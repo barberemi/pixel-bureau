@@ -182,7 +182,7 @@ test('daysLeft : jours calendaires à Paris', () => {
   assert.equal(run(`daysLeft(${Z('2026-10-01T22:30:00Z')}, ${Z('2026-10-01T09:00:00Z')})`), 1); // 00h30 à Paris le lendemain
 });
 
-test('dashData : sprint, PR, prod et « à toi »', () => {
+test('dashData : sprint, PR et prod', () => {
   run(`TEAM={sprint:{name:'S1',start:'2026-09-18T09:00:00Z',end:'2026-10-02T11:00:00Z'},
     people:[{tickets:[{key:'A',cat:'done',points:3},{key:'B',cat:'doing',points:5},{key:'C',cat:'review',points:2}],
       prs:[{n:1,review:'pending',draft:false,updated:'2026-09-29T09:00:00Z'},{n:2,review:'pending',draft:true},{n:3,review:'changes',draft:false}]}],
@@ -190,7 +190,6 @@ test('dashData : sprint, PR, prod et « à toi »', () => {
     DATA={runs:[{run:'r1',_s:0,_e:1,status:'Success',tok:100},{run:'r2',_s:0,_e:1,status:'Failed',tok:50,parent:'r1'}]};
     chars=[{key:'g',name:'Dwight',_st:{st:'gate'}},{key:'p',name:'Bob',person:'Bob',_st:{st:'error'}}];`);
   const d = JSON.parse(run(`JSON.stringify(dashData(${Date.parse('2026-10-01T09:00:00Z')}))`));
-  assert.equal(d.me.total, 1); // un humain « en panne » ne compte pas
   assert.equal(d.sprint.j, 1);
   assert.equal(d.sprint.ptsDone, 3);
   assert.equal(d.sprint.ptsAll, 11);

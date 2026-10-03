@@ -68,7 +68,7 @@ Tests : `tests/test_install.py` (faux Kronn : installation complète, sans Jira,
 ## Équipe et installation
 
 - `team/roster.json` : l'équipe, **identique pour tous** (clé stable, prénom, nom Jira `person`, rôle, place `seat`, `roleKind` po / sm / qa, apprenti, sprite fourni, `boss_sprite` porté seulement quand la personne est le boss). La recette d'avatar de chaque clé est dans `sprites/cast.json`.
-- `bureau.config.json` : **propre à chaque installation**, jamais partagé. `owner` = clé du roster de qui a installé la page : cette personne prend le bureau du boss (bloc « À toi », validations, routine du boss) ; les autres gardent leur place. Sans `owner`, personne n'est au bureau du boss.
+- `bureau.config.json` : **propre à chaque installation**, jamais partagé. `owner` = clé du roster de qui a installé la page : cette personne prend le bureau du boss (zone « À traiter », validations, routine du boss) ; les autres gardent leur place. Sans `owner`, personne n'est au bureau du boss.
 - Exemple : `owner: p_coll2` met Darryl au bureau du boss et Rémi à sa place `[12,15]`, avec son avatar classique (sans saxophone).
 - `bureau.config.json` porte aussi `actions` : ids des workflows et du Quick Prompt des boutons (`avatar`, `gate`, `relaunch`, `ask`). Un id vide : la carte `kronn-action` est retirée à l'assemblage et le bouton masqué.
 - **Page robuste** : chaque source est facultative. Sans dataset `office`, bureau vide (« En attente du premier rafraîchissement ») ; sans `team`, l'équipe du roster sans tickets et un bloc « Pas encore de données Jira ni GitHub ». Les instantanés de démo (`data/`) ne sont embarqués que dans l'aperçu local et les tests (`assemble.build(demo=True)`), jamais dans la page publiée (`publish.py` assemble avec `demo=False`).

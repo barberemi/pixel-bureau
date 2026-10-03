@@ -4,7 +4,7 @@
 const TODO_SHOWN=6, BLOCKED_DAYS=2, PR_STALE_H=24;
 const SEV_ORDER={err:0,warn:1,info:2};
 let TODO_ALL=false, TODO_SIG='';
-// réglage d'installation ui.todo : « open » (défaut), « folded » (replié au chargement) ou « hidden » (jamais affiché).
+// réglage d'installation ui.todo : « open » (défaut), « folded » (replié au chargement) ou « hidden » (jamais affiché, et rien ne le remplace).
 // Replier en cliquant le titre ne dure que le temps de la visite : la sandbox des pages ne mémorise rien.
 const TODO_MODE=((CFG.ui||{}).todo)||'open';
 if(!('todo' in COLLAPSED))COLLAPSED.todo=TODO_MODE==='folded';

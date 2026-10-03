@@ -1,13 +1,9 @@
 // ---------- tuiles KPI du haut et fil de la journée ----------
 document.getElementById('kpis').addEventListener('click',e=>{
-  if(e.target.closest('[data-todo-scroll]')){if(COLLAPSED.todo){COLLAPSED.todo=false;renderTodo();}const t=document.getElementById('todo');if(t)t.scrollIntoView({behavior:'smooth',block:'start'});return;}
   const k=e.target.closest('[data-open]');if(k)select(k.dataset.open);
 });
 // tous les chiffres du haut de page et du mode TV, à l'instant t (une seule source pour les deux)
 function dashData(t){
-  const of=k=>chars.filter(c=>c._st&&c._st.st===k);
-  const me={gates:of('gate'),asks:of('ask'),broken:of('error').filter(c=>!c.person)};
-  me.total=me.gates.length+me.asks.length+me.broken.length;
   let sprint=null, prs=null, prod=null;
   if(TEAM){
     const all=[...TEAM.people.flatMap(p=>p.tickets||[]),...(TEAM.unassigned||[])];
@@ -48,7 +44,7 @@ function dashData(t){
       tok:top.reduce((a,r)=>a+(r.tok||0),0)
     };
   }
-  return {me,sprint,prs,prod,agents};
+  return {sprint,prs,prod,agents};
 }
 const daysTxt=d=>d<36e5?Math.max(1,Math.round(d/6e4))+' min':d<864e5?Math.round(d/36e5)+' h':Math.floor(d/864e5)+' j';
 const plural=(n,a,b)=>n+' '+(n>1?b:a);
@@ -56,14 +52,7 @@ let KPI_SIG='';
 function renderKpis(){
   if(!DATA)return;
   const d=dashData(T), out=[];
-  if(TODO_MODE==='hidden'){ // 1. À toi : seulement quand la zone « À traiter » est masquée (sinon doublon)
-    const items=todoItems(T), act=items.filter(x=>x.sev!=='info'), by=k=>items.filter(x=>x.key.startsWith(k+':')||x.key===k).length;
-    const rows=[['err','🔧',['agent en panne','agents en panne']],['mep','✗',['MEP échouée','MEP échouées']],['gate','✋',['validation à faire','validations à faire']],
-      ['ask','❓',['question en attente','questions en attente']],['rev','👀',['PR à relire','PR à relire']],['fix','✏️',['PR à corriger','PR à corriger']],['tk','⏳',['ticket bloqué','tickets bloqués']]]
-      .filter(r=>by(r[0])).map(([k,ico,w])=>`<div class="dl">${ico} <b>${plural(by(k),w[0],w[1])}</b></div>`);
-    out.push(`<section class="dash me click${act.length?' on':''}" data-todo-scroll><h3>À toi</h3>`+(act.length?`<div class="big">${act.length}</div>${rows.join('')}`:`<div class="calm">Rien ne t'attend ✓</div>${rows.join('')}`)+'</section>');
-  }
-  if(d.sprint){ // 2. Sprint
+  if(d.sprint){ // 1. Sprint
     const s=d.sprint, c=s.cats, tot=Math.max(1,c.todo+c.doing+c.review+c.test+c.done), pct=s.ptsAll?Math.round(s.ptsDone/s.ptsAll*100):0;
     const seg=(k,col)=>c[k]?`<i style="width:${c[k]/tot*100}%;background:${col}" title="${c[k]} ${CAT_TXT[k]||'terminés'}"></i>`:'';
     out.push(`<section class="dash sprint"><h3>Sprint ${esc(s.name)}${s.j!=null?` <span class="j${s.j<=1?' hot':''}">J-${s.j}</span>`:''}</h3>`+
@@ -74,7 +63,7 @@ function renderKpis(){
       '</section>');
   }
   if(!d.sprint)out.push(`<section class="dash sprint"><h3>L'équipe</h3><div class="calm muted">Pas encore de données Jira ni GitHub.</div><div class="cap">Elles arrivent avec le cron « équipe » (sprint, tickets, PR, mises en prod).</div></section>`);
-  if(d.prod){ // 3. Prod aujourd'hui
+  if(d.prod){ // 2. Prod aujourd'hui
     const p=d.prod;
     const lines=[
       ...p.failed.map(x=>`<div class="cap err">✗ ${esc(x.m.tag)} : ${esc(MEP_TXT.failed)}${x.m.ticket?' · '+esc(x.m.ticket):''}</div>`),
@@ -84,14 +73,14 @@ function renderKpis(){
     ].filter(Boolean);
     out.push(`<section class="dash prod click" data-open="tv"><h3>La prod aujourd'hui</h3><div class="row"><div class="big">${p.done}</div><div class="grow">${plural(p.done,'mise en prod','mises en prod')}</div></div>${lines.join('')}</section>`);
   }
-  if(d.agents){ // 4. Agents (suivi, pas alerte)
+  if(d.agents){ // 3. Agents (suivi, pas alerte)
     const a=d.agents;
     out.push(`<section class="dash agents click" data-open="paie" title="Voir la fiche de paie"><h3>Les agents</h3><div class="cap">${a.runs} runs · <span style="color:var(--ok)">${a.ok} ✓</span> · <span style="color:${a.ko?'var(--err)':'inherit'}">${a.ko} ✗</span></div><div class="cap">${fmtTok(a.tok)} tokens · fiche de paie ›</div></section>`);
   }
   const html=out.join('');
   if(html===KPI_SIG)return;
   const box=document.getElementById('kpis');
-  KPI_SIG=html;box.innerHTML=html;box.classList.toggle('k3',out.length===3);
+  KPI_SIG=html;box.innerHTML=html;
 }
 const fmtPts=n=>String(Math.round(n*10)/10).replace('.',',');
 let FEED_EV=[];
