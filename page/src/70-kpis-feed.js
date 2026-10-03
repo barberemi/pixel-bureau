@@ -56,7 +56,7 @@ let KPI_SIG='';
 function renderKpis(){
   if(!DATA)return;
   const d=dashData(T), out=[];
-  { // 1. À toi : résumé de la zone « À traiter » (le détail et les boutons sont dessous)
+  if(TODO_MODE==='hidden'){ // 1. À toi : seulement quand la zone « À traiter » est masquée (sinon doublon)
     const items=todoItems(T), act=items.filter(x=>x.sev!=='info'), by=k=>items.filter(x=>x.key.startsWith(k+':')||x.key===k).length;
     const rows=[['err','🔧',['agent en panne','agents en panne']],['mep','✗',['MEP échouée','MEP échouées']],['gate','✋',['validation à faire','validations à faire']],
       ['ask','❓',['question en attente','questions en attente']],['rev','👀',['PR à relire','PR à relire']],['fix','✏️',['PR à corriger','PR à corriger']],['tk','⏳',['ticket bloqué','tickets bloqués']]]
@@ -66,13 +66,11 @@ function renderKpis(){
   if(d.sprint){ // 2. Sprint
     const s=d.sprint, c=s.cats, tot=Math.max(1,c.todo+c.doing+c.review+c.test+c.done), pct=s.ptsAll?Math.round(s.ptsDone/s.ptsAll*100):0;
     const seg=(k,col)=>c[k]?`<i style="width:${c[k]/tot*100}%;background:${col}" title="${c[k]} ${CAT_TXT[k]||'terminés'}"></i>`:'';
-    const pr=d.prs;
     out.push(`<section class="dash sprint"><h3>Sprint ${esc(s.name)}${s.j!=null?` <span class="j${s.j<=1?' hot':''}">J-${s.j}</span>`:''}</h3>`+
       `<div class="row"><div class="big">${pct}<small>%</small></div><div class="grow"><div class="meter"><i style="width:${pct}%"></i>${s.time!=null?`<u style="left:${s.time*100}%" title="Temps écoulé du sprint"></u>`:''}</div>`+
       `<div class="cap">${fmtPts(s.ptsDone)} / ${fmtPts(s.ptsAll)} points terminés${s.time!=null?' · '+Math.round(s.time*100)+' % du temps écoulé':''}</div></div></div>`+
       `<div class="stack">${seg('done','var(--idle)')}${seg('test',CAT_COLOR.test)}${seg('review',CAT_COLOR.review)}${seg('doing',CAT_COLOR.doing)}${seg('todo','var(--line)')}</div>`+
       `<div class="cap">${c.todo} à faire · <span style="color:${CAT_COLOR.doing}">${c.doing} en cours</span> · <span style="color:${CAT_COLOR.review}">${c.review} en review</span> · <span style="color:${CAT_COLOR.test}">${c.test} en test</span> · ${c.done} terminés</div>`+
-      (pr?`<div class="cap${pr.stale?' warn':''}">⏳ ${plural(pr.wait,'PR attend','PR attendent')} une review${pr.wait?' · la plus ancienne sans activité depuis '+daysTxt(pr.oldest):''}${pr.changes?' · '+plural(pr.changes,'PR à corriger','PR à corriger'):''}</div>`:'')+
       '</section>');
   }
   if(!d.sprint)out.push(`<section class="dash sprint"><h3>L'équipe</h3><div class="calm muted">Pas encore de données Jira ni GitHub.</div><div class="cap">Elles arrivent avec le cron « équipe » (sprint, tickets, PR, mises en prod).</div></section>`);
@@ -92,7 +90,8 @@ function renderKpis(){
   }
   const html=out.join('');
   if(html===KPI_SIG)return;
-  KPI_SIG=html;document.getElementById('kpis').innerHTML=html;
+  const box=document.getElementById('kpis');
+  KPI_SIG=html;box.innerHTML=html;box.classList.toggle('k3',out.length===3);
 }
 const fmtPts=n=>String(Math.round(n*10)/10).replace('.',',');
 let FEED_EV=[];
