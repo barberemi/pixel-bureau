@@ -138,6 +138,24 @@ function bossState(c,t){
   // 4. sinon, à son bureau
   return ret({st:'boss',zone:'boss',label:'Au bureau du boss'});
 }
+const ALARM_FAILS=3, FROZEN_AFTER=3*60e3;
+// instant du dernier relevé du direct quand il n'est plus rafraîchi (plus de 3 min), sinon null ; jamais en démo
+function frozenSince(){
+  if(!LIVE_DATA)return null;
+  const g=ms((LIVE&&LIVE.generated_at)||(DATA&&DATA.generated_at));
+  return g&&Date.now()-g>FROZEN_AFTER?g:null;
+}
+// échecs consécutifs des derniers runs terminés à t (premier niveau : les sous-runs sont comptés dans leur parent)
+function failStreak(c,t){
+  const ids=new Set(c.runs.map(r=>r.run)), done=c.runs.filter(r=>!(r.parent&&ids.has(r.parent))&&r._s<=t&&t>=r._ve);
+  let n=0;for(let i=done.length-1;i>=0&&(done[i].status==='Failed'||done[i].status==='Cancelled');i--)n++;
+  return n;
+}
+// santé sur 7 jours (fiche de paie) : « 136 échecs sur 160 runs en 7 j (85 %) »
+function weekHealth(c){
+  const p=typeof payFor==='function'?payFor(c):null; if(!p||!p.week.runs)return null;
+  return p.week.fail+' échecs sur '+p.week.runs+' runs en 7 j ('+Math.round(p.week.fail/p.week.runs*100)+' %)';
+}
 function stateAt0(c,t){
   if(c.person&&!c.boss){
     const h=+new Intl.DateTimeFormat('en-GB',{timeZone:TZ,hour:'numeric',hour12:false}).format(new Date(t));
@@ -203,7 +221,8 @@ function stateAt0(c,t){
   if(c.visitor){
     const d=c.disc, s0=c.runs[0]._s, e0=ms(d.end), nearNow=REND-t<15*60e3;
     if(t<s0)return {st:'absent',label:'Pas encore arrivé'};
-    if(d.awaiting&&nearNow)return {st:'meet',zone:'meet',label:"En réunion : l'agent travaille",bubble:'...'};
+    const fz=frozenSince(), stale=fz&&t>fz+60e3; // direct figé : « l'agent travaille » n'est plus sûr
+    if(d.awaiting&&nearNow&&!stale)return {st:'meet',zone:'meet',label:"En réunion : l'agent travaille",bubble:'...'};
     if(t<=Math.max(e0,s0+VIS_MIN))return {st:'meet',zone:'meet',label:'En discussion',bubble:'...'};
     if(d.pending>0&&nearNow)return {st:'ask',zone:'gate',label:'Attend ta réponse ('+d.pending+' question'+(d.pending>1?'s':'')+')',bubble:'?'};
     if(t-e0<15*60e3)return {st:'coffee',zone:'coffee',label:'Discussion terminée, pause café',bubble:'☕'};
@@ -217,6 +236,12 @@ function stateAt0(c,t){
     const r=active[active.length-1];
     if(c.visitor)return {st:'work',zone:c.multi?'meet':'desk',label:'En discussion',bubble:'...',run:r};
     if(r.status==='WaitingApproval')return {st:'gate',zone:'gate',label:'Attend ta validation',bubble:'✋',run:r};
+    // direct plus rafraîchi (cron arrêté la nuit, Kronn ou Mac éteint) : un run « en cours » n'est plus crédible
+    const fz=frozenSince();
+    if(fz&&t>fz+60e3&&r.status!=='Pending'){
+      const s=stepAt(r,fz);
+      return {st:'frozen',zone:'desk',label:'Données figées depuis '+hm(fz)+' : était sur '+(s?s.n:clean(r.wf_name)),bubble:'⏸',run:r,step:s};
+    }
     if(CFG.mep_workflow&&(r.wf||'').startsWith(CFG.mep_workflow)){
       const s=stepAt(r,t);
       return {
@@ -239,6 +264,20 @@ function stateAt0(c,t){
   const since=t-last._ve;
   if(c.visitor)return since<3*60e3?{st:'idle',zone:'leave',label:'Repart'}:{st:'gone',label:'Parti'};
   const bad=last.status==='Failed'||last.status==='Cancelled';
+  // alarme : ALARM_FAILS échecs d'affilée (runs de premier niveau) = en panne jusqu'au prochain succès, plus seulement 40 min
+  const streak=failStreak(c,t);
+  if(streak>=ALARM_FAILS){
+    const fs=(last.steps||[]).find(s=>s.s==='Failed'), w=weekHealth(c);
+    return {
+      st:'error',
+      zone:'wc',
+      alarm:streak,
+      label:'Alarme : '+streak+' échecs d\'affilée'+(fs?' (dernier sur '+fs.n+')':'')+(w?' · '+w:'')+' · en panne jusqu\'au prochain succès',
+      bubble:'🚨',
+      run:last,
+      step:fs
+    };
+  }
   if(bad&&since<40*60e3){
     const fs=(last.steps||[]).find(s=>s.s==='Failed');
     return {
@@ -266,7 +305,8 @@ const ST_COLOR={
   error:'#d1453b',
   coffee:'#9a9284',
   idle:'#9a9284',
-  boss:'#7a5cc8'
+  boss:'#7a5cc8',
+  frozen:'#7d8fa3'
 };
 const ST_CSS={
   sax:'#c9a227',
@@ -282,6 +322,7 @@ const ST_CSS={
   coffee:'var(--idle)',
   idle:'var(--idle)',
   boss:'#7a5cc8',
+  frozen:'#7d8fa3',
   absent:'transparent',
   gone:'transparent'
 };

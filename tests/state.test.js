@@ -281,3 +281,55 @@ test('week-end : les collègues restent chez eux, le boss vient', () => {
   assert.equal(bossAt(sat).zone, 'boss');
   assert.equal(J(`stateAt({key:'p_a',name:'Alice',person:'Alice',seat:[5,14],team:{tickets:[{key:'EW-1',cat:'doing'}]},runs:[]}, ${Z(parisISO('2026-10-05', '11:00'))})`).st, 'work'); // lundi
 });
+
+// ---------- données figées, alarme, minuit de Paris (lot 1 du 4 octobre) ----------
+const failRun = (id, startMin) => `{run:'${id}',wf:'abcd1234-x',status:'Failed',_s:${T11 - startMin * MIN},_e:${T11 - (startMin - 1) * MIN},_ve:${T11 - (startMin - 4) * MIN},
+  steps:[{n:'collect',k:'ApiCall',s:'Failed',at:'2026-10-01T08:00:00Z'}],vars:{}}`;
+
+test('alarme : 3 échecs d\'affilée restent en panne au-delà de 40 min, avec la santé 7 j', () => {
+  reset();
+  run('PAYROLL={agents:[{wf:"abcd1234-x",name:"Agent",today:{tok:0,runs:3,fail:3},week:{tok:0,runs:160,fail:136},days:[0,0,0,0,0,0,0]}],days:[]};');
+  const st = J(`stateAt(${agentWith([failRun('a', 300), failRun('b', 200), failRun('c', 100)].join(','))}, ${T11})`);
+  assert.equal(st.st, 'error');
+  assert.equal(st.alarm, 3);
+  assert.equal(st.bubble, '🚨');
+  assert.match(st.label, /3 échecs d'affilée.*136 échecs sur 160 runs en 7 j \(85 %\)/);
+  run('PAYROLL=null;');
+});
+
+test('alarme : 2 échecs seulement, panne oubliée après 40 min comme avant', () => {
+  reset();
+  const st = J(`stateAt(${agentWith([failRun('b', 200), failRun('c', 100)].join(','))}, ${T11})`);
+  assert.notEqual(st.st, 'error');
+});
+
+test('alarme : un succès après les échecs remet le compteur à zéro', () => {
+  reset();
+  const ok = `{run:'d',wf:'abcd1234-x',status:'Success',_s:${T11 - 60 * MIN},_e:${T11 - 59 * MIN},_ve:${T11 - 56 * MIN},steps:[],vars:{}}`;
+  const st = J(`stateAt(${agentWith([failRun('a', 300), failRun('b', 200), failRun('c', 100), ok].join(','))}, ${T11})`);
+  assert.notEqual(st.st, 'error');
+});
+
+test('données figées : un run « en cours » n\'est plus cru quand le direct a plus de 3 min', () => {
+  reset();
+  const now = Date.now(), gen = now - 2 * 3600e3; // dernier relevé il y a 2 h (la nuit)
+  run(`LIVE_DATA=true; LIVE={generated_at:'${new Date(gen).toISOString()}',runs:[]}; REND=${now};`);
+  const running = `{run:'r1',wf:'abcd1234-x',status:'Running',_s:${gen - 10 * MIN},_e:null,_ve:Infinity,
+    steps:[{n:'review',k:'Agent',at:'${new Date(gen - 5 * MIN).toISOString()}'}],vars:{}}`;
+  const st = J(`stateAt(${agentWith(running)}, ${now})`);
+  assert.equal(st.st, 'frozen');
+  assert.match(st.label, /^Données figées depuis \d\d:\d\d : était sur review$/);
+  // en rejeu, juste avant le dernier relevé : au travail comme d'habitude
+  assert.equal(J(`stateAt(${agentWith(running)}, ${gen - MIN})`).st, 'work');
+  // direct frais : au travail
+  run(`LIVE={generated_at:'${new Date(now - 30e3).toISOString()}',runs:[]};`);
+  assert.equal(J(`stateAt(${agentWith(running)}, ${now})`).st, 'work');
+  run('LIVE_DATA=false; LIVE=null;');
+});
+
+test('minuit de Paris, y compris le jour du passage à l\'heure d\'hiver', () => {
+  const M = s => new Date(J(`parisMidnight(${Date.parse(s)})`)).toISOString();
+  assert.equal(M('2026-10-03T12:00:00Z'), '2026-10-02T22:00:00.000Z'); // été : UTC+2
+  assert.equal(M('2026-10-25T18:00:00Z'), '2026-10-24T22:00:00.000Z'); // jour du changement : minuit encore en heure d'été
+  assert.equal(M('2026-10-26T08:00:00Z'), '2026-10-25T23:00:00.000Z'); // hiver : UTC+1
+});

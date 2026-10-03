@@ -20,7 +20,7 @@ python3 tools/install.py             # installation interactive (relançable san
 L'installateur pose ses questions (Kronn, qui tu es dans l'équipe, projet Kronn, Jira, GitHub, tes agents, ton avatar), puis crée la page, ses datasets, les workflows et le Quick Prompt dans **ton** Kronn, écrit `bureau.config.json` (propre à ton installation, jamais commité) et lance un premier rafraîchissement. Détail plus bas, section « Installer Le Bureau dans son Kronn ».
 
 Ensuite :
-- ouvre Kronn > Pages > « Le Bureau » : les crons la remplissent dans les minutes qui suivent (7h-21h, heure de Paris) ;
+- ouvre Kronn > Pages > « Le Bureau » : les crons la remplissent dans les minutes qui suivent (crons de 4h à 20h59 UTC : 6h-23h l'été, 5h-22h l'hiver, heure de Paris) ;
 - mise à jour : `git pull`, puis `python3 tools/publish.py all` (page + workflows, avec ta config) ;
 - tests avant de publier une modification : `sh tools/test.sh` (Node 20 ou plus, aucune dépendance npm).
 
@@ -30,9 +30,9 @@ Rien de secret n'est stocké : les connexions sont référencées par leur id Kr
 
 
 - Page Kronn : `4f38f114-e010-41ba-b34e-832ff9a72672` (http://localhost:5173/#page/4f38f114-e010-41ba-b34e-832ff9a72672)
-- Cron « Le Bureau · refresh (page) » : `622338c5-f4f7-4e01-a3b8-749f6c9b8c71` (dataset `office`, toutes les 10 min, 7h-21h Paris)
-- Cron « Le Bureau · équipe (Jira + GitHub) » : `60fd6c69-2afc-4467-b202-5887c943b85c` (dataset `team`, toutes les 10 min, 7h-21h Paris, semaine)
-- Cron « Le Bureau · live (1 min) » : `d1128ffe-beca-4580-8fb1-1db644f7c659` (dataset `live` : runs en cours, discussions récentes, déploiements staging/prod du jour ; toutes les minutes, 7h-21h Paris). La page le superpose aux deux instantanés.
+- Cron « Le Bureau · refresh (page) » : `622338c5-f4f7-4e01-a3b8-749f6c9b8c71` (dataset `office`, toutes les 10 min, 4h-20h59 UTC, au moins 7h-22h Paris toute l'année)
+- Cron « Le Bureau · équipe (Jira + GitHub) » : `60fd6c69-2afc-4467-b202-5887c943b85c` (dataset `team`, toutes les 10 min, 4h-20h59 UTC, au moins 7h-22h Paris toute l'année, semaine)
+- Cron « Le Bureau · live (1 min) » : `d1128ffe-beca-4580-8fb1-1db644f7c659` (dataset `live` : runs en cours, discussions récentes, déploiements staging/prod du jour ; toutes les minutes, 4h-20h59 UTC, au moins 7h-22h Paris toute l'année). La page le superpose aux deux instantanés.
 - Workflow « Le Bureau · avatars » : `6261fa8b-9e95-471e-ac23-c333031eaf86` (manuel, 0 token) : lancé depuis la page (bouton « Enregistrer pour l'équipe » = page action `bureau-avatar`), valide le code collé et le fusionne dans le dataset `avatars`.
 - Workflow « Le Bureau · décision gate » : `8f4c4b5f-143b-4759-9b2e-6a10e9f3add2` (manuel, 0 token) : lancé depuis la carte « Validation demandée » (page action `bureau-gate`) ; run/workflow/étape relus par Kronn dans le dataset `gates` (publié chaque minute par l'étape CollectApiData `gates` du cron live), décision choisie dans la carte, appel `POST /api/workflows/{id}/runs/{run}/decide`.
 - Purge : `office_snapshot.py` supprime les runs de plus de 7 jours des 3 crons du Bureau uniquement.

@@ -103,6 +103,11 @@ function bestEmployee(){
 }
 // le personnage d'un classement (le gagnant du sprint fermé peut n'avoir aucun ticket dans le nouveau)
 const empChar=r=>r&&(chars.find(x=>x.team&&x.team.id===r.p.id)||(typeof personChar==='function'?personChar(r.p.id,r.p.name):null));
+// minuit (heure de Paris) du jour de t ; juste aussi les jours de changement d'heure (minuit est avant le changement, à 2h ou 3h)
+function parisMidnight(t){
+  const u=Date.parse(new Intl.DateTimeFormat('en-CA',{timeZone:TZ}).format(new Date(t))+'T00:00:00Z'), p=parisHM(u);
+  return u-(p.h*60+p.m)*60e3;
+}
 function parisHM(t){
   const p=new Intl.DateTimeFormat('en-GB',{timeZone:TZ,hour:'numeric',minute:'numeric',weekday:'short',hour12:false}).formatToParts(new Date(t));
   const g=k=>(p.find(x=>x.type===k)||{}).value;
@@ -172,11 +177,7 @@ function setData(d,live){
   };
   CAST.forEach(add);
   const free=FREE_SEATS.filter(s=>!CAST.some(c=>c.seat&&c.seat[0]===s[0]&&c.seat[1]===s[1])); let tempN=0; DISC_BY_RUN={};
-  {
-    const t0=ms(d.generated_at), pp0=new Intl.DateTimeFormat('en-GB',{timeZone:TZ,hour:'numeric',minute:'numeric',second:'numeric',hour12:false}).formatToParts(new Date(t0));
-    const g0=k=>+pp0.find(p=>p.type===k).value;
-    DAY0=t0-((g0('hour')%24)*3600+g0('minute')*60+g0('second'))*1000;
-  }
+  DAY0=parisMidnight(ms(d.generated_at));
   for(const r of d.runs){
     r._s=ms(r.start); r._e=ms(r.end);
     const realEnd=r._e||null;
@@ -227,9 +228,6 @@ function setData(d,live){
     c.top=c.runs.filter(r=>!r.parent||!ids.has(r.parent));
     c.kids={}; for(const r of c.runs)if(r.parent&&ids.has(r.parent))(c.kids[r.parent]=c.kids[r.parent]||[]).push(r);
   }
-  const t0=ms(d.generated_at), pp=new Intl.DateTimeFormat('en-GB',{timeZone:TZ,hour:'numeric',minute:'numeric',second:'numeric',hour12:false}).formatToParts(new Date(t0));
-  const gp=k=>+pp.find(p=>p.type===k).value;
-  DAY0=t0-((gp('hour')%24)*3600+gp('minute')*60+gp('second'))*1000;
   const firsts=d.runs.map(r=>r._s).filter(Boolean);
   RSTART=Math.max(DAY0,(firsts.length?Math.min(...firsts):DAY0)-15*60e3);
   REND=live?Date.now():ms(d.generated_at);

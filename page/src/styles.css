@@ -1,16 +1,16 @@
 :root{
   --bg:#f3efe6; --panel:#fffdf8; --ink:#25221d; --muted:#6f685c; --line:#e2dccf; --chip:#f0ebe0;
-  --accent:#2f6fd6; --ok:#2e9e5b; --warn:#d89614; --err:#d1453b; --info:#4a7fe0; --idle:#9a9284;
+  --accent:#2f6fd6; --ok:#2e9e5b; --warn:#d89614; --err:#d1453b; --info:#4a7fe0; --idle:#7a7266; --on-accent:#ffffff;
   --shadow:0 1px 2px rgba(40,30,10,.06),0 6px 24px rgba(40,30,10,.06);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#17181c; --panel:#202228; --ink:#ece8df; --muted:#a29c90; --line:#2f323a; --chip:#2a2d34;
-  --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#7d786e;
+  --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#9a9284; --on-accent:#0d1b33;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 24px rgba(0,0,0,.25);
 }}
 :root[data-theme="dark"]{
   --bg:#17181c; --panel:#202228; --ink:#ece8df; --muted:#a29c90; --line:#2f323a; --chip:#2a2d34;
-  --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#7d786e;
+  --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#9a9284; --on-accent:#0d1b33;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 24px rgba(0,0,0,.25);
 }
 *{box-sizing:border-box}
@@ -37,7 +37,9 @@ canvas{display:block;width:100%;min-width:900px;image-rendering:pixelated;cursor
 .bar{display:flex;align-items:center;gap:10px;padding:10px 4px 2px;flex-wrap:wrap}
 button,select{font:inherit;color:var(--ink);background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:6px 11px;cursor:pointer}
 button:hover{border-color:var(--accent)}
-button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+canvas:focus-visible{outline-offset:-2px}
 input[type=range]{flex:1;min-width:160px;accent-color:var(--accent)}
 .tlabel{font:600 13px ui-monospace,Menlo,monospace;color:var(--muted);min-width:44px}
 .legend{display:flex;gap:12px;flex-wrap:wrap;padding:6px 4px 0;color:var(--muted);font-size:12px}
