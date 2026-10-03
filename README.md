@@ -2,6 +2,33 @@
 
 Page Live Kronn façon *The Office* : les agents, workflows, collègues et mises en prod de la journée dans un bureau en pixel art.
 
+## Démarrage rapide (installer chez soi)
+
+Prérequis :
+- Kronn 0.14.1 ou plus, lancé sur ta machine (API sur `127.0.0.1:3140`) ;
+- Python 3 ;
+- pour les tickets du sprint : une connexion Atlassian dans Kronn (MCP > Atlassian) ;
+- pour les PR et les mises en prod : `gh` connecté (`gh auth login`) avec accès au dépôt suivi.
+
+```sh
+git clone https://github.com/barberemi/kronn-bureau.git
+cd kronn-bureau
+python3 tools/install.py --dry-run   # voir ce qui serait créé, sans rien toucher
+python3 tools/install.py             # installation interactive (relançable sans doublon)
+```
+
+L'installateur pose ses questions (Kronn, qui tu es dans l'équipe, projet Kronn, Jira, GitHub, tes agents, ton avatar), puis crée la page, ses datasets, les workflows et le Quick Prompt dans **ton** Kronn, écrit `bureau.config.json` (propre à ton installation, jamais commité) et lance un premier rafraîchissement. Détail plus bas, section « Installer Le Bureau dans son Kronn ».
+
+Ensuite :
+- ouvre Kronn > Pages > « Le Bureau » : les crons la remplissent dans les minutes qui suivent (7h-21h, heure de Paris) ;
+- mise à jour : `git pull`, puis `python3 tools/publish.py all` (page + workflows, avec ta config) ;
+- tests avant de publier une modification : `sh tools/test.sh` (Node 20 ou plus, aucune dépendance npm).
+
+Rien de secret n'est stocké : les connexions sont référencées par leur id Kronn. Les tests utilisent leur propre copie de configuration (`tests/fixtures/bureau.config.json`).
+
+## L'installation de référence (Rémi)
+
+
 - Page Kronn : `4f38f114-e010-41ba-b34e-832ff9a72672` (http://localhost:5173/#page/4f38f114-e010-41ba-b34e-832ff9a72672)
 - Cron « Le Bureau · refresh (page) » : `622338c5-f4f7-4e01-a3b8-749f6c9b8c71` (dataset `office`, toutes les 10 min, 7h-21h Paris)
 - Cron « Le Bureau · équipe (Jira + GitHub) » : `60fd6c69-2afc-4467-b202-5887c943b85c` (dataset `team`, toutes les 10 min, 7h-21h Paris, semaine)
@@ -18,7 +45,7 @@ Page Live Kronn façon *The Office* : les agents, workflows, collègues et mises
 | `page/office_template.html` | Squelette HTML de la page : en-tête, canvas, barre de lecture, panneau, les 4 blocs `kronn-action` (gardés tels quels, Kronn les lit dans le HTML statique) et deux marqueurs `/*__STYLES__*/` et `/*__SCRIPTS__*/` |
 | `page/src/styles.css` | Toute la feuille de style (inlinée à la place de `/*__STYLES__*/`) |
 | `page/src/NN-*.js` | Le script de la page, découpé par responsabilité et concaténé **dans l'ordre des noms** en un seul `<script>` inline (une seule portée globale, pas de modules) : `00-config` (marqueurs de données `__SPRITES__`, `__CAST__`, `__SNAP__`..., casting `CAST`), `10-world` (grille, plan, `findPath`), `20-sprites` (calques LPC, planches, avatars personnalisés), `30-data` (équipe, MEP, heure de Paris, cron, `setData`), `35-state` (`stateAt`, déplacements), `40-render` (sol, mobilier, personnages, `render`), `50-panel` (liste du panneau), `55-actions` (fenêtre des cartes Kronn, gate, paie, relancer / interroger, musique), `60-fiches` (fiches visiteur, TV, planning, kanban, collègue), `65-editor` (éditeur d'avatar), `70-kpis-feed` (tuiles et fil), `75-tv` (mode TV), `80-input` (souris, lecture), `90-boot` (boucle, lecture des datasets Kronn, démarrage) |
-| `tests/` | Tests `node --test` (sans dépendance npm) : `helpers/page.js` charge `page/src/*.js` dans un contexte `vm` avec des bouchons DOM / canvas ; `logic.test.js` (cron, heure de Paris, MEP, paie, outils, places, KPI, éditeur), `state.test.js` (`stateAt`), `boot.test.js` (démarrage sur la démo, blocs `kronn-action`) |
+| `tests/` | Tests `node --test` (sans dépendance npm) : `helpers/page.js` charge `page/src/*.js` dans un contexte `vm` avec des bouchons DOM / canvas ; `logic.test.js` (cron, heure de Paris, MEP, paie, outils, places, KPI, éditeur), `state.test.js` (`stateAt`), `boot.test.js` (démarrage sur la démo, blocs `kronn-action`), `visuals.test.js` (enveloppes, double bulle, écrans) ; configuration de test dans `fixtures/` |
 | `sprites/` | `cast.json` (recette de chaque avatar), `build_layers.py` → `layers.json` (bibliothèque de calques LPC, assemblés dans le navigateur), `build_sprites.py` → `sprites.json` (planches ; seuls les sprites fournis de `custom/` sont embarqués), `lpc_cache/` (calques téléchargés) |
 | `workflows/` | Scripts Python exécutés par les steps Exec des deux crons |
 | `data/` | Instantanés de démo embarqués dans la page (utilisés tant que les crons n'ont rien publié) |
