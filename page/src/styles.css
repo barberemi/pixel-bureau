@@ -143,7 +143,8 @@ body.tv .wrap{max-width:none}
 body.tv .main{display:block}
 body.tv .stage{padding:0;border:0;border-radius:0;background:none;box-shadow:none}
 body.tv{--tvk:clamp(110px,15vh,170px)}
-body.tv .stage{display:flex;flex-direction:column;height:calc(100vh - 100px);margin-top:52px;margin-right:var(--tvw)}
+/* zone calée entre le bandeau du haut (52 px) et le bandeau défilant (48 px) : rien ne passe dessous */
+body.tv .stage{display:flex;flex-direction:column;position:fixed;top:52px;bottom:48px;left:0;right:var(--tvw);margin:0;overflow:hidden}
 body.tv .cv-wrap{overflow:hidden;border-radius:0;background:#111216;display:flex;justify-content:center;align-items:flex-start;flex:none}
 body.tv canvas{min-width:0;width:min(calc(100vw - var(--tvw)),calc((100vh - 100px - var(--tvk)) * 2));height:auto;border-radius:0}
 body.tv #tvbar{display:flex;flex-wrap:nowrap;white-space:nowrap;overflow:hidden;position:fixed;top:0;left:0;right:0;height:52px;align-items:center;gap:clamp(5px,0.8vw,14px);padding:0 clamp(8px,1.2vw,18px);background:#191b22;color:#ece8df;font:600 15px ui-sans-serif,system-ui,sans-serif;z-index:30;border-bottom:1px solid #2a2d36}
@@ -336,7 +337,7 @@ body.tv .recap,body.tv .recapbtn{display:none!important}
 body.tv .legend-help{display:none!important}
 /* TV : bande de chiffres sous le plan, scènes du daily */
 #tvkpi,#tvscene{display:none}
-body.tv #tvkpi{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:10px;flex:1;min-height:var(--tvk);padding:10px 12px;background:#111216}
+body.tv #tvkpi{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:10px;flex:1 1 var(--tvk);min-height:0;padding:10px 12px;background:#111216}
 #tvkpi .tk{background:#1d1f26;border-radius:12px;border-top:4px solid #3a3e4a;padding:10px 14px;display:flex;flex-direction:column;justify-content:center;min-width:0;color:#ece8df}
 #tvkpi .tk b{font:800 clamp(32px,3.4vw,58px)/1 ui-monospace,Menlo,monospace}
 #tvkpi .tk b i{font-style:normal;font-size:.5em;color:#a29c90}
@@ -370,4 +371,5 @@ body.tv.tvscene #tvscene{display:block;flex:1;overflow:hidden;background:#15161b
 #tvscene .more{color:#a29c90}
 #tvbar #tvstand.on{background:#2e9e9b;color:#0d1b1b;border-color:#2e9e9b}
 body.tv.tvscene #tvkpi{flex:0 0 var(--tvk)}
+#tvkpi .tk{overflow:hidden}
 #tvticker .calm{padding:12px 18px;color:#a29c90;font-size:16px}
