@@ -13,7 +13,7 @@ const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8');
 // même découpe que page_config() de tools/assemble.py
 function pageConfig(cfg) {
   return {kronn_ui: (cfg.kronn || {}).ui, jira_site: (cfg.jira || {}).site, github_repo: (cfg.github || {}).repo, github_login: (cfg.github || {}).login,
-    rhythm: cfg.rhythm || {}, mep_workflow: cfg.mep_workflow, workflows: cfg.workflows || {}, agents: cfg.agents || [],
+    rhythm: cfg.rhythm || {}, mep_workflow: cfg.mep_workflow, workflows: cfg.workflows || {}, agents: cfg.agents || [], ui: cfg.ui || {},
     schedules: Object.fromEntries(['office', 'live', 'team', 'payroll'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule]))};
 }
 

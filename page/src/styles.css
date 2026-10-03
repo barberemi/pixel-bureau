@@ -326,3 +326,5 @@ body.tv .todo{display:none!important}
 .recap .rfoot{margin-top:6px;font-size:12px;color:var(--muted)}
 .recap .rclose{font-size:12px;padding:2px 9px}
 body.tv .recap,body.tv .recapbtn{display:none!important}
+.todo h2.grp{cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px}.todo h2.grp:hover{color:var(--ink)}.todo h2 .chev{display:inline-block;width:10px}
+.todo h2 .tsum{text-transform:none;letter-spacing:0;font-weight:500;color:var(--ink);margin-left:6px}

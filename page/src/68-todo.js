@@ -4,6 +4,10 @@
 const TODO_SHOWN=6, BLOCKED_DAYS=2, PR_STALE_H=24;
 const SEV_ORDER={err:0,warn:1,info:2};
 let TODO_ALL=false, TODO_SIG='';
+// réglage d'installation ui.todo : « open » (défaut), « folded » (replié au chargement) ou « hidden » (jamais affiché).
+// Replier en cliquant le titre ne dure que le temps de la visite : la sandbox des pages ne mémorise rien.
+const TODO_MODE=((CFG.ui||{}).todo)||'open';
+if(!('todo' in COLLAPSED))COLLAPSED.todo=TODO_MODE==='folded';
 // login GitHub du boss : config d'installation, sinon le premier login rapproché de ses PR
 function bossLogin(){
   if(CFG.github_login)return String(CFG.github_login).toLowerCase();
@@ -70,8 +74,12 @@ function renderTodo(){
   const box=document.getElementById('todo'); if(!box||!DATA)return;
   const items=todoItems(T), shown=TODO_ALL?items:items.slice(0,TODO_SHOWN);
   const btn=a=>!a?'':a.href?`<a class="tbtn" href="${esc(a.href)}" target="_blank" rel="noopener">${esc(a.label)} ↗</a>`:`<button class="tbtn" data-open="${esc(a.open)}">${esc(a.label)} ›</button>`;
-  const html=!items.length?`<div class="todo-calm">✓ Rien à traiter</div>`:
-    `<h2>À traiter <span class="cnt">${items.length}</span></h2><ul>`+shown.map(x=>
+  if(TODO_MODE==='hidden'){box.hidden=true;return;}
+  const fold=!!COLLAPSED.todo, nErr=items.filter(x=>x.sev==='err').length, nWarn=items.filter(x=>x.sev==='warn').length;
+  const head=`<h2 class="grp" data-todo-toggle role="button" tabindex="0" aria-expanded="${!fold}"><span class="chev">${fold?'▸':'▾'}</span>À traiter <span class="cnt">${items.length}</span>`+
+    (fold?`<span class="tsum">${[nErr?plural(nErr,'cassé','cassés'):'',nWarn?nWarn+' pour toi':''].filter(Boolean).join(' · ')}</span>`:'')+'</h2>';
+  const html=!items.length?`<div class="todo-calm">✓ Rien à traiter</div>`:fold?head:
+    head+'<ul>'+shown.map(x=>
       `<li class="t-${x.sev}"><span class="ti">${x.ico}</span><span class="tt">${x.txt}</span>${x.age!=null?`<span class="ta">${ageTxt(x.age)}</span>`:'<span class="ta"></span>'}${btn(x.act)}</li>`).join('')+'</ul>'+
     (items.length>TODO_SHOWN?`<button class="tmore" data-todo-more>${TODO_ALL?'Moins':'+ '+(items.length-TODO_SHOWN)+' autre'+(items.length-TODO_SHOWN>1?'s':'')}</button>`:'');
   box.classList.toggle('empty',!items.length);
@@ -80,5 +88,7 @@ function renderTodo(){
 }
 document.getElementById('todo').addEventListener('click',e=>{
   if(e.target.closest('[data-todo-more]')){TODO_ALL=!TODO_ALL;renderTodo();return;}
+  if(e.target.closest('[data-todo-toggle]')){COLLAPSED.todo=!COLLAPSED.todo;renderTodo();return;}
   const b=e.target.closest('[data-open]');if(b)select(b.dataset.open);
 });
+document.getElementById('todo').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.closest('[data-todo-toggle]')){e.preventDefault();e.target.click();}});

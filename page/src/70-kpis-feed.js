@@ -1,6 +1,6 @@
 // ---------- tuiles KPI du haut et fil de la journée ----------
 document.getElementById('kpis').addEventListener('click',e=>{
-  if(e.target.closest('[data-todo-scroll]')){const t=document.getElementById('todo');if(t)t.scrollIntoView({behavior:'smooth',block:'start'});return;}
+  if(e.target.closest('[data-todo-scroll]')){if(COLLAPSED.todo){COLLAPSED.todo=false;renderTodo();}const t=document.getElementById('todo');if(t)t.scrollIntoView({behavior:'smooth',block:'start'});return;}
   const k=e.target.closest('[data-open]');if(k)select(k.dataset.open);
 });
 // tous les chiffres du haut de page et du mode TV, à l'instant t (une seule source pour les deux)

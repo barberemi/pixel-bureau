@@ -89,3 +89,11 @@ test('récap : échecs par agent, MEP, merges, tickets déployés et créés dep
   assert.deepEqual(d.deployed.map(e => e.key), ['EW-9']);
   assert.equal(d.todo, 5);
 });
+
+test('À traiter : réglage ui.todo (replié au chargement, ou masqué)', () => {
+  const folded = load({config: {...require('./fixtures/bureau.config.json'), ui: {todo: 'folded'}}});
+  assert.equal(folded.run('COLLAPSED.todo'), true);
+  const hidden = load({config: {...require('./fixtures/bureau.config.json'), ui: {todo: 'hidden'}}});
+  assert.equal(hidden.run('TODO_MODE'), 'hidden');
+  assert.equal(load().run('COLLAPSED.todo'), false);
+});

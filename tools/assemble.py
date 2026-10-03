@@ -67,6 +67,7 @@ def page_config(cfg):
         "workflows": cfg.get("workflows") or {},  # ids des crons : calendrier et fraîcheur des données
         "schedules": cron_schedules(),  # calendrier des crons du Bureau (modèles de workflows)
         "agents": cfg.get("agents") or [],
+        "ui": cfg.get("ui") or {},  # réglages d'affichage (ex. ui.todo : open / folded / hidden)
     }
 
 
