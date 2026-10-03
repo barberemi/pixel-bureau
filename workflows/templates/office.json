@@ -1,0 +1,84 @@
+{
+ "kind": "workflow",
+ "key": "office",
+ "definition": {
+  "name": "Le Bureau · refresh (page)",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Cron",
+   "schedule": "*/10 5-19 * * *"
+  },
+  "steps": [
+   {
+    "name": "snapshot",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "1/2 · Déterministe (0 token) : lit l'API locale Kronn (workflows, runs du jour, discussions) et sort l'instantané office en JSON.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "snap",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/office_snapshot.py@@"
+        ],
+        "timeout_secs": 150,
+        "output_format": "json"
+       },
+       "required": true
+      }
+     ],
+     "concurrent_limit": 1
+    }
+   },
+   {
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "2/2 · Remplace le dataset office de la page Le Bureau.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "office",
+       "operation": "replace",
+       "value_from": "steps.snapshot.data.sources.snap"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

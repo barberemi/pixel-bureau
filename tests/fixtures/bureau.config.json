@@ -1,0 +1,225 @@
+{
+ "_doc": "Propre à chaque installation, jamais partagé (il sera créé par tools/install.py). Lu par la page à l'assemblage (tools/assemble.py, partie « page ») et injecté dans les scripts des workflows par tools/publish.py.",
+ "owner": "p_remi",
+ "kronn": {
+  "api": "http://127.0.0.1:3140/api",
+  "ui": "http://localhost:5173/",
+  "project_id": "55ea7983-85bc-43f5-8800-f9a0b2f8629c"
+ },
+ "page_id": "4f38f114-e010-41ba-b34e-832ff9a72672",
+ "workflows": {
+  "office": "622338c5-f4f7-4e01-a3b8-749f6c9b8c71",
+  "live": "d1128ffe-beca-4580-8fb1-1db644f7c659",
+  "team": "60fd6c69-2afc-4467-b202-5887c943b85c",
+  "payroll": "527967ac-3369-49d1-854f-4fb8efe9d83a"
+ },
+ "actions": {
+  "avatar": "6261fa8b-9e95-471e-ac23-c333031eaf86",
+  "gate": "8f4c4b5f-143b-4759-9b2e-6a10e9f3add2",
+  "relaunch": "c925293a-15e5-4be6-8df7-9a9e9aeef5d0",
+  "ask": "165e1edf-44c8-40a7-9eb0-22fd96b91e33"
+ },
+ "jira": {
+  "config_id": "a793541d-02f2-41bd-ac1f-150391500bcf",
+  "site": "https://acme.atlassian.net",
+  "project": "EW",
+  "board": 1,
+  "points_fields": [
+   "customfield_10016",
+   "customfield_10102"
+  ],
+  "sprint_field": "customfield_10020",
+  "done_status": "Deployed",
+  "statuses": {
+   "À faire": "todo",
+   "En cours": "doing",
+   "Reopen": "doing",
+   "To Review": "review",
+   "To Test": "test",
+   "To Deploy": "deploy",
+   "Deployed": "done"
+  }
+ },
+ "github": {
+  "repo": "acme/front_web",
+  "staging_workflow": "CD_Deploy-NONPROD.yaml",
+  "prod_workflow": "CD_Deploy-PRODUCTION.yaml"
+ },
+ "rhythm": {
+  "timezone": "Europe/Paris",
+  "location": [
+   48.857,
+   2.352
+  ],
+  "daily": "09:40",
+  "daily_minutes": 15,
+  "office_hours": [
+   8,
+   20
+  ],
+  "mep_freeze": [
+   "Fri",
+   "Sat",
+   "Sun"
+  ],
+  "weekend": [
+   "Sat",
+   "Sun"
+  ]
+ },
+ "mep_workflow": "7f9e2b79",
+ "agents": [
+  {
+   "key": "dwight",
+   "name": "Dwight",
+   "role": "Reviewer de PR",
+   "wf": [
+    "b7ccd728",
+    "e2b72fea",
+    "33e26965"
+   ],
+   "seat": [
+    23,
+    14
+   ]
+  },
+  {
+   "key": "jim",
+   "name": "Jim",
+   "role": "Veille techno",
+   "wf": [
+    "e05964ae"
+   ],
+   "seat": [
+    23,
+    15
+   ]
+  },
+  {
+   "key": "stanley",
+   "name": "Stanley",
+   "role": "Core Web Vitals",
+   "wf": [
+    "97e52e9f"
+   ],
+   "seat": [
+    23,
+    16
+   ]
+  },
+  {
+   "key": "phyllis",
+   "name": "Phyllis",
+   "role": "Migration Apollo",
+   "wf": [
+    "391237f0"
+   ],
+   "seat": [
+    25,
+    14
+   ]
+  },
+  {
+   "key": "oscar",
+   "name": "Oscar",
+   "role": "Récap journalier",
+   "wf": [
+    "b713fbb5"
+   ],
+   "seat": [
+    25,
+    15
+   ]
+  },
+  {
+   "key": "angela",
+   "name": "Angela",
+   "role": "SCSS Modernisation",
+   "wf": [
+    "b4ac075e"
+   ],
+   "seat": [
+    25,
+    16
+   ]
+  },
+  {
+   "key": "kevin",
+   "name": "Kevin",
+   "role": "Migration des blocks",
+   "wf": [
+    "511fc02f",
+    "a0da6fcf"
+   ],
+   "seat": [
+    29,
+    14
+   ]
+  },
+  {
+   "key": "creed",
+   "name": "Creed",
+   "role": "Erreurs prod Fastly",
+   "wf": [
+    "8bc3dec3",
+    "65130609",
+    "1be9bb80"
+   ],
+   "seat": [
+    29,
+    15
+   ]
+  },
+  {
+   "key": "meredith",
+   "name": "Meredith",
+   "role": "Surveillance Adobe",
+   "wf": [
+    "c6969553"
+   ],
+   "seat": [
+    29,
+    16
+   ]
+  },
+  {
+   "key": "toby",
+   "name": "Toby",
+   "role": "Couverture Playwright",
+   "wf": [
+    "264b6990"
+   ],
+   "seat": [
+    31,
+    14
+   ]
+  },
+  {
+   "key": "erin",
+   "name": "Erin",
+   "role": "Mutation Ads/Video",
+   "wf": [
+    "084ee6d5",
+    "dd6fd6b5"
+   ],
+   "seat": [
+    31,
+    15
+   ]
+  },
+  {
+   "key": "ryan",
+   "name": "Ryan",
+   "role": "Implémentation & MEP",
+   "wf": [
+    "9513a829",
+    "7f9e2b79",
+    "cc0a696c"
+   ],
+   "seat": [
+    31,
+    16
+   ]
+  }
+ ]
+}

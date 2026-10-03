@@ -1,0 +1,221 @@
+// ---------- fenêtre centrée pour les cartes d'action Kronn ----------
+// Kronn ouvre sa carte dans l'ancêtre [data-kronn-action-slot-host] du bouton cliqué : au clic, on fait de cet
+// ancêtre une fenêtre centrée (fond assombri). Quand Kronn retire son emplacement (× / Annuler), on referme.
+// Tout bouton data-kronn-action placé dans un slot-host passé à kronnModal() en profite.
+let KM_OPEN=null;
+function kronnModal(host,btn,title){
+  btn.addEventListener('click',()=>{ // après le pont Kronn (capture) : on ne bloque pas son clic
+    if(KM_OPEN)return; KM_OPEN=host;
+    const ph=document.createElement('div');
+    ph.className='km-ph';
+    ph.style.height=host.offsetHeight+'px';
+    host.before(ph); // garde la place dans le panneau
+    const bd=document.createElement('div');
+    bd.className='km-backdrop';
+    (host.closest('.side')||document.body).appendChild(bd);
+    document.body.classList.add('km-on');
+    // clic sur le fond : la page ne peut pas fermer la carte Kronn, mais Kronn la ferme quand on reclique son bouton ;
+    // on relaie donc le vrai clic de l'utilisateur au bouton (l'activation utilisateur est encore valable)
+    bd.title='Fermer';bd.addEventListener('click',()=>{if(had)btn.click();});
+    host.classList.add('kmodal');
+    if(title&&!host.querySelector('.km-title')){const t=document.createElement('div');t.className='km-title';t.textContent=title;host.prepend(t);}
+    let had=false;
+    const close=()=>{
+      obs.disconnect();
+      clearTimeout(t0);
+      clearTimeout(gone);
+      host.classList.remove('kmodal');
+      bd.remove();
+      document.body.classList.remove('km-on');
+      ph.remove();
+      const tt=host.querySelector('.km-title');
+      if(tt)tt.remove();
+      KM_OPEN=null;
+      renderSide(!!EDIT);
+    };
+    // Kronn retire et recrée parfois son emplacement (redimensionnement) : on ne referme que s'il reste absent
+    let gone=null;
+    const obs=new MutationObserver(()=>{const slot=host.querySelector('[data-kronn-action-slot]');
+      if(slot){had=true;clearTimeout(gone);gone=null;}
+      else if(had&&!gone)gone=setTimeout(()=>{if(!host.querySelector('[data-kronn-action-slot]'))close();gone=null;},600);});
+    obs.observe(host,{childList:true,subtree:true});
+    // hors de Kronn (page ouverte seule), aucune carte ne vient : on referme
+    const t0=setTimeout(()=>{
+      if(!had){
+        close();
+        const n=document.createElement('div');
+        n.className='note';
+        n.textContent="La carte Kronn ne s'est pas ouverte : ouvre Le Bureau depuis Kronn.";
+        host.appendChild(n);
+      }
+    },4000);
+  });
+}
+// gates déjà décidées depuis ce navigateur (run|étape -> heure) : plus de bouton une fois la réponse donnée.
+// Kronn refuse de toute façon une 2e décision (le run n'attend plus) ; ceci évite juste de la proposer.
+let DECIDED={};try{DECIDED=JSON.parse(localStorage.getItem('bureau:decided')||'{}')||{};}catch(e){DECIDED={};}
+for(const k in DECIDED)if(Date.now()-DECIDED[k]>864e5)delete DECIDED[k];
+const saveDecided=()=>{try{localStorage.setItem('bureau:decided',JSON.stringify(DECIDED));}catch(e){}};
+// carte de décision d'une gate : le bouton ouvre la carte Kronn (workflow « Le Bureau · décision gate »)
+function gateCard(parent,run,who){
+  const g=GATES.find(x=>x.run===run.run);
+  const box=document.createElement('div');box.className='gatecard';box.setAttribute('data-kronn-action-slot-host','');
+  const since=g&&g.since?ms(g.since):run._s, mins=Math.max(0,Math.round((Date.now()-since)/60e3));
+  box.innerHTML=`<div class="gt">✋ Validation demandée${who?' · '+esc(who):''}</div><div class="gw">${esc(clean(run.wf_name))}${g?' · étape <b>'+esc(g.gate)+'</b>':''}</div>`+
+    (g&&g.message?`<div class="gm">${esc(g.message)}</div>`:'')+`<div class="gs">En attente depuis ${hm(since)}${mins?' ('+fmtDur(mins*60e3)+')':''}</div>`;
+  const dk=g?g.run+'|'+g.gate:null;
+  if(g&&DECIDED[dk]){
+    const n=document.createElement('div');
+    n.className='note';
+    n.style.margin='8px 0 0';
+    n.innerHTML='<b style="color:var(--ok)">✓ Réponse envoyée à '+hm(DECIDED[dk])+'.</b> L\'agent reprend d\'ici une minute sur le plan.';
+    box.appendChild(n);
+  }
+  else if(g&&!ACTIONS.gate){
+    const n=document.createElement('div');
+    n.className='note';
+    n.style.margin='6px 0 0';
+    n.textContent='La décision se prend dans Kronn (workflow « décision gate » non installé).';
+    box.appendChild(n);
+  }
+  else if(g){
+    const b=document.createElement('button');
+    b.className='on';
+    b.textContent='Décider…';
+    let clicked=false;
+    b.addEventListener('click',()=>{clicked=true;});
+    b.setAttribute('data-kronn-action','bureau-gate');
+    b.setAttribute('data-kronn-bindings',JSON.stringify({run_id:g.run})); // clé = nom du champ relu ; valeur = la ligne du dataset (find(run)) ; workflow et étape retrouvés par le script
+    const st=document.createElement('div');
+    st.className='note';
+    st.style.margin='6px 0 0';
+    st.textContent='Choisis Approuver, Rejeter ou Demander des changements dans la carte, puis Lancer.';
+    new MutationObserver(()=>{
+      const v=b.getAttribute('data-kronn-action-state');
+      if(v==='succeeded'){
+        st.innerHTML='<b style="color:var(--ok)">✓ Décision appliquée.</b> L\'agent reprend d\'ici une minute sur le plan.';
+        if(clicked&&!DECIDED[dk]){DECIDED[dk]=Date.now();saveDecided();}
+      }else if(v==='failed')st.innerHTML='<b style="color:var(--err)">Décision refusée par Kronn</b> (gate déjà décidée ?). Détail dans la carte.';
+    }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
+    box.append(b,st);kronnModal(box,b,'Décision de gate');}
+  else{
+    const n=document.createElement('div');
+    n.className='note';
+    n.style.margin='6px 0 0';
+    n.textContent="La gate arrive sur la page d'ici une minute (cron live), le bouton apparaîtra alors.";
+    box.appendChild(n);
+  }
+  parent.appendChild(box);
+}
+// ---------- fiche de paie ----------
+// tokens réels (runs de premier niveau) ; coût ESTIMÉ au tarif moyen que Kronn mesure sur les discussions
+function payFor(c){
+  if(!PAYROLL||!c||!c.wf||!c.wf.length)return null;
+  const rows=PAYROLL.agents.filter(a=>c.wf.includes(String(a.wf).slice(0,8)));if(!rows.length)return null;
+  const z=()=>({tok:0,runs:0,fail:0}), add=(o,k)=>rows.forEach(a=>{o.tok+=a[k].tok;o.runs+=a[k].runs;o.fail+=a[k].fail;});
+  const today=z(),week=z();add(today,'today');add(week,'week');
+  return {today,week,days:[0,1,2,3,4,5,6].map(i=>rows.reduce((s,a)=>s+(a.days[i]||0),0)),names:rows.map(a=>a.name)};
+}
+const usd=t=>PAYROLL&&PAYROLL.rate_usd_per_mtok?t*PAYROLL.rate_usd_per_mtok/1e6:null;
+const fmtUsd=v=>v==null?'':v<0.01&&v>0?'< 0,01 $':'≈ '+v.toFixed(v<10?2:0).replace('.',',')+' $';
+const DOW=['D','L','M','M','J','V','S'];
+function sparkDays(days){
+  const mx=Math.max(1,...days), labels=(PAYROLL.days||[]).map(d=>DOW[new Date(d+'T12:00:00').getDay()]);
+  return `<span class="spark" title="Tokens par jour, du plus ancien à aujourd'hui">${days.map((v,i)=>`<i style="height:${v?Math.max(2,Math.round(v/mx*22)):1}px" title="${labels[i]||''} : ${fmtTok(v)} tokens"></i>`).join('')}</span>`;
+}
+// relancer un workflow depuis la fiche de son agent (page action « bureau-relaunch »)
+// interroger un agent sur ses runs (page action « bureau-ask » : Quick Prompt en lecture seule, ~quelques k tokens)
+function askBlock(side,c){
+  if(!ACTIONS.ask)return;
+  if(!c.wf||!c.wf.length)return;
+  const list=ASKABLE.filter(w=>c.wf.includes(String(w.wf).slice(0,8)));if(!list.length)return;
+  const box=foldSection(side,'ask','💬 Lui poser une question',null,true);
+  for(const w of list){
+    const host=document.createElement('div');host.className='relaunch';host.setAttribute('data-kronn-action-slot-host','');
+    host.innerHTML=`<div class="rl-n">${esc(clean(w.name))}</div><div class="rl-s">Un agent IA lit ses runs et te répond (lecture seule, quelques centimes)</div>`;
+    const b=document.createElement('button');
+    b.textContent='💬 Demander';
+    b.setAttribute('data-kronn-action','bureau-ask');
+    b.setAttribute('data-kronn-bindings',JSON.stringify({wf_id:w.wf}));
+    host.appendChild(b);kronnModal(host,b,'Poser une question à '+c.name);box.appendChild(host);
+  }
+}
+function relaunchBlock(side,c){
+  if(!ACTIONS.relaunch)return;
+  if(!c.wf||!c.wf.length)return;
+  const list=RELAUNCH.filter(w=>c.wf.includes(String(w.wf).slice(0,8)));if(!list.length)return;
+  const box=foldSection(side,'relance','Relancer',list.length,true);
+  for(const w of list){
+    const host=document.createElement('div');host.className='relaunch';host.setAttribute('data-kronn-action-slot-host','');
+    const busy=c.runs.some(r=>String(r.wf).startsWith(String(w.wf).slice(0,8))&&['Running','Pending','WaitingApproval'].includes(r.status)&&r._s<=T);
+    const last=c.top&&c.top.filter(r=>String(r.wf).startsWith(String(w.wf).slice(0,8))&&r._s<=T).slice(-1)[0];
+    host.innerHTML=`<div class="rl-n">${esc(clean(w.name))}</div><div class="rl-s">${w.trigger==='cron'?'Cron':'Manuel'}${last?' · dernier run '+hm(last._s)+' : '+esc(STATUS_TXT[last.status]||last.status):' · pas encore lancé aujourd’hui'}</div>`;
+    const b=document.createElement('button');b.textContent=busy?'En cours…':'↻ Relancer';b.disabled=busy;
+    if(!busy){b.setAttribute('data-kronn-action','bureau-relaunch');b.setAttribute('data-kronn-bindings',JSON.stringify({wf_id:w.wf}));
+      const n=document.createElement('div');
+      n.className='note';
+      n.style.margin='6px 0 0';
+      n.textContent='Lance tout de suite un nouveau run de ce workflow, en plus de ses passages prévus.';
+      new MutationObserver(()=>{
+        const v=b.getAttribute('data-kronn-action-state');
+        if(v==='succeeded')n.innerHTML='<b style="color:var(--ok)">✓ Relancé.</b> L\'agent se met au travail d\'ici une minute sur le plan.';else if(v==='failed')n.innerHTML='<b style="color:var(--err)">Relance refusée</b> (déjà en cours ?). Détail dans la carte.';
+      }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
+      host.append(b,n);kronnModal(host,b,'Relancer un workflow');}
+    else host.appendChild(b);
+    box.appendChild(host);
+  }
+}
+// carte « Sa musique » : la sandbox interdit tout son externe et les iframes, d'où un lien vers la page du morceau
+function musicCard(side,c){
+  const m=MUSIC[c.key];if(!m)return;
+  // design compact : notre pochette à gauche ; à droite, le lecteur Suno compact posé par Kronn (data-kronn-embed,
+  // Kronn avec les embeds hôte) par-dessus le bloc texte, qui reste visible sinon (lien vers Suno)
+  const sec=foldSection(side,'music','♪ Son écoute',null); // pliée par défaut ; repliée en cours de lecture, la musique continue
+  const d=document.createElement('div');d.className='music';
+  const embed=m.suno_id?` data-kronn-embed="suno" data-kronn-embed-id="${esc(m.suno_id)}"`:'';
+  d.innerHTML=`${m.cover?`<img src="${m.cover}" alt="">`:''}<div class="mt${embed?' mt-embed':''}"${embed}><div class="mn">${esc(m.title)}</div><div class="mb">${esc(m.style||'')}${m.duration?' · '+esc(m.duration):''}</div>
+    <a class="mplay" href="${esc(m.url)}" target="_blank" rel="noopener">▶ Écouter sur Suno</a></div>`;
+  sec.appendChild(d);
+}
+function payBlock(side,c){
+  const p=payFor(c);if(!p)return;
+  const box=foldSection(side,'paie','Fiche de paie · 7 jours',null,true);
+  const fr=p.week.runs?Math.round(p.week.fail/p.week.runs*100):0;
+  box.innerHTML=`<div class="paygrid"><div><b>${fmtTok(p.today.tok)}</b><span>tokens aujourd'hui</span></div><div><b>${fmtTok(p.week.tok)}</b><span>tokens 7 jours</span></div><div><b>${fmtUsd(usd(p.week.tok))||'0 $'}</b><span>coût estimé 7 j</span></div><div><b style="color:${fr>=30?'var(--err)':'inherit'}">${p.week.fail}/${p.week.runs}</b><span>échecs / runs (${fr} %)</span></div></div>
+    <div class="payspark">${sparkDays(p.days)}<span class="note" style="margin:0">${p.week.tok?'':'Workflow sans IA : 0 token, '}${p.week.runs} runs sur 7 jours</span></div>`;
+}
+function renderPaie(side){
+  const h=document.createElement('h2');h.textContent='Fiche de paie · 7 derniers jours';side.appendChild(h);
+  if(!PAYROLL){
+    const e=document.createElement('div');
+    e.className='empty';
+    e.textContent="Pas encore de données (cron « Le Bureau · fiche de paie », toutes les heures).";
+    side.appendChild(e);
+    return;
+  }
+  const rows=chars.filter(c=>!c.person&&!c.visitor).map(c=>({c,p:payFor(c)})).filter(x=>x.p).sort((a,b)=>b.p.week.tok-a.p.week.tok||b.p.week.fail-a.p.week.fail);
+  const T7=rows.reduce((s,x)=>s+x.p.week.tok,0), R7=rows.reduce((s,x)=>s+x.p.week.runs,0), F7=rows.reduce((s,x)=>s+x.p.week.fail,0), TD=rows.reduce((s,x)=>s+x.p.today.tok,0);
+  const sum=document.createElement('div');
+  sum.className='paygrid';
+  sum.innerHTML=`<div><b>${fmtTok(TD)}</b><span>tokens aujourd'hui</span></div><div><b>${fmtTok(T7)}</b><span>tokens 7 jours</span></div><div><b>${fmtUsd(usd(T7))||'?'}</b><span>coût estimé 7 j</span></div><div><b>${F7}/${R7}</b><span>échecs / runs</span></div>`;
+  side.appendChild(sum);
+  const n=document.createElement('div');n.className='note';n.style.margin='6px 0 10px';
+  n.textContent=PAYROLL.rate_usd_per_mtok?`Coût estimé à ${String(PAYROLL.rate_usd_per_mtok).replace('.',',')} $ par million de tokens : tarif moyen mesuré par Kronn sur tes discussions (${PAYROLL.rate_source}). Kronn ne mesure pas le coût des workflows eux-mêmes. Mis à jour à ${hm(ms(PAYROLL.generated_at))}.`:'Coût non estimable (aucun coût mesuré par Kronn).';
+  side.appendChild(n);
+  const ul=document.createElement('div');ul.className='roster';
+  for(const {c,p} of rows){
+    const b=document.createElement('button');
+    b.className='who fam-wf payrow';
+    b.onclick=()=>select(c.key);
+    b.appendChild(portrait(c,36));
+    const t=document.createElement('div');t.className='t';const fr=p.week.runs?Math.round(p.week.fail/p.week.runs*100):0;
+    t.innerHTML=`<div class="n">${esc(c.name)}</div><div class="r">${p.week.runs} runs · <span style="color:${fr>=30?'var(--err)':'inherit'}">${p.week.fail} échecs</span> · auj. ${fmtTok(p.today.tok)}</div>`;
+    b.appendChild(t);
+    const v=document.createElement('div');
+    v.className='s payv';
+    v.innerHTML=`<b>${fmtTok(p.week.tok)}</b><small>${p.week.tok?fmtUsd(usd(p.week.tok)):'0 $'}</small>${sparkDays(p.days)}`;
+    b.appendChild(v);
+    ul.appendChild(b);
+    }
+  side.appendChild(ul);
+}

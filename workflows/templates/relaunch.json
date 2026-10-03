@@ -1,0 +1,45 @@
+{
+ "kind": "workflow",
+ "key": "relaunch",
+ "definition": {
+  "name": "Le Bureau · relancer un workflow",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "steps": [
+   {
+    "name": "relaunch",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Lance le workflow choisi sur la page (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/relaunch.py@@",
+     "{{wf_id}}"
+    ],
+    "exec_timeout_secs": 30
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

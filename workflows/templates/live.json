@@ -1,0 +1,125 @@
+{
+ "kind": "workflow",
+ "key": "live",
+ "definition": {
+  "name": "Le Bureau · live (1 min)",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Cron",
+   "schedule": "* 5-19 * * *"
+  },
+  "steps": [
+   {
+    "name": "snapshot",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "Runs en cours, discussions récentes, déploiements du jour (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "snap",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/live_snapshot.py@@"
+        ],
+        "timeout_secs": 150,
+        "output_format": "json"
+       },
+       "required": true
+      }
+     ],
+     "concurrent_limit": 1
+    }
+   },
+   {
+    "name": "gates",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "Gates en attente (JSON typé) pour les décider depuis la page.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "snap",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/gates_snapshot.py@@"
+        ],
+        "timeout_secs": 30,
+        "output_format": "json"
+       },
+       "required": true
+      }
+     ],
+     "concurrent_limit": 1
+    }
+   },
+   {
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset live de la page Le Bureau.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "live",
+       "operation": "replace",
+       "value_from": "steps.snapshot.data.sources.snap"
+      },
+      {
+       "dataset": "gates",
+       "operation": "replace",
+       "value_from": "steps.gates.data.sources.snap"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3",
+   "gh"
+  ]
+ }
+}

@@ -1,0 +1,363 @@
+// ---------- state machine ----------
+const KIND_ZONE={ApiCall:'srv',BatchApiCall:'srv',CollectApiData:'srv',PublishPageData:'srv',SubWorkflow:'meet',BatchQuickPrompt:'meet',Gate:'gate'};
+function stepAt(r,t){
+  if(!r.steps||!r.steps.length)return null;
+  const realEnd=r._e||Date.now(), realDur=Math.max(1,realEnd-r._s), visEnd=r._ve===Infinity?realEnd:r._ve, visDur=visEnd-r._s;
+  let cur=null;
+  for(const s of r.steps){if(!s.at)continue;const vt=r._s+(ms(s.at)-r._s)/realDur*visDur;if(vt<=t)cur=s;}
+  return cur||r.steps[0];
+}
+// ---------- §5 : outil en cours, collègue concerné, passage de dossier ----------
+const TOOL_TXT={
+  Read:['📖','lit'],
+  Edit:['✏️','modifie'],
+  MultiEdit:['✏️','modifie'],
+  Write:['✏️','écrit'],
+  Bash:['⌨️','lance'],
+  Grep:['🔎','cherche'],
+  Glob:['🔎','cherche'],
+  WebFetch:['🌐','lit le web'],
+  WebSearch:['🌐','cherche sur le web'],
+  Task:['🤝','délègue'],
+  TodoWrite:['🗒️','planifie']
+};
+function actText(a){
+  if(!a)return null;
+  const [ico,verb]=TOOL_TXT[a.t]||['🛠️',a.t];
+  let x=String(a.x||'').trim();
+  if(/^(Read|Edit|MultiEdit|Write)$/.test(a.t))x=x.split('/').pop();
+  if(a.t==='Bash')x=x.split(/\s+/).slice(0,2).join(' ');
+  return {ico,bubble:(ico+' '+(x||verb)).slice(0,22),label:ico+' '+verb+(x?' '+x:'')};
+}
+// le collègue que concerne un run : assigné du ticket (jira_ticket_key) ou auteur de la PR relue (current_task.author)
+function runPartner(r){
+  if(!r||!r.vars||!TEAM)return null;
+  const key=r.vars.jira_ticket_key, gh=r.vars['current_task.author'];
+  return chars.find(x=>x.person&&x.team&&x.seat&&((key&&(x.team.tickets||[]).some(t=>t.key===key))||(gh&&(x.team.gh||[]).some(g=>String(g).toLowerCase()===String(gh).toLowerCase()))))||null;
+}
+// ce que traite un run d'agent : ticket (jira_ticket_key) ou PR relue (current_task.number, pr), reliée à son ticket via les PR de l'équipe
+function runRef(r){
+  const v=(r&&r.vars)||{}, n=v['current_task.number']||v.pr||null;
+  if(!v.jira_ticket_key&&!n)return null;
+  const pr=n&&TEAM?[...TEAM.people.flatMap(p=>p.prs||[]),...(TEAM.other_prs||[])].find(p=>String(p.n)===String(n)):null;
+  const key=v.jira_ticket_key||(pr&&pr.keys&&pr.keys[0])||null;
+  const t=key&&TEAM?[...TEAM.people.flatMap(p=>p.tickets||[]),...(TEAM.unassigned||[])].find(x=>x.key===key):null;
+  return {key,pr:n?String(n):null,t:t||null,title:pr?pr.title:null};
+}
+// place debout côté allée, à côté d'un siège
+function besideSeat(seat){
+  const d=seatDir(seat[0],seat[1]);
+  return d==='right'?[seat[0]-1,seat[1],'right']:d==='left'?[seat[0]+1,seat[1],'left']:[seat[0],seat[1]+1,'up'];
+}
+function stateAt(c,t){
+  let s0=stateAt0(c,t);
+  if(!s0)return s0;
+  // outil en cours de l'étape IA (données live, seulement si récentes)
+  if(s0.step&&s0.step.act&&s0.run&&s0.run.status==='Running'&&t-ms(s0.step.act.at)<5*60e3){
+    const a=actText(s0.step.act);
+    s0={...s0,bubble:a.bubble,stepBubble:s0.bubble,label:s0.label+' · '+a.label,act:a};
+  }
+  if(!c.person&&s0.run){const ref=runRef(s0.run);if(ref)s0={...s0,ref};}
+  // l'agent va travailler au bureau du collègue concerné pendant une étape IA
+  if(!c.person&&s0.run&&s0.step&&s0.step.k==='Agent'&&['work','srv','meet'].includes(s0.st)){const pc=runPartner(s0.run);
+    if(pc&&pc!==c){
+      const v=besideSeat(pc.seat);
+      s0={
+        ...s0,
+        zone:'visit',
+        visit:v,
+        label:s0.label+' · avec '+pc.name+(s0.run.vars.jira_ticket_key?' sur '+s0.run.vars.jira_ticket_key:' (sa PR)')
+      };
+    }
+    }
+  // passage de dossier : un run qui vient d'en lancer un autre (sous-run ou TriggerWorkflow) d'un autre agent
+  if(!c.person&&!c.visitor&&['work','srv','meet','idle','coffee'].includes(s0.st)&&DATA){const mine=new Set(c.runs.map(r=>r.run));
+    const kid=DATA.runs.find(r=>(mine.has(r.tby)||mine.has(r.parent))&&r._s<=t&&t-r._s<75e3);
+    const kc=kid&&chars.find(x=>x!==c&&x.runs.some(r=>r.run===kid.run));
+    if(kc&&kc.seat){
+      const v=besideSeat(kc.seat);
+      s0={
+        ...s0,
+        st:'work',
+        zone:'visit',
+        visit:v,
+        label:'Apporte le dossier à '+kc.name+' ('+clean(kid.wf_name)+')',
+        bubble:'📁'
+      };
+    }
+    }
+  // messages importants d'une discussion (visiteurs)
+  if(c.visitor&&c.disc&&c.disc.imp>0&&!['gone','absent'].includes(s0.st))s0={
+    ...s0,
+    bubble:'❗',
+    label:s0.label+' · '+c.disc.imp+' message'+(c.disc.imp>1?'s':'')+' important'+(c.disc.imp>1?'s':'')
+  };
+  const s1=s0;
+  if(s1&&(s1.zone==='stage'||s0.zone==='stagesax')&&stageClosed(t)&&(s1.st==='mep'||s1.st==='party'))return {
+    ...s1,
+    label:'MEP un '+(parisHM(t).wd==='Fri'?'vendredi':'week-end')+' ! Plateau fermé : '+s1.label,
+    bubble:'😱'
+  };
+  return s1;
+}
+// ---------- la journée du boss : priorités, routine tirée au sort (fixe pour une date) ----------
+const parisMin=t=>{const p=parisHM(t);return p.h*60+p.m;};
+const daySeed=t=>+new Intl.DateTimeFormat('en-CA',{timeZone:TZ}).format(new Date(t)).replace(/-/g,'');
+// créneaux du jour en minutes depuis minuit (heure de Paris)
+function bossPlan(t){
+  const sd=daySeed(t), r=k=>hash(sd%100000,k);
+  const coffee1=10*60+15+Math.floor(r(1)*30), coffee2=15*60+45+Math.floor(r(2)*30);
+  const tours=[];for(let h=9;h<=17;h++){const m=h*60+5+Math.floor(r(10+h)*40);tours.push(m);}
+  return {coffee:[[coffee1,coffee1+10],[coffee2,coffee2+10]],tours};
+}
+const inSlot=(m,[a,b])=>m>=a&&m<b;
+// les collègues qu'il peut aller voir : présents, assis à leur place
+function deskColleagues(boss){return chars.filter(x=>x!==boss&&x.person&&x.seat&&x.present&&x._st&&x._st.zone==='desk');}
+function bossState(c,t){
+  const n=k=>chars.filter(x=>x._st&&x._st.st===k).length, gates=n('gate'), asks=n('ask'), pending=gates+asks;
+  const waitTxt=[gates?gates+' validation(s) en attente':'',asks?asks+' discussion(s) attendent ta réponse':''].filter(Boolean).join(' · ');
+  const ret=o=>{c.atBoss=o.zone==='boss';return o;};
+  const p=parisHM(t), m=p.h*60+p.m, wd=p.wd==='Sat'||p.wd==='Sun';
+  const sax=c.sprite==='boss_sax'; // le saxophone n'existe que sur ce sprite
+  // 1. daily et fête de MEP : il y reste, la bulle signale ce qui attend
+  if(inDaily(t))return ret(sax?{st:'sax',zone:'daily',label:'Joue du saxophone au daily'+(pending?' · '+waitTxt:''),bubble:pending?'✋'+pending:'♪'}
+    :{st:'daily',zone:'daily',label:'Au daily'+(pending?' · '+waitTxt:''),bubble:pending?'✋'+pending:null});
+  {const sg=stageAt(t);if(sg&&sg.phase==='done')return ret(sax?{st:'sax',zone:'stagesax',label:'Fête la mise en prod '+sg.m.tag+' au saxophone',bubble:pending?'✋'+pending:'♪'}
+    :{st:'party',zone:'stage',label:'Fête la mise en prod '+sg.m.tag,bubble:pending?'✋'+pending:'🎉'});}
+  const plan=bossPlan(t);
+  // 2. validations ou questions : retour au bureau, toutes affaires cessantes
+  if(pending)return ret({st:'boss',zone:'boss',label:waitTxt,bubble:'✋'+pending});
+  // 3. routine
+  if(sax&&inSax(t))return ret({st:'sax',zone:'boss',label:'Joue du saxophone à son bureau',bubble:'♪'});
+  {const sg=stageAt(t);if(sg)return ret({st:'idle',zone:'stageout',label:'Suit la MEP '+sg.m.tag+' devant le plateau TV',bubble:'📺'});}
+  if(!wd&&plan.coffee.some(s=>inSlot(m,s)))return ret({st:'coffee',zone:'coffee',label:'Pause café',bubble:'☕'});
+  if(!wd){const t0=plan.tours.find(x=>m>=x&&m<x+6);
+    if(t0!=null){const cols=deskColleagues(c);
+      if(cols.length){const i=Math.floor(hash(daySeed(t)%100000,t0+(m-t0>=3?1:0))*cols.length), pc=cols[i];
+        return ret({st:'idle',zone:'visit',visit:besideSeat(pc.seat),label:"Fait le tour de l'open space : passe voir "+pc.name,bubble:'👋'});}}}
+  // 4. sinon, à son bureau
+  return ret({st:'boss',zone:'boss',label:'Au bureau du boss'});
+}
+function stateAt0(c,t){
+  if(c.person&&!c.boss){
+    const h=+new Intl.DateTimeFormat('en-GB',{timeZone:TZ,hour:'numeric',hour12:false}).format(new Date(t));
+    if(RHYTHM.weekend.includes(parisHM(t).wd))return {st:'off',label:'En week-end'}; // seul le boss vient le week-end
+    if(h<RHYTHM.office_hours[0]||h>=RHYTHM.office_hours[1])return {st:'off',label:'Rentré chez soi'};
+    if(!c.team)return inDaily(t)?{st:'daily',zone:'daily',human:true,label:'Daily en cafétéria'}:{st:'idle',zone:'desk',human:true,label:'À son bureau · pas de ticket dans le sprint'};
+    if(inDaily(t))return {st:'daily',zone:'daily',human:true,label:'Daily en cafétéria',bubble:c.roleKind==='sm'?'Daily':null};
+    const sg=stageAt(t);
+    if(sg&&sg.m.who===c.team.id)return sg.phase==='done'?{
+      st:'party',
+      zone:'stage',
+      human:true,
+      label:'Fête la mise en prod '+sg.m.tag+' ('+sg.m.ticket+')',
+      bubble:'🎉'
+    }:{
+      st:'mep',
+      zone:'stage',
+      human:true,
+      label:'Met en prod '+sg.m.tag+' ('+sg.m.ticket+') : '+MEP_TXT[sg.phase],
+      bubble:'🚀'
+    };
+    const open=c.team.tickets.filter(x=>x.cat!=='done');
+    if(c.roleKind==='sm'){
+      const mn=+new Intl.DateTimeFormat('en-GB',{timeZone:TZ,minute:'numeric'}).format(new Date(t));
+      const atBoard=mn<20;
+      const end=TEAM&&TEAM.sprint&&TEAM.sprint.end?ms(TEAM.sprint.end):null;
+      const j=end?daysLeft(end,t):null;
+      return {
+        st:'work',
+        zone:atBoard?'kanban':'desk',
+        human:true,
+        label:(atBoard?'Au mur Kanban : ':'')+'Facilite le sprint '+((TEAM.sprint&&TEAM.sprint.name)||'')+(j!=null?' : J-'+j:''),
+        bubble:j!=null?'J-'+j:'sprint'
+      };
+    }
+    if(c.roleKind==='qa'){
+      const tt=open.filter(x=>x.cat==='test');
+      if(tt.length)return {
+        st:'work',
+        zone:'desk',
+        human:true,
+        label:'Teste '+tt.length+' ticket(s) : '+tt.map(x=>x.key).join(', '),
+        bubble:tt[0].key,
+        tk:tt
+      };
+      return {st:'idle',zone:'wander',human:true,label:'Rien à tester pour le moment'};
+    }
+    if(c.roleKind==='po'){
+      return {
+        st:open.length?'work':'idle',
+        zone:open.length?'desk':'wander',
+        human:true,
+        label:open.length?open.length+' ticket(s) à faire ou à assigner':'Backlog du sprint vide',
+        bubble:open.length?open.length+' à faire':null
+      };
+    }
+    const doing=open.filter(x=>x.cat==='doing');
+    const rv=open.filter(x=>x.cat==='review'||x.cat==='test');
+    if(doing.length)return {st:'work',zone:'desk',human:true,label:'En cours : '+doing.map(x=>x.key).join(', '),bubble:doing[0].key,tk:[...doing,...rv]};
+    return rv.length?{st:'idle',zone:'wander',human:true,label:rv.length+' ticket(s) en review ou en test',bubble:rv[0].key,tk:rv}:{st:'idle',zone:'wander',human:true,label:'Disponible'};
+  }
+  if(c.boss)return bossState(c,t);
+  if(c.visitor){
+    const d=c.disc, s0=c.runs[0]._s, e0=ms(d.end), nearNow=REND-t<15*60e3;
+    if(t<s0)return {st:'absent',label:'Pas encore arrivé'};
+    if(d.awaiting&&nearNow)return {st:'meet',zone:'meet',label:"En réunion : l'agent travaille",bubble:'...'};
+    if(t<=Math.max(e0,s0+VIS_MIN))return {st:'meet',zone:'meet',label:'En discussion',bubble:'...'};
+    if(d.pending>0&&nearNow)return {st:'ask',zone:'gate',label:'Attend ta réponse ('+d.pending+' question'+(d.pending>1?'s':'')+')',bubble:'?'};
+    if(t-e0<15*60e3)return {st:'coffee',zone:'coffee',label:'Discussion terminée, pause café',bubble:'☕'};
+    if(t-e0<18*60e3)return {st:'idle',zone:'leave',label:'Repart'};
+    return {st:'gone',label:'Reparti à '+hm(e0)};
+  }
+  const runs=c.runs.filter(r=>r._s<=t);
+  if(!runs.length)return c.runs.length?{st:'absent',label:'Pas encore arrivé'}:{st:'off',label:"Absent aujourd'hui"};
+  const active=runs.filter(r=>t<r._ve);
+  if(active.length){
+    const r=active[active.length-1];
+    if(c.visitor)return {st:'work',zone:c.multi?'meet':'desk',label:'En discussion',bubble:'...',run:r};
+    if(r.status==='WaitingApproval')return {st:'gate',zone:'gate',label:'Attend ta validation',bubble:'✋',run:r};
+    if(CFG.mep_workflow&&(r.wf||'').startsWith(CFG.mep_workflow)){
+      const s=stepAt(r,t);
+      return {
+        st:'mep',
+        zone:'stage',
+        label:'Pilote la MEP '+((r.vars&&r.vars.jira_ticket_key)||'')+(s?' : '+s.n:''),
+        bubble:'🚀',
+        run:r,
+        step:s
+      };
+    }
+    const s=stepAt(r,t);
+    const z=(s&&KIND_ZONE[s.k])||'desk';
+    const failedNow=s&&s.s==='Failed'&&r.status==='Failed'&&s===r.steps[r.steps.length-1];
+    const label=(z==='srv'?'Salle serveurs : ':z==='meet'?'En réunion : ':'Travaille sur ')+(s?s.n:'le run');
+    if(failedNow)return {st:'error',zone:'wc',label:'En panne : enfermé aux toilettes ('+s.n+')',bubble:'!',run:r,step:s};
+    return {st:z==='desk'?'work':z,zone:z==='desk'?'desk':z,label,bubble:s?s.n:'...',run:r,step:s};
+  }
+  const last=runs[runs.length-1];
+  const since=t-last._ve;
+  if(c.visitor)return since<3*60e3?{st:'idle',zone:'leave',label:'Repart'}:{st:'gone',label:'Parti'};
+  const bad=last.status==='Failed'||last.status==='Cancelled';
+  if(bad&&since<40*60e3){
+    const fs=(last.steps||[]).find(s=>s.s==='Failed');
+    return {
+      st:'error',
+      zone:'wc',
+      label:'En panne'+(fs?' sur '+fs.n:'')+' : enfermé aux toilettes',
+      bubble:'!',
+      run:last,
+      step:fs
+    };
+  }
+  if(!bad&&since<12*60e3)return {st:'coffee',zone:'coffee',label:'Pause café bien méritée',bubble:'☕',run:last};
+  return {st:'idle',zone:'wander',label:'Disponible',run:last};
+}
+const ST_COLOR={
+  sax:'#c9a227',
+  daily:'#2e9e9b',
+  ask:'#d97757',
+  mep:'#7a5cc8',
+  party:'#e0a020',
+  work:'#2e9e5b',
+  srv:'#4a7fe0',
+  meet:'#4a7fe0',
+  gate:'#e0a020',
+  error:'#d1453b',
+  coffee:'#9a9284',
+  idle:'#9a9284',
+  boss:'#7a5cc8'
+};
+const ST_CSS={
+  sax:'#c9a227',
+  daily:'#2e9e9b',
+  ask:'#d97757',
+  mep:'#7a5cc8',
+  party:'var(--warn)',
+  work:'var(--ok)',
+  srv:'var(--info)',
+  meet:'var(--info)',
+  gate:'var(--warn)',
+  error:'var(--err)',
+  coffee:'var(--idle)',
+  idle:'var(--idle)',
+  boss:'#7a5cc8',
+  absent:'transparent',
+  gone:'transparent'
+};
+
+function pickSpot(c,zone,taken){
+  if(zone==='desk'){const s=c.seat||[14,12];return {key:'desk',x:s[0],y:s[1],dir:seatDir(s[0],s[1])};}
+  if(zone==='boss'){const s=SPOTS.boss[0];return {key:'desk',x:s[0],y:s[1],dir:s[2]};}
+  if(zone==='leave')return {key:'exit',x:EXIT[0],y:EXIT[1],dir:'right'};
+  if(zone==='visit'&&c._st&&c._st.visit){const v=c._st.visit;return {key:'visit:'+v[0]+','+v[1],x:v[0],y:v[1],dir:v[2]};}
+  if((zone==='stage'||zone==='stagesax')&&stageClosed(T))zone='stageout'; // plateau fermé : on attend devant le ruban
+  const list=SPOTS[zone]; if(!list)return null;
+  if(c.spotKey&&c.spotKey.startsWith(zone+':')&&!taken.has(c.spotKey)){
+    const i=+c.spotKey.split(':')[1];
+    const s=list[i];
+    return {key:c.spotKey,x:s[0],y:s[1],dir:s[2]};
+  }
+  for(let i=0;i<list.length;i++){const k=zone+':'+i;if(!taken.has(k)){const s=list[i];return {key:k,x:s[0],y:s[1],dir:s[2]};}}
+  const s=list[0];return {key:zone+':0',x:s[0],y:s[1],dir:s[2]};
+}
+function wanderZone(c,real){
+  if(!c.idlePlan||real>c.idlePlan.until){
+    const r=Math.random();
+    const d=c.person?.75:.5;const z=r<d?'desk':r<d+(1-d)*.3?'coffee':r<d+(1-d)*.6?'sofa':r<d+(1-d)*.8?'ktable':r<d+(1-d)*.9?'cooler':'copier';
+    c.idlePlan={zone:z,until:real+12e3+Math.random()*25e3};
+  }
+  return c.idlePlan.zone;
+}
+function tick(real){
+  const taken=new Set();
+  const order=chars.slice().sort((a,b)=>(a.spotKey?0:1)-(b.spotKey?0:1));
+  for(const c of order){
+    const s=stateAt(c,T); c._st=s;
+    if(s.st==='absent'||s.st==='gone'||s.st==='off'){
+      if(c.present&&!needTeleport&&s.st==='gone'&&c.tile&&!(c.tile[0]===EXIT[0]&&c.tile[1]===EXIT[1])){goTo(c,{key:'exit',x:EXIT[0],y:EXIT[1],dir:'right'});continue;}
+      c.present=false;c.pos=null;c.spotKey=null;continue;
+    }
+    let zone=s.zone; if(zone==='wander')zone=wanderZone(c,real); else c.idlePlan=null;
+    const spot=pickSpot(c,zone,taken); if(!spot)continue;
+    if(spot.key!=='desk'&&spot.key!=='exit')taken.add(spot.key);
+    c.pose=s.st==='sax'?'type':(s.st==='gate'||s.st==='party')?'hands':(s.st==='work'&&zone==='desk')?'type':'idle';
+    if(!c.present||needTeleport||!c.pos){
+      c.present=true;
+      // placé d'un coup seulement au chargement / saut dans le temps ; un nouvel arrivant entre par la porte et marche
+      if(needTeleport){place(c,spot);}
+      else{c.pos=tileCenter(EXIT[0],EXIT[1]);c.tile=[EXIT[0],EXIT[1]];goTo(c,spot);}
+      c.arrivedOnce=true; continue;
+    }
+    goTo(c,spot);
+  }
+  needTeleport=false;
+}
+const tileCenter=(x,y)=>({x:x*TS+16,y:y*TS+28});
+function place(c,spot){
+  c.pos=tileCenter(spot.x,spot.y);
+  c.tile=[spot.x,spot.y];
+  c.path=[];
+  c.moving=false;
+  c.dir=spot.dir;
+  c.spotKey=spot.key;
+  c.target=spot;
+}
+function goTo(c,spot){
+  if(c.target&&c.target.x===spot.x&&c.target.y===spot.y){c.target.dir=spot.dir;c.spotKey=spot.key;if(!c.moving)c.dir=spot.dir;return;}
+  c.target=spot; c.spotKey=spot.key;
+  const from=c.path.length?c.path[0]:c.tile;
+  c.path=(c.path.length?[c.path[0]]:[]).concat(findPath(from[0],from[1],spot.x,spot.y));
+}
+function step(c,dt){
+  if(!c.pos)return;
+  if(!c.path.length){c.moving=false;if(c.target)c.dir=c.target.dir;
+    if(c.target&&c.target.key==='exit'&&c._st&&(c._st.st==='gone'||c._st.zone==='leave')){c.present=false;c.pos=null;}
+    return;}
+  const [tx,ty]=c.path[0]; const g=tileCenter(tx,ty);
+  const dx=g.x-c.pos.x, dy=g.y-c.pos.y, d=Math.hypot(dx,dy), v=95*dt;
+  c.moving=true;
+  if(Math.abs(dx)>Math.abs(dy))c.dir=dx>0?'right':'left';else if(d>0.1)c.dir=dy>0?'down':'up';
+  if(d<=v){c.pos=g;c.tile=[tx,ty];c.path.shift();}else{c.pos.x+=dx/d*v;c.pos.y+=dy/d*v;}
+}
+

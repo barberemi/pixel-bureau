@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Bureau Kronn</title>
+<style>
+/*__STYLES__*/
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Le Bureau</h1>
+      <div class="sub">Tout ce qui s'est passé aujourd'hui sur Kronn. Cliquez sur un collègue pour voir sa journée.</div>
+    </div>
+    <div>
+      <div class="clock" id="clock">--:--</div>
+      <div class="badge" id="badge"><i></i><span>...</span></div>
+    </div>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="main">
+    <div>
+      <div class="card stage">
+        <div class="cv-wrap"><canvas id="cv" width="1280" height="640" aria-label="Plan du bureau avec les agents et workflows de la journée"></canvas></div>
+        <div class="bar">
+          <button id="live" class="on" title="Revenir au direct">● Direct</button>
+          <button id="play" title="Rejouer la journée en accéléré">▶ Rejouer</button>
+          <span class="tlabel" id="tstart">00:00</span>
+          <input type="range" id="slider" min="0" max="1000" value="1000" aria-label="Heure affichée">
+          <span class="tlabel" id="tend">--:--</span>
+          <select id="speed" aria-label="Vitesse du replay">
+            <option value="120">x120</option>
+            <option value="480" selected>x480</option>
+            <option value="1500">x1500</option>
+          </select>
+          <button id="tvbtn" title="Plein écran pour un écran d'open space (touche T, Échap pour sortir)">📺 Mode TV</button>
+        </div>
+        <div class="legend">
+          <span><i style="background:var(--ok)"></i>Au travail</span>
+          <span><i style="background:var(--info)"></i>Salle serveurs / réunion</span>
+          <span><i style="background:var(--warn)"></i>Attend ta validation</span>
+          <span><i style="background:var(--err)"></i>En panne</span>
+          <span><i style="background:var(--idle)"></i>Pause / dispo</span>
+        </div>
+        <div class="legend envlegend" title="Une enveloppe vole d'un bureau à l'autre quand un run passe la main">
+          <span>✉ Enveloppes :</span>
+          <span><i class="sq" style="background:#4a90d9"></i>Sous-run</span>
+          <span><i class="sq" style="background:#9b7fd4"></i>Déclenche un workflow</span>
+          <span><i class="sq" style="background:#3fb37f"></i>Rendu</span>
+          <span><i class="sq" style="background:#d1453b"></i>Rendu en échec</span>
+          <span><i class="sq" style="background:#e0a020"></i>Validation</span>
+          <span><i class="sq" style="background:#d97757"></i>Discussion</span>
+        </div>
+      </div>
+      <div class="card whoboard" id="who"></div>
+      <div class="card feed">
+        <h2>Fil de la journée</h2>
+        <div id="feed"></div>
+      </div>
+    </div>
+    <aside class="card side" id="side"></aside>
+  </div>
+  <footer>Sprites : Universal LPC Spritesheet Character Generator, contributeurs du Liberated Pixel Cup (CC-BY-SA 3.0 / GPL 3.0). Bureau dessiné à la main en canvas.</footer>
+</div>
+<div class="tip" id="tip"></div>
+<div id="tvbar" aria-live="off"></div>
+<div id="tvticker"></div>
+<div id="tvwho" aria-live="off"></div>
+<script type="application/kronn-action" data-action-id="bureau-ask">{"kind":"quick_prompt","target_id":"__ASK_QP__","values":[{"name":"wf_id","provenance":"dynamic_binding","source_ref":"<page.dataset.gates.askable.find(wf).wf>"},{"name":"question","provenance":"user_input"}]}</script>
+<script type="application/kronn-action" data-action-id="bureau-relaunch">{"kind":"workflow","target_id":"__RELAUNCH_WF__","values":[{"name":"wf_id","provenance":"dynamic_binding","source_ref":"<page.dataset.gates.workflows.find(wf).wf>"}]}</script>
+<script type="application/kronn-action" data-action-id="bureau-gate">{"kind":"workflow","target_id":"__GATE_WF__","values":[{"name":"run_id","provenance":"dynamic_binding","source_ref":"<page.dataset.gates.gates.find(run).run>"},{"name":"decision","provenance":"user_input"},{"name":"comment","provenance":"user_input"}]}</script>
+<script type="application/kronn-action" data-action-id="bureau-avatar">{"kind":"workflow","target_id":"__AVATAR_WF__","values":[{"name":"avatar_code","provenance":"user_input"}]}</script>
+
+<script>
+/*__SCRIPTS__*/
+</script>
+</body>
+</html>

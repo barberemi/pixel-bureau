@@ -1,0 +1,228 @@
+// ---------- UI ----------
+let sel=null;
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const STATUS_TXT={
+  Success:'Réussi',
+  Failed:'Échec',
+  Running:'En cours',
+  WaitingApproval:'Attend validation',
+  Pending:'En attente',
+  Cancelled:'Annulé',
+  Skipped:'Ignoré'
+};
+const STATUS_COL={
+  Success:'var(--ok)',
+  Failed:'var(--err)',
+  Running:'var(--info)',
+  WaitingApproval:'var(--warn)',
+  Pending:'var(--idle)',
+  Cancelled:'var(--idle)',
+  Skipped:'var(--idle)'
+};
+function portrait(c,size){
+  const p=document.createElement('canvas');p.width=40;p.height=40;const x=p.getContext('2d');x.imageSmoothingEnabled=false;
+  const img=spriteOf(c);if(ready(img)){const tall=c.sprite==='boss_sax'; // le saxophoniste est plus grand : tête vers y=2 au lieu de ~13
+    const ox=2*64+12+(tall?5:0),oy=4*64+(tall?0:8);
+    if(famOf(c)==='wf')x.drawImage(holoFrame(img,2*64,4*64,0,false),12,8,40,40,0,0,40,40);else x.drawImage(img,ox,oy,40,40,0,0,40,40);}
+  p.style.width=size+'px';p.style.height=size+'px';return p;
+}
+let COLLAPSED={};try{COLLAPSED=JSON.parse(localStorage.getItem('bureau:collapsed')||'{}')||{};}catch(e){COLLAPSED={};}
+function renderSide(force){
+  if(EDIT&&!force)return; // l'éditeur d'avatar ne se redessine pas tout seul (saisie en cours)
+  if(!force&&(KM_OPEN||document.querySelector('#side [data-kronn-action-slot]')))return; // carte Kronn ouverte (fenêtre centrée)
+  const side=document.getElementById('side'); if(!DATA)return;
+  side.innerHTML='';
+  if(sel==='tv'||sel==='emp'||sel==='kanban'||sel==='planning'||sel==='paie'){
+    const back=document.createElement('button');
+    back.className='back';
+    back.textContent="← Toute l'équipe";
+    back.onclick=()=>select(null);
+    side.appendChild(back);
+    ({tv:renderTv,emp:renderEmp,kanban:renderKanban,planning:renderPlanning,paie:renderPaie})[sel](side);
+    return;
+  }
+  if(!sel||!byKey[sel]){
+    {
+      const nm=document.createElement('div');
+      nm.className='namesbar';
+      nm.innerHTML='<span>Noms sur le plan</span>';
+      const seg=document.createElement('div');
+      seg.className='seg';
+     for(const [v,t] of [['none','Aucun'],['hover','Au survol'],['all','Tous']]){
+       const b=document.createElement('button');
+       b.textContent=t;
+       b.className=NAMES===v?'on':'';
+       b.setAttribute('aria-pressed',String(NAMES===v));
+       b.onclick=()=>{
+         NAMES=v;
+         try{localStorage.setItem('bureau:names',v);}catch(e){}
+         renderSide();
+       };
+       seg.appendChild(b);
+     }
+     nm.appendChild(seg);side.appendChild(nm);}
+    {
+      const fb=document.createElement('div');
+      fb.className='namesbar stack';
+      fb.innerHTML='<span>Afficher sur le plan</span>';
+      const seg=document.createElement('div');
+      seg.className='seg';
+     for(const [v,t] of [[null,'Tous'],['team','Équipe'],['wf','⚙ Agents'],['vis','💬 Visiteurs']]){
+       const b=document.createElement('button');
+       b.textContent=t;
+       b.className=(FILTER===v?'on ':'')+(v?'famb fam-'+v:'');
+       b.setAttribute('aria-pressed',String(FILTER===v));
+       b.onclick=()=>{FILTER=v;renderSide();};
+       seg.appendChild(b);
+     }
+     fb.appendChild(seg);side.appendChild(fb);}
+    const groups=[["L'équipe",chars.filter(c=>c.person),'team'],['Les agents',chars.filter(c=>!c.person&&!c.visitor),'wf'],['Les visiteurs du jour',chars.filter(c=>c.visitor),'vis']].filter(g=>!FILTER||g[2]===FILTER);
+    for(const [title,list,fk] of groups){
+    if(!list.length)continue;
+    const closed=!!COLLAPSED[title];
+    const h=document.createElement('h2');
+    h.className='grp';
+    h.setAttribute('role','button');
+    h.tabIndex=0;
+    h.setAttribute('aria-expanded',String(!closed));
+    h.innerHTML=`<span class="chev">${closed?'▸':'▾'}</span><span class="famdot fam-${fk}"></span>${esc(title)} <span class="cnt">${list.length}</span>`;
+    const toggle=()=>{COLLAPSED[title]=!closed;try{localStorage.setItem('bureau:collapsed',JSON.stringify(COLLAPSED));}catch(e){}renderSide();};
+    h.onclick=toggle;h.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}};
+    h.style.marginTop=title==="L'équipe"?'0':'14px';if(closed){side.appendChild(h);continue;}
+    side.appendChild(h);
+    if(title==='Les visiteurs du jour'){
+      const n=document.createElement('div');
+      n.style.cssText='color:var(--muted);font-size:12px;margin:-4px 0 6px';
+      n.textContent='Tes discussions Kronn du jour';
+      side.appendChild(n);
+    }
+    const box=document.createElement('div');box.className='roster';
+    const sorted=list.slice().sort((a,b)=>rank(a)-rank(b));
+    for(const c of sorted){
+      const st=c._st||stateAt(c,T);
+      const b=document.createElement('button');
+      b.className='who fam-'+famOf(c);
+      b.onclick=()=>select(c.key);
+      b.onmouseenter=()=>{hoverKey=c.key;};
+      b.onmouseleave=()=>{if(hoverKey===c.key)hoverKey=null;};
+      b.appendChild(portrait(c,36));
+      const t=document.createElement('div');t.className='t';
+      const best=bestEmployee()[0];const trophy=best&&best.pts&&empChar(best)===c?' 🏆':'';
+      t.innerHTML=`<div class="n">${esc(c.name)}${trophy}${c.apprentice?' <span class="appr" title="Apprenti">🎓 apprenti</span>':''}</div><div class="r">${esc(c.role)}</div>`;
+      b.appendChild(t);
+      const s=document.createElement('div');
+      s.className='s';
+      s.innerHTML=`<span class="dot" style="background:${ST_CSS[st.st]||'var(--idle)'}"></span>${esc(shortSt(st))}`;
+      b.appendChild(s);box.appendChild(b);
+    }
+    side.appendChild(box);}
+    return;
+  }
+  const c=byKey[sel], st=c._st||stateAt(c,T);
+  if(EDIT&&EDIT.k===c.key){renderEditor(side,c);return;}
+  const back=document.createElement('button');
+  back.className='back';
+  back.textContent="← Toute l'équipe";
+  back.onclick=()=>select(null);
+  side.appendChild(back);
+  const f=document.createElement('div');f.className='face';f.appendChild(portrait(c,64));
+  const ft=document.createElement('div');
+  ft.innerHTML=`<div class="n">${esc(c.name)}${c.apprentice?' <span class="appr">🎓 apprenti</span>':''}</div><div class="r">${esc(c.role)}${c.name!==c.baseName?' · '+esc(c.baseName):''}</div>`;
+  f.appendChild(ft);
+  side.appendChild(f);
+  if(!c.visitor){
+    const eb=document.createElement('button');
+    eb.className='edit-btn';
+    eb.textContent=canLook(c)?'✎ Personnaliser':'✎ Renommer';
+    eb.onclick=()=>openEditor(c);
+    side.appendChild(eb);
+    if(localOnly(c.key)){
+      const n=document.createElement('div');
+      n.className='note';
+      n.textContent="Retouche visible seulement dans ton navigateur (pas encore enregistrée pour l'équipe).";
+      side.appendChild(n);
+    }
+    }
+  const s=document.createElement('div');
+  s.className='status';
+  s.innerHTML=`<span class="dot" style="background:${ST_CSS[st.st]||'var(--idle)'}"></span>${esc(st.label)}`;
+  side.appendChild(s);
+  if(st.step&&st.step.err){
+    const e=document.createElement('div');
+    e.className='steps';
+    e.innerHTML=`<div class="e" style="margin-left:0">${esc(st.step.err)}</div>`;
+    side.appendChild(e);
+  }
+  if(c.boss){const p=document.createElement('p');p.style.color='var(--muted)';const gates=chars.filter(x=>x._st&&x._st.st==='gate');
+    if(!gates.length){p.textContent="Personne n'attend ta validation. Le bureau tourne tout seul.";side.appendChild(p);}
+    for(const x of gates){const r=x._st&&x._st.run;if(r)gateCard(side,r,x.name);}
+    const imp=chars.filter(x=>x.visitor&&x.disc&&x.disc.imp>0);
+    if(imp.length){
+      const box=foldSection(side,'alire','❗ À lire',imp.length,true);
+      const ul=document.createElement('ul');
+      ul.className='steps';
+      ul.style.marginLeft='0';
+      for(const v of imp){
+        const li=document.createElement('li');
+        li.innerHTML=`<span class="dot" style="background:var(--err)"></span><span>${esc(clean(v.disc.title).replace(/\s+/g,' ').slice(0,70))}</span><span class="k">${v.disc.imp} important${v.disc.imp>1?'s':''} · ${discLink(v.disc.id,'ouvrir')}</span>`;
+        ul.appendChild(li);
+      }
+      box.appendChild(ul);}}
+  if(st.st==='gate'&&st.run)gateCard(side,st.run,null);
+  musicCard(side,c);
+  if(c.person){renderPerson(side,c);return;}
+  if(c.visitor){renderVisitor(side,c);return;}
+  const done=(c.top||c.runs).filter(r=>r._s<=T);
+  const ok=done.filter(r=>r.status==='Success').length, ko=done.filter(r=>r.status==='Failed').length;
+  const tok=(c.top||c.runs).filter(r=>r._s<=T).reduce((a,r)=>a+(r.tok||0),0), dur=done.reduce((a,r)=>a+((r._e||T)-r._s),0);
+  const stats=document.createElement('div');stats.className='stats';
+  stats.innerHTML=`<div><b>${done.length}</b><span>runs</span></div><div><b style="color:var(--ok)">${ok}</b><span>réussis</span></div><div><b style="color:${ko?'var(--err)':'inherit'}">${ko}</b><span>échecs</span></div><div><b>${fmtTok(tok)}</b><span>tokens</span></div>`;
+  side.appendChild(stats);
+  askBlock(side,c);
+  relaunchBlock(side,c);
+  payBlock(side,c);
+  const wfs=[...new Set(c.runs.map(r=>clean(r.wf_name)))];
+  if(wfs.length){
+    const p=document.createElement('div');
+    p.style.cssText='color:var(--muted);font-size:12px;margin-bottom:8px';
+    p.textContent=(c.visitor?'Discussion : ':'Workflows : ')+wfs.join(' / ')+(dur?' · '+fmtDur(dur)+' de travail':'');
+    side.appendChild(p);
+  }
+  const top=(c.top||c.runs).slice().reverse();
+  const jb=foldSection(side,'day','Sa journée',top.length);
+  if(!top.length){const e=document.createElement('div');e.className='empty';e.textContent="Rien aujourd'hui.";jb.appendChild(e);}
+  for(const r of top){
+    const d=memoDetails(document.createElement('details'),'run:'+r.run,false);if(r._s>T)d.className='future';
+    const kids=(c.kids&&c.kids[r.run])||[];
+    d.innerHTML=`<summary><span class="dot" style="background:${STATUS_COL[r.status]||'var(--idle)'}"></span><span class="tm">${hm(r._s)}</span><span class="wn">${esc(STATUS_TXT[r.status]||r.status)}${kids.length?' · '+kids.length+' sous-run'+(kids.length>1?'s':''):''}${r.msgs?' · '+r.msgs+' messages':''}</span><span class="du">${esc(fmtDur((r._e||Date.now())-r._s))}${r.tok?' · '+fmtTok(r.tok)+' tok':''}</span></summary>`;
+    const ul=document.createElement('ul');ul.className='steps';
+    {const src=r.tby||r.parent, oc=src&&chars.find(x=>x!==c&&x.runs.some(z=>z.run===src));
+     if(oc){
+       const li=document.createElement('li');
+       li.innerHTML=`<span class="dot" style="background:#7a5cc8"></span><span>📁 Lancé par ${esc(oc.name)}</span>`;
+       ul.appendChild(li);
+     }
+     }
+    for(const s of (r.steps||[])){
+      const li=document.createElement('li');
+      li.innerHTML=`<span class="dot" style="background:${STATUS_COL[s.s]||'var(--idle)'}"></span><span>${esc(s.n)}</span><span class="k">${esc(s.k||'')}${s.md?' · '+esc(s.md):''}${s.ms?' · '+fmtDur(s.ms):''}${s.tok?' · '+fmtTok(s.tok)+' tok':''}</span>`;
+      ul.appendChild(li);
+      if(s.err){const e=document.createElement('li');e.className='e';e.textContent=s.err;ul.appendChild(e);}
+    }
+    for(const k of kids){
+      const li=document.createElement('li');
+      li.innerHTML=`<span class="dot" style="background:${STATUS_COL[k.status]||'var(--idle)'}"></span><span>Sous-run ${hm(k._s)}</span><span class="k">${esc(fmtDur((k._e||Date.now())-k._s))}${k.tok?' · '+fmtTok(k.tok)+' tok':''}</span>`;
+      ul.appendChild(li);
+    }
+    const linked=[r.run,...kids.map(k=>k.run)].flatMap(id=>DISC_BY_RUN[id]||[]);
+    for(const v of linked){
+      const li=document.createElement('li');
+      li.innerHTML=`<span class="dot" style="background:#d97757"></span><span>Discussion : ${esc(clean(v.disc.title).replace(/\s+/g,' ').slice(0,60))}</span>`;
+      const a=document.createElement('span');
+      a.innerHTML=discLink(v.disc.id,'ouvrir');
+      li.appendChild(a);
+      ul.appendChild(li);
+    }
+    d.appendChild(ul);jb.appendChild(d);
+  }
+}

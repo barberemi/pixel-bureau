@@ -1,0 +1,55 @@
+{
+ "_doc": "Valeurs de l'équipe, identiques pour tous, proposées par tools/install.py (modifiables ensuite dans bureau.config.json).",
+ "page_title": "Le Bureau",
+ "kronn": {
+  "api": "http://127.0.0.1:3140/api",
+  "ui": "http://localhost:5173/"
+ },
+ "jira": {
+  "site": "https://acme.atlassian.net",
+  "project": "EW",
+  "board": 1,
+  "points_fields": [
+   "customfield_10016",
+   "customfield_10102"
+  ],
+  "sprint_field": "customfield_10020",
+  "done_status": "Deployed",
+  "statuses": {
+   "À faire": "todo",
+   "En cours": "doing",
+   "Reopen": "doing",
+   "To Review": "review",
+   "To Test": "test",
+   "To Deploy": "deploy",
+   "Deployed": "done"
+  }
+ },
+ "github": {
+  "repo": "acme/front_web",
+  "staging_workflow": "CD_Deploy-NONPROD.yaml",
+  "prod_workflow": "CD_Deploy-PRODUCTION.yaml"
+ },
+ "rhythm": {
+  "timezone": "Europe/Paris",
+  "location": [
+   48.857,
+   2.352
+  ],
+  "daily": "09:40",
+  "daily_minutes": 15,
+  "office_hours": [
+   8,
+   20
+  ],
+  "mep_freeze": [
+   "Fri",
+   "Sat",
+   "Sun"
+  ],
+  "weekend": [
+   "Sat",
+   "Sun"
+  ]
+ }
+}

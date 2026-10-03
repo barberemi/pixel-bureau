@@ -1,0 +1,47 @@
+{
+ "kind": "workflow",
+ "key": "gate",
+ "definition": {
+  "name": "Le Bureau · décision gate",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "steps": [
+   {
+    "name": "decide",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Applique la décision via l'API locale (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/gate_decide.py@@",
+     "{{run_id}}",
+     "{{decision}}",
+     "{{comment}}"
+    ],
+    "exec_timeout_secs": 30
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

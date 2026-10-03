@@ -1,0 +1,70 @@
+{
+ "kind": "workflow",
+ "key": "avatar",
+ "definition": {
+  "name": "Le Bureau · avatars",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "steps": [
+   {
+    "name": "save",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Valide le code et le fusionne dans le dataset avatars (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/avatar_save.py@@"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{avatar_code}}"
+   },
+   {
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset avatars de la page Le Bureau.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "avatars",
+       "operation": "replace",
+       "value_from": "steps.save.data.stdout"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

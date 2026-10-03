@@ -1,0 +1,183 @@
+{
+ "kind": "workflow",
+ "key": "team",
+ "definition": {
+  "name": "Le Bureau · équipe (Jira + GitHub)",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Cron",
+   "schedule": "*/10 5-19 * * 1-5"
+  },
+  "steps": [
+   {
+    "name": "sprint_info",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Sprint actif du board Delivery Front.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/agile/1.0/board/@@jira.board@@/sprint",
+    "api_method": "GET",
+    "api_query": {
+     "state": "active"
+    },
+    "api_extract": {
+     "path": "$.values[0]",
+     "fallback": {},
+     "fail_on_empty": true
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "jira_team",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Tickets EW du sprint en cours, avec l'historique (changements de statut du jour) et la date de création.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/search/jql",
+    "api_method": "GET",
+    "api_query": {
+     "jql": "project = @@jira.project@@ AND sprint in openSprints() ORDER BY updated DESC",
+     "fields": "summary,status,assignee,issuetype,updated,@@jira.points_fields@@,created",
+     "expand": "changelog",
+     "maxResults": "100"
+    },
+    "api_extract": {
+     "path": "$.issues",
+     "fallback": [],
+     "fail_on_empty": true
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "jira_closed",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Tickets EW du dernier sprint fermé (21 j) : employé du sprint tant que le nouveau n'a rien livré, et changements de statut du jour.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/search/jql",
+    "api_method": "GET",
+    "api_query": {
+     "fields": "summary,status,assignee,issuetype,updated,created,@@jira.points_fields@@,@@jira.sprint_field@@",
+     "jql": "project = @@jira.project@@ AND sprint in closedSprints() AND sprint not in openSprints() AND updated >= -21d ORDER BY updated DESC",
+     "maxResults": "100",
+     "expand": "changelog"
+    },
+    "api_extract": {
+     "path": "$.issues",
+     "fallback": [],
+     "fail_on_empty": false
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "github",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "PR, releases et déploiements de front_web via gh, regroupés ; ne fait jamais échouer le run (sans gh : listes vides + erreur notée).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/github_snapshot.py@@"
+    ],
+    "exec_timeout_secs": 60
+   },
+   {
+    "name": "shape",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Déterministe : regroupe tickets et PR par personne (lien GitHub et Jira par nom puis par clé EW).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/team_shape.py@@"
+    ],
+    "exec_timeout_secs": 60,
+    "exec_stdin": "{\"sprint\":{{steps.sprint_info.data_json}},\"issues\":{{steps.jira_team.data_json}},\"closed\":{{steps.jira_closed.data_json}},\"github\":{{steps.github.data.stdout}}}"
+   },
+   {
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset team de la page Le Bureau.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "team",
+       "operation": "replace",
+       "value_from": "steps.shape.data.stdout"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3",
+   "gh"
+  ]
+ }
+}

@@ -1,0 +1,8 @@
+# propre à chaque installation (créé par tools/install.py) ; les tests ont leur copie dans tests/fixtures/
+/bureau.config.json
+.venv/
+dist/
+sprites/cast_preview.png
+sprites/lpc_cache/
+__pycache__/
+.DS_Store

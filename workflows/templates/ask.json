@@ -1,0 +1,36 @@
+{
+ "kind": "quick_prompt",
+ "key": "ask",
+ "definition": {
+  "name": "Le Bureau · interroger un agent",
+  "icon": "💬",
+  "prompt_template": "Tu es l'agent du Bureau qui fait tourner le workflow Kronn d'id {{wf_id}}. @@owner_name@@ te pose une question sur ton travail récent.\n\n1. Lis tes runs avec les outils Kronn : `workflow_runs` (workflow_id={{wf_id}}, les plus récents) puis `workflow_run_get` sur le ou les runs utiles (d'abord le dernier ; pour une question sur des échecs, regarde aussi les précédents).\n2. Réponds en français, en 5 phrases maximum, à cette question : {{question}}\n\nRègles :\n- Donne des faits précis : nom de l'étape, heure, message d'erreur exact, nombre d'échecs.\n- S'il y a un problème, donne la cause probable et l'action concrète à faire.\n- N'invente rien : si l'information n'est pas dans les runs, dis-le simplement.\n- Lecture seule : ne lance, ne modifie et ne relance aucun workflow.\n- Pas de tiret cadratin dans ta réponse.",
+  "variables": [
+   {
+    "name": "wf_id",
+    "label": "Agent",
+    "placeholder": "",
+    "description": null,
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   },
+   {
+    "name": "question",
+    "label": "Ta question",
+    "placeholder": "Pourquoi tu échoues depuis hier ?",
+    "description": null,
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   }
+  ],
+  "agent": "ClaudeCode",
+  "project_id": "@@kronn.project_id@@",
+  "skill_ids": [],
+  "profile_ids": [],
+  "directive_ids": [],
+  "tier": "economy",
+  "description": "Pose une question à un agent du Bureau sur ses derniers runs (lecture seule)."
+ }
+}

@@ -1,0 +1,261 @@
+{
+ "p_remi": {
+  "torso": "longsleeve/formal",
+  "shirt": "#e8edf5",
+  "legs": "formal",
+  "legs_color": "#262b38",
+  "sex": "male",
+  "skin": "pale",
+  "hair": "curly_short2",
+  "hair_color": "#5a3a1e"
+ },
+ "dwight": {
+  "sex": "male",
+  "skin": "pale",
+  "hair": "parted2",
+  "hair_color": "#5a3a1e",
+  "torso": "longsleeve/formal",
+  "shirt": "#d9b44a",
+  "legs": "formal",
+  "legs_color": "#5b4630",
+  "glasses": "glasses"
+ },
+ "jim": {
+  "sex": "male",
+  "skin": "pale",
+  "hair": "messy1",
+  "hair_color": "#6b4426",
+  "shirt": "#9cc3e6",
+  "legs": "pants",
+  "legs_color": "#3a3f4a"
+ },
+ "oscar": {
+  "sex": "male",
+  "skin": "tan",
+  "hair": "buzzcut",
+  "hair_color": "#1e1a18",
+  "torso": "longsleeve/formal",
+  "shirt": "#b9a6d8",
+  "legs": "formal",
+  "legs_color": "#4a4e58",
+  "beard": "beard/trimmed"
+ },
+ "stanley": {
+  "sex": "male",
+  "skin": "dark",
+  "hair": "balding",
+  "hair_color": "#9a9a9a",
+  "torso": "longsleeve/formal",
+  "shirt": "#efe3a8",
+  "legs": "formal",
+  "legs_color": "#5a4a3a",
+  "beard": "mustache/basic",
+  "glasses": "halfmoon"
+ },
+ "angela": {
+  "sex": "female",
+  "skin": "pale",
+  "hair": "bangs_bun",
+  "hair_color": "#e6cf86",
+  "shirt": "#f1e4ea",
+  "legs": "pants",
+  "legs_color": "#6d6f80"
+ },
+ "kevin": {
+  "sex": "male",
+  "skin": "pale",
+  "head": "male_plump",
+  "hair": "balding",
+  "hair_color": "#6b4a2e",
+  "shirt": "#5f7f5a",
+  "legs": "pants",
+  "legs_color": "#a8936a"
+ },
+ "phyllis": {
+  "sex": "female",
+  "skin": "pale",
+  "hair": "bob",
+  "hair_color": "#9c4a2a",
+  "shirt": "#4f9c97",
+  "legs": "pants",
+  "legs_color": "#3b3f52"
+ },
+ "creed": {
+  "sex": "male",
+  "skin": "pale",
+  "head": "male_elderly",
+  "hair": "messy2",
+  "hair_color": "#c9c9c9",
+  "shirt": "#7a8ea6",
+  "legs": "pants",
+  "legs_color": "#3d3d3d"
+ },
+ "meredith": {
+  "sex": "female",
+  "skin": "pale",
+  "hair": "curly_short",
+  "hair_color": "#c2462a",
+  "torso": "shortsleeve/tshirt",
+  "shirt": "#c23b4a",
+  "legs": "pants",
+  "legs_color": "#2c2c3a"
+ },
+ "toby": {
+  "sex": "male",
+  "skin": "pale",
+  "hair": "plain",
+  "hair_color": "#3a2a20",
+  "shirt": "#cdbb9a",
+  "legs": "pants",
+  "legs_color": "#4a4a52",
+  "beard": "beard/5oclock_shadow"
+ },
+ "erin": {
+  "sex": "female",
+  "skin": "pale",
+  "hair": "long_messy",
+  "hair_color": "#d9712c",
+  "shirt": "#f2d14b",
+  "legs": "pants",
+  "legs_color": "#355a8a"
+ },
+ "ryan": {
+  "sex": "male",
+  "skin": "pale",
+  "hair": "spiked",
+  "hair_color": "#1a1614",
+  "torso": "shortsleeve/tshirt",
+  "shirt": "#2a2a30",
+  "legs": "pants",
+  "legs_color": "#22252e"
+ },
+ "temp": {
+  "sex": "male",
+  "skin": "brown",
+  "hair": "cowlick",
+  "hair_color": "#2a1e16",
+  "torso": "shortsleeve/tshirt",
+  "shirt": "#8a8f99",
+  "legs": "pants",
+  "legs_color": "#3a3f4a"
+ },
+ "v_claude": {
+  "sex": "female",
+  "skin": "tan",
+  "hair": "long",
+  "hair_color": "#3a2418",
+  "torso": "shortsleeve/tshirt",
+  "shirt": "#d97757",
+  "legs": "pants",
+  "legs_color": "#3a3f4a"
+ },
+ "v_codex": {
+  "sex": "male",
+  "skin": "brown",
+  "hair": "twists_fade",
+  "hair_color": "#1a1210",
+  "torso": "shortsleeve/tshirt",
+  "shirt": "#3fa46a",
+  "legs": "pants",
+  "legs_color": "#2a2f3a"
+ },
+ "v_gemini": {
+  "sex": "female",
+  "skin": "pale",
+  "hair": "pixie",
+  "hair_color": "#2a2a2a",
+  "torso": "shortsleeve/tshirt",
+  "shirt": "#4a7fe0",
+  "legs": "pants",
+  "legs_color": "#2a2f3a"
+ },
+ "p_coll6": {
+  "torso": "shortsleeve/tshirt",
+  "shirt": "#2f4a7a",
+  "legs": "pants",
+  "legs_color": "#2a2f3a",
+  "sex": "male",
+  "skin": "pale",
+  "hair": "buzzcut",
+  "hair_color": "#5a3a1e",
+  "beard": "beard/5oclock_shadow",
+  "hat": "cloth/leather_cap",
+  "hat_color": "#2f4a7a"
+ },
+ "p_coll5": {
+  "shirt": "#e9e4d8",
+  "legs": "pants",
+  "legs_color": "#3a3f4a",
+  "sex": "male",
+  "skin": "dark",
+  "hair": "buzzcut",
+  "hair_color": "#14100e"
+ },
+ "p_coll7": {
+  "torso": "shortsleeve/tshirt",
+  "shirt": "#4f7a4f",
+  "legs": "pants",
+  "legs_color": "#3a3f4a",
+  "sex": "male",
+  "skin": "pale",
+  "hair": "long_messy",
+  "hair_color": "#1a1614"
+ },
+ "p_coll2": {
+  "torso": "shortsleeve/tshirt",
+  "shirt": "#a33b3b",
+  "legs": "pants",
+  "legs_color": "#2c2c3a",
+  "sex": "male",
+  "skin": "dark",
+  "hair": "high_and_tight",
+  "hair_color": "#14100e"
+ },
+ "p_coll8": {
+  "shirt": "#6d7380",
+  "legs": "pants",
+  "legs_color": "#2a2f3a",
+  "sex": "male",
+  "skin": "pale",
+  "hair": "bangslong",
+  "hair_color": "#5a3a1e"
+ },
+ "p_coll9": {
+  "torso": "shortsleeve/tshirt",
+  "shirt": "#7a5cc8",
+  "legs": "pants",
+  "legs_color": "#2a2f3a",
+  "sex": "male",
+  "skin": "pale",
+  "hair": "plain",
+  "hair_color": "#5a3a1e"
+ },
+ "p_coll4": {
+  "shirt": "#e07a5f",
+  "legs": "pants",
+  "legs_color": "#3b3f52",
+  "sex": "female",
+  "skin": "pale",
+  "hair": "long",
+  "hair_color": "#1a1614"
+ },
+ "p_coll1": {
+  "shirt": "#2e9e9b",
+  "legs": "pants",
+  "legs_color": "#2c2c3a",
+  "sex": "female",
+  "skin": "pale",
+  "hair": "lob",
+  "hair_color": "#e6cf86"
+ },
+ "p_coll3": {
+  "torso": "shortsleeve/tshirt",
+  "shirt": "#4a6a9a",
+  "legs": "pants",
+  "legs_color": "#2a2f3a",
+  "sex": "male",
+  "skin": "pale",
+  "hair": "loose",
+  "hair_color": "#d8b45a"
+ }
+}
