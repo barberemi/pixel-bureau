@@ -32,7 +32,8 @@ function attachTeam(){
   for(const c of chars)c.team=null;
   if(!TEAM){applyNames();return;}
   for(const c of chars)if(c.roleKind){
-    const own=TEAM.people.find(p=>nameKey(String(p.name).split(' ')[0])===nameKey(c.person));
+    const first=n=>nameKey(String(n||'').split(' ')[0]); // le roster peut avoir le nom complet ou le seul prénom
+    const own=TEAM.people.find(p=>nameKey(p.name)===nameKey(c.person)||first(p.name)===first(c.person));
     c.team={
       id:own?own.id:'role_'+c.key,
       name:c.person,

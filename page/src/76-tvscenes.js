@@ -1,7 +1,7 @@
 // ---------- mode TV : bande de chiffres sous le plan, et scènes du daily (stand-up) ----------
 // Lisible à 3 m : chiffres de 48 px environ, rien de personnel (pas de validation ni de PR « à toi »).
-// Pendant le daily (RHYTHM.daily, en semaine), la TV enchaîne d'elle-même les scènes Sprint, Bloqués, MEP du jour et
-// Agents en panne, TVSCENE_MS chacune ; le bouton « Stand-up » (ou la touche S) les lance ou les arrête à la main.
+// Pendant le daily (RHYTHM.daily, en semaine), la TV enchaîne d'elle-même le sprint puis un tour de table (une scène par
+// personne) ; le bouton « Stand-up » (ou la touche S) le lance ou l'arrête à la main, les flèches passent d'une scène à l'autre.
 const TVSCENE_MS=20000;
 const TVSCENE={manual:null,idx:0,since:0,sig:''}; // manual : null = automatique (daily), true / false = forcé
 function agentsDown(){return chars.filter(c=>!c.person&&!c.visitor&&c._st&&c._st.st==='error');}
@@ -32,29 +32,48 @@ function sceneSprint(t){
     `<table class="sc-tab"><tr><th></th><th>en cours</th><th>review</th><th>test</th><th>terminés</th></tr>`+
     rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.doing||''}</td><td>${r.review||''}</td><td>${r.test||''}</td><td>${r.done||''}</td></tr>`).join('')+'</table>';
 }
-function sceneBlocked(t){
-  const tk=blockedTickets(t), pr=stalePrs(t);
-  if(!tk.length&&!pr.length)return '<p class="sc-ok">✓ Rien de bloqué : pas de ticket immobile, pas de PR qui attend.</p>';
-  const first=n=>String(n||'').split(' ')[0];
-  return `<div class="sc-cols"><div><h3>Tickets immobiles (${tk.length})</h3><ul>`+tk.slice(0,8).map(x=>`<li><b>${esc(x.key)}</b> ${esc(CAT_TXT[x.cat]||x.cat)} depuis ${ageTxt(t-ms(x.updated))}${x.who?' · '+esc(first(x.who)):''}<small>${esc(clip(x.summary,70))}</small></li>`).join('')+
-    (tk.length>8?`<li class="more">+ ${tk.length-8} autres</li>`:'')+`</ul></div><div><h3>PR sans review (${pr.length})</h3><ul>`+
-    pr.slice(0,8).map(x=>`<li><b>#${x.n}</b> de ${esc(first(x.who))} · ${ageTxt(t-ms(x.updated))}<small>${esc(clip(x.title,70))}</small></li>`).join('')+
-    (pr.length>8?`<li class="more">+ ${pr.length-8} autres</li>`:'')+'</ul></div></div>';
+// ---------- tour de table : une scène par personne, en commençant par le Tech Lead ----------
+// ordre : Tech Lead, développeurs, testeur, cheffe produit, apprentis sans ticket, facilitatrice (qui conclut)
+const STANDUP_RANK={lead:0,qa:2,po:3,sm:5};
+const ST_ORDER=['doing','review','test','todo','deploy','done'];
+function standupPeople(){
+  return chars.filter(c=>c.person).map((c,i)=>({c,i,r:c.roleKind in STANDUP_RANK?STANDUP_RANK[c.roleKind]:(!c.team&&c.standup?4:1)}))
+    .sort((a,b)=>a.r-b.r||a.i-b.i).map(x=>x.c);
 }
-function sceneMep(t){
-  const l=mepsAt(t);
-  if(!l.length)return `<p class="sc-empty">Pas de mise en prod aujourd'hui.${stageClosed(t)?' Plateau fermé : pas de MEP le vendredi ni le week-end.':''}</p>`;
-  const col={done:'var(--ok)',failed:'var(--err)'};
-  return '<ul class="sc-list">'+l.slice().reverse().map(x=>`<li><span class="sc-dot" style="background:${col[x.phase]||'#7a5cc8'}"></span><b>${esc(x.m.tag)}</b> ${esc(MEP_TXT[x.phase])}`+
-    `${x.m.ticket?' · '+esc(x.m.ticket):''}${x.m.who_name?' · '+esc(String(x.m.who_name).split(' ')[0]):''}<small>${esc(clip(x.m.summary||x.m.name||'',80))}</small></li>`).join('')+'</ul>';
+// dernier daily avant t (jours ouvrés) : les « nouveaux tickets » sont ceux créés depuis
+function prevDaily(t){
+  for(let k=1;k<8;k++){const d=parisMidnight(t-k*864e5)+DAILY_MIN*60e3;if(!['Sat','Sun'].includes(parisHM(d).wd))return d;}
+  return t-864e5;
 }
-function sceneAgents(t){
-  const down=agentsDown();
-  if(!down.length)return '<p class="sc-ok">✓ Tous les agents tournent.</p>';
-  return '<ul class="sc-list">'+down.map(c=>{const s=c._st, w=weekHealth(c);
-    return `<li><span class="sc-dot" style="background:var(--err)"></span><b>${esc(c.name)}</b> ${s.alarm?'🚨 '+s.alarm+' échecs d\'affilée':'en panne'}${s.step?' · sur '+esc(s.step.n):''}<small>${esc(clean(s.run&&s.run.wf_name||''))}${w?' · '+esc(w):''}</small></li>`;}).join('')+'</ul>';
+function sprintTickets(){return TEAM?[...TEAM.people.flatMap(p=>(p.tickets||[]).map(x=>({...x,who:p.name}))),...(TEAM.unassigned||[])]:[];}
+function newTickets(t){const s=prevDaily(t);return sprintTickets().filter(x=>x.created&&ms(x.created)>s).sort((a,b)=>ms(b.created)-ms(a.created));}
+const tkLi=x=>`<li><span class="st st-${esc(x.cat||'')}">${esc(x.status||CAT_TXT[x.cat]||'')}</span><b>${esc(x.key)}</b> ${esc(clip(x.summary||'',90))}${x.who?` <small>· ${esc(String(x.who).split(' ')[0])}</small>`:''}</li>`;
+const tkList=(l,n)=>`<ul class="sc-tk">${l.slice(0,n).map(tkLi).join('')}${l.length>n?`<li class="more">+ ${l.length-n} autres</li>`:''}</ul>`;
+function personScene(c,t){
+  const W=workOf(c), own=(c.team&&c.team.tickets||[]).slice().sort((a,b)=>ST_ORDER.indexOf(a.cat)-ST_ORDER.indexOf(b.cat));
+  const note=c.standup?`<p class="sc-note">${esc(c.standup)}</p>`:'';
+  if(c.roleKind==='sm'){
+    const nw=newTickets(t), rv=sprintTickets().filter(x=>x.cat==='review');
+    return `<h3>Nouveaux tickets depuis le dernier daily (${nw.length})</h3>${nw.length?tkList(nw,8):'<p class="sc-empty">Aucun.</p>'}`+
+      `<p class="sc-big">${plural(rv.length,'ticket en review','tickets en review')}</p><p class="sc-shout">FAITES DES REVIEWS</p>`;
+  }
+  if(c.roleKind==='po'){
+    const nw=W&&W.written.length?W.written:newTickets(t);
+    return note+`<h3>Nouveaux tickets (${nw.length})</h3>${nw.length?tkList(nw,10):'<p class="sc-empty">Aucun cette semaine.</p>'}`;
+  }
+  if(c.roleKind==='qa'){
+    const ok=W?W.validated:[], back=W?W.reopened:[];
+    return `<div class="sc-cols"><div><h3>Testés cette semaine (${cnt50(ok.length)})</h3>${ok.length?tkList(ok,10):'<p class="sc-empty">Aucun.</p>'}</div>`+
+      `<div><h3>Réouverts (${cnt50(back.length)})</h3>${back.length?tkList(back,10):'<p class="sc-empty">Aucun.</p>'}</div></div>`;
+  }
+  if(!own.length)return note||'<p class="sc-empty">Pas de ticket dans le sprint.</p>';
+  return note+`<h3>Ses tickets (${own.length})</h3>${tkList(own,12)}`;
 }
-const SCENES=[{t:'Le sprint',f:sceneSprint},{t:'Ce qui est bloqué',f:sceneBlocked},{t:'Les mises en prod du jour',f:sceneMep},{t:'Les agents en panne',f:sceneAgents}];
+const sceneMs=c=>c?Math.min(45000,15000+1500*((c.team&&c.team.tickets||[]).length)):TVSCENE_MS; // plus de tickets, plus de temps
+function standupScenes(){
+  return [{t:'Le sprint',f:sceneSprint,ms:TVSCENE_MS},
+    ...standupPeople().map(c=>({t:c.name+(c.role?' · '+c.role:''),f:t=>personScene(c,t),ms:sceneMs(c),c}))];
+}
 function sceneOn(t){return TVSCENE.manual!==null?TVSCENE.manual:inDaily(t);}
 function renderTvScenes(now){
   const box=document.getElementById('tvscene'), kpi=document.getElementById('tvkpi'); if(!box||!kpi)return;
@@ -62,13 +81,15 @@ function renderTvScenes(now){
   const on=TV&&sceneOn(T);
   document.body.classList.toggle('tvscene',on);
   if(!on){TVSCENE.since=0;return;}
+  const SC=standupScenes(); TVSCENE.idx%=SC.length;
   if(!TVSCENE.since)TVSCENE.since=now;
-  if(now-TVSCENE.since>=TVSCENE_MS){TVSCENE.idx=(TVSCENE.idx+1)%SCENES.length;TVSCENE.since=now;}
-  const sc=SCENES[TVSCENE.idx], left=Math.max(0,TVSCENE_MS-(now-TVSCENE.since));
-  const html=`<div class="sc-head"><h2>${esc(sc.t)}</h2><span class="sc-dots">${SCENES.map((_,i)=>`<i class="${i===TVSCENE.idx?'on':''}"></i>`).join('')}</span>`+
+  if(now-TVSCENE.since>=SC[TVSCENE.idx].ms){TVSCENE.idx=(TVSCENE.idx+1)%SC.length;TVSCENE.since=now;}
+  const sc=SC[TVSCENE.idx], left=Math.max(0,sc.ms-(now-TVSCENE.since));
+  const img=sc.c&&typeof portraitUrl==='function'?portraitUrl(sc.c):null;
+  const html=`<div class="sc-head">${img?`<img class="sc-face" src="${img}" alt="">`:''}<h2>${esc(sc.t)}</h2><span class="sc-dots">${SC.map((_,i)=>`<i class="${i===TVSCENE.idx?'on':''}"></i>`).join('')}</span>`+
     `<span class="sc-tag">${TVSCENE.manual?'Stand-up':'Daily'}</span></div><div class="sc-body">${sc.f(T)}</div>`;
   if(html!==TVSCENE.sig){TVSCENE.sig=html;box.innerHTML=html;}
-  box.style.setProperty('--sc-left',(left/TVSCENE_MS).toFixed(3));
+  box.style.setProperty('--sc-left',(left/sc.ms).toFixed(3));
 }
 function toggleStandup(){
   const cur=sceneOn(T);
@@ -80,5 +101,5 @@ function toggleStandup(){
 addEventListener('keydown',e=>{
   if(!TV||e.metaKey||e.ctrlKey||e.altKey||(e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)))return;
   if(e.key==='s'||e.key==='S')toggleStandup();
-  else if(sceneOn(T)&&(e.key==='ArrowRight'||e.key==='ArrowLeft')){TVSCENE.idx=(TVSCENE.idx+(e.key==='ArrowRight'?1:SCENES.length-1))%SCENES.length;TVSCENE.since=0;}
+  else if(sceneOn(T)&&(e.key==='ArrowRight'||e.key==='ArrowLeft')){const n=standupScenes().length;TVSCENE.idx=(TVSCENE.idx+(e.key==='ArrowRight'?1:n-1))%n;TVSCENE.since=0;}
 });

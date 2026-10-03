@@ -58,9 +58,10 @@ function tvLiveChip(){
 function updateTv(force){
   if(!TV||!DATA)return;
   const bar=document.getElementById('tvbar');
-  bar.innerHTML=`<span class="tvt">LE BUREAU</span><span class="tvc">${hms(T)}</span>${tvLiveChip()}`+
+  // les puces se partagent la place restante (et sont coupées si besoin) : les boutons à droite restent toujours visibles
+  bar.innerHTML=`<span class="tvt">LE BUREAU</span><span class="tvc">${hms(T)}</span><span class="tvchips">${tvLiveChip()}`+
     tvChips(dashData(T))+
-    `<span class="sp"></span><span class="tvhint">S : stand-up · Échap ou T pour quitter</span><button id="tvstand" class="${sceneOn(T)?'on':''}">${sceneOn(T)?'Retour au plan':'Stand-up'}</button><button id="tvexit">Quitter</button>`;
+    `</span><span class="tvhint">S : stand-up · Échap ou T pour quitter</span><button id="tvstand" class="${sceneOn(T)?'on':''}">${sceneOn(T)?'Retour au plan':'Stand-up'}</button><button id="tvexit">Quitter</button>`;
   bar.querySelector('#tvexit').onclick=()=>setTv(false);
   bar.querySelector('#tvstand').onclick=toggleStandup;
   renderTvScenes(performance.now());

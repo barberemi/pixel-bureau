@@ -36,7 +36,7 @@ for it in D.get("issues") or []:
         continue
     pts = next((f.get(k) for k in POINTS if f.get(k)), None)
     t = {"key": it.get("key"), "summary": (f.get("summary") or "")[:110], "status": st, "cat": cat,
-         "points": pts, "type": (f.get("issuetype") or {}).get("name"), "updated": f.get("updated")}
+         "points": pts, "type": (f.get("issuetype") or {}).get("name"), "updated": f.get("updated"), "created": f.get("created")}
     a = f.get("assignee")
     if not a:
         unassigned.append(t)

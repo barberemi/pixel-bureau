@@ -156,7 +156,6 @@ body.tv #tvbar{display:flex;flex-wrap:nowrap;white-space:nowrap;overflow:hidden;
 @media (max-width:1500px){#tvbar .tvhint{display:none}}
 @media (max-width:1100px){#tvbar .tvt{display:none}}
 #tvbar .chip.warn b{color:#f0b03a}#tvbar .chip.err b{color:#f06a5f}#tvbar .chip.ok b{color:#4cc27c}#tvbar .chip.mep b{color:#a98cf0}
-#tvbar .sp{flex:1}
 #tvbar .tvhint{color:#7d786e;font-size:12px;font-weight:500}
 #tvbar button{background:#242732;color:#ece8df;border-color:#353946}
 body.tv #tvticker{display:block;position:fixed;left:0;right:0;bottom:0;height:48px;background:#191b22;border-top:1px solid #2a2d36;color:#ece8df;font:500 18px ui-sans-serif,system-ui,sans-serif;overflow:hidden;white-space:nowrap;z-index:30}
@@ -373,3 +372,13 @@ body.tv.tvscene #tvscene{display:block;flex:1;overflow:hidden;background:#15161b
 body.tv.tvscene #tvkpi{flex:0 0 var(--tvk)}
 #tvkpi .tk{overflow:hidden}
 #tvticker .calm{padding:12px 18px;color:#a29c90;font-size:16px}
+#tvbar .tvchips{display:flex;flex:1;min-width:0;overflow:hidden;gap:clamp(5px,0.8vw,14px);align-items:center}
+#tvbar button,#tvbar .tvhint{flex:none}
+#tvscene .sc-face{width:clamp(44px,3.6vw,64px);height:clamp(44px,3.6vw,64px);image-rendering:pixelated;border-radius:10px;background:#2a2d36}
+#tvscene .sc-note{font-size:clamp(26px,2.4vw,42px);font-weight:700;color:#f0b03a;margin:0 0 clamp(10px,1.2vw,20px)}
+#tvscene .sc-big{font-size:clamp(24px,2.2vw,38px);font-weight:700;margin:clamp(14px,1.6vw,26px) 0 6px}
+#tvscene .sc-shout{font:900 clamp(40px,4.4vw,80px)/1.05 ui-sans-serif,system-ui,sans-serif;color:#f06a5f;letter-spacing:.04em;margin:8px 0 0}
+#tvscene .sc-tk li{display:flex;align-items:baseline;gap:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tvscene .sc-tk li small{display:inline;color:#a29c90}
+#tvscene .st{flex:none;font-size:.62em;font-weight:700;padding:2px 9px;border-radius:999px;background:#3a3e4a;color:#ece8df;min-width:6.5em;text-align:center}
+#tvscene .st-doing{background:#2e9e5b}#tvscene .st-review{background:#4a7fe0}#tvscene .st-test{background:#7a5cc8}#tvscene .st-done,#tvscene .st-deploy{background:#5b5f6b}

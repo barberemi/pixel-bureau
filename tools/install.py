@@ -23,7 +23,7 @@ OFFICE = [("dwight", "Dwight"), ("jim", "Jim"), ("stanley", "Stanley"), ("phylli
           ("angela", "Angela"), ("kevin", "Kevin"), ("creed", "Creed"), ("meredith", "Meredith"), ("toby", "Toby"),
           ("erin", "Erin"), ("ryan", "Ryan")]
 AGENT_SEATS = [[23, 14], [23, 15], [23, 16], [25, 14], [25, 15], [25, 16], [29, 14], [29, 15], [29, 16], [31, 14], [31, 15], [31, 16]]
-ROLES = {"dev": ("Développeur", None), "lead": ("Tech Lead", None), "qa": ("Testeur", "qa"), "po": ("Product owner", "po"),
+ROLES = {"dev": ("Développeur", None), "lead": ("Tech Lead", "lead"), "qa": ("Testeur", "qa"), "po": ("Product owner", "po"),
          "sm": ("Facilitateur", "sm")}
 DATASETS = ["office", "live", "team", "gates", "payroll", "avatars"]
 CRONS = ("office", "live", "team", "payroll")

@@ -113,3 +113,24 @@ test('rôles : la QA recette l\'équipe, la PO écrit et trie, sans ticket assig
   const cy = st(`{key:'c',name:'Clark',person:'Clark Green',jira_id:'zz',seat:[7,14]}`);
   assert.equal(cy.label, "À son bureau · pas d'activité Jira cette semaine");
 });
+
+test('stand-up : le sprint, puis le Tech Lead en premier et la facilitatrice en dernier', () => {
+  run(`chars=[{key:'d',name:'Andy',person:'A',team:{tickets:[]}},{key:'s',name:'Kelly',person:'M',roleKind:'sm'},
+    {key:'l',name:'DocRoms',person:'R',roleKind:'lead',team:{tickets:[]}},{key:'q',name:'Karen',person:'C',roleKind:'qa'},
+    {key:'p',name:'Jan',person:'L',roleKind:'po'},{key:'y',name:'Clark',person:'Y',standup:'Apprend'},{key:'ag',name:'Dwight'}];`);
+  assert.deepEqual(J('standupScenes().map(s=>s.c?s.c.key:"sprint")'), ['sprint', 'l', 'd', 'q', 'p', 'y', 's']);
+  run(`TEAM={sprint:{},people:[{name:'A B',tickets:[{key:'EW-1',cat:'review',status:'To Review',summary:'x',created:'${new Date(Date.parse('2026-10-01T09:00:00Z')).toISOString()}'}]}],unassigned:[],work:{}};`);
+  const sm = run(`personScene(chars[1],${Date.parse('2026-10-01T12:00:00Z')})`);
+  assert.match(sm, /FAITES DES REVIEWS/);
+  assert.match(sm, /1 ticket en review/);
+  assert.match(sm, /Nouveaux tickets depuis le dernier daily \(1\)/);
+  assert.match(sm, /To Review<\/span><b>EW-1<\/b>/);
+});
+
+test('rattachement : un rôle au nom complet dans le roster retrouve ses tickets, sans doublon', () => {
+  run(`chars=[mkChar({key:'p_coll8',name:'DocRoms',person:'DocRoms',roleKind:'lead',seat:[19,15]})];byKey={p_coll8:chars[0]};
+    TEAM={people:[{id:'acc-r',name:'DocRoms',gh:[],tickets:[{key:'EW-7',cat:'doing'}],prs:[],merged:[]}],unassigned:[]};attachTeam();`);
+  assert.equal(J('chars.length'), 1);
+  assert.equal(J('chars[0].team.id'), 'acc-r');
+  assert.deepEqual(J('chars[0].team.tickets.map(x=>x.key)'), ['EW-7']);
+});
