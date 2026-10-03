@@ -370,3 +370,4 @@ body.tv.tvscene #tvscene{display:block;flex:1;overflow:hidden;background:#15161b
 #tvscene .more{color:#a29c90}
 #tvbar #tvstand.on{background:#2e9e9b;color:#0d1b1b;border-color:#2e9e9b}
 body.tv.tvscene #tvkpi{flex:0 0 var(--tvk)}
+#tvticker .calm{padding:12px 18px;color:#a29c90;font-size:16px}

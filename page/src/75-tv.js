@@ -71,7 +71,8 @@ function updateTv(force){
   const sig=items.map(i=>i.tm+i.tx).join('|');
   if(force||sig!==TICK_SIG){
     TICK_SIG=sig;
-    document.getElementById('tvticker').innerHTML=items.length?'<div class="run">'+items.map(i=>`<span><span class="tm">${esc(i.tm)}</span>${esc(i.tx)}</span>`).join('')+'</div>':'';
+    document.getElementById('tvticker').innerHTML=items.length?'<div class="run">'+items.map(i=>`<span><span class="tm">${esc(i.tm)}</span>${esc(i.tx)}</span>`).join('')+'</div>':
+      `<div class="calm">Pas encore d'événement d'équipe aujourd'hui (merges, releases, MEP, tickets, reviews)</div>`; // un bandeau vide ressemble à un bug
   }
 }
 document.getElementById('tvbtn').onclick=()=>setTv(true);
