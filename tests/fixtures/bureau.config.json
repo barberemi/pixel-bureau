@@ -43,7 +43,8 @@
  "github": {
   "repo": "acme/front_web",
   "staging_workflow": "CD_Deploy-NONPROD.yaml",
-  "prod_workflow": "CD_Deploy-PRODUCTION.yaml"
+  "prod_workflow": "CD_Deploy-PRODUCTION.yaml",
+  "login": "barberemi"
  },
  "rhythm": {
   "timezone": "Europe/Paris",

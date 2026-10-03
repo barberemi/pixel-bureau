@@ -1,5 +1,8 @@
 // ---------- tuiles KPI du haut et fil de la journée ----------
-document.getElementById('kpis').addEventListener('click',e=>{const k=e.target.closest('[data-open]');if(k)select(k.dataset.open);});
+document.getElementById('kpis').addEventListener('click',e=>{
+  if(e.target.closest('[data-todo-scroll]')){const t=document.getElementById('todo');if(t)t.scrollIntoView({behavior:'smooth',block:'start'});return;}
+  const k=e.target.closest('[data-open]');if(k)select(k.dataset.open);
+});
 // tous les chiffres du haut de page et du mode TV, à l'instant t (une seule source pour les deux)
 function dashData(t){
   const of=k=>chars.filter(c=>c._st&&c._st.st===k);
@@ -53,10 +56,12 @@ let KPI_SIG='';
 function renderKpis(){
   if(!DATA)return;
   const d=dashData(T), out=[];
-  { // 1. À toi
-    const rows=[[d.me.gates,'✋',['validation à faire','validations à faire']],[d.me.asks,'❓',['question en attente','questions en attente']],[d.me.broken,'🔧',['agent en panne','agents en panne']]]
-      .filter(r=>r[0].length).map(([l,ico,w])=>`<button class="dl" data-open="${esc(l[0].key)}">${ico} <b>${plural(l.length,w[0],w[1])}</b><small>${esc(l.slice(0,3).map(c=>c.name).join(', '))}</small></button>`);
-    out.push(`<section class="dash me${d.me.total?' on':''}"><h3>À toi</h3>`+(d.me.total?`<div class="big">${d.me.total}</div>${rows.join('')}`:`<div class="calm">Rien ne t'attend ✓</div>`)+'</section>');
+  { // 1. À toi : résumé de la zone « À traiter » (le détail et les boutons sont dessous)
+    const items=todoItems(T), act=items.filter(x=>x.sev!=='info'), by=k=>items.filter(x=>x.key.startsWith(k+':')||x.key===k).length;
+    const rows=[['err','🔧',['agent en panne','agents en panne']],['mep','✗',['MEP échouée','MEP échouées']],['gate','✋',['validation à faire','validations à faire']],
+      ['ask','❓',['question en attente','questions en attente']],['rev','👀',['PR à relire','PR à relire']],['fix','✏️',['PR à corriger','PR à corriger']],['tk','⏳',['ticket bloqué','tickets bloqués']]]
+      .filter(r=>by(r[0])).map(([k,ico,w])=>`<div class="dl">${ico} <b>${plural(by(k),w[0],w[1])}</b></div>`);
+    out.push(`<section class="dash me click${act.length?' on':''}" data-todo-scroll><h3>À toi</h3>`+(act.length?`<div class="big">${act.length}</div>${rows.join('')}`:`<div class="calm">Rien ne t'attend ✓</div>${rows.join('')}`)+'</section>');
   }
   if(d.sprint){ // 2. Sprint
     const s=d.sprint, c=s.cats, tot=Math.max(1,c.todo+c.doing+c.review+c.test+c.done), pct=s.ptsAll?Math.round(s.ptsDone/s.ptsAll*100):0;
@@ -132,17 +137,20 @@ function renderFeed(){
   if(!DATA)return;
   const ev=[];
   for(const c of chars)for(const r of (c.top||c.runs)){
+    const g=c.visitor?null:c.key+'|'+(r.wf||''), done=r._e&&r._e<=T;
     if(r._s<=T)ev.push({
       t:r._s,
       c,
+      agent:!c.visitor,grp:g,kind:'start',done,
       txt:c.visitor?`<span style="color:#d97757">●</span> ${esc(c.name)} arrive pour « ${esc(clean(c.disc.title).replace(/\s+/g,' ').slice(0,70))} »`:`${esc(c.name)} lance <b>${esc(clean(r.wf_name))}</b>`
     });
-    if(r._e&&r._e<=T){
-      const fs=(r.steps||[]).find(s=>s.s==='Failed');
+    if(done){
+      const fs=(r.steps||[]).find(s=>s.s==='Failed'), ko=r.status==='Failed';
       ev.push({
         t:r._e,
         c,
-        txt:r.status==='Failed'?`<span style="color:var(--err)">✗</span> ${esc(c.name)} se plante${fs?' sur <b>'+esc(fs.n)+'</b>':''} <small>${esc((fs&&fs.err||'').slice(0,90))}</small>`:`<span style="color:var(--ok)">✓</span> ${esc(c.name)} termine <small>${esc(fmtDur(r._e-r._s))}${r.tok?' · '+fmtTok(r.tok)+' tokens':''}</small>`
+        agent:!c.visitor,grp:g,kind:ko?'ko':'ok',wf:clean(r.wf_name),
+        txt:ko?`<span style="color:var(--err)">✗</span> ${esc(c.name)} se plante${fs?' sur <b>'+esc(fs.n)+'</b>':''} <small>${esc((fs&&fs.err||'').slice(0,90))}</small>`:`<span style="color:var(--ok)">✓</span> ${esc(c.name)} termine <b>${esc(clean(r.wf_name))}</b> <small>${esc(fmtDur(r._e-r._s))}${r.tok?' · '+fmtTok(r.tok)+' tokens':''}</small>`
       });
     }
   }
@@ -188,14 +196,60 @@ function renderFeed(){
   }
   ev.sort((a,b)=>b.t-a.t);
   FEED_EV=ev;
-  const box=document.getElementById('feed');box.innerHTML='';
-  if(!ev.length){box.innerHTML='<div class="empty">Rien pour l\'instant. Le bureau est encore vide.</div>';return;}
-  for(const e of ev.slice(0,80)){
-    const d=document.createElement('div');
-    d.className='ev'+(e.c?' fam-'+famOf(e.c):'');
-    d.innerHTML=`<span class="tm">${hm(e.t)}</span><span class="x">${e.txt}</span>`;
-    d.onclick=()=>{if(e.tv)select('tv');else if(e.c)select(e.c.key);};
-    box.appendChild(d);
-  }
+  renderFeedList(feedView(ev,FEED_MODE));
 }
-
+// ---------- vue du fil : runs répétés regroupés, filtre « Important / Tout », séparateurs par heure ----------
+const FEED_REPEAT=4, FEED_PAGE=30;
+let FEED_MODE='important', FEED_N=FEED_PAGE, FEED_SIG='', FEED_VIEW=[];
+try{FEED_MODE=localStorage.getItem('bureau:feed')||'important';}catch(e){}
+// important : l'équipe, les MEP, les visiteurs et les échecs d'agents ; tout : en plus les lancements et les succès.
+// Un même workflow lancé plus de FEED_REPEAT fois dans la journée (crons horaires) tient en une ligne : « ×21, 0 ✓ 21 ✗ ».
+function feedView(ev,mode){
+  const groups={};
+  for(const e of ev)if(e.agent&&e.kind!=='start')(groups[e.grp]=groups[e.grp]||[]).push(e);
+  const out=[], summarized=new Set();
+  for(const e of ev){
+    if(!e.agent){out.push(e);continue;}
+    const g=groups[e.grp]||[];
+    if(g.length>FEED_REPEAT){
+      if(summarized.has(e.grp))continue;
+      summarized.add(e.grp);
+      const ko=g.filter(x=>x.kind==='ko').length, ok=g.length-ko, last=g[0];
+      if(mode==='important'&&!ko)continue;
+      out.push({t:last.t,c:last.c,txt:`<span style="color:${last.kind==='ko'?'var(--err)':'var(--ok)'}">${last.kind==='ko'?'✗':'✓'}</span> ${esc(last.c.name)} · <b>${esc(last.wf||'')}</b> <small>×${g.length} aujourd'hui · ${ok} ✓ · ${ko} ✗${last.kind==='ko'?' · dernier en échec':''}</small>`});
+      continue;
+    }
+    if(e.kind==='start'&&e.done)continue; // le run est fini : sa ligne de fin dit tout
+    if(mode==='important'&&e.kind!=='ko')continue;
+    out.push(e);
+  }
+  return out;
+}
+function renderFeedList(view){
+  FEED_VIEW=view;
+  const box=document.getElementById('feed');
+  let html='';
+  if(!view.length)html=`<div class="empty">${FEED_MODE==='important'&&FEED_EV.length?'Rien d\'important pour l\'instant.':'Rien pour l\'instant. Le bureau est encore vide.'}</div>`;
+  let lastH=null;
+  view.slice(0,FEED_N).forEach((e,i)=>{
+    const h=parisHM(e.t).h;
+    if(h!==lastH){html+=`<div class="evh">${h} h</div>`;lastH=h;}
+    html+=`<div class="ev${e.c?' fam-'+famOf(e.c):''}" data-i="${i}"><span class="tm">${hm(e.t)}</span><span class="x">${e.txt}</span></div>`;
+  });
+  if(view.length>FEED_N)html+=`<button class="feedmore" data-feed-more>Voir plus (${view.length-FEED_N})</button>`;
+  const seg=document.getElementById('feedmode');
+  if(seg)seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.mode===FEED_MODE));
+  if(html===FEED_SIG)return;
+  FEED_SIG=html;box.innerHTML=html;
+}
+document.getElementById('feed').addEventListener('click',ev=>{
+  if(ev.target.closest('[data-feed-more]')){FEED_N+=FEED_PAGE;renderFeedList(FEED_VIEW);return;}
+  const d=ev.target.closest('[data-i]');if(!d)return;
+  const e=FEED_VIEW[+d.dataset.i];if(!e)return;
+  if(e.tv)select('tv');else if(e.c)select(e.c.key);
+});
+{const seg=document.getElementById('feedmode');if(seg)seg.addEventListener('click',ev=>{
+  const b=ev.target.closest('[data-mode]');if(!b)return;
+  FEED_MODE=b.dataset.mode;FEED_N=FEED_PAGE;try{localStorage.setItem('bureau:feed',FEED_MODE);}catch(e){}
+  renderFeedList(feedView(FEED_EV,FEED_MODE));
+});}

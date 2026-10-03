@@ -61,6 +61,7 @@ def page_config(cfg):
         "kronn_ui": (cfg.get("kronn") or {}).get("ui"),
         "jira_site": (cfg.get("jira") or {}).get("site"),
         "github_repo": (cfg.get("github") or {}).get("repo"),
+        "github_login": (cfg.get("github") or {}).get("login"),
         "rhythm": cfg.get("rhythm") or {},
         "mep_workflow": cfg.get("mep_workflow"),
         "workflows": cfg.get("workflows") or {},  # ids des crons : calendrier et fraîcheur des données

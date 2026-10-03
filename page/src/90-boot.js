@@ -13,7 +13,7 @@ function loop(now){
       document.getElementById('clock').textContent=hms(T);
       document.getElementById('tend').textContent=hm(REND);
       if(document.activeElement!==slider)slider.value=Math.round((T-RSTART)/Math.max(1,REND-RSTART)*1000);
-      renderKpis();renderWho();renderFeed();updateFresh();updateTv();
+      renderRecap();renderTodo();renderKpis();renderWho();renderFeed();updateFresh();updateTv();
       if(!document.querySelector('.side details[open]'))renderSide();
     }
     pumpSheets(8);

@@ -64,7 +64,8 @@ for pr in D.get("open") or []:
         continue
     review = {"APPROVED": "approved", "CHANGES_REQUESTED": "changes", "REVIEW_REQUIRED": "pending"}.get(pr.get("reviewDecision") or "", "pending")
     row = {"n": pr["number"], "title": pr["title"][:110], "draft": pr.get("isDraft"), "review": review,
-           "url": pr["url"], "updated": pr.get("updatedAt"), "keys": sorted({k.upper() for k in KEY.findall(pr["title"])})}
+           "url": pr["url"], "updated": pr.get("updatedAt"), "keys": sorted({k.upper() for k in KEY.findall(pr["title"])}),
+           "req": [x for x in pr.get("reviewRequests") or [] if isinstance(x, str)]}
     p = owner(a, pr["title"])
     if p:
         p["prs"].append(row)

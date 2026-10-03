@@ -355,6 +355,8 @@ def main(argv=None):
     kronn["project_id"] = project_id
     j = jira(ask, k, project_id, defaults, tpls["team"])
     g, gh_login = github(ask, defaults)
+    if g is not None and gh_login:
+        g["login"] = gh_login  # login du boss : « PR qui attendent ta review » dans la page
     ai = ai_agent(ask, k)
     agents, mep = my_agents(ask, k, old.get("agents"))
     if new_person:

@@ -289,3 +289,40 @@ body.tv #tvwho{display:flex;flex-direction:column;gap:8px;position:fixed;top:52p
 #freshpop tr.late td{color:var(--warn);font-weight:600}
 #freshpop small{color:var(--muted)}
 #freshpop .purge{margin:6px 0 2px;font-size:11px;color:var(--muted)}#freshpop .purge.late{color:var(--err)}
+/* À traiter */
+.todo{padding:10px 12px;margin-bottom:12px;border-left:4px solid var(--warn)}
+.todo.empty{border-left-color:var(--ok);padding:7px 12px}
+.todo-calm{color:var(--ok);font-weight:600;font-size:13px}
+.todo h2{margin:0 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.todo h2 .cnt{background:var(--warn);color:#1b1404;border-radius:9px;padding:0 7px;margin-left:4px;font-size:12px}
+.todo ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.todo li{display:grid;grid-template-columns:22px 1fr auto auto;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;background:var(--bg);border-left:3px solid var(--idle);font-size:13px}
+.todo li.t-err{border-left-color:var(--err);background:color-mix(in srgb,var(--err) 9%,var(--panel))}
+.todo li.t-warn{border-left-color:var(--warn);background:color-mix(in srgb,var(--warn) 9%,var(--panel))}
+.todo li.t-info{border-left-color:var(--info)}
+.todo .ti{text-align:center}
+.todo .tt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.todo .tt small{color:var(--muted);margin-left:4px}
+.todo .ta{color:var(--muted);font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.todo .tbtn{font:600 12px ui-sans-serif,system-ui,sans-serif;padding:3px 10px;border-radius:7px;border:1px solid var(--accent);background:transparent;color:var(--accent);text-decoration:none;white-space:nowrap;cursor:pointer}
+.todo .tbtn:hover{background:var(--accent);color:var(--on-accent)}
+.todo .tmore{margin-top:6px;font-size:12px;background:none;border:0;color:var(--accent);cursor:pointer;padding:2px 0}
+body.tv .todo{display:none!important}
+@media (max-width:620px){.todo li{grid-template-columns:22px 1fr auto}.todo .ta{display:none}}
+.feedh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.feedh .seg button{font-size:11px;padding:2px 9px;text-transform:none;letter-spacing:0}
+#feed .evh{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:8px 2px 3px;border-bottom:1px solid var(--line);margin-bottom:2px}
+#feed .feedmore{margin:8px 0 2px;font-size:12px;width:100%}
+/* récap de la journée */
+.clockrow{display:flex;align-items:center;gap:10px;justify-content:flex-end}
+.recapbtn{font-size:12px;padding:3px 10px}
+.recap{padding:10px 12px;margin-bottom:12px;border-left:4px solid #c9a227;background:color-mix(in srgb,#c9a227 7%,var(--panel))}
+.recap .rh{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.recap h2{margin:0;font-size:14px}
+.recap ul{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:13px}
+.recap li small{color:var(--muted);margin-left:4px}
+.recap li.r-err{color:var(--err)}.recap li.r-err small{color:var(--muted)}
+.recap li.r-ok b{color:var(--ok)}
+.recap .rfoot{margin-top:6px;font-size:12px;color:var(--muted)}
+.recap .rclose{font-size:12px;padding:2px 9px}
+body.tv .recap,body.tv .recapbtn{display:none!important}

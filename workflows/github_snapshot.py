@@ -15,7 +15,7 @@ STAGING_WF = CFG["github"]["staging_workflow"]
 PROD_WF = CFG["github"]["prod_workflow"]
 CALLS = {
     "open": ["pr", "list", "--repo", REPO, "--state", "open", "--limit", "100", "--json",
-             "number,title,author,isDraft,reviewDecision,url,updatedAt,createdAt,latestReviews"],
+             "number,title,author,isDraft,reviewDecision,url,updatedAt,createdAt,latestReviews,reviewRequests"],
     "merged": ["pr", "list", "--repo", REPO, "--state", "merged", "--limit", "40", "--json", "number,title,author,mergedAt,url"],
     "releases": ["release", "list", "--repo", REPO, "--limit", "15", "--json", "tagName,name,publishedAt"],
     "staging": ["run", "list", "--repo", REPO, "--workflow", STAGING_WF, "--limit", "15", "--json",
@@ -43,6 +43,8 @@ for pr in out.get("open") or []:
     pr["author"] = {"login": a.get("login"), "name": a.get("name"), "is_bot": a.get("is_bot")}
     pr["latestReviews"] = [{"author": {"login": (r.get("author") or {}).get("login")}, "state": r.get("state"),
                             "submittedAt": r.get("submittedAt")} for r in pr.get("latestReviews") or []]
+    # relecteurs demandés (personnes seulement : une équipe GitHub n'a pas de login)
+    pr["reviewRequests"] = [r["login"] for r in pr.get("reviewRequests") or [] if r.get("login")]
 for pr in out.get("merged") or []:
     a = pr.get("author") or {}
     pr["author"] = {"login": a.get("login"), "name": a.get("name")}
