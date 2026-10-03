@@ -457,11 +457,14 @@ function drawChar(c,now){
   ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(x,y+1,11,4,0,0,7);ctx.fill();
   const col=ST_COLOR[st];
   if(col&&st!=='idle'&&st!=='coffee'){
+    // la forme double la couleur (daltonisme) : tirets = en panne, pointillés = attend une validation, plein = le reste
     ctx.strokeStyle=col;
-    ctx.lineWidth=2;
+    ctx.lineWidth=st==='error'?2.5:2;
+    ctx.setLineDash(st==='error'?[5,3]:st==='gate'||st==='ask'?[2,3]:[]);
     ctx.beginPath();
     ctx.ellipse(x,y+1,13,5,0,0,7);
     ctx.stroke();
+    ctx.setLineDash([]);
   }
   if(sel===c.key){
     const p=(Math.sin(now/260)+1)/2;
@@ -504,16 +507,21 @@ function drawSeatTrail(c,now){
   ctx.restore();
 }
 // étiquette de nom sous les pieds : toujours pour le sélectionné, sinon selon le réglage « Noms sur le plan »
-let NAMES='hover', hoverKey=null;
+let NAMES='hover', hoverKey=null, NAME_BOXES=[];
+const TV_TXT=1.45; // agrandissement des noms et des bulles en mode TV
 try{NAMES=localStorage.getItem('bureau:names')||'hover';}catch(e){}
 function drawName(c){
   const on=sel===c.key; if(!c.pos||!(on||NAMES==='all'||NAMES==='hover'&&hoverKey===c.key))return;
   const fm=FAM[famOf(c)], x=Math.round(c.pos.x), y=Math.round(c.pos.y)+6, t=fm.ico+(c.apprentice?'🎓 ':'')+String(c.name||'').slice(0,24);
-  ctx.font=(on?'bold 11px':'bold 9px')+' ui-sans-serif,system-ui,sans-serif';
-  const w=Math.ceil(ctx.measureText(t).width)+(on?10:8), h=on?15:12;
+  const S=TV?TV_TXT:1; // mode TV : lisible à 3 m
+  ctx.font='bold '+Math.round((on?11:9)*S)+'px ui-sans-serif,system-ui,sans-serif';
+  const w=Math.ceil(ctx.measureText(t).width)+(on?10:8), h=Math.round((on?15:12)*S);
   // assis aux îlots : sur le côté allée (sous la bulle), sinon il couvrirait le voisin du dessous
   let bx=x-w/2, by=y;
   if(!c.moving&&c.tile&&SEATS.some(s=>s.x===c.tile[0]&&s.y===c.tile[1])){bx=c.dir==='right'?x-14-w:x+14;by=y-32;}
+  // pas de chevauchement : une étiquette qui en touche une autre descend d'un cran (3 essais)
+  for(let i=0;i<3&&NAME_BOXES.some(b=>bx<b.x+b.w+2&&bx+w+2>b.x&&by<b.y+b.h+1&&by+h+1>b.y);i++)by+=h+2;
+  NAME_BOXES.push({x:bx,y:by,w,h});
   const cx=bx+w/2;
   ctx.fillStyle=on?'#fffdf8':fm.bg;ctx.beginPath();ctx.roundRect?ctx.roundRect(bx,by,w,h,4):ctx.rect(bx,by,w,h);ctx.fill();
   if(on){ctx.strokeStyle=famOf(c)==='team'?(ST_COLOR[(c._st||{}).st]||'#2f6fd6'):fm.c;ctx.lineWidth=famOf(c)==='team'?1.5:2.5;ctx.stroke();}
@@ -549,8 +557,9 @@ function drawOverlay(c,now){
   if(isFocus(c))return; // bulle détaillée, dessinée par-dessus tout le reste
   const bb=bubbleFor(c,st,T,now); if(!bb||c.moving&&st.st!=='gate')return;
   const txt=bb.head, isIcon=txt.length<=2;
-  ctx.font=isIcon?'13px system-ui,sans-serif':'bold 9px ui-monospace,Menlo,monospace';
-  const w=Math.ceil(ctx.measureText(txt).width)+(isIcon?8:10)+(bb.tone?3:0), h=isIcon?18:15;
+  const S=TV?TV_TXT:1;
+  ctx.font=isIcon?Math.round(13*S)+'px system-ui,sans-serif':'bold '+Math.round(9*S)+'px ui-monospace,Menlo,monospace';
+  const w=Math.ceil(ctx.measureText(txt).width)+(isIcon?8:10)+(bb.tone?3:0), h=Math.round((isIcon?18:15)*S);
   const seated=!c.moving&&c.tile&&SEATS.some(s=>s.x===c.tile[0]&&s.y===c.tile[1]);
   let bx=x-w/2, by=y-62-h-(sel===c.key?8:0);
   if(seated){const out=c.dir==='right'?-1:1;bx=out<0?x-14-w:x+14;by=y-48;}
@@ -638,8 +647,9 @@ function drawCloud(bx,by,w,h,tx,ty){
 }
 function drawToolBubble(a,ph,bx,by){
   const txt=ph.full?a.bubble:a.ico;
-  ctx.font=ph.full?'bold 9px ui-monospace,Menlo,monospace':'11px system-ui,sans-serif';
-  const w=Math.ceil(ctx.measureText(txt).width)+(ph.full?10:6), h=ph.full?14:15, y=by-h-3+Math.round((1-ph.pop)*3);
+  const S=TV?TV_TXT:1;
+  ctx.font=ph.full?'bold '+Math.round(9*S)+'px ui-monospace,Menlo,monospace':Math.round(11*S)+'px system-ui,sans-serif';
+  const w=Math.ceil(ctx.measureText(txt).width)+(ph.full?10:6), h=Math.round((ph.full?14:15)*S), y=by-h-3+Math.round((1-ph.pop)*3);
   ctx.globalAlpha=ph.pop*.95;
   R(ctx,bx,y,w,h,'#1a1320');
   ctx.fillStyle='#fffdf5';ctx.textBaseline='middle';ctx.textAlign='center';ctx.fillText(txt,bx+w/2,y+h/2+1);
@@ -685,6 +695,7 @@ function render(now){
   }
   for(const c of chars)if(c.present&&shown(c))drawOverlay(c,now);
   drawEnvelopes(now,FILTER?shown:null);
+  NAME_BOXES=[];
   for(const c of chars)if(c.present&&c.key!==sel&&shown(c))drawName(c);
   if(sc&&sc.present)drawName(sc);
   for(const c of chars)if(c.present&&shown(c)&&isFocus(c))drawDetail(c,now);

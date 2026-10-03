@@ -4,7 +4,7 @@ document.getElementById('kpis').addEventListener('click',e=>{
 });
 // tous les chiffres du haut de page et du mode TV, à l'instant t (une seule source pour les deux)
 function dashData(t){
-  let sprint=null, prs=null, prod=null;
+  let sprint=null, prod=null;
   if(TEAM){
     const all=[...TEAM.people.flatMap(p=>p.tickets||[]),...(TEAM.unassigned||[])];
     const n=k=>all.filter(x=>x.cat===k).length, pts=l=>l.reduce((a,x)=>a+(+x.points||0),0);
@@ -15,14 +15,6 @@ function dashData(t){
       time:st&&en&&en>st?Math.min(1,Math.max(0,(t-st)/(en-st))):null,
       ptsDone:pts(all.filter(x=>x.cat==='done')),ptsAll:pts(all),
       cats:{todo:n('todo'),doing:n('doing'),review:n('review'),test:n('test'),done:n('done')}
-    };
-    const open=TEAM.people.flatMap(p=>p.prs||[]).filter(x=>!x.draft);
-    const wait=open.filter(x=>x.review==='pending'), age=x=>t-(ms(x.updated)||t);
-    prs={
-      wait:wait.length,
-      stale:wait.filter(x=>age(x)>864e5).length,
-      oldest:wait.length?Math.max(...wait.map(age)):0,
-      changes:open.filter(x=>x.review==='changes').length
     };
     const l=mepsAt(t), done=l.filter(x=>x.phase==='done');
     prod={
@@ -44,9 +36,8 @@ function dashData(t){
       tok:top.reduce((a,r)=>a+(r.tok||0),0)
     };
   }
-  return {sprint,prs,prod,agents};
+  return {sprint,prod,agents};
 }
-const daysTxt=d=>d<36e5?Math.max(1,Math.round(d/6e4))+' min':d<864e5?Math.round(d/36e5)+' h':Math.floor(d/864e5)+' j';
 const plural=(n,a,b)=>n+' '+(n>1?b:a);
 let KPI_SIG='';
 function renderKpis(){

@@ -17,8 +17,10 @@ function tvChips(d){
   if(d.prod){const p=d.prod, live=p.live[p.live.length-1];
     out.push(`<span class="chip mep"><b>${p.done}</b>MEP${live?' · 🚀 '+esc(live.m.tag)+' '+esc(MEP_TXT[live.phase]):p.last?' · dernière '+esc(p.last.m.tag)+' à '+hm(ms(p.last.m.prod.end)):''}</span>`);
     for(const x of p.failed)out.push(`<span class="chip err"><b>✗</b>${esc(x.m.tag)} en échec</span>`);}
-  if(d.prs&&d.prs.stale)out.push(`<span class="chip warn"><b>${d.prs.stale}</b>${d.prs.stale>1?'PR sans review depuis plus de 24 h':'PR sans review depuis plus de 24 h'}</span>`);
-  if(d.prs&&d.prs.wait&&!d.prs.stale)out.push(`<span class="chip"><b>${d.prs.wait}</b>${d.prs.wait>1?'PR attendent':'PR attend'} une review</span>`);
+  const sp=stalePrs(T).length; // même compte que la bande du bas et « À traiter »
+  if(sp)out.push(`<span class="chip warn"><b>${sp}</b>PR sans review depuis plus de ${PR_STALE_H} h</span>`);
+  const down=agentsDown();
+  if(down.length)out.push(`<span class="chip err"><b>${down.length}</b>${down.length>1?'agents en panne':'agent en panne'}</span>`);
   return out.join('');
 }
 let TVWHO_SIG='';
@@ -58,8 +60,10 @@ function updateTv(force){
   const bar=document.getElementById('tvbar');
   bar.innerHTML=`<span class="tvt">LE BUREAU</span><span class="tvc">${hms(T)}</span>${tvLiveChip()}`+
     tvChips(dashData(T))+
-    `<span class="sp"></span><span class="tvhint">Échap ou T pour quitter</span><button id="tvexit">Quitter</button>`;
+    `<span class="sp"></span><span class="tvhint">S : stand-up · Échap ou T pour quitter</span><button id="tvstand" class="${sceneOn(T)?'on':''}">${sceneOn(T)?'Retour au plan':'Stand-up'}</button><button id="tvexit">Quitter</button>`;
   bar.querySelector('#tvexit').onclick=()=>setTv(false);
+  bar.querySelector('#tvstand').onclick=toggleStandup;
+  renderTvScenes(performance.now());
   renderTvWho();
   // fil défilant : les derniers événements d'équipe (merges, releases, MEP, daily), sans les runs des agents
   const strip=h=>{const d=document.createElement('div');d.innerHTML=h;return d.textContent.replace(/\s+/g,' ').trim();};

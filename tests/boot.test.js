@@ -67,7 +67,7 @@ test('installation neuve : sans démo, sans données ni config, bureau vide et �
   assert.equal(run(`DATA.runs.length`), 0);
   assert.equal(run(`TEAM`), null);
   assert.ok(run(`chars.filter(c=>c.person).length`) >= 10);
-  assert.equal(run(`stateAt(byKey.p_remi,Date.parse('2026-10-01T09:00:00Z')).label`), 'À son bureau · pas de ticket dans le sprint');
+  assert.equal(run(`stateAt(byKey.p_remi,Date.parse('2026-10-01T09:00:00Z')).label`), 'À son bureau · pas encore de données Jira');
   assert.equal(run(`dashData(T).sprint`), null);
   assert.doesNotThrow(() => run(`renderKpis();renderWho();renderFeed();renderSide(true);true`));
 });

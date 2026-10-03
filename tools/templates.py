@@ -50,6 +50,19 @@ def script_code(path, cfg):
     return code.replace("__BUREAU_CONFIG__", blob, 1)
 
 
+ROLES = ("po", "sm", "qa")
+# étapes du travail des rôles : retirées si personne n'a ce rôle (ou pas de compte Jira dans le roster)
+WORK_REQUIRES = {"work_written": "jira.role_ids", "work_po_triage": "jira.role.po", "work_sm_triage": "jira.role.sm",
+                 "work_qa_ok": "jira.role.qa", "work_qa_back": "jira.role.qa"}
+FLOW_DEFAULTS = {"triage_from": "Proposed", "test": "To Test", "validated": "To Deploy", "reopened": "Reopen"}
+
+
+def role_ids(role):
+    """Compte Jira (jira_id du roster) de la première personne de ce rôle, sinon chaîne vide."""
+    roster = json.load(open(os.path.join(ROOT, "team", "roster.json")))["people"]
+    return next((p["jira_id"] for p in roster if p.get("roleKind") == role and p.get("jira_id")), "")
+
+
 def values(cfg):
     """Valeur de chaque emplacement pour une installation."""
     j = cfg.get("jira") or {}
@@ -62,6 +75,10 @@ def values(cfg):
         "jira.sprint_field": j.get("sprint_field") or "",
         "jira.points_fields": ",".join(j.get("points_fields") or []),
         "owner_name": owner_name(cfg),
+        # travail Jira des rôles sans tickets assignés (PO, SM, QA) : compte Jira de la première personne du rôle
+        **{f"jira.role.{r}": role_ids(r) for r in ROLES},
+        "jira.role_ids": ",".join(f'"{x}"' for r in ROLES for x in [role_ids(r)] if x),
+        **{f"jira.flow.{k}": (j.get("flow") or {}).get(k) or v for k, v in FLOW_DEFAULTS.items()},
     }
 
 
@@ -88,7 +105,11 @@ def render(tpl, cfg):
     d = copy.deepcopy(tpl["definition"])
     if tpl["kind"] == "workflow":
         has_jira = bool((cfg.get("jira") or {}).get("config_id"))
-        dropped = {s["name"] for s in d["steps"] if s.get("_requires") == "jira" and not has_jira}
+        vals = values(cfg)
+
+        def ok(req):  # "jira" : connexion Jira ; "jira.role.qa", "jira.role_ids" : Jira et quelqu'un dans ce rôle
+            return not req or (has_jira and (req == "jira" or bool(vals.get(req))))
+        dropped = {s["name"] for s in d["steps"] if not ok(s.get("_requires"))}
         d["steps"] = [s for s in d["steps"] if s["name"] not in dropped]
         for s in d["steps"]:
             s.pop("_requires", None)
@@ -142,6 +163,18 @@ def templatize(key, kind, d, cfg):
                 v = re.sub(r"\bproject = " + re.escape(j["project"]) + r"\b", "project = @@jira.project@@", v)
             if j.get("board") is not None:
                 v = v.replace(f"/board/{j['board']}/", "/board/@@jira.board@@/")
+            if '"roles":{' in v:  # entrée de shape : comptes des rôles
+                for r in ROLES:
+                    if vals[f"jira.role.{r}"]:
+                        v = v.replace(f'"{r}":"{vals[f"jira.role.{r}"]}"', f'"{r}":"@@jira.role.{r}@@"')
+            if "CHANGED" in v or "reporter in" in v:  # requêtes du travail des rôles
+                if vals["jira.role_ids"]:
+                    v = v.replace(f"reporter in ({vals['jira.role_ids']})", "reporter in (@@jira.role_ids@@)")
+                for r in ROLES:
+                    if vals[f"jira.role.{r}"]:
+                        v = v.replace(f'BY "{vals[f"jira.role.{r}"]}"', f'BY "@@jira.role.{r}@@"')
+                for k in FLOW_DEFAULTS:
+                    v = re.sub(r'(FROM|TO) "' + re.escape(vals[f"jira.flow.{k}"]) + '"', lambda m: f'{m.group(1)} "@@jira.flow.{k}@@"', v)
             return v
         if isinstance(v, list):
             return [walk(x) for x in v]
@@ -153,7 +186,7 @@ def templatize(key, kind, d, cfg):
     if kind == "workflow":
         for s in d["steps"]:
             if s.get("api_plugin_slug") == "mcp-atlassian":
-                s["_requires"] = "jira"
+                s["_requires"] = WORK_REQUIRES.get(s["name"], "jira")
             path = scripts.get(s["name"])
             if not path:
                 continue

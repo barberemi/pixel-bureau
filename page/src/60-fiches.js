@@ -180,16 +180,37 @@ function foldSection(side,id,title,count,defOpen){
 // <details> dont on retient l'ouverture d'un rafraîchissement à l'autre
 const DET_OPEN={};
 function memoDetails(d,id,def){d.open=id in DET_OPEN?DET_OPEN[id]:def;d.addEventListener('toggle',()=>{DET_OPEN[id]=d.open;});return d;}
+// « Cette semaine dans Jira » : ce que font la PO, la SM et la QA sans tickets assignés (écrits, triés, recettés)
+function workBlock(side,c){
+  const W=workOf(c); if(!W)return;
+  const box=foldSection(side,'work','Cette semaine dans Jira',null,true);
+  const groups=[['written','Tickets écrits','var(--info)'],['triaged','Tickets triés','#8a8478'],['validated','Recettes validées','var(--ok)'],['reopened','Renvoyés en développement','var(--err)']];
+  for(const [k,t,col] of groups){
+    const list=W[k]; if(!list.length)continue;
+    const d=memoDetails(document.createElement('details'),c.key+':w:'+k,k!=='triaged');
+    d.innerHTML=`<summary><span class="dot" style="background:${col}"></span><span class="wn">${t}</span><span class="du">${cnt50(list.length)}</span></summary>`;
+    const ul=document.createElement('ul');ul.className='steps';
+    for(const x of list.slice(0,15)){
+      const li=document.createElement('li');
+      li.innerHTML=`<a href="${JIRA_BROWSE}${encodeURIComponent(x.key)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;white-space:nowrap">${esc(x.key)}</a><span>${esc(x.summary)}</span>`;
+      ul.appendChild(li);
+    }
+    if(list.length>15){const li=document.createElement('li');li.innerHTML=`<span></span><span style="color:var(--muted)">+ ${list.length-15} autres</span>`;ul.appendChild(li);}
+    d.appendChild(ul);box.appendChild(d);
+  }
+}
 function renderPerson(side,c){
   const p=c.team;
-  if(!p){
+  workBlock(side,c);
+  if(!p&&c.roleKind!=='sm'){
+    if(workOf(c))return;
     const e=document.createElement('div');
     e.className='empty';
-    e.textContent=TEAM?"Aucun ticket dans le sprint en cours.":"Données de l'équipe pas encore publiées.";
+    e.textContent=TEAM?"Aucun ticket dans le sprint en cours, et pas d'activité Jira cette semaine.":"Données de l'équipe pas encore publiées.";
     side.appendChild(e);
     return;
   }
-  const open=p.tickets.filter(x=>x.cat!=='done'), cnt=k=>p.tickets.filter(x=>x.cat===k).length;
+  const open=p?p.tickets.filter(x=>x.cat!=='done'):[], cnt=k=>p?p.tickets.filter(x=>x.cat===k).length:0;
   if(c.roleKind==='sm'&&TEAM){
     const all=TEAM.people.flatMap(q=>q.tickets),pts=f=>all.filter(f).reduce((a,x)=>a+(+x.points||0),0),n=k=>all.filter(x=>x.cat===k).length;
     const sp=TEAM.sprint||{};

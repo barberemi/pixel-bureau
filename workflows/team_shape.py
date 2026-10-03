@@ -193,6 +193,41 @@ if last:
         p["tickets"].append({"key": it.get("key"), "summary": (f.get("summary") or "")[:110], "points": pts_of(f), "cat": "done"})
     prev_sprint = {"name": last.get("name"), "end": last.get("completeDate"), "people": list(prev.values())}
 
+# ---------- travail Jira des rôles sans tickets assignés (PO, SM, QA), 7 derniers jours ----------
+# par compte Jira : tickets écrits, triés (PO, SM), recettes validées et renvoyées (QA) ; 50 max par requête (« 50+ »)
+# comptes Jira des rôles, rendus dans l'entrée par le modèle (emplacements jira.role.po, .sm, .qa ; vide si personne)
+ROSTER_ROLES = {r: a for r, a in (D.get("roles") or {}).items() if isinstance(a, str) and a}
+W = D.get("work") if isinstance(D.get("work"), dict) else {}
+
+
+def brief(issues):
+    out_ = []
+    for it in issues or []:
+        f = it.get("fields") or {}
+        out_.append({"key": it.get("key"), "summary": (f.get("summary") or "")[:100], "type": (f.get("issuetype") or {}).get("name")})
+    return out_
+
+
+work = {}
+
+
+def wk(acc):
+    return work.setdefault(acc, {"written": [], "triaged": [], "validated": [], "reopened": []})
+
+
+for it in W.get("written") or []:
+    rep = ((it.get("fields") or {}).get("reporter") or {}).get("accountId")
+    if rep:
+        wk(rep)["written"] += brief([it])
+for role, key in (("po", "po_triage"), ("sm", "sm_triage")):
+    if ROSTER_ROLES.get(role) and isinstance(W.get(key), list):
+        wk(ROSTER_ROLES[role])["triaged"] = brief(W[key])
+if ROSTER_ROLES.get("qa"):
+    if isinstance(W.get("qa_ok"), list):
+        wk(ROSTER_ROLES["qa"])["validated"] = brief(W["qa_ok"])
+    if isinstance(W.get("qa_back"), list):
+        wk(ROSTER_ROLES["qa"])["reopened"] = brief(W["qa_back"])
+
 sp = D.get("sprint") or {}
 out = {
     "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -204,6 +239,7 @@ out = {
     "meps": meps,
     "events": events,
     "prev_sprint": prev_sprint,
+    "work": work,
     # sources disponibles : la page masque ce qui manque au lieu d'afficher du vide trompeur
     "sources": {"jira": bool(D.get("issues")) or bool(D.get("sprint")), "github": not G.get("errors") if G else True,
                 "github_errors": (G.get("errors") or [])[:5]},

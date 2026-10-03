@@ -16,6 +16,22 @@ function bossLogin(){
 }
 const ageTxt=d=>d<36e5?Math.max(1,Math.round(d/6e4))+' min':d<864e5?Math.round(d/36e5)+' h':Math.floor(d/864e5)+' j';
 const ext=(href,label)=>({href,label});
+// PR ouvertes de l'équipe (sans les brouillons), avec leur auteur
+function teamPrs(){
+  if(!TEAM)return [];
+  return [...TEAM.people.flatMap(p=>(p.prs||[]).map(x=>({...x,who:p.name}))),...(TEAM.other_prs||[]).map(x=>({...x,who:x.author}))].filter(x=>!x.draft);
+}
+// tickets en review ou en test sans mouvement depuis BLOCKED_DAYS jours, les plus anciens d'abord
+function blockedTickets(t){
+  if(!TEAM)return [];
+  return [...TEAM.people.flatMap(p=>(p.tickets||[]).map(x=>({...x,who:p.name}))),...(TEAM.unassigned||[])]
+    .filter(x=>(x.cat==='review'||x.cat==='test')&&x.updated&&t-ms(x.updated)>BLOCKED_DAYS*864e5)
+    .sort((a,b)=>ms(a.updated)-ms(b.updated));
+}
+// PR qui attendent une review depuis plus de PR_STALE_H heures, les plus anciennes d'abord
+function stalePrs(t){
+  return teamPrs().filter(x=>x.review==='pending'&&x.updated&&t-ms(x.updated)>PR_STALE_H*36e5).sort((a,b)=>ms(a.updated)-ms(b.updated));
+}
 function todoItems(t){
   const out=[], of=k=>chars.filter(c=>c._st&&c._st.st===k);
   // 1. agents en panne (l'alarme d'abord)
@@ -43,7 +59,7 @@ function todoItems(t){
     age:c.disc.end?t-ms(c.disc.end):null,act:ext(`${KRONN_BASE}#discussion-${encodeURIComponent(c.disc.id)}`,'Répondre')});
   if(TEAM){
     const me=bossLogin(), b=chars.find(c=>c.boss), mine=(b&&b.team&&b.team.prs)||[];
-    const all=[...TEAM.people.flatMap(p=>(p.prs||[]).map(x=>({...x,who:p.name}))),...(TEAM.other_prs||[]).map(x=>({...x,who:x.author}))].filter(x=>!x.draft);
+    const all=teamPrs();
     const first=n=>String(n||'').split(' ')[0];
     // 5. PR qui attendent ta review
     if(me)for(const x of all.filter(x=>(x.req||[]).some(l=>String(l).toLowerCase()===me)))
@@ -54,14 +70,12 @@ function todoItems(t){
       out.push({sev:'warn',ico:'✏️',key:'fix:'+x.n,txt:`Ta PR <b>#${x.n}</b> : changements demandés <small>${esc(clip(x.title,60))}</small>`,
         age:x.updated?t-ms(x.updated):null,act:ext(x.url,'Corriger')});
     // 7. tickets immobiles en review ou en test
-    const tk=[...TEAM.people.flatMap(p=>(p.tickets||[]).map(x=>({...x,who:p.name}))),...(TEAM.unassigned||[])]
-      .filter(x=>(x.cat==='review'||x.cat==='test')&&x.updated&&t-ms(x.updated)>BLOCKED_DAYS*864e5)
-      .sort((a,b)=>ms(a.updated)-ms(b.updated));
+    const tk=blockedTickets(t);
     for(const x of tk)out.push({sev:'info',ico:'⏳',key:'tk:'+x.key,
       txt:`<b>${esc(x.key)}</b> ${esc(CAT_TXT[x.cat]||x.cat)} sans bouger`+(x.who?` · ${esc(first(x.who))}`:'')+` <small>${esc(clip(x.summary,55))}</small>`,
       age:t-ms(x.updated),act:ext(JIRA_BROWSE+encodeURIComponent(x.key),'Ouvrir')});
     // 8. PR de l'équipe sans review depuis plus de 24 h (une seule ligne)
-    const stale=all.filter(x=>x.review==='pending'&&x.updated&&t-ms(x.updated)>PR_STALE_H*36e5&&!(me&&(x.req||[]).some(l=>String(l).toLowerCase()===me)));
+    const stale=stalePrs(t).filter(x=>!(me&&(x.req||[]).some(l=>String(l).toLowerCase()===me)));
     if(stale.length){
       const old=Math.max(...stale.map(x=>t-ms(x.updated)));
       out.push({sev:'info',ico:'🕰',key:'stale',txt:`${plural(stale.length,'PR attend','PR attendent')} une review depuis plus de 24 h <small>${stale.slice(0,4).map(x=>'#'+x.n).join(', ')}${stale.length>4?'…':''}</small>`,

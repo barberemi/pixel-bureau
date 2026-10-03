@@ -38,6 +38,12 @@
    "To Test": "test",
    "To Deploy": "deploy",
    "Deployed": "done"
+  },
+  "flow": {
+   "triage_from": "Proposed",
+   "test": "To Test",
+   "validated": "To Deploy",
+   "reopened": "Reopen"
   }
  },
  "github": {

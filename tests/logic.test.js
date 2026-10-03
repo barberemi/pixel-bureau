@@ -182,7 +182,7 @@ test('daysLeft : jours calendaires à Paris', () => {
   assert.equal(run(`daysLeft(${Z('2026-10-01T22:30:00Z')}, ${Z('2026-10-01T09:00:00Z')})`), 1); // 00h30 à Paris le lendemain
 });
 
-test('dashData : sprint, PR et prod', () => {
+test('dashData : sprint et prod', () => {
   run(`TEAM={sprint:{name:'S1',start:'2026-09-18T09:00:00Z',end:'2026-10-02T11:00:00Z'},
     people:[{tickets:[{key:'A',cat:'done',points:3},{key:'B',cat:'doing',points:5},{key:'C',cat:'review',points:2}],
       prs:[{n:1,review:'pending',draft:false,updated:'2026-09-29T09:00:00Z'},{n:2,review:'pending',draft:true},{n:3,review:'changes',draft:false}]}],
@@ -194,9 +194,6 @@ test('dashData : sprint, PR et prod', () => {
   assert.equal(d.sprint.ptsDone, 3);
   assert.equal(d.sprint.ptsAll, 11);
   assert.deepEqual(d.sprint.cats, {todo: 1, doing: 1, review: 1, test: 0, done: 1});
-  assert.equal(d.prs.wait, 1); // le brouillon ne compte pas
-  assert.equal(d.prs.stale, 1);
-  assert.equal(d.prs.changes, 1);
   assert.equal(d.prod.done, 0);
   assert.deepEqual(d.agents, {runs: 2, ok: 1, ko: 1, tok: 100}); // tokens du parent seulement
 });

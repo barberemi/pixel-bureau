@@ -100,6 +100,156 @@
     "_requires": "jira"
    },
    {
+    "name": "work_written",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Tickets écrits ces 7 jours par la PO, la SM et la QA (travail sans ticket assigné).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/search/jql",
+    "api_method": "GET",
+    "api_query": {
+     "jql": "project = @@jira.project@@ AND reporter in (@@jira.role_ids@@) AND created >= -7d ORDER BY created DESC",
+     "fields": "summary,reporter,issuetype",
+     "maxResults": "50"
+    },
+    "api_extract": {
+     "path": "$.issues",
+     "fallback": [],
+     "fail_on_empty": false
+    },
+    "_requires": "jira.role_ids"
+   },
+   {
+    "name": "work_po_triage",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Tickets triés par la PO ces 7 jours (sortis du statut de proposition).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/search/jql",
+    "api_method": "GET",
+    "api_query": {
+     "jql": "project = @@jira.project@@ AND status CHANGED FROM \"@@jira.flow.triage_from@@\" BY \"@@jira.role.po@@\" DURING (-7d, now()) ORDER BY updated DESC",
+     "fields": "summary,status",
+     "maxResults": "50"
+    },
+    "api_extract": {
+     "path": "$.issues",
+     "fallback": [],
+     "fail_on_empty": false
+    },
+    "_requires": "jira.role.po"
+   },
+   {
+    "name": "work_sm_triage",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Tickets triés par la SM ces 7 jours (sortis du statut de proposition).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/search/jql",
+    "api_method": "GET",
+    "api_query": {
+     "jql": "project = @@jira.project@@ AND status CHANGED FROM \"@@jira.flow.triage_from@@\" BY \"@@jira.role.sm@@\" DURING (-7d, now()) ORDER BY updated DESC",
+     "fields": "summary,status",
+     "maxResults": "50"
+    },
+    "api_extract": {
+     "path": "$.issues",
+     "fallback": [],
+     "fail_on_empty": false
+    },
+    "_requires": "jira.role.sm"
+   },
+   {
+    "name": "work_qa_ok",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Recettes validées par la QA ces 7 jours (test vers à déployer).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/search/jql",
+    "api_method": "GET",
+    "api_query": {
+     "jql": "project = @@jira.project@@ AND status CHANGED FROM \"@@jira.flow.test@@\" TO \"@@jira.flow.validated@@\" BY \"@@jira.role.qa@@\" DURING (-7d, now()) ORDER BY updated DESC",
+     "fields": "summary,status",
+     "maxResults": "50"
+    },
+    "api_extract": {
+     "path": "$.issues",
+     "fallback": [],
+     "fail_on_empty": false
+    },
+    "_requires": "jira.role.qa"
+   },
+   {
+    "name": "work_qa_back",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Tickets renvoyés par la QA ces 7 jours (test vers réouvert).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/search/jql",
+    "api_method": "GET",
+    "api_query": {
+     "jql": "project = @@jira.project@@ AND status CHANGED FROM \"@@jira.flow.test@@\" TO \"@@jira.flow.reopened@@\" BY \"@@jira.role.qa@@\" DURING (-7d, now()) ORDER BY updated DESC",
+     "fields": "summary,status",
+     "maxResults": "50"
+    },
+    "api_extract": {
+     "path": "$.issues",
+     "fallback": [],
+     "fail_on_empty": false
+    },
+    "_requires": "jira.role.qa"
+   },
+   {
     "name": "github",
     "step_type": {
      "type": "Exec"
@@ -140,7 +290,7 @@
      "@@script:workflows/team_shape.py@@"
     ],
     "exec_timeout_secs": 60,
-    "exec_stdin": "{\"sprint\":{{steps.sprint_info.data_json}},\"issues\":{{steps.jira_team.data_json}},\"closed\":{{steps.jira_closed.data_json}},\"github\":{{steps.github.data.stdout}}}"
+    "exec_stdin": "{\"sprint\":{{steps.sprint_info.data_json}},\"issues\":{{steps.jira_team.data_json}},\"closed\":{{steps.jira_closed.data_json}},\"github\":{{steps.github.data.stdout}},\"work\":{\"written\":{{steps.work_written.data_json}},\"po_triage\":{{steps.work_po_triage.data_json}},\"sm_triage\":{{steps.work_sm_triage.data_json}},\"qa_ok\":{{steps.work_qa_ok.data_json}},\"qa_back\":{{steps.work_qa_back.data_json}}},\"roles\":{\"po\":\"@@jira.role.po@@\",\"sm\":\"@@jira.role.sm@@\",\"qa\":\"@@jira.role.qa@@\"}}"
    },
    {
     "name": "publish",

@@ -139,6 +139,21 @@ function bossState(c,t){
   return ret({st:'boss',zone:'boss',label:'Au bureau du boss'});
 }
 const ALARM_FAILS=3, FROZEN_AFTER=3*60e3;
+// travail Jira des 7 derniers jours d'une personne (dataset team.work, par compte Jira du roster) ; null si rien
+function workOf(c){
+  const w=c.jira_id&&TEAM&&TEAM.work&&TEAM.work[c.jira_id];
+  return w&&(w.written.length||w.triaged.length||w.validated.length||w.reopened.length)?w:null;
+}
+const cnt50=n=>n>=50?'50+':String(n); // requêtes plafonnées à 50 résultats
+// « 3 tickets écrits · 15 triés · 13 recettés (12 validés, 1 renvoyé) cette semaine »
+function workTxt(w){
+  if(!w)return '';
+  const out=[], r=w.validated.length+w.reopened.length;
+  if(w.written.length)out.push(cnt50(w.written.length)+' écrit'+(w.written.length>1?'s':''));
+  if(w.triaged.length)out.push(cnt50(w.triaged.length)+' trié'+(w.triaged.length>1?'s':''));
+  if(r)out.push(cnt50(r)+' recetté'+(r>1?'s':'')+' ('+cnt50(w.validated.length)+' validé'+(w.validated.length>1?'s':'')+', '+cnt50(w.reopened.length)+' renvoyé'+(w.reopened.length>1?'s':'')+')');
+  return out.join(' · ')+' cette semaine';
+}
 // instant du dernier relevé du direct quand il n'est plus rafraîchi (plus de 3 min), sinon null ; jamais en démo
 function frozenSince(){
   if(!LIVE_DATA)return null;
@@ -161,10 +176,9 @@ function stateAt0(c,t){
     const h=+new Intl.DateTimeFormat('en-GB',{timeZone:TZ,hour:'numeric',hour12:false}).format(new Date(t));
     if(RHYTHM.weekend.includes(parisHM(t).wd))return {st:'off',label:'En week-end'}; // seul le boss vient le week-end
     if(h<RHYTHM.office_hours[0]||h>=RHYTHM.office_hours[1])return {st:'off',label:'Rentré chez soi'};
-    if(!c.team)return inDaily(t)?{st:'daily',zone:'daily',human:true,label:'Daily en cafétéria'}:{st:'idle',zone:'desk',human:true,label:'À son bureau · pas de ticket dans le sprint'};
     if(inDaily(t))return {st:'daily',zone:'daily',human:true,label:'Daily en cafétéria',bubble:c.roleKind==='sm'?'Daily':null};
     const sg=stageAt(t);
-    if(sg&&sg.m.who===c.team.id)return sg.phase==='done'?{
+    if(sg&&c.team&&sg.m.who===c.team.id)return sg.phase==='done'?{
       st:'party',
       zone:'stage',
       human:true,
@@ -177,7 +191,7 @@ function stateAt0(c,t){
       label:'Met en prod '+sg.m.tag+' ('+sg.m.ticket+') : '+MEP_TXT[sg.phase],
       bubble:'🚀'
     };
-    const open=c.team.tickets.filter(x=>x.cat!=='done');
+    const open=c.team?c.team.tickets.filter(x=>x.cat!=='done'):[], W=workOf(c), wk=workTxt(W);
     if(c.roleKind==='sm'){
       const mn=+new Intl.DateTimeFormat('en-GB',{timeZone:TZ,minute:'numeric'}).format(new Date(t));
       const atBoard=mn<20;
@@ -187,30 +201,36 @@ function stateAt0(c,t){
         st:'work',
         zone:atBoard?'kanban':'desk',
         human:true,
-        label:(atBoard?'Au mur Kanban : ':'')+'Facilite le sprint '+((TEAM.sprint&&TEAM.sprint.name)||'')+(j!=null?' : J-'+j:''),
+        label:(atBoard?'Au mur Kanban : ':'')+'Facilite le sprint '+((TEAM&&TEAM.sprint&&TEAM.sprint.name)||'')+(j!=null?' : J-'+j:'')+(wk?' · '+wk:''),
         bubble:j!=null?'J-'+j:'sprint'
       };
     }
-    if(c.roleKind==='qa'){
-      const tt=open.filter(x=>x.cat==='test');
+    if(c.roleKind==='qa'){ // la QA recette les tickets de toute l'équipe, pas les siens
+      const tt=TEAM?[...TEAM.people.flatMap(p=>p.tickets||[]),...(TEAM.unassigned||[])].filter(x=>x.cat==='test'):[];
       if(tt.length)return {
         st:'work',
         zone:'desk',
         human:true,
-        label:'Teste '+tt.length+' ticket(s) : '+tt.map(x=>x.key).join(', '),
+        label:'Teste '+tt.length+' ticket(s) : '+tt.map(x=>x.key).join(', ')+(wk?' · '+wk:''),
         bubble:tt[0].key,
         tk:tt
       };
+      if(wk)return {st:'idle',zone:'desk',human:true,label:'Rien à tester pour le moment · '+wk,bubble:'🔍 '+cnt50(W.validated.length+W.reopened.length)};
       return {st:'idle',zone:'wander',human:true,label:'Rien à tester pour le moment'};
     }
-    if(c.roleKind==='po'){
-      return {
-        st:open.length?'work':'idle',
-        zone:open.length?'desk':'wander',
+    if(c.roleKind==='po'){ // la PO écrit et trie le backlog : ses tickets assignés sont rares
+      if(open.length||wk)return {
+        st:'work',
+        zone:'desk',
         human:true,
-        label:open.length?open.length+' ticket(s) à faire ou à assigner':'Backlog du sprint vide',
-        bubble:open.length?open.length+' à faire':null
+        label:[open.length?open.length+' ticket(s) à faire ou à assigner':'',wk].filter(Boolean).join(' · '),
+        bubble:wk?'✍ '+cnt50(W.written.length)+' · 🗂 '+cnt50(W.triaged.length):open.length+' à faire'
       };
+      return {st:'idle',zone:'wander',human:true,label:'Backlog du sprint vide'};
+    }
+    if(!c.team){ // ni ticket assigné ni rôle suivi : on le dit, sans le faire passer pour inactif
+      if(wk)return {st:'work',zone:'desk',human:true,label:wk,bubble:'✍ '+cnt50(W.written.length)};
+      return {st:'idle',zone:'desk',human:true,label:TEAM?"À son bureau · pas d'activité Jira cette semaine":'À son bureau · pas encore de données Jira'};
     }
     const doing=open.filter(x=>x.cat==='doing');
     const rv=open.filter(x=>x.cat==='review'||x.cat==='test');
@@ -305,7 +325,7 @@ const ST_COLOR={
   error:'#d1453b',
   coffee:'#9a9284',
   idle:'#9a9284',
-  boss:'#7a5cc8',
+  boss:'#8a8478',
   frozen:'#7d8fa3'
 };
 const ST_CSS={
@@ -321,7 +341,7 @@ const ST_CSS={
   error:'var(--err)',
   coffee:'var(--idle)',
   idle:'var(--idle)',
-  boss:'#7a5cc8',
+  boss:'#8a8478',
   frozen:'#7d8fa3',
   absent:'transparent',
   gone:'transparent'

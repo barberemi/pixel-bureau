@@ -29,6 +29,8 @@
     <div>
       <div class="card stage">
         <div class="cv-wrap"><canvas id="cv" width="1280" height="640" aria-label="Plan du bureau avec les agents et workflows de la journée"></canvas></div>
+        <div id="tvscene" aria-live="polite"></div>
+        <div id="tvkpi"></div>
         <div class="bar">
           <button id="live" class="on" title="Revenir au direct">● Direct</button>
           <button id="play" title="Rejouer la journée en accéléré">▶ Rejouer</button>
@@ -44,20 +46,29 @@
         </div>
         <div class="legend">
           <span><i style="background:var(--ok)"></i>Au travail</span>
-          <span><i style="background:var(--info)"></i>Salle serveurs / réunion</span>
-          <span><i style="background:var(--warn)"></i>Attend ta validation</span>
-          <span><i style="background:var(--err)"></i>En panne</span>
+          <span><i style="background:var(--info)"></i>Serveurs / réunion</span>
+          <span><i class="ring dot" style="border-color:var(--warn)"></i>Attend ta validation</span>
+          <span><i class="ring dash" style="border-color:var(--err)"></i>En panne</span>
           <span><i style="background:var(--idle)"></i>Pause / dispo</span>
         </div>
-        <div class="legend envlegend" title="Une enveloppe vole d'un bureau à l'autre quand un run passe la main">
-          <span>✉ Enveloppes :</span>
-          <span><i class="sq" style="background:#4a90d9"></i>Sous-run</span>
-          <span><i class="sq" style="background:#9b7fd4"></i>Déclenche un workflow</span>
-          <span><i class="sq" style="background:#3fb37f"></i>Rendu</span>
-          <span><i class="sq" style="background:#d1453b"></i>Rendu en échec</span>
-          <span><i class="sq" style="background:#e0a020"></i>Validation</span>
-          <span><i class="sq" style="background:#d97757"></i>Discussion</span>
-        </div>
+        <details class="legend-help">
+          <summary>? Comment lire le plan</summary>
+          <div class="lh-grid">
+            <div><h4>Qui</h4>
+              <p><b>Collègues</b> : en couleur, à leur place, leurs tickets en bulle.</p>
+              <p><b>Agents</b> (workflows Kronn) : en hologramme bleu, leur étape dans un nuage et l'outil en cours dans une petite bulle sombre.</p>
+              <p><b>Visiteurs</b> (discussions Kronn) : en salle de réunion, puis au café.</p></div>
+            <div><h4>Où</h4>
+              <p><b>Bureau</b> : travaille (étape IA, script). <b>Serveurs</b> : appelle une API. <b>Réunion</b> : sous-workflows.</p>
+              <p><b>Bureau du boss</b> : validations et questions qui t'attendent. <b>Toilettes</b> : en panne (🚨 = 3 échecs d'affilée ou plus).</p>
+              <p><b>Plateau TV</b> : mises en prod du jour (fermé le vendredi et le week-end). <b>Mur du fond</b> : planning des crons et Kanban du sprint.</p></div>
+            <div><h4>États (couleur et forme de l'anneau)</h4>
+              <p><span class="lk"><i style="background:var(--ok)"></i>au travail</span><span class="lk"><i style="background:var(--info)"></i>serveurs, réunion</span><span class="lk"><i class="ring dot" style="border-color:var(--warn)"></i>validation</span><span class="lk"><i class="ring dash" style="border-color:var(--err)"></i>en panne</span>
+              <span class="lk"><i style="background:#7a5cc8"></i>mise en prod</span><span class="lk"><i style="background:#2e9e9b"></i>daily</span><span class="lk"><i class="ring dot" style="border-color:#d97757"></i>attend ta réponse</span><span class="lk"><i style="background:#7d8fa3"></i>⏸ données figées</span><span class="lk"><i style="background:var(--idle)"></i>pause, dispo</span></p></div>
+            <div><h4>Enveloppes (un run passe la main)</h4>
+              <p><span class="lk"><i class="sq" style="background:#3fb8c9"></i>sous-run</span><span class="lk"><i class="sq" style="background:#e8e2d0"></i>déclenche un workflow</span><span class="lk"><i class="sq" style="background:#3fb37f"></i>rendu</span><span class="lk"><i class="sq" style="background:#d1453b"></i>rendu en échec</span><span class="lk"><i class="sq" style="background:#e0a020"></i>validation</span><span class="lk"><i class="sq" style="background:#d46fb0"></i>discussion</span></p></div>
+          </div>
+        </details>
       </div>
       <div class="card whoboard" id="who"></div>
       <div class="card feed">
