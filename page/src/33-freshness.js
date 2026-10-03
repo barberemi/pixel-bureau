@@ -43,7 +43,14 @@ function waitTxt(f,now){
   if(left>=120e3)return {txt:'dans '+Math.ceil(left/60e3)+' min',frac};
   return {txt:'dans '+Math.ceil(left/1e3)+' s',frac};
 }
-const agoTxt=d=>d<60e3?Math.max(0,Math.round(d/1e3))+' s':d<3600e3?Math.round(d/60e3)+' min':Math.floor(d/3600e3)+' h '+String(Math.round(d%3600e3/60e3)).padStart(2,'0');
+// dernier nettoyage des vieux runs du Bureau (cron office, 7h et 13h)
+function purgeTxt(){
+  const p=OFFICE&&OFFICE.purge; if(!p||!p.at)return '';
+  return `<div class="purge${p.errors?' late':''}">Nettoyage des runs de plus de 7 jours : ${p.deleted} supprimé${p.deleted>1?'s':''} à ${hm(ms(p.at))}`+
+    (p.errors?` · ${p.errors} erreur${p.errors>1?'s':''} (${esc(p.last_error||'')})`:'')+'</div>';
+}
+const hmin=m=>m<60?m+' min':Math.floor(m/60)+' h '+String(m%60).padStart(2,'0'); // minutes arrondies d'abord : jamais « 4 h 60 »
+const agoTxt=d=>d<60e3?Math.max(0,Math.round(d/1e3))+' s':hmin(Math.round(d/60e3));
 let FRESH_LAST=null, FRESH_FLASH=0, FRESH_VIEW=null; // FRESH_VIEW : dernier état affiché (repris par le mode TV)
 function updateFresh(){
   const b=document.getElementById('badge'); if(!b||!DATA)return;
@@ -66,5 +73,5 @@ function updateFresh(){
   el.innerHTML=freshRing(frac)+esc(txt);
   // panneau au survol (pas d'attribut title : son texte change chaque seconde, le navigateur ne l'afficherait jamais)
   pop.innerHTML='<b>Fraîcheur des données</b><table>'+all.map(f=>`<tr class="${f.late?'late':''}"><td>${esc(f.src.label)}</td><td>il y a ${agoTxt(f.age)}</td>`+
-    `<td>${f.late?'en retard de '+agoTxt(f.late):f.eta&&f.eta>now?(waitTxt(f,now).paused?waitTxt(f,now).txt:'prochain ~'+hm(f.eta)):'imminent'}</td></tr>`).join('')+'</table><small>Prochain passage estimé : calendrier du cron + durée de son dernier run.</small>';
+    `<td>${f.late?'en retard de '+agoTxt(f.late):f.eta&&f.eta>now?(waitTxt(f,now).paused?waitTxt(f,now).txt:'prochain ~'+hm(f.eta)):'imminent'}</td></tr>`).join('')+'</table>'+purgeTxt()+'<small>Prochain passage estimé : calendrier du cron + durée de son dernier run.</small>';
 }

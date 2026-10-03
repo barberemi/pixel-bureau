@@ -220,6 +220,8 @@ kbd{font:11px ui-monospace,Menlo,monospace;background:var(--panel);border:1px so
 .who-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
 .wc{display:flex;gap:9px;align-items:flex-start;text-align:left;background:var(--bg);border:1px solid var(--line);border-left:4px solid var(--st);border-radius:10px;padding:7px 9px;color:inherit;font:inherit;cursor:pointer;min-width:0}
 .wc:hover,.wc.on{border-color:var(--accent);border-left-color:var(--st)}
+/* sélectionnée : plus forte que button.on (fond accent plein, texte illisible sur les textes atténués) */
+button.wc.on{background:color-mix(in srgb,var(--accent) 14%,var(--panel));color:var(--ink);border-color:var(--accent);border-left-color:var(--st);box-shadow:0 0 0 1px var(--accent)}
 .wc.attn{background:color-mix(in srgb,var(--st) 10%,var(--panel))}
 .wc .wp{flex:none;width:28px;height:28px;border-radius:6px;background:var(--chip);overflow:hidden}
 .wc .wp img{width:28px;height:28px;image-rendering:pixelated;display:block}
@@ -286,3 +288,4 @@ body.tv #tvwho{display:flex;flex-direction:column;gap:8px;position:fixed;top:52p
 #freshpop td:first-child{color:var(--ink)}
 #freshpop tr.late td{color:var(--warn);font-weight:600}
 #freshpop small{color:var(--muted)}
+#freshpop .purge{margin:6px 0 2px;font-size:11px;color:var(--muted)}#freshpop .purge.late{color:var(--err)}

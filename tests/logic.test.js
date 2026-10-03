@@ -272,3 +272,11 @@ test('fraîcheur : texte d\'attente en secondes, en minutes, puis en pause hors 
   // après minuit : même jour
   assert.equal(w('live', '2026-10-03T19:59:10Z', '2026-10-03T22:30:00Z').txt, 'en pause · reprise à 7h00');
 });
+
+test('durées : jamais « 4 h 60 » ni « 60 min »', () => {
+  const r = code => run(code);
+  assert.equal(r(`sinceTxt(${4 * 3600e3 + 59.7 * 60e3})`), '5 h 00');
+  assert.equal(r(`sinceTxt(${59.8 * 60e3})`), '1 h 00');
+  assert.equal(r(`agoTxt(${2 * 3600e3 + 5 * 60e3})`), '2 h 05');
+  assert.equal(r(`agoTxt(${12 * 60e3})`), '12 min');
+});

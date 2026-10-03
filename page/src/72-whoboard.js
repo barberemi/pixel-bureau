@@ -7,7 +7,7 @@ function portraitUrl(c){
   if(!ready(spriteOf(c)))return '';
   try{return PORTRAIT_URL[c.key]=portrait(c,28).toDataURL();}catch(e){return '';}
 }
-const sinceTxt=d=>d<60e3?"à l'instant":d<3600e3?Math.round(d/60e3)+' min':Math.floor(d/3600e3)+' h '+String(Math.round(d%3600e3/60e3)).padStart(2,'0');
+const sinceTxt=d=>d<60e3?"à l'instant":hmin(Math.round(d/60e3));
 // ce que montre la carte : what = sujet (ticket, PR, workflow, discussion), sub = détail (étape, outil, état du ticket)
 function whoLine(c,st,t,pub){
   if(c.boss)return bossLine(c,st,pub);

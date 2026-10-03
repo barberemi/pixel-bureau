@@ -22,6 +22,26 @@ def get(path):
     return body.get("data", body)
 
 
+# définitions complètes en cache 10 min (la liste n'a pas de date de modification) : sans cache, un GET par
+# workflow actif chaque minute. Fichier hors du dépôt ; illisible ou absent : relecture de l'API.
+CACHE = _os.path.join(_os.path.expanduser("~"), ".cache", "kronn-bureau", "workflow_defs.json")
+CACHE_TTL = 600
+try:
+    _cache = json.load(open(CACHE))
+except Exception:
+    _cache = {}
+_now = datetime.now(timezone.utc).timestamp()
+
+
+def definition(wid):
+    c = _cache.get(wid)
+    if c and _now - c.get("at", 0) < CACHE_TTL:
+        return c["def"]
+    full = get(f"/workflows/{wid}")
+    _cache[wid] = {"at": _now, "def": {k: full.get(k) for k in ("steps", "variables")}}
+    return _cache[wid]["def"]
+
+
 gates, defs = [], {}
 for wf in get("/workflows"):
     if not wf.get("enabled"):
@@ -29,7 +49,7 @@ for wf in get("/workflows"):
     defs[wf["id"]] = (wf, None)
     # seuls les workflows qui ont une étape Gate peuvent attendre une validation ; on ne se fie pas au
     # dernier run (un run plus ancien peut attendre pendant qu'un plus récent est déjà fini)
-    full = get(f"/workflows/{wf['id']}")
+    full = definition(wf["id"])
     defs[wf["id"]] = (wf, full)
     steps_def = {x["name"]: x for x in full.get("steps", [])}
     if not any((x.get("step_type") or {}).get("type") == "Gate" for x in steps_def.values()):
@@ -56,4 +76,9 @@ for wid, (wf, full) in defs.items():
 
 # agents qu'on peut interroger sur leurs runs (page action « bureau-ask ») : tout workflow actif hors Bureau
 askable = [{"wf": wid, "name": wf["name"]} for wid, (wf, full) in defs.items() if not wf["name"].startswith("Le Bureau")]
+try:
+    _os.makedirs(_os.path.dirname(CACHE), exist_ok=True)
+    json.dump({k: v for k, v in _cache.items() if k in defs}, open(CACHE, "w"))
+except Exception:
+    pass
 print(json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "gates": gates, "workflows": relaunch, "askable": askable}, ensure_ascii=False))

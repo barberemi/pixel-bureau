@@ -292,7 +292,7 @@ test('alarme : 3 échecs d\'affilée restent en panne au-delà de 40 min, avec l
   const st = J(`stateAt(${agentWith([failRun('a', 300), failRun('b', 200), failRun('c', 100)].join(','))}, ${T11})`);
   assert.equal(st.st, 'error');
   assert.equal(st.alarm, 3);
-  assert.equal(st.bubble, '🚨');
+  assert.equal(st.bubble, '🚨 3');
   assert.match(st.label, /3 échecs d'affilée.*136 échecs sur 160 runs en 7 j \(85 %\)/);
   run('PAYROLL=null;');
 });

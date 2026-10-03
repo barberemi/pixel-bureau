@@ -273,7 +273,7 @@ function stateAt0(c,t){
       zone:'wc',
       alarm:streak,
       label:'Alarme : '+streak+' échecs d\'affilée'+(fs?' (dernier sur '+fs.n+')':'')+(w?' · '+w:'')+' · en panne jusqu\'au prochain succès',
-      bubble:'🚨',
+      bubble:'🚨 '+streak,
       run:last,
       step:fs
     };

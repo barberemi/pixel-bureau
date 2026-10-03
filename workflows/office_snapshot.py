@@ -47,6 +47,8 @@ def important_count(did):
 
 
 now = datetime.now(TZ)
+PURGE_HOURS = (7, 13)  # heures de Paris du nettoyage des vieux runs (premier passage de l'heure)
+PURGE_LOG = _os.path.join(_os.path.expanduser("~"), ".cache", "kronn-bureau", "purge.json")
 day_start = now.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 since = day_start.isoformat().replace("+00:00", "Z")
 
@@ -126,25 +128,46 @@ discs = [
 ]
 
 
-# Nettoyage : uniquement les runs des deux crons du Bureau, terminés depuis plus de 7 jours.
+# Nettoyage : uniquement les runs des crons du Bureau, terminés depuis plus de 7 jours.
 # (Kronn n'a qu'une purge globale ; on ne touche ici à aucun autre workflow.)
+# Kronn ne sait pas lister « les runs de plus de 7 jours » : il faut relire tous les runs (~6 000, ~120 GET).
+# On ne le fait donc qu'au premier passage de 7h et de 13h (heure de Paris), pas toutes les 10 min ;
+# 13h rattrape une matinée où le Mac dormait.
 BUREAU_WORKFLOWS = [w for w in (CFG.get("workflows") or {}).values() if w]
 cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat().replace("+00:00", "Z")
-purged = 0
-for wid in BUREAU_WORKFLOWS:
-    try:
-        old = []
-        off = 0
-        while True:
-            batch = get(f"/workflows/{wid}/runs?limit=50&offset={off}")
-            old += [r["id"] for r in batch if r.get("finished_at") and r["finished_at"] < cutoff
-                    and r.get("status") in ("Success", "Failed", "Cancelled", "Partial", "Interrupted")]
-            off += 50
-            if len(batch) < 50:
-                break
+purge = {"at": None, "deleted": 0, "errors": 0, "last_error": None}
+if now.hour in PURGE_HOURS and now.minute < 10:
+    purge["at"] = datetime.now(timezone.utc).isoformat()
+    for wid in BUREAU_WORKFLOWS:
+        try:
+            old = []
+            off = 0
+            while True:
+                batch = get(f"/workflows/{wid}/runs?limit=50&offset={off}")
+                old += [r["id"] for r in batch if r.get("finished_at") and r["finished_at"] < cutoff
+                        and r.get("status") in ("Success", "Failed", "Cancelled", "Partial", "Interrupted")]
+                off += 50
+                if len(batch) < 50:
+                    break
+        except Exception as e:
+            purge["errors"] += 1
+            purge["last_error"] = f"liste des runs de {wid[:8]} : {e}"[:200]
+            continue
         for rid in old:
-            urllib.request.urlopen(urllib.request.Request(f"{API}/workflows/{wid}/runs/{rid}", method="DELETE"), timeout=30)
-            purged += 1
+            try:
+                urllib.request.urlopen(urllib.request.Request(f"{API}/workflows/{wid}/runs/{rid}", method="DELETE"), timeout=30)
+                purge["deleted"] += 1
+            except Exception as e:
+                purge["errors"] += 1
+                purge["last_error"] = f"suppression du run {rid[:8]} : {e}"[:200]
+    try:  # bilan gardé hors du dépôt : la page l'affiche jusqu'au nettoyage suivant
+        _os.makedirs(_os.path.dirname(PURGE_LOG), exist_ok=True)
+        json.dump(purge, open(PURGE_LOG, "w"))
+    except Exception:
+        pass
+else:
+    try:
+        purge = json.load(open(PURGE_LOG))
     except Exception:
         pass
 
@@ -155,7 +178,7 @@ for w in get("/workflows"):
         tr = (get("/workflows/" + w["id"]).get("trigger") or {})
         if tr.get("schedule"):
             crons.append({"wf": w["id"], "name": w["name"], "schedule": tr["schedule"]})
-snap = {"generated_at": datetime.now(timezone.utc).isoformat(), "day": now.strftime("%Y-%m-%d"), "runs": runs, "discussions": discs, "crons": crons, "purged_runs": purged}
+snap = {"generated_at": datetime.now(timezone.utc).isoformat(), "day": now.strftime("%Y-%m-%d"), "runs": runs, "discussions": discs, "crons": crons, "purge": purge}
 out = json.dumps(snap, separators=(",", ":"), ensure_ascii=False)
 cut = datetime.now(timezone.utc) - timedelta(hours=3)
 for r in runs:

@@ -554,7 +554,9 @@ function drawOverlay(c,now){
   const seated=!c.moving&&c.tile&&SEATS.some(s=>s.x===c.tile[0]&&s.y===c.tile[1]);
   let bx=x-w/2, by=y-62-h-(sel===c.key?8:0);
   if(seated){const out=c.dir==='right'?-1:1;bx=out<0?x-14-w:x+14;by=y-48;}
-  const bc=st.st==='error'?'#d1453b':st.st==='gate'?'#e0a020':'#fffdf8';
+  // panne / validation : un emoji (🚨, ✋) sur fond rouge ou ambre ne se lit pas ; bulle claire cerclée à la place (seul « ! » reste blanc sur rouge)
+  const alert=st.st==='error'||st.st==='gate', ring=alert&&txt!=='!', ringCol=st.st==='error'?'#c62828':'#b7791f';
+  const bc=ring?'#fffdf8':st.st==='error'?'#d1453b':st.st==='gate'?'#e0a020':'#fffdf8';
   if(bb.cloud){
     if(!seated)by-=4; // place pour les bouffées sous le nuage
     drawCloud(bx,by,w,h,x,y-56);
@@ -564,9 +566,10 @@ function drawOverlay(c,now){
     ctx.fillStyle=bc;ctx.fillRect(bx,by,w,h);
     if(seated)ctx.fillRect(c.dir==='right'?bx+w:bx-3,by+h/2-2,3,4);else ctx.fillRect(x-2,by+h,4,3);
     if(bb.tone){ctx.fillStyle=bb.tone;ctx.fillRect(bx,by,3,h);}
+    if(ring){ctx.strokeStyle=ringCol;ctx.lineWidth=2;ctx.strokeRect(bx+1,by+1,w-2,h-2);}
   }
   const ph=toolPhase(c,bb.tool,now); if(ph)drawToolBubble(bb.tool,ph,bx,by);
-  ctx.fillStyle=st.st==='error'||st.st==='gate'?'#fff':'#25221d';ctx.textBaseline='middle';ctx.textAlign='center';
+  ctx.fillStyle=ring?ringCol:alert?'#fff':'#25221d';ctx.textBaseline='middle';ctx.textAlign='center';
   ctx.fillText(txt,bx+w/2+(bb.tone?1.5:0),by+h/2+1);ctx.textAlign='left';ctx.textBaseline='alphabetic';
 }
 // ---------- bulles : ticket(s) d'un collègue, ticket ou PR d'un agent ----------
