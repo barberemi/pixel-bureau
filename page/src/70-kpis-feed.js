@@ -128,7 +128,6 @@ function teamEventTxt(e){
   }
   return null;
 }
-const parisDay=t=>new Intl.DateTimeFormat('en-CA',{timeZone:TZ}).format(new Date(t));
 function renderFeed(){
   if(!DATA)return;
   const ev=[];

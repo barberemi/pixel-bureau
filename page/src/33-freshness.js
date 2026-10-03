@@ -31,6 +31,18 @@ function freshRing(frac,size){
   return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" aria-hidden="true"><circle cx="${c}" cy="${c}" r="${R}" fill="none" stroke="currentColor" stroke-opacity=".25" stroke-width="${w}"/>`+
     `<circle cx="${c}" cy="${c}" r="${R}" fill="none" stroke="currentColor" stroke-width="${w}" stroke-dasharray="${(C*frac).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 ${c} ${c})" stroke-linecap="round"/></svg>`;
 }
+// attente avant la prochaine arrivée : secondes, minutes, ou pause du cron (hors de ses heures) avec l'heure de reprise
+const parisDay=t=>new Intl.DateTimeFormat('en-CA',{timeZone:TZ}).format(new Date(t));
+const DAY_FR={Mon:'lundi',Tue:'mardi',Wed:'mercredi',Thu:'jeudi',Fri:'vendredi',Sat:'samedi',Sun:'dimanche'};
+function waitTxt(f,now){
+  const left=f.eta-now, frac=Math.min(1,Math.max(0,(now-f.gen)/Math.max(1,f.eta-f.gen)));
+  if(f.eta-f.gen>3*f.src.period&&left>5*60e3){ // le cron ne tourne pas à ces heures-là
+    const d=parisDay(f.eta), when=d===parisDay(now)?'':d===parisDay(now+864e5)?'demain ':DAY_FR[parisHM(f.eta).wd]+' ';
+    return {txt:'en pause · reprise '+when+'à '+hm(f.eta).replace(':','h').replace(/^0/,''),frac:0,paused:true};
+  }
+  if(left>=120e3)return {txt:'dans '+Math.ceil(left/60e3)+' min',frac};
+  return {txt:'dans '+Math.ceil(left/1e3)+' s',frac};
+}
 const agoTxt=d=>d<60e3?Math.max(0,Math.round(d/1e3))+' s':d<3600e3?Math.round(d/60e3)+' min':Math.floor(d/3600e3)+' h '+String(Math.round(d%3600e3/60e3)).padStart(2,'0');
 let FRESH_LAST=null, FRESH_FLASH=0, FRESH_VIEW=null; // FRESH_VIEW : dernier état affiché (repris par le mode TV)
 function updateFresh(){
@@ -48,11 +60,11 @@ function updateFresh(){
   let txt, frac;
   if(late){txt=late.src.label.split(' (')[0]+' en retard de '+agoTxt(late.late);frac=1;}
   else if(now<FRESH_FLASH){txt='✓ à jour';frac=1;}
-  else if(live.eta&&now<live.eta){const left=live.eta-now;txt='dans '+Math.ceil(left/1e3)+' s';frac=Math.min(1,Math.max(0,(now-live.gen)/Math.max(1,live.eta-live.gen)));}
+  else if(live.eta&&now<live.eta)({txt,frac}=waitTxt(live,now));
   else{txt='imminent';frac=1;}
   FRESH_VIEW={txt,frac,late:!!late};
   el.innerHTML=freshRing(frac)+esc(txt);
   // panneau au survol (pas d'attribut title : son texte change chaque seconde, le navigateur ne l'afficherait jamais)
   pop.innerHTML='<b>Fraîcheur des données</b><table>'+all.map(f=>`<tr class="${f.late?'late':''}"><td>${esc(f.src.label)}</td><td>il y a ${agoTxt(f.age)}</td>`+
-    `<td>${f.late?'en retard de '+agoTxt(f.late):f.eta&&f.eta>now?'prochain ~'+hm(f.eta):'imminent'}</td></tr>`).join('')+'</table><small>Prochain passage estimé : calendrier du cron + durée de son dernier run.</small>';
+    `<td>${f.late?'en retard de '+agoTxt(f.late):f.eta&&f.eta>now?(waitTxt(f,now).paused?waitTxt(f,now).txt:'prochain ~'+hm(f.eta)):'imminent'}</td></tr>`).join('')+'</table><small>Prochain passage estimé : calendrier du cron + durée de son dernier run.</small>';
 }

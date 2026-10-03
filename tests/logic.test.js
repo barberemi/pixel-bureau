@@ -255,3 +255,20 @@ test('fraîcheur : prochain passage du cron live, puis retard', () => {
   run(`LIVE={generated_at:'2026-10-03T19:59:10Z',runs:[]}`); // dernier passage du soir : prochain à 05:00 UTC, pas de retard la nuit
   assert.equal(f('2026-10-03T23:00:00Z').late, 0);
 });
+
+test('fraîcheur : texte d\'attente en secondes, en minutes, puis en pause hors des heures du cron', () => {
+  run(`CFG.schedules={}; CFG.workflows={live:'wf-live',payroll:'wf-pay'};
+    DATA={crons:[{wf:'wf-live',schedule:'* 5-19 * * *'},{wf:'wf-pay',schedule:'7 5-19 * * *'}],runs:[]};`);
+  const w = (src, gen, now) => {
+    run(`LIVE={generated_at:'${gen}',runs:[]}; PAYROLL={generated_at:'${gen}',agents:[]};`);
+    return JSON.parse(run(`JSON.stringify(waitTxt(freshness(FRESH_SRC.find(s=>s.key==='${src}'), ${Date.parse(now)}), ${Date.parse(now)}))`));
+  };
+  assert.match(w('live', '2026-10-03T06:49:20Z', '2026-10-03T06:49:40Z').txt, /^dans \d+ s$/);
+  assert.equal(w('payroll', '2026-10-03T06:07:05Z', '2026-10-03T06:20:00Z').txt, 'dans 48 min');
+  // samedi 23h30 (Paris) : dernier passage à 21h59, reprise dimanche 7h00
+  const p = w('live', '2026-10-03T19:59:10Z', '2026-10-03T21:30:00Z');
+  assert.equal(p.txt, 'en pause · reprise demain à 7h00');
+  assert.equal(p.paused, true);
+  // après minuit : même jour
+  assert.equal(w('live', '2026-10-03T19:59:10Z', '2026-10-03T22:30:00Z').txt, 'en pause · reprise à 7h00');
+});
