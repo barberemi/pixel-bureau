@@ -8,7 +8,7 @@
   python3 tools/plan.py share plan.json              # le proposer à toute l'équipe (workflow « Le Bureau · plan », validé par le boss)
   python3 tools/plan.py share defaut                 # revenir au plan embarqué dans la page
 
-Sans fichier : le plan de l'installation (bureau.config.json, clé layout), sinon layouts/equipe.json.
+Sans fichier : le plan de l'installation (clé layout de bureau.config.json, sinon celui du profil d'équipe, sinon le plan type).
 Le validateur dit ce dont le moteur a besoin aujourd'hui : un plan qui le passe se dessine et se parcourt sans accroc.
 """
 import argparse, json, os, sys, urllib.request
@@ -50,9 +50,8 @@ def cmd_check(path, as_json):
 
 
 def cast(cfg):
-    """Roster puis agents de l'installation ({key, name, seat?}), le boss à part."""
-    roster = json.load(open(os.path.join(ROOT, "team", "roster.json")))["people"]
-    return roster + [dict(a, name=a["name"] + " (agent)") for a in cfg.get("agents") or []]
+    """Équipe (profil et personnes ajoutées) puis agents de l'installation ({key, name, seat?})."""
+    return assemble.roster(cfg) + [dict(a, name=a["name"] + " (agent)") for a in cfg.get("agents") or []]
 
 
 def cmd_seats(path):

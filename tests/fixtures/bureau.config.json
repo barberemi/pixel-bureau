@@ -1,6 +1,7 @@
 {
  "_doc": "Propre à chaque installation, jamais partagé (il sera créé par tools/install.py). Lu par la page à l'assemblage (tools/assemble.py, partie « page ») et injecté dans les scripts des workflows par tools/publish.py.",
  "owner": "p_remi",
+ "team": "equipe",
  "kronn": {
   "api": "http://127.0.0.1:3140/api",
   "ui": "http://localhost:5173/",

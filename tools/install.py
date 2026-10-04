@@ -133,7 +133,7 @@ def check_kronn(ask, defaults):
     return k, {"api": api, "ui": ui}
 
 
-def layout(ask):
+def layout(ask, default):
     """Plan du bureau : un plan du dépôt (layouts/) ou un fichier à soi, refusé s'il ne passe pas tools/plan.py check.
     Renvoie le chemin écrit dans la config (relatif au dépôt quand il y est)."""
     plans = sorted(f for f in os.listdir(os.path.join(ROOT, "layouts")) if f.endswith(".json"))
@@ -141,8 +141,7 @@ def layout(ask):
     for f in plans:
         L = jload(os.path.join(ROOT, "layouts", f))
         opts.append((f"layouts/{f}", f"{L.get('name') or f} ({L['size'][0]} x {L['size'][1]} cases)"))
-    v = ask.choice("layout", "Plan du bureau", opts + [("__file__", "Un plan à moi (fichier JSON bureau-layout/1)")],
-                   assemble.DEFAULT_LAYOUT)
+    v = ask.choice("layout", "Plan du bureau", opts + [("__file__", "Un plan à moi (fichier JSON bureau-layout/1)")], default)
     if v == "__file__":
         v = os.path.abspath(os.path.expanduser(ask.text("layout_file", "Chemin du plan")))
         if v.startswith(ROOT + os.sep):
@@ -159,10 +158,56 @@ def layout(ask):
     return v
 
 
-def who(ask, roster_doc):
-    roster = roster_doc["people"]
-    opts = [(p["key"], f"{p['name']} ({p['role']})") for p in roster] + [("__new__", "Quelqu'un d'autre (je m'ajoute à l'équipe)")]
-    key = ask.choice("owner", "Qui es-tu ? Tu prendras le bureau du boss.", opts)
+def gh_login():
+    """Login GitHub du compte connecté à gh, ou None (gh absent ou non connecté)."""
+    try:
+        r = subprocess.run(["gh", "api", "user", "--jq", ".login"], capture_output=True, text=True, timeout=20)
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+    return r.stdout.strip() or None if r.returncode == 0 else None
+
+
+def org_member(org):
+    """(membre actif, explication) : le compte connecté à gh appartient-il à l'organisation ? Marche aussi quand
+    l'appartenance est masquée sur le profil public (il lit la sienne), avec le droit read:org."""
+    try:
+        r = subprocess.run(["gh", "api", f"user/memberships/orgs/{org}", "--jq", ".state"], capture_output=True, text=True, timeout=20)
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False, "gh introuvable : installe gh puis `gh auth login`"
+    if r.returncode == 0:
+        state = r.stdout.strip()
+        return state == "active", "membre actif" if state == "active" else f"invitation {state or 'inconnue'} : accepte-la sur GitHub"
+    err = (r.stderr or r.stdout).lower()
+    if "read:org" in err or "403" in err:
+        return False, "gh n'a pas le droit read:org : lance `gh auth refresh -s read:org`"
+    if "auth" in err and "login" in err:
+        return False, "gh non connecté : lance `gh auth login`"
+    return False, f"ton compte GitHub n'est pas membre de {org}"
+
+
+def team(ask):
+    """Profil d'équipe (teams/<équipe>/) ou équipe neuve. Un profil qui nomme une organisation GitHub n'est
+    installable que par ses membres actifs (vérifié avec gh). Renvoie l'id du profil, ou None."""
+    profiles = assemble.teams()
+    opts = [("", "Une nouvelle équipe (plan type, tu démarres seul et ajoutes tes collègues ensuite)")]
+    opts += [(t, f"Rejoindre {m.get('name') or t}" + (f" (membres de {m['github_org']})" if m.get("github_org") else ""))
+             for t, m in profiles.items()]
+    t = ask.choice("team", "Ton équipe", opts, "")
+    org = (profiles.get(t) or {}).get("github_org")
+    if org:
+        ok, why = org_member(org)
+        if not ok:
+            raise InstallError(f"l'équipe « {profiles[t].get('name') or t} » est réservée aux membres de {org} : {why}.")
+        say(f"✓ GitHub : {why} de {org}")
+    return t or None
+
+
+def who(ask, roster, login):
+    """Qui installe : une personne de l'équipe, ou quelqu'un d'autre (gardé dans la config locale, jamais dans le
+    roster partagé). Le login GitHub connu (champ github du roster) propose la bonne personne."""
+    opts = [(p["key"], f"{p['name']} ({p['role']})") for p in roster] + [("__new__", "Quelqu'un d'autre (je m'ajoute, pour cette installation)")]
+    guess = next((p["key"] for p in roster if login and str(p.get("github") or "").lower() == login.lower()), None)
+    key = ask.choice("owner", "Qui es-tu ? Tu prendras le bureau du boss.", opts, guess)
     if key != "__new__":
         return key, None
     name = ask.text("new_name", "Ton prénom (affiché)")
@@ -214,23 +259,18 @@ def jira(ask, k, project_id, defaults, tpl_team):
     return j
 
 
-def github(ask, defaults):
+def github(ask, defaults, login):
     g = dict(defaults["github"])
-    login = None
-    try:
-        st = subprocess.run(["gh", "auth", "status"], capture_output=True, text=True, timeout=20)
-        if st.returncode != 0:
-            raise RuntimeError("gh non connecté")
-        login = subprocess.run(["gh", "api", "user", "--jq", ".login"], capture_output=True, text=True, timeout=20).stdout.strip() or None
-        say(f"✓ gh connecté{(' en tant que ' + login) if login else ''}")
-    except (FileNotFoundError, RuntimeError, subprocess.TimeoutExpired) as e:
-        say(f"(i) GitHub : {e if not isinstance(e, FileNotFoundError) else 'gh introuvable'}. Sans gh, pas de PR ni de MEP"
-            " (installe gh puis `gh auth login`, rien d'autre à refaire).")
-    g["repo"] = ask.text("github_repo", "Dépôt GitHub suivi", g["repo"])
     if login:
+        say(f"✓ gh connecté en tant que {login}")
+    else:
+        say("(i) GitHub : gh absent ou non connecté. Sans gh, pas de PR ni de MEP"
+            " (installe gh puis `gh auth login`, rien d'autre à refaire).")
+    g["repo"] = ask.text("github_repo", "Dépôt GitHub suivi (Entrée pour aucun)", g["repo"])
+    if login and g["repo"]:
         r = subprocess.run(["gh", "repo", "view", g["repo"], "--json", "name"], capture_output=True, text=True, timeout=20)
         say(("✓" if r.returncode == 0 else "(!)") + f" accès au dépôt {g['repo']}" + ("" if r.returncode == 0 else " refusé"))
-    return g, login
+    return g
 
 
 def ai_agent(ask, k):
@@ -324,7 +364,8 @@ def reuse(ask, k, ids, tpls, with_ask, page_id):
     return ids, own
 
 
-def avatar(ask, key, roster_doc, dry):
+def avatar(ask, key, person, dry):
+    """person : la fiche de la personne (roster du profil, ou config locale pour quelqu'un d'ajouté), modifiée sur place."""
     a = ask.choice("avatar", "Ton avatar",
                    [("editor", "Je le personnaliserai dans la page (éditeur intégré, bouton ✎)"),
                     ("lpc", f"J'ai fait un sprite sur le générateur LPC ({LPC_GENERATOR})"),
@@ -339,9 +380,7 @@ def avatar(ask, key, roster_doc, dry):
             dest = os.path.join(ROOT, "sprites", "custom", folder)
             os.makedirs(dest, exist_ok=True)
             shutil.copy(png, os.path.join(dest, os.path.basename(png)))
-            for p in roster_doc["people"]:
-                if p["key"] == key:
-                    p["sprite"] = folder
+            person["sprite"] = folder
             py = os.path.join(ROOT, ".venv", "bin", "python")
             r = subprocess.run([py if os.path.exists(py) else sys.executable, os.path.join(ROOT, "sprites", "build_sprites.py")],
                                capture_output=True, text=True)
@@ -425,52 +464,58 @@ def main(argv=None):
     ap.add_argument("--answers", help="fichier JSON de réponses (id de question -> réponse)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--disabled", action="store_true", help="crons créés désactivés")
-    ap.add_argument("--title", help="titre de la page (défaut : team/defaults.json)")
+    ap.add_argument("--title", help="titre de la page (défaut : team/defaults.json, ou celui du profil d'équipe)")
     ap.add_argument("--no-run", action="store_true", help="ne pas lancer le premier rafraîchissement")
     a = ap.parse_args(argv)
 
-    defaults = jload(os.path.join(ROOT, "team", "defaults.json"))
-    roster_path = os.path.join(ROOT, "team", "roster.json")
-    roster_doc = jload(roster_path)
     old = jload(a.config) if os.path.exists(a.config) else {}
     previous = old.get("_answers") or {}
     ask = Asker(jload(a.answers) if a.answers else None, previous)
     tpls = templates.load_templates()
 
     say("— Le Bureau : installation —")
-    k, kronn = check_kronn(ask, defaults)
-    owner, new_person = who(ask, roster_doc)
-    layout_file = layout(ask)
+    k, kronn = check_kronn(ask, assemble.defaults({}))
+    team_id = team(ask)
+    defaults = assemble.defaults({"team": team_id})
+    roster_path = os.path.join(ROOT, "teams", team_id, "roster.json") if team_id else None
+    roster_doc = jload(roster_path) if roster_path else {"people": []}
+    people = [p for p in old.get("people") or [] if old.get("team") == team_id]  # personnes ajoutées à cette installation
+    login = gh_login()
+    owner, new_person = who(ask, roster_doc["people"] + people, login)
+    if new_person:
+        if login:
+            new_person["github"] = login
+        people = [p for p in people if p["key"] != new_person["key"]] + [new_person]
+    layout_file = layout(ask, assemble.layout_path({"team": team_id}))
     project_id = project(ask, k)
     kronn["project_id"] = project_id
     j = jira(ask, k, project_id, defaults, tpls["team"])
-    g, gh_login = github(ask, defaults)
-    if g is not None and gh_login:
-        g["login"] = gh_login  # login du boss : « PR qui attendent ta review » dans la page
+    g = github(ask, defaults, login)
+    if login:
+        g["login"] = login  # login du boss : « PR qui attendent ta review » dans la page
     ai = ai_agent(ask, k)
     tpl_ids = {key: (old.get(sec) or {}).get(field) for key, (_, (sec, field), _) in templates.TEMPLATES.items()}
     tpl_ids, own = reuse(ask, k, tpl_ids, tpls, bool(ai), old.get("page_id"))
     own |= set(old.get("own") or []) & set(tpl_ids.values())
     bureau = {v for v in tpl_ids.values() if v} | {t["definition"]["name"] for t in tpls.values()}
     agents, mep = my_agents(ask, k, old.get("agents"), bureau)
-    if new_person:
-        if gh_login:
-            new_person["github"] = gh_login
-        roster_doc["people"].append(new_person)
-    music = avatar(ask, owner, roster_doc, a.dry_run)
+    me = next(p for p in roster_doc["people"] + people if p["key"] == owner)
+    sprite_before = me.get("sprite")
+    music = avatar(ask, owner, me, a.dry_run)
 
     cfg = {"_doc": "Propre à cette installation, jamais partagé. Créé par tools/install.py (relançable).",
-           "owner": owner, "layout": layout_file, "kronn": kronn, "page_id": old.get("page_id"), "workflows": {}, "actions": {},
+           "owner": owner, "team": team_id, "people": people, "layout": layout_file, "kronn": kronn, "page_id": old.get("page_id"), "workflows": {}, "actions": {},
            "own": sorted(own), "jira": j, "github": g, "rhythm": defaults["rhythm"],
-           "mep_workflow": mep, "agents": agents, "ui": old.get("ui") or {}, "_ai_agent": ai}
+           "mep_workflow": mep, "agents": agents, "ui": old.get("ui") or {}, "music": old.get("music") or {}, "_ai_agent": ai}
     for key, (_, (sec, field), _) in templates.TEMPLATES.items():
         if tpl_ids.get(key):
             cfg[sec][field] = tpl_ids[key]
-    name = next(p["name"] for p in roster_doc["people"] if p["key"] == owner)
     say("\n— Récapitulatif —")
-    say(f"  Boss : {name} · plan {layout_file} · projet Kronn {project_id[:8]} · agent IA : {ai or 'aucun'}")
+    say(f"  Équipe : {(assemble.teams()[team_id].get('name') or team_id) if team_id else 'nouvelle'} · boss : {me['name']}"
+        + (" (ajouté à cette installation)" if me in people else ""))
+    say(f"  Plan {layout_file} · projet Kronn {project_id[:8]} · agent IA : {ai or 'aucun'}")
     say(f"  Jira : {j['project'] + ' (board ' + str(j['board']) + ')' if j else 'non connecté : sprint, tickets, kanban masqués'}")
-    say(f"  GitHub : {g['repo']}" + ("" if gh_login else " (gh non connecté : PR et MEP vides)"))
+    say(f"  GitHub : {g['repo'] or 'aucun dépôt suivi'}" + ("" if login else " (gh non connecté : PR et MEP vides)"))
     say(f"  Agents : {len(agents)} personnage(s) · page : {'existante' if cfg['page_id'] else 'à créer'} · crons : "
         + ("désactivés" if a.disabled else "actifs"))
     if not ask.yes("confirm", "Créer ou mettre à jour tout ça dans Kronn ?"):
@@ -487,13 +532,19 @@ def main(argv=None):
         say("\n(dry-run) Config qui serait écrite :")
         say(json.dumps({k_: v for k_, v in cfg.items() if not k_.startswith("_")}, ensure_ascii=False, indent=1)[:2500])
         return 0
-    jdump(roster_doc, roster_path)
+    if roster_path and me not in people and me.get("sprite") != sprite_before:
+        jdump(roster_doc, roster_path)  # sprite LPC d'une personne de l'équipe : pour toute l'équipe
     if music:
-        mp = os.path.join(ROOT, "sprites", "music", "music.json")
-        m = jload(mp)
         sid = re.search(r"song/([0-9a-f-]{36})", music)
-        m[owner] = {"title": "Sa musique", "url": music, **({"suno_id": sid.group(1)} if sid else {})}
-        jdump(m, mp)
+        song = {"title": "Sa musique", "url": music, **({"suno_id": sid.group(1)} if sid else {})}
+        mp = os.path.join(ROOT, "teams", team_id, "music", "music.json") if team_id and me not in people else None
+        if mp:  # morceau d'une personne de l'équipe : partagé avec l'équipe
+            os.makedirs(os.path.dirname(mp), exist_ok=True)
+            m = jload(mp) if os.path.exists(mp) else {}
+            m[owner] = song
+            jdump(m, mp)
+        else:
+            cfg["music"][owner] = song
     jdump(cfg, a.config)
     say(f"✓ config écrite : {os.path.relpath(a.config, ROOT)}")
     html = assemble.build(demo=False, cfg=cfg)

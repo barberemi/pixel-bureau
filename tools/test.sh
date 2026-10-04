@@ -9,4 +9,4 @@ python3 -m unittest -q tests/test_templates.py tests/test_install.py tests/test_
 PY=python3
 [ -x .venv/bin/python ] && PY=.venv/bin/python
 "$PY" tools/smoke.py "$@"
-"$PY" tools/smoke.py --empty "$@"   # installation neuve : sans démo, sans config
+"$PY" tools/smoke.py --empty "$@"   # installation neuve : équipe neuve, plan type, sans démo

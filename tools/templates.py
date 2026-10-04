@@ -16,6 +16,8 @@ import copy, json, os, re, sys, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TPL_DIR = os.path.join(ROOT, "workflows", "templates")
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+import assemble  # noqa: E402  (roster du profil d'équipe)
 # modèle -> (type, où trouver l'id dans la config, scripts par étape)
 TEMPLATES = {
     "office": ("workflow", ("workflows", "office"), {"snapshot": "workflows/office_snapshot.py"}),
@@ -38,8 +40,7 @@ def load_config():
 
 
 def owner_name(cfg):
-    roster = json.load(open(os.path.join(ROOT, "team", "roster.json")))["people"]
-    p = next((x for x in roster if x["key"] == cfg.get("owner")), None)
+    p = next((x for x in assemble.roster(cfg) if x["key"] == cfg.get("owner")), None)
     return p["name"] if p else "le boss"
 
 
@@ -69,10 +70,9 @@ WORK_REQUIRES = {"work_written": "jira.role_ids", "work_po_triage": "jira.role.p
 FLOW_DEFAULTS = {"triage_from": "Proposed", "test": "To Test", "validated": "To Deploy", "reopened": "Reopen"}
 
 
-def role_ids(role):
+def role_ids(role, cfg):
     """Compte Jira (jira_id du roster) de la première personne de ce rôle, sinon chaîne vide."""
-    roster = json.load(open(os.path.join(ROOT, "team", "roster.json")))["people"]
-    return next((p["jira_id"] for p in roster if p.get("roleKind") == role and p.get("jira_id")), "")
+    return next((p["jira_id"] for p in assemble.roster(cfg) if p.get("roleKind") == role and p.get("jira_id")), "")
 
 
 def values(cfg):
@@ -88,8 +88,8 @@ def values(cfg):
         "jira.points_fields": ",".join(j.get("points_fields") or []),
         "owner_name": owner_name(cfg),
         # travail Jira des rôles sans tickets assignés (PO, SM, QA) : compte Jira de la première personne du rôle
-        **{f"jira.role.{r}": role_ids(r) for r in ROLES},
-        "jira.role_ids": ",".join(f'"{x}"' for r in ROLES for x in [role_ids(r)] if x),
+        **{f"jira.role.{r}": role_ids(r, cfg) for r in ROLES},
+        "jira.role_ids": ",".join(f'"{x}"' for r in ROLES for x in [role_ids(r, cfg)] if x),
         **{f"jira.flow.{k}": (j.get("flow") or {}).get(k) or v for k, v in FLOW_DEFAULTS.items()},
     }
 

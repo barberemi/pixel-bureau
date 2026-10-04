@@ -8,7 +8,7 @@ Un open space en pixel art où chaque personnage montre ce qui se passe dans Kro
 
 | Personnage | Ce que c'est | Où le voir |
 | --- | --- | --- |
-| Collègue (en couleur) | Une personne de `team/roster.json` | À sa place, ses tickets Jira en bulle |
+| Collègue (en couleur) | Une personne de l'équipe (`teams/<équipe>/roster.json`, ou ajoutée à l'installation) | À sa place, ses tickets Jira en bulle |
 | Agent (hologramme bleu) | Un workflow Kronn, avec un personnage de *The Office* | Son étape dans un nuage, l'outil en cours dans une petite bulle sombre |
 | Visiteur | Une discussion Kronn du jour | En salle de réunion, puis au café |
 | Le boss | La personne qui a installé la page (`owner`) | Au bureau du boss, bras levés quand une validation l'attend |

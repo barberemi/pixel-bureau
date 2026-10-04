@@ -1,7 +1,7 @@
 // ---------- world ----------
 // Le plan vient de LAYOUT (layouts/*.json, format bureau-layout/1, embarqué par tools/assemble.py) : sol en texte
 // (une chaîne par rangée, un caractère par case), portes, sortie, îlots, bureau du boss, cases bloquées par le décor,
-// places de chaque zone. Plan par défaut : layouts/equipe.json, d'après le croquis de Rémi (2026-10-02) ; un plan
+// places de chaque zone. Plan de l'installation (assemble.layout_path : config, profil d'équipe, sinon layouts/open-space.json) ; un plan
 // partagé par le workflow « Le Bureau · plan » (dataset layout) le remplace (00-config.js).
 // buildWorld() remplit tout ce qui en découle ; il est rappelé quand un plan partagé arrive (applyLayout, 90-boot.js).
 let TS, COLS, ROWS, W, H, EXIT, grid, floorOf, GLASS, DOORS, ISLANDS, IROWS, SEATS, BOSS_SEAT, SPOTS, CLOSABLE;

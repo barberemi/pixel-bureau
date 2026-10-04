@@ -1,15 +1,14 @@
 """GitHub pour le cron équipe du Bureau : PR ouvertes et mergées, releases, déploiements staging et prod.
 
 Ne fait jamais échouer le run : sans `gh` (absent, non connecté, sans accès au dépôt), chaque liste est vide et
-l'erreur est notée dans `errors`. Les tickets Jira sont publiés quand même par l'étape suivante (shape).
+l'erreur est notée dans `errors`. Sans dépôt ou sans workflow de déploiement configuré, la liste est vide sans erreur. Les tickets Jira sont publiés quand même par l'étape suivante (shape).
 Sortie (stdout) : {"open": [...], "merged": [...], "releases": [...], "staging": [...], "prod": [...], "errors": [...]}
 """
 import json, subprocess
 from _lib import CFG, dumps
 
-REPO = CFG["github"]["repo"]
-STAGING_WF = CFG["github"]["staging_workflow"]
-PROD_WF = CFG["github"]["prod_workflow"]
+GH = CFG.get("github") or {}
+REPO, STAGING_WF, PROD_WF = GH.get("repo"), GH.get("staging_workflow"), GH.get("prod_workflow")
 CALLS = {
     "open": ["pr", "list", "--repo", REPO, "--state", "open", "--limit", "100", "--json",
              "number,title,author,isDraft,reviewDecision,url,updatedAt,createdAt,latestReviews,reviewRequests"],
@@ -23,6 +22,9 @@ CALLS = {
 
 out, errors = {}, []
 for key, args in CALLS.items():
+    if not REPO or key == "staging" and not STAGING_WF or key == "prod" and not PROD_WF:
+        out[key] = []  # rien de configuré à suivre : pas une erreur
+        continue
     try:
         r = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=40)
         if r.returncode != 0:

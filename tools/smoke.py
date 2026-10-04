@@ -143,6 +143,10 @@ def chrome_checks(path, port, user_dir, js, shot, wait, width, height):
             shutil.rmtree(user_dir, ignore_errors=True)
 
 
+# installation neuve : pas de profil d'équipe, la personne qui installe est gardée dans sa config locale
+NEW_TEAM = {"owner": "p_pam", "people": [{"key": "p_pam", "name": "Pam", "role": "Développeur", "person": "Pam Beesly"}]}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--html", help="fichier déjà assemblé à contrôler (sinon : assemble dist/office.html)")
@@ -153,19 +157,20 @@ def main():
     ap.add_argument("--shot", help="capture PNG")
     ap.add_argument("--wait", type=float, default=3.0, help="secondes d'attente après le chargement")
     ap.add_argument("--size", default="1400x1400", help="fenêtre LxH")
-    ap.add_argument("--empty", action="store_true", help="page d'une installation neuve : sans démo, sans propriétaire ni boutons")
+    ap.add_argument("--empty", action="store_true", help="page d'une installation neuve : équipe neuve (la seule personne qui "
+                    "installe), plan type, sans démo ni boutons")
     a = ap.parse_args()
     if a.html:
         path = a.html
         html = open(path).read()
     else:
-        cfg = {} if a.empty else None
+        cfg = NEW_TEAM if a.empty else None
         html = assemble.build(demo=not a.empty, cfg=cfg)
         path = os.path.join(ROOT, "dist", "office_empty.html" if a.empty else "office.html")
         os.makedirs(os.path.dirname(path), exist_ok=True)
         open(path, "w").write(html)
         print("     assemblé :", path)
-    static_checks(html, {} if a.empty else None)
+    static_checks(html, NEW_TEAM if a.empty else None)
     if a.chrome or a.shot:
         w, h = (int(x) for x in a.size.split("x"))
         chrome_checks(path, a.port, a.user_data_dir, a.js, a.shot, a.wait, w, h)

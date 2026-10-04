@@ -2,6 +2,7 @@
 HTTP et un faux `gh`, sans réseau. Chaque sortie doit être un JSON valide sous la limite de 100 Ko d'une étape Exec."""
 import json, os, re, shutil, subprocess, sys, tempfile, threading, unittest
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
@@ -256,9 +257,12 @@ print(json.dumps(d.get(key, [])))
         self.assertEqual(failed["steps"][0]["err"], "401 Unauthorized")
 
     def test_office_snapshot_stays_under_100k(self):
+        paris = datetime.now(ZoneInfo("Europe/Paris"))
+        if paris.hour * 60 + paris.minute < 3 * 60 + 10:
+            self.skipTest("entre minuit et 3h10 à Paris, aucun run du jour n'est fini depuis plus de 3 h")
         fake = FakeKronn(runs_per_wf=400, steps=6)
-        for r in fake.runs[AGENT_WF]:  # finis il y a plus de 3 h : leurs étapes peuvent partir
-            r["started_at"] = r["finished_at"] = datetime.now(timezone.utc).replace(hour=0, minute=5).isoformat().replace("+00:00", "Z")
+        for r in fake.runs[AGENT_WF]:  # du jour (heure de Paris) et finis il y a plus de 3 h : leurs étapes peuvent partir
+            r["started_at"] = r["finished_at"] = paris.replace(hour=0, minute=5).astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
         out = self.run_script("office_snapshot.py", api=self.kronn(fake))
         self.assertEqual(len(out["runs"]) + out["truncated"], 400)
         self.assertIn("Failed", {r["status"] for r in out["runs"]})  # un échec n'est jamais retiré
@@ -274,7 +278,10 @@ print(json.dumps(d.get(key, [])))
         return open(p).read().count("\n") if os.path.exists(p) else 0
 
     def test_live_snapshot_reads_deploys_only_when_they_can_move(self):
-        done = {"status": "completed", "conclusion": "success", "createdAt": iso(30), "updatedAt": iso(20),
+        paris = datetime.now(ZoneInfo("Europe/Paris"))
+        if paris.hour == 0 and paris.minute < 4:
+            self.skipTest("juste après minuit à Paris, un déploiement d'il y a 3 min date de la veille")
+        done = {"status": "completed", "conclusion": "success", "createdAt": iso(3), "updatedAt": iso(2),  # du jour, même tôt
                 "displayTitle": "Deploy 17.2.0", "url": "https://x/r/1"}
         self.fake_gh({"staging": [done], "prod": [done]})
         api = self.kronn(FakeKronn())

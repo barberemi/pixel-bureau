@@ -1,40 +1,30 @@
 {
- "_doc": "Valeurs de l'équipe, identiques pour tous, proposées par tools/install.py (modifiables ensuite dans bureau.config.json).",
+ "_doc": "Valeurs communes proposées par tools/install.py (modifiables ensuite dans bureau.config.json) ; un profil d'équipe (teams/<équipe>/defaults.json) les complète.",
  "page_title": "Le Bureau",
  "kronn": {
   "api": "http://127.0.0.1:3140/api",
   "ui": "http://localhost:5173/"
  },
  "jira": {
-  "site": "https://acme.atlassian.net",
-  "project": "EW",
+  "site": "",
+  "project": "",
   "board": 1,
   "points_fields": [
-   "customfield_10016",
-   "customfield_10102"
+   "customfield_10016"
   ],
   "sprint_field": "customfield_10020",
-  "done_status": "Deployed",
+  "done_status": "Done",
   "statuses": {
-   "À faire": "todo",
-   "En cours": "doing",
-   "Reopen": "doing",
-   "To Review": "review",
-   "To Test": "test",
-   "To Deploy": "deploy",
-   "Deployed": "done"
-  },
-  "flow": {
-   "triage_from": "Proposed",
-   "test": "To Test",
-   "validated": "To Deploy",
-   "reopened": "Reopen"
+   "To Do": "todo",
+   "In Progress": "doing",
+   "In Review": "review",
+   "Done": "done"
   }
  },
  "github": {
-  "repo": "acme/front_web",
-  "staging_workflow": "CD_Deploy-NONPROD.yaml",
-  "prod_workflow": "CD_Deploy-PRODUCTION.yaml"
+  "repo": "",
+  "staging_workflow": "",
+  "prod_workflow": ""
  },
  "rhythm": {
   "timezone": "Europe/Paris",

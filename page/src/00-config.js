@@ -16,14 +16,14 @@ let LAYOUT = readLayout(window.KronnPageData)||EMBEDDED_LAYOUT; // lu par 10-wor
 const SPR = __SPRITES__;   // sprites fournis tels quels (boss_sax)
 const LAYERS = __LAYERS__; // calques LPC (sprites/build_layers.py)
 const RECIPES = __CAST__;  // recette de chaque avatar (sprites/cast.json)
-const MUSIC = __MUSIC__;   // morceau de chaque collègue (sprites/music/music.json)
+const MUSIC = __MUSIC__;   // morceau de chaque collègue (teams/<équipe>/music, puis la config)
 const DEMO = __DEMO__;        // aperçu local / tests : instantanés de démo embarqués ; false dans la page publiée
 const SNAP = __SNAP__;        // instantané de démo (null hors démo)
 const TEAM_SNAP = __TEAM__;   // équipe de démo (null hors démo)
 const ACTIONS = __ACTIONS__;  // boutons disponibles (workflow ou QP configuré dans bureau.config.json)
 
 // ---------- casting ----------
-const ROSTER = __ROSTER__.people; // team/roster.json : l'équipe, identique pour tous
+const ROSTER = __ROSTER__.people; // l'équipe : teams/<équipe>/roster.json, puis les personnes ajoutées à l'installation
 const OWNER = __OWNER__;          // bureau.config.json : clé du roster de qui a installé la page (le boss)
 // partie « page » de bureau.config.json (tools/assemble.py) ; chaque valeur a un défaut : une config vide ne casse rien
 const CFG = __CONFIG__;

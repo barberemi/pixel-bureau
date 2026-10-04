@@ -71,12 +71,61 @@ def page_config(cfg):
     }
 
 
-DEFAULT_LAYOUT = "layouts/equipe.json"
+DEFAULT_LAYOUT = "layouts/open-space.json"  # plan type, sans équipe
+
+
+# ---------- profils d'équipe (teams/<équipe>/) ----------
+# Un profil = team.json (nom, organisation GitHub requise, plan), roster.json, defaults.json, music/.
+# bureau.config.json, clé team : le profil de l'installation ; absente = équipe neuve (roster vide).
+# Les personnes ajoutées à une installation (clé people de la config, jamais commitée) suivent le roster du profil.
+def teams():
+    """Profils d'équipe disponibles : {id: team.json}."""
+    base = p("teams")
+    out = {}
+    for d in sorted(os.listdir(base)) if os.path.isdir(base) else []:
+        if os.path.exists(os.path.join(base, d, "team.json")):
+            out[d] = json.load(open(os.path.join(base, d, "team.json")))
+    return out
+
+
+def _team_file(cfg, *parts):
+    t = (cfg or {}).get("team")
+    path = p("teams", t, *parts) if t else None
+    return path if path and os.path.exists(path) else None
+
+
+def roster(cfg):
+    """L'équipe de l'installation : roster du profil, puis les personnes ajoutées à l'installation (clé people)."""
+    path = _team_file(cfg, "roster.json")
+    people = json.load(open(path))["people"] if path else []
+    return people + list((cfg or {}).get("people") or [])
+
+
+def defaults(cfg):
+    """Valeurs proposées à l'installation : team/defaults.json, complété par le profil (clé à clé au premier niveau)."""
+    d = json.load(open(p("team", "defaults.json")))
+    path = _team_file(cfg, "defaults.json")
+    if path:
+        for k, v in json.load(open(path)).items():
+            if not k.startswith("_"):
+                d[k] = {**d[k], **v} if isinstance(v, dict) and isinstance(d.get(k), dict) else v
+    return d
+
+
+def music(cfg):
+    """Morceaux des collègues (carte « Sa musique ») : ceux du profil, puis ceux de l'installation (clé music)."""
+    path = _team_file(cfg, "music", "music.json")
+    m = json.load(open(path)) if path else {}
+    for v in m.values():
+        if v.get("cover"):  # pochette embarquée en data URI, rangée à côté de music.json
+            v["cover"] = open(os.path.join(os.path.dirname(path), v["cover"])).read().strip()
+    return {**m, **((cfg or {}).get("music") or {})}
 
 
 def layout_path(cfg):
-    """Plan du bureau de cette installation (bureau.config.json, clé layout), sinon le plan par défaut."""
-    return (cfg or {}).get("layout") or DEFAULT_LAYOUT
+    """Plan du bureau de cette installation : clé layout de la config, sinon celui du profil, sinon le plan type."""
+    t = teams().get((cfg or {}).get("team")) or {}
+    return (cfg or {}).get("layout") or t.get("layout") or DEFAULT_LAYOUT
 
 
 def build(demo=True, cfg=None):
@@ -89,16 +138,11 @@ def build(demo=True, cfg=None):
     html = ACTION_RE.sub(lambda m: m.group(0) if acts[ACTIONS[m.group(1)][0]] else "", html)
     cast = json.load(open(p("sprites", "cast.json")))
     custom = {k: v for k, v in json.load(open(p("sprites", "sprites.json"))).items() if k not in cast}
-    # morceaux des collègues (carte « Sa musique » du profil) : pochette embarquée en data URI
-    music = json.load(open(p("sprites", "music", "music.json")))
-    for m in music.values():
-        if m.get("cover"):
-            m["cover"] = open(p("sprites", "music", m["cover"])).read().strip()
     html = (html.replace("__SPRITES__", json.dumps(custom))
                 .replace("__LAYERS__", open(p("sprites", "layers.json")).read())
-                .replace("__MUSIC__", json.dumps(music, ensure_ascii=False))
+                .replace("__MUSIC__", json.dumps(music(cfg), ensure_ascii=False))
                 .replace("__CAST__", json.dumps(cast, ensure_ascii=False, separators=(",", ":")))
-                .replace("__ROSTER__", open(p("team", "roster.json")).read())
+                .replace("__ROSTER__", json.dumps({"people": roster(cfg)}, ensure_ascii=False))
                 .replace("__LAYOUT__", open(p(layout_path(cfg))).read())
                 .replace("__OWNER__", json.dumps(cfg.get("owner")))
                 .replace("__CONFIG__", json.dumps(page_config(cfg), ensure_ascii=False))

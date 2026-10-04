@@ -66,7 +66,7 @@ class FakeKronn:
         return self.call("GET", path)
 
 
-ANSWERS = {"owner": "p_coll2", "project_id": "1", "reuse": "new", "jira_config": "1", "github_repo": "acme/front_web",
+ANSWERS = {"team": "equipe", "owner": "p_coll2", "project_id": "1", "reuse": "new", "jira_config": "1", "github_repo": "acme/front_web",
            "ai_agent": "1", "agents": "auto", "mep_workflow": "", "avatar": "editor", "music": "", "confirm": "o"}
 
 
@@ -74,20 +74,21 @@ class InstallTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
         self.cfg_path = os.path.join(self.tmp, "bureau.config.json")
-        self.roster = open(os.path.join(ROOT, "team", "roster.json")).read()
+        self.roster = open(os.path.join(ROOT, "teams", "equipe", "roster.json")).read()
         self.fakes = []
 
         def make(api):
             f = FakeKronn(api); self.fakes.append(f); return f
         self.patches = [mock.patch.object(install, "Kronn", side_effect=make),
-                        mock.patch.object(install.subprocess, "run", side_effect=FileNotFoundError())]
+                        mock.patch.object(install.subprocess, "run", side_effect=FileNotFoundError()),
+                        mock.patch.object(install, "org_member", return_value=(True, "membre actif"))]
         for p in self.patches:
             p.start()
 
     def tearDown(self):
         for p in self.patches:
             p.stop()
-        open(os.path.join(ROOT, "team", "roster.json"), "w").write(self.roster)  # le test ne touche pas l'équipe
+        open(os.path.join(ROOT, "teams", "equipe", "roster.json"), "w").write(self.roster)  # le test ne touche pas l'équipe
         shutil.rmtree(self.tmp)
 
     def run_install(self, answers, *extra):
@@ -224,6 +225,43 @@ class InstallTest(unittest.TestCase):
         with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):
             self.assertEqual(self.run_install(ANSWERS), 0)
         self.assertEqual(json.load(open(self.cfg_path))["ui"], {"todo": "folded"})
+
+    def test_new_team_by_default_with_the_type_plan(self):
+        answers = {k: v for k, v in ANSWERS.items() if k not in ("team", "owner")}
+        answers.update(owner="__new__", new_name="Pam", new_person="Pam Beesly", new_role="dev", github_repo="")
+        self.assertEqual(self.run_install(answers), 0)
+        cfg = json.load(open(self.cfg_path))
+        self.assertIsNone(cfg["team"])
+        self.assertEqual(cfg["layout"], "layouts/open-space.json")
+        self.assertEqual([p["key"] for p in cfg["people"]], ["p_pam"])
+        self.assertEqual(cfg["jira"]["project"], "")  # défauts neutres : rien d'equipe
+        html = next(b for m, p, b in self.fakes[-1].calls if m == "PUT" and p.endswith("/html"))["html"]
+        self.assertIn('"p_pam"', html)
+        self.assertNotIn("Jan Levinson", html)  # pas le roster equipe (les recettes d'avatar restent dans sprites/cast.json)
+        self.assertNotIn("LE BUREAU", html)
+
+    def test_newcomer_stays_in_the_local_config(self):
+        answers = dict(ANSWERS, owner="__new__", new_name="Jan", new_person="Jan Levinson", new_role="po")
+        self.assertEqual(self.run_install(answers), 0)
+        cfg = json.load(open(self.cfg_path))
+        self.assertEqual(cfg["people"], [{"key": "p_jan", "name": "Jan", "role": "Product owner", "person": "Jan Levinson", "roleKind": "po"}])
+        self.assertEqual(open(os.path.join(ROOT, "teams", "equipe", "roster.json")).read(), self.roster)  # roster partagé intact
+        html = next(b for m, p, b in self.fakes[-1].calls if m == "PUT" and p.endswith("/html"))["html"]
+        self.assertIn('"p_jan"', html)
+        self.assertIn('"p_coll1"', html)
+
+    def test_team_reserved_to_its_github_organisation(self):
+        with mock.patch.object(install, "org_member", return_value=(False, "ton compte GitHub n'est pas membre de acme")):
+            with self.assertRaises(install.InstallError) as e:
+                self.run_install(ANSWERS)
+        self.assertIn("réservée aux membres de acme", str(e.exception))
+        self.assertFalse([c for c in self.fakes[-1].calls if c[0] in ("POST", "PUT")])
+
+    def test_github_login_suggests_who_you_are(self):
+        roster = [{"key": "p_a", "name": "A", "role": "Dev"}, {"key": "p_b", "name": "B", "role": "Dev", "github": "BeeGH"}]
+        asker = install.Asker({})
+        with mock.patch("sys.stdout", new=open(os.devnull, "w")):
+            self.assertEqual(install.who(asker, roster, "beegh"), ("p_b", None))
 
     def test_dry_run_creates_nothing(self):
         self.assertEqual(self.run_install(ANSWERS, "--dry-run"), 0)

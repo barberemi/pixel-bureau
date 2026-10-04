@@ -46,7 +46,7 @@ test("un autre plan (exemple-startup) : la page démarre, chaque siège et chaqu
 test('sièges : même attribution dans la page et dans tools/plan.py (plans, boss, agents avec ou sans place)', () => {
   const {execFileSync} = require('child_process');
   const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'bureau.config.json'), 'utf8'));
-  const roster = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'team', 'roster.json'), 'utf8')).people;
+  const roster = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'teams', 'equipe', 'roster.json'), 'utf8')).people;
   const bare = fixture.agents.map(({seat, ...a}) => a);
   for (const layout of ['equipe', 'exemple-startup'])
     for (const owner of ['p_remi', 'p_coll2', null])

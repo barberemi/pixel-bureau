@@ -40,8 +40,11 @@ DEPLOY_MAX_AGE = 600  # au plus 10 min sans relire (déploiement lancé hors de 
 
 
 def gh_runs(workflow):
+    repo = (CFG.get("github") or {}).get("repo")
+    if not repo or not workflow:  # pas de dépôt ou pas de workflow de déploiement configuré : rien à suivre
+        return []
     try:
-        out = subprocess.run(["gh", "run", "list", "--repo", CFG["github"]["repo"], "--workflow", workflow, "--limit", "5",
+        out = subprocess.run(["gh", "run", "list", "--repo", repo, "--workflow", workflow, "--limit", "5",
                               "--json", GH_FIELDS], capture_output=True, text=True, timeout=60)
         return json.loads(out.stdout or "[]")
     except Exception:
@@ -67,7 +70,7 @@ except (OSError, ValueError):
     cache = None
 if deploys_moving(cache):
     cache = {"day": now.strftime("%Y-%m-%d"), "at": datetime.now(timezone.utc).timestamp(),
-             "staging": gh_runs(CFG["github"]["staging_workflow"]), "prod": gh_runs(CFG["github"]["prod_workflow"])}
+             "staging": gh_runs((CFG.get("github") or {}).get("staging_workflow")), "prod": gh_runs((CFG.get("github") or {}).get("prod_workflow"))}
     try:
         _os.makedirs(_os.path.dirname(DEPLOY_CACHE), exist_ok=True)
         with open(DEPLOY_CACHE, "w") as fh:
