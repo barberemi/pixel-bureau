@@ -173,12 +173,15 @@ else:
 
 runs.sort(key=lambda x: x["start"] or "")
 crons = []
-for w in get("/workflows"):
+WFS = get("/workflows")
+# workflows désactivés : leurs échecs passés ne sont plus à traiter (la page les montre « désactivé »)
+disabled = [w["id"] for w in WFS if not w.get("enabled")]
+for w in WFS:
     if w.get("enabled") and w.get("trigger_type") == "cron" and not w["name"].startswith("Le Bureau"):
         tr = (get("/workflows/" + w["id"]).get("trigger") or {})
         if tr.get("schedule"):
             crons.append({"wf": w["id"], "name": w["name"], "schedule": tr["schedule"]})
-snap = {"generated_at": datetime.now(timezone.utc).isoformat(), "day": now.strftime("%Y-%m-%d"), "runs": runs, "discussions": discs, "crons": crons, "purge": purge}
+snap = {"generated_at": datetime.now(timezone.utc).isoformat(), "day": now.strftime("%Y-%m-%d"), "runs": runs, "discussions": discs, "crons": crons, "disabled": disabled, "purge": purge}
 out = json.dumps(snap, separators=(",", ":"), ensure_ascii=False)
 cut = datetime.now(timezone.utc) - timedelta(hours=3)
 for r in runs:

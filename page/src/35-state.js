@@ -158,6 +158,11 @@ function workTxt(w){
 }
 
 // instant du dernier relevé du direct quand il n'est plus rafraîchi (plus de 3 min), sinon null ; jamais en démo
+// tous les workflows de ce personnage sont désactivés (liste publiée par le cron « journée »)
+function wfDisabled(c){
+  const d=(DATA&&DATA.disabled)||[]; if(!d.length||!c.wf||!c.wf.length)return false;
+  return c.wf.every(p=>d.some(id=>String(id).startsWith(p)));
+}
 function frozenSince(){
   if(!LIVE_DATA)return null;
   const g=ms((LIVE&&LIVE.generated_at)||(DATA&&DATA.generated_at));
@@ -286,6 +291,8 @@ function stateAt0(c,t){
   const last=runs[runs.length-1];
   const since=t-last._ve;
   if(c.visitor)return since<3*60e3?{st:'idle',zone:'leave',label:'Repart'}:{st:'gone',label:'Parti'};
+  // workflow désactivé dans Kronn : c'est voulu, ses échecs passés ne sont plus une panne à traiter
+  if(wfDisabled(c))return {st:'off',label:'Workflow désactivé dans Kronn'+(last.status==='Failed'?' (dernier run en échec)':'')};
   const bad=last.status==='Failed'||last.status==='Cancelled';
   // alarme : ALARM_FAILS échecs d'affilée (runs de premier niveau) = en panne jusqu'au prochain succès, plus seulement 40 min
   const streak=failStreak(c,t);

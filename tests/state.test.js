@@ -333,3 +333,12 @@ test('minuit de Paris, y compris le jour du passage à l\'heure d\'hiver', () =>
   assert.equal(M('2026-10-25T18:00:00Z'), '2026-10-24T22:00:00.000Z'); // jour du changement : minuit encore en heure d'été
   assert.equal(M('2026-10-26T08:00:00Z'), '2026-10-25T23:00:00.000Z'); // hiver : UTC+1
 });
+
+test('workflow désactivé : plus de panne ni d\'alarme, l\'agent est absent', () => {
+  reset();
+  run(`DATA={runs:[],disabled:['abcd1234-ffff']};`);
+  const st = J(`stateAt(${agentWith([failRun('a', 300), failRun('b', 200), failRun('c', 100)].join(','))}, ${T11})`);
+  assert.equal(st.st, 'off');
+  assert.match(st.label, /désactivé/);
+  run('DATA={runs:[]};');
+});
