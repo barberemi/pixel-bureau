@@ -20,7 +20,7 @@ TPL_DIR = os.path.join(ROOT, "workflows", "templates")
 TEMPLATES = {
     "office": ("workflow", ("workflows", "office"), {"snapshot": "workflows/office_snapshot.py"}),
     "live": ("workflow", ("workflows", "live"), {"snapshot": "workflows/live_snapshot.py", "gates": "workflows/gates_snapshot.py"}),
-    "team": ("workflow", ("workflows", "team"), {"github": "workflows/github_snapshot.py", "shape": "workflows/team_shape.py"}),
+    "team": ("workflow", ("workflows", "team"), {"github": "workflows/github_snapshot.py", "shape": "workflows/team_shape.py", "since": "workflows/standup_since.py"}),
     "payroll": ("workflow", ("workflows", "payroll"), {"payroll": "workflows/payroll_snapshot.py"}),
     "avatar": ("workflow", ("actions", "avatar"), {"save": "workflows/avatar_save.py"}),
     "gate": ("workflow", ("actions", "gate"), {"decide": "workflows/gate_decide.py"}),
@@ -53,7 +53,7 @@ def script_code(path, cfg):
 ROLES = ("po", "sm", "qa")
 # étapes du travail des rôles : retirées si personne n'a ce rôle (ou pas de compte Jira dans le roster)
 WORK_REQUIRES = {"work_written": "jira.role_ids", "work_po_triage": "jira.role.po", "work_sm_triage": "jira.role.sm",
-                 "work_qa_ok": "jira.role.qa", "work_qa_back": "jira.role.qa"}
+                 "work_qa_ok": "jira.role.qa", "work_qa_back": "jira.role.qa", "since": "jira.role.qa"}
 FLOW_DEFAULTS = {"triage_from": "Proposed", "test": "To Test", "validated": "To Deploy", "reopened": "Reopen"}
 
 
@@ -167,14 +167,14 @@ def templatize(key, kind, d, cfg):
                 for r in ROLES:
                     if vals[f"jira.role.{r}"]:
                         v = v.replace(f'"{r}":"{vals[f"jira.role.{r}"]}"', f'"{r}":"@@jira.role.{r}@@"')
-            if "CHANGED" in v or "reporter in" in v:  # requêtes du travail des rôles
+            if "CHANGED" in v or "WAS" in v or "reporter in" in v:  # requêtes du travail des rôles
                 if vals["jira.role_ids"]:
                     v = v.replace(f"reporter in ({vals['jira.role_ids']})", "reporter in (@@jira.role_ids@@)")
                 for r in ROLES:
                     if vals[f"jira.role.{r}"]:
                         v = v.replace(f'BY "{vals[f"jira.role.{r}"]}"', f'BY "@@jira.role.{r}@@"')
                 for k in FLOW_DEFAULTS:
-                    v = re.sub(r'(FROM|TO) "' + re.escape(vals[f"jira.flow.{k}"]) + '"', lambda m: f'{m.group(1)} "@@jira.flow.{k}@@"', v)
+                    v = re.sub(r'(FROM|TO|WAS) "' + re.escape(vals[f"jira.flow.{k}"]) + '"', lambda m: f'{m.group(1)} "@@jira.flow.{k}@@"', v)
             return v
         if isinstance(v, list):
             return [walk(x) for x in v]
@@ -185,7 +185,7 @@ def templatize(key, kind, d, cfg):
     d = walk(d)
     if kind == "workflow":
         for s in d["steps"]:
-            if s.get("api_plugin_slug") == "mcp-atlassian":
+            if s.get("api_plugin_slug") == "mcp-atlassian" or s["name"] in WORK_REQUIRES:
                 s["_requires"] = WORK_REQUIRES.get(s["name"], "jira")
             path = scripts.get(s["name"])
             if not path:

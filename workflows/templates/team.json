@@ -190,11 +190,33 @@
     "_requires": "jira.role.sm"
    },
    {
+    "name": "since",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Heure du dernier daily (jour ouvré précédent), pour les tickets du testeur.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/standup_since.py@@"
+    ],
+    "exec_timeout_secs": 20,
+    "_requires": "jira.role.qa"
+   },
+   {
     "name": "work_qa_ok",
     "step_type": {
      "type": "ApiCall"
     },
-    "description": "Recettes validées par la QA ces 7 jours (test vers à déployer).",
+    "description": "Tickets passés en test depuis le dernier daily (statut actuel : validé, réouvert ou encore en test).",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -208,7 +230,7 @@
     "api_endpoint_path": "/rest/api/3/search/jql",
     "api_method": "GET",
     "api_query": {
-     "jql": "project = @@jira.project@@ AND status CHANGED FROM \"@@jira.flow.test@@\" TO \"@@jira.flow.validated@@\" BY \"@@jira.role.qa@@\" DURING (-7d, now()) ORDER BY updated DESC",
+     "jql": "project = @@jira.project@@ AND status WAS \"@@jira.flow.test@@\" DURING (\"{{steps.since.data.stdout}}\", now()) ORDER BY updated DESC",
      "fields": "summary,status",
      "maxResults": "50"
     },
@@ -224,7 +246,7 @@
     "step_type": {
      "type": "ApiCall"
     },
-    "description": "Tickets renvoyés par la QA ces 7 jours (test vers réouvert).",
+    "description": "Tickets réouverts après test depuis le dernier daily.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -238,7 +260,7 @@
     "api_endpoint_path": "/rest/api/3/search/jql",
     "api_method": "GET",
     "api_query": {
-     "jql": "project = @@jira.project@@ AND status CHANGED FROM \"@@jira.flow.test@@\" TO \"@@jira.flow.reopened@@\" BY \"@@jira.role.qa@@\" DURING (-7d, now()) ORDER BY updated DESC",
+     "jql": "project = @@jira.project@@ AND status CHANGED FROM \"@@jira.flow.test@@\" TO \"@@jira.flow.reopened@@\" AFTER \"{{steps.since.data.stdout}}\" ORDER BY updated DESC",
      "fields": "summary,status",
      "maxResults": "50"
     },

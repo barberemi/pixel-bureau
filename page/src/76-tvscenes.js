@@ -63,8 +63,8 @@ function personScene(c,t){
     return note+`<h3>Nouveaux tickets (${nw.length})</h3>${nw.length?tkList(nw,50):'<p class="sc-empty">Aucun cette semaine.</p>'}`;
   }
   if(c.roleKind==='qa'){
-    const ok=W?W.validated:[], back=W?W.reopened:[];
-    return `<div class="sc-cols"><div><h3>Testés cette semaine (${cnt50(ok.length)})</h3>${ok.length?tkList(ok,50):'<p class="sc-empty">Aucun.</p>'}</div>`+
+    const ok=W?W.tested:[], back=W?W.reopened:[];
+    return `<div class="sc-cols"><div><h3>Testés depuis le dernier daily (${cnt50(ok.length)})</h3>${ok.length?tkList(ok,50):'<p class="sc-empty">Aucun.</p>'}</div>`+
       `<div><h3>Réouverts (${cnt50(back.length)})</h3>${back.length?tkList(back,50):'<p class="sc-empty">Aucun.</p>'}</div></div>`;
   }
   if(!own.length)return note||'<p class="sc-empty">Pas de ticket dans le sprint.</p>';

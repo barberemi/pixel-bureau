@@ -194,7 +194,7 @@ if last:
     prev_sprint = {"name": last.get("name"), "end": last.get("completeDate"), "people": list(prev.values())}
 
 # ---------- travail Jira des rôles sans tickets assignés (PO, SM, QA), 7 derniers jours ----------
-# par compte Jira : tickets écrits, triés (PO, SM), recettes validées et renvoyées (QA) ; 50 max par requête (« 50+ »)
+# par compte Jira : tickets écrits, triés (PO, SM) sur 7 jours ; testés et réouverts (QA) depuis le dernier daily ; 50 max par requête
 # comptes Jira des rôles, rendus dans l'entrée par le modèle (emplacements jira.role.po, .sm, .qa ; vide si personne)
 ROSTER_ROLES = {r: a for r, a in (D.get("roles") or {}).items() if isinstance(a, str) and a}
 W = D.get("work") if isinstance(D.get("work"), dict) else {}
@@ -204,7 +204,9 @@ def brief(issues):
     out_ = []
     for it in issues or []:
         f = it.get("fields") or {}
-        out_.append({"key": it.get("key"), "summary": (f.get("summary") or "")[:100], "type": (f.get("issuetype") or {}).get("name")})
+        stn = (f.get("status") or {}).get("name")
+        out_.append({"key": it.get("key"), "summary": (f.get("summary") or "")[:100], "type": (f.get("issuetype") or {}).get("name"),
+                     "status": stn, "cat": CAT.get(stn)})
     return out_
 
 
@@ -212,7 +214,7 @@ work = {}
 
 
 def wk(acc):
-    return work.setdefault(acc, {"written": [], "triaged": [], "validated": [], "reopened": []})
+    return work.setdefault(acc, {"written": [], "triaged": [], "tested": [], "reopened": []})
 
 
 for it in W.get("written") or []:
@@ -224,7 +226,7 @@ for role, key in (("po", "po_triage"), ("sm", "sm_triage")):
         wk(ROSTER_ROLES[role])["triaged"] = brief(W[key])
 if ROSTER_ROLES.get("qa"):
     if isinstance(W.get("qa_ok"), list):
-        wk(ROSTER_ROLES["qa"])["validated"] = brief(W["qa_ok"])
+        wk(ROSTER_ROLES["qa"])["tested"] = brief(W["qa_ok"])  # passés en test depuis le dernier daily
     if isinstance(W.get("qa_back"), list):
         wk(ROSTER_ROLES["qa"])["reopened"] = brief(W["qa_back"])
 

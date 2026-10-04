@@ -180,11 +180,11 @@ function foldSection(side,id,title,count,defOpen){
 // <details> dont on retient l'ouverture d'un rafraîchissement à l'autre
 const DET_OPEN={};
 function memoDetails(d,id,def){d.open=id in DET_OPEN?DET_OPEN[id]:def;d.addEventListener('toggle',()=>{DET_OPEN[id]=d.open;});return d;}
-// « Cette semaine dans Jira » : ce que font la PO, la SM et la QA sans tickets assignés (écrits, triés, recettés)
+// « Cette semaine dans Jira » : ce que font la PO et la SM (écrits, triés : 7 jours) et la QA (testés, réouverts : depuis le dernier daily)
 function workBlock(side,c){
   const W=workOf(c); if(!W)return;
   const box=foldSection(side,'work','Cette semaine dans Jira',null,true);
-  const groups=[['written','Tickets écrits','var(--info)'],['triaged','Tickets triés','#8a8478'],['validated','Recettes validées','var(--ok)'],['reopened','Renvoyés en développement','var(--err)']];
+  const groups=[['written','Tickets écrits','var(--info)'],['triaged','Tickets triés','#8a8478'],['tested','Testés depuis le dernier daily','#7a5cc8'],['reopened','Réouverts depuis le dernier daily','var(--err)']];
   for(const [k,t,col] of groups){
     const list=W[k]; if(!list.length)continue;
     const d=memoDetails(document.createElement('details'),c.key+':w:'+k,k!=='triaged');

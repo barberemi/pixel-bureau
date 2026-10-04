@@ -101,12 +101,12 @@ test('À traiter : réglage ui.todo (replié au chargement, ou masqué)', () => 
 test('rôles : la QA recette l\'équipe, la PO écrit et trie, sans ticket assigné personne n\'est « inactif » à tort', () => {
   const T9 = Date.parse('2026-10-01T09:00:00Z');
   run(`TEAM={sprint:{name:'S'},people:[{id:'dev',name:'Andy',tickets:[{key:'EW-5',cat:'test'}],prs:[]}],unassigned:[],meps:[],events:[],
-    work:{q1:{written:[],triaged:[],validated:[{key:'EW-1'},{key:'EW-2'}],reopened:[{key:'EW-3'}]},
-          p1:{written:[{key:'EW-9'}],triaged:[{key:'EW-8'},{key:'EW-7'}],validated:[],reopened:[]}}};`);
+    work:{q1:{written:[],triaged:[],tested:[{key:'EW-1'},{key:'EW-2'}],reopened:[{key:'EW-3'}]},
+          p1:{written:[{key:'EW-9'}],triaged:[{key:'EW-8'},{key:'EW-7'}],tested:[],reopened:[]}}};`);
   const st = who => J(`stateAt(${who},${T9})`);
   const qa = st(`{key:'q',name:'Karen',person:'Karen Filippelli',roleKind:'qa',jira_id:'q1',seat:[19,14]}`);
   assert.equal(qa.st, 'work');
-  assert.match(qa.label, /^Teste 1 ticket\(s\) : EW-5 · 3 recettés \(2 validés, 1 renvoyé\) cette semaine$/);
+  assert.match(qa.label, /^Teste 1 ticket\(s\) : EW-5 · 2 testés depuis le dernier daily, dont 1 réouvert$/);
   const po = st(`{key:'p',name:'Jan',person:'Jan Levinson',roleKind:'po',jira_id:'p1',seat:[7,15]}`);
   assert.equal(po.label, '1 écrit · 2 triés cette semaine');
   assert.equal(po.bubble, '✍ 1 · 🗂 2');

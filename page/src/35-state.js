@@ -142,18 +142,21 @@ const ALARM_FAILS=3, FROZEN_AFTER=3*60e3;
 // travail Jira des 7 derniers jours d'une personne (dataset team.work, par compte Jira du roster) ; null si rien
 function workOf(c){
   const w=c.jira_id&&TEAM&&TEAM.work&&TEAM.work[c.jira_id];
-  return w&&(w.written.length||w.triaged.length||w.validated.length||w.reopened.length)?w:null;
+  return w&&(w.written.length||w.triaged.length||w.tested.length||w.reopened.length)?w:null;
 }
 const cnt50=n=>n>=50?'50+':String(n); // requêtes plafonnées à 50 résultats
-// « 3 tickets écrits · 15 triés · 13 recettés (12 validés, 1 renvoyé) cette semaine »
+// « 3 écrits · 15 triés cette semaine » ; testeur : « 5 testés depuis le dernier daily, dont 1 réouvert »
 function workTxt(w){
   if(!w)return '';
-  const out=[], r=w.validated.length+w.reopened.length;
-  if(w.written.length)out.push(cnt50(w.written.length)+' écrit'+(w.written.length>1?'s':''));
-  if(w.triaged.length)out.push(cnt50(w.triaged.length)+' trié'+(w.triaged.length>1?'s':''));
-  if(r)out.push(cnt50(r)+' recetté'+(r>1?'s':'')+' ('+cnt50(w.validated.length)+' validé'+(w.validated.length>1?'s':'')+', '+cnt50(w.reopened.length)+' renvoyé'+(w.reopened.length>1?'s':'')+')');
-  return out.join(' · ')+' cette semaine';
+  const week=[], out=[];
+  if(w.written.length)week.push(cnt50(w.written.length)+' écrit'+(w.written.length>1?'s':''));
+  if(w.triaged.length)week.push(cnt50(w.triaged.length)+' trié'+(w.triaged.length>1?'s':''));
+  if(week.length)out.push(week.join(' · ')+' cette semaine');
+  if(w.tested.length||w.reopened.length)out.push(cnt50(w.tested.length)+' testé'+(w.tested.length>1?'s':'')+' depuis le dernier daily'+
+    (w.reopened.length?', dont '+cnt50(w.reopened.length)+' réouvert'+(w.reopened.length>1?'s':''):''));
+  return out.join(' · ');
 }
+
 // instant du dernier relevé du direct quand il n'est plus rafraîchi (plus de 3 min), sinon null ; jamais en démo
 function frozenSince(){
   if(!LIVE_DATA)return null;
@@ -215,7 +218,7 @@ function stateAt0(c,t){
         bubble:tt[0].key,
         tk:tt
       };
-      if(wk)return {st:'idle',zone:'desk',human:true,label:'Rien à tester pour le moment · '+wk,bubble:'🔍 '+cnt50(W.validated.length+W.reopened.length)};
+      if(wk)return {st:'idle',zone:'desk',human:true,label:'Rien à tester pour le moment · '+wk,bubble:'🔍 '+cnt50(W.tested.length+W.reopened.length)};
       return {st:'idle',zone:'wander',human:true,label:'Rien à tester pour le moment'};
     }
     if(c.roleKind==='po'){ // la PO écrit et trie le backlog : ses tickets assignés sont rares
