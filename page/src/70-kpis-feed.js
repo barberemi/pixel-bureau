@@ -183,6 +183,11 @@ let FEED_MODE='important', FEED_N=FEED_PAGE, FEED_SIG='', FEED_VIEW=[];
 try{FEED_MODE=localStorage.getItem('bureau:feed')||'important';}catch(e){}
 // important : l'équipe, les MEP, les visiteurs et les échecs d'agents ; tout : en plus les lancements et les succès.
 // Un même workflow lancé plus de FEED_REPEAT fois dans la journée (crons horaires) tient en une ligne : « ×21, 0 ✓ 21 ✗ ».
+// jour des données affichées : « aujourd'hui », sinon « hier » ou la date (avant le premier cron du matin, c'est la veille)
+function dataDayWord(){
+  const d=Math.round((parisMidnight(Date.now())-DAY0)/864e5);
+  return d<=0?"aujourd'hui":d===1?'hier':'le '+new Intl.DateTimeFormat('fr-FR',{timeZone:TZ,weekday:'long',day:'numeric'}).format(new Date(DAY0+12*36e5));
+}
 function feedView(ev,mode){
   const groups={};
   for(const e of ev)if(e.agent&&e.kind!=='start')(groups[e.grp]=groups[e.grp]||[]).push(e);
@@ -195,7 +200,7 @@ function feedView(ev,mode){
       summarized.add(e.grp);
       const ko=g.filter(x=>x.kind==='ko').length, ok=g.length-ko, last=g[0];
       if(mode==='important'&&!ko)continue;
-      out.push({t:last.t,c:last.c,txt:`<span style="color:${last.kind==='ko'?'var(--err)':'var(--ok)'}">${last.kind==='ko'?'✗':'✓'}</span> ${esc(last.c.name)} · <b>${esc(last.wf||'')}</b> <small>×${g.length} aujourd'hui · ${ok} ✓ · ${ko} ✗${last.kind==='ko'?' · dernier en échec':''}</small>`});
+      out.push({t:last.t,c:last.c,txt:`<span style="color:${last.kind==='ko'?'var(--err)':'var(--ok)'}">${last.kind==='ko'?'✗':'✓'}</span> ${esc(last.c.name)} · <b>${esc(last.wf||'')}</b> <small>×${g.length} ${dataDayWord()} · ${ok} ✓ · ${ko} ✗${last.kind==='ko'?' · dernier en échec':''}</small>`});
       continue;
     }
     if(e.kind==='start'&&e.done)continue; // le run est fini : sa ligne de fin dit tout
@@ -216,6 +221,8 @@ function renderFeedList(view){
     html+=`<div class="ev${e.c?' fam-'+famOf(e.c):''}" data-i="${i}"><span class="tm">${hm(e.t)}</span><span class="x">${e.txt}</span></div>`;
   });
   if(view.length>FEED_N)html+=`<button class="feedmore" data-feed-more>Voir plus (${view.length-FEED_N})</button>`;
+  const ttl=document.getElementById('feedtitle'), w=dataDayWord();
+  if(ttl)ttl.textContent=w==="aujourd'hui"?'Fil de la journée':'Fil de la journée · '+w;
   const seg=document.getElementById('feedmode');
   if(seg)seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.mode===FEED_MODE));
   if(html===FEED_SIG)return;

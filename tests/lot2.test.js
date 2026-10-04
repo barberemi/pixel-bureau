@@ -62,6 +62,7 @@ function feedEv() {
 }
 
 test('fil : un workflow répété tient en une ligne, « Important » ne garde que l\'équipe et les échecs', () => {
+  run('DAY0=parisMidnight(Date.now());'); // données du jour : « aujourd'hui »
   const imp = J(`feedView(${feedEv()},'important').map(e=>e.txt)`);
   assert.equal(imp.length, 2);
   assert.ok(imp.some(x => x === 'merge #12'));
@@ -133,4 +134,11 @@ test('rattachement : un rôle au nom complet dans le roster retrouve ses tickets
   assert.equal(J('chars.length'), 1);
   assert.equal(J('chars[0].team.id'), 'acc-r');
   assert.deepEqual(J('chars[0].team.tickets.map(x=>x.key)'), ['EW-7']);
+});
+
+test('fil : les données de la veille sont dites « hier », pas « aujourd\'hui »', () => {
+  run(`DAY0=parisMidnight(Date.now());`);
+  assert.equal(run('dataDayWord()'), "aujourd'hui");
+  run(`DAY0=parisMidnight(Date.now()-864e5);`);
+  assert.equal(run('dataDayWord()'), 'hier');
 });
