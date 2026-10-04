@@ -1,6 +1,6 @@
 # Qui fait quoi
 
-Une carte par personne et par agent actif : ce qu'il fait maintenant, son ticket ou son étape, depuis quand.
+Une carte par personne et par agent actif : ce qu'il fait maintenant, son ticket ou son étape, depuis quand (pour un ticket : depuis son entrée dans la colonne, d'après l'historique Jira).
 
 ![Qui fait quoi](../img/qui-fait-quoi.png)
 
