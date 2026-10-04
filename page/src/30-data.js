@@ -106,11 +106,11 @@ function bestEmployee(){
 const empChar=r=>r&&(chars.find(x=>x.team&&x.team.id===r.p.id)||(typeof personChar==='function'?personChar(r.p.id,r.p.name):null));
 // minuit (heure de Paris) du jour de t ; juste aussi les jours de changement d'heure (minuit est avant le changement, à 2h ou 3h)
 function parisMidnight(t){
-  const u=Date.parse(new Intl.DateTimeFormat('en-CA',{timeZone:TZ}).format(new Date(t))+'T00:00:00Z'), p=parisHM(u);
+  const u=Date.parse(dtf('en-CA',{}).format(new Date(t))+'T00:00:00Z'), p=parisHM(u);
   return u-(p.h*60+p.m)*60e3;
 }
 function parisHM(t){
-  const p=new Intl.DateTimeFormat('en-GB',{timeZone:TZ,hour:'numeric',minute:'numeric',weekday:'short',hour12:false}).formatToParts(new Date(t));
+  const p=dtf('en-GB',{hour:'numeric',minute:'numeric',weekday:'short',hour12:false}).formatToParts(new Date(t));
   const g=k=>(p.find(x=>x.type===k)||{}).value;
   return {h:+g('hour')%24,m:+g('minute'),wd:g('weekday')};
 }
@@ -118,7 +118,7 @@ function inSax(t){const p=parisHM(t);return p.h>=RHYTHM.office_hours[0]&&p.h<RHY
 // pas de mise en prod le vendredi ni le week-end : le plateau TV est fermé (ruban, lumière éteinte, porte bloquée)
 // jours calendaires (Paris) restants avant une date : J-0 le jour même
 function daysLeft(end,t){
-  const d=x=>Date.parse(new Intl.DateTimeFormat('en-CA',{timeZone:TZ}).format(new Date(x))+'T00:00:00Z');
+  const d=x=>Date.parse(dtf('en-CA',{}).format(new Date(x))+'T00:00:00Z');
   return Math.max(0,Math.round((d(end)-d(t))/864e5));
 }
 function stageClosed(t){return RHYTHM.mep_freeze.includes(parisHM(t).wd);}
@@ -164,7 +164,7 @@ function readData(src){
 }
 const clean=s=>String(s||'').replace(/\s+—\s+/g,' · ').replace(/—/g,'-');
 function mkChar(def){
-  return {...def, baseName:def.name, runs:[], pos:null, tile:null, path:[], dir:'down', pose:'idle', moving:false, phase:Math.random()*10,
+  return {...def, baseName:def.name, runs:[], pos:null, tile:null, path:[], dir:'down', pose:'idle', moving:false, phase:keySeed(def.key)%97/9.7,
     spotKey:null, idlePlan:null, present:false, st:null};
 }
 function setData(d,live){
@@ -221,7 +221,6 @@ function setData(d,live){
   for(const c of chars){
     c.runs.sort((a,b)=>a._s-b._s);
     c.sprite=c.sprite||c.key;
-    if(c.parentRuns===undefined){}
   }
   // child runs (foreach) attach to their parent for display
   for(const c of chars){
@@ -243,9 +242,9 @@ let DAY0=0,RSTART=0,REND=0,DISC_BY_RUN={},FIRST_LOAD_DONE=false;
 
 // ---------- time ----------
 let mode='live', T=0, lastReal=performance.now(), needTeleport=true;
-const fmtTZ=new Intl.DateTimeFormat('fr-FR',{timeZone:TZ,hour:'2-digit',minute:'2-digit'});
+const fmtTZ=dtf('fr-FR',{hour:'2-digit',minute:'2-digit'});
 const hm=t=>fmtTZ.format(new Date(t));
-const hms=t=>new Intl.DateTimeFormat('fr-FR',{timeZone:TZ,hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(t));
+const hms=t=>dtf('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(t));
 function liveT(){return LIVE_DATA?Date.now():ms(DATA.generated_at);}
 function fmtDur(d){
   if(d==null||isNaN(d))return '';

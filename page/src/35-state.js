@@ -102,7 +102,7 @@ function stateAt(c,t){
 }
 // ---------- la journée du boss : priorités, routine tirée au sort (fixe pour une date) ----------
 const parisMin=t=>{const p=parisHM(t);return p.h*60+p.m;};
-const daySeed=t=>+new Intl.DateTimeFormat('en-CA',{timeZone:TZ}).format(new Date(t)).replace(/-/g,'');
+const daySeed=t=>+dtf('en-CA',{}).format(new Date(t)).replace(/-/g,'');
 // créneaux du jour en minutes depuis minuit (heure de Paris)
 function bossPlan(t){
   const sd=daySeed(t), r=k=>hash(sd%100000,k);
@@ -112,7 +112,7 @@ function bossPlan(t){
 }
 const inSlot=(m,[a,b])=>m>=a&&m<b;
 // les collègues qu'il peut aller voir : présents, assis à leur place
-function deskColleagues(boss){return chars.filter(x=>x!==boss&&x.person&&x.seat&&x.present&&x._st&&x._st.zone==='desk');}
+function deskColleagues(boss){return chars.filter(x=>x!==boss&&x.person&&x.seat&&x._st&&x._st.zone==='desk');}
 function bossState(c,t){
   const n=k=>chars.filter(x=>x._st&&x._st.st===k).length, gates=n('gate'), asks=n('ask'), pending=gates+asks;
   const waitTxt=[gates?gates+' validation(s) en attente':'',asks?asks+' discussion(s) attendent ta réponse':''].filter(Boolean).join(' · ');
@@ -181,7 +181,7 @@ function weekHealth(c){
 }
 function stateAt0(c,t){
   if(c.person&&!c.boss){
-    const h=+new Intl.DateTimeFormat('en-GB',{timeZone:TZ,hour:'numeric',hour12:false}).format(new Date(t));
+    const h=+dtf('en-GB',{hour:'numeric',hour12:false}).format(new Date(t));
     if(RHYTHM.weekend.includes(parisHM(t).wd))return {st:'off',label:'En week-end'}; // seul le boss vient le week-end
     if(h<RHYTHM.office_hours[0]||h>=RHYTHM.office_hours[1])return {st:'off',label:'Rentré chez soi'};
     if(inDaily(t))return {st:'daily',zone:'daily',human:true,label:'Daily en cafétéria',bubble:c.roleKind==='sm'?'Daily':null};
@@ -201,7 +201,7 @@ function stateAt0(c,t){
     };
     const open=c.team?c.team.tickets.filter(x=>x.cat!=='done'):[], W=workOf(c), wk=workTxt(W);
     if(c.roleKind==='sm'){
-      const mn=+new Intl.DateTimeFormat('en-GB',{timeZone:TZ,minute:'numeric'}).format(new Date(t));
+      const mn=+dtf('en-GB',{minute:'numeric'}).format(new Date(t));
       const atBoard=mn<20;
       const end=TEAM&&TEAM.sprint&&TEAM.sprint.end?ms(TEAM.sprint.end):null;
       const j=end?daysLeft(end,t):null;
@@ -377,19 +377,25 @@ function pickSpot(c,zone,taken){
 const OFS_X=[0,12,-12,22,-22,6,-6,17,-17];
 // position en pixels d'une place : centre de la case, décalé pour les places en surnombre
 function spotPos(s){const p=tileCenter(s.x,s.y);if(s.ofs){p.x+=OFS_X[s.ofs%OFS_X.length];p.y+=s.ofs%2?2:-1;}return p;}
+// flânerie : tirages à graine fixe (personnage + jour), la même suite de pauses à chaque chargement et dans les tests
+function rng(seed){let a=seed>>>0;return ()=>{a=a+0x6D2B79F5>>>0;let t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;};}
 function wanderZone(c,real){
   if(!c.idlePlan||real>c.idlePlan.until){
-    const r=Math.random();
+    if(!c.rand||c.randDay!==DAY0){c.rand=rng(keySeed(c.key)*7919+daySeed(DAY0||T));c.randDay=DAY0;}
+    const r=c.rand();
     const d=c.person?.75:.5;const z=r<d?'desk':r<d+(1-d)*.3?'coffee':r<d+(1-d)*.6?'sofa':r<d+(1-d)*.8?'ktable':r<d+(1-d)*.9?'cooler':'copier';
-    c.idlePlan={zone:z,until:real+12e3+Math.random()*25e3};
+    c.idlePlan={zone:z,until:real+12e3+c.rand()*25e3};
   }
   return c.idlePlan.zone;
 }
 function tick(real){
+  // deux passes : l'état du boss dépend de celui des autres (validations en attente, collègues à leur bureau)
+  for(const c of chars)if(!c.boss)c._st=stateAt(c,T);
+  for(const c of chars)if(c.boss)c._st=stateAt(c,T);
   const taken=new Set();
   const order=chars.slice().sort((a,b)=>(a.spotKey?0:1)-(b.spotKey?0:1));
   for(const c of order){
-    const s=stateAt(c,T); c._st=s;
+    const s=c._st;
     if(s.st==='absent'||s.st==='gone'||s.st==='off'){
       if(c.present&&!needTeleport&&s.st==='gone'&&c.tile&&!(c.tile[0]===EXIT[0]&&c.tile[1]===EXIT[1])){goTo(c,{key:'exit',x:EXIT[0],y:EXIT[1],dir:'right'});continue;}
       c.present=false;c.pos=null;c.spotKey=null;continue;

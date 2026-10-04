@@ -32,7 +32,7 @@ function freshRing(frac,size){
     `<circle cx="${c}" cy="${c}" r="${R}" fill="none" stroke="currentColor" stroke-width="${w}" stroke-dasharray="${(C*frac).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 ${c} ${c})" stroke-linecap="round"/></svg>`;
 }
 // attente avant la prochaine arrivée : secondes, minutes, ou pause du cron (hors de ses heures) avec l'heure de reprise
-const parisDay=t=>new Intl.DateTimeFormat('en-CA',{timeZone:TZ}).format(new Date(t));
+const parisDay=t=>dtf('en-CA',{}).format(new Date(t));
 const DAY_FR={Mon:'lundi',Tue:'mardi',Wed:'mercredi',Thu:'jeudi',Fri:'vendredi',Sat:'samedi',Sun:'dimanche'};
 function waitTxt(f,now){
   const left=f.eta-now, frac=Math.min(1,Math.max(0,(now-f.gen)/Math.max(1,f.eta-f.gen)));

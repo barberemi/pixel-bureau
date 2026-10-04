@@ -162,7 +162,7 @@ function renderFeed(){
       ev.push({t:r._e,c,team:true,txt:`🤖 ${esc(c.name)} ${/review|revue|relu/i.test(r.wf_name||'')?'a relu':'a travaillé sur'} <b>${esc(what)}</b>${pc?' de '+esc(pc.name):''}${ref.pr&&ref.key?' <small>'+esc(ref.key)+'</small>':''}`});}}
   // sprint : lancement et fin du jour (A2)
   if(TEAM&&TEAM.sprint){const sp=TEAM.sprint, st=ms(sp.start), en=ms(sp.end), sameDay=x=>x&&parisDay(x)===parisDay(T);
-    if(sameDay(st)&&st<=T)ev.push({t:st,c:smChar(),team:true,txt:`🏁 Le sprint <b>${esc(sp.name)}</b> commence <small>fin le ${esc(new Intl.DateTimeFormat('fr-FR',{timeZone:TZ,weekday:'short',day:'numeric',month:'short'}).format(new Date(en)))}</small>`});
+    if(sameDay(st)&&st<=T)ev.push({t:st,c:smChar(),team:true,txt:`🏁 Le sprint <b>${esc(sp.name)}</b> commence <small>fin le ${esc(dtf('fr-FR',{weekday:'short',day:'numeric',month:'short'}).format(new Date(en)))}</small>`});
     if(sameDay(en)&&en<=T){const d=dashData(T).sprint;ev.push({t:en,c:smChar(),team:true,txt:`🏁 Fin du sprint <b>${esc(sp.name)}</b> <small>${d&&d.ptsAll?Math.round(d.ptsDone/d.ptsAll*100)+' % des points terminés':''}</small>`});}}
   {
     const dt=DAY0+DAILY_MIN*60e3;
@@ -186,7 +186,7 @@ try{FEED_MODE=localStorage.getItem('bureau:feed')||'important';}catch(e){}
 // jour des données affichées : « aujourd'hui », sinon « hier » ou la date (avant le premier cron du matin, c'est la veille)
 function dataDayWord(){
   const d=Math.round((parisMidnight(Date.now())-DAY0)/864e5);
-  return d<=0?"aujourd'hui":d===1?'hier':'le '+new Intl.DateTimeFormat('fr-FR',{timeZone:TZ,weekday:'long',day:'numeric'}).format(new Date(DAY0+12*36e5));
+  return d<=0?"aujourd'hui":d===1?'hier':'le '+dtf('fr-FR',{weekday:'long',day:'numeric'}).format(new Date(DAY0+12*36e5));
 }
 function feedView(ev,mode){
   const groups={};

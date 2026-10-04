@@ -14,6 +14,11 @@ const OWNER = __OWNER__;          // bureau.config.json : clé du roster de qui 
 const CFG = __CONFIG__;
 const RHYTHM = {timezone:'Europe/Paris',location:[48.857,2.352],daily:'09:40',daily_minutes:15,office_hours:[8,20],mep_freeze:['Fri','Sat','Sun'],weekend:['Sat','Sun'],...(CFG.rhythm||{})};
 const TZ = RHYTHM.timezone;
+// graine stable tirée d'une clé (personnage, ticket) : rotation des bulles, phase d'animation, flânerie
+const keySeed=k=>[...String(k)].reduce((a,ch)=>a+ch.charCodeAt(0),0);
+// formateurs de dates du fuseau du bureau, créés une fois (certains servent à chaque image : en créer un coûte cher)
+const DTF_CACHE={};
+function dtf(locale,opts){const k=locale+JSON.stringify(opts);return DTF_CACHE[k]||(DTF_CACHE[k]=new Intl.DateTimeFormat(locale,Object.assign({timeZone:TZ},opts)));}
 // agents : un personnage par groupe de workflows (préfixes d'id), propres à cette installation
 const AGENTS = (CFG.agents||[]).map(a=>({...a,wf:a.wf||[]}));
 // casting : le propriétaire devient le boss (bureau du boss, sprite de boss s'il en a un), les autres gardent leur place

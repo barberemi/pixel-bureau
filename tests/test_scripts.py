@@ -119,6 +119,7 @@ class ScriptsTest(unittest.TestCase):
             fh.write(f"""#!{sys.executable}
 import json, sys
 a = sys.argv[1:]
+open({data!r} + ".calls", "a").write(" ".join(a) + "\\n")
 d = json.load(open({data!r}))
 key = ("open" if "open" in a else "merged") if a[0] == "pr" else "releases" if a[0] == "release" else \\
       "staging" if "NONPROD" in " ".join(a) else "prod"
@@ -233,6 +234,29 @@ print(json.dumps(d.get(key, [])))
         self.assertEqual({r["wf"] for r in out["runs"]}, {AGENT_WF})
         self.assertEqual([d["id"] for d in out["discussions"]], ["d1"])
         self.assertEqual(out["deploys"], {"staging": {}, "prod": {}})  # sans gh : aucun déploiement, pas d'erreur
+
+    def gh_calls(self):
+        p = os.path.join(self.tmp, "gh.json.calls")
+        return open(p).read().count("\n") if os.path.exists(p) else 0
+
+    def test_live_snapshot_reads_deploys_only_when_they_can_move(self):
+        done = {"status": "completed", "conclusion": "success", "createdAt": iso(30), "updatedAt": iso(20),
+                "displayTitle": "Deploy 17.2.0", "url": "https://x/r/1"}
+        self.fake_gh({"staging": [done], "prod": [done]})
+        api = self.kronn(FakeKronn())
+        out = self.run_script("live_snapshot.py", api=api)
+        self.assertEqual(self.gh_calls(), 2)  # pas encore de cache : staging + prod
+        self.assertEqual(out["deploys"]["prod"]["17.2.0"]["conclusion"], "success")
+        out = self.run_script("live_snapshot.py", api=api)
+        self.assertEqual(self.gh_calls(), 2)  # tout est fini, cache récent : aucun appel
+        self.assertEqual(out["deploys"]["prod"]["17.2.0"]["conclusion"], "success")  # republié depuis le cache
+        cache = os.path.join(self.tmp, ".cache", "kronn-bureau", "deploys.json")
+        c = json.load(open(cache))
+        c["prod"][0]["status"] = "in_progress"
+        with open(cache, "w") as fh:
+            json.dump(c, fh)
+        self.run_script("live_snapshot.py", api=api)
+        self.assertEqual(self.gh_calls(), 4)  # un déploiement en cours : relu
 
     def test_payroll_and_gates_ignore_bureau(self):
         api = self.kronn(FakeKronn())

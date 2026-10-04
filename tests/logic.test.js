@@ -127,27 +127,6 @@ test('runPartner : collègue concerné par un run (ticket ou auteur de PR)', () 
   assert.equal(run(`runPartner({vars:{jira_ticket_key:'EW-2'}})`), null);
 });
 
-test('kpiWallData : runs de premier niveau seulement, tokens du parent non doublés', () => {
-  const t = Z('2026-10-01T12:00:00Z');
-  run(`TEAM=null; T=${t}; DATA={runs:[
-    {run:'A',parent:null,status:'Success',_s:${t - 2 * 3600e3},_e:${t - 3600e3},tok:100},
-    {run:'A1',parent:'A',status:'Success',_s:${t - 2 * 3600e3},_e:${t - 3600e3},tok:40},
-    {run:'A2',parent:'A',status:'Failed',_s:${t - 2 * 3600e3},_e:${t - 3600e3},tok:60},
-    {run:'C',parent:'gone',status:'Failed',_s:${t - 30 * 60e3},_e:${t - 20 * 60e3},tok:10},
-    {run:'F',parent:null,status:'Success',_s:${t + 60e3},_e:null,tok:999}]}`);
-  const k = J('kpiWallData()');
-  assert.equal(k.runs, 2); // A et C (parent absent du jeu de données), pas les enfants ni le futur
-  assert.equal(k.tok, 110);
-  assert.equal(k.fails, 1);
-  assert.equal(k.recentFail, true);
-  assert.equal(k.hours.length, 12);
-  assert.equal(k.hours[11], 1); // C dans l'heure écoulée
-  assert.equal(k.hours[9], 1); // A il y a 2 h
-  assert.deepEqual(k.rot.map(r => r[1]), [0, 0, 0]);
-  run('DATA=null');
-  assert.equal(run('kpiWallData()'), null);
-});
-
 test('normLook : valeurs par défaut et options inconnues ramenées au défaut', () => {
   const l = J(`normLook({sex:'female',torso:'inconnu',legs:'formal',hair:'bob'})`);
   assert.equal(l.sex, 'female');

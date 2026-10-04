@@ -32,3 +32,23 @@ test('Agents empilés : une zone pleine décale chaque surnuméraire, jamais deu
     return JSON.stringify(out);})()`));
   assert.equal(new Set(pos).size, pos.length);
 });
+
+test('Flânerie à graine fixe : même personnage, même jour, même suite de pauses', () => {
+  const seq = () => JSON.parse(run(`(()=>{const c={key:'jim',person:false},out=[];
+    for(let i=0;i<6;i++){c.idlePlan=null;out.push(wanderZone(c,i));}return JSON.stringify(out);})()`));
+  const a = seq(), b = seq();
+  assert.deepEqual(a, b);
+  assert.ok(new Set(a).size > 1); // ce n'est pas toujours la même pause
+});
+
+test("tick en deux passes : l'état du boss ne dépend pas de l'ordre des personnages", () => {
+  const boss = () => run(`(()=>{
+    const g=chars.find(c=>!c.person&&!c.visitor&&!c.boss); const b=chars.find(c=>c.boss); if(!g||!b)return 'skip';
+    const keep=stateAt; stateAt=(c,t)=>c===g?{st:'gate',zone:'boss',label:'x'}:keep(c,t);
+    try{for(const c of chars)c._st=null; tick(0); return b._st.label;}finally{stateAt=keep;}
+  })()`);
+  run('chars.reverse()'); const a = boss();
+  run('chars.reverse()'); const b = boss();
+  assert.match(a, /validation/); // le boss voit la validation, qu'il soit calculé avant ou après l'agent
+  assert.equal(a, b);
+});

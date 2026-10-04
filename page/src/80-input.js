@@ -15,11 +15,7 @@ cv.addEventListener('mousemove',e=>{
     tip.style.display='block';
     tip.style.left=e.clientX+'px';
     tip.style.top=e.clientY+'px';
-    tip.textContent=(()=>{
-      const r=cv.getBoundingClientRect(),mx=(e.clientX-r.left)*W/r.width,my=(e.clientY-r.top)*H/r.height;
-      const ki=KPIS.findIndex(o=>mx>=o.x&&mx<=o.x+o.w&&my>=o.y&&my<=o.y+o.h);
-      return ki>=0?['Runs du jour · planning des crons','Échecs du jour · fiche de paie','Tokens du jour · fiche de paie'][ki]:null;
-    })()||(z==='tv'&&stageClosed(T)?'Plateau fermé : pas de MEP le vendredi ni le week-end':z==='paie'?'Fiche de paie des agents':z==='tv'?'Mises en prod du jour':z==='kanban'?'Mur Kanban du sprint':z==='planning'?'Planning des crons':'Employé du sprint');
+    tip.textContent=(z==='tv'&&stageClosed(T)?'Plateau fermé : pas de MEP le vendredi ni le week-end':z==='paie'?'Fiche de paie des agents':z==='tv'?'Mises en prod du jour':z==='kanban'?'Mur Kanban du sprint':z==='planning'?'Planning des crons':'Employé du sprint');
     return;
   }
   if(c){
@@ -33,8 +29,6 @@ cv.addEventListener('mouseleave',()=>{tip.style.display='none';hoverKey=null;});
 function hitZone(ev){
   const r=cv.getBoundingClientRect(),mx=(ev.clientX-r.left)*W/r.width,my=(ev.clientY-r.top)*H/r.height;
   const inR=o=>mx>=o.x&&mx<=o.x+o.w&&my>=o.y&&my<=o.y+o.h;
-  const ki=KPIS.findIndex(inR);
-  if(ki>=0)return ['planning','paie','paie'][ki];
   return inR(PAYR)?'paie':inR(TVR)?'tv':inR(KANR)?'kanban':inR(PLANR)?'planning':inR(EMPR)&&bestEmployee().length?'emp':null;}
 cv.addEventListener('click',e=>{if(TV)return;const c=hitTest(e);if(c){select(c.key);return;}select(hitZone(e));});
 const slider=document.getElementById('slider'), playBtn=document.getElementById('play'), liveBtn=document.getElementById('live'), speedSel=document.getElementById('speed');

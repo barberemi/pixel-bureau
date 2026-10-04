@@ -1,6 +1,9 @@
 // ---------- loop ----------
+// 30 images par seconde suffisent (pixel art, marche à 95 px/s) : une image sur deux d'un écran à 60 Hz est sautée
+const FRAME_MS=1000/30;
 let lastTick=0,lastUi=0;
 function loop(now){
+  if(now-lastReal<FRAME_MS-2){requestAnimationFrame(loop);return;}
   const dt=Math.min(.1,(now-lastReal)/1000); lastReal=now;
   if(DATA){
     REND=liveT();
@@ -23,6 +26,7 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 buildBg();
+bakeFurniture();
 // ---------- superposition : instantané complet (office/team, 10 min) + live (1 min) ----------
 let OFFICE=null, OFFICE_IS_LIVE=false, TEAM_BASE=null, LIVE=null;
 let GATES=[], PAYROLL=null, RELAUNCH=[], ASKABLE=[];
@@ -95,7 +99,7 @@ function mergedTeam(){
 // bureau vide (aucune donnée encore publiée) : la page tourne, les personnages de l'équipe sont là
 function emptyOffice(){
   const now=Date.now();
-  return {generated_at:new Date(now).toISOString(),day:new Intl.DateTimeFormat('en-CA',{timeZone:TZ}).format(new Date(now)),runs:[],discussions:[],crons:[],empty:true};
+  return {generated_at:new Date(now).toISOString(),day:dtf('en-CA',{}).format(new Date(now)),runs:[],discussions:[],crons:[],empty:true};
 }
 function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OFFICE_IS_LIVE);}
 {
