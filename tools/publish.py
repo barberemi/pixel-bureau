@@ -37,6 +37,9 @@ def workflows():
         if not ident:
             print(key, ": pas installé (aucun id dans la config)")
             continue
+        if ident in (CFG.get("own") or []):
+            print(f"{key} ({ident[:8]}) : gardé tel quel (branché à l'installation), non publié")
+            continue
         body = templates.render(tpl, CFG)
         if kind == "workflow":
             live = call("GET", f"/workflows/{ident}")["data"]

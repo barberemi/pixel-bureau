@@ -237,6 +237,9 @@ def main():
         for key, tpl in load_templates().items():
             kind, where, _ = TEMPLATES[key]
             ident = config_id(cfg, where)
+            if not ident or ident in (cfg.get("own") or []):
+                print(f"--   {key} : " + ("pas installé" if not ident else f"workflow {ident[:8]} gardé tel quel, non comparé"))
+                continue
             same = render(tpl, cfg) == clean(kind, fetch(kind, ident, cfg))
             bad += not same
             print(("ok   " if same else "DIFF ") + f"{key} : rendu {'identique au' if same else 'différent du'} workflow {ident[:8]}")

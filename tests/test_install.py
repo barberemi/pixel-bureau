@@ -11,8 +11,12 @@ JIRA = "abcdefab-cdef-abcd-efab-cdefabcdefab"
 
 
 class FakeKronn:
+    LIVE = "bbbbbbbb-1111-2222-3333-444444444444"  # homonyme du cron live : reste d'une installation sans config
+
     def __init__(self, api):
-        self.calls, self.n, self.store = [], 0, {}
+        self.calls, self.n = [], 0
+        self.store = {self.LIVE: {"name": "Le Bureau · live (1 min)", "steps": [{"name": "snapshot"}]}}
+        self.qps = {}
 
     def _id(self):
         self.n += 1
@@ -29,18 +33,28 @@ class FakeKronn:
         if path == "/agents":
             return [{"agent_type": "ClaudeCode", "name": "Claude Code", "installed": True, "enabled": True}]
         if path == "/workflows" and method == "GET":
-            return [{"id": "aaaaaaaa-1111-2222-3333-444444444444", "name": "Revue de PR", "trigger_type": "Cron"},
-                    {"id": "bbbbbbbb-1111-2222-3333-444444444444", "name": "Le Bureau · live (1 min)", "trigger_type": "Cron"}]
+            return [{"id": "aaaaaaaa-1111-2222-3333-444444444444", "name": "Revue de PR", "trigger_type": "Cron"}] + \
+                   [{"id": i, "name": b["name"], "trigger_type": "Cron"} for i, b in self.store.items() if "steps" in b]
+        if path == "/pages" and method == "GET":
+            return [{"id": i, "title": b.get("title")} for i, b in self.store.items() if "datasets" in b]
+        if path == "/quick-prompts" and method == "GET":
+            return [{"id": i, "name": b["name"]} for i, b in self.qps.items()]
         if path == "/workflow-steps/test-api-call":
             return {"success": True, "data": {"self": "https://acme.atlassian.net/rest/agile/1.0/sprint/1", "name": "S1"}}
         if method == "POST" and path in ("/pages", "/workflows", "/quick-prompts"):
-            i = self._id(); self.store[i] = body
+            i = self._id(); (self.qps if path == "/quick-prompts" else self.store)[i] = body
             return {"id": i}
-        if method == "GET" and path.startswith(("/pages/", "/workflows/")):
+        if method in ("GET", "DELETE") and path.startswith(("/pages/", "/workflows/", "/quick-prompts/")):
             i = path.split("/")[2]
-            if i not in self.store:
+            box = self.qps if path.startswith("/quick-prompts/") else self.store
+            if i not in box:
                 raise install.InstallError("404")
-            return {"id": i, "steps": [{"name": s["name"], "id": "s-" + s["name"]} for s in self.store[i].get("steps", [])]}
+            if method == "DELETE":
+                del box[i]
+                return {}
+            b = box[i]
+            return {"id": i, "name": b.get("name"), "title": b.get("title"),
+                    "steps": [{**s, "id": "s-" + s["name"]} for s in b.get("steps", [])]}
         if method == "PUT" or path == "/mcp/workflow-trigger":
             return {}
         raise AssertionError(f"appel inattendu {method} {path}")
@@ -49,7 +63,7 @@ class FakeKronn:
         return self.call("GET", path)
 
 
-ANSWERS = {"owner": "p_coll2", "project_id": "1", "jira_config": "1", "github_repo": "acme/front_web",
+ANSWERS = {"owner": "p_coll2", "project_id": "1", "reuse": "new", "jira_config": "1", "github_repo": "acme/front_web",
            "ai_agent": "1", "agents": "auto", "mep_workflow": "", "avatar": "editor", "music": "", "confirm": "o"}
 
 
@@ -118,6 +132,57 @@ class InstallTest(unittest.TestCase):
             self.assertEqual(self.run_install(ANSWERS), 0)
         posts = [p for m, p, _ in first.calls if m == "POST" and p in ("/pages", "/workflows", "/quick-prompts")]
         self.assertEqual(len(posts), 1 + 7 + 1)  # rien de recréé à la relance
+
+    def test_reuses_same_named_workflow_instead_of_creating(self):
+        answers = {k: v for k, v in ANSWERS.items() if k != "reuse"}  # défaut : homonymes réutilisés
+        self.assertEqual(self.run_install(answers), 0)
+        k = self.fakes[-1]
+        cfg = json.load(open(self.cfg_path))
+        self.assertEqual(cfg["workflows"]["live"], FakeKronn.LIVE)
+        self.assertEqual(sum(1 for m, p, _ in k.calls if m == "POST" and p == "/workflows"), 6)
+        self.assertTrue([1 for m, p, _ in k.calls if m == "PUT" and p == f"/workflows/{FakeKronn.LIVE}"])  # mis à jour
+        self.assertEqual([a["name"] for a in cfg["agents"]], ["Dwight"])
+
+    def test_never_takes_over_another_installation(self):
+        k = FakeKronn("http://x")
+        k.store["cccccccc-0000-4000-8000-000000000000"] = {"title": "Le Bureau de Rémi", "datasets": []}
+        k.store[FakeKronn.LIVE]["steps"][0]["page_id"] = "cccccccc-0000-4000-8000-000000000000"
+        answers = {kk: v for kk, v in ANSWERS.items() if kk != "reuse"}
+        with mock.patch.object(install, "Kronn", return_value=k):
+            self.assertEqual(self.run_install(answers), 0)
+        self.assertNotEqual(json.load(open(self.cfg_path))["workflows"]["live"], FakeKronn.LIVE)
+        self.assertFalse([1 for m, p, _ in k.calls if m == "PUT" and p == f"/workflows/{FakeKronn.LIVE}"])
+
+    def test_own_workflow_by_id_is_kept_as_is(self):
+        mine = "aaaaaaaa-1111-2222-3333-444444444444"
+        answers = {**ANSWERS, "reuse": "ask", **{f"reuse_{k}": "new" for k in ("office", "live", "payroll", "avatar", "gate", "relaunch", "ask")},
+                   "reuse_team": "id", "reuse_team_id": mine, "reuse_team_mode": "own"}
+        self.assertEqual(self.run_install(answers), 0)
+        k = self.fakes[-1]
+        cfg = json.load(open(self.cfg_path))
+        self.assertEqual(cfg["workflows"]["team"], mine)
+        self.assertEqual(cfg["own"], [mine])
+        self.assertFalse([1 for m, p, _ in k.calls if m in ("PUT", "DELETE") and p == f"/workflows/{mine}"])  # jamais touché
+        self.assertEqual(cfg["agents"], [])  # branché comme cron équipe : plus un agent
+        # désinstallation : tout le Bureau part, sauf le workflow branché tel quel
+        import uninstall
+        with mock.patch.object(uninstall, "Kronn", return_value=k), mock.patch("sys.stdout", new=open(os.devnull, "w")):
+            self.assertEqual(uninstall.main(["--config", self.cfg_path, "--dry-run"]), 0)
+            self.assertFalse([1 for m, _, _ in k.calls if m == "DELETE"])
+            self.assertEqual(uninstall.main(["--config", self.cfg_path, "--yes"]), 0)
+        deleted = [p for m, p, _ in k.calls if m == "DELETE"]
+        self.assertEqual(len(deleted), 6 + 1 + 1)  # 6 workflows, le QP, la page
+        self.assertNotIn(f"/workflows/{mine}", deleted)
+        self.assertEqual(deleted[-1], f"/pages/{cfg['page_id']}")  # la page en dernier
+        after = json.load(open(self.cfg_path))
+        self.assertEqual((after["page_id"], after["workflows"], after["actions"]), (None, {"team": mine}, {}))
+        self.assertEqual(after["owner"], "p_coll2")  # réponses gardées pour une réinstallation
+
+    def test_uninstall_refuses_reference_page(self):
+        import uninstall
+        install.jdump({"page_id": "4f38f114-e010-41ba-b34e-832ff9a72672", "kronn": {"api": "http://x"}}, self.cfg_path)
+        with self.assertRaises(install.InstallError):
+            uninstall.main(["--config", self.cfg_path, "--yes"])
 
     def test_dry_run_creates_nothing(self):
         self.assertEqual(self.run_install(ANSWERS, "--dry-run"), 0)

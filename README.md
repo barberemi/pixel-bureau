@@ -45,9 +45,9 @@ Rien de secret n'est stocké : les connexions sont référencées par leur id Kr
 | `page/office_template.html` | Squelette HTML de la page : en-tête, canvas, barre de lecture, panneau, les 4 blocs `kronn-action` (gardés tels quels, Kronn les lit dans le HTML statique) et deux marqueurs `/*__STYLES__*/` et `/*__SCRIPTS__*/` |
 | `page/src/styles.css` | Toute la feuille de style (inlinée à la place de `/*__STYLES__*/`) |
 | `page/src/NN-*.js` | Le script de la page, découpé par responsabilité et concaténé **dans l'ordre des noms** en un seul `<script>` inline (une seule portée globale, pas de modules) : `00-config` (marqueurs de données `__SPRITES__`, `__CAST__`, `__SNAP__`..., casting `CAST`), `10-world` (grille, plan, `findPath`), `20-sprites` (calques LPC, planches, avatars personnalisés), `30-data` (équipe, MEP, heure de Paris, cron, `setData`), `35-state` (`stateAt`, déplacements), `40-render` (sol, mobilier, personnages, `render`), `50-panel` (liste du panneau), `55-actions` (fenêtre des cartes Kronn, gate, paie, relancer / interroger, musique), `60-fiches` (fiches visiteur, TV, planning, kanban, collègue), `65-editor` (éditeur d'avatar), `70-kpis-feed` (tuiles et fil), `75-tv` (mode TV), `80-input` (souris, lecture), `90-boot` (boucle, lecture des datasets Kronn, démarrage) |
-| `tests/` | Tests `node --test` (sans dépendance npm) : `helpers/page.js` charge `page/src/*.js` dans un contexte `vm` avec des bouchons DOM / canvas ; `logic.test.js` (cron, heure de Paris, MEP, paie, outils, places, KPI, éditeur), `state.test.js` (`stateAt`), `boot.test.js` (démarrage sur la démo, blocs `kronn-action`), `visuals.test.js` (enveloppes, double bulle, écrans) ; configuration de test dans `fixtures/` |
+| `tests/` | Tests `node --test` (sans dépendance npm) : `helpers/page.js` charge `page/src/*.js` dans un contexte `vm` avec des bouchons DOM / canvas ; `logic.test.js` (cron, heure de Paris, MEP, paie, outils, places, KPI, éditeur), `state.test.js` (`stateAt`), `boot.test.js` (démarrage sur la démo, blocs `kronn-action`), `visuals.test.js` (enveloppes, double bulle, écrans) ; `test_scripts.py` lance chaque script de `workflows/` contre un faux Kronn HTTP et un faux `gh` (JSON valide, sortie < 100 Ko, Bureau filtré par id) ; configuration de test dans `fixtures/` |
 | `sprites/` | `cast.json` (recette de chaque avatar), `build_layers.py` → `layers.json` (bibliothèque de calques LPC, assemblés dans le navigateur), `build_sprites.py` → `sprites.json` (planches ; seuls les sprites fournis de `custom/` sont embarqués), `lpc_cache/` (calques téléchargés) |
-| `workflows/` | Scripts Python exécutés par les steps Exec des deux crons |
+| `workflows/` | Scripts Python exécutés par les étapes Exec des crons et des boutons ; `_lib.py` = socle commun (config, API Kronn, filtre des workflows du Bureau par id, format des runs), recopié dans chaque script au rendu car Kronn lance `python3 -c` sans fichier voisin |
 | `data/` | Instantanés de démo embarqués dans la page (utilisés tant que les crons n'ont rien publié) |
 | `tools/` | `assemble.py` (assemblage), `smoke.py` (contrôle de la page assemblée), `test.sh` (tests + smoke), `publish.py`, `cdp.py` (capture d'écran via Chrome headless) |
 
@@ -61,9 +61,20 @@ Prérequis : Kronn 0.14.1 ou plus lancé ; pour les tickets, une connexion Atlas
 
 Questions, dans l'ordre : Kronn (adresse, version), qui es-tu (roster ou « quelqu'un d'autre »), projet Kronn, connexion Jira (testée à travers Kronn, adresse du site déduite), GitHub (`gh`, accès au dépôt), agent IA du bouton « interroger », tes agents (un personnage de The Office par workflow actif, les plus récents d'abord), avatar (éditeur de la page, sprite du [générateur LPC](https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator) ou défaut) et musique (lien Suno), puis récapitulatif et confirmation.
 
+Réutiliser plutôt que créer (question `reuse`) : les homonymes orphelins (laissés par une installation dont la config est perdue) sont repris et mis à jour ; on peut aussi donner, élément par élément, l'id d'un de ses workflows ou Quick Prompt, à mettre à jour avec le modèle ou à **garder tel quel** (liste `own` de la config : ni `install.py`, ni `publish.py`, ni `uninstall.py` n'y touchent, `templates.py check` ne le compare pas). Un workflow qui sert la page d'une autre installation encore présente dans le même Kronn n'est jamais repris d'office. Le Bureau ne crée ni Quick API ni Quick Exec (ses sources CollectApiData sont dans les étapes).
+
 Il crée la page et ses 6 datasets, les 7 workflows et le QP depuis les modèles, écrit `bureau.config.json`, publie la page et lance un premier rafraîchissement. Valeurs proposées par défaut : `team/defaults.json`. Rien n'est stocké en clair : les connexions sont référencées par leur id Kronn.
 
-Tests : `tests/test_install.py` (faux Kronn : installation complète, sans Jira, relance sans recréation, dry-run).
+Tests : `tests/test_install.py` (faux Kronn : installation complète, sans Jira, relance sans recréation, réutilisation, autre installation jamais reprise, workflow gardé tel quel, désinstallation, dry-run).
+
+### Désinstaller
+
+```sh
+python3 tools/uninstall.py --dry-run   # liste ce qui serait supprimé
+python3 tools/uninstall.py             # confirmation, puis suppression (--yes : sans confirmation)
+```
+
+Supprime les workflows, le Quick Prompt puis la page de `bureau.config.json` et retire leurs ids de la config (les réponses restent pour une réinstallation). Ne touche jamais aux workflows gardés tels quels (`own`), aux connexions ni aux autres workflows ; refuse la page de l'installation de référence (`4f38f114`).
 
 ## Équipe et installation
 
@@ -101,6 +112,7 @@ Assemblage (`tools/assemble.py`) : le squelette reçoit `styles.css` à la place
 
 `workflows/templates/*.json` : un modèle par workflow du Bureau (office, live, team, payroll, avatar, gate, relaunch) et pour le Quick Prompt « interroger un agent » (ask). Ce sont **la source** : `publish.py workflows` pousse leur rendu (étapes, scripts avec la config injectée, déclencheur, programmes autorisés) dans les workflows dont les ids sont dans `bureau.config.json`, en gardant les ids des étapes.
 
+- Au rendu, la ligne `from _lib import …` d'un script est remplacée par `workflows/_lib.py` (sans `@@` ni `{{` : Kronn rendrait ses variables), puis la config est injectée. En local, les scripts importent `_lib` et lisent `bureau.config.json` (ou le fichier de la variable `BUREAU_CONFIG`).
 - Emplacements remplacés au rendu : `@@page_id@@`, `@@kronn.project_id@@`, `@@jira.config_id@@`, `@@jira.project@@`, `@@jira.board@@`, `@@jira.sprint_field@@`, `@@jira.points_fields@@`, `@@owner_name@@`, `@@script:workflows/x.py@@`. Les variables Kronn (`{{steps.x}}`, `{{run_id}}`) restent intactes.
 - Une étape `"_requires": "jira"` disparaît si l'installation n'a pas de connexion Jira ; les étapes suivantes reçoivent `null` à sa place.
 - `python3 tools/templates.py check` : le rendu avec la config redonne exactement les workflows du Kronn ; `export` régénère les modèles depuis le Kronn (après une modification faite dans l'interface) ; `render <clé>` affiche un rendu.

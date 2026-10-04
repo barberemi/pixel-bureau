@@ -41,6 +41,7 @@ def jload(path):
 def jdump(obj, path):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=1)
+        f.write("\n")
 
 
 # ---------- Kronn ----------
@@ -224,8 +225,9 @@ def ai_agent(ask, k):
                       agents[0]["agent_type"] if agents else "")
 
 
-def my_agents(ask, k, previous):
-    wfs = [w for w in k.get("/workflows") if not str(w.get("name", "")).startswith("Le Bureau") and w.get("enabled", True)]
+def my_agents(ask, k, previous, bureau):
+    """bureau : ids et noms des workflows du Bureau (config, réutilisés, modèles) : jamais des agents."""
+    wfs = [w for w in k.get("/workflows") if w.get("id") not in bureau and w.get("name") not in bureau and w.get("enabled", True)]
     if not wfs:
         return [], None
     mode = ask.choice("agents", "Tes agents : un personnage de The Office pour chacun de tes workflows",
@@ -247,6 +249,64 @@ def my_agents(ask, k, previous):
     mep = ask.choice("mep_workflow", "Un de ces workflows pilote-t-il les mises en prod (scène MEP sur le plan) ?",
                      [("", "Non")] + [(w["id"][:8], w["name"]) for w in picked], "")
     return agents, mep or None
+
+
+def reuse(ask, k, ids, tpls, with_ask, page_id):
+    """Workflows et Quick Prompt existants à réutiliser au lieu d'en créer : homonymes laissés par une installation
+    dont la config est perdue, ou les siens donnés par id. Seuls les éléments sans id dans la config sont proposés.
+    Un homonyme qui sert la page d'une AUTRE installation encore présente (même Kronn) n'est jamais repris d'office.
+    ids : {clé du modèle: id} (config actuelle). Renvoie (ids complétés, ids à garder tels quels)."""
+    missing = [key for key in tpls if not ids.get(key) and (key != "ask" or with_ask)]
+    if not missing:
+        return ids, set()
+    existing = {"workflow": k.get("/workflows"), "quick_prompt": k.get("/quick-prompts")}
+    kind_of = {key: templates.TEMPLATES[key][0] for key in tpls}
+    same = {key: [x for x in existing[kind_of[key]] if x.get("name") == tpls[key]["definition"]["name"]] for key in missing}
+    pages = {p["id"]: p.get("title") or p["id"][:8] for p in k.get("/pages")}
+
+    def serves(wid):  # page encore présente servie par ce workflow (son id apparaît dans ses étapes ou ses scripts)
+        text = json.dumps(k.get(f"/workflows/{wid}"))
+        return next((t for pid, t in pages.items() if pid != page_id and pid in text), None)
+    taken = {x["id"]: serves(x["id"]) for key in missing if kind_of[key] == "workflow" for x in same[key]}
+    other = next((t for t in taken.values() if t), None)
+    for x in (x for key in missing if kind_of[key] == "quick_prompt" for x in same[key]):
+        taken[x["id"]] = other  # un QP ne dit pas sa page : il suit les workflows homonymes
+    free = {key: [x for x in same[key] if not taken[x["id"]]] for key in missing}
+    n = sum(1 for key in missing if free[key])
+    if other:
+        say(f"(i) Un autre Bureau est installé dans ce Kronn (page « {other} ») : ses workflows ne sont pas repris d'office.")
+    mode = ask.choice("reuse", "Workflows et Quick Prompt du Bureau : en créer, ou réutiliser ceux qui existent déjà ?",
+                      [("auto", f"Réutiliser les homonymes orphelins ({n}) et les mettre à jour, créer le reste"),
+                       ("ask", "Choisir élément par élément (je peux donner l'id d'un des miens)"),
+                       ("new", "Tout créer")], "auto" if n else "new")
+    ids, own = dict(ids), set()
+    for key in missing:
+        if mode == "auto" and free[key]:
+            ids[key] = free[key][0]["id"]
+        if mode != "ask":
+            continue
+        label = tpls[key]["definition"]["name"]
+        pick = ask.choice(f"reuse_{key}", f"« {label} »",
+                          [("new", "Le créer")]
+                          + [(x["id"], f"Réutiliser {x['id'][:8]} et le mettre à jour"
+                              + (f" (ATTENTION : sert la page « {taken[x['id']]} »)" if taken[x["id"]] else "")) for x in same[key]]
+                          + [("id", "Donner l'id d'un workflow ou Quick Prompt existant")], "new")
+        if pick == "new":
+            continue
+        if pick == "id":
+            pick = ask.text(f"reuse_{key}_id", "Son id (complet)")
+            if not any(x.get("id") == pick for x in existing[kind_of[key]]):
+                raise InstallError(f"{key} : aucun {'workflow' if kind_of[key] == 'workflow' else 'Quick Prompt'} d'id {pick} dans Kronn")
+            if ask.choice(f"reuse_{key}_mode", "Ce workflow, on en fait quoi ?",
+                          [("update", "Le remplacer par le modèle du Bureau (étapes, scripts, déclencheur)"),
+                           ("own", "Le garder tel quel : je le branche moi-même (il doit publier ce qu'attend la page)")],
+                          "update") == "own":
+                own.add(pick)
+        ids[key] = pick
+    for key in missing:
+        if ids.get(key):
+            say(f"  {key:9} → {ids[key][:8]}" + (" (gardé tel quel)" if ids[key] in own else " (réutilisé, mis à jour)"))
+    return ids, own
 
 
 def avatar(ask, key, roster_doc, dry):
@@ -288,8 +348,13 @@ def upsert_page(k, cfg, title, dry):
             say("(i) la page de la config n'existe plus : nouvelle page")
     if dry:
         return "00000000-0000-0000-0000-000000000000"
-    p = k.call("POST", "/pages", {"title": title, "html": "<!doctype html><p>Installation du Bureau en cours…</p>",
-                                  "datasets": [{"name": n, "kind": "snapshot", "max_points": 50000} for n in DATASETS]})
+    try:
+        p = k.call("POST", "/pages", {"title": title, "html": "<!doctype html><p>Installation du Bureau en cours…</p>",
+                                      "datasets": [{"name": n, "kind": "snapshot", "max_points": 50000} for n in DATASETS]})
+    except InstallError as e:
+        if "UNIQUE" in str(e) and "slug" in str(e):
+            raise InstallError(f"une page « {title} » existe déjà dans ce Kronn : choisis un autre titre (--title \"…\")")
+        raise
     say(f"✓ page créée {p['id'][:8]} (6 datasets)")
     return p["id"]
 
@@ -306,6 +371,10 @@ def upsert_all(k, cfg, tpls, enabled, dry):
             if key == "ask":
                 body["agent"] = cfg["_ai_agent"]
             ident = (cfg.get(sec) or {}).get(field)
+            if ident and ident in (cfg.get("own") or []):
+                if pass_ == 2:
+                    say(f"✓ {key:9} {ident[:8]} (gardé tel quel)")
+                continue
             if dry:
                 cfg.setdefault(sec, {})[field] = ident or f"dry-{key}"
                 continue
@@ -358,7 +427,11 @@ def main(argv=None):
     if g is not None and gh_login:
         g["login"] = gh_login  # login du boss : « PR qui attendent ta review » dans la page
     ai = ai_agent(ask, k)
-    agents, mep = my_agents(ask, k, old.get("agents"))
+    tpl_ids = {key: (old.get(sec) or {}).get(field) for key, (_, (sec, field), _) in templates.TEMPLATES.items()}
+    tpl_ids, own = reuse(ask, k, tpl_ids, tpls, bool(ai), old.get("page_id"))
+    own |= set(old.get("own") or []) & set(tpl_ids.values())
+    bureau = {v for v in tpl_ids.values() if v} | {t["definition"]["name"] for t in tpls.values()}
+    agents, mep = my_agents(ask, k, old.get("agents"), bureau)
     if new_person:
         if gh_login:
             new_person["github"] = gh_login
@@ -366,9 +439,12 @@ def main(argv=None):
     music = avatar(ask, owner, roster_doc, a.dry_run)
 
     cfg = {"_doc": "Propre à cette installation, jamais partagé. Créé par tools/install.py (relançable).",
-           "owner": owner, "kronn": kronn, "page_id": old.get("page_id"), "workflows": dict(old.get("workflows") or {}),
-           "actions": dict(old.get("actions") or {}), "jira": j, "github": g, "rhythm": defaults["rhythm"],
+           "owner": owner, "kronn": kronn, "page_id": old.get("page_id"), "workflows": {}, "actions": {},
+           "own": sorted(own), "jira": j, "github": g, "rhythm": defaults["rhythm"],
            "mep_workflow": mep, "agents": agents, "_ai_agent": ai}
+    for key, (_, (sec, field), _) in templates.TEMPLATES.items():
+        if tpl_ids.get(key):
+            cfg[sec][field] = tpl_ids[key]
     name = next(p["name"] for p in roster_doc["people"] if p["key"] == owner)
     say("\n— Récapitulatif —")
     say(f"  Boss : {name} · projet Kronn {project_id[:8]} · agent IA : {ai or 'aucun'}")
@@ -385,7 +461,7 @@ def main(argv=None):
     upsert_all(k, cfg, tpls, not a.disabled, a.dry_run)
     cfg["_answers"] = {**previous, **(ask.answers or {}), "owner": owner, "project_id": project_id,
                        "jira_config": j.get("config_id", ""), "ai_agent": ai}
-    ai_agent_value = cfg.pop("_ai_agent")
+    cfg.pop("_ai_agent")
     if a.dry_run:
         say("\n(dry-run) Config qui serait écrite :")
         say(json.dumps({k_: v for k_, v in cfg.items() if not k_.startswith("_")}, ensure_ascii=False, indent=1)[:2500])
@@ -412,7 +488,6 @@ def main(argv=None):
                     say(f"(!) premier run de {key} : {e}")
         say("✓ premier rafraîchissement lancé (les données arrivent en 1 à 2 minutes)")
     say(f"\nLe Bureau est prêt : {kronn['ui'].rstrip('/')}/#page/{cfg['page_id']}")
-    _ = ai_agent_value
     return 0
 
 
