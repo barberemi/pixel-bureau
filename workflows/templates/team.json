@@ -276,7 +276,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "PR, releases et déploiements de front_web via gh, regroupés ; ne fait jamais échouer le run (sans gh : listes vides + erreur notée).",
+    "description": "PR, releases et déploiements du dépôt suivi via gh, regroupés ; ne fait jamais échouer le run (sans gh : listes vides + erreur notée).",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {

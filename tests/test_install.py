@@ -121,7 +121,7 @@ class InstallTest(unittest.TestCase):
         html = next(b for m, p, b in k.calls if m == "PUT" and p.endswith("/html"))["html"]
         self.assertIn('"p_coll2"', html)
         self.assertIn(cfg["actions"]["gate"], html)
-        self.assertNotIn("4f38f114", html)
+        self.assertNotIn(json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")))["page_id"], html)  # pas l'id de la démo
         self.assertEqual(sum(1 for m, p, _ in k.calls if p == "/mcp/workflow-trigger"), 4)
 
     def test_without_jira_team_cron_has_no_jira_steps(self):
@@ -193,9 +193,9 @@ class InstallTest(unittest.TestCase):
         self.assertEqual((after["page_id"], after["workflows"], after["actions"]), (None, {"team": mine}, {}))
         self.assertEqual(after["owner"], "p_coll2")  # réponses gardées pour une réinstallation
 
-    def test_uninstall_refuses_reference_page(self):
+    def test_uninstall_refuses_a_protected_installation(self):
         import uninstall
-        install.jdump({"page_id": "4f38f114-e010-41ba-b34e-832ff9a72672", "kronn": {"api": "http://x"}}, self.cfg_path)
+        install.jdump({"page_id": "11111111-0000-4000-8000-000000000000", "protect": True, "kronn": {"api": "http://x"}}, self.cfg_path)
         with self.assertRaises(install.InstallError):
             uninstall.main(["--config", self.cfg_path, "--yes"])
 
@@ -221,10 +221,11 @@ class InstallTest(unittest.TestCase):
     def test_settings_survive_a_relaunch(self):
         self.run_install(ANSWERS)
         cfg = json.load(open(self.cfg_path))
-        json.dump({**cfg, "ui": {"todo": "folded"}}, open(self.cfg_path, "w"))
+        json.dump({**cfg, "ui": {"todo": "folded"}, "protect": True}, open(self.cfg_path, "w"))
         with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):
             self.assertEqual(self.run_install(ANSWERS), 0)
         self.assertEqual(json.load(open(self.cfg_path))["ui"], {"todo": "folded"})
+        self.assertTrue(json.load(open(self.cfg_path))["protect"])
 
     def test_new_team_by_default_with_the_type_plan(self):
         answers = {k: v for k, v in ANSWERS.items() if k not in ("team", "owner")}

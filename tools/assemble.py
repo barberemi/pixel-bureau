@@ -4,8 +4,8 @@ Sources de la page : page/office_template.html (squelette HTML + blocs kronn-act
 `/*__STYLES__*/` <- page/src/styles.css et `/*__SCRIPTS__*/` <- page/src/*.js concaténés dans l'ordre du nom
 (00-, 10-, ...) en un seul <script> inline : une seule portée globale, pas de modules, pas de bundler.
 
-Les avatars sont assemblés dans le navigateur (calques de sprites/layers.json + recettes de sprites/cast.json) ;
-seuls les sprites fournis tels quels (sprites/custom/, ex. boss_sax) sont embarqués comme planches.
+Les avatars sont assemblés dans le navigateur (calques de sprites/layers.json + recettes de sprites/cast.json et du
+profil d'équipe) ; seuls les sprites fournis tels quels (teams/<équipe>/sprites/, sprites/custom/) sont embarqués comme planches.
 """
 import json, os, re
 
@@ -43,6 +43,11 @@ def config():
         return json.load(open(p("bureau.config.json")))
     except FileNotFoundError:
         return {}
+
+
+def demo_config():
+    """Installation de démonstration (équipe fictive) : aperçu local, captures de la documentation, tests."""
+    return json.load(open(p("tests", "fixtures", "bureau.config.json")))
 
 
 def cron_schedules():
@@ -122,6 +127,22 @@ def music(cfg):
     return {**m, **((cfg or {}).get("music") or {})}
 
 
+def recipes(cfg):
+    """Recettes des avatars : communes (agents, intérimaires, visiteurs, équipe de démo), puis celles du profil."""
+    path = _team_file(cfg, "cast.json")
+    return {**json.load(open(p("sprites", "cast.json"))), **(json.load(open(path)) if path else {})}
+
+
+def sprites(cfg):
+    """Sprites fournis tels quels (planches) : ceux de l'installation (sprites/sprites.json, local), puis ceux du profil.
+    Les avatars des recettes sont composés dans le navigateur : leurs planches ne sont pas embarquées."""
+    local = p("sprites", "sprites.json")
+    common = json.load(open(p("sprites", "cast.json")))
+    out = {k: v for k, v in (json.load(open(local)) if os.path.exists(local) else {}).items() if k not in common}
+    path = _team_file(cfg, "sprites.json")
+    return {**out, **(json.load(open(path)) if path else {})}
+
+
 def layout_path(cfg):
     """Plan du bureau de cette installation : clé layout de la config, sinon celui du profil, sinon le plan type."""
     t = teams().get((cfg or {}).get("team")) or {}
@@ -136,8 +157,7 @@ def build(demo=True, cfg=None):
     html = page_html()
     # bouton sans workflow configuré : sa carte kronn-action disparaît (la page masque le bouton)
     html = ACTION_RE.sub(lambda m: m.group(0) if acts[ACTIONS[m.group(1)][0]] else "", html)
-    cast = json.load(open(p("sprites", "cast.json")))
-    custom = {k: v for k, v in json.load(open(p("sprites", "sprites.json"))).items() if k not in cast}
+    cast, custom = recipes(cfg), sprites(cfg)
     html = (html.replace("__SPRITES__", json.dumps(custom))
                 .replace("__LAYERS__", open(p("sprites", "layers.json")).read())
                 .replace("__MUSIC__", json.dumps(music(cfg), ensure_ascii=False))

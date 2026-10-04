@@ -154,8 +154,21 @@ def build_custom(folder):
     return buf.getvalue()
 
 
+def sheets(custom_dir):
+    """Planches des sprites fournis d'un dossier (un sous-dossier par sprite)."""
+    out = {}
+    for name in sorted(os.listdir(custom_dir)) if os.path.isdir(custom_dir) else []:
+        png = build_custom(os.path.join(custom_dir, name))
+        out[name] = "data:image/png;base64," + base64.b64encode(png).decode()
+        print(name, len(png), "(sprite fourni)")
+    return out
+
+
 if __name__ == "__main__":
-    specs = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "cast.json")))
+    # sprites/sprites.json (local, non commité) : avatars des recettes communes + sprites fournis de l'installation (custom/)
+    # teams/<équipe>/sprites.json : sprites fournis de l'équipe (teams/<équipe>/sprites/)
+    here = os.path.dirname(os.path.abspath(__file__))
+    specs = json.load(open(os.path.join(here, "cast.json")))
     result = {}
     preview = Image.new("RGBA", (64 * 9, 64 * len(specs)), (210, 210, 210, 255))
     for i, (key, spec) in enumerate(specs.items()):
@@ -164,11 +177,12 @@ if __name__ == "__main__":
         im = Image.open(io.BytesIO(png)).convert("RGBA")
         preview.alpha_composite(im.crop((0, 128, 576, 192)), (0, i * 64))
         print(key, len(png))
-    here = os.path.dirname(os.path.abspath(__file__))
-    for name in sorted(os.listdir(os.path.join(here, "custom"))) if os.path.isdir(os.path.join(here, "custom")) else []:
-        png = build_custom(os.path.join(here, "custom", name))
-        result[name] = "data:image/png;base64," + base64.b64encode(png).decode()
-        print(name, len(png), "(sprite fourni)")
-    json.dump(result, open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "sprites.json"), "w"))
-    preview.resize((preview.width * 2, preview.height * 2), Image.NEAREST).save(os.path.join(os.path.dirname(os.path.abspath(__file__)), "cast_preview.png"))
+    result.update(sheets(os.path.join(here, "custom")))
+    json.dump(result, open(os.path.join(here, "sprites.json"), "w"))
+    preview.resize((preview.width * 2, preview.height * 2), Image.NEAREST).save(os.path.join(here, "cast_preview.png"))
     print("total b64", sum(len(v) for v in result.values()))
+    teams = os.path.join(os.path.dirname(here), "teams")
+    for t in sorted(os.listdir(teams)) if os.path.isdir(teams) else []:
+        if os.path.isdir(os.path.join(teams, t, "sprites")):
+            json.dump(sheets(os.path.join(teams, t, "sprites")), open(os.path.join(teams, t, "sprites.json"), "w"))
+            print(f"teams/{t}/sprites.json")

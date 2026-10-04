@@ -5,14 +5,15 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import templates  # noqa: E402
 
-REMI = templates.load_config()
+BASE = templates.assemble.demo_config()  # installation de démonstration (les tests ne lisent pas la config locale)
+LOCAL = os.path.join(ROOT, "bureau.config.json")
 TPL = templates.load_templates()
 UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
 
 def colleague(**over):
-    c = copy.deepcopy(REMI)
-    c.update(owner="p_coll2", page_id="11111111-2222-3333-4444-555555555555",
+    c = copy.deepcopy(BASE)
+    c.update(owner="p_darryl", page_id="11111111-2222-3333-4444-555555555555",
              kronn={**c["kronn"], "project_id": "99999999-8888-7777-6666-555555555555"})
     c["jira"] = {**c["jira"], "config_id": "abcdefab-cdef-abcd-efab-cdefabcdefab", "project": "AF", "board": 7}
     c.update(over)
@@ -21,21 +22,24 @@ def colleague(**over):
 
 class TemplatesTest(unittest.TestCase):
     def test_all_templates_present_and_without_installation_ids(self):
+        """Les modèles exportés (templates.py export) ne gardent aucun id de l'installation qui les a exportés."""
         self.assertEqual(set(TPL), set(templates.TEMPLATES))
-        own = {REMI["page_id"], REMI["kronn"]["project_id"], REMI["jira"]["config_id"],
-               *REMI["workflows"].values(), *REMI["actions"].values()}
+        if not os.path.exists(LOCAL):
+            self.skipTest("pas d'installation locale (bureau.config.json) : rien à comparer")
+        inst = json.load(open(LOCAL))
+        own = {inst["page_id"], inst["kronn"]["project_id"], (inst.get("jira") or {}).get("config_id"),
+               *inst["workflows"].values(), *inst["actions"].values()} - {None, ""}
         for key, t in TPL.items():
             text = json.dumps(t)
-            self.assertFalse(own & set(UUID.findall(text)), f"{key} contient un id de l'installation de Rémi")
+            self.assertFalse(own & set(UUID.findall(text)), f"{key} contient un id de l'installation de référence")
 
     def test_render_for_a_colleague(self):
         cfg = colleague()
         for key, t in TPL.items():
             out = json.dumps(templates.render(t, cfg), ensure_ascii=False)
             self.assertNotIn("@@", out, key)
-            self.assertNotIn(REMI["page_id"], out, key)
-            self.assertNotIn(REMI["jira"]["config_id"], out, key)
-            self.assertNotIn("4f38f114", out, key)
+            self.assertNotIn(BASE["page_id"], out, key)
+            self.assertNotIn(BASE["jira"]["config_id"], out, key)
         team = templates.render(TPL["team"], cfg)
         jql = next(s for s in team["steps"] if s["name"] == "jira_team")["api_query"]["jql"]
         self.assertTrue(jql.startswith("project = AF AND"))

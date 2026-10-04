@@ -3,6 +3,9 @@
 .venv/
 dist/
 sprites/cast_preview.png
+# sprites fournis propres à une installation (personne ajoutée) et leur planche : jamais commités
+sprites/custom/
+sprites/sprites.json
 sprites/lpc_cache/
 __pycache__/
 .DS_Store

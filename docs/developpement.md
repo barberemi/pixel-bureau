@@ -10,9 +10,9 @@
 | `workflows/` | Scripts Python des étapes Exec ; `_lib.py` = socle commun et `_plan.py` = règles des plans (aussi utilisées par `tools/plan.py`), recopiés dans chaque script qui les importe au rendu (Kronn lance `python3 -c` sans fichier voisin) ; `templates/` = modèles des workflows et du Quick Prompt |
 | `layouts/` | Plans de bureau (format `bureau-layout/1`) ; `open-space.json` = le plan type (équipe neuve), `equipe.json` = celui de l'équipe equipe, `exemple-startup.json` = un autre bureau (30 x 16, sans plateau TV) |
 | `team/` | `defaults.json` : valeurs communes proposées à l'installation (Kronn, rythme, Jira et GitHub vides) |
-| `teams/<équipe>/` | Profil d'équipe : `team.json` (nom, organisation GitHub requise, plan), `roster.json` (l'équipe), `defaults.json` (Jira, GitHub, titre), `music/` (morceaux des collègues). `teams/equipe/` = l'équipe de Rémi, réservée aux membres d'acme |
-| `sprites/` | Recettes d'avatars `cast.json`, calques LPC `layers.json`, sprites fournis `custom/` |
-| `data/` | Instantanés de démo (aperçu local et tests seulement, jamais dans la page publiée) |
+| `teams/<équipe>/` | Profil d'équipe : `team.json` (nom, organisation GitHub requise, plan), `roster.json` (l'équipe), `defaults.json` (Jira, GitHub, titre), `music/` (morceaux des collègues), `cast.json` (recettes de leurs avatars), `sprites/` et `sprites.json` (sprites fournis et leurs planches, `sprites/build_sprites.py`). `teams/equipe/` = l'équipe de Rémi, réservée aux membres d'acme |
+| `sprites/` | Recettes d'avatars communes `cast.json` (agents, intérimaires, visiteurs, équipe de démo), calques LPC `layers.json` ; `custom/` et `sprites.json` = sprites fournis d'une installation, jamais commités |
+| `data/` | Instantanés de démo, équipe fictive Dunder Mifflin (aperçu local, captures et tests seulement, jamais dans la page publiée) |
 | `tools/` | `install.py`, `uninstall.py`, `publish.py`, `templates.py`, `assemble.py`, `smoke.py`, `test.sh`, `shots.py` |
 | `tests/` | `node --test` (sans npm) et `unittest` : logique de la page, états, installateur, modèles, scripts contre un faux Kronn et un faux `gh` |
 
@@ -51,7 +51,7 @@ python3 tools/templates.py check       # les workflows du Kronn = le rendu des m
 Questions : Kronn, ton équipe (une équipe neuve par défaut, ou un profil de `teams/` : un profil qui nomme une organisation GitHub n'est installable que par ses membres actifs, vérifié avec `gh api user/memberships/orgs/<org>`, droit `read:org`), qui tu es (le champ `github` du roster propose la bonne personne ; « quelqu'un d'autre » reste dans ta config), le plan du bureau (un de `layouts/` ou ton propre fichier, refusé s'il ne passe pas `plan.py check` ; écrit dans la clé `layout` de la config), projet, Jira (testé à travers Kronn), GitHub, agent IA, tes agents (un personnage par workflow actif, placé par le plan), avatar, musique. Il crée la page et ses 7 datasets (et ajoute ceux qui manquent à une page existante), les workflows et le Quick Prompt, écrit la config, publie et lance un premier rafraîchissement. Relançable sans doublon.
 
 - Réutiliser plutôt que créer (question `reuse`) : homonymes orphelins repris, ou id donné élément par élément, mis à jour ou gardé tel quel (`own`). Un workflow qui sert une autre page encore présente n'est jamais repris d'office.
-- `uninstall.py` ne touche ni aux éléments `own`, ni aux connexions, ni aux autres workflows.
+- `uninstall.py` ne touche ni aux éléments `own`, ni aux connexions, ni aux autres workflows, et refuse une installation marquée `"protect": true` dans sa config (gardé par l'installateur).
 
 ## Plan du bureau (`layouts/*.json`)
 
@@ -62,7 +62,7 @@ Le plan n'est plus codé en dur : `10-world.js` construit grille, sols, portes, 
 - `furniture` : meubles du catalogue (`boss_desk`, `meeting_table`, `server_rack`, `counter`, `fridge`, `kitchen_table`, `sofa`, `water_cooler`, `copier`, `toilets`, `stage_closure`), chacun posé par `at` ; il bloque son emprise (`FURN_TYPES` de `40-furniture.js`, `FURNITURE` de `tools/plan.py`, tenus identiques par un test).
 - `wall` (décor mural : `whiteboard`, `mirror`, `sign` avec `text`), `clock`, `labels` (noms des pièces, position en cases).
 - `spots` : places de chaque zone (`[x, y, orientation]`) ; `free_seats` : places des intérimaires ; `light_rooms` : pièces éclairées la nuit ; `objects` : rectangles cliquables (TV, Kanban, planning, paie, employé du sprint).
-- `seating` : qui s'assoit où, par numéro de siège (`{"I2.R2": "p_remi"}` = îlot 2, côté droit, rang 2). Le plan est maître : la place `seat` du roster ou d'un agent (`"I2.R2"` ou l'ancien `[x, y]`) ne sert que s'il ne place pas la personne. Les autres reçoivent un siège libre, toujours le même tant que le plan ne change pas : collègues, puis agents, puis intérimaires (`free_seats` d'abord). La place du boss revient aux intérimaires.
+- `seating` : qui s'assoit où, par numéro de siège (`{"I2.R2": "p_pam"}` = îlot 2, côté droit, rang 2). Le plan est maître : la place `seat` du roster ou d'un agent (`"I2.R2"` ou l'ancien `[x, y]`) ne sert que s'il ne place pas la personne. Les autres reçoivent un siège libre, toujours le même tant que le plan ne change pas : collègues, puis agents, puis intérimaires (`free_seats` d'abord). La place du boss revient aux intérimaires.
 - Vérifier un plan, voir ses sièges, son rendu :
   ```sh
   python3 tools/plan.py check [plan.json] [--json]   # erreurs bloquantes et avertissements, avec les coordonnées
@@ -83,4 +83,5 @@ Le plan n'est plus codé en dur : `10-world.js` construit grille, sols, portes, 
 
 - Plan : grille 40 x 20 cases de 32 px (canvas 1280 x 640). Crons Kronn en UTC (4h-20h59), page et scripts en heure de Paris.
 - Rendu à 30 images par seconde ; meubles immobiles cuits une fois (`bakeFurniture`).
-- Installation de référence : page `4f38f114` du Kronn de Rémi ; feuille de route : https://claude.ai/code/artifact/56db95ed-d247-4574-aeef-9990cd9360bc
+- Démo (aperçu local, captures, tests) : équipe fictive Dunder Mifflin, `data/*.json` et `tests/fixtures/bureau.config.json` (`assemble.demo_config()`), sur le plan type. Rien de réel : une vraie installation lit ses données dans Kronn.
+- Feuille de route : https://claude.ai/code/artifact/56db95ed-d247-4574-aeef-9990cd9360bc

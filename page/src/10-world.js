@@ -38,8 +38,9 @@ function buildWorld(){
   CLOSABLE=new Set(LAYOUT.closable.map(c=>c.at.join(',')));
 }
 // places : le plan est maître (LAYOUT.seating {siège: clé}) ; sinon la place du roster ou de l'agent si c'est un siège
-// libre de ce plan ; sinon un siège libre, dans l'ordre du casting (collègues, puis agents), hors places des intérimaires
-// (free_seats) et sièges réservés à quelqu'un d'absent. Même règle que assign() de tools/plan.py (vérifié par un test).
+// libre de ce plan ; sinon un siège libre, dans l'ordre du casting (collègues, puis agents) : d'abord les sièges
+// ordinaires, puis ceux réservés à quelqu'un d'absent, enfin ceux des intérimaires (free_seats).
+// Même règle que assign() de tools/plan.py (vérifié par un test).
 // Le boss reçoit aussi une place, libérée pour les intérimaires tant qu'il est à son bureau.
 function placeCast(){
   const who=[...ROSTER,...AGENTS], got=new Map(), taken=new Set();
@@ -48,7 +49,8 @@ function placeCast(){
   for(const [id,k] of seating){const t=seatRef(id);if(t&&!taken.has(t.id)&&!got.has(k)&&who.some(w=>w.key===k))give(k,t);}
   for(const w of who)if(!got.has(w.key)){const t=seatRef(w.seat);if(t&&!taken.has(t.id))give(w.key,t);}
   const free=(LAYOUT.free_seats||[]).map(seatRef).filter(Boolean), reserved=new Set(seating.map(([id])=>id));
-  const spare=SEATS.filter(t=>!taken.has(t.id)&&!free.includes(t)&&!reserved.has(t.id));
+  const plain=SEATS.filter(t=>!taken.has(t.id)&&!free.includes(t)&&!reserved.has(t.id));
+  const spare=[...plain,...SEATS.filter(t=>!taken.has(t.id)&&!free.includes(t)&&reserved.has(t.id)),...free.filter(t=>!taken.has(t.id))];
   for(const w of who)if(!got.has(w.key)){const t=spare.shift();if(t)give(w.key,t);}
   for(const c of CAST){const t=got.get(c.key);c.seat=t&&!c.boss?[t.x,t.y]:null;}
   // places des intérimaires (et des collègues hors roster) : free_seats dans l'ordre, la place du boss, puis les sièges restants

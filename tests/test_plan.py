@@ -32,7 +32,7 @@ class PlanTest(unittest.TestCase):
 
     def test_seat_ids(self):
         ids = {(s["x"], s["y"]): s["id"] for s in plan.seats_of(BASE)}
-        self.assertEqual(ids[(12, 15)], "I2.R2")  # la place de Rémi
+        self.assertEqual(ids[(12, 15)], "I2.R2")  # exemple de numéro
         self.assertEqual(ids[(23, 14)], "I4.L1")  # Dwight
         self.assertEqual(len(ids), 36)
 
@@ -114,13 +114,13 @@ class SeatingTest(unittest.TestCase):
         self.assertEqual({k: after[k] for k in before}, before)
 
     def test_boss_seat_goes_to_temps(self):
-        got, temps = plan.assign(BASE, [{"key": "p_remi"}], owner="p_remi")
-        self.assertNotIn("p_remi", got)
+        got, temps = plan.assign(BASE, [{"key": "p_pam"}], owner="p_pam")
+        self.assertNotIn("p_pam", got)
         self.assertIn("I2.R2", temps)
 
     def test_seating_errors(self):
         self.assertErr(broken(a=lambda L: L["seating"].update({"I9.L1": "x"})), "pas un siège de ce plan")
-        self.assertErr(broken(a=lambda L: L["seating"].update({"I6.L1": "p_remi"})), "plusieurs sièges")
-        self.assertErr(broken(a=lambda L: L.update(seating=["p_remi"])), "seating : un objet")
+        self.assertErr(broken(a=lambda L: L["seating"].update({"I6.L1": next(iter(L["seating"].values()))})), "plusieurs sièges")
+        self.assertErr(broken(a=lambda L: L.update(seating=["p_pam"])), "seating : un objet")
 
     assertErr = PlanTest.assertErr

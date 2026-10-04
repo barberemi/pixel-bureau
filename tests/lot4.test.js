@@ -98,12 +98,12 @@ test('Nouvel an : compte à rebours jusqu\'à minuit le 31 décembre après midi
 test("Âge réel : un ticket en review depuis 12 j reste bloqué même si la bascule de sprint l'a touché hier", () => {
   const t = Date.parse('2026-10-04T10:00:00Z');
   run(`TEAM={people:[{name:'Darryl',tickets:[
-      {key:'EW-6550',cat:'review',since:'2026-09-22T10:00:00.000+0200',updated:'2026-10-02T16:13:27.490+0200'},
-      {key:'EW-1',cat:'review',since:'2026-10-03T18:00:00.000+0200',updated:'2026-10-03T18:00:00.000+0200'},
-      {key:'EW-2',cat:'test',updated:'2026-09-28T10:00:00.000+0200'}],
+      {key:'DM-6550',cat:'review',since:'2026-09-22T10:00:00.000+0200',updated:'2026-10-02T16:13:27.490+0200'},
+      {key:'DM-1',cat:'review',since:'2026-10-03T18:00:00.000+0200',updated:'2026-10-03T18:00:00.000+0200'},
+      {key:'DM-2',cat:'test',updated:'2026-09-28T10:00:00.000+0200'}],
     prs:[{n:7,review:'pending',created:'2026-09-25T10:00:00Z',updated:'2026-10-04T09:00:00Z'}]}],unassigned:[],other_prs:[]};`);
   const blocked = JSON.parse(run(`JSON.stringify(blockedTickets(${t}).map(x=>x.key))`));
-  assert.deepEqual(blocked, ['EW-6550', 'EW-2']); // EW-2 : vieil instantané sans since, repli sur updated
+  assert.deepEqual(blocked, ['DM-6550', 'DM-2']); // DM-2 : vieil instantané sans since, repli sur updated
   assert.deepEqual(JSON.parse(run(`JSON.stringify(stalePrs(${t}).map(x=>x.n))`)), [7]); // poussée ce matin, ouverte il y a 9 j
   assert.equal(run(`tkAge(TEAM.people[0].tickets[0],${t})`), '12 j');
   run('TEAM=null');

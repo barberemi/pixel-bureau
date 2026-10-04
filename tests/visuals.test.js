@@ -92,7 +92,7 @@ test('double bulle : le nuage garde l\'étape, l\'outil part dans sa bulle', () 
   assert.equal(h.cloud, false);
   assert.equal(h.tool, null);
   // agent sur un ticket : nuage « 🤖 1234 », outil à part
-  const r = J(`bubbleFor({key:'ag'},{st:'work',ref:{key:'EW-1234',pr:null},act:${act}},${T11},0)`);
+  const r = J(`bubbleFor({key:'ag'},{st:'work',ref:{key:'DM-1234',pr:null},act:${act}},${T11},0)`);
   assert.equal(r.head, '🤖 1234');
   assert.equal(r.tool.ico, '⌨️');
 });

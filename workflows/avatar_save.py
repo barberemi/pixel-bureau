@@ -1,7 +1,7 @@
 """Enregistre la personnalisation d'un avatar du Bureau pour toute l'équipe.
 
 Entrée (stdin) : le code copié depuis la page, « BUREAU1:<base64 de {k, n, l, at}> »
-  k  : clé du personnage (ex. p_coll8)
+  k  : clé du personnage (ex. p_pam)
   n  : nom affiché ("" ou null = nom d'origine)
   l  : apparence {sex, skin, hair, ...} (null = apparence d'origine)
   at : horodatage de la modification (ms), pour que la page départage local et équipe

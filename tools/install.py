@@ -506,7 +506,8 @@ def main(argv=None):
     cfg = {"_doc": "Propre à cette installation, jamais partagé. Créé par tools/install.py (relançable).",
            "owner": owner, "team": team_id, "people": people, "layout": layout_file, "kronn": kronn, "page_id": old.get("page_id"), "workflows": {}, "actions": {},
            "own": sorted(own), "jira": j, "github": g, "rhythm": defaults["rhythm"],
-           "mep_workflow": mep, "agents": agents, "ui": old.get("ui") or {}, "music": old.get("music") or {}, "_ai_agent": ai}
+           "mep_workflow": mep, "agents": agents, "ui": old.get("ui") or {}, "music": old.get("music") or {}, "_ai_agent": ai,
+           **({"protect": True} if old.get("protect") else {})}
     for key, (_, (sec, field), _) in templates.TEMPLATES.items():
         if tpl_ids.get(key):
             cfg[sec][field] = tpl_ids[key]

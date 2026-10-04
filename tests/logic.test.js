@@ -75,10 +75,10 @@ test('mepPhase : released -> staging -> staged -> prod -> done / failed', () => 
 
 test('payFor + usd + fmtUsd : fiche de paie d\'un agent', () => {
   run(`PAYROLL={generated_at:'x',rate_usd_per_mtok:5,days:[],agents:[
-    {wf:'b7ccd728-aaaa',name:'Revue A',today:{tok:1000,runs:2,fail:1},week:{tok:5000,runs:9,fail:2},days:[1,2,3,4,5,6,7]},
-    {wf:'d54be687-bbbb',name:'Revue B',today:{tok:500,runs:1,fail:0},week:{tok:700,runs:3,fail:0},days:[10,0,0,0,0,0,1]},
+    {wf:'aaaa1111-aaaa',name:'Revue A',today:{tok:1000,runs:2,fail:1},week:{tok:5000,runs:9,fail:2},days:[1,2,3,4,5,6,7]},
+    {wf:'bbbb2222-bbbb',name:'Revue B',today:{tok:500,runs:1,fail:0},week:{tok:700,runs:3,fail:0},days:[10,0,0,0,0,0,1]},
     {wf:'99999999-cccc',name:'Autre',today:{tok:9,runs:9,fail:9},week:{tok:9,runs:9,fail:9},days:[9,9,9,9,9,9,9]}]}`);
-  const p = J(`payFor({wf:['b7ccd728','d54be687']})`);
+  const p = J(`payFor({wf:['aaaa1111','bbbb2222']})`);
   assert.deepEqual(p.today, {tok: 1500, runs: 3, fail: 1});
   assert.deepEqual(p.week, {tok: 5700, runs: 12, fail: 2});
   assert.deepEqual(p.days, [11, 2, 3, 4, 5, 6, 8]);
@@ -94,7 +94,7 @@ test('payFor + usd + fmtUsd : fiche de paie d\'un agent', () => {
   assert.equal(run(`fmtUsd(12.6)`), '≈ 13 $');
   run('PAYROLL=null');
   assert.equal(run('usd(2e6)'), null);
-  assert.equal(run(`payFor({wf:['b7ccd728']})`), null);
+  assert.equal(run(`payFor({wf:['aaaa1111']})`), null);
 });
 
 test('actText : bulle et libellé de l\'outil en cours', () => {
@@ -115,16 +115,16 @@ test('besideSeat : place debout côté allée', () => {
 
 test('runPartner : collègue concerné par un run (ticket ou auteur de PR)', () => {
   run(`TEAM={people:[],meps:[]};
-    chars=[{key:'p_a',name:'Alice',person:'Alice',seat:[5,14],team:{tickets:[{key:'EW-1'}],gh:['AliceGH']}},
-           {key:'p_b',name:'Bob',person:'Bob',seat:[7,14],team:{tickets:[{key:'EW-2'}],gh:[]}},
-           {key:'p_c',name:'Sans place',person:'C',seat:null,team:{tickets:[{key:'EW-3'}],gh:[]}}];`);
-  assert.equal(run(`runPartner({vars:{jira_ticket_key:'EW-2'}}).key`), 'p_b');
+    chars=[{key:'p_a',name:'Alice',person:'Alice',seat:[5,14],team:{tickets:[{key:'DM-1'}],gh:['AliceGH']}},
+           {key:'p_b',name:'Bob',person:'Bob',seat:[7,14],team:{tickets:[{key:'DM-2'}],gh:[]}},
+           {key:'p_c',name:'Sans place',person:'C',seat:null,team:{tickets:[{key:'DM-3'}],gh:[]}}];`);
+  assert.equal(run(`runPartner({vars:{jira_ticket_key:'DM-2'}}).key`), 'p_b');
   assert.equal(run(`runPartner({vars:{'current_task.author':'alicegh'}}).key`), 'p_a'); // insensible à la casse
-  assert.equal(run(`runPartner({vars:{jira_ticket_key:'EW-3'}})`), null); // pas de place
-  assert.equal(run(`runPartner({vars:{jira_ticket_key:'EW-9'}})`), null);
+  assert.equal(run(`runPartner({vars:{jira_ticket_key:'DM-3'}})`), null); // pas de place
+  assert.equal(run(`runPartner({vars:{jira_ticket_key:'DM-9'}})`), null);
   assert.equal(run(`runPartner({})`), null);
   run('TEAM=null');
-  assert.equal(run(`runPartner({vars:{jira_ticket_key:'EW-2'}})`), null);
+  assert.equal(run(`runPartner({vars:{jira_ticket_key:'DM-2'}})`), null);
 });
 
 test('normLook : valeurs par défaut et options inconnues ramenées au défaut', () => {
@@ -178,25 +178,25 @@ test('dashData : sprint et prod', () => {
 });
 
 test('teamEventTxt : statut Jira traduit, reviews, auteur retrouvé par son nom', () => {
-  run(`TEAM={people:[{id:'a1',name:'Andy Bernard',tickets:[],prs:[{n:2012}]}],meps:[]};
-    chars=[{key:'p_coll6',name:'Andy',person:'Andy Bernard',team:{id:'a1'}},{key:'p_coll4',name:'Kelly',person:'Kelly Kapoor'}];`);
+  run(`TEAM={people:[{id:'a1',name:'Pam Beesly',tickets:[],prs:[{n:2012}]}],meps:[]};
+    chars=[{key:'p_pam',name:'Pam',person:'Pam Beesly',team:{id:'a1'}},{key:'p_kelly',name:'Kelly',person:'Kelly Kapoor'}];`);
   const txt = e => { const r = JSON.parse(run(`JSON.stringify(teamEventTxt(${JSON.stringify(e)}))`)); return r && {c: r.c && r.c.key, txt: r.txt.replace(/<[^>]+>/g, '')}; };
-  assert.deepEqual(txt({kind: 'move', key: 'EW-1', from: 'En cours', to: 'To Review', cat: 'review', who: null, who_name: 'Kelly Kapoor'}),
-    {c: 'p_coll4', txt: '➜ Kelly : EW-1 en cours → review'});
-  run(`TEAM.events=[{kind:'new',key:'EW-9'}]`);
-  assert.equal(txt({kind: 'move', key: 'EW-9', from: 'Proposed', to: 'To Do'}), null);
-  assert.deepEqual(txt({kind: 'review', state: 'approved', n: 2012, by: null, by_name: 'barberemi', author: 'a1'}),
-    {c: null, txt: '✓ barberemi approuve la PR #2012 de Andy'});
+  assert.deepEqual(txt({kind: 'move', key: 'DM-1', from: 'En cours', to: 'To Review', cat: 'review', who: null, who_name: 'Kelly Kapoor'}),
+    {c: 'p_kelly', txt: '➜ Kelly : DM-1 en cours → review'});
+  run(`TEAM.events=[{kind:'new',key:'DM-9'}]`);
+  assert.equal(txt({kind: 'move', key: 'DM-9', from: 'Proposed', to: 'To Do'}), null);
+  assert.deepEqual(txt({kind: 'review', state: 'approved', n: 2012, by: null, by_name: 'michaelscott', author: 'a1'}),
+    {c: null, txt: '✓ michaelscott approuve la PR #2012 de Pam'});
   assert.equal(txt({kind: 'review', state: 'commented', n: 2012, by: 'a1', author: 'a1'}), null);
-  assert.equal(run(`prOwnerChar(2012).key`), 'p_coll6');
+  assert.equal(run(`prOwnerChar(2012).key`), 'p_pam');
 });
 
 test('bestEmployee : sprint ouvert sans point livré → gagnant du dernier sprint fermé', () => {
-  run(`TEAM={sprint:{name:'26-41'},people:[{id:'t',name:'Gabe F',tickets:[{key:'A',cat:'doing',points:3}]}],meps:[],
-    prev_sprint:{name:'26-39',people:[{id:'t',name:'Gabe F',tickets:[{key:'B',cat:'done',points:5}]},{id:'a',name:'Andy M',tickets:[{key:'C',cat:'done',points:8}]}]}};
-    chars=[{key:'p_coll6',name:'Andy',person:'Andy M'},{key:'p_coll7',name:'Gabe',person:'Gabe F',team:{id:'t'}}];`);
+  run(`TEAM={sprint:{name:'26-41'},people:[{id:'t',name:'Gabe L',tickets:[{key:'A',cat:'doing',points:3}]}],meps:[],
+    prev_sprint:{name:'26-39',people:[{id:'t',name:'Gabe L',tickets:[{key:'B',cat:'done',points:5}]},{id:'a',name:'Pam B',tickets:[{key:'C',cat:'done',points:8}]}]}};
+    chars=[{key:'p_pam',name:'Pam',person:'Pam B'},{key:'p_gabe',name:'Gabe',person:'Gabe L',team:{id:'t'}}];`);
   const r = JSON.parse(run(`(()=>{const r=bestEmployee();return JSON.stringify({sprint:r.sprint,prev:r.prev,first:r[0].p.name,pts:r[0].pts,who:empChar(r[0]).key})})()`));
-  assert.deepEqual(r, {sprint: '26-39', prev: true, first: 'Andy M', pts: 8, who: 'p_coll6'});
+  assert.deepEqual(r, {sprint: '26-39', prev: true, first: 'Pam B', pts: 8, who: 'p_pam'});
   run(`TEAM.people[0].tickets.push({key:'D',cat:'done',points:1})`);
   assert.equal(run(`bestEmployee().sprint`), '26-41');
 });

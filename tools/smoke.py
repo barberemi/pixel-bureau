@@ -1,6 +1,6 @@
 """Contrôle de fumée de la page assemblée (ne publie rien).
 
-    python3 tools/smoke.py                       # assemble -> dist/office.html + contrôles statiques
+    python3 tools/smoke.py                       # installation de démonstration -> dist/office.html + contrôles statiques
     python3 tools/smoke.py --chrome              # + chargement dans Chrome headless : aucune exception JS
     python3 tools/smoke.py --chrome --shot dist/map.png --js "setMode('pause');T=DAY0+11*3600e3;needTeleport=true;"
     python3 tools/smoke.py --html dist/autre.html --chrome   # contrôler un fichier déjà assemblé
@@ -164,13 +164,13 @@ def main():
         path = a.html
         html = open(path).read()
     else:
-        cfg = NEW_TEAM if a.empty else None
+        cfg = NEW_TEAM if a.empty else assemble.demo_config()
         html = assemble.build(demo=not a.empty, cfg=cfg)
         path = os.path.join(ROOT, "dist", "office_empty.html" if a.empty else "office.html")
         os.makedirs(os.path.dirname(path), exist_ok=True)
         open(path, "w").write(html)
         print("     assemblé :", path)
-    static_checks(html, NEW_TEAM if a.empty else None)
+    static_checks(html, NEW_TEAM if a.empty else assemble.demo_config())
     if a.chrome or a.shot:
         w, h = (int(x) for x in a.size.split("x"))
         chrome_checks(path, a.port, a.user_data_dir, a.js, a.shot, a.wait, w, h)

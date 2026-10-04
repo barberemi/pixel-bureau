@@ -85,7 +85,7 @@ def cmd_preview(path, out):
     if err:
         print(f"✗ plan invalide ({len(err)} erreur(s)) : python3 tools/plan.py check {os.path.relpath(path, ROOT)}")
         return 1
-    page = shots.build_page({**assemble.config(), "layout": os.path.abspath(path)})
+    page = shots.build_page({**assemble.demo_config(), "layout": os.path.abspath(path)})
     with shots.chrome() as call:
         png = shots.capture(call, page, 1400, 1000, shots.AT(11), "#cv", 1.5)
     if isinstance(png, str):

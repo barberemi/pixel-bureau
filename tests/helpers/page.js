@@ -17,21 +17,25 @@ function pageConfig(cfg) {
     schedules: Object.fromEntries(['office', 'live', 'team', 'payroll'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule]))};
 }
 
-// même roster et mêmes morceaux que roster() et music() de tools/assemble.py : profil d'équipe (clé team), puis l'installation
+// mêmes roster, morceaux, recettes et sprites que roster(), music(), recipes() et sprites() de tools/assemble.py :
+// le commun, puis le profil d'équipe (clé team), puis l'installation
 function team(cfg) {
   const dir = cfg.team ? path.join(ROOT, 'teams', cfg.team) : null;
   const people = dir ? JSON.parse(fs.readFileSync(path.join(dir, 'roster.json'), 'utf8')).people : [];
   const music = dir && fs.existsSync(path.join(dir, 'music', 'music.json')) ? JSON.parse(fs.readFileSync(path.join(dir, 'music', 'music.json'), 'utf8')) : {};
-  return {roster: {people: [...people, ...(cfg.people || [])]}, music: {...music, ...(cfg.music || {})}};
+  const opt = (...p) => fs.existsSync(path.join(ROOT, ...p)) ? JSON.parse(read(...p)) : {};
+  const common = JSON.parse(read('sprites', 'cast.json'));
+  const local = Object.fromEntries(Object.entries(opt('sprites', 'sprites.json')).filter(([k]) => !(k in common)));
+  return {roster: {people: [...people, ...(cfg.people || [])]}, music: {...music, ...(cfg.music || {})},
+    cast: {...common, ...(dir ? opt('teams', cfg.team, 'cast.json') : {})},
+    custom: {...local, ...(dir ? opt('teams', cfg.team, 'sprites.json') : {})}};
 }
 
-function pageJs(owner, {demo = true, actions = true, config, layout = 'equipe'} = {}) {
+function pageJs(owner, {demo = true, actions = true, config, layout} = {}) {
   const files = fs.readdirSync(SRC).filter(f => f.endsWith('.js')).sort();
   const js = files.map(f => { const s = fs.readFileSync(path.join(SRC, f), 'utf8'); return s.endsWith('\n') ? s : s + '\n'; }).join('');
-  const cast = JSON.parse(read('sprites', 'cast.json'));
-  const sprites = JSON.parse(read('sprites', 'sprites.json'));
-  const custom = Object.fromEntries(Object.entries(sprites).filter(([k]) => !(k in cast)));
   const cfg = config === undefined ? JSON.parse(read('tests', 'fixtures', 'bureau.config.json')) : config;
+  const {cast, custom} = team(cfg);
   // mêmes remplacements que tools/assemble.py (les pochettes de music.json restent des chemins : inutiles ici)
   const data = {
     __SPRITES__: JSON.stringify(custom),
@@ -40,7 +44,8 @@ function pageJs(owner, {demo = true, actions = true, config, layout = 'equipe'} 
     __CAST__: JSON.stringify(cast),
     __AVATAR_WF__: 'avatar-wf', __GATE_WF__: 'gate-wf', __RELAUNCH_WF__: 'relaunch-wf', __ASK_QP__: 'ask-qp',
     __ROSTER__: JSON.stringify(team(cfg).roster),
-    __LAYOUT__: read('layouts', layout + '.json'),
+    // même plan que layout_path() de tools/assemble.py : celui demandé, sinon celui de la config, du profil, ou le plan type
+    __LAYOUT__: layout ? read('layouts', layout + '.json') : read(cfg.layout || (cfg.team && JSON.parse(read('teams', cfg.team, 'team.json')).layout) || 'layouts/open-space.json'),
     __CONFIG__: JSON.stringify(pageConfig(cfg)),
     __OWNER__: JSON.stringify(owner === undefined ? JSON.parse(read('tests', 'fixtures', 'bureau.config.json')).owner : owner),
     __SNAP__: demo ? read('data', 'office_snapshot.json') : 'null',

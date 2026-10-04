@@ -33,22 +33,41 @@ test('squelette : 4 blocs kronn-action et les marqueurs CSS / JS', () => {
   assert.equal(html.split('/*__SCRIPTS__*/\n').length, 2);
 });
 
-test('casting : le propriétaire de bureau.config.json devient le boss', () => {
+test('casting : le propriétaire de la config devient le boss (démo : Michael)', () => {
   const {load: ld} = require('./helpers/page.js');
-  const remi = ld().run;
-  const R = JSON.parse(remi(`JSON.stringify(CAST.filter(c=>c.person).map(c=>({k:c.key,boss:!!c.boss,seat:c.seat,sprite:c.sprite||null,role:c.role})))`));
-  const me = R.find(c => c.k === 'p_remi');
-  assert.deepEqual(me, {k: 'p_remi', boss: true, seat: null, sprite: 'boss_sax', role: 'Le boss'});
+  const R = JSON.parse(ld().run(`JSON.stringify(CAST.filter(c=>c.person).map(c=>({k:c.key,boss:!!c.boss,seat:c.seat,role:c.role})))`));
+  assert.deepEqual(R.find(c => c.k === 'p_michael'), {k: 'p_michael', boss: true, seat: null, role: 'Le boss'});
   assert.equal(R.filter(c => c.boss).length, 1);
 });
 
-test('casting : Darryl installe, Rémi redevient un collègue classique entre Darryl et Gabe', () => {
+test('casting : Pam installe, Michael redevient un collègue et la place de Pam revient aux intérimaires', () => {
   const {load: ld} = require('./helpers/page.js');
-  const run = ld({owner: 'p_coll2'}).run;
+  const before = JSON.parse(ld().run(`JSON.stringify(CAST.find(c=>c.key==='p_pam').seat)`));
+  const run = ld({owner: 'p_pam'}).run;
+  const R = JSON.parse(run(`JSON.stringify(CAST.filter(c=>c.person).map(c=>({k:c.key,boss:!!c.boss,seat:c.seat,role:c.role})))`));
+  assert.deepEqual(R.find(c => c.k === 'p_pam'), {k: 'p_pam', boss: true, seat: null, role: 'Le boss'});
+  const michael = R.find(c => c.k === 'p_michael');
+  assert.equal(michael.boss, false);
+  assert.equal(michael.role, 'Directeur régional');
+  assert.ok(Array.isArray(michael.seat));
+  assert.ok(JSON.parse(run(`JSON.stringify(FREE_SEATS)`)).some(s => s[0] === before[0] && s[1] === before[1]), 'la place de Pam se libère');
+});
+
+// profil d'équipe equipe (teams/equipe/) : sprite de boss fourni, places du plan equipe
+const EURO = {...require('./fixtures/bureau.config.json'), team: 'equipe', people: []};
+
+test('profil equipe : Rémi au bureau du boss avec son sprite de saxophoniste', () => {
+  const {load: ld} = require('./helpers/page.js');
+  const R = JSON.parse(ld({config: EURO, owner: 'p_remi'}).run(`JSON.stringify(CAST.filter(c=>c.person).map(c=>({k:c.key,boss:!!c.boss,seat:c.seat,sprite:c.sprite||null,role:c.role})))`));
+  assert.deepEqual(R.find(c => c.k === 'p_remi'), {k: 'p_remi', boss: true, seat: null, sprite: 'boss_sax', role: 'Le boss'});
+});
+
+test('profil equipe : Darryl installe, Rémi redevient un collègue à sa place I2.R2', () => {
+  const {load: ld} = require('./helpers/page.js');
+  const run = ld({config: EURO, owner: 'p_coll2'}).run;
   const R = JSON.parse(run(`JSON.stringify(CAST.filter(c=>c.person).map(c=>({k:c.key,boss:!!c.boss,seat:c.seat,sprite:c.sprite||null,role:c.role})))`));
-  const ced = R.find(c => c.k === 'p_coll2'), remi = R.find(c => c.k === 'p_remi');
-  assert.deepEqual(ced, {k: 'p_coll2', boss: true, seat: null, sprite: null, role: 'Le boss'});
-  assert.deepEqual(remi, {k: 'p_remi', boss: false, seat: [12, 15], sprite: null, role: 'Développeur'});
+  assert.deepEqual(R.find(c => c.k === 'p_coll2'), {k: 'p_coll2', boss: true, seat: null, sprite: null, role: 'Le boss'});
+  assert.deepEqual(R.find(c => c.k === 'p_remi'), {k: 'p_remi', boss: false, seat: [12, 15], sprite: null, role: 'Développeur'});
   assert.equal(JSON.parse(run(`JSON.stringify(RECIPES.p_remi.hair)`)), 'curly_short2');
   assert.ok(JSON.parse(run(`JSON.stringify(FREE_SEATS)`)).some(s => s[0] === 12 && s[1] === 14), 'la place de Darryl se libère');
 });
@@ -60,14 +79,14 @@ test('casting : sans propriétaire, personne au bureau du boss et la page démar
   assert.ok(run(`chars.length`) > 0);
 });
 
-test('installation neuve : sans démo, sans données ni config, bureau vide et équipe du roster', () => {
+test('installation neuve : sans démo ni données, bureau vide et équipe présente', () => {
   const {load: ld} = require('./helpers/page.js');
   const run = ld({demo: false, owner: null, actions: false}).run;
   assert.equal(run(`DATA&&DATA.empty`), true);
   assert.equal(run(`DATA.runs.length`), 0);
   assert.equal(run(`TEAM`), null);
   assert.ok(run(`chars.filter(c=>c.person).length`) >= 10);
-  assert.equal(run(`stateAt(byKey.p_remi,Date.parse('2026-10-01T09:00:00Z')).label`), 'À son bureau · pas encore de données Jira');
+  assert.equal(run(`stateAt(byKey.p_michael,Date.parse('2026-10-01T09:00:00Z')).label`), 'À son bureau · pas encore de données Jira');
   assert.equal(run(`dashData(T).sprint`), null);
   assert.doesNotThrow(() => run(`renderKpis();renderWho();renderFeed();renderSide(true);true`));
 });
@@ -76,7 +95,7 @@ test('installation avec Jira seul : le dataset team suffit, sans office ni live'
   const {load: ld} = require('./helpers/page.js');
   const fs = require('fs'), path = require('path');
   const team = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'team_snapshot.json'), 'utf8'));
-  const run = ld({demo: false, owner: 'p_remi', actions: false,
+  const run = ld({demo: false, owner: 'p_michael', actions: false,
     kronnPageData: {version: 1, datasets: {team: {kind: 'snapshot', current: team, points: []}}}}).run;
   assert.equal(run(`DATA.empty`), true);
   assert.ok(run(`TEAM.people.length`) > 0);

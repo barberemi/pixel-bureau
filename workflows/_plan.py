@@ -45,7 +45,7 @@ def seat_ref(seats, ref):
 def assign(L, people, owner=None):
     """Qui s'assoit où : même règle que 10-world.js (vérifié par tests/layout.test.js). people : roster puis agents,
     dans l'ordre du casting ({key, seat?}). Le plan est maître (seating), puis la place de la personne si c'est un siège
-    libre du plan, puis un siège libre hors free_seats et hors sièges réservés à un absent.
+    libre du plan, puis un siège libre : ordinaire, puis réservé à un absent, enfin une place d'intérimaire (free_seats).
     Renvoie ({clé: numéro de siège}, places des intérimaires dans l'ordre) ; la place du boss lui est comptée mais libérée."""
     seats = seats_of(L)
     keys = {p["key"] for p in people}
@@ -67,6 +67,8 @@ def assign(L, people, owner=None):
     free = [t for t in (seat_ref(seats, f) for f in L.get("free_seats") or []) if t]
     reserved = {sid for sid, _ in seating}
     spare = [t for t in seats if t["id"] not in taken and t not in free and t["id"] not in reserved]
+    spare += [t for t in seats if t["id"] not in taken and t not in free and t["id"] in reserved]
+    spare += [t for t in free if t["id"] not in taken]
     for p in people:
         if p["key"] not in got and spare:
             give(p["key"], spare.pop(0))

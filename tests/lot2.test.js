@@ -17,15 +17,15 @@ function world() {
       mk('meredith',{wf:['aaaa1111'],_st:{st:'error',alarm:21,step:{n:'collect'},run:{_e:${T11 - H}}}}),
       mk('oscar',{wf:['bbbb2222'],_st:{st:'gate'}}),
       mk('v1',{visitor:true,disc:{id:'d-1',title:'Une question',end:'${new Date(T11 - 2 * H).toISOString()}'},_st:{st:'ask'}}),
-      mk('p_remi',{person:'Remi',boss:true,team:{gh:['barberemi'],prs:[{n:7,title:'Ma PR',review:'changes',url:'u7',updated:'${new Date(T11 - H).toISOString()}'}]},_st:{st:'boss'}}),
+      mk('p_remi',{person:'Michael',boss:true,team:{gh:['michaelscott'],prs:[{n:7,title:'Ma PR',review:'changes',url:'u7',updated:'${new Date(T11 - H).toISOString()}'}]},_st:{st:'boss'}}),
       mk('ok',{wf:['cccc3333'],_st:{st:'work'}})
     ];
     GATES=[{run:'r',wf:'bbbb2222-x',gate:'ok_prod',since:'${new Date(T11 - 30 * 60e3).toISOString()}'}];
     TEAM={people:[
-      {name:'Andy M',tickets:[{key:'EW-1',cat:'review',summary:'vieux',updated:'${new Date(T11 - 3 * D).toISOString()}'},{key:'EW-2',cat:'review',summary:'récent',updated:'${new Date(T11 - H).toISOString()}'}],
-       prs:[{n:10,title:'À relire',review:'pending',req:['BarbeRemi'],url:'u10',updated:'${new Date(T11 - 2 * D).toISOString()}'},
+      {name:'Pam B',tickets:[{key:'DM-1',cat:'review',summary:'vieux',updated:'${new Date(T11 - 3 * D).toISOString()}'},{key:'DM-2',cat:'review',summary:'récent',updated:'${new Date(T11 - H).toISOString()}'}],
+       prs:[{n:10,title:'À relire',review:'pending',req:['MichaelScott'],url:'u10',updated:'${new Date(T11 - 2 * D).toISOString()}'},
             {n:11,title:'Vieille',review:'pending',req:[],url:'u11',updated:'${new Date(T11 - 2 * D).toISOString()}'},
-            {n:12,title:'Brouillon',draft:true,review:'pending',req:['barberemi'],url:'u12'}]}],
+            {n:12,title:'Brouillon',draft:true,review:'pending',req:['michaelscott'],url:'u12'}]}],
       unassigned:[],other_prs:[],meps:[],events:[],merged_today:[]};
     CFG.github_login=null; CFG.github_repo='org/repo';
   }`);
@@ -34,7 +34,7 @@ function world() {
 test('À traiter : panne, validation, question, PR à relire et à corriger, ticket bloqué, PR sans review', () => {
   world();
   const items = J(`todoItems(${T11})`);
-  assert.deepEqual(items.map(x => x.key), ['err:meredith', 'gate:oscar', 'ask:v1', 'rev:10', 'fix:7', 'tk:EW-1', 'stale']);
+  assert.deepEqual(items.map(x => x.key), ['err:meredith', 'gate:oscar', 'ask:v1', 'rev:10', 'fix:7', 'tk:DM-1', 'stale']);
   assert.deepEqual(items.map(x => x.sev), ['err', 'warn', 'warn', 'warn', 'warn', 'info', 'info']);
   assert.match(items[0].txt, /21 échecs d'affilée/);
   assert.equal(items[1].age, 30 * 60e3);
@@ -78,16 +78,16 @@ test('récap : échecs par agent, MEP, merges, tickets déployés et créés dep
   const iso = d => new Date(d).toISOString();
   run(`DAY0=${T11 - 11 * H};
     chars[0].top=[{status:'Failed',_e:${T11 - H}},{status:'Failed',_e:${T11 - 2 * H}},{status:'Failed',_e:${T11 - 20 * H}}];
-    TEAM.meps=[{tag:'17.1',ticket:'EW-9',prod:{end:'${iso(T11 - 3 * H)}',conclusion:'success'}}];
+    TEAM.meps=[{tag:'17.1',ticket:'DM-9',prod:{end:'${iso(T11 - 3 * H)}',conclusion:'success'}}];
     TEAM.merged_today=[{n:5,mergedAt:'${iso(T11 - H)}'}];
-    TEAM.events=[{kind:'new',key:'EW-20',t:'${iso(T11 - H)}'},{kind:'move',cat:'done',key:'EW-9',t:'${iso(T11 - 2 * H)}'},{kind:'new',key:'EW-0',t:'${iso(T11 - 30 * H)}'}];`);
+    TEAM.events=[{kind:'new',key:'DM-20',t:'${iso(T11 - H)}'},{kind:'move',cat:'done',key:'DM-9',t:'${iso(T11 - 2 * H)}'},{kind:'new',key:'DM-0',t:'${iso(T11 - 30 * H)}'}];`);
   const d = J(`recapData(${T11})`);
   assert.deepEqual(d.fails, [['meredith', 2]], 'l\'échec d\'avant minuit ne compte pas');
   assert.deepEqual(d.alarms, ['meredith']);
   assert.equal(d.mepOk.length, 1);
   assert.equal(d.merged.length, 1);
-  assert.deepEqual(d.created.map(e => e.key), ['EW-20']);
-  assert.deepEqual(d.deployed.map(e => e.key), ['EW-9']);
+  assert.deepEqual(d.created.map(e => e.key), ['DM-20']);
+  assert.deepEqual(d.deployed.map(e => e.key), ['DM-9']);
   assert.equal(d.todo, 5);
 });
 
@@ -101,13 +101,13 @@ test('À traiter : réglage ui.todo (replié au chargement, ou masqué)', () => 
 
 test('rôles : la QA recette l\'équipe, la PO écrit et trie, sans ticket assigné personne n\'est « inactif » à tort', () => {
   const T9 = Date.parse('2026-10-01T09:00:00Z');
-  run(`TEAM={sprint:{name:'S'},people:[{id:'dev',name:'Andy',tickets:[{key:'EW-5',cat:'test'}],prs:[]}],unassigned:[],meps:[],events:[],
-    work:{q1:{written:[],triaged:[],tested:[{key:'EW-1'},{key:'EW-2'}],reopened:[{key:'EW-3'}]},
-          p1:{written:[{key:'EW-9'}],triaged:[{key:'EW-8'},{key:'EW-7'}],tested:[],reopened:[]}}};`);
+  run(`TEAM={sprint:{name:'S'},people:[{id:'dev',name:'Pam',tickets:[{key:'DM-5',cat:'test'}],prs:[]}],unassigned:[],meps:[],events:[],
+    work:{q1:{written:[],triaged:[],tested:[{key:'DM-1'},{key:'DM-2'}],reopened:[{key:'DM-3'}]},
+          p1:{written:[{key:'DM-9'}],triaged:[{key:'DM-8'},{key:'DM-7'}],tested:[],reopened:[]}}};`);
   const st = who => J(`stateAt(${who},${T9})`);
   const qa = st(`{key:'q',name:'Karen',person:'Karen Filippelli',roleKind:'qa',jira_id:'q1',seat:[19,14]}`);
   assert.equal(qa.st, 'work');
-  assert.match(qa.label, /^Teste 1 ticket\(s\) : EW-5 · 2 testés depuis le dernier daily, dont 1 réouvert$/);
+  assert.match(qa.label, /^Teste 1 ticket\(s\) : DM-5 · 2 testés depuis le dernier daily, dont 1 réouvert$/);
   const po = st(`{key:'p',name:'Jan',person:'Jan Levinson',roleKind:'po',jira_id:'p1',seat:[7,15]}`);
   assert.equal(po.label, '1 écrit · 2 triés cette semaine');
   assert.equal(po.bubble, '✍ 1 · 🗂 2');
@@ -116,24 +116,24 @@ test('rôles : la QA recette l\'équipe, la PO écrit et trie, sans ticket assig
 });
 
 test('stand-up : le sprint, puis le Tech Lead en premier et la facilitatrice en dernier', () => {
-  run(`chars=[{key:'d',name:'Andy',person:'A',team:{tickets:[]}},{key:'s',name:'Kelly',person:'M',roleKind:'sm'},
-    {key:'l',name:'DocRoms',person:'R',roleKind:'lead',team:{tickets:[]}},{key:'q',name:'Karen',person:'C',roleKind:'qa'},
+  run(`chars=[{key:'d',name:'Pam',person:'A',team:{tickets:[]}},{key:'s',name:'Kelly',person:'M',roleKind:'sm'},
+    {key:'l',name:'Holly',person:'R',roleKind:'lead',team:{tickets:[]}},{key:'q',name:'Karen',person:'C',roleKind:'qa'},
     {key:'p',name:'Jan',person:'L',roleKind:'po'},{key:'y',name:'Clark',person:'Y',standup:'Apprend'},{key:'ag',name:'Dwight'}];`);
   assert.deepEqual(J('standupScenes().map(s=>s.c?s.c.key:"sprint")'), ['sprint', 'l', 'd', 'q', 'p', 'y', 's']);
-  run(`TEAM={sprint:{},people:[{name:'A B',tickets:[{key:'EW-1',cat:'review',status:'To Review',summary:'x',created:'${new Date(Date.parse('2026-10-01T09:00:00Z')).toISOString()}'}]}],unassigned:[],work:{}};`);
+  run(`TEAM={sprint:{},people:[{name:'A B',tickets:[{key:'DM-1',cat:'review',status:'To Review',summary:'x',created:'${new Date(Date.parse('2026-10-01T09:00:00Z')).toISOString()}'}]}],unassigned:[],work:{}};`);
   const sm = run(`personScene(chars[1],${Date.parse('2026-10-01T12:00:00Z')})`);
   assert.match(sm, /FAITES DES REVIEWS/);
   assert.match(sm, /1 ticket en review/);
   assert.match(sm, /Nouveaux tickets depuis le dernier daily \(1\)/);
-  assert.match(sm, /To Review<\/span><b>EW-1<\/b>/);
+  assert.match(sm, /To Review<\/span><b>DM-1<\/b>/);
 });
 
 test('rattachement : un rôle au nom complet dans le roster retrouve ses tickets, sans doublon', () => {
-  run(`chars=[mkChar({key:'p_coll8',name:'DocRoms',person:'DocRoms',roleKind:'lead',seat:[19,15]})];byKey={p_coll8:chars[0]};
-    TEAM={people:[{id:'acc-r',name:'DocRoms',gh:[],tickets:[{key:'EW-7',cat:'doing'}],prs:[],merged:[]}],unassigned:[]};attachTeam();`);
+  run(`chars=[mkChar({key:'p_holly',name:'Holly',person:'Holly Flax',roleKind:'lead',seat:[19,15]})];byKey={p_holly:chars[0]};
+    TEAM={people:[{id:'acc-r',name:'Holly Flax',gh:[],tickets:[{key:'DM-7',cat:'doing'}],prs:[],merged:[]}],unassigned:[]};attachTeam();`);
   assert.equal(J('chars.length'), 1);
   assert.equal(J('chars[0].team.id'), 'acc-r');
-  assert.deepEqual(J('chars[0].team.tickets.map(x=>x.key)'), ['EW-7']);
+  assert.deepEqual(J('chars[0].team.tickets.map(x=>x.key)'), ['DM-7']);
 });
 
 test('fil : les données de la veille sont dites « hier », pas « aujourd\'hui »', () => {

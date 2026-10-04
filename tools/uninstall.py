@@ -15,7 +15,6 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 from install import InstallError, Kronn, jdump, jload, say  # noqa: E402
 import templates  # noqa: E402
 
-REFERENCE_PAGE = "4f38f114"  # installation de référence (Rémi) : jamais désinstallée par ce script
 
 
 def targets(k, cfg):
@@ -55,8 +54,8 @@ def main(argv=None):
         say(f"Pas de {os.path.relpath(a.config, ROOT)} : rien à désinstaller.")
         return 0
     cfg = jload(a.config)
-    if str(cfg.get("page_id") or "").startswith(REFERENCE_PAGE):
-        raise InstallError(f"page {REFERENCE_PAGE} : c'est l'installation de référence, ce script refuse de la désinstaller.")
+    if cfg.get("protect"):  # installation à garder (réglage "protect": true de la config)
+        raise InstallError("cette installation est protégée (\"protect\": true dans la config) : ce script refuse de la désinstaller.")
     k = Kronn(cfg["kronn"]["api"])
     todo = targets(k, cfg)
     if not todo:

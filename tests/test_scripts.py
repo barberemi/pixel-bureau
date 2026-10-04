@@ -164,16 +164,16 @@ print(json.dumps(d.get(key, [])))
         issues = []
         for i in range(n_issues):
             acc, name = people[i % 2]
-            issues.append({"key": f"EW-{100 + i}", "fields": {
+            issues.append({"key": f"DM-{100 + i}", "fields": {
                 "summary": f"Ticket {i} " + "x" * 120, "status": {"name": ["En cours", "To Review", "To Test", "Inconnu"][i % 4]},
                 "assignee": None if i == n_issues - 1 else {"accountId": acc, "displayName": name},
                 "issuetype": {"name": "Story"}, "updated": today, "created": today, "customfield_10016": 3},
                 "changelog": {"histories": [{"created": today, "author": {"accountId": acc, "displayName": name},
                                              "items": [{"field": "status", "fromString": "À faire", "toString": "En cours"}]}] * moves}})
         gh = github if github is not None else {
-            "open": [{"number": 7, "title": "EW-100 corrige le menu", "author": {"login": "cmartin", "name": "Darryl Martin"},
+            "open": [{"number": 7, "title": "DM-100 corrige le menu", "author": {"login": "dmartin", "name": "Darryl Martin"},
                       "isDraft": False, "reviewDecision": "APPROVED", "url": "https://x/7", "updatedAt": today, "createdAt": today,
-                      "latestReviews": [], "reviewRequests": ["barberemi"]}],
+                      "latestReviews": [], "reviewRequests": ["michaelscott"]}],
             "merged": [], "releases": [], "staging": [], "prod": [], "errors": []}
         return {"sprint": {"name": "S42", "startDate": today, "endDate": today}, "issues": issues, "closed": [], "github": gh,
                 "work": {"written": [], "po_triage": None, "sm_triage": None, "qa_ok": None, "qa_back": None},
@@ -183,8 +183,8 @@ print(json.dumps(d.get(key, [])))
         out = self.run_script("team_shape.py", self.team_input())
         names = {p["name"]: p for p in out["people"]}
         self.assertEqual(set(names), {"Darryl Martin", "Jan Dupont"})
-        self.assertEqual([t["key"] for t in names["Darryl Martin"]["tickets"]], ["EW-100", "EW-102"])
-        self.assertEqual(names["Darryl Martin"]["prs"][0]["req"], ["barberemi"])
+        self.assertEqual([t["key"] for t in names["Darryl Martin"]["tickets"]], ["DM-100", "DM-102"])
+        self.assertEqual(names["Darryl Martin"]["prs"][0]["req"], ["michaelscott"])
         self.assertEqual(out["unassigned"], [])  # le ticket sans assigné est dans un statut inconnu : ignoré
         self.assertTrue(out["sources"]["jira"] and out["sources"]["github"])
         self.assertNotIn("truncated", out)
@@ -233,7 +233,7 @@ print(json.dumps(d.get(key, [])))
         self.assertIn("gh introuvable", out["errors"][0])
 
     def test_github_snapshot_stays_under_100k(self):
-        pr = {"number": 1, "title": "EW-1 " + "t" * 400, "author": {"login": "a", "name": "A", "id": "x" * 300}, "isDraft": False,
+        pr = {"number": 1, "title": "DM-1 " + "t" * 400, "author": {"login": "a", "name": "A", "id": "x" * 300}, "isDraft": False,
               "reviewDecision": None, "url": "https://x/1", "updatedAt": iso(), "createdAt": iso(),
               "latestReviews": [{"author": {"login": "b"}, "state": "APPROVED", "submittedAt": iso(), "body": "b" * 2000}] * 3,
               "reviewRequests": [{"login": "c"}, {"name": "une équipe"}]}
@@ -331,14 +331,14 @@ if __name__ == "__main__":
 
     def test_layout_save_publishes_a_valid_plan_with_a_summary(self):
         fake = FakeKronn()
-        fake.datasets = [{"name": "layout", "current": {"layout": dict(self.PLAN, seating={"I1.L1": "p_remi"})}}]
-        r = self.run_raw("layout_save.py", "```json\n" + json.dumps(dict(self.PLAN, seating={"I2.R1": "p_remi"})) + "\n```",
+        fake.datasets = [{"name": "layout", "current": {"layout": dict(self.PLAN, seating={"I1.L1": "p_pam"})}}]
+        r = self.run_raw("layout_save.py", "```json\n" + json.dumps(dict(self.PLAN, seating={"I2.R1": "p_pam"})) + "\n```",
                          api=self.kronn(fake))
         self.assertEqual(r.returncode, 0, r.stderr)
         out = json.loads(r.stdout)
         self.assertEqual(out["layout"]["id"], "exemple-startup")
         self.assertIn("36 sièges", r.stderr)  # résumé lu par le boss dans la gate
-        self.assertIn("p_remi I1.L1 → I2.R1", r.stderr)
+        self.assertIn("p_pam I1.L1 → I2.R1", r.stderr)
 
     def test_layout_save_refuses_an_invalid_plan(self):
         r = self.run_raw("layout_save.py", json.dumps(dict(self.PLAN, exit=[5, 5])))

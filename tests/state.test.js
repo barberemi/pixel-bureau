@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {load} = require('./helpers/page.js');
+const MEP = require('./fixtures/bureau.config.json').mep_workflow; // workflow de mise en prod de la démo
 
 const page = load();
 const run = page.run;
@@ -38,12 +39,12 @@ test('étape ApiCall : salle serveurs', () => {
 
 test('étape Agent sur le ticket d\'un collègue : va le voir à sa place (visit)', () => {
   reset();
-  run(`chars=[{key:'p_a',name:'Alice',person:'Alice',seat:[5,14],team:{tickets:[{key:'EW-42',cat:'doing'}],gh:[]},runs:[]}]`);
+  run(`chars=[{key:'p_a',name:'Alice',person:'Alice',seat:[5,14],team:{tickets:[{key:'DM-42',cat:'doing'}],gh:[]},runs:[]}]`);
   const st = J(`stateAt(${agentWith(`{run:'r1',wf:'abcd1234-x',status:'Running',_s:${T11 - 10 * MIN},_e:null,_ve:Infinity,
-    steps:[{n:'implement',k:'Agent',at:'2026-10-01T08:55:00Z'}],vars:{jira_ticket_key:'EW-42'}}`)}, ${T11})`);
+    steps:[{n:'implement',k:'Agent',at:'2026-10-01T08:55:00Z'}],vars:{jira_ticket_key:'DM-42'}}`)}, ${T11})`);
   assert.equal(st.zone, 'visit');
   assert.deepEqual(st.visit, [4, 14, 'right']);
-  assert.equal(st.label, 'Travaille sur implement · avec Alice sur EW-42');
+  assert.equal(st.label, 'Travaille sur implement · avec Alice sur DM-42');
 });
 
 test('outil en cours récent : bulle et libellé de l\'outil', () => {
@@ -86,12 +87,12 @@ test('succès récent : pause café ; avant le premier run : pas encore arrivé'
 
 test('humain hors des heures de bureau : rentré chez soi', () => {
   reset();
-  const human = `({key:'p_a',name:'Alice',person:'Alice',seat:[5,14],team:{tickets:[{key:'EW-1',cat:'doing'}]},runs:[]})`;
+  const human = `({key:'p_a',name:'Alice',person:'Alice',seat:[5,14],team:{tickets:[{key:'DM-1',cat:'doing'}]},runs:[]})`;
   assert.deepEqual(J(`stateAt(${human}, ${Z('2026-10-01T19:30:00Z')})`), {st: 'off', label: 'Rentré chez soi'}); // 21h30
   assert.deepEqual(J(`stateAt(${human}, ${Z('2026-10-01T05:30:00Z')})`), {st: 'off', label: 'Rentré chez soi'}); // 7h30
   const day = J(`stateAt(${human}, ${T11})`);
   assert.equal(day.st, 'work');
-  assert.equal(day.bubble, 'EW-1');
+  assert.equal(day.bubble, 'DM-1');
   assert.equal(J(`stateAt(${human}, ${Z('2026-10-01T07:45:00Z')})`).st, 'daily'); // 9h45
 });
 
@@ -112,31 +113,31 @@ test('MEP un vendredi : plateau fermé (bulle 😱)', () => {
   reset();
   const fri = Z('2026-10-02T09:00:00Z');
   run(`REND=${fri}`);
-  const st = J(`stateAt(${agentWith(`{run:'r1',wf:'7f9e2b79-x',status:'Running',_s:${fri - 10 * MIN},_e:null,_ve:Infinity,
-    steps:[{n:'deploy',k:'Exec',at:'2026-10-02T08:55:00Z'}],vars:{jira_ticket_key:'EW-7'}}`)}, ${fri})`);
+  const st = J(`stateAt(${agentWith(`{run:'r1',wf:'${MEP}-x',status:'Running',_s:${fri - 10 * MIN},_e:null,_ve:Infinity,
+    steps:[{n:'deploy',k:'Exec',at:'2026-10-02T08:55:00Z'}],vars:{jira_ticket_key:'DM-7'}}`)}, ${fri})`);
   assert.equal(st.st, 'mep');
   assert.equal(st.bubble, '😱');
-  assert.match(st.label, /^MEP un vendredi ! Plateau fermé : Pilote la MEP EW-7/);
+  assert.match(st.label, /^MEP un vendredi ! Plateau fermé : Pilote la MEP DM-7/);
 });
 
 // ---------- bulles (bubbleFor) ----------
 const dev = tickets => `({key:'p_b',name:'Bob',person:'Bob',seat:[5,14],team:{tickets:${tickets},gh:[]},runs:[]})`;
-const TK = `[{key:'EW-1',cat:'doing',type:'Bug',summary:'Corriger le lecteur vidéo',updated:'2026-09-28T10:00:00.000+0200'},
-  {key:'EW-2',cat:'review',type:'Story',summary:'Nouveau bloc'},{key:'EW-3',cat:'done'}]`;
+const TK = `[{key:'DM-1',cat:'doing',type:'Bug',summary:'Corriger le lecteur vidéo',updated:'2026-09-28T10:00:00.000+0200'},
+  {key:'DM-2',cat:'review',type:'Story',summary:'Nouveau bloc'},{key:'DM-3',cat:'done'}]`;
 
 test('dev avec un ticket en cours et un en review : tk liste les deux, en cours d\'abord', () => {
   reset();
   const st = J(`stateAt(${dev(TK)}, ${T11})`);
-  assert.equal(st.bubble, 'EW-1');
-  assert.deepEqual(st.tk.map(x => x.key), ['EW-1', 'EW-2']);
+  assert.equal(st.bubble, 'DM-1');
+  assert.deepEqual(st.tk.map(x => x.key), ['DM-1', 'DM-2']);
 });
 
 test('dev sans ticket en cours mais avec de la review : il garde une bulle', () => {
   reset();
-  const st = J(`stateAt(${dev(`[{key:'EW-9',cat:'review'}]`)}, ${T11})`);
+  const st = J(`stateAt(${dev(`[{key:'DM-9',cat:'review'}]`)}, ${T11})`);
   assert.equal(st.st, 'idle');
-  assert.equal(st.bubble, 'EW-9');
-  assert.deepEqual(st.tk.map(x => x.key), ['EW-9']);
+  assert.equal(st.bubble, 'DM-9');
+  assert.deepEqual(st.tk.map(x => x.key), ['DM-9']);
 });
 
 test('bubbleFor : rotation toutes les 4 s, couleur de l\'état, détail de tous les tickets', () => {
@@ -151,15 +152,15 @@ test('bubbleFor : rotation toutes les 4 s, couleur de l\'état, détail de tous 
   assert.equal(second.head, '📗 2 2/2');
   assert.equal(second.tone, '#4a7fe0');
   assert.deepEqual(first.detail.map(l => l.txt), [
-    '🐛 EW-1 · en cours · 3 j', 'Corriger le lecteur vidéo', '📗 EW-2 · en review', 'Nouveau bloc'
+    '🐛 DM-1 · en cours · 3 j', 'Corriger le lecteur vidéo', '📗 DM-2 · en review', 'Nouveau bloc'
   ]);
 });
 
 test('runRef : une PR relue retrouve son ticket via les PR de l\'équipe', () => {
   reset();
-  run(`TEAM={people:[{name:'Bob',tickets:[{key:'EW-7',cat:'review',summary:'Swiper v14'}],prs:[{n:2012,title:'refactor(EW-7): swiper',keys:['EW-7']}]}],meps:[]}`);
+  run(`TEAM={people:[{name:'Bob',tickets:[{key:'DM-7',cat:'review',summary:'Swiper v14'}],prs:[{n:2012,title:'refactor(DM-7): swiper',keys:['DM-7']}]}],meps:[]}`);
   const ref = J(`runRef({vars:{'current_task.number':'2012'}})`);
-  assert.equal(ref.key, 'EW-7');
+  assert.equal(ref.key, 'DM-7');
   assert.equal(ref.pr, '2012');
   assert.equal(ref.t.summary, 'Swiper v14');
   assert.equal(J(`runRef({vars:{}})`), null);
@@ -170,13 +171,13 @@ test('runRef : une PR relue retrouve son ticket via les PR de l\'équipe', () =>
 
 test('agent sur la PR d\'un collègue : bulle = 🤖 + ticket, détail avec la PR et l\'étape', () => {
   reset();
-  run(`TEAM={people:[{name:'Bob',tickets:[{key:'EW-7',cat:'review',summary:'Swiper v14'}],prs:[{n:2012,keys:['EW-7']}]}],meps:[]}`);
+  run(`TEAM={people:[{name:'Bob',tickets:[{key:'DM-7',cat:'review',summary:'Swiper v14'}],prs:[{n:2012,keys:['DM-7']}]}],meps:[]}`);
   run(`_ac=${agentWith(`{run:'r1',wf:'abcd1234-x',status:'Running',_s:${T11 - 10 * MIN},_e:null,_ve:Infinity,
     steps:[{n:'review',k:'Agent',at:'2026-10-01T08:55:00Z'}],vars:{'current_task.number':'2012'}}`)}; _as=stateAt(_ac, ${T11});`);
   const bb = J(`bubbleFor(_ac,_as,${T11},0)`);
   assert.equal(bb.head, '🤖 7');
   assert.equal(bb.tone, '#4a7fe0');
-  assert.deepEqual(bb.detail.map(l => l.txt), ['🤖 EW-7 · PR #2012', 'Swiper v14', 'Étape review']);
+  assert.deepEqual(bb.detail.map(l => l.txt), ['🤖 DM-7 · PR #2012', 'Swiper v14', 'Étape review']);
 });
 
 test('agent sans ticket ni PR : bulle inchangée (nom de l\'étape)', () => {
@@ -193,13 +194,13 @@ test('whoCards : ce qui demande une action d\'abord, puis l\'équipe, puis les a
   run(`chars=[
     {key:'ag_idle',name:'Jim',runs:[],present:true,_st:{st:'idle',label:'Disponible'}},
     {key:'ag_work',name:'Dwight',runs:[],present:true,_st:{st:'work',label:'Travaille sur review',run:{wf_name:'Review PR',_s:${T11 - 12 * MIN}},step:{n:'review'}}},
-    {key:'p_b',name:'Bob',person:'Bob',runs:[],present:true,_st:{st:'work',human:true,label:'En cours',tk:[{key:'EW-1',cat:'doing',type:'Bug',summary:'Lecteur'}]}},
-    {key:'ag_ko',name:'Meredith',runs:[],present:true,_st:{st:'error',label:'En panne',run:{wf_name:'Adobe',_s:${T11 - 40 * MIN}}}}
+    {key:'p_b',name:'Bob',person:'Bob',runs:[],present:true,_st:{st:'work',human:true,label:'En cours',tk:[{key:'DM-1',cat:'doing',type:'Bug',summary:'Lecteur'}]}},
+    {key:'ag_ko',name:'Meredith',runs:[],present:true,_st:{st:'error',label:'En panne',run:{wf_name:'Statistiques',_s:${T11 - 40 * MIN}}}}
   ]`);
   const cards = J(`whoCards(${T11}).map(x=>({k:x.c.key,what:x.what,since:x.since,attn:x.attn}))`);
   assert.deepEqual(cards.map(x => x.k), ['ag_ko', 'p_b', 'ag_work']);
   assert.equal(cards[0].attn, true);
-  assert.equal(cards[1].what, '🐛 EW-1 Lecteur');
+  assert.equal(cards[1].what, '🐛 DM-1 Lecteur');
   assert.equal(cards[2].what, '⚙ Review PR');
   assert.equal(cards[2].since, '12 min');
 });
@@ -209,19 +210,19 @@ test('whoCards : le boss en tout premier, avec son ticket et ce qui l\'attend', 
   run(`chars=[
     {key:'ag_ko',name:'Meredith',runs:[],present:true,_st:{st:'error',label:'En panne'}},
     {key:'ag_g',name:'Dwight',runs:[],present:true,_st:{st:'gate',label:'Attend ta validation'}},
-    {key:'boss',name:'Rémi',boss:true,person:'Remi',runs:[],present:true,_st:{st:'boss',label:'Au bureau du boss'},
-      team:{tickets:[{key:'EW-5',cat:'done'},{key:'EW-6',cat:'review',type:'Story',summary:'Bloc'},{key:'EW-7',cat:'doing',type:'Bug',summary:'Fix'}]}}
+    {key:'boss',name:'Michael',boss:true,person:'Michael',runs:[],present:true,_st:{st:'boss',label:'Au bureau du boss'},
+      team:{tickets:[{key:'DM-5',cat:'done'},{key:'DM-6',cat:'review',type:'Story',summary:'Bloc'},{key:'DM-7',cat:'doing',type:'Bug',summary:'Fix'}]}}
   ]`);
   const cards = J(`whoCards(${T11}).map(x=>({k:x.c.key,what:x.what,sub:x.sub}))`);
   assert.deepEqual(cards.map(x => x.k), ['boss', 'ag_g', 'ag_ko']);
-  assert.equal(cards[0].what, '🐛 EW-7 Fix');
-  assert.equal(cards[0].sub, '✋ 1 validation à faire · en cours · +1 : EW-6');
+  assert.equal(cards[0].what, '🐛 DM-7 Fix');
+  assert.equal(cards[0].sub, '✋ 1 validation à faire · en cours · +1 : DM-6');
 });
 
 // ---------- la journée du boss ----------
 const bossAt = (iso, extra = '') => {
   run(`TEAM={people:[],meps:[]}; DATA={runs:[]}; REND=${Z(iso)};
-    chars=[{key:'boss',name:'Rémi',boss:true,person:'Remi',runs:[],seat:null,sprite:'boss_sax'},
+    chars=[{key:'boss',name:'Michael',boss:true,person:'Michael',runs:[],seat:null,sprite:'boss_sax'},
       {key:'p_a',name:'Alice',person:'Alice',seat:[12,14],present:true,_st:{st:'work',zone:'desk'},runs:[]}${extra}];`);
   return J(`stateAt(chars[0], ${Z(iso)})`);
 };
@@ -276,10 +277,10 @@ test('boss sans sprite de saxophoniste : au daily sans sax, pas de sax à h45', 
 test('week-end : les collègues restent chez eux, le boss vient', () => {
   const sat = parisISO('2026-10-03', '11:00'); // samedi
   run(`TEAM={people:[],meps:[]}; DATA={runs:[]}; chars=[];`);
-  const dev = J(`stateAt({key:'p_a',name:'Alice',person:'Alice',seat:[5,14],team:{tickets:[{key:'EW-1',cat:'doing'}]},runs:[]}, ${Z(sat)})`);
+  const dev = J(`stateAt({key:'p_a',name:'Alice',person:'Alice',seat:[5,14],team:{tickets:[{key:'DM-1',cat:'doing'}]},runs:[]}, ${Z(sat)})`);
   assert.deepEqual(dev, {st: 'off', label: 'En week-end'});
   assert.equal(bossAt(sat).zone, 'boss');
-  assert.equal(J(`stateAt({key:'p_a',name:'Alice',person:'Alice',seat:[5,14],team:{tickets:[{key:'EW-1',cat:'doing'}]},runs:[]}, ${Z(parisISO('2026-10-05', '11:00'))})`).st, 'work'); // lundi
+  assert.equal(J(`stateAt({key:'p_a',name:'Alice',person:'Alice',seat:[5,14],team:{tickets:[{key:'DM-1',cat:'doing'}]},runs:[]}, ${Z(parisISO('2026-10-05', '11:00'))})`).st, 'work'); // lundi
 });
 
 // ---------- données figées, alarme, minuit de Paris (lot 1 du 4 octobre) ----------

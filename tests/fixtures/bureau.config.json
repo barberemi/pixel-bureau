@@ -1,29 +1,115 @@
 {
- "_doc": "Propre à chaque installation, jamais partagé (il sera créé par tools/install.py). Lu par la page à l'assemblage (tools/assemble.py, partie « page ») et injecté dans les scripts des workflows par tools/publish.py.",
- "owner": "p_remi",
- "team": "equipe",
+ "_doc": "Installation de démonstration (équipe fictive Dunder Mifflin) : aperçu local, captures de la documentation et tests. Une vraie installation écrit la sienne dans bureau.config.json (tools/install.py).",
+ "owner": "p_michael",
+ "team": null,
+ "people": [
+  {
+   "key": "p_michael",
+   "name": "Michael",
+   "role": "Directeur régional",
+   "person": "Michael Scott",
+   "github": "michaelscott"
+  },
+  {
+   "key": "p_jan",
+   "name": "Jan",
+   "role": "Cheffe produit",
+   "person": "Jan Levinson",
+   "roleKind": "po",
+   "jira_id": "dm:0101",
+   "standup": "Parle des ventes"
+  },
+  {
+   "key": "p_darryl",
+   "name": "Darryl",
+   "role": "Développeur",
+   "person": "Darryl Philbin",
+   "github": "darrylphilbin"
+  },
+  {
+   "key": "p_gabe",
+   "name": "Gabe",
+   "role": "Développeur",
+   "person": "Gabe Lewis",
+   "apprentice": true,
+   "github": "gabelewis"
+  },
+  {
+   "key": "p_clark",
+   "name": "Clark",
+   "role": "Product manager",
+   "person": "Clark Green",
+   "apprentice": true,
+   "jira_id": "dm:0102",
+   "standup": [
+    "Toujours en cours d'apprentissage",
+    "Fait des trucs avec Jan",
+    "Apprend le métier",
+    "Note les mots inconnus du daily pour les demander après"
+   ]
+  },
+  {
+   "key": "p_kelly",
+   "name": "Kelly",
+   "role": "Facilitatrice",
+   "person": "Kelly Kapoor",
+   "roleKind": "sm",
+   "jira_id": "dm:0103"
+  },
+  {
+   "key": "p_pam",
+   "name": "Pam",
+   "role": "Développeuse",
+   "person": "Pam Beesly",
+   "github": "pambeesly"
+  },
+  {
+   "key": "p_andy",
+   "name": "Andy",
+   "role": "Développeur",
+   "person": "Andy Bernard",
+   "github": "andybernard"
+  },
+  {
+   "key": "p_karen",
+   "name": "Karen",
+   "role": "Testeuse",
+   "person": "Karen Filippelli",
+   "roleKind": "qa",
+   "jira_id": "dm:0104"
+  },
+  {
+   "key": "p_holly",
+   "name": "Holly",
+   "role": "Tech Lead",
+   "person": "Holly Flax",
+   "roleKind": "lead",
+   "github": "hollyflax"
+  }
+ ],
  "kronn": {
   "api": "http://127.0.0.1:3140/api",
   "ui": "http://localhost:5173/",
-  "project_id": "55ea7983-85bc-43f5-8800-f9a0b2f8629c"
+  "project_id": "a4aec343-45c6-5acf-baa8-061e06fb4c23"
  },
- "page_id": "4f38f114-e010-41ba-b34e-832ff9a72672",
+ "page_id": "9f44a73d-261a-5bee-8df1-fbca3b43402b",
  "workflows": {
-  "office": "622338c5-f4f7-4e01-a3b8-749f6c9b8c71",
-  "live": "d1128ffe-beca-4580-8fb1-1db644f7c659",
-  "team": "60fd6c69-2afc-4467-b202-5887c943b85c",
-  "payroll": "527967ac-3369-49d1-854f-4fb8efe9d83a"
+  "office": "1cf55dcb-eb7d-5834-a973-641c7442b112",
+  "live": "6a5b5e80-7d43-5ddb-92c5-a8b10459fde0",
+  "team": "a3f7f21c-4dec-5aff-bc8b-e6cca36d4d19",
+  "payroll": "6f3d76f4-da5c-5902-8047-fd0d00d0114c"
  },
  "actions": {
-  "avatar": "6261fa8b-9e95-471e-ac23-c333031eaf86",
-  "gate": "8f4c4b5f-143b-4759-9b2e-6a10e9f3add2",
-  "relaunch": "c925293a-15e5-4be6-8df7-9a9e9aeef5d0",
-  "ask": "165e1edf-44c8-40a7-9eb0-22fd96b91e33"
+  "avatar": "3c3c8b06-6253-51d6-a475-49cc0a6368d3",
+  "gate": "d2a337a7-0353-5487-8be2-9560c9ddc65a",
+  "relaunch": "2333bb6f-63cb-589d-8056-fd18810b80f4",
+  "ask": "bf2eba71-bcd0-51f7-8710-1a8594ca0cbf",
+  "layout": "c1d95990-12ee-5572-a7c8-4eb9b68a42f3"
  },
  "jira": {
-  "config_id": "a793541d-02f2-41bd-ac1f-150391500bcf",
-  "site": "https://acme.atlassian.net",
-  "project": "EW",
+  "config_id": "81ee2591-ff21-5f4c-b66f-30e8e78003f0",
+  "site": "https://dunder-mifflin.atlassian.net",
+  "project": "DM",
   "board": 1,
   "points_fields": [
    "customfield_10016",
@@ -48,10 +134,10 @@
   }
  },
  "github": {
-  "repo": "acme/front_web",
-  "staging_workflow": "CD_Deploy-NONPROD.yaml",
-  "prod_workflow": "CD_Deploy-PRODUCTION.yaml",
-  "login": "barberemi"
+  "repo": "dunder-mifflin/site-web",
+  "staging_workflow": "deploy-staging.yml",
+  "prod_workflow": "deploy-production.yml",
+  "login": "michaelscott"
  },
  "rhythm": {
   "timezone": "Europe/Paris",
@@ -75,20 +161,16 @@
    "Sun"
   ]
  },
- "mep_workflow": "7f9e2b79",
+ "mep_workflow": "f8d2a0f8",
  "agents": [
   {
    "key": "dwight",
    "name": "Dwight",
    "role": "Reviewer de PR",
    "wf": [
-    "b7ccd728",
-    "e2b72fea",
-    "33e26965"
-   ],
-   "seat": [
-    23,
-    14
+    "0c20b83e",
+    "64c2cfe7",
+    "26d24a40"
    ]
   },
   {
@@ -96,35 +178,23 @@
    "name": "Jim",
    "role": "Veille techno",
    "wf": [
-    "e05964ae"
-   ],
-   "seat": [
-    23,
-    15
+    "9d26248e"
    ]
   },
   {
    "key": "stanley",
    "name": "Stanley",
-   "role": "Core Web Vitals",
+   "role": "Performance du site",
    "wf": [
-    "97e52e9f"
-   ],
-   "seat": [
-    23,
-    16
+    "181cf6e5"
    ]
   },
   {
    "key": "phyllis",
    "name": "Phyllis",
-   "role": "Migration Apollo",
+   "role": "Migration de l'API",
    "wf": [
-    "391237f0"
-   ],
-   "seat": [
-    25,
-    14
+    "ea46f49f"
    ]
   },
   {
@@ -132,102 +202,71 @@
    "name": "Oscar",
    "role": "Récap journalier",
    "wf": [
-    "b713fbb5"
-   ],
-   "seat": [
-    25,
-    15
+    "8cda79ef"
    ]
   },
   {
    "key": "angela",
    "name": "Angela",
-   "role": "SCSS Modernisation",
+   "role": "Modernisation CSS",
    "wf": [
-    "b4ac075e"
-   ],
-   "seat": [
-    25,
-    16
+    "9e7a2507"
    ]
   },
   {
    "key": "kevin",
    "name": "Kevin",
-   "role": "Migration des blocks",
+   "role": "Migration des composants",
    "wf": [
-    "511fc02f",
-    "a0da6fcf"
-   ],
-   "seat": [
-    29,
-    14
+    "e709e91c",
+    "c349e6c2"
    ]
   },
   {
    "key": "creed",
    "name": "Creed",
-   "role": "Erreurs prod Fastly",
+   "role": "Erreurs prod CDN",
    "wf": [
-    "8bc3dec3",
-    "65130609",
-    "1be9bb80"
-   ],
-   "seat": [
-    29,
-    15
+    "b442a801",
+    "0a134a23",
+    "4f8ff764"
    ]
   },
   {
    "key": "meredith",
    "name": "Meredith",
-   "role": "Surveillance Adobe",
+   "role": "Surveillance des stats",
    "wf": [
-    "c6969553"
-   ],
-   "seat": [
-    29,
-    16
+    "ad46c862"
    ]
   },
   {
    "key": "toby",
    "name": "Toby",
-   "role": "Couverture Playwright",
+   "role": "Couverture des tests",
    "wf": [
-    "264b6990"
-   ],
-   "seat": [
-    31,
-    14
+    "d97ad4c9"
    ]
   },
   {
    "key": "erin",
    "name": "Erin",
-   "role": "Mutation Ads/Video",
+   "role": "Tests de mutation",
    "wf": [
-    "084ee6d5",
-    "dd6fd6b5"
-   ],
-   "seat": [
-    31,
-    15
+    "0576503b",
+    "3f6fb338"
    ]
   },
   {
    "key": "ryan",
    "name": "Ryan",
-   "role": "Implémentation & MEP",
+   "role": "Implémentation et MEP",
    "wf": [
-    "9513a829",
-    "7f9e2b79",
-    "cc0a696c"
-   ],
-   "seat": [
-    31,
-    16
+    "a61eba94",
+    "6084b06f",
+    "44ba8f84"
    ]
   }
- ]
+ ],
+ "ui": {}
 }

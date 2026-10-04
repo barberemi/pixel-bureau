@@ -37,10 +37,10 @@ SHOTS = {
     "mep": (1400, 1400, AT(11.6) + "select('tv');", "#side"),
     "avatar": (1400, 1600, AT(11) + "select('jim');openEditor(byKey.jim);", "#side"),
     # plan d'équipe proposé par « python3 tools/plan.py share » : la validation du boss, seule dans le panneau
-    "validation-plan": (1400, 1200, AT(11) + "GATES=[{run:'demo',wf:'2057374e-0000',wf_name:'Le Bureau · plan',gate:'boss',"
+    "validation-plan": (1400, 1200, AT(11) + "GATES=[{run:'demo',wf:'00000000-demo',wf_name:'Le Bureau · plan',gate:'boss',"
                         "since:new Date(Date.now()-12*60e3).toISOString(),message:\"Nouveau plan du bureau pour toute l'équipe : valider pour le publier.\\n\\n"
                         "Nouveau plan : Plateau web, 2e étage (40 x 20 cases, 36 sièges, 22 places attribuées).\\n"
-                        "Places qui changent : p_coll7 I2.R3 → I3.R3, dwight I4.L1 → I6.L1.\"}];select('gate:demo');", "#side"),
+                        "Places qui changent : p_gabe I2.R3 → I3.R3, dwight I4.L1 → I6.L1.\"}];select('gate:demo');", "#side"),
     "panneau-replie": (1440, 820, AT(11) + "SIDE_FOLDED=true;renderSide(true);scrollTo(0,document.querySelector('.main').offsetTop-8);", None),
     "mobile": (390, 1200, AT(11), None),
     "visite": (1400, 1000, AT(11) + "tourShow(0);", None),
@@ -55,12 +55,12 @@ SHOTS = {
 
 
 def build_page(cfg=None, variant=None):
-    """Page de démo assemblée dans dist/ (cfg : config d'installation, par exemple un autre plan ; variant : nom de
-    fichier distinct, pour garder plusieurs pages à la fois)."""
+    """Page de démo assemblée dans dist/ (cfg : config d'installation, défaut : l'installation de démonstration ;
+    variant : nom de fichier distinct, pour garder plusieurs pages à la fois)."""
     path = os.path.join(ROOT, "dist", "office.html" if not variant else "office-" + os.path.basename(variant).replace(".json", ".html"))
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
-        f.write(assemble.build(demo=True, cfg=cfg))
+        f.write(assemble.build(demo=True, cfg=assemble.demo_config() if cfg is None else cfg))
     return path
 
 
@@ -128,7 +128,7 @@ def main(names):
             w, h, js, sel, *rest = SHOTS[name]
             scale, layout = (rest + [1, None][len(rest):])[:2]
             if layout not in pages:  # même page de démo, sur un autre plan
-                pages[layout] = build_page({**assemble.config(), "layout": layout}, layout)
+                pages[layout] = build_page({**assemble.demo_config(), "layout": layout}, layout)
             png = capture(call, pages[layout], w, h, js, sel, scale)
             if isinstance(png, str):
                 print(f"✗ {name} : {png}")
