@@ -354,7 +354,7 @@ function buildFurniture(){
   ({tv:TVR,emp:EMPR,paie:PAYR,kanban:KANR,planning:PLANR}=LAYOUT.objects);
   islandFurniture();
   // meubles du plan, dans l'ordre du plan
-  for(const f of LAYOUT.furniture){
+  for(const f of LAYOUT.furniture||[]){
     const t=FURN_TYPES[f.type]; if(!t)continue;
     const o={tx:f.at[0]-t.anchor[0],ty:f.at[1]-t.anchor[1]}; o.dx=o.tx*TS; o.dy=o.ty*TS;
     (FURN_AT[f.type]=FURN_AT[f.type]||[]).push(o);
@@ -362,7 +362,7 @@ function buildFurniture(){
     for(const [x,y] of t.foot)B(f.at[0]+x,f.at[1]+y);
   }
   FURN.push(TV_SCREEN,PAY_ENVELOPE,EMP_FRAME,KANBAN_WALL,CRON_BOARD);
-  for(const [x,y] of LAYOUT.plants)plant(x,y);
+  for(const [x,y] of LAYOUT.plants||[])plant(x,y);
   themeFurniture(); // 46-themes.js : décor des fêtes
 }
 // meubles immobiles cuits une fois : ceux d'une même profondeur (même y) dessinés ensemble dans une toile de travail,

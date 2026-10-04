@@ -2,12 +2,13 @@
 
   python3 tools/templates.py export   # depuis le Kronn de bureau.config.json : valeurs de l'installation -> emplacements
   python3 tools/templates.py check    # le rendu avec bureau.config.json redonne exactement les workflows de ce Kronn
-  python3 tools/templates.py render <clé>   # affiche le rendu d'un modèle (office, live, team, payroll, avatar, gate, relaunch, layout, ask)
+  python3 tools/templates.py render <clé>   # affiche le rendu d'un modèle (office, live, team, payroll, avatar, gate, relaunch, layout, ask, sketch)
 
 Emplacements, remplacés au rendu :
   @@page_id@@, @@kronn.project_id@@, @@jira.config_id@@, @@jira.project@@, @@jira.board@@, @@jira.sprint_field@@,
   @@jira.points_fields@@ (liste jointe par des virgules), @@owner_name@@ (prénom du boss),
-  @@script:workflows/x.py@@ (le script, config d'installation injectée comme le fait publish.py).
+  @@script:workflows/x.py@@ (le script, config d'installation injectée comme le fait publish.py),
+  @@text:tools/x.md@@ (le texte du fichier, tel quel), @@root@@ (dossier du dépôt de l'installation, pour les commandes d'un prompt).
 Une étape marquée "_requires": "jira" disparaît au rendu si l'installation n'a pas de connexion Jira ; ses
 références {{steps.<étape>.…}} dans l'entrée des étapes suivantes deviennent null.
 Les noms des emplacements ne ressemblent pas aux variables Kronn ({{steps.x}}, {{run_id}}), qui restent intactes.
@@ -29,14 +30,23 @@ TEMPLATES = {
     "relaunch": ("workflow", ("actions", "relaunch"), {"relaunch": "workflows/relaunch.py"}),
     "layout": ("workflow", ("actions", "layout"), {"save": "workflows/layout_save.py"}),
     "ask": ("quick_prompt", ("actions", "ask"), {}),
+    "sketch": ("quick_prompt", ("actions", "sketch"), {}),
 }
 WF_KEYS = ("name", "project_id", "trigger", "variables", "steps", "actions", "safety", "workspace_config", "concurrency_limit", "exec_allowlist")
 QP_KEYS = ("name", "icon", "prompt_template", "variables", "agent", "project_id", "skill_ids", "profile_ids", "directive_ids", "tier", "description")
-TOKEN = re.compile(r"@@([a-z_.]+|script:[\w/.]+)@@")
+TOKEN = re.compile(r"@@([a-z_.]+|(?:script|text):[\w/.]+)@@")
+TEXTS = ("tools/plan_prompt.md",)  # fichiers recopiés tels quels dans un prompt (@@text:…@@)
 
 
 def load_config():
     return json.load(open(os.path.join(ROOT, "bureau.config.json")))
+
+
+def text_of(path):
+    """Un fichier recopié dans un prompt : ni @@ ni {{ (Kronn y verrait ses variables)."""
+    body = open(os.path.join(ROOT, path), encoding="utf-8").read()
+    assert "@@" not in body and "{{" not in body, path + " : ni @@ ni {{"
+    return body
 
 
 def owner_name(cfg):
@@ -87,6 +97,7 @@ def values(cfg):
         "jira.sprint_field": j.get("sprint_field") or "",
         "jira.points_fields": ",".join(j.get("points_fields") or []),
         "owner_name": owner_name(cfg),
+        "root": ROOT,
         # travail Jira des rôles sans tickets assignés (PO, SM, QA) : compte Jira de la première personne du rôle
         **{f"jira.role.{r}": role_ids(r, cfg) for r in ROLES},
         "jira.role_ids": ",".join(f'"{x}"' for r in ROLES for x in [role_ids(r, cfg)] if x),
@@ -101,6 +112,8 @@ def _sub(v, vals, cfg):
             k = m.group(1)
             if k.startswith("script:"):
                 return script_code(k[7:], cfg)
+            if k.startswith("text:"):
+                return text_of(k[5:])
             if k not in vals:
                 raise KeyError(f"emplacement inconnu : {k}")
             return vals[k]
@@ -209,7 +222,10 @@ def templatize(key, kind, d, cfg):
                 s["exec_args"] = ["-c", tok] + (s.get("exec_args") or [])[2:]
     else:
         name = vals["owner_name"]
-        d["prompt_template"] = d["prompt_template"].replace(f"{name} te pose", "@@owner_name@@ te pose")
+        t = d["prompt_template"].replace(f"{name} te pose", "@@owner_name@@ te pose")
+        for path in TEXTS:
+            t = t.replace(text_of(path), f"@@text:{path}@@")
+        d["prompt_template"] = t.replace(ROOT, "@@root@@")
     return {"kind": kind, "key": key, "definition": d}
 
 

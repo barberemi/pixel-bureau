@@ -32,10 +32,10 @@ function buildWorld(){
   for(const [x,y] of LAYOUT.boss.desk)B(x,y); seatTiles.add(BOSS_SEAT.join(','));
   // plantes et cases bloquées en plus (les meubles du catalogue bloquent leur emprise : 40-furniture.js)
   for(const [x,y] of LAYOUT.blocked||[])B(x,y);
-  for(const [x,y] of LAYOUT.plants)B(x,y);
+  for(const [x,y] of LAYOUT.plants||[])B(x,y);
   SPOTS=LAYOUT.spots;
   // porte qui se ferme (plateau TV fermé le vendredi et le week-end)
-  CLOSABLE=new Set(LAYOUT.closable.map(c=>c.at.join(',')));
+  CLOSABLE=new Set((LAYOUT.closable||[]).map(c=>c.at.join(',')));
 }
 // places : le plan est maître (LAYOUT.seating {siège: clé}) ; sinon la place du roster ou de l'agent si c'est un siège
 // libre de ce plan ; sinon un siège libre, dans l'ordre du casting (collègues, puis agents) : d'abord les sièges

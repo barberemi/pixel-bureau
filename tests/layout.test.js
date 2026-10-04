@@ -105,3 +105,11 @@ test('thèmes : chaque décor se dessine sur un autre plan, même sans les meubl
       p.run(`THEME_FORCE='${th}';T=DAY0+${h}*3600e3;THEME_MEMO={k:null,v:null};render(${h * 1000});lightSources();`);
   assert.equal(p.run('furnAt("toilets")'), null); // pas de toilettes : pas de banderole, pas d'erreur
 });
+
+test('plan sans les listes facultatives (porte refermable, plantes, fenêtres, meubles, lumières) : la page démarre et se dessine', () => {
+  const lean = {...EXAMPLE};
+  for (const k of ['closable', 'plants', 'windows', 'furniture', 'light_rooms', 'blocked', 'wall', 'labels', 'clock', 'free_seats']) delete lean[k];
+  const p = load({kronnPageData: {datasets: {layout: {current: {layout: lean}}}}});
+  assert.equal(p.run('LAYOUT.id'), 'exemple-startup');
+  for (const h of [11, 20.25]) p.run(`T=DAY0+${h}*3600e3;render(${h * 1000});lightSources();`);
+});

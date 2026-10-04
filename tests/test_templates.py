@@ -53,6 +53,17 @@ class TemplatesTest(unittest.TestCase):
         self.assertIn('"page_id": "11111111-2222-3333-4444-555555555555"', shape["exec_args"][1])  # config injectée
         self.assertIn("Darryl te pose", templates.render(TPL["ask"], cfg)["prompt_template"])
 
+    def test_sketch_prompt_carries_the_shared_text_and_the_repo(self):
+        """Le Quick Prompt « plan vers brouillon » reprend tools/plan_prompt.md (comme plan.py from-image) et les commandes
+        du dépôt de l'installation ; templatize retrouve exactement le modèle."""
+        cfg = colleague()
+        qp = templates.render(TPL["sketch"], cfg)
+        self.assertTrue(qp["prompt_template"].startswith(templates.text_of("tools/plan_prompt.md")))
+        self.assertIn(f"python3 {ROOT}/tools/plan.py check", qp["prompt_template"])
+        self.assertEqual(qp["variables"], [])  # sans variable : il s'enchaîne après l'image jointe dans une discussion
+        back = templates.templatize("sketch", "quick_prompt", copy.deepcopy(qp), cfg)
+        self.assertEqual(back["definition"], TPL["sketch"]["definition"])
+
     def test_render_without_jira_drops_jira_steps(self):
         cfg = colleague(jira={})
         team = templates.render(TPL["team"], cfg)

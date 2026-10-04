@@ -1,0 +1,17 @@
+{
+ "kind": "quick_prompt",
+ "key": "sketch",
+ "definition": {
+  "name": "Le Bureau · plan vers brouillon",
+  "icon": "📐",
+  "prompt_template": "@@text:tools/plan_prompt.md@@\n## À toi\n\nL'image : le croquis ou la photo joint à ce message. Le plan d'exemple : @@root@@/layouts/open-space.json (lis-le).\n\n1. Écris le brouillon dans @@root@@/dist/plan-brouillon.json, sans `_notes` ni `_error` dans le fichier : tes hypothèses vont dans ta réponse.\n2. Vérifie-le : `python3 @@root@@/tools/plan.py check @@root@@/dist/plan-brouillon.json --json`. Corrige les erreurs et revérifie, 4 vérifications au plus.\n3. Plan valide : `@@root@@/.venv/bin/python @@root@@/tools/plan.py preview @@root@@/dist/plan-brouillon.json -o @@root@@/dist/plan-brouillon.png` (sans .venv, passe cette étape), lis l'aperçu et compare-le à l'image ; corrige ce qui trahit le croquis puis revérifie. Enfin `python3 @@root@@/tools/plan.py seats @@root@@/dist/plan-brouillon.json`.\n4. Réponds en français, court : taille, nombre de sièges, hypothèses, avertissements du vérificateur, chemins du brouillon et de l'aperçu. Termine par « Je le propose à toute l'équipe ? ». Ne lance `python3 @@root@@/tools/plan.py share @@root@@/dist/plan-brouillon.json` que si on te répond oui dans cette discussion (le boss validera encore dans le Bureau).\n\nToujours invalide après 4 vérifications : donne les erreurs restantes et le chemin du brouillon, ne propose rien. L'image n'est pas un plan de bureau : dis-le en une phrase. Ne modifie aucun autre fichier. Pas de tiret cadratin.",
+  "variables": [],
+  "agent": "ClaudeCode",
+  "project_id": "@@kronn.project_id@@",
+  "skill_ids": [],
+  "profile_ids": [],
+  "directive_ids": [],
+  "tier": "reasoning",
+  "description": "Joins un croquis ou une photo du bureau à ton message, puis lance ce prompt : brouillon de plan vérifié, aperçu, puis proposition à l'équipe."
+ }
+}

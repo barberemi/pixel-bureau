@@ -79,7 +79,15 @@ def assign(L, people, owner=None):
 
 
 def validate(L, raw_size=0):
-    """(erreurs, avertissements) : messages en français avec les coordonnées [x,y] en cause."""
+    """(erreurs, avertissements) : messages en français avec les coordonnées [x,y] en cause. Un plan mal formé (clé
+    de type inattendu, coordonnée incomplète, brouillon d'un modèle) donne une erreur, jamais une exception."""
+    try:
+        return _validate(L, raw_size)
+    except (AttributeError, IndexError, KeyError, TypeError, ValueError) as e:
+        return [f"structure inattendue ({type(e).__name__} : {e}) : compare avec un plan de layouts/"], []
+
+
+def _validate(L, raw_size):
     err, warn = [], []
     E, Wn = err.append, warn.append
     if L.get("format") != FORMAT:
@@ -134,6 +142,9 @@ def validate(L, raw_size=0):
 
     seats = seats_of(L)
     boss = L.get("boss") or {}
+    if not (isinstance(boss.get("seat"), list) and len(boss["seat"]) == 2 and boss.get("desk")):
+        E("boss : seat [x, y] et desk [[x, y], …] obligatoires (la page place le boss et ses validations à son bureau)")
+        boss = {}
     seat_tiles = {(s["x"], s["y"]) for s in seats} | ({tuple(boss["seat"])} if boss.get("seat") else set())
     blocked = {(cx, r) for cx in L["islands"]["x"] for r in L["islands"]["rows"]}
     blocked |= {tuple(p) for p in (boss.get("desk") or []) + (L.get("blocked") or []) + (L.get("plants") or [])}
@@ -181,7 +192,7 @@ def validate(L, raw_size=0):
         E(f"place du boss {boss['seat']} : inaccessible depuis la sortie")
 
     spots = L.get("spots") or {}
-    need = dict(ZONES_ESSENTIAL, **(ZONES_BOSS if boss else {}))
+    need = dict(ZONES_ESSENTIAL, **ZONES_BOSS)
     for z, n in need.items():
         if len(spots.get(z) or []) < n:
             E(f"zone « {z} » : au moins {n} place(s)")

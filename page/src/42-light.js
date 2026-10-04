@@ -28,7 +28,7 @@ function skyColor(t){
 let ROOMS, ROOM_LV;
 function buildRooms(){ // rappelé quand le plan change
   ROOMS=[
-    ...LAYOUT.light_rooms,                                                                  // pièces et allées du plan
+    ...LAYOUT.light_rooms||[],                                                                // pièces et allées du plan
     ...ISLANDS.map(cx=>[cx-2,IROWS[0]-2,cx+2,IROWS[IROWS.length-1]+2])                     // un plafonnier par îlot
   ];
   ROOM_LV=ROOMS.map(()=>0);

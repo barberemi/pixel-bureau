@@ -8,7 +8,7 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 
 | Fonctionnalité | En bref |
 | --- | --- |
-| [Le plan](docs/fonctionnalites/01-plan.md) | Collègues, agents en hologramme et visiteurs, placés selon ce qu'ils font ; lumière du jour ; plan d'équipe validé par le boss |
+| [Le plan](docs/fonctionnalites/01-plan.md) | Collègues, agents en hologramme et visiteurs, placés selon ce qu'ils font ; lumière du jour ; plan d'équipe validé par le boss, brouillon depuis un croquis ou une photo |
 | [À traiter](docs/fonctionnalites/02-a-traiter.md) | Pannes, validations, PR à relire ou corriger, tickets bloqués, chacun avec son bouton |
 | [Qui fait quoi](docs/fonctionnalites/03-qui-fait-quoi.md) | Une carte par personne et par agent : ce qu'il fait maintenant |
 | [Fil et récap](docs/fonctionnalites/04-fil-et-recap.md) | La journée heure par heure, et son résumé depuis minuit |
@@ -31,7 +31,7 @@ python3 tools/install.py --dry-run   # voir ce qui serait créé
 python3 tools/install.py             # installation interactive, relançable sans doublon
 ```
 
-L'installateur demande ton équipe (une équipe neuve avec le plan type par défaut, ou un profil de `teams/`, réservé aux membres de son organisation GitHub), qui tu es (tu prends le bureau du boss, les autres gardent leur place) et le plan du bureau, puis crée la page, ses datasets, 8 workflows et un Quick Prompt dans **ton** Kronn, écrit `bureau.config.json` (jamais commité) et lance un premier rafraîchissement. Ouvre ensuite Kronn > Pages > « Le Bureau ». Aucun secret n'est stocké : les connexions sont référencées par leur id Kronn.
+L'installateur demande ton équipe (une équipe neuve avec le plan type par défaut, ou un profil de `teams/`, réservé aux membres de son organisation GitHub), qui tu es (tu prends le bureau du boss, les autres gardent leur place) et le plan du bureau, puis crée la page, ses datasets, 8 workflows et deux Quick Prompts dans **ton** Kronn, écrit `bureau.config.json` (jamais commité) et lance un premier rafraîchissement. Ouvre ensuite Kronn > Pages > « Le Bureau ». Aucun secret n'est stocké : les connexions sont référencées par leur id Kronn.
 
 | Action | Commande |
 | --- | --- |

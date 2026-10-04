@@ -53,3 +53,16 @@ python3 tools/plan.py share defaut           # revenir au plan de l'installation
 `share` lance le workflow « Le Bureau · plan » : il revérifie le plan, puis attend la validation du boss. La demande apparaît dans [À traiter](02-a-traiter.md) avec son résumé (taille, sièges, places qui changent). Une fois validé, la page se redessine sans rechargement et chacun rejoint sa nouvelle place. Un plan refusé n'est jamais publié.
 
 ![Validation d'un nouveau plan par le boss](../img/validation-plan.png)
+
+## Partir d'un croquis ou d'une photo
+
+Pas besoin d'écrire le JSON : Claude dessine un brouillon à partir d'un croquis ou d'une photo du plan (PNG, JPEG ou WebP ; une photo HEIC s'exporte d'abord en JPEG). Le vérificateur le relit et Claude corrige ses erreurs, 4 tours au plus. Ce qui manque au dessin mais dont le Bureau a besoin (salle serveurs, toilettes, bureau du boss) est ajouté là où c'est plausible, et chaque supposition est listée.
+
+- **En local** : `python3 tools/plan.py from-image croquis.jpg` (CLI `claude` connecté, Opus par défaut, `--model sonnet` pour aller plus vite). Le brouillon arrive dans `dist/plan-brouillon.json` avec son aperçu `dist/plan-brouillon.png`, puis la commande demande s'il faut le proposer à l'équipe (`plan.py share`, toujours validé par le boss).
+- **Dans Kronn** : dans une discussion, joins l'image à ton message puis enchaîne le Quick Prompt « Le Bureau · plan vers brouillon ». L'agent écrit le même brouillon, le vérifie, regarde l'aperçu et te demande avant de le proposer.
+
+| Croquis | Brouillon obtenu (premier tour, sans retouche) |
+| --- | --- |
+| ![Croquis d'un étage](../img/croquis.png) | ![Brouillon tiré du croquis](../img/croquis-brouillon.png) |
+
+Le brouillon garde l'esprit des lieux, pas les cotes : une case vaut environ 50 cm, les postes deviennent des îlots (une table, un siège de chaque côté). Relis les suppositions, retouche le JSON si besoin (`plan.py check`), puis propose-le.
