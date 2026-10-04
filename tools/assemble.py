@@ -71,6 +71,14 @@ def page_config(cfg):
     }
 
 
+DEFAULT_LAYOUT = "layouts/equipe.json"
+
+
+def layout_path(cfg):
+    """Plan du bureau de cette installation (bureau.config.json, clé layout), sinon le plan par défaut."""
+    return (cfg or {}).get("layout") or DEFAULT_LAYOUT
+
+
 def build(demo=True, cfg=None):
     """Page complète. demo : instantanés de démo embarqués (aperçu local, tests) ; la page publiée n'en a pas.
     cfg : config d'installation (défaut : bureau.config.json)."""
@@ -91,6 +99,7 @@ def build(demo=True, cfg=None):
                 .replace("__MUSIC__", json.dumps(music, ensure_ascii=False))
                 .replace("__CAST__", json.dumps(cast, ensure_ascii=False, separators=(",", ":")))
                 .replace("__ROSTER__", open(p("team", "roster.json")).read())
+                .replace("__LAYOUT__", open(p(layout_path(cfg))).read())
                 .replace("__OWNER__", json.dumps(cfg.get("owner")))
                 .replace("__CONFIG__", json.dumps(page_config(cfg), ensure_ascii=False))
                 .replace("__ACTIONS__", json.dumps({k: bool(v) for k, v in acts.items()}))

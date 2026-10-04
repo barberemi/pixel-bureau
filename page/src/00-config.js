@@ -1,3 +1,4 @@
+const LAYOUT = __LAYOUT__;   // plan du bureau (layouts/*.json), lu par 10-world.js
 const SPR = __SPRITES__;   // sprites fournis tels quels (boss_sax)
 const LAYERS = __LAYERS__; // calques LPC (sprites/build_layers.py)
 const RECIPES = __CAST__;  // recette de chaque avatar (sprites/cast.json)
@@ -26,7 +27,7 @@ const CAST = [
   ...ROSTER.map(({boss_sprite,...p})=>p.key===OWNER?{...p,wf:[],boss:true,seat:null,role:'Le boss',sprite:boss_sprite||p.sprite}:{...p,wf:[]}),
   ...AGENTS,
 ];
-const FREE_SEATS = [[12,15],[35,14],[37,14],[35,15],[37,15],[35,16],[37,16],[5,14],[5,15],[5,16],[7,16],[10,14],[10,15],[10,16],[19,16]];
+const FREE_SEATS = LAYOUT.free_seats.map(s=>s.slice()); // places libres du plan (intérimaires, collègues sans place)
 // la place du propriétaire se libère quand il passe au bureau du boss
 {const o=ROSTER.find(p=>p.key===OWNER);if(o&&o.seat&&!FREE_SEATS.some(s=>s[0]===o.seat[0]&&s[1]===o.seat[1]))FREE_SEATS.push(o.seat);}
 const JIRA_BROWSE = (CFG.jira_site||'').replace(/\/$/,'')+'/browse/'; // lien d'un ticket

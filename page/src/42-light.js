@@ -26,9 +26,8 @@ function skyColor(t){
 }
 // pièces éclairées quand quelqu'un s'y trouve (cases)
 const ROOMS=[
-  [1,2,11,10],[13,2,15,4],[18,2,26,4],[28,2,31,4],[34,2,38,4],[18,8,26,10], // café, serveurs, réunion, plateau, WC, boss
-  [13,6,38,7],[13,8,16,11],[28,8,38,11],                                       // allée haute de l'open space, autour du bureau du boss
-  ...ISLANDS.map(cx=>[cx-2,12,cx+2,18])                                         // un plafonnier par îlot
+  ...LAYOUT.light_rooms,                                                                  // pièces et allées du plan
+  ...ISLANDS.map(cx=>[cx-2,IROWS[0]-2,cx+2,IROWS[IROWS.length-1]+2])                     // un plafonnier par îlot
 ];
 const NIGHT_MAX=.45; // opacité du voile au cœur de la nuit (au-delà, plan et personnages illisibles)
 let LIGHT_CV=null, LIGHT_AT=0, LIGHT_D=0;
@@ -41,7 +40,7 @@ function lightSources(){
     if(o._st.st==='work'&&!o.moving)S.push({x:left?x0+7:x0+TS-12,y:py+4,r:16,a:.6,c:'rgba(120,200,255,.14)'}); // écran allumé
   }
   const b=chars.find(c=>c.boss);
-  if(b&&b.present&&b.atBoss)S.push({x:22*TS+16,y:9*TS-14,r:46,a:.85,c:'rgba(255,214,150,.2)'});
+  if(b&&b.present&&b.atBoss)S.push({x:BOSS_SEAT[0]*TS+16,y:(BOSS_SEAT[1]+1)*TS-14,r:46,a:.85,c:'rgba(255,214,150,.2)'});
   for(const x of [13,15])S.push({x:x*TS+16,y:2*TS+2,r:22,a:.35,c:'rgba(95,240,138,.12)'}); // baies serveurs
   if(typeof TVR!=='undefined'&&!stageClosed(T))S.push({x:TVR.x+TVR.w/2,y:TVR.y+TVR.h/2,r:44,a:.5,c:'rgba(150,180,255,.12)'});
   if(chars.some(c=>c.present&&c._st&&c._st.st==='coffee'))S.push({x:3*TS+17,y:2*TS-20,r:22,a:.5,c:'rgba(255,190,120,.16)'});

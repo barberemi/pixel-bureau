@@ -134,9 +134,8 @@ def check_kronn(ask, defaults):
 
 
 def free_seats(roster):
-    with open(os.path.join(ROOT, "page", "src", "00-config.js"), encoding="utf-8") as f:
-        src = f.read()
-    seats = json.loads(re.search(r"const FREE_SEATS = (\[\[.*?\]\]);", src).group(1))
+    """Places libres du plan par défaut (layouts/equipe.json), moins celles déjà prises dans le roster."""
+    seats = jload(os.path.join(ROOT, assemble.DEFAULT_LAYOUT))["free_seats"]
     taken = {tuple(p["seat"]) for p in roster if p.get("seat")}
     return [s for s in seats if tuple(s) not in taken]
 

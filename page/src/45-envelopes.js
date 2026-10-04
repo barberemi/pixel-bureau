@@ -57,7 +57,7 @@ function envTick(now){
 function envPos(key){
   const c=byKey[key]; if(!c)return null;
   if(c.present&&c.pos)return {x:c.pos.x,y:c.pos.y-34};
-  const s=c.boss?[22,8]:c.seat; if(!s)return null;
+  const s=c.boss?BOSS_SEAT:c.seat; if(!s)return null;
   const p=tileCenter(s[0],s[1]);return {x:p.x,y:p.y-34};
 }
 function drawEnvelope(x,y,col,tilt){

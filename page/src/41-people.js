@@ -59,7 +59,7 @@ function drawChar(c,now){
     ctx.stroke();
     ctx.restore();
   }
-  const bob=(c.pose==='type'&&!c.moving&&(c.dir==='left'||c.dir==='right')?(Math.floor(now/320+c.phase)%2):0)+(c.boss&&!c.moving&&c.tile&&c.tile[0]===22&&c.tile[1]===8?9:0);
+  const bob=(c.pose==='type'&&!c.moving&&(c.dir==='left'||c.dir==='right')?(Math.floor(now/320+c.phase)%2):0)+(c.boss&&!c.moving&&c.tile&&c.tile[0]===BOSS_SEAT[0]&&c.tile[1]===BOSS_SEAT[1]?9:0);
   const dx=x-32-(c.sprite==='boss_sax'?5:0), dy=y-60+bob;
   if(famOf(c)==='wf'){
     const glitch=(Math.floor(now/110)+Math.floor(c.phase*7))%41===0;
@@ -77,7 +77,7 @@ function drawChar(c,now){
 // chemin vers sa place quand le personnage sélectionné n'y est pas (café, réunion, toilettes...)
 let TRAIL={k:null,v:null};
 function drawSeatTrail(c,now){
-  const s=c.boss?[22,8]:c.seat; if(!s||!c.tile)return;
+  const s=c.boss?BOSS_SEAT:c.seat; if(!s||!c.tile)return;
   const d=tileCenter(s[0],s[1]); if(Math.hypot(d.x-c.pos.x,d.y-c.pos.y)<48)return;
   const k=c.tile.join(',')+'>'+s.join(','); if(TRAIL.k!==k)TRAIL={k,v:findPath(c.tile[0],c.tile[1],s[0],s[1])};
   ctx.save();ctx.setLineDash([4,6]);ctx.lineDashOffset=-now/50;ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=2;

@@ -31,6 +31,7 @@ function pageJs(owner, {demo = true, actions = true, config} = {}) {
     __CAST__: JSON.stringify(cast),
     __AVATAR_WF__: 'avatar-wf', __GATE_WF__: 'gate-wf', __RELAUNCH_WF__: 'relaunch-wf', __ASK_QP__: 'ask-qp',
     __ROSTER__: read('team', 'roster.json'),
+    __LAYOUT__: read('layouts', 'equipe.json'),
     __CONFIG__: JSON.stringify(pageConfig(config === undefined ? JSON.parse(read('tests', 'fixtures', 'bureau.config.json')) : config)),
     __OWNER__: JSON.stringify(owner === undefined ? JSON.parse(read('tests', 'fixtures', 'bureau.config.json')).owner : owner),
     __SNAP__: demo ? read('data', 'office_snapshot.json') : 'null',
@@ -38,7 +39,7 @@ function pageJs(owner, {demo = true, actions = true, config} = {}) {
     __DEMO__: String(!!demo),
     __ACTIONS__: JSON.stringify({avatar: actions, gate: actions, relaunch: actions, ask: actions}),
   };
-  return js.replace(/__(SPRITES|LAYERS|MUSIC|CAST|ROSTER|CONFIG|OWNER|DEMO|ACTIONS|AVATAR_WF|GATE_WF|RELAUNCH_WF|ASK_QP|SNAP|TEAM)__/g, m => data[m]);
+  return js.replace(/__(SPRITES|LAYERS|MUSIC|CAST|ROSTER|LAYOUT|CONFIG|OWNER|DEMO|ACTIONS|AVATAR_WF|GATE_WF|RELAUNCH_WF|ASK_QP|SNAP|TEAM)__/g, m => data[m]);
 }
 
 // objet « fourre-tout » : toute propriété lue est un nouveau bouchon (mémorisé), appelable et constructible ;

@@ -77,7 +77,7 @@ function buildBg(){
 }
 function drawWindows(t,now){
   const s=skyColor(t); // 42-light.js : hauteur du soleil au bureau
-  for(const x of [1,4,7,9,18,24,34]){
+  for(const x of LAYOUT.windows){
     R(ctx,x*TS+4,TS+4,TS*1.5,20,'#e7e1d3');
     R(ctx,x*TS+6,TS+6,TS*1.5-4,16,s);
     drawStars(x*TS+6,TS+6,TS*1.5-4,16,now||0);

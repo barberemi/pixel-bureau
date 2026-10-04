@@ -8,6 +8,7 @@
 | `page/src/styles.css` | Toute la feuille de style |
 | `page/src/NN-*.js` | Le script, concaténé **dans l'ordre des noms** en un seul `<script>` (une portée globale, pas de modules) : config `00`, plan `10`, sprites `20`, données `30-33`, états `35`, dessin `40-45`, panneau, actions, fiches et éditeur `50-65`, À traiter et récap `68-69`, tuiles, fil et « Qui fait quoi » `70-72`, mode TV `75-76`, visite `78`, souris `80`, boucle et démarrage `90` |
 | `workflows/` | Scripts Python des étapes Exec ; `_lib.py` = socle commun, recopié dans chaque script au rendu (Kronn lance `python3 -c` sans fichier voisin) ; `templates/` = modèles des workflows et du Quick Prompt |
+| `layouts/` | Plans de bureau (format `bureau-layout/1`) ; `equipe.json` = le plan par défaut |
 | `team/` | `roster.json` (l'équipe, identique pour tous), `defaults.json` (valeurs proposées à l'installation) |
 | `sprites/` | Recettes d'avatars `cast.json`, calques LPC `layers.json`, sprites fournis `custom/` |
 | `data/` | Instantanés de démo (aperçu local et tests seulement, jamais dans la page publiée) |
@@ -49,6 +50,16 @@ Questions : Kronn, qui tu es, projet, Jira (testé à travers Kronn), GitHub, ag
 
 - Réutiliser plutôt que créer (question `reuse`) : homonymes orphelins repris, ou id donné élément par élément, mis à jour ou gardé tel quel (`own`). Un workflow qui sert une autre page encore présente n'est jamais repris d'office.
 - `uninstall.py` ne touche ni aux éléments `own`, ni aux connexions, ni aux autres workflows.
+
+## Plan du bureau (`layouts/*.json`)
+
+Le plan n'est plus codé en dur : `10-world.js` construit grille, sols, portes, sièges, places et cases bloquées depuis le plan embarqué par `assemble.py` (marqueur `__LAYOUT__` ; `layout` dans `bureau.config.json`, sinon `layouts/equipe.json`).
+
+- `tiles` : le sol en texte, une chaîne par rangée, un caractère par case ; `legend` dit ce que vaut chaque caractère (`#` mur, `=` vitre, `.` moquette, `c` carrelage, `s` serveurs, `r` réunion, `p` plateau, `w` toilettes, `b` parquet, `E` paillasson).
+- `doors` (seuils dessinés), `exit`, `closable` (porte du plateau fermée le vendredi et le week-end), `islands` (colonnes des tables et rangs des sièges), `boss` (place et bureau), `blocked` (décor infranchissable), `plants`, `windows`.
+- `spots` : places de chaque zone (`[x, y, orientation]`) ; `free_seats` : places des intérimaires ; `light_rooms` : pièces éclairées la nuit ; `objects` : rectangles cliquables (TV, Kanban, planning, paie, employé du sprint).
+- Encore dans le code (lot 7, phase 3) : le dessin et la position des meubles, des libellés de pièces et du décor mural.
+- `tests/layout.test.js` vérifie que le plan redonne exactement l'ancien monde (`tests/fixtures/world_equipe.json`).
 
 ## Repères
 

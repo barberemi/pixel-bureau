@@ -188,7 +188,7 @@ FURN.push({y:2*TS+31,draw:(now)=>{
   ctx.fillStyle='#5a6b78';ctx.font='bold 6px ui-monospace,monospace';ctx.fillText('🧻',33*TS+8,2*TS+28);
 }});
 // plateau TV : écran au mur du fond
-const TVR={x:28*TS+6,y:TS+3,w:4*TS-12,h:28};
+const TVR=LAYOUT.objects.tv;
 function tapeBand(x1,y1,x2,y2,w){ // ruban de chantier jaune et noir
   const L=Math.hypot(x2-x1,y2-y1),a=Math.atan2(y2-y1,x2-x1);ctx.save();ctx.translate(x1,y1);ctx.rotate(a);
   ctx.fillStyle='#f2c314';
@@ -244,9 +244,9 @@ FURN.push({y:-1,draw:(now)=>{
   ctx.restore();
 }});
 // employé du sprint : cadre sur le mur bas de la cafétéria
-const EMPR={x:8*TS+4,y:11*TS+2,w:62,h:28};
+const EMPR=LAYOUT.objects.emp;
 // enveloppe de paie posée sur le bureau du boss -> fiche de paie
-const PAYR={x:23*TS+16,y:8*TS+17,w:14,h:10};
+const PAYR=LAYOUT.objects.paie;
 FURN.push({
   y:9*TS+31,fixed:true,draw:()=>{
     const {x,y,w,h}=PAYR;
@@ -276,7 +276,7 @@ FURN.push({y:-1,draw:()=>{
   ctx.fillText(Math.round(b.pts)+' PTS',x+27,y+25);
 }});
 // mur Kanban à droite du bureau du boss
-const KANR={x:23*TS-2,y:7*TS-6,w:4*TS,h:36};
+const KANR=LAYOUT.objects.kanban;
 function kanbanCols(){
   const all=TEAM?[...TEAM.people.flatMap(p=>p.tickets.map(x=>({...x,owner:p.name}))),...(TEAM.unassigned||[]).map(x=>({...x,owner:null}))]:[];
   return ['todo','doing','review','test','deploy','done'].map(k=>({k,list:all.filter(x=>x.cat===k)}));
@@ -294,7 +294,7 @@ FURN.push({y:-1,draw:()=>{
   ctx.textAlign='left';
 }});
 // planning mural des crons (couloir, à gauche du bureau du boss)
-const PLANR={x:18*TS+4,y:7*TS-6,w:3*TS+4,h:36};
+const PLANR=LAYOUT.objects.planning;
 FURN.push({y:-1,draw:()=>{
   const {x,y,w,h}=PLANR;
   R(ctx,x,y,w,h,'#3d4250');R(ctx,x+2,y+2,w-4,h-4,'#1f2430');
@@ -322,7 +322,7 @@ const plant=(x,y)=>FURN.push({
     ctx.fill();
   }
 });
-plant(1,10);plant(11,2);plant(1,18);plant(38,18);plant(38,12);plant(13,12);
+for(const [x,y] of LAYOUT.plants)plant(x,y);
 // meubles immobiles cuits une fois : ceux d'une même profondeur (même y) dessinés ensemble dans une toile de travail,
 // rognés à leur rectangle utile, puis remplacés dans FURN par une seule recopie (tri en profondeur inchangé).
 // Sans lecture des pixels possible (getImageData indisponible), ils restent dessinés à chaque image.
