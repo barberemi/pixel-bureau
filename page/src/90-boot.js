@@ -139,4 +139,5 @@ window.addEventListener('kronn:page-data',e=>{
   refreshAll();
   });
 if(TV){document.body.classList.add('tv');NAMES_BEFORE_TV=NAMES;NAMES='all';}
+tourAuto();
 requestAnimationFrame(loop);

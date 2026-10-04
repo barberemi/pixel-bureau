@@ -23,3 +23,12 @@ test('Fraîcheur : cron du Bureau en échec, erreurs GitHub, Jira muet, nettoyag
   run(`OFFICE=null; TEAM_BASE=null;`);
   assert.equal(run('diagTxt()'), '');
 });
+
+test('Agents empilés : une zone pleine décale chaque surnuméraire, jamais deux sprites au même pixel', () => {
+  const pos = JSON.parse(run(`(()=>{
+    const taken=new Set(), out=[];
+    const zone=Object.keys(SPOTS).find(z=>z!=='boss'&&SPOTS[z].length>0), n=SPOTS[zone].length+3;
+    for(let i=0;i<n;i++){const s=pickSpot({key:'k'+i},zone,taken);taken.add(s.key);const p=spotPos(s);out.push(p.x+','+p.y);}
+    return JSON.stringify(out);})()`));
+  assert.equal(new Set(pos).size, pos.length);
+});

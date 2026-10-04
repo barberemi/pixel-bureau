@@ -437,8 +437,15 @@ const FAM={
   vis:{t:'Visiteurs',ico:'💬 ',bg:'#c2410c',c:'#d97757'}
 };
 let FILTER=null; // null = tout le monde ; sinon une famille mise en avant
-// workflows en hologramme : teinte cyan, lignes de balayage qui défilent, halo, scintillement rare
+// workflows en hologramme : teinte cyan, lignes de balayage qui défilent, scintillement rare ; sur le sol beige,
+// un contour sombre de 1 px et un halo cyan (silhouette décalée) le détachent du décor
 const HOLO=document.createElement('canvas');HOLO.width=64;HOLO.height=64;const hctx=HOLO.getContext('2d');
+const HOLO_EDGE=document.createElement('canvas');HOLO_EDGE.width=64;HOLO_EDGE.height=64;const ectx=HOLO_EDGE.getContext('2d');
+function holoSilhouette(img,sx,sy,col){
+  ectx.globalCompositeOperation='source-over';ectx.clearRect(0,0,64,64);ectx.drawImage(img,sx,sy,64,64,0,0,64,64);
+  ectx.globalCompositeOperation='source-in';ectx.fillStyle=col;ectx.fillRect(0,0,64,64);
+  ectx.globalCompositeOperation='source-over';return HOLO_EDGE;
+}
 function holoFrame(img,sx,sy,now,lines){
   hctx.globalCompositeOperation='source-over';hctx.clearRect(0,0,64,64);hctx.drawImage(img,sx,sy,64,64,0,0,64,64);
   hctx.globalCompositeOperation='source-atop';hctx.fillStyle='rgba(70,190,255,.55)';hctx.fillRect(0,0,64,64);
@@ -486,8 +493,14 @@ function drawChar(c,now){
   const dx=x-32-(c.sprite==='boss_sax'?5:0), dy=y-60+bob;
   if(famOf(c)==='wf'){
     const glitch=(Math.floor(now/110)+Math.floor(c.phase*7))%41===0;
-    ctx.save();ctx.globalAlpha=glitch?.45:.9;ctx.shadowColor='rgba(80,200,255,.75)';ctx.shadowBlur=7;
-    ctx.drawImage(holoFrame(img,fx*64,fy*64,now,true),0,0,64,64,dx+(glitch?1:0),dy,64,64);ctx.restore();
+    const gx=dx+(glitch?1:0);
+    ctx.save();
+    ctx.globalAlpha=glitch?.2:.35; holoSilhouette(img,fx*64,fy*64,'#5fd4ff');
+    for(const [ox,oy] of [[-2,0],[2,0],[0,-2],[0,2]])ctx.drawImage(HOLO_EDGE,gx+ox,dy+oy);
+    ctx.globalAlpha=glitch?.45:.95; holoSilhouette(img,fx*64,fy*64,'#0b3a4a');
+    for(const [ox,oy] of [[-1,0],[1,0],[0,-1],[0,1]])ctx.drawImage(HOLO_EDGE,gx+ox,dy+oy);
+    ctx.globalAlpha=glitch?.45:.92;
+    ctx.drawImage(holoFrame(img,fx*64,fy*64,now,true),gx,dy);ctx.restore();
   }else ctx.drawImage(img,fx*64,fy*64,64,64,dx,dy,64,64);
 }
 // chemin vers sa place quand le personnage sélectionné n'y est pas (café, réunion, toilettes...)
@@ -506,10 +519,10 @@ function drawSeatTrail(c,now){
   ctx.textAlign='left';
   ctx.restore();
 }
-// étiquette de nom sous les pieds : toujours pour le sélectionné, sinon selon le réglage « Noms sur le plan »
+// étiquette de nom sous les pieds : toujours pour le sélectionné ; tous les noms de la famille choisie dans le
+// panneau (« Sur le plan ») ou en mode TV ; sinon au survol
 let NAMES='hover', hoverKey=null, NAME_BOXES=[];
 const TV_TXT=1.45; // agrandissement des noms et des bulles en mode TV
-try{NAMES=localStorage.getItem('bureau:names')||'hover';}catch(e){}
 function drawName(c){
   const on=sel===c.key; if(!c.pos||!(on||NAMES==='all'||NAMES==='hover'&&hoverKey===c.key))return;
   const fm=FAM[famOf(c)], x=Math.round(c.pos.x), y=Math.round(c.pos.y)+6, t=fm.ico+(c.apprentice?'🎓 ':'')+String(c.name||'').slice(0,24);

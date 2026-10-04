@@ -30,7 +30,7 @@ const ROOMS=[
   [13,6,38,7],[13,8,16,11],[28,8,38,11],                                       // allée haute de l'open space, autour du bureau du boss
   ...ISLANDS.map(cx=>[cx-2,12,cx+2,18])                                         // un plafonnier par îlot
 ];
-const NIGHT_MAX=.7; // opacité du voile au cœur de la nuit
+const NIGHT_MAX=.45; // opacité du voile au cœur de la nuit (au-delà, plan et personnages illisibles)
 let LIGHT_CV=null, LIGHT_AT=0, LIGHT_D=0;
 function lightSources(){
   const S=[]; // {x,y,r,a,c} : a = part du voile retirée au centre, c = halo coloré ajouté
@@ -89,6 +89,8 @@ function drawLight(now){
       const [x0,y0,x1,y1]=r;m.fillStyle=`rgba(0,0,0,${(.22*lv).toFixed(3)})`;m.fillRect(x0*TS,y0*TS-6,(x1-x0+1)*TS,(y1-y0+1)*TS+6);
       for(const [x,y] of ceilingLamps(r))softSpot(m,x,y,2.6*TS,.7*lv);});
     for(const s of src)softSpot(m,s.x,s.y,s.r,s.a);
+    // chaque personnage présent reste lisible : le voile s'ouvre autour de lui (sous lui le décor reste dans l'ombre)
+    for(const c of chars)if(c.present&&c.pos)softSpot(m,c.pos.x,c.pos.y-26,30,.8);
     // 2. flou du masque (bords doux), dessiné en basse résolution
     const l=LIGHT_CV.getContext('2d');l.clearRect(0,0,W/LQ,H/LQ);
     l.filter='blur(3px)';l.drawImage(LIGHT_MASK,0,0);l.filter='none';

@@ -364,14 +364,19 @@ function pickSpot(c,zone,taken){
   if(zone==='visit'&&c._st&&c._st.visit){const v=c._st.visit;return {key:'visit:'+v[0]+','+v[1],x:v[0],y:v[1],dir:v[2]};}
   if((zone==='stage'||zone==='stagesax')&&stageClosed(T))zone='stageout'; // plateau fermé : on attend devant le ruban
   const list=SPOTS[zone]; if(!list)return null;
-  if(c.spotKey&&c.spotKey.startsWith(zone+':')&&!taken.has(c.spotKey)){
+  if(c.spotKey&&c.spotKey.startsWith(zone+':')&&!c.spotKey.includes('~')&&!taken.has(c.spotKey)){
     const i=+c.spotKey.split(':')[1];
     const s=list[i];
     return {key:c.spotKey,x:s[0],y:s[1],dir:s[2]};
   }
   for(let i=0;i<list.length;i++){const k=zone+':'+i;if(!taken.has(k)){const s=list[i];return {key:k,x:s[0],y:s[1],dir:s[2]};}}
-  const s=list[0];return {key:zone+':0',x:s[0],y:s[1],dir:s[2]};
+  // zone pleine : on se serre sur la première place, chacun décalé de quelques pixels (jamais deux sprites l'un sur l'autre)
+  let n=1; while(taken.has(zone+':0~'+n))n++;
+  const s=list[0];return {key:zone+':0~'+n,x:s[0],y:s[1],dir:s[2],ofs:n};
 }
+const OFS_X=[0,12,-12,22,-22,6,-6,17,-17];
+// position en pixels d'une place : centre de la case, décalé pour les places en surnombre
+function spotPos(s){const p=tileCenter(s.x,s.y);if(s.ofs){p.x+=OFS_X[s.ofs%OFS_X.length];p.y+=s.ofs%2?2:-1;}return p;}
 function wanderZone(c,real){
   if(!c.idlePlan||real>c.idlePlan.until){
     const r=Math.random();
@@ -406,7 +411,7 @@ function tick(real){
 }
 const tileCenter=(x,y)=>({x:x*TS+16,y:y*TS+28});
 function place(c,spot){
-  c.pos=tileCenter(spot.x,spot.y);
+  c.pos=spotPos(spot);
   c.tile=[spot.x,spot.y];
   c.path=[];
   c.moving=false;
@@ -415,7 +420,9 @@ function place(c,spot){
   c.target=spot;
 }
 function goTo(c,spot){
-  if(c.target&&c.target.x===spot.x&&c.target.y===spot.y){c.target.dir=spot.dir;c.spotKey=spot.key;if(!c.moving)c.dir=spot.dir;return;}
+  if(c.target&&c.target.x===spot.x&&c.target.y===spot.y){
+    if((c.target.ofs||0)!==(spot.ofs||0)&&!c.path.length)c.path=[[spot.x,spot.y]]; // même case, autre décalage : quelques pas
+    c.target.dir=spot.dir;c.target.ofs=spot.ofs;c.spotKey=spot.key;if(!c.moving)c.dir=spot.dir;return;}
   c.target=spot; c.spotKey=spot.key;
   const from=c.path.length?c.path[0]:c.tile;
   c.path=(c.path.length?[c.path[0]]:[]).concat(findPath(from[0],from[1],spot.x,spot.y));
@@ -425,7 +432,8 @@ function step(c,dt){
   if(!c.path.length){c.moving=false;if(c.target)c.dir=c.target.dir;
     if(c.target&&c.target.key==='exit'&&c._st&&(c._st.st==='gone'||c._st.zone==='leave')){c.present=false;c.pos=null;}
     return;}
-  const [tx,ty]=c.path[0]; const g=tileCenter(tx,ty);
+  const [tx,ty]=c.path[0], last=c.path.length===1&&c.target&&c.target.x===tx&&c.target.y===ty;
+  const g=last?spotPos(c.target):tileCenter(tx,ty);
   const dx=g.x-c.pos.x, dy=g.y-c.pos.y, d=Math.hypot(dx,dy), v=95*dt;
   c.moving=true;
   if(Math.abs(dx)>Math.abs(dy))c.dir=dx>0?'right':'left';else if(d>0.1)c.dir=dy>0?'down':'up';

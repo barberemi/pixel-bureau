@@ -390,3 +390,18 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 #tvscene .sc-lines{list-style:none;margin:0;padding:0}
 #tvscene .sc-lines li{font-size:clamp(20px,1.7vw,30px);border-top:0;padding:4px 0}
 #tvscene .sc-lines li::before{content:"• ";color:#f0b03a}
+/* téléphone : d'abord « Qui fait quoi », le plan en entier en miniature (toucher un personnage ouvre sa fiche), légende repliée dans « Comment lire le plan » */
+@media (max-width:620px){
+  .main>div{display:flex;flex-direction:column}
+  .main>div>.whoboard{order:-1;margin:0 0 14px}
+  canvas{min-width:0}
+  .stage>.legend{display:none}
+  .bar .tlabel{display:none}
+}
+/* visite guidée */
+#tour{position:absolute;z-index:60;background:var(--panel);color:var(--ink);border:2px solid var(--accent);border-radius:12px;padding:10px 12px;box-shadow:var(--shadow);font-size:13px}
+#tour p{margin:6px 0 10px;line-height:1.4}
+#tour .tn{color:var(--muted);font-size:11px}
+#tour .ta{display:flex;justify-content:flex-end;gap:6px}
+.tour-on{outline:3px solid var(--accent);outline-offset:3px;border-radius:8px}
+body.tv #tourbtn{display:none!important}

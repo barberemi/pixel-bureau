@@ -42,40 +42,24 @@ function renderSide(force){
     return;
   }
   if(!sel||!byKey[sel]){
-    {
-      const nm=document.createElement('div');
-      nm.className='namesbar';
-      nm.innerHTML='<span>Noms sur le plan</span>';
-      const seg=document.createElement('div');
-      seg.className='seg';
-     for(const [v,t] of [['none','Aucun'],['hover','Au survol'],['all','Tous']]){
-       const b=document.createElement('button');
-       b.textContent=t;
-       b.className=NAMES===v?'on':'';
-       b.setAttribute('aria-pressed',String(NAMES===v));
-       b.onclick=()=>{
-         NAMES=v;
-         try{localStorage.setItem('bureau:names',v);}catch(e){}
-         renderSide();
-       };
-       seg.appendChild(b);
-     }
-     nm.appendChild(seg);side.appendChild(nm);}
-    {
+    { // un seul contrôle : la famille choisie est mise en avant sur le plan, avec ses noms ; « Tous » = noms au survol
       const fb=document.createElement('div');
       fb.className='namesbar stack';
-      fb.innerHTML='<span>Afficher sur le plan</span>';
+      fb.innerHTML='<span>Sur le plan</span>';
       const seg=document.createElement('div');
       seg.className='seg';
-     for(const [v,t] of [[null,'Tous'],['team','Équipe'],['wf','⚙ Agents'],['vis','💬 Visiteurs']]){
-       const b=document.createElement('button');
-       b.textContent=t;
-       b.className=(FILTER===v?'on ':'')+(v?'famb fam-'+v:'');
-       b.setAttribute('aria-pressed',String(FILTER===v));
-       b.onclick=()=>{FILTER=v;renderSide();};
-       seg.appendChild(b);
-     }
-     fb.appendChild(seg);side.appendChild(fb);}
+      seg.setAttribute('role','group');
+      seg.setAttribute('aria-label','Famille mise en avant sur le plan');
+      for(const [v,t,tip] of [[null,'Tous','Tout le monde, noms au survol'],['team','Équipe',"L'équipe en avant, avec les noms"],['wf','⚙ Agents','Les agents en avant, avec les noms'],['vis','💬 Visiteurs','Les visiteurs en avant, avec les noms']]){
+        const b=document.createElement('button');
+        b.textContent=t;
+        b.title=tip;
+        b.className=(FILTER===v?'on ':'')+(v?'famb fam-'+v:'');
+        b.setAttribute('aria-pressed',String(FILTER===v));
+        b.onclick=()=>{FILTER=v;if(!TV)NAMES=v?'all':'hover';renderSide();};
+        seg.appendChild(b);
+      }
+      fb.appendChild(seg);side.appendChild(fb);}
     const groups=[["L'équipe",chars.filter(c=>c.person),'team'],['Les agents',chars.filter(c=>!c.person&&!c.visitor),'wf'],['Les visiteurs du jour',chars.filter(c=>c.visitor),'vis']].filter(g=>!FILTER||g[2]===FILTER);
     for(const [title,list,fk] of groups){
     if(!list.length)continue;
