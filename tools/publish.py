@@ -22,7 +22,10 @@ def call(method, path, body=None):
 
 def page():
     sys.path.insert(0, os.path.join(ROOT, "tools"))
-    import assemble
+    import assemble, plan
+    err, _ = plan.validate(*plan.load(os.path.join(ROOT, assemble.layout_path(CFG))))
+    if err:  # un plan cassé ferait disparaître des personnages ou bloquerait des chemins : on ne publie pas
+        sys.exit(f"plan invalide ({len(err)} erreur(s)) : python3 tools/plan.py check")
     html = assemble.build(demo=False)  # sans les instantanés de démo : une page vide attend ses propres données
     print("page", call("PUT", f"/pages/{PAGE_ID}/html", {"html": html}).get("success"))
 

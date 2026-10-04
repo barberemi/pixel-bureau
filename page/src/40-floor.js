@@ -31,7 +31,7 @@ function drawFloor(c,x,y,f){
     R(c,px,py,TS,TS,'#7a3540');
     R(c,px,py,TS,1,'#8f4250');
     R(c,px+((x*11)%28),py+((y*7)%28),2,2,'#6a2c37');
-    if(y===4)R(c,px,py+TS-3,TS,3,'#5a2530');
+    if(grid[y][x]===0&&(!floorOf[y+1]||floorOf[y+1][x]!=='stage'||DOORS.some(d=>d[0]===x&&d[1]===y+1)))R(c,px,py+TS-3,TS,3,'#5a2530'); // bord avant du plateau
   }
 }
 const isFloor=(x,y)=>y>=0&&y<ROWS&&x>=0&&x<COLS&&grid[y][x]===0;
@@ -52,7 +52,12 @@ function buildBg(){
       R(g,px+10,py,12,TS,glass?'#bfe0ee':'#efe9dc');R(g,px+10,py,1,TS,'#cfc6b4');R(g,px+21,py,1,TS,'#cfc6b4');
     }
   }
-  for(const [x,y] of DOORS)if(x!==39)R(g,x*TS+2,y*TS+(y===11||y===5?26:2),TS-4,4,'#8d7b62');
+  // seuils : aucun sur le bord du plan (sortie) ; en bas de la case dans un mur horizontal (murs à gauche et à droite), en haut sinon
+  for(const [x,y] of DOORS){
+    if(x===0||y===0||x===COLS-1||y===ROWS-1)continue;
+    const inHWall=grid[y][x-1]===1&&grid[y][x+1]===1;
+    R(g,x*TS+2,y*TS+(inHWall?26:2),TS-4,4,'#8d7b62');
+  }
   // tableau blanc de la salle de réunion
   R(g,20*TS+4,TS+4,3*TS-8,22,'#f7f7f4');R(g,20*TS+4,TS+24,3*TS-8,3,'#9aa0aa');
   g.strokeStyle='#d1453b';g.lineWidth=1;g.beginPath();g.moveTo(20*TS+14,TS+18);g.lineTo(20*TS+40,TS+10);g.lineTo(20*TS+60,TS+16);g.stroke();

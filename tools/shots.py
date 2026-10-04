@@ -6,7 +6,7 @@
 Chaque capture : page rechargée, mise en scène en JS (heure, sélection, mode), puis rognée sur un élément.
 Démo du jeudi 1er octobre, plan à 11h sauf mention contraire. websocket-client requis (comme smoke.py --chrome).
 """
-import base64, json, os, shutil, subprocess, sys, tempfile, time, urllib.request
+import base64, contextlib, json, os, shutil, subprocess, sys, tempfile, time, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -46,28 +46,29 @@ SHOTS = {
 }
 
 
-def build_page():
+def build_page(cfg=None):
+    """Page de démo assemblée dans dist/ (cfg : config d'installation, par exemple un autre plan)."""
     path = os.path.join(ROOT, "dist", "office.html")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
-        f.write(assemble.build(demo=True))
+        f.write(assemble.build(demo=True, cfg=cfg))
     return path
 
 
-def main(names):
+@contextlib.contextmanager
+def chrome(port=PORT):
+    """Chrome headless jetable ; renvoie call(méthode, **paramètres) du protocole DevTools."""
     import websocket
-    names = names or list(SHOTS)
-    os.makedirs(OUT, exist_ok=True)
-    if not free_port(PORT):
-        sys.exit(f"port {PORT} déjà occupé")
-    page, user_dir = build_page(), tempfile.mkdtemp(prefix="bureau-shots-")
+    if not free_port(port):
+        sys.exit(f"port {port} déjà occupé")
+    user_dir = tempfile.mkdtemp(prefix="bureau-shots-")
     proc = subprocess.Popen([CHROME, "--headless=new", "--mute-audio", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
-                             f"--remote-debugging-port={PORT}", f"--user-data-dir={user_dir}", "about:blank"],
+                             f"--remote-debugging-port={port}", f"--user-data-dir={user_dir}", "about:blank"],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         for _ in range(50):
             try:
-                tabs = json.load(urllib.request.urlopen(f"http://127.0.0.1:{PORT}/json"))
+                tabs = json.load(urllib.request.urlopen(f"http://127.0.0.1:{port}/json"))
                 break
             except OSError:
                 time.sleep(0.2)
@@ -82,34 +83,47 @@ def main(names):
                 m = json.loads(ws.recv())
                 if m.get("id") == n[0]:
                     return m.get("result", m.get("error"))
-
-        for name in names:
-            w, h, js, sel, scale = (*SHOTS[name], 1)[:5]
-            call("Emulation.setDeviceMetricsOverride", width=w, height=h, deviceScaleFactor=1, mobile=w < 600)
-            call("Page.navigate", url="file://" + page)
-            time.sleep(3)
-            r = call("Runtime.evaluate", expression=js + WAIT, awaitPromise=True)
-            if "exceptionDetails" in r:
-                print(f"✗ {name} : {json.dumps(r['exceptionDetails'])[:300]}")
-                continue
-            clip = None
-            if sel:
-                box = call("Runtime.evaluate", returnByValue=True, expression=(
-                    f"(()=>{{const e=document.querySelector({sel!r});if(!e)return null;const r=e.getBoundingClientRect();"
-                    f"return {{x:r.left+scrollX,y:r.top+scrollY,width:r.width,height:r.height,scale:{scale}}};}})()"))["result"].get("value")
-                if not box or not box["width"]:
-                    print(f"✗ {name} : élément {sel} absent ou vide")
-                    continue
-                clip = box
-            shot = call("Page.captureScreenshot", format="png", captureBeyondViewport=bool(clip), **({"clip": clip} if clip else {}))
-            with open(os.path.join(OUT, name + ".png"), "wb") as f:
-                f.write(base64.b64decode(shot["data"]))
-            print(f"✓ docs/img/{name}.png")
+        yield call
         ws.close()
     finally:
         proc.terminate()
         proc.wait(10)
         shutil.rmtree(user_dir, ignore_errors=True)
+
+
+def capture(call, page, w, h, js, sel, scale=1):
+    """Recharge la page, joue la mise en scène, renvoie le PNG (bytes) de l'élément sel (None = la fenêtre), ou un message d'erreur."""
+    call("Emulation.setDeviceMetricsOverride", width=w, height=h, deviceScaleFactor=1, mobile=w < 600)
+    call("Page.navigate", url="file://" + page)
+    time.sleep(3)
+    r = call("Runtime.evaluate", expression=js + WAIT, awaitPromise=True)
+    if "exceptionDetails" in r:
+        return json.dumps(r["exceptionDetails"])[:300]
+    clip = None
+    if sel:
+        clip = call("Runtime.evaluate", returnByValue=True, expression=(
+            f"(()=>{{const e=document.querySelector({sel!r});if(!e)return null;const r=e.getBoundingClientRect();"
+            f"return {{x:r.left+scrollX,y:r.top+scrollY,width:r.width,height:r.height,scale:{scale}}};}})()"))["result"].get("value")
+        if not clip or not clip["width"]:
+            return f"élément {sel} absent ou vide"
+    shot = call("Page.captureScreenshot", format="png", captureBeyondViewport=bool(clip), **({"clip": clip} if clip else {}))
+    return base64.b64decode(shot["data"])
+
+
+def main(names):
+    names = names or list(SHOTS)
+    os.makedirs(OUT, exist_ok=True)
+    page = build_page()
+    with chrome() as call:
+        for name in names:
+            w, h, js, sel, scale = (*SHOTS[name], 1)[:5]
+            png = capture(call, page, w, h, js, sel, scale)
+            if isinstance(png, str):
+                print(f"✗ {name} : {png}")
+                continue
+            with open(os.path.join(OUT, name + ".png"), "wb") as f:
+                f.write(png)
+            print(f"✓ docs/img/{name}.png")
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@
 set -e
 cd "$(dirname "$0")/.."
 node --test tests/*.test.js
-python3 -m unittest -q tests/test_templates.py tests/test_install.py tests/test_scripts.py
+python3 -m unittest -q tests/test_templates.py tests/test_install.py tests/test_scripts.py tests/test_plan.py
 PY=python3
 [ -x .venv/bin/python ] && PY=.venv/bin/python
 "$PY" tools/smoke.py "$@"

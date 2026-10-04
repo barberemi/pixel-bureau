@@ -58,6 +58,14 @@ Le plan n'est plus codé en dur : `10-world.js` construit grille, sols, portes, 
 - `tiles` : le sol en texte, une chaîne par rangée, un caractère par case ; `legend` dit ce que vaut chaque caractère (`#` mur, `=` vitre, `.` moquette, `c` carrelage, `s` serveurs, `r` réunion, `p` plateau, `w` toilettes, `b` parquet, `E` paillasson).
 - `doors` (seuils dessinés), `exit`, `closable` (porte du plateau fermée le vendredi et le week-end), `islands` (colonnes des tables et rangs des sièges), `boss` (place et bureau), `blocked` (décor infranchissable), `plants`, `windows`.
 - `spots` : places de chaque zone (`[x, y, orientation]`) ; `free_seats` : places des intérimaires ; `light_rooms` : pièces éclairées la nuit ; `objects` : rectangles cliquables (TV, Kanban, planning, paie, employé du sprint).
+- Vérifier un plan, voir ses sièges, son rendu :
+  ```sh
+  python3 tools/plan.py check [plan.json] [--json]   # erreurs bloquantes et avertissements, avec les coordonnées
+  python3 tools/plan.py seats [plan.json]            # sièges numérotés (I2.R2 = îlot 2, côté droit, rang 2) et qui s'y assoit
+  .venv/bin/python tools/plan.py preview [plan.json] # capture du plan dans dist/plan.png
+  ```
+  Le vérificateur contrôle la forme (taille, rangées, légende, murs du bord et du fond), la sortie et les portes, les meubles et sièges sur du sol, l'accès depuis la sortie à chaque siège (par son allée) et à chaque place, les zones dont la machine à états a besoin, les places libres, les objets cliquables. `publish.py page` refuse un plan invalide.
+- Les seuils de porte et le bord du plateau se déduisent du plan (murs voisins, sol de plateau), plus de rangées écrites en dur.
 - Encore dans le code (lot 7, phase 3) : le dessin et la position des meubles, des libellés de pièces et du décor mural.
 - `tests/layout.test.js` vérifie que le plan redonne exactement l'ancien monde (`tests/fixtures/world_equipe.json`).
 
