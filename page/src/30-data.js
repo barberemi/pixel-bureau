@@ -240,6 +240,10 @@ function setData(d,live){
 }
 let DAY0=0,RSTART=0,REND=0,DISC_BY_RUN={},FIRST_LOAD_DONE=false;
 
+// depuis quand ça attend : entrée d'un ticket dans son statut (since, tiré de l'historique Jira par le cron équipe),
+// création d'une PR ; repli sur updated (anciens instantanés), que les bascules de sprint et les pushs réécrivent
+const tkSince=x=>ms(x&&(x.since||x.updated));
+const prSince=x=>ms(x&&(x.created||x.updated));
 // ---------- time ----------
 let mode='live', T=0, lastReal=performance.now(), needTeleport=true;
 const fmtTZ=dtf('fr-FR',{hour:'2-digit',minute:'2-digit'});

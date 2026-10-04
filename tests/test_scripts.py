@@ -171,6 +171,23 @@ print(json.dumps(d.get(key, [])))
         self.assertTrue(out["sources"]["jira"] and out["sources"]["github"])
         self.assertNotIn("truncated", out)
 
+    def test_team_shape_real_age_from_status_history(self):
+        d = self.team_input(n_issues=2, moves=0)
+        bascule = "2026-10-02T16:13:27.490+0200"  # bascule de sprint : réécrit updated, pas le statut
+        a, b = d["issues"]
+        a["fields"].update(updated=bascule, created="2025-05-22T14:25:19.116+0200")
+        a["changelog"]["histories"] = [
+            {"created": "2026-09-20T10:00:00.000+0200", "items": [{"field": "status", "fromString": "En cours", "toString": "To Review"}]},
+            {"created": "2026-09-01T09:00:00.000+0200", "items": [{"field": "status", "fromString": "À faire", "toString": "En cours"}]},
+            {"created": bascule, "items": [{"field": "Sprint", "fromString": "S41", "toString": "S42"}]}]
+        b["fields"].update(updated=bascule, created="2026-09-15T08:00:00.000+0200")  # jamais changé de statut
+        out = self.run_script("team_shape.py", d)
+        since = {t["key"]: t["since"] for t in [x for p in out["people"] for x in p["tickets"]] + out["unassigned"]}
+        self.assertEqual(since[a["key"]], "2026-09-20T10:00:00.000+0200")
+        self.assertEqual(since[b["key"]], "2026-09-15T08:00:00.000+0200")
+        pr = next(x for p in out["people"] for x in p["prs"])
+        self.assertTrue(pr["created"])  # création de la PR, gardée pour l'âge de « PR sans review »
+
     def test_team_shape_reports_github_errors(self):
         gh = {"open": [], "merged": [], "releases": [], "staging": [], "prod": [], "errors": ["open : gh introuvable sur la machine"]}
         out = self.run_script("team_shape.py", self.team_input(github=gh))

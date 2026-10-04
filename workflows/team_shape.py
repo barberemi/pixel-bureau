@@ -17,6 +17,20 @@ SPRINT_FIELD = J["sprint_field"]
 DONE = J["done_status"]
 
 
+def status_since(it):
+    """Entrée dans le statut actuel : dernier changement de statut de l'historique, sinon la création du ticket.
+    `updated` ne convient pas : une bascule de sprint ou une automatisation le réécrit pour tout le sprint."""
+    moves = [h.get("created") for h in ((it.get("changelog") or {}).get("histories") or [])
+             if h.get("created") and any(i.get("field") == "status" for i in h.get("items") or [])]
+    return max(moves, key=jira_ts) if moves else (it.get("fields") or {}).get("created")
+
+
+def jira_ts(iso):
+    iso = re.sub(r"([+-]\d{2})(\d{2})$", r"\1:\2", (iso or "").replace("Z", "+00:00"))  # Jira : +0200 -> +02:00
+    iso = re.sub(r"\.(\d{3})(?=[+-])", r".\g<1>000", iso)  # millisecondes -> microsecondes (Python < 3.11)
+    return datetime.fromisoformat(iso)
+
+
 def norm(s):
     s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
     return re.sub(r"[^a-z ]", " ", s).split()
@@ -31,7 +45,8 @@ for it in D.get("issues") or []:
         continue
     pts = next((f.get(k) for k in POINTS if f.get(k)), None)
     t = {"key": it.get("key"), "summary": (f.get("summary") or "")[:110], "status": st, "cat": cat,
-         "points": pts, "type": (f.get("issuetype") or {}).get("name"), "updated": f.get("updated"), "created": f.get("created")}
+         "points": pts, "type": (f.get("issuetype") or {}).get("name"), "updated": f.get("updated"), "created": f.get("created"),
+         "since": status_since(it)}
     a = f.get("assignee")
     if not a:
         unassigned.append(t)
@@ -59,7 +74,8 @@ for pr in D.get("open") or []:
         continue
     review = {"APPROVED": "approved", "CHANGES_REQUESTED": "changes", "REVIEW_REQUIRED": "pending"}.get(pr.get("reviewDecision") or "", "pending")
     row = {"n": pr["number"], "title": pr["title"][:110], "draft": pr.get("isDraft"), "review": review,
-           "url": pr["url"], "updated": pr.get("updatedAt"), "keys": sorted({k.upper() for k in KEY.findall(pr["title"])}),
+           "url": pr["url"], "updated": pr.get("updatedAt"), "created": pr.get("createdAt"),
+           "keys": sorted({k.upper() for k in KEY.findall(pr["title"])}),
            "req": [x for x in pr.get("reviewRequests") or [] if isinstance(x, str)]}
     p = owner(a, pr["title"])
     if p:
@@ -91,11 +107,7 @@ VER = re.compile(r"(\d+\.\d+\.\d+)")
 
 
 def is_today(iso):
-    if not iso:
-        return False
-    iso = re.sub(r"([+-]\d{2})(\d{2})$", r"\1:\2", iso.replace("Z", "+00:00"))  # Jira : +0200 -> +02:00
-    iso = re.sub(r"\.(\d{3})(?=[+-])", r".\g<1>000", iso)  # millisecondes -> microsecondes (Python < 3.11)
-    return datetime.fromisoformat(iso).astimezone(TZ).strftime("%Y-%m-%d") == today
+    return bool(iso) and jira_ts(iso).astimezone(TZ).strftime("%Y-%m-%d") == today
 
 
 def runs_by_tag(runs):

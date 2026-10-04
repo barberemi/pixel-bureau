@@ -25,12 +25,12 @@ function teamPrs(){
 function blockedTickets(t){
   if(!TEAM)return [];
   return [...TEAM.people.flatMap(p=>(p.tickets||[]).map(x=>({...x,who:p.name}))),...(TEAM.unassigned||[])]
-    .filter(x=>(x.cat==='review'||x.cat==='test')&&x.updated&&t-ms(x.updated)>BLOCKED_DAYS*864e5)
-    .sort((a,b)=>ms(a.updated)-ms(b.updated));
+    .filter(x=>(x.cat==='review'||x.cat==='test')&&tkSince(x)&&t-tkSince(x)>BLOCKED_DAYS*864e5)
+    .sort((a,b)=>tkSince(a)-tkSince(b));
 }
 // PR qui attendent une review depuis plus de PR_STALE_H heures, les plus anciennes d'abord
 function stalePrs(t){
-  return teamPrs().filter(x=>x.review==='pending'&&x.updated&&t-ms(x.updated)>PR_STALE_H*36e5).sort((a,b)=>ms(a.updated)-ms(b.updated));
+  return teamPrs().filter(x=>x.review==='pending'&&prSince(x)&&t-prSince(x)>PR_STALE_H*36e5).sort((a,b)=>prSince(a)-prSince(b));
 }
 function todoItems(t){
   const out=[], of=k=>chars.filter(c=>c._st&&c._st.st===k);
@@ -64,7 +64,7 @@ function todoItems(t){
     // 5. PR qui attendent ta review
     if(me)for(const x of all.filter(x=>(x.req||[]).some(l=>String(l).toLowerCase()===me)))
       out.push({sev:'warn',ico:'👀',key:'rev:'+x.n,txt:`PR <b>#${x.n}</b> de ${esc(first(x.who))} attend ta review <small>${esc(clip(x.title,60))}</small>`,
-        age:x.updated?t-ms(x.updated):null,act:ext(x.url,'Relire')});
+        age:prSince(x)?t-prSince(x):null,act:ext(x.url,'Relire')});
     // 6. tes PR à corriger
     for(const x of mine.filter(x=>!x.draft&&x.review==='changes'))
       out.push({sev:'warn',ico:'✏️',key:'fix:'+x.n,txt:`Ta PR <b>#${x.n}</b> : changements demandés <small>${esc(clip(x.title,60))}</small>`,
@@ -73,11 +73,11 @@ function todoItems(t){
     const tk=blockedTickets(t);
     for(const x of tk)out.push({sev:'info',ico:'⏳',key:'tk:'+x.key,
       txt:`<b>${esc(x.key)}</b> ${esc(CAT_TXT[x.cat]||x.cat)} sans bouger`+(x.who?` · ${esc(first(x.who))}`:'')+` <small>${esc(clip(x.summary,55))}</small>`,
-      age:t-ms(x.updated),act:ext(JIRA_BROWSE+encodeURIComponent(x.key),'Ouvrir')});
+      age:t-tkSince(x),act:ext(JIRA_BROWSE+encodeURIComponent(x.key),'Ouvrir')});
     // 8. PR de l'équipe sans review depuis plus de 24 h (une seule ligne)
     const stale=stalePrs(t).filter(x=>!(me&&(x.req||[]).some(l=>String(l).toLowerCase()===me)));
     if(stale.length){
-      const old=Math.max(...stale.map(x=>t-ms(x.updated)));
+      const old=Math.max(...stale.map(x=>t-prSince(x)));
       out.push({sev:'info',ico:'🕰',key:'stale',txt:`${plural(stale.length,'PR attend','PR attendent')} une review depuis plus de 24 h <small>${stale.slice(0,4).map(x=>'#'+x.n).join(', ')}${stale.length>4?'…':''}</small>`,
         age:old,act:CFG.github_repo?ext(`https://github.com/${CFG.github_repo}/pulls?q=is%3Apr+is%3Aopen+review%3Arequired`,'Voir'):null});
     }
