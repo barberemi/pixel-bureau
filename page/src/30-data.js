@@ -57,7 +57,7 @@ function attachTeam(){
         role:'Équipe',
         person:p.name,
         wf:[],
-        seat:free.shift()||[10,12]
+        seat:free.shift()||null
       });
       if(!byKey[key]){chars.push(c);byKey[key]=c;}
     }
@@ -187,7 +187,7 @@ function setData(d,live){
     let c=chars.find(x=>x.wf&&x.wf.includes(p8));
     if(!c){
       const key='temp_'+p8;
-      c=byKey[key]||add({key,sprite:'temp',name:'Intérimaire '+(++tempN),role:clean(r.wf_name),wf:[p8],seat:free.shift()||[20,14],temp:true});
+      c=byKey[key]||add({key,sprite:'temp',name:'Intérimaire '+(++tempN),role:clean(r.wf_name),wf:[p8],seat:free.shift()||null,temp:true});
     }
     c.runs.push(r);
   }

@@ -10,7 +10,7 @@ const {load} = require('./helpers/page.js');
 
 const page = load();
 const ref = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'world_equipe.json'), 'utf8'));
-const now = JSON.parse(page.run(`JSON.stringify({TS,COLS,ROWS,W,H,EXIT,grid,floorOf,DOORS,GLASS:[...GLASS].sort(),ISLANDS,IROWS,SEATS,
+const now = JSON.parse(page.run(`JSON.stringify({TS,COLS,ROWS,W,H,EXIT,grid,floorOf,DOORS,GLASS:[...GLASS].sort(),ISLANDS,IROWS,SEATS:SEATS.map(({id,...s})=>s),
   seatTiles:[...seatTiles].sort(),blocked:[...blocked].sort(),SPOTS,FREE_SEATS:LAYOUT.free_seats,ROOMS,TVR,KANR,PLANR,PAYR,EMPR,
   walk:Array.from({length:ROWS},(_,y)=>Array.from({length:COLS},(_,x)=>walkable(x,y)?1:0).join('')).join('|')})`));
 
@@ -40,4 +40,33 @@ test("un autre plan (exemple-startup) : la page démarre, chaque siège et chaqu
   assert.deepEqual(r.bad, []);
   assert.deepEqual(r.seatless, []); // places du roster (plan equipe) réattribuées sur des sièges de ce plan
   assert.ok(r.chars > 10);
+});
+
+// Lot 7, phase 4 : sièges par numéro. La page (10-world.js) et tools/plan.py (assign) placent tout le monde pareil.
+test('sièges : même attribution dans la page et dans tools/plan.py (plans, boss, agents avec ou sans place)', () => {
+  const {execFileSync} = require('child_process');
+  const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'bureau.config.json'), 'utf8'));
+  const roster = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'team', 'roster.json'), 'utf8')).people;
+  const bare = fixture.agents.map(({seat, ...a}) => a);
+  for (const layout of ['equipe', 'exemple-startup'])
+    for (const owner of ['p_remi', 'p_coll2', null])
+      for (const agents of [fixture.agents, bare]) {
+        const p = load({layout, owner, config: {...fixture, agents}});
+        const js = JSON.parse(p.run(`JSON.stringify({seats:Object.fromEntries(CAST.filter(c=>c.seat).map(c=>[c.key,seatRef(c.seat).id])),
+          temps:FREE_SEATS.map(s=>seatRef(s).id)})`));
+        const py = JSON.parse(execFileSync('python3', ['-c', `import json,sys;sys.path.insert(0,'tools');import plan
+d=json.load(sys.stdin);got,temps=plan.assign(json.load(open('layouts/'+d['layout']+'.json')),d['people'],d['owner'])
+print(json.dumps({'seats':got,'temps':temps}))`], {cwd: path.join(__dirname, '..'),
+          input: JSON.stringify({layout, owner, people: [...roster, ...agents]})}));
+        assert.deepEqual(js, py, `${layout}, boss ${owner}, agents ${agents === bare ? 'sans' : 'avec'} place`);
+      }
+});
+
+test('sièges : le plan equipe place l\'équipe et les agents sans leur place du roster', () => {
+  const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'bureau.config.json'), 'utf8'));
+  const p = load({owner: 'p_coll2', config: {...fixture, agents: fixture.agents.map(({seat, ...a}) => a)}});
+  const s = JSON.parse(p.run(`JSON.stringify(Object.fromEntries(CAST.map(c=>[c.key,c.seat])))`));
+  assert.deepEqual(s.p_remi, [12, 15]); // I2.R2
+  assert.deepEqual(s.dwight, [23, 14]); // I4.L1
+  assert.equal(s.p_coll2, null); // le boss
 });

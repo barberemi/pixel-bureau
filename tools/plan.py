@@ -2,7 +2,8 @@
 
   python3 tools/plan.py check [plan.json]            # erreurs (bloquantes) et avertissements, code de sortie 1 si erreur
   python3 tools/plan.py check plan.json --json       # même chose en JSON (pour un agent qui corrige son brouillon)
-  python3 tools/plan.py seats [plan.json]            # sièges numérotés (I2.R2 = îlot 2, côté droit, rang 2) et qui s'y assoit
+  python3 tools/plan.py seats [plan.json]            # sièges numérotés (I2.R2 = îlot 2, côté droit, rang 2), qui s'y assoit,
+                                                     # et qui change de place par rapport au plan de l'installation
   .venv/bin/python tools/plan.py preview [plan.json] [-o plan.png]   # rendu du plan (page de démo, Chrome headless)
 
 Sans fichier : le plan de l'installation (bureau.config.json, clé layout), sinon layouts/equipe.json.
@@ -46,6 +47,49 @@ def seats_of(L):
             out.append({"id": f"I{i}.L{k}", "x": cx - 1, "y": r, "dir": "right"})
             out.append({"id": f"I{i}.R{k}", "x": cx + 1, "y": r, "dir": "left"})
     return out
+
+
+def seat_ref(seats, ref):
+    """Siège désigné par son numéro (« I2.R2 ») ou, ancien format, par ses coordonnées [x, y] ; None s'il n'existe pas."""
+    if isinstance(ref, str):
+        return next((t for t in seats if t["id"] == ref), None)
+    if isinstance(ref, list) and len(ref) == 2:
+        return next((t for t in seats if [t["x"], t["y"]] == ref), None)
+    return None
+
+
+def assign(L, people, owner=None):
+    """Qui s'assoit où : même règle que 10-world.js (vérifié par tests/layout.test.js). people : roster puis agents,
+    dans l'ordre du casting ({key, seat?}). Le plan est maître (seating), puis la place de la personne si c'est un siège
+    libre du plan, puis un siège libre hors free_seats et hors sièges réservés à un absent.
+    Renvoie ({clé: numéro de siège}, places des intérimaires dans l'ordre) ; la place du boss lui est comptée mais libérée."""
+    seats = seats_of(L)
+    keys = {p["key"] for p in people}
+    got, taken = {}, set()
+
+    def give(k, t):
+        got[k] = t
+        taken.add(t["id"])
+    seating = list((L.get("seating") or {}).items())
+    for sid, k in seating:
+        t = seat_ref(seats, sid)
+        if t and t["id"] not in taken and k not in got and k in keys:
+            give(k, t)
+    for p in people:
+        if p["key"] not in got:
+            t = seat_ref(seats, p.get("seat"))
+            if t and t["id"] not in taken:
+                give(p["key"], t)
+    free = [t for t in (seat_ref(seats, f) for f in L.get("free_seats") or []) if t]
+    reserved = {sid for sid, _ in seating}
+    spare = [t for t in seats if t["id"] not in taken and t not in free and t["id"] not in reserved]
+    for p in people:
+        if p["key"] not in got and spare:
+            give(p["key"], spare.pop(0))
+    boss = got.pop(owner, None)
+    rest = [t for t in seats if t["id"] not in taken and t not in free]
+    temps = free + ([boss] if boss and boss not in free else []) + rest
+    return {k: t["id"] for k, t in got.items()}, [t["id"] for t in temps]
 
 
 def validate(L, raw_size=0):
@@ -178,6 +222,19 @@ def validate(L, raw_size=0):
     for p in L.get("free_seats") or []:
         if tuple(p) not in seat_set:
             E(f"free_seats {p} : n'est pas un siège d'îlot")
+    seating = L.get("seating") or {}
+    if not isinstance(seating, dict):
+        E("seating : un objet {numéro de siège: clé du personnage}")
+        seating = {}
+    ids = {s["id"] for s in seats}
+    for sid, k in seating.items():
+        if sid not in ids:
+            E(f"seating « {sid} » : pas un siège de ce plan (python3 tools/plan.py seats)")
+        if not isinstance(k, str) or not k:
+            E(f"seating « {sid} » : la clé du personnage (ex. p_remi) est attendue")
+    dup = sorted({k for k in seating.values() if list(seating.values()).count(k) > 1})
+    for k in dup:
+        E(f"seating : « {k} » a plusieurs sièges")
     for x in L.get("windows") or []:
         if not 0 <= x < cols - 1:
             E(f"fenêtre en x={x} : hors du mur du fond")
@@ -217,19 +274,33 @@ def cmd_check(path, as_json):
     return 1 if err else 0
 
 
+def cast(cfg):
+    """Roster puis agents de l'installation ({key, name, seat?}), le boss à part."""
+    roster = json.load(open(os.path.join(ROOT, "team", "roster.json")))["people"]
+    return roster + [dict(a, name=a["name"] + " (agent)") for a in cfg.get("agents") or []]
+
+
 def cmd_seats(path):
     L, _ = load(path)
-    roster = json.load(open(os.path.join(ROOT, "team", "roster.json")))["people"]
-    cfg_path = os.path.join(ROOT, "bureau.config.json")
-    cfg = json.load(open(cfg_path)) if os.path.exists(cfg_path) else {}
-    who = {tuple(p["seat"]): p["name"] for p in roster if p.get("seat") and p["key"] != cfg.get("owner")}
-    who.update({tuple(a["seat"]): a["name"] + " (agent)" for a in cfg.get("agents") or [] if a.get("seat")})
-    free = {tuple(p) for p in L.get("free_seats") or []}
+    cfg = assemble.config()
+    people = cast(cfg)
+    owner = cfg.get("owner")
+    names = {p["key"]: p["name"] for p in people}
+    got, temps = assign(L, people, owner)
+    who = {sid: names[k] for k, sid in got.items()}
     for s in seats_of(L):
-        t = (s["x"], s["y"])
-        print(f"{s['id']:7} [{s['x']:>2},{s['y']:>2}]  " + (who.get(t) or ("libre (intérimaires)" if t in free else "")))
+        print(f"{s['id']:7} [{s['x']:>2},{s['y']:>2}]  " + (who.get(s["id"]) or ("libre (intérimaires)" if s["id"] in temps else "")))
     if L.get("boss"):
-        print(f"{'BOSS':7} {L['boss']['seat']}  " + next((p["name"] for p in roster if p["key"] == cfg.get("owner")), "le boss"))
+        print(f"{'BOSS':7} {L['boss']['seat']}  " + names.get(owner, "le boss"))
+    # qui change de place si ce plan remplace celui de l'installation
+    cur = default_path()
+    if os.path.abspath(path) != cur and os.path.exists(cur):
+        before, _ = assign(load(cur)[0], people, owner)
+        moves = [(names[k], before.get(k), got.get(k)) for k in names if before.get(k) != got.get(k)]
+        print(f"\nPar rapport au plan actuel ({os.path.relpath(cur, ROOT)}) : " + ("personne ne change de place" if not moves else
+              f"{len(moves)} changement(s) de place"))
+        for n, a, b in moves:
+            print(f"  {n:22} {a or 'sans siège':10} → {b or 'sans siège'}")
     return 0
 
 

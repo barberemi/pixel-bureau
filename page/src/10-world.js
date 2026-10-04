@@ -13,20 +13,32 @@ LAYOUT.tiles.forEach((row,y)=>{grid.push([]);floorOf.push([]);[...row].forEach((
 const DOORS=LAYOUT.doors.map(([x,y])=>[x,y,floorOf[y][x]]); // seuils dessinés par buildBg
 const blocked=new Set(); const B=(x,y)=>blocked.add(x+','+y);
 const seatTiles=new Set();
-// îlots : table verticale (une case par rang), places à gauche (regardent à droite) et à droite (regardent à gauche)
+// îlots : table verticale (une case par rang), places à gauche (regardent à droite) et à droite (regardent à gauche) ;
+// numérotées comme tools/plan.py : I2.R2 = îlot 2, côté droit, rang 2
 const ISLANDS=LAYOUT.islands.x, IROWS=LAYOUT.islands.rows;
 const SEATS=[];
-for(const cx of ISLANDS)for(const r of IROWS){
+ISLANDS.forEach((cx,i)=>IROWS.forEach((r,k)=>{
   B(cx,r);
-  for(const [sx,dir] of [[cx-1,'right'],[cx+1,'left']]){SEATS.push({x:sx,y:r,dir,cx});seatTiles.add(sx+','+r);}
-}
-// places du roster et des agents qui ne sont pas des sièges de ce plan (plan d'un autre bureau) : un siège libre chacun,
-// dans l'ordre du casting ; les places libres du plan qui ne sont pas des sièges sont ignorées
-{const isSeat=s=>!!s&&SEATS.some(t=>t.x===s[0]&&t.y===s[1]);
- for(let i=FREE_SEATS.length-1;i>=0;i--)if(!isSeat(FREE_SEATS[i]))FREE_SEATS.splice(i,1);
- const used=new Set(CAST.filter(c=>isSeat(c.seat)).map(c=>c.seat.join(',')));
- const spare=SEATS.filter(t=>!used.has(t.x+','+t.y)&&!FREE_SEATS.some(f=>f[0]===t.x&&f[1]===t.y));
- for(const c of CAST)if(c.seat&&!isSeat(c.seat)){const t=spare.shift();c.seat=t?[t.x,t.y]:null;}}
+  for(const [sx,dir,side] of [[cx-1,'right','L'],[cx+1,'left','R']]){SEATS.push({id:'I'+(i+1)+'.'+side+(k+1),x:sx,y:r,dir,cx});seatTiles.add(sx+','+r);}
+}));
+// un siège du plan désigné par son numéro (« I2.R2 ») ou, ancien format, par ses coordonnées [x, y]
+const seatRef=s=>typeof s==='string'?SEATS.find(t=>t.id===s):Array.isArray(s)?SEATS.find(t=>t.x===s[0]&&t.y===s[1]):undefined;
+// places : le plan est maître (LAYOUT.seating {siège: clé}) ; sinon la place du roster ou de l'agent si c'est un siège
+// libre de ce plan ; sinon un siège libre, dans l'ordre du casting (collègues, puis agents), hors places des intérimaires
+// (free_seats) et sièges réservés à quelqu'un d'absent. Même règle que assign() de tools/plan.py (vérifié par un test).
+// Le boss reçoit aussi une place, libérée pour les intérimaires tant qu'il est à son bureau.
+{const who=[...ROSTER,...AGENTS], got=new Map(), taken=new Set();
+ const give=(k,t)=>{got.set(k,t);taken.add(t.id);};
+ const seating=Object.entries(LAYOUT.seating||{});
+ for(const [id,k] of seating){const t=seatRef(id);if(t&&!taken.has(t.id)&&!got.has(k)&&who.some(w=>w.key===k))give(k,t);}
+ for(const w of who)if(!got.has(w.key)){const t=seatRef(w.seat);if(t&&!taken.has(t.id))give(w.key,t);}
+ const free=(LAYOUT.free_seats||[]).map(seatRef).filter(Boolean), reserved=new Set(seating.map(([id])=>id));
+ const spare=SEATS.filter(t=>!taken.has(t.id)&&!free.includes(t)&&!reserved.has(t.id));
+ for(const w of who)if(!got.has(w.key)){const t=spare.shift();if(t)give(w.key,t);}
+ for(const c of CAST){const t=got.get(c.key);c.seat=t&&!c.boss?[t.x,t.y]:null;}
+ // places des intérimaires (et des collègues hors roster) : free_seats dans l'ordre, la place du boss, puis les sièges restants
+ const boss=got.get(OWNER), rest=SEATS.filter(t=>!taken.has(t.id)&&!free.includes(t));
+ for(const t of [...free,...(boss&&!free.includes(boss)?[boss]:[]),...rest])FREE_SEATS.push([t.x,t.y]);}
 const seatDir=(x,y)=>{const s=SEATS.find(s=>s.x===x&&s.y===y);return s?s.dir:'down';};
 // bureau du boss : sa place et son bureau
 const BOSS_SEAT=LAYOUT.boss.seat;

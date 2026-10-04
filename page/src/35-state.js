@@ -360,7 +360,8 @@ const ST_CSS={
 // zones facultatives d'un plan : où aller quand le plan n'en a pas (plateau TV, canapé, fontaine...)
 const ZONE_FALLBACK={stage:'stageout',stageout:'coffee',stagesax:'stageout',daily:'meet',sofa:'coffee',ktable:'coffee',cooler:'coffee',copier:'coffee',kanban:'gate',sax:'boss',gate:'boss'};
 function pickSpot(c,zone,taken){
-  if(zone==='desk'){const s=c.seat||[14,12];return {key:'desk',x:s[0],y:s[1],dir:seatDir(s[0],s[1])};}
+  if(zone==='desk'&&c.seat){const s=c.seat;return {key:'desk',x:s[0],y:s[1],dir:seatDir(s[0],s[1])};}
+  if(zone==='desk')zone='daily'; // plus un siège de libre : debout dans l'open space
   if(zone==='boss'){const s=SPOTS.boss[0];return {key:'desk',x:s[0],y:s[1],dir:s[2]};}
   if(zone==='leave')return {key:'exit',x:EXIT[0],y:EXIT[1],dir:'right'};
   if(zone==='visit'&&c._st&&c._st.visit){const v=c._st.visit;return {key:'visit:'+v[0]+','+v[1],x:v[0],y:v[1],dir:v[2]};}

@@ -95,3 +95,32 @@ class CatalogueTest(unittest.TestCase):
         err, warn = plan.validate(L)
         self.assertEqual(err, [])
         self.assertTrue(any("sofa" in w for w in warn))
+
+
+class SeatingTest(unittest.TestCase):
+    PEOPLE = [{"key": "a"}, {"key": "b", "seat": [12, 14]}, {"key": "c", "seat": "I6.R3"}, {"key": "d"}]
+
+    def test_plan_is_master(self):
+        L = dict(BASE, seating={"I1.L1": "b"})
+        got, _ = plan.assign(L, self.PEOPLE)
+        self.assertEqual(got["b"], "I1.L1")  # le plan l'emporte sur la place [12, 14] de la personne
+        self.assertEqual(got["c"], "I6.R3")  # place de repli au nouveau format
+        self.assertNotIn(got["a"], {"I1.L1", "I6.R3"})
+
+    def test_stable_when_someone_arrives(self):
+        L = dict(BASE, seating={})
+        before, _ = plan.assign(L, self.PEOPLE)
+        after, _ = plan.assign(L, self.PEOPLE + [{"key": "e"}])
+        self.assertEqual({k: after[k] for k in before}, before)
+
+    def test_boss_seat_goes_to_temps(self):
+        got, temps = plan.assign(BASE, [{"key": "p_remi"}], owner="p_remi")
+        self.assertNotIn("p_remi", got)
+        self.assertIn("I2.R2", temps)
+
+    def test_seating_errors(self):
+        self.assertErr(broken(a=lambda L: L["seating"].update({"I9.L1": "x"})), "pas un siège de ce plan")
+        self.assertErr(broken(a=lambda L: L["seating"].update({"I6.L1": "p_remi"})), "plusieurs sièges")
+        self.assertErr(broken(a=lambda L: L.update(seating=["p_remi"])), "seating : un objet")
+
+    assertErr = PlanTest.assertErr

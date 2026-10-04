@@ -27,9 +27,7 @@ const CAST = [
   ...ROSTER.map(({boss_sprite,...p})=>p.key===OWNER?{...p,wf:[],boss:true,seat:null,role:'Le boss',sprite:boss_sprite||p.sprite}:{...p,wf:[]}),
   ...AGENTS,
 ];
-const FREE_SEATS = LAYOUT.free_seats.map(s=>s.slice()); // places libres du plan (intérimaires, collègues sans place)
-// la place du propriétaire se libère quand il passe au bureau du boss
-{const o=ROSTER.find(p=>p.key===OWNER);if(o&&o.seat&&!FREE_SEATS.some(s=>s[0]===o.seat[0]&&s[1]===o.seat[1]))FREE_SEATS.push(o.seat);}
+const FREE_SEATS = []; // places des intérimaires et des collègues sans place, remplies par 10-world.js
 const JIRA_BROWSE = (CFG.jira_site||'').replace(/\/$/,'')+'/browse/'; // lien d'un ticket
 const KRONN_BASE = CFG.kronn_ui||'http://localhost:5173/';
 const VISITOR = {ClaudeCode:'v_claude', Codex:'v_codex', GeminiCli:'v_gemini', Gemini:'v_gemini'};
