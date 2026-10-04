@@ -24,6 +24,12 @@ class PlanTest(unittest.TestCase):
         err, warn = plan.validate(BASE)
         self.assertEqual(err, [])
 
+    def test_example_plan_is_valid(self):
+        L = json.load(open(os.path.join(ROOT, "layouts", "exemple-startup.json")))
+        err, warn = plan.validate(L)
+        self.assertEqual(err, [])
+        self.assertTrue(any("stage" in w for w in warn))  # sans plateau TV : repli, simple avertissement
+
     def test_seat_ids(self):
         ids = {(s["x"], s["y"]): s["id"] for s in plan.seats_of(BASE)}
         self.assertEqual(ids[(12, 15)], "I2.R2")  # la place de Rémi
@@ -41,7 +47,7 @@ class PlanTest(unittest.TestCase):
 
     def test_exit_and_doors(self):
         self.assertErr(broken(a=lambda L: L.__setitem__("exit", [20, 12])), "exit")
-        self.assertErr(broken(a=lambda L: L["blocked"].append([12, 6])), "porte [12, 6] bloquée")
+        self.assertErr(broken(a=lambda L: L["plants"].append([12, 6])), "porte [12, 6] bloquée")
 
     def test_unreachable_seat(self):
         # une rangée de plantes entre l'open space et les îlots de droite : les allées ne sont plus accessibles
@@ -69,3 +75,23 @@ class PlanTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CatalogueTest(unittest.TestCase):
+    def test_python_and_page_catalogues_agree(self):
+        import subprocess
+        js = ("const {load}=require('./tests/helpers/page.js');const p=load();"
+              "console.log(p.run('JSON.stringify(Object.fromEntries(Object.entries(FURN_TYPES).map(([k,t])=>[k,t.foot])))'))")
+        page = json.loads(subprocess.run(["node", "-e", js], cwd=ROOT, capture_output=True, text=True, check=True).stdout)
+        self.assertEqual(page, plan.FURNITURE)
+
+    def test_unknown_furniture_and_decor(self):
+        self.assertTrue(any("inconnu" in e for e in broken(a=lambda L: L["furniture"].append({"type": "trampoline", "at": [20, 12]}))))
+        self.assertTrue(any("il faut un mur" in e for e in broken(a=lambda L: L["wall"].append({"type": "mirror", "at": [20, 12]}))))
+
+    def test_optional_zone_is_a_warning(self):
+        L = copy.deepcopy(BASE)
+        L["spots"].pop("sofa")
+        err, warn = plan.validate(L)
+        self.assertEqual(err, [])
+        self.assertTrue(any("sofa" in w for w in warn))

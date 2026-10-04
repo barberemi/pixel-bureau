@@ -41,9 +41,10 @@ function lightSources(){
   }
   const b=chars.find(c=>c.boss);
   if(b&&b.present&&b.atBoss)S.push({x:BOSS_SEAT[0]*TS+16,y:(BOSS_SEAT[1]+1)*TS-14,r:46,a:.85,c:'rgba(255,214,150,.2)'});
-  for(const x of [13,15])S.push({x:x*TS+16,y:2*TS+2,r:22,a:.35,c:'rgba(95,240,138,.12)'}); // baies serveurs
+  for(const o of FURN_AT.server_rack||[])S.push({x:13*TS+16+o.dx,y:2*TS+2+o.dy,r:22,a:.35,c:'rgba(95,240,138,.12)'}); // baies serveurs
   if(typeof TVR!=='undefined'&&!stageClosed(T))S.push({x:TVR.x+TVR.w/2,y:TVR.y+TVR.h/2,r:44,a:.5,c:'rgba(150,180,255,.12)'});
-  if(chars.some(c=>c.present&&c._st&&c._st.st==='coffee'))S.push({x:3*TS+17,y:2*TS-20,r:22,a:.5,c:'rgba(255,190,120,.16)'});
+  const cm=furnAt('counter'); // machine à café du comptoir
+  if(cm&&chars.some(c=>c.present&&c._st&&c._st.st==='coffee'))S.push({x:3*TS+17+cm.dx,y:2*TS-20+cm.dy,r:22,a:.5,c:'rgba(255,190,120,.16)'});
   S.push({x:EXIT[0]*TS+4,y:EXIT[1]*TS-8,r:26,a:.4,c:'rgba(80,230,120,.22)'}); // panneau Sortie
   themeLights(S); // 46-themes.js : citrouilles, sapin
   return S;

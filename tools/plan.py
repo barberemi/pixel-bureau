@@ -21,7 +21,13 @@ MIN_SIZE, MAX_SIZE, MAX_BYTES = (20, 12), (80, 40), 64 * 1024
 # zones de la machine à états (35-state.js) : sans elles, un personnage n'a nulle part où aller et disparaît
 ZONES_ESSENTIAL = {"wc": 1, "srv": 1, "meet": 2, "coffee": 1, "daily": 1}
 ZONES_BOSS = {"boss": 1, "gate": 1, "kanban": 1, "sax": 1}
-ZONES_ENGINE = {"stage": 1, "stageout": 1, "stagesax": 1, "sofa": 1, "ktable": 1, "cooler": 1, "copier": 1}  # facultatives en phase 3
+# facultatives : sans elles, les personnages se replient sur une autre zone (ZONE_FALLBACK de 35-state.js)
+ZONES_OPTIONAL = ("stage", "stageout", "stagesax", "sofa", "ktable", "cooler", "copier")
+# catalogue des meubles (le même que FURN_TYPES de 40-furniture.js, vérifié par tests/test_plan.py) : type -> cases bloquées, relatives à `at`
+FURNITURE = {"boss_desk": [], "meeting_table": [[i, 0] for i in range(7)], "server_rack": [[0, 0]], "counter": [[i, 0] for i in range(6)],
+             "fridge": [[0, 0]], "kitchen_table": [[0, 0], [1, 0]], "sofa": [], "water_cooler": [[0, 0]], "copier": [[0, 0]],
+             "toilets": [[4, 0]], "stage_closure": []}
+WALL_DECOR = ("whiteboard", "mirror", "sign")
 DIRS = {"up", "down", "left", "right"}
 OBJECTS = ("tv", "kanban", "planning", "paie", "emp")
 
@@ -101,6 +107,21 @@ def validate(L, raw_size=0):
     seat_tiles = {(s["x"], s["y"]) for s in seats} | ({tuple(boss["seat"])} if boss.get("seat") else set())
     blocked = {(cx, r) for cx in L["islands"]["x"] for r in L["islands"]["rows"]}
     blocked |= {tuple(p) for p in (boss.get("desk") or []) + (L.get("blocked") or []) + (L.get("plants") or [])}
+    for f in L.get("furniture") or []:
+        if f.get("type") not in FURNITURE:
+            E(f"meuble « {f.get('type')} » inconnu (catalogue : {', '.join(FURNITURE)})")
+            continue
+        blocked |= {(f["at"][0] + dx, f["at"][1] + dy) for dx, dy in FURNITURE[f["type"]]}
+    for d in L.get("wall") or []:
+        if d.get("type") not in WALL_DECOR:
+            E(f"décor mural « {d.get('type')} » inconnu ({', '.join(WALL_DECOR)})")
+        elif floor(*d["at"]):
+            E(f"décor mural « {d['type']} » {d['at']} : sur du sol, il faut un mur")
+    if L.get("clock") and floor(*L["clock"]):
+        E(f"horloge {L['clock']} : sur du sol, il faut un mur")
+    for lab in L.get("labels") or []:
+        if not (0 <= lab["at"][0] <= cols and 0 <= lab["at"][1] <= rows):
+            E(f"nom de pièce « {lab.get('text')} » hors du plan")
     for x, y in sorted(blocked | seat_tiles):
         if not floor(x, y):
             E(f"[{x},{y}] : table, siège, meuble ou plante hors du sol")
@@ -130,11 +151,13 @@ def validate(L, raw_size=0):
         E(f"place du boss {boss['seat']} : inaccessible depuis la sortie")
 
     spots = L.get("spots") or {}
-    need = dict(ZONES_ESSENTIAL, **ZONES_ENGINE, **(ZONES_BOSS if boss else {}))
+    need = dict(ZONES_ESSENTIAL, **(ZONES_BOSS if boss else {}))
     for z, n in need.items():
         if len(spots.get(z) or []) < n:
-            when = "" if z in ZONES_ESSENTIAL or z in ZONES_BOSS else " (le moteur actuel en a besoin ; facultative après la phase 3)"
-            E(f"zone « {z} » : au moins {n} place(s){when}")
+            E(f"zone « {z} » : au moins {n} place(s)")
+    for z in ZONES_OPTIONAL:
+        if not spots.get(z):
+            Wn(f"zone « {z} » absente : les personnages iront ailleurs (repli)")
     for z, lst in spots.items():
         seen = set()
         for p in lst:

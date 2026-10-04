@@ -357,13 +357,16 @@ const ST_CSS={
   gone:'transparent'
 };
 
+// zones facultatives d'un plan : où aller quand le plan n'en a pas (plateau TV, canapé, fontaine...)
+const ZONE_FALLBACK={stage:'stageout',stageout:'coffee',stagesax:'stageout',daily:'meet',sofa:'coffee',ktable:'coffee',cooler:'coffee',copier:'coffee',kanban:'gate',sax:'boss',gate:'boss'};
 function pickSpot(c,zone,taken){
   if(zone==='desk'){const s=c.seat||[14,12];return {key:'desk',x:s[0],y:s[1],dir:seatDir(s[0],s[1])};}
   if(zone==='boss'){const s=SPOTS.boss[0];return {key:'desk',x:s[0],y:s[1],dir:s[2]};}
   if(zone==='leave')return {key:'exit',x:EXIT[0],y:EXIT[1],dir:'right'};
   if(zone==='visit'&&c._st&&c._st.visit){const v=c._st.visit;return {key:'visit:'+v[0]+','+v[1],x:v[0],y:v[1],dir:v[2]};}
   if((zone==='stage'||zone==='stagesax')&&stageClosed(T))zone='stageout'; // plateau fermé : on attend devant le ruban
-  const list=SPOTS[zone]; if(!list)return null;
+  while(!(SPOTS[zone]||[]).length&&ZONE_FALLBACK[zone])zone=ZONE_FALLBACK[zone]; // zone absente du plan : on se replie
+  const list=SPOTS[zone]; if(!list||!list.length)return null;
   if(c.spotKey&&c.spotKey.startsWith(zone+':')&&!c.spotKey.includes('~')&&!taken.has(c.spotKey)){
     const i=+c.spotKey.split(':')[1];
     const s=list[i];

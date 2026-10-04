@@ -7,10 +7,16 @@ function pileOf(c){
   return t?t.filter(x=>x.cat!=='done').sort((a,b)=>TORDER.indexOf(b.cat)-TORDER.indexOf(a.cat)).slice(-5):[];
 }
 const FURN=[];
+// catalogue : un type de meuble = ses éléments, dessinés à leur place d'origine (ancre, en cases) et l'emprise qu'il bloque ;
+// le plan (LAYOUT.furniture) pose chaque meuble ailleurs : ses éléments sont décalés d'autant (o = décalage en cases et en pixels)
+const FURN_TYPES={}, FURN_AT={};
+function furnType(id,anchor,foot){const t={anchor,foot,items:[]};FURN_TYPES[id]=t;return t.items;}
+const furnAt=id=>(FURN_AT[id]||[])[0]||null;
 // îlots
 for(const cx of ISLANDS){
-  FURN.push({y:14*TS-2,draw:(now)=>{
-    const x0=cx*TS+3, y0=14*TS-8, h=3*TS+4;
+  const r0=IROWS[0], nr=IROWS.length; // table d'îlot : du premier au dernier rang
+  FURN.push({y:r0*TS-2,draw:(now)=>{
+    const x0=cx*TS+3, y0=r0*TS-8, h=nr*TS+4;
     R(ctx,x0+2,y0+h,TS-6,4,'rgba(0,0,0,.18)');
     R(ctx,x0,y0,TS-6,h,'#a87b4f');R(ctx,x0,y0,TS-6,2,'#c79a6a');R(ctx,x0,y0+h-6,TS-6,6,'#7d5634');
     for(const r of IROWS){
@@ -40,7 +46,8 @@ for(const cx of ISLANDS){
   }
 }
 // bureau du boss
-FURN.push({
+{const F=furnType('boss_desk',[21,8],[]);
+F.push({
   y:8*TS+2,fixed:true,
   draw:()=>{
     const px=22*TS+16,py=8*TS;
@@ -52,7 +59,7 @@ FURN.push({
     R(ctx,px+16,py-2,6,2,'#6a3434');
   }
 });
-FURN.push({
+F.push({
   y:9*TS,draw:(now)=>{
     const x0=21*TS-2,top=9*TS-20;
     R(ctx,x0,top+30,3*TS+4,3,'rgba(0,0,0,.2)');
@@ -72,8 +79,10 @@ FURN.push({
   ctx.textAlign='left';
   }
   });
+}
 // table de réunion
-FURN.push({
+{const F=furnType('meeting_table',[19,3],[[0,0],[1,0],[2,0],[3,0],[4,0],[5,0],[6,0]]);
+F.push({
   y:3*TS,fixed:true,draw:()=>{
     const x0=19*TS+2,y0=3*TS-6;
     R(ctx,x0,y0+30,7*TS-4,4,'rgba(0,0,0,.2)');
@@ -81,8 +90,10 @@ FURN.push({
     R(ctx,x0,y0,7*TS-4,3,'#a58260');
     R(ctx,x0,y0+24,7*TS-4,6,'#6a4f34');
   for(let i=0;i<6;i++)R(ctx,x0+14+i*34,y0+9,12,8,'#f4f1e8');R(ctx,x0+100,y0+10,16,8,'#2c2f38');}});
+}
 // baies serveurs
-for(const x of [13,15])FURN.push({y:2*TS+20,draw:(now)=>{const px=x*TS+2,py=TS+10;R(ctx,px,py,28,52,'#23262d');R(ctx,px,py,28,3,'#3a3e47');
+{const F=furnType('server_rack',[13,2],[[0,0]]);
+F.push({y:2*TS+20,draw:(now,o)=>{const x=13+o.tx, px=13*TS+2,py=TS+10; // x : colonne réelle (clignotement propre à chaque baie)R(ctx,px,py,28,52,'#23262d');R(ctx,px,py,28,3,'#3a3e47');
   for(let i=0;i<5;i++){
     R(ctx,px+3,py+7+i*9,22,6,'#2f333c');
     const on=hash(x+i,Math.floor(now/(300+i*70)))>.35;
@@ -91,8 +102,10 @@ for(const x of [13,15])FURN.push({y:2*TS+20,draw:(now)=>{const px=x*TS+2,py=TS+1
   }
   }
   });
+}
 // cafétéria : comptoir, machine à café, frigo, table, canapé, fontaine
-FURN.push({
+{const F=furnType('counter',[2,2],[[0,0],[1,0],[2,0],[3,0],[4,0],[5,0]]);
+F.push({
   y:2*TS+30,draw:(now)=>{
     const x0=2*TS,top=2*TS-14;
     R(ctx,x0,top,6*TS,16,'#c8c2b4');
@@ -106,7 +119,9 @@ FURN.push({
     ctx.fillRect(cm+10+Math.sin(k*8)*2,top-10-k*16,2,3);
   }
   R(ctx,6*TS+4,top+2,24,10,'#9aa8b4');R(ctx,6*TS+14,top-6,3,8,'#7d8a96');R(ctx,5*TS+6,top-8,8,10,'#e6dfc9');R(ctx,5*TS+8,top-11,4,3,'#2e9e5b');}});
-FURN.push({
+}
+{const F=furnType('fridge',[1,2],[[0,0]]);
+F.push({
   y:2*TS+30,fixed:true,
   draw:()=>{
     const px=1*TS+2,py=TS+8;
@@ -116,7 +131,9 @@ FURN.push({
     R(ctx,px+22,py+26,2,16,'#9aa3ab');
   }
 });
-FURN.push({
+}
+{const F=furnType('kitchen_table',[4,6],[[0,0],[1,0]]);
+F.push({
   y:6*TS,fixed:true,
   draw:()=>{
     const x0=4*TS+2,y0=6*TS-10;
@@ -127,8 +144,10 @@ FURN.push({
     R(ctx,x0+24,y0+6,8,6,'#d1453b');
   }
 });
-FURN.push({y:10*TS-6,fixed:true,draw:()=>{R(ctx,8*TS-4,10*TS-6,3*TS+8,16,'#3f6b8a');R(ctx,8*TS-4,10*TS-6,3*TS+8,3,'#4f80a3');}});
-FURN.push({
+}
+{const F=furnType('sofa',[8,10],[]);
+F.push({y:10*TS-6,fixed:true,draw:()=>{R(ctx,8*TS-4,10*TS-6,3*TS+8,16,'#3f6b8a');R(ctx,8*TS-4,10*TS-6,3*TS+8,3,'#4f80a3');}});
+F.push({
   y:10*TS+31,fixed:true,
   draw:()=>{
     R(ctx,8*TS-8,10*TS+16,3*TS+16,14,'#355c77');
@@ -136,7 +155,9 @@ FURN.push({
     R(ctx,11*TS,10*TS+4,8,26,'#2d4f66');
   }
 });
-FURN.push({
+}
+{const F=furnType('water_cooler',[11,7],[[0,0]]);
+F.push({
   y:7*TS+28,fixed:true,
   draw:()=>{
     const px=11*TS+16,py=7*TS+28;
@@ -146,8 +167,10 @@ FURN.push({
     R(ctx,px-2,py-12,4,3,'#2f6fd6');
   }
 });
+}
 // copieur et carton de papier près de l'entrée
-FURN.push({
+{const F=furnType('copier',[38,9],[[0,0]]);
+F.push({
   y:9*TS+28,fixed:true,
   draw:()=>{
     const px=38*TS+16,py=9*TS+28;
@@ -157,8 +180,10 @@ FURN.push({
     R(ctx,px+6,py-23,3,2,'#5ff08a');
   }
 });
+}
 // toilettes : cuvettes, cloisons, portes, voyants, lavabo
-FURN.push({
+{const F=furnType('toilets',[34,2],[[4,0]]);
+F.push({
   y:2*TS-2,fixed:true,
   draw:()=>{
     for(const sx of [34,35,36,37]){
@@ -170,9 +195,9 @@ FURN.push({
     }
   }
 });
-FURN.push({y:2*TS+31,draw:(now)=>{
+F.push({y:2*TS+31,draw:(now,o)=>{
   for(const sx of [34,35,36,37]){
-    const px=sx*TS, py=2*TS, occ=chars.find(c=>c.present&&c.spotKey&&c.spotKey.startsWith('wc:')&&c.tile&&c.tile[0]===sx&&c.tile[1]===2&&!c.moving);
+    const px=sx*TS, py=2*TS, occ=chars.find(c=>c.present&&c.spotKey&&c.spotKey.startsWith('wc:')&&c.tile&&c.tile[0]===sx+o.tx&&c.tile[1]===2+o.ty&&!c.moving);
     R(ctx,px,py-22,2,54,'#9fb0bd');
     if(occ){
       const wob=Math.sin(now/180+sx)>0.92?1:0;
@@ -187,8 +212,8 @@ FURN.push({y:2*TS+31,draw:(now)=>{
   R(ctx,38*TS+6,2*TS-2,20,12,'#ffffff');R(ctx,38*TS+14,2*TS-6,3,6,'#9aa3ab');
   ctx.fillStyle='#5a6b78';ctx.font='bold 6px ui-monospace,monospace';ctx.fillText('🧻',33*TS+8,2*TS+28);
 }});
-// plateau TV : écran au mur du fond
-const TVR=LAYOUT.objects.tv;
+}
+const TVR=LAYOUT.objects.tv; // plateau TV : écran au mur du fond
 function tapeBand(x1,y1,x2,y2,w){ // ruban de chantier jaune et noir
   const L=Math.hypot(x2-x1,y2-y1),a=Math.atan2(y2-y1,x2-x1);ctx.save();ctx.translate(x1,y1);ctx.rotate(a);
   ctx.fillStyle='#f2c314';
@@ -204,7 +229,8 @@ function tapeBand(x1,y1,x2,y2,w){ // ruban de chantier jaune et noir
   }
   ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(0,w/2,L,1);ctx.restore();
 }
-FURN.push({y:5*TS+30,draw:()=>{
+{const F=furnType('stage_closure',[28,2],[]);
+F.push({y:5*TS+30,draw:()=>{
   if(!stageClosed(T))return;
   R(ctx,28*TS,2*TS,4*TS,3*TS,'rgba(8,10,18,.62)'); // lumière éteinte
   const dx=29*TS, dy=5*TS; // porte
@@ -219,6 +245,15 @@ FURN.push({y:5*TS+30,draw:()=>{
   ctx.fillText('PAS DE MEP',px+TS/2+3,py+16);
   ctx.textAlign='left';
 }});
+}
+// meubles du plan, dans l'ordre du plan
+for(const f of LAYOUT.furniture){
+  const t=FURN_TYPES[f.type]; if(!t)continue;
+  const o={tx:f.at[0]-t.anchor[0],ty:f.at[1]-t.anchor[1]}; o.dx=o.tx*TS; o.dy=o.ty*TS;
+  (FURN_AT[f.type]=FURN_AT[f.type]||[]).push(o);
+  for(const it of t.items)FURN.push({y:it.y+o.dy,fixed:it.fixed,draw:o.dx||o.dy?n=>{ctx.save();ctx.translate(o.dx,o.dy);it.draw(n,o);ctx.restore();}:n=>it.draw(n,o)});
+  for(const [x,y] of t.foot)B(f.at[0]+x,f.at[1]+y);
+}
 FURN.push({y:-1,draw:(now)=>{
   const {x,y,w,h}=TVR, sg=stageAt(T);
   R(ctx,x-2,y-2,w+4,h+4,'#111216');R(ctx,x,y,w,h,'#0e1b30');

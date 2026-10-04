@@ -73,7 +73,7 @@ function garland(now){
 
 // ---------- décor posé au sol ou sur les meubles (entrées dynamiques de FURN, triées en profondeur) ----------
 const BOSS_DESK={x:21*TS-2,top:9*TS-20}, KTABLE={x:4*TS+2,y:6*TS-10}, COUNTER_TOP=2*TS-14;
-const ISLAND_TOP=cx=>({x:cx*TS+16-3,y:14*TS-6}), ISLAND_END=cx=>({x:cx*TS+16-3,y:17*TS-6});
+const ISLAND_TOP=cx=>({x:cx*TS+16-3,y:IROWS[0]*TS-6}), ISLAND_END=cx=>({x:cx*TS+16-3,y:(IROWS[IROWS.length-1]+1)*TS-6});
 function pumpkin(x,y,now,big){
   const s=big?1.8:1.4, w=Math.round(10*s), h=Math.round(8*s);
   R(ctx,x-w/2,y-h,w,h,'#e8731a');R(ctx,x-w/2+2,y-h,2,h,'#c95d10');R(ctx,x+w/2-4,y-h,2,h,'#c95d10');R(ctx,x-1,y-h-3,2,3,'#4a7a2a');
@@ -126,7 +126,7 @@ FURN.push({y:9*TS+1,draw:now=>{const {x,top}=BOSS_DESK;
 FURN.push({y:12*TS+29,draw:now=>{if(themeIs('noel'))xmasTree(now);}});
 FURN.push({y:13*TS+28,draw:()=>{if(themeIs('noel'))E('☃️',2*TS+16,13*TS+12,28);}});
 FURN.push({y:11*TS+28,draw:()=>{if(themeIs('noel'))E('🦌',37*TS+16,11*TS+14,24);}});
-FURN.push({y:14*TS-1,draw:now=>{
+FURN.push({y:IROWS[0]*TS-1,draw:now=>{
   ISLANDS.forEach((cx,i)=>{const p=ISLAND_TOP(cx);
     if(themeIs('halloween'))pumpkin(p.x,p.y,now,i%2===0);
     if(themeIs('noel'))E('🎁',p.x,p.y-6,13);
@@ -208,7 +208,7 @@ function themeOverlay(now){
 }
 // lumières du thème dans le voile de nuit (citrouilles, sapin)
 function themeLights(S){
-  if(themeIs('halloween'))for(const cx of ISLANDS)S.push({x:cx*TS+13,y:14*TS-10,r:20,a:.6,c:'rgba(255,150,40,.22)'});
+  if(themeIs('halloween'))for(const cx of ISLANDS)S.push({x:cx*TS+13,y:IROWS[0]*TS-10,r:20,a:.6,c:'rgba(255,150,40,.22)'});
   if(themeIs('noel'))S.push({x:13*TS+16,y:12*TS-8,r:40,a:.7,c:'rgba(255,210,90,.22)'});
 }
 

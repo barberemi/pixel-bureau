@@ -1,5 +1,7 @@
 // ---------- plan : toile, sol et murs (cuits une fois dans bg), fenêtres et horloge ----------
 const cv=document.getElementById('cv');
+cv.width=W;cv.height=H; // taille du plan (cases de 32 px)
+document.documentElement.style.setProperty('--plan-ratio',String(W/H)); // proportions du plan (mode TV)
 let ctx=cv.getContext('2d'); // let : la cuisson des meubles (40-furniture.js) dessine un moment dans une autre toile
 ctx.imageSmoothingEnabled=false;
 const bg=document.createElement('canvas'); bg.width=W; bg.height=H; const g=bg.getContext('2d');
@@ -35,6 +37,20 @@ function drawFloor(c,x,y,f){
   }
 }
 const isFloor=(x,y)=>y>=0&&y<ROWS&&x>=0&&x<COLS&&grid[y][x]===0;
+// décor mural : chaque type dessiné à sa place d'origine (ancre, en cases), décalé là où le plan le pose
+const WALL_DECOR={
+  whiteboard:{anchor:[20,1],draw:g=>{ // tableau blanc de la salle de réunion
+    R(g,20*TS+4,TS+4,3*TS-8,22,'#f7f7f4');R(g,20*TS+4,TS+24,3*TS-8,3,'#9aa0aa');
+    g.strokeStyle='#d1453b';g.lineWidth=1;g.beginPath();g.moveTo(20*TS+14,TS+18);g.lineTo(20*TS+40,TS+10);g.lineTo(20*TS+60,TS+16);g.stroke();
+    g.strokeStyle='#2f6fd6';g.beginPath();g.moveTo(21*TS+30,TS+9);g.lineTo(22*TS+4,TS+20);g.lineTo(22*TS+20,TS+12);g.stroke();
+  }},
+  mirror:{anchor:[38,1],draw:g=>{R(g,38*TS+6,TS+6,20,18,'#cfe6f2');R(g,38*TS+8,TS+8,4,14,'#f2fafd');}}, // miroir des toilettes
+  sign:{anchor:[21,5],draw:(g,d)=>{ // panneau (texte et couleurs du plan) sur un mur vu du couloir
+    const x0=21*TS-8, y0=5*TS+10, w=(d.w||3)*TS+16;
+    R(g,x0,y0,w,16,d.bg||'#0b2a4a');R(g,x0,y0,w,2,d.accent||'#0172f0');
+    g.fillStyle='#ffffff';g.font='bold 10px ui-monospace,Menlo,monospace';g.textAlign='center';g.fillText(d.text||'',x0+w/2,y0+13);g.textAlign='left';
+  }},
+};
 function buildBg(){
   R(g,0,0,W,H,'#2a2b33');
   for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)if(floorOf[y][x])drawFloor(g,x,y,floorOf[y][x]);
@@ -58,26 +74,11 @@ function buildBg(){
     const inHWall=grid[y][x-1]===1&&grid[y][x+1]===1;
     R(g,x*TS+2,y*TS+(inHWall?26:2),TS-4,4,'#8d7b62');
   }
-  // tableau blanc de la salle de réunion
-  R(g,20*TS+4,TS+4,3*TS-8,22,'#f7f7f4');R(g,20*TS+4,TS+24,3*TS-8,3,'#9aa0aa');
-  g.strokeStyle='#d1453b';g.lineWidth=1;g.beginPath();g.moveTo(20*TS+14,TS+18);g.lineTo(20*TS+40,TS+10);g.lineTo(20*TS+60,TS+16);g.stroke();
-  g.strokeStyle='#2f6fd6';g.beginPath();g.moveTo(21*TS+30,TS+9);g.lineTo(22*TS+4,TS+20);g.lineTo(22*TS+20,TS+12);g.stroke();
-  // bibliothèque du boss (mur du haut, rangée 7)
-  // miroir des toilettes
-  R(g,38*TS+6,TS+6,20,18,'#cfe6f2');R(g,38*TS+8,TS+8,4,14,'#f2fafd');
-  // panneau LE BUREAU sur le mur de la salle de réunion (vu du couloir)
-  R(g,21*TS-8,5*TS+10,3*TS+16,16,'#0b2a4a');
-  R(g,21*TS-8,5*TS+10,3*TS+16,2,'#0172f0');
-  g.fillStyle='#ffffff';
-  g.font='bold 10px ui-monospace,Menlo,monospace';
-  g.textAlign='center';
-  g.fillText('LE BUREAU',22*TS+16,5*TS+23);
-  // noms des pièces
-  g.font='bold 9px ui-monospace,Menlo,monospace';
-  const lab=(t,x,y,c)=>{g.fillStyle=c||'rgba(0,0,0,.22)';g.fillText(t,x,y);};
-  lab('CAFÉTÉRIA',6*TS,10*TS+8); lab('SERVEURS',14*TS+16,4*TS+26,'rgba(255,255,255,.3)'); lab('SALLE DE RÉUNION',22*TS+16,2*TS+10);
-  lab('PLATEAU TV',30*TS,4*TS+26,'rgba(255,255,255,.35)'); lab('TOILETTES',36*TS+16,4*TS+26); lab('BUREAU DU BOSS',22*TS+16,10*TS+26);
-  lab('ENTRÉE PRINCIPALE',36*TS+8,8*TS+20); lab('OPEN SPACE',20*TS,18*TS+24);
+  // décor mural et noms des pièces : posés par le plan (LAYOUT.wall, LAYOUT.labels)
+  for(const d of LAYOUT.wall||[]){const t=WALL_DECOR[d.type]; if(!t)continue;
+    g.save();g.translate((d.at[0]-t.anchor[0])*TS,(d.at[1]-t.anchor[1])*TS);t.draw(g,d);g.restore();}
+  g.font='bold 9px ui-monospace,Menlo,monospace';g.textAlign='center';
+  for(const l of LAYOUT.labels||[]){g.fillStyle=l.color||'rgba(0,0,0,.22)';g.fillText(l.text,l.at[0]*TS,l.at[1]*TS);}
   g.textAlign='left';
 }
 function drawWindows(t,now){
@@ -89,8 +90,9 @@ function drawWindows(t,now){
     themeWindow(x*TS+6,TS+6,TS*1.5-4,16,now||0,x); // 46-themes.js : neige, feux d'artifice
     R(ctx,x*TS+4+TS*.75,TS+4,2,20,'#e7e1d3');
   }
-  // horloge sur le mur bas de la cafétéria
-  const cx=3*TS, cy=11*TS+18;
+  // horloge murale (LAYOUT.clock)
+  if(!LAYOUT.clock)return;
+  const cx=LAYOUT.clock[0]*TS, cy=LAYOUT.clock[1]*TS+18;
   ctx.fillStyle='#f7f5ef';ctx.beginPath();ctx.arc(cx,cy,10,0,7);ctx.fill();ctx.strokeStyle='#3a3530';ctx.lineWidth=2;ctx.stroke();
   const parts=dtf('en-GB',{hour:'numeric',minute:'numeric',hour12:false}).formatToParts(new Date(t));
   const hh=+parts.find(p=>p.type==='hour').value, mm=+parts.find(p=>p.type==='minute').value;

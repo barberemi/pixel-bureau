@@ -20,12 +20,19 @@ for(const cx of ISLANDS)for(const r of IROWS){
   B(cx,r);
   for(const [sx,dir] of [[cx-1,'right'],[cx+1,'left']]){SEATS.push({x:sx,y:r,dir,cx});seatTiles.add(sx+','+r);}
 }
+// places du roster et des agents qui ne sont pas des sièges de ce plan (plan d'un autre bureau) : un siège libre chacun,
+// dans l'ordre du casting ; les places libres du plan qui ne sont pas des sièges sont ignorées
+{const isSeat=s=>!!s&&SEATS.some(t=>t.x===s[0]&&t.y===s[1]);
+ for(let i=FREE_SEATS.length-1;i>=0;i--)if(!isSeat(FREE_SEATS[i]))FREE_SEATS.splice(i,1);
+ const used=new Set(CAST.filter(c=>isSeat(c.seat)).map(c=>c.seat.join(',')));
+ const spare=SEATS.filter(t=>!used.has(t.x+','+t.y)&&!FREE_SEATS.some(f=>f[0]===t.x&&f[1]===t.y));
+ for(const c of CAST)if(c.seat&&!isSeat(c.seat)){const t=spare.shift();c.seat=t?[t.x,t.y]:null;}}
 const seatDir=(x,y)=>{const s=SEATS.find(s=>s.x===x&&s.y===y);return s?s.dir:'down';};
 // bureau du boss : sa place et son bureau
 const BOSS_SEAT=LAYOUT.boss.seat;
 for(const [x,y] of LAYOUT.boss.desk)B(x,y); seatTiles.add(BOSS_SEAT.join(','));
-// décor qui bloque le passage (comptoir, tables, baies, copieur...) et plantes
-for(const [x,y] of LAYOUT.blocked)B(x,y);
+// plantes et cases bloquées en plus (les meubles du catalogue bloquent leur emprise : 40-furniture.js)
+for(const [x,y] of LAYOUT.blocked||[])B(x,y);
 for(const [x,y] of LAYOUT.plants)B(x,y);
 const SPOTS=LAYOUT.spots;
 // porte qui se ferme (plateau TV fermé le vendredi et le week-end)

@@ -26,3 +26,18 @@ test('plan : chaque rangée a la largeur annoncée et chaque caractère est dans
     for (const ch of row) assert.ok(ch in L.legend, `caractère inconnu : ${ch}`);
   }
 });
+
+test("un autre plan (exemple-startup) : la page démarre, chaque siège et chaque place se rejoignent depuis la sortie", () => {
+  const p = load({layout: 'exemple-startup'});
+  const r = JSON.parse(p.run(`(()=>{
+    const bad=[], reach=(x,y)=>{const path=findPath(EXIT[0],EXIT[1],x,y);const l=path[path.length-1];
+      return path.length>1||(l&&Math.abs(l[0]-EXIT[0])+Math.abs(l[1]-EXIT[1])<=1);};
+    for(const s of SEATS)if(!reach(s.x,s.y))bad.push('siège '+s.x+','+s.y);
+    for(const [z,l] of Object.entries(SPOTS))for(const [x,y] of l)if(!reach(x,y))bad.push(z+' '+x+','+y);
+    const seatless=CAST.filter(c=>c.seat&&!SEATS.some(t=>t.x===c.seat[0]&&t.y===c.seat[1])).map(c=>c.key);
+    return JSON.stringify({W,H,bad,seatless,chars:chars.length});})()`));
+  assert.deepEqual([r.W, r.H], [960, 512]);
+  assert.deepEqual(r.bad, []);
+  assert.deepEqual(r.seatless, []); // places du roster (plan equipe) réattribuées sur des sièges de ce plan
+  assert.ok(r.chars > 10);
+});

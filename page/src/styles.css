@@ -146,7 +146,7 @@ body.tv{--tvk:clamp(110px,15vh,170px)}
 /* zone calée entre le bandeau du haut (52 px) et le bandeau défilant (48 px) : rien ne passe dessous */
 body.tv .stage{display:flex;flex-direction:column;position:fixed;top:52px;bottom:48px;left:0;right:var(--tvw);margin:0;overflow:hidden}
 body.tv .cv-wrap{overflow:hidden;border-radius:0;background:#111216;display:flex;justify-content:center;align-items:flex-start;flex:none}
-body.tv canvas{min-width:0;width:min(calc(100vw - var(--tvw)),calc((100vh - 100px - var(--tvk)) * 2));height:auto;border-radius:0}
+body.tv canvas{min-width:0;width:min(calc(100vw - var(--tvw)),calc((100vh - 100px - var(--tvk)) * var(--plan-ratio,2)));height:auto;border-radius:0}
 body.tv #tvbar{display:flex;flex-wrap:nowrap;white-space:nowrap;overflow:hidden;position:fixed;top:0;left:0;right:0;height:52px;align-items:center;gap:clamp(5px,0.8vw,14px);padding:0 clamp(8px,1.2vw,18px);background:#191b22;color:#ece8df;font:600 15px ui-sans-serif,system-ui,sans-serif;z-index:30;border-bottom:1px solid #2a2d36}
 #tvbar .tvt{font-weight:800;letter-spacing:.02em;margin-right:6px}
 #tvbar .tvc{font:700 clamp(15px,1.5vw,22px) ui-monospace,Menlo,monospace;flex:none}

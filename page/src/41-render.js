@@ -36,11 +36,12 @@ function render(now){
     }
   }
   const sg=stageAt(T);
+  const so=furnAt('stage_closure')||{dx:0,dy:0}; // confettis sur le plateau TV
   if(sg&&sg.phase==='done'){
     const cols=['#e0a020','#d1453b','#2f6fd6','#2e9e5b','#7a5cc8'];
     for(let i=0;i<40;i++){
       const k=((now/1800)+hash(i,3))%1;
-      R(ctx,28*TS+hash(i,7)*4*TS+Math.sin(now/300+i)*4,2*TS-8+k*3*TS,3,3,cols[i%5]);
+      R(ctx,28*TS+so.dx+hash(i,7)*4*TS+Math.sin(now/300+i)*4,2*TS-8+so.dy+k*3*TS,3,3,cols[i%5]);
     }
   }
 }

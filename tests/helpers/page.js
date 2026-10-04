@@ -17,7 +17,7 @@ function pageConfig(cfg) {
     schedules: Object.fromEntries(['office', 'live', 'team', 'payroll'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule]))};
 }
 
-function pageJs(owner, {demo = true, actions = true, config} = {}) {
+function pageJs(owner, {demo = true, actions = true, config, layout = 'equipe'} = {}) {
   const files = fs.readdirSync(SRC).filter(f => f.endsWith('.js')).sort();
   const js = files.map(f => { const s = fs.readFileSync(path.join(SRC, f), 'utf8'); return s.endsWith('\n') ? s : s + '\n'; }).join('');
   const cast = JSON.parse(read('sprites', 'cast.json'));
@@ -31,7 +31,7 @@ function pageJs(owner, {demo = true, actions = true, config} = {}) {
     __CAST__: JSON.stringify(cast),
     __AVATAR_WF__: 'avatar-wf', __GATE_WF__: 'gate-wf', __RELAUNCH_WF__: 'relaunch-wf', __ASK_QP__: 'ask-qp',
     __ROSTER__: read('team', 'roster.json'),
-    __LAYOUT__: read('layouts', 'equipe.json'),
+    __LAYOUT__: read('layouts', layout + '.json'),
     __CONFIG__: JSON.stringify(pageConfig(config === undefined ? JSON.parse(read('tests', 'fixtures', 'bureau.config.json')) : config)),
     __OWNER__: JSON.stringify(owner === undefined ? JSON.parse(read('tests', 'fixtures', 'bureau.config.json')).owner : owner),
     __SNAP__: demo ? read('data', 'office_snapshot.json') : 'null',
@@ -67,7 +67,7 @@ function stub(name) {
   return p;
 }
 
-function load({kronnPageData, owner, demo, actions, config} = {}) {
+function load({kronnPageData, owner, demo, actions, config, layout} = {}) {
   const storage = new Map();
   const localStorage = {
     getItem: k => (storage.has(k) ? storage.get(k) : null),
@@ -92,7 +92,7 @@ function load({kronnPageData, owner, demo, actions, config} = {}) {
   };
   ctx.window = ctx;
   vm.createContext(ctx);
-  vm.runInContext(pageJs(owner, {demo, actions, config}), ctx, {filename: 'office.js'});
+  vm.runInContext(pageJs(owner, {demo, actions, config, layout}), ctx, {filename: 'office.js'});
   return {ctx, run: code => vm.runInContext(code, ctx)};
 }
 

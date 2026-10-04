@@ -8,7 +8,7 @@
 | `page/src/styles.css` | Toute la feuille de style |
 | `page/src/NN-*.js` | Le script, concaténé **dans l'ordre des noms** en un seul `<script>` (une portée globale, pas de modules) : config `00`, plan `10`, sprites `20`, données `30-33`, états `35`, dessin `40-45`, panneau, actions, fiches et éditeur `50-65`, À traiter et récap `68-69`, tuiles, fil et « Qui fait quoi » `70-72`, mode TV `75-76`, visite `78`, souris `80`, boucle et démarrage `90` |
 | `workflows/` | Scripts Python des étapes Exec ; `_lib.py` = socle commun, recopié dans chaque script au rendu (Kronn lance `python3 -c` sans fichier voisin) ; `templates/` = modèles des workflows et du Quick Prompt |
-| `layouts/` | Plans de bureau (format `bureau-layout/1`) ; `equipe.json` = le plan par défaut |
+| `layouts/` | Plans de bureau (format `bureau-layout/1`) ; `equipe.json` = le plan par défaut, `exemple-startup.json` = un autre bureau (30 x 16, sans plateau TV) |
 | `team/` | `roster.json` (l'équipe, identique pour tous), `defaults.json` (valeurs proposées à l'installation) |
 | `sprites/` | Recettes d'avatars `cast.json`, calques LPC `layers.json`, sprites fournis `custom/` |
 | `data/` | Instantanés de démo (aperçu local et tests seulement, jamais dans la page publiée) |
@@ -56,7 +56,9 @@ Questions : Kronn, qui tu es, projet, Jira (testé à travers Kronn), GitHub, ag
 Le plan n'est plus codé en dur : `10-world.js` construit grille, sols, portes, sièges, places et cases bloquées depuis le plan embarqué par `assemble.py` (marqueur `__LAYOUT__` ; `layout` dans `bureau.config.json`, sinon `layouts/equipe.json`).
 
 - `tiles` : le sol en texte, une chaîne par rangée, un caractère par case ; `legend` dit ce que vaut chaque caractère (`#` mur, `=` vitre, `.` moquette, `c` carrelage, `s` serveurs, `r` réunion, `p` plateau, `w` toilettes, `b` parquet, `E` paillasson).
-- `doors` (seuils dessinés), `exit`, `closable` (porte du plateau fermée le vendredi et le week-end), `islands` (colonnes des tables et rangs des sièges), `boss` (place et bureau), `blocked` (décor infranchissable), `plants`, `windows`.
+- `doors` (seuils dessinés), `exit`, `closable` (porte du plateau fermée le vendredi et le week-end), `islands` (colonnes des tables et rangs des sièges), `boss` (place et bureau), `plants`, `windows`, `blocked` (facultatif : cases bloquées en plus des meubles).
+- `furniture` : meubles du catalogue (`boss_desk`, `meeting_table`, `server_rack`, `counter`, `fridge`, `kitchen_table`, `sofa`, `water_cooler`, `copier`, `toilets`, `stage_closure`), chacun posé par `at` ; il bloque son emprise (`FURN_TYPES` de `40-furniture.js`, `FURNITURE` de `tools/plan.py`, tenus identiques par un test).
+- `wall` (décor mural : `whiteboard`, `mirror`, `sign` avec `text`), `clock`, `labels` (noms des pièces, position en cases).
 - `spots` : places de chaque zone (`[x, y, orientation]`) ; `free_seats` : places des intérimaires ; `light_rooms` : pièces éclairées la nuit ; `objects` : rectangles cliquables (TV, Kanban, planning, paie, employé du sprint).
 - Vérifier un plan, voir ses sièges, son rendu :
   ```sh
@@ -66,7 +68,11 @@ Le plan n'est plus codé en dur : `10-world.js` construit grille, sols, portes, 
   ```
   Le vérificateur contrôle la forme (taille, rangées, légende, murs du bord et du fond), la sortie et les portes, les meubles et sièges sur du sol, l'accès depuis la sortie à chaque siège (par son allée) et à chaque place, les zones dont la machine à états a besoin, les places libres, les objets cliquables. `publish.py page` refuse un plan invalide.
 - Les seuils de porte et le bord du plateau se déduisent du plan (murs voisins, sol de plateau), plus de rangées écrites en dur.
-- Encore dans le code (lot 7, phase 3) : le dessin et la position des meubles, des libellés de pièces et du décor mural.
+- Zones facultatives (plateau TV, canapé, table, fontaine, copieur…) : sans elles, les personnages se replient ailleurs (`ZONE_FALLBACK` de `35-state.js`). La toile prend la taille du plan.
+- Places du roster et des agents qui ne sont pas des sièges du plan : remplacées par un siège libre, dans l'ordre du casting.
+- Limite : le décor des thèmes saisonniers (banderole, bonhomme de neige, ballons…) est encore placé pour le plan equipe.
+
+![Le plan d'exemple exemple-startup.json](img/plan-exemple-startup.png)
 - `tests/layout.test.js` vérifie que le plan redonne exactement l'ancien monde (`tests/fixtures/world_equipe.json`).
 
 ## Repères
