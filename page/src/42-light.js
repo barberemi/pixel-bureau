@@ -34,7 +34,7 @@ function buildRooms(){ // rappelé quand le plan change
   ROOM_LV=ROOMS.map(()=>0);
   LIGHT_CV=null; LIGHT_AT=0; // toiles de la lumière refaites à la taille du plan
 }
-const NIGHT_MAX=.45; // opacité du voile au cœur de la nuit (au-delà, plan et personnages illisibles)
+const NIGHT_MAX=.55; // opacité du voile au cœur de la nuit (0,7 rendait plan et personnages illisibles)
 let LIGHT_CV=null, LIGHT_AT=0, LIGHT_D=0;
 function lightSources(){
   const S=[]; // {x,y,r,a,c} : a = part du voile retirée au centre, c = halo coloré ajouté

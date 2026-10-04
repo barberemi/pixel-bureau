@@ -18,7 +18,7 @@ PORT = 9335
 # avant chaque capture : hors mode TV (mémorisé par le navigateur), visite guidée fermée, lecture en pause à 11h, personnages posés à leur place
 AT = lambda h: f"if(TV)setTv(false);tourShow(-1);setMode('pause');T=DAY0+{h}*3600e3;needTeleport=true;"  # noqa: E731
 WAIT = "new Promise(r=>setTimeout(r,2500))"
-# nom -> (largeur, hauteur, JS de mise en scène, sélecteur à rogner ; None = la fenêtre[, échelle de la capture])
+# nom -> (largeur, hauteur, JS de mise en scène, sélecteur à rogner ; None = la fenêtre[, échelle de la capture[, autre plan]])
 SHOTS = {
     "plan": (1400, 1000, AT(11), "#cv", 1.5),
     "legende": (1400, 1600, AT(11) + "document.querySelector('.legend-help').open=true;", ".legend-help"),
@@ -41,6 +41,7 @@ SHOTS = {
                         "since:new Date(Date.now()-12*60e3).toISOString(),message:\"Nouveau plan du bureau pour toute l'équipe : valider pour le publier.\\n\\n"
                         "Nouveau plan : Plateau web, 2e étage (40 x 20 cases, 36 sièges, 22 places attribuées).\\n"
                         "Places qui changent : p_coll7 I2.R3 → I3.R3, dwight I4.L1 → I6.L1.\"}];select('gate:demo');", "#side"),
+    "panneau-replie": (1440, 820, AT(11) + "SIDE_FOLDED=true;renderSide(true);scrollTo(0,document.querySelector('.main').offsetTop-8);", None),
     "mobile": (390, 1200, AT(11), None),
     "visite": (1400, 1000, AT(11) + "tourShow(0);", None),
     # thèmes saisonniers (46-themes.js), forcés sur la journée de démo, de jour (11h) et le soir (20h15)
@@ -48,12 +49,15 @@ SHOTS = {
        for name, tid, h in (("halloween", "halloween", 20.25), ("halloween-jour", "halloween", 11), ("noel", "noel", 11),
                             ("noel-soir", "noel", 20.25), ("nouvel-an", "nouvel-an", 11), ("nouvel-an-soir", "nouvel-an", 20.25),
                             ("saint-valentin", "saint-valentin", 11))},
+    # le décor suit les meubles et les îlots d'un autre plan
+    "theme-noel-autre-plan": (1400, 1000, AT(20.25) + "THEME_FORCE='noel';", "#cv", 1.5, "layouts/exemple-startup.json"),
 }
 
 
-def build_page(cfg=None):
-    """Page de démo assemblée dans dist/ (cfg : config d'installation, par exemple un autre plan)."""
-    path = os.path.join(ROOT, "dist", "office.html")
+def build_page(cfg=None, variant=None):
+    """Page de démo assemblée dans dist/ (cfg : config d'installation, par exemple un autre plan ; variant : nom de
+    fichier distinct, pour garder plusieurs pages à la fois)."""
+    path = os.path.join(ROOT, "dist", "office.html" if not variant else "office-" + os.path.basename(variant).replace(".json", ".html"))
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
         f.write(assemble.build(demo=True, cfg=cfg))
@@ -118,11 +122,14 @@ def capture(call, page, w, h, js, sel, scale=1):
 def main(names):
     names = names or list(SHOTS)
     os.makedirs(OUT, exist_ok=True)
-    page = build_page()
+    pages = {None: build_page()}
     with chrome() as call:
         for name in names:
-            w, h, js, sel, scale = (*SHOTS[name], 1)[:5]
-            png = capture(call, page, w, h, js, sel, scale)
+            w, h, js, sel, *rest = SHOTS[name]
+            scale, layout = (rest + [1, None][len(rest):])[:2]
+            if layout not in pages:  # même page de démo, sur un autre plan
+                pages[layout] = build_page({**assemble.config(), "layout": layout}, layout)
+            png = capture(call, pages[layout], w, h, js, sel, scale)
             if isinstance(png, str):
                 print(f"✗ {name} : {png}")
                 continue

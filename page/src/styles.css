@@ -20,7 +20,7 @@ body{background:var(--bg);color:var(--ink);font:14px/1.45 ui-sans-serif,system-u
 header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px}
 h1{font-size:22px;margin:0;letter-spacing:-.01em}
 .sub{color:var(--muted);margin-top:2px}
-.clock{font:600 28px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.02em;text-align:right}
+.clock{font:600 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.02em;text-align:right}
 .badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 9px;border-radius:999px;background:var(--chip);color:var(--muted);margin-top:6px}
 .badge i{width:8px;height:8px;border-radius:50%;background:var(--idle);display:inline-block}
 .badge.live i{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 25%,transparent)}
@@ -243,6 +243,18 @@ button.wc.on{background:color-mix(in srgb,var(--accent) 14%,var(--panel));color:
 .dash .cap b{color:var(--ink)}
 .dash .cap.warn{color:var(--warn)}.dash .cap.err{color:var(--err);font-weight:600}.dash .cap.live{color:#7a5cc8;font-weight:600}
 .dash.click{cursor:pointer}.dash.click:hover{border-color:var(--accent)}
+.dash.err{border-top:3px solid var(--err)}.dash.warn{border-top:3px solid var(--warn)} /* tuile à la couleur de son alerte */
+.dash.flash{animation:tileflash 1.2s ease-out} /* tuile dont le chiffre vient de changer */
+@keyframes tileflash{from{background:color-mix(in srgb,var(--accent) 22%,var(--panel))}to{background:var(--panel)}}
+.todo h2 .cnt.hot{background:var(--err);color:#fff;animation:cntpulse 1.6s ease-in-out infinite} /* une panne attend */
+@keyframes cntpulse{50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--err) 25%,transparent)}}
+@media (prefers-reduced-motion:reduce){.dash.flash,.todo h2 .cnt.hot{animation:none}}
+.badge.replay{background:color-mix(in srgb,var(--warn) 22%,var(--chip));color:var(--ink)}.badge.replay i{background:var(--warn)}
+/* panneau replié : une bande de 56 px, le plan prend la place */
+.sidefold-btn{width:100%;margin:0 0 10px;font-size:12px}
+body.sidefold .main{grid-template-columns:minmax(0,1fr) 56px}
+body.sidefold .side{padding:8px 6px}
+body.sidefold .sidefold-btn{margin:0;padding:10px 0;font-size:16px}
 .dash .j{background:var(--chip);color:var(--ink);border-radius:999px;padding:0 7px;letter-spacing:0}
 .dash .j.hot{background:color-mix(in srgb,var(--err) 20%,transparent)}
 .dash .meter{position:relative;height:8px;border-radius:99px;background:var(--chip);overflow:visible;margin:2px 0 3px}

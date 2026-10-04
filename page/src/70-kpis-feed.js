@@ -39,10 +39,10 @@ function dashData(t){
   return {sprint,prod,agents};
 }
 const plural=(n,a,b)=>n+' '+(n>1?b:a);
-let KPI_SIG='';
+let KPI_SIG='', KPI_FIG=[]; // html complet ; chiffres de chaque tuile (une tuile dont un chiffre change clignote)
 function renderKpis(){
   if(!DATA)return;
-  const d=dashData(T), out=[];
+  const d=dashData(T), out=[], fig=[]; // fig : les chiffres de chaque tuile, sans le repère du temps qui avance
   if(d.sprint){ // 1. Sprint
     const s=d.sprint, c=s.cats, tot=Math.max(1,c.todo+c.doing+c.review+c.test+c.done), pct=s.ptsAll?Math.round(s.ptsDone/s.ptsAll*100):0;
     const seg=(k,col)=>c[k]?`<i style="width:${c[k]/tot*100}%;background:${col}" title="${c[k]} ${CAT_TXT[k]||'terminés'}"></i>`:'';
@@ -52,8 +52,9 @@ function renderKpis(){
       `<div class="stack">${seg('done','var(--idle)')}${seg('test',CAT_COLOR.test)}${seg('review',CAT_COLOR.review)}${seg('doing',CAT_COLOR.doing)}${seg('todo','var(--line)')}</div>`+
       `<div class="cap">${c.todo} à faire · <span style="color:${CAT_COLOR.doing}">${c.doing} en cours</span> · <span style="color:${CAT_COLOR.review}">${c.review} en review</span> · <span style="color:${CAT_COLOR.test}">${c.test} en test</span> · ${c.done} terminés</div>`+
       '</section>');
+    fig.push([s.ptsDone,s.ptsAll,c.todo,c.doing,c.review,c.test,c.done].join());
   }
-  if(!d.sprint)out.push(`<section class="dash sprint"><h3>L'équipe</h3><div class="calm muted">Pas encore de données Jira ni GitHub.</div><div class="cap">Elles arrivent avec le cron « équipe » (sprint, tickets, PR, mises en prod).</div></section>`);
+  if(!d.sprint){fig.push('');out.push(`<section class="dash sprint"><h3>L'équipe</h3><div class="calm muted">Pas encore de données Jira ni GitHub.</div><div class="cap">Elles arrivent avec le cron « équipe » (sprint, tickets, PR, mises en prod).</div></section>`);}
   if(d.prod){ // 2. Prod aujourd'hui
     const p=d.prod;
     const lines=[
@@ -62,16 +63,21 @@ function renderKpis(){
       p.last?`<div class="cap">Dernière : <b>${esc(p.last.m.tag)}</b> à ${hm(ms(p.last.m.prod.end))}${p.last.m.ticket?' · '+esc(p.last.m.ticket):''}</div>`:'',
       p.closed?`<div class="cap">Plateau fermé : pas de MEP le vendredi ni le week-end</div>`:''
     ].filter(Boolean);
-    out.push(`<section class="dash prod click" data-open="tv"><h3>La prod aujourd'hui</h3><div class="row"><div class="big">${p.done}</div><div class="grow">${plural(p.done,'mise en prod','mises en prod')}</div></div>${lines.join('')}</section>`);
+    fig.push([p.done,p.failed.length,p.live.length].join());
+    out.push(`<section class="dash prod click${p.failed.length?' err':''}" data-open="tv"><h3>La prod aujourd'hui</h3><div class="row"><div class="big">${p.done}</div><div class="grow">${plural(p.done,'mise en prod','mises en prod')}</div></div>${lines.join('')}</section>`);
   }
   if(d.agents){ // 3. Agents (suivi, pas alerte)
-    const a=d.agents;
-    out.push(`<section class="dash agents click" data-open="paie" title="Voir la fiche de paie"><h3>Les agents</h3><div class="cap">${a.runs} runs · <span style="color:var(--ok)">${a.ok} ✓</span> · <span style="color:${a.ko?'var(--err)':'inherit'}">${a.ko} ✗</span></div><div class="cap">${fmtTok(a.tok)} tokens · fiche de paie ›</div></section>`);
+    const a=d.agents, down=chars.some(c=>!c.person&&!c.visitor&&c._st&&c._st.st==='error');
+    fig.push([a.runs,a.ok,a.ko,down].join());
+    out.push(`<section class="dash agents click${down?' err':a.ko?' warn':''}" data-open="paie" title="Voir la fiche de paie"><h3>Les agents</h3><div class="cap">${a.runs} runs · <span style="color:var(--ok)">${a.ok} ✓</span> · <span style="color:${a.ko?'var(--err)':'inherit'}">${a.ko} ✗</span></div><div class="cap">${fmtTok(a.tok)} tokens · fiche de paie ›</div></section>`);
   }
   const html=out.join('');
   if(html===KPI_SIG)return;
-  const box=document.getElementById('kpis');
+  const box=document.getElementById('kpis'), first=!KPI_SIG;
   KPI_SIG=html;box.innerHTML=html;
+  // une tuile dont un chiffre change clignote une fois (pas au premier affichage, ni en rejeu)
+  fig.forEach((f,i)=>{if(!first&&mode==='live'&&KPI_FIG[i]!==undefined&&KPI_FIG[i]!==f&&box.children[i])box.children[i].classList.add('flash');});
+  KPI_FIG=fig;
 }
 const fmtPts=n=>String(Math.round(n*10)/10).replace('.',',');
 let FEED_EV=[];

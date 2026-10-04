@@ -37,6 +37,7 @@ function setMode(m){
   liveBtn.classList.toggle('on',m==='live');
   playBtn.classList.toggle('on',m==='play');
   playBtn.textContent=m==='play'?'❚❚ Pause':'▶ Rejouer';
+  updateBadge();
 }
 liveBtn.onclick=()=>{setMode('live');needTeleport=true;};
 playBtn.onclick=()=>{if(mode==='play'){setMode('pause');return;}if(mode==='live'||T>=REND-1000){T=RSTART;needTeleport=true;}setMode('play');};

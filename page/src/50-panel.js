@@ -26,12 +26,31 @@ function portrait(c,size){
     if(famOf(c)==='wf')x.drawImage(holoFrame(img,2*64,4*64,0,false),12,8,40,40,0,0,40,40);else x.drawImage(img,ox,oy,40,40,0,0,40,40);}
   p.style.width=size+'px';p.style.height=size+'px';return p;
 }
+// panneau replié en une bande étroite : le plan prend la place (bouton en haut du panneau ; un clic sur le plan le rouvre)
+let SIDE_FOLDED=false;
+function sideFoldButton(side){
+  const b=document.createElement('button');b.className='sidefold-btn';b.dataset.fid='fold';
+  b.textContent=SIDE_FOLDED?'⟨':'Replier ⟩';b.title=SIDE_FOLDED?'Rouvrir le panneau':'Replier le panneau : le plan prend la place';
+  b.setAttribute('aria-expanded',String(!SIDE_FOLDED));
+  b.onclick=()=>{SIDE_FOLDED=!SIDE_FOLDED;renderSide(true);};
+  side.appendChild(b);
+}
+function refocus(side,fid){const e=fid&&[...side.querySelectorAll('[data-fid]')].find(x=>x.dataset.fid===fid);if(e)e.focus();}
 let COLLAPSED={};try{COLLAPSED=JSON.parse(localStorage.getItem('bureau:collapsed')||'{}')||{};}catch(e){COLLAPSED={};}
 function renderSide(force){
   if(EDIT&&!force)return; // l'éditeur d'avatar ne se redessine pas tout seul (saisie en cours)
   if(!force&&(KM_OPEN||document.querySelector('#side [data-kronn-action-slot]')))return; // carte Kronn ouverte (fenêtre centrée)
   const side=document.getElementById('side'); if(!DATA)return;
+  // le panneau se redessine chaque seconde : on garde l'élément qui a le focus clavier (data-fid)
+  const fid=side.contains(document.activeElement)&&document.activeElement.dataset?document.activeElement.dataset.fid:null;
   side.innerHTML='';
+  const folded=SIDE_FOLDED&&innerWidth>980; // sous 980 px le panneau passe sous le plan : jamais replié
+  if(innerWidth>980)sideFoldButton(side);
+  document.body.classList.toggle('sidefold',folded);
+  if(!folded)drawSide(side);
+  refocus(side,fid);
+}
+function drawSide(side){
   if(sel==='tv'||sel==='emp'||sel==='kanban'||sel==='planning'||sel==='paie'||String(sel).startsWith('gate:')){
     const back=document.createElement('button');
     back.className='back';
@@ -69,7 +88,7 @@ function renderSide(force){
     h.className='grp';
     h.setAttribute('role','button');
     h.tabIndex=0;
-    h.setAttribute('aria-expanded',String(!closed));
+    h.setAttribute('aria-expanded',String(!closed));h.dataset.fid='grp:'+title;
     h.innerHTML=`<span class="chev">${closed?'▸':'▾'}</span><span class="famdot fam-${fk}"></span>${esc(title)} <span class="cnt">${list.length}</span>`;
     const toggle=()=>{COLLAPSED[title]=!closed;try{localStorage.setItem('bureau:collapsed',JSON.stringify(COLLAPSED));}catch(e){}renderSide();};
     h.onclick=toggle;h.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}};
@@ -86,10 +105,15 @@ function renderSide(force){
     for(const c of sorted){
       const st=c._st||stateAt(c,T);
       const b=document.createElement('button');
-      b.className='who fam-'+famOf(c);
+      b.className='who fam-'+famOf(c);b.dataset.fid='who:'+c.key;
       b.onclick=()=>select(c.key);
-      b.onmouseenter=()=>{hoverKey=c.key;};
-      b.onmouseleave=()=>{if(hoverKey===c.key)hoverKey=null;};
+      b.onmouseenter=b.onfocus=()=>{hoverKey=c.key;}; // au clavier aussi : la personne ressort sur le plan
+      b.onmouseleave=b.onblur=()=>{if(hoverKey===c.key)hoverKey=null;};
+      b.onkeydown=e=>{ // flèches : personne suivante ou précédente de la liste
+        if(e.key!=='ArrowDown'&&e.key!=='ArrowUp')return;
+        const all=[...side.querySelectorAll('button.who')], i=all.indexOf(b), n=all[i+(e.key==='ArrowDown'?1:-1)];
+        if(n){e.preventDefault();n.focus();}
+      };
       b.appendChild(portrait(c,36));
       const t=document.createElement('div');t.className='t';
       const best=bestEmployee()[0];const trophy=best&&best.pts&&empChar(best)===c?' 🏆':'';

@@ -1,6 +1,6 @@
 # Thèmes saisonniers
 
-Le bureau se déguise selon la date : décor, chapeaux, emojis, effets. Le thème suit la date affichée (heure de Paris), donc aussi « Rejouer ».
+Le bureau se déguise selon la date : décor, chapeaux, emojis, effets. Le thème suit la date affichée (heure de Paris), donc aussi « Rejouer ». Le décor suit le plan : la banderole va sur le mur des toilettes, les chaussettes sur le comptoir, le sapin devant les îlots ; un meuble absent du plan, et son décor n'apparaît pas.
 
 | Thème | Dates | Ce qui change |
 | --- | --- | --- |
@@ -16,8 +16,8 @@ Le bureau se déguise selon la date : décor, chapeaux, emojis, effets. Le thèm
 | ![Halloween le soir](../img/theme-halloween.png) | ![Halloween de jour](../img/theme-halloween-jour.png) |
 | **Nouvel an** | **Nouvel an, le soir** |
 | ![Nouvel an](../img/theme-nouvel-an.png) | ![Nouvel an le soir](../img/theme-nouvel-an-soir.png) |
-| **Saint-Valentin** | |
-| ![Saint-Valentin](../img/theme-saint-valentin.png) | |
+| **Saint-Valentin** | **Noël sur un autre plan** |
+| ![Saint-Valentin](../img/theme-saint-valentin.png) | ![Noël sur le plan exemple-startup](../img/theme-noel-autre-plan.png) |
 
 - **Voir un thème tout de suite** : « ? Comment lire le plan », puis « Thème du bureau ». Le choix dure le temps de la visite.
 - **Config** (`bureau.config.json`) : `"ui": {"themes": false}` coupe les thèmes, `"ui": {"theme": "noel"}` en impose un.

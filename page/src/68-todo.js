@@ -94,7 +94,7 @@ function renderTodo(){
   const btn=a=>!a?'':a.href?`<a class="tbtn" href="${esc(a.href)}" target="_blank" rel="noopener">${esc(a.label)} ↗</a>`:`<button class="tbtn" data-open="${esc(a.open)}">${esc(a.label)} ›</button>`;
   if(TODO_MODE==='hidden'){box.hidden=true;return;}
   const fold=!!COLLAPSED.todo, nErr=items.filter(x=>x.sev==='err').length, nWarn=items.filter(x=>x.sev==='warn').length;
-  const head=`<h2 class="grp" data-todo-toggle role="button" tabindex="0" aria-expanded="${!fold}"><span class="chev">${fold?'▸':'▾'}</span>À traiter <span class="cnt">${items.length}</span>`+
+  const head=`<h2 class="grp" data-todo-toggle role="button" tabindex="0" aria-expanded="${!fold}"><span class="chev">${fold?'▸':'▾'}</span>À traiter <span class="cnt${nErr?' hot':''}">${items.length}</span>`+
     (fold?`<span class="tsum">${[nErr?plural(nErr,'cassé','cassés'):'',nWarn?nWarn+' pour toi':''].filter(Boolean).join(' · ')}</span>`:'')+'</h2>';
   const html=!items.length?`<div class="todo-calm">✓ Rien à traiter</div>`:fold?head:
     head+'<ul>'+shown.map(x=>

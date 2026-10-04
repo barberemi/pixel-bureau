@@ -55,7 +55,7 @@ Questions : Kronn, ton équipe (une équipe neuve par défaut, ou un profil de `
 
 ## Plan du bureau (`layouts/*.json`)
 
-Le plan n'est plus codé en dur : `10-world.js` construit grille, sols, portes, sièges, places et cases bloquées depuis le plan embarqué par `assemble.py` (marqueur `__LAYOUT__` ; `layout` dans `bureau.config.json`, sinon `layouts/equipe.json`).
+Le plan n'est plus codé en dur : `10-world.js` construit grille, sols, portes, sièges, places et cases bloquées depuis le plan embarqué par `assemble.py` (marqueur `__LAYOUT__` ; `layout` dans `bureau.config.json`, sinon celui du profil d'équipe, sinon `layouts/open-space.json`).
 
 - `tiles` : le sol en texte, une chaîne par rangée, un caractère par case ; `legend` dit ce que vaut chaque caractère (`#` mur, `=` vitre, `.` moquette, `c` carrelage, `s` serveurs, `r` réunion, `p` plateau, `w` toilettes, `b` parquet, `E` paillasson).
 - `doors` (seuils dessinés), `exit`, `closable` (porte du plateau fermée le vendredi et le week-end), `islands` (colonnes des tables et rangs des sièges), `boss` (place et bureau), `plants`, `windows`, `blocked` (facultatif : cases bloquées en plus des meubles).
@@ -74,7 +74,7 @@ Le plan n'est plus codé en dur : `10-world.js` construit grille, sols, portes, 
 - Plan d'équipe partagé : `plan.py share` lance le workflow « Le Bureau · plan » (`layout_save.py` revérifie avec les règles de `_plan.py`, une gate attend le boss, puis `PublishPageData` remplace le dataset `layout` : `{updated_at, layout}`, `layout` null = plan embarqué). La page le lit au démarrage (`readLayout`, 00-config) et à chaque rafraîchissement : `applyLayout` refait monde, toile, fond, meubles, lumières (`buildWorld`, `sizeCanvas`, `buildFurniture`, `buildBg`, `bakeFurniture`, `buildRooms`) et téléporte chacun à sa place. Sans dataset lisible, le plan embarqué reste.
 - Les seuils de porte et le bord du plateau se déduisent du plan (murs voisins, sol de plateau), plus de rangées écrites en dur.
 - Zones facultatives (plateau TV, canapé, table, fontaine, copieur…) : sans elles, les personnages se replient ailleurs (`ZONE_FALLBACK` de `35-state.js`). La toile prend la taille du plan.
-- Limite : le décor des thèmes saisonniers (banderole, bonhomme de neige, ballons…) est encore placé pour le plan equipe.
+- Décor des thèmes saisonniers (`46-themes.js`) ancré sur le plan : ce qui décore un meuble suit ce meuble (`onF`, absent du plan = pas de décor), l'open space suit les îlots, ce qui flotte (ballons, nœuds) est placé en proportion du plan.
 
 ![Le plan d'exemple exemple-startup.json](img/plan-exemple-startup.png)
 - `tests/layout.test.js` vérifie que le plan redonne exactement l'ancien monde (`tests/fixtures/world_equipe.json`).

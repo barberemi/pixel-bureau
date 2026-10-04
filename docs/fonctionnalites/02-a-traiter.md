@@ -15,5 +15,7 @@ Ce qui attend le boss, trié du plus urgent au moins urgent, chaque ligne avec s
 | PR sans review | Ouverte depuis plus de 24 h sans relecture | Voir |
 
 - **Durées justes** : un ticket compte depuis son entrée dans sa colonne (historique Jira), une PR depuis sa création. Une bascule de sprint, une automatisation Jira ou un push ne remettent pas le compteur à zéro (avant : 7 tickets affichés « 2 j » étaient en review depuis 3 à 87 jours).
+- Le compteur passe au rouge et pulse tant qu'un agent est en panne (sans animation si le système demande moins de mouvement).
+- Les tuiles du dessous prennent la couleur de leur alerte : « Les agents » en rouge si un agent est en panne, en ambre s'il y a des échecs ; « La prod aujourd'hui » en rouge si une mise en prod a échoué. Une tuile dont le chiffre change clignote une fois.
 - Section repliable ; réglage d'installation `ui.todo` : `open`, `folded` ou `hidden`.
 - Un workflow désactivé dans Kronn ne crée plus de ligne.

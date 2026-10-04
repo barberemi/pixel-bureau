@@ -94,3 +94,13 @@ test('plan partagé : appliqué à chaud, puis retour au plan embarqué sans auc
   p.run('applyLayout(EMBEDDED_LAYOUT)');
   assert.equal(p.run(WORLD), before);
 });
+
+test('thèmes : chaque décor se dessine sur un autre plan, même sans les meubles où il s\'accroche', () => {
+  const bare = {...EXAMPLE, furniture: EXAMPLE.furniture.filter(f => !['toilets', 'kitchen_table', 'counter', 'boss_desk'].includes(f.type))};
+  const p = load({layout: 'exemple-startup'});
+  p.run(`applyLayout(${JSON.stringify(bare)})`);
+  for (const th of ['noel', 'nouvel-an', 'saint-valentin', 'halloween'])
+    for (const h of [11, 20.25])
+      p.run(`THEME_FORCE='${th}';T=DAY0+${h}*3600e3;THEME_MEMO={k:null,v:null};render(${h * 1000});lightSources();`);
+  assert.equal(p.run('furnAt("toilets")'), null); // pas de toilettes : pas de banderole, pas d'erreur
+});

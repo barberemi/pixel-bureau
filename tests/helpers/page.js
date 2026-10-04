@@ -89,6 +89,7 @@ function load({kronnPageData, owner, demo, actions, config, layout} = {}) {
     navigator: stub('navigator'),
     localStorage,
     performance: {now: () => 0},
+    innerWidth: 1400,
     requestAnimationFrame: () => 0,
     setTimeout: () => 0,
     clearTimeout: () => {},

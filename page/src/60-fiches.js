@@ -316,5 +316,5 @@ function rank(c){
     off:8
   }[s]??5)*100+chars.indexOf(c);
 }
-function select(k){if(EDIT)closeEditor();sel=k;renderSide(true);}
+function select(k){if(EDIT)closeEditor();sel=k;if(k)SIDE_FOLDED=false;renderSide(true);} // choisir quelqu'un rouvre le panneau replié
 

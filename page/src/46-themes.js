@@ -48,7 +48,7 @@ function bannerText(th){
   }
   return {'saint-valentin':'SAINT-VALENTIN','halloween':'HAPPY HALLOWEEN'}[th.id];
 }
-function banner(){
+function banner(){ // sur le mur des toilettes (onF('toilets'))
   const th=themeNow(); if(!th)return;
   const pal={'nouvel-an':['#1d2440','#f2c314'],'saint-valentin':['#b0254f','#ffe1ea'],'halloween':['#2a1a38','#ff9a2e'],'noel':['#8e1b1b','#fff6e0']}[th.id];
   const x0=33*TS+14, x1=38*TS+18, y=5*TS+7;
@@ -72,8 +72,16 @@ function garland(now){
 }
 
 // ---------- décor posé au sol ou sur les meubles (entrées dynamiques de FURN, triées en profondeur) ----------
-const BOSS_DESK={x:21*TS-2,top:9*TS-20}, KTABLE={x:4*TS+2,y:6*TS-10}, COUNTER_TOP=2*TS-14;
+// Ancré sur le plan, comme les meubles : un décor de meuble garde ses coordonnées d'origine (plan equipe) et suit le
+// meuble là où le plan le pose (onF ; sans ce meuble, pas de décor) ; celui de l'open space suit les îlots (isl, rows) ;
+// ce qui flotte (ballons, nœuds) est placé en proportion du plan.
+function onF(type,f){const o=furnAt(type);if(!o)return;ctx.save();ctx.translate(o.dx,o.dy);f();ctx.restore();}
+const isl=i=>ISLANDS[Math.max(0,Math.min(ISLANDS.length-1,i<0?ISLANDS.length+i:i))]; // i<0 : depuis la fin
+const inCols=x=>Math.max(1,Math.min(COLS-2,x)); // colonne gardée dans le plan
+const ROW0=()=>IROWS[0], ROWN=()=>IROWS[IROWS.length-1]; // premier et dernier rang des îlots
+const BOSS_DESK={x:21*TS-2,top:9*TS-20}, KTABLE={x:4*TS+2,y:6*TS-10}, COUNTER_TOP=2*TS-14; // à leur place d'origine
 const ISLAND_TOP=cx=>({x:cx*TS+16-3,y:IROWS[0]*TS-6}), ISLAND_END=cx=>({x:cx*TS+16-3,y:(IROWS[IROWS.length-1]+1)*TS-6});
+const TREE=()=>({x:inCols(isl(1)+2)*TS+16,y:(ROW0()-2)*TS+30}); // sapin : devant le 2e îlot
 function pumpkin(x,y,now,big){
   const s=big?1.8:1.4, w=Math.round(10*s), h=Math.round(8*s);
   R(ctx,x-w/2,y-h,w,h,'#e8731a');R(ctx,x-w/2+2,y-h,2,h,'#c95d10');R(ctx,x+w/2-4,y-h,2,h,'#c95d10');R(ctx,x-1,y-h-3,2,3,'#4a7a2a');
@@ -81,7 +89,7 @@ function pumpkin(x,y,now,big){
   R(ctx,x-3,y-h+2,2,2,glow?'#ffe066':'#3a1a05');R(ctx,x+1,y-h+2,2,2,glow?'#ffe066':'#3a1a05');R(ctx,x-3,y-3,6,1,glow?'#ffe066':'#3a1a05');
 }
 function xmasTree(now){
-  const px=13*TS+16, py=12*TS+30;
+  const {x:px,y:py}=TREE();
   ctx.save();ctx.translate(px,py);ctx.scale(1.35,1.35);ctx.translate(-px,-py);
   R(ctx,px-12,py-2,24,4,'rgba(0,0,0,.2)');R(ctx,px-3,py-8,6,7,'#6b4423');
   for(const [w,yy] of [[30,-10],[24,-22],[17,-33],[10,-43]]){ctx.fillStyle='#2e7d32';ctx.beginPath();ctx.moveTo(px-w/2,py+yy);ctx.lineTo(px+w/2,py+yy);ctx.lineTo(px,py+yy-14);ctx.closePath();ctx.fill();
@@ -92,42 +100,48 @@ function xmasTree(now){
   E('⭐',px,py-78,14);E('🎁',px-18,py-4,14);E('🎁',px+17,py-3,12);E('🎁',px+2,py+6,11);
 }
 function balloon(e,x,y,now,i){const b=Math.sin(now/700+i)*3;ctx.strokeStyle='rgba(60,60,70,.6)';ctx.beginPath();ctx.moveTo(x,y+8+b);ctx.lineTo(x+Math.sin(now/900+i)*2,y+24);ctx.stroke();E(e,x,y+b,16);}
-const BALLOONS=[[1.6,2.3],[10.4,2.3],[18.6,7.6],[26.4,7.6],[34.4,6.2],[12.6,11.4]];
+const BALLOONS=[[1.6,2.3],[10.4,2.3],[18.6,7.6],[26.4,7.6],[34.4,6.2],[12.6,11.4]].map(([x,y])=>[x/40,y/20]); // en part du plan
 function tombs(){ // agents en panne en ce moment : une tombe chacun (des agents, jamais un collègue)
   const down=chars.filter(c=>c.present!==false&&!c.person&&!c.visitor&&c._st&&c._st.st==='error').slice(0,4);
-  down.forEach((c,i)=>{const x=(2.4+i*1.5)*TS, y=18*TS+12;E('🪦',x,y,22);
+  down.forEach((c,i)=>{const x=(inCols(isl(0)-4)+.4+i*1.5)*TS, y=(ROWN()+2)*TS+12;E('🪦',x,y,22);
     ctx.fillStyle='#e9e4f2';ctx.font='bold 6px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText('RIP '+String(c.name).slice(0,7).toUpperCase(),x,y+17);ctx.textAlign='left';});
 }
 // décor des fêtes posé avec les meubles (buildFurniture, 40-furniture.js)
 function themeFurniture(){
-  FURN.push({y:-1,draw:now=>{banner();garland(now);
-    if(themeIs('noel')){E('🎀',11.6*TS,TS+16,14);E('🎀',26.7*TS,TS+16,14);E('🔔',17.3*TS,TS+18,12);}
-    if(themeIs('nouvel-an')){ // boule à facettes : taches de lumière qui tournent sur le sol de la cafétéria
+  // profondeur (y) : celle du meuble d'ancrage, décalée comme lui
+  const fy=(type,y)=>{const o=furnAt(type);return y+(o?o.dy:0);};
+  FURN.push({y:-1,draw:now=>{onF('toilets',banner);garland(now);
+    if(themeIs('noel')){E('🎀',.29*W,TS+16,14);E('🎀',.6675*W,TS+16,14);E('🔔',.4325*W,TS+18,12);}
+    if(themeIs('nouvel-an'))onF('kitchen_table',()=>{ // boule à facettes : taches de lumière qui tournent sur le sol de la cafétéria
       const cx=6.5*TS, cy=6*TS, cols=['#ff6fb5','#5fd4ff','#ffd23f','#7dff8a'];
       for(let i=0;i<10;i++){const a=now/1400+i*.63, r=40+(i%3)*42;ctx.globalAlpha=.32;R(ctx,cx+Math.cos(a)*r*1.3-4,cy+Math.sin(a)*r*.75-3,8,6,cols[i%4]);}ctx.globalAlpha=1;
-    }
+    });
   }});
-  FURN.push({y:2*TS,draw:()=>{if(!themeIs('halloween'))return;
-    for(const [x,y] of [[1.4,2.4],[11.6,2.4],[18.4,2.4],[26.6,2.4],[34.4,2.4],[1.4,12.4],[38.6,11.4]])E('🕸️',x*TS,y*TS,30);}});
-  FURN.push({y:2*TS+31,draw:now=>{
-    if(themeIs('halloween')){pumpkin(5*TS+4,COUNTER_TOP,now);E('🎃',36.5*TS,10.6*TS,20);}
-    if(themeIs('noel'))for(const x of [2.6,4.6,6.6])E('🧦',x*TS,2*TS+12,13);
+  FURN.push({y:2*TS,draw:()=>{if(!themeIs('halloween'))return; // toiles d'araignée dans les coins des pièces
+    onF('fridge',()=>E('🕸️',1.4*TS,2.4*TS,30)); onF('water_cooler',()=>E('🕸️',11.6*TS,2.4*TS,30));
+    onF('meeting_table',()=>{E('🕸️',18.4*TS,2.4*TS,30);E('🕸️',26.6*TS,2.4*TS,30);});
+    onF('toilets',()=>E('🕸️',34.4*TS,2.4*TS,30)); onF('copier',()=>E('🕸️',38.6*TS,11.4*TS,30));
+    E('🕸️',(inCols(isl(0)-4)-.6)*TS,(ROW0()-1.6)*TS,30);}}); // coin de l'open space
+  FURN.push({y:fy('counter',2*TS+31),draw:now=>{
+    if(themeIs('halloween'))onF('counter',()=>pumpkin(5*TS+4,COUNTER_TOP,now));
+    if(themeIs('noel'))onF('counter',()=>{for(const x of [2.6,4.6,6.6])E('🧦',x*TS,2*TS+12,13);});
   }});
-  FURN.push({y:3*TS+12,draw:()=>{if(themeIs('halloween'))E('💀',26.3*TS,3*TS+6,16);}});
-  FURN.push({y:6*TS+1,draw:()=>{const {x,y}=KTABLE;
+  FURN.push({y:(ROW0()-3.4)*TS,draw:()=>{if(themeIs('halloween'))E('🎃',(isl(-1)+.5)*TS,(ROW0()-3.4)*TS,20);}});
+  FURN.push({y:fy('meeting_table',3*TS+12),draw:()=>{if(themeIs('halloween'))onF('meeting_table',()=>E('💀',26.3*TS,3*TS+6,16));}});
+  FURN.push({y:fy('kitchen_table',6*TS+1),draw:()=>onF('kitchen_table',()=>{const {x,y}=KTABLE;
     if(themeIs('noel')){E('☕',x+12,y+6,11);E('🍪',x+46,y+8,11);}
     if(themeIs('saint-valentin'))E('💐',x+46,y+2,16);
     if(themeIs('nouvel-an'))E('🎂',x+46,y+4,14);
-  }});
-  FURN.push({y:9*TS+1,draw:now=>{const {x,top}=BOSS_DESK;
+  })});
+  FURN.push({y:fy('boss_desk',9*TS+1),draw:now=>onF('boss_desk',()=>{const {x,top}=BOSS_DESK;
     if(themeIs('halloween')){E('🕯️',x+34,top+(Math.floor(now/180)%3?0:1),12);E('🍬',x+92,top+2,11);}
     if(themeIs('noel'))E('🕯️',x+34,top,12);
     if(themeIs('saint-valentin')){E('🍫',x+34,top+2,12);E('💝',x+92,top+1,12);}
     if(themeIs('nouvel-an'))E('🎉',x+92,top+1,12);
-  }});
-  FURN.push({y:12*TS+29,draw:now=>{if(themeIs('noel'))xmasTree(now);}});
-  FURN.push({y:13*TS+28,draw:()=>{if(themeIs('noel'))E('☃️',2*TS+16,13*TS+12,28);}});
-  FURN.push({y:11*TS+28,draw:()=>{if(themeIs('noel'))E('🦌',37*TS+16,11*TS+14,24);}});
+  })});
+  FURN.push({y:TREE().y-1,draw:now=>{if(themeIs('noel'))xmasTree(now);}});
+  FURN.push({y:(ROW0()-1)*TS+28,draw:()=>{if(themeIs('noel'))E('☃️',inCols(isl(0)-4)*TS+16,(ROW0()-1)*TS+12,28);}}); // bonhomme de neige
+  FURN.push({y:(ROW0()-3)*TS+28,draw:()=>{if(themeIs('noel'))E('🦌',inCols(isl(-1)+1)*TS+16,(ROW0()-3)*TS+14,24);}});
   FURN.push({y:IROWS[0]*TS-1,draw:now=>{
     ISLANDS.forEach((cx,i)=>{const p=ISLAND_TOP(cx);
       if(themeIs('halloween'))pumpkin(p.x,p.y,now,i%2===0);
@@ -138,7 +152,7 @@ function themeFurniture(){
   }});
   FURN.push({y:17*TS,draw:()=>{if(!themeIs('saint-valentin')&&!themeIs('noel'))return;
     ISLANDS.forEach((cx,i)=>{if(i%2)return;const p=ISLAND_END(cx);E(themeIs('noel')?'🍬':'💌',p.x,p.y-4,12);});}});
-  FURN.push({y:18*TS+20,draw:()=>{if(themeIs('halloween'))tombs();}});
+  FURN.push({y:(ROWN()+2)*TS+20,draw:()=>{if(themeIs('halloween'))tombs();}});
 }
 
 // ---------- fenêtres : neige, lune, feux d'artifice ----------
@@ -152,7 +166,7 @@ function themeWindow(x,y,w,h,now,i){
     const p=(now/1600+i*.37)%1, cx=x+4+((i*11)%(w-8)), cy=y+h*.55-p*4, col=['#ffd23f','#ff6fb5','#5fd4ff','#7dff8a'][i%4];
     if(p>.35){const r=(p-.35)*16;ctx.globalAlpha=1-(p-.35)/.65;for(let k=0;k<8;k++){const a=k*Math.PI/4;ctx.fillStyle=col;ctx.fillRect(Math.round(cx+Math.cos(a)*r),Math.round(cy+Math.sin(a)*r*.6),1,1);}ctx.globalAlpha=1;}
     else{ctx.fillStyle='#fff';ctx.fillRect(Math.round(cx),Math.round(y+h-p*h*2),1,2);}
-  }else if(th.id==='halloween'&&daylight(T).k<.6&&i===24)E('🌕',x+w-8,y+8,11);
+  }else if(th.id==='halloween'&&daylight(T).k<.6&&i===LAYOUT.windows[Math.max(0,LAYOUT.windows.length-2)])E('🌕',x+w-8,y+8,11); // l'avant-dernière fenêtre
 }
 
 // ---------- sur les personnages : chapeaux, cœurs ----------
@@ -184,11 +198,11 @@ function themeOverlay(now){
   const th=themeNow(); if(!th)return;
   if(th.id==='halloween'){
     for(let i=0;i<4;i++){const p=((now/9000)+i*.29)%1; if(p>.6)continue; const k=p/.6;E('🦇',-20+k*(W+40),40+i*55+Math.sin(k*18+i)*14,16);}
-    {const p=(now/26000)%1, x=-40+p*(W+80), y=14.5*TS+Math.sin(p*14)*36;E('👻',x,y,32,.85);}
-    ISLANDS.forEach((cx,i)=>{if(i%2)return;const x=cx*TS+30, y=12.6*TS+Math.sin(now/800+cx)*12;
-      ctx.strokeStyle='rgba(230,230,240,.7)';ctx.beginPath();ctx.moveTo(x,11.3*TS);ctx.lineTo(x,y-6);ctx.stroke();E('🕷️',x,y,13);});
+    {const p=(now/26000)%1, x=-40+p*(W+80), y=(ROW0()+.5)*TS+Math.sin(p*14)*36;E('👻',x,y,32,.85);} // au-dessus des îlots
+    ISLANDS.forEach((cx,i)=>{if(i%2)return;const x=cx*TS+30, y=(ROW0()-1.4)*TS+Math.sin(now/800+cx)*12;
+      ctx.strokeStyle='rgba(230,230,240,.7)';ctx.beginPath();ctx.moveTo(x,(ROW0()-2.7)*TS);ctx.lineTo(x,y-6);ctx.stroke();E('🕷️',x,y,13);});
     if(night()){ // brume violette et éclair de temps en temps
-      for(let i=0;i<6;i++){const x=((now/90+i*230)%(W+200))-100, y=17.3*TS+Math.sin(now/2000+i)*10;
+      for(let i=0;i<6;i++){const x=((now/90+i*230)%(W+200))-100, y=(ROWN()+1.3)*TS+Math.sin(now/2000+i)*10;
         ctx.fillStyle='rgba(150,110,200,.10)';ctx.beginPath();ctx.ellipse(x,y,110,22,0,0,7);ctx.fill();}
       const ph=now%37000; if(ph<90||(ph>180&&ph<240)){ctx.fillStyle='rgba(235,235,255,.32)';ctx.fillRect(0,0,W,H);}
     }
@@ -201,18 +215,18 @@ function themeOverlay(now){
     for(let i=0;i<60;i++){const k=((now/5200)+spread(i,2))%1;R(ctx,spread(i)*W+Math.sin(now/400+i)*6,k*H,2,3,cols[i%5]);}
     if(night())for(let i=0;i<3;i++){const p=(now/1900+i*.33)%1, n=Math.floor(now/1900+i*.33), x=spread(n*5+i,7)*W, y=(.12+spread(n+i,9)*.35)*H;
       if(p>.3)burst(x,y,(p-.3)*70,cols[(n+i)%4],1-(p-.3)/.7);else R(ctx,x,y+(.3-p)*400,2,5,'#fff');}
-    BALLOONS.forEach(([bx,by],i)=>balloon(i===5?'🪩':'🎈',bx*TS,by*TS,now,i));
+    BALLOONS.forEach(([bx,by],i)=>balloon(i===5?'🪩':'🎈',bx*W,by*H,now,i));
   }else if(th.id==='saint-valentin'){
     const p=(now/30000)%1; if(p<.6){const k=p/.6, x=-30+k*(W+60), y=4*TS+Math.sin(k*10)*30; // Cupidon
       E('👼',x,y,20);E('💘',x+18,y+4,14);for(let j=1;j<4;j++)E('💗',x-j*16,y+Math.sin(k*10-j*.6)*6,9,.7-j*.15);}
-    BALLOONS.forEach(([bx,by],i)=>balloon('💗',bx*TS,by*TS,now,i));
+    BALLOONS.forEach(([bx,by],i)=>balloon('💗',bx*W,by*H,now,i));
     for(let i=0;i<8;i++){const k=((now/9000)+spread(i,4))%1;E('💕',spread(i,8)*W,H+10-k*(H+20),10,.35);}
   }
 }
 // lumières du thème dans le voile de nuit (citrouilles, sapin)
 function themeLights(S){
   if(themeIs('halloween'))for(const cx of ISLANDS)S.push({x:cx*TS+13,y:IROWS[0]*TS-10,r:20,a:.6,c:'rgba(255,150,40,.22)'});
-  if(themeIs('noel'))S.push({x:13*TS+16,y:12*TS-8,r:40,a:.7,c:'rgba(255,210,90,.22)'});
+  if(themeIs('noel')){const t=TREE();S.push({x:t.x,y:t.y-38,r:40,a:.7,c:'rgba(255,210,90,.22)'});}
 }
 
 // ---------- sélecteur (« Comment lire le plan ») : forcer un thème le temps de la visite ----------

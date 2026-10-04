@@ -147,11 +147,17 @@ function planningToday(){
   out.sort((a,b)=>a.t-b.t); PLAN_CACHE={k,v:out}; return out;
 }
 function setTeam(t){TEAM=t;attachTeam();updateBadge();renderSide();renderKpis();renderFeed();}
+// en direct : d'où viennent les données ; en rejeu ou en pause : l'heure rejouée et celle des données
+function badgeText(){
+  if(mode!=='live')return 'Rejeu '+hm(T)+' · données de '+hm(ms(DATA.generated_at));
+  return (DATA.empty?'En attente du premier rafraîchissement':LIVE_DATA?'Données live':'Instantané du '+hm(ms(DATA.generated_at))+(DEMO?' (démo)':''))+
+    (TEAM?' · équipe '+hm(ms(TEAM.generated_at)):'')+(typeof LIVE!=='undefined'&&LIVE?' · direct '+hms(ms(LIVE.generated_at)):'');
+}
 function updateBadge(){
   if(!DATA)return;
   const b=document.getElementById('badge');
-  b.classList.toggle('live',LIVE_DATA);
-  b.querySelector('span').textContent=(DATA.empty?'En attente du premier rafraîchissement':LIVE_DATA?'Données live':'Instantané du '+hm(ms(DATA.generated_at))+(DEMO?' (démo)':''))+(TEAM?' · équipe '+hm(ms(TEAM.generated_at)):'')+(typeof LIVE!=='undefined'&&LIVE?' · direct '+hms(ms(LIVE.generated_at)):'');
+  b.classList.toggle('live',LIVE_DATA&&mode==='live');b.classList.toggle('replay',mode!=='live');
+  b.querySelector('span').textContent=badgeText();
 }
 function readData(src){
   try{
