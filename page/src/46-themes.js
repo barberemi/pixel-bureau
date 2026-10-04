@@ -175,7 +175,7 @@ function themeEnvelope(x,y){
   E({'noel':'🎁','halloween':'🍬','saint-valentin':'💌','nouvel-an':'🎊'}[th.id],x,y,14);return true;
 }
 
-// ---------- par-dessus le plan (après le voile) : vols, flocons, confettis, feux d'artifice, éclairs ----------
+// ---------- par-dessus le plan (après le voile) : vols, flocons, confettis qui tombent, feux d'artifice, éclairs ----------
 function burst(x,y,r,col,a){ctx.globalAlpha=Math.max(0,a);for(let k=0;k<12;k++){const an=k*Math.PI/6;R(ctx,x+Math.cos(an)*r-1,y+Math.sin(an)*r-1,2,2,col);}ctx.globalAlpha=1;}
 function themeOverlay(now){
   const th=themeNow(); if(!th)return;
@@ -196,10 +196,6 @@ function themeOverlay(now){
   }else if(th.id==='nouvel-an'){
     const cols=['#ffd23f','#ff6fb5','#5fd4ff','#7dff8a','#ffffff'];
     for(let i=0;i<60;i++){const k=((now/5200)+spread(i,2))%1;R(ctx,spread(i)*W+Math.sin(now/400+i)*6,k*H,2,3,cols[i%5]);}
-    for(let i=0;i<3;i++){ // cotillons qui éclatent un peu partout
-      const p=(now/2400+i/3)%1, n=Math.floor(now/2400+i/3), x=spread(n*3+i,1)*(W-80)+40, y=(.25+spread(n*7+i,5)*.6)*H;
-      if(p<.5){E('🎉',x,y,18,1-p);burst(x,y,6+p*40,cols[(n+i)%5],1-p*2);}
-    }
     if(night())for(let i=0;i<3;i++){const p=(now/1900+i*.33)%1, n=Math.floor(now/1900+i*.33), x=spread(n*5+i,7)*W, y=(.12+spread(n+i,9)*.35)*H;
       if(p>.3)burst(x,y,(p-.3)*70,cols[(n+i)%4],1-(p-.3)/.7);else R(ctx,x,y+(.3-p)*400,2,5,'#fff');}
     BALLOONS.forEach(([bx,by],i)=>balloon(i===5?'🪩':'🎈',bx*TS,by*TS,now,i));

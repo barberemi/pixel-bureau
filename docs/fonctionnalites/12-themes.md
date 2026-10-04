@@ -5,7 +5,7 @@ Le bureau se déguise selon la date : décor, chapeaux, emojis, effets. Le thèm
 | Thème | Dates | Ce qui change |
 | --- | --- | --- |
 | 🎄 Noël | 1er au 30 déc. | Bonnets, guirlande lumineuse, sapin et cadeaux, bonhomme de neige, renne, chaussettes sur le comptoir, chocolat chaud, flocons, traîneau du Père Noël dans le ciel, cadeaux à la place des enveloppes, banderole « JOYEUX NOËL · J-12 » |
-| 🎆 Nouvel an | 31 déc. au 2 janv. | Chapeaux pointus, confettis, cotillons qui éclatent, ballons, boule à facettes et ses lumières en cafétéria, gâteau, feux d'artifice le soir ; le 31 après midi, compte à rebours « MINUIT DANS 3 H 12 », puis « BONNE ANNÉE » |
+| 🎆 Nouvel an | 31 déc. au 2 janv. | Chapeaux pointus, confettis qui tombent, ballons, boule à facettes et ses lumières en cafétéria, gâteau, feux d'artifice le soir ; le 31 après midi, compte à rebours « MINUIT DANS 3 H 12 », puis « BONNE ANNÉE » |
 | 💘 Saint-Valentin | 13 et 14 févr. | Cœurs qui s'envolent des gens, Cupidon qui traverse le plan, ballons cœurs, roses sur les îlots, bouquet, chocolats, lettres d'amour à la place des enveloppes |
 | 🎃 Halloween | 24 au 31 oct. | Agents en fantômes verts, chapeaux de sorcière, citrouilles allumées le soir, toiles d'araignée, araignées qui pendent, fantôme qui flotte, chauves-souris, crâne en salle de réunion, tombe « RIP » pour chaque agent en panne, lune, brume et éclairs la nuit, bonbons à la place des enveloppes |
 
