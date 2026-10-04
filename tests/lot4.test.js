@@ -52,3 +52,30 @@ test("tick en deux passes : l'état du boss ne dépend pas de l'ordre des person
   assert.match(a, /validation/); // le boss voit la validation, qu'il soit calculé avant ou après l'agent
   assert.equal(a, b);
 });
+
+test('Thèmes : choisis par la date de Paris, forçables, désactivables', () => {
+  const at = d => run(`(themeAt(Date.parse('${d}'))||{id:null}).id`);
+  assert.equal(at('2026-10-31T21:00:00Z'), 'halloween');
+  assert.equal(at('2026-10-31T23:30:00Z'), null); // déjà le 1er novembre à Paris
+  assert.equal(at('2026-12-24T10:00:00Z'), 'noel');
+  assert.equal(at('2026-12-31T10:00:00Z'), 'nouvel-an');
+  assert.equal(at('2027-01-02T10:00:00Z'), 'nouvel-an'); // la période passe d'une année à l'autre
+  assert.equal(at('2027-01-06T10:00:00Z'), 'galette');
+  assert.equal(at('2027-04-01T10:00:00Z'), 'poisson-avril');
+  assert.equal(at('2027-07-14T10:00:00Z'), 'ete');
+  assert.equal(at('2027-03-10T10:00:00Z'), null);
+  run(`THEME_FORCE='noel'`); assert.equal(at('2027-03-10T10:00:00Z'), 'noel');
+  run(`THEME_FORCE='off'`); assert.equal(at('2026-12-24T10:00:00Z'), null);
+  run(`THEME_FORCE=null; CFG.ui={themes:false}`); assert.equal(at('2026-12-24T10:00:00Z'), null);
+  run(`CFG.ui={}`);
+});
+
+test('Thèmes : chaque décor se dessine sans erreur', () => {
+  for (const id of JSON.parse(run('JSON.stringify(THEMES.map(x=>x.id))'))) {
+    run(`THEME_FORCE='${id}'; THEME_MEMO={k:null,v:null};
+      banner(); garland(1000); themeOverlay(1000); themeWindow(10,10,40,16,1000,4); themeLights([]);
+      for(const f of FURN)f.draw(1000);
+      for(const c of chars)themeOnChar(c,100,100,1000);`);
+  }
+  run(`THEME_FORCE=null; THEME_MEMO={k:null,v:null}`);
+});

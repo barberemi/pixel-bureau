@@ -405,3 +405,6 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 #tour .ta{display:flex;justify-content:flex-end;gap:6px}
 .tour-on{outline:3px solid var(--accent);outline-offset:3px;border-radius:8px}
 body.tv #tourbtn{display:none!important}
+/* sélecteur de thème (dans « Comment lire le plan ») */
+.themesel{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted)}
+.themesel select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:2px 6px}

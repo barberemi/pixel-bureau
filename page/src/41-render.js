@@ -6,6 +6,7 @@ function render(now){
   list.sort((a,b)=>a.y-b.y);
   for(const it of list)it.d(now);
   drawLight(now); // voile du soir et de la nuit, sous les bulles et les noms
+  themeOverlay(now); // 46-themes.js : chauves-souris, confettis
   const shown=c=>!FILTER||famOf(c)===FILTER||c.key===sel;
   if(FILTER){ // les autres familles passent dans l'ombre, la famille choisie est redessinée par-dessus
     ctx.fillStyle='rgba(10,12,22,.58)';ctx.fillRect(0,0,W,H);

@@ -46,6 +46,7 @@ function lightSources(){
   if(typeof TVR!=='undefined'&&!stageClosed(T))S.push({x:TVR.x+TVR.w/2,y:TVR.y+TVR.h/2,r:44,a:.5,c:'rgba(150,180,255,.12)'});
   if(chars.some(c=>c.present&&c._st&&c._st.st==='coffee'))S.push({x:3*TS+17,y:2*TS-20,r:22,a:.5,c:'rgba(255,190,120,.16)'});
   S.push({x:EXIT[0]*TS+4,y:EXIT[1]*TS-8,r:26,a:.4,c:'rgba(80,230,120,.22)'}); // panneau Sortie
+  themeLights(S); // 46-themes.js : citrouilles, sapin
   return S;
 }
 // occupation des pièces (cases) ; chaque pièce s'allume et s'éteint en fondu (ROOM_LV : 0 éteinte, 1 allumée)

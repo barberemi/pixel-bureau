@@ -38,6 +38,10 @@ SHOTS = {
     "avatar": (1400, 1600, AT(11) + "select('jim');openEditor(byKey.jim);", "#side"),
     "mobile": (390, 1200, AT(11), None),
     "visite": (1400, 1000, AT(11) + "tourShow(0);", None),
+    # thèmes saisonniers (46-themes.js), forcés sur la journée de démo ; Halloween à 20h15 (citrouilles allumées)
+    **{f"theme-{tid}": (1400, 1000, AT(h) + f"THEME_FORCE='{tid}';", "#cv", 1.5)
+       for tid, h in (("halloween", 20.25), ("noel", 11), ("nouvel-an", 11), ("galette", 11),
+                      ("saint-valentin", 11), ("poisson-avril", 11), ("ete", 11))},
 }
 
 

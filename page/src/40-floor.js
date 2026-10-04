@@ -81,6 +81,7 @@ function drawWindows(t,now){
     R(ctx,x*TS+4,TS+4,TS*1.5,20,'#e7e1d3');
     R(ctx,x*TS+6,TS+6,TS*1.5-4,16,s);
     drawStars(x*TS+6,TS+6,TS*1.5-4,16,now||0);
+    themeWindow(x*TS+6,TS+6,TS*1.5-4,16,now||0,x); // 46-themes.js : neige, feux d'artifice
     R(ctx,x*TS+4+TS*.75,TS+4,2,20,'#e7e1d3');
   }
   // horloge sur le mur bas de la cafétéria

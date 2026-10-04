@@ -17,7 +17,8 @@ function holoSilhouette(img,sx,sy,col){
 }
 function holoFrame(img,sx,sy,now,lines){
   hctx.globalCompositeOperation='source-over';hctx.clearRect(0,0,64,64);hctx.drawImage(img,sx,sy,64,64,0,0,64,64);
-  hctx.globalCompositeOperation='source-atop';hctx.fillStyle='rgba(70,190,255,.55)';hctx.fillRect(0,0,64,64);
+  // teinte cyan ; vert fantôme à Halloween (46-themes.js)
+  hctx.globalCompositeOperation='source-atop';hctx.fillStyle=themeIs('halloween')?'rgba(150,255,170,.6)':'rgba(70,190,255,.55)';hctx.fillRect(0,0,64,64);
   if(lines){
     hctx.globalCompositeOperation='destination-out';
     hctx.fillStyle='rgba(0,0,0,.4)';
@@ -71,6 +72,7 @@ function drawChar(c,now){
     ctx.globalAlpha=glitch?.45:.92;
     ctx.drawImage(holoFrame(img,fx*64,fy*64,now,true),gx,dy);ctx.restore();
   }else ctx.drawImage(img,fx*64,fy*64,64,64,dx,dy,64,64);
+  themeOnChar(c,x,dy+(c.sprite==='boss_sax'?3:14),now); // 46-themes.js : chapeau, lunettes, couronne
 }
 // chemin vers sa place quand le personnage sélectionné n'y est pas (café, réunion, toilettes...)
 let TRAIL={k:null,v:null};
