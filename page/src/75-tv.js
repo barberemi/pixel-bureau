@@ -26,16 +26,24 @@ function tvChips(d){
 let TVWHO_SIG='';
 // la colonne défile toute seule si elle déborde (personne ne touche la TV) : descente lente, pause en bas, retour en haut ;
 // une interaction (molette, survol, toucher) suspend le défilement automatique 15 s
-const TVSCROLL={hold:0,pause:0,pos:0};
+const TVSCROLL={hold:0,pause:0,pos:0}, SCSCROLL={hold:0,pause:0,pos:0,el:null};
+function softScroll(box,S,now,dt){
+  const max=box.scrollHeight-box.clientHeight; if(max<=4){S.pos=0;return;}
+  if(now<S.hold){S.pos=box.scrollTop;return;}
+  if(now<S.pause)return;
+  if(S.pos>=max){S.pos=0;box.scrollTo({top:0,behavior:'smooth'});S.pause=now+6000;return;}
+  S.pos=Math.min(max,S.pos+dt*18); // ~18 px/s
+  box.scrollTop=S.pos;
+  if(S.pos>=max)S.pause=now+5000;
+}
 function tvAutoScroll(now,dt){
-  const box=document.getElementById('tvwho'); if(!TV||!box)return;
-  const max=box.scrollHeight-box.clientHeight; if(max<=4){TVSCROLL.pos=0;return;}
-  if(now<TVSCROLL.hold){TVSCROLL.pos=box.scrollTop;return;}
-  if(now<TVSCROLL.pause)return;
-  if(TVSCROLL.pos>=max){TVSCROLL.pos=0;box.scrollTo({top:0,behavior:'smooth'});TVSCROLL.pause=now+6000;return;}
-  TVSCROLL.pos=Math.min(max,TVSCROLL.pos+dt*18); // ~18 px/s
-  box.scrollTop=TVSCROLL.pos;
-  if(TVSCROLL.pos>=max)TVSCROLL.pause=now+5000;
+  if(!TV)return;
+  const box=document.getElementById('tvwho'); if(box)softScroll(box,TVSCROLL,now,dt);
+  const body=document.querySelector('#tvscene .sc-body');
+  if(body&&document.body.classList.contains('tvscene')){
+    if(SCSCROLL.el!==body){SCSCROLL.el=body;SCSCROLL.pos=0;SCSCROLL.pause=now+4000;} // nouvelle scène : on lit d'abord le haut
+    softScroll(body,SCSCROLL,now,dt);
+  }
 }
 {const box=document.getElementById('tvwho');
   if(box)for(const ev of ['wheel','touchstart','pointerdown','mousemove'])box.addEventListener(ev,()=>{TVSCROLL.hold=performance.now()+15000;},{passive:true});}

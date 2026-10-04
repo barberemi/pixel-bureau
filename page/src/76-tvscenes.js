@@ -47,27 +47,28 @@ function prevDaily(t){
 }
 function sprintTickets(){return TEAM?[...TEAM.people.flatMap(p=>(p.tickets||[]).map(x=>({...x,who:p.name}))),...(TEAM.unassigned||[])]:[];}
 function newTickets(t){const s=prevDaily(t);return sprintTickets().filter(x=>x.created&&ms(x.created)>s).sort((a,b)=>ms(b.created)-ms(a.created));}
-const tkLi=x=>`<li><span class="st st-${esc(x.cat||'')}">${esc(x.status||CAT_TXT[x.cat]||'')}</span><b>${esc(x.key)}</b> ${esc(clip(x.summary||'',90))}${x.who?` <small>· ${esc(String(x.who).split(' ')[0])}</small>`:''}</li>`;
+const tkLi=x=>`<li>${x.status||x.cat?`<span class="st st-${esc(x.cat||'')}">${esc(x.status||CAT_TXT[x.cat]||'')}</span>`:''}<b>${esc(x.key)}</b> ${esc(clip(x.summary||'',90))}${x.who?` <small>· ${esc(String(x.who).split(' ')[0])}</small>`:''}</li>`;
 const tkList=(l,n)=>`<ul class="sc-tk">${l.slice(0,n).map(tkLi).join('')}${l.length>n?`<li class="more">+ ${l.length-n} autres</li>`:''}</ul>`;
 function personScene(c,t){
   const W=workOf(c), own=(c.team&&c.team.tickets||[]).slice().sort((a,b)=>ST_ORDER.indexOf(a.cat)-ST_ORDER.indexOf(b.cat));
-  const note=c.standup?`<p class="sc-note">${esc(c.standup)}</p>`:'';
+  const lines=[].concat(c.standup||[]); // roster : une phrase, ou une liste (la première en grand, les autres en puces)
+  const note=lines.length?`<p class="sc-note">${esc(lines[0])}</p>`+(lines.length>1?`<ul class="sc-lines">${lines.slice(1).map(l=>`<li>${esc(l)}</li>`).join('')}</ul>`:''):'';
   if(c.roleKind==='sm'){
     const nw=newTickets(t), rv=sprintTickets().filter(x=>x.cat==='review');
-    return `<h3>Nouveaux tickets depuis le dernier daily (${nw.length})</h3>${nw.length?tkList(nw,8):'<p class="sc-empty">Aucun.</p>'}`+
+    return `<h3>Nouveaux tickets depuis le dernier daily (${nw.length})</h3>${nw.length?tkList(nw,50):'<p class="sc-empty">Aucun.</p>'}`+
       `<p class="sc-big">${plural(rv.length,'ticket en review','tickets en review')}</p><p class="sc-shout">FAITES DES REVIEWS</p>`;
   }
   if(c.roleKind==='po'){
     const nw=W&&W.written.length?W.written:newTickets(t);
-    return note+`<h3>Nouveaux tickets (${nw.length})</h3>${nw.length?tkList(nw,10):'<p class="sc-empty">Aucun cette semaine.</p>'}`;
+    return note+`<h3>Nouveaux tickets (${nw.length})</h3>${nw.length?tkList(nw,50):'<p class="sc-empty">Aucun cette semaine.</p>'}`;
   }
   if(c.roleKind==='qa'){
     const ok=W?W.validated:[], back=W?W.reopened:[];
-    return `<div class="sc-cols"><div><h3>Testés cette semaine (${cnt50(ok.length)})</h3>${ok.length?tkList(ok,10):'<p class="sc-empty">Aucun.</p>'}</div>`+
-      `<div><h3>Réouverts (${cnt50(back.length)})</h3>${back.length?tkList(back,10):'<p class="sc-empty">Aucun.</p>'}</div></div>`;
+    return `<div class="sc-cols"><div><h3>Testés cette semaine (${cnt50(ok.length)})</h3>${ok.length?tkList(ok,50):'<p class="sc-empty">Aucun.</p>'}</div>`+
+      `<div><h3>Réouverts (${cnt50(back.length)})</h3>${back.length?tkList(back,50):'<p class="sc-empty">Aucun.</p>'}</div></div>`;
   }
   if(!own.length)return note||'<p class="sc-empty">Pas de ticket dans le sprint.</p>';
-  return note+`<h3>Ses tickets (${own.length})</h3>${tkList(own,12)}`;
+  return note+`<h3>Ses tickets (${own.length})</h3>${tkList(own,50)}`;
 }
 const sceneMs=c=>c?Math.min(45000,15000+1500*((c.team&&c.team.tickets||[]).length)):TVSCENE_MS; // plus de tickets, plus de temps
 function standupScenes(){

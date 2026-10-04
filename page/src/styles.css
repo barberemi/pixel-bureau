@@ -382,3 +382,12 @@ body.tv.tvscene #tvkpi{flex:0 0 var(--tvk)}
 #tvscene .sc-tk li small{display:inline;color:#a29c90}
 #tvscene .st{flex:none;font-size:.62em;font-weight:700;padding:2px 9px;border-radius:999px;background:#3a3e4a;color:#ece8df;min-width:6.5em;text-align:center}
 #tvscene .st-doing{background:#2e9e5b}#tvscene .st-review{background:#4a7fe0}#tvscene .st-test{background:#7a5cc8}#tvscene .st-done,#tvscene .st-deploy{background:#5b5f6b}
+/* stand-up : pas de colonne « Qui fait quoi », la scène prend toute la largeur ; le corps défile s'il déborde */
+body.tv.tvscene #tvwho{display:none!important}
+body.tv.tvscene .stage{right:0}
+body.tv.tvscene #tvscene{display:flex;flex-direction:column}
+#tvscene .sc-body{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none}
+#tvscene .sc-body::-webkit-scrollbar{display:none}
+#tvscene .sc-lines{list-style:none;margin:0;padding:0}
+#tvscene .sc-lines li{font-size:clamp(20px,1.7vw,30px);border-top:0;padding:4px 0}
+#tvscene .sc-lines li::before{content:"• ";color:#f0b03a}
