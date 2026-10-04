@@ -60,9 +60,9 @@ test('Thèmes : choisis par la date de Paris, forçables, désactivables', () =>
   assert.equal(at('2026-12-24T10:00:00Z'), 'noel');
   assert.equal(at('2026-12-31T10:00:00Z'), 'nouvel-an');
   assert.equal(at('2027-01-02T10:00:00Z'), 'nouvel-an'); // la période passe d'une année à l'autre
-  assert.equal(at('2027-01-06T10:00:00Z'), 'galette');
-  assert.equal(at('2027-04-01T10:00:00Z'), 'poisson-avril');
-  assert.equal(at('2027-07-14T10:00:00Z'), 'ete');
+  assert.equal(at('2027-02-14T10:00:00Z'), 'saint-valentin');
+  assert.equal(at('2027-01-06T10:00:00Z'), null);
+  assert.equal(at('2027-07-14T10:00:00Z'), null);
   assert.equal(at('2027-03-10T10:00:00Z'), null);
   run(`THEME_FORCE='noel'`); assert.equal(at('2027-03-10T10:00:00Z'), 'noel');
   run(`THEME_FORCE='off'`); assert.equal(at('2026-12-24T10:00:00Z'), null);
@@ -73,9 +73,24 @@ test('Thèmes : choisis par la date de Paris, forçables, désactivables', () =>
 test('Thèmes : chaque décor se dessine sans erreur', () => {
   for (const id of JSON.parse(run('JSON.stringify(THEMES.map(x=>x.id))'))) {
     run(`THEME_FORCE='${id}'; THEME_MEMO={k:null,v:null};
-      banner(); garland(1000); themeOverlay(1000); themeWindow(10,10,40,16,1000,4); themeLights([]);
+      banner(); garland(1000); themeOverlay(1000); themeWindow(10,10,40,16,1000,24); themeLights([]); themeEnvelope(50,50);
       for(const f of FURN)f.draw(1000);
       for(const c of chars)themeOnChar(c,100,100,1000);`);
   }
   run(`THEME_FORCE=null; THEME_MEMO={k:null,v:null}`);
+});
+
+test("Nouvel an : les confettis couvrent toute la largeur (pas seulement la gauche)", () => {
+  const xs = JSON.parse(run('JSON.stringify([...Array(60)].map((_,i)=>spread(i)))'));
+  assert.ok(Math.min(...xs) < 0.05 && Math.max(...xs) > 0.95);
+  assert.ok(xs.filter(x => x > 0.5).length >= 25);
+});
+
+test('Nouvel an : compte à rebours jusqu\'à minuit le 31 décembre après midi', () => {
+  run(`THEME_FORCE=null; T=Date.parse('2026-12-31T21:30:00Z'); THEME_MEMO={k:null,v:null}`);
+  assert.equal(run('bannerText(themeNow())'), 'MINUIT DANS 1 H 30'); // 22h30 à Paris
+  run(`T=Date.parse('2027-01-01T09:00:00Z'); THEME_MEMO={k:null,v:null}`);
+  assert.equal(run('bannerText(themeNow())'), 'BONNE ANNÉE 2027 !');
+  run(`T=Date.parse('2026-12-13T09:00:00Z'); THEME_MEMO={k:null,v:null}`);
+  assert.equal(run('bannerText(themeNow())'), 'JOYEUX NOËL · J-12');
 });

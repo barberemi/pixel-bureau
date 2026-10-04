@@ -82,7 +82,7 @@ function drawEnvelopes(now,shown){
       const at=u=>({x:a.x+(b.x-a.x)*u,y:a.y+(b.y-a.y)*u-Math.sin(Math.PI*u)*arc});
       for(let i=1;i<=3;i++){const q=at(Math.max(0,e-i*.04));ctx.globalAlpha=.4-i*.1;R(ctx,q.x-1,q.y-1,3,3,col);}
       ctx.globalAlpha=1;
-      const q=at(e);drawEnvelope(q.x,q.y,col,Math.sin(now/90+f.t)*1.2);
+      const q=at(e);if(!themeEnvelope(q.x,q.y))drawEnvelope(q.x,q.y,col,Math.sin(now/90+f.t)*1.2); // 46-themes.js : cadeau, lettre d'amour...
     }else{
       const u=(age-ENV_FLY)/ENV_BURST;
       ctx.globalAlpha=1-u;
