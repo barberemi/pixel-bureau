@@ -98,45 +98,48 @@ function tombs(){ // agents en panne en ce moment : une tombe chacun (des agents
   down.forEach((c,i)=>{const x=(2.4+i*1.5)*TS, y=18*TS+12;E('🪦',x,y,22);
     ctx.fillStyle='#e9e4f2';ctx.font='bold 6px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText('RIP '+String(c.name).slice(0,7).toUpperCase(),x,y+17);ctx.textAlign='left';});
 }
-FURN.push({y:-1,draw:now=>{banner();garland(now);
-  if(themeIs('noel')){E('🎀',11.6*TS,TS+16,14);E('🎀',26.7*TS,TS+16,14);E('🔔',17.3*TS,TS+18,12);}
-  if(themeIs('nouvel-an')){ // boule à facettes : taches de lumière qui tournent sur le sol de la cafétéria
-    const cx=6.5*TS, cy=6*TS, cols=['#ff6fb5','#5fd4ff','#ffd23f','#7dff8a'];
-    for(let i=0;i<10;i++){const a=now/1400+i*.63, r=40+(i%3)*42;ctx.globalAlpha=.32;R(ctx,cx+Math.cos(a)*r*1.3-4,cy+Math.sin(a)*r*.75-3,8,6,cols[i%4]);}ctx.globalAlpha=1;
-  }
-}});
-FURN.push({y:2*TS,draw:()=>{if(!themeIs('halloween'))return;
-  for(const [x,y] of [[1.4,2.4],[11.6,2.4],[18.4,2.4],[26.6,2.4],[34.4,2.4],[1.4,12.4],[38.6,11.4]])E('🕸️',x*TS,y*TS,30);}});
-FURN.push({y:2*TS+31,draw:now=>{
-  if(themeIs('halloween')){pumpkin(5*TS+4,COUNTER_TOP,now);E('🎃',36.5*TS,10.6*TS,20);}
-  if(themeIs('noel'))for(const x of [2.6,4.6,6.6])E('🧦',x*TS,2*TS+12,13);
-}});
-FURN.push({y:3*TS+12,draw:()=>{if(themeIs('halloween'))E('💀',26.3*TS,3*TS+6,16);}});
-FURN.push({y:6*TS+1,draw:()=>{const {x,y}=KTABLE;
-  if(themeIs('noel')){E('☕',x+12,y+6,11);E('🍪',x+46,y+8,11);}
-  if(themeIs('saint-valentin'))E('💐',x+46,y+2,16);
-  if(themeIs('nouvel-an'))E('🎂',x+46,y+4,14);
-}});
-FURN.push({y:9*TS+1,draw:now=>{const {x,top}=BOSS_DESK;
-  if(themeIs('halloween')){E('🕯️',x+34,top+(Math.floor(now/180)%3?0:1),12);E('🍬',x+92,top+2,11);}
-  if(themeIs('noel'))E('🕯️',x+34,top,12);
-  if(themeIs('saint-valentin')){E('🍫',x+34,top+2,12);E('💝',x+92,top+1,12);}
-  if(themeIs('nouvel-an'))E('🎉',x+92,top+1,12);
-}});
-FURN.push({y:12*TS+29,draw:now=>{if(themeIs('noel'))xmasTree(now);}});
-FURN.push({y:13*TS+28,draw:()=>{if(themeIs('noel'))E('☃️',2*TS+16,13*TS+12,28);}});
-FURN.push({y:11*TS+28,draw:()=>{if(themeIs('noel'))E('🦌',37*TS+16,11*TS+14,24);}});
-FURN.push({y:IROWS[0]*TS-1,draw:now=>{
-  ISLANDS.forEach((cx,i)=>{const p=ISLAND_TOP(cx);
-    if(themeIs('halloween'))pumpkin(p.x,p.y,now,i%2===0);
-    if(themeIs('noel'))E('🎁',p.x,p.y-6,13);
-    if(themeIs('saint-valentin'))E('🌹',p.x,p.y-7,14);
-    if(themeIs('nouvel-an'))E(['🎊','🥳','🎉'][i%3],p.x,p.y-6,13);
-  });
-}});
-FURN.push({y:17*TS,draw:()=>{if(!themeIs('saint-valentin')&&!themeIs('noel'))return;
-  ISLANDS.forEach((cx,i)=>{if(i%2)return;const p=ISLAND_END(cx);E(themeIs('noel')?'🍬':'💌',p.x,p.y-4,12);});}});
-FURN.push({y:18*TS+20,draw:()=>{if(themeIs('halloween'))tombs();}});
+// décor des fêtes posé avec les meubles (buildFurniture, 40-furniture.js)
+function themeFurniture(){
+  FURN.push({y:-1,draw:now=>{banner();garland(now);
+    if(themeIs('noel')){E('🎀',11.6*TS,TS+16,14);E('🎀',26.7*TS,TS+16,14);E('🔔',17.3*TS,TS+18,12);}
+    if(themeIs('nouvel-an')){ // boule à facettes : taches de lumière qui tournent sur le sol de la cafétéria
+      const cx=6.5*TS, cy=6*TS, cols=['#ff6fb5','#5fd4ff','#ffd23f','#7dff8a'];
+      for(let i=0;i<10;i++){const a=now/1400+i*.63, r=40+(i%3)*42;ctx.globalAlpha=.32;R(ctx,cx+Math.cos(a)*r*1.3-4,cy+Math.sin(a)*r*.75-3,8,6,cols[i%4]);}ctx.globalAlpha=1;
+    }
+  }});
+  FURN.push({y:2*TS,draw:()=>{if(!themeIs('halloween'))return;
+    for(const [x,y] of [[1.4,2.4],[11.6,2.4],[18.4,2.4],[26.6,2.4],[34.4,2.4],[1.4,12.4],[38.6,11.4]])E('🕸️',x*TS,y*TS,30);}});
+  FURN.push({y:2*TS+31,draw:now=>{
+    if(themeIs('halloween')){pumpkin(5*TS+4,COUNTER_TOP,now);E('🎃',36.5*TS,10.6*TS,20);}
+    if(themeIs('noel'))for(const x of [2.6,4.6,6.6])E('🧦',x*TS,2*TS+12,13);
+  }});
+  FURN.push({y:3*TS+12,draw:()=>{if(themeIs('halloween'))E('💀',26.3*TS,3*TS+6,16);}});
+  FURN.push({y:6*TS+1,draw:()=>{const {x,y}=KTABLE;
+    if(themeIs('noel')){E('☕',x+12,y+6,11);E('🍪',x+46,y+8,11);}
+    if(themeIs('saint-valentin'))E('💐',x+46,y+2,16);
+    if(themeIs('nouvel-an'))E('🎂',x+46,y+4,14);
+  }});
+  FURN.push({y:9*TS+1,draw:now=>{const {x,top}=BOSS_DESK;
+    if(themeIs('halloween')){E('🕯️',x+34,top+(Math.floor(now/180)%3?0:1),12);E('🍬',x+92,top+2,11);}
+    if(themeIs('noel'))E('🕯️',x+34,top,12);
+    if(themeIs('saint-valentin')){E('🍫',x+34,top+2,12);E('💝',x+92,top+1,12);}
+    if(themeIs('nouvel-an'))E('🎉',x+92,top+1,12);
+  }});
+  FURN.push({y:12*TS+29,draw:now=>{if(themeIs('noel'))xmasTree(now);}});
+  FURN.push({y:13*TS+28,draw:()=>{if(themeIs('noel'))E('☃️',2*TS+16,13*TS+12,28);}});
+  FURN.push({y:11*TS+28,draw:()=>{if(themeIs('noel'))E('🦌',37*TS+16,11*TS+14,24);}});
+  FURN.push({y:IROWS[0]*TS-1,draw:now=>{
+    ISLANDS.forEach((cx,i)=>{const p=ISLAND_TOP(cx);
+      if(themeIs('halloween'))pumpkin(p.x,p.y,now,i%2===0);
+      if(themeIs('noel'))E('🎁',p.x,p.y-6,13);
+      if(themeIs('saint-valentin'))E('🌹',p.x,p.y-7,14);
+      if(themeIs('nouvel-an'))E(['🎊','🥳','🎉'][i%3],p.x,p.y-6,13);
+    });
+  }});
+  FURN.push({y:17*TS,draw:()=>{if(!themeIs('saint-valentin')&&!themeIs('noel'))return;
+    ISLANDS.forEach((cx,i)=>{if(i%2)return;const p=ISLAND_END(cx);E(themeIs('noel')?'🍬':'💌',p.x,p.y-4,12);});}});
+  FURN.push({y:18*TS+20,draw:()=>{if(themeIs('halloween'))tombs();}});
+}
 
 // ---------- fenêtres : neige, lune, feux d'artifice ----------
 function themeWindow(x,y,w,h,now,i){

@@ -7,7 +7,7 @@
 | `page/office_template.html` | Squelette : en-tête, canvas, barre de lecture, panneau, les 4 blocs `kronn-action` (Kronn les lit dans le HTML statique), marqueurs `/*__STYLES__*/` et `/*__SCRIPTS__*/` |
 | `page/src/styles.css` | Toute la feuille de style |
 | `page/src/NN-*.js` | Le script, concaténé **dans l'ordre des noms** en un seul `<script>` (une portée globale, pas de modules) : config `00`, plan `10`, sprites `20`, données `30-33`, états `35`, dessin `40-45`, panneau, actions, fiches et éditeur `50-65`, À traiter et récap `68-69`, tuiles, fil et « Qui fait quoi » `70-72`, mode TV `75-76`, visite `78`, souris `80`, boucle et démarrage `90` |
-| `workflows/` | Scripts Python des étapes Exec ; `_lib.py` = socle commun, recopié dans chaque script au rendu (Kronn lance `python3 -c` sans fichier voisin) ; `templates/` = modèles des workflows et du Quick Prompt |
+| `workflows/` | Scripts Python des étapes Exec ; `_lib.py` = socle commun et `_plan.py` = règles des plans (aussi utilisées par `tools/plan.py`), recopiés dans chaque script qui les importe au rendu (Kronn lance `python3 -c` sans fichier voisin) ; `templates/` = modèles des workflows et du Quick Prompt |
 | `layouts/` | Plans de bureau (format `bureau-layout/1`) ; `equipe.json` = le plan par défaut, `exemple-startup.json` = un autre bureau (30 x 16, sans plateau TV) |
 | `team/` | `roster.json` (l'équipe, identique pour tous), `defaults.json` (valeurs proposées à l'installation) |
 | `sprites/` | Recettes d'avatars `cast.json`, calques LPC `layers.json`, sprites fournis `custom/` |
@@ -37,7 +37,7 @@ python3 tools/templates.py check       # les workflows du Kronn = le rendu des m
 
 ## Modèles de workflows
 
-`workflows/templates/*.json` sont la source des 7 workflows et du Quick Prompt : `publish.py workflows` pousse leur rendu dans les ids de la config, en gardant les ids des étapes.
+`workflows/templates/*.json` sont la source des 8 workflows et du Quick Prompt : `publish.py workflows` pousse leur rendu dans les ids de la config, en gardant les ids des étapes.
 
 - Emplacements remplacés au rendu : `@@page_id@@`, `@@kronn.project_id@@`, `@@jira.*@@`, `@@owner_name@@`, `@@script:workflows/x.py@@`. Les variables Kronn (`{{steps.x}}`) restent intactes : jamais de `{{` ni de `@@` dans un script.
 - Une étape `"_requires": "jira"` disparaît sans connexion Jira.
@@ -46,7 +46,7 @@ python3 tools/templates.py check       # les workflows du Kronn = le rendu des m
 
 ## Installateur
 
-Questions : Kronn, qui tu es, le plan du bureau (un de `layouts/` ou ton propre fichier, refusé s'il ne passe pas `plan.py check` ; écrit dans la clé `layout` de la config), projet, Jira (testé à travers Kronn), GitHub, agent IA, tes agents (un personnage par workflow actif, placé par le plan), avatar, musique. Il crée la page et ses 6 datasets, les workflows et le Quick Prompt, écrit la config, publie et lance un premier rafraîchissement. Relançable sans doublon.
+Questions : Kronn, qui tu es, le plan du bureau (un de `layouts/` ou ton propre fichier, refusé s'il ne passe pas `plan.py check` ; écrit dans la clé `layout` de la config), projet, Jira (testé à travers Kronn), GitHub, agent IA, tes agents (un personnage par workflow actif, placé par le plan), avatar, musique. Il crée la page et ses 7 datasets (et ajoute ceux qui manquent à une page existante), les workflows et le Quick Prompt, écrit la config, publie et lance un premier rafraîchissement. Relançable sans doublon.
 
 - Réutiliser plutôt que créer (question `reuse`) : homonymes orphelins repris, ou id donné élément par élément, mis à jour ou gardé tel quel (`own`). Un workflow qui sert une autre page encore présente n'est jamais repris d'office.
 - `uninstall.py` ne touche ni aux éléments `own`, ni aux connexions, ni aux autres workflows.
@@ -66,8 +66,10 @@ Le plan n'est plus codé en dur : `10-world.js` construit grille, sols, portes, 
   python3 tools/plan.py check [plan.json] [--json]   # erreurs bloquantes et avertissements, avec les coordonnées
   python3 tools/plan.py seats [plan.json]            # sièges numérotés, qui s'y assoit, et qui change de place par rapport au plan actuel
   .venv/bin/python tools/plan.py preview [plan.json] # capture du plan dans dist/plan.png
+  python3 tools/plan.py share plan.json              # le proposer à toute l'équipe (share defaut : retour au plan embarqué)
   ```
   Le vérificateur contrôle la forme (taille, rangées, légende, murs du bord et du fond), la sortie et les portes, les meubles et sièges sur du sol, l'accès depuis la sortie à chaque siège (par son allée) et à chaque place, les zones dont la machine à états a besoin, les places libres, les objets cliquables. `publish.py page` refuse un plan invalide.
+- Plan d'équipe partagé : `plan.py share` lance le workflow « Le Bureau · plan » (`layout_save.py` revérifie avec les règles de `_plan.py`, une gate attend le boss, puis `PublishPageData` remplace le dataset `layout` : `{updated_at, layout}`, `layout` null = plan embarqué). La page le lit au démarrage (`readLayout`, 00-config) et à chaque rafraîchissement : `applyLayout` refait monde, toile, fond, meubles, lumières (`buildWorld`, `sizeCanvas`, `buildFurniture`, `buildBg`, `bakeFurniture`, `buildRooms`) et téléporte chacun à sa place. Sans dataset lisible, le plan embarqué reste.
 - Les seuils de porte et le bord du plateau se déduisent du plan (murs voisins, sol de plateau), plus de rangées écrites en dur.
 - Zones facultatives (plateau TV, canapé, table, fontaine, copieur…) : sans elles, les personnages se replient ailleurs (`ZONE_FALLBACK` de `35-state.js`). La toile prend la taille du plan.
 - Limite : le décor des thèmes saisonniers (banderole, bonhomme de neige, ballons…) est encore placé pour le plan equipe.

@@ -2,7 +2,7 @@
 
   python3 tools/templates.py export   # depuis le Kronn de bureau.config.json : valeurs de l'installation -> emplacements
   python3 tools/templates.py check    # le rendu avec bureau.config.json redonne exactement les workflows de ce Kronn
-  python3 tools/templates.py render <clé>   # affiche le rendu d'un modèle (office, live, team, payroll, avatar, gate, relaunch, ask)
+  python3 tools/templates.py render <clé>   # affiche le rendu d'un modèle (office, live, team, payroll, avatar, gate, relaunch, layout, ask)
 
 Emplacements, remplacés au rendu :
   @@page_id@@, @@kronn.project_id@@, @@jira.config_id@@, @@jira.project@@, @@jira.board@@, @@jira.sprint_field@@,
@@ -25,9 +25,10 @@ TEMPLATES = {
     "avatar": ("workflow", ("actions", "avatar"), {"save": "workflows/avatar_save.py"}),
     "gate": ("workflow", ("actions", "gate"), {"decide": "workflows/gate_decide.py"}),
     "relaunch": ("workflow", ("actions", "relaunch"), {"relaunch": "workflows/relaunch.py"}),
+    "layout": ("workflow", ("actions", "layout"), {"save": "workflows/layout_save.py"}),
     "ask": ("quick_prompt", ("actions", "ask"), {}),
 }
-WF_KEYS = ("name", "project_id", "trigger", "steps", "actions", "safety", "workspace_config", "concurrency_limit", "exec_allowlist")
+WF_KEYS = ("name", "project_id", "trigger", "variables", "steps", "actions", "safety", "workspace_config", "concurrency_limit", "exec_allowlist")
 QP_KEYS = ("name", "icon", "prompt_template", "variables", "agent", "project_id", "skill_ids", "profile_ids", "directive_ids", "tier", "description")
 TOKEN = re.compile(r"@@([a-z_.]+|script:[\w/.]+)@@")
 
@@ -42,16 +43,20 @@ def owner_name(cfg):
     return p["name"] if p else "le boss"
 
 
-LIB_IMPORT = re.compile(r"^from _lib import [\w, ]+$", re.M)
+LIB_IMPORT = re.compile(r"^from (_lib|_plan) import [\w, ]+$", re.M)
 
 
 def script_code(path, cfg):
-    """Le script tel qu'il tourne dans Kronn (« python3 -c », sans fichier voisin) : workflows/_lib.py recopié à la
-    place de sa ligne « from _lib import … », puis la config d'installation injectée à la place de __BUREAU_CONFIG__."""
+    """Le script tel qu'il tourne dans Kronn (« python3 -c », sans fichier voisin) : workflows/_lib.py et _plan.py
+    recopiés à la place de leur ligne « from _lib import … », puis la config d'installation injectée à la place de
+    __BUREAU_CONFIG__."""
     code = open(os.path.join(ROOT, path)).read()
-    lib = open(os.path.join(ROOT, "workflows", "_lib.py")).read()
-    assert "@@" not in lib and "{{" not in lib, "_lib.py : ni @@ ni {{ (Kronn rendrait ses propres variables)"
-    code = LIB_IMPORT.sub(lambda m: lib, code, count=1)
+
+    def lib(m):
+        body = open(os.path.join(ROOT, "workflows", m.group(1) + ".py")).read()
+        assert "@@" not in body and "{{" not in body, m.group(1) + ".py : ni @@ ni {{ (Kronn rendrait ses propres variables)"
+        return body
+    code = LIB_IMPORT.sub(lib, code)
     blob = json.dumps({k: v for k, v in cfg.items() if not k.startswith("_")}, ensure_ascii=False)
     assert '"""' not in blob and "__BUREAU_CONFIG__" in code, path
     return code.replace("__BUREAU_CONFIG__", blob, 1)
@@ -143,7 +148,7 @@ def fetch(kind, ident, cfg):
 def clean(kind, live):
     """Définition comparable : sans ids, dates, état ; étapes sans leur id."""
     keys = WF_KEYS if kind == "workflow" else QP_KEYS
-    d = {k: copy.deepcopy(live.get(k)) for k in keys}
+    d = {k: copy.deepcopy(live.get(k)) for k in keys if k != "variables" or live.get(k) or kind != "workflow"}  # Kronn omet une liste vide
     if kind == "workflow":
         for s in d["steps"]:
             s.pop("id", None)

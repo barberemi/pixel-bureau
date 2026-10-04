@@ -12,39 +12,6 @@ const FURN=[];
 const FURN_TYPES={}, FURN_AT={};
 function furnType(id,anchor,foot){const t={anchor,foot,items:[]};FURN_TYPES[id]=t;return t.items;}
 const furnAt=id=>(FURN_AT[id]||[])[0]||null;
-// îlots
-for(const cx of ISLANDS){
-  const r0=IROWS[0], nr=IROWS.length; // table d'îlot : du premier au dernier rang
-  FURN.push({y:r0*TS-2,draw:(now)=>{
-    const x0=cx*TS+3, y0=r0*TS-8, h=nr*TS+4;
-    R(ctx,x0+2,y0+h,TS-6,4,'rgba(0,0,0,.18)');
-    R(ctx,x0,y0,TS-6,h,'#a87b4f');R(ctx,x0,y0,TS-6,2,'#c79a6a');R(ctx,x0,y0+h-6,TS-6,6,'#7d5634');
-    for(const r of IROWS){
-      for(const side of ['L','R']){
-        const sx=side==='L'?cx-1:cx+1, o=deskOwner(sx,r), py=r*TS;
-        const mx=side==='L'?x0+3:x0+TS-6-11;
-        R(ctx,mx,py-4,8,16,'#2c2f38'); drawScreen(side==='L'?mx:mx+3,py-3,5,14,screenState(o),now,sx*31+r); // face tournée vers la place
-        const kx=side==='L'?x0+12:x0+4; R(ctx,kx,py+2,5,10,'#e6e6e6');
-        const pile=pileOf(o); const bx=side==='L'?x0+12:x0+4;
-        pile.forEach((t,i)=>{R(ctx,bx-1,py+22-i*3,8,3,TCAT[t.cat].c);});
-        const lc=o&&o.present?lampColor(o):'#55524c'; R(ctx,side==='L'?x0+2:x0+TS-11,py+18,4,4,lc);
-      }
-    }
-  }});
-  for(const r of IROWS)for(const side of ['L','R']){
-    const sx=side==='L'?cx-1:cx+1;
-    FURN.push({
-      y:r*TS+1,fixed:true,
-      draw:()=>{
-        const px=sx*TS+16,py=r*TS;
-        const bx=side==='L'?px-13:px+9;
-        R(ctx,px-7,py+12,14,10,'#6a7080');
-        R(ctx,bx,py+2,4,20,'#4d5363');
-        R(ctx,bx,py+2,4,2,'#7a8090');
-      }
-    });
-  }
-}
 // bureau du boss
 {const F=furnType('boss_desk',[21,8],[]);
 F.push({
@@ -213,7 +180,6 @@ F.push({y:2*TS+31,draw:(now,o)=>{
   ctx.fillStyle='#5a6b78';ctx.font='bold 6px ui-monospace,monospace';ctx.fillText('🧻',33*TS+8,2*TS+28);
 }});
 }
-const TVR=LAYOUT.objects.tv; // plateau TV : écran au mur du fond
 function tapeBand(x1,y1,x2,y2,w){ // ruban de chantier jaune et noir
   const L=Math.hypot(x2-x1,y2-y1),a=Math.atan2(y2-y1,x2-x1);ctx.save();ctx.translate(x1,y1);ctx.rotate(a);
   ctx.fillStyle='#f2c314';
@@ -246,15 +212,7 @@ F.push({y:5*TS+30,draw:()=>{
   ctx.textAlign='left';
 }});
 }
-// meubles du plan, dans l'ordre du plan
-for(const f of LAYOUT.furniture){
-  const t=FURN_TYPES[f.type]; if(!t)continue;
-  const o={tx:f.at[0]-t.anchor[0],ty:f.at[1]-t.anchor[1]}; o.dx=o.tx*TS; o.dy=o.ty*TS;
-  (FURN_AT[f.type]=FURN_AT[f.type]||[]).push(o);
-  for(const it of t.items)FURN.push({y:it.y+o.dy,fixed:it.fixed,draw:o.dx||o.dy?n=>{ctx.save();ctx.translate(o.dx,o.dy);it.draw(n,o);ctx.restore();}:n=>it.draw(n,o)});
-  for(const [x,y] of t.foot)B(f.at[0]+x,f.at[1]+y);
-}
-FURN.push({y:-1,draw:(now)=>{
+const TV_SCREEN={y:-1,draw:(now)=>{ // écran du plateau TV, au mur du fond
   const {x,y,w,h}=TVR, sg=stageAt(T);
   R(ctx,x-2,y-2,w+4,h+4,'#111216');R(ctx,x,y,w,h,'#0e1b30');
   if(stageClosed(T)){
@@ -277,12 +235,9 @@ FURN.push({y:-1,draw:(now)=>{
   ctx.fillStyle='#ffffff';const tw=ctx.measureText(txt).width, off=(now/25)%tw;
   for(let k=-1;k<3;k++)ctx.fillText(txt,x+3-off+k*tw,y+24);
   ctx.restore();
-}});
-// employé du sprint : cadre sur le mur bas de la cafétéria
-const EMPR=LAYOUT.objects.emp;
+}};
 // enveloppe de paie posée sur le bureau du boss -> fiche de paie
-const PAYR=LAYOUT.objects.paie;
-FURN.push({
+const PAY_ENVELOPE={
   y:9*TS+31,fixed:true,draw:()=>{
     const {x,y,w,h}=PAYR;
     R(ctx,x,y,w,h,'#e9dcb8');
@@ -298,8 +253,9 @@ FURN.push({
   ctx.font='bold 7px ui-monospace,Menlo,monospace';
   ctx.fillText('$',x+w-6,y+h-1);
   }
-  });
-FURN.push({y:-1,draw:()=>{
+  };
+// employé du sprint : cadre sur le mur bas de la cafétéria
+const EMP_FRAME={y:-1,draw:()=>{
   const b=bestEmployee()[0]; if(!b||!b.pts)return;
   const c=empChar(b); if(!c)return; const {x,y,w,h}=EMPR;
   R(ctx,x,y,w,h,'#c9a227');R(ctx,x+2,y+2,w-4,h-4,'#f3e6c2');
@@ -309,14 +265,13 @@ FURN.push({y:-1,draw:()=>{
   ctx.fillText('EMPLOYÉ',x+27,y+11);
   ctx.fillText('DU SPRINT',x+27,y+18);
   ctx.fillText(Math.round(b.pts)+' PTS',x+27,y+25);
-}});
+}};
 // mur Kanban à droite du bureau du boss
-const KANR=LAYOUT.objects.kanban;
 function kanbanCols(){
   const all=TEAM?[...TEAM.people.flatMap(p=>p.tickets.map(x=>({...x,owner:p.name}))),...(TEAM.unassigned||[]).map(x=>({...x,owner:null}))]:[];
   return ['todo','doing','review','test','deploy','done'].map(k=>({k,list:all.filter(x=>x.cat===k)}));
 }
-FURN.push({y:-1,draw:()=>{
+const KANBAN_WALL={y:-1,draw:()=>{
   const {x,y,w,h}=KANR;
   R(ctx,x,y,w,h,'#7a5a43');R(ctx,x+2,y+2,w-4,h-4,'#f7f7f4');
   const cols=kanbanCols(), cw=(w-4)/6;
@@ -327,10 +282,9 @@ FURN.push({y:-1,draw:()=>{
     ctx.fillStyle='#4a4038';ctx.fillText(String(c.list.length),cx+cw/2,y+h-4);
   });
   ctx.textAlign='left';
-}});
+}};
 // planning mural des crons (couloir, à gauche du bureau du boss)
-const PLANR=LAYOUT.objects.planning;
-FURN.push({y:-1,draw:()=>{
+const CRON_BOARD={y:-1,draw:()=>{
   const {x,y,w,h}=PLANR;
   R(ctx,x,y,w,h,'#3d4250');R(ctx,x+2,y+2,w-4,h-4,'#1f2430');
   ctx.font='bold 5px ui-monospace,Menlo,monospace';ctx.fillStyle='#9fb7d9';ctx.fillText('PROCHAINS CRONS',x+5,y+9);
@@ -341,7 +295,7 @@ FURN.push({y:-1,draw:()=>{
     ctx.fillStyle=i===0?'#ffd479':'#e6e9ef';
     ctx.fillText(hm(p.t)+' '+(p.who?p.who.name:String(p.c.name).slice(0,10)),x+5,y+17+i*7);
   });
-}});
+}};
 // plantes
 const plant=(x,y)=>FURN.push({
   y:y*TS+28,fixed:true,
@@ -357,7 +311,60 @@ const plant=(x,y)=>FURN.push({
     ctx.fill();
   }
 });
-for(const [x,y] of LAYOUT.plants)plant(x,y);
+function islandFurniture(){ // îlots : tables, écrans, chaises
+  for(const cx of ISLANDS){
+    const r0=IROWS[0], nr=IROWS.length; // table d'îlot : du premier au dernier rang
+    FURN.push({y:r0*TS-2,draw:(now)=>{
+      const x0=cx*TS+3, y0=r0*TS-8, h=nr*TS+4;
+      R(ctx,x0+2,y0+h,TS-6,4,'rgba(0,0,0,.18)');
+      R(ctx,x0,y0,TS-6,h,'#a87b4f');R(ctx,x0,y0,TS-6,2,'#c79a6a');R(ctx,x0,y0+h-6,TS-6,6,'#7d5634');
+      for(const r of IROWS){
+        for(const side of ['L','R']){
+          const sx=side==='L'?cx-1:cx+1, o=deskOwner(sx,r), py=r*TS;
+          const mx=side==='L'?x0+3:x0+TS-6-11;
+          R(ctx,mx,py-4,8,16,'#2c2f38'); drawScreen(side==='L'?mx:mx+3,py-3,5,14,screenState(o),now,sx*31+r); // face tournée vers la place
+          const kx=side==='L'?x0+12:x0+4; R(ctx,kx,py+2,5,10,'#e6e6e6');
+          const pile=pileOf(o); const bx=side==='L'?x0+12:x0+4;
+          pile.forEach((t,i)=>{R(ctx,bx-1,py+22-i*3,8,3,TCAT[t.cat].c);});
+          const lc=o&&o.present?lampColor(o):'#55524c'; R(ctx,side==='L'?x0+2:x0+TS-11,py+18,4,4,lc);
+        }
+      }
+    }});
+    for(const r of IROWS)for(const side of ['L','R']){
+      const sx=side==='L'?cx-1:cx+1;
+      FURN.push({
+        y:r*TS+1,fixed:true,
+        draw:()=>{
+          const px=sx*TS+16,py=r*TS;
+          const bx=side==='L'?px-13:px+9;
+          R(ctx,px-7,py+12,14,10,'#6a7080');
+          R(ctx,bx,py+2,4,20,'#4d5363');
+          R(ctx,bx,py+2,4,2,'#7a8090');
+        }
+      });
+    }
+  }
+}
+// objets cliquables du plan (rectangles en pixels) : écran TV, employé du sprint, paie, Kanban, planning des crons
+let TVR, EMPR, PAYR, KANR, PLANR;
+// tout le mobilier du plan, dans l'ordre de dessin (tri en profondeur stable) ; rappelé quand le plan change,
+// après buildWorld() qui vide les cases bloquées (les meubles y ajoutent leur emprise)
+function buildFurniture(){
+  FURN.length=0; for(const k of Object.keys(FURN_AT))delete FURN_AT[k];
+  ({tv:TVR,emp:EMPR,paie:PAYR,kanban:KANR,planning:PLANR}=LAYOUT.objects);
+  islandFurniture();
+  // meubles du plan, dans l'ordre du plan
+  for(const f of LAYOUT.furniture){
+    const t=FURN_TYPES[f.type]; if(!t)continue;
+    const o={tx:f.at[0]-t.anchor[0],ty:f.at[1]-t.anchor[1]}; o.dx=o.tx*TS; o.dy=o.ty*TS;
+    (FURN_AT[f.type]=FURN_AT[f.type]||[]).push(o);
+    for(const it of t.items)FURN.push({y:it.y+o.dy,fixed:it.fixed,draw:o.dx||o.dy?n=>{ctx.save();ctx.translate(o.dx,o.dy);it.draw(n,o);ctx.restore();}:n=>it.draw(n,o)});
+    for(const [x,y] of t.foot)B(f.at[0]+x,f.at[1]+y);
+  }
+  FURN.push(TV_SCREEN,PAY_ENVELOPE,EMP_FRAME,KANBAN_WALL,CRON_BOARD);
+  for(const [x,y] of LAYOUT.plants)plant(x,y);
+  themeFurniture(); // 46-themes.js : décor des fêtes
+}
 // meubles immobiles cuits une fois : ceux d'une même profondeur (même y) dessinés ensemble dans une toile de travail,
 // rognés à leur rectangle utile, puis remplacés dans FURN par une seule recopie (tri en profondeur inchangé).
 // Sans lecture des pixels possible (getImageData indisponible), ils restent dessinés à chaque image.

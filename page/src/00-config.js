@@ -1,4 +1,18 @@
-const LAYOUT = __LAYOUT__;   // plan du bureau (layouts/*.json), lu par 10-world.js
+const EMBEDDED_LAYOUT = __LAYOUT__; // plan du bureau embarqué (layouts/*.json de l'installation)
+// plan d'équipe partagé : dataset `layout`, publié par le workflow « Le Bureau · plan » après validation du boss et
+// vérifié par tools/plan.py. undefined = pas de dataset lisible, null = retour au plan embarqué, sinon le plan.
+// La page n'en contrôle que la forme : le script l'a déjà validé.
+function readLayout(src){
+  try{
+    let d=src&&src.datasets&&src.datasets.layout;
+    if(d&&d.current!==undefined)d=d.current;
+    if(typeof d==='string')d=JSON.parse(d);
+    if(!d||typeof d!=='object'||!('layout' in d))return undefined;
+    const L=d.layout;
+    return L&&L.format==='bureau-layout/1'&&Array.isArray(L.size)&&Array.isArray(L.tiles)?L:null;
+  }catch(e){return undefined;}
+}
+let LAYOUT = readLayout(window.KronnPageData)||EMBEDDED_LAYOUT; // lu par 10-world.js
 const SPR = __SPRITES__;   // sprites fournis tels quels (boss_sax)
 const LAYERS = __LAYERS__; // calques LPC (sprites/build_layers.py)
 const RECIPES = __CAST__;  // recette de chaque avatar (sprites/cast.json)

@@ -25,8 +25,21 @@ function loop(now){
   }
   requestAnimationFrame(loop);
 }
+buildFurniture();
 buildBg();
 bakeFurniture();
+// plan partagé arrivé (ou retiré) pendant que la page est ouverte : monde, toile, fond, meubles et lumières refaits,
+// puis chacun repris à sa nouvelle place (setData relit les places du casting et des intérimaires) et téléporté
+let LAYOUT_KEY=JSON.stringify(LAYOUT);
+function applyLayout(L){
+  const key=JSON.stringify(L); if(key===LAYOUT_KEY)return false;
+  LAYOUT=L; LAYOUT_KEY=key;
+  buildWorld(); sizeCanvas(); buildFurniture(); buildBg(); bakeFurniture(); buildRooms();
+  for(const c of chars){c.path=[];c.moving=false;c.spotKey=null;c.idlePlan=null;c.pos=null;c.tile=null;}
+  ENV.fly=[];
+  refreshAll(); needTeleport=true;
+  return true;
+}
 // ---------- superposition : instantané complet (office/team, 10 min) + live (1 min) ----------
 let OFFICE=null, OFFICE_IS_LIVE=false, TEAM_BASE=null, LIVE=null;
 let GATES=[], PAYROLL=null, RELAUNCH=[], ASKABLE=[];
@@ -140,6 +153,8 @@ window.addEventListener('kronn:page-data',e=>{
   }
   const l=readLive(k)||readLive(window.KronnPageData);
   if(l)LIVE=l;
+  const lay=readLayout(k);
+  if(lay!==undefined&&applyLayout(lay||EMBEDDED_LAYOUT))return; // applyLayout a déjà tout rafraîchi
   refreshAll();
   });
 if(TV){document.body.classList.add('tv');NAMES_BEFORE_TV=NAMES;NAMES='all';}

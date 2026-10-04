@@ -1,0 +1,100 @@
+{
+ "kind": "workflow",
+ "key": "layout",
+ "definition": {
+  "name": "Le Bureau · plan",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "layout_json",
+    "label": "Plan (JSON)",
+    "placeholder": "{\"format\": \"bureau-layout/1\", …} ou defaut",
+    "description": "Le plan au format bureau-layout/1 (vérifié par python3 tools/plan.py check), ou « defaut » pour revenir au plan embarqué dans la page",
+    "required": true,
+    "source": null,
+    "allow_manual_override": false,
+    "control": {
+     "type": "textarea"
+    }
+   }
+  ],
+  "steps": [
+   {
+    "name": "save",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Vérifie le plan (règles de tools/plan.py check) et prépare le dataset layout (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/layout_save.py@@"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{layout_json}}"
+   },
+   {
+    "name": "boss",
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "Le boss valide le plan avant qu'il remplace celui de toute l'équipe.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "gate_message": "Nouveau plan du bureau pour toute l'équipe : valider pour le publier.\n\n{{steps.save.data.stderr}}"
+   },
+   {
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset layout de la page Le Bureau : la page se redessine avec ce plan.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "layout",
+       "operation": "replace",
+       "value_from": "steps.save.data.stdout"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

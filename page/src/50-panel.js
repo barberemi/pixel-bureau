@@ -32,12 +32,13 @@ function renderSide(force){
   if(!force&&(KM_OPEN||document.querySelector('#side [data-kronn-action-slot]')))return; // carte Kronn ouverte (fenêtre centrée)
   const side=document.getElementById('side'); if(!DATA)return;
   side.innerHTML='';
-  if(sel==='tv'||sel==='emp'||sel==='kanban'||sel==='planning'||sel==='paie'){
+  if(sel==='tv'||sel==='emp'||sel==='kanban'||sel==='planning'||sel==='paie'||String(sel).startsWith('gate:')){
     const back=document.createElement('button');
     back.className='back';
     back.textContent="← Toute l'équipe";
     back.onclick=()=>select(null);
     side.appendChild(back);
+    if(String(sel).startsWith('gate:')){renderLoneGate(side,sel.slice(5));return;}
     ({tv:renderTv,emp:renderEmp,kanban:renderKanban,planning:renderPlanning,paie:renderPaie})[sel](side);
     return;
   }

@@ -25,10 +25,15 @@ function skyColor(t){
   return rgb(mixC(mixC(night,day,d.k),warm,d.twi*0.8));
 }
 // pièces éclairées quand quelqu'un s'y trouve (cases)
-const ROOMS=[
-  ...LAYOUT.light_rooms,                                                                  // pièces et allées du plan
-  ...ISLANDS.map(cx=>[cx-2,IROWS[0]-2,cx+2,IROWS[IROWS.length-1]+2])                     // un plafonnier par îlot
-];
+let ROOMS, ROOM_LV;
+function buildRooms(){ // rappelé quand le plan change
+  ROOMS=[
+    ...LAYOUT.light_rooms,                                                                  // pièces et allées du plan
+    ...ISLANDS.map(cx=>[cx-2,IROWS[0]-2,cx+2,IROWS[IROWS.length-1]+2])                     // un plafonnier par îlot
+  ];
+  ROOM_LV=ROOMS.map(()=>0);
+  LIGHT_CV=null; LIGHT_AT=0; // toiles de la lumière refaites à la taille du plan
+}
 const NIGHT_MAX=.45; // opacité du voile au cœur de la nuit (au-delà, plan et personnages illisibles)
 let LIGHT_CV=null, LIGHT_AT=0, LIGHT_D=0;
 function lightSources(){
@@ -55,7 +60,7 @@ function roomTargets(){
     .map(c=>[Math.floor(c.pos.x/TS),Math.floor((c.pos.y-4)/TS)]);
   return ROOMS.map(([x0,y0,x1,y1])=>occ.some(([x,y])=>x>=x0&&x<=x1&&y>=y0&&y<=y1)?1:0);
 }
-const ROOM_LV=ROOMS.map(()=>0), LIGHT_FADE=1200; // ms pour s'allumer ou s'éteindre
+const LIGHT_FADE=1200; // ms pour s'allumer ou s'éteindre
 // plafonniers d'une pièce : une flaque de lumière toutes les 3 cases
 function ceilingLamps([x0,y0,x1,y1]){
   const xs=[], ys=[], w=x1-x0+1, h=y1-y0+1;
@@ -67,6 +72,7 @@ function ceilingLamps([x0,y0,x1,y1]){
 // halos colorés ajoutés à part en pleine résolution ; recalculé au plus 5 fois par seconde
 const LQ=4;
 let LIGHT_MASK=null, LIGHT_HALO=null;
+buildRooms();
 function lightCanvas(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c;}
 function softSpot(g,x,y,r,a,col){
   const rg=g.createRadialGradient(x,y,0,x,y,r);

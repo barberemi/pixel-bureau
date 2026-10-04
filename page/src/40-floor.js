@@ -1,10 +1,14 @@
 // ---------- plan : toile, sol et murs (cuits une fois dans bg), fenêtres et horloge ----------
 const cv=document.getElementById('cv');
-cv.width=W;cv.height=H; // taille du plan (cases de 32 px)
-document.documentElement.style.setProperty('--plan-ratio',String(W/H)); // proportions du plan (mode TV)
 let ctx=cv.getContext('2d'); // let : la cuisson des meubles (40-furniture.js) dessine un moment dans une autre toile
-ctx.imageSmoothingEnabled=false;
-const bg=document.createElement('canvas'); bg.width=W; bg.height=H; const g=bg.getContext('2d');
+const bg=document.createElement('canvas'), g=bg.getContext('2d');
+// toile et fond à la taille du plan (cases de 32 px) ; rappelé quand le plan change
+function sizeCanvas(){
+  cv.width=W;cv.height=H;bg.width=W;bg.height=H;
+  document.documentElement.style.setProperty('--plan-ratio',String(W/H)); // proportions du plan (mode TV)
+  ctx.imageSmoothingEnabled=false;
+}
+sizeCanvas();
 const R=(c,x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
 function hash(x,y){let h=x*374761393+y*668265263;h=(h^(h>>13))*1274126177;return ((h^(h>>16))>>>0)/4294967295;}
 function drawFloor(c,x,y,f){

@@ -7,6 +7,17 @@
   "trigger": {
    "type": "Manual"
   },
+  "variables": [
+   {
+    "name": "wf_id",
+    "label": "Workflow",
+    "placeholder": "",
+    "description": null,
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   }
+  ],
   "steps": [
    {
     "name": "relaunch",

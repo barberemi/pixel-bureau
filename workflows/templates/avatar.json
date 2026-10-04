@@ -7,6 +7,17 @@
   "trigger": {
    "type": "Manual"
   },
+  "variables": [
+   {
+    "name": "avatar_code",
+    "label": "Code avatar (déjà copié)",
+    "placeholder": "Colle ici avec ⌘V",
+    "description": "Le bouton « Enregistrer pour l'équipe » vient de copier ce code : colle-le (⌘V) puis clique Lancer.",
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   }
+  ],
   "steps": [
    {
     "name": "save",

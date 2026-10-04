@@ -70,3 +70,27 @@ test('sièges : le plan equipe place l\'équipe et les agents sans leur place du
   assert.deepEqual(s.dwight, [23, 14]); // I4.L1
   assert.equal(s.p_coll2, null); // le boss
 });
+
+// Plan d'équipe partagé (dataset layout, workflow « Le Bureau · plan ») : lu au démarrage, appliqué à chaud
+const EXAMPLE = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'layouts', 'exemple-startup.json'), 'utf8'));
+const WORLD = `JSON.stringify({W,H,grid,SEATS,blocked:[...blocked].sort(),seats:CAST.map(c=>c.seat),free:FREE_SEATS,rooms:ROOMS.length,furn:FURN.length})`;
+
+test('plan partagé : lu au démarrage à la place du plan embarqué', () => {
+  const p = load({kronnPageData: {datasets: {layout: {current: {layout: EXAMPLE}}}}});
+  assert.deepEqual(JSON.parse(p.run('JSON.stringify([W,H,LAYOUT.id])')), [960, 512, 'exemple-startup']);
+  const off = load({kronnPageData: {datasets: {layout: {current: {layout: null}}}}}); // « defaut » : plan embarqué
+  assert.equal(off.run('LAYOUT.id'), 'equipe');
+});
+
+test('plan partagé : appliqué à chaud, puis retour au plan embarqué sans aucune différence', () => {
+  const p = load();
+  const before = p.run(WORLD);
+  assert.equal(p.run(`applyLayout(${JSON.stringify(EXAMPLE)})`), true);
+  const hot = JSON.parse(p.run(WORLD));
+  const fresh = JSON.parse(load({layout: 'exemple-startup'}).run(WORLD));
+  assert.deepEqual(hot, fresh); // même monde qu'une page chargée directement avec ce plan
+  assert.ok(JSON.parse(p.run('JSON.stringify(chars.filter(c=>c.seat&&!seatRef(c.seat)).map(c=>c.key))')).length === 0);
+  assert.equal(p.run(`applyLayout(${JSON.stringify(EXAMPLE)})`), false); // même plan : rien à refaire
+  p.run('applyLayout(EMBEDDED_LAYOUT)');
+  assert.equal(p.run(WORLD), before);
+});

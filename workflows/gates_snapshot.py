@@ -51,7 +51,11 @@ for wf in get("/workflows"):
         if not waiting:
             continue
         s = waiting[-1]
-        msg = (s.get("output") or "").strip() or (steps_def.get(s["step_name"], {}).get("gate_message") or "")
+        msg = (s.get("output") or "").strip()
+        if not msg:  # la liste des runs ne porte pas les sorties : le message rendu de la gate est dans le détail du run
+            detail = get(f"/workflows/{wf['id']}/runs/{r['id']}")
+            msg = next((x.get("output") or "" for x in detail.get("step_results") or [] if x.get("step_name") == s["step_name"]), "").strip()
+        msg = msg or (steps_def.get(s["step_name"], {}).get("gate_message") or "")
         gates.append({"run": r["id"], "wf": wf["id"], "wf_name": wf["name"], "gate": s["step_name"],
                       "message": msg[:400], "since": s.get("started_at") or r.get("started_at")})
 

@@ -142,3 +142,12 @@ test('fil : les données de la veille sont dites « hier », pas « aujourd\'hui
   run(`DAY0=parisMidnight(Date.now()-864e5);`);
   assert.equal(run('dataDayWord()'), 'hier');
 });
+
+test('À traiter : une gate sans personnage (« Le Bureau · plan ») ouvre sa carte de décision seule', () => {
+  world();
+  run(`GATES.push({run:'r2',wf:'eeee5555-x',wf_name:'Le Bureau · plan',gate:'boss',message:'Nouveau plan',since:'${new Date(T11 - H).toISOString()}'});`);
+  const it = J(`todoItems(${T11}).find(x=>x.key==='gate:r2')`);
+  assert.match(it.txt, /Le Bureau · plan<\/b> attend ta validation/);
+  assert.deepEqual(it.act, {label: 'Décider', open: 'gate:r2'});
+  assert.equal(J(`todoItems(${T11}).filter(x=>x.key.startsWith('gate:')).length`), 2); // celle d'Oscar reste sur Oscar
+});

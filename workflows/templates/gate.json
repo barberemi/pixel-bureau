@@ -7,6 +7,59 @@
   "trigger": {
    "type": "Manual"
   },
+  "variables": [
+   {
+    "name": "run_id",
+    "label": "Gate",
+    "placeholder": "",
+    "description": null,
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   },
+   {
+    "name": "decision",
+    "label": "Décision",
+    "placeholder": "",
+    "description": "Ce que tu décides pour cette gate",
+    "required": true,
+    "source": null,
+    "allow_manual_override": false,
+    "control": {
+     "type": "select",
+     "options": [
+      {
+       "value": "approve",
+       "label": "✅ Approuver",
+       "enabled": true
+      },
+      {
+       "value": "reject",
+       "label": "⛔ Rejeter",
+       "enabled": true
+      },
+      {
+       "value": "request_changes",
+       "label": "✏️ Demander des changements",
+       "enabled": true
+      }
+     ],
+     "default_value": "approve"
+    }
+   },
+   {
+    "name": "comment",
+    "label": "Commentaire",
+    "placeholder": "Facultatif (obligatoire pour demander des changements)",
+    "description": null,
+    "required": false,
+    "source": null,
+    "allow_manual_override": false,
+    "control": {
+     "type": "textarea"
+    }
+   }
+  ],
   "steps": [
    {
     "name": "decide",

@@ -36,6 +36,11 @@ SHOTS = {
     "planning": (1400, 1400, AT(11) + "select('planning');", "#side"),
     "mep": (1400, 1400, AT(11.6) + "select('tv');", "#side"),
     "avatar": (1400, 1600, AT(11) + "select('jim');openEditor(byKey.jim);", "#side"),
+    # plan d'équipe proposé par « python3 tools/plan.py share » : la validation du boss, seule dans le panneau
+    "validation-plan": (1400, 1200, AT(11) + "GATES=[{run:'demo',wf:'2057374e-0000',wf_name:'Le Bureau · plan',gate:'boss',"
+                        "since:new Date(Date.now()-12*60e3).toISOString(),message:\"Nouveau plan du bureau pour toute l'équipe : valider pour le publier.\\n\\n"
+                        "Nouveau plan : Plateau web, 2e étage (40 x 20 cases, 36 sièges, 22 places attribuées).\\n"
+                        "Places qui changent : p_coll7 I2.R3 → I3.R3, dwight I4.L1 → I6.L1.\"}];select('gate:demo');", "#side"),
     "mobile": (390, 1200, AT(11), None),
     "visite": (1400, 1000, AT(11) + "tourShow(0);", None),
     # thèmes saisonniers (46-themes.js), forcés sur la journée de démo, de jour (11h) et le soir (20h15)

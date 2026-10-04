@@ -38,7 +38,7 @@ def workflows():
         kind, where, _ = templates.TEMPLATES[key]
         ident = templates.config_id(CFG, where)
         if not ident:
-            print(key, ": pas installé (aucun id dans la config)")
+            print(key, ": pas installé (aucun id dans la config) : relance python3 tools/install.py, qui l'ajoute sans doublon")
             continue
         if ident in (CFG.get("own") or []):
             print(f"{key} ({ident[:8]}) : gardé tel quel (branché à l'installation), non publié")

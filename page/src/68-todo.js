@@ -53,6 +53,10 @@ function todoItems(t){
     out.push({sev:'warn',ico:'✋',key:'gate:'+c.key,txt:`<b>${esc(c.name)}</b> attend ta validation`+(g&&g.gate?` <small>${esc(g.gate)}</small>`:''),
       age:g&&g.since?t-ms(g.since):null,act:{label:'Décider',open:c.key}});
   }
+  // gates sans personnage sur le plan : workflows du Bureau (ex. « Le Bureau · plan » qui propose un nouveau plan)
+  for(const g of GATES.filter(g=>!chars.some(c=>c.wf&&c.wf.includes(String(g.wf).slice(0,8)))))
+    out.push({sev:'warn',ico:'✋',key:'gate:'+g.run,txt:`<b>${esc(clean(g.wf_name))}</b> attend ta validation`+(g.gate?` <small>${esc(g.gate)}</small>`:''),
+      age:g.since?t-ms(g.since):null,act:{label:'Décider',open:'gate:'+g.run}});
   // 4. questions des discussions
   for(const c of of('ask'))out.push({sev:'warn',ico:'❓',key:'ask:'+c.key,
     txt:`<b>${esc(c.name)}</b> attend ta réponse <small>${esc(clip(c.disc.title,60))}</small>`,

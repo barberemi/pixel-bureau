@@ -34,3 +34,18 @@ L'anneau sous les pieds double la couleur par une forme (lisible par les daltoni
 - « Sur le plan » dans le panneau met une famille en avant (équipe, agents ou visiteurs), avec ses noms.
 - Les bulles des tickets affichent depuis combien de jours le ticket est dans sa colonne (« 📗 7685 · en review · 6 j »).
 - Selon la date, le bureau se déguise : voir [Thèmes saisonniers](12-themes.md). « Comment lire le plan » permet d'en essayer un tout de suite.
+
+## Changer de plan pour toute l'équipe
+
+Le plan se décrit dans un fichier JSON (voir [Développer, plan du bureau](../developpement.md#plan-du-bureau-layoutsjson)). Chacun est placé par le plan (`seating`, par numéro de siège : `I2.R2` = îlot 2, côté droit, rang 2), les autres reçoivent un siège libre, toujours le même.
+
+```sh
+python3 tools/plan.py check mon-plan.json    # erreurs et avertissements
+python3 tools/plan.py seats mon-plan.json    # qui s'assoit où, et qui change de place
+python3 tools/plan.py share mon-plan.json    # le proposer à toute l'équipe
+python3 tools/plan.py share defaut           # revenir au plan de l'installation
+```
+
+`share` lance le workflow « Le Bureau · plan » : il revérifie le plan, puis attend la validation du boss. La demande apparaît dans [À traiter](02-a-traiter.md) avec son résumé (taille, sièges, places qui changent). Une fois validé, la page se redessine sans rechargement et chacun rejoint sa nouvelle place. Un plan refusé n'est jamais publié.
+
+![Validation d'un nouveau plan par le boss](../img/validation-plan.png)

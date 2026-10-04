@@ -7,7 +7,7 @@ Ce qui attend le boss, trié du plus urgent au moins urgent, chaque ligne avec s
 | Ligne | Quand | Bouton |
 | --- | --- | --- |
 | 🚨 Agent en panne | Dernier run en échec (alarme après 3 échecs d'affilée) | Voir sa fiche |
-| ✋ Validation demandée | Un run attend une gate | Décider |
+| ✋ Validation demandée | Un run attend une gate, y compris un nouveau plan proposé à l'équipe ([Le plan](01-plan.md#changer-de-plan-pour-toute-léquipe)) | Décider |
 | 💬 Discussion qui attend ta réponse | Une question d'agent sans réponse | Ouvrir |
 | PR à relire | Ta review est demandée sur GitHub | Ouvrir |
 | PR à corriger | Changements demandés sur ta PR | Corriger |

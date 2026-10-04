@@ -39,6 +39,8 @@ class FakeKronn:
         ]
         self.runs = {AGENT_WF: [run_of(i, "Failed" if i == 0 else "Success", steps) for i in range(runs_per_wf)],
                      OFFICE_WF: [run_of(900)], TEAM_WF: [run_of(901, "Failed")]}
+        self.datasets = []  # datasets de la page (GET /pages/{id})
+        self.details = {}  # id de run -> step_results du détail du run (sorties complètes)
         self.discussions = [
             {"id": "d1", "title": "Pourquoi ça casse ?", "agent": "ClaudeCode", "participants": ["ClaudeCode"], "message_count": 4,
              "archived": False, "created_at": now, "updated_at": now, "workflow_run_id": None, "project_id": "p1"},
@@ -50,6 +52,9 @@ class FakeKronn:
         p = urlparse(path).path.removeprefix("/api")
         if p == "/workflows":
             return self.workflows
+        m = re.fullmatch(r"/workflows/([\w-]+)/runs/([\w-]+)", p)
+        if m:  # détail d'un run : les sorties des étapes (la liste ne les porte pas)
+            return next(dict(r, step_results=self.details.get(r["id"], r["step_results"])) for r in self.runs[m.group(1)] if r["id"] == m.group(2))
         m = re.fullmatch(r"/workflows/([\w-]+)/runs", p)
         if m:
             return self.runs.get(m.group(1), []) if "offset=0" in path or "offset" not in path else []
@@ -57,6 +62,8 @@ class FakeKronn:
         if m:
             return {"id": m.group(1), "trigger": {"schedule": "*/10 4-20 * * *"}, "variables": [],
                     "steps": [{"name": "gate", "step_type": {"type": "Gate"}}] if m.group(1) == AGENT_WF else []}
+        if re.fullmatch(r"/pages/[\w-]+", p):
+            return {"datasets": self.datasets}
         if p == "/projects":
             return [{"id": "p1", "name": "Front"}]
         if p == "/discussions":
@@ -126,6 +133,16 @@ key = ("open" if "open" in a else "merged") if a[0] == "pr" else "releases" if a
 print(json.dumps(d.get(key, [])))
 """)
         os.chmod(path, 0o755)
+
+    def run_raw(self, name, text, api=None):
+        """Lance le script avec ce texte tel quel sur stdin ; renvoie le processus terminé (sans exiger de succès)."""
+        cfg = dict(FIXTURE, kronn=dict(FIXTURE["kronn"], api=api or "http://127.0.0.1:9/api"))
+        cfg_path = os.path.join(self.tmp, "bureau.config.json")
+        with open(cfg_path, "w") as fh:
+            json.dump(cfg, fh)
+        env = {"BUREAU_CONFIG": cfg_path, "HOME": self.tmp, "PATH": self.bin, "PYTHONPATH": ""}
+        return subprocess.run([sys.executable, os.path.join(ROOT, "workflows", name)], input=text, capture_output=True, text=True,
+                              env=env, timeout=60)
 
     def run_script(self, name, stdin=None, api=None, args=()):
         cfg = dict(FIXTURE, kronn=dict(FIXTURE["kronn"], api=api or "http://127.0.0.1:9/api"))
@@ -284,6 +301,15 @@ print(json.dumps(d.get(key, [])))
         self.assertEqual([w["wf"] for w in gates["workflows"]], [AGENT_WF])
         self.assertEqual([w["wf"] for w in gates["askable"]], [AGENT_WF])
 
+    def test_gate_message_is_read_from_the_run_detail(self):
+        fake = FakeKronn()
+        run = dict(run_of(950, steps=0), status="WaitingApproval",
+                   step_results=[{"step_name": "gate", "status": "WaitingApproval", "output": "", "started_at": iso(1)}])
+        fake.runs[AGENT_WF] = [run]
+        fake.details[run["id"]] = [{"step_name": "gate", "status": "WaitingApproval", "output": "Nouveau plan : 36 sièges"}]
+        gates = self.run_script("gates_snapshot.py", api=self.kronn(fake))
+        self.assertEqual([g["message"] for g in gates["gates"]], ["Nouveau plan : 36 sièges"])
+
     def test_standup_since_format(self):
         r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "standup_since.py")], capture_output=True, text=True,
                            env={"BUREAU_CONFIG": os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"), "PATH": self.bin})
@@ -292,3 +318,30 @@ print(json.dumps(d.get(key, [])))
 
 if __name__ == "__main__":
     unittest.main()
+
+    # ---------- plan partagé (workflow « Le Bureau · plan ») ----------
+    PLAN = json.load(open(os.path.join(ROOT, "layouts", "exemple-startup.json")))
+
+    def test_layout_save_publishes_a_valid_plan_with_a_summary(self):
+        fake = FakeKronn()
+        fake.datasets = [{"name": "layout", "current": {"layout": dict(self.PLAN, seating={"I1.L1": "p_remi"})}}]
+        r = self.run_raw("layout_save.py", "```json\n" + json.dumps(dict(self.PLAN, seating={"I2.R1": "p_remi"})) + "\n```",
+                         api=self.kronn(fake))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out = json.loads(r.stdout)
+        self.assertEqual(out["layout"]["id"], "exemple-startup")
+        self.assertIn("36 sièges", r.stderr)  # résumé lu par le boss dans la gate
+        self.assertIn("p_remi I1.L1 → I2.R1", r.stderr)
+
+    def test_layout_save_refuses_an_invalid_plan(self):
+        r = self.run_raw("layout_save.py", json.dumps(dict(self.PLAN, exit=[5, 5])))
+        self.assertEqual(r.returncode, 1)
+        self.assertEqual(r.stdout, "")  # rien à publier
+        self.assertIn("Plan refusé", r.stderr)
+        self.assertIn("exit", r.stderr)
+        self.assertEqual(self.run_raw("layout_save.py", "pas du json").returncode, 1)
+
+    def test_layout_save_back_to_embedded_plan(self):
+        r = self.run_raw("layout_save.py", "defaut")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIsNone(json.loads(r.stdout)["layout"])

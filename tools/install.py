@@ -24,8 +24,9 @@ OFFICE = [("dwight", "Dwight"), ("jim", "Jim"), ("stanley", "Stanley"), ("phylli
           ("erin", "Erin"), ("ryan", "Ryan")]
 ROLES = {"dev": ("Développeur", None), "lead": ("Tech Lead", "lead"), "qa": ("Testeur", "qa"), "po": ("Product owner", "po"),
          "sm": ("Facilitateur", "sm")}
-DATASETS = ["office", "live", "team", "gates", "payroll", "avatars"]
+DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "layout"]
 CRONS = ("office", "live", "team", "payroll")
+DATASET = lambda name: {"name": name, "kind": "snapshot", "max_points": 50000}  # noqa: E731
 
 
 class InstallError(Exception):
@@ -355,8 +356,13 @@ def avatar(ask, key, roster_doc, dry):
 def upsert_page(k, cfg, title, dry):
     if cfg.get("page_id"):
         try:
-            k.get(f"/pages/{cfg['page_id']}")
+            page = k.get(f"/pages/{cfg['page_id']}")
             say(f"✓ page existante {cfg['page_id'][:8]}")
+            have = {d.get("name") for d in page.get("datasets") or []}
+            for n in DATASETS:  # datasets ajoutés depuis l'installation (ex. layout)
+                if n not in have and not dry:
+                    k.call("POST", f"/pages/{cfg['page_id']}/datasets", DATASET(n))
+                    say(f"✓ dataset {n} ajouté")
             return cfg["page_id"]
         except InstallError:
             say("(i) la page de la config n'existe plus : nouvelle page")
@@ -364,12 +370,12 @@ def upsert_page(k, cfg, title, dry):
         return "00000000-0000-0000-0000-000000000000"
     try:
         p = k.call("POST", "/pages", {"title": title, "html": "<!doctype html><p>Installation du Bureau en cours…</p>",
-                                      "datasets": [{"name": n, "kind": "snapshot", "max_points": 50000} for n in DATASETS]})
+                                      "datasets": [DATASET(n) for n in DATASETS]})
     except InstallError as e:
         if "UNIQUE" in str(e) and "slug" in str(e):
             raise InstallError(f"une page « {title} » existe déjà dans ce Kronn : choisis un autre titre (--title \"…\")")
         raise
-    say(f"✓ page créée {p['id'][:8]} (6 datasets)")
+    say(f"✓ page créée {p['id'][:8]} ({len(DATASETS)} datasets)")
     return p["id"]
 
 

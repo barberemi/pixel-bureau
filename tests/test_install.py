@@ -41,6 +41,9 @@ class FakeKronn:
             return [{"id": i, "name": b["name"]} for i, b in self.qps.items()]
         if path == "/workflow-steps/test-api-call":
             return {"success": True, "data": {"self": "https://acme.atlassian.net/rest/agile/1.0/sprint/1", "name": "S1"}}
+        if method == "POST" and path.startswith("/pages/") and path.endswith("/datasets"):
+            self.store[path.split("/")[2]]["datasets"].append(body)
+            return body
         if method == "POST" and path in ("/pages", "/workflows", "/quick-prompts"):
             i = self._id(); (self.qps if path == "/quick-prompts" else self.store)[i] = body
             return {"id": i}
@@ -53,7 +56,7 @@ class FakeKronn:
                 del box[i]
                 return {}
             b = box[i]
-            return {"id": i, "name": b.get("name"), "title": b.get("title"),
+            return {"id": i, "name": b.get("name"), "title": b.get("title"), "datasets": b.get("datasets"),
                     "steps": [{**s, "id": "s-" + s["name"]} for s in b.get("steps", [])]}
         if method == "PUT" or path == "/mcp/workflow-trigger":
             return {}
@@ -99,7 +102,7 @@ class InstallTest(unittest.TestCase):
         posts = [(p, b) for m, p, b in k.calls if m == "POST"]
         page = next(b for p, b in posts if p == "/pages")
         self.assertEqual([d["name"] for d in page["datasets"]], install.DATASETS)
-        self.assertEqual(sum(1 for p, _ in posts if p == "/workflows"), 7)
+        self.assertEqual(sum(1 for p, _ in posts if p == "/workflows"), 8)
         self.assertEqual(sum(1 for p, _ in posts if p == "/quick-prompts"), 1)
         cfg = json.load(open(self.cfg_path))
         self.assertEqual(cfg["owner"], "p_coll2")
@@ -133,7 +136,16 @@ class InstallTest(unittest.TestCase):
         with mock.patch.object(install, "Kronn", return_value=first):
             self.assertEqual(self.run_install(ANSWERS), 0)
         posts = [p for m, p, _ in first.calls if m == "POST" and p in ("/pages", "/workflows", "/quick-prompts")]
-        self.assertEqual(len(posts), 1 + 7 + 1)  # rien de recréé à la relance
+        self.assertEqual(len(posts), 1 + 8 + 1)  # rien de recréé à la relance
+
+    def test_relaunch_adds_missing_datasets(self):
+        self.run_install(ANSWERS)
+        first = self.fakes[-1]
+        page_id = json.load(open(self.cfg_path))["page_id"]
+        first.store[page_id]["datasets"] = [d for d in first.store[page_id]["datasets"] if d["name"] != "layout"]  # page d'avant
+        with mock.patch.object(install, "Kronn", return_value=first):
+            self.assertEqual(self.run_install(ANSWERS), 0)
+        self.assertEqual([d["name"] for d in first.store[page_id]["datasets"]], install.DATASETS)
 
     def test_reuses_same_named_workflow_instead_of_creating(self):
         answers = {k: v for k, v in ANSWERS.items() if k != "reuse"}  # défaut : homonymes réutilisés
@@ -141,7 +153,7 @@ class InstallTest(unittest.TestCase):
         k = self.fakes[-1]
         cfg = json.load(open(self.cfg_path))
         self.assertEqual(cfg["workflows"]["live"], FakeKronn.LIVE)
-        self.assertEqual(sum(1 for m, p, _ in k.calls if m == "POST" and p == "/workflows"), 6)
+        self.assertEqual(sum(1 for m, p, _ in k.calls if m == "POST" and p == "/workflows"), 7)
         self.assertTrue([1 for m, p, _ in k.calls if m == "PUT" and p == f"/workflows/{FakeKronn.LIVE}"])  # mis à jour
         self.assertEqual([a["name"] for a in cfg["agents"]], ["Dwight"])
 
@@ -173,7 +185,7 @@ class InstallTest(unittest.TestCase):
             self.assertFalse([1 for m, _, _ in k.calls if m == "DELETE"])
             self.assertEqual(uninstall.main(["--config", self.cfg_path, "--yes"]), 0)
         deleted = [p for m, p, _ in k.calls if m == "DELETE"]
-        self.assertEqual(len(deleted), 6 + 1 + 1)  # 6 workflows, le QP, la page
+        self.assertEqual(len(deleted), 7 + 1 + 1)  # 7 workflows, le QP, la page
         self.assertNotIn(f"/workflows/{mine}", deleted)
         self.assertEqual(deleted[-1], f"/pages/{cfg['page_id']}")  # la page en dernier
         after = json.load(open(self.cfg_path))
