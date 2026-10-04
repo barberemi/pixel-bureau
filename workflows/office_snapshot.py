@@ -1,49 +1,7 @@
-"""Snapshot of today's Kronn activity -> office_events dataset shape."""
-import json, re, sys, urllib.request
-from zoneinfo import ZoneInfo
+"""Instantané de la journée (toutes les 10 min) : runs et discussions du jour, crons, purge des vieux runs du Bureau."""
+import json, os as _os, urllib.request
 from datetime import datetime, timedelta, timezone
-# config d'installation : injectée par tools/publish.py (étape Kronn « python3 -c ») ; en local, lue dans bureau.config.json
-import os as _os
-_CFG = r"""__BUREAU_CONFIG__"""
-CFG = json.loads(_CFG) if not _CFG.startswith("__") else json.load(open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), _os.pardir, "bureau.config.json")))
-
-# variables de lancement recopiées dans la page : seulement celles qu'elle lit (jamais un token passé en variable)
-VARS_KEPT = ("jira_ticket_key", "current_task.number", "current_task.author", "current_task.repo", "pr", "repo")
-API = CFG["kronn"]["api"]
-TZ = ZoneInfo(CFG["rhythm"]["timezone"])  # fuseau du bureau, été comme hiver
-
-
-def get(path):
-    with urllib.request.urlopen(API + path, timeout=120) as r:
-        body = json.load(r)
-    return body.get("data", body)
-
-def model_short(m):
-    m = (m or "").lower()
-    for k, v in (("opus", "Opus"), ("sonnet", "Sonnet"), ("haiku", "Haiku"), ("gpt", "GPT"), ("gemini", "Gemini"), ("codex", "Codex")):
-        if k in m:
-            return v
-    return (m.split(" ")[0][:14]) if m else None
-
-
-def step_extra(s, st):
-    """Agent, modèle et outil en cours d'une étape (données §5 du Bureau)."""
-    if s.get("step_agent"):
-        st["ag"] = s["step_agent"]
-    if s.get("step_model"):
-        st["md"] = model_short(s["step_model"])
-    la = s.get("last_activity") or {}
-    if la.get("tool"):
-        st["act"] = {"t": la["tool"], "x": (la.get("target") or "")[-70:], "at": la.get("at")}
-    return st
-
-
-def important_count(did):
-    try:
-        return int((get(f"/discussions/{did}/important") or {}).get("total") or 0)
-    except Exception:
-        return 0
-
+from _lib import API, CFG, TZ, ACTIVE, dumps, get, is_bureau, is_bureau_disc, run_row, disc_row, err_of
 
 
 now = datetime.now(TZ)
@@ -53,43 +11,13 @@ day_start = now.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(ti
 since = day_start.isoformat().replace("+00:00", "Z")
 
 
-def _dig(v):
-    if isinstance(v, str):
-        t = v.strip()
-        if t.startswith("{"):
-            try:
-                return _dig(json.loads(t))
-            except Exception:
-                pass
-        return t.splitlines()[-1] if t else ""
-    if isinstance(v, dict):
-        d = v.get("data") if isinstance(v.get("data"), dict) else v
-        for k in ("error", "message", "stderr", "stdout"):
-            if d.get(k):
-                r = _dig(d[k])
-                if r:
-                    return r
-        return v.get("summary") or ""
-    return ""
-
-
-def err_of(step):
-    out = step.get("output") or ""
-    head = out.split("---STEP_OUTPUT---")[0].strip()
-    body = out.split("---STEP_OUTPUT---")[1].split("---END_STEP_OUTPUT---")[0] if "---STEP_OUTPUT---" in out else ""
-    msg = _dig(body) if body.strip() else ""
-    if not msg or msg.startswith("exit "):
-        msg = (msg + " " if msg else "") + head.splitlines()[0] if head else msg
-    msg = re.split(r"\s+[\u2014-]\s+\{", msg)[0]
-    return re.sub(r"\s+\u2014\s+", " · ", msg).strip()[:240]
-
-
+WFS = get("/workflows")
 runs = []
-for wf in get("/workflows"):
-    if not wf.get("enabled") or wf["name"].startswith("Le Bureau"):
+for wf in WFS:
+    if not wf.get("enabled") or is_bureau(wf):
         continue
     lr = wf.get("last_run") or {}
-    if (lr.get("started_at") or "") < since and lr.get("status") not in ("Running", "WaitingApproval", "Pending"):
+    if (lr.get("started_at") or "") < since and lr.get("status") not in ACTIVE:
         continue
     page, off = [], 0
     while True:
@@ -99,33 +27,13 @@ for wf in get("/workflows"):
         if len(batch) < 15 or min((b.get("started_at") or "") for b in batch) < since:
             break
     for r in page:
-        if (r.get("started_at") or "") < since and r.get("status") not in ("Running", "WaitingApproval", "Pending"):
+        if (r.get("started_at") or "") < since and r.get("status") not in ACTIVE:
             continue
-        steps = []
-        for s in r.get("step_results") or []:
-            st = {"n": s["step_name"], "k": s.get("step_kind"), "s": s["status"], "at": s.get("started_at"),
-                  "ms": int(s.get("duration_ms") or 0), "tok": int(s.get("tokens_used") or 0)}
-            if s["status"] not in ("Success", "Skipped"):
-                st["err"] = err_of(s)
-            step_extra(s, st)
-            steps.append(st)
-        runs.append({
-            "wf": wf["id"], "wf_name": wf["name"], "project": wf.get("project_name"), "trigger": wf.get("trigger_type"),
-            "run": r["id"], "status": r["status"], "start": r.get("started_at"), "end": r.get("finished_at"),
-            "tok": r.get("tokens_used") or 0, "parent": r.get("parent_run_id"), "tby": r.get("triggered_by_run_id"),
-            "vars": {k: v for k, v in (r.get("trigger_context") or {}).items() if k in VARS_KEPT and isinstance(v, str) and len(v) < 80} if isinstance(r.get("trigger_context"), dict) else {},
-            "batch": [r.get("batch_total") or 0, r.get("batch_completed") or 0, r.get("batch_failed") or 0],
-            "steps": steps,
-        })
+        runs.append(run_row(wf, r))
 
 projects = {p["id"]: p.get("name") for p in get("/projects")}
-discs = [
-    {"id": d["id"], "title": d["title"][:160], "agent": d.get("agent"), "participants": d.get("participants"),
-     "msgs": d.get("non_system_message_count") or d.get("message_count"), "start": d["created_at"],
-     "end": d["updated_at"], "awaiting": bool(d.get("awaiting_agent")), "pending": d.get("pending_question_count") or 0,
-     "run": d.get("workflow_run_id"), "imp": important_count(d["id"]), "project": projects.get(d.get("project_id"))}
-    for d in get("/discussions?per_page=200") if d["updated_at"] >= since and not d.get("archived") and not d["title"].startswith("Le Bureau")
-]
+discs = [disc_row(d, projects) for d in get("/discussions?per_page=200")
+         if d["updated_at"] >= since and not d.get("archived") and not is_bureau_disc(d)]
 
 
 # Nettoyage : uniquement les runs des crons du Bureau, terminés depuis plus de 7 jours.
@@ -173,21 +81,42 @@ else:
 
 runs.sort(key=lambda x: x["start"] or "")
 crons = []
-WFS = get("/workflows")
 # workflows désactivés : leurs échecs passés ne sont plus à traiter (la page les montre « désactivé »)
 disabled = [w["id"] for w in WFS if not w.get("enabled")]
 for w in WFS:
-    if w.get("enabled") and w.get("trigger_type") == "cron" and not w["name"].startswith("Le Bureau"):
+    if w.get("enabled") and w.get("trigger_type") == "cron" and not is_bureau(w):
         tr = (get("/workflows/" + w["id"]).get("trigger") or {})
         if tr.get("schedule"):
             crons.append({"wf": w["id"], "name": w["name"], "schedule": tr["schedule"]})
-snap = {"generated_at": datetime.now(timezone.utc).isoformat(), "day": now.strftime("%Y-%m-%d"), "runs": runs, "discussions": discs, "crons": crons, "disabled": disabled, "purge": purge}
-out = json.dumps(snap, separators=(",", ":"), ensure_ascii=False)
-cut = datetime.now(timezone.utc) - timedelta(hours=3)
-for r in runs:
-    if len(out.encode()) < 90000:
-        break
-    if r["status"] == "Success" and (r["end"] or "") < cut.isoformat():
-        r["steps"] = []
-        out = json.dumps(snap, separators=(",", ":"), ensure_ascii=False)
+
+# crons du Bureau dont le dernier passage a échoué (Jira refusé, script en erreur…) : la page le dit dans le panneau
+# Fraîcheur au lieu d'un simple retard. Un GET de plus seulement pour un cron en échec.
+health = {}
+for key, wid in (CFG.get("workflows") or {}).items():
+    lr = next(((w.get("last_run") or {}) for w in WFS if w["id"] == wid), {})
+    if lr.get("status") != "Failed":
+        continue
+    last = next(iter(get(f"/workflows/{wid}/runs?limit=1")), {})
+    bad = next((s for s in last.get("step_results") or [] if s.get("status") == "Failed"), None)
+    health[key] = {"at": last.get("finished_at") or lr.get("finished_at"), "step": bad and bad["step_name"], "err": bad and err_of(bad)}
+
+snap = {"generated_at": datetime.now(timezone.utc).isoformat(), "day": now.strftime("%Y-%m-%d"), "runs": runs, "discussions": discs,
+        "crons": crons, "disabled": disabled, "purge": purge, "bureau_failed": health}
+out = dumps(snap)
+# Sous la limite de 100 Ko d'une sortie Exec, par paliers : étapes des runs réussis finis depuis plus de 3 h,
+# puis de tous les runs réussis, puis les plus vieux runs réussis eux-mêmes (comptés dans « truncated »).
+cut = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat()
+for older in (cut, "9999"):
+    for r in runs:
+        if len(out.encode()) < 90000:
+            break
+        if r["status"] == "Success" and r["steps"] and (r["end"] or "") < older:
+            r["steps"] = []
+            out = dumps(snap)
+while len(out.encode()) >= 90000 and any(r["status"] == "Success" for r in runs):
+    ok = [i for i, r in enumerate(runs) if r["status"] == "Success"][:max(1, len(runs) // 10)]
+    for i in reversed(ok):
+        del runs[i]
+    snap["truncated"] = snap.get("truncated", 0) + len(ok)
+    out = dumps(snap)
 print(out)

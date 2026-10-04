@@ -5,12 +5,8 @@ Revérifie ici que le workflow est toujours dans cette liste et qu'aucun run n'e
 via POST /api/mcp/workflow-trigger (route JSON : crée le run et rend la main, sans flux SSE).
 """
 import json, re, sys, urllib.request, urllib.error
-# config d'installation : injectée par tools/publish.py (étape Kronn « python3 -c ») ; en local, lue dans bureau.config.json
-import os as _os
-_CFG = r"""__BUREAU_CONFIG__"""
-CFG = json.loads(_CFG) if not _CFG.startswith("__") else json.load(open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), _os.pardir, "bureau.config.json")))
+from _lib import API, CFG, get
 
-API = CFG["kronn"]["api"]
 PAGE = CFG["page_id"]
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
@@ -18,11 +14,6 @@ UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 def fail(msg):
     print(msg, file=sys.stderr)
     sys.exit(1)
-
-
-def get(path):
-    with urllib.request.urlopen(API + path, timeout=30) as r:
-        return json.load(r)["data"]
 
 
 wf_id = (sys.argv[1] if len(sys.argv) > 1 else "").strip()

@@ -5,22 +5,9 @@ Sortie (stdout) : {generated_at, rate_usd_per_mtok, rate_source, agents[{wf, nam
 - Kronn ne mesure pas le coût en $ des workflows ; il le mesure pour les discussions. Le tarif moyen observé
   ($ / million de tokens) sert à donner un coût ESTIMÉ, affiché comme tel par la page.
 """
-import json, urllib.request
-from zoneinfo import ZoneInfo
 from datetime import datetime, timedelta, timezone
-# config d'installation : injectée par tools/publish.py (étape Kronn « python3 -c ») ; en local, lue dans bureau.config.json
-import os as _os
-_CFG = r"""__BUREAU_CONFIG__"""
-CFG = json.loads(_CFG) if not _CFG.startswith("__") else json.load(open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), _os.pardir, "bureau.config.json")))
+from _lib import TZ, dumps, get, is_bureau
 
-API = CFG["kronn"]["api"]
-TZ = ZoneInfo(CFG["rhythm"]["timezone"])
-
-
-def get(path):
-    with urllib.request.urlopen(API + path, timeout=120) as r:
-        body = json.load(r)
-    return body.get("data", body)
 
 
 now = datetime.now(TZ)
@@ -37,7 +24,7 @@ def day_index(iso):
 
 agents = []
 for wf in get("/workflows"):
-    if wf["name"].startswith("Le Bureau"):
+    if is_bureau(wf):
         continue
     lr = wf.get("last_run") or {}
     if (lr.get("started_at") or "") < since:
@@ -80,5 +67,5 @@ except Exception:
     pass
 
 agents.sort(key=lambda a: -a["week"]["tok"])
-print(json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "days": [d.strftime("%Y-%m-%d") for d in days],
-                  "rate_usd_per_mtok": rate, "rate_source": src, "agents": agents}, ensure_ascii=False, separators=(",", ":")))
+print(dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "days": [d.strftime("%Y-%m-%d") for d in days],
+                  "rate_usd_per_mtok": rate, "rate_source": src, "agents": agents}))

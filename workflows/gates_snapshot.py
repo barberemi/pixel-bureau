@@ -6,20 +6,10 @@ Sortie (stdout, JSON parsé par l'étape CollectApiData) :
 sous-workflow d'un autre, sans variable obligatoire à saisir.
 Le dataset doit être un vrai objet : Kronn y retrouve la ligne cliquée (find(run)) côté serveur.
 """
-import json, urllib.request
+import json, os as _os
 from datetime import datetime, timezone
-# config d'installation : injectée par tools/publish.py (étape Kronn « python3 -c ») ; en local, lue dans bureau.config.json
-import os as _os
-_CFG = r"""__BUREAU_CONFIG__"""
-CFG = json.loads(_CFG) if not _CFG.startswith("__") else json.load(open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), _os.pardir, "bureau.config.json")))
+from _lib import get, is_bureau
 
-API = CFG["kronn"]["api"]
-
-
-def get(path):
-    with urllib.request.urlopen(API + path, timeout=30) as r:
-        body = json.load(r)
-    return body.get("data", body)
 
 
 # définitions complètes en cache 10 min (la liste n'a pas de date de modification) : sans cache, un GET par
@@ -68,14 +58,14 @@ for wf in get("/workflows"):
 children = {s.get("sub_workflow_id") for _, full in defs.values() if full for s in full.get("steps", []) if s.get("sub_workflow_id")}
 relaunch = []
 for wid, (wf, full) in defs.items():
-    if wf["name"].startswith("Le Bureau") or wid in children or not full:
+    if is_bureau(wf) or wid in children or not full:
         continue
     if any(v.get("required", True) and not v.get("source") for v in full.get("variables") or []):
         continue
     relaunch.append({"wf": wid, "name": wf["name"], "trigger": wf.get("trigger_type")})
 
 # agents qu'on peut interroger sur leurs runs (page action « bureau-ask ») : tout workflow actif hors Bureau
-askable = [{"wf": wid, "name": wf["name"]} for wid, (wf, full) in defs.items() if not wf["name"].startswith("Le Bureau")]
+askable = [{"wf": wid, "name": wf["name"]} for wid, (wf, full) in defs.items() if not is_bureau(wf)]
 try:
     _os.makedirs(_os.path.dirname(CACHE), exist_ok=True)
     json.dump({k: v for k, v in _cache.items() if k in defs}, open(CACHE, "w"))

@@ -42,9 +42,16 @@ def owner_name(cfg):
     return p["name"] if p else "le boss"
 
 
+LIB_IMPORT = re.compile(r"^from _lib import [\w, ]+$", re.M)
+
+
 def script_code(path, cfg):
-    """Le script tel qu'il tourne dans Kronn : la config d'installation injectée à la place de __BUREAU_CONFIG__."""
+    """Le script tel qu'il tourne dans Kronn (« python3 -c », sans fichier voisin) : workflows/_lib.py recopié à la
+    place de sa ligne « from _lib import … », puis la config d'installation injectée à la place de __BUREAU_CONFIG__."""
     code = open(os.path.join(ROOT, path)).read()
+    lib = open(os.path.join(ROOT, "workflows", "_lib.py")).read()
+    assert "@@" not in lib and "{{" not in lib, "_lib.py : ni @@ ni {{ (Kronn rendrait ses propres variables)"
+    code = LIB_IMPORT.sub(lambda m: lib, code, count=1)
     blob = json.dumps({k: v for k, v in cfg.items() if not k.startswith("_")}, ensure_ascii=False)
     assert '"""' not in blob and "__BUREAU_CONFIG__" in code, path
     return code.replace("__BUREAU_CONFIG__", blob, 1)

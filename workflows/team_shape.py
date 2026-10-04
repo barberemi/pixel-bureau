@@ -1,10 +1,6 @@
 import json, re, sys, unicodedata
-from zoneinfo import ZoneInfo
-from datetime import datetime, timedelta, timezone
-# config d'installation : injectée par tools/publish.py (étape Kronn « python3 -c ») ; en local, lue dans bureau.config.json
-import os as _os
-_CFG = r"""__BUREAU_CONFIG__"""
-CFG = json.loads(_CFG) if not _CFG.startswith("__") else json.load(open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), _os.pardir, "bureau.config.json")))
+from datetime import datetime, timezone
+from _lib import CFG, TZ, dumps
 
 D = json.load(sys.stdin)
 # GitHub regroupé dans une seule étape (github_snapshot.py) ; l'ancien format (une clé par étape gh) reste accepté
@@ -12,7 +8,6 @@ G = D.get("github") if isinstance(D.get("github"), dict) else {}
 for _k in ("open", "merged", "releases", "staging", "prod"):
     if _k not in D:
         D[_k] = G.get(_k) or []
-TZ = ZoneInfo(CFG["rhythm"]["timezone"])  # fuseau du bureau, été comme hiver
 today = datetime.now(TZ).strftime("%Y-%m-%d")
 J = CFG["jira"]
 CAT = J["statuses"]                       # statut Jira -> colonne du Bureau (todo, doing, review, test, deploy, done)
@@ -246,4 +241,18 @@ out = {
     "sources": {"jira": bool(D.get("issues")) or bool(D.get("sprint")), "github": not G.get("errors") if G else True,
                 "github_errors": (G.get("errors") or [])[:5]},
 }
-print(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
+# Kronn coupe la sortie d'une étape Exec à 100 Ko : au-delà, le JSON tronqué casserait la publication.
+# On raccourcit d'abord la plus longue liste secondaire (les plus vieux événements du jour en premier).
+LIMIT = 95 * 1024
+text = dumps(out)
+while len(text.encode()) > LIMIT:
+    lists = [(out["events"], True), (out["unassigned"], False), (out["other_prs"], False), (out["merged_today"], False)]
+    lists += [(w[k], False) for w in work.values() for k in w]
+    lst, oldest_first = max(lists, key=lambda x: len(x[0]))
+    if len(lst) <= 5:
+        break
+    n = max(1, len(lst) // 4)
+    del lst[slice(0, n) if oldest_first else slice(-n, None)]
+    out["truncated"] = True
+    text = dumps(out)
+print(text)

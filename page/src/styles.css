@@ -282,7 +282,7 @@ body.tv #tvwho{display:flex;flex-direction:column;gap:8px;position:fixed;top:52p
 #freshpop td:first-child{color:var(--ink)}
 #freshpop tr.late td{color:var(--warn);font-weight:600}
 #freshpop small{color:var(--muted)}
-#freshpop .purge{margin:6px 0 2px;font-size:11px;color:var(--muted)}#freshpop .purge.late{color:var(--err)}
+#freshpop .diag{margin:6px 0 2px;font-size:11px;color:var(--muted);white-space:normal;max-width:420px;overflow-wrap:anywhere}#freshpop .diag.late{color:var(--err)}
 /* À traiter */
 .todo{padding:10px 12px;margin-bottom:12px;border-left:4px solid var(--warn)}
 .todo.empty{border-left-color:var(--ok);padding:7px 12px}

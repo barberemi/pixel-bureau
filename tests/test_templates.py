@@ -61,11 +61,18 @@ class TemplatesTest(unittest.TestCase):
         self.assertIn('"issues":null', shape["exec_stdin"])
         self.assertNotIn("_requires", json.dumps(team))
 
-    def test_scripts_receive_config(self):
+    def test_scripts_receive_lib_and_config(self):
+        cfg = colleague()
         for key, (kind, _, scripts) in templates.TEMPLATES.items():
             for path in scripts.values():
-                self.assertIn("__BUREAU_CONFIG__", open(os.path.join(ROOT, path)).read(), path)
+                self.assertIn("from _lib import", open(os.path.join(ROOT, path)).read(), path)
                 self.assertIn(f"@@script:{path}@@", json.dumps(TPL[key]), path)
+                code = templates.script_code(path, cfg)
+                self.assertNotIn("from _lib import", code, path)
+                self.assertNotIn("__BUREAU_CONFIG__", code, path)
+                self.assertIn("def is_bureau(", code, path)
+                self.assertIn(cfg["page_id"], code, path)
+                compile(code, path, "exec")  # le script recopié reste du Python valide
 
 
 if __name__ == "__main__":

@@ -43,11 +43,23 @@ function waitTxt(f,now){
   if(left>=120e3)return {txt:'dans '+Math.ceil(left/60e3)+' min',frac};
   return {txt:'dans '+Math.ceil(left/1e3)+' s',frac};
 }
-// dernier nettoyage des vieux runs du Bureau (cron office, 7h et 13h)
-function purgeTxt(){
-  const p=OFFICE&&OFFICE.purge; if(!p||!p.at)return '';
-  return `<div class="purge${p.errors?' late':''}">Nettoyage des runs de plus de 7 jours : ${p.deleted} supprimé${p.deleted>1?'s':''} à ${hm(ms(p.at))}`+
-    (p.errors?` · ${p.errors} erreur${p.errors>1?'s':''} (${esc(p.last_error||'')})`:'')+'</div>';
+// diagnostic sous le tableau : crons du Bureau en échec (Jira refusé, script en erreur), erreurs GitHub du cron
+// équipe, dernier nettoyage des vieux runs (cron office, 7h et 13h)
+function diagTxt(){
+  const out=[], failed=(OFFICE&&OFFICE.bureau_failed)||{};
+  for(const [key,f] of Object.entries(failed)){
+    const src=FRESH_SRC.find(s=>s.key===key), label=src?src.label:key;
+    out.push(`<div class="diag late">${esc(label)} : dernier passage en échec${f.at?' à '+hm(ms(f.at)):''}`+
+      (f.step?` (étape ${esc(f.step)}${f.err?' : '+esc(f.err):''})`:'')+'</div>');
+  }
+  const src=TEAM_BASE&&TEAM_BASE.sources;
+  if(src&&src.github_errors&&src.github_errors.length)
+    out.push('<div class="diag late">GitHub : '+src.github_errors.slice(0,3).map(esc).join(' · ')+'</div>');
+  if(src&&!src.jira&&CFG.jira_site&&!failed.team)out.push('<div class="diag">Jira : aucun ticket reçu au dernier passage du cron équipe</div>');
+  const p=OFFICE&&OFFICE.purge;
+  if(p&&p.at)out.push(`<div class="diag${p.errors?' late':''}">Nettoyage des runs de plus de 7 jours : ${p.deleted} supprimé${p.deleted>1?'s':''} à ${hm(ms(p.at))}`+
+    (p.errors?` · ${p.errors} erreur${p.errors>1?'s':''} (${esc(p.last_error||'')})`:'')+'</div>');
+  return out.join('');
 }
 const hmin=m=>m<60?m+' min':Math.floor(m/60)+' h '+String(m%60).padStart(2,'0'); // minutes arrondies d'abord : jamais « 4 h 60 »
 const agoTxt=d=>d<60e3?Math.max(0,Math.round(d/1e3))+' s':hmin(Math.round(d/60e3));
@@ -62,8 +74,8 @@ function updateFresh(){
   if(!LIVE_DATA||!live){el.innerHTML='';pop.innerHTML='';b.classList.remove('late');FRESH_VIEW=null;return;}
   if(FRESH_LAST&&live.gen!==FRESH_LAST)FRESH_FLASH=now+2500; // nouvelles données arrivées
   FRESH_LAST=live.gen;
-  const late=all.filter(f=>f.late).sort((x,y)=>y.late-x.late)[0];
-  b.classList.toggle('late',!!late);
+  const late=all.filter(f=>f.late).sort((x,y)=>y.late-x.late)[0], failed=(OFFICE&&OFFICE.bureau_failed)||{};
+  b.classList.toggle('late',!!late||Object.keys(failed).length>0);
   let txt, frac;
   if(late){txt=late.src.label.split(' (')[0]+' en retard de '+agoTxt(late.late);frac=1;}
   else if(now<FRESH_FLASH){txt='✓ à jour';frac=1;}
@@ -72,6 +84,6 @@ function updateFresh(){
   FRESH_VIEW={txt,frac,late:!!late};
   el.innerHTML=freshRing(frac)+esc(txt);
   // panneau au survol (pas d'attribut title : son texte change chaque seconde, le navigateur ne l'afficherait jamais)
-  pop.innerHTML='<b>Fraîcheur des données</b><table>'+all.map(f=>`<tr class="${f.late?'late':''}"><td>${esc(f.src.label)}</td><td>il y a ${agoTxt(f.age)}</td>`+
-    `<td>${f.late?'en retard de '+agoTxt(f.late):f.eta&&f.eta>now?(waitTxt(f,now).paused?waitTxt(f,now).txt:'prochain ~'+hm(f.eta)):'imminent'}</td></tr>`).join('')+'</table>'+purgeTxt()+'<small>Prochain passage estimé : calendrier du cron + durée de son dernier run.</small>';
+  pop.innerHTML='<b>Fraîcheur des données</b><table>'+all.map(f=>`<tr class="${f.late||failed[f.src.key]?'late':''}"><td>${esc(f.src.label)}</td><td>il y a ${agoTxt(f.age)}</td>`+
+    `<td>${failed[f.src.key]?'en échec':f.late?'en retard de '+agoTxt(f.late):f.eta&&f.eta>now?(waitTxt(f,now).paused?waitTxt(f,now).txt:'prochain ~'+hm(f.eta)):'imminent'}</td></tr>`).join('')+'</table>'+diagTxt()+'<small>Prochain passage estimé : calendrier du cron + durée de son dernier run.</small>';
 }

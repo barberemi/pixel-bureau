@@ -8,12 +8,8 @@ Appelle POST /api/workflows/{wf}/runs/{run}/decide avec gate_step : Kronn refuse
 n'attend plus CETTE gate (décision périmée), donc rien d'autre ne peut être validé par erreur.
 """
 import json, re, sys, urllib.request, urllib.error
-# config d'installation : injectée par tools/publish.py (étape Kronn « python3 -c ») ; en local, lue dans bureau.config.json
-import os as _os
-_CFG = r"""__BUREAU_CONFIG__"""
-CFG = json.loads(_CFG) if not _CFG.startswith("__") else json.load(open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), _os.pardir, "bureau.config.json")))
+from _lib import API, CFG
 
-API = CFG["kronn"]["api"]
 PAGE = CFG["page_id"]
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 LABEL = {"approve": "approuvée", "reject": "rejetée", "request_changes": "renvoyée avec des changements demandés"}

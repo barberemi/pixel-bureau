@@ -5,10 +5,7 @@ l'erreur est notée dans `errors`. Les tickets Jira sont publiés quand même pa
 Sortie (stdout) : {"open": [...], "merged": [...], "releases": [...], "staging": [...], "prod": [...], "errors": [...]}
 """
 import json, subprocess
-# config d'installation : injectée par tools/publish.py (étape Kronn « python3 -c ») ; en local, lue dans bureau.config.json
-import os as _os
-_CFG = r"""__BUREAU_CONFIG__"""
-CFG = json.loads(_CFG) if not _CFG.startswith("__") else json.load(open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), _os.pardir, "bureau.config.json")))
+from _lib import CFG, dumps
 
 REPO = CFG["github"]["repo"]
 STAGING_WF = CFG["github"]["staging_workflow"]
@@ -50,9 +47,9 @@ for pr in out.get("merged") or []:
     pr["author"] = {"login": a.get("login"), "name": a.get("name")}
 out["errors"] = errors
 LIMIT = 95 * 1024
-text = json.dumps(out, ensure_ascii=False, separators=(",", ":"))
+text = dumps(out)
 while len(text.encode()) > LIMIT and any(len(out[k]) > 5 for k in CALLS):  # sécurité : on raccourcit les listes
     for k in CALLS:
         out[k] = out[k][:max(5, len(out[k]) * 3 // 4)]
-    text = json.dumps(out, ensure_ascii=False, separators=(",", ":"))
+    text = dumps(out)
 print(text)

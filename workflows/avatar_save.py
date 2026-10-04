@@ -10,10 +10,7 @@ Tout ce qui ne passe pas la validation fait échouer le run (rien n'est publié)
 """
 import base64, json, re, sys, urllib.request
 from datetime import datetime, timezone
-# config d'installation : injectée par tools/publish.py (étape Kronn « python3 -c ») ; en local, lue dans bureau.config.json
-import os as _os
-_CFG = r"""__BUREAU_CONFIG__"""
-CFG = json.loads(_CFG) if not _CFG.startswith("__") else json.load(open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), _os.pardir, "bureau.config.json")))
+from _lib import CFG, dumps
 
 PAGE = f"{CFG['kronn']['api']}/pages/{CFG['page_id']}"
 KEY = re.compile(r"^[a-z0-9_]{1,40}$")
@@ -84,6 +81,5 @@ else:
 if len(avatars) > 80:
     fail("trop d'avatars personnalisés")
 
-print(json.dumps({"updated_at": datetime.now(timezone.utc).isoformat(), "avatars": avatars},
-                 ensure_ascii=False, separators=(",", ":")))
+print(dumps({"updated_at": datetime.now(timezone.utc).isoformat(), "avatars": avatars}))
 print(f"{k} : " + ("enregistré" if k in avatars else "remis à l'original"), file=sys.stderr)
