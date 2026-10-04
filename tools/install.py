@@ -14,7 +14,7 @@ import argparse, json, os, re, shutil, subprocess, sys, urllib.error, urllib.req
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
-import assemble, templates  # noqa: E402
+import assemble, plan, templates  # noqa: E402
 
 LPC_GENERATOR = "https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator"
 MIN_VERSION = (0, 14, 1)
@@ -22,7 +22,6 @@ MIN_VERSION = (0, 14, 1)
 OFFICE = [("dwight", "Dwight"), ("jim", "Jim"), ("stanley", "Stanley"), ("phyllis", "Phyllis"), ("oscar", "Oscar"),
           ("angela", "Angela"), ("kevin", "Kevin"), ("creed", "Creed"), ("meredith", "Meredith"), ("toby", "Toby"),
           ("erin", "Erin"), ("ryan", "Ryan")]
-AGENT_SEATS = [[23, 14], [23, 15], [23, 16], [25, 14], [25, 15], [25, 16], [29, 14], [29, 15], [29, 16], [31, 14], [31, 15], [31, 16]]
 ROLES = {"dev": ("Développeur", None), "lead": ("Tech Lead", "lead"), "qa": ("Testeur", "qa"), "po": ("Product owner", "po"),
          "sm": ("Facilitateur", "sm")}
 DATASETS = ["office", "live", "team", "gates", "payroll", "avatars"]
@@ -133,11 +132,30 @@ def check_kronn(ask, defaults):
     return k, {"api": api, "ui": ui}
 
 
-def free_seats(roster):
-    """Places libres du plan par défaut (layouts/equipe.json), moins celles déjà prises dans le roster."""
-    seats = jload(os.path.join(ROOT, assemble.DEFAULT_LAYOUT))["free_seats"]
-    taken = {tuple(p["seat"]) for p in roster if p.get("seat")}
-    return [s for s in seats if tuple(s) not in taken]
+def layout(ask):
+    """Plan du bureau : un plan du dépôt (layouts/) ou un fichier à soi, refusé s'il ne passe pas tools/plan.py check.
+    Renvoie le chemin écrit dans la config (relatif au dépôt quand il y est)."""
+    plans = sorted(f for f in os.listdir(os.path.join(ROOT, "layouts")) if f.endswith(".json"))
+    opts = []
+    for f in plans:
+        L = jload(os.path.join(ROOT, "layouts", f))
+        opts.append((f"layouts/{f}", f"{L.get('name') or f} ({L['size'][0]} x {L['size'][1]} cases)"))
+    v = ask.choice("layout", "Plan du bureau", opts + [("__file__", "Un plan à moi (fichier JSON bureau-layout/1)")],
+                   assemble.DEFAULT_LAYOUT)
+    if v == "__file__":
+        v = os.path.abspath(os.path.expanduser(ask.text("layout_file", "Chemin du plan")))
+        if v.startswith(ROOT + os.sep):
+            v = os.path.relpath(v, ROOT)
+    try:
+        L, size = plan.load(os.path.join(ROOT, v))
+    except (OSError, ValueError) as e:
+        raise InstallError(f"plan illisible ({v}) : {e}")
+    err, _ = plan.validate(L, size)
+    if err:
+        raise InstallError(f"plan invalide ({v}), {len(err)} erreur(s) :\n  " + "\n  ".join(err[:10])
+                           + f"\n  Détail : python3 tools/plan.py check {v}")
+    say(f"✓ plan {v}")
+    return v
 
 
 def who(ask, roster_doc):
@@ -149,12 +167,9 @@ def who(ask, roster_doc):
     name = ask.text("new_name", "Ton prénom (affiché)")
     person = ask.text("new_person", "Ton nom exact dans Jira (pour retrouver tes tickets)", name)
     role = ask.choice("new_role", "Ton rôle", [(k, v[0]) for k, v in ROLES.items()], "dev")
-    seats = free_seats(roster)
-    seat = ask.choice("new_seat", "Ta place quand tu n'es pas le boss", [(f"{s[0]},{s[1]}", f"[{s[0]},{s[1]}]") for s in seats],
-                      f"{seats[0][0]},{seats[0][1]}" if seats else None)
     key = "p_" + re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
     label, kind = ROLES[role]
-    p = {"key": key, "name": name, "role": label, "person": person, "seat": [int(x) for x in seat.split(",")]}
+    p = {"key": key, "name": name, "role": label, "person": person}  # sa place : celle que le plan lui donne
     if kind:
         p["roleKind"] = kind
     return key, p
@@ -241,8 +256,8 @@ def my_agents(ask, k, previous, bureau):
         lr = w.get("last_run")
         return str((lr or {}).get("started_at") or (lr or {}).get("finished_at") or "") if isinstance(lr, dict) else str(lr or "")
     picked = sorted(wfs, key=last, reverse=True)[:len(OFFICE)]
-    agents = [{"key": OFFICE[i][0], "name": OFFICE[i][1], "role": re.sub(r"\s+", " ", w["name"])[:40], "wf": [w["id"][:8]],
-               "seat": AGENT_SEATS[i]} for i, w in enumerate(picked)]
+    agents = [{"key": OFFICE[i][0], "name": OFFICE[i][1], "role": re.sub(r"\s+", " ", w["name"])[:40], "wf": [w["id"][:8]]}
+              for i, w in enumerate(picked)]  # leur place : celle que le plan leur donne
     for a in agents:
         say(f"  {a['name']:9} → {a['role']}")
     mep = ask.choice("mep_workflow", "Un de ces workflows pilote-t-il les mises en prod (scène MEP sur le plan) ?",
@@ -419,6 +434,7 @@ def main(argv=None):
     say("— Le Bureau : installation —")
     k, kronn = check_kronn(ask, defaults)
     owner, new_person = who(ask, roster_doc)
+    layout_file = layout(ask)
     project_id = project(ask, k)
     kronn["project_id"] = project_id
     j = jira(ask, k, project_id, defaults, tpls["team"])
@@ -438,15 +454,15 @@ def main(argv=None):
     music = avatar(ask, owner, roster_doc, a.dry_run)
 
     cfg = {"_doc": "Propre à cette installation, jamais partagé. Créé par tools/install.py (relançable).",
-           "owner": owner, "kronn": kronn, "page_id": old.get("page_id"), "workflows": {}, "actions": {},
+           "owner": owner, "layout": layout_file, "kronn": kronn, "page_id": old.get("page_id"), "workflows": {}, "actions": {},
            "own": sorted(own), "jira": j, "github": g, "rhythm": defaults["rhythm"],
-           "mep_workflow": mep, "agents": agents, "_ai_agent": ai}
+           "mep_workflow": mep, "agents": agents, "ui": old.get("ui") or {}, "_ai_agent": ai}
     for key, (_, (sec, field), _) in templates.TEMPLATES.items():
         if tpl_ids.get(key):
             cfg[sec][field] = tpl_ids[key]
     name = next(p["name"] for p in roster_doc["people"] if p["key"] == owner)
     say("\n— Récapitulatif —")
-    say(f"  Boss : {name} · projet Kronn {project_id[:8]} · agent IA : {ai or 'aucun'}")
+    say(f"  Boss : {name} · plan {layout_file} · projet Kronn {project_id[:8]} · agent IA : {ai or 'aucun'}")
     say(f"  Jira : {j['project'] + ' (board ' + str(j['board']) + ')' if j else 'non connecté : sprint, tickets, kanban masqués'}")
     say(f"  GitHub : {g['repo']}" + ("" if gh_login else " (gh non connecté : PR et MEP vides)"))
     say(f"  Agents : {len(agents)} personnage(s) · page : {'existante' if cfg['page_id'] else 'à créer'} · crons : "

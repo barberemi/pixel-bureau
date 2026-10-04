@@ -18,7 +18,7 @@
 ## Configuration
 
 - `bureau.config.json` : **propre à chaque installation**, jamais commité. Toutes les valeurs de l'installation : `kronn` (API, interface, projet), `page_id`, `workflows` (crons), `actions` (boutons), `own` (workflows gardés tels quels), `jira`, `github`, `rhythm` (fuseau, daily, heures de bureau, gel des MEP), `mep_workflow`, `agents`.
-- `owner` = clé du roster de qui a installé la page : cette personne prend le bureau du boss.
+- `owner` = clé du roster de qui a installé la page : cette personne prend le bureau du boss. `layout` = le plan du bureau (défaut `layouts/equipe.json`).
 - La page en reçoit une partie (`page_config()` dans `assemble.py`) ; les scripts la reçoivent injectée au rendu. Un id d'action vide retire le bouton.
 - Chaque source est facultative : sans Jira ni GitHub, les blocs concernés sont masqués.
 
@@ -46,7 +46,7 @@ python3 tools/templates.py check       # les workflows du Kronn = le rendu des m
 
 ## Installateur
 
-Questions : Kronn, qui tu es, projet, Jira (testé à travers Kronn), GitHub, agent IA, tes agents (un personnage par workflow actif), avatar, musique. Il crée la page et ses 6 datasets, les workflows et le Quick Prompt, écrit la config, publie et lance un premier rafraîchissement. Relançable sans doublon.
+Questions : Kronn, qui tu es, le plan du bureau (un de `layouts/` ou ton propre fichier, refusé s'il ne passe pas `plan.py check` ; écrit dans la clé `layout` de la config), projet, Jira (testé à travers Kronn), GitHub, agent IA, tes agents (un personnage par workflow actif, placé par le plan), avatar, musique. Il crée la page et ses 6 datasets, les workflows et le Quick Prompt, écrit la config, publie et lance un premier rafraîchissement. Relançable sans doublon.
 
 - Réutiliser plutôt que créer (question `reuse`) : homonymes orphelins repris, ou id donné élément par élément, mis à jour ou gardé tel quel (`own`). Un workflow qui sert une autre page encore présente n'est jamais repris d'office.
 - `uninstall.py` ne touche ni aux éléments `own`, ni aux connexions, ni aux autres workflows.

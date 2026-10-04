@@ -31,7 +31,7 @@ python3 tools/install.py --dry-run   # voir ce qui serait créé
 python3 tools/install.py             # installation interactive, relançable sans doublon
 ```
 
-L'installateur crée la page, ses datasets, 7 workflows et un Quick Prompt dans **ton** Kronn, écrit `bureau.config.json` (jamais commité) et lance un premier rafraîchissement. Ouvre ensuite Kronn > Pages > « Le Bureau ». Aucun secret n'est stocké : les connexions sont référencées par leur id Kronn.
+L'installateur demande qui tu es (tu prends le bureau du boss, les autres gardent leur place) et le plan du bureau (`layouts/equipe.json` par défaut), puis crée la page, ses datasets, 7 workflows et un Quick Prompt dans **ton** Kronn, écrit `bureau.config.json` (jamais commité) et lance un premier rafraîchissement. Ouvre ensuite Kronn > Pages > « Le Bureau ». Aucun secret n'est stocké : les connexions sont référencées par leur id Kronn.
 
 | Action | Commande |
 | --- | --- |

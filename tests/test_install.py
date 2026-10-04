@@ -108,6 +108,8 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(set(cfg["workflows"]), {"office", "live", "team", "payroll"})
         self.assertTrue(all(cfg["actions"].values()))
         self.assertEqual([a["name"] for a in cfg["agents"]], ["Dwight"])  # ses workflows, pas ceux du Bureau
+        self.assertNotIn("seat", cfg["agents"][0])  # sa place : celle que le plan lui donne
+        self.assertEqual(cfg["layout"], "layouts/equipe.json")  # plan par défaut
         # deuxième passe : les scripts reçoivent la config complète (ids de tous les crons)
         office_put = [b for m, p, b in k.calls if m == "PUT" and p == f"/workflows/{cfg['workflows']['office']}"][-1]
         script = office_put["steps"][0]["collect_api_data"]["sources"][0]["quick_exec"]["args"][1]
@@ -183,6 +185,33 @@ class InstallTest(unittest.TestCase):
         install.jdump({"page_id": "4f38f114-e010-41ba-b34e-832ff9a72672", "kronn": {"api": "http://x"}}, self.cfg_path)
         with self.assertRaises(install.InstallError):
             uninstall.main(["--config", self.cfg_path, "--yes"])
+
+    def test_own_layout_file(self):
+        L = json.load(open(os.path.join(ROOT, "layouts", "exemple-startup.json")))
+        mine = os.path.join(self.tmp, "mon-plan.json")
+        json.dump(L, open(mine, "w"))
+        self.assertEqual(self.run_install({**ANSWERS, "layout": "__file__", "layout_file": mine}), 0)
+        self.assertEqual(json.load(open(self.cfg_path))["layout"], mine)
+        html = next(b for m, p, b in self.fakes[-1].calls if m == "PUT" and p.endswith("/html"))["html"]
+        self.assertIn('"exemple-startup"', html)  # la page embarque ce plan
+
+    def test_invalid_layout_is_refused_before_anything_is_created(self):
+        L = json.load(open(os.path.join(ROOT, "layouts", "exemple-startup.json")))
+        L["exit"] = [5, 5]
+        bad = os.path.join(self.tmp, "casse.json")
+        json.dump(L, open(bad, "w"))
+        with self.assertRaises(install.InstallError) as e:
+            self.run_install({**ANSWERS, "layout": "__file__", "layout_file": bad})
+        self.assertIn("plan invalide", str(e.exception))
+        self.assertFalse([c for c in self.fakes[-1].calls if c[0] in ("POST", "PUT")])
+
+    def test_settings_survive_a_relaunch(self):
+        self.run_install(ANSWERS)
+        cfg = json.load(open(self.cfg_path))
+        json.dump({**cfg, "ui": {"todo": "folded"}}, open(self.cfg_path, "w"))
+        with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):
+            self.assertEqual(self.run_install(ANSWERS), 0)
+        self.assertEqual(json.load(open(self.cfg_path))["ui"], {"todo": "folded"})
 
     def test_dry_run_creates_nothing(self):
         self.assertEqual(self.run_install(ANSWERS, "--dry-run"), 0)
