@@ -63,7 +63,7 @@ function whoCards(t,teamOnly){
 let WHO_SIG='';
 function renderWho(){
   const box=document.getElementById('who'); if(!box||!DATA)return;
-  const cards=whoCards(T), idle=chars.filter(c=>!c.person&&!c.visitor&&c._st&&!WHO_ACTIVE.includes(c._st.st));
+  const cards=whoCards(T);
   const attn=cards.filter(x=>x.attn).length;
   const head=`<h2 class="grp" data-who-toggle role="button" tabindex="0" aria-expanded="${!COLLAPSED.who}"><span class="chev">${COLLAPSED.who?'▸':'▾'}</span>Qui fait quoi <span class="cnt">${cards.length}</span>${attn?`<span class="cnt attn">${attn} pour toi</span>`:''}</h2>`;
   const body=COLLAPSED.who?'':'<div class="who-grid">'+cards.map(x=>{
@@ -72,7 +72,7 @@ function renderWho(){
       `<span class="wp">${img?`<img src="${img}" alt="">`:''}</span>`+
       `<span class="wt"><span class="wn">${esc(x.c.name)}<span class="ws">${esc(shortSt(x.st))}${x.since?' · '+esc(x.since):''}</span></span>`+
       `<span class="ww${x.tone?'':' nt'}">${esc(x.what)}</span>${x.sub?`<span class="wsub">${esc(x.sub)}</span>`:''}</span></button>`;
-  }).join('')+'</div>'+(idle.length?`<div class="who-idle">${idle.length} agent${idle.length>1?'s':''} sans travail en ce moment : ${esc(idle.map(c=>c.name).join(', '))}</div>`:'');
+  }).join('')+'</div>';
   const html=head+body;
   if(html===WHO_SIG)return;
   WHO_SIG=html;box.innerHTML=html;
