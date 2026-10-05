@@ -14,7 +14,7 @@ Un open space en pixel art où chaque personnage montre ce qui se passe dans Kro
 | Le boss | La personne qui a installé la page (`owner`) | Au bureau du boss, bras levés quand une validation l'attend |
 | Invité de passage | Quelqu'un qui passe voir l'équipe (clé `guests` du roster) | Au plus une fois par jour ouvré, 20 à 40 min, à une heure tirée au sort ; il se promène |
 
-Un invité de passage entre par la porte, va saluer des collègues à leur bureau, prend un café, s'assoit sur le canapé, puis repart. L'heure et la durée de sa visite sont tirées au sort pour chaque date : tout le monde le voit au même moment, et il ne passe pas forcément tous les jours (`chance`). Il n'apparaît que sur le plan ; un clic ouvre sa fiche, avec son heure d'arrivée et de départ.
+Un invité de passage entre par la porte, va saluer des collègues à leur bureau, prend un café, s'assoit sur le canapé, puis repart. L'heure et la durée de sa visite sont tirées au sort pour chaque date : tout le monde le voit au même moment, et il ne passe pas forcément tous les jours (`chance`). Il n'apparaît que sur le plan ; un clic ouvre sa fiche, avec son heure d'arrivée et de départ. Un invité peut aussi venir à heure fixe (même la nuit, même le week-end), faire le tour de toutes les salles et lancer sa phrase dans sa bulle.
 
 ![Un invité de passage chez Jan](../img/invite.png)
 

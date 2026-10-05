@@ -59,3 +59,16 @@ test('ni dans Qui fait quoi, ni dans la liste des visiteurs, ni comme agent ; ar
   run(`select(null);T=${THU + 23 * 60 * MIN};tick(1);`);
   assert.equal(J('byKey.g_david._st.st'), 'gone');
 });
+
+test('tour de minuit (at, jitter, days all, tour, shout) : tous les soirs vers 00h10, toutes les salles dans l\'ordre, puis repart', () => {
+  const g = `({key:'g_s',name:'Steph',guest:true,visitor:true,at:'00:10',jitter:5,days:'all',tour:true,stay:[16,16],shout:'JE SUIS TOUTE VERTE !'})`;
+  for (const d of [day('2026-10-03'), THU]) { // samedi compris
+    const ms = J(`Array.from({length:120},(_,m)=>m).filter(m=>{const s=guestState(${g},${d}+m*60e3);return s.st!=='off'&&s.st!=='gone';})`);
+    assert.ok(ms[0] >= 5 && ms[0] <= 15, `arrivée à ${ms[0]} min`);
+    assert.equal(ms.length, 16);
+    const zones = [...new Set(ms.map(m => J(`guestState(${g},${d}+${m}*60e3).zone`)))];
+    assert.deepEqual(zones, J('GUEST_TOUR.map(x=>x[0])'));
+    assert.equal(J(`guestState(${g},${d}+${ms[3]}*60e3).bubble`), 'JE SUIS TOUTE VERTE !');
+    assert.equal(J(`guestState(${g},${d}+${ms[ms.length - 1] + 1}*60e3).st`), 'gone');
+  }
+});

@@ -100,16 +100,23 @@ function stateAt(c,t){
   };
   return s1;
 }
-// ---------- invités de passage : au plus une visite par jour ouvré, heure et durée tirées au sort (fixes pour une date) ----------
+// ---------- invités de passage : au plus une visite par jour, heure et durée tirées au sort (fixes pour une date) ----------
+// Réglages (roster, clé guests) : days « all » (sinon jours ouvrés), at « HH:MM » + jitter en minutes (sinon une heure
+// tirée dans les heures de bureau), stay [min, max] en minutes, chance, tour (le tour des salles), shout (sa bulle).
 const GUEST_STOP=3*60e3; // il change d'endroit toutes les 3 min
 const GUEST_SPOTS={coffee:'Prend un café',cooler:'À la fontaine',copier:'À la photocopieuse',sofa:'Sur le canapé',ktable:'À la cafétéria',meet:'Passe la tête en salle de réunion'};
+// tour des salles, dans l'ordre (une salle absente du plan se replie ailleurs, ZONE_FALLBACK)
+const GUEST_TOUR=[['coffee','la cafétéria'],['srv','la salle serveurs'],['meet','la salle de réunion'],['stageout','le plateau TV'],
+  ['gate','le bureau du boss'],['wc','les toilettes'],['copier','la photocopieuse'],['daily',"l'open space"]];
 // {s, e, r} : arrivée, départ (ms) et suite de tirages de la visite ; null = pas de visite ce jour-là
 function guestVisit(c,t){
-  if(RHYTHM.weekend.includes(parisHM(t).wd))return null;
+  if(c.days!=='all'&&RHYTHM.weekend.includes(parisHM(t).wd))return null;
   const r=rng(keySeed(c.key)*7919+daySeed(t));
   if(r()>=(c.chance==null?1:c.chance))return null;
-  const [h0,h1]=RHYTHM.office_hours, [a,b]=c.stay||[20,40], dur=a+r()*(b-a);
-  const m0=(h0+1)*60+r()*Math.max(0,(h1-h0-2)*60-dur), d0=parisMidnight(t); // une heure de marge à l'ouverture et à la fermeture
+  const [h0,h1]=RHYTHM.office_hours, [a,b]=c.stay||(c.tour?[16,16]:[20,40]), dur=a+r()*(b-a), d0=parisMidnight(t);
+  const at=c.at&&String(c.at).split(':').map(Number);
+  const m0=at?Math.max(0,at[0]*60+at[1]+(r()-.5)*2*(c.jitter||0))
+    :(h0+1)*60+r()*Math.max(0,(h1-h0-2)*60-dur); // une heure de marge à l'ouverture et à la fermeture
   return {s:d0+m0*60e3,e:d0+(m0+dur)*60e3,r};
 }
 function guestState(c,t){
@@ -119,6 +126,8 @@ function guestState(c,t){
   const k=Math.floor((t-v.s)/GUEST_STOP); let x=0, y=0;
   for(let i=0;i<=k;i++){x=v.r();y=v.r();} // arrêt n° k : le même à chaque calcul
   const since=' · arrivé à '+hm(v.s)+', repart vers '+hm(v.e), cols=deskColleagues(c);
+  if(c.tour){const i=Math.min(GUEST_TOUR.length-1,Math.floor((t-v.s)/((v.e-v.s)/GUEST_TOUR.length))), [z,room]=GUEST_TOUR[i];
+    return {st:'idle',zone:z,label:'Fait le tour : '+room+since,bubble:c.shout||'👋'};}
   if(x<.6&&cols.length){const pc=cols[Math.floor(y*cols.length)];
     return {st:'idle',zone:'visit',visit:besideSeat(pc.seat),label:'Passe voir '+pc.name+since,bubble:'👋'};}
   const z=Object.keys(GUEST_SPOTS)[Math.floor(y*Object.keys(GUEST_SPOTS).length)];

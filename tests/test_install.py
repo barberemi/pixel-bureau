@@ -278,7 +278,9 @@ class GuestsTest(unittest.TestCase):
     def test_profile_then_installation(self):
         import assemble
         cfg = {"team": "equipe", "guests": [{"key": "g_x", "name": "X"}]}
-        self.assertEqual([g["key"] for g in assemble.guests(cfg)], ["g_bob", "g_x"])
+        profile = [g["key"] for g in json.load(open(os.path.join(ROOT, "teams", "equipe", "roster.json")))["guests"]]
+        self.assertEqual([g["key"] for g in assemble.guests(cfg)], profile + ["g_x"])
+        self.assertIn("g_bob", profile)
         self.assertEqual(assemble.guests({}), [])
         self.assertIn("bob", assemble.sprites(cfg))  # sa planche, tirée de teams/equipe/sprites/bob/
         html = assemble.build(demo=False, cfg=dict(json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"))), team="equipe"))

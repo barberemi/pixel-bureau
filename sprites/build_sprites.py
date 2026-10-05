@@ -124,7 +124,8 @@ def build_custom(folder):
     """Sprite fourni -> même planche que les avatars composés. Deux formats acceptés :
     - planche complète exportée du générateur LPC (832 px de large) : marche rangées 8-11,
       attente 22-25 (dos, gauche, face, droite), bras levés (emote) 34-37 ;
-    - deux fichiers séparés au format LPC : *walk*.png (9x4) et *idle*.png (2x4), *emote*.png (3x1, facultatif).
+    - des fichiers séparés au format LPC : *walk*.png (9x4), *idle*.png (2x4, facultatif : sinon la première image de
+      marche de chaque direction), *emote*.png (3x1, facultatif).
     """
     files = sorted(f for f in os.listdir(folder) if f.lower().endswith(".png"))
     full = next((f for f in files if Image.open(os.path.join(folder, f)).size[0] == 832), None)
@@ -134,9 +135,15 @@ def build_custom(folder):
         idle = im.crop((0, 22 * 64, 128, 26 * 64))
         emote = [frame(im, 36, c) for c in range(3)] if im.size[1] >= 38 * 64 else None
     else:
-        pick = lambda k: next(f for f in files if k in f.lower())
+        pick = lambda k: next((f for f in files if k in f.lower()), None)
         walk = Image.open(os.path.join(folder, pick("walk"))).convert("RGBA")
-        idle = Image.open(os.path.join(folder, pick("idle"))).convert("RGBA")
+        if pick("idle"):
+            idle = Image.open(os.path.join(folder, pick("idle"))).convert("RGBA")
+        else:  # pas de pose d'attente fournie : debout = la première image de marche, deux fois
+            idle = Image.new("RGBA", (128, 256), (0, 0, 0, 0))
+            for r in range(4):
+                for c in range(2):
+                    idle.paste(frame(walk, r, 0), (c * 64, r * 64))
         em = next((f for f in files if "emote" in f.lower()), None)
         emote = [frame(Image.open(os.path.join(folder, em)).convert("RGBA"), 0, c) for c in range(3)] if em else None
     out = Image.new("RGBA", (576, 384), (0, 0, 0, 0))
