@@ -21,6 +21,8 @@ WAIT = "new Promise(r=>setTimeout(r,2500))"
 # nom -> (largeur, hauteur, JS de mise en scène, sélecteur à rogner ; None = la fenêtre[, échelle de la capture[, autre plan]])
 SHOTS = {
     "plan": (1400, 1000, AT(11), "#cv", 1.5),
+    # agents mis en avant (« Sur le plan » : agents) : icône, prénom et métier de chacun
+    "etiquettes-agents": (1400, 1000, AT(11) + "FILTER='wf';NAMES='all';renderSide();", "#cv", 1.5),
     "legende": (1400, 1600, AT(11) + "document.querySelector('.legend-help').open=true;", ".legend-help"),
     "a-traiter": (1400, 1000, AT(11), "#todo"),
     "qui-fait-quoi": (1400, 1400, AT(11), "#who"),

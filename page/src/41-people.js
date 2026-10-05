@@ -5,6 +5,23 @@ const FAM={
   wf:{t:'Agents',ico:'⚙ ',bg:'#1d4ed8',c:'#3b82f6'},
   vis:{t:'Visiteurs',ico:'💬 ',bg:'#c2410c',c:'#d97757'}
 };
+// agents : métier court et icône, pour savoir d'un coup d'œil quel workflow est qui (agents[].short et agents[].icon
+// de la config les fixent ; sinon tirés du rôle, c'est-à-dire du nom du workflow). Le premier motif qui colle gagne.
+const AGENT_ICONS=[[/migration/i,'🧳'],[/mutation/i,'🧬'],[/revue|review|\bpr\b/i,'🔎'],[/veille|rss|news/i,'📰'],
+  [/web vitals|\bcwv\b|perf/i,'⚡'],[/erreur|error|5xx|incident|fastly/i,'🚨'],[/playwright|e2e|couverture|\btests?\b/i,'🧪'],
+  [/\bmep\b|mise en prod|d[ée]ploi|deploy|release|impl[ée]mentation/i,'🚀'],[/r[ée]cap|digest|r[ée]sum[ée]|journalier/i,'🗞️'],
+  [/scss|\bcss\b|style/i,'🎨'],[/adobe|analytics|\bstats?\b|statist/i,'📊'],[/jira|ticket|sprint/i,'🎫'],[/doc|wiki|confluence/i,'📚']];
+const agentIcon=c=>c.icon||(AGENT_ICONS.find(([re])=>re.test(c.role||''))||[0,'⚙'])[1];
+const wordClip=(s,n)=>{s=s.trim();if(s.length<=n)return s;const i=s.slice(0,n+1).lastIndexOf(' ');return (i>8?s.slice(0,i):s.slice(0,n-1))+'…';};
+const agentShort=c=>c.short||wordClip(clean(c.role||'').split(' · ')[0].replace(/^cron\s+/i,'') // avant le premier « — »
+  .replace(/\s*\((horaire|page|\d+\s*(min|h))\)/gi,''),24);
+const agentTag=c=>famOf(c)==='wf'?agentIcon(c)+' ':''; // devant un prénom d'agent, dans les listes
+// étiquette sur le plan : agents « 🔎 Dwight · Reviewer de PR » (ui.agent_label : both, office ou metier ; mode TV : metier)
+function labelText(c){
+  if(famOf(c)!=='wf')return FAM[famOf(c)].ico+(c.apprentice?'🎓 ':'')+String(c.name||'').slice(0,24);
+  const mode=(CFG.ui||{}).agent_label||(TV?'metier':'both'), job=agentShort(c);
+  return agentIcon(c)+' '+(mode==='office'||!job?String(c.name||'').slice(0,24):mode==='metier'?job:String(c.name||'').slice(0,14)+' · '+job);
+}
 let FILTER=null; // null = tout le monde ; sinon une famille mise en avant
 // workflows en hologramme : teinte cyan, lignes de balayage qui défilent, scintillement rare ; sur le sol beige,
 // un contour sombre de 1 px et un halo cyan (silhouette décalée) le détachent du décor
@@ -96,7 +113,7 @@ let NAMES='hover', hoverKey=null, NAME_BOXES=[];
 const TV_TXT=1.45; // agrandissement des noms et des bulles en mode TV
 function drawName(c){
   const on=sel===c.key; if(!c.pos||!(on||NAMES==='all'||NAMES==='hover'&&hoverKey===c.key))return;
-  const fm=FAM[famOf(c)], x=Math.round(c.pos.x), y=Math.round(c.pos.y)+6, t=fm.ico+(c.apprentice?'🎓 ':'')+String(c.name||'').slice(0,24);
+  const fm=FAM[famOf(c)], x=Math.round(c.pos.x), y=Math.round(c.pos.y)+6, t=labelText(c);
   const S=TV?TV_TXT:1; // mode TV : lisible à 3 m
   ctx.font='bold '+Math.round((on?11:9)*S)+'px ui-sans-serif,system-ui,sans-serif';
   const w=Math.ceil(ctx.measureText(t).width)+(on?10:8), h=Math.round((on?15:12)*S);

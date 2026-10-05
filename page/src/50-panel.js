@@ -117,7 +117,7 @@ function drawSide(side){
       b.appendChild(portrait(c,36));
       const t=document.createElement('div');t.className='t';
       const best=bestEmployee()[0];const trophy=best&&best.pts&&empChar(best)===c?' 🏆':'';
-      t.innerHTML=`<div class="n">${esc(c.name)}${trophy}${c.apprentice?' <span class="appr" title="Apprenti">🎓 apprenti</span>':''}</div><div class="r">${esc(c.role)}</div>`;
+      t.innerHTML=`<div class="n">${esc(agentTag(c)+c.name)}${trophy}${c.apprentice?' <span class="appr" title="Apprenti">🎓 apprenti</span>':''}</div><div class="r">${esc(c.role)}</div>`;
       b.appendChild(t);
       const s=document.createElement('div');
       s.className='s';
@@ -136,7 +136,7 @@ function drawSide(side){
   side.appendChild(back);
   const f=document.createElement('div');f.className='face';f.appendChild(portrait(c,64));
   const ft=document.createElement('div');
-  ft.innerHTML=`<div class="n">${esc(c.name)}${c.apprentice?' <span class="appr">🎓 apprenti</span>':''}</div><div class="r">${esc(c.role)}${c.name!==c.baseName?' · '+esc(c.baseName):''}</div>`;
+  ft.innerHTML=`<div class="n">${esc(agentTag(c)+c.name)}${c.apprentice?' <span class="appr">🎓 apprenti</span>':''}</div><div class="r">${esc(c.role)}${c.name!==c.baseName?' · '+esc(c.baseName):''}</div>`;
   f.appendChild(ft);
   side.appendChild(f);
   if(!c.visitor){

@@ -70,7 +70,7 @@ function renderWho(){
     const img=portraitUrl(x.c);
     return `<button class="wc${x.attn?' attn':''}${sel===x.c.key?' on':''}" data-who="${esc(x.c.key)}" style="--st:${ST_CSS[x.st.st]||'var(--idle)'};--tk:${x.tone||'transparent'}">`+
       `<span class="wp">${img?`<img src="${img}" alt="">`:''}</span>`+
-      `<span class="wt"><span class="wn">${esc(x.c.name)}<span class="ws">${esc(shortSt(x.st))}${x.since?' · '+esc(x.since):''}</span></span>`+
+      `<span class="wt"><span class="wn">${esc(agentTag(x.c)+x.c.name)}<span class="ws">${esc(shortSt(x.st))}${x.since?' · '+esc(x.since):''}</span></span>`+
       `<span class="ww${x.tone?'':' nt'}">${esc(x.what)}</span>${x.sub?`<span class="wsub">${esc(x.sub)}</span>`:''}</span></button>`;
   }).join('')+'</div>';
   const html=head+body;
