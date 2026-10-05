@@ -8,6 +8,6 @@ Les objets du plan sont cliquables et ouvrent leur détail dans le panneau.
 
 - **Kanban** (à droite du bureau du boss) : tickets et points par colonne Jira.
 - **Planning** (à gauche) : les prochains crons de la journée et ceux déjà passés.
-- **Écran du plateau TV** : chaque mise en prod (release, staging, production) avec ses liens GitHub ; confettis quand elle arrive en prod. Plateau fermé le vendredi et le week-end.
+- **Écran du plateau TV** : chaque mise en prod (release, staging, production) avec ses liens GitHub ; confettis quand elle arrive en prod. Plateau fermé le vendredi et le week-end. Une mise en prod lancée à la main sur GitHub apparaît en moins d'une minute : les déploiements sont relus chaque minute par une requête conditionnelle, que GitHub ne décompte pas tant que rien ne bouge.
 - **Employé du sprint** (mur de la cafétéria) : le plus de points déployés.
 - **Enveloppe de paie** : la fiche de paie des agents.

@@ -1,6 +1,6 @@
 """Instantané « live » (toutes les minutes) : runs en cours ou récents, discussions récentes, déploiements du jour.
 
-Entrée : aucune (déploiements lus avec `gh run list`, seulement quand un déploiement peut bouger : voir deploys_moving)
+Entrée : aucune (déploiements lus chaque minute avec `gh api` et un ETag : GitHub répond 304 sans le décompter tant que rien ne change)
 Sortie (stdout) : {generated_at, day, runs[], discussions[], deploys{staging{tag:run}, prod{tag:run}}}
 Même format de runs et de discussions que office_snapshot.py, pour que la page les superpose.
 """
@@ -32,52 +32,49 @@ discs = [disc_row(d) for d in get("/discussions?page=1&per_page=20")
          if d["updated_at"] >= since and not d.get("archived") and not is_bureau_disc(d)]
 
 VER = re.compile(r"(\d+\.\d+\.\d+)")
-GH_FIELDS = "status,conclusion,createdAt,updatedAt,displayTitle,url"
-# Déploiements staging/prod lus avec gh, mais pas chaque minute (~1 800 appels par jour) : seulement quand un
-# déploiement peut bouger. Les listes sont gardées hors du dépôt et republiées telles quelles entre deux lectures.
+# Déploiements staging/prod : derniers runs des workflows de déploiement GitHub Actions, relus à chaque passage. La
+# requête est conditionnelle (If-None-Match) : tant que rien ne bouge, GitHub répond 304 sans la compter dans la limite
+# d'appels. Les runs et leur ETag sont gardés hors du dépôt, puis republiés tels quels sur un 304 ou une erreur.
 DEPLOY_CACHE = _os.path.join(_os.path.expanduser("~"), ".cache", "kronn-bureau", "deploys.json")
-DEPLOY_MAX_AGE = 600  # au plus 10 min sans relire (déploiement lancé hors de Kronn)
 
 
-def gh_runs(workflow):
+def gh_runs(workflow, prev):
+    """{runs, etag} : les 5 derniers runs du workflow (champs de « gh run list »). prev = la lecture précédente,
+    rendue telle quelle si GitHub répond 304 (rien n'a changé) ou si la lecture échoue."""
     repo = (CFG.get("github") or {}).get("repo")
     if not repo or not workflow:  # pas de dépôt ou pas de workflow de déploiement configuré : rien à suivre
-        return []
-    try:
-        out = subprocess.run(["gh", "run", "list", "--repo", repo, "--workflow", workflow, "--limit", "5",
-                              "--json", GH_FIELDS], capture_output=True, text=True, timeout=60)
-        return json.loads(out.stdout or "[]")
+        return {"runs": [], "etag": None}
+    prev = prev if isinstance(prev, dict) else {"runs": [], "etag": None}
+    cmd = ["gh", "api", "-i", f"repos/{repo}/actions/workflows/{workflow}/runs?per_page=5"]
+    if prev.get("etag"):
+        cmd[3:3] = ["-H", f"If-None-Match: {prev['etag']}"]
+    try:  # gh sort en erreur sur un 304 : seule la ligne d'état compte
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=60).stdout.replace("\r\n", "\n")
+        head, _, body = out.partition("\n\n")
+        status = head.split("\n", 1)[0]
+        if " 200" not in status:  # 304, ou erreur (gh absent, pas d'accès) : la lecture précédente reste
+            return prev
+        etag = next((h.split(":", 1)[1].strip() for h in head.split("\n") if h.lower().startswith("etag:")), None)
+        runs = [{"status": r.get("status"), "conclusion": r.get("conclusion"), "createdAt": r.get("created_at"),
+                 "updatedAt": r.get("updated_at"), "displayTitle": r.get("display_title"), "url": r.get("html_url")}
+                for r in json.loads(body).get("workflow_runs") or []]
+        return {"runs": runs, "etag": etag}
     except Exception:
-        return []
-
-
-def deploys_moving(cache):
-    """Faut-il relire GitHub ? Pas de cache du jour, cache trop vieux, un déploiement en cours dans le cache, ou le
-    workflow de mise en prod (mep_workflow, préfixe d'id) actif ou fini il y a moins de 20 min."""
-    if not cache or cache.get("day") != now.strftime("%Y-%m-%d"):
-        return True
-    if datetime.now(timezone.utc).timestamp() - cache.get("at", 0) > DEPLOY_MAX_AGE:
-        return True
-    if any(r.get("status") != "completed" for k in ("staging", "prod") for r in cache.get(k) or []):
-        return True
-    mep = CFG.get("mep_workflow") or ""
-    return bool(mep) and any(r["wf"].startswith(mep) for r in runs)
+        return prev
 
 
 try:
     cache = json.load(open(DEPLOY_CACHE))
 except (OSError, ValueError):
-    cache = None
-if deploys_moving(cache):
-    cache = {"day": now.strftime("%Y-%m-%d"), "at": datetime.now(timezone.utc).timestamp(),
-             "staging": gh_runs((CFG.get("github") or {}).get("staging_workflow")), "prod": gh_runs((CFG.get("github") or {}).get("prod_workflow"))}
-    try:
-        _os.makedirs(_os.path.dirname(DEPLOY_CACHE), exist_ok=True)
-        with open(DEPLOY_CACHE, "w") as fh:
-            json.dump(cache, fh)
-    except OSError:
-        pass
-D = cache
+    cache = {}
+gh_cfg = CFG.get("github") or {}
+D = {k: gh_runs(gh_cfg.get(k + "_workflow"), cache.get(k)) for k in ("staging", "prod")}
+try:
+    _os.makedirs(_os.path.dirname(DEPLOY_CACHE), exist_ok=True)
+    with open(DEPLOY_CACHE, "w") as fh:
+        json.dump(D, fh)
+except OSError:
+    pass
 
 
 def by_tag(lst):
@@ -92,4 +89,4 @@ def by_tag(lst):
 
 print(dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "day": now.strftime("%Y-%m-%d"),
              "runs": runs, "discussions": discs,
-             "deploys": {"staging": by_tag(D.get("staging")), "prod": by_tag(D.get("prod"))}}))
+             "deploys": {"staging": by_tag(D["staging"]["runs"]), "prod": by_tag(D["prod"]["runs"])}}))

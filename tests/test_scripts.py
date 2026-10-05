@@ -125,12 +125,22 @@ class ScriptsTest(unittest.TestCase):
         path = os.path.join(self.bin, "gh")
         with open(path, "w") as fh:
             fh.write(f"""#!{sys.executable}
-import json, sys
+import hashlib, json, sys
 a = sys.argv[1:]
 open({data!r} + ".calls", "a").write(" ".join(a) + "\\n")
 d = json.load(open({data!r}))
 key = ("open" if "open" in a else "merged") if a[0] == "pr" else "releases" if a[0] == "release" else \\
       "staging" if "NONPROD" in " ".join(a) else "prod"
+if a[0] == "api":  # gh api -i [-H If-None-Match: …] …/actions/workflows/<fichier>/runs : en-têtes, ETag, 304
+    body = json.dumps({{"workflow_runs": [{{"status": r["status"], "conclusion": r["conclusion"], "created_at": r["createdAt"],
+        "updated_at": r["updatedAt"], "display_title": r["displayTitle"], "html_url": r["url"]}} for r in d.get(key, [])]}})
+    etag = 'W/"' + hashlib.sha1(body.encode()).hexdigest() + '"'
+    if "If-None-Match: " + etag in a:
+        open({data!r} + ".calls", "a").write("304\\n")
+        print("HTTP/2.0 304 Not Modified\\r\\nEtag: " + etag + "\\r\\n\\r\\n")
+        sys.exit(1)
+    print("HTTP/2.0 200 OK\\r\\nEtag: " + etag + "\\r\\n\\r\\n" + body)
+    sys.exit(0)
 print(json.dumps(d.get(key, [])))
 """)
         os.chmod(path, 0o755)
@@ -277,7 +287,7 @@ print(json.dumps(d.get(key, [])))
         p = os.path.join(self.tmp, "gh.json.calls")
         return open(p).read().count("\n") if os.path.exists(p) else 0
 
-    def test_live_snapshot_reads_deploys_only_when_they_can_move(self):
+    def test_live_snapshot_reads_deploys_with_an_etag(self):
         paris = datetime.now(ZoneInfo("Europe/Paris"))
         if paris.hour == 0 and paris.minute < 4:
             self.skipTest("juste après minuit à Paris, un déploiement d'il y a 3 min date de la veille")
@@ -286,18 +296,20 @@ print(json.dumps(d.get(key, [])))
         self.fake_gh({"staging": [done], "prod": [done]})
         api = self.kronn(FakeKronn())
         out = self.run_script("live_snapshot.py", api=api)
-        self.assertEqual(self.gh_calls(), 2)  # pas encore de cache : staging + prod
         self.assertEqual(out["deploys"]["prod"]["17.2.0"]["conclusion"], "success")
+        calls = open(os.path.join(self.tmp, "gh.json.calls")).read().splitlines()
+        self.assertEqual(len(calls), 2)  # staging + prod
+        self.assertNotIn("If-None-Match", calls[0])  # pas encore d'ETag
+        out = self.run_script("live_snapshot.py", api=api)  # rien n'a bougé : 304, runs republiés depuis le cache
+        calls = open(os.path.join(self.tmp, "gh.json.calls")).read().splitlines()
+        self.assertEqual(calls[2:], [calls[2], "304", calls[4], "304"])  # deux requêtes conditionnelles, deux 304
+        self.assertIn("If-None-Match: W/", calls[4])
+        self.assertEqual(out["deploys"]["prod"]["17.2.0"]["conclusion"], "success")
+        moving = dict(done, status="in_progress", conclusion=None, updatedAt=iso(1), displayTitle="Deploy 17.3.0")
+        self.fake_gh({"staging": [done], "prod": [moving, done]})  # une MEP part sur GitHub : nouvel ETag, relue tout de suite
         out = self.run_script("live_snapshot.py", api=api)
-        self.assertEqual(self.gh_calls(), 2)  # tout est fini, cache récent : aucun appel
-        self.assertEqual(out["deploys"]["prod"]["17.2.0"]["conclusion"], "success")  # republié depuis le cache
-        cache = os.path.join(self.tmp, ".cache", "kronn-bureau", "deploys.json")
-        c = json.load(open(cache))
-        c["prod"][0]["status"] = "in_progress"
-        with open(cache, "w") as fh:
-            json.dump(c, fh)
-        self.run_script("live_snapshot.py", api=api)
-        self.assertEqual(self.gh_calls(), 4)  # un déploiement en cours : relu
+        self.assertEqual(out["deploys"]["prod"]["17.3.0"]["status"], "in_progress")
+        self.assertIsNone(out["deploys"]["prod"]["17.3.0"]["end"])
 
     def test_payroll_and_gates_ignore_bureau(self):
         api = self.kronn(FakeKronn())
