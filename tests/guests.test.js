@@ -72,3 +72,10 @@ test('tour de minuit (at, jitter, days all, tour, shout) : tous les soirs vers 0
     assert.equal(J(`guestState(${g},${d}+${ms[ms.length - 1] + 1}*60e3).st`), 'gone');
   }
 });
+
+test('invité en marche : un pas sur deux, 1 px de rebond ; immobile ou collègue : aucun', () => {
+  assert.equal(J(`guestBob({guest:true,moving:true},1)`), -1);
+  assert.equal(J(`guestBob({guest:true,moving:true},2)`), 0);
+  assert.equal(J(`guestBob({guest:true,moving:false},1)`), 0);
+  assert.equal(J(`guestBob({person:'x',moving:true},1)`), 0);
+});

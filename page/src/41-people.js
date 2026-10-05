@@ -44,6 +44,9 @@ function holoFrame(img,sx,sy,now,lines){
   }
   hctx.globalCompositeOperation='source-over';return HOLO;
 }
+// invités en marche : 1 px de rebond un pas sur deux, pour que la marche se lise même quand les jambes bougent peu
+// (sprites fournis de face ou de dos)
+const guestBob=(c,fx)=>c.guest&&c.moving&&fx%4<2?-1:0;
 function drawChar(c,now){
   const img=spriteOf(c); if(!ready(img)||!c.pos)return;
   const [fx,fy]=frameFor(c,now); const x=Math.round(c.pos.x), y=Math.round(c.pos.y);
@@ -88,7 +91,7 @@ function drawChar(c,now){
     for(const [ox,oy] of [[-1,0],[1,0],[0,-1],[0,1]])ctx.drawImage(HOLO_EDGE,gx+ox,dy+oy);
     ctx.globalAlpha=glitch?.45:.92;
     ctx.drawImage(holoFrame(img,fx*64,fy*64,now,true),gx,dy);ctx.restore();
-  }else ctx.drawImage(img,fx*64,fy*64,64,64,dx,dy,64,64);
+  }else ctx.drawImage(img,fx*64,fy*64,64,64,dx,dy+guestBob(c,fx),64,64);
   themeOnChar(c,x,dy+(c.sprite==='boss_sax'?3:14),now); // 46-themes.js : chapeau, lunettes, couronne
 }
 // chemin vers sa place quand le personnage sélectionné n'y est pas (café, réunion, toilettes...)
