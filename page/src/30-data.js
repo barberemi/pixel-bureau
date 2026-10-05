@@ -183,6 +183,7 @@ function setData(d,live){
     return c;
   };
   CAST.forEach(add);
+  GUESTS.forEach(add);
   const free=FREE_SEATS.filter(s=>!CAST.some(c=>c.seat&&c.seat[0]===s[0]&&c.seat[1]===s[1])); let tempN=0; DISC_BY_RUN={};
   DAY0=parisMidnight(ms(d.generated_at));
   for(const r of d.runs){

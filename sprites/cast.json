@@ -254,5 +254,15 @@
   "shirt": "#9a7ac8",
   "legs": "pants",
   "legs_color": "#3b3f52"
+ },
+ "g_david": {
+  "sex": "male",
+  "skin": "light",
+  "hair": "plain",
+  "hair_color": "#9a9a9a",
+  "torso": "longsleeve/formal",
+  "shirt": "#2c3550",
+  "legs": "formal",
+  "legs_color": "#20242e"
  }
 }

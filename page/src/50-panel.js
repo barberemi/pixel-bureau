@@ -80,7 +80,7 @@ function drawSide(side){
         seg.appendChild(b);
       }
       fb.appendChild(seg);side.appendChild(fb);}
-    const groups=[["L'équipe",chars.filter(c=>c.person),'team'],['Les agents',chars.filter(c=>!c.person&&!c.visitor),'wf'],['Les visiteurs du jour',chars.filter(c=>c.visitor),'vis']].filter(g=>!FILTER||g[2]===FILTER);
+    const groups=[["L'équipe",chars.filter(c=>c.person),'team'],['Les agents',chars.filter(c=>!c.person&&!c.visitor),'wf'],['Les visiteurs du jour',chars.filter(c=>c.visitor&&!c.guest),'vis']].filter(g=>!FILTER||g[2]===FILTER);
     for(const [title,list,fk] of groups){
     if(!list.length)continue;
     const closed=!!COLLAPSED[title];
@@ -180,6 +180,7 @@ function drawSide(side){
   if(st.st==='gate'&&st.run)gateCard(side,st.run,null);
   musicCard(side,c);
   if(c.person){renderPerson(side,c);return;}
+  if(c.guest)return; // invité de passage : son état suffit
   if(c.visitor){renderVisitor(side,c);return;}
   const done=(c.top||c.runs).filter(r=>r._s<=T);
   const ok=done.filter(r=>r.status==='Success').length, ko=done.filter(r=>r.status==='Failed').length;

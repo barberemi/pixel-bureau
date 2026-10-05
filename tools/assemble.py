@@ -106,6 +106,12 @@ def roster(cfg):
     return people + list((cfg or {}).get("people") or [])
 
 
+def guests(cfg):
+    """Invités de passage (clé guests du roster du profil, puis de l'installation) : au plus une visite par jour ouvré."""
+    path = _team_file(cfg, "roster.json")
+    return (json.load(open(path)).get("guests") or [] if path else []) + list((cfg or {}).get("guests") or [])
+
+
 def defaults(cfg):
     """Valeurs proposées à l'installation : team/defaults.json, complété par le profil (clé à clé au premier niveau)."""
     d = json.load(open(p("team", "defaults.json")))
@@ -162,7 +168,7 @@ def build(demo=True, cfg=None):
                 .replace("__LAYERS__", open(p("sprites", "layers.json")).read())
                 .replace("__MUSIC__", json.dumps(music(cfg), ensure_ascii=False))
                 .replace("__CAST__", json.dumps(cast, ensure_ascii=False, separators=(",", ":")))
-                .replace("__ROSTER__", json.dumps({"people": roster(cfg)}, ensure_ascii=False))
+                .replace("__ROSTER__", json.dumps({"people": roster(cfg), "guests": guests(cfg)}, ensure_ascii=False))
                 .replace("__LAYOUT__", open(p(layout_path(cfg))).read())
                 .replace("__OWNER__", json.dumps(cfg.get("owner")))
                 .replace("__CONFIG__", json.dumps(page_config(cfg), ensure_ascii=False))

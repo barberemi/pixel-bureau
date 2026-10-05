@@ -23,7 +23,10 @@ const TEAM_SNAP = __TEAM__;   // équipe de démo (null hors démo)
 const ACTIONS = __ACTIONS__;  // boutons disponibles (workflow ou QP configuré dans bureau.config.json)
 
 // ---------- casting ----------
-const ROSTER = __ROSTER__.people; // l'équipe : teams/<équipe>/roster.json, puis les personnes ajoutées à l'installation
+const ROSTER_DEF = __ROSTER__;
+const ROSTER = ROSTER_DEF.people; // l'équipe : teams/<équipe>/roster.json, puis les personnes ajoutées à l'installation
+// invités de passage (clé guests) : hors équipe, au plus une visite par jour ouvré (35-state.js, guestState)
+const GUESTS = (ROSTER_DEF.guests||[]).map(({person,...g})=>({...g,wf:[],seat:null,visitor:true,guest:true,role:g.role||'De passage'})); // jamais un collègue (person)
 const OWNER = __OWNER__;          // bureau.config.json : clé du roster de qui a installé la page (le boss)
 // partie « page » de bureau.config.json (tools/assemble.py) ; chaque valeur a un défaut : une config vide ne casse rien
 const CFG = __CONFIG__;

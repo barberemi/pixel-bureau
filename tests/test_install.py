@@ -271,5 +271,19 @@ class InstallTest(unittest.TestCase):
         self.assertFalse(os.path.exists(self.cfg_path))
 
 
+
+class GuestsTest(unittest.TestCase):
+    """Invités de passage : ceux du profil d'équipe, puis ceux de l'installation, embarqués avec le roster."""
+
+    def test_profile_then_installation(self):
+        import assemble
+        cfg = {"team": "equipe", "guests": [{"key": "g_x", "name": "X"}]}
+        self.assertEqual([g["key"] for g in assemble.guests(cfg)], ["g_bob", "g_x"])
+        self.assertEqual(assemble.guests({}), [])
+        self.assertIn("bob", assemble.sprites(cfg))  # sa planche, tirée de teams/equipe/sprites/bob/
+        html = assemble.build(demo=False, cfg=dict(json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"))), team="equipe"))
+        self.assertIn('"guests": [{"key": "g_bob"', html)
+
+
 if __name__ == "__main__":
     unittest.main()

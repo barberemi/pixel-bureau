@@ -51,6 +51,8 @@ SHOTS = {
                             ("saint-valentin", "saint-valentin", 11))},
     # le décor suit les meubles et les îlots d'un autre plan
     "theme-noel-autre-plan": (1400, 1000, AT(20.25) + "THEME_FORCE='noel';", "#cv", 1.5, "layouts/exemple-startup.json"),
+    # invité de passage (clé guests du roster) : David Wallace, de 11h16 à 11h40 dans la démo, ici chez Jan
+    "invite": (1400, 1000, AT(11.5) + "select('g_david');", "#cv", 1.5),
     # brouillon tiré de docs/img/croquis.png par « python3 tools/plan.py from-image » (premier tour, sans retouche)
     "croquis-brouillon": (1400, 1000, AT(11), "#cv", 1.5, "docs/exemples/plan-croquis.json"),
 }

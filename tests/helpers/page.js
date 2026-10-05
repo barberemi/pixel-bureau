@@ -17,16 +17,17 @@ function pageConfig(cfg) {
     schedules: Object.fromEntries(['office', 'live', 'team', 'payroll'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule]))};
 }
 
-// mêmes roster, morceaux, recettes et sprites que roster(), music(), recipes() et sprites() de tools/assemble.py :
+// mêmes roster (et invités), morceaux, recettes et sprites que roster(), guests(), music(), recipes() et sprites() de tools/assemble.py :
 // le commun, puis le profil d'équipe (clé team), puis l'installation
 function team(cfg) {
   const dir = cfg.team ? path.join(ROOT, 'teams', cfg.team) : null;
-  const people = dir ? JSON.parse(fs.readFileSync(path.join(dir, 'roster.json'), 'utf8')).people : [];
+  const file = dir ? JSON.parse(fs.readFileSync(path.join(dir, 'roster.json'), 'utf8')) : {};
+  const people = file.people || [], guests = [...(file.guests || []), ...(cfg.guests || [])];
   const music = dir && fs.existsSync(path.join(dir, 'music', 'music.json')) ? JSON.parse(fs.readFileSync(path.join(dir, 'music', 'music.json'), 'utf8')) : {};
   const opt = (...p) => fs.existsSync(path.join(ROOT, ...p)) ? JSON.parse(read(...p)) : {};
   const common = JSON.parse(read('sprites', 'cast.json'));
   const local = Object.fromEntries(Object.entries(opt('sprites', 'sprites.json')).filter(([k]) => !(k in common)));
-  return {roster: {people: [...people, ...(cfg.people || [])]}, music: {...music, ...(cfg.music || {})},
+  return {roster: {people: [...people, ...(cfg.people || [])], guests}, music: {...music, ...(cfg.music || {})},
     cast: {...common, ...(dir ? opt('teams', cfg.team, 'cast.json') : {})},
     custom: {...local, ...(dir ? opt('teams', cfg.team, 'sprites.json') : {})}};
 }

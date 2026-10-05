@@ -48,7 +48,7 @@ function bossLine(c,st,pub){ // pub : écran partagé (TV), sans ce qui n'attend
   };
 }
 function whoCards(t,teamOnly){
-  const list=chars.filter(c=>c.present!==false&&c._st&&(!teamOnly||c.person)&&(c.boss||c.person?!['off','absent','gone'].includes(c._st.st):WHO_ACTIVE.includes(c._st.st)));
+  const list=chars.filter(c=>!c.guest&&c.present!==false&&c._st&&(!teamOnly||c.person)&&(c.boss||c.person?!['off','absent','gone'].includes(c._st.st):WHO_ACTIVE.includes(c._st.st)));
   const score=c=>c.boss?-1e9:(WHO_ATTN.includes(c._st.st)?0:c.person?1:2)*1000+rank(c);
   return list.sort((a,b)=>score(a)-score(b)).map(c=>{
     const st=c._st, l=whoLine(c,st,t,teamOnly), run=st.run;

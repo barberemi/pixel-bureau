@@ -268,5 +268,16 @@
    ]
   }
  ],
- "ui": {}
+ "ui": {},
+ "guests": [
+  {
+   "key": "g_david",
+   "name": "David",
+   "role": "Directeur financier, de passage",
+   "stay": [
+    20,
+    40
+   ]
+  }
+ ]
 }

@@ -100,6 +100,30 @@ function stateAt(c,t){
   };
   return s1;
 }
+// ---------- invités de passage : au plus une visite par jour ouvré, heure et durée tirées au sort (fixes pour une date) ----------
+const GUEST_STOP=3*60e3; // il change d'endroit toutes les 3 min
+const GUEST_SPOTS={coffee:'Prend un café',cooler:'À la fontaine',copier:'À la photocopieuse',sofa:'Sur le canapé',ktable:'À la cafétéria',meet:'Passe la tête en salle de réunion'};
+// {s, e, r} : arrivée, départ (ms) et suite de tirages de la visite ; null = pas de visite ce jour-là
+function guestVisit(c,t){
+  if(RHYTHM.weekend.includes(parisHM(t).wd))return null;
+  const r=rng(keySeed(c.key)*7919+daySeed(t));
+  if(r()>=(c.chance==null?1:c.chance))return null;
+  const [h0,h1]=RHYTHM.office_hours, [a,b]=c.stay||[20,40], dur=a+r()*(b-a);
+  const m0=(h0+1)*60+r()*Math.max(0,(h1-h0-2)*60-dur), d0=parisMidnight(t); // une heure de marge à l'ouverture et à la fermeture
+  return {s:d0+m0*60e3,e:d0+(m0+dur)*60e3,r};
+}
+function guestState(c,t){
+  const v=guestVisit(c,t);
+  if(!v||t<v.s)return {st:'off',label:"Pas passé aujourd'hui"};
+  if(t>=v.e)return {st:'gone',label:'Passé de '+hm(v.s)+' à '+hm(v.e)};
+  const k=Math.floor((t-v.s)/GUEST_STOP); let x=0, y=0;
+  for(let i=0;i<=k;i++){x=v.r();y=v.r();} // arrêt n° k : le même à chaque calcul
+  const since=' · arrivé à '+hm(v.s)+', repart vers '+hm(v.e), cols=deskColleagues(c);
+  if(x<.6&&cols.length){const pc=cols[Math.floor(y*cols.length)];
+    return {st:'idle',zone:'visit',visit:besideSeat(pc.seat),label:'Passe voir '+pc.name+since,bubble:'👋'};}
+  const z=Object.keys(GUEST_SPOTS)[Math.floor(y*Object.keys(GUEST_SPOTS).length)];
+  return {st:'idle',zone:z,label:GUEST_SPOTS[z]+since};
+}
 // ---------- la journée du boss : priorités, routine tirée au sort (fixe pour une date) ----------
 const parisMin=t=>{const p=parisHM(t);return p.h*60+p.m;};
 const daySeed=t=>+dtf('en-CA',{}).format(new Date(t)).replace(/-/g,'');
@@ -180,6 +204,7 @@ function weekHealth(c){
   return p.week.fail+' échecs sur '+p.week.runs+' runs en 7 j ('+Math.round(p.week.fail/p.week.runs*100)+' %)';
 }
 function stateAt0(c,t){
+  if(c.guest)return guestState(c,t);
   if(c.person&&!c.boss){
     const h=+dtf('en-GB',{hour:'numeric',hour12:false}).format(new Date(t));
     if(RHYTHM.weekend.includes(parisHM(t).wd))return {st:'off',label:'En week-end'}; // seul le boss vient le week-end
@@ -393,9 +418,9 @@ function wanderZone(c,real){
   return c.idlePlan.zone;
 }
 function tick(real){
-  // deux passes : l'état du boss dépend de celui des autres (validations en attente, collègues à leur bureau)
-  for(const c of chars)if(!c.boss)c._st=stateAt(c,T);
-  for(const c of chars)if(c.boss)c._st=stateAt(c,T);
+  // deux passes : l'état du boss et des invités dépend de celui des autres (validations en attente, collègues à leur bureau)
+  for(const c of chars)if(!c.boss&&!c.guest)c._st=stateAt(c,T);
+  for(const c of chars)if(c.boss||c.guest)c._st=stateAt(c,T);
   const taken=new Set();
   const order=chars.slice().sort((a,b)=>(a.spotKey?0:1)-(b.spotKey?0:1));
   for(const c of order){
