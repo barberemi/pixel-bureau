@@ -131,11 +131,10 @@ const daySeed=t=>+dtf('en-CA',{}).format(new Date(t)).replace(/-/g,'');
 function bossPlan(t){
   const sd=daySeed(t), r=k=>hash(sd%100000,k);
   const coffee1=10*60+15+Math.floor(r(1)*30), coffee2=15*60+45+Math.floor(r(2)*30);
-  const tours=[];for(let h=9;h<=17;h++){const m=h*60+5+Math.floor(r(10+h)*40);tours.push(m);}
-  return {coffee:[[coffee1,coffee1+10],[coffee2,coffee2+10]],tours};
+  return {coffee:[[coffee1,coffee1+10],[coffee2,coffee2+10]]};
 }
 const inSlot=(m,[a,b])=>m>=a&&m<b;
-// les collègues qu'il peut aller voir : présents, assis à leur place
+// collègues présents, assis à leur place (ceux qu'un invité de passage va saluer)
 function deskColleagues(boss){return chars.filter(x=>x!==boss&&x.person&&x.seat&&x._st&&x._st.zone==='desk');}
 function bossState(c,t){
   const n=k=>chars.filter(x=>x._st&&x._st.st===k).length, gates=n('gate'), asks=n('ask'), pending=gates+asks;
@@ -156,10 +155,6 @@ function bossState(c,t){
   if(sax&&inSax(t))return ret({st:'sax',zone:'boss',label:'Joue du saxophone à son bureau',bubble:'♪'});
   {const sg=stageAt(t);if(sg)return ret({st:'idle',zone:'stageout',label:'Suit la MEP '+sg.m.tag+' devant le plateau TV',bubble:'📺'});}
   if(!wd&&plan.coffee.some(s=>inSlot(m,s)))return ret({st:'coffee',zone:'coffee',label:'Pause café',bubble:'☕'});
-  if(!wd){const t0=plan.tours.find(x=>m>=x&&m<x+6);
-    if(t0!=null){const cols=deskColleagues(c);
-      if(cols.length){const i=Math.floor(hash(daySeed(t)%100000,t0+(m-t0>=3?1:0))*cols.length), pc=cols[i];
-        return ret({st:'idle',zone:'visit',visit:besideSeat(pc.seat),label:"Fait le tour de l'open space : passe voir "+pc.name,bubble:'👋'});}}}
   // 4. sinon, à son bureau
   return ret({st:'boss',zone:'boss',label:'Au bureau du boss'});
 }

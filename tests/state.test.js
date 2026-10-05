@@ -262,15 +262,11 @@ test('boss : une validation en attente le ramène au bureau, même à l’heure 
   assert.equal(st.bubble, '✋1');
 });
 
-test('boss : sax à son bureau de h45 à h50, tour de l’open space chez un collègue', () => {
+test('boss : sax à son bureau de h45 à h50, jamais de tournée chez les collègues', () => {
   const sax = bossAt(parisISO(DAY, '11:46'));
   assert.equal(sax.st, 'sax');
   assert.equal(sax.zone, 'boss');
-  const p = plan(), tour = p.tours.find(m => Math.floor(m / 60) === 14);
-  const v = bossAt(parisISO(DAY, hhmm(tour + 1)));
-  assert.equal(v.zone, 'visit');
-  assert.deepEqual(v.visit, [13, 14, 'left']); // à côté d'Alice, côté allée
-  assert.match(v.label, /Alice/);
+  for (let m = 9 * 60; m < 18 * 60; m += 3) assert.notEqual(bossAt(parisISO(DAY, hhmm(m))).zone, 'visit', hhmm(m));
 });
 
 test('boss : même planning pour une même date (replay et autres écrans), différent un autre jour', () => {
