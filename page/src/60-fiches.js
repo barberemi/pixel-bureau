@@ -293,6 +293,7 @@ function shortSt(st){
     idle:'dispo',
     boss:'au bureau',
     reopen:'signale un reopen',
+    proud:'félicite',
     deliver:'livre un ticket',
     thumbs:'valide',
     cheer:'ticket validé',

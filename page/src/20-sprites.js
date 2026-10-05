@@ -21,7 +21,7 @@ function layerPx(id){
 const rgbOf=h=>{const m=/^#?([0-9a-f]{6})$/i.exec(h||'');if(!m)return null;const n=parseInt(m[1],16);return [n>>16,n>>8&255,n&255];};
 const isSet=v=>!!v&&v!=='none';
 function specLayers(s){
-  const sex=s.sex==='female'?'female':'male', skin=LAYERS.skin[s.skin]||LAYERS.skin.light, has=id=>!!LAYERS.layers[id];
+  const sex=s.sex==='female'?'female':'male', skin=LAYERS.skin[s.skin]||(rgbOf(s.skin)?s.skin:LAYERS.skin.light), has=id=>!!LAYERS.layers[id];
   const torso=has('torso/'+s.torso+'/'+sex)?s.torso:'longsleeve/longsleeve', legs=has('legs/'+s.legs+'/'+sex)?s.legs:'pants';
   const L=[['body/'+sex,'mul',skin],['feet/'+sex,'lum',s.shoes||'#3a2a22'],['legs/'+legs+'/'+sex,'lum',s.legs_color||'#3b4a63'],['torso/'+torso+'/'+sex,'lum',s.shirt||'#8a8f99'],
     ['head/'+(sex==='female'?'female':has('head/'+s.head)?s.head:'male'),'mul',skin],['eyes','raw']];

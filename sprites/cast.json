@@ -275,5 +275,16 @@
   "shirt": "#7c7f88",
   "legs": "pants",
   "legs_color": "#6d7079"
+ },
+ "g_sage": {
+  "sex": "male",
+  "skin": "#9cc06a",
+  "head": "male_elderly",
+  "hair": "balding",
+  "hair_color": "#e8e6dc",
+  "torso": "longsleeve/longsleeve",
+  "shirt": "#a08460",
+  "legs": "pants",
+  "legs_color": "#7a6248"
  }
 }

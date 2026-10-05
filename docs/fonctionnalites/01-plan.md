@@ -31,6 +31,10 @@ Quand un ticket passe en Reopen dans Jira, un mage entre par la porte. Lui, celu
 
 ![Le face-à-face devant le bureau du boss](../img/reopen-testeur.png)
 
+Quand une mise en prod réussit, un héraut entre aussi par la porte (Yoda chez equipe, un sage dans la démo). Il monte sur la scène du plateau TV à côté de celui qui a fait la mise en prod (le boss y est déjà, au saxophone) et le félicite en grand : « Fier de toi, je suis. ». Trois minutes plus tard, il repart. Si la prod finit pendant le daily, il les rejoint à la table du daily ; le vendredi et le week-end, plateau fermé, il attend devant le ruban. Sa réplique ne cache jamais les bulles de ses voisins : elle se décale à droite, à gauche ou au-dessus.
+
+![Le héraut félicite Andy sur le plateau TV](../img/prod-heraut.png)
+
 D'autres changements de colonne se jouent aussi, à l'heure exacte du changement de statut :
 - **Ticket à tester** : le développeur porte le dossier au bureau du testeur (« 📁 6717 »), et le testeur a sur son bureau une pile de dossiers, un par ticket en test.
 - **Ticket validé** : le testeur lève le pouce depuis son bureau (« 👍 6550 validé ») et le développeur lève les bras (🙌), boss compris.

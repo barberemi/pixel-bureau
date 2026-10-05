@@ -291,6 +291,13 @@
    "role": "Gardien des reopens",
    "on": "reopen",
    "shout": "Vous ne passerez pas !"
+  },
+  {
+   "key": "g_sage",
+   "name": "Le sage",
+   "role": "Héraut des mises en prod",
+   "on": "prod",
+   "shout": "Fier de toi, je suis."
   }
  ]
 }

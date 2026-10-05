@@ -5,7 +5,7 @@ Sheet layout (64x64 frames):
   row 4    : idle up f0,f1 | idle down f0,f1 | idle left f0 | idle right f0
   row 5    : emote down f0..f2 | hurt f0..f5
 """
-import base64, io, json, os, urllib.request
+import base64, io, json, os, re, urllib.request
 from PIL import Image
 
 BASE = "https://raw.githubusercontent.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator/master/spritesheets"
@@ -67,18 +67,23 @@ def recolor(im, color, mode):
 SKIN = {"light": "#ffffff", "pale": "#f4e2d4", "tan": "#d7a57e", "brown": "#a8724e", "dark": "#7a5038"}
 
 
+def skin_of(spec):  # un nom de SKIN ou une teinte « #rrggbb » (ex. le sage vert de la démo)
+    v = spec.get("skin", "light")
+    return SKIN.get(v) or (v if re.fullmatch(r"#[0-9a-fA-F]{6}", str(v)) else SKIN["light"])
+
+
 def char_layers(spec, anim):
     sex = spec["sex"]
     thin = "thin" if sex == "female" else "male"
     L = []
-    L.append(recolor(layer([f"body/bodies/{sex}"], anim), SKIN[spec.get("skin", "light")], "mul"))
+    L.append(recolor(layer([f"body/bodies/{sex}"], anim), skin_of(spec), "mul"))
     L.append(recolor(layer([f"feet/shoes/basic/{thin}"], anim), spec.get("shoes", "#3a2a22"), "lum"))
     legs = spec.get("legs", "pants")
     L.append(recolor(layer([f"legs/{legs}/{thin}", f"legs/{legs}/male", f"legs/pants/{thin}"], anim), spec.get("legs_color", "#3b4a63"), "lum"))
     torso = spec.get("torso", "longsleeve/longsleeve")
     L.append(recolor(layer([f"torso/clothes/{torso}/{sex}", f"torso/clothes/{torso}/male", f"torso/clothes/longsleeve/longsleeve/{sex}"], anim), spec["shirt"], "lum"))
     head = "human/female" if sex == "female" else "human/" + spec.get("head", "male")
-    L.append(recolor(layer([f"head/heads/{head}"], anim), SKIN[spec.get("skin", "light")], "mul"))
+    L.append(recolor(layer([f"head/heads/{head}"], anim), skin_of(spec), "mul"))
     L.append(layer(["eyes/human/adult/default"], anim))
     if spec.get("beard"):
         L.append(recolor(layer([f"beards/{spec['beard']}"], anim), spec["hair_color"], "lum"))

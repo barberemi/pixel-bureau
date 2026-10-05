@@ -111,11 +111,17 @@ function drawSeatTrail(c,now){
   ctx.restore();
 }
 // étiquette de nom sous les pieds : toujours pour le sélectionné ; tous les noms de la famille choisie dans le
-// panneau (« Sur le plan ») ou en mode TV ; sinon au survol
+// panneau (« Sur le plan ») ou en mode TV ; sinon au survol. En mode TV, un agent n'a son nom que s'il travaille vraiment
 let NAMES='hover', hoverKey=null, NAME_BOXES=[];
 const TV_TXT=1.45; // agrandissement des noms et des bulles en mode TV
+const AGENT_BUSY=['work','srv','meet','gate'];
+function nameShown(c){
+  if(sel===c.key||hoverKey===c.key)return true;
+  if(NAMES!=='all')return false;
+  return !(TV&&famOf(c)==='wf'&&!AGENT_BUSY.includes((c._st||{}).st));
+}
 function drawName(c){
-  const on=sel===c.key; if(!c.pos||!(on||NAMES==='all'||NAMES==='hover'&&hoverKey===c.key))return;
+  const on=sel===c.key; if(!c.pos||!nameShown(c))return;
   const fm=FAM[famOf(c)], x=Math.round(c.pos.x), y=Math.round(c.pos.y)+6, t=labelText(c);
   const S=TV?TV_TXT:1; // mode TV : lisible à 3 m
   ctx.font='bold '+Math.round((on?11:9)*S)+'px ui-sans-serif,system-ui,sans-serif';
@@ -145,6 +151,8 @@ function drawApprentice(c){
   ctx.fillStyle='#1d2433';ctx.beginPath();ctx.moveTo(bx-7,by);ctx.lineTo(bx,by-3);ctx.lineTo(bx+7,by);ctx.lineTo(bx,by+3);ctx.closePath();ctx.fill();
   ctx.fillRect(bx-3,by+1,6,4);ctx.fillStyle='#e0a020';ctx.fillRect(bx+5,by,1,6);ctx.fillRect(bx+4,by+5,3,2);
 }
+// bulles déjà dessinées dans l'image en cours (41-render.js les remet à zéro) : la réplique d'un héraut les évite
+let BUBBLE_BOXES=[];
 function drawOverlay(c,now){
   if(!c.pos)return;
   drawApprentice(c);
@@ -161,12 +169,21 @@ function drawOverlay(c,now){
   if(isFocus(c))return; // bulle détaillée, dessinée par-dessus tout le reste
   const bb=bubbleFor(c,st,T,now); if(!bb||c.moving&&st.st!=='gate')return;
   const txt=bb.head, isIcon=txt.length<=2;
-  const S=(TV?TV_TXT:1)*(bb.big?1.6:1); // big : la réplique d'une scène (le cri du héraut)
+  const S=bb.big?1.6*(TV?1.2:1):TV?TV_TXT:1; // big : la réplique d'une scène (le cri du héraut), un peu moins agrandie en TV
   ctx.font=isIcon?Math.round(13*S)+'px system-ui,sans-serif':'bold '+Math.round(9*S)+'px ui-monospace,Menlo,monospace';
   const w=Math.ceil(ctx.measureText(txt).width)+(isIcon?8:10)+(bb.tone?3:0), h=Math.round((isIcon?18:15)*S);
   const seated=!c.moving&&c.tile&&SEATS.some(s=>s.x===c.tile[0]&&s.y===c.tile[1]);
   let bx=x-w/2, by=y-62-h-(sel===c.key?8:0);
   if(seated){const out=c.dir==='right'?-1:1;bx=out<0?x-14-w:x+14;by=y-48;}
+  // réplique d'un héraut : large, elle ne doit pas cacher les bulles de ses voisins (l'auteur fêté, le boss) : première place libre
+  // parmi centrée, étirée vers la droite, vers la gauche, puis les mêmes surélevées (une tige la relie alors à lui)
+  let stem=0;
+  if(bb.big&&!seated){
+    const lift=Math.round(22*(TV?TV_TXT:1)), cover=(x0,y0)=>BUBBLE_BOXES.reduce((a,b)=>a+Math.max(0,Math.min(x0+w,b.x+b.w)-Math.max(x0,b.x))*Math.max(0,Math.min(y0+h,b.y+b.h)-Math.max(y0,b.y)),0);
+    const tries=[];for(const l of [0,lift])for(const x0 of [x-w/2,x-14,x+14-w])tries.push([Math.max(2,Math.min(W-w-2,x0)),Math.max(2,by-l)]);
+    const ok=tries.reduce((m,p)=>{const v=cover(p[0],p[1]);return v<m.v?{p,v}:m;},{p:tries[0],v:Infinity}).p; // aucune place libre (mode TV, plan serré) : celle qui en cache le moins
+    stem=by-ok[1];bx=ok[0];by=ok[1];
+  }
   // panne / validation : un emoji (🚨, ✋) sur fond rouge ou ambre ne se lit pas ; bulle claire cerclée à la place (seul « ! » reste blanc sur rouge)
   const alert=st.st==='error'||st.st==='gate', ring=alert&&txt!=='!', ringCol=st.st==='error'?'#c62828':'#b7791f';
   const bc=ring?'#fffdf8':st.st==='error'?'#d1453b':st.st==='gate'?'#e0a020':'#fffdf8';
@@ -178,9 +195,11 @@ function drawOverlay(c,now){
     ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(bx+1,by+2,w,h);
     ctx.fillStyle=bc;ctx.fillRect(bx,by,w,h);
     if(seated)ctx.fillRect(c.dir==='right'?bx+w:bx-3,by+h/2-2,3,4);else ctx.fillRect(x-2,by+h,4,3);
+    if(stem)ctx.fillRect(x-1,by+h+3,2,stem);
     if(bb.tone){ctx.fillStyle=bb.tone;ctx.fillRect(bx,by,3,h);}
     if(ring){ctx.strokeStyle=ringCol;ctx.lineWidth=2;ctx.strokeRect(bx+1,by+1,w-2,h-2);}
   }
+  BUBBLE_BOXES.push({x:bx,y:by,w,h});
   const ph=toolPhase(c,bb.tool,now); if(ph)drawToolBubble(bb.tool,ph,bx,by);
   ctx.fillStyle=ring?ringCol:alert?'#fff':'#25221d';ctx.textBaseline='middle';ctx.textAlign='center';
   ctx.fillText(txt,bx+w/2+(bb.tone?1.5:0),by+h/2+1);ctx.textAlign='left';ctx.textBaseline='alphabetic';

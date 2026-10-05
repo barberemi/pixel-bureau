@@ -25,6 +25,8 @@ SHOTS = {
     "etiquettes-agents": (1400, 1000, AT(11) + "FILTER='wf';NAMES='all';renderSide();", "#cv", 1.5),
     # ticket réouvert à 10h50 : face-à-face de Pam avec Karen (testeuse) et le mage, devant le bureau du boss
     "reopen-testeur": (1400, 1000, AT(10 + 51 / 60), "#cv", 1.5),
+    # mise en prod d'Andy finie à 10h42 : le sage le félicite sur la scène du plateau TV, Michael au sax
+    "prod-heraut": (1400, 1000, AT(10 + 43.5 / 60), "#cv", 1.5),
     # scènes d'équipe (37-scenes.js) : Gabe livre DM-6717 à Karen, Karen valide DM-6550 de Michael (le boss)
     "scene-livraison": (1400, 1000, AT(11 + 11 / 60), "#cv", 1.5),
     "scene-validation": (1400, 1000, AT(11 + 21 / 60), "#cv", 1.5),
