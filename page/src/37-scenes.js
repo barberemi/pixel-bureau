@@ -17,17 +17,18 @@ function teamMoves(){
   return list;
 }
 // ticket réouvert avec un héraut (invité on: « reopen », ex. le mage) : il entre par la porte ; lui, l'auteur et l'assigné
-// se retrouvent devant le bureau du boss (spots gate), l'assigné d'un côté face aux deux autres, le héraut crie (shout)
+// se retrouvent en salle de réunion, l'assigné d'un côté de la table face aux deux autres ; le héraut crie (shout, en grand)
 const HERALD_MS=3*60e3;
 const herald=()=>chars.find(x=>x.guest&&x.on==='reopen')||null;
-function standoff(){ // places de l'assigné, du testeur et du héraut, serrées devant le bureau du boss
-  const [bx,by]=BOSS_SEAT||[], y=by+2, row=[[bx-1,'right'],[bx+1,'left'],[bx+2,'left']]; // une case vide entre l'assigné et eux
-  if(BOSS_SEAT&&row.every(([x])=>walkable(x,y)))return {dev:[bx-1,y,'right'],tester:[bx+1,y,'left'],herald:[bx+2,y,'left']};
-  // plan où cette rangée est encombrée : les places « gate » de gauche à droite
-  const g=((SPOTS.gate||[]).slice()).sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+function standoff(){ // en salle de réunion : l'assigné d'un côté de la table, le testeur et le héraut en face
+  const meet=SPOTS.meet||[], up=meet.filter(p=>p[2]==='down').sort((a,b)=>a[0]-b[0]), down=meet.filter(p=>p[2]==='up').sort((a,b)=>a[0]-b[0]);
+  if(up.length&&down.length>=2){
+    const d=up[Math.floor(up.length/2)], near=down.slice().sort((a,b)=>Math.abs(a[0]-d[0])-Math.abs(b[0]-d[0])).slice(0,2).sort((a,b)=>a[0]-b[0]);
+    return {dev:[d[0],d[1],'down'],tester:[near[0][0],near[0][1],'up'],herald:[near[1][0],near[1][1],'up']};
+  }
+  const g=((SPOTS.gate||[]).slice()).sort((a,b)=>a[0]-b[0]||a[1]-b[1]); // plan sans salle de réunion assez grande
   if(g.length<3)return null;
-  const [d,tt,h]=[g[0],g[g.length-2],g[g.length-1]];
-  return {dev:[d[0],d[1],'right'],tester:[tt[0],tt[1],'left'],herald:[h[0],h[1],'left']};
+  return {dev:[g[0][0],g[0][1],'right'],tester:[g[g.length-2][0],g[g.length-2][1],'left'],herald:[g[g.length-1][0],g[g.length-1][1],'left']};
 }
 function heraldScene(c,t,m,h){
   const pos=standoff(); if(!pos||!m.dev||!m.author||m.author===m.dev)return undefined; // pas de face-à-face possible
@@ -35,7 +36,7 @@ function heraldScene(c,t,m,h){
   if(t<m.t+HERALD_MS){
     if(c===m.dev)return {st:'reopen',zone:'visit',visit:pos.dev,human:true,label:m.key+' réouvert : convoqué devant '+h.name,bubble:'😨 '+k};
     if(c===m.author)return {st:'reopen',zone:'visit',visit:pos.tester,human:true,label:'Annonce que '+m.key+' est réouvert'}; // pas de bulle : celles de l'assigné et du héraut suffisent, côte à côte
-    if(c===h)return {st:'reopen',zone:'visit',visit:pos.herald,label:m.key+' ne passera pas',bubble:h.shout||'🧙'};
+    if(c===h)return {st:'reopen',zone:'visit',visit:pos.herald,label:m.key+' ne passera pas',bubble:h.shout||'🧙',big:true};
     return null;
   }
   return null;

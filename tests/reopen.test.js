@@ -21,8 +21,9 @@ test('10h50 : le mage entre ; Pam d\'un côté, Karen et le mage en face, devant
   assert.deepEqual([k.st, k.visit, k.bubble], ['reopen', pos.tester, null]);
   assert.deepEqual([p.st, p.visit, p.bubble], ['reopen', pos.dev, '😨 7089']);
   assert.deepEqual([m.st, m.visit, m.bubble], ['reopen', pos.herald, 'Vous ne passerez pas !']);
-  assert.equal(pos.dev[2], 'right'); // l'assigné regarde les deux autres
-  assert.ok(pos.tester[2] === 'left' && pos.herald[2] === 'left');
+  assert.equal(pos.dev[2], 'down'); // l'assigné d'un côté de la table de réunion, les deux autres en face
+  assert.ok(pos.tester[2] === 'up' && pos.herald[2] === 'up' && pos.tester[1] > pos.dev[1]);
+  assert.equal(J(`bubbleFor(byKey.g_mage,stateAt(byKey.g_mage,${at('10:51')}),${at('10:51')},0).big`), true);
   assert.equal(st('g_mage', '10:49').st, 'off'); // absent avant
   assert.equal(st('g_mage', '10:54').st, 'gone'); // repart par la porte
   assert.equal(st('g_mage', '11:00').st, 'off');

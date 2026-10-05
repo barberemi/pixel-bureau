@@ -161,7 +161,7 @@ function drawOverlay(c,now){
   if(isFocus(c))return; // bulle détaillée, dessinée par-dessus tout le reste
   const bb=bubbleFor(c,st,T,now); if(!bb||c.moving&&st.st!=='gate')return;
   const txt=bb.head, isIcon=txt.length<=2;
-  const S=TV?TV_TXT:1;
+  const S=(TV?TV_TXT:1)*(bb.big?1.6:1); // big : la réplique d'une scène (le cri du héraut)
   ctx.font=isIcon?Math.round(13*S)+'px system-ui,sans-serif':'bold '+Math.round(9*S)+'px ui-monospace,Menlo,monospace';
   const w=Math.ceil(ctx.measureText(txt).width)+(isIcon?8:10)+(bb.tone?3:0), h=Math.round((isIcon?18:15)*S);
   const seated=!c.moving&&c.tile&&SEATS.some(s=>s.x===c.tile[0]&&s.y===c.tile[1]);

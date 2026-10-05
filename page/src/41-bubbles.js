@@ -40,7 +40,7 @@ function bubbleFor(c,st,t,clock){
   // agent au travail : nuage = l'étape en cours, l'outil part dans sa propre bulle
   const think=!c.person&&!c.visitor&&['work','srv','meet'].includes(st.st);
   const head=think&&st.act?String(st.stepBubble||'...'):String(st.bubble);
-  return {head:st.st==='work'&&!c.visitor?head.slice(0,18):head,tone:null,detail:null,cloud:think,tool:think?st.act||null:null};
+  return {head:st.st==='work'&&!c.visitor?head.slice(0,18):head,tone:null,detail:null,cloud:think,tool:think?st.act||null:null,big:!!st.big};
 }
 // ---------- double bulle (d'après ThoughtBubble.ts / ToolBubble.ts de Munder Difflin) ----------
 // nuage clair = ce que fait l'agent (étape, ticket) ; bulle sombre = l'outil en cours, en entier pendant TOOL_FULL
