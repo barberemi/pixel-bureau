@@ -33,6 +33,20 @@ Quand un ticket passe en Reopen dans Jira, celui qui l'a réouvert (souvent le t
 | --- | --- |
 | ![Karen va voir Pam](../img/reopen-testeur.png) | ![Pam aux toilettes](../img/reopen-pleure.png) |
 
+D'autres changements de colonne se jouent aussi, à l'heure exacte du changement de statut :
+- **Ticket à tester** : le développeur porte le dossier au bureau du testeur (« 📁 6717 »), et le testeur a sur son bureau une pile de dossiers, un par ticket en test.
+- **Ticket validé** : le testeur lève le pouce depuis son bureau (« 👍 6550 validé ») et le développeur lève les bras (🙌), boss compris.
+
+| Ticket livré au testeur | Ticket validé |
+| --- | --- |
+| ![Gabe apporte DM-6717 à Karen](../img/scene-livraison.png) | ![Karen valide, Michael lève les bras](../img/scene-validation.png) |
+
+Le sprint a ses rendez-vous : le premier jour, juste après le daily, l'équipe passe 5 min devant le Kanban (🏁) ; le dernier jour, des boîtes de pizza arrivent sur la table de la cuisine vers midi et tout le monde y mange de 12h à 12h40 (🍕).
+
+| Lancement du sprint | Pizzas du dernier jour |
+| --- | --- |
+| ![Toute l'équipe devant le Kanban](../img/scene-kickoff.png) | ![Toute l'équipe à la cafétéria](../img/scene-pizza.png) |
+
 L'anneau sous les pieds double la couleur par une forme (lisible par les daltoniens) : plein = au travail, pointillés = attend une validation, tirets = en panne.
 
 ![Légende « Comment lire le plan »](../img/legende.png)

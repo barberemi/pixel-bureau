@@ -335,6 +335,7 @@ function islandFurniture(){ // îlots : tables, écrans, chaises
           const pile=pileOf(o); const bx=side==='L'?x0+12:x0+4;
           pile.forEach((t,i)=>{R(ctx,bx-1,py+22-i*3,8,3,TCAT[t.cat].c);});
           if(o&&o.roleKind==='sm')docPile(side==='L'?x0+18:x0+11,py+22,o);
+          if(o&&o.roleKind==='qa')folderPile(side==='L'?x0+18:x0+11,py+22); // 37-scenes.js
           const lc=o&&o.present?lampColor(o):'#55524c'; R(ctx,side==='L'?x0+2:x0+TS-11,py+18,4,4,lc);
         }
       }
@@ -373,6 +374,7 @@ function buildFurniture(){
   FURN.push(TV_SCREEN,PAY_ENVELOPE,EMP_FRAME,KANBAN_WALL,CRON_BOARD);
   for(const [x,y] of LAYOUT.plants||[])plant(x,y);
   themeFurniture(); // 46-themes.js : décor des fêtes
+  sceneFurniture(); // 37-scenes.js : pizzas du dernier jour du sprint
 }
 // meubles immobiles cuits une fois : ceux d'une même profondeur (même y) dessinés ensemble dans une toile de travail,
 // rognés à leur rectangle utile, puis remplacés dans FURN par une seule recopie (tri en profondeur inchangé).

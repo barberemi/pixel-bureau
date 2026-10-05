@@ -151,6 +151,7 @@ function bossState(c,t){
   const plan=bossPlan(t);
   // 2. validations ou questions : retour au bureau, toutes affaires cessantes
   if(pending)return ret({st:'boss',zone:'boss',label:waitTxt,bubble:'✋'+pending});
+  {const sc=teamScene(c,t);if(sc)return ret(sc);} // 37-scenes.js : le boss a aussi des tickets
   // 3. routine
   if(sax&&inSax(t))return ret({st:'sax',zone:'boss',label:'Joue du saxophone à son bureau',bubble:'♪'});
   {const sg=stageAt(t);if(sg)return ret({st:'idle',zone:'stageout',label:'Suit la MEP '+sg.m.tag+' devant le plateau TV',bubble:'📺'});}
@@ -203,27 +204,6 @@ function weekHealth(c){
   const p=typeof payFor==='function'?payFor(c):null; if(!p||!p.week.runs)return null;
   return p.week.fail+' échecs sur '+p.week.runs+' runs en 7 j ('+Math.round(p.week.fail/p.week.runs*100)+' %)';
 }
-// ---------- ticket réouvert : le testeur va le dire au développeur, puis le développeur part pleurer aux toilettes ----------
-const REOPEN_TELL=2*60e3, REOPEN_CRY=5*60e3;
-let REOPEN_MEMO={team:null,list:[]};
-// passages du jour au statut « réouvert » (team.events) : {t, key, tester, dev}, recalculés quand les données changent
-function reopens(){
-  if(REOPEN_MEMO.team===TEAM)return REOPEN_MEMO.list;
-  const list=((TEAM&&TEAM.events)||[]).filter(e=>e.kind==='move'&&e.to===(CFG.jira_reopened||'Reopen')).map(e=>({t:ms(e.t),key:e.key,
-    tester:personChar(e.who,e.who_name),dev:chars.find(x=>x.person&&x.team&&(x.team.tickets||[]).some(k=>k.key===e.key))||null}));
-  REOPEN_MEMO={team:TEAM,list};
-  return list;
-}
-function reopenState(c,t){
-  for(const r of reopens()){
-    const tell=r.tester&&r.tester!==r.dev&&r.dev&&r.dev.seat, cry0=r.t+(tell?REOPEN_TELL:0), short=String(r.key).replace(/^[A-Z][A-Z0-9]*-/,'');
-    if(tell&&c===r.tester&&t>=r.t&&t<r.t+REOPEN_TELL)
-      return {st:'reopen',zone:'visit',visit:besideSeat(r.dev.seat),human:true,label:'Vient dire à '+r.dev.name+' que '+r.key+' est réouvert',bubble:'🔁 '+short+' réouvert'};
-    if(c===r.dev&&t>=cry0&&t<cry0+REOPEN_CRY)
-      return {st:'cry',zone:'wc',human:true,label:'Pleure aux toilettes : '+r.key+' réouvert'+(r.tester&&r.tester!==c?' par '+r.tester.name:''),bubble:'😭'};
-  }
-  return null;
-}
 function stateAt0(c,t){
   if(c.guest)return guestState(c,t);
   if(c.person&&!c.boss){
@@ -245,7 +225,7 @@ function stateAt0(c,t){
       label:'Met en prod '+sg.m.tag+' ('+sg.m.ticket+') : '+MEP_TXT[sg.phase],
       bubble:'🚀'
     };
-    {const ro=reopenState(c,t);if(ro)return ro;}
+    {const sc=teamScene(c,t);if(sc)return sc;} // 37-scenes.js : sprint, ticket livré, validé, réouvert
     const open=c.team?c.team.tickets.filter(x=>x.cat!=='done'):[], W=workOf(c), wk=workTxt(W);
     if(c.roleKind==='sm'){
       const mn=+dtf('en-GB',{minute:'numeric'}).format(new Date(t));
@@ -385,7 +365,12 @@ const ST_COLOR={
   boss:'#8a8478',
   frozen:'#7d8fa3',
   reopen:'#d97757',
-  cry:'#4a7fe0'
+  cry:'#4a7fe0',
+  deliver:'#7a5cc8',
+  thumbs:'#2e9e5b',
+  cheer:'#2e9e5b',
+  pizza:'#e0a020',
+  kickoff:'#2e9e9b'
 };
 const ST_CSS={
   sax:'#c9a227',
@@ -404,6 +389,11 @@ const ST_CSS={
   frozen:'#7d8fa3',
   reopen:'#d97757',
   cry:'#4a7fe0',
+  deliver:'#7a5cc8',
+  thumbs:'var(--ok)',
+  cheer:'var(--ok)',
+  pizza:'var(--warn)',
+  kickoff:'#2e9e9b',
   absent:'transparent',
   gone:'transparent'
 };
@@ -458,7 +448,7 @@ function tick(real){
     let zone=s.zone; if(zone==='wander')zone=wanderZone(c,real); else c.idlePlan=null;
     const spot=pickSpot(c,zone,taken); if(!spot)continue;
     if(spot.key!=='desk'&&spot.key!=='exit')taken.add(spot.key);
-    c.pose=s.st==='sax'?'type':(s.st==='gate'||s.st==='party')?'hands':(s.st==='work'&&zone==='desk')?'type':'idle';
+    c.pose=s.st==='sax'?'type':(s.st==='gate'||s.st==='party'||s.st==='cheer')?'hands':(s.st==='work'&&zone==='desk')?'type':'idle';
     if(!c.present||needTeleport||!c.pos){
       c.present=true;
       // placé d'un coup seulement au chargement / saut dans le temps ; un nouvel arrivant entre par la porte et marche

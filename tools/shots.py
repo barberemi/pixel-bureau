@@ -26,6 +26,12 @@ SHOTS = {
     # ticket réouvert à 10h50 : Karen (testeuse) va le dire à Pam, puis Pam pleure aux toilettes
     "reopen-testeur": (1400, 1000, AT(10 + 51 / 60), "#cv", 1.5),
     "reopen-pleure": (1400, 1000, AT(10 + 54 / 60), "#cv", 1.5),
+    # scènes d'équipe (37-scenes.js) : Gabe livre DM-6717 à Karen, Karen valide DM-6550 de Michael (le boss)
+    "scene-livraison": (1400, 1000, AT(11 + 11 / 60), "#cv", 1.5),
+    "scene-validation": (1400, 1000, AT(11 + 21 / 60), "#cv", 1.5),
+    # dernier jour du sprint (fin du sprint ramenée au jour de la démo) et premier jour, après le daily
+    "scene-pizza": (1400, 1000, AT(12 + 10 / 60) + "TEAM.sprint.end='2026-10-01T15:00:00Z';", "#cv", 1.5),
+    "scene-kickoff": (1400, 1000, AT(9 + 56 / 60) + "TEAM.sprint.start='2026-10-01T07:00:00Z';", "#cv", 1.5),
     "legende": (1400, 1600, AT(11) + "document.querySelector('.legend-help').open=true;", ".legend-help"),
     "a-traiter": (1400, 1000, AT(11), "#todo"),
     "qui-fait-quoi": (1400, 1400, AT(11), "#who"),

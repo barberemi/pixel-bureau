@@ -65,7 +65,8 @@ def page_config(cfg):
     return {
         "kronn_ui": (cfg.get("kronn") or {}).get("ui"),
         "jira_site": (cfg.get("jira") or {}).get("site"),
-        "jira_reopened": ((cfg.get("jira") or {}).get("flow") or {}).get("reopened") or "Reopen",  # statut Jira d'un ticket réouvert
+        # statuts Jira des scènes d'équipe : ticket à tester, validé, réouvert
+        "jira_flow": {**JIRA_FLOW, **{k: v for k, v in ((cfg.get("jira") or {}).get("flow") or {}).items() if v}},
         "github_repo": (cfg.get("github") or {}).get("repo"),
         "github_login": (cfg.get("github") or {}).get("login"),
         "rhythm": cfg.get("rhythm") or {},
@@ -77,6 +78,8 @@ def page_config(cfg):
     }
 
 
+# statuts Jira par défaut du flux de l'équipe (jira.flow) : requêtes du cron équipe et scènes de la page
+JIRA_FLOW = {"triage_from": "Proposed", "test": "To Test", "validated": "To Deploy", "reopened": "Reopen"}
 DEFAULT_LAYOUT = "layouts/open-space.json"  # plan type, sans équipe
 
 

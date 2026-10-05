@@ -18,7 +18,10 @@ function render(now){
     g.addColorStop(0,'rgba(10,12,22,0)');g.addColorStop(1,'rgba(10,12,22,.52)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
     drawSeatTrail(sc,now);
   }
-  for(const c of chars)if(c.present&&shown(c))drawOverlay(c,now);
+  // bulles : celui qui vient voir quelqu'un (ticket livré, réouvert) passe par-dessus la bulle de la personne visitée
+  const onTop=c=>c._st&&(c._st.st==='deliver'||c._st.st==='reopen');
+  for(const c of chars)if(c.present&&shown(c)&&!onTop(c))drawOverlay(c,now);
+  for(const c of chars)if(c.present&&shown(c)&&onTop(c))drawOverlay(c,now);
   drawEnvelopes(now,FILTER?shown:null);
   NAME_BOXES=[];
   for(const c of chars)if(c.present&&c.key!==sel&&shown(c))drawName(c);

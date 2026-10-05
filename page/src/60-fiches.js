@@ -294,6 +294,11 @@ function shortSt(st){
     boss:'au bureau',
     reopen:'signale un reopen',
     cry:'pleure',
+    deliver:'livre un ticket',
+    thumbs:'valide',
+    cheer:'ticket validé',
+    pizza:'pizza',
+    kickoff:'lancement du sprint',
     absent:'pas arrivé',
     off:'absent',
     gone:'parti'
