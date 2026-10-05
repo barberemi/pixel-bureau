@@ -65,6 +65,7 @@ def page_config(cfg):
     return {
         "kronn_ui": (cfg.get("kronn") or {}).get("ui"),
         "jira_site": (cfg.get("jira") or {}).get("site"),
+        "jira_reopened": ((cfg.get("jira") or {}).get("flow") or {}).get("reopened") or "Reopen",  # statut Jira d'un ticket réouvert
         "github_repo": (cfg.get("github") or {}).get("repo"),
         "github_login": (cfg.get("github") or {}).get("login"),
         "rhythm": cfg.get("rhythm") or {},

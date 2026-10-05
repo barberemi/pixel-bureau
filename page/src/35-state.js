@@ -203,6 +203,27 @@ function weekHealth(c){
   const p=typeof payFor==='function'?payFor(c):null; if(!p||!p.week.runs)return null;
   return p.week.fail+' échecs sur '+p.week.runs+' runs en 7 j ('+Math.round(p.week.fail/p.week.runs*100)+' %)';
 }
+// ---------- ticket réouvert : le testeur va le dire au développeur, puis le développeur part pleurer aux toilettes ----------
+const REOPEN_TELL=2*60e3, REOPEN_CRY=5*60e3;
+let REOPEN_MEMO={team:null,list:[]};
+// passages du jour au statut « réouvert » (team.events) : {t, key, tester, dev}, recalculés quand les données changent
+function reopens(){
+  if(REOPEN_MEMO.team===TEAM)return REOPEN_MEMO.list;
+  const list=((TEAM&&TEAM.events)||[]).filter(e=>e.kind==='move'&&e.to===(CFG.jira_reopened||'Reopen')).map(e=>({t:ms(e.t),key:e.key,
+    tester:personChar(e.who,e.who_name),dev:chars.find(x=>x.person&&x.team&&(x.team.tickets||[]).some(k=>k.key===e.key))||null}));
+  REOPEN_MEMO={team:TEAM,list};
+  return list;
+}
+function reopenState(c,t){
+  for(const r of reopens()){
+    const tell=r.tester&&r.tester!==r.dev&&r.dev&&r.dev.seat, cry0=r.t+(tell?REOPEN_TELL:0), short=String(r.key).replace(/^[A-Z][A-Z0-9]*-/,'');
+    if(tell&&c===r.tester&&t>=r.t&&t<r.t+REOPEN_TELL)
+      return {st:'reopen',zone:'visit',visit:besideSeat(r.dev.seat),human:true,label:'Vient dire à '+r.dev.name+' que '+r.key+' est réouvert',bubble:'🔁 '+short+' réouvert'};
+    if(c===r.dev&&t>=cry0&&t<cry0+REOPEN_CRY)
+      return {st:'cry',zone:'wc',human:true,label:'Pleure aux toilettes : '+r.key+' réouvert'+(r.tester&&r.tester!==c?' par '+r.tester.name:''),bubble:'😭'};
+  }
+  return null;
+}
 function stateAt0(c,t){
   if(c.guest)return guestState(c,t);
   if(c.person&&!c.boss){
@@ -224,6 +245,7 @@ function stateAt0(c,t){
       label:'Met en prod '+sg.m.tag+' ('+sg.m.ticket+') : '+MEP_TXT[sg.phase],
       bubble:'🚀'
     };
+    {const ro=reopenState(c,t);if(ro)return ro;}
     const open=c.team?c.team.tickets.filter(x=>x.cat!=='done'):[], W=workOf(c), wk=workTxt(W);
     if(c.roleKind==='sm'){
       const mn=+dtf('en-GB',{minute:'numeric'}).format(new Date(t));
@@ -361,7 +383,9 @@ const ST_COLOR={
   coffee:'#9a9284',
   idle:'#9a9284',
   boss:'#8a8478',
-  frozen:'#7d8fa3'
+  frozen:'#7d8fa3',
+  reopen:'#d97757',
+  cry:'#4a7fe0'
 };
 const ST_CSS={
   sax:'#c9a227',
@@ -378,6 +402,8 @@ const ST_CSS={
   idle:'var(--idle)',
   boss:'#8a8478',
   frozen:'#7d8fa3',
+  reopen:'#d97757',
+  cry:'#4a7fe0',
   absent:'transparent',
   gone:'transparent'
 };

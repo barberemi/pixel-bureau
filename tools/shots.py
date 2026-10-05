@@ -23,6 +23,9 @@ SHOTS = {
     "plan": (1400, 1000, AT(11), "#cv", 1.5),
     # agents mis en avant (« Sur le plan » : agents) : icône, prénom et métier de chacun
     "etiquettes-agents": (1400, 1000, AT(11) + "FILTER='wf';NAMES='all';renderSide();", "#cv", 1.5),
+    # ticket réouvert à 10h50 : Karen (testeuse) va le dire à Pam, puis Pam pleure aux toilettes
+    "reopen-testeur": (1400, 1000, AT(10 + 51 / 60), "#cv", 1.5),
+    "reopen-pleure": (1400, 1000, AT(10 + 54 / 60), "#cv", 1.5),
     "legende": (1400, 1600, AT(11) + "document.querySelector('.legend-help').open=true;", ".legend-help"),
     "a-traiter": (1400, 1000, AT(11), "#todo"),
     "qui-fait-quoi": (1400, 1400, AT(11), "#who"),

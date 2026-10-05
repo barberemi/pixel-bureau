@@ -292,6 +292,8 @@ function shortSt(st){
     coffee:'café',
     idle:'dispo',
     boss:'au bureau',
+    reopen:'signale un reopen',
+    cry:'pleure',
     absent:'pas arrivé',
     off:'absent',
     gone:'parti'
