@@ -27,7 +27,7 @@ Un invité de passage entre par la porte, va saluer des collègues à leur burea
 - **Plateau TV** : mises en prod du jour (fermé le vendredi et le week-end).
 - **Café, canapé** : run réussi récemment, ou rien à faire.
 
-Quand un ticket passe en Reopen dans Jira, un mage entre par la porte. Lui, celui qui a réouvert le ticket (souvent le testeur) et le développeur se retrouvent devant le bureau du boss : le développeur d'un côté (😨), face au testeur (« 🔁 7089 réouvert ») et au mage, qui crie « Vous ne passerez pas ! ». Trois minutes plus tard, le mage repart par la porte et chacun retourne à sa place. Sans mage dans le roster, le testeur va simplement le dire au développeur à sa place. La scène se rejoue à l'heure exacte du changement de statut.
+Quand un ticket passe en Reopen dans Jira, un mage entre par la porte. Lui, celui qui a réouvert le ticket (souvent le testeur) et le développeur se retrouvent devant le bureau du boss : le développeur d'un côté (« 😨 7089 »), face au testeur et au mage, côte à côte, qui crie « Vous ne passerez pas ! ». Trois minutes plus tard, le mage repart par la porte et chacun retourne à sa place. Sans mage dans le roster, le testeur va simplement le dire au développeur à sa place. La scène se rejoue à l'heure exacte du changement de statut.
 
 ![Le face-à-face devant le bureau du boss](../img/reopen-testeur.png)
 

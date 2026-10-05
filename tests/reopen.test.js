@@ -18,8 +18,8 @@ test('le reopen du jour : testeuse Karen, développeuse Pam', () => {
 
 test('10h50 : le mage entre ; Pam d\'un côté, Karen et le mage en face, devant le bureau du boss ; il crie', () => {
   const pos = J('standoff()'), k = st('p_karen', '10:51'), p = st('p_pam', '10:51'), m = st('g_mage', '10:51');
-  assert.deepEqual([k.st, k.visit, k.bubble], ['reopen', pos.tester, '🔁 7089 réouvert']);
-  assert.deepEqual([p.st, p.visit, p.bubble], ['reopen', pos.dev, '😨']);
+  assert.deepEqual([k.st, k.visit, k.bubble], ['reopen', pos.tester, null]);
+  assert.deepEqual([p.st, p.visit, p.bubble], ['reopen', pos.dev, '😨 7089']);
   assert.deepEqual([m.st, m.visit, m.bubble], ['reopen', pos.herald, 'Vous ne passerez pas !']);
   assert.equal(pos.dev[2], 'right'); // l'assigné regarde les deux autres
   assert.ok(pos.tester[2] === 'left' && pos.herald[2] === 'left');
