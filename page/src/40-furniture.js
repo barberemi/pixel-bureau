@@ -2,6 +2,14 @@
 // fixed : meuble immobile, cuit une fois par bakeFurniture() ; sinon redessiné à chaque image (écrans, voyants, données)
 function deskOwner(x,y){return chars.find(c=>c.seat&&c.seat[0]===x&&c.seat[1]===y&&!(c.boss&&c.atBoss));}
 function lampColor(c){if(!c||!c._st)return '#5a5a5a';return ST_COLOR[c._st.st]||'#5a5a5a';}
+// pile de documents de la facilitatrice : une feuille par ticket créé par l'équipe depuis le dernier daily (20 au plus)
+const DOC_MAX=20;
+function docPile(x,y,o){
+  const n=Math.min(DOC_MAX,teamCreated(lastDaily(T),T).length);
+  for(let i=0;i<n;i++){const dx=Math.round((hash(i,o.seat[0])-.5)*4), yy=y-i*3; // feuilles un peu de travers
+    R(ctx,x+dx-2,yy,11,3,'#fbf8ef');R(ctx,x+dx-2,yy+2,11,1,'#a39c8a');R(ctx,x+dx+1,yy+1,5,1,'#c9c2b0');}
+  if(n>=DOC_MAX)R(ctx,x+2,y-n*3-2,5,3,'#d1453b'); // au sommet : un trombone rouge, la pile déborde
+}
 function pileOf(c){
   const t=c&&c.team&&c.team.tickets;
   return t?t.filter(x=>x.cat!=='done').sort((a,b)=>TORDER.indexOf(b.cat)-TORDER.indexOf(a.cat)).slice(-5):[];
@@ -326,6 +334,7 @@ function islandFurniture(){ // îlots : tables, écrans, chaises
           const kx=side==='L'?x0+12:x0+4; R(ctx,kx,py+2,5,10,'#e6e6e6');
           const pile=pileOf(o); const bx=side==='L'?x0+12:x0+4;
           pile.forEach((t,i)=>{R(ctx,bx-1,py+22-i*3,8,3,TCAT[t.cat].c);});
+          if(o&&o.roleKind==='sm')docPile(side==='L'?x0+18:x0+11,py+22,o);
           const lc=o&&o.present?lampColor(o):'#55524c'; R(ctx,side==='L'?x0+2:x0+TS-11,py+18,4,4,lc);
         }
       }

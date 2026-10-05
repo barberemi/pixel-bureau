@@ -194,7 +194,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Heure du dernier daily (jour ouvré précédent), pour les tickets du testeur.",
+    "description": "Heure du dernier daily (jour ouvré précédent) : tickets créés depuis, et ceux du testeur.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -209,7 +209,37 @@
      "@@script:workflows/standup_since.py@@"
     ],
     "exec_timeout_secs": 20,
-    "_requires": "jira.role.qa"
+    "_requires": "jira"
+   },
+   {
+    "name": "new_tickets",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Tickets créés depuis le dernier daily, avec leur auteur (la page garde ceux de l'équipe).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/search/jql",
+    "api_method": "GET",
+    "api_query": {
+     "jql": "project = @@jira.project@@ AND created >= \"{{steps.since.data.stdout}}\" ORDER BY created DESC",
+     "fields": "summary,reporter,issuetype,status,created",
+     "maxResults": "50"
+    },
+    "api_extract": {
+     "path": "$.issues",
+     "fallback": [],
+     "fail_on_empty": false
+    },
+    "_requires": "jira"
    },
    {
     "name": "work_qa_ok",
@@ -312,7 +342,7 @@
      "@@script:workflows/team_shape.py@@"
     ],
     "exec_timeout_secs": 60,
-    "exec_stdin": "{\"sprint\":{{steps.sprint_info.data_json}},\"issues\":{{steps.jira_team.data_json}},\"closed\":{{steps.jira_closed.data_json}},\"github\":{{steps.github.data.stdout}},\"work\":{\"written\":{{steps.work_written.data_json}},\"po_triage\":{{steps.work_po_triage.data_json}},\"sm_triage\":{{steps.work_sm_triage.data_json}},\"qa_ok\":{{steps.work_qa_ok.data_json}},\"qa_back\":{{steps.work_qa_back.data_json}}},\"roles\":{\"po\":\"@@jira.role.po@@\",\"sm\":\"@@jira.role.sm@@\",\"qa\":\"@@jira.role.qa@@\"}}"
+    "exec_stdin": "{\"sprint\":{{steps.sprint_info.data_json}},\"issues\":{{steps.jira_team.data_json}},\"closed\":{{steps.jira_closed.data_json}},\"github\":{{steps.github.data.stdout}},\"work\":{\"written\":{{steps.work_written.data_json}},\"po_triage\":{{steps.work_po_triage.data_json}},\"sm_triage\":{{steps.work_sm_triage.data_json}},\"qa_ok\":{{steps.work_qa_ok.data_json}},\"qa_back\":{{steps.work_qa_back.data_json}}},\"new_tickets\":{{steps.new_tickets.data_json}},\"roles\":{\"po\":\"@@jira.role.po@@\",\"sm\":\"@@jira.role.sm@@\",\"qa\":\"@@jira.role.qa@@\"}}"
    },
    {
     "name": "publish",

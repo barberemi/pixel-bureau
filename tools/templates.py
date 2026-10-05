@@ -76,7 +76,7 @@ def script_code(path, cfg):
 ROLES = ("po", "sm", "qa")
 # étapes du travail des rôles : retirées si personne n'a ce rôle (ou pas de compte Jira dans le roster)
 WORK_REQUIRES = {"work_written": "jira.role_ids", "work_po_triage": "jira.role.po", "work_sm_triage": "jira.role.sm",
-                 "work_qa_ok": "jira.role.qa", "work_qa_back": "jira.role.qa", "since": "jira.role.qa"}
+                 "work_qa_ok": "jira.role.qa", "work_qa_back": "jira.role.qa", "since": "jira"}
 FLOW_DEFAULTS = {"triage_from": "Proposed", "test": "To Test", "validated": "To Deploy", "reopened": "Reopen"}
 
 

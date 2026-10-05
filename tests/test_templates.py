@@ -70,9 +70,12 @@ class TemplatesTest(unittest.TestCase):
         names = [s["name"] for s in team["steps"]]
         self.assertNotIn("jira_team", names)
         self.assertNotIn("sprint_info", names)
+        self.assertNotIn("new_tickets", names)
+        self.assertNotIn("since", names)
         self.assertIn("github", names)
         shape = next(s for s in team["steps"] if s["name"] == "shape")
         self.assertNotIn("jira", shape["exec_stdin"])
+        self.assertIn('"new_tickets":null', shape["exec_stdin"])
         self.assertIn('"issues":null', shape["exec_stdin"])
         self.assertNotIn("_requires", json.dumps(team))
 

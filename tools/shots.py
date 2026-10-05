@@ -30,6 +30,11 @@ SHOTS = {
     "rejouer": (1400, 1200, AT(9.7) + "setMode('play');", ".stage", 1.5),
     "tv": (1600, 900, AT(11) + "setTv(true);", None),
     "standup": (1600, 900, AT(9.7) + "setTv(true);TVSCENE.manual=true;TVSCENE.idx=0;updateTv(true);", None),
+    # tour de table : la facilitatrice présente les tickets créés par l'équipe depuis le dernier daily
+    "standup-facilitatrice": (1600, 900, AT(9.7) + "setTv(true);TVSCENE.manual=true;"
+                              "TVSCENE.idx=standupScenes().findIndex(s=>s.c&&s.c.roleKind==='sm');updateTv(true);", None),
+    # pile de documents sur son bureau : 7 tickets créés depuis le daily de 9h40 (et le plan à 11h, rogné sur l'îlot)
+    "pile-facilitatrice": (1400, 1000, AT(11), "#cv", 1.5),
     "fiche-agent": (1400, 1400, AT(11) + "select((chars.find(c=>!c.person&&!c.visitor&&c.runs.length)||{}).key);", "#side"),
     "fiche-collegue": (1400, 1400, AT(11) + "select((chars.find(c=>c.person&&c.team&&c.team.tickets.length)||{}).key);", "#side"),
     "kanban": (1400, 1400, AT(11) + "select('kanban');", "#side"),

@@ -45,6 +45,13 @@ function prevDaily(t){
   for(let k=1;k<8;k++){const d=parisMidnight(t-k*864e5)+DAILY_MIN*60e3;if(!['Sat','Sun'].includes(parisHM(d).wd))return d;}
   return t-864e5;
 }
+// dernier daily passé à t (aujourd'hui s'il a eu lieu, sinon le précédent) : la pile de la facilitatrice repart de zéro
+function lastDaily(t){const d=parisMidnight(t)+DAILY_MIN*60e3;return t>=d&&!['Sat','Sun'].includes(parisHM(d).wd)?d:prevDaily(t);}
+// tickets créés par des collègues entre since et t (team.new_tickets, cron équipe), le plus récent d'abord, avec leur auteur
+function teamCreated(since,t){
+  return ((TEAM&&TEAM.new_tickets)||[]).map(x=>({...x,c:personChar(x.by,x.by_name)})).filter(x=>x.c&&x.c.person&&ms(x.created)>since&&ms(x.created)<=t)
+    .sort((a,b)=>ms(b.created)-ms(a.created));
+}
 function sprintTickets(){return TEAM?[...TEAM.people.flatMap(p=>(p.tickets||[]).map(x=>({...x,who:p.name}))),...(TEAM.unassigned||[])]:[];}
 function newTickets(t){const s=prevDaily(t);return sprintTickets().filter(x=>x.created&&ms(x.created)>s).sort((a,b)=>ms(b.created)-ms(a.created));}
 const tkLi=x=>`<li>${x.status||x.cat?`<span class="st st-${esc(x.cat||'')}">${esc(x.status||CAT_TXT[x.cat]||'')}</span>`:''}<b>${esc(x.key)}</b> ${esc(clip(x.summary||'',90))}${x.who?` <small>· ${esc(String(x.who).split(' ')[0])}</small>`:''}</li>`;
@@ -53,9 +60,10 @@ function personScene(c,t){
   const W=workOf(c), own=(c.team&&c.team.tickets||[]).slice().sort((a,b)=>ST_ORDER.indexOf(a.cat)-ST_ORDER.indexOf(b.cat));
   const lines=[].concat(c.standup||[]); // roster : une phrase, ou une liste (la première en grand, les autres en puces)
   const note=lines.length?`<p class="sc-note">${esc(lines[0])}</p>`+(lines.length>1?`<ul class="sc-lines">${lines.slice(1).map(l=>`<li>${esc(l)}</li>`).join('')}</ul>`:''):'';
-  if(c.roleKind==='sm'){
-    const nw=newTickets(t), rv=sprintTickets().filter(x=>x.cat==='review');
-    return `<h3>Nouveaux tickets depuis le dernier daily (${nw.length})</h3>${nw.length?tkList(nw,50):'<p class="sc-empty">Aucun.</p>'}`+
+  if(c.roleKind==='sm'){ // tickets créés par l'équipe (sprint ou backlog), sinon ceux du sprint (données sans new_tickets)
+    const rv=sprintTickets().filter(x=>x.cat==='review');
+    const byTeam=!!(TEAM&&TEAM.new_tickets), nw=byTeam?teamCreated(prevDaily(t),t).map(x=>({...x,who:x.c.name})):newTickets(t);
+    return `<h3>${byTeam?"Tickets créés par l'équipe":'Nouveaux tickets'} depuis le dernier daily (${nw.length})</h3>${nw.length?tkList(nw,50):'<p class="sc-empty">Aucun.</p>'}`+
       `<p class="sc-big">${plural(rv.length,'ticket en review','tickets en review')}</p><p class="sc-shout">FAITES DES REVIEWS</p>`;
   }
   if(c.roleKind==='po'){

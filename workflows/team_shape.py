@@ -237,6 +237,17 @@ if ROSTER_ROLES.get("qa"):
     if isinstance(W.get("qa_back"), list):
         wk(ROSTER_ROLES["qa"])["reopened"] = brief(W["qa_back"])
 
+# tickets créés depuis le dernier daily (étape new_tickets), avec leur auteur : la page ne garde que ceux de l'équipe
+# (stand-up de la facilitatrice, fil, pile de documents sur son bureau)
+new_tickets = []
+for it in D.get("new_tickets") or []:
+    f = it.get("fields") or {}
+    rep = f.get("reporter") or {}
+    stn = (f.get("status") or {}).get("name")
+    new_tickets.append({"key": it.get("key"), "summary": (f.get("summary") or "")[:110], "type": (f.get("issuetype") or {}).get("name"),
+                        "status": stn, "cat": CAT.get(stn), "created": f.get("created"),
+                        "by": rep.get("accountId"), "by_name": rep.get("displayName")})
+
 sp = D.get("sprint") or {}
 out = {
     "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -249,6 +260,7 @@ out = {
     "events": events,
     "prev_sprint": prev_sprint,
     "work": work,
+    "new_tickets": new_tickets,
     # sources disponibles : la page masque ce qui manque au lieu d'afficher du vide trompeur
     "sources": {"jira": bool(D.get("issues")) or bool(D.get("sprint")), "github": not G.get("errors") if G else True,
                 "github_errors": (G.get("errors") or [])[:5]},
@@ -258,7 +270,8 @@ out = {
 LIMIT = 95 * 1024
 text = dumps(out)
 while len(text.encode()) > LIMIT:
-    lists = [(out["events"], True), (out["unassigned"], False), (out["other_prs"], False), (out["merged_today"], False)]
+    lists = [(out["events"], True), (out["unassigned"], False), (out["other_prs"], False), (out["merged_today"], False),
+             (out["new_tickets"], False)]
     lists += [(w[k], False) for w in work.values() for k in w]
     lst, oldest_first = max(lists, key=lambda x: len(x[0]))
     if len(lst) <= 5:

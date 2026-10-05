@@ -88,7 +88,7 @@ const JIRA_ST={'To Do':'à faire','À faire':'à faire','To Frame':'à cadrer','
 const jst=x=>JIRA_ST[x]||String(x||'').toLowerCase();
 // le personnage d'un collègue : par compte Jira, sinon par nom (les collègues sans ticket ne sont pas dans TEAM.people)
 function personChar(id,name){
-  if(id){const c=chars.find(x=>x.team&&x.team.id===id);if(c)return c;}
+  if(id){const c=chars.find(x=>(x.team&&x.team.id===id)||(x.jira_id&&x.jira_id===id));if(c)return c;}
   if(!name)return null;
   const full=nameKey(name), first=nameKey(String(name).split(' ')[0]);
   return chars.find(x=>x.person&&(nameKey(x.person)===full||nameKey(String(x.person).split(' ')[0])===first))||null;
@@ -160,7 +160,10 @@ function renderFeed(){
     if(m.prod)push(ms(m.prod.start),`<span style="color:#7a5cc8">🚀</span> <b>${esc(m.tag)}</b> part en prod`);
     if(m.prod&&m.prod.end)push(ms(m.prod.end),m.prod.conclusion==='success'?`<span style="color:var(--ok)">✓</span> <b>${esc(m.tag)}</b> est en prod${tk}`:`<span style="color:var(--err)">✗</span> <b>${esc(m.tag)}</b> échoue en prod`);
     }
-  if(TEAM)for(const e of (TEAM.events||[])){const t=ms(e.t);if(t&&t<=T){const x=teamEventTxt(e);if(x)ev.push({t,c:x.c,txt:x.txt,team:true});}}
+  const created=TEAM?teamCreated(DAY0,T):[], createdKeys=new Set(created.map(x=>x.key)); // tickets créés aujourd'hui par l'équipe
+  for(const x of created)ev.push({t:ms(x.created),c:x.c,tv:true,team:true,
+    txt:`<span style="color:var(--info)">📝</span> ${esc(x.c.name)} crée <b>${esc(x.key)}</b> <small>${esc(clip(x.summary,70))}</small>`});
+  if(TEAM)for(const e of (TEAM.events||[])){const t=ms(e.t);if(t&&t<=T&&!(e.kind==='new'&&createdKeys.has(e.key))){const x=teamEventTxt(e);if(x)ev.push({t,c:x.c,txt:x.txt,team:true});}} // déjà « X crée »
   // relectures et travaux des agents sur le ticket ou la PR d'un collègue (A1)
   for(const c of chars){if(c.person||c.visitor)continue;
     for(const r of c.runs){if(!r._e||r._e>T||r.status!=='Success')continue;const ref=runRef(r);if(!ref)continue;

@@ -4,7 +4,7 @@ Le fil raconte la journée, heure par heure ; le récap la résume en quelques l
 
 ![Fil de la journée](../img/fil.png)
 
-- Événements : runs d'agents (regroupés au-delà de 4 runs par jour : « Creed ×38, 31 ✓ 7 ✗ »), tickets Jira qui changent de statut, PR ouvertes, relues et mergées, releases, staging et prod, daily, discussions.
+- Événements : runs d'agents (regroupés au-delà de 4 runs par jour : « Creed ×38, 31 ✓ 7 ✗ »), tickets créés par l'équipe (« 📝 Jan crée DM-7910 », aussi dans le bandeau du mode TV), tickets Jira qui changent de statut, PR ouvertes, relues et mergées, releases, staging et prod, daily, discussions.
 - Filtre « Important » (par défaut) ou « Tout ». Le titre dit « hier » quand les données sont celles de la veille.
 
 ![Récap de la journée](../img/recap.png)

@@ -199,6 +199,19 @@ print(json.dumps(d.get(key, [])))
         self.assertTrue(out["sources"]["jira"] and out["sources"]["github"])
         self.assertNotIn("truncated", out)
 
+    def test_team_shape_new_tickets_with_their_author(self):
+        """Tickets créés depuis le dernier daily (étape new_tickets) : numéro, titre, statut, auteur ; null = étape retirée."""
+        inp = self.team_input()
+        inp["new_tickets"] = [{"key": "DM-900", "fields": {"summary": "Nouveau besoin " + "y" * 200, "status": {"name": "En cours"},
+                               "issuetype": {"name": "Bug"}, "created": "2026-10-01T10:08:00.000+0200",
+                               "reporter": {"accountId": "acc-2", "displayName": "Jan Dupont"}}}]
+        out = self.run_script("team_shape.py", inp)
+        t = out["new_tickets"][0]
+        self.assertEqual((t["key"], t["by"], t["by_name"], t["type"], t["status"]), ("DM-900", "acc-2", "Jan Dupont", "Bug", "En cours"))
+        self.assertEqual(len(t["summary"]), 110)
+        inp["new_tickets"] = None  # sans Jira, l'étape est retirée du rendu et sa référence devient null
+        self.assertEqual(self.run_script("team_shape.py", inp)["new_tickets"], [])
+
     def test_team_shape_real_age_from_status_history(self):
         d = self.team_input(n_issues=2, moves=0)
         bascule = "2026-10-02T16:13:27.490+0200"  # bascule de sprint : réécrit updated, pas le statut

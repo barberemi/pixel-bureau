@@ -42,6 +42,9 @@ L'anneau sous les pieds double la couleur par une forme (lisible par les daltoni
 
 ![Panneau replié : le plan prend la place](../img/panneau-replie.png)
 - Les bulles des tickets affichent depuis combien de jours le ticket est dans sa colonne (« 📗 7685 · en review · 6 j »).
+- Sur le bureau de la facilitatrice, une pile de documents monte d'une feuille par ticket créé par l'équipe depuis le dernier daily, et repart de zéro à chaque daily. À 20, elle déborde (trombone rouge au sommet).
+
+![La pile de la facilitatrice : 7 tickets créés depuis le daily](../img/pile-facilitatrice.png)
 - Selon la date, le bureau se déguise : voir [Thèmes saisonniers](12-themes.md). « Comment lire le plan » permet d'en essayer un tout de suite.
 
 ## Changer de plan pour toute l'équipe
