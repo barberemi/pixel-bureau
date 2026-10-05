@@ -1,6 +1,6 @@
 // ---------- scènes d'équipe : le sprint et les tickets qui changent de colonne se jouent sur le plan ----------
 // Priorité dans stateAt0 : après le daily et la MEP, avant le travail ordinaire ; pour le boss, après ses validations.
-const SCENE_TELL=2*60e3, SCENE_CRY=5*60e3, KICKOFF_MS=5*60e3;
+const SCENE_TELL=2*60e3, KICKOFF_MS=5*60e3;
 const PIZZA_LUNCH=[12*60,12*60+40], PIZZA_TABLE=[11*60+45,14*60]; // minutes de Paris : le repas, les boîtes sur la table
 const FLOW=Object.assign({test:'To Test',validated:'To Deploy',reopened:'Reopen'},CFG.jira_flow||{});
 const shortKey=k=>String(k).replace(/^[A-Z][A-Z0-9]*-/,'');
@@ -16,13 +16,41 @@ function teamMoves(){
   MOVES_MEMO={team:TEAM,list};
   return list;
 }
-// ticket réouvert : son auteur va le dire à l'assigné, puis l'assigné pleure aux toilettes
+// ticket réouvert avec un héraut (invité on: « reopen », ex. le mage) : il entre par la porte ; lui, l'auteur et l'assigné
+// se retrouvent devant le bureau du boss (spots gate), l'assigné d'un côté face aux deux autres, le héraut crie (shout)
+const HERALD_MS=3*60e3;
+const herald=()=>chars.find(x=>x.guest&&x.on==='reopen')||null;
+function standoff(){ // [place de l'assigné, du testeur, du héraut] : les places « gate » de gauche à droite
+  const g=((SPOTS.gate||[]).slice()).sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  if(g.length<3)return null;
+  const [d,tt,h]=[g[0],g[g.length-2],g[g.length-1]];
+  return {dev:[d[0],d[1],'right'],tester:[tt[0],tt[1],'left'],herald:[h[0],h[1],'left']};
+}
+function heraldScene(c,t,m,h){
+  const pos=standoff(); if(!pos||!m.dev||!m.author||m.author===m.dev)return undefined; // pas de face-à-face possible
+  const k=shortKey(m.key);
+  if(t<m.t+HERALD_MS){
+    if(c===m.dev)return {st:'reopen',zone:'visit',visit:pos.dev,human:true,label:m.key+' réouvert : convoqué devant '+h.name,bubble:'😨'};
+    if(c===m.author)return {st:'reopen',zone:'visit',visit:pos.tester,human:true,label:'Annonce que '+m.key+' est réouvert',bubble:'🔁 '+k+' réouvert'};
+    if(c===h)return {st:'reopen',zone:'visit',visit:pos.herald,label:m.key+' ne passera pas',bubble:h.shout||'🧙'};
+    return null;
+  }
+  return null;
+}
+// le héraut lui-même : seulement pendant un face-à-face, puis il repart par la porte
+function heraldState(c,t){
+  for(const m of teamMoves()){
+    if(m.kind!=='reopened'||t<m.t||t>=m.t+HERALD_MS+2*60e3)continue;
+    if(t<m.t+HERALD_MS){const sc=heraldScene(c,t,m,c);if(sc)return sc;continue;}
+    return {st:'gone',label:'Reparti'};
+  }
+  return {st:'off',label:'Attend un ticket réouvert'};
+}
+// ticket réouvert : face-à-face avec le héraut s'il y en a un, sinon l'auteur va le dire à l'assigné à sa place
 function reopenScene(c,t,m){
-  const tell=m.author&&m.dev&&m.author!==m.dev&&m.dev.seat, cry0=m.t+(tell?SCENE_TELL:0);
-  if(tell&&c===m.author&&t<m.t+SCENE_TELL)
+  const h=herald(); if(h){const sc=heraldScene(c,t,m,h);if(sc!==undefined)return sc;}
+  if(m.author&&m.dev&&m.author!==m.dev&&m.dev.seat&&c===m.author&&t<m.t+SCENE_TELL)
     return {st:'reopen',zone:'visit',visit:besideSeat(m.dev.seat),human:true,label:'Vient dire à '+m.dev.name+' que '+m.key+' est réouvert',bubble:'🔁 '+shortKey(m.key)+' réouvert'};
-  if(c===m.dev&&t>=cry0&&t<cry0+SCENE_CRY)
-    return {st:'cry',zone:'wc',human:true,label:'Pleure aux toilettes : '+m.key+' réouvert'+(m.author&&m.author!==c?' par '+m.author.name:''),bubble:'😭'};
   return null;
 }
 // ticket à tester : le développeur porte le dossier au bureau du testeur (il rejoint sa pile, 40-furniture.js)
@@ -51,7 +79,7 @@ function teamScene(c,t){
   if(lastSprintDay(t)&&m0>=PIZZA_LUNCH[0]&&m0<PIZZA_LUNCH[1])
     return {st:'pizza',zone:['ktable','coffee','sofa'][keySeed(c.key)%3],human:true,label:'Pizza de fin de sprint',bubble:'🍕'};
   for(const m of teamMoves()){
-    if(t<m.t||t>m.t+SCENE_TELL+SCENE_CRY)continue;
+    if(t<m.t||t>m.t+HERALD_MS)continue; // la plus longue : le face-à-face
     const sc=SCENES[m.kind](c,t,m);
     if(sc)return sc;
   }

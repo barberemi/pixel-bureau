@@ -264,5 +264,16 @@
   "shirt": "#2c3550",
   "legs": "formal",
   "legs_color": "#20242e"
+ },
+ "g_mage": {
+  "sex": "male",
+  "skin": "pale",
+  "hair": "long",
+  "hair_color": "#ecebe6",
+  "beard": "beard/basic",
+  "torso": "longsleeve/longsleeve",
+  "shirt": "#7c7f88",
+  "legs": "pants",
+  "legs_color": "#6d7079"
  }
 }

@@ -284,6 +284,13 @@
     20,
     40
    ]
+  },
+  {
+   "key": "g_mage",
+   "name": "Le mage",
+   "role": "Gardien des reopens",
+   "on": "reopen",
+   "shout": "Vous ne passerez pas !"
   }
  ]
 }

@@ -120,6 +120,7 @@ function guestVisit(c,t){
   return {s:d0+m0*60e3,e:d0+(m0+dur)*60e3,r};
 }
 function guestState(c,t){
+  if(c.on==='reopen')return heraldState(c,t); // 37-scenes.js : le héraut des tickets réouverts
   const v=guestVisit(c,t);
   if(!v||t<v.s)return {st:'off',label:"Pas passé aujourd'hui"};
   if(t>=v.e)return {st:'gone',label:'Passé de '+hm(v.s)+' à '+hm(v.e)};
@@ -369,7 +370,6 @@ const ST_COLOR={
   boss:'#8a8478',
   frozen:'#7d8fa3',
   reopen:'#d97757',
-  cry:'#4a7fe0',
   deliver:'#7a5cc8',
   thumbs:'#2e9e5b',
   cheer:'#2e9e5b',
@@ -392,7 +392,6 @@ const ST_CSS={
   boss:'#8a8478',
   frozen:'#7d8fa3',
   reopen:'#d97757',
-  cry:'#4a7fe0',
   deliver:'#7a5cc8',
   thumbs:'var(--ok)',
   cheer:'var(--ok)',

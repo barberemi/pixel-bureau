@@ -23,15 +23,13 @@ Un invité de passage entre par la porte, va saluer des collègues à leur burea
 - **Bureau** : étape IA ou script en cours.
 - **Salle serveurs** : appel d'API. **Salle de réunion** : sous-workflows.
 - **Bureau du boss** : validations et questions qui t'attendent.
-- **Toilettes** : en panne (🚨 après 3 échecs d'affilée), ou un développeur qui vient d'apprendre que son ticket est réouvert (😭).
+- **Toilettes** : en panne (🚨 après 3 échecs d'affilée).
 - **Plateau TV** : mises en prod du jour (fermé le vendredi et le week-end).
 - **Café, canapé** : run réussi récemment, ou rien à faire.
 
-Quand un ticket passe en Reopen dans Jira, celui qui l'a réouvert (souvent le testeur) se lève et va le dire au développeur à sa place (« 🔁 7089 réouvert ») pendant 2 min, puis retourne à son bureau. Le développeur part alors pleurer 5 min aux toilettes (😭), puis revient. La scène se rejoue à l'heure exacte du changement de statut.
+Quand un ticket passe en Reopen dans Jira, un mage entre par la porte. Lui, celui qui a réouvert le ticket (souvent le testeur) et le développeur se retrouvent devant le bureau du boss : le développeur d'un côté (😨), face au testeur (« 🔁 7089 réouvert ») et au mage, qui crie « Vous ne passerez pas ! ». Trois minutes plus tard, le mage repart par la porte et chacun retourne à sa place. Sans mage dans le roster, le testeur va simplement le dire au développeur à sa place. La scène se rejoue à l'heure exacte du changement de statut.
 
-| Le testeur prévient | Le développeur pleure |
-| --- | --- |
-| ![Karen va voir Pam](../img/reopen-testeur.png) | ![Pam aux toilettes](../img/reopen-pleure.png) |
+![Le face-à-face devant le bureau du boss](../img/reopen-testeur.png)
 
 D'autres changements de colonne se jouent aussi, à l'heure exacte du changement de statut :
 - **Ticket à tester** : le développeur porte le dossier au bureau du testeur (« 📁 6717 »), et le testeur a sur son bureau une pile de dossiers, un par ticket en test.

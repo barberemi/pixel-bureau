@@ -23,9 +23,8 @@ SHOTS = {
     "plan": (1400, 1000, AT(11), "#cv", 1.5),
     # agents mis en avant (« Sur le plan » : agents) : icône, prénom et métier de chacun
     "etiquettes-agents": (1400, 1000, AT(11) + "FILTER='wf';NAMES='all';renderSide();", "#cv", 1.5),
-    # ticket réouvert à 10h50 : Karen (testeuse) va le dire à Pam, puis Pam pleure aux toilettes
+    # ticket réouvert à 10h50 : face-à-face de Pam avec Karen (testeuse) et le mage, devant le bureau du boss
     "reopen-testeur": (1400, 1000, AT(10 + 51 / 60), "#cv", 1.5),
-    "reopen-pleure": (1400, 1000, AT(10 + 54 / 60), "#cv", 1.5),
     # scènes d'équipe (37-scenes.js) : Gabe livre DM-6717 à Karen, Karen valide DM-6550 de Michael (le boss)
     "scene-livraison": (1400, 1000, AT(11 + 11 / 60), "#cv", 1.5),
     "scene-validation": (1400, 1000, AT(11 + 21 / 60), "#cv", 1.5),
