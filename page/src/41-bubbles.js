@@ -12,6 +12,7 @@ function tkLines(x,t){
 }
 // head : texte compact toujours affiché ; detail : lignes du survol / de la sélection ; tone : couleur de l'état du ticket
 function bubbleFor(c,st,t,clock){
+  if(TV&&st.human&&(st.st==='work'||st.st==='idle'))return null; // mode TV : le travail de chacun est déjà dans « Qui fait quoi » à droite
   const tk=st.tk||[];
   if(tk.length){
     const i=tk.length>1?(Math.floor(clock/BUBBLE_ROT)+keySeed(c.key))%tk.length:0, x=tk[i];

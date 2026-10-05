@@ -140,6 +140,19 @@ test('dev sans ticket en cours mais avec de la review : il garde une bulle', () 
   assert.deepEqual(st.tk.map(x => x.key), ['DM-9']);
 });
 
+test('mode TV : pas de bulle de travail sur les collègues (déjà dans « Qui fait quoi »), la MEP et le daily gardent la leur', () => {
+  reset();
+  run(`_bc=${dev(TK)}; _bs=stateAt(_bc, ${T11});`);
+  assert.ok(J(`bubbleFor(_bc,_bs,${T11},0)`));
+  run('TV=true;');
+  try {
+    assert.equal(J(`bubbleFor(_bc,_bs,${T11},0)`), null);
+    assert.equal(J(`bubbleFor(_bc,{st:'mep',human:true,bubble:'🚀'},${T11},0)`).head, '🚀');
+    assert.equal(J(`bubbleFor(_bc,{st:'daily',human:true,bubble:'Daily'},${T11},0)`).head, 'Daily');
+    assert.ok(J(`bubbleFor({key:'ag'},{st:'work',bubble:'⌨️ npm test'},${T11},0)`)); // les agents gardent leurs bulles
+  } finally { run('TV=false;'); }
+});
+
 test('bubbleFor : rotation toutes les 4 s, couleur de l\'état, détail de tous les tickets', () => {
   reset();
   run(`_bc=${dev(TK)}; _bs=stateAt(_bc, ${T11});`);
