@@ -137,7 +137,13 @@
   "repo": "dunder-mifflin/site-web",
   "staging_workflow": "deploy-staging.yml",
   "prod_workflow": "deploy-production.yml",
-  "login": "michaelscott"
+  "login": "michaelscott",
+  "deploys": [
+   {
+    "repo": "dunder-mifflin/intranet",
+    "prod_workflow": "deploy-production.yml"
+   }
+  ]
  },
  "rhythm": {
   "timezone": "Europe/Paris",

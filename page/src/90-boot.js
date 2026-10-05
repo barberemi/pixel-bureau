@@ -103,10 +103,11 @@ function mergedTeam(){
   const dep=LIVE.deploys, tags=new Set([...Object.keys(dep.staging||{}),...Object.keys(dep.prod||{})]);
   for(const tag of tags){
     const st=(dep.staging||{})[tag], pr=(dep.prod||{})[tag]; let m=t.meps.find(x=>x.tag===tag);
-    if(!m){m={tag,name:'Version '+tag,ticket:null,summary:null,who:null,who_name:null,released:(st||pr).start,staging:null,prod:null};t.meps.push(m);}
+    // autre dépôt suivi (github.deploys) : pas de release ni de ticket connus, seulement ses déploiements du jour
+    if(!m){const r=st||pr;m={tag,name:r.project?tag:'Version '+tag,repo:r.repo,ticket:null,summary:null,who:null,who_name:null,released:r.project?null:r.start,staging:null,prod:null};t.meps.push(m);}
     if(st)m.staging=st; if(pr)m.prod=pr;
   }
-  t.meps.sort((a,b)=>String(a.released||'').localeCompare(String(b.released||'')));
+  t.meps.sort((a,b)=>String(mepStart(a)||'').localeCompare(String(mepStart(b)||'')));
   return t;
 }
 // bureau vide (aucune donnée encore publiée) : la page tourne, les personnages de l'équipe sont là

@@ -24,7 +24,8 @@
  "github": {
   "repo": "",
   "staging_workflow": "",
-  "prod_workflow": ""
+  "prod_workflow": "",
+  "deploys": []
  },
  "rhythm": {
   "timezone": "Europe/Paris",

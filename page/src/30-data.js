@@ -83,10 +83,12 @@ function mepPhase(m,t){
   if(r&&t>=r)return 'released';
   return null;
   }
+// début d'une MEP : sa release, sinon son premier déploiement (autre dépôt suivi, sans release connue)
+const mepStart=m=>m.released||(m.staging||m.prod||{}).start||null;
 function mepsAt(t){return ((TEAM&&TEAM.meps)||[]).map(m=>({m,phase:mepPhase(m,t)})).filter(x=>x.phase);}
 function stageAt(t){
   const list=mepsAt(t);
-  const live=list.filter(x=>['released','staging','staged','prod'].includes(x.phase)&&t-ms(x.m.released)<3*3600e3);
+  const live=list.filter(x=>['released','staging','staged','prod'].includes(x.phase)&&t-ms(mepStart(x.m))<3*3600e3);
   if(live.length)return live[live.length-1];
   const party=list.filter(x=>x.phase==='done'&&t-ms(x.m.prod.end)<10*60e3);
   return party.length?party[party.length-1]:null;

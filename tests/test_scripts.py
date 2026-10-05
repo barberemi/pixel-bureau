@@ -130,7 +130,7 @@ a = sys.argv[1:]
 open({data!r} + ".calls", "a").write(" ".join(a) + "\\n")
 d = json.load(open({data!r}))
 key = ("open" if "open" in a else "merged") if a[0] == "pr" else "releases" if a[0] == "release" else \\
-      "staging" if "NONPROD" in " ".join(a) else "prod"
+      "staging" if "NONPROD" in " ".join(a) or "staging" in " ".join(a) else "prod"
 if a[0] == "api":  # gh api -i [-H If-None-Match: …] …/actions/workflows/<fichier>/runs : en-têtes, ETag, 304
     body = json.dumps({{"workflow_runs": [{{"status": r["status"], "conclusion": r["conclusion"], "created_at": r["createdAt"],
         "updated_at": r["updatedAt"], "display_title": r["displayTitle"], "html_url": r["url"]}} for r in d.get(key, [])]}})
@@ -297,13 +297,15 @@ print(json.dumps(d.get(key, [])))
         api = self.kronn(FakeKronn())
         out = self.run_script("live_snapshot.py", api=api)
         self.assertEqual(out["deploys"]["prod"]["17.2.0"]["conclusion"], "success")
+        self.assertEqual(out["deploys"]["prod"]["intranet 17.2.0"]["project"], "intranet")  # autre dépôt suivi (github.deploys)
+        self.assertIsNone(out["deploys"]["prod"]["17.2.0"]["project"])  # dépôt principal : la version seule
         calls = open(os.path.join(self.tmp, "gh.json.calls")).read().splitlines()
-        self.assertEqual(len(calls), 2)  # staging + prod
-        self.assertNotIn("If-None-Match", calls[0])  # pas encore d'ETag
+        self.assertEqual(len(calls), 3)  # staging + prod du dépôt principal, prod de l'intranet
+        self.assertFalse([c for c in calls if "If-None-Match" in c])  # pas encore d'ETag
         out = self.run_script("live_snapshot.py", api=api)  # rien n'a bougé : 304, runs republiés depuis le cache
-        calls = open(os.path.join(self.tmp, "gh.json.calls")).read().splitlines()
-        self.assertEqual(calls[2:], [calls[2], "304", calls[4], "304"])  # deux requêtes conditionnelles, deux 304
-        self.assertIn("If-None-Match: W/", calls[4])
+        calls = open(os.path.join(self.tmp, "gh.json.calls")).read().splitlines()[3:]
+        self.assertEqual(sum("If-None-Match: W/" in c for c in calls), 3)  # trois requêtes conditionnelles…
+        self.assertEqual(calls.count("304"), 3)  # … et trois 304 (ordre libre : lectures en parallèle)
         self.assertEqual(out["deploys"]["prod"]["17.2.0"]["conclusion"], "success")
         moving = dict(done, status="in_progress", conclusion=None, updatedAt=iso(1), displayTitle="Deploy 17.3.0")
         self.fake_gh({"staging": [done], "prod": [moving, done]})  # une MEP part sur GitHub : nouvel ETag, relue tout de suite

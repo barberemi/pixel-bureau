@@ -356,3 +356,17 @@ test('workflow désactivé : plus de panne ni d\'alarme, l\'agent est absent', (
   assert.match(st.label, /désactivé/);
   run('DATA={runs:[]};');
 });
+
+test('MEP d\'un autre dépôt suivi (github.deploys) : nom du projet, pas de release inventée, scène du plateau TV', () => {
+  reset();
+  const dep = `{status:'in_progress',conclusion:null,start:'2026-10-01T08:50:00Z',end:null,url:'https://x/r/9',project:'api',repo:'acme/front_api'}`;
+  run(`TEAM_BASE={people:[],meps:[]};LIVE={deploys:{staging:{},prod:{'api 2.4.0':${dep}}}};TEAM=mergedTeam();`);
+  const m = J(`TEAM.meps[0]`);
+  assert.equal(m.tag, 'api 2.4.0');
+  assert.equal(m.name, 'api 2.4.0');
+  assert.equal(m.released, null);
+  assert.equal(m.repo, 'acme/front_api');
+  assert.equal(J(`mepPhase(TEAM.meps[0],${T11})`), 'prod');
+  assert.equal(J(`stageAt(${T11}).m.tag`), 'api 2.4.0');
+  run(`TEAM=null;TEAM_BASE=null;LIVE=null;`);
+});
