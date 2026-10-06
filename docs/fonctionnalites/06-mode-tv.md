@@ -24,7 +24,7 @@ Deux cérémonies réunissent toute l'équipe en salle de réunion, l'animateur 
 | ![Sprint planning sur le plan](../img/scene-planning.png) | ![Rétrospective sur le plan](../img/scene-retro.png) |
 | ![Sprint planning en mode TV](../img/planning-tv.png) | ![Rétrospective : tour de table](../img/retro-tour.png) |
 
-- **Sprint planning** : chaque vendredi de 10h à 10h30, animé par la facilitatrice. Scènes : le sprint (avancement), ce qui reste, ce qu'on embarque (tickets sans personne, tickets créés par l'équipe cette semaine), la charge de chacun (points restants).
+- **Sprint planning** : chaque vendredi de 10h à 10h30, animé par la facilitatrice. Une seule scène, qui reste à l'écran : les tickets des 2 prochains sprints du board sans story points, une colonne par sprint (statut, numéro, titre, assigné), pour les estimer ensemble. Les tickets terminés n'y sont pas ; un ticket disparaît au rafraîchissement suivant du cron équipe dès qu'il a ses points.
 - **Rétrospective** : un jeudi sur deux de 15h à 16h (à partir du 15 octobre 2026), animée par un collègue tiré au sort, le même sur tous les écrans. Scènes : le sprint, ce qu'on a livré (avec l'employé du sprint), ce qui a coincé (tickets bloqués, réouverts, PR sans review), les agents sur 7 jours, puis le tour de table (bien, coincé, à essayer) avec l'ordre de parole, qui reste à l'écran.
 - Touches **P** (planning) et **R** (rétro), boutons de la barre ; **S** reste le stand-up.
 - Réglages `rhythm.planning` et `rhythm.retro` de `bureau.config.json` : `{day, at, minutes, every?, from?}` (`every` : toutes les N semaines à compter de la semaine de `from`), `null` pour retirer une cérémonie.

@@ -70,7 +70,7 @@ test('mode TV : les scènes suivent la cérémonie, P et R les forcent, le daily
   assert.equal(J(`sceneMode(${at('2026-10-15', '15:10')})`), 'retro');
   assert.equal(J(`sceneMode(${at('2026-10-15', '09:45')})`), 'daily');
   assert.equal(J(`sceneMode(${at('2026-10-14', '15:10')})`), false);
-  assert.deepEqual(J(`planningScenes(${at('2026-10-02', '10:10')}).map(s=>s.t)`), ['Sprint planning', 'Ce qui reste', "Ce qu'on embarque", 'La charge de chacun']);
+  assert.deepEqual(J(`planningScenes(${at('2026-10-02', '10:10')}).map(s=>s.t)`), ['Sans story points']);
   assert.deepEqual(J(`retroScenes(${at('2026-10-15', '15:10')}).map(s=>s.t)`), ['Rétrospective', "Ce qu'on a livré", 'Ce qui a coincé', 'Les agents', 'Tour de table']);
   const t = at('2026-10-01', '15:10');
   for (const s of J(`retroScenes(${t}).map(s=>s.f(${t}))`)) assert.ok(s.length > 20);
@@ -78,4 +78,19 @@ test('mode TV : les scènes suivent la cérémonie, P et R les forcent, le daily
   const order = J(`retroOrder(ceremonyAt(${t})).map(c=>c.key)`);
   assert.equal(order[0], J(`ceremonyHost(ceremonyAt(${t})).key`)); // l'animateur commence le tour de table
   assert.equal(new Set(order).size, order.length);
+});
+
+test('sprint planning : les tickets sans story points des 2 prochains sprints (team.planning), une colonne par sprint', () => {
+  const t = at('2026-10-02', '10:10'), html = J(`planningScenes(${t})[0].f(${t})`);
+  assert.match(html, /Animée par <b>Kelly<\/b>/);
+  assert.match(html, /26-41 · du 2 octobre au 16 octobre \(4\)/);
+  assert.match(html, /26-43 · du 16 octobre au 30 octobre \(3\)/);
+  for (const k of ['DM-7921', 'DM-7940', 'DM-7961']) assert.ok(html.includes(k), k);
+  const keep = J('TEAM.planning');
+  try {
+    run(`TEAM.planning={sprints:[{id:1,name:'S1'}],tickets:[]};`);
+    assert.match(J(`planningScenes(${t})[0].f(${t})`), /Tout est estimé/);
+    run(`TEAM.planning=null;`);
+    assert.match(J(`planningScenes(${t})[0].f(${t})`), /Pas de sprint à venir/);
+  } finally { run(`TEAM.planning=${JSON.stringify(keep)};`); }
 });

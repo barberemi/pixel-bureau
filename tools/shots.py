@@ -50,7 +50,6 @@ SHOTS = {
     "scene-planning": (1400, 1000, AT(10 + 10 / 60) + "RHYTHM.planning.day='Thu';", "#cv", 1.5),
     "scene-retro": (1400, 1000, AT(15 + 10 / 60), "#cv", 1.5),
     "planning-tv": (1600, 900, AT(10 + 10 / 60) + "RHYTHM.planning.day='Thu';setTv(true);TVSCENE.manual=null;TVSCENE.idx=0;updateTv(true);", None),
-    "planning-charge": (1600, 900, AT(10 + 10 / 60) + "RHYTHM.planning.day='Thu';setTv(true);TVSCENE.manual=null;TVSCENE.idx=3;updateTv(true);", None),
     "retro-tv": (1600, 900, AT(15 + 10 / 60) + "setTv(true);TVSCENE.manual=null;TVSCENE.idx=2;updateTv(true);", None),
     "retro-tour": (1600, 900, AT(15 + 10 / 60) + "setTv(true);TVSCENE.manual=null;TVSCENE.idx=4;updateTv(true);", None),
     # piles des bureaux à 11h : barres de tickets, feuilles de Kelly (tickets créés depuis le daily de 9h40), dossiers de Karen

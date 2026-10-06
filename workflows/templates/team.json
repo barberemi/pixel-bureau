@@ -38,6 +38,87 @@
     "_requires": "jira"
    },
    {
+    "name": "future_sprints",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Sprints futurs du board, dans son ordre : les 2 prochains sont préparés au sprint planning.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/agile/1.0/board/@@jira.board@@/sprint",
+    "api_method": "GET",
+    "api_query": {
+     "state": "future"
+    },
+    "api_extract": {
+     "path": "$.values",
+     "fallback": [],
+     "fail_on_empty": false
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "planning_jql",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "JQL des tickets des 2 prochains sprints sans story points (sprint planning).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/planning_jql.py@@"
+    ],
+    "exec_timeout_secs": 20,
+    "_requires": "jira",
+    "exec_stdin": "{{steps.future_sprints.data_json}}"
+   },
+   {
+    "name": "planning_tickets",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Tickets des 2 prochains sprints sans story points, à estimer au sprint planning.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/search/jql",
+    "api_method": "GET",
+    "api_query": {
+     "jql": "{{steps.planning_jql.data.stdout}}",
+     "fields": "summary,status,assignee,issuetype,@@jira.sprint_field@@",
+     "maxResults": "100"
+    },
+    "api_extract": {
+     "path": "$.issues",
+     "fallback": [],
+     "fail_on_empty": false
+    },
+    "_requires": "jira"
+   },
+   {
     "name": "jira_team",
     "step_type": {
      "type": "ApiCall"
@@ -342,7 +423,7 @@
      "@@script:workflows/team_shape.py@@"
     ],
     "exec_timeout_secs": 60,
-    "exec_stdin": "{\"sprint\":{{steps.sprint_info.data_json}},\"issues\":{{steps.jira_team.data_json}},\"closed\":{{steps.jira_closed.data_json}},\"github\":{{steps.github.data.stdout}},\"work\":{\"written\":{{steps.work_written.data_json}},\"po_triage\":{{steps.work_po_triage.data_json}},\"sm_triage\":{{steps.work_sm_triage.data_json}},\"qa_ok\":{{steps.work_qa_ok.data_json}},\"qa_back\":{{steps.work_qa_back.data_json}}},\"new_tickets\":{{steps.new_tickets.data_json}},\"roles\":{\"po\":\"@@jira.role.po@@\",\"sm\":\"@@jira.role.sm@@\",\"qa\":\"@@jira.role.qa@@\"}}"
+    "exec_stdin": "{\"sprint\":{{steps.sprint_info.data_json}},\"issues\":{{steps.jira_team.data_json}},\"closed\":{{steps.jira_closed.data_json}},\"github\":{{steps.github.data.stdout}},\"work\":{\"written\":{{steps.work_written.data_json}},\"po_triage\":{{steps.work_po_triage.data_json}},\"sm_triage\":{{steps.work_sm_triage.data_json}},\"qa_ok\":{{steps.work_qa_ok.data_json}},\"qa_back\":{{steps.work_qa_back.data_json}}},\"planning\":{\"sprints\":{{steps.future_sprints.data_json}},\"issues\":{{steps.planning_tickets.data_json}}},\"new_tickets\":{{steps.new_tickets.data_json}},\"roles\":{\"po\":\"@@jira.role.po@@\",\"sm\":\"@@jira.role.sm@@\",\"qa\":\"@@jira.role.qa@@\"}}"
    },
    {
     "name": "publish",

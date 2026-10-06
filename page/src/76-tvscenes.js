@@ -84,35 +84,24 @@ function standupScenes(){
   return [{t:'Le sprint',f:sceneSprint,ms:TVSCENE_MS},
     ...standupPeople().map(c=>({t:c.name+(c.role?' · '+c.role:''),f:t=>personScene(c,t),ms:sceneMs(c),c}))];
 }
-// ---------- sprint planning : la facilitatrice anime, ce qui reste, ce qu'on embarque, la charge de chacun ----------
-const openTickets=()=>sprintTickets().filter(x=>x.cat!=='done').sort((a,b)=>ST_ORDER.indexOf(a.cat)-ST_ORDER.indexOf(b.cat));
+// ---------- sprint planning : la facilitatrice anime ; les tickets des 2 prochains sprints sans story points, à estimer ----------
 function hostIntro(cr,t){
   const h=cr&&ceremonyHost(cr), img=h&&typeof portraitUrl==='function'?portraitUrl(h):null;
   return h?`<p class="sc-host">${img?`<img class="sc-face" src="${img}" alt="">`:''}<span>Animée par <b>${esc(h.name)}</b>${cr.end?` · jusqu'à ${hm(cr.end)}`:''}</span></p>`:'';
 }
-function scenePlanLeft(t){
-  const l=openTickets();
-  return l.length?`<h3>Pas encore terminés (${l.length})</h3>${tkList(l,50)}`:'<p class="sc-ok">Tout le sprint est terminé.</p>';
-}
-function scenePlanNext(t){
-  const un=(TEAM&&TEAM.unassigned||[]).filter(x=>x.cat!=='done'), nw=teamCreated(t-7*864e5,t).map(x=>({...x,who:x.c.name}));
-  return `<div class="sc-cols"><div><h3>Sans personne dans le sprint (${un.length})</h3>${un.length?tkList(un,30):'<p class="sc-empty">Aucun.</p>'}</div>`+
-    `<div><h3>Créés par l'équipe cette semaine (${nw.length})</h3>${nw.length?tkList(nw,30):'<p class="sc-empty">Aucun.</p>'}</div></div>`;
-}
-function scenePlanLoad(t){
-  const rows=chars.filter(c=>c.person&&c.team).map(c=>{const tk=(c.team.tickets||[]).filter(x=>x.cat!=='done'), n=k=>tk.filter(x=>x.cat===k).length;
-    return {c,todo:n('todo'),doing:n('doing'),rv:n('review')+n('test'),pts:tk.reduce((a,x)=>a+(+x.points||0),0),n:tk.length};})
-    .sort((a,b)=>b.pts-a.pts||b.n-a.n);
-  if(!rows.length)return '<p class="sc-empty">Pas de données Jira.</p>';
-  return `<table class="sc-tab"><tr><th></th><th>à faire</th><th>en cours</th><th>review, test</th><th>points restants</th></tr>`+
-    rows.map(r=>`<tr><td>${esc(r.c.name)}</td><td>${r.todo||''}</td><td>${r.doing||''}</td><td>${r.rv||''}</td><td>${r.pts?fmtPts(r.pts):''}</td></tr>`).join('')+'</table>';
+const dayMonth=x=>x?dtf('fr-FR',{day:'numeric',month:'long'}).format(new Date(ms(x))):'';
+// team.planning (cron équipe : future_sprints, planning_tickets) : {sprints:[{id, name, start, end}], tickets:[{key, …, sprint}]}
+function scenePlanEstimate(cr,t){
+  const P=TEAM&&TEAM.planning;
+  if(!P||!(P.sprints||[]).length)return hostIntro(cr,t)+`<p class="sc-empty">${TEAM&&TEAM.sources&&!TEAM.sources.jira?'Pas de données Jira.':'Pas de sprint à venir sur le board.'}</p>`;
+  const cols=P.sprints.map(sp=>{const l=(P.tickets||[]).filter(x=>x.sprint===sp.id);
+    return `<div><h3>${esc(sp.name||'')}${sp.start?` · du ${dayMonth(sp.start)} au ${dayMonth(sp.end)}`:''} (${l.length})</h3>`+
+      (l.length?tkList(l,50):'<p class="sc-ok">Tout est estimé.</p>')+'</div>';});
+  return hostIntro(cr,t)+`<div class="sc-cols">${cols.join('')}</div>`;
 }
 function planningScenes(t){
   const cr=ceremonyAt(t)||{k:'planning',title:CEREMONY_TITLE.planning,start:t};
-  return [{t:'Sprint planning',f:t=>hostIntro(cr,t)+sceneSprint(t),ms:TVSCENE_MS},
-    {t:'Ce qui reste',f:scenePlanLeft,ms:30000},
-    {t:"Ce qu'on embarque",f:scenePlanNext,ms:30000},
-    {t:'La charge de chacun',f:scenePlanLoad,ms:TVSCENE_MS}];
+  return [{t:'Sans story points',f:t=>scenePlanEstimate(cr,t),ms:30*60e3}]; // une seule scène : on estime ensemble
 }
 // ---------- rétrospective : un collègue tiré au sort anime ; chiffres, livré, ce qui a coincé, agents, tour de table ----------
 function sceneRetroDone(t){

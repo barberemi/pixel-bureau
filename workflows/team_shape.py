@@ -248,6 +248,26 @@ for it in D.get("new_tickets") or []:
                         "status": stn, "cat": CAT.get(stn), "created": f.get("created"),
                         "by": rep.get("accountId"), "by_name": rep.get("displayName")})
 
+# ---------- sprint planning : tickets des 2 prochains sprints sans story points (étapes future_sprints, planning_tickets) ----------
+PL = D.get("planning") if isinstance(D.get("planning"), dict) else {}
+nexts = [s_ for s_ in (PL.get("sprints") if isinstance(PL.get("sprints"), list) else []) if isinstance(s_, dict) and s_.get("id")][:2]
+planning = None
+if nexts:
+    ids = {s_["id"] for s_ in nexts}
+    pl_tickets = []
+    for it in PL.get("issues") if isinstance(PL.get("issues"), list) else []:
+        f = it.get("fields") or {}
+        if any(f.get(k) for k in POINTS):  # estimé entre-temps
+            continue
+        sp_ = next((x for x in f.get(SPRINT_FIELD) or [] if x.get("id") in ids), None)
+        if not sp_:
+            continue
+        stn = (f.get("status") or {}).get("name")
+        pl_tickets.append({"key": it.get("key"), "summary": (f.get("summary") or "")[:110], "type": (f.get("issuetype") or {}).get("name"),
+                           "status": stn, "cat": CAT.get(stn), "sprint": sp_["id"], "who": ((f.get("assignee") or {}).get("displayName"))})
+    planning = {"sprints": [{"id": s_["id"], "name": s_.get("name"), "start": s_.get("startDate"), "end": s_.get("endDate")} for s_ in nexts],
+                "tickets": pl_tickets}
+
 sp = D.get("sprint") or {}
 out = {
     "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -261,6 +281,7 @@ out = {
     "prev_sprint": prev_sprint,
     "work": work,
     "new_tickets": new_tickets,
+    "planning": planning,
     # sources disponibles : la page masque ce qui manque au lieu d'afficher du vide trompeur
     "sources": {"jira": bool(D.get("issues")) or bool(D.get("sprint")), "github": not G.get("errors") if G else True,
                 "github_errors": (G.get("errors") or [])[:5]},
@@ -271,7 +292,7 @@ LIMIT = 95 * 1024
 text = dumps(out)
 while len(text.encode()) > LIMIT:
     lists = [(out["events"], True), (out["unassigned"], False), (out["other_prs"], False), (out["merged_today"], False),
-             (out["new_tickets"], False)]
+             (out["new_tickets"], False)] + ([(planning["tickets"], False)] if planning else [])
     lists += [(w[k], False) for w in work.values() for k in w]
     lst, oldest_first = max(lists, key=lambda x: len(x[0]))
     if len(lst) <= 5:

@@ -23,7 +23,8 @@ import assemble  # noqa: E402  (roster du profil d'équipe)
 TEMPLATES = {
     "office": ("workflow", ("workflows", "office"), {"snapshot": "workflows/office_snapshot.py"}),
     "live": ("workflow", ("workflows", "live"), {"snapshot": "workflows/live_snapshot.py", "gates": "workflows/gates_snapshot.py"}),
-    "team": ("workflow", ("workflows", "team"), {"github": "workflows/github_snapshot.py", "shape": "workflows/team_shape.py", "since": "workflows/standup_since.py"}),
+    "team": ("workflow", ("workflows", "team"), {"github": "workflows/github_snapshot.py", "shape": "workflows/team_shape.py", "since": "workflows/standup_since.py",
+                                                    "planning_jql": "workflows/planning_jql.py"}),
     "payroll": ("workflow", ("workflows", "payroll"), {"payroll": "workflows/payroll_snapshot.py"}),
     "avatar": ("workflow", ("actions", "avatar"), {"save": "workflows/avatar_save.py"}),
     "gate": ("workflow", ("actions", "gate"), {"decide": "workflows/gate_decide.py"}),
@@ -76,7 +77,8 @@ def script_code(path, cfg):
 ROLES = ("po", "sm", "qa")
 # étapes du travail des rôles : retirées si personne n'a ce rôle (ou pas de compte Jira dans le roster)
 WORK_REQUIRES = {"work_written": "jira.role_ids", "work_po_triage": "jira.role.po", "work_sm_triage": "jira.role.sm",
-                 "work_qa_ok": "jira.role.qa", "work_qa_back": "jira.role.qa", "since": "jira"}
+                 "work_qa_ok": "jira.role.qa", "work_qa_back": "jira.role.qa", "since": "jira",
+                 "planning_jql": "jira"}
 FLOW_DEFAULTS = assemble.JIRA_FLOW
 
 
