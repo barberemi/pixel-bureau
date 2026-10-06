@@ -15,7 +15,7 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 | [Rejouer la journée](docs/fonctionnalites/05-rejouer.md) | Direct, ou relecture accélérée de minuit à maintenant |
 | [Mode TV et cérémonies](docs/fonctionnalites/06-mode-tv.md) | Écran d'open space lisible à 3 m, tour de table du daily, sprint planning et rétrospective en salle de réunion |
 | [Fiches](docs/fonctionnalites/07-fiches.md) | Journée d'un agent ou d'un collègue ; relancer, interroger, valider ; fiche de paie |
-| [Murs du bureau](docs/fonctionnalites/08-murs.md) | Kanban du sprint, planning des crons, mises en prod, employé du sprint |
+| [Murs du bureau](docs/fonctionnalites/08-murs.md) | Kanban du sprint, planning des crons, mises en prod, employé du sprint, écran du boss avec tes autres pages Kronn |
 | [Avatars](docs/fonctionnalites/09-avatars.md) | Éditeur d'apparence, pour soi ou pour toute l'équipe |
 | [Fraîcheur des données](docs/fonctionnalites/10-fraicheur.md) | Prochaine arrivée, sources en retard, crons du Bureau en échec |
 | [Téléphone et visite](docs/fonctionnalites/11-mobile-et-visite.md) | Affichage mobile, visite guidée en 3 bulles |

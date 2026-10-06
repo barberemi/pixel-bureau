@@ -45,6 +45,41 @@
     }
    },
    {
+    "name": "pages",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "Pages Kronn du boss (boss_pages) : titre, mise à jour et miniature, refaite seulement si la page change (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "snap",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/pages_snapshot.py@@"
+        ],
+        "timeout_secs": 180,
+        "output_format": "json"
+       },
+       "required": true
+      }
+     ],
+     "concurrent_limit": 1
+    }
+   },
+   {
     "name": "publish",
     "step_type": {
      "type": "PublishPageData"
@@ -64,6 +99,11 @@
        "dataset": "payroll",
        "operation": "replace",
        "value_from": "steps.payroll.data.sources.snap"
+      },
+      {
+       "dataset": "bosspages",
+       "operation": "replace",
+       "value_from": "steps.pages.data.sources.snap"
       }
      ]
     }

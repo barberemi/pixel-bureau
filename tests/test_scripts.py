@@ -41,6 +41,7 @@ class FakeKronn:
         self.runs = {AGENT_WF: [run_of(i, "Failed" if i == 0 else "Success", steps) for i in range(runs_per_wf)],
                      OFFICE_WF: [run_of(900)], TEAM_WF: [run_of(901, "Failed")]}
         self.datasets = []  # datasets de la page (GET /pages/{id})
+        self.pages = {}  # autres pages Kronn par id (écran du boss, pages_snapshot.py)
         self.details = {}  # id de run -> step_results du détail du run (sorties complètes)
         self.discussions = [
             {"id": "d1", "title": "Pourquoi ça casse ?", "agent": "ClaudeCode", "participants": ["ClaudeCode"], "message_count": 4,
@@ -63,7 +64,12 @@ class FakeKronn:
         if m:
             return {"id": m.group(1), "trigger": {"schedule": "*/10 4-20 * * *"}, "variables": [],
                     "steps": [{"name": "gate", "step_type": {"type": "Gate"}}] if m.group(1) == AGENT_WF else []}
-        if re.fullmatch(r"/pages/[\w-]+", p):
+        m = re.fullmatch(r"/pages/([\w-]+)", p)
+        if m and m.group(1) in self.pages:
+            return self.pages[m.group(1)]
+        if m and self.pages:
+            raise KeyError(path)  # page supprimée
+        if m:
             return {"datasets": self.datasets}
         if p == "/projects":
             return [{"id": "p1", "name": "Front"}]
@@ -155,8 +161,8 @@ print(json.dumps(d.get(key, [])))
         return subprocess.run([sys.executable, os.path.join(ROOT, "workflows", name)], input=text, capture_output=True, text=True,
                               env=env, timeout=60)
 
-    def run_script(self, name, stdin=None, api=None, args=()):
-        cfg = dict(FIXTURE, kronn=dict(FIXTURE["kronn"], api=api or "http://127.0.0.1:9/api"))
+    def run_script(self, name, stdin=None, api=None, args=(), **extra):
+        cfg = dict(FIXTURE, kronn=dict(FIXTURE["kronn"], api=api or "http://127.0.0.1:9/api"), **extra)
         cfg_path = os.path.join(self.tmp, "bureau.config.json")
         with open(cfg_path, "w") as fh:
             json.dump(cfg, fh)
@@ -351,6 +357,37 @@ print(json.dumps(d.get(key, [])))
         out = self.run_script("live_snapshot.py", api=api)
         self.assertEqual(out["deploys"]["prod"]["17.3.0"]["status"], "in_progress")
         self.assertIsNone(out["deploys"]["prod"]["17.3.0"]["end"])
+
+    # ---------- écran du boss : ses autres pages Kronn ----------
+    def boss_pages(self, img_kb=1):
+        fake = FakeKronn()
+        page = lambda pid, title: {"id": pid, "slug": pid, "title": title, "current_revision_id": "r1", "data_revision": 3,
+                                   "last_published_at": iso(30), "updated_at": iso(90), "datasets": [], "revision": {"html": "<p>x</p>"}}
+        fake.pages = {"pa": page("pa", "Veille techno"), "pb": page("pb", "Core Web Vitals")}
+        cache = os.path.join(self.tmp, ".cache", "kronn-bureau", "thumbs")
+        os.makedirs(cache)
+        img = "data:image/jpeg;base64," + "A" * (img_kb * 1024)
+        for pid, key in (("pa", "r1:3"), ("pb", "r0:1"), ("old", "r1:1")):  # pb : miniature périmée ; old : page retirée de la liste
+            json.dump({"key": key, "img": img}, open(os.path.join(cache, pid + ".json"), "w"))
+        return fake, cache, img
+
+    def test_pages_snapshot_order_cache_and_missing_pages(self):
+        fake, cache, img = self.boss_pages()
+        out = self.run_script("pages_snapshot.py", api=self.kronn(fake), boss_pages=["pa", "gone", "pb"], chrome=False)
+        self.assertEqual([p["id"] for p in out["pages"]], ["pa", "pb"])  # ordre de la config, page supprimée sautée
+        pa, pb = out["pages"]
+        self.assertEqual((pa["title"], pa["img"]), ("Veille techno", img))  # page inchangée : miniature du cache
+        self.assertIsNone(pb["img"])  # page changée et pas de Chrome : pas d'image (jamais l'ancienne)
+        self.assertEqual(pa["updated"], fake.pages["pa"]["last_published_at"])
+        self.assertEqual(sorted(os.listdir(cache)), ["pa.json", "pb.json"])  # cache de la page retirée supprimé
+
+    def test_pages_snapshot_stays_under_exec_limit(self):
+        fake, cache, img = self.boss_pages(img_kb=60)
+        json.dump({"key": "r1:3", "img": img}, open(os.path.join(cache, "pb.json"), "w"))
+        api = self.kronn(fake)
+        out = self.run_script("pages_snapshot.py", api=api, boss_pages=["pa", "pb"], chrome=False)
+        self.assertEqual([bool(p["img"]) for p in out["pages"]], [True, False])  # la dernière image saute d'abord
+        self.assertEqual(self.run_script("pages_snapshot.py", api=api, chrome=False)["pages"], [])  # sans boss_pages
 
     def test_payroll_and_gates_ignore_bureau(self):
         api = self.kronn(FakeKronn())

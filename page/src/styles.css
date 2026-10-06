@@ -110,6 +110,21 @@ footer{color:var(--muted);font-size:11px;margin-top:16px;text-align:center}
 .seg button.famb.fam-vis.on{background:#d97757;border-color:#d97757}
 .seg button.famb.fam-team.on{background:#8a7f68;border-color:#8a7f68}
 body.km-on .side{z-index:50} /* le panneau est sticky (plan d'empilement propre) : on le passe devant le reste */
+/* écran du boss : ses autres pages Kronn (47-bosspages.js) */
+.bp-backdrop{position:fixed;inset:0;background:rgba(10,12,22,.6);z-index:40;backdrop-filter:blur(2px);cursor:pointer}
+.bp-modal{position:fixed;z-index:41;top:8vh;left:max(16px,calc(50% - 440px));width:min(880px,calc(100vw - 32px));max-height:84vh;overflow:auto;
+  padding:18px 20px 20px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.45)}
+.bp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.bp-head h2{margin:0;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.bp-x{border:0;background:var(--chip);color:var(--ink);border-radius:8px;width:30px;height:30px;font-size:18px;line-height:1;cursor:pointer}
+.bp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.bp-card{display:flex;flex-direction:column;gap:6px;padding:8px 8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);text-decoration:none}
+.bp-card:hover,.bp-card:focus-visible{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 35%,transparent)}
+.bp-card img,.bp-noimg{width:100%;aspect-ratio:16/10;object-fit:cover;object-position:top;border-radius:8px;background:var(--chip);display:block}
+.bp-noimg{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
+.bp-card b{font-size:14px;line-height:1.25}
+.bp-card small{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}
+.bp-card small span{color:var(--accent);font-weight:700}
 .km-backdrop{cursor:pointer;position:fixed;inset:0;background:rgba(10,12,22,.6);z-index:40;backdrop-filter:blur(2px)}
 .kmodal{position:fixed!important;z-index:41;top:9vh;left:max(16px,calc(50% - 300px));width:min(600px,calc(100vw - 32px));max-height:82vh;overflow:visible;
   margin:0!important;padding:18px 20px 20px!important;background:var(--panel)!important;border:1px solid var(--line)!important;border-radius:16px!important;box-shadow:0 24px 70px rgba(0,0,0,.45)!important}

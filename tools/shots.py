@@ -54,6 +54,8 @@ SHOTS = {
     "retro-tour": (1600, 900, AT(15 + 10 / 60) + "setTv(true);TVSCENE.manual=null;TVSCENE.idx=4;updateTv(true);", None),
     # piles des bureaux à 11h : barres de tickets, feuilles de Kelly (tickets créés depuis le daily de 9h40), dossiers de Karen
     "piles-bureaux": (1400, 1000, AT(11), "#cv", 1.5),
+    # écran du boss : ses autres pages Kronn (dataset bosspages) ; miniatures dessinées pour la démo, fenêtre ouverte
+    "pages-boss": (1400, 1000, AT(11) + "BOSS_PAGES=[['Ventes du trimestre','#2f6fd6',35],['Stock de papier','#2e9e5b',180],['Satisfaction clients','#e0a020',600],['Livraisons','#7a5cc8',1500]].map(([t,c,m],i)=>{const k=document.createElement('canvas');k.width=320;k.height=200;const g=k.getContext('2d');g.fillStyle='#1c1f26';g.fillRect(0,0,320,200);g.fillStyle='#e8e2d0';g.fillRect(14,14,150,10);for(let j=0;j<4;j++){g.fillStyle='#2a2e37';g.fillRect(14+j*76,36,68,40);g.fillStyle=c;g.fillRect(20+j*76,58,20+j*9,8);}g.fillStyle='#2a2e37';g.fillRect(14,88,292,98);g.fillStyle=c;for(let j=0;j<12;j++){const h=18+((j*37+i*11)%60);g.fillRect(24+j*23,176-h,14,h);}return {id:'demo'+i,title:t,updated:new Date(Date.now()-m*60e3).toISOString(),img:k.toDataURL('image/jpeg',.8)};});openBossPages();", None),
     "fiche-agent": (1400, 1400, AT(11) + "select((chars.find(c=>!c.person&&!c.visitor&&c.runs.length)||{}).key);", "#side"),
     "fiche-collegue": (1400, 1400, AT(11) + "select((chars.find(c=>c.person&&c.team&&c.team.tickets.length)||{}).key);", "#side"),
     "kanban": (1400, 1400, AT(11) + "select('kanban');", "#side"),
