@@ -18,13 +18,27 @@ cv.addEventListener('mousemove',e=>{
     tip.textContent=(z==='tv'&&stageClosed(T)?'Plateau fermé : pas de MEP le vendredi ni le week-end':z==='paie'?'Fiche de paie des agents':z==='tv'?'Mises en prod du jour':z==='kanban'?'Mur Kanban du sprint':z==='planning'?'Planning des crons':'Employé du sprint');
     return;
   }
-  if(c){
+  const p=c?null:pileAt(e);
+  if(c||p){
     tip.style.display='block';
     tip.style.left=e.clientX+'px';
     tip.style.top=e.clientY+'px';
-    tip.textContent=c.name+' · '+(c._st?c._st.label:'');
+    tip.textContent=c?c.name+' · '+(c._st?c._st.label:''):pileTip(p);
   }else tip.style.display='none';
   });
+// piles posées sur les bureaux (40-furniture.js) : ce qu'elles comptent
+function pileAt(ev){
+  const r=cv.getBoundingClientRect(),mx=(ev.clientX-r.left)*W/r.width,my=(ev.clientY-r.top)*H/r.height;
+  return PILE_HITS.find(h=>mx>=h.x&&mx<=h.x+h.w&&my>=h.y&&my<=h.y+h.h)||null;
+}
+function pileTip(h){
+  const keys=l=>l.slice(0,6).map(x=>x.key).join(', ')+(l.length>6?'…':'');
+  if(h.kind==='doc')return h.o.name+' : '+plural(h.list.length,'ticket créé','tickets créés')+" par l'équipe depuis le daily · "+keys(h.list);
+  if(h.kind==='folder')return h.o.name+' : '+plural(h.list.length,'ticket','tickets')+' à tester · '+keys(h.list);
+  const open=(h.o.team&&h.o.team.tickets||[]).filter(x=>x.cat!=='done'), by={};
+  for(const x of open)by[x.cat]=(by[x.cat]||0)+1;
+  return h.o.name+' : '+plural(open.length,'ticket ouvert','tickets ouverts')+' · '+TORDER.filter(k=>by[k]).map(k=>by[k]+' '+TCAT[k].t.toLowerCase()).join(', ')+(open.length>5?' (5 sur la pile)':'');
+}
 cv.addEventListener('mouseleave',()=>{tip.style.display='none';hoverKey=null;});
 function hitZone(ev){
   const r=cv.getBoundingClientRect(),mx=(ev.clientX-r.left)*W/r.width,my=(ev.clientY-r.top)*H/r.height;

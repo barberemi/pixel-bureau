@@ -36,7 +36,7 @@ Quand une mise en prod réussit, un héraut entre aussi par la porte (Yoda chez 
 ![Le héraut félicite Andy sur le plateau TV](../img/prod-heraut.png)
 
 D'autres changements de colonne se jouent aussi, à l'heure exacte du changement de statut :
-- **Ticket à tester** : le développeur porte le dossier au bureau du testeur (« 📁 6717 »), et le testeur a sur son bureau une pile de dossiers, un par ticket en test.
+- **Ticket à tester** : le développeur porte le dossier au bureau du testeur (« 📁 6717 »), et le dossier rejoint la pile du testeur, sur le caisson à côté de son bureau.
 - **Ticket validé** : le testeur lève le pouce depuis son bureau (« 👍 6550 validé ») et le développeur lève les bras (🙌), boss compris.
 
 | Ticket livré au testeur | Ticket validé |
@@ -67,9 +67,14 @@ L'anneau sous les pieds double la couleur par une forme (lisible par les daltoni
 
 ![Panneau replié : le plan prend la place](../img/panneau-replie.png)
 - Les bulles des tickets affichent depuis combien de jours le ticket est dans sa colonne (« 📗 7685 · en review · 6 j »).
-- Sur le bureau de la facilitatrice, une pile de documents monte d'une feuille par ticket créé par l'équipe depuis le dernier daily, et repart de zéro à chaque daily. À 20, elle déborde (trombone rouge au sommet).
+- Sur les bureaux, des piles montrent le travail de chacun :
+  - devant chaque collègue, sous son écran, une barre par ticket ouvert (5 au plus), de la couleur de son statut : bleu en cours, orange en review, violet en test, bleu-vert à déployer, gris à faire ;
+  - sur un caisson dans l'allée, à côté de la facilitatrice, une feuille blanche par ticket créé par l'équipe depuis le dernier daily (la pile repart de zéro à chaque daily) ;
+  - sur un caisson à côté du testeur, un dossier jaune par ticket du sprint en test.
 
-![La pile de la facilitatrice : 7 tickets créés depuis le daily](../img/pile-facilitatrice.png)
+  Les caissons affichent le nombre exact (6 éléments dessinés au plus). Survole une pile pour le détail : « Karen : 3 tickets à tester · DM-6717, … ».
+
+![Les piles des bureaux à 11h](../img/piles-bureaux.png)
 - Selon la date, le bureau se déguise : voir [Thèmes saisonniers](12-themes.md). « Comment lire le plan » permet d'en essayer un tout de suite.
 
 ## Changer de plan pour toute l'équipe

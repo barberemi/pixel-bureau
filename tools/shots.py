@@ -45,8 +45,8 @@ SHOTS = {
     # tour de table : la facilitatrice présente les tickets créés par l'équipe depuis le dernier daily
     "standup-facilitatrice": (1600, 900, AT(9.7) + "setTv(true);TVSCENE.manual=true;"
                               "TVSCENE.idx=standupScenes().findIndex(s=>s.c&&s.c.roleKind==='sm');updateTv(true);", None),
-    # pile de documents sur son bureau : 7 tickets créés depuis le daily de 9h40 (et le plan à 11h, rogné sur l'îlot)
-    "pile-facilitatrice": (1400, 1000, AT(11), "#cv", 1.5),
+    # piles des bureaux à 11h : barres de tickets, feuilles de Kelly (tickets créés depuis le daily de 9h40), dossiers de Karen
+    "piles-bureaux": (1400, 1000, AT(11), "#cv", 1.5),
     "fiche-agent": (1400, 1400, AT(11) + "select((chars.find(c=>!c.person&&!c.visitor&&c.runs.length)||{}).key);", "#side"),
     "fiche-collegue": (1400, 1400, AT(11) + "select((chars.find(c=>c.person&&c.team&&c.team.tickets.length)||{}).key);", "#side"),
     "kanban": (1400, 1400, AT(11) + "select('kanban');", "#side"),

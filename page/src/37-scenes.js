@@ -99,17 +99,11 @@ function teamScene(c,t){
   }
   return null;
 }
-// décor : boîtes de pizza sur la table de la cuisine le dernier jour du sprint ; dossiers sur le bureau du testeur
+// décor : boîtes de pizza sur la table de la cuisine le dernier jour du sprint (dossiers du testeur : rolePile, 40-furniture.js)
 function sceneFurniture(){
   const o=furnAt('kitchen_table');
   FURN.push({y:6*TS+2+(o?o.dy:0),draw:()=>{const m0=parisMin(T);if(!lastSprintDay(T)||m0<PIZZA_TABLE[0]||m0>=PIZZA_TABLE[1])return;
     onF('kitchen_table',()=>{const {x,y}=KTABLE;
       for(let i=0;i<3;i++){R(ctx,x+4+i*18,y+2-i*2,16,5,'#c98b4a');R(ctx,x+4+i*18,y+2-i*2,16,1,'#e0b07a');}
       E('🍕',x+30,y-8,13);});}});
-}
-const FOLDER_MAX=12;
-function folderPile(x,y){ // un dossier par ticket du sprint en test
-  const n=Math.min(FOLDER_MAX,sprintTickets().filter(k=>k.cat==='test').length);
-  for(let i=0;i<n;i++){const dx=i%2?1:-1, yy=y-i*3;
-    R(ctx,x+dx-2,yy,11,3,'#e2b65a');R(ctx,x+dx-2,yy+2,11,1,'#9c7a33');R(ctx,x+dx+5,yy-1,3,1,'#e2b65a');}
 }

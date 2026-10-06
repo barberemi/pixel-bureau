@@ -1,6 +1,6 @@
 // ---------- une image : sol, meubles et personnages triés en profondeur, voile, bulles, noms ----------
 function render(now){
-  ctx.drawImage(bg,0,0); drawWindows(T,now);
+  ctx.drawImage(bg,0,0); drawWindows(T,now); PILE_HITS=[];
   const list=FURN.map(f=>({y:f.y,d:f.draw}));
   for(const c of chars)if(c.present&&c.pos)list.push({y:c.pos.y,d:n=>drawChar(c,n)});
   list.sort((a,b)=>a.y-b.y);

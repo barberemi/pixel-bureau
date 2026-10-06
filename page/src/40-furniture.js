@@ -2,13 +2,29 @@
 // fixed : meuble immobile, cuit une fois par bakeFurniture() ; sinon redessiné à chaque image (écrans, voyants, données)
 function deskOwner(x,y){return chars.find(c=>c.seat&&c.seat[0]===x&&c.seat[1]===y&&!(c.boss&&c.atBoss));}
 function lampColor(c){if(!c||!c._st)return '#5a5a5a';return ST_COLOR[c._st.st]||'#5a5a5a';}
-// pile de documents de la facilitatrice : une feuille par ticket créé par l'équipe depuis le dernier daily (20 au plus)
-const DOC_MAX=20;
-function docPile(x,y,o){
-  const n=Math.min(DOC_MAX,teamCreated(lastDaily(T),T).length);
-  for(let i=0;i<n;i++){const dx=Math.round((hash(i,o.seat[0])-.5)*4), yy=y-i*3; // feuilles un peu de travers
-    R(ctx,x+dx-2,yy,11,3,'#fbf8ef');R(ctx,x+dx-2,yy+2,11,1,'#a39c8a');R(ctx,x+dx+1,yy+1,5,1,'#c9c2b0');}
-  if(n>=DOC_MAX)R(ctx,x+2,y-n*3-2,5,3,'#d1453b'); // au sommet : un trombone rouge, la pile déborde
+// piles de rôle, sur un caisson côté allée (la table est partagée avec le collègue d'en face) : feuilles blanches de la
+// facilitatrice (tickets créés par l'équipe depuis le dernier daily), dossiers jaunes du testeur (tickets du sprint en test) ;
+// PILE_SHOWN éléments dessinés au plus, le nombre exact en pastille. PILE_HITS : zones survolables de l'image en cours (80-input.js)
+const PILE_SHOWN=6;
+let PILE_HITS=[];
+function roleItems(o){
+  if(o.roleKind==='sm')return {kind:'doc',list:teamCreated(lastDaily(T),T)};
+  if(o.roleKind==='qa')return {kind:'folder',list:sprintTickets().filter(k=>k.cat==='test')};
+  return null;
+}
+function rolePile(o,side,sx,r){
+  const p=o&&roleItems(o); if(!p||!p.list.length)return;
+  const n=p.list.length, cw=11, x=side==='L'?sx*TS-10:sx*TS+31, y=r*TS+29; // bas du caisson aligné sur le bas du siège
+  R(ctx,x+1,y,cw,2,'rgba(0,0,0,.18)');R(ctx,x,y-12,cw,12,'#8a8f9c');R(ctx,x,y-12,cw,1,'#a5aab6');R(ctx,x+1,y-6,cw-2,1,'#6a6f7c');
+  R(ctx,x+4,y-10,3,1,'#cfd3da');R(ctx,x+4,y-4,3,1,'#cfd3da');
+  const m=Math.min(n,PILE_SHOWN), [hi,lo]=p.kind==='doc'?['#fbf8ef','#a39c8a']:['#e2b65a','#9c7a33'];
+  for(let i=0;i<m;i++){const dx=i%2?1:-1, yy=y-15-i*3;R(ctx,x+dx,yy,cw,1,hi);R(ctx,x+dx,yy+1,cw,1,lo);
+    if(p.kind==='folder')R(ctx,x+dx+(i%2?6:2),yy-1,3,1,hi);}
+  const top=y-15-(m-1)*3, t=String(n);
+  ctx.font='bold 8px ui-monospace,Menlo,monospace';const bw=Math.ceil(ctx.measureText(t).width)+4, bx=x+cw-bw+3, by=top-10;
+  R(ctx,bx,by,bw,9,'#25221d');ctx.fillStyle='#fffdf8';ctx.textBaseline='middle';ctx.textAlign='center';ctx.fillText(t,bx+bw/2,by+5);
+  ctx.textAlign='left';ctx.textBaseline='alphabetic';
+  PILE_HITS.push({x:x-2,y:by,w:cw+5,h:y-by+1,kind:p.kind,o,list:p.list});
 }
 function pileOf(c){
   const t=c&&c.team&&c.team.tickets;
@@ -332,16 +348,17 @@ function islandFurniture(){ // îlots : tables, écrans, chaises
           const mx=side==='L'?x0+3:x0+TS-6-11;
           R(ctx,mx,py-4,8,16,'#2c2f38'); drawScreen(side==='L'?mx:mx+3,py-3,5,14,screenState(o),now,sx*31+r); // face tournée vers la place
           const kx=side==='L'?x0+12:x0+4; R(ctx,kx,py+2,5,10,'#e6e6e6');
-          const pile=pileOf(o); const bx=side==='L'?x0+12:x0+4;
-          pile.forEach((t,i)=>{R(ctx,bx-1,py+22-i*3,8,3,TCAT[t.cat].c);});
-          if(o&&o.roleKind==='sm')docPile(side==='L'?x0+18:x0+11,py+22,o);
-          if(o&&o.roleKind==='qa')folderPile(side==='L'?x0+18:x0+11,py+22); // 37-scenes.js
+          // une barre par ticket, sous son écran, de son côté de la table ; un pixel d'écart pour les compter
+          const pile=pileOf(o), bx=side==='L'?x0+3:x0+16;
+          pile.forEach((t,i)=>{R(ctx,bx,py+24-i*3,7,2,TCAT[t.cat].c);});
+          if(pile.length)PILE_HITS.push({x:bx-1,y:py+24-(pile.length-1)*3-1,w:9,h:(pile.length-1)*3+4,kind:'tk',o});
           const lc=o&&o.present?lampColor(o):'#55524c'; R(ctx,side==='L'?x0+2:x0+TS-11,py+18,4,4,lc);
         }
       }
     }});
     for(const r of IROWS)for(const side of ['L','R']){
       const sx=side==='L'?cx-1:cx+1;
+      FURN.push({y:r*TS+29,draw:()=>rolePile(deskOwner(sx,r),side,sx,r)});
       FURN.push({
         y:r*TS+1,fixed:true,
         draw:()=>{
