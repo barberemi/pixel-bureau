@@ -132,6 +132,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
 }
 window.addEventListener('kronn:page-data',e=>{
   const k=e.detail||window.KronnPageData;
+  applyViewParams(k);
   const d=readData(k)||readData(window.KronnPageData);
   if(d){OFFICE=d;OFFICE_IS_LIVE=true;}
   const t=readTeam(k)||readTeam(window.KronnPageData);
@@ -159,5 +160,6 @@ window.addEventListener('kronn:page-data',e=>{
   refreshAll();
   });
 if(TV){document.body.classList.add('tv');NAMES_BEFORE_TV=NAMES;NAMES='all';}
+applyViewParams(window.KronnPageData); // #page/<id>?tv=1 : l'écran mural démarre en mode TV
 tourAuto();
 requestAnimationFrame(loop);

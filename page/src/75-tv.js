@@ -1,13 +1,22 @@
 // ---------- mode TV (écran d'open space) ----------
 let TV=false;try{TV=localStorage.getItem('bureau:tv')==='1';}catch(e){}
 let NAMES_BEFORE_TV=null, TICK_SIG='';
-function setTv(on){
-  TV=on;try{localStorage.setItem('bureau:tv',on?'1':'0');}catch(e){}
+function setTv(on,remember=true){
+  TV=on;if(remember)try{localStorage.setItem('bureau:tv',on?'1':'0');}catch(e){}
   document.body.classList.toggle('tv',on);
   if(on){NAMES_BEFORE_TV=NAMES;NAMES='all';if(EDIT)closeEditor();sel=null;renderSide(true);
     try{const el=document.documentElement;if(el.requestFullscreen&&!document.fullscreenElement)el.requestFullscreen().catch(()=>{});}catch(e){}}
   else{if(NAMES_BEFORE_TV)NAMES=NAMES_BEFORE_TV;try{if(document.fullscreenElement)document.exitFullscreen();}catch(e){}}
   updateTv(true);
+}
+// paramètres d'affichage de l'adresse Kronn (#page/<id>?tv=1&scene=standup, reçus dans KronnPageData.page.params) :
+// appliqués une seule fois, au premier envoi qui en contient, sans toucher au réglage mémorisé ; tv=0 force le plan
+let VIEW_PARAMS_DONE=false;
+function viewParams(src){const p=src&&src.page&&src.page.params;return p&&typeof p==='object'?p:null;}
+function applyViewParams(src){
+  const p=viewParams(src); if(VIEW_PARAMS_DONE||!p)return; VIEW_PARAMS_DONE=true;
+  if(p.tv==='1'&&!TV)setTv(true,false); else if(p.tv==='0'&&TV)setTv(false,false);
+  if(p.scene==='standup'&&TV){TVSCENE.manual=true;TVSCENE.idx=0;TVSCENE.since=0;updateTv(true);}
 }
 // écran d'open space vu par toute l'équipe : sprint, prod et alertes d'équipe, rien de personnel (validations, tokens)
 function tvChips(d){

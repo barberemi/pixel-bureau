@@ -5,6 +5,7 @@ Pour l'écran de l'open space : plein écran, textes lisibles à 3 m, chiffres d
 ![Mode TV](../img/tv.png)
 
 - Bouton « 📺 Mode TV » ou touche **T** ; **Échap** pour sortir.
+- Pour l'écran de l'open space, ouvre directement la page en mode TV par son adresse : `http://localhost:5173/#page/<id de la page>?tv=1`. Ajoute `&scene=standup` pour démarrer sur le stand-up. Il faut Kronn avec les paramètres d'affichage des pages (branche `feat/live-page-embeds`) ; dans la vue intégrée de Kronn, rien ne change.
 - Plan en haut (les agents y affichent leur métier plutôt que leur prénom, et seulement quand ils travaillent vraiment : à leur bureau, en salle serveurs, en réunion ou en attente de validation ; sinon au survol), « Qui fait quoi » à droite, bande de chiffres (sprint, mises en prod, tickets bloqués, PR sans review, agents en panne) et fil qui défile en bas.
 - Sur le plan, les collègues n'ont plus leurs bulles de tickets : leur travail est déjà dans « Qui fait quoi ». Restent les bulles des agents, de la mise en prod (🚀, 🎉) et du daily.
 
