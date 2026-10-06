@@ -69,9 +69,13 @@ function updateTv(force){
   // les puces se partagent la place restante (et sont coupées si besoin) : les boutons à droite restent toujours visibles
   bar.innerHTML=`<span class="tvt">LE BUREAU</span><span class="tvc">${hms(T)}</span><span class="tvchips">${tvLiveChip()}`+
     tvChips(dashData(T))+
-    `</span><span class="tvhint">S : stand-up · Échap ou T pour quitter</span><button id="tvstand" class="${sceneOn(T)?'on':''}">${sceneOn(T)?'Retour au plan':'Stand-up'}</button><button id="tvexit">Quitter</button>`;
+    `</span><span class="tvhint">S stand-up · P planning · R rétro · Échap ou T pour quitter</span>`+
+    [['daily','tvstand','Stand-up'],['planning','tvplan','Planning'],['retro','tvretro','Rétro']].map(([k,id,l])=>
+      `<button id="${id}" class="${sceneMode(T)===k?'on':''}">${sceneMode(T)===k?'Retour au plan':l}</button>`).join('')+`<button id="tvexit">Quitter</button>`;
   bar.querySelector('#tvexit').onclick=()=>setTv(false);
-  bar.querySelector('#tvstand').onclick=toggleStandup;
+  bar.querySelector('#tvstand').onclick=()=>toggleScenes('daily');
+  bar.querySelector('#tvplan').onclick=()=>toggleScenes('planning');
+  bar.querySelector('#tvretro').onclick=()=>toggleScenes('retro');
   renderTvScenes(performance.now());
   renderTvWho();
   // fil défilant : les derniers événements d'équipe (merges, releases, MEP, daily), sans les runs des agents

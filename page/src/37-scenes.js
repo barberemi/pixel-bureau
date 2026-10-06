@@ -1,5 +1,6 @@
 // ---------- scènes d'équipe : le sprint et les tickets qui changent de colonne se jouent sur le plan ----------
 // Priorité dans stateAt0 : après le daily et la MEP, avant le travail ordinaire ; pour le boss, après ses validations.
+// Sprint planning et rétrospective (ceremonyAt, 30-data.js) : toute l'équipe en salle de réunion, l'animateur en bout de table.
 const SCENE_TELL=2*60e3, KICKOFF_MS=5*60e3;
 const PIZZA_LUNCH=[12*60,12*60+40], PIZZA_TABLE=[11*60+45,14*60]; // minutes de Paris : le repas, les boîtes sur la table
 const FLOW=Object.assign({test:'To Test',validated:'To Deploy',reopened:'Reopen'},CFG.jira_flow||{});
@@ -106,4 +107,17 @@ function sceneFurniture(){
     onF('kitchen_table',()=>{const {x,y}=KTABLE;
       for(let i=0;i<3;i++){R(ctx,x+4+i*18,y+2-i*2,16,5,'#c98b4a');R(ctx,x+4+i*18,y+2-i*2,16,1,'#e0b07a');}
       E('🍕',x+30,y-8,13);});}});
+}
+// ---------- cérémonies : sprint planning et rétrospective, en salle de réunion ----------
+// l'animateur en bout de table (la place de réunion tournée vers la table sur le côté), les autres autour
+function headSpot(){
+  const meet=SPOTS.meet||[], h=meet.find(p=>p[2]==='left'||p[2]==='right');
+  return h?[h[0],h[1],h[2]]:null;
+}
+const CEREMONY_BUBBLE={planning:'🗓️ Planning',retro:'🔁 Rétro'};
+function ceremonyState(c,cr,pending){
+  const host=ceremonyHost(cr), head=headSpot();
+  if(c===host)return {st:cr.k,zone:head?'visit':'meet',visit:head,human:true,label:'Anime la '+cr.title.toLowerCase()+(pending?' · '+pending:''),
+    bubble:CEREMONY_BUBBLE[cr.k],big:true};
+  return {st:cr.k,zone:'meet',human:true,label:cr.title+(host?' animée par '+host.name:'')+(pending?' · '+pending:''),bubble:null};
 }

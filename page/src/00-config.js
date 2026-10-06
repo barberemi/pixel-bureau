@@ -30,7 +30,9 @@ const GUESTS = (ROSTER_DEF.guests||[]).map(({person,...g})=>({...g,wf:[],seat:nu
 const OWNER = __OWNER__;          // bureau.config.json : clé du roster de qui a installé la page (le boss)
 // partie « page » de bureau.config.json (tools/assemble.py) ; chaque valeur a un défaut : une config vide ne casse rien
 const CFG = __CONFIG__;
-const RHYTHM = {timezone:'Europe/Paris',location:[48.857,2.352],daily:'09:40',daily_minutes:15,office_hours:[8,20],mep_freeze:['Fri','Sat','Sun'],weekend:['Sat','Sun'],...(CFG.rhythm||{})};
+const RHYTHM = {timezone:'Europe/Paris',location:[48.857,2.352],daily:'09:40',daily_minutes:15,office_hours:[8,20],mep_freeze:['Fri','Sat','Sun'],weekend:['Sat','Sun'],
+  // cérémonies en salle de réunion (30-data.js, ceremonyAt) : every = toutes les N semaines, à compter de la semaine de from ; null = pas de cérémonie
+  planning:{day:'Fri',at:'10:00',minutes:30},retro:{day:'Thu',at:'15:00',minutes:60,every:2,from:'2026-10-15'},...(CFG.rhythm||{})};
 const TZ = RHYTHM.timezone;
 // graine stable tirée d'une clé (personnage, ticket) : rotation des bulles, phase d'animation, flânerie
 const keySeed=k=>[...String(k)].reduce((a,ch)=>a+ch.charCodeAt(0),0);

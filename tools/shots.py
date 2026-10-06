@@ -41,10 +41,18 @@ SHOTS = {
     "recap": (1400, 1200, AT(11) + "RECAP_OPEN=true;renderRecap();", "#recap"),
     "rejouer": (1400, 1200, AT(9.7) + "setMode('play');", ".stage", 1.5),
     "tv": (1600, 900, AT(11) + "setTv(true);", None),
-    "standup": (1600, 900, AT(9.7) + "setTv(true);TVSCENE.manual=true;TVSCENE.idx=0;updateTv(true);", None),
+    "standup": (1600, 900, AT(9.7) + "setTv(true);TVSCENE.manual='daily';TVSCENE.idx=0;updateTv(true);", None),
     # tour de table : la facilitatrice présente les tickets créés par l'équipe depuis le dernier daily
-    "standup-facilitatrice": (1600, 900, AT(9.7) + "setTv(true);TVSCENE.manual=true;"
+    "standup-facilitatrice": (1600, 900, AT(9.7) + "setTv(true);TVSCENE.manual='daily';"
                               "TVSCENE.idx=standupScenes().findIndex(s=>s.c&&s.c.roleKind==='sm');updateTv(true);", None),
+    # cérémonies en salle de réunion : rétro un jeudi sur deux à 15h (le jour de la démo en est un), planning le vendredi
+    # à 10h (avancé au jeudi pour la démo) ; animateur en bout de table, scènes TV de chacune
+    "scene-planning": (1400, 1000, AT(10 + 10 / 60) + "RHYTHM.planning.day='Thu';", "#cv", 1.5),
+    "scene-retro": (1400, 1000, AT(15 + 10 / 60), "#cv", 1.5),
+    "planning-tv": (1600, 900, AT(10 + 10 / 60) + "RHYTHM.planning.day='Thu';setTv(true);TVSCENE.manual=null;TVSCENE.idx=0;updateTv(true);", None),
+    "planning-charge": (1600, 900, AT(10 + 10 / 60) + "RHYTHM.planning.day='Thu';setTv(true);TVSCENE.manual=null;TVSCENE.idx=3;updateTv(true);", None),
+    "retro-tv": (1600, 900, AT(15 + 10 / 60) + "setTv(true);TVSCENE.manual=null;TVSCENE.idx=2;updateTv(true);", None),
+    "retro-tour": (1600, 900, AT(15 + 10 / 60) + "setTv(true);TVSCENE.manual=null;TVSCENE.idx=4;updateTv(true);", None),
     # piles des bureaux à 11h : barres de tickets, feuilles de Kelly (tickets créés depuis le daily de 9h40), dossiers de Karen
     "piles-bureaux": (1400, 1000, AT(11), "#cv", 1.5),
     "fiche-agent": (1400, 1400, AT(11) + "select((chars.find(c=>!c.person&&!c.visitor&&c.runs.length)||{}).key);", "#side"),

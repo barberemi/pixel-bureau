@@ -126,6 +126,29 @@ function daysLeft(end,t){
 function stageClosed(t){return RHYTHM.mep_freeze.includes(parisHM(t).wd);}
 const DAILY_MIN=(([h,m])=>+h*60+(+m||0))(String(RHYTHM.daily).split(':')); // heure du daily en minutes
 function inDaily(t){const p=parisHM(t);if(p.wd==='Sat'||p.wd==='Sun')return false;const mn=p.h*60+p.m;return mn>=DAILY_MIN&&mn<DAILY_MIN+RHYTHM.daily_minutes;}
+// cérémonies de l'équipe en salle de réunion : sprint planning (animé par la facilitatrice) et rétrospective (animée par un
+// collègue tiré au sort). Réglages rhythm.planning et rhythm.retro : {day:'Fri', at:'10:00', minutes:30, every?:2, from?:'AAAA-MM-JJ'}
+const CEREMONY_TITLE={planning:'Sprint planning',retro:'Rétrospective'};
+const dayNum=t=>Math.round(Date.parse(parisDay(t)+'T00:00:00Z')/864e5);
+function ceremonyAt(t){
+  const p=parisHM(t), mn=p.h*60+p.m;
+  for(const k of ['retro','planning']){
+    const c=RHYTHM[k]; if(!c||c.day!==p.wd)continue;
+    const a=(([h,m])=>+h*60+(+m||0))(String(c.at||'').split(':')), len=+c.minutes||30;
+    if(!(mn>=a&&mn<a+len))continue;
+    const every=Math.max(1,+c.every||1), from=c.from?Date.parse(c.from+'T00:00:00Z')/864e5:null;
+    if(every>1&&from!=null&&((Math.round((dayNum(t)-from)/7)%every)+every)%every)continue; // pas la bonne semaine
+    const start=parisMidnight(t)+a*60e3;
+    return {k,title:CEREMONY_TITLE[k],start,end:start+len*60e3};
+  }
+  return null;
+}
+// qui anime : la facilitatrice pour le planning, un collègue tiré au sort pour la rétro (le même pour tous, d'après la date)
+function ceremonyHost(cr){
+  const all=chars.filter(c=>c.person), ppl=all.some(c=>c.sprite!=='temp')?all.filter(c=>c.sprite!=='temp'):all; if(!ppl.length)return null; // pas un intérimaire
+  if(cr.k==='planning')return ppl.find(c=>c.roleKind==='sm')||ppl.find(c=>c.boss)||ppl[0];
+  return ppl[Math.floor(hash(dayNum(cr.start)%100000,17)*ppl.length)%ppl.length];
+}
 function cronField(f,v,min){
   return f.split(',').some(part=>{
     let [r,st]=part.split('/');

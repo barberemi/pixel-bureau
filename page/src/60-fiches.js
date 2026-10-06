@@ -299,6 +299,8 @@ function shortSt(st){
     cheer:'ticket validé',
     pizza:'pizza',
     kickoff:'lancement du sprint',
+    planning:'sprint planning',
+    retro:'rétro',
     absent:'pas arrivé',
     off:'absent',
     gone:'parti'
@@ -308,6 +310,8 @@ function rank(c){
   const s=(c._st||{}).st;
   return c.boss?-1:({
     daily:0,
+    planning:0,
+    retro:0,
     ask:0,
     mep:0,
     party:0,

@@ -1,9 +1,10 @@
-// ---------- mode TV : bande de chiffres sous le plan, et scènes du daily (stand-up) ----------
+// ---------- mode TV : bande de chiffres sous le plan, et scènes du daily (stand-up), du sprint planning et de la rétro ----------
 // Lisible à 3 m : chiffres de 48 px environ, rien de personnel (pas de validation ni de PR « à toi »).
 // Pendant le daily (RHYTHM.daily, en semaine), la TV enchaîne d'elle-même le sprint puis un tour de table (une scène par
 // personne) ; le bouton « Stand-up » (ou la touche S) le lance ou l'arrête à la main, les flèches passent d'une scène à l'autre.
+// Pendant le sprint planning et la rétro (ceremonyAt, 30-data.js), leurs scènes à elles ; touches P et R, boutons de la barre.
 const TVSCENE_MS=20000;
-const TVSCENE={manual:null,idx:0,since:0,sig:''}; // manual : null = automatique (daily), true / false = forcé
+const TVSCENE={manual:null,idx:0,since:0,sig:''}; // manual : null = automatique (daily, cérémonies), 'daily' / 'planning' / 'retro' / false = forcé
 function agentsDown(){return chars.filter(c=>!c.person&&!c.visitor&&c._st&&c._st.st==='error');}
 function tvKpis(t){
   const d=dashData(t), out=[], k=(cls,num,lbl,sub)=>`<div class="tk ${cls}"><b>${num}</b><span>${lbl}</span>${sub?`<small>${sub}</small>`:''}</div>`;
@@ -83,32 +84,115 @@ function standupScenes(){
   return [{t:'Le sprint',f:sceneSprint,ms:TVSCENE_MS},
     ...standupPeople().map(c=>({t:c.name+(c.role?' · '+c.role:''),f:t=>personScene(c,t),ms:sceneMs(c),c}))];
 }
-function sceneOn(t){return TVSCENE.manual!==null?TVSCENE.manual:inDaily(t);}
+// ---------- sprint planning : la facilitatrice anime, ce qui reste, ce qu'on embarque, la charge de chacun ----------
+const openTickets=()=>sprintTickets().filter(x=>x.cat!=='done').sort((a,b)=>ST_ORDER.indexOf(a.cat)-ST_ORDER.indexOf(b.cat));
+function hostIntro(cr,t){
+  const h=cr&&ceremonyHost(cr), img=h&&typeof portraitUrl==='function'?portraitUrl(h):null;
+  return h?`<p class="sc-host">${img?`<img class="sc-face" src="${img}" alt="">`:''}<span>Animée par <b>${esc(h.name)}</b>${cr.end?` · jusqu'à ${hm(cr.end)}`:''}</span></p>`:'';
+}
+function scenePlanLeft(t){
+  const l=openTickets();
+  return l.length?`<h3>Pas encore terminés (${l.length})</h3>${tkList(l,50)}`:'<p class="sc-ok">Tout le sprint est terminé.</p>';
+}
+function scenePlanNext(t){
+  const un=(TEAM&&TEAM.unassigned||[]).filter(x=>x.cat!=='done'), nw=teamCreated(t-7*864e5,t).map(x=>({...x,who:x.c.name}));
+  return `<div class="sc-cols"><div><h3>Sans personne dans le sprint (${un.length})</h3>${un.length?tkList(un,30):'<p class="sc-empty">Aucun.</p>'}</div>`+
+    `<div><h3>Créés par l'équipe cette semaine (${nw.length})</h3>${nw.length?tkList(nw,30):'<p class="sc-empty">Aucun.</p>'}</div></div>`;
+}
+function scenePlanLoad(t){
+  const rows=chars.filter(c=>c.person&&c.team).map(c=>{const tk=(c.team.tickets||[]).filter(x=>x.cat!=='done'), n=k=>tk.filter(x=>x.cat===k).length;
+    return {c,todo:n('todo'),doing:n('doing'),rv:n('review')+n('test'),pts:tk.reduce((a,x)=>a+(+x.points||0),0),n:tk.length};})
+    .sort((a,b)=>b.pts-a.pts||b.n-a.n);
+  if(!rows.length)return '<p class="sc-empty">Pas de données Jira.</p>';
+  return `<table class="sc-tab"><tr><th></th><th>à faire</th><th>en cours</th><th>review, test</th><th>points restants</th></tr>`+
+    rows.map(r=>`<tr><td>${esc(r.c.name)}</td><td>${r.todo||''}</td><td>${r.doing||''}</td><td>${r.rv||''}</td><td>${r.pts?fmtPts(r.pts):''}</td></tr>`).join('')+'</table>';
+}
+function planningScenes(t){
+  const cr=ceremonyAt(t)||{k:'planning',title:CEREMONY_TITLE.planning,start:t};
+  return [{t:'Sprint planning',f:t=>hostIntro(cr,t)+sceneSprint(t),ms:TVSCENE_MS},
+    {t:'Ce qui reste',f:scenePlanLeft,ms:30000},
+    {t:"Ce qu'on embarque",f:scenePlanNext,ms:30000},
+    {t:'La charge de chacun',f:scenePlanLoad,ms:TVSCENE_MS}];
+}
+// ---------- rétrospective : un collègue tiré au sort anime ; chiffres, livré, ce qui a coincé, agents, tour de table ----------
+function sceneRetroDone(t){
+  const done=sprintTickets().filter(x=>x.cat==='done'), best=typeof bestEmployee==='function'?bestEmployee():[], b=best[0];
+  const bc=b&&b.pts&&typeof empChar==='function'?empChar(b):null;
+  return (bc?`<p class="sc-note">🏆 ${esc(bc.name)} : ${fmtPts(b.pts)} points livrés${best.prev?' (sprint '+esc(best.sprint||'')+')':''}</p>`:'')+
+    `<h3>Terminés (${done.length})</h3>${done.length?tkList(done,50):'<p class="sc-empty">Rien de terminé pour le moment.</p>'}`;
+}
+function sceneRetroStuck(t){
+  const bt=blockedTickets(t), sp=stalePrs(t), qa=chars.find(c=>c.person&&c.roleKind==='qa'), W=qa&&workOf(qa), back=W?W.reopened:[];
+  const prLi=x=>`<li><b>#${esc(x.n||x.number||'')}</b> ${esc(clip(x.title||'',80))}${x.who?` <small>· ${esc(String(x.who).split(' ')[0])}</small>`:''}</li>`;
+  return `<div class="sc-cols"><div><h3>Bloqués en review ou test (${bt.length})</h3>${bt.length?tkList(bt,20):'<p class="sc-empty">Aucun.</p>'}`+
+    `<h3 style="margin-top:18px">Réouverts (${cnt50(back.length)})</h3>${back.length?tkList(back,20):'<p class="sc-empty">Aucun.</p>'}</div>`+
+    `<div><h3>PR sans review depuis plus de ${PR_STALE_H} h (${sp.length})</h3>${sp.length?`<ul class="sc-tk">${sp.slice(0,20).map(prLi).join('')}</ul>`:'<p class="sc-empty">Aucune.</p>'}</div></div>`;
+}
+function sceneRetroAgents(t){
+  const rows=chars.filter(c=>!c.person&&!c.visitor&&!c.guest).map(c=>({c,p:payFor(c)})).filter(x=>x.p&&x.p.week.runs)
+    .sort((a,b)=>b.p.week.runs-a.p.week.runs);
+  if(!rows.length)return '<p class="sc-empty">Pas de fiche de paie des agents.</p>';
+  return `<table class="sc-tab"><tr><th></th><th>runs (7 j)</th><th>échecs</th><th>coût</th></tr>`+
+    rows.slice(0,12).map(r=>`<tr><td>${esc(r.c.name)}</td><td>${r.p.week.runs}</td><td>${r.p.week.fail?r.p.week.fail+' ('+Math.round(r.p.week.fail/r.p.week.runs*100)+' %)':''}</td><td>${esc(fmtUsd(usd(r.p.week.tok)))}</td></tr>`).join('')+'</table>';
+}
+// tour de table : l'ordre de parole est tiré au sort pour la date (le même pour tous), l'animateur commence
+function retroOrder(cr){
+  const h=ceremonyHost(cr), r=rng(dayNum(cr.start)*31+7);
+  const rest=chars.filter(c=>c.person&&c!==h&&c.sprite!=='temp').map(c=>({c,k:r()})).sort((a,b)=>a.k-b.k).map(x=>x.c);
+  return h?[h,...rest]:rest;
+}
+function sceneRetroTour(cr,t){
+  const who=retroOrder(cr);
+  return `<div class="sc-rq"><div class="rq ok"><b>👍</b>Ce qui a bien marché</div><div class="rq ko"><b>👎</b>Ce qui a coincé</div><div class="rq try"><b>💡</b>Ce qu'on essaie au prochain sprint</div></div>`+
+    `<h3>Ordre de parole</h3><ol class="sc-order">${who.map(c=>{const img=typeof portraitUrl==='function'?portraitUrl(c):null;
+      return `<li>${img?`<img src="${img}" alt="">`:''}<span>${esc(c.name)}</span></li>`;}).join('')}</ol>`;
+}
+function retroScenes(t){
+  const cr=ceremonyAt(t)||{k:'retro',title:CEREMONY_TITLE.retro,start:t};
+  return [{t:'Rétrospective',f:t=>hostIntro(cr,t)+sceneSprint(t),ms:TVSCENE_MS},
+    {t:"Ce qu'on a livré",f:sceneRetroDone,ms:30000},
+    {t:'Ce qui a coincé',f:sceneRetroStuck,ms:30000},
+    {t:'Les agents',f:sceneRetroAgents,ms:TVSCENE_MS},
+    {t:'Tour de table',f:t=>sceneRetroTour(cr,t),ms:40*60e3}]; // on y discute : la scène reste
+}
+// mode des scènes à t : forcé à la main, sinon le daily, sinon une cérémonie en cours, sinon rien (le plan)
+function sceneMode(t){
+  if(TVSCENE.manual!==null)return TVSCENE.manual;
+  if(inDaily(t))return 'daily';
+  const cr=ceremonyAt(t); return cr?cr.k:false;
+}
+function sceneOn(t){return !!sceneMode(t);}
+function scenesFor(mode,t){return mode==='planning'?planningScenes(t):mode==='retro'?retroScenes(t):standupScenes();}
+const SCENE_TAG={planning:'Sprint planning',retro:'Rétro'};
 function renderTvScenes(now){
   const box=document.getElementById('tvscene'), kpi=document.getElementById('tvkpi'); if(!box||!kpi)return;
   const k=tvKpis(T); if(kpi.dataset.sig!==k){kpi.dataset.sig=k;kpi.innerHTML=k;}
   const on=TV&&sceneOn(T);
   document.body.classList.toggle('tvscene',on);
   if(!on){TVSCENE.since=0;return;}
-  const SC=standupScenes(); TVSCENE.idx%=SC.length;
+  const mode=sceneMode(T), SC=scenesFor(mode,T); TVSCENE.idx%=SC.length;
   if(!TVSCENE.since)TVSCENE.since=now;
   if(now-TVSCENE.since>=SC[TVSCENE.idx].ms){TVSCENE.idx=(TVSCENE.idx+1)%SC.length;TVSCENE.since=now;}
   const sc=SC[TVSCENE.idx], left=Math.max(0,sc.ms-(now-TVSCENE.since));
   const img=sc.c&&typeof portraitUrl==='function'?portraitUrl(sc.c):null;
   const html=`<div class="sc-head">${img?`<img class="sc-face" src="${img}" alt="">`:''}<h2>${esc(sc.t)}</h2><span class="sc-dots">${SC.map((_,i)=>`<i class="${i===TVSCENE.idx?'on':''}"></i>`).join('')}</span>`+
-    `<span class="sc-tag">${TVSCENE.manual?'Stand-up':'Daily'}</span></div><div class="sc-body">${sc.f(T)}</div>`;
+    `<span class="sc-tag sc-${mode}">${SCENE_TAG[mode]||(TVSCENE.manual?'Stand-up':'Daily')}</span></div><div class="sc-body">${sc.f(T)}</div>`;
   if(html!==TVSCENE.sig){TVSCENE.sig=html;box.innerHTML=html;}
   box.style.setProperty('--sc-left',(left/sc.ms).toFixed(3));
 }
-function toggleStandup(){
-  const cur=sceneOn(T);
-  TVSCENE.manual=!cur; TVSCENE.idx=0; TVSCENE.since=0;
-  // hors daily, revenir au plan = repasser en automatique
-  if(!TVSCENE.manual&&!inDaily(T))TVSCENE.manual=null;
+// bouton ou touche : lance ces scènes, ou revient au plan si elles sont déjà à l'écran
+function toggleScenes(mode){
+  const cur=sceneMode(T);
+  TVSCENE.manual=cur===mode?false:mode; TVSCENE.idx=0; TVSCENE.since=0;
+  // revenir au plan hors daily et hors cérémonie = repasser en automatique
+  if(TVSCENE.manual===false&&!inDaily(T)&&!ceremonyAt(T))TVSCENE.manual=null;
   updateTv(true);
 }
+const toggleStandup=()=>toggleScenes('daily');
+const SCENE_KEYS={s:'daily',p:'planning',r:'retro'};
 addEventListener('keydown',e=>{
   if(!TV||e.metaKey||e.ctrlKey||e.altKey||(e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)))return;
-  if(e.key==='s'||e.key==='S')toggleStandup();
-  else if(sceneOn(T)&&(e.key==='ArrowRight'||e.key==='ArrowLeft')){const n=standupScenes().length;TVSCENE.idx=(TVSCENE.idx+(e.key==='ArrowRight'?1:n-1))%n;TVSCENE.since=0;}
+  const k=SCENE_KEYS[String(e.key).toLowerCase()];
+  if(k)toggleScenes(k);
+  else if(sceneOn(T)&&(e.key==='ArrowRight'||e.key==='ArrowLeft')){const n=scenesFor(sceneMode(T),T).length;TVSCENE.idx=(TVSCENE.idx+(e.key==='ArrowRight'?1:n-1))%n;TVSCENE.since=0;}
 });

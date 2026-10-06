@@ -266,7 +266,10 @@ test('boss : sax à son bureau de h45 à h50, jamais de tournée chez les collè
   const sax = bossAt(parisISO(DAY, '11:46'));
   assert.equal(sax.st, 'sax');
   assert.equal(sax.zone, 'boss');
-  for (let m = 9 * 60; m < 18 * 60; m += 3) assert.notEqual(bossAt(parisISO(DAY, hhmm(m))).zone, 'visit', hhmm(m));
+  for (let m = 9 * 60; m < 18 * 60; m += 3) {
+    const s = bossAt(parisISO(DAY, hhmm(m)));
+    if (s.st !== 'retro' && s.st !== 'planning') assert.notEqual(s.zone, 'visit', hhmm(m)); // animer une cérémonie : en bout de table
+  }
 });
 
 test('boss : même planning pour une même date (replay et autres écrans), différent un autre jour', () => {

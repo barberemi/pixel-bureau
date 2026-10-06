@@ -158,6 +158,7 @@ function bossState(c,t){
     :{st:'daily',zone:'daily',label:'Au daily'+(pending?' · '+waitTxt:''),bubble:pending?'✋'+pending:null});
   {const sg=stageAt(t);if(sg&&sg.phase==='done')return ret(sax?{st:'sax',zone:'stagesax',label:'Fête la mise en prod '+sg.m.tag+' au saxophone',bubble:pending?'✋'+pending:'♪'}
     :{st:'party',zone:'stage',label:'Fête la mise en prod '+sg.m.tag,bubble:pending?'✋'+pending:'🎉'});}
+  {const cr=ceremonyAt(t);if(cr){const o=ceremonyState(c,cr,waitTxt);if(pending)o.bubble='✋'+pending;return ret(o);}} // planning, rétro : il y est
   const plan=bossPlan(t);
   // 2. validations ou questions : retour au bureau, toutes affaires cessantes
   if(pending)return ret({st:'boss',zone:'boss',label:waitTxt,bubble:'✋'+pending});
@@ -231,6 +232,7 @@ function stateAt0(c,t){
       label:'Met en prod '+sg.m.tag+' ('+sg.m.ticket+') : '+MEP_TXT[sg.phase],
       bubble:'🚀'
     };
+    {const cr=ceremonyAt(t);if(cr)return ceremonyState(c,cr);} // 37-scenes.js : planning, rétro en salle de réunion
     {const sc=teamScene(c,t);if(sc)return sc;} // 37-scenes.js : sprint, ticket livré, validé, réouvert
     const open=c.team?c.team.tickets.filter(x=>x.cat!=='done'):[], W=workOf(c), wk=workTxt(W);
     if(c.roleKind==='sm'){
@@ -375,7 +377,9 @@ const ST_COLOR={
   thumbs:'#2e9e5b',
   cheer:'#2e9e5b',
   pizza:'#e0a020',
-  kickoff:'#2e9e9b'
+  kickoff:'#2e9e9b',
+  planning:'#2e9e9b',
+  retro:'#c25a9e'
 };
 const ST_CSS={
   sax:'#c9a227',
@@ -398,6 +402,8 @@ const ST_CSS={
   cheer:'var(--ok)',
   pizza:'var(--warn)',
   kickoff:'#2e9e9b',
+  planning:'#2e9e9b',
+  retro:'#c25a9e',
   absent:'transparent',
   gone:'transparent'
 };

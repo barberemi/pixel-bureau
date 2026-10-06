@@ -1,5 +1,5 @@
 // ---------- bandeau « Qui fait quoi » : une carte par collègue présent et par agent actif ----------
-const WHO_ACTIVE=['work','srv','meet','gate','error','mep','ask','party','daily'];
+const WHO_ACTIVE=['work','srv','meet','gate','error','mep','ask','party','daily','planning','retro'];
 const WHO_ATTN=['gate','ask','error'];
 const PORTRAIT_URL={};
 function portraitUrl(c){

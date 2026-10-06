@@ -14,3 +14,17 @@ Pour l'écran de l'open space : plein écran, textes lisibles à 3 m, chiffres d
 - La facilitatrice clôt le tour avec les tickets créés par l'équipe depuis le dernier daily, dans le sprint ou le backlog : numéro, titre, statut et qui l'a créé. Les tickets de personnes hors de l'équipe n'y sont pas.
 
 ![Stand-up : les tickets créés par l'équipe](../img/standup-facilitatrice.png)
+
+## Sprint planning et rétrospective
+
+Deux cérémonies réunissent toute l'équipe en salle de réunion, l'animateur en bout de table avec sa bulle ; en mode TV, leurs scènes tournent d'elles-mêmes.
+
+| Sprint planning | Rétrospective |
+| --- | --- |
+| ![Sprint planning sur le plan](../img/scene-planning.png) | ![Rétrospective sur le plan](../img/scene-retro.png) |
+| ![Sprint planning en mode TV](../img/planning-tv.png) | ![Rétrospective : tour de table](../img/retro-tour.png) |
+
+- **Sprint planning** : chaque vendredi de 10h à 10h30, animé par la facilitatrice. Scènes : le sprint (avancement), ce qui reste, ce qu'on embarque (tickets sans personne, tickets créés par l'équipe cette semaine), la charge de chacun (points restants).
+- **Rétrospective** : un jeudi sur deux de 15h à 16h (à partir du 15 octobre 2026), animée par un collègue tiré au sort, le même sur tous les écrans. Scènes : le sprint, ce qu'on a livré (avec l'employé du sprint), ce qui a coincé (tickets bloqués, réouverts, PR sans review), les agents sur 7 jours, puis le tour de table (bien, coincé, à essayer) avec l'ordre de parole, qui reste à l'écran.
+- Touches **P** (planning) et **R** (rétro), boutons de la barre ; **S** reste le stand-up.
+- Réglages `rhythm.planning` et `rhythm.retro` de `bureau.config.json` : `{day, at, minutes, every?, from?}` (`every` : toutes les N semaines à compter de la semaine de `from`), `null` pour retirer une cérémonie.
