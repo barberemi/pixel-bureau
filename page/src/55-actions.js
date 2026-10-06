@@ -178,7 +178,8 @@ function musicCard(side,c){
   // Kronn avec les embeds hôte) par-dessus le bloc texte, qui reste visible sinon (lien vers Suno)
   const sec=foldSection(side,'music','♪ Son écoute',null); // pliée par défaut ; repliée en cours de lecture, la musique continue
   const d=document.createElement('div');d.className='music';
-  const embed=m.suno_id?` data-kronn-embed="suno" data-kronn-embed-id="${esc(m.suno_id)}"`:'';
+  // contrat Kronn : l'URL complète du lecteur ; Kronn ne l'affiche que si suno.com est dans ses sites autorisés
+  const embed=m.suno_id?` data-kronn-embed="https://suno.com/embed/${encodeURIComponent(m.suno_id)}"`:'';
   d.innerHTML=`${m.cover?`<img src="${m.cover}" alt="">`:''}<div class="mt${embed?' mt-embed':''}"${embed}><div class="mn">${esc(m.title)}</div><div class="mb">${esc(m.style||'')}${m.duration?' · '+esc(m.duration):''}</div>
     <a class="mplay" href="${esc(m.url)}" target="_blank" rel="noopener">▶ Écouter sur Suno</a></div>`;
   sec.appendChild(d);
