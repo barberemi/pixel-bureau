@@ -215,6 +215,7 @@ function stateAt0(c,t){
   if(c.guest)return guestState(c,t);
   if(c.person&&!c.boss){
     const h=+dtf('en-GB',{hour:'numeric',hour12:false}).format(new Date(t));
+    {const ho=holoEvening(c,t);if(ho)return ho;} // 38-passions.js : le soir en hologramme (avant le week-end : vendredi soir jusqu'au samedi 3 h)
     if(RHYTHM.weekend.includes(parisHM(t).wd))return {st:'off',label:'En week-end'}; // seul le boss vient le week-end
     if(h<RHYTHM.office_hours[0]||h>=RHYTHM.office_hours[1])return {st:'off',label:'Rentré chez soi'};
     if(inDaily(t))return {st:'daily',zone:'daily',human:true,label:'Daily en cafétéria',bubble:c.roleKind==='sm'?'Daily':null};
@@ -234,6 +235,7 @@ function stateAt0(c,t){
     };
     {const cr=ceremonyAt(t);if(cr)return ceremonyState(c,cr);} // 37-scenes.js : planning, rétro en salle de réunion
     {const sc=teamScene(c,t);if(sc)return sc;} // 37-scenes.js : sprint, ticket livré, validé, réouvert
+    {const pm=passionMoment(c,t);if(pm)return pm;} // 38-passions.js : volant, panier, sac de frappe
     const open=c.team?c.team.tickets.filter(x=>x.cat!=='done'):[], W=workOf(c), wk=workTxt(W);
     if(c.roleKind==='sm'){
       const mn=+dtf('en-GB',{minute:'numeric'}).format(new Date(t));
@@ -458,7 +460,7 @@ function tick(real){
     let zone=s.zone; if(zone==='wander')zone=wanderZone(c,real); else c.idlePlan=null;
     const spot=pickSpot(c,zone,taken); if(!spot)continue;
     if(spot.key!=='desk'&&spot.key!=='exit')taken.add(spot.key);
-    c.pose=s.st==='sax'?'type':(s.st==='gate'||s.st==='party'||s.st==='cheer')?'hands':(s.st==='work'&&zone==='desk')?'type':'idle';
+    c.pose=s.st==='sax'?'type':(s.st==='gate'||s.st==='party'||s.st==='cheer'||s.st==='passion'&&s.passion!=='boxe')?'hands':(s.st==='work'&&zone==='desk')?'type':'idle';
     if(!c.present||needTeleport||!c.pos){
       c.present=true;
       // placé d'un coup seulement au chargement / saut dans le temps ; un nouvel arrivant entre par la porte et marche

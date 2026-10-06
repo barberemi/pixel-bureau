@@ -179,6 +179,7 @@ function drawSide(side){
       box.appendChild(ul);}}
   if(st.st==='gate'&&st.run)gateCard(side,st.run,null);
   musicCard(side,c);
+  passionCards(side,c); // 38-passions.js : Smash, dramas, GitFut
   if(c.person){renderPerson(side,c);return;}
   if(c.guest)return; // invité de passage : son état suffit
   if(c.visitor){renderVisitor(side,c);return;}

@@ -16,3 +16,14 @@ Clic sur un personnage (plan, panneau ou « Qui fait quoi ») : sa fiche s'ouvre
 **Visiteur** : la discussion Kronn, ses messages importants, le run qui l'a lancée.
 
 La **fiche de paie** (enveloppe sur le bureau du boss) donne tokens, runs et échecs par agent sur 7 jours, avec un coût estimé.
+
+## Cartes de passion
+
+Selon la clé `passion` du roster, la fiche d'un collègue affiche aussi :
+
+- **Carte GitFut** : sa carte de joueur façon FIFA Ultimate Team, notée sur 99 d'après son activité GitHub ([gitfut.com](https://gitfut.com)), sans le fond, cliquable. Les logins se donnent dans `bureau.config.json` (clé `gitfut`, `{clé du roster: login GitHub}`) ; le cron horaire la récupère une fois par jour (script `gitfut_snapshot.py`, `sips` sur macOS).
+- **Smash Bros Ultimate** (`smash` : `pseudo`, `main`, `rank`, `tournament`, `url`) : pseudo, personnage principal, classement, dernier tournoi, lien vers son profil.
+- **Top 3 dramas** (`dramas` : `top` (3 titres), `now`) : façon Netflix, avec l'épisode en cours.
+
+Sans les infos, la carte s'affiche avec « à venir ».
+

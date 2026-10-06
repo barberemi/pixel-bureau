@@ -93,6 +93,7 @@ function drawChar(c,now){
     ctx.drawImage(holoFrame(img,fx*64,fy*64,now,true),gx,dy);ctx.restore();
   }else ctx.drawImage(img,fx*64,fy*64,64,64,dx,dy+guestBob(c,fx),64,64);
   themeOnChar(c,x,dy+(c.sprite==='boss_sax'?3:14),now); // 46-themes.js : chapeau, lunettes, couronne
+  drawPassion(c,x,y,now); // 38-passions.js : volant, panier, sac de frappe, hologramme du soir
 }
 // chemin vers sa place quand le personnage sélectionné n'y est pas (café, réunion, toilettes...)
 let TRAIL={k:null,v:null};

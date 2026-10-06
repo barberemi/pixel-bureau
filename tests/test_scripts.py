@@ -389,6 +389,20 @@ print(json.dumps(d.get(key, [])))
         self.assertEqual([bool(p["img"]) for p in out["pages"]], [True, False])  # la dernière image saute d'abord
         self.assertEqual(self.run_script("pages_snapshot.py", api=api, chrome=False)["pages"], [])  # sans boss_pages
 
+    # ---------- cartes GitFut des fiches ----------
+    def test_gitfut_cache_of_the_day_bad_login_and_unreachable_site(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        cache = os.path.join(self.tmp, ".cache", "kronn-bureau", "gitfut")
+        os.makedirs(cache)
+        today = datetime.now(ZoneInfo("Europe/Paris")).strftime("%Y-%m-%d")
+        kept = {"login": "pam", "img": "data:image/jpeg;base64,QUJD", "desc": "Pam scouted on GitFut: 80 OVR ST."}
+        json.dump({"day": today, "card": kept}, open(os.path.join(cache, "pam.json"), "w"))
+        json.dump({"day": "2020-01-01", "card": kept}, open(os.path.join(cache, "old.json"), "w"))  # périmée : refetch
+        out = self.run_script("gitfut_snapshot.py", gitfut={"p_pam": "Pam", "p_old": "old", "p_bad": "../etc"},
+                              gitfut_base="http://127.0.0.1:9")  # gitfut injoignable
+        self.assertEqual(out["cards"], {"p_pam": kept})  # carte du jour reprise du cache ; le reste est sauté sans planter
+
     def test_payroll_and_gates_ignore_bureau(self):
         api = self.kronn(FakeKronn())
         pay = self.run_script("payroll_snapshot.py", api=api)

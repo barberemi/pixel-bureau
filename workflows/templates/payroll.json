@@ -80,6 +80,41 @@
     }
    },
    {
+    "name": "gitfut",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "Cartes GitFut (clé gitfut) pour les fiches, une fois par jour (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "snap",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/gitfut_snapshot.py@@"
+        ],
+        "timeout_secs": 180,
+        "output_format": "json"
+       },
+       "required": true
+      }
+     ],
+     "concurrent_limit": 1
+    }
+   },
+   {
     "name": "publish",
     "step_type": {
      "type": "PublishPageData"
@@ -104,6 +139,11 @@
        "dataset": "bosspages",
        "operation": "replace",
        "value_from": "steps.pages.data.sources.snap"
+      },
+      {
+       "dataset": "gitfut",
+       "operation": "replace",
+       "value_from": "steps.gitfut.data.sources.snap"
       }
      ]
     }

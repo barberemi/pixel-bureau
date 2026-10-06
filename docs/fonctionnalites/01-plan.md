@@ -77,6 +77,19 @@ L'anneau sous les pieds double la couleur par une forme (lisible par les daltoni
 ![Les piles des bureaux à 11h](../img/piles-bureaux.png)
 - Selon la date, le bureau se déguise : voir [Thèmes saisonniers](12-themes.md). « Comment lire le plan » permet d'en essayer un tout de suite.
 
+## Les passions de l'équipe
+
+Chacun peut avoir une passion (clé `passion` du roster), qui se joue sur le plan une fois par jour ouvré, à une heure tirée au sort entre 10h30 et 17h, la même pour tous :
+
+- **Badminton** : la personne se lève et frappe un volant qui traverse la pièce (2 min).
+- **Basket** : une minute de tirs au panier, avec le score et des « SWISH! ».
+- **Boxe** : gants aux mains, quelques séries au sac de frappe (« POW! », 2 min).
+- **Le soir en hologramme** (`soir_holo`) : en semaine, de la fin des heures de bureau à 3h du matin (le vendredi soir compris, jusqu'au samedi 3h), la personne vient travailler en semi-hologramme (reflet bleu, lignes de balayage), avec son petit robot IA.
+
+![Une séance de tirs au panier](../img/passions.png)
+
+Les cartes de passion des fiches sont décrites dans [Fiches](07-fiches.md).
+
 ## Changer de plan pour toute l'équipe
 
 Le plan se décrit dans un fichier JSON (voir [Développer, plan du bureau](../developpement.md#plan-du-bureau-layoutsjson)). Chacun est placé par le plan (`seating`, par numéro de siège : `I2.R2` = îlot 2, côté droit, rang 2), les autres reçoivent un siège libre, toujours le même.
