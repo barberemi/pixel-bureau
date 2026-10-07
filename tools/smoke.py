@@ -36,13 +36,13 @@ def static_checks(html, cfg=None):
     # blocs kronn-action attendus : ceux du squelette, ids de workflows remplacés comme à l'assemblage
     tpl = open(os.path.join(ROOT, "page", "office_template.html")).read()
     c = assemble.config() if cfg is None else cfg
-    acts = {**(c.get("actions") or {}), **(c.get("launch") or {})}  # comme build() dans assemble.py
+    acts = assemble.action_ids(c)  # comme build() dans assemble.py
     expected, total = [], 0
     for b in ACTION_RE.findall(tpl):
         total += 1
         key, mark = assemble.ACTIONS[re.search(r'data-action-id="([^"]+)"', b).group(1)]
         if acts.get(key):  # bouton sans workflow configuré : bloc retiré à l'assemblage
-            expected.append(b.replace(mark, acts[key]))
+            expected.append(assemble.action_block(b, c))
     found = ACTION_RE.findall(html)
     check(total == 8, f"{total} blocs kronn-action dans le squelette (attendu 8)")
     check(found == expected, f"blocs kronn-action attendus présents à l'identique ({len(expected)}/8 configurés)")

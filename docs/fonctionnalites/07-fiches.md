@@ -19,7 +19,17 @@ Clic sur un personnage (plan, panneau ou « Qui fait quoi ») : sa fiche s'ouvre
 - **Corriger les retours** : sur une PR avec changements demandés (avec des consignes facultatives).
 - **Mettre en prod** : ticket à déployer ; grisé les jours de gel des mises en prod.
 
-Chaque bouton ouvre la carte Kronn du workflow : tu valides, puis elle suit le run étape par étape. Les workflows se choisissent dans `bureau.config.json` (clé `launch` : `impl`, `mep`, `review`, `fix`) ; sans eux, la fiche n'a pas de boutons.
+Chaque bouton ouvre la carte Kronn du workflow : tu valides, puis elle suit le run étape par étape. Les workflows se choisissent dans `bureau.config.json` (clé `launch` : `impl`, `mep`, `review`, `fix`) ; sans eux, la fiche n'a pas de boutons. N'importe quel workflow Kronn convient : si ses variables ne portent pas les noms attendus, donne-les.
+
+```json
+"launch": {
+  "impl": "<id du workflow>",
+  "mep": {"wf": "<id>", "vars": {"ticket": "issue_key", "pr": null}},
+  "review": {"wf": "<id>", "vars": {"repo": "project", "pr": "mr"}}
+}
+```
+
+Rôles et noms par défaut : `impl` → `ticket` (`jira_ticket_key`) ; `mep` → `ticket` (`jira_ticket_key`), `pr` (`pr_number`) ; `review` → `repo`, `pr` ; `fix` → `pr`, `notes`. `null` : ton workflow n'a pas cette variable, elle n'est pas envoyée.
 
 ![Fiche d'un ticket](../img/fiche-ticket.png)
 

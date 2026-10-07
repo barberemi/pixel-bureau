@@ -1,5 +1,5 @@
 """Installateur (python3 -m unittest tests/test_install.py) : déroulé complet contre un faux Kronn, sans réseau."""
-import copy, json, os, shutil, sys, tempfile, unittest
+import copy, json, os, re, shutil, sys, tempfile, unittest
 from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -349,6 +349,40 @@ class GuestsTest(unittest.TestCase):
         html = assemble.build(demo=False, cfg=dict(json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"))), team="equipe"))
         self.assertIn('"guests": [{"key": "g_gandalf"', html)
 
+
+
+class LaunchTest(unittest.TestCase):
+    """Clé launch : les workflows lancés depuis la fiche d'un ticket, avec les noms de variables de chaque installation."""
+
+    def block(self, cfg, aid):
+        import assemble
+        html = assemble.build(demo=False, cfg=cfg)
+        m = re.search(r'<script type="application/kronn-action" data-action-id="' + aid + r'">(.*?)</script>', html, re.S)
+        return json.loads(m.group(1)) if m else None
+
+    def test_id_alone_keeps_the_default_variable_names(self):
+        cfg = dict(json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"))))
+        cfg["launch"] = {"mep": "wf-mep"}
+        spec = self.block(cfg, "bureau-mep")
+        self.assertEqual(spec["target_id"], "wf-mep")
+        self.assertEqual([v["name"] for v in spec["values"]], ["jira_ticket_key", "pr_number"])
+        self.assertIsNone(self.block(cfg, "bureau-impl"))  # pas configuré : pas de bouton
+
+    def test_variables_renamed_or_dropped_for_your_workflows(self):
+        cfg = dict(json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"))))
+        cfg["launch"] = {"mep": {"wf": "wf-mep", "vars": {"ticket": "issue_key", "pr": None}},
+                         "review": {"wf": "wf-rev", "vars": {"repo": "project", "pr": "mr"}}}
+        mep = self.block(cfg, "bureau-mep")
+        self.assertEqual([(v["name"], v["source_ref"]) for v in mep["values"]],
+                         [("issue_key", "<page.dataset.actions.tickets.find(key).key>")])  # pr retiré, liaison gardée
+        rev = self.block(cfg, "bureau-review")
+        self.assertEqual([v["name"] for v in rev["values"]], ["project", "mr"])
+
+    def test_unknown_role_is_refused(self):
+        import assemble
+        with self.assertRaises(ValueError) as e:
+            assemble.launch({"launch": {"impl": {"wf": "x", "vars": {"pr": "pr"}}}})
+        self.assertIn("rôles : ticket", str(e.exception))
 
 
 if __name__ == "__main__":

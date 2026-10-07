@@ -18,6 +18,10 @@ ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate",
            "bureau-relaunch": ("relaunch", "__RELAUNCH_WF__"), "bureau-ask": ("ask", "__ASK_QP__"),
            "bureau-impl": ("impl", "__IMPL_WF__"), "bureau-mep": ("mep", "__MEP_WF__"),
            "bureau-review": ("review", "__REVIEW_WF__"), "bureau-fix": ("fix", "__FIX_WF__")}
+# variables des workflows de la clé launch : rôle -> nom par défaut ; launch.<action> = id seul, ou {wf, vars: {rôle: nom
+# chez toi, ou null si ton workflow n'a pas cette variable}}
+LAUNCH_VARS = {"impl": {"ticket": "jira_ticket_key"}, "mep": {"ticket": "jira_ticket_key", "pr": "pr_number"},
+               "review": {"repo": "repo", "pr": "pr"}, "fix": {"pr": "pr", "notes": "notes"}}
 ACTION_RE = re.compile(r'<script type="application/kronn-action" data-action-id="([^"]+)">.*?</script>\n?', re.S)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -211,15 +215,47 @@ def layout_path(cfg):
     return (cfg or {}).get("layout") or t.get("layout") or DEFAULT_LAYOUT
 
 
+def launch(cfg):
+    """Clé launch : {action: (id du workflow, {nom par défaut: nom chez toi, ou None})}. Rôle inconnu : ValueError."""
+    out = {}
+    for k, v in ((cfg or {}).get("launch") or {}).items():
+        wf, names = (v.get("wf") or "", v.get("vars") or {}) if isinstance(v, dict) else (v or "", {})
+        roles = LAUNCH_VARS.get(k, {})
+        bad = sorted(set(names) - set(roles))
+        if bad:
+            raise ValueError(f"launch.{k}.vars : rôle inconnu {', '.join(bad)} (rôles : {', '.join(roles) or 'aucun'})")
+        out[k] = (wf, {roles[r]: n for r, n in names.items()})
+    return out
+
+
+def action_ids(cfg):
+    """Id de la cible de chaque bouton : workflows du Bureau (actions), puis tes workflows (launch)."""
+    return {**(cfg.get("actions") or {}), **{k: wf for k, (wf, _) in launch(cfg).items()}}
+
+
+def action_block(block, cfg):
+    """Bloc kronn-action du squelette prêt pour cette installation : id de la cible, variables renommées (launch.vars)."""
+    aid = re.search(r'data-action-id="([^"]+)"', block).group(1)
+    key, mark = ACTIONS[aid]
+    block = block.replace(mark, action_ids(cfg).get(key) or "")
+    names = launch(cfg).get(key, ("", {}))[1]
+    if not names:
+        return block
+    m = re.match(r"(<script[^>]*>)(.*?)(</script>\n?)$", block, re.S)
+    spec = json.loads(m.group(2))
+    spec["values"] = [dict(v, name=names.get(v["name"], v["name"])) for v in spec["values"] if names.get(v["name"], v["name"])]
+    return m.group(1) + json.dumps(spec, ensure_ascii=False, separators=(",", ":")) + m.group(3)
+
+
 def build(demo=True, cfg=None):
     """Page complète. demo : instantanés de démo embarqués (aperçu local, tests) ; la page publiée n'en a pas.
     cfg : config d'installation (défaut : bureau.config.json)."""
     cfg = config() if cfg is None else cfg
-    ids = {**(cfg.get("actions") or {}), **(cfg.get("launch") or {})}
+    ids = action_ids(cfg)
     acts = {k: ids.get(k) or "" for k, _ in ACTIONS.values()}
     html = page_html()
     # bouton sans workflow configuré : sa carte kronn-action disparaît (la page masque le bouton)
-    html = ACTION_RE.sub(lambda m: m.group(0) if acts[ACTIONS[m.group(1)][0]] else "", html)
+    html = ACTION_RE.sub(lambda m: action_block(m.group(0), cfg) if acts[ACTIONS[m.group(1)][0]] else "", html)
     cast, custom = recipes(cfg), sprites(cfg)
     html = (html.replace("__SPRITES__", json.dumps(custom))
                 .replace("__LAYERS__", open(p("sprites", "layers.json")).read())
