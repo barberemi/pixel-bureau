@@ -23,7 +23,22 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 
 ## Installer
 
-Prérequis : Kronn 0.14.1 ou plus lancé en local, Python 3. Facultatifs : une connexion Atlassian dans Kronn (tickets du sprint) et `gh` connecté (PR, mises en prod).
+### Prérequis
+
+À préparer avant de lancer l'installateur. Seuls les deux premiers sont obligatoires : sans les autres, Le Bureau tourne, sans la partie indiquée.
+
+| Prérequis | Pour quoi | Sans lui |
+| --- | --- | --- |
+| Kronn 0.14.1 ou plus, lancé sur ta machine | La page, ses datasets, les workflows | Rien ne s'installe |
+| Python 3.9 ou plus (`python3`, celui que Kronn trouve dans son `PATH`) | L'installateur et les scripts des crons | Rien ne s'installe |
+| Une connexion Atlassian dans Kronn (Kronn > MCP > Atlassian), créée avant l'installation | Sprint, tickets, Kanban, stand-up | Pas de Jira : blocs masqués |
+| `gh` connecté (`gh auth login`, droits `repo` et `read:org`) et accès aux dépôts suivis | PR, mises en prod ; un profil d'équipe réservé à une organisation GitHub | Pas de PR ni de MEP ; profils réservés refusés |
+| Le venv du dépôt avec Pillow : `python3 -m venv .venv && .venv/bin/pip install pillow` | Miniatures de l'écran du boss, cartes GitFut, affiches des Top 3, sprite LPC de l'installateur | Cartes sans image (sauf sur macOS : repli sur `sips`) |
+| Chrome ou Chromium | Miniatures de l'écran du boss | Cartes sans miniature |
+| Un agent IA installé dans Kronn (Claude Code, par exemple) | « Lui poser une question », plan depuis un croquis | Boutons masqués |
+| suno.com autorisé dans Kronn (Configuration > Artifacts) | Le lecteur Suno de la carte « Son écoute » | Lien vers Suno seulement |
+
+macOS ou Linux (Windows n'est pas testé). Pour développer : Node 20 ou plus (tests) et la CLI `claude` (plan depuis un croquis en local).
 
 ```sh
 git clone https://github.com/barberemi/kronn-bureau.git && cd kronn-bureau
