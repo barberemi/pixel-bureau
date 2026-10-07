@@ -339,11 +339,11 @@ class GuestsTest(unittest.TestCase):
         cfg = {"team": "equipe", "guests": [{"key": "g_x", "name": "X"}]}
         profile = [g["key"] for g in json.load(open(os.path.join(ROOT, "teams", "equipe", "roster.json")))["guests"]]
         self.assertEqual([g["key"] for g in assemble.guests(cfg)], profile + ["g_x"])
-        self.assertIn("g_bob", profile)
+        self.assertIn("g_veilleur", profile)
         self.assertEqual(assemble.guests({}), [])
-        self.assertIn("bob", assemble.sprites(cfg))  # sa planche, tirée de teams/equipe/sprites/bob/
+        self.assertIn("hank", assemble.sprites(cfg))  # sa planche, tirée de teams/equipe/sprites/hank/
         html = assemble.build(demo=False, cfg=dict(json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"))), team="equipe"))
-        self.assertIn('"guests": [{"key": "g_bob"', html)
+        self.assertIn('"guests": [{"key": "g_veilleur"', html)
 
 
 
