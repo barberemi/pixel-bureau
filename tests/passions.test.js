@@ -49,3 +49,10 @@ test('dataset gitfut : objet ou texte JSON ; absent ou cassé = null', () => {
   assert.equal(J('readGitfut({datasets:{}})'), null);
   assert.deepEqual(J(ds({cards: {}, posters: {Five: 'data:x'}}).replace('readGitfut', 'readPosters')), {Five: 'data:x'}); // affiches des Top 3
 });
+
+test('carte Smash : classements en liste (le premier en avant) ou en texte, puis le dernier tournoi', () => {
+  assert.equal(J(`smashChips({rank:['138e mondial','21e européen'],tournament:'UFA 2026 : 65e'})`),
+    '<span class="pc-hot">138e mondial</span><span>21e européen</span><span>UFA 2026 : 65e</span>');
+  assert.equal(J(`smashChips({rank:'Top 8'})`), '<span class="pc-hot">Top 8</span>');
+  assert.equal(J(`smashChips({})`), '');
+});

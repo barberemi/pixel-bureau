@@ -105,7 +105,7 @@ function passionCards(side,c){
   }
   if(p.smash){
     const s=p.smash, sec=foldSection(side,'smash','🎮 Smash Bros Ultimate',null,true);
-    const chips=[s.rank&&`<span class="pc-hot">${esc(s.rank)}</span>`,s.tournament&&`<span>${esc(s.tournament)}</span>`].filter(Boolean).join('');
+    const chips=smashChips(s);
     sec.insertAdjacentHTML('beforeend',`<div class="pcard smash"><div class="pc-ball" aria-hidden="true"></div><div class="pc-main"><b>${esc(s.pseudo||'Pseudo à venir')}</b>`+
       `<small>${s.main?'Main : '+esc(s.main):'Perso principal à venir'}</small>${chips?`<div class="pc-chips">${chips}</div>`:''}`+
       `${/^https:\/\//.test(s.url||'')?`<a href="${esc(s.url)}" target="_blank" rel="noopener">Voir son profil ↗</a>`:''}</div></div>`);
@@ -121,4 +121,10 @@ function top3Card(side,id,section,what,cfg){
     [0,1,2].map(i=>{const im=POSTERS[(cfg.wiki||[])[i]], img=im&&GF_IMG_OK.test(im)?`<img src="${im}" alt="">`:''; // affiche (dataset gitfut, posters)
       return `<div class="pc-poster"><i>${i+1}</i><div style="background:linear-gradient(160deg,${grads[i][0]},${grads[i][1]})">${img}<b>${esc(top[i]||'À venir')}</b></div></div>`;}).join('')+
     `</div>${cfg.now?`<small>En ce moment : ${esc(cfg.now)}</small>`:''}</div>`);
+}
+
+// pastilles de la carte Smash : rank (texte, ou liste : mondial, Europe, France…, la première en avant), puis le dernier tournoi
+function smashChips(s){
+  const ranks=(Array.isArray(s.rank)?s.rank:[s.rank]).filter(r=>typeof r==='string'&&r);
+  return [...ranks.map((r,i)=>`<span${i?'':' class="pc-hot"'}>${esc(r)}</span>`),s.tournament&&`<span>${esc(s.tournament)}</span>`].filter(Boolean).join('');
 }
