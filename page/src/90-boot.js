@@ -125,6 +125,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   PAYROLL=readPayroll(k);
   BOSS_PAGES=readBossPages(k)||[];
   GITFUT=readGitfut(k)||{};
+  POSTERS=readPosters(k)||{};
   OFFICE=readData(k);
   OFFICE_IS_LIVE=!!OFFICE;
   if(!OFFICE)OFFICE=DEMO&&SNAP?SNAP:emptyOffice();
@@ -150,6 +151,8 @@ window.addEventListener('kronn:page-data',e=>{
   if(bp)BOSS_PAGES=bp;
   const gf=readGitfut(k)||readGitfut(window.KronnPageData);
   if(gf)GITFUT=gf;
+  const po=readPosters(k)||readPosters(window.KronnPageData);
+  if(po)POSTERS=po;
   if(py)PAYROLL=py;
   const av=readAvatars(k)||readAvatars(window.KronnPageData);
   if(av){

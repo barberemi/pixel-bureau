@@ -400,8 +400,9 @@ print(json.dumps(d.get(key, [])))
         json.dump({"day": today, "card": kept}, open(os.path.join(cache, "pam.json"), "w"))
         json.dump({"day": "2020-01-01", "card": kept}, open(os.path.join(cache, "old.json"), "w"))  # périmée : refetch
         out = self.run_script("gitfut_snapshot.py", gitfut={"p_pam": "Pam", "p_old": "old", "p_bad": "../etc"},
-                              gitfut_base="http://127.0.0.1:9")  # gitfut injoignable
-        self.assertEqual(out["cards"], {"p_pam": kept})  # carte du jour reprise du cache ; le reste est sauté sans planter
+                              gitfut_base="http://127.0.0.1:9", wiki_posters=["Five_(2016_film)"], wiki_base="http://127.0.0.1:9")  # injoignables
+        self.assertEqual(out["cards"], {"p_pam": kept})
+        self.assertEqual(out["posters"], {})  # affiche introuvable : pas d'image, pas d'erreur  # carte du jour reprise du cache ; le reste est sauté sans planter
 
     def test_payroll_and_gates_ignore_bureau(self):
         api = self.kronn(FakeKronn())

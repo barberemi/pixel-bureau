@@ -74,7 +74,8 @@ function drawRobot(x,y,now){
   ctx.shadowBlur=0;ctx.globalAlpha=.3;pDisc(x+4,y+16,3,'#5fd4ff');ctx.restore();
 }
 // ---------- cartes de fiche ----------
-let GITFUT={};
+let GITFUT={}, POSTERS={};
+function readPosters(src){try{let d=src&&src.datasets&&src.datasets.gitfut;if(d&&d.current!==undefined)d=d.current;if(typeof d==='string')d=JSON.parse(d);return d&&d.posters&&typeof d.posters==='object'?d.posters:null;}catch(e){return null;}}
 function readGitfut(src){
   try{if(!src||!src.datasets)return null;let d=src.datasets.gitfut;if(d&&d.current!==undefined)d=d.current;if(typeof d==='string')d=JSON.parse(d);
     return d&&d.cards&&typeof d.cards==='object'?d.cards:null;}catch(e){return null;}
@@ -117,6 +118,7 @@ function top3Card(side,id,section,what,cfg){
   const top=(cfg.top||[]).slice(0,3), sec=foldSection(side,id,section,null,true);
   const grads=[['#8a2a5a','#1a1030'],['#2a5a8a','#101830'],['#5a8a2a','#102010']];
   sec.insertAdjacentHTML('beforeend',`<div class="pcard drama"><div class="pc-top"><span>TOP 3</span> · ${esc(what)}</div><div class="pc-posters">`+
-    [0,1,2].map(i=>`<div class="pc-poster"><i>${i+1}</i><div style="background:linear-gradient(160deg,${grads[i][0]},${grads[i][1]})"><b>${esc(top[i]||'À venir')}</b></div></div>`).join('')+
+    [0,1,2].map(i=>{const im=POSTERS[(cfg.wiki||[])[i]], img=im&&GF_IMG_OK.test(im)?`<img src="${im}" alt="">`:''; // affiche (dataset gitfut, posters)
+      return `<div class="pc-poster"><i>${i+1}</i><div style="background:linear-gradient(160deg,${grads[i][0]},${grads[i][1]})">${img}<b>${esc(top[i]||'À venir')}</b></div></div>`;}).join('')+
     `</div>${cfg.now?`<small>En ce moment : ${esc(cfg.now)}</small>`:''}</div>`);
 }

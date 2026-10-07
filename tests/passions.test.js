@@ -47,4 +47,5 @@ test('dataset gitfut : objet ou texte JSON ; absent ou cassé = null', () => {
   assert.deepEqual(Object.keys(J(ds(JSON.stringify({cards: {p_pam: {}}})))), ['p_pam']);
   assert.equal(J(ds('{cassé')), null);
   assert.equal(J('readGitfut({datasets:{}})'), null);
+  assert.deepEqual(J(ds({cards: {}, posters: {Five: 'data:x'}}).replace('readGitfut', 'readPosters')), {Five: 'data:x'}); // affiches des Top 3
 });
