@@ -109,11 +109,14 @@ function passionCards(side,c){
       `<small>${s.main?'Main : '+esc(s.main):'Perso principal à venir'}</small>${chips?`<div class="pc-chips">${chips}</div>`:''}`+
       `${/^https:\/\//.test(s.url||'')?`<a href="${esc(s.url)}" target="_blank" rel="noopener">Voir son profil ↗</a>`:''}</div></div>`);
   }
-  if(p.dramas){
-    const dr=p.dramas, top=(dr.top||[]).slice(0,3), sec=foldSection(side,'dramas','📺 Top 3 dramas',null,true);
-    const grads=[['#8a2a5a','#1a1030'],['#2a5a8a','#101830'],['#5a8a2a','#102010']];
-    sec.insertAdjacentHTML('beforeend',`<div class="pcard drama"><div class="pc-top"><span>TOP 3</span> · les dramas de ${esc(c.name)}</div><div class="pc-posters">`+
-      [0,1,2].map(i=>`<div class="pc-poster"><i>${i+1}</i><div style="background:linear-gradient(160deg,${grads[i][0]},${grads[i][1]})"><b>${esc(top[i]||'À venir')}</b></div></div>`).join('')+
-      `</div>${dr.now?`<small>En ce moment : ${esc(dr.now)}</small>`:''}</div>`);
-  }
+  if(p.dramas)top3Card(side,'dramas','📺 Top 3 dramas','les dramas de '+c.name,p.dramas);
+  if(p.top3)top3Card(side,'top3','🎬 Top 3 · '+(p.top3.title||'ses préférés'),p.top3.title||'ses préférés',p.top3);
+}
+// carte « TOP 3 » façon Netflix : grands chiffres détourés, trois affiches ; top = 3 titres, now = en cours (facultatif)
+function top3Card(side,id,section,what,cfg){
+  const top=(cfg.top||[]).slice(0,3), sec=foldSection(side,id,section,null,true);
+  const grads=[['#8a2a5a','#1a1030'],['#2a5a8a','#101830'],['#5a8a2a','#102010']];
+  sec.insertAdjacentHTML('beforeend',`<div class="pcard drama"><div class="pc-top"><span>TOP 3</span> · ${esc(what)}</div><div class="pc-posters">`+
+    [0,1,2].map(i=>`<div class="pc-poster"><i>${i+1}</i><div style="background:linear-gradient(160deg,${grads[i][0]},${grads[i][1]})"><b>${esc(top[i]||'À venir')}</b></div></div>`).join('')+
+    `</div>${cfg.now?`<small>En ce moment : ${esc(cfg.now)}</small>`:''}</div>`);
 }
