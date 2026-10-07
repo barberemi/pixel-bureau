@@ -103,6 +103,7 @@ def values(cfg):
         "jira.points_fields": ",".join(j.get("points_fields") or []),
         "owner_name": owner_name(cfg),
         "root": ROOT,
+        "cron_hours": assemble.cron_hours(cfg),  # heures UTC des crons, d'après le fuseau et les heures de bureau
         # travail Jira des rôles sans tickets assignés (PO, SM, QA) : compte Jira de la première personne du rôle
         **{f"jira.role.{r}": role_ids(r, cfg) for r in ROLES},
         "jira.role_ids": ",".join(f'"{x}"' for r in ROLES for x in [role_ids(r, cfg)] if x),
@@ -213,6 +214,10 @@ def templatize(key, kind, d, cfg):
         return v
 
     d = walk(d)
+    sch = (d.get("trigger") or {}).get("schedule")
+    if isinstance(sch, str) and len(sch.split()) == 5 and sch.split()[1] == vals["cron_hours"]:
+        f = sch.split()
+        d["trigger"]["schedule"] = " ".join(f[:1] + ["@@cron_hours@@"] + f[2:])
     if kind == "workflow":
         for s in d["steps"]:
             if s.get("api_plugin_slug") == "mcp-atlassian" or s["name"] in WORK_REQUIRES:

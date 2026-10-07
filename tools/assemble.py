@@ -7,7 +7,9 @@ Sources de la page : page/office_template.html (squelette HTML + blocs kronn-act
 Les avatars sont assemblés dans le navigateur (calques de sprites/layers.json + recettes de sprites/cast.json et du
 profil d'équipe) ; seuls les sprites fournis tels quels (teams/<équipe>/sprites/, sprites/custom/) sont embarqués comme planches.
 """
-import json, os, re
+import json, math, os, re
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 # boutons de la page : bloc kronn-action du squelette -> (clé dans bureau.config.json « actions », marqueur de l'id)
 ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate", "__GATE_WF__"),
@@ -50,13 +52,31 @@ def demo_config():
     return json.load(open(p("tests", "fixtures", "bureau.config.json")))
 
 
-def cron_schedules():
-    """Calendrier de chaque cron du Bureau, lu dans ses modèles (workflows/templates)."""
+def cron_hours(cfg):
+    """Heures UTC où tournent les crons du Bureau (champ « heures » de leurs expressions cron, que Kronn lit en UTC) :
+    les heures de bureau (rhythm.office_hours, heure locale de rhythm.timezone), 2 h avant et 1 h après, été comme hiver.
+    Paris, 8h-20h : « 4-20 ». Une plage qui passe minuit UTC devient deux plages (« 13-23,0-4 »)."""
+    r = (cfg or {}).get("rhythm") or {}
+    tz = ZoneInfo(r.get("timezone") or "Europe/Paris")
+    h0, h1 = (r.get("office_hours") or [8, 20])[:2]
+    year = datetime.now().year
+    offs = [tz.utcoffset(datetime(year, m, 1)).total_seconds() / 3600 for m in (1, 7)]  # hiver et été
+    a, b = math.floor(h0 - 2 - max(offs)), math.ceil(h1 + 1 - min(offs))
+    if b - a >= 23:
+        return "*"
+    a, b = a % 24, b % 24
+    span = lambda x, y: str(x) if x == y else f"{x}-{y}"
+    return span(a, b) if a <= b else f"{span(a, 23)},{span(0, b)}"
+
+
+def cron_schedules(cfg=None):
+    """Calendrier de chaque cron du Bureau : celui de ses modèles (workflows/templates), heures calées sur le bureau."""
     out = {}
     for key in ("office", "live", "team", "payroll"):
         path = p("workflows", "templates", key + ".json")
         if os.path.exists(path):
-            out[key] = ((json.load(open(path))["definition"].get("trigger") or {}).get("schedule"))
+            s = (json.load(open(path))["definition"].get("trigger") or {}).get("schedule")
+            out[key] = s.replace("@@cron_hours@@", cron_hours(cfg)) if s else s
     return out
 
 
@@ -72,7 +92,7 @@ def page_config(cfg):
         "rhythm": cfg.get("rhythm") or {},
         "mep_workflow": cfg.get("mep_workflow"),
         "workflows": cfg.get("workflows") or {},  # ids des crons : calendrier et fraîcheur des données
-        "schedules": cron_schedules(),  # calendrier des crons du Bureau (modèles de workflows)
+        "schedules": cron_schedules(cfg),  # calendrier des crons du Bureau (modèles de workflows)
         "agents": cfg.get("agents") or [],
         "ui": cfg.get("ui") or {},  # réglages d'affichage (ex. ui.todo : open / folded / hidden)
     }

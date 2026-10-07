@@ -110,5 +110,20 @@ class TemplatesTest(unittest.TestCase):
         self.assertEqual(self.script_cfg(colleague(gitfut=False))["gitfut"], {})
 
 
+    def test_cron_hours_follow_the_office_timezone(self):
+        """Les crons tournent aux heures de bureau du fuseau (Kronn lit les crons en UTC), 2 h avant et 1 h après."""
+        hours = lambda tz, h: templates.assemble.cron_hours({"rhythm": {"timezone": tz, "office_hours": h}})
+        self.assertEqual(hours("Europe/Paris", [8, 20]), "4-20")  # comme avant : été (UTC+2) comme hiver (UTC+1)
+        self.assertEqual(hours("America/New_York", [9, 18]), "11-23,0")  # passe minuit UTC
+        self.assertEqual(hours("Asia/Kolkata", [9, 18]), "1-14")  # décalage d'une demi-heure
+        self.assertEqual(hours("UTC", [0, 24]), "*")
+        c = colleague(rhythm={**BASE["rhythm"], "timezone": "America/New_York", "office_hours": [9, 18]})
+        live = templates.render(TPL["live"], c)
+        self.assertEqual(live["trigger"]["schedule"], "* 11-23,0 * * *")
+        self.assertEqual(templates.assemble.cron_schedules(c)["team"], "*/10 11-23,0 * * 1-5")  # le calendrier de la page aussi
+        back = templates.templatize("live", "workflow", live, c)["definition"]  # export : l'emplacement revient
+        self.assertEqual(back["trigger"]["schedule"], "* @@cron_hours@@ * * *")
+
+
 if __name__ == "__main__":
     unittest.main()
