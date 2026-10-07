@@ -1,5 +1,5 @@
 """Installateur (python3 -m unittest tests/test_install.py) : déroulé complet contre un faux Kronn, sans réseau."""
-import json, os, shutil, sys, tempfile, unittest
+import copy, json, os, shutil, sys, tempfile, unittest
 from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -221,11 +221,34 @@ class InstallTest(unittest.TestCase):
     def test_settings_survive_a_relaunch(self):
         self.run_install(ANSWERS)
         cfg = json.load(open(self.cfg_path))
-        json.dump({**cfg, "ui": {"todo": "folded"}, "protect": True}, open(self.cfg_path, "w"))
+        hand = {"gitfut": {"p_remi": "barberemi"}, "wiki_posters": ["Five_(2016_film)"], "chrome": False}  # posés à la main
+        json.dump({**cfg, "ui": {"todo": "folded"}, "protect": True, **hand}, open(self.cfg_path, "w"))
         with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):
             self.assertEqual(self.run_install(ANSWERS), 0)
-        self.assertEqual(json.load(open(self.cfg_path))["ui"], {"todo": "folded"})
-        self.assertTrue(json.load(open(self.cfg_path))["protect"])
+        after = json.load(open(self.cfg_path))
+        self.assertEqual(after["ui"], {"todo": "folded"})
+        self.assertTrue(after["protect"])
+        self.assertEqual({k: after.get(k) for k in hand}, hand)
+
+    def test_boss_screen_pages_asked_by_id(self):
+        """Écran du boss : ids complets ou débuts d'id uniques, dans l'ordre donné ; la page du Bureau n'est pas proposée."""
+        pages = {"cccc1111-0000-4000-8000-000000000000": {"title": "Revue de PR", "datasets": []},
+                 "cccc2222-0000-4000-8000-000000000000": {"title": "CWV", "datasets": []},
+                 "dddd3333-0000-4000-8000-000000000000": {"title": "SCSS", "datasets": []}}
+        init = FakeKronn.__init__
+
+        def with_pages(f, api):
+            init(f, api)
+            f.store.update(copy.deepcopy(pages))
+        with mock.patch.object(FakeKronn, "__init__", with_pages):
+            self.assertEqual(self.run_install({**ANSWERS, "boss_pages": "dddd, cccc2222-0000-4000-8000-000000000000"}), 0)
+            self.assertEqual(json.load(open(self.cfg_path))["boss_pages"],
+                             ["dddd3333-0000-4000-8000-000000000000", "cccc2222-0000-4000-8000-000000000000"])
+        with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):  # relance sur le même Kronn
+            with self.assertRaises(install.InstallError):  # « cccc » : deux pages
+                self.run_install({**ANSWERS, "boss_pages": "cccc"})
+            self.assertEqual(self.run_install({**ANSWERS, "boss_pages": "-"}), 0)
+            self.assertEqual(json.load(open(self.cfg_path))["boss_pages"], [])
 
     def test_new_team_by_default_with_the_type_plan(self):
         answers = {k: v for k, v in ANSWERS.items() if k not in ("team", "owner")}

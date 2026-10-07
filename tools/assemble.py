@@ -127,6 +127,25 @@ def defaults(cfg):
     return d
 
 
+def gitfut(cfg):
+    """Cartes GitFut de la fiche, {clé: login GitHub} : la clé gitfut de la config si elle est posée (false = aucune
+    carte), sinon toute personne du roster qui a son login GitHub (champ github, le vrai login : gitfut.com/<login>)."""
+    v = (cfg or {}).get("gitfut")
+    if v is False:
+        return {}
+    if isinstance(v, dict):
+        return v
+    return {p["key"]: p["github"] for p in roster(cfg) if p.get("github")}
+
+
+def wiki_posters(cfg):
+    """Pages de la Wikipédia anglaise des affiches des cartes Top 3 : celles du roster (passion.top3.wiki), puis la
+    clé wiki_posters de la config, sans doublon."""
+    pages = [w for p in roster(cfg) for w in (((p.get("passion") or {}).get("top3") or {}).get("wiki") or [])]
+    pages += list((cfg or {}).get("wiki_posters") or [])
+    return list(dict.fromkeys(w for w in pages if isinstance(w, str) and w))
+
+
 def music(cfg):
     """Morceaux des collègues (carte « Sa musique ») : ceux du profil, puis ceux de l'installation (clé music)."""
     path = _team_file(cfg, "music", "music.json")

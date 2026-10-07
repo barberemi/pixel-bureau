@@ -69,7 +69,9 @@ def script_code(path, cfg):
         assert "@@" not in body and "{{" not in body, m.group(1) + ".py : ni @@ ni {{ (Kronn rendrait ses propres variables)"
         return body
     code = LIB_IMPORT.sub(lib, code)
-    blob = json.dumps({k: v for k, v in cfg.items() if not k.startswith("_")}, ensure_ascii=False)
+    c = {k: v for k, v in cfg.items() if not k.startswith("_")}
+    c.update(gitfut=assemble.gitfut(cfg), wiki_posters=assemble.wiki_posters(cfg))  # déduits du roster (scripts sans accès au dépôt)
+    blob = json.dumps(c, ensure_ascii=False)
     assert '"""' not in blob and "__BUREAU_CONFIG__" in code, path
     return code.replace("__BUREAU_CONFIG__", blob, 1)
 

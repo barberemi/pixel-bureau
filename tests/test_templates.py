@@ -92,6 +92,23 @@ class TemplatesTest(unittest.TestCase):
                 self.assertIn(cfg["page_id"], code, path)
                 compile(code, path, "exec")  # le script recopié reste du Python valide
 
+    def script_cfg(self, cfg):
+        code = templates.script_code("workflows/gitfut_snapshot.py", cfg)
+        return json.loads(re.search(r'_CFG = r"""(.*?)"""', code, re.S).group(1))
+
+    def test_gitfut_and_posters_come_from_the_roster(self):
+        """Cartes GitFut : le login github du roster, sauf clé gitfut posée (false = aucune) ; affiches : top3.wiki du roster."""
+        cfg = colleague(people=BASE["people"] + [{"key": "p_new", "name": "New", "github": "NewLogin",
+                                 "passion": {"top3": {"title": "Films", "top": ["A", "B", "C"], "wiki": ["A_(film)", "B_(film)"]}}}],
+                        wiki_posters=["B_(film)", "Z_(film)"])
+        got = self.script_cfg(cfg)
+        self.assertEqual(got["gitfut"]["p_new"], "NewLogin")
+        self.assertEqual(got["gitfut"]["p_pam"], "pambeesly")
+        self.assertNotIn("p_jan", got["gitfut"])  # pas de login github
+        self.assertEqual(got["wiki_posters"], ["A_(film)", "B_(film)", "Z_(film)"])
+        self.assertEqual(self.script_cfg(colleague(gitfut={"p_pam": "Pam"}))["gitfut"], {"p_pam": "Pam"})
+        self.assertEqual(self.script_cfg(colleague(gitfut=False))["gitfut"], {})
+
 
 if __name__ == "__main__":
     unittest.main()

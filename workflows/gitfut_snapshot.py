@@ -1,9 +1,9 @@
-"""Cartes GitFut (gitfut.com : profil GitHub noté sur 99, façon FIFA Ultimate Team) des personnes de la clé gitfut
-de bureau.config.json ({clé du roster: login GitHub}), pour leur fiche.
+"""Cartes GitFut (gitfut.com : profil GitHub noté sur 99, façon FIFA Ultimate Team) des personnes qui ont un login
+GitHub dans le roster (clé gitfut de la config injectée, {clé du roster: login GitHub}, déduite au rendu), pour leur fiche.
 
 Sortie (stdout) : {generated_at, cards{clé: {login, img, desc}}, posters{page: img}}.
-- posters : affiches des cartes « Top 3 » (clé wiki_posters de la config : pages de la Wikipédia anglaise, qui les
-  héberge), miniature JPEG ~160 px en data URI, récupérées une fois par jour avec le même cache.
+- posters : affiches des cartes « Top 3 » (passion.top3.wiki du roster, plus la clé wiki_posters de la config :
+  pages de la Wikipédia anglaise, qui les héberge), miniature JPEG ~160 px en data URI, récupérées une fois par jour avec le même cache.
 - img : la carte découpée dans l'image de partage gitfut (<login>/opengraph-image, 1200x630, carte à gauche), en JPEG
   data URI ; le fond est retiré par la page. desc : la description de la page (« 79 OVR CDM, Mezzala »).
 - Récupérée une fois par jour (cache ~/.cache/kronn-bureau/gitfut/<login>.json) : le cron tourne toutes les heures.

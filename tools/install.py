@@ -280,6 +280,33 @@ def ai_agent(ask, k):
                       agents[0]["agent_type"] if agents else "")
 
 
+def boss_pages(ask, k, previous, page_id):
+    """Pages Kronn montrées en miniatures sur l'écran du bureau du boss (clé boss_pages), dans l'ordre donné :
+    ids séparés par des virgules ou des espaces, un début d'id suffit s'il est unique ; « - » = aucune."""
+    pages = {p["id"]: p.get("title") or p["id"][:8] for p in k.get("/pages") if p.get("id") and p["id"] != page_id}
+    if not pages:
+        return []
+    if ask.answers is None:
+        say("\nTes pages Kronn :")
+        for i, t in pages.items():
+            say(f"  {i}  {t}")
+    while True:
+        raw = ask.text("boss_pages", "Pages à montrer sur l'écran du boss (ids, Entrée pour garder, « - » pour aucune)",
+                       ",".join(previous or []) or "-")
+        toks = raw if isinstance(raw, list) else re.split(r"[\s,;]+", str(raw or "").strip())
+        toks = [t for t in toks if t and t != "-"]
+        ids, bad = [], []
+        for t in toks:
+            hit = [i for i in pages if i == t] or [i for i in pages if i.startswith(t)]
+            (ids.append(hit[0]) if len(hit) == 1 else bad.append(t))
+        if not bad:
+            return list(dict.fromkeys(ids))
+        msg = "page inconnue ou début d'id ambigu : " + ", ".join(bad)
+        if ask.answers is not None:
+            raise InstallError(msg)
+        say(f"  {msg}")
+
+
 def my_agents(ask, k, previous, bureau):
     """bureau : ids et noms des workflows du Bureau (config, réutilisés, modèles) : jamais des agents."""
     wfs = [w for w in k.get("/workflows") if w.get("id") not in bureau and w.get("name") not in bureau and w.get("enabled", True)]
@@ -499,15 +526,18 @@ def main(argv=None):
     own |= set(old.get("own") or []) & set(tpl_ids.values())
     bureau = {v for v in tpl_ids.values() if v} | {t["definition"]["name"] for t in tpls.values()}
     agents, mep = my_agents(ask, k, old.get("agents"), bureau)
-    me = next(p for p in roster_doc["people"] + people if p["key"] == owner)
+    screens = boss_pages(ask, k, old.get("boss_pages"), old.get("page_id"))
+    me =next(p for p in roster_doc["people"] + people if p["key"] == owner)
     sprite_before = me.get("sprite")
     music = avatar(ask, owner, me, a.dry_run)
 
     cfg = {"_doc": "Propre à cette installation, jamais partagé. Créé par tools/install.py (relançable).",
            "owner": owner, "team": team_id, "people": people, "layout": layout_file, "kronn": kronn, "page_id": old.get("page_id"), "workflows": {}, "actions": {},
            "own": sorted(own), "jira": j, "github": g, "rhythm": defaults["rhythm"],
-           "mep_workflow": mep, "agents": agents, "ui": old.get("ui") or {}, "music": old.get("music") or {}, "_ai_agent": ai,
-           **({"protect": True} if old.get("protect") else {})}
+           "mep_workflow": mep, "agents": agents, "boss_pages": screens, "ui": old.get("ui") or {}, "music": old.get("music") or {},
+           "_ai_agent": ai, **({"protect": True} if old.get("protect") else {})}
+    # réglages posés à la main dans la config (gitfut, wiki_posters, chrome…) : gardés tels quels à la relance
+    cfg = {**{k_: v for k_, v in old.items() if not k_.startswith("_") and k_ not in cfg}, **cfg}
     for key, (_, (sec, field), _) in templates.TEMPLATES.items():
         if tpl_ids.get(key):
             cfg[sec][field] = tpl_ids[key]
@@ -517,6 +547,7 @@ def main(argv=None):
     say(f"  Plan {layout_file} · projet Kronn {project_id[:8]} · agent IA : {ai or 'aucun'}")
     say(f"  Jira : {j['project'] + ' (board ' + str(j['board']) + ')' if j else 'non connecté : sprint, tickets, kanban masqués'}")
     say(f"  GitHub : {g['repo'] or 'aucun dépôt suivi'}" + ("" if login else " (gh non connecté : PR et MEP vides)"))
+    say(f"  Écran du boss : {len(screens)} page(s) Kronn")
     say(f"  Agents : {len(agents)} personnage(s) · page : {'existante' if cfg['page_id'] else 'à créer'} · crons : "
         + ("désactivés" if a.disabled else "actifs"))
     if not ask.yes("confirm", "Créer ou mettre à jour tout ça dans Kronn ?"):
