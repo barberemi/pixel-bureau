@@ -40,6 +40,18 @@ class FakeKronn:
         if path == "/quick-prompts" and method == "GET":
             return [{"id": i, "name": b["name"]} for i, b in self.qps.items()]
         if path == "/workflow-steps/test-api-call":
+            ep = body["step"]["api_endpoint_path"]
+            if ep.endswith("/configuration"):
+                return {"success": True, "envelope": {"data": {"columnConfig": {"columns": [
+                    {"name": "Backlog", "statuses": [{"id": "1"}]}, {"name": "Doing", "statuses": [{"id": "2"}]},
+                    {"name": "Code review", "statuses": [{"id": "3"}]}, {"name": "QA", "statuses": [{"id": "4"}, {"id": "9"}]},
+                    {"name": "Ready to ship", "statuses": [{"id": "5"}]}, {"name": "Shipped", "statuses": [{"id": "6"}]}]}}}}
+            if ep == "/rest/api/2/status":
+                return {"success": True, "envelope": {"data": [
+                    {"id": "1", "name": "Open", "statusCategory": {"key": "new"}}, {"id": "2", "name": "Building", "statusCategory": {"key": "indeterminate"}},
+                    {"id": "3", "name": "Peer review", "statusCategory": {"key": "indeterminate"}},
+                    {"id": "4", "name": "In QA", "statusCategory": {"key": "indeterminate"}}, {"id": "9", "name": "Reopened", "statusCategory": {"key": "indeterminate"}},
+                    {"id": "5", "name": "Ready", "statusCategory": {"key": "indeterminate"}}, {"id": "6", "name": "Live", "statusCategory": {"key": "done"}}]}}
             return {"success": True, "data": {"self": "https://acme.atlassian.net/rest/agile/1.0/sprint/1", "name": "S1"}}
         if method == "POST" and path.startswith("/pages/") and path.endswith("/datasets"):
             self.store[path.split("/")[2]]["datasets"].append(body)
@@ -294,6 +306,30 @@ class InstallTest(unittest.TestCase):
         self.assertFalse(os.path.exists(self.cfg_path))
 
 
+    def test_jira_statuses_proposed_from_the_board_columns(self):
+        """Colonnes du board lues à travers Kronn : chaque statut classé par le nom de sa colonne, sinon sa catégorie Jira."""
+        self.assertEqual(self.run_install(ANSWERS), 0)
+        j = json.load(open(self.cfg_path))["jira"]
+        self.assertEqual({k: j["statuses"][k] for k in ("Open", "Building", "Peer review", "In QA", "Reopened", "Ready", "Live")},
+                         {"Open": "todo", "Building": "doing", "Peer review": "review", "In QA": "test", "Reopened": "test",
+                          "Ready": "deploy", "Live": "done"})  # « Backlog » et « Doing » : par leur nom ; colonne inconnue : catégorie
+        self.assertEqual((j["flow"]["test"], j["flow"]["reopened"], j["done_status"]), ("In QA", "Reopened", "Live"))
+        with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):  # refusé : le classement du profil reste
+            self.assertEqual(self.run_install({**ANSWERS, "jira_statuses": "n"}), 0)
+        self.assertNotIn("Live", json.load(open(self.cfg_path))["jira"]["statuses"])
+
+    def test_deploy_workflows_and_other_repos_asked(self):
+        self.assertEqual(self.run_install({**ANSWERS, "github_prod": "deploy-prod.yml", "github_staging": "",
+                                           "github_deploys": "acme/front_api, acme/new-repo"}), 0)
+        g = json.load(open(self.cfg_path))["github"]
+        self.assertEqual(g["prod_workflow"], "deploy-prod.yml")
+        by = {d["repo"]: d for d in g["deploys"]}
+        self.assertEqual(list(by), ["acme/front_api", "acme/new-repo"])
+        self.assertEqual(by["acme/front_api"]["prod_workflow"], "CD_Deploy-PROD.yaml")  # celui du profil, gardé
+        self.assertEqual(by["acme/new-repo"], {"repo": "acme/new-repo", "prod_workflow": "deploy-prod.yml"})
+        with self.assertRaises(install.InstallError):
+            self.run_install({**ANSWERS, "github_deploys": "pas-un-depot"})
+
 
 class GuestsTest(unittest.TestCase):
     """Invités de passage : ceux du profil d'équipe, puis ceux de l'installation, embarqués avec le roster."""
@@ -308,6 +344,7 @@ class GuestsTest(unittest.TestCase):
         self.assertIn("bob", assemble.sprites(cfg))  # sa planche, tirée de teams/equipe/sprites/bob/
         html = assemble.build(demo=False, cfg=dict(json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"))), team="equipe"))
         self.assertIn('"guests": [{"key": "g_bob"', html)
+
 
 
 if __name__ == "__main__":

@@ -256,7 +256,72 @@ def jira(ask, k, project_id, defaults, tpl_team):
     except InstallError as e:
         say(f"(!) Test Jira impossible : {e}. On garde la connexion, à vérifier au premier run.")
     j["site"] = ask.text("jira_site", "Adresse du site Jira (liens des tickets)", j["site"])
+    board = board_statuses(k, step, project_id)
+    if board:
+        cols, names, cats = board
+        statuses, flow, done = guess_statuses(cols, names, cats, j.get("statuses") or {}, j.get("done_status"))
+        say(f"\nColonnes du board {j['board']}, et ce que Le Bureau en fera :")
+        for c in cols:
+            sts = [names.get(i, i) for i in c["statuses"]]
+            say(f"  {c['name']:14} → {KIND_LABELS[statuses.get(sts[0], 'doing')] if sts else '?':11} ({', '.join(sts)})")
+        if ask.yes("jira_statuses", "Garder ce classement des statuts ?"):
+            j["statuses"], j["done_status"] = statuses, done
+            j["flow"] = {**(j.get("flow") or {}), **flow}
+        else:
+            say("  (i) Classement par défaut gardé : à corriger dans bureau.config.json (jira.statuses, jira.flow).")
     return j
+
+
+KIND_LABELS = {"todo": "à faire", "doing": "en cours", "review": "en review", "test": "en test", "deploy": "à déployer", "done": "terminé"}
+# mots des noms de colonne, dans l'ordre où on les cherche (« Deployed » est terminé, « To Deploy » à déployer)
+KIND_WORDS = (("done", ("deployed", "shipped", "done", "termin", "fini", "closed", "fermé", "résolu", "resolved")),
+              ("review", ("review", "revue")), ("test", ("test", "qa", "recette")),
+              ("deploy", ("deploy", "déploi", "release", "ship", "livr", "mep")),
+              ("doing", ("progress", "en cours", "doing", "reopen", "rouvert", "réouvert", "dev")),
+              ("todo", ("to do", "todo", "à faire", "a faire", "backlog", "open", "ouvert", "selected")))
+CAT_KIND = {"new": "todo", "indeterminate": "doing", "done": "done"}
+
+
+def guess_statuses(cols, names, cats, known, done_status=None):
+    """Colonnes du board [{name, statuses[ids]}] -> ({statut: colonne du Bureau}, flow, done_status). La colonne se
+    devine à son nom, sinon à la catégorie Jira de son premier statut ; les statuts connus hors du board sont gardés."""
+    statuses, by_kind = dict(known), {}
+    for c in cols:
+        low = c["name"].lower()
+        kind = next((k for k, words in KIND_WORDS if any(w in low for w in words)), None)
+        kind = kind or CAT_KIND.get(cats.get(c["statuses"][0]) if c["statuses"] else None, "doing")
+        for i in c["statuses"]:
+            n = names.get(i)
+            if n:
+                statuses[n] = kind
+                by_kind.setdefault(kind, []).append(n)
+    first = lambda kind: (by_kind.get(kind) or [None])[0]
+    on_board = [n for ns in by_kind.values() for n in ns]  # les statuts du board d'abord, puis ceux déjà connus
+    reopened = next((n for n in on_board + list(known) if any(w in n.lower() for w in ("reopen", "rouvert", "réouvert"))), None)
+    flow = {k: v for k, v in (("test", first("test")), ("validated", first("deploy")), ("reopened", reopened)) if v}
+    dones = by_kind.get("done") or []
+    done = done_status if done_status in dones else next((n for n in dones if "deploy" in n.lower()), dones[0] if dones else done_status)
+    return statuses, flow, done
+
+
+def board_statuses(k, step, project_id):
+    """(colonnes du board, {id: nom de statut}, {id: catégorie}) lus à travers Kronn, ou None si Jira ne répond pas."""
+    def get(path):
+        s = {**step, "api_endpoint_path": path, "api_query": {}, "api_extract": {"path": "$", "fallback": None, "fail_on_empty": False}}
+        r = k.call("POST", "/workflow-steps/test-api-call", {"step": s, "project_id": project_id})
+        return ((r or {}).get("envelope") or {}).get("data") if isinstance(r, dict) else None
+    try:
+        conf = get(step["api_endpoint_path"].rsplit("/sprint", 1)[0] + "/configuration")
+        sts = get("/rest/api/2/status")
+    except InstallError:
+        return None
+    if not isinstance(conf, dict) or not isinstance(sts, list):
+        return None
+    cols = [{"name": c.get("name") or "?", "statuses": [x.get("id") for x in c.get("statuses") or [] if x.get("id")]}
+            for c in (conf.get("columnConfig") or {}).get("columns") or []]
+    names = {x["id"]: x.get("name") for x in sts if isinstance(x, dict) and x.get("id")}
+    cats = {x["id"]: (x.get("statusCategory") or {}).get("key") for x in sts if isinstance(x, dict) and x.get("id")}
+    return (cols, names, cats) if cols else None
 
 
 def github(ask, defaults, login):
@@ -270,7 +335,43 @@ def github(ask, defaults, login):
     if login and g["repo"]:
         r = subprocess.run(["gh", "repo", "view", g["repo"], "--json", "name"], capture_output=True, text=True, timeout=20)
         say(("✓" if r.returncode == 0 else "(!)") + f" accès au dépôt {g['repo']}" + ("" if r.returncode == 0 else " refusé"))
+    if not g["repo"]:
+        return g
+    wfs = gh_workflows(g["repo"]) if login else []
+    if wfs:
+        say("  Workflows GitHub Actions du dépôt : " + ", ".join(wfs))
+    # mises en prod : un run du jour de ces workflows dont le titre porte la version (x.y.z)
+    g["staging_workflow"] = ask.text("github_staging", "Workflow de déploiement en staging (fichier .yaml, Entrée pour aucun)",
+                                     g.get("staging_workflow") or "")
+    g["prod_workflow"] = ask.text("github_prod", "Workflow de mise en prod (fichier .yaml, Entrée pour aucun)", g.get("prod_workflow") or "")
+    known = {d["repo"]: d for d in g.get("deploys") or [] if d.get("repo")}
+    while True:
+        raw = ask.text("github_deploys", "Autres dépôts dont suivre les mises en prod (owner/repo, séparés par des virgules ; « - » pour aucun)",
+                       ",".join(known) or "-")
+        repos = [x for x in (raw if isinstance(raw, list) else re.split(r"[\s,;]+", str(raw or "").strip())) if x and x != "-"]
+        bad = [x for x in repos if not re.fullmatch(r"[\w.-]+/[\w.-]+", x)]
+        if not bad:
+            break
+        if ask.answers is not None:
+            raise InstallError("dépôt invalide (owner/repo attendu) : " + ", ".join(bad))
+        say("  dépôt invalide (owner/repo attendu) : " + ", ".join(bad))
+    new = [x for x in repos if x not in known]
+    if new and not g["prod_workflow"]:
+        say("  (i) Pas de workflow de mise en prod : " + ", ".join(new) + " à compléter dans bureau.config.json (github.deploys).")
+    # un nouveau dépôt reprend les workflows du dépôt principal ; un autre nom se règle dans la config
+    g["deploys"] = [known.get(x) or {"repo": x, **({"staging_workflow": g["staging_workflow"]} if g["staging_workflow"] else {}),
+                                      "prod_workflow": g["prod_workflow"]} for x in repos if x in known or g["prod_workflow"]]
     return g
+
+
+def gh_workflows(repo):
+    """Fichiers des workflows GitHub Actions du dépôt (pour aider à répondre), ou [] si gh ne répond pas."""
+    try:
+        r = subprocess.run(["gh", "api", f"repos/{repo}/actions/workflows", "--jq", ".workflows[].path"],
+                           capture_output=True, text=True, timeout=20)
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return list(dict.fromkeys(os.path.basename(x) for x in r.stdout.split())) if r.returncode == 0 else []
 
 
 def ai_agent(ask, k):
