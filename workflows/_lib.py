@@ -5,7 +5,7 @@ fichier à la place de la ligne qui importe le socle, au rendu. En local (tests,
 Config : injectée au rendu dans _CFG ; en local, le fichier de la variable
 d'environnement BUREAU_CONFIG, sinon bureau.config.json à la racine du dépôt.
 """
-import json, os as _os, re, urllib.request
+import json, os as _os, re, shutil as _shutil, subprocess as _subprocess, urllib.request
 from zoneinfo import ZoneInfo
 
 _CFG = r"""__BUREAU_CONFIG__"""
@@ -13,6 +13,9 @@ CFG = json.loads(_CFG) if not _CFG.startswith("__") else json.load(open(
     _os.environ.get("BUREAU_CONFIG") or _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), _os.pardir, "bureau.config.json")))
 
 API = (CFG.get("kronn") or {}).get("api", "")
+# dossier du dépôt : injecté au rendu (dans Kronn, « python3 -c » n'a pas de __file__), sinon celui de ce fichier
+ROOT = CFG.get("root") or (_os.path.dirname(_os.path.dirname(_os.path.abspath(globals()["__file__"])))
+                           if "__file__" in globals() else "")
 TZ = ZoneInfo((CFG.get("rhythm") or {}).get("timezone") or "Europe/Paris")  # fuseau du bureau, été comme hiver
 ACTIVE = ("Running", "WaitingApproval", "Pending")
 # variables de lancement recopiées dans la page : seulement celles qu'elle lit (jamais un token passé en variable)
@@ -123,3 +126,50 @@ def disc_row(d, projects=None):
 
 def dumps(obj):
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
+
+
+_PIL = """from PIL import Image
+im = Image.open(A['src']).convert('RGB')
+if A.get('crop'):
+    x, y, w, h = A['crop']
+    im = im.crop((x, y, x + w, y + h))
+if A.get('size'):
+    im = im.resize(tuple(A['size']), Image.LANCZOS)
+elif A.get('fit'):
+    im.thumbnail((A['fit'], A['fit']), Image.LANCZOS)
+im.save(A['out'], 'JPEG', quality=A['q'])
+"""
+
+
+def jpeg(src, out, size=None, fit=None, crop=None, quality=80):
+    """Image src -> JPEG out : crop (x, y, largeur, hauteur) d'abord, puis size (largeur, hauteur) exacte ou fit (côté
+    max, sans agrandir). Pillow s'il est importable, sinon le Python du venv du dépôt (Kronn lance les scripts avec le
+    python3 du système, souvent sans Pillow), sinon sips (macOS). True si out est écrit."""
+    a = {"src": src, "out": out, "size": size, "fit": fit, "crop": crop, "q": quality}
+    try:
+        exec(_PIL, {"A": a})
+        return _os.path.exists(out)
+    except ImportError:
+        pass
+    except Exception:
+        return False
+    py = _os.path.join(ROOT, ".venv", "bin", "python") if ROOT else ""
+    if py and _os.path.exists(py):
+        try:
+            r = _subprocess.run([py, "-c", "import json, sys\nA = json.loads(sys.argv[1])\n" + _PIL, json.dumps(a)],
+                                stdout=_subprocess.DEVNULL, stderr=_subprocess.DEVNULL, timeout=60)
+            if r.returncode == 0 and _os.path.exists(out):
+                return True
+        except Exception:
+            pass
+    if not _shutil.which("sips"):
+        return False
+    run = lambda *x: _subprocess.run(["sips", *x], stdout=_subprocess.DEVNULL, stderr=_subprocess.DEVNULL, timeout=30)
+    cur = src
+    if crop:
+        x, y, w, h = crop
+        cur = out + ".crop.png"
+        run("-c", str(h), str(w), "--cropOffset", str(y), str(x), src, "--out", cur)
+    scale = ["-z", str(size[1]), str(size[0])] if size else (["-Z", str(fit)] if fit else [])
+    run("-s", "format", "jpeg", "-s", "formatOptions", str(quality), *scale, cur, "--out", out)
+    return _os.path.exists(out)

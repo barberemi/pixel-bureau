@@ -457,3 +457,52 @@ if __name__ == "__main__":
         r = self.run_raw("layout_save.py", "defaut")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIsNone(json.loads(r.stdout)["layout"])
+
+
+
+def pil_python():
+    """Un Python qui a Pillow : celui des tests, sinon celui du venv du dépôt ; None sinon."""
+    for py in (sys.executable, os.path.join(ROOT, ".venv", "bin", "python")):
+        if os.path.exists(py) and subprocess.run([py, "-c", "import PIL"], capture_output=True).returncode == 0:
+            return py
+    return None
+
+
+class JpegTest(unittest.TestCase):
+    """jpeg() du socle : Pillow dans le processus, sinon le Python du venv du dépôt (cas de Kronn : python3 du système)."""
+    CODE = ("import sys; sys.path.insert(0, {wf!r}); from _lib import jpeg; "
+            "print(jpeg({src!r}, {out!r}, crop=(78, 30, 380, 580), fit=300))")
+
+    def setUp(self):
+        self.pil = pil_python()
+        if not self.pil:
+            self.skipTest("Pillow absent (python3 -m venv .venv && .venv/bin/pip install pillow)")
+        self.tmp = tempfile.mkdtemp()
+        self.cfg = os.path.join(self.tmp, "bureau.config.json")
+        json.dump({**FIXTURE, "root": ROOT}, open(self.cfg, "w"))
+        self.src, self.out = os.path.join(self.tmp, "og.png"), os.path.join(self.tmp, "card.jpg")
+        subprocess.run([self.pil, "-c", f"from PIL import Image; Image.new('RGB', (1200, 630), (10, 20, 60)).save({self.src!r})"], check=True)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def convert(self, python):
+        code = self.CODE.format(wf=os.path.join(ROOT, "workflows"), src=self.src, out=self.out)
+        r = subprocess.run([python, "-c", code], capture_output=True, text=True, timeout=60,
+                           env={"BUREAU_CONFIG": self.cfg, "PATH": "/usr/bin:/bin", "HOME": self.tmp})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.strip(), "True")
+        fmt, w, h = subprocess.run([self.pil, "-c", f"from PIL import Image; im = Image.open({self.out!r}); print(im.format, *im.size)"],
+                                   capture_output=True, text=True, check=True).stdout.split()
+        self.assertEqual((fmt, max(int(w), int(h))), ("JPEG", 300))
+        self.assertAlmostEqual(int(w) / int(h), 380 / 580, places=2)  # la carte recadrée, pas l'image entière
+
+    def test_with_pillow(self):
+        self.convert(self.pil)
+
+    def test_system_python_without_pillow_uses_the_repo_venv(self):
+        py = "/usr/bin/python3"
+        if not os.path.exists(os.path.join(ROOT, ".venv", "bin", "python")) or not os.path.exists(py) or \
+                subprocess.run([py, "-c", "import PIL"], capture_output=True).returncode == 0:
+            self.skipTest("il faut un python3 système sans Pillow et le venv du dépôt")
+        self.convert(py)

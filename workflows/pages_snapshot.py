@@ -4,12 +4,12 @@ Sortie (stdout) : {generated_at, pages[{id, title, updated, img}]}, dans l'ordre
 - img : capture JPEG 320x200 en data URI, ou null. Refaite seulement quand la page change (révision du HTML ou des
   données), sinon reprise du cache ~/.cache/kronn-bureau/thumbs/<id>.json.
 - Capture : le HTML de la page et ses datasets dans un fichier local (window.KronnPageData, comme dans Kronn),
-  photographié par Chrome headless, puis réduit par sips (macOS). Ni Chrome ni sips : cartes sans image.
+  photographié par Chrome headless, puis réduit par jpeg() du socle (Pillow, sinon sips). Sans Chrome : cartes sans image.
 - Une page supprimée ou illisible est sautée. Sortie bornée sous 90 Ko (les images en trop sont retirées).
 """
 import base64, glob, json, os, shutil, signal, subprocess, tempfile, time
 from datetime import datetime
-from _lib import CFG, TZ, dumps, get
+from _lib import CFG, TZ, dumps, get, jpeg
 
 CACHE = os.path.expanduser("~/.cache/kronn-bureau/thumbs")
 CHROMES = ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -35,7 +35,7 @@ def runtime_data(d):
 
 
 def capture(d, exe):
-    """Capture JPEG 320x200 de la page, en data URI ; None si Chrome ou sips échouent."""
+    """Capture JPEG 320x200 de la page, en data URI ; None si Chrome ou la réduction échouent."""
     html = (d.get("revision") or {}).get("html") or ""
     boot = ("<script>window.KronnPageData=" + json.dumps(runtime_data(d)).replace("</", "<\\/") +
             ";addEventListener('load',()=>dispatchEvent(new CustomEvent('kronn:page-data',{detail:window.KronnPageData})));</script>")
@@ -62,11 +62,9 @@ def capture(d, exe):
         except ProcessLookupError:
             pass
         p.wait(timeout=10)
-        if not os.path.exists(png) or not shutil.which("sips"):
+        if not os.path.exists(png) or not jpeg(png, jpg, size=(320, 200), quality=55):
             return None
-        subprocess.run(["sips", "-s", "format", "jpeg", "-s", "formatOptions", "55", "-z", "200", "320", png, "--out", jpg],
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
-        return "data:image/jpeg;base64," + base64.b64encode(open(jpg, "rb").read()).decode() if os.path.exists(jpg) else None
+        return "data:image/jpeg;base64," + base64.b64encode(open(jpg, "rb").read()).decode()
     except Exception:
         return None
     finally:

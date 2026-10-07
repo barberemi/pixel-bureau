@@ -70,7 +70,8 @@ def script_code(path, cfg):
         return body
     code = LIB_IMPORT.sub(lib, code)
     c = {k: v for k, v in cfg.items() if not k.startswith("_")}
-    c.update(gitfut=assemble.gitfut(cfg), wiki_posters=assemble.wiki_posters(cfg))  # déduits du roster (scripts sans accès au dépôt)
+    c.update(gitfut=assemble.gitfut(cfg), wiki_posters=assemble.wiki_posters(cfg),  # déduits du roster (scripts sans accès au dépôt)
+             root=ROOT)  # dossier du dépôt : son venv (Pillow) pour réduire les images
     blob = json.dumps(c, ensure_ascii=False)
     assert '"""' not in blob and "__BUREAU_CONFIG__" in code, path
     return code.replace("__BUREAU_CONFIG__", blob, 1)
