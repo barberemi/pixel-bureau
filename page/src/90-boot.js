@@ -125,6 +125,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   PAYROLL=readPayroll(k);
   BOSS_PAGES=readBossPages(k)||[];
   GITFUT=readGitfut(k)||{};
+  ACTS=readActs(k);
   POSTERS=readPosters(k)||{};
   OFFICE=readData(k);
   OFFICE_IS_LIVE=!!OFFICE;
@@ -151,6 +152,8 @@ window.addEventListener('kronn:page-data',e=>{
   if(bp)BOSS_PAGES=bp;
   const gf=readGitfut(k)||readGitfut(window.KronnPageData);
   if(gf)GITFUT=gf;
+  const ac=readActs(k)||readActs(window.KronnPageData);
+  if(ac)ACTS=ac;
   const po=readPosters(k)||readPosters(window.KronnPageData);
   if(po)POSTERS=po;
   if(py)PAYROLL=py;

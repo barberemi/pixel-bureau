@@ -61,6 +61,11 @@ SHOTS = {
     "fiche-agent": (1400, 1400, AT(11) + "select((chars.find(c=>!c.person&&!c.visitor&&c.runs.length)||{}).key);", "#side"),
     "fiche-collegue": (1400, 1400, AT(11) + "select((chars.find(c=>c.person&&c.team&&c.team.tickets.length)||{}).key);", "#side"),
     "kanban": (1400, 1400, AT(11) + "select('kanban');", "#side"),
+    # fiche d'un ticket : ses PR et les workflows à lancer (dataset actions simulé depuis l'équipe de démo)
+    "fiche-ticket": (1400, 1400, AT(11) + "const all=TEAM.people.flatMap(p=>p.tickets),prs=TEAM.people.flatMap(p=>p.prs);"
+                     "ACTS={tickets:all.map(t=>({key:t.key})),prs:prs.map(x=>({n:String(x.n)}))};"
+                     "const pr=prs.find(x=>x.review==='changes'&&!x.draft&&(x.keys||[]).length);"
+                     "select('ticket:'+(pr?pr.keys[0]:(all.find(t=>t.cat==='deploy')||all[0]).key));", "#side"),
     "planning": (1400, 1400, AT(11) + "select('planning');", "#side"),
     "mep": (1400, 1400, AT(11.6) + "select('tv');", "#side"),
     "avatar": (1400, 1600, AT(11) + "select('jim');openEditor(byKey.jim);", "#side"),

@@ -116,7 +116,7 @@ function renderKanban(side){
     const ul=document.createElement('ul');ul.className='steps';
     for(const x of list){
       const li=document.createElement('li');
-      li.innerHTML=`<a href="${JIRA_BROWSE}${encodeURIComponent(x.key)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;white-space:nowrap">${esc(x.key)}</a><span>${esc(x.summary)} <small style="color:var(--muted)">(${esc(x.owner?String(x.owner).split(' ')[0]:'non assigné')})</small></span>${x.points?`<span class="k pts">${esc(x.points)} pts</span>`:''}`;
+      li.innerHTML=`<a href="${JIRA_BROWSE}${encodeURIComponent(x.key)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;white-space:nowrap">${esc(x.key)}</a><span>${tkOpen(x)} <small style="color:var(--muted)">(${esc(x.owner?String(x.owner).split(' ')[0]:'non assigné')})</small></span>${x.points?`<span class="k pts">${esc(x.points)} pts</span>`:''}`;
       ul.appendChild(li);
     }
     d.appendChild(ul);side.appendChild(d);
@@ -248,7 +248,7 @@ function renderPerson(side,c){
     const ul=document.createElement('ul');ul.className='steps';
     for(const x of list){
       const li=document.createElement('li');
-      li.innerHTML=`<a href="${JIRA_BROWSE}${encodeURIComponent(x.key)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;white-space:nowrap">${esc(x.key)}</a><span>${esc(x.summary)}${x.owner?' <small style="color:var(--muted)">('+esc(String(x.owner).split(' ')[0])+')</small>':''}</span>${x.points?`<span class="k pts">${esc(x.points)} pts</span>`:''}`;
+      li.innerHTML=`<a href="${JIRA_BROWSE}${encodeURIComponent(x.key)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;white-space:nowrap">${esc(x.key)}</a><span>${tkOpen(x)}${x.owner?' <small style="color:var(--muted)">('+esc(String(x.owner).split(' ')[0])+')</small>':''}</span>${x.points?`<span class="k pts">${esc(x.points)} pts</span>`:''}`;
       ul.appendChild(li);
     }
     d.appendChild(ul);tb.appendChild(d);

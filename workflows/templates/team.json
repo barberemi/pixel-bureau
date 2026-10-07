@@ -449,6 +449,66 @@
       }
      ]
     }
+   },
+   {
+    "name": "actions",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "Tickets et PR visés par les boutons de la page (dataset actions, JSON plat), relus dans le dataset team.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "snap",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/actions_snapshot.py@@"
+        ],
+        "timeout_secs": 30,
+        "output_format": "json"
+       },
+       "required": true
+      }
+     ],
+     "concurrent_limit": 1
+    }
+   },
+   {
+    "name": "publish_actions",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Publie le dataset actions.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "actions",
+       "operation": "replace",
+       "value_from": "steps.actions.data.sources.snap"
+      }
+     ]
+    }
    }
   ],
   "actions": [],

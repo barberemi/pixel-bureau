@@ -428,9 +428,6 @@ print(json.dumps(d.get(key, [])))
         self.assertRegex(r.stdout, r"^\d{4}/\d{2}/\d{2} 09:40$")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
     # ---------- plan partagé (workflow « Le Bureau · plan ») ----------
     PLAN = json.load(open(os.path.join(ROOT, "layouts", "exemple-startup.json")))
 
@@ -458,6 +455,20 @@ if __name__ == "__main__":
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIsNone(json.loads(r.stdout)["layout"])
 
+
+    def test_actions_flat_tickets_and_prs_from_the_team_dataset(self):
+        """Dataset actions : tickets et PR à plat (les cartes d'action de Kronn y relisent la clé ou le n° de PR) ;
+        la PR d'un ticket = la PR prête qui cite sa clé, plutôt qu'un brouillon ; dataset team en texte JSON."""
+        fake = FakeKronn()
+        team = {"people": [{"name": "Pam", "tickets": [{"key": "DM-1", "cat": "review"}, {"key": "DM-2", "cat": "todo"}],
+                            "prs": [{"n": 7, "keys": ["DM-1"], "draft": True}, {"n": 5, "keys": ["DM-1"]}]}],
+                "unassigned": [{"key": "DM-3", "cat": "deploy"}], "other_prs": [{"n": 9, "keys": []}]}
+        fake.datasets = [{"name": "team", "current": json.dumps(team)}]
+        out = self.run_script("actions_snapshot.py", api=self.kronn(fake), github={"repo": "acme/web"})
+        self.assertEqual(out["tickets"], [{"key": "DM-1", "cat": "review", "pr": "5"}, {"key": "DM-2", "cat": "todo", "pr": ""},
+                                          {"key": "DM-3", "cat": "deploy", "pr": ""}])
+        self.assertEqual(out["prs"], [{"n": "7", "repo": "acme/web"}, {"n": "5", "repo": "acme/web"}, {"n": "9", "repo": "acme/web"}])
+        self.assertEqual(self.run_script("actions_snapshot.py")["tickets"], [])  # Kronn injoignable : listes vides
 
 
 def pil_python():
@@ -506,3 +517,7 @@ class JpegTest(unittest.TestCase):
                 subprocess.run([py, "-c", "import PIL"], capture_output=True).returncode == 0:
             self.skipTest("il faut un python3 système sans Pillow et le venv du dépôt")
         self.convert(py)
+
+
+if __name__ == "__main__":
+    unittest.main()

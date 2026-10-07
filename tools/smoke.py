@@ -6,7 +6,7 @@
     python3 tools/smoke.py --html dist/autre.html --chrome   # contrôler un fichier déjà assemblé
 
 Contrôles : taille < 1 000 000 octets, chaque <script> (hors kronn-action) se parse (node, new Function),
-les 4 blocs kronn-action du squelette sont présents à l'identique (ids de workflows remplacés), leur JSON est valide,
+les 8 blocs kronn-action du squelette sont présents à l'identique (ids de workflows remplacés), leur JSON est valide,
 plus aucun marqueur __X__ ni /*__STYLES__*/ /*__SCRIPTS__*/ ne traîne.
 --chrome demande websocket-client (`.venv/bin/pip install websocket-client`) ; Chrome est lancé muet
 (--mute-audio), sur un profil jetable, puis arrêté.
@@ -35,7 +35,8 @@ def static_checks(html, cfg=None):
     check(size < LIMIT, f"taille {size} octets < {LIMIT}")
     # blocs kronn-action attendus : ceux du squelette, ids de workflows remplacés comme à l'assemblage
     tpl = open(os.path.join(ROOT, "page", "office_template.html")).read()
-    acts = ((assemble.config() if cfg is None else cfg).get("actions") or {})
+    c = assemble.config() if cfg is None else cfg
+    acts = {**(c.get("actions") or {}), **(c.get("launch") or {})}  # comme build() dans assemble.py
     expected, total = [], 0
     for b in ACTION_RE.findall(tpl):
         total += 1
@@ -43,8 +44,8 @@ def static_checks(html, cfg=None):
         if acts.get(key):  # bouton sans workflow configuré : bloc retiré à l'assemblage
             expected.append(b.replace(mark, acts[key]))
     found = ACTION_RE.findall(html)
-    check(total == 4, f"{total} blocs kronn-action dans le squelette (attendu 4)")
-    check(found == expected, f"blocs kronn-action attendus présents à l'identique ({len(expected)}/4 configurés)")
+    check(total == 8, f"{total} blocs kronn-action dans le squelette (attendu 8)")
+    check(found == expected, f"blocs kronn-action attendus présents à l'identique ({len(expected)}/8 configurés)")
     for b in found:
         body = b.split(">", 1)[1].rsplit("</script>", 1)[0]
         try:

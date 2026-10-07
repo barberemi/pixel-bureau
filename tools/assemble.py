@@ -11,9 +11,13 @@ import json, math, os, re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-# boutons de la page : bloc kronn-action du squelette -> (clé dans bureau.config.json « actions », marqueur de l'id)
+# boutons de la page : bloc kronn-action du squelette -> (clé dans bureau.config.json « actions » ou « launch »,
+# marqueur de l'id). actions = workflows du Bureau (créés par l'installateur) ; launch = tes workflows lancés depuis la
+# fiche d'un ticket (impl : clé du ticket ; mep : clé + n° de PR ; review : dépôt + n° de PR ; fix : n° de PR + consignes)
 ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate", "__GATE_WF__"),
-           "bureau-relaunch": ("relaunch", "__RELAUNCH_WF__"), "bureau-ask": ("ask", "__ASK_QP__")}
+           "bureau-relaunch": ("relaunch", "__RELAUNCH_WF__"), "bureau-ask": ("ask", "__ASK_QP__"),
+           "bureau-impl": ("impl", "__IMPL_WF__"), "bureau-mep": ("mep", "__MEP_WF__"),
+           "bureau-review": ("review", "__REVIEW_WF__"), "bureau-fix": ("fix", "__FIX_WF__")}
 ACTION_RE = re.compile(r'<script type="application/kronn-action" data-action-id="([^"]+)">.*?</script>\n?', re.S)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -202,7 +206,8 @@ def build(demo=True, cfg=None):
     """Page complète. demo : instantanés de démo embarqués (aperçu local, tests) ; la page publiée n'en a pas.
     cfg : config d'installation (défaut : bureau.config.json)."""
     cfg = config() if cfg is None else cfg
-    acts = {k: (cfg.get("actions") or {}).get(k) or "" for k, _ in ACTIONS.values()}
+    ids = {**(cfg.get("actions") or {}), **(cfg.get("launch") or {})}
+    acts = {k: ids.get(k) or "" for k, _ in ACTIONS.values()}
     html = page_html()
     # bouton sans workflow configuré : sa carte kronn-action disparaît (la page masque le bouton)
     html = ACTION_RE.sub(lambda m: m.group(0) if acts[ACTIONS[m.group(1)][0]] else "", html)

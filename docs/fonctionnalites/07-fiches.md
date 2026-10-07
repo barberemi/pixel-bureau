@@ -13,6 +13,16 @@ Clic sur un personnage (plan, panneau ou « Qui fait quoi ») : sa fiche s'ouvre
 
 **Collègue** : tickets ouverts, en cours, PR ouvertes et mergées du jour, ce qu'il a écrit, trié ou testé (PO, facilitateur, testeur).
 
+**Ticket** : clic sur un ticket (Kanban, fiche d'un collègue) : son statut et depuis quand, qui l'a, ses points, ses PR ouvertes avec leur review, le lien Jira, et les workflows à lancer dessus selon son statut :
+- **Implémenter** : ticket à faire ou en cours, sans PR.
+- **Faire relire** : sur chacune de ses PR prêtes et pas encore approuvées.
+- **Corriger les retours** : sur une PR avec changements demandés (avec des consignes facultatives).
+- **Mettre en prod** : ticket à déployer ; grisé les jours de gel des mises en prod.
+
+Chaque bouton ouvre la carte Kronn du workflow : tu valides, puis elle suit le run étape par étape. Les workflows se choisissent dans `bureau.config.json` (clé `launch` : `impl`, `mep`, `review`, `fix`) ; sans eux, la fiche n'a pas de boutons.
+
+![Fiche d'un ticket](../img/fiche-ticket.png)
+
 **Visiteur** : la discussion Kronn, ses messages importants, le run qui l'a lancée.
 
 La **fiche de paie** (enveloppe sur le bureau du boss) donne tokens, runs et échecs par agent sur 7 jours, avec un coût estimé.

@@ -14,7 +14,7 @@ const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8');
 function pageConfig(cfg) {
   return {kronn_ui: (cfg.kronn || {}).ui, jira_site: (cfg.jira || {}).site, jira_flow: {triage_from: 'Proposed', test: 'To Test', validated: 'To Deploy', reopened: 'Reopen', ...((cfg.jira || {}).flow || {})}, github_repo: (cfg.github || {}).repo, github_login: (cfg.github || {}).login,
     rhythm: cfg.rhythm || {}, mep_workflow: cfg.mep_workflow, workflows: cfg.workflows || {}, agents: cfg.agents || [], ui: cfg.ui || {},
-    schedules: Object.fromEntries(['office', 'live', 'team', 'payroll'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule]))};
+    schedules: Object.fromEntries(['office', 'live', 'team', 'payroll'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule.replace('@@cron_hours@@', '4-20')]))}; // heures de Paris, comme cron_hours()
 }
 
 // mêmes roster (et invités), morceaux, recettes et sprites que roster(), guests(), music(), recipes() et sprites() de tools/assemble.py :
@@ -52,7 +52,7 @@ function pageJs(owner, {demo = true, actions = true, config, layout} = {}) {
     __SNAP__: demo ? read('data', 'office_snapshot.json') : 'null',
     __TEAM__: demo ? read('data', 'team_snapshot.json') : 'null',
     __DEMO__: String(!!demo),
-    __ACTIONS__: JSON.stringify({avatar: actions, gate: actions, relaunch: actions, ask: actions}),
+    __ACTIONS__: JSON.stringify({avatar: actions, gate: actions, relaunch: actions, ask: actions, impl: actions, mep: actions, review: actions, fix: actions}),
   };
   return js.replace(/__(SPRITES|LAYERS|MUSIC|CAST|ROSTER|LAYOUT|CONFIG|OWNER|DEMO|ACTIONS|AVATAR_WF|GATE_WF|RELAUNCH_WF|ASK_QP|SNAP|TEAM)__/g, m => data[m]);
 }
