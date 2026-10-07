@@ -193,6 +193,8 @@ if __name__ == "__main__":
     json.dump(result, open(os.path.join(here, "sprites.json"), "w"))
     preview.resize((preview.width * 2, preview.height * 2), Image.NEAREST).save(os.path.join(here, "cast_preview.png"))
     print("total b64", sum(len(v) for v in result.values()))
+    json.dump(sheets(os.path.join(here, "common")), open(os.path.join(here, "common.json"), "w"))  # sprites communs (hérauts)
+    print("sprites/common.json")
     teams = os.path.join(os.path.dirname(here), "teams")
     for t in sorted(os.listdir(teams)) if os.path.isdir(teams) else []:
         if os.path.isdir(os.path.join(teams, t, "sprites")):

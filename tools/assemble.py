@@ -135,9 +135,16 @@ def roster(cfg):
 
 
 def guests(cfg):
-    """Invités de passage (clé guests du roster du profil, puis de l'installation) : au plus une visite par jour ouvré."""
+    """Invités de passage : les communs (team/guests.json : les hérauts Yoda et Gandalf ; config common_guests false pour
+    les retirer), puis ceux du profil (clé guests de son roster), puis ceux de l'installation. Même clé : le dernier
+    remplace le précédent. Au plus une visite par jour ouvré."""
     path = _team_file(cfg, "roster.json")
-    return (json.load(open(path)).get("guests") or [] if path else []) + list((cfg or {}).get("guests") or [])
+    common = [] if (cfg or {}).get("common_guests") is False else json.load(open(p("team", "guests.json")))["guests"]
+    out = {}
+    for g in common + (json.load(open(path)).get("guests") or [] if path else []) + list((cfg or {}).get("guests") or []):
+        out.pop(g["key"], None)
+        out[g["key"]] = g
+    return list(out.values())
 
 
 def defaults(cfg):
@@ -187,13 +194,15 @@ def recipes(cfg):
 
 
 def sprites(cfg):
-    """Sprites fournis tels quels (planches) : ceux de l'installation (sprites/sprites.json, local), puis ceux du profil.
-    Les avatars des recettes sont composés dans le navigateur : leurs planches ne sont pas embarquées."""
+    """Sprites fournis tels quels (planches) : les communs (sprites/common.json, hérauts), ceux de l'installation
+    (sprites/sprites.json, local), puis ceux du profil. Les avatars des recettes sont composés dans le navigateur :
+    leurs planches ne sont pas embarquées."""
     local = p("sprites", "sprites.json")
+    shared = json.load(open(p("sprites", "common.json")))
     common = json.load(open(p("sprites", "cast.json")))
     out = {k: v for k, v in (json.load(open(local)) if os.path.exists(local) else {}).items() if k not in common}
     path = _team_file(cfg, "sprites.json")
-    return {**out, **(json.load(open(path)) if path else {})}
+    return {**shared, **out, **(json.load(open(path)) if path else {})}
 
 
 def layout_path(cfg):

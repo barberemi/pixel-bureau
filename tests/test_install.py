@@ -332,18 +332,22 @@ class InstallTest(unittest.TestCase):
 
 
 class GuestsTest(unittest.TestCase):
-    """Invités de passage : ceux du profil d'équipe, puis ceux de l'installation, embarqués avec le roster."""
+    """Invités de passage : les communs (hérauts), ceux du profil d'équipe, puis ceux de l'installation, embarqués avec le roster."""
 
-    def test_profile_then_installation(self):
+    def test_common_then_profile_then_installation(self):
         import assemble
         cfg = {"team": "equipe", "guests": [{"key": "g_x", "name": "X"}]}
         profile = [g["key"] for g in json.load(open(os.path.join(ROOT, "teams", "equipe", "roster.json")))["guests"]]
-        self.assertEqual([g["key"] for g in assemble.guests(cfg)], profile + ["g_x"])
+        self.assertEqual([g["key"] for g in assemble.guests(cfg)], ["g_gandalf", "g_yoda"] + profile + ["g_x"])
         self.assertIn("g_veilleur", profile)
-        self.assertEqual(assemble.guests({}), [])
+        self.assertEqual([g["key"] for g in assemble.guests({})], ["g_gandalf", "g_yoda"])  # toute installation, même sans équipe
+        self.assertEqual(assemble.guests({"common_guests": False}), [])
+        renamed = assemble.guests({"guests": [{"key": "g_yoda", "name": "Le sage", "sprite": "yoda", "on": "prod"}]})
+        self.assertEqual([(g["key"], g["name"]) for g in renamed], [("g_gandalf", "Gandalf"), ("g_yoda", "Le sage")])  # même clé : remplacé
+        self.assertTrue({"yoda", "mage"} <= set(assemble.sprites({})))  # planches communes (sprites/common.json)
         self.assertIn("hank", assemble.sprites(cfg))  # sa planche, tirée de teams/equipe/sprites/hank/
         html = assemble.build(demo=False, cfg=dict(json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"))), team="equipe"))
-        self.assertIn('"guests": [{"key": "g_veilleur"', html)
+        self.assertIn('"guests": [{"key": "g_gandalf"', html)
 
 
 

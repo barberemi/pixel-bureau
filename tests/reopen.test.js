@@ -17,25 +17,25 @@ test('le reopen du jour : testeuse Karen, développeuse Pam', () => {
 });
 
 test('10h50 : le mage entre ; Pam d\'un côté, Karen et le mage en face, devant le bureau du boss ; il crie', () => {
-  const pos = J('standoff()'), k = st('p_karen', '10:51'), p = st('p_pam', '10:51'), m = st('g_mage', '10:51');
+  const pos = J('standoff()'), k = st('p_karen', '10:51'), p = st('p_pam', '10:51'), m = st('g_gandalf', '10:51');
   assert.deepEqual([k.st, k.visit, k.bubble], ['reopen', pos.tester, null]);
   assert.deepEqual([p.st, p.visit, p.bubble], ['reopen', pos.dev, '😨 7089']);
   assert.deepEqual([m.st, m.visit, m.bubble], ['reopen', pos.herald, 'Vous ne passerez pas !']);
   assert.equal(pos.dev[2], 'down'); // l'assigné d'un côté de la table de réunion, les deux autres en face
   assert.ok(pos.tester[2] === 'up' && pos.herald[2] === 'up' && pos.tester[1] > pos.dev[1]);
-  assert.equal(J(`bubbleFor(byKey.g_mage,stateAt(byKey.g_mage,${at('10:51')}),${at('10:51')},0).big`), true);
-  assert.equal(st('g_mage', '10:49').st, 'off'); // absent avant
-  assert.equal(st('g_mage', '10:54').st, 'gone'); // repart par la porte
-  assert.equal(st('g_mage', '11:00').st, 'off');
+  assert.equal(J(`bubbleFor(byKey.g_gandalf,stateAt(byKey.g_gandalf,${at('10:51')}),${at('10:51')},0).big`), true);
+  assert.equal(st('g_gandalf', '10:49').st, 'off'); // absent avant
+  assert.equal(st('g_gandalf', '10:54').st, 'gone'); // repart par la porte
+  assert.equal(st('g_gandalf', '11:00').st, 'off');
 });
 
 test('sans héraut dans le roster : l\'auteur va voir l\'assigné à sa place (scène d\'origine)', () => {
-  run(`byKey.g_mage.on=null;`);
+  run(`byKey.g_gandalf.on=null;`);
   try {
     const k = st('p_karen', '10:51');
     assert.deepEqual([k.zone, k.visit], ['visit', J(`besideSeat(byKey.p_pam.seat)`)]);
     assert.match(k.label, /Vient dire à Pam que DM-7089 est réouvert/);
-  } finally { run(`byKey.g_mage.on='reopen';`); }
+  } finally { run(`byKey.g_gandalf.on='reopen';`); }
 });
 
 test('10h53 : fin du face-à-face, chacun retourne à sa place (pas de toilettes)', () => {

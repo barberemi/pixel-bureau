@@ -27,13 +27,15 @@ Un invité de passage entre par la porte, va saluer des collègues à leur burea
 - **Plateau TV** : mises en prod du jour (fermé le vendredi et le week-end).
 - **Café, canapé** : run réussi récemment, ou rien à faire.
 
-Quand un ticket passe en Reopen dans Jira, un mage entre par la porte. Lui, celui qui a réouvert le ticket (souvent le testeur) et le développeur se retrouvent en salle de réunion : le développeur d'un côté de la table (« 😨 7089 »), le testeur et le mage en face, et le mage crie en grand « Vous ne passerez pas ! ». Trois minutes plus tard, le mage repart par la porte et chacun retourne à sa place. Sans mage dans le roster, le testeur va simplement le dire au développeur à sa place. La scène se rejoue à l'heure exacte du changement de statut.
+Quand un ticket passe en Reopen dans Jira, Gandalf entre par la porte. Lui, celui qui a réouvert le ticket (souvent le testeur) et le développeur se retrouvent en salle de réunion : le développeur d'un côté de la table (« 😨 7089 »), le testeur et Gandalf en face, et Gandalf crie en grand « Vous ne passerez pas ! ». Trois minutes plus tard, il repart par la porte et chacun retourne à sa place. Sans héraut des reopens, le testeur va simplement le dire au développeur à sa place. La scène se rejoue à l'heure exacte du changement de statut.
 
 ![Le face-à-face devant le bureau du boss](../img/reopen-testeur.png)
 
-Quand une mise en prod réussit, un héraut entre aussi par la porte (Yoda chez equipe, un sage dans la démo). Il monte sur la scène du plateau TV à côté de celui qui a fait la mise en prod (le boss y est déjà, au saxophone) et le félicite en grand : « Fier de toi, je suis. ». Trois minutes plus tard, il repart. Si la prod finit pendant le daily, il les rejoint à la table du daily ; le vendredi et le week-end, plateau fermé, il attend devant le ruban. Sa réplique ne cache jamais les bulles de ses voisins : elle se décale à droite, à gauche ou au-dessus.
+Quand une mise en prod réussit, Yoda entre aussi par la porte. Il monte sur la scène du plateau TV à côté de celui qui a fait la mise en prod (le boss y est déjà, au saxophone) et le félicite en grand : « Fier de toi, je suis. ». Trois minutes plus tard, il repart. Si la prod finit pendant le daily, il les rejoint à la table du daily ; le vendredi et le week-end, plateau fermé, il attend devant le ruban. Sa réplique ne cache jamais les bulles de ses voisins : elle se décale à droite, à gauche ou au-dessus.
 
 ![Le héraut félicite Andy sur le plateau TV](../img/prod-heraut.png)
+
+Gandalf et Yoda viennent dans tous les bureaux, quelle que soit l'équipe (`team/guests.json`). Pour les retirer : `"common_guests": false` dans `bureau.config.json` ; pour en changer le nom, la réplique ou l'allure : un invité de même clé (`g_gandalf`, `g_yoda`) dans le roster de l'équipe ou dans la config.
 
 D'autres changements de colonne se jouent aussi, à l'heure exacte du changement de statut :
 - **Ticket à tester** : le développeur porte le dossier au bureau du testeur (« 📁 6717 »), et le dossier rejoint la pile du testeur, sur le caisson à côté de son bureau.

@@ -1,0 +1,21 @@
+{
+ "_doc": "Invités communs à toutes les installations (avant ceux du profil d'équipe et de la config ; même clé = remplacé). Les hérauts : Gandalf au face-à-face d'un ticket réouvert, Yoda à côté de l'auteur d'une mise en prod réussie. Config : common_guests false pour les retirer.",
+ "guests": [
+  {
+   "key": "g_gandalf",
+   "name": "Gandalf",
+   "sprite": "mage",
+   "role": "Gardien des reopens",
+   "on": "reopen",
+   "shout": "Vous ne passerez pas !"
+  },
+  {
+   "key": "g_yoda",
+   "name": "Yoda",
+   "sprite": "yoda",
+   "role": "Héraut des mises en prod",
+   "on": "prod",
+   "shout": "Fier de toi, je suis."
+  }
+ ]
+}

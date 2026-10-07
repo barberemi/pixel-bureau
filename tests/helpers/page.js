@@ -22,14 +22,17 @@ function pageConfig(cfg) {
 function team(cfg) {
   const dir = cfg.team ? path.join(ROOT, 'teams', cfg.team) : null;
   const file = dir ? JSON.parse(fs.readFileSync(path.join(dir, 'roster.json'), 'utf8')) : {};
-  const people = file.people || [], guests = [...(file.guests || []), ...(cfg.guests || [])];
+  const people = file.people || [], byKey = new Map();
+  const shared = cfg.common_guests === false ? [] : JSON.parse(read('team', 'guests.json')).guests;
+  for (const g of [...shared, ...(file.guests || []), ...(cfg.guests || [])]) { byKey.delete(g.key); byKey.set(g.key, g); }
+  const guests = [...byKey.values()];
   const music = dir && fs.existsSync(path.join(dir, 'music', 'music.json')) ? JSON.parse(fs.readFileSync(path.join(dir, 'music', 'music.json'), 'utf8')) : {};
   const opt = (...p) => fs.existsSync(path.join(ROOT, ...p)) ? JSON.parse(read(...p)) : {};
   const common = JSON.parse(read('sprites', 'cast.json'));
   const local = Object.fromEntries(Object.entries(opt('sprites', 'sprites.json')).filter(([k]) => !(k in common)));
   return {roster: {people: [...people, ...(cfg.people || [])], guests}, music: {...music, ...(cfg.music || {})},
     cast: {...common, ...(dir ? opt('teams', cfg.team, 'cast.json') : {})},
-    custom: {...local, ...(dir ? opt('teams', cfg.team, 'sprites.json') : {})}};
+    custom: {...opt('sprites', 'common.json'), ...local, ...(dir ? opt('teams', cfg.team, 'sprites.json') : {})}};
 }
 
 function pageJs(owner, {demo = true, actions = true, config, layout} = {}) {
