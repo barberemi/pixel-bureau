@@ -47,7 +47,6 @@
     "api_endpoint_path": "/rest/api/2/issue/{key}/comment",
     "api_method": "POST",
     "api_query": {},
-    "api_extract": null,
     "_requires": "jira",
     "api_path_params": {
      "key": "{{jira_ticket_key}}"
