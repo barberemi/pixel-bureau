@@ -95,7 +95,7 @@ function renderTicket(side,key){
   const known=ACTS.tickets.some(t=>t.key===key);
   const before=box.childElementCount;
   if(known&&ACTIONS.impl&&(x.cat==='todo'||x.cat==='doing')&&!prs.length)
-    launchBlock(box,{action:'bureau-impl',bind:{key},name:'Implémenter',sub:'Ryan code le ticket, ouvre la PR et la fait relire',label:'🤖 Implémenter',title:'Implémenter '+key});
+    launchBlock(box,{action:'bureau-impl',bind:{key},name:'Implémenter',sub:'Après ta validation du plan, le ticket t\'est assigné et passe En cours ; Ryan le code, ouvre la PR et la fait relire',label:'🤖 Implémenter',title:'Implémenter '+key});
   if(known&&ACTIONS.mep&&x.cat==='deploy'){
     const frozen=stageClosed(Date.now());
     launchBlock(box,{action:'bureau-mep',bind:{key},name:'Mettre en prod',sub:frozen?'Gel des mises en prod aujourd\'hui':'Rebase, CI, merge, release, staging puis prod, avec tes validations',

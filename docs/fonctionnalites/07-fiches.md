@@ -14,7 +14,7 @@ Clic sur un personnage (plan, panneau ou « Qui fait quoi ») : sa fiche s'ouvre
 **Collègue** : tickets ouverts, en cours, PR ouvertes et mergées du jour, ce qu'il a écrit, trié ou testé (PO, facilitateur, testeur).
 
 **Ticket** : clic sur un ticket (Kanban, fiche d'un collègue) : son statut et depuis quand, qui l'a, ses points, ses PR ouvertes avec leur review, le lien Jira, et les workflows à lancer dessus selon son statut :
-- **Implémenter** : ticket à faire ou en cours, sans PR.
+- **Implémenter** : ticket à faire ou en cours, sans PR. Après ta validation du plan, le workflow t'assigne le ticket et le passe « En cours » dans Jira, puis code, ouvre la PR et la fait relire.
 - **Faire relire** : sur chacune de ses PR prêtes et pas encore approuvées.
 - **Corriger les retours** : sur une PR avec changements demandés (avec des consignes facultatives).
 - **Mettre en prod** : ticket à déployer ; grisé les jours de gel des mises en prod.
