@@ -60,7 +60,7 @@ function todoItems(t){
   // 4. questions des discussions
   for(const c of of('ask'))out.push({sev:'warn',ico:'❓',key:'ask:'+c.key,
     txt:`<b>${esc(c.name)}</b> attend ta réponse <small>${esc(clip(c.disc.title,60))}</small>`,
-    age:c.disc.end?t-ms(c.disc.end):null,act:ext(`${KRONN_BASE}#discussion-${encodeURIComponent(c.disc.id)}`,'Répondre')});
+    age:c.disc.end?t-ms(c.disc.end):null,act:ext(`${kronnTab()}#discussion-${encodeURIComponent(c.disc.id)}`,'Répondre')});
   if(TEAM){
     const me=bossLogin(), b=chars.find(c=>c.boss), mine=(b&&b.team&&b.team.prs)||[];
     const all=teamPrs();

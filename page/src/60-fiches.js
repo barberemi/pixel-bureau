@@ -1,6 +1,9 @@
 // ---------- fiches du panneau latéral : visiteur, mode TV, planning, kanban, employé du sprint, collègue ----------
+// lien vers une discussion Kronn, dans un nouvel onglet : Kronn ouvre dans l'onglet courant un lien vers sa propre adresse
+// (même chemin + #discussion-…) ; par /index.html (servi pareil), il le traite en lien externe (même astuce que bpLink)
+const kronnTab=()=>/\/$/.test(KRONN_BASE)?KRONN_BASE+'index.html':KRONN_BASE;
 function discLink(id,label){
-  return `<a href="${KRONN_BASE}#discussion-${encodeURIComponent(id)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600">${label}</a>`;
+  return `<a href="${kronnTab()}#discussion-${encodeURIComponent(id)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600">${label}</a>`;
 }
 function ownerOfRun(runId){
   for(const c of chars){

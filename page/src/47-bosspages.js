@@ -36,7 +36,7 @@ function drawBossPages(x,y,w,h,now){
 const bpAge=a=>a>=864e5?Math.floor(a/864e5)+' j':agoTxt(a); // au-delà d'un jour, en jours
 // Kronn ouvre dans l'onglet courant un lien vers sa propre adresse (même chemin + #page/…) ; avec /index.html, le
 // chemin diffère : le lien part dans un nouvel onglet, sur le même Kronn
-const bpLink=id=>(/\/$/.test(KRONN_BASE)?KRONN_BASE+'index.html':KRONN_BASE)+'#page/'+encodeURIComponent(id);
+const bpLink=id=>kronnTab()+'#page/'+encodeURIComponent(id);
 function bossPagesHtml(){
   const now=Date.now();
   return BOSS_PAGES.map(p=>{

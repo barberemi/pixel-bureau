@@ -38,7 +38,7 @@ test('À traiter : panne, validation, question, PR à relire et à corriger, tic
   assert.deepEqual(items.map(x => x.sev), ['err', 'warn', 'warn', 'warn', 'warn', 'info', 'info']);
   assert.match(items[0].txt, /21 échecs d'affilée/);
   assert.equal(items[1].age, 30 * 60e3);
-  assert.equal(items[2].act.href, 'http://localhost:5173/#discussion-d-1');
+  assert.equal(items[2].act.href, 'http://localhost:5173/index.html#discussion-d-1');
   assert.match(items[6].txt, /#11/);
   assert.doesNotMatch(items[6].txt, /#10/, 'la PR qui t\'attend n\'est pas comptée deux fois');
 });
