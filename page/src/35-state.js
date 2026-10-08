@@ -45,13 +45,15 @@ function runRef(r){
   return {key,pr:n?String(n):null,t:t||null,title:pr?pr.title:null};
 }
 // place debout côté allée, à côté d'un siège
-// de passage : au bureau seulement avec un ticket en cours, à sa place ; ni daily ni cérémonies ; heures de bureau comme tout le monde
+// de passage : à sa place tant qu'il a un ticket ouvert dans le sprint (il ne se promène pas) ; ni daily ni cérémonies ;
+// heures de bureau comme tout le monde ; plus aucun ticket ouvert : pas au bureau
 function outsiderState(c,t){
   const s=stateAt0(c,t);
   if(!s||s.st==='off'||s.st==='absent'||s.st==='gone')return s;
-  const tk=((c.team&&c.team.tickets)||[]).filter(x=>x.cat==='doing');
-  if(!tk.length)return {st:'off',human:true,label:'De passage, pas de ticket en cours'};
-  return {st:'work',zone:'desk',human:true,label:'En cours : '+tk[0].key,bubble:tk[0].key,tk};
+  const open=((c.team&&c.team.tickets)||[]).filter(x=>x.cat!=='done'), doing=open.filter(x=>x.cat==='doing');
+  if(!open.length)return {st:'off',human:true,label:'De passage, pas de ticket ouvert'};
+  if(doing.length)return {st:'work',zone:'desk',human:true,label:'En cours : '+doing[0].key,bubble:doing[0].key,tk:doing};
+  return {st:'idle',zone:'desk',human:true,label:'De passage · '+open.length+' ticket(s) '+(CAT_TXT[open[0].cat]||open[0].status||''),bubble:open[0].key,tk:open};
 }
 function besideSeat(seat){
   const d=seatDir(seat[0],seat[1]);

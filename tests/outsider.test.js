@@ -32,8 +32,9 @@ test('rafraîchissement des données : le même personnage (position et place ga
   assert.equal(r.inChars, 1);
 });
 
-test('au bureau seulement avec un ticket en cours, à sa place ; pas au daily', () => {
-  assert.equal(J(`outsiderState(chars.find(x => x.person === 'Alexis Nouveau'), ${at('11:00')}).st`), 'off'); // en review : pas là
+test('à sa place tant qu\'il a un ticket ouvert (en cours : au travail) ; pas au daily ; pas le soir', () => {
+  const rv = J(`outsiderState(chars.find(x => x.person === 'Alexis Nouveau'), ${at('11:00')})`); // en review : à sa place, sans se promener
+  assert.deepEqual([rv.st, rv.zone], ['idle', 'desk']);
   run(`chars.find(x => x.person === 'Alexis Nouveau').team.tickets[0].cat = 'doing';`);
   const s = J(`outsiderState(chars.find(x => x.person === 'Alexis Nouveau'), ${at('09:45')})`); // pendant le daily
   assert.deepEqual([s.st, s.zone, s.bubble], ['work', 'desk', 'DM-9001']);
