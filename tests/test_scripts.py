@@ -43,6 +43,7 @@ class FakeKronn:
         self.datasets = []  # datasets de la page (GET /pages/{id})
         self.pages = {}  # autres pages Kronn par id (écran du boss, pages_snapshot.py)
         self.details = {}  # id de run -> step_results du détail du run (sorties complètes)
+        self.posts = []  # (chemin, corps) des POST reçus
         self.discussions = [
             {"id": "d1", "title": "Pourquoi ça casse ?", "agent": "ClaudeCode", "participants": ["ClaudeCode"], "message_count": 4,
              "archived": False, "created_at": now, "updated_at": now, "workflow_run_id": None, "project_id": "p1"},
@@ -81,6 +82,16 @@ class FakeKronn:
             return {"total_cost": {"recorded_usd": 12.5}, "discussion_tokens": 2_500_000}
         raise KeyError(path)
 
+    def post(self, path, body):
+        """POST reçus (duck_start.py) : création d'une discussion, puis lancement de l'agent (/run, flux SSE)."""
+        self.posts.append((urlparse(path).path.removeprefix("/api"), body))
+        p = self.posts[-1][0]
+        if p == "/discussions":
+            return {"id": "dd000001", "title": body["title"]}
+        if re.fullmatch(r"/discussions/[\w-]+/run", p):
+            return None
+        raise KeyError(path)
+
 
 def serve(fake):
     class H(BaseHTTPRequestHandler):
@@ -93,6 +104,19 @@ def serve(fake):
             self.send_header("content-type", "application/json")
             self.end_headers()
             self.wfile.write(body)
+
+        def do_POST(self):
+            body = json.loads(self.rfile.read(int(self.headers.get("content-length") or 0)) or b"null")
+            try:
+                data = fake.post(self.path, body)
+                code = 200
+                out = b"event: done\ndata: {}\n\n" if data is None else json.dumps({"success": True, "data": data}).encode()
+            except KeyError:
+                code, out = 404, b'{"success":false}'
+            self.send_response(code)
+            self.send_header("content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(out)
 
         def do_DELETE(self):
             self.send_response(200)
@@ -412,6 +436,63 @@ print(json.dumps(d.get(key, [])))
         gates = self.run_script("gates_snapshot.py", api=api)
         self.assertEqual([w["wf"] for w in gates["workflows"]], [AGENT_WF])
         self.assertEqual([w["wf"] for w in gates["askable"]], [AGENT_WF])
+
+    # ---------- le canard ----------
+    def duck_discs(self, fake):
+        days = lambda n: iso(n * 24 * 60)  # noqa: E731
+        fake.discussions += [
+            {"id": "k1", "title": "🦆 Le menu casse", "project_id": "p1", "updated_at": days(1), "created_at": days(1), "pending_question_count": 2},
+            {"id": "k2", "title": "🦆 EW-1234", "project_id": None, "updated_at": iso(5), "created_at": iso(5)},
+            {"id": "k3", "title": "🦆 Trop vieux", "project_id": "p1", "updated_at": days(20), "created_at": days(20)},
+            {"id": "k4", "title": "🦆 Archivé", "project_id": "p1", "updated_at": iso(5), "created_at": iso(5), "archived": True},
+        ] + [{"id": f"m{i}", "title": f"🦆 n° {i}", "project_id": "p1", "updated_at": days(2), "created_at": days(2)} for i in range(20)]
+
+    def test_gates_lists_projects_and_duck_discussions(self):
+        """Dataset gates : projets (« Sans projet » en tête) et discussions du canard (14 jours, 15 au plus, récentes d'abord)."""
+        fake = FakeKronn()
+        self.duck_discs(fake)
+        out = self.run_script("gates_snapshot.py", api=self.kronn(fake))
+        self.assertEqual(out["projects"], [{"id": "none", "name": "Sans projet"}, {"id": "p1", "name": "Front"}])
+        ducks = out["ducks"]
+        self.assertEqual(len(ducks), 15)
+        self.assertEqual([d["id"] for d in ducks[:2]], ["k2", "k1"])
+        self.assertEqual(ducks[1], {"id": "k1", "title": "🦆 Le menu casse", "project": "Front", "updated": ducks[1]["updated"], "awaiting": True})
+        self.assertEqual((ducks[0]["project"], ducks[0]["awaiting"]), (None, False))
+        self.assertFalse({"k3", "k4", "d1", "d2"} & {d["id"] for d in ducks})
+
+    def test_duck_discussions_are_not_visitors(self):
+        fake = FakeKronn()
+        self.duck_discs(fake)
+        api = self.kronn(fake)
+        for name in ("office_snapshot.py", "live_snapshot.py"):
+            out = self.run_script(name, api=api)
+            self.assertEqual([d["id"] for d in out["discussions"]], ["d1"], name)
+
+    def test_duck_start_opens_a_discussion_and_runs_the_agent(self):
+        fake = FakeKronn()
+        api = self.kronn(fake)
+        out = self.run_script("duck_start.py", api=api, args=("none", "Le menu casse sur mobile " + "x" * 80 + "\nDétails : EW-1234"))
+        (p1, body), (p2, run) = fake.posts
+        self.assertEqual((p1, p2), ("/discussions", "/discussions/dd000001/run"))
+        self.assertIsNone(body["project_id"])  # « none » : sans projet
+        self.assertTrue(body["title"].startswith("🦆 Le menu casse sur mobile"))
+        self.assertLessEqual(len(body["title"]), 72)
+        self.assertNotIn("EW-1234", body["title"])  # première ligne seulement
+        self.assertEqual((body["agent"], body["language"]), ("ClaudeCode", "fr"))
+        self.assertTrue(body["initial_prompt"].startswith("Le menu casse sur mobile"))
+        self.assertIn("Détails : EW-1234", body["initial_prompt"])
+        self.assertIn("(Discussion ouverte depuis Le Bureau, par le canard.", body["initial_prompt"])
+        self.assertIn("idempotency_key", run)
+        self.assertEqual(out, {"discussion_id": "dd000001", "url": FIXTURE["kronn"]["ui"] + "#discussion-dd000001"})
+        self.run_script("duck_start.py", api=api, args=("p1", "EW-42"))  # un projet : son id tel quel
+        self.assertEqual(fake.posts[2][1]["project_id"], "p1")
+        self.assertEqual(fake.posts[2][1]["title"], "🦆 EW-42")
+
+    def test_duck_start_refuses_an_empty_topic(self):
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "duck_start.py"), "none", "  "], capture_output=True, text=True,
+                           env={"BUREAU_CONFIG": os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"), "PATH": self.bin, "PYTHONPATH": ""})
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("canard", r.stderr)
 
     def test_gate_message_is_read_from_the_run_detail(self):
         fake = FakeKronn()

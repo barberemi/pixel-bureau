@@ -35,9 +35,9 @@ def is_bureau(wf):
 
 
 def is_bureau_disc(d):
-    """Discussions ouvertes par le bouton « interroger » (Quick Prompt du Bureau) : pas des visiteurs.
-    Une discussion ne porte pas l'id de son Quick Prompt, seulement son nom en titre."""
-    return str(d.get("title") or "").startswith("Le Bureau")
+    """Discussions ouvertes par le Bureau : bouton « interroger » (Quick Prompt du Bureau, son nom en titre : une
+    discussion ne porte pas l'id de son Quick Prompt) et le canard (titre « 🦆 … », duck_start.py). Pas des visiteurs."""
+    return str(d.get("title") or "").startswith(("Le Bureau", "🦆"))
 
 
 def model_short(m):

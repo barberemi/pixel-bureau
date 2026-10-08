@@ -93,6 +93,7 @@
 <script type="application/kronn-action" data-action-id="bureau-review">{"kind":"workflow","target_id":"__REVIEW_WF__","values":[{"name":"repo","provenance":"dynamic_binding","source_ref":"<page.dataset.actions.prs.find(n).repo>"},{"name":"pr","provenance":"dynamic_binding","source_ref":"<page.dataset.actions.prs.find(n).n>"}]}</script>
 <script type="application/kronn-action" data-action-id="bureau-fix">{"kind":"workflow","target_id":"__FIX_WF__","values":[{"name":"pr","provenance":"dynamic_binding","source_ref":"<page.dataset.actions.prs.find(n).n>"},{"name":"notes","provenance":"user_input"}]}</script>
 <script type="application/kronn-action" data-action-id="bureau-comment">{"kind":"workflow","target_id":"__COMMENT_WF__","values":[{"name":"jira_ticket_key","provenance":"dynamic_binding","source_ref":"<page.dataset.actions.tickets.find(key).key>"},{"name":"comment","provenance":"user_input"}]}</script>
+<script type="application/kronn-action" data-action-id="bureau-duck">{"kind":"workflow","target_id":"__DUCK_WF__","values":[{"name":"project_id","provenance":"dynamic_binding","source_ref":"<page.dataset.gates.projects.find(id).id>"},{"name":"topic","provenance":"user_input"}]}</script>
 <script type="application/kronn-action" data-action-id="bureau-avatar">{"kind":"workflow","target_id":"__AVATAR_WF__","values":[{"name":"avatar_code","provenance":"user_input"}]}</script>
 
 <script>

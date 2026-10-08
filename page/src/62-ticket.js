@@ -44,8 +44,9 @@ function bindsFor(action,row){
   const e=Object.entries(ACTION_BINDS[action]||{}).filter(([,f])=>row[f]!=null);
   return e.length?Object.fromEntries(e.map(([n,f])=>[n,String(row[f])])):null;
 }
-// un bouton de lancement : bloc qui devient la fenêtre de la carte Kronn, note qui suit l'état du lancement
-function launchBlock(box,{action,bind,name,sub,label,title,off}){
+// un bouton de lancement : bloc qui devient la fenêtre de la carte Kronn, note qui suit l'état du lancement (done : texte
+// du succès, sinon « l'agent se met au travail »)
+function launchBlock(box,{action,bind,name,sub,label,title,off,done}){
   bind=bindsFor(action,bind);if(!bind)return;
   const host=document.createElement('div');host.className='relaunch';host.setAttribute('data-kronn-action-slot-host','');
   host.innerHTML=`<div class="rl-n">${esc(name)}</div><div class="rl-s">${esc(sub)}</div>`;
@@ -56,7 +57,7 @@ function launchBlock(box,{action,bind,name,sub,label,title,off}){
   n.textContent='Kronn ouvre sa carte : tu valides, puis elle suit le run étape par étape.';
   new MutationObserver(()=>{
     const v=b.getAttribute('data-kronn-action-state');
-    if(v==='succeeded')n.innerHTML='<b style="color:var(--ok)">✓ Lancé.</b> L\'agent se met au travail d\'ici une minute sur le plan.';
+    if(v==='succeeded')n.innerHTML=done||'<b style="color:var(--ok)">✓ Lancé.</b> L\'agent se met au travail d\'ici une minute sur le plan.';
     else if(v==='failed')n.innerHTML='<b style="color:var(--err)">Lancement refusé</b> (déjà en cours ?). Détail dans la carte.';
   }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
   host.append(b,n);kronnModal(host,b,title);box.appendChild(host);

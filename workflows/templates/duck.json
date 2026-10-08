@@ -1,0 +1,66 @@
+{
+ "kind": "workflow",
+ "key": "duck",
+ "definition": {
+  "name": "Le Bureau · parler au canard",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "project_id",
+    "label": "Projet",
+    "placeholder": "",
+    "description": null,
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   },
+   {
+    "name": "topic",
+    "label": "Sujet (texte libre ou numéro de ticket)",
+    "placeholder": "",
+    "description": null,
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   }
+  ],
+  "steps": [
+   {
+    "name": "start",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Ouvre une discussion Kronn avec le canard sur le sujet donné et lance l'agent (0 token ici).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/duck_start.py@@",
+     "{{project_id}}",
+     "{{topic}}"
+    ],
+    "exec_timeout_secs": 30
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

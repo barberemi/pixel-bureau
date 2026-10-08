@@ -106,6 +106,9 @@ function bestEmployee(){
 }
 // le personnage d'un classement (le gagnant du sprint fermé peut n'avoir aucun ticket dans le nouveau)
 const empChar=r=>r&&(chars.find(x=>x.team&&x.team.id===r.p.id)||(typeof personChar==='function'?personChar(r.p.id,r.p.name):null));
+// discussions ouvertes par le Bureau (questions aux agents « Le Bureau · … », le canard « 🦆 … ») : jamais des visiteurs,
+// comme is_bureau_disc de workflows/_lib.py
+const bureauDisc=d=>{const t=String((d&&d.title)||'');return t.startsWith('Le Bureau')||t.startsWith('🦆');};
 // minuit (heure de Paris) du jour de t ; juste aussi les jours de changement d'heure (minuit est avant le changement, à 2h ou 3h)
 function parisMidnight(t){
   const u=Date.parse(dtf('en-CA',{}).format(new Date(t))+'T00:00:00Z'), p=parisHM(u);
@@ -223,7 +226,7 @@ function setData(d,live){
     }
     c.runs.push(r);
   }
-  for(const disc of (d.discussions||[]).filter(x=>!String(x.title||'').startsWith('Le Bureau'))){ // discussions créées par le Bureau (questions aux agents) : pas des visiteurs
+  for(const disc of (d.discussions||[]).filter(x=>!bureauDisc(x))){ // discussions créées par le Bureau : pas des visiteurs
     const key='v_'+disc.id.slice(0,8);
     const c=add({
       key,

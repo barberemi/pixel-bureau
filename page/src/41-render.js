@@ -3,6 +3,7 @@ function render(now){
   ctx.drawImage(bg,0,0); drawWindows(T,now); PILE_HITS=[];
   const list=FURN.map(f=>({y:f.y,d:f.draw}));
   for(const c of chars)if(c.present&&c.pos)list.push({y:c.pos.y,d:n=>drawChar(c,n)});
+  DUCK_POS=duckAt(T); if(DUCK_POS)list.push({y:DUCK_POS.y,d:drawDuck}); // 39-duck.js : le canard, trié avec les personnages
   list.sort((a,b)=>a.y-b.y);
   for(const it of list)it.d(now);
   drawLight(now); // voile du soir et de la nuit, sous les bulles et les noms
@@ -17,6 +18,10 @@ function render(now){
     const gx=sc.pos.x, gy=sc.pos.y-26, g=ctx.createRadialGradient(gx,gy,30,gx,gy,120);
     g.addColorStop(0,'rgba(10,12,22,0)');g.addColorStop(1,'rgba(10,12,22,.52)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
     drawSeatTrail(sc,now);
+  }
+  if(sel==='duck'&&DUCK_POS){ // fiche du canard ouverte : le plan s'assombrit autour de lui
+    const gx=DUCK_POS.x, gy=DUCK_POS.y-10, g=ctx.createRadialGradient(gx,gy,18,gx,gy,90);
+    g.addColorStop(0,'rgba(10,12,22,0)');g.addColorStop(1,'rgba(10,12,22,.52)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
   }
   // bulles : celui qui vient voir quelqu'un (ticket livré, réouvert, prod fêtée) passe par-dessus la bulle de la personne visitée
   const onTop=c=>c._st&&(c._st.st==='deliver'||c._st.st==='reopen'||c._st.st==='proud');

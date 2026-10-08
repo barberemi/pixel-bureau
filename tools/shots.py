@@ -84,6 +84,13 @@ SHOTS = {
                             ("saint-valentin", "saint-valentin", 11))},
     # le décor suit les meubles et les îlots d'un autre plan
     "theme-noel-autre-plan": (1400, 1000, AT(20.25) + "THEME_FORCE='noel';", "#cv", 1.5, "layouts/exemple-startup.json"),
+    # le canard en plastique (39-duck.js) sur le plan, sa fiche ouverte : projets et discussions simulés (dataset gates)
+    "canard": (1440, 960, AT(11) + "ACTIONS.duck=true;ACTION_BINDS['bureau-duck']={project_id:'id'};DUCK_PROJECTS=[{id:'none',name:'Sans projet'},{id:'p1',name:'Site Dunder Mifflin'},"
+               "{id:'p2',name:'Stock de papier'}];const at=x=>new Date(DAY0+x*3600e3).toISOString();DUCKS=["
+               "{id:'k1',title:'🦆 Le bon de commande arrondit mal les ramettes',project:'Stock de papier',updated:at(10.6),awaiting:true},"
+               "{id:'k2',title:'🦆 DM-6717',project:'Site Dunder Mifflin',updated:at(9.2),awaiting:false},"
+               "{id:'k3',title:'🦆 Pourquoi le cache vide le panier ?',project:null,updated:at(-20),awaiting:false}];select('duck');"
+               "scrollTo(0,document.querySelector('.main').offsetTop-8);", None),
     # invité de passage (clé guests du roster) : David Wallace, de 11h16 à 11h40 dans la démo, ici chez Jan
     "invite": (1400, 1000, AT(11.5) + "select('g_david');", "#cv", 1.5),
     # brouillon tiré de docs/img/croquis.png par « python3 tools/plan.py from-image » (premier tour, sans retouche)

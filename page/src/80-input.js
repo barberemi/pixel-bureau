@@ -15,7 +15,7 @@ cv.addEventListener('mousemove',e=>{
     tip.style.display='block';
     tip.style.left=e.clientX+'px';
     tip.style.top=e.clientY+'px';
-    tip.textContent=(z==='bosspages'?'Mes pages Kronn ('+BOSS_PAGES.length+')':z==='tv'&&stageClosed(T)?'Plateau fermé : pas de MEP le vendredi ni le week-end':z==='paie'?'Fiche de paie des agents':z==='tv'?'Mises en prod du jour':z==='kanban'?'Mur Kanban du sprint':z==='planning'?'Planning des crons':'Employé du sprint');
+    tip.textContent=(z==='duck'?'Le canard en plastique : parle-lui de ton problème':z==='bosspages'?'Mes pages Kronn ('+BOSS_PAGES.length+')':z==='tv'&&stageClosed(T)?'Plateau fermé : pas de MEP le vendredi ni le week-end':z==='paie'?'Fiche de paie des agents':z==='tv'?'Mises en prod du jour':z==='kanban'?'Mur Kanban du sprint':z==='planning'?'Planning des crons':'Employé du sprint');
     return;
   }
   const p=c?null:pileAt(e);
@@ -44,7 +44,7 @@ function hitZone(ev){
   const r=cv.getBoundingClientRect(),mx=(ev.clientX-r.left)*W/r.width,my=(ev.clientY-r.top)*H/r.height;
   const inR=o=>mx>=o.x&&mx<=o.x+o.w&&my>=o.y&&my<=o.y+o.h;
   const bs=bossPagesOn()&&bossScreenRect();
-  return bs&&inR(bs)?'bosspages':inR(PAYR)?'paie':inR(TVR)?'tv':inR(KANR)?'kanban':inR(PLANR)?'planning':inR(EMPR)&&bestEmployee().length?'emp':null;}
+  return duckHit(mx,my)?'duck':bs&&inR(bs)?'bosspages':inR(PAYR)?'paie':inR(TVR)?'tv':inR(KANR)?'kanban':inR(PLANR)?'planning':inR(EMPR)&&bestEmployee().length?'emp':null;}
 cv.addEventListener('click',e=>{if(TV)return;const c=hitTest(e);if(c){select(c.key);return;}const z=hitZone(e);if(z==='bosspages')openBossPages();else select(z);});
 const slider=document.getElementById('slider'), playBtn=document.getElementById('play'), liveBtn=document.getElementById('live'), speedSel=document.getElementById('speed');
 function setMode(m){

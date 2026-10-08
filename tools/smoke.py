@@ -6,7 +6,7 @@
     python3 tools/smoke.py --html dist/autre.html --chrome   # contrôler un fichier déjà assemblé
 
 Contrôles : taille < 1 000 000 octets, chaque <script> (hors kronn-action) se parse (node, new Function),
-les 9 blocs kronn-action du squelette sont présents à l'identique (ids de workflows remplacés), leur JSON est valide,
+les 10 blocs kronn-action du squelette sont présents à l'identique (ids de workflows remplacés), leur JSON est valide,
 plus aucun marqueur __X__ ni /*__STYLES__*/ /*__SCRIPTS__*/ ne traîne.
 --chrome demande websocket-client (`.venv/bin/pip install websocket-client`) ; Chrome est lancé muet
 (--mute-audio), sur un profil jetable, puis arrêté.
@@ -44,8 +44,8 @@ def static_checks(html, cfg=None):
         if acts.get(key):  # bouton sans workflow configuré : bloc retiré à l'assemblage
             expected.append(assemble.action_block(b, c))
     found = ACTION_RE.findall(html)
-    check(total == 9, f"{total} blocs kronn-action dans le squelette (attendu 9)")
-    check(found == expected, f"blocs kronn-action attendus présents à l'identique ({len(expected)}/9 configurés)")
+    check(total == 10, f"{total} blocs kronn-action dans le squelette (attendu 10)")
+    check(found == expected, f"blocs kronn-action attendus présents à l'identique ({len(expected)}/10 configurés)")
     for b in found:
         body = b.split(">", 1)[1].rsplit("</script>", 1)[0]
         try:

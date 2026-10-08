@@ -92,6 +92,14 @@ Chacun peut avoir une passion (clé `passion` du roster), qui se joue sur le pla
 
 Les cartes de passion des fiches sont décrites dans [Fiches](07-fiches.md).
 
+## Le canard
+
+Un canard de bain jaune se promène tout le temps dans tout le bureau : jour et nuit, en semaine comme le week-end, et en mode TV. Il marche lentement vers une case libre tirée au sort, en se dandinant, s'y arrête de 20 secondes à une minute, puis repart ailleurs : cafétéria, salle serveurs, toilettes, open space… Son parcours ne dépend que de la date et de l'heure : tout le monde le voit au même endroit au même instant, et le rejeu le refait à l'identique.
+
+Un clic sur lui ouvre sa fiche (voir [Fiches](07-fiches.md)) : c'est la [méthode du canard en plastique](https://fr.wikipedia.org/wiki/M%C3%A9thode_du_canard_en_plastique), on lui explique son problème dans une discussion Kronn.
+
+![Le canard sur le plan, sa fiche ouverte](../img/canard.png)
+
 ## Changer de plan pour toute l'équipe
 
 Le plan se décrit dans un fichier JSON (voir [Développer, plan du bureau](../developpement.md#plan-du-bureau-layoutsjson)). Chacun est placé par le plan (`seating`, par numéro de siège : `I2.R2` = îlot 2, côté droit, rang 2), les autres reçoivent un siège libre, toujours le même.

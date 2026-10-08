@@ -1,13 +1,18 @@
 """Gates en attente de validation, pour que la page Le Bureau puisse les décider (page action « bureau-gate »).
 
 Sortie (stdout, JSON parsé par l'étape CollectApiData) :
-  {generated_at, gates: [{run, wf, wf_name, gate, message, since}], workflows: [{wf, name, trigger}]}
+  {generated_at, gates: [{run, wf, wf_name, gate, message, since}], workflows: [{wf, name, trigger}], askable: [{wf, name}],
+   projects: [{id, name}], ducks: [{id, title, project, updated, awaiting}]}
 `workflows` = ceux que la page peut relancer (page action « bureau-relaunch ») : actifs, hors Bureau, pas
 sous-workflow d'un autre, sans variable obligatoire à saisir.
+`projects` = les projets Kronn, « Sans projet » (id « none ») en tête : un bouton « parler au canard » chacun (page action
+« bureau-duck », find(id)). `ducks` = les discussions du canard (titre « 🦆 … », duck_start.py) des 14 derniers jours,
+15 au plus, les plus récentes d'abord ; awaiting = des questions attendent ta réponse (pending_question_count, comme
+« Attend ta réponse » des visiteurs).
 Le dataset doit être un vrai objet : Kronn y retrouve la ligne cliquée (find(run)) côté serveur.
 """
 import json, os as _os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from _lib import get, is_bureau
 
 
@@ -70,9 +75,27 @@ for wid, (wf, full) in defs.items():
 
 # agents qu'on peut interroger sur leurs runs (page action « bureau-ask ») : tout workflow actif hors Bureau
 askable = [{"wf": wid, "name": wf["name"]} for wid, (wf, full) in defs.items() if not is_bureau(wf)]
+# le canard : un bouton par projet, et ses discussions
+names = {}
+try:
+    names = {p["id"]: p.get("name") or p["id"] for p in get("/projects")}
+except Exception:
+    pass
+projects = [{"id": "none", "name": "Sans projet"}] + [{"id": k, "name": v[:60]} for k, v in sorted(names.items(), key=lambda x: str(x[1]).lower())]
+since = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
+ducks = []
+try:
+    ducks = [{"id": d["id"], "title": str(d.get("title") or "")[:100], "project": names.get(d.get("project_id")), "updated": d.get("updated_at"),
+              "awaiting": (d.get("pending_question_count") or 0) > 0}
+             for d in get("/discussions?per_page=200") if str(d.get("title") or "").startswith("🦆") and not d.get("archived")
+             and str(d.get("updated_at") or "") >= since]
+except Exception:
+    pass
+ducks = sorted(ducks, key=lambda d: str(d["updated"] or ""), reverse=True)[:15]
 try:
     _os.makedirs(_os.path.dirname(CACHE), exist_ok=True)
     json.dump({k: v for k, v in _cache.items() if k in defs}, open(CACHE, "w"))
 except Exception:
     pass
-print(json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "gates": gates, "workflows": relaunch, "askable": askable}, ensure_ascii=False))
+print(json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "gates": gates, "workflows": relaunch, "askable": askable,
+                  "projects": projects, "ducks": ducks}, ensure_ascii=False))
