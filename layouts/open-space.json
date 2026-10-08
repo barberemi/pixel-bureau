@@ -139,7 +139,10 @@
   "sofa": [
    [8,10,"down"],
    [9,10,"down"],
-   [10,10,"down"]
+   [10,10,"down"],
+   [8,3,"down"],
+   [9,3,"down"],
+   [10,3,"down"]
   ],
   "ktable": [
    [3,6,"right"],
@@ -267,6 +270,7 @@
   {"type": "fridge", "at": [1,2]},
   {"type": "kitchen_table", "at": [4,6]},
   {"type": "sofa", "at": [8,10]},
+  {"type": "sofa", "at": [8,3]},
   {"type": "water_cooler", "at": [11,7]},
   {"type": "copier", "at": [38,9]},
   {"type": "toilets", "at": [34,2]},

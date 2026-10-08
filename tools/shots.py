@@ -85,6 +85,14 @@ SHOTS = {
     # le décor suit les meubles et les îlots d'un autre plan
     "theme-noel-autre-plan": (1400, 1000, AT(20.25) + "THEME_FORCE='noel';", "#cv", 1.5, "layouts/exemple-startup.json"),
     # le canard en plastique (39-duck.js) sur le plan, sa fiche ouverte : projets et discussions simulés (dataset gates)
+    # le canard attend ta réponse (discussion « 🦆 » awaiting, en direct) : arrivé devant le bureau du boss, bulle « ? » ;
+    # horloge ramenée à T pour le « direct », trajet supposé fini, zone rognée posée sur la toile juste avant la capture (#shotclip : la toile bouge pendant le rendu)
+    "canard-attend": (1400, 1000, AT(11) + "DUCKS=[{id:'k1',title:'🦆 Le bon de commande arrondit mal les ramettes',awaiting:true}];"
+                      "Date.now=()=>T;setTimeout(()=>{if(DUCK_CALL)DUCK_CALL.since-=1e9;},300);"
+                      "setTimeout(()=>{const [bx,by]=duckBossTile(),c=document.querySelector('#cv'),r=c.getBoundingClientRect(),k=r.width/c.width,"
+                      "d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(bx-4.6)*TS*k)+'px',"
+                      "top:(r.top+scrollY+(by-4)*TS*k)+'px',width:10.25*TS*k+'px',height:6.8*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);",
+                      "#shotclip", 1.5),
     "canard": (1440, 960, AT(11) + "ACTIONS.duck=true;ACTION_BINDS['bureau-duck']={project_id:'id'};DUCK_PROJECTS=[{id:'none',name:'Sans projet'},{id:'p1',name:'Site Dunder Mifflin'},"
                "{id:'p2',name:'Stock de papier'}];const at=x=>new Date(DAY0+x*3600e3).toISOString();DUCKS=["
                "{id:'k1',title:'🦆 Le bon de commande arrondit mal les ramettes',project:'Stock de papier',updated:at(10.6),awaiting:true},"
@@ -92,6 +100,8 @@ SHOTS = {
                "{id:'k3',title:'🦆 Pourquoi le cache vide le panier ?',project:null,updated:at(-20),awaiting:false}];select('duck');"
                "scrollTo(0,document.querySelector('.main').offsetTop-8);", None),
     # invité de passage (clé guests du roster) : David Wallace, de 11h16 à 11h40 dans la démo, ici chez Jan
+    # bas du panneau, vue « Tous », équipe et agents repliés : « Et aussi » = invités présents (David Wallace, ici chez Jan) + le canard
+    "panneau-et-aussi": (1400, 1600, AT(11.5) + "FILTER=null;COLLAPSED[\"L'équipe\"]=true;COLLAPSED['Les agents']=true;renderSide();", "#side"),
     "invite": (1400, 1000, AT(11.5) + "select('g_david');", "#cv", 1.5),
     # brouillon tiré de docs/img/croquis.png par « python3 tools/plan.py from-image » (premier tour, sans retouche)
     "croquis-brouillon": (1400, 1000, AT(11), "#cv", 1.5, "docs/exemples/plan-croquis.json"),

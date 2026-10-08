@@ -91,16 +91,18 @@ function drawSide(side){
         seg.appendChild(b);
       }
       fb.appendChild(seg);side.appendChild(fb);}
-    const groups=[["L'équipe",chars.filter(c=>c.person),'team'],['Les agents',chars.filter(c=>!c.person&&!c.visitor),'wf'],['Les visiteurs du jour',chars.filter(c=>c.visitor&&!c.guest),'vis']].filter(g=>!FILTER||g[2]===FILTER);
+    const groups=[["L'équipe",chars.filter(c=>c.person),'team'],['Les agents',chars.filter(c=>!c.person&&!c.visitor),'wf'],['Les visiteurs du jour',chars.filter(c=>c.visitor&&!c.guest),'vis'],
+      ['Et aussi',chars.filter(c=>c.guest&&c.present),'misc']].filter(g=>!FILTER||g[2]===FILTER); // misc : invités du moment + le canard, vue « Tous » seulement
     for(const [title,list,fk] of groups){
-    if(!list.length)continue;
+    if(!list.length&&fk!=='misc')continue;
+    const n=list.length+(fk==='misc'?1:0); // le canard est toujours là
     const closed=!!COLLAPSED[title];
     const h=document.createElement('h2');
     h.className='grp';
     h.setAttribute('role','button');
     h.tabIndex=0;
     h.setAttribute('aria-expanded',String(!closed));h.dataset.fid='grp:'+title;
-    h.innerHTML=`<span class="chev">${closed?'▸':'▾'}</span><span class="famdot fam-${fk}"></span>${esc(title)} <span class="cnt">${list.length}</span>`;
+    h.innerHTML=`<span class="chev">${closed?'▸':'▾'}</span><span class="famdot fam-${fk}"></span>${esc(title)} <span class="cnt">${n}</span>`;
     const toggle=()=>{COLLAPSED[title]=!closed;try{localStorage.setItem('bureau:collapsed',JSON.stringify(COLLAPSED));}catch(e){}renderSide();};
     h.onclick=toggle;h.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}};
     h.style.marginTop=title==="L'équipe"?'0':'14px';if(closed){side.appendChild(h);continue;}
@@ -135,6 +137,7 @@ function drawSide(side){
       s.innerHTML=`<span class="dot" style="background:${ST_CSS[st.st]||'var(--idle)'}"></span>${esc(shortSt(st))}`;
       b.appendChild(s);box.appendChild(b);
     }
+    if(fk==='misc')box.appendChild(duckRow());
     side.appendChild(box);}
     return;
   }

@@ -25,7 +25,7 @@ Un invité de passage entre par la porte, va saluer des collègues à leur burea
 - **Bureau du boss** : validations et questions qui t'attendent.
 - **Toilettes** : en panne (🚨 après 3 échecs d'affilée).
 - **Plateau TV** : mises en prod du jour (fermé le vendredi et le week-end).
-- **Café, canapé** : run réussi récemment, ou rien à faire.
+- **Café, canapés** : run réussi récemment, ou rien à faire. La cafétéria a deux canapés de trois places, l'un en bas, l'autre en haut à droite près du comptoir : chacun prend une place libre, personne ne s'assoit sur un autre.
 
 Quand un ticket passe en Reopen dans Jira, Gandalf entre par la porte. Lui, celui qui a réouvert le ticket (souvent le testeur) et le développeur se retrouvent en salle de réunion : le développeur d'un côté de la table (« 😨 7089 »), le testeur et Gandalf en face, et Gandalf crie en grand « Vous ne passerez pas ! ». Trois minutes plus tard, il repart par la porte et chacun retourne à sa place. Sans héraut des reopens, le testeur va simplement le dire au développeur à sa place. La scène se rejoue à l'heure exacte du changement de statut.
 
@@ -64,6 +64,9 @@ L'anneau sous les pieds double la couleur par une forme (lisible par les daltoni
 - La lumière suit le soleil au bureau : fenêtres, crépuscule, voile de nuit qui s'ouvre autour de chaque personnage, lampes des bureaux occupés.
 - Quand un run en lance un autre, une enveloppe passe d'un agent à l'autre (sous-run, déclenchement, validation, discussion).
 - « Sur le plan » dans le panneau met une famille en avant (équipe, agents ou visiteurs), avec ses noms.
+- En bas du panneau, « Et aussi » liste les invités du moment (Yoda, Gandalf, un invité de passage…), tant qu'ils sont dans le bureau, et le canard, avec ce qu'il fait (« se promène · cafétéria », « attend ta réponse »). Survol : il ressort sur le plan. Clic : sa fiche. Ce groupe n'apparaît que dans la vue « Tous ».
+
+![« Et aussi » : un invité de passage et le canard](../img/panneau-et-aussi.png)
 - « Replier ⟩ » en haut du panneau le réduit à une bande : le plan prend presque toute la largeur (×1 sur un écran de 1440 px au lieu de ×0,77). Un clic sur un personnage le rouvre.
 - Au clavier : Tab jusqu'à la liste de l'équipe, flèches pour passer d'une personne à l'autre (elle ressort sur le plan), Entrée pour ouvrir sa fiche.
 
@@ -94,11 +97,11 @@ Les cartes de passion des fiches sont décrites dans [Fiches](07-fiches.md).
 
 ## Le canard
 
-Un canard de bain jaune se promène tout le temps dans tout le bureau : jour et nuit, en semaine comme le week-end, et en mode TV. Il marche lentement vers une case libre tirée au sort, en se dandinant, s'y arrête de 20 secondes à une minute, puis repart ailleurs : cafétéria, salle serveurs, toilettes, open space… Son parcours ne dépend que de la date et de l'heure : tout le monde le voit au même endroit au même instant, et le rejeu le refait à l'identique.
+Un canard de bain jaune se promène tout le temps dans tout le bureau : jour et nuit, en semaine comme le week-end, et en mode TV. Il marche lentement vers une case libre tirée au sort, en se dandinant, s'y arrête de 20 secondes à une minute, puis repart ailleurs : cafétéria, salle serveurs, toilettes, open space… Il est un peu plus grand que nature et une petite flèche jaune flotte au-dessus de lui, pour le repérer d'un coup d'œil sur la moquette. Son parcours ne dépend que de la date et de l'heure : tout le monde le voit au même endroit au même instant, et le rejeu le refait à l'identique.
 
 Un clic sur lui ouvre sa fiche (voir [Fiches](07-fiches.md)) : c'est la [méthode du canard en plastique](https://fr.wikipedia.org/wiki/M%C3%A9thode_du_canard_en_plastique), on lui explique son problème dans une discussion Kronn.
 
-Quand une de ses discussions attend ta réponse, en direct (pas en rejeu), il quitte sa promenade, marche jusqu'au bureau du boss et attend devant, de face, avec une bulle « ? ». « À traiter » affiche aussi « 🦆 Le canard attend ta réponse », avec un bouton Répondre qui ouvre la discussion dans un nouvel onglet. Une fois ta réponse donnée, il reprend sa promenade.
+Quand une de ses discussions attend ta réponse, en direct (pas en rejeu), il quitte sa promenade, marche jusqu'au bureau du boss et attend devant, de face, avec une bulle « ? » à la place de sa flèche. « À traiter » affiche aussi « 🦆 Le canard attend ta réponse », avec un bouton Répondre qui ouvre la discussion dans un nouvel onglet. Une fois ta réponse donnée, il reprend sa promenade.
 
 ![Le canard attend ta réponse devant le bureau du boss](../img/canard-attend.png)
 

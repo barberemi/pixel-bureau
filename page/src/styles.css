@@ -105,7 +105,7 @@ footer{color:var(--muted);font-size:11px;margin-top:16px;text-align:center}
 :root[data-theme="dark"] .appr{color:#f6e7b8;background:#4a3a14}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .appr{color:#f6e7b8;background:#4a3a14}}
 .famdot{width:8px;height:8px;border-radius:2px;display:inline-block;background:var(--idle)}
-.famdot.fam-team{background:#cfc6b2}.famdot.fam-wf{background:#3b82f6}.famdot.fam-vis{background:#d97757}
+.famdot.fam-team{background:#cfc6b2}.famdot.fam-wf{background:#3b82f6}.famdot.fam-vis{background:#d97757}.famdot.fam-misc{background:#f5c518}
 .seg button.famb.fam-wf.on{background:#3b82f6;border-color:#3b82f6}
 .seg button.famb.fam-vis.on{background:#d97757;border-color:#d97757}
 .seg button.famb.fam-team.on{background:#8a7f68;border-color:#8a7f68}

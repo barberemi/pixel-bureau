@@ -147,24 +147,53 @@ function duckAt(t){
   return {x:c0.x+(c1.x-c0.x)*k,y:c0.y+(c1.y-c0.y)*k,tile:k<.5?P[i]:P[i+1],dir:duckDir(P[i],P[i+1]),moving:true,call:true};
 }
 let DUCK_POS=null; // dernière position dessinée (zone de clic)
+const DUCK_SCALE=1.3; // un peu plus grand que son dessin de 16 px : il se perdait sur la moquette
 function drawDuck(now){
   const p=DUCK_POS; if(!p)return;
   const x=Math.round(p.x), y=Math.round(p.y)-4; // posé un peu au-dessus des pieds des humains : il est petit
-  ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(x,y+1,7,2,0,0,7);ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(x,y+1,7*DUCK_SCALE,2*DUCK_SCALE,0,0,7);ctx.fill();
   const w=p.moving?Math.sin(now/140):0; // dandinement : inclinaison et ±1 px
-  ctx.save();ctx.translate(x,y+(p.moving&&w>0?-1:0));ctx.rotate(w*.14);if(p.dir==='left')ctx.scale(-1,1);
+  ctx.save();ctx.translate(x,y+(p.moving&&w>0?-1:0));ctx.rotate(w*.14);if(p.dir==='left')ctx.scale(-1,1);ctx.scale(DUCK_SCALE,DUCK_SCALE);
   ctx.drawImage(duckImg(p.dir==='down'?'front':p.dir==='up'?'back':'side'),-8,-14);
   ctx.restore();
   if(p.call&&!p.moving){ // il attend ta réponse : une bulle « ? » qui respire au-dessus de lui
-    const by=y-30+Math.round(Math.sin(now/400));
+    const by=y-34+Math.round(Math.sin(now/400));
     ctx.fillStyle='#ffffff';ctx.strokeStyle='#c47f00';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(x-7,by,14,13,4);ctx.fill();ctx.stroke();
     ctx.beginPath();ctx.moveTo(x-2,by+13);ctx.lineTo(x,by+17);ctx.lineTo(x+2,by+13);ctx.fill();
     ctx.fillStyle='#c47f00';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText('?',x,by+10);ctx.textAlign='left';
+  }else{ // sinon une flèche jaune qui flotte au-dessus de lui, pour le repérer sur le plan
+    const ay=y-Math.round(14*DUCK_SCALE)-12+Math.round(2*Math.sin(now/300));
+    ctx.fillStyle='#f5c518';ctx.strokeStyle='#3a2a00';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x-5,ay);ctx.lineTo(x+5,ay);ctx.lineTo(x,ay+6);ctx.closePath();ctx.fill();ctx.stroke();
   }
-  if(sel==='duck'){ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.beginPath();ctx.ellipse(x,y+1,10,3.5,0,0,7);ctx.stroke();}
+  if(sel==='duck'||hoverKey==='duck'){ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.beginPath();ctx.ellipse(x,y+1,12,4,0,0,7);ctx.stroke();}
+}
+// ---------- sa ligne dans le panneau (groupe « Et aussi ») ----------
+// la pièce où il est : le libellé du plan posé dans la même pièce éclairée (light_rooms), sinon l'open space
+function duckRoom(tile){
+  const r=(LAYOUT.light_rooms||[]).find(([x0,y0,x1,y1])=>tile[0]>=x0&&tile[0]<=x1&&tile[1]>=y0&&tile[1]<=y1);
+  const l=r&&(LAYOUT.labels||[]).find(({at:[x,y]})=>x>=r[0]&&x<=r[2]+1&&y>=r[1]&&y<=r[3]+1);
+  return l?l.text.toLowerCase():'open space';
+}
+function duckStatus(){
+  const p=DUCK_POS||duckAt(T); if(!p)return {txt:'au repos',col:'var(--idle)'};
+  if(p.call)return {txt:p.moving?'vient te voir':'attend ta réponse',col:ST_CSS.ask};
+  return {txt:(p.moving?'se promène':'halte')+' · '+duckRoom(p.tile),col:'var(--idle)'};
+}
+function duckRow(){
+  const b=document.createElement('button');b.className='who';b.dataset.fid='who:duck';
+  b.onclick=()=>select('duck');
+  b.onmouseenter=b.onfocus=()=>{hoverKey='duck';};
+  b.onmouseleave=b.onblur=()=>{if(hoverKey==='duck')hoverKey=null;};
+  const p=document.createElement('canvas');p.width=40;p.height=40;const x=p.getContext('2d');x.imageSmoothingEnabled=false;
+  x.drawImage(duckImg('front'),4,6,32,28);p.style.width=p.style.height='36px';b.appendChild(p);
+  const t=document.createElement('div');t.className='t';t.innerHTML='<div class="n">🦆 Le canard</div><div class="r">Mascotte</div>';b.appendChild(t);
+  const st=duckStatus(), s=document.createElement('div');s.className='s';
+  s.innerHTML=`<span class="dot" style="background:${st.col}"></span>${esc(st.txt)}`;b.appendChild(s);
+  return b;
 }
 // survol, clic : le rectangle du canard dessiné
-function duckHit(mx,my){const p=DUCK_POS;return !!p&&Math.abs(mx-p.x)<=10&&my>=p.y-22&&my<=p.y;}
+function duckHit(mx,my){const p=DUCK_POS;return !!p&&Math.abs(mx-p.x)<=12&&my>=p.y-34&&my<=p.y;} // flèche comprise
 // ---------- sa fiche ----------
 // projet choisi pour parler au canard : retenu dans ce navigateur (confort ; « Sans projet » par défaut)
 let DUCK_PROJECT='none';

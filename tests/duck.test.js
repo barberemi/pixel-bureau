@@ -109,3 +109,13 @@ test('À traiter : « Le canard attend ta réponse », bouton Répondre vers la 
   assert.match(it[0].txt, /Le canard<\/b> attend ta réponse <small>Le menu casse/);
   assert.match(it[0].act.href, /index\.html#discussion-d1$/);
 });
+
+test('panneau « Et aussi » : la pièce du canard d\'après le libellé du plan, son statut selon qu\'il marche, s\'arrête ou attend', () => {
+  assert.deepEqual(J("[duckRoom([5, 5]), duckRoom([14, 3]), duckRoom([20, 16])]"), ['cafétéria', 'serveurs', 'open space']);
+  const st = pos => J(`(() => { const p0 = DUCK_POS; DUCK_POS = ${JSON.stringify(pos)}; try { return duckStatus().txt; } finally { DUCK_POS = p0; } })()`);
+  assert.equal(st({x: 0, y: 0, tile: [5, 5], moving: true}), 'se promène · cafétéria');
+  assert.equal(st({x: 0, y: 0, tile: [20, 16], moving: false}), 'halte · open space');
+  assert.equal(st({x: 0, y: 0, tile: [22, 10], moving: true, call: true}), 'vient te voir');
+  assert.equal(st({x: 0, y: 0, tile: [22, 10], moving: false, call: true}), 'attend ta réponse');
+  assert.doesNotThrow(() => run('duckRow(); FILTER = null; renderSide(true); true'));
+});
