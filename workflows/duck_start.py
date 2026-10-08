@@ -32,11 +32,12 @@ def post(path, body, timeout=30):
 
 project = (sys.argv[1] if len(sys.argv) > 1 else "").strip()
 topic = (sys.argv[2] if len(sys.argv) > 2 else "").strip()
+asked = (sys.argv[3] if len(sys.argv) > 3 else "").strip()  # titre donné (facultatif)
 if not project:
     fail("Projet manquant : recharge la page.")
 if not topic:
     fail("Dis au canard de quoi tu veux parler.")
-first = topic.splitlines()[0].strip()
+first = (asked or topic).splitlines()[0].strip()  # sans titre : la première ligne du sujet
 title = "🦆 " + (first if len(first) <= 70 else first[:69].rstrip() + "…")
 with post("/discussions", {"project_id": None if project == "none" else project, "title": title, "agent": "ClaudeCode",
                            "language": "fr", "initial_prompt": topic + "\n\n" + NOTE}) as r:

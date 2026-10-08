@@ -487,6 +487,9 @@ print(json.dumps(d.get(key, [])))
         self.run_script("duck_start.py", api=api, args=("p1", "EW-42"))  # un projet : son id tel quel
         self.assertEqual(fake.posts[2][1]["project_id"], "p1")
         self.assertEqual(fake.posts[2][1]["title"], "🦆 EW-42")
+        self.run_script("duck_start.py", api=api, args=("p1", "Long détail\nsur plusieurs lignes", "Panier qui ne se vide pas"))
+        self.assertEqual(fake.posts[4][1]["title"], "🦆 Panier qui ne se vide pas")  # titre donné : le sujet reste le prompt
+        self.assertTrue(fake.posts[4][1]["initial_prompt"].startswith("Long détail"))
 
     def test_duck_start_refuses_an_empty_topic(self):
         r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "duck_start.py"), "none", "  "], capture_output=True, text=True,

@@ -18,6 +18,15 @@
     "allow_manual_override": false
    },
    {
+    "name": "title",
+    "label": "Titre (facultatif)",
+    "placeholder": "Ex : le panier ne se vide pas",
+    "description": "Titre de la discussion dans la liste du canard ; vide = la première ligne du sujet.",
+    "required": false,
+    "source": null,
+    "allow_manual_override": false
+   },
+   {
     "name": "topic",
     "label": "Sujet (texte libre ou numéro de ticket)",
     "placeholder": "",
@@ -47,7 +56,8 @@
      "-c",
      "@@script:workflows/duck_start.py@@",
      "{{project_id}}",
-     "{{topic}}"
+     "{{topic}}",
+     "{{title}}"
     ],
     "exec_timeout_secs": 30
    }
