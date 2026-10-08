@@ -21,6 +21,8 @@ const DEMO = __DEMO__;        // aperçu local / tests : instantanés de démo e
 const SNAP = __SNAP__;        // instantané de démo (null hors démo)
 const TEAM_SNAP = __TEAM__;   // équipe de démo (null hors démo)
 const ACTIONS = __ACTIONS__;  // boutons disponibles (workflow ou QP configuré dans bureau.config.json)
+// clés de data-kronn-bindings qu'attend Kronn : {id d'action : {nom de la variable liée : champ de la ligne (find(champ))}}
+const ACTION_BINDS = __ACTION_BINDS__;
 
 // ---------- casting ----------
 const ROSTER_DEF = __ROSTER__;

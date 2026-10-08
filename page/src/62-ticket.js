@@ -38,8 +38,15 @@ document.addEventListener('click',e=>{
 });
 const tkOpen=x=>`<a href="#" data-tk="${esc(x.key)}" title="Ouvrir sa fiche et ses actions" style="color:inherit">${esc(x.summary)}</a>`;
 const TK_REV={approved:['approuvée','var(--ok)'],changes:['changements demandés','var(--err)'],pending:['review en attente','var(--warn)']};
+// clés de data-kronn-bindings d'une action : chaque variable liée (son nom chez toi) -> la valeur du champ de la ligne
+// qu'elle relit (ex. {jira_ticket_key: 'EW-1', pr_number: 'EW-1'} pour une ligne {key:'EW-1'}) ; null si rien à lier
+function bindsFor(action,row){
+  const e=Object.entries(ACTION_BINDS[action]||{}).filter(([,f])=>row[f]!=null);
+  return e.length?Object.fromEntries(e.map(([n,f])=>[n,String(row[f])])):null;
+}
 // un bouton de lancement : bloc qui devient la fenêtre de la carte Kronn, note qui suit l'état du lancement
 function launchBlock(box,{action,bind,name,sub,label,title,off}){
+  bind=bindsFor(action,bind);if(!bind)return;
   const host=document.createElement('div');host.className='relaunch';host.setAttribute('data-kronn-action-slot-host','');
   host.innerHTML=`<div class="rl-n">${esc(name)}</div><div class="rl-s">${esc(sub)}</div>`;
   const b=document.createElement('button');b.textContent=label;

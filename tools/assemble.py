@@ -247,6 +247,17 @@ def action_block(block, cfg):
     return m.group(1) + json.dumps(spec, ensure_ascii=False, separators=(",", ":")) + m.group(3)
 
 
+def action_binds(html):
+    """Pour chaque bloc kronn-action de la page : {nom de chaque valeur liée : champ de la ligne relue (find(champ))}.
+    Kronn attend ces noms, renommages de launch.vars compris, comme clés de data-kronn-bindings."""
+    out = {}
+    for m in ACTION_RE.finditer(html):
+        spec = json.loads(re.search(r">(.*)</script>", m.group(0), re.S).group(1))
+        out[m.group(1)] = {v["name"]: f.group(1) for v in spec.get("values") or [] if v.get("provenance") == "dynamic_binding"
+                           for f in [re.search(r"\.find\((\w+)\)", v.get("source_ref") or "")] if f}
+    return out
+
+
 def build(demo=True, cfg=None):
     """Page complète. demo : instantanés de démo embarqués (aperçu local, tests) ; la page publiée n'en a pas.
     cfg : config d'installation (défaut : bureau.config.json)."""
@@ -266,6 +277,7 @@ def build(demo=True, cfg=None):
                 .replace("__OWNER__", json.dumps(cfg.get("owner")))
                 .replace("__CONFIG__", json.dumps(page_config(cfg), ensure_ascii=False))
                 .replace("__ACTIONS__", json.dumps({k: bool(v) for k, v in acts.items()}))
+                .replace("__ACTION_BINDS__", json.dumps(action_binds(html)))
                 .replace("__DEMO__", "true" if demo else "false")
                 .replace("__SNAP__", open(p("data", "office_snapshot.json")).read() if demo else "null")
                 .replace("__TEAM__", open(p("data", "team_snapshot.json")).read() if demo else "null"))

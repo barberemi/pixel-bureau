@@ -57,3 +57,12 @@ test('dataset actions : objet ou texte JSON ; absent ou cassé = null', () => {
   assert.equal(J('readActs({datasets: {}})'), null);
   assert.equal(J('readActs({datasets: {actions: {current: "{cassé"}}})'), null);
 });
+
+test('liaisons envoyées à Kronn : le nom de chaque variable liée (pas le champ de recherche), avec la valeur de la ligne', () => {
+  // Kronn refuse une clé qui n'est pas le nom d'une valeur liée (« unknown dynamic action binding `key` »)
+  assert.deepEqual(J(`bindsFor('bureau-impl', {key: 'DM-1'})`), {jira_ticket_key: 'DM-1'});
+  assert.deepEqual(J(`bindsFor('bureau-mep', {key: 'DM-3'})`), {jira_ticket_key: 'DM-3', pr_number: 'DM-3'});
+  assert.deepEqual(J(`bindsFor('bureau-review', {n: '12'})`), {repo: '12', pr: '12'});
+  assert.deepEqual(J(`bindsFor('bureau-fix', {n: '13'})`), {pr: '13'}); // notes : saisie, pas liée
+  assert.equal(J(`bindsFor('bureau-impl', {n: '13'})`), null); // pas le bon champ : pas de bouton
+});
