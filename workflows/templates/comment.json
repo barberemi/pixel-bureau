@@ -1,0 +1,69 @@
+{
+ "kind": "workflow",
+ "key": "comment",
+ "definition": {
+  "name": "Le Bureau · commenter un ticket",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "jira_ticket_key",
+    "label": "Clé du ticket Jira",
+    "placeholder": "EW-1234",
+    "description": null,
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   },
+   {
+    "name": "comment",
+    "label": "Commentaire",
+    "placeholder": "Ton commentaire",
+    "description": null,
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   }
+  ],
+  "steps": [
+   {
+    "name": "comment",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Pose le commentaire sur le ticket Jira (REST v2, texte wiki), avec le compte de la connexion Atlassian de Kronn. 0 token.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/2/issue/{key}/comment",
+    "api_method": "POST",
+    "api_query": {},
+    "api_extract": null,
+    "_requires": "jira",
+    "api_path_params": {
+     "key": "{{jira_ticket_key}}"
+    },
+    "api_body": {
+     "body": "{{comment}}\n\n_(depuis Le Bureau)_"
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": null
+ }
+}

@@ -88,7 +88,7 @@ function renderTicket(side,key){
     }
     pb.appendChild(ul);
   }
-  if(!(ACTIONS.impl||ACTIONS.mep||ACTIONS.review||ACTIONS.fix))return;
+  if(!(ACTIONS.impl||ACTIONS.mep||ACTIONS.review||ACTIONS.fix||ACTIONS.comment))return;
   const box=foldSection(side,'tk-launch','🤖 Lancer un workflow',null,true);
   const note=t=>{const e=document.createElement('div');e.className='note';e.textContent=t;box.appendChild(e);};
   if(!ACTS){note('Les boutons arrivent au prochain passage du cron équipe (10 min au plus).');return;}
@@ -109,5 +109,7 @@ function renderTicket(side,key){
     if(ACTIONS.review&&p.review!=='approved')
       launchBlock(box,{action:'bureau-review',bind:{n:String(p.n)},name:'Faire relire · #'+p.n,sub:'Dwight relit la PR et poste sa review',label:'🔎 Faire relire',title:'Faire relire #'+p.n});
   }
+  if(known&&ACTIONS.comment) // à tout statut ; le texte se saisit dans la carte Kronn
+    launchBlock(box,{action:'bureau-comment',bind:{key},name:'Commenter',sub:'Ton commentaire part sur le ticket dans Jira',label:'💬 Commenter',title:'Commenter '+key});
   if(box.childElementCount===before)note(known?'Rien à lancer à ce statut.':'Ticket pas encore dans les données des boutons : prochain passage du cron équipe.');
 }

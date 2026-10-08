@@ -115,7 +115,7 @@ class InstallTest(unittest.TestCase):
         posts = [(p, b) for m, p, b in k.calls if m == "POST"]
         page = next(b for p, b in posts if p == "/pages")
         self.assertEqual([d["name"] for d in page["datasets"]], install.DATASETS)
-        self.assertEqual(sum(1 for p, _ in posts if p == "/workflows"), 8)
+        self.assertEqual(sum(1 for p, _ in posts if p == "/workflows"), 9)  # dont commenter un ticket (Jira connecté)
         self.assertEqual(sum(1 for p, _ in posts if p == "/quick-prompts"), 2)  # interroger un agent, plan vers brouillon
         cfg = json.load(open(self.cfg_path))
         self.assertEqual(cfg["owner"], "p_coll2")
@@ -136,6 +136,19 @@ class InstallTest(unittest.TestCase):
         self.assertNotIn(json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")))["page_id"], html)  # pas l'id de la démo
         self.assertEqual(sum(1 for m, p, _ in k.calls if p == "/mcp/workflow-trigger"), 4)
 
+    def test_comment_workflow_only_with_jira(self):
+        """« Commenter un ticket » : un ApiCall Jira (POST commentaire), créé seulement si Jira est connecté."""
+        self.assertEqual(self.run_install(ANSWERS), 0)
+        cfg = json.load(open(self.cfg_path))
+        wf = self.fakes[-1].store[cfg["actions"]["comment"]]
+        step = wf["steps"][0]
+        self.assertEqual((step["api_method"], step["api_endpoint_path"], step["api_config_id"]), ("POST", "/rest/api/2/issue/{key}/comment", JIRA))
+        self.assertTrue(step["api_body"]["body"].startswith("{{comment}}"))  # jamais le placeholder seul : reste du texte
+        os.remove(self.cfg_path)  # installation neuve, sans Jira : pas de workflow de commentaire
+        self.assertEqual(self.run_install({**ANSWERS, "jira_config": "2"}), 0)  # « Pas de Jira »
+        self.assertEqual(json.load(open(self.cfg_path))["actions"]["comment"], "")
+        self.assertFalse([b for m, p, b in self.fakes[-1].calls if m == "POST" and p == "/workflows" and "commenter" in b["name"]])
+
     def test_without_jira_team_cron_has_no_jira_steps(self):
         self.assertEqual(self.run_install({**ANSWERS, "jira_config": "2"}), 0)
         k = self.fakes[-1]
@@ -149,7 +162,7 @@ class InstallTest(unittest.TestCase):
         with mock.patch.object(install, "Kronn", return_value=first):
             self.assertEqual(self.run_install(ANSWERS), 0)
         posts = [p for m, p, _ in first.calls if m == "POST" and p in ("/pages", "/workflows", "/quick-prompts")]
-        self.assertEqual(len(posts), 1 + 8 + 2)  # rien de recréé à la relance
+        self.assertEqual(len(posts), 1 + 9 + 2)  # rien de recréé à la relance
 
     def test_relaunch_adds_missing_datasets(self):
         self.run_install(ANSWERS)
@@ -166,7 +179,7 @@ class InstallTest(unittest.TestCase):
         k = self.fakes[-1]
         cfg = json.load(open(self.cfg_path))
         self.assertEqual(cfg["workflows"]["live"], FakeKronn.LIVE)
-        self.assertEqual(sum(1 for m, p, _ in k.calls if m == "POST" and p == "/workflows"), 7)
+        self.assertEqual(sum(1 for m, p, _ in k.calls if m == "POST" and p == "/workflows"), 8)
         self.assertTrue([1 for m, p, _ in k.calls if m == "PUT" and p == f"/workflows/{FakeKronn.LIVE}"])  # mis à jour
         self.assertEqual([a["name"] for a in cfg["agents"]], ["Dwight"])
 
@@ -198,7 +211,7 @@ class InstallTest(unittest.TestCase):
             self.assertFalse([1 for m, _, _ in k.calls if m == "DELETE"])
             self.assertEqual(uninstall.main(["--config", self.cfg_path, "--yes"]), 0)
         deleted = [p for m, p, _ in k.calls if m == "DELETE"]
-        self.assertEqual(len(deleted), 7 + 2 + 1)  # 7 workflows, les 2 QP, la page
+        self.assertEqual(len(deleted), 8 + 2 + 1)  # 8 workflows, les 2 QP, la page
         self.assertNotIn(f"/workflows/{mine}", deleted)
         self.assertEqual(deleted[-1], f"/pages/{cfg['page_id']}")  # la page en dernier
         after = json.load(open(self.cfg_path))

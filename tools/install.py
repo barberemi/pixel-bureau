@@ -551,8 +551,8 @@ def upsert_all(k, cfg, tpls, enabled, dry):
     for pass_ in (1, 2):
         for key, tpl in tpls.items():
             kind, (sec, field), _ = templates.TEMPLATES[key]
-            if key == "ask" and not cfg.get("_ai_agent"):
-                cfg.setdefault(sec, {})[field] = ""
+            if (key == "ask" and not cfg.get("_ai_agent")) or (key == "comment" and not (cfg.get("jira") or {}).get("config_id")):
+                cfg.setdefault(sec, {})[field] = ""  # sans agent IA / sans Jira : pas de bouton
                 continue
             body = templates.render(tpl, cfg)
             if key == "ask":

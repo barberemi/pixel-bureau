@@ -11,7 +11,7 @@ const J = code => JSON.parse(run('JSON.stringify(' + code + ')'));
 const at = (d, hm) => Date.parse(`2026-10-${d}T${hm}:00+02:00`);
 
 // boutons proposés pour un ticket : [action, liaison, grisé ?]
-function buttons(key, {acts = true, now = at('07', '11:00')} = {}) {
+function buttons(key, {acts = true, now = at('07', '11:00'), comment = false} = {}) {
   return J(`(() => {
     const calls = [], lb = launchBlock, fs = foldSection, dn = Date.now;
     launchBlock = (box, o) => { calls.push([o.action, o.bind, !!o.off]); box.childElementCount++; };
@@ -26,7 +26,7 @@ function buttons(key, {acts = true, now = at('07', '11:00')} = {}) {
     ACTS = ${acts ? `{tickets: ['DM-1', 'DM-2', 'DM-3', 'DM-4'].map(key => ({key})), prs: [{n: '12'}, {n: '13'}, {n: '14'}]}` : 'null'};
     try { renderTicket({appendChild() {}}, ${JSON.stringify(key)}); } finally { launchBlock = lb; foldSection = fs; Date.now = dn; }
     return calls;
-  })()`);
+  })()`).filter(c => comment || c[0] !== 'bureau-comment');
 }
 
 test('à faire, sans PR : Implémenter, lié à la clé du ticket', () => {
@@ -65,4 +65,10 @@ test('liaisons envoyées à Kronn : le nom de chaque variable liée (pas le cham
   assert.deepEqual(J(`bindsFor('bureau-review', {n: '12'})`), {repo: '12', pr: '12'});
   assert.deepEqual(J(`bindsFor('bureau-fix', {n: '13'})`), {pr: '13'}); // notes : saisie, pas liée
   assert.equal(J(`bindsFor('bureau-impl', {n: '13'})`), null); // pas le bon champ : pas de bouton
+});
+
+test('Commenter : sur tout ticket du sprint, quel que soit son statut, en dernier ; la saisie se fait dans la carte Kronn', () => {
+  for (const key of ['DM-1', 'DM-2', 'DM-3', 'DM-4']) assert.deepEqual(buttons(key, {comment: true}).at(-1), ['bureau-comment', {key}, false]);
+  assert.deepEqual(buttons('DM-1', {comment: true, acts: false}), []);
+  assert.deepEqual(J(`bindsFor('bureau-comment', {key: 'DM-2'})`), {jira_ticket_key: 'DM-2'}); // comment : saisi, pas lié
 });

@@ -30,6 +30,7 @@ TEMPLATES = {
     "gate": ("workflow", ("actions", "gate"), {"decide": "workflows/gate_decide.py"}),
     "relaunch": ("workflow", ("actions", "relaunch"), {"relaunch": "workflows/relaunch.py"}),
     "layout": ("workflow", ("actions", "layout"), {"save": "workflows/layout_save.py"}),
+    "comment": ("workflow", ("actions", "comment"), {}),  # commentaire Jira depuis la fiche d'un ticket (sans Jira : pas créé)
     "ask": ("quick_prompt", ("actions", "ask"), {}),
     "sketch": ("quick_prompt", ("actions", "sketch"), {}),
 }

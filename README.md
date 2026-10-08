@@ -46,7 +46,7 @@ python3 tools/install.py --dry-run   # voir ce qui serait créé
 python3 tools/install.py             # installation interactive, relançable sans doublon
 ```
 
-L'installateur demande ton équipe (une équipe neuve avec le plan type par défaut, ou un profil de `teams/`, réservé aux membres de son organisation GitHub), qui tu es (tu prends le bureau du boss, les autres gardent leur place), le plan du bureau, ton board Jira (il en lit les colonnes et te propose comment classer chaque statut), tes dépôts et workflows de déploiement, et les pages Kronn à montrer sur l'écran du boss, puis crée la page, ses datasets, 8 workflows et deux Quick Prompts dans **ton** Kronn, écrit `bureau.config.json` (jamais commité) et lance un premier rafraîchissement. Ouvre ensuite Kronn > Pages > « Le Bureau ». Aucun secret n'est stocké : les connexions sont référencées par leur id Kronn.
+L'installateur demande ton équipe (une équipe neuve avec le plan type par défaut, ou un profil de `teams/`, réservé aux membres de son organisation GitHub), qui tu es (tu prends le bureau du boss, les autres gardent leur place), le plan du bureau, ton board Jira (il en lit les colonnes et te propose comment classer chaque statut), tes dépôts et workflows de déploiement, et les pages Kronn à montrer sur l'écran du boss, puis crée la page, ses datasets, 9 workflows (8 sans Jira) et deux Quick Prompts dans **ton** Kronn, écrit `bureau.config.json` (jamais commité) et lance un premier rafraîchissement. Ouvre ensuite Kronn > Pages > « Le Bureau ». Aucun secret n'est stocké : les connexions sont référencées par leur id Kronn.
 
 | Action | Commande |
 | --- | --- |
