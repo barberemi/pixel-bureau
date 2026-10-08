@@ -50,6 +50,7 @@ function runRef(r){
 function outsiderState(c,t){
   const s=stateAt0(c,t);
   if(!s||s.st==='off'||s.st==='absent'||s.st==='gone')return s;
+  if(s.zone==='stage')return s; // sa mise en prod : il monte sur le plateau TV comme tout le monde (Yoda vient le féliciter)
   const open=((c.team&&c.team.tickets)||[]).filter(x=>x.cat!=='done'), doing=open.filter(x=>x.cat==='doing');
   if(!open.length)return {st:'off',human:true,label:'De passage, pas de ticket ouvert'};
   if(doing.length)return {st:'work',zone:'desk',human:true,label:'En cours : '+doing[0].key,bubble:doing[0].key,tk:doing};

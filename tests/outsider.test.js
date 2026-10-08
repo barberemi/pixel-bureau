@@ -40,3 +40,10 @@ test('à sa place tant qu\'il a un ticket ouvert (en cours : au travail) ; pas a
   assert.deepEqual([s.st, s.zone, s.bubble], ['work', 'desk', 'DM-9001']);
   assert.equal(J(`outsiderState(chars.find(x => x.person === 'Alexis Nouveau'), ${at('23:30')}).st`), 'off'); // le soir
 });
+
+test('sa mise en prod : il monte sur le plateau comme tout le monde (Yoda le félicite)', () => {
+  const r = J(`(() => { const c = chars.find(x => x.person === 'Alexis Nouveau'), sa = stageAt;
+    stageAt = () => ({phase: 'done', m: {who: c.team.id, tag: '1.2.3', ticket: 'DM-9001'}});
+    try { const s = outsiderState(c, ${at('11:00')}); return [s.st, s.zone, personChar(c.team.id, 'Alexis Nouveau') === c]; } finally { stageAt = sa; } })()`);
+  assert.deepEqual(r, ['party', 'stage', true]);
+});
