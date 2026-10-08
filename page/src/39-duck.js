@@ -40,7 +40,7 @@ function duckExtend(D,t){
         // findPath rend [[gx, gy]] quand la case est inaccessible : pas de saut, le canard reste où il est
         if(path.length&&last[0]===g[0]&&last[1]===g[1]&&Math.abs(first[0]-D.cur[0])+Math.abs(first[1]-D.cur[1])===1){
           const pts=[D.cur,...path], d0=D.dir;
-          for(let i=1;i<pts.length;i++)if(pts[i][0]!==pts[i-1][0])D.dir=pts[i][0]>pts[i-1][0]?'right':'left';
+          for(let i=1;i<pts.length;i++)D.dir=duckDir(pts[i-1],pts[i]);
           D.segs.push({a:D.s,b:D.s+path.length*DUCK_STEP,pts,dir:d0});
           D.s+=path.length*DUCK_STEP;D.cur=g;
         }
@@ -51,7 +51,9 @@ function duckExtend(D,t){
     }
   });
 }
-// {x, y (pixels, pieds), tile, dir ('left'|'right'), moving} à l'instant t
+// sens d'un pas d'une case à la suivante : vers le bas du plan = de face, vers le haut = de dos
+const duckDir=(a,b)=>b[0]>a[0]?'right':b[0]<a[0]?'left':b[1]>a[1]?'down':'up';
+// {x, y (pixels, pieds), tile, dir ('left'|'right'|'down'|'up'), moving} à l'instant t
 function duckAt(t){
   const D=duckDay(t); duckExtend(D,t);
   const S=D.segs; if(!S.length)return null;
@@ -62,11 +64,11 @@ function duckAt(t){
   const f=Math.min(g.pts.length-1,(t-g.a)/DUCK_STEP), i=Math.min(g.pts.length-2,Math.floor(f)), k=f-i;
   const p0=g.pts[i], p1=g.pts[i+1], c0=tileCenter(p0[0],p0[1]), c1=tileCenter(p1[0],p1[1]);
   let dir=g.dir;
-  for(let j=1;j<=i+1;j++)if(g.pts[j][0]!==g.pts[j-1][0])dir=g.pts[j][0]>g.pts[j-1][0]?'right':'left';
+  for(let j=1;j<=i+1;j++)dir=duckDir(g.pts[j-1],g.pts[j]);
   return {x:c0.x+(c1.x-c0.x)*k,y:c0.y+(c1.y-c0.y)*k,tile:k<.5?p0:p1,dir,moving:true};
 }
-// le canard dessiné à la main, tourné vers la droite (16 x 14 px) : corps, ombre du corps, bec, œil, reflets
-const DUCK_ART=[
+// le canard dessiné à la main (16 x 14 px) : de profil (tourné vers la droite, miroir pour la gauche), de face, de dos
+const DUCK_ARTS={side:[
   '.........YYYY...',
   '........YYYYYY..',
   '........YYWYKY..',
@@ -80,14 +82,44 @@ const DUCK_ART=[
   '.YYYYYYYYYYYYYY.',
   '.yYYYYYYYYYYYYy.',
   '..yyYYYYYYYYyy..',
-  '....yyyyyyyy....'];
+  '....yyyyyyyy....'],
+front:[
+  '.....YYYYYY.....',
+  '....YYYYYYYY....',
+  '....YKWYYKWY....',
+  '....YYOOOOYY....',
+  '.....YYOOYY.....',
+  '......YYYY......',
+  '...YYYYYYYYYY...',
+  '..YYYYYYYYYYYY..',
+  '.yYYWWYYYYYYYYy.',
+  '.yYYYYYYYYYYYYy.',
+  '.yYYYYYYYYYYYYy.',
+  '..yYYYYYYYYYYy..',
+  '...yyYYYYYYyy...',
+  '.....yyyyyy.....'],
+back:[
+  '.....YYYYYY.....',
+  '....YYYYYYYY....',
+  '....YWYYYYYY....',
+  '....YYYYYYYY....',
+  '.....yYYYYy.....',
+  '......yyyy......',
+  '...YYYYYYYYYY...',
+  '..YYYYYYYYYYYY..',
+  '.yYYYYYYYYYYYYy.',
+  '.yYYYYYYYYYYYYy.',
+  '.yYYYYYYYYYYYYy.',
+  '..yYYYYYYYYYYy..',
+  '...yyYYYYYYyy...',
+  '.....yyYYyy.....']};
 const DUCK_COL={Y:'#f5c518',y:'#d29b0c',O:'#f08a1c',K:'#1a1a1a',W:'#ffffff'};
-let DUCK_IMG=null;
-function duckImg(){
-  if(DUCK_IMG)return DUCK_IMG;
+const DUCK_IMG={};
+function duckImg(kind){
+  if(DUCK_IMG[kind])return DUCK_IMG[kind];
   const c=document.createElement('canvas');c.width=16;c.height=14;const x=c.getContext('2d');
-  DUCK_ART.forEach((row,j)=>[...row].forEach((ch,i)=>{if(DUCK_COL[ch]){x.fillStyle=DUCK_COL[ch];x.fillRect(i,j,1,1);}}));
-  return DUCK_IMG=c;
+  DUCK_ARTS[kind].forEach((row,j)=>[...row].forEach((ch,i)=>{if(DUCK_COL[ch]){x.fillStyle=DUCK_COL[ch];x.fillRect(i,j,1,1);}}));
+  return DUCK_IMG[kind]=c;
 }
 let DUCK_POS=null; // dernière position dessinée (zone de clic)
 function drawDuck(now){
@@ -96,7 +128,7 @@ function drawDuck(now){
   ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(x,y+1,7,2,0,0,7);ctx.fill();
   const w=p.moving?Math.sin(now/140):0; // dandinement : inclinaison et ±1 px
   ctx.save();ctx.translate(x,y+(p.moving&&w>0?-1:0));ctx.rotate(w*.14);if(p.dir==='left')ctx.scale(-1,1);
-  ctx.drawImage(duckImg(),-8,-14);
+  ctx.drawImage(duckImg(p.dir==='down'?'front':p.dir==='up'?'back':'side'),-8,-14);
   ctx.restore();
   if(sel==='duck'){ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.beginPath();ctx.ellipse(x,y+1,10,3.5,0,0,7);ctx.stroke();}
 }

@@ -78,3 +78,9 @@ test('dataset gates : projets et discussions du canard lus, tolérant', () => {
 test('les discussions « 🦆 » et « Le Bureau · … » ne sont pas des visiteurs', () => {
   assert.deepEqual(J("[{title: '🦆 Le menu'}, {title: 'Le Bureau · interroger un agent'}, {title: 'Pourquoi ça casse ?'}].map(bureauDisc)"), [true, true, false]);
 });
+
+test('vu de face en descendant, de dos en montant, de profil sur les côtés : les 4 sens dans la journée', () => {
+  const seen = J(`(() => { const s = new Set(); const d0 = Date.parse('2026-10-08T00:00:00+02:00');
+    for (let t = d0; t < d0 + 864e5; t += 7e3) { const p = duckAt(t); if (p && p.moving) s.add(p.dir); } return [...s].sort(); })()`);
+  assert.deepEqual(seen, ['down', 'left', 'right', 'up']);
+});
