@@ -229,6 +229,16 @@ print(json.dumps(d.get(key, [])))
         self.assertTrue(out["sources"]["jira"] and out["sources"]["github"])
         self.assertNotIn("truncated", out)
 
+    def test_team_shape_points_follow_the_field_order_and_keep_zero(self):
+        """Champ du board d'abord (Story Points) ; un 0 posé compte, l'estimation ne le remplace pas (cas EW-7852)."""
+        inp = self.team_input(n_issues=2)
+        inp["issues"][0]["fields"].update({"customfield_10016": 3, "customfield_10102": 0})
+        inp["issues"][1]["fields"].update({"customfield_10016": 1, "customfield_10102": None})
+        jira = dict(FIXTURE["jira"], points_fields=["customfield_10102", "customfield_10016"])
+        out = self.run_script("team_shape.py", inp, jira=jira)
+        pts = {t["key"]: t["points"] for t in [t for p in out["people"] for t in p["tickets"]] + out["unassigned"]}
+        self.assertEqual(pts, {"DM-100": 0, "DM-101": 1})  # 0 gardé ; sans Story Points, repli sur l'estimation
+
     def test_team_shape_new_tickets_with_their_author(self):
         """Tickets créés depuis le dernier daily (étape new_tickets) : numéro, titre, statut, auteur ; null = étape retirée."""
         inp = self.team_input()

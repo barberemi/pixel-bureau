@@ -12,7 +12,7 @@ today = datetime.now(TZ).strftime("%Y-%m-%d")
 J = CFG["jira"]
 CAT = J["statuses"]                       # statut Jira -> colonne du Bureau (todo, doing, review, test, deploy, done)
 KEY = re.compile(r"\b" + re.escape(J["project"]) + r"-\d+\b", re.I)
-POINTS = J["points_fields"]              # champ(s) de story points, le premier rempli gagne
+POINTS = J["points_fields"]              # champ(s) de story points, le premier non vide gagne (0 compte)
 SPRINT_FIELD = J["sprint_field"]
 DONE = J["done_status"]
 
@@ -43,7 +43,7 @@ for it in D.get("issues") or []:
     cat = CAT.get(st)
     if not cat:
         continue
-    pts = next((f.get(k) for k in POINTS if f.get(k)), None)
+    pts = next((f.get(k) for k in POINTS if f.get(k) is not None), None)
     t = {"key": it.get("key"), "summary": (f.get("summary") or "")[:110], "status": st, "cat": cat,
          "points": pts, "type": (f.get("issuetype") or {}).get("name"), "updated": f.get("updated"), "created": f.get("created"),
          "since": status_since(it)}
@@ -178,7 +178,7 @@ events.sort(key=lambda e: e["t"])
 
 # ---------- dernier sprint fermé : points déployés par personne (employé du sprint tant que le nouveau n'a rien livré) ----------
 def pts_of(f):
-    return next((f.get(k) for k in POINTS if f.get(k)), 0)
+    return next((f.get(k) for k in POINTS if f.get(k) is not None), 0) or 0
 
 
 last = None
