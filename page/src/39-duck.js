@@ -103,6 +103,13 @@ function drawDuck(now){
 // survol, clic : le rectangle du canard dessiné
 function duckHit(mx,my){const p=DUCK_POS;return !!p&&Math.abs(mx-p.x)<=10&&my>=p.y-22&&my<=p.y;}
 // ---------- sa fiche ----------
+// projet choisi pour parler au canard : retenu dans ce navigateur (confort ; « Sans projet » par défaut)
+let DUCK_PROJECT='none';
+function duckProject(id){
+  if(id!==undefined){DUCK_PROJECT=id;try{localStorage.setItem('bureau:duckProject',id);}catch(e){}return id;}
+  try{const v=localStorage.getItem('bureau:duckProject');if(v)DUCK_PROJECT=v;}catch(e){}
+  return DUCK_PROJECT;
+}
 function renderDuck(side){
   const h=document.createElement('h2');h.textContent='🦆 Le canard';side.appendChild(h);
   const intro=document.createElement('div');intro.className='note';intro.style.margin='0 0 12px';
@@ -115,9 +122,20 @@ function renderDuck(side){
     const note=t=>{const e=document.createElement('div');e.className='note';e.textContent=t;box.appendChild(e);};
     if(!ACTIONS.duck)note('Workflow « Le Bureau · parler au canard » non installé : python3 tools/publish.py workflows le crée.');
     else if(!DUCK_PROJECTS.length)note('Les projets arrivent au prochain passage du cron live (1 min au plus).');
-    else for(const p of DUCK_PROJECTS)
-      launchBlock(box,{action:'bureau-duck',bind:{id:p.id},name:p.name,sub:p.id==='none'?'Discussion libre, hors de tout projet':'Discussion dans ce projet',
-        label:'🦆 Parler au canard',title:'Parler au canard · '+p.name,done:'<b style="color:var(--ok)">✓ Discussion ouverte.</b> Elle apparaît ci-dessous d\'ici une minute.'});
+    else{ // un sélecteur de projet et un seul bouton, dont la liaison suit le projet choisi
+      let cur=DUCK_PROJECTS.find(p=>p.id===duckProject())||DUCK_PROJECTS[0];
+      const sel=document.createElement('select');sel.className='duck-project';sel.dataset.fid='duck-project';sel.setAttribute('aria-label','Projet de la discussion');
+      for(const p of DUCK_PROJECTS){const o=document.createElement('option');o.value=p.id;o.textContent=p.name;o.selected=p===cur;sel.appendChild(o);}
+      box.appendChild(sel);
+      launchBlock(box,{action:'bureau-duck',bind:{id:cur.id},name:cur.name,sub:cur.id==='none'?'Discussion libre, hors de tout projet':'Discussion dans ce projet',
+        label:'🦆 Parler au canard',title:'Parler au canard',done:'<b style="color:var(--ok)">✓ Discussion ouverte.</b> Elle apparaît ci-dessous d\'ici une minute.'});
+      sel.onchange=()=>{
+        cur=DUCK_PROJECTS.find(p=>p.id===sel.value)||cur;duckProject(cur.id);
+        const host=box.querySelector('.relaunch'), b=host&&host.querySelector('[data-kronn-action="bureau-duck"]');
+        if(b)b.setAttribute('data-kronn-bindings',JSON.stringify(bindsFor('bureau-duck',{id:cur.id})));
+        if(host){host.querySelector('.rl-n').textContent=cur.name;host.querySelector('.rl-s').textContent=cur.id==='none'?'Discussion libre, hors de tout projet':'Discussion dans ce projet';}
+      };
+    }
   }
   const list=DUCKS.slice().sort((a,b)=>String(b.updated||'').localeCompare(String(a.updated||'')));
   const db=foldSection(side,'duck-discs','Ses discussions',list.length,true);

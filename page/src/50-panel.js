@@ -40,6 +40,7 @@ let COLLAPSED={};try{COLLAPSED=JSON.parse(localStorage.getItem('bureau:collapsed
 function renderSide(force){
   if(EDIT&&!force)return; // l'éditeur d'avatar ne se redessine pas tout seul (saisie en cours)
   if(!force&&(KM_OPEN||document.querySelector('#side [data-kronn-action-slot]')))return; // carte Kronn ouverte (fenêtre centrée)
+  if(!force&&document.activeElement&&document.activeElement.tagName==='SELECT'&&document.activeElement.closest('#side'))return; // menu ouvert : ne pas le refermer
   const side=document.getElementById('side'); if(!DATA)return;
   // le panneau se redessine chaque seconde : on garde l'élément qui a le focus clavier (data-fid)
   const fid=side.contains(document.activeElement)&&document.activeElement.dataset?document.activeElement.dataset.fid:null;

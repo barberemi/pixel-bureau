@@ -456,3 +456,5 @@ body.tv #tourbtn{display:none!important}
 /* sélecteur de thème (dans « Comment lire le plan ») */
 .themesel{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted)}
 .themesel select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:2px 6px}
+
+.duck-project{width:100%;margin:0 0 8px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit}

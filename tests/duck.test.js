@@ -1,6 +1,6 @@
 // Le canard en plastique (39-duck.js) : position fonction pure du temps (même canard à chaque calcul, quel que soit
 // l'instant affiché), toujours sur une case marchable, qui bouge et visite plusieurs pièces dans la journée ; sa fiche
-// (un bouton par projet, lié à la ligne {id}, pas de bouton en mode TV) ; ses discussions jamais en visiteurs.
+// (un sélecteur de projet et un seul bouton, lié au projet choisi, pas de bouton en mode TV) ; ses discussions jamais en visiteurs.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -48,12 +48,12 @@ test('bouton « parler au canard » : liaison project_id = id de la ligne', () =
 });
 
 // boutons de la fiche : [action, liaison, nom]
-function duckButtons(tv) {
+function duckButtons(tv, chosen = 'none') {
   return J(`(() => {
     const calls = [], lb = launchBlock, fs = foldSection, tv0 = TV;
     launchBlock = (box, o) => calls.push([o.action, o.bind, o.name]);
     foldSection = () => ({appendChild() {}});
-    TV = ${tv};
+    TV = ${tv}; DUCK_PROJECT = ${JSON.stringify(chosen)};
     DUCK_PROJECTS = [{id: 'none', name: 'Sans projet'}, {id: 'p1', name: 'Front'}];
     DUCKS = [{id: 'd1', title: '🦆 Le menu casse', project: 'Front', updated: '2026-10-01T09:00:00Z', awaiting: true}];
     try { renderDuck({appendChild() {}}); } finally { launchBlock = lb; foldSection = fs; TV = tv0; }
@@ -61,8 +61,10 @@ function duckButtons(tv) {
   })()`);
 }
 
-test('fiche : un bouton par projet, « Sans projet » en premier ; aucun en mode TV', () => {
-  assert.deepEqual(duckButtons(false), [['bureau-duck', {id: 'none'}, 'Sans projet'], ['bureau-duck', {id: 'p1'}, 'Front']]);
+test('fiche : un seul bouton, lié au projet choisi (« Sans projet » par défaut ou inconnu) ; aucun en mode TV', () => {
+  assert.deepEqual(duckButtons(false), [['bureau-duck', {id: 'none'}, 'Sans projet']]);
+  assert.deepEqual(duckButtons(false, 'p1'), [['bureau-duck', {id: 'p1'}, 'Front']]);
+  assert.deepEqual(duckButtons(false, 'supprimé'), [['bureau-duck', {id: 'none'}, 'Sans projet']]);
   assert.deepEqual(duckButtons(true), []);
 });
 
