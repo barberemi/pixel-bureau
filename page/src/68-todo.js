@@ -61,6 +61,10 @@ function todoItems(t){
   for(const c of of('ask'))out.push({sev:'warn',ico:'❓',key:'ask:'+c.key,
     txt:`<b>${esc(c.name)}</b> attend ta réponse <small>${esc(clip(c.disc.title,60))}</small>`,
     age:c.disc.end?t-ms(c.disc.end):null,act:ext(`${kronnTab()}#discussion-${encodeURIComponent(c.disc.id)}`,'Répondre')});
+  // 4 bis. le canard attend ta réponse (ses discussions ne sont pas des visiteurs : elles n'arrivent pas par of('ask'))
+  for(const d of DUCKS.filter(d=>d.awaiting))out.push({sev:'warn',ico:'🦆',key:'duck:'+d.id,
+    txt:`<b>Le canard</b> attend ta réponse <small>${esc(clip(String(d.title||'').replace(/^🦆\s*/,''),60))}</small>`,
+    age:d.updated?t-ms(d.updated):null,act:ext(`${kronnTab()}#discussion-${encodeURIComponent(d.id)}`,'Répondre')});
   if(TEAM){
     const me=bossLogin(), b=chars.find(c=>c.boss), mine=(b&&b.team&&b.team.prs)||[];
     const all=teamPrs();

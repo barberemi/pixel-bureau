@@ -54,7 +54,7 @@ function duckExtend(D,t){
 // sens d'un pas d'une case à la suivante : vers le bas du plan = de face, vers le haut = de dos
 const duckDir=(a,b)=>b[0]>a[0]?'right':b[0]<a[0]?'left':b[1]>a[1]?'down':'up';
 // {x, y (pixels, pieds), tile, dir ('left'|'right'|'down'|'up'), moving} à l'instant t
-function duckAt(t){
+function duckWalk(t){
   const D=duckDay(t); duckExtend(D,t);
   const S=D.segs; if(!S.length)return null;
   let lo=0,hi=S.length-1;
@@ -121,6 +121,31 @@ function duckImg(kind){
   DUCK_ARTS[kind].forEach((row,j)=>[...row].forEach((ch,i)=>{if(DUCK_COL[ch]){x.fillStyle=DUCK_COL[ch];x.fillRect(i,j,1,1);}}));
   return DUCK_IMG[kind]=c;
 }
+// une discussion du canard attend ta réponse : en direct (pas en rejeu), il quitte sa promenade, marche jusqu'au bureau
+// du boss et y attend avec un « ? » ; réponse donnée (awaiting retombe), il reprend sa promenade là où elle en est
+let DUCK_CALL=null; // {since, pts:[[x,y]…]} : le chemin depuis là où il était quand l'attente a commencé
+// où il attend : devant le bureau du boss, côté open space (là où les agents attendent leurs gates), sinon la première
+// case libre et accessible autour de sa place ; jamais derrière le meuble, où il serait caché
+function duckBossTile(){
+  if(!BOSS_SEAT)return null;
+  const [sx,sy]=BOSS_SEAT, desk=(LAYOUT.boss&&LAYOUT.boss.desk)||[], cand=[];
+  const front=desk.map(([x,y])=>[x,y+1]).sort((a,b)=>Math.abs(a[0]-sx)-Math.abs(b[0]-sx));
+  cand.push(...front);
+  for(let r=1;r<=3;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++)if(Math.max(Math.abs(dx),Math.abs(dy))===r)cand.push([sx+dx,sy+dy]);
+  return cand.find(([x,y])=>walkable(x,y)&&!seatTiles.has(x+','+y))||null;
+}
+function duckAt(t){
+  const live=Math.abs(t-Date.now())<3*60e3, to=live&&DUCKS.some(d=>d.awaiting)?duckBossTile():null;
+  if(!to){DUCK_CALL=null;return duckWalk(t);}
+  if(!DUCK_CALL){
+    const p=duckWalk(t), from=p?p.tile:to;
+    DUCK_CALL={since:t,pts:[from,...(findPath(from[0],from[1],to[0],to[1])||[])]};
+  }
+  const P=DUCK_CALL.pts, f=Math.max(0,(t-DUCK_CALL.since)/DUCK_STEP);
+  if(f>=P.length-1||P.length<2){const e=P[P.length-1],c=tileCenter(e[0],e[1]);return {x:c.x,y:c.y,tile:e,dir:'down',moving:false,call:true};}
+  const i=Math.floor(f), k=f-i, c0=tileCenter(P[i][0],P[i][1]), c1=tileCenter(P[i+1][0],P[i+1][1]);
+  return {x:c0.x+(c1.x-c0.x)*k,y:c0.y+(c1.y-c0.y)*k,tile:k<.5?P[i]:P[i+1],dir:duckDir(P[i],P[i+1]),moving:true,call:true};
+}
 let DUCK_POS=null; // dernière position dessinée (zone de clic)
 function drawDuck(now){
   const p=DUCK_POS; if(!p)return;
@@ -130,6 +155,12 @@ function drawDuck(now){
   ctx.save();ctx.translate(x,y+(p.moving&&w>0?-1:0));ctx.rotate(w*.14);if(p.dir==='left')ctx.scale(-1,1);
   ctx.drawImage(duckImg(p.dir==='down'?'front':p.dir==='up'?'back':'side'),-8,-14);
   ctx.restore();
+  if(p.call&&!p.moving){ // il attend ta réponse : une bulle « ? » qui respire au-dessus de lui
+    const by=y-30+Math.round(Math.sin(now/400));
+    ctx.fillStyle='#ffffff';ctx.strokeStyle='#c47f00';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(x-7,by,14,13,4);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x-2,by+13);ctx.lineTo(x,by+17);ctx.lineTo(x+2,by+13);ctx.fill();
+    ctx.fillStyle='#c47f00';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText('?',x,by+10);ctx.textAlign='left';
+  }
   if(sel==='duck'){ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.beginPath();ctx.ellipse(x,y+1,10,3.5,0,0,7);ctx.stroke();}
 }
 // survol, clic : le rectangle du canard dessiné

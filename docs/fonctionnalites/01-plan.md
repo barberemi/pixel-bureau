@@ -98,6 +98,10 @@ Un canard de bain jaune se promène tout le temps dans tout le bureau : jour et 
 
 Un clic sur lui ouvre sa fiche (voir [Fiches](07-fiches.md)) : c'est la [méthode du canard en plastique](https://fr.wikipedia.org/wiki/M%C3%A9thode_du_canard_en_plastique), on lui explique son problème dans une discussion Kronn.
 
+Quand une de ses discussions attend ta réponse, en direct (pas en rejeu), il quitte sa promenade, marche jusqu'au bureau du boss et attend devant, de face, avec une bulle « ? ». « À traiter » affiche aussi « 🦆 Le canard attend ta réponse », avec un bouton Répondre qui ouvre la discussion dans un nouvel onglet. Une fois ta réponse donnée, il reprend sa promenade.
+
+![Le canard attend ta réponse devant le bureau du boss](../img/canard-attend.png)
+
 ![Le canard sur le plan, sa fiche ouverte](../img/canard.png)
 
 ## Changer de plan pour toute l'équipe

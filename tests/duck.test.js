@@ -84,3 +84,28 @@ test('vu de face en descendant, de dos en montant, de profil sur les côtés : l
     for (let t = d0; t < d0 + 864e5; t += 7e3) { const p = duckAt(t); if (p && p.moving) s.add(p.dir); } return [...s].sort(); })()`);
   assert.deepEqual(seen, ['down', 'left', 'right', 'up']);
 });
+
+test('il attend ta réponse : en direct, il marche jusqu\'au bureau du boss et y reste avec un « ? » ; en rejeu, il se promène', () => {
+  const r = J(`(() => {
+    const now = Date.now, t0 = now(), d0 = DUCKS;
+    DUCKS = [{id: 'd1', title: '🦆 Le menu casse', awaiting: true}]; DUCK_CALL = null;
+    try {
+      const to = duckBossTile();
+      const start = duckAt(t0), end = duckAt(t0 + 120e3); // 2 min plus tard : arrivé (marche lente)
+      const replay = duckAt(t0 - 864e5); // la veille : pas d'appel, la promenade
+      DUCKS = []; const free = duckAt(t0 + 121e3); // réponse donnée : promenade reprise
+      return {startCall: !!start.call, end: [end.tile[0], end.tile[1]], to: [to[0], to[1]], endCall: end.call, endMoving: end.moving,
+              replayCall: !!replay.call, freeCall: !!free.call};
+    } finally { DUCKS = d0; DUCK_CALL = null; }
+  })()`);
+  assert.deepEqual(r.end, r.to);
+  assert.deepEqual([r.startCall, r.endCall, r.endMoving, r.replayCall, r.freeCall], [true, true, false, false, false]);
+});
+
+test('À traiter : « Le canard attend ta réponse », bouton Répondre vers la discussion dans un nouvel onglet', () => {
+  const it = J(`(() => { const d0 = DUCKS; DUCKS = [{id: 'd1', title: '🦆 Le menu casse', awaiting: true}, {id: 'd2', title: '🦆 Rien', awaiting: false}];
+    try { return todoItems(Date.now()).filter(x => x.key.startsWith('duck:')); } finally { DUCKS = d0; } })()`);
+  assert.equal(it.length, 1);
+  assert.match(it[0].txt, /Le canard<\/b> attend ta réponse <small>Le menu casse/);
+  assert.match(it[0].act.href, /index\.html#discussion-d1$/);
+});
