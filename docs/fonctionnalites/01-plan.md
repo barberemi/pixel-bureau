@@ -131,3 +131,7 @@ Pas besoin d'écrire le JSON : Claude dessine un brouillon à partir d'un croqui
 | ![Croquis d'un étage](../img/croquis.png) | ![Brouillon tiré du croquis](../img/croquis-brouillon.png) |
 
 Le brouillon garde l'esprit des lieux, pas les cotes : une case vaut environ 50 cm, les postes deviennent des îlots (une table, un siège de chaque côté). Relis les suppositions, retouche le JSON si besoin (`plan.py check`), puis propose-le.
+
+## Collègues de passage
+
+Une personne qui a des tickets dans le sprint sans être dans le roster de l'équipe est « de passage » : elle n'est pas ajoutée à l'équipe. Son rôle affiché est « De passage » ; elle a la place libre la plus au fond du plan, jamais celle d'un collègue, d'un agent ou d'un intérimaire, et la garde d'un rafraîchissement à l'autre. Elle n'est au bureau que si elle a un ticket en cours (aux heures de bureau, comme tout le monde) et ne vient ni au daily ni aux cérémonies. Pour la faire entrer dans l'équipe : l'ajouter au roster.

@@ -2,6 +2,8 @@
 const ms=s=>s?Date.parse(s):null;
 const VIS_MIN=4*60e3;
 let DATA=null, LIVE_DATA=false, chars=[], byKey={};
+// collègues « de passage » (dans le sprint, absents du roster) : gardés d'une reconstruction à l'autre (position, place)
+const OUTSIDERS={};
 let TEAM=null;
 const nameKey=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 const TCAT={
@@ -50,15 +52,19 @@ function attachTeam(){
     let c=chars.find(x=>x.person&&!x.roleKind&&(nameKey(x.person)===nameKey(p.name)||!String(x.person).includes(' ')&&nameKey(x.person)===nameKey(String(p.name).split(' ')[0])));
     if(!c){
       const key='p_'+String(p.id).slice(-8);
-      c=byKey[key]||mkChar({
+      // de passage : pas un membre de l'équipe ; sa place se prend par la fin des places libres (l'îlot du fond),
+      // loin des intérimaires qui les prennent par le début, et il garde la sienne d'un rafraîchissement à l'autre
+      c=byKey[key]||OUTSIDERS[key]||mkChar({
         key,
         sprite:'temp',
         name:String(p.name).split(' ')[0],
-        role:'Équipe',
+        role:'De passage',
         person:p.name,
         wf:[],
-        seat:free.shift()||null
+        outsider:true,
+        seat:free.sort((a,b)=>a[0]-b[0]||a[1]-b[1]).pop()||null // la plus au fond (à droite) du plan
       });
+      OUTSIDERS[key]=c;
       if(!byKey[key]){chars.push(c);byKey[key]=c;}
     }
     c.team=p;
@@ -212,7 +218,8 @@ function setData(d,live){
   };
   CAST.forEach(add);
   GUESTS.forEach(add);
-  const free=FREE_SEATS.filter(s=>!CAST.some(c=>c.seat&&c.seat[0]===s[0]&&c.seat[1]===s[1])); let tempN=0; DISC_BY_RUN={};
+  const sameSeat=(a,s)=>a.seat&&a.seat[0]===s[0]&&a.seat[1]===s[1];
+  const free=FREE_SEATS.filter(s=>!CAST.some(c=>sameSeat(c,s))&&!Object.values(OUTSIDERS).some(o=>sameSeat(o,s))); // places des de passage : réservées let tempN=0; DISC_BY_RUN={};
   DAY0=parisMidnight(ms(d.generated_at));
   for(const r of d.runs){
     r._s=ms(r.start); r._e=ms(r.end);
