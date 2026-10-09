@@ -36,6 +36,12 @@
 /* et en largeur : cadre (3 px de chaque côté) + ombre (6 px à droite) = 12 px, d'où 28 px entre deux colonnes cadrées */
 :root[data-skin] body:not(.tv) .kpis{column-gap:28px}
 :root[data-skin] body:not(.tv) .main{column-gap:28px}
+/* téléphone (sous 620 px) : cartes de chiffres empilées (même écart qu'entre deux blocs cadrés), « Qui fait quoi » remonté
+   avant le plan (styles.css) sans sa marge du haut : 16 px visibles partout */
+@media (max-width:620px){
+  :root[data-skin] body:not(.tv) .kpis{row-gap:28px}
+  :root[data-skin] body:not(.tv) .main>div>.whoboard{margin:0 0 28px}
+}
 :root[data-skin] body:not(.tv) .card,:root[data-skin] body:not(.tv) section.dash{border:0;background:var(--panel);box-shadow:var(--frame),var(--drop)}
 :root[data-skin] body:not(.tv) .cv-wrap{box-shadow:var(--frame);margin:var(--px);background:var(--line)}
 
