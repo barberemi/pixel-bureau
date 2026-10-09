@@ -107,12 +107,20 @@ test('rôles : la QA recette l\'équipe, la PO écrit et trie, sans ticket assig
   const st = who => J(`stateAt(${who},${T9})`);
   const qa = st(`{key:'q',name:'Karen',person:'Karen Filippelli',roleKind:'qa',jira_id:'q1',seat:[19,14]}`);
   assert.equal(qa.st, 'work');
-  assert.match(qa.label, /^Teste 1 ticket\(s\) : DM-5 · 2 testés depuis le dernier daily, dont 1 réouvert$/);
+  assert.match(qa.label, /^Teste 1 ticket : DM-5 · 2 testés depuis le dernier daily, dont 1 réouvert$/);
+  // fiche et « Qui fait quoi » : titre court, détail en gris, compteurs et tickets à part
+  assert.equal(qa.head, 'Teste 1 ticket');
+  assert.equal(qa.sub, '2 testés depuis le dernier daily, dont 1 réouvert');
+  assert.deepEqual(qa.facts, [{n: '2', t: 'testés depuis le daily'}, {n: '1', t: 'réouvert depuis le daily'}]);
+  assert.deepEqual(qa.chips.map(x => x.key), ['DM-5']);
   const po = st(`{key:'p',name:'Jan',person:'Jan Levinson',roleKind:'po',jira_id:'p1',seat:[7,15]}`);
   assert.equal(po.label, '1 écrit · 2 triés cette semaine');
+  assert.equal(po.head, 'Écrit et trie le backlog');
+  assert.deepEqual(po.facts, [{n: '1', t: 'écrit cette semaine'}, {n: '2', t: 'triés cette semaine'}]);
   assert.equal(po.bubble, '✍ 1 · 🗂 2');
   const cy = st(`{key:'c',name:'Clark',person:'Clark Green',jira_id:'zz',seat:[7,14]}`);
   assert.equal(cy.label, "À son bureau · pas d'activité Jira cette semaine");
+  assert.deepEqual([cy.head, cy.sub], ['À son bureau', "pas d'activité Jira cette semaine"]);
 });
 
 test('stand-up : le sprint, puis le Tech Lead en premier et la facilitatrice en dernier', () => {

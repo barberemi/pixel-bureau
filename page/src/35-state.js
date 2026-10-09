@@ -54,7 +54,7 @@ function outsiderState(c,t){
   const open=((c.team&&c.team.tickets)||[]).filter(x=>x.cat!=='done'), doing=open.filter(x=>x.cat==='doing');
   if(!open.length)return {st:'off',human:true,label:'De passage, pas de ticket ouvert'};
   if(doing.length)return {st:'work',zone:'desk',human:true,label:'En cours : '+doing[0].key,bubble:doing[0].key,tk:doing};
-  return {st:'idle',zone:'desk',human:true,label:'De passage · '+open.length+' ticket(s) '+(CAT_TXT[open[0].cat]||open[0].status||''),bubble:open[0].key,tk:open};
+  return {st:'idle',zone:'desk',human:true,label:'De passage · '+nTk(open.length)+' '+(CAT_TXT[open[0].cat]||open[0].status||''),bubble:open[0].key,tk:open};
 }
 function besideSeat(seat){
   const d=seatDir(seat[0],seat[1]);
@@ -189,6 +189,19 @@ function workOf(c){
   return w&&(w.written.length||w.triaged.length||w.tested.length||w.reopened.length)?w:null;
 }
 const cnt50=n=>n>=50?'50+':String(n); // requêtes plafonnées à 50 résultats
+const nTk=n=>n+' ticket'+(n>1?'s':'');
+// « le plus ancien depuis 3 j » : le ticket de la liste arrivé le premier dans sa colonne ('' s'il date d'aujourd'hui)
+function oldestAge(list,t){
+  const o=list.reduce((a,x)=>!a||(tkSince(x)||Infinity)<(tkSince(a)||Infinity)?x:a,null), age=o?tkAge(o,t):'';
+  return age?'le plus ancien depuis '+age:'';
+}
+// compteurs de la fiche (sous la ligne d'état) : [{n:'2', t:'écrits cette semaine'}, …]
+function workFacts(w){
+  if(!w)return [];
+  const f=(l,one,many)=>l.length?[{n:cnt50(l.length),t:l.length>1?many:one}]:[];
+  return [...f(w.written,'écrit cette semaine','écrits cette semaine'),...f(w.triaged,'trié cette semaine','triés cette semaine'),
+    ...f(w.tested,'testé depuis le daily','testés depuis le daily'),...f(w.reopened,'réouvert depuis le daily','réouverts depuis le daily')];
+}
 // « 3 écrits · 15 triés cette semaine » ; testeur : « 5 testés depuis le dernier daily, dont 1 réouvert »
 function workTxt(w){
   if(!w)return '';
@@ -259,6 +272,9 @@ function stateAt0(c,t){
         zone:atBoard?'kanban':'desk',
         human:true,
         label:(atBoard?'Au mur Kanban : ':'')+'Facilite le sprint '+((TEAM&&TEAM.sprint&&TEAM.sprint.name)||'')+(j!=null?' : J-'+j:'')+(wk?' · '+wk:''),
+        head:'Facilite le sprint '+((TEAM&&TEAM.sprint&&TEAM.sprint.name)||''),
+        sub:[j!=null?'J-'+j:'',atBoard?'au mur Kanban':'',wk].filter(Boolean).join(' · '),
+        facts:workFacts(W),
         bubble:j!=null?'J-'+j:'sprint'
       };
     }
@@ -268,11 +284,15 @@ function stateAt0(c,t){
         st:'work',
         zone:'desk',
         human:true,
-        label:'Teste '+tt.length+' ticket(s) : '+tt.map(x=>x.key).join(', ')+(wk?' · '+wk:''),
+        label:'Teste '+nTk(tt.length)+' : '+tt.map(x=>x.key).join(', ')+(wk?' · '+wk:''),
+        head:'Teste '+nTk(tt.length),
+        sub:[oldestAge(tt,t),wk].filter(Boolean).join(' · '),
+        facts:workFacts(W),
+        chips:tt,
         bubble:tt[0].key,
         tk:tt
       };
-      if(wk)return {st:'idle',zone:'desk',human:true,label:'Rien à tester pour le moment · '+wk,bubble:'🔍 '+cnt50(W.tested.length+W.reopened.length)};
+      if(wk)return {st:'idle',zone:'desk',human:true,label:'Rien à tester pour le moment · '+wk,head:'Rien à tester pour le moment',sub:wk,facts:workFacts(W),bubble:'🔍 '+cnt50(W.tested.length+W.reopened.length)};
       return {st:'idle',zone:'wander',human:true,label:'Rien à tester pour le moment'};
     }
     if(c.roleKind==='po'){ // la PO écrit et trie le backlog : ses tickets assignés sont rares
@@ -280,19 +300,23 @@ function stateAt0(c,t){
         st:'work',
         zone:'desk',
         human:true,
-        label:[open.length?open.length+' ticket(s) à faire ou à assigner':'',wk].filter(Boolean).join(' · '),
+        label:[open.length?nTk(open.length)+' à faire ou à assigner':'',wk].filter(Boolean).join(' · '),
+        head:open.length?nTk(open.length)+' à faire ou à assigner':'Écrit et trie le backlog',
+        sub:wk,
+        facts:workFacts(W),
         bubble:wk?'✍ '+cnt50(W.written.length)+' · 🗂 '+cnt50(W.triaged.length):open.length+' à faire'
       };
       return {st:'idle',zone:'wander',human:true,label:'Backlog du sprint vide'};
     }
     if(!c.team){ // ni ticket assigné ni rôle suivi : on le dit, sans le faire passer pour inactif
-      if(wk)return {st:'work',zone:'desk',human:true,label:wk,bubble:'✍ '+cnt50(W.written.length)};
-      return {st:'idle',zone:'desk',human:true,label:TEAM?"À son bureau · pas d'activité Jira cette semaine":'À son bureau · pas encore de données Jira'};
+      if(wk)return {st:'work',zone:'desk',human:true,label:wk,head:'À son bureau',sub:wk,facts:workFacts(W),bubble:'✍ '+cnt50(W.written.length)};
+      return {st:'idle',zone:'desk',human:true,label:TEAM?"À son bureau · pas d'activité Jira cette semaine":'À son bureau · pas encore de données Jira',
+        head:'À son bureau',sub:TEAM?"pas d'activité Jira cette semaine":'pas encore de données Jira'};
     }
     const doing=open.filter(x=>x.cat==='doing');
     const rv=open.filter(x=>x.cat==='review'||x.cat==='test');
-    if(doing.length)return {st:'work',zone:'desk',human:true,label:'En cours : '+doing.map(x=>x.key).join(', '),bubble:doing[0].key,tk:[...doing,...rv]};
-    return rv.length?{st:'idle',zone:'wander',human:true,label:rv.length+' ticket(s) en review ou en test',bubble:rv[0].key,tk:rv}:{st:'idle',zone:'wander',human:true,label:'Disponible'};
+    if(doing.length)return {st:'work',zone:'desk',human:true,label:'En cours : '+doing.map(x=>x.key).join(', '),pill:doing.length>1?'En cours sur '+nTk(doing.length):'En cours : '+doing[0].key,bubble:doing[0].key,tk:[...doing,...rv]};
+    return rv.length?{st:'idle',zone:'wander',human:true,label:nTk(rv.length)+' en review ou en test',bubble:rv[0].key,tk:rv}:{st:'idle',zone:'wander',human:true,label:'Disponible'};
   }
   if(c.boss)return bossState(c,t);
   if(c.visitor){

@@ -51,6 +51,20 @@ function renderSide(force){
   if(!folded)drawSide(side);
   refocus(side,fid);
 }
+// ligne d'état d'une fiche : une pastille d'une ligne (pill, sinon head, sinon label ; le libellé complet au survol), puis
+// les compteurs de la semaine (facts) et les tickets concernés (chips : clé, clic = fiche du ticket)
+function statusHtml(st){
+  const txt=st.pill||st.head||st.label||'';
+  let h=`<div class="status" title="${esc(st.label||'')}"><span class="dot" style="background:${ST_CSS[st.st]||'var(--idle)'}"></span><span class="stt">${esc(txt)}</span></div>`;
+  if(st.facts&&st.facts.length)h+=`<div class="st-facts">${st.facts.map(f=>`<span><b>${esc(f.n)}</b> ${esc(f.t)}</span>`).join('')}</div>`;
+  if(st.chips&&st.chips.length)h+=`<div class="st-chips">${st.chips.map(x=>`<a href="#" data-tk="${esc(x.key)}" title="${esc(tkComp(x.summary).title)}">${esc(x.key)}</a>`).join('')}</div>`;
+  return h;
+}
+// le panneau ne se redessine pas quand un groupe dépliable y est ouvert (90-boot.js) : la ligne d'état, elle, suit l'heure
+function refreshStatus(){
+  const box=document.querySelector('#side .stbox'), c=box&&byKey[box.dataset.key]; if(!c)return;
+  const h=statusHtml(c._st||stateAt(c,T)); if(box.dataset.sig!==h)box.innerHTML=box.dataset.sig=h;
+}
 function drawSide(side){
   if(String(sel).startsWith('ticket:')){ // fiche d'un ticket (62-ticket.js) : retour à la vue d'où l'on vient
     const back=document.createElement('button');
@@ -167,8 +181,8 @@ function drawSide(side){
     }
     }
   const s=document.createElement('div');
-  s.className='status';
-  s.innerHTML=`<span class="dot" style="background:${ST_CSS[st.st]||'var(--idle)'}"></span>${esc(st.label)}`;
+  s.className='stbox';s.dataset.key=c.key;
+  s.innerHTML=s.dataset.sig=statusHtml(st);
   side.appendChild(s);
   if(st.step&&st.step.err){
     const e=document.createElement('div');

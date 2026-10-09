@@ -5,6 +5,8 @@ const CAT_COLOR={doing:'#2e9e5b',review:'#4a7fe0',test:'#7a5cc8',todo:'#8a8478'}
 const BUBBLE_ROT=4000; // une bulle à plusieurs tickets passe au suivant toutes les 4 s
 const clip=(s,n)=>{s=clean(s).trim();return s.length>n?s.slice(0,n-1).trimEnd()+'…':s;};
 const tkHead=(x,short)=>(TYPE_ICO[x.type]||'🎫')+' '+(short?String(x.key).replace(/^[A-Z][A-Z0-9]*-/,''):x.key); // compact : sans le préfixe projet
+// « [Panier] Alléger le bundle » -> {comp:'Panier', title:'Alléger le bundle'} ; sans composant (ou titre réduit à lui) : comp null
+function tkComp(s){const m=/^\s*\[([^\]]{1,40})\]\s*(.+)$/.exec(s||'');return m?{comp:m[1],title:m[2]}:{comp:null,title:s||''};}
 function tkAge(x,t){const u=tkSince(x);if(!u)return '';const d=Math.floor((t-u)/864e5);return d>=1?d+' j':'';}
 function tkLines(x,t){
   const age=tkAge(x,t);

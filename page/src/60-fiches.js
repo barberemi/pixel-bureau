@@ -207,7 +207,7 @@ function workBlock(side,c){
 const tkPts=v=>v==null||v===''?'':`<span class="k pts">${esc(+v)} pt${+v>1?'s':''}</span>`;
 function tkRow(x){const li=document.createElement('li');li.className='tkr';li.innerHTML=tkRowHtml(x);return li;}
 function tkRowHtml(x){
-  const m=/^\s*\[([^\]]{1,40})\]\s*(.*)$/.exec(x.summary||''), comp=m&&m[2]?m[1]:null, u=tkSince(x);
+  const {comp,title}=tkComp(x.summary), u=tkSince(x);
   const meta=[];
   if(x.cat!=='done'&&x.cat!=='todo'&&u&&u<=T){
     const age=tkAge(x,T), stuck=(x.cat==='review'||x.cat==='test')&&T-u>BLOCKED_DAYS*864e5;
@@ -220,7 +220,7 @@ function tkRowHtml(x){
   }
   return `<div class="tk-top">${x.type==='Bug'?'<span title="Bug">'+TYPE_ICO.Bug+'</span>':''}<a class="tk-key" href="${JIRA_BROWSE}${encodeURIComponent(x.key)}" target="_blank" rel="noopener" title="Ouvrir dans Jira">${esc(x.key)}</a>`+
     `${comp?`<span class="tk-comp">${esc(comp)}</span>`:''}${tkPts(x.points)}</div>`+
-    `<div class="tk-t">${tkOpen(comp?{...x,summary:m[2]}:x)}</div>${meta.length?`<div class="tk-meta">${meta.join('')}</div>`:''}`;
+    `<div class="tk-t">${tkOpen({...x,summary:title})}</div>${meta.length?`<div class="tk-meta">${meta.join('')}</div>`:''}`;
 }
 // ordre dans un groupe de « Ses tickets » : le plus ancien dans sa colonne d'abord ; déployés : le plus récent d'abord
 function tkSorted(list,k){
@@ -252,7 +252,7 @@ const daysAgoTxt=d=>d<1?"aujourd'hui":d<2?'hier':d<60?'il y a '+Math.floor(d)+' 
 // dernière activité (orange avec ⏳ si elle attend une review depuis plus de PR_STALE_H heures, comme dans À traiter)
 function prRowHtml(x){
   let t=String(x.title||'').replace(/^\s*\w+(\([^)]*\))?!?:\s*/,'');
-  const m=/^\[([^\]]{1,40})\]\s*(.+)$/.exec(t), comp=m?m[1]:null; if(m)t=m[2];
+  const {comp,title}=tkComp(t); t=title;
   const keys=(x.keys||[]).map(k=>`<a class="tk-key tk-cite" href="${JIRA_BROWSE}${encodeURIComponent(k)}" target="_blank" rel="noopener" title="Ouvrir dans Jira">${esc(k)}</a>`).join('');
   const meta=[], u=ms(x.updated), s=prSince(x);
   const stale=!x.draft&&prGroup(x)==='pending'&&s&&T-s>PR_STALE_H*36e5;
