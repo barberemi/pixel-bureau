@@ -75,7 +75,7 @@ test('« Ses autres PR » : groupe par état de review, titre sans préfixe, tic
   assert.equal(g({review: 'bizarre'}), 'pending');
   const pr = x => run(`(() => { T = ${T11}; return prRowHtml(${JSON.stringify(x)}); })()`);
   const h = pr({n: 1432, url: 'https://x/1432', title: 'feat(DM-6305): [Devis] Corriger le tri', review: 'changes', keys: ['DM-6305'], updated: '2026-08-07T10:00:00Z'});
-  assert.match(h, /href="https:\/\/x\/1432"[^>]*>#1432<\/a><a class="tk-key"[^>]*DM-6305[^>]*>DM-6305<\/a><span class="tk-comp">Devis<\/span>/);
+  assert.match(h, /href="https:\/\/x\/1432"[^>]*>#1432<\/a><a class="tk-key tk-cite"[^>]*DM-6305[^>]*>DM-6305<\/a><span class="tk-comp">Devis<\/span>/);
   assert.match(h, /<div class="tk-t">Corriger le tri<\/div>/);
   assert.match(h, /activité il y a 2 mois/);
   assert.match(pr({n: 7, title: 'chore: mettre à jour', review: 'approved', updated: '2026-10-06T10:00:00+02:00'}), /tk-t">mettre à jour<\/div>.*activité hier/);

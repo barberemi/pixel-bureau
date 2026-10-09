@@ -248,12 +248,12 @@ function loosePrs(p){
 const PR_GROUPS=[['changes','Changements demandés','var(--err)'],['pending','En attente de review','var(--warn)'],['approved','Approuvées','var(--ok)'],['draft','Brouillons','var(--idle)']];
 const prGroup=x=>x.draft?'draft':PR_GROUPS.some(([k])=>k===x.review)?x.review:'pending';
 const daysAgoTxt=d=>d<1?"aujourd'hui":d<2?'hier':d<60?'il y a '+Math.floor(d)+' j':'il y a '+Math.floor(d/30.4)+' mois';
-// une ligne : n° (lien GitHub), ticket cité (lien Jira), composant ; titre sans « feat(DM-1): » ni « [Composant] » ;
+// une ligne : n° (lien GitHub), ticket cité (lien Jira, en gris : la PR est l'objet de la ligne), composant ; titre sans « feat(DM-1): » ni « [Composant] » ;
 // dernière activité (orange avec ⏳ si elle attend une review depuis plus de PR_STALE_H heures, comme dans À traiter)
 function prRowHtml(x){
   let t=String(x.title||'').replace(/^\s*\w+(\([^)]*\))?!?:\s*/,'');
   const m=/^\[([^\]]{1,40})\]\s*(.+)$/.exec(t), comp=m?m[1]:null; if(m)t=m[2];
-  const keys=(x.keys||[]).map(k=>`<a class="tk-key" href="${JIRA_BROWSE}${encodeURIComponent(k)}" target="_blank" rel="noopener" title="Ouvrir dans Jira">${esc(k)}</a>`).join('');
+  const keys=(x.keys||[]).map(k=>`<a class="tk-key tk-cite" href="${JIRA_BROWSE}${encodeURIComponent(k)}" target="_blank" rel="noopener" title="Ouvrir dans Jira">${esc(k)}</a>`).join('');
   const meta=[], u=ms(x.updated), s=prSince(x);
   const stale=!x.draft&&prGroup(x)==='pending'&&s&&T-s>PR_STALE_H*36e5;
   if(stale)meta.push(`<span class="warn" title="Sans review depuis plus de ${PR_STALE_H} h">⏳ attend une review depuis ${daysAgoTxt((T-s)/864e5).replace(/^il y a /,'')}</span>`);
