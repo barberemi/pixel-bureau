@@ -17,6 +17,7 @@ function applyViewParams(src){
   const p=viewParams(src); if(VIEW_PARAMS_DONE||!p)return; VIEW_PARAMS_DONE=true;
   if(p.tv==='1'&&!TV)setTv(true,false); else if(p.tv==='0'&&TV)setTv(false,false);
   if(p.scene==='standup'&&TV){TVSCENE.manual=true;TVSCENE.idx=0;TVSCENE.since=0;updateTv(true);}
+  if(p.loupe==='0')setLoupe(false,false); // écran mural sans loupe
   if(p.skin&&UI_SKINS[p.skin])applySkin(p.skin); // écran mural : thème choisi par l'adresse (pas de bouton 🎨 en mode TV), non mémorisé
 }
 let TVWHO_SIG='';

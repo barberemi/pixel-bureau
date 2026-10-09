@@ -140,3 +140,16 @@ Le brouillon garde l'esprit des lieux, pas les cotes : une case vaut environ 50 
 ## Collègues de passage
 
 Une personne qui a des tickets dans le sprint sans être dans le roster de l'équipe est « de passage » : elle n'est pas ajoutée à l'équipe. Son rôle affiché est « De passage » ; elle a la place libre la plus au fond du plan, jamais celle d'un collègue, d'un agent ou d'un intérimaire, et la garde d'un rafraîchissement à l'autre. Elle reste à sa place tant qu'elle a un ticket ouvert dans le sprint, au travail s'il est en cours (aux heures de bureau, comme tout le monde ; sans ticket ouvert, elle n'est pas là) et ne vient ni au daily ni aux cérémonies. Pour la faire entrer dans l'équipe : l'ajouter au roster.
+
+## Loupe sur les événements forts
+
+Quand un événement fort commence, un médaillon agrandit la scène dans un coin du plan, qui reste entier : un cadre de couleur entoure l'endroit, la légende dit qui et quoi (clic : sa fiche), une barre montre le temps restant.
+
+![La loupe sur une réouverture : Gandalf convoque Pam](../img/loupe.png)
+
+- **Les événements** : un ticket réouvert (le héraut convoque l'assigné), une mise en prod réussie (le sage félicite l'auteur), un invité qui arrive, la fête d'une MEP, le pouce du testeur qui valide, le lancement du sprint.
+- **Une loupe à la fois**, ouverte une fois les personnages arrivés (40 s au plus d'attente), pendant 20 s ; deux événements au même endroit (la fête et le sage) n'en font qu'une.
+- **En rejeu accéléré**, la lecture se met en pause le temps de la loupe, puis reprend. Rien quand on fait glisser l'heure, ni quand la souris est sur le plan.
+- **Fermer** : clic sur le plan ou Échap. **Couper** : bouton « 🔍 Loupe » sous le plan (retenu dans le navigateur) ; sur l'écran mural, `?loupe=0` dans l'adresse.
+- Aussi en mode TV, où personne ne clique : elle se referme seule.
+

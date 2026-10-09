@@ -57,6 +57,9 @@ SHOTS = {
                         "{written:[],triaged:[],tested:TEAM.people.flatMap(p=>p.tickets).filter(x=>x.cat==='done').slice(0,7).map(x=>({...x,cat:'test',status:'To Test'})),"
                         "reopened:[{key:'DM-7089',summary:'[Panier] Alléger le bundle',cat:'doing',status:'Reopen'}]}});"
                         "setTv(true);TVSCENE.manual='daily';TVSCENE.idx=standupScenes().findIndex(s=>s.c&&s.c.roleKind==='qa');updateTv(true);", None),
+    # loupe (44-loupe.js) sur la réouverture de 10h50 : cadre sur la salle de réunion, médaillon agrandi et sa légende
+    "loupe": (1400, 1000, AT(10 + 51 / 60) + "setTimeout(()=>{LOUPE.seen=new Set();const ev=loupeScan().find(e=>e.kind==='reopen');LOUPE.resume=true;LOUPE.hoverUntil=0;loupeShow(ev,performance.now());},1200);", ".stage"),
+    "loupe-tv": (1600, 900, AT(10 + 51 / 60) + "setTv(true);setTimeout(()=>{LOUPE.seen=new Set();const ev=loupeScan().find(e=>e.kind==='reopen');LOUPE.resume=true;LOUPE.hoverUntil=0;loupeShow(ev,performance.now());},1200);", None),
     # tour de table : la facilitatrice présente les tickets créés par l'équipe depuis le dernier daily
     "standup-facilitatrice": (1600, 900, AT(9.7) + "setTv(true);TVSCENE.manual='daily';"
                               "TVSCENE.idx=standupScenes().findIndex(s=>s.c&&s.c.roleKind==='sm');updateTv(true);", None),
