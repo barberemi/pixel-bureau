@@ -141,3 +141,7 @@
   background:#b3122e;color:#ffffff;font:400 16px 'BureauPixel',ui-monospace,monospace;box-shadow:6px 0 0 0 #ffffff}
 :root[data-skin] body.tv #tvticker .run .tm{color:#b3122e;font:400 16px 'BureauPixel',ui-monospace,monospace}
 :root[data-skin] body.tv #tvticker .calm{color:#566880;padding-left:200px}
+/* loupe : fenêtre flottante cadrée, ombre décalée, liseré de l'événement gardé */
+:root[data-skin] #loupefly{border-radius:0;margin:var(--px);box-shadow:var(--frame),6px 6px 0 0 rgba(0,0,0,.35)}
+:root[data-skin] #loupefly .lx{box-shadow:none;margin:0}
+:root[data-skin] body.tv #loupefly{box-shadow:var(--tv-frame),6px 6px 0 0 rgba(0,0,0,.45)}

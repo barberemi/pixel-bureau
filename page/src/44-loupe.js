@@ -1,11 +1,15 @@
 // ---------- loupe : un médaillon agrandi sur le plan quand un événement fort commence ----------
 // Réouverture (le héraut convoque l'assigné), mise en prod réussie (le sage félicite), invité qui arrive, fête de MEP,
-// pouce du testeur, lancement du sprint. Le plan reste entier : un cadre entoure la scène et un médaillon l'agrandit dans le
-// coin opposé, avec sa légende (clic : la fiche). Un événement à la fois, une fois les personnages arrivés, LOUPE_MS ;
+// pouce du testeur, daily, sprint planning, rétro, lancement et pizza du sprint. Le plan reste entier : un cadre entoure la
+// scène ; une fenêtre flottante l'agrandit, en bas à gauche de l'écran (à droite si elle couvrirait la scène), avec un liseré
+// de la couleur de l'événement et sa légende (clic : la fiche, ✕ : fermer). Un événement à la fois, une fois les personnages arrivés, LOUPE_MS ;
 // en rejeu accéléré la lecture se met en pause le temps de la loupe ; rien quand on fait glisser l'heure ou qu'on survole le
 // plan. Bouton « 🔍 Loupe » de la barre (retenu dans le navigateur), ?loupe=0 dans l'adresse de l'écran mural.
 const LOUPE_MS=20e3, LOUPE_WAIT_MAX=40e3, LOUPE_HOVER_MS=5e3;
-const LOUPE_KINDS={reopen:['⛔','#b3122e'],proud:['🎉','#0172f0'],party:['🎉','#0172f0'],thumbs:['👍','#2e9e5b'],kickoff:['🏁','#2e9e9b'],guest:['👋','#2e9e5b']};
+const LOUPE_KINDS={reopen:['⛔','#b3122e'],proud:['🎉','#0172f0'],party:['🎉','#0172f0'],thumbs:['👍','#2e9e5b'],guest:['👋','#2e9e5b'],
+  daily:['☀️','#2e9e9b'],planning:['🗓','#2e9e9b'],retro:['🔄','#c25a9e'],kickoff:['🏁','#2e9e9b'],pizza:['🍕','#2e9e9b']};
+// cérémonies : toute l'équipe est dans la scène, la légende la nomme au lieu d'énumérer tout le monde
+const LOUPE_CEREMONY={daily:"Daily de l'équipe",planning:'Sprint planning',retro:'Rétrospective',kickoff:'Lancement du sprint',pizza:'Pizza de fin de sprint'};
 let LOUPE_ON=true;try{LOUPE_ON=localStorage.getItem('bureau:loupe')!=='0';}catch(e){}
 const LOUPE={seen:null,queue:[],cur:null,resume:false,hoverUntil:0,lastScan:0};
 // le type d'événement que vit ce personnage (null : rien à montrer) ; un invité qui n'est pas en scène de héraut = une visite
@@ -35,6 +39,11 @@ function loupeBox(cs){
 }
 // légende : qui (l'invité ou le héraut d'abord), avec qui, et ce qui se passe (le libellé de son état)
 function loupeCaption(ev){
+  if(LOUPE_CEREMONY[ev.kind]){ // l'animateur (rétro, planning) d'abord s'il y en a un
+    const host=ev.cs.find(c=>/^Anime/.test((c._st&&c._st.label)||''))||ev.cs.find(c=>c.roleKind==='sm')||ev.cs[0];
+    return {lead:host,ico:LOUPE_KINDS[ev.kind][0],color:LOUPE_KINDS[ev.kind][1],
+      title:LOUPE_CEREMONY[ev.kind]+' · '+ev.cs.length+(ev.cs.length>1?' personnes':' personne'),sub:(host._st&&host._st.label)||''};
+  }
   const lead=ev.cs.find(c=>c.guest)||(ev.kind==='thumbs'&&ev.cs.find(c=>c.roleKind==='qa'))||ev.cs[0];
   const others=ev.cs.filter(c=>c!==lead).map(c=>c.name);
   return {lead,ico:LOUPE_KINDS[ev.kind][0],color:LOUPE_KINDS[ev.kind][1],
@@ -48,8 +57,8 @@ function loupeShow(ev,now){
 }
 function loupeHide(){
   LOUPE.cur=null;
-  const o=document.getElementById('loupecv'), cap=document.getElementById('loupecap');
-  if(o)o.hidden=true; if(cap)cap.hidden=true;
+  const o=document.getElementById('loupecv'), f=document.getElementById('loupefly');
+  if(o)o.hidden=true; if(f)f.hidden=true;
   if(LOUPE.resume){LOUPE.resume=false;if(mode==='pause')setMode('play');}
 }
 // à chaque image : repérer les nouveaux événements, en montrer un quand ses personnages sont arrivés, dessiner le médaillon
@@ -73,29 +82,40 @@ function loupeFrame(now){
   if(LOUPE.cur)drawLoupe(now);
 }
 function drawLoupe(now){
-  const wrap=cv.parentElement;
-  let o=document.getElementById('loupecv'), cap=document.getElementById('loupecap');
-  if(!o){o=document.createElement('canvas');o.id='loupecv';wrap.appendChild(o);}
-  if(!cap){cap=document.createElement('div');cap.id='loupecap';cap.title='Ouvrir sa fiche';wrap.appendChild(cap);
-    cap.onclick=()=>{const c=LOUPE.cur&&LOUPE.cur.cap.lead;loupeHide();if(c)select(c.key);};}
+  const {box,cap:k}=LOUPE.cur;
+  // le cadre sur le plan : un calque posé exactement sur la toile (centrée en mode TV)
+  let o=document.getElementById('loupecv');
+  if(!o){o=document.createElement('canvas');o.id='loupecv';cv.parentElement.appendChild(o);}
   if(o.width!==cv.width||o.height!==cv.height){o.width=cv.width;o.height=cv.height;}
-  // calque posé exactement sur la toile (centrée en mode TV)
   Object.assign(o.style,{left:cv.offsetLeft+'px',top:cv.offsetTop+'px',width:cv.offsetWidth+'px',height:cv.offsetHeight+'px'});
   o.hidden=false;
-  const g=o.getContext('2d'), {box,cap:k}=LOUPE.cur, W=o.width, H=o.height, m=12, capH=54;
-  const iw=Math.round(W*0.4), ih=Math.round(iw*box.h/box.w);
-  const ix=box.x+box.w/2<W/2?W-iw-m:m, iy=box.y+box.h/2<H/2?H-ih-capH-m:m;
-  g.clearRect(0,0,W,H);
-  g.imageSmoothingEnabled=false;
+  const g=o.getContext('2d');g.clearRect(0,0,o.width,o.height);
   g.lineWidth=4;g.strokeStyle=k.color;g.strokeRect(box.x+2,box.y+2,box.w-4,box.h-4);
-  g.fillStyle='#0b2350';g.fillRect(ix-4,iy-4,iw+8,ih+capH+8);
-  g.drawImage(cv,box.x,box.y,box.w,box.h,ix,iy,iw,ih);
-  const s=cv.offsetWidth/W, left=(ix-4)*s, width=(iw+8)*s;
-  Object.assign(cap.style,{left:cv.offsetLeft+left+'px',top:cv.offsetTop+(iy+ih)*s+'px',width:width+'px','--lc':k.color});
-  const html=`<b>${k.ico} ${esc(k.title)}</b><small>${esc(k.sub)}</small><i style="width:${Math.max(0,Math.min(100,(LOUPE.cur.until-now)/LOUPE_MS*100))}%"></i>`;
-  if(cap.dataset.sig!==html){cap.dataset.sig=html;cap.innerHTML=html;}
-  cap.hidden=false;
+  // la fenêtre flottante : la scène agrandie (×2 de la toile), liseré de l'événement, légende, temps restant
+  let f=document.getElementById('loupefly');
+  if(!f){
+    f=document.createElement('div');f.id='loupefly';
+    f.innerHTML='<canvas></canvas><div class="lh" title="Ouvrir sa fiche"><button class="lx" aria-label="Fermer">✕</button><b></b><small></small><i></i></div>';
+    document.body.appendChild(f);
+    f.querySelector('.lx').onclick=e=>{e.stopPropagation();loupeHide();};
+    f.querySelector('.lh').onclick=()=>{const c=LOUPE.cur&&LOUPE.cur.cap.lead;loupeHide();if(c)select(c.key);};
+  }
+  f.style.setProperty('--lc',k.color);
+  const fc=f.querySelector('canvas');
+  if(fc.width!==box.w*2||fc.height!==box.h*2){fc.width=box.w*2;fc.height=box.h*2;}
+  const h=fc.getContext('2d');h.imageSmoothingEnabled=false;h.drawImage(cv,box.x,box.y,box.w,box.h,0,0,fc.width,fc.height);
+  const t=k.ico+' '+k.title;
+  if(f.dataset.sig!==t+k.sub){f.dataset.sig=t+k.sub;f.querySelector('b').textContent=t;f.querySelector('small').textContent=k.sub;}
+  f.querySelector('i').style.width=Math.max(0,Math.min(100,(LOUPE.cur.until-now)/LOUPE_MS*100))+'%';
+  f.hidden=false;
+  // à gauche, sauf si elle couvrirait la scène encadrée : alors à droite
+  const r=cv.getBoundingClientRect(), s=r.width/cv.width;
+  const scene={x:r.left+box.x*s,y:r.top+box.y*s,w:box.w*s,h:box.h*s};
+  f.classList.remove('right');
+  const a=f.getBoundingClientRect();
+  if(overlaps({x:a.left,y:a.top,w:a.width,h:a.height},scene))f.classList.add('right');
 }
+
 cv.addEventListener('mousemove',()=>{LOUPE.hoverUntil=performance.now()+LOUPE_HOVER_MS;});
 cv.addEventListener('click',()=>{if(LOUPE.cur)loupeHide();});
 addEventListener('keydown',e=>{if(e.key==='Escape'&&LOUPE.cur)loupeHide();});

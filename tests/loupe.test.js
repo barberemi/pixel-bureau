@@ -33,3 +33,10 @@ test('légende : l\'invité (le héraut) en premier, les autres ensuite, et le l
   assert.equal(c.sub, 'Gandalf reopen');
   assert.equal(c.ico, '⛔');
 });
+
+test('cérémonies : la légende nomme la cérémonie et compte l\'équipe, l\'animateur en sous-titre', () => {
+  const c = J(`loupeCaption({kind:'retro',cs:[${mk('Pam', 'retro')},{key:'k',name:'Kelly',pos:{x:1,y:1},_st:{st:'retro',label:'Anime la rétro'}},${mk('Andy', 'retro')}]})`);
+  assert.deepEqual([c.title, c.sub, c.lead.name, c.ico], ['Rétrospective · 3 personnes', 'Anime la rétro', 'Kelly', '🔄']);
+  assert.equal(J(`loupeCaption({kind:'daily',cs:[${mk('Pam', 'daily')}]}).title`), "Daily de l'équipe · 1 personne");
+  assert.equal(run(`loupeKind(${mk('a', 'pizza')})`), 'pizza');
+});
