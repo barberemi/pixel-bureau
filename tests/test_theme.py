@@ -9,6 +9,10 @@ import assemble  # noqa: E402
 TEXT = ("ink", "muted", "accent", "ok", "warn", "err")  # couleurs de texte
 GROUNDS = ("panel", "chip", "bg")                      # fonds sur lesquels elles s'affichent
 FILLS = ("line", "err", "warn", "brand")               # aplats qui portent du texte blanc (brand : facultatif)
+# mode TV (bloc :root[data-skin="<id>"] body.tv, facultatif) : textes sur les fonds de l'écran mural, et texte des aplats
+TV_TEXT = ("tv-ink", "tv-muted", "tv-h2", "tv-hint", "tv-ok", "tv-warn", "tv-err", "tv-mep")
+TV_GROUNDS = ("tv-bg", "tv-bar", "tv-deep", "tv-card", "tv-chip")
+TV_FILLS = (("tv-stand-ink", "tv-stand"), ("tv-retro-ink", "tv-retro"))
 
 
 def lum(h):
@@ -20,6 +24,13 @@ def lum(h):
 def ratio(a, b):
     a, b = lum(a), lum(b)
     return (max(a, b) + 0.05) / (min(a, b) + 0.05)
+
+
+def tv_palette(theme):
+    """Variables du bloc mode TV du thème ({} s'il n'en a pas : le mode TV garde alors ses couleurs de styles.css)."""
+    css = open(os.path.join(assemble.SRC, f"theme-{theme}.css")).read()
+    block = re.search(r':root\[data-skin="%s"\] body\.tv\s*\{(.*?)\}' % re.escape(theme), css, re.S)
+    return dict(re.findall(r"--([\w-]+):\s*(#[0-9a-fA-F]{6})\b", block.group(1))) if block else {}
 
 
 def palette(theme):
@@ -49,6 +60,23 @@ class ThemeTest(unittest.TestCase):
                 if fill in v:
                     with self.subTest(theme=theme, fill=fill):
                         self.assertGreaterEqual(ratio("#ffffff", v[fill]), 4.5, f"{theme} : blanc sur --{fill}")
+
+    def test_tv_contrasts(self):
+        for theme in assemble.themes():
+            v = tv_palette(theme)
+            if not v:
+                continue
+            for key in TV_TEXT + TV_GROUNDS:
+                self.assertIn(key, v, f"theme-{theme}.css (mode TV) : --{key} manquante")
+            for fg in TV_TEXT:
+                for bg in TV_GROUNDS:
+                    with self.subTest(theme=theme, fg=fg, bg=bg):
+                        self.assertGreaterEqual(ratio(v[fg], v[bg]), 4.5, f"{theme} (TV) : --{fg} sur --{bg}")
+            for fg, bg in TV_FILLS:
+                if fg in v and bg in v:
+                    with self.subTest(theme=theme, fill=bg):
+                        self.assertGreaterEqual(ratio(v[fg], v[bg]), 4.5, f"{theme} (TV) : --{fg} sur --{bg}")
+        self.assertTrue(tv_palette("equipe"), "le thème Equipe habille le mode TV")
 
     def test_fonts_are_embedded(self):
         html = assemble.page_html()
