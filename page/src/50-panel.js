@@ -190,9 +190,10 @@ function drawSide(side){
     e.innerHTML=`<div class="e" style="margin-left:0">${esc(st.step.err)}</div>`;
     side.appendChild(e);
   }
-  if(c.boss){const p=document.createElement('p');p.style.color='var(--muted)';const gates=chars.filter(x=>x._st&&x._st.st==='gate');
-    if(!gates.length){p.textContent="Personne n'attend ta validation. Le bureau tourne tout seul.";side.appendChild(p);}
+  if(c.boss){const p=document.createElement('p');p.style.color='var(--muted)';const gates=chars.filter(x=>x._st&&x._st.st==='gate'), lone=loneGates();
+    if(!gates.length&&!lone.length){p.textContent="Personne n'attend ta validation. Le bureau tourne tout seul.";side.appendChild(p);}
     for(const x of gates){const r=x._st&&x._st.run;if(r)gateCard(side,r,x.name);}
+    for(const g of lone)gateCard(side,{run:g.run,wf_name:g.wf_name,_s:ms(g.since)},null); // workflows sans personnage (« Le Bureau · plan »)
     const imp=chars.filter(x=>x.visitor&&x.disc&&x.disc.imp>0);
     if(imp.length){
       const box=foldSection(side,'alire','❗ À lire',imp.length,true);

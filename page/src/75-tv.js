@@ -26,7 +26,7 @@ function tvChips(d){
   if(d.prod){const p=d.prod, live=p.live[p.live.length-1];
     out.push(`<span class="chip mep"><b>${p.done}</b>MEP${live?' · 🚀 '+esc(live.m.tag)+' '+esc(MEP_TXT[live.phase]):p.last?' · dernière '+esc(p.last.m.tag)+' à '+hm(ms(p.last.m.prod.end)):''}</span>`);
     for(const x of p.failed)out.push(`<span class="chip err"><b>✗</b>${esc(x.m.tag)} en échec</span>`);}
-  const sp=stalePrs(T).length; // même compte que la bande du bas et « À traiter »
+  const sp=stalePrs(T).length; // même compte que la bande du bas
   if(sp)out.push(`<span class="chip warn"><b>${sp}</b>PR sans review depuis plus de ${PR_STALE_H} h</span>`);
   const down=agentsDown();
   if(down.length)out.push(`<span class="chip err"><b>${down.length}</b>${down.length>1?'agents en panne':'agent en panne'}</span>`);

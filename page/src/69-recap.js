@@ -23,7 +23,7 @@ function recapData(t){
     created:evs.filter(e=>e.kind==='new'),
     deployed:evs.filter(e=>e.kind==='move'&&e.cat==='done'),
     approved:evs.filter(e=>e.kind==='review'&&e.state==='approved'),
-    todo:todoItems(t).filter(x=>x.sev!=='info').length
+    gates:chars.filter(c=>c._st&&c._st.st==='gate').length+loneGates().length
   };
 }
 function renderRecap(){
@@ -41,7 +41,7 @@ function renderRecap(){
   if(!li.length)li.push(`<li class="r-ok">Rien de notable.</li>`);
   const title=parisMidnight(Date.now())>d.since?'☀ Ta journée d\'hier':'☀ Ta journée depuis minuit'; // données encore d'hier (avant le premier cron du matin)
   const html=`<div class="rh"><h2>${title}</h2><button class="rclose" data-recap-close aria-label="Fermer le récap">Fermer</button></div><ul>${li.join('')}</ul>`+
-    (d.todo?`<div class="rfoot">${plural(d.todo,'chose t\'attend','choses t\'attendent')} dans « À traiter » ci-dessous.</div>`:'');
+    (d.gates?`<div class="rfoot">✋ ${plural(d.gates,'validation t\'attend','validations t\'attendent')} : clique sur ton personnage, elles sont dans ta fiche.</div>`:'');
   box.hidden=false;
   if(html===RECAP_SIG)return;
   RECAP_SIG=html;box.innerHTML=html;

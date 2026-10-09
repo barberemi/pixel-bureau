@@ -247,11 +247,11 @@ class InstallTest(unittest.TestCase):
         self.run_install(ANSWERS)
         cfg = json.load(open(self.cfg_path))
         hand = {"gitfut": {"p_remi": "barberemi"}, "wiki_posters": ["Five_(2016_film)"], "chrome": False}  # posés à la main
-        json.dump({**cfg, "ui": {"todo": "folded"}, "protect": True, **hand}, open(self.cfg_path, "w"))
+        json.dump({**cfg, "ui": {"agent_label": "office"}, "protect": True, **hand}, open(self.cfg_path, "w"))
         with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):
             self.assertEqual(self.run_install(ANSWERS), 0)
         after = json.load(open(self.cfg_path))
-        self.assertEqual(after["ui"], {"skin": "equipe", "todo": "folded"})  # thème du profil ajouté, réglage gardé
+        self.assertEqual(after["ui"], {"skin": "equipe", "agent_label": "office"})  # thème du profil ajouté, réglage gardé
         self.assertTrue(after["protect"])
         # un thème choisi à la main l'emporte sur celui du profil
         json.dump({**after, "ui": {"skin": "classique"}}, open(self.cfg_path, "w"))

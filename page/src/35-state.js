@@ -160,8 +160,8 @@ const inSlot=(m,[a,b])=>m>=a&&m<b;
 // collègues présents, assis à leur place (ceux qu'un invité de passage va saluer)
 function deskColleagues(boss){return chars.filter(x=>x!==boss&&x.person&&x.seat&&x._st&&x._st.zone==='desk');}
 function bossState(c,t){
-  const n=k=>chars.filter(x=>x._st&&x._st.st===k).length, gates=n('gate'), asks=n('ask'), pending=gates+asks;
-  const waitTxt=[gates?gates+' validation(s) en attente':'',asks?asks+' discussion(s) attendent ta réponse':''].filter(Boolean).join(' · ');
+  const n=k=>chars.filter(x=>x._st&&x._st.st===k).length, gates=n('gate')+loneGates().length, asks=n('ask'), pending=gates+asks;
+  const waitTxt=[gates?gates+' validation'+(gates>1?'s':'')+' en attente':'',asks?asks+(asks>1?' discussions attendent':' discussion attend')+' ta réponse':''].filter(Boolean).join(' · ');
   const ret=o=>{c.atBoss=o.zone==='boss';return o;};
   const p=parisHM(t), m=p.h*60+p.m, wd=p.wd==='Sat'||p.wd==='Sun';
   const sax=c.sprite==='boss_sax'; // le saxophone n'existe que sur ce sprite

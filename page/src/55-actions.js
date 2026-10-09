@@ -56,7 +56,10 @@ function kronnModal(host,btn,title){
 let DECIDED={};try{DECIDED=JSON.parse(localStorage.getItem('bureau:decided')||'{}')||{};}catch(e){DECIDED={};}
 for(const k in DECIDED)if(Date.now()-DECIDED[k]>864e5)delete DECIDED[k];
 const saveDecided=()=>{try{localStorage.setItem('bureau:decided',JSON.stringify(DECIDED));}catch(e){}};
-// gate d'un workflow sans personnage (ex. « Le Bureau · plan ») : sa carte de décision seule dans le panneau
+// validations des workflows sans personnage sur le plan (ex. « Le Bureau · plan ») : comptées dans la bulle ✋ du boss,
+// leur carte de décision dans sa fiche
+function loneGates(){return GATES.filter(g=>!chars.some(c=>c.wf&&c.wf.includes(String(g.wf).slice(0,8))));}
+// gate d'un workflow sans personnage : sa carte de décision seule dans le panneau
 function renderLoneGate(side,run){
   const g=GATES.find(x=>x.run===run);
   if(!g){const n=document.createElement('div');n.className='note';n.textContent='Cette validation n\'attend plus (déjà décidée).';side.appendChild(n);return;}

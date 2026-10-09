@@ -102,14 +102,6 @@ test('il attend ta réponse : en direct, il marche jusqu\'au bureau du boss et y
   assert.deepEqual([r.startCall, r.endCall, r.endMoving, r.replayCall, r.freeCall], [true, true, false, false, false]);
 });
 
-test('À traiter : « Le canard attend ta réponse », bouton Répondre vers la discussion dans un nouvel onglet', () => {
-  const it = J(`(() => { const d0 = DUCKS; DUCKS = [{id: 'd1', title: '🦆 Le menu casse', awaiting: true}, {id: 'd2', title: '🦆 Rien', awaiting: false}];
-    try { return todoItems(Date.now()).filter(x => x.key.startsWith('duck:')); } finally { DUCKS = d0; } })()`);
-  assert.equal(it.length, 1);
-  assert.match(it[0].txt, /Le canard<\/b> attend ta réponse <small>Le menu casse/);
-  assert.match(it[0].act.href, /index\.html#discussion-d1$/);
-});
-
 test('panneau « Et aussi » : la pièce du canard d\'après le libellé du plan, son statut selon qu\'il marche, s\'arrête ou attend', () => {
   assert.deepEqual(J("[duckRoom([5, 5]), duckRoom([14, 3]), duckRoom([20, 16])]"), ['cafétéria', 'serveurs', 'open space']);
   const st = pos => J(`(() => { const p0 = DUCK_POS; DUCK_POS = ${JSON.stringify(pos)}; try { return duckStatus().txt; } finally { DUCK_POS = p0; } })()`);

@@ -286,6 +286,24 @@ let DAY0=0,RSTART=0,REND=0,DISC_BY_RUN={},FIRST_LOAD_DONE=false;
 // création d'une PR ; repli sur updated (anciens instantanés), que les bascules de sprint et les pushs réécrivent
 const tkSince=x=>ms(x&&(x.since||x.updated));
 const prSince=x=>ms(x&&(x.created||x.updated));
+// ce qui bloque l'équipe (mode TV, fiche d'un collègue) : ticket immobile en review ou en test, PR sans review
+const BLOCKED_DAYS=2, PR_STALE_H=24;
+// PR ouvertes de l'équipe (sans les brouillons), avec leur auteur
+function teamPrs(){
+  if(!TEAM)return [];
+  return [...TEAM.people.flatMap(p=>(p.prs||[]).map(x=>({...x,who:p.name}))),...(TEAM.other_prs||[]).map(x=>({...x,who:x.author}))].filter(x=>!x.draft);
+}
+// tickets en review ou en test sans mouvement depuis BLOCKED_DAYS jours, les plus anciens d'abord
+function blockedTickets(t){
+  if(!TEAM)return [];
+  return [...TEAM.people.flatMap(p=>(p.tickets||[]).map(x=>({...x,who:p.name}))),...(TEAM.unassigned||[])]
+    .filter(x=>(x.cat==='review'||x.cat==='test')&&tkSince(x)&&t-tkSince(x)>BLOCKED_DAYS*864e5)
+    .sort((a,b)=>tkSince(a)-tkSince(b));
+}
+// PR qui attendent une review depuis plus de PR_STALE_H heures, les plus anciennes d'abord
+function stalePrs(t){
+  return teamPrs().filter(x=>x.review==='pending'&&prSince(x)&&t-prSince(x)>PR_STALE_H*36e5).sort((a,b)=>prSince(a)-prSince(b));
+}
 // ---------- time ----------
 let mode='live', T=0, lastReal=performance.now(), needTeleport=true;
 const fmtTZ=dtf('fr-FR',{hour:'2-digit',minute:'2-digit'});

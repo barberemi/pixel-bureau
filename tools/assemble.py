@@ -112,14 +112,13 @@ def page_config(cfg):
         # statuts Jira des scènes d'équipe : ticket à tester, validé, réouvert
         "jira_flow": {**JIRA_FLOW, **{k: v for k, v in ((cfg.get("jira") or {}).get("flow") or {}).items() if v}},
         "github_repo": (cfg.get("github") or {}).get("repo"),
-        "github_login": (cfg.get("github") or {}).get("login"),
         "rhythm": cfg.get("rhythm") or {},
         "mep_workflow": cfg.get("mep_workflow"),
         "workflows": cfg.get("workflows") or {},  # ids des crons : calendrier et fraîcheur des données
         "schedules": cron_schedules(cfg),  # calendrier des crons du Bureau (modèles de workflows)
         "agents": cfg.get("agents") or [],
         "ui": cfg.get("ui") or {},
-        "skins": themes(),  # thèmes d'interface (theme-*.css) proposés par le bouton 🎨  # réglages d'affichage (ex. ui.todo : open / folded / hidden)
+        "skins": themes(),  # thèmes d'interface (theme-*.css) proposés par le bouton 🎨
     }
 
 

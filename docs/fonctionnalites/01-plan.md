@@ -101,7 +101,7 @@ Un canard de bain jaune se promène tout le temps dans tout le bureau : jour et 
 
 Un clic sur lui ouvre sa fiche (voir [Fiches](07-fiches.md)) : c'est la [méthode du canard en plastique](https://fr.wikipedia.org/wiki/M%C3%A9thode_du_canard_en_plastique), on lui explique son problème dans une discussion Kronn.
 
-Quand une de ses discussions attend ta réponse, en direct (pas en rejeu), il quitte sa promenade, marche jusqu'au bureau du boss et attend devant, de face, avec une bulle « ? » à la place de sa flèche. « À traiter » affiche aussi « 🦆 Le canard attend ta réponse », avec un bouton Répondre qui ouvre la discussion dans un nouvel onglet. Une fois ta réponse donnée, il reprend sa promenade.
+Quand une de ses discussions attend ta réponse, en direct (pas en rejeu), il quitte sa promenade, marche jusqu'au bureau du boss et attend devant, de face, avec une bulle « ? » à la place de sa flèche. Le groupe « Et aussi » du panneau dit aussi « attend ta réponse », et sa fiche ouvre la discussion dans un nouvel onglet. Une fois ta réponse donnée, il reprend sa promenade.
 
 ![Le canard attend ta réponse devant le bureau du boss](../img/canard-attend.png)
 
@@ -118,9 +118,11 @@ python3 tools/plan.py share mon-plan.json    # le proposer à toute l'équipe
 python3 tools/plan.py share defaut           # revenir au plan de l'installation
 ```
 
-`share` lance le workflow « Le Bureau · plan » : il revérifie le plan, puis attend la validation du boss. La demande apparaît dans [À traiter](02-a-traiter.md) avec son résumé (taille, sièges, places qui changent). Une fois validé, la page se redessine sans rechargement et chacun rejoint sa nouvelle place. Un plan refusé n'est jamais publié.
+`share` lance le workflow « Le Bureau · plan » : il revérifie le plan, puis attend la validation du boss. La demande apparaît dans la fiche du boss (clic sur son personnage, qui porte alors la bulle ✋), avec son résumé (taille, sièges, places qui changent) et le bouton « Décider ». Une fois validé, la page se redessine sans rechargement et chacun rejoint sa nouvelle place. Un plan refusé n'est jamais publié.
 
-![Validation d'un nouveau plan par le boss](../img/validation-plan.png)
+| Sur le plan : la bulle ✋ du boss | Dans sa fiche : la carte de décision |
+| --- | --- |
+| ![Le boss attend à son bureau, bulle ✋1](../img/bulle-validation.png) | ![Validation d'un nouveau plan dans la fiche du boss](../img/validation-plan.png) |
 
 ## Partir d'un croquis ou d'une photo
 

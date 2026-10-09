@@ -1,9 +1,9 @@
-// ---------- accueil : visite guidée en 3 bulles (plan, « À traiter », barre de lecture) ----------
+// ---------- accueil : visite guidée en 3 bulles (plan, « Qui fait quoi », barre de lecture) ----------
 // Lancée d'office au premier passage quand le navigateur peut s'en souvenir ; dans Kronn la page n'a pas de
 // stockage (sandbox sans allow-same-origin) : elle ne s'ouvre alors que par le bouton « ? Visite ».
 const TOUR=[
   {at:'#cv',title:'Le plan',txt:"Chaque personnage est un collègue (en couleur) ou un agent Kronn (hologramme bleu). Clique sur l'un d'eux pour voir sa journée."},
-  {at:'#todo',alt:'#kpis',title:'À traiter',txt:"Ce qui t'attend : pannes, validations à donner, PR à relire, tickets bloqués. Chaque ligne a son bouton."},
+  {at:'#who',alt:'#kpis',title:'Qui fait quoi',txt:"Ce que fait chacun en ce moment. Une bulle ✋ sur ton personnage : une validation t'attend, elle est dans ta fiche."},
   {at:'.bar',title:'Rejouer la journée',txt:'Fais glisser l\'heure ou lance « Rejouer » pour revoir la journée en accéléré. « Mode TV » : l\'écran de l\'open space et du daily.'},
 ];
 let TOUR_I=-1;

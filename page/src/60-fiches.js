@@ -203,7 +203,7 @@ function workBlock(side,c){
   }
 }
 // une ligne de « Ses tickets » : clé (🐛 si bug), composant (le « [Panier] » du titre), points (0 compris), titre,
-// puis depuis quand il est dans sa colonne (orange : bloqué, comme dans À traiter), « Réouvert », ses PR ouvertes
+// puis depuis quand il est dans sa colonne (orange : bloqué, en review ou en test depuis plus de BLOCKED_DAYS jours), « Réouvert », ses PR ouvertes
 const tkPts=v=>v==null||v===''?'':`<span class="k pts">${esc(+v)} pt${+v>1?'s':''}</span>`;
 function tkRow(x){const li=document.createElement('li');li.className='tkr';li.innerHTML=tkRowHtml(x);return li;}
 function tkRowHtml(x){
@@ -249,7 +249,7 @@ const PR_GROUPS=[['changes','Changements demandés','var(--err)'],['pending','En
 const prGroup=x=>x.draft?'draft':PR_GROUPS.some(([k])=>k===x.review)?x.review:'pending';
 const daysAgoTxt=d=>d<1?"aujourd'hui":d<2?'hier':d<60?'il y a '+Math.floor(d)+' j':'il y a '+Math.floor(d/30.4)+' mois';
 // une ligne : n° (lien GitHub), ticket cité (lien Jira, en gris : la PR est l'objet de la ligne), composant ; titre sans « feat(DM-1): » ni « [Composant] » ;
-// dernière activité (orange avec ⏳ si elle attend une review depuis plus de PR_STALE_H heures, comme dans À traiter)
+// dernière activité (orange avec ⏳ si elle attend une review depuis plus de PR_STALE_H heures)
 function prRowHtml(x){
   let t=String(x.title||'').replace(/^\s*\w+(\([^)]*\))?!?:\s*/,'');
   const {comp,title}=tkComp(t); t=title;

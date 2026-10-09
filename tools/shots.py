@@ -36,7 +36,6 @@ SHOTS = {
     "legende": (1400, 1600, AT(11) + "document.querySelector('.legend-help').open=true;", ".legend-help"),
     # thème Equipe (bouton 🎨) : habillage pixel aux couleurs d'Equipe, fiche d'un collègue ouverte
     "theme-equipe": (1400, 1000, AT(11) + "applySkin('equipe');select((chars.find(c=>c.person&&c.team&&c.team.tickets.length)||{}).key);scrollTo(0,0);", None),
-    "a-traiter": (1400, 1000, AT(11), "#todo"),
     "qui-fait-quoi": (1400, 1400, AT(11), "#who"),
     "fil": (1400, 1400, AT(11) + "document.querySelector('#feed').style.maxHeight='520px';"
             "document.querySelector('#feed').style.overflow='hidden';", ".feed"),
@@ -77,11 +76,17 @@ SHOTS = {
     "planning": (1400, 1400, AT(11) + "select('planning');", "#side"),
     "mep": (1400, 1400, AT(11.6) + "select('tv');", "#side"),
     "avatar": (1400, 1600, AT(11) + "select('jim');openEditor(byKey.jim);", "#side"),
-    # plan d'équipe proposé par « python3 tools/plan.py share » : la validation du boss, seule dans le panneau
+    # plan d'équipe proposé par « python3 tools/plan.py share » : la validation dans la fiche du boss (pas de personnage pour ce workflow)
     "validation-plan": (1400, 1200, AT(11) + "GATES=[{run:'demo',wf:'00000000-demo',wf_name:'Le Bureau · plan',gate:'boss',"
                         "since:new Date(Date.now()-12*60e3).toISOString(),message:\"Nouveau plan du bureau pour toute l'équipe : valider pour le publier.\\n\\n"
                         "Nouveau plan : Plateau web, 2e étage (40 x 20 cases, 36 sièges, 22 places attribuées).\\n"
-                        "Places qui changent : p_gabe I2.R3 → I3.R3, dwight I4.L1 → I6.L1.\"}];select('gate:demo');", "#side"),
+                        "Places qui changent : p_gabe I2.R3 → I3.R3, dwight I4.L1 → I6.L1.\"}];select(chars.find(c=>c.boss).key);", "#side"),
+    # la même validation vue sur le plan : le boss reste à son bureau avec la bulle ✋1 (zone rognée posée sur la toile, comme canard-attend)
+    "bulle-validation": (1400, 1000, AT(11) + "GATES=[{run:'demo',wf:'00000000-demo',wf_name:'Le Bureau · plan',gate:'boss',since:new Date(Date.now()-12*60e3).toISOString()}];"
+                         "setTimeout(()=>{const [bx,by]=LAYOUT.boss.seat,c=document.querySelector('#cv'),r=c.getBoundingClientRect(),k=r.width/c.width,"
+                         "d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(bx-4.5)*TS*k)+'px',"
+                         "top:(r.top+scrollY+(by-3)*TS*k)+'px',width:10*TS*k+'px',height:6*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);",
+                         "#shotclip", 1.5),
     "panneau-replie": (1440, 820, AT(11) + "SIDE_FOLDED=true;renderSide(true);scrollTo(0,document.querySelector('.main').offsetTop-8);", None),
     "mobile": (390, 1200, AT(11), None),
     "visite": (1400, 1000, AT(11) + "tourShow(0);", None),

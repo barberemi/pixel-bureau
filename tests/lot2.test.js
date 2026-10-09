@@ -1,4 +1,4 @@
-// Lot 2 : « À traiter », fil regroupé et filtré, récap de la journée.
+// Lot 2 : ce qui bloque l'équipe, validations du boss, fil regroupé et filtré, récap de la journée.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,27 +27,14 @@ function world() {
             {n:11,title:'Vieille',review:'pending',req:[],url:'u11',updated:'${new Date(T11 - 2 * D).toISOString()}'},
             {n:12,title:'Brouillon',draft:true,review:'pending',req:['michaelscott'],url:'u12'}]}],
       unassigned:[],other_prs:[],meps:[],events:[],merged_today:[]};
-    CFG.github_login=null; CFG.github_repo='org/repo';
+    CFG.github_repo='org/repo';
   }`);
 }
 
-test('À traiter : panne, validation, question, PR à relire et à corriger, ticket bloqué, PR sans review', () => {
+test('bloqués : ticket immobile en review depuis plus de 2 j, PR sans review depuis plus de 24 h (brouillons exclus)', () => {
   world();
-  const items = J(`todoItems(${T11})`);
-  assert.deepEqual(items.map(x => x.key), ['err:meredith', 'gate:oscar', 'ask:v1', 'rev:10', 'fix:7', 'tk:DM-1', 'stale']);
-  assert.deepEqual(items.map(x => x.sev), ['err', 'warn', 'warn', 'warn', 'warn', 'info', 'info']);
-  assert.match(items[0].txt, /21 échecs d'affilée/);
-  assert.equal(items[1].age, 30 * 60e3);
-  assert.equal(items[2].act.href, 'http://localhost:5173/index.html#discussion-d-1');
-  assert.match(items[6].txt, /#11/);
-  assert.doesNotMatch(items[6].txt, /#10/, 'la PR qui t\'attend n\'est pas comptée deux fois');
-});
-
-test('À traiter : le login de la config passe avant celui des PR', () => {
-  world();
-  run(`CFG.github_login='quelquun';`);
-  assert.equal(J(`todoItems(${T11}).some(x=>x.key==='rev:10')`), false);
-  run(`CFG.github_login=null;`);
+  assert.deepEqual(J(`blockedTickets(${T11}).map(x=>x.key)`), ['DM-1']);
+  assert.deepEqual(J(`stalePrs(${T11}).map(x=>x.n)`), [10, 11]);
 });
 
 // un agent horaire (6 runs dont 2 échecs), un agent ponctuel (1 succès), un événement d'équipe
@@ -88,15 +75,7 @@ test('récap : échecs par agent, MEP, merges, tickets déployés et créés dep
   assert.equal(d.merged.length, 1);
   assert.deepEqual(d.created.map(e => e.key), ['DM-20']);
   assert.deepEqual(d.deployed.map(e => e.key), ['DM-9']);
-  assert.equal(d.todo, 5);
-});
-
-test('À traiter : réglage ui.todo (replié au chargement, ou masqué)', () => {
-  const folded = load({config: {...require('./fixtures/bureau.config.json'), ui: {todo: 'folded'}}});
-  assert.equal(folded.run('COLLAPSED.todo'), true);
-  const hidden = load({config: {...require('./fixtures/bureau.config.json'), ui: {todo: 'hidden'}}});
-  assert.equal(hidden.run('TODO_MODE'), 'hidden');
-  assert.equal(load().run('COLLAPSED.todo'), false);
+  assert.equal(d.gates, 1); // la validation d'Oscar : « ✋ 1 validation t'attend » au pied du récap
 });
 
 test('rôles : la QA recette l\'équipe, la PO écrit et trie, sans ticket assigné personne n\'est « inactif » à tort', () => {
@@ -151,11 +130,12 @@ test('fil : les données de la veille sont dites « hier », pas « aujourd\'hui
   assert.equal(run('dataDayWord()'), 'hier');
 });
 
-test('À traiter : une gate sans personnage (« Le Bureau · plan ») ouvre sa carte de décision seule', () => {
+test('validation sans personnage (« Le Bureau · plan ») : comptée dans la bulle ✋ du boss, sa carte dans sa fiche', () => {
   world();
   run(`GATES.push({run:'r2',wf:'eeee5555-x',wf_name:'Le Bureau · plan',gate:'boss',message:'Nouveau plan',since:'${new Date(T11 - H).toISOString()}'});`);
-  const it = J(`todoItems(${T11}).find(x=>x.key==='gate:r2')`);
-  assert.match(it.txt, /Le Bureau · plan<\/b> attend ta validation/);
-  assert.deepEqual(it.act, {label: 'Décider', open: 'gate:r2'});
-  assert.equal(J(`todoItems(${T11}).filter(x=>x.key.startsWith('gate:')).length`), 2); // celle d'Oscar reste sur Oscar
+  assert.deepEqual(J('loneGates().map(g=>g.run)'), ['r2']); // celle d'Oscar reste sur Oscar
+  const b = J(`stateAt(chars.find(c=>c.boss),${T11})`);
+  assert.equal(b.bubble, '✋3'); // Oscar, le plan et la question du visiteur
+  assert.equal(b.label, '2 validations en attente · 1 discussion attend ta réponse');
+  assert.equal(J(`recapData(${T11}).gates`), 2);
 });
