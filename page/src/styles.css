@@ -227,7 +227,7 @@ body.tv #tvbar{display:flex;flex-wrap:nowrap;white-space:nowrap;overflow:hidden;
 #tvbar .tvt{flex:none}
 #tvbar .chip{display:inline-flex;flex:none;align-items:center;gap:5px;background:var(--tv-chip);border-radius:999px;padding:4px clamp(7px,0.8vw,12px);font-size:clamp(11px,0.95vw,14px)}
 #tvbar .chip b{font:700 clamp(12px,1vw,15px) ui-monospace,Menlo,monospace}
-@media (max-width:1800px){#tvbar .tvhint{display:none}} /* les pastilles passent avant le rappel des touches (personne ne tape au clavier sur l'écran mural) */
+@media (max-width:1500px){#tvbar .tvhint{display:none}}
 @media (max-width:1100px){#tvbar .tvt{display:none}}
 #tvbar .chip.warn b{color:var(--tv-warn)}#tvbar .chip.err b{color:var(--tv-err)}#tvbar .chip.ok b{color:var(--tv-ok)}#tvbar .chip.mep b{color:var(--tv-mep)}
 #tvbar .tvhint{color:var(--tv-hint);font-size:12px;font-weight:500}

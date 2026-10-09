@@ -19,20 +19,6 @@ function applyViewParams(src){
   if(p.scene==='standup'&&TV){TVSCENE.manual=true;TVSCENE.idx=0;TVSCENE.since=0;updateTv(true);}
   if(p.skin&&UI_SKINS[p.skin])applySkin(p.skin); // écran mural : thème choisi par l'adresse (pas de bouton 🎨 en mode TV), non mémorisé
 }
-// écran d'open space vu par toute l'équipe : sprint, prod et alertes d'équipe, rien de personnel (validations, tokens)
-function tvChips(d){
-  const out=[];
-  if(d.sprint){const s=d.sprint, pct=s.ptsAll?Math.round(s.ptsDone/s.ptsAll*100):0;
-    out.push(`<span class="chip"><b>${pct}%</b>Sprint ${esc(s.name)}${s.j!=null?' · J-'+s.j:''}</span>`);}
-  if(d.prod){const p=d.prod, live=p.live[p.live.length-1];
-    out.push(`<span class="chip mep"><b>${p.done}</b>MEP${live?' · 🚀 '+esc(live.m.tag)+' '+esc(MEP_TXT[live.phase]):p.last?' · dernière '+esc(p.last.m.tag)+' à '+hm(ms(p.last.m.prod.end)):''}</span>`);
-    for(const x of p.failed)out.push(`<span class="chip err"><b>✗</b>${esc(x.m.tag)} en échec</span>`);}
-  const sp=stalePrs(T).length; // même compte que la bande du bas
-  if(sp)out.push(`<span class="chip warn"><b>${sp}</b>PR sans review depuis plus de ${PR_STALE_H} h</span>`);
-  const down=agentsDown();
-  if(down.length)out.push(`<span class="chip err"><b>${down.length}</b>${down.length>1?'agents en panne':'agent en panne'}</span>`);
-  return out.join('');
-}
 let TVWHO_SIG='';
 // la colonne défile toute seule si elle déborde (personne ne touche la TV) : descente lente, pause en bas, retour en haut ;
 // une interaction (molette, survol, toucher) suspend le défilement automatique 15 s
@@ -76,9 +62,8 @@ function tvLiveChip(){
 function updateTv(force){
   if(!TV||!DATA)return;
   const bar=document.getElementById('tvbar');
-  // les puces se partagent la place restante (et sont coupées si besoin) : les boutons à droite restent toujours visibles
+  // titre, horloge, fraîcheur des données, boutons : sprint, MEP, PR et pannes sont dans les cartes du bas (tvKpis)
   bar.innerHTML=`<span class="tvt">LE BUREAU</span><span class="tvc">${hms(T)}</span><span class="tvchips">${tvLiveChip()}`+
-    tvChips(dashData(T))+
     `</span><span class="tvhint">S stand-up · P planning · R rétro · Échap ou T pour quitter</span>`+
     [['daily','tvstand','Stand-up'],['planning','tvplan','Planning'],['retro','tvretro','Rétro']].map(([k,id,l])=>
       `<button id="${id}" class="${sceneMode(T)===k?'on':''}">${sceneMode(T)===k?'Retour au plan':l}</button>`).join('')+`<button id="tvexit">Quitter</button>`;

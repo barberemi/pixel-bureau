@@ -12,7 +12,8 @@ function tvKpis(t){
     out.push(k('',pct+'<i>%</i>','du sprint '+esc(s.name),(s.j!=null?'J-'+s.j:'')+(s.time!=null?' · '+Math.round(s.time*100)+' % du temps':'')));}
   if(d.prod){const p=d.prod, live=p.live[p.live.length-1];
     out.push(k(p.failed.length?'err':'mep',p.done,plural(p.done,'mise en prod','mises en prod').replace(/^\d+ /,''),
-      live?'🚀 '+esc(live.m.tag)+' : '+esc(MEP_TXT[live.phase]):p.failed.length?'✗ '+esc(p.failed[0].m.tag)+' en échec':p.closed?'plateau fermé':''));}
+      live?'🚀 '+esc(live.m.tag)+' : '+esc(MEP_TXT[live.phase]):p.failed.length?'✗ '+esc(p.failed[0].m.tag)+' en échec':
+      [p.last?'dernière '+esc(p.last.m.tag)+' à '+hm(ms(p.last.m.prod.end)):'',p.closed?'plateau fermé':''].filter(Boolean).join(' · ')));}
   const bt=blockedTickets(t).length, sp=stalePrs(t).length;
   out.push(k(bt?'warn':'ok',bt,bt>1?'tickets bloqués':'ticket bloqué','en review ou test depuis plus de '+BLOCKED_DAYS+' j'));
   out.push(k(sp?'warn':'ok',sp,'PR sans review','depuis plus de '+PR_STALE_H+' h'));
