@@ -6,7 +6,7 @@
 | --- | --- |
 | `page/office_template.html` | Squelette : en-tête, canvas, barre de lecture, panneau, les 4 blocs `kronn-action` (Kronn les lit dans le HTML statique), marqueurs `/*__STYLES__*/` et `/*__SCRIPTS__*/` |
 | `page/src/styles.css` | Toute la feuille de style |
-| `page/src/NN-*.js` | Le script, concaténé **dans l'ordre des noms** en un seul `<script>` (une portée globale, pas de modules) : config `00`, plan `10`, sprites `20`, données `30-33`, états `35`, dessin `40-45`, panneau, actions, fiches et éditeur `50-65`, récap `69`, tuiles, fil et « Qui fait quoi » `70-72`, mode TV `75-76`, visite `78`, souris `80`, boucle et démarrage `90` |
+| `page/src/NN-*.js` | Le script, concaténé **dans l'ordre des noms** en un seul `<script>` (une portée globale, pas de modules) : config `00`, plan `10`, sprites `20`, données `30-33`, états `35`, dessin `40-45`, panneau, actions, fiches et éditeur `50-65`, récap `69`, tuiles, fil et « Qui fait quoi » `70-72`, mode TV `75-76`, souris `80`, boucle et démarrage `90` |
 | `workflows/` | Scripts Python des étapes Exec ; `_lib.py` = socle commun et `_plan.py` = règles des plans (aussi utilisées par `tools/plan.py`), recopiés dans chaque script qui les importe au rendu (Kronn lance `python3 -c` sans fichier voisin) ; `templates/` = modèles des workflows et du Quick Prompt |
 | `layouts/` | Plans de bureau (format `bureau-layout/1`) ; `open-space.json` = le plan type (équipe neuve), `equipe.json` = celui de l'équipe equipe, `exemple-startup.json` = un autre bureau (30 x 16, sans plateau TV) |
 | `team/` | `defaults.json` : valeurs communes proposées à l'installation (Kronn, rythme, Jira et GitHub vides) |

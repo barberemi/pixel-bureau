@@ -17,7 +17,7 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 | [Murs du bureau](docs/fonctionnalites/08-murs.md) | Kanban du sprint, planning des crons, mises en prod, employé du sprint, écran du boss avec tes autres pages Kronn |
 | [Avatars](docs/fonctionnalites/09-avatars.md) | Éditeur d'apparence, pour soi ou pour toute l'équipe |
 | [Fraîcheur des données](docs/fonctionnalites/10-fraicheur.md) | Prochaine arrivée, sources en retard, crons du Bureau en échec |
-| [Téléphone et visite](docs/fonctionnalites/11-mobile-et-visite.md) | Affichage mobile, visite guidée en 3 bulles |
+| [Téléphone](docs/fonctionnalites/11-mobile.md) | Affichage mobile |
 | [Thèmes saisonniers](docs/fonctionnalites/12-themes.md) | Noël, Nouvel an, Saint-Valentin, Halloween : décor, chapeaux, emojis, effets |
 | [Thème de la page](docs/fonctionnalites/13-theme-page.md) | Classique ou Equipe (pixel art aux couleurs d'Equipe), au bouton 🎨 ; Equipe par défaut pour l'équipe equipe |
 

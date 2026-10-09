@@ -466,13 +466,6 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
   .stage>.legend{display:none}
   .bar .tlabel{display:none}
 }
-/* visite guidée */
-#tour{position:absolute;z-index:60;background:var(--panel);color:var(--ink);border:2px solid var(--accent);border-radius:12px;padding:10px 12px;box-shadow:var(--shadow);font-size:13px}
-#tour p{margin:6px 0 10px;line-height:1.4}
-#tour .tn{color:var(--muted);font-size:11px}
-#tour .ta{display:flex;justify-content:flex-end;gap:6px}
-.tour-on{outline:3px solid var(--accent);outline-offset:3px;border-radius:8px}
-body.tv #tourbtn{display:none!important}
 /* sélecteur de thème (dans « Comment lire le plan ») */
 .themesel{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted)}
 .themesel select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:2px 6px}

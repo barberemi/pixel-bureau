@@ -176,5 +176,4 @@ window.addEventListener('kronn:page-data',e=>{
   });
 if(TV){document.body.classList.add('tv');NAMES_BEFORE_TV=NAMES;NAMES='all';}
 applyViewParams(window.KronnPageData); // #page/<id>?tv=1 : l'écran mural démarre en mode TV
-tourAuto();
 requestAnimationFrame(loop);

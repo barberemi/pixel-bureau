@@ -15,8 +15,8 @@ from smoke import CHROME, free_port  # noqa: E402
 
 OUT = os.path.join(ROOT, "docs", "img")
 PORT = 9335
-# avant chaque capture : hors mode TV (mémorisé par le navigateur), visite guidée fermée, lecture en pause à 11h, personnages posés à leur place
-AT = lambda h: f"applySkin('classique');if(TV)setTv(false);tourShow(-1);setMode('pause');T=DAY0+{h}*3600e3;needTeleport=true;"  # noqa: E731
+# avant chaque capture : hors mode TV (mémorisé par le navigateur), lecture en pause à 11h, personnages posés à leur place
+AT = lambda h: f"applySkin('classique');if(TV)setTv(false);setMode('pause');T=DAY0+{h}*3600e3;needTeleport=true;"  # noqa: E731
 WAIT = "new Promise(r=>setTimeout(r,2500))"
 # nom -> (largeur, hauteur, JS de mise en scène, sélecteur à rogner ; None = la fenêtre[, échelle de la capture[, autre plan]])
 SHOTS = {
@@ -89,7 +89,6 @@ SHOTS = {
                          "#shotclip", 1.5),
     "panneau-replie": (1440, 820, AT(11) + "SIDE_FOLDED=true;renderSide(true);scrollTo(0,document.querySelector('.main').offsetTop-8);", None),
     "mobile": (390, 1200, AT(11), None),
-    "visite": (1400, 1000, AT(11) + "tourShow(0);", None),
     # thèmes saisonniers (46-themes.js), forcés sur la journée de démo, de jour (11h) et le soir (20h15)
     **{f"theme-{name}": (1400, 1000, AT(h) + f"THEME_FORCE='{tid}';", "#cv", 1.5)
        for name, tid, h in (("halloween", "halloween", 20.25), ("halloween-jour", "halloween", 11), ("noel", "noel", 11),
