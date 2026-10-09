@@ -91,10 +91,14 @@ summary .du{color:var(--muted);font-size:12px;white-space:nowrap}
 .steps li.pl .k{line-height:18px}
 .steps .e{color:var(--err);font-size:11px;margin:0 0 4px 15px;word-break:break-word}
 /* « Ses tickets » (fiche d'un collègue, tkRow) : clé, composant et points en tête, titre, puis âge, réouvert, PR */
+/* groupes de colonne : liseré à leur couleur, de l'air entre eux, pas de trait horizontal */
+.tkg{border-top:0;padding:4px 0 4px 10px;box-shadow:inset 3px 0 0 var(--c,var(--line))}
+.tkg+.tkg{margin-top:14px}
+.tkg>summary .wn{font-weight:700}
 .tkg>summary .chev{color:var(--muted);font-size:11px;width:8px;margin-right:-4px}
 .tkg>summary .chev::before{content:'▸'}
 .tkg[open]>summary .chev::before{content:'▾'}
-.tkg>.steps{margin-top:3px} /* 8 px du titre du groupe à la clé du premier ticket */
+.tkg>.steps{margin:3px 0 0 12px} /* 8 px du titre du groupe à la clé du premier ticket ; clés alignées sur le nom de la colonne */
 .steps li.tkr{display:block;padding:5px 0}
 .tkr .tk-top{display:flex;align-items:center;gap:6px;min-width:0}
 .tkr .tk-key{font:600 11px/18px ui-monospace,Menlo,monospace;color:var(--accent);text-decoration:none;white-space:nowrap}
@@ -109,7 +113,7 @@ summary .du{color:var(--muted);font-size:12px;white-space:nowrap}
 .tk-tag{color:var(--err);border:1px solid currentColor;border-radius:4px;padding:0 4px;font-size:10px;font-weight:700;line-height:14px;text-transform:uppercase;letter-spacing:.04em}
 .tk-bar{display:flex;gap:2px;height:8px;border-radius:4px;overflow:hidden;background:var(--chip)}
 .tk-bar i{display:block;min-width:3px}
-.tk-bar-cap{font-size:12px;color:var(--muted);margin:4px 0 8px}
+.tk-bar-cap{font-size:12px;color:var(--muted);margin:4px 0 14px}
 .tk-bar-cap b{color:var(--ink)}
 .future{opacity:.45}
 .back{margin-bottom:10px}

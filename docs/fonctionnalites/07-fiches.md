@@ -13,7 +13,7 @@ Clic sur un personnage (plan, panneau ou « Qui fait quoi ») : sa fiche s'ouvre
 
 **Collègue** : tickets ouverts, en cours, PR ouvertes et mergées du jour, ce qu'il a écrit, trié ou testé (PO, facilitateur, testeur).
 
-**Ses tickets** (dans la fiche d'un collègue) : en tête, une barre de ses points du sprint, un segment par colonne aux couleurs des groupes (en tickets si aucun n'est estimé ; survol : le détail), et les points déployés sur le total. Puis un groupe par colonne du board (▸ : replié, clic pour l'ouvrir ; « À faire » et « Déployé » repliés par défaut), le ticket le plus ancien dans sa colonne en premier (« Déployé » : le plus récent). Chaque ticket tient sur deux ou trois lignes :
+**Ses tickets** (dans la fiche d'un collègue) : en tête, une barre de ses points du sprint, un segment par colonne aux couleurs des groupes (en tickets si aucun n'est estimé ; survol : le détail), et les points déployés sur le total. Puis un groupe par colonne du board, bordé à gauche d'un liseré à sa couleur (▸ : replié, clic pour l'ouvrir ; « À faire » et « Déployé » repliés par défaut), le ticket le plus ancien dans sa colonne en premier (« Déployé » : le plus récent). Chaque ticket tient sur deux ou trois lignes :
 - la clé (lien Jira), 🐛 si c'est un bug, le composant (le « [Panier] » du début du titre, sorti en étiquette) et ses points (« 0 pt » compris ; rien s'il n'est pas estimé) ;
 - le titre, qui ouvre la fiche du ticket ;
 - depuis quand il est dans sa colonne (en cours, en review, en test, à déployer), en orange avec ⏳ quand il est bloqué (en review ou en test depuis plus de 2 jours, comme dans À traiter), « Réouvert » quand son statut Jira est celui des réouvertures (`jira_flow.reopened`), et ses PR ouvertes avec l'état de leur review.

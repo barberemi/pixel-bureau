@@ -290,8 +290,8 @@ function renderPerson(side,c){
     const list=p.tickets.filter(x=>x.cat===k); if(!list.length)continue;
     const d=memoDetails(document.createElement('details'),c.key+':'+k,k!=='done'&&k!=='todo');
     const pts=list.reduce((a,x)=>a+(+x.points||0),0);
-    d.className='tkg';
-    d.innerHTML=`<summary><span class="chev" aria-hidden="true"></span><span class="dot" style="background:${TCAT[k].c}"></span><span class="wn">${TCAT[k].t}</span><span class="du">${list.length} ticket${list.length>1?'s':''}${pts?' · '+Math.round(pts)+' pts':''}</span></summary>`;
+    d.className='tkg';d.style.setProperty('--c',TCAT[k].c); // liseré aux couleurs de la colonne
+    d.innerHTML=`<summary><span class="chev" aria-hidden="true"></span><span class="wn">${TCAT[k].t}</span><span class="du">${list.length} ticket${list.length>1?'s':''}${pts?' · '+Math.round(pts)+' pts':''}</span></summary>`;
     const ul=document.createElement('ul');ul.className='steps';
     for(const x of tkSorted(list,k))ul.appendChild(tkRow(x));
     d.appendChild(ul);tb.appendChild(d);
