@@ -1,0 +1,137 @@
+/* Habillage pixel commun à tous les thèmes de page (theme-*.css) : cadres crénelés, boutons en relief, barres de titre,
+   police pixel, mode TV et son bandeau « EN DIRECT ». Assemblé après styles.css et avant les thèmes, qui n'y mettent que
+   leurs couleurs (variables) : --line (cadres, barres de titre), --on-line, --line-hover, --brand, --on-brand, --brand-lo,
+   --brand-hi, --btn-hover, --sel-bg, --h1-shadow, --appr-ink, --appr-bg, --on-warn, --select-arrow, --drop, --bevel, et en
+   mode TV --tv-* (valeurs par défaut dans styles.css).
+   Police pixel (Press Start 2P, OFL, page/fonts/) : seulement aux tailles où elle est nette, sur des éléments courts. */
+@font-face{font-family:'BureauPixel';src:url(data:font/woff2;base64,@@font:page/fonts/PressStart2P-latin.woff2@@) format('woff2')}
+:root[data-skin]{
+  --px:3px;
+  /* bordure pixel : 4 ombres pleines décalées = coins « crénelés », sans border-radius */
+  --frame:0 calc(-1*var(--px)) 0 0 var(--line),0 var(--px) 0 0 var(--line),calc(-1*var(--px)) 0 0 0 var(--line),var(--px) 0 0 0 var(--line);
+}
+:root[data-skin] body:not(.tv) *{border-radius:0!important}
+:root[data-skin] body:not(.tv){background:var(--bg)}
+
+/* police pixel : titre, horloge, gros chiffres des KPI (.dash .big) */
+:root[data-skin] h1,:root[data-skin] .clock,:root[data-skin] .dash .big{
+  font-family:'BureauPixel',ui-monospace,monospace;font-weight:400;letter-spacing:0;
+}
+:root[data-skin] h1{font-size:24px;line-height:1.3;text-shadow:3px 3px 0 var(--h1-shadow)}
+:root[data-skin] .clock{font-size:24px;line-height:1}
+:root[data-skin] .dash .big{font-size:24px;line-height:1.4}
+
+/* cadres : cartes, KPI, plan */
+/* le cadre est une ombre (hors de la boîte) : on garde les marges de styles.css, qui séparent les blocs */
+/* rythme vertical de la colonne principale : 16 px visibles entre deux grands blocs, ombre comprise. Un bloc cadré
+   dépasse de 3 px en haut (cadre) et de 9 px en bas (cadre + ombre) : marge = 16 + 9 + 3 = 28 px entre deux blocs cadrés
+   (mesuré par le relevé des écarts) ; marges du bas à 0 pour éviter leur fusion avec celles du haut */
+:root[data-skin] body:not(.tv) header{margin-bottom:0}
+:root[data-skin] body:not(.tv) .recap{margin:19px 0 0}
+:root[data-skin] body:not(.tv) .kpis{margin:19px 0 0} /* sous l'en-tête, qui n'a pas de cadre */
+:root[data-skin] body:not(.tv) .recap:not([hidden]) + .kpis{margin-top:28px}
+:root[data-skin] body:not(.tv) .main{margin-top:28px}
+:root[data-skin] body:not(.tv) .whoboard,:root[data-skin] body:not(.tv) .feed{margin:28px 0 0}
+:root[data-skin] body:not(.tv) footer{margin-top:25px}
+/* et en largeur : cadre (3 px de chaque côté) + ombre (6 px à droite) = 12 px, d'où 28 px entre deux colonnes cadrées */
+:root[data-skin] body:not(.tv) .kpis{column-gap:28px}
+:root[data-skin] body:not(.tv) .main{column-gap:28px}
+:root[data-skin] body:not(.tv) .card,:root[data-skin] body:not(.tv) section.dash{border:0;background:var(--panel);box-shadow:var(--frame),var(--drop)}
+:root[data-skin] body:not(.tv) .cv-wrap{box-shadow:var(--frame);margin:var(--px);background:var(--line)}
+
+/* titres de section : barre en aplat façon fenêtre de RPG, compteur dans la couleur de la marque */
+:root[data-skin] .side h2,:root[data-skin] .feed h2,:root[data-skin] .whoboard h2{background:var(--line);color:var(--on-line);padding:6px 8px;margin:0 0 8px}
+:root[data-skin] .whoboard h2:hover{color:var(--on-line);background:var(--line-hover)}
+:root[data-skin] .side h2 .cnt,:root[data-skin] .feed h2 .cnt,:root[data-skin] .whoboard h2 .cnt{background:var(--brand);color:var(--on-brand)}
+
+/* boutons : relief 3D qui s'enfonce au clic, texte normal */
+:root[data-skin] body:not(.tv) button:not(.who),:root[data-skin] body:not(.tv) select{
+  border:0;background:var(--chip);color:var(--ink);font-weight:600;box-shadow:var(--frame),var(--bevel);margin:var(--px);
+}
+:root[data-skin] body:not(.tv) button:not(.who):hover{background:var(--btn-hover);color:var(--ink)}
+:root[data-skin] body:not(.tv) button.on{background:var(--brand);color:var(--on-brand);box-shadow:var(--frame),inset -3px -3px 0 0 var(--brand-lo),inset 3px 3px 0 0 var(--brand-hi)}
+:root[data-skin] body:not(.tv) button:not(.who):active{transform:translate(1px,2px);box-shadow:var(--frame)}
+
+/* badges, sélection, portraits */
+:root[data-skin] .badge{border:0;background:var(--chip);box-shadow:var(--frame);margin:var(--px)}
+/* badge des données sous les boutons de l'en-tête : 8 px entre les deux cadres (3 px chacun), bord droit du cadre au bord de la page */
+:root[data-skin] header .badge{margin:14px var(--px) var(--px)}
+:root[data-skin] .who.sel{background:var(--chip);box-shadow:inset 4px 0 0 var(--brand)}
+:root[data-skin] button.who:hover{background:var(--chip)}
+:root[data-skin] .face canvas{box-shadow:var(--frame);background:var(--chip);margin:var(--px)}
+
+/* couleurs codées en dur dans styles.css, ramenées à la palette */
+:root[data-skin] .appr{color:var(--appr-ink);background:var(--appr-bg)}
+:root[data-skin] .recap{border-left-color:var(--brand);background:color-mix(in srgb,var(--brand) 6%,var(--panel))}
+:root[data-skin] .tip{background:var(--line);color:var(--on-line)}
+:root[data-skin] .prev{background:var(--line)}
+:root[data-skin] h2 .cnt.attn{background:var(--warn);color:var(--on-warn)}
+/* panneau de droite : « Replier », « ← Toute l'équipe » et la fiche gardent leur espace (la règle des boutons
+   ci-dessus remplace les marges de styles.css) ; « Replier » garde sa pleine largeur, cadre compris */
+:root[data-skin] body:not(.tv) button.sidefold-btn{width:calc(100% - 2*var(--px));margin:var(--px) var(--px) 17px}
+:root[data-skin] body:not(.tv) button.back{margin:var(--px) var(--px) 20px}
+:root[data-skin] .face{margin-bottom:17px}
+/* rythme vertical du panneau : 14 px visibles entre deux blocs, 8 px entre un titre de section et son contenu
+   (marges calculées avec les cadres pixel, qui dépassent de 3 px ; mesuré par le relevé des écarts) */
+:root[data-skin] #side .stbox{margin-bottom:14px}
+/* la ligne d'état passe toujours sous « Personnaliser » : 14 px sous le cadre du bouton */
+:root[data-skin] #side .edit-btn + .stbox{margin-top:14px}
+:root[data-skin] #side .stbox + p{margin-top:0}
+:root[data-skin] #side .stats{margin-bottom:14px}
+:root[data-skin] #side h2.grp{margin-top:14px}
+:root[data-skin] #side h2.grp + .note{margin-top:0;margin-bottom:8px}
+/* sous-titre en style inline (« Tes discussions Kronn du jour ») : même place qu'une note */
+:root[data-skin] #side h2.grp + div:not([class]){margin:0 0 8px!important}
+:root[data-skin] #side .namesbar{margin-bottom:14px}
+/* carte « Qui fait quoi » sélectionnée : pas l'aplat bleu des boutons actifs (son texte gris y devenait illisible),
+   fond teinté (--sel-bg, tous les textes >= 4,5:1) et liseré de la marque */
+:root[data-skin] body:not(.tv) button.wc.on{background:var(--sel-bg);color:var(--ink);box-shadow:var(--frame),inset 0 0 0 3px var(--brand)}
+/* sélecteurs : flèche pixel (--select-arrow) à 10 px du bord (la flèche native collait au cadre), jamais plus larges que leur
+   colonne, cadre compris */
+:root[data-skin] body:not(.tv) select{
+  appearance:none;-webkit-appearance:none;padding-right:32px;max-width:calc(100% - 2*var(--px));
+  background:var(--chip) var(--select-arrow) no-repeat right 12px center;
+}
+/* anneaux de la légende (« En panne », « Attend ta validation »…) : ronds et en pointillés comme dans le thème classique,
+   malgré les coins carrés du thème (leur classe dash = pointillés, à ne pas confondre avec les cartes KPI section.dash) */
+:root[data-skin] body:not(.tv) i.ring{border-radius:50%!important}
+/* cadres pixel du mode TV (même principe que --frame de la page, couleur --tv-line2) */
+:root[data-skin] body.tv{
+  --tv-frame:0 calc(-1*var(--px)) 0 0 var(--tv-line2),0 var(--px) 0 0 var(--tv-line2),calc(-1*var(--px)) 0 0 0 var(--tv-line2),var(--px) 0 0 0 var(--tv-line2);
+  --tv-wframe:0 calc(-1*var(--px)) 0 0 #ffffff,0 var(--px) 0 0 #ffffff,calc(-1*var(--px)) 0 0 0 #ffffff,var(--px) 0 0 0 #ffffff;
+}
+:root[data-skin] body.tv *{border-radius:0!important}
+:root[data-skin] body.tv #tvscene .sc-dots i,:root[data-skin] body.tv #tvscene .sc-dot,:root[data-skin] body.tv i.ring{border-radius:50%!important}
+/* police pixel : titre, horloge, gros chiffres, titres de scène (tailles multiples de 8, où elle est nette) */
+:root[data-skin] body.tv #tvbar .tvt{font:400 16px 'BureauPixel',ui-monospace,monospace;letter-spacing:0}
+:root[data-skin] body.tv #tvbar .tvc{font:400 24px 'BureauPixel',ui-monospace,monospace}
+:root[data-skin] body.tv #tvkpi .tk b{font:400 48px/1 'BureauPixel',ui-monospace,monospace}
+:root[data-skin] body.tv #tvscene h2{font:400 32px/1.3 'BureauPixel',ui-monospace,monospace;text-shadow:4px 4px 0 var(--tv-stand)}
+:root[data-skin] body.tv #tvscene .sc-hero>b{font:400 96px/1 'BureauPixel',ui-monospace,monospace}
+/* barre du haut : pastilles carrées, boutons blancs cadrés, le bouton de la scène en cours dans la couleur du stand-up */
+:root[data-skin] body.tv #tvbar .chip{margin:0 var(--px)}
+:root[data-skin] body.tv #tvbar button{background:#ffffff;color:var(--tv-bar);border:0;font-weight:700;margin:0 var(--px);box-shadow:var(--tv-wframe),inset -3px -3px 0 0 var(--tv-btn-bevel)}
+:root[data-skin] body.tv #tvbar #tvstand.on,:root[data-skin] body.tv #tvbar #tvplan.on,:root[data-skin] body.tv #tvbar #tvretro.on{background:var(--tv-stand);color:var(--tv-stand-ink);box-shadow:var(--tv-wframe)}
+/* cartes : cadre pixel, ombre décalée pour les chiffres, liseré d'état gardé ; 16 px visibles entre deux cartes de chiffres et
+   jusqu'aux bords (cadre 3 px, ombre 6 px), 14 px entre deux cartes de « Qui fait quoi » (mesuré par le relevé des écarts) */
+:root[data-skin] body.tv #tvwho{border-left:0;gap:14px;padding:16px}
+:root[data-skin] body.tv #tvwho .tw{box-shadow:var(--tv-frame);margin:var(--px);border-left-width:6px}
+:root[data-skin] body.tv #tvkpi{gap:19px;padding:16px 19px 19px 16px}
+:root[data-skin] body.tv #tvkpi .tk{box-shadow:var(--tv-frame),6px 6px 0 0 rgba(0,0,0,.35);margin:var(--px);border-top-width:8px}
+/* scènes : étiquette, barre de temps et jauge dans la couleur du stand-up, cartes cadrées */
+:root[data-skin] body.tv #tvscene::after{background:var(--tv-stand);height:6px}
+:root[data-skin] body.tv #tvscene .sc-tag,:root[data-skin] body.tv #tvscene .sc-tag.sc-retro{background:var(--tv-stand);color:var(--tv-stand-ink);box-shadow:var(--tv-frame)}
+:root[data-skin] body.tv #tvscene .sc-meter{height:24px;box-shadow:var(--tv-frame);margin:var(--px)}
+:root[data-skin] body.tv #tvscene .rq,:root[data-skin] body.tv #tvscene .sc-order li{box-shadow:var(--tv-frame)}
+:root[data-skin] body.tv #tvscene .st{color:#ffffff}
+/* compteurs de colonnes de la scène sprint (couleurs CAT_COLOR écrites dans la ligne, trop sombres sur un fond de TV : 3,4:1 pour
+   « en test » sur le marine) : leurs versions claires, >= 7:1 */
+:root[data-skin] body.tv #tvscene .sc-cats span:nth-child(2){color:#4cc27c!important}
+:root[data-skin] body.tv #tvscene .sc-cats span:nth-child(3){color:#5aa9ff!important}
+:root[data-skin] body.tv #tvscene .sc-cats span:nth-child(4){color:#b39cf5!important}
+/* bandeau du bas façon « breaking news », sans clignoter : étiquette rouge EN DIRECT, texte qui défile sur bande blanche */
+:root[data-skin] body.tv #tvticker{background:#ffffff;color:#0a1420;border-top:0}
+:root[data-skin] body.tv #tvticker::before{content:'EN DIRECT';position:absolute;z-index:2;left:0;top:0;bottom:0;display:flex;align-items:center;padding:0 18px;
+  background:#b3122e;color:#ffffff;font:400 16px 'BureauPixel',ui-monospace,monospace;box-shadow:6px 0 0 0 #ffffff}
+:root[data-skin] body.tv #tvticker .run .tm{color:#b3122e;font:400 16px 'BureauPixel',ui-monospace,monospace}
+:root[data-skin] body.tv #tvticker .calm{color:#566880;padding-left:200px}

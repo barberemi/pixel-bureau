@@ -30,7 +30,7 @@ p = lambda *a: os.path.join(ROOT, *a)
 
 SRC = p("page", "src")
 JS_FILES = sorted(f for f in os.listdir(SRC) if f.endswith(".js"))
-# thèmes d'interface (ui.skin, bouton 🎨) : feuilles posées après styles.css
+# thèmes d'interface (ui.skin, bouton 🎨) : leurs couleurs, posées après styles.css et pixel.css (habillage commun)
 THEME_FILES = sorted(f for f in os.listdir(SRC) if f.startswith("theme-") and f.endswith(".css"))
 
 
@@ -51,9 +51,9 @@ def _nl(s):
 def page_html():
     """Squelette + CSS + JS concaténés, avant le remplacement des marqueurs de données (__SPRITES__...)."""
     html = open(p("page", "office_template.html")).read()
-    # styles.css puis les thèmes (theme-*.css), qui l'emportent à spécificité égale ;
+    # styles.css, pixel.css (habillage commun) puis les thèmes (theme-*.css), qui l'emportent à spécificité égale ;
     # @@font:chemin@@ = police intégrée en base64 (la sandbox des pages n'accepte que font-src data:)
-    css = "".join(_nl(open(os.path.join(SRC, f)).read()) for f in ["styles.css"] + THEME_FILES)
+    css = "".join(_nl(open(os.path.join(SRC, f)).read()) for f in ["styles.css", "pixel.css"] + THEME_FILES)
     css = re.sub(r"@@font:([\w./-]+)@@", lambda m: base64.b64encode(open(p(m.group(1)), "rb").read()).decode(), css)
     js = "".join(_nl(open(os.path.join(SRC, f)).read()) for f in JS_FILES)
     for mark, body in (("/*__STYLES__*/", css), ("/*__SCRIPTS__*/", js)):

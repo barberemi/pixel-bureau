@@ -14,3 +14,10 @@ test('thème : choix du navigateur, puis de l\'installation, puis classique', ()
   assert.equal(run("skinFor('inconnu','autre')"), 'classique');
   assert.equal(run('skinFor(null,undefined)'), 'classique');
 });
+
+test('thème : tous les thèmes posent data-skin (habillage pixel commun), le Classique compris', () => {
+  run("applySkin('classique')");
+  assert.equal(run('document.documentElement.dataset.skin'), 'classique');
+  run("applySkin('equipe')");
+  assert.equal(run('document.documentElement.dataset.skin'), 'equipe');
+});

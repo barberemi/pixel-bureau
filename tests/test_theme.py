@@ -8,7 +8,7 @@ import assemble  # noqa: E402
 
 TEXT = ("ink", "muted", "accent", "ok", "warn", "err")  # couleurs de texte
 GROUNDS = ("panel", "chip", "bg")                      # fonds sur lesquels elles s'affichent
-FILLS = ("line", "err", "warn", "brand")               # aplats qui portent du texte blanc (brand : facultatif)
+FILLS = ("line", "err", "warn", "brand")               # aplats qui portent du texte (--on-<aplat>, blanc par défaut ; brand : facultatif)
 # mode TV (bloc :root[data-skin="<id>"] body.tv, facultatif) : textes sur les fonds de l'écran mural, et texte des aplats
 TV_TEXT = ("tv-ink", "tv-muted", "tv-h2", "tv-hint", "tv-ok", "tv-warn", "tv-err", "tv-mep")
 TV_GROUNDS = ("tv-bg", "tv-bar", "tv-deep", "tv-card", "tv-chip")
@@ -58,8 +58,9 @@ class ThemeTest(unittest.TestCase):
                         self.assertGreaterEqual(ratio(v[fg], v[bg]), 4.5, f"{theme} : --{fg} sur --{bg}")
             for fill in FILLS:
                 if fill in v:
+                    on = v.get("on-" + fill, "#ffffff")
                     with self.subTest(theme=theme, fill=fill):
-                        self.assertGreaterEqual(ratio("#ffffff", v[fill]), 4.5, f"{theme} : blanc sur --{fill}")
+                        self.assertGreaterEqual(ratio(on, v[fill]), 4.5, f"{theme} : --on-{fill} sur --{fill}")
 
     def test_tv_contrasts(self):
         for theme in assemble.themes():

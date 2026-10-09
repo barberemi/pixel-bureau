@@ -206,10 +206,10 @@ body.km-on .side{z-index:50} /* le panneau est sticky (plan d'empilement propre)
 .payrow .payv b{font:600 12px ui-monospace,Menlo,monospace;color:var(--ink)}
 .payrow .payv small{font-size:10.5px;color:var(--muted)}
 #tvbar,#tvticker,#tvwho{display:none}
-/* couleurs du mode TV (thème Classique) ; un thème de page les redéfinit sur body.tv (theme-equipe.css : « Equipe nuit ») */
+/* couleurs du mode TV (celles du thème Classique) ; un thème de page peut les redéfinir sur body.tv (theme-equipe.css : « Equipe nuit ») */
 body.tv{--tv-bg:#111216;--tv-bar:#191b22;--tv-deep:#15161b;--tv-card:#1d1f26;--tv-chip:#242732;--tv-line:#2a2d36;--tv-line2:#3a3e4a;--tv-btnline:#353946;
   --tv-ink:#ece8df;--tv-muted:#a29c90;--tv-h2:#8d877b;--tv-hint:#7d786e;--tv-ok:#4cc27c;--tv-warn:#f0b03a;--tv-err:#f06a5f;--tv-mep:#a98cf0;
-  --tv-stand:#2e9e9b;--tv-stand-ink:#0d1b1b;--tv-retro:#c25a9e;--tv-retro-ink:#1b0d17}
+  --tv-stand:#2e9e9b;--tv-stand-ink:#0d1b1b;--tv-retro:#c25a9e;--tv-retro-ink:#1b0d17;--tv-btn-bevel:#cfd5e0}
 body.tv{--tvw:clamp(320px,25vw,480px)}
 body.tv{padding:0;overflow:hidden;background:var(--tv-bg)}
 body.tv header,body.tv .kpis,body.tv .side,body.tv .feed,body.tv .whoboard,body.tv footer,body.tv .bar,body.tv .legend{display:none!important}

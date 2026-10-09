@@ -1,0 +1,19 @@
+/* @nom: Classique */
+/* Thème d'interface « Classique » (défaut, bouton 🎨 de l'en-tête) : les couleurs sombres d'origine du Bureau (anthracite,
+   crème, bleu) sur l'habillage pixel commun (pixel.css). Toujours sombre, même quand Kronn est en clair ; mode TV avec les
+   couleurs sombres de styles.css (--tv-*). Contrastes vérifiés par tests/test_theme.py. */
+
+/* même spécificité que les variables de styles.css, déclarées après : le thème l'emporte */
+:root[data-skin="classique"],:root[data-skin="classique"]:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#17181c; --panel:#202228; --ink:#ece8df; --muted:#a29c90; --line:#646a78; --chip:#2a2d34;
+  --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#9a9284; --on-accent:#0d1b33;
+  --shadow:none;
+  --drop:calc(2*var(--px)) calc(2*var(--px)) 0 0 rgba(0,0,0,.45);
+  --bevel:inset -3px -3px 0 0 #17181c,inset 3px 3px 0 0 #3a3e48;
+  --brand:#2f6fd6; /* bleu d'origine en aplat, texte blanc (4,8:1) */
+  --on-brand:#ffffff; --brand-lo:#1f56b3; --brand-hi:#5a8fe6;
+  --on-line:#ffffff; --line-hover:#535866; --on-warn:#1b1404; --on-err:#1b0606;
+  --btn-hover:#33363e; --sel-bg:#263247; --h1-shadow:#3a3e48; --appr-ink:#f0d48a; --appr-bg:#3a3420;
+  --select-arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h10v2H8v2H6v2H4V4H2V2H0z' fill='%23ece8df'/%3E%3C/svg%3E");
+}

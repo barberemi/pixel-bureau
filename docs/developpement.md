@@ -48,14 +48,17 @@ python3 tools/templates.py check       # les workflows du Kronn = le rendu des m
 
 ## Ajouter un thème
 
-Un thème d'interface = un fichier `page/src/theme-<id>.css`. L'assemblage le prend tout seul (après `styles.css`) et le bouton 🎨 le propose : rien d'autre à brancher.
+Un thème d'interface = un fichier `page/src/theme-<id>.css` qui ne contient que des couleurs. L'habillage pixel (cadres crénelés, boutons en relief, barres de titre, police pixel, mode TV et son bandeau « EN DIRECT ») est commun à tous les thèmes : `page/src/pixel.css`, assemblé après `styles.css` et avant les thèmes. L'assemblage prend le thème tout seul et le bouton 🎨 le propose : rien d'autre à brancher.
 
-1. Copier `page/src/theme-equipe.css` en `page/src/theme-<id>.css` (`<id>` en minuscules, sans espace).
+1. Copier `page/src/theme-classique.css` (sombre) ou `page/src/theme-equipe.css` (clair) en `page/src/theme-<id>.css` (`<id>` en minuscules, sans espace).
 2. Première ligne : `/* @nom: Nom affiché */` (le nom du bouton 🎨).
-3. Remplacer partout `data-skin="equipe"` par `data-skin="<id>"`.
-4. Changer les couleurs du bloc `:root[data-skin="<id>"]` : `--bg`, `--panel`, `--chip` (fonds), `--ink`, `--muted`, `--accent`, `--ok`, `--warn`, `--err` (textes), `--line` (cadres et barres de titre), `--brand` (aplat de la marque, facultatif). Garder le reste (cadres, boutons, police) ou l'adapter.
-   Mode TV (facultatif) : un bloc `:root[data-skin="<id>"] body.tv` qui redéfinit les variables `--tv-*` de `styles.css` (fond, barres, cartes, traits, textes, états) ; sans lui, l'écran mural garde ses couleurs du Classique. Le thème Equipe y ajoute ses cadres pixel et son bandeau du bas.
-5. `sh tools/test.sh` : `tests/test_theme.py` vérifie le nom, les variables et les contrastes (texte au moins 4,5:1 sur chaque fond, blanc au moins 4,5:1 sur `--line`, `--err`, `--warn`, `--brand`, et de même pour le bloc du mode TV s'il existe). Un thème illisible ne passe pas.
+3. Remplacer partout `data-skin="classique"` (ou `equipe`) par `data-skin="<id>"`.
+4. Changer les couleurs du bloc `:root[data-skin="<id>"]` :
+   - fonds `--bg`, `--panel`, `--chip` ; textes `--ink`, `--muted`, `--accent`, `--ok`, `--warn`, `--err` ; `color-scheme` (light ou dark) ;
+   - habillage pixel : `--line` (cadres et barres de titre) et `--on-line` (leur texte), `--line-hover`, `--brand` (aplat de la marque) avec `--on-brand`, `--brand-lo`, `--brand-hi` (relief du bouton actif), `--bevel` (relief des boutons), `--drop` (ombre décalée), `--btn-hover`, `--sel-bg` (carte sélectionnée), `--h1-shadow`, `--appr-ink` et `--appr-bg` (badge apprenti), `--on-warn` et `--on-err` (texte des pastilles), `--select-arrow` (flèche des sélecteurs, une image SVG en `url(data:…)` de la couleur du texte).
+
+   Mode TV (facultatif) : un bloc `:root[data-skin="<id>"] body.tv` qui redéfinit les variables `--tv-*` de `styles.css` (fond, barres, cartes, traits, textes, états, `--tv-btn-bevel`) ; sans lui, l'écran mural garde les couleurs sombres du Classique.
+5. `sh tools/test.sh` : `tests/test_theme.py` vérifie le nom, les variables et les contrastes (texte au moins 4,5:1 sur chaque fond, texte des aplats `--on-<aplat>` au moins 4,5:1 sur `--line`, `--err`, `--warn`, `--brand`, et de même pour le bloc du mode TV s'il existe). Un thème illisible ne passe pas.
 6. Ajouter une capture : une entrée `theme-<id>` dans `SHOTS` de `tools/shots.py` (copier `theme-equipe`), `.venv/bin/python tools/shots.py theme-<id>`, puis une ligne dans `docs/fonctionnalites/13-theme-page.md`.
 
 Une police : un `.woff2` (sous-ensemble latin) dans `page/fonts/` avec sa licence, déclarée par `@font-face{...src:url(data:font/woff2;base64,@@font:page/fonts/<fichier>.woff2@@)...}` (intégrée en base64 à l'assemblage : la sandbox des pages n'accepte que `font-src data:`). Pour être facile à lire, la réserver aux éléments courts (titre, horloge, chiffres), à la taille où elle est nette. Pour qu'un thème soit le défaut d'une équipe : `"ui": {"skin": "<id>"}` dans `teams/<équipe>/defaults.json`.
