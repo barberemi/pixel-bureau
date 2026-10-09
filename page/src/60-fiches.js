@@ -222,6 +222,28 @@ function tkRowHtml(x){
     `${comp?`<span class="tk-comp">${esc(comp)}</span>`:''}${tkPts(x.points)}</div>`+
     `<div class="tk-t">${tkOpen(comp?{...x,summary:m[2]}:x)}</div>${meta.length?`<div class="tk-meta">${meta.join('')}</div>`:''}`;
 }
+// ordre dans un groupe de « Ses tickets » : le plus ancien dans sa colonne d'abord ; déployés : le plus récent d'abord
+function tkSorted(list,k){
+  if(k==='done')return list.slice().sort((a,b)=>(ms(b.updated)||0)-(ms(a.updated)||0));
+  if(k==='todo')return list;
+  return list.slice().sort((a,b)=>(tkSince(a)||Infinity)-(tkSince(b)||Infinity));
+}
+// barre en tête de « Ses tickets » : un segment par colonne, aux couleurs des groupes, en points (en tickets si aucun n'est estimé)
+function tkBarHtml(tickets){
+  const byPts=tickets.some(x=>+x.points>0), w=x=>byPts?(+x.points||0):1;
+  const tot=tickets.reduce((a,x)=>a+w(x),0); if(!tot)return '';
+  const unit=n=>byPts?Math.round(n)+' pt'+(Math.round(n)>1?'s':''):n+' ticket'+(n>1?'s':'');
+  const seg=TORDER.map(k=>[k,tickets.filter(x=>x.cat===k).reduce((a,x)=>a+w(x),0)]).filter(([,n])=>n>0);
+  const done=seg.find(([k])=>k==='done');
+  return `<div class="tk-bar" role="img" aria-label="${seg.map(([k,n])=>TCAT[k].t+' : '+unit(n)).join(', ')}">`+
+    seg.map(([k,n])=>`<i style="flex:${n};background:${TCAT[k].c}" title="${TCAT[k].t} : ${unit(n)}"></i>`).join('')+'</div>'+
+    `<div class="tk-bar-cap"><b>${unit(done?done[1]:0)}</b> déployé${byPts?'s':(done&&done[1]>1?'s':'')} sur ${unit(tot)}</div>`;
+}
+// PR ouvertes qui ne citent aucun de ses tickets (les autres sont sur la ligne de leur ticket)
+function loosePrs(p){
+  const mine=new Set(p.tickets.map(x=>x.key));
+  return p.prs.filter(x=>!(x.keys||[]).some(k=>mine.has(k)));
+}
 function renderPerson(side,c){
   const p=c.team;
   workBlock(side,c);
@@ -263,6 +285,7 @@ function renderPerson(side,c){
   }
   const tb=foldSection(side,'tickets','Ses tickets',p.tickets.length);
   if(!p.tickets.length){const e=document.createElement('div');e.className='empty';e.textContent='Aucun ticket.';tb.appendChild(e);}
+  else{const bar=document.createElement('div');bar.innerHTML=tkBarHtml(p.tickets);tb.appendChild(bar);}
   for(const k of TORDER){
     const list=p.tickets.filter(x=>x.cat===k); if(!list.length)continue;
     const d=memoDetails(document.createElement('details'),c.key+':'+k,k!=='done'&&k!=='todo');
@@ -270,14 +293,15 @@ function renderPerson(side,c){
     d.className='tkg';
     d.innerHTML=`<summary><span class="chev" aria-hidden="true"></span><span class="dot" style="background:${TCAT[k].c}"></span><span class="wn">${TCAT[k].t}</span><span class="du">${list.length} ticket${list.length>1?'s':''}${pts?' · '+Math.round(pts)+' pts':''}</span></summary>`;
     const ul=document.createElement('ul');ul.className='steps';
-    for(const x of list)ul.appendChild(tkRow(x));
+    for(const x of tkSorted(list,k))ul.appendChild(tkRow(x));
     d.appendChild(ul);tb.appendChild(d);
   }
   const REV={approved:['approuvée','var(--ok)'],changes:['changements demandés','var(--err)'],pending:['review en attente','var(--warn)']};
-  if(p.prs.length){
-    const pb=foldSection(side,'prs','Ses PR ouvertes',p.prs.length);
+  const loose=loosePrs(p);
+  if(loose.length){
+    const pb=foldSection(side,'prs',loose.length<p.prs.length?'Ses autres PR ouvertes':'Ses PR ouvertes',loose.length);
     const ul=document.createElement('ul');ul.className='steps';ul.style.marginLeft='0';
-    for(const x of p.prs.slice().sort((a,b)=>(a.draft?1:0)-(b.draft?1:0))){
+    for(const x of loose.slice().sort((a,b)=>(a.draft?1:0)-(b.draft?1:0))){
       const r=x.draft?['brouillon','var(--idle)']:REV[x.review]||REV.pending;
       const li=document.createElement('li');
       li.innerHTML=`<span class="dot" style="background:${r[1]}"></span><a href="${esc(x.url)}" target="_blank" rel="noopener" style="color:var(--accent);white-space:nowrap">#${x.n}</a><span>${esc(x.title)}</span><span class="k">${r[0]}</span>`;

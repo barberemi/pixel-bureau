@@ -43,3 +43,27 @@ test('Réouvert (statut jira_flow.reopened), PR du ticket avec leur review, bug 
   assert.match(h, /title="Bug">🐛/);
   assert.doesNotMatch(row({key: 'DM-9', summary: 'c', cat: 'doing', status: 'En cours'}), /tk-tag|#12/);
 });
+
+test('tri : le plus ancien dans sa colonne d\'abord ; déployés : le plus récent d\'abord ; à faire : ordre de Jira', () => {
+  const list = [{key: 'A', since: '2026-10-05T10:00:00+02:00', updated: '2026-10-01T10:00:00+02:00'},
+    {key: 'B', since: '2026-09-28T10:00:00+02:00', updated: '2026-10-06T10:00:00+02:00'}, {key: 'C', updated: '2026-10-03T10:00:00+02:00'}];
+  const keys = k => JSON.parse(run(`JSON.stringify(tkSorted(${JSON.stringify(list)}, '${k}').map(x => x.key))`));
+  assert.deepEqual(keys('review'), ['B', 'C', 'A']); // C sans since : repli sur updated, comme ailleurs
+  assert.deepEqual(keys('done'), ['B', 'C', 'A']);
+  assert.deepEqual(keys('todo'), ['A', 'B', 'C']);
+});
+
+test('barre : un segment par colonne en points, en tickets si aucun n\'est estimé', () => {
+  const h = run(`tkBarHtml([{cat: 'done', points: 8}, {cat: 'doing', points: 3}, {cat: 'doing', points: 0}, {cat: 'review', points: null}])`);
+  assert.match(h, /flex:3;background:#2f6fd6" title="En cours : 3 pts"/);
+  assert.match(h, /flex:8;[^>]*title="Déployé : 8 pts"/);
+  assert.doesNotMatch(h, /En review/); // ticket non estimé : 0 pt, pas de segment
+  assert.match(h, /<b>8 pts<\/b> déployés sur 11 pts/);
+  assert.match(run(`tkBarHtml([{cat: 'todo'}, {cat: 'test'}, {cat: 'test'}])`), /<b>0 ticket<\/b> déployé sur 3 tickets/);
+  assert.equal(run('tkBarHtml([])'), '');
+});
+
+test('« Ses autres PR ouvertes » : seulement celles qui ne citent aucun de ses tickets', () => {
+  const p = {tickets: [{key: 'DM-1'}, {key: 'DM-2'}], prs: [{n: 1, keys: ['DM-1']}, {n: 2, keys: []}, {n: 3, keys: ['DM-9']}, {n: 4}]};
+  assert.deepEqual(JSON.parse(run(`JSON.stringify(loosePrs(${JSON.stringify(p)}).map(x => x.n))`)), [2, 3, 4]);
+});

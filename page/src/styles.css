@@ -107,6 +107,10 @@ summary .du{color:var(--muted);font-size:12px;white-space:nowrap}
 .tkr .tk-meta .warn{color:var(--warn);font-weight:600}
 .tkr .tk-meta .dot{width:7px;height:7px;margin-right:4px}
 .tk-tag{color:var(--err);border:1px solid currentColor;border-radius:4px;padding:0 4px;font-size:10px;font-weight:700;line-height:14px;text-transform:uppercase;letter-spacing:.04em}
+.tk-bar{display:flex;gap:2px;height:8px;border-radius:4px;overflow:hidden;background:var(--chip)}
+.tk-bar i{display:block;min-width:3px}
+.tk-bar-cap{font-size:12px;color:var(--muted);margin:4px 0 8px}
+.tk-bar-cap b{color:var(--ink)}
 .future{opacity:.45}
 .back{margin-bottom:10px}
 .feed{margin-top:14px;padding:14px}

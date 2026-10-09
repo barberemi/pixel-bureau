@@ -13,10 +13,12 @@ Clic sur un personnage (plan, panneau ou « Qui fait quoi ») : sa fiche s'ouvre
 
 **Collègue** : tickets ouverts, en cours, PR ouvertes et mergées du jour, ce qu'il a écrit, trié ou testé (PO, facilitateur, testeur).
 
-**Ses tickets** (dans la fiche d'un collègue) : un groupe par colonne du board (▸ : replié, clic pour l'ouvrir ; « À faire » et « Déployé » repliés par défaut). Chaque ticket tient sur deux ou trois lignes :
+**Ses tickets** (dans la fiche d'un collègue) : en tête, une barre de ses points du sprint, un segment par colonne aux couleurs des groupes (en tickets si aucun n'est estimé ; survol : le détail), et les points déployés sur le total. Puis un groupe par colonne du board (▸ : replié, clic pour l'ouvrir ; « À faire » et « Déployé » repliés par défaut), le ticket le plus ancien dans sa colonne en premier (« Déployé » : le plus récent). Chaque ticket tient sur deux ou trois lignes :
 - la clé (lien Jira), 🐛 si c'est un bug, le composant (le « [Panier] » du début du titre, sorti en étiquette) et ses points (« 0 pt » compris ; rien s'il n'est pas estimé) ;
 - le titre, qui ouvre la fiche du ticket ;
 - depuis quand il est dans sa colonne (en cours, en review, en test, à déployer), en orange avec ⏳ quand il est bloqué (en review ou en test depuis plus de 2 jours, comme dans À traiter), « Réouvert » quand son statut Jira est celui des réouvertures (`jira_flow.reopened`), et ses PR ouvertes avec l'état de leur review.
+
+Les PR qui citent un de ses tickets sont sur la ligne du ticket : le bloc suivant, « Ses autres PR ouvertes », ne garde que les autres (sans ticket, ou d'un ticket hors de ses tickets du sprint). Le compteur « PR ouvertes » en haut de la fiche les compte toutes.
 
 **Ticket** : clic sur un ticket (Kanban, fiche d'un collègue) : son statut et depuis quand, qui l'a, ses points, ses PR ouvertes avec leur review, le lien Jira, et les workflows à lancer dessus selon son statut :
 - **Implémenter** : ticket à faire ou en cours, sans PR. Après ta validation du plan, le workflow t'assigne le ticket et le passe « En cours » dans Jira, puis code, ouvre la PR et la fait relire.
