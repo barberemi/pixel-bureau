@@ -295,6 +295,29 @@ print(json.dumps(d.get(key, [])))
         pr = next(x for p in out["people"] for x in p["prs"])
         self.assertTrue(pr["created"])  # création de la PR, gardée pour l'âge de « PR sans review »
 
+    def test_team_shape_status_from_bulkfetch(self):
+        """Tickets sans historique (jira_team) + changements de statut de status_log (changelog/bulkfetch), rattachés par id."""
+        d = self.team_input(n_issues=2, moves=0)
+        a, b = d["issues"]
+        for i, it in enumerate(d["issues"]):
+            it["id"] = str(81000 + i)
+            del it["changelog"]
+        a["fields"]["created"] = "2026-08-01T08:00:00.000+0200"
+        b["fields"]["created"] = "2026-09-15T08:00:00.000+0200"
+        now = datetime.now(timezone.utc).replace(microsecond=0)
+        # bulkfetch date en millisecondes epoch (expand=changelog en ISO)
+        d["status_log"] = [{"issueId": "81000", "changeHistories": [
+            {"created": int(datetime(2026, 9, 20, 8, tzinfo=timezone.utc).timestamp() * 1000),
+             "items": [{"field": "status", "fromString": "À faire", "toString": "En cours"}]},
+            {"created": int(now.timestamp() * 1000), "author": {"accountId": "acc-1", "displayName": "Darryl Martin"},
+             "items": [{"field": "status", "fromString": "En cours", "toString": "To Review"}]}]}]
+        out = self.run_script("team_shape.py", d)
+        since = {t["key"]: t["since"] for t in [x for p in out["people"] for x in p["tickets"]] + out["unassigned"]}
+        self.assertEqual(since[a["key"]], now.isoformat(timespec="milliseconds"))  # dernier changement de statut
+        self.assertEqual(since[b["key"]], "2026-09-15T08:00:00.000+0200")  # absent de status_log : création
+        moves = [e for e in out["events"] if e["kind"] == "move"]
+        self.assertEqual([(e["key"], e["to"]) for e in moves], [(a["key"], "To Review")])  # seul celui d'aujourd'hui
+
     def test_team_shape_reports_github_errors(self):
         gh = {"open": [], "merged": [], "releases": [], "staging": [], "prod": [], "errors": ["open : gh introuvable sur la machine"]}
         out = self.run_script("team_shape.py", self.team_input(github=gh))

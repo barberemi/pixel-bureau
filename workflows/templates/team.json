@@ -123,7 +123,7 @@
     "step_type": {
      "type": "ApiCall"
     },
-    "description": "Tickets EW du sprint en cours, avec l'historique (changements de statut du jour) et la date de création.",
+    "description": "Tickets EW du sprint en cours (champs seulement) ; leurs changements de statut viennent de status_log.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -139,13 +139,74 @@
     "api_query": {
      "jql": "project = @@jira.project@@ AND sprint in openSprints() ORDER BY updated DESC",
      "fields": "summary,status,assignee,issuetype,updated,@@jira.points_fields@@,created",
-     "expand": "changelog",
      "maxResults": "100"
     },
     "api_extract": {
      "path": "$.issues",
      "fallback": [],
      "fail_on_empty": true
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "team_keys",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Clés des tickets du sprint en cours, pour status_log (même requête que jira_team, sans champs).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/search/jql",
+    "api_method": "GET",
+    "api_query": {
+     "jql": "project = @@jira.project@@ AND sprint in openSprints() ORDER BY updated DESC",
+     "fields": "status",
+     "maxResults": "100"
+    },
+    "api_extract": {
+     "path": "$.issues[*].key",
+     "fallback": [],
+     "fail_on_empty": true
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "status_log",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Changements de statut seuls des tickets du sprint en cours (changelog/bulkfetch filtré sur status) : ~10 fois plus léger que expand=changelog, qui ramenait aussi chaque version de la description. Une seule page (1000 changements) : Kronn ne pagine pas un nextPageToken dans le corps ; 353 pour 57 tickets le 2026-10-09.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/changelog/bulkfetch",
+    "api_method": "POST",
+    "api_body": {
+     "issueIdsOrKeys": "{{steps.team_keys.data}}",
+     "fieldIds": [
+      "status"
+     ],
+     "maxResults": 1000
+    },
+    "api_extract": {
+     "path": "$.issueChangeLogs",
+     "fallback": [],
+     "fail_on_empty": false
     },
     "_requires": "jira"
    },
@@ -422,7 +483,7 @@
      "@@script:workflows/team_shape.py@@"
     ],
     "exec_timeout_secs": 60,
-    "exec_stdin": "{\"sprint\":{{steps.sprint_info.data_json}},\"issues\":{{steps.jira_team.data_json}},\"closed\":{{steps.jira_closed.data_json}},\"github\":{{steps.github.data.stdout}},\"work\":{\"written\":{{steps.work_written.data_json}},\"po_triage\":{{steps.work_po_triage.data_json}},\"sm_triage\":{{steps.work_sm_triage.data_json}},\"qa_ok\":{{steps.work_qa_ok.data_json}},\"qa_back\":{{steps.work_qa_back.data_json}}},\"planning\":{\"sprints\":{{steps.future_sprints.data_json}},\"issues\":{{steps.planning_tickets.data_json}}},\"new_tickets\":{{steps.new_tickets.data_json}},\"roles\":{\"po\":\"@@jira.role.po@@\",\"sm\":\"@@jira.role.sm@@\",\"qa\":\"@@jira.role.qa@@\"}}"
+    "exec_stdin": "{\"sprint\":{{steps.sprint_info.data_json}},\"issues\":{{steps.jira_team.data_json}},\"status_log\":{{steps.status_log.data_json}},\"closed\":{{steps.jira_closed.data_json}},\"github\":{{steps.github.data.stdout}},\"work\":{\"written\":{{steps.work_written.data_json}},\"po_triage\":{{steps.work_po_triage.data_json}},\"sm_triage\":{{steps.work_sm_triage.data_json}},\"qa_ok\":{{steps.work_qa_ok.data_json}},\"qa_back\":{{steps.work_qa_back.data_json}}},\"planning\":{\"sprints\":{{steps.future_sprints.data_json}},\"issues\":{{steps.planning_tickets.data_json}}},\"new_tickets\":{{steps.new_tickets.data_json}},\"roles\":{\"po\":\"@@jira.role.po@@\",\"sm\":\"@@jira.role.sm@@\",\"qa\":\"@@jira.role.qa@@\"}}"
    },
    {
     "name": "publish",

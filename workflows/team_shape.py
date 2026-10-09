@@ -3,6 +3,20 @@ from datetime import datetime, timezone
 from _lib import CFG, TZ, dumps
 
 D = json.load(sys.stdin)
+# Changements de statut du sprint en cours (étape status_log, changelog/bulkfetch) rattachés à leur ticket par id,
+# au format de expand=changelog : status_since et les événements du jour les lisent sans changer.
+def _iso(ms):
+    """bulkfetch date un changement en millisecondes epoch, expand=changelog en ISO : on ramène tout en ISO."""
+    if isinstance(ms, (int, float)):
+        return datetime.fromtimestamp(ms / 1000, timezone.utc).isoformat(timespec="milliseconds")
+    return ms
+
+
+_LOG = {str(l.get("issueId")): [dict(h, created=_iso(h.get("created"))) for h in l.get("changeHistories") or []]
+        for l in D.get("status_log") or []}
+for _it in D.get("issues") or []:
+    if "changelog" not in _it and str(_it.get("id")) in _LOG:
+        _it["changelog"] = {"histories": _LOG[str(_it.get("id"))]}
 # GitHub regroupé dans une seule étape (github_snapshot.py) ; l'ancien format (une clé par étape gh) reste accepté
 G = D.get("github") if isinstance(D.get("github"), dict) else {}
 for _k in ("open", "merged", "releases", "staging", "prod"):
