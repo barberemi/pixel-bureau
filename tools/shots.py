@@ -50,6 +50,11 @@ SHOTS = {
     "tv-agents": (1600, 900, AT(11) + "setTv(true);setTimeout(()=>{TVSCROLL.hold=performance.now()+1e6;const b=document.querySelector('#tvwho'),"
                   "h=[...b.querySelectorAll('h2')][1];b.scrollTop=h?h.offsetTop-300:0;},1500);", "#tvwho"),
     "standup": (1600, 900, AT(9.7) + "setTv(true);TVSCENE.manual='daily';TVSCENE.idx=0;updateTv(true);", None),
+    # tour de table : la testeuse, ses réouverts puis ses testés (travail Jira de la semaine simulé)
+    "standup-testeur": (1600, 900, AT(9.7) + "const k=chars.find(c=>c.roleKind==='qa');k.jira_id=k.jira_id||'qa';TEAM.work=Object.assign({},TEAM.work,{[k.jira_id]:"
+                        "{written:[],triaged:[],tested:TEAM.people.flatMap(p=>p.tickets).filter(x=>x.cat==='done').slice(0,7).map(x=>({...x,cat:'test',status:'To Test'})),"
+                        "reopened:[{key:'DM-7089',summary:'[Panier] Alléger le bundle',cat:'doing',status:'Reopen'}]}});"
+                        "setTv(true);TVSCENE.manual='daily';TVSCENE.idx=standupScenes().findIndex(s=>s.c&&s.c.roleKind==='qa');updateTv(true);", None),
     # tour de table : la facilitatrice présente les tickets créés par l'équipe depuis le dernier daily
     "standup-facilitatrice": (1600, 900, AT(9.7) + "setTv(true);TVSCENE.manual='daily';"
                               "TVSCENE.idx=standupScenes().findIndex(s=>s.c&&s.c.roleKind==='sm');updateTv(true);", None),

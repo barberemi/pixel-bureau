@@ -56,7 +56,8 @@ function teamCreated(since,t){
 }
 function sprintTickets(){return TEAM?[...TEAM.people.flatMap(p=>(p.tickets||[]).map(x=>({...x,who:p.name}))),...(TEAM.unassigned||[])]:[];}
 function newTickets(t){const s=prevDaily(t);return sprintTickets().filter(x=>x.created&&ms(x.created)>s).sort((a,b)=>ms(b.created)-ms(a.created));}
-const tkLi=x=>`<li>${x.status||x.cat?`<span class="st st-${esc(x.cat||'')}">${esc(x.status||CAT_TXT[x.cat]||'')}</span>`:''}<b>${esc(x.key)}</b> ${esc(clip(x.summary||'',90))}${x.who?` <small>· ${esc(String(x.who).split(' ')[0])}</small>`:''}</li>`;
+// étiquette du statut : couleur de sa colonne, rouge pour un ticket réouvert (il est retombé « en cours »)
+const tkLi=x=>`<li>${x.status||x.cat?`<span class="st st-${x.status&&x.status===FLOW.reopened?'reopen':esc(x.cat||'')}">${esc(x.status||CAT_TXT[x.cat]||'')}</span>`:''}<b>${esc(x.key)}</b> ${esc(clip(x.summary||'',90))}${x.who?` <small>· ${esc(String(x.who).split(' ')[0])}</small>`:''}</li>`;
 const tkList=(l,n)=>`<ul class="sc-tk">${l.slice(0,n).map(tkLi).join('')}${l.length>n?`<li class="more">+ ${l.length-n} autres</li>`:''}</ul>`;
 function personScene(c,t){
   const W=workOf(c), own=(c.team&&c.team.tickets||[]).slice().sort((a,b)=>ST_ORDER.indexOf(a.cat)-ST_ORDER.indexOf(b.cat));
@@ -74,8 +75,9 @@ function personScene(c,t){
   }
   if(c.roleKind==='qa'){
     const ok=W?W.tested:[], back=W?W.reopened:[];
-    return `<div class="sc-cols"><div><h3>Testés depuis le dernier daily (${cnt50(ok.length)})</h3>${ok.length?tkList(ok,50):'<p class="sc-empty">Aucun.</p>'}</div>`+
-      `<div><h3>Réouverts (${cnt50(back.length)})</h3>${back.length?tkList(back,50):'<p class="sc-empty">Aucun.</p>'}</div></div>`;
+    // l'un sous l'autre, pleine largeur : les réouverts d'abord (peu nombreux, ce qui compte au daily), puis les testés (jusqu'à 50)
+    return `<h3>Réouverts (${cnt50(back.length)})</h3>${back.length?tkList(back,50):'<p class="sc-empty">Aucun.</p>'}`+
+      `<h3 style="margin-top:18px">Testés depuis le dernier daily (${cnt50(ok.length)})</h3>${ok.length?tkList(ok,50):'<p class="sc-empty">Aucun.</p>'}`;
   }
   if(!own.length)return note||'<p class="sc-empty">Pas de ticket dans le sprint.</p>';
   return note+`<h3>Ses tickets (${own.length})</h3>${tkList(own,50)}`;

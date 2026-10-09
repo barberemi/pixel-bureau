@@ -11,7 +11,9 @@ Pour l'écran de l'open space : plein écran, textes lisibles à 3 m, chiffres d
 
 ![Stand-up](../img/standup.png)
 
-- Pendant le daily (ou touche **S**, bouton « Stand-up »), les scènes tournent toutes les 20 s : le sprint, puis un tour de table (lead, devs, testeur, PO, apprentis, facilitateur en dernier) avec le vrai travail de chacun. Flèches pour passer d'une scène à l'autre.
+- Pendant le daily (ou touche **S**, bouton « Stand-up »), les scènes tournent toutes les 20 s : le sprint, puis un tour de table (lead, devs, testeur, PO, apprentis, facilitateur en dernier) avec le vrai travail de chacun. Flèches pour passer d'une scène à l'autre. Le testeur : ses tickets réouverts d'abord (étiquette rouge), puis ceux testés depuis le dernier daily, l'un sous l'autre sur toute la largeur ; une liste trop longue défile toute seule.
+
+![Stand-up : les réouverts puis les testés](../img/standup-testeur.png)
 - La facilitatrice clôt le tour avec les tickets créés par l'équipe depuis le dernier daily, dans le sprint ou le backlog : numéro, titre, statut et qui l'a créé. Les tickets de personnes hors de l'équipe n'y sont pas.
 
 ![Stand-up : les tickets créés par l'équipe](../img/standup-facilitatrice.png)

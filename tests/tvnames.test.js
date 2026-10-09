@@ -35,3 +35,13 @@ test('« Qui fait quoi » de l\'écran mural : carte d\'agent nommée par son m�
   assert.match(h, /<span class="wn">🔎 Reviewer de PR<span class="ws">au travail · 12 min<\/span>/);
   assert.match(run(`tvWhoCard({c:{key:'p',name:'Pam',person:'Pam'},st:{st:'work',human:true},what:'DM-1 Un',sub:''},'Pam')`), /^<div class="tw" /);
 });
+
+test('stand-up de la testeuse : réouverts d\'abord, pleine largeur, étiquette « Reopen » rouge ; puis les testés', () => {
+  const h = run(`(() => { const t0 = TEAM; TEAM = {people: [], work: {q: {written: [], triaged: [],
+      tested: [{key: 'DM-1', summary: 'Un', cat: 'test', status: 'To Test'}], reopened: [{key: 'DM-2', summary: 'Deux', cat: 'doing', status: 'Reopen'}]}}};
+    try { return personScene({key: 'k', name: 'Karen', person: 'Karen', roleKind: 'qa', jira_id: 'q'}, Date.now()); } finally { TEAM = t0; } })()`);
+  assert.ok(h.indexOf('Réouverts (1)') < h.indexOf('Testés depuis le dernier daily (1)'));
+  assert.doesNotMatch(h, /sc-cols/);
+  assert.match(h, /<span class="st st-reopen">Reopen<\/span><b>DM-2<\/b>/);
+  assert.match(h, /<span class="st st-test">To Test<\/span><b>DM-1<\/b>/);
+});

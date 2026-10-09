@@ -424,7 +424,8 @@ body.tv.tvscene #tvscene{display:block;flex:1;overflow:hidden;background:var(--t
 #tvscene .sc-tab{border-collapse:collapse;margin-top:clamp(12px,1.5vw,24px);font-size:clamp(17px,1.35vw,26px)}
 #tvscene .sc-tab th{color:var(--tv-muted);font-weight:600;text-align:center;padding:4px 18px;font-size:.8em}
 #tvscene .sc-tab td{padding:4px 18px;text-align:center;border-top:1px solid var(--tv-line)}#tvscene .sc-tab td:first-child{text-align:left;font-weight:700}
-#tvscene .sc-cols{display:grid;grid-template-columns:1fr 1fr;gap:clamp(18px,2vw,40px)}
+/* minmax(0,…) : un titre long ne pousse pas l'autre colonne hors de l'écran */
+#tvscene .sc-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(18px,2vw,40px)}
 #tvscene h3{margin:0 0 8px;font-size:clamp(18px,1.4vw,26px);color:var(--tv-warn)}
 #tvscene ul{list-style:none;margin:0;padding:0}
 #tvscene li{padding:7px 0;border-top:1px solid var(--tv-line)}#tvscene li small{display:block;color:var(--tv-muted);font-size:.75em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -456,7 +457,7 @@ body.tv.tvscene #tvkpi{flex:0 0 auto;min-height:var(--tvk)} /* pendant une scèn
 #tvscene .sc-tk li{display:flex;align-items:baseline;gap:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #tvscene .sc-tk li small{display:inline;color:var(--tv-muted)}
 #tvscene .st{flex:none;font-size:.62em;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--tv-line2);color:var(--tv-ink);min-width:6.5em;text-align:center}
-#tvscene .st-doing{background:#2e9e5b}#tvscene .st-review{background:#4a7fe0}#tvscene .st-test{background:#7a5cc8}#tvscene .st-done,#tvscene .st-deploy{background:#5b5f6b}
+#tvscene .st-doing{background:#2e9e5b}#tvscene .st-reopen{background:#b3122e}#tvscene .st-review{background:#4a7fe0}#tvscene .st-test{background:#7a5cc8}#tvscene .st-done,#tvscene .st-deploy{background:#5b5f6b}
 /* stand-up : pas de colonne « Qui fait quoi », la scène prend toute la largeur ; le corps défile s'il déborde */
 body.tv.tvscene #tvwho{display:none!important}
 body.tv.tvscene .stage{right:0}
