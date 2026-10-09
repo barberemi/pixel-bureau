@@ -46,6 +46,9 @@ SHOTS = {
     "recap": (1400, 1200, AT(11) + "RECAP_OPEN=true;renderRecap();", "#recap"),
     "rejouer": (1400, 1200, AT(9.7) + "setMode('play');", ".stage", 1.5),
     "tv": (1600, 900, AT(11) + "setTv(true);", None),
+    # « Qui fait quoi » de l'écran mural, défilé jusqu'aux agents (actifs ou en panne, nommés par leur métier)
+    "tv-agents": (1600, 900, AT(11) + "setTv(true);setTimeout(()=>{TVSCROLL.hold=performance.now()+1e6;const b=document.querySelector('#tvwho'),"
+                  "h=[...b.querySelectorAll('h2')][1];b.scrollTop=h?h.offsetTop-300:0;},1500);", "#tvwho"),
     "standup": (1600, 900, AT(9.7) + "setTv(true);TVSCENE.manual='daily';TVSCENE.idx=0;updateTv(true);", None),
     # tour de table : la facilitatrice présente les tickets créés par l'équipe depuis le dernier daily
     "standup-facilitatrice": (1600, 900, AT(9.7) + "setTv(true);TVSCENE.manual='daily';"

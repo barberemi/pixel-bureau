@@ -44,12 +44,18 @@ function tvAutoScroll(now,dt){
 {const box=document.getElementById('tvwho');
   if(box)for(const ev of ['wheel','touchstart','pointerdown','mousemove'])box.addEventListener(ev,()=>{TVSCROLL.hold=performance.now()+15000;},{passive:true});}
 
+// « Qui fait quoi » de l'écran mural : l'équipe (rien de personnel : la carte du boss sans ses validations), puis les agents
+// actifs ou en panne, nommés par leur métier comme sur le plan ; même carte que la page (titre sur 2 lignes, depuis quand)
+function tvWhoCard(x,name){
+  const img=portraitUrl(x.c), tip=[x.what,x.sub,x.tip].filter(Boolean).join('\n');
+  return `<div class="tw${x.c.person?'':' ag'}" title="${esc(tip)}" style="--st:${ST_CSS[x.st.st]||'var(--idle)'};--tk:${x.tone||'transparent'}"><span class="wp">${img?`<img src="${img}" alt="">`:''}</span>`+
+    `<span class="wt"><span class="wn">${esc(name)}<span class="ws">${esc(shortSt(x.st))}${x.since?' · '+esc(x.since):''}</span></span><span class="ww${x.tone?'':' nt'}">${esc(x.what)}</span>${x.sub?`<span class="wsub">${esc(x.sub)}</span>`:''}</span></div>`;
+}
 function renderTvWho(){
   const box=document.getElementById('tvwho');if(!box)return;
-  const cards=whoCards(T,true);
-  const html='<h2>Qui fait quoi</h2>'+cards.map(x=>{const img=portraitUrl(x.c);
-    return `<div class="tw" style="--st:${ST_CSS[x.st.st]||'var(--idle)'};--tk:${x.tone||'transparent'}"><span class="wp">${img?`<img src="${img}" alt="">`:''}</span>`+
-      `<span class="wt"><span class="wn">${esc(x.c.name)}<span class="ws">${esc(shortSt(x.st))}</span></span><span class="ww${x.tone?'':' nt'}">${esc(x.what)}</span>${x.sub?`<span class="wsub">${esc(x.sub)}</span>`:''}</span></div>`;}).join('');
+  const team=whoCards(T,true), agents=whoCards(T).filter(x=>!x.c.person&&!x.c.visitor&&!x.c.guest);
+  const html='<h2>Qui fait quoi</h2>'+team.map(x=>tvWhoCard(x,x.c.name)).join('')+
+    (agents.length?`<h2>Les agents</h2>`+agents.map(x=>tvWhoCard(x,labelText(x.c))).join(''):'');
   if(html!==TVWHO_SIG){TVWHO_SIG=html;box.innerHTML=html;}
 }
 // puce « direct » : anneau du prochain passage du cron live, orange en cas de retard (même calcul que le badge)

@@ -336,6 +336,7 @@ body.sidefold .sidefold-btn{margin:0;padding:10px 0;font-size:16px}
 .dash .stack i{display:block;height:100%}
 /* mode TV : colonne « Qui fait quoi » (équipe seulement, lisible de loin) */
 body.tv #tvwho{display:flex;flex-direction:column;gap:8px;position:fixed;top:52px;bottom:48px;right:0;width:var(--tvw);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--tv-line2) transparent;padding:12px 14px;background:var(--tv-deep);border-left:1px solid var(--tv-line);color:var(--tv-ink);z-index:30;font-family:ui-sans-serif,system-ui,sans-serif}
+#tvwho h2+h2,#tvwho .tw+h2{margin-top:10px} /* « Les agents » après l'équipe */
 #tvwho h2{margin:0 0 2px;font-size:clamp(12px,0.9vw,15px);text-transform:uppercase;letter-spacing:.08em;color:var(--tv-h2)}
 #tvwho .tw{display:flex;gap:10px;align-items:flex-start;background:var(--tv-card);border-radius:10px;border-left:5px solid var(--st);padding:8px 10px;min-width:0;flex:none}
 #tvwho .wp{flex:none;width:36px;height:36px;border-radius:7px;background:var(--tv-line);overflow:hidden}
@@ -343,7 +344,7 @@ body.tv #tvwho{display:flex;flex-direction:column;gap:8px;position:fixed;top:52p
 #tvwho .wt{display:flex;flex-direction:column;min-width:0;flex:1}
 #tvwho .wn{display:flex;justify-content:space-between;gap:8px;font-weight:700;font-size:clamp(14px,1.05vw,18px)}
 #tvwho .ws{font-weight:500;font-size:clamp(11px,0.8vw,14px);color:var(--tv-muted);white-space:nowrap}
-#tvwho .ww{font-size:clamp(13px,0.95vw,16px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:3px solid var(--tk);padding-left:6px;margin-top:2px}
+#tvwho .ww{font-size:clamp(13px,0.95vw,16px);line-height:1.3;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;border-left:3px solid var(--tk);padding-left:6px;margin-top:2px}
 #tvwho .ww.nt{border-left:0;padding-left:0}
 #tvwho .wsub{font-size:clamp(11px,0.8vw,13.5px);color:var(--tv-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wc .wp,#tvwho .wp{align-self:center}
