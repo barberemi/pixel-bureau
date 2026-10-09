@@ -61,8 +61,8 @@ SHOTS = {
     "passions": (1400, 1000, AT(11) + "byKey.p_gabe.passion={moment:'basket'};T=passionSlot(byKey.p_gabe,T).s+40e3;needTeleport=true;", "#cv", 1.5),
     "pages-boss": (1400, 1000, AT(11) + "BOSS_PAGES=[['Ventes du trimestre','#2f6fd6',35],['Stock de papier','#2e9e5b',180],['Satisfaction clients','#e0a020',600],['Livraisons','#7a5cc8',1500]].map(([t,c,m],i)=>{const k=document.createElement('canvas');k.width=320;k.height=200;const g=k.getContext('2d');g.fillStyle='#1c1f26';g.fillRect(0,0,320,200);g.fillStyle='#e8e2d0';g.fillRect(14,14,150,10);for(let j=0;j<4;j++){g.fillStyle='#2a2e37';g.fillRect(14+j*76,36,68,40);g.fillStyle=c;g.fillRect(20+j*76,58,20+j*9,8);}g.fillStyle='#2a2e37';g.fillRect(14,88,292,98);g.fillStyle=c;for(let j=0;j<12;j++){const h=18+((j*37+i*11)%60);g.fillRect(24+j*23,176-h,14,h);}return {id:'demo'+i,title:t,updated:new Date(Date.now()-m*60e3).toISOString(),img:k.toDataURL('image/jpeg',.8)};});openBossPages();", None),
     "fiche-agent": (1400, 1400, AT(11) + "select((chars.find(c=>!c.person&&!c.visitor&&c.runs.length)||{}).key);", "#side"),
-    # Gabe, « Ses tickets » déplié : composant, points, âge (DM-7761 bloqué en review), PR de chaque ticket, un bug
-    "fiche-collegue": (1400, 1600, AT(11) + "COLLAPSED['fiche:tickets']=false;select('p_gabe');", "#side"),
+    # Gabe, « Ses tickets » et « Ses autres PR ouvertes » dépliés : composant, points, âge (DM-7761 bloqué en review), PR de chaque ticket, un bug
+    "fiche-collegue": (1400, 2000, AT(11) + "COLLAPSED['fiche:tickets']=false;COLLAPSED['fiche:prs']=false;select('p_gabe');", "#side"),
     "kanban": (1400, 1400, AT(11) + "select('kanban');", "#side"),
     # fiche d'un ticket : ses PR et les workflows à lancer (dataset actions simulé depuis l'équipe de démo)
     "fiche-ticket": (1400, 1400, AT(11) + "const all=TEAM.people.flatMap(p=>p.tickets),prs=TEAM.people.flatMap(p=>p.prs);"

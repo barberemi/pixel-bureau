@@ -67,3 +67,19 @@ test('« Ses autres PR ouvertes » : seulement celles qui ne citent aucun de ses
   const p = {tickets: [{key: 'DM-1'}, {key: 'DM-2'}], prs: [{n: 1, keys: ['DM-1']}, {n: 2, keys: []}, {n: 3, keys: ['DM-9']}, {n: 4}]};
   assert.deepEqual(JSON.parse(run(`JSON.stringify(loosePrs(${JSON.stringify(p)}).map(x => x.n))`)), [2, 3, 4]);
 });
+
+test('« Ses autres PR » : groupe par état de review, titre sans préfixe, ticket cité, ⏳ si elle attend une review depuis trop longtemps', () => {
+  const g = x => run(`prGroup(${JSON.stringify(x)})`);
+  assert.equal(g({review: 'changes'}), 'changes');
+  assert.equal(g({review: 'approved', draft: true}), 'draft');
+  assert.equal(g({review: 'bizarre'}), 'pending');
+  const pr = x => run(`(() => { T = ${T11}; return prRowHtml(${JSON.stringify(x)}); })()`);
+  const h = pr({n: 1432, url: 'https://x/1432', title: 'feat(DM-6305): [Devis] Corriger le tri', review: 'changes', keys: ['DM-6305'], updated: '2026-08-07T10:00:00Z'});
+  assert.match(h, /href="https:\/\/x\/1432"[^>]*>#1432<\/a><a class="tk-key"[^>]*DM-6305[^>]*>DM-6305<\/a><span class="tk-comp">Devis<\/span>/);
+  assert.match(h, /<div class="tk-t">Corriger le tri<\/div>/);
+  assert.match(h, /activité il y a 2 mois/);
+  assert.match(pr({n: 7, title: 'chore: mettre à jour', review: 'approved', updated: '2026-10-06T10:00:00+02:00'}), /tk-t">mettre à jour<\/div>.*activité hier/);
+  assert.match(pr({n: 8, title: 'x', review: 'pending', created: '2026-10-04T10:00:00+02:00', updated: '2026-10-07T10:00:00+02:00'}),
+    /class="warn"[^>]*>⏳ attend une review depuis 3 j/);
+  assert.doesNotMatch(pr({n: 9, title: 'x', draft: true, review: 'pending', created: '2026-10-04T10:00:00+02:00'}), /warn/); // brouillon : n'attend rien
+});

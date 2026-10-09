@@ -244,6 +244,23 @@ function loosePrs(p){
   const mine=new Set(p.tickets.map(x=>x.key));
   return p.prs.filter(x=>!(x.keys||[]).some(k=>mine.has(k)));
 }
+// « Ses autres PR ouvertes » : mêmes groupes à liseré et mêmes lignes que « Ses tickets », un groupe par état de review
+const PR_GROUPS=[['changes','Changements demandés','var(--err)'],['pending','En attente de review','var(--warn)'],['approved','Approuvées','var(--ok)'],['draft','Brouillons','var(--idle)']];
+const prGroup=x=>x.draft?'draft':PR_GROUPS.some(([k])=>k===x.review)?x.review:'pending';
+const daysAgoTxt=d=>d<1?"aujourd'hui":d<2?'hier':d<60?'il y a '+Math.floor(d)+' j':'il y a '+Math.floor(d/30.4)+' mois';
+// une ligne : n° (lien GitHub), ticket cité (lien Jira), composant ; titre sans « feat(DM-1): » ni « [Composant] » ;
+// dernière activité (orange avec ⏳ si elle attend une review depuis plus de PR_STALE_H heures, comme dans À traiter)
+function prRowHtml(x){
+  let t=String(x.title||'').replace(/^\s*\w+(\([^)]*\))?!?:\s*/,'');
+  const m=/^\[([^\]]{1,40})\]\s*(.+)$/.exec(t), comp=m?m[1]:null; if(m)t=m[2];
+  const keys=(x.keys||[]).map(k=>`<a class="tk-key" href="${JIRA_BROWSE}${encodeURIComponent(k)}" target="_blank" rel="noopener" title="Ouvrir dans Jira">${esc(k)}</a>`).join('');
+  const meta=[], u=ms(x.updated), s=prSince(x);
+  const stale=!x.draft&&prGroup(x)==='pending'&&s&&T-s>PR_STALE_H*36e5;
+  if(stale)meta.push(`<span class="warn" title="Sans review depuis plus de ${PR_STALE_H} h">⏳ attend une review depuis ${daysAgoTxt((T-s)/864e5).replace(/^il y a /,'')}</span>`);
+  else if(u&&u<=T)meta.push(`<span>activité ${daysAgoTxt((T-u)/864e5)}</span>`);
+  return `<div class="tk-top"><a class="tk-key" href="${esc(x.url)}" target="_blank" rel="noopener" title="Ouvrir sur GitHub">#${esc(x.n)}</a>${keys}`+
+    `${comp?`<span class="tk-comp">${esc(comp)}</span>`:''}</div><div class="tk-t">${esc(t)}</div>${meta.length?`<div class="tk-meta">${meta.join('')}</div>`:''}`;
+}
 function renderPerson(side,c){
   const p=c.team;
   workBlock(side,c);
@@ -296,18 +313,18 @@ function renderPerson(side,c){
     for(const x of tkSorted(list,k))ul.appendChild(tkRow(x));
     d.appendChild(ul);tb.appendChild(d);
   }
-  const REV={approved:['approuvée','var(--ok)'],changes:['changements demandés','var(--err)'],pending:['review en attente','var(--warn)']};
   const loose=loosePrs(p);
   if(loose.length){
     const pb=foldSection(side,'prs',loose.length<p.prs.length?'Ses autres PR ouvertes':'Ses PR ouvertes',loose.length);
-    const ul=document.createElement('ul');ul.className='steps';ul.style.marginLeft='0';
-    for(const x of loose.slice().sort((a,b)=>(a.draft?1:0)-(b.draft?1:0))){
-      const r=x.draft?['brouillon','var(--idle)']:REV[x.review]||REV.pending;
-      const li=document.createElement('li');
-      li.innerHTML=`<span class="dot" style="background:${r[1]}"></span><a href="${esc(x.url)}" target="_blank" rel="noopener" style="color:var(--accent);white-space:nowrap">#${x.n}</a><span>${esc(x.title)}</span><span class="k">${r[0]}</span>`;
-      ul.appendChild(li);
+    for(const [k,t,col] of PR_GROUPS){
+      const list=loose.filter(x=>prGroup(x)===k).sort((a,b)=>(ms(b.updated)||0)-(ms(a.updated)||0)); if(!list.length)continue;
+      const d=memoDetails(document.createElement('details'),c.key+':pr:'+k,k!=='draft');
+      d.className='tkg';d.style.setProperty('--c',col);
+      d.innerHTML=`<summary><span class="chev" aria-hidden="true"></span><span class="wn">${t}</span><span class="du">${list.length} PR</span></summary>`;
+      const ul=document.createElement('ul');ul.className='steps';
+      for(const x of list){const li=document.createElement('li');li.className='tkr';li.innerHTML=prRowHtml(x);ul.appendChild(li);}
+      d.appendChild(ul);pb.appendChild(d);
     }
-    pb.appendChild(ul);
   }
   if(p.merged.length){
     const mb=foldSection(side,'merged',"Mergées aujourd'hui",p.merged.length);
