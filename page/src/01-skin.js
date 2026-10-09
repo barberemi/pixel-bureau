@@ -1,0 +1,15 @@
+// Thème d'interface (theme-*.css) : classique (styles.css seul) ou equipe. Le choix de la personne, gardé dans ce
+// navigateur (bureau:skin), passe avant celui de l'installation (ui.skin, posé par le profil d'équipe à l'installation).
+const UI_SKINS={classique:'Classique',...(CFG.skins||{})}; // thèmes de page/src/theme-<id>.css (assemble.themes)
+function skinFor(stored,cfgSkin){return UI_SKINS[stored]?stored:UI_SKINS[cfgSkin]?cfgSkin:'classique';}
+let UI_SKIN=(()=>{let s=null;try{s=localStorage.getItem('bureau:skin');}catch(e){}return skinFor(s,(CFG.ui||{}).skin);})();
+function applySkin(s,remember=false){
+  UI_SKIN=skinFor(s);
+  if(remember)try{localStorage.setItem('bureau:skin',UI_SKIN);}catch(e){}
+  const root=document.documentElement;
+  if(UI_SKIN==='classique')delete root.dataset.skin;else root.dataset.skin=UI_SKIN;
+  const b=document.getElementById('skinbtn');
+  if(b){b.textContent='🎨 '+UI_SKINS[UI_SKIN];b.title='Thème de la page : '+UI_SKINS[UI_SKIN]+' (cliquer pour changer)';}
+}
+applySkin(UI_SKIN);
+document.getElementById('skinbtn')?.addEventListener('click',()=>{const ids=Object.keys(UI_SKINS);applySkin(ids[(ids.indexOf(UI_SKIN)+1)%ids.length],true);});

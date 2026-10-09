@@ -16,7 +16,7 @@ from smoke import CHROME, free_port  # noqa: E402
 OUT = os.path.join(ROOT, "docs", "img")
 PORT = 9335
 # avant chaque capture : hors mode TV (mémorisé par le navigateur), visite guidée fermée, lecture en pause à 11h, personnages posés à leur place
-AT = lambda h: f"if(TV)setTv(false);tourShow(-1);setMode('pause');T=DAY0+{h}*3600e3;needTeleport=true;"  # noqa: E731
+AT = lambda h: f"applySkin('classique');if(TV)setTv(false);tourShow(-1);setMode('pause');T=DAY0+{h}*3600e3;needTeleport=true;"  # noqa: E731
 WAIT = "new Promise(r=>setTimeout(r,2500))"
 # nom -> (largeur, hauteur, JS de mise en scène, sélecteur à rogner ; None = la fenêtre[, échelle de la capture[, autre plan]])
 SHOTS = {
@@ -34,6 +34,8 @@ SHOTS = {
     "scene-pizza": (1400, 1000, AT(12 + 10 / 60) + "TEAM.sprint.end='2026-10-01T15:00:00Z';", "#cv", 1.5),
     "scene-kickoff": (1400, 1000, AT(9 + 56 / 60) + "TEAM.sprint.start='2026-10-01T07:00:00Z';", "#cv", 1.5),
     "legende": (1400, 1600, AT(11) + "document.querySelector('.legend-help').open=true;", ".legend-help"),
+    # thème Equipe (bouton 🎨) : habillage pixel aux couleurs d'Equipe, fiche d'un collègue ouverte
+    "theme-equipe": (1400, 1000, AT(11) + "applySkin('equipe');select((chars.find(c=>c.person&&c.team&&c.team.tickets.length)||{}).key);scrollTo(0,0);", None),
     "a-traiter": (1400, 1000, AT(11), "#todo"),
     "qui-fait-quoi": (1400, 1400, AT(11), "#who"),
     "fil": (1400, 1400, AT(11) + "document.querySelector('#feed').style.maxHeight='520px';"

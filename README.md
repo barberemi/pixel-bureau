@@ -20,6 +20,7 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 | [Fraîcheur des données](docs/fonctionnalites/10-fraicheur.md) | Prochaine arrivée, sources en retard, crons du Bureau en échec |
 | [Téléphone et visite](docs/fonctionnalites/11-mobile-et-visite.md) | Affichage mobile, visite guidée en 3 bulles |
 | [Thèmes saisonniers](docs/fonctionnalites/12-themes.md) | Noël, Nouvel an, Saint-Valentin, Halloween : décor, chapeaux, emojis, effets |
+| [Thème de la page](docs/fonctionnalites/13-theme-page.md) | Classique ou Equipe (pixel art aux couleurs d'Equipe), au bouton 🎨 ; Equipe par défaut pour l'équipe equipe |
 
 ## Installer
 
@@ -57,5 +58,7 @@ L'installateur demande ton équipe (une équipe neuve avec le plan type par déf
 Pour modifier la page ou les workflows : [docs/developpement.md](docs/developpement.md).
 
 ## Crédits
+
+Police pixel du thème Equipe : [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) de CodeMan38 (SIL Open Font License 1.1, `page/fonts/OFL-PressStart2P.txt`).
 
 Sprites : [Universal LPC Spritesheet Character Generator](https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator), contributeurs du Liberated Pixel Cup (CC-BY-SA 3.0 / GPL 3.0). Captures : page de démo.

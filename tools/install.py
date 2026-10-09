@@ -635,7 +635,7 @@ def main(argv=None):
     cfg = {"_doc": "Propre à cette installation, jamais partagé. Créé par tools/install.py (relançable).",
            "owner": owner, "team": team_id, "people": people, "layout": layout_file, "kronn": kronn, "page_id": old.get("page_id"), "workflows": {}, "actions": {},
            "own": sorted(own), "jira": j, "github": g, "rhythm": defaults["rhythm"],
-           "mep_workflow": mep, "agents": agents, "boss_pages": screens, "ui": old.get("ui") or {}, "music": old.get("music") or {},
+           "mep_workflow": mep, "agents": agents, "boss_pages": screens, "ui": {**(defaults.get("ui") or {}), **(old.get("ui") or {})}, "music": old.get("music") or {},
            "_ai_agent": ai, **({"protect": True} if old.get("protect") else {})}
     # réglages posés à la main dans la config (gitfut, wiki_posters, chrome…) : gardés tels quels à la relance
     cfg = {**{k_: v for k_, v in old.items() if not k_.startswith("_") and k_ not in cfg}, **cfg}

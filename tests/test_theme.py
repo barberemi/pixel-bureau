@@ -1,0 +1,60 @@
+"""Thèmes d'interface (page/src/theme-<id>.css) : chacun a son nom (« /* @nom: … */ »), ses variables de couleur, des
+contrastes WCAG suffisants (texte >= 4,5:1 sur ses fonds, blanc >= 4,5:1 sur ses aplats) ; polices intégrées."""
+import os, re, sys, unittest
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+import assemble  # noqa: E402
+
+TEXT = ("ink", "muted", "accent", "ok", "warn", "err")  # couleurs de texte
+GROUNDS = ("panel", "chip", "bg")                      # fonds sur lesquels elles s'affichent
+FILLS = ("line", "err", "warn", "brand")               # aplats qui portent du texte blanc (brand : facultatif)
+
+
+def lum(h):
+    c = [int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+    c = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in c]
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+
+
+def ratio(a, b):
+    a, b = lum(a), lum(b)
+    return (max(a, b) + 0.05) / (min(a, b) + 0.05)
+
+
+def palette(theme):
+    """Variables du premier bloc :root[data-skin="<id>"] du thème."""
+    css = open(os.path.join(assemble.SRC, f"theme-{theme}.css")).read()
+    block = re.search(r':root\[data-skin="%s"\][^{]*\{(.*?)\}' % re.escape(theme), css, re.S)
+    assert block, f"theme-{theme}.css : bloc :root[data-skin=\"{theme}\"] absent"
+    return dict(re.findall(r"--([\w-]+):\s*(#[0-9a-fA-F]{6})\b", block.group(1)))
+
+
+class ThemeTest(unittest.TestCase):
+    def test_every_theme_has_a_name(self):
+        self.assertIn("equipe", assemble.themes())
+        for theme, name in assemble.themes().items():
+            self.assertTrue(name, theme)
+
+    def test_contrasts(self):
+        for theme in assemble.themes():
+            v = palette(theme)
+            for key in TEXT + GROUNDS + ("line",):
+                self.assertIn(key, v, f"theme-{theme}.css : --{key} manquante (couleur #rrggbb)")
+            for fg in TEXT:
+                for bg in GROUNDS:
+                    with self.subTest(theme=theme, fg=fg, bg=bg):
+                        self.assertGreaterEqual(ratio(v[fg], v[bg]), 4.5, f"{theme} : --{fg} sur --{bg}")
+            for fill in FILLS:
+                if fill in v:
+                    with self.subTest(theme=theme, fill=fill):
+                        self.assertGreaterEqual(ratio("#ffffff", v[fill]), 4.5, f"{theme} : blanc sur --{fill}")
+
+    def test_fonts_are_embedded(self):
+        html = assemble.page_html()
+        self.assertNotIn("@@font:", html)
+        self.assertIn("font/woff2;base64,d09GMg", html)  # signature wOF2
+
+
+if __name__ == "__main__":
+    unittest.main()

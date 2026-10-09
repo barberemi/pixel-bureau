@@ -251,8 +251,13 @@ class InstallTest(unittest.TestCase):
         with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):
             self.assertEqual(self.run_install(ANSWERS), 0)
         after = json.load(open(self.cfg_path))
-        self.assertEqual(after["ui"], {"todo": "folded"})
+        self.assertEqual(after["ui"], {"skin": "equipe", "todo": "folded"})  # thème du profil ajouté, réglage gardé
         self.assertTrue(after["protect"])
+        # un thème choisi à la main l'emporte sur celui du profil
+        json.dump({**after, "ui": {"skin": "classique"}}, open(self.cfg_path, "w"))
+        with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):
+            self.assertEqual(self.run_install(ANSWERS), 0)
+        self.assertEqual(json.load(open(self.cfg_path))["ui"], {"skin": "classique"})
         self.assertEqual({k: after.get(k) for k in hand}, hand)
 
     def test_boss_screen_pages_asked_by_id(self):

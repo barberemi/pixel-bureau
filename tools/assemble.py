@@ -7,7 +7,7 @@ Sources de la page : page/office_template.html (squelette HTML + blocs kronn-act
 Les avatars sont assemblés dans le navigateur (calques de sprites/layers.json + recettes de sprites/cast.json et du
 profil d'équipe) ; seuls les sprites fournis tels quels (teams/<équipe>/sprites/, sprites/custom/) sont embarqués comme planches.
 """
-import json, math, os, re
+import base64, json, math, os, re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -30,6 +30,18 @@ p = lambda *a: os.path.join(ROOT, *a)
 
 SRC = p("page", "src")
 JS_FILES = sorted(f for f in os.listdir(SRC) if f.endswith(".js"))
+# thèmes d'interface (ui.skin, bouton 🎨) : feuilles posées après styles.css
+THEME_FILES = sorted(f for f in os.listdir(SRC) if f.startswith("theme-") and f.endswith(".css"))
+
+
+def themes():
+    """Thèmes d'interface {id: nom} : page/src/theme-<id>.css, nom lu dans sa première ligne « /* @nom: … */ »."""
+    out = {}
+    for f in THEME_FILES:
+        m = re.match(r"/\*\s*@nom:\s*(.+?)\s*\*/", open(os.path.join(SRC, f)).read())
+        assert m, f"{f} : première ligne attendue /* @nom: Nom du thème */"
+        out[f[len("theme-"):-len(".css")]] = m.group(1)
+    return out
 
 
 def _nl(s):
@@ -39,7 +51,10 @@ def _nl(s):
 def page_html():
     """Squelette + CSS + JS concaténés, avant le remplacement des marqueurs de données (__SPRITES__...)."""
     html = open(p("page", "office_template.html")).read()
-    css = open(os.path.join(SRC, "styles.css")).read()
+    # styles.css puis les thèmes (theme-*.css), qui l'emportent à spécificité égale ;
+    # @@font:chemin@@ = police intégrée en base64 (la sandbox des pages n'accepte que font-src data:)
+    css = "".join(_nl(open(os.path.join(SRC, f)).read()) for f in ["styles.css"] + THEME_FILES)
+    css = re.sub(r"@@font:([\w./-]+)@@", lambda m: base64.b64encode(open(p(m.group(1)), "rb").read()).decode(), css)
     js = "".join(_nl(open(os.path.join(SRC, f)).read()) for f in JS_FILES)
     for mark, body in (("/*__STYLES__*/", css), ("/*__SCRIPTS__*/", js)):
         assert html.count(mark + "\n") == 1, mark
@@ -103,7 +118,8 @@ def page_config(cfg):
         "workflows": cfg.get("workflows") or {},  # ids des crons : calendrier et fraîcheur des données
         "schedules": cron_schedules(cfg),  # calendrier des crons du Bureau (modèles de workflows)
         "agents": cfg.get("agents") or [],
-        "ui": cfg.get("ui") or {},  # réglages d'affichage (ex. ui.todo : open / folded / hidden)
+        "ui": cfg.get("ui") or {},
+        "skins": themes(),  # thèmes d'interface (theme-*.css) proposés par le bouton 🎨  # réglages d'affichage (ex. ui.todo : open / folded / hidden)
     }
 
 
