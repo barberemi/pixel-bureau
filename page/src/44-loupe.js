@@ -8,6 +8,7 @@
 const LOUPE_MS=20e3, LOUPE_WAIT_MAX=40e3, LOUPE_HOVER_MS=5e3;
 const LOUPE_KINDS={reopen:['⛔','#b3122e'],proud:['🎉','#0172f0'],party:['🎉','#0172f0'],thumbs:['👍','#2e9e5b'],guest:['👋','#2e9e5b'],
   daily:['☀️','#2e9e9b'],planning:['🗓','#2e9e9b'],retro:['🔄','#c25a9e'],kickoff:['🏁','#2e9e9b'],pizza:['🍕','#2e9e9b']};
+const LOUPE_ORDER=['reopen','proud','guest','thumbs','kickoff','planning','retro','daily','pizza','party'];
 // cérémonies : toute l'équipe est dans la scène, la légende la nomme au lieu d'énumérer tout le monde
 const LOUPE_CEREMONY={daily:"Daily de l'équipe",planning:'Sprint planning',retro:'Rétrospective',kickoff:'Lancement du sprint',pizza:'Pizza de fin de sprint'};
 let LOUPE_ON=true;try{LOUPE_ON=localStorage.getItem('bureau:loupe')!=='0';}catch(e){}
@@ -16,7 +17,7 @@ const LOUPE={seen:null,queue:[],cur:null,resume:false,hoverUntil:0,lastScan:0};
 function loupeKind(c){
   const st=c._st&&c._st.st;
   if(st&&st!=='guest'&&LOUPE_KINDS[st])return st;
-  return c.guest&&c.present!==false?'guest':null;
+  return c.guest&&!c.on&&c.present!==false?'guest':null; // les hérauts (on : reopen, prod) n'ont que leur scène
 }
 // événements qui commencent depuis le dernier passage ; le premier passage ne fait que noter ce qui est déjà en cours
 function loupeScan(){
@@ -27,7 +28,8 @@ function loupeScan(){
   }
   for(const id in groups){now.add(id);if(LOUPE.seen&&!LOUPE.seen.has(id))fresh.push({id,kind:id.split(':')[0],cs:groups[id]});}
   LOUPE.seen=now;
-  return fresh;
+  // au même endroit, le plus parlant d'abord : le sage avant la fête de MEP (l'autre est écarté, même cadre)
+  return fresh.sort((a,b)=>LOUPE_ORDER.indexOf(a.kind)-LOUPE_ORDER.indexOf(b.kind));
 }
 // cadre de la scène sur la toile (px) : les personnages, la place de leurs bulles au-dessus, au format 16:10, dans la toile
 function loupeBox(cs){
@@ -57,18 +59,27 @@ function loupeShow(ev,now){
 }
 function loupeHide(){
   LOUPE.cur=null;
+  if(LOUPE.queue.length)return loupeHideView(); // d'autres événements attendent : la lecture reste en pause
+  loupeHideView();
+  if(LOUPE.resume){LOUPE.resume=false;if(mode==='pause')setMode('play');}
+}
+function loupeHideView(){
   const o=document.getElementById('loupecv'), f=document.getElementById('loupefly');
   if(o)o.hidden=true; if(f)f.hidden=true;
-  if(LOUPE.resume){LOUPE.resume=false;if(mode==='pause')setMode('play');}
 }
 // à chaque image : repérer les nouveaux événements, en montrer un quand ses personnages sont arrivés, dessiner le médaillon
 function loupeFrame(now){
-  if(!LOUPE_ON||!DATA){if(LOUPE.cur)loupeHide();LOUPE.queue=[];return;}
+  if(!LOUPE_ON||!DATA){LOUPE.queue=[];if(LOUPE.cur)loupeHide();return;}
   if(mode==='pause'&&!LOUPE.resume){if(LOUPE.cur)loupeHide();LOUPE.queue=[];LOUPE.seen=null;return;} // on fait glisser l'heure
-  if(now-LOUPE.lastScan>250){
+  // en rejeu, à chaque image (à x480, une scène de 3 min ne dure que 0,4 s) ; en direct, 4 fois par seconde
+  if(mode==='play'||now-LOUPE.lastScan>250){
     LOUPE.lastScan=now;
     for(const ev of loupeScan()){ev.added=now;if(!LOUPE.queue.some(q=>q.id===ev.id))LOUPE.queue.push(ev);}
   }
+  // une scène finie avant d'avoir été montrée sort de la file
+  LOUPE.queue=LOUPE.queue.filter(q=>q.cs.some(c=>loupeKind(c)===q.kind));
+  // rejeu : la lecture s'arrête dès qu'un événement commence, le temps que les personnages arrivent et que la loupe passe
+  if(mode==='play'&&LOUPE.queue.length&&!LOUPE.cur){setMode('pause');LOUPE.resume=true;}
   if(LOUPE.cur&&now>LOUPE.cur.until)loupeHide();
   if(!LOUPE.cur&&LOUPE.queue.length&&now>LOUPE.hoverUntil){
     const ev=LOUPE.queue[0];
@@ -120,7 +131,7 @@ cv.addEventListener('mousemove',()=>{LOUPE.hoverUntil=performance.now()+LOUPE_HO
 cv.addEventListener('click',()=>{if(LOUPE.cur)loupeHide();});
 addEventListener('keydown',e=>{if(e.key==='Escape'&&LOUPE.cur)loupeHide();});
 function setLoupe(on,remember=true){
-  LOUPE_ON=on;if(!on)loupeHide();
+  LOUPE_ON=on;if(!on){LOUPE.queue=[];loupeHide();}
   if(remember)try{localStorage.setItem('bureau:loupe',on?'1':'0');}catch(e){}
   const b=document.getElementById('loupebtn');if(b)b.classList.toggle('on',on);
 }

@@ -40,3 +40,13 @@ test('cérémonies : la légende nomme la cérémonie et compte l\'équipe, l\'a
   assert.equal(J(`loupeCaption({kind:'daily',cs:[${mk('Pam', 'daily')}]}).title`), "Daily de l'équipe · 1 personne");
   assert.equal(run(`loupeKind(${mk('a', 'pizza')})`), 'pizza');
 });
+
+test('rejeu : la lecture s\'arrête dès qu\'un événement commence (à x480 la scène serait finie avant la loupe), le sage avant la fête', () => {
+  run(`LOUPE.seen=new Set(); LOUPE.queue=[]; LOUPE.cur=null; LOUPE.resume=false; LOUPE_ON=true; mode='play';
+    chars=[${mk('andy', 'party')},${mk('yoda', 'proud', ',guest:true,on:"prod"')}];`);
+  run('loupeFrame(1e9)');
+  // personnages déjà arrivés : la loupe s'ouvre sur le sage, la fête au même endroit est écartée
+  assert.deepEqual(J('[mode, LOUPE.resume, LOUPE.cur&&LOUPE.cur.kind, LOUPE.queue.length]'), ['pause', true, 'proud', 0]);
+  assert.equal(run(`loupeKind(${mk('gandalf', 'idle', ',guest:true,on:"reopen"')})`), null, 'un héraut n\'a que sa scène');
+  run(`LOUPE.queue=[]; LOUPE.cur=null; LOUPE.resume=false; mode='live';`);
+});

@@ -151,6 +151,6 @@ Quand un événement fort commence, un cadre de couleur entoure la scène sur le
 
 - **Les événements** : un ticket réouvert (⛔, le héraut convoque l'assigné), une mise en prod réussie (🎉, le sage félicite l'auteur), la fête d'une MEP (🎉), un invité qui arrive (👋), le pouce du testeur qui valide (👍), et les cérémonies : daily (☀️), sprint planning (🗓), rétro (🔄), lancement du sprint (🏁), pizza de fin de sprint (🍕). Pour une cérémonie, la légende la nomme et compte l'équipe (« Daily de l'équipe · 10 personnes »), l'animateur en dessous.
 - **Une loupe à la fois**, ouverte une fois les personnages arrivés (40 s au plus d'attente), pendant 20 s ; deux événements au même endroit (la fête et le sage) n'en font qu'une.
-- **En rejeu accéléré**, la lecture se met en pause le temps de la loupe, puis reprend. Rien quand on fait glisser l'heure, ni quand la souris est sur le plan.
+- **En rejeu accéléré** (même à x1500), la lecture s'arrête dès qu'un événement commence, le temps que les personnages arrivent et que la loupe passe, puis reprend. Deux événements au même endroit : le plus parlant d'abord (le sage avant la fête de MEP). Rien quand on fait glisser l'heure, ni quand la souris est sur le plan.
 - **Fermer** : ✕, clic sur le plan ou Échap. **Couper** : bouton « 🔍 Loupe » sous le plan (retenu dans le navigateur) ; sur l'écran mural, `?loupe=0` dans l'adresse.
 - Aussi en mode TV, où personne ne clique : la fenêtre se pose sur les cartes de chiffres et se referme seule.
