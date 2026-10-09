@@ -8,15 +8,21 @@ function portraitUrl(c){
   try{return PORTRAIT_URL[c.key]=portrait(c,28).toDataURL();}catch(e){return '';}
 }
 const sinceTxt=d=>d<60e3?"à l'instant":hmin(Math.round(d/60e3));
-// ce que montre la carte : what = sujet (ticket, PR, workflow, discussion), sub = détail (étape, outil, état du ticket)
+// ce que montre la carte : what = sujet (ticket, PR, workflow, discussion, sur 2 lignes), sub = détail (étape, outil, état
+// du ticket, sur 1 ligne), tip = infobulle (le tout, avec la liste complète des tickets)
+const tkWhat=x=>tkHead(x)+' '+clip(tkComp(x.summary).title,90);
+const tkTip=list=>list.map(x=>x.key+' '+tkComp(x.summary).title).join('\n');
+const moreTk=n=>n>1?' · +'+(n-1)+' autre'+(n>2?'s':''):'';
 function whoLine(c,st,t,pub){
   if(c.boss)return bossLine(c,st,pub);
+  if(st.head)return {what:st.head,sub:st.sub||'',tone:st.chips&&st.chips.length?CAT_COLOR[st.chips[0].cat]:null,tip:st.chips?tkTip(st.chips):''}; // rôles (testeur, PO, facilitatrice) : titre court, détail en gris
   if(st.tk&&st.tk.length){
     const x=st.tk[0], age=tkAge(x,t);
     return {
-      what:tkHead(x)+' '+clip(x.summary,60),
-      sub:(CAT_TXT[x.cat]||x.status||'')+(age?' depuis '+age:'')+(st.tk.length>1?' · +'+(st.tk.length-1)+' autre'+(st.tk.length>2?'s':'')+' : '+st.tk.slice(1,4).map(y=>y.key).join(', '):''),
-      tone:CAT_COLOR[x.cat]
+      what:tkWhat(x),
+      sub:(CAT_TXT[x.cat]||x.status||'')+(age?' depuis '+age:'')+moreTk(st.tk.length),
+      tone:CAT_COLOR[x.cat],
+      tip:st.tk.length>1?tkTip(st.tk):''
     };
   }
   if(c.visitor&&c.disc)return {what:'💬 '+clip(c.disc.title,60),sub:st.label};
@@ -42,9 +48,10 @@ function bossLine(c,st,pub){ // pub : écran partagé (TV), sans ce qui n'attend
   if(!tk.length)return {what:extra[0]||st.label||'Au bureau',sub:extra.slice(1).join(' · ')};
   const x=tk[0];
   return {
-    what:tkHead(x)+' '+clip(x.summary,60),
-    sub:[...extra,(CAT_TXT[x.cat]||'')+(tk.length>1?' · +'+(tk.length-1)+' : '+tk.slice(1,4).map(y=>y.key).join(', '):'')].join(' · '),
-    tone:CAT_COLOR[x.cat]
+    what:tkWhat(x),
+    sub:[...extra,(CAT_TXT[x.cat]||'')+moreTk(tk.length)].join(' · '),
+    tone:CAT_COLOR[x.cat],
+    tip:tk.length>1?tkTip(tk):''
   };
 }
 function whoCards(t,teamOnly){
@@ -68,7 +75,8 @@ function renderWho(){
   const head=`<h2 class="grp" data-who-toggle role="button" tabindex="0" aria-expanded="${!COLLAPSED.who}"><span class="chev">${COLLAPSED.who?'▸':'▾'}</span>Qui fait quoi <span class="cnt">${cards.length}</span>${attn?`<span class="cnt attn">${attn} pour toi</span>`:''}</h2>`;
   const body=COLLAPSED.who?'':'<div class="who-grid">'+cards.map(x=>{
     const img=portraitUrl(x.c);
-    return `<button class="wc${x.attn?' attn':''}${sel===x.c.key?' on':''}" data-who="${esc(x.c.key)}" style="--st:${ST_CSS[x.st.st]||'var(--idle)'};--tk:${x.tone||'transparent'}">`+
+    const tip=[x.what,x.sub,x.tip].filter(Boolean).join('\n');
+    return `<button class="wc${x.attn?' attn':''}${sel===x.c.key?' on':''}" data-who="${esc(x.c.key)}" title="${esc(tip)}" style="--st:${ST_CSS[x.st.st]||'var(--idle)'};--tk:${x.tone||'transparent'}">`+
       `<span class="wp">${img?`<img src="${img}" alt="">`:''}</span>`+
       `<span class="wt"><span class="wn">${esc(agentTag(x.c)+x.c.name)}<span class="ws">${esc(shortSt(x.st))}${x.since?' · '+esc(x.since):''}</span></span>`+
       `<span class="ww${x.tone?'':' nt'}">${esc(x.what)}</span>${x.sub?`<span class="wsub">${esc(x.sub)}</span>`:''}</span></button>`;

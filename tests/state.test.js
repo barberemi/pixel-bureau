@@ -229,7 +229,8 @@ test('whoCards : le boss en tout premier, avec son ticket et ce qui l\'attend', 
   const cards = J(`whoCards(${T11}).map(x=>({k:x.c.key,what:x.what,sub:x.sub}))`);
   assert.deepEqual(cards.map(x => x.k), ['boss', 'ag_g', 'ag_ko']);
   assert.equal(cards[0].what, '🐛 DM-7 Fix');
-  assert.equal(cards[0].sub, '✋ 1 validation à faire · en cours · +1 : DM-6');
+  assert.equal(cards[0].sub, '✋ 1 validation à faire · en cours · +1 autre'); // la liste des clés : dans l'infobulle
+  assert.equal(J(`whoCards(${T11})[0].tip`), 'DM-7 Fix\nDM-6 Bloc');
 });
 
 // ---------- la journée du boss ----------
@@ -368,4 +369,29 @@ test('MEP d\'un autre dépôt suivi (github.deploys) : nom du projet, pas de rel
   assert.equal(J(`mepPhase(TEAM.meps[0],${T11})`), 'prod');
   assert.equal(J(`stageAt(${T11}).m.tag`), 'api 2.4.0');
   run(`TEAM=null;TEAM_BASE=null;LIVE=null;`);
+});
+
+test('whoCards : titre sans « [Composant] », un rôle à titre court garde son détail en gris, liste complète en infobulle', () => {
+  reset();
+  run(`chars=[
+    {key:'p_b',name:'Bob',person:'Bob',runs:[],present:true,_st:{st:'work',human:true,label:'En cours',tk:[
+      {key:'DM-1',cat:'doing',type:'Bug',summary:'[Panier] Lecteur'},{key:'DM-2',cat:'review',summary:'[Panier] Autre'},{key:'DM-3',cat:'test',summary:'Trois'}]}},
+    {key:'p_q',name:'Karen',person:'Karen',runs:[],present:true,_st:{st:'work',human:true,label:'Teste 2 tickets : DM-4, DM-5',head:'Teste 2 tickets',
+      sub:'le plus ancien depuis 3 j',chips:[{key:'DM-4',cat:'test',summary:'[Stock] Quatre'},{key:'DM-5',cat:'test',summary:'Cinq'}],tk:[{key:'DM-4',cat:'test'}]}}
+  ]`);
+  const [b, q] = J(`whoCards(${T11}).map(x=>({what:x.what,sub:x.sub,tip:x.tip,tone:x.tone}))`);
+  assert.equal(b.what, '🐛 DM-1 Lecteur');
+  assert.equal(b.sub, 'en cours · +2 autres');
+  assert.equal(b.tip, 'DM-1 Lecteur\nDM-2 Autre\nDM-3 Trois');
+  assert.deepEqual(q, {what: 'Teste 2 tickets', sub: 'le plus ancien depuis 3 j', tip: 'DM-4 Quatre\nDM-5 Cinq', tone: '#7a5cc8'});
+});
+
+test('fiche : ligne d\'état d\'une ligne (titre court, libellé complet au survol), compteurs, tickets cliquables', () => {
+  const h = run(`statusHtml({st:'work',label:'Teste 2 tickets : DM-4, DM-5 · 2 écrits cette semaine',head:'Teste 2 tickets',
+    facts:[{n:'2',t:'écrits cette semaine'}],chips:[{key:'DM-4',summary:'[Stock] Quatre'}]})`);
+  assert.match(h, /<div class="status" title="Teste 2 tickets : DM-4, DM-5 · 2 écrits cette semaine">.*<span class="stt">Teste 2 tickets<\/span>/);
+  assert.match(h, /<div class="st-facts"><span><b>2<\/b> écrits cette semaine<\/span><\/div>/);
+  assert.match(h, /<a href="#" data-tk="DM-4" title="Quatre">DM-4<\/a>/);
+  assert.match(run(`statusHtml({st:'work',label:'En cours : DM-1, DM-2',pill:'En cours sur 2 tickets'})`), /stt">En cours sur 2 tickets</);
+  assert.doesNotMatch(run(`statusHtml({st:'off',label:'Rentré chez soi'})`), /st-facts|st-chips/);
 });
