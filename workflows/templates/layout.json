@@ -58,7 +58,7 @@
     "output_format": {
      "type": "FreeText"
     },
-    "gate_message": "Nouveau plan du bureau pour toute l'équipe : valider pour le publier.\n\n{{steps.save.data.stderr}}"
+    "gate_message": "Plan du bureau de toute l'équipe : valider pour l'appliquer, rejeter pour garder le plan actuel.\n\n{{steps.save.data.stderr}}"
    },
    {
     "name": "publish",

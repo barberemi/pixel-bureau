@@ -19,11 +19,29 @@ def fail(msg):
     sys.exit(1)
 
 
+def current():
+    """Dataset `layout` actuel de la page ({updated_at, layout}, layout null = plan embarqué), None s'il est vide."""
+    with urllib.request.urlopen(PAGE, timeout=30) as r:
+        page = json.load(r)["data"]
+    cur = next((d.get("current") for d in page.get("datasets") or [] if d.get("name") == "layout"), None)
+    return json.loads(cur or "null") if isinstance(cur, str) else cur
+
+
 raw = sys.stdin.read().strip()
 raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw)
 if raw.lower() in ("defaut", "défaut", "default"):
     print(dumps({"updated_at": datetime.now(timezone.utc).isoformat(), "layout": None}))
-    print("Retour au plan embarqué dans la page.", file=sys.stderr)
+    try:
+        shared = (current() or {}).get("layout")
+    except OSError:  # Kronn injoignable : on ne sait pas ce qui est en place
+        shared = False
+    if shared is None:
+        msg = "c'est déjà le plan en place : valider ou rejeter ne change rien."
+    elif shared:
+        msg = f"il remplace le plan partagé « {shared.get('name') or shared.get('id') or 'sans nom'} », chacun reprend sa place du plan par défaut."
+    else:
+        msg = "il remplace le plan partagé, s'il y en a un."
+    print("Retour au plan par défaut (celui intégré à la page) : " + msg, file=sys.stderr)
     sys.exit(0)
 if len(raw.encode()) > MAX_BYTES:
     fail(f"{len(raw.encode()) // 1024} Ko, 64 Ko au plus")
@@ -38,11 +56,7 @@ if err:
     fail(f"{len(err)} erreur(s)\n- " + "\n- ".join(err[:20]))
 
 # plan partagé actuel : pour dire au boss qui change de place
-with urllib.request.urlopen(PAGE, timeout=30) as r:
-    page = json.load(r)["data"]
-cur = next((d.get("current") for d in page.get("datasets") or [] if d.get("name") == "layout"), None)
-if isinstance(cur, str):
-    cur = json.loads(cur or "null")
+cur = current()
 before = ((cur or {}).get("layout") or {}).get("seating") or {}
 after = L.get("seating") or {}
 b, a = ({k: s for s, k in seating.items()} for seating in (before, after))  # clé -> siège

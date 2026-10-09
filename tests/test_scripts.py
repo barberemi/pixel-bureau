@@ -568,9 +568,16 @@ print(json.dumps(d.get(key, [])))
         self.assertEqual(self.run_raw("layout_save.py", "pas du json").returncode, 1)
 
     def test_layout_save_back_to_embedded_plan(self):
-        r = self.run_raw("layout_save.py", "defaut")
+        """« defaut » : revenir au plan intégré à la page ; le boss lit si ça change quelque chose."""
+        r = self.run_raw("layout_save.py", "defaut")  # Kronn injoignable : publié quand même, message prudent
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIsNone(json.loads(r.stdout)["layout"])
+        self.assertIn("il remplace le plan partagé, s'il y en a un", r.stderr)
+        fake = FakeKronn()
+        fake.datasets = [{"name": "layout", "current": {"layout": None}}]
+        self.assertIn("c'est déjà le plan en place : valider ou rejeter ne change rien", self.run_raw("layout_save.py", "defaut", api=self.kronn(fake)).stderr)
+        fake.datasets = [{"name": "layout", "current": {"layout": dict(self.PLAN, name="Plateau web")}}]
+        self.assertIn("il remplace le plan partagé « Plateau web »", self.run_raw("layout_save.py", "defaut", api=self.kronn(fake)).stderr)
 
 
     def test_actions_flat_tickets_and_prs_from_the_team_dataset(self):
