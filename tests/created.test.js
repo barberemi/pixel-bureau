@@ -36,7 +36,7 @@ test('pile de documents : les tickets créés depuis le dernier daily passé, re
 test('fil : « Jan crée DM-7910 » pour les tickets du jour, sans doublon « Nouveau ticket »', () => {
   run(`T=${at('11:00')};renderFeed();`);
   const txt = J(`FEED_EV.map(e=>e.txt)`);
-  assert.ok(txt.some(t => /Jan crée <b>DM-7910<\/b>/.test(t)));
+  assert.ok(txt.some(t => /data-who="[^"]+"[^>]*>Jan<\/a> crée <a class="lk lk-id lk-ext" href="[^"]*browse\/DM-7910"[^>]*>DM-7910<\/a>/.test(t))); // créé aujourd'hui : Jira
   assert.ok(!txt.some(t => /DM-7901|DM-7905/.test(t))); // créés la veille : pas dans le fil du jour
   assert.ok(!txt.some(t => /Qui sommes-nous/.test(t)));
   const keys = txt.filter(t => /DM-7910/.test(t));

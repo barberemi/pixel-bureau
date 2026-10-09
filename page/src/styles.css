@@ -134,6 +134,15 @@ summary .du{color:var(--muted);font-size:12px;white-space:nowrap}
 .ev .tm{font:600 12px ui-monospace,Menlo,monospace;color:var(--muted);min-width:40px}
 .ev .x{flex:1;min-width:0}
 .ev .x small{color:var(--muted)}
+/* liens du fil (70-kpis-feed.js) : étiquette = ticket, PR ou version (fiche dans la page), ↗ = s'ouvre dehors (Jira, GitHub),
+   nom en gras = sa fiche ; texte grisé = pas de fiche (raison au survol) */
+.ev .lk{text-decoration:none;cursor:pointer}
+.ev .lk:hover{text-decoration:underline}
+.ev .lk-who{color:var(--ink);font-weight:700}
+.ev .lk-id{display:inline-block;font:600 11px/18px ui-monospace,Menlo,monospace;color:var(--accent);background:var(--chip);border-radius:4px;padding:0 5px}
+.ev:hover .lk-id{background:var(--panel)} /* la ligne survolée prend le fond des étiquettes */
+.ev .lk-ext::after{content:' ↗'}
+.ev .lk-off{color:var(--muted);cursor:help}
 .empty{color:var(--muted);padding:6px}
 footer{color:var(--muted);font-size:11px;margin-top:16px;text-align:center}
 .appr{display:inline-block;font-size:11px;font-weight:600;color:#7a5a10;background:#f6e7b8;border-radius:999px;padding:0 7px;vertical-align:2px}

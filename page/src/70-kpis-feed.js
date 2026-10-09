@@ -98,23 +98,45 @@ function prOwnerChar(n){
   const p=TEAM.people.find(q=>(q.prs||[]).some(x=>String(x.n)===String(n)));
   return p?personChar(p.id,p.name):null;
 }
+// ---------- liens du fil : une étiquette par ticket, PR et version, un lien par personne ----------
+// Dans la page d'abord (fiche), sinon dehors avec ↗ (Jira, GitHub), sinon du texte grisé qui dit pourquoi au survol.
+const extA=(url,title,txt)=>`<a class="lk lk-id lk-ext" href="${esc(url)}" target="_blank" rel="noopener" title="${esc(title)}">${esc(txt)}</a>`;
+function refWho(c,name){
+  if(c)return `<a href="#" class="lk lk-who" data-who="${esc(c.key)}" title="Ouvrir sa fiche">${esc(c.name)}</a>`;
+  return `<span class="lk-off" title="Pas dans l'équipe : pas de fiche">${esc(name||'Quelqu’un')}</span>`;
+}
+// ticket du sprint : sa fiche ; sinon (ou créé aujourd'hui : ext) Jira
+function refTk(key,ext){
+  if(!key)return '';
+  if(!ext&&ticketOf(key))return `<a href="#" class="lk lk-id" data-tk="${esc(key)}" title="Ouvrir sa fiche">${esc(key)}</a>`;
+  return extA(JIRA_BROWSE+encodeURIComponent(key),ext?'Ouvrir dans Jira':'Pas dans le sprint : ouvrir dans Jira',key);
+}
+// PR qui cite un ticket du sprint : la fiche de ce ticket (ses PR, Relire, Corriger) ; sinon GitHub ; sinon texte
+function refPr(n,url){
+  const p=[...((TEAM&&TEAM.people)||[]).flatMap(q=>q.prs||[]),...((TEAM&&TEAM.other_prs)||[])].find(x=>String(x.n)===String(n));
+  const k=p&&(p.keys||[]).find(x=>ticketOf(x));
+  if(k)return `<a href="#" class="lk lk-id" data-tk="${esc(k)}" title="Fiche du ticket ${esc(k)} : ses PR et ses actions">#${esc(n)}</a>`;
+  const u=url||(p&&p.url)||(CFG.github_repo?`https://github.com/${CFG.github_repo}/pull/${encodeURIComponent(n)}`:'');
+  return u?extA(u,'Ouvrir sur GitHub','#'+n):`<span class="lk-off" title="Dépôt GitHub inconnu">#${esc(n)}</span>`;
+}
+const refTag=tag=>`<a href="#" class="lk lk-id" data-mep title="Fiche de la mise en prod">${esc(tag)}</a>`;
 function teamEventTxt(e){
-  const nm=(id,name)=>{const c=personChar(id,name);return {c,n:c?c.name:String(name||'Quelqu’un').split(' ')[0]};};
+  const nm=(id,name)=>{const c=personChar(id,name);return {c,n:c?c.name:String(name||'Quelqu’un').split(' ')[0],r:refWho(c,String(name||'Quelqu’un').split(' ')[0])};};
   const sum=e.summary?' <small>'+esc(clip(e.summary,70))+'</small>':'';
   if(e.kind==='move'){const w=nm(e.who,e.who_name);
     const col=CAT_COLOR[e.cat]||'var(--muted)';
     if(e.from==='Proposed'&&((TEAM&&TEAM.events)||[]).some(x=>x.kind==='new'&&x.key===e.key))return null; // création puis mise au planning : déjà « Nouveau ticket »
-    return {c:w.c,txt:`<span style="color:${col}">➜</span> ${esc(w.n)} : <b>${esc(e.key)}</b> ${esc(jst(e.from))} → ${esc(jst(e.to))}${sum}`};}
+    return {c:w.c,txt:`<span style="color:${col}">➜</span> ${w.r} : ${refTk(e.key)} ${esc(jst(e.from))} → ${esc(jst(e.to))}${sum}`};}
   if(e.kind==='new'){const w=e.who?nm(e.who,null):null;
-    return {c:w&&w.c,txt:`<span style="color:var(--info)">＋</span> Nouveau ticket <b>${esc(e.key)}</b>${w?' pour '+esc(w.n):''}${sum}`};}
+    return {c:w&&w.c,txt:`<span style="color:var(--info)">＋</span> Nouveau ticket ${refTk(e.key,true)}${w?' pour '+w.r:''}${sum}`};}
   if(e.kind==='pr'){const w=nm(e.author,e.author_name);
-    return {c:w.c,txt:`<span style="color:#7a5cc8">⇡</span> ${esc(w.n)} ouvre la PR <b>#${e.n}</b> <small>${esc(clip(e.title,70))}</small>`};}
+    return {c:w.c,txt:`<span style="color:#7a5cc8">⇡</span> ${w.r} ouvre la PR ${refPr(e.n,e.url)} <small>${esc(clip(e.title,70))}</small>`};}
   if(e.kind==='review'){
     if(e.by&&e.by===e.author)return null; // réponse de l'auteur sur sa propre PR
-    const b=nm(e.by,e.by_name), a=nm(e.author,e.author_name), of=' de '+esc(a.n);
-    if(e.state==='approved')return {c:b.c,txt:`<span style="color:var(--ok)">✓</span> ${esc(b.n)} approuve la PR <b>#${e.n}</b>${of}`};
-    if(e.state==='changes')return {c:b.c,txt:`<span style="color:var(--warn)">✋</span> ${esc(b.n)} demande des changements sur <b>#${e.n}</b>${of}`};
-    return {c:b.c,txt:`<span style="color:var(--muted)">💬</span> ${esc(b.n)} commente la PR <b>#${e.n}</b>${of}`};
+    const b=nm(e.by,e.by_name), a=nm(e.author,e.author_name), of=' de '+a.r, pr=refPr(e.n,e.url);
+    if(e.state==='approved')return {c:b.c,txt:`<span style="color:var(--ok)">✓</span> ${b.r} approuve la PR ${pr}${of}`};
+    if(e.state==='changes')return {c:b.c,txt:`<span style="color:var(--warn)">✋</span> ${b.r} demande des changements sur ${pr}${of}`};
+    return {c:b.c,txt:`<span style="color:var(--muted)">💬</span> ${b.r} commente la PR ${pr}${of}`};
   }
   return null;
 }
@@ -127,7 +149,7 @@ function renderFeed(){
       t:r._s,
       c,
       agent:!c.visitor,grp:g,kind:'start',done,
-      txt:c.visitor?`<span style="color:#d97757">●</span> ${esc(c.name)} arrive pour « ${esc(clean(c.disc.title).replace(/\s+/g,' ').slice(0,70))} »`:`${esc(c.name)} lance <b>${esc(clean(r.wf_name))}</b>`
+      txt:c.visitor?`<span style="color:#d97757">●</span> ${refWho(c)} arrive pour « ${esc(clean(c.disc.title).replace(/\s+/g,' ').slice(0,70))} »`:`${refWho(c)} lance <b>${esc(clean(r.wf_name))}</b>`
     });
     if(done){
       const fs=(r.steps||[]).find(s=>s.s==='Failed'), ko=r.status==='Failed';
@@ -135,7 +157,7 @@ function renderFeed(){
         t:r._e,
         c,
         agent:!c.visitor,grp:g,kind:ko?'ko':'ok',wf:clean(r.wf_name),
-        txt:ko?`<span style="color:var(--err)">✗</span> ${esc(c.name)} se plante${fs?' sur <b>'+esc(fs.n)+'</b>':''} <small>${esc((fs&&fs.err||'').slice(0,90))}</small>`:`<span style="color:var(--ok)">✓</span> ${esc(c.name)} termine <b>${esc(clean(r.wf_name))}</b> <small>${esc(fmtDur(r._e-r._s))}${r.tok?' · '+fmtTok(r.tok)+' tokens':''}</small>`
+        txt:ko?`<span style="color:var(--err)">✗</span> ${refWho(c)} se plante${fs?' sur <b>'+esc(fs.n)+'</b>':''} <small>${esc((fs&&fs.err||'').slice(0,90))}</small>`:`<span style="color:var(--ok)">✓</span> ${refWho(c)} termine <b>${esc(clean(r.wf_name))}</b> <small>${esc(fmtDur(r._e-r._s))}${r.tok?' · '+fmtTok(r.tok)+' tokens':''}</small>`
       });
     }
   }
@@ -147,28 +169,28 @@ function renderFeed(){
       t,
       c:c||null,
       team:true,
-      txt:`<span style="color:#7a5cc8">⇡</span> ${esc(c?c.name:m.author)} merge <b>#${m.n}</b> <small>${esc(m.title)}</small>`
+      txt:`<span style="color:#7a5cc8">⇡</span> ${refWho(c,m.author)} merge ${refPr(m.n,m.url)} <small>${esc(m.title)}</small>`
     });
   }
   if(TEAM)for(const m of (TEAM.meps||[])){
     const c=chars.find(x=>x.team&&x.team.id===m.who)||null;
-    const who=esc(c?c.name:(m.who_name||'Quelqu’un'));
-    const tk=m.ticket?' <small>'+esc(m.ticket)+'</small>':'';
+    const who=refWho(c,String(m.who_name||'Quelqu’un').split(' ')[0]), tag=refTag(m.tag);
+    const tk=m.ticket?' '+refTk(m.ticket):'';
     const push=(t,txt)=>{if(t&&t<=T)ev.push({t,c,txt,tv:true,team:true});};
-    push(ms(m.released),`<span style="color:#7a5cc8">●</span> ${who} publie la release <b>${esc(m.tag)}</b>${tk}`);
-    if(m.staging&&m.staging.end)push(ms(m.staging.end),`<span style="color:#2e9e9b">●</span> <b>${esc(m.tag)}</b> ${m.staging.conclusion==='success'?'validée sur staging':'échoue sur staging'}`);
-    if(m.prod)push(ms(m.prod.start),`<span style="color:#7a5cc8">🚀</span> <b>${esc(m.tag)}</b> part en prod`);
-    if(m.prod&&m.prod.end)push(ms(m.prod.end),m.prod.conclusion==='success'?`<span style="color:var(--ok)">✓</span> <b>${esc(m.tag)}</b> est en prod${tk}`:`<span style="color:var(--err)">✗</span> <b>${esc(m.tag)}</b> échoue en prod`);
+    push(ms(m.released),`<span style="color:#7a5cc8">●</span> ${who} publie la release ${tag}${tk}`);
+    if(m.staging&&m.staging.end)push(ms(m.staging.end),`<span style="color:#2e9e9b">●</span> ${tag} ${m.staging.conclusion==='success'?'validée sur staging':'échoue sur staging'}`);
+    if(m.prod)push(ms(m.prod.start),`<span style="color:#7a5cc8">🚀</span> ${tag} part en prod`);
+    if(m.prod&&m.prod.end)push(ms(m.prod.end),m.prod.conclusion==='success'?`<span style="color:var(--ok)">✓</span> ${tag} est en prod${tk}`:`<span style="color:var(--err)">✗</span> ${tag} échoue en prod`);
     }
   const created=TEAM?teamCreated(DAY0,T):[], createdKeys=new Set(created.map(x=>x.key)); // tickets créés aujourd'hui par l'équipe
   for(const x of created)ev.push({t:ms(x.created),c:x.c,tv:true,team:true,
-    txt:`<span style="color:var(--info)">📝</span> ${esc(x.c.name)} crée <b>${esc(x.key)}</b> <small>${esc(clip(x.summary,70))}</small>`});
+    txt:`<span style="color:var(--info)">📝</span> ${refWho(x.c)} crée ${refTk(x.key,true)} <small>${esc(clip(x.summary,70))}</small>`});
   if(TEAM)for(const e of (TEAM.events||[])){const t=ms(e.t);if(t&&t<=T&&!(e.kind==='new'&&createdKeys.has(e.key))){const x=teamEventTxt(e);if(x)ev.push({t,c:x.c,txt:x.txt,team:true});}} // déjà « X crée »
   // relectures et travaux des agents sur le ticket ou la PR d'un collègue (A1)
   for(const c of chars){if(c.person||c.visitor)continue;
     for(const r of c.runs){if(!r._e||r._e>T||r.status!=='Success')continue;const ref=runRef(r);if(!ref)continue;
-      const pc=runPartner(r)||(ref.pr&&prOwnerChar(ref.pr)), what=ref.pr?'la PR #'+ref.pr:ref.key;
-      ev.push({t:r._e,c,team:true,txt:`🤖 ${esc(c.name)} ${/review|revue|relu/i.test(r.wf_name||'')?'a relu':'a travaillé sur'} <b>${esc(what)}</b>${pc?' de '+esc(pc.name):''}${ref.pr&&ref.key?' <small>'+esc(ref.key)+'</small>':''}`});}}
+      const pc=runPartner(r)||(ref.pr&&prOwnerChar(ref.pr)), what=ref.pr?'la PR '+refPr(ref.pr):refTk(ref.key);
+      ev.push({t:r._e,c,team:true,txt:`🤖 ${refWho(c)} ${/review|revue|relu/i.test(r.wf_name||'')?'a relu':'a travaillé sur'} ${what}${pc?' de '+refWho(pc):''}${ref.pr&&ref.key?' '+refTk(ref.key):''}`});}}
   // sprint : lancement et fin du jour (A2)
   if(TEAM&&TEAM.sprint){const sp=TEAM.sprint, st=ms(sp.start), en=ms(sp.end), sameDay=x=>x&&parisDay(x)===parisDay(T);
     if(sameDay(st)&&st<=T)ev.push({t:st,c:smChar(),team:true,txt:`🏁 Le sprint <b>${esc(sp.name)}</b> commence <small>fin le ${esc(dtf('fr-FR',{weekday:'short',day:'numeric',month:'short'}).format(new Date(en)))}</small>`});
@@ -209,7 +231,7 @@ function feedView(ev,mode){
       summarized.add(e.grp);
       const ko=g.filter(x=>x.kind==='ko').length, ok=g.length-ko, last=g[0];
       if(mode==='important'&&!ko)continue;
-      out.push({t:last.t,c:last.c,txt:`<span style="color:${last.kind==='ko'?'var(--err)':'var(--ok)'}">${last.kind==='ko'?'✗':'✓'}</span> ${esc(last.c.name)} · <b>${esc(last.wf||'')}</b> <small>×${g.length} ${dataDayWord()} · ${ok} ✓ · ${ko} ✗${last.kind==='ko'?' · dernier en échec':''}</small>`});
+      out.push({t:last.t,c:last.c,txt:`<span style="color:${last.kind==='ko'?'var(--err)':'var(--ok)'}">${last.kind==='ko'?'✗':'✓'}</span> ${refWho(last.c)} · <b>${esc(last.wf||'')}</b> <small>×${g.length} ${dataDayWord()} · ${ok} ✓ · ${ko} ✗${last.kind==='ko'?' · dernier en échec':''}</small>`});
       continue;
     }
     if(e.kind==='start'&&e.done)continue; // le run est fini : sa ligne de fin dit tout
@@ -239,10 +261,19 @@ function renderFeedList(view){
 }
 document.getElementById('feed').addEventListener('click',ev=>{
   if(ev.target.closest('[data-feed-more]')){FEED_N+=FEED_PAGE;renderFeedList(FEED_VIEW);return;}
+  const lk=ev.target.closest('.lk');
+  if(lk){ // un lien de la ligne : data-tk (fiche du ticket) est pris par le gestionnaire commun de 62-ticket.js, ↗ s'ouvre seul
+    if(lk.dataset.who){ev.preventDefault();select(lk.dataset.who);}
+    else if(lk.hasAttribute('data-mep')){ev.preventDefault();select('tv');}
+    return;
+  }
   const d=ev.target.closest('[data-i]');if(!d)return;
   const e=FEED_VIEW[+d.dataset.i];if(!e)return;
   if(e.tv)select('tv');else if(e.c)select(e.c.key);
 });
+// survol d'un nom du fil : la personne s'allume sur le plan (comme une carte de « Qui fait quoi »)
+document.getElementById('feed').addEventListener('mouseover',e=>{const a=e.target.closest('.lk-who');hoverKey=a?a.dataset.who:null;});
+document.getElementById('feed').addEventListener('mouseleave',()=>{hoverKey=null;});
 {const seg=document.getElementById('feedmode');if(seg)seg.addEventListener('click',ev=>{
   const b=ev.target.closest('[data-mode]');if(!b)return;
   FEED_MODE=b.dataset.mode;FEED_N=FEED_PAGE;try{localStorage.setItem('bureau:feed',FEED_MODE);}catch(e){}
