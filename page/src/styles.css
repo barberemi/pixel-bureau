@@ -369,6 +369,7 @@ body.tv #tvwho{display:flex;flex-direction:column;gap:8px;position:fixed;top:52p
 #feed .feedmore{margin:8px 0 2px;font-size:12px;width:100%}
 /* récap de la journée */
 .clockrow{display:flex;align-items:center;gap:10px;justify-content:flex-end}
+.hright{display:flex;flex-direction:column;align-items:flex-end} /* boutons, horloge et badge des données, calés à droite */
 .recapbtn{font-size:12px;padding:3px 10px}
 .recap{padding:10px 12px;margin-bottom:12px;border-left:4px solid #c9a227;background:color-mix(in srgb,#c9a227 7%,var(--panel))}
 .recap .rh{display:flex;justify-content:space-between;align-items:center;gap:8px}
