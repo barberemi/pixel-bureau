@@ -36,6 +36,7 @@ h1{font-size:22px;margin:0;letter-spacing:-.01em}
 /* loupe (44-loupe.js) : cadre posé sur le plan, fenêtre flottante en bas à gauche de l'écran (.right : à droite), liseré de
    la couleur de l'événement (--lc) */
 #loupecv{position:absolute;pointer-events:none;z-index:2}
+#loupecv[hidden]{display:none} /* canvas{display:block} l'emporte sur l'attribut hidden : le cadre restait sur le plan */
 #loupefly{position:fixed;z-index:80;left:20px;bottom:20px;width:min(460px,45vw);background:var(--panel);color:var(--ink);
   border-left:8px solid var(--lc);border-radius:10px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.35)}
 #loupefly.right{left:auto;right:20px}

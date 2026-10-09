@@ -105,3 +105,8 @@ test('bulle d\'outil : en entier 6 s après un changement d\'outil, puis réduit
   assert.equal(J(`toolPhase(TC,${a('b.ts')},8000).full`), true, 'nouvel outil : de nouveau en entier');
   assert.equal(J(`toolPhase(TC,null,9000)`), null);
 });
+
+test('loupe : le calque du cadre est vraiment caché à la fermeture (canvas{display:block} ne doit pas l\'emporter sur hidden)', () => {
+  const css = require('fs').readFileSync(require('path').join(__dirname, '..', 'page', 'src', 'styles.css'), 'utf8');
+  assert.match(css, /#loupecv\[hidden\]\{display:none\}/);
+});
