@@ -13,6 +13,11 @@ Clic sur un personnage (plan, panneau ou « Qui fait quoi ») : sa fiche s'ouvre
 
 **Collègue** : tickets ouverts, en cours, PR ouvertes et mergées du jour, ce qu'il a écrit, trié ou testé (PO, facilitateur, testeur).
 
+**Ses tickets** (dans la fiche d'un collègue) : un groupe par colonne du board (▸ : replié, clic pour l'ouvrir ; « À faire » et « Déployé » repliés par défaut). Chaque ticket tient sur deux ou trois lignes :
+- la clé (lien Jira), 🐛 si c'est un bug, le composant (le « [Panier] » du début du titre, sorti en étiquette) et ses points (« 0 pt » compris ; rien s'il n'est pas estimé) ;
+- le titre, qui ouvre la fiche du ticket ;
+- depuis quand il est dans sa colonne (en cours, en review, en test, à déployer), en orange avec ⏳ quand il est bloqué (en review ou en test depuis plus de 2 jours, comme dans À traiter), « Réouvert » quand son statut Jira est celui des réouvertures (`jira_flow.reopened`), et ses PR ouvertes avec l'état de leur review.
+
 **Ticket** : clic sur un ticket (Kanban, fiche d'un collègue) : son statut et depuis quand, qui l'a, ses points, ses PR ouvertes avec leur review, le lien Jira, et les workflows à lancer dessus selon son statut :
 - **Implémenter** : ticket à faire ou en cours, sans PR. Après ta validation du plan, le workflow t'assigne le ticket et le passe « En cours » dans Jira, puis code, ouvre la PR et la fait relire.
 - **Faire relire** : sur chacune de ses PR prêtes et pas encore approuvées.

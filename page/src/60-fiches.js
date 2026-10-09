@@ -202,6 +202,26 @@ function workBlock(side,c){
     d.appendChild(ul);box.appendChild(d);
   }
 }
+// une ligne de « Ses tickets » : clé (🐛 si bug), composant (le « [Panier] » du titre), points (0 compris), titre,
+// puis depuis quand il est dans sa colonne (orange : bloqué, comme dans À traiter), « Réouvert », ses PR ouvertes
+const tkPts=v=>v==null||v===''?'':`<span class="k pts">${esc(+v)} pt${+v>1?'s':''}</span>`;
+function tkRow(x){const li=document.createElement('li');li.className='tkr';li.innerHTML=tkRowHtml(x);return li;}
+function tkRowHtml(x){
+  const m=/^\s*\[([^\]]{1,40})\]\s*(.*)$/.exec(x.summary||''), comp=m&&m[2]?m[1]:null, u=tkSince(x);
+  const meta=[];
+  if(x.cat!=='done'&&x.cat!=='todo'&&u&&u<=T){
+    const age=tkAge(x,T), stuck=(x.cat==='review'||x.cat==='test')&&T-u>BLOCKED_DAYS*864e5;
+    meta.push(`<span${stuck?' class="warn" title="Bloqué : sans bouger depuis plus de '+BLOCKED_DAYS+' j">⏳ ':'>'}${age?'depuis '+age:u>=DAY0?"aujourd'hui":'depuis hier'}</span>`);
+  }
+  if(x.status&&x.status===FLOW.reopened)meta.push('<span class="tk-tag">Réouvert</span>');
+  for(const p of prsOf(x.key)){
+    const r=p.draft?['brouillon','var(--idle)']:TK_REV[p.review]||TK_REV.pending;
+    meta.push(`<span><span class="dot" style="background:${r[1]}"></span><a href="${esc(p.url)}" target="_blank" rel="noopener">#${p.n}</a> ${r[0]}</span>`);
+  }
+  return `<div class="tk-top">${x.type==='Bug'?'<span title="Bug">'+TYPE_ICO.Bug+'</span>':''}<a class="tk-key" href="${JIRA_BROWSE}${encodeURIComponent(x.key)}" target="_blank" rel="noopener" title="Ouvrir dans Jira">${esc(x.key)}</a>`+
+    `${comp?`<span class="tk-comp">${esc(comp)}</span>`:''}${tkPts(x.points)}</div>`+
+    `<div class="tk-t">${tkOpen(comp?{...x,summary:m[2]}:x)}</div>${meta.length?`<div class="tk-meta">${meta.join('')}</div>`:''}`;
+}
 function renderPerson(side,c){
   const p=c.team;
   workBlock(side,c);
@@ -247,13 +267,10 @@ function renderPerson(side,c){
     const list=p.tickets.filter(x=>x.cat===k); if(!list.length)continue;
     const d=memoDetails(document.createElement('details'),c.key+':'+k,k!=='done'&&k!=='todo');
     const pts=list.reduce((a,x)=>a+(+x.points||0),0);
-    d.innerHTML=`<summary><span class="dot" style="background:${TCAT[k].c}"></span><span class="wn">${TCAT[k].t}</span><span class="du">${list.length} ticket${list.length>1?'s':''}${pts?' · '+Math.round(pts)+' pts':''}</span></summary>`;
+    d.className='tkg';
+    d.innerHTML=`<summary><span class="chev" aria-hidden="true"></span><span class="dot" style="background:${TCAT[k].c}"></span><span class="wn">${TCAT[k].t}</span><span class="du">${list.length} ticket${list.length>1?'s':''}${pts?' · '+Math.round(pts)+' pts':''}</span></summary>`;
     const ul=document.createElement('ul');ul.className='steps';
-    for(const x of list){
-      const li=document.createElement('li');
-      li.innerHTML=`<a href="${JIRA_BROWSE}${encodeURIComponent(x.key)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;white-space:nowrap">${esc(x.key)}</a><span>${tkOpen(x)}${x.owner?' <small style="color:var(--muted)">('+esc(String(x.owner).split(' ')[0])+')</small>':''}</span>${x.points?`<span class="k pts">${esc(x.points)} pts</span>`:''}`;
-      ul.appendChild(li);
-    }
+    for(const x of list)ul.appendChild(tkRow(x));
     d.appendChild(ul);tb.appendChild(d);
   }
   const REV={approved:['approuvée','var(--ok)'],changes:['changements demandés','var(--err)'],pending:['review en attente','var(--warn)']};

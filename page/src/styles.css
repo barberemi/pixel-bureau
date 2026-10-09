@@ -90,6 +90,23 @@ summary .du{color:var(--muted);font-size:12px;white-space:nowrap}
 .steps li.pl .plw small{color:var(--muted);font-size:11px}
 .steps li.pl .k{line-height:18px}
 .steps .e{color:var(--err);font-size:11px;margin:0 0 4px 15px;word-break:break-word}
+/* « Ses tickets » (fiche d'un collègue, tkRow) : clé, composant et points en tête, titre, puis âge, réouvert, PR */
+.tkg>summary .chev{color:var(--muted);font-size:11px;width:8px;margin-right:-4px}
+.tkg>summary .chev::before{content:'▸'}
+.tkg[open]>summary .chev::before{content:'▾'}
+.tkg>.steps{margin-top:3px} /* 8 px du titre du groupe à la clé du premier ticket */
+.steps li.tkr{display:block;padding:5px 0}
+.tkr .tk-top{display:flex;align-items:center;gap:6px;min-width:0}
+.tkr .tk-key{font:600 11px/18px ui-monospace,Menlo,monospace;color:var(--accent);text-decoration:none;white-space:nowrap}
+.tkr .tk-comp{font-size:11px;line-height:16px;color:var(--muted);background:var(--chip);border-radius:4px;padding:0 5px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tkr .tk-t{font-size:13px;line-height:1.35;margin-top:1px;overflow-wrap:anywhere}
+.tkr .tk-key:hover,.tkr .tk-t a:hover,.tkr .tk-meta a:hover{text-decoration:underline}
+.tkr .tk-t a,.tkr .tk-meta a{text-decoration:none}
+.tkr .tk-meta{display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;margin-top:3px;font-size:11px;color:var(--muted)}
+.tkr .tk-meta a{color:var(--accent);font-weight:600}
+.tkr .tk-meta .warn{color:var(--warn);font-weight:600}
+.tkr .tk-meta .dot{width:7px;height:7px;margin-right:4px}
+.tk-tag{color:var(--err);border:1px solid currentColor;border-radius:4px;padding:0 4px;font-size:10px;font-weight:700;line-height:14px;text-transform:uppercase;letter-spacing:.04em}
 .future{opacity:.45}
 .back{margin-bottom:10px}
 .feed{margin-top:14px;padding:14px}
