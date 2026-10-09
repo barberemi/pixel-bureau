@@ -35,3 +35,12 @@ test('sans paramètres (vue intégrée, mosaïque) : rien ne change et le premie
   assert.equal(J('TV'), true);
   reset();
 });
+
+test('skin=classique : l\'écran mural prend le thème de l\'adresse, sans le mémoriser ; un thème inconnu ne change rien', () => {
+  reset();
+  run(`applySkin('equipe');localStorage.removeItem&&localStorage.removeItem('bureau:skin');applyViewParams({page:{params:{tv:'1',skin:'classique'}}});`);
+  assert.deepEqual(J('[TV,UI_SKIN]'), [true, 'classique']);
+  reset();
+  run(`applySkin('equipe');applyViewParams({page:{params:{skin:'parchemin'}}});`);
+  assert.equal(J('UI_SKIN'), 'equipe');
+});
