@@ -140,6 +140,7 @@ meps.sort(key=lambda m: m["released"] or "")
 events = []
 by_acc = {p["id"]: p for p in people.values()}
 open_keys = {it.get("key") for it in D.get("issues") or []}
+# Les tickets du sprint fermé arrivent sans historique (étape jira_closed) : seuls leurs « créé aujourd'hui » comptent.
 for it in (D.get("issues") or []) + [x for x in (D.get("closed") or []) if x.get("key") not in open_keys]:
     f = it.get("fields") or {}
     key = it.get("key")

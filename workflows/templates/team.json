@@ -154,7 +154,7 @@
     "step_type": {
      "type": "ApiCall"
     },
-    "description": "Tickets EW du dernier sprint fermé (21 j) : employé du sprint tant que le nouveau n'a rien livré, et changements de statut du jour.",
+    "description": "Tickets EW du dernier sprint fermé (21 j) : employé du sprint tant que le nouveau n'a rien livré. Sans historique (changelog) : il pesait ~7 Mo par run pour des changements de statut quasi inexistants hors sprint en cours.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -170,8 +170,7 @@
     "api_query": {
      "fields": "summary,status,assignee,issuetype,updated,created,@@jira.points_fields@@,@@jira.sprint_field@@",
      "jql": "project = @@jira.project@@ AND sprint in closedSprints() AND sprint not in openSprints() AND updated >= -21d ORDER BY updated DESC",
-     "maxResults": "100",
-     "expand": "changelog"
+     "maxResults": "100"
     },
     "api_extract": {
      "path": "$.issues",
