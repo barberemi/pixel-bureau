@@ -30,8 +30,8 @@ Les PR qui citent un de ses tickets sont sur la ligne du ticket : le bloc suivan
 
 **Ticket** : clic sur un ticket (Kanban, fiche d'un collègue) : son statut et depuis quand, qui l'a, ses points, ses PR ouvertes avec leur review, le lien Jira, et les workflows à lancer dessus selon son statut :
 - **Implémenter** : ticket à faire ou en cours, sans PR. Après ta validation du plan, le workflow t'assigne le ticket et le passe « En cours » dans Jira, puis code, ouvre la PR et la fait relire.
-- **Faire relire** : sur chacune de ses PR prêtes et pas encore approuvées.
-- **Corriger les retours** : sur une PR avec changements demandés (avec des consignes facultatives).
+- **Faire relire** : sur chacune de ses PR pas encore approuvées, brouillons compris (la carte dit alors « (brouillon) »).
+- **Corriger les retours** : sur une PR avec changements demandés, même en brouillon (avec des consignes facultatives).
 - **Mettre en prod** : ticket à déployer ; grisé les jours de gel des mises en prod.
 - **Commenter** : à tout statut. Le texte se saisit dans la carte Kronn ; il part sur le ticket dans Jira avec le compte de ta connexion Atlassian, suivi de « (depuis Le Bureau) ». C'est un workflow du Bureau (« Le Bureau · commenter un ticket », un appel Jira, 0 token), créé par l'installateur quand Jira est connecté.
 

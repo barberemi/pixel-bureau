@@ -104,11 +104,12 @@ function renderTicket(side,key){
   }
   for(const p of prs){
     const ok=ACTS.prs.some(q=>String(q.n)===String(p.n));
-    if(!ok||p.draft)continue;
+    if(!ok)continue;
+    const dr=p.draft?' (brouillon)':''; // un brouillon se relit et se corrige aussi
     if(ACTIONS.fix&&p.review==='changes')
-      launchBlock(box,{action:'bureau-fix',bind:{n:String(p.n)},name:'Corriger les retours · #'+p.n,sub:'Un agent applique les commentaires de review et pousse',label:'🛠 Corriger',title:'Corriger les retours de #'+p.n});
+      launchBlock(box,{action:'bureau-fix',bind:{n:String(p.n)},name:'Corriger les retours · #'+p.n+dr,sub:'Un agent applique les commentaires de review et pousse',label:'🛠 Corriger',title:'Corriger les retours de #'+p.n});
     if(ACTIONS.review&&p.review!=='approved')
-      launchBlock(box,{action:'bureau-review',bind:{n:String(p.n)},name:'Faire relire · #'+p.n,sub:'Dwight relit la PR et poste sa review',label:'🔎 Faire relire',title:'Faire relire #'+p.n});
+      launchBlock(box,{action:'bureau-review',bind:{n:String(p.n)},name:'Faire relire · #'+p.n+dr,sub:'Dwight relit la PR et poste sa review',label:'🔎 Faire relire',title:'Faire relire #'+p.n});
   }
   if(known&&ACTIONS.comment) // à tout statut ; le texte se saisit dans la carte Kronn
     launchBlock(box,{action:'bureau-comment',bind:{key},name:'Commenter',sub:'Ton commentaire part sur le ticket dans Jira',label:'💬 Commenter',title:'Commenter '+key});

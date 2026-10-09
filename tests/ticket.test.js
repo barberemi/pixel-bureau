@@ -37,8 +37,8 @@ test('en review avec une PR en attente : Faire relire, lié au n° de PR', () =>
   assert.deepEqual(buttons('DM-2'), [['bureau-review', {n: '12'}, false]]);
 });
 
-test('changements demandés : Corriger et Faire relire ; un brouillon n\'a pas de bouton ; une PR ouverte retire Implémenter', () => {
-  assert.deepEqual(buttons('DM-4'), [['bureau-fix', {n: '13'}, false], ['bureau-review', {n: '13'}, false]]);
+test('changements demandés : Corriger et Faire relire ; un brouillon a aussi les siens ; une PR ouverte retire Implémenter', () => {
+  assert.deepEqual(buttons('DM-4'), [['bureau-fix', {n: '13'}, false], ['bureau-review', {n: '13'}, false], ['bureau-review', {n: '14'}, false]]);
 });
 
 test('à déployer : Mettre en prod, grisé pendant le gel (vendredi)', () => {
