@@ -105,12 +105,13 @@ function duckLook(t){
   return {stage:p.stage.id,acc:p.stage.id==='oeuf'?[]:duckWorn(t),kids:DUCKGAME.canetons||0};
 }
 // ---------- sur le plan : la file des canetons derrière lui (là où il était quelques pas plus tôt, plus loin s'ils sont grands) ----------
+let DUCK_KIDS_POS=[]; // où sont les canetons dessinés (le voile de nuit s'ouvre autour d'eux, 42-light.js)
 function drawDuckKids(now,look){
-  const n=Math.min(DUCK_KIDS_MAX,look.kids); if(!DUCK_POS)return;
+  const n=Math.min(DUCK_KIDS_MAX,look.kids); DUCK_KIDS_POS=[]; if(!DUCK_POS)return;
   const at=i=>(DUCK_POS.call?null:duckWalk(T-i*.9*DUCK_SCALE*DUCK_STEP))||{x:DUCK_POS.x-i*TS*.6*DUCK_SCALE,y:DUCK_POS.y,dir:DUCK_POS.dir,moving:false};
   for(let i=n;i>=1;i--){
     const q=at(i);
-    const x=Math.round(q.x), y=Math.round(q.y)-4, w=q.moving?Math.sin(now/120+i):0;
+    const x=Math.round(q.x), y=Math.round(q.y)-4, w=q.moving?Math.sin(now/120+i):0;DUCK_KIDS_POS.push({x,y});
     ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.ellipse(x,y+1,4*DUCK_SCALE,1.2*DUCK_SCALE,0,0,7);ctx.fill();
     ctx.save();ctx.translate(x,y+(q.moving&&w>0?-1:0));ctx.rotate(w*.12);if(q.dir==='left')ctx.scale(-1,1);ctx.scale(DUCK_SCALE,DUCK_SCALE);
     ctx.drawImage(duckGameImg(q.dir==='down'?'front':q.dir==='up'?'back':'side','caneton'),-12,-22);ctx.restore();

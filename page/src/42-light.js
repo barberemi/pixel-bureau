@@ -98,6 +98,8 @@ function drawLight(now){
     for(const s of src)softSpot(m,s.x,s.y,s.r,s.a);
     // chaque personnage présent reste lisible : le voile s'ouvre autour de lui (sous lui le décor reste dans l'ombre)
     for(const c of chars)if(c.present&&c.pos)softSpot(m,c.pos.x,c.pos.y-26,30,.8);
+    if(DUCK_POS)softSpot(m,DUCK_POS.x,DUCK_POS.y-14,26,.8); // le canard aussi, et ses canetons (39-duckgame.js), plus petits
+    for(const k of DUCK_KIDS_POS)softSpot(m,k.x,k.y-8,16,.7);
     // 2. flou du masque (bords doux), dessiné en basse résolution
     const l=LIGHT_CV.getContext('2d');l.clearRect(0,0,W/LQ,H/LQ);
     l.filter='blur(3px)';l.drawImage(LIGHT_MASK,0,0);l.filter='none';

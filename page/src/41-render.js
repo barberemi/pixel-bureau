@@ -19,8 +19,8 @@ function render(now){
     g.addColorStop(0,'rgba(10,12,22,0)');g.addColorStop(1,'rgba(10,12,22,.52)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
     drawSeatTrail(sc,now);
   }
-  if(sel==='duck'&&DUCK_POS){ // fiche du canard ouverte : le plan s'assombrit autour de lui
-    const gx=DUCK_POS.x, gy=DUCK_POS.y-10, g=ctx.createRadialGradient(gx,gy,18,gx,gy,90);
+  if(sel==='duck'&&DUCK_POS){ // fiche du canard ouverte : le plan s'assombrit autour de lui, comme autour d'un personnage
+    const gx=DUCK_POS.x, gy=DUCK_POS.y-14, g=ctx.createRadialGradient(gx,gy,30,gx,gy,120);
     g.addColorStop(0,'rgba(10,12,22,0)');g.addColorStop(1,'rgba(10,12,22,.52)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
   }
   // bulles : celui qui vient voir quelqu'un (ticket livré, réouvert, prod fêtée) passe par-dessus la bulle de la personne visitée
