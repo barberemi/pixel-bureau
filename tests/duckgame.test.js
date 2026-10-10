@@ -41,10 +41,11 @@ test('le stade suit les points déployés avant l\'instant affiché (rejeu), en 
   assert.equal(stage(at('09', '16:00')), 'dore');       // 20 / 16 = 125 %
 });
 
-test('accessoires des succès : un seul couvre-chef (le plus rare), rien sur l\'œuf ni le caneton', () => {
+test('accessoires des succès : un seul couvre-chef (le plus rare), le caneton aussi, rien sur l\'œuf', () => {
   setup({zero_panne: {ok: true}, leve_tot: {ok: true}, triple: {ok: true}, bavard: {ok: false}});
   assert.deepEqual(J(`duckLook(${at('08', '12:00')}).acc`).sort(), ['couronne', 'lunettes']); // couronne plutôt que casquette
-  assert.deepEqual(J(`duckLook(${at('06', '12:00')}).acc`), []); // caneton
+  assert.deepEqual(J(`duckLook(${at('06', '12:00')}).acc`).sort(), ['couronne', 'lunettes']); // caneton
+  assert.deepEqual(J(`duckLook(${at('05', '12:00')}).acc`), []); // œuf
   assert.equal(J(`duckLook(${at('08', '12:00')}).kids`), 3);
 });
 

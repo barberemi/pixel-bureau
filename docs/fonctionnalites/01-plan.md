@@ -113,7 +113,7 @@ Le canard appartient à toute l'équipe : il grandit avec le travail collectif d
 
 - **Ses stades** : œuf, caneton, canard de bain, canard détective, canard sage, canard doré. Ils suivent les points des tickets du sprint passés en terminé, rapportés à la cible du sprint : la moyenne des points terminés des 4 derniers sprints fermés. Caneton dès 25 % de la cible, canard de bain dès 50 %, détective dès 75 %, sage à 100 %, doré à 120 %. Le premier jour du sprint suivant, il mue et repart de l'œuf. Le stade suit l'heure affichée, rejeu compris.
 - **Ses canetons** : un sprint est tenu quand ses points terminés atteignent la moyenne des 4 sprints d'avant. Chaque sprint tenu parmi les 8 derniers lui donne un caneton, qui le suit en file indienne pendant sa promenade (6 dessinés au plus, puis « ×8 »).
-- **Ses succès** : des faits réels de l'équipe lui font porter un accessoire. Un seul couvre-chef à la fois (couronne, puis auréole, puis casquette), qui remplace le chapeau du détective ; rien sur l'œuf ni sur le caneton.
+- **Ses succès** : des faits réels de l'équipe lui font porter un accessoire. Un seul couvre-chef à la fois (couronne, puis auréole, puis casquette), qui remplace le chapeau du détective ; le caneton les porte en plus petit, l'œuf n'en a pas.
 
 | Succès | Quand | Accessoire |
 | --- | --- | --- |

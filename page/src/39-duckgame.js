@@ -65,12 +65,16 @@ function duckGameImg(view,stage,acc){
   acc=acc||[];const k=view+'|'+stage+'|'+acc.join(',');if(DG_IMG[k])return DG_IMG[k];
   const c=document.createElement('canvas');c.width=c.height=24;const g=c.getContext('2d');
   if(stage==='oeuf'){dgPaint(g,DG_EGG,{W:'#fff4d6',w:'#d9c49a',Y:'#f5c518',K:'#b39a68'},7,10);return DG_IMG[k]=c;}
-  if(stage==='caneton'){ // plus petit, une houppette, sans accessoires
-    const t=document.createElement('canvas');t.width=16;t.height=14;dgPaint(t.getContext('2d'),DUCK_ARTS[view],DG_PAL.caneton,0,0);
-    g.imageSmoothingEnabled=false;g.drawImage(t,7,13,11,10);g.fillStyle=DG_PAL.caneton.y;g.fillRect(12,12,1,1);g.fillRect(13,11,1,1);
+  const head=acc.some(a=>DUCK_HEADS.includes(a));
+  if(stage==='caneton'){ // plus petit, une houppette ; ses accessoires (choix de Rémi : réduits avec lui, pixels nets)
+    const t=document.createElement('canvas');t.width=t.height=24;const f=t.getContext('2d');
+    for(const a of acc)if(DG_BEHIND[a]&&DG_BEHIND[a][view])dgLayer(f,a,view);
+    dgPaint(f,DUCK_ARTS[view],DG_PAL.caneton,4,8);
+    for(const a of acc)if(!(DG_BEHIND[a]&&DG_BEHIND[a][view]))dgLayer(f,a,view);
+    g.imageSmoothingEnabled=false;g.drawImage(t,0,0,24,24,4.25,7.5,16.5,16.5);
+    if(!head){g.fillStyle=DG_PAL.caneton.y;g.fillRect(12,12,1,1);g.fillRect(13,11,1,1);}
     return DG_IMG[k]=c;
   }
-  const head=acc.some(a=>DUCK_HEADS.includes(a));
   const L=[...(stage==='detective'&&!head?['detective']:[]),...(stage==='sage'?['sage']:[]),...acc];
   for(const a of L)if(DG_BEHIND[a]&&DG_BEHIND[a][view])dgLayer(g,a,view);
   dgPaint(g,DUCK_ARTS[view],DG_PAL[stage]||DUCK_COL,4,8);
@@ -95,11 +99,10 @@ function duckWorn(){
   const head=DUCK_HEADS.find(a=>won.includes(a));
   return won.filter(a=>!DUCK_HEADS.includes(a)||a===head);
 }
-// allure : stade, accessoires (pas sur l'œuf ni le caneton), canetons ; sans données, le canard de bain d'avant
+// allure : stade, accessoires (pas sur l'œuf), canetons ; sans données, le canard de bain d'avant
 function duckLook(t){
   const p=duckProgress(t); if(!p)return {stage:'bain',acc:[],kids:0};
-  const small=p.stage.id==='oeuf'||p.stage.id==='caneton';
-  return {stage:p.stage.id,acc:small?[]:duckWorn(),kids:DUCKGAME.canetons||0};
+  return {stage:p.stage.id,acc:p.stage.id==='oeuf'?[]:duckWorn(),kids:DUCKGAME.canetons||0};
 }
 // ---------- sur le plan : la file des canetons derrière lui (là où il était quelques pas plus tôt, plus loin s'ils sont grands) ----------
 function drawDuckKids(now,look){
