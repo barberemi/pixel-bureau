@@ -520,6 +520,9 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .dg-tr>div{min-width:0;display:flex;flex-direction:column}
 .dg-tr b{font-size:13px}
 .dg-tr small{font-size:11px;line-height:1.35;color:var(--muted)}
-.dg-tr.off .dg-pix{filter:grayscale(1);opacity:.55}
-.dg-tr.off b{color:var(--muted)}
+.dg-tr.won{background:var(--chip)} /* même habillage que les stades : gagnés sur fond, à venir en pointillés */
+.dg-tr.soon{border:2px solid var(--accent)}
 .dg-tr.soon .dg-pix{opacity:.55}
+.dg-tr.off{border-style:dashed;border-color:var(--muted)}
+.dg-tr.off .dg-pix{filter:grayscale(1);opacity:.4}
+.dg-tr.off b{color:var(--muted)}

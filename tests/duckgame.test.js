@@ -81,7 +81,7 @@ test('la fiche : son sprint, ses canetons et ses trophées, sans un chiffre par 
   assert.equal(html[1][1], '1 / 6');
   assert.match(html[0][2], /Canard détective/);
   assert.match(html[0][2], /18 \/ 20 pts/);
-  assert.match(html[0][2], /1 caneton/);
+  assert.match(html[0][2], /1 caneton<\/b> : un par sprint où l'équipe a fait mieux que sa moyenne des 4 sprints d'avant\. 1 sur les 1 derniers : S1\./);
   assert.match(html[1][2], /gagné · sem\. du 5 oct\./);
   assert.match(html[1][2], /6 \/ 8/);
   assert.doesNotMatch(html.map(h => h[2]).join(' '), /Pam/);

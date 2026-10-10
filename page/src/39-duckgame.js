@@ -163,16 +163,17 @@ function renderDuckGame(side){
     box.appendChild(st);
   }else{const e=document.createElement('div');e.className='note';e.textContent='Le stade arrive avec les tickets du sprint (cron équipe).';box.appendChild(e);}
   const held=D.sprints.filter(s=>s.held), kids=document.createElement('div');kids.className='dg-kids';
-  for(let i=0;i<Math.min(DUCK_KIDS_MAX,held.length);i++)kids.appendChild(dgPix(duckGameImg('side','caneton'),28));
+  const pts=v=>fmtPts(Math.round(+v||0));
+  for(const s of held.slice(0,DUCK_KIDS_MAX)){const k=dgPix(duckGameImg('side','caneton'),28);k.title=`${s.name} : ${pts(s.done)} pts, moyenne des 4 sprints d'avant ${pts(s.target)}`;kids.appendChild(k);}
   kids.appendChild(Object.assign(document.createElement('div'),{className:'note',
-    innerHTML:held.length?`<b>${held.length} caneton${held.length>1?'s':''}</b> : ${held.length} sprint${held.length>1?'s':''} tenu${held.length>1?'s':''} sur les ${D.sprints.length} derniers (${esc(held.map(s=>s.name).join(', '))})`
-      :`Pas encore de caneton : un sprint est tenu quand il dépasse la moyenne des 4 sprints d'avant`}));
+    innerHTML:held.length?`<b>${held.length} caneton${held.length>1?'s':''}</b> : un par sprint où l'équipe a fait mieux que sa moyenne des 4 sprints d'avant. ${held.length} sur les ${D.sprints.length} derniers : ${esc(held.map(s=>s.name).join(', '))}.`
+      :`Pas encore de caneton : il en naît un à chaque sprint où l'équipe fait mieux que sa moyenne des 4 sprints d'avant.`}));
   box.appendChild(kids);
   const T_=D.trophies||{}, n=DUCK_TROPHIES.filter(x=>T_[x.id]&&T_[x.id].ok).length;
   const tb=foldSection(side,'duck-trophies','Ses trophées',n+' / '+DUCK_TROPHIES.length,true);
   const gr=document.createElement('div');gr.className='dg-troph';
   for(const x of DUCK_TROPHIES){
-    const s=T_[x.id]||{}, soon=s.ok&&s.at&&ms(s.at)>T, c=document.createElement('div');c.className='dg-tr'+(s.ok?soon?' soon':'':' off');c.title=x.what;
+    const s=T_[x.id]||{}, soon=s.ok&&s.at&&ms(s.at)>T, c=document.createElement('div');c.className='dg-tr'+(s.ok?soon?' won soon':' won':' off');c.title=x.what;
     c.appendChild(dgPix(duckGameImg('front','bain',[x.acc]),40));
     // gagné mais daté plus tard (succès de la semaine passée : le lundi à l'ouverture) : il ne le porte pas encore
     const day=t=>{const d=dtf('fr-FR',{weekday:'long'}).format(new Date(t));return fmtDay(t)===hm(t)?'aujourd\'hui à '+hm(t):d+' à '+hm(t);};
