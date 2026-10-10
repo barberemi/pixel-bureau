@@ -308,6 +308,12 @@ const KANBAN_WALL={y:-1,draw:()=>{
   ctx.textAlign='left';
 }};
 // planning mural des crons (couloir, à gauche du bureau du boss)
+// texte raccourci avec « … » pour tenir dans max pixels (police courante du contexte)
+function fitText(t,max){
+  if(ctx.measureText(t).width<=max)return t;
+  while(t.length>1&&ctx.measureText(t+'…').width>max)t=t.slice(0,-1);
+  return t+'…';
+}
 const CRON_BOARD={y:-1,draw:()=>{
   const {x,y,w,h}=PLANR;
   R(ctx,x,y,w,h,'#3d4250');R(ctx,x+2,y+2,w-4,h-4,'#1f2430');
@@ -317,7 +323,7 @@ const CRON_BOARD={y:-1,draw:()=>{
   if(!next.length){ctx.fillStyle='#8a93a6';ctx.fillText("fini pour aujourd'hui",x+5,y+20);}
   next.forEach((p,i)=>{
     ctx.fillStyle=i===0?'#ffd479':'#e6e9ef';
-    ctx.fillText(hm(p.t)+' '+(p.who?p.who.name:String(p.c.name).slice(0,10)),x+5,y+17+i*7);
+    ctx.fillText(fitText(hm(p.t)+' '+(p.who?p.who.name:String(p.c.name)),w-9),x+5,y+17+i*7); // « Intérimaire 3 » : tronqué au tableau
   });
 }};
 // plantes
