@@ -140,7 +140,8 @@ function duckAt(t){
   return {x:c0.x+(c1.x-c0.x)*k,y:c0.y+(c1.y-c0.y)*k,tile:k<.5?P[i]:P[i+1],dir:duckDir(P[i],P[i+1]),moving:true,call:true};
 }
 let DUCK_POS=null; // dernière position dessinée (zone de clic)
-const DUCK_SCALE=1.3; // un peu plus grand que son dessin de 16 px : il se perdait sur la moquette
+const DUCK_SCALE=1.6; // plus grand que son dessin de 16 px : il se perdait sur la moquette, et ses accessoires doivent se lire (choix de Rémi)
+const DUCK_K=DUCK_SCALE/1.3; // bulle, anneau et zone de clic, réglés à l'origine pour ×1,3
 function drawDuck(now){
   const p=DUCK_POS; if(!p)return;
   const look=duckLook(T); drawDuckKids(now,look); // canard d'équipe (39-duckgame.js) : stade, accessoires, canetons
@@ -152,7 +153,7 @@ function drawDuck(now){
   ctx.restore();
   if(look.stage==='dore')drawDuckSparkles(x,y,now);
   if(p.call&&!p.moving){ // il attend ta réponse : une bulle « ? » qui respire au-dessus de lui
-    const by=y-34+Math.round(Math.sin(now/400));
+    const by=y-Math.round(34*DUCK_K)+Math.round(Math.sin(now/400));
     ctx.fillStyle='#ffffff';ctx.strokeStyle='#c47f00';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(x-7,by,14,13,4);ctx.fill();ctx.stroke();
     ctx.beginPath();ctx.moveTo(x-2,by+13);ctx.lineTo(x,by+17);ctx.lineTo(x+2,by+13);ctx.fill();
     ctx.fillStyle='#c47f00';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText('?',x,by+10);ctx.textAlign='left';
@@ -161,7 +162,7 @@ function drawDuck(now){
     ctx.fillStyle='#f5c518';ctx.strokeStyle='#3a2a00';ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(x-5,ay);ctx.lineTo(x+5,ay);ctx.lineTo(x,ay+6);ctx.closePath();ctx.fill();ctx.stroke();
   }
-  if(sel==='duck'||hoverKey==='duck'){ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.beginPath();ctx.ellipse(x,y+1,12,4,0,0,7);ctx.stroke();}
+  if(sel==='duck'||hoverKey==='duck'){ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.beginPath();ctx.ellipse(x,y+1,12*DUCK_K,4*DUCK_K,0,0,7);ctx.stroke();}
 }
 // ---------- sa ligne dans le panneau (groupe « Et aussi ») ----------
 // la pièce où il est : le libellé du plan posé dans la même pièce éclairée (light_rooms), sinon l'open space
@@ -189,7 +190,7 @@ function duckRow(){
   return b;
 }
 // survol, clic : le rectangle du canard dessiné
-function duckHit(mx,my){const p=DUCK_POS;return !!p&&Math.abs(mx-p.x)<=12&&my>=p.y-34&&my<=p.y;} // flèche comprise
+function duckHit(mx,my){const p=DUCK_POS;return !!p&&Math.abs(mx-p.x)<=12*DUCK_K&&my>=p.y-Math.round(22*DUCK_SCALE+16)&&my<=p.y;} // flèche comprise
 // ---------- sa fiche ----------
 // projet choisi pour parler au canard : retenu dans ce navigateur (confort ; « Sans projet » par défaut)
 let DUCK_PROJECT='none';
