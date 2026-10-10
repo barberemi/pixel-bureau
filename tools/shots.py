@@ -46,6 +46,9 @@ SHOTS = {
     # fil à 18h30 (Important) : les rétablissements de Creed et Meredith en haut
     "fil": (1400, 1400, AT(18.5) + "FEED_MODE='important';renderFeed();document.querySelector('#feed').style.maxHeight='620px';"
             "document.querySelector('#feed').style.overflow='hidden';", ".feed"),
+    # fil « Tout » à 15h20 : la rétro de 15h, les visites (David, Gandalf à la réouverture, Yoda à la prod)
+    "fil-tout": (1400, 1600, AT(15 + 20 / 60) + "FEED_MODE='all';renderFeed();document.querySelector('#feed').style.maxHeight='960px';"
+                 "document.querySelector('#feed').style.overflow='hidden';", ".feed"),
     "recap": (1400, 1200, AT(11) + "RECAP_OPEN=true;renderRecap();", "#recap"),
     "rejouer": (1400, 1200, AT(9.7) + "setMode('play');", ".stage", 1.5),
     "tv": (1600, 900, AT(11) + "setTv(true);", None),

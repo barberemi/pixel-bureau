@@ -151,6 +151,45 @@ function agentDowns(c,t){
   }
   return out;
 }
+// ---------- la vie du bureau : cérémonies, visites, canard d'équipe (imp:false = seulement dans « Tout ») ----------
+const duckLink=txt=>`<a href="#" class="lk lk-who" data-who="duck" title="Ouvrir la fiche du canard">${esc(txt)}</a>`;
+function feedLifeEvents(t){
+  const ev=[], today=x=>x&&x>=DAY0&&x<=t;
+  // planning et rétro : à leur heure de début, si elles ont lieu ce jour-là (ceremonyAt : jour, semaine, réglages rhythm)
+  for(const k of ['planning','retro']){
+    const cf=RHYTHM[k]; if(!cf||!cf.at)continue;
+    const [h,m]=String(cf.at).split(':').map(Number), cr=ceremonyAt(DAY0+((h||0)*60+(m||0))*60e3+1e3);
+    if(!cr||cr.k!==k||!today(cr.start))continue;
+    const host=ceremonyHost(cr), len=fmtDur(cr.end-cr.start);
+    ev.push({t:cr.start,c:host,imp:false,txt:`${k==='planning'?'🗓️':'🔁'} ${esc(cr.title)} en salle de réunion <small>${host?(k==='planning'?'animé':'animée')+' par '+refWho(host)+' · ':''}${esc(len)}</small>`});
+  }
+  // visites : les hérauts avec leur événement (réouverture, mise en prod réussie), les invités à leur arrivée
+  for(const c of chars){if(!c.guest)continue;
+    const shout=n=>c.shout?` <small>« ${esc(String(c.shout).replace(/,?\s*\{name\}/g,n?' '+n:'').trim())} »</small>`:'';
+    if(c.on==='reopen'){for(const m of teamMoves())if(m.kind==='reopened'&&today(m.t))ev.push({t:m.t,c,imp:false,txt:`🧙 ${refWho(c)} passe pour la réouverture de ${refTk(m.key)}${shout()}`});continue;}
+    if(c.on==='prod'){if(TEAM)for(const z of (TEAM.meps||[])){const e=z.prod&&z.prod.end&&ms(z.prod.end);if(!today(e)||z.prod.conclusion!=='success')continue;
+      const a=personChar(z.who,z.who_name), n=a?a.name:String(z.who_name||'').split(' ')[0];
+      ev.push({t:e,c,imp:false,txt:`🧘 ${refWho(c)} passe féliciter ${a?refWho(a):esc(n||"l'équipe")} pour ${refTag(z.tag)}${shout(n)}`});}continue;}
+    if(c.on)continue;
+    const v=guestVisit(c,DAY0+12*36e5); if(!v||!today(v.s))continue;
+    const p=/^Passe voir (.+?) ·/.exec((guestState(c,v.s+1e3)||{}).label||''), pc=p&&chars.find(x=>x.person&&x.name===p[1]);
+    ev.push({t:v.s,c,imp:false,txt:`👋 ${refWho(c)} ${pc?'passe voir '+refWho(pc):'passe au bureau'} <small>jusqu'à ${hm(v.e)}</small>`});
+  }
+  // canard d'équipe : succès débloqué et caneton né (Important), changement de stade et mue (Tout)
+  if(DUCKGAME){
+    const T_=DUCKGAME.trophies||{};
+    for(const x of DUCK_TROPHIES){const s=T_[x.id];if(s&&s.ok&&today(ms(s.at)))
+      ev.push({t:ms(s.at),txt:`🏆 ${duckLink('Le canard')} débloque un succès : <b>${esc(x.name)}</b> <small>${esc(x.what)}</small>`});}
+    const sp=(TEAM&&TEAM.sprint)||{}, last=DUCKGAME.sprints[0];
+    if(last&&last.held&&today(ms(sp.start))&&DUCKGAME.sprint&&DUCKGAME.sprint.name===sp.name)
+      ev.push({t:ms(sp.start),txt:`🐣 Un ${duckLink('caneton')} est né <small>le sprint ${esc(last.name)} a fait mieux que la moyenne des 4 d'avant</small>`});
+    for(const s of duckStageTimes()){if(!today(s.at))continue;
+      const to=DUCK_STAGES.find(d=>d.id===s.to)||{};
+      ev.push({t:s.at,imp:false,txt:s.mue?`🦆 Nouveau sprint : ${duckLink('le canard')} mue <small>il repart de l'œuf</small>`
+        :`🦆 ${duckLink('Le canard')} passe <b>${esc(to.name||'')}</b> <small>${Math.round((to.at||0)*100)} % des points visés sont terminés</small>`});}
+  }
+  return ev;
+}
 function renderFeed(){
   if(!DATA)return;
   const ev=[];
@@ -220,6 +259,7 @@ function renderFeed(){
       txt:`<span style="color:#2e9e9b">●</span> Daily de l'équipe en cafétéria`
     });
   }
+  ev.push(...feedLifeEvents(T));
   ev.sort((a,b)=>b.t-a.t);
   FEED_EV=ev;
   renderFeedList(feedView(ev,FEED_MODE));
@@ -240,7 +280,7 @@ function feedView(ev,mode){
   for(const e of ev)if(e.agent&&e.kind!=='start')(groups[e.grp]=groups[e.grp]||[]).push(e);
   const out=[], summarized=new Set(), down=new Set(ev.filter(e=>e.down).map(e=>e.down));
   for(const e of ev){
-    if(!e.agent){out.push(e);continue;}
+    if(!e.agent){if(mode!=='important'||e.imp!==false)out.push(e);continue;}
     const g=groups[e.grp]||[];
     if(g.length>FEED_REPEAT){
       if(summarized.has(e.grp))continue;
