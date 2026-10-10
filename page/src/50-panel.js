@@ -76,14 +76,14 @@ function drawSide(side){
     renderTicket(side,sel.slice(7));
     return;
   }
-  if(sel==='tv'||sel==='emp'||sel==='kanban'||sel==='planning'||sel==='paie'||sel==='duck'||String(sel).startsWith('gate:')){
+  if(sel==='tv'||sel==='emp'||sel==='kanban'||sel==='planning'||sel==='paie'||sel==='duck'||sel==='calendar'||String(sel).startsWith('gate:')){
     const back=document.createElement('button');
     back.className='back';
     back.textContent="← Toute l'équipe";
     back.onclick=()=>select(null);
     side.appendChild(back);
     if(String(sel).startsWith('gate:')){renderLoneGate(side,sel.slice(5));return;}
-    ({tv:renderTv,emp:renderEmp,kanban:renderKanban,planning:renderPlanning,paie:renderPaie,duck:renderDuck})[sel](side);
+    ({tv:renderTv,emp:renderEmp,kanban:renderKanban,planning:renderPlanning,paie:renderPaie,duck:renderDuck,calendar:renderCalendar})[sel](side);
     return;
   }
   if(!sel||!byKey[sel]){

@@ -55,6 +55,8 @@ SHOTS = {
     "fil-tout": (1400, 1600, AT(15 + 20 / 60) + "const iso=h=>new Date(DAY0+h*3600e3).toISOString();DATA.actions=[{k:'comment',at:iso(11.5),ok:true,key:'DM-7089',"
                  "txt:'Je regarde avec Karen'},{k:'ask',at:iso(12.2),wf:byKey.creed.wf[0],q:'Pourquoi tes derniers runs échouent ?'}];FEED_MODE='all';renderFeed();document.querySelector('#feed').style.maxHeight='960px';"
                  "document.querySelector('#feed').style.overflow='hidden';", ".feed"),
+    # absences (démo : Clark absent, Darryl absent le matin, Holly en télétravail) : fiche du calendrier de l'équipe
+    "calendrier": (1400, 1600, AT(11) + "select('calendar');", "#side"),
     "recap": (1400, 1200, AT(11) + "RECAP_OPEN=true;renderRecap();", "#recap"),
     "rejouer": (1400, 1200, AT(9.7) + "setMode('play');", ".stage", 1.5),
     "tv": (1600, 900, AT(11) + "setTv(true);", None),

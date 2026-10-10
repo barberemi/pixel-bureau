@@ -20,7 +20,7 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 | [Téléphone](docs/fonctionnalites/11-mobile.md) | Affichage mobile |
 | [Thèmes saisonniers](docs/fonctionnalites/12-themes.md) | Noël, Nouvel an, Saint-Valentin, Halloween : décor, chapeaux, emojis, effets |
 | [Thème de la page](docs/fonctionnalites/13-theme-page.md) | Pixel art en Classique (sombre) ou Equipe (clair), au bouton 🎨, mode TV et bandeau « EN DIRECT » compris ; Equipe par défaut pour l'équipe equipe |
-| [Absences et télétravail](docs/fonctionnalites/14-absences.md) | Qui est là, d'après le planning de l'équipe : absents hors du bureau, télétravail en transparence |
+| [Absences et télétravail](docs/fonctionnalites/14-absences.md) | Qui est là, d'après le planning de l'équipe : absents hors du bureau, télétravail en transparence, calendrier de deux semaines au mur du boss |
 
 ## Installer
 
@@ -38,7 +38,7 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 | Chrome ou Chromium | Miniatures de l'écran du boss | Cartes sans miniature |
 | Un agent IA installé dans Kronn (Claude Code, par exemple) | « Lui poser une question », plan depuis un croquis | Boutons masqués |
 | suno.com autorisé dans Kronn (Configuration > Artifacts) | Le lecteur Suno de la carte « Son écoute » | Lien vers Suno seulement |
-| Azure CLI connecté (`az login --allow-no-subscriptions`), la connexion Kronn « Microsoft 365 » (globale) et le planning Excel de l'équipe sur SharePoint | Absences et télétravail | Tout le monde au bureau |
+| Azure CLI connecté (`az login --allow-no-subscriptions`), la connexion Kronn « Microsoft 365 » (globale) et le planning Excel de l'équipe sur SharePoint | Absences et télétravail, calendrier de l'équipe | Tout le monde au bureau, pas de calendrier |
 
 macOS ou Linux (Windows n'est pas testé). Pour développer : Node 20 ou plus (tests) et la CLI `claude` (plan depuis un croquis en local).
 

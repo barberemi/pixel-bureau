@@ -71,3 +71,12 @@ test('Qui fait quoi : l\'absent en carte grisée, en dernier ; pas sa raison ; l
   assert.match(away, /🏠 En télétravail : <b>Holly<\/b>/);
 });
 
+test('calendrier : cases bureau, télétravail, absence, demi-journée coupée, férié ; le jour encadré', () => {
+  setup({p_pam: {[D]: 'tt', [D2]: 'ba'}}, [D2]);
+  run(`T = ${at(D, '11:00')};`);
+  assert.match(J(`calCell(byKey.p_pam, '${D}')`), /class="calc t today" title="télétravail">🏠</);
+  assert.match(J(`calCell(byKey.p_pam, '${D2}')`), /class="calc ferie"/);
+  run(`ABSENCES.ferie = [];`);
+  assert.match(J(`calCell(byKey.p_pam, '${D2}')`), /class="calc split" title="matin : au bureau · après-midi : absence"><i class="b">●<\/i><i class="a">—<\/i>/);
+  assert.match(J(`calCell(byKey.p_kelly, '${D}')`), /class="calc none/); // pas dans le planning
+});

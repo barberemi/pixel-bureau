@@ -13,11 +13,20 @@ Le Bureau sait qui est là : il lit le planning de l'équipe (le classeur Excel 
 
 ![Stand-up : la scène du sprint](../img/standup.png)
 
+## Le calendrier de l'équipe
+
+Un petit calendrier est accroché au mur du bureau du boss, entre le planning des crons et son fauteuil. Un clic dessus ouvre la fiche « Calendrier de l'équipe » : cette semaine et la suivante, du lundi au vendredi (le week-end, à partir du lundi qui vient).
+
+![Calendrier de l'équipe](../img/calendrier.png)
+
+- `●` au bureau, `🏠` télétravail, `—` absence ; une case coupée en deux = une demi-journée (matin | après-midi) ; les jours fériés sont marqués ; aujourd'hui est encadré.
+- Un nom ouvre la fiche de la personne.
+- Sans planning (pas de section `microsoft`), ni calendrier au mur, ni absences : tout le monde est au bureau, comme avant.
+
 ## Mise en place
 
 - Le planning est lu par Microsoft Graph avec la connexion **Microsoft 365** de Kronn (Kronn > MCP, sans clé, **globale**), qui emprunte ton `az login` (Azure CLI) : `brew install azure-cli` puis `az login --allow-no-subscriptions`.
 - Dans `bureau.config.json`, une section `microsoft` : l'id de cette connexion et ceux du classeur (site et fichier, tels que Graph les donne). Le cron « Le Bureau · absences » est alors créé par `python3 tools/publish.py workflows` (à lancer deux fois pour un nouveau cron) ; sans cette section, il ne l'est pas.
 - Les personnes sont retrouvées par leur nom complet (champ `person` du roster), sans accents ni ordre des mots (« Barbe Rémi » = « Remi Barbe »).
 - Le classeur est annuel : en janvier, mets à jour l'id du fichier de la nouvelle année.
-- Sans planning (pas de section `microsoft`), tout le monde est au bureau, comme avant.
 - Si la connexion `az` expire, le cron échoue : la [fraîcheur des données](10-fraicheur.md) le signale, relance `az login`.
