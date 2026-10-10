@@ -190,9 +190,56 @@ function feedLifeEvents(t){
   }
   return ev;
 }
+// ---------- « En ce moment » : ce qui t'attend à l'heure affichée, et les repères du jour ; en haut du fil, hors de la liste ----------
+// étapes Gate des runs d'agents (premier niveau) : attente en cours à t, ou décision prise (Success = validée, Failed = refusée)
+function gateSteps(t){
+  const out=[];
+  for(const c of chars){if(c.person||c.visitor||c.guest||!c.runs)continue;
+    for(const r of c.runs){if(r._s>t)continue;
+      for(const s of (r.steps||[])){if(s.k!=='Gate'||!s.at||ms(s.at)>t)continue;
+        const a=ms(s.at), e=s.s==='WaitingApproval'?Infinity:a+(s.ms||0);
+        out.push({c,r,n:s.n,since:a,end:e,ok:s.s!=='Failed',waiting:e>t});}}}
+  return out;
+}
+const waitSince=(a,t)=>`<b class="since">depuis ${hm(a)} · ${esc(fmtDur(t-a))}</b>`;
+// une seule ligne : MEP du jour (plateau fermé), fin ou début du sprint, week-end
+function landmarks(t){
+  const p=[], wd=parisHM(t).wd, next=parisHM(t+864e5).wd, day=dtf('fr-FR',{weekday:'long'}).format(new Date(t));
+  if(RHYTHM.weekend.includes(wd))p.push("C'est le week-end");
+  else if(stageClosed(t))p.push(`Pas de MEP aujourd'hui <small>(${esc(day)})</small>`);
+  else if(stageClosed(t+864e5))p.push(`Dernière MEP de la semaine <small>plateau fermé demain</small>`);
+  const sp=TEAM&&TEAM.sprint, st=sp&&ms(sp.start), en=sp&&ms(sp.end);
+  if(en&&en>=t){const name=`<a href="#" class="lk lk-id" data-sprint title="Voir le sprint">${esc(sp.name)}</a>`, j=daysLeft(en,t);
+    if(st&&parisDay(st)===parisDay(t))p.push(`Premier jour du sprint ${name}`);
+    else if(j===0)p.push(`Dernier jour du sprint ${name}`);
+    else if(j===1)p.push(`Fin du sprint ${name} demain`);
+    else if(j<=3)p.push(`Fin du sprint ${name} dans ${j} jours`);}
+  if(!RHYTHM.weekend.includes(wd)&&RHYTHM.weekend.includes(next)&&parisHM(t).h>=15)p.push('Bon week-end');
+  return p.length?'📌 '+p.join(' · '):'';
+}
+function feedPins(t){
+  const out=[];
+  for(const g of gateSteps(t))if(g.waiting){const ref=runRef(g.r);
+    out.push({t:g.since,c:g.c,txt:`✋ ${refWho(g.c)} attend ta validation <small>« ${esc(g.n)} »${ref&&ref.key?' · '+refTk(ref.key):''}</small> ${waitSince(g.since,t)}`});}
+  for(const g of loneGates()){const a=ms(g.since);if(a&&a<=t)out.push({t:a,c:chars.find(x=>x.boss)||null,
+    txt:`✋ <b>${esc(clean(g.wf_name))}</b> attend ta validation <small>« ${esc(g.gate)} »</small> ${waitSince(a,t)}`});}
+  for(const c of chars)if(c.visitor&&c._st&&c._st.st==='ask'){const a=Math.min(t,ms(c.disc.end)||t);
+    out.push({t:a,c,txt:`💬 ${refWho(c)} attend ta réponse <small>« ${esc(clip(clean(c.disc.title),60))} »</small> ${waitSince(a,t)}`});}
+  for(const d of DUCKS)if(d.awaiting){const a=ms(d.updated);if(a&&a<=t)out.push({t:a,duck:true,
+    txt:`🦆 ${duckLink('Le canard')} attend ta réponse <small>« ${esc(clip(String(d.title).replace(/^🦆\s*/,''),60))} »</small> ${waitSince(a,t)}`});}
+  out.sort((a,b)=>a.t-b.t);
+  const lm=landmarks(t); if(lm)out.push({t:null,txt:lm});
+  return out;
+}
+let FEED_PIN=[];
 function renderFeed(){
   if(!DATA)return;
   const ev=[];
+  FEED_PIN=feedPins(T);
+  // tes décisions : la gate quitte « En ce moment » et entre dans le fil
+  for(const g of gateSteps(T))if(!g.waiting)ev.push({t:g.end,c:g.c,
+    txt:g.ok?`<span style="color:var(--ok)">✅</span> Tu valides la gate de ${refWho(g.c)} <small>« ${esc(g.n)} » · après ${esc(fmtDur(g.end-g.since))} d'attente</small>`
+      :`⛔ Tu refuses la gate de ${refWho(g.c)} <small>« ${esc(g.n)} » · après ${esc(fmtDur(g.end-g.since))} d'attente</small>`});
   // pannes et rétablissements : en « Important », elles remplacent la ligne « ×16 · 16 ✗ » de l'agent (feedView)
   for(const c of chars){if(c.person||c.visitor||c.guest||!c.runs)continue;
     for(const d of agentDowns(c,T))ev.push({t:d.t,c,down:c.key,
@@ -299,8 +346,9 @@ function feedView(ev,mode){
 function renderFeedList(view){
   FEED_VIEW=view;
   const box=document.getElementById('feed');
-  let html='';
-  if(!view.length)html=`<div class="empty">${FEED_MODE==='important'&&FEED_EV.length?'Rien d\'important pour l\'instant.':'Rien pour l\'instant. Le bureau est encore vide.'}</div>`;
+  let html=FEED_PIN.length?`<div class="feedpin"><div class="pinh">En ce moment</div>${FEED_PIN.map((e,i)=>
+    `<div class="ev" data-pin="${i}"><span class="tm">${e.t?hm(e.t):'auj.'}</span><span class="x">${e.txt}</span></div>`).join('')}</div>`:'';
+  if(!view.length)html+=`<div class="empty">${FEED_MODE==='important'&&FEED_EV.length?'Rien d\'important pour l\'instant.':'Rien pour l\'instant. Le bureau est encore vide.'}</div>`;
   let lastH=null;
   view.slice(0,FEED_N).forEach((e,i)=>{
     const h=parisHM(e.t).h;
@@ -321,8 +369,12 @@ document.getElementById('feed').addEventListener('click',ev=>{
   if(lk){ // un lien de la ligne : data-tk (fiche du ticket) est pris par le gestionnaire commun de 62-ticket.js, ↗ s'ouvre seul
     if(lk.dataset.who){ev.preventDefault();select(lk.dataset.who);}
     else if(lk.hasAttribute('data-mep')){ev.preventDefault();select('tv');}
+    else if(lk.hasAttribute('data-sprint')){ev.preventDefault();const s=document.querySelector('#kpis .sprint'); // la tuile du sprint
+      if(s){s.scrollIntoView({behavior:'smooth',block:'center'});s.classList.remove('flash');void s.offsetWidth;s.classList.add('flash');}}
     return;
   }
+  const pin=ev.target.closest('[data-pin]');
+  if(pin){const e=FEED_PIN[+pin.dataset.pin];if(e&&e.duck)select('duck');else if(e&&e.c)select(e.c.key);return;}
   const d=ev.target.closest('[data-i]');if(!d)return;
   const e=FEED_VIEW[+d.dataset.i];if(!e)return;
   if(e.tv)select('tv');else if(e.c)select(e.c.key);

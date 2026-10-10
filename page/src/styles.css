@@ -389,6 +389,12 @@ body.tv #tvwho{display:flex;flex-direction:column;gap:8px;position:fixed;top:52p
 .feedh .seg button{font-size:11px;padding:2px 9px;text-transform:none;letter-spacing:0}
 #feed .evh{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:8px 2px 3px;border-bottom:1px solid var(--line);margin-bottom:2px}
 #feed .feedmore{margin:8px 0 2px;font-size:12px;width:100%}
+/* « En ce moment » en haut du fil : ce qui t'attend (depuis quand) et les repères du jour */
+#feed .feedpin{background:var(--chip);border-left:3px solid var(--accent);padding:6px 6px 4px;margin:0 0 10px}
+#feed .feedpin .pinh{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:0 6px 4px}
+#feed .feedpin .ev:hover{background:var(--panel)}
+#feed .feedpin .ev:hover .lk-id{background:var(--chip)}
+#feed .since{color:var(--warn);font-size:12px;white-space:nowrap}
 /* récap de la journée */
 .clockrow{display:flex;align-items:center;gap:10px;justify-content:flex-end}
 .hright{display:flex;flex-direction:column;align-items:flex-end;margin-left:auto} /* boutons, horloge et badge des données, calés à droite */

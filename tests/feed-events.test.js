@@ -77,3 +77,35 @@ test('visites (démo du 1er octobre) : Gandalf à la réouverture, Yoda à chaqu
   assert.match(e.find(x => /g_david/.test(x.txt)).txt, /passe (voir <a [^>]*data-who="p_|au bureau).*jusqu'à \d\d:\d\d/);
   assert.equal(life('2026-10-01', '10:49').filter(x => /g_gandalf/.test(x.txt)).length, 0);
 });
+
+// un agent dont un run passe par une validation : à 10h05, décidée (s) au bout de d minutes, ou encore en attente
+function gateAgent(s, d) {
+  run(`chars = [{key: 'dwight', name: 'Dwight', runs: [{run: 'g1', wf_name: 'Revue', status: 'Success', _s: ${at('2026-10-01', '10:00')}, _ve: ${at('2026-10-01', '11:00')},
+    vars: {jira_ticket_key: 'DM-1'}, steps: [{n: 'publier', k: 'Gate', s: '${s}', at: new Date(${at('2026-10-01', '10:05')}).toISOString(), ms: ${d * M}}]}]},
+    {key: 'p_michael', name: 'Michael', person: 'Michael', boss: true}];
+    GATES = []; DUCKS = []; TEAM = {sprint: {name: 'S9', start: new Date(${at('2026-09-18', '09:00')}).toISOString(), end: new Date(${at('2026-10-02', '13:00')}).toISOString()}, people: [], unassigned: []};`);
+}
+
+test('validation en attente : en haut (« En ce moment »), avec depuis quand ; décidée : ta décision dans le fil', () => {
+  gateAgent('WaitingApproval', 0);
+  const p = J(`feedPins(${at('2026-10-01', '10:43')}).map(e => e.txt)`);
+  assert.match(p[0], /✋ <a [^>]*data-who="dwight"[^>]*>Dwight<\/a> attend ta validation <small>« publier » · <a [^>]*>DM-1<\/a><\/small> <b class="since">depuis 10:05 · 38 min<\/b>/);
+  gateAgent('Success', 25);
+  assert.equal(J(`feedPins(${at('2026-10-01', '10:20')})`).filter(e => /attend ta validation/.test(e.txt)).length, 1); // rejeu : pas encore décidée
+  assert.equal(J(`feedPins(${at('2026-10-01', '10:43')})`).filter(e => /attend ta validation/.test(e.txt)).length, 0);
+  const g = J(`gateSteps(${at('2026-10-01', '10:43')})`)[0];
+  assert.deepEqual([g.waiting, g.ok, (g.end - g.since) / M], [false, true, 25]);
+  gateAgent('Failed', 3);
+  assert.equal(J(`gateSteps(${at('2026-10-01', '10:43')})`)[0].ok, false);
+});
+
+test('repères du jour : une seule ligne, déduite du calendrier', () => {
+  gateAgent('Success', 1);
+  const lm = t => run(`landmarks(${t})`).replace(/<[^>]+>/g, '');
+  assert.equal(lm(at('2026-10-01', '09:00')), '📌 Dernière MEP de la semaine plateau fermé demain · Fin du sprint S9 demain'); // jeudi
+  assert.equal(lm(at('2026-10-02', '09:00')), '📌 Pas de MEP aujourd\'hui (vendredi) · Dernier jour du sprint S9');
+  assert.match(run(`landmarks(${at('2026-10-02', '09:00')})`), /<a href="#" class="lk lk-id" data-sprint[^>]*>S9<\/a>/);
+  assert.equal(lm(at('2026-10-02', '16:00')), '📌 Pas de MEP aujourd\'hui (vendredi) · Bon week-end'); // sprint fini à 13h : sa ligne est dans le fil
+  assert.equal(lm(at('2026-09-29', '09:00')), '📌 Fin du sprint S9 dans 3 jours'); // mardi
+  assert.equal(lm(at('2026-09-22', '09:00')), ''); // rien à signaler
+});

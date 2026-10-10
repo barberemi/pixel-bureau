@@ -103,15 +103,15 @@ for key, wid in (CFG.get("workflows") or {}).items():
 snap = {"generated_at": datetime.now(timezone.utc).isoformat(), "day": now.strftime("%Y-%m-%d"), "runs": runs, "discussions": discs,
         "crons": crons, "disabled": disabled, "purge": purge, "bureau_failed": health}
 out = dumps(snap)
-# Sous la limite de 100 Ko d'une sortie Exec, par paliers : étapes des runs réussis finis depuis plus de 3 h,
+# Sous la limite de 100 Ko d'une sortie Exec, par paliers : étapes des runs réussis finis depuis plus de 3 h (sauf Gate),
 # puis de tous les runs réussis, puis les plus vieux runs réussis eux-mêmes (comptés dans « truncated »).
 cut = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat()
 for older in (cut, "9999"):
     for r in runs:
         if len(out.encode()) < 90000:
             break
-        if r["status"] == "Success" and r["steps"] and (r["end"] or "") < older:
-            r["steps"] = []
+        if r["status"] == "Success" and any(s.get("k") != "Gate" for s in r["steps"]) and (r["end"] or "") < older:
+            r["steps"] = [s for s in r["steps"] if s.get("k") == "Gate"]  # la page date tes validations par leur étape Gate
             out = dumps(snap)
 while len(out.encode()) >= 90000 and any(r["status"] == "Success" for r in runs):
     ok = [i for i, r in enumerate(runs) if r["status"] == "Success"][:max(1, len(runs) // 10)]

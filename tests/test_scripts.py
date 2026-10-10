@@ -422,9 +422,12 @@ print(json.dumps(d.get(key, [])))
         fake = FakeKronn(runs_per_wf=400, steps=6)
         for r in fake.runs[AGENT_WF]:  # du jour (heure de Paris) et finis il y a plus de 3 h : leurs étapes peuvent partir
             r["started_at"] = r["finished_at"] = paris.replace(hour=0, minute=5).astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+            r["step_results"][1]["step_kind"] = "Gate"
         out = self.run_script("office_snapshot.py", api=self.kronn(fake))
         self.assertEqual(len(out["runs"]) + out["truncated"], 400)
         self.assertIn("Failed", {r["status"] for r in out["runs"]})  # un échec n'est jamais retiré
+        # l'étape Gate reste : la page en tire tes validations et leur durée d'attente
+        self.assertTrue(all([s["k"] for s in r["steps"]] == ["Gate"] for r in out["runs"] if r["status"] == "Success"))
 
     def test_live_snapshot(self):
         out = self.run_script("live_snapshot.py", api=self.kronn(FakeKronn()))
