@@ -1,0 +1,179 @@
+{
+ "kind": "workflow",
+ "key": "absences",
+ "definition": {
+  "name": "Le Bureau · absences (1 h)",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Cron",
+   "schedule": "43 @@cron_hours@@ * * 1-5"
+  },
+  "steps": [
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "month_now",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Nom de la feuille du mois en cours (sans accents).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/absence_month.py@@",
+     "0"
+    ],
+    "exec_timeout_secs": 20
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "month_next",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Nom de la feuille du mois suivant (decembre en décembre).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/absence_month.py@@",
+     "1"
+    ],
+    "exec_timeout_secs": 20
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "sheet_now",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Planning de l'équipe, feuille du mois (Microsoft Graph, connexion Azure CLI).",
+    "api_plugin_slug": "api-microsoft-365",
+    "api_config_id": "@@microsoft.config_id@@",
+    "api_endpoint_path": "/sites/{site}/drive/items/{item}/workbook/worksheets/{sheet}/usedRange(valuesOnly=true)",
+    "api_method": "GET",
+    "api_query": {
+     "$select": "values"
+    },
+    "api_path_params": {
+     "site": "@@microsoft.site@@",
+     "item": "@@microsoft.item@@",
+     "sheet": "{{steps.month_now.data.stdout}}"
+    },
+    "api_extract": {
+     "path": "$.values",
+     "fallback": [],
+     "fail_on_empty": false
+    }
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "sheet_next",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Feuille du mois suivant : le calendrier de la page couvre aussi la semaine prochaine.",
+    "api_plugin_slug": "api-microsoft-365",
+    "api_config_id": "@@microsoft.config_id@@",
+    "api_endpoint_path": "/sites/{site}/drive/items/{item}/workbook/worksheets/{sheet}/usedRange(valuesOnly=true)",
+    "api_method": "GET",
+    "api_query": {
+     "$select": "values"
+    },
+    "api_path_params": {
+     "site": "@@microsoft.site@@",
+     "item": "@@microsoft.item@@",
+     "sheet": "{{steps.month_next.data.stdout}}"
+    },
+    "api_extract": {
+     "path": "$.values",
+     "fallback": [],
+     "fail_on_empty": false
+    }
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "absences",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Déterministe : absences et télétravail des gens du roster, sur deux semaines, sans la raison (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/absences_snapshot.py@@"
+    ],
+    "exec_timeout_secs": 60,
+    "exec_stdin": "{\"now\":{{steps.sheet_now.data_json}},\"next\":{{steps.sheet_next.data_json}}}"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset absences de la page Le Bureau.",
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "absences",
+       "operation": "replace",
+       "value_from": "steps.absences.data.stdout"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

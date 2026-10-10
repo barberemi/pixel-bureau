@@ -37,7 +37,7 @@ def workflows():
     for key, tpl in templates.load_templates().items():
         kind, where, _ = templates.TEMPLATES[key]
         ident = templates.config_id(CFG, where)
-        if not ident and kind == "workflow" and not (key == "comment" and not (CFG.get("jira") or {}).get("config_id")):
+        if not ident and kind == "workflow" and not templates.skipped(key, CFG):
             # workflow du Bureau ajouté depuis l'installation (ex. commenter un ticket) : créé, son id rangé dans la config
             ident = call("POST", "/workflows", templates.render(tpl, CFG))["data"]["id"]
             CFG.setdefault(where[0], {})[where[1]] = ident

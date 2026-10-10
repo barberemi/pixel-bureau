@@ -189,6 +189,12 @@ def gitfut(cfg):
     return {p["key"]: p["github"] for p in roster(cfg) if p.get("github")}
 
 
+def planning_names(cfg):
+    """{clé: nom complet} des personnes du roster (champ person, sinon name), pour retrouver chacun dans le planning des
+    absences (« Nom Prénom » du classeur, comparé sans accents ni ordre des mots)."""
+    return {p["key"]: p.get("person") or p.get("name") for p in roster(cfg) if p.get("key") and (p.get("person") or p.get("name"))}
+
+
 def wiki_posters(cfg):
     """Pages de la Wikipédia anglaise des affiches des cartes Top 3 : celles du roster (passion.top3.wiki), puis la
     clé wiki_posters de la config, sans doublon."""

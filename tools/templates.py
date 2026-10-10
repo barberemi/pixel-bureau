@@ -2,11 +2,12 @@
 
   python3 tools/templates.py export   # depuis le Kronn de bureau.config.json : valeurs de l'installation -> emplacements
   python3 tools/templates.py check    # le rendu avec bureau.config.json redonne exactement les workflows de ce Kronn
-  python3 tools/templates.py render <clé>   # affiche le rendu d'un modèle (office, live, team, payroll, avatar, gate, relaunch, layout, comment, duck, ask, sketch)
+  python3 tools/templates.py render <clé>   # affiche le rendu d'un modèle (office, live, team, payroll, canard, absences, avatar, gate, relaunch, layout, comment, duck, ask, sketch)
 
 Emplacements, remplacés au rendu :
   @@page_id@@, @@kronn.project_id@@, @@jira.config_id@@, @@jira.project@@, @@jira.board@@, @@jira.sprint_field@@,
   @@jira.points_fields@@ (liste jointe par des virgules), @@owner_name@@ (prénom du boss),
+  @@microsoft.config_id@@, @@microsoft.site@@, @@microsoft.item@@ (planning des absences, connexion Microsoft 365 de Kronn),
   @@script:workflows/x.py@@ (le script, config d'installation injectée comme le fait publish.py),
   @@text:tools/x.md@@ (le texte du fichier, tel quel), @@root@@ (dossier du dépôt de l'installation, pour les commandes d'un prompt).
 Une étape marquée "_requires": "jira" disparaît au rendu si l'installation n'a pas de connexion Jira ; ses
@@ -27,6 +28,9 @@ TEMPLATES = {
                                                     "planning_jql": "workflows/planning_jql.py", "actions": "workflows/actions_snapshot.py"}),
     "payroll": ("workflow", ("workflows", "payroll"), {"payroll": "workflows/payroll_snapshot.py", "pages": "workflows/pages_snapshot.py", "gitfut": "workflows/gitfut_snapshot.py"}),
     "canard": ("workflow", ("workflows", "canard"), {"duck": "workflows/duck_snapshot.py", "prev_window": "workflows/duck_window.py"}),  # canard d'équipe (KT-7)
+    # absences et télétravail (KT-1) : planning Excel lu par Microsoft Graph (connexion Microsoft 365) ; sans elle : pas créé
+    "absences": ("workflow", ("workflows", "absences"), {"absences": "workflows/absences_snapshot.py", "month_now": "workflows/absence_month.py",
+                                                         "month_next": "workflows/absence_month.py"}),
     "avatar": ("workflow", ("actions", "avatar"), {"save": "workflows/avatar_save.py"}),
     "gate": ("workflow", ("actions", "gate"), {"decide": "workflows/gate_decide.py"}),
     "relaunch": ("workflow", ("actions", "relaunch"), {"relaunch": "workflows/relaunch.py"}),
@@ -74,6 +78,7 @@ def script_code(path, cfg):
     code = LIB_IMPORT.sub(lib, code)
     c = {k: v for k, v in cfg.items() if not k.startswith("_")}
     c.update(gitfut=assemble.gitfut(cfg), wiki_posters=assemble.wiki_posters(cfg),  # déduits du roster (scripts sans accès au dépôt)
+             planning_names=assemble.planning_names(cfg),  # noms complets du roster, pour le planning des absences
              root=ROOT)  # dossier du dépôt : son venv (Pillow) pour réduire les images
     blob = json.dumps(c, ensure_ascii=False)
     assert '"""' not in blob and "__BUREAU_CONFIG__" in code, path
@@ -104,6 +109,9 @@ def values(cfg):
         "jira.board": str(j.get("board") or ""),
         "jira.sprint_field": j.get("sprint_field") or "",
         "jira.points_fields": ",".join(j.get("points_fields") or []),
+        "microsoft.config_id": (cfg.get("microsoft") or {}).get("config_id") or "",  # planning des absences (Graph)
+        "microsoft.site": ((cfg.get("microsoft") or {}).get("planning") or {}).get("site") or "",
+        "microsoft.item": ((cfg.get("microsoft") or {}).get("planning") or {}).get("item") or "",
         "owner_name": owner_name(cfg),
         "root": ROOT,
         "cron_hours": assemble.cron_hours(cfg),  # heures UTC des crons, d'après le fuseau et les heures de bureau
@@ -112,6 +120,17 @@ def values(cfg):
         "jira.role_ids": ",".join(f'"{x}"' for r in ROLES for x in [role_ids(r, cfg)] if x),
         **{f"jira.flow.{k}": (j.get("flow") or {}).get(k) or v for k, v in FLOW_DEFAULTS.items()},
     }
+
+
+def skipped(key, cfg):
+    """Workflows du Bureau qu'une installation ne crée pas faute de connexion : commenter un ticket sans Jira, les
+    absences sans planning Microsoft 365 (microsoft.config_id et microsoft.planning dans la config)."""
+    if key == "comment":
+        return not (cfg.get("jira") or {}).get("config_id")
+    if key == "absences":
+        m = cfg.get("microsoft") or {}
+        return not (m.get("config_id") and (m.get("planning") or {}).get("site") and (m.get("planning") or {}).get("item"))
+    return False
 
 
 # ---------- rendu ----------
@@ -186,7 +205,8 @@ def templatize(key, kind, d, cfg):
     def walk(v):
         if isinstance(v, str):
             for k, val in (("page_id", vals["page_id"]), ("jira.config_id", vals["jira.config_id"]),
-                           ("kronn.project_id", vals["kronn.project_id"])):
+                           ("kronn.project_id", vals["kronn.project_id"]), ("microsoft.config_id", vals["microsoft.config_id"]),
+                           ("microsoft.site", vals["microsoft.site"]), ("microsoft.item", vals["microsoft.item"])):
                 if val and v == val:
                     return f"@@{k}@@"
             if vals["jira.points_fields"]:

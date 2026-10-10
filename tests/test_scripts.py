@@ -437,6 +437,37 @@ print(json.dumps(d.get(key, [])))
         self.assertEqual([r.get("man") for r in out["runs"] if r["wf"] == AGENT_WF].count(1), 1)
         self.assertNotIn(cw, {r["wf"] for r in out["runs"]})  # une action du Bureau n'est pas un agent
 
+    def test_absence_month_names_the_sheet(self):
+        """Feuille du mois sans accents, sans retour à la ligne ; en décembre, le mois suivant reste decembre."""
+        out = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "absence_month.py"), "0"], capture_output=True, text=True,
+                             env=dict(os.environ, BUREAU_CONFIG=os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"))).stdout
+        months = ("janvier", "fevrier", "mars", "avril", "mai", "juin", "juillet", "aout", "septembre", "octobre", "novembre", "decembre")
+        self.assertEqual(out, months[datetime.now(ZoneInfo("Europe/Paris")).month - 1])
+
+    def test_absences_snapshot_reads_the_planning(self):
+        """Planning Excel (values de Graph) -> présence par demi-journée des gens du roster, jamais la raison."""
+        paris = datetime.now(ZoneInfo("Europe/Paris")).date()
+        mon = paris - timedelta(days=paris.weekday()) + timedelta(days=7 if paris.weekday() >= 5 else 0)
+        days = [mon + timedelta(days=i) for i in range(5)]
+        serial = lambda d: (d - datetime(1899, 12, 30).date()).days  # noqa: E731
+        sheet = [["numero jour semaine", ""] + [""] * 5,
+                 ["férié", ""] + [False, False, True, False, False],
+                 ["Nom Prénom", "Total travaillé"] + [serial(d) for d in days],
+                 ["Dev Front Office", ""] + [""] * 5,
+                 ["Beesly Pam", 20, "D", "C", "", "AM", "M"], ["", "", "T", "", "", "", ""],
+                 ["Halpert Jim", 20, "D", "PM", "", "D", "D"], ["", "", "", "TPM", "", "TAM", "AT"],
+                 ["Scott Michael", 20, "D", "D", "", "D", "D"], ["", "", "", "", "", "", ""]]
+        out = self.run_script("absences_snapshot.py", stdin={"now": sheet, "next": None},
+                              planning_names={"p_pam": "Pam Beesly", "p_jim": "Jim Halpert"})
+        iso = [d.isoformat() for d in days]
+        self.assertEqual(out["days"][:5], iso)
+        self.assertEqual(len(out["days"]), 10)
+        self.assertEqual(out["ferie"], [iso[2]])
+        self.assertEqual(out["people"]["p_pam"], {iso[0]: "tt", iso[1]: "aa", iso[3]: "ba", iso[4]: "aa"})  # C et M : « absent »
+        self.assertEqual(out["people"]["p_jim"], {iso[0]: "bb", iso[1]: "at", iso[3]: "tb", iso[4]: "tt"})
+        self.assertNotIn("p_michael", out["people"])  # pas dans le roster de la config : pas publié
+        self.assertNotIn("M", json.dumps(out["people"]))
+
     def test_office_snapshot_stays_under_100k(self):
         paris = datetime.now(ZoneInfo("Europe/Paris"))
         if paris.hour * 60 + paris.minute < 3 * 60 + 10:
