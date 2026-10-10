@@ -320,7 +320,7 @@ const CRON_BOARD={y:-1,draw:()=>{
   ctx.font='bold 5px ui-monospace,Menlo,monospace';ctx.fillStyle='#9fb7d9';ctx.fillText('PROCHAINS CRONS',x+5,y+9);
   const next=planningToday().filter(p=>p.t>=T&&!p.hourly).slice(0,3);
   ctx.font='6px ui-monospace,Menlo,monospace';
-  if(!next.length){ctx.fillStyle='#8a93a6';ctx.fillText("fini pour aujourd'hui",x+5,y+20);}
+  if(!next.length){ctx.fillStyle='#8a93a6';ctx.fillText(fitText('fini pour',w-9),x+5,y+19);ctx.fillText(fitText("aujourd'hui",w-9),x+5,y+26);}
   next.forEach((p,i)=>{
     ctx.fillStyle=i===0?'#ffd479':'#e6e9ef';
     ctx.fillText(fitText(hm(p.t)+' '+(p.who?p.who.name:String(p.c.name)),w-9),x+5,y+17+i*7); // « Intérimaire 3 » : tronqué au tableau
