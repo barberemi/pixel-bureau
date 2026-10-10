@@ -231,6 +231,24 @@ function feedPins(t){
   const lm=landmarks(t); if(lm)out.push({t:null,txt:lm});
   return out;
 }
+// ---------- tes actions (hors validations, dans gateSteps) : un lancement compte (Important), un mot posé se raconte (Tout) ----------
+function feedMyActions(t){
+  const ev=[], today=x=>x&&x>=DAY0&&x<=t;
+  // runs lancés à la main (« man » : bouton du Bureau, page d'un workflow, Kronn) : relance, ou travail sur un ticket
+  for(const c of chars){if(c.person||c.visitor||c.guest||!c.runs)continue;
+    const top=c.top||c.runs;
+    top.forEach((r,i)=>{if(!r.man||!today(r._s))return;
+      const key=r.vars&&r.vars.jira_ticket_key, wf=clean(r.wf_name);
+      ev.push({t:r._s,c,txt:key?`🤖 Tu lances <a href="#" class="lk lk-who" data-who="${esc(c.key)}" title="Ouvrir sa fiche">${esc(wf)}</a> sur ${refTk(key)} <small>${refWho(c)} s'y met</small>`
+        :`🔁 Tu ${top.slice(0,i).some(x=>today(x._s))?'relances':'lances'} ${refWho(c)} <small>${esc(wf)}</small>`});});}
+  for(const a of ((DATA&&DATA.actions)||[])){const at=ms(a.at);if(!today(at))continue;
+    if(a.k==='comment')ev.push({t:at,imp:false,txt:`💬 Tu commentes ${refTk(a.key)} <small>« ${esc(a.txt||'')} »${a.ok?'':' · échec'}</small>`});
+    if(a.k==='ask'){const c=a.wf&&chars.find(x=>x.wf&&x.wf.includes(String(a.wf).slice(0,8)));
+      ev.push({t:at,c,imp:false,txt:`❓ Tu interroges ${c?refWho(c):'un agent'}${a.q?` <small>« ${esc(a.q)} »</small>`:''}`});}}
+  for(const d of DUCKS){const at=ms(d.created);if(today(at))ev.push({t:at,imp:false,duck:true,
+    txt:`🦆 Tu ouvres une discussion avec ${duckLink('le canard')} <small>« ${esc(clip(String(d.title).replace(/^🦆\s*/,''),60))} »</small>`});}
+  return ev;
+}
 let FEED_PIN=[];
 function renderFeed(){
   if(!DATA)return;
@@ -306,7 +324,7 @@ function renderFeed(){
       txt:`<span style="color:#2e9e9b">●</span> Daily de l'équipe en cafétéria`
     });
   }
-  ev.push(...feedLifeEvents(T));
+  ev.push(...feedLifeEvents(T),...feedMyActions(T));
   ev.sort((a,b)=>b.t-a.t);
   FEED_EV=ev;
   renderFeedList(feedView(ev,FEED_MODE));
@@ -377,7 +395,7 @@ document.getElementById('feed').addEventListener('click',ev=>{
   if(pin){const e=FEED_PIN[+pin.dataset.pin];if(e&&e.duck)select('duck');else if(e&&e.c)select(e.c.key);return;}
   const d=ev.target.closest('[data-i]');if(!d)return;
   const e=FEED_VIEW[+d.dataset.i];if(!e)return;
-  if(e.tv)select('tv');else if(e.c)select(e.c.key);
+  if(e.tv)select('tv');else if(e.duck)select('duck');else if(e.c)select(e.c.key);
 });
 // survol d'un nom du fil : la personne s'allume sur le plan (comme une carte de « Qui fait quoi »)
 document.getElementById('feed').addEventListener('mouseover',e=>{const a=e.target.closest('.lk-who');hoverKey=a?a.dataset.who:null;});

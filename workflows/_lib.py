@@ -104,7 +104,8 @@ def run_row(wf, r):
             "tok": r.get("tokens_used") or 0, "parent": r.get("parent_run_id"), "tby": r.get("triggered_by_run_id"),
             "vars": {k: v for k, v in tc.items() if k in VARS_KEPT and isinstance(v, str) and len(v) < 80},
             "batch": [r.get("batch_total") or 0, r.get("batch_completed") or 0, r.get("batch_failed") or 0],
-            "steps": [step_row(s) for s in r.get("step_results") or []]}
+            "steps": [step_row(s) for s in r.get("step_results") or []],
+            **({"man": 1} if tc.get("type") == "manual" else {})}  # lancé à la main (bouton du Bureau ou Kronn) : « Tu lances »
 
 
 def important_count(did):

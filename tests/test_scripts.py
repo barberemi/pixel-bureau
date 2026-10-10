@@ -44,6 +44,7 @@ class FakeKronn:
         self.pages = {}  # autres pages Kronn par id (écran du boss, pages_snapshot.py)
         self.details = {}  # id de run -> step_results du détail du run (sorties complètes)
         self.posts = []  # (chemin, corps) des POST reçus
+        self.disc_details = {}  # id de discussion -> détail (GET /discussions/{id}, avec ses messages)
         self.discussions = [
             {"id": "d1", "title": "Pourquoi ça casse ?", "agent": "ClaudeCode", "participants": ["ClaudeCode"], "message_count": 4,
              "archived": False, "created_at": now, "updated_at": now, "workflow_run_id": None, "project_id": "p1"},
@@ -76,6 +77,9 @@ class FakeKronn:
             return [{"id": "p1", "name": "Front"}]
         if p == "/discussions":
             return self.discussions
+        m = re.fullmatch(r"/discussions/([\w-]+)", p)
+        if m and m.group(1) in self.disc_details:
+            return self.disc_details[m.group(1)]
         if re.fullmatch(r"/discussions/[\w-]+/important", p):
             return {"total": 1}
         if p == "/stats/tokens":
@@ -415,6 +419,24 @@ print(json.dumps(d.get(key, [])))
         failed = next(r for r in out["runs"] if r["status"] == "Failed")
         self.assertEqual(failed["steps"][0]["err"], "401 Unauthorized")
 
+    def test_office_snapshot_lists_your_actions(self):
+        """Fil du Bureau : commentaires posés et questions aux agents du jour ; un run lancé à la main est marqué « man »."""
+        cw = "cccccccc-1111-2222-3333-444444444444"
+        fake = FakeKronn()
+        fake.workflows.append({"id": cw, "name": "Le Bureau · commenter un ticket", "enabled": True, "trigger_type": "manual",
+                               "last_run": {"started_at": iso(3), "status": "Success"}})
+        fake.runs[cw] = [dict(run_of(950), trigger_context={"type": "manual", "jira_ticket_key": "DM-7", "comment": "Je  regarde\navec Karen"})]
+        fake.runs[AGENT_WF][1]["trigger_context"] = {"type": "manual"}
+        fake.disc_details["d2"] = {"messages": [{"content": f"Tu es l'agent du Bureau qui fait tourner le workflow Kronn d'id {AGENT_WF}. "
+                                                           "Rémi te pose une question.\n2. Réponds à cette question : Pourquoi tu échoues ?\n\nRègles"}]}
+        out = self.run_script("office_snapshot.py", api=self.kronn(fake), workflows=FIXTURE["workflows"],
+                              actions=dict(FIXTURE["actions"], comment=cw))
+        self.assertEqual(out["actions"], [
+            {"k": "comment", "at": fake.runs[cw][0]["started_at"], "ok": True, "key": "DM-7", "txt": "Je regarde avec Karen"},
+            {"k": "ask", "at": fake.discussions[1]["created_at"], "wf": AGENT_WF, "q": "Pourquoi tu échoues ?"}])
+        self.assertEqual([r.get("man") for r in out["runs"] if r["wf"] == AGENT_WF].count(1), 1)
+        self.assertNotIn(cw, {r["wf"] for r in out["runs"]})  # une action du Bureau n'est pas un agent
+
     def test_office_snapshot_stays_under_100k(self):
         paris = datetime.now(ZoneInfo("Europe/Paris"))
         if paris.hour * 60 + paris.minute < 3 * 60 + 10:
@@ -539,7 +561,7 @@ print(json.dumps(d.get(key, [])))
         ducks = out["ducks"]
         self.assertEqual(len(ducks), 15)
         self.assertEqual([d["id"] for d in ducks[:2]], ["k2", "k1"])
-        self.assertEqual(ducks[1], {"id": "k1", "title": "🦆 Le menu casse", "project": "Front", "updated": ducks[1]["updated"], "awaiting": True})
+        self.assertEqual(ducks[1], {"id": "k1", "title": "🦆 Le menu casse", "project": "Front", "updated": ducks[1]["updated"], "created": ducks[1]["created"], "awaiting": True})
         self.assertEqual((ducks[0]["project"], ducks[0]["awaiting"]), (None, False))
         self.assertFalse({"k3", "k4", "d1", "d2"} & {d["id"] for d in ducks})
 

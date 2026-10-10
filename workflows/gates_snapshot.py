@@ -2,7 +2,7 @@
 
 Sortie (stdout, JSON parsé par l'étape CollectApiData) :
   {generated_at, gates: [{run, wf, wf_name, gate, message, since}], workflows: [{wf, name, trigger}], askable: [{wf, name}],
-   projects: [{id, name}], ducks: [{id, title, project, updated, awaiting}]}
+   projects: [{id, name}], ducks: [{id, title, project, updated, created, awaiting}]}
 `workflows` = ceux que la page peut relancer (page action « bureau-relaunch ») : actifs, hors Bureau, pas
 sous-workflow d'un autre, sans variable obligatoire à saisir.
 `projects` = les projets Kronn, « Sans projet » (id « none ») en tête : un bouton « parler au canard » chacun (page action
@@ -85,7 +85,7 @@ projects = [{"id": "none", "name": "Sans projet"}] + [{"id": k, "name": v[:60]} 
 since = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
 ducks = []
 try:
-    ducks = [{"id": d["id"], "title": str(d.get("title") or "")[:100], "project": names.get(d.get("project_id")), "updated": d.get("updated_at"),
+    ducks = [{"id": d["id"], "title": str(d.get("title") or "")[:100], "project": names.get(d.get("project_id")), "updated": d.get("updated_at"), "created": d.get("created_at"),
               "awaiting": (d.get("pending_question_count") or 0) > 0}
              for d in get("/discussions?per_page=200") if str(d.get("title") or "").startswith("🦆") and not d.get("archived")
              and str(d.get("updated_at") or "") >= since]

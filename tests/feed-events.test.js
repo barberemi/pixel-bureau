@@ -109,3 +109,24 @@ test('repères du jour : une seule ligne, déduite du calendrier', () => {
   assert.equal(lm(at('2026-09-29', '09:00')), '📌 Fin du sprint S9 dans 3 jours'); // mardi
   assert.equal(lm(at('2026-09-22', '09:00')), ''); // rien à signaler
 });
+
+test('tes actions : lancements à la main en « Important », commentaires, questions et canard en « Tout »', () => {
+  const r = (id, h, extra) => `{run: '${id}', wf_name: 'Implémentation ticket', status: 'Success', _s: ${at('2026-10-01', '00:00')} + ${h} * 3600e3, _ve: ${at('2026-10-01', '00:00')} + ${h} * 3600e3 + 6e4, ${extra}}`;
+  run(`DAY0 = parisMidnight(${at('2026-10-01', '12:00')});
+    chars = [{key: 'ryan', name: 'Ryan', wf: ['a61eba94'], runs: [${r('a', 8, '')}, ${r('b', 9, 'man: 1')}, ${r('c', 17, "man: 1, vars: {jira_ticket_key: 'DM-7911'}")}]},
+      {key: 'kevin', name: 'Kevin', wf: ['e709e91c'], runs: [${r('d', 10, 'man: 1')}]}];
+    DATA = {actions: [{k: 'comment', at: new Date(${at('2026-10-01', '11:00')}).toISOString(), ok: true, key: 'DM-7089', txt: 'Je regarde'},
+      {k: 'ask', at: new Date(${at('2026-10-01', '09:15')}).toISOString(), wf: 'e709e91c-0000', q: 'Pourquoi ?'},
+      {k: 'comment', at: new Date(${at('2026-09-30', '11:00')}).toISOString(), ok: true, key: 'DM-1', txt: 'hier'}]};
+    DUCKS = [{id: 'k', title: '🦆 Le build casse', created: new Date(${at('2026-10-01', '14:20')}).toISOString(), awaiting: false}];`);
+  const e = J(`feedMyActions(${at('2026-10-01', '18:00')}).sort((a, b) => a.t - b.t).map(x => [x.imp === false ? 'tout' : 'imp', x.txt.replace(/<[^>]+>/g, '')])`);
+  assert.deepEqual(e, [
+    ['imp', '🔁 Tu relances Ryan Implémentation ticket'],
+    ['tout', '❓ Tu interroges Kevin « Pourquoi ? »'],
+    ['imp', '🔁 Tu lances Kevin Implémentation ticket'],
+    ['tout', '💬 Tu commentes DM-7089 « Je regarde »'],
+    ['tout', '🦆 Tu ouvres une discussion avec le canard « Le build casse »'],
+    ['imp', '🤖 Tu lances Implémentation ticket sur DM-7911 Ryan s\'y met']]);
+  assert.match(run(`feedMyActions(${at('2026-10-01', '18:00')}).find(x => /DM-7911/.test(x.txt)).txt`), /Tu lances <a [^>]*data-who="ryan"[^>]*>Implémentation ticket<\/a>/);
+  assert.equal(J(`feedMyActions(${at('2026-10-01', '09:30')}).length`), 2); // rejeu : relance de 9h et question de 9h15
+});
