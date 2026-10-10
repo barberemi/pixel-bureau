@@ -17,7 +17,7 @@ const themes = () => Object.fromEntries(fs.readdirSync(SRC).filter(f => /^theme-
 function pageConfig(cfg) {
   return {kronn_ui: (cfg.kronn || {}).ui, jira_site: (cfg.jira || {}).site, jira_flow: {triage_from: 'Proposed', test: 'To Test', validated: 'To Deploy', reopened: 'Reopen', ...((cfg.jira || {}).flow || {})}, github_repo: (cfg.github || {}).repo,
     rhythm: cfg.rhythm || {}, mep_workflow: cfg.mep_workflow, workflows: cfg.workflows || {}, agents: cfg.agents || [], ui: cfg.ui || {}, skins: themes(),
-    schedules: Object.fromEntries(['office', 'live', 'team', 'payroll'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule.replace('@@cron_hours@@', '4-20')]))}; // heures de Paris, comme cron_hours()
+    schedules: Object.fromEntries(['office', 'live', 'team', 'payroll', 'canard'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule.replace('@@cron_hours@@', '4-20')]))}; // heures de Paris, comme cron_hours()
 }
 
 // mêmes roster (et invités), morceaux, recettes et sprites que roster(), guests(), music(), recipes() et sprites() de tools/assemble.py :

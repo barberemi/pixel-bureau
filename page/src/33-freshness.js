@@ -6,6 +6,7 @@ const FRESH_SRC=[
   {key:'office',label:'Bureau (journée)',period:600e3,grace:300e3,gen:()=>OFFICE&&!OFFICE.empty&&OFFICE.generated_at},
   {key:'team',label:'Équipe (Jira, GitHub)',period:600e3,grace:300e3,gen:()=>TEAM_BASE&&TEAM_BASE.generated_at},
   {key:'payroll',label:'Fiche de paie',period:3600e3,grace:600e3,gen:()=>PAYROLL&&PAYROLL.generated_at},
+  {key:'canard',label:'Canard d\'équipe',period:3600e3,grace:600e3,gen:()=>DUCKGAME&&DUCKGAME.generated_at},
 ];
 function cronOf(key){
   if((CFG.schedules||{})[key])return CFG.schedules[key]; // modèles de workflows (assemblage)

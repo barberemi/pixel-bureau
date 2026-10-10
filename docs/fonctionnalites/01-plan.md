@@ -107,6 +107,29 @@ Quand une de ses discussions attend ta réponse, en direct (pas en rejeu), il qu
 
 ![Le canard sur le plan, sa fiche ouverte](../img/canard.png)
 
+### Le canard d'équipe
+
+Le canard appartient à toute l'équipe : il grandit avec le travail collectif du sprint, jamais avec celui d'une personne.
+
+- **Ses stades** : œuf, caneton, canard de bain, canard détective, canard sage, canard doré. Ils suivent les points des tickets du sprint passés en terminé, rapportés à la cible du sprint : la moyenne des points terminés des 4 derniers sprints fermés. Caneton dès 25 % de la cible, canard de bain dès 50 %, détective dès 75 %, sage à 100 %, doré à 120 %. Le premier jour du sprint suivant, il mue et repart de l'œuf. Le stade suit l'heure affichée, rejeu compris.
+- **Ses canetons** : un sprint est tenu quand ses points terminés atteignent la moyenne des 4 sprints d'avant. Chaque sprint tenu parmi les 8 derniers lui donne un caneton, qui le suit en file indienne pendant sa promenade (6 dessinés au plus, puis « ×8 »).
+- **Ses succès** : des faits réels de l'équipe lui font porter un accessoire. Un seul couvre-chef à la fois (couronne, puis auréole, puis casquette), qui remplace le chapeau du détective ; rien sur l'œuf ni sur le caneton.
+
+| Succès | Quand | Accessoire |
+| --- | --- | --- |
+| Zéro panne | Aucun agent en panne (3 échecs d'affilée) la semaine dernière | Lunettes de soleil |
+| Lève-tôt | Une mise en prod réussie avant 11 h depuis le début du sprint, sur un des dépôts suivis | Casquette |
+| Pas un reopen | Aucun ticket réouvert pendant le sprint précédent | Auréole |
+| Relu dans la journée | Chaque PR ouverte la semaine dernière a eu sa première review en moins de 24 h ouvrées | Loupe |
+| Bavard | 10 discussions avec le canard, depuis le début | Cape |
+| Triplé | Les 3 derniers sprints tenus | Couronne |
+
+![Ses stades et les accessoires de ses succès](../img/canard-stades.png)
+
+![Le canard détective, avec ses lunettes et sa loupe, et ses 4 canetons](../img/canard-canetons.png)
+
+Quand il change de stade, ou quand un caneton naît (dans les 2 heures qui suivent le début d'un sprint, si le précédent est tenu), la [loupe](#loupe-sur-les-événements-forts) s'ouvre sur lui. Les chiffres viennent du cron « Le Bureau · canard d'équipe » (toutes les heures, 0 token) : graphique de vélocité et réouvertures dans Jira, runs des agents et discussions dans Kronn, mises en prod et reviews avec `gh`. Sans ces données, il reste un canard de bain, sans canetons.
+
 ## Changer de plan pour toute l'équipe
 
 Le plan se décrit dans un fichier JSON (voir [Développer, plan du bureau](../developpement.md#plan-du-bureau-layoutsjson)). Chacun est placé par le plan (`seating`, par numéro de siège : `I2.R2` = îlot 2, côté droit, rang 2), les autres reçoivent un siège libre, toujours le même.
@@ -149,7 +172,7 @@ Quand un événement fort commence, un cadre de couleur entoure la scène sur le
 | --- | --- |
 | ![La loupe sur une réouverture](../img/loupe.png) | ![La loupe sur le daily](../img/loupe-daily.png) |
 
-- **Les événements** : un ticket réouvert (⛔, le héraut convoque l'assigné), une mise en prod réussie (🎉, le sage félicite l'auteur), la fête d'une MEP (🎉), un invité qui arrive (👋), le pouce du testeur qui valide (👍), et les cérémonies : daily (☀️), sprint planning (🗓), rétro (🔄), lancement du sprint (🏁), pizza de fin de sprint (🍕). Pour une cérémonie, la légende la nomme et compte l'équipe (« Daily de l'équipe · 10 personnes »), l'animateur en dessous.
+- **Les événements** : un ticket réouvert (⛔, le héraut convoque l'assigné), une mise en prod réussie (🎉, le sage félicite l'auteur), la fête d'une MEP (🎉), un invité qui arrive (👋), le pouce du testeur qui valide (👍), le canard qui change de stade (🦆) ou un caneton qui naît (🐣), et les cérémonies : daily (☀️), sprint planning (🗓), rétro (🔄), lancement du sprint (🏁), pizza de fin de sprint (🍕). Pour une cérémonie, la légende la nomme et compte l'équipe (« Daily de l'équipe · 10 personnes »), l'animateur en dessous.
 - **Une loupe à la fois**, ouverte une fois les personnages arrivés (40 s au plus d'attente), pendant 20 s ; deux événements au même endroit (la fête et le sage) n'en font qu'une.
 - **En rejeu accéléré** (même à x1500), la lecture s'arrête dès qu'un événement commence, le temps que les personnages arrivent et que la loupe passe, puis reprend. Deux événements au même endroit : le plus parlant d'abord (le sage avant la fête de MEP). Rien quand on fait glisser l'heure, ni quand la souris est sur le plan.
 - **Fermer** : ✕, clic sur le plan ou Échap. **Couper** : bouton « 🔍 Loupe » sous le plan (retenu dans le navigateur) ; sur l'écran mural, `?loupe=0` dans l'adresse.

@@ -496,3 +496,24 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .themesel select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:2px 6px}
 
 .duck-project{width:100%;margin:0 0 8px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit}
+/* canard d'équipe (39-duckgame.js) : son sprint, ses canetons, ses trophées */
+.dg-pix{flex:none;image-rendering:pixelated}
+.dg-top{display:flex;gap:14px;align-items:center;margin:0 0 14px}
+.dg-txt{flex:1;min-width:0}
+.dg-txt .note{margin:2px 0 6px}
+.dg-name{font-weight:600;font-size:15px}
+.dg-bar{position:relative;height:8px;border-radius:4px;overflow:hidden;background:var(--chip)}
+.dg-bar b{position:absolute;left:0;top:0;bottom:0;background:var(--accent)}
+.dg-bar i{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--panel)}
+.dg-stages{display:flex;justify-content:space-between;gap:2px;margin:0 0 14px}
+.dg-st{display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--muted)}
+.dg-st.off .dg-pix{opacity:.35}
+.dg-kids{display:flex;align-items:center;gap:2px;margin:0 0 14px}
+.dg-kids .note{margin:0 0 0 8px}
+.dg-troph{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 14px}
+.dg-tr{display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid var(--line);border-radius:8px;min-width:0}
+.dg-tr>div{min-width:0;display:flex;flex-direction:column}
+.dg-tr b{font-size:13px}
+.dg-tr small{font-size:11px;line-height:1.35;color:var(--muted)}
+.dg-tr.off .dg-pix{filter:grayscale(1);opacity:.55}
+.dg-tr.off b{color:var(--muted)}

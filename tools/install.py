@@ -24,8 +24,8 @@ OFFICE = [("dwight", "Dwight"), ("jim", "Jim"), ("stanley", "Stanley"), ("phylli
           ("erin", "Erin"), ("ryan", "Ryan")]
 ROLES = {"dev": ("Développeur", None), "lead": ("Tech Lead", "lead"), "qa": ("Testeur", "qa"), "po": ("Product owner", "po"),
          "sm": ("Facilitateur", "sm")}
-DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "bosspages", "gitfut", "layout", "actions"]
-CRONS = ("office", "live", "team", "payroll")
+DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "bosspages", "gitfut", "layout", "actions", "duck"]
+CRONS = ("office", "live", "team", "payroll", "canard")
 DATASET = lambda name: {"name": name, "kind": "snapshot", "max_points": 50000}  # noqa: E731
 
 

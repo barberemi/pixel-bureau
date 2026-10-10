@@ -355,6 +355,50 @@ print(json.dumps(d.get(key, [])))
         self.assertEqual(out["open"][0]["reviewRequests"], ["c"])
         self.assertNotIn("body", json.dumps(out["open"][0]["latestReviews"]))
 
+    # ---------- canard d'équipe ----------
+    def velocity(self, done):
+        """Graphique de vélocité Jira : sprints du plus récent au plus ancien, points terminés de chacun."""
+        sprints = [{"id": 100 - i, "name": f"S{len(done) - i}"} for i in range(len(done))]
+        return {"sprints": sprints, "velocityStatEntries": {str(s["id"]): {"completed": {"value": d}, "estimated": {"value": 99}}
+                                                            for s, d in zip(sprints, done)}}
+
+    def test_duck_snapshot_target_held_sprints_and_trophies(self):
+        paris = ZoneInfo("Europe/Paris")
+        start = (datetime.now(paris) - timedelta(days=3)).replace(hour=9, minute=0, second=0, microsecond=0)
+        early = start.replace(hour=10, minute=12) + timedelta(days=1)
+        fake = FakeKronn()
+        fake.discussions += [{"id": f"k{i}", "title": f"🦆 question {i}", "updated_at": iso()} for i in range(3)]
+        self.fake_gh({"prod": [{"status": "completed", "conclusion": "success", "createdAt": early.isoformat(), "updatedAt": early.isoformat(),
+                                "displayTitle": "v1.2.0", "url": "https://x/r"}],
+                      "merged": []})
+        # du plus récent au plus ancien : 120 (moyenne des 4 d'avant 85 : tenu), 100 (85 : tenu), 60 (90 : pas tenu), 80, 100, 100, 80
+        out = self.run_script("duck_snapshot.py", {"sprint": {"name": "S8", "startDate": start.isoformat(), "endDate": (start + timedelta(days=14)).isoformat()},
+                                                   "velocity": self.velocity([120, 100, 60, 80, 100, 100, 80]), "reopens": []}, api=self.kronn(fake))
+        self.assertEqual(out["errors"], [])
+        self.assertEqual(out["target"], 90.0)  # moyenne des 4 derniers sprints fermés
+        self.assertEqual([(s["name"], s["target"], s["held"]) for s in out["sprints"]],
+                         [("S7", 85.0, True), ("S6", 85.0, True), ("S5", 90.0, False)])
+        self.assertEqual((out["canetons"], out["streak"]), (2, 2))
+        t = out["trophies"]
+        self.assertTrue(t["leve_tot"]["ok"])
+        self.assertIn("v1.2.0 à 10:12", t["leve_tot"]["detail"])
+        self.assertTrue(t["pas_reopen"]["ok"])
+        self.assertEqual(t["bavard"], {"ok": False, "progress": "3 / 10"})
+        self.assertEqual(t["triple"], {"ok": False, "progress": "2 / 3"})
+        self.assertFalse(t["relu_24h"]["ok"])  # aucune PR la semaine dernière : rien à gagner
+        self.assertIn("zero_panne", t)
+        self.assertNotIn("Pam", json.dumps(out))
+
+    def test_duck_snapshot_without_jira_nor_gh(self):
+        out = self.run_script("duck_snapshot.py", {"sprint": None, "velocity": None, "reopens": None}, api=self.kronn(FakeKronn()))
+        self.assertEqual((out["target"], out["sprints"], out["canetons"]), (None, [], 0))
+        self.assertNotIn("pas_reopen", out["trophies"])
+        self.assertTrue(any("gh" in e for e in out["errors"]))
+
+    def test_duck_window_is_the_previous_sprint(self):
+        r = self.run_raw("duck_window.py", json.dumps({"startDate": "2026-10-02T14:30:00.000Z", "endDate": "2026-10-16T14:30:00.000Z"}))
+        self.assertEqual(r.stdout, '"2026/09/18 16:30", "2026/10/02 16:30"')
+
     # ---------- instantanés Kronn ----------
     def test_office_snapshot_filters_bureau_by_id_and_reports_failures(self):
         out = self.run_script("office_snapshot.py", api=self.kronn(FakeKronn()))

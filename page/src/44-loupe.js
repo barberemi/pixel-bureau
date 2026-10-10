@@ -7,8 +7,8 @@
 // plan. Bouton « 🔍 Loupe » de la barre (retenu dans le navigateur), ?loupe=0 dans l'adresse de l'écran mural.
 const LOUPE_MS=20e3, LOUPE_WAIT_MAX=40e3, LOUPE_HOVER_MS=5e3;
 const LOUPE_KINDS={reopen:['⛔','#b3122e'],proud:['🎉','#0172f0'],party:['🎉','#0172f0'],thumbs:['👍','#2e9e5b'],guest:['👋','#2e9e5b'],
-  daily:['☀️','#2e9e9b'],planning:['🗓','#2e9e9b'],retro:['🔄','#c25a9e'],kickoff:['🏁','#2e9e9b'],pizza:['🍕','#2e9e9b']};
-const LOUPE_ORDER=['reopen','proud','guest','thumbs','kickoff','planning','retro','daily','pizza','party'];
+  daily:['☀️','#2e9e9b'],planning:['🗓','#2e9e9b'],retro:['🔄','#c25a9e'],kickoff:['🏁','#2e9e9b'],pizza:['🍕','#2e9e9b'],duck:['🦆','#c47f00'],hatch:['🐣','#c47f00']};
+const LOUPE_ORDER=['reopen','proud','guest','thumbs','kickoff','planning','retro','daily','pizza','party','hatch','duck'];
 // cérémonies : toute l'équipe est dans la scène, la légende la nomme au lieu d'énumérer tout le monde
 const LOUPE_CEREMONY={daily:"Daily de l'équipe",planning:'Sprint planning',retro:'Rétrospective',kickoff:'Lancement du sprint',pizza:'Pizza de fin de sprint'};
 let LOUPE_ON=true;try{LOUPE_ON=localStorage.getItem('bureau:loupe')!=='0';}catch(e){}
@@ -27,6 +27,7 @@ function loupeScan(){
     const id=k==='guest'?'guest:'+c.key:k;(groups[id]=groups[id]||[]).push(c);
   }
   for(const id in groups){now.add(id);if(LOUPE.seen&&!LOUPE.seen.has(id))fresh.push({id,kind:id.split(':')[0],cs:groups[id]});}
+  for(const ev of duckLoupeEvents(T)){now.add(ev.id);if(LOUPE.seen&&!LOUPE.seen.has(ev.id))fresh.push(ev);} // canard d'équipe (39-duckgame.js)
   LOUPE.seen=now;
   // au même endroit, le plus parlant d'abord : le sage avant la fête de MEP (l'autre est écarté, même cadre)
   return fresh.sort((a,b)=>LOUPE_ORDER.indexOf(a.kind)-LOUPE_ORDER.indexOf(b.kind));

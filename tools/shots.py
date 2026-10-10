@@ -123,6 +123,27 @@ SHOTS = {
                       "d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(bx-4.6)*TS*k)+'px',"
                       "top:(r.top+scrollY+(by-4)*TS*k)+'px',width:10.25*TS*k+'px',height:6.8*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);",
                       "#shotclip", 1.5),
+    # canard d'équipe (39-duckgame.js, données de démo) : détective avec lunettes et loupe, ses 4 canetons en file derrière lui ;
+    # instant où il marche depuis 10 s, zone rognée autour de lui posée sur la toile juste avant la capture
+    "canard-canetons": (1400, 1000, AT(11) + "for(let t=T;t<T+3*3600e3;t+=1000){const a=duckWalk(t),b=duckWalk(t-10e3);"
+                        "if(a&&b&&a.moving&&b.moving&&Math.hypot(a.x-b.x,a.y-b.y)>60){T=t;break;}}needTeleport=true;"
+                        "setTimeout(()=>{const p=DUCK_POS,c=document.querySelector('#cv'),r=c.getBoundingClientRect(),k=r.width/c.width,"
+                        "d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(p.x-7*TS)*k)+'px',"
+                        "top:(r.top+scrollY+(p.y-4*TS)*k)+'px',width:14*TS*k+'px',height:6.5*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);",
+                        "#shotclip", 2),
+    # planche : ses 6 stades, puis les 6 accessoires des succès (dessins de la page, agrandis)
+    "canard-stades": (1300, 700, AT(11) + "setTimeout(()=>{const W=1200,H=540,c=document.createElement('canvas');c.width=W;c.height=H;c.id='dgboard';"
+                      "const g=c.getContext('2d'),cs=getComputedStyle(document.body);g.imageSmoothingEnabled=false;"
+                      "g.fillStyle=cs.getPropertyValue('--panel');g.fillRect(0,0,W,H);const ink=cs.getPropertyValue('--ink'),mut=cs.getPropertyValue('--muted');"
+                      "g.fillStyle=ink;g.font='600 20px sans-serif';g.fillText('Ses stades, en % de la cible du sprint',30,40);"
+                      "DUCK_STAGES.forEach((s,i)=>{const x=30+i*190;g.drawImage(duckGameImg('front',s.id),x,56,144,144);"
+                      "g.fillStyle=ink;g.font='600 15px sans-serif';g.fillText(s.name,x+8,222);g.fillStyle=mut;g.font='14px sans-serif';g.fillText('dès '+Math.round(s.at*100)+' %',x+8,242);});"
+                      "g.fillStyle=ink;g.font='600 20px sans-serif';g.fillText('Les accessoires de ses succès',30,300);"
+                      "DUCK_TROPHIES.forEach((t,i)=>{const x=30+i*190;['front','side','back'].forEach((v,j)=>g.drawImage(duckGameImg(v,'bain',[t.acc]),x+j*56,316,72,72));"
+                      "g.fillStyle=ink;g.font='600 15px sans-serif';g.fillText(t.name,x+8,412);g.fillStyle=mut;g.font='13px sans-serif';"
+                      "const ls=[''];t.what.split(' ').forEach(m=>{const k=ls.length-1;if((ls[k]+' '+m).trim().length>22)ls.push(m);else ls[k]=(ls[k]+' '+m).trim();});ls.forEach((l,j)=>g.fillText(l,x+8,432+j*18));});"
+                      "Object.assign(c.style,{position:'absolute',left:'0',top:'0',zIndex:99999});document.body.appendChild(c);scrollTo(0,0);},500);",
+                      "#dgboard"),
     "canard": (1440, 960, AT(11) + "ACTIONS.duck=true;ACTION_BINDS['bureau-duck']={project_id:'id'};DUCK_PROJECTS=[{id:'none',name:'Sans projet'},{id:'p1',name:'Site Dunder Mifflin'},"
                "{id:'p2',name:'Stock de papier'}];const at=x=>new Date(DAY0+x*3600e3).toISOString();DUCKS=["
                "{id:'k1',title:'🦆 Le bon de commande arrondit mal les ramettes',project:'Stock de papier',updated:at(10.6),awaiting:true},"

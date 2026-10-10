@@ -1,0 +1,182 @@
+{
+ "kind": "workflow",
+ "key": "canard",
+ "definition": {
+  "name": "Le Bureau · canard d'équipe (1 h)",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Cron",
+   "schedule": "23 @@cron_hours@@ * * *"
+  },
+  "steps": [
+   {
+    "name": "sprint_info",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Sprint actif du board (dates du sprint précédent, mises en prod du sprint).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/agile/1.0/board/@@jira.board@@/sprint",
+    "api_method": "GET",
+    "api_query": {
+     "state": "active"
+    },
+    "api_extract": {
+     "path": "$.values[0]",
+     "fallback": {},
+     "fail_on_empty": true
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "velocity",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Graphique de vélocité Jira : points terminés des 12 derniers sprints fermés (cible et sprints tenus).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/greenhopper/1.0/rapid/charts/velocity",
+    "api_method": "GET",
+    "api_query": {
+     "rapidViewId": "@@jira.board@@",
+     "sprintsToDisplay": "12"
+    },
+    "api_extract": {
+     "path": "$",
+     "fallback": {},
+     "fail_on_empty": false
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "prev_window",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Dates du sprint précédent (JQL DURING).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/duck_window.py@@"
+    ],
+    "exec_timeout_secs": 20,
+    "exec_stdin": "{{steps.sprint_info.data_json}}",
+    "_requires": "jira"
+   },
+   {
+    "name": "reopens",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Tickets réouverts pendant le sprint précédent (succès « Pas un reopen »).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/search/jql",
+    "api_method": "GET",
+    "api_query": {
+     "jql": "project = @@jira.project@@ AND status CHANGED TO \"@@jira.flow.reopened@@\" DURING ({{steps.prev_window.data.stdout}})",
+     "fields": "key",
+     "maxResults": "50"
+    },
+    "api_extract": {
+     "path": "$.issues",
+     "fallback": [],
+     "fail_on_empty": false
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "duck",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Déterministe : cible, sprints tenus (canetons) et succès collectifs du canard (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/duck_snapshot.py@@"
+    ],
+    "exec_timeout_secs": 180,
+    "exec_stdin": "{\"sprint\":{{steps.sprint_info.data_json}},\"velocity\":{{steps.velocity.data_json}},\"reopens\":{{steps.reopens.data_json}}}"
+   },
+   {
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset duck de la page Le Bureau.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "duck",
+       "operation": "replace",
+       "value_from": "steps.duck.data.stdout"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3",
+   "gh"
+  ]
+ }
+}

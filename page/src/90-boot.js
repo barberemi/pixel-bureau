@@ -125,6 +125,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   ASKABLE=readAskable(k)||[];
   {const dk=readDuckData(k);if(dk){DUCK_PROJECTS=dk.projects;DUCKS=dk.ducks;}} // 39-duck.js
   PAYROLL=readPayroll(k);
+  DUCKGAME=readDuckGame(k)||(DEMO?DUCKGAME_DEMO:null);
   BOSS_PAGES=readBossPages(k)||[];
   GITFUT=readGitfut(k)||{};
   ACTS=readActs(k);
@@ -161,6 +162,8 @@ window.addEventListener('kronn:page-data',e=>{
   const po=readPosters(k)||readPosters(window.KronnPageData);
   if(po)POSTERS=po;
   if(py)PAYROLL=py;
+  const dg=readDuckGame(k)||readDuckGame(window.KronnPageData);
+  if(dg)DUCKGAME=dg;
   const av=readAvatars(k)||readAvatars(window.KronnPageData);
   if(av){
     setTeamAvatars(av);
