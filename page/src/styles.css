@@ -517,3 +517,4 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .dg-tr small{font-size:11px;line-height:1.35;color:var(--muted)}
 .dg-tr.off .dg-pix{filter:grayscale(1);opacity:.55}
 .dg-tr.off b{color:var(--muted)}
+.dg-tr.soon .dg-pix{opacity:.55}

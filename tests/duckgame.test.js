@@ -85,6 +85,15 @@ test('la fiche : son sprint, ses canetons et ses trophées, sans un chiffre par 
   assert.match(html[1][2], /gagné · sem\. du 5 oct\./);
   assert.match(html[1][2], /6 \/ 8/);
   assert.doesNotMatch(html.map(h => h[2]).join(' '), /Pam/);
+  // gagné mais pas encore porté (succès de la semaine passée, daté du lundi à l'ouverture)
+  setup({zero_panne: {ok: true, at: new Date(at('12', '08:00')).toISOString()}});
+  const soon = J(`(() => { const out = [], fs = foldSection, ce = document.createElement, t0 = T; T = ${at('10', '12:00')};
+    const el = () => ({children: [], style: {}, innerHTML: '', textContent: '', className: '', appendChild(c) { this.children.push(c); return c; },
+      getContext: () => ({drawImage() {}, fillRect() {}})});
+    document.createElement = el; foldSection = () => { const b = el(); out.push(b); return b; };
+    try { renderDuckGame(el()); } finally { foldSection = fs; document.createElement = ce; T = t0; }
+    const txt = e => [e.innerHTML || '', ...(e.children || []).map(txt)].join(' '); return txt(out[1]); })()`);
+  assert.match(soon, /gagné · le porte lundi à 08:00/);
 });
 
 // ---------- petites scènes de 3 s (43-fx.js) ----------

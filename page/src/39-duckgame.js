@@ -172,9 +172,11 @@ function renderDuckGame(side){
   const tb=foldSection(side,'duck-trophies','Ses trophées',n+' / '+DUCK_TROPHIES.length,true);
   const gr=document.createElement('div');gr.className='dg-troph';
   for(const x of DUCK_TROPHIES){
-    const s=T_[x.id]||{}, c=document.createElement('div');c.className='dg-tr'+(s.ok?'':' off');c.title=x.what;
+    const s=T_[x.id]||{}, soon=s.ok&&s.at&&ms(s.at)>T, c=document.createElement('div');c.className='dg-tr'+(s.ok?soon?' soon':'':' off');c.title=x.what;
     c.appendChild(dgPix(duckGameImg('front','bain',[x.acc]),40));
-    const info=[s.ok?'✓ gagné'+(s.period?' · '+s.period:''):s.progress||s.detail||(s.period?'pas cette fois · '+s.period:'pas encore')].filter(Boolean);
+    // gagné mais daté plus tard (succès de la semaine passée : le lundi à l'ouverture) : il ne le porte pas encore
+    const day=t=>{const d=dtf('fr-FR',{weekday:'long'}).format(new Date(t));return fmtDay(t)===hm(t)?'aujourd\'hui à '+hm(t):d+' à '+hm(t);};
+    const info=[s.ok?(soon?'✓ gagné · le porte '+day(ms(s.at)):'✓ gagné'+(s.period?' · '+s.period:'')):s.progress||s.detail||(s.period?'pas cette fois · '+s.period:'pas encore')].filter(Boolean);
     c.appendChild(Object.assign(document.createElement('div'),{innerHTML:`<b>${esc(x.name)}</b><small>${esc(x.what)}</small><small>${esc(info.join(' · '))}</small>`}));
     gr.appendChild(c);
   }
