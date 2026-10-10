@@ -158,7 +158,7 @@ function renderDuckGame(side){
       `<div class="note">${p.next?`${esc(p.next.name)} à ${Math.round(p.next.at*100)} %`:'Stade le plus haut'} · repart de l'œuf au prochain sprint</div>`;
     top.appendChild(t);box.appendChild(top);
     const st=document.createElement('div');st.className='dg-stages';
-    DUCK_STAGES.forEach(s=>{const d=document.createElement('div');d.className='dg-st'+(s.at<=p.pct?'':' off');d.title=s.name;
+    DUCK_STAGES.forEach(s=>{const d=document.createElement('div');d.className='dg-st'+(s.id===p.stage.id?' cur':s.at<=p.pct?'':' off');d.title=s.name;
       d.appendChild(dgPix(duckGameImg('front',s.id),36));d.appendChild(Object.assign(document.createElement('span'),{textContent:Math.round(s.at*100)+' %'}));st.appendChild(d);});
     box.appendChild(st);
   }else{const e=document.createElement('div');e.className='note';e.textContent='Le stade arrive avec les tickets du sprint (cron équipe).';box.appendChild(e);}

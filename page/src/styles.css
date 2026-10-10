@@ -506,8 +506,13 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .dg-bar b{position:absolute;left:0;top:0;bottom:0;background:var(--accent)}
 .dg-bar i{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--panel)}
 .dg-stages{display:flex;justify-content:space-between;gap:2px;margin:0 0 14px}
-.dg-st{display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--muted)}
-.dg-st.off .dg-pix{opacity:.35}
+.dg-top>.dg-pix{background:var(--chip);border-radius:8px}
+:root[data-skin] .dg-top>.dg-pix{box-shadow:var(--frame);margin:var(--px);border-radius:0}
+/* stades : atteints sur fond, l'actuel encadré à la couleur du thème, ceux à venir en pointillés et gris (choix de Rémi, variante 2) */
+.dg-st{display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--muted);padding:4px 3px 3px;border:1px solid transparent;border-radius:6px;background:var(--chip)}
+.dg-st.cur{border:2px solid var(--accent);color:var(--ink);font-weight:600}
+.dg-st.off{background:none;border:1px dashed var(--muted)}
+.dg-st.off .dg-pix{filter:grayscale(1);opacity:.4}
 .dg-kids{display:flex;align-items:center;gap:2px;margin:0 0 14px}
 .dg-kids .note{margin:0 0 0 8px}
 .dg-troph{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 14px}
