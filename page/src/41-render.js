@@ -28,6 +28,7 @@ function render(now){
   BUBBLE_BOXES=[];
   for(const c of chars)if(c.present&&shown(c)&&!onTop(c))drawOverlay(c,now);
   for(const c of chars)if(c.present&&shown(c)&&onTop(c))drawOverlay(c,now);
+  fxOverlay(now); // 43-fx.js : agent rétabli, applaudissements
   drawEnvelopes(now,FILTER?shown:null);
   NAME_BOXES=[];
   for(const c of chars)if(c.present&&c.key!==sel&&shown(c))drawName(c);

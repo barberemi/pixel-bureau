@@ -144,20 +144,22 @@ const DUCK_SCALE=1.6; // plus grand que son dessin de 16 px : il se perdait sur 
 const DUCK_K=DUCK_SCALE/1.3; // bulle, anneau et zone de clic, réglés à l'origine pour ×1,3
 function drawDuck(now){
   const p=DUCK_POS; if(!p)return;
-  const look=duckLook(T); drawDuckKids(now,look); // canard d'équipe (39-duckgame.js) : stade, accessoires, canetons
+  const look=fxDuckLook(duckLook(T),now); drawDuckKids(now,look); // canard d'équipe (39-duckgame.js) : stade, accessoires, canetons
   const x=Math.round(p.x), y=Math.round(p.y)-4; // posé un peu au-dessus des pieds des humains : il est petit
   ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(x,y+1,7*DUCK_SCALE,2*DUCK_SCALE,0,0,7);ctx.fill();
   const w=p.moving?Math.sin(now/140):0; // dandinement : inclinaison et ±1 px
-  ctx.save();ctx.translate(x,y+(p.moving&&w>0?-1:0));ctx.rotate(w*.14);if(p.dir==='left')ctx.scale(-1,1);ctx.scale(DUCK_SCALE,DUCK_SCALE);
+  ctx.save();ctx.translate(x,y+(p.moving&&w>0?-1:0));ctx.rotate(w*.14+fxDuckWobble(now));if(p.dir==='left')ctx.scale(-1,1);ctx.scale(DUCK_SCALE,DUCK_SCALE);
   ctx.drawImage(duckGameImg(p.dir==='down'?'front':p.dir==='up'?'back':'side',look.stage,look.acc),-12,-22);
   ctx.restore();
   if(look.stage==='dore')drawDuckSparkles(x,y,now);
+  fxDrawKid(x-Math.round(14*DUCK_SCALE)*(p.dir==='left'?-1:1),y,now); // 43-fx.js : le caneton qui naît, juste derrière lui
+  fxDrawDuck(x,y,now); // 43-fx.js : succès qui tombe, éclosion, « pouf »
   if(p.call&&!p.moving){ // il attend ta réponse : une bulle « ? » qui respire au-dessus de lui
     const by=y-Math.round(34*DUCK_K)+Math.round(Math.sin(now/400));
     ctx.fillStyle='#ffffff';ctx.strokeStyle='#c47f00';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(x-7,by,14,13,4);ctx.fill();ctx.stroke();
     ctx.beginPath();ctx.moveTo(x-2,by+13);ctx.lineTo(x,by+17);ctx.lineTo(x+2,by+13);ctx.fill();
     ctx.fillStyle='#c47f00';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText('?',x,by+10);ctx.textAlign='left';
-  }else{ // sinon une flèche jaune qui flotte au-dessus de lui, pour le repérer sur le plan
+  }else if(!fxDuckBusy()){ // sinon une flèche jaune qui flotte au-dessus de lui, pour le repérer sur le plan (pas pendant une scène : sa bulle la remplace)
     const ay=y-Math.round((look.acc.some(a=>DUCK_HEADS.includes(a))||look.stage==='detective'?20:14)*DUCK_SCALE)-12+Math.round(2*Math.sin(now/300));
     ctx.fillStyle='#f5c518';ctx.strokeStyle='#3a2a00';ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(x-5,ay);ctx.lineTo(x+5,ay);ctx.lineTo(x,ay+6);ctx.closePath();ctx.fill();ctx.stroke();

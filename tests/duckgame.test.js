@@ -86,3 +86,38 @@ test('la fiche : son sprint, ses canetons et ses trophées, sans un chiffre par 
   assert.match(html[1][2], /6 \/ 8/);
   assert.doesNotMatch(html.map(h => h[2]).join(' '), /Pam/);
 });
+
+// ---------- petites scènes de 3 s (43-fx.js) ----------
+test('un succès daté ne se porte qu\'à partir de sa date (rejeu)', () => {
+  setup({zero_panne: {ok: true, at: new Date(at('07', '08:00')).toISOString()}});
+  assert.deepEqual(J(`duckLook(${at('06', '12:00')}).acc`), []);
+  assert.deepEqual(J(`duckLook(${at('07', '12:00')}).acc`), ['lunettes']);
+});
+
+test('scènes datées : succès débloqué, éclosion (œuf vers caneton), changement de stade, mue, caneton né', () => {
+  setup({leve_tot: {ok: true, at: new Date(at('08', '10:42')).toISOString()}});
+  const ev = t => J(`fxEvents(${t}).map(e => e.kind + (e.to ? ':' + e.to : '') + (e.tr ? ':' + e.tr.id : ''))`);
+  assert.deepEqual(ev(at('05', '09:03')), ['stage:oeuf', 'kid']);               // début du sprint : mue, et un caneton né (S1 tenu)
+  assert.deepEqual(ev(at('06', '10:05')), ['hatch:caneton']);                    // 5 / 20 : l'œuf éclot
+  assert.deepEqual(ev(at('07', '10:05')), ['stage:bain']);
+  assert.deepEqual(ev(at('08', '10:05')), ['stage:detective']);
+  assert.deepEqual(ev(at('08', '10:45')), ['trophy:leve_tot']);
+  assert.deepEqual(ev(at('08', '11:00')), []);                                   // plus de 10 min après : fini
+});
+
+test('pendant la scène : la casquette n\'est pas encore sur lui, l\'ancien stade reste jusqu\'au « pouf »', () => {
+  setup({leve_tot: {ok: true}});
+  const look = J(`(() => { FX.cur = new Map([['a', {kind: 'trophy', t0: 1000, tr: DUCK_TROPHIES[1]}], ['b', {kind: 'stage', t0: 1000, from: 'bain', to: 'detective'}]]);
+    const l0 = fxDuckLook({stage: 'detective', acc: ['casquette'], kids: 3}, 1500), l1 = fxDuckLook({stage: 'detective', acc: ['casquette'], kids: 3}, 4500);
+    FX.cur = new Map(); return [l0, l1]; })()`);
+  assert.deepEqual(look[0], {stage: 'bain', acc: [], kids: 3});
+  assert.deepEqual(look[1], {stage: 'detective', acc: ['casquette'], kids: 3});
+});
+
+test('agent rétabli : un run réussi juste après un échec qui l\'avait envoyé aux toilettes', () => {
+  const r = J(`agentRecoveries({runs: [
+    {run: 'a', status: 'Failed', _s: 0, _ve: 60e3}, {run: 'b', status: 'Success', _s: 20 * 60e3, _ve: 21 * 60e3},
+    {run: 'c', status: 'Success', _s: 30 * 60e3, _ve: 31 * 60e3},
+    {run: 'd', status: 'Failed', _s: 40 * 60e3, _ve: 41 * 60e3}, {run: 'e', status: 'Success', _s: 3 * 3600e3, _ve: 3 * 3600e3 + 60e3}]})`);
+  assert.deepEqual(r.map(x => x.run), ['b']); // e : l'échec d'avant date de plus de 40 min, il n'était plus aux toilettes
+});

@@ -382,9 +382,12 @@ print(json.dumps(d.get(key, [])))
         t = out["trophies"]
         self.assertTrue(t["leve_tot"]["ok"])
         self.assertIn("v1.2.0 à 10:12", t["leve_tot"]["detail"])
+        self.assertEqual(datetime.fromisoformat(t["leve_tot"]["at"]).astimezone(paris).strftime("%H:%M"), "10:12")  # sa scène joue à l'heure de la MEP
+        self.assertEqual(datetime.fromisoformat(t["pas_reopen"]["at"]), start)  # succès du sprint : à son début
+        self.assertEqual(datetime.fromisoformat(t["zero_panne"]["at"]).astimezone(paris).strftime("%a %H:%M"), "Mon 08:00")
         self.assertTrue(t["pas_reopen"]["ok"])
         self.assertEqual(t["bavard"], {"ok": False, "progress": "3 / 10"})
-        self.assertEqual(t["triple"], {"ok": False, "progress": "2 / 3"})
+        self.assertEqual({k: t["triple"][k] for k in ("ok", "progress")}, {"ok": False, "progress": "2 / 3"})
         self.assertFalse(t["relu_24h"]["ok"])  # aucune PR la semaine dernière : rien à gagner
         self.assertIn("zero_panne", t)
         self.assertNotIn("Pam", json.dumps(out))

@@ -23,7 +23,7 @@ Un invité de passage entre par la porte, va saluer des collègues à leur burea
 - **Bureau** : étape IA ou script en cours.
 - **Salle serveurs** : appel d'API. **Salle de réunion** : sous-workflows.
 - **Bureau du boss** : validations et questions qui t'attendent.
-- **Toilettes** : en panne (🚨 après 3 échecs d'affilée).
+- **Toilettes** : en panne (🚨 après 3 échecs d'affilée). Quand un run réussit juste après la panne, l'agent sort avec la bulle « ✅ Rétabli ! » et les agents au travail l'applaudissent (👏) pendant quelques secondes.
 - **Plateau TV** : mises en prod du jour (fermé le vendredi et le week-end).
 - **Café, canapés** : run réussi récemment, ou rien à faire. La cafétéria a deux canapés de trois places, l'un en bas, l'autre en haut à droite près du comptoir : chacun prend une place libre, personne ne s'assoit sur un autre.
 
@@ -34,6 +34,8 @@ Quand un ticket passe en Reopen dans Jira, Gandalf entre par la porte. Lui, celu
 Quand une mise en prod réussit, Yoda entre aussi par la porte. Il monte sur la scène du plateau TV à côté de celui qui a fait la mise en prod (le boss y est déjà, au saxophone) et le félicite en grand : « Fier de toi, je suis. ». Trois minutes plus tard, il repart. Si la prod finit pendant le daily, il les rejoint à la table du daily ; le vendredi et le week-end, plateau fermé, il attend devant le ruban. Sa réplique ne cache jamais les bulles de ses voisins : elle se décale à droite, à gauche ou au-dessus.
 
 ![Le héraut félicite Andy sur le plateau TV](../img/prod-heraut.png)
+
+![Creed sort de panne : « ✅ Rétabli ! » et les applaudissements des autres agents](../img/agent-retabli.png)
 
 Gandalf et Yoda viennent dans tous les bureaux, quelle que soit l'équipe (`team/guests.json`). Pour les retirer : `"common_guests": false` dans `bureau.config.json` ; pour en changer le nom, la réplique ou l'allure : un invité de même clé (`g_gandalf`, `g_yoda`) dans le roster de l'équipe ou dans la config.
 
@@ -128,7 +130,18 @@ Le canard appartient à toute l'équipe : il grandit avec le travail collectif d
 
 ![Le canard détective, avec ses lunettes et sa loupe, et ses 4 canetons](../img/canard-canetons.png)
 
-Quand il change de stade, ou quand un caneton naît (dans les 2 heures qui suivent le début d'un sprint, si le précédent est tenu), la [loupe](#loupe-sur-les-événements-forts) s'ouvre sur lui. Les chiffres viennent du cron « Le Bureau · canard d'équipe » (toutes les heures, 0 token) : graphique de vélocité et réouvertures dans Jira, runs des agents et discussions dans Kronn, mises en prod et reviews avec `gh`. Sans ces données, il reste un canard de bain, sans canetons.
+Ses moments forts se jouent en petites scènes de 3 secondes (puis leur bulle reste 4 secondes), à l'heure du fait, en direct comme en rejeu :
+
+- **Succès débloqué** : l'accessoire tombe du ciel et se pose sur lui, dans des étincelles, avec la bulle « 🏆 Lève-tôt ! ». Il ne le porte qu'à partir de cette heure : celle de la mise en prod pour « Lève-tôt », le lundi à l'ouverture du bureau pour les succès de la semaine passée, le début du sprint pour ceux du sprint.
+- **Éclosion** : quand il atteint le stade caneton, l'œuf tremble, se fend (« crac ! »), la coquille vole et le caneton sort.
+- **Changement de stade** : un nuage « POUF » le cache, il ressort à son nouveau stade (« Canard détective ! ») ; au premier jour du sprint, le même nuage le fait muer en œuf.
+- **Caneton né** : au début d'un sprint qui suit un sprint tenu, un petit œuf tremble juste derrière lui, puis le nouveau caneton rejoint la file.
+
+| Succès débloqué | Éclosion |
+| --- | --- |
+| ![La casquette de « Lève-tôt » vient de se poser](../img/canard-succes.png) | ![Le caneton sort de l'œuf](../img/canard-eclosion.png) |
+
+Quand il change de stade, gagne un succès ou qu'un caneton naît (dans les 2 heures qui suivent le début d'un sprint, si le précédent est tenu), la [loupe](#loupe-sur-les-événements-forts) s'ouvre aussi sur lui. Les chiffres viennent du cron « Le Bureau · canard d'équipe » (toutes les heures, 0 token) : graphique de vélocité et réouvertures dans Jira, runs des agents et discussions dans Kronn, mises en prod et reviews avec `gh`. Sans ces données, il reste un canard de bain, sans canetons.
 
 ## Changer de plan pour toute l'équipe
 
@@ -172,7 +185,7 @@ Quand un événement fort commence, un cadre de couleur entoure la scène sur le
 | --- | --- |
 | ![La loupe sur une réouverture](../img/loupe.png) | ![La loupe sur le daily](../img/loupe-daily.png) |
 
-- **Les événements** : un ticket réouvert (⛔, le héraut convoque l'assigné), une mise en prod réussie (🎉, le sage félicite l'auteur), la fête d'une MEP (🎉), un invité qui arrive (👋), le pouce du testeur qui valide (👍), le canard qui change de stade (🦆) ou un caneton qui naît (🐣), et les cérémonies : daily (☀️), sprint planning (🗓), rétro (🔄), lancement du sprint (🏁), pizza de fin de sprint (🍕). Pour une cérémonie, la légende la nomme et compte l'équipe (« Daily de l'équipe · 10 personnes »), l'animateur en dessous.
+- **Les événements** : un ticket réouvert (⛔, le héraut convoque l'assigné), une mise en prod réussie (🎉, le sage félicite l'auteur), la fête d'une MEP (🎉), un invité qui arrive (👋), le pouce du testeur qui valide (👍), le canard qui change de stade (🦆), gagne un succès (🏆) ou dont un caneton naît (🐣), et les cérémonies : daily (☀️), sprint planning (🗓), rétro (🔄), lancement du sprint (🏁), pizza de fin de sprint (🍕). Pour une cérémonie, la légende la nomme et compte l'équipe (« Daily de l'équipe · 10 personnes »), l'animateur en dessous.
 - **Une loupe à la fois**, ouverte une fois les personnages arrivés (40 s au plus d'attente), pendant 20 s ; deux événements au même endroit (la fête et le sage) n'en font qu'une.
 - **En rejeu accéléré** (même à x1500), la lecture s'arrête dès qu'un événement commence, le temps que les personnages arrivent et que la loupe passe, puis reprend. Deux événements au même endroit : le plus parlant d'abord (le sage avant la fête de MEP). Rien quand on fait glisser l'heure, ni quand la souris est sur le plan.
 - **Fermer** : ✕, clic sur le plan ou Échap. **Couper** : bouton « 🔍 Loupe » sous le plan (retenu dans le navigateur) ; sur l'écran mural, `?loupe=0` dans l'adresse.

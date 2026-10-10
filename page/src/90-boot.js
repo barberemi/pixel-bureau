@@ -20,6 +20,7 @@ function loop(now){
       if(!document.querySelector('.side details[open]'))renderSide();else refreshStatus();
     }
     pumpSheets(8);
+    fxFrame(now); // 43-fx.js : petites scènes de 3 s (succès, éclosion, stade, agent rétabli)
     render(now);
     loupeFrame(now); // 44-loupe.js : médaillon sur l'événement fort en cours
     drawPreview(now);

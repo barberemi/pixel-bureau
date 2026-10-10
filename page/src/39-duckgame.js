@@ -94,21 +94,22 @@ function duckProgress(t){
   let i=0;DUCK_STAGES.forEach((s,k)=>{if(pct>=s.at)i=k;});
   return {pts,target:D.target,pct,stage:DUCK_STAGES[i],next:DUCK_STAGES[i+1]||null};
 }
-function duckWorn(){
-  const T_=(DUCKGAME&&DUCKGAME.trophies)||{}, won=DUCK_TROPHIES.filter(x=>T_[x.id]&&T_[x.id].ok).map(x=>x.acc);
+function duckWorn(t){ // un succès daté (at) ne se porte qu'à partir de sa date : il suit le rejeu
+  const T_=(DUCKGAME&&DUCKGAME.trophies)||{}, won=DUCK_TROPHIES.filter(x=>T_[x.id]&&T_[x.id].ok&&!(T_[x.id].at&&ms(T_[x.id].at)>t)).map(x=>x.acc);
   const head=DUCK_HEADS.find(a=>won.includes(a));
   return won.filter(a=>!DUCK_HEADS.includes(a)||a===head);
 }
 // allure : stade, accessoires (pas sur l'œuf), canetons ; sans données, le canard de bain d'avant
 function duckLook(t){
   const p=duckProgress(t); if(!p)return {stage:'bain',acc:[],kids:0};
-  return {stage:p.stage.id,acc:p.stage.id==='oeuf'?[]:duckWorn(),kids:DUCKGAME.canetons||0};
+  return {stage:p.stage.id,acc:p.stage.id==='oeuf'?[]:duckWorn(t),kids:DUCKGAME.canetons||0};
 }
 // ---------- sur le plan : la file des canetons derrière lui (là où il était quelques pas plus tôt, plus loin s'ils sont grands) ----------
 function drawDuckKids(now,look){
-  const n=Math.min(DUCK_KIDS_MAX,look.kids); if(!n||!DUCK_POS)return;
+  const n=Math.min(DUCK_KIDS_MAX,look.kids); if(!DUCK_POS)return;
+  const at=i=>(DUCK_POS.call?null:duckWalk(T-i*.9*DUCK_SCALE*DUCK_STEP))||{x:DUCK_POS.x-i*TS*.6*DUCK_SCALE,y:DUCK_POS.y,dir:DUCK_POS.dir,moving:false};
   for(let i=n;i>=1;i--){
-    const q=(DUCK_POS.call?null:duckWalk(T-i*.9*DUCK_SCALE*DUCK_STEP))||{x:DUCK_POS.x-i*TS*.6*DUCK_SCALE,y:DUCK_POS.y,dir:DUCK_POS.dir,moving:false};
+    const q=at(i);
     const x=Math.round(q.x), y=Math.round(q.y)-4, w=q.moving?Math.sin(now/120+i):0;
     ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.ellipse(x,y+1,4*DUCK_SCALE,1.2*DUCK_SCALE,0,0,7);ctx.fill();
     ctx.save();ctx.translate(x,y+(q.moving&&w>0?-1:0));ctx.rotate(w*.12);if(q.dir==='left')ctx.scale(-1,1);ctx.scale(DUCK_SCALE,DUCK_SCALE);
@@ -133,6 +134,11 @@ function duckLoupeEvents(t){
     DUCK_HATCH_CHAR._st.label='Un caneton est né : le sprint '+last.name+' est tenu ('+DUCKGAME.canetons+' en tout)';
     out.push({id:'hatch:'+sp.name,kind:'hatch',cs:[DUCK_HATCH_CHAR]});
   }
+  const T_=DUCKGAME.trophies||{};
+  for(const x of DUCK_TROPHIES){const s=T_[x.id];if(s&&s.ok&&s.at&&ms(s.at)<=t&&t-ms(s.at)<FX_WIN){
+    const c={...DUCK_LOUPE_CHAR,_st:{st:'trophy',label:'Succès débloqué : '+x.name+(s.detail&&!/^aucun/.test(s.detail)?' · '+s.detail:'')}};
+    Object.defineProperties(c,{pos:{get:()=>DUCK_POS&&{x:DUCK_POS.x,y:DUCK_POS.y}},moving:{get:()=>!!(DUCK_POS&&DUCK_POS.moving)}});
+    out.push({id:'trophy:'+x.id+':'+s.at,kind:'trophy',cs:[c]});}}
   return out;
 }
 // ---------- sa fiche : « Son sprint » et « Ses trophées » ----------

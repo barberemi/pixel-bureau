@@ -4,7 +4,7 @@ Entrée (stdin) : {"sprint": sprint actif (sprint_info), "velocity": graphique d
 terminés de chacun), "reopens": tickets réouverts pendant le sprint précédent}. Lit aussi les runs Kronn (pannes de la
 semaine), les discussions du canard, et `gh` (mises en prod du sprint, reviews de la semaine).
 Sortie (stdout) : {generated_at, sprint{name,start,end}, target, sprints[{id,name,done,target,held}], canetons, streak,
-trophies{id: {ok, period?, detail?, progress?}}, errors[]}
+trophies{id: {ok, at?, period?, detail?, progress?}}, errors[]}
 - Un sprint est tenu quand ses points terminés atteignent la moyenne des 4 sprints fermés avant lui ; la cible du sprint
   en cours est la moyenne des 4 derniers. Un caneton par sprint tenu parmi ceux que Jira donne (12 au plus, donc 8 jugés).
 - Tout est collectif : aucun chiffre par personne. Une source muette n'arrête rien, elle est notée dans `errors`.
@@ -101,6 +101,11 @@ for s in sprints:
 start = parse(sp.get("startDate")) or now - timedelta(days=14)
 w0, w1 = week_bounds(now)
 week = f"sem. du {day_label(w0)}"
+# date de chaque succès (la page ne le porte qu'à partir de là, et joue sa scène à cette heure) : ceux de la semaine passée,
+# le lundi suivant à l'ouverture du bureau ; ceux du sprint, à son début
+OPEN_H = int(((CFG.get("rhythm") or {}).get("office_hours") or [8, 20])[0])
+week_at = (w0 + timedelta(days=7)).replace(hour=OPEN_H).astimezone(timezone.utc).isoformat()
+sprint_at = start.astimezone(timezone.utc).isoformat()
 trophies = {}
 
 # Zéro panne : aucun agent (workflow hors Bureau) n'a eu 3 échecs d'affilée la semaine dernière
@@ -120,25 +125,27 @@ try:
         runs.sort(key=lambda r: r["started_at"])
         if worst_streak([r.get("status") for r in runs]) >= 3:
             down.append(wf.get("name") or "?")
-    trophies["zero_panne"] = {"ok": not down, "period": week, "detail": f"{len(down)} agent(s) en panne" if down else "aucun agent en panne"}
+    trophies["zero_panne"] = {"ok": not down, "period": week, "at": week_at, "detail": f"{len(down)} agent(s) en panne" if down else "aucun agent en panne"}
 except Exception as e:
     errors.append(f"runs Kronn : {e}")
 
 # Pas un reopen : aucun ticket réouvert pendant le sprint précédent
 if D.get("reopens") is not None and sprints:
     n = len(D.get("reopens") or [])
-    trophies["pas_reopen"] = {"ok": n == 0, "period": sprints[0]["name"], "detail": f"{n} réouverture(s)" if n else "aucune réouverture"}
+    trophies["pas_reopen"] = {"ok": n == 0, "period": sprints[0]["name"], "at": sprint_at, "detail": f"{n} réouverture(s)" if n else "aucune réouverture"}
 
 # Bavard : 10 discussions avec le canard (titre « 🦆 … »), depuis toujours
 try:
-    n = sum(1 for d in get("/discussions?per_page=200") if str(d.get("title") or "").startswith("🦆"))
-    trophies["bavard"] = {"ok": n >= 10, "progress": f"{min(n, 10)} / 10"}
+    ducks = sorted(str(d.get("created_at") or d.get("updated_at") or "") for d in get("/discussions?per_page=200")
+                   if str(d.get("title") or "").startswith("🦆"))
+    n = len(ducks)
+    trophies["bavard"] = {"ok": n >= 10, "progress": f"{min(n, 10)} / 10", **({"at": ducks[9]} if n >= 10 and ducks[9] else {})}
 except Exception as e:
     errors.append(f"discussions : {e}")
 
 # Triplé : les 3 derniers sprints tenus
 if sprints:
-    trophies["triple"] = {"ok": streak >= 3, "progress": f"{min(streak, 3)} / 3"}
+    trophies["triple"] = {"ok": streak >= 3, "progress": f"{min(streak, 3)} / 3", "at": sprint_at}
 
 G = CFG.get("github") or {}
 # Lève-tôt : une mise en prod réussie avant 11h depuis le début du sprint (tous les dépôts suivis)
@@ -157,7 +164,7 @@ for repo, wf in prods:
     except Exception as e:
         errors.append(f"gh {repo} : {e}")
 if any(r and w for r, w in prods):
-    trophies["leve_tot"] = {"ok": bool(early), "period": sp.get("name") or "",
+    trophies["leve_tot"] = {"ok": bool(early), "period": sp.get("name") or "", **({"at": early[0].astimezone(timezone.utc).isoformat()} if early else {}),
                             "detail": f"{early[1][:60]} à {early[0].astimezone(TZ):%H:%M}" if early else "pas encore de MEP avant 11h"}
 
 # Relu dans la journée : chaque PR ouverte la semaine dernière a eu sa première review en moins de 24 h ouvrées
@@ -176,7 +183,7 @@ if G.get("repo"):
             created = parse(p.get("createdAt"))
             if first and created and business_hours(created, first) <= 24:
                 fast += 1
-        trophies["relu_24h"] = {"ok": bool(total) and fast == total, "period": week, "progress": f"{fast} / {total}"}
+        trophies["relu_24h"] = {"ok": bool(total) and fast == total, "period": week, "at": week_at, "progress": f"{fast} / {total}"}
     except Exception as e:
         errors.append(f"gh reviews : {e}")
 
