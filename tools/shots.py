@@ -43,7 +43,8 @@ SHOTS = {
     # thème Equipe (bouton 🎨) : habillage pixel aux couleurs d'Equipe, fiche d'un collègue ouverte
     "theme-equipe": (1400, 1000, AT(11) + "applySkin('equipe');select((chars.find(c=>c.person&&c.team&&c.team.tickets.length)||{}).key);scrollTo(0,0);", None),
     "qui-fait-quoi": (1400, 1400, AT(11), "#who"),
-    "fil": (1400, 1400, AT(11) + "document.querySelector('#feed').style.maxHeight='520px';"
+    # fil à 18h30 (Important) : les rétablissements de Creed et Meredith en haut
+    "fil": (1400, 1400, AT(18.5) + "FEED_MODE='important';renderFeed();document.querySelector('#feed').style.maxHeight='620px';"
             "document.querySelector('#feed').style.overflow='hidden';", ".feed"),
     "recap": (1400, 1200, AT(11) + "RECAP_OPEN=true;renderRecap();", "#recap"),
     "rejouer": (1400, 1200, AT(9.7) + "setMode('play');", ".stage", 1.5),

@@ -140,9 +140,25 @@ function teamEventTxt(e){
   }
   return null;
 }
+// pannes d'un agent jusqu'à t, avec la règle de l'alarme (failStreak) : en panne au ALARM_FAILS-ième échec d'affilée
+// (runs de premier niveau), rétabli au succès suivant ; [{t, up, n, wf}], n = échecs d'affilée à ce moment
+function agentDowns(c,t){
+  const ids=new Set(c.runs.map(r=>r.run)), done=c.runs.filter(r=>!(r.parent&&ids.has(r.parent))&&r._s<=t&&t>=r._ve), out=[];
+  let n=0;
+  for(const r of done){
+    if(r.status==='Failed'||r.status==='Cancelled'){if(++n===ALARM_FAILS)out.push({t:r._ve,up:false,n,wf:clean(r.wf_name)});}
+    else{if(n>=ALARM_FAILS)out.push({t:r._ve,up:true,n,wf:clean(r.wf_name)});n=0;}
+  }
+  return out;
+}
 function renderFeed(){
   if(!DATA)return;
   const ev=[];
+  // pannes et rétablissements : en « Important », elles remplacent la ligne « ×16 · 16 ✗ » de l'agent (feedView)
+  for(const c of chars){if(c.person||c.visitor||c.guest||!c.runs)continue;
+    for(const d of agentDowns(c,T))ev.push({t:d.t,c,down:c.key,
+      txt:d.up?`<span style="color:var(--ok)">✅</span> ${refWho(c)} rétabli <small>après ${plural(d.n,'échec','échecs')} d'affilée</small>`
+        :`🚨 ${refWho(c)} en panne <small>${d.n} échecs d'affilée sur <b>${esc(d.wf)}</b></small>`});}
   for(const c of chars)for(const r of (c.top||c.runs)){
     const g=c.visitor?null:c.key+'|'+(r.wf||''), done=r._e&&r._e<=T;
     if(r._s<=T)ev.push({
@@ -212,7 +228,7 @@ function renderFeed(){
 const FEED_REPEAT=4, FEED_PAGE=30;
 let FEED_MODE='important', FEED_N=FEED_PAGE, FEED_SIG='', FEED_VIEW=[];
 try{FEED_MODE=localStorage.getItem('bureau:feed')||'important';}catch(e){}
-// important : l'équipe, les MEP, les visiteurs et les échecs d'agents ; tout : en plus les lancements et les succès.
+// important : l'équipe, les MEP, les visiteurs, les pannes et les échecs d'agents ; tout : en plus les lancements et les succès.
 // Un même workflow lancé plus de FEED_REPEAT fois dans la journée (crons horaires) tient en une ligne : « ×21, 0 ✓ 21 ✗ ».
 // jour des données affichées : « aujourd'hui », sinon « hier » ou la date (avant le premier cron du matin, c'est la veille)
 function dataDayWord(){
@@ -222,7 +238,7 @@ function dataDayWord(){
 function feedView(ev,mode){
   const groups={};
   for(const e of ev)if(e.agent&&e.kind!=='start')(groups[e.grp]=groups[e.grp]||[]).push(e);
-  const out=[], summarized=new Set();
+  const out=[], summarized=new Set(), down=new Set(ev.filter(e=>e.down).map(e=>e.down));
   for(const e of ev){
     if(!e.agent){out.push(e);continue;}
     const g=groups[e.grp]||[];
@@ -230,7 +246,7 @@ function feedView(ev,mode){
       if(summarized.has(e.grp))continue;
       summarized.add(e.grp);
       const ko=g.filter(x=>x.kind==='ko').length, ok=g.length-ko, last=g[0];
-      if(mode==='important'&&!ko)continue;
+      if(mode==='important'&&(!ko||down.has(last.c.key)))continue; // en panne : ses lignes de panne le disent mieux
       out.push({t:last.t,c:last.c,txt:`<span style="color:${last.kind==='ko'?'var(--err)':'var(--ok)'}">${last.kind==='ko'?'✗':'✓'}</span> ${refWho(last.c)} · <b>${esc(last.wf||'')}</b> <small>×${g.length} ${dataDayWord()} · ${ok} ✓ · ${ko} ✗${last.kind==='ko'?' · dernier en échec':''}</small>`});
       continue;
     }
