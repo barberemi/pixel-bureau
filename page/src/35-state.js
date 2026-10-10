@@ -110,6 +110,8 @@ function stateAt(c,t){
     label:'MEP un '+(parisHM(t).wd==='Fri'?'vendredi':'week-end')+' ! Plateau fermé : '+s1.label,
     bubble:'😱'
   };
+  // en télétravail (36-absences.js) : à sa place, en transparence, avec le reste de sa journée (daily, cérémonies en visio)
+  if(c.person&&!c.boss&&s1&&!['off','absent','gone'].includes(s1.st)&&presenceAt(c,t).tt)return {...s1,tt:true,label:'En télétravail · '+s1.label};
   return s1;
 }
 // ---------- invités de passage : au plus une visite par jour, heure et durée tirées au sort (fixes pour une date) ----------
@@ -240,6 +242,7 @@ function stateAt0(c,t){
   if(c.guest)return guestState(c,t);
   if(c.person&&!c.boss){
     const h=+dtf('en-GB',{hour:'numeric',hour12:false}).format(new Date(t));
+    {const pr=presenceAt(c,t);if(pr.abs&&!RHYTHM.weekend.includes(parisHM(t).wd))return {st:'off',abs:pr.abs,label:ABS_LABEL[pr.abs]};} // 36-absences.js : planning de l'équipe
     {const ho=holoEvening(c,t);if(ho)return ho;} // 38-passions.js : le soir en hologramme (avant le week-end : vendredi soir jusqu'au samedi 3 h)
     if(RHYTHM.weekend.includes(parisHM(t).wd))return {st:'off',label:'En week-end'}; // seul le boss vient le week-end
     if(h<RHYTHM.office_hours[0]||h>=RHYTHM.office_hours[1])return {st:'off',label:'Rentré chez soi'};

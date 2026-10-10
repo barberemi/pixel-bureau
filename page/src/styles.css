@@ -322,6 +322,7 @@ button.wc.on{background:color-mix(in srgb,var(--accent) 14%,var(--panel));color:
 .wc .ws{font-weight:500;font-size:11px;color:var(--muted);white-space:nowrap}
 .wc .ww{font-size:12.5px;line-height:1.35;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;border-left:3px solid var(--tk);padding-left:5px;margin-top:2px}
 .wc .wsub{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.wc.abs{background:transparent}.wc.abs .wp img{filter:grayscale(1)}.wc.abs .wn,.wc.abs .ww{color:var(--muted)} /* absence (36-absences.js) */
 .wc .ww.nt{border-left:0;padding-left:0}
 /* tuiles du haut : 4 blocs, une question chacun */
 .dash{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:4px}
@@ -450,6 +451,7 @@ body.tv.tvscene #tvscene{display:block;flex:1;overflow:hidden;background:var(--t
 #tvscene p{margin:10px 0}
 #tvscene .sc-tab{border-collapse:collapse;margin-top:clamp(12px,1.5vw,24px);font-size:clamp(17px,1.35vw,26px)}
 #tvscene .sc-tab th{color:var(--tv-muted);font-weight:600;text-align:center;padding:4px 18px;font-size:.8em}
+#tvscene .sc-away{margin-top:clamp(10px,1.2vw,20px);font-size:clamp(16px,1.2vw,24px);color:var(--tv-muted)}#tvscene .sc-away b{color:var(--tv-ink)} /* absences du jour (36-absences.js) */
 #tvscene .sc-tab td{padding:4px 18px;text-align:center;border-top:1px solid var(--tv-line)}#tvscene .sc-tab td:first-child{text-align:left;font-weight:700}
 /* minmax(0,…) : un titre long ne pousse pas l'autre colonne hors de l'écran */
 #tvscene .sc-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(18px,2vw,40px)}

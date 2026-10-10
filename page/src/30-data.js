@@ -154,7 +154,8 @@ function ceremonyAt(t){
 }
 // qui anime : la facilitatrice pour le planning, un collègue tiré au sort pour la rétro (le même pour tous, d'après la date)
 function ceremonyHost(cr){
-  const all=chars.filter(c=>c.person), ppl=all.some(c=>c.sprite!=='temp')?all.filter(c=>c.sprite!=='temp'):all; if(!ppl.length)return null; // pas un intérimaire
+  const all=chars.filter(c=>c.person), real=all.some(c=>c.sprite!=='temp')?all.filter(c=>c.sprite!=='temp'):all; // pas un intérimaire
+  const ppl=real.filter(c=>c.boss||!absentAt(c,cr.start)).length?real.filter(c=>c.boss||!absentAt(c,cr.start)):real; if(!ppl.length)return null; // les absents n'animent pas
   if(cr.k==='planning')return ppl.find(c=>c.roleKind==='sm')||ppl.find(c=>c.boss)||ppl[0];
   return ppl[Math.floor(hash(dayNum(cr.start)%100000,17)*ppl.length)%ppl.length];
 }

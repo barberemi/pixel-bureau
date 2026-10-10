@@ -15,6 +15,7 @@ const tkTip=list=>list.map(x=>x.key+' '+tkComp(x.summary).title).join('\n');
 const moreTk=n=>n>1?' · +'+(n-1)+' autre'+(n>2?'s':''):'';
 function whoLine(c,st,t,pub){
   if(c.boss)return bossLine(c,st,pub);
+  if(st.abs)return {what:st.label,sub:''};
   if(st.head)return {what:st.head,sub:st.sub||'',tone:st.chips&&st.chips.length?CAT_COLOR[st.chips[0].cat]:null,tip:st.chips?tkTip(st.chips):''}; // rôles (testeur, PO, facilitatrice) : titre court, détail en gris
   if(st.tk&&st.tk.length){
     const x=st.tk[0], age=tkAge(x,t);
@@ -55,8 +56,8 @@ function bossLine(c,st,pub){ // pub : écran partagé (TV), sans ce qui n'attend
   };
 }
 function whoCards(t,teamOnly){
-  const list=chars.filter(c=>!c.guest&&c.present!==false&&c._st&&(!teamOnly||c.person)&&(c.boss||c.person?!['off','absent','gone'].includes(c._st.st):WHO_ACTIVE.includes(c._st.st)));
-  const score=c=>c.boss?-1e9:(WHO_ATTN.includes(c._st.st)?0:c.person?1:2)*1000+rank(c);
+  const list=chars.filter(c=>!c.guest&&c._st&&(!teamOnly||c.person)&&(c.person&&c._st.abs&&c._st.abs!=='ferie'||c.present!==false&&(c.boss||c.person?!['off','absent','gone'].includes(c._st.st):WHO_ACTIVE.includes(c._st.st))));
+  const score=c=>c.boss?-1e9:c._st.abs?1e9+rank(c):(WHO_ATTN.includes(c._st.st)?0:c.person?1:2)*1000+rank(c); // les absents en dernier (36-absences.js)
   return list.sort((a,b)=>score(a)-score(b)).map(c=>{
     const st=c._st, l=whoLine(c,st,t,teamOnly), run=st.run;
     return {
@@ -76,7 +77,7 @@ function renderWho(){
   const body=COLLAPSED.who?'':'<div class="who-grid">'+cards.map(x=>{
     const img=portraitUrl(x.c);
     const tip=[x.what,x.sub,x.tip].filter(Boolean).join('\n');
-    return `<button class="wc${x.attn?' attn':''}${sel===x.c.key?' on':''}" data-who="${esc(x.c.key)}" title="${esc(tip)}" style="--st:${ST_CSS[x.st.st]||'var(--idle)'};--tk:${x.tone||'transparent'}">`+
+    return `<button class="wc${x.attn?' attn':''}${x.st.abs?' abs':''}${sel===x.c.key?' on':''}" data-who="${esc(x.c.key)}" title="${esc(tip)}" style="--st:${ST_CSS[x.st.st]||'var(--idle)'};--tk:${x.tone||'transparent'}">`+
       `<span class="wp">${img?`<img src="${img}" alt="">`:''}</span>`+
       `<span class="wt"><span class="wn">${esc(agentTag(x.c)+x.c.name)}<span class="ws">${esc(shortSt(x.st))}${x.since?' · '+esc(x.since):''}</span></span>`+
       `<span class="ww${x.tone?'':' nt'}">${esc(x.what)}</span>${x.sub?`<span class="wsub">${esc(x.sub)}</span>`:''}</span></button>`;

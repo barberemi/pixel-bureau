@@ -338,6 +338,8 @@ function renderPerson(side,c){
   }
 }
 function shortSt(st){
+  if(st.abs)return ABS_SHORT[st.abs]; // 36-absences.js
+  if(st.tt)return '🏠 télétravail · '+shortSt({...st,tt:false});
   if(st.human&&st.st==='work')return 'en cours';
   return {
     sax:'joue du sax',

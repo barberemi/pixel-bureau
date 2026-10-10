@@ -32,14 +32,20 @@ function sceneSprint(t){
     `<p>${fmtPts(s.ptsDone)} / ${fmtPts(s.ptsAll)} points terminés${s.time!=null?' · '+Math.round(s.time*100)+' % du temps écoulé':''}${s.j!=null?' · J-'+s.j:''}</p>`+
     `<p class="sc-cats"><span>${c.todo} à faire</span><span style="color:${CAT_COLOR.doing}">${c.doing} en cours</span><span style="color:${CAT_COLOR.review}">${c.review} en review</span><span style="color:${CAT_COLOR.test}">${c.test} en test</span><span>${c.done} terminés</span></p></div></div>`+
     `<table class="sc-tab"><tr><th></th><th>en cours</th><th>review</th><th>test</th><th>terminés</th></tr>`+
-    rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.doing||''}</td><td>${r.review||''}</td><td>${r.test||''}</td><td>${r.done||''}</td></tr>`).join('')+'</table>';
+    rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.doing||''}</td><td>${r.review||''}</td><td>${r.test||''}</td><td>${r.done||''}</td></tr>`).join('')+'</table>'+sceneAway(t);
+}
+// qui n'est pas au bureau aujourd'hui (36-absences.js) : sous le tableau du sprint
+function sceneAway(t){
+  const ppl=chars.filter(c=>c.person&&c.sprite!=='temp'), abs=ppl.filter(c=>presenceAt(c,t).abs||dayCode(c,t)==='aa'), tt=ppl.filter(c=>!abs.includes(c)&&presenceAt(c,t).tt);
+  const half=c=>{const v=dayCode(c,t);return v==='ab'||v==='at'?' (ce matin)':v==='ba'||v==='ta'?' (cet après-midi)':'';};
+  return abs.length||tt.length?`<p class="sc-away">${abs.length?`Absences aujourd'hui : <b>${abs.map(c=>esc(c.name)+half(c)).join(', ')}</b>`:''}${abs.length&&tt.length?' · ':''}${tt.length?`🏠 En télétravail : <b>${tt.map(c=>esc(c.name)).join(', ')}</b>`:''}</p>`:'';
 }
 // ---------- tour de table : une scène par personne, en commençant par le Tech Lead ----------
 // ordre : Tech Lead, développeurs, testeur, cheffe produit, apprentis sans ticket, facilitatrice (qui conclut)
 const STANDUP_RANK={lead:0,qa:2,po:3,sm:5};
 const ST_ORDER=['doing','review','test','todo','deploy','done'];
 function standupPeople(){
-  return chars.filter(c=>c.person).map((c,i)=>({c,i,r:c.roleKind in STANDUP_RANK?STANDUP_RANK[c.roleKind]:(!c.team&&c.standup?4:1)}))
+  return chars.filter(c=>c.person&&(c.boss||!absentAt(c,T))).map((c,i)=>({c,i,r:c.roleKind in STANDUP_RANK?STANDUP_RANK[c.roleKind]:(!c.team&&c.standup?4:1)}))
     .sort((a,b)=>a.r-b.r||a.i-b.i).map(x=>x.c);
 }
 // dernier daily avant t (jours ouvrés) : les « nouveaux tickets » sont ceux créés depuis

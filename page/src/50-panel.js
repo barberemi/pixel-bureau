@@ -190,6 +190,9 @@ function drawSide(side){
     e.innerHTML=`<div class="e" style="margin-left:0">${esc(st.step.err)}</div>`;
     side.appendChild(e);
   }
+  if(c.boss){const pr=presenceAt(c,T); // le boss reste à son bureau sur le plan : son absence ne se lit qu'ici et au calendrier
+    if(pr.abs||pr.tt){const n=document.createElement('p');n.className='note';n.textContent='📅 Selon le planning : '+(pr.abs?ABS_LABEL[pr.abs].toLowerCase():'en télétravail')+'.';side.appendChild(n);}
+  }
   if(c.boss){const p=document.createElement('p');p.style.color='var(--muted)';const gates=chars.filter(x=>x._st&&x._st.st==='gate'), lone=loneGates();
     if(!gates.length&&!lone.length){p.textContent="Personne n'attend ta validation. Le bureau tourne tout seul.";side.appendChild(p);}
     for(const x of gates){const r=x._st&&x._st.run;if(r)gateCard(side,r,x.name);}
