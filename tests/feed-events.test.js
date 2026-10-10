@@ -123,10 +123,22 @@ test('tes actions : lancements à la main en « Important », commentaires, ques
   assert.deepEqual(e, [
     ['imp', '🔁 Tu relances Ryan Implémentation ticket'],
     ['tout', '❓ Tu interroges Kevin « Pourquoi ? »'],
-    ['imp', '🔁 Tu lances Kevin Implémentation ticket'],
+    ['imp', '▶️ Tu lances Kevin Implémentation ticket'],
     ['tout', '💬 Tu commentes DM-7089 « Je regarde »'],
     ['tout', '🦆 Tu ouvres une discussion avec le canard « Le build casse »'],
     ['imp', '🤖 Tu lances Implémentation ticket sur DM-7911 Ryan s\'y met']]);
   assert.match(run(`feedMyActions(${at('2026-10-01', '18:00')}).find(x => /DM-7911/.test(x.txt)).txt`), /Tu lances <a [^>]*data-who="ryan"[^>]*>Implémentation ticket<\/a>/);
   assert.equal(J(`feedMyActions(${at('2026-10-01', '09:30')}).length`), 2); // rejeu : relance de 9h et question de 9h15
+});
+
+test('types : chaque événement du fil a le sien ; une pastille éteinte retire ses lignes, et elle est retenue', () => {
+  run(`TEAM = mergedTeam(); refreshAll(); DUCKGAME = null; DUCKS = []; GATES = []; T = DAY0 + 18.5 * 3600e3; FEED_MODE = 'all'; FEED_OFF = new Set(); renderFeed();`);
+  const tys = J(`[...new Set(FEED_ALL.map(e => e.ty))].sort()`);
+  assert.deepEqual(tys, ['agents', 'equipe', 'mep', 'pr', 'tickets']);
+  assert.equal(J(`FEED_EV.filter(e => !e.ty).length`), 0);
+  run(`FEED_OFF = new Set(['agents', 'mep']); showFeed();`);
+  assert.ok(J(`FEED_VIEW.length`) > 0);
+  assert.equal(J(`FEED_VIEW.filter(e => e.ty === 'agents' || e.ty === 'mep').length`), 0);
+  assert.equal(J(`FEED_ALL.length`) > J(`FEED_VIEW.length`), true);
+  run(`FEED_OFF = new Set();`);
 });

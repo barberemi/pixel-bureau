@@ -20,7 +20,7 @@ Le fil raconte la journée, heure par heure ; le récap la résume en quelques l
   - un nom grisé n'a pas de fiche (relecteur hors de l'équipe, par exemple) : la raison s'affiche au survol.
 
   Un clic ailleurs sur la ligne ouvre, comme avant, la fiche de la personne principale (ou celle de la mise en prod).
-- Filtre « Important » (par défaut) ou « Tout ». Le titre dit « hier » quand les données sont celles de la veille.
+- Filtre « Important » (par défaut) ou « Tout », et pastilles par type, avec leur nombre de lignes : 🙋 Toi (tes actions et tes validations), 🤖 Agents (runs, pannes, visiteurs), 📝 Tickets, ⇡ PR, 🚀 MEP, 👥 Équipe (daily, sprint, cérémonies, visites, canard). Un clic éteint ou rallume un type ; le navigateur s'en souvient. « En ce moment » reste affiché quels que soient les filtres. Le titre dit « hier » quand les données sont celles de la veille.
 
 ![Récap de la journée](../img/recap.png)
 

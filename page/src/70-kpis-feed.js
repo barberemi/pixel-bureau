@@ -240,7 +240,7 @@ function feedMyActions(t){
     top.forEach((r,i)=>{if(!r.man||!today(r._s))return;
       const key=r.vars&&r.vars.jira_ticket_key, wf=clean(r.wf_name);
       ev.push({t:r._s,c,txt:key?`🤖 Tu lances <a href="#" class="lk lk-who" data-who="${esc(c.key)}" title="Ouvrir sa fiche">${esc(wf)}</a> sur ${refTk(key)} <small>${refWho(c)} s'y met</small>`
-        :`🔁 Tu ${top.slice(0,i).some(x=>today(x._s))?'relances':'lances'} ${refWho(c)} <small>${esc(wf)}</small>`});});}
+        :(top.slice(0,i).some(x=>today(x._s))?`🔁 Tu relances ${refWho(c)}`:`▶️ Tu lances ${refWho(c)}`)+` <small>${esc(wf)}</small>`});});}
   for(const a of ((DATA&&DATA.actions)||[])){const at=ms(a.at);if(!today(at))continue;
     if(a.k==='comment')ev.push({t:at,imp:false,txt:`💬 Tu commentes ${refTk(a.key)} <small>« ${esc(a.txt||'')} »${a.ok?'':' · échec'}</small>`});
     if(a.k==='ask'){const c=a.wf&&chars.find(x=>x.wf&&x.wf.includes(String(a.wf).slice(0,8)));
@@ -255,12 +255,12 @@ function renderFeed(){
   const ev=[];
   FEED_PIN=feedPins(T);
   // tes décisions : la gate quitte « En ce moment » et entre dans le fil
-  for(const g of gateSteps(T))if(!g.waiting)ev.push({t:g.end,c:g.c,
+  for(const g of gateSteps(T))if(!g.waiting)ev.push({t:g.end,c:g.c,ty:'toi',
     txt:g.ok?`<span style="color:var(--ok)">✅</span> Tu valides la gate de ${refWho(g.c)} <small>« ${esc(g.n)} » · après ${esc(fmtDur(g.end-g.since))} d'attente</small>`
       :`⛔ Tu refuses la gate de ${refWho(g.c)} <small>« ${esc(g.n)} » · après ${esc(fmtDur(g.end-g.since))} d'attente</small>`});
   // pannes et rétablissements : en « Important », elles remplacent la ligne « ×16 · 16 ✗ » de l'agent (feedView)
   for(const c of chars){if(c.person||c.visitor||c.guest||!c.runs)continue;
-    for(const d of agentDowns(c,T))ev.push({t:d.t,c,down:c.key,
+    for(const d of agentDowns(c,T))ev.push({t:d.t,c,down:c.key,ty:'agents',
       txt:d.up?`<span style="color:var(--ok)">✅</span> ${refWho(c)} rétabli <small>après ${plural(d.n,'échec','échecs')} d'affilée</small>`
         :`🚨 ${refWho(c)} en panne <small>${d.n} échecs d'affilée sur <b>${esc(d.wf)}</b></small>`});}
   for(const c of chars)for(const r of (c.top||c.runs)){
@@ -268,7 +268,7 @@ function renderFeed(){
     if(r._s<=T)ev.push({
       t:r._s,
       c,
-      agent:!c.visitor,grp:g,kind:'start',done,
+      agent:!c.visitor,grp:g,kind:'start',done,ty:'agents',
       txt:c.visitor?`<span style="color:#d97757">●</span> ${refWho(c)} arrive pour « ${esc(clean(c.disc.title).replace(/\s+/g,' ').slice(0,70))} »`:`${refWho(c)} lance <b>${esc(clean(r.wf_name))}</b>`
     });
     if(done){
@@ -276,7 +276,7 @@ function renderFeed(){
       ev.push({
         t:r._e,
         c,
-        agent:!c.visitor,grp:g,kind:ko?'ko':'ok',wf:clean(r.wf_name),
+        agent:!c.visitor,grp:g,kind:ko?'ko':'ok',wf:clean(r.wf_name),ty:'agents',
         txt:ko?`<span style="color:var(--err)">✗</span> ${refWho(c)} se plante${fs?' sur <b>'+esc(fs.n)+'</b>':''} <small>${esc((fs&&fs.err||'').slice(0,90))}</small>`:`<span style="color:var(--ok)">✓</span> ${refWho(c)} termine <b>${esc(clean(r.wf_name))}</b> <small>${esc(fmtDur(r._e-r._s))}${r.tok?' · '+fmtTok(r.tok)+' tokens':''}</small>`
       });
     }
@@ -288,7 +288,7 @@ function renderFeed(){
     ev.push({
       t,
       c:c||null,
-      team:true,
+      team:true,ty:'pr',
       txt:`<span style="color:#7a5cc8">⇡</span> ${refWho(c,m.author)} merge ${refPr(m.n,m.url)} <small>${esc(m.title)}</small>`
     });
   }
@@ -296,43 +296,48 @@ function renderFeed(){
     const c=chars.find(x=>x.team&&x.team.id===m.who)||null;
     const who=refWho(c,String(m.who_name||'Quelqu’un').split(' ')[0]), tag=refTag(m.tag);
     const tk=m.ticket?' '+refTk(m.ticket):'';
-    const push=(t,txt)=>{if(t&&t<=T)ev.push({t,c,txt,tv:true,team:true});};
+    const push=(t,txt)=>{if(t&&t<=T)ev.push({t,c,txt,tv:true,team:true,ty:'mep'});};
     push(ms(m.released),`<span style="color:#7a5cc8">●</span> ${who} publie la release ${tag}${tk}`);
     if(m.staging&&m.staging.end)push(ms(m.staging.end),`<span style="color:#2e9e9b">●</span> ${tag} ${m.staging.conclusion==='success'?'validée sur staging':'échoue sur staging'}`);
     if(m.prod)push(ms(m.prod.start),`<span style="color:#7a5cc8">🚀</span> ${tag} part en prod`);
     if(m.prod&&m.prod.end)push(ms(m.prod.end),m.prod.conclusion==='success'?`<span style="color:var(--ok)">✓</span> ${tag} est en prod${tk}`:`<span style="color:var(--err)">✗</span> ${tag} échoue en prod`);
     }
   const created=TEAM?teamCreated(DAY0,T):[], createdKeys=new Set(created.map(x=>x.key)); // tickets créés aujourd'hui par l'équipe
-  for(const x of created)ev.push({t:ms(x.created),c:x.c,tv:true,team:true,
+  for(const x of created)ev.push({t:ms(x.created),c:x.c,tv:true,team:true,ty:'tickets',
     txt:`<span style="color:var(--info)">📝</span> ${refWho(x.c)} crée ${refTk(x.key,true)} <small>${esc(clip(x.summary,70))}</small>`});
-  if(TEAM)for(const e of (TEAM.events||[])){const t=ms(e.t);if(t&&t<=T&&!(e.kind==='new'&&createdKeys.has(e.key))){const x=teamEventTxt(e);if(x)ev.push({t,c:x.c,txt:x.txt,team:true});}} // déjà « X crée »
+  if(TEAM)for(const e of (TEAM.events||[])){const t=ms(e.t);if(t&&t<=T&&!(e.kind==='new'&&createdKeys.has(e.key))){const x=teamEventTxt(e);if(x)ev.push({t,c:x.c,txt:x.txt,team:true,ty:e.kind==='pr'||e.kind==='review'?'pr':'tickets'});}} // déjà « X crée »
   // relectures et travaux des agents sur le ticket ou la PR d'un collègue (A1)
   for(const c of chars){if(c.person||c.visitor)continue;
     for(const r of c.runs){if(!r._e||r._e>T||r.status!=='Success')continue;const ref=runRef(r);if(!ref)continue;
       const pc=runPartner(r)||(ref.pr&&prOwnerChar(ref.pr)), what=ref.pr?'la PR '+refPr(ref.pr):refTk(ref.key);
-      ev.push({t:r._e,c,team:true,txt:`🤖 ${refWho(c)} ${/review|revue|relu/i.test(r.wf_name||'')?'a relu':'a travaillé sur'} ${what}${pc?' de '+refWho(pc):''}${ref.pr&&ref.key?' '+refTk(ref.key):''}`});}}
+      ev.push({t:r._e,c,team:true,ty:ref.pr?'pr':'tickets',txt:`🤖 ${refWho(c)} ${/review|revue|relu/i.test(r.wf_name||'')?'a relu':'a travaillé sur'} ${what}${pc?' de '+refWho(pc):''}${ref.pr&&ref.key?' '+refTk(ref.key):''}`});}}
   // sprint : lancement et fin du jour (A2)
   if(TEAM&&TEAM.sprint){const sp=TEAM.sprint, st=ms(sp.start), en=ms(sp.end), sameDay=x=>x&&parisDay(x)===parisDay(T);
-    if(sameDay(st)&&st<=T)ev.push({t:st,c:smChar(),team:true,txt:`🏁 Le sprint <b>${esc(sp.name)}</b> commence <small>fin le ${esc(dtf('fr-FR',{weekday:'short',day:'numeric',month:'short'}).format(new Date(en)))}</small>`});
-    if(sameDay(en)&&en<=T){const d=dashData(T).sprint;ev.push({t:en,c:smChar(),team:true,txt:`🏁 Fin du sprint <b>${esc(sp.name)}</b> <small>${d&&d.ptsAll?Math.round(d.ptsDone/d.ptsAll*100)+' % des points terminés':''}</small>`});}}
+    if(sameDay(st)&&st<=T)ev.push({t:st,c:smChar(),team:true,ty:'equipe',txt:`🏁 Le sprint <b>${esc(sp.name)}</b> commence <small>fin le ${esc(dtf('fr-FR',{weekday:'short',day:'numeric',month:'short'}).format(new Date(en)))}</small>`});
+    if(sameDay(en)&&en<=T){const d=dashData(T).sprint;ev.push({t:en,c:smChar(),team:true,ty:'equipe',txt:`🏁 Fin du sprint <b>${esc(sp.name)}</b> <small>${d&&d.ptsAll?Math.round(d.ptsDone/d.ptsAll*100)+' % des points terminés':''}</small>`});}}
   {
     const dt=DAY0+DAILY_MIN*60e3;
     if(dt<=T&&!['Sat','Sun'].includes(parisHM(dt).wd))ev.push({
       t:dt,
       c:smChar(),
-      team:true,
+      team:true,ty:'equipe',
       txt:`<span style="color:#2e9e9b">●</span> Daily de l'équipe en cafétéria`
     });
   }
-  ev.push(...feedLifeEvents(T),...feedMyActions(T));
+  ev.push(...feedLifeEvents(T).map(e=>({ty:'equipe',...e})),...feedMyActions(T).map(e=>({ty:'toi',...e})));
   ev.sort((a,b)=>b.t-a.t);
   FEED_EV=ev;
-  renderFeedList(feedView(ev,FEED_MODE));
+  showFeed();
 }
 // ---------- vue du fil : runs répétés regroupés, filtre « Important / Tout », séparateurs par heure ----------
 const FEED_REPEAT=4, FEED_PAGE=30;
-let FEED_MODE='important', FEED_N=FEED_PAGE, FEED_SIG='', FEED_VIEW=[];
+let FEED_MODE='important', FEED_N=FEED_PAGE, FEED_SIG='', FEED_VIEW=[], FEED_ALL=[];
 try{FEED_MODE=localStorage.getItem('bureau:feed')||'important';}catch(e){}
+// filtre par type (pastilles, en plus d'« Important / Tout ») : on retient les types éteints, un type nouveau est donc allumé
+const FEED_TYPES=[['toi','Toi','🙋'],['agents','Agents','🤖'],['tickets','Tickets','📝'],['pr','PR','⇡'],['mep','MEP','🚀'],['equipe','Équipe','👥']];
+let FEED_OFF=new Set();
+try{FEED_OFF=new Set(JSON.parse(localStorage.getItem('bureau:feedtypes')||'[]'));}catch(e){}
+function showFeed(){const all=feedView(FEED_EV,FEED_MODE);renderFeedList(all.filter(e=>!FEED_OFF.has(e.ty||'equipe')),all);}
 // important : l'équipe, les MEP, les visiteurs, les pannes et les échecs d'agents ; tout : en plus les lancements et les succès.
 // Un même workflow lancé plus de FEED_REPEAT fois dans la journée (crons horaires) tient en une ligne : « ×21, 0 ✓ 21 ✗ ».
 // jour des données affichées : « aujourd'hui », sinon « hier » ou la date (avant le premier cron du matin, c'est la veille)
@@ -352,7 +357,7 @@ function feedView(ev,mode){
       summarized.add(e.grp);
       const ko=g.filter(x=>x.kind==='ko').length, ok=g.length-ko, last=g[0];
       if(mode==='important'&&(!ko||down.has(last.c.key)))continue; // en panne : ses lignes de panne le disent mieux
-      out.push({t:last.t,c:last.c,txt:`<span style="color:${last.kind==='ko'?'var(--err)':'var(--ok)'}">${last.kind==='ko'?'✗':'✓'}</span> ${refWho(last.c)} · <b>${esc(last.wf||'')}</b> <small>×${g.length} ${dataDayWord()} · ${ok} ✓ · ${ko} ✗${last.kind==='ko'?' · dernier en échec':''}</small>`});
+      out.push({t:last.t,c:last.c,ty:'agents',txt:`<span style="color:${last.kind==='ko'?'var(--err)':'var(--ok)'}">${last.kind==='ko'?'✗':'✓'}</span> ${refWho(last.c)} · <b>${esc(last.wf||'')}</b> <small>×${g.length} ${dataDayWord()} · ${ok} ✓ · ${ko} ✗${last.kind==='ko'?' · dernier en échec':''}</small>`});
       continue;
     }
     if(e.kind==='start'&&e.done)continue; // le run est fini : sa ligne de fin dit tout
@@ -361,12 +366,12 @@ function feedView(ev,mode){
   }
   return out;
 }
-function renderFeedList(view){
-  FEED_VIEW=view;
+function renderFeedList(view,all=FEED_ALL){
+  FEED_VIEW=view;FEED_ALL=all;
   const box=document.getElementById('feed');
   let html=FEED_PIN.length?`<div class="feedpin"><div class="pinh">En ce moment</div>${FEED_PIN.map((e,i)=>
     `<div class="ev" data-pin="${i}"><span class="tm">${e.t?hm(e.t):'auj.'}</span><span class="x">${e.txt}</span></div>`).join('')}</div>`:'';
-  if(!view.length)html+=`<div class="empty">${FEED_MODE==='important'&&FEED_EV.length?'Rien d\'important pour l\'instant.':'Rien pour l\'instant. Le bureau est encore vide.'}</div>`;
+  if(!view.length)html+=`<div class="empty">${all.length?'Rien pour ces types : rallume une pastille.':FEED_MODE==='important'&&FEED_EV.length?'Rien d\'important pour l\'instant.':'Rien pour l\'instant. Le bureau est encore vide.'}</div>`;
   let lastH=null;
   view.slice(0,FEED_N).forEach((e,i)=>{
     const h=parisHM(e.t).h;
@@ -378,6 +383,10 @@ function renderFeedList(view){
   if(ttl)ttl.textContent=w==="aujourd'hui"?'Fil de la journée':'Fil de la journée · '+w;
   const seg=document.getElementById('feedmode');
   if(seg)seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.mode===FEED_MODE));
+  const tys=document.getElementById('feedtypes');
+  if(tys){const n={};all.forEach(e=>{const k=e.ty||'equipe';n[k]=(n[k]||0)+1;});
+    const th=FEED_TYPES.map(([k,l,i])=>`<button data-ty="${k}" class="${FEED_OFF.has(k)?'':'on'}" aria-pressed="${!FEED_OFF.has(k)}" title="${FEED_OFF.has(k)?'Montrer':'Masquer'} : ${l}">${i} ${l} <small>${n[k]||0}</small></button>`).join('');
+    if(tys.innerHTML!==th)tys.innerHTML=th;}
   if(html===FEED_SIG)return;
   FEED_SIG=html;box.innerHTML=html;
 }
@@ -403,5 +412,11 @@ document.getElementById('feed').addEventListener('mouseleave',()=>{hoverKey=null
 {const seg=document.getElementById('feedmode');if(seg)seg.addEventListener('click',ev=>{
   const b=ev.target.closest('[data-mode]');if(!b)return;
   FEED_MODE=b.dataset.mode;FEED_N=FEED_PAGE;try{localStorage.setItem('bureau:feed',FEED_MODE);}catch(e){}
-  renderFeedList(feedView(FEED_EV,FEED_MODE));
+  showFeed();
+});}
+{const tys=document.getElementById('feedtypes');if(tys)tys.addEventListener('click',ev=>{
+  const b=ev.target.closest('[data-ty]');if(!b)return;
+  const k=b.dataset.ty;if(FEED_OFF.has(k))FEED_OFF.delete(k);else FEED_OFF.add(k);
+  FEED_N=FEED_PAGE;try{localStorage.setItem('bureau:feedtypes',JSON.stringify([...FEED_OFF]));}catch(e){}
+  showFeed();
 });}

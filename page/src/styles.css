@@ -389,6 +389,10 @@ body.tv #tvwho{display:flex;flex-direction:column;gap:8px;position:fixed;top:52p
 .feedh .seg button{font-size:11px;padding:2px 9px;text-transform:none;letter-spacing:0}
 #feed .evh{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:8px 2px 3px;border-bottom:1px solid var(--line);margin-bottom:2px}
 #feed .feedmore{margin:8px 0 2px;font-size:12px;width:100%}
+/* pastilles des types du fil (allumées : .on, comme Important / Tout ; éteintes : bouton simple) */
+.feedtypes{justify-content:flex-start;margin:0 0 8px}
+.feedtypes button{font-size:11px;padding:2px 8px}
+.feedtypes button small{font-size:10px}
 /* « En ce moment » en haut du fil : ce qui t'attend (depuis quand) et les repères du jour */
 #feed .feedpin{background:var(--chip);border-left:3px solid var(--accent);padding:6px 6px 4px;margin:0 0 10px}
 #feed .feedpin .pinh{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:0 6px 4px}
