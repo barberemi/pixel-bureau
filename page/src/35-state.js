@@ -162,7 +162,7 @@ const inSlot=(m,[a,b])=>m>=a&&m<b;
 // collègues présents, assis à leur place (ceux qu'un invité de passage va saluer)
 function deskColleagues(boss){return chars.filter(x=>x!==boss&&x.person&&x.seat&&x._st&&x._st.zone==='desk');}
 function bossState(c,t){
-  const n=k=>chars.filter(x=>x._st&&x._st.st===k).length, gates=n('gate')+loneGates().length, asks=n('ask'), pending=gates+asks;
+  const n=k=>chars.filter(x=>x._st&&x._st.st===k).length, gates=n('gate')+loneGates().length, asks=n('ask')+new Set(loneQuestions(t).map(q=>q.disc)).size, pending=gates+asks;
   const waitTxt=[gates?gates+' validation'+(gates>1?'s':'')+' en attente':'',asks?asks+(asks>1?' discussions attendent':' discussion attend')+' ta réponse':''].filter(Boolean).join(' · ');
   const ret=o=>{c.atBoss=o.zone==='boss';return o;};
   const p=parisHM(t), m=p.h*60+p.m, wd=p.wd==='Sat'||p.wd==='Sun';
@@ -325,6 +325,9 @@ function stateAt0(c,t){
   if(c.visitor){
     const d=c.disc, s0=c.runs[0]._s, e0=ms(d.end), nearNow=REND-t<15*60e3;
     if(t<s0)return {st:'absent',label:'Pas encore arrivé'};
+    // question encore en attente (cron live) et déjà posée à cette heure : il t'attend au bureau du boss
+    const qs=discQuestions(d.id,t);
+    if(qs.length)return {st:'ask',zone:'gate',label:'Attend ta réponse ('+qs.length+' question'+(qs.length>1?'s':'')+')',bubble:'?',qs};
     const fz=frozenSince(), stale=fz&&t>fz+60e3; // direct figé : « l'agent travaille » n'est plus sûr
     if(d.awaiting&&nearNow&&!stale)return {st:'meet',zone:'meet',label:"En réunion : l'agent travaille",bubble:'...'};
     if(t<=Math.max(e0,s0+VIS_MIN))return {st:'meet',zone:'meet',label:'En discussion',bubble:'...'};
@@ -398,6 +401,12 @@ function stateAt0(c,t){
   if(!bad&&since<12*60e3)return {st:'coffee',zone:'coffee',label:'Pause café bien méritée',bubble:'☕',run:last};
   return {st:'idle',zone:'wander',label:'Disponible',run:last};
 }
+// questions en attente d'une discussion, posées avant t (dataset gates, 90-boot.js)
+const discQuestions=(id,t)=>QUESTIONS.filter(q=>q.disc===id&&(ms(q.since)||0)<=t);
+// questions sans visiteur sur le plan (discussions du Bureau : canard, « interroger ») : comptées chez le boss, comme loneGates()
+const loneQuestions=t=>QUESTIONS.filter(q=>(ms(q.since)||0)<=t&&!chars.some(c=>c.visitor&&c.disc&&c.disc.id===q.disc));
+// questions qui attendent ta réponse à t : celles des visiteurs (au moins une par visiteur en attente) et les autres
+const askCount=t=>chars.reduce((a,x)=>a+(x._st&&x._st.st==='ask'?((x._st.qs||[]).length||1):0),0)+loneQuestions(t).length;
 const ST_COLOR={
   sax:'#c9a227',
   daily:'#2e9e9b',

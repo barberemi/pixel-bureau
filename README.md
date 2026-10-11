@@ -13,7 +13,7 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 | [Fil et récap](guide/fonctionnalites/04-fil-et-recap.md) | La journée heure par heure (ce qui t'attend en haut, tes actions, pannes, filtre par type), et son résumé depuis minuit |
 | [Rejouer la journée](guide/fonctionnalites/05-rejouer.md) | Direct, ou relecture accélérée de minuit à maintenant |
 | [Mode TV et cérémonies](guide/fonctionnalites/06-mode-tv.md) | Écran d'open space lisible à 3 m, tour de table du daily, sprint planning et rétrospective en salle de réunion |
-| [Fiches](guide/fonctionnalites/07-fiches.md) | Journée d'un agent ou d'un collègue ; relancer, interroger ; tes validations dans ta fiche de boss (bulle ✋ sur ton personnage) ; parler au canard, son sprint et ses trophées ; fiche de paie ; cartes de passion (GitFut, Smash, dramas) |
+| [Fiches](guide/fonctionnalites/07-fiches.md) | Journée d'un agent ou d'un collègue ; relancer, interroger ; tes validations et les questions des discussions dans ta fiche de boss, à décider sur la page (bulle ✋ sur ton personnage) ; parler au canard, son sprint et ses trophées ; fiche de paie ; cartes de passion (GitFut, Smash, dramas) |
 | [Murs du bureau](guide/fonctionnalites/08-murs.md) | Kanban du sprint, planning des crons, mises en prod, employé du sprint, écran du boss avec tes autres pages Kronn |
 | [Avatars](guide/fonctionnalites/09-avatars.md) | Éditeur d'apparence, pour soi ou pour toute l'équipe |
 | [Fraîcheur des données](guide/fonctionnalites/10-fraicheur.md) | Prochaine arrivée, sources en retard, crons du Bureau en échec |
@@ -48,7 +48,7 @@ python3 tools/install.py --dry-run   # voir ce qui serait créé
 python3 tools/install.py             # installation interactive, relançable sans doublon
 ```
 
-L'installateur demande ton équipe (une équipe neuve avec le plan type par défaut, ou un profil de `teams/`, réservé aux membres de son organisation GitHub), qui tu es (tu prends le bureau du boss, les autres gardent leur place), le plan du bureau, ton board Jira (il en lit les colonnes et te propose comment classer chaque statut), tes dépôts et workflows de déploiement, et les pages Kronn à montrer sur l'écran du boss, puis crée la page, ses datasets, 12 workflows (un de moins sans Jira, un de moins sans Microsoft 365) et deux Quick Prompts dans **ton** Kronn, écrit `bureau.config.json` (jamais commité) et lance un premier rafraîchissement. Ouvre ensuite Kronn > Pages > « Le Bureau ». Aucun secret n'est stocké : les connexions sont référencées par leur id Kronn.
+L'installateur demande ton équipe (une équipe neuve avec le plan type par défaut, ou un profil de `teams/`, réservé aux membres de son organisation GitHub), qui tu es (tu prends le bureau du boss, les autres gardent leur place), le plan du bureau, ton board Jira (il en lit les colonnes et te propose comment classer chaque statut), tes dépôts et workflows de déploiement, et les pages Kronn à montrer sur l'écran du boss, puis crée la page, ses datasets, 13 workflows (un de moins sans Jira, un de moins sans Microsoft 365) et deux Quick Prompts dans **ton** Kronn, écrit `bureau.config.json` (jamais commité) et lance un premier rafraîchissement. Ouvre ensuite Kronn > Pages > « Le Bureau ». Aucun secret n'est stocké : les connexions sont référencées par leur id Kronn.
 
 | Action | Commande |
 | --- | --- |

@@ -44,7 +44,7 @@ function applyLayout(L){
 }
 // ---------- superposition : instantané complet (office/team, 10 min) + live (1 min) ----------
 let OFFICE=null, OFFICE_IS_LIVE=false, TEAM_BASE=null, LIVE=null;
-let GATES=[], PAYROLL=null, RELAUNCH=[], ASKABLE=[];
+let GATES=[], PAYROLL=null, RELAUNCH=[], ASKABLE=[], QUESTIONS=[];
 function readAskable(src){
   try{
     if(!src||!src.datasets)return null;
@@ -79,6 +79,16 @@ function readGates(src){
     if(d&&d.current!==undefined)d=d.current;
     if(typeof d==='string')d=JSON.parse(d);
     return d&&Array.isArray(d.gates)?d.gates:null;
+  }catch(e){return null;}
+}
+// questions de discussion en attente (dataset gates, cron live) : les visiteurs qui attendent ta réponse
+function readQuestions(src){
+  try{
+    if(!src||!src.datasets)return null;
+    let d=src.datasets.gates;
+    if(d&&d.current!==undefined)d=d.current;
+    if(typeof d==='string')d=JSON.parse(d);
+    return d&&Array.isArray(d.questions)?d.questions:null;
   }catch(e){return null;}
 }
 function readLive(src){
@@ -122,6 +132,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   const k=window.KronnPageData;
   setTeamAvatars(readAvatars(k)||{});
   GATES=readGates(k)||[];
+  QUESTIONS=readQuestions(k)||[];
   RELAUNCH=readRelaunch(k)||[];
   ASKABLE=readAskable(k)||[];
   {const dk=readDuckData(k);if(dk){DUCK_PROJECTS=dk.projects;DUCKS=dk.ducks;}} // 39-duck.js
@@ -149,6 +160,8 @@ window.addEventListener('kronn:page-data',e=>{
   if(t)TEAM_BASE=t;
   const gg=readGates(k)||readGates(window.KronnPageData);
   if(gg)GATES=gg;
+  const qq=readQuestions(k)||readQuestions(window.KronnPageData);
+  if(qq)QUESTIONS=qq;
   const rl=readRelaunch(k)||readRelaunch(window.KronnPageData);
   if(rl)RELAUNCH=rl;
   const ak=readAskable(k)||readAskable(window.KronnPageData);

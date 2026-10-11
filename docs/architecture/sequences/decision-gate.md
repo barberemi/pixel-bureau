@@ -32,3 +32,5 @@ sequenceDiagram
 - Le script retrouve workflow et étape dans le même dataset et envoie `gate_step` : Kronn refuse une décision périmée (le run n'attend plus cette gate) [src: file: workflows/gate_decide.py:7].
 - `request_changes` sans commentaire échoue avant tout appel [src: file: workflows/gate_decide.py:38].
 - La page observe `data-kronn-action-state` pour mettre à jour la carte [src: file: page/src/55-actions.js:103].
+
+Les questions de discussion (KT-27) suivent la même séquence : bouton `data-kronn-action="bureau-answer"`, ligne relue dans `gates.qrows`, workflow « Le Bureau · réponse à une question » et `question_answer.py`, qui relit la question dans Kronn puis appelle `POST /api/discussions/{d}/questions/{q}/answer` ou `/decline` [src: file: workflows/question_answer.py:1].

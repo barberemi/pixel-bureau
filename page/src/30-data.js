@@ -262,6 +262,15 @@ function setData(d,live){
     });
     if(disc.run)(DISC_BY_RUN[disc.run]=DISC_BY_RUN[disc.run]||[]).push(c);
   }
+  // une discussion d'un autre jour dont une question attend ta réponse revient en visiteur : arrivée à sa question
+  for(const q of QUESTIONS){
+    if(q.bureau||byKey['v_'+String(q.disc).slice(0,8)])continue;
+    const s0=ms(q.since)||ms(d.generated_at);
+    const disc={id:q.disc,title:q.title,agent:q.agent,start:q.since,end:q.since,msgs:null,awaiting:false,pending:0,run:null,imp:0,fromQ:true}; // connue par ses questions seulement
+    add({key:'v_'+String(q.disc).slice(0,8),sprite:VISITOR[q.agent]||'v_claude',name:(q.agent||'Agent').replace('Code',' Code'),
+      role:clean(q.title).replace(/\s+/g,' ').slice(0,60),wf:[],seat:null,visitor:true,disc}).runs.push(
+      {visitor:true,run:q.disc,wf_name:clean(q.title),status:'Success',_s:s0,_e:s0,_ve:s0+VIS_MIN,steps:[],tok:0,msgs:null});
+  }
   for(const c of chars){
     c.runs.sort((a,b)=>a._s-b._s);
     c.sprite=c.sprite||c.key;

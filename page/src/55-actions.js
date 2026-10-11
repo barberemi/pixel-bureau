@@ -116,6 +116,57 @@ function gateCard(parent,run,who){
   }
   parent.appendChild(box);
 }
+// questions de discussion déjà répondues depuis ce navigateur (id -> heure) : plus de boutons une fois la réponse partie
+let ANSWERED={};try{ANSWERED=JSON.parse(localStorage.getItem('bureau:answered')||'{}')||{};}catch(e){ANSWERED={};}
+for(const k in ANSWERED)if(Date.now()-ANSWERED[k]>864e5)delete ANSWERED[k];
+const saveAnswered=()=>{try{localStorage.setItem('bureau:answered',JSON.stringify(ANSWERED));}catch(e){}};
+// « depuis 10:42 (20 min) », « depuis hier 16:10 (19 h) », « depuis le 28/09 (3 j) » : à l'heure de la page (rejeu compris)
+function qWaitTxt(s,t){
+  const d=Math.max(0,t-s), dur=d<3600e3?Math.round(d/60e3)+' min':d<864e5?Math.floor(d/3600e3)+' h':Math.floor(d/864e5)+' j';
+  const days=Math.round((parisMidnight(t)-parisMidnight(s))/864e5);
+  const when=days<=0?hm(s):days===1?'hier '+hm(s):'le '+dtf('fr-FR',{day:'2-digit',month:'2-digit'}).format(new Date(s));
+  return 'depuis '+when+(d>=60e3?' ('+dur+')':'');
+}
+// qui pose la question : le visiteur de la discussion, sinon le canard ou l'agent interrogé (discussions du Bureau)
+function askerOf(q){const v=chars.find(c=>c.visitor&&c.disc&&c.disc.id===q.disc);
+  return v?v.name:String(q.title||'').startsWith('🦆')?'🦆 Le canard':(q.agent||'Agent').replace('Code',' Code');}
+// carte d'une question de discussion : un bouton par option (question simple) ou par option pour tout le formulaire,
+// réponse libre, refus ; chaque bouton ouvre la carte Kronn (workflow « Le Bureau · réponse à une question »)
+function questionCard(parent,q,who){
+  const box=document.createElement('div');box.className='gatecard qcard';box.setAttribute('data-kronn-action-slot-host','');
+  const since=ms(q.since)||T, form=q.items&&q.items.length>0;
+  box.innerHTML=`<div class="gt">❓ Question${who?' · '+esc(who):''}</div><div class="gw">${esc(clean(q.title).replace(/\s+/g,' ').slice(0,90))}</div>`+
+    `<div class="gm"><b>${esc(q.question)}</b></div>`+(q.context?`<div class="gs">${esc(q.context)}</div>`:'')+
+    (form?`<ul class="qitems">${q.items.slice(0,8).map(i=>`<li>${esc(i.label)}</li>`).join('')}${q.items.length>8||q.more_items?`<li class="k">et ${q.items.length-8>0?q.items.length-8:'d\'autres'} de plus</li>`:''}</ul>`:'')+
+    `<div class="gs">En attente ${qWaitTxt(since,T)}</div>`;
+  const note=(html,mt)=>{const n=document.createElement('div');n.className='note';n.style.margin=(mt||6)+'px 0 0';n.innerHTML=html;box.appendChild(n);return n;};
+  const link=discLink(q.disc,'Ouvrir la discussion');
+  if(ANSWERED[q.id]){note('<b style="color:var(--ok)">✓ Réponse envoyée à '+hm(ANSWERED[q.id])+'.</b> L\'agent reprend la discussion. '+link,8);parent.appendChild(box);return;}
+  if(!ACTIONS.answer){note('La réponse se donne dans Kronn (workflow « réponse à une question » non installé). '+link);parent.appendChild(box);return;}
+  const opts=document.createElement('div');opts.className='qopts';
+  const st=document.createElement('div');st.className='note';st.style.margin='6px 0 0';
+  const btn=(label,pick,cls,title)=>{
+    const b=document.createElement('button');b.innerHTML=label;if(cls)b.className=cls;
+    let clicked=false;b.addEventListener('click',()=>{clicked=true;});
+    b.setAttribute('data-kronn-action','bureau-answer');
+    b.setAttribute('data-kronn-bindings',JSON.stringify({choice:q.id+'|'+pick})); // ligne de gates.qrows, relue par Kronn
+    new MutationObserver(()=>{
+      const v=b.getAttribute('data-kronn-action-state');
+      if(v==='succeeded'){st.innerHTML='<b style="color:var(--ok)">✓ Réponse envoyée.</b> L\'agent reprend la discussion.';if(clicked&&!ANSWERED[q.id]){ANSWERED[q.id]=Date.now();saveAnswered();}}
+      else if(v==='failed')st.innerHTML='<b style="color:var(--err)">Réponse refusée par Kronn</b> (déjà répondue ?). Détail dans la carte.';
+    }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
+    kronnModal(box,b,title);return b;};
+  for(const o of q.options||[]){
+    const rec=(q.rec||[]).includes(o.id), lbl=(form?'Tout : ':'')+(rec?'★ ':'')+esc(o.label)+(o.desc?` <span class="qd">· ${esc(o.desc)}</span>`:'');
+    opts.appendChild(btn(lbl,(form?'all:':'')+o.id,rec?'on':'',form?'Même réponse pour tout le formulaire':'Réponse à la question'));}
+  const row=document.createElement('div');row.className='qrow';
+  if(!form)row.appendChild(btn('✏️ Autre réponse…','_text','','Réponse libre'));
+  row.appendChild(btn('⛔ Refuser…','_decline','','Refuser la question'));
+  opts.appendChild(row);box.appendChild(opts);
+  st.innerHTML=(form?'Une réponse différente selon les items : dans Kronn. ':'Le bouton ouvre la carte Kronn : commentaire facultatif, puis Lancer. ')+link;
+  box.appendChild(st);
+  parent.appendChild(box);
+}
 // ---------- fiche de paie ----------
 // tokens réels (runs de premier niveau) ; coût ESTIMÉ au tarif moyen que Kronn mesure sur les discussions
 function payFor(c){

@@ -38,7 +38,7 @@ function whoLine(c,st,t,pub){
 function bossLine(c,st,pub){ // pub : écran partagé (TV), sans ce qui n'attend que le boss
   const open=((c.team&&c.team.tickets)||[]).filter(x=>x.cat!=='done');
   const tk=[...open.filter(x=>x.cat==='doing'),...open.filter(x=>x.cat==='review'||x.cat==='test')];
-  const n=k=>chars.filter(x=>x._st&&x._st.st===k).length, gates=n('gate')+loneGates().length, asks=n('ask');
+  const n=k=>chars.filter(x=>x._st&&x._st.st===k).length, gates=n('gate')+loneGates().length, asks=askCount(T);
   const talks=chars.filter(x=>x.visitor&&x._st&&x._st.st==='meet').length;
   const pl=(k,a,b)=>k+' '+(k>1?b:a);
   const extra=[

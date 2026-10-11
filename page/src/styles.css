@@ -210,6 +210,12 @@ body.km-on .side{z-index:50} /* le panneau est sticky (plan d'empilement propre)
 .gatecard .gm{font-size:12px;margin:6px 0;padding:6px 8px;background:var(--panel);border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere}
 .gatecard .gs{font-size:11px;color:var(--muted)}
 .gatecard>button{width:100%;margin-top:8px}
+.qcard .qopts{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.qcard .qopts>button{text-align:left}
+.qcard .qd{font-weight:400;opacity:.8}
+.qcard .qrow{display:flex;gap:6px;flex-wrap:wrap}
+.qcard .qitems{margin:4px 0 6px;padding-left:18px;font-size:12px}
+.qcard .qitems .k{list-style:none;margin-left:-18px;color:var(--muted)}
 .kpi.click{cursor:pointer}.kpi.click:hover{border-color:var(--accent)}
 .paygrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
 .paygrid div{background:var(--chip);border-radius:8px;padding:6px 8px}

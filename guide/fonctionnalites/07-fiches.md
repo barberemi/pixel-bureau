@@ -11,7 +11,15 @@ Clic sur un personnage (plan, panneau ou « Qui fait quoi ») : sa fiche s'ouvre
 - **Lui poser une question** : un agent IA lit ses runs et répond en 5 phrases.
 - **Décider** une validation : approuver, rejeter ou demander des changements.
 
-**Boss** (ton personnage) : ce qui attend ta décision, chaque validation avec sa carte « Décider… » : celles de tes agents, et celles des workflows qui n'ont pas de personnage sur le plan (« Le Bureau · plan », qui propose un nouveau plan pour toute l'équipe). Tant qu'une validation ou une question t'attend, ton personnage porte la bulle ✋ avec leur nombre, et le récap de la journée le rappelle.
+**Boss** (ton personnage) : ce qui attend ta décision, chaque validation avec sa carte « Décider… » : celles de tes agents, et celles des workflows qui n'ont pas de personnage sur le plan (« Le Bureau · plan », qui propose un nouveau plan pour toute l'équipe). Puis chaque question qu'une discussion Kronn t'a posée et qui attend encore (14 jours, comme le canard) : celles des visiteurs, du canard et des agents interrogés depuis la page. Tant qu'une validation ou une question t'attend, ton personnage porte la bulle ✋ avec leur nombre, et le récap de la journée le rappelle.
+
+![Questions des discussions dans la fiche du boss](../img/questions.png)
+
+Une carte de question se décide sur la page :
+
+- **Question simple** : un bouton par option (★ = celle que l'agent recommande), « ✏️ Autre réponse… » (texte libre) et « ⛔ Refuser… ». Chaque bouton ouvre la carte Kronn : un commentaire facultatif, puis Lancer.
+- **Formulaire** (une réponse par item, comme les lots de fiches de dette d'un audit Kronn) : « Tout : Confirmer », « Tout : Différer »… donnent la même réponse à chaque item ; une réponse différente selon les items se donne dans Kronn (lien « Ouvrir la discussion »).
+- La réponse part par le workflow « Le Bureau · réponse à une question » (sans agent, 0 token), qui relit la question dans Kronn : déjà décidée ailleurs, rien n'est envoyé.
 
 **Collègue** : tickets ouverts, en cours, PR ouvertes et mergées du jour, ce qu'il a écrit, trié ou testé (PO, facilitateur, testeur).
 
@@ -49,7 +57,7 @@ Rôles et noms par défaut : `impl` → `ticket` (`jira_ticket_key`) ; `mep` →
 
 ![Fiche d'un ticket](../img/fiche-ticket.png)
 
-**Visiteur** : la discussion Kronn, ses messages importants, le run qui l'a lancée.
+**Visiteur** : la discussion Kronn, ses messages importants, le run qui l'a lancée, et la carte de chaque question qui t'attend (la même que dans la fiche du boss).
 
 **Le canard** (clic sur le canard du plan) : une phrase sur la [méthode du canard en plastique](https://fr.wikipedia.org/wiki/M%C3%A9thode_du_canard_en_plastique), puis :
 - **Parler au canard** : un sélecteur de projet Kronn (« Sans projet » en premier, le choix est retenu dans ton navigateur) et un bouton. La carte Kronn demande un titre facultatif (celui de la liste ; vide : la première ligne du sujet) et le sujet (texte libre ou numéro de ticket) ; le workflow du Bureau « Le Bureau · parler au canard » ouvre une discussion « 🦆 … » avec Claude Code dans ce projet et lance l'agent. Pas de boutons en mode TV.

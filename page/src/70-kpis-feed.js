@@ -223,8 +223,10 @@ function feedPins(t){
     out.push({t:g.since,c:g.c,txt:`✋ ${refWho(g.c)} attend ta validation <small>« ${esc(g.n)} »${ref&&ref.key?' · '+refTk(ref.key):''}</small> ${waitSince(g.since,t)}`});}
   for(const g of loneGates()){const a=ms(g.since);if(a&&a<=t)out.push({t:a,c:chars.find(x=>x.boss)||null,
     txt:`✋ <b>${esc(clean(g.wf_name))}</b> attend ta validation <small>« ${esc(g.gate)} »</small> ${waitSince(a,t)}`});}
-  for(const c of chars)if(c.visitor&&c._st&&c._st.st==='ask'){const a=Math.min(t,ms(c.disc.end)||t);
+  for(const c of chars)if(c.visitor&&c._st&&c._st.st==='ask'){const qs=c._st.qs||[], a=qs.length?Math.min(...qs.map(q=>ms(q.since)||t)):Math.min(t,ms(c.disc.end)||t);
     out.push({t:a,c,txt:`💬 ${refWho(c)} attend ta réponse <small>« ${esc(clip(clean(c.disc.title),60))} »</small> ${waitSince(a,t)}`});}
+  for(const q of loneQuestions(t))if(!String(q.title||'').startsWith('🦆')){const a=ms(q.since)||t; // « interroger un agent » (le canard : ci-dessous)
+    out.push({t:a,c:chars.find(x=>x.boss)||null,txt:`💬 <b>${esc(askerOf(q))}</b> attend ta réponse <small>« ${esc(clip(clean(q.title),60))} »</small> ${waitSince(a,t)}`});}
   for(const d of DUCKS)if(d.awaiting){const a=ms(d.updated);if(a&&a<=t)out.push({t:a,duck:true,
     txt:`🦆 ${duckLink('Le canard')} attend ta réponse <small>« ${esc(clip(String(d.title).replace(/^🦆\s*/,''),60))} »</small> ${waitSince(a,t)}`});}
   out.sort((a,b)=>a.t-b.t);

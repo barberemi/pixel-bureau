@@ -17,7 +17,7 @@ function renderVisitor(side,c){
   const d=c.disc;
   const box=document.createElement('div');box.style.cssText='font-size:13px;margin-bottom:10px';
   box.innerHTML=`<div style="margin-bottom:8px">${esc(clean(d.title))}</div>`+
-    `<div class="stats"><div><b>${d.msgs||0}</b><span>messages</span></div><div><b>${hm(ms(d.start))}</b><span>ouverte</span></div><div><b>${hm(ms(d.end))}</b><span>dernière activité</span></div><div><b>${d.pending||0}</b><span>questions pour toi</span></div></div>`+
+    `<div class="stats">${d.fromQ?'':`<div><b>${d.msgs||0}</b><span>messages</span></div><div><b>${hm(ms(d.start))}</b><span>ouverte</span></div><div><b>${hm(ms(d.end))}</b><span>dernière activité</span></div>`}<div><b>${Math.max(d.pending||0,discQuestions(d.id,T).length)}</b><span>questions pour toi</span></div></div>`+
     `<div style="color:var(--muted);font-size:12px;margin-bottom:10px">${esc(d.agent||'Agent')}${d.project?' · projet '+esc(d.project):''}${(d.participants||[]).length>1?' · '+d.participants.length+' agents':''}</div>`+
     `<div>${discLink(d.id,'Ouvrir la discussion dans Kronn ↗')}</div>`;
   side.appendChild(box);

@@ -112,6 +112,19 @@ SHOTS = {
                         "Nouveau plan : Plateau web, 2e étage (40 x 20 cases, 36 sièges, 22 places attribuées).\\n"
                         "Places qui changent : p_gabe I2.R3 → I3.R3, dwight I4.L1 → I6.L1.\"}];select(chars.find(c=>c.boss).key);", "#side"),
     # la même validation vue sur le plan : le boss reste à son bureau avec la bulle ✋1 (zone rognée posée sur la toile, comme canard-attend)
+    # questions des discussions (KT-27) dans la fiche du boss : une simple d'un visiteur revenu de la veille, un formulaire
+    # (lot de fiches d'un audit Kronn), une du canard ; workflow « réponse » supposé installé
+    "questions": (1400, 2200, AT(11) + ("const iso=h=>new Date(DAY0+h*3600e3).toISOString();ACTIONS.answer=true;QUESTIONS=["
+      "{id:'q1',disc:'5e7a91c2-demo',title:'Commandes bloquées au paiement',agent:'ClaudeCode',bureau:false,since:iso(-14),"
+      "question:'Je purge la file des commandes bloquées ou je les rejoue une par une ?',context:'312 commandes bloquées depuis 9h ; rejouer une par une prend environ 20 min.',"
+      "options:[{id:'purge',label:'Purger la file',desc:'rapide, perd l\\'historique'},{id:'replay',label:'Rejouer une par une',desc:'≈ 20 min'},{id:'wait',label:'Attendre le correctif',desc:''}],rec:['replay'],multiple:false,items:[]},"
+      "{id:'q2',disc:'7b21d0e4-demo',title:'Validation de l\\'audit · Le Bureau',agent:'ClaudeCode',bureau:false,since:iso(9.5),"
+      "question:'Lot 1/4 (accessibilité) : choisis un statut pour chaque fiche.',context:'',"
+      "options:[{id:'confirm',label:'Confirmer',desc:''},{id:'reject',label:'Rejeter',desc:''},{id:'accept_decision',label:'Décision assumée',desc:''},{id:'defer',label:'Différer',desc:''}],rec:[],multiple:false,"
+      "items:[{id:'a',label:'Modale « Mes pages » : focus ni piégé ni rendu (Low)'},{id:'b',label:'Plan accessible à la souris seulement (Medium)'},{id:'c',label:'Tuiles cliquables mais pas focalisables (Medium)'}]},"
+      "{id:'q3',disc:'9c33aa10-demo',title:'🦆 Le bon de commande arrondit mal les ramettes',agent:'ClaudeCode',bureau:true,since:iso(10.7),"
+      "question:'Je corrige l\\'arrondi côté panier ou côté facture ?',context:'',options:[{id:'cart',label:'Côté panier',desc:''},{id:'invoice',label:'Côté facture',desc:''}],rec:['cart'],multiple:false,items:[]}];"
+      "refreshAll();needTeleport=true;") + "select(chars.find(c=>c.boss).key);", "#side"),
     "bulle-validation": (1400, 1000, AT(11) + "GATES=[{run:'demo',wf:'00000000-demo',wf_name:'Le Bureau · plan',gate:'boss',since:new Date(Date.now()-12*60e3).toISOString()}];"
                          "setTimeout(()=>{const [bx,by]=LAYOUT.boss.seat,c=document.querySelector('#cv'),r=c.getBoundingClientRect(),k=r.width/c.width,"
                          "d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(bx-4.5)*TS*k)+'px',"

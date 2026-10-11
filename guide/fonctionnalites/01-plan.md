@@ -10,7 +10,7 @@ Un open space en pixel art où chaque personnage montre ce qui se passe dans Kro
 | --- | --- | --- |
 | Collègue (en couleur) | Une personne de l'équipe (`teams/<équipe>/roster.json`, ou ajoutée à l'installation) | À sa place, ses tickets Jira en bulle |
 | Agent (hologramme bleu) | Un workflow Kronn, avec un personnage de *The Office* | Son étape dans un nuage, l'outil en cours dans une petite bulle sombre |
-| Visiteur | Une discussion Kronn du jour | En salle de réunion, puis au café |
+| Visiteur | Une discussion Kronn du jour, ou plus ancienne (14 jours) tant qu'une de ses questions t'attend | En salle de réunion, puis au café ; devant le bureau du boss avec un « ? » tant qu'une question t'attend |
 | Le boss | La personne qui a installé la page (`owner`) | Au bureau du boss, bras levés quand une validation l'attend |
 | Invité de passage | Quelqu'un qui passe voir l'équipe (clé `guests` du roster) | Au plus une fois par jour ouvré, 20 à 40 min, à une heure tirée au sort ; il se promène |
 

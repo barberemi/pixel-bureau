@@ -76,7 +76,7 @@ Le projet n'a pas de gestionnaire de paquets (ni `package.json`, ni `requirement
 | Observability | findings | TD-20261011-silent-partial-failures. Existant : fraîcheur des datasets et crons en échec affichés dans la page [src: file: page/src/33-freshness.js:89], erreurs des runs dans Kronn. Pas d'endpoint santé : N/A, pas de serveur dans ce dépôt (page statique hébergée par Kronn) |
 | Compliance | findings | TD-20261011-missing-license. Crédits des assets présents (OFL, LPC) [src: file: README.md:63] [src: file: README.md:65]. RGPD : aucune ressource externe chargée par la page (polices et images inlinées) [src: file: guide/developpement.md:48], seulement des liens ; les absences nommées viennent du planning interne de l'équipe [src: file: workflows/absences_snapshot.py:1] et restent sur le Kronn local |
 | Performance | findings | TD-20261011-page-size-near-kronn-limit (961 621 / 1 000 000 octets, mesuré avec `python3 tools/smoke.py`) |
-| Documentation drift | scanned - nothing substantiable | Compteurs de `guide/developpement.md` et du README (12 workflows, 12 datasets) réalignés sur `tools/templates.py` et `tools/install.py` [src: file: tools/templates.py:24] [src: file: tools/install.py:27]. Comptes de tests de `docs/testing-quality.md` confirmés en relançant `tools/test.sh` |
+| Documentation drift | scanned - nothing substantiable | Compteurs de `guide/developpement.md` et du README (13 workflows, 12 datasets) réalignés sur `tools/templates.py` et `tools/install.py` [src: file: tools/templates.py:24] [src: file: tools/install.py:27]. Comptes de tests de `docs/testing-quality.md` confirmés en relançant `tools/test.sh` |
 
 ## Coverage gaps
 
