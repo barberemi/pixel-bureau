@@ -33,6 +33,7 @@ TEMPLATES = {
                                                          "month_next": "workflows/absence_month.py"}),
     "avatar": ("workflow", ("actions", "avatar"), {"save": "workflows/avatar_save.py"}),
     "gate": ("workflow", ("actions", "gate"), {"decide": "workflows/gate_decide.py"}),
+    "answer": ("workflow", ("actions", "answer"), {"answer": "workflows/question_answer.py"}),  # question de discussion (KT-27)
     "relaunch": ("workflow", ("actions", "relaunch"), {"relaunch": "workflows/relaunch.py"}),
     "layout": ("workflow", ("actions", "layout"), {"save": "workflows/layout_save.py"}),
     "comment": ("workflow", ("actions", "comment"), {}),  # commentaire Jira depuis la fiche d'un ticket (sans Jira : pas créé)

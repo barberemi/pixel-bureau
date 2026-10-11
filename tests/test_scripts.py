@@ -99,6 +99,11 @@ class FakeKronn:
             return {"id": "dd000001", "title": body["title"]}
         if re.fullmatch(r"/discussions/[\w-]+/run", p):
             return None
+        m = re.fullmatch(r"/discussions/([\w-]+)/questions/([\w-]+)/(answer|decline)", p)
+        if m:  # question_answer.py : la question passe à answered / declined
+            q = next(x for x in self.questions[m.group(1)] if x["id"] == m.group(2))
+            q["state"] = "answered" if m.group(3) == "answer" else "declined"
+            return q
         raise KeyError(path)
 
 
@@ -622,6 +627,47 @@ print(json.dumps(d.get(key, [])))
         self.assertEqual(q2["items"], [{"id": "TD-1", "label": "Fiche 1"}])
         self.assertEqual([r["id"] for r in out["qrows"]],
                          ["q1|confirm", "q1|defer", "q1|_text", "q1|_decline", "q2|all:confirm", "q2|all:defer", "q2|_decline"])
+
+    def answer(self, fake, *args):
+        """question_answer.py lancé comme l'étape Exec du workflow « réponse » : (code de sortie, sortie, erreur)."""
+        cfg_path = os.path.join(self.tmp, "bureau.config.json")
+        json.dump(dict(FIXTURE, kronn=dict(FIXTURE["kronn"], api=self.kronn(fake))), open(cfg_path, "w"))
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "question_answer.py"), *args], capture_output=True, text=True,
+                           env={"BUREAU_CONFIG": cfg_path, "HOME": self.tmp, "PATH": self.bin, "PYTHONPATH": ""}, timeout=60)
+        self.srv.shutdown()
+        self.srv.server_close()
+        self.srv = None
+        return r.returncode, r.stdout, r.stderr
+
+    def test_question_answer_option_form_text_and_decline(self):
+        """Réponse depuis la page : la ligne cliquée (qrows) dit quoi envoyer ; Kronn reçoit option, items ou refus."""
+        opts = [{"id": "confirm", "label": "Confirmer"}, {"id": "defer", "label": "Différer"}]
+        q = lambda i, items=(): {"id": i, "options": opts, "items": list(items), "state": "pending"}  # noqa: E731
+        rows = [{"id": f"{i}|{c}", "q": i, "disc": "a1"} for i, c in
+                (("q1", "defer"), ("q2", "all:confirm"), ("q3", "_text"), ("q4", "_decline"), ("q5", "confirm"))]
+        fake = FakeKronn()
+        fake.datasets = [{"name": "gates", "current": json.dumps({"qrows": rows})}]
+        fake.questions = {"a1": [q("q1"), q("q2", [{"id": "TD-1"}, {"id": "TD-2"}]), q("q3"), q("q4"), dict(q("q5"), state="answered")]}
+        code, out, _ = self.answer(fake, "q1|defer", "dès lundi")
+        self.assertEqual((code, out.strip()), (0, "Réponse envoyée : « Différer ». L'agent reprend la discussion."))
+        path, body = fake.posts[-1]
+        self.assertEqual(path, "/discussions/a1/questions/q1/answer")
+        self.assertEqual((body["selected_option_ids"], body["text"]), (["defer"], "dès lundi"))
+        self.assertTrue(body["idempotency_key"].startswith("bureau-"))
+        self.assertEqual(self.answer(fake, "q2|all:confirm")[0], 0)
+        self.assertEqual(fake.posts[-1][1]["item_answers"], [{"item_id": "TD-1", "selected_option_id": "confirm"},
+                                                            {"item_id": "TD-2", "selected_option_id": "confirm"}])
+        self.assertEqual(self.answer(fake, "q3|_text")[0], 1)  # réponse libre vide : rien d'envoyé
+        self.assertEqual(self.answer(fake, "q3|_text", "Ni l'un ni l'autre")[0], 0)
+        self.assertEqual(fake.posts[-1][1]["text"], "Ni l'un ni l'autre")
+        self.assertEqual(self.answer(fake, "q4|_decline", "hors sujet")[0], 0)
+        self.assertEqual(fake.posts[-1], ("/discussions/a1/questions/q4/decline", {"idempotency_key": fake.posts[-1][1]["idempotency_key"], "reason": "hors sujet"}))
+        n = len(fake.posts)
+        for bad in ("q5|confirm", "q1|defer", "q9|confirm", "q1|../x"):  # déjà décidée, ligne absente, id invalide
+            code, _, err = self.answer(fake, bad)
+            self.assertEqual(code, 1, bad)
+            self.assertTrue(err.strip(), bad)
+        self.assertEqual(len(fake.posts), n)  # rien d'envoyé
 
     def test_duck_discussions_are_not_visitors(self):
         fake = FakeKronn()

@@ -25,10 +25,10 @@ test('les données Kronn (window.KronnPageData) remplacent la démo', () => {
   assert.equal(run('LIVE_DATA'), true);
 });
 
-test('squelette : 10 blocs kronn-action et les marqueurs CSS / JS', () => {
+test('squelette : 11 blocs kronn-action et les marqueurs CSS / JS', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'page', 'office_template.html'), 'utf8');
   const ids = [...html.matchAll(/<script type="application\/kronn-action" data-action-id="([^"]+)">/g)].map(m => m[1]);
-  assert.deepEqual(ids, ['bureau-ask', 'bureau-relaunch', 'bureau-gate', 'bureau-impl', 'bureau-mep', 'bureau-review', 'bureau-fix', 'bureau-comment', 'bureau-duck', 'bureau-avatar']);
+  assert.deepEqual(ids, ['bureau-ask', 'bureau-relaunch', 'bureau-gate', 'bureau-answer', 'bureau-impl', 'bureau-mep', 'bureau-review', 'bureau-fix', 'bureau-comment', 'bureau-duck', 'bureau-avatar']);
   assert.equal(html.split('/*__STYLES__*/\n').length, 2);
   assert.equal(html.split('/*__SCRIPTS__*/\n').length, 2);
 });

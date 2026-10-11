@@ -1,0 +1,69 @@
+{
+ "kind": "workflow",
+ "key": "answer",
+ "definition": {
+  "name": "Le Bureau · réponse à une question",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "choice",
+    "label": "Réponse",
+    "placeholder": "",
+    "description": null,
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   },
+   {
+    "name": "text",
+    "label": "Texte",
+    "placeholder": "Facultatif (obligatoire pour une réponse libre)",
+    "description": "Ta réponse libre, un commentaire sur l'option choisie, ou la raison d'un refus",
+    "required": false,
+    "source": null,
+    "allow_manual_override": false,
+    "control": {
+     "type": "textarea"
+    }
+   }
+  ],
+  "steps": [
+   {
+    "name": "answer",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Répond à la question de discussion via l'API locale (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/question_answer.py@@",
+     "{{choice}}",
+     "{{text}}"
+    ],
+    "exec_timeout_secs": 30
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}
