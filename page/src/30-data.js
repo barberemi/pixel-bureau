@@ -6,13 +6,14 @@ let DATA=null, LIVE_DATA=false, chars=[], byKey={};
 const OUTSIDERS={};
 let TEAM=null;
 const nameKey=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+// la palette des statuts de ticket, la seule de la page (bureaux, Kanban, fiches, bulles, KPI, fil, TV)
 const TCAT={
-  doing:{t:'En cours',c:'#2f6fd6'},
-  review:{t:'En review',c:'#e0a020'},
+  doing:{t:'En cours',c:'#2e9e5b'},
+  review:{t:'En review',c:'#4a7fe0'},
   test:{t:'En test',c:'#7a5cc8'},
   deploy:{t:'À déployer',c:'#2e9e9b'},
-  todo:{t:'À faire',c:'#9a9284'},
-  done:{t:'Déployé',c:'#2e9e5b'}
+  todo:{t:'À faire',c:'#8a8478'},
+  done:{t:'Déployé',c:'#647282'}
 };
 const TORDER=['doing','review','test','deploy','todo','done'];
 function readTeam(src){

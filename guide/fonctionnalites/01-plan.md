@@ -75,7 +75,7 @@ L'anneau sous les pieds double la couleur par une forme (lisible par les daltoni
 ![Panneau replié : le plan prend la place](../img/panneau-replie.png)
 - Les bulles des tickets affichent depuis combien de jours le ticket est dans sa colonne (« 📗 7685 · en review · 6 j »).
 - Sur les bureaux, des piles montrent le travail de chacun :
-  - devant chaque collègue, sous son écran, une barre par ticket ouvert (5 au plus), de la couleur de son statut : bleu en cours, orange en review, violet en test, bleu-vert à déployer, gris à faire ;
+  - devant chaque collègue, sous son écran, une barre par ticket ouvert (5 au plus), de la couleur de son statut : vert en cours, bleu en review, violet en test, bleu-vert à déployer, gris à faire ;
   - sur un caisson dans l'allée, à côté de la facilitatrice, une feuille blanche par ticket créé par l'équipe depuis le dernier daily (la pile repart de zéro à chaque daily) ;
   - sur un caisson à côté du testeur, un dossier jaune par ticket du sprint en test.
 

@@ -1,7 +1,7 @@
 // ---------- bulles : ticket(s) d'un collègue, ticket ou PR d'un agent ----------
 const TYPE_ICO={Bug:'🐛',Story:'📗',Tâche:'🔧',Task:'🔧','Sous-tâche':'🔹','Sub-task':'🔹',Epic:'⚡'};
 const CAT_TXT={doing:'en cours',review:'en review',test:'en test',todo:'à faire'};
-const CAT_COLOR={doing:'#2e9e5b',review:'#4a7fe0',test:'#7a5cc8',todo:'#8a8478'};
+const CAT_COLOR=Object.fromEntries(Object.entries(TCAT).map(([k,v])=>[k,v.c])); // couleurs de TCAT (30-data.js)
 const BUBBLE_ROT=4000; // une bulle à plusieurs tickets passe au suivant toutes les 4 s
 const clip=(s,n)=>{s=clean(s).trim();return s.length>n?s.slice(0,n-1).trimEnd()+'…':s;};
 const tkHead=(x,short)=>(TYPE_ICO[x.type]||'🎫')+' '+(short?String(x.key).replace(/^[A-Z][A-Z0-9]*-/,''):x.key); // compact : sans le préfixe projet

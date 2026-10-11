@@ -292,7 +292,7 @@ function renderPerson(side,c){
     return;
     }
   const stats=document.createElement('div');stats.className='stats';
-  stats.innerHTML=`<div><b>${open.length}</b><span>tickets ouverts</span></div><div><b style="color:#2f6fd6">${cnt('doing')}</b><span>en cours</span></div><div><b>${p.prs.length}</b><span>PR ouvertes</span></div><div><b style="color:var(--ok)">${p.merged.length}</b><span>mergées auj.</span></div>`;
+  stats.innerHTML=`<div><b>${open.length}</b><span>tickets ouverts</span></div><div><b style="color:${TCAT.doing.c}">${cnt('doing')}</b><span>en cours</span></div><div><b>${p.prs.length}</b><span>PR ouvertes</span></div><div><b style="color:var(--ok)">${p.merged.length}</b><span>mergées auj.</span></div>`;
   side.appendChild(stats);
   if(TEAM&&TEAM.sprint&&TEAM.sprint.name){
     const m=document.createElement('div');

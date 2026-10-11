@@ -7,6 +7,9 @@ metadata:
     - date: 2026-10-11
       status: Verified in source
       reviewer: Code-quality audit
+    - date: 2026-10-12
+      status: Partially resolved
+      reviewer: mainteneur
 ---
 
 # TD-20261011-status-palettes-diverge
@@ -14,7 +17,7 @@ metadata:
 - **Category**: code-quality
 - **Area**: Frontend
 - **Severity**: Medium
-- **Status**: Verified in source
+- **Status**: Partially resolved (2026-10-12)
 - **Effort**: M (1-4h)
 - **Blast radius**: module (5-10 files)
 
@@ -43,4 +46,6 @@ Un même ticket « en cours » change de couleur selon la vue, et changer une co
 Une seule table de catégories (couleur + libellé) et une seule table d'états, `ST_CSS` dérivée de `ST_COLOR` ; légende du gabarit générée depuis ces tables ou passée en classes.
 
 ## Next step
-Différence non voulue : « en cours » doit être **vert** partout [src: user:mainteneur:2026-10-11: KT-19]. Harmoniser les tables vers le vert dans la même passe que l'unification des tables.
+Fait le 2026-10-12 [src: user:mainteneur:2026-10-11: KT-19] : une seule palette des statuts de ticket, `TCAT` [src: file: page/src/30-data.js:10] (« en cours » vert `#2e9e5b`, « en review » bleu `#4a7fe0`, « déployé » ardoise `#647282`, contraste >= 3:1 sur les deux thèmes) ; `CAT_COLOR` en est dérivée [src: file: page/src/41-bubbles.js:4] ; légende du gabarit, chiffre « en cours » de la fiche et tuile KPI alignés. Un test vérifie que les deux tables concordent [src: file: tests/tickets-fiche.test.js:89].
+
+Reste : les tables d'états des personnages `ST_COLOR` / `ST_CSS` tenues à la main, et `#7a5cc8` recopié dans le fil et le CSS.

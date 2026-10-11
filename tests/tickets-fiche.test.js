@@ -55,7 +55,7 @@ test('tri : le plus ancien dans sa colonne d\'abord ; déployés : le plus réce
 
 test('barre : un segment par colonne en points, en tickets si aucun n\'est estimé', () => {
   const h = run(`tkBarHtml([{cat: 'done', points: 8}, {cat: 'doing', points: 3}, {cat: 'doing', points: 0}, {cat: 'review', points: null}])`);
-  assert.match(h, /flex:3;background:#2f6fd6" title="En cours : 3 pts"/);
+  assert.match(h, /flex:3;background:#2e9e5b" title="En cours : 3 pts"/); // en cours : vert, comme partout
   assert.match(h, /flex:8;[^>]*title="Déployé : 8 pts"/);
   assert.doesNotMatch(h, /En review/); // ticket non estimé : 0 pt, pas de segment
   assert.match(h, /<b>8 pts<\/b> déployés sur 11 pts/);
@@ -84,4 +84,11 @@ test('« Ses autres PR » : groupe par état de review, titre sans préfixe, tic
   assert.doesNotMatch(pr({n: 9, title: 'x', draft: true, review: 'pending', created: '2026-10-04T10:00:00+02:00'}), /warn/); // brouillon : n'attend rien
   // sans date de création, pas d'attente déduite de updated (réécrit par les pushs) : seulement la dernière activité
   assert.match(pr({n: 10, title: 'x', review: 'pending', updated: '2026-10-04T10:00:00+02:00'}), /activité il y a 3 j/);
+});
+
+test('palette : une seule table des statuts de ticket, « en cours » vert et distinct de « déployé »', () => {
+  const t = JSON.parse(run(`JSON.stringify({tcat: Object.fromEntries(Object.entries(TCAT).map(([k, v]) => [k, v.c])), cat: CAT_COLOR})`));
+  assert.deepEqual(t.cat, t.tcat); // bulles, KPI, fil, « Qui fait quoi », TV : les couleurs de TCAT
+  assert.equal(t.tcat.doing, '#2e9e5b');
+  assert.equal(new Set(Object.values(t.tcat)).size, Object.keys(t.tcat).length); // six statuts, six couleurs
 });
