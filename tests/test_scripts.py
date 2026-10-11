@@ -45,6 +45,7 @@ class FakeKronn:
         self.details = {}  # id de run -> step_results du détail du run (sorties complètes)
         self.posts = []  # (chemin, corps) des POST reçus
         self.disc_details = {}  # id de discussion -> détail (GET /discussions/{id}, avec ses messages)
+        self.questions = {}  # id de discussion -> questions (GET /discussions/{id}/questions)
         self.discussions = [
             {"id": "d1", "title": "Pourquoi ça casse ?", "agent": "ClaudeCode", "participants": ["ClaudeCode"], "message_count": 4,
              "archived": False, "created_at": now, "updated_at": now, "workflow_run_id": None, "project_id": "p1"},
@@ -80,6 +81,10 @@ class FakeKronn:
         m = re.fullmatch(r"/discussions/([\w-]+)", p)
         if m and m.group(1) in self.disc_details:
             return self.disc_details[m.group(1)]
+        m = re.fullmatch(r"/discussions/([\w-]+)/questions", p)
+        if m:
+            qs = self.questions.get(m.group(1), [])
+            return {"questions": qs, "pending_count": sum(q["state"] == "pending" for q in qs)}
         if re.fullmatch(r"/discussions/[\w-]+/important", p):
             return {"total": 1}
         if p == "/stats/tokens":
@@ -595,6 +600,28 @@ print(json.dumps(d.get(key, [])))
         self.assertEqual(ducks[1], {"id": "k1", "title": "🦆 Le menu casse", "project": "Front", "updated": ducks[1]["updated"], "created": ducks[1]["created"], "awaiting": True})
         self.assertEqual((ducks[0]["project"], ducks[0]["awaiting"]), (None, False))
         self.assertFalse({"k3", "k4", "d1", "d2"} & {d["id"] for d in ducks})
+
+    def test_gates_lists_pending_discussion_questions(self):
+        """Questions de discussion en attente (14 jours, hors archivées) : simple et formulaire, et une ligne par réponse cliquable."""
+        fake = FakeKronn()
+        opts = [{"id": "confirm", "label": "Confirmer", "description": None}, {"id": "defer", "label": "Différer", "description": "plus tard"}]
+        fake.discussions += [
+            {"id": "a1", "title": "Validation de l'audit", "agent": "ClaudeCode", "updated_at": iso(30), "created_at": iso(90), "pending_question_count": 2},
+            {"id": "a2", "title": "Vieille", "agent": "ClaudeCode", "updated_at": iso(20 * 24 * 60), "created_at": iso(20 * 24 * 60), "pending_question_count": 1},
+            {"id": "a3", "title": "Archivée", "agent": "ClaudeCode", "updated_at": iso(5), "created_at": iso(5), "pending_question_count": 1, "archived": True},
+        ]
+        q = lambda i, state="pending", items=(): {"id": i, "question": "Que fait-on ?", "context": None, "options": opts, "items": list(items),  # noqa: E731
+                                                  "multiple": False, "recommended_option_ids": ["confirm"], "state": state, "created_at": iso(40)}
+        fake.questions = {"a1": [q("q1"), q("q2", items=[{"id": "TD-1", "label": "Fiche 1"}]), q("q0", "answered")],
+                          "a2": [q("q9")], "a3": [q("q8")]}
+        out = self.run_script("gates_snapshot.py", api=self.kronn(fake))
+        self.assertEqual([x["id"] for x in out["questions"]], ["q1", "q2"])
+        q1, q2 = out["questions"]
+        self.assertEqual((q1["disc"], q1["bureau"], q1["rec"], q1["items"]), ("a1", False, ["confirm"], []))
+        self.assertEqual(q1["options"][1], {"id": "defer", "label": "Différer", "desc": "plus tard"})
+        self.assertEqual(q2["items"], [{"id": "TD-1", "label": "Fiche 1"}])
+        self.assertEqual([r["id"] for r in out["qrows"]],
+                         ["q1|confirm", "q1|defer", "q1|_text", "q1|_decline", "q2|all:confirm", "q2|all:defer", "q2|_decline"])
 
     def test_duck_discussions_are_not_visitors(self):
         fake = FakeKronn()
