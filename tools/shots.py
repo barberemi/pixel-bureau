@@ -1,4 +1,4 @@
-"""Captures des pages de fonctionnalités (docs/img/*.png), sur la page de démo (data/), dans Chrome headless.
+"""Captures des pages de fonctionnalités (guide/img/*.png), sur la page de démo (data/), dans Chrome headless.
 
   .venv/bin/python tools/shots.py            # toutes les captures
   .venv/bin/python tools/shots.py plan tv    # seulement celles-ci
@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 import assemble  # noqa: E402
 from smoke import CHROME, free_port  # noqa: E402
 
-OUT = os.path.join(ROOT, "docs", "img")
+OUT = os.path.join(ROOT, "guide", "img")
 PORT = 9335
 # avant chaque capture : hors mode TV (mémorisé par le navigateur), lecture en pause à 11h, personnages posés à leur place
 AT = lambda h: f"applySkin('classique');if(TV)setTv(false);setMode('pause');T=DAY0+{h}*3600e3;needTeleport=true;"  # noqa: E731
@@ -173,8 +173,8 @@ SHOTS = {
     # bas du panneau, vue « Tous », équipe et agents repliés : « Et aussi » = invités présents (David Wallace, ici chez Jan) + le canard
     "panneau-et-aussi": (1400, 1600, AT(11.5) + "FILTER=null;COLLAPSED[\"L'équipe\"]=true;COLLAPSED['Les agents']=true;renderSide();", "#side"),
     "invite": (1400, 1000, AT(11.5) + "select('g_david');", "#cv", 1.5),
-    # brouillon tiré de docs/img/croquis.png par « python3 tools/plan.py from-image » (premier tour, sans retouche)
-    "croquis-brouillon": (1400, 1000, AT(11), "#cv", 1.5, "docs/exemples/plan-croquis.json"),
+    # brouillon tiré de guide/img/croquis.png par « python3 tools/plan.py from-image » (premier tour, sans retouche)
+    "croquis-brouillon": (1400, 1000, AT(11), "#cv", 1.5, "guide/exemples/plan-croquis.json"),
 }
 
 
@@ -259,7 +259,7 @@ def main(names):
                 continue
             with open(os.path.join(OUT, name + ".png"), "wb") as f:
                 f.write(png)
-            print(f"✓ docs/img/{name}.png")
+            print(f"✓ guide/img/{name}.png")
 
 
 if __name__ == "__main__":

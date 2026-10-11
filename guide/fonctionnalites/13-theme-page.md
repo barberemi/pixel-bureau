@@ -17,4 +17,4 @@ Le bouton 🎨 de l'en-tête change les couleurs de la page : **Classique** (som
 - **Par défaut** : celui du profil d'équipe (Equipe pour l'équipe equipe), sinon Classique. Réglage de l'installation : `ui.skin` dans `bureau.config.json`.
 - **Choix de chacun** : le bouton 🎨 passe d'un thème à l'autre ; le choix est gardé dans ce navigateur et passe avant celui de l'installation.
 
-Ajouter un thème : [docs/developpement.md](../developpement.md#ajouter-un-thème).
+Ajouter un thème : [guide/developpement.md](../developpement.md#ajouter-un-thème).

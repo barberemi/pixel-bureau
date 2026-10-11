@@ -2,25 +2,25 @@
 
 Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office* : la journée de l'équipe et de ses agents IA dans un open space en pixel art. Collègues, workflows Kronn, mises en prod et validations en attente, d'un coup d'œil.
 
-![Le plan à 11h](docs/img/plan.png)
+![Le plan à 11h](guide/img/plan.png)
 
 ## Fonctionnalités
 
 | Fonctionnalité | En bref |
 | --- | --- |
-| [Le plan](docs/fonctionnalites/01-plan.md) | Collègues, agents en hologramme, visiteurs et invités de passage, placés selon ce qu'ils font ; lumière du jour ; loupe sur les événements forts (réouverture, mise en prod, visite, cérémonies), plan d'équipe validé par le boss, brouillon depuis un croquis ou une photo, passions de l'équipe, le canard en plastique qui se promène et grandit avec le sprint (stades, canetons, succès, petites scènes) ; l'agent qui sort de panne applaudi |
-| [Qui fait quoi](docs/fonctionnalites/03-qui-fait-quoi.md) | Une carte par personne et par agent : ce qu'il fait maintenant |
-| [Fil et récap](docs/fonctionnalites/04-fil-et-recap.md) | La journée heure par heure (ce qui t'attend en haut, tes actions, pannes, filtre par type), et son résumé depuis minuit |
-| [Rejouer la journée](docs/fonctionnalites/05-rejouer.md) | Direct, ou relecture accélérée de minuit à maintenant |
-| [Mode TV et cérémonies](docs/fonctionnalites/06-mode-tv.md) | Écran d'open space lisible à 3 m, tour de table du daily, sprint planning et rétrospective en salle de réunion |
-| [Fiches](docs/fonctionnalites/07-fiches.md) | Journée d'un agent ou d'un collègue ; relancer, interroger ; tes validations dans ta fiche de boss (bulle ✋ sur ton personnage) ; parler au canard, son sprint et ses trophées ; fiche de paie ; cartes de passion (GitFut, Smash, dramas) |
-| [Murs du bureau](docs/fonctionnalites/08-murs.md) | Kanban du sprint, planning des crons, mises en prod, employé du sprint, écran du boss avec tes autres pages Kronn |
-| [Avatars](docs/fonctionnalites/09-avatars.md) | Éditeur d'apparence, pour soi ou pour toute l'équipe |
-| [Fraîcheur des données](docs/fonctionnalites/10-fraicheur.md) | Prochaine arrivée, sources en retard, crons du Bureau en échec |
-| [Téléphone](docs/fonctionnalites/11-mobile.md) | Affichage mobile |
-| [Thèmes saisonniers](docs/fonctionnalites/12-themes.md) | Noël, Nouvel an, Saint-Valentin, Halloween : décor, chapeaux, emojis, effets |
-| [Thème de la page](docs/fonctionnalites/13-theme-page.md) | Pixel art en Classique (sombre) ou Equipe (clair), au bouton 🎨, mode TV et bandeau « EN DIRECT » compris ; Equipe par défaut pour l'équipe equipe |
-| [Absences et télétravail](docs/fonctionnalites/14-absences.md) | Qui est là, d'après le planning de l'équipe : absents hors du bureau, télétravail en transparence, calendrier de deux semaines au mur du boss |
+| [Le plan](guide/fonctionnalites/01-plan.md) | Collègues, agents en hologramme, visiteurs et invités de passage, placés selon ce qu'ils font ; lumière du jour ; loupe sur les événements forts (réouverture, mise en prod, visite, cérémonies), plan d'équipe validé par le boss, brouillon depuis un croquis ou une photo, passions de l'équipe, le canard en plastique qui se promène et grandit avec le sprint (stades, canetons, succès, petites scènes) ; l'agent qui sort de panne applaudi |
+| [Qui fait quoi](guide/fonctionnalites/03-qui-fait-quoi.md) | Une carte par personne et par agent : ce qu'il fait maintenant |
+| [Fil et récap](guide/fonctionnalites/04-fil-et-recap.md) | La journée heure par heure (ce qui t'attend en haut, tes actions, pannes, filtre par type), et son résumé depuis minuit |
+| [Rejouer la journée](guide/fonctionnalites/05-rejouer.md) | Direct, ou relecture accélérée de minuit à maintenant |
+| [Mode TV et cérémonies](guide/fonctionnalites/06-mode-tv.md) | Écran d'open space lisible à 3 m, tour de table du daily, sprint planning et rétrospective en salle de réunion |
+| [Fiches](guide/fonctionnalites/07-fiches.md) | Journée d'un agent ou d'un collègue ; relancer, interroger ; tes validations dans ta fiche de boss (bulle ✋ sur ton personnage) ; parler au canard, son sprint et ses trophées ; fiche de paie ; cartes de passion (GitFut, Smash, dramas) |
+| [Murs du bureau](guide/fonctionnalites/08-murs.md) | Kanban du sprint, planning des crons, mises en prod, employé du sprint, écran du boss avec tes autres pages Kronn |
+| [Avatars](guide/fonctionnalites/09-avatars.md) | Éditeur d'apparence, pour soi ou pour toute l'équipe |
+| [Fraîcheur des données](guide/fonctionnalites/10-fraicheur.md) | Prochaine arrivée, sources en retard, crons du Bureau en échec |
+| [Téléphone](guide/fonctionnalites/11-mobile.md) | Affichage mobile |
+| [Thèmes saisonniers](guide/fonctionnalites/12-themes.md) | Noël, Nouvel an, Saint-Valentin, Halloween : décor, chapeaux, emojis, effets |
+| [Thème de la page](guide/fonctionnalites/13-theme-page.md) | Pixel art en Classique (sombre) ou Equipe (clair), au bouton 🎨, mode TV et bandeau « EN DIRECT » compris ; Equipe par défaut pour l'équipe equipe |
+| [Absences et télétravail](guide/fonctionnalites/14-absences.md) | Qui est là, d'après le planning de l'équipe : absents hors du bureau, télétravail en transparence, calendrier de deux semaines au mur du boss |
 
 ## Installer
 
@@ -56,7 +56,7 @@ L'installateur demande ton équipe (une équipe neuve avec le plan type par déf
 | Désinstaller | `python3 tools/uninstall.py --dry-run`, puis sans `--dry-run` |
 | Tester | `sh tools/test.sh` (Node 20+, aucune dépendance npm) |
 
-Pour modifier la page ou les workflows : [docs/developpement.md](docs/developpement.md).
+Pour modifier la page ou les workflows : [guide/developpement.md](guide/developpement.md).
 
 ## Crédits
 

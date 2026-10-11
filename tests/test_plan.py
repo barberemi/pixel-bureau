@@ -31,8 +31,8 @@ class PlanTest(unittest.TestCase):
         self.assertTrue(any("stage" in w for w in warn))  # sans plateau TV : repli, simple avertissement
 
     def test_sketch_example_is_valid(self):
-        """Brouillon tiré de docs/img/croquis.png par plan.py from-image (capture croquis-brouillon de la doc)."""
-        L = json.load(open(os.path.join(ROOT, "docs", "exemples", "plan-croquis.json")))
+        """Brouillon tiré de guide/img/croquis.png par plan.py from-image (capture croquis-brouillon de la doc)."""
+        L = json.load(open(os.path.join(ROOT, "guide", "exemples", "plan-croquis.json")))
         self.assertEqual(plan.validate(L)[0], [])
 
     def test_seat_ids(self):
