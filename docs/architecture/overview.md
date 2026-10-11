@@ -95,7 +95,7 @@ Fichiers `sequenceDiagram` par flux dans [`sequences/`](sequences/) :
 | Zone | État actuel | Cible |
 |---|---|---|
 | Plan du bureau | Construit depuis `layouts/*.json` (format `bureau-layout/1`) ; plus de rangées codées en dur [src: file: guide/developpement.md:87] | Fait ; `tests/layout.test.js` garde l'équivalence avec l'ancien monde (`tests/fixtures/world_equipe.json`) [src: file: guide/developpement.md:112] |
-| Places dans le plan | Siège désigné par numéro (`"I2.R2"`) ; l'ancien format `[x, y]` reste lu [src: file: page/src/10-world.js:9] | Numéros de siège seulement : l'ancien format `[x, y]` est abandonné, sa lecture peut être retirée [src: user:mainteneur:2026-10-11: KT-19] |
+| Places dans le plan | Place `seat` du roster ou d'un agent par numéro de siège seulement (`"I2.R2"`) ; une place `[x, y]` est ignorée [src: file: page/src/10-world.js:10] [src: file: workflows/_plan.py:36]. `free_seats` reste en cases `[x, y]` (places d'intérimaires) | Fait (2026-10-12) |
 | Avatar du boss en local | Ancienne clé `boss` migrée vers `p_remi` au chargement [src: file: page/src/20-sprites.js:76] | Clés du roster seulement |
 | Date de création des PR | Champ `created` seul, sans repli sur `updated` (réécrit par les pushs) [src: file: page/src/30-data.js:289] ; données de démo complétées | Fait (2026-10-12) |
 | Feuille de route | Externe : https://claude.ai/code/artifact/56db95ed-d247-4574-aeef-9990cd9360bc [src: file: guide/developpement.md:119] | N/A dans le dépôt |

@@ -48,19 +48,26 @@ test('sièges : même attribution dans la page et dans tools/plan.py (plans, bos
   const fixture = {...JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'bureau.config.json'), 'utf8')), team: 'equipe', people: []};
   const roster = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'teams', 'equipe', 'roster.json'), 'utf8')).people;
   const bare = fixture.agents.map(({seat, ...a}) => a);
-  fixture.agents = bare.map((a, i) => ({...a, seat: [[23, 14], [23, 15], [23, 16], [25, 14], [25, 15], [25, 16], [29, 14], [29, 15], [29, 16], [31, 14], [31, 15], [31, 16]][i]})); // ancien format [x, y]
+  fixture.agents = bare.map((a, i) => ({...a, seat: ['I4.L1', 'I4.L2', 'I4.L3', 'I4.R1', 'I4.R2', 'I4.R3', 'I5.L1', 'I5.L2', 'I5.L3', 'I5.R1', 'I5.R2', 'I5.R3'][i]}));
+  // l'ancien format [x, y] (les mêmes places) n'est plus lu : mêmes sièges que sans place
+  const legacy = bare.map((a, i) => ({...a, seat: [[23, 14], [23, 15], [23, 16], [25, 14], [25, 15], [25, 16], [29, 14], [29, 15], [29, 16], [31, 14], [31, 15], [31, 16]][i]}));
   for (const layout of ['equipe', 'exemple-startup'])
-    for (const owner of ['p_remi', 'p_coll2', null])
-      for (const agents of [fixture.agents, bare]) {
+    for (const owner of ['p_remi', 'p_coll2', null]) {
+      const got = {};
+      for (const agents of [fixture.agents, bare, legacy]) {
         const p = load({layout, owner, config: {...fixture, agents}});
-        const js = JSON.parse(p.run(`JSON.stringify({seats:Object.fromEntries(CAST.filter(c=>c.seat).map(c=>[c.key,seatRef(c.seat).id])),
-          temps:FREE_SEATS.map(s=>seatRef(s).id)})`));
+        const js = JSON.parse(p.run(`JSON.stringify({seats:Object.fromEntries(CAST.filter(c=>c.seat).map(c=>[c.key,seatAt(c.seat).id])),
+          temps:FREE_SEATS.map(s=>seatAt(s).id)})`));
         const py = JSON.parse(execFileSync('python3', ['-c', `import json,sys;sys.path.insert(0,'tools');import plan
 d=json.load(sys.stdin);got,temps=plan.assign(json.load(open('layouts/'+d['layout']+'.json')),d['people'],d['owner'])
 print(json.dumps({'seats':got,'temps':temps}))`], {cwd: path.join(__dirname, '..'),
           input: JSON.stringify({layout, owner, people: [...roster, ...agents]})}));
-        assert.deepEqual(js, py, `${layout}, boss ${owner}, agents ${agents === bare ? 'sans' : 'avec'} place`);
+        const kind = agents === bare ? 'sans' : agents === legacy ? 'ancien format' : 'avec';
+        assert.deepEqual(js, py, `${layout}, boss ${owner}, agents ${kind} place`);
+        got[kind] = js;
       }
+      assert.deepEqual(got['ancien format'], got.sans, `${layout}, boss ${owner} : une place [x, y] est ignorée`);
+    }
 });
 
 test('sièges : le plan equipe place l\'équipe et les agents sans leur place du roster', () => {
@@ -90,7 +97,7 @@ test('plan partagé : appliqué à chaud, puis retour au plan embarqué sans auc
   const hot = JSON.parse(p.run(WORLD));
   const fresh = JSON.parse(load({layout: 'exemple-startup'}).run(WORLD));
   assert.deepEqual(hot, fresh); // même monde qu'une page chargée directement avec ce plan
-  assert.ok(JSON.parse(p.run('JSON.stringify(chars.filter(c=>c.seat&&!seatRef(c.seat)).map(c=>c.key))')).length === 0);
+  assert.ok(JSON.parse(p.run('JSON.stringify(chars.filter(c=>c.seat&&!seatAt(c.seat)).map(c=>c.key))')).length === 0);
   assert.equal(p.run(`applyLayout(${JSON.stringify(EXAMPLE)})`), false); // même plan : rien à refaire
   p.run('applyLayout(EMBEDDED_LAYOUT)');
   assert.equal(p.run(WORLD), before);

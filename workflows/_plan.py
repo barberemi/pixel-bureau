@@ -34,11 +34,16 @@ def seats_of(L):
 
 
 def seat_ref(seats, ref):
-    """Siège désigné par son numéro (« I2.R2 ») ou, ancien format, par ses coordonnées [x, y] ; None s'il n'existe pas."""
+    """Siège désigné par son numéro (« I2.R2 ») ; None s'il n'existe pas (une place [x, y] n'est plus lue)."""
     if isinstance(ref, str):
         return next((t for t in seats if t["id"] == ref), None)
-    if isinstance(ref, list) and len(ref) == 2:
-        return next((t for t in seats if [t["x"], t["y"]] == ref), None)
+    return None
+
+
+def seat_at(seats, xy):
+    """Siège d'îlot à la case [x, y] (places d'intérimaires free_seats) ; None s'il n'y en a pas."""
+    if isinstance(xy, list) and len(xy) == 2:
+        return next((t for t in seats if [t["x"], t["y"]] == xy), None)
     return None
 
 
@@ -64,7 +69,7 @@ def assign(L, people, owner=None):
             t = seat_ref(seats, p.get("seat"))
             if t and t["id"] not in taken:
                 give(p["key"], t)
-    free = [t for t in (seat_ref(seats, f) for f in L.get("free_seats") or []) if t]
+    free = [t for t in (seat_at(seats, f) for f in L.get("free_seats") or []) if t]
     reserved = {sid for sid, _ in seating}
     spare = [t for t in seats if t["id"] not in taken and t not in free and t["id"] not in reserved]
     spare += [t for t in seats if t["id"] not in taken and t not in free and t["id"] in reserved]

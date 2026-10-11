@@ -6,8 +6,10 @@
 // buildWorld() remplit tout ce qui en découle ; il est rappelé quand un plan partagé arrive (applyLayout, 90-boot.js).
 let TS, COLS, ROWS, W, H, EXIT, grid, floorOf, GLASS, DOORS, ISLANDS, IROWS, SEATS, BOSS_SEAT, SPOTS, CLOSABLE;
 const blocked=new Set(), seatTiles=new Set(); const B=(x,y)=>blocked.add(x+','+y);
-// un siège du plan désigné par son numéro (« I2.R2 ») ou, ancien format, par ses coordonnées [x, y]
-const seatRef=s=>typeof s==='string'?SEATS.find(t=>t.id===s):Array.isArray(s)?SEATS.find(t=>t.x===s[0]&&t.y===s[1]):undefined;
+// un siège du plan désigné par son numéro (« I2.R2 ») ; une place [x, y] dans le roster ou un agent n'est plus lue
+const seatRef=s=>typeof s==='string'?SEATS.find(t=>t.id===s):undefined;
+// le siège d'îlot à une case [x, y] (places d'intérimaires free_seats, place d'un personnage)
+const seatAt=s=>Array.isArray(s)?SEATS.find(t=>t.x===s[0]&&t.y===s[1]):undefined;
 const seatDir=(x,y)=>{const s=SEATS.find(s=>s.x===x&&s.y===y);return s?s.dir:'down';};
 function buildWorld(){
   TS=LAYOUT.tile; COLS=LAYOUT.size[0]; ROWS=LAYOUT.size[1]; W=COLS*TS; H=ROWS*TS;
@@ -48,7 +50,7 @@ function placeCast(){
   const seating=Object.entries(LAYOUT.seating||{});
   for(const [id,k] of seating){const t=seatRef(id);if(t&&!taken.has(t.id)&&!got.has(k)&&who.some(w=>w.key===k))give(k,t);}
   for(const w of who)if(!got.has(w.key)){const t=seatRef(w.seat);if(t&&!taken.has(t.id))give(w.key,t);}
-  const free=(LAYOUT.free_seats||[]).map(seatRef).filter(Boolean), reserved=new Set(seating.map(([id])=>id));
+  const free=(LAYOUT.free_seats||[]).map(seatAt).filter(Boolean), reserved=new Set(seating.map(([id])=>id));
   const plain=SEATS.filter(t=>!taken.has(t.id)&&!free.includes(t)&&!reserved.has(t.id));
   const spare=[...plain,...SEATS.filter(t=>!taken.has(t.id)&&!free.includes(t)&&reserved.has(t.id)),...free.filter(t=>!taken.has(t.id))];
   for(const w of who)if(!got.has(w.key)){const t=spare.shift();if(t)give(w.key,t);}
