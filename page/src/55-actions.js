@@ -133,7 +133,7 @@ function askerOf(q){const v=chars.find(c=>c.visitor&&c.disc&&c.disc.id===q.disc)
 // carte d'une question de discussion : un bouton par option (question simple) ou par option pour tout le formulaire,
 // réponse libre, refus ; chaque bouton ouvre la carte Kronn (workflow « Le Bureau · réponse à une question »)
 function questionCard(parent,q,who){
-  const box=document.createElement('div');box.className='gatecard qcard';box.setAttribute('data-kronn-action-slot-host','');
+  const box=document.createElement('div');box.className='gatecard qcard'; // chaque bouton a son propre emplacement (btn ci-dessous)
   const since=ms(q.since)||T, form=q.items&&q.items.length>0;
   box.innerHTML=`<div class="gt">❓ Question${who?' · '+esc(who):''}</div><div class="gw">${esc(clean(q.title).replace(/\s+/g,' ').slice(0,90))}</div>`+
     `<div class="gm"><b>${esc(q.question)}</b></div>`+(q.context?`<div class="gs">${esc(q.context)}</div>`:'')+
@@ -145,8 +145,13 @@ function questionCard(parent,q,who){
   if(!ACTIONS.answer){note('La réponse se donne dans Kronn (workflow « réponse à une question » non installé). '+link);parent.appendChild(box);return;}
   const opts=document.createElement('div');opts.className='qopts';
   const st=document.createElement('div');st.className='note';st.style.margin='6px 0 0';
+  // un emplacement par bouton : la fenêtre centrée ne montre que l'option choisie et la carte Kronn juste dessous
+  // (un emplacement commun mettait toute la carte en fenêtre, et recliquer l'option refermait la carte Kronn)
   const btn=(label,pick,cls,title)=>{
+    const w=document.createElement('div');w.className='qslot';w.setAttribute('data-kronn-action-slot-host','');
     const b=document.createElement('button');b.innerHTML=label;if(cls)b.className=cls;
+    const qk=document.createElement('div');qk.className='qkm';qk.innerHTML=`<b>${esc(q.question)}</b><div>Ta réponse : ${label}</div>`; // visible dans la fenêtre seulement
+    w.append(b,qk);
     let clicked=false;b.addEventListener('click',()=>{clicked=true;});
     b.setAttribute('data-kronn-action','bureau-answer');
     b.setAttribute('data-kronn-bindings',JSON.stringify({choice:q.id+'|'+pick})); // ligne de gates.qrows, relue par Kronn
@@ -155,7 +160,7 @@ function questionCard(parent,q,who){
       if(v==='succeeded'){st.innerHTML='<b style="color:var(--ok)">✓ Réponse envoyée.</b> L\'agent reprend la discussion.';if(clicked&&!ANSWERED[q.id]){ANSWERED[q.id]=Date.now();saveAnswered();}}
       else if(v==='failed')st.innerHTML='<b style="color:var(--err)">Réponse refusée par Kronn</b> (déjà répondue ?). Détail dans la carte.';
     }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
-    kronnModal(box,b,title);return b;};
+    kronnModal(w,b,title);return w;};
   for(const o of q.options||[]){
     const rec=(q.rec||[]).includes(o.id), lbl=(form?'Tout : ':'')+(rec?'★ ':'')+esc(o.label)+(o.desc?` <span class="qd">· ${esc(o.desc)}</span>`:'');
     opts.appendChild(btn(lbl,(form?'all:':'')+o.id,rec?'on':'',form?'Même réponse pour tout le formulaire':'Réponse à la question'));}

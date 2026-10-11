@@ -211,7 +211,11 @@ body.km-on .side{z-index:50} /* le panneau est sticky (plan d'empilement propre)
 .gatecard .gs{font-size:11px;color:var(--muted)}
 .gatecard>button{width:100%;margin-top:8px}
 .qcard .qopts{display:flex;flex-direction:column;gap:6px;margin-top:8px}
-.qcard .qopts>button{text-align:left}
+.qcard .qopts>.qslot>button{text-align:left;width:100%}
+.qcard .qrow>.qslot>button{width:auto}
+.qcard .qkm{display:none}
+.kmodal.qslot .qkm{display:block;font-size:13px;line-height:1.45}
+.kmodal.qslot .qkm div{margin-top:6px;color:var(--muted)}
 .qcard .qd{font-weight:400;opacity:.8}
 .qcard .qrow{display:flex;gap:6px;flex-wrap:wrap}
 .qcard .qitems{margin:4px 0 6px;padding-left:18px;font-size:12px}
