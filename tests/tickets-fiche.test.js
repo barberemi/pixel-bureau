@@ -82,4 +82,6 @@ test('« Ses autres PR » : groupe par état de review, titre sans préfixe, tic
   assert.match(pr({n: 8, title: 'x', review: 'pending', created: '2026-10-04T10:00:00+02:00', updated: '2026-10-07T10:00:00+02:00'}),
     /class="warn"[^>]*>⏳ attend une review depuis 3 j/);
   assert.doesNotMatch(pr({n: 9, title: 'x', draft: true, review: 'pending', created: '2026-10-04T10:00:00+02:00'}), /warn/); // brouillon : n'attend rien
+  // sans date de création, pas d'attente déduite de updated (réécrit par les pushs) : seulement la dernière activité
+  assert.match(pr({n: 10, title: 'x', review: 'pending', updated: '2026-10-04T10:00:00+02:00'}), /activité il y a 3 j/);
 });

@@ -283,10 +283,10 @@ function setData(d,live){
 }
 let DAY0=0,RSTART=0,REND=0,DISC_BY_RUN={},FIRST_LOAD_DONE=false;
 
-// depuis quand ça attend : entrée d'un ticket dans son statut (since, tiré de l'historique Jira par le cron équipe),
-// création d'une PR ; repli sur updated (anciens instantanés), que les bascules de sprint et les pushs réécrivent
+// depuis quand ça attend : entrée d'un ticket dans son statut (since, tiré de l'historique Jira par le cron équipe ;
+// repli sur updated, que les bascules de sprint et les pushs réécrivent), création d'une PR
 const tkSince=x=>ms(x&&(x.since||x.updated));
-const prSince=x=>ms(x&&(x.created||x.updated));
+const prSince=x=>ms(x&&x.created);
 // ce qui bloque l'équipe (mode TV, fiche d'un collègue) : ticket immobile en review ou en test, PR sans review
 const BLOCKED_DAYS=2, PR_STALE_H=24;
 // PR ouvertes de l'équipe (sans les brouillons), avec leur auteur

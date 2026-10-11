@@ -23,8 +23,8 @@ function world() {
     GATES=[{run:'r',wf:'bbbb2222-x',gate:'ok_prod',since:'${new Date(T11 - 30 * 60e3).toISOString()}'}];
     TEAM={people:[
       {name:'Pam B',tickets:[{key:'DM-1',cat:'review',summary:'vieux',updated:'${new Date(T11 - 3 * D).toISOString()}'},{key:'DM-2',cat:'review',summary:'récent',updated:'${new Date(T11 - H).toISOString()}'}],
-       prs:[{n:10,title:'À relire',review:'pending',req:['MichaelScott'],url:'u10',updated:'${new Date(T11 - 2 * D).toISOString()}'},
-            {n:11,title:'Vieille',review:'pending',req:[],url:'u11',updated:'${new Date(T11 - 2 * D).toISOString()}'},
+       prs:[{n:10,title:'À relire',review:'pending',req:['MichaelScott'],url:'u10',created:'${new Date(T11 - 2 * D).toISOString()}',updated:'${new Date(T11 - 2 * D).toISOString()}'},
+            {n:11,title:'Vieille',review:'pending',req:[],url:'u11',created:'${new Date(T11 - 2 * D).toISOString()}',updated:'${new Date(T11 - 2 * D).toISOString()}'},
             {n:12,title:'Brouillon',draft:true,review:'pending',req:['michaelscott'],url:'u12'}]}],
       unassigned:[],other_prs:[],meps:[],events:[],merged_today:[]};
     CFG.github_repo='org/repo';
