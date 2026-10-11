@@ -4,7 +4,7 @@ import json, os, re, shutil, subprocess, sys, tempfile, threading, unittest
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FIXTURE = json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")))
@@ -99,9 +99,9 @@ class FakeKronn:
             return {"id": "dd000001", "title": body["title"]}
         if re.fullmatch(r"/discussions/[\w-]+/run", p):
             return None
-        m = re.fullmatch(r"/discussions/([\w-]+)/questions/([\w-]+)/(answer|decline)", p)
-        if m:  # question_answer.py : la question passe à answered / declined
-            q = next(x for x in self.questions[m.group(1)] if x["id"] == m.group(2))
+        m = re.fullmatch(r"/discussions/([\w-]+)/questions/([^/]+)/(answer|decline)", p)
+        if m:  # question_answer.py : la question passe à answered / declined (id Kronn « question:<discussion>:<n> », encodé)
+            q = next(x for x in self.questions[m.group(1)] if x["id"] == unquote(m.group(2)))
             q["state"] = "answered" if m.group(3) == "answer" else "declined"
             return q
         raise KeyError(path)
@@ -644,10 +644,11 @@ print(json.dumps(d.get(key, [])))
         opts = [{"id": "confirm", "label": "Confirmer"}, {"id": "defer", "label": "Différer"}]
         q = lambda i, items=(): {"id": i, "options": opts, "items": list(items), "state": "pending"}  # noqa: E731
         rows = [{"id": f"{i}|{c}", "q": i, "disc": "a1"} for i, c in
-                (("q1", "defer"), ("q2", "all:confirm"), ("q3", "_text"), ("q4", "_decline"), ("q5", "confirm"))]
+                (("q1", "defer"), ("q2", "all:confirm"), ("q3", "_text"), ("q4", "_decline"), ("q5", "confirm"), ("question:a1:6", "confirm"))]
         fake = FakeKronn()
         fake.datasets = [{"name": "gates", "current": json.dumps({"qrows": rows})}]
-        fake.questions = {"a1": [q("q1"), q("q2", [{"id": "TD-1"}, {"id": "TD-2"}]), q("q3"), q("q4"), dict(q("q5"), state="answered")]}
+        fake.questions = {"a1": [q("q1"), q("q2", [{"id": "TD-1"}, {"id": "TD-2"}]), q("q3"), q("q4"), dict(q("q5"), state="answered"),
+                                 q("question:a1:6")]}
         code, out, _ = self.answer(fake, "q1|defer", "dès lundi")
         self.assertEqual((code, out.strip()), (0, "Réponse envoyée : « Différer ». L'agent reprend la discussion."))
         path, body = fake.posts[-1]
@@ -662,6 +663,8 @@ print(json.dumps(d.get(key, [])))
         self.assertEqual(fake.posts[-1][1]["text"], "Ni l'un ni l'autre")
         self.assertEqual(self.answer(fake, "q4|_decline", "hors sujet")[0], 0)
         self.assertEqual(fake.posts[-1], ("/discussions/a1/questions/q4/decline", {"idempotency_key": fake.posts[-1][1]["idempotency_key"], "reason": "hors sujet"}))
+        self.assertEqual(self.answer(fake, "question:a1:6|confirm")[0], 0)  # vrai format d'id Kronn
+        self.assertEqual(fake.posts[-1][0], "/discussions/a1/questions/question%3Aa1%3A6/answer")
         n = len(fake.posts)
         for bad in ("q5|confirm", "q1|defer", "q9|confirm", "q1|../x"):  # déjà décidée, ligne absente, id invalide
             code, _, err = self.answer(fake, bad)

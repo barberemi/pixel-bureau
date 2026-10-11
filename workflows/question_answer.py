@@ -8,11 +8,11 @@ Arguments : choice [text]
 La question est relue dans Kronn : déjà décidée ou disparue, rien n'est envoyé. Kronn valide encore la réponse
 (POST /api/discussions/{d}/questions/{q}/answer ou /decline) ; la clé d'idempotence évite une double réponse.
 """
-import hashlib, json, re, sys, urllib.request, urllib.error
+import hashlib, json, re, sys, urllib.parse, urllib.request, urllib.error
 from _lib import API, CFG
 
 PAGE = CFG["page_id"]
-ROW = re.compile(r"^([\w-]{1,80})\|(all:[\w-]{1,80}|_text|_decline|[\w-]{1,80})$")
+ROW = re.compile(r"^([\w:.-]{1,160})\|(all:[\w-]{1,80}|_text|_decline|[\w-]{1,80})$")  # id Kronn : « question:<discussion>:<n> »
 
 
 def fail(msg):
@@ -46,13 +46,14 @@ row = next((r for r in cur.get("qrows") or [] if r.get("id") == choice), None)
 if not row:
     fail("Cette question n'est plus en attente (déjà décidée ?) : recharge la page.")
 disc = row["disc"]
+qpath = urllib.parse.quote(qid, safe="")
 q = next((x for x in call(f"/discussions/{disc}/questions").get("questions") or [] if x.get("id") == qid), None)
 if not q or q.get("state") != "pending":
     fail("Cette question n'est plus en attente (déjà décidée dans Kronn ?).")
 key = "bureau-" + hashlib.sha1(f"{qid}|{pick}|{text}".encode()).hexdigest()[:32]
 labels = {o["id"]: o.get("label") or o["id"] for o in q.get("options") or []}
 if pick == "_decline":
-    call(f"/discussions/{disc}/questions/{qid}/decline", {"idempotency_key": key, "reason": text or None})
+    call(f"/discussions/{disc}/questions/{qpath}/decline", {"idempotency_key": key, "reason": text or None})
     print("Question refusée" + (f" : {text}" if text else "") + ". L'agent est prévenu.")
     sys.exit(0)
 if pick == "_text":
@@ -68,6 +69,6 @@ else:
     if pick not in labels or q.get("items"):
         fail("Option inconnue pour cette question : recharge la page.")
     body = {"selected_option_ids": [pick], "item_answers": [], "text": text or None}
-call(f"/discussions/{disc}/questions/{qid}/answer", dict(body, idempotency_key=key))
+call(f"/discussions/{disc}/questions/{qpath}/answer", dict(body, idempotency_key=key))
 what = f"« {labels[pick[4:]]} » pour les {len(q['items'])} items" if pick.startswith("all:") else f"« {labels[pick]} »" if pick in labels else "ta réponse libre"
 print(f"Réponse envoyée : {what}. L'agent reprend la discussion.")
