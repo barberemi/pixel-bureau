@@ -1,0 +1,1 @@
+Not applicable: le projet n'expose aucune API (page statique alimentée par des crons Python qui consomment seulement l'API locale de Kronn ; le seul serveur HTTP est un faux Kronn dans les tests) [src: file: tests/test_scripts.py:132] [src: file: workflows/gate_decide.py:27].

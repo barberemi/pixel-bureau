@@ -1,0 +1,294 @@
+{
+  "phase": "documentary_optimization",
+  "budgets": {
+    "adapter_max_words": 220,
+    "agents_md_max_words": 800,
+    "mandatory_path_max_words": 1200,
+    "initially_routed_max_documents": 2,
+    "large_inventory_min_words": 1200,
+    "exception": null
+  },
+  "agents": [
+    {
+      "adapter": "AGENTS.md",
+      "documents": [
+        {
+          "path": "AGENTS.md",
+          "bytes": 399,
+          "words": 54,
+          "estimated_tokens": 99
+        },
+        {
+          "path": "docs/AGENTS.md",
+          "bytes": 13723,
+          "words": 1761,
+          "estimated_tokens": 3400
+        }
+      ],
+      "bytes": 14122,
+      "words": 1815,
+      "estimated_tokens": 3499,
+      "initially_routed_documents": 1,
+      "top_contributors": [
+        {
+          "path": "docs/AGENTS.md",
+          "bytes": 13723,
+          "words": 1761,
+          "estimated_tokens": 3400
+        },
+        {
+          "path": "AGENTS.md",
+          "bytes": 399,
+          "words": 54,
+          "estimated_tokens": 99
+        }
+      ]
+    },
+    {
+      "adapter": "CLAUDE.md",
+      "documents": [
+        {
+          "path": "CLAUDE.md",
+          "bytes": 295,
+          "words": 41,
+          "estimated_tokens": 73
+        },
+        {
+          "path": "docs/AGENTS.md",
+          "bytes": 13723,
+          "words": 1761,
+          "estimated_tokens": 3400
+        }
+      ],
+      "bytes": 14018,
+      "words": 1802,
+      "estimated_tokens": 3473,
+      "initially_routed_documents": 1,
+      "top_contributors": [
+        {
+          "path": "docs/AGENTS.md",
+          "bytes": 13723,
+          "words": 1761,
+          "estimated_tokens": 3400
+        },
+        {
+          "path": "CLAUDE.md",
+          "bytes": 295,
+          "words": 41,
+          "estimated_tokens": 73
+        }
+      ]
+    },
+    {
+      "adapter": "GEMINI.md",
+      "documents": [
+        {
+          "path": "GEMINI.md",
+          "bytes": 295,
+          "words": 41,
+          "estimated_tokens": 73
+        },
+        {
+          "path": "docs/AGENTS.md",
+          "bytes": 13723,
+          "words": 1761,
+          "estimated_tokens": 3400
+        }
+      ],
+      "bytes": 14018,
+      "words": 1802,
+      "estimated_tokens": 3473,
+      "initially_routed_documents": 1,
+      "top_contributors": [
+        {
+          "path": "docs/AGENTS.md",
+          "bytes": 13723,
+          "words": 1761,
+          "estimated_tokens": 3400
+        },
+        {
+          "path": "GEMINI.md",
+          "bytes": 295,
+          "words": 41,
+          "estimated_tokens": 73
+        }
+      ]
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "mandatory_path_budget",
+      "path": "AGENTS.md",
+      "message": "mandatory path is 1815 words; budget is 1200",
+      "blocking": false
+    },
+    {
+      "code": "placeholder",
+      "path": "AGENTS.md",
+      "message": "unresolved template or TODO placeholder",
+      "blocking": false
+    },
+    {
+      "code": "mandatory_path_budget",
+      "path": "CLAUDE.md",
+      "message": "mandatory path is 1802 words; budget is 1200",
+      "blocking": false
+    },
+    {
+      "code": "placeholder",
+      "path": "CLAUDE.md",
+      "message": "unresolved template or TODO placeholder",
+      "blocking": false
+    },
+    {
+      "code": "mandatory_path_budget",
+      "path": "GEMINI.md",
+      "message": "mandatory path is 1802 words; budget is 1200",
+      "blocking": false
+    },
+    {
+      "code": "placeholder",
+      "path": "GEMINI.md",
+      "message": "unresolved template or TODO placeholder",
+      "blocking": false
+    },
+    {
+      "code": "agents_md_budget",
+      "path": "docs/AGENTS.md",
+      "message": "1761 words exceeds budget 800",
+      "blocking": false
+    },
+    {
+      "code": "large_inventory_not_search_first",
+      "path": "docs/AGENTS.md",
+      "message": "large document is not marked search-first",
+      "blocking": false
+    },
+    {
+      "code": "large_inventory_not_search_first",
+      "path": "docs/architecture/overview.md",
+      "message": "large document is not marked search-first",
+      "blocking": false
+    },
+    {
+      "code": "orphan_document",
+      "path": "docs/briefing.md",
+      "message": "document is not linked from another documentation file",
+      "blocking": false
+    },
+    {
+      "code": "large_inventory_not_search_first",
+      "path": "docs/conventions/agents-md-format-v1.md",
+      "message": "large document is not marked search-first",
+      "blocking": false
+    },
+    {
+      "code": "large_inventory_not_search_first",
+      "path": "docs/glossary.md",
+      "message": "large document is not marked search-first",
+      "blocking": false
+    },
+    {
+      "code": "orphan_document",
+      "path": "docs/gotchas/tmpdir-dans-le-depot.md",
+      "message": "document is not linked from another documentation file",
+      "blocking": false
+    },
+    {
+      "code": "orphan_document",
+      "path": "docs/inconsistencies-accessibility.md",
+      "message": "document is not linked from another documentation file",
+      "blocking": false
+    },
+    {
+      "code": "orphan_document",
+      "path": "docs/inconsistencies-api.md",
+      "message": "document is not linked from another documentation file",
+      "blocking": false
+    },
+    {
+      "code": "orphan_document",
+      "path": "docs/inconsistencies-code-quality.md",
+      "message": "document is not linked from another documentation file",
+      "blocking": false
+    },
+    {
+      "code": "orphan_document",
+      "path": "docs/inconsistencies-database.md",
+      "message": "document is not linked from another documentation file",
+      "blocking": false
+    },
+    {
+      "code": "orphan_document",
+      "path": "docs/inconsistencies-docker.md",
+      "message": "document is not linked from another documentation file",
+      "blocking": false
+    },
+    {
+      "code": "orphan_document",
+      "path": "docs/inconsistencies-performance.md",
+      "message": "document is not linked from another documentation file",
+      "blocking": false
+    },
+    {
+      "code": "orphan_document",
+      "path": "docs/inconsistencies-security.md",
+      "message": "document is not linked from another documentation file",
+      "blocking": false
+    },
+    {
+      "code": "large_inventory_not_search_first",
+      "path": "docs/inconsistencies-tech-debt.md",
+      "message": "large document is not marked search-first",
+      "blocking": false
+    },
+    {
+      "code": "orphan_document",
+      "path": "docs/operations/mcp-servers.md",
+      "message": "document is not linked from another documentation file",
+      "blocking": false
+    },
+    {
+      "code": "mutable_line_reference",
+      "path": "docs/tech-debt/TD-20261011-a11y-bosspages-modal-focus.md",
+      "message": "crée un     et place le focus sur la première carte [src: file: page/src/47-bosspages.js:52-56]. Aucun gestionnaire   ne retient le focus dans la boîte ; le reste de la page n'est pas rendu  .   supprime les nœuds sans rendre le focus à un déclencheur [src: file: page/src/47-bosspages.js:58] (le déclencheur est le canvas, non focalisable, voir TD-20261011-a11y-canvas-mouse-only).",
+      "blocking": false
+    },
+    {
+      "code": "mutable_line_reference",
+      "path": "docs/tech-debt/TD-20261011-a11y-clickable-divs.md",
+      "message": "- Lignes du fil :   et   avec   [src: file: page/src/70-kpis-feed.js:379] [src: file: page/src/70-kpis-feed.js:373] [src: file: page/src/styles.css:149] ; le clic ouvre la personne, le plateau TV ou le canard [src: file: page/src/70-kpis-feed.js:404-407]. Les liens   internes à certaines lignes restent accessibles, la ligne entière non (lignes du canard épinglées : aucune alternative).",
+      "blocking": false
+    },
+    {
+      "code": "mutable_line_reference",
+      "path": "docs/tech-debt/TD-20261011-a11y-clickable-divs.md",
+      "message": "- Loupe :   avec   [src: file: page/src/44-loupe.js:110-113].",
+      "blocking": false
+    },
+    {
+      "code": "mutable_line_reference",
+      "path": "docs/tech-debt/TD-20261011-a11y-heading-structure.md",
+      "message": "- Les en-têtes de groupe repliables sont des   [src: file: page/src/50-panel.js:115-117] [src: file: page/src/72-whoboard.js:76] ; le rôle   remplace le rôle  , ces titres disparaissent de la navigation par titres.",
+      "blocking": false
+    },
+    {
+      "code": "mutable_line_reference",
+      "path": "docs/tech-debt/TD-20261011-a11y-reduced-motion-canvas.md",
+      "message": "n'apparaît que dans deux règles CSS : bandeau TV et flash de la tuile sprint [src: file: page/src/styles.css:257] [src: file: page/src/styles.css:355]. Aucun   dans  . Restent animés sans condition : effets de thème au-dessus du plan (chauves-souris, flocons, confettis, feux d'artifice, éclairs) [src: file: page/src/46-themes.js:197-215], ouverture automatique de la loupe sur un événement fort [src: file: page/src/44-loupe.js:1-8], défilement   [src: file: page/src/70-kpis-feed.js:400]. En direct, le plan n'a pas de bouton pause (« ▶ Rejouer » ne vaut que pour le rejeu,  ). La loupe se coupe avec son bouton.",
+      "blocking": false
+    },
+    {
+      "code": "mutable_line_reference",
+      "path": "docs/tech-debt/TD-20261011-a11y-toggle-state-unexposed.md",
+      "message": "- « ● Direct » / « ▶ Rejouer » :   seulement [src: file: page/src/80-input.js:52-53].",
+      "blocking": false
+    },
+    {
+      "code": "mutable_line_reference",
+      "path": "docs/tech-debt/TD-20261011-page-no-csp.md",
+      "message": "Le   ne contient que  ,   et   [src: file: page/office_template.html:3-10]. Pas de  . Les en-têtes HTTP de la Live Page sont posés par Kronn, hors dépôt.",
+      "blocking": false
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+Not applicable: le dépôt n'a aucune couche base de données (ni fichier .sql/.db, ni migration, ni ORM, ni import sqlite3 dans les scripts Python) ; les données de la Live Page sont des fichiers JSON produits par les crons de `workflows/` (ex. `data/office_snapshot.json`).
