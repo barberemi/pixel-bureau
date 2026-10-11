@@ -7,6 +7,10 @@ metadata:
     - date: 2026-10-11
       status: Verified in source
       reviewer: Security audit 0.8.2
+    - date: 2026-10-11
+      status: Confirmed by user
+      reviewer: Kronn audit validation card
+      note: "Confirmed through an audit validation card."
 ---
 
 # TD-20261011-sprites-unpinned-master
@@ -14,7 +18,7 @@ metadata:
 - **Category**: security
 - **Area**: Supply chain
 - **Severity**: Low
-- **Status**: Verified in source
+- **Status**: Confirmed by user
 - **Effort**: S (< 1h)
 - **Blast radius**: local (1-2 files)
 

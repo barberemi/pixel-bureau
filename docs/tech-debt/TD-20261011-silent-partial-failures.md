@@ -10,13 +10,17 @@ metadata:
     - date: 2026-10-11
       status: Verified in source
       reviewer: Code-quality audit (gates_snapshot.py:92 toujours `except Exception: pass` sur /discussions)
+    - date: 2026-10-11
+      status: Confirmed by user
+      reviewer: Kronn audit validation card
+      note: "Confirmed through an audit validation card."
 ---
 
 # TD-20261011-silent-partial-failures
 
 - **Area**: Observability
 - **Severity**: Low
-- **Status**: Verified in source
+- **Status**: Confirmed by user
 - **Effort**: M (1-4h)
 - **Blast radius**: module (5-10 files)
 

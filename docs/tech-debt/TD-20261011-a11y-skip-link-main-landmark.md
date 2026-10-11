@@ -7,6 +7,10 @@ metadata:
     - date: 2026-10-11
       status: Verified in source
       reviewer: Accessibility audit 0.8.2
+    - date: 2026-10-11
+      status: Deferred
+      reviewer: Kronn audit validation card
+      note: "Deferred through an audit validation card."
 ---
 
 # TD-20261011-a11y-skip-link-main-landmark
@@ -15,7 +19,7 @@ metadata:
 - **WCAG**: 2.4.1 Bypass Blocks ; 1.3.1 Info and Relationships
 - **Area**: Sémantique
 - **Severity**: Low
-- **Status**: Verified in source
+- **Status**: Deferred
 - **Effort**: S (< 1h)
 - **Blast radius**: local (1-2 files)
 

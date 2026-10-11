@@ -7,6 +7,10 @@ metadata:
     - date: 2026-10-11
       status: Verified in source
       reviewer: Code-quality audit
+    - date: 2026-10-11
+      status: Deferred
+      reviewer: Kronn audit validation card
+      note: "Deferred through an audit validation card."
 ---
 
 # TD-20261011-run-pagination-copypaste
@@ -14,7 +18,7 @@ metadata:
 - **Category**: code-quality
 - **Area**: Backend
 - **Severity**: Low
-- **Status**: Verified in source
+- **Status**: Deferred
 - **Effort**: S (< 1h)
 - **Blast radius**: module (3-4 files)
 

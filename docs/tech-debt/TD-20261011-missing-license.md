@@ -8,13 +8,17 @@ metadata:
       status: Verified in source
       reviewer: Full audit
       note: dépôt GitHub privé (`gh repo view` : visibility PRIVATE, licenseInfo null)
+    - date: 2026-10-11
+      status: Confirmed by user
+      reviewer: Kronn audit validation card
+      note: "Confirmed through an audit validation card."
 ---
 
 # TD-20261011-missing-license
 
 - **Area**: Other
 - **Severity**: Medium
-- **Status**: Verified in source
+- **Status**: Confirmed by user
 - **Effort**: S (< 1h)
 - **Blast radius**: local (1-2 files)
 

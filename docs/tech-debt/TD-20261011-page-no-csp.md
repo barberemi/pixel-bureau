@@ -7,6 +7,10 @@ metadata:
     - date: 2026-10-11
       status: Verified in source
       reviewer: Security audit 0.8.2
+    - date: 2026-10-11
+      status: Accepted decision
+      reviewer: Kronn audit validation card
+      note: "Accepted as an intentional decision and recorded in docs/decisions.md."
 ---
 
 # TD-20261011-page-no-csp
@@ -14,7 +18,7 @@ metadata:
 - **Category**: security
 - **Area**: Headers
 - **Severity**: Low
-- **Status**: Verified in source
+- **Status**: Accepted decision
 - **Effort**: S (< 1h)
 - **Blast radius**: local (1-2 files)
 

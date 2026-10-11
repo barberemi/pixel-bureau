@@ -10,6 +10,10 @@ metadata:
     - date: 2026-10-12
       status: Partially resolved
       reviewer: mainteneur
+    - date: 2026-10-11
+      status: Confirmed by user
+      reviewer: Kronn audit validation card
+      note: "Confirmed through an audit validation card."
 ---
 
 # TD-20261011-status-palettes-diverge
@@ -17,7 +21,7 @@ metadata:
 - **Category**: code-quality
 - **Area**: Frontend
 - **Severity**: Medium
-- **Status**: Partially resolved (2026-10-12)
+- **Status**: Confirmed by user
 - **Effort**: M (1-4h)
 - **Blast radius**: module (5-10 files)
 

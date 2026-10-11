@@ -7,13 +7,17 @@ metadata:
     - date: 2026-10-11
       status: Verified in source
       reviewer: Full audit
+    - date: 2026-10-11
+      status: Confirmed by user
+      reviewer: Kronn audit validation card
+      note: "Confirmed through an audit validation card."
 ---
 
 # TD-20261011-unclosed-file-handles
 
 - **Area**: Backend
 - **Severity**: Low
-- **Status**: Verified in source
+- **Status**: Confirmed by user
 - **Effort**: S (< 1h)
 - **Blast radius**: module (5-10 files)
 

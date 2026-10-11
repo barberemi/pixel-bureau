@@ -12,13 +12,17 @@ metadata:
       status: Verified in source
       reviewer: Performance audit 0.8.2
       note: repris comme constat de poids de page (tout est inliné dans un seul HTML, pas de découpage possible dans la sandbox Live Pages) ; pas de nouvelle mesure
+    - date: 2026-10-11
+      status: Confirmed by user
+      reviewer: Kronn audit validation card
+      note: "Confirmed through an audit validation card."
 ---
 
 # TD-20261011-page-size-near-kronn-limit
 
 - **Area**: Frontend
 - **Severity**: Medium
-- **Status**: Verified in source
+- **Status**: Confirmed by user
 - **Effort**: M (1-4h)
 - **Blast radius**: module (5-10 files)
 

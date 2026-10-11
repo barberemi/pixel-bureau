@@ -8,13 +8,17 @@ metadata:
       status: Verified in source
       reviewer: Full audit
       note: `python3 --version` = 3.9.6, `node --version` = v25.9.0 sur le poste de dev
+    - date: 2026-10-11
+      status: Deferred
+      reviewer: Kronn audit validation card
+      note: "Deferred through an audit validation card."
 ---
 
 # TD-20261011-python-runtime-eol
 
 - **Area**: Infra
 - **Severity**: Medium
-- **Status**: Verified in source
+- **Status**: Deferred
 - **Effort**: M (1-4h)
 - **Blast radius**: cross-cutting (50+ files or new pattern)
 

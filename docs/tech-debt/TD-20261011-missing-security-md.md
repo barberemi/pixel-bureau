@@ -8,13 +8,17 @@ metadata:
       status: Verified in source
       reviewer: Full audit
       note: signal du détecteur missing-community-files ; sévérité Low car dépôt privé
+    - date: 2026-10-11
+      status: Accepted decision
+      reviewer: Kronn audit validation card
+      note: "Accepted as an intentional decision and recorded in docs/decisions.md."
 ---
 
 # TD-20261011-missing-security-md
 
 - **Area**: Security
 - **Severity**: Low
-- **Status**: Verified in source
+- **Status**: Accepted decision
 - **Effort**: S (< 1h)
 - **Blast radius**: local (1-2 files)
 

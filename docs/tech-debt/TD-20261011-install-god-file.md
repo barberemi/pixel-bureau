@@ -10,13 +10,17 @@ metadata:
     - date: 2026-10-11
       status: Verified in source
       reviewer: Code-quality audit (toujours 710 lignes ; jira:231, github:327, reuse:437, upsert_all:549 inchangés)
+    - date: 2026-10-11
+      status: Deferred
+      reviewer: Kronn audit validation card
+      note: "Deferred through an audit validation card."
 ---
 
 # TD-20261011-install-god-file
 
 - **Area**: Other
 - **Severity**: Low
-- **Status**: Verified in source
+- **Status**: Deferred
 - **Effort**: L (1+ day)
 - **Blast radius**: local (1-2 files)
 

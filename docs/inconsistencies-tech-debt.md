@@ -7,15 +7,15 @@ Details in `tech-debt/TD-YYYYMMDD-slug.md` (use today's date for YYYYMMDD).
 
 **To add:** create detail file, add one-line entry below.
 
-**Detail file example** (`tech-debt/TD-20260315-hardcoded-secret.md`):
-- **ID**: TD-20260315-hardcoded-secret
-- **Area**: Backend
-- **Severity**: Critical
-- **Problem**: API key hardcoded in `src/config.rs:42`
-- **Impact**: security: key exposed in version control
-- **Where**: `src/config.rs:42`, `src/payments/client.rs:15`
-- **Suggested fix**: Move to environment variable
-- **Next step**: create ticket
+**Detail file example** (fictif, illustre seulement le format ; ce n'est pas une dette du dépôt) (`tech-debt/TD-YYYYMMDD-slug.md`) :
+- **ID**: TD-YYYYMMDD-slug
+- **Area**: Backend | Frontend | Infra | ...
+- **Severity**: Critical | High | Medium | Low
+- **Problem**: constat factuel, avec `chemin:ligne`
+- **Impact**: conséquence concrète
+- **Where**: `chemin:ligne` des occurrences
+- **Suggested fix**: piste de correction
+- **Next step**: créer un ticket
 
 **Severity scale:**
 - **Critical**: security risk or data loss

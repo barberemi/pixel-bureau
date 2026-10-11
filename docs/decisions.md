@@ -30,3 +30,11 @@ It is the *positive* counterpart to `inconsistencies-tech-debt.md`: decisions th
 | Changements de statut Jira lus par `changelog/bulkfetch` filtré sur `status` | `expand=changelog` ramène chaque version de la description : 12 Mo par run, 80 runs par jour | Ne jamais ajouter `expand=changelog` sur `jira_team` ni `jira_closed` | [src: file: guide/developpement.md:26] |
 | Publication sans données de démo, plan validé avant envoi | La page publiée attend ses propres datasets ; un plan cassé ferait disparaître des personnages ou bloquerait des chemins | Ne pas publier une page assemblée avec la démo (`data/*.json`) ; ne pas contourner `plan.validate` | [src: file: tools/publish.py:27] [src: file: tools/publish.py:29] |
 | Tout est rejouable et daté par les données | Rejeu de la journée et instantanés cohérents, quelle que soit l'heure du calcul | Ne pas dater un événement par l'heure de calcul du script ou du navigateur | [src: file: docs/briefing.md:33] |
+
+## Audit validation decisions
+
+| Decision | Why chosen | What NOT to do | Source |
+|----------|------------|----------------|--------|
+| Accept `TD-20261011-page-no-csp` as an intentional trade-off | Accepted during audit validation. | Do not reopen without new evidence | [`TD-20261011-page-no-csp`](tech-debt/TD-20261011-page-no-csp.md) |
+| Accept `TD-20261011-missing-security-md` as an intentional trade-off | Accepted during audit validation. | Do not reopen without new evidence | [`TD-20261011-missing-security-md`](tech-debt/TD-20261011-missing-security-md.md) |
+| Accept `TD-20261011-a11y-canvas-mouse-only` as an intentional trade-off | Accepted during audit validation. | Do not reopen without new evidence | [`TD-20261011-a11y-canvas-mouse-only`](tech-debt/TD-20261011-a11y-canvas-mouse-only.md) |

@@ -7,6 +7,10 @@ metadata:
     - date: 2026-10-11
       status: Verified in source
       reviewer: Accessibility audit 0.8.2
+    - date: 2026-10-11
+      status: Accepted decision
+      reviewer: Kronn audit validation card
+      note: "Accepted as an intentional decision and recorded in docs/decisions.md."
 ---
 
 # TD-20261011-a11y-canvas-mouse-only
@@ -15,7 +19,7 @@ metadata:
 - **WCAG**: 2.1.1 Keyboard
 - **Area**: Clavier
 - **Severity**: Medium
-- **Status**: Verified in source
+- **Status**: Accepted decision
 - **Effort**: M (demi-journée)
 - **Blast radius**: local (1-2 files)
 

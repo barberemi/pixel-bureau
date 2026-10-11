@@ -7,6 +7,10 @@ metadata:
     - date: 2026-10-11
       status: Verified in source
       reviewer: Security audit 0.8.2
+    - date: 2026-10-11
+      status: Confirmed by user
+      reviewer: Kronn audit validation card
+      note: "Confirmed through an audit validation card."
 ---
 
 # TD-20261011-href-scheme-unchecked
@@ -14,7 +18,7 @@ metadata:
 - **Category**: security
 - **Area**: XSS
 - **Severity**: Low
-- **Status**: Verified in source
+- **Status**: Confirmed by user
 - **Effort**: S (< 1h)
 - **Blast radius**: module (several files in page/src)
 

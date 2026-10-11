@@ -7,6 +7,10 @@ metadata:
     - date: 2026-10-11
       status: Verified in source
       reviewer: Accessibility audit 0.8.2
+    - date: 2026-10-11
+      status: Confirmed by user
+      reviewer: Kronn audit validation card
+      note: "Confirmed through an audit validation card."
 ---
 
 # TD-20261011-a11y-reduced-motion-canvas
@@ -15,7 +19,7 @@ metadata:
 - **WCAG**: 2.2.2 Pause, Stop, Hide ; 2.3.3 Animation from Interactions (AAA, indicatif)
 - **Area**: Mouvement
 - **Severity**: Low
-- **Status**: Verified in source
+- **Status**: Confirmed by user
 - **Effort**: M (demi-journée)
 - **Blast radius**: local (3-4 files)
 

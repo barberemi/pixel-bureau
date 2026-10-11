@@ -7,6 +7,10 @@ metadata:
     - date: 2026-10-11
       status: Verified in source
       reviewer: Performance audit 0.8.2
+    - date: 2026-10-11
+      status: Deferred
+      reviewer: Kronn audit validation card
+      note: "Deferred through an audit validation card."
 ---
 
 # TD-20261011-side-panel-rebuilt-every-second
@@ -14,7 +18,7 @@ metadata:
 - **Category**: performance
 - **Area**: Frontend
 - **Severity**: Low
-- **Status**: Verified in source
+- **Status**: Deferred
 - **Effort**: M (1-4h)
 - **Blast radius**: local (1-2 files)
 

@@ -7,6 +7,10 @@ metadata:
     - date: 2026-10-11
       status: Verified in source
       reviewer: Accessibility audit 0.8.2
+    - date: 2026-10-11
+      status: Confirmed by user
+      reviewer: Kronn audit validation card
+      note: "Confirmed through an audit validation card."
 ---
 
 # TD-20261011-a11y-bosspages-modal-focus
@@ -15,7 +19,7 @@ metadata:
 - **WCAG**: 2.4.3 Focus Order
 - **Area**: Focus
 - **Severity**: Low
-- **Status**: Verified in source
+- **Status**: Confirmed by user
 - **Effort**: S (< 1h)
 - **Blast radius**: local (1-2 files)
 

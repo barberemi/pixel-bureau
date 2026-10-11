@@ -14,33 +14,33 @@
       "documents": [
         {
           "path": "AGENTS.md",
-          "bytes": 399,
-          "words": 54,
-          "estimated_tokens": 99
+          "bytes": 449,
+          "words": 65,
+          "estimated_tokens": 113
         },
         {
           "path": "docs/AGENTS.md",
-          "bytes": 13723,
-          "words": 1761,
-          "estimated_tokens": 3400
+          "bytes": 13944,
+          "words": 1767,
+          "estimated_tokens": 3463
         }
       ],
-      "bytes": 14122,
-      "words": 1815,
-      "estimated_tokens": 3499,
+      "bytes": 14393,
+      "words": 1832,
+      "estimated_tokens": 3576,
       "initially_routed_documents": 1,
       "top_contributors": [
         {
           "path": "docs/AGENTS.md",
-          "bytes": 13723,
-          "words": 1761,
-          "estimated_tokens": 3400
+          "bytes": 13944,
+          "words": 1767,
+          "estimated_tokens": 3463
         },
         {
           "path": "AGENTS.md",
-          "bytes": 399,
-          "words": 54,
-          "estimated_tokens": 99
+          "bytes": 449,
+          "words": 65,
+          "estimated_tokens": 113
         }
       ]
     },
@@ -49,33 +49,33 @@
       "documents": [
         {
           "path": "CLAUDE.md",
-          "bytes": 295,
-          "words": 41,
-          "estimated_tokens": 73
+          "bytes": 345,
+          "words": 52,
+          "estimated_tokens": 87
         },
         {
           "path": "docs/AGENTS.md",
-          "bytes": 13723,
-          "words": 1761,
-          "estimated_tokens": 3400
+          "bytes": 13944,
+          "words": 1767,
+          "estimated_tokens": 3463
         }
       ],
-      "bytes": 14018,
-      "words": 1802,
-      "estimated_tokens": 3473,
+      "bytes": 14289,
+      "words": 1819,
+      "estimated_tokens": 3550,
       "initially_routed_documents": 1,
       "top_contributors": [
         {
           "path": "docs/AGENTS.md",
-          "bytes": 13723,
-          "words": 1761,
-          "estimated_tokens": 3400
+          "bytes": 13944,
+          "words": 1767,
+          "estimated_tokens": 3463
         },
         {
           "path": "CLAUDE.md",
-          "bytes": 295,
-          "words": 41,
-          "estimated_tokens": 73
+          "bytes": 345,
+          "words": 52,
+          "estimated_tokens": 87
         }
       ]
     },
@@ -84,33 +84,33 @@
       "documents": [
         {
           "path": "GEMINI.md",
-          "bytes": 295,
-          "words": 41,
-          "estimated_tokens": 73
+          "bytes": 345,
+          "words": 52,
+          "estimated_tokens": 87
         },
         {
           "path": "docs/AGENTS.md",
-          "bytes": 13723,
-          "words": 1761,
-          "estimated_tokens": 3400
+          "bytes": 13944,
+          "words": 1767,
+          "estimated_tokens": 3463
         }
       ],
-      "bytes": 14018,
-      "words": 1802,
-      "estimated_tokens": 3473,
+      "bytes": 14289,
+      "words": 1819,
+      "estimated_tokens": 3550,
       "initially_routed_documents": 1,
       "top_contributors": [
         {
           "path": "docs/AGENTS.md",
-          "bytes": 13723,
-          "words": 1761,
-          "estimated_tokens": 3400
+          "bytes": 13944,
+          "words": 1767,
+          "estimated_tokens": 3463
         },
         {
           "path": "GEMINI.md",
-          "bytes": 295,
-          "words": 41,
-          "estimated_tokens": 73
+          "bytes": 345,
+          "words": 52,
+          "estimated_tokens": 87
         }
       ]
     }
@@ -119,43 +119,25 @@
     {
       "code": "mandatory_path_budget",
       "path": "AGENTS.md",
-      "message": "mandatory path is 1815 words; budget is 1200",
-      "blocking": false
-    },
-    {
-      "code": "placeholder",
-      "path": "AGENTS.md",
-      "message": "unresolved template or TODO placeholder",
+      "message": "mandatory path is 1832 words; budget is 1200",
       "blocking": false
     },
     {
       "code": "mandatory_path_budget",
       "path": "CLAUDE.md",
-      "message": "mandatory path is 1802 words; budget is 1200",
-      "blocking": false
-    },
-    {
-      "code": "placeholder",
-      "path": "CLAUDE.md",
-      "message": "unresolved template or TODO placeholder",
+      "message": "mandatory path is 1819 words; budget is 1200",
       "blocking": false
     },
     {
       "code": "mandatory_path_budget",
       "path": "GEMINI.md",
-      "message": "mandatory path is 1802 words; budget is 1200",
-      "blocking": false
-    },
-    {
-      "code": "placeholder",
-      "path": "GEMINI.md",
-      "message": "unresolved template or TODO placeholder",
+      "message": "mandatory path is 1819 words; budget is 1200",
       "blocking": false
     },
     {
       "code": "agents_md_budget",
       "path": "docs/AGENTS.md",
-      "message": "1761 words exceeds budget 800",
+      "message": "1767 words exceeds budget 800",
       "blocking": false
     },
     {
@@ -191,12 +173,6 @@
     {
       "code": "orphan_document",
       "path": "docs/gotchas/tmpdir-dans-le-depot.md",
-      "message": "document is not linked from another documentation file",
-      "blocking": false
-    },
-    {
-      "code": "orphan_document",
-      "path": "docs/inconsistencies-accessibility.md",
       "message": "document is not linked from another documentation file",
       "blocking": false
     },

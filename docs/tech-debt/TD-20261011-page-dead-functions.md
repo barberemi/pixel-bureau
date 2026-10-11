@@ -7,6 +7,10 @@ metadata:
     - date: 2026-10-11
       status: Verified in source
       reviewer: Code-quality audit
+    - date: 2026-10-11
+      status: Confirmed by user
+      reviewer: Kronn audit validation card
+      note: "Confirmed through an audit validation card."
 ---
 
 # TD-20261011-page-dead-functions
@@ -14,7 +18,7 @@ metadata:
 - **Category**: code-quality
 - **Area**: Frontend
 - **Severity**: Low
-- **Status**: Verified in source
+- **Status**: Confirmed by user
 - **Effort**: XS (< 15 min)
 - **Blast radius**: local (1-2 files)
 
