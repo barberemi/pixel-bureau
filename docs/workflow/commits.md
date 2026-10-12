@@ -18,3 +18,5 @@ Trailer `Co-Authored-By` obligatoire sur les commits écrits par un agent [src: 
 
 <!-- Fill: is a DCO / `Signed-off-by` trailer required? -->
 DCO non requis : pas de `Signed-off-by` [src: file: docs/briefing.md:21].
+
+Commits signés par clé SSH (KT-59, depuis le 2026-10-12) : `commit.gpgsign true` et `gpg.format ssh` dans la config git du dépôt, adresse d'auteur `…@users.noreply.github.com` ; un agent qui commite ici signe avec la même config (agent SSH). Recette : `guide/developpement.md` [src: file: guide/developpement.md:51].

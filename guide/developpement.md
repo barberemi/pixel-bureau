@@ -48,6 +48,21 @@ python3 tools/templates.py check       # les workflows du Kronn = le rendu des m
 
 Un changement = une branche et une PR, mergée en squash après CI verte ; `main` ne reçoit pas de push direct (hook `.githooks/pre-push`, à activer une fois par clone : `git config core.hooksPath .githooks`). Publier depuis `main` à jour, après le merge.
 
+Commits signés (KT-59), une fois par poste, avec une clé SSH (celle de `ssh-add -l`, ou une nouvelle `ssh-keygen -t ed25519`) :
+
+```sh
+gh auth refresh -h github.com -s admin:ssh_signing_key        # une fois : droit de déclarer une clé de signature
+gh ssh-key add ~/.ssh/id_ed25519.pub --type signing --title "Signature (poste)"
+git config user.email "<id>+<login>@users.noreply.github.com"  # adresse publique, sans l'adresse pro (gh api user --jq .id)
+git config gpg.format ssh
+git config user.signingkey ~/.ssh/id_ed25519.pub
+git config commit.gpgsign true && git config tag.gpgsign true
+echo "$(git config user.email) $(cat ~/.ssh/id_ed25519.pub)" >> ~/.config/git/allowed_signers
+git config gpg.ssh.allowedSignersFile ~/.config/git/allowed_signers   # pour git log --show-signature
+```
+
+Réglages du dépôt seulement (pas `--global`) : les agents qui commitent dans ce dépôt (Claude Code, Kronn) signent avec la même clé, par l'agent SSH. Vérifier : `git log --show-signature -1` en local, « Verified » sur GitHub. Les commits de `main` sont des squash faits par GitHub, qui les signe lui-même.
+
 La CI GitHub Actions (`.github/workflows/tests.yml`) relance `sh tools/test.sh --chrome` sur chaque PR et chaque push sur `main`, avec Node 20 et Python 3.9. Chrome se choisit par `BUREAU_CHROME` (sinon le premier trouvé : macOS, puis `google-chrome`, `chromium`) et reçoit les options de `BUREAU_CHROME_ARGS` (CI : `--no-sandbox`).
 
 - On édite `page/src/*` et `page/office_template.html`, jamais `dist/`. Pas d'`import` ni de ressource externe : la sandbox des pages n'accepte que du inline (images en `data:`), HTML de moins de 1 Mo.
