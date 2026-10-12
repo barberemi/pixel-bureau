@@ -201,6 +201,8 @@ function duckProject(id){
   try{const v=localStorage.getItem('bureau:duckProject');if(v)DUCK_PROJECT=v;}catch(e){}
   return DUCK_PROJECT;
 }
+// questions des discussions du canard qui attendent ta réponse à t (aussi chez le boss, avec les autres)
+const duckQuestions=t=>QUESTIONS.filter(q=>(ms(q.since)||0)<=t&&String(q.title||'').startsWith('🦆'));
 function renderDuck(side){
   const h=document.createElement('h2');h.textContent='🦆 Le canard';side.appendChild(h);
   const intro=document.createElement('div');intro.className='note';intro.style.margin='0 0 12px';
@@ -208,6 +210,8 @@ function renderDuck(side){
     'En le formulant, on trouve souvent la solution soi-même. Ici, il répond dans une discussion Kronn. '+
     `<a href="${DUCK_WIKI}" target="_blank" rel="noopener" style="color:var(--accent)">Wikipédia ↗</a>`;
   side.appendChild(intro);
+  const qs=duckQuestions(T); if(qs.length)intro.style.margin='0 0 14px'; // 14 px jusqu'à la carte, comme jusqu'à un titre de groupe
+  for(const q of qs)questionCard(side,q,null); // la carte de réponse, comme dans la fiche d'un visiteur
   renderDuckGame(side); // son sprint, ses canetons, ses trophées (39-duckgame.js)
   if(!TV){
     const box=foldSection(side,'duck-talk','Parler au canard',null,true);

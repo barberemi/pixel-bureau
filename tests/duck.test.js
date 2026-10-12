@@ -111,3 +111,19 @@ test('panneau « Et aussi » : la pièce du canard d\'après le libellé du plan
   assert.equal(st({x: 0, y: 0, tile: [22, 10], moving: false, call: true}), 'attend ta réponse');
   assert.doesNotThrow(() => run('duckRow(); FILTER = null; renderSide(true); true'));
 });
+
+// questions des discussions du canard (KT-27) : leur carte de réponse dans sa fiche, comme chez le boss
+test('fiche : une carte par question du canard déjà posée, rien pour les autres discussions', () => {
+  const r = J(`(() => {
+    const calls = [], qc = questionCard, fs = foldSection, gm = renderDuckGame, q0 = QUESTIONS;
+    questionCard = (parent, q, who) => calls.push([q.id, who]);
+    foldSection = () => ({appendChild() {}}); renderDuckGame = () => {};
+    const at = h => new Date(DAY0 + h * 3600e3).toISOString();
+    QUESTIONS = [{id: 'q1', disc: 'k1', title: '🦆 Le menu casse', since: at(9)}, {id: 'q2', disc: 'v1', title: 'Commandes bloquées', since: at(9)},
+                 {id: 'q3', disc: 'k2', title: '🦆 Plus tard', since: at(15)}];
+    T = DAY0 + 11 * 3600e3; DUCKS = [];
+    try { renderDuck({appendChild() {}}); } finally { questionCard = qc; foldSection = fs; renderDuckGame = gm; QUESTIONS = q0; }
+    return calls;
+  })()`);
+  assert.deepEqual(r, [['q1', null]]); // q2 : pas le canard ; q3 : posée à 15h, pas encore à 11h
+});

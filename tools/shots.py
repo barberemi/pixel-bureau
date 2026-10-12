@@ -179,6 +179,14 @@ SHOTS = {
     "canard-eclosion": (1400, 1000, AT(11) + "DUCKGAME=Object.assign({},DUCKGAME_DEMO,{target:400});for(let t=T;t<T+3*3600e3;t+=5000){const a=duckWalk(t),b=duckWalk(t+40e3);if(a&&!a.moving&&b&&!b.moving&&a.x>8*TS&&a.y>6*TS){T=t;break;}}needTeleport=true;" + "setTimeout(()=>{window.fxFrame=()=>{};setLoupe(false,false);FX.cur=new Map([['x',Object.assign({kind:'hatch',t0:performance.now()-1700},{from:'oeuf',to:'caneton'})]]);},1800);" + "setTimeout(()=>{const p=DUCK_POS,c=document.querySelector('#cv'),r=c.getBoundingClientRect(),k=r.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(p.x-6*TS)*k)+'px',top:(r.top+scrollY+(p.y-4.2*TS)*k)+'px',width:12*TS*k+'px',height:5.4*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 2),
     "agent-retabli": (1400, 1000, AT(18 + 7 / 60) + "setTimeout(()=>{window.fxFrame=()=>{};setLoupe(false,false);FX_WORKING.push('idle');"
                       "FX.cur=new Map([['x',{kind:'recover',t0:performance.now()-800,c:chars.find(c=>c.name==='Creed')}]]);},1800);", "#cv", 1),
+    # fiche du canard quand il attend ta réponse : la carte de la question en tête (démo : question ajoutée)
+    "canard-question": (1440, 1100, AT(11) + "ACTIONS.duck=true;ACTIONS.answer=true;ACTION_BINDS['bureau-duck']={project_id:'id'};DUCK_PROJECTS=[{id:'none',name:'Sans projet'}];"
+                        "const at=x=>new Date(DAY0+x*3600e3).toISOString();DUCKS=[{id:'k1',title:'🦆 Le bon de commande arrondit mal les ramettes',project:'Stock de papier',updated:at(10.6),awaiting:true}];"
+                        "QUESTIONS=[{id:'q1',disc:'k1',title:'🦆 Le bon de commande arrondit mal les ramettes',agent:'ClaudeCode',bureau:true,since:at(10.6),"
+                        "question:'J\\'arrondis au paquet supérieur ou je garde la quantité exacte demandée ?',"
+                        "context:'Les ramettes sont vendues par 5 ; 3 commandes sur 40 ont une quantité qui n\\'est pas un multiple de 5.',"
+                        "options:[{id:'up',label:'Arrondir au paquet supérieur',desc:''},{id:'exact',label:'Garder la quantité exacte',desc:'facturer à l\\'unité'}],rec:['up'],multiple:false,items:[]}];"
+                        "select('duck');document.querySelector('#side').style.maxHeight='980px';document.querySelector('#side').style.overflow='hidden';", "#side"),
     "canard": (1440, 960, AT(11) + "ACTIONS.duck=true;ACTION_BINDS['bureau-duck']={project_id:'id'};DUCK_PROJECTS=[{id:'none',name:'Sans projet'},{id:'p1',name:'Site Dunder Mifflin'},"
                "{id:'p2',name:'Stock de papier'}];const at=x=>new Date(DAY0+x*3600e3).toISOString();DUCKS=["
                "{id:'k1',title:'🦆 Le bon de commande arrondit mal les ramettes',project:'Stock de papier',updated:at(10.6),awaiting:true},"
