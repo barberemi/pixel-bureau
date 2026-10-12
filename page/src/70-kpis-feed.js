@@ -90,8 +90,15 @@ const jst=x=>JIRA_ST[x]||String(x||'').toLowerCase();
 function personChar(id,name){
   if(id){const c=chars.find(x=>(x.team&&x.team.id===id)||(x.jira_id&&x.jira_id===id));if(c)return c;}
   if(!name)return null;
+  const g=ghChar(name);if(g)return g; // une review GitHub ne donne que le login (« hollyflax ») : son personnage, sous son nom
   const full=nameKey(name), first=nameKey(String(name).split(' ')[0]);
   return chars.find(x=>x.person&&(nameKey(x.person)===full||nameKey(String(x.person).split(' ')[0])===first))||null;
+}
+// le personnage d'un compte GitHub (roster : github, équipe : gh), casse ignorée ; null si personne
+function ghChar(login){
+  const l=String(login||'').toLowerCase();
+  if(!l)return null;
+  return chars.find(x=>x.person&&(String(x.github||'').toLowerCase()===l||((x.team&&x.team.gh)||[]).some(g=>String(g).toLowerCase()===l)))||null;
 }
 function prOwnerChar(n){
   if(!TEAM)return null;
@@ -111,15 +118,11 @@ function refTk(key,ext){
   if(!ext&&ticketOf(key))return `<a href="#" class="lk lk-id" data-tk="${esc(key)}" title="Ouvrir sa fiche">${esc(key)}</a>`;
   return extA(JIRA_BROWSE+encodeURIComponent(key),ext?'Ouvrir dans Jira':'Pas dans le sprint : ouvrir dans Jira',key);
 }
-// PR qui cite un ticket du sprint : la fiche de ce ticket (ses PR, Relire, Corriger) ; sinon GitHub ; sinon texte
+// PR : toujours sa fiche dans le panneau (62-ticket.js), nommée par son dépôt (« front_web#2033 ») ; repo absent :
+// le dépôt de l'équipe (github_repo), inconnu : « #2033 »
 function refPr(n,url,repo){
-  if(otherRepo(repo)){const nm=repo.split('/')[1]; // PR d'un autre dépôt (revue multi-dépôts) : son dépôt, jamais celui de l'équipe
-    return extA(`https://github.com/${repo}/pull/${encodeURIComponent(n)}`,'Ouvrir sur GitHub ('+repo+')',nm+'#'+n);}
-  const p=[...((TEAM&&TEAM.people)||[]).flatMap(q=>q.prs||[]),...((TEAM&&TEAM.other_prs)||[])].find(x=>String(x.n)===String(n));
-  const k=p&&(p.keys||[]).find(x=>ticketOf(x));
-  if(k)return `<a href="#" class="lk lk-id" data-tk="${esc(k)}" title="Fiche du ticket ${esc(k)} : ses PR et ses actions">#${esc(n)}</a>`;
-  const u=url||(p&&p.url)||(CFG.github_repo?`https://github.com/${CFG.github_repo}/pull/${encodeURIComponent(n)}`:'');
-  return u?extA(u,'Ouvrir sur GitHub','#'+n):`<span class="lk-off" title="Dépôt GitHub inconnu">#${esc(n)}</span>`;
+  const r=otherRepo(repo)?repo:(CFG.github_repo||''), nm=r?r.split('/')[1]+'#'+n:'#'+n;
+  return `<a href="#" class="lk lk-id" data-pr="${esc(r+'#'+n)}" title="Fiche de la PR">${esc(nm)}</a>`;
 }
 const refTag=tag=>`<a href="#" class="lk lk-id" data-mep title="Fiche de la mise en prod">${esc(tag)}</a>`;
 function teamEventTxt(e){
@@ -313,8 +316,8 @@ function renderFeed(){
   // relectures et travaux des agents sur le ticket ou la PR d'un collègue (A1)
   for(const c of chars){if(c.person||c.visitor)continue;
     for(const r of c.runs){if(!r._e||r._e>T||r.status!=='Success')continue;const ref=runRef(r);if(!ref)continue;
-      const pc=runPartner(r)||(ref.pr&&!ref.repo&&prOwnerChar(ref.pr)), what=ref.pr?'la PR '+refPr(ref.pr,null,ref.repo):refTk(ref.key);
-      ev.push({t:r._e,c,team:true,ty:ref.pr?'pr':'tickets',txt:`🤖 ${refWho(c)} ${/review|revue|relu/i.test(r.wf_name||'')?'a relu':'a travaillé sur'} ${what}${pc?' de '+refWho(pc):''}${ref.pr&&ref.key?' '+refTk(ref.key):''}`});}}
+      const au=r.vars&&r.vars['current_task.author'], pc=runPartner(r)||ghChar(au)||(ref.pr&&!ref.repo&&prOwnerChar(ref.pr)), what=ref.pr?'la PR '+refPr(ref.pr,null,ref.repo):refTk(ref.key);
+      ev.push({t:r._e,c,team:true,ty:ref.pr?'pr':'tickets',txt:`🤖 ${refWho(c)} ${/review|revue|relu/i.test(r.wf_name||'')?'a relu':'a travaillé sur'} ${what}${pc||au?' de '+refWho(pc,au):''}${ref.pr&&ref.key?' '+refTk(ref.key):''}`});}}
   // sprint : lancement et fin du jour (A2)
   if(TEAM&&TEAM.sprint){const sp=TEAM.sprint, st=ms(sp.start), en=ms(sp.end), sameDay=x=>x&&parisDay(x)===parisDay(T);
     if(sameDay(st)&&st<=T)ev.push({t:st,c:smChar(),team:true,ty:'equipe',txt:`🏁 Le sprint <b>${esc(sp.name)}</b> commence <small>fin le ${esc(dtf('fr-FR',{weekday:'short',day:'numeric',month:'short'}).format(new Date(en)))}</small>`});

@@ -25,18 +25,17 @@ test('ticket : fiche s\'il est dans le sprint ; Jira sinon, ou toujours pour un 
   assert.equal(run(`refTk('')`), '');
 });
 
-test('PR : la fiche de son ticket du sprint, sinon GitHub (son adresse, ou celle du dépôt), sinon texte', () => {
-  assert.match(run(`refPr(12)`), /data-tk="DM-1" title="Fiche du ticket DM-1 : ses PR et ses actions">#12</);
-  assert.match(run(`refPr(13)`), /lk-ext" href="https:\/\/gh\/13"[^>]*>#13</); // sans ticket
-  assert.match(run(`refPr(14)`), /lk-ext" href="https:\/\/github.com\/acme\/site\/pull\/14"/); // ticket hors sprint, pas d'adresse
+test('PR : toujours sa fiche dans le panneau, nommée par son dépôt (celui de l\'équipe par défaut)', () => {
+  assert.equal(run(`refPr(12)`), '<a href="#" class="lk lk-id" data-pr="acme/site#12" title="Fiche de la PR">site#12</a>');
+  assert.match(run(`refPr(13)`), /data-pr="acme\/site#13"[^>]*>site#13</); // sans ticket : sa fiche aussi, plus GitHub
   run(`CFG.github_repo = null;`);
-  assert.match(run(`refPr(99)`), /^<span class="lk-off" title="Dépôt GitHub inconnu">#99<\/span>$/);
+  assert.match(run(`refPr(99)`), /data-pr="#99"[^>]*>#99</); // dépôt inconnu : la fiche le dit
 });
 
 test('événements d\'équipe : chaque personne, ticket et PR devient un lien', () => {
   run(`chars = [{key: 'p_pam', name: 'Pam', person: 'Pam Beesly', team: TEAM.people[0]}];`);
   const rv = run(`teamEventTxt({kind: 'review', state: 'approved', n: 12, by: 'zz', by_name: 'Robert California', author: 'a1', author_name: 'Pam Beesly'}).txt`);
-  assert.match(rv, /<span class="lk-off"[^>]*>Robert<\/span> approuve la PR <a [^>]*data-tk="DM-1"[^>]*>#12<\/a> de <a [^>]*data-who="p_pam"/);
+  assert.match(rv, /<span class="lk-off"[^>]*>Robert<\/span> approuve la PR <a [^>]*data-pr="acme\/site#12"[^>]*>site#12<\/a> de <a [^>]*data-who="p_pam"/);
   const mv = run(`teamEventTxt({kind: 'move', key: 'DM-1', from: 'En cours', to: 'To Review', cat: 'review', who: 'a1'}).txt`);
   assert.match(mv, /data-who="p_pam"[^>]*>Pam<\/a> : <a href="#" class="lk lk-id" data-tk="DM-1"/);
 });
@@ -47,8 +46,21 @@ test('PR d\'un autre dépôt : lien vers son dépôt, nommé, jamais la PR de m�
   const ref = JSON.parse(run(`JSON.stringify(runRef({vars: {'current_task.number': '12', 'current_task.repo': 'acme/image-server'}}))`));
   assert.deepEqual([ref.pr, ref.repo, ref.key, ref.t], ['12', 'acme/image-server', null, null]); // pas DM-1 (PR #12 de acme/site)
   assert.equal(run(`refPr('12', null, 'acme/image-server')`),
-    '<a class="lk lk-id lk-ext" href="https://github.com/acme/image-server/pull/12" target="_blank" rel="noopener" title="Ouvrir sur GitHub (acme/image-server)">image-server#12</a>');
+    '<a href="#" class="lk lk-id" data-pr="acme/image-server#12" title="Fiche de la PR">image-server#12</a>');
   const same = JSON.parse(run(`JSON.stringify(runRef({vars: {'current_task.number': '12', 'current_task.repo': 'Acme/Site'}}))`));
   assert.deepEqual([same.repo, same.key], [null, 'DM-1']); // le dépôt de l'équipe (casse comprise) : comme avant
-  assert.match(run(`refPr('12', null, 'acme/site')`), /data-tk="DM-1"/);
+  assert.match(run(`refPr('12', null, 'Acme/Site')`), /data-pr="acme\/site#12"[^>]*>site#12</);
+});
+
+// fiche d'une PR : ce que la page en sait (dataset team pour le dépôt de l'équipe, runs des agents pour les autres)
+test('fiche PR : titre, auteur et ticket de la PR de l\'équipe ; auteur d\'une PR d\'un autre dépôt par son login', () => {
+  run(`chars = [{key: 'p_pam', name: 'Pam', person: 'Pam Beesly', github: 'pambeesly', team: TEAM.people[0]},
+    {key: 'dwight', name: 'Dwight', wf: ['rev'], runs: [
+      {wf_name: 'Revue', status: 'Success', _s: 1, vars: {'current_task.number': '12', 'current_task.repo': 'acme/site'}},
+      {wf_name: 'Revue', status: 'Success', _s: 2, vars: {'current_task.number': '12', 'current_task.repo': 'acme/image-server', 'current_task.author': 'PamBeesly'}}]}];
+    T = 10;`);
+  const mine = JSON.parse(run(`(() => { const x = prInfo('acme/site#12'); return JSON.stringify({url: x.url, owner: x.owner && x.owner.key, keys: x.pr.keys, runs: x.runs.map(y => y.r._s)}); })()`));
+  assert.deepEqual(mine, {url: 'https://gh/12', owner: 'p_pam', keys: ['DM-1'], runs: [1]});
+  const other = JSON.parse(run(`(() => { const x = prInfo('acme/image-server#12'); return JSON.stringify({url: x.url, owner: x.owner && x.owner.key, pr: x.pr, runs: x.runs.map(y => y.r._s)}); })()`));
+  assert.deepEqual(other, {url: 'https://github.com/acme/image-server/pull/12', owner: 'p_pam', pr: null, runs: [2]});
 });

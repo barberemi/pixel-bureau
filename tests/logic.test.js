@@ -186,7 +186,10 @@ test('teamEventTxt : statut Jira traduit, reviews, auteur retrouvé par son nom'
   run(`TEAM.events=[{kind:'new',key:'DM-9'}]`);
   assert.equal(txt({kind: 'move', key: 'DM-9', from: 'Proposed', to: 'To Do'}), null);
   assert.deepEqual(txt({kind: 'review', state: 'approved', n: 2012, by: null, by_name: 'michaelscott', author: 'a1'}),
-    {c: null, txt: '✓ michaelscott approuve la PR #2012 de Pam'});
+    {c: null, txt: '✓ michaelscott approuve la PR site-web#2012 de Pam'});
+  run(`chars.push({key:'p_michael',name:'Mike',person:'Michael Scott',github:'MichaelScott'})`); // le login GitHub : son personnage, sous son nom
+  assert.deepEqual(txt({kind: 'review', state: 'approved', n: 2012, by: null, by_name: 'michaelscott', author: 'a1'}),
+    {c: 'p_michael', txt: '✓ Mike approuve la PR site-web#2012 de Pam'});
   assert.equal(txt({kind: 'review', state: 'commented', n: 2012, by: 'a1', author: 'a1'}), null);
   assert.equal(run(`prOwnerChar(2012).key`), 'p_pam');
 });

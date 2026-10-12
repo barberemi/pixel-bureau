@@ -58,6 +58,10 @@ Rôles et noms par défaut : `impl` → `ticket` (`jira_ticket_key`) ; `mep` →
 
 ![Fiche d'un ticket](../img/fiche-ticket.png)
 
+**PR** : clic sur une PR dans le fil. Son nom avec son dépôt, son titre, l'état de sa review, son auteur (sa fiche), le lien GitHub, le ticket qu'elle cite (sa fiche, d'où se lancent Relire et Corriger) et les runs d'agents du jour qui l'ont traitée (une revue de Dwight, une correction). Pour une PR d'un autre dépôt que celui de l'équipe, la page n'en connaît que ce qu'en disent les runs : l'auteur, les agents, le lien GitHub.
+
+![Fiche d'une PR](../img/fiche-pr.png)
+
 **Visiteur** : la discussion Kronn, ses messages importants, le run qui l'a lancée, et la carte de chaque question qui t'attend (la même que dans la fiche du boss).
 
 **Le canard** (clic sur le canard du plan) : une phrase sur la [méthode du canard en plastique](https://fr.wikipedia.org/wiki/M%C3%A9thode_du_canard_en_plastique), puis :

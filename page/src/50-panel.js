@@ -66,14 +66,14 @@ function refreshStatus(){
   const h=statusHtml(c._st||stateAt(c,T)); if(box.dataset.sig!==h)box.innerHTML=box.dataset.sig=h;
 }
 function drawSide(side){
-  if(String(sel).startsWith('ticket:')){ // fiche d'un ticket (62-ticket.js) : retour à la vue d'où l'on vient
+  if(ficheSel(sel)){ // fiche d'un ticket ou d'une PR (62-ticket.js) : retour à la vue d'où l'on vient
     const back=document.createElement('button');
     back.className='back';
     const to=TICKET_BACK&&(byKey[TICKET_BACK]||['kanban','emp'].includes(TICKET_BACK))?TICKET_BACK:null;
     back.textContent=to==='kanban'?'← Mur Kanban':to&&byKey[to]?'← '+byKey[to].name:"← Toute l'équipe";
     back.onclick=()=>select(to);
     side.appendChild(back);
-    renderTicket(side,sel.slice(7));
+    if(String(sel).startsWith('pr:'))renderPr(side,sel.slice(3));else renderTicket(side,sel.slice(7));
     return;
   }
   if(sel==='tv'||sel==='emp'||sel==='kanban'||sel==='planning'||sel==='paie'||sel==='duck'||sel==='calendar'||String(sel).startsWith('gate:')){

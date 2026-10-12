@@ -221,7 +221,8 @@ function setData(d,live){
   CAST.forEach(add);
   GUESTS.forEach(add);
   const sameSeat=(a,s)=>a.seat&&a.seat[0]===s[0]&&a.seat[1]===s[1];
-  const free=FREE_SEATS.filter(s=>!CAST.some(c=>sameSeat(c,s))&&!Object.values(OUTSIDERS).some(o=>sameSeat(o,s))); // places des de passage : réservées let tempN=0; DISC_BY_RUN={};
+  const free=FREE_SEATS.filter(s=>!CAST.some(c=>sameSeat(c,s))&&!Object.values(OUTSIDERS).some(o=>sameSeat(o,s))); // places des de passage : réservées
+  let tempN=0; DISC_BY_RUN={};
   DAY0=parisMidnight(ms(d.generated_at));
   for(const r of d.runs){
     r._s=ms(r.start); r._e=ms(r.end);

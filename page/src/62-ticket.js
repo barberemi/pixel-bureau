@@ -25,16 +25,21 @@ function prsOf(key){
   const all=[...TEAM.people.flatMap(p=>(p.prs||[]).map(x=>({...x,author:p.name}))),...(TEAM.other_prs||[])];
   return all.filter(x=>(x.keys||[]).includes(key));
 }
+const ficheSel=k=>/^(ticket|pr):/.test(String(k)); // fiches d'un ticket ou d'une PR : le retour mène à la vue d'avant
 function openTicket(key){
-  if(!String(sel).startsWith('ticket:'))TICKET_BACK=sel;
+  if(!ficheSel(sel))TICKET_BACK=sel;
   select('ticket:'+key);
 }
-// lien vers la fiche : <a data-tk="EW-1234"> n'importe où dans le panneau
+function openPr(id){
+  if(!ficheSel(sel))TICKET_BACK=sel;
+  select('pr:'+id);
+}
+// lien vers la fiche : <a data-tk="EW-1234"> ou <a data-pr="owner/dépôt#12"> n'importe où dans la page
 document.addEventListener('click',e=>{
-  const a=e.target.closest&&e.target.closest('[data-tk]');
+  const a=e.target.closest&&e.target.closest('[data-tk],[data-pr]');
   if(!a)return;
   e.preventDefault();
-  openTicket(a.dataset.tk);
+  if(a.dataset.tk)openTicket(a.dataset.tk);else openPr(a.dataset.pr);
 });
 const tkOpen=x=>`<a href="#" data-tk="${esc(x.key)}" title="Ouvrir sa fiche et ses actions" style="color:inherit">${esc(x.summary)}</a>`;
 const TK_REV={approved:['approuvée','var(--ok)'],changes:['changements demandés','var(--err)'],pending:['review en attente','var(--warn)']};
@@ -116,4 +121,54 @@ function renderTicket(side,key){
   if(known&&ACTIONS.estimate&&x.cat!=='done') // ton workflow de réestimation (launch.estimate) : Story Points et raison dans la carte
     launchBlock(box,{action:'bureau-estimate',bind:{key},name:'Réestimer',sub:'Nouveaux Story Points et raison : le ticket est mis à jour dans Jira, avec un commentaire',label:'📏 Réestimer',title:'Réestimer '+key});
   if(box.childElementCount===before)note(known?'Rien à lancer à ce statut.':'Ticket pas encore dans les données des boutons : prochain passage du cron équipe.');
+}
+// ---------- fiche d'une PR (lien du fil) : « owner/dépôt#n », dépôt vide = inconnu ----------
+// Ce que la page en sait : la PR de l'équipe (titre, auteur, review, tickets cités) quand elle est du dépôt de l'équipe,
+// sinon ce qu'en disent les runs des agents (auteur) ; les runs d'agents du jour qui l'ont traitée ; GitHub en lien.
+function prInfo(id){
+  const i=String(id).lastIndexOf('#'), repo=String(id).slice(0,i), n=String(id).slice(i+1);
+  const mine=!otherRepo(repo); // dépôt de l'équipe (ou inconnu) : ses PR sont dans le dataset team
+  const all=mine&&TEAM?[...TEAM.people.flatMap(p=>(p.prs||[]).map(x=>({...x,who:p.id,who_name:p.name}))),...(TEAM.other_prs||[]),
+    ...(TEAM.merged_today||[]).map(m=>({...m,merged:true,who_name:m.author}))]:[];
+  const pr=all.find(x=>String(x.n)===n)||null;
+  const runs=[];
+  for(const c of chars){if(c.person||c.visitor)continue;
+    for(const r of c.runs){const ref=runRef(r);if(ref&&ref.pr===n&&(ref.repo||'')===(mine?'':repo)&&r._s<=T)runs.push({r,c});}}
+  runs.sort((a,b)=>a.r._s-b.r._s);
+  const au=(runs.find(x=>x.r.vars&&x.r.vars['current_task.author'])||{r:{vars:{}}}).r.vars['current_task.author'];
+  const owner=(pr&&personChar(pr.who,pr.who_name))||ghChar(au)||null;
+  return {repo,n,pr,runs,owner,ownerName:(pr&&pr.who_name)||au||null,
+    url:(pr&&pr.url)||(repo?`https://github.com/${repo}/pull/${encodeURIComponent(n)}`:'')};
+}
+function renderPr(side,id){
+  const x=prInfo(id);
+  const h=document.createElement('h2');h.textContent=(x.repo?x.repo.split('/')[1]:'')+'#'+x.n;side.appendChild(h);
+  const gh=x.url?`<a href="${esc(x.url)}" target="_blank" rel="noopener" style="color:var(--accent)">Ouvrir sur GitHub ↗</a>`:'dépôt GitHub inconnu';
+  const rv=x.pr&&(x.pr.merged?['mergée','var(--ok)']:x.pr.draft?['brouillon','var(--idle)']:TK_REV[x.pr.review]);
+  const head=document.createElement('div');head.style.cssText='margin:0 0 12px';
+  head.innerHTML=(x.pr&&x.pr.title?`<div style="font-size:14px;margin-bottom:6px">${esc(x.pr.title)}</div>`:'')+
+    `<div style="font-size:12px;color:var(--muted)">`+(rv?`<span class="dot" style="background:${rv[1]};display:inline-block;margin-right:6px"></span>${esc(rv[0])} · `:'')+
+    (x.owner||x.ownerName?'de '+refWho(x.owner,x.ownerName)+' · ':'')+(x.repo?esc(x.repo)+' · ':'')+gh+`</div>`;
+  side.appendChild(head);
+  const keys=(x.pr&&x.pr.keys)||[];
+  if(keys.length){
+    const tb=foldSection(side,'pr-tk','Son ticket',keys.length,true);
+    const ul=document.createElement('ul');ul.className='steps';ul.style.marginLeft='0';
+    for(const k of keys){const t=ticketOf(k);const li=document.createElement('li');
+      li.innerHTML=t?`<span class="dot" style="background:${(TCAT[t.cat]||{c:'var(--idle)'}).c}"></span><a href="#" data-tk="${esc(k)}" style="color:var(--accent);white-space:nowrap">${esc(k)}</a><span>${esc(t.summary)}</span><span class="k">${esc(t.status||'')}</span>`
+        :`<span class="dot" style="background:var(--idle)"></span><a href="${JIRA_BROWSE}${encodeURIComponent(k)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(k)} ↗</a><span>hors du sprint</span>`;
+      ul.appendChild(li);}
+    tb.appendChild(ul);
+    const note=document.createElement('div');note.className='note';note.textContent='Relire, corriger : depuis la fiche du ticket.';tb.appendChild(note);
+  }
+  const rb=foldSection(side,'pr-runs','Les agents dessus aujourd\'hui',x.runs.length,true);
+  if(!x.runs.length){const e=document.createElement('div');e.className='empty';e.textContent='Aucun run d\'agent sur cette PR aujourd\'hui.';rb.appendChild(e);return;}
+  const ul=document.createElement('ul');ul.className='steps';ul.style.marginLeft='0';
+  for(const {r,c} of x.runs){const ok=r.status==='Success', ko=r.status==='Failed';
+    const li=document.createElement('li');
+    li.innerHTML=`<span class="dot" style="background:${ok?'var(--ok)':ko?'var(--err)':'var(--warn)'}"></span><span class="k" style="white-space:nowrap">${esc(hm(r._s))}</span>`+
+      `<a href="#" data-who="${esc(c.key)}" style="color:var(--accent)">${esc(c.name)}</a><span>${esc(clean(r.wf_name))}</span>`;
+    ul.appendChild(li);}
+  ul.addEventListener('click',e=>{const a=e.target.closest('[data-who]');if(a){e.preventDefault();select(a.dataset.who);}});
+  rb.appendChild(ul);
 }
