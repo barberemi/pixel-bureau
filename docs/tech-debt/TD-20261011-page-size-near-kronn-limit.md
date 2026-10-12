@@ -16,13 +16,17 @@ metadata:
       status: Confirmed by user
       reviewer: Kronn audit validation card
       note: "Confirmed through an audit validation card."
+    - date: 2026-10-12
+      status: Partially fixed
+      reviewer: KT-28
+      note: "page publiée 980 079 -> 852 934 octets : JS et CSS compactés à l'assemblage (tools/compact.py, environ 91 Ko), sprites inutilisés non embarqués (environ 36 Ko), alerte du smoke à 90 %. Reste : calques LPC de l'éditeur (330 Ko) et sprites fournis (115 Ko) dans le HTML ; piste dataset en attente de la raison de la limite Kronn."
 ---
 
 # TD-20261011-page-size-near-kronn-limit
 
 - **Area**: Frontend
 - **Severity**: Medium
-- **Status**: Confirmed by user
+- **Status**: Partially fixed (KT-28, 2026-10-12)
 - **Effort**: M (1-4h)
 - **Blast radius**: module (5-10 files)
 

@@ -7,9 +7,12 @@ Sources de la page : page/office_template.html (squelette HTML + blocs kronn-act
 Les avatars sont assemblés dans le navigateur (calques de sprites/layers.json + recettes de sprites/cast.json et du
 profil d'équipe) ; seuls les sprites fournis tels quels (teams/<équipe>/sprites/, sprites/custom/) sont embarqués comme planches.
 """
-import base64, json, math, os, re
+import base64, json, math, os, re, sys
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from compact import strip_css, strip_js  # noqa: E402
 
 # boutons de la page : bloc kronn-action du squelette -> (clé dans bureau.config.json « actions » ou « launch »,
 # marqueur de l'id). actions = workflows du Bureau (créés par l'installateur) ; launch = tes workflows lancés depuis la
@@ -57,8 +60,9 @@ def page_html():
     # styles.css, pixel.css (habillage commun) puis les thèmes (theme-*.css), qui l'emportent à spécificité égale ;
     # @@font:chemin@@ = police intégrée en base64 (la sandbox des pages n'accepte que font-src data:)
     css = "".join(_nl(open(os.path.join(SRC, f)).read()) for f in ["styles.css", "pixel.css"] + THEME_FILES)
+    css = strip_css(css)  # KT-28 : sans commentaires ni indentation (tools/compact.py), les sources gardent les leurs
     css = re.sub(r"@@font:([\w./-]+)@@", lambda m: base64.b64encode(open(p(m.group(1)), "rb").read()).decode(), css)
-    js = "".join(_nl(open(os.path.join(SRC, f)).read()) for f in JS_FILES)
+    js = strip_js("".join(_nl(open(os.path.join(SRC, f)).read()) for f in JS_FILES))
     for mark, body in (("/*__STYLES__*/", css), ("/*__SCRIPTS__*/", js)):
         assert html.count(mark + "\n") == 1, mark
         # le marqueur occupe sa propre ligne ; chaque fichier source se termine par un saut de ligne
@@ -231,7 +235,19 @@ def sprites(cfg):
     common = json.load(open(p("sprites", "cast.json")))
     out = {k: v for k, v in (json.load(open(local)) if os.path.exists(local) else {}).items() if k not in common}
     path = _team_file(cfg, "sprites.json")
-    return {**shared, **out, **(json.load(open(path)) if path else {})}
+    every = {**shared, **out, **(json.load(open(path)) if path else {})}
+    used = used_sprites(cfg)
+    return {k: v for k, v in every.items() if k in used}
+
+
+def used_sprites(cfg):
+    """Noms de sprite qu'un personnage peut porter (KT-28 : seules ces planches sont embarquées) : clé ou sprite du
+    roster, des invités et des agents (sprite d'un personnage = son sprite, sinon sa clé), boss_sprite, et tout nom
+    cité entre apostrophes dans le JS de la page (« 'temp' », VISITOR)."""
+    defs = roster(cfg) + guests(cfg) + list((cfg or {}).get("agents") or [])
+    names = {d.get(f) for d in defs for f in ("key", "sprite", "boss_sprite")} - {None}
+    js = "".join(open(os.path.join(SRC, f)).read() for f in JS_FILES)
+    return names | set(re.findall(r"'([\w-]+)'", js))
 
 
 def layout_path(cfg):

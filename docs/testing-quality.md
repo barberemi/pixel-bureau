@@ -10,7 +10,7 @@ Pas de CI : aucun dossier `.github/` ni autre pipeline dans le dépôt ; les con
 |---|---|---|
 | Tests JS de la page | `node --test tests/*.test.js` | Logique de `page/src/*.js` chargée dans un contexte `vm` [src: file: tools/test.sh:7] [src: file: tests/helpers/page.js:1] |
 | Tests Python | `python3 -m unittest -q tests/test_templates.py tests/test_install.py tests/test_scripts.py tests/test_plan.py tests/test_theme.py` | Scripts `workflows/`, installateur, modèles, plans, thèmes [src: file: tools/test.sh:8] |
-| Build + smoke statique (démo) | `python3 tools/smoke.py` | Assemble `dist/office.html` ; taille < 1 000 000 octets, chaque `<script>` se parse, 10 blocs `kronn-action` du squelette, JSON valide, aucun marqueur `__X__` restant, 1 seul `<script>` exécutable [src: file: tools/smoke.py:8] [src: file: tools/smoke.py:20] [src: file: tools/smoke.py:59] |
+| Build + smoke statique (démo) | `python3 tools/smoke.py` | Assemble `dist/office.html` ; taille < 1 000 000 octets (alerte à partir de 90 %), chaque `<script>` se parse, 10 blocs `kronn-action` du squelette, JSON valide, aucun marqueur `__X__` restant, 1 seul `<script>` exécutable [src: file: tools/smoke.py:8] [src: file: tools/smoke.py:20] [src: file: tools/smoke.py:59] |
 | Smoke installation neuve | `python3 tools/smoke.py --empty` | Mêmes contrôles sur une page d'équipe neuve, plan type, sans démo [src: file: tools/test.sh:12] |
 | Chargement Chrome headless | `sh tools/test.sh --chrome` (passe `--chrome` aux deux smoke) | Aucune exception JS, zéro `console.error` [src: file: tools/smoke.py:135] |
 | Modèles = workflows du Kronn | `python3 tools/templates.py check` | `DIFF` si le rendu d'un modèle diffère du workflow installé ; code de sortie 1 [src: file: tools/templates.py:289] |

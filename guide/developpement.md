@@ -52,6 +52,7 @@ La CI GitHub Actions (`.github/workflows/tests.yml`) relance `sh tools/test.sh -
 
 - On édite `page/src/*` et `page/office_template.html`, jamais `dist/`. Pas d'`import` ni de ressource externe : la sandbox des pages n'accepte que du inline (images en `data:`), HTML de moins de 1 Mo.
 - Un nouveau fichier `page/src/NN-nom.js` est pris à sa place dans l'ordre.
+- Poids de la page (KT-28) : `tools/assemble.py` retire commentaires et indentation du JS et du CSS (`tools/compact.py`, les sources gardent les leurs ; une ligne vide ou de commentaire disparaît, les sauts de ligne restent) et n'embarque que les sprites fournis qu'un personnage peut porter (`used_sprites` : clé ou sprite du roster, des invités et des agents, nom cité entre apostrophes dans le JS). `smoke.py` affiche une alerte à partir de 90 % de la limite.
 - Captures de la documentation : `.venv/bin/python tools/shots.py [nom...]` (page de démo, dans `guide/img/`).
 
 ## Ajouter un thème

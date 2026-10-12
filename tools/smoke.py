@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 import assemble  # noqa: E402
 
 LIMIT = 1_000_000
+WARN = 0.9  # seuil d'alerte, en part de LIMIT
 # Chrome : BUREAU_CHROME, sinon le premier trouvé (macOS, puis Linux, comme workflows/pages_snapshot.py) ;
 # BUREAU_CHROME_ARGS = options en plus (CI Linux : --no-sandbox)
 CHROMES = ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -38,6 +39,8 @@ def check(ok, msg):
 def static_checks(html, cfg=None):
     size = len(html.encode())
     check(size < LIMIT, f"taille {size} octets < {LIMIT}")
+    if size >= LIMIT * WARN:  # KT-28 : prévenu avant d'être bloqué (Kronn refuse la page au-delà de LIMIT)
+        print(f"ALERTE taille : {size * 100 // LIMIT} % de la limite Kronn, alléger la page (docs/tech-debt, KT-28)")
     # blocs kronn-action attendus : ceux du squelette, ids de workflows remplacés comme à l'assemblage
     tpl = open(os.path.join(ROOT, "page", "office_template.html")).read()
     c = assemble.config() if cfg is None else cfg
