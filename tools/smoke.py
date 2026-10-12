@@ -4,6 +4,7 @@
     python3 tools/smoke.py --chrome              # + chargement dans Chrome headless : aucune exception JS
     python3 tools/smoke.py --chrome --shot dist/map.png --js "setMode('pause');T=DAY0+11*3600e3;needTeleport=true;"
     python3 tools/smoke.py --html dist/autre.html --chrome   # contrôler un fichier déjà assemblé
+    python3 tools/smoke.py --team ~/Sites/bureau-monequipe --chrome   # la démo avec un autre pack d'équipe (sa CI)
 
 Contrôles : taille < 1 000 000 octets, chaque <script> (hors kronn-action) se parse (node, new Function),
 les 12 blocs kronn-action du squelette sont présents à l'identique (ids de workflows remplacés), leur JSON est valide,
@@ -170,6 +171,18 @@ def chrome_checks(path, port, user_dir, js, shot, wait, width, height):
 NEW_TEAM = {"owner": "p_pam", "people": [{"key": "p_pam", "name": "Pam", "role": "Développeur", "person": "Pam Beesly"}]}
 
 
+def team_config(team):
+    """Démo avec une autre équipe (--team) : un id de teams/ ou le chemin d'un pack (relatif au dossier courant), sans
+    l'équipe de démo de la config ; boss = première personne de l'équipe, thème = celui de ses réglages."""
+    cfg = {**assemble.demo_config(), "people": [],
+           "team": os.path.abspath(os.path.expanduser(team)) if assemble.is_pack(team) else team}
+    if not assemble.team_dir(cfg):
+        raise ValueError(f"équipe introuvable : {team}")
+    cfg["owner"] = next((p["key"] for p in assemble.roster(cfg)), None)
+    cfg["ui"] = assemble.defaults(cfg).get("ui") or {}
+    return cfg
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--html", help="fichier déjà assemblé à contrôler (sinon : assemble dist/office.html)")
@@ -182,18 +195,19 @@ def main():
     ap.add_argument("--size", default="1400x1400", help="fenêtre LxH")
     ap.add_argument("--empty", action="store_true", help="page d'une installation neuve : équipe neuve (la seule personne qui "
                     "installe), plan type, sans démo ni boutons")
+    ap.add_argument("--team", help="la démo avec cette équipe : id de teams/ ou chemin d'un pack d'équipe")
     a = ap.parse_args()
     if a.html:
         path = a.html
         html = open(path).read()
-    else:
-        cfg = NEW_TEAM if a.empty else assemble.demo_config()
+    cfg = NEW_TEAM if a.empty else team_config(a.team) if a.team else assemble.demo_config()
+    if not a.html:
         html = assemble.build(demo=not a.empty, cfg=cfg)
-        path = os.path.join(ROOT, "dist", "office_empty.html" if a.empty else "office.html")
+        path = os.path.join(ROOT, "dist", "office_empty.html" if a.empty else "office_team.html" if a.team else "office.html")
         os.makedirs(os.path.dirname(path), exist_ok=True)
         open(path, "w").write(html)
         print("     assemblé :", path)
-    static_checks(html, NEW_TEAM if a.empty else assemble.demo_config())
+    static_checks(html, cfg)
     if a.chrome or a.shot:
         w, h = (int(x) for x in a.size.split("x"))
         chrome_checks(path, a.port, a.user_data_dir, a.js, a.shot, a.wait, w, h)

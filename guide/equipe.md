@@ -87,7 +87,18 @@ La première ligne donne son nom au bouton 🎨 ; remplace partout `data-skin="e
 - `music/music.json` : le morceau de chacun, sur sa fiche (« Sa musique »).
 - Les passions de chacun (`passion` dans le roster) : [Les passions de l'équipe](fonctionnalites/01-plan.md#les-passions-de-léquipe).
 
-## 7. Installer et partager
+## 7. Valider le pack
+
+Les outils du Bureau vérifient un pack sans rien publier : ses plans, puis la page de démo assemblée avec ton équipe, chargée dans Chrome (aucune erreur JS attendue) :
+
+```sh
+python3 tools/plan.py check ~/Sites/bureau-dunder-mifflin/layouts/plan.json
+.venv/bin/python tools/smoke.py --team ~/Sites/bureau-dunder-mifflin --chrome   # page dans dist/office_team.html
+```
+
+Le pack d'exemple apporte la même vérification en CI GitHub (`.github/workflows/pack.yml`, copiée avec lui) : sur chaque PR et chaque push sur `main`, elle clone le Bureau à côté du pack et lance ces deux contrôles. Tant que le dépôt du Bureau est privé, elle a besoin d'un secret `BUREAU_TOKEN` dans le dépôt du pack : un jeton GitHub fine-grained, droit « Contents: read » sur `barberemi/kronn-bureau`.
+
+## 8. Installer et partager
 
 Pousse le pack dans un dépôt privé de ton organisation. Chaque personne qui veut la page dans son Kronn clone le pack, puis le Bureau, et lance l'installateur :
 

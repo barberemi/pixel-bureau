@@ -23,6 +23,7 @@ Un pack introuvable (pas de `team.json`) est une erreur, jamais une page sans so
 | `sprites/` et `sprites.json` | planches fournies telles quelles ; `sprites.json` se fabrique par `python3 sprites/build_sprites.py <pack>` | non |
 | `music/music.json` | morceau de chaque personne (carte « Sa musique »), pochette en data URI à côté | non |
 | `layouts/*.json` | plans du bureau (`bureau-layout/1`), proposés par l'installateur avec ceux du dépôt | non |
+| `.github/workflows/pack.yml` | CI du pack (modèle dans le pack d'exemple) : `tools/plan.py check` sur `layouts/*.json`, puis `tools/smoke.py --team <pack> --chrome` ; clone `barberemi/kronn-bureau` avec le secret `BUREAU_TOKEN` tant qu'il est privé | non |
 | `themes/theme-<id>.css` | thèmes de page : première ligne `/* @nom: Nom */`, règles sous `:root[data-skin="<id>"]` ; remplace un thème de même id ; polices par `@@font:fonts/<fichier>.woff2@@`, chemin relatif au pack | non |
 
 Un exemple complet et fictif est dans `tests/fixtures/pack-exemple/`, testé par `tests/test_pack.py` et `tests/test_install.py`. Le pas-à-pas pour les humains : `guide/equipe.md`.
@@ -33,4 +34,8 @@ Seulement ce que l'équipe utilise (KT-28) : son roster et ses recettes, les spr
 
 ## Lus par
 
-`tools/assemble.py` (`team_dir`, `_team_file`, `theme_paths`, `layout_path`), `tools/install.py` (choix de l'équipe, roster, musique et sprite écrits pour toute l'équipe dans le pack), `tests/helpers/page.js` (même résolution pour les tests de la page), `sprites/build_sprites.py`.
+`tools/assemble.py` (`team_dir`, `_team_file`, `theme_paths`, `layout_path`), `tools/install.py` (choix de l'équipe, roster, musique et sprite écrits pour toute l'équipe dans le pack), `tests/helpers/page.js` (même résolution pour les tests de la page), `sprites/build_sprites.py`, `tools/smoke.py --team` (`team_config` : la démo avec ce pack seul, chemin relatif au dossier courant, boss = première personne du roster, thème de son `defaults.json`) [src: file: tools/smoke.py:174].
+
+## Valider un pack
+
+`python3 tools/plan.py check <pack>/layouts/<plan>.json`, puis `.venv/bin/python tools/smoke.py --team <pack> --chrome` (page dans `dist/office_team.html`) [src: file: tools/smoke.py:198]. C'est ce que lance la CI d'exemple ; testé par `tests/test_pack.py` (`test_smoke_team_option`, `test_example_ci_uses_existing_tools`).

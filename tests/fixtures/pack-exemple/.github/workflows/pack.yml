@@ -1,0 +1,53 @@
+# Validation du pack d'équipe par les outils du Bureau, sur chaque PR et chaque push sur main (KT-61) : ses plans
+# (tools/plan.py check), puis la page assemblée avec cette équipe, contrôlée et chargée dans Chrome (tools/smoke.py --team).
+# Tant que kronn-bureau est privé : secret BUREAU_TOKEN du pack, jeton GitHub fine-grained « Contents: read » sur
+# barberemi/kronn-bureau.
+name: Pack
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: pack
+
+      - uses: actions/checkout@v7
+        with:
+          repository: barberemi/kronn-bureau
+          path: bureau
+          token: ${{ secrets.BUREAU_TOKEN || github.token }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.9"
+
+      - name: Dépendances Python (pilotage de Chrome)
+        run: python3 -m pip install --disable-pip-version-check pillow websocket-client
+
+      - name: Plans du pack
+        run: |
+          for f in pack/layouts/*.json; do
+            [ -e "$f" ] || continue
+            python3 bureau/tools/plan.py check "$f"
+          done
+
+      - name: Page assemblée avec ce pack, dans Chrome
+        run: python3 bureau/tools/smoke.py --team "$GITHUB_WORKSPACE/pack" --chrome
+        env:
+          BUREAU_CHROME: google-chrome
+          BUREAU_CHROME_ARGS: --no-sandbox  # Ubuntu 24.04 refuse le bac à sable de Chrome (AppArmor)

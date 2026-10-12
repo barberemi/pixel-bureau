@@ -66,6 +66,32 @@ class PackTest(unittest.TestCase):
         self.assertIn("menthe", page["skins"])
         self.assertEqual(page["plan"], "vance-plan")
 
+    def test_smoke_team_option(self):
+        """smoke.py --team <pack> (CI d'un pack) : la démo avec cette équipe seule, son boss et son thème."""
+        cwd = os.getcwd()
+        try:
+            os.chdir(self.tmp)
+            cfg = smoke.team_config("./bureau-vance")  # chemin relatif au dossier courant, pas au dépôt
+        finally:
+            os.chdir(cwd)
+        self.assertEqual(os.path.realpath(cfg["team"]), os.path.realpath(self.pack))
+        self.assertEqual(cfg["owner"], "p_bob")
+        self.assertEqual(cfg["ui"]["skin"], "menthe")
+        self.assertEqual([p["key"] for p in assemble.roster(cfg)], ["p_bob", "p_lynn", "p_ozzie"])  # sans l'équipe de démo
+        with self.assertRaises(ValueError):
+            smoke.team_config("inconnue")  # ni pack ni profil de teams/
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "smoke.py"), "--team", self.pack],
+                           capture_output=True, text=True, timeout=120)
+        self.assertEqual(r.returncode, 0, r.stdout[-800:] + r.stderr[-800:])
+        self.assertIn("office_team.html", r.stdout)
+
+    def test_example_ci_uses_existing_tools(self):
+        """La CI d'exemple d'un pack (.github/workflows/pack.yml, copiée avec le pack) appelle des outils qui existent."""
+        ci = open(os.path.join(PACK, ".github", "workflows", "pack.yml")).read()
+        self.assertIn("bureau/tools/plan.py check", ci)
+        self.assertIn("bureau/tools/smoke.py --team", ci)
+        self.assertTrue(os.path.isfile(os.path.join(ROOT, "tools", "plan.py")))
+
     def test_without_pack_nothing_changes(self):
         cfg = assemble.demo_config()
         self.assertIsNone(cfg.get("team"))

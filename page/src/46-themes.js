@@ -72,7 +72,7 @@ function garland(now){
 }
 
 // ---------- décor posé au sol ou sur les meubles (entrées dynamiques de FURN, triées en profondeur) ----------
-// Ancré sur le plan, comme les meubles : un décor de meuble garde ses coordonnées d'origine (plan equipe) et suit le
+// Ancré sur le plan, comme les meubles : un décor de meuble garde ses coordonnées d'origine (le plan où il a été dessiné) et suit le
 // meuble là où le plan le pose (onF ; sans ce meuble, pas de décor) ; celui de l'open space suit les îlots (isl, rows) ;
 // ce qui flotte (ballons, nœuds) est placé en proportion du plan.
 function onF(type,f){const o=furnAt(type);if(!o)return;ctx.save();ctx.translate(o.dx,o.dy);f();ctx.restore();}

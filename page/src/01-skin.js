@@ -1,5 +1,6 @@
-// Thème d'interface (theme-*.css, sur l'habillage commun pixel.css) : classique (sombre) ou equipe (clair). Le choix de la personne, gardé dans ce
-// navigateur (bureau:skin), passe avant celui de l'installation (ui.skin, posé par le profil d'équipe à l'installation).
+// Thème d'interface (theme-*.css, sur l'habillage commun pixel.css) : classique (sombre), ceux de page/src/ et du pack
+// d'équipe. Le choix de la personne, gardé dans ce navigateur (bureau:skin), passe avant celui de l'installation (ui.skin,
+// posé par le profil d'équipe à l'installation).
 const UI_SKINS={classique:'Classique',...(CFG.skins||{})}; // thèmes de page/src/theme-<id>.css (assemble.themes)
 function skinFor(stored,cfgSkin){return UI_SKINS[stored]?stored:UI_SKINS[cfgSkin]?cfgSkin:'classique';}
 let UI_SKIN=(()=>{let s=null;try{s=localStorage.getItem('bureau:skin');}catch(e){}return skinFor(s,(CFG.ui||{}).skin);})();
