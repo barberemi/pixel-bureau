@@ -225,13 +225,23 @@ class InstallTest(unittest.TestCase):
             uninstall.main(["--config", self.cfg_path, "--yes"])
 
     def test_own_layout_file(self):
+        """Un plan à soi : chemin absolu hors du dépôt, relatif au dépôt dedans (la config reste valable si on le déplace).
+        Les deux cas sont posés explicitement : TMPDIR peut être dans le dépôt (agents lancés par Kronn, KT-42)."""
         L = json.load(open(os.path.join(ROOT, "layouts", "exemple-startup.json")))
-        mine = os.path.join(self.tmp, "mon-plan.json")
-        json.dump(L, open(mine, "w"))
-        self.assertEqual(self.run_install({**ANSWERS, "layout": "__file__", "layout_file": mine}), 0)
-        self.assertEqual(json.load(open(self.cfg_path))["layout"], mine)
-        html = next(b for m, p, b in self.fakes[-1].calls if m == "PUT" and p.endswith("/html"))["html"]
-        self.assertIn('"exemple-startup"', html)  # la page embarque ce plan
+        inside = tempfile.mkdtemp(dir=ROOT, prefix=".test-plan-")
+        self.addCleanup(shutil.rmtree, inside, True)
+        outside = self.tmp if not os.path.abspath(self.tmp).startswith(ROOT + os.sep) else tempfile.mkdtemp(dir=os.path.dirname(ROOT))
+        if outside != self.tmp:
+            self.addCleanup(shutil.rmtree, outside, True)
+        for where, expect in ((outside, lambda f: f), (inside, lambda f: os.path.relpath(f, ROOT))):
+            mine = os.path.join(where, "mon-plan.json")
+            json.dump(L, open(mine, "w"))
+            if os.path.exists(self.cfg_path):
+                os.remove(self.cfg_path)  # une installation neuve par cas
+            self.assertEqual(self.run_install({**ANSWERS, "layout": "__file__", "layout_file": mine}), 0)
+            self.assertEqual(json.load(open(self.cfg_path))["layout"], expect(mine))
+            html = next(b for m, p, b in self.fakes[-1].calls if m == "PUT" and p.endswith("/html"))["html"]
+            self.assertIn('"exemple-startup"', html)  # la page embarque ce plan
 
     def test_invalid_layout_is_refused_before_anything_is_created(self):
         L = json.load(open(os.path.join(ROOT, "layouts", "exemple-startup.json")))

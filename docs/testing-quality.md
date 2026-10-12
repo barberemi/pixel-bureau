@@ -45,7 +45,7 @@ Compté le 2026-10-11 en lançant `sh tools/test.sh`.
 
 Horloge des tests de scripts (KT-56, 2026-10-12) : les scripts lancés par `tests/test_scripts.py` voient une heure figée, midi à Paris le jour du test, via `tests/fakeclock/sitecustomize.py` (`PYTHONPATH`, variable `BUREAU_TEST_NOW`) [src: file: tests/test_scripts.py:17] ; les données de test sont datées par rapport à la même heure (`NOW`, `iso()`). Avant, trois tests échouaient entre 00h00 et 00h05 à Paris. `BUREAU_TEST_NOW=2026-10-12T00:02:00+02:00` rejoue une autre heure ; la nuit, des tests qui datent leurs runs de « il y a 5 minutes » échouent par construction.
 
-État au 2026-10-11 : 1 échec, `test_own_layout_file` [src: file: tests/test_install.py:226], uniquement quand `TMPDIR` pointe dans le dépôt (ici `.kronn/tmp`) : `install.py` rend relatif un chemin de plan situé sous la racine [src: file: tools/install.py:147] alors que le test attend le chemin absolu. Passe avec `TMPDIR=/tmp`.
+`test_own_layout_file` couvre les deux cas d'un plan à soi, quel que soit `TMPDIR` (y compris `<dépôt>/.kronn/tmp` des agents sous Kronn) : hors du dépôt, chemin absolu ; dans le dépôt, chemin relatif [src: file: tests/test_install.py:227] (KT-42, 2026-10-12).
 
 ## Test selection (when required by the project policy)
 
@@ -93,7 +93,7 @@ Vérifié par recherche du nom de module dans `tests/` (2026-10-11) :
 
 ```sh
 rtk node --test tests/*.test.js                       # ~1 s, logique de la page
-TMPDIR=/tmp rtk python3 -m unittest -q tests/test_scripts.py tests/test_install.py   # scripts et installateur
+rtk python3 -m unittest -q tests/test_scripts.py tests/test_install.py   # scripts et installateur
 rtk sh tools/test.sh                                  # tout, sans Chrome
 rtk sh tools/test.sh --chrome                         # obligatoire avant publication : zéro console.error
 rtk python3 tools/templates.py check                  # après modification d'un modèle de workflow (Kronn joignable)

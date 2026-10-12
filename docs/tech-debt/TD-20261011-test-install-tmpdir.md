@@ -12,13 +12,17 @@ metadata:
       status: Confirmed by user
       reviewer: Kronn audit validation card
       note: "Confirmed through an audit validation card."
+    - date: 2026-10-12
+      status: Resolved
+      reviewer: mainteneur
+      note: "KT-42 : le test pose explicitement un plan hors du dépôt (chemin absolu) et un plan dans le dépôt (chemin relatif)."
 ---
 
 # TD-20261011-test-install-tmpdir
 
 - **Area**: Backend
 - **Severity**: Medium
-- **Status**: Confirmed by user
+- **Status**: Resolved (2026-10-12, KT-42)
 - **Effort**: S (< 1h)
 - **Blast radius**: local (1-2 files)
 
@@ -32,7 +36,7 @@ metadata:
 - `tools/install.py:147-148` : `os.path.relpath` quand le plan est sous `ROOT`
 - `tests/test_install.py:227-232` : `test_own_layout_file`, assertion sur le chemin absolu
 - `tools/test.sh:5` : `set -e`
-- `docs/gotchas/tmpdir-dans-le-depot.md` : contournement `TMPDIR=/tmp`
+- `docs/gotchas/tmpdir-dans-le-depot.md` : contournement `TMPDIR=/tmp` (note retirée à la résolution)
 
 ## Suggested direction
 Rendre le test indépendant de `TMPDIR` : créer le plan dans un dossier temporaire explicitement hors du dépôt (`tempfile.mkdtemp(dir="/tmp")`), ou faire attendre au test le chemin relatif quand le fichier tombe sous la racine. Alternative : forcer `TMPDIR=/tmp` dans `tools/test.sh`.

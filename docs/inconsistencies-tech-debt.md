@@ -38,7 +38,7 @@ Le projet n'a pas de gestionnaire de paquets (ni `package.json`, ni `requirement
 | ID | Problem | Area | Severity |
 |----|---------|------|----------|
 | [TD-20261011-page-size-near-kronn-limit](tech-debt/TD-20261011-page-size-near-kronn-limit.md) | Page de démo à 961 621 octets pour une limite Kronn de 1 000 000 [src: file: tools/smoke.py:20] | Frontend | Medium |
-| [TD-20261011-test-install-tmpdir](tech-debt/TD-20261011-test-install-tmpdir.md) | `test_own_layout_file` rouge quand `TMPDIR` est dans le dépôt ; `set -e` saute les smoke [src: file: tools/install.py:147] | Backend | Medium |
+| [TD-20261011-test-install-tmpdir](tech-debt/TD-20261011-test-install-tmpdir.md) | **Résolu le 2026-10-12 (KT-42).** `test_own_layout_file` rouge quand `TMPDIR` est dans le dépôt ; `set -e` saute les smoke [src: file: tools/install.py:147] | Backend | Medium |
 | [TD-20261011-discussions-unpaginated](tech-debt/TD-20261011-discussions-unpaginated.md) | `/discussions?per_page=200` sans pagination dans 3 crons [src: file: workflows/office_snapshot.py:35] | Backend | Medium |
 | [TD-20261011-python-runtime-eol](tech-debt/TD-20261011-python-runtime-eol.md) | Python 3.9 en fin de vie comme minimum ; runtimes et venv non épinglés [src: file: README.md:34] | Infra | Medium |
 | [TD-20261011-missing-license](tech-debt/TD-20261011-missing-license.md) | Pas de LICENSE alors que des sprites CC-BY-SA / GPL sont embarqués [src: file: README.md:65] | Other | Medium |
