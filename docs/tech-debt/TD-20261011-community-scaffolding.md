@@ -12,13 +12,17 @@ metadata:
       status: Confirmed by user
       reviewer: Kronn audit validation card
       note: "Confirmed through an audit validation card."
+    - date: 2026-10-12
+      status: Resolved
+      reviewer: KT-30
+      note: "CONTRIBUTING.md, CODE_OF_CONDUCT.md (Contributor Covenant 2.1 en français), .github/pull_request_template.md, formulaires d'issue bug / idée / dette, config.yml (pas d'issue vierge, sécurité en privé), CODEOWNERS ; section Contribuer du README."
 ---
 
 # TD-20261011-community-scaffolding
 
 - **Area**: Docs
 - **Severity**: Low
-- **Status**: Confirmed by user
+- **Status**: Resolved (KT-30, 2026-10-12)
 - **Effort**: S (< 1h)
 - **Blast radius**: local (1-2 files)
 

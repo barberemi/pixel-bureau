@@ -1,0 +1,18 @@
+name: ✨ Idée
+description: Une fonctionnalité ou une amélioration.
+labels: ["✨ fonctionnalité"]
+body:
+  - type: textarea
+    id: besoin
+    attributes:
+      label: 🎯 Le besoin
+      description: Ce qui manque ou gêne aujourd'hui, et pour qui.
+    validations:
+      required: true
+  - type: textarea
+    id: proposition
+    attributes:
+      label: 💡 La proposition
+      description: Ce que tu imagines. Une maquette ou une capture annotée aide.
+    validations:
+      required: true

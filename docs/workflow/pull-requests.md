@@ -5,7 +5,7 @@
 ## Title & description
 
 <!-- Fill: title format, required description sections, template file if any -->
-Depuis le 2026-10-12 (KT-58), tout changement passe par une branche et une PR (première : #1). Titre au format des commits (`type(portée): sujet` en français), description qui dit quoi et pourquoi ; modèle de PR à venir (KT-30). La PR est **assignée au mainteneur** (`gh pr create --fill --assignee @me`) [src: user:mainteneur:2026-10-12: KT-58].
+Depuis le 2026-10-12 (KT-58), tout changement passe par une branche et une PR (première : #1). Titre au format des commits (`type(portée): sujet` en français), description qui dit quoi et pourquoi ; modèle `.github/pull_request_template.md` (KT-30). La PR est **assignée au mainteneur** (`gh pr create --fill --assignee @me`) [src: user:mainteneur:2026-10-12: KT-58].
 
 ## Review
 

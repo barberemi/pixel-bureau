@@ -1,0 +1,35 @@
+name: 🐛 Bug
+description: Quelque chose ne marche pas ou s'affiche mal.
+labels: ["🐛 bug"]
+body:
+  - type: textarea
+    id: quoi
+    attributes:
+      label: 🔍 Ce qui se passe
+      description: Ce que tu vois. Une capture aide beaucoup si c'est visuel.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduire
+    attributes:
+      label: 🔁 Reproduire
+      description: Les étapes, et l'heure ou les données du moment si ça compte (rejeu, mode TV, thème).
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: attendu
+    attributes:
+      label: 🎯 Attendu
+      description: Ce qui aurait dû se passer.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 🏷️ Version
+      description: Commit ou release du Bureau, version de Kronn, navigateur.
+      placeholder: "9b54aee · Kronn 0.14.3 · Chrome 141"

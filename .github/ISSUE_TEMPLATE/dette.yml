@@ -1,0 +1,30 @@
+name: 🧹 Dette
+description: Du code, des tests ou de la doc à remettre d'aplomb.
+labels: ["🧹 dette"]
+body:
+  - type: textarea
+    id: constat
+    attributes:
+      label: 🔍 Constat
+      description: Le fait, avec les fichiers concernés.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: 💥 Impact
+      description: Ce que ça coûte ou risque si on ne fait rien.
+    validations:
+      required: true
+  - type: textarea
+    id: piste
+    attributes:
+      label: 🛠️ Piste
+      description: Comment s'y prendre, si tu as une idée.
+  - type: textarea
+    id: termine
+    attributes:
+      label: ✅ Terminé quand
+      placeholder: |
+        - [ ]
+        - [ ]

@@ -58,6 +58,10 @@ L'installateur demande ton équipe (une équipe neuve avec le plan type par déf
 
 Pour modifier la page ou les workflows : [guide/developpement.md](guide/developpement.md).
 
+## Contribuer
+
+Bug, idée ou dette : ouvre une issue avec son formulaire. Pour proposer un changement : une branche, une PR avec le modèle proposé, la CI verte, puis un merge en squash. Le circuit et les règles du dépôt sont dans [CONTRIBUTING.md](CONTRIBUTING.md), le code de conduite dans [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
 ## Crédits
 
 Police pixel des thèmes de page : [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) de CodeMan38 (SIL Open Font License 1.1, `page/fonts/OFL-PressStart2P.txt`).
