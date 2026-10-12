@@ -73,6 +73,7 @@ If T0–T2 are insufficient, state which additional file you need and why. Never
 ## 2. DO NOT (critical)
 
 - **Lancer `tools/publish.py` ou `git push`** : réservé à l'humain [src: file: docs/briefing.md:23].
+- **Commiter sur `main`** : chaque changement se fait sur une branche `type/sujet` et devient une PR assignée au mainteneur (`gh pr create --fill --base main --assignee @me`), mergée en squash après CI « Tests » verte ; le hook `.githooks/pre-push` refuse un push vers `main`. Publier depuis `main` à jour, après le merge [src: file: docs/workflow/pull-requests.md:8].
 - **Toucher à `.gitignore`**, ni commiter `bureau.config.json` (propre à chaque installation) [src: file: .gitignore:2] [src: file: docs/briefing.md:23].
 - **Éditer `dist/`** : on édite `page/src/*` et `page/office_template.html` ; `dist/office.html` est produit par `tools/assemble.py` [src: file: guide/developpement.md:48] [src: file: tools/assemble.py:316].
 - **Ajouter un `import`, un module ou une ressource externe** dans la page : sandbox inline seulement (images et polices en `data:`), HTML de moins de 1 Mo [src: file: guide/developpement.md:48].
