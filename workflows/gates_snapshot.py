@@ -70,7 +70,9 @@ relaunch = []
 for wid, (wf, full) in defs.items():
     if is_bureau(wf) or wid in children or not full:
         continue
-    if any(v.get("required", True) and not v.get("source") for v in full.get("variables") or []):
+    # « Relancer » envoie variables: {} : on écarte tout workflow qui attend une saisie obligatoire, sans source ou à saisir
+    # au lancement (source user_input, comme Réestimer : sinon le run partirait sans ticket)
+    if any(v.get("required", True) and v.get("source") in (None, "", "user_input") for v in full.get("variables") or []):
         continue
     relaunch.append({"wf": wid, "name": wf["name"], "trigger": wf.get("trigger_type")})
 

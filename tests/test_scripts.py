@@ -51,6 +51,7 @@ class FakeKronn:
         self.posts = []  # (chemin, corps) des POST reçus
         self.disc_details = {}  # id de discussion -> détail (GET /discussions/{id}, avec ses messages)
         self.questions = {}  # id de discussion -> questions (GET /discussions/{id}/questions)
+        self.variables = {}  # id de workflow -> variables de lancement (GET /workflows/{id})
         self.discussions = [
             {"id": "d1", "title": "Pourquoi ça casse ?", "agent": "ClaudeCode", "participants": ["ClaudeCode"], "message_count": 4,
              "archived": False, "created_at": now, "updated_at": now, "workflow_run_id": None, "project_id": "p1"},
@@ -70,7 +71,7 @@ class FakeKronn:
             return self.runs.get(m.group(1), []) if "offset=0" in path or "offset" not in path else []
         m = re.fullmatch(r"/workflows/([\w-]+)", p)
         if m:
-            return {"id": m.group(1), "trigger": {"schedule": "*/10 4-20 * * *"}, "variables": [],
+            return {"id": m.group(1), "trigger": {"schedule": "*/10 4-20 * * *"}, "variables": self.variables.get(m.group(1), []),
                     "steps": [{"name": "gate", "step_type": {"type": "Gate"}}] if m.group(1) == AGENT_WF else []}
         m = re.fullmatch(r"/pages/([\w-]+)", p)
         if m and m.group(1) in self.pages:
@@ -587,6 +588,23 @@ print(json.dumps(d.get(key, [])))
         gates = self.run_script("gates_snapshot.py", api=api)
         self.assertEqual([w["wf"] for w in gates["workflows"]], [AGENT_WF])
         self.assertEqual([w["wf"] for w in gates["askable"]], [AGENT_WF])
+
+    def test_gates_relaunch_skips_workflows_waiting_for_input(self):
+        """« Relancer » lance sans variables : pas de bouton pour un workflow qui attend une saisie obligatoire (Réestimer)."""
+        fake = FakeKronn()
+        now = iso(2)
+        ids = {k: f"{k * 8}-1111-2222-3333-444444444444" for k in "bcde"}
+        for k, name in (("b", "Réestimer"), ("c", "Sans source"), ("d", "Saisie facultative"), ("e", "Variable fournie")):
+            fake.workflows.append({"id": ids[k], "name": name, "enabled": True, "trigger_type": "manual", "last_run": {"started_at": now, "finished_at": now, "status": "Success"}})
+        fake.variables = {
+            ids["b"]: [{"name": "ticketKey", "required": True, "source": "user_input"}, {"name": "raison", "source": "user_input"}],
+            ids["c"]: [{"name": "x", "required": True}],
+            ids["d"]: [{"name": "notes", "required": False, "source": "user_input"}],
+            ids["e"]: [{"name": "repo", "required": True, "source": "config"}],
+        }
+        gates = self.run_script("gates_snapshot.py", api=self.kronn(fake))
+        self.assertEqual([w["name"] for w in gates["workflows"]], ["Revue de PR", "Saisie facultative", "Variable fournie"])
+        self.assertIn(ids["b"], [w["wf"] for w in gates["askable"]])  # on peut toujours l'interroger sur ses runs
 
     # ---------- le canard ----------
     def duck_discs(self, fake):

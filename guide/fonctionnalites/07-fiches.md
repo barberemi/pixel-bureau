@@ -7,7 +7,7 @@ Clic sur un personnage (plan, panneau ou « Qui fait quoi ») : sa fiche s'ouvre
 | ![Fiche d'un agent](../img/fiche-agent.png) | ![Fiche d'un collègue](../img/fiche-collegue.png) |
 
 **Agent** : runs, réussites, échecs et tokens du jour, workflows, sa journée run par run avec les étapes et les erreurs. Boutons (cartes Kronn, sans token sauf « interroger ») :
-- **Relancer** : relance le workflow (refusé s'il tourne déjà ou demande des variables).
+- **Relancer** : relance le workflow, sans variables (refusé s'il tourne déjà). Absent pour un workflow qui attend une saisie obligatoire, comme Réestimer : celui-là se lance depuis la fiche du ticket, qui envoie la clé et te demande le reste.
 - **Lui poser une question** : un agent IA lit ses runs et répond en 5 phrases.
 - **Décider** une validation : approuver, rejeter ou demander des changements.
 
