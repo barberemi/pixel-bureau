@@ -1,0 +1,11 @@
+#!/bin/sh
+# Refuse un push direct sur main (KT-58) : main ne reçoit que des PR mergées en squash sur GitHub.
+# Activé par : git config core.hooksPath .githooks (une fois par clone). Exception assumée : git push --no-verify.
+# Protection côté poste seulement : la vraie protection de main est posée sur le dépôt public (KT-64).
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "pre-push : push direct sur main refusé. Pousse une branche et ouvre une PR (gh pr create --fill --assignee @me)." >&2
+    exit 1
+  fi
+done
+exit 0

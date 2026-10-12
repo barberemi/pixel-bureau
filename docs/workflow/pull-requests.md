@@ -5,14 +5,14 @@
 ## Title & description
 
 <!-- Fill: title format, required description sections, template file if any -->
-N/A: not used in this project : travail direct sur `main` (une seule branche locale, aucun PR sur `github.com/barberemi/kronn-bureau` d'après `gh pr list --state all`), un seul humain [src: file: docs/briefing.md:8].
+Depuis le 2026-10-12 (KT-58), tout changement passe par une branche et une PR (première : #1). Titre au format des commits (`type(portée): sujet` en français), description qui dit quoi et pourquoi ; modèle de PR à venir (KT-30). La PR est **assignée au mainteneur** (`gh pr create --fill --assignee @me`) [src: user:mainteneur:2026-10-12: KT-58].
 
 ## Review
 
 <!-- Fill: required approvals, who reviews what, draft-PR conventions -->
-N/A: not used in this project : pas de revue de PR ; l'humain relit et lance lui-même `git push` [src: file: docs/briefing.md:23].
+Le mainteneur relit et merge ; il pousse lui-même les branches (`git push` reste humain) [src: file: docs/briefing.md:23]. Ne merger que CI « Tests » verte (`gh pr checks <n>`) : le dépôt privé ne peut pas encore l'exiger (protection de branche réservée à GitHub Pro ou aux dépôts publics), elle le sera sur le dépôt public (KT-64).
 
 ## Merge strategy
 
 <!-- Fill: squash / rebase / merge commit, branch naming, who is allowed to merge -->
-N/A: not used in this project : commits directs sur `main`, pas de branche de fonctionnalité.
+Squash seulement (réglage du dépôt : merge commit et rebase désactivés, branche supprimée après le merge) : un commit par PR sur `main`, signé par GitHub. Branches nommées `type/sujet` (ex. `ci/actions-node24`). Push direct sur `main` refusé par le hook local `.githooks/pre-push`, à activer une fois par clone : `git config core.hooksPath .githooks` [src: file: .githooks/pre-push:1]. Publication (`tools/publish.py`) depuis `main` à jour, après le merge.
