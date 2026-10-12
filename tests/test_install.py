@@ -304,6 +304,34 @@ class InstallTest(unittest.TestCase):
         self.assertNotIn("Jan Levinson", html)  # pas le roster equipe (les recettes d'avatar restent dans sprites/cast.json)
         self.assertNotIn("LE BUREAU", html)
 
+    def test_from_scratch_without_any_team_pack_the_page_is_valid_and_starts(self):
+        """Installation de zéro, sans profil d'équipe (KT-57) : la page que l'installateur publie passe les contrôles
+        du smoke (taille, scripts, blocs d'action, marqueurs) et démarre avec la config écrite, sans démo ni données."""
+        import smoke, subprocess
+        answers = {k: v for k, v in ANSWERS.items() if k not in ("team", "owner")}
+        answers.update(owner="__new__", new_name="Pam", new_person="Pam Beesly", new_role="dev", github_repo="")
+        self.assertEqual(self.run_install(answers), 0)
+        cfg = json.load(open(self.cfg_path))
+        html = next(b for m, p, b in self.fakes[-1].calls if m == "PUT" and p.endswith("/html"))["html"]
+        self.patches[1].stop()  # le vrai subprocess pour node (setUp le remplace pour l'installateur)
+        try:
+            smoke.fails.clear()
+            with mock.patch("sys.stdout", new=open(os.devnull, "w")):
+                smoke.static_checks(html, cfg)
+            self.assertEqual(smoke.fails, [])
+            js = ("const {load}=require(process.argv[1]);const cfg=JSON.parse(require('fs').readFileSync(process.argv[2],'utf8'));"
+                  "const p=load({config:cfg,demo:false,owner:cfg.owner});"
+                  "process.stdout.write(p.run('JSON.stringify({data:!!DATA,boss:(chars.find(c=>c.boss)||{}).key||null,keys:chars.filter(c=>c.person).map(c=>c.key)})'))")
+            r = subprocess.run(["node", "-e", js, os.path.join(ROOT, "tests", "helpers", "page.js"), self.cfg_path],
+                               capture_output=True, text=True, timeout=60)
+            self.assertEqual(r.returncode, 0, r.stderr[-800:])
+            page = json.loads(r.stdout)
+            self.assertTrue(page["data"])  # bureau vide (pas encore de données) mais la page tourne
+            self.assertEqual(page["boss"], "p_pam")
+            self.assertEqual(page["keys"], ["p_pam"])
+        finally:
+            self.patches[1].start()  # remis avant tearDown, qui l'arrête
+
     def test_newcomer_stays_in_the_local_config(self):
         answers = dict(ANSWERS, owner="__new__", new_name="Jan", new_person="Jan Levinson", new_role="po")
         self.assertEqual(self.run_install(answers), 0)

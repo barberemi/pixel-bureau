@@ -211,13 +211,18 @@ def chrome(port=PORT):
     if not free_port(port):
         sys.exit(f"port {port} déjà occupé")
     user_dir = tempfile.mkdtemp(prefix="bureau-shots-")
-    proc = subprocess.Popen([CHROME, *CHROME_ARGS, "--headless=new", "--mute-audio", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
-                             f"--remote-debugging-port={port}", f"--user-data-dir={user_dir}", "about:blank"],
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    args = [CHROME, *CHROME_ARGS, "--headless=new", "--mute-audio", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
+            f"--remote-debugging-port={port}", f"--user-data-dir={user_dir}", "about:blank"]
+    proc = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         tab = wait_tab(port)
+        if not tab:  # démarrage raté (vu une fois sur la CI) : une seconde tentative avant d'abandonner
+            proc.kill()
+            proc.wait(10)
+            proc = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            tab = wait_tab(port)
         if not tab:
-            sys.exit(f"Chrome n'a pas ouvert d'onglet en {TAB_WAIT} s ({CHROME})")
+            sys.exit(f"Chrome n'a pas ouvert d'onglet en {TAB_WAIT} s, deux fois ({CHROME})")
         ws = websocket.create_connection(tab["webSocketDebuggerUrl"], timeout=60, suppress_origin=True)
         n = [0]
 

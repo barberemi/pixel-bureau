@@ -1,0 +1,61 @@
+# Références visuelles (KT-57) : refaites par la CI (Linux) sur la branche d'une PR quand on y pose le label
+# « références visuelles » (changement d'affichage voulu, ou Chrome mis à jour). Le commit est poussé sur la branche,
+# le label retiré, puis les tests relancés (un push du jeton d'Actions ne déclenche pas les workflows de la PR).
+name: Références visuelles
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: visual-refs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update:
+    # le label voulu, et seulement une branche de ce dépôt (jamais celle d'un fork)
+    if: github.event.label.name == 'références visuelles' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.9"
+
+      - name: Dépendances Python (captures et pilotage de Chrome)
+        run: python3 -m pip install --disable-pip-version-check pillow websocket-client
+
+      - name: Refaire les références
+        run: python3 tools/visual.py --update
+        env:
+          BUREAU_CHROME: google-chrome
+          BUREAU_CHROME_ARGS: --no-sandbox
+
+      - name: Commit sur la branche de la PR
+        run: |
+          git add tests/visual
+          if git diff --cached --quiet; then echo "Références inchangées"; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "test(visuel): références visuelles refaites par la CI" -m "Label « références visuelles » sur la PR #${{ github.event.pull_request.number }}."
+          git push
+
+      - name: Retirer le label et relancer les tests
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr edit ${{ github.event.pull_request.number }} --remove-label "références visuelles" || true
+          gh workflow run tests.yml --ref "${{ github.head_ref }}" || echo "Tests à relancer à la main (le workflow Tests doit être sur main avec workflow_dispatch)"

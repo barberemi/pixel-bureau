@@ -797,6 +797,65 @@ print(json.dumps(d.get(key, [])))
         self.assertEqual(self.run_script("actions_snapshot.py")["tickets"], [])  # Kronn injoignable : listes vides
 
 
+    # ---------- contrat crons -> page (KT-57) ----------
+    def fresh_kronn(self, fake):
+        """Un faux Kronn par script (le précédent est arrêté) : chaque cron lit l'API comme dans Kronn."""
+        if self.srv:
+            self.srv.shutdown()
+            self.srv.server_close()
+            self.srv = None
+        return self.kronn(fake)
+
+    def cron_outputs(self):
+        """La sortie de chaque script qui écrit un dataset de la page, comme l'écrit son modèle (workflows/templates)."""
+        out = {
+            "office": self.run_script("office_snapshot.py", api=self.fresh_kronn(FakeKronn())),
+            "live": self.run_script("live_snapshot.py", api=self.fresh_kronn(FakeKronn())),
+            "gates": self.run_script("gates_snapshot.py", api=self.fresh_kronn(FakeKronn())),
+            "payroll": self.run_script("payroll_snapshot.py", api=self.fresh_kronn(FakeKronn())),
+            "team": self.run_script("team_shape.py", self.team_input()),
+            "duck": self.run_script("duck_snapshot.py", {"sprint": None, "velocity": None, "reopens": None}, api=self.fresh_kronn(FakeKronn())),
+            "gitfut": self.run_script("gitfut_snapshot.py", gitfut={"p_pam": "Pam"}, gitfut_base="http://127.0.0.1:9",
+                                      wiki_posters=[], wiki_base="http://127.0.0.1:9"),
+        }
+        fake, _, _ = self.boss_pages()
+        out["bosspages"] = self.run_script("pages_snapshot.py", api=self.fresh_kronn(fake), boss_pages=["pa"], chrome=False)
+        fake = FakeKronn()
+        fake.datasets = [{"name": "team", "current": json.dumps(out["team"])}]
+        out["actions"] = self.run_script("actions_snapshot.py", api=self.fresh_kronn(fake), github={"repo": "acme/web"})
+        paris = NOW.astimezone(ZoneInfo("Europe/Paris")).date()
+        mon = paris - timedelta(days=paris.weekday())
+        serial = lambda d: (d - datetime(1899, 12, 30).date()).days  # noqa: E731
+        sheet = [["numero jour semaine", ""] + [""] * 5, ["férié", ""] + [False] * 5,
+                 ["Nom Prénom", "Total travaillé"] + [serial(mon + timedelta(days=i)) for i in range(5)],
+                 ["Beesly Pam", 20, "D", "C", "", "AM", "M"], ["", "", "T", "", "", "", ""]]
+        out["absences"] = self.run_script("absences_snapshot.py", stdin={"now": sheet, "next": None}, planning_names={"p_pam": "Pam Beesly"})
+        code = "BUREAU1:" + __import__("base64").b64encode(json.dumps({"k": "p_pam", "n": "Pamela", "l": None, "at": 1}).encode()).decode()
+        r = self.run_raw("avatar_save.py", code, api=self.fresh_kronn(FakeKronn()))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out["avatars"] = json.loads(r.stdout)
+        r = self.run_raw("layout_save.py", json.dumps(dict(self.PLAN)), api=self.fresh_kronn(FakeKronn()))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out["layout"] = json.loads(r.stdout)
+        return out
+
+    def test_contract_page_reads_every_cron_output(self):
+        """Ce qu'écrit chaque cron, la page sait le lire : chaque readXxx accepte son dataset, en texte JSON comme en
+        objet, et la page démarre sur ces seules données (sans démo). Un champ renommé d'un côté seulement casse ici."""
+        outputs = self.cron_outputs()
+        self.assertEqual(sorted(outputs), sorted(["office", "live", "gates", "payroll", "team", "duck", "gitfut", "bosspages",
+                                                  "actions", "absences", "avatars", "layout"]))  # tous les datasets de la page
+        path = os.path.join(self.tmp, "outputs.json")
+        with open(path, "w") as fh:
+            json.dump(outputs, fh)
+        r = subprocess.run(["node", os.path.join(ROOT, "tests", "helpers", "contract.js"), path], capture_output=True, text=True, timeout=120)
+        self.assertEqual(r.returncode, 0, r.stderr[-800:])
+        res = json.loads(r.stdout)
+        for form, readers in res.items():
+            bad = {k: v for k, v in readers.items() if v is not True}
+            self.assertEqual(bad, {}, f"dataset en {form} : lecteurs qui refusent la sortie de leur cron")
+            self.assertGreaterEqual(len(readers), 18, form)  # démarrage + 17 lecteurs
+
 def pil_python():
     """Un Python qui a Pillow : celui des tests, sinon celui du venv du dépôt ; None sinon."""
     for py in (sys.executable, os.path.join(ROOT, ".venv", "bin", "python")):

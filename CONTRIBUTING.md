@@ -18,7 +18,7 @@ Il faut Python 3.9 ou plus, Node 20 ou plus (sans dépendance npm) et Chrome ou 
 1. **Une branche par changement**, nommée `type/sujet` (`fix/fil-pr`, `feat/fiche-pr`…), jamais de commit sur `main`.
 2. **Des commits au format** `type(portée): sujet`, en français : `feat`, `fix`, `perf`, `style`, `docs`, `test`, `chore`, `ci`. Un commit par changement, signé.
 3. **Une PR** avec le modèle proposé, assignée au mainteneur (`gh pr create --fill --base main --assignee @me` pour les mainteneurs).
-4. **CI « Tests » verte**, relecture, puis **merge en squash** (seul mode autorisé).
+4. **CI « Tests » verte**, relecture, puis **merge en squash** (seul mode autorisé). Si l'affichage change exprès, la régression visuelle échoue : pose le label « références visuelles » sur la PR, la CI refait les références et relance les tests.
 5. La publication de la page et des workflows (`tools/publish.py`) se fait depuis `main` à jour, après le merge, par un mainteneur.
 
 ## ✅ Les règles du dépôt

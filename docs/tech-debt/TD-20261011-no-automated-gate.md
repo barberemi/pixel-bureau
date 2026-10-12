@@ -15,13 +15,17 @@ metadata:
       status: Partially resolved
       reviewer: mainteneur
       note: "KT-37 : CI GitHub Actions (.github/workflows/tests.yml) verte sur main et sur la PR #1. Reste : l'exiger par la protection de main (KT-58). Pas de linter."
+    - date: 2026-10-12
+      status: Resolved
+      reviewer: KT-37 / KT-57
+      note: "CI sur chaque PR et push sur main, avec contrat crons -> page, installation de zéro, régression visuelle et règle du guide (KT-57) ; hook pre-push contre le push direct sur main (KT-58). L'exigence de la CI par une règle de branche attend le dépôt public (KT-64). Pas de linter (choix assumé)."
 ---
 
 # TD-20261011-no-automated-gate
 
 - **Area**: CI
 - **Severity**: Low
-- **Status**: Partially resolved (2026-10-12, KT-37 ; protection de main : KT-58)
+- **Status**: Resolved (2026-10-12, KT-37 et KT-57 ; règle de branche exigeant la CI : KT-64)
 - **Effort**: M (1-4h)
 - **Blast radius**: local (1-2 files)
 

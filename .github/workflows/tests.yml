@@ -4,11 +4,14 @@ name: Tests
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]  # labeled : « références seules » lève la règle du guide
   push:
     branches: [main]
+  workflow_dispatch:  # relancé par visual-refs.yml après une mise à jour des références (un push du jeton d'Actions ne relance rien)
 
 permissions:
   contents: read
+  pull-requests: read  # règle du guide : labels de la PR quand les tests sont relancés par visual-refs.yml
 
 concurrency:
   group: tests-${{ github.ref }}
@@ -20,6 +23,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # règle du guide : diff avec la branche de base
 
       - uses: actions/setup-node@v7
         with:
@@ -41,3 +46,22 @@ jobs:
           BUREAU_CHROME: google-chrome
           # Ubuntu 24.04 refuse le bac à sable de Chrome aux utilisateurs non privilégiés (AppArmor)
           BUREAU_CHROME_ARGS: --no-sandbox
+
+      # sur la PR, et sur les tests relancés par visual-refs.yml (workflow_dispatch) : c'est ce run-là qui voit les
+      # références refaites ; levée par le label « références seules »
+      - name: Règle du guide (références visuelles changées => guide/ changé)
+        if: github.event_name != 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          labels=$(gh pr view "${{ github.head_ref || github.ref_name }}" --json labels --jq '[.labels[].name] | join(",")' 2>/dev/null || true)
+          case ",$labels," in *",références seules,"*) echo "règle du guide levée (label « références seules »)"; exit 0;; esac
+          python3 tools/visual.py --guide-rule "origin/${{ github.base_ref || 'main' }}"
+
+      - name: Captures qui s'écartent de leur référence
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visuel
+          path: dist/visual/
+          if-no-files-found: ignore

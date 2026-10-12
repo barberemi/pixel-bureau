@@ -4,15 +4,17 @@
 
 ## Build checks
 
-Pas de CI : aucun dossier `.github/` ni autre pipeline dans le dépôt ; les contrôles sont lancés à la main avant publication. Pas de linter, de formateur ni de typecheck configurés (aucun `package.json`, `pyproject.toml`, `setup.cfg`, `.pre-commit-config.yaml`). Point d'entrée unique : `sh tools/test.sh` [src: file: tools/test.sh:1].
+CI GitHub Actions (`.github/workflows/tests.yml`) : `sh tools/test.sh --chrome` sur chaque PR et chaque push sur `main` (KT-37), plus la règle du guide sur les PR. Pas de linter, de formateur ni de typecheck configurés (aucun `package.json`, `pyproject.toml`, `setup.cfg`, `.pre-commit-config.yaml`). Point d'entrée unique : `sh tools/test.sh` [src: file: tools/test.sh:1].
 
 | Contrôle | Commande | Ce qu'il vérifie |
 |---|---|---|
 | Tests JS de la page | `node --test tests/*.test.js` | Logique de `page/src/*.js` chargée dans un contexte `vm` [src: file: tools/test.sh:7] [src: file: tests/helpers/page.js:1] |
-| Tests Python | `python3 -m unittest -q tests/test_templates.py tests/test_install.py tests/test_scripts.py tests/test_plan.py tests/test_theme.py` | Scripts `workflows/`, installateur, modèles, plans, thèmes [src: file: tools/test.sh:8] |
+| Tests Python | `python3 -m unittest -q tests/test_templates.py tests/test_install.py tests/test_scripts.py tests/test_plan.py tests/test_theme.py tests/test_compact.py tests/test_visual.py` | Scripts `workflows/` (dont le contrat crons → page), installateur (dont installation de zéro sans profil), modèles, plans, thèmes, compactage, règle du guide [src: file: tools/test.sh:8] |
 | Build + smoke statique (démo) | `python3 tools/smoke.py` | Assemble `dist/office.html` ; taille < 1 000 000 octets (alerte à partir de 90 %), chaque `<script>` se parse, 10 blocs `kronn-action` du squelette, JSON valide, aucun marqueur `__X__` restant, 1 seul `<script>` exécutable [src: file: tools/smoke.py:8] [src: file: tools/smoke.py:20] [src: file: tools/smoke.py:59] |
 | Smoke installation neuve | `python3 tools/smoke.py --empty` | Mêmes contrôles sur une page d'équipe neuve, plan type, sans démo [src: file: tools/test.sh:12] |
 | Chargement Chrome headless | `sh tools/test.sh --chrome` (passe `--chrome` aux deux smoke) | Aucune exception JS, zéro `console.error` [src: file: tools/smoke.py:135] |
+| Régression visuelle | `.venv/bin/python tools/visual.py` (lancée par `tools/test.sh --chrome`) | 9 captures clés comparées à `tests/visual/` (temps figé et virtuel : deux rendus identiques ; tolérance 0,3 %) ; stricte sur la plateforme des références (Linux, CI), indicative ailleurs [src: file: tools/visual.py:1] |
+| Règle du guide (PR) | `python3 tools/visual.py --guide-rule origin/main` | Références visuelles changées ⇒ `guide/` changé ; levée par le label « références seules » [src: file: .github/workflows/tests.yml:1] |
 | Modèles = workflows du Kronn | `python3 tools/templates.py check` | `DIFF` si le rendu d'un modèle diffère du workflow installé ; code de sortie 1 [src: file: tools/templates.py:289] |
 
 `tools/test.sh` tourne avec `set -e` : un échec des tests JS empêche les étapes suivantes [src: file: tools/test.sh:5]. Le smoke utilise `.venv/bin/python` s'il existe, sinon `python3` [src: file: tools/test.sh:9].
@@ -83,10 +85,10 @@ Aucune mesure de couverture : pas d'outil configuré (ni `c8`, ni `--experimenta
 
 Vérifié par recherche du nom de module dans `tests/` (2026-10-11) :
 
-- `workflows/avatar_save.py`, `workflows/gate_decide.py`, `workflows/payroll_snapshot.py` : aucun test ne les référence.
+- `workflows/gate_decide.py` : aucun test ne le référence (`avatar_save.py` et `payroll_snapshot.py` sont couverts par le test de contrat, 2026-10-12).
 - `tools/publish.py` (publication vers Kronn, lancée par l'humain seul), `tools/shots.py` (captures), `tools/cdp.py` (pilotage Chrome) : pas de test.
 - `tools/smoke.py` n'a pas de test propre (c'est lui-même un contrôle).
-- Rendu visuel (canvas, sprites, thèmes à l'écran) : seulement le chargement sans erreur via `--chrome` et les captures relues à l'oeil ; pas de comparaison d'images.
+- Rendu visuel : 9 captures clés comparées (`tools/visual.py`) ; les autres vues (scènes, thèmes saisonniers, éditeur…) restent relues à l'oeil.
 - Appels réels à Kronn, GitHub, Jira, Microsoft Graph : remplacés par des faux dans les tests ; la conformité des workflows installés se vérifie avec `python3 tools/templates.py check` (demande un Kronn joignable).
 
 ## Smoke checks (pre-commit)

@@ -1,0 +1,15 @@
+{
+ "platform": "linux",
+ "chrome": "Google Chrome 154.0.8037.97",
+ "names": [
+  "plan",
+  "theme-equipe",
+  "fiche-agent",
+  "fiche-collegue",
+  "fiche-ticket",
+  "fil",
+  "kanban",
+  "tv",
+  "mobile"
+ ]
+}

@@ -15,6 +15,7 @@
 
 ## ✅ Avant de merger
 - [ ] Guide (`guide/fonctionnalites/`), ligne du README et captures (`tools/shots.py`) dans la même PR si c'est visible
+- [ ] Affichage changé exprès : label « références visuelles » posé (la CI refait `tests/visual/`)
 - [ ] `docs/` à jour si une règle ou la structure change
 - [ ] Un commit par changement, commits signés
 - [ ] CI « Tests » verte, PR assignée au mainteneur
