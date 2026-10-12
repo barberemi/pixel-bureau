@@ -1,0 +1,43 @@
+# Tests du Bureau sur chaque PR et chaque push sur main (KT-37) : les mêmes que `sh tools/test.sh --chrome` en local.
+# Versions minimales annoncées par le README : Node 20, Python 3.9.
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Dépendances Python (captures et pilotage de Chrome)
+        run: python3 -m pip install --disable-pip-version-check pillow websocket-client
+
+      - name: Chrome
+        run: google-chrome --version
+
+      - name: sh tools/test.sh --chrome
+        run: sh tools/test.sh --chrome
+        env:
+          BUREAU_CHROME: google-chrome
+          # Ubuntu 24.04 refuse le bac à sable de Chrome aux utilisateurs non privilégiés (AppArmor)
+          BUREAU_CHROME_ARGS: --no-sandbox

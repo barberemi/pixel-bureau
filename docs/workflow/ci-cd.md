@@ -5,16 +5,16 @@
 ## Pipeline stages
 
 <!-- Fill: build → test → deploy stages, the provider (GitHub Actions, GitLab CI, etc.), and where the config lives -->
-Pas de CI : aucun `.github/workflows/` ni `.gitlab-ci.yml` dans le dépôt (suivi dans [TD-20261011-no-automated-gate](../tech-debt/TD-20261011-no-automated-gate.md)). Les étapes sont lancées à la main sur le poste :
+GitHub Actions, workflow « Tests » (`.github/workflows/tests.yml`, KT-37) sur chaque PR et chaque push sur `main` : Ubuntu 24.04, Node 20 et Python 3.9 (versions minimales du README), `pillow` et `websocket-client`, puis `sh tools/test.sh --chrome` avec le Chrome du runner (`BUREAU_CHROME=google-chrome`, `BUREAU_CHROME_ARGS=--no-sandbox`) [src: file: .github/workflows/tests.yml:1]. Les autres étapes restent sur le poste :
 
-1. Tests : `sh tools/test.sh --chrome` (`node --test`, `unittest`, smoke de la page assemblée dans Chrome headless) [src: file: tools/test.sh:7].
+1. Tests en local avant de pousser : `sh tools/test.sh --chrome` (`node --test`, `unittest`, smoke de la page assemblée dans Chrome headless) [src: file: tools/test.sh:7]. Deux tests Python se sautent en CI, faute d'installation locale (`tests/test_templates.py`, export des modèles) et de `.venv` du dépôt.
 2. Contrôle des modèles : `python3 tools/templates.py check` (les workflows du Kronn = le rendu des modèles) [src: file: guide/developpement.md:45].
 3. Publication : `python3 tools/publish.py page|workflows|all` vers l'API du Kronn local [src: file: tools/publish.py:1].
 
 ## Quality gates
 
 <!-- Fill: what blocks a merge/deploy (tests, lint, security scan, manual approval) -->
-Aucun garde automatique (ni hook, ni linter). Garde manuelle avant publication : `sh tools/test.sh --chrome` vert avec zéro `console.error` [src: file: docs/briefing.md:22]. `tools/publish.py page` refuse de publier un plan de bureau invalide [src: file: tools/publish.py:28] ; le smoke vérifie une page de moins de 1 000 000 octets [src: file: tools/smoke.py:20].
+La CI « Tests » doit être verte (exigée par la protection de `main`, KT-58). Pas de linter ni de hook. Garde manuelle avant publication : `sh tools/test.sh --chrome` vert avec zéro `console.error` [src: file: docs/briefing.md:22]. `tools/publish.py page` refuse de publier un plan de bureau invalide [src: file: tools/publish.py:28] ; le smoke vérifie une page de moins de 1 000 000 octets [src: file: tools/smoke.py:20].
 
 ## Deployment targets
 

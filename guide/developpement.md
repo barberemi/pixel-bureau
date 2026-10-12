@@ -46,6 +46,8 @@ python3 tools/publish.py page          # ou workflows, ou all
 python3 tools/templates.py check       # les workflows du Kronn = le rendu des modèles
 ```
 
+La CI GitHub Actions (`.github/workflows/tests.yml`) relance `sh tools/test.sh --chrome` sur chaque PR et chaque push sur `main`, avec Node 20 et Python 3.9. Chrome se choisit par `BUREAU_CHROME` (sinon le premier trouvé : macOS, puis `google-chrome`, `chromium`) et reçoit les options de `BUREAU_CHROME_ARGS` (CI : `--no-sandbox`).
+
 - On édite `page/src/*` et `page/office_template.html`, jamais `dist/`. Pas d'`import` ni de ressource externe : la sandbox des pages n'accepte que du inline (images en `data:`), HTML de moins de 1 Mo.
 - Un nouveau fichier `page/src/NN-nom.js` est pris à sa place dans l'ordre.
 - Captures de la documentation : `.venv/bin/python tools/shots.py [nom...]` (page de démo, dans `guide/img/`).

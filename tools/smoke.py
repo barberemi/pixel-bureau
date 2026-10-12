@@ -18,7 +18,12 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 import assemble  # noqa: E402
 
 LIMIT = 1_000_000
-CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+# Chrome : BUREAU_CHROME, sinon le premier trouvé (macOS, puis Linux, comme workflows/pages_snapshot.py) ;
+# BUREAU_CHROME_ARGS = options en plus (CI Linux : --no-sandbox)
+CHROMES = ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+           "/Applications/Chromium.app/Contents/MacOS/Chromium", "google-chrome", "chromium", "chromium-browser")
+CHROME = os.environ.get("BUREAU_CHROME") or next((shutil.which(c) or c for c in CHROMES if os.path.isfile(c) or shutil.which(c)), CHROMES[0])
+CHROME_ARGS = os.environ.get("BUREAU_CHROME_ARGS", "").split()
 ACTION_RE = re.compile(r'<script type="application/kronn-action" data-action-id="[^"]+">.*?</script>', re.S)
 SCRIPT_RE = re.compile(r"<script([^>]*)>(.*?)</script>", re.S)
 fails = []
@@ -80,7 +85,7 @@ def chrome_checks(path, port, user_dir, js, shot, wait, width, height):
     own_dir = user_dir is None
     user_dir = user_dir or tempfile.mkdtemp(prefix="bureau-smoke-")
     os.makedirs(user_dir, exist_ok=True)
-    proc = subprocess.Popen([CHROME, "--headless=new", "--mute-audio", "--disable-gpu", "--no-first-run",
+    proc = subprocess.Popen([CHROME, *CHROME_ARGS, "--headless=new", "--mute-audio", "--disable-gpu", "--no-first-run",
                              "--no-default-browser-check", f"--remote-debugging-port={port}",
                              f"--user-data-dir={user_dir}", "about:blank"],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

@@ -11,7 +11,7 @@ import base64, contextlib, json, os, shutil, subprocess, sys, tempfile, time, ur
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import assemble  # noqa: E402
-from smoke import CHROME, free_port  # noqa: E402
+from smoke import CHROME, CHROME_ARGS, free_port  # noqa: E402
 
 OUT = os.path.join(ROOT, "guide", "img")
 PORT = 9335
@@ -208,7 +208,7 @@ def chrome(port=PORT):
     if not free_port(port):
         sys.exit(f"port {port} déjà occupé")
     user_dir = tempfile.mkdtemp(prefix="bureau-shots-")
-    proc = subprocess.Popen([CHROME, "--headless=new", "--mute-audio", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
+    proc = subprocess.Popen([CHROME, *CHROME_ARGS, "--headless=new", "--mute-audio", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
                              f"--remote-debugging-port={port}", f"--user-data-dir={user_dir}", "about:blank"],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
