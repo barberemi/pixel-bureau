@@ -11,13 +11,17 @@ metadata:
       status: Confirmed by user
       reviewer: Kronn audit validation card
       note: "Confirmed through an audit validation card."
+    - date: 2026-10-12
+      status: Partially resolved
+      reviewer: mainteneur
+      note: "KT-37 : CI GitHub Actions (.github/workflows/tests.yml) verte sur main et sur la PR #1. Reste : l'exiger par la protection de main (KT-58). Pas de linter."
 ---
 
 # TD-20261011-no-automated-gate
 
 - **Area**: CI
 - **Severity**: Low
-- **Status**: Confirmed by user
+- **Status**: Partially resolved (2026-10-12, KT-37 ; protection de main : KT-58)
 - **Effort**: M (1-4h)
 - **Blast radius**: local (1-2 files)
 

@@ -45,7 +45,7 @@ Le projet n'a pas de gestionnaire de paquets (ni `package.json`, ni `requirement
 | [TD-20261011-silent-partial-failures](tech-debt/TD-20261011-silent-partial-failures.md) | `except Exception: pass` sur des lectures d'API : datasets partiels sans trace [src: file: workflows/gates_snapshot.py:92] | Observability | Low |
 | [TD-20261011-unclosed-file-handles](tech-debt/TD-20261011-unclosed-file-handles.md) | `open()` sans `with`, ResourceWarning dans les tests [src: file: tools/assemble.py:58] | Backend | Low |
 | [TD-20261011-install-god-file](tech-debt/TD-20261011-install-god-file.md) | `tools/install.py` de 710 lignes [src: file: tools/install.py:549] | Other | Low |
-| [TD-20261011-no-automated-gate](tech-debt/TD-20261011-no-automated-gate.md) | Ni CI, ni linter, ni hook : contrôles manuels seulement [src: file: tools/test.sh:1] | CI | Low |
+| [TD-20261011-no-automated-gate](tech-debt/TD-20261011-no-automated-gate.md) | **CI en place le 2026-10-12 (KT-37), à exiger par la protection de main (KT-58).** Ni CI, ni linter, ni hook : contrôles manuels seulement [src: file: tools/test.sh:1] | CI | Low |
 | [TD-20261011-missing-security-md](tech-debt/TD-20261011-missing-security-md.md) | Pas de SECURITY.md (signal du détecteur) | Security | Low |
 | [TD-20261011-community-scaffolding](tech-debt/TD-20261011-community-scaffolding.md) | Pas de CONTRIBUTING, CODE_OF_CONDUCT, modèles d'issue et de PR | Docs | Low |
 
@@ -55,7 +55,7 @@ Le projet n'a pas de gestionnaire de paquets (ni `package.json`, ni `requirement
 |------|-----------|----------|
 | Dockerfile | Non | Aucun `Dockerfile` dans le dépôt (vérifié par `find`) |
 | docker-compose / compose.yaml | Non | Aucun fichier compose |
-| CI (`.github/workflows`, `.gitlab-ci.yml`) | Non | Aucune config CI ; l'absence de garde automatique est suivie dans TD-20261011-no-automated-gate |
+| CI (`.github/workflows`, `.gitlab-ci.yml`) | Oui | Workflow « Tests » sur chaque PR et push sur `main` (`.github/workflows/tests.yml`, KT-37) [src: file: .github/workflows/tests.yml:1] |
 | `.env*` à la racine | Non | Aucun fichier `.env*` présent ni suivi (`git ls-files -- '*.env*' '.env*'` vide) |
 | Web (labels, alt, scripts inline, CSP) | Partiel : un seul gabarit HTML, DOM construit en JS | Labels : `aria-label` sur le curseur et la vitesse [src: file: page/office_template.html:37], `<select id="themesel">` dans un `<label>` [src: file: page/src/46-themes.js:235], champ du code avatar avec `aria-label` [src: file: page/src/65-editor.js:252]. `alt` : présent sur tous les `<img>` générés (décoratifs, `alt=""`). Script inline : un seul `<script>` de toute la page, imposé par la sandbox des Live Pages (inline seulement) [src: file: guide/developpement.md:48]. CSP : en-têtes servis par Kronn, hors du dépôt ; pas de finding |
 | Community standards | Oui (remote `github.com`), dépôt privé d'après `gh repo view` | README avec description : présent [src: file: README.md:3]. LICENSE, SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, modèles d'issue et de PR : absents (3 TD) |
