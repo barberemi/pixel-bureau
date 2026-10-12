@@ -40,6 +40,7 @@ Full grammar and cascade: [`docs/conventions/agents-md-format-v1.md`](convention
 |------|-------|
 | Modifier la page (`page/src/NN-*.js`, `styles.css`, thèmes) [src: file: guide/developpement.md:9] | [repo-map](repo-map.md), [coding-rules](coding-rules.md) |
 | Modifier un cron (script `workflows/*.py` ou modèle `workflows/templates/*.json`) [src: file: guide/developpement.md:71] | [repo-map](repo-map.md), [architecture/overview](architecture/overview.md) |
+| Équipe, profil `teams/<id>/` ou pack d'équipe hors du dépôt (roster, avatars, musique, plan, thèmes) [src: file: tools/assemble.py:177] | [conventions/pack-equipe](conventions/pack-equipe.md), [repo-map](repo-map.md) |
 | Ajouter un dataset de page ou un workflow / cron du Bureau [src: file: tools/templates.py:24] | [conventions/ajouter-dataset-ou-workflow](conventions/ajouter-dataset-ou-workflow.md), [architecture/overview](architecture/overview.md) |
 | Corriger ou ajouter un test (`tests/`) [src: file: tools/test.sh:7] | [testing-quality](testing-quality.md) |
 | Nouvelle fonctionnalité visible (page + `guide/fonctionnalites/NN-*.md` + ligne du README + captures) [src: file: README.md:9] | [architecture/overview](architecture/overview.md), [repo-map](repo-map.md) |

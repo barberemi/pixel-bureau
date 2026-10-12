@@ -141,6 +141,11 @@ def layout(ask, default):
     for f in plans:
         L = jload(os.path.join(ROOT, "layouts", f))
         opts.append((f"layouts/{f}", f"{L.get('name') or f} ({L['size'][0]} x {L['size'][1]} cases)"))
+    pack = os.path.dirname(default) if os.path.isabs(default) else None  # plan d'un pack d'équipe : ses plans aussi
+    for f in sorted(os.listdir(pack)) if pack and os.path.isdir(pack) else []:
+        if f.endswith(".json"):
+            L = jload(os.path.join(pack, f))
+            opts.append((os.path.join(pack, f), f"{L.get('name') or f} ({L['size'][0]} x {L['size'][1]} cases, pack d'équipe)"))
     v = ask.choice("layout", "Plan du bureau", opts + [("__file__", "Un plan à moi (fichier JSON bureau-layout/1)")], default)
     if v == "__file__":
         v = os.path.abspath(os.path.expanduser(ask.text("layout_file", "Chemin du plan")))
@@ -186,19 +191,31 @@ def org_member(org):
 
 
 def team(ask):
-    """Profil d'équipe (teams/<équipe>/) ou équipe neuve. Un profil qui nomme une organisation GitHub n'est
-    installable que par ses membres actifs (vérifié avec gh). Renvoie l'id du profil, ou None."""
+    """Profil d'équipe (teams/<équipe>/), pack d'équipe (dossier hors du dépôt, KT-60) ou équipe neuve. Une équipe qui
+    nomme une organisation GitHub n'est installable que par ses membres actifs (vérifié avec gh). Renvoie l'id du
+    profil ou le chemin du pack (valeur de la clé team), ou None."""
     profiles = assemble.teams()
     opts = [("", "Une nouvelle équipe (plan type, tu démarres seul et ajoutes tes collègues ensuite)")]
     opts += [(t, f"Rejoindre {m.get('name') or t}" + (f" (membres de {m['github_org']})" if m.get("github_org") else ""))
              for t, m in profiles.items()]
+    opts += [("__pack__", "Un pack d'équipe (le dossier de ton équipe, par exemple un dépôt privé cloné)")]
     t = ask.choice("team", "Ton équipe", opts, "")
-    org = (profiles.get(t) or {}).get("github_org")
+    if t == "__pack__":
+        t = ask.text("team_pack", "Chemin du pack d'équipe (dossier avec team.json)")
+        if not assemble.is_pack(t):
+            t = "./" + t  # un nom seul serait pris pour un profil de teams/
+    try:
+        meta = assemble.team_meta({"team": t}) if t else {}
+    except ValueError as e:
+        raise InstallError(str(e))
+    org = meta.get("github_org")
     if org:
         ok, why = org_member(org)
         if not ok:
-            raise InstallError(f"l'équipe « {profiles[t].get('name') or t} » est réservée aux membres de {org} : {why}.")
+            raise InstallError(f"l'équipe « {meta.get('name') or t} » est réservée aux membres de {org} : {why}.")
         say(f"✓ GitHub : {why} de {org}")
+    if t and assemble.is_pack(t):
+        say(f"✓ pack d'équipe {meta.get('name') or t} ({assemble.team_dir({'team': t})})")
     return t or None
 
 
@@ -608,7 +625,8 @@ def main(argv=None):
     k, kronn = check_kronn(ask, assemble.defaults({}))
     team_id = team(ask)
     defaults = assemble.defaults({"team": team_id})
-    roster_path = os.path.join(ROOT, "teams", team_id, "roster.json") if team_id else None
+    tdir = assemble.team_dir({"team": team_id})  # teams/<id> ou le pack
+    roster_path = os.path.join(tdir, "roster.json") if tdir and os.path.exists(os.path.join(tdir, "roster.json")) else None
     roster_doc = jload(roster_path) if roster_path else {"people": []}
     people = [p for p in old.get("people") or [] if old.get("team") == team_id]  # personnes ajoutées à cette installation
     login = gh_login()
@@ -646,7 +664,7 @@ def main(argv=None):
         if tpl_ids.get(key):
             cfg[sec][field] = tpl_ids[key]
     say("\n— Récapitulatif —")
-    say(f"  Équipe : {(assemble.teams()[team_id].get('name') or team_id) if team_id else 'nouvelle'} · boss : {me['name']}"
+    say(f"  Équipe : {(assemble.team_meta(cfg).get('name') or team_id) if team_id else 'nouvelle'} · boss : {me['name']}"
         + (" (ajouté à cette installation)" if me in people else ""))
     say(f"  Plan {layout_file} · projet Kronn {project_id[:8]} · agent IA : {ai or 'aucun'}")
     say(f"  Jira : {j['project'] + ' (board ' + str(j['board']) + ')' if j else 'non connecté : sprint, tickets, kanban masqués'}")
@@ -673,7 +691,7 @@ def main(argv=None):
     if music:
         sid = re.search(r"song/([0-9a-f-]{36})", music)
         song = {"title": "Sa musique", "url": music, **({"suno_id": sid.group(1)} if sid else {})}
-        mp = os.path.join(ROOT, "teams", team_id, "music", "music.json") if team_id and me not in people else None
+        mp = os.path.join(tdir, "music", "music.json") if tdir and me not in people else None
         if mp:  # morceau d'une personne de l'équipe : partagé avec l'équipe
             os.makedirs(os.path.dirname(mp), exist_ok=True)
             m = jload(mp) if os.path.exists(mp) else {}

@@ -1,0 +1,5 @@
+{
+ "_doc": "Pack d'équipe de test (KT-60) : même format qu'un profil de teams/, hors du dépôt dans la vraie vie. Équipe fictive.",
+ "name": "Vance Réfrigération (pack de test)",
+ "layout": "layouts/plan.json"
+}

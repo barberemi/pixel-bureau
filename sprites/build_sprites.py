@@ -5,7 +5,7 @@ Sheet layout (64x64 frames):
   row 4    : idle up f0,f1 | idle down f0,f1 | idle left f0 | idle right f0
   row 5    : emote down f0..f2 | hurt f0..f5
 """
-import base64, io, json, os, re, urllib.request
+import base64, io, json, os, re, sys, urllib.request
 from PIL import Image
 
 BASE = "https://raw.githubusercontent.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator/master/spritesheets"
@@ -178,7 +178,7 @@ def sheets(custom_dir):
 
 if __name__ == "__main__":
     # sprites/sprites.json (local, non commité) : avatars des recettes communes + sprites fournis de l'installation (custom/)
-    # teams/<équipe>/sprites.json : sprites fournis de l'équipe (teams/<équipe>/sprites/)
+    # teams/<équipe>/sprites.json : sprites fournis de l'équipe (teams/<équipe>/sprites/), et ceux des packs passés en argument
     here = os.path.dirname(os.path.abspath(__file__))
     specs = json.load(open(os.path.join(here, "cast.json")))
     result = {}
@@ -196,7 +196,10 @@ if __name__ == "__main__":
     json.dump(sheets(os.path.join(here, "common")), open(os.path.join(here, "common.json"), "w"))  # sprites communs (hérauts)
     print("sprites/common.json")
     teams = os.path.join(os.path.dirname(here), "teams")
-    for t in sorted(os.listdir(teams)) if os.path.isdir(teams) else []:
-        if os.path.isdir(os.path.join(teams, t, "sprites")):
-            json.dump(sheets(os.path.join(teams, t, "sprites")), open(os.path.join(teams, t, "sprites.json"), "w"))
-            print(f"teams/{t}/sprites.json")
+    dirs = [os.path.join(teams, t) for t in sorted(os.listdir(teams))] if os.path.isdir(teams) else []
+    # packs d'équipe hors du dépôt (KT-60) : python3 sprites/build_sprites.py ~/Sites/bureau-monequipe
+    dirs += [os.path.abspath(os.path.expanduser(a)) for a in sys.argv[1:]]
+    for d in dirs:
+        if os.path.isdir(os.path.join(d, "sprites")):
+            json.dump(sheets(os.path.join(d, "sprites")), open(os.path.join(d, "sprites.json"), "w"))
+            print(os.path.join(d, "sprites.json"))

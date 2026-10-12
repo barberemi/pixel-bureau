@@ -40,13 +40,26 @@ JS_FILES = sorted(f for f in os.listdir(SRC) if f.endswith(".js"))
 THEME_FILES = sorted(f for f in os.listdir(SRC) if f.startswith("theme-") and f.endswith(".css"))
 
 
-def themes():
-    """Thèmes d'interface {id: nom} : page/src/theme-<id>.css, nom lu dans sa première ligne « /* @nom: … */ »."""
+def theme_paths(cfg=None):
+    """Fichiers des thèmes d'interface {id: chemin} : page/src/theme-<id>.css, puis ceux du pack d'équipe
+    (<pack>/themes/theme-<id>.css), qui remplacent un thème de même id."""
+    out = {f[len("theme-"):-len(".css")]: os.path.join(SRC, f) for f in THEME_FILES}
+    d = team_dir(cfg)
+    tdir = os.path.join(d, "themes") if d else None
+    if tdir and os.path.isdir(tdir):
+        for f in sorted(os.listdir(tdir)):
+            if f.startswith("theme-") and f.endswith(".css"):
+                out[f[len("theme-"):-len(".css")]] = os.path.join(tdir, f)
+    return out
+
+
+def themes(cfg=None):
+    """Thèmes d'interface {id: nom}, nom lu dans la première ligne du fichier « /* @nom: … */ »."""
     out = {}
-    for f in THEME_FILES:
-        m = re.match(r"/\*\s*@nom:\s*(.+?)\s*\*/", open(os.path.join(SRC, f)).read())
-        assert m, f"{f} : première ligne attendue /* @nom: Nom du thème */"
-        out[f[len("theme-"):-len(".css")]] = m.group(1)
+    for t, path in theme_paths(cfg).items():
+        m = re.match(r"/\*\s*@nom:\s*(.+?)\s*\*/", open(path).read())
+        assert m, f"{path} : première ligne attendue /* @nom: Nom du thème */"
+        out[t] = m.group(1)
     return out
 
 
@@ -54,14 +67,19 @@ def _nl(s):
     return s if s.endswith("\n") else s + "\n"
 
 
-def page_html():
-    """Squelette + CSS + JS concaténés, avant le remplacement des marqueurs de données (__SPRITES__...)."""
+def page_html(cfg=None):
+    """Squelette + CSS + JS concaténés, avant le remplacement des marqueurs de données (__SPRITES__...).
+    cfg : pour les thèmes du pack d'équipe (défaut : ceux de page/src seulement)."""
     html = open(p("page", "office_template.html")).read()
-    # styles.css, pixel.css (habillage commun) puis les thèmes (theme-*.css), qui l'emportent à spécificité égale ;
-    # @@font:chemin@@ = police intégrée en base64 (la sandbox des pages n'accepte que font-src data:)
-    css = "".join(_nl(open(os.path.join(SRC, f)).read()) for f in ["styles.css", "pixel.css"] + THEME_FILES)
+    # styles.css, pixel.css (habillage commun) puis les thèmes, qui l'emportent à spécificité égale ;
+    # @@font:chemin@@ = police intégrée en base64 (la sandbox des pages n'accepte que font-src data:), chemin relatif
+    # au dépôt, ou au pack pour un thème du pack
+    def font(css, base):
+        return re.sub(r"@@font:([\w./-]+)@@", lambda m: base64.b64encode(open(os.path.join(base, m.group(1)), "rb").read()).decode(), css)
+    pack = team_dir(cfg)
+    files = [os.path.join(SRC, f) for f in ["styles.css", "pixel.css"]] + list(theme_paths(cfg).values())
+    css = "".join(font(_nl(open(f).read()), pack if pack and f.startswith(pack + os.sep) else ROOT) for f in files)
     css = strip_css(css)  # KT-28 : sans commentaires ni indentation (tools/compact.py), les sources gardent les leurs
-    css = re.sub(r"@@font:([\w./-]+)@@", lambda m: base64.b64encode(open(p(m.group(1)), "rb").read()).decode(), css)
     js = strip_js("".join(_nl(open(os.path.join(SRC, f)).read()) for f in JS_FILES))
     for mark, body in (("/*__STYLES__*/", css), ("/*__SCRIPTS__*/", js)):
         assert html.count(mark + "\n") == 1, mark
@@ -125,7 +143,7 @@ def page_config(cfg):
         "schedules": cron_schedules(cfg),  # calendrier des crons du Bureau (modèles de workflows)
         "agents": cfg.get("agents") or [],
         "ui": cfg.get("ui") or {},
-        "skins": themes(),  # thèmes d'interface (theme-*.css) proposés par le bouton 🎨
+        "skins": themes(cfg),  # thèmes d'interface (theme-*.css) proposés par le bouton 🎨
     }
 
 
@@ -134,9 +152,12 @@ JIRA_FLOW = {"triage_from": "Proposed", "test": "To Test", "validated": "To Depl
 DEFAULT_LAYOUT = "layouts/open-space.json"  # plan type, sans équipe
 
 
-# ---------- profils d'équipe (teams/<équipe>/) ----------
-# Un profil = team.json (nom, organisation GitHub requise, plan), roster.json, defaults.json, music/.
-# bureau.config.json, clé team : le profil de l'installation ; absente = équipe neuve (roster vide).
+# ---------- profils d'équipe (teams/<équipe>/) et packs d'équipe (KT-60) ----------
+# Un profil = team.json (nom, organisation GitHub requise, plan), roster.json, defaults.json, cast.json, sprites.json,
+# music/ ; un pack d'équipe = le même dossier hors du dépôt (ex. un dépôt privé), qui peut apporter en plus ses plans
+# (layouts/) et ses thèmes de page (themes/theme-<id>.css, polices dans fonts/). Format : docs/conventions/pack-equipe.md.
+# bureau.config.json, clé team : l'id d'un profil de teams/, ou le chemin d'un pack (« ~/Sites/bureau-monequipe ») ;
+# absente = équipe neuve (roster vide).
 # Les personnes ajoutées à une installation (clé people de la config, jamais commitée) suivent le roster du profil.
 def teams():
     """Profils d'équipe disponibles : {id: team.json}."""
@@ -148,9 +169,35 @@ def teams():
     return out
 
 
-def _team_file(cfg, *parts):
+def is_pack(team):
+    """La clé team désigne-t-elle un pack (un chemin) plutôt qu'un profil de teams/ (un id) ?"""
+    return isinstance(team, str) and ("/" in team or team.startswith(("~", ".")))
+
+
+def team_dir(cfg):
+    """Dossier de l'équipe de l'installation : le pack (chemin, ~ compris ; relatif = au dépôt) ou teams/<id> ;
+    None pour une équipe neuve. Un pack introuvable est une erreur : la page n'aurait plus son équipe."""
     t = (cfg or {}).get("team")
-    path = p("teams", t, *parts) if t else None
+    if not t:
+        return None
+    if is_pack(t):
+        d = os.path.abspath(os.path.join(ROOT, os.path.expanduser(t)))
+        if not os.path.isfile(os.path.join(d, "team.json")):
+            raise ValueError(f"pack d'équipe introuvable : {t} (team.json attendu dans {d})")
+        return d
+    d = p("teams", t)
+    return d if os.path.isdir(d) else None
+
+
+def team_meta(cfg):
+    """team.json de l'équipe de l'installation ({} pour une équipe neuve)."""
+    d = team_dir(cfg)
+    return json.load(open(os.path.join(d, "team.json"))) if d and os.path.exists(os.path.join(d, "team.json")) else {}
+
+
+def _team_file(cfg, *parts):
+    d = team_dir(cfg)
+    path = os.path.join(d, *parts) if d else None
     return path if path and os.path.exists(path) else None
 
 
@@ -251,9 +298,14 @@ def used_sprites(cfg):
 
 
 def layout_path(cfg):
-    """Plan du bureau de cette installation : clé layout de la config, sinon celui du profil, sinon le plan type."""
-    t = teams().get((cfg or {}).get("team")) or {}
-    return (cfg or {}).get("layout") or t.get("layout") or DEFAULT_LAYOUT
+    """Plan du bureau de cette installation : clé layout de la config, sinon celui du profil ou du pack (chemin relatif
+    au pack s'il y est, sinon au dépôt), sinon le plan type."""
+    if (cfg or {}).get("layout"):
+        return cfg["layout"]
+    lay, d = team_meta(cfg).get("layout"), team_dir(cfg)
+    if lay and d and os.path.exists(os.path.join(d, lay)):
+        return os.path.join(d, lay)
+    return lay or DEFAULT_LAYOUT
 
 
 def launch(cfg):
@@ -305,7 +357,7 @@ def build(demo=True, cfg=None):
     cfg = config() if cfg is None else cfg
     ids = action_ids(cfg)
     acts = {k: ids.get(k) or "" for k, _ in ACTIONS.values()}
-    html = page_html()
+    html = page_html(cfg)
     # bouton sans workflow configuré : sa carte kronn-action disparaît (la page masque le bouton)
     html = ACTION_RE.sub(lambda m: action_block(m.group(0), cfg) if acts[ACTIONS[m.group(1)][0]] else "", html)
     cast, custom = recipes(cfg), sprites(cfg)

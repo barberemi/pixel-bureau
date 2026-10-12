@@ -1,0 +1,27 @@
+{
+ "_doc": "Équipe fictive du pack de test.",
+ "people": [
+  {
+   "key": "p_bob",
+   "name": "Bob",
+   "role": "Directeur",
+   "person": "Bob Vance",
+   "github": "bobvance"
+  },
+  {
+   "key": "p_lynn",
+   "name": "Lynn",
+   "role": "Développeuse",
+   "person": "Lynn Carter",
+   "github": "lynncarter"
+  },
+  {
+   "key": "p_ozzie",
+   "name": "Ozzie",
+   "role": "Testeur",
+   "person": "Ozzie Park",
+   "roleKind": "qa"
+  }
+ ],
+ "guests": []
+}

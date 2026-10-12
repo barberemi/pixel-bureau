@@ -1,0 +1,29 @@
+{
+ "p_bob": {
+  "sex": "male",
+  "skin": "light",
+  "hair": "plain",
+  "hair_color": "#3a2a1a",
+  "shirt": "#2f5d8a",
+  "legs": "formal",
+  "legs_color": "#262b38"
+ },
+ "p_lynn": {
+  "sex": "female",
+  "skin": "brown",
+  "hair": "bob",
+  "hair_color": "#111111",
+  "shirt": "#7a5cc8",
+  "legs": "pants",
+  "legs_color": "#3b3f52"
+ },
+ "p_ozzie": {
+  "sex": "male",
+  "skin": "olive",
+  "hair": "buzzcut",
+  "hair_color": "#5a3a1e",
+  "shirt": "#2e9e5b",
+  "legs": "pants",
+  "legs_color": "#3b3f52"
+ }
+}

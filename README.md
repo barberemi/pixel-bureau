@@ -48,7 +48,7 @@ python3 tools/install.py --dry-run   # voir ce qui serait créé
 python3 tools/install.py             # installation interactive, relançable sans doublon
 ```
 
-L'installateur demande ton équipe (une équipe neuve avec le plan type par défaut, ou un profil de `teams/`, réservé aux membres de son organisation GitHub), qui tu es (tu prends le bureau du boss, les autres gardent leur place), le plan du bureau, ton board Jira (il en lit les colonnes et te propose comment classer chaque statut), tes dépôts et workflows de déploiement, et les pages Kronn à montrer sur l'écran du boss, puis crée la page, ses datasets, 13 workflows (un de moins sans Jira, un de moins sans Microsoft 365) et deux Quick Prompts dans **ton** Kronn, écrit `bureau.config.json` (jamais commité) et lance un premier rafraîchissement. Ouvre ensuite Kronn > Pages > « Le Bureau ». Aucun secret n'est stocké : les connexions sont référencées par leur id Kronn.
+L'installateur demande ton équipe (une équipe neuve avec le plan type par défaut, ou un profil de `teams/`, ou le dossier de ton équipe hors du dépôt, un « pack d'équipe », réservés aux membres de leur organisation GitHub quand ils en nomment une), qui tu es (tu prends le bureau du boss, les autres gardent leur place), le plan du bureau, ton board Jira (il en lit les colonnes et te propose comment classer chaque statut), tes dépôts et workflows de déploiement, et les pages Kronn à montrer sur l'écran du boss, puis crée la page, ses datasets, 13 workflows (un de moins sans Jira, un de moins sans Microsoft 365) et deux Quick Prompts dans **ton** Kronn, écrit `bureau.config.json` (jamais commité) et lance un premier rafraîchissement. Ouvre ensuite Kronn > Pages > « Le Bureau ». Aucun secret n'est stocké : les connexions sont référencées par leur id Kronn.
 
 | Action | Commande |
 | --- | --- |
@@ -57,6 +57,10 @@ L'installateur demande ton équipe (une équipe neuve avec le plan type par déf
 | Tester | `sh tools/test.sh` (Node 20+, aucune dépendance npm) |
 
 Pour modifier la page ou les workflows : [guide/developpement.md](guide/developpement.md).
+
+## Ton équipe
+
+Le Bureau de ton équipe, dans tes bureaux : ses collègues, leur apparence, le plan de l'étage depuis un croquis ou une photo, les couleurs de ton entreprise, le tout dans un dossier privé à ton équipe, hors de ce dépôt. Pas à pas, avec l'équipe de la démo en exemple : [guide/equipe.md](guide/equipe.md).
 
 ## Contribuer
 

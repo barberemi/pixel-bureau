@@ -11,19 +11,34 @@ const SRC = path.join(ROOT, 'page', 'src');
 const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8');
 
 // même découpe que page_config() de tools/assemble.py
-// thèmes d'interface {id: nom}, comme assemble.themes()
-const themes = () => Object.fromEntries(fs.readdirSync(SRC).filter(f => /^theme-.+\.css$/.test(f)).sort()
-  .map(f => [f.slice('theme-'.length, -'.css'.length), (read('page', 'src', f).match(/^\/\*\s*@nom:\s*(.+?)\s*\*\//) || [])[1]]));
+// dossier de l'équipe, comme team_dir() de tools/assemble.py : un pack (clé team = chemin, ~ compris, relatif au dépôt)
+// ou teams/<id> ; null pour une équipe neuve
+function teamDir(cfg) {
+  const t = cfg.team;
+  if (!t) return null;
+  if (t.includes('/') || t.startsWith('~') || t.startsWith('.')) return path.resolve(ROOT, t.replace(/^~(?=\/|$)/, require('os').homedir()));
+  const d = path.join(ROOT, 'teams', t);
+  return fs.existsSync(d) ? d : null;
+}
+// thèmes d'interface {id: nom}, comme assemble.themes() : ceux de page/src, puis ceux du pack (themes/theme-<id>.css)
+const themeName = f => (fs.readFileSync(f, 'utf8').match(/^\/\*\s*@nom:\s*(.+?)\s*\*\//) || [])[1];
+function themes(cfg = {}) {
+  const out = {}, add = dir => { if (fs.existsSync(dir)) for (const f of fs.readdirSync(dir).filter(f => /^theme-.+\.css$/.test(f)).sort()) out[f.slice('theme-'.length, -'.css'.length)] = themeName(path.join(dir, f)); };
+  add(SRC);
+  const d = teamDir(cfg);
+  if (d) add(path.join(d, 'themes'));
+  return out;
+}
 function pageConfig(cfg) {
   return {kronn_ui: (cfg.kronn || {}).ui, jira_site: (cfg.jira || {}).site, jira_flow: {triage_from: 'Proposed', test: 'To Test', validated: 'To Deploy', reopened: 'Reopen', ...((cfg.jira || {}).flow || {})}, github_repo: (cfg.github || {}).repo,
-    rhythm: cfg.rhythm || {}, mep_workflow: cfg.mep_workflow, workflows: cfg.workflows || {}, agents: cfg.agents || [], ui: cfg.ui || {}, skins: themes(),
+    rhythm: cfg.rhythm || {}, mep_workflow: cfg.mep_workflow, workflows: cfg.workflows || {}, agents: cfg.agents || [], ui: cfg.ui || {}, skins: themes(cfg),
     schedules: Object.fromEntries(['office', 'live', 'team', 'payroll', 'canard'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule.replace('@@cron_hours@@', '4-20')]))}; // heures de Paris, comme cron_hours()
 }
 
 // mêmes roster (et invités), morceaux, recettes et sprites que roster(), guests(), music(), recipes() et sprites() de tools/assemble.py :
 // le commun, puis le profil d'équipe (clé team), puis l'installation
 function team(cfg) {
-  const dir = cfg.team ? path.join(ROOT, 'teams', cfg.team) : null;
+  const dir = teamDir(cfg);
   const file = dir ? JSON.parse(fs.readFileSync(path.join(dir, 'roster.json'), 'utf8')) : {};
   const people = file.people || [], byKey = new Map();
   const shared = cfg.common_guests === false ? [] : JSON.parse(read('team', 'guests.json')).guests;
@@ -34,8 +49,16 @@ function team(cfg) {
   const common = JSON.parse(read('sprites', 'cast.json'));
   const local = Object.fromEntries(Object.entries(opt('sprites', 'sprites.json')).filter(([k]) => !(k in common)));
   return {roster: {people: [...people, ...(cfg.people || [])], guests}, music: {...music, ...(cfg.music || {})},
-    cast: {...common, ...(dir ? opt('teams', cfg.team, 'cast.json') : {})},
-    custom: {...opt('sprites', 'common.json'), ...local, ...(dir ? opt('teams', cfg.team, 'sprites.json') : {})}};
+    cast: {...common, ...(dir ? opt(path.relative(ROOT, path.join(dir, 'cast.json'))) : {})},
+    custom: {...opt('sprites', 'common.json'), ...local, ...(dir ? opt(path.relative(ROOT, path.join(dir, 'sprites.json'))) : {})}};
+}
+
+// plan de l'installation, comme layout_path() : clé layout, sinon celui de l'équipe (relatif au pack s'il y est), sinon le plan type
+function layoutPath(cfg) {
+  if (cfg.layout) return path.resolve(ROOT, cfg.layout);
+  const d = teamDir(cfg), meta = d && fs.existsSync(path.join(d, 'team.json')) ? JSON.parse(fs.readFileSync(path.join(d, 'team.json'), 'utf8')) : {};
+  if (meta.layout && fs.existsSync(path.join(d, meta.layout))) return path.join(d, meta.layout);
+  return path.resolve(ROOT, meta.layout || 'layouts/open-space.json');
 }
 
 function pageJs(owner, {demo = true, actions = true, config, layout} = {}) {
@@ -52,7 +75,7 @@ function pageJs(owner, {demo = true, actions = true, config, layout} = {}) {
     __AVATAR_WF__: 'avatar-wf', __GATE_WF__: 'gate-wf', __RELAUNCH_WF__: 'relaunch-wf', __ASK_QP__: 'ask-qp',
     __ROSTER__: JSON.stringify(team(cfg).roster),
     // même plan que layout_path() de tools/assemble.py : celui demandé, sinon celui de la config, du profil, ou le plan type
-    __LAYOUT__: layout ? read('layouts', layout + '.json') : read(cfg.layout || (cfg.team && JSON.parse(read('teams', cfg.team, 'team.json')).layout) || 'layouts/open-space.json'),
+    __LAYOUT__: layout ? read('layouts', layout + '.json') : fs.readFileSync(layoutPath(cfg), 'utf8'),
     __CONFIG__: JSON.stringify(pageConfig(cfg)),
     __OWNER__: JSON.stringify(owner === undefined ? JSON.parse(read('tests', 'fixtures', 'bureau.config.json')).owner : owner),
     __SNAP__: demo ? read('data', 'office_snapshot.json') : 'null',

@@ -103,9 +103,13 @@ class InstallTest(unittest.TestCase):
         open(os.path.join(ROOT, "teams", "equipe", "roster.json"), "w").write(self.roster)  # le test ne touche pas l'équipe
         shutil.rmtree(self.tmp)
 
-    def run_install(self, answers, *extra):
+    def write_answers(self, answers):
         ap = os.path.join(self.tmp, "answers.json")
         json.dump(answers, open(ap, "w"))
+        return ap
+
+    def run_install(self, answers, *extra):
+        ap = self.write_answers(answers)
         with mock.patch("sys.stdout", new=open(os.devnull, "w")):
             return install.main(["--config", self.cfg_path, "--answers", ap, *extra])
 
@@ -331,6 +335,27 @@ class InstallTest(unittest.TestCase):
             self.assertEqual(page["keys"], ["p_pam"])
         finally:
             self.patches[1].start()  # remis avant tearDown, qui l'arrête
+
+    def test_team_pack_outside_the_repo(self):
+        """Pack d'équipe (KT-60) : l'installateur prend le chemin d'un dossier hors du dépôt, y lit l'équipe et son plan,
+        écrit ce chemin dans la clé team, et la page publiée a l'équipe, le plan et le thème du pack."""
+        pack = os.path.join(self.tmp, "bureau-vance")
+        shutil.copytree(os.path.join(ROOT, "tests", "fixtures", "pack-exemple"), pack)
+        answers = dict(ANSWERS, team="__pack__", team_pack=pack, owner="p_bob", github_repo="")
+        self.assertEqual(self.run_install(answers), 0)
+        cfg = json.load(open(self.cfg_path))
+        self.assertEqual(cfg["team"], pack)
+        self.assertEqual(cfg["layout"], os.path.join(pack, "layouts", "plan.json"))  # le plan du pack, proposé par défaut
+        html = next(b for m, p, b in self.fakes[-1].calls if m == "PUT" and p.endswith("/html"))["html"]
+        self.assertIn('"p_lynn"', html)
+        self.assertIn('data-skin="menthe"', html)
+        self.assertNotIn("Jan", html)  # rien du profil equipe
+
+    def test_missing_team_pack_is_refused(self):
+        answers = dict(ANSWERS, team="__pack__", team_pack=os.path.join(self.tmp, "absent"))
+        with self.assertRaisesRegex(install.InstallError, "pack d'équipe introuvable"):
+            self.run_install(answers)
+        self.assertFalse(os.path.exists(self.cfg_path))  # rien d'écrit
 
     def test_newcomer_stays_in_the_local_config(self):
         answers = dict(ANSWERS, owner="__new__", new_name="Jan", new_person="Jan Levinson", new_role="po")
