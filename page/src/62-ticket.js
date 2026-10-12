@@ -113,5 +113,7 @@ function renderTicket(side,key){
   }
   if(known&&ACTIONS.comment) // à tout statut ; le texte se saisit dans la carte Kronn
     launchBlock(box,{action:'bureau-comment',bind:{key},name:'Commenter',sub:'Ton commentaire part sur le ticket dans Jira',label:'💬 Commenter',title:'Commenter '+key});
+  if(known&&ACTIONS.estimate&&x.cat!=='done') // ton workflow de réestimation (launch.estimate) : Story Points et raison dans la carte
+    launchBlock(box,{action:'bureau-estimate',bind:{key},name:'Réestimer',sub:'Nouveaux Story Points et raison : le ticket est mis à jour dans Jira, avec un commentaire',label:'📏 Réestimer',title:'Réestimer '+key});
   if(box.childElementCount===before)note(known?'Rien à lancer à ce statut.':'Ticket pas encore dans les données des boutons : prochain passage du cron équipe.');
 }

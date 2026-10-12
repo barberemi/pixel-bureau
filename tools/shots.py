@@ -99,7 +99,7 @@ SHOTS = {
                        "triaged:[],tested:Array.from({length:7},(_,i)=>({key:'DM-75'+(10+i),summary:'Ticket testé'})),reopened:[]}});select(k.key);", "#side"),
     "kanban": (1400, 1400, AT(11) + "select('kanban');", "#side"),
     # fiche d'un ticket : ses PR et les workflows à lancer (dataset actions simulé depuis l'équipe de démo)
-    "fiche-ticket": (1400, 1400, AT(11) + "const all=TEAM.people.flatMap(p=>p.tickets),prs=TEAM.people.flatMap(p=>p.prs);"
+    "fiche-ticket": (1400, 1400, AT(11) + "ACTIONS.estimate=true;ACTION_BINDS['bureau-estimate']={jira_ticket_key:'key'};const all=TEAM.people.flatMap(p=>p.tickets),prs=TEAM.people.flatMap(p=>p.prs);"
                      "ACTS={tickets:all.map(t=>({key:t.key})),prs:prs.map(x=>({n:String(x.n)}))};"
                      "const pr=prs.find(x=>x.review==='changes'&&!x.draft&&(x.keys||[]).length);"
                      "select('ticket:'+(pr?pr.keys[0]:(all.find(t=>t.cat==='deploy')||all[0]).key));", "#side"),

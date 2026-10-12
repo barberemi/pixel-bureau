@@ -72,3 +72,19 @@ test('Commenter : sur tout ticket du sprint, quel que soit son statut, en dernie
   assert.deepEqual(buttons('DM-1', {comment: true, acts: false}), []);
   assert.deepEqual(J(`bindsFor('bureau-comment', {key: 'DM-2'})`), {jira_ticket_key: 'DM-2'}); // comment : saisi, pas lié
 });
+
+test('Réestimer (launch.estimate) : sur un ticket non terminé du sprint seulement, Story Points et raison saisis dans la carte', () => {
+  const est = (key, cat) => J(`(() => {
+    const calls = [], lb = launchBlock, fs = foldSection, a0 = ACTIONS.estimate;
+    launchBlock = (box, o) => { calls.push([o.action, o.bind]); box.childElementCount++; };
+    foldSection = () => ({childElementCount: 0, appendChild() { this.childElementCount++; }});
+    ACTIONS.estimate = true;
+    TEAM = {people: [{name: 'Pam', tickets: [{key: ${JSON.stringify(key)}, cat: ${JSON.stringify(cat)}, status: 's', summary: 'a'}], prs: []}],
+      unassigned: [], other_prs: []};
+    ACTS = {tickets: [{key: ${JSON.stringify(key)}}], prs: []};
+    try { renderTicket({appendChild() {}}, ${JSON.stringify(key)}); } finally { launchBlock = lb; foldSection = fs; ACTIONS.estimate = a0; }
+    return calls.filter(c => c[0] === 'bureau-estimate');
+  })()`);
+  for (const cat of ['todo', 'doing', 'review', 'test', 'deploy']) assert.deepEqual(est('DM-7', cat), [['bureau-estimate', {key: 'DM-7'}]], cat);
+  assert.deepEqual(est('DM-8', 'done'), []); // déployé : rien à réestimer
+});

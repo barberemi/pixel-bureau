@@ -13,16 +13,19 @@ from zoneinfo import ZoneInfo
 
 # boutons de la page : bloc kronn-action du squelette -> (clé dans bureau.config.json « actions » ou « launch »,
 # marqueur de l'id). actions = workflows du Bureau (créés par l'installateur) ; launch = tes workflows lancés depuis la
-# fiche d'un ticket (impl : clé du ticket ; mep : clé + n° de PR ; review : dépôt + n° de PR ; fix : n° de PR + consignes)
+# fiche d'un ticket (impl : clé du ticket ; mep : clé + n° de PR ; review : dépôt + n° de PR ; fix : n° de PR + consignes ;
+# estimate : clé du ticket, Story Points et raison saisis dans la carte)
 ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate", "__GATE_WF__"), "bureau-answer": ("answer", "__ANSWER_WF__"),
            "bureau-relaunch": ("relaunch", "__RELAUNCH_WF__"), "bureau-ask": ("ask", "__ASK_QP__"),
            "bureau-impl": ("impl", "__IMPL_WF__"), "bureau-mep": ("mep", "__MEP_WF__"),
            "bureau-review": ("review", "__REVIEW_WF__"), "bureau-fix": ("fix", "__FIX_WF__"),
-           "bureau-comment": ("comment", "__COMMENT_WF__"), "bureau-duck": ("duck", "__DUCK_WF__")}
+           "bureau-comment": ("comment", "__COMMENT_WF__"), "bureau-duck": ("duck", "__DUCK_WF__"),
+           "bureau-estimate": ("estimate", "__ESTIMATE_WF__")}
 # variables des workflows de la clé launch : rôle -> nom par défaut ; launch.<action> = id seul, ou {wf, vars: {rôle: nom
 # chez toi, ou null si ton workflow n'a pas cette variable}}
 LAUNCH_VARS = {"impl": {"ticket": "jira_ticket_key"}, "mep": {"ticket": "jira_ticket_key", "pr": "pr_number"},
-               "review": {"repo": "repo", "pr": "pr"}, "fix": {"pr": "pr", "notes": "notes"}}
+               "review": {"repo": "repo", "pr": "pr"}, "fix": {"pr": "pr", "notes": "notes"},
+               "estimate": {"ticket": "jira_ticket_key", "points": "story_points", "reason": "raison"}}
 ACTION_RE = re.compile(r'<script type="application/kronn-action" data-action-id="([^"]+)">.*?</script>\n?', re.S)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
