@@ -73,6 +73,24 @@ def free_port(port):
         return s.connect_ex(("127.0.0.1", port)) != 0
 
 
+TAB_WAIT = 30  # s : sur un runner de CI chargé, Chrome met parfois plus de 10 s à exposer son onglet
+
+
+def wait_tab(port, wait=TAB_WAIT):
+    """Premier onglet « page » de Chrome (protocole DevTools), ou None s'il n'apparaît pas à temps."""
+    end = time.time() + wait
+    while time.time() < end:
+        try:
+            tabs = json.load(urllib.request.urlopen(f"http://127.0.0.1:{port}/json", timeout=2))
+            tab = next((t for t in tabs if t.get("type") == "page" and t.get("webSocketDebuggerUrl")), None)
+            if tab:
+                return tab
+        except (OSError, ValueError):
+            pass
+        time.sleep(0.2)
+    return None
+
+
 def chrome_checks(path, port, user_dir, js, shot, wait, width, height):
     try:
         import websocket
@@ -90,14 +108,10 @@ def chrome_checks(path, port, user_dir, js, shot, wait, width, height):
                              f"--user-data-dir={user_dir}", "about:blank"],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
-        tabs = None
-        for _ in range(50):
-            try:
-                tabs = json.load(urllib.request.urlopen(f"http://127.0.0.1:{port}/json"))
-                break
-            except OSError:
-                time.sleep(0.2)
-        tab = [t for t in tabs or [] if t["type"] == "page"][0]
+        tab = wait_tab(port)
+        if not tab:
+            check(False, f"Chrome n'a pas ouvert d'onglet en {TAB_WAIT} s ({CHROME})")
+            return
         ws = websocket.create_connection(tab["webSocketDebuggerUrl"], timeout=60, suppress_origin=True)
         n, events = [0], []
 

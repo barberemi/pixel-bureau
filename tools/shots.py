@@ -11,7 +11,7 @@ import base64, contextlib, json, os, shutil, subprocess, sys, tempfile, time, ur
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import assemble  # noqa: E402
-from smoke import CHROME, CHROME_ARGS, free_port  # noqa: E402
+from smoke import CHROME, CHROME_ARGS, TAB_WAIT, free_port, wait_tab  # noqa: E402
 
 OUT = os.path.join(ROOT, "guide", "img")
 PORT = 9335
@@ -212,13 +212,9 @@ def chrome(port=PORT):
                              f"--remote-debugging-port={port}", f"--user-data-dir={user_dir}", "about:blank"],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
-        for _ in range(50):
-            try:
-                tabs = json.load(urllib.request.urlopen(f"http://127.0.0.1:{port}/json"))
-                break
-            except OSError:
-                time.sleep(0.2)
-        tab = next(t for t in tabs if t["type"] == "page")
+        tab = wait_tab(port)
+        if not tab:
+            sys.exit(f"Chrome n'a pas ouvert d'onglet en {TAB_WAIT} s ({CHROME})")
         ws = websocket.create_connection(tab["webSocketDebuggerUrl"], timeout=60, suppress_origin=True)
         n = [0]
 
