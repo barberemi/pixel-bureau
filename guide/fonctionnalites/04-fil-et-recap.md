@@ -16,7 +16,7 @@ Le fil raconte la journée, heure par heure ; le récap la résume en quelques l
 - Liens dans chaque ligne :
   - un nom en gras ouvre la fiche de la personne ou de l'agent (et l'allume sur le plan au survol) ;
   - une étiquette ouvre une fiche dans la page : ticket du sprint, PR (la fiche de son ticket, avec ses PR et les boutons Relire et Corriger), version (la fiche de la mise en prod) ;
-  - une étiquette avec ↗ s'ouvre dehors : Jira pour un ticket créé aujourd'hui ou hors du sprint, GitHub pour une PR sans ticket du sprint ;
+  - une étiquette avec ↗ s'ouvre dehors : Jira pour un ticket créé aujourd'hui ou hors du sprint, GitHub pour une PR sans ticket du sprint ; une PR d'un autre dépôt que celui de l'équipe (revue multi-dépôts) porte le nom de son dépôt (« front_image_server#36 ») et mène à ce dépôt ;
   - un nom grisé n'a pas de fiche (relecteur hors de l'équipe, par exemple) : la raison s'affiche au survol.
 
   Un clic ailleurs sur la ligne ouvre, comme avant, la fiche de la personne principale (ou celle de la mise en prod).

@@ -40,3 +40,15 @@ test('événements d\'équipe : chaque personne, ticket et PR devient un lien', 
   const mv = run(`teamEventTxt({kind: 'move', key: 'DM-1', from: 'En cours', to: 'To Review', cat: 'review', who: 'a1'}).txt`);
   assert.match(mv, /data-who="p_pam"[^>]*>Pam<\/a> : <a href="#" class="lk lk-id" data-tk="DM-1"/);
 });
+
+// revue multi-dépôts : le run dit le dépôt de la PR (current_task.repo) ; une PR d'un autre dépôt n'est jamais prise
+// pour la PR de même numéro de l'équipe, et son lien mène à son dépôt
+test('PR d\'un autre dépôt : lien vers son dépôt, nommé, jamais la PR de même numéro de l\'équipe', () => {
+  const ref = JSON.parse(run(`JSON.stringify(runRef({vars: {'current_task.number': '12', 'current_task.repo': 'acme/image-server'}}))`));
+  assert.deepEqual([ref.pr, ref.repo, ref.key, ref.t], ['12', 'acme/image-server', null, null]); // pas DM-1 (PR #12 de acme/site)
+  assert.equal(run(`refPr('12', null, 'acme/image-server')`),
+    '<a class="lk lk-id lk-ext" href="https://github.com/acme/image-server/pull/12" target="_blank" rel="noopener" title="Ouvrir sur GitHub (acme/image-server)">image-server#12</a>');
+  const same = JSON.parse(run(`JSON.stringify(runRef({vars: {'current_task.number': '12', 'current_task.repo': 'Acme/Site'}}))`));
+  assert.deepEqual([same.repo, same.key], [null, 'DM-1']); // le dépôt de l'équipe (casse comprise) : comme avant
+  assert.match(run(`refPr('12', null, 'acme/site')`), /data-tk="DM-1"/);
+});

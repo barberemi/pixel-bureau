@@ -26,8 +26,9 @@ function bubbleFor(c,st,t,clock){
   }
   const ref=st.ref;
   if(ref){
-    const what=ref.key||'PR #'+ref.pr, short=ref.key?String(ref.key).replace(/^[A-Z][A-Z0-9]*-/,''):'#'+ref.pr, busy=['work','srv','meet'].includes(st.st);
-    const detail=[{txt:'🤖 '+what+(ref.key&&ref.pr?' · PR #'+ref.pr:''),b:true,tone:ref.t?CAT_COLOR[ref.t.cat]:null}];
+    const prl=(ref.repo?ref.repo.split('/')[1]+' ':'')+'PR #'+ref.pr; // autre dépôt (revue multi-dépôts) : nommé
+    const what=ref.key||prl, short=ref.key?String(ref.key).replace(/^[A-Z][A-Z0-9]*-/,''):'#'+ref.pr, busy=['work','srv','meet'].includes(st.st);
+    const detail=[{txt:'🤖 '+what+(ref.key&&ref.pr?' · '+prl:''),b:true,tone:ref.t?CAT_COLOR[ref.t.cat]:null}];
     if(ref.t||ref.title)detail.push({txt:clip(ref.t?ref.t.summary:ref.title,40)});
     if(st.step)detail.push({txt:clip('Étape '+st.step.n+(st.act?' · '+st.act.label:''),40)});
     return {

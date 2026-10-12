@@ -36,14 +36,19 @@ function runPartner(r){
   return chars.find(x=>x.person&&x.team&&x.seat&&((key&&(x.team.tickets||[]).some(t=>t.key===key))||(gh&&(x.team.gh||[]).some(g=>String(g).toLowerCase()===String(gh).toLowerCase()))))||null;
 }
 // ce que traite un run d'agent : ticket (jira_ticket_key) ou PR relue (current_task.number, pr), reliée à son ticket via les PR de l'équipe
+// repo : dépôt de la PR quand le run le dit (revue multi-dépôts : current_task.repo) ; une PR d'un autre dépôt que
+// github_repo n'est jamais confondue avec la PR de même numéro de l'équipe
 function runRef(r){
-  const v=(r&&r.vars)||{}, n=v['current_task.number']||v.pr||null;
+  const v=(r&&r.vars)||{}, n=v['current_task.number']||v.pr||null, repo=v['current_task.repo']||v.repo||null;
   if(!v.jira_ticket_key&&!n)return null;
-  const pr=n&&TEAM?[...TEAM.people.flatMap(p=>p.prs||[]),...(TEAM.other_prs||[])].find(p=>String(p.n)===String(n)):null;
+  const other=otherRepo(repo);
+  const pr=n&&TEAM&&!other?[...TEAM.people.flatMap(p=>p.prs||[]),...(TEAM.other_prs||[])].find(p=>String(p.n)===String(n)):null;
   const key=v.jira_ticket_key||(pr&&pr.keys&&pr.keys[0])||null;
   const t=key&&TEAM?[...TEAM.people.flatMap(p=>p.tickets||[]),...(TEAM.unassigned||[])].find(x=>x.key===key):null;
-  return {key,pr:n?String(n):null,t:t||null,title:pr?pr.title:null};
+  return {key,pr:n?String(n):null,repo:other?repo:null,t:t||null,title:pr?pr.title:null};
 }
+// un dépôt « owner/nom » autre que celui de l'équipe (github_repo) ; inconnu ou identique : false
+const otherRepo=repo=>!!repo&&/^[\w.-]+\/[\w.-]+$/.test(repo)&&String(repo).toLowerCase()!==String(CFG.github_repo||'').toLowerCase();
 // place debout côté allée, à côté d'un siège
 // de passage : à sa place tant qu'il a un ticket ouvert dans le sprint (il ne se promène pas) ; ni daily ni cérémonies ;
 // heures de bureau comme tout le monde ; plus aucun ticket ouvert : pas au bureau

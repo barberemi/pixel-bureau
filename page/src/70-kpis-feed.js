@@ -112,7 +112,9 @@ function refTk(key,ext){
   return extA(JIRA_BROWSE+encodeURIComponent(key),ext?'Ouvrir dans Jira':'Pas dans le sprint : ouvrir dans Jira',key);
 }
 // PR qui cite un ticket du sprint : la fiche de ce ticket (ses PR, Relire, Corriger) ; sinon GitHub ; sinon texte
-function refPr(n,url){
+function refPr(n,url,repo){
+  if(otherRepo(repo)){const nm=repo.split('/')[1]; // PR d'un autre dépôt (revue multi-dépôts) : son dépôt, jamais celui de l'équipe
+    return extA(`https://github.com/${repo}/pull/${encodeURIComponent(n)}`,'Ouvrir sur GitHub ('+repo+')',nm+'#'+n);}
   const p=[...((TEAM&&TEAM.people)||[]).flatMap(q=>q.prs||[]),...((TEAM&&TEAM.other_prs)||[])].find(x=>String(x.n)===String(n));
   const k=p&&(p.keys||[]).find(x=>ticketOf(x));
   if(k)return `<a href="#" class="lk lk-id" data-tk="${esc(k)}" title="Fiche du ticket ${esc(k)} : ses PR et ses actions">#${esc(n)}</a>`;
@@ -311,7 +313,7 @@ function renderFeed(){
   // relectures et travaux des agents sur le ticket ou la PR d'un collègue (A1)
   for(const c of chars){if(c.person||c.visitor)continue;
     for(const r of c.runs){if(!r._e||r._e>T||r.status!=='Success')continue;const ref=runRef(r);if(!ref)continue;
-      const pc=runPartner(r)||(ref.pr&&prOwnerChar(ref.pr)), what=ref.pr?'la PR '+refPr(ref.pr):refTk(ref.key);
+      const pc=runPartner(r)||(ref.pr&&!ref.repo&&prOwnerChar(ref.pr)), what=ref.pr?'la PR '+refPr(ref.pr,null,ref.repo):refTk(ref.key);
       ev.push({t:r._e,c,team:true,ty:ref.pr?'pr':'tickets',txt:`🤖 ${refWho(c)} ${/review|revue|relu/i.test(r.wf_name||'')?'a relu':'a travaillé sur'} ${what}${pc?' de '+refWho(pc):''}${ref.pr&&ref.key?' '+refTk(ref.key):''}`});}}
   // sprint : lancement et fin du jour (A2)
   if(TEAM&&TEAM.sprint){const sp=TEAM.sprint, st=ms(sp.start), en=ms(sp.end), sameDay=x=>x&&parisDay(x)===parisDay(T);
