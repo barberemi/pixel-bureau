@@ -12,10 +12,15 @@ LIMIT = 100 * 1024
 OFFICE_WF = FIXTURE["workflows"]["office"]
 TEAM_WF = FIXTURE["workflows"]["team"]
 AGENT_WF = "aaaaaaaa-1111-2222-3333-444444444444"
+# horloge figée (KT-56) : les scripts lancés ici lisent BUREAU_TEST_NOW (tests/fakeclock/sitecustomize.py) ; midi à
+# Paris par défaut, BUREAU_TEST_NOW=2026-10-12T00:02:00+02:00 pour rejouer le passage de minuit
+NOW = datetime.fromisoformat(os.environ.get("BUREAU_TEST_NOW") or
+                             datetime.now(ZoneInfo("Europe/Paris")).replace(hour=12, minute=0, second=0, microsecond=0).isoformat())
+CLOCK = {"PYTHONPATH": os.path.join(ROOT, "tests", "fakeclock"), "BUREAU_TEST_NOW": NOW.isoformat()}
 
 
 def iso(minutes_ago=0):
-    return (datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)).isoformat().replace("+00:00", "Z")
+    return (NOW.astimezone(timezone.utc) - timedelta(minutes=minutes_ago)).isoformat().replace("+00:00", "Z")
 
 
 def run_of(i, status="Success", steps=3, ago=5):
@@ -195,7 +200,7 @@ print(json.dumps(d.get(key, [])))
         cfg_path = os.path.join(self.tmp, "bureau.config.json")
         with open(cfg_path, "w") as fh:
             json.dump(cfg, fh)
-        env = {"BUREAU_CONFIG": cfg_path, "HOME": self.tmp, "PATH": self.bin, "PYTHONPATH": ""}
+        env = {"BUREAU_CONFIG": cfg_path, "HOME": self.tmp, "PATH": self.bin, **CLOCK}
         return subprocess.run([sys.executable, os.path.join(ROOT, "workflows", name)], input=text, capture_output=True, text=True,
                               env=env, timeout=60)
 
@@ -204,7 +209,7 @@ print(json.dumps(d.get(key, [])))
         cfg_path = os.path.join(self.tmp, "bureau.config.json")
         with open(cfg_path, "w") as fh:
             json.dump(cfg, fh)
-        env = {"BUREAU_CONFIG": cfg_path, "HOME": self.tmp, "PATH": self.bin, "PYTHONPATH": ""}
+        env = {"BUREAU_CONFIG": cfg_path, "HOME": self.tmp, "PATH": self.bin, **CLOCK}
         r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", name), *args], input=json.dumps(stdin) if stdin is not None else "",
                            capture_output=True, text=True, env=env, timeout=60)
         self.assertEqual(r.returncode, 0, f"{name} : {r.stderr[-800:]}")
@@ -213,7 +218,7 @@ print(json.dumps(d.get(key, [])))
 
     # ---------- équipe ----------
     def team_input(self, n_issues=4, moves=1, github=None):
-        today = datetime.now(timezone.utc).isoformat()
+        today = NOW.astimezone(timezone.utc).isoformat()
         people = [("acc-1", "Darryl Martin"), ("acc-2", "Jan Dupont")]
         issues = []
         for i in range(n_issues):
@@ -318,7 +323,7 @@ print(json.dumps(d.get(key, [])))
             del it["changelog"]
         a["fields"]["created"] = "2026-08-01T08:00:00.000+0200"
         b["fields"]["created"] = "2026-09-15T08:00:00.000+0200"
-        now = datetime.now(timezone.utc).replace(microsecond=0)
+        now = NOW.astimezone(timezone.utc).replace(microsecond=0)
         # bulkfetch date en millisecondes epoch (expand=changelog en ISO)
         d["status_log"] = [{"issueId": "81000", "changeHistories": [
             {"created": int(datetime(2026, 9, 20, 8, tzinfo=timezone.utc).timestamp() * 1000),
@@ -378,7 +383,7 @@ print(json.dumps(d.get(key, [])))
 
     def test_duck_snapshot_target_held_sprints_and_trophies(self):
         paris = ZoneInfo("Europe/Paris")
-        start = (datetime.now(paris) - timedelta(days=3)).replace(hour=9, minute=0, second=0, microsecond=0)
+        start = (NOW.astimezone(paris) - timedelta(days=3)).replace(hour=9, minute=0, second=0, microsecond=0)
         early = start.replace(hour=10, minute=12) + timedelta(days=1)
         fake = FakeKronn()
         fake.discussions += [{"id": f"k{i}", "title": f"🦆 question {i}", "updated_at": iso()} for i in range(3)]
@@ -450,13 +455,13 @@ print(json.dumps(d.get(key, [])))
     def test_absence_month_names_the_sheet(self):
         """Feuille du mois sans accents, sans retour à la ligne ; en décembre, le mois suivant reste decembre."""
         out = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "absence_month.py"), "0"], capture_output=True, text=True,
-                             env=dict(os.environ, BUREAU_CONFIG=os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"))).stdout
+                             env=dict(os.environ, BUREAU_CONFIG=os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"), **CLOCK)).stdout
         months = ("janvier", "fevrier", "mars", "avril", "mai", "juin", "juillet", "aout", "septembre", "octobre", "novembre", "decembre")
-        self.assertEqual(out, months[datetime.now(ZoneInfo("Europe/Paris")).month - 1])
+        self.assertEqual(out, months[NOW.astimezone(ZoneInfo("Europe/Paris")).month - 1])
 
     def test_absences_snapshot_reads_the_planning(self):
         """Planning Excel (values de Graph) -> présence par demi-journée des gens du roster, jamais la raison."""
-        paris = datetime.now(ZoneInfo("Europe/Paris")).date()
+        paris = NOW.astimezone(ZoneInfo("Europe/Paris")).date()
         mon = paris - timedelta(days=paris.weekday()) + timedelta(days=7 if paris.weekday() >= 5 else 0)
         days = [mon + timedelta(days=i) for i in range(5)]
         serial = lambda d: (d - datetime(1899, 12, 30).date()).days  # noqa: E731
@@ -479,7 +484,7 @@ print(json.dumps(d.get(key, [])))
         self.assertNotIn("M", json.dumps(out["people"]))
 
     def test_office_snapshot_stays_under_100k(self):
-        paris = datetime.now(ZoneInfo("Europe/Paris"))
+        paris = NOW.astimezone(ZoneInfo("Europe/Paris"))
         if paris.hour * 60 + paris.minute < 3 * 60 + 10:
             self.skipTest("entre minuit et 3h10 à Paris, aucun run du jour n'est fini depuis plus de 3 h")
         fake = FakeKronn(runs_per_wf=400, steps=6)
@@ -503,7 +508,7 @@ print(json.dumps(d.get(key, [])))
         return open(p).read().count("\n") if os.path.exists(p) else 0
 
     def test_live_snapshot_reads_deploys_with_an_etag(self):
-        paris = datetime.now(ZoneInfo("Europe/Paris"))
+        paris = NOW.astimezone(ZoneInfo("Europe/Paris"))
         if paris.hour == 0 and paris.minute < 4:
             self.skipTest("juste après minuit à Paris, un déploiement d'il y a 3 min date de la veille")
         done = {"status": "completed", "conclusion": "success", "createdAt": iso(3), "updatedAt": iso(2),  # du jour, même tôt
@@ -565,7 +570,7 @@ print(json.dumps(d.get(key, [])))
         from zoneinfo import ZoneInfo
         cache = os.path.join(self.tmp, ".cache", "kronn-bureau", "gitfut")
         os.makedirs(cache)
-        today = datetime.now(ZoneInfo("Europe/Paris")).strftime("%Y-%m-%d")
+        today = NOW.astimezone(ZoneInfo("Europe/Paris")).strftime("%Y-%m-%d")
         kept = {"login": "pam", "img": "data:image/jpeg;base64,QUJD", "desc": "Pam scouted on GitFut: 80 OVR ST."}
         json.dump({"day": today, "card": kept}, open(os.path.join(cache, "pam.json"), "w"))
         json.dump({"day": "2020-01-01", "card": kept}, open(os.path.join(cache, "old.json"), "w"))  # périmée : refetch
@@ -633,7 +638,7 @@ print(json.dumps(d.get(key, [])))
         cfg_path = os.path.join(self.tmp, "bureau.config.json")
         json.dump(dict(FIXTURE, kronn=dict(FIXTURE["kronn"], api=self.kronn(fake))), open(cfg_path, "w"))
         r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "question_answer.py"), *args], capture_output=True, text=True,
-                           env={"BUREAU_CONFIG": cfg_path, "HOME": self.tmp, "PATH": self.bin, "PYTHONPATH": ""}, timeout=60)
+                           env={"BUREAU_CONFIG": cfg_path, "HOME": self.tmp, "PATH": self.bin, **CLOCK}, timeout=60)
         self.srv.shutdown()
         self.srv.server_close()
         self.srv = None
@@ -705,7 +710,7 @@ print(json.dumps(d.get(key, [])))
 
     def test_duck_start_refuses_an_empty_topic(self):
         r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "duck_start.py"), "none", "  "], capture_output=True, text=True,
-                           env={"BUREAU_CONFIG": os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"), "PATH": self.bin, "PYTHONPATH": ""})
+                           env={"BUREAU_CONFIG": os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"), "PATH": self.bin, **CLOCK})
         self.assertEqual(r.returncode, 1)
         self.assertIn("canard", r.stderr)
 

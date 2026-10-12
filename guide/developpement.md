@@ -14,7 +14,7 @@
 | `sprites/` | Recettes d'avatars communes `cast.json` (agents, intérimaires, visiteurs, équipe de démo), calques LPC `layers.json` ; `custom/` et `sprites.json` = sprites fournis d'une installation, jamais commités |
 | `data/` | Instantanés de démo, équipe fictive Dunder Mifflin (aperçu local, captures et tests seulement, jamais dans la page publiée) |
 | `tools/` | `install.py`, `uninstall.py`, `publish.py`, `templates.py`, `assemble.py`, `smoke.py`, `test.sh`, `shots.py` |
-| `tests/` | `node --test` (sans npm) et `unittest` : logique de la page, états, installateur, modèles, scripts contre un faux Kronn et un faux `gh` |
+| `tests/` | `node --test` (sans npm) et `unittest` : logique de la page, états, installateur, modèles, scripts contre un faux Kronn et un faux `gh`, à une heure figée (midi à Paris, `tests/fakeclock/`, `BUREAU_TEST_NOW` pour une autre heure) |
 
 ## Configuration
 

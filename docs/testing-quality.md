@@ -37,11 +37,13 @@ Compté le 2026-10-11 en lançant `sh tools/test.sh`.
 
 | Fichier | Tests | Portée |
 |---|---|---|
-| `tests/test_scripts.py` | 38 | Scripts de `workflows/` (snapshots, `team_shape`, `layout_save`, `relaunch`, canard...) |
+| `tests/test_scripts.py` | 40 | Scripts de `workflows/` (snapshots, `team_shape`, `layout_save`, `relaunch`, canard...) |
 | `tests/test_install.py` | 24 | `tools/install.py`, `tools/uninstall.py` (avec un faux Kronn) |
 | `tests/test_plan.py` | 23 | `tools/plan.py`, `workflows/_plan.py` (format `bureau-layout/1`) |
 | `tests/test_templates.py` | 7 | `tools/templates.py` : modèles sans ids d'installation, rendu, crons au fuseau du bureau [src: file: tests/test_templates.py:24] |
 | `tests/test_theme.py` | 4 | Thèmes `page/src/theme-*.css` [src: file: guide/developpement.md:64] |
+
+Horloge des tests de scripts (KT-56, 2026-10-12) : les scripts lancés par `tests/test_scripts.py` voient une heure figée, midi à Paris le jour du test, via `tests/fakeclock/sitecustomize.py` (`PYTHONPATH`, variable `BUREAU_TEST_NOW`) [src: file: tests/test_scripts.py:17] ; les données de test sont datées par rapport à la même heure (`NOW`, `iso()`). Avant, trois tests échouaient entre 00h00 et 00h05 à Paris. `BUREAU_TEST_NOW=2026-10-12T00:02:00+02:00` rejoue une autre heure ; la nuit, des tests qui datent leurs runs de « il y a 5 minutes » échouent par construction.
 
 État au 2026-10-11 : 1 échec, `test_own_layout_file` [src: file: tests/test_install.py:226], uniquement quand `TMPDIR` pointe dans le dépôt (ici `.kronn/tmp`) : `install.py` rend relatif un chemin de plan situé sous la racine [src: file: tools/install.py:147] alors que le test attend le chemin absolu. Passe avec `TMPDIR=/tmp`.
 
