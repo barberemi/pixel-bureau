@@ -4,7 +4,7 @@ Merci de passer par ici. Le Bureau est une Live Page Kronn en pixel art, aliment
 
 ## 💬 Avant de coder
 - **Un bug, une idée, de la dette** : ouvre une issue avec le formulaire qui va bien. Pour une fonctionnalité visible, attends un retour sur l'issue avant de t'y mettre.
-- **Une faille de sécurité** : jamais dans une issue publique, passe par [un avis de sécurité privé](https://github.com/barberemi/kronn-bureau/security/advisories/new).
+- **Une faille de sécurité** : jamais dans une issue publique, passe par [un avis de sécurité privé](../../security/advisories/new), comme le décrit [SECURITY.md](SECURITY.md).
 
 ## 🛠️ Mettre en place
 ```sh

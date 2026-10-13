@@ -90,7 +90,7 @@ const jst=x=>JIRA_ST[x]||String(x||'').toLowerCase();
 function personChar(id,name){
   if(id){const c=chars.find(x=>(x.team&&x.team.id===id)||(x.jira_id&&x.jira_id===id));if(c)return c;}
   if(!name)return null;
-  const g=ghChar(name);if(g)return g; // une review GitHub ne donne que le login (« hollyflax ») : son personnage, sous son nom
+  const g=ghChar(name);if(g)return g; // une review GitHub ne donne que le login (« pam-beesly ») : son personnage, sous son nom
   const full=nameKey(name), first=nameKey(String(name).split(' ')[0]);
   return chars.find(x=>x.person&&(nameKey(x.person)===full||nameKey(String(x.person).split(' ')[0])===first))||null;
 }

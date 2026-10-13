@@ -27,6 +27,6 @@ Un petit calendrier est accroché au mur du bureau du boss, entre le planning de
 
 - Le planning est lu par Microsoft Graph avec la connexion **Microsoft 365** de Kronn (Kronn > MCP, sans clé, **globale**), qui emprunte ton `az login` (Azure CLI) : `brew install azure-cli` puis `az login --allow-no-subscriptions`.
 - Dans `bureau.config.json`, une section `microsoft` : l'id de cette connexion et ceux du classeur (site et fichier, tels que Graph les donne). Le cron « Le Bureau · absences » est alors créé par `python3 tools/publish.py workflows` (à lancer deux fois pour un nouveau cron) ; sans cette section, il ne l'est pas.
-- Les personnes sont retrouvées par leur nom complet (champ `person` du roster), sans accents ni ordre des mots (« Barbe Rémi » = « Remi Barbe »).
+- Les personnes sont retrouvées par leur nom complet (champ `person` du roster), sans accents ni ordre des mots (« Beesly Pam » = « Pam Beesly »).
 - Le classeur est annuel : en janvier, mets à jour l'id du fichier de la nouvelle année.
 - Si la connexion `az` expire, le cron échoue : la [fraîcheur des données](10-fraicheur.md) le signale, relance `az login`.

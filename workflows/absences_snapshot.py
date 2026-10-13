@@ -22,7 +22,7 @@ TRUE = {"true", "vrai", "1"}
 
 
 def norm(s):
-    """Nom comparable : sans accents ni casse, mots triés (« Barbe Rémi » = « Remi Barbe »)."""
+    """Nom comparable : sans accents ni casse, mots triés (« Beesly Pam » = « Pam Beesly »)."""
     s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode().lower().replace("-", " ")
     return " ".join(sorted(s.split()))
 

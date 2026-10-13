@@ -445,7 +445,7 @@ print(json.dumps(d.get(key, [])))
         fake.runs[cw] = [dict(run_of(950), trigger_context={"type": "manual", "jira_ticket_key": "DM-7", "comment": "Je  regarde\navec Karen"})]
         fake.runs[AGENT_WF][1]["trigger_context"] = {"type": "manual"}
         fake.disc_details["d2"] = {"messages": [{"content": f"Tu es l'agent du Bureau qui fait tourner le workflow Kronn d'id {AGENT_WF}. "
-                                                           "Rémi te pose une question.\n2. Réponds à cette question : Pourquoi tu échoues ?\n\nRègles"}]}
+                                                           "Michael te pose une question.\n2. Réponds à cette question : Pourquoi tu échoues ?\n\nRègles"}]}
         out = self.run_script("office_snapshot.py", api=self.kronn(fake), workflows=FIXTURE["workflows"],
                               actions=dict(FIXTURE["actions"], comment=cw))
         self.assertEqual(out["actions"], [

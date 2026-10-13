@@ -64,10 +64,12 @@ Le Bureau de ton équipe, dans tes bureaux : ses collègues, leur apparence, le 
 
 ## Contribuer
 
-Bug, idée ou dette : ouvre une issue avec son formulaire. Pour proposer un changement : une branche, une PR avec le modèle proposé, la CI verte, puis un merge en squash. Le circuit et les règles du dépôt sont dans [CONTRIBUTING.md](CONTRIBUTING.md), le code de conduite dans [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+Bug, idée ou dette : ouvre une issue avec son formulaire. Pour proposer un changement : une branche, une PR avec le modèle proposé, la CI verte, puis un merge en squash. Le circuit et les règles du dépôt sont dans [CONTRIBUTING.md](CONTRIBUTING.md), le code de conduite dans [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Une faille de sécurité : jamais dans une issue, voir [SECURITY.md](SECURITY.md).
 
 ## Crédits
 
 Police pixel des thèmes de page : [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) de CodeMan38 (SIL Open Font License 1.1, `page/fonts/OFL-PressStart2P.txt`).
 
 Sprites : [Universal LPC Spritesheet Character Generator](https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator), contributeurs du Liberated Pixel Cup (CC-BY-SA 3.0 / GPL 3.0). Captures : page de démo.
+
+Personnages : la démo et les agents sont un clin d'œil de fan à *The Office* (Dunder Mifflin, Michael, Dwight, Jim…), les hérauts à Yoda (*Star Wars*) et à Gandalf (*Le Seigneur des anneaux*). Ces noms et ces personnages appartiennent à leurs ayants droit (NBCUniversal, Lucasfilm, Tolkien Estate) ; Le Bureau n'a aucun lien avec eux, ni leur approbation, et n'en fait aucun usage commercial.

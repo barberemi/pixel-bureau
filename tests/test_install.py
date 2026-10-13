@@ -192,7 +192,7 @@ class InstallTest(unittest.TestCase):
 
     def test_never_takes_over_another_installation(self):
         k = FakeKronn("http://x")
-        k.store["cccccccc-0000-4000-8000-000000000000"] = {"title": "Le Bureau de Rémi", "datasets": []}
+        k.store["cccccccc-0000-4000-8000-000000000000"] = {"title": "Le Bureau de Michael", "datasets": []}
         k.store[FakeKronn.LIVE]["steps"][0]["page_id"] = "cccccccc-0000-4000-8000-000000000000"
         answers = {kk: v for kk, v in ANSWERS.items() if kk != "reuse"}
         with mock.patch.object(install, "Kronn", return_value=k):

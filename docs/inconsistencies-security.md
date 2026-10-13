@@ -8,7 +8,7 @@ Périmètre : page statique (`page/office_template.html` + `page/src/*.js`) serv
 | [TD-20261011-page-no-csp](tech-debt/TD-20261011-page-no-csp.md) | Pas de `Content-Security-Policy` (meta) dans le gabarit de la page ; les en-têtes HTTP dépendent de Kronn | Headers | Low |
 | [TD-20261011-href-scheme-unchecked](tech-debt/TD-20261011-href-scheme-unchecked.md) | Les liens `href` venant des datasets (PR, runs GitHub) sont échappés mais leur schéma n'est pas vérifié (`javascript:` passerait) | XSS | Low |
 
-Existant lié : [TD-20261011-missing-security-md](tech-debt/TD-20261011-missing-security-md.md) (pas de canal de signalement).
+Existant lié : [TD-20261011-missing-security-md](tech-debt/TD-20261011-missing-security-md.md), résolu le 2026-10-13 : `SECURITY.md` (avis de sécurité privé GitHub).
 
 ## Checklist § A
 

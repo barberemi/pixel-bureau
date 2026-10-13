@@ -140,7 +140,7 @@ function duckAt(t){
   return {x:c0.x+(c1.x-c0.x)*k,y:c0.y+(c1.y-c0.y)*k,tile:k<.5?P[i]:P[i+1],dir:duckDir(P[i],P[i+1]),moving:true,call:true};
 }
 let DUCK_POS=null; // dernière position dessinée (zone de clic)
-const DUCK_SCALE=1.6; // plus grand que son dessin de 16 px : il se perdait sur la moquette, et ses accessoires doivent se lire (choix de Rémi)
+const DUCK_SCALE=1.6; // plus grand que son dessin de 16 px : il se perdait sur la moquette, et ses accessoires doivent se lire (choix du mainteneur)
 const DUCK_K=DUCK_SCALE/1.3; // bulle, anneau et zone de clic, réglés à l'origine pour ×1,3
 function drawDuck(now){
   const p=DUCK_POS; if(!p)return;

@@ -36,5 +36,5 @@ It is the *positive* counterpart to `inconsistencies-tech-debt.md`: decisions th
 | Decision | Why chosen | What NOT to do | Source |
 |----------|------------|----------------|--------|
 | Accept `TD-20261011-page-no-csp` as an intentional trade-off | Accepted during audit validation. | Do not reopen without new evidence | [`TD-20261011-page-no-csp`](tech-debt/TD-20261011-page-no-csp.md) |
-| Accept `TD-20261011-missing-security-md` as an intentional trade-off | Accepted during audit validation. | Do not reopen without new evidence | [`TD-20261011-missing-security-md`](tech-debt/TD-20261011-missing-security-md.md) |
+| Accept `TD-20261011-missing-security-md` as an intentional trade-off (superseded 2026-10-13, KT-63: public repo, SECURITY.md added) | Accepted during audit validation. | Do not reopen without new evidence | [`TD-20261011-missing-security-md`](tech-debt/TD-20261011-missing-security-md.md) |
 | Accept `TD-20261011-a11y-canvas-mouse-only` as an intentional trade-off | Accepted during audit validation. | Do not reopen without new evidence | [`TD-20261011-a11y-canvas-mouse-only`](tech-debt/TD-20261011-a11y-canvas-mouse-only.md) |

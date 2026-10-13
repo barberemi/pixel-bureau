@@ -46,7 +46,7 @@ Le projet n'a pas de gestionnaire de paquets (ni `package.json`, ni `requirement
 | [TD-20261011-unclosed-file-handles](tech-debt/TD-20261011-unclosed-file-handles.md) | `open()` sans `with`, ResourceWarning dans les tests [src: file: tools/assemble.py:58] | Backend | Low |
 | [TD-20261011-install-god-file](tech-debt/TD-20261011-install-god-file.md) | `tools/install.py` de 710 lignes [src: file: tools/install.py:549] | Other | Low |
 | [TD-20261011-no-automated-gate](tech-debt/TD-20261011-no-automated-gate.md) | **CI en place le 2026-10-12 (KT-37), à exiger par la protection de main (KT-58).** Ni CI, ni linter, ni hook : contrôles manuels seulement [src: file: tools/test.sh:1] | CI | Low |
-| [TD-20261011-missing-security-md](tech-debt/TD-20261011-missing-security-md.md) | Pas de SECURITY.md (signal du détecteur) | Security | Low |
+| [TD-20261011-missing-security-md](tech-debt/TD-20261011-missing-security-md.md) | **Résolu le 2026-10-13 (KT-63).** SECURITY.md à la racine, avis de sécurité privé GitHub [src: file: SECURITY.md:1] | Security | Low |
 | [TD-20261011-community-scaffolding](tech-debt/TD-20261011-community-scaffolding.md) | Pas de CONTRIBUTING, CODE_OF_CONDUCT, modèles d'issue et de PR | Docs | Low |
 
 ## Baseline checklist

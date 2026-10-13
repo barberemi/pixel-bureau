@@ -12,13 +12,17 @@ metadata:
       status: Accepted decision
       reviewer: Kronn audit validation card
       note: "Accepted as an intentional decision and recorded in docs/decisions.md."
+    - date: 2026-10-13
+      status: Resolved
+      reviewer: mainteneur
+      note: "KT-63 : le dépôt devient public ; SECURITY.md à la racine (avis de sécurité privé GitHub, délais, périmètre), lié depuis le README et CONTRIBUTING."
 ---
 
 # TD-20261011-missing-security-md
 
 - **Area**: Security
 - **Severity**: Low
-- **Status**: Accepted decision
+- **Status**: Resolved (2026-10-13, KT-63)
 - **Effort**: S (< 1h)
 - **Blast radius**: local (1-2 files)
 

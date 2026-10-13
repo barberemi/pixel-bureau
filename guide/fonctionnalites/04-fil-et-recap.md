@@ -16,7 +16,7 @@ Le fil raconte la journée, heure par heure ; le récap la résume en quelques l
 - Liens dans chaque ligne :
   - un nom en gras ouvre la fiche de la personne ou de l'agent (et l'allume sur le plan au survol) ;
   - une étiquette ouvre une fiche dans la page : ticket du sprint, PR (toujours la fiche de la PR, voir [Fiches](07-fiches.md)), version (la fiche de la mise en prod) ;
-  - une PR porte toujours le nom de son dépôt, celui de l'équipe comme les autres (revue multi-dépôts) : « front_web#2033 », « front_image_server#36 » ; « Dwight a relu la PR front_api#16 de Andy » se lit pareil quel que soit le dépôt ;
+  - une PR porte toujours le nom de son dépôt, celui de l'équipe comme les autres (revue multi-dépôts) : « front_web#2033 », « front_images#36 » ; « Dwight a relu la PR front_api#16 de Pam » se lit pareil quel que soit le dépôt ;
   - une étiquette avec ↗ s'ouvre dehors : Jira pour un ticket créé aujourd'hui ou hors du sprint ;
   - un collègue cité par son login GitHub (relecteur d'une PR, auteur d'une PR relue par un agent) est retrouvé par le `github` du roster ou les comptes `gh` de l'équipe : son nom, celui de sa fiche, partout ;
   - un nom grisé n'a pas de fiche (relecteur hors de l'équipe, par exemple) : la raison s'affiche au survol.

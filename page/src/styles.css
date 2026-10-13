@@ -544,7 +544,7 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .dg-stages{display:flex;justify-content:space-between;gap:2px;margin:0 0 14px}
 .dg-top>.dg-pix{background:var(--chip);border-radius:8px}
 :root[data-skin] .dg-top>.dg-pix{box-shadow:var(--frame);margin:var(--px);border-radius:0}
-/* stades : atteints sur fond, l'actuel encadré à la couleur du thème, ceux à venir en pointillés et gris (choix de Rémi, variante 2) */
+/* stades : atteints sur fond, l'actuel encadré à la couleur du thème, ceux à venir en pointillés et gris (choix du mainteneur, variante 2) */
 .dg-st{display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--muted);padding:4px 3px 3px;border:1px solid transparent;border-radius:6px;background:var(--chip)}
 .dg-st.cur{border:2px solid var(--accent);color:var(--ink);font-weight:600}
 .dg-st.off{background:none;border:1px dashed var(--muted)}

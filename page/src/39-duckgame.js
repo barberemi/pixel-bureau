@@ -66,7 +66,7 @@ function duckGameImg(view,stage,acc){
   const c=document.createElement('canvas');c.width=c.height=24;const g=c.getContext('2d');
   if(stage==='oeuf'){dgPaint(g,DG_EGG,{W:'#fff4d6',w:'#d9c49a',Y:'#f5c518',K:'#b39a68'},7,10);return DG_IMG[k]=c;}
   const head=acc.some(a=>DUCK_HEADS.includes(a));
-  if(stage==='caneton'){ // plus petit, une houppette ; ses accessoires (choix de Rémi : réduits avec lui, pixels nets)
+  if(stage==='caneton'){ // plus petit, une houppette ; ses accessoires (choix du mainteneur : réduits avec lui, pixels nets)
     const t=document.createElement('canvas');t.width=t.height=24;const f=t.getContext('2d');
     for(const a of acc)if(DG_BEHIND[a]&&DG_BEHIND[a][view])dgLayer(f,a,view);
     dgPaint(f,DUCK_ARTS[view],DG_PAL.caneton,4,8);
