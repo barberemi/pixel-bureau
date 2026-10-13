@@ -64,7 +64,7 @@ Le Bureau de ton équipe, dans tes bureaux : ses collègues, leur apparence, le 
 
 ## Contribuer
 
-Bug, idée ou dette : ouvre une issue avec son formulaire. Pour proposer un changement : une branche, une PR avec le modèle proposé, la CI verte, puis un merge en squash. Le circuit et les règles du dépôt sont dans [CONTRIBUTING.md](CONTRIBUTING.md), le code de conduite dans [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Une faille de sécurité : jamais dans une issue, voir [SECURITY.md](SECURITY.md).
+Bug, idée ou dette : ouvre une issue avec son formulaire. Pour proposer un changement : une branche, une PR avec le modèle proposé, la CI verte, puis un merge en squash. Le circuit et les règles du dépôt sont dans [CONTRIBUTING.md](CONTRIBUTING.md), le code de conduite dans [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Une faille de sécurité : jamais dans une issue, voir [SECURITY.md](SECURITY.md). Les changements de chaque version : [CHANGELOG.md](CHANGELOG.md).
 
 ## Licence et crédits
 

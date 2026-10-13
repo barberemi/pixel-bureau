@@ -1,0 +1,31 @@
+# Release sur tag (KT-66) : un tag « 0.MINOR.PATCH » (sans v, comme Kronn) publie la GitHub Release dont le texte est la
+# section de CHANGELOG.md de cette version. Le tag doit correspondre au fichier VERSION (tools/release_notes.py --check).
+name: Release
+
+on:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.9"
+
+      - name: Tag, VERSION et CHANGELOG cohérents
+        run: python3 tools/release_notes.py --check "$GITHUB_REF_NAME"
+
+      - name: GitHub Release avec la section du CHANGELOG
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 tools/release_notes.py "$GITHUB_REF_NAME" > notes.md
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag

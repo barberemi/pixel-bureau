@@ -13,7 +13,7 @@
 | `teams/<équipe>/` | Profil d'équipe : `team.json` (nom, organisation GitHub requise, plan), `roster.json` (l'équipe), `defaults.json` (Jira, GitHub, titre), `music/` (morceaux des collègues), `cast.json` (recettes de leurs avatars), `sprites/` et `sprites.json` (sprites fournis et leurs planches, `sprites/build_sprites.py`). aucun profil n'est livré (une équipe réelle garde ses noms hors du dépôt public) ; le même dossier hors du dépôt = un **pack d'équipe** (clé `team` = son chemin), qui peut aussi apporter ses plans (`layouts/`) et ses thèmes (`themes/`) : format dans `docs/conventions/pack-equipe.md` |
 | `sprites/` | Recettes d'avatars communes `cast.json` (agents, intérimaires, visiteurs, équipe de démo), calques LPC `layers.json` (`build_layers.py`, qui note les fichiers LPC utilisés dans `lpc_used.json` ; après un changement de calques, `python3 sprites/credits.py` régénère `CREDITS.md`) ; `custom/` et `sprites.json` = sprites fournis d'une installation, jamais commités |
 | `data/` | Instantanés de démo, équipe fictive Dunder Mifflin (aperçu local, captures et tests seulement, jamais dans la page publiée) |
-| `tools/` | `install.py`, `uninstall.py`, `publish.py`, `templates.py`, `assemble.py`, `smoke.py`, `theme.py`, `test.sh`, `shots.py` |
+| `tools/` | `install.py`, `uninstall.py`, `publish.py`, `templates.py`, `assemble.py`, `smoke.py`, `theme.py`, `release_notes.py`, `test.sh`, `shots.py` |
 | `tests/` | `node --test` (sans npm) et `unittest` : logique de la page, états, installateur, modèles, scripts contre un faux Kronn et un faux `gh`, à une heure figée (midi à Paris, `tests/fakeclock/`, `BUREAU_TEST_NOW` pour une autre heure) |
 
 ## Configuration
@@ -71,6 +71,12 @@ La CI GitHub Actions (`.github/workflows/tests.yml`) relance `sh tools/test.sh -
 - Captures de la documentation : `.venv/bin/python tools/shots.py [nom...]` (page de démo, dans `guide/img/`). Si Chrome affiche les barres de défilement (réglage de macOS), `BUREAU_CHROME_ARGS=--hide-scrollbars` : sinon tout le cadrage se décale.
 - Régression visuelle (KT-57) : `.venv/bin/python tools/visual.py` compare 8 captures clés (`NAMES`, mises en scène de `tools/shots.py` ; `Date` figée à l'heure de la démo, animations sur un temps virtuel avancé d'un nombre fixe d'images : deux rendus donnent la même image) aux références de `tests/visual/` ; échec au-delà de 0,3 % de pixels différents, captures et différences dans `dist/visual/`. Les références sont faites par la CI sous Linux : quand l'affichage change exprès, poser le label « références visuelles » sur la PR (`.github/workflows/visual-refs.yml` les refait, les commite sur la branche et relance les tests ; le run « Tests » que crée son push attendrait une approbation sans fin, il le supprime). Sous macOS la comparaison est indicative. Règle de PR : des références changées demandent un changement dans `guide/` (page de la fonctionnalité ou captures) ; label « références seules » quand seul Chrome a changé.
 - Contrat crons → page : `test_contract_page_reads_every_cron_output` (`tests/test_scripts.py`) lance chaque script qui écrit un dataset et vérifie que la page le lit (`tests/helpers/contract.js`) ; un nouveau dataset s'y ajoute avec son lecteur `readXxx`.
+
+## Versions et release
+
+- Versions `0.MINOR.PATCH` (MINOR = fonctionnalités, PATCH = correctifs), tag sans `v` comme Kronn. La version courante est dans `VERSION`, affichée en pied de page (`assemble.version()`).
+- `CHANGELOG.md` (Keep a Changelog) : chaque PR ajoute sa ligne dans « Unreleased » (case du modèle de PR).
+- Sortir une version : une PR qui passe `VERSION` au nouveau numéro et renomme « Unreleased » en `## [0.x.y] - AAAA-MM-JJ` (avec une nouvelle section « Unreleased » vide au-dessus) ; après le merge, `git tag -s 0.x.y && git push origin 0.x.y`. Le workflow `.github/workflows/release.yml` vérifie que le tag correspond à `VERSION` et au changelog (`tools/release_notes.py --check`) puis publie la GitHub Release avec la section de cette version. Une milestone par version choisit ce qui part dedans.
 
 ## Ajouter un thème
 

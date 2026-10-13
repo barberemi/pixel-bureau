@@ -143,6 +143,11 @@ def cron_schedules(cfg=None):
     return out
 
 
+def version():
+    """Version du Bureau (fichier VERSION, « 0.MINOR.PATCH ») : affichée en pied de page, tag de la release (KT-66)."""
+    return open(p("VERSION")).read().strip()
+
+
 def page_config(cfg):
     """La partie de bureau.config.json utile à la page (pas d'ids de workflows ni de connexions)."""
     return {
@@ -389,6 +394,7 @@ def build(demo=True, cfg=None):
                 .replace("__ACTIONS__", json.dumps({k: bool(v) for k, v in acts.items()}))
                 .replace("__ACTION_BINDS__", json.dumps(action_binds(html)))
                 .replace("__DEMO__", "true" if demo else "false")
+                .replace("__VERSION__", version())
                 .replace("__SNAP__", open(p("data", "office_snapshot.json")).read() if demo else "null")
                 .replace("__TEAM__", open(p("data", "team_snapshot.json")).read() if demo else "null"))
     for _, mark in ACTIONS.values():
