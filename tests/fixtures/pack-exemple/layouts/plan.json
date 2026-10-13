@@ -891,5 +891,11 @@
     18.75
    ]
   }
- ]
+ ],
+ "seating": {
+  "I1.R2": "p_lynn",
+  "I2.R2": "p_bob",
+  "I3.L1": "p_ozzie",
+  "I4.L1": "dwight"
+ }
 }

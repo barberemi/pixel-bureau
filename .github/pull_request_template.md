@@ -11,7 +11,7 @@
 - [ ] Un test ajouté ou adapté pour ce changement
 
 ## 📸 Captures
-<!-- Si c'est visible : avant / après, thèmes Classique et Equipe clair au besoin. Sinon : « rien de visible ». -->
+<!-- Si c'est visible : avant / après, thème Classique, et celui d'un pack d'équipe au besoin. Sinon : « rien de visible ». -->
 
 ## ✅ Avant de merger
 - [ ] Guide (`guide/fonctionnalites/`), ligne du README et captures (`tools/shots.py`) dans la même PR si c'est visible

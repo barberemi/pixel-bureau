@@ -1,5 +1,5 @@
-// Lot 7, phase 1 : le monde construit depuis layouts/equipe.json est exactement celui de l'ancien plan codé en dur
-// (tests/fixtures/world_equipe.json, figé avant l'extraction) : grille, sols, portes, vitres, sièges, places, cases
+// Lot 7, phase 1 : le monde construit depuis layouts/open-space.json (le plan type, même géométrie que le plan d'origine)
+// est exactement celui de l'ancien plan codé en dur (tests/fixtures/world_open-space.json, figé avant l'extraction) : grille, sols, portes, vitres, sièges, places, cases
 // bloquées, cases praticables, pièces éclairées, objets cliquables, places libres.
 'use strict';
 const test = require('node:test');
@@ -8,8 +8,8 @@ const fs = require('fs');
 const path = require('path');
 const {load} = require('./helpers/page.js');
 
-const page = load({layout: 'equipe'});
-const ref = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'world_equipe.json'), 'utf8'));
+const page = load({layout: 'open-space'});
+const ref = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'world_open-space.json'), 'utf8'));
 const now = JSON.parse(page.run(`JSON.stringify({TS,COLS,ROWS,W,H,EXIT,grid,floorOf,DOORS,GLASS:[...GLASS].sort(),ISLANDS,IROWS,SEATS:SEATS.map(({id,...s})=>s),
   seatTiles:[...seatTiles].sort(),blocked:[...blocked].sort(),SPOTS,FREE_SEATS:LAYOUT.free_seats,ROOMS,TVR,KANR,PLANR,PAYR,EMPR,
   walk:Array.from({length:ROWS},(_,y)=>Array.from({length:COLS},(_,x)=>walkable(x,y)?1:0).join('')).join('|')})`));
@@ -19,7 +19,7 @@ for (const k of Object.keys(ref)) {
 }
 
 test('plan : chaque rangée a la largeur annoncée et chaque caractère est dans la légende', () => {
-  const L = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'layouts', 'equipe.json'), 'utf8'));
+  const L = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'layouts', 'open-space.json'), 'utf8'));
   assert.equal(L.tiles.length, L.size[1]);
   for (const row of L.tiles) {
     assert.equal(row.length, L.size[0]);
@@ -38,28 +38,32 @@ test("un autre plan (exemple-startup) : la page démarre, chaque siège et chaqu
     return JSON.stringify({W,H,bad,seatless,chars:chars.length});})()`));
   assert.deepEqual([r.W, r.H], [960, 512]);
   assert.deepEqual(r.bad, []);
-  assert.deepEqual(r.seatless, []); // places du roster (plan equipe) réattribuées sur des sièges de ce plan
+  assert.deepEqual(r.seatless, []); // places du roster réattribuées sur des sièges de ce plan
   assert.ok(r.chars > 10);
 });
+
+// pack d'équipe fictif (tests/fixtures/pack-exemple) : son plan place l'équipe (seating)
+const PACK = './tests/fixtures/pack-exemple', PACK_PLAN = 'tests/fixtures/pack-exemple/layouts/plan.json';
 
 // Lot 7, phase 4 : sièges par numéro. La page (10-world.js) et tools/plan.py (assign) placent tout le monde pareil.
 test('sièges : même attribution dans la page et dans tools/plan.py (plans, boss, agents avec ou sans place)', () => {
   const {execFileSync} = require('child_process');
-  const fixture = {...JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'bureau.config.json'), 'utf8')), team: 'equipe', people: []};
-  const roster = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'teams', 'equipe', 'roster.json'), 'utf8')).people;
+  const fixture = {...JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'bureau.config.json'), 'utf8')), team: PACK, people: []};
+  const roster = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'pack-exemple', 'roster.json'), 'utf8')).people;
   const bare = fixture.agents.map(({seat, ...a}) => a);
   fixture.agents = bare.map((a, i) => ({...a, seat: ['I4.L1', 'I4.L2', 'I4.L3', 'I4.R1', 'I4.R2', 'I4.R3', 'I5.L1', 'I5.L2', 'I5.L3', 'I5.R1', 'I5.R2', 'I5.R3'][i]}));
   // l'ancien format [x, y] (les mêmes places) n'est plus lu : mêmes sièges que sans place
   const legacy = bare.map((a, i) => ({...a, seat: [[23, 14], [23, 15], [23, 16], [25, 14], [25, 15], [25, 16], [29, 14], [29, 15], [29, 16], [31, 14], [31, 15], [31, 16]][i]}));
-  for (const layout of ['equipe', 'exemple-startup'])
-    for (const owner of ['p_remi', 'p_coll2', null]) {
+  for (const layout of [PACK_PLAN, 'exemple-startup'])
+    for (const owner of ['p_bob', 'p_lynn', null]) {
       const got = {};
       for (const agents of [fixture.agents, bare, legacy]) {
         const p = load({layout, owner, config: {...fixture, agents}});
         const js = JSON.parse(p.run(`JSON.stringify({seats:Object.fromEntries(CAST.filter(c=>c.seat).map(c=>[c.key,seatAt(c.seat).id])),
           temps:FREE_SEATS.map(s=>seatAt(s).id)})`));
         const py = JSON.parse(execFileSync('python3', ['-c', `import json,sys;sys.path.insert(0,'tools');import plan
-d=json.load(sys.stdin);got,temps=plan.assign(json.load(open('layouts/'+d['layout']+'.json')),d['people'],d['owner'])
+d=json.load(sys.stdin);f=d['layout'] if '/' in d['layout'] else 'layouts/'+d['layout']+'.json'
+got,temps=plan.assign(json.load(open(f)),d['people'],d['owner'])
 print(json.dumps({'seats':got,'temps':temps}))`], {cwd: path.join(__dirname, '..'),
           input: JSON.stringify({layout, owner, people: [...roster, ...agents]})}));
         const kind = agents === bare ? 'sans' : agents === legacy ? 'ancien format' : 'avec';
@@ -70,13 +74,13 @@ print(json.dumps({'seats':got,'temps':temps}))`], {cwd: path.join(__dirname, '..
     }
 });
 
-test('sièges : le plan equipe place l\'équipe et les agents sans leur place du roster', () => {
+test('sièges : le plan du pack place l\'équipe et les agents sans leur place du roster', () => {
   const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'bureau.config.json'), 'utf8'));
-  const p = load({owner: 'p_coll2', config: {...fixture, team: 'equipe', people: []}});
+  const p = load({owner: 'p_lynn', config: {...fixture, team: PACK, people: []}});
   const s = JSON.parse(p.run(`JSON.stringify(Object.fromEntries(CAST.map(c=>[c.key,c.seat])))`));
-  assert.deepEqual(s.p_remi, [12, 15]); // I2.R2
+  assert.deepEqual(s.p_bob, [12, 15]); // I2.R2
   assert.deepEqual(s.dwight, [23, 14]); // I4.L1
-  assert.equal(s.p_coll2, null); // le boss
+  assert.equal(s.p_lynn, null); // le boss
 });
 
 // Plan d'équipe partagé (dataset layout, workflow « Le Bureau · plan ») : lu au démarrage, appliqué à chaud
@@ -91,7 +95,7 @@ test('plan partagé : lu au démarrage à la place du plan embarqué', () => {
 });
 
 test('plan partagé : appliqué à chaud, puis retour au plan embarqué sans aucune différence', () => {
-  const p = load({layout: 'equipe'});
+  const p = load({layout: 'open-space'});
   const before = p.run(WORLD);
   assert.equal(p.run(`applyLayout(${JSON.stringify(EXAMPLE)})`), true);
   const hot = JSON.parse(p.run(WORLD));

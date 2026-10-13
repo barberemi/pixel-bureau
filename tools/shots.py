@@ -34,14 +34,8 @@ SHOTS = {
     "scene-pizza": (1400, 1000, AT(12 + 10 / 60) + "TEAM.sprint.end='2026-10-01T15:00:00Z';", "#cv", 1.5),
     "scene-kickoff": (1400, 1000, AT(9 + 56 / 60) + "TEAM.sprint.start='2026-10-01T07:00:00Z';", "#cv", 1.5),
     "legende": (1400, 1600, AT(11) + "document.querySelector('.legend-help').open=true;", ".legend-help"),
-    # thème Classique (le défaut) : même cadrage que theme-equipe
+    # thème Classique (le seul du dépôt ; un pack d'équipe apporte les autres), fiche d'un collègue ouverte
     "theme-classique": (1400, 1000, AT(11) + "select((chars.find(c=>c.person&&c.team&&c.team.tickets.length)||{}).key);scrollTo(0,0);", None),
-    # mode TV du thème Equipe (« Equipe nuit ») : le plan, le stand-up, le tour de table de la rétro
-    "theme-equipe-tv": (1600, 900, AT(11) + "setTv(true);applySkin('equipe');", None),
-    "theme-equipe-tv-standup": (1600, 900, AT(9.7) + "setTv(true);applySkin('equipe');TVSCENE.manual='daily';TVSCENE.idx=0;updateTv(true);", None),
-    "theme-equipe-tv-retro": (1600, 900, AT(15 + 10 / 60) + "setTv(true);applySkin('equipe');TVSCENE.manual=null;TVSCENE.idx=4;updateTv(true);", None),
-    # thème Equipe (bouton 🎨) : habillage pixel aux couleurs d'Equipe, fiche d'un collègue ouverte
-    "theme-equipe": (1400, 1000, AT(11) + "applySkin('equipe');select((chars.find(c=>c.person&&c.team&&c.team.tickets.length)||{}).key);scrollTo(0,0);", None),
     "qui-fait-quoi": (1400, 1400, AT(11), "#who"),
     # fil à 18h30 (Important) : « En ce moment » (une validation de Dwight en attente depuis 17h52, ajoutée pour la démo,
     # et les repères du jeudi), les rétablissements de Creed et Meredith, la validation de 9h01 décidée en 2 min, Stanley lancé à la main

@@ -6,7 +6,7 @@ Format relevé dans le code (KT-60, 2026-10-12). Une équipe vit soit dans le d�
 
 Clé `team` de `bureau.config.json` [src: file: tools/assemble.py:172] :
 
-- un id (`"equipe"`) : le profil `teams/equipe/` du dépôt ;
+- un id (`"monequipe"`) : le profil `teams/monequipe/` du dépôt (`assemble.TEAMS` ; aucun n'est livré, le dossier n'existe que s'il est créé à la main) ;
 - un chemin (contient `/`, ou commence par `~` ou `.`) : un pack, `~` compris, relatif au dépôt s'il n'est pas absolu (`"~/Sites/bureau-monequipe"`) ;
 - absente : équipe neuve (roster vide, plan type).
 

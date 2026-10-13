@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {load} = require('./helpers/page.js');
 
-const page = load({layout: 'equipe'});
+const page = load({layout: 'open-space'});
 const run = page.run;
 const J = code => JSON.parse(run('JSON.stringify(' + code + ')'));
 const IMG = 'data:image/jpeg;base64,QUJD';
@@ -27,7 +27,7 @@ test('rien sans pages ni en mode TV ; sinon l\'écran du boss est une zone cliqu
   assert.equal(J('bossPagesOn()'), true);
   run('TV=true;');
   try { assert.equal(J('bossPagesOn()'), false); } finally { run('TV=false;'); }
-  const r = J('bossScreenRect()'); // l'écran du bureau du boss (plan equipe : bureau en 21-23, rangée 9)
+  const r = J('bossScreenRect()'); // l'écran du bureau du boss (plan type : bureau en 21-23, rangée 9)
   assert.deepEqual(r, {x: 21 * 32 + 4, y: 9 * 32 - 32, w: 18, h: 13});
 });
 

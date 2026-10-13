@@ -75,7 +75,7 @@ function pageJs(owner, {demo = true, actions = true, config, layout} = {}) {
     __AVATAR_WF__: 'avatar-wf', __GATE_WF__: 'gate-wf', __RELAUNCH_WF__: 'relaunch-wf', __ASK_QP__: 'ask-qp',
     __ROSTER__: JSON.stringify(team(cfg).roster),
     // même plan que layout_path() de tools/assemble.py : celui demandé, sinon celui de la config, du profil, ou le plan type
-    __LAYOUT__: layout ? read('layouts', layout + '.json') : fs.readFileSync(layoutPath(cfg), 'utf8'),
+    __LAYOUT__: layout ? (layout.includes('/') ? fs.readFileSync(path.resolve(ROOT, layout), 'utf8') : read('layouts', layout + '.json')) : fs.readFileSync(layoutPath(cfg), 'utf8'),
     __CONFIG__: JSON.stringify(pageConfig(cfg)),
     __OWNER__: JSON.stringify(owner === undefined ? JSON.parse(read('tests', 'fixtures', 'bureau.config.json')).owner : owner),
     __SNAP__: demo ? read('data', 'office_snapshot.json') : 'null',

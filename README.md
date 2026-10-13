@@ -19,7 +19,7 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 | [Fraîcheur des données](guide/fonctionnalites/10-fraicheur.md) | Prochaine arrivée, sources en retard, crons du Bureau en échec |
 | [Téléphone](guide/fonctionnalites/11-mobile.md) | Affichage mobile |
 | [Thèmes saisonniers](guide/fonctionnalites/12-themes.md) | Noël, Nouvel an, Saint-Valentin, Halloween : décor, chapeaux, emojis, effets |
-| [Thème de la page](guide/fonctionnalites/13-theme-page.md) | Pixel art en Classique (sombre) ou Equipe (clair), au bouton 🎨, mode TV et bandeau « EN DIRECT » compris ; Equipe par défaut pour l'équipe equipe |
+| [Thème de la page](guide/fonctionnalites/13-theme-page.md) | Pixel art en Classique (sombre), mode TV et bandeau « EN DIRECT » compris ; les thèmes d'une équipe (son pack) au bouton 🎨 |
 | [Absences et télétravail](guide/fonctionnalites/14-absences.md) | Qui est là, d'après le planning de l'équipe : absents hors du bureau, télétravail en transparence, calendrier de deux semaines au mur du boss |
 
 ## Installer

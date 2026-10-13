@@ -14,7 +14,7 @@ CI GitHub Actions (`.github/workflows/tests.yml`) : `sh tools/test.sh --chrome` 
 | Smoke installation neuve | `python3 tools/smoke.py --empty` | Mêmes contrôles sur une page d'équipe neuve, plan type, sans démo [src: file: tools/test.sh:12] |
 | Smoke d'un pack d'équipe | `python3 tools/smoke.py --team <id ou chemin>` | La démo avec cette équipe seule (`dist/office_team.html`) ; ce que lance la CI d'un pack [src: file: tools/smoke.py:174] |
 | Chargement Chrome headless | `sh tools/test.sh --chrome` (passe `--chrome` aux deux smoke) | Aucune exception JS, zéro `console.error` [src: file: tools/smoke.py:135] |
-| Régression visuelle | `.venv/bin/python tools/visual.py` (lancée par `tools/test.sh --chrome`) | 9 captures clés comparées à `tests/visual/` (temps figé et virtuel : deux rendus identiques ; tolérance 0,3 %) ; stricte sur la plateforme des références (Linux, CI), indicative ailleurs [src: file: tools/visual.py:1] |
+| Régression visuelle | `.venv/bin/python tools/visual.py` (lancée par `tools/test.sh --chrome`) | 8 captures clés comparées à `tests/visual/` (temps figé et virtuel : deux rendus identiques ; tolérance 0,3 %) ; stricte sur la plateforme des références (Linux, CI), indicative ailleurs [src: file: tools/visual.py:1] |
 | Règle du guide (PR) | `python3 tools/visual.py --guide-rule origin/main` | Références visuelles changées ⇒ `guide/` changé ; levée par le label « références seules » [src: file: .github/workflows/tests.yml:1] |
 | Modèles = workflows du Kronn | `python3 tools/templates.py check` | `DIFF` si le rendu d'un modèle diffère du workflow installé ; code de sortie 1 [src: file: tools/templates.py:289] |
 
@@ -24,7 +24,7 @@ CI GitHub Actions (`.github/workflows/tests.yml`) : `sh tools/test.sh --chrome` 
 
 | Langage | Runner | Config / setup | Runtime |
 |---|---|---|---|
-| JavaScript (page) | `node --test` intégré, sans npm ni dépendance [src: file: tools/test.sh:2] | Pas de fichier de config ; harnais `tests/helpers/page.js` (concatène `page/src/*.js` dans l'ordre d'assemblage, bouchons DOM / canvas) [src: file: tests/helpers/page.js:1] ; fixtures `tests/fixtures/bureau.config.json`, `tests/fixtures/world_equipe.json` | Node non épinglé (pas de `.nvmrc`) ; v25.9.0 sur le poste de dev au 2026-10-11 |
+| JavaScript (page) | `node --test` intégré, sans npm ni dépendance [src: file: tools/test.sh:2] | Pas de fichier de config ; harnais `tests/helpers/page.js` (concatène `page/src/*.js` dans l'ordre d'assemblage, bouchons DOM / canvas) [src: file: tests/helpers/page.js:1] ; fixtures `tests/fixtures/bureau.config.json`, `tests/fixtures/world_open-space.json`, pack fictif `tests/fixtures/pack-exemple/` | Node non épinglé (pas de `.nvmrc`) ; v25.9.0 sur le poste de dev au 2026-10-11 |
 | Python (workflows, tools) | `unittest` de la bibliothèque standard [src: file: tools/test.sh:8] | Pas de config ; liste des fichiers en dur dans `tools/test.sh` | Python non épinglé (pas de `.python-version`) ; `python3` 3.9.6 sur le poste de dev |
 | Smoke / Chrome | `tools/smoke.py` | `.venv` avec `websocket-client` pour `--chrome` (et `pillow` pour les captures) [src: file: tools/smoke.py:11] [src: file: guide/developpement.md:41] | Chrome attendu à `/Applications/Google Chrome.app/...` (macOS) [src: file: tools/smoke.py:21], port de débogage 9334 par défaut [src: file: tools/smoke.py:155] |
 
@@ -89,7 +89,7 @@ Vérifié par recherche du nom de module dans `tests/` (2026-10-11) :
 - `workflows/gate_decide.py` : aucun test ne le référence (`avatar_save.py` et `payroll_snapshot.py` sont couverts par le test de contrat, 2026-10-12).
 - `tools/publish.py` (publication vers Kronn, lancée par l'humain seul), `tools/shots.py` (captures), `tools/cdp.py` (pilotage Chrome) : pas de test.
 - `tools/smoke.py` n'a pas de test propre (c'est lui-même un contrôle).
-- Rendu visuel : 9 captures clés comparées (`tools/visual.py`) ; les autres vues (scènes, thèmes saisonniers, éditeur…) restent relues à l'oeil.
+- Rendu visuel : 8 captures clés comparées (`tools/visual.py`) ; les autres vues (scènes, thèmes saisonniers, éditeur…) restent relues à l'oeil.
 - Appels réels à Kronn, GitHub, Jira, Microsoft Graph : remplacés par des faux dans les tests ; la conformité des workflows installés se vérifie avec `python3 tools/templates.py check` (demande un Kronn joignable).
 
 ## Smoke checks (pre-commit)

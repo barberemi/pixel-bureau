@@ -43,7 +43,7 @@ def palette(theme):
 
 class ThemeTest(unittest.TestCase):
     def test_every_theme_has_a_name(self):
-        self.assertIn("equipe", assemble.themes())
+        self.assertEqual(list(assemble.themes()), ["classique"])  # le dépôt n'a que le Classique : les autres viennent des packs
         for theme, name in assemble.themes().items():
             self.assertTrue(name, theme)
 
@@ -77,7 +77,6 @@ class ThemeTest(unittest.TestCase):
                 if fg in v and bg in v:
                     with self.subTest(theme=theme, fill=bg):
                         self.assertGreaterEqual(ratio(v[fg], v[bg]), 4.5, f"{theme} (TV) : --{fg} sur --{bg}")
-        self.assertTrue(tv_palette("equipe"), "le thème Equipe habille le mode TV")
 
     def test_fonts_are_embedded(self):
         html = assemble.page_html()

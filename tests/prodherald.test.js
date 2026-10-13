@@ -1,4 +1,4 @@
-// Mise en prod réussie avec un héraut (invité on: « prod », Yoda chez equipe, le sage dans la démo) : il entre pendant la
+// Mise en prod réussie avec un héraut (invité on: « prod », Yoda par défaut, le sage dans la démo) : il entre pendant la
 // fête, monte sur la scène à côté de l'auteur (le boss au sax), le félicite en grand 3 min puis repart.
 // Démo : prod d'Andy (17.107.0) finie à 10h42, prod de Pam (17.107.1) finie à 9h38, juste avant le daily de 9h40.
 'use strict';

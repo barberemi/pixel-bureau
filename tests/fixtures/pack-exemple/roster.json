@@ -6,7 +6,8 @@
    "name": "Bob",
    "role": "Directeur",
    "person": "Bob Vance",
-   "github": "bobvance"
+   "github": "bobvance",
+   "boss_sprite": "sorcier"
   },
   {
    "key": "p_lynn",
@@ -23,5 +24,21 @@
    "roleKind": "qa"
   }
  ],
- "guests": []
+ "guests": [
+  {
+   "key": "g_hank",
+   "name": "Hank",
+   "sprite": "sorcier",
+   "role": "Gardien de nuit",
+   "at": "00:10",
+   "jitter": 5,
+   "days": "all",
+   "tour": true,
+   "stay": [
+    6,
+    8
+   ],
+   "shout": "Tout est calme !"
+  }
+ ]
 }

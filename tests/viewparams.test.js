@@ -5,7 +5,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {load} = require('./helpers/page.js');
 
-const page = load();
+// pack d'équipe fictif : un deuxième thème (Menthe) en plus du Classique
+const page = load({config: {...require('./fixtures/bureau.config.json'), team: './tests/fixtures/pack-exemple', people: []}, owner: 'p_bob'});
 const run = page.run;
 const J = code => JSON.parse(run('JSON.stringify(' + code + ')'));
 const reset = () => run(`VIEW_PARAMS_DONE=false;if(TV)setTv(false,false);TVSCENE.manual=null;`);
@@ -38,9 +39,9 @@ test('sans paramètres (vue intégrée, mosaïque) : rien ne change et le premie
 
 test('skin=classique : l\'écran mural prend le thème de l\'adresse, sans le mémoriser ; un thème inconnu ne change rien', () => {
   reset();
-  run(`applySkin('equipe');localStorage.removeItem&&localStorage.removeItem('bureau:skin');applyViewParams({page:{params:{tv:'1',skin:'classique'}}});`);
+  run(`applySkin('menthe');localStorage.removeItem&&localStorage.removeItem('bureau:skin');applyViewParams({page:{params:{tv:'1',skin:'classique'}}});`);
   assert.deepEqual(J('[TV,UI_SKIN]'), [true, 'classique']);
   reset();
-  run(`applySkin('equipe');applyViewParams({page:{params:{skin:'parchemin'}}});`);
-  assert.equal(J('UI_SKIN'), 'equipe');
+  run(`applySkin('menthe');applyViewParams({page:{params:{skin:'parchemin'}}});`);
+  assert.equal(J('UI_SKIN'), 'menthe');
 });

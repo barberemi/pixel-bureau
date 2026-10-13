@@ -138,7 +138,7 @@ See the Test policy parameter above (§ Project parameters). Checklist: [testing
 | Modèles des 13 workflows (6 crons, 7 manuels) et 2 Quick Prompts | `workflows/templates/*.json`, rendus par `tools/templates.py` [src: file: tools/templates.py:24] [src: file: tools/templates.py:251] |
 | Socle des scripts de cron / règles des plans | `workflows/_lib.py`, `workflows/_plan.py` [src: file: guide/developpement.md:10] |
 | Format des plans de bureau (`bureau-layout/1`) | `layouts/*.json`, vérifiés par `tools/plan.py check` [src: file: guide/developpement.md:11] [src: file: guide/developpement.md:97] |
-| Profils d'équipe | `teams/<équipe>/` (`team.json`, `roster.json`, `defaults.json`) [src: file: guide/developpement.md:13] |
+| Profils et packs d'équipe | pack hors du dépôt (clé `team` = chemin) ou `teams/<équipe>/` local, jamais livré (`team.json`, `roster.json`, `defaults.json`) ; exemple fictif `tests/fixtures/pack-exemple/` [src: file: guide/developpement.md:13] [src: file: docs/conventions/pack-equipe.md:1] |
 | Config d'installation (jamais commitée) | `bureau.config.json` ; copie de test `tests/fixtures/bureau.config.json` [src: file: guide/developpement.md:21] [src: file: guide/developpement.md:118] |
 | Données de démo | `data/*.json` [src: file: guide/developpement.md:15] |
 | Doc humaine des fonctionnalités | `guide/fonctionnalites/NN-*.md`, `guide/developpement.md` [src: file: README.md:9] |

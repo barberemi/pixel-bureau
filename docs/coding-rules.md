@@ -46,7 +46,7 @@
 ### Conventions
 
 - Un thème = `page/src/theme-<id>.css` qui ne contient que des couleurs ; l'habillage pixel commun vit dans `pixel.css` [src: file: guide/developpement.md:54].
-- Première ligne d'un thème : `/* @nom: Nom affiché */` [src: file: guide/developpement.md:57] [src: file: page/src/theme-equipe.css:1] [src: file: page/src/theme-classique.css:1].
+- Première ligne d'un thème : `/* @nom: Nom affiché */` [src: file: guide/developpement.md:57] [src: file: page/src/theme-classique.css:1].
 
 ### Common mistakes to avoid
 

@@ -3,5 +3,17 @@
  "page_title": "Le Bureau de Vance Réfrigération",
  "ui": {
   "skin": "menthe"
+ },
+ "github": {
+  "repo": "vance/frigo",
+  "staging_workflow": "deploy-staging.yml",
+  "prod_workflow": "deploy-prod.yml",
+  "deploys": [
+   {
+    "repo": "vance/api",
+    "staging_workflow": "deploy-staging.yml",
+    "prod_workflow": "CD_Deploy-PROD.yaml"
+   }
+  ]
  }
 }

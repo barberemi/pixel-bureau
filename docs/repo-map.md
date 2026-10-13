@@ -21,7 +21,7 @@ kronn-bureau/
 │       │                      # 50-65 panneau/actions/fiches/éditeur, 69-72 récap/fil/Qui fait quoi, 75-76 TV, 80 souris, 90 boucle
 │       ├── styles.css         # feuille de style principale
 │       ├── pixel.css          # habillage pixel commun à tous les thèmes
-│       └── theme-*.css        # thèmes (couleurs seulement) : classique, equipe
+│       └── theme-*.css        # thème (couleurs seulement) : classique ; les autres viennent du pack d'équipe
 ├── workflows/                 # scripts Python des étapes Exec des crons Kronn
 │   ├── _lib.py, _plan.py      # socle commun et règles des plans, recopiés dans chaque script au rendu
 │   ├── *_snapshot.py          # producteurs des datasets (office, live, gates, payroll, duck, absences, pages, github, gitfut, actions)
@@ -34,9 +34,9 @@ kronn-bureau/
 │   ├── test.sh, smoke.py, cdp.py  # tests + contrôle de fumée (Chrome headless)
 │   └── shots.py               # captures de la doc -> guide/img/
 ├── tests/                     # *.test.js (node --test), test_*.py (unittest), fixtures/, helpers/page.js
-├── layouts/                   # plans de bureau bureau-layout/1 : open-space (type), equipe, exemple-startup
+├── layouts/                   # plans de bureau bureau-layout/1 : open-space (type), exemple-startup
 ├── team/                      # defaults.json (valeurs proposées à l'installation), guests.json (invités communs)
-├── teams/equipe/            # profil d'équipe : team.json, roster.json, defaults.json, cast.json, music/, sprites/, sprites.json
+├── teams/                     # (absent du dépôt) profils d'équipe locaux ; une équipe vit dans son pack (tests/fixtures/pack-exemple)
 ├── sprites/                   # build_sprites.py, build_layers.py, cast.json, layers.json, common/ (Gandalf, Yoda), common.json
 ├── data/                      # instantanés de démo (équipe fictive) : aperçu local, captures, tests
 ├── guide/                     # doc HUMAINE (ne pas réécrire) : developpement.md, fonctionnalites/NN-*.md, img/, exemples/

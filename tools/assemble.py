@@ -159,9 +159,12 @@ DEFAULT_LAYOUT = "layouts/open-space.json"  # plan type, sans équipe
 # bureau.config.json, clé team : l'id d'un profil de teams/, ou le chemin d'un pack (« ~/Sites/bureau-monequipe ») ;
 # absente = équipe neuve (roster vide).
 # Les personnes ajoutées à une installation (clé people de la config, jamais commitée) suivent le roster du profil.
+TEAMS = p("teams")  # profils d'équipe du dépôt (aucun n'est livré : une équipe vit dans son pack)
+
+
 def teams():
     """Profils d'équipe disponibles : {id: team.json}."""
-    base = p("teams")
+    base = TEAMS
     out = {}
     for d in sorted(os.listdir(base)) if os.path.isdir(base) else []:
         if os.path.exists(os.path.join(base, d, "team.json")):
@@ -185,7 +188,7 @@ def team_dir(cfg):
         if not os.path.isfile(os.path.join(d, "team.json")):
             raise ValueError(f"pack d'équipe introuvable : {t} (team.json attendu dans {d})")
         return d
-    d = p("teams", t)
+    d = os.path.join(TEAMS, t)
     return d if os.path.isdir(d) else None
 
 

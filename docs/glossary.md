@@ -15,7 +15,7 @@ Terms marked `<!-- TODO: ask user -->` need human confirmation.
 | Architecture | Emplacements `@@…@@` | Variables remplacées au rendu des modèles (`@@page_id@@`, `@@jira.*@@`, `@@script:workflows/x.py@@`, `@@cron_hours@@`…) ; interdites dans un script de cron [src: file: guide/developpement.md:73] | |
 | Architecture | `_lib.py` / `_plan.py` | Socle commun des scripts de cron et règles des plans, recopiés dans chaque script au rendu (Kronn lance `python3 -c`) [src: file: guide/developpement.md:10] | |
 | Architecture | `bureau.config.json` | Config propre à chaque installation (Kronn, ids de page et de workflows, Jira, GitHub, `rhythm`, `owner`, `team`…), jamais commitée [src: file: guide/developpement.md:21] | |
-| Architecture | Profil d'équipe | Dossier `teams/<équipe>/` : `team.json`, `roster.json`, `defaults.json`, `music/`, `cast.json`, `sprites/` [src: file: guide/developpement.md:13] | |
+| Architecture | Profil d'équipe | Dossier de l'équipe, pack hors du dépôt ou `teams/<équipe>/` local (aucun livré) : `team.json`, `roster.json`, `defaults.json`, `music/`, `cast.json`, `sprites/` [src: file: guide/developpement.md:13] | |
 | Architecture | Roster | Liste des personnes de l'équipe : celle du profil puis `people` de la config, lue par `roster()` de `assemble.py` [src: file: guide/developpement.md:23] | |
 | Architecture | Plan (`bureau-layout/1`) | Format JSON des plans de bureau `layouts/*.json` (`tiles`, `legend`, `furniture`, `spots`, `seating`…), vérifié par `tools/plan.py check` [src: file: tools/plan.py:1] [src: file: guide/developpement.md:89] | |
 | Architecture | Plan type | `layouts/open-space.json`, plan par défaut d'une équipe neuve [src: file: tools/assemble.py:127] | |
@@ -23,7 +23,7 @@ Terms marked `<!-- TODO: ask user -->` need human confirmation.
 | Architecture | Zone | Lieu logique où se rend un personnage (`desk`, `srv`, `meet`, `gate`, `stage`, `coffee`, `visit`…) ; le type d'étape Kronn en cours donne la zone d'un agent (`KIND_ZONE`), avec repli `ZONE_FALLBACK` si le plan n'a pas la zone [src: file: page/src/35-state.js:2] [src: file: page/src/35-state.js:453] | |
 | Architecture | Machine à états | Calcul de l'état et de la zone de chaque personnage à un instant `t` (`35-state.js`) [src: file: page/src/35-state.js:1] | |
 | Architecture | Famille | Catégorie d'un personnage : `team` (humains), `wf` (agents IA), `vis` (visiteurs) [src: file: page/src/41-people.js:3] | |
-| Architecture | Thème de page (skin) | Fichier `page/src/theme-<id>.css` de couleurs seules (Classique sombre, Equipe clair), choisi au bouton 🎨 ; habillage commun dans `pixel.css` [src: file: guide/developpement.md:54] | |
+| Architecture | Thème de page (skin) | Fichier `page/src/theme-<id>.css` de couleurs seules (le Classique, sombre ; les autres viennent du pack d'équipe), choisi au bouton 🎨 (masqué s'il n'y a qu'un thème) ; habillage commun dans `pixel.css` [src: file: guide/developpement.md:54] | |
 | Architecture | Démo | Aperçu local, captures et tests sur l'équipe fictive Dunder Mifflin (`data/*.json`, `tests/fixtures/bureau.config.json`) ; jamais dans la page publiée [src: file: guide/developpement.md:118] | [testing-quality](testing-quality.md) |
 | Domain | Collègue | Personne de l'équipe (roster ou ajoutée à l'installation), dessinée en couleur à sa place [src: file: guide/fonctionnalites/01-plan.md:11] | |
 | Domain | Agent | Workflow Kronn représenté par un personnage en hologramme bleu, son étape dans un nuage [src: file: guide/fonctionnalites/01-plan.md:12] | |

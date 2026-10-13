@@ -72,14 +72,14 @@ Range le résultat dans le pack (`layouts/plan.json`, celui que nomme `team.json
 
 ## 5. Les couleurs de ton entreprise
 
-Un thème de page dans `themes/theme-<id>.css` du pack, qui ne sera proposé qu'à ton équipe. Pars d'un thème livré, complet (fonds, textes, cadres pixel, mode TV) : `page/src/theme-equipe.css` pour un thème clair, `page/src/theme-classique.css` pour un sombre, copié en `themes/theme-dundermifflin.css`, puis :
+Un thème de page dans `themes/theme-<id>.css` du pack, qui ne sera proposé qu'à ton équipe. Pars du thème livré, complet (fonds, textes, cadres pixel) : `page/src/theme-classique.css`, copié en `themes/theme-dundermifflin.css` (pour un thème clair, `color-scheme:light` et fonds et textes inversés), puis :
 
 ```css
 /* @nom: Dunder Mifflin */
 :root[data-skin="dundermifflin"]{ … --bg:#f4f1ea; --panel:#ffffff; --ink:#1d2433; --accent:#1f4e8c; … }
 ```
 
-La première ligne donne son nom au bouton 🎨 ; remplace partout `data-skin="equipe"` par `data-skin="dundermifflin"`, puis les couleurs. Pour qu'il soit le thème par défaut de l'équipe : `"ui": {"skin": "dundermifflin"}` dans `defaults.json`. Une police va dans `fonts/` du pack avec sa licence (une police de marque n'est pas toujours libre). Les variables à redéfinir et le contraste attendu : [Ajouter un thème](developpement.md#ajouter-un-thème), et les thèmes livrés : [Thème de la page](fonctionnalites/13-theme-page.md).
+La première ligne donne son nom au bouton 🎨 ; remplace partout `data-skin="classique"` par `data-skin="dundermifflin"`, puis les couleurs. Pour qu'il soit le thème par défaut de l'équipe : `"ui": {"skin": "dundermifflin"}` dans `defaults.json`. Une police va dans `fonts/` du pack avec sa licence (une police de marque n'est pas toujours libre). Les variables à redéfinir et le contraste attendu : [Ajouter un thème](developpement.md#ajouter-un-thème), et les thèmes livrés : [Thème de la page](fonctionnalites/13-theme-page.md).
 
 ## 6. Le reste, facultatif
 

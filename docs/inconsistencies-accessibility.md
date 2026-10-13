@@ -32,7 +32,7 @@ Périmètre : la page (`page/office_template.html` + `page/src/*.js` + `page/src
 - Lien d'évitement, modale, canvas : voir TD.
 
 **C. Couleurs et contraste**
-- Les thèmes d'interface s'appliquent toujours (`classique` par défaut, `page/src/01-skin.js:4`) ; les variables claires de base de `page/src/styles.css:2-3` ne sont donc pas visibles. Contrastes calculés (texte sur `--panel`) : Classique ink 13.0, muted 5.83, on-accent/accent 6.25, err 5.25 ; Equipe ink 18.5, muted 5.69, on-accent/accent 7.17, err 5.29, warn 6.0. Tous ≥ 4.5:1. `tests/test_theme.py` vérifie ces contrastes (`page/src/theme-classique.css:4`).
+- Les thèmes d'interface s'appliquent toujours (`classique` par défaut, `page/src/01-skin.js:4`) ; les variables claires de base de `page/src/styles.css:2-3` ne sont donc pas visibles. Contrastes calculés (texte sur `--panel`) : Classique ink 13.0, muted 5.83, on-accent/accent 6.25, err 5.25. Tous ≥ 4.5:1. `tests/test_theme.py` vérifie ces contrastes (`page/src/theme-classique.css:4`).
 - États du plan : couleur doublée d'une forme d'anneau (pointillé / tirets) dans la légende (`page/office_template.html:50-51`). Pas de cue couleur seule constaté.
 
 **D. ARIA**

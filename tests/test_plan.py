@@ -5,7 +5,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import plan  # noqa: E402
 
-BASE = json.load(open(os.path.join(ROOT, "layouts", "equipe.json")))
+PACK_PLAN = os.path.join(ROOT, "tests", "fixtures", "pack-exemple", "layouts", "plan.json")
+BASE = json.load(open(PACK_PLAN))  # plan type et places de l'équipe (seating) du pack fictif
 
 
 def broken(**changes):
@@ -81,7 +82,7 @@ class PlanTest(unittest.TestCase):
         import io, contextlib
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            code = plan.main(["check", os.path.join(ROOT, "layouts", "equipe.json"), "--json"])
+            code = plan.main(["check", PACK_PLAN, "--json"])
         self.assertEqual(code, 0)
         self.assertEqual(json.loads(buf.getvalue())["errors"], [])
 

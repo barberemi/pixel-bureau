@@ -24,7 +24,9 @@ class PackTest(unittest.TestCase):
         shutil.rmtree(self.tmp)
 
     def test_team_dir_id_path_tilde_and_missing(self):
-        self.assertTrue(assemble.team_dir({"team": "equipe"}).endswith(os.path.join("teams", "equipe")))  # un id : teams/
+        with mock.patch.object(assemble, "TEAMS", self.tmp):
+            self.assertEqual(assemble.team_dir({"team": "bureau-vance"}), self.pack)  # un id : un profil de teams/
+            self.assertIsNone(assemble.team_dir({"team": "inconnue"}))
         self.assertEqual(assemble.team_dir({"team": self.pack}), self.pack)
         with mock.patch.dict(os.environ, {"HOME": self.tmp}):
             self.assertEqual(assemble.team_dir({"team": "~/bureau-vance"}), self.pack)
