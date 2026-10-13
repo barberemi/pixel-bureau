@@ -37,7 +37,7 @@ Le projet n'a pas de gestionnaire de paquets (ni `package.json`, ni `requirement
 
 | ID | Problem | Area | Severity |
 |----|---------|------|----------|
-| [TD-20261011-page-size-near-kronn-limit](tech-debt/TD-20261011-page-size-near-kronn-limit.md) | Page de démo à 961 621 octets pour une limite Kronn de 1 000 000 [src: file: tools/smoke.py:20] | Frontend | Medium |
+| [TD-20261011-page-size-near-kronn-limit](tech-debt/TD-20261011-page-size-near-kronn-limit.md) | **Résolu le 2026-10-13 (KT-28).** Page de démo à 850 778 octets pour une limite Kronn de 1 000 000 ; poids par bloc dans le smoke [src: file: tools/smoke.py:20] | Frontend | Medium |
 | [TD-20261011-test-install-tmpdir](tech-debt/TD-20261011-test-install-tmpdir.md) | **Résolu le 2026-10-12 (KT-42).** `test_own_layout_file` rouge quand `TMPDIR` est dans le dépôt ; `set -e` saute les smoke [src: file: tools/install.py:147] | Backend | Medium |
 | [TD-20261011-discussions-unpaginated](tech-debt/TD-20261011-discussions-unpaginated.md) | `/discussions?per_page=200` sans pagination dans 3 crons [src: file: workflows/office_snapshot.py:35] | Backend | Medium |
 | [TD-20261011-python-runtime-eol](tech-debt/TD-20261011-python-runtime-eol.md) | Python 3.9 en fin de vie comme minimum ; runtimes et venv non épinglés [src: file: README.md:34] | Infra | Medium |
@@ -75,7 +75,7 @@ Le projet n'a pas de gestionnaire de paquets (ni `package.json`, ni `requirement
 | Accessibility | findings | TD-20261011-a11y-canvas-mouse-only, TD-20261011-a11y-clickable-divs, TD-20261011-a11y-bosspages-modal-focus, TD-20261011-a11y-heading-structure, TD-20261011-a11y-reduced-motion-canvas, TD-20261011-a11y-skip-link-main-landmark, TD-20261011-a11y-toggle-state-unexposed (audit ciblé, voir [inconsistencies-accessibility](inconsistencies-accessibility.md)). Existant : canvas avec `aria-label` [src: file: page/office_template.html:30], équivalent textuel dans « Qui fait quoi » [src: file: page/src/72-whoboard.js:76], `prefers-reduced-motion` dans la CSS [src: file: page/src/styles.css:257] |
 | Observability | findings | TD-20261011-silent-partial-failures. Existant : fraîcheur des datasets et crons en échec affichés dans la page [src: file: page/src/33-freshness.js:89], erreurs des runs dans Kronn. Pas d'endpoint santé : N/A, pas de serveur dans ce dépôt (page statique hébergée par Kronn) |
 | Compliance | findings | TD-20261011-missing-license. Crédits des assets présents (OFL, LPC) [src: file: README.md:63] [src: file: README.md:65]. RGPD : aucune ressource externe chargée par la page (polices et images inlinées) [src: file: guide/developpement.md:48], seulement des liens ; les absences nommées viennent du planning interne de l'équipe [src: file: workflows/absences_snapshot.py:1] et restent sur le Kronn local |
-| Performance | findings | TD-20261011-page-size-near-kronn-limit (961 621 / 1 000 000 octets, mesuré avec `python3 tools/smoke.py`) |
+| Performance | findings | TD-20261011-page-size-near-kronn-limit (résolu : 850 778 / 1 000 000 octets, poids par bloc dans `python3 tools/smoke.py`) |
 | Documentation drift | scanned - nothing substantiable | Compteurs de `guide/developpement.md` et du README (13 workflows, 12 datasets) réalignés sur `tools/templates.py` et `tools/install.py` [src: file: tools/templates.py:24] [src: file: tools/install.py:27]. Comptes de tests de `docs/testing-quality.md` confirmés en relançant `tools/test.sh` |
 
 ## Coverage gaps

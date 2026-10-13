@@ -6,7 +6,7 @@ Déjà en place, non signalé : fond et meubles cuits une fois (`page/src/90-boo
 
 | ID | Problem | Area | Severity |
 |----|---------|------|----------|
-| [TD-20261011-page-size-near-kronn-limit](tech-debt/TD-20261011-page-size-near-kronn-limit.md) | Page démo de 961 621 octets pour une limite de 1 000 000 ; tout est inliné dans un seul HTML (`tools/smoke.py:20`) | Frontend (poids) | Medium |
+| [TD-20261011-page-size-near-kronn-limit](tech-debt/TD-20261011-page-size-near-kronn-limit.md) | **Résolu le 2026-10-13 (KT-28).** Page démo à 850 778 octets pour une limite de 1 000 000 ; poids par bloc dans le smoke (`tools/smoke.py:20`) | Frontend (poids) | Medium |
 | [TD-20261011-side-panel-rebuilt-every-second](tech-debt/TD-20261011-side-panel-rebuilt-every-second.md) | Panneau latéral vidé et reconstruit chaque seconde, une toile de portrait par personnage, sans signature (`page/src/50-panel.js:47`) | Frontend (DOM) | Low |
 | [TD-20261011-office-cron-defs-per-pass](tech-debt/TD-20261011-office-cron-defs-per-pass.md) | Un `GET /workflows/{id}` par cron toutes les 10 min pour lire la planification, sans cache (`workflows/office_snapshot.py:116`) | Backend (crons) | Low |
 | [TD-20261011-crons-rescan-run-history](tech-debt/TD-20261011-crons-rescan-run-history.md) | Crons horaires qui relisent tout l'historique des runs de la semaine par pages de 25, en séquentiel (`workflows/payroll_snapshot.py:37`, `workflows/duck_snapshot.py:120`) | Backend (crons) | Low |

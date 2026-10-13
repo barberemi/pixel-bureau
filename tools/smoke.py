@@ -37,6 +37,11 @@ def check(ok, msg):
         fails.append(msg)
 
 
+def weights(w):
+    """Poids de chaque bloc de la page (KT-28), du plus lourd au plus léger, en Ko et en part de la limite Kronn."""
+    print("     poids :", " · ".join(f"{k} {v / 1000:.0f} Ko ({v * 100 / LIMIT:.0f} %)" for k, v in sorted(w.items(), key=lambda x: -x[1]) if v))
+
+
 def static_checks(html, cfg=None):
     size = len(html.encode())
     check(size < LIMIT, f"taille {size} octets < {LIMIT}")
@@ -207,6 +212,7 @@ def main():
         os.makedirs(os.path.dirname(path), exist_ok=True)
         open(path, "w").write(html)
         print("     assemblé :", path)
+        weights(assemble.weights(cfg, demo=not a.empty))
     static_checks(html, cfg)
     if a.chrome or a.shot:
         w, h = (int(x) for x in a.size.split("x"))

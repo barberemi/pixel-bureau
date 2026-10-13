@@ -67,20 +67,34 @@ def _nl(s):
     return s if s.endswith("\n") else s + "\n"
 
 
-def page_html(cfg=None):
-    """Squelette + CSS + JS concaténés, avant le remplacement des marqueurs de données (__SPRITES__...).
+def page_parts(cfg=None):
+    """(css, js, polices) : le CSS compacté (polices comprises), le JS compacté, et les octets des polices en base64.
     cfg : pour les thèmes du pack d'équipe (défaut : ceux de page/src seulement)."""
-    html = open(p("page", "office_template.html")).read()
     # styles.css, pixel.css (habillage commun) puis les thèmes, qui l'emportent à spécificité égale ;
     # @@font:chemin@@ = police intégrée en base64 (la sandbox des pages n'accepte que font-src data:), chemin relatif
     # au dépôt, ou au pack pour un thème du pack
+    fonts = [0]
+
+    def embed(path):
+        b64 = base64.b64encode(open(path, "rb").read()).decode()
+        fonts[0] += len(b64)
+        return b64
+
     def font(css, base):
-        return re.sub(r"@@font:([\w./-]+)@@", lambda m: base64.b64encode(open(os.path.join(base, m.group(1)), "rb").read()).decode(), css)
+        return re.sub(r"@@font:([\w./-]+)@@", lambda m: embed(os.path.join(base, m.group(1))), css)
     pack = team_dir(cfg)
     files = [os.path.join(SRC, f) for f in ["styles.css", "pixel.css"]] + list(theme_paths(cfg).values())
     css = "".join(font(_nl(open(f).read()), pack if pack and f.startswith(pack + os.sep) else ROOT) for f in files)
     css = strip_css(css)  # KT-28 : sans commentaires ni indentation (tools/compact.py), les sources gardent les leurs
     js = strip_js("".join(_nl(open(os.path.join(SRC, f)).read()) for f in JS_FILES))
+    return css, js, fonts[0]
+
+
+def page_html(cfg=None):
+    """Squelette + CSS + JS concaténés, avant le remplacement des marqueurs de données (__SPRITES__...).
+    cfg : pour les thèmes du pack d'équipe (défaut : ceux de page/src seulement)."""
+    html = open(p("page", "office_template.html")).read()
+    css, js, _ = page_parts(cfg)
     for mark, body in (("/*__STYLES__*/", css), ("/*__SCRIPTS__*/", js)):
         assert html.count(mark + "\n") == 1, mark
         # le marqueur occupe sa propre ligne ; chaque fichier source se termine par un saut de ligne
@@ -383,6 +397,23 @@ def build(demo=True, cfg=None):
 
 
 ACTIONS_BY_MARK = {mark: key for key, mark in ACTIONS.values()}
+
+
+def weights(cfg=None, demo=True):
+    """Poids de la page par bloc, en octets (KT-28, affiché par tools/smoke.py) : JS et CSS compactés, polices en base64,
+    sprites fournis et calques LPC de l'éditeur, données de l'équipe (recettes, roster, plan, musique), instantanés de
+    démo ; le reste (squelette, config de la page, blocs d'action) par différence avec la page assemblée."""
+    cfg = config() if cfg is None else cfg
+    b = lambda s: len(s.encode())  # noqa: E731
+    css, js, fonts = page_parts(cfg)
+    w = {"JS": b(js), "CSS": b(css) - fonts, "polices": fonts,
+         "sprites et calques": b(json.dumps(sprites(cfg))) + b(open(p("sprites", "layers.json")).read()),
+         "équipe et plan": b(json.dumps(recipes(cfg), ensure_ascii=False, separators=(",", ":")))
+         + b(json.dumps({"people": roster(cfg), "guests": guests(cfg)}, ensure_ascii=False))
+         + b(open(p(layout_path(cfg))).read()) + b(json.dumps(music(cfg), ensure_ascii=False)),
+         "démo": b(open(p("data", "office_snapshot.json")).read()) + b(open(p("data", "team_snapshot.json")).read()) if demo else 0}
+    w["squelette et réglages"] = b(build(demo=demo, cfg=cfg)) - sum(w.values())
+    return w
 
 
 if __name__ == "__main__":

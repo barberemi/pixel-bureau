@@ -60,5 +60,21 @@ class CompactTest(unittest.TestCase):
         self.assertEqual(sorted(assemble.sprites(cfg)), sorted(k for k in json.load(open(os.path.join(ROOT, "sprites", "common.json"))) if k in used))
 
 
+    def test_weights_by_block_add_up_to_the_page(self):
+        """Poids par bloc (smoke) : chaque bloc compte, la somme fait la page assemblée, la page de démo reste sous 900 Ko."""
+        import smoke, contextlib, io
+        cfg = assemble.demo_config()
+        for demo in (True, False):
+            w = assemble.weights(cfg, demo=demo)
+            self.assertEqual(sum(w.values()), len(assemble.build(demo=demo, cfg=cfg).encode()), demo)
+            self.assertTrue(all(v >= 0 for v in w.values()), w)
+            self.assertEqual(bool(w["démo"]), demo)
+        self.assertGreater(w["polices"], 0)  # police pixel des thèmes, en base64
+        self.assertLess(sum(assemble.weights(cfg).values()), 900_000)  # KT-28 : marge sous la limite Kronn (1 000 000)
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            smoke.weights({"JS": 300_000, "CSS": 50_000, "démo": 0})
+        self.assertEqual(out.getvalue().strip(), "poids : JS 300 Ko (30 %) · CSS 50 Ko (5 %)")  # du plus lourd, sans bloc vide
+
+
 if __name__ == "__main__":
     unittest.main()
