@@ -428,3 +428,23 @@ test('fiche : ligne d\'état d\'une ligne (titre court, libellé complet au surv
   assert.match(run(`statusHtml({st:'work',label:'En cours : DM-1, DM-2',pill:'En cours sur 2 tickets'})`), /stt">En cours sur 2 tickets</);
   assert.doesNotMatch(run(`statusHtml({st:'off',label:'Rentré chez soi'})`), /st-facts|st-chips/);
 });
+
+test('plateau TV : seule la prod déplace l\'auteur et le boss ; une release ou un staging seuls (un test) ne déplacent personne', () => {
+  const q = load(), R = code => JSON.parse(q.run('JSON.stringify(' + code + ')'));
+  const at = h => `Date.parse('2026-10-01T00:00:00Z')+${h}*3600e3`;
+  const stg = `{status:'completed',conclusion:'success',start:'2026-10-01T08:00:00Z',end:'2026-10-01T08:15:00Z',url:'',project:'api',repo:'acme/front_api',by:'pambeesly'}`;
+  q.run(`TEAM_BASE={people:[],meps:[]};LIVE={deploys:{staging:{'api 2.4.0':${stg}},prod:{}}};setTeam(mergedTeam());`);
+  assert.equal(R(`mepPhase(TEAM.meps[0],${at(8.1)})`), 'staging');
+  assert.equal(R(`mepPhase(TEAM.meps[0],${at(9)})`), 'staged');
+  for (const h of [8.1, 9, 10.5]) {
+    assert.equal(R(`stageAt(${at(h)})`), null, `staging seul, ${h} h UTC`);
+    assert.notEqual(R(`stateAt(byKey.p_pam,${at(h)}).zone`), 'stage');
+    assert.notEqual(R(`stateAt(chars.find(c=>c.boss),${at(h)}).zone`), 'stageout');
+  }
+  // la prod part : l'auteur monte sur la scène, le boss vient devant le plateau
+  const prd = `{status:'in_progress',conclusion:null,start:'2026-10-01T09:30:00Z',end:null,url:'',project:'api',repo:'acme/front_api',by:'pambeesly'}`;
+  q.run(`LIVE={deploys:{staging:{'api 2.4.0':${stg}},prod:{'api 2.4.0':${prd}}}};setTeam(mergedTeam());`);
+  assert.equal(R(`stageAt(${at(9.2)})`), null); // validée sur staging, prod pas encore partie
+  assert.equal(R(`stageAt(${at(9.6)}).phase`), 'prod');
+  assert.deepEqual(R(`(s=>[s.st,s.zone])(stateAt(byKey.p_pam,${at(9.6)}))`), ['mep', 'stage']);
+});

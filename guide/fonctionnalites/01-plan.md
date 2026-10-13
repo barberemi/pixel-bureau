@@ -24,7 +24,7 @@ Un invité de passage entre par la porte, va saluer des collègues à leur burea
 - **Salle serveurs** : appel d'API. **Salle de réunion** : sous-workflows.
 - **Bureau du boss** : validations et questions qui t'attendent.
 - **Toilettes** : en panne (🚨 après 3 échecs d'affilée). Quand un run réussit juste après la panne, l'agent sort avec la bulle « ✅ Rétabli ! » et les agents au travail l'applaudissent (👏) pendant quelques secondes.
-- **Plateau TV** : mises en prod du jour (fermé le vendredi et le week-end).
+- **Plateau TV** : mises en prod du jour (fermé le vendredi et le week-end). Pendant le déploiement en prod, son auteur monte sur la scène et le boss vient suivre devant le plateau, puis tout le monde fête la mise en prod. Une release publiée ou un déploiement sur staging seul (un test, sans prod derrière) n'y amènent personne : ils restent dans le fil, sur l'écran du plateau et dans la fiche des mises en prod.
 - **Café, canapés** : run réussi récemment, ou rien à faire. La cafétéria a deux canapés de trois places, l'un en bas, l'autre en haut à droite près du comptoir : chacun prend une place libre, personne ne s'assoit sur un autre.
 
 Quand un ticket passe en Reopen dans Jira, Gandalf entre par la porte. Lui, celui qui a réouvert le ticket (souvent le testeur) et le développeur se retrouvent en salle de réunion : le développeur d'un côté de la table (« 😨 7089 »), le testeur et Gandalf en face, et Gandalf crie en grand « Vous ne passerez pas ! ». Trois minutes plus tard, il repart par la porte et chacun retourne à sa place. Sans héraut des reopens, le testeur va simplement le dire au développeur à sa place. La scène se rejoue à l'heure exacte du changement de statut.
@@ -35,7 +35,7 @@ Quand une mise en prod réussit, Yoda entre aussi par la porte. Il monte sur la 
 
 ![Le héraut félicite Andy sur le plateau TV](../img/prod-heraut.png)
 
-Une mise en prod d'un autre dépôt suivi peut être lancée par quelqu'un qui n'est ni dans l'équipe ni dans le sprint (une autre équipe, un ops). Il vient quand même : il entre par la porte quand le déploiement démarre, sous son login GitHub, le suit sur la scène du plateau TV, fête la mise en prod, puis repart. Dans le fil : « 🚀 bobvance met api 2.4.0 en prod ».
+Une mise en prod d'un autre dépôt suivi peut être lancée par quelqu'un qui n'est ni dans l'équipe ni dans le sprint (une autre équipe, un ops). Il vient quand même : il entre par la porte quand le déploiement en prod démarre, sous son login GitHub, le suit sur la scène du plateau TV, fête la mise en prod, puis repart. Dans le fil : « 🚀 bobvance met api 2.4.0 en prod ».
 
 ![Un visiteur de l'extérieur met api 2.4.0 en prod sur le plateau TV](../img/mep-visiteur.png)
 
