@@ -35,6 +35,10 @@ Quand une mise en prod réussit, Yoda entre aussi par la porte. Il monte sur la 
 
 ![Le héraut félicite Andy sur le plateau TV](../img/prod-heraut.png)
 
+Une mise en prod d'un autre dépôt suivi peut être lancée par quelqu'un qui n'est ni dans l'équipe ni dans le sprint (une autre équipe, un ops). Il vient quand même : il entre par la porte quand le déploiement démarre, sous son login GitHub, le suit sur la scène du plateau TV, fête la mise en prod, puis repart. Dans le fil : « 🚀 bobvance met api 2.4.0 en prod ».
+
+![Un visiteur de l'extérieur met api 2.4.0 en prod sur le plateau TV](../img/mep-visiteur.png)
+
 ![Creed sort de panne : « ✅ Rétabli ! » et les applaudissements des autres agents](../img/agent-retabli.png)
 
 Gandalf et Yoda viennent dans tous les bureaux, quelle que soit l'équipe (`team/guests.json`). Pour les retirer : `"common_guests": false` dans `bureau.config.json` ; pour en changer le nom, la réplique ou l'allure : un invité de même clé (`g_gandalf`, `g_yoda`) dans le roster de l'équipe ou dans la config.

@@ -384,10 +384,24 @@ test('MEP d\'un autre dépôt : celui qui a lancé le déploiement (login GitHub
   assert.equal(st.label, 'Met en prod api 2.4.0 : ' + R(`MEP_TXT.prod`)); // pas de « (null) » sans ticket
   q.run(`T=${T11};renderFeed();`);
   assert.ok(R(`FEED_EV.filter(e=>e.ty==='mep').map(e=>e.txt).join('|')`).includes('>Pam</a> met'));
-  // ni dans l'équipe ni dans le sprint : son login, sans personnage
-  q.run(`LIVE={deploys:{staging:{},prod:{'api 2.4.0':${dep('outsider-dev')}}}};TEAM=mergedTeam();`);
-  assert.equal(R(`mepChar(TEAM.meps[0])`), null);
-  assert.equal(R(`mepName(TEAM.meps[0])`), 'outsider-dev');
+});
+
+test('MEP lancée par un inconnu (ni roster ni sprint) : un visiteur entre le temps de la MEP et de la fête, puis repart', () => {
+  const q = load(), R = code => JSON.parse(q.run('JSON.stringify(' + code + ')'));
+  const dep = `{status:'completed',conclusion:'success',start:'2026-10-01T08:50:00Z',end:'2026-10-01T09:10:00Z',url:'https://x/r/9',project:'api',repo:'acme/front_api',by:'Outsider-Dev'}`;
+  q.run(`TEAM_BASE={people:[],meps:[]};LIVE={deploys:{staging:{},prod:{'api 2.4.0':${dep}}}};setTeam(mergedTeam());`);
+  const v = R(`(c=>c&&{key:c.key,name:c.name,guest:c.guest,on:c.on,sprite:c.sprite,person:c.person||null})(mepChar(TEAM.meps[0]))`);
+  assert.deepEqual(v, {key: 'g_mep_outsiderdev', name: 'Outsider-Dev', guest: true, on: 'mep', sprite: 'temp', person: null});
+  assert.equal(R(`mepName(TEAM.meps[0])`), 'Outsider-Dev');
+  const at = h => R(`stateAt(byKey.g_mep_outsiderdev,Date.parse('2026-10-01T00:00:00Z')+${h}*3600e3)`);
+  assert.equal(at(8.5).st, 'off'); // avant le déploiement (8h50 UTC) : pas encore là
+  assert.deepEqual([at(9).st, at(9).zone], ['mep', 'stage']); // pendant le déploiement, sur la scène
+  assert.deepEqual([at(9.2).st, at(9.2).zone], ['party', 'stage']); // fête dans les 10 min après la fin
+  assert.equal(at(10).st, 'gone'); // puis il repart
+  q.run(`setTeam(mergedTeam());`); // un rafraîchissement ne le duplique pas
+  assert.equal(R(`chars.filter(c=>c.on==='mep').length`), 1);
+  q.run(`T=Date.parse('2026-10-01T09:30:00Z');renderFeed();`);
+  assert.match(R(`FEED_EV.filter(e=>e.ty==='mep').map(e=>e.txt).join('|')`), /data-who="g_mep_outsiderdev"[^>]*>Outsider-Dev<\/a> met .*api 2\.4\.0/);
 });
 
 test('whoCards : titre sans « [Composant] », un rôle à titre court garde son détail en gris, liste complète en infobulle', () => {

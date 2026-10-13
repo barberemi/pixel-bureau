@@ -27,6 +27,10 @@ SHOTS = {
     "reopen-testeur": (1400, 1000, AT(10 + 51 / 60), "#cv", 1.5),
     # mise en prod d'Andy finie à 10h42 : le sage le félicite sur la scène du plateau TV, Michael au sax
     "prod-heraut": (1400, 1000, AT(10 + 43.5 / 60), "#cv", 1.5),
+    # MEP d'un autre dépôt lancée par quelqu'un hors de l'équipe et du sprint : son visiteur sur la scène du plateau TV
+    "mep-visiteur": (1400, 1000, AT(11) + "LIVE={deploys:{staging:{},prod:{'api 2.4.0':{status:'in_progress',conclusion:null,"
+                     "start:'2026-10-01T08:55:00Z',end:null,url:'',project:'api',repo:'acme/front_api',by:'bobvance'}}}};"
+                     "setTeam(mergedTeam());needTeleport=true;select('g_mep_bobvance');", "#cv", 1.5),
     # scènes d'équipe (37-scenes.js) : Gabe livre DM-6717 à Karen, Karen valide DM-6550 de Michael (le boss)
     "scene-livraison": (1400, 1000, AT(11 + 11 / 60), "#cv", 1.5),
     "scene-validation": (1400, 1000, AT(11 + 21 / 60), "#cv", 1.5),

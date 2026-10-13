@@ -70,7 +70,19 @@ function attachTeam(){
     }
     c.team=p;
   }
+  mepVisitors();
   applyNames();
+}
+// MEP lancée par quelqu'un qui n'est ni dans l'équipe ni dans le sprint : un visiteur, qui entre par la porte le temps
+// de la mise en prod et de sa fête (guestState, on: « mep »), sous son login GitHub, puis repart
+function mepVisitors(){
+  for(const m of TEAM.meps||[]){
+    if(!m.by||personChar(m.who,m.who_name)||ghChar(m.by))continue;
+    const key=mepKey(m.by);
+    if(byKey[key])continue;
+    const c=OUTSIDERS[key]||mkChar({key,sprite:'temp',name:m.by,role:'Met en prod (hors équipe)',wf:[],seat:null,guest:true,visitor:true,on:'mep'});
+    OUTSIDERS[key]=c; chars.push(c); byKey[key]=c;
+  }
 }
 const MEP_TXT={
   released:'release publiée',
@@ -93,8 +105,10 @@ function mepPhase(m,t){
 // début d'une MEP : sa release, sinon son premier déploiement (autre dépôt suivi, sans release connue)
 const mepStart=m=>m.released||(m.staging||m.prod||{}).start||null;
 // qui porte une MEP : l'assigné du ticket de sa release (dépôt principal), sinon qui a lancé le déploiement (login GitHub
-// du run, m.by) : un collègue du roster ou de passage (dans le sprint) ; null si personne de connu
-function mepChar(m){return personChar(m.who,m.who_name)||ghChar(m.by)||null;}
+// du run, m.by) : un collègue du roster ou de passage (dans le sprint), sinon le visiteur venu pour elle (mepVisitors)
+const mepKey=login=>'g_mep_'+nameKey(login).replace(/[^a-z0-9]/g,'');
+function byChar(login){return ghChar(login)||(login&&byKey[mepKey(login)])||null;}
+function mepChar(m){return personChar(m.who,m.who_name)||byChar(m.by);}
 function mepName(m){const c=mepChar(m);return c?c.name:String(m.who_name||'').split(' ')[0]||m.by||'';}
 function mepsAt(t){return ((TEAM&&TEAM.meps)||[]).map(m=>({m,phase:mepPhase(m,t)})).filter(x=>x.phase);}
 function stageAt(t){

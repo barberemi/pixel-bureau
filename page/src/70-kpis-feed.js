@@ -307,7 +307,7 @@ function renderFeed(){
     push(ms(m.released),`<span style="color:#7a5cc8">●</span> ${who} publie la release ${tag}${tk}`);
     if(m.staging&&m.staging.end)push(ms(m.staging.end),`<span style="color:#2e9e9b">●</span> ${tag} ${m.staging.conclusion==='success'?'validée sur staging':'échoue sur staging'}`);
     // qui a lancé le déploiement (login du run), s'il est connu ; sinon la version part en prod
-    if(m.prod)push(ms(m.prod.start),m.prod.by?`<span style="color:#7a5cc8">🚀</span> ${refWho(ghChar(m.prod.by),m.prod.by)} met ${tag} en prod`:`<span style="color:#7a5cc8">🚀</span> ${tag} part en prod`);
+    if(m.prod)push(ms(m.prod.start),m.prod.by?`<span style="color:#7a5cc8">🚀</span> ${refWho(byChar(m.prod.by),m.prod.by)} met ${tag} en prod`:`<span style="color:#7a5cc8">🚀</span> ${tag} part en prod`);
     if(m.prod&&m.prod.end)push(ms(m.prod.end),m.prod.conclusion==='success'?`<span style="color:var(--ok)">✓</span> ${tag} est en prod${tk}`:`<span style="color:var(--err)">✗</span> ${tag} échoue en prod`);
     }
   const created=TEAM?teamCreated(DAY0,T):[], createdKeys=new Set(created.map(x=>x.key)); // tickets créés aujourd'hui par l'équipe

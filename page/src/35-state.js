@@ -138,7 +138,21 @@ function guestVisit(c,t){
     :(h0+1)*60+r()*Math.max(0,(h1-h0-2)*60-dur); // une heure de marge à l'ouverture et à la fermeture
   return {s:d0+m0*60e3,e:d0+(m0+dur)*60e3,r};
 }
+// l'auteur d'une MEP en cours, sur la scène du plateau TV : il la suit, puis la fête
+function mepStageState(sg){
+  const what=sg.m.tag+(sg.m.ticket?' ('+sg.m.ticket+')':'');
+  return sg.phase==='done'?{st:'party',zone:'stage',human:true,label:'Fête la mise en prod '+what,bubble:'🎉'}
+    :{st:'mep',zone:'stage',human:true,label:'Met en prod '+what+' : '+MEP_TXT[sg.phase],bubble:'🚀'};
+}
+// visiteur d'une MEP (30-data.js, mepVisitors) : là le temps de sa mise en prod et de la fête, sinon dehors
+function mepVisitorState(c,t){
+  const sg=stageAt(t);
+  if(sg&&mepChar(sg.m)===c)return mepStageState(sg);
+  const mine=mepsAt(t).filter(x=>mepChar(x.m)===c);
+  return mine.length?{st:'gone',label:'Reparti après la mise en prod '+mine[mine.length-1].m.tag}:{st:'off',label:'Pas encore arrivé'};
+}
 function guestState(c,t){
+  if(c.on==='mep')return mepVisitorState(c,t);
   if(c.on==='reopen')return heraldState(c,t); // 37-scenes.js : le héraut des tickets réouverts
   if(c.on==='prod')return prodHeraldState(c,t); // 37-scenes.js : le héraut des mises en prod réussies
   const v=guestVisit(c,t);
@@ -253,19 +267,7 @@ function stateAt0(c,t){
     if(h<RHYTHM.office_hours[0]||h>=RHYTHM.office_hours[1])return {st:'off',label:'Rentré chez soi'};
     if(inDaily(t))return {st:'daily',zone:'daily',human:true,label:'Daily en cafétéria',bubble:c.roleKind==='sm'?'Daily':null};
     const sg=stageAt(t);
-    if(sg&&mepChar(sg.m)===c)return sg.phase==='done'?{
-      st:'party',
-      zone:'stage',
-      human:true,
-      label:'Fête la mise en prod '+sg.m.tag+(sg.m.ticket?' ('+sg.m.ticket+')':''),
-      bubble:'🎉'
-    }:{
-      st:'mep',
-      zone:'stage',
-      human:true,
-      label:'Met en prod '+sg.m.tag+(sg.m.ticket?' ('+sg.m.ticket+')':'')+' : '+MEP_TXT[sg.phase],
-      bubble:'🚀'
-    };
+    if(sg&&mepChar(sg.m)===c)return mepStageState(sg);
     {const cr=ceremonyAt(t);if(cr)return ceremonyState(c,cr);} // 37-scenes.js : planning, rétro en salle de réunion
     {const sc=teamScene(c,t);if(sc)return sc;} // 37-scenes.js : sprint, ticket livré, validé, réouvert
     {const pm=passionMoment(c,t);if(pm)return pm;} // 38-passions.js : volant, panier, sac de frappe
