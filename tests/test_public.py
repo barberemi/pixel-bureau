@@ -22,5 +22,28 @@ class PublicTreeTest(unittest.TestCase):
         self.assertIn("security/advisories/new", sec)  # signalement privé, jamais une issue publique
 
 
+    def test_license_and_credits(self):
+        """KT-29 : AGPL 3.0 à la racine ; chaque fichier LPC embarqué (sprites/lpc_used.json) a son calque dans
+        CREDITS.md, qui est à jour (python3 sprites/credits.py --check, quand le CSV du générateur est en cache)."""
+        import json
+        self.assertIn("GNU AFFERO GENERAL PUBLIC LICENSE", open(os.path.join(ROOT, "LICENSE")).read())
+        credits = open(os.path.join(ROOT, "CREDITS.md"), encoding="utf-8").read()
+        sys_path = os.path.join(ROOT, "sprites")
+        import sys
+        sys.path.insert(0, sys_path)
+        import credits as cr
+        used = json.load(open(os.path.join(sys_path, "lpc_used.json")))
+        self.assertGreater(len(used), 100)
+        missing = sorted({cr.asset(p) for p in used if f"| `{cr.asset(p)}` |" not in credits})
+        self.assertEqual(missing, [])
+        for s in ("Press Start 2P", "AGPL 3.0", "Planches fournies", "Personnages"):
+            self.assertIn(s, credits)
+        self.assertNotIn("à relever", credits)  # chaque planche fournie a ses calques (sprites/heralds.py)
+        for name in cr.heralds.RECIPES:
+            self.assertIn(f"`sprites/common/{name}/`, recette", credits)
+        if os.path.exists(cr.CSV):  # en local : CREDITS.md doit correspondre aux calques utilisés
+            self.assertEqual(cr.main(["--check"]), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

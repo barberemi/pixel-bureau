@@ -12,13 +12,17 @@ metadata:
       status: Confirmed by user
       reviewer: Kronn audit validation card
       note: "Confirmed through an audit validation card."
+    - date: 2026-10-13
+      status: Resolved
+      reviewer: mainteneur
+      note: "KT-29 : LICENSE AGPL 3.0 (texte de gnu.org, identique à celui de Kronn) ; CREDITS.md généré par sprites/credits.py à partir des fichiers LPC embarqués (sprites/lpc_used.json) et du CREDITS.csv du générateur ; police Press Start 2P (OFL 1.1)."
 ---
 
 # TD-20261011-missing-license
 
 - **Area**: Other
 - **Severity**: Medium
-- **Status**: Confirmed by user
+- **Status**: Resolved (2026-10-13, KT-29)
 - **Effort**: S (< 1h)
 - **Blast radius**: local (1-2 files)
 

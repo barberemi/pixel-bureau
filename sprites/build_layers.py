@@ -9,6 +9,7 @@ Sortie : layers.json {catalog, layers{id: {m, src}}}.
 """
 import base64, io, json, os
 from PIL import Image
+import build_sprites
 from build_sprites import SKIN, frame, layer
 
 ANIMS = ["walk", "idle", "emote"]
@@ -130,6 +131,8 @@ def main():
 
     out = {"catalog": cat, "skin": SKIN, "layers": layers}
     json.dump(out, open(os.path.join(HERE, "layers.json"), "w"), separators=(",", ":"))
+    # les fichiers LPC embarqués dans la page (layers.json) : crédités dans CREDITS.md par credits.py
+    json.dump(sorted(build_sprites.USED), open(os.path.join(HERE, "lpc_used.json"), "w"), indent=0)
     tot = sum(sizes.values())
     print(len(layers), "calques,", tot, "octets en data URI")
     for k, v in sorted(sizes.items(), key=lambda x: -x[1])[:8]:

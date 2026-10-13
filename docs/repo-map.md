@@ -37,7 +37,7 @@ kronn-bureau/
 ├── layouts/                   # plans de bureau bureau-layout/1 : open-space (type), exemple-startup
 ├── team/                      # defaults.json (valeurs proposées à l'installation), guests.json (invités communs)
 ├── teams/                     # (absent du dépôt) profils d'équipe locaux ; une équipe vit dans son pack (tests/fixtures/pack-exemple)
-├── sprites/                   # build_sprites.py, build_layers.py, cast.json, layers.json, common/ (Gandalf, Yoda), common.json
+├── sprites/                   # build_sprites.py, build_layers.py, credits.py (CREDITS.md), heralds.py (recettes des hérauts), cast.json, layers.json, lpc_used.json, common/ (Gandalf, Yoda), common.json
 ├── data/                      # instantanés de démo (équipe fictive) : aperçu local, captures, tests
 ├── guide/                     # doc HUMAINE (ne pas réécrire) : developpement.md, fonctionnalites/NN-*.md, img/, exemples/
 ├── docs/                      # doc pour agents (ce dossier)
@@ -63,7 +63,8 @@ Sources : [src: file: guide/developpement.md:5] [src: file: .gitignore:2].
 | Fichier | Généré par |
 |---|---|
 | `dist/office.html` (et tout `dist/`) | `tools/assemble.py` [src: file: tools/assemble.py:317] ; `tools/shots.py` y écrit aussi ses variantes `office-*.html` [src: file: tools/shots.py:184] ; `tools/plan.py preview` y écrit `dist/plan.png` [src: file: guide/developpement.md:99] |
-| `sprites/layers.json` | `sprites/build_layers.py` [src: file: sprites/build_layers.py:132] |
+| `sprites/layers.json`, `sprites/lpc_used.json` | `sprites/build_layers.py` [src: file: sprites/build_layers.py:132] |
+| `CREDITS.md` | `sprites/credits.py` (fichiers LPC de `lpc_used.json` croisés avec le `CREDITS.csv` du générateur) [src: file: sprites/credits.py:1] |
 | `sprites/common.json`, `teams/<équipe>/sprites.json`, `sprites/sprites.json` (local), `sprites/cast_preview.png` (local) | `sprites/build_sprites.py` [src: file: sprites/build_sprites.py:193] [src: file: sprites/build_sprites.py:196] |
 | `sprites/lpc_cache/` | cache des téléchargements LPC de `build_sprites.py`, non versionné [src: file: .gitignore:9] |
 | `guide/img/*.png` | `tools/shots.py` (ne commiter que les captures qui changent vraiment) [src: file: tools/shots.py:1] |

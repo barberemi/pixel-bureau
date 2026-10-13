@@ -12,18 +12,23 @@ BASE = "https://raw.githubusercontent.com/LiberatedPixelCup/Universal-LPC-Sprite
 CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lpc_cache")
 os.makedirs(CACHE, exist_ok=True)
 ANIMS = ["walk", "idle", "emote", "hurt"]
+USED = set()  # fichiers LPC réellement lus (chemins du générateur) : leurs auteurs vont dans CREDITS.md (credits.py)
 
 
 def fetch(path):
     local = os.path.join(CACHE, path.replace("/", "__"))
     if os.path.exists(local):
-        return Image.open(local).convert("RGBA") if os.path.getsize(local) else None
+        if not os.path.getsize(local):
+            return None
+        USED.add(path)
+        return Image.open(local).convert("RGBA")
     try:
         data = urllib.request.urlopen(f"{BASE}/{path}", timeout=20).read()
     except Exception:
         open(local, "wb").close()
         return None
     open(local, "wb").write(data)
+    USED.add(path)
     return Image.open(io.BytesIO(data)).convert("RGBA")
 
 
