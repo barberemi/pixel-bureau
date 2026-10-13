@@ -39,7 +39,7 @@ VER = re.compile(r"(\d+\.\d+\.\d+)")
 # Déploiements staging/prod : derniers runs des workflows de déploiement GitHub Actions, relus à chaque passage. La
 # requête est conditionnelle (If-None-Match) : tant que rien ne bouge, GitHub répond 304 sans la compter dans la limite
 # d'appels. Les runs et leur ETag sont gardés hors du dépôt, puis republiés tels quels sur un 304 ou une erreur.
-DEPLOY_CACHE = _os.path.join(_os.path.expanduser("~"), ".cache", "kronn-bureau", "deploys.json")
+DEPLOY_CACHE = _os.path.join(_os.path.expanduser("~"), ".cache", "pixel-bureau", "deploys.json")
 
 
 def targets():

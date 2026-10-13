@@ -6,7 +6,7 @@ from _lib import API, CFG, TZ, ACTIVE, dumps, get, is_bureau, is_bureau_disc, ru
 
 now = datetime.now(TZ)
 PURGE_HOURS = (7, 13)  # heures de Paris du nettoyage des vieux runs (premier passage de l'heure)
-PURGE_LOG = _os.path.join(_os.path.expanduser("~"), ".cache", "kronn-bureau", "purge.json")
+PURGE_LOG = _os.path.join(_os.path.expanduser("~"), ".cache", "pixel-bureau", "purge.json")
 day_start = now.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 since = day_start.isoformat().replace("+00:00", "Z")
 

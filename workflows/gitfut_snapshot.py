@@ -6,7 +6,7 @@ Sortie (stdout) : {generated_at, cards{clé: {login, img, desc}}, posters{page: 
   pages de la Wikipédia anglaise, qui les héberge), miniature JPEG ~160 px en data URI, récupérées une fois par jour avec le même cache.
 - img : la carte découpée dans l'image de partage gitfut (<login>/opengraph-image, 1200x630, carte à gauche), en JPEG
   data URI ; le fond est retiré par la page. desc : la description de la page (« 79 OVR CDM, Mezzala »).
-- Récupérée une fois par jour (cache ~/.cache/kronn-bureau/gitfut/<login>.json) : le cron tourne toutes les heures.
+- Récupérée une fois par jour (cache ~/.cache/pixel-bureau/gitfut/<login>.json) : le cron tourne toutes les heures.
 - Images réduites par jpeg() du socle (Pillow, sinon sips). Si gitfut ne répond pas : la personne est sautée.
 """
 import base64, html, json, os, re, shutil, tempfile, urllib.parse, urllib.request
@@ -14,8 +14,8 @@ from datetime import datetime
 from _lib import CFG, TZ, dumps, jpeg
 
 BASE = (CFG.get("gitfut_base") or "https://gitfut.com").rstrip("/")
-CACHE = os.path.expanduser("~/.cache/kronn-bureau/gitfut")
-UA = {"User-Agent": "kronn-bureau (carte GitFut de la fiche)"}
+CACHE = os.path.expanduser("~/.cache/pixel-bureau/gitfut")
+UA = {"User-Agent": "pixel-bureau (carte GitFut de la fiche)"}
 
 
 def fetch(url):

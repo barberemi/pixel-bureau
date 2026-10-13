@@ -542,7 +542,7 @@ print(json.dumps(d.get(key, [])))
         page = lambda pid, title: {"id": pid, "slug": pid, "title": title, "current_revision_id": "r1", "data_revision": 3,
                                    "last_published_at": iso(30), "updated_at": iso(90), "datasets": [], "revision": {"html": "<p>x</p>"}}
         fake.pages = {"pa": page("pa", "Veille techno"), "pb": page("pb", "Core Web Vitals")}
-        cache = os.path.join(self.tmp, ".cache", "kronn-bureau", "thumbs")
+        cache = os.path.join(self.tmp, ".cache", "pixel-bureau", "thumbs")
         os.makedirs(cache)
         img = "data:image/jpeg;base64," + "A" * (img_kb * 1024)
         for pid, key in (("pa", "r1:3"), ("pb", "r0:1"), ("old", "r1:1")):  # pb : miniature périmée ; old : page retirée de la liste
@@ -571,7 +571,7 @@ print(json.dumps(d.get(key, [])))
     def test_gitfut_cache_of_the_day_bad_login_and_unreachable_site(self):
         from datetime import datetime
         from zoneinfo import ZoneInfo
-        cache = os.path.join(self.tmp, ".cache", "kronn-bureau", "gitfut")
+        cache = os.path.join(self.tmp, ".cache", "pixel-bureau", "gitfut")
         os.makedirs(cache)
         today = NOW.astimezone(ZoneInfo("Europe/Paris")).strftime("%Y-%m-%d")
         kept = {"login": "pam", "img": "data:image/jpeg;base64,QUJD", "desc": "Pam scouted on GitFut: 80 OVR ST."}

@@ -2,7 +2,7 @@
 
 Sortie (stdout) : {generated_at, pages[{id, title, updated, img}]}, dans l'ordre de boss_pages.
 - img : capture JPEG 320x200 en data URI, ou null. Refaite seulement quand la page change (révision du HTML ou des
-  données), sinon reprise du cache ~/.cache/kronn-bureau/thumbs/<id>.json.
+  données), sinon reprise du cache ~/.cache/pixel-bureau/thumbs/<id>.json.
 - Capture : le HTML de la page et ses datasets dans un fichier local (window.KronnPageData, comme dans Kronn),
   photographié par Chrome headless, puis réduit par jpeg() du socle (Pillow, sinon sips). Sans Chrome : cartes sans image.
 - Une page supprimée ou illisible est sautée. Sortie bornée sous 90 Ko (les images en trop sont retirées).
@@ -11,7 +11,7 @@ import base64, glob, json, os, shutil, signal, subprocess, tempfile, time
 from datetime import datetime
 from _lib import CFG, TZ, dumps, get, jpeg
 
-CACHE = os.path.expanduser("~/.cache/kronn-bureau/thumbs")
+CACHE = os.path.expanduser("~/.cache/pixel-bureau/thumbs")
 CHROMES = ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
            "/Applications/Chromium.app/Contents/MacOS/Chromium", "google-chrome", "chromium", "chromium-browser")
 W, H, MAX_OUT = 1280, 800, 90_000

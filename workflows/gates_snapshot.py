@@ -20,7 +20,7 @@ from _lib import get, is_bureau, is_bureau_disc
 
 # définitions complètes en cache 10 min (la liste n'a pas de date de modification) : sans cache, un GET par
 # workflow actif chaque minute. Fichier hors du dépôt ; illisible ou absent : relecture de l'API.
-CACHE = _os.path.join(_os.path.expanduser("~"), ".cache", "kronn-bureau", "workflow_defs.json")
+CACHE = _os.path.join(_os.path.expanduser("~"), ".cache", "pixel-bureau", "workflow_defs.json")
 CACHE_TTL = 600
 try:
     _cache = json.load(open(CACHE))

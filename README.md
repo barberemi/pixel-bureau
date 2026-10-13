@@ -43,7 +43,7 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 macOS ou Linux (Windows n'est pas testé). Pour développer : Node 20 ou plus (tests) et la CLI `claude` (plan depuis un croquis en local).
 
 ```sh
-git clone https://github.com/barberemi/kronn-bureau.git && cd kronn-bureau
+git clone https://github.com/barberemi/pixel-bureau.git && cd pixel-bureau
 python3 tools/install.py --dry-run   # voir ce qui serait créé
 python3 tools/install.py             # installation interactive, relançable sans doublon
 ```

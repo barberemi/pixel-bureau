@@ -16,5 +16,6 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- Le dépôt public s'appelle `pixel-bureau` ; le dossier de cache des crons devient `~/.cache/pixel-bureau` (reconstruit tout seul).
 - Seul le déploiement en prod amène l'auteur et le boss au plateau TV ; une release ou un staging seuls ne déplacent personne.
 - Le dépôt ne livre plus que le thème Classique : les autres viennent des packs, et le bouton 🎨 n'apparaît que s'il y a un autre thème.

@@ -38,7 +38,7 @@ Le nombre de GET par passage croît avec le volume de runs de la semaine (enviro
 - `workflows/_lib.py:27-30`
 
 ## Suggested direction
-Garder hors du dépôt (comme `~/.cache/kronn-bureau/purge.json`, `workflows/office_snapshot.py:9`) les agrégats des jours clos et le trophée de la semaine passée, ne relire que les runs du jour ; monter `limit` à la taille maximale acceptée par l'API.
+Garder hors du dépôt (comme `~/.cache/pixel-bureau/purge.json`, `workflows/office_snapshot.py:9`) les agrégats des jours clos et le trophée de la semaine passée, ne relire que les runs du jour ; monter `limit` à la taille maximale acceptée par l'API.
 
 ## Next step
 `create ticket`

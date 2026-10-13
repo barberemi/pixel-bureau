@@ -12,7 +12,7 @@ Live Page Kronn autonome : un seul fichier HTML (`dist/office.html`, moins de 1 
 ## Key folders
 
 ```
-kronn-bureau/
+pixel-bureau/
 ├── page/                      # sources de la page (seul endroit à éditer pour la page)
 │   ├── office_template.html   # squelette : canvas, panneau, blocs kronn-action, marqueurs /*__STYLES__*/ et /*__SCRIPTS__*/
 │   ├── fonts/                 # PressStart2P (woff2 + licence OFL), intégrée en base64 à l'assemblage

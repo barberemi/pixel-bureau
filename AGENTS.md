@@ -1,4 +1,4 @@
-# Le Bureau (kronn-bureau) : Live Page Kronn en pixel art, HTML/CSS/JS vanilla et crons Python 3
+# Le Bureau (pixel-bureau) : Live Page Kronn en pixel art, HTML/CSS/JS vanilla et crons Python 3
 
 Working language: see `docs/AGENTS.md`.
 

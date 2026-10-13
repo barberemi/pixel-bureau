@@ -97,7 +97,7 @@ python3 tools/theme.py check ~/Sites/bureau-dunder-mifflin/themes/theme-*.css
 .venv/bin/python tools/smoke.py --team ~/Sites/bureau-dunder-mifflin --chrome   # page dans dist/office_team.html
 ```
 
-Le pack d'exemple apporte la même vérification en CI GitHub (`.github/workflows/pack.yml`, copiée avec lui) : sur chaque PR et chaque push sur `main`, elle clone le Bureau à côté du pack et lance ces trois contrôles. Tant que le dépôt du Bureau est privé, elle a besoin d'un secret `BUREAU_TOKEN` dans le dépôt du pack : un jeton GitHub fine-grained, droit « Contents: read » sur `barberemi/kronn-bureau`.
+Le pack d'exemple apporte la même vérification en CI GitHub (`.github/workflows/pack.yml`, copiée avec lui) : sur chaque PR et chaque push sur `main`, elle clone le Bureau à côté du pack et lance ces trois contrôles.
 
 ## 8. Installer et partager
 
@@ -105,7 +105,7 @@ Pousse le pack dans un dépôt privé de ton organisation. Chaque personne qui v
 
 ```sh
 git clone git@github.com:dunder-mifflin/bureau-dunder-mifflin.git ~/Sites/bureau-dunder-mifflin
-git clone https://github.com/barberemi/kronn-bureau.git && cd kronn-bureau
+git clone https://github.com/barberemi/pixel-bureau.git && cd pixel-bureau
 python3 tools/install.py   # « Ton équipe » : Un pack d'équipe, puis ~/Sites/bureau-dunder-mifflin
 ```
 

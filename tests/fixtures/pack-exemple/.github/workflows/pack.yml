@@ -1,8 +1,6 @@
 # Validation du pack d'équipe par les outils du Bureau, sur chaque PR et chaque push sur main (KT-61) : ses plans
 # (tools/plan.py check), les contrastes de ses thèmes (tools/theme.py check), puis la page assemblée avec cette équipe,
 # contrôlée et chargée dans Chrome (tools/smoke.py --team).
-# Tant que kronn-bureau est privé : secret BUREAU_TOKEN du pack, jeton GitHub fine-grained « Contents: read » sur
-# barberemi/kronn-bureau.
 name: Pack
 
 on:
@@ -25,9 +23,8 @@ jobs:
 
       - uses: actions/checkout@v7
         with:
-          repository: barberemi/kronn-bureau
+          repository: barberemi/pixel-bureau
           path: bureau
-          token: ${{ secrets.BUREAU_TOKEN || github.token }}
 
       - uses: actions/setup-node@v7
         with:

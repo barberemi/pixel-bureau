@@ -2,7 +2,7 @@
 <!-- kronn:spec="https://github.com/DocRoms/Kronn/blob/main/docs/conventions/agents-md-format-v1.md" local="docs/conventions/agents-md-format-v1.md" -->
 # AI agent context: Entry point
 
-**Project:** Le Bureau (kronn-bureau) : Live Page Kronn en pixel art (HTML/CSS/JS vanilla assemblé en un seul fichier) alimentée par des crons Kronn à 0 token (scripts Python 3 de `workflows/`).
+**Project:** Le Bureau (pixel-bureau) : Live Page Kronn en pixel art (HTML/CSS/JS vanilla assemblé en un seul fichier) alimentée par des crons Kronn à 0 token (scripts Python 3 de `workflows/`).
 
 ## Project parameters
 

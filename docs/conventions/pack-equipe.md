@@ -23,7 +23,7 @@ Un pack introuvable (pas de `team.json`) est une erreur, jamais une page sans so
 | `sprites/` et `sprites.json` | planches fournies telles quelles ; `sprites.json` se fabrique par `python3 sprites/build_sprites.py <pack>` | non |
 | `music/music.json` | morceau de chaque personne (carte « Sa musique »), pochette en data URI à côté | non |
 | `layouts/*.json` | plans du bureau (`bureau-layout/1`), proposés par l'installateur avec ceux du dépôt | non |
-| `.github/workflows/pack.yml` | CI du pack (modèle dans le pack d'exemple) : `tools/plan.py check` sur `layouts/*.json`, `tools/theme.py check` sur `themes/theme-*.css`, puis `tools/smoke.py --team <pack> --chrome` ; clone `barberemi/kronn-bureau` avec le secret `BUREAU_TOKEN` tant qu'il est privé | non |
+| `.github/workflows/pack.yml` | CI du pack (modèle dans le pack d'exemple) : `tools/plan.py check` sur `layouts/*.json`, `tools/theme.py check` sur `themes/theme-*.css`, puis `tools/smoke.py --team <pack> --chrome` ; clone `barberemi/pixel-bureau` (public, sans jeton) | non |
 | `themes/theme-<id>.css` | thèmes de page : première ligne `/* @nom: Nom */`, règles sous `:root[data-skin="<id>"]` ; remplace un thème de même id ; polices par `@@font:fonts/<fichier>.woff2@@`, chemin relatif au pack | non |
 
 Un exemple complet et fictif est dans `tests/fixtures/pack-exemple/`, testé par `tests/test_pack.py` et `tests/test_install.py`. Le pas-à-pas pour les humains : `guide/equipe.md`.
