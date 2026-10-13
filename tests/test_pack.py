@@ -87,6 +87,32 @@ class PackTest(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout[-800:] + r.stderr[-800:])
         self.assertIn("office_team.html", r.stdout)
 
+    def test_demo_reassigned_to_the_pack_team(self):
+        """Démo d'un pack (smoke.py et shots.py --team) : les tickets de la démo vont à son équipe, boss au boss, même métier
+        ensemble ; sans pack, l'instantané de démo est inchangé."""
+        with open(os.path.join(ROOT, "data", "team_snapshot.json")) as f:
+            demo = f.read()
+        self.assertEqual(assemble.demo_team(assemble.demo_config()), demo)
+        text = assemble.demo_team(smoke.team_config(self.pack))
+        team = json.loads(text)
+        names = [p["name"] for p in team["people"]]
+        self.assertIn("Bob Vance", names)  # Michael Scott, le boss de la démo
+        self.assertIn("Lynn Carter", names)  # premier développeur de la démo (Darryl Philbin)
+        self.assertNotIn("Michael Scott", text)
+        self.assertNotIn("Karen Filippelli", text)  # la testeuse devient Ozzie, le testeur
+        self.assertIn("Ozzie Park", text)
+        self.assertIn("Pam Beesly", names)  # trois personnes dans le pack : le reste de la démo reste de passage
+
+    def test_shots_team_option(self):
+        """shots.py --team : les captures par défaut ne visent aucune personne ni aucun invité de la démo (les agents, eux,
+        restent ceux de la démo), et prennent le thème du pack."""
+        import shots
+        for name in shots.TEAM_SHOTS:
+            js = shots.SHOTS[name][2]
+            self.assertNotRegex(js, r"\b[pg]_[a-z]+", name)
+        self.assertIn("applySkin((CFG.ui||{}).skin);", shots.team_js(shots.SHOTS["plan"][2]))
+        self.assertTrue(shots.build_page(smoke.team_config(self.pack), "team").endswith("office-team.html"))
+
     def test_example_ci_uses_existing_tools(self):
         """La CI d'exemple d'un pack (.github/workflows/pack.yml, copiée avec le pack) appelle des outils qui existent."""
         ci = open(os.path.join(PACK, ".github", "workflows", "pack.yml")).read()

@@ -2,16 +2,20 @@
 
   .venv/bin/python tools/shots.py            # toutes les captures
   .venv/bin/python tools/shots.py plan tv    # seulement celles-ci
+  .venv/bin/python tools/shots.py --team ~/Sites/bureau-monequipe [noms]   # la démo avec un pack, dans <pack>/guide/img
+
+Avec --team : roster, avatars, plan et thème du pack, la démo réattribuée à son équipe (assemble.demo_team), le boss
+= la première personne du roster ; seulement les captures de TEAM_SHOTS par défaut (les autres visent la démo).
 
 Chaque capture : page rechargée, mise en scène en JS (heure, sélection, mode), puis rognée sur un élément.
 Démo du jeudi 1er octobre, plan à 11h sauf mention contraire. websocket-client requis (comme smoke.py --chrome).
 """
-import base64, contextlib, json, os, shutil, subprocess, sys, tempfile, time, urllib.request
+import argparse, base64, contextlib, json, os, shutil, subprocess, sys, tempfile, time, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import assemble  # noqa: E402
-from smoke import CHROME, CHROME_ARGS, TAB_WAIT, free_port, wait_tab  # noqa: E402
+from smoke import CHROME, CHROME_ARGS, TAB_WAIT, free_port, team_config, wait_tab  # noqa: E402
 
 OUT = os.path.join(ROOT, "guide", "img")
 PORT = 9335
@@ -198,12 +202,20 @@ SHOTS = {
     # brouillon tiré de guide/img/croquis.png par « python3 tools/plan.py from-image » (premier tour, sans retouche)
     "croquis-brouillon": (1400, 1000, AT(11), "#cv", 1.5, "guide/exemples/plan-croquis.json"),
 }
+# captures qui ne visent aucun personnage de la démo : valables avec n'importe quelle équipe (--team)
+TEAM_SHOTS = ["plan", "qui-fait-quoi", "fil", "recap", "kanban", "mep", "calendrier", "fiche-agent", "scene-retro",
+              "tv", "tv-agents", "standup"]
+
+
+def team_js(js):
+    """Mise en scène d'une capture pour un pack : le thème de l'équipe (ui.skin de ses réglages) au lieu du Classique."""
+    return js.replace("applySkin('classique');", "applySkin((CFG.ui||{}).skin);")
 
 
 def build_page(cfg=None, variant=None):
     """Page de démo assemblée dans dist/ (cfg : config d'installation, défaut : l'installation de démonstration ;
     variant : nom de fichier distinct, pour garder plusieurs pages à la fois)."""
-    path = os.path.join(ROOT, "dist", "office.html" if not variant else "office-" + os.path.basename(variant).replace(".json", ".html"))
+    path = os.path.join(ROOT, "dist", "office.html" if not variant else "office-" + os.path.splitext(os.path.basename(variant))[0] + ".html")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
         f.write(assemble.build(demo=True, cfg=assemble.demo_config() if cfg is None else cfg))
@@ -266,23 +278,30 @@ def capture(call, page, w, h, js, sel, scale=1):
     return base64.b64decode(shot["data"])
 
 
-def main(names):
-    names = names or list(SHOTS)
-    os.makedirs(OUT, exist_ok=True)
-    pages = {None: build_page()}
+def main(argv):
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("names", nargs="*", help="captures à refaire (défaut : toutes, ou TEAM_SHOTS avec --team)")
+    ap.add_argument("--team", help="la démo avec ce pack d'équipe (chemin) ou ce profil de teams/")
+    ap.add_argument("--out", help="dossier des PNG (défaut : guide/img, ou <pack>/guide/img avec --team)")
+    a = ap.parse_args(argv)
+    cfg = team_config(a.team) if a.team else None
+    names = a.names or (TEAM_SHOTS if a.team else list(SHOTS))
+    out = a.out or (os.path.join(assemble.team_dir(cfg), "guide", "img") if a.team else OUT)
+    os.makedirs(out, exist_ok=True)
+    pages = {None: build_page(cfg, "team") if a.team else build_page()}
     with chrome() as call:
         for name in names:
             w, h, js, sel, *rest = SHOTS[name]
             scale, layout = (rest + [1, None][len(rest):])[:2]
             if layout not in pages:  # même page de démo, sur un autre plan
-                pages[layout] = build_page({**assemble.demo_config(), "layout": layout}, layout)
-            png = capture(call, pages[layout], w, h, js, sel, scale)
+                pages[layout] = build_page({**(cfg or assemble.demo_config()), "layout": layout}, layout)
+            png = capture(call, pages[layout], w, h, team_js(js) if a.team else js, sel, scale)
             if isinstance(png, str):
                 print(f"✗ {name} : {png}")
                 continue
-            with open(os.path.join(OUT, name + ".png"), "wb") as f:
+            with open(os.path.join(out, name + ".png"), "wb") as f:
                 f.write(png)
-            print(f"✓ guide/img/{name}.png")
+            print(f"✓ {os.path.relpath(os.path.join(out, name + '.png'))}")
 
 
 if __name__ == "__main__":
