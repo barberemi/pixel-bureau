@@ -56,5 +56,21 @@ class GuideRuleTest(unittest.TestCase):
         self.assertEqual(self.rule()[0], 0)
 
 
+
+class RefsWorkflowTest(unittest.TestCase):
+    """.github/workflows/visual-refs.yml : après son commit, le run « Tests » de la PR créé par le push du robot (en
+    attente d'approbation, il ne tournerait jamais) est supprimé ; les tests relancés par workflow_dispatch restent."""
+
+    def test_awaiting_approval_run_is_deleted(self):
+        wf = open(os.path.join(ROOT, ".github", "workflows", "visual-refs.yml")).read()
+        self.assertIn('echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"', wf)  # seulement si un commit a été poussé
+        step = wf[wf.index("- name: Supprimer le run en attente d'approbation"):]
+        self.assertIn("if: steps.commit.outputs.sha != ''", step)
+        self.assertIn("head_sha=$SHA&event=pull_request", step)  # jamais le run workflow_dispatch des tests relancés
+        self.assertIn('select(.conclusion == "action_required" or .status == "waiting")', step)
+        self.assertIn("gh api -X DELETE", step)
+        self.assertIn("actions: write", wf)
+
+
 if __name__ == "__main__":
     unittest.main()

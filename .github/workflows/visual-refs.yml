@@ -1,6 +1,7 @@
 # Références visuelles (KT-57) : refaites par la CI (Linux) sur la branche d'une PR quand on y pose le label
 # « références visuelles » (changement d'affichage voulu, ou Chrome mis à jour). Le commit est poussé sur la branche,
-# le label retiré, puis les tests relancés (un push du jeton d'Actions ne déclenche pas les workflows de la PR).
+# le label retiré, puis les tests relancés par workflow_dispatch. Le push du robot crée aussi un run « Tests » de la PR
+# qui attend une approbation (« awaiting approval ») et ne tournera jamais : il est supprimé, les tests relancés suffisent.
 name: Références visuelles
 
 on:
@@ -45,12 +46,14 @@ jobs:
           BUREAU_CHROME_ARGS: --no-sandbox
 
       - name: Commit sur la branche de la PR
+        id: commit
         run: |
           git add tests/visual
           if git diff --cached --quiet; then echo "Références inchangées"; exit 0; fi
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -m "test(visuel): références visuelles refaites par la CI" -m "Label « références visuelles » sur la PR #${{ github.event.pull_request.number }}."
           git push
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Retirer le label et relancer les tests
         if: always()
@@ -59,3 +62,22 @@ jobs:
         run: |
           gh pr edit ${{ github.event.pull_request.number }} --remove-label "références visuelles" || true
           gh workflow run tests.yml --ref "${{ github.head_ref }}" || echo "Tests à relancer à la main (le workflow Tests doit être sur main avec workflow_dispatch)"
+
+      # le run « Tests » de la PR que crée le push du robot attend une approbation sans fin : il est supprimé (il apparaît
+      # quelques secondes après le push, d'où les tentatives)
+      - name: Supprimer le run en attente d'approbation
+        if: steps.commit.outputs.sha != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          for i in 1 2 3 4 5 6; do
+            ids=$(gh api "repos/${{ github.repository }}/actions/runs?head_sha=$SHA&event=pull_request" \
+              --jq '.workflow_runs[] | select(.conclusion == "action_required" or .status == "waiting") | .id')
+            if [ -n "$ids" ]; then
+              for id in $ids; do gh api -X DELETE "repos/${{ github.repository }}/actions/runs/$id" && echo "run $id supprimé"; done
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "aucun run en attente d'approbation"
