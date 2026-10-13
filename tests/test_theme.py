@@ -1,82 +1,58 @@
-"""Thèmes d'interface (page/src/theme-<id>.css) : chacun a son nom (« /* @nom: … */ »), ses variables de couleur, des
-contrastes WCAG suffisants (texte >= 4,5:1 sur ses fonds, blanc >= 4,5:1 sur ses aplats) ; polices intégrées."""
-import os, re, sys, unittest
+"""Thèmes d'interface (page/src/theme-<id>.css) : chacun a son nom (« /* @nom: … */ »), toutes ses variables de couleur,
+des contrastes WCAG suffisants (tools/theme.py : texte >= 4,5:1 sur ses fonds, blanc >= 4,5:1 sur ses aplats) ; polices
+intégrées. Le même contrôle vaut pour le thème d'un pack d'équipe (python3 tools/theme.py check, sa CI)."""
+import contextlib, io, os, shutil, sys, tempfile, unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
-import assemble  # noqa: E402
-
-TEXT = ("ink", "muted", "accent", "ok", "warn", "err")  # couleurs de texte
-GROUNDS = ("panel", "chip", "bg")                      # fonds sur lesquels elles s'affichent
-FILLS = ("line", "err", "warn", "brand")               # aplats qui portent du texte (--on-<aplat>, blanc par défaut ; brand : facultatif)
-# mode TV (bloc :root[data-skin="<id>"] body.tv, facultatif) : textes sur les fonds de l'écran mural, et texte des aplats
-TV_TEXT = ("tv-ink", "tv-muted", "tv-h2", "tv-hint", "tv-ok", "tv-warn", "tv-err", "tv-mep")
-TV_GROUNDS = ("tv-bg", "tv-bar", "tv-deep", "tv-card", "tv-chip")
-TV_FILLS = (("tv-stand-ink", "tv-stand"), ("tv-retro-ink", "tv-retro"))
+import assemble, theme  # noqa: E402
 
 
-def lum(h):
-    c = [int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)]
-    c = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in c]
-    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
-
-
-def ratio(a, b):
-    a, b = lum(a), lum(b)
-    return (max(a, b) + 0.05) / (min(a, b) + 0.05)
-
-
-def tv_palette(theme):
-    """Variables du bloc mode TV du thème ({} s'il n'en a pas : le mode TV garde alors ses couleurs de styles.css)."""
-    css = open(os.path.join(assemble.SRC, f"theme-{theme}.css")).read()
-    block = re.search(r':root\[data-skin="%s"\] body\.tv\s*\{(.*?)\}' % re.escape(theme), css, re.S)
-    return dict(re.findall(r"--([\w-]+):\s*(#[0-9a-fA-F]{6})\b", block.group(1))) if block else {}
-
-
-def palette(theme):
-    """Variables du premier bloc :root[data-skin="<id>"] du thème."""
-    css = open(os.path.join(assemble.SRC, f"theme-{theme}.css")).read()
-    block = re.search(r':root\[data-skin="%s"\][^{]*\{(.*?)\}' % re.escape(theme), css, re.S)
-    assert block, f"theme-{theme}.css : bloc :root[data-skin=\"{theme}\"] absent"
-    return dict(re.findall(r"--([\w-]+):\s*(#[0-9a-fA-F]{6})\b", block.group(1)))
+def path(t):
+    return os.path.join(assemble.SRC, f"theme-{t}.css")
 
 
 class ThemeTest(unittest.TestCase):
     def test_every_theme_has_a_name(self):
         self.assertEqual(list(assemble.themes()), ["classique"])  # le dépôt n'a que le Classique : les autres viennent des packs
-        for theme, name in assemble.themes().items():
-            self.assertTrue(name, theme)
+        for t, name in assemble.themes().items():
+            self.assertTrue(name, t)
 
     def test_contrasts(self):
-        for theme in assemble.themes():
-            v = palette(theme)
-            for key in TEXT + GROUNDS + ("line",):
-                self.assertIn(key, v, f"theme-{theme}.css : --{key} manquante (couleur #rrggbb)")
-            for fg in TEXT:
-                for bg in GROUNDS:
-                    with self.subTest(theme=theme, fg=fg, bg=bg):
-                        self.assertGreaterEqual(ratio(v[fg], v[bg]), 4.5, f"{theme} : --{fg} sur --{bg}")
-            for fill in FILLS:
-                if fill in v:
-                    on = v.get("on-" + fill, "#ffffff")
-                    with self.subTest(theme=theme, fill=fill):
-                        self.assertGreaterEqual(ratio(on, v[fill]), 4.5, f"{theme} : --on-{fill} sur --{fill}")
+        for t in assemble.themes():
+            v = theme.palette(path(t))
+            for key in theme.TEXT + theme.GROUNDS + ("line",):
+                self.assertIn(key, v, f"theme-{t}.css : --{key} manquante (couleur #rrggbb)")  # un thème du dépôt définit tout
+            errors, _ = theme.check(path(t))
+            self.assertEqual(errors, [], t)
 
     def test_tv_contrasts(self):
-        for theme in assemble.themes():
-            v = tv_palette(theme)
-            if not v:
-                continue
-            for key in TV_TEXT + TV_GROUNDS:
-                self.assertIn(key, v, f"theme-{theme}.css (mode TV) : --{key} manquante")
-            for fg in TV_TEXT:
-                for bg in TV_GROUNDS:
-                    with self.subTest(theme=theme, fg=fg, bg=bg):
-                        self.assertGreaterEqual(ratio(v[fg], v[bg]), 4.5, f"{theme} (TV) : --{fg} sur --{bg}")
-            for fg, bg in TV_FILLS:
-                if fg in v and bg in v:
-                    with self.subTest(theme=theme, fill=bg):
-                        self.assertGreaterEqual(ratio(v[fg], v[bg]), 4.5, f"{theme} (TV) : --{fg} sur --{bg}")
+        for t in assemble.themes():
+            v = theme.tv_palette(path(t))
+            if v:
+                for key in theme.TV_TEXT + theme.TV_GROUNDS:
+                    self.assertIn(key, v, f"theme-{t}.css (mode TV) : --{key} manquante")
+
+    def test_check_a_pack_theme(self):
+        """Thème de pack : seules ses couleurs sont vérifiées ; un contraste insuffisant fait échouer la commande."""
+        menthe = os.path.join(ROOT, "tests", "fixtures", "pack-exemple", "themes", "theme-menthe.css")
+        self.assertEqual(theme.check(menthe), ([], []))
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp)
+        pale = os.path.join(tmp, "theme-pale.css")
+        open(pale, "w").write('/* @nom: Pâle */\n:root[data-skin="pale"]{--bg:#ffffff;--panel:#ffffff;--ink:#bbbbbb}\n'
+                              ':root[data-skin="pale"] body.tv{--tv-bg:#000000;--tv-ink:#111111}\n')
+        errors, warnings = theme.check(pale)
+        self.assertIn("--ink sur --panel : 1.92:1 (minimum 4.5:1)", errors)
+        self.assertIn("mode TV : --tv-ink sur --tv-bg : 1.11:1 (minimum 4.5:1)", errors)
+        self.assertTrue(warnings and "--muted" in warnings[0])  # couleurs restées celles du Classique
+        sans_nom = os.path.join(tmp, "theme-x.css")
+        open(sans_nom, "w").write(':root[data-skin="x"]{--ink:#000000;--bg:#ffffff}\n')
+        self.assertIn("première ligne « /* @nom: Nom affiché */ » absente", theme.check(sans_nom)[0])
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(theme.main(["check", menthe]), 0)
+            self.assertEqual(theme.main(["check", menthe, pale]), 1)
+        self.assertIn("✓ thème valide", out.getvalue())
 
     def test_fonts_are_embedded(self):
         html = assemble.page_html()

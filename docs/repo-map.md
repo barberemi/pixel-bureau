@@ -31,7 +31,7 @@ kronn-bureau/
 │   ├── assemble.py            # page -> dist/office.html
 │   ├── install.py, uninstall.py, publish.py, templates.py
 │   ├── plan.py, plan_prompt.md  # vérif/aperçu/partage des plans, brouillon depuis une image (CLI claude)
-│   ├── test.sh, smoke.py, cdp.py  # tests + contrôle de fumée (Chrome headless)
+│   ├── test.sh, smoke.py, cdp.py  # tests + contrôle de fumée (Chrome headless) ; theme.py : contrastes d'un thème
 │   └── shots.py               # captures de la doc -> guide/img/
 ├── tests/                     # *.test.js (node --test), test_*.py (unittest), fixtures/, helpers/page.js
 ├── layouts/                   # plans de bureau bureau-layout/1 : open-space (type), exemple-startup

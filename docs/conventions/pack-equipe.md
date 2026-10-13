@@ -23,7 +23,7 @@ Un pack introuvable (pas de `team.json`) est une erreur, jamais une page sans so
 | `sprites/` et `sprites.json` | planches fournies telles quelles ; `sprites.json` se fabrique par `python3 sprites/build_sprites.py <pack>` | non |
 | `music/music.json` | morceau de chaque personne (carte « Sa musique »), pochette en data URI à côté | non |
 | `layouts/*.json` | plans du bureau (`bureau-layout/1`), proposés par l'installateur avec ceux du dépôt | non |
-| `.github/workflows/pack.yml` | CI du pack (modèle dans le pack d'exemple) : `tools/plan.py check` sur `layouts/*.json`, puis `tools/smoke.py --team <pack> --chrome` ; clone `barberemi/kronn-bureau` avec le secret `BUREAU_TOKEN` tant qu'il est privé | non |
+| `.github/workflows/pack.yml` | CI du pack (modèle dans le pack d'exemple) : `tools/plan.py check` sur `layouts/*.json`, `tools/theme.py check` sur `themes/theme-*.css`, puis `tools/smoke.py --team <pack> --chrome` ; clone `barberemi/kronn-bureau` avec le secret `BUREAU_TOKEN` tant qu'il est privé | non |
 | `themes/theme-<id>.css` | thèmes de page : première ligne `/* @nom: Nom */`, règles sous `:root[data-skin="<id>"]` ; remplace un thème de même id ; polices par `@@font:fonts/<fichier>.woff2@@`, chemin relatif au pack | non |
 
 Un exemple complet et fictif est dans `tests/fixtures/pack-exemple/`, testé par `tests/test_pack.py` et `tests/test_install.py`. Le pas-à-pas pour les humains : `guide/equipe.md`.
@@ -38,4 +38,4 @@ Seulement ce que l'équipe utilise (KT-28) : son roster et ses recettes, les spr
 
 ## Valider un pack
 
-`python3 tools/plan.py check <pack>/layouts/<plan>.json`, puis `.venv/bin/python tools/smoke.py --team <pack> --chrome` (page dans `dist/office_team.html`) [src: file: tools/smoke.py:198]. C'est ce que lance la CI d'exemple ; testé par `tests/test_pack.py` (`test_smoke_team_option`, `test_example_ci_uses_existing_tools`).
+`python3 tools/plan.py check <pack>/layouts/<plan>.json`, `python3 tools/theme.py check <pack>/themes/theme-*.css` (nom et contrastes ; un thème de pack peut ne redéfinir que quelques couleurs : seules ses paires sont vérifiées, les manquantes signalées), puis `.venv/bin/python tools/smoke.py --team <pack> --chrome` (page dans `dist/office_team.html`) [src: file: tools/smoke.py:198]. C'est ce que lance la CI d'exemple ; testé par `tests/test_pack.py` (`test_smoke_team_option`, `test_example_ci_uses_existing_tools`) et `tests/test_theme.py` (`test_check_a_pack_theme`).

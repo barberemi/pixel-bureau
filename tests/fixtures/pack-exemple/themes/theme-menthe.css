@@ -1,3 +1,5 @@
 /* @nom: Menthe */
-/* Thème d'exemple du pack de test (KT-60) : un thème de page apporté par un pack d'équipe. */
-:root[data-skin="menthe"]{--bg:#eef7f2;--panel:#ffffff;--ink:#14261c;--muted:#4d6b5a;--accent:#1f8a5b;--chip:#dcefe4}
+/* Thème d'exemple du pack de test (KT-60) : un thème de page apporté par un pack d'équipe. Il ne redéfinit que ses
+   textes et ses fonds ; contrastes vérifiés par tools/theme.py check (CI du pack). */
+:root[data-skin="menthe"]{--bg:#eef7f2;--panel:#ffffff;--ink:#14261c;--muted:#4d6b5a;--accent:#17744b;--chip:#dcefe4;
+  --ok:#1d7442;--warn:#94480a;--err:#b3261e}

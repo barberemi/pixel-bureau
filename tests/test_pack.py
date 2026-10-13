@@ -92,7 +92,9 @@ class PackTest(unittest.TestCase):
         ci = open(os.path.join(PACK, ".github", "workflows", "pack.yml")).read()
         self.assertIn("bureau/tools/plan.py check", ci)
         self.assertIn("bureau/tools/smoke.py --team", ci)
-        self.assertTrue(os.path.isfile(os.path.join(ROOT, "tools", "plan.py")))
+        self.assertIn("bureau/tools/theme.py check", ci)
+        for tool in ("plan.py", "smoke.py", "theme.py"):
+            self.assertTrue(os.path.isfile(os.path.join(ROOT, "tools", tool)), tool)
 
     def test_without_pack_nothing_changes(self):
         cfg = assemble.demo_config()

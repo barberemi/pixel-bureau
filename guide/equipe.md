@@ -89,14 +89,15 @@ La première ligne donne son nom au bouton 🎨 ; remplace partout `data-skin="c
 
 ## 7. Valider le pack
 
-Les outils du Bureau vérifient un pack sans rien publier : ses plans, puis la page de démo assemblée avec ton équipe, chargée dans Chrome (aucune erreur JS attendue) :
+Les outils du Bureau vérifient un pack sans rien publier : ses plans, les contrastes de ses thèmes (texte lisible sur chaque fond), puis la page de démo assemblée avec ton équipe, chargée dans Chrome (aucune erreur JS attendue) :
 
 ```sh
 python3 tools/plan.py check ~/Sites/bureau-dunder-mifflin/layouts/plan.json
+python3 tools/theme.py check ~/Sites/bureau-dunder-mifflin/themes/theme-*.css
 .venv/bin/python tools/smoke.py --team ~/Sites/bureau-dunder-mifflin --chrome   # page dans dist/office_team.html
 ```
 
-Le pack d'exemple apporte la même vérification en CI GitHub (`.github/workflows/pack.yml`, copiée avec lui) : sur chaque PR et chaque push sur `main`, elle clone le Bureau à côté du pack et lance ces deux contrôles. Tant que le dépôt du Bureau est privé, elle a besoin d'un secret `BUREAU_TOKEN` dans le dépôt du pack : un jeton GitHub fine-grained, droit « Contents: read » sur `barberemi/kronn-bureau`.
+Le pack d'exemple apporte la même vérification en CI GitHub (`.github/workflows/pack.yml`, copiée avec lui) : sur chaque PR et chaque push sur `main`, elle clone le Bureau à côté du pack et lance ces trois contrôles. Tant que le dépôt du Bureau est privé, elle a besoin d'un secret `BUREAU_TOKEN` dans le dépôt du pack : un jeton GitHub fine-grained, droit « Contents: read » sur `barberemi/kronn-bureau`.
 
 ## 8. Installer et partager
 
