@@ -6,6 +6,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ## [Unreleased]
 
+### Ajouté
+
+- Captures d'un pack d'équipe : `tools/shots.py --team <pack>` refait les captures du guide avec l'équipe du pack (la démo lui est réattribuée, boss compris), dans `<pack>/guide/img/`.
+
 ## [0.1.0] - 2026-10-13
 
 ### Ajouté

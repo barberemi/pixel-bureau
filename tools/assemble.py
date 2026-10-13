@@ -373,6 +373,37 @@ def action_binds(html):
     return out
 
 
+def demo_team(cfg):
+    """Instantané d'équipe de la démo (data/team_snapshot.json). Avec une autre équipe (pack, smoke.py et shots.py --team),
+    réattribué à ses personnes : boss au boss, puis même métier dans l'ordre (« Testeuse » et « Testeur » vont ensemble),
+    puis le reste dans l'ordre ; noms complets et prénoms remplacés partout. Une personne de la démo en trop reste de passage."""
+    with open(p("data", "team_snapshot.json")) as f:
+        text = f.read()
+    base = demo_config()
+    src, dst = roster(base), roster(cfg)
+    if [x.get("key") for x in src] == [x.get("key") for x in dst]:
+        return text
+    trade = lambda x: str(x.get("role") or "").lower()[:5]  # noqa: E731
+    boss = lambda r, c: [x for x in r if x.get("key") == c.get("owner")]  # noqa: E731
+    pairs = list(zip(boss(src, base), boss(dst, cfg)))
+    left = [x for x in dst if x not in [b for _, b in pairs]]
+    alone = []
+    for a in (x for x in src if x not in [s for s, _ in pairs]):
+        b = next((x for x in left if trade(x) == trade(a)), None)
+        if b:
+            pairs.append((a, b))
+            left.remove(b)
+        else:
+            alone.append(a)
+    pairs += list(zip(alone, left))
+    names = {}
+    for a, b in pairs:
+        names[a.get("person") or a["name"]] = b.get("person") or b["name"]
+        names[a["name"]] = b["name"]
+    rx = re.compile(r"\b(" + "|".join(map(re.escape, sorted(names, key=len, reverse=True))) + r")\b")
+    return rx.sub(lambda m: names[m.group(1)], text)
+
+
 def build(demo=True, cfg=None):
     """Page complète. demo : instantanés de démo embarqués (aperçu local, tests) ; la page publiée n'en a pas.
     cfg : config d'installation (défaut : bureau.config.json)."""
@@ -396,7 +427,7 @@ def build(demo=True, cfg=None):
                 .replace("__DEMO__", "true" if demo else "false")
                 .replace("__VERSION__", version())
                 .replace("__SNAP__", open(p("data", "office_snapshot.json")).read() if demo else "null")
-                .replace("__TEAM__", open(p("data", "team_snapshot.json")).read() if demo else "null"))
+                .replace("__TEAM__", demo_team(cfg) if demo else "null"))
     for _, mark in ACTIONS.values():
         html = html.replace(mark, acts[ACTIONS_BY_MARK[mark]])
     return html
