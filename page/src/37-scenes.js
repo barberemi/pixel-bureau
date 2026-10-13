@@ -57,7 +57,7 @@ function prodHeraldState(c,t){
   const live=mepsAt(t).filter(x=>x.phase==='done'&&t<ms(x.m.prod.end)+HERALD_MS+2*60e3), z=live[live.length-1];
   if(!z)return {st:'off',label:'Attend une mise en prod'};
   if(t>=ms(z.m.prod.end)+HERALD_MS)return {st:'gone',label:'Reparti'};
-  const a=personChar(z.m.who,z.m.who_name), name=a?a.name:String(z.m.who_name||'').split(' ')[0];
+  const name=mepName(z.m);
   const shout=(c.shout||'Bravo {name} !').replace(name?/\{name\}/g:/,?\s*\{name\}/g,name);
   return {st:'proud',zone:inDaily(t)?'daily':'stage',label:'Félicite '+(name||"l'équipe")+' pour la mise en prod '+z.m.tag,bubble:shout,big:true}; // prod finie pendant le daily : il les y rejoint
 }

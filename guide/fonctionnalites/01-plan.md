@@ -31,7 +31,7 @@ Quand un ticket passe en Reopen dans Jira, Gandalf entre par la porte. Lui, celu
 
 ![Le face-à-face devant le bureau du boss](../img/reopen-testeur.png)
 
-Quand une mise en prod réussit, Yoda entre aussi par la porte. Il monte sur la scène du plateau TV à côté de celui qui a fait la mise en prod (le boss y est déjà, au saxophone) et le félicite en grand : « Fier de toi, je suis. ». Trois minutes plus tard, il repart. Si la prod finit pendant le daily, il les rejoint à la table du daily ; le vendredi et le week-end, plateau fermé, il attend devant le ruban. Sa réplique ne cache jamais les bulles de ses voisins : elle se décale à droite, à gauche ou au-dessus.
+Quand une mise en prod réussit, Yoda entre aussi par la porte. Il monte sur la scène du plateau TV à côté de celui qui a fait la mise en prod (l'assigné du ticket de la release, ou, pour un autre dépôt suivi, celui qui a lancé le déploiement sur GitHub ; le boss y est déjà, au saxophone) et le félicite en grand : « Fier de toi, je suis. ». Trois minutes plus tard, il repart. Si la prod finit pendant le daily, il les rejoint à la table du daily ; le vendredi et le week-end, plateau fermé, il attend devant le ruban. Sa réplique ne cache jamais les bulles de ses voisins : elle se décale à droite, à gauche ou au-dessus.
 
 ![Le héraut félicite Andy sur le plateau TV](../img/prod-heraut.png)
 

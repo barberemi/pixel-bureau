@@ -253,17 +253,17 @@ function stateAt0(c,t){
     if(h<RHYTHM.office_hours[0]||h>=RHYTHM.office_hours[1])return {st:'off',label:'Rentré chez soi'};
     if(inDaily(t))return {st:'daily',zone:'daily',human:true,label:'Daily en cafétéria',bubble:c.roleKind==='sm'?'Daily':null};
     const sg=stageAt(t);
-    if(sg&&c.team&&sg.m.who===c.team.id)return sg.phase==='done'?{
+    if(sg&&mepChar(sg.m)===c)return sg.phase==='done'?{
       st:'party',
       zone:'stage',
       human:true,
-      label:'Fête la mise en prod '+sg.m.tag+' ('+sg.m.ticket+')',
+      label:'Fête la mise en prod '+sg.m.tag+(sg.m.ticket?' ('+sg.m.ticket+')':''),
       bubble:'🎉'
     }:{
       st:'mep',
       zone:'stage',
       human:true,
-      label:'Met en prod '+sg.m.tag+' ('+sg.m.ticket+') : '+MEP_TXT[sg.phase],
+      label:'Met en prod '+sg.m.tag+(sg.m.ticket?' ('+sg.m.ticket+')':'')+' : '+MEP_TXT[sg.phase],
       bubble:'🚀'
     };
     {const cr=ceremonyAt(t);if(cr)return ceremonyState(c,cr);} // 37-scenes.js : planning, rétro en salle de réunion

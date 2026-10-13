@@ -35,7 +35,6 @@ function renderVisitor(side,c){
     side.appendChild(p);
   }
 }
-function firstName(id,fallback){const c=chars.find(x=>x.team&&x.team.id===id);return c?c.name:(fallback||'?');}
 function renderTv(side){
   const h=document.createElement('h2');h.textContent="Mises en prod du jour";side.appendChild(h);
   const list=mepsAt(T);
@@ -57,7 +56,7 @@ function renderTv(side){
   for(const {m,phase} of list.slice().reverse()){
     const d=document.createElement('details');d.open=phase!=='done';
     const step=(lbl,o,url)=>o?((fin)=>`<li><span class="dot" style="background:${!fin?'#2f6fd6':o.conclusion==='success'?'var(--ok)':'var(--err)'}"></span><span>${lbl}</span><span class="k">${hm(ms(o.start))}${fin?' → '+hm(ms(o.end)):' · en cours'}</span>`)(o.end&&ms(o.end)<=T)+`${url?`<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent)">run</a>`:''}</li>`:`<li><span class="dot" style="background:var(--line)"></span><span>${lbl}</span><span class="k">à venir</span></li>`;
-    d.innerHTML=`<summary><span class="dot" style="background:${PH[phase][1]}"></span><span class="tm">${esc(m.tag)}</span><span class="wn">${esc(firstName(m.who,m.who_name))} · ${esc(PH[phase][0])}</span><span class="du">${hm(ms(mepStart(m)))}</span></summary>`+
+    d.innerHTML=`<summary><span class="dot" style="background:${PH[phase][1]}"></span><span class="tm">${esc(m.tag)}</span><span class="wn">${esc(mepName(m)||'?')} · ${esc(PH[phase][0])}</span><span class="du">${hm(ms(mepStart(m)))}</span></summary>`+
       `<div style="font-size:12px;margin:6px 0 4px 18px">${m.ticket?`<a href="${JIRA_BROWSE}${encodeURIComponent(m.ticket)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600">${esc(m.ticket)}</a> `:''}${esc(m.summary||m.name||'')}</div>`+
       `<ul class="steps">${m.released?`<li><span class="dot" style="background:var(--ok)"></span><span>Release</span><span class="k">${hm(ms(m.released))}</span><a href="https://github.com/${m.repo||CFG.github_repo||''}/releases/tag/${encodeURIComponent(m.tag)}" target="_blank" rel="noopener" style="color:var(--accent)">release</a></li>`:''}${step('Staging',m.staging&&ms(m.staging.start)<=T?m.staging:null,m.staging&&m.staging.url)}${step('Production',m.prod&&ms(m.prod.start)<=T?m.prod:null,m.prod&&m.prod.url)}</ul>`;
     side.appendChild(d);

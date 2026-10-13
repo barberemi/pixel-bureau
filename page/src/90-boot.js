@@ -118,6 +118,7 @@ function mergedTeam(){
     // autre dépôt suivi (github.deploys) : pas de release ni de ticket connus, seulement ses déploiements du jour
     if(!m){const r=st||pr;m={tag,name:r.project?tag:'Version '+tag,repo:r.repo,ticket:null,summary:null,who:null,who_name:null,released:r.project?null:r.start,staging:null,prod:null};t.meps.push(m);}
     if(st)m.staging=st; if(pr)m.prod=pr;
+    m.by=(pr&&pr.by)||(st&&st.by)||m.by||null; // login GitHub de qui a lancé le déploiement (mepChar, 30-data.js)
   }
   t.meps.sort((a,b)=>String(mepStart(a)||'').localeCompare(String(mepStart(b)||'')));
   return t;

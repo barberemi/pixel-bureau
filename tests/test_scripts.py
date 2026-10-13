@@ -183,7 +183,8 @@ key = ("open" if "open" in a else "merged") if a[0] == "pr" else "releases" if a
       "staging" if "NONPROD" in " ".join(a) or "staging" in " ".join(a) else "prod"
 if a[0] == "api":  # gh api -i [-H If-None-Match: …] …/actions/workflows/<fichier>/runs : en-têtes, ETag, 304
     body = json.dumps({{"workflow_runs": [{{"status": r["status"], "conclusion": r["conclusion"], "created_at": r["createdAt"],
-        "updated_at": r["updatedAt"], "display_title": r["displayTitle"], "html_url": r["url"]}} for r in d.get(key, [])]}})
+        "updated_at": r["updatedAt"], "display_title": r["displayTitle"], "html_url": r["url"],
+        **({{"actor": {{"login": r["by"]}}}} if r.get("by") else {{}})}} for r in d.get(key, [])]}})
     etag = 'W/"' + hashlib.sha1(body.encode()).hexdigest() + '"'
     if "If-None-Match: " + etag in a:
         open({data!r} + ".calls", "a").write("304\\n")
@@ -513,13 +514,14 @@ print(json.dumps(d.get(key, [])))
         if paris.hour == 0 and paris.minute < 4:
             self.skipTest("juste après minuit à Paris, un déploiement d'il y a 3 min date de la veille")
         done = {"status": "completed", "conclusion": "success", "createdAt": iso(3), "updatedAt": iso(2),  # du jour, même tôt
-                "displayTitle": "Deploy 17.2.0", "url": "https://x/r/1"}
+                "displayTitle": "Deploy 17.2.0", "url": "https://x/r/1", "by": "pambeesly"}
         self.fake_gh({"staging": [done], "prod": [done]})
         api = self.kronn(FakeKronn())
         out = self.run_script("live_snapshot.py", api=api)
         self.assertEqual(out["deploys"]["prod"]["17.2.0"]["conclusion"], "success")
         self.assertEqual(out["deploys"]["prod"]["intranet 17.2.0"]["project"], "intranet")  # autre dépôt suivi (github.deploys)
         self.assertIsNone(out["deploys"]["prod"]["17.2.0"]["project"])  # dépôt principal : la version seule
+        self.assertEqual(out["deploys"]["prod"]["intranet 17.2.0"]["by"], "pambeesly")  # qui a lancé le déploiement
         calls = open(os.path.join(self.tmp, "gh.json.calls")).read().splitlines()
         self.assertEqual(len(calls), 3)  # staging + prod du dépôt principal, prod de l'intranet
         self.assertFalse([c for c in calls if "If-None-Match" in c])  # pas encore d'ETag

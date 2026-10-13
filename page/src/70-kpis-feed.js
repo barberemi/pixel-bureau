@@ -173,7 +173,7 @@ function feedLifeEvents(t){
     const shout=n=>c.shout?` <small>« ${esc(String(c.shout).replace(/,?\s*\{name\}/g,n?' '+n:'').trim())} »</small>`:'';
     if(c.on==='reopen'){for(const m of teamMoves())if(m.kind==='reopened'&&today(m.t))ev.push({t:m.t,c,imp:false,txt:`🧙 ${refWho(c)} passe pour la réouverture de ${refTk(m.key)}${shout()}`});continue;}
     if(c.on==='prod'){if(TEAM)for(const z of (TEAM.meps||[])){const e=z.prod&&z.prod.end&&ms(z.prod.end);if(!today(e)||z.prod.conclusion!=='success')continue;
-      const a=personChar(z.who,z.who_name), n=a?a.name:String(z.who_name||'').split(' ')[0];
+      const a=mepChar(z), n=mepName(z);
       ev.push({t:e,c,imp:false,txt:`🧘 ${refWho(c)} passe féliciter ${a?refWho(a):esc(n||"l'équipe")} pour ${refTag(z.tag)}${shout(n)}`});}continue;}
     if(c.on)continue;
     const v=guestVisit(c,DAY0+12*36e5); if(!v||!today(v.s))continue;
@@ -300,13 +300,14 @@ function renderFeed(){
     });
   }
   if(TEAM)for(const m of (TEAM.meps||[])){
-    const c=chars.find(x=>x.team&&x.team.id===m.who)||null;
-    const who=refWho(c,String(m.who_name||'Quelqu’un').split(' ')[0]), tag=refTag(m.tag);
+    const c=mepChar(m);
+    const who=refWho(c,mepName(m)||'Quelqu’un'), tag=refTag(m.tag);
     const tk=m.ticket?' '+refTk(m.ticket):'';
     const push=(t,txt)=>{if(t&&t<=T)ev.push({t,c,txt,tv:true,team:true,ty:'mep'});};
     push(ms(m.released),`<span style="color:#7a5cc8">●</span> ${who} publie la release ${tag}${tk}`);
     if(m.staging&&m.staging.end)push(ms(m.staging.end),`<span style="color:#2e9e9b">●</span> ${tag} ${m.staging.conclusion==='success'?'validée sur staging':'échoue sur staging'}`);
-    if(m.prod)push(ms(m.prod.start),`<span style="color:#7a5cc8">🚀</span> ${tag} part en prod`);
+    // qui a lancé le déploiement (login du run), s'il est connu ; sinon la version part en prod
+    if(m.prod)push(ms(m.prod.start),m.prod.by?`<span style="color:#7a5cc8">🚀</span> ${refWho(ghChar(m.prod.by),m.prod.by)} met ${tag} en prod`:`<span style="color:#7a5cc8">🚀</span> ${tag} part en prod`);
     if(m.prod&&m.prod.end)push(ms(m.prod.end),m.prod.conclusion==='success'?`<span style="color:var(--ok)">✓</span> ${tag} est en prod${tk}`:`<span style="color:var(--err)">✗</span> ${tag} échoue en prod`);
     }
   const created=TEAM?teamCreated(DAY0,T):[], createdKeys=new Set(created.map(x=>x.key)); // tickets créés aujourd'hui par l'équipe

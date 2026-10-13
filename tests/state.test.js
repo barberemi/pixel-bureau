@@ -368,7 +368,26 @@ test('MEP d\'un autre dépôt suivi (github.deploys) : nom du projet, pas de rel
   assert.equal(m.repo, 'acme/front_api');
   assert.equal(J(`mepPhase(TEAM.meps[0],${T11})`), 'prod');
   assert.equal(J(`stageAt(${T11}).m.tag`), 'api 2.4.0');
+  assert.equal(J(`mepChar(TEAM.meps[0])`), null); // personne : on ne sait pas qui l'a lancée
   run(`TEAM=null;TEAM_BASE=null;LIVE=null;`);
+});
+
+test('MEP d\'un autre dépôt : celui qui a lancé le déploiement (login GitHub du run) la porte, au plateau et dans le fil', () => {
+  const q = load(), R = code => JSON.parse(q.run('JSON.stringify(' + code + ')')); // démo complète : les collègues du roster
+  const dep = by => `{status:'in_progress',conclusion:null,start:'2026-10-01T08:50:00Z',end:null,url:'https://x/r/9',project:'api',repo:'acme/front_api',by:${JSON.stringify(by)}}`;
+  q.run(`TEAM_BASE={people:[],meps:[]};LIVE={deploys:{staging:{},prod:{'api 2.4.0':${dep('PamBeesly')}}}};TEAM=mergedTeam();`);
+  assert.equal(R(`TEAM.meps[0].by`), 'PamBeesly');
+  assert.equal(R(`mepChar(TEAM.meps[0]).key`), 'p_pam'); // casse ignorée
+  assert.equal(R(`mepName(TEAM.meps[0])`), 'Pam');
+  const st = R(`stateAt(chars.find(c=>c.key==='p_pam'),${T11})`);
+  assert.equal(st.st, 'mep');
+  assert.equal(st.label, 'Met en prod api 2.4.0 : ' + R(`MEP_TXT.prod`)); // pas de « (null) » sans ticket
+  q.run(`T=${T11};renderFeed();`);
+  assert.ok(R(`FEED_EV.filter(e=>e.ty==='mep').map(e=>e.txt).join('|')`).includes('>Pam</a> met'));
+  // ni dans l'équipe ni dans le sprint : son login, sans personnage
+  q.run(`LIVE={deploys:{staging:{},prod:{'api 2.4.0':${dep('outsider-dev')}}}};TEAM=mergedTeam();`);
+  assert.equal(R(`mepChar(TEAM.meps[0])`), null);
+  assert.equal(R(`mepName(TEAM.meps[0])`), 'outsider-dev');
 });
 
 test('whoCards : titre sans « [Composant] », un rôle à titre court garde son détail en gris, liste complète en infobulle', () => {

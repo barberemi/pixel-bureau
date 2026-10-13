@@ -92,6 +92,10 @@ function mepPhase(m,t){
   }
 // début d'une MEP : sa release, sinon son premier déploiement (autre dépôt suivi, sans release connue)
 const mepStart=m=>m.released||(m.staging||m.prod||{}).start||null;
+// qui porte une MEP : l'assigné du ticket de sa release (dépôt principal), sinon qui a lancé le déploiement (login GitHub
+// du run, m.by) : un collègue du roster ou de passage (dans le sprint) ; null si personne de connu
+function mepChar(m){return personChar(m.who,m.who_name)||ghChar(m.by)||null;}
+function mepName(m){const c=mepChar(m);return c?c.name:String(m.who_name||'').split(' ')[0]||m.by||'';}
 function mepsAt(t){return ((TEAM&&TEAM.meps)||[]).map(m=>({m,phase:mepPhase(m,t)})).filter(x=>x.phase);}
 function stageAt(t){
   const list=mepsAt(t);

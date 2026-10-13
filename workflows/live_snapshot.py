@@ -3,7 +3,8 @@
 Entrée : aucune (déploiements lus chaque minute avec `gh api` et un ETag : GitHub répond 304 sans le décompter tant que rien ne change)
 Sortie (stdout) : {generated_at, day, runs[], discussions[], deploys{staging{clé:run}, prod{clé:run}}}
 Clé = la version pour le dépôt principal (github.repo, ses MEP ont ticket et release dans le dataset team), « projet version »
-pour les autres dépôts suivis (github.deploys : [{repo, label?, staging_workflow?, prod_workflow}]) ; run.project = ce projet.
+pour les autres dépôts suivis (github.deploys : [{repo, label?, staging_workflow?, prod_workflow}]) ; run.project = ce projet,
+run.by = le login GitHub de qui a lancé le déploiement (la page en fait l'auteur de la MEP s'il n'en a pas d'autre).
 Même format de runs et de discussions que office_snapshot.py, pour que la page les superpose.
 """
 import json, os as _os, re, subprocess
@@ -55,7 +56,7 @@ def gh_runs(repo, workflow, prev):
     rendue telle quelle si GitHub répond 304 (rien n'a changé) ou si la lecture échoue."""
     prev = prev if isinstance(prev, dict) else {"runs": [], "etag": None}
     cmd = ["gh", "api", "-i", f"repos/{repo}/actions/workflows/{workflow}/runs?per_page=5"]
-    if prev.get("etag"):
+    if prev.get("etag") and all("by" in r for r in prev.get("runs") or []):  # cache d'avant « by » : relu en entier
         cmd[3:3] = ["-H", f"If-None-Match: {prev['etag']}"]
     try:  # gh sort en erreur sur un 304 : seule la ligne d'état compte
         out = subprocess.run(cmd, capture_output=True, text=True, timeout=60).stdout.replace("\r\n", "\n")
@@ -65,7 +66,8 @@ def gh_runs(repo, workflow, prev):
             return prev
         etag = next((h.split(":", 1)[1].strip() for h in head.split("\n") if h.lower().startswith("etag:")), None)
         runs = [{"status": r.get("status"), "conclusion": r.get("conclusion"), "createdAt": r.get("created_at"),
-                 "updatedAt": r.get("updated_at"), "displayTitle": r.get("display_title"), "url": r.get("html_url")}
+                 "updatedAt": r.get("updated_at"), "displayTitle": r.get("display_title"), "url": r.get("html_url"),
+                 "by": (r.get("triggering_actor") or r.get("actor") or {}).get("login")}
                 for r in json.loads(body).get("workflow_runs") or []]
         return {"runs": runs, "etag": etag}
     except Exception:
@@ -100,7 +102,7 @@ def by_tag(env):
                 out[(label + " " if label else "") + m.group(1)] = {
                     "status": r.get("status"), "conclusion": r.get("conclusion"), "start": r.get("createdAt"),
                     "end": r.get("updatedAt") if r.get("status") == "completed" else None, "url": r.get("url"),
-                    "project": label or None, "repo": repo}
+                    "project": label or None, "repo": repo, "by": r.get("by")}
     return out
 
 
