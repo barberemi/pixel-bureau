@@ -76,7 +76,7 @@ La CI GitHub Actions (`.github/workflows/tests.yml`) relance `sh tools/test.sh -
 
 - Versions `0.MINOR.PATCH` (MINOR = fonctionnalités, PATCH = correctifs), tag sans `v` comme Kronn. La version courante est dans `VERSION`, affichée en pied de page (`assemble.version()`).
 - `CHANGELOG.md` (Keep a Changelog) : chaque PR ajoute sa ligne dans « Unreleased » (case du modèle de PR).
-- Sortir une version : une PR qui passe `VERSION` au nouveau numéro et renomme « Unreleased » en `## [0.x.y] - AAAA-MM-JJ` (avec une nouvelle section « Unreleased » vide au-dessus) ; après le merge, `git tag -s 0.x.y && git push origin 0.x.y`. Le workflow `.github/workflows/release.yml` vérifie que le tag correspond à `VERSION` et au changelog (`tools/release_notes.py --check`) puis publie la GitHub Release avec la section de cette version. Une milestone par version choisit ce qui part dedans.
+- Sortir une version : une PR qui passe `VERSION` au nouveau numéro et renomme « Unreleased » en `## [0.x.y] - AAAA-MM-JJ` (avec une nouvelle section « Unreleased » vide au-dessus) ; après le merge, `git tag -s 0.x.y -m "0.x.y" && git push origin 0.x.y` (sans `-m`, git ouvre un éditeur), puis fermer la milestone. Le workflow `.github/workflows/release.yml` vérifie que le tag correspond à `VERSION` et au changelog (`tools/release_notes.py --check`) puis publie la GitHub Release avec la section de cette version. Une milestone par version choisit ce qui part dedans.
 
 ## Ajouter un thème
 
