@@ -6,6 +6,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-13
+
 ### Ajouté
 
 - Première version publique : la Live Page Kronn en pixel art (plan du bureau, qui fait quoi, fil et récap, rejeu, mode TV et cérémonies, fiches, murs, avatars, thèmes saisonniers, absences), ses crons et ses workflows à 0 token, l'installateur et la publication.

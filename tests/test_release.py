@@ -56,6 +56,9 @@ class ReleaseTest(unittest.TestCase):
     def test_changelog_has_unreleased_and_workflow_checks_the_tag(self):
         log = open(os.path.join(ROOT, "CHANGELOG.md"), encoding="utf-8").read()
         self.assertTrue(re.search(r"^## \[Unreleased\]", log, re.M))
+        with open(os.path.join(ROOT, "VERSION")) as f:
+            version = f.read().strip()
+        self.assertIn(f"## [{version}] - ", log)  # la version courante a sa section datée : le tag passera le --check
         wf = open(os.path.join(ROOT, ".github", "workflows", "release.yml")).read()
         self.assertIn('tools/release_notes.py --check "$GITHUB_REF_NAME"', wf)
         self.assertIn("gh release create", wf)
