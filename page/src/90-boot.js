@@ -27,6 +27,7 @@ function loop(now){
   }
   requestAnimationFrame(loop);
 }
+paintLegend(document); // 35-state.js : pastilles de la légende aux couleurs des tables d'états et de statuts
 buildFurniture();
 buildBg();
 bakeFurniture();

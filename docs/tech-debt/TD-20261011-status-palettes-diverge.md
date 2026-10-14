@@ -14,6 +14,10 @@ metadata:
       status: Confirmed by user
       reviewer: Kronn audit validation card
       note: "Confirmed through an audit validation card."
+    - date: 2026-10-15
+      status: Resolved
+      reviewer: mainteneur
+      note: "#10 : une seule table d'états (ST_PALETTE, d'où ST_COLOR et ST_CSS), #7a5cc8 en une seule copie (MEP_COLOR, var(--mep) en CSS), légende du gabarit peinte depuis les tables ; test tests/palettes.test.js."
 ---
 
 # TD-20261011-status-palettes-diverge
@@ -21,7 +25,7 @@ metadata:
 - **Category**: code-quality
 - **Area**: Frontend
 - **Severity**: Medium
-- **Status**: Confirmed by user
+- **Status**: Resolved (2026-10-15, #10)
 - **Effort**: M (1-4h)
 - **Blast radius**: module (5-10 files)
 
@@ -53,3 +57,9 @@ Une seule table de catégories (couleur + libellé) et une seule table d'états,
 Fait le 2026-10-12 [src: user:mainteneur:2026-10-11: KT-19] : une seule palette des statuts de ticket, `TCAT` [src: file: page/src/30-data.js:10] (« en cours » vert `#2e9e5b`, « en review » bleu `#4a7fe0`, « déployé » ardoise `#647282`, contraste >= 3:1 sur les deux thèmes) ; `CAT_COLOR` en est dérivée [src: file: page/src/41-bubbles.js:4] ; légende du gabarit, chiffre « en cours » de la fiche et tuile KPI alignés. Un test vérifie que les deux tables concordent [src: file: tests/tickets-fiche.test.js:89].
 
 Reste : les tables d'états des personnages `ST_COLOR` / `ST_CSS` tenues à la main, et `#7a5cc8` recopié dans le fil et le CSS.
+
+Fait le 2026-10-15 (#10), sans changement visuel :
+- une seule table d'états, `ST_PALETTE` [src: file: page/src/35-state.js:426] : chaque état y est soit un jeton du thème (`ok`, `info`, `warn`, `err`, `idle`), soit une couleur fixe. `ST_COLOR` (canvas) et `ST_CSS` (HTML) en sont dérivées [src: file: page/src/35-state.js:453] [src: file: page/src/35-state.js:454]. Le canvas prend la valeur figée du jeton dans `ST_TOKEN` [src: file: page/src/35-state.js:425], le HTML garde `var(--jeton)` et suit le thème (Classique, clair, sombre, thèmes de pack) : c'est la seule différence entre les deux vues, voulue. `absent` et `gone` restent sans couleur sur le canvas et `transparent` en HTML, comme avant ;
+- `#7a5cc8` n'existe plus qu'une fois, `MEP_COLOR` [src: file: page/src/30-data.js:10], posé en `--mep` sur la racine pour le CSS [src: file: page/src/styles.css:286] ;
+- la légende du gabarit n'a plus de couleur en dur : pastilles `data-st` / `data-cat` peintes au démarrage par `paintLegend()` [src: file: page/src/35-state.js:457] [src: file: page/src/90-boot.js:30] ;
+- `tests/palettes.test.js` vérifie que chaque état a sa couleur, que les deux vues concordent, qu'il n'y a qu'une copie de `#7a5cc8` et que la légende garde ses couleurs d'avant.
