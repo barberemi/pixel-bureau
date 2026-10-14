@@ -86,7 +86,21 @@ function updateFresh(){
   else{txt='imminent';frac=1;}
   FRESH_VIEW={txt,frac,late:!!late};
   el.innerHTML=freshRing(frac)+esc(txt);
-  // panneau au survol (pas d'attribut title : son texte change chaque seconde, le navigateur ne l'afficherait jamais)
-  pop.innerHTML='<b>Fraîcheur des données</b><table>'+all.map(f=>`<tr class="${f.late||failed[f.src.key]?'late':''}"><td>${esc(f.src.label)}</td><td>il y a ${agoTxt(f.age)}</td>`+
-    `<td>${failed[f.src.key]?'en échec':f.late?'en retard de '+agoTxt(f.late):f.eta&&f.eta>now?(waitTxt(f,now).paused?waitTxt(f,now).txt:'prochain ~'+hm(f.eta)):'imminent'}</td></tr>`).join('')+'</table>'+diagTxt()+'<small>Prochain passage estimé : calendrier du cron + durée de son dernier run.</small>';
+  // panneau au survol (pas d'attribut title : son texte change chaque seconde, le navigateur ne l'afficherait jamais) ;
+  // pas refait pendant un clic ni tant que la carte Kronn d'une relance y est ouverte (elle serait détruite)
+  if(performance.now()<PRESS_HOLD||KM_OPEN&&pop.contains(KM_OPEN))return; // 50-panel.js, 55-actions.js
+  pop.innerHTML='<b>Fraîcheur des données</b><table>'+all.map(f=>`<tr class="${f.late||failed[f.src.key]?'late':''}" data-k="${esc(f.src.key)}"><td>${esc(f.src.label)}</td><td>il y a ${agoTxt(f.age)}</td>`+
+    `<td>${failed[f.src.key]?'en échec':f.late?'en retard de '+agoTxt(f.late):f.eta&&f.eta>now?(waitTxt(f,now).paused?waitTxt(f,now).txt:'prochain ~'+hm(f.eta)):'imminent'}</td><td class="rl"></td></tr>`).join('')+'</table>'+diagTxt()+'<small>Prochain passage estimé : calendrier du cron + durée de son dernier run.</small>';
+  for(const tr of pop.querySelectorAll('tr[data-k]'))freshRelaunch(tr.querySelector('td.rl'),tr.dataset.k,all.find(f=>f.src.key===tr.dataset.k).src.label,tr.classList.contains('late'));
+}
+// relancer le cron d'une source (#44) : « ↻ Relancer » sur une ligne en échec ou en retard, « ↻ » discret sur les autres
+// (rafraîchir sans attendre) ; action bureau-relaunch, ligne de gates.workflows marquée de la clé de la source, carte
+// Kronn en fenêtre centrée. Rien pour Direct (le cron live passe chaque minute) ni en mode TV.
+function freshRelaunch(td,key,label,urgent){
+  const w=key!=='live'&&ACTIONS.relaunch&&!TV&&RELAUNCH.find(x=>x.bureau===key); if(!w)return;
+  const host=document.createElement('div');host.className='relaunch fr-rl';host.setAttribute('data-kronn-action-slot-host','');
+  host.innerHTML=`<div class="rl-n">${esc(label)}</div><div class="rl-s">Lance tout de suite un nouveau passage de ce cron du Bureau, en plus de ses passages prévus.</div>`;
+  const b=document.createElement('button');b.textContent=urgent?'↻ Relancer':'↻';if(!urgent){b.className='rl-mini';b.title='Rafraîchir maintenant';b.setAttribute('aria-label','Rafraîchir '+label+' maintenant');}
+  b.setAttribute('data-kronn-action','bureau-relaunch');b.setAttribute('data-kronn-bindings',JSON.stringify({wf_id:w.wf}));
+  host.appendChild(b);td.appendChild(host);kronnModal(host,b,'Relancer un cron du Bureau');
 }

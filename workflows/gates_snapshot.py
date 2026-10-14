@@ -1,12 +1,12 @@
 """Gates en attente de validation, pour que la page Le Bureau puisse les décider (page action « bureau-gate »).
 
 Sortie (stdout, JSON parsé par l'étape CollectApiData) :
-  {generated_at, gates: [{run, wf, wf_name, gate, message, since}], workflows: [{wf, name, trigger}], askable: [{wf, name}],
+  {generated_at, gates: [{run, wf, wf_name, gate, message, since}], workflows: [{wf, name, trigger, bureau?}], askable: [{wf, name}],
    projects: [{id, name}], ducks: [{id, title, project, updated, created, awaiting}],
    questions: [{id, disc, title, agent, bureau, since, question, context, options, rec, multiple, items, more_items}], qrows: [{id, q, disc}],
    grows: [{id, run, decision}]}
 `workflows` = ceux que la page peut relancer (page action « bureau-relaunch ») : actifs, hors Bureau, pas
-sous-workflow d'un autre, sans variable obligatoire à saisir.
+sous-workflow d'un autre, sans variable obligatoire à saisir ; plus les crons du Bureau, avec la clé de leur source (bureau).
 `projects` = les projets Kronn, « Sans projet » (id « none ») en tête : un bouton « parler au canard » chacun (page action
 « bureau-duck », find(id)). `ducks` = les discussions du canard (titre « 🦆 … », duck_start.py) des 14 derniers jours,
 15 au plus, les plus récentes d'abord ; awaiting = des questions attendent ta réponse (pending_question_count, comme
@@ -15,7 +15,7 @@ Le dataset doit être un vrai objet : Kronn y retrouve la ligne cliquée (find(r
 """
 import json, os as _os
 from datetime import datetime, timedelta, timezone
-from _lib import get, is_bureau, is_bureau_disc
+from _lib import CFG, get, is_bureau, is_bureau_disc
 
 
 
@@ -76,6 +76,11 @@ for wid, (wf, full) in defs.items():
     if any(v.get("required", True) and v.get("source") in (None, "", "user_input") for v in full.get("variables") or []):
         continue
     relaunch.append({"wf": wid, "name": wf["name"], "trigger": wf.get("trigger_type")})
+# les crons du Bureau aussi (#44), clé de leur source (bureau) : « ↻ Relancer » sur leur ligne en échec ou en retard du
+# panneau Fraîcheur ; jamais comptés comme des agents pour autant (is_bureau)
+for key, wid in (CFG.get("workflows") or {}).items():
+    if wid in defs:
+        relaunch.append({"wf": wid, "name": defs[wid][0]["name"], "trigger": defs[wid][0].get("trigger_type"), "bureau": key})
 
 # agents qu'on peut interroger sur leurs runs (page action « bureau-ask ») : tout workflow actif hors Bureau
 askable = [{"wf": wid, "name": wf["name"]} for wid, (wf, full) in defs.items() if not is_bureau(wf)]

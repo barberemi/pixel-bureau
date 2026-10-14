@@ -170,7 +170,7 @@ footer{color:var(--muted);font-size:11px;margin-top:16px;text-align:center}
 .seg button.famb.fam-wf.on{background:#3b82f6;border-color:#3b82f6}
 .seg button.famb.fam-vis.on{background:#d97757;border-color:#d97757}
 .seg button.famb.fam-team.on{background:#8a7f68;border-color:#8a7f68}
-body.km-on .side{z-index:50} /* le panneau est sticky (plan d'empilement propre) : on le passe devant le reste */
+body.km-on .side:has(.kmodal){z-index:50} /* le panneau est sticky (plan d'empilement propre) : on le passe devant le reste quand la fenêtre vient de lui */
 /* passions de l'équipe (38-passions.js) : carte GitFut, Smash, top 3 dramas */
 .gitfut{display:block;text-align:center;margin:0 0 12px}.gitfut img{width:190px;filter:drop-shadow(0 8px 18px rgba(0,0,0,.45))}
 .pcard{border:1px solid var(--line);border-radius:12px;padding:12px;margin:0 0 12px;color:var(--ink)}
@@ -418,6 +418,12 @@ body.tv #tvwho{display:flex;flex-direction:column;gap:8px;position:fixed;top:52p
 .badge{position:relative}
 #freshpop{display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:40;min-width:330px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 10px;box-shadow:var(--shadow);font-size:12px;text-align:left;cursor:default}
 #freshpop:empty{display:none!important}
+/* « ↻ Relancer » (#44) : le bouton seul dans la ligne ; nom et explication dans la fenêtre centrée, qui garde le panneau
+   ouvert et devant le fond assombri */
+#freshpop td.rl{padding-left:8px;text-align:right}#freshpop td.rl button{font:inherit;font-size:11px;padding:1px 8px;white-space:nowrap}
+#freshpop td.rl button.rl-mini{padding:0 6px;opacity:.55}#freshpop td.rl button.rl-mini:hover,#freshpop td.rl button.rl-mini:focus-visible{opacity:1}
+.fr-rl:not(.kmodal){display:block;border:0;padding:0;margin:0}.fr-rl:not(.kmodal) .rl-n,.fr-rl:not(.kmodal) .rl-s{display:none}
+body.km-on #freshpop:has(.kmodal){display:block;z-index:50}
 .badge:hover #freshpop,.badge:focus-within #freshpop{display:block}
 #freshpop table{border-collapse:collapse;width:100%;margin:4px 0}
 #freshpop td{padding:2px 6px 2px 0;white-space:nowrap;color:var(--muted)}

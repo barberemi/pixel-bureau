@@ -603,7 +603,10 @@ print(json.dumps(d.get(key, [])))
         self.assertEqual([a["wf"] for a in pay["agents"]], [AGENT_WF])
         self.assertEqual(pay["rate_usd_per_mtok"], 5.0)
         gates = self.run_script("gates_snapshot.py", api=api)
-        self.assertEqual([w["wf"] for w in gates["workflows"]], [AGENT_WF])
+        self.assertEqual([w["wf"] for w in gates["workflows"] if "bureau" not in w], [AGENT_WF])
+        # les crons du Bureau sont relançables (panneau Fraîcheur, #44), marqués par la clé de leur source
+        self.assertEqual({w["bureau"]: w["wf"] for w in gates["workflows"] if "bureau" in w},
+                         {k: v for k, v in FIXTURE["workflows"].items() if any(x["id"] == v for x in FakeKronn().workflows)})
         self.assertEqual([w["wf"] for w in gates["askable"]], [AGENT_WF])
 
     def test_gates_relaunch_skips_workflows_waiting_for_input(self):
@@ -620,7 +623,7 @@ print(json.dumps(d.get(key, [])))
             ids["e"]: [{"name": "repo", "required": True, "source": "config"}],
         }
         gates = self.run_script("gates_snapshot.py", api=self.kronn(fake))
-        self.assertEqual([w["name"] for w in gates["workflows"]], ["Revue de PR", "Saisie facultative", "Variable fournie"])
+        self.assertEqual([w["name"] for w in gates["workflows"] if "bureau" not in w], ["Revue de PR", "Saisie facultative", "Variable fournie"])
         self.assertIn(ids["b"], [w["wf"] for w in gates["askable"]])  # on peut toujours l'interroger sur ses runs
 
     # ---------- le canard ----------
