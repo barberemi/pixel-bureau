@@ -121,6 +121,23 @@ test('panneau : pas de redessin automatique pendant un clic, le bouton cliqué r
   assert.equal(draws('renderSide()'), 1);
 });
 
+test('panneau Fraîcheur : « ↻ Relancer » si en retard, « ↻ » discret sinon, lié au cron de la source ; rien pour Direct, sans ligne relançable ni en mode TV', () => {
+  const {run} = load();
+  run(`document.createElement = t => ({tag: t, attrs: {}, kids: [], setAttribute(k, v) { this.attrs[k] = v; }, appendChild(x) { this.kids.push(x); },
+    addEventListener() {}}); var cell = () => ({kids: [], appendChild(x) { this.kids.push(x); }});
+    RELAUNCH = [{wf: 'wf-agent', name: 'Revue de PR'}, {wf: 'wf-team', name: 'Le Bureau · équipe', bureau: 'team'}, {wf: 'wf-live', name: 'Le Bureau · live', bureau: 'live'}];
+    ACTIONS.relaunch = true; TV = false;`);
+  const btn = code => JSON.parse(run(`JSON.stringify((() => { const td = cell(); ${code}; const h = td.kids[0], b = h && h.kids.find(k => k.tag === 'button');
+    return b ? {text: b.textContent, cls: b.className || '', action: b.attrs['data-kronn-action'], bind: b.attrs['data-kronn-bindings']} : null; })())`));
+  const bind = '{"wf_id":"wf-team"}';
+  assert.deepEqual(btn(`freshRelaunch(td, 'team', 'Équipe', true)`), {text: '↻ Relancer', cls: '', action: 'bureau-relaunch', bind});
+  assert.deepEqual(btn(`freshRelaunch(td, 'team', 'Équipe', false)`), {text: '↻', cls: 'rl-mini', action: 'bureau-relaunch', bind});
+  assert.equal(btn(`freshRelaunch(td, 'live', 'Direct', true)`), null, 'Direct : le cron live passe chaque minute');
+  assert.equal(btn(`freshRelaunch(td, 'office', 'Bureau', true)`), null, 'cron absent de la liste relançable');
+  assert.equal(btn(`TV = true; freshRelaunch(td, 'team', 'Équipe', true); TV = false`), null, 'mode TV');
+  assert.equal(btn(`ACTIONS.relaunch = false; freshRelaunch(td, 'team', 'Équipe', true); ACTIONS.relaunch = true`), null, 'sans le workflow de relance');
+});
+
 test('validation : trois boutons directs, chacun lié à sa ligne de gates.grows (run_id et decision relus par Kronn)', () => {
   const {run} = load();
   run(`document.createElement = t => ({tag: t, attrs: {}, kids: [], className: '', style: {}, setAttribute(k, v) { this.attrs[k] = v; },
@@ -134,16 +151,4 @@ test('validation : trois boutons directs, chacun lié à sa ligne de gates.grows
   for (const [, a] of btns) assert.equal(a['data-kronn-action'], 'bureau-gate');
   assert.deepEqual(btns.map(([, a]) => JSON.parse(a['data-kronn-bindings'])), ['approve', 'reject', 'request_changes'].map(d => ({run_id: 'r1|' + d, decision: 'r1|' + d})));
   assert.match(run('P.kids[0].innerHTML'), /En attente depuis .* \(12 min\)/, 'durée à l\'heure de la page');
-
-test('panneau Fraîcheur : « ↻ Relancer » lié au cron de la source (ligne de gates.workflows), rien sans elle ni en mode TV', () => {
-  const {run} = load();
-  run(`document.createElement = t => ({tag: t, attrs: {}, kids: [], setAttribute(k, v) { this.attrs[k] = v; }, appendChild(x) { this.kids.push(x); },
-    addEventListener() {}}); var cell = () => ({kids: [], appendChild(x) { this.kids.push(x); }});
-    RELAUNCH = [{wf: 'wf-agent', name: 'Revue de PR'}, {wf: 'wf-team', name: 'Le Bureau · équipe', bureau: 'team'}]; ACTIONS.relaunch = true; TV = false;`);
-  const btn = code => JSON.parse(run(`JSON.stringify((() => { const td = cell(); ${code}; const h = td.kids[0];
-    return h ? h.kids.find(k => k.tag === 'button').attrs : null; })())`));
-  assert.deepEqual(btn(`freshRelaunch(td, 'team', 'Équipe')`), {'data-kronn-action': 'bureau-relaunch', 'data-kronn-bindings': '{"wf_id":"wf-team"}'});
-  assert.equal(btn(`freshRelaunch(td, 'office', 'Bureau')`), null, 'cron absent de la liste relançable');
-  assert.equal(btn(`TV = true; freshRelaunch(td, 'team', 'Équipe'); TV = false`), null, 'mode TV');
-  assert.equal(btn(`ACTIONS.relaunch = false; freshRelaunch(td, 'team', 'Équipe'); ACTIONS.relaunch = true`), null, 'sans le workflow de relance');
 });
