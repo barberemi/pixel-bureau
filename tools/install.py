@@ -463,7 +463,7 @@ def slug(s):
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-") or "compte"
 
 
-def mail(ask, previous):
+def mail(ask, previous, team_defaults=None):
     """Courrier (#30) : comptes à lire (clé mail.accounts) ; les règles, elles, sont proposées ensuite par le facteur.
     Comptes de l'appli Mail du Mac, puis comptes IMAP (mot de passe dans le trousseau). À la relance, règles gardées."""
     previous = previous or {}
@@ -496,7 +496,12 @@ def mail(ask, previous):
         n += 1
     for i, a in enumerate(accounts):
         a["color"] = (old.get(a.get("account") or a.get("user")) or {}).get("color") or MAIL_COLORS[i % len(MAIL_COLORS)]
-    return {**{k_: v for k_, v in previous.items() if k_ != "accounts"}, "accounts": accounts} if accounts else {}
+    if not accounts:
+        return {}
+    # porteurs proposés par le pack d'équipe (defaults.json, mail.messengers), si l'installation n'en a pas encore
+    pack = ((team_defaults or {}).get("mail") or {}).get("messengers") or []
+    return {**{k_: v for k_, v in previous.items() if k_ != "accounts"}, "accounts": accounts,
+            **({"messengers": pack} if pack and not previous.get("messengers") else {})}
 
 
 def my_agents(ask, k, previous, bureau):
@@ -723,7 +728,7 @@ def main(argv=None):
     bureau = {v for v in tpl_ids.values() if v} | {t["definition"]["name"] for t in tpls.values()}
     agents, mep = my_agents(ask, k, old.get("agents"), bureau)
     screens = boss_pages(ask, k, old.get("boss_pages"), old.get("page_id"))
-    courrier = mail(ask, old.get("mail"))
+    courrier = mail(ask, old.get("mail"), defaults)
     me =next(p for p in roster_doc["people"] + people if p["key"] == owner)
     sprite_before = me.get("sprite")
     music = avatar(ask, owner, me, a.dry_run)

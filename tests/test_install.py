@@ -326,6 +326,10 @@ class InstallTest(unittest.TestCase):
                 self.assertEqual(cfg["mail"]["ignore"], ["atlassian.net"])
                 self.assertEqual([a["id"] for a in cfg["mail"]["accounts"]], ["pro", "perso"])
                 self.assertEqual(len(keys), 1)
+                # porteurs du pack (defaults.json, mail.messengers) : repris s'il n'y en a pas encore
+                with mock.patch.object(install.assemble, "defaults", side_effect=lambda c, f=install.assemble.defaults: {**f(c), "mail": {"messengers": [{"id": "gazette", "carrier": "g_x"}]}}):
+                    self.assertEqual(self.run_install({**answers, "mail_keep_perso": "o", "mail_imap_0": "n"}), 0)
+                self.assertEqual(json.load(open(self.cfg_path))["mail"]["messengers"], [{"id": "gazette", "carrier": "g_x"}])
                 self.assertEqual(self.run_install({**ANSWERS, "mail": "n"}), 0)
                 self.assertNotIn("mail", json.load(open(self.cfg_path)))
 

@@ -54,7 +54,7 @@ Certains mails méritent mieux qu'une boîte aux lettres. Une règle de porteur 
 
 ![La carte « remis en personne »](../img/fiche-porteur.png)
 
-Les règles de porteur vont dans `mail.messengers`, et l'avatar du porteur dans le pack de ton équipe (un invité de son roster) : voir le [guide de développement](../developpement.md#courrier-cron-courrier).
+Les règles de porteur vont dans `mail.messengers` (dans la config, ou proposées par le `defaults.json` du pack de ton équipe et reprises à l'installation), et l'avatar du porteur dans le pack (un invité de son roster) : voir le [guide de développement](../developpement.md#courrier-cron-courrier).
 
 ## Mise en place
 
