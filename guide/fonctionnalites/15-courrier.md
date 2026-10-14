@@ -47,7 +47,7 @@ Certains mails méritent mieux qu'une boîte aux lettres. Une règle de porteur 
 
 ![Un porteur devant le bureau du boss](../img/porteur.png)
 
-- Le mail n'est pas compté dans la boîte : il est en tête de la fiche Courrier, dans la fiche du porteur et dans la tienne, « remis en personne », avec **Lu ✓** (il le marque lu dans ta messagerie, et le porteur repart) et « Ouvrir ↗ ».
+- Le mail n'est pas compté dans la boîte : il est en tête de la fiche Courrier, dans la fiche du porteur et dans la tienne, « remis en personne », avec « Ouvrir ↗ ». Lis-le dans ta messagerie : le porteur repart au relevé suivant (10 min au plus).
 - Le lire dans l'appli Mail ou dans Gmail suffit aussi : le porteur repart au relevé suivant.
 - Une règle peut fixer un moment : par exemple, les mails reçus le vendredi remis le lundi à 9h.
 - En mode TV, on voit le porteur et sa bulle, jamais l'objet du mail.

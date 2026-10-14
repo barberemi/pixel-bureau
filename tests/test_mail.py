@@ -32,7 +32,6 @@ class FakeImap(socketserver.StreamRequestHandler):
     """Juste ce que lit imaplib : accueil, CAPABILITY, LOGIN, SELECT (lecture seule), UID SEARCH, UID FETCH, LOGOUT."""
     MAILS = {}  # uid -> (en-têtes bruts, drapeaux)
     SEEN = []  # commandes reçues
-    STORED = []  # uid marqués lus (UID STORE +FLAGS \Seen)
 
     def send(self, s):
         self.wfile.write(s.encode() if isinstance(s, str) else s)
@@ -61,9 +60,6 @@ class FakeImap(socketserver.StreamRequestHandler):
                 hdr, flags = FakeImap.MAILS[uid]
                 body = hdr.encode()
                 self.send(f"* 1 FETCH (UID {uid} FLAGS ({flags}) BODY[HEADER.FIELDS (FROM)] {{{len(body)}}}\r\n".encode() + body + b")\r\n" + (tag + " OK done\r\n").encode())
-            elif c == "UID" and arg.upper().startswith("STORE"):
-                FakeImap.STORED.append(arg.split(" ")[1])
-                self.send(tag + " OK done\r\n")
             elif c == "LOGOUT":
                 self.send("* BYE\r\n" + tag + " OK done\r\n")
                 return
@@ -258,25 +254,13 @@ class MailSnapshotTest(unittest.TestCase):
 
     def test_messenger_rule_takes_the_mail_out_of_the_box(self):
         """Porteur (mail.messengers) : le mail qui correspond (objet) passe avant le tri et les règles, hors du compteur, avec
-        son porteur et sa bulle ; une ligne read_rows pour le bouton « Lu ✓ »."""
+        son porteur et sa bulle. Il repart quand le mail est lu dans la messagerie : la page n'a rien pour le marquer lu."""
         out, _ = self.run_mail({"accounts": [{"id": "pro", "provider": "mac-mail", "account": "Dunder"}], "ignore": ["staples.example"],
                                 "messengers": [{"id": "promo", "match": {"subject_contains": ["promo"]}, "carrier": "g_porteur", "bubble": "📰 Promo"}]})
         a = out["accounts"][0]
         self.assertEqual([(m["subject"], m["carrier"], m["bubble"]) for m in a["carried"]], [("Promo ramettes", "g_porteur", "📰 Promo")])
         self.assertNotIn("Staples", dict(a["ignored"]))  # pris par le porteur avant la règle ignore
-        self.assertEqual(out["read_rows"], [{"id": "pro|a4@x"}])
-
-    def test_read_marks_the_mail_read_in_mail_or_imap(self):
-        self.tool("osascript", f"import sys\nsys.stdin.read()\nopen({os.path.join(self.tmp, 'argv.txt')!r}, 'w').write(' '.join(sys.argv[1:]))\nprint('ok')")
-        out, _ = self.run_mail({"accounts": [{"id": "pro", "provider": "mac-mail", "account": "Dunder"}]}, args=("read", "pro|<a4@x>"))
-        self.assertEqual(out, {"read": True, "account": "pro", "id": "a4@x"})
-        self.assertEqual(open(os.path.join(self.tmp, "argv.txt")).read(), "- Dunder a4@x 150")
-        port = self.imap_server({"11": (raw("Marie <marie@exemple.example>", "Ce week-end ?", 2), "")})
-        out, _ = self.run_mail({"accounts": [{"id": "perso", "provider": "imap", "host": "127.0.0.1", "port": port, "ssl": False,
-                                              "user": "pam.perso@gmail.example", "secret": "keychain:pixel-bureau-perso"}]}, args=("read", "perso|m1@x"))
-        self.assertTrue(out["read"])
-        self.assertEqual(FakeImap.STORED, ["11"])
-        self.assertTrue(any(s.startswith("UID SEARCH HEADER Message-ID") for s in FakeImap.SEEN))
+        self.assertNotIn("read_rows", out)
 
     def test_no_accounts_empty(self):
         out, _ = self.run_mail({})

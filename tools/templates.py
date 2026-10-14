@@ -35,8 +35,6 @@ TEMPLATES = {
     "courrier": ("workflow", ("workflows", "courrier"), {"mails": "workflows/mail_snapshot.py"}),
     # règles du courrier (#30) : le facteur les propose (agent), le boss les valide (gate) ; lancé par le cron courrier
     "regles": ("workflow", ("actions", "mail_rules"), {"senders": "workflows/mail_snapshot.py", "merge": "workflows/mail_snapshot.py"}),
-    # bouton « Lu ✓ » d'un mail remis en personne (#30) : le marque lu dans sa messagerie
-    "lu": ("workflow", ("actions", "mail_read"), {"read": "workflows/mail_snapshot.py"}),
     "avatar": ("workflow", ("actions", "avatar"), {"save": "workflows/avatar_save.py"}),
     "gate": ("workflow", ("actions", "gate"), {"decide": "workflows/gate_decide.py"}),
     "answer": ("workflow", ("actions", "answer"), {"answer": "workflows/question_answer.py"}),  # question de discussion (KT-27)
@@ -138,7 +136,7 @@ def skipped(key, cfg):
     if key == "absences":
         m = cfg.get("microsoft") or {}
         return not (m.get("config_id") and (m.get("planning") or {}).get("site") and (m.get("planning") or {}).get("item"))
-    if key in ("courrier", "regles", "lu"):
+    if key in ("courrier", "regles"):
         return not (cfg.get("mail") or {}).get("accounts")
     return False
 

@@ -334,62 +334,6 @@ def merge():
     print(dumps({"updated_at": datetime.now(TZ).isoformat(), "keep": list(keep.values()), "ignore": list(ignore.values()), "by": "facteur"}))
 
 
-READ_SCRIPT = r'''
-on run argv
-  tell application "Mail"
-    set ib to missing value
-    repeat with m in mailboxes of inbox
-      if (name of account of m) is (item 1 of argv) then set ib to m
-    end repeat
-    set n to count of messages of ib
-    if n > ((item 3 of argv) as integer) then set n to (item 3 of argv) as integer
-    set lId to message id of messages 1 thru n of ib
-    repeat with i from 1 to n
-      if (item i of lId) is (item 2 of argv) then
-        set read status of message i of ib to true
-        return "ok"
-      end if
-    end repeat
-  end tell
-  return "absent"
-end run
-'''
-
-
-def mark_read():
-    """Bouton « Lu ✓ » (workflow « Le Bureau · lu ») : argv = id du compte, Message-ID ; marque le mail lu (appli Mail ou
-    IMAP), puis relance le cron courrier pour que la page le voie tout de suite."""
-    acc_id, _, mid = sys.argv[2].partition("|")  # « compte|Message-ID » (ligne read_rows du dataset)
-    mid = mid.strip("<>")
-    acc = next(({"provider": "mac-mail", **a} for a in MAIL.get("accounts") or [] if a.get("id") == acc_id), None)
-    if not acc:
-        raise SystemExit("compte inconnu : " + acc_id)
-    if acc["provider"] == "mac-mail":
-        r = subprocess.run(["osascript", "-", acc.get("account") or "", mid, str(SCAN)], input=READ_SCRIPT, capture_output=True, text=True, timeout=110)
-        done = r.returncode == 0 and r.stdout.strip() == "ok"
-    else:
-        port = int(acc.get("port") or (993 if acc.get("ssl", True) else 143))
-        c = imaplib.IMAP4_SSL(acc["host"], port, timeout=60) if acc.get("ssl", True) else imaplib.IMAP4(acc["host"], port, timeout=60)
-        c.login(acc["user"], secret(acc.get("secret"), acc["user"]))
-        c.select("INBOX")
-        typ, data = c.uid("SEARCH", "HEADER", "Message-ID", "<" + mid + ">")
-        uids = (data[0] or b"").split() if typ == "OK" else []
-        for uid in uids:
-            c.uid("STORE", uid, "+FLAGS", "(\\Seen)")
-        c.logout()
-        done = bool(uids)
-    wf = (CFG.get("workflows") or {}).get("courrier")
-    if done and wf:
-        try:
-            urllib.request.urlopen(urllib.request.Request((CFG.get("kronn") or {}).get("api", "") + "/mcp/workflow-trigger", method="POST",
-                                   headers={"content-type": "application/json"}, data=json.dumps({"workflow_id": wf}).encode()), timeout=30).read()
-        except Exception as e:
-            print("courrier : relevé non relancé (" + str(e)[:120] + ")", file=sys.stderr)
-    print(dumps({"read": done, "account": acc_id, "id": mid}))
-    if not done:
-        raise SystemExit("mail introuvable (déjà lu, ou plus dans les " + str(SCAN) + " derniers)")
-
-
 def main():
     keep, ignore = rules("keep"), rules("ignore")
     out = {"generated_at": datetime.now(TZ).isoformat(), "sorted": bool(keep or ignore), "accounts": []}
@@ -407,10 +351,8 @@ def main():
             print("courrier : " + acc["id"] + " : " + str(e), file=sys.stderr)
             out["accounts"].append({**base, "ok": False, "error": str(e)[:200], "unread": 0, "useful_n": 0, "useful": [], "carried": [], "ignored": [],
                                     "ignored_n": 0, "unknown": 0})
-    # lignes du bouton « Lu ✓ » de la page (action bureau-mailread) : un mail remis en personne = « compte|Message-ID »
-    out["read_rows"] = [{"id": a["id"] + "|" + m["id"]} for a in out["accounts"] for m in a.get("carried") or [] if m.get("id")]
     print(dumps(out))
     ask_rules(out)
 
 
-{"senders": senders, "merge": merge, "read": mark_read}.get(sys.argv[1] if len(sys.argv) > 1 else "", main)()
+{"senders": senders, "merge": merge}.get(sys.argv[1] if len(sys.argv) > 1 else "", main)()

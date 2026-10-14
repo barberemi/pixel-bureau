@@ -648,7 +648,7 @@ def upsert_all(k, cfg, tpls, enabled, dry):
         for key, tpl in tpls.items():
             kind, (sec, field), _ = templates.TEMPLATES[key]
             if (key == "ask" and not cfg.get("_ai_agent")) or templates.skipped(key, cfg):
-                if sec == "actions" and key not in ("regles", "lu"):
+                if sec == "actions" and key != "regles":
                     cfg.setdefault(sec, {})[field] = ""  # sans agent IA / sans Jira : pas de bouton
                 else:
                     (cfg.get(sec) or {}).pop(field, None)  # sans planning Microsoft 365 : pas de cron des absences ; sans courrier : pas de règles

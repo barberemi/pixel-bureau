@@ -91,7 +91,7 @@ function postmanState(c,t){
 // ---------- porteurs (mail.messengers) : un invité remet en personne les mails d'une règle, jusqu'à leur lecture ----------
 // Le cron sort ces mails du tri (carried, hors du compteur). L'invité de la règle (carrier = sa clé) vient devant le bureau
 // du boss à leur arrivée (ou au créneau de la règle : {received: 'fri', deliver: 'mon 09:00'}) et y reste tant qu'ils
-// ne sont pas lus (ils disparaissent du dataset au relevé suivant, ou tout de suite avec « Lu ✓ »).
+// ne sont pas lus dans la messagerie (ils disparaissent du dataset au relevé suivant, et l'invité repart).
 const WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 function carryStart(m){
   const t=ms(m.at); if(!t)return 0;
@@ -125,12 +125,11 @@ function mailRow(m,a){
 }
 // mails remis en personne (avec leur compte) déjà arrivés à t, d'un porteur (clé) ou de tous
 function carriedMails(t,carrier){return mailAccounts().filter(a=>a.ok).flatMap(a=>(a.carried||[]).map(m=>({...m,acc:a}))).filter(m=>(!carrier||m.carrier===carrier)&&carryStart(m)<=t);}
-// carte d'un mail remis en personne, avec « Lu ✓ » (workflow « lu ») : fiche Courrier, fiche du porteur et fiche du boss
+// carte d'un mail remis en personne : fiche Courrier, fiche du porteur et fiche du boss ; il se lit dans la messagerie (« Ouvrir ↗ »)
 function handHtml(m){
   const href=safeMailUrl(m.open);
   return `<div class="ml-hand" style="--c:${esc(m.acc.color||'var(--accent)')}"><div class="ml-top"><b>${esc(m.bubble)} · remis en personne · ${esc(m.acc.label)}</b><span class="ml-t">${esc(mailWhen(m.at))}</span></div>`+
-    `<div class="ml-s">${esc(m.subject||'(sans objet)')}${m.name?' · '+esc(m.name):''}</div><div class="ml-tags" data-kronn-action-slot-host><span class="ml-tag ml-wait">attend ta lecture</span>`+
-    (ACTIONS.mail_read?`<button class="ml-read" data-kronn-action="bureau-mailread" data-kronn-bindings='${esc(JSON.stringify({id:m.acc.id+'|'+m.id}))}'>Lu ✓</button>`:'')+
+    `<div class="ml-s">${esc(m.subject||'(sans objet)')}${m.name?' · '+esc(m.name):''}</div><div class="ml-tags"><span class="ml-tag ml-wait">attend ta lecture</span>`+
     (href?`<a class="ml-open" href="${esc(href)}" target="_blank" rel="noopener">Ouvrir ↗</a>`:'')+`</div></div>`;
 }
 function handCards(side,list){
@@ -146,7 +145,7 @@ function renderMail(side,first){
   if(!acc.length){box.innerHTML='<p class="sub">Pas de compte : le courrier se branche à l\'installation.</p>';side.appendChild(box);return;}
   const n=acc.reduce((s,a)=>s+(a.ok?a.useful_n||0:0),0);
   let html=`<p class="sub">${MAILS.sorted?plural(n,'mail utile','mails utiles'):'Pas encore trié : le facteur viendra proposer tes règles'} · relevé à ${hm(ms(MAILS.generated_at))}${MAILS.demo?' (démo)':''}</p>`;
-  html+=carriedMails(Infinity).map(handHtml).join(''); // remis en personne : en tête, avec « Lu ✓ »
+  html+=carriedMails(Infinity).map(handHtml).join(''); // remis en personne : en tête
   for(const a of acc){
     html+=`<section class="ml-acc" style="--c:${esc(a.color||'var(--accent)')}"><div class="ml-head"><b>${MAIL_ICON[a.provider]||'📬'} ${esc(a.label)}${a.ok?' · '+(MAILS.sorted?a.useful_n:'?'):''}</b>`+
       `<small>${a.provider==='imap'?'IMAP':'appli Mail'} · ${a.unread||0} non lus</small></div>`;
