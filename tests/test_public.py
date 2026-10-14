@@ -45,6 +45,17 @@ class PublicTreeTest(unittest.TestCase):
         if os.path.exists(cr.CSV):  # en local : CREDITS.md doit correspondre aux calques utilisés
             self.assertEqual(cr.main(["--check"]), 0)
 
+    def test_lpc_pinned_on_a_commit(self):
+        """#9 : sprites et crédits LPC lus sur un même commit figé du générateur, jamais sur une branche mobile."""
+        import re
+        pins = set()
+        for f in ("build_sprites.py", "credits.py"):
+            src = Path(os.path.join(ROOT, "sprites", f)).read_text(encoding="utf-8")
+            self.assertNotIn("/master/", src, f)
+            pins |= set(re.findall(r'^LPC_COMMIT = "([0-9a-f]{40})"', src, re.M))
+            self.assertIn("{LPC_COMMIT}/", src, f)
+        self.assertEqual(len(pins), 1, pins)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -11,6 +11,10 @@ metadata:
       status: Confirmed by user
       reviewer: Kronn audit validation card
       note: "Confirmed through an audit validation card."
+    - date: 2026-10-15
+      status: Resolved
+      reviewer: mainteneur
+      note: "#9 : sprites/build_sprites.py et sprites/credits.py lisent le générateur LPC au commit 9bf06be (master du 2026-10-14), constante LPC_COMMIT vérifiée par tests/test_public.py. Pas de sha256 par fichier : une URL raw sur un SHA de commit est déjà figée. Sprites non régénérés : l'API GitHub montre que spritesheets/ et CREDITS.csv n'ont pas changé en amont depuis le 2026-08-16, avant le premier commit des sprites (2026-10-04) ; les fichiers lus sont donc les mêmes et aucune capture ne change."
 ---
 
 # TD-20261011-sprites-unpinned-master
@@ -18,7 +22,7 @@ metadata:
 - **Category**: security
 - **Area**: Supply chain
 - **Severity**: Low
-- **Status**: Confirmed by user
+- **Status**: Resolved (2026-10-15, #9)
 - **Effort**: S (< 1h)
 - **Blast radius**: local (1-2 files)
 
