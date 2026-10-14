@@ -27,6 +27,9 @@ def mail_now(cfg):
         r = subprocess.run(["osascript", "-e", 'tell application "Mail" to get name of every account'], capture_output=True, text=True, timeout=60)
         names = [x.strip() for x in r.stdout.split(",") if x.strip()]
         cfg = {**cfg, "mail": {"accounts": [{"id": f"m{i}", "label": n, "provider": "mac-mail", "account": n} for i, n in enumerate(names)]}}
+    pack = ((assemble.defaults(cfg).get("mail") or {}).get("messengers")) or []  # porteurs du pack d'équipe
+    if pack and not cfg["mail"].get("messengers"):
+        cfg = {**cfg, "mail": {**cfg["mail"], "messengers": pack}}
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
         json.dump({**cfg, "actions": {k: v for k, v in (cfg.get("actions") or {}).items() if k != "mail_rules"}}, fh)  # jamais de visite du facteur
     r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "mail_snapshot.py")], capture_output=True, text=True,
