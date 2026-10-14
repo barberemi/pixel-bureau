@@ -61,7 +61,11 @@
    "sandbox": false,
    "require_approval": false
   },
-  "workspace_config": null,
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
   "concurrency_limit": null,
   "exec_allowlist": [
    "python3"

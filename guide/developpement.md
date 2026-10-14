@@ -103,6 +103,7 @@ Une police : un `.woff2` (sous-ensemble latin) dans `page/fonts/` avec sa licenc
 - Une étape `"_requires": "jira"` disparaît sans connexion Jira.
 - `templates.py export` régénère les modèles après une modification faite dans l'interface de Kronn.
 - Toute sortie d'étape Exec reste sous 100 Ko (limite de Kronn) : les scripts raccourcissent leurs listes au besoin.
+- Un script n'écrit jamais dans le dossier du projet Kronn : seulement `~/.cache/pixel-bureau` ou un dossier temporaire. Chaque workflow le déclare (`workspace_config.main_tree_read_only`), sinon Kronn le fait attendre le dossier du projet et le refuse au-delà de 60 s quand plusieurs crons partent à la même minute (étape `__workspace__` en échec).
 
 ## Aperçu local, avant de merger
 
