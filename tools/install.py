@@ -10,7 +10,7 @@ Relançable : les réponses et les ids déjà dans la config sont repris, ce qui
 L'installateur ne crée jamais de connexion Jira ni ne se connecte à GitHub à ta place : il dit comment faire.
 Python 3 seul, sans dépendance (Pillow seulement pour un sprite fourni).
 """
-import argparse, json, os, re, shutil, subprocess, sys, urllib.error, urllib.request
+import argparse, getpass, imaplib, json, os, re, shutil, subprocess, sys, unicodedata, urllib.error, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -24,8 +24,8 @@ OFFICE = [("dwight", "Dwight"), ("jim", "Jim"), ("stanley", "Stanley"), ("phylli
           ("erin", "Erin"), ("ryan", "Ryan")]
 ROLES = {"dev": ("Développeur", None), "lead": ("Tech Lead", "lead"), "qa": ("Testeur", "qa"), "po": ("Product owner", "po"),
          "sm": ("Facilitateur", "sm")}
-DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "bosspages", "gitfut", "layout", "actions", "duck", "absences"]
-CRONS = ("office", "live", "team", "payroll", "canard", "absences")
+DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "bosspages", "gitfut", "layout", "actions", "duck", "absences", "mails", "mail_rules"]
+CRONS = ("office", "live", "team", "payroll", "canard", "absences", "courrier")
 DATASET = lambda name: {"name": name, "kind": "snapshot", "max_points": 50000}  # noqa: E731
 
 
@@ -425,6 +425,85 @@ def boss_pages(ask, k, previous, page_id):
         say(f"  {msg}")
 
 
+MAIL_COLORS = ("#1f3f8f", "#2e7d4f", "#8a3a8f", "#b0592c")  # boîte aux lettres de chaque compte, dans l'ordre
+
+
+def mac_mail_accounts():
+    """Comptes de l'appli Mail du Mac (osascript), [] sans Mail ni osascript."""
+    if not shutil.which("osascript"):
+        return []
+    try:
+        r = subprocess.run(["osascript", "-e", 'tell application "Mail" to get name of every account'], capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    return [x.strip() for x in r.stdout.strip().split(",") if x.strip()] if r.returncode == 0 else []
+
+
+def keychain_set(service, user, password):
+    """Mot de passe d'un compte IMAP dans le trousseau macOS (jamais dans la config) ; -U : remplace l'ancien."""
+    r = subprocess.run(["security", "add-generic-password", "-U", "-s", service, "-a", user, "-w", password], capture_output=True, text=True, timeout=20)
+    if r.returncode:
+        raise InstallError("trousseau : " + (r.stderr.strip() or "security a échoué"))
+
+
+def imap_check(host, user, password):
+    """Connexion IMAP d'essai (lecture seule) : None si elle passe, sinon l'erreur (l'installation continue)."""
+    try:
+        c = imaplib.IMAP4_SSL(host, 993, timeout=20)
+        c.login(user, password)
+        c.select("INBOX", readonly=True)
+        c.logout()
+        return None
+    except Exception as e:
+        return str(e)[:160]
+
+
+def slug(s):
+    s = unicodedata.normalize("NFKD", str(s)).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9]+", "-", s).strip("-") or "compte"
+
+
+def mail(ask, previous, team_defaults=None):
+    """Courrier (#30) : comptes à lire (clé mail.accounts) ; les règles, elles, sont proposées ensuite par le facteur.
+    Comptes de l'appli Mail du Mac, puis comptes IMAP (mot de passe dans le trousseau). À la relance, règles gardées."""
+    previous = previous or {}
+    if not ask.yes("mail", "Afficher ton courrier dans Le Bureau (appli Mail du Mac, Gmail ou autre par IMAP) ?", bool(previous.get("accounts"))):
+        return {}
+    old = {a.get("account") or a.get("user"): a for a in previous.get("accounts") or []}
+    accounts = []
+    for name in mac_mail_accounts():
+        if ask.yes(f"mail_mac_{slug(name)}", f"Lire le compte « {name} » de l'appli Mail ?", name in old or not previous.get("accounts")):
+            o = old.get(name) or {}
+            label = ask.text(f"mail_mac_{slug(name)}_label", "  Son nom dans la page", o.get("label") or name)
+            accounts.append({"id": o.get("id") or slug(label), "label": label, "provider": "mac-mail", "account": name})
+    for a in previous.get("accounts") or []:  # comptes IMAP d'avant : gardés (le mot de passe est déjà au trousseau)
+        if a.get("provider") == "imap" and ask.yes(f"mail_keep_{a['id']}", f"Garder le compte IMAP « {a.get('label')} » ({a.get('user')}) ?", True):
+            accounts.append({k_: v for k_, v in a.items() if k_ != "color"})
+    n = 0
+    while ask.yes(f"mail_imap_{n}", "Ajouter un compte IMAP (Gmail : mot de passe d'application, myaccount.google.com/apppasswords) ?", False):
+        user = ask.text(f"mail_imap_{n}_user", "  Adresse")
+        gmail = str(user).endswith(("@gmail.com", "@googlemail.com"))
+        host = ask.text(f"mail_imap_{n}_host", "  Serveur IMAP", "imap.gmail.com" if gmail else None)
+        label = ask.text(f"mail_imap_{n}_label", "  Son nom dans la page", "Perso")
+        acc = {"id": slug(label), "label": label, "provider": "imap", "host": host, "user": user, "secret": "keychain:pixel-bureau-" + slug(label)}
+        password = (ask.answers or {}).get(f"mail_imap_{n}_password") if ask.answers is not None else getpass.getpass("  Mot de passe (d'application) : ")
+        keychain_set(acc["secret"].split(":", 1)[1], user, password or "")
+        err = imap_check(host, user, password or "")
+        say("  ✓ connexion IMAP réussie" if not err else f"  (!) connexion IMAP refusée : {err} (compte gardé, à corriger)")
+        if "gmail" in str(host) and ask.yes(f"mail_imap_{n}_primary", "  Gmail : seulement l'onglet Principal ?", True):
+            acc["only"] = "category:primary"
+        accounts.append(acc)
+        n += 1
+    for i, a in enumerate(accounts):
+        a["color"] = (old.get(a.get("account") or a.get("user")) or {}).get("color") or MAIL_COLORS[i % len(MAIL_COLORS)]
+    if not accounts:
+        return {}
+    # porteurs proposés par le pack d'équipe (defaults.json, mail.messengers), si l'installation n'en a pas encore
+    pack = ((team_defaults or {}).get("mail") or {}).get("messengers") or []
+    return {**{k_: v for k_, v in previous.items() if k_ != "accounts"}, "accounts": accounts,
+            **({"messengers": pack} if pack and not previous.get("messengers") else {})}
+
+
 def my_agents(ask, k, previous, bureau):
     """bureau : ids et noms des workflows du Bureau (config, réutilisés, modèles) : jamais des agents."""
     wfs = [w for w in k.get("/workflows") if w.get("id") not in bureau and w.get("name") not in bureau and w.get("enabled", True)]
@@ -569,10 +648,10 @@ def upsert_all(k, cfg, tpls, enabled, dry):
         for key, tpl in tpls.items():
             kind, (sec, field), _ = templates.TEMPLATES[key]
             if (key == "ask" and not cfg.get("_ai_agent")) or templates.skipped(key, cfg):
-                if sec == "actions":
+                if sec == "actions" and key != "regles":
                     cfg.setdefault(sec, {})[field] = ""  # sans agent IA / sans Jira : pas de bouton
                 else:
-                    (cfg.get(sec) or {}).pop(field, None)  # sans planning Microsoft 365 : pas de cron des absences
+                    (cfg.get(sec) or {}).pop(field, None)  # sans planning Microsoft 365 : pas de cron des absences ; sans courrier : pas de règles
                 continue
             body = templates.render(tpl, cfg)
             if key == "ask":
@@ -649,6 +728,7 @@ def main(argv=None):
     bureau = {v for v in tpl_ids.values() if v} | {t["definition"]["name"] for t in tpls.values()}
     agents, mep = my_agents(ask, k, old.get("agents"), bureau)
     screens = boss_pages(ask, k, old.get("boss_pages"), old.get("page_id"))
+    courrier = mail(ask, old.get("mail"), defaults)
     me =next(p for p in roster_doc["people"] + people if p["key"] == owner)
     sprite_before = me.get("sprite")
     music = avatar(ask, owner, me, a.dry_run)
@@ -656,10 +736,10 @@ def main(argv=None):
     cfg = {"_doc": "Propre à cette installation, jamais partagé. Créé par tools/install.py (relançable).",
            "owner": owner, "team": team_id, "people": people, "layout": layout_file, "kronn": kronn, "page_id": old.get("page_id"), "workflows": {}, "actions": {},
            "own": sorted(own), "jira": j, "github": g, "rhythm": defaults["rhythm"],
-           "mep_workflow": mep, "agents": agents, "boss_pages": screens, "ui": {**(defaults.get("ui") or {}), **(old.get("ui") or {})}, "music": old.get("music") or {},
+           "mep_workflow": mep, "agents": agents, "boss_pages": screens, **({"mail": courrier} if courrier else {}), "ui": {**(defaults.get("ui") or {}), **(old.get("ui") or {})}, "music": old.get("music") or {},
            "_ai_agent": ai, **({"protect": True} if old.get("protect") else {})}
     # réglages posés à la main dans la config (gitfut, wiki_posters, chrome…) : gardés tels quels à la relance
-    cfg = {**{k_: v for k_, v in old.items() if not k_.startswith("_") and k_ not in cfg}, **cfg}
+    cfg = {**{k_: v for k_, v in old.items() if not k_.startswith("_") and k_ not in cfg and k_ != "mail"}, **cfg}
     for key, (_, (sec, field), _) in templates.TEMPLATES.items():
         if tpl_ids.get(key):
             cfg[sec][field] = tpl_ids[key]
@@ -670,6 +750,7 @@ def main(argv=None):
     say(f"  Jira : {j['project'] + ' (board ' + str(j['board']) + ')' if j else 'non connecté : sprint, tickets, kanban masqués'}")
     say(f"  GitHub : {g['repo'] or 'aucun dépôt suivi'}" + ("" if login else " (gh non connecté : PR et MEP vides)"))
     say(f"  Écran du boss : {len(screens)} page(s) Kronn")
+    say("  Courrier : " + (", ".join(f"{a['label']} ({'appli Mail' if a['provider'] == 'mac-mail' else 'IMAP'})" for a in courrier["accounts"]) if courrier else "non"))
     say(f"  Agents : {len(agents)} personnage(s) · page : {'existante' if cfg['page_id'] else 'à créer'} · crons : "
         + ("désactivés" if a.disabled else "actifs"))
     if not ask.yes("confirm", "Créer ou mettre à jour tout ça dans Kronn ?"):
@@ -679,7 +760,8 @@ def main(argv=None):
     title = a.title or defaults["page_title"]
     cfg["page_id"] = upsert_page(k, cfg, title, a.dry_run)
     upsert_all(k, cfg, tpls, not a.disabled, a.dry_run)
-    cfg["_answers"] = {**previous, **(ask.answers or {}), "owner": owner, "project_id": project_id,
+    # réponses gardées pour la relance, jamais un mot de passe (comptes IMAP : il est au trousseau)
+    cfg["_answers"] = {**{k_: v for k_, v in {**previous, **(ask.answers or {})}.items() if not k_.endswith("_password")}, "owner": owner, "project_id": project_id,
                        "jira_config": j.get("config_id", ""), "ai_agent": ai}
     cfg.pop("_ai_agent")
     if a.dry_run:

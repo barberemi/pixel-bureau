@@ -151,10 +151,15 @@ function mepVisitorState(c,t){
   const mine=mepsAt(t).filter(x=>mepChar(x.m)===c);
   return mine.length?{st:'gone',label:'Reparti après la mise en prod '+mine[mine.length-1].m.tag}:{st:'off',label:'Pas encore arrivé'};
 }
+// repart par la porte au lieu de disparaître sur place : reparti, ou invité encore sur le plan dont la raison d'être là a
+// cessé (porteur dont le mail est lu, facteur dont la validation est décidée un jour sans tournée)
+const walksOut=(c,s)=>s.st==='gone'||c.guest&&s.st==='off';
 function guestState(c,t){
+  {const ms_=messengerState(c,t);if(ms_)return ms_;} // 48-mail.js : un porteur qui remet un mail en personne
   if(c.on==='mep')return mepVisitorState(c,t);
   if(c.on==='reopen')return heraldState(c,t); // 37-scenes.js : le héraut des tickets réouverts
   if(c.on==='prod')return prodHeraldState(c,t); // 37-scenes.js : le héraut des mises en prod réussies
+  if(c.on==='mail')return postmanState(c,t); // 48-mail.js : le facteur dépose le courrier
   const v=guestVisit(c,t);
   if(!v||t<v.s)return {st:'off',label:"Pas passé aujourd'hui"};
   if(t>=v.e)return {st:'gone',label:'Passé de '+hm(v.s)+' à '+hm(v.e)};
@@ -509,7 +514,7 @@ function tick(real){
   for(const c of order){
     const s=c._st;
     if(s.st==='absent'||s.st==='gone'||s.st==='off'){
-      if(c.present&&!needTeleport&&s.st==='gone'&&c.tile&&!(c.tile[0]===EXIT[0]&&c.tile[1]===EXIT[1])){goTo(c,{key:'exit',x:EXIT[0],y:EXIT[1],dir:'right'});continue;}
+      if(c.present&&!needTeleport&&walksOut(c,s)&&c.tile&&!(c.tile[0]===EXIT[0]&&c.tile[1]===EXIT[1])){goTo(c,{key:'exit',x:EXIT[0],y:EXIT[1],dir:'right'});continue;}
       c.present=false;c.pos=null;c.spotKey=null;continue;
     }
     let zone=s.zone; if(zone==='wander')zone=wanderZone(c,real); else c.idlePlan=null;
@@ -548,7 +553,7 @@ function goTo(c,spot){
 function step(c,dt){
   if(!c.pos)return;
   if(!c.path.length){c.moving=false;if(c.target)c.dir=c.target.dir;
-    if(c.target&&c.target.key==='exit'&&c._st&&(c._st.st==='gone'||c._st.zone==='leave')){c.present=false;c.pos=null;}
+    if(c.target&&c.target.key==='exit'&&c._st&&(walksOut(c,c._st)||c._st.zone==='leave')){c.present=false;c.pos=null;}
     return;}
   const [tx,ty]=c.path[0], last=c.path.length===1&&c.target&&c.target.x===tx&&c.target.y===ty;
   const g=last?spotPos(c.target):tileCenter(tx,ty);

@@ -37,8 +37,16 @@ function sideFoldButton(side){
 }
 function refocus(side,fid){const e=fid&&[...side.querySelectorAll('[data-fid]')].find(x=>x.dataset.fid===fid);if(e)e.focus();}
 let COLLAPSED={};try{COLLAPSED=JSON.parse(localStorage.getItem('bureau:collapsed')||'{}')||{};}catch(e){COLLAPSED={};}
+// appui en cours dans le panneau : pas de redessin automatique. Un panneau refait entre l'appui et le relâchement
+// remplace le bouton, le « click » part alors sur le panneau et la carte Kronn ne s'ouvre pas. Plafond de 10 s si le
+// relâchement se perd (souris lâchée hors de la page), puis 400 ms après lui, le temps que le clic arrive.
+let SIDE_HOLD=0;
+function sideHold(down,now){if(down)SIDE_HOLD=now+1e4;else if(SIDE_HOLD>now)SIDE_HOLD=now+400;}
+addEventListener('pointerdown',e=>{if(e.target&&e.target.closest&&e.target.closest('#side'))sideHold(true,performance.now());},true);
+for(const ev of ['pointerup','pointercancel'])addEventListener(ev,()=>sideHold(false,performance.now()),true);
 function renderSide(force){
   if(EDIT&&!force)return; // l'éditeur d'avatar ne se redessine pas tout seul (saisie en cours)
+  if(!force&&performance.now()<SIDE_HOLD)return; // clic en cours dans le panneau
   if(!force&&(KM_OPEN||document.querySelector('#side [data-kronn-action-slot]')))return; // carte Kronn ouverte (fenêtre centrée)
   if(!force&&document.activeElement&&document.activeElement.tagName==='SELECT'&&document.activeElement.closest('#side'))return; // menu ouvert : ne pas le refermer
   const side=document.getElementById('side'); if(!DATA)return;
@@ -76,13 +84,14 @@ function drawSide(side){
     if(String(sel).startsWith('pr:'))renderPr(side,sel.slice(3));else renderTicket(side,sel.slice(7));
     return;
   }
-  if(sel==='tv'||sel==='emp'||sel==='kanban'||sel==='planning'||sel==='paie'||sel==='duck'||sel==='calendar'||String(sel).startsWith('gate:')){
+  if(sel==='tv'||sel==='emp'||sel==='kanban'||sel==='planning'||sel==='paie'||sel==='duck'||sel==='calendar'||String(sel).startsWith('gate:')||String(sel).startsWith('mail:')){
     const back=document.createElement('button');
     back.className='back';
     back.textContent="← Toute l'équipe";
     back.onclick=()=>select(null);
     side.appendChild(back);
     if(String(sel).startsWith('gate:')){renderLoneGate(side,sel.slice(5));return;}
+    if(String(sel).startsWith('mail:')){renderMail(side,sel.slice(5));return;} // 48-mail.js
     ({tv:renderTv,emp:renderEmp,kanban:renderKanban,planning:renderPlanning,paie:renderPaie,duck:renderDuck,calendar:renderCalendar})[sel](side);
     return;
   }
@@ -196,7 +205,7 @@ function drawSide(side){
   if(c.boss){const p=document.createElement('p');p.style.color='var(--muted)';const gates=chars.filter(x=>x._st&&x._st.st==='gate'), lone=loneGates();
     const qs=QUESTIONS.filter(q=>(ms(q.since)||0)<=T);
     if(!gates.length&&!lone.length&&!qs.length){p.textContent="Personne n'attend ta validation. Le bureau tourne tout seul.";side.appendChild(p);}
-    for(const x of gates){const r=x._st&&x._st.run;if(r)gateCard(side,r,x.name);}
+    for(const x of gates){const r=x._st&&x._st.run;if(r)gateCard(side,r,x.name);else handCards(side,carriedFor(x,T));} // porteurs : les mails qu'ils remettent (48-mail.js)
     for(const g of lone)gateCard(side,{run:g.run,wf_name:g.wf_name,_s:ms(g.since)},null); // workflows sans personnage (« Le Bureau · plan »)
     for(const q of qs)questionCard(side,q,askerOf(q)); // questions des discussions (visiteurs, canard, « interroger »)
     const imp=chars.filter(x=>x.visitor&&x.disc&&x.disc.imp>0);
@@ -212,6 +221,7 @@ function drawSide(side){
       }
       box.appendChild(ul);}}
   if(st.st==='gate'&&st.run)gateCard(side,st.run,null);
+  else if(st.st==='gate'&&c.guest)handCards(side,carriedFor(c,T)); // porteur : les mails qu'il remet
   if(c.visitor&&c.disc)for(const q of discQuestions(c.disc.id,T))questionCard(side,q,null);
   musicCard(side,c);
   passionCards(side,c); // 38-passions.js : Smash, dramas, GitFut

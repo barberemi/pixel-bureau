@@ -25,10 +25,10 @@ test('les données Kronn (window.KronnPageData) remplacent la démo', () => {
   assert.equal(run('LIVE_DATA'), true);
 });
 
-test('squelette : 12 blocs kronn-action et les marqueurs CSS / JS', () => {
+test('squelette : 13 blocs kronn-action et les marqueurs CSS / JS', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'page', 'office_template.html'), 'utf8');
   const ids = [...html.matchAll(/<script type="application\/kronn-action" data-action-id="([^"]+)">/g)].map(m => m[1]);
-  assert.deepEqual(ids, ['bureau-ask', 'bureau-relaunch', 'bureau-gate', 'bureau-answer', 'bureau-impl', 'bureau-mep', 'bureau-review', 'bureau-fix', 'bureau-comment', 'bureau-estimate', 'bureau-duck', 'bureau-avatar']);
+  assert.deepEqual(ids, ['bureau-ask', 'bureau-relaunch', 'bureau-gate', 'bureau-answer', 'bureau-impl', 'bureau-mep', 'bureau-review', 'bureau-fix', 'bureau-comment', 'bureau-estimate', 'bureau-duck', 'bureau-mailrules', 'bureau-avatar']);
   assert.equal(html.split('/*__STYLES__*/\n').length, 2);
   assert.equal(html.split('/*__SCRIPTS__*/\n').length, 2);
 });
@@ -101,4 +101,22 @@ test('installation avec Jira seul : le dataset team suffit, sans office ni live'
   assert.ok(run(`TEAM.people.length`) > 0);
   assert.ok(run(`dashData(T).sprint.ptsAll`) > 0);
   assert.doesNotThrow(() => run(`renderKpis();renderWho();renderFeed();true`));
+});
+
+test('panneau : pas de redessin automatique pendant un clic, le bouton cliqué reste le même', () => {
+  const {run} = load();
+  run('var NDRAW=0; drawSide=()=>{NDRAW++}; document.querySelector=()=>null; EDIT=null; KM_OPEN=null; SIDE_FOLDED=false; performance.now=()=>1000;');
+  const draws = code => run(`(()=>{const n=NDRAW;${code};return NDRAW-n;})()`);
+  assert.equal(draws('renderSide()'), 1);
+  run('sideHold(true,1000)');
+  assert.equal(draws('renderSide()'), 0, 'appui en cours');
+  assert.equal(draws('renderSide(true)'), 1, 'un redessin demandé (choix d\'une fiche) passe toujours');
+  run('performance.now=()=>1200; sideHold(false,1200)');
+  assert.equal(draws('renderSide()'), 0, 'le clic arrive juste après le relâchement');
+  run('performance.now=()=>1700');
+  assert.equal(draws('renderSide()'), 1);
+  run('sideHold(true,1700); performance.now=()=>11800'); // relâchement perdu : le panneau repart au bout de 10 s
+  assert.equal(draws('renderSide()'), 1);
+  run('sideHold(false,11800)'); // relâchement sans appui dans le panneau : rien à retenir
+  assert.equal(draws('renderSide()'), 1);
 });

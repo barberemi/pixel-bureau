@@ -21,6 +21,7 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 | [Thèmes saisonniers](guide/fonctionnalites/12-themes.md) | Noël, Nouvel an, Saint-Valentin, Halloween : décor, chapeaux, emojis, effets |
 | [Thème de la page](guide/fonctionnalites/13-theme-page.md) | Pixel art en Classique (sombre), mode TV et bandeau « EN DIRECT » compris ; les thèmes d'une équipe (son pack) au bouton 🎨 |
 | [Absences et télétravail](guide/fonctionnalites/14-absences.md) | Qui est là, d'après le planning de l'équipe : absents hors du bureau, télétravail en transparence, calendrier de deux semaines au mur du boss |
+| [Courrier](guide/fonctionnalites/15-courrier.md) | Tes mails utiles (appli Mail du Mac, Gmail ou autre par IMAP), triés par des règles que le facteur te propose : une boîte aux lettres par compte à côté du bureau du boss, le facteur qui dépose, des porteurs qui remettent certains mails en personne jusqu'à leur lecture ; jamais le contenu |
 
 ## Installer
 
@@ -48,7 +49,7 @@ python3 tools/install.py --dry-run   # voir ce qui serait créé
 python3 tools/install.py             # installation interactive, relançable sans doublon
 ```
 
-L'installateur demande ton équipe (une équipe neuve avec le plan type par défaut, ou un profil de `teams/`, ou le dossier de ton équipe hors du dépôt, un « pack d'équipe », réservés aux membres de leur organisation GitHub quand ils en nomment une), qui tu es (tu prends le bureau du boss, les autres gardent leur place), le plan du bureau, ton board Jira (il en lit les colonnes et te propose comment classer chaque statut), tes dépôts et workflows de déploiement, et les pages Kronn à montrer sur l'écran du boss, puis crée la page, ses datasets, 13 workflows (un de moins sans Jira, un de moins sans Microsoft 365) et deux Quick Prompts dans **ton** Kronn, écrit `bureau.config.json` (jamais commité) et lance un premier rafraîchissement. Ouvre ensuite Kronn > Pages > « Le Bureau ». Aucun secret n'est stocké : les connexions sont référencées par leur id Kronn.
+L'installateur demande ton équipe (une équipe neuve avec le plan type par défaut, ou un profil de `teams/`, ou le dossier de ton équipe hors du dépôt, un « pack d'équipe », réservés aux membres de leur organisation GitHub quand ils en nomment une), qui tu es (tu prends le bureau du boss, les autres gardent leur place), le plan du bureau, ton board Jira (il en lit les colonnes et te propose comment classer chaque statut), tes dépôts et workflows de déploiement, les pages Kronn à montrer sur l'écran du boss et, si tu veux, ton courrier (comptes de l'appli Mail du Mac, Gmail ou autre par IMAP), puis crée la page, ses datasets, 15 workflows (un de moins sans Jira, un de moins sans Microsoft 365, deux de moins sans compte de courrier) et deux Quick Prompts dans **ton** Kronn, écrit `bureau.config.json` (jamais commité) et lance un premier rafraîchissement. Ouvre ensuite Kronn > Pages > « Le Bureau ». Aucun secret n'est stocké : les connexions sont référencées par leur id Kronn.
 
 | Action | Commande |
 | --- | --- |

@@ -1,0 +1,70 @@
+{
+ "kind": "workflow",
+ "key": "courrier",
+ "definition": {
+  "name": "Le Bureau · courrier (10 min)",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Cron",
+   "schedule": "*/10 @@cron_hours@@ * * *"
+  },
+  "steps": [
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "mails",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Déterministe : mails non lus des comptes de la config (appli Mail par osascript, IMAP), triés par les règles ; en-têtes seulement, jamais le contenu (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mail_snapshot.py@@"
+    ],
+    "exec_timeout_secs": 240
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset mails de la page Le Bureau.",
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "mails",
+       "operation": "replace",
+       "value_from": "steps.mails.data.stdout"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

@@ -175,7 +175,7 @@ class InstallTest(unittest.TestCase):
         self.run_install(ANSWERS)
         first = self.fakes[-1]
         page_id = json.load(open(self.cfg_path))["page_id"]
-        first.store[page_id]["datasets"] = [d for d in first.store[page_id]["datasets"] if d["name"] not in ("layout", "actions", "duck", "absences")]  # page d'avant
+        first.store[page_id]["datasets"] = [d for d in first.store[page_id]["datasets"] if d["name"] not in ("layout", "actions", "duck", "absences", "mails", "mail_rules")]  # page d'avant
         with mock.patch.object(install, "Kronn", return_value=first):
             self.assertEqual(self.run_install(ANSWERS), 0)
         self.assertEqual([d["name"] for d in first.store[page_id]["datasets"]], install.DATASETS)
@@ -296,6 +296,42 @@ class InstallTest(unittest.TestCase):
                 self.run_install({**ANSWERS, "boss_pages": "cccc"})
             self.assertEqual(self.run_install({**ANSWERS, "boss_pages": "-"}), 0)
             self.assertEqual(json.load(open(self.cfg_path))["boss_pages"], [])
+
+    def test_mail_accounts_from_mac_mail_and_imap(self):
+        """Courrier (#30) : comptes de l'appli Mail et IMAP ; mot de passe au trousseau, jamais dans la config ; cron courrier
+        créé ; à la relance, règles gardées ; refuser le courrier retire la clé mail."""
+        keys = []
+        with mock.patch.object(install, "mac_mail_accounts", return_value=["Exchange", "iCloud"]), \
+                mock.patch.object(install, "keychain_set", side_effect=lambda *a: keys.append(a)), \
+                mock.patch.object(install, "imap_check", return_value=None):
+            answers = {**ANSWERS, "mail": "o", "mail_mac_exchange": "o", "mail_mac_exchange_label": "Pro", "mail_mac_icloud": "n",
+                       "mail_imap_0": "o", "mail_imap_0_user": "lynn@gmail.com", "mail_imap_0_label": "Perso",
+                       "mail_imap_0_password": "abcd efgh ijkl mnop", "mail_imap_0_primary": "o", "mail_imap_1": "n"}
+            self.assertEqual(self.run_install(answers), 0)
+            cfg = json.load(open(self.cfg_path))
+            pro, perso = cfg["mail"]["accounts"]
+            self.assertEqual((pro["id"], pro["provider"], pro["account"]), ("pro", "mac-mail", "Exchange"))
+            self.assertEqual((perso["provider"], perso["host"], perso["secret"], perso["only"]),
+                             ("imap", "imap.gmail.com", "keychain:pixel-bureau-perso", "category:primary"))
+            self.assertNotEqual(pro["color"], perso["color"])
+            self.assertEqual(keys, [("pixel-bureau-perso", "lynn@gmail.com", "abcd efgh ijkl mnop")])
+            self.assertNotIn("abcd efgh ijkl mnop", open(self.cfg_path).read())  # le mot de passe n'est jamais écrit (_answers compris)
+            self.assertIn("courrier", cfg["workflows"])
+            # relance : règles posées depuis gardées, compte IMAP gardé sans redemander son mot de passe
+            cfg["mail"]["ignore"] = ["atlassian.net"]
+            json.dump(cfg, open(self.cfg_path, "w"))
+            with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):
+                self.assertEqual(self.run_install({**answers, "mail_keep_perso": "o", "mail_imap_0": "n"}), 0)
+                cfg = json.load(open(self.cfg_path))
+                self.assertEqual(cfg["mail"]["ignore"], ["atlassian.net"])
+                self.assertEqual([a["id"] for a in cfg["mail"]["accounts"]], ["pro", "perso"])
+                self.assertEqual(len(keys), 1)
+                # porteurs du pack (defaults.json, mail.messengers) : repris s'il n'y en a pas encore
+                with mock.patch.object(install.assemble, "defaults", side_effect=lambda c, f=install.assemble.defaults: {**f(c), "mail": {"messengers": [{"id": "gazette", "carrier": "g_x"}]}}):
+                    self.assertEqual(self.run_install({**answers, "mail_keep_perso": "o", "mail_imap_0": "n"}), 0)
+                self.assertEqual(json.load(open(self.cfg_path))["mail"]["messengers"], [{"id": "gazette", "carrier": "g_x"}])
+                self.assertEqual(self.run_install({**ANSWERS, "mail": "n"}), 0)
+                self.assertNotIn("mail", json.load(open(self.cfg_path)))
 
     def test_new_team_by_default_with_the_type_plan(self):
         answers = {k: v for k, v in ANSWERS.items() if k not in ("team", "owner")}
@@ -422,13 +458,13 @@ class GuestsTest(unittest.TestCase):
         pack = os.path.join(ROOT, "tests", "fixtures", "pack-exemple")
         cfg = {"team": pack, "guests": [{"key": "g_x", "name": "X"}]}
         profile = [g["key"] for g in json.load(open(os.path.join(pack, "roster.json")))["guests"]]
-        self.assertEqual([g["key"] for g in assemble.guests(cfg)], ["g_gandalf", "g_yoda"] + profile + ["g_x"])
+        self.assertEqual([g["key"] for g in assemble.guests(cfg)], ["g_gandalf", "g_yoda", "g_facteur"] + profile + ["g_x"])
         self.assertIn("g_hank", profile)
-        self.assertEqual([g["key"] for g in assemble.guests({})], ["g_gandalf", "g_yoda"])  # toute installation, même sans équipe
+        self.assertEqual([g["key"] for g in assemble.guests({})], ["g_gandalf", "g_yoda", "g_facteur"])  # toute installation, même sans équipe
         self.assertEqual(assemble.guests({"common_guests": False}), [])
         renamed = assemble.guests({"guests": [{"key": "g_yoda", "name": "Le sage", "sprite": "yoda", "on": "prod"}]})
-        self.assertEqual([(g["key"], g["name"]) for g in renamed], [("g_gandalf", "Gandalf"), ("g_yoda", "Le sage")])  # même clé : remplacé
-        self.assertTrue({"yoda", "mage"} <= set(assemble.sprites({})))  # planches communes (sprites/common.json)
+        self.assertEqual([(g["key"], g["name"]) for g in renamed], [("g_gandalf", "Gandalf"), ("g_facteur", "Le facteur"), ("g_yoda", "Le sage")])  # même clé : remplacé (et passé en dernier)
+        self.assertTrue({"yoda", "mage", "facteur"} <= set(assemble.sprites({})))  # planches communes (sprites/common.json)
         self.assertIn("sorcier", assemble.sprites(cfg))  # sa planche, tirée de sprites/sorcier/ du pack
         html = assemble.build(demo=False, cfg=dict(json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"))), team=pack))
         self.assertIn('"guests": [{"key": "g_gandalf"', html)

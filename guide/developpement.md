@@ -97,16 +97,43 @@ Une police : un `.woff2` (sous-ensemble latin) dans `page/fonts/` avec sa licenc
 
 ## Modèles de workflows
 
-`workflows/templates/*.json` sont la source des 13 workflows et des 2 Quick Prompts : `publish.py workflows` pousse leur rendu dans les ids (et crée un workflow du Bureau ajouté depuis l'installation, son id rangé dans la config) de la config, en gardant les ids des étapes.
+`workflows/templates/*.json` sont la source des 15 workflows et des 2 Quick Prompts : `publish.py workflows` pousse leur rendu dans les ids (et crée un workflow du Bureau ajouté depuis l'installation, son id rangé dans la config) de la config, en gardant les ids des étapes.
 
 - Emplacements remplacés au rendu : `@@page_id@@`, `@@kronn.project_id@@`, `@@jira.*@@`, `@@owner_name@@`, `@@script:workflows/x.py@@`. Les variables Kronn (`{{steps.x}}`) restent intactes : jamais de `{{` ni de `@@` dans un script.
 - Une étape `"_requires": "jira"` disparaît sans connexion Jira.
 - `templates.py export` régénère les modèles après une modification faite dans l'interface de Kronn.
 - Toute sortie d'étape Exec reste sous 100 Ko (limite de Kronn) : les scripts raccourcissent leurs listes au besoin.
 
+## Aperçu local, avant de merger
+
+`python3 tools/preview.py` assemble la page de ta branche avec ta config et les datasets actuels de ta page Kronn, et l'ouvre dans le navigateur (`dist/apercu.html`, jamais commité). Rien n'est publié : c'est la page que tu aurais après le merge, avec tes vraies données. `--mail` y ajoute un relevé réel du courrier (sans section `mail` dans la config : tous les comptes de l'appli Mail). Les boutons d'action ne marchent pas hors de Kronn.
+
+## Courrier (cron « courrier »)
+
+`workflows/mail_snapshot.py`, toutes les 10 min aux heures du bureau, publie le dataset `mails` : les mails non lus de chaque compte de `mail.accounts`, triés par les règles, sans jamais le contenu (expéditeur, objet, heure, lu, destinataire direct ou en copie). Sans compte, le workflow n'est pas créé.
+
+```json
+"mail": {
+  "accounts": [
+    {"id": "pro", "label": "Pro", "provider": "mac-mail", "account": "Exchange", "color": "#1f3f8f"},
+    {"id": "perso", "label": "Perso", "provider": "imap", "host": "imap.gmail.com", "user": "moi@gmail.com",
+     "secret": "keychain:pixel-bureau-perso", "only": "category:primary", "show": "list"}
+  ],
+  "keep": ["@monentreprise.com"], "ignore": ["atlassian.net", {"from": "github.com", "account": "pro"}],
+  "days": 14, "scan": 150
+}
+```
+
+- `mac-mail` : l'appli Mail du Mac par `osascript` (Kronn tourne sur ce Mac ; au premier passage, macOS demande d'autoriser `kronn` à piloter Mail). La boîte de réception du compte est trouvée par son rôle ; les `scan` mails les plus récents sont lus en groupe (une boîte Exchange de plusieurs milliers de mails : environ 15 s).
+- `imap` : boîte ouverte en lecture seule, en-têtes lus sans marquer lu. Le mot de passe (Gmail : un mot de passe d'application) est dans le trousseau macOS, `security add-generic-password -s pixel-bureau-perso -a moi@gmail.com -w`, jamais dans la config. `only` : recherche Gmail (`category:primary` : l'onglet Principal).
+- Tri : règle `ignore`, puis règle `keep`, puis en-têtes de robot (`List-Unsubscribe`, `List-Id`, `Auto-Submitted`, `Precedence`) écartés, le reste utile. Une règle : une adresse, un domaine (sous-domaines compris), ou `{"from", "account"}` pour un seul compte. `show: "count"` : ni nom ni objet dans le dataset.
+- Un compte en échec reste dans le dataset (`ok` faux, `error`), et l'erreur part dans le journal du run.
+- Porteurs (`mail.messengers`) : `{"id": "gazette", "match": {"subject_contains": ["GAZETTE"], "from": ["@exemple.com"]}, "carrier": "g_porteur", "bubble": "📰 Gazette", "when": "arrival", "account": "pro"}` (`account` facultatif ; `when` : `arrival`, ou `{"received": "Fri", "deliver": "Mon 09:00"}`). Un mail qui correspond passe avant le tri et les règles, hors du compteur (`carried` du dataset) ; `carrier` est la clé d'un invité (roster du pack), qui attend devant le bureau du boss tant que le mail est non lu. Rien ne le marque lu depuis la page : on le lit dans sa messagerie, et l'invité repart au relevé suivant (10 min au plus). `carrier: "sender"` (l'expéditeur en personne) n'est pas encore fait.
+- Règles validées : dataset `mail_rules` (workflow « Le Bureau · règles du courrier », clé `actions.mail_rules` : `mail_snapshot.py senders`, un agent sans outils et à sortie typée (`tools/mail_rules_prompt.md`), `mail_snapshot.py merge`, gate du boss, publication), avant `mail.keep` / `mail.ignore`. Le cron le lance lui-même sans règles, puis au-delà de 10 expéditeurs inconnus, au plus une fois par semaine (`~/.cache/pixel-bureau/mail_rules.json`) ; `python3 tools/mail.py rules` le lance à la main.
+
 ## Installateur
 
-Questions : Kronn, ton équipe (une équipe neuve par défaut, ou un profil de `teams/`, ou un pack d'équipe dont il demande le chemin : une équipe qui nomme une organisation GitHub n'est installable que par ses membres actifs, vérifié avec `gh api user/memberships/orgs/<org>`, droit `read:org`), qui tu es (le champ `github` du roster propose la bonne personne ; « quelqu'un d'autre » reste dans ta config), le plan du bureau (un de `layouts/` ou ton propre fichier, refusé s'il ne passe pas `plan.py check` ; écrit dans la clé `layout` de la config), projet, Jira (testé à travers Kronn ; les colonnes du board sont lues pour proposer le classement des statuts, `jira.statuses`, `jira.flow` et `done_status`, d'après le nom de chaque colonne, sinon la catégorie Jira de son statut), GitHub (dépôt, workflows de déploiement en staging et en prod parmi ceux du dépôt, autres dépôts dont suivre les mises en prod : `github.deploys`, un nouveau dépôt reprend les workflows du principal), agent IA, tes agents (un personnage par workflow actif, placé par le plan), avatar, musique. Il crée la page et ses 12 datasets (et ajoute ceux qui manquent à une page existante), les workflows et les Quick Prompts, écrit la config, publie et lance un premier rafraîchissement. Relançable sans doublon.
+Questions : Kronn, ton équipe (une équipe neuve par défaut, ou un profil de `teams/`, ou un pack d'équipe dont il demande le chemin : une équipe qui nomme une organisation GitHub n'est installable que par ses membres actifs, vérifié avec `gh api user/memberships/orgs/<org>`, droit `read:org`), qui tu es (le champ `github` du roster propose la bonne personne ; « quelqu'un d'autre » reste dans ta config), le plan du bureau (un de `layouts/` ou ton propre fichier, refusé s'il ne passe pas `plan.py check` ; écrit dans la clé `layout` de la config), projet, Jira (testé à travers Kronn ; les colonnes du board sont lues pour proposer le classement des statuts, `jira.statuses`, `jira.flow` et `done_status`, d'après le nom de chaque colonne, sinon la catégorie Jira de son statut), GitHub (dépôt, workflows de déploiement en staging et en prod parmi ceux du dépôt, autres dépôts dont suivre les mises en prod : `github.deploys`, un nouveau dépôt reprend les workflows du principal), agent IA, tes agents (un personnage par workflow actif, placé par le plan), courrier (facultatif : comptes de l'appli Mail du Mac détectés par `osascript`, comptes IMAP dont le mot de passe va au trousseau macOS avec un essai de connexion ; clé `mail.accounts`, les règles d'avant sont gardées), avatar, musique. Il crée la page et ses 14 datasets (et ajoute ceux qui manquent à une page existante), les workflows et les Quick Prompts, écrit la config, publie et lance un premier rafraîchissement. Relançable sans doublon.
 
 - Réutiliser plutôt que créer (question `reuse`) : homonymes orphelins repris, ou id donné élément par élément, mis à jour ou gardé tel quel (`own`). Un workflow qui sert une autre page encore présente n'est jamais repris d'office.
 - `uninstall.py` ne touche ni aux éléments `own`, ni aux connexions, ni aux autres workflows, et refuse une installation marquée `"protect": true` dans sa config (gardé par l'installateur).
@@ -118,7 +145,7 @@ Le plan n'est plus codé en dur : `10-world.js` construit grille, sols, portes, 
 - `tiles` : le sol en texte, une chaîne par rangée, un caractère par case ; `legend` dit ce que vaut chaque caractère (`#` mur, `=` vitre, `.` moquette, `c` carrelage, `s` serveurs, `r` réunion, `p` plateau, `w` toilettes, `b` parquet, `E` paillasson).
 - `doors` (seuils dessinés), `exit`, `closable` (porte du plateau fermée le vendredi et le week-end), `islands` (colonnes des tables et rangs des sièges), `boss` (place et bureau), `plants`, `windows`, `blocked` (facultatif : cases bloquées en plus des meubles).
 - `furniture` : meubles du catalogue (`boss_desk`, `meeting_table`, `server_rack`, `counter`, `fridge`, `kitchen_table`, `sofa`, `water_cooler`, `copier`, `toilets`, `stage_closure`), chacun posé par `at` ; il bloque son emprise (`FURN_TYPES` de `40-furniture.js`, `FURNITURE` de `tools/plan.py`, tenus identiques par un test).
-- `wall` (décor mural : `whiteboard`, `mirror`, `sign` avec `text`), `clock`, `labels` (noms des pièces, position en cases).
+- `wall` (décor mural : `whiteboard`, `mirror`, `sign` avec `text`), `clock`, `mailbox` (facultatif : case de la première boîte aux lettres du courrier, sur du sol ; sans elle, juste dehors à droite du bureau du boss), `labels` (noms des pièces, position en cases).
 - `spots` : places de chaque zone (`[x, y, orientation]`) ; `free_seats` : places des intérimaires ; `light_rooms` : pièces éclairées la nuit ; `objects` : rectangles cliquables (TV, Kanban, planning, paie, employé du sprint).
 - `seating` : qui s'assoit où, par numéro de siège (`{"I2.R2": "p_pam"}` = îlot 2, côté droit, rang 2). Le plan est maître : la place `seat` du roster ou d'un agent (numéro de siège, `"I2.R2"` ; une place en `[x, y]` est ignorée) ne sert que s'il ne place pas la personne. Les autres reçoivent un siège libre, toujours le même tant que le plan ne change pas : collègues, puis agents, puis intérimaires (`free_seats` d'abord). La place du boss revient aux intérimaires.
 - Vérifier un plan, voir ses sièges, son rendu :

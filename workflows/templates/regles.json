@@ -1,0 +1,156 @@
+{
+ "kind": "workflow",
+ "key": "regles",
+ "definition": {
+  "name": "Le Bureau · règles du courrier",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "senders",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Déterministe : expéditeurs des 30 derniers jours par compte (nombre, non lus, envois automatiques), jamais un objet ni un contenu ; règles actuelles (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mail_snapshot.py@@",
+     "senders"
+    ],
+    "exec_timeout_secs": 240
+   },
+   {
+    "name": "propose",
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "Le facteur propose des règles garder / ignorer à partir du résumé des expéditeurs (seule étape avec des tokens).",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "agent_settings": {
+     "tools": {
+      "cli": [],
+      "kronn_internal": []
+     }
+    },
+    "prompt_template": "@@text:tools/mail_rules_prompt.md@@\n{{steps.senders.data.stdout}}",
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "keep": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "ignore": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "why": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "keep",
+       "ignore",
+       "why"
+      ]
+     }
+    }
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "merge",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Déterministe : règles proposées ajoutées aux règles actuelles ; le résumé lisible part dans la validation (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mail_snapshot.py@@",
+     "merge"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{\"proposal\":{{steps.propose.data_json}},\"summary\":{{steps.senders.data.stdout}}}"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "boss",
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "Le boss valide les règles du courrier (le facteur attend devant son bureau).",
+    "gate_message": "📮 Le facteur te propose de trier ton courrier : valider pour appliquer ces règles, rejeter pour garder les règles actuelles.\n\n{{steps.merge.data.stderr}}"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset mail_rules : le cron courrier trie avec ces règles à son passage suivant.",
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "mail_rules",
+       "operation": "replace",
+       "value_from": "steps.merge.data.stdout"
+      }
+     ]
+    }
+   }
+  ]
+ }
+}

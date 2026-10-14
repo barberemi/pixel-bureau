@@ -165,6 +165,8 @@ def _validate(L, raw_size):
             E(f"décor mural « {d['type']} » {d['at']} : sur du sol, il faut un mur")
     if L.get("clock") and floor(*L["clock"]):
         E(f"horloge {L['clock']} : sur du sol, il faut un mur")
+    if L.get("mailbox") and not floor(*L["mailbox"]):  # boîtes aux lettres du courrier (#30), facultatif
+        E(f"boîte aux lettres {L['mailbox']} : sur un mur, il faut du sol")
     for lab in L.get("labels") or []:
         if not (0 <= lab["at"][0] <= cols and 0 <= lab["at"][1] <= rows):
             E(f"nom de pièce « {lab.get('text')} » hors du plan")

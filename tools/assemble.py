@@ -23,7 +23,7 @@ ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate",
            "bureau-impl": ("impl", "__IMPL_WF__"), "bureau-mep": ("mep", "__MEP_WF__"),
            "bureau-review": ("review", "__REVIEW_WF__"), "bureau-fix": ("fix", "__FIX_WF__"),
            "bureau-comment": ("comment", "__COMMENT_WF__"), "bureau-duck": ("duck", "__DUCK_WF__"),
-           "bureau-estimate": ("estimate", "__ESTIMATE_WF__")}
+           "bureau-estimate": ("estimate", "__ESTIMATE_WF__"), "bureau-mailrules": ("mail_rules", "__MAILRULES_WF__")}
 # variables des workflows de la clé launch : rôle -> nom par défaut ; launch.<action> = id seul, ou {wf, vars: {rôle: nom
 # chez toi, ou null si ton workflow n'a pas cette variable}}
 LAUNCH_VARS = {"impl": {"ticket": "jira_ticket_key"}, "mep": {"ticket": "jira_ticket_key", "pr": "pr_number"},
@@ -135,7 +135,7 @@ def cron_hours(cfg):
 def cron_schedules(cfg=None):
     """Calendrier de chaque cron du Bureau : celui de ses modèles (workflows/templates), heures calées sur le bureau."""
     out = {}
-    for key in ("office", "live", "team", "payroll", "canard", "absences"):
+    for key in ("office", "live", "team", "payroll", "canard", "absences", "courrier"):
         path = p("workflows", "templates", key + ".json")
         if os.path.exists(path):
             s = (json.load(open(path))["definition"].get("trigger") or {}).get("schedule")

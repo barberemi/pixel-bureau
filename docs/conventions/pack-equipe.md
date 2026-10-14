@@ -18,7 +18,7 @@ Un pack introuvable (pas de `team.json`) est une erreur, jamais une page sans so
 |---|---|---|
 | `team.json` | `name`, `layout` (chemin relatif au pack, sinon au dépôt), `github_org` (seuls ses membres actifs peuvent l'installer) | oui |
 | `roster.json` | `people` (clé, nom, rôle, `person` = nom exact dans Jira, `github`, `roleKind`, place…) et `guests` | non |
-| `defaults.json` | réglages proposés à l'installation (`page_title`, `rhythm`, `ui.skin`, `jira`, `github`) | non |
+| `defaults.json` | réglages proposés à l'installation (`page_title`, `rhythm`, `ui.skin`, `jira`, `github`, `mail.messengers` : règles de porteurs du courrier, reprises par l'installateur si l'installation n'en a pas) | non |
 | `cast.json` | recettes d'avatar LPC par clé de personne (composées dans le navigateur) | non |
 | `sprites/` et `sprites.json` | planches fournies telles quelles ; `sprites.json` se fabrique par `python3 sprites/build_sprites.py <pack>` | non |
 | `music/music.json` | morceau de chaque personne (carte « Sa musique »), pochette en data URI à côté | non |
