@@ -7,7 +7,6 @@
   "trigger": {
    "type": "Manual"
   },
-  "variables": [],
   "actions": [],
   "safety": {
    "sandbox": false,
@@ -84,7 +83,8 @@
        "ignore",
        "why"
       ]
-     }
+     },
+     "on_invalid": "Continue"
     }
    },
    {
