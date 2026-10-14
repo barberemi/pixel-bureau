@@ -140,6 +140,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   PAYROLL=readPayroll(k);
   DUCKGAME=readDuckGame(k)||(DEMO?DUCKGAME_DEMO:null);
   ABSENCES=readAbsences(k); // 36-absences.js (démo : après refreshAll, qui crée les personnages)
+  MAILS=readMails(k); // 48-mail.js
   BOSS_PAGES=readBossPages(k)||[];
   GITFUT=readGitfut(k)||{};
   ACTS=readActs(k);
@@ -151,6 +152,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   LIVE=readLive(k);
   refreshAll();
   if(!ABSENCES&&DEMO)ABSENCES=absencesDemo();
+  if(!MAILS&&DEMO)MAILS=mailDemo();
 }
 window.addEventListener('kronn:page-data',e=>{
   const k=e.detail||window.KronnPageData;
@@ -181,6 +183,8 @@ window.addEventListener('kronn:page-data',e=>{
   if(py)PAYROLL=py;
   const ab=readAbsences(k)||readAbsences(window.KronnPageData);
   if(ab)ABSENCES=ab;
+  const ml=readMails(k)||readMails(window.KronnPageData);
+  if(ml)MAILS=ml;
   const dg=readDuckGame(k)||readDuckGame(window.KronnPageData);
   if(dg)DUCKGAME=dg;
   const av=readAvatars(k)||readAvatars(window.KronnPageData);

@@ -76,13 +76,14 @@ function drawSide(side){
     if(String(sel).startsWith('pr:'))renderPr(side,sel.slice(3));else renderTicket(side,sel.slice(7));
     return;
   }
-  if(sel==='tv'||sel==='emp'||sel==='kanban'||sel==='planning'||sel==='paie'||sel==='duck'||sel==='calendar'||String(sel).startsWith('gate:')){
+  if(sel==='tv'||sel==='emp'||sel==='kanban'||sel==='planning'||sel==='paie'||sel==='duck'||sel==='calendar'||String(sel).startsWith('gate:')||String(sel).startsWith('mail:')){
     const back=document.createElement('button');
     back.className='back';
     back.textContent="← Toute l'équipe";
     back.onclick=()=>select(null);
     side.appendChild(back);
     if(String(sel).startsWith('gate:')){renderLoneGate(side,sel.slice(5));return;}
+    if(String(sel).startsWith('mail:')){renderMail(side,sel.slice(5));return;} // 48-mail.js
     ({tv:renderTv,emp:renderEmp,kanban:renderKanban,planning:renderPlanning,paie:renderPaie,duck:renderDuck,calendar:renderCalendar})[sel](side);
     return;
   }

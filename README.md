@@ -21,6 +21,7 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 | [Thèmes saisonniers](guide/fonctionnalites/12-themes.md) | Noël, Nouvel an, Saint-Valentin, Halloween : décor, chapeaux, emojis, effets |
 | [Thème de la page](guide/fonctionnalites/13-theme-page.md) | Pixel art en Classique (sombre), mode TV et bandeau « EN DIRECT » compris ; les thèmes d'une équipe (son pack) au bouton 🎨 |
 | [Absences et télétravail](guide/fonctionnalites/14-absences.md) | Qui est là, d'après le planning de l'équipe : absents hors du bureau, télétravail en transparence, calendrier de deux semaines au mur du boss |
+| [Courrier](guide/fonctionnalites/15-courrier.md) | Tes mails utiles (appli Mail du Mac, Gmail ou autre par IMAP), triés par tes règles : une boîte aux lettres par compte à côté du bureau du boss, la fiche Courrier ; jamais le contenu |
 
 ## Installer
 

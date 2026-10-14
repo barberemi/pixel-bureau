@@ -200,6 +200,11 @@ SHOTS = {
     "panneau-et-aussi": (1400, 1600, AT(11.5) + "FILTER=null;COLLAPSED[\"L'équipe\"]=true;COLLAPSED['Les agents']=true;renderSide();", "#side"),
     "invite": (1400, 1000, AT(11.5) + "select('g_david');", "#cv", 1.5),
     # brouillon tiré de guide/img/croquis.png par « python3 tools/plan.py from-image » (premier tour, sans retouche)
+    # courrier (48-mail.js, démo : un compte de l'appli Mail et un Gmail) : les deux boîtes dehors, à droite du bureau du boss
+    "courrier": (1400, 1000, AT(11) + "setTimeout(()=>{const [mx,my]=mailboxTile(),c=document.querySelector('#cv'),r=c.getBoundingClientRect(),"
+                 "k=r.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(mx-9)*TS*k)+'px',"
+                 "top:(r.top+scrollY+(my-5)*TS*k)+'px',width:14*TS*k+'px',height:7*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 2),
+    "fiche-courrier": (1400, 1400, AT(11) + "select('mail:pro');", "#side"),
     "croquis-brouillon": (1400, 1000, AT(11), "#cv", 1.5, "guide/exemples/plan-croquis.json"),
 }
 # captures qui ne visent aucun personnage de la démo : valables avec n'importe quelle équipe (--team)

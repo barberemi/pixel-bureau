@@ -103,6 +103,11 @@ class CatalogueTest(unittest.TestCase):
         self.assertTrue(any("inconnu" in e for e in broken(a=lambda L: L["furniture"].append({"type": "trampoline", "at": [20, 12]}))))
         self.assertTrue(any("il faut un mur" in e for e in broken(a=lambda L: L["wall"].append({"type": "mirror", "at": [20, 12]}))))
 
+    def test_mailbox_on_the_floor(self):
+        """Case « mailbox » des boîtes aux lettres (#30), facultative : sur du sol."""
+        self.assertEqual(broken(a=lambda L: L.update(mailbox=[28, 10])), [])
+        self.assertTrue(any("boîte aux lettres" in e for e in broken(a=lambda L: L.update(mailbox=[0, 0]))))
+
     def test_optional_zone_is_a_warning(self):
         L = copy.deepcopy(BASE)
         L["spots"].pop("sofa")
