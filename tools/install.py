@@ -24,7 +24,7 @@ OFFICE = [("dwight", "Dwight"), ("jim", "Jim"), ("stanley", "Stanley"), ("phylli
           ("erin", "Erin"), ("ryan", "Ryan")]
 ROLES = {"dev": ("Développeur", None), "lead": ("Tech Lead", "lead"), "qa": ("Testeur", "qa"), "po": ("Product owner", "po"),
          "sm": ("Facilitateur", "sm")}
-DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "bosspages", "gitfut", "layout", "actions", "duck", "absences", "mails"]
+DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "bosspages", "gitfut", "layout", "actions", "duck", "absences", "mails", "mail_rules"]
 CRONS = ("office", "live", "team", "payroll", "canard", "absences", "courrier")
 DATASET = lambda name: {"name": name, "kind": "snapshot", "max_points": 50000}  # noqa: E731
 
@@ -643,10 +643,10 @@ def upsert_all(k, cfg, tpls, enabled, dry):
         for key, tpl in tpls.items():
             kind, (sec, field), _ = templates.TEMPLATES[key]
             if (key == "ask" and not cfg.get("_ai_agent")) or templates.skipped(key, cfg):
-                if sec == "actions":
+                if sec == "actions" and key != "regles":
                     cfg.setdefault(sec, {})[field] = ""  # sans agent IA / sans Jira : pas de bouton
                 else:
-                    (cfg.get(sec) or {}).pop(field, None)  # sans planning Microsoft 365 : pas de cron des absences
+                    (cfg.get(sec) or {}).pop(field, None)  # sans planning Microsoft 365 : pas de cron des absences ; sans courrier : pas de règles
                 continue
             body = templates.render(tpl, cfg)
             if key == "ask":

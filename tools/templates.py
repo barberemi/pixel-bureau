@@ -33,6 +33,8 @@ TEMPLATES = {
                                                          "month_next": "workflows/absence_month.py"}),
     # courrier (#30) : mails non lus des comptes de mail.accounts (appli Mail du Mac, IMAP) ; sans compte : pas créé
     "courrier": ("workflow", ("workflows", "courrier"), {"mails": "workflows/mail_snapshot.py"}),
+    # règles du courrier (#30) : le facteur les propose (agent), le boss les valide (gate) ; lancé par le cron courrier
+    "regles": ("workflow", ("actions", "mail_rules"), {"senders": "workflows/mail_snapshot.py", "merge": "workflows/mail_snapshot.py"}),
     "avatar": ("workflow", ("actions", "avatar"), {"save": "workflows/avatar_save.py"}),
     "gate": ("workflow", ("actions", "gate"), {"decide": "workflows/gate_decide.py"}),
     "answer": ("workflow", ("actions", "answer"), {"answer": "workflows/question_answer.py"}),  # question de discussion (KT-27)
@@ -46,7 +48,7 @@ TEMPLATES = {
 WF_KEYS = ("name", "project_id", "trigger", "variables", "steps", "actions", "safety", "workspace_config", "concurrency_limit", "exec_allowlist")
 QP_KEYS = ("name", "icon", "prompt_template", "variables", "agent", "project_id", "skill_ids", "profile_ids", "directive_ids", "tier", "description")
 TOKEN = re.compile(r"@@([a-z_.]+|(?:script|text):[\w/.]+)@@")
-TEXTS = ("tools/plan_prompt.md",)  # fichiers recopiés tels quels dans un prompt (@@text:…@@)
+TEXTS = ("tools/plan_prompt.md", "tools/mail_rules_prompt.md")  # fichiers recopiés tels quels dans un prompt (@@text:…@@)
 
 
 def load_config():
@@ -134,7 +136,7 @@ def skipped(key, cfg):
     if key == "absences":
         m = cfg.get("microsoft") or {}
         return not (m.get("config_id") and (m.get("planning") or {}).get("site") and (m.get("planning") or {}).get("item"))
-    if key == "courrier":
+    if key in ("courrier", "regles"):
         return not (cfg.get("mail") or {}).get("accounts")
     return False
 

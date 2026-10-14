@@ -101,3 +101,12 @@ test('rejeu : la boîte ne compte que les mails déjà arrivés à l\'instant af
   run(`T = Date.parse('${at('12:00')}');`);
   assert.equal(J(`mailBadge(MAILS.accounts[0])`), '3');
 });
+
+test('règles : le facteur attend devant le bureau du boss tant que leur validation est ouverte', () => {
+  withMails(['10:00']);
+  run(`GATES = [{wf_name: 'Le Bureau · règles du courrier', gate: 'boss', since: '${at('10:30')}'}];`);
+  assert.equal(P('10:20').st, 'gone'); // avant la demande : sa tournée
+  assert.deepEqual(P('10:45'), {st: 'gate', bubble: '✋ 📮 On trie ton courrier ?', label: 'Te propose des règles pour trier ton courrier : attend ta validation'});
+  run(`GATES = [];`);
+  assert.equal(P('10:45').st, 'gone');
+});

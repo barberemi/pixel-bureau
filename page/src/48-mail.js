@@ -73,8 +73,13 @@ function postVisits(){
 }
 // à côté de la dernière boîte, tourné vers elles
 function postSpot(){const [x,y]=mailboxTile();return [x+Math.max(1,mailAccounts().length),y,'left'];}
+// règles du courrier en attente de validation (workflow « Le Bureau · règles du courrier ») : le facteur reste devant le
+// bureau du boss tant que le gate n'est pas décidé
+const RULES_WF='Le Bureau · règles du courrier';
 function postmanState(c,t){
   if(!mailAccounts().length)return {st:'off',label:'Pas de courrier branché'};
+  const g=(GATES||[]).find(x=>x.wf_name===RULES_WF&&(!x.since||ms(x.since)<=t));
+  if(g)return {st:'gate',zone:'gate',label:'Te propose des règles pour trier ton courrier : attend ta validation',bubble:'✋ 📮 On trie ton courrier ?'};
   const vs=postVisits().filter(v=>parisDay(v.s)===parisDay(t)), cur=vs.find(v=>t>=v.s&&t<v.s+POST_STAY), past=vs.filter(v=>v.s+POST_STAY<=t);
   if(cur)return {st:'idle',zone:'visit',visit:postSpot(),label:'Dépose '+plural(cur.n,'lettre','lettres')+' dans les boîtes aux lettres',bubble:'📬 '+cur.n};
   return past.length?{st:'gone',label:'Passé à '+hm(past[past.length-1].s)}:{st:'off',label:"Pas encore passé aujourd'hui"};
@@ -114,6 +119,12 @@ function renderMail(side,first){
   }
   html+=`<p class="sub">Jamais le contenu des mails, jamais sur l'écran mural.</p>`;
   box.innerHTML=html;side.appendChild(box);
+  if(ACTIONS.mail_rules){ // le facteur repasse proposer des règles (workflow « règles du courrier »)
+    const host=document.createElement('div');host.className='relaunch';host.setAttribute('data-kronn-action-slot-host','');
+    host.innerHTML='<div class="rl-n">Règles du tri</div><div class="rl-s">Le facteur relit tes expéditeurs des 30 derniers jours et te propose quoi garder ou ignorer ; tu valides.</div>';
+    const b=document.createElement('button');b.textContent='📮 Revoir mes règles';b.setAttribute('data-kronn-action','bureau-mailrules');
+    host.appendChild(b);side.appendChild(host);kronnModal(host,b,'Règles du courrier');
+  }
 }
 // démo (jeudi 1er octobre) : un compte de l'appli Mail et un Gmail par IMAP, mails fictifs
 function mailDemo(){

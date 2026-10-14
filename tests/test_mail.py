@@ -1,6 +1,7 @@
 """Courrier, #30 (python3 -m unittest tests/test_mail.py) : le cron « courrier » (workflows/mail_snapshot.py) lancé
 comme dans Kronn, avec un faux osascript (appli Mail), un faux security (trousseau) et un faux serveur IMAP local."""
 import json, os, shutil, socketserver, subprocess, sys, tempfile, threading, unittest
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from datetime import datetime, timedelta
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -100,12 +101,39 @@ class MailSnapshotTest(unittest.TestCase):
         threading.Thread(target=self.srv.serve_forever, daemon=True).start()
         return self.srv.server_address[1]
 
-    def run_mail(self, mail):
+    def fake_kronn(self, rules=None):
+        """Page avec son dataset mail_rules (ou sans), et les lancements de workflow reçus."""
+        calls = self.kronn_calls = []
+
+        class H(BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def reply(self, obj):
+                body = json.dumps({"success": True, "data": obj}).encode()
+                self.send_response(200); self.send_header("content-type", "application/json"); self.end_headers(); self.wfile.write(body)
+
+            def do_GET(self):
+                self.reply({"datasets": [{"name": "mail_rules", "current": json.dumps(rules)}] if rules else []})
+
+            def do_POST(self):
+                calls.append((self.path, json.loads(self.rfile.read(int(self.headers["content-length"])))))
+                self.reply({"run_id": "r1"})
+        self.ksrv = ThreadingHTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=self.ksrv.serve_forever, daemon=True).start()
+        self.addCleanup(self.ksrv.shutdown)
+        return f"http://127.0.0.1:{self.ksrv.server_address[1]}/api"
+
+    def run_mail(self, mail, args=(), stdin="", api=None, actions=None):
         cfg = dict(FIXTURE, mail=mail)
+        if api:
+            cfg["kronn"] = dict(FIXTURE["kronn"], api=api)
+        if actions is not None:
+            cfg["actions"] = actions
         path = os.path.join(self.tmp, "bureau.config.json")
         with open(path, "w") as fh:
             json.dump(cfg, fh)
-        r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "mail_snapshot.py")], capture_output=True, text=True,
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "mail_snapshot.py"), *args], input=stdin, capture_output=True, text=True,
                            env={"BUREAU_CONFIG": path, "HOME": self.tmp, "PATH": self.bin}, timeout=60)
         self.assertEqual(r.returncode, 0, r.stderr[-800:])
         self.assertLess(len(r.stdout.encode()), LIMIT)
@@ -176,6 +204,55 @@ class MailSnapshotTest(unittest.TestCase):
         for n in names:
             self.assertNotIn(n.lower(), low, f"{n} et {low.get(n.lower())}")
             low[n.lower()] = n
+
+    def test_page_rules_win_over_config_and_the_postman_asks_once_a_week(self):
+        """Règles validées (dataset mail_rules) avant celles de la config ; sans règles, le workflow « règles du courrier »
+        est lancé, une seule fois (puis au plus une fois par semaine, ou s'il y a au moins 10 expéditeurs inconnus)."""
+        acc = {"accounts": [{"id": "pro", "provider": "mac-mail", "account": "Dunder"}]}
+        api = self.fake_kronn(rules={"keep": [], "ignore": ["dundermifflin.example"]})
+        out, _ = self.run_mail({**acc, "keep": ["dundermifflin.example"]}, api=api, actions={"mail_rules": "wf-regles"})
+        self.assertTrue(out["sorted"])
+        self.assertEqual([m["name"] for m in out["accounts"][0]["useful"]], ["Jira", "Inconnu"])  # Jan et David : ignorés par la page
+        self.assertEqual(self.kronn_calls, [])  # trié, 3 inconnus : pas de visite
+        self.ksrv.shutdown()
+        api = self.fake_kronn(rules=None)
+        out, err = self.run_mail(acc, api=api, actions={"mail_rules": "wf-regles"})
+        self.assertFalse(out["sorted"])
+        self.assertEqual(self.kronn_calls, [("/api/mcp/workflow-trigger", {"workflow_id": "wf-regles"})])
+        self.assertIn("le facteur vient proposer des règles", err)
+        self.run_mail(acc, api=api, actions={"mail_rules": "wf-regles"})
+        self.assertEqual(len(self.kronn_calls), 1)  # déjà demandé cette semaine
+
+    def test_senders_summary_and_merge(self):
+        """Résumé des expéditeurs (lus compris, jamais d'objet) ; fusion : ajoutées, sans doublon, une règle « garder »
+        retire la même en « ignorer » ; le texte du gate dit combien de mails chaque règle couvre."""
+        out, _ = self.run_mail({"accounts": [{"id": "pro", "label": "Pro", "provider": "mac-mail", "account": "Dunder"}],
+                                "ignore": ["staples.example"]}, args=("senders",))
+        snd = {x["addr"]: x for x in out["accounts"][0]["senders"]}
+        self.assertEqual(snd["jira@dm.atlassian.net"]["n"], 1)
+        self.assertEqual(snd["news@staples.example"]["robot"], 1)
+        self.assertNotIn("Budget", json.dumps(out))
+        self.assertEqual(out["rules"]["ignore"], ["staples.example"])
+        prop = {"keep": ["dundermifflin.example"], "ignore": ["atlassian.net", "staples.example", "dundermifflin.example"], "why": "Les notifications Jira."}
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "mail_snapshot.py"), "merge"], capture_output=True, text=True,
+                           input=json.dumps({"proposal": prop, "summary": out}),
+                           env={"BUREAU_CONFIG": os.path.join(self.tmp, "bureau.config.json"), "HOME": self.tmp, "PATH": self.bin}, timeout=60)
+        rules = json.loads(r.stdout)
+        self.assertEqual(rules["keep"], [])  # « garder » puis « ignorer » le même domaine : la dernière proposition gagne
+        self.assertEqual(rules["ignore"], ["staples.example", "atlassian.net", "dundermifflin.example"])
+        self.assertIn("atlassian.net (1)", r.stderr)
+        self.assertIn("Pourquoi : Les notifications Jira.", r.stderr)
+
+    def test_terminal_command_launches_the_rules_workflow(self):
+        api = self.fake_kronn()
+        cfg = dict(FIXTURE, kronn=dict(FIXTURE["kronn"], api=api), actions={"mail_rules": "wf-regles"})
+        path = os.path.join(self.tmp, "cfg.json")
+        with open(path, "w") as fh:
+            json.dump(cfg, fh)
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "mail.py"), "rules"], capture_output=True, text=True,
+                           env={"BUREAU_CONFIG": path, "PATH": os.environ.get("PATH", "")}, timeout=60)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.kronn_calls, [("/api/mcp/workflow-trigger", {"workflow_id": "wf-regles"})])
 
     def test_no_accounts_empty(self):
         out, _ = self.run_mail({})

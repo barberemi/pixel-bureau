@@ -19,10 +19,10 @@ useful: [{id, name, addr, subject, at, direct, flagged, open}], ignored: [[nom, 
 - unknown : expéditeurs qu'aucune règle ne couvre (pour proposer de nouvelles règles).
 Un compte en échec garde sa place (ok faux, error) et l'erreur part sur stderr : jamais un dataset partiel sans trace.
 """
-import email.header, email.utils, imaplib, json, subprocess, sys, urllib.parse
+import email.header, email.utils, imaplib, json, os, subprocess, sys, urllib.parse, urllib.request
 from datetime import datetime, timedelta
 from email.parser import BytesHeaderParser
-from _lib import CFG, TZ, dumps
+from _lib import CFG, TZ, dumps, get
 
 MAIL = CFG.get("mail") or {}
 DAYS = int(MAIL.get("days") or 14)  # mails non lus des N derniers jours seulement
@@ -61,7 +61,7 @@ on run argv
       set lTo to address of to recipients of messages 1 thru n of ib
       set lHead to all headers of messages 1 thru n of ib
       repeat with i from 1 to n
-        if item i of lRead is false then
+        if (item 3 of argv) is "all" or item i of lRead is false then
           set t to ""
           repeat with x in item i of lTo
             set t to t & x & ","
@@ -70,7 +70,7 @@ on run argv
           repeat with k in {"List-Unsubscribe:", "List-Id:", "Auto-Submitted: auto", "Precedence: bulk", "Precedence: list"}
             if (item i of lHead) contains k then set robot to "1"
           end repeat
-          set out to out & "MSG" & FS & (item i of lId) & FS & (item i of lFrom) & FS & (item i of lSubj) & FS & ((item i of lDate) as «class isot» as string) & FS & (item i of lFlag) & FS & t & FS & robot & RS
+          set out to out & "MSG" & FS & (item i of lId) & FS & (item i of lFrom) & FS & (item i of lSubj) & FS & ((item i of lDate) as «class isot» as string) & FS & (item i of lFlag) & FS & t & FS & robot & FS & (item i of lRead) & RS
         end if
       end repeat
     end if
@@ -92,8 +92,9 @@ def dec(v):
         return str(v or "")
 
 
-def mac_mail(acc):
-    r = subprocess.run(["osascript", "-", acc.get("account") or "", str(SCAN)], input=APPLESCRIPT, capture_output=True, text=True, timeout=110)
+def mac_mail(acc, every=False):
+    r = subprocess.run(["osascript", "-", acc.get("account") or "", str(SCAN), "all" if every else "unread"], input=APPLESCRIPT,
+                       capture_output=True, text=True, timeout=110)
     if r.returncode:
         raise RuntimeError((r.stderr or "osascript a échoué").strip().splitlines()[-1][:200])
     unread, mine, msgs = 0, set(), []
@@ -109,8 +110,9 @@ def mac_mail(acc):
             tos = {x.strip().lower() for x in f[6].split(",") if x.strip()}
             mid = f[1].strip("<>")
             msgs.append({"id": mid, "name": name or addr, "addr": addr.lower(), "subject": f[3], "at": at, "flagged": f[5] == "true",
-                         "to": tos, "robot": f[7] == "1", "open": "message://%3C" + urllib.parse.quote(mid) + "%3E"})
-    since = datetime.now(TZ) - timedelta(days=DAYS)
+                         "to": tos, "robot": f[7] == "1", "read": len(f) > 8 and f[8] == "true",
+                         "open": "message://%3C" + urllib.parse.quote(mid) + "%3E"})
+    since = datetime.now(TZ) - timedelta(days=30 if every else DAYS)
     msgs = [m for m in msgs if not m["at"] or m["at"] >= since]
     for m in msgs:
         m["direct"] = bool(m.pop("to") & mine) if mine else True
@@ -130,17 +132,17 @@ def secret(ref, user):
 FIELDS = "FROM TO CC SUBJECT DATE MESSAGE-ID LIST-UNSUBSCRIBE LIST-ID AUTO-SUBMITTED PRECEDENCE"
 
 
-def imap(acc):
+def imap(acc, every=False):
     host, user = acc.get("host") or "", acc.get("user") or ""
     port = int(acc.get("port") or (993 if acc.get("ssl", True) else 143))
     c = imaplib.IMAP4_SSL(host, port, timeout=60) if acc.get("ssl", True) else imaplib.IMAP4(host, port, timeout=60)
     try:
         c.login(user, secret(acc.get("secret"), user))
         c.select("INBOX", readonly=True)
-        crit = ["UNSEEN"] + (["X-GM-RAW", '"' + acc["only"].replace('"', "") + '"'] if acc.get("only") else [])
+        since = datetime.now(TZ) - timedelta(days=30 if every else DAYS)
+        crit = (["SINCE", since.strftime("%d-%b-%Y")] if every else ["UNSEEN"]) + (["X-GM-RAW", '"' + acc["only"].replace('"', "") + '"'] if acc.get("only") else [])
         typ, data = c.uid("SEARCH", *crit)
         uids = (data[0] or b"").split() if typ == "OK" else []
-        since = datetime.now(TZ) - timedelta(days=DAYS)
         msgs = []
         for uid in uids[-200:]:
             typ, data = c.uid("FETCH", uid, "(FLAGS BODY.PEEK[HEADER.FIELDS (" + FIELDS + ")])")
@@ -160,7 +162,7 @@ def imap(acc):
             low = {k.lower() for k in h.keys()}
             prec = str(h.get("Precedence") or "").lower()
             msgs.append({"id": mid, "name": name or addr, "addr": addr.lower(), "subject": dec(h.get("Subject")), "at": at,
-                         "flagged": b"\\Flagged" in part[0], "direct": user.lower() in tos,
+                         "flagged": b"\\Flagged" in part[0], "direct": user.lower() in tos, "read": b"\\Seen" in part[0],
                          "robot": bool(low & set(ROBOT)) and not str(h.get("Auto-Submitted") or "").lower().startswith("no") or prec in ("bulk", "list", "junk"),
                          "open": ("https://mail.google.com/mail/#search/rfc822msgid%3A" + urllib.parse.quote(mid)) if "gmail" in host and mid else None})
         return len(uids), msgs
@@ -174,8 +176,23 @@ def imap(acc):
 PROVIDERS = {"mac-mail": mac_mail, "imap": imap}
 
 
+def page_rules():
+    """Règles validées (dataset mail_rules, publié par le workflow « règles du courrier »), sinon None."""
+    try:
+        cur = next((d.get("current") for d in get(f"/pages/{CFG['page_id']}", timeout=20).get("datasets") or [] if d.get("name") == "mail_rules"), None)
+        cur = json.loads(cur) if isinstance(cur, str) else cur
+        return cur if isinstance(cur, dict) and ("keep" in cur or "ignore" in cur) else None
+    except Exception as e:
+        print("courrier : règles de la page illisibles (" + str(e)[:80] + "), celles de la config", file=sys.stderr)
+        return None
+
+
+RULES = page_rules() if CFG.get("page_id") and (CFG.get("kronn") or {}).get("api") else None
+
+
 def rules(kind):
-    return [r if isinstance(r, dict) else {"from": r} for r in (MAIL.get(kind) or []) if r]
+    src = RULES if RULES is not None else MAIL
+    return [r if isinstance(r, dict) else {"from": r} for r in (src.get(kind) or []) if r]
 
 
 def matches(rule, addr, acc_id):
@@ -212,6 +229,90 @@ def sort_account(acc, unread, msgs, keep, ignore):
             "ignored_n": sum(ignored.values()), "unknown": len(unknown)}
 
 
+ASK_EVERY = timedelta(days=7)  # le facteur revient proposer des règles au plus une fois par semaine
+ASK_UNKNOWN = 10  # … quand au moins 10 expéditeurs ne sont couverts par aucune règle
+STATE = os.path.join(os.path.expanduser("~"), ".cache", "pixel-bureau", "mail_rules.json")
+
+
+def ask_rules(out):
+    """Lance le workflow « règles du courrier » (actions.mail_rules) : la première fois, puis s'il y a du nouveau."""
+    wf = (CFG.get("actions") or {}).get("mail_rules")
+    if not wf or not any(a["ok"] for a in out["accounts"]):
+        return
+    unknown = sum(a["unknown"] for a in out["accounts"])
+    try:
+        with open(STATE) as fh:
+            asked = datetime.fromisoformat(json.load(fh)["asked_at"])
+    except (OSError, ValueError, KeyError):
+        asked = None
+    now = datetime.now(TZ)
+    due = (not out["sorted"] and (not asked or now - asked > ASK_EVERY)) or (out["sorted"] and unknown >= ASK_UNKNOWN and (not asked or now - asked > ASK_EVERY))
+    if not due:
+        return
+    try:
+        req = urllib.request.Request((CFG.get("kronn") or {}).get("api", "") + "/mcp/workflow-trigger", method="POST",
+                                     headers={"content-type": "application/json"}, data=json.dumps({"workflow_id": wf}).encode())
+        urllib.request.urlopen(req, timeout=30).read()
+        os.makedirs(os.path.dirname(STATE), exist_ok=True)
+        with open(STATE, "w") as fh:
+            json.dump({"asked_at": now.isoformat(), "unknown": unknown}, fh)
+        print("courrier : le facteur vient proposer des règles (" + str(unknown) + " expéditeurs inconnus)", file=sys.stderr)
+    except Exception as e:
+        print("courrier : règles non demandées (" + str(e)[:120] + ")", file=sys.stderr)
+
+
+def senders():
+    """Résumé des expéditeurs des 30 derniers jours (lus compris), par compte, pour proposer des règles : adresse, nom,
+    nombre de mails, non lus, part d'envois automatiques. Jamais un objet ni un contenu."""
+    out = {"accounts": [], "rules": {"keep": (RULES or MAIL).get("keep") or [], "ignore": (RULES or MAIL).get("ignore") or []}}
+    for acc in MAIL.get("accounts") or []:
+        acc = {"id": "mail", "provider": "mac-mail", **acc}
+        try:
+            _, msgs = PROVIDERS[acc["provider"]](acc, every=True)
+        except Exception as e:
+            print("courrier : " + acc["id"] + " : " + str(e), file=sys.stderr)
+            continue
+        by = {}
+        for m in msgs:
+            s = by.setdefault(m["addr"], {"addr": m["addr"], "name": (m["name"] or "")[:60], "n": 0, "unread": 0, "robot": 0})
+            s["n"] += 1
+            s["unread"] += 0 if m.get("read") else 1
+            s["robot"] += 1 if m["robot"] else 0
+        top = sorted(by.values(), key=lambda s: -s["n"])[:80]
+        out["accounts"].append({"id": acc["id"], "label": acc.get("label") or acc["id"], "senders": top})
+    print(dumps(out))
+
+
+def merge():
+    """Proposition de l'agent + règles actuelles -> nouveau dataset mail_rules (stdout) et le texte du gate (stderr)."""
+    data = json.loads(sys.stdin.read() or "{}")
+    prop, summary = data.get("proposal") or {}, data.get("summary") or {}
+    cur = summary.get("rules") or {}
+    key = lambda r: json.dumps(r, sort_keys=True) if isinstance(r, dict) else str(r).strip().lower()  # noqa: E731
+    keep = {key(r): r for r in cur.get("keep") or []}
+    ignore = {key(r): r for r in cur.get("ignore") or []}
+    added = {"keep": [], "ignore": []}
+    for kind, mine, other in (("keep", keep, ignore), ("ignore", ignore, keep)):
+        for r in prop.get(kind) or []:
+            if not r or key(r) in mine:
+                continue
+            mine[key(r)] = r
+            other.pop(key(r), None)
+            added[kind].append(r)
+    count = {}
+    for a in summary.get("accounts") or []:
+        for snd in a.get("senders") or []:
+            count[snd["addr"]] = count.get(snd["addr"], 0) + snd["n"]
+    n_of = lambda r: sum(n for addr, n in count.items() if matches(r if isinstance(r, dict) else {"from": r}, addr, ""))  # noqa: E731
+    label = lambda r: (r.get("from") + " (" + r.get("account") + ")") if isinstance(r, dict) else str(r)  # noqa: E731
+    lines = ["Garder : " + (", ".join(f"{label(r)} ({n_of(r)})" for r in added["keep"]) or "rien de nouveau"),
+             "Ignorer : " + (", ".join(f"{label(r)} ({n_of(r)})" for r in added["ignore"]) or "rien de nouveau")]
+    if prop.get("why"):
+        lines += ["", "Pourquoi : " + str(prop["why"])[:600]]
+    print("\n".join(lines), file=sys.stderr)
+    print(dumps({"updated_at": datetime.now(TZ).isoformat(), "keep": list(keep.values()), "ignore": list(ignore.values()), "by": "facteur"}))
+
+
 def main():
     keep, ignore = rules("keep"), rules("ignore")
     out = {"generated_at": datetime.now(TZ).isoformat(), "sorted": bool(keep or ignore), "accounts": []}
@@ -230,6 +331,7 @@ def main():
             out["accounts"].append({**base, "ok": False, "error": str(e)[:200], "unread": 0, "useful_n": 0, "useful": [], "ignored": [],
                                     "ignored_n": 0, "unknown": 0})
     print(dumps(out))
+    ask_rules(out)
 
 
-main()
+{"senders": senders, "merge": merge}.get(sys.argv[1] if len(sys.argv) > 1 else "", main)()

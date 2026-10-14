@@ -205,6 +205,12 @@ SHOTS = {
                  "k=r.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(mx-9)*TS*k)+'px',"
                  "top:(r.top+scrollY+(my-5)*TS*k)+'px',width:14*TS*k+'px',height:7*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 2),
     "fiche-courrier": (1400, 1400, AT(11) + "select('mail:pro');", "#side"),
+    # règles du courrier en attente de validation (workflow « règles du courrier ») : le facteur attend devant le bureau du boss
+    "facteur-regles": (1400, 1000, AT(11) + "GATES=[{run:'demo',wf:'00000000-demo',wf_name:'Le Bureau · règles du courrier',gate:'boss',"
+                       "since:new Date(DAY0+10.5*36e5).toISOString(),message:'Le facteur te propose de trier ton courrier'}];refreshAll();needTeleport=true;"
+                       "setTimeout(()=>{const [mx,my]=mailboxTile(),c=document.querySelector('#cv'),r=c.getBoundingClientRect(),"
+                       "k=r.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(mx-12)*TS*k)+'px',"
+                       "top:(r.top+scrollY+(my-5)*TS*k)+'px',width:16*TS*k+'px',height:7*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 2),
     # le facteur dépose le courrier arrivé à 10h42 (démo), à côté des boîtes, puis repart
     "facteur": (1400, 1000, AT(10 + 43 / 60) + "setTimeout(()=>{const [mx,my]=mailboxTile(),c=document.querySelector('#cv'),r=c.getBoundingClientRect(),"
                 "k=r.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(mx-9)*TS*k)+'px',"

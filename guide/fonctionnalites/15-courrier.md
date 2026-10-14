@@ -28,9 +28,18 @@ Sa tenue : chemise bleu ciel, gilet bleu marine, cravate jaune, sacoche en cuir 
 - En bas de chaque compte, les ignorés regroupés par expéditeur (Jira 9, GitHub 6…).
 - Un compte réglé en « nombre seul » (`show: "count"`) ne montre que son nombre : ni expéditeur ni objet n'arrivent jusqu'à la page.
 
-## Le tri
+## Le tri, et le facteur qui le propose
 
 Un mail non lu est **ignoré** s'il correspond à une règle « ignorer », **utile** s'il correspond à une règle « garder », sinon ignoré s'il a les en-têtes d'un envoi automatique (lettre d'information, liste de diffusion, notification), et utile sinon. Une règle : une adresse (`jan@exemple.com`), un domaine (`atlassian.net`, sous-domaines compris), éventuellement pour un seul compte.
+
+Tu n'écris pas les règles toi-même : **le facteur vient les proposer**.
+
+![Le facteur attend la validation des règles](../img/facteur-regles.png)
+
+- **Au premier passage** du cron (pas encore de règles, les boîtes affichent `?`), le workflow « Le Bureau · règles du courrier » résume tes expéditeurs des 30 derniers jours (nombre de mails, non lus, envois automatiques ; jamais un objet ni un contenu), un agent propose quoi garder et quoi ignorer, et le facteur **reste devant ton bureau** avec « ✋ 📮 On trie ton courrier ? ». La proposition est dans ta fiche, à valider ou rejeter, comme les autres validations.
+- **Validées**, les règles vont dans le dataset `mail_rules` : le cron trie avec elles dès son passage suivant, sans rien republier. Celles de la config (`mail.keep`, `mail.ignore`) ne servent qu'avant.
+- **Ensuite**, le facteur revient quand au moins 10 expéditeurs ne sont couverts par aucune règle, au plus une fois par semaine. Pour le faire venir tout de suite : **📮 Revoir mes règles** en bas de la fiche Courrier, ou `python3 tools/mail.py rules`.
+- Coût : une proposition d'agent au premier passage, puis au plus une par semaine ; le relevé du courrier, lui, reste à 0 token.
 
 ## Mise en place
 
