@@ -104,6 +104,10 @@ Une police : un `.woff2` (sous-ensemble latin) dans `page/fonts/` avec sa licenc
 - `templates.py export` régénère les modèles après une modification faite dans l'interface de Kronn.
 - Toute sortie d'étape Exec reste sous 100 Ko (limite de Kronn) : les scripts raccourcissent leurs listes au besoin.
 
+## Aperçu local, avant de merger
+
+`python3 tools/preview.py` assemble la page de ta branche avec ta config et les datasets actuels de ta page Kronn, et l'ouvre dans le navigateur (`dist/apercu.html`, jamais commité). Rien n'est publié : c'est la page que tu aurais après le merge, avec tes vraies données. `--mail` y ajoute un relevé réel du courrier (sans section `mail` dans la config : tous les comptes de l'appli Mail). Les boutons d'action ne marchent pas hors de Kronn.
+
 ## Courrier (cron « courrier »)
 
 `workflows/mail_snapshot.py`, toutes les 10 min aux heures du bureau, publie le dataset `mails` : les mails non lus de chaque compte de `mail.accounts`, triés par les règles, sans jamais le contenu (expéditeur, objet, heure, lu, destinataire direct ou en copie). Sans compte, le workflow n'est pas créé.
