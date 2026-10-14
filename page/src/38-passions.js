@@ -108,7 +108,7 @@ function passionCards(side,c){
     const chips=smashChips(s);
     sec.insertAdjacentHTML('beforeend',`<div class="pcard smash"><div class="pc-ball" aria-hidden="true"></div><div class="pc-main"><b>${esc(s.pseudo||'Pseudo à venir')}</b>`+
       `<small>${s.main?'Main : '+esc(s.main):'Perso principal à venir'}</small>${chips?`<div class="pc-chips">${chips}</div>`:''}`+
-      `${/^https:\/\//.test(s.url||'')?`<a href="${esc(s.url)}" target="_blank" rel="noopener">Voir son profil ↗</a>`:''}</div></div>`);
+      `${safeUrl(s.url)?`<a ${hrefOf(s.url)} target="_blank" rel="noopener">Voir son profil ↗</a>`:''}</div></div>`);
   }
   if(p.dramas)top3Card(side,'dramas','📺 Top 3 dramas','les dramas de '+c.name,p.dramas);
   if(p.top3)top3Card(side,'top3','🎬 Top 3 · '+(p.top3.title||'ses préférés'),p.top3.title||'ses préférés',p.top3);
