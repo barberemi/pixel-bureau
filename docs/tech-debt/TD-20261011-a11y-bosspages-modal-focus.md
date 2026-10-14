@@ -11,6 +11,10 @@ metadata:
       status: Confirmed by user
       reviewer: Kronn audit validation card
       note: "Confirmed through an audit validation card."
+    - date: 2026-10-15
+      status: Resolved
+      reviewer: mainteneur
+      note: "#1 : le reste de la page est inerte pendant l'ouverture, Tab et Maj+Tab bouclent dans la fenêtre, Échap et Fermer rendent le focus à l'élément d'avant ou, ouverte depuis le canvas, au plan (tabindex -1)."
 ---
 
 # TD-20261011-a11y-bosspages-modal-focus
@@ -19,7 +23,7 @@ metadata:
 - **WCAG**: 2.4.3 Focus Order
 - **Area**: Focus
 - **Severity**: Low
-- **Status**: Confirmed by user
+- **Status**: Resolved (2026-10-15, #1)
 - **Effort**: S (< 1h)
 - **Blast radius**: local (1-2 files)
 
