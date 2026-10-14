@@ -8,6 +8,7 @@ Les avatars sont assemblés dans le navigateur (calques de sprites/layers.json +
 profil d'équipe) ; seuls les sprites fournis tels quels (teams/<équipe>/sprites/, sprites/custom/) sont embarqués comme planches.
 """
 import base64, json, math, os, re, sys
+from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -57,7 +58,7 @@ def themes(cfg=None):
     """Thèmes d'interface {id: nom}, nom lu dans la première ligne du fichier « /* @nom: … */ »."""
     out = {}
     for t, path in theme_paths(cfg).items():
-        m = re.match(r"/\*\s*@nom:\s*(.+?)\s*\*/", open(path).read())
+        m = re.match(r"/\*\s*@nom:\s*(.+?)\s*\*/", Path(path).read_text())
         assert m, f"{path} : première ligne attendue /* @nom: Nom du thème */"
         out[t] = m.group(1)
     return out
@@ -76,7 +77,7 @@ def page_parts(cfg=None):
     fonts = [0]
 
     def embed(path):
-        b64 = base64.b64encode(open(path, "rb").read()).decode()
+        b64 = base64.b64encode(Path(path).read_bytes()).decode()
         fonts[0] += len(b64)
         return b64
 
@@ -84,16 +85,16 @@ def page_parts(cfg=None):
         return re.sub(r"@@font:([\w./-]+)@@", lambda m: embed(os.path.join(base, m.group(1))), css)
     pack = team_dir(cfg)
     files = [os.path.join(SRC, f) for f in ["styles.css", "pixel.css"]] + list(theme_paths(cfg).values())
-    css = "".join(font(_nl(open(f).read()), pack if pack and f.startswith(pack + os.sep) else ROOT) for f in files)
+    css = "".join(font(_nl(Path(f).read_text()), pack if pack and f.startswith(pack + os.sep) else ROOT) for f in files)
     css = strip_css(css)  # KT-28 : sans commentaires ni indentation (tools/compact.py), les sources gardent les leurs
-    js = strip_js("".join(_nl(open(os.path.join(SRC, f)).read()) for f in JS_FILES))
+    js = strip_js("".join(_nl(Path(os.path.join(SRC, f)).read_text()) for f in JS_FILES))
     return css, js, fonts[0]
 
 
 def page_html(cfg=None):
     """Squelette + CSS + JS concaténés, avant le remplacement des marqueurs de données (__SPRITES__...).
     cfg : pour les thèmes du pack d'équipe (défaut : ceux de page/src seulement)."""
-    html = open(p("page", "office_template.html")).read()
+    html = Path(p("page", "office_template.html")).read_text()
     css, js, _ = page_parts(cfg)
     for mark, body in (("/*__STYLES__*/", css), ("/*__SCRIPTS__*/", js)):
         assert html.count(mark + "\n") == 1, mark
@@ -105,14 +106,14 @@ def page_html(cfg=None):
 def config():
     """bureau.config.json (propre à l'installation) ; absent : page sans boss ni boutons d'action."""
     try:
-        return json.load(open(p("bureau.config.json")))
+        return json.loads(Path(p("bureau.config.json")).read_text())
     except FileNotFoundError:
         return {}
 
 
 def demo_config():
     """Installation de démonstration (équipe fictive) : aperçu local, captures de la documentation, tests."""
-    return json.load(open(p("tests", "fixtures", "bureau.config.json")))
+    return json.loads(Path(p("tests", "fixtures", "bureau.config.json")).read_text())
 
 
 def cron_hours(cfg):
@@ -138,14 +139,14 @@ def cron_schedules(cfg=None):
     for key in ("office", "live", "team", "payroll", "canard", "absences", "courrier"):
         path = p("workflows", "templates", key + ".json")
         if os.path.exists(path):
-            s = (json.load(open(path))["definition"].get("trigger") or {}).get("schedule")
+            s = (json.loads(Path(path).read_text())["definition"].get("trigger") or {}).get("schedule")
             out[key] = s.replace("@@cron_hours@@", cron_hours(cfg)) if s else s
     return out
 
 
 def version():
     """Version du Bureau (fichier VERSION, « 0.MINOR.PATCH ») : affichée en pied de page, tag de la release (KT-66)."""
-    return open(p("VERSION")).read().strip()
+    return Path(p("VERSION")).read_text().strip()
 
 
 def page_config(cfg):
@@ -187,7 +188,7 @@ def teams():
     out = {}
     for d in sorted(os.listdir(base)) if os.path.isdir(base) else []:
         if os.path.exists(os.path.join(base, d, "team.json")):
-            out[d] = json.load(open(os.path.join(base, d, "team.json")))
+            out[d] = json.loads(Path(os.path.join(base, d, "team.json")).read_text())
     return out
 
 
@@ -214,7 +215,7 @@ def team_dir(cfg):
 def team_meta(cfg):
     """team.json de l'équipe de l'installation ({} pour une équipe neuve)."""
     d = team_dir(cfg)
-    return json.load(open(os.path.join(d, "team.json"))) if d and os.path.exists(os.path.join(d, "team.json")) else {}
+    return json.loads(Path(os.path.join(d, "team.json")).read_text()) if d and os.path.exists(os.path.join(d, "team.json")) else {}
 
 
 def _team_file(cfg, *parts):
@@ -226,7 +227,7 @@ def _team_file(cfg, *parts):
 def roster(cfg):
     """L'équipe de l'installation : roster du profil, puis les personnes ajoutées à l'installation (clé people)."""
     path = _team_file(cfg, "roster.json")
-    people = json.load(open(path))["people"] if path else []
+    people = json.loads(Path(path).read_text())["people"] if path else []
     return people + list((cfg or {}).get("people") or [])
 
 
@@ -235,9 +236,9 @@ def guests(cfg):
     les retirer), puis ceux du profil (clé guests de son roster), puis ceux de l'installation. Même clé : le dernier
     remplace le précédent. Au plus une visite par jour ouvré."""
     path = _team_file(cfg, "roster.json")
-    common = [] if (cfg or {}).get("common_guests") is False else json.load(open(p("team", "guests.json")))["guests"]
+    common = [] if (cfg or {}).get("common_guests") is False else json.loads(Path(p("team", "guests.json")).read_text())["guests"]
     out = {}
-    for g in common + (json.load(open(path)).get("guests") or [] if path else []) + list((cfg or {}).get("guests") or []):
+    for g in common + (json.loads(Path(path).read_text()).get("guests") or [] if path else []) + list((cfg or {}).get("guests") or []):
         out.pop(g["key"], None)
         out[g["key"]] = g
     return list(out.values())
@@ -245,10 +246,10 @@ def guests(cfg):
 
 def defaults(cfg):
     """Valeurs proposées à l'installation : team/defaults.json, complété par le profil (clé à clé au premier niveau)."""
-    d = json.load(open(p("team", "defaults.json")))
+    d = json.loads(Path(p("team", "defaults.json")).read_text())
     path = _team_file(cfg, "defaults.json")
     if path:
-        for k, v in json.load(open(path)).items():
+        for k, v in json.loads(Path(path).read_text()).items():
             if not k.startswith("_"):
                 d[k] = {**d[k], **v} if isinstance(v, dict) and isinstance(d.get(k), dict) else v
     return d
@@ -282,17 +283,17 @@ def wiki_posters(cfg):
 def music(cfg):
     """Morceaux des collègues (carte « Sa musique ») : ceux du profil, puis ceux de l'installation (clé music)."""
     path = _team_file(cfg, "music", "music.json")
-    m = json.load(open(path)) if path else {}
+    m = json.loads(Path(path).read_text()) if path else {}
     for v in m.values():
         if v.get("cover"):  # pochette embarquée en data URI, rangée à côté de music.json
-            v["cover"] = open(os.path.join(os.path.dirname(path), v["cover"])).read().strip()
+            v["cover"] = Path(os.path.join(os.path.dirname(path), v["cover"])).read_text().strip()
     return {**m, **((cfg or {}).get("music") or {})}
 
 
 def recipes(cfg):
     """Recettes des avatars : communes (agents, intérimaires, visiteurs, équipe de démo), puis celles du profil."""
     path = _team_file(cfg, "cast.json")
-    return {**json.load(open(p("sprites", "cast.json"))), **(json.load(open(path)) if path else {})}
+    return {**json.loads(Path(p("sprites", "cast.json")).read_text()), **(json.loads(Path(path).read_text()) if path else {})}
 
 
 def sprites(cfg):
@@ -300,11 +301,11 @@ def sprites(cfg):
     (sprites/sprites.json, local), puis ceux du profil. Les avatars des recettes sont composés dans le navigateur :
     leurs planches ne sont pas embarquées."""
     local = p("sprites", "sprites.json")
-    shared = json.load(open(p("sprites", "common.json")))
-    common = json.load(open(p("sprites", "cast.json")))
-    out = {k: v for k, v in (json.load(open(local)) if os.path.exists(local) else {}).items() if k not in common}
+    shared = json.loads(Path(p("sprites", "common.json")).read_text())
+    common = json.loads(Path(p("sprites", "cast.json")).read_text())
+    out = {k: v for k, v in (json.loads(Path(local).read_text()) if os.path.exists(local) else {}).items() if k not in common}
     path = _team_file(cfg, "sprites.json")
-    every = {**shared, **out, **(json.load(open(path)) if path else {})}
+    every = {**shared, **out, **(json.loads(Path(path).read_text()) if path else {})}
     used = used_sprites(cfg)
     return {k: v for k, v in every.items() if k in used}
 
@@ -315,7 +316,7 @@ def used_sprites(cfg):
     cité entre apostrophes dans le JS de la page (« 'temp' », VISITOR)."""
     defs = roster(cfg) + guests(cfg) + list((cfg or {}).get("agents") or [])
     names = {d.get(f) for d in defs for f in ("key", "sprite", "boss_sprite")} - {None}
-    js = "".join(open(os.path.join(SRC, f)).read() for f in JS_FILES)
+    js = "".join(Path(os.path.join(SRC, f)).read_text() for f in JS_FILES)
     return names | set(re.findall(r"'([\w-]+)'", js))
 
 
@@ -415,18 +416,18 @@ def build(demo=True, cfg=None):
     html = ACTION_RE.sub(lambda m: action_block(m.group(0), cfg) if acts[ACTIONS[m.group(1)][0]] else "", html)
     cast, custom = recipes(cfg), sprites(cfg)
     html = (html.replace("__SPRITES__", json.dumps(custom))
-                .replace("__LAYERS__", open(p("sprites", "layers.json")).read())
+                .replace("__LAYERS__", Path(p("sprites", "layers.json")).read_text())
                 .replace("__MUSIC__", json.dumps(music(cfg), ensure_ascii=False))
                 .replace("__CAST__", json.dumps(cast, ensure_ascii=False, separators=(",", ":")))
                 .replace("__ROSTER__", json.dumps({"people": roster(cfg), "guests": guests(cfg)}, ensure_ascii=False))
-                .replace("__LAYOUT__", open(p(layout_path(cfg))).read())
+                .replace("__LAYOUT__", Path(p(layout_path(cfg))).read_text())
                 .replace("__OWNER__", json.dumps(cfg.get("owner")))
                 .replace("__CONFIG__", json.dumps(page_config(cfg), ensure_ascii=False))
                 .replace("__ACTIONS__", json.dumps({k: bool(v) for k, v in acts.items()}))
                 .replace("__ACTION_BINDS__", json.dumps(action_binds(html)))
                 .replace("__DEMO__", "true" if demo else "false")
                 .replace("__VERSION__", version())
-                .replace("__SNAP__", open(p("data", "office_snapshot.json")).read() if demo else "null")
+                .replace("__SNAP__", Path(p("data", "office_snapshot.json")).read_text() if demo else "null")
                 .replace("__TEAM__", demo_team(cfg) if demo else "null"))
     for _, mark in ACTIONS.values():
         html = html.replace(mark, acts[ACTIONS_BY_MARK[mark]])
@@ -444,11 +445,11 @@ def weights(cfg=None, demo=True):
     b = lambda s: len(s.encode())  # noqa: E731
     css, js, fonts = page_parts(cfg)
     w = {"JS": b(js), "CSS": b(css) - fonts, "polices": fonts,
-         "sprites et calques": b(json.dumps(sprites(cfg))) + b(open(p("sprites", "layers.json")).read()),
+         "sprites et calques": b(json.dumps(sprites(cfg))) + b(Path(p("sprites", "layers.json")).read_text()),
          "équipe et plan": b(json.dumps(recipes(cfg), ensure_ascii=False, separators=(",", ":")))
          + b(json.dumps({"people": roster(cfg), "guests": guests(cfg)}, ensure_ascii=False))
-         + b(open(p(layout_path(cfg))).read()) + b(json.dumps(music(cfg), ensure_ascii=False)),
-         "démo": b(open(p("data", "office_snapshot.json")).read()) + b(open(p("data", "team_snapshot.json")).read()) if demo else 0}
+         + b(Path(p(layout_path(cfg))).read_text()) + b(json.dumps(music(cfg), ensure_ascii=False)),
+         "démo": b(Path(p("data", "office_snapshot.json")).read_text()) + b(Path(p("data", "team_snapshot.json")).read_text()) if demo else 0}
     w["squelette et réglages"] = b(build(demo=demo, cfg=cfg)) - sum(w.values())
     return w
 
@@ -456,5 +457,5 @@ def weights(cfg=None, demo=True):
 if __name__ == "__main__":
     html = build()
     os.makedirs(p("dist"), exist_ok=True)
-    open(p("dist", "office.html"), "w").write(html)
+    Path(p("dist", "office.html")).write_text(html)
     print("dist/office.html", len(html.encode()), "octets (limite Kronn : 1 000 000)")

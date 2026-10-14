@@ -1,5 +1,6 @@
 """Modèles de workflows (python3 -m unittest tests/test_templates.py) : rendu pour une autre installation, sans Jira."""
 import copy, json, os, re, sys, unittest
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -26,7 +27,7 @@ class TemplatesTest(unittest.TestCase):
         self.assertEqual(set(TPL), set(templates.TEMPLATES))
         if not os.path.exists(LOCAL):
             self.skipTest("pas d'installation locale (bureau.config.json) : rien à comparer")
-        inst = json.load(open(LOCAL))
+        inst = json.loads(Path(LOCAL).read_text())
         own = {inst["page_id"], inst["kronn"]["project_id"], (inst.get("jira") or {}).get("config_id"),
                *inst["workflows"].values(), *inst["actions"].values()} - {None, ""}
         for key, t in TPL.items():
@@ -93,7 +94,7 @@ class TemplatesTest(unittest.TestCase):
         cfg = colleague()
         for key, (kind, _, scripts) in templates.TEMPLATES.items():
             for path in scripts.values():
-                self.assertIn("from _lib import", open(os.path.join(ROOT, path)).read(), path)
+                self.assertIn("from _lib import", Path(os.path.join(ROOT, path)).read_text(), path)
                 self.assertIn(f"@@script:{path}@@", json.dumps(TPL[key]), path)
                 code = templates.script_code(path, cfg)
                 self.assertNotIn("from _lib import", code, path)

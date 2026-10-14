@@ -1,5 +1,6 @@
 """Tiny CDP driver: cdp.py <url> <out.png> [js-before-shot] [wait_s] [width] [height]"""
 import base64, json, sys, time, urllib.request
+from pathlib import Path
 import websocket
 
 url, out = sys.argv[1], sys.argv[2]
@@ -34,7 +35,7 @@ if js:
     print("JS:", json.dumps(r.get("result", r))[:1500])
     time.sleep(1.2)
 shot = call("Page.captureScreenshot", format="png", captureBeyondViewport=True)
-open(out, "wb").write(base64.b64decode(shot["data"]))
+Path(out).write_bytes(base64.b64decode(shot["data"]))
 for m in logs:
     p = m["params"]
     if m["method"] == "Runtime.exceptionThrown":

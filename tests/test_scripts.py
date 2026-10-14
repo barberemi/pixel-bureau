@@ -1,13 +1,14 @@
 """Scripts des workflows (python3 -m unittest tests/test_scripts.py) : lancés comme dans Kronn, contre un faux Kronn
 HTTP et un faux `gh`, sans réseau. Chaque sortie doit être un JSON valide sous la limite de 100 Ko d'une étape Exec."""
 import json, os, re, shutil, subprocess, sys, tempfile, threading, unittest
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlparse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FIXTURE = json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")))
+FIXTURE = json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text())
 LIMIT = 100 * 1024
 OFFICE_WF = FIXTURE["workflows"]["office"]
 TEAM_WF = FIXTURE["workflows"]["team"]
@@ -167,6 +168,9 @@ class ScriptsTest(unittest.TestCase):
         shutil.rmtree(self.tmp)
 
     def kronn(self, fake):
+        if self.srv:  # un nouveau faux Kronn dans le même test : l'ancien est arrêté et sa socket fermée
+            self.srv.shutdown()
+            self.srv.server_close()
         self.srv = serve(fake)
         return f"http://127.0.0.1:{self.srv.server_address[1]}/api"
 
@@ -179,9 +183,13 @@ class ScriptsTest(unittest.TestCase):
         with open(path, "w") as fh:
             fh.write(f"""#!{sys.executable}
 import hashlib, json, sys
+from pathlib import Path
 a = sys.argv[1:]
-open({data!r} + ".calls", "a").write(" ".join(a) + "\\n")
-d = json.load(open({data!r}))
+def call(s):
+    with open({data!r} + ".calls", "a") as fh:
+        fh.write(s + "\\n")
+call(" ".join(a))
+d = json.loads(Path({data!r}).read_text())
 key = ("open" if "open" in a else "merged") if a[0] == "pr" else "releases" if a[0] == "release" else \\
       "staging" if "NONPROD" in " ".join(a) or "staging" in " ".join(a) else "prod"
 if a[0] == "api":  # gh api -i [-H If-None-Match: …] …/actions/workflows/<fichier>/runs : en-têtes, ETag, 304
@@ -190,7 +198,7 @@ if a[0] == "api":  # gh api -i [-H If-None-Match: …] …/actions/workflows/<fi
         **({{"actor": {{"login": r["by"]}}}} if r.get("by") else {{}})}} for r in d.get(key, [])]}})
     etag = 'W/"' + hashlib.sha1(body.encode()).hexdigest() + '"'
     if "If-None-Match: " + etag in a:
-        open({data!r} + ".calls", "a").write("304\\n")
+        call("304")
         print("HTTP/2.0 304 Not Modified\\r\\nEtag: " + etag + "\\r\\n\\r\\n")
         sys.exit(1)
     print("HTTP/2.0 200 OK\\r\\nEtag: " + etag + "\\r\\n\\r\\n" + body)
@@ -510,7 +518,7 @@ print(json.dumps(d.get(key, [])))
 
     def gh_calls(self):
         p = os.path.join(self.tmp, "gh.json.calls")
-        return open(p).read().count("\n") if os.path.exists(p) else 0
+        return Path(p).read_text().count("\n") if os.path.exists(p) else 0
 
     def test_live_snapshot_reads_deploys_with_an_etag(self):
         paris = NOW.astimezone(ZoneInfo("Europe/Paris"))
@@ -525,11 +533,11 @@ print(json.dumps(d.get(key, [])))
         self.assertEqual(out["deploys"]["prod"]["intranet 17.2.0"]["project"], "intranet")  # autre dépôt suivi (github.deploys)
         self.assertIsNone(out["deploys"]["prod"]["17.2.0"]["project"])  # dépôt principal : la version seule
         self.assertEqual(out["deploys"]["prod"]["intranet 17.2.0"]["by"], "pambeesly")  # qui a lancé le déploiement
-        calls = open(os.path.join(self.tmp, "gh.json.calls")).read().splitlines()
+        calls = Path(os.path.join(self.tmp, "gh.json.calls")).read_text().splitlines()
         self.assertEqual(len(calls), 3)  # staging + prod du dépôt principal, prod de l'intranet
         self.assertFalse([c for c in calls if "If-None-Match" in c])  # pas encore d'ETag
         out = self.run_script("live_snapshot.py", api=api)  # rien n'a bougé : 304, runs republiés depuis le cache
-        calls = open(os.path.join(self.tmp, "gh.json.calls")).read().splitlines()[3:]
+        calls = Path(os.path.join(self.tmp, "gh.json.calls")).read_text().splitlines()[3:]
         self.assertEqual(sum("If-None-Match: W/" in c for c in calls), 3)  # trois requêtes conditionnelles…
         self.assertEqual(calls.count("304"), 3)  # … et trois 304 (ordre libre : lectures en parallèle)
         self.assertEqual(out["deploys"]["prod"]["17.2.0"]["conclusion"], "success")
@@ -549,7 +557,7 @@ print(json.dumps(d.get(key, [])))
         os.makedirs(cache)
         img = "data:image/jpeg;base64," + "A" * (img_kb * 1024)
         for pid, key in (("pa", "r1:3"), ("pb", "r0:1"), ("old", "r1:1")):  # pb : miniature périmée ; old : page retirée de la liste
-            json.dump({"key": key, "img": img}, open(os.path.join(cache, pid + ".json"), "w"))
+            Path(os.path.join(cache, pid + ".json")).write_text(json.dumps({"key": key, "img": img}))
         return fake, cache, img
 
     def test_pages_snapshot_order_cache_and_missing_pages(self):
@@ -567,16 +575,16 @@ print(json.dumps(d.get(key, [])))
         fake, cache, _ = self.boss_pages()
         exe = os.path.join(self.bin, "chrome")
         with open(exe, "w") as fh:
-            fh.write(f"#!{sys.executable}\nimport base64, sys\n"
+            fh.write(f"#!{sys.executable}\nimport base64, sys\nfrom pathlib import Path\n"
                      "png = [a.split('=', 1)[1] for a in sys.argv if a.startswith('--screenshot=')][0]\n"
-                     f"open(png, 'wb').write(base64.b64decode({PNG_1PX!r}))\n")
+                     f"Path(png).write_bytes(base64.b64decode({PNG_1PX!r}))\n")
         os.chmod(exe, 0o755)
         out = self.run_script("pages_snapshot.py", api=self.kronn(fake), boss_pages=["pb"], chrome=exe)
         self.assertTrue(out["pages"][0]["img"].startswith("data:image/jpeg;base64,"))
 
     def test_pages_snapshot_stays_under_exec_limit(self):
         fake, cache, img = self.boss_pages(img_kb=60)
-        json.dump({"key": "r1:3", "img": img}, open(os.path.join(cache, "pb.json"), "w"))
+        Path(os.path.join(cache, "pb.json")).write_text(json.dumps({"key": "r1:3", "img": img}))
         api = self.kronn(fake)
         out = self.run_script("pages_snapshot.py", api=api, boss_pages=["pa", "pb"], chrome=False)
         self.assertEqual([bool(p["img"]) for p in out["pages"]], [True, False])  # la dernière image saute d'abord
@@ -590,8 +598,8 @@ print(json.dumps(d.get(key, [])))
         os.makedirs(cache)
         today = NOW.astimezone(ZoneInfo("Europe/Paris")).strftime("%Y-%m-%d")
         kept = {"login": "pam", "img": "data:image/jpeg;base64,QUJD", "desc": "Pam scouted on GitFut: 80 OVR ST."}
-        json.dump({"day": today, "card": kept}, open(os.path.join(cache, "pam.json"), "w"))
-        json.dump({"day": "2020-01-01", "card": kept}, open(os.path.join(cache, "old.json"), "w"))  # périmée : refetch
+        Path(os.path.join(cache, "pam.json")).write_text(json.dumps({"day": today, "card": kept}))
+        Path(os.path.join(cache, "old.json")).write_text(json.dumps({"day": "2020-01-01", "card": kept}))  # périmée : refetch
         out = self.run_script("gitfut_snapshot.py", gitfut={"p_pam": "Pam", "p_old": "old", "p_bad": "../etc"},
                               gitfut_base="http://127.0.0.1:9", wiki_posters=["Five_(2016_film)"], wiki_base="http://127.0.0.1:9")  # injoignables
         self.assertEqual(out["cards"], {"p_pam": kept})
@@ -674,7 +682,7 @@ print(json.dumps(d.get(key, [])))
     def answer(self, fake, *args):
         """question_answer.py lancé comme l'étape Exec du workflow « réponse » : (code de sortie, sortie, erreur)."""
         cfg_path = os.path.join(self.tmp, "bureau.config.json")
-        json.dump(dict(FIXTURE, kronn=dict(FIXTURE["kronn"], api=self.kronn(fake))), open(cfg_path, "w"))
+        Path(cfg_path).write_text(json.dumps(dict(FIXTURE, kronn=dict(FIXTURE["kronn"], api=self.kronn(fake)))))
         r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "question_answer.py"), *args], capture_output=True, text=True,
                            env={"BUREAU_CONFIG": cfg_path, "HOME": self.tmp, "PATH": self.bin, **CLOCK}, timeout=60)
         self.srv.shutdown()
@@ -770,7 +778,7 @@ print(json.dumps(d.get(key, [])))
 
 
     # ---------- plan partagé (workflow « Le Bureau · plan ») ----------
-    PLAN = json.load(open(os.path.join(ROOT, "layouts", "exemple-startup.json")))
+    PLAN = json.loads(Path(os.path.join(ROOT, "layouts", "exemple-startup.json")).read_text())
 
     def test_layout_save_publishes_a_valid_plan_with_a_summary(self):
         fake = FakeKronn()
@@ -897,7 +905,7 @@ class JpegTest(unittest.TestCase):
             self.skipTest("Pillow absent (python3 -m venv .venv && .venv/bin/pip install pillow)")
         self.tmp = tempfile.mkdtemp()
         self.cfg = os.path.join(self.tmp, "bureau.config.json")
-        json.dump({**FIXTURE, "root": ROOT}, open(self.cfg, "w"))
+        Path(self.cfg).write_text(json.dumps({**FIXTURE, "root": ROOT}))
         self.src, self.out = os.path.join(self.tmp, "og.png"), os.path.join(self.tmp, "card.jpg")
         subprocess.run([self.pil, "-c", f"from PIL import Image; Image.new('RGB', (1200, 630), (10, 20, 60)).save({self.src!r})"], check=True)
 

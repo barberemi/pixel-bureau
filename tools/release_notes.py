@@ -21,8 +21,10 @@ def main(argv):
         print(__doc__)
         return 2
     tag = args[0]
-    notes = section(open(os.path.join(ROOT, "CHANGELOG.md"), encoding="utf-8").read(), tag)
-    current = open(os.path.join(ROOT, "VERSION")).read().strip()
+    with open(os.path.join(ROOT, "CHANGELOG.md"), encoding="utf-8") as f:
+        notes = section(f.read(), tag)
+    with open(os.path.join(ROOT, "VERSION")) as f:
+        current = f.read().strip()
     errors = ([] if notes else [f"pas de section « ## [{tag}] » dans CHANGELOG.md"]) + \
              ([] if tag == current else [f"tag {tag} différent de VERSION ({current})"])
     if errors:

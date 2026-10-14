@@ -1,6 +1,7 @@
 """Régression visuelle, KT-57 (python3 -m unittest tests/test_visual.py) : règle de PR « références visuelles changées
 => guide/ changé » (tools/visual.py --guide-rule), sur un petit dépôt git jetable."""
 import contextlib, io, os, subprocess, sys, tempfile, unittest
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -62,7 +63,7 @@ class RefsWorkflowTest(unittest.TestCase):
     attente d'approbation, il ne tournerait jamais) est supprimé ; les tests relancés par workflow_dispatch restent."""
 
     def test_awaiting_approval_run_is_deleted(self):
-        wf = open(os.path.join(ROOT, ".github", "workflows", "visual-refs.yml")).read()
+        wf = Path(os.path.join(ROOT, ".github", "workflows", "visual-refs.yml")).read_text()
         self.assertIn('echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"', wf)  # seulement si un commit a été poussé
         step = wf[wf.index("- name: Supprimer le run en attente d'approbation"):]
         self.assertIn("if: steps.commit.outputs.sha != ''", step)

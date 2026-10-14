@@ -9,6 +9,7 @@ couleur de texte ou de fond qui manque est signalée (elle reste celle du Classi
 contraste est insuffisant ou si le nom manque. Les thèmes de page/src/ doivent tout définir (tests/test_theme.py).
 """
 import os, re, sys
+from pathlib import Path
 
 TEXT = ("ink", "muted", "accent", "ok", "warn", "err")  # couleurs de texte
 GROUNDS = ("panel", "chip", "bg")                      # fonds sur lesquels elles s'affichent
@@ -36,7 +37,7 @@ def theme_id(path):
 
 
 def name(path):
-    m = re.match(r"/\*\s*@nom:\s*(.+?)\s*\*/", open(path).read())
+    m = re.match(r"/\*\s*@nom:\s*(.+?)\s*\*/", Path(path).read_text())
     return m.group(1) if m else None
 
 
@@ -46,14 +47,14 @@ def _vars(block):
 
 def palette(path):
     """Variables du premier bloc :root[data-skin="<id>"] du thème ({} s'il n'y en a pas)."""
-    css = open(path).read()
+    css = Path(path).read_text()
     block = re.search(r':root\[data-skin="%s"\][^{]*\{(.*?)\}' % re.escape(theme_id(path)), css, re.S)
     return _vars(block.group(1)) if block else {}
 
 
 def tv_palette(path):
     """Variables du bloc mode TV du thème ({} s'il n'en a pas : le mode TV garde alors ses couleurs de styles.css)."""
-    css = open(path).read()
+    css = Path(path).read_text()
     block = re.search(r':root\[data-skin="%s"\] body\.tv\s*\{(.*?)\}' % re.escape(theme_id(path)), css, re.S)
     return _vars(block.group(1)) if block else {}
 

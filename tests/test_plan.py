@@ -1,12 +1,13 @@
 """Vérificateur de plans (python3 -m unittest tests/test_plan.py) : le plan par défaut passe, chaque défaut est signalé."""
 import copy, json, os, sys, unittest
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import plan  # noqa: E402
 
 PACK_PLAN = os.path.join(ROOT, "tests", "fixtures", "pack-exemple", "layouts", "plan.json")
-BASE = json.load(open(PACK_PLAN))  # plan type et places de l'équipe (seating) du pack fictif
+BASE = json.loads(Path(PACK_PLAN).read_text())  # plan type et places de l'équipe (seating) du pack fictif
 
 
 def broken(**changes):
@@ -26,14 +27,14 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(err, [])
 
     def test_example_plan_is_valid(self):
-        L = json.load(open(os.path.join(ROOT, "layouts", "exemple-startup.json")))
+        L = json.loads(Path(os.path.join(ROOT, "layouts", "exemple-startup.json")).read_text())
         err, warn = plan.validate(L)
         self.assertEqual(err, [])
         self.assertTrue(any("stage" in w for w in warn))  # sans plateau TV : repli, simple avertissement
 
     def test_sketch_example_is_valid(self):
         """Brouillon tiré de guide/img/croquis.png par plan.py from-image (capture croquis-brouillon de la doc)."""
-        L = json.load(open(os.path.join(ROOT, "guide", "exemples", "plan-croquis.json")))
+        L = json.loads(Path(os.path.join(ROOT, "guide", "exemples", "plan-croquis.json")).read_text())
         self.assertEqual(plan.validate(L)[0], [])
 
     def test_seat_ids(self):
@@ -148,12 +149,13 @@ class SeatingTest(unittest.TestCase):
 # faux CLI claude : note ses arguments et rend, appel après appel, les réponses de answers.json (la dernière ensuite)
 FAKE_CLAUDE = """#!/usr/bin/env python3
 import json, os, sys
+from pathlib import Path
 d = os.path.dirname(os.path.abspath(__file__))
 log = os.path.join(d, "calls.json")
-calls = json.load(open(log)) if os.path.exists(log) else []
+calls = json.loads(Path(log).read_text()) if os.path.exists(log) else []
 calls.append(sys.argv[1:])
-json.dump(calls, open(log, "w"))
-answers = json.load(open(os.path.join(d, "answers.json")))
+Path(log).write_text(json.dumps(calls))
+answers = json.loads(Path(os.path.join(d, "answers.json")).read_text())
 print(json.dumps({"type": "result", "is_error": False, "session_id": "s1", "result": answers[min(len(calls), len(answers)) - 1]}))
 """
 
@@ -180,12 +182,11 @@ class FromImageTest(unittest.TestCase):
             self.addCleanup(p.stop)
 
     def answers(self, *plans):
-        json.dump([x if isinstance(x, str) else "Voici le plan :\n```json\n" + json.dumps(x) + "\n```" for x in plans],
-                  open(os.path.join(self.dir, "answers.json"), "w"))
+        Path(os.path.join(self.dir, "answers.json")).write_text(json.dumps([x if isinstance(x, str) else "Voici le plan :\n```json\n" + json.dumps(x) + "\n```" for x in plans]))
 
     def calls(self):
         path = os.path.join(self.dir, "calls.json")
-        return json.load(open(path)) if os.path.exists(path) else []
+        return json.loads(Path(path).read_text()) if os.path.exists(path) else []
 
     def run_cmd(self, image=None):
         import io, contextlib
@@ -202,7 +203,7 @@ class FromImageTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn("plan valide en 2 tour(s)", out)
         self.assertIn("hypothèse : salle serveurs ajoutée", out)
-        saved = json.load(open(self.out))
+        saved = json.loads(Path(self.out).read_text())
         self.assertNotIn("_notes", saved)
         self.assertEqual(plan.validate(saved)[0], [])
         first, second = self.calls()

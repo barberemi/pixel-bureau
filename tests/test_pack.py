@@ -1,6 +1,7 @@
 """Packs d'équipe, KT-60 (python3 -m unittest tests/test_pack.py) : une équipe chargée depuis un dossier hors du dépôt
 (clé team = chemin) apporte son roster, ses avatars, sa musique, son plan et ses thèmes ; sans pack, rien ne change."""
 import contextlib, io, json, os, shutil, subprocess, sys, tempfile, unittest
+from pathlib import Path
 from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -55,7 +56,7 @@ class PackTest(unittest.TestCase):
             smoke.static_checks(html, cfg)
         self.assertEqual(smoke.fails, [])
         path = os.path.join(self.tmp, "cfg.json")
-        json.dump(cfg, open(path, "w"))
+        Path(path).write_text(json.dumps(cfg))
         js = ("const {load}=require(process.argv[1]);const cfg=JSON.parse(require('fs').readFileSync(process.argv[2],'utf8'));"
               "const p=load({config:cfg,demo:false,owner:cfg.owner});"
               "process.stdout.write(p.run('JSON.stringify({boss:(chars.find(c=>c.boss)||{}).key,people:chars.filter(c=>c.person).map(c=>c.key),"
@@ -115,7 +116,7 @@ class PackTest(unittest.TestCase):
 
     def test_example_ci_uses_existing_tools(self):
         """La CI d'exemple d'un pack (.github/workflows/pack.yml, copiée avec le pack) appelle des outils qui existent."""
-        ci = open(os.path.join(PACK, ".github", "workflows", "pack.yml")).read()
+        ci = Path(os.path.join(PACK, ".github", "workflows", "pack.yml")).read_text()
         self.assertIn("bureau/tools/plan.py check", ci)
         self.assertIn("bureau/tools/smoke.py --team", ci)
         self.assertIn("bureau/tools/theme.py check", ci)

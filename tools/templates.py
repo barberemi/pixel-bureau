@@ -15,6 +15,7 @@ références {{steps.<étape>.…}} dans l'entrée des étapes suivantes devienn
 Les noms des emplacements ne ressemblent pas aux variables Kronn ({{steps.x}}, {{run_id}}), qui restent intactes.
 """
 import copy, json, os, re, sys, urllib.request
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TPL_DIR = os.path.join(ROOT, "workflows", "templates")
@@ -52,12 +53,12 @@ TEXTS = ("tools/plan_prompt.md", "tools/mail_rules_prompt.md")  # fichiers recop
 
 
 def load_config():
-    return json.load(open(os.path.join(ROOT, "bureau.config.json")))
+    return json.loads(Path(os.path.join(ROOT, "bureau.config.json")).read_text())
 
 
 def text_of(path):
     """Un fichier recopié dans un prompt : ni @@ ni {{ (Kronn y verrait ses variables)."""
-    body = open(os.path.join(ROOT, path), encoding="utf-8").read()
+    body = Path(os.path.join(ROOT, path)).read_text(encoding="utf-8")
     assert "@@" not in body and "{{" not in body, path + " : ni @@ ni {{"
     return body
 
@@ -74,10 +75,10 @@ def script_code(path, cfg):
     """Le script tel qu'il tourne dans Kronn (« python3 -c », sans fichier voisin) : workflows/_lib.py et _plan.py
     recopiés à la place de leur ligne « from _lib import … », puis la config d'installation injectée à la place de
     __BUREAU_CONFIG__."""
-    code = open(os.path.join(ROOT, path)).read()
+    code = Path(os.path.join(ROOT, path)).read_text()
 
     def lib(m):
-        body = open(os.path.join(ROOT, "workflows", m.group(1) + ".py")).read()
+        body = Path(os.path.join(ROOT, "workflows", m.group(1) + ".py")).read_text()
         assert "@@" not in body and "{{" not in body, m.group(1) + ".py : ni @@ ni {{ (Kronn rendrait ses propres variables)"
         return body
     code = LIB_IMPORT.sub(lib, code)
@@ -276,7 +277,7 @@ def config_id(cfg, where):
 
 
 def load_templates():
-    return {k: json.load(open(os.path.join(TPL_DIR, k + ".json"))) for k in TEMPLATES
+    return {k: json.loads(Path(os.path.join(TPL_DIR, k + ".json")).read_text()) for k in TEMPLATES
             if os.path.exists(os.path.join(TPL_DIR, k + ".json"))}
 
 
@@ -291,7 +292,7 @@ def main():
                 print(f"{key} : pas d'id dans la config, ignoré")
                 continue
             t = templatize(key, kind, clean(kind, fetch(kind, ident, cfg)), cfg)
-            json.dump(t, open(os.path.join(TPL_DIR, key + ".json"), "w"), ensure_ascii=False, indent=1)
+            Path(os.path.join(TPL_DIR, key + ".json")).write_text(json.dumps(t, ensure_ascii=False, indent=1))
             left = sorted(set(re.findall(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", json.dumps(t))))
             print(f"{key} : exporté" + (f" (ids restants : {left})" if left else ""))
     elif cmd == "check":

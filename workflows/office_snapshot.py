@@ -1,7 +1,7 @@
 """Instantané de la journée (toutes les 10 min) : runs et discussions du jour, crons, purge des vieux runs du Bureau."""
-import json, os as _os, re, urllib.request
+import os as _os, re, urllib.request
 from datetime import datetime, timedelta, timezone
-from _lib import API, CFG, TZ, ACTIVE, dumps, get, is_bureau, is_bureau_disc, run_row, disc_row, err_of
+from _lib import API, CFG, TZ, ACTIVE, dumps, get, is_bureau, is_bureau_disc, run_row, disc_row, err_of, read_json, write_json
 
 
 now = datetime.now(TZ)
@@ -98,12 +98,12 @@ if now.hour in PURGE_HOURS and now.minute < 10:
                 purge["last_error"] = f"suppression du run {rid[:8]} : {e}"[:200]
     try:  # bilan gardé hors du dépôt : la page l'affiche jusqu'au nettoyage suivant
         _os.makedirs(_os.path.dirname(PURGE_LOG), exist_ok=True)
-        json.dump(purge, open(PURGE_LOG, "w"))
+        write_json(PURGE_LOG, purge)
     except Exception:
         pass
 else:
     try:
-        purge = json.load(open(PURGE_LOG))
+        purge = read_json(PURGE_LOG)
     except Exception:
         pass
 

@@ -1,6 +1,7 @@
 """Poids de la page, KT-28 (python3 -m unittest tests/test_compact.py) : JS et CSS compactés à l'assemblage
 (tools/compact.py), sprites embarqués seulement s'ils servent."""
 import json, os, re, subprocess, sys, tempfile, unittest
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -57,7 +58,7 @@ class CompactTest(unittest.TestCase):
         used = assemble.used_sprites(cfg)
         self.assertTrue({"temp", "v_claude", "mage", "yoda"} <= used)  # code de la page (temp, VISITOR), invités communs
         self.assertNotIn("g_inconnu", used)
-        self.assertEqual(sorted(assemble.sprites(cfg)), sorted(k for k in json.load(open(os.path.join(ROOT, "sprites", "common.json"))) if k in used))
+        self.assertEqual(sorted(assemble.sprites(cfg)), sorted(k for k in json.loads(Path(os.path.join(ROOT, "sprites", "common.json")).read_text()) if k in used))
 
 
     def test_weights_by_block_add_up_to_the_page(self):

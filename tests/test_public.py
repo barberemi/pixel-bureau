@@ -1,6 +1,7 @@
 """Dépôt public, KT-63 (python3 -m unittest tests/test_public.py) : rien de l'équipe d'origine dans l'arbre (son nom,
 ses adresses), et les fichiers attendus d'un dépôt public sont là. Les noms réels vivent dans les packs d'équipe privés."""
 import os, subprocess, unittest
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEAM = "euro" + "news"  # écrit en deux morceaux : ce fichier ne doit pas se trouver lui-même
@@ -18,7 +19,7 @@ class PublicTreeTest(unittest.TestCase):
     def test_public_repository_files(self):
         for f in ("README.md", "SECURITY.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md"):
             self.assertTrue(os.path.isfile(os.path.join(ROOT, f)), f)
-        sec = open(os.path.join(ROOT, "SECURITY.md")).read()
+        sec = Path(os.path.join(ROOT, "SECURITY.md")).read_text()
         self.assertIn("security/advisories/new", sec)  # signalement privé, jamais une issue publique
 
 
@@ -26,13 +27,13 @@ class PublicTreeTest(unittest.TestCase):
         """KT-29 : AGPL 3.0 à la racine ; chaque fichier LPC embarqué (sprites/lpc_used.json) a son calque dans
         CREDITS.md, qui est à jour (python3 sprites/credits.py --check, quand le CSV du générateur est en cache)."""
         import json
-        self.assertIn("GNU AFFERO GENERAL PUBLIC LICENSE", open(os.path.join(ROOT, "LICENSE")).read())
-        credits = open(os.path.join(ROOT, "CREDITS.md"), encoding="utf-8").read()
+        self.assertIn("GNU AFFERO GENERAL PUBLIC LICENSE", Path(os.path.join(ROOT, "LICENSE")).read_text())
+        credits = Path(os.path.join(ROOT, "CREDITS.md")).read_text(encoding="utf-8")
         sys_path = os.path.join(ROOT, "sprites")
         import sys
         sys.path.insert(0, sys_path)
         import credits as cr
-        used = json.load(open(os.path.join(sys_path, "lpc_used.json")))
+        used = json.loads(Path(os.path.join(sys_path, "lpc_used.json")).read_text())
         self.assertGreater(len(used), 100)
         missing = sorted({cr.asset(p) for p in used if f"| `{cr.asset(p)}` |" not in credits})
         self.assertEqual(missing, [])

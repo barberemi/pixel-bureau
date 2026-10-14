@@ -1,6 +1,7 @@
 """Aperçu local (python3 -m unittest tests/test_preview.py) : tools/preview.py assemble la page du dossier courant et y
 injecte les datasets de la page Kronn (faux Kronn HTTP), sans rien publier."""
-import json, os, sys, tempfile, threading, unittest
+import io, json, os, sys, tempfile, threading, unittest
+from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from unittest import mock
 
@@ -25,15 +26,16 @@ class PreviewTest(unittest.TestCase):
                 posts.append(self.path)
         srv = ThreadingHTTPServer(("127.0.0.1", 0), H)
         threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.server_close)  # après shutdown (nettoyages en ordre inverse)
         self.addCleanup(srv.shutdown)
-        cfg = dict(json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"))), page_id="p1")
+        cfg = dict(json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text()), page_id="p1")
         cfg["kronn"] = dict(cfg["kronn"], api=f"http://127.0.0.1:{srv.server_address[1]}/api")
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
             json.dump(cfg, fh)
         self.addCleanup(os.unlink, fh.name)
-        with mock.patch("sys.stdout", new=open(os.devnull, "w")):
+        with mock.patch("sys.stdout", new=io.StringIO()):
             self.assertEqual(preview.main(["--config", fh.name, "--no-open"]), 0)
-        html = open(os.path.join(ROOT, "dist", "apercu.html"), encoding="utf-8").read()
+        html = Path(os.path.join(ROOT, "dist", "apercu.html")).read_text(encoding="utf-8")
         self.assertIn('window.KronnPageData={"version": 1', html)
         self.assertIn('"gitfut"', html)
         self.assertEqual(posts, [])

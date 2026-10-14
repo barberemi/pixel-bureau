@@ -15,7 +15,7 @@ Le dataset doit être un vrai objet : Kronn y retrouve la ligne cliquée (find(r
 """
 import json, os as _os
 from datetime import datetime, timedelta, timezone
-from _lib import CFG, get, is_bureau, is_bureau_disc
+from _lib import CFG, get, is_bureau, is_bureau_disc, read_json, write_json
 
 
 
@@ -24,7 +24,7 @@ from _lib import CFG, get, is_bureau, is_bureau_disc
 CACHE = _os.path.join(_os.path.expanduser("~"), ".cache", "pixel-bureau", "workflow_defs.json")
 CACHE_TTL = 600
 try:
-    _cache = json.load(open(CACHE))
+    _cache = read_json(CACHE)
 except Exception:
     _cache = {}
 _now = datetime.now(timezone.utc).timestamp()
@@ -128,7 +128,7 @@ except Exception:
     pass
 try:
     _os.makedirs(_os.path.dirname(CACHE), exist_ok=True)
-    json.dump({k: v for k, v in _cache.items() if k in defs}, open(CACHE, "w"))
+    write_json(CACHE, {k: v for k, v in _cache.items() if k in defs})
 except Exception:
     pass
 # une ligne par décision possible de chaque gate (#45) : les boutons directs de la page (approuver, rejeter, changements)
