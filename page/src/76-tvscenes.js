@@ -186,7 +186,6 @@ function toggleScenes(mode){
   if(TVSCENE.manual===false&&!inDaily(T)&&!ceremonyAt(T))TVSCENE.manual=null;
   updateTv(true);
 }
-const toggleStandup=()=>toggleScenes('daily');
 const SCENE_KEYS={s:'daily',p:'planning',r:'retro'};
 addEventListener('keydown',e=>{
   if(!TV||e.metaKey||e.ctrlKey||e.altKey||(e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)))return;
