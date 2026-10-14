@@ -31,6 +31,8 @@ TEMPLATES = {
     # absences et télétravail (KT-1) : planning Excel lu par Microsoft Graph (connexion Microsoft 365) ; sans elle : pas créé
     "absences": ("workflow", ("workflows", "absences"), {"absences": "workflows/absences_snapshot.py", "month_now": "workflows/absence_month.py",
                                                          "month_next": "workflows/absence_month.py"}),
+    # courrier (#30) : mails non lus des comptes de mail.accounts (appli Mail du Mac, IMAP) ; sans compte : pas créé
+    "courrier": ("workflow", ("workflows", "courrier"), {"mails": "workflows/mail_snapshot.py"}),
     "avatar": ("workflow", ("actions", "avatar"), {"save": "workflows/avatar_save.py"}),
     "gate": ("workflow", ("actions", "gate"), {"decide": "workflows/gate_decide.py"}),
     "answer": ("workflow", ("actions", "answer"), {"answer": "workflows/question_answer.py"}),  # question de discussion (KT-27)
@@ -125,12 +127,15 @@ def values(cfg):
 
 def skipped(key, cfg):
     """Workflows du Bureau qu'une installation ne crée pas faute de connexion : commenter un ticket sans Jira, les
-    absences sans planning Microsoft 365 (microsoft.config_id et microsoft.planning dans la config)."""
+    absences sans planning Microsoft 365 (microsoft.config_id et microsoft.planning dans la config), le courrier sans
+    compte (mail.accounts)."""
     if key == "comment":
         return not (cfg.get("jira") or {}).get("config_id")
     if key == "absences":
         m = cfg.get("microsoft") or {}
         return not (m.get("config_id") and (m.get("planning") or {}).get("site") and (m.get("planning") or {}).get("item"))
+    if key == "courrier":
+        return not (cfg.get("mail") or {}).get("accounts")
     return False
 
 

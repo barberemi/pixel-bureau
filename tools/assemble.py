@@ -135,7 +135,7 @@ def cron_hours(cfg):
 def cron_schedules(cfg=None):
     """Calendrier de chaque cron du Bureau : celui de ses modèles (workflows/templates), heures calées sur le bureau."""
     out = {}
-    for key in ("office", "live", "team", "payroll", "canard", "absences"):
+    for key in ("office", "live", "team", "payroll", "canard", "absences", "courrier"):
         path = p("workflows", "templates", key + ".json")
         if os.path.exists(path):
             s = (json.load(open(path))["definition"].get("trigger") or {}).get("schedule")
