@@ -32,6 +32,9 @@ def run_of(i, status="Success", steps=3, ago=5):
                              for k in range(steps)]}
 
 
+# PNG 1x1 valide (faux Chrome des miniatures)
+PNG_1PX = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
 class FakeKronn:
     """Les routes de l'API Kronn que lisent les scripts. `runs_per_wf` : nombre de runs du jour par agent."""
 
@@ -558,6 +561,18 @@ print(json.dumps(d.get(key, [])))
         self.assertIsNone(pb["img"])  # page changée et pas de Chrome : pas d'image (jamais l'ancienne)
         self.assertEqual(pa["updated"], fake.pages["pa"]["last_published_at"])
         self.assertEqual(sorted(os.listdir(cache)), ["pa.json", "pb.json"])  # cache de la page retirée supprimé
+
+    def test_pages_snapshot_captures_with_a_chrome_that_exits_by_itself(self):
+        """Chrome récent : il sort seul après --screenshot ; arrêter son groupe (déjà parti) ne doit pas perdre la capture."""
+        fake, cache, _ = self.boss_pages()
+        exe = os.path.join(self.bin, "chrome")
+        with open(exe, "w") as fh:
+            fh.write(f"#!{sys.executable}\nimport base64, sys\n"
+                     "png = [a.split('=', 1)[1] for a in sys.argv if a.startswith('--screenshot=')][0]\n"
+                     f"open(png, 'wb').write(base64.b64decode({PNG_1PX!r}))\n")
+        os.chmod(exe, 0o755)
+        out = self.run_script("pages_snapshot.py", api=self.kronn(fake), boss_pages=["pb"], chrome=exe)
+        self.assertTrue(out["pages"][0]["img"].startswith("data:image/jpeg;base64,"))
 
     def test_pages_snapshot_stays_under_exec_limit(self):
         fake, cache, img = self.boss_pages(img_kb=60)

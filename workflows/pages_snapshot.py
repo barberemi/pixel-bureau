@@ -45,7 +45,8 @@ def capture(d, exe):
     try:
         page, png, jpg = (os.path.join(tmp, n) for n in ("page.html", "shot.png", "shot.jpg"))
         open(page, "w", encoding="utf-8").write(html)
-        # Chrome ne rend pas la main après --screenshot (processus auxiliaires) : on guette l'image, puis on arrête le groupe
+        # Chrome ne rendait pas la main après --screenshot (processus auxiliaires) : on guette l'image, puis on arrête le
+        # groupe ; les versions récentes sortent seules, et macOS refuse alors le signal (EPERM, pas ESRCH)
         p = subprocess.Popen([exe, "--headless=new", "--disable-gpu", "--mute-audio", "--no-first-run", "--hide-scrollbars",
                               "--user-data-dir=" + os.path.join(tmp, "profile"), f"--window-size={W},{H}",
                               "--virtual-time-budget=3000", "--screenshot=" + png, "file://" + page],
@@ -59,7 +60,7 @@ def capture(d, exe):
             last = size
         try:
             os.killpg(p.pid, signal.SIGTERM)
-        except ProcessLookupError:
+        except OSError:  # groupe déjà parti (ProcessLookupError) ou réduit à un zombie (PermissionError sur macOS)
             pass
         p.wait(timeout=10)
         if not os.path.exists(png) or not jpeg(png, jpg, size=(320, 200), quality=55):
