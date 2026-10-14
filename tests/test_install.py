@@ -297,6 +297,38 @@ class InstallTest(unittest.TestCase):
             self.assertEqual(self.run_install({**ANSWERS, "boss_pages": "-"}), 0)
             self.assertEqual(json.load(open(self.cfg_path))["boss_pages"], [])
 
+    def test_mail_accounts_from_mac_mail_and_imap(self):
+        """Courrier (#30) : comptes de l'appli Mail et IMAP ; mot de passe au trousseau, jamais dans la config ; cron courrier
+        créé ; à la relance, règles gardées ; refuser le courrier retire la clé mail."""
+        keys = []
+        with mock.patch.object(install, "mac_mail_accounts", return_value=["Exchange", "iCloud"]), \
+                mock.patch.object(install, "keychain_set", side_effect=lambda *a: keys.append(a)), \
+                mock.patch.object(install, "imap_check", return_value=None):
+            answers = {**ANSWERS, "mail": "o", "mail_mac_exchange": "o", "mail_mac_exchange_label": "Pro", "mail_mac_icloud": "n",
+                       "mail_imap_0": "o", "mail_imap_0_user": "lynn@gmail.com", "mail_imap_0_label": "Perso",
+                       "mail_imap_0_password": "abcd efgh ijkl mnop", "mail_imap_0_primary": "o", "mail_imap_1": "n"}
+            self.assertEqual(self.run_install(answers), 0)
+            cfg = json.load(open(self.cfg_path))
+            pro, perso = cfg["mail"]["accounts"]
+            self.assertEqual((pro["id"], pro["provider"], pro["account"]), ("pro", "mac-mail", "Exchange"))
+            self.assertEqual((perso["provider"], perso["host"], perso["secret"], perso["only"]),
+                             ("imap", "imap.gmail.com", "keychain:pixel-bureau-perso", "category:primary"))
+            self.assertNotEqual(pro["color"], perso["color"])
+            self.assertEqual(keys, [("pixel-bureau-perso", "lynn@gmail.com", "abcd efgh ijkl mnop")])
+            self.assertNotIn("abcd efgh ijkl mnop", open(self.cfg_path).read())  # le mot de passe n'est jamais écrit (_answers compris)
+            self.assertIn("courrier", cfg["workflows"])
+            # relance : règles posées depuis gardées, compte IMAP gardé sans redemander son mot de passe
+            cfg["mail"]["ignore"] = ["atlassian.net"]
+            json.dump(cfg, open(self.cfg_path, "w"))
+            with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):
+                self.assertEqual(self.run_install({**answers, "mail_keep_perso": "o", "mail_imap_0": "n"}), 0)
+                cfg = json.load(open(self.cfg_path))
+                self.assertEqual(cfg["mail"]["ignore"], ["atlassian.net"])
+                self.assertEqual([a["id"] for a in cfg["mail"]["accounts"]], ["pro", "perso"])
+                self.assertEqual(len(keys), 1)
+                self.assertEqual(self.run_install({**ANSWERS, "mail": "n"}), 0)
+                self.assertNotIn("mail", json.load(open(self.cfg_path)))
+
     def test_new_team_by_default_with_the_type_plan(self):
         answers = {k: v for k, v in ANSWERS.items() if k not in ("team", "owner")}
         answers.update(owner="__new__", new_name="Pam", new_person="Pam Beesly", new_role="dev", github_repo="")
