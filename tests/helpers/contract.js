@@ -2,7 +2,8 @@
 // <sorties.json> = {nom du dataset: sortie du script qui l'écrit} (tests/test_scripts.py, test_contract_*). Chaque
 // dataset est passé à la page deux fois, comme Kronn peut le stocker : en texte JSON (stdout d'une étape Exec) puis
 // en objet. Pour chaque forme : la page démarre sans démo sur ces seules données, et chaque lecteur readXxx de la page
-// accepte son dataset. Sortie : {forme: {lecteur: true | false | "erreur"}}.
+// accepte son dataset ; et les avertissements de chaque cron (liste warnings, #8) arrivent tels quels au panneau
+// Fraîcheur (readWarnings). Sortie : {forme: {lecteur: true | false | "erreur"}}.
 'use strict';
 const fs = require('fs');
 const {load} = require('./page.js');
@@ -37,6 +38,15 @@ for (const form of ['texte', 'objet']) {
     } catch (e) {
       r[reader] = 'erreur : ' + String(e).slice(0, 200);
     }
+  }
+  // chaque sortie qui porte une liste warnings : la page la relit à l'identique, sous le nom de son dataset
+  try {
+    const got = JSON.parse(page.run('JSON.stringify(readWarnings(window.KronnPageData))'));
+    const want = Object.entries(outputs).filter(([, out]) => out && Array.isArray(out.warnings));
+    r.readWarnings = want.length > 0 && want.every(([name, out]) => JSON.stringify(got[name]) === JSON.stringify(out.warnings.slice(0, 20)))
+      || 'avertissements perdus : ' + want.filter(([name, out]) => JSON.stringify(got[name]) !== JSON.stringify(out.warnings.slice(0, 20))).map(([n]) => n).join(', ');
+  } catch (e) {
+    r.readWarnings = 'erreur : ' + String(e).slice(0, 200);
   }
 }
 process.stdout.write(JSON.stringify(result));

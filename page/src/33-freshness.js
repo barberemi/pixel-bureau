@@ -46,8 +46,29 @@ function waitTxt(f,now){
   if(left>=120e3)return {txt:'dans '+Math.ceil(left/60e3)+' min',frac};
   return {txt:'dans '+Math.ceil(left/1e3)+' s',frac};
 }
+// avertissements des crons (#8) : un échec qui laisse une partie du dataset vide (projets du canard, tarif, miniature…)
+// ne fait plus échouer ni taire le cron ; il publie quand même, avec une liste warnings lue ici par dataset
+// (dataset -> source affichée). WARNINGS = {dataset: [texte]}, relu au démarrage et à chaque kronn:page-data (90-boot.js).
+const WARN_SRC={office:'Bureau (journée)',live:'Direct (runs, gates)',gates:'Direct (gates, canard)',payroll:'Fiche de paie',
+  bosspages:'Écran du boss',gitfut:'Cartes GitFut',actions:'Équipe (boutons)',duck:'Canard d\'équipe',mails:'Courrier',avatars:'Avatars'};
+let WARNINGS={};
+// {dataset: [avertissements]} pour chaque dataset présent dans src (liste vide sans avertissement : efface l'ancienne)
+function readWarnings(src){
+  const out={}; if(!src||!src.datasets)return out;
+  for(const name of Object.keys(WARN_SRC)){
+    if(!(name in src.datasets))continue;
+    try{
+      let d=src.datasets[name];
+      if(d&&d.current!==undefined)d=d.current;
+      if(typeof d==='string')d=JSON.parse(d);
+      if(d&&d.payload)d=typeof d.payload==='string'?JSON.parse(d.payload):d.payload; // ancien format du dataset live
+      out[name]=d&&Array.isArray(d.warnings)?d.warnings.filter(w=>typeof w==='string'&&w).slice(0,20):[];
+    }catch(e){out[name]=[];}
+  }
+  return out;
+}
 // diagnostic sous le tableau : crons du Bureau en échec (Jira refusé, script en erreur), erreurs GitHub du cron
-// équipe, dernier nettoyage des vieux runs (cron office, 7h et 13h)
+// équipe, avertissements des crons (3 par source au plus), dernier nettoyage des vieux runs (cron office, 7h et 13h)
 function diagTxt(){
   const out=[], failed=(OFFICE&&OFFICE.bureau_failed)||{};
   for(const [key,f] of Object.entries(failed)){
@@ -59,6 +80,12 @@ function diagTxt(){
   if(src&&src.github_errors&&src.github_errors.length)
     out.push('<div class="diag late">GitHub : '+src.github_errors.slice(0,3).map(esc).join(' · ')+'</div>');
   if(src&&!src.jira&&CFG.jira_site&&!failed.team)out.push('<div class="diag">Jira : aucun ticket reçu au dernier passage du cron équipe</div>');
+  for(const [name,list] of Object.entries(WARNINGS||{})){
+    if(!Array.isArray(list)||!list.length)continue;
+    const label=WARN_SRC[name]||name;
+    for(const w of list.slice(0,3))out.push(`<div class="diag warn">⚠ ${esc(label)} : ${esc(w)}</div>`);
+    if(list.length>3)out.push(`<div class="diag warn">⚠ ${esc(label)} : ${list.length-3} autre${list.length>4?'s':''} avertissement${list.length>4?'s':''}</div>`);
+  }
   const p=OFFICE&&OFFICE.purge;
   if(p&&p.at)out.push(`<div class="diag${p.errors?' late':''}">Nettoyage des runs de plus de 7 jours : ${p.deleted} supprimé${p.deleted>1?'s':''} à ${hm(ms(p.at))}`+
     (p.errors?` · ${p.errors} erreur${p.errors>1?'s':''} (${esc(p.last_error||'')})`:'')+'</div>');

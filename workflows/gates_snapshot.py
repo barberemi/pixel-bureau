@@ -4,16 +4,18 @@ Sortie (stdout, JSON parsé par l'étape CollectApiData) :
   {generated_at, gates: [{run, wf, wf_name, gate, message, since}], workflows: [{wf, name, trigger, bureau?}], askable: [{wf, name}],
    projects: [{id, name}], ducks: [{id, title, project, updated, created, awaiting}],
    questions: [{id, disc, title, agent, bureau, since, question, context, options, rec, multiple, items, more_items}], qrows: [{id, q, disc}],
-   grows: [{id, run, decision}]}
+   grows: [{id, run, decision}], warnings: [texte]}
 `workflows` = ceux que la page peut relancer (page action « bureau-relaunch ») : actifs, hors Bureau, pas
 sous-workflow d'un autre, sans variable obligatoire à saisir ; plus les crons du Bureau, avec la clé de leur source (bureau).
 `projects` = les projets Kronn, « Sans projet » (id « none ») en tête : un bouton « parler au canard » chacun (page action
 « bureau-duck », find(id)). `ducks` = les discussions du canard (titre « 🦆 … », duck_start.py) des 14 derniers jours,
 15 au plus, les plus récentes d'abord ; awaiting = des questions attendent ta réponse (pending_question_count, comme
 « Attend ta réponse » des visiteurs).
+`warnings` (#8) = lectures en échec dont la partie reste vide (projets, canard, questions) : le dataset est publié
+quand même, chaque échec est écrit sur stderr (visible dans le run Kronn) et affiché par le panneau Fraîcheur.
 Le dataset doit être un vrai objet : Kronn y retrouve la ligne cliquée (find(run)) côté serveur.
 """
-import json, os as _os
+import json, os as _os, sys
 from datetime import datetime, timedelta, timezone
 from _lib import CFG, get, get_all, is_bureau, is_bureau_disc, read_json, write_json
 
@@ -28,6 +30,14 @@ try:
 except Exception:
     _cache = {}
 _now = datetime.now(timezone.utc).timestamp()
+warnings = []
+
+
+def warn(what, e):
+    """Échec avalé qui laisse une partie du dataset vide : sur stderr et dans warnings (#8)."""
+    msg = f"{what} ({str(e)[:120] or type(e).__name__})"
+    print("gates : " + msg, file=sys.stderr)
+    warnings.append(msg)
 
 
 def definition(wid):
@@ -88,24 +98,24 @@ askable = [{"wf": wid, "name": wf["name"]} for wid, (wf, full) in defs.items() i
 names = {}
 try:
     names = {p["id"]: p.get("name") or p["id"] for p in get("/projects")}
-except Exception:
-    pass
+except Exception as e:
+    warn("projets Kronn illisibles : canard sans bouton par projet", e)
 projects = [{"id": "none", "name": "Sans projet"}] + [{"id": k, "name": v[:60]} for k, v in sorted(names.items(), key=lambda x: str(x[1]).lower())]
 since = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
 # discussions des 14 derniers jours, toutes pages lues (#5) : le canard et les questions en attente
 discs = []
 try:
     discs = get_all("/discussions", since=since)
-except Exception:
-    pass
+except Exception as e:
+    warn("discussions Kronn illisibles : canard et questions en attente absents", e)
 ducks = []
 try:
     ducks = [{"id": d["id"], "title": str(d.get("title") or "")[:100], "project": names.get(d.get("project_id")), "updated": d.get("updated_at"), "created": d.get("created_at"),
               "awaiting": (d.get("pending_question_count") or 0) > 0}
              for d in discs if str(d.get("title") or "").startswith("🦆") and not d.get("archived")
              and str(d.get("updated_at") or "") >= since]
-except Exception:
-    pass
+except Exception as e:
+    warn("discussions du canard illisibles", e)
 ducks = sorted(ducks, key=lambda d: str(d["updated"] or ""), reverse=True)[:15]
 # questions de discussion en attente (bloc kronn-question) : 14 jours, comme le canard, 15 au plus, les plus anciennes
 # d'abord. Décidées depuis la page (page action « bureau-answer ») par la ligne cliquée de `qrows` :
@@ -130,9 +140,9 @@ try:
                               "multiple": bool(q.get("multiple")), "items": items, "more_items": len(q.get("items") or []) > len(items)})
             qrows += [{"id": f"{q['id']}|{'all:' if form else ''}{o['id']}", "q": q["id"], "disc": d["id"]} for o in opts]
             qrows += [{"id": f"{q['id']}|{k}", "q": q["id"], "disc": d["id"]} for k in ((["_text"] if not form else []) + ["_decline"])]
-except Exception:
-    pass
-try:
+except Exception as e:
+    warn("questions en attente illisibles", e)
+try:  # cache seulement : un échec coûte une relecture de l'API au passage suivant, rien de faux n'est publié
     _os.makedirs(_os.path.dirname(CACHE), exist_ok=True)
     write_json(CACHE, {k: v for k, v in _cache.items() if k in defs})
 except Exception:
@@ -141,4 +151,5 @@ except Exception:
 # en désignent une, Kronn y relit run_id et decision (page action « bureau-gate »), jamais saisis
 grows = [{"id": f"{g['run']}|{d}", "run": g["run"], "decision": d} for g in gates for d in ("approve", "reject", "request_changes")]
 print(json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "gates": gates, "workflows": relaunch, "askable": askable,
-                  "projects": projects, "ducks": ducks, "questions": questions, "qrows": qrows, "grows": grows}, ensure_ascii=False))
+                  "projects": projects, "ducks": ducks, "questions": questions, "qrows": qrows, "grows": grows,
+                  "warnings": warnings}, ensure_ascii=False))

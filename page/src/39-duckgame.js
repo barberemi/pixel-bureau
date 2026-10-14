@@ -32,7 +32,7 @@ const DUCKGAME_DEMO={generated_at:'2026-10-01T09:23:00Z',sprint:{name:'26-39'},t
     {name:'26-25',done:118,target:130,held:false},{name:'26-23',done:112,target:133,held:false}],
   trophies:{zero_panne:{ok:true,period:'sem. du 21 sept.',detail:'aucun agent en panne'},leve_tot:{ok:false,period:'26-39',detail:'pas encore de MEP avant 11h'},
     pas_reopen:{ok:false,period:'26-37',detail:'2 réouvertures'},relu_24h:{ok:true,period:'sem. du 21 sept.',progress:'9 / 9'},
-    bavard:{ok:false,progress:'3 / 10'},triple:{ok:false,progress:'2 / 3'}},errors:[]};
+    bavard:{ok:false,progress:'3 / 10'},triple:{ok:false,progress:'2 / 3'}},warnings:[]};
 // ---------- son allure : calques posés sur son dessin (toile 24 x 24, canard de base en 4, 8) ----------
 const DG_PAL={caneton:{Y:'#ffe98a',y:'#e3c24a',O:'#f3a24a',K:'#1a1a1a',W:'#ffffff'},dore:{Y:'#f0b000',y:'#a06a00',O:'#e0661c',K:'#1a1a1a',W:'#fff6c0'}};
 const DG_C={br:'#8a5a2b',br2:'#5e3a17',red:'#d8342c',red2:'#9e1f19',gold:'#ffcf33',gold2:'#b07d00',k:'#141414',kg:'#6a6a6a',wh:'#f4f4f4',gr:'#bdbdbd',

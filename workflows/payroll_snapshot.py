@@ -1,10 +1,13 @@
 """Fiche de paie des agents du Bureau : tokens, runs et échecs par workflow, aujourd'hui et sur 7 jours glissants.
 
-Sortie (stdout) : {generated_at, rate_usd_per_mtok, rate_source, agents[{wf, name, today{tok,runs,fail}, week{tok,runs,fail}, days[7 tok]}]}
+Sortie (stdout) : {generated_at, rate_usd_per_mtok, rate_source, agents[{wf, name, today{tok,runs,fail}, week{tok,runs,fail}, days[7 tok]}],
+                   warnings[texte]}
 - Seuls les runs de premier niveau comptent : les tokens d'un parent incluent déjà ceux de ses sous-runs.
 - Kronn ne mesure pas le coût en $ des workflows ; il le mesure pour les discussions. Le tarif moyen observé
   ($ / million de tokens) sert à donner un coût ESTIMÉ, affiché comme tel par la page.
+- warnings (#8) : tarif illisible (/stats/tokens en échec) ; publié sans coût, écrit sur stderr, affiché par le panneau Fraîcheur.
 """
+import sys
 from datetime import datetime, timedelta, timezone
 from _lib import TZ, dumps, get, is_bureau
 
@@ -55,7 +58,7 @@ for wf in get("/workflows"):
         agents.append({"wf": wf["id"], "name": wf["name"], "today": today, "week": week, "days": per_day})
 
 # tarif moyen observé par Kronn sur les discussions (coût réellement mesuré)
-rate, src = None, ""
+rate, src, warnings = None, "", []
 try:
     st = get("/stats/tokens")
     usd = (st.get("total_cost") or {}).get("recorded_usd") or 0
@@ -63,9 +66,10 @@ try:
     if usd and tok:
         rate = round(usd / tok * 1e6, 2)
         src = f"{usd:.2f} $ mesurés pour {tok/1e6:.1f} M tokens de discussions"
-except Exception:
-    pass
+except Exception as e:
+    warnings.append(f"tarif non mesuré, coûts non estimés ({str(e)[:120] or type(e).__name__})")
+    print("fiche de paie : " + warnings[-1], file=sys.stderr)
 
 agents.sort(key=lambda a: -a["week"]["tok"])
 print(dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "days": [d.strftime("%Y-%m-%d") for d in days],
-                  "rate_usd_per_mtok": rate, "rate_source": src, "agents": agents}))
+                  "rate_usd_per_mtok": rate, "rate_source": src, "agents": agents, "warnings": warnings}))

@@ -14,10 +14,11 @@ List-Id, Auto-Submitted, Precedence bulk/list) -> ignoré ; sinon utile. Une rè
 mail.keep / mail.ignore de la config. « sorted » faux tant qu'il n'y a aucune règle (la page montre alors « ? »).
 
 Sortie (stdout) : {generated_at, sorted, accounts: [{id, label, color, show, provider, ok, error?, unread, useful_n,
-useful: [{id, name, addr, subject, at, direct, flagged, open}], ignored: [[nom, n]…], unknown}]}
+useful: [{id, name, addr, subject, at, direct, flagged, open}], ignored: [[nom, n]…], unknown}], warnings: [texte]}
 - show « count » : ni nom, ni adresse, ni objet dans la sortie (le nombre seul) ;
 - unknown : expéditeurs qu'aucune règle ne couvre (pour proposer de nouvelles règles).
 Un compte en échec garde sa place (ok faux, error) et l'erreur part sur stderr : jamais un dataset partiel sans trace.
+warnings (#8) : règles validées de la page illisibles, tri fait avec celles de la config (panneau Fraîcheur).
 """
 import email.header, email.utils, imaplib, json, os, subprocess, sys, urllib.parse, urllib.request
 from datetime import datetime, timedelta
@@ -31,6 +32,7 @@ MAX_SUBJECT = 140
 SCAN = int(MAIL.get("scan") or 150)  # mac-mail : mails les plus récents parcourus (lus ou non)
 ROBOT = ("list-unsubscribe", "list-id", "auto-submitted")
 SEP, END = "\x1f", "\x1e"  # séparateurs de champs et de mails dans la sortie d'osascript
+WARNINGS = []  # échecs avalés qui changent le dataset publié (#8)
 
 # AppleScript : argv = nom du compte, nombre de mails à parcourir (les plus récents) ; propriétés lues EN GROUPE (un
 # « whose read status is false » sur une grosse boîte Exchange dépasse 2 min ; 150 mails groupés : environ 13 s).
@@ -184,6 +186,7 @@ def page_rules():
         return cur if isinstance(cur, dict) and ("keep" in cur or "ignore" in cur) else None
     except Exception as e:
         print("courrier : règles de la page illisibles (" + str(e)[:80] + "), celles de la config", file=sys.stderr)
+        WARNINGS.append("règles validées illisibles, tri fait avec celles de la config (" + (str(e)[:80] or type(e).__name__) + ")")
         return None
 
 
@@ -336,7 +339,7 @@ def merge():
 
 def main():
     keep, ignore = rules("keep"), rules("ignore")
-    out = {"generated_at": datetime.now(TZ).isoformat(), "sorted": bool(keep or ignore), "accounts": []}
+    out = {"generated_at": datetime.now(TZ).isoformat(), "sorted": bool(keep or ignore), "accounts": [], "warnings": WARNINGS}
     for acc in MAIL.get("accounts") or []:
         acc = {"id": "mail", "provider": "mac-mail", **acc}
         base = {"id": acc["id"], "label": acc.get("label") or acc["id"], "color": acc.get("color"), "show": acc.get("show") or "list",

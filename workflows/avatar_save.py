@@ -5,8 +5,9 @@ Entrée (stdin) : le code copié depuis la page, « BUREAU1:<base64 de {k, n, l,
   n  : nom affiché ("" ou null = nom d'origine)
   l  : apparence {sex, skin, hair, ...} (null = apparence d'origine)
   at : horodatage de la modification (ms), pour que la page départage local et équipe
-Sortie (stdout) : le dataset `avatars` complet {updated_at, avatars{k: {name?, look?, at}}}, lu puis fusionné.
+Sortie (stdout) : le dataset `avatars` complet {updated_at, avatars{k: {name?, look?, at}}, warnings[texte]}, lu puis fusionné.
 Tout ce qui ne passe pas la validation fait échouer le run (rien n'est publié).
+warnings (#8) : dataset en place illisible, repris de zéro (les autres personnalisations sont perdues) ; aussi sur stderr.
 """
 import base64, json, re, sys, urllib.request
 from datetime import datetime, timezone
@@ -65,13 +66,15 @@ if look is not None:
 
 with urllib.request.urlopen(PAGE, timeout=30) as r:
     page = json.load(r)["data"]
-cur = {}
+cur, warnings = {}, []
 for d in page.get("datasets") or []:
     if d.get("name") == "avatars" and d.get("current"):
         try:
             cur = d["current"] if isinstance(d["current"], dict) else json.loads(d["current"])
-        except Exception:
+        except Exception as e:
             cur = {}
+            warnings.append(f"avatars en place illisibles, repris de zéro ({str(e)[:120] or type(e).__name__})")
+            print("avatars : " + warnings[-1], file=sys.stderr)
 avatars = dict(cur.get("avatars") or {})
 
 if "name" in entry or "look" in entry:
@@ -81,5 +84,5 @@ else:
 if len(avatars) > 80:
     fail("trop d'avatars personnalisés")
 
-print(dumps({"updated_at": datetime.now(timezone.utc).isoformat(), "avatars": avatars}))
+print(dumps({"updated_at": datetime.now(timezone.utc).isoformat(), "avatars": avatars, "warnings": warnings}))
 print(f"{k} : " + ("enregistré" if k in avatars else "remis à l'original"), file=sys.stderr)

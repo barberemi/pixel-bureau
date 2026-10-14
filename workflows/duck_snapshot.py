@@ -4,10 +4,11 @@ Entrée (stdin) : {"sprint": sprint actif (sprint_info), "velocity": graphique d
 terminés de chacun), "reopens": tickets réouverts pendant le sprint précédent}. Lit aussi les runs Kronn (pannes de la
 semaine), les discussions du canard, et `gh` (mises en prod du sprint, reviews de la semaine).
 Sortie (stdout) : {generated_at, sprint{name,start,end}, target, sprints[{id,name,done,target,held}], canetons, streak,
-trophies{id: {ok, at?, period?, detail?, progress?}}, errors[]}
+trophies{id: {ok, at?, period?, detail?, progress?}}, warnings[]}
 - Un sprint est tenu quand ses points terminés atteignent la moyenne des 4 sprints fermés avant lui ; la cible du sprint
   en cours est la moyenne des 4 derniers. Un caneton par sprint tenu parmi ceux que Jira donne (12 au plus, donc 8 jugés).
-- Tout est collectif : aucun chiffre par personne. Une source muette n'arrête rien, elle est notée dans `errors`.
+- Tout est collectif : aucun chiffre par personne. Une source muette n'arrête rien : le succès qu'elle juge manque, elle
+  est notée dans `warnings` (affichés par le panneau Fraîcheur, #8) et sur stderr (run Kronn).
 """
 import json, subprocess, sys
 from datetime import datetime, timedelta, timezone
@@ -15,7 +16,7 @@ from _lib import CFG, TZ, dumps, get, get_all, is_bureau
 
 _IN = sys.stdin.read()
 D = (json.loads(_IN) if _IN.strip() else {}) or {}
-errors = []
+warnings = []
 now = datetime.now(TZ)
 TARGET_N = 4  # sprints de référence de la cible
 
@@ -127,7 +128,7 @@ try:
             down.append(wf.get("name") or "?")
     trophies["zero_panne"] = {"ok": not down, "period": week, "at": week_at, "detail": f"{len(down)} agent(s) en panne" if down else "aucun agent en panne"}
 except Exception as e:
-    errors.append(f"runs Kronn : {e}")
+    warnings.append(f"runs Kronn illisibles, Zéro panne non jugé : {e}"[:240])
 
 # Pas un reopen : aucun ticket réouvert pendant le sprint précédent
 if D.get("reopens") is not None and sprints:
@@ -141,7 +142,7 @@ try:
     n = len(ducks)
     trophies["bavard"] = {"ok": n >= 10, "progress": f"{min(n, 10)} / 10", **({"at": ducks[9]} if n >= 10 and ducks[9] else {})}
 except Exception as e:
-    errors.append(f"discussions : {e}")
+    warnings.append(f"discussions illisibles, Bavard non jugé : {e}"[:240])
 
 # Triplé : les 3 derniers sprints tenus
 if sprints:
@@ -162,7 +163,7 @@ for repo, wf in prods:
                 if not early or end < early[0]:
                     early = (end, r.get("displayTitle") or repo)
     except Exception as e:
-        errors.append(f"gh {repo} : {e}")
+        warnings.append(f"gh {repo} : {e}"[:240])
 if any(r and w for r, w in prods):
     trophies["leve_tot"] = {"ok": bool(early), "period": sp.get("name") or "", **({"at": early[0].astimezone(timezone.utc).isoformat()} if early else {}),
                             "detail": f"{early[1][:60]} à {early[0].astimezone(TZ):%H:%M}" if early else "pas encore de MEP avant 11h"}
@@ -185,9 +186,11 @@ if G.get("repo"):
                 fast += 1
         trophies["relu_24h"] = {"ok": bool(total) and fast == total, "period": week, "at": week_at, "progress": f"{fast} / {total}"}
     except Exception as e:
-        errors.append(f"gh reviews : {e}")
+        warnings.append(f"gh reviews : {e}"[:240])
 
+for w in warnings:
+    print("canard : " + w, file=sys.stderr)
 print(dumps({"generated_at": datetime.now(timezone.utc).isoformat(),
              "sprint": {"name": sp.get("name"), "start": sp.get("startDate"), "end": sp.get("endDate")},
              "target": target, "sprints": sprints[:8], "canetons": sum(1 for s in sprints if s["held"]), "streak": streak,
-             "trophies": trophies, "errors": errors}))
+             "trophies": trophies, "warnings": warnings}))

@@ -1,13 +1,15 @@
 """Instantané « live » (toutes les minutes) : runs en cours ou récents, discussions récentes, déploiements du jour.
 
 Entrée : aucune (déploiements lus chaque minute avec `gh api` et un ETag : GitHub répond 304 sans le décompter tant que rien ne change)
-Sortie (stdout) : {generated_at, day, runs[], discussions[], deploys{staging{clé:run}, prod{clé:run}}}
+Sortie (stdout) : {generated_at, day, runs[], discussions[], deploys{staging{clé:run}, prod{clé:run}}, warnings[texte]}
 Clé = la version pour le dépôt principal (github.repo, ses MEP ont ticket et release dans le dataset team), « projet version »
 pour les autres dépôts suivis (github.deploys : [{repo, label?, staging_workflow?, prod_workflow}]) ; run.project = ce projet,
 run.by = le login GitHub de qui a lancé le déploiement (la page en fait l'auteur de la MEP s'il n'en a pas d'autre).
 Même format de runs et de discussions que office_snapshot.py, pour que la page les superpose.
+warnings (#8) : déploiements non relus (gh absent, accès refusé…), republiés depuis la lecture précédente ; écrit aussi
+sur stderr (run Kronn). Un 304 (rien n'a changé) n'en est pas un.
 """
-import json, os as _os, re, subprocess
+import json, os as _os, re, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from _lib import CFG, TZ, ACTIVE, dumps, get, is_bureau, is_bureau_disc, run_row, disc_row, read_json
@@ -40,6 +42,7 @@ VER = re.compile(r"(\d+\.\d+\.\d+)")
 # requête est conditionnelle (If-None-Match) : tant que rien ne bouge, GitHub répond 304 sans la compter dans la limite
 # d'appels. Les runs et leur ETag sont gardés hors du dépôt, puis republiés tels quels sur un 304 ou une erreur.
 DEPLOY_CACHE = _os.path.join(_os.path.expanduser("~"), ".cache", "pixel-bureau", "deploys.json")
+FAILED = []  # (dépôt, workflow, raison) des lectures en échec, remplie par les lectures parallèles
 
 
 def targets():
@@ -59,10 +62,14 @@ def gh_runs(repo, workflow, prev):
     if prev.get("etag") and all("by" in r for r in prev.get("runs") or []):  # cache d'avant « by » : relu en entier
         cmd[3:3] = ["-H", f"If-None-Match: {prev['etag']}"]
     try:  # gh sort en erreur sur un 304 : seule la ligne d'état compte
-        out = subprocess.run(cmd, capture_output=True, text=True, timeout=60).stdout.replace("\r\n", "\n")
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        out = res.stdout.replace("\r\n", "\n")
         head, _, body = out.partition("\n\n")
         status = head.split("\n", 1)[0]
-        if " 200" not in status:  # 304, ou erreur (gh absent, pas d'accès) : la lecture précédente reste
+        if " 304" in status or "HTTP 304" in (res.stderr or ""):  # rien n'a changé : la lecture précédente reste
+            return prev
+        if " 200" not in status:  # erreur (pas d'accès, workflow inconnu…) : la lecture précédente reste, signalée
+            FAILED.append((repo, workflow, status.strip()[:80] or (res.stderr or "").strip()[-120:] or f"gh : code {res.returncode}"))
             return prev
         etag = next((h.split(":", 1)[1].strip() for h in head.split("\n") if h.lower().startswith("etag:")), None)
         runs = [{"status": r.get("status"), "conclusion": r.get("conclusion"), "createdAt": r.get("created_at"),
@@ -70,7 +77,11 @@ def gh_runs(repo, workflow, prev):
                  "by": (r.get("triggering_actor") or r.get("actor") or {}).get("login")}
                 for r in json.loads(body).get("workflow_runs") or []]
         return {"runs": runs, "etag": etag}
-    except Exception:
+    except FileNotFoundError:
+        FAILED.append((repo, workflow, "gh introuvable sur la machine"))
+        return prev
+    except Exception as e:
+        FAILED.append((repo, workflow, str(e)[:120] or type(e).__name__))
         return prev
 
 
@@ -82,7 +93,13 @@ TARGETS = targets()
 with ThreadPoolExecutor(max_workers=8) as pool:  # un dépôt lent ne retarde pas les autres
     reads = list(pool.map(lambda t: gh_runs(t[1], t[3], cache.get(t[1] + "|" + t[3])), TARGETS))
 D = {t[1] + "|" + t[3]: r for t, r in zip(TARGETS, reads)}
-try:
+warnings = []
+if FAILED:  # une ligne pour toutes les lectures en échec (gh absent : chaque workflow suivi échoue pareil)
+    repo, workflow, why = FAILED[0]
+    warnings.append(f"déploiements non relus ({len(FAILED)} workflow{'s' if len(FAILED) > 1 else ''}) : {repo} {workflow} : {why}"[:240])
+    for repo, workflow, why in FAILED:
+        print(f"live : déploiements de {repo} ({workflow}) non relus : {why}", file=sys.stderr)
+try:  # cache seulement : un échec coûte une lecture complète au passage suivant, rien de faux n'est publié
     _os.makedirs(_os.path.dirname(DEPLOY_CACHE), exist_ok=True)
     with open(DEPLOY_CACHE, "w") as fh:
         json.dump(D, fh)
@@ -108,4 +125,4 @@ def by_tag(env):
 
 print(dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "day": now.strftime("%Y-%m-%d"),
              "runs": runs, "discussions": discs,
-             "deploys": {"staging": by_tag("staging"), "prod": by_tag("prod")}}))
+             "deploys": {"staging": by_tag("staging"), "prod": by_tag("prod")}, "warnings": warnings}))

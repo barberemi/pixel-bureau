@@ -1,13 +1,14 @@
 """Pages Kronn du boss (bureau.config.json, clé boss_pages) pour l'écran du bureau du boss : titre, mise à jour, miniature.
 
-Sortie (stdout) : {generated_at, pages[{id, title, updated, img}]}, dans l'ordre de boss_pages.
+Sortie (stdout) : {generated_at, pages[{id, title, updated, img}], warnings[texte]}, dans l'ordre de boss_pages.
 - img : capture JPEG 320x200 en data URI, ou null. Refaite seulement quand la page change (révision du HTML ou des
   données), sinon reprise du cache ~/.cache/pixel-bureau/thumbs/<id>.json.
 - Capture : le HTML de la page et ses datasets dans un fichier local (window.KronnPageData, comme dans Kronn),
   photographié par Chrome headless, puis réduit par jpeg() du socle (Pillow, sinon sips). Sans Chrome : cartes sans image.
 - Une page supprimée ou illisible est sautée. Sortie bornée sous 90 Ko (les images en trop sont retirées).
+- warnings (#8) : page sautée, capture ratée (carte sans image) ; écrits aussi sur stderr (run Kronn).
 """
-import base64, glob, json, os, shutil, signal, subprocess, tempfile, time
+import base64, glob, json, os, shutil, signal, subprocess, sys, tempfile, time
 from datetime import datetime
 from _lib import CFG, TZ, dumps, get, jpeg, read_json, write_json, write_text, read_bytes
 
@@ -15,6 +16,12 @@ CACHE = os.path.expanduser("~/.cache/pixel-bureau/thumbs")
 CHROMES = ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
            "/Applications/Chromium.app/Contents/MacOS/Chromium", "google-chrome", "chromium", "chromium-browser")
 W, H, MAX_OUT = 1280, 800, 90_000
+warnings = []
+
+
+def warn(msg):
+    print("écran du boss : " + msg, file=sys.stderr)
+    warnings.append(msg)
 
 
 def chrome():
@@ -35,7 +42,7 @@ def runtime_data(d):
 
 
 def capture(d, exe):
-    """Capture JPEG 320x200 de la page, en data URI ; None si Chrome ou la réduction échouent."""
+    """Capture JPEG 320x200 de la page, en data URI ; None (et un avertissement) si Chrome ou la réduction échouent."""
     html = (d.get("revision") or {}).get("html") or ""
     boot = ("<script>window.KronnPageData=" + json.dumps(runtime_data(d)).replace("</", "<\\/") +
             ";addEventListener('load',()=>dispatchEvent(new CustomEvent('kronn:page-data',{detail:window.KronnPageData})));</script>")
@@ -63,10 +70,13 @@ def capture(d, exe):
         except OSError:  # groupe déjà parti (ProcessLookupError) ou réduit à un zombie (PermissionError sur macOS)
             pass
         p.wait(timeout=10)
-        if not os.path.exists(png) or not jpeg(png, jpg, size=(320, 200), quality=55):
-            return None
+        if not os.path.exists(png):
+            raise RuntimeError("Chrome n'a pas rendu d'image")
+        if not jpeg(png, jpg, size=(320, 200), quality=55):
+            raise RuntimeError("réduction en JPEG impossible (ni Pillow ni sips)")
         return "data:image/jpeg;base64," + base64.b64encode(read_bytes(jpg)).decode()
-    except Exception:
+    except Exception as e:
+        warn(f"miniature de « {str(d.get('title') or d['id'][:8])[:40]} » non faite ({str(e)[:120] or type(e).__name__})")
         return None
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -81,7 +91,7 @@ def thumb(d, exe):
         if c.get("key") == key and c.get("img"):
             return c["img"]
     except Exception:
-        pass
+        pass  # cache absent ou illisible : nouvelle capture, rien de faux n'est publié
     img = capture(d, exe) if exe else None
     if img:
         os.makedirs(CACHE, exist_ok=True)
@@ -95,17 +105,22 @@ pages = []
 for pid in ids:
     try:
         d = get(f"/pages/{pid}")
-    except Exception:
-        continue  # page supprimée ou Kronn injoignable : on passe
+    except Exception as e:  # page supprimée ou Kronn injoignable : on passe, et on le dit
+        warn(f"page {pid[:8]} sautée, supprimée ou illisible ({str(e)[:120] or type(e).__name__})")
+        continue
     pages.append({"id": d["id"], "title": d.get("title") or d.get("slug") or d["id"][:8],
                   "updated": d.get("last_published_at") or d.get("updated_at"), "img": thumb(d, exe)})
 # caches des pages retirées de la liste
 for f in glob.glob(os.path.join(CACHE, "*.json")):
     if os.path.basename(f)[:-5] not in ids:
         os.remove(f)
-out = {"generated_at": datetime.now(TZ).isoformat(), "pages": pages}
+out = {"generated_at": datetime.now(TZ).isoformat(), "pages": pages, "warnings": warnings}
+dropped = 0
 for p in reversed(pages):  # sortie Exec tronquée à 100 Ko : les dernières images sautent d'abord
     if len(dumps(out)) <= MAX_OUT:
         break
+    dropped += bool(p["img"])
     p["img"] = None
+if dropped:
+    warn(f"{dropped} miniature{'s' if dropped > 1 else ''} retirée{'s' if dropped > 1 else ''} : sortie limitée à 90 Ko")
 print(dumps(out))

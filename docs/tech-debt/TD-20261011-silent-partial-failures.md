@@ -14,13 +14,17 @@ metadata:
       status: Confirmed by user
       reviewer: Kronn audit validation card
       note: "Confirmed through an audit validation card."
+    - date: 2026-10-15
+      status: Resolved
+      reviewer: mainteneur
+      note: "#8 : chaque échec avalé qui laisse un dataset incomplet écrit sur stderr et alimente une liste warnings du dataset (gates, payroll, office, live, bosspages, gitfut, actions, duck, mails, avatars) ; la page les lit (readWarnings, 33-freshness.js) et les affiche dans le diagnostic du panneau Fraîcheur ; les except qui protègent un cache restent silencieux ; tests tests/test_scripts.py (faux Kronn en échec, contrat crons -> page) et tests/lot4.test.js."
 ---
 
 # TD-20261011-silent-partial-failures
 
 - **Area**: Observability
 - **Severity**: Low
-- **Status**: Confirmed by user
+- **Status**: Resolved (2026-10-15, #8)
 - **Effort**: M (1-4h)
 - **Blast radius**: module (5-10 files)
 
