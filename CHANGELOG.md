@@ -12,6 +12,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 - Aperçu local avant le merge : `python3 tools/preview.py` montre la page de ta branche avec tes vraies données, sans rien publier.
 - Courrier : tes mails non lus (appli Mail du Mac, Gmail ou autre par IMAP, plusieurs comptes), relevés toutes les 10 min sans jamais le contenu ; une boîte aux lettres par compte à côté du bureau du boss et la fiche Courrier ; le facteur qui dépose le courrier et vient proposer les règles du tri (validées par le boss) ; des porteurs qui remettent certains mails en personne et restent jusqu'à leur lecture dans ta messagerie.
 
+### Corrigé
+
+- Un bouton du panneau de droite qui ne répondait pas de temps en temps (la carte Kronn ne s'ouvrait pas) : le panneau ne se redessine plus pendant un clic.
+
 ## [0.1.0] - 2026-10-13
 
 ### Ajouté
