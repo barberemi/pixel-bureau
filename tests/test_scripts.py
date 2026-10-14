@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FIXTURE = json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text())
@@ -56,6 +56,7 @@ class FakeKronn:
         self.disc_details = {}  # id de discussion -> détail (GET /discussions/{id}, avec ses messages)
         self.questions = {}  # id de discussion -> questions (GET /discussions/{id}/questions)
         self.variables = {}  # id de workflow -> variables de lancement (GET /workflows/{id})
+        self.disc_pages = []  # numéros de page des GET /discussions reçus (0 : sans page)
         self.discussions = [
             {"id": "d1", "title": "Pourquoi ça casse ?", "agent": "ClaudeCode", "participants": ["ClaudeCode"], "message_count": 4,
              "archived": False, "created_at": now, "updated_at": now, "workflow_run_id": None, "project_id": "p1"},
@@ -86,8 +87,14 @@ class FakeKronn:
             return {"datasets": self.datasets}
         if p == "/projects":
             return [{"id": "p1", "name": "Front"}]
-        if p == "/discussions":
-            return self.discussions
+        if p == "/discussions":  # comme Kronn : page > 0 = une page (per_page plafonné à 200, updated_at décroissant), sinon tout
+            q = parse_qs(urlparse(path).query)
+            page, per = int(q.get("page", ["0"])[0]), min(int(q.get("per_page", ["50"])[0]), 200)
+            self.disc_pages.append(page)
+            if not page:
+                return self.discussions
+            ordered = sorted(self.discussions, key=lambda d: str(d.get("updated_at") or ""), reverse=True)
+            return ordered[(page - 1) * per:page * per]
         m = re.fullmatch(r"/discussions/([\w-]+)", p)
         if m and m.group(1) in self.disc_details:
             return self.disc_details[m.group(1)]
@@ -689,6 +696,38 @@ print(json.dumps(d.get(key, [])))
         self.srv.server_close()
         self.srv = None
         return r.returncode, r.stdout, r.stderr
+
+    def test_discussions_beyond_one_page(self):
+        """Plus de 200 discussions (#5) : office, duck et gates suivent les pages de /discussions (200 par page, récentes
+        d'abord) ; office et gates s'arrêtent à la page qui franchit leur date de début ; sorties toujours sous 100 Ko."""
+        fake = FakeKronn()
+        days = lambda n: iso(n * 24 * 60)  # noqa: E731
+        # 260 discussions du jour : elles remplissent la première page à elles seules
+        fake.discussions += [{"id": f"j{i:03d}", "title": f"Sujet du jour n° {i} " + "x" * 80, "agent": "ClaudeCode", "participants": ["ClaudeCode"],
+                              "message_count": 3, "archived": False, "created_at": iso(i % 2), "updated_at": iso(i % 2), "project_id": "p1"}
+                             for i in range(260)]
+        # puis 12 discussions du canard d'il y a 3 jours (deuxième page) et 150 vieilles d'un mois (deuxième et troisième)
+        fake.discussions += [{"id": f"c{i:02d}", "title": f"🦆 n° {i}", "project_id": "p1", "updated_at": days(3), "created_at": days(3)}
+                             for i in range(12)]
+        fake.discussions += [{"id": f"o{i:03d}", "title": f"Vieille {i}", "updated_at": days(30), "created_at": days(30)} for i in range(150)]
+        self.assertGreater(len(fake.discussions), 400)
+        api = self.kronn(fake)
+
+        out = self.run_script("office_snapshot.py", api=api)
+        self.assertEqual(sorted(d["id"] for d in out["discussions"]), sorted(["d1"] + [f"j{i:03d}" for i in range(260)]))
+        self.assertEqual(fake.disc_pages, [1, 2])  # la deuxième page finit sur un mois : pas de troisième
+
+        fake.disc_pages.clear()
+        out = self.run_script("gates_snapshot.py", api=api)
+        self.assertEqual(sorted(d["id"] for d in out["ducks"]), [f"c{i:02d}" for i in range(12)])
+        self.assertEqual(fake.disc_pages, [1, 2])
+
+        fake.disc_pages.clear()
+        out = self.run_script("duck_snapshot.py", {"sprint": None, "velocity": None, "reopens": None}, api=api)
+        self.assertEqual(out["trophies"]["bavard"]["progress"], "10 / 10")  # depuis toujours : les 12 de la deuxième page comptent
+        self.assertTrue(out["trophies"]["bavard"]["ok"])
+        self.assertEqual(fake.disc_pages, [1, 2, 3])  # toutes les pages, jusqu'à la page incomplète
+        self.assertFalse([e for e in out["errors"] if "discussions" in e])
 
     def test_question_answer_option_form_text_and_decline(self):
         """Réponse depuis la page : la ligne cliquée (qrows) dit quoi envoyer ; Kronn reçoit option, items ou refus."""

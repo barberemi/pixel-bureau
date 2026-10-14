@@ -1,7 +1,7 @@
 """Instantané de la journée (toutes les 10 min) : runs et discussions du jour, crons, purge des vieux runs du Bureau."""
 import os as _os, re, urllib.request
 from datetime import datetime, timedelta, timezone
-from _lib import API, CFG, TZ, ACTIVE, dumps, get, is_bureau, is_bureau_disc, run_row, disc_row, err_of, read_json, write_json
+from _lib import API, CFG, TZ, ACTIVE, dumps, get, get_all, is_bureau, is_bureau_disc, run_row, disc_row, err_of, read_json, write_json
 
 
 now = datetime.now(TZ)
@@ -32,7 +32,7 @@ for wf in WFS:
         runs.append(run_row(wf, r))
 
 projects = {p["id"]: p.get("name") for p in get("/projects")}
-ALL_DISCS = get("/discussions?per_page=200")
+ALL_DISCS = get_all("/discussions", since=since)  # du jour (et un peu plus : la page qui franchit since)
 discs = [disc_row(d, projects) for d in ALL_DISCS
          if d["updated_at"] >= since and not d.get("archived") and not is_bureau_disc(d)]
 

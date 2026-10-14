@@ -11,7 +11,7 @@ trophies{id: {ok, at?, period?, detail?, progress?}}, errors[]}
 """
 import json, subprocess, sys
 from datetime import datetime, timedelta, timezone
-from _lib import CFG, TZ, dumps, get, is_bureau
+from _lib import CFG, TZ, dumps, get, get_all, is_bureau
 
 _IN = sys.stdin.read()
 D = (json.loads(_IN) if _IN.strip() else {}) or {}
@@ -136,7 +136,7 @@ if D.get("reopens") is not None and sprints:
 
 # Bavard : 10 discussions avec le canard (titre « 🦆 … »), depuis toujours
 try:
-    ducks = sorted(str(d.get("created_at") or d.get("updated_at") or "") for d in get("/discussions?per_page=200")
+    ducks = sorted(str(d.get("created_at") or d.get("updated_at") or "") for d in get_all("/discussions")
                    if str(d.get("title") or "").startswith("🦆"))
     n = len(ducks)
     trophies["bavard"] = {"ok": n >= 10, "progress": f"{min(n, 10)} / 10", **({"at": ducks[9]} if n >= 10 and ducks[9] else {})}

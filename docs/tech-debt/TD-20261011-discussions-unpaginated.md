@@ -11,13 +11,17 @@ metadata:
       status: Confirmed by user
       reviewer: Kronn audit validation card
       note: "Confirmed through an audit validation card."
+    - date: 2026-10-15
+      status: Resolved
+      reviewer: mainteneur
+      note: "#5 : helper get_all (workflows/_lib.py) qui suit page / per_page=200 jusqu'à une page incomplète, ou jusqu'à la page qui franchit since ; utilisé par office (depuis minuit), gates (14 jours, une seule lecture pour le canard et les questions) et duck (depuis toujours). Test à plus de 400 discussions dans le faux Kronn, qui pagine comme Kronn. Constat en relisant Kronn 0.14 : sans page, /discussions rend déjà tout (per_page ignoré) ; la pagination borne chaque réponse à 200. Workflows à republier."
 ---
 
 # TD-20261011-discussions-unpaginated
 
 - **Area**: Backend
 - **Severity**: Medium
-- **Status**: Confirmed by user
+- **Status**: Resolved (2026-10-15, #5)
 - **Effort**: S (< 1h)
 - **Blast radius**: local (1-2 files)
 

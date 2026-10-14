@@ -57,6 +57,24 @@ def get(path, timeout=120):
     return body.get("data", body) if isinstance(body, dict) else body
 
 
+def get_all(path, per_page=200, since=None, max_pages=50):
+    """Toutes les pages d'une liste de Kronn paginée par page / per_page (comme /discussions, triée par updated_at
+    décroissant), jusqu'à une page incomplète (#5). since : on s'arrête aussi dès qu'une page finit avant cette date
+    (updated_at), les suivantes sont plus vieilles. Un élément déjà vu (Kronn qui ignorerait page) arrête la lecture."""
+    out, seen = [], set()
+    sep = "&" if "?" in path else "?"
+    for page in range(1, max_pages + 1):
+        batch = get(f"{path}{sep}page={page}&per_page={per_page}") or []
+        fresh = [x for x in batch if x.get("id") not in seen]
+        seen.update(x.get("id") for x in fresh)
+        out += fresh
+        if len(batch) < per_page or len(fresh) < len(batch):
+            break
+        if since and str(batch[-1].get("updated_at") or "") < since:
+            break
+    return out
+
+
 def is_bureau(wf):
     return wf.get("id") in BUREAU_IDS
 
