@@ -149,3 +149,12 @@ test('porteur : ses mails dans sa fiche et dans celle du boss (qui les compte en
   for (const k of ['g_david', run('chars.find(c => c.boss).key')]) assert.match(draw(k), /📰 Gazette · remis en personne · Pro/, k);
   run(`sel = null;`);
 });
+
+test('porteur : son mail lu, il repart par la porte au lieu de disparaître sur place', () => {
+  run(`MAILS = {generated_at: '${at('11:00')}', sorted: true, accounts: [{id: 'pro', label: 'Pro', ok: true, unread: 1, useful_n: 0, useful: [], ignored: [], carried: [${JSON.stringify(carried('11:05'))}]}]};
+    mode = 'pause'; T = Date.parse('${at('11:10')}'); needTeleport = true; tick(0); needTeleport = false;`);
+  assert.deepEqual(J(`[byKey.g_david._st.st, byKey.g_david.present]`), ['gate', true]);
+  run(`MAILS.accounts[0].carried = []; byKey.g_david.on = undefined; guestVisit = () => null; tick(1000);`); // ni mail ni visite : « off »
+  assert.deepEqual(J(`[byKey.g_david._st.st, byKey.g_david.present, byKey.g_david.target && byKey.g_david.target.key]`), ['off', true, 'exit']);
+  assert.equal(J(`!!walksOut({}, {st: 'off'})`), false, 'un collègue « off » ne marche pas vers la sortie');
+});
