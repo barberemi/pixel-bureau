@@ -79,7 +79,8 @@ const RULES_WF='Le Bureau · règles du courrier';
 function postmanState(c,t){
   if(!mailAccounts().length)return {st:'off',label:'Pas de courrier branché'};
   const g=(GATES||[]).find(x=>x.wf_name===RULES_WF&&(!x.since||ms(x.since)<=t));
-  if(g)return {st:'gate',zone:'gate',label:'Te propose des règles pour trier ton courrier : attend ta validation',bubble:'✋ 📮 On trie ton courrier ?'};
+  if(g){c.wf=[String(g.wf).slice(0,8)]; // sa gate est la sienne (pas une validation orpheline) : sa carte dans sa fiche, comptée une fois chez le boss
+    return {st:'gate',zone:'gate',run:{run:g.run,wf_name:g.wf_name,_s:ms(g.since)},label:'Te propose des règles pour trier ton courrier : attend ta validation',bubble:'✋ 📮 On trie ton courrier ?'};}
   const vs=postVisits().filter(v=>parisDay(v.s)===parisDay(t)), cur=vs.find(v=>t>=v.s&&t<v.s+POST_STAY), past=vs.filter(v=>v.s+POST_STAY<=t);
   if(cur)return {st:'idle',zone:'visit',visit:postSpot(),label:'Dépose '+plural(cur.n,'lettre','lettres')+' dans les boîtes aux lettres',bubble:'📬 '+cur.n};
   return past.length?{st:'gone',label:'Passé à '+hm(past[past.length-1].s)}:{st:'off',label:"Pas encore passé aujourd'hui"};

@@ -107,6 +107,9 @@ test('règles : le facteur attend devant le bureau du boss tant que leur validat
   run(`GATES = [{wf_name: 'Le Bureau · règles du courrier', gate: 'boss', since: '${at('10:30')}'}];`);
   assert.equal(P('10:20').st, 'gone'); // avant la demande : sa tournée
   assert.deepEqual(P('10:45'), {st: 'gate', bubble: '✋ 📮 On trie ton courrier ?', label: 'Te propose des règles pour trier ton courrier : attend ta validation'});
+  assert.equal(J(`postmanState(byKey.g_facteur, Date.parse('${at('10:45')}')).run.wf_name`), 'Le Bureau · règles du courrier'); // sa carte dans sa fiche
+  run(`GATES[0].wf = 'e3944095-7c8f'; postmanState(byKey.g_facteur, Date.parse('${at('10:45')}'));`);
+  assert.equal(J('loneGates().length'), 0); // pas comptée une seconde fois chez le boss
   run(`GATES = [];`);
   assert.equal(P('10:45').st, 'gone');
 });
