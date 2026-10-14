@@ -41,6 +41,13 @@ SHOTS = {
     # dernier jour du sprint (fin du sprint ramenée au jour de la démo) et premier jour, après le daily
     "scene-pizza": (1400, 1000, AT(12 + 10 / 60) + "TEAM.sprint.end='2026-10-01T15:00:00Z';", "#cv", 1.5),
     "scene-kickoff": (1400, 1000, AT(9 + 56 / 60) + "TEAM.sprint.start='2026-10-01T07:00:00Z';", "#cv", 1.5),
+    # panneau Fraîcheur (survol du badge) : données live simulées, journée en retard, équipe en échec (Jira 401), « ↻ Relancer »
+    "fraicheur": (1400, 1000, AT(11) + "LIVE_DATA=true;ACTIONS.relaunch=true;const now=Date.now(),iso=d=>new Date(now-d).toISOString();"
+                  "LIVE={...(LIVE||{}),generated_at:iso(20e3)};OFFICE={...OFFICE,empty:false,generated_at:iso(42*60e3),"
+                  "bureau_failed:{team:{at:iso(7*60e3),step:'jira_board',err:'HTTP 401 Unauthorized'}}};TEAM_BASE={...TEAM_BASE,generated_at:iso(17*60e3)};"
+                  "PAYROLL={...(PAYROLL||{}),generated_at:iso(25*60e3)};DUCKGAME=null;"
+                  "RELAUNCH=['office','team','payroll'].map(k=>({wf:'wf-'+k,name:'Le Bureau · '+k,bureau:k}));updateFresh();"
+                  "document.getElementById('freshpop').style.display='block';document.getElementById('badge').style.marginBottom='240px';", "#freshpop", 1.5),
     "legende": (1400, 1600, AT(11) + "document.querySelector('.legend-help').open=true;", ".legend-help"),
     # thème Classique (le seul du dépôt ; un pack d'équipe apporte les autres), fiche d'un collègue ouverte
     "theme-classique": (1400, 1000, AT(11) + "select((chars.find(c=>c.person&&c.team&&c.team.tickets.length)||{}).key);scrollTo(0,0);", None),

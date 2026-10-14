@@ -37,16 +37,16 @@ function sideFoldButton(side){
 }
 function refocus(side,fid){const e=fid&&[...side.querySelectorAll('[data-fid]')].find(x=>x.dataset.fid===fid);if(e)e.focus();}
 let COLLAPSED={};try{COLLAPSED=JSON.parse(localStorage.getItem('bureau:collapsed')||'{}')||{};}catch(e){COLLAPSED={};}
-// appui en cours dans le panneau : pas de redessin automatique. Un panneau refait entre l'appui et le relâchement
-// remplace le bouton, le « click » part alors sur le panneau et la carte Kronn ne s'ouvre pas. Plafond de 10 s si le
-// relâchement se perd (souris lâchée hors de la page), puis 400 ms après lui, le temps que le clic arrive.
-let SIDE_HOLD=0;
-function sideHold(down,now){if(down)SIDE_HOLD=now+1e4;else if(SIDE_HOLD>now)SIDE_HOLD=now+400;}
-addEventListener('pointerdown',e=>{if(e.target&&e.target.closest&&e.target.closest('#side'))sideHold(true,performance.now());},true);
-for(const ev of ['pointerup','pointercancel'])addEventListener(ev,()=>sideHold(false,performance.now()),true);
+// appui en cours dans le panneau ou le panneau Fraîcheur (33-freshness.js) : pas de redessin automatique. Refait entre
+// l'appui et le relâchement, il remplace le bouton, le « click » part alors à côté et la carte Kronn ne s'ouvre pas.
+// Plafond de 10 s si le relâchement se perd (souris lâchée hors de la page), puis 400 ms après lui, le temps que le clic arrive.
+let PRESS_HOLD=0;
+function pressHold(down,now){if(down)PRESS_HOLD=now+1e4;else if(PRESS_HOLD>now)PRESS_HOLD=now+400;}
+addEventListener('pointerdown',e=>{if(e.target&&e.target.closest&&e.target.closest('#side,#freshpop'))pressHold(true,performance.now());},true);
+for(const ev of ['pointerup','pointercancel'])addEventListener(ev,()=>pressHold(false,performance.now()),true);
 function renderSide(force){
   if(EDIT&&!force)return; // l'éditeur d'avatar ne se redessine pas tout seul (saisie en cours)
-  if(!force&&performance.now()<SIDE_HOLD)return; // clic en cours dans le panneau
+  if(!force&&performance.now()<PRESS_HOLD)return; // clic en cours dans le panneau
   if(!force&&(KM_OPEN||document.querySelector('#side [data-kronn-action-slot]')))return; // carte Kronn ouverte (fenêtre centrée)
   if(!force&&document.activeElement&&document.activeElement.tagName==='SELECT'&&document.activeElement.closest('#side'))return; // menu ouvert : ne pas le refermer
   const side=document.getElementById('side'); if(!DATA)return;

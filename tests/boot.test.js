@@ -108,16 +108,16 @@ test('panneau : pas de redessin automatique pendant un clic, le bouton cliqué r
   run('var NDRAW=0; drawSide=()=>{NDRAW++}; document.querySelector=()=>null; EDIT=null; KM_OPEN=null; SIDE_FOLDED=false; performance.now=()=>1000;');
   const draws = code => run(`(()=>{const n=NDRAW;${code};return NDRAW-n;})()`);
   assert.equal(draws('renderSide()'), 1);
-  run('sideHold(true,1000)');
+  run('pressHold(true,1000)');
   assert.equal(draws('renderSide()'), 0, 'appui en cours');
   assert.equal(draws('renderSide(true)'), 1, 'un redessin demandé (choix d\'une fiche) passe toujours');
-  run('performance.now=()=>1200; sideHold(false,1200)');
+  run('performance.now=()=>1200; pressHold(false,1200)');
   assert.equal(draws('renderSide()'), 0, 'le clic arrive juste après le relâchement');
   run('performance.now=()=>1700');
   assert.equal(draws('renderSide()'), 1);
-  run('sideHold(true,1700); performance.now=()=>11800'); // relâchement perdu : le panneau repart au bout de 10 s
+  run('pressHold(true,1700); performance.now=()=>11800'); // relâchement perdu : le panneau repart au bout de 10 s
   assert.equal(draws('renderSide()'), 1);
-  run('sideHold(false,11800)'); // relâchement sans appui dans le panneau : rien à retenir
+  run('pressHold(false,11800)'); // relâchement sans appui dans le panneau : rien à retenir
   assert.equal(draws('renderSide()'), 1);
 });
 
@@ -134,4 +134,16 @@ test('validation : trois boutons directs, chacun lié à sa ligne de gates.grows
   for (const [, a] of btns) assert.equal(a['data-kronn-action'], 'bureau-gate');
   assert.deepEqual(btns.map(([, a]) => JSON.parse(a['data-kronn-bindings'])), ['approve', 'reject', 'request_changes'].map(d => ({run_id: 'r1|' + d, decision: 'r1|' + d})));
   assert.match(run('P.kids[0].innerHTML'), /En attente depuis .* \(12 min\)/, 'durée à l\'heure de la page');
+
+test('panneau Fraîcheur : « ↻ Relancer » lié au cron de la source (ligne de gates.workflows), rien sans elle ni en mode TV', () => {
+  const {run} = load();
+  run(`document.createElement = t => ({tag: t, attrs: {}, kids: [], setAttribute(k, v) { this.attrs[k] = v; }, appendChild(x) { this.kids.push(x); },
+    addEventListener() {}}); var cell = () => ({kids: [], appendChild(x) { this.kids.push(x); }});
+    RELAUNCH = [{wf: 'wf-agent', name: 'Revue de PR'}, {wf: 'wf-team', name: 'Le Bureau · équipe', bureau: 'team'}]; ACTIONS.relaunch = true; TV = false;`);
+  const btn = code => JSON.parse(run(`JSON.stringify((() => { const td = cell(); ${code}; const h = td.kids[0];
+    return h ? h.kids.find(k => k.tag === 'button').attrs : null; })())`));
+  assert.deepEqual(btn(`freshRelaunch(td, 'team', 'Équipe')`), {'data-kronn-action': 'bureau-relaunch', 'data-kronn-bindings': '{"wf_id":"wf-team"}'});
+  assert.equal(btn(`freshRelaunch(td, 'office', 'Bureau')`), null, 'cron absent de la liste relançable');
+  assert.equal(btn(`TV = true; freshRelaunch(td, 'team', 'Équipe'); TV = false`), null, 'mode TV');
+  assert.equal(btn(`ACTIONS.relaunch = false; freshRelaunch(td, 'team', 'Équipe'); ACTIONS.relaunch = true`), null, 'sans le workflow de relance');
 });
