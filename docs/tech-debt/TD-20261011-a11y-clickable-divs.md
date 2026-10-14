@@ -11,6 +11,10 @@ metadata:
       status: Confirmed by user
       reviewer: Kronn audit validation card
       note: "Confirmed through an audit validation card."
+    - date: 2026-10-15
+      status: Resolved
+      reviewer: mainteneur
+      note: "#2 : tuiles KPI cliquables, lignes du fil qui ouvrent quelque chose et titre de la légende de la loupe en tabindex 0 + role button, activés par Entrée ou Espace (keyClick) ; focus rendu après redessin des tuiles et du fil."
 ---
 
 # TD-20261011-a11y-clickable-divs
@@ -19,7 +23,7 @@ metadata:
 - **WCAG**: 2.1.1 Keyboard ; 4.1.2 Name, Role, Value
 - **Area**: Clavier
 - **Severity**: Medium
-- **Status**: Confirmed by user
+- **Status**: Resolved (2026-10-15, #2)
 - **Effort**: S (< 1h par élément)
 - **Blast radius**: local (1-2 files)
 

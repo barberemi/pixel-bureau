@@ -2,6 +2,13 @@
 document.getElementById('kpis').addEventListener('click',e=>{
   const k=e.target.closest('[data-open]');if(k)select(k.dataset.open);
 });
+document.getElementById('kpis').addEventListener('keydown',keyClick);
+// redessin d'une zone par innerHTML : le focus clavier revient à l'élément de même attr (sinon il tombe sur <body>)
+function keepFocus(box,attr,draw){
+  const a=document.activeElement, v=a&&a!==document.body&&box.contains&&box.contains(a)&&a.getAttribute&&a.getAttribute(attr);
+  draw();
+  if(v!=null&&v!==false){const e=box.querySelector(`[${attr}="${v}"]`);if(e)e.focus();}
+}
 // tous les chiffres du haut de page et du mode TV, à l'instant t (une seule source pour les deux)
 function dashData(t){
   let sprint=null, prod=null;
@@ -64,17 +71,17 @@ function renderKpis(){
       p.closed?`<div class="cap">Plateau fermé : pas de MEP le vendredi ni le week-end</div>`:''
     ].filter(Boolean);
     fig.push([p.done,p.failed.length,p.live.length].join());
-    out.push(`<section class="dash prod click${p.failed.length?' err':''}" data-open="tv"><h3>La prod aujourd'hui</h3><div class="row"><div class="big">${p.done}</div><div class="grow">${plural(p.done,'mise en prod','mises en prod')}</div></div>${lines.join('')}</section>`);
+    out.push(`<section class="dash prod click${p.failed.length?' err':''}" data-open="tv" tabindex="0" role="button"><h3>La prod aujourd'hui</h3><div class="row"><div class="big">${p.done}</div><div class="grow">${plural(p.done,'mise en prod','mises en prod')}</div></div>${lines.join('')}</section>`);
   }
   if(d.agents){ // 3. Agents (suivi, pas alerte)
     const a=d.agents, down=chars.some(c=>!c.person&&!c.visitor&&c._st&&c._st.st==='error');
     fig.push([a.runs,a.ok,a.ko,down].join());
-    out.push(`<section class="dash agents click${down?' err':a.ko?' warn':''}" data-open="paie" title="Voir la fiche de paie"><h3>Les agents</h3><div class="cap">${a.runs} runs · <span style="color:var(--ok)">${a.ok} ✓</span> · <span style="color:${a.ko?'var(--err)':'inherit'}">${a.ko} ✗</span></div><div class="cap">${fmtTok(a.tok)} tokens · fiche de paie ›</div></section>`);
+    out.push(`<section class="dash agents click${down?' err':a.ko?' warn':''}" data-open="paie" tabindex="0" role="button" title="Voir la fiche de paie"><h3>Les agents</h3><div class="cap">${a.runs} runs · <span style="color:var(--ok)">${a.ok} ✓</span> · <span style="color:${a.ko?'var(--err)':'inherit'}">${a.ko} ✗</span></div><div class="cap">${fmtTok(a.tok)} tokens · fiche de paie ›</div></section>`);
   }
   const html=out.join('');
   if(html===KPI_SIG)return;
   const box=document.getElementById('kpis'), first=!KPI_SIG;
-  KPI_SIG=html;box.innerHTML=html;
+  KPI_SIG=html;keepFocus(box,'data-open',()=>{box.innerHTML=html;});
   // une tuile dont un chiffre change clignote une fois (pas au premier affichage, ni en rejeu)
   fig.forEach((f,i)=>{if(!first&&mode==='live'&&KPI_FIG[i]!==undefined&&KPI_FIG[i]!==f&&box.children[i])box.children[i].classList.add('flash');});
   KPI_FIG=fig;
@@ -378,13 +385,13 @@ function renderFeedList(view,all=FEED_ALL){
   FEED_VIEW=view;FEED_ALL=all;
   const box=document.getElementById('feed');
   let html=FEED_PIN.length?`<div class="feedpin"><div class="pinh">En ce moment</div>${FEED_PIN.map((e,i)=>
-    `<div class="ev" data-pin="${i}"><span class="tm">${e.t?hm(e.t):'auj.'}</span><span class="x">${e.txt}</span></div>`).join('')}</div>`:'';
+    `<div class="ev" data-pin="${i}"${e.duck||e.c?' tabindex="0" role="button"':''}><span class="tm">${e.t?hm(e.t):'auj.'}</span><span class="x">${e.txt}</span></div>`).join('')}</div>`:'';
   if(!view.length)html+=`<div class="empty">${all.length?'Rien pour ces types : rallume une pastille.':FEED_MODE==='important'&&FEED_EV.length?'Rien d\'important pour l\'instant.':'Rien pour l\'instant. Le bureau est encore vide.'}</div>`;
   let lastH=null;
   view.slice(0,FEED_N).forEach((e,i)=>{
     const h=parisHM(e.t).h;
     if(h!==lastH){html+=`<div class="evh">${h} h</div>`;lastH=h;}
-    html+=`<div class="ev${e.c?' fam-'+famOf(e.c):''}" data-i="${i}"><span class="tm">${hm(e.t)}</span><span class="x">${e.txt}</span></div>`;
+    html+=`<div class="ev${e.c?' fam-'+famOf(e.c):''}" data-i="${i}"${e.tv||e.duck||e.c?' tabindex="0" role="button"':''}><span class="tm">${hm(e.t)}</span><span class="x">${e.txt}</span></div>`;
   });
   if(view.length>FEED_N)html+=`<button class="feedmore" data-feed-more>Voir plus (${view.length-FEED_N})</button>`;
   const ttl=document.getElementById('feedtitle'), w=dataDayWord();
@@ -396,8 +403,11 @@ function renderFeedList(view,all=FEED_ALL){
     const th=FEED_TYPES.map(([k,l,i])=>`<button data-ty="${k}" class="${FEED_OFF.has(k)?'':'on'}" aria-pressed="${!FEED_OFF.has(k)}" title="${FEED_OFF.has(k)?'Montrer':'Masquer'} : ${l}">${i} ${l} <small>${n[k]||0}</small></button>`).join('');
     if(tys.innerHTML!==th)tys.innerHTML=th;}
   if(html===FEED_SIG)return;
-  FEED_SIG=html;box.innerHTML=html;
+  FEED_SIG=html;
+  const a=document.activeElement, pin=a&&a.getAttribute&&a.getAttribute('data-pin')!=null;
+  keepFocus(box,pin?'data-pin':'data-i',()=>{box.innerHTML=html;});
 }
+document.getElementById('feed').addEventListener('keydown',keyClick);
 document.getElementById('feed').addEventListener('click',ev=>{
   if(ev.target.closest('[data-feed-more]')){FEED_N+=FEED_PAGE;renderFeedList(FEED_VIEW);return;}
   const lk=ev.target.closest('.lk');
