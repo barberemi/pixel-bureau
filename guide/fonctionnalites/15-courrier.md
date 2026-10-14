@@ -12,6 +12,14 @@ Une boîte par compte, dehors, à droite du bureau du boss, de la couleur du com
 - **Au survol** : le compte, ses mails utiles et ses non lus. **Au clic** : la fiche Courrier, le compte cliqué en premier.
 - **En mode TV**, les boîtes et leurs compteurs restent visibles (on voit que quelque chose attend), mais jamais un expéditeur ni un objet.
 
+## Le facteur
+
+Quand un mail utile arrive, le facteur entre par la porte, va aux boîtes aux lettres, dépose le courrier (« 📬 2 ») et repart. Il passe au plus une fois toutes les 30 minutes : les mails arrivés entre-temps attendent sa tournée suivante. Arrivés la nuit, ils viennent avec le premier passage du matin. Sa fiche dit quand il est passé.
+
+![Le facteur aux boîtes aux lettres](../img/facteur.png)
+
+Sa tenue : chemise bleu ciel, gilet bleu marine, cravate jaune, sacoche en cuir (calques LPC, crédités dans `CREDITS.md`) et un képi dessiné pour le Bureau. Il passe aussi en mode TV et dans le rejeu, à l'identique.
+
 ## La fiche Courrier
 
 ![La fiche Courrier](../img/fiche-courrier.png)

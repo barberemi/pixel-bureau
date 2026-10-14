@@ -1,5 +1,5 @@
 {
- "_doc": "Invités communs à toutes les installations (avant ceux du profil d'équipe et de la config ; même clé = remplacé). Les hérauts : Gandalf au face-à-face d'un ticket réouvert, Yoda à côté de l'auteur d'une mise en prod réussie. Config : common_guests false pour les retirer.",
+ "_doc": "Invités communs à toutes les installations (avant ceux du profil d'équipe et de la config ; même clé = remplacé). Les hérauts : Gandalf au face-à-face d'un ticket réouvert, Yoda à côté de l'auteur d'une mise en prod réussie ; le facteur, qui dépose le courrier (#30, seulement avec un compte de courrier). Config : common_guests false pour les retirer.",
  "guests": [
   {
    "key": "g_gandalf",
@@ -16,6 +16,13 @@
    "role": "Héraut des mises en prod",
    "on": "prod",
    "shout": "Fier de toi, je suis."
+  },
+  {
+   "key": "g_facteur",
+   "name": "Le facteur",
+   "sprite": "facteur",
+   "role": "Facteur",
+   "on": "mail"
   }
  ]
 }

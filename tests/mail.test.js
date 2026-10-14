@@ -24,7 +24,7 @@ test('lecture du dataset : objet ou chaîne JSON, current des datasets Kronn ; a
 });
 
 test('boîte : nombre de mails utiles, « ? » tant qu\'aucune règle, « ! » si le compte est en échec', () => {
-  run(`MAILS = {sorted: true, accounts: []};`);
+  run(`MAILS = {sorted: true, accounts: []}; T = Date.parse('2026-10-01T12:00:00+02:00');`);
   assert.equal(J(`mailBadge(${JSON.stringify(acc('pro'))})`), '2');
   run(`MAILS.sorted = false;`);
   assert.equal(J(`mailBadge(${JSON.stringify(acc('pro'))})`), '?');
@@ -67,4 +67,37 @@ test('démo : deux comptes (appli Mail et IMAP), triés', () => {
   const d = J('MAILS');
   assert.equal(d.sorted, true);
   assert.deepEqual(d.accounts.map(a => [a.id, a.provider, a.useful_n]), [['pro', 'mac-mail', 3], ['perso', 'imap', 2]]);
+});
+
+// ---------- le facteur ----------
+const at = hm => `2026-10-01T${hm}:00+02:00`;
+const withMails = times => run(`MAILS = {generated_at: '${at('19:00')}', sorted: true, accounts: [{id: 'pro', label: 'Pro', ok: true, unread: ${times.length},
+  useful_n: ${times.length}, useful: ${JSON.stringify(times.map((t, i) => ({id: 'm' + i, name: 'X', subject: 's', at: t ? at(t) : null, direct: true})))}, ignored: []}]};`);
+const P = hm => J(`(s => ({st: s.st, bubble: s.bubble || null, label: s.label}))(postmanState(byKey.g_facteur, Date.parse('${at(hm)}')))`);
+
+test('facteur : un passage par arrivée, au plus un toutes les 30 min, la nuit reportée à l\'ouverture', () => {
+  withMails(['06:10', '06:50', '10:00', '10:10', '10:20', '10:45', '21:00']);
+  const v = J(`postVisits().map(v => [new Date(v.s).toISOString(), v.n])`);
+  assert.deepEqual(v, [['2026-10-01T06:00:00.000Z', 2], ['2026-10-01T08:00:00.000Z', 1], ['2026-10-01T08:30:00.000Z', 2],
+                       ['2026-10-01T09:00:00.000Z', 1]]); // 8h ; 10h ; 10h30 (10h10 et 10h20) ; 11h (10h45) ; 21h : le soir, rien
+});
+
+test('facteur : pas passé, en train de déposer « 📬 n » à côté des boîtes, puis reparti ; rien sans courrier', () => {
+  withMails(['10:00', '10:10']);
+  assert.equal(P('09:30').st, 'off');
+  assert.deepEqual(P('10:01'), {st: 'idle', bubble: '📬 1', label: 'Dépose 1 lettre dans les boîtes aux lettres'});
+  assert.equal(P('10:05').st, 'gone');
+  assert.match(P('10:20').label, /Passé à 10:00/);
+  assert.equal(P('10:31').bubble, '📬 1'); // celui de 10h10, au passage de 10h30
+  assert.deepEqual(J(`postSpot()`), [29, 10, 'left']); // à droite de la boîte (un compte)
+  run(`MAILS = null;`);
+  assert.equal(P('10:01').st, 'off');
+});
+
+test('rejeu : la boîte ne compte que les mails déjà arrivés à l\'instant affiché', () => {
+  withMails(['09:00', '11:00', null]);
+  run(`T = Date.parse('${at('10:00')}');`);
+  assert.equal(J(`mailCount(MAILS.accounts[0])`), 2); // 9h et celui sans heure
+  run(`T = Date.parse('${at('12:00')}');`);
+  assert.equal(J(`mailBadge(MAILS.accounts[0])`), '3');
 });

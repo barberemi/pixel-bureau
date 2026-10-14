@@ -155,6 +155,7 @@ function guestState(c,t){
   if(c.on==='mep')return mepVisitorState(c,t);
   if(c.on==='reopen')return heraldState(c,t); // 37-scenes.js : le héraut des tickets réouverts
   if(c.on==='prod')return prodHeraldState(c,t); // 37-scenes.js : le héraut des mises en prod réussies
+  if(c.on==='mail')return postmanState(c,t); // 48-mail.js : le facteur dépose le courrier
   const v=guestVisit(c,t);
   if(!v||t<v.s)return {st:'off',label:"Pas passé aujourd'hui"};
   if(t>=v.e)return {st:'gone',label:'Passé de '+hm(v.s)+' à '+hm(v.e)};

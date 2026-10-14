@@ -14,9 +14,9 @@ Le code du Bureau est sous licence [GNU AGPL 3.0](LICENSE).
 
 Les personnages sont composés de calques du [Universal LPC Spritesheet Character Generator](https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator), issus du Liberated Pixel Cup. Chaque calque garde sa licence, au choix parmi celles indiquées (CC-BY-SA 3.0, GPL 3.0, OGA-BY 3.0, CC0…) ; Le Bureau les redistribue sous GPL 3.0 quand elle est proposée, compatible avec l'AGPL 3.0 du code, et crédite chaque artiste ci-dessous. Calques embarqués dans la page : `sprites/layers.json` (liste des fichiers : `sprites/lpc_used.json`).
 
-### Les 30 artistes
+### Les 32 artistes
 
-Benjamin K. Smith (BenCreating), bluecarrot16, Carlo Enrico Victoria (Nemisys), Durrani, Eliza Wyatt (ElizaWy), ElizaWy, Evert, JaidynReiman, Joe White, Johannes Sjölund (wulax), kcilds/Rocetti/Eredah, kheftel, kirts, laetissima, Mandi Paugh, Manuel Riecke (MrBeast), Marcel van de Steeg (MadMarcel), Matthew Krohn (Makrohn), Matthew Krohn (makrohn), Michael Whitlock (bigbeargames), MuffinElZangano, Nila122, Page, Pierre Vigier (pvigier), Skorpio, Stephen Challener (Redshrike), Thane Brimhall (pennomi), thecilekli, TheraHedwig, Tuomo Untinen (reemax).
+Benjamin K. Smith (BenCreating), bluecarrot16, Carlo Enrico Victoria (Nemisys), Durrani, Eliza Wyatt (ElizaWy), ElizaWy, Evert, JaidynReiman, Joe White, Johannes Sjölund (wulax), kcilds/Rocetti/Eredah, kheftel, kirts, laetissima, macmanmatty, Makrohn, Mandi Paugh, Manuel Riecke (MrBeast), Marcel van de Steeg (MadMarcel), Matthew Krohn (Makrohn), Matthew Krohn (makrohn), Michael Whitlock (bigbeargames), MuffinElZangano, Nila122, Page, Pierre Vigier (pvigier), Skorpio, Stephen Challener (Redshrike), Thane Brimhall (pennomi), thecilekli, TheraHedwig, Tuomo Untinen (reemax).
 
 ### Calque par calque
 
@@ -85,6 +85,7 @@ Benjamin K. Smith (BenCreating), bluecarrot16, Carlo Enrico Victoria (Nemisys), 
 
 - Le mage (Gandalf) (`sprites/common/mage/`, recette `sprites/heralds.py`) : calques LPC `cape/solid/bg`, `body/bodies/male`, `feet/shoes/basic/male`, `legs/pants/male`, `torso/clothes/longsleeve/longsleeve/male`, `cape/solid/fg`, `head/heads/human/male`, `eyes/human/adult/default`, `hair/long/adult`, `beards/beard/winter/male`, `hat/magic/wizard/base/adult/gray` ; artistes : Benjamin K. Smith (BenCreating), bluecarrot16, Durrani, Eliza Wyatt (ElizaWy), ElizaWy, Evert, JaidynReiman, Johannes Sjölund (wulax), kirts, Manuel Riecke (MrBeast), Matthew Krohn (makrohn), Michael Whitlock (bigbeargames), MuffinElZangano, Nila122, Stephen Challener (Redshrike), TheraHedwig, Tuomo Untinen (reemax).
 - Le sage (Yoda) (`sprites/common/yoda/`, recette `sprites/heralds.py`) : calques LPC `cape/solid/bg`, `body/bodies/child`, `head/heads/human/child`, `head/ears/long/adult`, `eyes/human/adult/default`, `cape/solid/fg` ; artistes : Benjamin K. Smith (BenCreating), bluecarrot16, Durrani, ElizaWy, JaidynReiman, kheftel, kirts, MuffinElZangano, Nila122, Stephen Challener (Redshrike).
+- Le facteur (képi dessiné pour le Bureau) (`sprites/common/facteur/`, recette `sprites/heralds.py`) : calques LPC `body/bodies/male`, `feet/shoes/basic/male`, `legs/pants/male`, `torso/clothes/longsleeve/longsleeve/male`, `torso/clothes/vest/male/navy`, `neck/tie/necktie/male`, `head/heads/human/male`, `eyes/human/adult/default`, `hair/plain/adult`, `backpack/straps/male/leather`, `backpack/squarepack/male/leather` ; artistes : Benjamin K. Smith (BenCreating), bluecarrot16, Durrani, Eliza Wyatt (ElizaWy), ElizaWy, Evert, JaidynReiman, Joe White, Johannes Sjölund (wulax), kirts, laetissima, macmanmatty, Makrohn, Manuel Riecke (MrBeast), Matthew Krohn (makrohn), MuffinElZangano, Stephen Challener (Redshrike), Thane Brimhall (pennomi), TheraHedwig.
 - Le sorcier du pack d'exemple (`tests/fixtures/pack-exemple/sprites/sorcier/`) : copie du mage, mêmes crédits.
 
 ## Personnages

@@ -15,7 +15,9 @@ function readMails(src){
 const MAIL_ICON={'mac-mail':'💼',imap:'🏠'};
 const mailAccounts=()=>(MAILS&&MAILS.accounts||[]);
 // badge d'un compte : nombre de mails utiles, « ? » sans règles (le nombre ne veut rien dire), « ! » compte en erreur
-function mailBadge(a){return !a.ok?'!':MAILS.sorted?String(a.useful_n||0):'?';}
+function mailBadge(a){return !a.ok?'!':MAILS.sorted?String(mailCount(a)):'?';}
+// mails utiles déjà arrivés à l'instant affiché (rejeu) ; liste tronquée par le cron : le nombre du dataset
+function mailCount(a){const u=a.useful||[];return u.length<(a.useful_n||0)?a.useful_n||0:u.filter(m=>!m.at||ms(m.at)<=T).length;}
 // case de la première boîte : « mailbox » du plan, sinon la case de sol la plus proche à droite du bureau du boss, avec
 // la place pour toutes les boîtes côte à côte, hors de son bureau (parquet, vitres, murs), des portes et du paillasson
 function mailboxTile(){
@@ -30,7 +32,7 @@ function mailboxTile(){
 }
 let MAIL_HITS=[];
 function drawMailbox(bx,by,a){
-  const col=a.color||'#1f3f8f', badge=mailBadge(a), up=a.ok&&(a.useful_n||0)>0;
+  const col=a.color||'#1f3f8f', badge=mailBadge(a), up=a.ok&&mailCount(a)>0;
   R(ctx,bx+9,by+14,4,18,'#4a4a52');                                 // pied
   R(ctx,bx,by,22,16,col);R(ctx,bx+1,by+1,20,3,'rgba(255,255,255,.28)'); // caisson, reflet
   R(ctx,bx+4,by+7,14,2,'#0c1a3d');                                  // fente
@@ -51,6 +53,31 @@ function mailAt(mx,my){const h=MAIL_HITS.find(o=>mx>=o.x&&mx<=o.x+o.w&&my>=o.y&&
 function mailTip(id){
   const a=mailAccounts().find(x=>x.id===id); if(!a)return '';
   return 'Courrier · '+a.label+' : '+(!a.ok?'lecture en échec':!MAILS.sorted?a.unread+' non lus, pas encore triés':plural(a.useful_n||0,'mail utile','mails utiles')+' sur '+a.unread+' non lus');
+}
+// ---------- le facteur (invité commun on: « mail ») : il dépose le courrier aux boîtes, puis repart ----------
+// Un passage à l'arrivée d'un mail utile, au plus un toutes les 30 min (les mails arrivés entre-temps attendent le
+// suivant), aux heures du bureau (arrivés la nuit : au premier passage du matin). Tout se déduit de l'heure d'arrivée
+// des mails : le rejeu le rejoue à l'identique.
+const POST_EVERY=30*60e3, POST_STAY=2*60e3;
+function postVisits(){
+  const [h0,h1]=RHYTHM.office_hours||[8,20], visits=[];
+  const arr=mailAccounts().filter(a=>a.ok).flatMap(a=>(a.useful||[]).map(m=>ms(m.at))).filter(Boolean).sort((x,y)=>x-y);
+  for(const t of arr){
+    const p=parisHM(t), m=p.h+p.m/60;
+    if(m>=h1)continue; // le soir : rien ce jour-là (le cron reprend le lendemain)
+    const at=m<h0?parisMidnight(t)+h0*36e5:t, last=visits[visits.length-1];
+    if(last&&at<=last.s){last.n++;continue;}
+    visits.push({s:last?Math.max(at,last.s+POST_EVERY):at,n:1});
+  }
+  return visits;
+}
+// à côté de la dernière boîte, tourné vers elles
+function postSpot(){const [x,y]=mailboxTile();return [x+Math.max(1,mailAccounts().length),y,'left'];}
+function postmanState(c,t){
+  if(!mailAccounts().length)return {st:'off',label:'Pas de courrier branché'};
+  const vs=postVisits().filter(v=>parisDay(v.s)===parisDay(t)), cur=vs.find(v=>t>=v.s&&t<v.s+POST_STAY), past=vs.filter(v=>v.s+POST_STAY<=t);
+  if(cur)return {st:'idle',zone:'visit',visit:postSpot(),label:'Dépose '+plural(cur.n,'lettre','lettres')+' dans les boîtes aux lettres',bubble:'📬 '+cur.n};
+  return past.length?{st:'gone',label:'Passé à '+hm(past[past.length-1].s)}:{st:'off',label:"Pas encore passé aujourd'hui"};
 }
 // ---------- fiche « Courrier » : un compte par section (celui de la boîte cliquée en premier) ----------
 function mailWhen(iso){

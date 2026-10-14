@@ -205,6 +205,10 @@ SHOTS = {
                  "k=r.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(mx-9)*TS*k)+'px',"
                  "top:(r.top+scrollY+(my-5)*TS*k)+'px',width:14*TS*k+'px',height:7*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 2),
     "fiche-courrier": (1400, 1400, AT(11) + "select('mail:pro');", "#side"),
+    # le facteur dépose le courrier arrivé à 10h42 (démo), à côté des boîtes, puis repart
+    "facteur": (1400, 1000, AT(10 + 43 / 60) + "setTimeout(()=>{const [mx,my]=mailboxTile(),c=document.querySelector('#cv'),r=c.getBoundingClientRect(),"
+                "k=r.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(mx-9)*TS*k)+'px',"
+                "top:(r.top+scrollY+(my-5)*TS*k)+'px',width:14*TS*k+'px',height:7*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 2),
     "croquis-brouillon": (1400, 1000, AT(11), "#cv", 1.5, "guide/exemples/plan-croquis.json"),
 }
 # captures qui ne visent aucun personnage de la démo : valables avec n'importe quelle équipe (--team)

@@ -454,13 +454,13 @@ class GuestsTest(unittest.TestCase):
         pack = os.path.join(ROOT, "tests", "fixtures", "pack-exemple")
         cfg = {"team": pack, "guests": [{"key": "g_x", "name": "X"}]}
         profile = [g["key"] for g in json.load(open(os.path.join(pack, "roster.json")))["guests"]]
-        self.assertEqual([g["key"] for g in assemble.guests(cfg)], ["g_gandalf", "g_yoda"] + profile + ["g_x"])
+        self.assertEqual([g["key"] for g in assemble.guests(cfg)], ["g_gandalf", "g_yoda", "g_facteur"] + profile + ["g_x"])
         self.assertIn("g_hank", profile)
-        self.assertEqual([g["key"] for g in assemble.guests({})], ["g_gandalf", "g_yoda"])  # toute installation, même sans équipe
+        self.assertEqual([g["key"] for g in assemble.guests({})], ["g_gandalf", "g_yoda", "g_facteur"])  # toute installation, même sans équipe
         self.assertEqual(assemble.guests({"common_guests": False}), [])
         renamed = assemble.guests({"guests": [{"key": "g_yoda", "name": "Le sage", "sprite": "yoda", "on": "prod"}]})
-        self.assertEqual([(g["key"], g["name"]) for g in renamed], [("g_gandalf", "Gandalf"), ("g_yoda", "Le sage")])  # même clé : remplacé
-        self.assertTrue({"yoda", "mage"} <= set(assemble.sprites({})))  # planches communes (sprites/common.json)
+        self.assertEqual([(g["key"], g["name"]) for g in renamed], [("g_gandalf", "Gandalf"), ("g_facteur", "Le facteur"), ("g_yoda", "Le sage")])  # même clé : remplacé (et passé en dernier)
+        self.assertTrue({"yoda", "mage", "facteur"} <= set(assemble.sprites({})))  # planches communes (sprites/common.json)
         self.assertIn("sorcier", assemble.sprites(cfg))  # sa planche, tirée de sprites/sorcier/ du pack
         html = assemble.build(demo=False, cfg=dict(json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"))), team=pack))
         self.assertIn('"guests": [{"key": "g_gandalf"', html)
