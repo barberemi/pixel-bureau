@@ -135,7 +135,7 @@ See the Test policy parameter above (§ Project parameters). Checklist: [testing
 | Squelette de la page | `page/office_template.html` [src: file: guide/developpement.md:7] |
 | Script de la page (concaténé dans l'ordre des noms) | `page/src/NN-*.js` [src: file: guide/developpement.md:9] |
 | Assemblage, config de la page, roster, heures des crons | `tools/assemble.py` (`page_config`, `roster`, `defaults`, `cron_hours`, `JIRA_FLOW`) [src: file: tools/assemble.py:107] [src: file: tools/assemble.py:150] [src: file: tools/assemble.py:79] [src: file: tools/assemble.py:126] |
-| Modèles des 15 workflows (7 crons, 8 manuels) et 2 Quick Prompts | `workflows/templates/*.json`, rendus par `tools/templates.py` [src: file: tools/templates.py:24] [src: file: tools/templates.py:251] |
+| Modèles des 16 workflows (7 crons, 9 manuels) et 2 Quick Prompts | `workflows/templates/*.json`, rendus par `tools/templates.py` [src: file: tools/templates.py:24] [src: file: tools/templates.py:251] |
 | Socle des scripts de cron / règles des plans | `workflows/_lib.py`, `workflows/_plan.py` [src: file: guide/developpement.md:10] |
 | Format des plans de bureau (`bureau-layout/1`) | `layouts/*.json`, vérifiés par `tools/plan.py check` [src: file: guide/developpement.md:11] [src: file: guide/developpement.md:97] |
 | Profils et packs d'équipe | pack hors du dépôt (clé `team` = chemin) ou `teams/<équipe>/` local, jamais livré (`team.json`, `roster.json`, `defaults.json`) ; exemple fictif `tests/fixtures/pack-exemple/` [src: file: guide/developpement.md:13] [src: file: docs/conventions/pack-equipe.md:1] |

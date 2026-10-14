@@ -41,6 +41,21 @@ Tu n'écris pas les règles toi-même : **le facteur vient les proposer**.
 - **Ensuite**, le facteur revient quand au moins 10 expéditeurs ne sont couverts par aucune règle, au plus une fois par semaine. Pour le faire venir tout de suite : **📮 Revoir mes règles** en bas de la fiche Courrier, ou `python3 tools/mail.py rules`.
 - Coût : une proposition d'agent au premier passage, puis au plus une par semaine ; le relevé du courrier, lui, reste à 0 token.
 
+## Les porteurs : des mails remis en personne
+
+Certains mails méritent mieux qu'une boîte aux lettres. Une règle de porteur dit lesquels (un texte dans l'objet, un expéditeur ou un domaine) et qui les apporte : un invité de ton équipe, avec son avatar. Quand un tel mail arrive, il entre, vient devant ton bureau avec sa bulle (« ✋ 📰 Gazette ») et **attend que tu l'aies lu**. Il compte avec ce qui attend ta réponse.
+
+![Un porteur devant le bureau du boss](../img/porteur.png)
+
+- Le mail n'est pas compté dans la boîte : il est en tête de la fiche Courrier, « remis en personne », avec **Lu ✓** (il le marque lu dans ta messagerie, et le porteur repart) et « Ouvrir ↗ ».
+- Le lire dans l'appli Mail ou dans Gmail suffit aussi : le porteur repart au relevé suivant.
+- Une règle peut fixer un moment : par exemple, les mails reçus le vendredi remis le lundi à 9h.
+- En mode TV, on voit le porteur et sa bulle, jamais l'objet du mail.
+
+![La carte « remis en personne »](../img/fiche-porteur.png)
+
+Les règles de porteur vont dans `mail.messengers`, et l'avatar du porteur dans le pack de ton équipe (un invité de son roster) : voir le [guide de développement](../developpement.md#courrier-cron-courrier).
+
 ## Mise en place
 
 - À l'installation (`python3 tools/install.py`), réponds oui à « Afficher ton courrier » : il propose les comptes de l'appli Mail, puis des comptes IMAP. Pour un Gmail : un mot de passe d'application (myaccount.google.com/apppasswords), rangé dans le trousseau macOS, jamais dans la config ; seulement l'onglet Principal si tu veux.

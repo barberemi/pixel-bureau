@@ -343,7 +343,8 @@ button.wc.on{background:color-mix(in srgb,var(--accent) 14%,var(--panel));color:
 .ml-top{display:flex;justify-content:space-between;gap:8px}.ml-t{color:var(--muted);font-size:12px;white-space:nowrap}
 .ml-s{margin:2px 0 4px;overflow-wrap:anywhere}
 .ml-tags{display:flex;gap:6px;align-items:center;font-size:12px}.ml-tag{padding:0 5px;border:1px solid var(--muted);color:var(--muted)}
-.ml-open{margin-left:auto}.ml-ign,.ml-hid{color:var(--muted);font-size:12px;margin:4px 0}.ml-err{color:var(--err);font-size:12px;margin:4px 0}
+.ml-open{margin-left:auto}
+.ml-hand{background:var(--chip);padding:6px 8px;margin:8px 0 12px;border:2px solid var(--warn)}.ml-wait{border-color:var(--warn)!important;color:var(--warn)!important}.ml-read{font:inherit;padding:0 8px;cursor:pointer}.ml-ign,.ml-hid{color:var(--muted);font-size:12px;margin:4px 0}.ml-err{color:var(--err);font-size:12px;margin:4px 0}
 .calbox h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:14px 0 6px}
 .calbox .sub{font-size:12px;color:var(--muted);margin:4px 0}
 .calbox .calk{color:var(--ok)}

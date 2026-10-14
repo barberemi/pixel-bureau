@@ -84,6 +84,29 @@ function postmanState(c,t){
   if(cur)return {st:'idle',zone:'visit',visit:postSpot(),label:'Dépose '+plural(cur.n,'lettre','lettres')+' dans les boîtes aux lettres',bubble:'📬 '+cur.n};
   return past.length?{st:'gone',label:'Passé à '+hm(past[past.length-1].s)}:{st:'off',label:"Pas encore passé aujourd'hui"};
 }
+// ---------- porteurs (mail.messengers) : un invité remet en personne les mails d'une règle, jusqu'à leur lecture ----------
+// Le cron sort ces mails du tri (carried, hors du compteur). L'invité de la règle (carrier = sa clé) vient devant le bureau
+// du boss à leur arrivée (ou au créneau de la règle : {received: 'fri', deliver: 'mon 09:00'}) et y reste tant qu'ils
+// ne sont pas lus (ils disparaissent du dataset au relevé suivant, ou tout de suite avec « Lu ✓ »).
+const WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function carryStart(m){
+  const t=ms(m.at); if(!t)return 0;
+  const w=m.when;
+  if(w&&typeof w==='object'&&w.received&&w.deliver&&parisHM(t).wd===w.received){
+    const [dd,hh]=String(w.deliver).split(' '), [h,mi]=(hh||'09:00').split(':').map(Number), d=WD.findIndex(x=>x.toLowerCase()===String(dd).toLowerCase().slice(0,3));
+    let day=parisMidnight(t)+864e5;
+    for(let i=0;i<7&&d>=0&&parisHM(day+12*36e5).wd!==WD[d];i++)day+=864e5;
+    return day+(h*60+(mi||0))*60e3;
+  }
+  const [h0]=RHYTHM.office_hours||[8,20], p=parisHM(t);
+  return p.h<h0?parisMidnight(t)+h0*36e5:t;
+}
+function carriedFor(c,t){return mailAccounts().filter(a=>a.ok).flatMap(a=>(a.carried||[]).map(m=>({...m,acc:a.id}))).filter(m=>m.carrier===c.key&&carryStart(m)<=t);}
+function messengerState(c,t){
+  const l=carriedFor(c,t); if(!l.length)return null;
+  return {st:'gate',zone:'gate',label:'Te remet '+plural(l.length,'mail','mails')+' en personne ('+l[0].rule+') : attend que tu les lises',
+    bubble:'✋ '+l[0].bubble+(l.length>1?' · '+l.length:'')};
+}
 // ---------- fiche « Courrier » : un compte par section (celui de la boîte cliquée en premier) ----------
 function mailWhen(iso){
   if(!iso)return '';
@@ -105,6 +128,14 @@ function renderMail(side,first){
   if(!acc.length){box.innerHTML='<p class="sub">Pas de compte : le courrier se branche à l\'installation.</p>';side.appendChild(box);return;}
   const n=acc.reduce((s,a)=>s+(a.ok?a.useful_n||0:0),0);
   let html=`<p class="sub">${MAILS.sorted?plural(n,'mail utile','mails utiles'):'Pas encore trié : le facteur viendra proposer tes règles'} · relevé à ${hm(ms(MAILS.generated_at))}${MAILS.demo?' (démo)':''}</p>`;
+  const hand=acc.filter(a=>a.ok).flatMap(a=>(a.carried||[]).map(m=>({...m,acc:a})));
+  for(const m of hand){ // remis en personne : en tête, avec « Lu ✓ »
+    const href=safeMailUrl(m.open);
+    html+=`<div class="ml-hand" style="--c:${esc(m.acc.color||'var(--accent)')}"><div class="ml-top"><b>${esc(m.bubble)} · remis en personne · ${esc(m.acc.label)}</b><span class="ml-t">${esc(mailWhen(m.at))}</span></div>`+
+      `<div class="ml-s">${esc(m.subject||'(sans objet)')}${m.name?' · '+esc(m.name):''}</div><div class="ml-tags" data-kronn-action-slot-host><span class="ml-tag ml-wait">attend ta lecture</span>`+
+      (ACTIONS.mail_read?`<button class="ml-read" data-kronn-action="bureau-mailread" data-kronn-bindings='${esc(JSON.stringify({id:m.acc.id+'|'+m.id}))}'>Lu ✓</button>`:'')+
+      (href?`<a class="ml-open" href="${esc(href)}" target="_blank" rel="noopener">Ouvrir ↗</a>`:'')+`</div></div>`;
+  }
   for(const a of acc){
     html+=`<section class="ml-acc" style="--c:${esc(a.color||'var(--accent)')}"><div class="ml-head"><b>${MAIL_ICON[a.provider]||'📬'} ${esc(a.label)}${a.ok?' · '+(MAILS.sorted?a.useful_n:'?'):''}</b>`+
       `<small>${a.provider==='imap'?'IMAP':'appli Mail'} · ${a.unread||0} non lus</small></div>`;

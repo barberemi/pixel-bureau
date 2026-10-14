@@ -110,3 +110,31 @@ test('règles : le facteur attend devant le bureau du boss tant que leur validat
   run(`GATES = [];`);
   assert.equal(P('10:45').st, 'gone');
 });
+
+// ---------- porteurs ----------
+const carried = (hm, when) => ({id: 'y1', name: 'Rédaction', subject: 'Programme du week-end', at: at(hm), direct: true, rule: 'gazette', carrier: 'g_david', bubble: '📰 Gazette', when: when || 'arrival'});
+const S = (k, hm) => J(`(s => s && ({st: s.st, bubble: s.bubble || null}))(messengerState(byKey.${k}, Date.parse('${at(hm)}')))`);
+
+test('porteur : l\'invité de la règle attend devant le bureau du boss, dès l\'arrivée et tant que le mail est là', () => {
+  run(`MAILS = {generated_at: '${at('19:00')}', sorted: true, accounts: [{id: 'pro', label: 'Pro', ok: true, unread: 1, useful_n: 0, useful: [], ignored: [], carried: [${JSON.stringify(carried('11:05'))}]}]};`);
+  assert.equal(S('g_david', '11:00'), null);
+  assert.deepEqual(S('g_david', '11:10'), {st: 'gate', bubble: '✋ 📰 Gazette'});
+  assert.equal(J(`stateAt(byKey.g_david, Date.parse('${at('11:10')}')).st`), 'gate');
+  run(`MAILS.accounts[0].carried = [];`);
+  assert.equal(S('g_david', '11:10'), null);
+});
+
+test('porteur : reçu le vendredi, remis le lundi au créneau de la règle', () => {
+  const fri = '2026-10-02T15:00:00+02:00';
+  run(`MAILS = {sorted: true, accounts: [{id: 'pro', ok: true, carried: [${JSON.stringify({...carried('11:00'), at: fri, when: {received: 'Fri', deliver: 'Mon 09:00'}})}]}]};`);
+  assert.equal(J(`new Date(carryStart(MAILS.accounts[0].carried[0])).toISOString()`), '2026-10-05T07:00:00.000Z');
+});
+
+test('fiche : la carte « Remis en personne » en tête, avec « Lu ✓ » lié au mail', () => {
+  run(`ACTIONS.mail_read = true; MAILS = {generated_at: '${at('11:00')}', sorted: true, accounts: [{id: 'pro', label: 'Pro', ok: true, unread: 1, useful_n: 0, useful: [], ignored: [], carried: [${JSON.stringify(carried('11:05'))}]}]};`);
+  const h = fiche('pro');
+  assert.match(h, /📰 Gazette · remis en personne · Pro/);
+  assert.match(h, /data-kronn-action="bureau-mailread"/);
+  assert.match(h, /&quot;id&quot;:&quot;pro\|y1&quot;/);
+  run(`ACTIONS.mail_read = false;`);
+});
