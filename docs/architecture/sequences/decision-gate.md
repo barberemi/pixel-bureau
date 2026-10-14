@@ -1,6 +1,6 @@
 # Décider une gate depuis la page
 
-Cette séquence décrit comment le boss approuve, rejette ou renvoie une gate d'un workflow d'agent depuis la page. Elle commence au clic sur une carte de gate (bouton `data-kronn-action="bureau-gate"`, lié à la ligne `run` du dataset `gates`) [src: file: page/src/55-actions.js:96] et se termine quand Kronn a changé le statut du run et que le cron live republie `gates` sans cette ligne. Elle touche la page, Kronn (action de page et workflow manuel « Le Bureau · décision gate ») et le script `gate_decide.py` [src: file: workflows/templates/gate.json:8].
+Cette séquence décrit comment le boss approuve, rejette ou renvoie une gate d'un workflow d'agent depuis la page. Elle commence au clic sur un des trois boutons d'une carte de gate (Approuver, Rejeter, Changements ; `data-kronn-action="bureau-gate"`, chacun lié à sa ligne de `gates.grows`) [src: file: page/src/55-actions.js:105] et se termine quand Kronn a changé le statut du run et que le cron live republie `gates` sans cette ligne. Elle touche la page, Kronn (action de page et workflow manuel « Le Bureau · décision gate ») et le script `gate_decide.py` [src: file: workflows/templates/gate.json:8].
 
 ```mermaid
 sequenceDiagram
@@ -11,10 +11,10 @@ sequenceDiagram
     participant Script as gate_decide.py
     participant Api as Kronn API locale
 
-    Boss->>Page: clic sur la carte de gate
-    Page->>Kronn: data-kronn-action bureau-gate avec run_id
-    Kronn-->>Boss: carte avec decision et commentaire
-    Boss->>Kronn: approve, reject ou request_changes
+    Boss->>Page: clic sur Approuver, Rejeter ou Changements
+    Page->>Kronn: data-kronn-action bureau-gate, ligne run et decision de grows
+    Kronn-->>Boss: carte avec la decision et un commentaire
+    Boss->>Kronn: Lancer
     Kronn->>Wf: lance le workflow avec run_id, decision, comment
     Wf->>Script: python3 -c avec les trois arguments
     Script->>Api: GET pages id pour relire le dataset gates
@@ -28,7 +28,7 @@ sequenceDiagram
 
 ## Notes
 
-- Le `run_id` n'est jamais saisi : Kronn le relit dans le dataset `gates` (`dynamic_binding`, `find(run)`) [src: file: page/office_template.html:95].
+- Ni `run_id` ni `decision` ne sont saisis : Kronn les relit dans la ligne cliquée de `gates.grows` (`dynamic_binding`, `find(id)`, une ligne par gate et par décision) [src: file: page/office_template.html:95] [src: file: workflows/gates_snapshot.py:131].
 - Le script retrouve workflow et étape dans le même dataset et envoie `gate_step` : Kronn refuse une décision périmée (le run n'attend plus cette gate) [src: file: workflows/gate_decide.py:7].
 - `request_changes` sans commentaire échoue avant tout appel [src: file: workflows/gate_decide.py:38].
 - La page observe `data-kronn-action-state` pour mettre à jour la carte [src: file: page/src/55-actions.js:103].

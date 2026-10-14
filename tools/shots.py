@@ -113,7 +113,7 @@ SHOTS = {
     "avatar": (1400, 1600, AT(11) + "select('jim');openEditor(byKey.jim);", "#side"),
     # plan d'équipe proposé par « python3 tools/plan.py share » : la validation dans la fiche du boss (pas de personnage pour ce workflow)
     "validation-plan": (1400, 1200, AT(11) + "GATES=[{run:'demo',wf:'00000000-demo',wf_name:'Le Bureau · plan',gate:'boss',"
-                        "since:new Date(Date.now()-12*60e3).toISOString(),message:\"Plan du bureau de toute l'équipe : valider pour l'appliquer, rejeter pour garder le plan actuel.\\n\\n"
+                        "since:new Date(DAY0+10.8*36e5).toISOString(),message:\"Plan du bureau de toute l'équipe : valider pour l'appliquer, rejeter pour garder le plan actuel.\\n\\n"
                         "Nouveau plan : Plateau web, 2e étage (40 x 20 cases, 36 sièges, 22 places attribuées).\\n"
                         "Places qui changent : p_gabe I2.R3 → I3.R3, dwight I4.L1 → I6.L1.\"}];select(chars.find(c=>c.boss).key);", "#side"),
     # la même validation vue sur le plan : le boss reste à son bureau avec la bulle ✋1 (zone rognée posée sur la toile, comme canard-attend)
