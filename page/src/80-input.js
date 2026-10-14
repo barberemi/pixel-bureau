@@ -50,8 +50,8 @@ cv.addEventListener('click',e=>{if(TV)return;const c=hitTest(e);if(c){select(c.k
 const slider=document.getElementById('slider'), playBtn=document.getElementById('play'), liveBtn=document.getElementById('live'), speedSel=document.getElementById('speed');
 function setMode(m){
   mode=m;
-  liveBtn.classList.toggle('on',m==='live');
-  playBtn.classList.toggle('on',m==='play');
+  liveBtn.classList.toggle('on',m==='live');liveBtn.setAttribute('aria-pressed',String(m==='live'));
+  playBtn.classList.toggle('on',m==='play');playBtn.setAttribute('aria-pressed',String(m==='play'));
   playBtn.textContent=m==='play'?'❚❚ Pause':'▶ Rejouer';
   updateBadge();
 }

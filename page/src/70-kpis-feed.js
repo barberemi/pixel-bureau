@@ -397,7 +397,7 @@ function renderFeedList(view,all=FEED_ALL){
   const ttl=document.getElementById('feedtitle'), w=dataDayWord();
   if(ttl)ttl.textContent=w==="aujourd'hui"?'Fil de la journée':'Fil de la journée · '+w;
   const seg=document.getElementById('feedmode');
-  if(seg)seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.mode===FEED_MODE));
+  if(seg)seg.querySelectorAll('button').forEach(b=>{const on=b.dataset.mode===FEED_MODE;b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));});
   const tys=document.getElementById('feedtypes');
   if(tys){const n={};all.forEach(e=>{const k=e.ty||'equipe';n[k]=(n[k]||0)+1;});
     const th=FEED_TYPES.map(([k,l,i])=>`<button data-ty="${k}" class="${FEED_OFF.has(k)?'':'on'}" aria-pressed="${!FEED_OFF.has(k)}" title="${FEED_OFF.has(k)?'Montrer':'Masquer'} : ${l}">${i} ${l} <small>${n[k]||0}</small></button>`).join('');

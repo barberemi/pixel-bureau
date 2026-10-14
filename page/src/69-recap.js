@@ -30,6 +30,7 @@ function recapData(t){
 function renderRecap(){
   const box=document.getElementById('recap'); if(!box||!DATA)return;
   if(RECAP_OPEN===null){if(!LIVE_DATA&&!DEMO)return;RECAP_OPEN=parisHM(Date.now()).h<RECAP_AUTO_H;}
+  document.getElementById('recapbtn')?.setAttribute('aria-expanded',String(RECAP_OPEN));
   if(!RECAP_OPEN){if(RECAP_SIG){RECAP_SIG='';box.innerHTML='';box.hidden=true;}return;}
   const d=recapData(T), li=[];
   const names=(l,n)=>esc(l.slice(0,n).join(', '))+(l.length>n?'…':'');

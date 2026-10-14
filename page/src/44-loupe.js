@@ -135,7 +135,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape'&&LOUPE.cur)loupeHide();});
 function setLoupe(on,remember=true){
   LOUPE_ON=on;if(!on){LOUPE.queue=[];loupeHide();}
   if(remember)try{localStorage.setItem('bureau:loupe',on?'1':'0');}catch(e){}
-  const b=document.getElementById('loupebtn');if(b)b.classList.toggle('on',on);
+  const b=document.getElementById('loupebtn');if(b){b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));}
 }
 document.getElementById('loupebtn')?.addEventListener('click',()=>setLoupe(!LOUPE_ON));
 setLoupe(LOUPE_ON,false);

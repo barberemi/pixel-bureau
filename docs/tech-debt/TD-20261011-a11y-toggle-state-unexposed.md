@@ -11,6 +11,10 @@ metadata:
       status: Confirmed by user
       reviewer: Kronn audit validation card
       note: "Confirmed through an audit validation card."
+    - date: 2026-10-15
+      status: Resolved
+      reviewer: mainteneur
+      note: "#4 : aria-pressed tenu à jour avec la classe on sur Direct, Rejouer, Loupe et Important / Tout ; aria-expanded et aria-controls=recap sur Récap ; état de départ posé dans le squelette."
 ---
 
 # TD-20261011-a11y-toggle-state-unexposed
@@ -19,7 +23,7 @@ metadata:
 - **WCAG**: 4.1.2 Name, Role, Value
 - **Area**: ARIA
 - **Severity**: Low
-- **Status**: Confirmed by user
+- **Status**: Resolved (2026-10-15, #4)
 - **Effort**: S (< 1h)
 - **Blast radius**: local (3-4 files)
 
