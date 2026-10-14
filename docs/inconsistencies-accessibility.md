@@ -5,12 +5,12 @@ Périmètre : la page (`page/office_template.html` + `page/src/*.js` + `page/src
 | ID | Problem | Area | Severity |
 |----|---------|------|----------|
 | [TD-20261011-a11y-canvas-mouse-only](tech-debt/TD-20261011-a11y-canvas-mouse-only.md) | Zones du plan (canard, pages du boss, Kanban, planning, calendrier, employé du mois) et infobulles des piles accessibles seulement à la souris sur le `<canvas>` | Clavier | Medium |
-| [TD-20261011-a11y-clickable-divs](tech-debt/TD-20261011-a11y-clickable-divs.md) | Tuiles KPI (`<section data-open>`), lignes du fil (`<div class="ev">`) et légende de la loupe (`<div class="lh">`) cliquables mais non focalisables | Clavier | Medium |
-| [TD-20261011-a11y-bosspages-modal-focus](tech-debt/TD-20261011-a11y-bosspages-modal-focus.md) | La modale « Mes pages Kronn » (`aria-modal="true"`) ne piège pas le focus et ne le rend pas à la fermeture | Focus | Low |
-| [TD-20261011-a11y-toggle-state-unexposed](tech-debt/TD-20261011-a11y-toggle-state-unexposed.md) | Boutons bascule (Direct/Rejouer, Loupe, Important/Tout, Récap) : état porté par la classe `on` seule, sans `aria-pressed` / `aria-expanded` | ARIA | Low |
+| [TD-20261011-a11y-clickable-divs](tech-debt/TD-20261011-a11y-clickable-divs.md) | **Résolu le 2026-10-15 (#2).** Tuiles KPI (`<section data-open>`), lignes du fil (`<div class="ev">`) et légende de la loupe (`<div class="lh">`) cliquables mais non focalisables | Clavier | Medium |
+| [TD-20261011-a11y-bosspages-modal-focus](tech-debt/TD-20261011-a11y-bosspages-modal-focus.md) | **Résolu le 2026-10-15 (#1).** La modale « Mes pages Kronn » (`aria-modal="true"`) ne piège pas le focus et ne le rend pas à la fermeture | Focus | Low |
+| [TD-20261011-a11y-toggle-state-unexposed](tech-debt/TD-20261011-a11y-toggle-state-unexposed.md) | **Résolu le 2026-10-15 (#4).** Boutons bascule (Direct/Rejouer, Loupe, Important/Tout, Récap) : état porté par la classe `on` seule, sans `aria-pressed` / `aria-expanded` | ARIA | Low |
 | [TD-20261011-a11y-heading-structure](tech-debt/TD-20261011-a11y-heading-structure.md) | Saut `<h1>` → `<h4>` dans l'aide de la légende ; `<h2 role="button">` efface la sémantique de titre des groupes | Sémantique | Low |
 | [TD-20261011-a11y-skip-link-main-landmark](tech-debt/TD-20261011-a11y-skip-link-main-landmark.md) | Pas de lien d'évitement ni de repère `<main>` (le contenu est dans `<div class="main">`) | Sémantique | Low |
-| [TD-20261011-a11y-reduced-motion-canvas](tech-debt/TD-20261011-a11y-reduced-motion-canvas.md) | `prefers-reduced-motion` respecté en CSS seulement (bandeau TV, flash) ; animations du plan, effets de thème et loupe automatique l'ignorent | Mouvement | Low |
+| [TD-20261011-a11y-reduced-motion-canvas](tech-debt/TD-20261011-a11y-reduced-motion-canvas.md) | **Résolu le 2026-10-15 (#3).** `prefers-reduced-motion` respecté en CSS seulement (bandeau TV, flash) ; animations du plan, effets de thème et loupe automatique l'ignorent | Mouvement | Low |
 
 ## Checklist
 
