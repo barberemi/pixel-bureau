@@ -18,6 +18,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 - Un bouton du panneau de droite qui ne répondait pas de temps en temps (la carte Kronn ne s'ouvrait pas) : le panneau ne se redessine plus pendant un clic.
 - Les miniatures de « Mes pages Kronn » sur l'écran du boss avaient disparu : les versions récentes de Chrome se ferment seules après la capture, et le cron perdait l'image en voulant l'arrêter.
+- Des crons du Bureau refusés de temps en temps (« étape __workspace__ ») quand plusieurs partaient à la même minute : ils se déclarent désormais sans écriture dans le dossier du projet, et Kronn ne les fait plus attendre.
 
 ## [0.1.0] - 2026-10-13
 

@@ -78,6 +78,7 @@ If T0–T2 are insufficient, state which additional file you need and why. Never
 - **Toucher à `.gitignore`**, ni commiter `bureau.config.json` (propre à chaque installation) [src: file: .gitignore:2] [src: file: docs/briefing.md:23].
 - **Éditer `dist/`** : on édite `page/src/*` et `page/office_template.html` ; `dist/office.html` est produit par `tools/assemble.py` [src: file: guide/developpement.md:48] [src: file: tools/assemble.py:316].
 - **Ajouter un `import`, un module ou une ressource externe** dans la page : sandbox inline seulement (images et polices en `data:`), HTML de moins de 1 Mo [src: file: guide/developpement.md:48].
+- **Écrire dans le dossier du projet depuis un script de cron** : `~/.cache/pixel-bureau` ou un dossier temporaire seulement ; chaque modèle déclare `workspace_config.main_tree_read_only` (sinon verrou du dossier principal de Kronn) [src: file: tests/test_templates.py:36].
 - **Écrire `{{` ou `@@` dans un script de `workflows/`** (emplacements de rendu et variables Kronn) ; sortie d'étape Exec sous 100 Ko [src: file: guide/developpement.md:73] [src: file: guide/developpement.md:76].
 - **Importer un fichier voisin dans un script de cron** autrement que par `_lib.py` / `_plan.py`, recopiés au rendu (Kronn lance `python3 -c`) [src: file: guide/developpement.md:10].
 - **Réécrire `guide/`** (doc humaine) : `docs/` = doc pour agents [src: file: docs/briefing.md:27].

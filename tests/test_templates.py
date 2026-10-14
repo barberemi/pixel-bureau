@@ -33,6 +33,16 @@ class TemplatesTest(unittest.TestCase):
             text = json.dumps(t)
             self.assertFalse(own & set(UUID.findall(text)), f"{key} contient un id de l'installation de référence")
 
+    def test_workflows_never_take_the_main_checkout_lock(self):
+        """Les scripts du Bureau n'écrivent que dans ~/.cache et des dossiers temporaires : chaque workflow le déclare
+        (main_tree_read_only), sinon Kronn le fait attendre le dossier du projet et le refuse au-delà de 60 s quand
+        plusieurs crons partent à la même minute (étape __workspace__ en échec)."""
+        for key, t in TPL.items():
+            if t["kind"] != "workflow":
+                continue
+            self.assertEqual(t["definition"].get("workspace_config"),
+                             {"hooks": {}, "require_isolation": False, "main_tree_read_only": True}, key)
+
     def test_render_for_a_colleague(self):
         cfg = colleague()
         for key, t in TPL.items():
