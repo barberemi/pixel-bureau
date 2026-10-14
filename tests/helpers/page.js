@@ -115,7 +115,7 @@ function stub(name) {
   return p;
 }
 
-function load({kronnPageData, owner, demo, actions, config, layout} = {}) {
+function load({kronnPageData, owner, demo, actions, config, layout, globals} = {}) {
   const storage = new Map();
   const localStorage = {
     getItem: k => (storage.has(k) ? storage.get(k) : null),
@@ -139,6 +139,7 @@ function load({kronnPageData, owner, demo, actions, config, layout} = {}) {
     btoa: s => Buffer.from(s, 'binary').toString('base64'),
     KronnPageData: kronnPageData,
   };
+  Object.assign(ctx, globals); // globaux du navigateur simulés par un test (matchMedia…)
   ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(pageJs(owner, {demo, actions, config, layout}), ctx, {filename: 'office.js'});

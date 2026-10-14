@@ -415,7 +415,7 @@ document.getElementById('feed').addEventListener('click',ev=>{
     if(lk.dataset.who){ev.preventDefault();select(lk.dataset.who);}
     else if(lk.hasAttribute('data-mep')){ev.preventDefault();select('tv');}
     else if(lk.hasAttribute('data-sprint')){ev.preventDefault();const s=document.querySelector('#kpis .sprint'); // la tuile du sprint
-      if(s){s.scrollIntoView({behavior:'smooth',block:'center'});s.classList.remove('flash');void s.offsetWidth;s.classList.add('flash');}}
+      if(s){s.scrollIntoView({behavior:SCROLL_BEHAVIOR,block:'center'});s.classList.remove('flash');void s.offsetWidth;s.classList.add('flash');}}
     return;
   }
   const pin=ev.target.closest('[data-pin]');

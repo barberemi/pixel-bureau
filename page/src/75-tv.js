@@ -28,7 +28,7 @@ function softScroll(box,S,now,dt){
   const max=box.scrollHeight-box.clientHeight; if(max<=4){S.pos=0;return;}
   if(now<S.hold){S.pos=box.scrollTop;return;}
   if(now<S.pause)return;
-  if(S.pos>=max){S.pos=0;box.scrollTo({top:0,behavior:'smooth'});S.pause=now+6000;return;}
+  if(S.pos>=max){S.pos=0;box.scrollTo({top:0,behavior:SCROLL_BEHAVIOR});S.pause=now+6000;return;}
   S.pos=Math.min(max,S.pos+dt*18); // ~18 px/s
   box.scrollTop=S.pos;
   if(S.pos>=max)S.pause=now+5000;
