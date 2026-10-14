@@ -65,11 +65,12 @@ function renderLoneGate(side,run){
   if(!g){const n=document.createElement('div');n.className='note';n.textContent='Cette validation n\'attend plus (déjà décidée).';side.appendChild(n);return;}
   gateCard(side,{run:g.run,wf_name:g.wf_name,_s:ms(g.since)},null);
 }
-// carte de décision d'une gate : le bouton ouvre la carte Kronn (workflow « Le Bureau · décision gate »)
+// carte de décision d'une gate : trois boutons directs (approuver, rejeter, changements, #45), chacun lié à sa ligne de
+// gates.grows ; chacun ouvre la carte Kronn (workflow « Le Bureau · décision gate ») pour un commentaire et Lancer
 function gateCard(parent,run,who){
   const g=GATES.find(x=>x.run===run.run);
-  const box=document.createElement('div');box.className='gatecard';box.setAttribute('data-kronn-action-slot-host','');
-  const since=g&&g.since?ms(g.since):run._s, mins=Math.max(0,Math.round((Date.now()-since)/60e3));
+  const box=document.createElement('div');box.className='gatecard';
+  const since=g&&g.since?ms(g.since):run._s, mins=Math.max(0,Math.round((T-since)/60e3)); // à l'heure de la page (rejeu compris)
   box.innerHTML=`<div class="gt">✋ Validation demandée${who?' · '+esc(who):''}</div><div class="gw">${esc(clean(run.wf_name))}${g?' · étape <b>'+esc(g.gate)+'</b>':''}</div>`+
     (g&&g.message?`<div class="gm">${esc(g.message)}</div>`:'')+`<div class="gs">En attente depuis ${hm(since)}${mins?' ('+fmtDur(mins*60e3)+')':''}</div>`;
   const dk=g?g.run+'|'+g.gate:null;
@@ -88,25 +89,32 @@ function gateCard(parent,run,who){
     box.appendChild(n);
   }
   else if(g){
-    const b=document.createElement('button');
-    b.className='on';
-    b.textContent='Décider…';
-    let clicked=false;
-    b.addEventListener('click',()=>{clicked=true;});
-    b.setAttribute('data-kronn-action','bureau-gate');
-    b.setAttribute('data-kronn-bindings',JSON.stringify({run_id:g.run})); // clé = nom du champ relu ; valeur = la ligne du dataset (find(run)) ; workflow et étape retrouvés par le script
     const st=document.createElement('div');
     st.className='note';
     st.style.margin='6px 0 0';
-    st.textContent='Choisis Approuver, Rejeter ou Demander des changements dans la carte, puis Lancer.';
-    new MutationObserver(()=>{
-      const v=b.getAttribute('data-kronn-action-state');
-      if(v==='succeeded'){
-        st.innerHTML='<b style="color:var(--ok)">✓ Décision appliquée.</b> L\'agent reprend d\'ici une minute sur le plan.';
-        if(clicked&&!DECIDED[dk]){DECIDED[dk]=Date.now();saveDecided();}
-      }else if(v==='failed')st.innerHTML='<b style="color:var(--err)">Décision refusée par Kronn</b> (gate déjà décidée ?). Détail dans la carte.';
-    }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
-    box.append(b,st);kronnModal(box,b,'Décision de gate');}
+    st.textContent='Le bouton ouvre la carte Kronn : un commentaire si tu veux (obligatoire pour des changements), puis Lancer.';
+    const row=document.createElement('div');row.className='gq';
+    // un emplacement par bouton (comme les réponses aux questions) : la fenêtre centrée montre la décision choisie
+    for(const [d,label,cls] of [['approve','✅ Approuver','on'],['reject','⛔ Rejeter',''],['request_changes','✏️ Changements…','']]){
+      const w=document.createElement('div');w.className='qslot';w.setAttribute('data-kronn-action-slot-host','');
+      const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;
+      const qk=document.createElement('div');qk.className='qkm';qk.innerHTML=`<b>${esc(clean(run.wf_name))}${g.gate?' · étape '+esc(g.gate):''}</b><div>Ta décision : ${label}</div>`;
+      w.append(b,qk);
+      let clicked=false;
+      b.addEventListener('click',()=>{clicked=true;});
+      b.setAttribute('data-kronn-action','bureau-gate');
+      const row_id=g.run+'|'+d; // ligne de gates.grows : Kronn y relit run_id et decision
+      b.setAttribute('data-kronn-bindings',JSON.stringify({run_id:row_id,decision:row_id}));
+      new MutationObserver(()=>{
+        const v=b.getAttribute('data-kronn-action-state');
+        if(v==='succeeded'){
+          st.innerHTML='<b style="color:var(--ok)">✓ Décision appliquée.</b> L\'agent reprend d\'ici une minute sur le plan.';
+          if(clicked&&!DECIDED[dk]){DECIDED[dk]=Date.now();saveDecided();}
+        }else if(v==='failed')st.innerHTML='<b style="color:var(--err)">Décision refusée par Kronn</b> (gate déjà décidée ?). Détail dans la carte.';
+      }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
+      kronnModal(w,b,'Décision de gate');row.appendChild(w);
+    }
+    box.append(row,st);}
   else{
     const n=document.createElement('div');
     n.className='note';

@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
+- Trois boutons directs sur chaque validation (✅ Approuver, ⛔ Rejeter, ✏️ Changements…) au lieu de « Décider… » et de son menu (#45).
 - Captures d'un pack d'équipe : `tools/shots.py --team <pack>` refait les captures du guide avec l'équipe du pack (la démo lui est réattribuée, boss compris), dans `<pack>/guide/img/`.
 - Aperçu local avant le merge : `python3 tools/preview.py` montre la page de ta branche avec tes vraies données, sans rien publier.
 - Courrier : tes mails non lus (appli Mail du Mac, Gmail ou autre par IMAP, plusieurs comptes), relevés toutes les 10 min sans jamais le contenu ; une boîte aux lettres par compte à côté du bureau du boss et la fiche Courrier ; le facteur qui dépose le courrier et vient proposer les règles du tri (validées par le boss) ; des porteurs qui remettent certains mails en personne et restent jusqu'à leur lecture dans ta messagerie.

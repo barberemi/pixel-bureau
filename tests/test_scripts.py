@@ -757,6 +757,8 @@ print(json.dumps(d.get(key, [])))
         fake.details[run["id"]] = [{"step_name": "gate", "status": "WaitingApproval", "output": "Nouveau plan : 36 sièges"}]
         gates = self.run_script("gates_snapshot.py", api=self.kronn(fake))
         self.assertEqual([g["message"] for g in gates["gates"]], ["Nouveau plan : 36 sièges"])
+        # une ligne par décision (boutons directs de la page, #45) : Kronn y relit run_id et decision
+        self.assertEqual(gates["grows"], [{"id": f"{run['id']}|{d}", "run": run["id"], "decision": d} for d in ("approve", "reject", "request_changes")])
 
     def test_standup_since_format(self):
         r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "standup_since.py")], capture_output=True, text=True,

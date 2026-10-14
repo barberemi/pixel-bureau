@@ -158,7 +158,7 @@ python3 tools/plan.py share mon-plan.json    # le proposer à toute l'équipe
 python3 tools/plan.py share defaut           # revenir au plan de l'installation
 ```
 
-`share` lance le workflow « Le Bureau · plan » : il revérifie le plan, puis attend la validation du boss. La demande apparaît dans la fiche du boss (clic sur son personnage, qui porte alors la bulle ✋), avec son résumé (taille, sièges, places qui changent) et le bouton « Décider ». Une fois validé, la page se redessine sans rechargement et chacun rejoint sa nouvelle place. Un plan refusé n'est jamais publié.
+`share` lance le workflow « Le Bureau · plan » : il revérifie le plan, puis attend la validation du boss. La demande apparaît dans la fiche du boss (clic sur son personnage, qui porte alors la bulle ✋), avec son résumé (taille, sièges, places qui changent) et ses boutons Approuver, Rejeter, Changements. Une fois validé, la page se redessine sans rechargement et chacun rejoint sa nouvelle place. Un plan refusé n'est jamais publié.
 
 | Sur le plan : la bulle ✋ du boss | Dans sa fiche : la carte de décision |
 | --- | --- |

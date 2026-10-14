@@ -120,3 +120,18 @@ test('panneau : pas de redessin automatique pendant un clic, le bouton cliqué r
   run('sideHold(false,11800)'); // relâchement sans appui dans le panneau : rien à retenir
   assert.equal(draws('renderSide()'), 1);
 });
+
+test('validation : trois boutons directs, chacun lié à sa ligne de gates.grows (run_id et decision relus par Kronn)', () => {
+  const {run} = load();
+  run(`document.createElement = t => ({tag: t, attrs: {}, kids: [], className: '', style: {}, setAttribute(k, v) { this.attrs[k] = v; },
+    getAttribute(k) { return this.attrs[k]; }, appendChild(x) { this.kids.push(x); }, append(...x) { this.kids.push(...x); }, addEventListener() {}});
+    MutationObserver = function () { return {observe() {}}; }; DECIDED = {}; ACTIONS.gate = true;
+    GATES = [{run: 'r1', wf: 'w1', wf_name: 'Le Bureau · plan', gate: 'boss', since: new Date(T - 12 * 60e3).toISOString(), message: 'Nouveau plan'}];
+    var P = {kids: [], appendChild(x) { this.kids.push(x); }}; gateCard(P, {run: 'r1', wf_name: 'Le Bureau · plan', _s: T}, null);`);
+  const btns = JSON.parse(run(`JSON.stringify((() => { const out = [], walk = e => { if (e.tag === 'button') out.push([e.textContent, e.attrs]);
+    (e.kids || []).forEach(walk); }; walk(P.kids[0]); return out; })())`));
+  assert.deepEqual(btns.map(([t]) => t), ['✅ Approuver', '⛔ Rejeter', '✏️ Changements…']);
+  for (const [, a] of btns) assert.equal(a['data-kronn-action'], 'bureau-gate');
+  assert.deepEqual(btns.map(([, a]) => JSON.parse(a['data-kronn-bindings'])), ['approve', 'reject', 'request_changes'].map(d => ({run_id: 'r1|' + d, decision: 'r1|' + d})));
+  assert.match(run('P.kids[0].innerHTML'), /En attente depuis .* \(12 min\)/, 'durée à l\'heure de la page');
+});

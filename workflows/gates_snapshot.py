@@ -3,7 +3,8 @@
 Sortie (stdout, JSON parsé par l'étape CollectApiData) :
   {generated_at, gates: [{run, wf, wf_name, gate, message, since}], workflows: [{wf, name, trigger}], askable: [{wf, name}],
    projects: [{id, name}], ducks: [{id, title, project, updated, created, awaiting}],
-   questions: [{id, disc, title, agent, bureau, since, question, context, options, rec, multiple, items, more_items}], qrows: [{id, q, disc}]}
+   questions: [{id, disc, title, agent, bureau, since, question, context, options, rec, multiple, items, more_items}], qrows: [{id, q, disc}],
+   grows: [{id, run, decision}]}
 `workflows` = ceux que la page peut relancer (page action « bureau-relaunch ») : actifs, hors Bureau, pas
 sous-workflow d'un autre, sans variable obligatoire à saisir.
 `projects` = les projets Kronn, « Sans projet » (id « none ») en tête : un bouton « parler au canard » chacun (page action
@@ -125,5 +126,8 @@ try:
     json.dump({k: v for k, v in _cache.items() if k in defs}, open(CACHE, "w"))
 except Exception:
     pass
+# une ligne par décision possible de chaque gate (#45) : les boutons directs de la page (approuver, rejeter, changements)
+# en désignent une, Kronn y relit run_id et decision (page action « bureau-gate »), jamais saisis
+grows = [{"id": f"{g['run']}|{d}", "run": g["run"], "decision": d} for g in gates for d in ("approve", "reject", "request_changes")]
 print(json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "gates": gates, "workflows": relaunch, "askable": askable,
-                  "projects": projects, "ducks": ducks, "questions": questions, "qrows": qrows}, ensure_ascii=False))
+                  "projects": projects, "ducks": ducks, "questions": questions, "qrows": qrows, "grows": grows}, ensure_ascii=False))

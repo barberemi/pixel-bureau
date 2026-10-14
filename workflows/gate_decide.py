@@ -1,9 +1,9 @@
 """Décide une gate depuis la page Le Bureau (page action « bureau-gate »).
 
 Arguments : run_id decision [comment]
-  run_id : relu par Kronn dans le dataset `gates` (ligne cliquée), jamais saisi ; le workflow et l'étape
-           sont retrouvés ici dans ce même dataset (un seul champ automatique dans la carte)
-  decision : approve | reject | request_changes (menu de la carte)
+  run_id, decision : relus par Kronn dans la ligne cliquée de `gates.grows` (un bouton par décision : approve |
+           reject | request_changes), jamais saisis ; le workflow et l'étape sont retrouvés ici dans `gates.gates`
+  comment : saisi dans la carte (obligatoire pour demander des changements)
 Appelle POST /api/workflows/{wf}/runs/{run}/decide avec gate_step : Kronn refuse si le run
 n'attend plus CETTE gate (décision périmée), donc rien d'autre ne peut être validé par erreur.
 """
