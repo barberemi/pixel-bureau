@@ -58,7 +58,7 @@ for(const k in DECIDED)if(Date.now()-DECIDED[k]>864e5)delete DECIDED[k];
 const saveDecided=()=>{try{localStorage.setItem('bureau:decided',JSON.stringify(DECIDED));}catch(e){}};
 // validations des workflows sans personnage sur le plan (ex. « Le Bureau · plan ») : comptées dans la bulle ✋ du boss,
 // leur carte de décision dans sa fiche
-function loneGates(){return GATES.filter(g=>!chars.some(c=>c.wf&&c.wf.includes(String(g.wf).slice(0,8))));}
+function loneGates(){return GATES.filter(g=>!postmanOwns(g)&&!chars.some(c=>c.wf&&c.wf.includes(String(g.wf).slice(0,8))));} // postmanOwns : 48-mail.js
 // gate d'un workflow sans personnage : sa carte de décision seule dans le panneau
 function renderLoneGate(side,run){
   const g=GATES.find(x=>x.run===run);

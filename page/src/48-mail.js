@@ -76,6 +76,9 @@ function postSpot(){const [x,y]=mailboxTile();return [x+Math.max(1,mailAccounts(
 // règles du courrier en attente de validation (workflow « Le Bureau · règles du courrier ») : le facteur reste devant le
 // bureau du boss tant que le gate n'est pas décidé
 const RULES_WF='Le Bureau · règles du courrier';
+// la gate des règles appartient au facteur, quel que soit l'ordre de calcul des états (sinon le boss la compte un instant
+// en plus, comme une validation orpheline)
+const postmanOwns=g=>g.wf_name===RULES_WF&&!!byKey.g_facteur&&mailAccounts().length>0;
 function postmanState(c,t){
   if(!mailAccounts().length)return {st:'off',label:'Pas de courrier branché'};
   const g=(GATES||[]).find(x=>x.wf_name===RULES_WF&&(!x.since||ms(x.since)<=t));
