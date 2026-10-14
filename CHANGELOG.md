@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
+- Panneau Fraîcheur : les avertissements des crons (tarif non mesuré, canard sans projets, page du boss sautée, déploiements non relus…) s'affichent avec leur source, et chaque échec partiel est aussi écrit dans le run Kronn (#8).
 - Trois boutons directs sur chaque validation (✅ Approuver, ⛔ Rejeter, ✏️ Changements…) au lieu de « Décider… » et de son menu (#45).
 - Relancer un cron du Bureau depuis le panneau Fraîcheur : « ↻ Relancer » sur une ligne en échec ou en retard, « ↻ » discret sur les autres pour rafraîchir sans attendre (#44).
 - Captures d'un pack d'équipe : `tools/shots.py --team <pack>` refait les captures du guide avec l'équipe du pack (la démo lui est réattribuée, boss compris), dans `<pack>/guide/img/`.
