@@ -205,7 +205,7 @@ function drawSide(side){
   if(c.boss){const p=document.createElement('p');p.style.color='var(--muted)';const gates=chars.filter(x=>x._st&&x._st.st==='gate'), lone=loneGates();
     const qs=QUESTIONS.filter(q=>(ms(q.since)||0)<=T);
     if(!gates.length&&!lone.length&&!qs.length){p.textContent="Personne n'attend ta validation. Le bureau tourne tout seul.";side.appendChild(p);}
-    for(const x of gates){const r=x._st&&x._st.run;if(r)gateCard(side,r,x.name);}
+    for(const x of gates){const r=x._st&&x._st.run;if(r)gateCard(side,r,x.name);else handCards(side,carriedFor(x,T));} // porteurs : leurs mails, avec « Lu ✓ » (48-mail.js)
     for(const g of lone)gateCard(side,{run:g.run,wf_name:g.wf_name,_s:ms(g.since)},null); // workflows sans personnage (« Le Bureau · plan »)
     for(const q of qs)questionCard(side,q,askerOf(q)); // questions des discussions (visiteurs, canard, « interroger »)
     const imp=chars.filter(x=>x.visitor&&x.disc&&x.disc.imp>0);
@@ -221,6 +221,7 @@ function drawSide(side){
       }
       box.appendChild(ul);}}
   if(st.st==='gate'&&st.run)gateCard(side,st.run,null);
+  else if(st.st==='gate'&&c.guest)handCards(side,carriedFor(c,T)); // porteur : les mails qu'il remet, avec « Lu ✓ »
   if(c.visitor&&c.disc)for(const q of discQuestions(c.disc.id,T))questionCard(side,q,null);
   musicCard(side,c);
   passionCards(side,c); // 38-passions.js : Smash, dramas, GitFut

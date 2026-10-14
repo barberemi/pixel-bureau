@@ -141,3 +141,16 @@ test('fiche : la carte « Remis en personne » en tête, avec « Lu ✓ » lié 
   assert.match(h, /&quot;id&quot;:&quot;pro\|y1&quot;/);
   run(`ACTIONS.mail_read = false;`);
 });
+
+test('porteur : ses mails, avec « Lu ✓ », dans sa fiche et dans celle du boss (qui les compte en validations)', () => {
+  run(`ACTIONS.mail_read = true; MAILS = {generated_at: '${at('11:00')}', sorted: true, accounts: [{id: 'pro', label: 'Pro', ok: true, unread: 1, useful_n: 0, useful: [], ignored: [], carried: [${JSON.stringify(carried('11:05'))}]}]};
+    T = Date.parse('${at('11:10')}'); for (const c of chars) c._st = stateAt(c, T);`);
+  const draw = k => run(`(() => { const s = {kids: [], appendChild(x) { this.kids.push(x); }, querySelector() { return null; }, querySelectorAll() { return []; }};
+    sel = '${k}'; drawSide(s); return s.kids.map(k => k.innerHTML || '').join('\\n'); })()`);
+  for (const k of ['g_david', run('chars.find(c => c.boss).key')]) {
+    const h = draw(k);
+    assert.match(h, /📰 Gazette · remis en personne · Pro/, k);
+    assert.match(h, /data-kronn-action="bureau-mailread"/, k);
+  }
+  run(`ACTIONS.mail_read = false; sel = null;`);
+});

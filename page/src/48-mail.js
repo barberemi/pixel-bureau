@@ -105,7 +105,7 @@ function carryStart(m){
   const [h0]=RHYTHM.office_hours||[8,20], p=parisHM(t);
   return p.h<h0?parisMidnight(t)+h0*36e5:t;
 }
-function carriedFor(c,t){return mailAccounts().filter(a=>a.ok).flatMap(a=>(a.carried||[]).map(m=>({...m,acc:a.id}))).filter(m=>m.carrier===c.key&&carryStart(m)<=t);}
+function carriedFor(c,t){return carriedMails(t,c.key);}
 function messengerState(c,t){
   const l=carriedFor(c,t); if(!l.length)return null;
   return {st:'gate',zone:'gate',label:'Te remet '+plural(l.length,'mail','mails')+' en personne ('+l[0].rule+') : attend que tu les lises',
@@ -123,6 +123,20 @@ function mailRow(m,a){
     `<div class="ml-s">${esc(m.subject||'(sans objet)')}</div><div class="ml-tags"><span class="ml-tag">${m.direct?'à toi':'en copie'}</span>`+
     (m.flagged?'<span class="ml-tag">🚩 suivi</span>':'')+(href?`<a class="ml-open" href="${esc(href)}" target="_blank" rel="noopener">Ouvrir ↗</a>`:'')+`</div></div>`;
 }
+// mails remis en personne (avec leur compte) déjà arrivés à t, d'un porteur (clé) ou de tous
+function carriedMails(t,carrier){return mailAccounts().filter(a=>a.ok).flatMap(a=>(a.carried||[]).map(m=>({...m,acc:a}))).filter(m=>(!carrier||m.carrier===carrier)&&carryStart(m)<=t);}
+// carte d'un mail remis en personne, avec « Lu ✓ » (workflow « lu ») : fiche Courrier, fiche du porteur et fiche du boss
+function handHtml(m){
+  const href=safeMailUrl(m.open);
+  return `<div class="ml-hand" style="--c:${esc(m.acc.color||'var(--accent)')}"><div class="ml-top"><b>${esc(m.bubble)} · remis en personne · ${esc(m.acc.label)}</b><span class="ml-t">${esc(mailWhen(m.at))}</span></div>`+
+    `<div class="ml-s">${esc(m.subject||'(sans objet)')}${m.name?' · '+esc(m.name):''}</div><div class="ml-tags" data-kronn-action-slot-host><span class="ml-tag ml-wait">attend ta lecture</span>`+
+    (ACTIONS.mail_read?`<button class="ml-read" data-kronn-action="bureau-mailread" data-kronn-bindings='${esc(JSON.stringify({id:m.acc.id+'|'+m.id}))}'>Lu ✓</button>`:'')+
+    (href?`<a class="ml-open" href="${esc(href)}" target="_blank" rel="noopener">Ouvrir ↗</a>`:'')+`</div></div>`;
+}
+function handCards(side,list){
+  if(!list.length)return;
+  const box=document.createElement('div');box.className='mailbox';box.innerHTML=list.map(handHtml).join('');side.appendChild(box);
+}
 // liens d'un mail : l'appli Mail (message:) ou le webmail en https ; rien d'autre
 function safeMailUrl(u){return typeof u==='string'&&/^(message:\/\/|https:\/\/)/.test(u)?u:null;}
 function renderMail(side,first){
@@ -132,14 +146,7 @@ function renderMail(side,first){
   if(!acc.length){box.innerHTML='<p class="sub">Pas de compte : le courrier se branche à l\'installation.</p>';side.appendChild(box);return;}
   const n=acc.reduce((s,a)=>s+(a.ok?a.useful_n||0:0),0);
   let html=`<p class="sub">${MAILS.sorted?plural(n,'mail utile','mails utiles'):'Pas encore trié : le facteur viendra proposer tes règles'} · relevé à ${hm(ms(MAILS.generated_at))}${MAILS.demo?' (démo)':''}</p>`;
-  const hand=acc.filter(a=>a.ok).flatMap(a=>(a.carried||[]).map(m=>({...m,acc:a})));
-  for(const m of hand){ // remis en personne : en tête, avec « Lu ✓ »
-    const href=safeMailUrl(m.open);
-    html+=`<div class="ml-hand" style="--c:${esc(m.acc.color||'var(--accent)')}"><div class="ml-top"><b>${esc(m.bubble)} · remis en personne · ${esc(m.acc.label)}</b><span class="ml-t">${esc(mailWhen(m.at))}</span></div>`+
-      `<div class="ml-s">${esc(m.subject||'(sans objet)')}${m.name?' · '+esc(m.name):''}</div><div class="ml-tags" data-kronn-action-slot-host><span class="ml-tag ml-wait">attend ta lecture</span>`+
-      (ACTIONS.mail_read?`<button class="ml-read" data-kronn-action="bureau-mailread" data-kronn-bindings='${esc(JSON.stringify({id:m.acc.id+'|'+m.id}))}'>Lu ✓</button>`:'')+
-      (href?`<a class="ml-open" href="${esc(href)}" target="_blank" rel="noopener">Ouvrir ↗</a>`:'')+`</div></div>`;
-  }
+  html+=carriedMails(Infinity).map(handHtml).join(''); // remis en personne : en tête, avec « Lu ✓ »
   for(const a of acc){
     html+=`<section class="ml-acc" style="--c:${esc(a.color||'var(--accent)')}"><div class="ml-head"><b>${MAIL_ICON[a.provider]||'📬'} ${esc(a.label)}${a.ok?' · '+(MAILS.sorted?a.useful_n:'?'):''}</b>`+
       `<small>${a.provider==='imap'?'IMAP':'appli Mail'} · ${a.unread||0} non lus</small></div>`;
