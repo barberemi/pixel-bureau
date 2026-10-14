@@ -9,7 +9,7 @@ Périmètre : page monofichier (`page/office_template.html`, `page/src/*.js`, `p
 | [TD-20261011-run-pagination-copypaste](tech-debt/TD-20261011-run-pagination-copypaste.md) | Boucle de pagination des runs recopiée 4 fois dans 3 crons, sans helper dans `_lib.py` (`workflows/office_snapshot.py:24`) | Backend | Low |
 | [TD-20261011-page-dead-functions](tech-debt/TD-20261011-page-dead-functions.md) | **Résolu le 2026-10-15 (#7).** `setTeam` et `toggleStandup` jamais appelées (`page/src/30-data.js:184`, `page/src/76-tvscenes.js:189`) | Frontend | Low |
 | [TD-20261011-install-god-file](tech-debt/TD-20261011-install-god-file.md) | `tools/install.py` de 710 lignes (repris, inchangé) (`tools/install.py:549`) | Other | Low |
-| [TD-20261011-silent-partial-failures](tech-debt/TD-20261011-silent-partial-failures.md) | `except Exception: pass` sur des lectures d'API (repris, inchangé) (`workflows/gates_snapshot.py:92`) | Observability | Low |
+| [TD-20261011-silent-partial-failures](tech-debt/TD-20261011-silent-partial-failures.md) | **Résolu le 2026-10-15 (#8).** `except Exception: pass` sur des lectures d'API (repris, inchangé) (`workflows/gates_snapshot.py:92`) | Observability | Low |
 
 ## Checklist
 
