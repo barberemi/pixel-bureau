@@ -10,7 +10,7 @@ Même format de runs et de discussions que office_snapshot.py, pour que la page 
 import json, os as _os, re, subprocess
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
-from _lib import CFG, TZ, ACTIVE, dumps, get, is_bureau, is_bureau_disc, run_row, disc_row
+from _lib import CFG, TZ, ACTIVE, dumps, get, is_bureau, is_bureau_disc, run_row, disc_row, read_json
 
 now = datetime.now(TZ)
 day_start = now.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
@@ -75,7 +75,7 @@ def gh_runs(repo, workflow, prev):
 
 
 try:
-    cache = json.load(open(DEPLOY_CACHE))
+    cache = read_json(DEPLOY_CACHE)
 except (OSError, ValueError):
     cache = {}
 TARGETS = targets()

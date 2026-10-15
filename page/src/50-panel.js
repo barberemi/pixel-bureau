@@ -1,6 +1,10 @@
 // ---------- UI ----------
 let sel=null;
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+// liens sortants venus des données (#6) : seul https passe (ni javascript:, ni data:, ni http) ; sinon null
+const safeUrl=u=>typeof u==='string'&&/^https:\/\//i.test(u)?u:null;
+// attribut href d'un lien sortant, échappé ; schéma refusé : pas de href, le lien reste affiché mais inactif
+const hrefOf=u=>{const s=safeUrl(u);return s?`href="${esc(s)}"`:'';};
 const STATUS_TXT={
   Success:'Réussi',
   Failed:'Échec',

@@ -5,9 +5,10 @@
   python3 tools/publish.py all
 """
 import json, os, sys, urllib.request
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CFG = json.load(open(os.path.join(ROOT, "bureau.config.json")))
+CFG = json.loads(Path(os.path.join(ROOT, "bureau.config.json")).read_text())
 API = CFG["kronn"]["api"].rstrip("/")
 PAGE_ID = CFG["page_id"]
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -41,7 +42,7 @@ def workflows():
             # workflow du Bureau ajouté depuis l'installation (ex. commenter un ticket) : créé, son id rangé dans la config
             ident = call("POST", "/workflows", templates.render(tpl, CFG))["data"]["id"]
             CFG.setdefault(where[0], {})[where[1]] = ident
-            json.dump(CFG, open(os.path.join(ROOT, "bureau.config.json"), "w"), ensure_ascii=False, indent=1)
+            Path(os.path.join(ROOT, "bureau.config.json")).write_text(json.dumps(CFG, ensure_ascii=False, indent=1))
             print(f"{key} ({ident[:8]}) créé")
             continue
         if not ident:

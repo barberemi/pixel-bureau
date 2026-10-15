@@ -11,6 +11,10 @@ metadata:
       status: Confirmed by user
       reviewer: Kronn audit validation card
       note: "Confirmed through an audit validation card."
+    - date: 2026-10-15
+      status: Resolved
+      reviewer: mainteneur
+      note: "#7 : toggleStandup supprimée. setTeam gardée : elle est appelée depuis (après l'audit) par tests/state.test.js (visiteur de MEP) et tools/shots.py (capture de la MEP), elle n'est donc plus morte."
 ---
 
 # TD-20261011-page-dead-functions
@@ -18,7 +22,7 @@ metadata:
 - **Category**: code-quality
 - **Area**: Frontend
 - **Severity**: Low
-- **Status**: Confirmed by user
+- **Status**: Resolved (2026-10-15, #7)
 - **Effort**: XS (< 15 min)
 - **Blast radius**: local (1-2 files)
 

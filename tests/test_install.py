@@ -1,5 +1,6 @@
 """Installateur (python3 -m unittest tests/test_install.py) : déroulé complet contre un faux Kronn, sans réseau."""
-import copy, json, os, re, shutil, sys, tempfile, unittest
+import copy, io, json, os, re, shutil, sys, tempfile, unittest
+from pathlib import Path
 from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -89,7 +90,7 @@ class InstallTest(unittest.TestCase):
         self.cfg_path = os.path.join(self.tmp, "bureau.config.json")
         self.teams = os.path.join(self.tmp, "teams")
         shutil.copytree(os.path.join(ROOT, "tests", "fixtures", "pack-exemple"), os.path.join(self.teams, "vance"))
-        self.roster = open(os.path.join(self.teams, "vance", "roster.json")).read()
+        self.roster = Path(os.path.join(self.teams, "vance", "roster.json")).read_text()
         self.fakes = []
 
         def make(api):
@@ -108,12 +109,12 @@ class InstallTest(unittest.TestCase):
 
     def write_answers(self, answers):
         ap = os.path.join(self.tmp, "answers.json")
-        json.dump(answers, open(ap, "w"))
+        Path(ap).write_text(json.dumps(answers))
         return ap
 
     def run_install(self, answers, *extra):
         ap = self.write_answers(answers)
-        with mock.patch("sys.stdout", new=open(os.devnull, "w")):
+        with mock.patch("sys.stdout", new=io.StringIO()):
             return install.main(["--config", self.cfg_path, "--answers", ap, *extra])
 
     def test_full_install_creates_everything_and_writes_config(self):
@@ -124,7 +125,7 @@ class InstallTest(unittest.TestCase):
         self.assertEqual([d["name"] for d in page["datasets"]], install.DATASETS)
         self.assertEqual(sum(1 for p, _ in posts if p == "/workflows"), 12)  # dont commenter un ticket (Jira connecté), parler au canard, le canard d'équipe et répondre aux questions
         self.assertEqual(sum(1 for p, _ in posts if p == "/quick-prompts"), 2)  # interroger un agent, plan vers brouillon
-        cfg = json.load(open(self.cfg_path))
+        cfg = json.loads(Path(self.cfg_path).read_text())
         self.assertEqual(cfg["owner"], "p_lynn")
         self.assertEqual(cfg["jira"]["config_id"], JIRA)
         self.assertEqual(cfg["jira"]["site"], "https://acme.atlassian.net")  # déduit de la réponse Jira
@@ -140,20 +141,20 @@ class InstallTest(unittest.TestCase):
         html = next(b for m, p, b in k.calls if m == "PUT" and p.endswith("/html"))["html"]
         self.assertIn('"p_lynn"', html)
         self.assertIn(cfg["actions"]["gate"], html)
-        self.assertNotIn(json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")))["page_id"], html)  # pas l'id de la démo
+        self.assertNotIn(json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text())["page_id"], html)  # pas l'id de la démo
         self.assertEqual(sum(1 for m, p, _ in k.calls if p == "/mcp/workflow-trigger"), 5)
 
     def test_comment_workflow_only_with_jira(self):
         """« Commenter un ticket » : un ApiCall Jira (POST commentaire), créé seulement si Jira est connecté."""
         self.assertEqual(self.run_install(ANSWERS), 0)
-        cfg = json.load(open(self.cfg_path))
+        cfg = json.loads(Path(self.cfg_path).read_text())
         wf = self.fakes[-1].store[cfg["actions"]["comment"]]
         step = wf["steps"][0]
         self.assertEqual((step["api_method"], step["api_endpoint_path"], step["api_config_id"]), ("POST", "/rest/api/2/issue/{key}/comment", JIRA))
         self.assertTrue(step["api_body"]["body"].startswith("{{comment}}"))  # jamais le placeholder seul : reste du texte
         os.remove(self.cfg_path)  # installation neuve, sans Jira : pas de workflow de commentaire
         self.assertEqual(self.run_install({**ANSWERS, "jira_config": "2"}), 0)  # « Pas de Jira »
-        self.assertEqual(json.load(open(self.cfg_path))["actions"]["comment"], "")
+        self.assertEqual(json.loads(Path(self.cfg_path).read_text())["actions"]["comment"], "")
         self.assertFalse([b for m, p, b in self.fakes[-1].calls if m == "POST" and p == "/workflows" and "commenter" in b["name"]])
 
     def test_without_jira_team_cron_has_no_jira_steps(self):
@@ -161,7 +162,7 @@ class InstallTest(unittest.TestCase):
         k = self.fakes[-1]
         team = [b for m, p, b in k.calls if m == "POST" and p == "/workflows" and b["name"].startswith("Le Bureau · équipe")][0]
         self.assertNotIn("jira_team", [s["name"] for s in team["steps"]])
-        self.assertEqual(json.load(open(self.cfg_path))["jira"], {})
+        self.assertEqual(json.loads(Path(self.cfg_path).read_text())["jira"], {})
 
     def test_relaunch_updates_instead_of_creating(self):
         self.run_install(ANSWERS)
@@ -174,7 +175,7 @@ class InstallTest(unittest.TestCase):
     def test_relaunch_adds_missing_datasets(self):
         self.run_install(ANSWERS)
         first = self.fakes[-1]
-        page_id = json.load(open(self.cfg_path))["page_id"]
+        page_id = json.loads(Path(self.cfg_path).read_text())["page_id"]
         first.store[page_id]["datasets"] = [d for d in first.store[page_id]["datasets"] if d["name"] not in ("layout", "actions", "duck", "absences", "mails", "mail_rules")]  # page d'avant
         with mock.patch.object(install, "Kronn", return_value=first):
             self.assertEqual(self.run_install(ANSWERS), 0)
@@ -184,7 +185,7 @@ class InstallTest(unittest.TestCase):
         answers = {k: v for k, v in ANSWERS.items() if k != "reuse"}  # défaut : homonymes réutilisés
         self.assertEqual(self.run_install(answers), 0)
         k = self.fakes[-1]
-        cfg = json.load(open(self.cfg_path))
+        cfg = json.loads(Path(self.cfg_path).read_text())
         self.assertEqual(cfg["workflows"]["live"], FakeKronn.LIVE)
         self.assertEqual(sum(1 for m, p, _ in k.calls if m == "POST" and p == "/workflows"), 11)
         self.assertTrue([1 for m, p, _ in k.calls if m == "PUT" and p == f"/workflows/{FakeKronn.LIVE}"])  # mis à jour
@@ -197,7 +198,7 @@ class InstallTest(unittest.TestCase):
         answers = {kk: v for kk, v in ANSWERS.items() if kk != "reuse"}
         with mock.patch.object(install, "Kronn", return_value=k):
             self.assertEqual(self.run_install(answers), 0)
-        self.assertNotEqual(json.load(open(self.cfg_path))["workflows"]["live"], FakeKronn.LIVE)
+        self.assertNotEqual(json.loads(Path(self.cfg_path).read_text())["workflows"]["live"], FakeKronn.LIVE)
         self.assertFalse([1 for m, p, _ in k.calls if m == "PUT" and p == f"/workflows/{FakeKronn.LIVE}"])
 
     def test_own_workflow_by_id_is_kept_as_is(self):
@@ -206,14 +207,14 @@ class InstallTest(unittest.TestCase):
                    "reuse_team": "id", "reuse_team_id": mine, "reuse_team_mode": "own"}
         self.assertEqual(self.run_install(answers), 0)
         k = self.fakes[-1]
-        cfg = json.load(open(self.cfg_path))
+        cfg = json.loads(Path(self.cfg_path).read_text())
         self.assertEqual(cfg["workflows"]["team"], mine)
         self.assertEqual(cfg["own"], [mine])
         self.assertFalse([1 for m, p, _ in k.calls if m in ("PUT", "DELETE") and p == f"/workflows/{mine}"])  # jamais touché
         self.assertEqual(cfg["agents"], [])  # branché comme cron équipe : plus un agent
         # désinstallation : tout le Bureau part, sauf le workflow branché tel quel
         import uninstall
-        with mock.patch.object(uninstall, "Kronn", return_value=k), mock.patch("sys.stdout", new=open(os.devnull, "w")):
+        with mock.patch.object(uninstall, "Kronn", return_value=k), mock.patch("sys.stdout", new=io.StringIO()):
             self.assertEqual(uninstall.main(["--config", self.cfg_path, "--dry-run"]), 0)
             self.assertFalse([1 for m, _, _ in k.calls if m == "DELETE"])
             self.assertEqual(uninstall.main(["--config", self.cfg_path, "--yes"]), 0)
@@ -221,7 +222,7 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(len(deleted), 11 + 2 + 1)  # 11 workflows, les 2 QP, la page
         self.assertNotIn(f"/workflows/{mine}", deleted)
         self.assertEqual(deleted[-1], f"/pages/{cfg['page_id']}")  # la page en dernier
-        after = json.load(open(self.cfg_path))
+        after = json.loads(Path(self.cfg_path).read_text())
         self.assertEqual((after["page_id"], after["workflows"], after["actions"]), (None, {"team": mine}, {}))
         self.assertEqual(after["owner"], "p_lynn")  # réponses gardées pour une réinstallation
 
@@ -234,7 +235,7 @@ class InstallTest(unittest.TestCase):
     def test_own_layout_file(self):
         """Un plan à soi : chemin absolu hors du dépôt, relatif au dépôt dedans (la config reste valable si on le déplace).
         Les deux cas sont posés explicitement : TMPDIR peut être dans le dépôt (agents lancés par Kronn, KT-42)."""
-        L = json.load(open(os.path.join(ROOT, "layouts", "exemple-startup.json")))
+        L = json.loads(Path(os.path.join(ROOT, "layouts", "exemple-startup.json")).read_text())
         inside = tempfile.mkdtemp(dir=ROOT, prefix=".test-plan-")
         self.addCleanup(shutil.rmtree, inside, True)
         outside = self.tmp if not os.path.abspath(self.tmp).startswith(ROOT + os.sep) else tempfile.mkdtemp(dir=os.path.dirname(ROOT))
@@ -242,19 +243,19 @@ class InstallTest(unittest.TestCase):
             self.addCleanup(shutil.rmtree, outside, True)
         for where, expect in ((outside, lambda f: f), (inside, lambda f: os.path.relpath(f, ROOT))):
             mine = os.path.join(where, "mon-plan.json")
-            json.dump(L, open(mine, "w"))
+            Path(mine).write_text(json.dumps(L))
             if os.path.exists(self.cfg_path):
                 os.remove(self.cfg_path)  # une installation neuve par cas
             self.assertEqual(self.run_install({**ANSWERS, "layout": "__file__", "layout_file": mine}), 0)
-            self.assertEqual(json.load(open(self.cfg_path))["layout"], expect(mine))
+            self.assertEqual(json.loads(Path(self.cfg_path).read_text())["layout"], expect(mine))
             html = next(b for m, p, b in self.fakes[-1].calls if m == "PUT" and p.endswith("/html"))["html"]
             self.assertIn('"exemple-startup"', html)  # la page embarque ce plan
 
     def test_invalid_layout_is_refused_before_anything_is_created(self):
-        L = json.load(open(os.path.join(ROOT, "layouts", "exemple-startup.json")))
+        L = json.loads(Path(os.path.join(ROOT, "layouts", "exemple-startup.json")).read_text())
         L["exit"] = [5, 5]
         bad = os.path.join(self.tmp, "casse.json")
-        json.dump(L, open(bad, "w"))
+        Path(bad).write_text(json.dumps(L))
         with self.assertRaises(install.InstallError) as e:
             self.run_install({**ANSWERS, "layout": "__file__", "layout_file": bad})
         self.assertIn("plan invalide", str(e.exception))
@@ -262,19 +263,19 @@ class InstallTest(unittest.TestCase):
 
     def test_settings_survive_a_relaunch(self):
         self.run_install(ANSWERS)
-        cfg = json.load(open(self.cfg_path))
+        cfg = json.loads(Path(self.cfg_path).read_text())
         hand = {"gitfut": {"p_bob": "bobvance"}, "wiki_posters": ["Five_(2016_film)"], "chrome": False}  # posés à la main
-        json.dump({**cfg, "ui": {"agent_label": "office"}, "protect": True, **hand}, open(self.cfg_path, "w"))
+        Path(self.cfg_path).write_text(json.dumps({**cfg, "ui": {"agent_label": "office"}, "protect": True, **hand}))
         with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):
             self.assertEqual(self.run_install(ANSWERS), 0)
-        after = json.load(open(self.cfg_path))
+        after = json.loads(Path(self.cfg_path).read_text())
         self.assertEqual(after["ui"], {"skin": "menthe", "agent_label": "office"})  # thème du profil ajouté, réglage gardé
         self.assertTrue(after["protect"])
         # un thème choisi à la main l'emporte sur celui du profil
-        json.dump({**after, "ui": {"skin": "classique"}}, open(self.cfg_path, "w"))
+        Path(self.cfg_path).write_text(json.dumps({**after, "ui": {"skin": "classique"}}))
         with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):
             self.assertEqual(self.run_install(ANSWERS), 0)
-        self.assertEqual(json.load(open(self.cfg_path))["ui"], {"skin": "classique"})
+        self.assertEqual(json.loads(Path(self.cfg_path).read_text())["ui"], {"skin": "classique"})
         self.assertEqual({k: after.get(k) for k in hand}, hand)
 
     def test_boss_screen_pages_asked_by_id(self):
@@ -289,13 +290,13 @@ class InstallTest(unittest.TestCase):
             f.store.update(copy.deepcopy(pages))
         with mock.patch.object(FakeKronn, "__init__", with_pages):
             self.assertEqual(self.run_install({**ANSWERS, "boss_pages": "dddd, cccc2222-0000-4000-8000-000000000000"}), 0)
-            self.assertEqual(json.load(open(self.cfg_path))["boss_pages"],
+            self.assertEqual(json.loads(Path(self.cfg_path).read_text())["boss_pages"],
                              ["dddd3333-0000-4000-8000-000000000000", "cccc2222-0000-4000-8000-000000000000"])
         with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):  # relance sur le même Kronn
             with self.assertRaises(install.InstallError):  # « cccc » : deux pages
                 self.run_install({**ANSWERS, "boss_pages": "cccc"})
             self.assertEqual(self.run_install({**ANSWERS, "boss_pages": "-"}), 0)
-            self.assertEqual(json.load(open(self.cfg_path))["boss_pages"], [])
+            self.assertEqual(json.loads(Path(self.cfg_path).read_text())["boss_pages"], [])
 
     def test_mail_accounts_from_mac_mail_and_imap(self):
         """Courrier (#30) : comptes de l'appli Mail et IMAP ; mot de passe au trousseau, jamais dans la config ; cron courrier
@@ -308,36 +309,36 @@ class InstallTest(unittest.TestCase):
                        "mail_imap_0": "o", "mail_imap_0_user": "lynn@gmail.com", "mail_imap_0_label": "Perso",
                        "mail_imap_0_password": "abcd efgh ijkl mnop", "mail_imap_0_primary": "o", "mail_imap_1": "n"}
             self.assertEqual(self.run_install(answers), 0)
-            cfg = json.load(open(self.cfg_path))
+            cfg = json.loads(Path(self.cfg_path).read_text())
             pro, perso = cfg["mail"]["accounts"]
             self.assertEqual((pro["id"], pro["provider"], pro["account"]), ("pro", "mac-mail", "Exchange"))
             self.assertEqual((perso["provider"], perso["host"], perso["secret"], perso["only"]),
                              ("imap", "imap.gmail.com", "keychain:pixel-bureau-perso", "category:primary"))
             self.assertNotEqual(pro["color"], perso["color"])
             self.assertEqual(keys, [("pixel-bureau-perso", "lynn@gmail.com", "abcd efgh ijkl mnop")])
-            self.assertNotIn("abcd efgh ijkl mnop", open(self.cfg_path).read())  # le mot de passe n'est jamais écrit (_answers compris)
+            self.assertNotIn("abcd efgh ijkl mnop", Path(self.cfg_path).read_text())  # le mot de passe n'est jamais écrit (_answers compris)
             self.assertIn("courrier", cfg["workflows"])
             # relance : règles posées depuis gardées, compte IMAP gardé sans redemander son mot de passe
             cfg["mail"]["ignore"] = ["atlassian.net"]
-            json.dump(cfg, open(self.cfg_path, "w"))
+            Path(self.cfg_path).write_text(json.dumps(cfg))
             with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):
                 self.assertEqual(self.run_install({**answers, "mail_keep_perso": "o", "mail_imap_0": "n"}), 0)
-                cfg = json.load(open(self.cfg_path))
+                cfg = json.loads(Path(self.cfg_path).read_text())
                 self.assertEqual(cfg["mail"]["ignore"], ["atlassian.net"])
                 self.assertEqual([a["id"] for a in cfg["mail"]["accounts"]], ["pro", "perso"])
                 self.assertEqual(len(keys), 1)
                 # porteurs du pack (defaults.json, mail.messengers) : repris s'il n'y en a pas encore
                 with mock.patch.object(install.assemble, "defaults", side_effect=lambda c, f=install.assemble.defaults: {**f(c), "mail": {"messengers": [{"id": "gazette", "carrier": "g_x"}]}}):
                     self.assertEqual(self.run_install({**answers, "mail_keep_perso": "o", "mail_imap_0": "n"}), 0)
-                self.assertEqual(json.load(open(self.cfg_path))["mail"]["messengers"], [{"id": "gazette", "carrier": "g_x"}])
+                self.assertEqual(json.loads(Path(self.cfg_path).read_text())["mail"]["messengers"], [{"id": "gazette", "carrier": "g_x"}])
                 self.assertEqual(self.run_install({**ANSWERS, "mail": "n"}), 0)
-                self.assertNotIn("mail", json.load(open(self.cfg_path)))
+                self.assertNotIn("mail", json.loads(Path(self.cfg_path).read_text()))
 
     def test_new_team_by_default_with_the_type_plan(self):
         answers = {k: v for k, v in ANSWERS.items() if k not in ("team", "owner")}
         answers.update(owner="__new__", new_name="Pam", new_person="Pam Beesly", new_role="dev", github_repo="")
         self.assertEqual(self.run_install(answers), 0)
-        cfg = json.load(open(self.cfg_path))
+        cfg = json.loads(Path(self.cfg_path).read_text())
         self.assertIsNone(cfg["team"])
         self.assertEqual(cfg["layout"], "layouts/open-space.json")
         self.assertEqual([p["key"] for p in cfg["people"]], ["p_pam"])
@@ -354,12 +355,12 @@ class InstallTest(unittest.TestCase):
         answers = {k: v for k, v in ANSWERS.items() if k not in ("team", "owner")}
         answers.update(owner="__new__", new_name="Pam", new_person="Pam Beesly", new_role="dev", github_repo="")
         self.assertEqual(self.run_install(answers), 0)
-        cfg = json.load(open(self.cfg_path))
+        cfg = json.loads(Path(self.cfg_path).read_text())
         html = next(b for m, p, b in self.fakes[-1].calls if m == "PUT" and p.endswith("/html"))["html"]
         self.patches[1].stop()  # le vrai subprocess pour node (setUp le remplace pour l'installateur)
         try:
             smoke.fails.clear()
-            with mock.patch("sys.stdout", new=open(os.devnull, "w")):
+            with mock.patch("sys.stdout", new=io.StringIO()):
                 smoke.static_checks(html, cfg)
             self.assertEqual(smoke.fails, [])
             js = ("const {load}=require(process.argv[1]);const cfg=JSON.parse(require('fs').readFileSync(process.argv[2],'utf8'));"
@@ -382,7 +383,7 @@ class InstallTest(unittest.TestCase):
         shutil.copytree(os.path.join(ROOT, "tests", "fixtures", "pack-exemple"), pack)
         answers = dict(ANSWERS, team="__pack__", team_pack=pack, owner="p_bob", github_repo="")
         self.assertEqual(self.run_install(answers), 0)
-        cfg = json.load(open(self.cfg_path))
+        cfg = json.loads(Path(self.cfg_path).read_text())
         self.assertEqual(cfg["team"], pack)
         self.assertEqual(cfg["layout"], os.path.join(pack, "layouts", "plan.json"))  # le plan du pack, proposé par défaut
         html = next(b for m, p, b in self.fakes[-1].calls if m == "PUT" and p.endswith("/html"))["html"]
@@ -398,9 +399,9 @@ class InstallTest(unittest.TestCase):
     def test_newcomer_stays_in_the_local_config(self):
         answers = dict(ANSWERS, owner="__new__", new_name="Jan", new_person="Jan Levinson", new_role="po")
         self.assertEqual(self.run_install(answers), 0)
-        cfg = json.load(open(self.cfg_path))
+        cfg = json.loads(Path(self.cfg_path).read_text())
         self.assertEqual(cfg["people"], [{"key": "p_jan", "name": "Jan", "role": "Product owner", "person": "Jan Levinson", "roleKind": "po"}])
-        self.assertEqual(open(os.path.join(self.teams, "vance", "roster.json")).read(), self.roster)  # roster partagé intact
+        self.assertEqual(Path(os.path.join(self.teams, "vance", "roster.json")).read_text(), self.roster)  # roster partagé intact
         html = next(b for m, p, b in self.fakes[-1].calls if m == "PUT" and p.endswith("/html"))["html"]
         self.assertIn('"p_jan"', html)
         self.assertIn('"p_bob"', html)
@@ -415,7 +416,7 @@ class InstallTest(unittest.TestCase):
     def test_github_login_suggests_who_you_are(self):
         roster = [{"key": "p_a", "name": "A", "role": "Dev"}, {"key": "p_b", "name": "B", "role": "Dev", "github": "BeeGH"}]
         asker = install.Asker({})
-        with mock.patch("sys.stdout", new=open(os.devnull, "w")):
+        with mock.patch("sys.stdout", new=io.StringIO()):
             self.assertEqual(install.who(asker, roster, "beegh"), ("p_b", None))
 
     def test_dry_run_creates_nothing(self):
@@ -428,19 +429,19 @@ class InstallTest(unittest.TestCase):
     def test_jira_statuses_proposed_from_the_board_columns(self):
         """Colonnes du board lues à travers Kronn : chaque statut classé par le nom de sa colonne, sinon sa catégorie Jira."""
         self.assertEqual(self.run_install(ANSWERS), 0)
-        j = json.load(open(self.cfg_path))["jira"]
+        j = json.loads(Path(self.cfg_path).read_text())["jira"]
         self.assertEqual({k: j["statuses"][k] for k in ("Open", "Building", "Peer review", "In QA", "Reopened", "Ready", "Live")},
                          {"Open": "todo", "Building": "doing", "Peer review": "review", "In QA": "test", "Reopened": "test",
                           "Ready": "deploy", "Live": "done"})  # « Backlog » et « Doing » : par leur nom ; colonne inconnue : catégorie
         self.assertEqual((j["flow"]["test"], j["flow"]["reopened"], j["done_status"]), ("In QA", "Reopened", "Live"))
         with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):  # refusé : le classement du profil reste
             self.assertEqual(self.run_install({**ANSWERS, "jira_statuses": "n"}), 0)
-        self.assertNotIn("Live", json.load(open(self.cfg_path))["jira"]["statuses"])
+        self.assertNotIn("Live", json.loads(Path(self.cfg_path).read_text())["jira"]["statuses"])
 
     def test_deploy_workflows_and_other_repos_asked(self):
         self.assertEqual(self.run_install({**ANSWERS, "github_prod": "deploy-prod.yml", "github_staging": "",
                                            "github_deploys": "vance/api, acme/new-repo"}), 0)
-        g = json.load(open(self.cfg_path))["github"]
+        g = json.loads(Path(self.cfg_path).read_text())["github"]
         self.assertEqual(g["prod_workflow"], "deploy-prod.yml")
         by = {d["repo"]: d for d in g["deploys"]}
         self.assertEqual(list(by), ["vance/api", "acme/new-repo"])
@@ -457,7 +458,7 @@ class GuestsTest(unittest.TestCase):
         import assemble
         pack = os.path.join(ROOT, "tests", "fixtures", "pack-exemple")
         cfg = {"team": pack, "guests": [{"key": "g_x", "name": "X"}]}
-        profile = [g["key"] for g in json.load(open(os.path.join(pack, "roster.json")))["guests"]]
+        profile = [g["key"] for g in json.loads(Path(os.path.join(pack, "roster.json")).read_text())["guests"]]
         self.assertEqual([g["key"] for g in assemble.guests(cfg)], ["g_gandalf", "g_yoda", "g_facteur"] + profile + ["g_x"])
         self.assertIn("g_hank", profile)
         self.assertEqual([g["key"] for g in assemble.guests({})], ["g_gandalf", "g_yoda", "g_facteur"])  # toute installation, même sans équipe
@@ -466,7 +467,7 @@ class GuestsTest(unittest.TestCase):
         self.assertEqual([(g["key"], g["name"]) for g in renamed], [("g_gandalf", "Gandalf"), ("g_facteur", "Le facteur"), ("g_yoda", "Le sage")])  # même clé : remplacé (et passé en dernier)
         self.assertTrue({"yoda", "mage", "facteur"} <= set(assemble.sprites({})))  # planches communes (sprites/common.json)
         self.assertIn("sorcier", assemble.sprites(cfg))  # sa planche, tirée de sprites/sorcier/ du pack
-        html = assemble.build(demo=False, cfg=dict(json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"))), team=pack))
+        html = assemble.build(demo=False, cfg=dict(json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text()), team=pack))
         self.assertIn('"guests": [{"key": "g_gandalf"', html)
 
 
@@ -481,7 +482,7 @@ class LaunchTest(unittest.TestCase):
         return json.loads(m.group(1)) if m else None
 
     def test_id_alone_keeps_the_default_variable_names(self):
-        cfg = dict(json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"))))
+        cfg = dict(json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text()))
         cfg["launch"] = {"mep": "wf-mep"}
         spec = self.block(cfg, "bureau-mep")
         self.assertEqual(spec["target_id"], "wf-mep")
@@ -489,7 +490,7 @@ class LaunchTest(unittest.TestCase):
         self.assertIsNone(self.block(cfg, "bureau-impl"))  # pas configuré : pas de bouton
 
     def test_variables_renamed_or_dropped_for_your_workflows(self):
-        cfg = dict(json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"))))
+        cfg = dict(json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text()))
         cfg["launch"] = {"mep": {"wf": "wf-mep", "vars": {"ticket": "issue_key", "pr": None}},
                          "review": {"wf": "wf-rev", "vars": {"repo": "project", "pr": "mr"}}}
         mep = self.block(cfg, "bureau-mep")

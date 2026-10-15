@@ -14,6 +14,7 @@ Sans fichier : le plan de l'installation (clé layout de bureau.config.json, sin
 Le validateur dit ce dont le moteur a besoin aujourd'hui : un plan qui le passe se dessine et se parcourt sans accroc.
 """
 import argparse, json, os, shutil, subprocess, sys, urllib.request
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -29,7 +30,7 @@ ROUNDS = 4  # un brouillon, puis trois corrections au plus
 
 def default_path():
     cfg_path = os.path.join(ROOT, "bureau.config.json")
-    cfg = json.load(open(cfg_path)) if os.path.exists(cfg_path) else {}
+    cfg = json.loads(Path(cfg_path).read_text()) if os.path.exists(cfg_path) else {}
     return os.path.join(ROOT, assemble.layout_path(cfg))
 
 
@@ -40,7 +41,7 @@ def shown(path):
 
 
 def load(path):
-    raw = open(path, "rb").read()
+    raw = Path(path).read_bytes()
     return json.loads(raw), len(raw)
 
 
@@ -123,7 +124,7 @@ def cmd_share(path):
     else:
         if cmd_check(path, False):
             return 1
-        text = open(path).read()
+        text = Path(path).read_text()
     req = urllib.request.Request(cfg["kronn"]["api"].rstrip("/") + "/mcp/workflow-trigger", method="POST",
                                  headers={"content-type": "application/json"},
                                  data=json.dumps({"workflow_id": wf, "variables": {"layout_json": text}}).encode())
@@ -192,7 +193,7 @@ def cmd_from_image(image, out, model):
     if not shutil.which(CLAUDE):
         print("✗ CLI claude introuvable : installe Claude Code (https://claude.com/claude-code) et connecte-toi")
         return 1
-    text = (open(PROMPT, encoding="utf-8").read()
+    text = (Path(PROMPT).read_text(encoding="utf-8")
             + f"\n## À toi\n\nL'image : {image}\nLe plan d'exemple : {EXAMPLE}\n"
             "Lis les deux avec l'outil Read, puis réponds uniquement par le JSON du plan, sans texte autour.\n")
     session, err = None, None

@@ -9,6 +9,7 @@ d'action (cartes Kronn) n'y marchent pas : ils ont besoin de Kronn. Sans section
 les comptes de l'appli Mail du Mac.
 """
 import argparse, json, os, subprocess, sys, tempfile, urllib.request
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -45,7 +46,7 @@ def main(argv):
     ap.add_argument("--mail", action="store_true", help="relever le courrier maintenant (appli Mail, IMAP)")
     ap.add_argument("--no-open", action="store_true")
     a = ap.parse_args(argv)
-    cfg = json.load(open(a.config))
+    cfg = json.loads(Path(a.config).read_text())
     api = (cfg.get("kronn") or {}).get("api", "").rstrip("/")
     with urllib.request.urlopen(f"{api}/pages/{cfg['page_id']}", timeout=30) as r:
         d = json.load(r)

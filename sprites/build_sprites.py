@@ -8,7 +8,12 @@ Sheet layout (64x64 frames):
 import base64, io, json, os, re, sys, urllib.request
 from PIL import Image
 
-BASE = "https://raw.githubusercontent.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator/master/spritesheets"
+# générateur LPC figé sur un commit (#9) : un changement ou une compromission du dépôt amont ne modifie plus les sprites
+# en silence. Commit de master du 2026-10-14 ; spritesheets/ et CREDITS.csv n'y ont pas bougé depuis le 2026-08-16.
+# Monter de version : nouveau SHA ici et dans credits.py (même valeur, vérifiée par tests/test_public.py), vider
+# sprites/lpc_cache/, relancer build_sprites.py, build_layers.py et credits.py, puis comparer les captures.
+LPC_COMMIT = "9bf06be193b053db256b2536824af426de046aa2"
+BASE = f"https://raw.githubusercontent.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator/{LPC_COMMIT}/spritesheets"
 CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lpc_cache")
 os.makedirs(CACHE, exist_ok=True)
 ANIMS = ["walk", "idle", "emote", "hurt"]

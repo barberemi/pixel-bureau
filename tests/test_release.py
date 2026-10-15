@@ -1,6 +1,7 @@
 """Versions et release, KT-66 (python3 -m unittest tests/test_release.py) : VERSION au format 0.MINOR.PATCH, affichée en
 pied de page ; notes de la GitHub Release tirées de CHANGELOG.md, tag cohérent avec VERSION."""
 import contextlib, io, os, re, sys, unittest
+from pathlib import Path
 from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -54,12 +55,12 @@ class ReleaseTest(unittest.TestCase):
         self.assertIn("différent de VERSION", err.getvalue())
 
     def test_changelog_has_unreleased_and_workflow_checks_the_tag(self):
-        log = open(os.path.join(ROOT, "CHANGELOG.md"), encoding="utf-8").read()
+        log = Path(os.path.join(ROOT, "CHANGELOG.md")).read_text(encoding="utf-8")
         self.assertTrue(re.search(r"^## \[Unreleased\]", log, re.M))
         with open(os.path.join(ROOT, "VERSION")) as f:
             version = f.read().strip()
         self.assertIn(f"## [{version}] - ", log)  # la version courante a sa section datée : le tag passera le --check
-        wf = open(os.path.join(ROOT, ".github", "workflows", "release.yml")).read()
+        wf = Path(os.path.join(ROOT, ".github", "workflows", "release.yml")).read_text()
         self.assertIn('tools/release_notes.py --check "$GITHUB_REF_NAME"', wf)
         self.assertIn("gh release create", wf)
 

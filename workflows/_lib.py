@@ -8,9 +8,36 @@ d'environnement BUREAU_CONFIG, sinon bureau.config.json à la racine du dépôt.
 import json, os as _os, re, shutil as _shutil, subprocess as _subprocess, urllib.request
 from zoneinfo import ZoneInfo
 
+
+# fichiers lus ou écrits puis toujours refermés (#11 : jamais de open() sans with, tests en -W error::ResourceWarning)
+def read_json(path):
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def write_json(path, obj):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f)
+
+
+def write_text(path, text):
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+
+
+def read_bytes(path):
+    with open(path, "rb") as f:
+        return f.read()
+
+
+def write_bytes(path, data):
+    with open(path, "wb") as f:
+        f.write(data)
+
+
 _CFG = r"""__BUREAU_CONFIG__"""
-CFG = json.loads(_CFG) if not _CFG.startswith("__") else json.load(open(
-    _os.environ.get("BUREAU_CONFIG") or _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), _os.pardir, "bureau.config.json")))
+CFG = json.loads(_CFG) if not _CFG.startswith("__") else read_json(
+    _os.environ.get("BUREAU_CONFIG") or _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), _os.pardir, "bureau.config.json"))
 
 API = (CFG.get("kronn") or {}).get("api", "")
 # dossier du dépôt : injecté au rendu (dans Kronn, « python3 -c » n'a pas de __file__), sinon celui de ce fichier
@@ -28,6 +55,24 @@ def get(path, timeout=120):
     with urllib.request.urlopen(API + path, timeout=timeout) as r:
         body = json.load(r)
     return body.get("data", body) if isinstance(body, dict) else body
+
+
+def get_all(path, per_page=200, since=None, max_pages=50):
+    """Toutes les pages d'une liste de Kronn paginée par page / per_page (comme /discussions, triée par updated_at
+    décroissant), jusqu'à une page incomplète (#5). since : on s'arrête aussi dès qu'une page finit avant cette date
+    (updated_at), les suivantes sont plus vieilles. Un élément déjà vu (Kronn qui ignorerait page) arrête la lecture."""
+    out, seen = [], set()
+    sep = "&" if "?" in path else "?"
+    for page in range(1, max_pages + 1):
+        batch = get(f"{path}{sep}page={page}&per_page={per_page}") or []
+        fresh = [x for x in batch if x.get("id") not in seen]
+        seen.update(x.get("id") for x in fresh)
+        out += fresh
+        if len(batch) < per_page or len(fresh) < len(batch):
+            break
+        if since and str(batch[-1].get("updated_at") or "") < since:
+            break
+    return out
 
 
 def is_bureau(wf):

@@ -89,7 +89,7 @@ function renderTicket(side,key){
     for(const p of prs){
       const r=p.draft?['brouillon','var(--idle)']:TK_REV[p.review]||TK_REV.pending;
       const li=document.createElement('li');
-      li.innerHTML=`<span class="dot" style="background:${r[1]}"></span><a href="${esc(p.url)}" target="_blank" rel="noopener" style="color:var(--accent);white-space:nowrap">#${p.n}</a><span>${esc(p.title)}</span><span class="k">${r[0]}</span>`;
+      li.innerHTML=`<span class="dot" style="background:${r[1]}"></span><a ${hrefOf(p.url)} target="_blank" rel="noopener" style="color:var(--accent);white-space:nowrap">#${p.n}</a><span>${esc(p.title)}</span><span class="k">${r[0]}</span>`;
       ul.appendChild(li);
     }
     pb.appendChild(ul);
@@ -143,7 +143,7 @@ function prInfo(id){
 function renderPr(side,id){
   const x=prInfo(id);
   const h=document.createElement('h2');h.textContent=(x.repo?x.repo.split('/')[1]:'')+'#'+x.n;side.appendChild(h);
-  const gh=x.url?`<a href="${esc(x.url)}" target="_blank" rel="noopener" style="color:var(--accent)">Ouvrir sur GitHub ↗</a>`:'dépôt GitHub inconnu';
+  const gh=x.url?`<a ${hrefOf(x.url)} target="_blank" rel="noopener" style="color:var(--accent)">Ouvrir sur GitHub ↗</a>`:'dépôt GitHub inconnu';
   const rv=x.pr&&(x.pr.merged?['mergée','var(--ok)']:x.pr.draft?['brouillon','var(--idle)']:TK_REV[x.pr.review]);
   const head=document.createElement('div');head.style.cssText='margin:0 0 12px';
   head.innerHTML=(x.pr&&x.pr.title?`<div style="font-size:14px;margin-bottom:6px">${esc(x.pr.title)}</div>`:'')+

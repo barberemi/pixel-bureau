@@ -9,7 +9,7 @@ Sortie (stdout) : {generated_at, pages[{id, title, updated, img}]}, dans l'ordre
 """
 import base64, glob, json, os, shutil, signal, subprocess, tempfile, time
 from datetime import datetime
-from _lib import CFG, TZ, dumps, get, jpeg
+from _lib import CFG, TZ, dumps, get, jpeg, read_json, write_json, write_text, read_bytes
 
 CACHE = os.path.expanduser("~/.cache/pixel-bureau/thumbs")
 CHROMES = ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -44,7 +44,7 @@ def capture(d, exe):
     tmp = tempfile.mkdtemp(prefix="bureau-thumb-")
     try:
         page, png, jpg = (os.path.join(tmp, n) for n in ("page.html", "shot.png", "shot.jpg"))
-        open(page, "w", encoding="utf-8").write(html)
+        write_text(page, html)
         # Chrome ne rendait pas la main après --screenshot (processus auxiliaires) : on guette l'image, puis on arrête le
         # groupe ; les versions récentes sortent seules, et macOS refuse alors le signal (EPERM, pas ESRCH)
         p = subprocess.Popen([exe, "--headless=new", "--disable-gpu", "--mute-audio", "--no-first-run", "--hide-scrollbars",
@@ -65,7 +65,7 @@ def capture(d, exe):
         p.wait(timeout=10)
         if not os.path.exists(png) or not jpeg(png, jpg, size=(320, 200), quality=55):
             return None
-        return "data:image/jpeg;base64," + base64.b64encode(open(jpg, "rb").read()).decode()
+        return "data:image/jpeg;base64," + base64.b64encode(read_bytes(jpg)).decode()
     except Exception:
         return None
     finally:
@@ -77,7 +77,7 @@ def thumb(d, exe):
     key = f"{d.get('current_revision_id')}:{d.get('data_revision')}"
     path = os.path.join(CACHE, d["id"] + ".json")
     try:
-        c = json.load(open(path))
+        c = read_json(path)
         if c.get("key") == key and c.get("img"):
             return c["img"]
     except Exception:
@@ -85,7 +85,7 @@ def thumb(d, exe):
     img = capture(d, exe) if exe else None
     if img:
         os.makedirs(CACHE, exist_ok=True)
-        json.dump({"key": key, "img": img}, open(path, "w"))
+        write_json(path, {"key": key, "img": img})
     return img
 
 

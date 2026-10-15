@@ -137,7 +137,7 @@ function handCards(side,list){
   const box=document.createElement('div');box.className='mailbox';box.innerHTML=list.map(handHtml).join('');side.appendChild(box);
 }
 // liens d'un mail : l'appli Mail (message:) ou le webmail en https ; rien d'autre
-function safeMailUrl(u){return typeof u==='string'&&/^(message:\/\/|https:\/\/)/.test(u)?u:null;}
+function safeMailUrl(u){return typeof u==='string'&&/^message:\/\//.test(u)?u:safeUrl(u);}
 function renderMail(side,first){
   const h=document.createElement('h2');h.textContent='📬 Courrier';side.appendChild(h);
   const acc=mailAccounts().slice().sort((x,y)=>(x.id===first?-1:y.id===first?1:0));

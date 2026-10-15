@@ -107,7 +107,7 @@ function prOwnerChar(n){
 }
 // ---------- liens du fil : une étiquette par ticket, PR et version, un lien par personne ----------
 // Dans la page d'abord (fiche), sinon dehors avec ↗ (Jira, GitHub), sinon du texte grisé qui dit pourquoi au survol.
-const extA=(url,title,txt)=>`<a class="lk lk-id lk-ext" href="${esc(url)}" target="_blank" rel="noopener" title="${esc(title)}">${esc(txt)}</a>`;
+const extA=(url,title,txt)=>`<a class="lk lk-id lk-ext" ${hrefOf(url)} target="_blank" rel="noopener" title="${esc(title)}">${esc(txt)}</a>`;
 function refWho(c,name){
   if(c)return `<a href="#" class="lk lk-who" data-who="${esc(c.key)}" title="Ouvrir sa fiche">${esc(c.name)}</a>`;
   return `<span class="lk-off" title="Pas dans l'équipe : pas de fiche">${esc(name||'Quelqu’un')}</span>`;

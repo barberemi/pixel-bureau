@@ -13,6 +13,7 @@ plus aucun marqueur __X__ ni /*__STYLES__*/ /*__SCRIPTS__*/ ne traîne.
 (--mute-audio), sur un profil jetable, puis arrêté.
 """
 import argparse, base64, json, os, re, shutil, socket, subprocess, sys, tempfile, time, urllib.request
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -48,7 +49,7 @@ def static_checks(html, cfg=None):
     if size >= LIMIT * WARN:  # KT-28 : prévenu avant d'être bloqué (Kronn refuse la page au-delà de LIMIT)
         print(f"ALERTE taille : {size * 100 // LIMIT} % de la limite Kronn, alléger la page (docs/tech-debt, KT-28)")
     # blocs kronn-action attendus : ceux du squelette, ids de workflows remplacés comme à l'assemblage
-    tpl = open(os.path.join(ROOT, "page", "office_template.html")).read()
+    tpl = Path(os.path.join(ROOT, "page", "office_template.html")).read_text()
     c = assemble.config() if cfg is None else cfg
     acts = assemble.action_ids(c)  # comme build() dans assemble.py
     expected, total = [], 0
@@ -150,7 +151,7 @@ def chrome_checks(path, port, user_dir, js, shot, wait, width, height):
         if shot:
             data = call("Page.captureScreenshot", format="png", captureBeyondViewport=True)["data"]
             os.makedirs(os.path.dirname(os.path.abspath(shot)), exist_ok=True)
-            open(shot, "wb").write(base64.b64decode(data))
+            Path(shot).write_bytes(base64.b64decode(data))
             print("     capture :", shot)
         call("Runtime.evaluate", expression="0")  # vide la file d'événements
         exc = [e["params"]["exceptionDetails"] for e in events if e.get("method") == "Runtime.exceptionThrown"]
@@ -204,13 +205,13 @@ def main():
     a = ap.parse_args()
     if a.html:
         path = a.html
-        html = open(path).read()
+        html = Path(path).read_text()
     cfg = NEW_TEAM if a.empty else team_config(a.team) if a.team else assemble.demo_config()
     if not a.html:
         html = assemble.build(demo=not a.empty, cfg=cfg)
         path = os.path.join(ROOT, "dist", "office_empty.html" if a.empty else "office_team.html" if a.team else "office.html")
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        open(path, "w").write(html)
+        Path(path).write_text(html)
         print("     assemblé :", path)
         weights(assemble.weights(cfg, demo=not a.empty))
     static_checks(html, cfg)

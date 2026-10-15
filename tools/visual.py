@@ -16,6 +16,7 @@ que celle des références, la comparaison n'est qu'indicative (avertissement, j
 Pour les refaire sur une PR : poser le label « références visuelles » (workflow .github/workflows/visual-refs.yml).
 """
 import io, json, os, platform, subprocess, sys
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -35,7 +36,7 @@ def frozen_clock():
     """Script lancé avant la page : le temps ne dépend plus de la machine. Date figée à l'heure de l'instantané de démo
     (data/office_snapshot.json) ; performance.now et requestAnimationFrame sur un temps virtuel qui n'avance que par
     __advance(n) (n images de 1/30 s) : la CI, lente ou rapide, dessine exactement la même image."""
-    at = json.load(open(os.path.join(ROOT, "data", "office_snapshot.json")))["generated_at"]
+    at = json.loads(Path(os.path.join(ROOT, "data", "office_snapshot.json")).read_text())["generated_at"]
     return ("(()=>{const F=Date.parse(%s),R=Date;class D extends R{constructor(...a){super(...(a.length?a:[F]))}"
             "static now(){return F}}D.parse=R.parse;D.UTC=R.UTC;window.Date=D;"
             "let vt=1000,q=[];performance.now=()=>vt;window.requestAnimationFrame=cb=>{q.push(cb);return q.length};"
@@ -92,7 +93,7 @@ def update(names):
     for n, im in capture_all(names).items():
         im.save(os.path.join(REF, n + ".png"), optimize=True)
         print(f"✓ tests/visual/{n}.png")
-    json.dump({"platform": plat(), "chrome": chrome_version(), "names": names}, open(META, "w"), indent=1)
+    Path(META).write_text(json.dumps({"platform": plat(), "chrome": chrome_version(), "names": names}, indent=1))
     return 0
 
 
@@ -107,7 +108,7 @@ def compare(names, strict):
     if not os.path.exists(META):
         print("visuel : pas encore de références (tests/visual/) ; label « références visuelles » sur la PR pour les faire")
         return 1 if strict else 0
-    meta = json.load(open(META))
+    meta = json.loads(Path(META).read_text())
     indicative = meta.get("platform") != plat() and not strict
     os.makedirs(DIFF, exist_ok=True)
     bad = []

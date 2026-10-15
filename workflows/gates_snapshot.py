@@ -15,7 +15,7 @@ Le dataset doit être un vrai objet : Kronn y retrouve la ligne cliquée (find(r
 """
 import json, os as _os
 from datetime import datetime, timedelta, timezone
-from _lib import CFG, get, is_bureau, is_bureau_disc
+from _lib import CFG, get, get_all, is_bureau, is_bureau_disc, read_json, write_json
 
 
 
@@ -24,7 +24,7 @@ from _lib import CFG, get, is_bureau, is_bureau_disc
 CACHE = _os.path.join(_os.path.expanduser("~"), ".cache", "pixel-bureau", "workflow_defs.json")
 CACHE_TTL = 600
 try:
-    _cache = json.load(open(CACHE))
+    _cache = read_json(CACHE)
 except Exception:
     _cache = {}
 _now = datetime.now(timezone.utc).timestamp()
@@ -92,11 +92,17 @@ except Exception:
     pass
 projects = [{"id": "none", "name": "Sans projet"}] + [{"id": k, "name": v[:60]} for k, v in sorted(names.items(), key=lambda x: str(x[1]).lower())]
 since = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
+# discussions des 14 derniers jours, toutes pages lues (#5) : le canard et les questions en attente
+discs = []
+try:
+    discs = get_all("/discussions", since=since)
+except Exception:
+    pass
 ducks = []
 try:
     ducks = [{"id": d["id"], "title": str(d.get("title") or "")[:100], "project": names.get(d.get("project_id")), "updated": d.get("updated_at"), "created": d.get("created_at"),
               "awaiting": (d.get("pending_question_count") or 0) > 0}
-             for d in get("/discussions?per_page=200") if str(d.get("title") or "").startswith("🦆") and not d.get("archived")
+             for d in discs if str(d.get("title") or "").startswith("🦆") and not d.get("archived")
              and str(d.get("updated_at") or "") >= since]
 except Exception:
     pass
@@ -108,7 +114,7 @@ ducks = sorted(ducks, key=lambda d: str(d["updated"] or ""), reverse=True)[:15]
 # dans Kronn avant de répondre (déjà décidée : refus). bureau = discussion ouverte par le Bureau (canard, interroger).
 questions, qrows = [], []
 try:
-    pend = sorted((d for d in get("/discussions?per_page=200") if (d.get("pending_question_count") or 0) > 0
+    pend = sorted((d for d in discs if (d.get("pending_question_count") or 0) > 0
                    and not d.get("archived") and str(d.get("updated_at") or "") >= since), key=lambda d: str(d.get("updated_at") or ""))
     for d in pend:
         for q in (get(f"/discussions/{d['id']}/questions") or {}).get("questions") or []:
@@ -128,7 +134,7 @@ except Exception:
     pass
 try:
     _os.makedirs(_os.path.dirname(CACHE), exist_ok=True)
-    json.dump({k: v for k, v in _cache.items() if k in defs}, open(CACHE, "w"))
+    write_json(CACHE, {k: v for k, v in _cache.items() if k in defs})
 except Exception:
     pass
 # une ligne par décision possible de chaque gate (#45) : les boutons directs de la page (approuver, rejeter, changements)

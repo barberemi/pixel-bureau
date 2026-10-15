@@ -11,6 +11,10 @@ metadata:
       status: Confirmed by user
       reviewer: Kronn audit validation card
       note: "Confirmed through an audit validation card."
+    - date: 2026-10-15
+      status: Resolved
+      reviewer: mainteneur
+      note: "#6 : helper safeUrl / hrefOf (page/src/50-panel.js) qui ne garde que https, appliqué aux liens venus des données (PR, runs, release, musique, fil, passions) ; schéma refusé = lien sans href. Le courrier garde message:// (safeMailUrl). Liens bâtis sur la config (Jira, Kronn local en http) ou une adresse fixe inchangés. Test tests/safeurl.test.js."
 ---
 
 # TD-20261011-href-scheme-unchecked
@@ -18,7 +22,7 @@ metadata:
 - **Category**: security
 - **Area**: XSS
 - **Severity**: Low
-- **Status**: Confirmed by user
+- **Status**: Resolved (2026-10-15, #6)
 - **Effort**: S (< 1h)
 - **Blast radius**: module (several files in page/src)
 

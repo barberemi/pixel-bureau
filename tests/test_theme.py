@@ -2,6 +2,7 @@
 des contrastes WCAG suffisants (tools/theme.py : texte >= 4,5:1 sur ses fonds, blanc >= 4,5:1 sur ses aplats) ; polices
 intégrées. Le même contrôle vaut pour le thème d'un pack d'équipe (python3 tools/theme.py check, sa CI)."""
 import contextlib, io, os, shutil, sys, tempfile, unittest
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -40,14 +41,14 @@ class ThemeTest(unittest.TestCase):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
         pale = os.path.join(tmp, "theme-pale.css")
-        open(pale, "w").write('/* @nom: Pâle */\n:root[data-skin="pale"]{--bg:#ffffff;--panel:#ffffff;--ink:#bbbbbb}\n'
+        Path(pale).write_text('/* @nom: Pâle */\n:root[data-skin="pale"]{--bg:#ffffff;--panel:#ffffff;--ink:#bbbbbb}\n'
                               ':root[data-skin="pale"] body.tv{--tv-bg:#000000;--tv-ink:#111111}\n')
         errors, warnings = theme.check(pale)
         self.assertIn("--ink sur --panel : 1.92:1 (minimum 4.5:1)", errors)
         self.assertIn("mode TV : --tv-ink sur --tv-bg : 1.11:1 (minimum 4.5:1)", errors)
         self.assertTrue(warnings and "--muted" in warnings[0])  # couleurs restées celles du Classique
         sans_nom = os.path.join(tmp, "theme-x.css")
-        open(sans_nom, "w").write(':root[data-skin="x"]{--ink:#000000;--bg:#ffffff}\n')
+        Path(sans_nom).write_text(':root[data-skin="x"]{--ink:#000000;--bg:#ffffff}\n')
         self.assertIn("première ligne « /* @nom: Nom affiché */ » absente", theme.check(sans_nom)[0])
         with contextlib.redirect_stdout(io.StringIO()) as out:
             self.assertEqual(theme.main(["check", menthe]), 0)

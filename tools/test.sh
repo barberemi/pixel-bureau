@@ -5,7 +5,7 @@
 set -e
 cd "$(dirname "$0")/.."
 node --test tests/*.test.js
-python3 -m unittest -q tests/test_templates.py tests/test_install.py tests/test_scripts.py tests/test_plan.py tests/test_theme.py tests/test_compact.py tests/test_visual.py tests/test_pack.py tests/test_mail.py tests/test_preview.py tests/test_public.py tests/test_release.py
+python3 -W error::ResourceWarning -m unittest -q tests/test_templates.py tests/test_install.py tests/test_scripts.py tests/test_plan.py tests/test_theme.py tests/test_compact.py tests/test_visual.py tests/test_pack.py tests/test_mail.py tests/test_preview.py tests/test_public.py tests/test_release.py
 PY=python3
 [ -x .venv/bin/python ] && PY=.venv/bin/python
 "$PY" tools/smoke.py "$@"

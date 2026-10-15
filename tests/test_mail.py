@@ -1,11 +1,12 @@
 """Courrier, #30 (python3 -m unittest tests/test_mail.py) : le cron « courrier » (workflows/mail_snapshot.py) lancé
 comme dans Kronn, avec un faux osascript (appli Mail), un faux security (trousseau) et un faux serveur IMAP local."""
 import json, os, shutil, socketserver, subprocess, sys, tempfile, threading, unittest
+from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from datetime import datetime, timedelta
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FIXTURE = json.load(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")))
+FIXTURE = json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text())
 LIMIT = 100 * 1024
 FS, RS = "\x1f", "\x1e"
 NOW = datetime.now()
@@ -77,7 +78,7 @@ class MailSnapshotTest(unittest.TestCase):
         self.tmp = tempfile.mkdtemp()
         self.bin = os.path.join(self.tmp, "bin")
         os.makedirs(self.bin)
-        self.tool("osascript", f"import sys\nsys.stdin.read()\nsys.stdout.write(open({os.path.join(self.tmp, 'mac.txt')!r}).read())")
+        self.tool("osascript", f"import sys\nfrom pathlib import Path\nsys.stdin.read()\nsys.stdout.write(Path({os.path.join(self.tmp, 'mac.txt')!r}).read_text())")
         self.tool("security", "import sys\na = sys.argv[1:]\nprint('mdp-application') if a[a.index('-s') + 1] == 'pixel-bureau-perso' else sys.exit(44)")
         with open(os.path.join(self.tmp, "mac.txt"), "w") as fh:
             fh.write(MAC_OUT)
@@ -121,6 +122,7 @@ class MailSnapshotTest(unittest.TestCase):
                 self.reply({"run_id": "r1"})
         self.ksrv = ThreadingHTTPServer(("127.0.0.1", 0), H)
         threading.Thread(target=self.ksrv.serve_forever, daemon=True).start()
+        self.addCleanup(self.ksrv.server_close)  # après shutdown (nettoyages en ordre inverse)
         self.addCleanup(self.ksrv.shutdown)
         return f"http://127.0.0.1:{self.ksrv.server_address[1]}/api"
 
@@ -196,7 +198,7 @@ class MailSnapshotTest(unittest.TestCase):
     def test_applescript_names_distinct_ignoring_case(self):
         """AppleScript ignore la casse : une liste « rs » écrasait le séparateur « RS » (tous les mails en un seul)."""
         import re
-        src = open(os.path.join(ROOT, "workflows", "mail_snapshot.py"), encoding="utf-8").read()
+        src = Path(os.path.join(ROOT, "workflows", "mail_snapshot.py")).read_text(encoding="utf-8")
         names = set(re.findall(r"\bset (\w+) to", src.split("APPLESCRIPT = r")[1].split("\n\n\n")[0]))
         low = {}
         for n in names:

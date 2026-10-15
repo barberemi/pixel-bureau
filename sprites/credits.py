@@ -14,7 +14,8 @@ import heralds  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-CSV_URL = "https://raw.githubusercontent.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator/master/CREDITS.csv"
+LPC_COMMIT = "9bf06be193b053db256b2536824af426de046aa2"  # le même commit que build_sprites.py (#9)
+CSV_URL = f"https://raw.githubusercontent.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator/{LPC_COMMIT}/CREDITS.csv"
 CSV = os.path.join(HERE, "lpc_cache", "CREDITS.csv")
 OUT = os.path.join(ROOT, "CREDITS.md")
 ANIMS = ("walk", "idle", "emote", "hurt")

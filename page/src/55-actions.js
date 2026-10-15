@@ -248,7 +248,7 @@ function musicCard(side,c){
   // contrat Kronn : l'URL complète du lecteur ; Kronn ne l'affiche que si suno.com est dans ses sites autorisés
   const embed=m.suno_id?` data-kronn-embed="https://suno.com/embed/${encodeURIComponent(m.suno_id)}"`:'';
   d.innerHTML=`${m.cover?`<img src="${m.cover}" alt="">`:''}<div class="mt${embed?' mt-embed':''}"${embed}><div class="mn">${esc(m.title)}</div><div class="mb">${esc(m.style||'')}${m.duration?' · '+esc(m.duration):''}</div>
-    <a class="mplay" href="${esc(m.url)}" target="_blank" rel="noopener">▶ Écouter sur Suno</a></div>`;
+    <a class="mplay" ${hrefOf(m.url)} target="_blank" rel="noopener">▶ Écouter sur Suno</a></div>`;
   sec.appendChild(d);
 }
 function payBlock(side,c){
