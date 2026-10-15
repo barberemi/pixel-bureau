@@ -111,12 +111,13 @@ SHOTS = {
     "kanban": (1400, 1400, AT(11) + "select('kanban');", "#side"),
     # fiche d'un ticket : ses PR et les workflows à lancer (dataset actions simulé depuis l'équipe de démo)
     "fiche-ticket": (1400, 1400, AT(11) + "ACTIONS.estimate=true;ACTION_BINDS['bureau-estimate']={jira_ticket_key:'key'};const all=TEAM.people.flatMap(p=>p.tickets),prs=TEAM.people.flatMap(p=>p.prs);"
-                     "ACTS={tickets:all.map(t=>({key:t.key})),prs:prs.map(x=>({n:String(x.n)}))};"
+                     "ACTS={tickets:all.map(t=>({key:t.key})),prs:prs.map(x=>({id:prId(x),n:String(x.n),repo:prRepo(x)}))};"
                      "const pr=prs.find(x=>x.review==='changes'&&!x.draft&&(x.keys||[]).length);"
                      "select('ticket:'+(pr?pr.keys[0]:(all.find(t=>t.cat==='deploy')||all[0]).key));", "#side"),
     # fiche d'une PR (lien du fil) : la PR #2016 de Darryl, relue deux fois par Dwight (variables de run ajoutées pour la démo)
     "fiche-pr": (1400, 1200, AT(18.5) + "byKey.dwight.runs.filter(r=>r._s<=T&&r.status==='Success').slice(0,2).forEach(r=>r.vars={'current_task.number':'2016',"
-                 "'current_task.repo':CFG.github_repo});select('pr:'+CFG.github_repo+'#2016');", "#side"),
+                 "'current_task.repo':CFG.github_repo});const all=TEAM.people.flatMap(p=>p.tickets),prs=TEAM.people.flatMap(p=>p.prs);"
+                 "ACTS={tickets:all.map(t=>({key:t.key})),prs:prs.map(x=>({id:prId(x),n:String(x.n),repo:prRepo(x)}))};select('pr:'+CFG.github_repo+'#2016');", "#side"),
     "planning": (1400, 1400, AT(11) + "select('planning');", "#side"),
     "mep": (1400, 1400, AT(11.6) + "select('tv');", "#side"),
     "avatar": (1400, 1600, AT(11) + "select('jim');openEditor(byKey.jim);", "#side"),

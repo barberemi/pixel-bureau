@@ -31,6 +31,7 @@ function themes(cfg = {}) {
 }
 function pageConfig(cfg) {
   return {kronn_ui: (cfg.kronn || {}).ui, jira_site: (cfg.jira || {}).site, jira_flow: {triage_from: 'Proposed', test: 'To Test', validated: 'To Deploy', reopened: 'Reopen', ...((cfg.jira || {}).flow || {})}, github_repo: (cfg.github || {}).repo,
+    fix_any_repo: !!((((cfg.launch || {}).fix || {}).vars || {}).repo), // comme page_config() : Corriger prend le dépôt (#56)
     rhythm: cfg.rhythm || {}, mep_workflow: cfg.mep_workflow, workflows: cfg.workflows || {}, agents: cfg.agents || [], ui: cfg.ui || {}, skins: themes(cfg),
     schedules: Object.fromEntries(['office', 'live', 'team', 'payroll', 'canard'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule.replace('@@cron_hours@@', '4-20')]))}; // heures de Paris, comme cron_hours()
 }
@@ -82,9 +83,11 @@ function pageJs(owner, {demo = true, actions = true, config, layout} = {}) {
     __TEAM__: demo ? read('data', 'team_snapshot.json') : 'null',
     __DEMO__: String(!!demo),
     __ACTIONS__: JSON.stringify({avatar: actions, gate: actions, relaunch: actions, ask: actions, impl: actions, mep: actions, review: actions, fix: actions, comment: actions, duck: actions}),
-    // comme action_binds() de tools/assemble.py, sur les blocs du squelette (noms par défaut)
+    // comme action_binds() de tools/assemble.py, sur les blocs du squelette (noms par défaut ; rôle facultatif repo de
+    // « Corriger » retiré tant que launch.fix.vars ne le nomme pas, LAUNCH_OPTIONAL)
     __ACTION_BINDS__: JSON.stringify(Object.fromEntries([...read('page', 'office_template.html').matchAll(/data-action-id="([^"]+)">(.*?)<\/script>/gs)]
       .map(([, id, body]) => [id, Object.fromEntries(JSON.parse(body).values.filter(v => v.provenance === 'dynamic_binding')
+        .filter(v => !(id === 'bureau-fix' && v.name === 'repo' && !pageConfig(cfg).fix_any_repo))
         .map(v => [v.name, ((v.source_ref || '').match(/\.find\((\w+)\)/) || [])[1]]).filter(([, f]) => f))]))),
   };
   return js.replace(/__(SPRITES|LAYERS|MUSIC|CAST|ROSTER|LAYOUT|CONFIG|OWNER|DEMO|ACTIONS|ACTION_BINDS|AVATAR_WF|GATE_WF|RELAUNCH_WF|ASK_QP|SNAP|TEAM)__/g, m => data[m]);

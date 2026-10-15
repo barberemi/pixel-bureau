@@ -42,13 +42,20 @@ function runRef(r){
   const v=(r&&r.vars)||{}, n=v['current_task.number']||v.pr||null, repo=v['current_task.repo']||v.repo||null;
   if(!v.jira_ticket_key&&!n)return null;
   const other=otherRepo(repo);
-  const pr=n&&TEAM&&!other?[...TEAM.people.flatMap(p=>p.prs||[]),...(TEAM.other_prs||[])].find(p=>String(p.n)===String(n)):null;
+  const pr=n&&TEAM?[...TEAM.people.flatMap(p=>p.prs||[]),...(TEAM.other_prs||[])].find(p=>samePr(p,repo,n)):null;
   const key=v.jira_ticket_key||(pr&&pr.keys&&pr.keys[0])||null;
   const t=key&&TEAM?[...TEAM.people.flatMap(p=>p.tickets||[]),...(TEAM.unassigned||[])].find(x=>x.key===key):null;
   return {key,pr:n?String(n):null,repo:other?repo:null,t:t||null,title:pr?pr.title:null};
 }
 // un dépôt « owner/nom » autre que celui de l'équipe (github_repo) ; inconnu ou identique : false
 const otherRepo=repo=>!!repo&&/^[\w.-]+\/[\w.-]+$/.test(repo)&&String(repo).toLowerCase()!==String(CFG.github_repo||'').toLowerCase();
+// identité d'une PR (#56) : son dépôt et son numéro, jamais le numéro seul (front_api#16 n'est pas front_web#16).
+// repo absent (ancien dataset) ou celui de l'équipe : le dépôt principal (github_repo).
+const prRepo=x=>otherRepo(x&&x.repo)?x.repo:(CFG.github_repo||'');
+const prId=x=>prRepo(x)+'#'+x.n; // « owner/dépôt#n » : fiche (select('pr:'+id)), liens data-pr, dataset actions (prs.find(id))
+const prNum=x=>(otherRepo(x&&x.repo)?x.repo.split('/')[1]:'')+'#'+x.n; // affiché : « #2039 », « front_api#16 » ailleurs
+const repoKey=repo=>otherRepo(repo)?String(repo).toLowerCase():'';
+const samePr=(x,repo,n)=>!!x&&String(x.n)===String(n)&&repoKey(x.repo)===repoKey(repo);
 // place debout côté allée, à côté d'un siège
 // de passage : à sa place tant qu'il a un ticket ouvert dans le sprint (il ne se promène pas) ; ni daily ni cérémonies ;
 // heures de bureau comme tout le monde ; plus aucun ticket ouvert : pas au bureau

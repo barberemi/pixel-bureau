@@ -17,7 +17,8 @@ from compact import strip_css, strip_js  # noqa: E402
 
 # boutons de la page : bloc kronn-action du squelette -> (clé dans bureau.config.json « actions » ou « launch »,
 # marqueur de l'id). actions = workflows du Bureau (créés par l'installateur) ; launch = tes workflows lancés depuis la
-# fiche d'un ticket (impl : clé du ticket ; mep : clé + n° de PR ; review : dépôt + n° de PR ; fix : n° de PR + consignes ;
+# fiche d'un ticket ou d'une PR (impl : clé du ticket ; mep : clé + n° de PR ; review : dépôt + n° de PR ; fix : n° de PR + consignes,
+# et le dépôt si ton workflow le prend (launch.fix.vars.repo) ;
 # estimate : clé du ticket, Story Points et raison saisis dans la carte)
 ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate", "__GATE_WF__"), "bureau-answer": ("answer", "__ANSWER_WF__"),
            "bureau-relaunch": ("relaunch", "__RELAUNCH_WF__"), "bureau-ask": ("ask", "__ASK_QP__"),
@@ -28,8 +29,11 @@ ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate",
 # variables des workflows de la clé launch : rôle -> nom par défaut ; launch.<action> = id seul, ou {wf, vars: {rôle: nom
 # chez toi, ou null si ton workflow n'a pas cette variable}}
 LAUNCH_VARS = {"impl": {"ticket": "jira_ticket_key"}, "mep": {"ticket": "jira_ticket_key", "pr": "pr_number"},
-               "review": {"repo": "repo", "pr": "pr"}, "fix": {"pr": "pr", "notes": "notes"},
+               "review": {"repo": "repo", "pr": "pr"}, "fix": {"pr": "pr", "notes": "notes", "repo": "repo"},
                "estimate": {"ticket": "jira_ticket_key", "points": "story_points", "reason": "raison"}}
+# rôles facultatifs : absents du bloc tant que launch.<action>.vars ne les nomme pas (#56 : un workflow « Corriger »
+# d'un seul dépôt n'a pas de variable repo ; il ne reçoit alors que les PR du dépôt principal)
+LAUNCH_OPTIONAL = {"fix": ("repo",)}
 ACTION_RE = re.compile(r'<script type="application/kronn-action" data-action-id="([^"]+)">.*?</script>\n?', re.S)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -157,6 +161,8 @@ def page_config(cfg):
         # statuts Jira des scènes d'équipe : ticket à tester, validé, réouvert
         "jira_flow": {**JIRA_FLOW, **{k: v for k, v in ((cfg.get("jira") or {}).get("flow") or {}).items() if v}},
         "github_repo": (cfg.get("github") or {}).get("repo"),
+        # « Corriger » sur la PR d'un autre dépôt : seulement si ton workflow prend le dépôt (launch.fix.vars.repo, #56)
+        "fix_any_repo": bool(launch(cfg).get("fix", ("", {}))[1].get("repo")),
         "rhythm": cfg.get("rhythm") or {},
         "mep_workflow": cfg.get("mep_workflow"),
         "workflows": cfg.get("workflows") or {},  # ids des crons : calendrier et fraîcheur des données
@@ -354,7 +360,7 @@ def action_block(block, cfg):
     aid = re.search(r'data-action-id="([^"]+)"', block).group(1)
     key, mark = ACTIONS[aid]
     block = block.replace(mark, action_ids(cfg).get(key) or "")
-    names = launch(cfg).get(key, ("", {}))[1]
+    names = {**{LAUNCH_VARS[key][r]: None for r in LAUNCH_OPTIONAL.get(key, ())}, **launch(cfg).get(key, ("", {}))[1]}
     if not names:
         return block
     m = re.match(r"(<script[^>]*>)(.*?)(</script>\n?)$", block, re.S)

@@ -510,7 +510,7 @@ class LaunchTest(unittest.TestCase):
         self.assertEqual([v["name"] for v in rev["values"]], ["project", "mr"])
         import assemble  # la page reçoit les noms renommés comme clés de data-kronn-bindings
         binds = assemble.action_binds(assemble.build(demo=False, cfg=cfg))
-        self.assertEqual((binds["bureau-mep"], binds["bureau-review"]), ({"issue_key": "key"}, {"project": "n", "mr": "n"}))
+        self.assertEqual((binds["bureau-mep"], binds["bureau-review"]), ({"issue_key": "key"}, {"project": "id", "mr": "id"}))
 
     def test_unknown_role_is_refused(self):
         import assemble
