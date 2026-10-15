@@ -419,56 +419,47 @@ const discQuestions=(id,t)=>QUESTIONS.filter(q=>q.disc===id&&(ms(q.since)||0)<=t
 const loneQuestions=t=>QUESTIONS.filter(q=>(ms(q.since)||0)<=t&&!chars.some(c=>c.visitor&&c.disc&&c.disc.id===q.disc));
 // questions qui attendent ta réponse à t : celles des visiteurs (au moins une par visiteur en attente) et les autres
 const askCount=t=>chars.reduce((a,x)=>a+(x._st&&x._st.st==='ask'?((x._st.qs||[]).length||1):0),0)+loneQuestions(t).length;
-const ST_COLOR={
+// couleurs des états des personnages, une seule table : soit un jeton du thème (ok, info, warn, err, idle), soit une couleur
+// fixe. Le canvas veut une vraie couleur : un jeton y prend sa valeur de ST_TOKEN, figée ; le HTML (panneau, « Qui fait quoi »,
+// TV, légende) garde var(--jeton) pour suivre le thème. Les deux vues ne diffèrent donc que par ce suivi du thème.
+const ST_TOKEN={ok:'#2e9e5b',info:'#4a7fe0',warn:'#e0a020',err:'#d1453b',idle:'#9a9284'};
+const ST_PALETTE={
   sax:'#c9a227',
   daily:'#2e9e9b',
   ask:'#d97757',
-  mep:'#7a5cc8',
-  party:'#e0a020',
-  work:'#2e9e5b',
-  srv:'#4a7fe0',
-  meet:'#4a7fe0',
-  gate:'#e0a020',
-  error:'#d1453b',
-  coffee:'#9a9284',
-  idle:'#9a9284',
+  mep:MEP_COLOR,
+  party:'warn',
+  work:'ok',
+  srv:'info',
+  meet:'info',
+  gate:'warn',
+  error:'err',
+  coffee:'idle',
+  idle:'idle',
   boss:'#8a8478',
   frozen:'#7d8fa3',
   reopen:'#d97757',
-  deliver:'#7a5cc8',
-  thumbs:'#2e9e5b',
-  cheer:'#2e9e5b',
-  pizza:'#e0a020',
-  kickoff:'#2e9e9b',
-  planning:'#2e9e9b',
-  retro:'#c25a9e'
-};
-const ST_CSS={
-  sax:'#c9a227',
-  daily:'#2e9e9b',
-  ask:'#d97757',
-  mep:'#7a5cc8',
-  party:'var(--warn)',
-  work:'var(--ok)',
-  srv:'var(--info)',
-  meet:'var(--info)',
-  gate:'var(--warn)',
-  error:'var(--err)',
-  coffee:'var(--idle)',
-  idle:'var(--idle)',
-  boss:'#8a8478',
-  frozen:'#7d8fa3',
-  reopen:'#d97757',
-  deliver:'#7a5cc8',
-  thumbs:'var(--ok)',
-  cheer:'var(--ok)',
-  pizza:'var(--warn)',
+  deliver:MEP_COLOR,
+  thumbs:'ok',
+  cheer:'ok',
+  pizza:'warn',
   kickoff:'#2e9e9b',
   planning:'#2e9e9b',
   retro:'#c25a9e',
+  // pas d'anneau sur le plan (absent, parti) : rien dans ST_COLOR, pastille vide en HTML
   absent:'transparent',
   gone:'transparent'
 };
+const ST_COLOR=Object.fromEntries(Object.entries(ST_PALETTE).filter(([,v])=>v!=='transparent').map(([k,v])=>[k,ST_TOKEN[v]||v]));
+const ST_CSS=Object.fromEntries(Object.entries(ST_PALETTE).map(([k,v])=>[k,ST_TOKEN[v]?'var(--'+v+')':v]));
+// pastilles de la légende du gabarit (office_template.html) : data-st = un état de ST_CSS, data-cat = un statut de TCAT ;
+// une pastille en anneau (.ring) prend la couleur en bordure
+function paintLegend(root){
+  for(const i of root.querySelectorAll('[data-st],[data-cat]')){
+    const col=i.dataset.st?ST_CSS[i.dataset.st]:TCAT[i.dataset.cat].c;
+    if(i.classList.contains('ring'))i.style.borderColor=col;else i.style.background=col;
+  }
+}
 
 // zones facultatives d'un plan : où aller quand le plan n'en a pas (plateau TV, canapé, fontaine...)
 const ZONE_FALLBACK={stage:'stageout',stageout:'coffee',stagesax:'stageout',daily:'meet',sofa:'coffee',ktable:'coffee',cooler:'coffee',copier:'coffee',kanban:'gate',sax:'boss',gate:'boss'};

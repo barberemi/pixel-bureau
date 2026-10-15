@@ -49,7 +49,7 @@ function renderTv(side){
     released:['Release publiée','#9a9284'],
     staging:['Staging en cours','#2f6fd6'],
     staged:['Validée sur staging','#2e9e9b'],
-    prod:['Prod en cours','#7a5cc8'],
+    prod:['Prod en cours',MEP_COLOR],
     done:['En prod','var(--ok)'],
     failed:['Échec','var(--err)']
   };
@@ -186,7 +186,7 @@ function memoDetails(d,id,def){d.open=id in DET_OPEN?DET_OPEN[id]:def;d.addEvent
 function workBlock(side,c){
   const W=workOf(c); if(!W)return;
   const box=foldSection(side,'work','Cette semaine dans Jira',null,true);
-  const groups=[['written','Tickets écrits','var(--info)'],['triaged','Tickets triés','#8a8478'],['tested','Testés depuis le dernier daily','#7a5cc8'],['reopened','Réouverts depuis le dernier daily','var(--err)']];
+  const groups=[['written','Tickets écrits','var(--info)'],['triaged','Tickets triés','#8a8478'],['tested','Testés depuis le dernier daily',MEP_COLOR],['reopened','Réouverts depuis le dernier daily','var(--err)']];
   for(const [k,t,col] of groups){
     const list=W[k]; if(!list.length)continue;
     const d=memoDetails(document.createElement('details'),c.key+':w:'+k,k!=='triaged');

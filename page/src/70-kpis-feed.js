@@ -142,7 +142,7 @@ function teamEventTxt(e){
   if(e.kind==='new'){const w=e.who?nm(e.who,null):null;
     return {c:w&&w.c,txt:`<span style="color:var(--info)">＋</span> Nouveau ticket ${refTk(e.key,true)}${w?' pour '+w.r:''}${sum}`};}
   if(e.kind==='pr'){const w=nm(e.author,e.author_name);
-    return {c:w.c,txt:`<span style="color:#7a5cc8">⇡</span> ${w.r} ouvre la PR ${refPr(e.n,e.url)} <small>${esc(clip(e.title,70))}</small>`};}
+    return {c:w.c,txt:`<span style="color:${MEP_COLOR}">⇡</span> ${w.r} ouvre la PR ${refPr(e.n,e.url)} <small>${esc(clip(e.title,70))}</small>`};}
   if(e.kind==='review'){
     if(e.by&&e.by===e.author)return null; // réponse de l'auteur sur sa propre PR
     const b=nm(e.by,e.by_name), a=nm(e.author,e.author_name), of=' de '+a.r, pr=refPr(e.n,e.url);
@@ -303,7 +303,7 @@ function renderFeed(){
       t,
       c:c||null,
       team:true,ty:'pr',
-      txt:`<span style="color:#7a5cc8">⇡</span> ${refWho(c,m.author)} merge ${refPr(m.n,m.url)} <small>${esc(m.title)}</small>`
+      txt:`<span style="color:${MEP_COLOR}">⇡</span> ${refWho(c,m.author)} merge ${refPr(m.n,m.url)} <small>${esc(m.title)}</small>`
     });
   }
   if(TEAM)for(const m of (TEAM.meps||[])){
@@ -311,10 +311,10 @@ function renderFeed(){
     const who=refWho(c,mepName(m)||'Quelqu’un'), tag=refTag(m.tag);
     const tk=m.ticket?' '+refTk(m.ticket):'';
     const push=(t,txt)=>{if(t&&t<=T)ev.push({t,c,txt,tv:true,team:true,ty:'mep'});};
-    push(ms(m.released),`<span style="color:#7a5cc8">●</span> ${who} publie la release ${tag}${tk}`);
+    push(ms(m.released),`<span style="color:${MEP_COLOR}">●</span> ${who} publie la release ${tag}${tk}`);
     if(m.staging&&m.staging.end)push(ms(m.staging.end),`<span style="color:#2e9e9b">●</span> ${tag} ${m.staging.conclusion==='success'?'validée sur staging':'échoue sur staging'}`);
     // qui a lancé le déploiement (login du run), s'il est connu ; sinon la version part en prod
-    if(m.prod)push(ms(m.prod.start),m.prod.by?`<span style="color:#7a5cc8">🚀</span> ${refWho(byChar(m.prod.by),m.prod.by)} met ${tag} en prod`:`<span style="color:#7a5cc8">🚀</span> ${tag} part en prod`);
+    if(m.prod)push(ms(m.prod.start),m.prod.by?`<span style="color:${MEP_COLOR}">🚀</span> ${refWho(byChar(m.prod.by),m.prod.by)} met ${tag} en prod`:`<span style="color:${MEP_COLOR}">🚀</span> ${tag} part en prod`);
     if(m.prod&&m.prod.end)push(ms(m.prod.end),m.prod.conclusion==='success'?`<span style="color:var(--ok)">✓</span> ${tag} est en prod${tk}`:`<span style="color:var(--err)">✗</span> ${tag} échoue en prod`);
     }
   const created=TEAM?teamCreated(DAY0,T):[], createdKeys=new Set(created.map(x=>x.key)); // tickets créés aujourd'hui par l'équipe

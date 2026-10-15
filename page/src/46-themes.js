@@ -177,7 +177,7 @@ function themeOnChar(c,x,top,now){
     ctx.fillStyle='#d32f2f';ctx.beginPath();ctx.moveTo(x-7,top+3);ctx.lineTo(x+7,top+3);ctx.lineTo(x+9-side*3,top-8);ctx.closePath();ctx.fill();
     R(ctx,x-8,top+2,16,3,'#fafafa');R(ctx,x+8-side*3,top-10,4,4,'#fafafa');
   }else if(th.id==='nouvel-an'){
-    ctx.fillStyle=['#7a5cc8','#e0457b','#2e9e9b'][keySeed(c.key)%3];ctx.beginPath();ctx.moveTo(x-5,top+3);ctx.lineTo(x+5,top+3);ctx.lineTo(x+side,top-10);ctx.closePath();ctx.fill();
+    ctx.fillStyle=[MEP_COLOR,'#e0457b','#2e9e9b'][keySeed(c.key)%3];ctx.beginPath();ctx.moveTo(x-5,top+3);ctx.lineTo(x+5,top+3);ctx.lineTo(x+side,top-10);ctx.closePath();ctx.fill();
     R(ctx,x-3,top-1,6,1,'#ffd23f');R(ctx,x-2,top-5,4,1,'#3fb8c9');R(ctx,x-1+side,top-12,3,3,'#ffd23f');
   }else if(th.id==='halloween'){
     R(ctx,x-10,top+2,20,2,'#1d1726');ctx.fillStyle='#1d1726';ctx.beginPath();ctx.moveTo(x-6,top+2);ctx.lineTo(x+6,top+2);ctx.lineTo(x+3-side*2,top-12);ctx.closePath();ctx.fill();

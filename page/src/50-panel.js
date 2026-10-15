@@ -266,7 +266,7 @@ function drawSide(side){
     {const src=r.tby||r.parent, oc=src&&chars.find(x=>x!==c&&x.runs.some(z=>z.run===src));
      if(oc){
        const li=document.createElement('li');
-       li.innerHTML=`<span class="dot" style="background:#7a5cc8"></span><span>📁 Lancé par ${esc(oc.name)}</span>`;
+       li.innerHTML=`<span class="dot" style="background:${MEP_COLOR}"></span><span>📁 Lancé par ${esc(oc.name)}</span>`;
        ul.appendChild(li);
      }
      }

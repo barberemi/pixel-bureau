@@ -45,11 +45,11 @@
           <button id="tvbtn" title="Plein écran pour un écran d'open space (touche T, Échap pour sortir)">📺 Mode TV</button>
         </div>
         <div class="legend">
-          <span><i style="background:var(--ok)"></i>Au travail</span>
-          <span><i style="background:var(--info)"></i>Serveurs / réunion</span>
-          <span><i class="ring dot" style="border-color:var(--warn)"></i>Attend ta validation</span>
-          <span><i class="ring dash" style="border-color:var(--err)"></i>En panne</span>
-          <span><i style="background:var(--idle)"></i>Pause / dispo</span>
+          <span><i data-st="work"></i>Au travail</span>
+          <span><i data-st="srv"></i>Serveurs / réunion</span>
+          <span><i class="ring dot" data-st="gate"></i>Attend ta validation</span>
+          <span><i class="ring dash" data-st="error"></i>En panne</span>
+          <span><i data-st="idle"></i>Pause / dispo</span>
         </div>
         <details class="legend-help">
           <summary>? Comment lire le plan</summary>
@@ -58,7 +58,7 @@
               <p><b>Collègues</b> : en couleur, à leur place, leurs tickets en bulle.</p>
               <p><b>Agents</b> (workflows Kronn) : en hologramme bleu, leur étape dans un nuage et l'outil en cours dans une petite bulle sombre.</p>
               <p><b>Visiteurs</b> (discussions Kronn) : en salle de réunion, puis au café.</p>
-              <p><b>Sur les bureaux</b> : une barre par ticket ouvert, couleur de son statut (<span class="lk"><i class="sq" style="background:#2e9e5b"></i>en cours</span><span class="lk"><i class="sq" style="background:#4a7fe0"></i>review</span><span class="lk"><i class="sq" style="background:#7a5cc8"></i>test</span><span class="lk"><i class="sq" style="background:#2e9e9b"></i>à déployer</span><span class="lk"><i class="sq" style="background:#8a8478"></i>à faire</span>). Sur le caisson à côté : les feuilles blanches de la facilitatrice (tickets créés depuis le daily) et les dossiers jaunes du testeur (tickets à tester), avec leur nombre. Survole une pile pour le détail.</p></div>
+              <p><b>Sur les bureaux</b> : une barre par ticket ouvert, couleur de son statut (<span class="lk"><i class="sq" data-cat="doing"></i>en cours</span><span class="lk"><i class="sq" data-cat="review"></i>review</span><span class="lk"><i class="sq" data-cat="test"></i>test</span><span class="lk"><i class="sq" data-cat="deploy"></i>à déployer</span><span class="lk"><i class="sq" data-cat="todo"></i>à faire</span>). Sur le caisson à côté : les feuilles blanches de la facilitatrice (tickets créés depuis le daily) et les dossiers jaunes du testeur (tickets à tester), avec leur nombre. Survole une pile pour le détail.</p></div>
             <div><h4>Où</h4>
               <p><b>Bureau</b> : travaille (étape IA, script).</p>
               <p><b>Serveurs</b> : appelle une API.</p>
@@ -68,8 +68,8 @@
               <p><b>Plateau TV</b> : mises en prod du jour (fermé le vendredi et le week-end).</p>
               <p><b>Mur du fond</b> : planning des crons et Kanban du sprint.</p></div>
             <div><h4>États (couleur et forme de l'anneau)</h4>
-              <p><span class="lk"><i style="background:var(--ok)"></i>au travail</span><span class="lk"><i style="background:var(--info)"></i>serveurs, réunion</span><span class="lk"><i class="ring dot" style="border-color:var(--warn)"></i>validation</span><span class="lk"><i class="ring dash" style="border-color:var(--err)"></i>en panne</span>
-              <span class="lk"><i style="background:#7a5cc8"></i>mise en prod</span><span class="lk"><i style="background:#2e9e9b"></i>daily</span><span class="lk"><i class="ring dot" style="border-color:#d97757"></i>attend ta réponse</span><span class="lk"><i style="background:#7d8fa3"></i>⏸ données figées</span><span class="lk"><i style="background:var(--idle)"></i>pause, dispo</span></p></div>
+              <p><span class="lk"><i data-st="work"></i>au travail</span><span class="lk"><i data-st="srv"></i>serveurs, réunion</span><span class="lk"><i class="ring dot" data-st="gate"></i>validation</span><span class="lk"><i class="ring dash" data-st="error"></i>en panne</span>
+              <span class="lk"><i data-st="mep"></i>mise en prod</span><span class="lk"><i data-st="daily"></i>daily</span><span class="lk"><i class="ring dot" data-st="ask"></i>attend ta réponse</span><span class="lk"><i data-st="frozen"></i>⏸ données figées</span><span class="lk"><i data-st="idle"></i>pause, dispo</span></p></div>
             <div><h4>Enveloppes (un run passe la main)</h4>
               <p><span class="lk"><i class="sq" style="background:#3fb8c9"></i>sous-run</span><span class="lk"><i class="sq" style="background:#e8e2d0"></i>déclenche un workflow</span><span class="lk"><i class="sq" style="background:#3fb37f"></i>rendu</span><span class="lk"><i class="sq" style="background:#d1453b"></i>rendu en échec</span><span class="lk"><i class="sq" style="background:#e0a020"></i>validation</span><span class="lk"><i class="sq" style="background:#d46fb0"></i>discussion</span></p></div>
           </div>

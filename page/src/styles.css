@@ -276,14 +276,14 @@ body.tv #tvticker{display:block;position:fixed;left:0;right:0;bottom:0;height:48
 .relaunch>.note{grid-column:1/3}
 .relaunch.kmodal{display:block}
 .relaunch.kmodal .rl-n{font-size:15px}
-.music{display:flex;gap:12px;align-items:center;background:linear-gradient(135deg,color-mix(in srgb,#7a5cc8 18%,var(--panel)),var(--panel));border:1px solid var(--line);border-radius:12px;padding:10px;margin:0 0 12px}
+.music{display:flex;gap:12px;align-items:center;background:linear-gradient(135deg,color-mix(in srgb,var(--mep) 18%,var(--panel)),var(--panel));border:1px solid var(--line);border-radius:12px;padding:10px;margin:0 0 12px}
 .music img{width:64px;height:64px;border-radius:8px;flex:none;box-shadow:0 2px 8px rgba(0,0,0,.3)}
 .music .mt{min-width:0;flex:1}
 .music .mt-embed{height:116px;border-radius:10px;overflow:hidden}
 .music .mk{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
 .music .mn{font-weight:700;margin:1px 0}
 .music .mb{font-size:12px;color:var(--muted)}
-.music .mplay{display:inline-block;margin-top:6px;font-size:12px;font-weight:600;color:#fff;background:#7a5cc8;border-radius:999px;padding:3px 11px;text-decoration:none}
+.music .mplay{display:inline-block;margin-top:6px;font-size:12px;font-weight:600;color:#fff;background:var(--mep);border-radius:999px;padding:3px 11px;text-decoration:none}
 .music .mplay:hover{background:#6a4cb8}
 .namesbar.stack{flex-direction:column;align-items:stretch;gap:5px}
 .namesbar.stack .seg{justify-content:flex-start;flex-wrap:nowrap}
@@ -372,7 +372,7 @@ button.wc.on{background:color-mix(in srgb,var(--accent) 14%,var(--panel));color:
 .dash .grow{flex:1;min-width:0;color:var(--muted);font-size:12.5px}
 .dash .cap{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dash .cap b{color:var(--ink)}
-.dash .cap.warn{color:var(--warn)}.dash .cap.err{color:var(--err);font-weight:600}.dash .cap.live{color:#7a5cc8;font-weight:600}
+.dash .cap.warn{color:var(--warn)}.dash .cap.err{color:var(--err);font-weight:600}.dash .cap.live{color:var(--mep);font-weight:600}
 .dash.click{cursor:pointer}.dash.click:hover{border-color:var(--accent)}
 .dash.err{border-top:3px solid var(--err)}.dash.warn{border-top:3px solid var(--warn)} /* tuile à la couleur de son alerte */
 .dash.flash{animation:tileflash 1.2s ease-out} /* tuile dont le chiffre vient de changer */
@@ -531,7 +531,7 @@ body.tv.tvscene #tvkpi{flex:0 0 auto;min-height:var(--tvk)} /* pendant une scèn
 #tvscene .sc-tk li{display:flex;align-items:baseline;gap:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #tvscene .sc-tk li small{display:inline;color:var(--tv-muted)}
 #tvscene .st{flex:none;font-size:.62em;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--tv-line2);color:var(--tv-ink);min-width:6.5em;text-align:center}
-#tvscene .st-doing{background:#2e9e5b}#tvscene .st-reopen{background:#b3122e}#tvscene .st-review{background:#4a7fe0}#tvscene .st-test{background:#7a5cc8}#tvscene .st-done,#tvscene .st-deploy{background:#5b5f6b}
+#tvscene .st-doing{background:#2e9e5b}#tvscene .st-reopen{background:#b3122e}#tvscene .st-review{background:#4a7fe0}#tvscene .st-test{background:var(--mep)}#tvscene .st-done,#tvscene .st-deploy{background:#5b5f6b}
 /* stand-up : pas de colonne « Qui fait quoi », la scène prend toute la largeur ; le corps défile s'il déborde */
 body.tv.tvscene #tvwho{display:none!important}
 body.tv.tvscene .stage{right:0}

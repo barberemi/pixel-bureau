@@ -6,11 +6,14 @@ let DATA=null, LIVE_DATA=false, chars=[], byKey={};
 const OUTSIDERS={};
 let TEAM=null;
 const nameKey=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+// violet « test / mise en prod » : la seule copie de la page, que le CSS lit par var(--mep)
+const MEP_COLOR='#7a5cc8';
+document.documentElement.style.setProperty('--mep',MEP_COLOR);
 // la palette des statuts de ticket, la seule de la page (bureaux, Kanban, fiches, bulles, KPI, fil, TV)
 const TCAT={
   doing:{t:'En cours',c:'#2e9e5b'},
   review:{t:'En review',c:'#4a7fe0'},
-  test:{t:'En test',c:'#7a5cc8'},
+  test:{t:'En test',c:MEP_COLOR},
   deploy:{t:'À déployer',c:'#2e9e9b'},
   todo:{t:'À faire',c:'#8a8478'},
   done:{t:'Déployé',c:'#647282'}

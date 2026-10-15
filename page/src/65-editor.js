@@ -48,7 +48,7 @@ const LBL={
   head:{male:'Normal',male_plump:'Rond',male_elderly:'Âgé'}};
 const SKINS=[['light','#f6dcc8','Très claire'],['pale','#eccaa9','Claire'],['tan','#d7a57e','Mate'],['brown','#a8724e','Brune'],['dark','#7a5038','Foncée']];
 const HAIR_COLORS=['#14100e','#3a2418','#5a3a1e','#8a5a2e','#c2462a','#e6cf86','#c9c9c9','#2f4a7a'];
-const CLOTH_COLORS=['#25221d','#e9e4d8','#a33b3b','#e0a020','#4f7a4f','#2e9e9b','#2f6fd6','#7a5cc8'];
+const CLOTH_COLORS=['#25221d','#e9e4d8','#a33b3b','#e0a020','#4f7a4f','#2e9e9b','#2f6fd6',MEP_COLOR];
 const canLook=c=>!SPR[c.sprite]&&!!RECIPES[c.sprite];
 function normLook(s){
   return {
