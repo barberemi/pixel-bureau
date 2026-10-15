@@ -107,9 +107,9 @@ function ghChar(login){
   if(!l)return null;
   return chars.find(x=>x.person&&(String(x.github||'').toLowerCase()===l||((x.team&&x.team.gh)||[]).some(g=>String(g).toLowerCase()===l)))||null;
 }
-function prOwnerChar(n){
+function prOwnerChar(n,repo){
   if(!TEAM)return null;
-  const p=TEAM.people.find(q=>(q.prs||[]).some(x=>String(x.n)===String(n)));
+  const p=TEAM.people.find(q=>(q.prs||[]).some(x=>samePr(x,repo,n)));
   return p?personChar(p.id,p.name):null;
 }
 // ---------- liens du fil : une étiquette par ticket, PR et version, un lien par personne ----------
@@ -142,10 +142,10 @@ function teamEventTxt(e){
   if(e.kind==='new'){const w=e.who?nm(e.who,null):null;
     return {c:w&&w.c,txt:`<span style="color:var(--info)">＋</span> Nouveau ticket ${refTk(e.key,true)}${w?' pour '+w.r:''}${sum}`};}
   if(e.kind==='pr'){const w=nm(e.author,e.author_name);
-    return {c:w.c,txt:`<span style="color:${MEP_COLOR}">⇡</span> ${w.r} ouvre la PR ${refPr(e.n,e.url)} <small>${esc(clip(e.title,70))}</small>`};}
+    return {c:w.c,txt:`<span style="color:${MEP_COLOR}">⇡</span> ${w.r} ouvre la PR ${refPr(e.n,e.url,e.repo)} <small>${esc(clip(e.title,70))}</small>`};}
   if(e.kind==='review'){
     if(e.by&&e.by===e.author)return null; // réponse de l'auteur sur sa propre PR
-    const b=nm(e.by,e.by_name), a=nm(e.author,e.author_name), of=' de '+a.r, pr=refPr(e.n,e.url);
+    const b=nm(e.by,e.by_name), a=nm(e.author,e.author_name), of=' de '+a.r, pr=refPr(e.n,e.url,e.repo);
     if(e.state==='approved')return {c:b.c,txt:`<span style="color:var(--ok)">✓</span> ${b.r} approuve la PR ${pr}${of}`};
     if(e.state==='changes')return {c:b.c,txt:`<span style="color:var(--warn)">✋</span> ${b.r} demande des changements sur ${pr}${of}`};
     return {c:b.c,txt:`<span style="color:var(--muted)">💬</span> ${b.r} commente la PR ${pr}${of}`};
@@ -303,7 +303,7 @@ function renderFeed(){
       t,
       c:c||null,
       team:true,ty:'pr',
-      txt:`<span style="color:${MEP_COLOR}">⇡</span> ${refWho(c,m.author)} merge ${refPr(m.n,m.url)} <small>${esc(m.title)}</small>`
+      txt:`<span style="color:${MEP_COLOR}">⇡</span> ${refWho(c,m.author)} merge ${refPr(m.n,m.url,m.repo)} <small>${esc(m.title)}</small>`
     });
   }
   if(TEAM)for(const m of (TEAM.meps||[])){
@@ -324,7 +324,7 @@ function renderFeed(){
   // relectures et travaux des agents sur le ticket ou la PR d'un collègue (A1)
   for(const c of chars){if(c.person||c.visitor)continue;
     for(const r of c.runs){if(!r._e||r._e>T||r.status!=='Success')continue;const ref=runRef(r);if(!ref)continue;
-      const au=r.vars&&r.vars['current_task.author'], pc=runPartner(r)||ghChar(au)||(ref.pr&&!ref.repo&&prOwnerChar(ref.pr)), what=ref.pr?'la PR '+refPr(ref.pr,null,ref.repo):refTk(ref.key);
+      const au=r.vars&&r.vars['current_task.author'], pc=runPartner(r)||ghChar(au)||(ref.pr&&prOwnerChar(ref.pr,ref.repo)), what=ref.pr?'la PR '+refPr(ref.pr,null,ref.repo):refTk(ref.key);
       ev.push({t:r._e,c,team:true,ty:ref.pr?'pr':'tickets',txt:`🤖 ${refWho(c)} ${/review|revue|relu/i.test(r.wf_name||'')?'a relu':'a travaillé sur'} ${what}${pc||au?' de '+refWho(pc,au):''}${ref.pr&&ref.key?' '+refTk(ref.key):''}`});}}
   // sprint : lancement et fin du jour (A2)
   if(TEAM&&TEAM.sprint){const sp=TEAM.sprint, st=ms(sp.start), en=ms(sp.end), sameDay=x=>x&&parisDay(x)===parisDay(T);

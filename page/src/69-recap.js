@@ -36,7 +36,7 @@ function renderRecap(){
   const names=(l,n)=>esc(l.slice(0,n).join(', '))+(l.length>n?'…':'');
   if(d.fails.length)li.push(`<li class="r-err">✗ <b>${plural(d.fails.reduce((a,x)=>a+x[1],0),'échec','échecs')} d'agents</b> <small>${esc(d.fails.slice(0,4).map(([n,k])=>n+' ×'+k).join(', '))}</small>${d.alarms.length?` · 🚨 alarme : ${names(d.alarms,3)}`:''}</li>`);
   if(d.mepOk.length||d.mepKo.length)li.push(`<li class="${d.mepKo.length?'r-err':'r-ok'}">🚀 <b>${plural(d.mepOk.length,'mise en prod','mises en prod')}</b>${d.mepKo.length?` · ${plural(d.mepKo.length,'échouée','échouées')}`:''} <small>${esc([...d.mepOk,...d.mepKo].map(m=>m.tag+(m.ticket?' '+m.ticket:'')).join(', '))}</small></li>`);
-  if(d.merged.length)li.push(`<li>⇡ <b>${plural(d.merged.length,'PR mergée','PR mergées')}</b> <small>${esc(d.merged.slice(0,5).map(m=>'#'+m.n).join(', '))}${d.merged.length>5?'…':''}</small></li>`);
+  if(d.merged.length)li.push(`<li>⇡ <b>${plural(d.merged.length,'PR mergée','PR mergées')}</b> <small>${esc(d.merged.slice(0,5).map(prNum).join(', '))}${d.merged.length>5?'…':''}</small></li>`);
   if(d.deployed.length)li.push(`<li class="r-ok">✓ <b>${plural(d.deployed.length,'ticket déployé','tickets déployés')}</b> <small>${esc(d.deployed.slice(0,5).map(e=>e.key).join(', '))}</small></li>`);
   if(d.created.length)li.push(`<li>＋ <b>${plural(d.created.length,'nouveau ticket','nouveaux tickets')}</b> <small>${esc(d.created.slice(0,5).map(e=>e.key).join(', '))}</small></li>`);
   if(d.approved.length)li.push(`<li>👍 <b>${plural(d.approved.length,'review approuvée','reviews approuvées')}</b></li>`);

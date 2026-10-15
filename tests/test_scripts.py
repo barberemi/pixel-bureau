@@ -185,7 +185,8 @@ class ScriptsTest(unittest.TestCase):
         return f"http://127.0.0.1:{self.srv.server_address[1]}/api"
 
     def fake_gh(self, outputs):
-        """Faux `gh` : sa sortie selon le sous-commande (« pr list --state open » -> outputs["open"], …)."""
+        """Faux `gh` : sa sortie selon le sous-commande (« pr list --state open » -> outputs["open"], …) ; outputs["by_repo"]
+        = {"owner/repo": {...}} répond par dépôt (--repo), et "FAIL" à la place d'une liste fait échouer l'appel (#56)."""
         data = os.path.join(self.tmp, "gh.json")
         with open(data, "w") as fh:
             json.dump(outputs, fh)
@@ -213,7 +214,14 @@ if a[0] == "api":  # gh api -i [-H If-None-Match: …] …/actions/workflows/<fi
         sys.exit(1)
     print("HTTP/2.0 200 OK\\r\\nEtag: " + etag + "\\r\\n\\r\\n" + body)
     sys.exit(0)
-print(json.dumps(d.get(key, [])))
+repo = a[a.index("--repo") + 1] if "--repo" in a else ""
+val = (d.get("by_repo") or {{}}).get(repo, d).get(key, [])
+if isinstance(val, list) and "--limit" in a:  # comme gh : --limit borne la liste
+    val = val[:int(a[a.index("--limit") + 1])]
+if val == "FAIL":
+    print("GraphQL: Could not resolve to a Repository with the name '" + repo + "'.", file=sys.stderr)
+    sys.exit(1)
+print(json.dumps(val))
 """)
         os.chmod(path, 0o755)
 
@@ -397,6 +405,74 @@ print(json.dumps(d.get(key, [])))
         self.assertEqual(out["errors"], [])
         self.assertEqual(out["open"][0]["reviewRequests"], ["c"])
         self.assertNotIn("body", json.dumps(out["open"][0]["latestReviews"]))
+
+    # ---------- PR de plusieurs dépôts (#56) ----------
+    def gh_pr(self, n, title, login="adrienmerignac", name="Adrien Merignac", branch="", review=None):
+        return {"number": n, "title": title, "headRefName": branch, "author": {"login": login, "name": name, "is_bot": False},
+                "isDraft": False, "reviewDecision": review, "url": f"https://github.com/x/pull/{n}", "updatedAt": iso(),
+                "createdAt": iso(), "latestReviews": [], "reviewRequests": []}
+
+    def test_github_snapshot_reads_prs_of_several_repos(self):
+        """github.pr_repos : PR ouvertes et mergées de chaque dépôt, chacune avec son repo ; deux #16 de deux dépôts restent
+        deux PR ; un dépôt illisible n'est qu'un avertissement (les autres sont lus, pas d'erreur GitHub)."""
+        self.fake_gh({"releases": [], "staging": [], "prod": [], "by_repo": {
+            "acme/web": {"open": [self.gh_pr(16, "DM-1 menu")], "merged": [self.gh_pr(15, "DM-2 pied")]},
+            "acme/api": {"open": [self.gh_pr(16, "feat(Observability):DM-3 purge")], "merged": []},
+            "acme/cassé": {"open": "FAIL", "merged": "FAIL"}}})
+        gh = {"repo": "acme/web", "pr_repos": ["acme/api", "acme/web", "acme/cassé", "acme/API"]}
+        out = self.run_script("github_snapshot.py", github=gh)
+        self.assertEqual([(p["repo"], p["number"]) for p in out["open"]], [("acme/web", 16), ("acme/api", 16)])  # principal d'abord
+        self.assertEqual([(p["repo"], p["number"]) for p in out["merged"]], [("acme/web", 15)])
+        self.assertEqual(out["errors"], [])
+        self.assertEqual(len(out["warnings"]), 2)
+        self.assertIn("acme/cassé", out["warnings"][0])
+        self.assertIn("acme/cassé", self.stderr)
+        self.assertEqual(Path(os.path.join(self.tmp, "gh.json.calls")).read_text().count("--repo acme/api "), 2)  # pas de doublon (casse)
+
+    def test_github_snapshot_default_repos_are_main_and_deploys(self):
+        self.fake_gh({"open": [], "merged": [], "releases": [], "staging": [], "prod": []})
+        self.run_script("github_snapshot.py")  # fixture : site-web, et intranet dans github.deploys
+        calls = Path(os.path.join(self.tmp, "gh.json.calls")).read_text()
+        self.assertEqual(calls.count("pr list --repo dunder-mifflin/site-web"), 2)
+        self.assertEqual(calls.count("pr list --repo dunder-mifflin/intranet"), 2)
+        self.assertEqual(calls.count("release list --repo dunder-mifflin/intranet"), 0)  # releases et MEP : le principal seul
+
+    def test_github_snapshot_many_repos_stay_under_100k(self):
+        big = dict(self.gh_pr(1, "DM-1 " + "t" * 200), latestReviews=[{"author": {"login": "b"}, "state": "APPROVED", "submittedAt": iso()}] * 3)
+        repos = [f"acme/r{i}" for i in range(14)]
+        self.fake_gh({"open": [big] * 100, "merged": [big] * 40, "releases": [], "staging": [], "prod": []})
+        out = self.run_script("github_snapshot.py", github={"repo": "acme/r0", "pr_repos": repos})  # run_script : sortie < 100 Ko
+        self.assertEqual(len({p["repo"] for p in out["open"]}), 12)  # 12 dépôts au plus
+        n = {r: sum(p["repo"] == r for p in out["open"]) for r in repos[:12]}
+        self.assertGreater(n["acme/r0"], 50)  # les autres dépôts sont raccourcis d'abord : le principal garde l'essentiel
+        self.assertTrue(all(2 <= v < n["acme/r0"] for r, v in n.items() if r != "acme/r0"), n)
+
+    def test_team_shape_prs_of_another_repo_reach_people_tickets_and_feed(self):
+        gh = {"open": [dict(self.gh_pr(16, "DM-100 menu", "dmartin", "Darryl Martin"), repo="acme/web"),
+                       dict(self.gh_pr(16, "Feat/dm 101 search", "dmartin", "Darryl Martin", branch="feat/DM-101-search"), repo="acme/api")],
+              "merged": [dict(self.gh_pr(9, "DM-100 x", "dmartin", "Darryl Martin"), repo="acme/api", mergedAt=iso())],
+              "releases": [], "staging": [], "prod": [], "errors": [], "warnings": ["PR open de acme/cassé illisibles : 404"]}
+        out = self.run_script("team_shape.py", self.team_input(github=gh), github={"repo": "acme/web"})
+        darryl = next(p for p in out["people"] if p["name"] == "Darryl Martin")
+        self.assertEqual([(x["repo"], x["n"], x["keys"]) for x in darryl["prs"]],
+                         [("acme/web", 16, ["DM-100"]), ("acme/api", 16, ["DM-101"])])  # clé lue dans la branche
+        self.assertEqual([(x["repo"], x["n"]) for x in darryl["merged"]], [("acme/api", 9)])
+        self.assertEqual(sorted((e["repo"], e["n"]) for e in out["events"] if e["kind"] == "pr"), [("acme/api", 16), ("acme/web", 16)])
+        self.assertEqual(out["warnings"], ["PR open de acme/cassé illisibles : 404"])
+        self.assertTrue(out["sources"]["github"])  # un autre dépôt illisible ne masque pas GitHub
+
+    def test_actions_prs_carry_their_real_repo(self):
+        """actions.prs : le vrai dépôt et l'id « owner/repo#n » de chaque PR (Faire relire, Corriger) ; la PR d'un ticket
+        (Mettre en prod) reste une PR du dépôt principal."""
+        fake = FakeKronn()
+        team = {"people": [{"name": "Pam", "tickets": [{"key": "DM-1", "cat": "deploy"}],
+                            "prs": [{"n": 16, "repo": "acme/api", "keys": ["DM-1"]}, {"n": 16, "repo": "acme/web", "keys": ["DM-2"]}]}],
+                "other_prs": [{"n": 4, "repo": "acme/api", "keys": []}]}
+        fake.datasets = [{"name": "team", "current": json.dumps(team)}]
+        out = self.run_script("actions_snapshot.py", api=self.kronn(fake), github={"repo": "acme/web"})
+        self.assertEqual(out["prs"], [{"id": "acme/api#16", "n": "16", "repo": "acme/api"}, {"id": "acme/web#16", "n": "16", "repo": "acme/web"},
+                                      {"id": "acme/api#4", "n": "4", "repo": "acme/api"}])
+        self.assertEqual(out["tickets"], [{"key": "DM-1", "cat": "deploy", "pr": ""}])  # sa seule PR est sur acme/api
 
     # ---------- canard d'équipe ----------
     def velocity(self, done):
@@ -951,7 +1027,8 @@ print(json.dumps(d.get(key, [])))
         out = self.run_script("actions_snapshot.py", api=self.kronn(fake), github={"repo": "acme/web"})
         self.assertEqual(out["tickets"], [{"key": "DM-1", "cat": "review", "pr": "5"}, {"key": "DM-2", "cat": "todo", "pr": ""},
                                           {"key": "DM-3", "cat": "deploy", "pr": ""}])
-        self.assertEqual(out["prs"], [{"n": "7", "repo": "acme/web"}, {"n": "5", "repo": "acme/web"}, {"n": "9", "repo": "acme/web"}])
+        self.assertEqual(out["prs"], [{"id": "acme/web#7", "n": "7", "repo": "acme/web"}, {"id": "acme/web#5", "n": "5", "repo": "acme/web"},
+                                      {"id": "acme/web#9", "n": "9", "repo": "acme/web"}])  # ancien dataset team sans repo : le principal
         self.assertEqual(self.run_script("actions_snapshot.py")["tickets"], [])  # Kronn injoignable : listes vides
 
 

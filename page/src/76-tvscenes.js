@@ -121,7 +121,7 @@ function sceneRetroDone(t){
 }
 function sceneRetroStuck(t){
   const bt=blockedTickets(t), sp=stalePrs(t), qa=chars.find(c=>c.person&&c.roleKind==='qa'), W=qa&&workOf(qa), back=W?W.reopened:[];
-  const prLi=x=>`<li><b>#${esc(x.n||x.number||'')}</b> ${esc(clip(x.title||'',80))}${x.who?` <small>· ${esc(String(x.who).split(' ')[0])}</small>`:''}</li>`;
+  const prLi=x=>`<li><b>${esc(x.n?prNum(x):'#'+(x.number||''))}</b> ${esc(clip(x.title||'',80))}${x.who?` <small>· ${esc(String(x.who).split(' ')[0])}</small>`:''}</li>`;
   return `<div class="sc-cols"><div><h3>Bloqués en review ou test (${bt.length})</h3>${bt.length?tkList(bt,20):'<p class="sc-empty">Aucun.</p>'}`+
     `<h3 style="margin-top:18px">Réouverts (${cnt50(back.length)})</h3>${back.length?tkList(back,20):'<p class="sc-empty">Aucun.</p>'}</div>`+
     `<div><h3>PR sans review depuis plus de ${PR_STALE_H} h (${sp.length})</h3>${sp.length?`<ul class="sc-tk">${sp.slice(0,20).map(prLi).join('')}</ul>`:'<p class="sc-empty">Aucune.</p>'}</div></div>`;

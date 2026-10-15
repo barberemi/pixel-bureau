@@ -2,7 +2,7 @@
 // Un clic sur un ticket (Kanban, fiche d'un collègue) ouvre sa fiche dans le panneau. Les boutons sont des cartes
 // d'action Kronn (bureau-impl, bureau-mep, bureau-review, bureau-fix ; clé launch de la config) : Kronn relit côté
 // serveur la clé du ticket ou le n° de PR dans le dataset actions (cron équipe), puis suit le run dans sa carte.
-let ACTS=null; // dataset actions : {tickets[{key,cat,pr}], prs[{n,repo}]}
+let ACTS=null; // dataset actions : {tickets[{key,cat,pr}], prs[{id,n,repo}]} ; id = « owner/dépôt#n » (#56)
 let TICKET_BACK=null; // la vue d'où l'on vient (Kanban, un collègue) : bouton retour
 function readActs(src){
   try{
@@ -89,7 +89,7 @@ function renderTicket(side,key){
     for(const p of prs){
       const r=p.draft?['brouillon','var(--idle)']:TK_REV[p.review]||TK_REV.pending;
       const li=document.createElement('li');
-      li.innerHTML=`<span class="dot" style="background:${r[1]}"></span><a ${hrefOf(p.url)} target="_blank" rel="noopener" style="color:var(--accent);white-space:nowrap">#${p.n}</a><span>${esc(p.title)}</span><span class="k">${r[0]}</span>`;
+      li.innerHTML=`<span class="dot" style="background:${r[1]}"></span><a ${hrefOf(p.url)} target="_blank" rel="noopener" style="color:var(--accent);white-space:nowrap">${esc(prNum(p))}</a><span>${esc(p.title)}</span><span class="k">${r[0]}</span>`;
       ul.appendChild(li);
     }
     pb.appendChild(ul);
@@ -107,33 +107,38 @@ function renderTicket(side,key){
     launchBlock(box,{action:'bureau-mep',bind:{key},name:'Mettre en prod',sub:frozen?'Gel des mises en prod aujourd\'hui':'Rebase, CI, merge, release, staging puis prod, avec tes validations',
       label:'🚀 Mettre en prod',title:'Mettre en prod '+key,off:frozen?'Gel des mises en prod (rhythm.mep_freeze)':null});
   }
-  for(const p of prs){
-    const ok=ACTS.prs.some(q=>String(q.n)===String(p.n));
-    if(!ok)continue;
-    const dr=p.draft?' (brouillon)':''; // un brouillon se relit et se corrige aussi
-    if(ACTIONS.fix&&p.review==='changes')
-      launchBlock(box,{action:'bureau-fix',bind:{n:String(p.n)},name:'Corriger les retours · #'+p.n+dr,sub:'Un agent applique les commentaires de review et pousse',label:'🛠 Corriger',title:'Corriger les retours de #'+p.n});
-    if(ACTIONS.review&&p.review!=='approved')
-      launchBlock(box,{action:'bureau-review',bind:{n:String(p.n)},name:'Faire relire · #'+p.n+dr,sub:'Dwight relit la PR et poste sa review',label:'🔎 Faire relire',title:'Faire relire #'+p.n});
-  }
+  for(const p of prs)prLaunch(box,p);
   if(known&&ACTIONS.comment) // à tout statut ; le texte se saisit dans la carte Kronn
     launchBlock(box,{action:'bureau-comment',bind:{key},name:'Commenter',sub:'Ton commentaire part sur le ticket dans Jira',label:'💬 Commenter',title:'Commenter '+key});
   if(known&&ACTIONS.estimate&&x.cat!=='done') // ton workflow de réestimation (launch.estimate) : Story Points et raison dans la carte
     launchBlock(box,{action:'bureau-estimate',bind:{key},name:'Réestimer',sub:'Nouveaux Story Points et raison : le ticket est mis à jour dans Jira, avec un commentaire',label:'📏 Réestimer',title:'Réestimer '+key});
   if(box.childElementCount===before)note(known?'Rien à lancer à ce statut.':'Ticket pas encore dans les données des boutons : prochain passage du cron équipe.');
 }
+// la ligne du dataset actions d'une PR (même dépôt, même numéro) ; ancien dataset sans id : son repo et son n°
+const actPr=p=>ACTS&&ACTS.prs.find(q=>String(q.id||prId(q)).toLowerCase()===prId(p).toLowerCase())||null;
+// « 🛠 Corriger » et « 🔎 Faire relire » d'une PR (fiche du ticket, fiche de la PR) : liées par « owner/dépôt#n » (#56),
+// Kronn relit le dépôt et le numéro dans actions.prs. Corriger une PR d'un autre dépôt : si ton workflow prend le dépôt.
+function prLaunch(box,p){
+  const a=actPr(p);
+  if(!a)return;
+  const dr=p.draft?' (brouillon)':'', nm=prNum(p); // un brouillon se relit et se corrige aussi
+  if(ACTIONS.fix&&p.review==='changes'&&(!otherRepo(p.repo)||CFG.fix_any_repo))
+    launchBlock(box,{action:'bureau-fix',bind:{id:a.id||prId(p)},name:'Corriger les retours · '+nm+dr,sub:'Un agent applique les commentaires de review et pousse',label:'🛠 Corriger',title:'Corriger les retours de '+nm});
+  if(ACTIONS.review&&p.review!=='approved')
+    launchBlock(box,{action:'bureau-review',bind:{id:a.id||prId(p)},name:'Faire relire · '+nm+dr,sub:'Dwight relit la PR et poste sa review',label:'🔎 Faire relire',title:'Faire relire '+nm});
+}
 // ---------- fiche d'une PR (lien du fil) : « owner/dépôt#n », dépôt vide = inconnu ----------
-// Ce que la page en sait : la PR de l'équipe (titre, auteur, review, tickets cités) quand elle est du dépôt de l'équipe,
-// sinon ce qu'en disent les runs des agents (auteur) ; les runs d'agents du jour qui l'ont traitée ; GitHub en lien.
+// Ce que la page en sait : la PR de l'équipe (titre, auteur, review, tickets cités) quand elle est d'un dépôt suivi
+// (github.pr_repos, #56), sinon ce qu'en disent les runs des agents (auteur) ; les runs d'agents du jour qui l'ont traitée ;
+// GitHub en lien ; Faire relire et Corriger comme dans la fiche du ticket.
 function prInfo(id){
   const i=String(id).lastIndexOf('#'), repo=String(id).slice(0,i), n=String(id).slice(i+1);
-  const mine=!otherRepo(repo); // dépôt de l'équipe (ou inconnu) : ses PR sont dans le dataset team
-  const all=mine&&TEAM?[...TEAM.people.flatMap(p=>(p.prs||[]).map(x=>({...x,who:p.id,who_name:p.name}))),...(TEAM.other_prs||[]),
+  const all=TEAM?[...TEAM.people.flatMap(p=>(p.prs||[]).map(x=>({...x,who:p.id,who_name:p.name}))),...(TEAM.other_prs||[]),
     ...(TEAM.merged_today||[]).map(m=>({...m,merged:true,who_name:m.author}))]:[];
-  const pr=all.find(x=>String(x.n)===n)||null;
+  const pr=all.find(x=>samePr(x,repo,n))||null;
   const runs=[];
   for(const c of chars){if(c.person||c.visitor)continue;
-    for(const r of c.runs){const ref=runRef(r);if(ref&&ref.pr===n&&(ref.repo||'')===(mine?'':repo)&&r._s<=T)runs.push({r,c});}}
+    for(const r of c.runs){const ref=runRef(r);if(ref&&ref.pr===n&&repoKey(ref.repo)===repoKey(repo)&&r._s<=T)runs.push({r,c});}}
   runs.sort((a,b)=>a.r._s-b.r._s);
   const au=(runs.find(x=>x.r.vars&&x.r.vars['current_task.author'])||{r:{vars:{}}}).r.vars['current_task.author'];
   const owner=(pr&&personChar(pr.who,pr.who_name))||ghChar(au)||null;
@@ -142,7 +147,7 @@ function prInfo(id){
 }
 function renderPr(side,id){
   const x=prInfo(id);
-  const h=document.createElement('h2');h.textContent=(x.repo?x.repo.split('/')[1]:'')+'#'+x.n;side.appendChild(h);
+  const h=document.createElement('h2');h.textContent=prNum({repo:x.repo,n:x.n});side.appendChild(h);
   const gh=x.url?`<a ${hrefOf(x.url)} target="_blank" rel="noopener" style="color:var(--accent)">Ouvrir sur GitHub ↗</a>`:'dépôt GitHub inconnu';
   const rv=x.pr&&(x.pr.merged?['mergée','var(--ok)']:x.pr.draft?['brouillon','var(--idle)']:TK_REV[x.pr.review]);
   const head=document.createElement('div');head.style.cssText='margin:0 0 12px';
@@ -159,7 +164,14 @@ function renderPr(side,id){
         :`<span class="dot" style="background:var(--idle)"></span><a href="${JIRA_BROWSE}${encodeURIComponent(k)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(k)} ↗</a><span>hors du sprint</span>`;
       ul.appendChild(li);}
     tb.appendChild(ul);
-    const note=document.createElement('div');note.className='note';note.textContent='Relire, corriger : depuis la fiche du ticket.';tb.appendChild(note);
+  }
+  if(x.pr&&!x.pr.merged&&(ACTIONS.review||ACTIONS.fix)){
+    const box=foldSection(side,'pr-launch','🤖 Lancer un workflow',null,true), before=box.childElementCount;
+    const note=t=>{const e=document.createElement('div');e.className='note';e.textContent=t;box.appendChild(e);};
+    if(!ACTS)note('Les boutons arrivent au prochain passage du cron équipe (10 min au plus).');
+    else{const p={...x.pr,repo:x.pr.repo||x.repo};prLaunch(box,p);
+      if(box.childElementCount===before)note(!actPr(p)?'PR pas encore dans les données des boutons : prochain passage du cron équipe.'
+        :p.review==='approved'?'Rien à lancer : PR approuvée.':'Rien à lancer sur cette PR.');}
   }
   const rb=foldSection(side,'pr-runs','Les agents dessus aujourd\'hui',x.runs.length,true);
   if(!x.runs.length){const e=document.createElement('div');e.className='empty';e.textContent='Aucun run d\'agent sur cette PR aujourd\'hui.';rb.appendChild(e);return;}

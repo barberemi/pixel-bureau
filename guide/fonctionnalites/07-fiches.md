@@ -54,11 +54,13 @@ Chaque bouton ouvre la carte Kronn du workflow : tu valides, puis elle suit le r
 }
 ```
 
-Rôles et noms par défaut : `impl` → `ticket` (`jira_ticket_key`) ; `mep` → `ticket` (`jira_ticket_key`), `pr` (`pr_number`) ; `review` → `repo`, `pr` ; `fix` → `pr`, `notes` ; `estimate` → `ticket` (`jira_ticket_key`), `points` (`story_points`), `reason` (`raison`), par exemple `{"wf": "…", "vars": {"ticket": "ticketKey"}}` si ton workflow nomme autrement la clé du ticket. `null` : ton workflow n'a pas cette variable, elle n'est pas envoyée.
+Rôles et noms par défaut : `impl` → `ticket` (`jira_ticket_key`) ; `mep` → `ticket` (`jira_ticket_key`), `pr` (`pr_number`) ; `review` → `repo`, `pr` ; `fix` → `pr`, `notes`, et `repo` (facultatif : absent tant que tu ne le nommes pas, par exemple `{"wf": "…", "vars": {"repo": "repo"}}`) ; `estimate` → `ticket` (`jira_ticket_key`), `points` (`story_points`), `reason` (`raison`), par exemple `{"wf": "…", "vars": {"ticket": "ticketKey"}}` si ton workflow nomme autrement la clé du ticket. `null` : ton workflow n'a pas cette variable, elle n'est pas envoyée.
 
 ![Fiche d'un ticket](../img/fiche-ticket.png)
 
-**PR** : clic sur une PR dans le fil. Son nom avec son dépôt, son titre, l'état de sa review, son auteur (sa fiche), le lien GitHub, le ticket qu'elle cite (sa fiche, d'où se lancent Relire et Corriger) et les runs d'agents du jour qui l'ont traitée (une revue de Dwight, une correction). Pour une PR d'un autre dépôt que celui de l'équipe, la page n'en connaît que ce qu'en disent les runs : l'auteur, les agents, le lien GitHub.
+**PR** : clic sur une PR dans le fil. Son nom avec son dépôt, son titre, l'état de sa review, son auteur (sa fiche), le lien GitHub, le ticket qu'elle cite (sa fiche) et les runs d'agents du jour qui l'ont traitée (une revue de Dwight, une correction). Puis les mêmes boutons que dans la fiche du ticket : **Faire relire** (PR pas encore approuvée) et **Corriger les retours** (changements demandés).
+
+Une PR se reconnaît à son dépôt et à son numéro : `#2039` pour le dépôt principal (`github.repo`), `front_api#16` pour un autre dépôt suivi (`github.pr_repos`, par défaut le principal et ceux des mises en prod). Deux PR #16 de deux dépôts ne se confondent jamais : chacune a sa fiche, ses boutons (Faire relire envoie son dépôt et son numéro), sa ligne dans la fiche du collègue et du ticket, et compte dans « PR ouvertes ». Une PR est rattachée à un ticket par la clé Jira de son titre ou de sa branche (`feat/EW-7317-…`). Corriger une PR d'un autre dépôt demande un workflow qui prend le dépôt (`launch.fix.vars.repo`) ; sinon le bouton n'est proposé que pour le dépôt principal. Pour une PR d'un dépôt non suivi, la page n'en connaît que ce qu'en disent les runs : l'auteur, les agents, le lien GitHub.
 
 ![Fiche d'une PR](../img/fiche-pr.png)
 

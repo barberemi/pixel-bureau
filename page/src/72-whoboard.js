@@ -28,7 +28,7 @@ function whoLine(c,st,t,pub){
   }
   if(c.visitor&&c.disc)return {what:'💬 '+clip(c.disc.title,60),sub:st.label};
   if(st.ref){
-    const r=st.ref, what='🤖 '+(r.key||'PR #'+r.pr)+(r.key&&r.pr?' · PR #'+r.pr:'')+' '+clip(r.t?r.t.summary:r.title||'',50);
+    const r=st.ref, what='🤖 '+(r.key||'PR '+prNum({repo:r.repo,n:r.pr}))+(r.key&&r.pr?' · PR '+prNum({repo:r.repo,n:r.pr}):'')+' '+clip(r.t?r.t.summary:r.title||'',50);
     return {what,sub:clip((st.step?'Étape '+st.step.n:st.label)+(st.act?' · '+st.act.label:''),80),tone:r.t?CAT_COLOR[r.t.cat]:null};
   }
   if(st.run)return {what:'⚙ '+clip(st.run.wf_name,60),sub:clip((st.step?'Étape '+st.step.n:st.label)+(st.act?' · '+st.act.label:''),80)};

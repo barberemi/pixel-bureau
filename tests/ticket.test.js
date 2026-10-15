@@ -33,12 +33,13 @@ test('à faire, sans PR : Implémenter, lié à la clé du ticket', () => {
   assert.deepEqual(buttons('DM-1'), [['bureau-impl', {key: 'DM-1'}, false]]);
 });
 
-test('en review avec une PR en attente : Faire relire, lié au n° de PR', () => {
-  assert.deepEqual(buttons('DM-2'), [['bureau-review', {n: '12'}, false]]);
+const ID = n => ({id: 'dunder-mifflin/site-web#' + n}); // identité d'une PR du dépôt principal (#56)
+test('en review avec une PR en attente : Faire relire, lié au dépôt et au n° de PR', () => {
+  assert.deepEqual(buttons('DM-2'), [['bureau-review', ID(12), false]]);
 });
 
 test('changements demandés : Corriger et Faire relire ; un brouillon a aussi les siens ; une PR ouverte retire Implémenter', () => {
-  assert.deepEqual(buttons('DM-4'), [['bureau-fix', {n: '13'}, false], ['bureau-review', {n: '13'}, false], ['bureau-review', {n: '14'}, false]]);
+  assert.deepEqual(buttons('DM-4'), [['bureau-fix', ID(13), false], ['bureau-review', ID(13), false], ['bureau-review', ID(14), false]]);
 });
 
 test('à déployer : Mettre en prod, grisé pendant le gel (vendredi)', () => {
@@ -62,8 +63,8 @@ test('liaisons envoyées à Kronn : le nom de chaque variable liée (pas le cham
   // Kronn refuse une clé qui n'est pas le nom d'une valeur liée (« unknown dynamic action binding `key` »)
   assert.deepEqual(J(`bindsFor('bureau-impl', {key: 'DM-1'})`), {jira_ticket_key: 'DM-1'});
   assert.deepEqual(J(`bindsFor('bureau-mep', {key: 'DM-3'})`), {jira_ticket_key: 'DM-3', pr_number: 'DM-3'});
-  assert.deepEqual(J(`bindsFor('bureau-review', {n: '12'})`), {repo: '12', pr: '12'});
-  assert.deepEqual(J(`bindsFor('bureau-fix', {n: '13'})`), {pr: '13'}); // notes : saisie, pas liée
+  assert.deepEqual(J(`bindsFor('bureau-review', {id: 'a/b#12'})`), {repo: 'a/b#12', pr: 'a/b#12'});
+  assert.deepEqual(J(`bindsFor('bureau-fix', {id: 'a/b#13'})`), {pr: 'a/b#13'}); // notes : saisie, pas liée ; repo : facultatif
   assert.equal(J(`bindsFor('bureau-impl', {n: '13'})`), null); // pas le bon champ : pas de bouton
 });
 
@@ -87,4 +88,55 @@ test('Réestimer (launch.estimate) : sur un ticket non terminé du sprint seulem
   })()`);
   for (const cat of ['todo', 'doing', 'review', 'test', 'deploy']) assert.deepEqual(est('DM-7', cat), [['bureau-estimate', {key: 'DM-7'}]], cat);
   assert.deepEqual(est('DM-8', 'done'), []); // déployé : rien à réestimer
+});
+
+// ---------- #56 : PR de plusieurs dépôts, identifiées par « owner/dépôt#n » ----------
+// deux #16 : front_web (dépôt principal du test, dunder-mifflin/site-web) et front_api ; boutons de la fiche d'une PR
+const TWO16 = `TEAM = {people: [{id: 'acc-p', name: 'Pam', tickets: [{key: 'DM-5', cat: 'review', status: 'To Review', summary: 'e'}],
+    prs: [{n: 16, repo: 'dunder-mifflin/site-web', title: 'DM-9 web', review: 'approved', keys: ['DM-9']},
+          {n: 16, repo: 'dunder-mifflin/front_api', title: 'DM-5 api', review: 'changes', keys: ['DM-5']}]}],
+  unassigned: [], other_prs: []};
+  ACTS = {tickets: [{key: 'DM-5'}], prs: [{id: 'dunder-mifflin/site-web#16', n: '16', repo: 'dunder-mifflin/site-web'},
+    {id: 'dunder-mifflin/front_api#16', n: '16', repo: 'dunder-mifflin/front_api'}]};`;
+function prButtons(id, {fixAnyRepo = false, acts = true} = {}) {
+  return J(`(() => {
+    const calls = [], lb = launchBlock, fs = foldSection, f0 = CFG.fix_any_repo;
+    launchBlock = (box, o) => { calls.push([o.action, o.bind, o.name]); box.childElementCount++; };
+    foldSection = () => ({childElementCount: 0, appendChild() { this.childElementCount++; }});
+    CFG.fix_any_repo = ${fixAnyRepo};
+    ${TWO16}
+    ${acts ? '' : 'ACTS = null;'}
+    try { renderPr({appendChild() {}}, ${JSON.stringify(id)}); } finally { launchBlock = lb; foldSection = fs; CFG.fix_any_repo = f0; }
+    return calls;
+  })()`);
+}
+
+test('#56 fiche d\'une PR d\'un autre dépôt : Faire relire lié à « owner/dépôt#n », nommée « front_api#16 »', () => {
+  assert.deepEqual(prButtons('dunder-mifflin/front_api#16'),
+    [['bureau-review', {id: 'dunder-mifflin/front_api#16'}, 'Faire relire · front_api#16']]); // Corriger : workflow sans repo
+  assert.deepEqual(prButtons('dunder-mifflin/front_api#16', {fixAnyRepo: true}).map(c => c[0]), ['bureau-fix', 'bureau-review']);
+  assert.deepEqual(prButtons('dunder-mifflin/front_api#16', {acts: false}), []); // dataset actions pas encore là
+});
+
+test('#56 deux #16 de deux dépôts ne se confondent pas : la PR du dépôt principal est approuvée, rien à lancer', () => {
+  assert.deepEqual(prButtons('dunder-mifflin/site-web#16'), []);
+  const info = id => J(`(() => { ${TWO16} const x = prInfo(${JSON.stringify(id)}); return {title: x.pr && x.pr.title, h: prNum({repo: x.repo, n: x.n})}; })()`);
+  assert.deepEqual(info('dunder-mifflin/front_api#16'), {title: 'DM-5 api', h: 'front_api#16'});
+  assert.deepEqual(info('dunder-mifflin/site-web#16'), {title: 'DM-9 web', h: '#16'});
+});
+
+test('#56 fiche du ticket : sa PR d\'un autre dépôt, ses boutons liés au bon dépôt ; liaison Kronn = repo et pr relus par id', () => {
+  const calls = J(`(() => {
+    const calls = [], lb = launchBlock, fs = foldSection;
+    launchBlock = (box, o) => { calls.push([o.action, o.bind]); box.childElementCount++; };
+    foldSection = () => ({childElementCount: 0, appendChild() { this.childElementCount++; }});
+    ${TWO16}
+    try { renderTicket({appendChild() {}}, 'DM-5'); } finally { launchBlock = lb; foldSection = fs; }
+    return calls.filter(c => c[0] === 'bureau-review' || c[0] === 'bureau-fix');
+  })()`);
+  assert.deepEqual(calls, [['bureau-review', {id: 'dunder-mifflin/front_api#16'}]]);
+  assert.deepEqual(J(`bindsFor('bureau-review', {id: 'dunder-mifflin/front_api#16'})`),
+    {repo: 'dunder-mifflin/front_api#16', pr: 'dunder-mifflin/front_api#16'}); // Kronn : prs.find(id).repo, prs.find(id).n
+  assert.deepEqual(J(`[prId({n: 3}), prId({n: 3, repo: 'a/b'}), prNum({n: 3, repo: 'dunder-mifflin/site-web'}), prNum({n: 3, repo: 'a/b'})]`),
+    ['dunder-mifflin/site-web#3', 'a/b#3', '#3', 'b#3']);
 });

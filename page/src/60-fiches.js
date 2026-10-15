@@ -215,7 +215,7 @@ function tkRowHtml(x){
   if(x.status&&x.status===FLOW.reopened)meta.push('<span class="tk-tag">Réouvert</span>');
   for(const p of prsOf(x.key)){
     const r=p.draft?['brouillon','var(--idle)']:TK_REV[p.review]||TK_REV.pending;
-    meta.push(`<span><span class="dot" style="background:${r[1]}"></span><a ${hrefOf(p.url)} target="_blank" rel="noopener">#${p.n}</a> ${r[0]}</span>`);
+    meta.push(`<span><span class="dot" style="background:${r[1]}"></span><a ${hrefOf(p.url)} target="_blank" rel="noopener">${esc(prNum(p))}</a> ${r[0]}</span>`);
   }
   return `<div class="tk-top">${x.type==='Bug'?'<span title="Bug">'+TYPE_ICO.Bug+'</span>':''}<a class="tk-key" href="${JIRA_BROWSE}${encodeURIComponent(x.key)}" target="_blank" rel="noopener" title="Ouvrir dans Jira">${esc(x.key)}</a>`+
     `${comp?`<span class="tk-comp">${esc(comp)}</span>`:''}${tkPts(x.points)}</div>`+
@@ -257,7 +257,7 @@ function prRowHtml(x){
   const stale=!x.draft&&prGroup(x)==='pending'&&s&&T-s>PR_STALE_H*36e5;
   if(stale)meta.push(`<span class="warn" title="Sans review depuis plus de ${PR_STALE_H} h">⏳ attend une review depuis ${daysAgoTxt((T-s)/864e5).replace(/^il y a /,'')}</span>`);
   else if(u&&u<=T)meta.push(`<span>activité ${daysAgoTxt((T-u)/864e5)}</span>`);
-  return `<div class="tk-top"><a class="tk-key" ${hrefOf(x.url)} target="_blank" rel="noopener" title="Ouvrir sur GitHub">#${esc(x.n)}</a>${keys}`+
+  return `<div class="tk-top"><a class="tk-key" ${hrefOf(x.url)} target="_blank" rel="noopener" title="Ouvrir sur GitHub">${esc(prNum(x))}</a>${keys}`+
     `${comp?`<span class="tk-comp">${esc(comp)}</span>`:''}</div><div class="tk-t">${esc(t)}</div>${meta.length?`<div class="tk-meta">${meta.join('')}</div>`:''}`;
 }
 function renderPerson(side,c){
@@ -330,7 +330,7 @@ function renderPerson(side,c){
     const ul=document.createElement('ul');ul.className='steps';ul.style.marginLeft='0';
     for(const x of p.merged){
       const li=document.createElement('li');
-      li.innerHTML=`<span class="dot" style="background:var(--ok)"></span><span class="k">${hm(ms(x.mergedAt))}</span><a ${hrefOf(x.url)} target="_blank" rel="noopener" style="color:var(--accent);white-space:nowrap">#${x.n}</a><span>${esc(x.title)}</span>`;
+      li.innerHTML=`<span class="dot" style="background:var(--ok)"></span><span class="k">${hm(ms(x.mergedAt))}</span><a ${hrefOf(x.url)} target="_blank" rel="noopener" style="color:var(--accent);white-space:nowrap">${esc(prNum(x))}</a><span>${esc(x.title)}</span>`;
       ul.appendChild(li);
     }
     mb.appendChild(ul);

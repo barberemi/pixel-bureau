@@ -362,23 +362,39 @@ def github(ask, defaults, login):
                                      g.get("staging_workflow") or "")
     g["prod_workflow"] = ask.text("github_prod", "Workflow de mise en prod (fichier .yaml, Entrée pour aucun)", g.get("prod_workflow") or "")
     known = {d["repo"]: d for d in g.get("deploys") or [] if d.get("repo")}
-    while True:
-        raw = ask.text("github_deploys", "Autres dépôts dont suivre les mises en prod (owner/repo, séparés par des virgules ; « - » pour aucun)",
-                       ",".join(known) or "-")
-        repos = [x for x in (raw if isinstance(raw, list) else re.split(r"[\s,;]+", str(raw or "").strip())) if x and x != "-"]
-        bad = [x for x in repos if not re.fullmatch(r"[\w.-]+/[\w.-]+", x)]
-        if not bad:
-            break
-        if ask.answers is not None:
-            raise InstallError("dépôt invalide (owner/repo attendu) : " + ", ".join(bad))
-        say("  dépôt invalide (owner/repo attendu) : " + ", ".join(bad))
+    repos = ask_repos(ask, "github_deploys", "Autres dépôts dont suivre les mises en prod (owner/repo, séparés par des virgules ; « - » pour aucun)",
+                      ",".join(known) or "-")
     new = [x for x in repos if x not in known]
     if new and not g["prod_workflow"]:
         say("  (i) Pas de workflow de mise en prod : " + ", ".join(new) + " à compléter dans bureau.config.json (github.deploys).")
     # un nouveau dépôt reprend les workflows du dépôt principal ; un autre nom se règle dans la config
     g["deploys"] = [known.get(x) or {"repo": x, **({"staging_workflow": g["staging_workflow"]} if g["staging_workflow"] else {}),
                                       "prod_workflow": g["prod_workflow"]} for x in repos if x in known or g["prod_workflow"]]
+    # PR suivies (#56, facultatif) : par défaut le dépôt principal et ceux des mises en prod (clé github.pr_repos absente,
+    # elle suit alors github.deploys) ; une autre liste est gardée telle quelle, dépôt principal en tête
+    default = [g["repo"]] + [d["repo"] for d in g["deploys"] if d["repo"] != g["repo"]]
+    cur = g.get("pr_repos") if isinstance(g.get("pr_repos"), list) else default
+    prs = ask_repos(ask, "github_pr_repos", "Dépôts dont lire les PR (owner/repo, séparés par des virgules ; Entrée : "
+                    "le dépôt principal et ceux des mises en prod)", ",".join(cur))
+    prs = [g["repo"]] + [x for x in dict.fromkeys(prs) if x.lower() != g["repo"].lower()]
+    if prs == default:
+        g.pop("pr_repos", None)
+    else:
+        g["pr_repos"] = prs
     return g
+
+
+def ask_repos(ask, key, prompt, default):
+    """Liste de dépôts « owner/repo » (virgules, espaces ; « - » = aucun), redemandée tant qu'un nom est invalide."""
+    while True:
+        raw = ask.text(key, prompt, default)
+        repos = [x for x in (raw if isinstance(raw, list) else re.split(r"[\s,;]+", str(raw or "").strip())) if x and x != "-"]
+        bad = [x for x in repos if not re.fullmatch(r"[\w.-]+/[\w.-]+", x)]
+        if not bad:
+            return repos
+        if ask.answers is not None:
+            raise InstallError("dépôt invalide (owner/repo attendu) : " + ", ".join(bad))
+        say("  dépôt invalide (owner/repo attendu) : " + ", ".join(bad))
 
 
 def gh_workflows(repo):
