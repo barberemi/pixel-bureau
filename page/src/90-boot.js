@@ -145,6 +145,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   GITFUT=readGitfut(k)||{};
   ACTS=readActs(k);
   POSTERS=readPosters(k)||{};
+  WARNINGS=readWarnings(k); // 33-freshness.js (#8)
   OFFICE=readData(k);
   OFFICE_IS_LIVE=!!OFFICE;
   if(!OFFICE)OFFICE=DEMO&&SNAP?SNAP:emptyOffice();
@@ -181,6 +182,7 @@ window.addEventListener('kronn:page-data',e=>{
   const po=readPosters(k)||readPosters(window.KronnPageData);
   if(po)POSTERS=po;
   if(py)PAYROLL=py;
+  WARNINGS={...WARNINGS,...readWarnings(window.KronnPageData),...readWarnings(k)}; // dataset absent de l'événement : avertissements gardés
   const ab=readAbsences(k)||readAbsences(window.KronnPageData);
   if(ab)ABSENCES=ab;
   const ml=readMails(k)||readMails(window.KronnPageData);

@@ -1,5 +1,9 @@
-"""Instantané de la journée (toutes les 10 min) : runs et discussions du jour, crons, purge des vieux runs du Bureau."""
-import os as _os, re, urllib.request
+"""Instantané de la journée (toutes les 10 min) : runs et discussions du jour, crons, purge des vieux runs du Bureau.
+
+warnings (#8) : lectures ou écritures en échec dont le dataset est publié quand même, incomplet (question d'un
+« interroger » illisible, bilan du nettoyage non gardé ou illisible) ; chacune écrite aussi sur stderr (run Kronn).
+"""
+import os as _os, re, sys, urllib.request
 from datetime import datetime, timedelta, timezone
 from _lib import API, CFG, TZ, ACTIVE, dumps, get, get_all, is_bureau, is_bureau_disc, run_row, disc_row, err_of, read_json, write_json
 
@@ -9,6 +13,12 @@ PURGE_HOURS = (7, 13)  # heures de Paris du nettoyage des vieux runs (premier pa
 PURGE_LOG = _os.path.join(_os.path.expanduser("~"), ".cache", "pixel-bureau", "purge.json")
 day_start = now.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 since = day_start.isoformat().replace("+00:00", "Z")
+warnings = []
+
+
+def warn(msg):
+    print("bureau : " + msg, file=sys.stderr)
+    warnings.append(msg)
 
 
 WFS = get("/workflows")
@@ -58,8 +68,9 @@ for d in ALL_DISCS:
         continue
     try:
         first = str(((get(f"/discussions/{d['id']}").get("messages") or [{}])[0]).get("content") or "")
-    except Exception:
+    except Exception as e:
         first = ""
+        warn(f"question d'un « interroger » illisible ({str(e)[:120] or type(e).__name__})")
     w, q = ASK_WF.search(first), ASK_Q.search(first)
     actions.append({"k": "ask", "at": d["created_at"], "wf": w and w.group(1), "q": q and q.group(1).strip()[:80]})
 
@@ -99,13 +110,15 @@ if now.hour in PURGE_HOURS and now.minute < 10:
     try:  # bilan gardé hors du dépôt : la page l'affiche jusqu'au nettoyage suivant
         _os.makedirs(_os.path.dirname(PURGE_LOG), exist_ok=True)
         write_json(PURGE_LOG, purge)
-    except Exception:
-        pass
+    except Exception as e:
+        warn(f"bilan du nettoyage non gardé, absent des prochains passages ({str(e)[:120] or type(e).__name__})")
 else:
     try:
         purge = read_json(PURGE_LOG)
-    except Exception:
-        pass
+    except FileNotFoundError:
+        pass  # aucun nettoyage encore fait sur cette machine : rien à afficher, pas une erreur
+    except Exception as e:
+        warn(f"bilan du dernier nettoyage illisible ({str(e)[:120] or type(e).__name__})")
 
 runs.sort(key=lambda x: x["start"] or "")
 crons = []
@@ -129,7 +142,8 @@ for key, wid in (CFG.get("workflows") or {}).items():
     health[key] = {"at": last.get("finished_at") or lr.get("finished_at"), "step": bad and bad["step_name"], "err": bad and err_of(bad)}
 
 snap = {"generated_at": datetime.now(timezone.utc).isoformat(), "day": now.strftime("%Y-%m-%d"), "runs": runs, "discussions": discs,
-        "crons": crons, "disabled": disabled, "purge": purge, "bureau_failed": health, "actions": actions}
+        "crons": crons, "disabled": disabled, "purge": purge, "bureau_failed": health, "actions": actions,
+        "warnings": warnings}
 out = dumps(snap)
 # Sous la limite de 100 Ko d'une sortie Exec, par paliers : étapes des runs réussis finis depuis plus de 3 h (sauf Gate),
 # puis de tous les runs réussis, puis les plus vieux runs réussis eux-mêmes (comptés dans « truncated »).

@@ -264,6 +264,18 @@ class MailSnapshotTest(unittest.TestCase):
         self.assertNotIn("Staples", dict(a["ignored"]))  # pris par le porteur avant la règle ignore
         self.assertNotIn("read_rows", out)
 
+    def test_unreadable_page_rules_warn(self):
+        """#8 : règles validées de la page illisibles (Kronn injoignable) : tri avec celles de la config, et un avertissement
+        dans le dataset (panneau Fraîcheur) en plus de stderr ; règles lues : aucun avertissement."""
+        acc = {"accounts": [{"id": "pro", "provider": "mac-mail", "account": "Dunder"}], "keep": ["dundermifflin.example"]}
+        out, err = self.run_mail(acc)  # http://127.0.0.1:9 : personne
+        self.assertTrue(out["sorted"])
+        self.assertEqual(len(out["warnings"]), 1)
+        self.assertIn("règles validées illisibles, tri fait avec celles de la config", out["warnings"][0])
+        self.assertIn("courrier : règles de la page illisibles", err)
+        out, _ = self.run_mail(acc, api=self.fake_kronn(rules={"keep": [], "ignore": ["atlassian.net"]}))
+        self.assertEqual(out["warnings"], [])
+
     def test_no_accounts_empty(self):
         out, _ = self.run_mail({})
         self.assertEqual(out["accounts"], [])

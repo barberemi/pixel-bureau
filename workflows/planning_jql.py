@@ -1,7 +1,8 @@
 """JQL des tickets à estimer au sprint planning : ceux des 2 prochains sprints du board sans story points, sans retour à la ligne.
 
 Entrée (stdin) : les sprints futurs du board (étape « future_sprints », /rest/agile/1.0/board/<board>/sprint?state=future),
-dans l'ordre du board. Lu par l'étape « planning_tickets ». Sans sprint futur, une requête valide qui ne renvoie rien.
+dans l'ordre du board. Lu par l'étape « planning_tickets ». Sans sprint futur, une requête valide qui ne renvoie rien ;
+entrée illisible : la même, et un avertissement sur stderr (#8 ; la sortie est du JQL, sans place pour une liste warnings).
 """
 import json, re, sys
 from _lib import CFG
@@ -11,8 +12,9 @@ NEXT = 2
 
 try:
     sprints = json.loads(sys.stdin.read() or "null")
-except ValueError:
+except ValueError as e:
     sprints = None
+    print(f"planning : sprints futurs illisibles ({str(e)[:120]}), aucun ticket à estimer", file=sys.stderr)
 ids = [int(s["id"]) for s in (sprints if isinstance(sprints, list) else [])
        if isinstance(s, dict) and str(s.get("id", "")).isdigit()][:NEXT]
 project = J["project"]

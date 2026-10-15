@@ -57,6 +57,7 @@ class FakeKronn:
         self.questions = {}  # id de discussion -> questions (GET /discussions/{id}/questions)
         self.variables = {}  # id de workflow -> variables de lancement (GET /workflows/{id})
         self.disc_pages = []  # numéros de page des GET /discussions reçus (0 : sans page)
+        self.broken = set()  # routes en échec (404), pour les échecs partiels (#8) : "/projects", "/stats/tokens"…
         self.discussions = [
             {"id": "d1", "title": "Pourquoi ça casse ?", "agent": "ClaudeCode", "participants": ["ClaudeCode"], "message_count": 4,
              "archived": False, "created_at": now, "updated_at": now, "workflow_run_id": None, "project_id": "p1"},
@@ -66,6 +67,8 @@ class FakeKronn:
 
     def route(self, path):
         p = urlparse(path).path.removeprefix("/api")
+        if p in self.broken:
+            raise KeyError(path)
         if p == "/workflows":
             return self.workflows
         m = re.fullmatch(r"/workflows/([\w-]+)/runs/([\w-]+)", p)
@@ -234,6 +237,7 @@ print(json.dumps(d.get(key, [])))
                            capture_output=True, text=True, env=env, timeout=60)
         self.assertEqual(r.returncode, 0, f"{name} : {r.stderr[-800:]}")
         self.assertLess(len(r.stdout.encode()), LIMIT, f"{name} : sortie de {len(r.stdout.encode())} octets")
+        self.stderr = r.stderr  # avertissements du run (#8), lus par les tests des échecs partiels
         return json.loads(r.stdout)
 
     # ---------- équipe ----------
@@ -413,7 +417,7 @@ print(json.dumps(d.get(key, [])))
         # du plus récent au plus ancien : 120 (moyenne des 4 d'avant 85 : tenu), 100 (85 : tenu), 60 (90 : pas tenu), 80, 100, 100, 80
         out = self.run_script("duck_snapshot.py", {"sprint": {"name": "S8", "startDate": start.isoformat(), "endDate": (start + timedelta(days=14)).isoformat()},
                                                    "velocity": self.velocity([120, 100, 60, 80, 100, 100, 80]), "reopens": []}, api=self.kronn(fake))
-        self.assertEqual(out["errors"], [])
+        self.assertEqual(out["warnings"], [])
         self.assertEqual(out["target"], 90.0)  # moyenne des 4 derniers sprints fermés
         self.assertEqual([(s["name"], s["target"], s["held"]) for s in out["sprints"]],
                          [("S7", 85.0, True), ("S6", 85.0, True), ("S5", 90.0, False)])
@@ -435,7 +439,8 @@ print(json.dumps(d.get(key, [])))
         out = self.run_script("duck_snapshot.py", {"sprint": None, "velocity": None, "reopens": None}, api=self.kronn(FakeKronn()))
         self.assertEqual((out["target"], out["sprints"], out["canetons"]), (None, [], 0))
         self.assertNotIn("pas_reopen", out["trophies"])
-        self.assertTrue(any("gh" in e for e in out["errors"]))
+        self.assertTrue(any("gh" in e for e in out["warnings"]))  # #8 : source muette notée et écrite sur stderr
+        self.assertIn("canard : gh", self.stderr)
 
     def test_duck_window_is_the_previous_sprint(self):
         r = self.run_raw("duck_window.py", json.dumps({"startDate": "2026-10-02T14:30:00.000Z", "endDate": "2026-10-16T14:30:00.000Z"}))
@@ -471,6 +476,74 @@ print(json.dumps(d.get(key, [])))
             {"k": "ask", "at": fake.discussions[1]["created_at"], "wf": AGENT_WF, "q": "Pourquoi tu échoues ?"}])
         self.assertEqual([r.get("man") for r in out["runs"] if r["wf"] == AGENT_WF].count(1), 1)
         self.assertNotIn(cw, {r["wf"] for r in out["runs"]})  # une action du Bureau n'est pas un agent
+        self.assertEqual(out["warnings"], [])  # tout est lu : aucun avertissement (#8)
+
+    # ---------- échecs partiels (#8) : publiés quand même, sur stderr et dans warnings ----------
+    def test_payroll_without_measured_rate_warns(self):
+        fake = FakeKronn()
+        fake.broken = {"/stats/tokens"}
+        out = self.run_script("payroll_snapshot.py", api=self.kronn(fake))
+        self.assertEqual([a["wf"] for a in out["agents"]], [AGENT_WF])  # le dataset reste publié
+        self.assertIsNone(out["rate_usd_per_mtok"])
+        self.assertEqual(len(out["warnings"]), 1)
+        self.assertIn("tarif non mesuré", out["warnings"][0])
+        self.assertIn("HTTP Error 404", out["warnings"][0])  # la cause, courte
+        self.assertIn("fiche de paie : tarif non mesuré", self.stderr)
+
+    def test_gates_without_projects_discussions_nor_questions_warns(self):
+        fake = FakeKronn()
+        self.duck_discs(fake)
+        fake.broken = {"/projects", "/discussions"}
+        out = self.run_script("gates_snapshot.py", api=self.kronn(fake))
+        self.assertEqual(out["projects"], [{"id": "none", "name": "Sans projet"}])  # le canard garde « Sans projet »
+        self.assertEqual((out["ducks"], out["questions"]), ([], []))
+        self.assertEqual([w["wf"] for w in out["askable"]], [AGENT_WF])  # le reste du dataset est là
+        self.assertEqual([w.split(" (")[0] for w in out["warnings"]],
+                         ["projets Kronn illisibles : canard sans bouton par projet",
+                          "discussions Kronn illisibles : canard et questions en attente absents"])
+        self.assertEqual(self.stderr.count("gates : "), 2)  # une seule lecture des discussions pour le canard et les questions (#5)
+
+    def test_office_unreadable_question_and_purge_log_warn(self):
+        os.makedirs(os.path.join(self.tmp, ".cache", "pixel-bureau"))
+        with open(os.path.join(self.tmp, ".cache", "pixel-bureau", "purge.json"), "w") as fh:
+            fh.write("pas du json")
+        fake = FakeKronn()  # d2 (« interroger ») sans détail lisible : sa question reste vide
+        out = self.run_script("office_snapshot.py", api=self.kronn(fake))
+        self.assertEqual({r["wf"] for r in out["runs"]}, {AGENT_WF})
+        self.assertEqual([(a["k"], a["q"]) for a in out["actions"]], [("ask", None)])
+        self.assertEqual([w.split(" (")[0] for w in out["warnings"]],
+                         ["question d'un « interroger » illisible", "bilan du dernier nettoyage illisible"])
+        self.assertIn("bureau : bilan du dernier nettoyage illisible", self.stderr)
+        os.remove(os.path.join(self.tmp, ".cache", "pixel-bureau", "purge.json"))  # pas encore de nettoyage : pas une erreur
+        fake.disc_details["d2"] = {"messages": [{"content": "Réponds à cette question : Pourquoi ?"}]}
+        self.assertEqual(self.run_script("office_snapshot.py", api=self.kronn(fake))["warnings"], [])
+
+    def test_actions_without_team_dataset_warns(self):
+        out = self.run_script("actions_snapshot.py")  # Kronn injoignable
+        self.assertEqual((out["tickets"], out["prs"]), ([], []))
+        self.assertIn("dataset team illisible", out["warnings"][0])
+        self.assertIn("actions : dataset team illisible", self.stderr)
+
+    def test_avatar_save_over_an_unreadable_dataset_warns(self):
+        fake = FakeKronn()
+        fake.datasets = [{"name": "avatars", "current": "{pas du json"}]
+        code = "BUREAU1:" + __import__("base64").b64encode(json.dumps({"k": "p_pam", "n": "Pamela", "l": None, "at": 1}).encode()).decode()
+        r = self.run_raw("avatar_save.py", code, api=self.kronn(fake))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out = json.loads(r.stdout)
+        self.assertEqual(set(out["avatars"]), {"p_pam"})
+        self.assertIn("avatars en place illisibles", out["warnings"][0])
+        self.assertIn("avatars : avatars en place illisibles", r.stderr)
+
+    def test_jql_helpers_warn_on_unreadable_input(self):
+        """Sorties en JQL (pas de place pour warnings) : l'avertissement part seulement sur stderr."""
+        r = self.run_raw("duck_window.py", "null")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("canard : sprint actif illisible", r.stderr)
+        r = self.run_raw("planning_jql.py", "pas du json")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("sprint is EMPTY", r.stdout)
+        self.assertIn("planning : sprints futurs illisibles", r.stderr)
 
     def test_absence_month_names_the_sheet(self):
         """Feuille du mois sans accents, sans retour à la ligne ; en décembre, le mois suivant reste decembre."""
@@ -521,7 +594,10 @@ print(json.dumps(d.get(key, [])))
         out = self.run_script("live_snapshot.py", api=self.kronn(FakeKronn()))
         self.assertEqual({r["wf"] for r in out["runs"]}, {AGENT_WF})
         self.assertEqual([d["id"] for d in out["discussions"]], ["d1"])
-        self.assertEqual(out["deploys"], {"staging": {}, "prod": {}})  # sans gh : aucun déploiement, pas d'erreur
+        self.assertEqual(out["deploys"], {"staging": {}, "prod": {}})  # sans gh : aucun déploiement, le run ne plante pas…
+        self.assertEqual(len(out["warnings"]), 1)  # … mais le dit (#8) : une ligne pour tous les workflows suivis
+        self.assertIn("gh introuvable", out["warnings"][0])
+        self.assertIn("live : déploiements de", self.stderr)
 
     def gh_calls(self):
         p = os.path.join(self.tmp, "gh.json.calls")
@@ -548,6 +624,7 @@ print(json.dumps(d.get(key, [])))
         self.assertEqual(sum("If-None-Match: W/" in c for c in calls), 3)  # trois requêtes conditionnelles…
         self.assertEqual(calls.count("304"), 3)  # … et trois 304 (ordre libre : lectures en parallèle)
         self.assertEqual(out["deploys"]["prod"]["17.2.0"]["conclusion"], "success")
+        self.assertEqual(out["warnings"], [])  # un 304 n'est pas un échec
         moving = dict(done, status="in_progress", conclusion=None, updatedAt=iso(1), displayTitle="Deploy 17.3.0")
         self.fake_gh({"staging": [done], "prod": [moving, done]})  # une MEP part sur GitHub : nouvel ETag, relue tout de suite
         out = self.run_script("live_snapshot.py", api=api)
@@ -570,7 +647,10 @@ print(json.dumps(d.get(key, [])))
     def test_pages_snapshot_order_cache_and_missing_pages(self):
         fake, cache, img = self.boss_pages()
         out = self.run_script("pages_snapshot.py", api=self.kronn(fake), boss_pages=["pa", "gone", "pb"], chrome=False)
-        self.assertEqual([p["id"] for p in out["pages"]], ["pa", "pb"])  # ordre de la config, page supprimée sautée
+        self.assertEqual([p["id"] for p in out["pages"]], ["pa", "pb"])  # ordre de la config, page supprimée sautée…
+        self.assertEqual(len(out["warnings"]), 1)  # … et signalée (#8)
+        self.assertIn("page gone sautée", out["warnings"][0])
+        self.assertIn("écran du boss : page gone", self.stderr)
         pa, pb = out["pages"]
         self.assertEqual((pa["title"], pa["img"]), ("Veille techno", img))  # page inchangée : miniature du cache
         self.assertIsNone(pb["img"])  # page changée et pas de Chrome : pas d'image (jamais l'ancienne)
@@ -588,6 +668,7 @@ print(json.dumps(d.get(key, [])))
         os.chmod(exe, 0o755)
         out = self.run_script("pages_snapshot.py", api=self.kronn(fake), boss_pages=["pb"], chrome=exe)
         self.assertTrue(out["pages"][0]["img"].startswith("data:image/jpeg;base64,"))
+        self.assertEqual(out["warnings"], [])
 
     def test_pages_snapshot_stays_under_exec_limit(self):
         fake, cache, img = self.boss_pages(img_kb=60)
@@ -595,6 +676,7 @@ print(json.dumps(d.get(key, [])))
         api = self.kronn(fake)
         out = self.run_script("pages_snapshot.py", api=api, boss_pages=["pa", "pb"], chrome=False)
         self.assertEqual([bool(p["img"]) for p in out["pages"]], [True, False])  # la dernière image saute d'abord
+        self.assertEqual(out["warnings"], ["1 miniature retirée : sortie limitée à 90 Ko"])
         self.assertEqual(self.run_script("pages_snapshot.py", api=api, chrome=False)["pages"], [])  # sans boss_pages
 
     # ---------- cartes GitFut des fiches ----------
@@ -610,19 +692,26 @@ print(json.dumps(d.get(key, [])))
         out = self.run_script("gitfut_snapshot.py", gitfut={"p_pam": "Pam", "p_old": "old", "p_bad": "../etc"},
                               gitfut_base="http://127.0.0.1:9", wiki_posters=["Five_(2016_film)"], wiki_base="http://127.0.0.1:9")  # injoignables
         self.assertEqual(out["cards"], {"p_pam": kept})
-        self.assertEqual(out["posters"], {})  # affiche introuvable : pas d'image, pas d'erreur  # carte du jour reprise du cache ; le reste est sauté sans planter
+        self.assertEqual(out["posters"], {})  # affiche introuvable : pas d'image  # carte du jour reprise du cache ; le reste est sauté sans planter
+        # … mais chaque carte ou affiche manquée est signalée (#8) ; le login refusé n'est pas tenté, pas d'avertissement
+        self.assertEqual(len(out["warnings"]), 2)
+        self.assertIn("carte de old non récupérée", out["warnings"][0])
+        self.assertIn("affiche « Five_(2016_film) » non récupérée", out["warnings"][1])
+        self.assertIn("gitfut : carte de old", self.stderr)
 
     def test_payroll_and_gates_ignore_bureau(self):
         api = self.kronn(FakeKronn())
         pay = self.run_script("payroll_snapshot.py", api=api)
         self.assertEqual([a["wf"] for a in pay["agents"]], [AGENT_WF])
         self.assertEqual(pay["rate_usd_per_mtok"], 5.0)
+        self.assertEqual(pay["warnings"], [])
         gates = self.run_script("gates_snapshot.py", api=api)
         self.assertEqual([w["wf"] for w in gates["workflows"] if "bureau" not in w], [AGENT_WF])
         # les crons du Bureau sont relançables (panneau Fraîcheur, #44), marqués par la clé de leur source
         self.assertEqual({w["bureau"]: w["wf"] for w in gates["workflows"] if "bureau" in w},
                          {k: v for k, v in FIXTURE["workflows"].items() if any(x["id"] == v for x in FakeKronn().workflows)})
         self.assertEqual([w["wf"] for w in gates["askable"]], [AGENT_WF])
+        self.assertEqual(gates["warnings"], [])
 
     def test_gates_relaunch_skips_workflows_waiting_for_input(self):
         """« Relancer » lance sans variables : pas de bouton pour un workflow qui attend une saisie obligatoire (Réestimer)."""
@@ -727,7 +816,7 @@ print(json.dumps(d.get(key, [])))
         self.assertEqual(out["trophies"]["bavard"]["progress"], "10 / 10")  # depuis toujours : les 12 de la deuxième page comptent
         self.assertTrue(out["trophies"]["bavard"]["ok"])
         self.assertEqual(fake.disc_pages, [1, 2, 3])  # toutes les pages, jusqu'à la page incomplète
-        self.assertFalse([e for e in out["errors"] if "discussions" in e])
+        self.assertFalse([e for e in out["warnings"] if "discussions" in e])
 
     def test_question_answer_option_form_text_and_decline(self):
         """Réponse depuis la page : la ligne cliquée (qrows) dit quoi envoyer ; Kronn reçoit option, items ou refus."""
@@ -923,7 +1012,9 @@ print(json.dumps(d.get(key, [])))
         for form, readers in res.items():
             bad = {k: v for k, v in readers.items() if v is not True}
             self.assertEqual(bad, {}, f"dataset en {form} : lecteurs qui refusent la sortie de leur cron")
-            self.assertGreaterEqual(len(readers), 18, form)  # démarrage + 17 lecteurs
+            self.assertGreaterEqual(len(readers), 19, form)  # démarrage + 17 lecteurs + avertissements (#8)
+        # au moins un cron du contrat publie un avertissement (cartes GitFut injoignables) : le contrôle a de quoi lire
+        self.assertTrue(outputs["gitfut"]["warnings"])
 
 def pil_python():
     """Un Python qui a Pillow : celui des tests, sinon celui du venv du dépôt ; None sinon."""
