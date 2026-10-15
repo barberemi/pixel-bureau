@@ -449,6 +449,16 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(by["acme/new-repo"], {"repo": "acme/new-repo", "prod_workflow": "deploy-prod.yml"})
         with self.assertRaises(install.InstallError):
             self.run_install({**ANSWERS, "github_deploys": "pas-un-depot"})
+        self.assertNotIn("pr_repos", g)  # PR : par défaut le principal et les dépôts de mises en prod, sans clé (#56)
+
+    def test_pr_repos_asked_main_repo_first(self):
+        """#56 : dépôts dont lire les PR, facultatif ; une liste différente du défaut est écrite, dépôt principal en tête."""
+        self.assertEqual(self.run_install({**ANSWERS, "github_prod": "deploy-prod.yml", "github_deploys": "vance/api",
+                                           "github_pr_repos": "vance/api, acme/outils, vance/api"}), 0)
+        g = json.loads(Path(self.cfg_path).read_text())["github"]
+        self.assertEqual(g["pr_repos"], ["vance/frigo", "vance/api", "acme/outils"])
+        with self.assertRaises(install.InstallError):
+            self.run_install({**ANSWERS, "github_pr_repos": "pas-un-depot"})
 
 
 class GuestsTest(unittest.TestCase):

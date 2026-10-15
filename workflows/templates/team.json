@@ -447,7 +447,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "PR, releases et déploiements du dépôt suivi via gh, regroupés ; ne fait jamais échouer le run (sans gh : listes vides + erreur notée).",
+    "description": "PR des dépôts suivis (github.pr_repos), releases et déploiements du dépôt principal via gh, regroupés ; ne fait jamais échouer le run (sans gh : listes vides + erreur notée).",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -461,7 +461,7 @@
      "-c",
      "@@script:workflows/github_snapshot.py@@"
     ],
-    "exec_timeout_secs": 60
+    "exec_timeout_secs": 120
    },
    {
     "name": "shape",

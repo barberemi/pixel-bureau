@@ -2,56 +2,124 @@
 
 Ne fait jamais échouer le run : sans `gh` (absent, non connecté, sans accès au dépôt), chaque liste est vide et
 l'erreur est notée dans `errors`. Sans dépôt ou sans workflow de déploiement configuré, la liste est vide sans erreur. Les tickets Jira sont publiés quand même par l'étape suivante (shape).
-Sortie (stdout) : {"open": [...], "merged": [...], "releases": [...], "staging": [...], "prod": [...], "errors": [...]}
+PR de plusieurs dépôts (#56) : `github.pr_repos` (liste « owner/repo »), par défaut le dépôt principal puis ceux de
+`github.deploys`. Chaque PR porte son `repo` (owner/repo) : `front_api#16` et `front_web#16` ne se confondent jamais.
+Un autre dépôt illisible ne coupe pas le reste : ses PR manquent et c'est noté dans `warnings` (panneau Fraîcheur, #8).
+Releases et déploiements restent ceux du dépôt principal (ses MEP portent ticket et release).
+Sortie (stdout) : {"open": [...], "merged": [...], "releases": [...], "staging": [...], "prod": [...], "errors": [...], "warnings": [...]}
 """
-import json, subprocess
+import json, subprocess, sys
+from concurrent.futures import ThreadPoolExecutor
 from _lib import CFG, dumps
 
 GH = CFG.get("github") or {}
 REPO, STAGING_WF, PROD_WF = GH.get("repo"), GH.get("staging_workflow"), GH.get("prod_workflow")
-CALLS = {
-    "open": ["pr", "list", "--repo", REPO, "--state", "open", "--limit", "100", "--json",
-             "number,title,author,isDraft,reviewDecision,url,updatedAt,createdAt,latestReviews,reviewRequests"],
-    "merged": ["pr", "list", "--repo", REPO, "--state", "merged", "--limit", "40", "--json", "number,title,author,mergedAt,url"],
-    "releases": ["release", "list", "--repo", REPO, "--limit", "15", "--json", "tagName,name,publishedAt"],
-    "staging": ["run", "list", "--repo", REPO, "--workflow", STAGING_WF, "--limit", "15", "--json",
-                "status,conclusion,createdAt,updatedAt,displayTitle,url"],
-    "prod": ["run", "list", "--repo", REPO, "--workflow", PROD_WF, "--limit", "15", "--json",
-             "status,conclusion,createdAt,updatedAt,displayTitle,url"],
-}
 
-out, errors = {}, []
-for key, args in CALLS.items():
-    if not REPO or key == "staging" and not STAGING_WF or key == "prod" and not PROD_WF:
-        out[key] = []  # rien de configuré à suivre : pas une erreur
-        continue
+
+def pr_repos():
+    """Dépôts dont lire les PR : github.pr_repos, sinon le principal et ceux de github.deploys ; principal d'abord, sans doublon, 12 au plus."""
+    raw = GH.get("pr_repos")
+    if not isinstance(raw, list):
+        raw = [REPO] + [d.get("repo") for d in GH.get("deploys") or [] if isinstance(d, dict)]
+    out = []
+    for r in raw:
+        if isinstance(r, str) and r.count("/") == 1 and r.lower() not in (x.lower() for x in out):
+            out.append(r)
+    out.sort(key=lambda r: r.lower() != (REPO or "").lower())  # le principal d'abord : la coupe des 100 Ko le garde
+    return out[:12]
+
+
+REPOS = pr_repos()
+# limites par dépôt : le principal garde ses 100 PR ouvertes et 40 mergées, les autres moins (sortie sous 100 Ko)
+OPEN_FIELDS = "number,title,headRefName,author,isDraft,reviewDecision,url,updatedAt,createdAt,latestReviews,reviewRequests"
+CALLS = {}
+for repo in REPOS:
+    main = repo.lower() == (REPO or "").lower()
+    CALLS[("open", repo)] = ["pr", "list", "--repo", repo, "--state", "open", "--limit", "100" if main else "25", "--json", OPEN_FIELDS]
+    CALLS[("merged", repo)] = ["pr", "list", "--repo", repo, "--state", "merged", "--limit", "40" if main else "10",
+                               "--json", "number,title,author,mergedAt,url"]
+CALLS[("releases", REPO)] = ["release", "list", "--repo", REPO, "--limit", "15", "--json", "tagName,name,publishedAt"]
+CALLS[("staging", REPO)] = ["run", "list", "--repo", REPO, "--workflow", STAGING_WF, "--limit", "15", "--json",
+                            "status,conclusion,createdAt,updatedAt,displayTitle,url"]
+CALLS[("prod", REPO)] = ["run", "list", "--repo", REPO, "--workflow", PROD_WF, "--limit", "15", "--json",
+                         "status,conclusion,createdAt,updatedAt,displayTitle,url"]
+KEYS = ("open", "merged", "releases", "staging", "prod")
+
+
+def call(args):
+    """(liste, erreur) d'un appel gh borné à 30 s ; l'erreur est None si tout va bien."""
     try:
-        r = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=40)
+        r = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=30)
         if r.returncode != 0:
-            raise RuntimeError((r.stderr or r.stdout).strip().splitlines()[-1][:200] if (r.stderr or r.stdout).strip() else f"code {r.returncode}")
-        out[key] = json.loads(r.stdout or "[]")
+            msg = (r.stderr or r.stdout).strip()
+            return [], msg.splitlines()[-1][:200] if msg else f"code {r.returncode}"
+        return json.loads(r.stdout or "[]"), None
     except FileNotFoundError:
-        out[key] = []
-        errors.append(f"{key} : gh introuvable sur la machine")
-    except (RuntimeError, subprocess.TimeoutExpired, ValueError) as e:
-        out[key] = []
-        errors.append(f"{key} : {e}"[:240])
+        return [], "gh introuvable sur la machine"
+    except (subprocess.TimeoutExpired, ValueError) as e:
+        return [], str(e)
+
+
+todo = {k: a for k, a in CALLS.items()
+        if REPO and k[1] and not (k[0] == "staging" and not STAGING_WF or k[0] == "prod" and not PROD_WF)}
+with ThreadPoolExecutor(max_workers=8) as pool:  # en parallèle : 12 dépôts tiennent dans le délai de l'étape (120 s)
+    res = dict(zip(todo, pool.map(call, todo.values())))
+
+out, errors, warnings = {k: [] for k in KEYS}, [], []
+for (key, repo), (rows, err) in res.items():
+    main = repo.lower() == (REPO or "").lower()
+    if err:  # dépôt principal : une erreur GitHub (source absente) ; autre dépôt : un avertissement, le reste est lu
+        if main:
+            errors.append(f"{key} : {err}"[:240])
+        else:
+            warnings.append(f"PR {key} de {repo} illisibles : {err}"[:240])
+        continue
+    if key in ("open", "merged"):
+        for pr in rows if isinstance(rows, list) else []:
+            pr["repo"] = repo
+    out[key] += rows if isinstance(rows, list) else []
+for w in warnings:
+    print("github : " + w, file=sys.stderr)
 # Kronn coupe la sortie d'une étape Exec à 100 Ko (exec_step.rs) : on ne garde que ce que lit team_shape.py
-for pr in out.get("open") or []:
+for pr in out["open"]:
     a = pr.get("author") or {}
     pr["author"] = {"login": a.get("login"), "name": a.get("name"), "is_bot": a.get("is_bot")}
     pr["latestReviews"] = [{"author": {"login": (r.get("author") or {}).get("login")}, "state": r.get("state"),
                             "submittedAt": r.get("submittedAt")} for r in pr.get("latestReviews") or []]
     # relecteurs demandés (personnes seulement : une équipe GitHub n'a pas de login)
     pr["reviewRequests"] = [r["login"] for r in pr.get("reviewRequests") or [] if r.get("login")]
-for pr in out.get("merged") or []:
+for pr in out["merged"]:
     a = pr.get("author") or {}
     pr["author"] = {"login": a.get("login"), "name": a.get("name")}
-out["errors"] = errors
+out["errors"], out["warnings"] = errors, warnings
 LIMIT = 95 * 1024
+
+
+def shorten(with_main):
+    """Raccourcit d'un quart les PR de chaque autre dépôt (2 gardées au moins), et du principal avec with_main (5 au
+    moins) : chaque dépôt garde ses PR les plus récentes. False si rien n'a bougé."""
+    moved = False
+    for k in ("open", "merged"):
+        total, seen, keep = {}, {}, []
+        for pr in out[k]:
+            total[pr["repo"]] = total.get(pr["repo"], 0) + 1
+        for pr in out[k]:
+            main = pr["repo"].lower() == (REPO or "").lower()
+            seen[pr["repo"]] = seen.get(pr["repo"], 0) + 1
+            if (with_main or not main) and seen[pr["repo"]] > max(5 if main else 2, total[pr["repo"]] * 3 // 4):
+                moved = True
+                continue
+            keep.append(pr)
+        out[k] = keep
+    return moved
+
+
 text = dumps(out)
-while len(text.encode()) > LIMIT and any(len(out[k]) > 5 for k in CALLS):  # sécurité : on raccourcit les listes
-    for k in CALLS:
-        out[k] = out[k][:max(5, len(out[k]) * 3 // 4)]
+while len(text.encode()) > LIMIT:  # sécurité : les autres dépôts d'abord, puis le principal, puis le reste
+    if not shorten(False) and not shorten(True):
+        if not any(len(out[k]) > 5 for k in KEYS):
+            break
+        for k in KEYS:
+            out[k] = out[k][:max(5, len(out[k]) * 3 // 4)]
     text = dumps(out)
 print(text)

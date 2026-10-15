@@ -30,10 +30,11 @@ test('Fraîcheur : avertissements des crons (#8), une ligne par avertissement av
     payroll: {current: JSON.stringify({generated_at: '2026-10-04T08:00:00Z', agents: [], warnings: ['tarif non mesuré, coûts non estimés (HTTP Error 500)']})},
     gates: {current: {gates: [], warnings: ['projets Kronn illisibles <b>', 'discussions du canard illisibles', 'questions en attente illisibles', 'quatrième', 'cinquième']}},
     office: {current: {runs: [], warnings: []}},
-    team: {current: {warnings: ['jamais lu : la source équipe a ses propres erreurs GitHub']}},
+    team: {current: {warnings: ['PR open de acme/api illisibles : 404']}}, // #56 : un autre dépôt de PR illisible
   }};
   const w = JSON.parse(run(`JSON.stringify(readWarnings(${JSON.stringify(k)}))`));
-  assert.deepEqual(Object.keys(w).sort(), ['gates', 'office', 'payroll']);
+  assert.deepEqual(Object.keys(w).sort(), ['gates', 'office', 'payroll', 'team']);
+  assert.deepEqual(w.team, ['PR open de acme/api illisibles : 404']);
   assert.deepEqual(w.office, []);
   run(`OFFICE=null; TEAM_BASE=null; WARNINGS=readWarnings(${JSON.stringify(k)});`);
   const html = run('diagTxt()');
@@ -41,7 +42,7 @@ test('Fraîcheur : avertissements des crons (#8), une ligne par avertissement av
   assert.match(html, /⚠ Direct \(gates, canard\) : projets Kronn illisibles &lt;b&gt;/); // échappé
   assert.equal((html.match(/Direct \(gates, canard\)/g) || []).length, 4); // 3 au plus, puis le reste compté
   assert.match(html, /Direct \(gates, canard\) : 2 autres avertissements/);
-  assert.doesNotMatch(html, /jamais lu/);
+  assert.match(html, /⚠ Équipe \(Jira, GitHub\) : PR open de acme\/api illisibles : 404/);
   // un nouveau passage sans avertissement efface ceux de sa source, les autres restent
   run(`WARNINGS={...WARNINGS,...readWarnings({datasets:{gates:{current:{gates:[],warnings:[]}}}})};`);
   assert.doesNotMatch(run('diagTxt()'), /Direct \(gates/);

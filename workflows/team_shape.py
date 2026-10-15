@@ -29,6 +29,14 @@ KEY = re.compile(r"\b" + re.escape(J["project"]) + r"-\d+\b", re.I)
 POINTS = J["points_fields"]              # champ(s) de story points, le premier non vide gagne (0 compte)
 SPRINT_FIELD = J["sprint_field"]
 DONE = J["done_status"]
+# dépôt de chaque PR (#56) : owner/repo complet, celui du dépôt principal quand l'entrée ne le dit pas (ancien format)
+MAIN_REPO = (CFG.get("github") or {}).get("repo") or ""
+repo_of = lambda pr: pr.get("repo") or MAIN_REPO  # noqa: E731
+
+
+def pr_keys(pr):
+    """Clés Jira citées par une PR : dans son titre, puis dans sa branche (« feat/EW-7317-… » quand le titre dit « ew 7317 »)."""
+    return sorted({k.upper() for k in KEY.findall(pr.get("title") or "") + KEY.findall(pr.get("headRefName") or "")})
 
 
 def status_since(it):
@@ -87,9 +95,9 @@ for pr in D.get("open") or []:
     if a.get("is_bot"):
         continue
     review = {"APPROVED": "approved", "CHANGES_REQUESTED": "changes", "REVIEW_REQUIRED": "pending"}.get(pr.get("reviewDecision") or "", "pending")
-    row = {"n": pr["number"], "title": pr["title"][:110], "draft": pr.get("isDraft"), "review": review,
+    row = {"n": pr["number"], "repo": repo_of(pr), "title": pr["title"][:110], "draft": pr.get("isDraft"), "review": review,
            "url": pr["url"], "updated": pr.get("updatedAt"), "created": pr.get("createdAt"),
-           "keys": sorted({k.upper() for k in KEY.findall(pr["title"])}),
+           "keys": pr_keys(pr),
            "req": [x for x in pr.get("reviewRequests") or [] if isinstance(x, str)]}
     p = owner(a, pr["title"])
     if p:
@@ -110,7 +118,7 @@ for pr in D.get("merged") or []:
         continue
     a = pr.get("author") or {}
     p = owner(a, pr["title"])
-    row = {"n": pr["number"], "title": pr["title"][:110], "mergedAt": m, "url": pr["url"],
+    row = {"n": pr["number"], "repo": repo_of(pr), "title": pr["title"][:110], "mergedAt": m, "url": pr["url"],
            "who": p["id"] if p else None, "author": a.get("name") or a.get("login")}
     merged_today.append(row)
     if p:
@@ -178,8 +186,8 @@ for pr in D.get("open") or []:
     if a.get("is_bot"):
         continue
     author = gh_owner.get((a.get("login") or "").lower())
-    keys = sorted({k.upper() for k in KEY.findall(pr["title"])})
-    base = {"n": pr["number"], "title": pr["title"][:110], "keys": keys, "author": author, "author_name": a.get("name") or a.get("login")}
+    keys = pr_keys(pr)
+    base = {"n": pr["number"], "repo": repo_of(pr), "title": pr["title"][:110], "keys": keys, "author": author, "author_name": a.get("name") or a.get("login")}
     if is_today(pr.get("createdAt")) and not pr.get("isDraft"):
         events.append({"t": pr["createdAt"], "kind": "pr", **base})
     for rv in pr.get("latestReviews") or []:
@@ -300,6 +308,8 @@ out = {
     # sources disponibles : la page masque ce qui manque au lieu d'afficher du vide trompeur
     "sources": {"jira": bool(D.get("issues")) or bool(D.get("sprint")), "github": not G.get("errors") if G else True,
                 "github_errors": (G.get("errors") or [])[:5]},
+    # échecs partiels (#8) : un autre dépôt de PR illisible (#56), affiché par le panneau Fraîcheur
+    "warnings": [w for w in G.get("warnings") or [] if isinstance(w, str)][:10],
 }
 # Kronn coupe la sortie d'une étape Exec à 100 Ko : au-delà, le JSON tronqué casserait la publication.
 # On raccourcit d'abord la plus longue liste secondaire (les plus vieux événements du jour en premier).
