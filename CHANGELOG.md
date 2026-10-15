@@ -16,6 +16,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- La fenêtre « Mes pages Kronn » garde le focus clavier (Tab et Maj+Tab bouclent dedans, le reste de la page est inerte) et le rend à la fermeture (#1).
+- Les tuiles « La prod aujourd'hui » et « Les agents », les lignes du fil et le titre de la loupe s'atteignent au clavier et s'ouvrent par Entrée ou Espace (#2).
+- Avec le réglage système « réduire les animations », les effets de thème au-dessus du plan disparaissent, la loupe automatique est éteinte par défaut et les défilements sont instantanés (#3).
+- Les boutons Direct, Rejouer, Loupe, Important / Tout et Récap annoncent leur état aux lecteurs d'écran (#4).
 - Un bouton du panneau de droite qui ne répondait pas de temps en temps (la carte Kronn ne s'ouvrait pas) : le panneau ne se redessine plus pendant un clic.
 - Les miniatures de « Mes pages Kronn » sur l'écran du boss avaient disparu : les versions récentes de Chrome se ferment seules après la capture, et le cron perdait l'image en voulant l'arrêter.
 - Des crons du Bureau refusés de temps en temps (« étape __workspace__ ») quand plusieurs partaient à la même minute : ils se déclarent désormais sans écriture dans le dossier du projet, et Kronn ne les fait plus attendre.

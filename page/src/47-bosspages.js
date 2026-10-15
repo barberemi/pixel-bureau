@@ -46,14 +46,42 @@ function bossPagesHtml(){
       `<b>${esc(p.title||p.id.slice(0,8))}</b><small>${age!=null&&age>=0?'Mise à jour il y a '+esc(bpAge(age)):''}<span aria-hidden="true">↗</span></small></a>`;
   }).join('');
 }
+// fenêtre modale : le reste de la page est inerte, Tab et Maj+Tab bouclent dans la fenêtre, et à la fermeture le focus
+// revient à l'élément qui l'avait ; ouverte d'un clic sur le canvas (non focalisable), il n'y en a pas : le focus revient
+// alors au plan (tabindex -1, hors de l'ordre de tabulation), là où était l'écran cliqué, et Tab reprend aux boutons du rejeu
+let BP_BACK=null, BP_INERT=[];
+const bpFocusables=box=>[...box.querySelectorAll('a[href],button')];
 function openBossPages(){
-  closeBossPages(); if(!bossPagesOn())return;
-  const bd=document.createElement('div');bd.className='bp-backdrop';bd.onclick=closeBossPages;
+  const back=BP_BACK||document.activeElement; // réouverture : on garde l'élément d'avant la première ouverture
+  closeBossPages(false); if(!bossPagesOn())return;
+  BP_BACK=back;
+  const bd=document.createElement('div');bd.className='bp-backdrop';bd.onclick=()=>closeBossPages();
   const box=document.createElement('div');box.className='bp-modal';box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label','Mes pages Kronn');
   box.innerHTML=`<div class="bp-head"><h2>Mes pages Kronn</h2><button type="button" class="bp-x" aria-label="Fermer">×</button></div><div class="bp-grid">${bossPagesHtml()}</div>`;
+  BP_INERT=[...document.body.children].filter(e=>!e.inert&&e.tagName!=='SCRIPT');
+  BP_INERT.forEach(e=>{e.inert=true;});
   document.body.append(bd,box);
-  box.querySelector('.bp-x').onclick=closeBossPages;
-  const first=box.querySelector('.bp-card');if(first)first.focus();
+  box.querySelector('.bp-x').onclick=()=>closeBossPages();
+  const first=box.querySelector('.bp-card')||box.querySelector('.bp-x');if(first)first.focus();
 }
-function closeBossPages(){document.querySelectorAll('.bp-backdrop,.bp-modal').forEach(e=>e.remove());}
-addEventListener('keydown',e=>{if(e.key==='Escape'&&document.querySelector('.bp-modal'))closeBossPages();});
+function closeBossPages(restore=true){
+  const was=!!document.querySelector('.bp-modal');
+  document.querySelectorAll('.bp-backdrop,.bp-modal').forEach(e=>e.remove());
+  BP_INERT.forEach(e=>{e.inert=false;});BP_INERT=[];
+  if(!restore)return;
+  const back=BP_BACK;BP_BACK=null;
+  if(!was)return;
+  if(back&&back!==document.body&&back.isConnected&&back.focus){back.focus();if(document.activeElement===back)return;}
+  const plan=document.getElementById('cv');
+  if(plan){if(!plan.hasAttribute('tabindex'))plan.tabIndex=-1;plan.focus();}
+}
+function bossPagesKey(e){
+  const box=document.querySelector('.bp-modal');if(!box)return;
+  if(e.key==='Escape'){closeBossPages();return;}
+  if(e.key!=='Tab')return;
+  const f=bpFocusables(box);if(!f.length)return;
+  const a=f[0], z=f[f.length-1], cur=document.activeElement, inside=box.contains(cur);
+  if(e.shiftKey&&(cur===a||!inside)){e.preventDefault();z.focus();}
+  else if(!e.shiftKey&&(cur===z||!inside)){e.preventDefault();a.focus();}
+}
+addEventListener('keydown',bossPagesKey);

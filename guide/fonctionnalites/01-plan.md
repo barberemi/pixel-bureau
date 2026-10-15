@@ -193,4 +193,5 @@ Quand un événement fort commence, un cadre de couleur entoure la scène sur le
 - **Une loupe à la fois**, ouverte une fois les personnages arrivés (40 s au plus d'attente), pendant 20 s ; deux événements au même endroit (la fête et le sage) n'en font qu'une.
 - **En rejeu accéléré** (même à x1500), la lecture s'arrête dès qu'un événement commence, le temps que les personnages arrivent et que la loupe passe, puis reprend. Deux événements au même endroit : le plus parlant d'abord (le sage avant la fête de MEP). Rien quand on fait glisser l'heure, ni quand la souris est sur le plan.
 - **Fermer** : ✕, clic sur le plan ou Échap. **Couper** : bouton « 🔍 Loupe » sous le plan (retenu dans le navigateur) ; sur l'écran mural, `?loupe=0` dans l'adresse.
+- **Animations réduites** : avec le réglage système « réduire les animations », la loupe est éteinte par défaut ; le bouton « 🔍 Loupe » la rallume (choix retenu).
 - Aussi en mode TV, où personne ne clique : la fenêtre se pose sur les cartes de chiffres et se referme seule.

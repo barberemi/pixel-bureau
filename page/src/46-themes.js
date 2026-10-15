@@ -195,7 +195,7 @@ function themeEnvelope(x,y){
 // ---------- par-dessus le plan (après le voile) : vols, flocons, confettis qui tombent, feux d'artifice, éclairs ----------
 function burst(x,y,r,col,a){ctx.globalAlpha=Math.max(0,a);for(let k=0;k<12;k++){const an=k*Math.PI/6;R(ctx,x+Math.cos(an)*r-1,y+Math.sin(an)*r-1,2,2,col);}ctx.globalAlpha=1;}
 function themeOverlay(now){
-  const th=themeNow(); if(!th)return;
+  const th=themeNow(); if(!th||REDUCED_MOTION)return;
   if(th.id==='halloween'){
     for(let i=0;i<4;i++){const p=((now/9000)+i*.29)%1; if(p>.6)continue; const k=p/.6;E('🦇',-20+k*(W+40),40+i*55+Math.sin(k*18+i)*14,16);}
     {const p=(now/26000)%1, x=-40+p*(W+80), y=(ROW0()+.5)*TS+Math.sin(p*14)*36;E('👻',x,y,32,.85);} // au-dessus des îlots

@@ -11,6 +11,10 @@ metadata:
       status: Confirmed by user
       reviewer: Kronn audit validation card
       note: "Confirmed through an audit validation card."
+    - date: 2026-10-15
+      status: Resolved
+      reviewer: mainteneur
+      note: "#3 : prefers-reduced-motion lu une fois par matchMedia (REDUCED_MOTION, 00-config.js) : themeOverlay ne dessine rien, loupe automatique éteinte par défaut (un choix du bouton passe avant), défilements en behavior auto ; guide (thèmes, loupe) mis à jour."
 ---
 
 # TD-20261011-a11y-reduced-motion-canvas
@@ -19,7 +23,7 @@ metadata:
 - **WCAG**: 2.2.2 Pause, Stop, Hide ; 2.3.3 Animation from Interactions (AAA, indicatif)
 - **Area**: Mouvement
 - **Severity**: Low
-- **Status**: Confirmed by user
+- **Status**: Resolved (2026-10-15, #3)
 - **Effort**: M (demi-journée)
 - **Blast radius**: local (3-4 files)
 

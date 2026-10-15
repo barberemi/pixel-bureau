@@ -52,4 +52,9 @@ const FREE_SEATS = []; // places des intérimaires et des collègues sans place,
 const JIRA_BROWSE = (CFG.jira_site||'').replace(/\/$/,'')+'/browse/'; // lien d'un ticket
 const KRONN_BASE = CFG.kronn_ui||'http://localhost:5173/';
 const VISITOR = {ClaudeCode:'v_claude', Codex:'v_codex', GeminiCli:'v_gemini', Gemini:'v_gemini'};
+// réglage système « réduire les animations », lu une fois au chargement : pas d'effets de thème au-dessus du plan, loupe
+// automatique éteinte par défaut, défilements instantanés (le CSS coupe déjà le bandeau TV et le flash des tuiles)
+function prefersReducedMotion(){try{return typeof matchMedia==='function'&&!!matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){return false;}}
+const REDUCED_MOTION = prefersReducedMotion();
+const SCROLL_BEHAVIOR = REDUCED_MOTION?'auto':'smooth';
 

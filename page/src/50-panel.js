@@ -5,6 +5,13 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;'
 const safeUrl=u=>typeof u==='string'&&/^https:\/\//i.test(u)?u:null;
 // attribut href d'un lien sortant, échappé ; schéma refusé : pas de href, le lien reste affiché mais inactif
 const hrefOf=u=>{const s=safeUrl(u);return s?`href="${esc(s)}"`:'';};
+// Entrée ou Espace sur un élément role="button" qui n'est pas un vrai bouton (tuile, ligne du fil, titre de la loupe) :
+// le même clic qu'à la souris ; les liens et boutons qu'il contient gardent leur comportement
+function keyClick(e){
+  const t=e.target;
+  if((e.key!=='Enter'&&e.key!==' ')||!t||!t.getAttribute||t.getAttribute('role')!=='button'||t.tagName==='BUTTON')return false;
+  e.preventDefault();t.click();return true;
+}
 const STATUS_TXT={
   Success:'Réussi',
   Failed:'Échec',
