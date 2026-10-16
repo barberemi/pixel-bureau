@@ -194,3 +194,9 @@ test('case « + Ajouter » de la grille : ouvre directement la liste des pages �
     bpWireGrid({querySelectorAll:()=>[],querySelector:s=>s==='.bp-plus'?PL:s==='.bp-pick'?PK:null}); PL.onclick();`);
   assert.equal(J('OPENED'), 1);
 });
+
+test('fenêtre : 4 colonnes (6 pages et « + Ajouter » tiennent en 2 rangées sur un portable), 2 sous 900 px', () => {
+  const css = require('fs').readFileSync(require('path').join(__dirname, '..', 'page', 'src', 'styles.css'), 'utf8');
+  assert.match(css, /\.bp-grid\{display:grid;grid-template-columns:repeat\(4,1fr\)/);
+  assert.match(css, /@media \(max-width:900px\)\{\.bp-grid\{grid-template-columns:repeat\(2,1fr\)\}\}/);
+});
