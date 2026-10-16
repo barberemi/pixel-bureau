@@ -94,7 +94,7 @@ function renderTicket(side,key){
     }
     pb.appendChild(ul);
   }
-  if(!(ACTIONS.impl||ACTIONS.mep||ACTIONS.review||ACTIONS.fix||ACTIONS.comment))return;
+  if(!(ACTIONS.impl||ACTIONS.mep||ACTIONS.mep_pr||ACTIONS.review||ACTIONS.fix||ACTIONS.comment))return;
   const box=foldSection(side,'tk-launch','🤖 Lancer un workflow',null,true);
   const note=t=>{const e=document.createElement('div');e.className='note';e.textContent=t;box.appendChild(e);};
   if(!ACTS){note('Les boutons arrivent au prochain passage du cron équipe (10 min au plus).');return;}
@@ -124,6 +124,12 @@ function prLaunch(box,p){
   const dr=p.draft?' (brouillon)':'', nm=prNum(p); // un brouillon se relit et se corrige aussi
   if(ACTIONS.fix&&p.review==='changes'&&(!otherRepo(p.repo)||CFG.fix_any_repo))
     launchBlock(box,{action:'bureau-fix',bind:{id:a.id||prId(p)},name:'Corriger les retours · '+nm+dr,sub:'Un agent applique les commentaires de review et pousse',label:'🛠 Corriger',title:'Corriger les retours de '+nm});
+  // « 🚀 Mise en prod » d'une PR (#58) : dépôt de la config (CFG.mep_repos), PR prête (ni brouillon ni changements demandés)
+  if(ACTIONS.mep_pr&&(CFG.mep_repos||[]).some(r=>r.toLowerCase()===String(a.id||prId(p)).replace(/#\d+$/,'').toLowerCase())&&!p.draft&&p.review!=='changes'){
+    const frozen=stageClosed(Date.now());
+    launchBlock(box,{action:'bureau-meppr',bind:{id:a.id||prId(p)},name:'Mettre en prod · '+nm,sub:frozen?'Gel des mises en prod aujourd\'hui':'Rebase, CI, merge, release, staging puis prod, avec tes validations',
+      label:'🚀 Mise en prod',title:'Mettre en prod '+nm,off:frozen?'Gel des mises en prod (rhythm.mep_freeze)':null});
+  }
   if(ACTIONS.review&&p.review!=='approved')
     launchBlock(box,{action:'bureau-review',bind:{id:a.id||prId(p)},name:'Faire relire · '+nm+dr,sub:'Dwight relit la PR et poste sa review',label:'🔎 Faire relire',title:'Faire relire '+nm});
 }

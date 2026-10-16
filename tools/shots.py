@@ -123,6 +123,14 @@ SHOTS = {
                            "placeholder:'Ex. pouvoir trier le kanban par priorité'},{name:'repo',label:'Dépôt',required:false,placeholder:'owner/dépôt'},"
                            "{name:'milestone',label:'Jalon',required:false}]}];COLLAPSED['fiche:added']=false;select('a_clark_e5ce');"
                            "const f=document.querySelector('.rl-f textarea');f.value='Pouvoir éditer une étape de workflow en arrivant directement dessus';f.oninput();", "#side"),
+    # mise en prod d'une PR (#58) : « ▶ Lancer » de l'agent qui l'incarne, projet choisi dans la liste, n° de PR saisi
+    "lancer-mep": (1400, 1200, AT(11) + "applyAgents({a_darryl_7f9e:{name:'Darryl',role:'Mise en prod',wf:['7f9e2b79'],sprite:'p_darryl',at:T-5*864e5}});"
+                   "LAUNCHABLE=[{wf:'7f9e2b79-demo',name:'Mise en prod d\\'une PR',vars:[{name:'project',label:'Projet',required:true,options:"
+                   "[{value:'dunder-mifflin/site-web',label:'site-web'},{value:'dunder-mifflin/intranet',label:'intranet'}],default:'dunder-mifflin/site-web'},"
+                   "{name:'pr_number',label:'N° de PR',required:true,placeholder:'Ex. 2042',pattern:'\\\\d+'},"
+                   "{name:'jira_ticket_key',label:'Ticket (si mal trouvé)',required:false,placeholder:'Ex. DM-7675'},"
+                   "{name:'dry_run',label:'Simulation',required:false,options:[{value:'non',label:'Non, la vraie mise en prod'},{value:'oui',label:'Oui, simulation'}],default:'non'}]}];"
+                   "COLLAPSED['fiche:added']=true;select('a_darryl_7f9e');const p=document.querySelector('.rl-f input');p.value='16';p.oninput();", "#side"),
     "fiche-agent": (1400, 1400, AT(11) + "select((chars.find(c=>!c.person&&!c.visitor&&c.runs.length)||{}).key);", "#side"),
     # Gabe, « Ses tickets » et « Ses autres PR ouvertes » dépliés : composant, points, âge (DM-7761 bloqué en review), PR de chaque ticket, un bug
     "fiche-collegue": (1400, 2000, AT(11) + "COLLAPSED['fiche:tickets']=false;COLLAPSED['fiche:prs']=false;select('p_gabe');", "#side"),

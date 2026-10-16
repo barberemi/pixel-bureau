@@ -26,12 +26,14 @@ ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate",
            "bureau-review": ("review", "__REVIEW_WF__"), "bureau-fix": ("fix", "__FIX_WF__"),
            "bureau-comment": ("comment", "__COMMENT_WF__"), "bureau-duck": ("duck", "__DUCK_WF__"),
            "bureau-estimate": ("estimate", "__ESTIMATE_WF__"), "bureau-mailrules": ("mail_rules", "__MAILRULES_WF__"),
-           "bureau-agent": ("agent", "__AGENT_WF__"), "bureau-pages": ("pages", "__PAGES_WF__")}
+           "bureau-agent": ("agent", "__AGENT_WF__"), "bureau-pages": ("pages", "__PAGES_WF__"),
+           "bureau-meppr": ("mep_pr", "__MEPPR_WF__")}
 # variables des workflows de la clé launch : rôle -> nom par défaut ; launch.<action> = id seul, ou {wf, vars: {rôle: nom
 # chez toi, ou null si ton workflow n'a pas cette variable}}
 LAUNCH_VARS = {"impl": {"ticket": "jira_ticket_key"}, "mep": {"ticket": "jira_ticket_key", "pr": "pr_number"},
                "review": {"repo": "repo", "pr": "pr"}, "fix": {"pr": "pr", "notes": "notes", "repo": "repo"},
-               "estimate": {"ticket": "jira_ticket_key", "points": "story_points", "reason": "raison"}}
+               "estimate": {"ticket": "jira_ticket_key", "points": "story_points", "reason": "raison"},
+               "mep_pr": {}}  # mise en prod d'une PR (#58) : le modèle mep.json du Bureau, variables fixes
 # rôles facultatifs : absents du bloc tant que launch.<action>.vars ne les nomme pas (#56 : un workflow « Corriger »
 # d'un seul dépôt n'a pas de variable repo ; il ne reçoit alors que les PR du dépôt principal)
 LAUNCH_OPTIONAL = {"fix": ("repo",)}
@@ -154,10 +156,22 @@ def version():
     return Path(p("VERSION")).read_text().strip()
 
 
+def mep_projects(cfg):
+    """Projets qu'on peut mettre en prod (#58) : le dépôt principal (github) et ceux de github.deploys qui ont une clé mep,
+    comme projects() de workflows/mep.py ; [(dépôt, nom court)]."""
+    g = (cfg or {}).get("github") or {}
+    out = []
+    for d in [g] + list(g.get("deploys") or []):
+        if d.get("repo") and isinstance(d.get("mep"), dict) and d.get("prod_workflow") and d["repo"] not in [r for r, _ in out]:
+            out.append((d["repo"], d.get("label") or d["repo"].split("/")[-1]))
+    return out
+
+
 def page_config(cfg):
     """La partie de bureau.config.json utile à la page (pas d'ids de workflows ni de connexions)."""
     return {
         "kronn_ui": (cfg.get("kronn") or {}).get("ui"),
+        "mep_repos": [r for r, _ in mep_projects(cfg)],  # « 🚀 Mise en prod » sur les PR de ces dépôts (#58)
         "jira_site": (cfg.get("jira") or {}).get("site"),
         # statuts Jira des scènes d'équipe : ticket à tester, validé, réouvert
         "jira_flow": {**JIRA_FLOW, **{k: v for k, v in ((cfg.get("jira") or {}).get("flow") or {}).items() if v}},

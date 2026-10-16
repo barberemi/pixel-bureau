@@ -140,3 +140,14 @@ test('#56 fiche du ticket : sa PR d\'un autre dépôt, ses boutons liés au bon 
   assert.deepEqual(J(`[prId({n: 3}), prId({n: 3, repo: 'a/b'}), prNum({n: 3, repo: 'dunder-mifflin/site-web'}), prNum({n: 3, repo: 'a/b'})]`),
     ['dunder-mifflin/site-web#3', 'a/b#3', '#3', 'b#3']);
 });
+
+test('« 🚀 Mise en prod » d\'une PR (#58) : dépôt de mep_repos, ni brouillon ni changements demandés, gelée le vendredi', () => {
+  run("var MR0 = CFG.mep_repos, MA0 = ACTIONS.mep_pr; CFG.mep_repos = ['dunder-mifflin/site-web']; ACTIONS.mep_pr = true;");
+  try {
+    assert.deepEqual(buttons('DM-2'), [['bureau-meppr', ID(12), false], ['bureau-review', ID(12), false]]);
+    assert.deepEqual(buttons('DM-2', {now: at('09', '11:00')})[0], ['bureau-meppr', ID(12), true]);
+    assert.ok(!buttons('DM-4').some(b => b[0] === 'bureau-meppr'), 'changements demandés (#13) ou brouillon (#14) : pas de MEP');
+    run("CFG.mep_repos = ['dunder-mifflin/intranet'];");
+    assert.ok(!buttons('DM-2').some(b => b[0] === 'bureau-meppr'), 'dépôt sans réglages de MEP');
+  } finally { run('CFG.mep_repos = MR0; ACTIONS.mep_pr = MA0;'); }
+});
