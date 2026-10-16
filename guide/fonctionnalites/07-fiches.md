@@ -8,6 +8,7 @@ Clic sur un personnage (plan, panneau ou « Qui fait quoi ») : sa fiche s'ouvre
 
 **Agent** : runs, réussites, échecs et tokens du jour, workflows, sa journée run par run avec les étapes et les erreurs. Boutons (cartes Kronn, sans token sauf « interroger ») :
 - **Relancer** : relance le workflow, sans variables (refusé s'il tourne déjà). Absent pour un workflow qui attend une saisie obligatoire, comme Réestimer : celui-là se lance depuis la fiche du ticket, qui envoie la clé et te demande le reste.
+- **▶ Lancer…** (si l'agent a une clé `launch` dans `agents`) : lance son workflow quand il demande une saisie. La carte Kronn s'ouvre avec les variables à remplir (une intention, un dépôt…) ; l'agent se met au travail sur le plan dès que le run démarre. Exemple : `{"key": "clark", "name": "Clark", "wf": ["e5ce6732"], "launch": {"wf": "<id complet du workflow>", "vars": ["intention", "repo", "milestone"]}}`.
 - **Lui poser une question** : un agent IA lit ses runs et répond en 5 phrases.
 - **Décider** une validation : trois boutons directs, ✅ Approuver, ⛔ Rejeter, ✏️ Changements… ; la carte Kronn qui s'ouvre prend un commentaire (obligatoire pour des changements), puis Lancer.
 

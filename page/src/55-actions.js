@@ -238,6 +238,26 @@ function relaunchBlock(side,c){
     box.appendChild(host);
   }
 }
+// lancer le workflow d'un agent qui demande une saisie (« ▶ Lancer… », #64) : agents[].launch de la config, un bloc
+// kronn-action bureau-run-<clé> par agent, assemblé par tools/assemble.py ; les variables se remplissent dans la carte
+const AGENT_RUNS=new Set(CFG.agent_runs||[]);
+function runBlock(side,c){
+  if(!AGENT_RUNS.has(c.key)||!c.launch)return;
+  const wf=String(c.launch.wf||''), vars=(c.launch.vars||[]).map(String);
+  const known=ASKABLE.find(w=>String(w.wf)===wf), name=known?clean(known.name):(c.role||c.name);
+  const box=foldSection(side,'run','▶ Lancer',null,true);
+  const host=document.createElement('div');host.className='relaunch';host.setAttribute('data-kronn-action-slot-host','');
+  host.innerHTML=`<div class="rl-n">${esc(name)}</div><div class="rl-s">${vars.length?'À remplir dans la carte : '+esc(vars.join(', ')):'Rien à remplir'}</div>`;
+  const b=document.createElement('button');b.textContent='▶ Lancer…';
+  b.setAttribute('data-kronn-action','bureau-run-'+c.key);
+  const n=document.createElement('div');n.className='note';n.style.margin='6px 0 0';
+  n.textContent=c.name+' se met au travail sur le plan dès que le run démarre.';
+  new MutationObserver(()=>{
+    const v=b.getAttribute('data-kronn-action-state');
+    if(v==='succeeded')n.innerHTML='<b style="color:var(--ok)">✓ Lancé.</b> '+esc(c.name)+' arrive d\'ici une minute sur le plan.';else if(v==='failed')n.innerHTML='<b style="color:var(--err)">Lancement refusé.</b> Détail dans la carte.';
+  }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
+  host.append(b,n);kronnModal(host,b,'Lancer '+name);box.appendChild(host);
+}
 // carte « Sa musique » : la sandbox interdit tout son externe et les iframes, d'où un lien vers la page du morceau
 function musicCard(side,c){
   const m=MUSIC[c.key];if(!m)return;

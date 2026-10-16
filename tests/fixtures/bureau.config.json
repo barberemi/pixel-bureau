@@ -177,7 +177,14 @@
     "0c20b83e",
     "64c2cfe7",
     "26d24a40"
-   ]
+   ],
+   "launch": {
+    "wf": "0c20b83e-demo-revue-pr",
+    "vars": [
+     "repo",
+     "pr"
+    ]
+   }
   },
   {
    "key": "jim",

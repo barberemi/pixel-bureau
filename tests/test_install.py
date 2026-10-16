@@ -512,6 +512,24 @@ class LaunchTest(unittest.TestCase):
         binds = assemble.action_binds(assemble.build(demo=False, cfg=cfg))
         self.assertEqual((binds["bureau-mep"], binds["bureau-review"]), ({"issue_key": "key"}, {"project": "id", "mr": "id"}))
 
+    def test_agent_launch_buttons(self):
+        """agents[].launch (#64) : un bloc bureau-run-<clé> par agent lançable, variables saisies dans la carte."""
+        import assemble
+        cfg = dict(json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text()))
+        a = cfg["agents"][0]
+        cfg["agents"] = [dict(a, launch={"wf": "e5ce6732-abf2-4a7a", "vars": ["intention", "repo", "milestone"]})] + cfg["agents"][1:]
+        spec = self.block(cfg, "bureau-run-" + a["key"])
+        self.assertEqual(spec["target_id"], "e5ce6732-abf2-4a7a")
+        self.assertEqual([(v["name"], v["provenance"]) for v in spec["values"]],
+                         [("intention", "user_input"), ("repo", "user_input"), ("milestone", "user_input")])
+        self.assertEqual(assemble.page_config(cfg)["agent_runs"], [a["key"]])
+        self.assertIsNone(self.block(cfg, "bureau-run-" + cfg["agents"][1]["key"]))  # sans launch : pas de bouton
+        self.assertNotIn("__AGENT_RUNS__", assemble.build(demo=False, cfg=cfg))
+        self.assertNotIn("__AGENT_RUNS__", assemble.build(demo=False, cfg={}))
+        for bad in ({"wf": 'x"><script>'}, {"wf": "x", "vars": ["a b"]}):
+            with self.assertRaises(ValueError):
+                assemble.agent_launches({"agents": [{"key": "clark", "launch": bad}]})
+
     def test_unknown_role_is_refused(self):
         import assemble
         with self.assertRaises(ValueError) as e:

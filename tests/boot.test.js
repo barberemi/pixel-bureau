@@ -138,6 +138,26 @@ test('panneau Fraîcheur : « ↻ Relancer » si en retard, « ↻ » discret si
   assert.equal(btn(`ACTIONS.relaunch = false; freshRelaunch(td, 'team', 'Équipe', true); ACTIONS.relaunch = true`), null, 'sans le workflow de relance');
 });
 
+test('fiche d\'un agent : « ▶ Lancer… » lié à son bloc bureau-run-<clé> si agents[].launch le déclare (#64)', () => {
+  const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'bureau.config.json'), 'utf8'));
+  const a = cfg.agents[0];
+  cfg.agents = [{...a, launch: {wf: 'wf-issue', vars: ['intention', 'repo']}}, ...cfg.agents.slice(1)];
+  const {run} = load({config: cfg});
+  run(`document.createElement = t => ({tag: t, attrs: {}, kids: [], style: {}, setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; },
+    appendChild(x) { this.kids.push(x); }, append(...x) { this.kids.push(...x); }, prepend() {}, addEventListener() {}});
+    MutationObserver = function () { return {observe() {}}; };
+    foldSection = () => ({kids: [], appendChild(x) { this.kids.push(x); }}); var box = null; var _f = foldSection;
+    foldSection = (...a) => (box = _f(...a)); ASKABLE = [{wf: 'wf-issue', name: 'Issue GitHub'}];`);
+  const btn = key => JSON.parse(run(`JSON.stringify((() => { box = null; runBlock({kids: [], appendChild() {}}, byKey[${JSON.stringify(key)}]);
+    const h = box && box.kids[0], b = h && h.kids.find(k => k.tag === 'button'); return b ? {text: b.textContent, action: b.attrs['data-kronn-action'], html: h.innerHTML} : null; })())`));
+  const got = btn(a.key);
+  assert.equal(got.text, '▶ Lancer…');
+  assert.equal(got.action, 'bureau-run-' + a.key);
+  assert.match(got.html, /Issue GitHub/);
+  assert.match(got.html, /intention, repo/);
+  assert.equal(btn(cfg.agents[1].key), null, 'agent sans launch : pas de bouton');
+});
+
 test('validation : trois boutons directs, chacun lié à sa ligne de gates.grows (run_id et decision relus par Kronn)', () => {
   const {run} = load();
   run(`document.createElement = t => ({tag: t, attrs: {}, kids: [], className: '', style: {}, setAttribute(k, v) { this.attrs[k] = v; },
