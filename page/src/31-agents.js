@@ -38,3 +38,11 @@ function applyAgents(map){
   refreshAll();
   return true;
 }
+// le jour de sa création, tant qu'il n'a pas tourné, l'agent ajouté est là : il arrive (bulle 👋, il sort de la baie de la
+// salle Serveurs, 66-newagent.js) puis attend son premier run à sa place ; daté par sa création, rejouable
+const ARRIVE_MS=4*60e3;
+function arrivalAt(c,t){
+  if(!c.added||!c.at||t<c.at||parisMidnight(t)!==parisMidnight(c.at)||c.runs.some(r=>r._s<=t))return null;
+  return t<c.at+ARRIVE_MS?{st:'idle',zone:'desk',label:"Vient d'arriver : rejoint sa place",bubble:'👋',arrive:true}
+    :{st:'idle',zone:'desk',label:'Nouveau : attend son premier run'};
+}

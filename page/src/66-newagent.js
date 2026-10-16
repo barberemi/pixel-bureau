@@ -112,3 +112,28 @@ function drawNewAgentPreview(now){
   if(!ready(img))return;const f=1+Math.floor(now/110)%8;
   ['down','left','right','up'].forEach((d,i)=>x.drawImage(img,f*64,DIRROW[d]*64,64,64,i*64,0,64,64));
 }
+// ---------- arrivée d'un agent ajouté : il sort de la baie (#64) ----------
+// la baie s'entoure de lumière, des pixels en descendent, l'hologramme se forme ligne par ligne à ses pieds, puis il
+// marche jusqu'à sa place (35-state.js le fait partir de rackFoot) ; animations réduites : placé d'un coup
+const POP_MS=1500, POP_FORM=900;
+function rackFoot(){
+  const l=FURN_AT.server_rack||[], o=l[l.length-1];if(!o)return null;
+  const x=13+o.tx, y=3+o.ty;
+  return x>=0&&y>=0&&!blocked.has(x+','+y)?[x,y]:null;
+}
+const popHidden=(c,now)=>c.popAt!=null&&now-c.popAt<POP_FORM;
+const RACK_POP={get y(){const r=newAgentRack();return r?r.y+r.h+40:-1;},draw:now=>{
+  const r=newAgentRack();if(!r)return;
+  for(const c of chars){
+    if(c.popAt==null||now-c.popAt>=POP_MS)continue;
+    const k=(now-c.popAt)/POP_MS, glow=Math.sin(Math.PI*Math.min(1,k*1.4));
+    ctx.save();ctx.globalAlpha=.85*glow;ctx.strokeStyle='#7dffb0';ctx.lineWidth=2;ctx.strokeRect(r.x-2,r.y-2,r.w+4,r.h+4);ctx.restore();
+    const f=rackFoot(), fx=f?f[0]*TS+16:r.x+r.w/2, fy=f?f[1]*TS+28:r.y+r.h+20;
+    if(now-c.popAt<POP_FORM)for(let i=0;i<14;i++){ // pluie de pixels de la baie vers ses pieds
+      const p=((now-c.popAt)/POP_FORM+i/14)%1;
+      R(ctx,r.x+4+((i*7)%(r.w-8)),r.y+r.h+p*(fy-r.y-r.h-8),2,2,'rgba(120,230,255,'+(1-p).toFixed(2)+')');
+    }
+    const t=(now-c.popAt-POP_FORM*.5)/(POP_FORM*.5);
+    if(t>0&&t<1){ctx.save();ctx.globalAlpha=.7*(1-t);for(let j=0;j<12;j++)if(j/12<t)R(ctx,fx-10,fy-6-j*4,20,2,'#78e6ff');ctx.restore();} // l'hologramme se forme
+  }
+}};

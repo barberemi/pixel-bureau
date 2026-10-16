@@ -2,7 +2,7 @@
 function render(now){
   ctx.drawImage(bg,0,0); drawWindows(T,now); PILE_HITS=[];
   const list=FURN.map(f=>({y:f.y,d:f.draw}));
-  for(const c of chars)if(c.present&&c.pos)list.push({y:c.pos.y,d:n=>drawChar(c,n)});
+  for(const c of chars)if(c.present&&c.pos&&!popHidden(c,now))list.push({y:c.pos.y,d:n=>drawChar(c,n)}); // popHidden : 66-newagent.js
   DUCK_POS=duckAt(T); if(DUCK_POS)list.push({y:DUCK_POS.y,d:drawDuck}); // 39-duck.js : le canard, trié avec les personnages
   list.sort((a,b)=>a.y-b.y);
   for(const it of list)it.d(now);

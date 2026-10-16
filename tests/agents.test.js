@@ -50,3 +50,27 @@ test('ajouter un agent ne déplace pas ceux de la config (CAST garde des copies 
   assert.deepEqual(seats(), before, 'un second placement (changement de plan) non plus');
   assert.equal(run('AGENTS.every(a=>!Array.isArray(a.seat)||a.added)'), true, 'AGENTS jamais réécrit en [x, y]');
 });
+
+test('le jour de sa création, sans run : il arrive (👋), sort de la baie, puis attend son premier run à sa place', () => {
+  const {run} = load();
+  const at = run('T') - 60e3;
+  run(`applyAgents({a_clark: ${JSON.stringify({...CLARK, at})}})`);
+  const st = t => JSON.parse(run(`JSON.stringify(stateAt(byKey.a_clark, ${t}))`));
+  assert.deepEqual([st(at + 30e3).st, st(at + 30e3).zone, st(at + 30e3).arrive], ['idle', 'desk', true]);
+  assert.equal(st(at + 10 * 60e3).label, 'Nouveau : attend son premier run');
+  assert.equal(st(at - 1000).st, 'off', 'avant sa création');
+  assert.equal(st(at + 26 * 3600e3).st, 'off', 'le lendemain, sans run : comme les autres agents');
+  // il sort de la baie de la salle Serveurs (pas de la porte) et marche jusqu'à sa place
+  run(`T = ${at + 30e3}; needTeleport = false; byKey.a_clark.present = false; byKey.a_clark.pos = null; tick(0);`);
+  assert.deepEqual(JSON.parse(run('JSON.stringify(byKey.a_clark.tile)')), JSON.parse(run('JSON.stringify(rackFoot())')));
+  assert.equal(run('typeof byKey.a_clark.popAt'), 'number');
+  assert.equal(run('popHidden(byKey.a_clark, byKey.a_clark.popAt + 100)'), true, "l'hologramme se forme d'abord");
+  assert.equal(run('popHidden(byKey.a_clark, byKey.a_clark.popAt + 2000)'), false);
+  // animations réduites : placé d'un coup à sa place, sans effet
+  const calm = load({globals: {matchMedia: () => ({matches: true})}});
+  calm.run(`applyAgents({a_clark: ${JSON.stringify({...CLARK, at})}}); T = ${at + 30e3}; needTeleport = false;
+    byKey.a_clark.present = false; byKey.a_clark.pos = null; tick(0);`);
+  assert.equal(calm.run('REDUCED_MOTION'), true);
+  assert.equal(calm.run('byKey.a_clark.popAt'), undefined);
+  assert.equal(calm.run('byKey.a_clark.moving'), false);
+});

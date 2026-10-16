@@ -26,6 +26,10 @@ Un workflow sans personnage ne se voit qu'en intérimaire, le jour où il tourne
 
 ![La fenêtre « Nouvel agent »](../img/nouvel-agent.png)
 
+À son arrivée, l'agent sort de la baie : elle s'entoure de lumière, des pixels en descendent, son hologramme se forme ligne par ligne à ses pieds, puis il marche jusqu'à sa place (bulle 👋). Le jour de sa création, il y attend son premier run (« Nouveau : attend son premier run ») ; ensuite il ne vient que les jours où son workflow tourne, comme les autres agents. Avec le réglage « réduire les animations », il apparaît directement à sa place.
+
+![Un agent ajouté sort de la baie de la salle Serveurs](../img/arrivee-agent.png)
+
 ## Où ils vont
 
 - **Bureau** : étape IA ou script en cours.

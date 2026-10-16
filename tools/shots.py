@@ -103,6 +103,9 @@ SHOTS = {
     # « Nouvel agent » (#64) : clic sur le « + » de la baie ; workflows sans agent simulés, prénom tapé
     "nouvel-agent": (1400, 1000, AT(11) + "ASKABLE=[{wf:'e5ce6732-demo',name:'Issue GitHub'},{wf:'7f9e2b79-demo',name:'Mise en prod ticket'}];"
                      "openNewAgent();NA.look={...RECIPES.p_clark};const i=document.querySelector('.na-name');i.value='Clark';i.oninput();", ".na-modal", 1.5),
+    # arrivée d'un agent ajouté (#64) : la baie s'allume, les pixels tombent, l'hologramme se forme (capturé à mi-chemin)
+    "arrivee-agent": (1400, 1000, AT(11) + "applyAgents({a_clark:{name:'Clark',role:'Issue GitHub',wf:['e5ce6732'],sprite:'p_clark',at:T-30e3}});"
+                      "needTeleport=false;const c=byKey.a_clark;c.present=false;c.pos=null;tick(0);setMode('pause');c.popAt=performance.now()+1750;", "#cv", 1.5),
     "fiche-agent": (1400, 1400, AT(11) + "select((chars.find(c=>!c.person&&!c.visitor&&c.runs.length)||{}).key);", "#side"),
     # Gabe, « Ses tickets » et « Ses autres PR ouvertes » dépliés : composant, points, âge (DM-7761 bloqué en review), PR de chaque ticket, un bug
     "fiche-collegue": (1400, 2000, AT(11) + "COLLAPSED['fiche:tickets']=false;COLLAPSED['fiche:prs']=false;select('p_gabe');", "#side"),
