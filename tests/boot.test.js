@@ -25,10 +25,10 @@ test('les données Kronn (window.KronnPageData) remplacent la démo', () => {
   assert.equal(run('LIVE_DATA'), true);
 });
 
-test('squelette : 13 blocs kronn-action et les marqueurs CSS / JS', () => {
+test('squelette : 15 blocs kronn-action et les marqueurs CSS / JS', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'page', 'office_template.html'), 'utf8');
   const ids = [...html.matchAll(/<script type="application\/kronn-action" data-action-id="([^"]+)">/g)].map(m => m[1]);
-  assert.deepEqual(ids, ['bureau-ask', 'bureau-relaunch', 'bureau-gate', 'bureau-answer', 'bureau-impl', 'bureau-mep', 'bureau-review', 'bureau-fix', 'bureau-comment', 'bureau-estimate', 'bureau-duck', 'bureau-mailrules', 'bureau-avatar']);
+  assert.deepEqual(ids, ['bureau-ask', 'bureau-relaunch', 'bureau-gate', 'bureau-answer', 'bureau-impl', 'bureau-mep', 'bureau-review', 'bureau-fix', 'bureau-comment', 'bureau-estimate', 'bureau-duck', 'bureau-mailrules', 'bureau-avatar', 'bureau-agent', 'bureau-launch']);
   assert.equal(html.split('/*__STYLES__*/\n').length, 2);
   assert.equal(html.split('/*__SCRIPTS__*/\n').length, 2);
 });
@@ -136,6 +136,24 @@ test('panneau Fraîcheur : « ↻ Relancer » si en retard, « ↻ » discret si
   assert.equal(btn(`freshRelaunch(td, 'office', 'Bureau', true)`), null, 'cron absent de la liste relançable');
   assert.equal(btn(`TV = true; freshRelaunch(td, 'team', 'Équipe', true); TV = false`), null, 'mode TV');
   assert.equal(btn(`ACTIONS.relaunch = false; freshRelaunch(td, 'team', 'Équipe', true); ACTIONS.relaunch = true`), null, 'sans le workflow de relance');
+});
+
+test('fiche d\'un agent : « ▶ Lancer… » par workflow à saisie (liste launchable), lié au bloc bureau-launch ; la ligne de paramètres copiée (#64)', () => {
+  const {run} = load();
+  const a = run('AGENTS[0].key'), wf = run('AGENTS[0].wf[0]') + '-1111-2222-3333-444444444444';
+  run(`document.createElement = t => ({tag: t, attrs: {}, kids: [], style: {}, setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; },
+    appendChild(x) { this.kids.push(x); }, append(...x) { this.kids.push(...x); }, prepend() {}, addEventListener() {}, querySelector() { return {}; }});
+    MutationObserver = function () { return {observe() {}}; }; var COPIED = null; copyText = t => { COPIED = t; return true; };
+    var box = null; foldSection = () => (box = {kids: [], appendChild(x) { this.kids.push(x); }});
+    LAUNCHABLE = [{wf: '${wf}', name: 'Issue GitHub', vars: [{name: 'intention', label: 'Ce que tu veux faire', required: true}, {name: 'repo', label: 'Dépôt', required: false}]}];`);
+  const got = key => JSON.parse(run(`JSON.stringify((() => { box = null; runBlock({}, byKey[${JSON.stringify(key)}]);
+    const h = box && box.kids[0], b = h && h.kids.find(k => k.tag === 'button'); if (b) b.onclick();
+    return b ? {text: b.textContent, action: b.attrs['data-kronn-action'], bind: b.attrs['data-kronn-bindings'], html: h.innerHTML, copied: COPIED} : null; })())`));
+  const g = got(a);
+  assert.deepEqual([g.text, g.action, g.bind], ['▶ Lancer…', 'bureau-launch', JSON.stringify({wf_id: wf})]);
+  assert.match(g.html, /Ce que tu veux faire \*, Dépôt/);
+  assert.equal(g.copied, 'intention=… ; repo=…');
+  assert.equal(got(run('AGENTS[1].key')), null, 'aucun de ses workflows ne demande de saisie : pas de bouton');
 });
 
 test('validation : trois boutons directs, chacun lié à sa ligne de gates.grows (run_id et decision relus par Kronn)', () => {

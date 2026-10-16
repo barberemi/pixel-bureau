@@ -98,7 +98,7 @@ Une police : un `.woff2` (sous-ensemble latin) dans `page/fonts/` avec sa licenc
 
 ## Modèles de workflows
 
-`workflows/templates/*.json` sont la source des 15 workflows et des 2 Quick Prompts : `publish.py workflows` pousse leur rendu dans les ids (et crée un workflow du Bureau ajouté depuis l'installation, son id rangé dans la config) de la config, en gardant les ids des étapes.
+`workflows/templates/*.json` sont la source des 16 workflows et des 2 Quick Prompts : `publish.py workflows` pousse leur rendu dans les ids (et crée un workflow du Bureau ajouté depuis l'installation, son id rangé dans la config) de la config, en gardant les ids des étapes.
 
 - Emplacements remplacés au rendu : `@@page_id@@`, `@@kronn.project_id@@`, `@@jira.*@@`, `@@owner_name@@`, `@@script:workflows/x.py@@`. Les variables Kronn (`{{steps.x}}`) restent intactes : jamais de `{{` ni de `@@` dans un script.
 - Une étape `"_requires": "jira"` disparaît sans connexion Jira.

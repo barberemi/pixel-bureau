@@ -21,11 +21,12 @@ from compact import strip_css, strip_js  # noqa: E402
 # et le dépôt si ton workflow le prend (launch.fix.vars.repo) ;
 # estimate : clé du ticket, Story Points et raison saisis dans la carte)
 ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate", "__GATE_WF__"), "bureau-answer": ("answer", "__ANSWER_WF__"),
-           "bureau-relaunch": ("relaunch", "__RELAUNCH_WF__"), "bureau-ask": ("ask", "__ASK_QP__"),
+           "bureau-relaunch": ("relaunch", "__RELAUNCH_WF__"), "bureau-launch": ("relaunch", "__RELAUNCH_WF__"), "bureau-ask": ("ask", "__ASK_QP__"),
            "bureau-impl": ("impl", "__IMPL_WF__"), "bureau-mep": ("mep", "__MEP_WF__"),
            "bureau-review": ("review", "__REVIEW_WF__"), "bureau-fix": ("fix", "__FIX_WF__"),
            "bureau-comment": ("comment", "__COMMENT_WF__"), "bureau-duck": ("duck", "__DUCK_WF__"),
-           "bureau-estimate": ("estimate", "__ESTIMATE_WF__"), "bureau-mailrules": ("mail_rules", "__MAILRULES_WF__")}
+           "bureau-estimate": ("estimate", "__ESTIMATE_WF__"), "bureau-mailrules": ("mail_rules", "__MAILRULES_WF__"),
+           "bureau-agent": ("agent", "__AGENT_WF__")}
 # variables des workflows de la clé launch : rôle -> nom par défaut ; launch.<action> = id seul, ou {wf, vars: {rôle: nom
 # chez toi, ou null si ton workflow n'a pas cette variable}}
 LAUNCH_VARS = {"impl": {"ticket": "jira_ticket_key"}, "mep": {"ticket": "jira_ticket_key", "pr": "pr_number"},

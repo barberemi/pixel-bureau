@@ -11,14 +11,10 @@ warnings (#8) : dataset en place illisible, repris de zéro (les autres personna
 """
 import base64, json, re, sys, urllib.request
 from datetime import datetime, timezone
-from _lib import CFG, dumps
+from _lib import CFG, clean_look, dumps
 
 PAGE = f"{CFG['kronn']['api']}/pages/{CFG['page_id']}"
 KEY = re.compile(r"^[a-z0-9_]{1,40}$")
-WORD = re.compile(r"^[a-z0-9_/]{1,40}$")
-COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
-COLORS = {"hair_color", "shirt", "legs_color", "shoes", "hat_color"}
-WORDS = {"sex", "skin", "head", "hair", "beard", "torso", "legs", "hat", "glasses"}
 
 
 def fail(msg):
@@ -49,18 +45,10 @@ if name:
 
 look = req.get("l")
 if look is not None:
-    if not isinstance(look, dict) or len(look) > 20:
-        fail("apparence invalide")
-    clean = {}
-    for a, v in look.items():
-        if v in (None, ""):
-            continue
-        if a in COLORS and isinstance(v, str) and COLOR.match(v):
-            clean[a] = v.lower()
-        elif a in WORDS and isinstance(v, str) and WORD.match(v):
-            clean[a] = v
-        else:
-            fail(f"champ {a!r} invalide")
+    try:
+        clean = clean_look(look)
+    except ValueError as e:
+        fail(str(e))
     if clean:
         entry["look"] = clean
 

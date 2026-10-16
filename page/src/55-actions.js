@@ -238,6 +238,28 @@ function relaunchBlock(side,c){
     box.appendChild(host);
   }
 }
+// lancer un workflow d'agent qui demande une saisie (« ▶ Lancer… », #64) : liste launchable du dataset gates, un seul
+// bloc kronn-action (bureau-launch) ; le bouton copie « nom=… ; nom=… », à compléter dans le champ Paramètres de la carte
+// (relaunch.py revérifie chaque nom). Tout agent l'a, ceux ajoutés depuis une baie compris, sans republier la page.
+function runBlock(side,c){
+  if(!ACTIONS.relaunch||!c.wf||!c.wf.length)return;
+  const list=LAUNCHABLE.filter(w=>c.wf.includes(String(w.wf).slice(0,8)));if(!list.length)return;
+  const box=foldSection(side,'run','▶ Lancer',list.length,true);
+  for(const w of list){
+    const vars=(w.vars||[]).filter(v=>v&&v.name), tpl=vars.map(v=>v.name+'=…').join(' ; ');
+    const host=document.createElement('div');host.className='relaunch';host.setAttribute('data-kronn-action-slot-host','');
+    host.innerHTML=`<div class="rl-n">${esc(clean(w.name))}</div><div class="rl-s">À remplir : ${esc(vars.map(v=>(v.label||v.name)+(v.required?' *':'')).join(', '))}</div>`;
+    const b=document.createElement('button');b.textContent='▶ Lancer…';
+    b.setAttribute('data-kronn-action','bureau-launch');b.setAttribute('data-kronn-bindings',JSON.stringify({wf_id:w.wf}));
+    const hint=document.createElement('div');
+    b.onclick=()=>{hint.className='hint';codeHint(hint,tpl,'Paramètres','après avoir remplacé chaque … par ta valeur');};
+    new MutationObserver(()=>{
+      const v=b.getAttribute('data-kronn-action-state');
+      if(v==='succeeded')hint.innerHTML='<b style="color:var(--ok)">✓ Lancé.</b> '+esc(c.name)+' se met au travail d\'ici une minute.';else if(v==='failed')hint.innerHTML='<b style="color:var(--err)">Refusé :</b> voir la carte.';
+    }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
+    host.append(b,hint);kronnModal(host,b,'Lancer '+clean(w.name));box.appendChild(host);
+  }
+}
 // carte « Sa musique » : la sandbox interdit tout son externe et les iframes, d'où un lien vers la page du morceau
 function musicCard(side,c){
   const m=MUSIC[c.key];if(!m)return;

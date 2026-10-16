@@ -1,0 +1,85 @@
+{
+ "kind": "workflow",
+ "key": "agent",
+ "definition": {
+  "name": "Le Bureau · agents",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "agent_code",
+    "label": "Code agent (déjà copié)",
+    "placeholder": "Colle ici avec ⌘V",
+    "description": "Le bouton « Créer l'agent » vient de copier ce code : colle-le (⌘V) puis clique Lancer.",
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   }
+  ],
+  "steps": [
+   {
+    "name": "save",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Valide le code et le fusionne dans le dataset agents (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/agent_save.py@@"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{agent_code}}"
+   },
+   {
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset agents de la page Le Bureau.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "agents",
+       "operation": "replace",
+       "value_from": "steps.save.data.stdout"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

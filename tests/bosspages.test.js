@@ -60,7 +60,7 @@ function fakeDom() {
     contains(x) { for (; x; x = x.parent) if (x === this) return true; return false; }
     focus() { if (this.focusable && this.isConnected) doc.activeElement = this; }
     matches(sel) {
-      return sel.split(',').some(s => { s = s.trim().replace('[href]', ''); return s[0] === '.' ? this.className.split(' ').includes(s.slice(1)) : this.tagName === s.toUpperCase(); });
+      return sel.split(',').some(s => { if (/:not\(\[disabled\]\)/.test(s) && this.disabled) return false; s = s.trim().replace(/\[href\]|:not\(\[disabled\]\)/g, ''); return s[0] === '.' ? this.className.split(' ').includes(s.slice(1)) : this.tagName === s.toUpperCase(); });
     }
     querySelectorAll(sel) { const out = []; const walk = e => { for (const k of e.kids) { if (k.matches(sel)) out.push(k); walk(k); } }; walk(this); return out; }
     querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }

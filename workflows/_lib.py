@@ -170,6 +170,30 @@ def disc_row(d, projects=None):
     return row
 
 
+# apparence d'un personnage (recette LPC) envoyée depuis la page : avatars personnalisés, agents ajoutés (#64)
+_LOOK_WORD = re.compile(r"^[a-z0-9_/]{1,40}$")
+_LOOK_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
+_LOOK_COLORS = {"hair_color", "shirt", "legs_color", "shoes", "hat_color"}
+_LOOK_WORDS = {"sex", "skin", "head", "hair", "beard", "torso", "legs", "hat", "glasses"}
+
+
+def clean_look(look):
+    """Apparence validée {calque: valeur} (valeurs vides retirées) ; ValueError si un champ est inconnu ou douteux."""
+    if not isinstance(look, dict) or len(look) > 20:
+        raise ValueError("apparence invalide")
+    out = {}
+    for a, v in look.items():
+        if v in (None, ""):
+            continue
+        if a in _LOOK_COLORS and isinstance(v, str) and _LOOK_COLOR.match(v):
+            out[a] = v.lower()
+        elif a in _LOOK_WORDS and isinstance(v, str) and _LOOK_WORD.match(v):
+            out[a] = v
+        else:
+            raise ValueError(f"champ {a!r} invalide")
+    return out
+
+
 def dumps(obj):
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
 

@@ -50,7 +50,7 @@ function bossPagesHtml(){
 // revient à l'élément qui l'avait ; ouverte d'un clic sur le canvas (non focalisable), il n'y en a pas : le focus revient
 // alors au plan (tabindex -1, hors de l'ordre de tabulation), là où était l'écran cliqué, et Tab reprend aux boutons du rejeu
 let BP_BACK=null, BP_INERT=[];
-const bpFocusables=box=>[...box.querySelectorAll('a[href],button')];
+const bpFocusables=box=>[...box.querySelectorAll('a[href],button:not([disabled]),input,select')];
 function openBossPages(){
   const back=BP_BACK||document.activeElement; // réouverture : on garde l'élément d'avant la première ouverture
   closeBossPages(false); if(!bossPagesOn())return;
@@ -70,14 +70,17 @@ function closeBossPages(restore=true){
   BP_INERT.forEach(e=>{e.inert=false;});BP_INERT=[];
   if(!restore)return;
   const back=BP_BACK;BP_BACK=null;
-  if(!was)return;
+  if(was)focusBack(back);
+}
+// retour du focus à la fermeture d'une fenêtre (pages du boss, nouvel agent) : l'élément d'avant, sinon le plan
+function focusBack(back){
   if(back&&back!==document.body&&back.isConnected&&back.focus){back.focus();if(document.activeElement===back)return;}
   const plan=document.getElementById('cv');
   if(plan){if(!plan.hasAttribute('tabindex'))plan.tabIndex=-1;plan.focus();}
 }
 function bossPagesKey(e){
   const box=document.querySelector('.bp-modal');if(!box)return;
-  if(e.key==='Escape'){closeBossPages();return;}
+  if(e.key==='Escape'){(/\bna-modal\b/.test(box.className)?closeNewAgent:closeBossPages)();return;} // 66-newagent.js : même fenêtre
   if(e.key!=='Tab')return;
   const f=bpFocusables(box);if(!f.length)return;
   const a=f[0], z=f[f.length-1], cur=document.activeElement, inside=box.contains(cur);

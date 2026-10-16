@@ -46,7 +46,7 @@ const AGENTS = (CFG.agents||[]).map(a=>({...a,wf:a.wf||[]}));
 // casting : le propriétaire devient le boss (bureau du boss, sprite de boss s'il en a un), les autres gardent leur place
 const CAST = [
   ...ROSTER.map(({boss_sprite,...p})=>p.key===OWNER?{...p,wf:[],boss:true,seat:null,role:'Le boss',sprite:boss_sprite||p.sprite}:{...p,wf:[]}),
-  ...AGENTS,
+  ...AGENTS.map(a=>({...a})), // copies : placeCast() y écrit la place [x, y], AGENTS garde le siège demandé (#64)
 ];
 const FREE_SEATS = []; // places des intérimaires et des collègues sans place, remplies par 10-world.js
 const JIRA_BROWSE = (CFG.jira_site||'').replace(/\/$/,'')+'/browse/'; // lien d'un ticket

@@ -50,7 +50,7 @@ function waitTxt(f,now){
 // ne fait plus échouer ni taire le cron ; il publie quand même, avec une liste warnings lue ici par dataset
 // (dataset -> source affichée). WARNINGS = {dataset: [texte]}, relu au démarrage et à chaque kronn:page-data (90-boot.js).
 const WARN_SRC={office:'Bureau (journée)',live:'Direct (runs, gates)',gates:'Direct (gates, canard)',payroll:'Fiche de paie',
-  bosspages:'Écran du boss',gitfut:'Cartes GitFut',team:'Équipe (Jira, GitHub)',actions:'Équipe (boutons)',duck:'Canard d\'équipe',mails:'Courrier',avatars:'Avatars'};
+  bosspages:'Écran du boss',gitfut:'Cartes GitFut',team:'Équipe (Jira, GitHub)',actions:'Équipe (boutons)',duck:'Canard d\'équipe',mails:'Courrier',avatars:'Avatars',agents:'Agents ajoutés'};
 let WARNINGS={};
 // {dataset: [avertissements]} pour chaque dataset présent dans src (liste vide sans avertissement : efface l'ancienne)
 function readWarnings(src){

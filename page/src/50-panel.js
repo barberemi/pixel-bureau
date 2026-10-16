@@ -245,8 +245,10 @@ function drawSide(side){
   const stats=document.createElement('div');stats.className='stats';
   stats.innerHTML=`<div><b>${done.length}</b><span>runs</span></div><div><b style="color:var(--ok)">${ok}</b><span>réussis</span></div><div><b style="color:${ko?'var(--err)':'inherit'}">${ko}</b><span>échecs</span></div><div><b>${fmtTok(tok)}</b><span>tokens</span></div>`;
   side.appendChild(stats);
+  runBlock(side,c);
   askBlock(side,c);
   relaunchBlock(side,c);
+  addedAgentBlock(side,c); // 66-newagent.js : agent ajouté depuis une baie
   payBlock(side,c);
   const wfs=[...new Set(c.runs.map(r=>clean(r.wf_name)))];
   if(wfs.length){

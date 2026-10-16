@@ -355,6 +355,7 @@ function stateAt0(c,t){
     if(t-e0<18*60e3)return {st:'idle',zone:'leave',label:'Repart'};
     return {st:'gone',label:'Reparti à '+hm(e0)};
   }
+  {const ar=arrivalAt(c,t);if(ar)return ar;} // 31-agents.js : agent ajouté depuis la page, le jour de son arrivée
   const runs=c.runs.filter(r=>r._s<=t);
   if(!runs.length)return c.runs.length?{st:'absent',label:'Pas encore arrivé'}:{st:'off',label:"Absent aujourd'hui"};
   const active=runs.filter(r=>t<r._ve);
@@ -522,7 +523,8 @@ function tick(real){
     if(!c.present||needTeleport||!c.pos){
       c.present=true;
       // placé d'un coup seulement au chargement / saut dans le temps ; un nouvel arrivant entre par la porte et marche
-      if(needTeleport){place(c,spot);}
+      if(needTeleport||s.arrive&&REDUCED_MOTION){place(c,spot);}
+      else if(s.arrive&&rackFoot()){const f=rackFoot();c.pos=tileCenter(f[0],f[1]);c.tile=f;c.popAt=performance.now();goTo(c,spot);} // 66-newagent.js : sort de la baie
       else{c.pos=tileCenter(EXIT[0],EXIT[1]);c.tile=[EXIT[0],EXIT[1]];goTo(c,spot);}
       c.arrivedOnce=true; continue;
     }

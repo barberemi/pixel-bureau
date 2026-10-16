@@ -119,6 +119,8 @@ class FakeKronn:
             return {"id": "dd000001", "title": body["title"]}
         if re.fullmatch(r"/discussions/[\w-]+/run", p):
             return None
+        if p == "/mcp/workflow-trigger":  # relaunch.py
+            return {"run_id": "run-lance"}  # enveloppé en {success, data} par le faux serveur
         m = re.fullmatch(r"/discussions/([\w-]+)/questions/([^/]+)/(answer|decline)", p)
         if m:  # question_answer.py : la question passe à answered / declined (id Kronn « question:<discussion>:<n> », encodé)
             q = next(x for x in self.questions[m.group(1)] if x["id"] == unquote(m.group(2)))
@@ -620,6 +622,49 @@ print(json.dumps(val))
         self.assertIn("avatars en place illisibles", out["warnings"][0])
         self.assertIn("avatars : avatars en place illisibles", r.stderr)
 
+    def agent_code(self, **req):
+        return "AGENT1:" + __import__("base64").b64encode(json.dumps(req).encode()).decode()
+
+    def test_agent_save_adds_then_removes_an_agent(self):
+        """Agent ajouté depuis une baie (#64) : validé, fusionné dans le dataset agents, retiré sur demande."""
+        fake = FakeKronn()
+        fake.datasets = [{"name": "agents", "current": {"agents": {"a_mose": {"name": "Mose", "wf": ["33e26965"], "seat": None, "at": 1}}}}]
+        code = self.agent_code(op="add", k="a_clark", n="Clark <b>", r="Issue GitHub", wf=["e5ce6732", "e5ce6732"], seat="I5.R3",
+                               sp="p_clark", l={"hair": "messy1", "shirt": "#6A8A5A"}, at=2)
+        r = self.run_raw("agent_save.py", code, api=self.kronn(fake))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out = json.loads(r.stdout)
+        self.assertEqual(out["agents"]["a_clark"], {"name": "Clark b", "role": "Issue GitHub", "wf": ["e5ce6732"], "seat": "I5.R3",
+                                                    "at": 2, "sprite": "p_clark", "look": {"hair": "messy1", "shirt": "#6a8a5a"}})
+        self.assertIn("a_mose", out["agents"])  # les autres agents ajoutés restent
+        fake.datasets = [{"name": "agents", "current": json.dumps(out)}]
+        r = self.run_raw("agent_save.py", self.agent_code(op="remove", k="a_mose"), api=self.kronn(fake))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(sorted(json.loads(r.stdout)["agents"]), ["a_clark"])
+
+    def test_agent_save_refuses_bad_codes(self):
+        bad = [("pas un code", "AGENT1:"), (self.agent_code(op="add", k="p_pam", n="Pam", wf=["e5ce6732"]), "clé d'agent"),
+               (self.agent_code(op="add", k="dwight", n="D", wf=["e5ce6732"]), "clé d'agent"),
+               (self.agent_code(op="add", k="a_x", n="X", wf=["e5ce"]), "workflows invalides"),
+               (self.agent_code(op="add", k="a_x", n="X", wf=[]), "workflows invalides"),
+               (self.agent_code(op="add", k="a_x", n="", wf=["e5ce6732"]), "prénom manquant"),
+               (self.agent_code(op="add", k="a_x", n="X", wf=["e5ce6732"], seat=[35, 16]), "place invalide"),
+               (self.agent_code(op="add", k="a_x", n="X", wf=["e5ce6732"], l={"script": "x"}), "champ 'script' invalide"),
+               (self.agent_code(op="drop", k="a_x"), "opération inconnue")]
+        for code, msg in bad:
+            r = self.run_raw("agent_save.py", code, api=self.kronn(FakeKronn()))
+            self.assertNotEqual(r.returncode, 0, code)
+            self.assertIn(msg, r.stderr)
+
+    def test_agent_save_over_an_unreadable_dataset_warns(self):
+        fake = FakeKronn()
+        fake.datasets = [{"name": "agents", "current": "{pas du json"}]
+        r = self.run_raw("agent_save.py", self.agent_code(op="add", k="a_x", n="X", wf=["e5ce6732"]), api=self.kronn(fake))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out = json.loads(r.stdout)
+        self.assertEqual(set(out["agents"]), {"a_x"})
+        self.assertIn("agents en place illisibles", out["warnings"][0])
+
     def test_jql_helpers_warn_on_unreadable_input(self):
         """Sorties en JQL (pas de place pour warnings) : l'avertissement part seulement sur stderr."""
         r = self.run_raw("duck_window.py", "null")
@@ -814,6 +859,42 @@ print(json.dumps(val))
         gates = self.run_script("gates_snapshot.py", api=self.kronn(fake))
         self.assertEqual([w["name"] for w in gates["workflows"] if "bureau" not in w], ["Revue de PR", "Saisie facultative", "Variable fournie"])
         self.assertIn(ids["b"], [w["wf"] for w in gates["askable"]])  # on peut toujours l'interroger sur ses runs
+
+    def test_gates_lists_launchable_workflows_with_their_inputs(self):
+        """« ▶ Lancer… » (#64) : chaque workflow qui demande une saisie, avec ses variables à saisir (pas celles d'une source)."""
+        fake = FakeKronn()
+        now = iso(2)
+        wid = "b" * 8 + "-1111-2222-3333-444444444444"
+        fake.workflows.append({"id": wid, "name": "Issue GitHub", "enabled": True, "trigger_type": "manual", "last_run": {"started_at": now, "finished_at": now, "status": "Success"}})
+        fake.variables = {wid: [{"name": "intention", "label": "Ce que tu veux faire", "required": True, "source": "user_input"},
+                                {"name": "repo", "required": False}, {"name": "token", "required": True, "source": "config"}]}
+        gates = self.run_script("gates_snapshot.py", api=self.kronn(fake))
+        self.assertEqual(gates["launchable"], [{"wf": wid, "name": "Issue GitHub", "vars": [
+            {"name": "intention", "label": "Ce que tu veux faire", "required": True}, {"name": "repo", "label": "repo", "required": False}]}])
+
+    def relaunch(self, fake, *args):
+        cfg_path = os.path.join(self.tmp, "bureau.config.json")
+        with open(cfg_path, "w") as fh:
+            json.dump(dict(FIXTURE, kronn=dict(FIXTURE["kronn"], api=self.kronn(fake))), fh)
+        return subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "relaunch.py"), *args], capture_output=True, text=True,
+                              env={"BUREAU_CONFIG": cfg_path, "HOME": self.tmp, "PATH": self.bin, **CLOCK}, timeout=60)
+
+    def test_relaunch_with_params_checks_each_name_then_launches(self):
+        """Paramètres « nom=valeur ; … » (#64) : noms revérifiés contre launchable, « … » = vide, obligatoires remplis."""
+        wid = "c" * 8 + "-1111-2222-3333-444444444444"
+        fake = FakeKronn()
+        fake.datasets = [{"name": "gates", "current": {"workflows": [], "launchable": [{"wf": wid, "name": "Issue GitHub", "vars": [
+            {"name": "intention", "required": True}, {"name": "repo", "required": False}]}]}}]
+        r = self.relaunch(fake, wid, "intention=Pouvoir lancer Clark = facile ; repo=…")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(fake.posts[-1], ("/mcp/workflow-trigger", {"workflow_id": wid, "variables": {"intention": "Pouvoir lancer Clark = facile"}}))
+        for params, msg in (("intention=… ; repo=x", "obligatoire à remplir : intention"), ("intent=x", "Paramètre inconnu : « intent »"),
+                            ("n'importe quoi", "Paramètre inconnu")):
+            r = self.relaunch(fake, wid, params)
+            self.assertNotEqual(r.returncode, 0, params)
+            self.assertIn(msg, r.stderr)
+        r = self.relaunch(fake, wid)  # sans paramètres : il faut être dans « workflows » (relance simple)
+        self.assertIn("ne peut pas être relancé", r.stderr)
 
     # ---------- le canard ----------
     def duck_discs(self, fake):
@@ -1078,6 +1159,10 @@ print(json.dumps(val))
         r = self.run_raw("avatar_save.py", code, api=self.fresh_kronn(FakeKronn()))
         self.assertEqual(r.returncode, 0, r.stderr)
         out["avatars"] = json.loads(r.stdout)
+        r = self.run_raw("agent_save.py", self.agent_code(op="add", k="a_clark", n="Clark", wf=["e5ce6732"], seat=None, at=1),
+                         api=self.fresh_kronn(FakeKronn()))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out["agents"] = json.loads(r.stdout)
         r = self.run_raw("layout_save.py", json.dumps(dict(self.PLAN)), api=self.fresh_kronn(FakeKronn()))
         self.assertEqual(r.returncode, 0, r.stderr)
         out["layout"] = json.loads(r.stdout)
@@ -1088,7 +1173,7 @@ print(json.dumps(val))
         objet, et la page démarre sur ces seules données (sans démo). Un champ renommé d'un côté seulement casse ici."""
         outputs = self.cron_outputs()
         self.assertEqual(sorted(outputs), sorted(["office", "live", "gates", "payroll", "team", "duck", "gitfut", "bosspages",
-                                                  "actions", "absences", "avatars", "layout"]))  # tous les datasets de la page
+                                                  "actions", "absences", "avatars", "agents", "layout"]))  # tous les datasets de la page
         path = os.path.join(self.tmp, "outputs.json")
         with open(path, "w") as fh:
             json.dump(outputs, fh)

@@ -68,6 +68,10 @@ function editorEntry(){
   return {k:EDIT.k,n:name||null,l:EDIT.look&&!same?EDIT.look:null,at:Date.now()};
 }
 function keepLocal(e){AV_LOCAL[e.k]=e.n||e.l?{name:e.n||undefined,look:e.l||undefined,at:e.at}:{reset:true,at:e.at};saveLocal();}
+// étapes des cartes Kronn qui demandent un code (avatar, agent) : copié pour toi, à coller, puis Lancer
+function codeHint(hint,code,label,last){const ok=copyText(code);
+  hint.innerHTML=`<ol class="steps3"><li class="done">${ok?'Code copié ✓':'Copie ce code :'}</li><li>Clique dans le champ <b>${label}</b> ci-dessous et colle (<kbd>⌘V</kbd>)</li><li>Clique <b>Lancer</b>${last?' : '+last:''}</li></ol><input type="text" readonly aria-label="${label}" style="${ok?'display:none':''}">`;
+  const inp=hint.querySelector('input');inp.value=code;inp.onclick=()=>inp.select();}
 const avatarCode=e=>'BUREAU1:'+btoa(unescape(encodeURIComponent(JSON.stringify(e))));
 function copyText(t){
   let ok=false;
@@ -248,9 +252,7 @@ function renderEditor(side,c){
   save.setAttribute('data-kronn-action','bureau-avatar');
   const hint=document.createElement('div');hint.className='hint';hint.id='avhint';
   hint.innerHTML="Kronn va te demander un <b>code avatar</b> : ce bouton le copie pour toi, il n'y a qu'à le coller.";
-  save.onclick=()=>{const e=editorEntry();keepLocal(e);const code=avatarCode(e);const ok=copyText(code);EDIT.hint=e.at;
-    hint.innerHTML=`<ol class="steps3"><li class="done">${ok?'Code copié ✓':'Copie ce code :'}</li><li>Clique dans le champ <b>Code avatar</b> ci-dessous et colle (<kbd>⌘V</kbd>)</li><li>Clique <b>Lancer</b> : toute l'équipe le verra d'ici quelques secondes</li></ol><input type="text" readonly aria-label="Code avatar" style="${ok?'display:none':''}">`;
-    const inp=hint.querySelector('input');inp.value=code;inp.onclick=()=>inp.select();};
+  save.onclick=()=>{const e=editorEntry();keepLocal(e);EDIT.hint=e.at;codeHint(hint,avatarCode(e),'Code avatar',"toute l'équipe le verra d'ici quelques secondes");};
   team.append(save,hint);kronnModal(team,save,'Enregistrer l’avatar pour l’équipe');
   // Kronn marque le bouton (data-kronn-action-state) quand le run avance : on suit pour confirmer sans attendre la relecture des données
   new MutationObserver(()=>{const st=save.getAttribute('data-kronn-action-state');if(!EDIT||!EDIT.hint)return;
