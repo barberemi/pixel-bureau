@@ -132,6 +132,13 @@ SHOTS = {
                  "'current_task.repo':CFG.github_repo});const all=TEAM.people.flatMap(p=>p.tickets),prs=TEAM.people.flatMap(p=>p.prs);"
                  "ACTS={tickets:all.map(t=>({key:t.key})),prs:prs.map(x=>({id:prId(x),n:String(x.n),repo:prRepo(x)}))};select('pr:'+CFG.github_repo+'#2016');", "#side"),
     "planning": (1400, 1400, AT(11) + "select('planning');", "#side"),
+    # prochains crons en post-it au fond de la salle Serveurs (#60), survolés : la liste en clair (zoom sur la pièce)
+    "postit-crons": (1400, 1000, AT(11) + "const r=cronNoteRect(),c=cv.getBoundingClientRect(),k=c.width/W;"
+                     "cv.dispatchEvent(new MouseEvent('mousemove',{clientX:c.left+(r.x+r.w/2)*k,clientY:c.top+(r.y+7)*k,bubbles:true}));"
+                     "const t=document.getElementById('tip').getBoundingClientRect(),x0=Math.min(t.left,c.left+(r.x-40)*k)-8,"
+                     "x1=Math.max(t.right,c.left+(r.x+r.w+40)*k)+8,y0=Math.min(t.top,c.top+(r.y-20)*k)-8,d=document.createElement('div');d.id='zoom';"
+                     "d.style.cssText=`position:absolute;pointer-events:none;left:${x0+scrollX}px;top:${y0+scrollY}px;width:${x1-x0}px;height:${c.top+(r.y+80)*k-y0}px`;"
+                     "document.body.appendChild(d);", "#zoom", 2),
     "mep": (1400, 1400, AT(11.6) + "select('tv');", "#side"),
     "avatar": (1400, 1600, AT(11) + "select('jim');openEditor(byKey.jim);", "#side"),
     # plan d'équipe proposé par « python3 tools/plan.py share » : la validation dans la fiche du boss (pas de personnage pour ce workflow)
