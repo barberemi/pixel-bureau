@@ -2,7 +2,7 @@
 // Dataset `agents` (workflow « Le Bureau · agents », script agent_save.py) : {agents: {a_…: {name, role, wf, seat (numéro de siège ou null),
 // sprite?, look?, at}}}. Ils rejoignent le casting après ceux de la config (AGENTS, CAST), prennent une place comme
 // eux (placeCast) et se comportent en agents ordinaires : fiche, relance, question, fiche de paie par préfixe de workflow.
-let EXTRA_KEY='';
+let EXTRA_KEY='', EXTRA_RAW={}; // EXTRA_RAW : entrées du dataset, reprises telles quelles pour renommer (66-newagent.js)
 function readAgents(src){
   try{
     if(!src||!src.datasets)return null;
@@ -30,6 +30,7 @@ function extraAgents(map){
 // remplace les agents ajoutés du casting par ceux du dataset ; false si rien n'a changé (pas de rafraîchissement)
 function applyAgents(map){
   const defs=extraAgents(map), key=JSON.stringify(defs);
+  EXTRA_RAW=map||{};
   if(key===EXTRA_KEY)return false;
   EXTRA_KEY=key;
   for(const list of [AGENTS,CAST])for(let i=list.length-1;i>=0;i--)if(list[i].added)list.splice(i,1);

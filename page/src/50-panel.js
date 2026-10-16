@@ -248,6 +248,7 @@ function drawSide(side){
   runBlock(side,c);
   askBlock(side,c);
   relaunchBlock(side,c);
+  addedAgentBlock(side,c); // 66-newagent.js : agent ajouté depuis une baie
   payBlock(side,c);
   const wfs=[...new Set(c.runs.map(r=>clean(r.wf_name)))];
   if(wfs.length){

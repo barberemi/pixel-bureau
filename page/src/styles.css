@@ -197,15 +197,13 @@ body.km-on .side:has(.kmodal){z-index:50} /* le panneau est sticky (plan d'empil
 /* « Nouvel agent » : le « + » d'une baie de la salle Serveurs (66-newagent.js, #64) */
 .na-modal{width:min(640px,calc(100vw - 32px));left:max(16px,calc(50% - 320px))}
 .na-grid{display:grid;grid-template-columns:1fr 272px;gap:16px}
-.na-form label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:10px}
-.na-form label small{font-weight:400}
-.na-form select,.na-form input{display:block;width:100%;margin-top:4px;padding:6px 8px;font:inherit;font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px}
-.na-av{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
-.na-av canvas{width:256px;height:64px;image-rendering:pixelated;background:var(--chip);border-radius:8px}
-.na-av small{font-size:11px;color:var(--muted)}
-.na-save{display:block;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
-.na-save>button{width:100%}
+.na-form label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px}
+.na-form select,.na-form input{display:block;width:100%;margin-top:4px;padding:6px 8px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px}
+.na-av{display:grid;gap:8px;justify-items:start;align-content:start;font-size:11px;color:var(--muted)}
+.na-av canvas{width:256px;image-rendering:pixelated;background:var(--chip);border-radius:8px}
 @media (max-width:640px){.na-grid{grid-template-columns:1fr}}
+.na-admin{padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px}
+.na-acts{display:flex;gap:6px;margin-top:4px}
 .bp-card b{font-size:14px;line-height:1.25}
 .bp-card small{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}
 .bp-card small span{color:var(--accent);font-weight:700}
