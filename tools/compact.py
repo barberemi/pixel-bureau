@@ -1,8 +1,8 @@
 """Compacte le JS et le CSS de la page à l'assemblage (KT-28) : commentaires et indentation retirés, rien d'autre.
 
 Les sources de page/src/ gardent leurs commentaires ; seule la page assemblée (limite Kronn de 1 000 000 octets)
-est allégée. Les sauts de ligne sont gardés (insertion automatique des points-virgules du JS, numéros de ligne
-proches des sources) ; une ligne qui ne contenait qu'un commentaire disparaît.
+est allégée. Les sauts de ligne sont gardés (insertion automatique des points-virgules du JS), sauf dans le JS après « ; », « { » et
+« , », où aucune insertion n'en dépend ; une ligne qui ne contenait qu'un commentaire disparaît.
 Le JS est lu par un petit lecteur qui connaît les chaînes, les gabarits (`…${…}…`, imbriqués) et les expressions
 régulières (/…/ après un opérateur ou un mot-clé, division sinon) : un « // » dans « https:// » n'est pas un commentaire.
 """
@@ -110,7 +110,7 @@ def strip_js(src):
             i += 1
     if braces:
         raise ValueError("gabarit non fermé")
-    return _lines("".join(out))
+    return _lines("".join(out), join=True)
 
 
 _NL = "\x00"  # saut de ligne d'une chaîne ou d'un gabarit : du texte, jamais retouché
@@ -127,9 +127,17 @@ def _glue(out, src, i):
         out.append(" ")
 
 
-def _lines(text):
-    """Indentation et blancs de fin retirés, lignes vides supprimées (y compris celles d'un commentaire retiré)."""
-    return "".join(l.strip() + "\n" for l in text.split("\n") if l.strip()).replace(_NL, "\n")
+def _lines(text, join=False):
+    """Indentation et blancs de fin retirés, lignes vides supprimées (y compris celles d'un commentaire retiré).
+    join (JS) : une ligne de code finie par « ; », « { » ou « , » est recollée à la suivante ; aucune insertion
+    automatique de point-virgule n'en dépend, et les sauts de ligne des chaînes et gabarits (_NL) ne sont pas touchés."""
+    out = []
+    for l in (l.strip() for l in text.split("\n")):
+        if l:
+            out.append(l + ("" if join and l.endswith((";", "{", ",")) else "\n"))
+    if out and not out[-1].endswith("\n"):
+        out[-1] += "\n"  # le texte finit toujours par un saut de ligne (fichiers mis bout à bout)
+    return "".join(out).replace(_NL, "\n")
 
 
 def strip_css(src):

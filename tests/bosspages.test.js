@@ -158,3 +158,45 @@ test('fenêtre ouverte depuis le plan (canvas, rien de focalisable) : le bouton 
     assert.equal(dom.cv.attrs.tabindex, '-1');
   } finally { page.ctx.document = real; }
 });
+
+test('écran de validation (× ou Ajouter) : la grille se replie, l\'aide ne suit que la demande lancée d\'ici, retour à la grille à jour', () => {
+  run(`BOSS_PAGES=${JSON.stringify(PAGES)};BOSS_CHOICES=[{id:'pc',title:'Revue <de> PR'}];PAGELIST=null;BP_ADDED=null;BP_SENT=null;ACTIONS.pages=true;
+    var OBS=[], COPIED=null, CLICKED=0; MutationObserver=function(cb){OBS.push(cb);return {observe(){}};}; codeHint=(h,c)=>{COPIED=c;h.innerHTML='steps';};
+    var tHint={innerHTML:''}, tBack={textContent:'↩ Annuler'}, tGrid={innerHTML:''}, tMsg={innerHTML:''};
+    var tBox={cls:new Set(),scrollTop:5,classList:{add(c){tBox.cls.add(c);},remove(c){tBox.cls.delete(c);},contains(c){return tBox.cls.has(c);}},
+      q:{'.bp-grid':tGrid,'.bp-hint':tMsg},querySelector(s){return this.q[s]||null;},querySelectorAll(){return [];}};
+    var tConf={hidden:true,set innerHTML(h){this.html=h;tBox.q['.bp-confirm .hint']=tHint;tBox.q['.bp-back']=tBack;},get innerHTML(){return this.html;},
+      querySelector(s){return s==='.hint'?tHint:s==='.bp-back'?tBack:null;}};
+    tBox.q['.bp-confirm']=tConf;
+    var TB={attrs:{'data-kronn-action-state':'succeeded'},getAttribute(k){return this.attrs[k];},click(){CLICKED++;}};
+    bpAsk(tBox,TB,'add',()=>'pc'); OBS[0]();`); // état « succeeded » d'une demande précédente : ignoré
+  try {
+    assert.equal(run('BP_ADDED'), null);
+    run('TB.onclick()');
+    assert.deepEqual(J('[tBox.classList.contains("bp-on"), tConf.hidden, tBox.scrollTop]'), [true, false, 0]);
+    assert.match(J('tConf.html'), /Ajouter à l'écran mural.*Revue &lt;de&gt; PR/s);
+    assert.match(J('tConf.html'), /↩ Annuler/);
+    assert.deepEqual(JSON.parse(Buffer.from(J('COPIED').slice(7), 'base64').toString()).id, 'pc');
+    run('TB.attrs["data-kronn-action-state"]="launching";OBS[0]();TB.attrs["data-kronn-action-state"]="succeeded";OBS[0]();');
+    assert.equal(J('BP_ADDED'), 'pc');
+    assert.match(J('tHint.innerHTML'), /C'est fait.*est sur l'écran mural/);
+    assert.equal(J('tBack.textContent'), '↩ Retour à mes pages');
+    run('PAGELIST=["pa","pc"];tBox.q["[data-kronn-action-slot]"]={};bpBack(tBox);');
+    assert.equal(J('CLICKED'), 1, 'carte Kronn encore ouverte : refermée par un second clic sur son bouton');
+    assert.deepEqual(J('[tBox.classList.contains("bp-on"), tConf.hidden]'), [false, true]);
+    assert.match(J('tGrid.innerHTML'), /⏳ Miniature en cours…[\s\S]*bp-badge">✓ Ajoutée/, 'la page ajoutée, en attendant sa miniature');
+    assert.match(J('tMsg.innerHTML'), /C'est fait/);
+  } finally { run('ACTIONS.pages=false;PAGELIST=null;BP_ADDED=null;BP_SENT=null;'); }
+});
+
+test('case « + Ajouter » de la grille : ouvre directement la liste des pages à ajouter', () => {
+  run(`var OPENED=0, PK={scrollIntoView(){},focus(){},showPicker(){OPENED++;}}, PL={};
+    bpWireGrid({querySelectorAll:()=>[],querySelector:s=>s==='.bp-plus'?PL:s==='.bp-pick'?PK:null}); PL.onclick();`);
+  assert.equal(J('OPENED'), 1);
+});
+
+test('fenêtre : 4 colonnes (6 pages et « + Ajouter » tiennent en 2 rangées sur un portable), 2 sous 900 px', () => {
+  const css = require('fs').readFileSync(require('path').join(__dirname, '..', 'page', 'src', 'styles.css'), 'utf8');
+  assert.match(css, /\.bp-grid\{display:grid;grid-template-columns:repeat\(4,1fr\)/);
+  assert.match(css, /@media \(max-width:900px\)\{\.bp-grid\{grid-template-columns:repeat\(2,1fr\)\}\}/);
+});

@@ -104,6 +104,8 @@ SHOTS = {
     "passions": (1400, 1000, AT(11) + "byKey.p_gabe.passion={moment:'basket'};T=passionSlot(byKey.p_gabe,T).s+40e3;needTeleport=true;", "#cv", 1.5),
     # « Mes pages Kronn » (#61) : la fenêtre de l'écran mural, avec × par page, « + Ajouter » et la liste des autres pages
     "pages-boss": (1400, 1000, AT(11) + DEMO_PAGES + "openBossPages();", None),
+    # écran de validation (#61) : clic sur × d'une page, la grille se replie ; la carte Kronn s'ouvre juste dessous (pas en démo)
+    "pages-validation": (1400, 1000, AT(11) + DEMO_PAGES + "openBossPages();document.querySelectorAll('.bp-del')[2].click();", ".bp-modal"),
     # l'écran mural de la salle de réunion (#61) : 4 miniatures et la case « + » (zoom sur la pièce)
     "mur-pages": (1400, 1000, AT(11) + DEMO_PAGES + "const r=wallRect(),c=cv.getBoundingClientRect(),k=c.width/W,d=document.createElement('div');d.id='zoom';"
                   "d.style.cssText=`position:absolute;pointer-events:none;left:${c.left+scrollX+(r.x-90)*k}px;top:${c.top+scrollY+(r.y-37)*k}px;width:${(r.w+180)*k}px;height:${120*k}px`;"

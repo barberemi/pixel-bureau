@@ -8,7 +8,8 @@ import json, os, sys, urllib.request
 from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CFG = json.loads(Path(os.path.join(ROOT, "bureau.config.json")).read_text())
+CFG_PATH = os.environ.get("BUREAU_CONFIG") or os.path.join(ROOT, "bureau.config.json")  # BUREAU_CONFIG : tests
+CFG = json.loads(Path(CFG_PATH).read_text())
 API = CFG["kronn"]["api"].rstrip("/")
 PAGE_ID = CFG["page_id"]
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -34,17 +35,22 @@ def page():
 def workflows():
     """Pousse dans Kronn le rendu de chaque modèle (workflows/templates) avec bureau.config.json.
     Les modèles sont la source : étapes, scripts (config injectée), déclencheur et programmes autorisés.
-    Les ids des étapes existantes sont gardés (retrouvés par leur nom)."""
-    for key, tpl in templates.load_templates().items():
+    Les ids des étapes existantes sont gardés (retrouvés par leur nom).
+    En deux temps : d'abord les workflows du Bureau absents de la config (créés, leur id rangé), puis le rendu de tous,
+    pour que chaque script connaisse les ids de tous les workflows du Bureau (BUREAU_IDS de _lib.py : un workflow créé
+    après le rendu d'un cron passerait sinon pour un agent, « Intérimaire 1 »)."""
+    tpls = templates.load_templates()
+    for key, tpl in tpls.items():
         kind, where, _ = templates.TEMPLATES[key]
-        ident = templates.config_id(CFG, where)
-        if not ident and kind == "workflow" and not templates.skipped(key, CFG):
+        if not templates.config_id(CFG, where) and kind == "workflow" and not templates.skipped(key, CFG):
             # workflow du Bureau ajouté depuis l'installation (ex. commenter un ticket) : créé, son id rangé dans la config
             ident = call("POST", "/workflows", templates.render(tpl, CFG))["data"]["id"]
             CFG.setdefault(where[0], {})[where[1]] = ident
-            Path(os.path.join(ROOT, "bureau.config.json")).write_text(json.dumps(CFG, ensure_ascii=False, indent=1))
+            Path(CFG_PATH).write_text(json.dumps(CFG, ensure_ascii=False, indent=1))
             print(f"{key} ({ident[:8]}) créé")
-            continue
+    for key, tpl in tpls.items():
+        kind, where, _ = templates.TEMPLATES[key]
+        ident = templates.config_id(CFG, where)
         if not ident:
             print(key, ": pas installé (aucun id dans la config) : relance python3 tools/install.py, qui l'ajoute sans doublon")
             continue
@@ -64,8 +70,9 @@ def workflows():
         print(f"{key} ({ident[:8]})", ok)
 
 
-what = sys.argv[1] if len(sys.argv) > 1 else "all"
-if what in ("page", "all"):
-    page()
-if what in ("workflows", "all"):
-    workflows()
+if __name__ == "__main__":
+    what = sys.argv[1] if len(sys.argv) > 1 else "all"
+    if what in ("page", "all"):
+        page()
+    if what in ("workflows", "all"):
+        workflows()

@@ -175,6 +175,7 @@ window.addEventListener('kronn:page-data',e=>{
   if(bp)BOSS_PAGES=bp;
   const pl=readPageList(k)||readPageList(window.KronnPageData);
   if(pl)PAGELIST=pl;
+  if(bp||pl)bpRefresh(); // 47-bosspages.js : la fenêtre ouverte suit (#61)
   const gf=readGitfut(k)||readGitfut(window.KronnPageData);
   if(gf)GITFUT=gf;
   const ac=readActs(k)||readActs(window.KronnPageData);

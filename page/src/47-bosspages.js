@@ -47,34 +47,78 @@ const bpAge=a=>a>=864e5?Math.floor(a/864e5)+' j':agoTxt(a); // au-delà d'un jou
 // chemin diffère : le lien part dans un nouvel onglet, sur le même Kronn
 const bpLink=id=>kronnTab()+'#page/'+encodeURIComponent(id);
 const pagesCode=(op,id)=>'PAGES1:'+btoa(JSON.stringify({op,id,at:Date.now()}));
+let BP_ADDED=null, BP_SENT=null; // page ajoutée depuis la fenêtre (miniature en cours) ; demande en cours {b, op, p}
+const bpPageOf=id=>shownPages().find(p=>p.id===id)||BOSS_CHOICES.find(p=>p.id===id)||{id,title:id.slice(0,8)};
+const bpImg=(p,empty)=>p.img&&BP_IMG_OK.test(p.img)?`<img src="${p.img}" alt="">`:`<span class="bp-noimg">${empty}</span>`;
 function bossPagesHtml(){
   const now=Date.now(), del=!!ACTIONS.pages;
   return shownPages().map(p=>{
-    const age=p.updated?now-ms(p.updated):null;
-    const img=p.img&&BP_IMG_OK.test(p.img)?`<img src="${p.img}" alt="">`:'<span class="bp-noimg">Pas d\'aperçu</span>';
-    return `<div class="bp-cell"><a class="bp-card" href="${esc(bpLink(p.id))}" target="_blank" rel="noopener">${img}`+
-      `<b>${esc(p.title||p.id.slice(0,8))}</b><small>${age!=null&&age>=0?'Mise à jour il y a '+esc(bpAge(age)):''}<span aria-hidden="true">↗</span></small></a>`+
+    const age=p.updated?now-ms(p.updated):null, nw=p.id===BP_ADDED;
+    return `<div class="bp-cell"><a class="bp-card" href="${esc(bpLink(p.id))}" target="_blank" rel="noopener">${bpImg(p,nw?'⏳ Miniature en cours…':'Pas d\'aperçu')}`+
+      `<b>${esc(p.title||p.id.slice(0,8))}</b><small>${nw?'Ajoutée à l\'instant':age!=null&&age>=0?'Mise à jour il y a '+esc(bpAge(age)):''}<span aria-hidden="true">↗</span></small></a>`+
+      (nw?'<span class="bp-badge">✓ Ajoutée</span>':'')+
       (del?`<button type="button" class="bp-del" data-kronn-action="bureau-pages" data-id="${esc(p.id)}" aria-label="Retirer ${esc(p.title||'')}">×</button>`:'')+'</div>';
   }).join('')+(del?'<button type="button" class="bp-card bp-plus"><span>+</span>Ajouter</button>':'');
 }
+const bpOpts=()=>{const have=new Set(shownPages().map(p=>p.id)), o=BOSS_CHOICES.filter(p=>!have.has(p.id));
+  return `<option value="">${o.length?'Choisir parmi tes pages Kronn…':'Aucune autre page Kronn'}</option>`+o.map(p=>`<option value="${esc(p.id)}">${esc(p.title)}</option>`).join('');};
 function bossAddHtml(){
   if(!ACTIONS.pages)return '';
-  const have=new Set(shownPages().map(p=>p.id)), opts=BOSS_CHOICES.filter(p=>!have.has(p.id));
-  return `<div class="bp-add"><label>+ Ajouter une page<select class="bp-pick"><option value="">${opts.length?'Choisir parmi tes pages Kronn…':'Aucune autre page Kronn'}</option>`+
-    opts.map(p=>`<option value="${esc(p.id)}">${esc(p.title)}</option>`).join('')+`</select></label><button type="button" class="on bp-go" data-kronn-action="bureau-pages" disabled>Ajouter</button></div>`+
-    `<div class="hint bp-hint">Ajout et retrait passent par une carte Kronn : le bouton copie le <b>code page</b> à y coller. L'écran se met à jour tout de suite ; la miniature d'une page ajoutée arrive au passage suivant du cron (toutes les heures).</div>`;
+  return `<div class="bp-add"><label>+ Ajouter une page<select class="bp-pick">${bpOpts()}</select></label><button type="button" class="on bp-go" data-kronn-action="bureau-pages" disabled>Ajouter</button></div>`+
+    `<div class="hint bp-hint">Ajout et retrait passent par une carte Kronn : le bouton copie le <b>code page</b> à y coller. L'écran se met à jour tout de suite, la miniature d'une page ajoutée quelques secondes après.</div>`;
 }
-// boutons × et Ajouter : le code copié, la réponse de la carte Kronn (data-kronn-action-state) dans l'aide
+// × et Ajouter (#61) : l'écran de validation remplace la grille (la carte Kronn s'ouvre juste dessous, dans le même
+// bloc data-kronn-action-slot-host) ; l'aide ne suit que la demande lancée d'ici (Kronn garde l'état de la précédente
+// sur tous les boutons de la même action)
+function bpAsk(box,b,op,id){
+  b.onclick=()=>{
+    if(box.classList.contains('bp-on'))return; // second clic (Annuler) : Kronn referme sa carte
+    const p=bpPageOf(id()), conf=box.querySelector('.bp-confirm');BP_SENT={b,op,p};
+    box.classList.add('bp-on');conf.hidden=false;
+    conf.innerHTML=`<div class="bp-what">${bpImg(p,'Pas encore d\'aperçu')}<div><span class="bp-tag ${op}">${op==='add'?'Ajouter à l\'écran mural':'Retirer de l\'écran mural'}</span>`+
+      `<b>${esc(p.title||'')}</b><small>${op==='add'?'Sa miniature est faite juste après, en une dizaine de secondes.':'Elle quitte l\'écran ; la page Kronn elle-même n\'est pas touchée.'}</small></div>`+
+      `<button type="button" class="bp-back">↩ Annuler</button></div><div class="hint"></div>`;
+    codeHint(conf.querySelector('.hint'),pagesCode(op,p.id),'Code page','rien à retoucher');
+    conf.querySelector('.bp-back').onclick=()=>bpBack(box);box.scrollTop=0;
+  };
+  new MutationObserver(()=>{
+    if(!BP_SENT||BP_SENT.b!==b)return;
+    const st=b.getAttribute('data-kronn-action-state'), h=box.querySelector('.bp-confirm .hint'), t=esc(BP_SENT.p.title||'');if(!h)return;
+    if(st==='succeeded'){if(BP_SENT.op==='add')BP_ADDED=BP_SENT.p.id;BP_SENT.done=true;
+      h.innerHTML=`<b style="color:var(--ok)">✓ C'est fait.</b> « ${t} » ${BP_SENT.op==='add'?'est sur l\'écran mural ; sa miniature arrive dans quelques secondes.':'a quitté l\'écran mural.'}`;
+      box.querySelector('.bp-back').textContent='↩ Retour à mes pages';}
+    else if(st==='failed')h.innerHTML='<b style="color:var(--err)">Code refusé.</b> Colle le code en entier (il commence par PAGES1:), puis relance.';
+  }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
+}
+// retour à la grille : la carte Kronn encore ouverte est refermée (second clic sur son bouton), la grille redessinée
+function bpBack(box){
+  const s=BP_SENT;
+  if(s&&box.querySelector('[data-kronn-action-slot]'))s.b.click();
+  box.classList.remove('bp-on');const conf=box.querySelector('.bp-confirm');conf.hidden=true;conf.innerHTML='';BP_SENT=null;
+  bpRefresh(box);
+  const h=box.querySelector('.bp-hint');if(s&&s.done&&h)h.innerHTML=`<b style="color:var(--ok)">✓ C'est fait.</b> « ${esc(s.p.title||'')} » ${s.op==='add'?'est sur l\'écran mural.':'a quitté l\'écran mural.'}`;
+}
+// la grille et la liste des pages à ajouter suivent les données (dataset pagelist, miniatures), sauf pendant une validation
+function bpRefresh(box){
+  box=box||document.querySelector('.bp-modal:not(.na-modal)');
+  if(!box||box.classList.contains('bp-on')||!box.querySelector('.bp-confirm'))return;
+  if(BP_ADDED&&(bpPageOf(BP_ADDED).img||!shownPages().some(p=>p.id===BP_ADDED)))BP_ADDED=null; // miniature arrivée
+  box.querySelector('.bp-grid').innerHTML=bossPagesHtml();
+  const pick=box.querySelector('.bp-pick'), go=box.querySelector('.bp-go');
+  if(pick){pick.innerHTML=bpOpts();go.disabled=true;}
+  bpWireGrid(box);
+}
+function bpWireGrid(box){
+  for(const b of box.querySelectorAll('.bp-del'))bpAsk(box,b,'remove',()=>b.dataset.id);
+  // la case « + Ajouter » de la grille ouvre directement la liste des pages à ajouter (sous la grille)
+  const plus=box.querySelector('.bp-plus'), pick=box.querySelector('.bp-pick');
+  if(plus)plus.onclick=()=>{if(!pick)return;pick.scrollIntoView({block:'nearest',behavior:SCROLL_BEHAVIOR});pick.focus();try{pick.showPicker();}catch(e){}};
+}
 function bossPagesWire(box){
-  const hint=box.querySelector('.bp-hint'), pick=box.querySelector('.bp-pick'), go=box.querySelector('.bp-go');if(!hint)return;
-  const give=(b,op,id,ok)=>{b.onclick=()=>{hint.className='hint bp-hint';codeHint(hint,pagesCode(op,id()),'Code page',ok);};
-    new MutationObserver(()=>{const st=b.getAttribute('data-kronn-action-state');
-      if(st==='succeeded')hint.innerHTML=`<b style="color:var(--ok)">✓ C'est fait.</b> L'écran mural suit dans un instant.`;
-      else if(st==='failed')hint.innerHTML='<b style="color:var(--err)">Code refusé.</b> Colle le code en entier (il commence par PAGES1:), puis relance.';
-    }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});};
-  for(const b of box.querySelectorAll('.bp-del'))give(b,'remove',()=>b.dataset.id,'la page quitte l\'écran');
-  if(go){pick.onchange=()=>{go.disabled=!pick.value;};give(go,'add',()=>pick.value,'la page rejoint l\'écran');}
-  const plus=box.querySelector('.bp-plus');if(plus)plus.onclick=()=>pick&&pick.focus();
+  if(!box.querySelector('.bp-confirm'))return;
+  const pick=box.querySelector('.bp-pick'), go=box.querySelector('.bp-go');
+  bpWireGrid(box);
+  if(go){pick.onchange=()=>{go.disabled=!pick.value;};bpAsk(box,go,'add',()=>pick.value);}
 }
 // fenêtre modale : le reste de la page est inerte, Tab et Maj+Tab bouclent dans la fenêtre, et à la fermeture le focus
 // revient à l'élément qui l'avait ; ouverte d'un clic sur le canvas (non focalisable), il n'y en a pas : le focus revient
@@ -87,7 +131,7 @@ function openBossPages(){
   BP_BACK=back;
   const bd=document.createElement('div');bd.className='bp-backdrop';bd.onclick=()=>closeBossPages();
   const box=document.createElement('div');box.className='bp-modal';box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label','Mes pages Kronn');
-  box.innerHTML=`<div class="bp-head"><h2>Mes pages Kronn</h2><button type="button" class="bp-x" aria-label="Fermer">×</button></div><div data-kronn-action-slot-host><div class="bp-grid">${bossPagesHtml()}</div>${bossAddHtml()}</div>`;
+  box.innerHTML=`<div class="bp-head"><h2>Mes pages Kronn</h2><button type="button" class="bp-x" aria-label="Fermer">×</button></div><div data-kronn-action-slot-host>${ACTIONS.pages?'<div class="bp-confirm" hidden></div>':''}<div class="bp-grid">${bossPagesHtml()}</div>${bossAddHtml()}</div>`;
   BP_INERT=[...document.body.children].filter(e=>!e.inert&&e.tagName!=='SCRIPT');
   BP_INERT.forEach(e=>{e.inert=true;});
   document.body.append(bd,box);

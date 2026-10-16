@@ -11,7 +11,7 @@ l'ordre de la liste ; choices : les pages Kronn qu'on peut ajouter (toutes, sauf
 - Une page supprimée ou illisible est sautée. Sortie bornée sous 90 Ko (les images en trop sont retirées).
 - warnings (#8) : page sautée, capture ratée (carte sans image) ; écrits aussi sur stderr (run Kronn).
 """
-import base64, glob, json, os, shutil, signal, subprocess, sys, tempfile, time
+import base64, glob, html, json, os, shutil, signal, subprocess, sys, tempfile, time
 from datetime import datetime
 from _lib import CFG, TZ, dumps, get, jpeg, read_json, write_json, write_text, read_bytes
 
@@ -102,6 +102,12 @@ def thumb(d, exe):
     return img
 
 
+def title(d):
+    """Titre affichable : certaines pages Kronn ont un titre déjà échappé (« Fastly &amp; CloudWatch »), décodé ici
+    (la page l'échappe elle-même à l'affichage)."""
+    return html.unescape(str(d.get("title") or d.get("slug") or d["id"][:8]))
+
+
 def chosen():
     """La liste rangée par la page (dataset pagelist), sinon boss_pages."""
     try:
@@ -117,7 +123,7 @@ def chosen():
 
 ids = chosen() if CFG.get("page_id") else [x for x in CFG.get("boss_pages") or [] if isinstance(x, str) and x]
 try:
-    choices = [{"id": p["id"], "title": str(p.get("title") or p.get("slug") or p["id"][:8])[:80]}
+    choices = [{"id": p["id"], "title": title(p)[:80]}
                for p in get("/pages") or [] if p.get("id") and p["id"] != CFG.get("page_id")][:80]
 except Exception as e:
     choices = []
@@ -130,7 +136,7 @@ for pid in ids:
     except Exception as e:  # page supprimée ou Kronn injoignable : on passe, et on le dit
         warn(f"page {pid[:8]} sautée, supprimée ou illisible ({str(e)[:120] or type(e).__name__})")
         continue
-    pages.append({"id": d["id"], "title": d.get("title") or d.get("slug") or d["id"][:8],
+    pages.append({"id": d["id"], "title": title(d),
                   "updated": d.get("last_published_at") or d.get("updated_at"), "img": thumb(d, exe)})
 # caches des pages retirées de la liste
 for f in glob.glob(os.path.join(CACHE, "*.json")):

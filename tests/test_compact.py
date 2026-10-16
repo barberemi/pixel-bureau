@@ -12,7 +12,12 @@ from compact import strip_css, strip_js  # noqa: E402
 class CompactTest(unittest.TestCase):
     def test_js_comments_and_indentation_removed(self):
         src = "// en-tête\nfunction f(a){\n  return a+1; // fin de ligne\n  /* bloc\n  sur deux lignes */\n}\n"
-        self.assertEqual(strip_js(src), "function f(a){\nreturn a+1;\n}\n")
+        self.assertEqual(strip_js(src), "function f(a){return a+1;}\n")  # recollée après « { » et « ; »
+
+    def test_js_lines_joined_only_where_no_semicolon_is_inserted(self):
+        """Recollée après « ; », « { », « , » ; gardée ailleurs (return, ++ et lignes sans point-virgule) et dans un gabarit."""
+        src = "const a=[1,\n  2];\nlet b=a\n++c\nreturn\nx;\nel.innerHTML=`<li>a;\n<li>b,\n`;\n"
+        self.assertEqual(strip_js(src), "const a=[1,2];let b=a\n++c\nreturn\nx;el.innerHTML=`<li>a;\n<li>b,\n`;\n")
 
     def test_js_strings_templates_and_regex_untouched(self):
         cases = [
