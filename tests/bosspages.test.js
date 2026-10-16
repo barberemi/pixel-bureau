@@ -1,5 +1,6 @@
-// L'écran du boss montre ses autres pages Kronn (dataset bosspages publié par le cron fiche de paie, clé boss_pages) :
-// diaporama dans l'écran du bureau du boss, et au clic une fenêtre de cartes qui ouvrent chaque page dans Kronn.
+// L'écran mural de la salle de réunion montre les autres pages Kronn du boss (#61 ; dataset bosspages publié par le cron
+// fiche de paie, liste rangée par la page dans pagelist) : 4 miniatures et une case « + », et au clic une fenêtre de
+// cartes qui ouvrent chaque page dans Kronn, avec × pour retirer et « + Ajouter » (code copié pour la carte Kronn).
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,8 +28,37 @@ test('rien sans pages ni en mode TV ; sinon l\'écran du boss est une zone cliqu
   assert.equal(J('bossPagesOn()'), true);
   run('TV=true;');
   try { assert.equal(J('bossPagesOn()'), false); } finally { run('TV=false;'); }
-  const r = J('bossScreenRect()'); // l'écran du bureau du boss (plan type : bureau en 21-23, rangée 9)
-  assert.deepEqual(r, {x: 21 * 32 + 4, y: 9 * 32 - 32, w: 18, h: 13});
+  const r = J('wallRect()'); // l'écran mural, centré sur le tableau blanc du plan type (case 20, rangée 1)
+  assert.deepEqual(r, {x: 20 * 32 + 48 - 56, y: 32 + 5, w: 112, h: 21});
+  run('BOSS_PAGES=[];ACTIONS.pages=true;');
+  try { assert.equal(J('bossPagesOn()'), true, 'sans page mais avec le workflow : la case « + » suffit'); } finally { run('ACTIONS.pages=false;'); }
+});
+
+test('liste rangée par la page (pagelist) : son ordre, retrait immédiat, page ajoutée sans aperçu en attendant le cron', () => {
+  run(`BOSS_PAGES=${JSON.stringify(PAGES)};BOSS_CHOICES=[{id:'pc',title:'Revue de PR'}];`);
+  assert.deepEqual(J(`readPageList({datasets:{pagelist:{current:${JSON.stringify(JSON.stringify({pages: ['pb', 'pc', 7]}))}}}})`), ['pb', 'pc']);
+  assert.equal(J('readPageList({datasets:{}})'), null);
+  run("PAGELIST=['pb','pc'];");
+  try {
+    assert.deepEqual(J('shownPages().map(p=>[p.id,p.title,p.img])'), [['pb', 'Core Web Vitals', 'javascript:alert(1)'], ['pc', 'Revue de PR', null]]);
+  } finally { run('PAGELIST=null;'); }
+  assert.deepEqual(J('readBossPages({datasets:{bosspages:{current:{pages:[],choices:[{id:"pz",title:"Z"},{title:"sans id"}]}}}}) && BOSS_CHOICES'), [{id: 'pz', title: 'Z'}]);
+});
+
+test('fenêtre avec le workflow pages : × par carte, case « + Ajouter » et liste des pages pas encore sur l\'écran ; code PAGES1', () => {
+  run(`BOSS_PAGES=${JSON.stringify(PAGES)};BOSS_CHOICES=[{id:'pa',title:'Veille'},{id:'pc',title:'Revue <de> PR'}];ACTIONS.pages=true;`);
+  try {
+    const html = J('bossPagesHtml()'), add = J('bossAddHtml()');
+    assert.equal((html.match(/class="bp-del" data-kronn-action="bureau-pages" data-id="p[ab]"/g) || []).length, 2);
+    assert.match(html, /bp-plus/);
+    assert.match(add, /<option value="pc">Revue &lt;de&gt; PR<\/option>/);
+    assert.ok(!add.includes('value="pa"'), 'une page déjà sur l\'écran n\'est pas proposée');
+    assert.match(add, /data-kronn-action="bureau-pages" disabled/);
+    const code = J("pagesCode('remove','pa')");
+    assert.deepEqual(Object.assign(JSON.parse(Buffer.from(code.slice(7), 'base64').toString()), {at: 0}), {op: 'remove', id: 'pa', at: 0});
+  } finally { run('ACTIONS.pages=false;'); }
+  assert.ok(!J('bossPagesHtml()').includes('bp-del'), 'sans le workflow : ni × ni « + »');
+  assert.equal(J('bossAddHtml()'), '');
 });
 
 test('cartes : lien Kronn vers chaque page, titre échappé, image data: seulement, âge de la mise à jour', () => {

@@ -1,6 +1,9 @@
-"""Pages Kronn du boss (bureau.config.json, clé boss_pages) pour l'écran du bureau du boss : titre, mise à jour, miniature.
+"""Pages Kronn du boss pour l'écran mural de la salle de réunion (#61) : titre, mise à jour, miniature.
 
-Sortie (stdout) : {generated_at, pages[{id, title, updated, img}], warnings[texte]}, dans l'ordre de boss_pages.
+Liste : le dataset `pagelist` de la page (ajouts et retraits faits depuis la page, pages_save.py), sinon la clé
+boss_pages de la config (l'installation).
+Sortie (stdout) : {generated_at, pages[{id, title, updated, img}], choices[{id, title}], warnings[texte]}, pages dans
+l'ordre de la liste ; choices : les pages Kronn qu'on peut ajouter (toutes, sauf le Bureau ; 80 au plus, sans image).
 - img : capture JPEG 320x200 en data URI, ou null. Refaite seulement quand la page change (révision du HTML ou des
   données), sinon reprise du cache ~/.cache/pixel-bureau/thumbs/<id>.json.
 - Capture : le HTML de la page et ses datasets dans un fichier local (window.KronnPageData, comme dans Kronn),
@@ -99,7 +102,26 @@ def thumb(d, exe):
     return img
 
 
-ids = [x for x in CFG.get("boss_pages") or [] if isinstance(x, str) and x]
+def chosen():
+    """La liste rangée par la page (dataset pagelist), sinon boss_pages."""
+    try:
+        for d in get(f"/pages/{CFG['page_id']}").get("datasets") or []:
+            if d.get("name") == "pagelist" and d.get("current"):
+                c = d["current"] if isinstance(d["current"], dict) else json.loads(d["current"])
+                if isinstance(c.get("pages"), list):
+                    return [x for x in c["pages"] if isinstance(x, str) and x]
+    except Exception as e:
+        warn(f"liste de l'écran illisible, reprise de boss_pages ({str(e)[:120] or type(e).__name__})")
+    return [x for x in CFG.get("boss_pages") or [] if isinstance(x, str) and x]
+
+
+ids = chosen() if CFG.get("page_id") else [x for x in CFG.get("boss_pages") or [] if isinstance(x, str) and x]
+try:
+    choices = [{"id": p["id"], "title": str(p.get("title") or p.get("slug") or p["id"][:8])[:80]}
+               for p in get("/pages") or [] if p.get("id") and p["id"] != CFG.get("page_id")][:80]
+except Exception as e:
+    choices = []
+    warn(f"liste des pages Kronn illisible : « + Ajouter » sans choix ({str(e)[:120] or type(e).__name__})")
 exe = chrome()
 pages = []
 for pid in ids:
@@ -114,7 +136,7 @@ for pid in ids:
 for f in glob.glob(os.path.join(CACHE, "*.json")):
     if os.path.basename(f)[:-5] not in ids:
         os.remove(f)
-out = {"generated_at": datetime.now(TZ).isoformat(), "pages": pages, "warnings": warnings}
+out = {"generated_at": datetime.now(TZ).isoformat(), "pages": pages, "choices": choices, "warnings": warnings}
 dropped = 0
 for p in reversed(pages):  # sortie Exec tronquée à 100 Ko : les dernières images sautent d'abord
     if len(dumps(out)) <= MAX_OUT:

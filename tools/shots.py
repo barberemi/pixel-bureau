@@ -23,6 +23,9 @@ PORT = 9335
 AT = lambda h: f"applySkin('classique');if(TV)setTv(false);setMode('pause');T=DAY0+{h}*3600e3;needTeleport=true;"  # noqa: E731
 WAIT = "new Promise(r=>setTimeout(r,2500))"
 # nom -> (largeur, hauteur, JS de mise en scène, sélecteur à rogner ; None = la fenêtre[, échelle de la capture[, autre plan]])
+# pages Kronn du boss simulées (#61) : 5 pages aux miniatures dessinées, le workflow pages branché, deux pages à ajouter
+DEMO_PAGES = ("ACTIONS.pages=true;BOSS_CHOICES=[{id:'demo-a',title:'Planning des congés'},{id:'demo-b',title:'Suivi des commandes'}];"
+              "BOSS_PAGES=" + "[['Ventes du trimestre','#2f6fd6',35],['Stock de papier','#2e9e5b',180],['Satisfaction clients','#e0a020',600],['Livraisons','#7a5cc8',1500],['Notes de frais','#c8456e',2900]].map(([t,c,m],i)=>{const k=document.createElement('canvas');k.width=320;k.height=200;const g=k.getContext('2d');g.fillStyle='#1c1f26';g.fillRect(0,0,320,200);g.fillStyle='#e8e2d0';g.fillRect(14,14,150,10);for(let j=0;j<4;j++){g.fillStyle='#2a2e37';g.fillRect(14+j*76,36,68,40);g.fillStyle=c;g.fillRect(20+j*76,58,20+j*9,8);}g.fillStyle='#2a2e37';g.fillRect(14,88,292,98);g.fillStyle=c;for(let j=0;j<12;j++){const h=18+((j*37+i*11)%60);g.fillRect(24+j*23,176-h,14,h);}return {id:'demo'+i,title:t,updated:new Date(Date.now()-m*60e3).toISOString(),img:k.toDataURL('image/jpeg',.8)};});")
 SHOTS = {
     "plan": (1400, 1000, AT(11), "#cv", 1.5),
     # agents mis en avant (« Sur le plan » : agents) : icône, prénom et métier de chacun
@@ -99,7 +102,12 @@ SHOTS = {
     # écran du boss : ses autres pages Kronn (dataset bosspages) ; miniatures dessinées pour la démo, fenêtre ouverte
     # passions (roster passion) : Gabe en séance de tirs au panier, à son créneau du jour
     "passions": (1400, 1000, AT(11) + "byKey.p_gabe.passion={moment:'basket'};T=passionSlot(byKey.p_gabe,T).s+40e3;needTeleport=true;", "#cv", 1.5),
-    "pages-boss": (1400, 1000, AT(11) + "BOSS_PAGES=[['Ventes du trimestre','#2f6fd6',35],['Stock de papier','#2e9e5b',180],['Satisfaction clients','#e0a020',600],['Livraisons','#7a5cc8',1500]].map(([t,c,m],i)=>{const k=document.createElement('canvas');k.width=320;k.height=200;const g=k.getContext('2d');g.fillStyle='#1c1f26';g.fillRect(0,0,320,200);g.fillStyle='#e8e2d0';g.fillRect(14,14,150,10);for(let j=0;j<4;j++){g.fillStyle='#2a2e37';g.fillRect(14+j*76,36,68,40);g.fillStyle=c;g.fillRect(20+j*76,58,20+j*9,8);}g.fillStyle='#2a2e37';g.fillRect(14,88,292,98);g.fillStyle=c;for(let j=0;j<12;j++){const h=18+((j*37+i*11)%60);g.fillRect(24+j*23,176-h,14,h);}return {id:'demo'+i,title:t,updated:new Date(Date.now()-m*60e3).toISOString(),img:k.toDataURL('image/jpeg',.8)};});openBossPages();", None),
+    # « Mes pages Kronn » (#61) : la fenêtre de l'écran mural, avec × par page, « + Ajouter » et la liste des autres pages
+    "pages-boss": (1400, 1000, AT(11) + DEMO_PAGES + "openBossPages();", None),
+    # l'écran mural de la salle de réunion (#61) : 4 miniatures et la case « + » (zoom sur la pièce)
+    "mur-pages": (1400, 1000, AT(11) + DEMO_PAGES + "const r=wallRect(),c=cv.getBoundingClientRect(),k=c.width/W,d=document.createElement('div');d.id='zoom';"
+                  "d.style.cssText=`position:absolute;pointer-events:none;left:${c.left+scrollX+(r.x-90)*k}px;top:${c.top+scrollY+(r.y-37)*k}px;width:${(r.w+180)*k}px;height:${120*k}px`;"
+                  "document.body.appendChild(d);", "#zoom", 2),
     # « Nouvel agent » (#64) : clic sur le « + » de la baie ; workflows sans agent simulés, prénom tapé
     "nouvel-agent": (1400, 1000, AT(11) + "ASKABLE=[{wf:'e5ce6732-demo',name:'Issue GitHub'},{wf:'7f9e2b79-demo',name:'Mise en prod ticket'}];"
                      "openNewAgent();NA.look={...RECIPES.p_clark};const i=document.querySelector('.na-name');i.value='Clark';i.oninput();", ".na-modal", 1.5),

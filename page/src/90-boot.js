@@ -137,7 +137,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   DUCKGAME=readDuckGame(k)||(DEMO?DUCKGAME_DEMO:null);
   ABSENCES=readAbsences(k); // 36-absences.js (démo : après refreshAll, qui crée les personnages)
   MAILS=readMails(k); // 48-mail.js
-  BOSS_PAGES=readBossPages(k)||[];
+  BOSS_PAGES=readBossPages(k)||[];PAGELIST=readPageList(k); // 47-bosspages.js (#61)
   GITFUT=readGitfut(k)||{};
   ACTS=readActs(k);
   POSTERS=readPosters(k)||{};
@@ -173,6 +173,8 @@ window.addEventListener('kronn:page-data',e=>{
   const py=readPayroll(k)||readPayroll(window.KronnPageData);
   const bp=readBossPages(k)||readBossPages(window.KronnPageData);
   if(bp)BOSS_PAGES=bp;
+  const pl=readPageList(k)||readPageList(window.KronnPageData);
+  if(pl)PAGELIST=pl;
   const gf=readGitfut(k)||readGitfut(window.KronnPageData);
   if(gf)GITFUT=gf;
   const ac=readActs(k)||readActs(window.KronnPageData);

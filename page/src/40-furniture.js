@@ -58,7 +58,7 @@ F.push({
     R(ctx,x0,top,3*TS+4,2,'#8a6040');
     R(ctx,x0,top+18,3*TS+4,13,'#56391f');
   R(ctx,x0+6,top-12,18,13,'#2c2f38');
-  {const b=chars.find(c=>c.boss);if(!drawBossPages(x0+7,top-11,16,10,now))drawScreen(x0+7,top-11,16,10,b?screenState(b):'off',now,97);} // 47-bosspages.js
+  {const b=chars.find(c=>c.boss);drawScreen(x0+7,top-11,16,10,b?screenState(b):'off',now,97);} // ses pages Kronn : écran mural de la salle de réunion (#61)
   R(ctx,x0+12,top+1,5,3,'#2c2f38');
   R(ctx,x0+44,top+4,15,5,'#e6e6e6');
   R(ctx,x0+76,top+2,6,7,'#fbfbf6');
@@ -407,7 +407,7 @@ function buildFurniture(){
     for(const it of t.items)FURN.push({y:it.y+o.dy,fixed:it.fixed,draw:o.dx||o.dy?n=>{ctx.save();ctx.translate(o.dx,o.dy);it.draw(n,o);ctx.restore();}:n=>it.draw(n,o)});
     for(const [x,y] of t.foot)B(f.at[0]+x,f.at[1]+y);
   }
-  FURN.push(TV_SCREEN,PAY_ENVELOPE,EMP_FRAME,KANBAN_WALL,CRON_NOTES,WALL_CAL,MAILBOXES,RACK_PLUS,RACK_POP); // WALL_CAL : 36-absences.js ; MAILBOXES : 48-mail.js ; RACK_PLUS, RACK_POP : 66-newagent.js
+  FURN.push(TV_SCREEN,PAY_ENVELOPE,EMP_FRAME,KANBAN_WALL,CRON_NOTES,WALL_CAL,WALL_SCREEN,MAILBOXES,RACK_PLUS,RACK_POP); // WALL_CAL : 36-absences.js ; WALL_SCREEN : 47-bosspages.js ; MAILBOXES : 48-mail.js ; RACK_PLUS, RACK_POP : 66-newagent.js
   for(const [x,y] of LAYOUT.plants||[])plant(x,y);
   themeFurniture(); // 46-themes.js : décor des fêtes
   sceneFurniture(); // 37-scenes.js : pizzas du dernier jour du sprint

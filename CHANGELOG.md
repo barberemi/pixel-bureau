@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
+- Écran mural « Mes pages Kronn » en salle de réunion, à la place du tableau blanc : quatre miniatures et une case « + » ; la fenêtre « Mes pages Kronn » gagne × pour retirer une page et « + Ajouter une page », par une carte Kronn (workflow « Le Bureau · pages », dataset `pagelist`, sans republier). L'ordinateur du boss est libéré (#61).
 - Prochains crons en post-it au fond de la salle Serveurs, entre les deux baies : un par cron, couleur de l'agent, il tombe quand le cron a tourné, la liste en clair au survol ; le tableau « Prochains crons » quitte le bureau du boss et le calendrier des absences glisse un peu à gauche ; `objects.planning` des plans n'est plus demandé (#60).
 - « ▶ Lancer… » : un champ par paramètre dans la fiche de l'agent (libellé, exemple, * des obligatoires, zone de texte ou liste selon le workflow) ; le bouton copie la ligne déjà remplie, à coller telle quelle dans la carte Kronn, et reste grisé tant qu'une valeur manque ou est refusée (« ; », format) (#67).
 - Agents : « ▶ Lancer… » sur la fiche de tout agent dont un workflow demande une saisie (ligne « nom=… ; nom=… » copiée, à compléter dans la carte Kronn, revérifiée avant le lancement) ; « Nouvel agent » depuis le « + » d'une baie de la salle Serveurs (workflow sans agent, prénom, métier, siège, avatar), rangé dans le dataset `agents` sans republier, qui sort de la baie et rejoint sa place ; renommer ou retirer depuis sa fiche (#64).

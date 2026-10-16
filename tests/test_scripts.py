@@ -81,7 +81,11 @@ class FakeKronn:
         if m:
             return {"id": m.group(1), "trigger": {"schedule": "*/10 4-20 * * *"}, "variables": self.variables.get(m.group(1), []),
                     "steps": [{"name": "gate", "step_type": {"type": "Gate"}}] if m.group(1) == AGENT_WF else []}
+        if p == "/pages":  # liste des pages Kronn (« + Ajouter » de l'écran mural, #61), le Bureau compris
+            return [{"id": FIXTURE["page_id"], "title": "Le Bureau"}] + [{"id": k, "title": v.get("title")} for k, v in self.pages.items()]
         m = re.fullmatch(r"/pages/([\w-]+)", p)
+        if m and m.group(1) == FIXTURE["page_id"] and m.group(1) not in self.pages:
+            return {"datasets": self.datasets}
         if m and m.group(1) in self.pages:
             return self.pages[m.group(1)]
         if m and self.pages:
@@ -808,6 +812,42 @@ print(json.dumps(val))
         self.assertEqual([bool(p["img"]) for p in out["pages"]], [True, False])  # la dernière image saute d'abord
         self.assertEqual(out["warnings"], ["1 miniature retirée : sortie limitée à 90 Ko"])
         self.assertEqual(self.run_script("pages_snapshot.py", api=api, chrome=False)["pages"], [])  # sans boss_pages
+
+    def test_pages_snapshot_reads_the_page_list_and_offers_choices(self):
+        """Écran mural (#61) : la liste rangée par la page (dataset pagelist) passe avant boss_pages ; choices = les pages
+        qu'on peut ajouter, sans le Bureau."""
+        fake, cache, img = self.boss_pages()
+        fake.datasets = [{"name": "pagelist", "current": json.dumps({"pages": ["pb"]})}]
+        out = self.run_script("pages_snapshot.py", api=self.kronn(fake), boss_pages=["pa", "pb"], chrome=False)
+        self.assertEqual([p["id"] for p in out["pages"]], ["pb"])
+        self.assertEqual(out["choices"], [{"id": "pa", "title": "Veille techno"}, {"id": "pb", "title": "Core Web Vitals"}])
+        self.assertEqual(out["warnings"], [])
+        fake.datasets = [{"name": "pagelist", "current": "{pas du json"}]
+        out = self.run_script("pages_snapshot.py", api=self.kronn(fake), boss_pages=["pa"], chrome=False)
+        self.assertEqual([p["id"] for p in out["pages"]], ["pa"])  # illisible : boss_pages, et on le dit
+        self.assertIn("liste de l'écran illisible", out["warnings"][0])
+
+    def pages_code(self, **req):
+        return "PAGES1:" + __import__("base64").b64encode(json.dumps(req).encode()).decode()
+
+    def test_pages_save_adds_then_removes_a_page(self):
+        """« + Ajouter » et × de la fenêtre Mes pages Kronn (#61) : départ = boss_pages, ajout en dernier, retrait."""
+        a, b = "a" * 8 + "-1111-2222-3333-444444444444", "b" * 8 + "-1111-2222-3333-444444444444"
+        fake = FakeKronn()
+        fake.pages = {a: {"id": a, "title": "Veille"}, b: {"id": b, "title": "CWV"}}
+        r = self.run_raw("pages_save.py", self.pages_code(op="add", id=b, at=1), api=self.kronn(fake))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(r.stdout)["pages"], [b])
+        fake.datasets = [{"name": "pagelist", "current": {"pages": [a, b]}}]
+        r = self.run_raw("pages_save.py", self.pages_code(op="remove", id=a, at=2), api=self.kronn(fake))
+        self.assertEqual(json.loads(r.stdout)["pages"], [b])
+        for code, msg in (("rien", "PAGES1:"), (self.pages_code(op="drop", id=a), "opération inconnue"),
+                          (self.pages_code(op="add", id="pa"), "id de page invalide"),
+                          (self.pages_code(op="add", id="c" * 8 + "-1111-2222-3333-444444444444"), "n'existe pas"),
+                          (self.pages_code(op="add", id=FIXTURE["page_id"]), "page du Bureau")):
+            r = self.run_raw("pages_save.py", code, api=self.kronn(fake))
+            self.assertNotEqual(r.returncode, 0, code)
+            self.assertIn(msg, r.stderr)
 
     # ---------- cartes GitFut des fiches ----------
     def test_gitfut_cache_of_the_day_bad_login_and_unreachable_site(self):

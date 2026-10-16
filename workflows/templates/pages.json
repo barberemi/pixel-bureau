@@ -1,0 +1,85 @@
+{
+ "kind": "workflow",
+ "key": "pages",
+ "definition": {
+  "name": "Le Bureau · pages",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "page_code",
+    "label": "Code page (déjà copié)",
+    "placeholder": "Colle ici avec ⌘V",
+    "description": "Le bouton « Ajouter » ou × de la fenêtre Mes pages Kronn vient de copier ce code : colle-le (⌘V) puis clique Lancer.",
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   }
+  ],
+  "steps": [
+   {
+    "name": "save",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Valide le code et met à jour la liste de l'écran mural (dataset pagelist, 0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/pages_save.py@@"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{page_code}}"
+   },
+   {
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset pagelist de la page Le Bureau.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "pagelist",
+       "operation": "replace",
+       "value_from": "steps.save.data.stdout"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}
