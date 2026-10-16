@@ -22,6 +22,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- Page plus légère : le JS assemblé recolle les lignes finies par « ; », « { » ou « , » (5 Ko).
 - Ce qu'on tape dans un champ de fiche (Renommer un agent ajouté) n'est plus effacé par la mise à jour du panneau, chaque seconde.
 - Les pizzas de fin de sprint ont lieu même quand le sprint est clôturé le matin de sa fin et le suivant déjà ouvert : le cron équipe garde la fin prévue du sprint clôturé (`prev_sprint.planned_end`).
 - Un second placement de l'équipe (nouveau plan) ne déplace plus les agents de la config : leur siège demandé n'est plus réécrit en coordonnées (#64).
