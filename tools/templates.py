@@ -38,7 +38,7 @@ TEMPLATES = {
     "regles": ("workflow", ("actions", "mail_rules"), {"senders": "workflows/mail_snapshot.py", "merge": "workflows/mail_snapshot.py"}),
     "avatar": ("workflow", ("actions", "avatar"), {"save": "workflows/avatar_save.py"}),
     "agent": ("workflow", ("actions", "agent"), {"save": "workflows/agent_save.py"}),  # agents ajoutés depuis une baie (#64)
-    "pages": ("workflow", ("actions", "pages"), {"save": "workflows/pages_save.py"}),  # écran mural Mes pages Kronn (#61)
+    "pages": ("workflow", ("actions", "pages"), {"save": "workflows/pages_save.py", "thumbs": "workflows/pages_snapshot.py"}),  # écran mural Mes pages Kronn (#61)
     "gate": ("workflow", ("actions", "gate"), {"decide": "workflows/gate_decide.py"}),
     "answer": ("workflow", ("actions", "answer"), {"answer": "workflows/question_answer.py"}),  # question de discussion (KT-27)
     "relaunch": ("workflow", ("actions", "relaunch"), {"relaunch": "workflows/relaunch.py"}),

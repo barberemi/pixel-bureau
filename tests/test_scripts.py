@@ -817,10 +817,11 @@ print(json.dumps(val))
         """Écran mural (#61) : la liste rangée par la page (dataset pagelist) passe avant boss_pages ; choices = les pages
         qu'on peut ajouter, sans le Bureau."""
         fake, cache, img = self.boss_pages()
+        fake.pages["pa"]["title"] = "Veille &amp; techno"  # titre déjà échappé dans Kronn : décodé
         fake.datasets = [{"name": "pagelist", "current": json.dumps({"pages": ["pb"]})}]
         out = self.run_script("pages_snapshot.py", api=self.kronn(fake), boss_pages=["pa", "pb"], chrome=False)
         self.assertEqual([p["id"] for p in out["pages"]], ["pb"])
-        self.assertEqual(out["choices"], [{"id": "pa", "title": "Veille techno"}, {"id": "pb", "title": "Core Web Vitals"}])
+        self.assertEqual(out["choices"], [{"id": "pa", "title": "Veille & techno"}, {"id": "pb", "title": "Core Web Vitals"}])
         self.assertEqual(out["warnings"], [])
         fake.datasets = [{"name": "pagelist", "current": "{pas du json"}]
         out = self.run_script("pages_snapshot.py", api=self.kronn(fake), boss_pages=["pa"], chrome=False)
