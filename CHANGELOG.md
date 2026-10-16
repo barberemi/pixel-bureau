@@ -22,6 +22,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- `publish.py workflows` crée d'abord les workflows du Bureau manquants puis rend tous les modèles : un workflow créé au même passage (« Le Bureau · pages ») n'apparaît plus comme un agent (« Intérimaire 1 »).
 - Page plus légère : le JS assemblé recolle les lignes finies par « ; », « { » ou « , » (5 Ko).
 - Ce qu'on tape dans un champ de fiche (Renommer un agent ajouté) n'est plus effacé par la mise à jour du panneau, chaque seconde.
 - Les pizzas de fin de sprint ont lieu même quand le sprint est clôturé le matin de sa fin et le suivant déjà ouvert : le cron équipe garde la fin prévue du sprint clôturé (`prev_sprint.planned_end`).
