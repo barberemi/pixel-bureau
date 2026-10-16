@@ -58,7 +58,7 @@ F.push({
     R(ctx,x0,top,3*TS+4,2,'#8a6040');
     R(ctx,x0,top+18,3*TS+4,13,'#56391f');
   R(ctx,x0+6,top-12,18,13,'#2c2f38');
-  {const b=chars.find(c=>c.boss);if(!drawBossPages(x0+7,top-11,16,10,now))drawScreen(x0+7,top-11,16,10,b?screenState(b):'off',now,97);} // 47-bosspages.js
+  {const b=chars.find(c=>c.boss);drawScreen(x0+7,top-11,16,10,b?screenState(b):'off',now,97);} // ses pages Kronn : écran mural de la salle de réunion (#61)
   R(ctx,x0+12,top+1,5,3,'#2c2f38');
   R(ctx,x0+44,top+4,15,5,'#e6e6e6');
   R(ctx,x0+76,top+2,6,7,'#fbfbf6');
@@ -307,24 +307,37 @@ const KANBAN_WALL={y:-1,draw:()=>{
   });
   ctx.textAlign='left';
 }};
-// planning mural des crons (couloir, à gauche du bureau du boss)
 // texte raccourci avec « … » pour tenir dans max pixels (police courante du contexte)
 function fitText(t,max){
   if(ctx.measureText(t).width<=max)return t;
   while(t.length>1&&ctx.measureText(t+'…').width>max)t=t.slice(0,-1);
   return t+'…';
 }
-const CRON_BOARD={y:-1,draw:()=>{
-  const {x,y,w,h}=PLANR;
-  R(ctx,x,y,w,h,'#3d4250');R(ctx,x+2,y+2,w-4,h-4,'#1f2430');
-  ctx.font='bold 5px ui-monospace,Menlo,monospace';ctx.fillStyle='#9fb7d9';ctx.fillText('PROCHAINS CRONS',x+5,y+9);
-  const next=planningToday().filter(p=>p.t>=T&&!p.hourly).slice(0,3);
-  ctx.font='6px ui-monospace,Menlo,monospace';
-  if(!next.length){ctx.fillStyle='#8a93a6';ctx.fillText(fitText('fini pour',w-9),x+5,y+19);ctx.fillText(fitText("aujourd'hui",w-9),x+5,y+26);}
-  next.forEach((p,i)=>{
-    ctx.fillStyle=i===0?'#ffd479':'#e6e9ef';
-    ctx.fillText(fitText(hm(p.t)+' '+(p.who?p.who.name:String(p.c.name)),w-9),x+5,y+17+i*7); // « Intérimaire 3 » : tronqué au tableau
-  });
+// prochains crons en post-it (#60) : au fond de la salle Serveurs, entre les deux premières baies (à droite de la baie
+// seule s'il n'y en a qu'une) ; un post-it par cron (les 3 prochains, hors crons horaires), couleur de l'agent, l'heure
+// dessus. Quand le cron a tourné, son post-it tombe (rien d'animé avec les animations réduites). Survol ou clic :
+// la liste en clair (infobulle, fiche « planning »).
+function cronNoteRect(){
+  const l=(FURN_AT.server_rack||[]).map(o=>13*TS+2+o.dx).sort((a,b)=>a-b), o=(FURN_AT.server_rack||[])[0];if(!o)return null;
+  const x=l[0]+28, w=l.length>1&&l[1]-x>=24?l[1]-x:36; // baie de 28 px : les 36 px entre les deux
+  return {x,y:TS+12+o.dy,w,h:14};
+}
+function cronNotesTip(){const n=nextCrons();return n.length?'Prochains crons : '+n.map(p=>hm(p.t)+' '+(p.who?p.who.name:clean(String(p.c.name)))).join(' · '):"Plus de cron prévu aujourd'hui (hors crons horaires)";}
+const nextCrons=()=>planningToday().filter(p=>p.t>=T&&!p.hourly).slice(0,3);
+function noteColor(c){const r=c&&(RECIPES[c.sprite]||RECIPES[c.key]);return r&&r.shirt||['#e8c33a','#5aa6e0','#e3604f','#7cc46a'][Math.floor(hash(String(c&&c.key).length,7)*4)];}
+let NOTES_UP=[], NOTES_FALL=[];
+function drawNote(x,y,p){
+  const col=noteColor(p.who), [r,g2,b]=[1,3,5].map(i=>parseInt(col.slice(i,i+2),16)||0), light=r*.3+g2*.59+b*.11>140;
+  R(ctx,x+1,y+1,11,11,'rgba(0,0,0,.25)');R(ctx,x,y,11,11,col);R(ctx,x,y,11,2,'rgba(0,0,0,.18)');
+  ctx.fillStyle=light?'#2a2622':'#ffffff';ctx.font='bold 5px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText(hm(p.t).slice(0,2),x+5.5,y+9);ctx.textAlign='left';
+}
+const CRON_NOTES={get y(){const r=cronNoteRect();return r?r.y+40:-1;},draw:now=>{
+  const r=cronNoteRect();if(!r)return;
+  const next=nextCrons(), at=i=>r.x+Math.round((r.w-(next.length*12-1))/2)+i*12;
+  NOTES_UP.forEach((p,i)=>{if(p.t<T&&!next.includes(p)&&!REDUCED_MOTION)NOTES_FALL.push({p,x:at(i),at:now});});
+  NOTES_UP=next;NOTES_FALL=NOTES_FALL.filter(f=>now-f.at<1200);
+  next.forEach((p,i)=>drawNote(at(i),r.y,p));
+  for(const f of NOTES_FALL){const k=(now-f.at)/1200;ctx.save();ctx.globalAlpha=1-k*k;drawNote(f.x+Math.sin(k*9)*3,r.y+k*k*44,f.p);ctx.restore();}
 }};
 // plantes
 const plant=(x,y)=>FURN.push({
@@ -378,13 +391,13 @@ function islandFurniture(){ // îlots : tables, écrans, chaises
     }
   }
 }
-// objets cliquables du plan (rectangles en pixels) : écran TV, employé du sprint, paie, Kanban, planning des crons
-let TVR, EMPR, PAYR, KANR, PLANR;
+// objets cliquables du plan (rectangles en pixels) : écran TV, employé du sprint, paie, Kanban
+let TVR, EMPR, PAYR, KANR;
 // tout le mobilier du plan, dans l'ordre de dessin (tri en profondeur stable) ; rappelé quand le plan change,
 // après buildWorld() qui vide les cases bloquées (les meubles y ajoutent leur emprise)
 function buildFurniture(){
   FURN.length=0; for(const k of Object.keys(FURN_AT))delete FURN_AT[k];
-  ({tv:TVR,emp:EMPR,paie:PAYR,kanban:KANR,planning:PLANR,calendar:CALR=null}=LAYOUT.objects);
+  ({tv:TVR,emp:EMPR,paie:PAYR,kanban:KANR,calendar:CALR=null}=LAYOUT.objects); // objects.planning (avant #60) : ignoré
   islandFurniture();
   // meubles du plan, dans l'ordre du plan
   for(const f of LAYOUT.furniture||[]){
@@ -394,7 +407,7 @@ function buildFurniture(){
     for(const it of t.items)FURN.push({y:it.y+o.dy,fixed:it.fixed,draw:o.dx||o.dy?n=>{ctx.save();ctx.translate(o.dx,o.dy);it.draw(n,o);ctx.restore();}:n=>it.draw(n,o)});
     for(const [x,y] of t.foot)B(f.at[0]+x,f.at[1]+y);
   }
-  FURN.push(TV_SCREEN,PAY_ENVELOPE,EMP_FRAME,KANBAN_WALL,CRON_BOARD,WALL_CAL,MAILBOXES,RACK_PLUS,RACK_POP); // WALL_CAL : 36-absences.js ; MAILBOXES : 48-mail.js ; RACK_PLUS, RACK_POP : 66-newagent.js
+  FURN.push(TV_SCREEN,PAY_ENVELOPE,EMP_FRAME,KANBAN_WALL,CRON_NOTES,WALL_CAL,WALL_SCREEN,MAILBOXES,RACK_PLUS,RACK_POP); // WALL_CAL : 36-absences.js ; WALL_SCREEN : 47-bosspages.js ; MAILBOXES : 48-mail.js ; RACK_PLUS, RACK_POP : 66-newagent.js
   for(const [x,y] of LAYOUT.plants||[])plant(x,y);
   themeFurniture(); // 46-themes.js : décor des fêtes
   sceneFurniture(); // 37-scenes.js : pizzas du dernier jour du sprint

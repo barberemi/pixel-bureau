@@ -46,7 +46,7 @@ flowchart LR
     api[API locale port 3140]
     ui[Interface port 5173]
     page[Live Page Le Bureau]
-    ds[(Datasets - office, team, live, gates, actions, payroll, bosspages, gitfut, duck, absences, avatars, layout)]
+    ds[(Datasets - office, team, live, gates, actions, payroll, bosspages, pagelist, gitfut, duck, absences, avatars, layout)]
     crons[Crons du Bureau - live, office, team, payroll, canard, absences]
     manual[Workflows manuels - gate, relaunch, avatar, comment, duck, layout]
     agents[Workflows d agents de l equipe]

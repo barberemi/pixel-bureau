@@ -11,7 +11,7 @@ const {load} = require('./helpers/page.js');
 const page = load({layout: 'open-space'});
 const ref = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'world_open-space.json'), 'utf8'));
 const now = JSON.parse(page.run(`JSON.stringify({TS,COLS,ROWS,W,H,EXIT,grid,floorOf,DOORS,GLASS:[...GLASS].sort(),ISLANDS,IROWS,SEATS:SEATS.map(({id,...s})=>s),
-  seatTiles:[...seatTiles].sort(),blocked:[...blocked].sort(),SPOTS,FREE_SEATS:LAYOUT.free_seats,ROOMS,TVR,KANR,PLANR,PAYR,EMPR,
+  seatTiles:[...seatTiles].sort(),blocked:[...blocked].sort(),SPOTS,FREE_SEATS:LAYOUT.free_seats,ROOMS,TVR,KANR,PAYR,EMPR,
   walk:Array.from({length:ROWS},(_,y)=>Array.from({length:COLS},(_,x)=>walkable(x,y)?1:0).join('')).join('|')})`));
 
 for (const k of Object.keys(ref)) {

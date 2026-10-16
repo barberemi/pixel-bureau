@@ -14,7 +14,7 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 | [Rejouer la journée](guide/fonctionnalites/05-rejouer.md) | Direct, ou relecture accélérée de minuit à maintenant |
 | [Mode TV et cérémonies](guide/fonctionnalites/06-mode-tv.md) | Écran d'open space lisible à 3 m, tour de table du daily, sprint planning et rétrospective en salle de réunion |
 | [Fiches](guide/fonctionnalites/07-fiches.md) | Journée d'un agent ou d'un collègue ; fiche d'un ticket ou d'une PR (PR de plusieurs dépôts, faire relire et corriger) ; lancer (un champ par paramètre), relancer, interroger ; tes validations et les questions des discussions dans ta fiche de boss, à décider sur la page (bulle ✋ sur ton personnage) ; parler au canard et répondre à ses questions, son sprint et ses trophées ; fiche de paie ; cartes de passion (GitFut, Smash, dramas) |
-| [Murs du bureau](guide/fonctionnalites/08-murs.md) | Kanban du sprint, planning des crons, mises en prod, employé du sprint, écran du boss avec tes autres pages Kronn |
+| [Murs du bureau](guide/fonctionnalites/08-murs.md) | Kanban du sprint, prochains crons en post-it (salle Serveurs), mises en prod, employé du sprint, écran mural de la salle de réunion avec tes autres pages Kronn (ajout et retrait depuis la page) |
 | [Avatars](guide/fonctionnalites/09-avatars.md) | Éditeur d'apparence, pour soi ou pour toute l'équipe |
 | [Fraîcheur des données](guide/fonctionnalites/10-fraicheur.md) | Prochaine arrivée, sources en retard, crons du Bureau en échec, à relancer ou rafraîchir d'un clic |
 | [Téléphone](guide/fonctionnalites/11-mobile.md) | Affichage mobile |
@@ -35,8 +35,8 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 | Python 3.9 ou plus (`python3`, celui que Kronn trouve dans son `PATH`) | L'installateur et les scripts des crons | Rien ne s'installe |
 | Une connexion Atlassian dans Kronn (Kronn > MCP > Atlassian), créée avant l'installation | Sprint, tickets, Kanban, stand-up | Pas de Jira : blocs masqués |
 | `gh` connecté (`gh auth login`, droits `repo` et `read:org`) et accès aux dépôts suivis | PR, mises en prod ; un profil d'équipe réservé à une organisation GitHub | Pas de PR ni de MEP ; profils réservés refusés |
-| Le venv du dépôt avec Pillow : `python3 -m venv .venv && .venv/bin/pip install pillow` | Miniatures de l'écran du boss, cartes GitFut, affiches des Top 3, sprite LPC de l'installateur | Cartes sans image (sauf sur macOS : repli sur `sips`) |
-| Chrome ou Chromium | Miniatures de l'écran du boss | Cartes sans miniature |
+| Le venv du dépôt avec Pillow : `python3 -m venv .venv && .venv/bin/pip install pillow` | Miniatures de l'écran mural « Mes pages Kronn », cartes GitFut, affiches des Top 3, sprite LPC de l'installateur | Cartes sans image (sauf sur macOS : repli sur `sips`) |
+| Chrome ou Chromium | Miniatures de l'écran mural « Mes pages Kronn » | Cartes sans miniature |
 | Un agent IA installé dans Kronn (Claude Code, par exemple) | « Lui poser une question », plan depuis un croquis | Boutons masqués |
 | suno.com autorisé dans Kronn (Configuration > Artifacts) | Le lecteur Suno de la carte « Son écoute » | Lien vers Suno seulement |
 | Azure CLI connecté (`az login --allow-no-subscriptions`), la connexion Kronn « Microsoft 365 » (globale) et le planning Excel de l'équipe sur SharePoint | Absences et télétravail, calendrier de l'équipe | Tout le monde au bureau, pas de calendrier |

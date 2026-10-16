@@ -20,7 +20,7 @@ FURNITURE = {"boss_desk": [], "meeting_table": [[i, 0] for i in range(7)], "serv
              "toilets": [[4, 0]], "stage_closure": []}
 WALL_DECOR = ("whiteboard", "mirror", "sign")
 DIRS = {"up", "down", "left", "right"}
-OBJECTS = ("tv", "kanban", "planning", "paie", "emp")
+OBJECTS = ("tv", "kanban", "paie", "emp")  # « planning » (avant #60) : ignoré, les crons sont en post-it en salle Serveurs
 
 
 def seats_of(L):

@@ -26,7 +26,7 @@ ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate",
            "bureau-review": ("review", "__REVIEW_WF__"), "bureau-fix": ("fix", "__FIX_WF__"),
            "bureau-comment": ("comment", "__COMMENT_WF__"), "bureau-duck": ("duck", "__DUCK_WF__"),
            "bureau-estimate": ("estimate", "__ESTIMATE_WF__"), "bureau-mailrules": ("mail_rules", "__MAILRULES_WF__"),
-           "bureau-agent": ("agent", "__AGENT_WF__")}
+           "bureau-agent": ("agent", "__AGENT_WF__"), "bureau-pages": ("pages", "__PAGES_WF__")}
 # variables des workflows de la clé launch : rôle -> nom par défaut ; launch.<action> = id seul, ou {wf, vars: {rôle: nom
 # chez toi, ou null si ton workflow n'a pas cette variable}}
 LAUNCH_VARS = {"impl": {"ticket": "jira_ticket_key"}, "mep": {"ticket": "jira_ticket_key", "pr": "pr_number"},
@@ -417,6 +417,15 @@ def tight(data):
     return json.dumps(json.loads(data) if isinstance(data, str) else data, ensure_ascii=False, separators=(",", ":"))
 
 
+def to_second(text):
+    """Instantanés de démo embarqués : horodatages à la seconde (les fractions ne servent pas au rejeu)."""
+    return re.sub(r"(T\d\d:\d\d:\d\d)\.\d+(?=Z|[+-]\d\d:\d\d)", r"\1", text)
+
+
+def demo_snap():
+    return to_second(tight(Path(p("data", "office_snapshot.json")).read_text()))
+
+
 def build(demo=True, cfg=None):
     """Page complète. demo : instantanés de démo embarqués (aperçu local, tests) ; la page publiée n'en a pas.
     cfg : config d'installation (défaut : bureau.config.json)."""
@@ -439,8 +448,8 @@ def build(demo=True, cfg=None):
                 .replace("__ACTION_BINDS__", json.dumps(action_binds(html)))
                 .replace("__DEMO__", "true" if demo else "false")
                 .replace("__VERSION__", version())
-                .replace("__SNAP__", tight(Path(p("data", "office_snapshot.json")).read_text()) if demo else "null")
-                .replace("__TEAM__", tight(demo_team(cfg)) if demo else "null"))
+                .replace("__SNAP__", demo_snap() if demo else "null")
+                .replace("__TEAM__", to_second(tight(demo_team(cfg))) if demo else "null"))
     for _, mark in ACTIONS.values():
         html = html.replace(mark, acts[ACTIONS_BY_MARK[mark]])
     return html
@@ -460,7 +469,7 @@ def weights(cfg=None, demo=True):
          "sprites et calques": b(tight(sprites(cfg))) + b(Path(p("sprites", "layers.json")).read_text()),
          "équipe et plan": b(tight(recipes(cfg))) + b(tight({"people": roster(cfg), "guests": guests(cfg)}))
          + b(tight(Path(p(layout_path(cfg))).read_text())) + b(tight(music(cfg))),
-         "démo": b(tight(Path(p("data", "office_snapshot.json")).read_text())) + b(tight(demo_team(cfg))) if demo else 0}
+         "démo": b(demo_snap()) + b(to_second(tight(demo_team(cfg)))) if demo else 0}
     w["squelette et réglages"] = b(build(demo=demo, cfg=cfg)) - sum(w.values())
     return w
 
