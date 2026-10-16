@@ -412,6 +412,11 @@ def demo_team(cfg):
     return rx.sub(lambda m: names[m.group(1)], text)
 
 
+def tight(data):
+    """JSON embarqué sans espaces (KT-28 : poids de la page) ; data = objet ou texte JSON (fichier)."""
+    return json.dumps(json.loads(data) if isinstance(data, str) else data, ensure_ascii=False, separators=(",", ":"))
+
+
 def build(demo=True, cfg=None):
     """Page complète. demo : instantanés de démo embarqués (aperçu local, tests) ; la page publiée n'en a pas.
     cfg : config d'installation (défaut : bureau.config.json)."""
@@ -422,20 +427,20 @@ def build(demo=True, cfg=None):
     # bouton sans workflow configuré : sa carte kronn-action disparaît (la page masque le bouton)
     html = ACTION_RE.sub(lambda m: action_block(m.group(0), cfg) if acts[ACTIONS[m.group(1)][0]] else "", html)
     cast, custom = recipes(cfg), sprites(cfg)
-    html = (html.replace("__SPRITES__", json.dumps(custom))
+    html = (html.replace("__SPRITES__", tight(custom))
                 .replace("__LAYERS__", Path(p("sprites", "layers.json")).read_text())
-                .replace("__MUSIC__", json.dumps(music(cfg), ensure_ascii=False))
-                .replace("__CAST__", json.dumps(cast, ensure_ascii=False, separators=(",", ":")))
-                .replace("__ROSTER__", json.dumps({"people": roster(cfg), "guests": guests(cfg)}, ensure_ascii=False))
-                .replace("__LAYOUT__", Path(p(layout_path(cfg))).read_text())
+                .replace("__MUSIC__", tight(music(cfg)))
+                .replace("__CAST__", tight(cast))
+                .replace("__ROSTER__", tight({"people": roster(cfg), "guests": guests(cfg)}))
+                .replace("__LAYOUT__", tight(Path(p(layout_path(cfg))).read_text()))
                 .replace("__OWNER__", json.dumps(cfg.get("owner")))
                 .replace("__CONFIG__", json.dumps(page_config(cfg), ensure_ascii=False))
                 .replace("__ACTIONS__", json.dumps({k: bool(v) for k, v in acts.items()}))
                 .replace("__ACTION_BINDS__", json.dumps(action_binds(html)))
                 .replace("__DEMO__", "true" if demo else "false")
                 .replace("__VERSION__", version())
-                .replace("__SNAP__", Path(p("data", "office_snapshot.json")).read_text() if demo else "null")
-                .replace("__TEAM__", demo_team(cfg) if demo else "null"))
+                .replace("__SNAP__", tight(Path(p("data", "office_snapshot.json")).read_text()) if demo else "null")
+                .replace("__TEAM__", tight(demo_team(cfg)) if demo else "null"))
     for _, mark in ACTIONS.values():
         html = html.replace(mark, acts[ACTIONS_BY_MARK[mark]])
     return html
@@ -452,11 +457,10 @@ def weights(cfg=None, demo=True):
     b = lambda s: len(s.encode())  # noqa: E731
     css, js, fonts = page_parts(cfg)
     w = {"JS": b(js), "CSS": b(css) - fonts, "polices": fonts,
-         "sprites et calques": b(json.dumps(sprites(cfg))) + b(Path(p("sprites", "layers.json")).read_text()),
-         "équipe et plan": b(json.dumps(recipes(cfg), ensure_ascii=False, separators=(",", ":")))
-         + b(json.dumps({"people": roster(cfg), "guests": guests(cfg)}, ensure_ascii=False))
-         + b(Path(p(layout_path(cfg))).read_text()) + b(json.dumps(music(cfg), ensure_ascii=False)),
-         "démo": b(Path(p("data", "office_snapshot.json")).read_text()) + b(Path(p("data", "team_snapshot.json")).read_text()) if demo else 0}
+         "sprites et calques": b(tight(sprites(cfg))) + b(Path(p("sprites", "layers.json")).read_text()),
+         "équipe et plan": b(tight(recipes(cfg))) + b(tight({"people": roster(cfg), "guests": guests(cfg)}))
+         + b(tight(Path(p(layout_path(cfg))).read_text())) + b(tight(music(cfg))),
+         "démo": b(tight(Path(p("data", "office_snapshot.json")).read_text())) + b(tight(demo_team(cfg))) if demo else 0}
     w["squelette et réglages"] = b(build(demo=demo, cfg=cfg)) - sum(w.values())
     return w
 

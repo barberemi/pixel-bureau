@@ -478,7 +478,7 @@ class GuestsTest(unittest.TestCase):
         self.assertTrue({"yoda", "mage", "facteur"} <= set(assemble.sprites({})))  # planches communes (sprites/common.json)
         self.assertIn("sorcier", assemble.sprites(cfg))  # sa planche, tirée de sprites/sorcier/ du pack
         html = assemble.build(demo=False, cfg=dict(json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text()), team=pack))
-        self.assertIn('"guests": [{"key": "g_gandalf"', html)
+        self.assertIn('"guests":[{"key":"g_gandalf"', html)
 
 
 

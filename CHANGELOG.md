@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
+- « ▶ Lancer… » : un champ par paramètre dans la fiche de l'agent (libellé, exemple, * des obligatoires, zone de texte ou liste selon le workflow) ; le bouton copie la ligne déjà remplie, à coller telle quelle dans la carte Kronn, et reste grisé tant qu'une valeur manque ou est refusée (« ; », format) (#67).
 - Agents : « ▶ Lancer… » sur la fiche de tout agent dont un workflow demande une saisie (ligne « nom=… ; nom=… » copiée, à compléter dans la carte Kronn, revérifiée avant le lancement) ; « Nouvel agent » depuis le « + » d'une baie de la salle Serveurs (workflow sans agent, prénom, métier, siège, avatar), rangé dans le dataset `agents` sans republier, qui sort de la baie et rejoint sa place ; renommer ou retirer depuis sa fiche (#64).
 - PR de plusieurs dépôts (clé `github.pr_repos`, par défaut le dépôt principal et ceux des mises en prod) : une PR d'un autre dépôt apparaît dans la fiche du collègue et du ticket, le fil et les compteurs, s'identifie par son dépôt et son numéro (`front_api#16`), et « 🔎 Faire relire » et « 🛠 Corriger » se lancent aussi depuis la fiche d'une PR (#56).
 - Panneau Fraîcheur : les avertissements des crons (tarif non mesuré, canard sans projets, page du boss sautée, déploiements non relus…) s'affichent avec leur source, et chaque échec partiel est aussi écrit dans le run Kronn (#8).
@@ -19,6 +20,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- Ce qu'on tape dans un champ de fiche (Renommer un agent ajouté) n'est plus effacé par la mise à jour du panneau, chaque seconde.
 - Les pizzas de fin de sprint ont lieu même quand le sprint est clôturé le matin de sa fin et le suivant déjà ouvert : le cron équipe garde la fin prévue du sprint clôturé (`prev_sprint.planned_end`).
 - Un second placement de l'équipe (nouveau plan) ne déplace plus les agents de la config : leur siège demandé n'est plus réécrit en coordonnées (#64).
 - La fenêtre « Mes pages Kronn » garde le focus clavier (Tab et Maj+Tab bouclent dedans, le reste de la page est inerte) et le rend à la fermeture (#1).

@@ -198,7 +198,7 @@ body.km-on .side:has(.kmodal){z-index:50} /* le panneau est sticky (plan d'empil
 .na-modal{width:min(640px,calc(100vw - 32px));left:max(16px,calc(50% - 320px))}
 .na-grid{display:grid;grid-template-columns:1fr 272px;gap:16px}
 .na-form label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px}
-.na-form select,.na-form input{display:block;width:100%;margin-top:4px;padding:6px 8px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px}
+.na-form select,.na-form input,.na-form textarea{display:block;width:100%;margin-top:4px;padding:6px 8px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px}
 .na-av{display:grid;gap:8px;justify-items:start;align-content:start;font-size:11px;color:var(--muted)}
 .na-av canvas{width:256px;image-rendering:pixelated;background:var(--chip);border-radius:8px}
 @media (max-width:640px){.na-grid{grid-template-columns:1fr}}
@@ -285,6 +285,9 @@ body.tv #tvticker{display:block;position:fixed;left:0;right:0;bottom:0;height:48
 .relaunch>button{grid-column:2;grid-row:1/3}
 .relaunch>.note{grid-column:1/3}
 .relaunch.kmodal{display:block}
+.rl-form{display:block}.rl-f{margin-top:8px}.rl-form>button{width:100%}.rl-form>button:disabled{opacity:.5;cursor:not-allowed}.rl-why{margin:6px 0 0}.rl-f textarea{resize:vertical}
+.rl-f .req{color:var(--warn)}.rl-err{display:block;color:var(--err);font-weight:400}.rl-err:empty,.rl-why:empty{display:none}
+.rl-form.kmodal .rl-f,.rl-form.kmodal .rl-why{display:none}
 .relaunch.kmodal .rl-n{font-size:15px}
 .music{display:flex;gap:12px;align-items:center;background:linear-gradient(135deg,color-mix(in srgb,var(--mep) 18%,var(--panel)),var(--panel));border:1px solid var(--line);border-radius:12px;padding:10px;margin:0 0 12px}
 .music img{width:64px;height:64px;border-radius:8px;flex:none;box-shadow:0 2px 8px rgba(0,0,0,.3)}

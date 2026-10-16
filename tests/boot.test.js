@@ -138,22 +138,57 @@ test('panneau Fraîcheur : « ↻ Relancer » si en retard, « ↻ » discret si
   assert.equal(btn(`ACTIONS.relaunch = false; freshRelaunch(td, 'team', 'Équipe', true); ACTIONS.relaunch = true`), null, 'sans le workflow de relance');
 });
 
-test('fiche d\'un agent : « ▶ Lancer… » par workflow à saisie (liste launchable), lié au bloc bureau-launch ; la ligne de paramètres copiée (#64)', () => {
+test('fiche d\'un agent : « ▶ Lancer… » avec un champ par variable (liste launchable), lié au bloc bureau-launch ; la ligne copiée déjà remplie (#64, #67)', () => {
   const {run} = load();
   const a = run('AGENTS[0].key'), wf = run('AGENTS[0].wf[0]') + '-1111-2222-3333-444444444444';
-  run(`document.createElement = t => ({tag: t, attrs: {}, kids: [], style: {}, setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; },
+  run(`document.createElement = t => ({tag: t, attrs: {}, kids: [], style: {}, dataset: {}, setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; },
     appendChild(x) { this.kids.push(x); }, append(...x) { this.kids.push(...x); }, prepend() {}, addEventListener() {}, querySelector() { return {}; }});
     MutationObserver = function () { return {observe() {}}; }; var COPIED = null; copyText = t => { COPIED = t; return true; };
     var box = null; foldSection = () => (box = {kids: [], appendChild(x) { this.kids.push(x); }});
-    LAUNCHABLE = [{wf: '${wf}', name: 'Issue GitHub', vars: [{name: 'intention', label: 'Ce que tu veux faire', required: true}, {name: 'repo', label: 'Dépôt', required: false}]}];`);
-  const got = key => JSON.parse(run(`JSON.stringify((() => { box = null; runBlock({}, byKey[${JSON.stringify(key)}]);
-    const h = box && box.kids[0], b = h && h.kids.find(k => k.tag === 'button'); if (b) b.onclick();
-    return b ? {text: b.textContent, action: b.attrs['data-kronn-action'], bind: b.attrs['data-kronn-bindings'], html: h.innerHTML, copied: COPIED} : null; })())`));
-  const g = got(a);
-  assert.deepEqual([g.text, g.action, g.bind], ['▶ Lancer…', 'bureau-launch', JSON.stringify({wf_id: wf})]);
-  assert.match(g.html, /Ce que tu veux faire \*, Dépôt/);
-  assert.equal(g.copied, 'intention=… ; repo=…');
-  assert.equal(got(run('AGENTS[1].key')), null, 'aucun de ses workflows ne demande de saisie : pas de bouton');
+    LAUNCHABLE = [{wf: '${wf}', name: 'Issue GitHub', vars: [{name: 'intention', label: 'Ce que tu veux faire', required: true, multiline: true},
+      {name: 'repo', label: 'Dépôt', required: false, placeholder: 'owner/dépôt', pattern: '[\\\\w.-]+/[\\\\w.-]+'},
+      {name: 'type', label: 'Type', required: false, options: [{value: 'bug', label: 'Bug'}, {value: 'idee', label: 'Idée'}], default: 'idee'}]}];`);
+  run(`var LH = null, LB = null, F = {}; var grab = key => { box = null; runBlock({}, byKey[key]); LH = box && box.kids[0]; if (!LH) return;
+    LB = LH.kids.find(k => k.tag === 'button'); F = {}; for (const l of LH.kids[0].kids) { const f = l.kids[0]; F[f.tag] = f; } };
+    var type = (f, v) => { f.value = v; f.oninput(); };`);
+  run(`grab(${JSON.stringify(a)})`);
+  assert.deepEqual(JSON.parse(run('JSON.stringify([LB.textContent, LB.attrs["data-kronn-action"], LB.attrs["data-kronn-bindings"], Object.keys(F)])')),
+    ['▶ Lancer…', 'bureau-launch', JSON.stringify({wf_id: wf}), ['textarea', 'input', 'select']]);
+  assert.match(run('LH.kids[0].kids.map(l => l.innerHTML).join("|")'), /^Ce que tu veux faire <b class="req">\*<\/b>\|Dépôt\|Type$/);
+  assert.equal(run('F.input.placeholder'), 'owner/dépôt');
+  assert.equal(run('F.select.value'), 'idee', 'valeur par défaut de la liste');
+  assert.equal(run('LB.disabled'), true, 'obligatoire vide : bouton grisé');
+  assert.equal(run('LH.kids.find(k => k.className === "note rl-why").textContent'), 'À remplir : Ce que tu veux faire');
+  run('type(F.textarea, "Pouvoir éditer une étape ; vite")');
+  assert.equal(run('LB.disabled'), true, 'le « ; » est refusé');
+  assert.match(run('LH.kids[0].kids[0].kids[1].textContent'), /remplace-le par une virgule/);
+  run('type(F.textarea, "Pouvoir éditer une étape\\n  en arrivant dessus"); type(F.input, "pas un dépôt")');
+  assert.match(run('LH.kids[0].kids[1].kids[1].textContent'), /Format attendu : owner\/dépôt/);
+  run('type(F.input, "barberemi/pixel-bureau"); LB.onclick()');
+  assert.equal(run('LB.disabled'), false);
+  assert.equal(run('COPIED'), 'intention=Pouvoir éditer une étape en arrivant dessus ; repo=barberemi/pixel-bureau ; type=idee');
+  run(`box = null; runBlock({}, byKey[${JSON.stringify(run('AGENTS[1].key'))}])`);
+  assert.equal(run('box'), null, 'aucun de ses workflows ne demande de saisie : pas de bouton');
+});
+
+test('launchLine : obligatoires, « … » vide, « ; » refusé, motif, retours à la ligne en espaces', () => {
+  const {run} = load();
+  const ll = (vars, vals) => JSON.parse(run(`JSON.stringify(launchLine(${JSON.stringify(vars)}, ${JSON.stringify(vals)}))`));
+  const V = [{name: 'ticket', label: 'Ticket', required: true, pattern: '[A-Z]+-\\d+'}, {name: 'note', required: false}];
+  assert.deepEqual(ll(V, {ticket: '…'}), {line: '', errs: {}, missing: ['Ticket']});
+  assert.deepEqual(ll(V, {ticket: 'EW-12', note: ' a\nb '}), {line: 'ticket=EW-12 ; note=a b', errs: {}, missing: []});
+  assert.equal(Object.keys(ll(V, {ticket: '12'}).errs)[0], 'ticket');
+  assert.deepEqual(ll([{name: 'x', pattern: '('}], {x: 'ok'}).errs, {}, 'motif invalide : ignoré, comme Kronn');
+  assert.deepEqual(ll(V, {ticket: 'EW-1', note: 'a=b'}).line, 'ticket=EW-1 ; note=a=b', 'le « = » reste permis (relaunch.py coupe au premier)');
+});
+
+test('panneau redessiné : les saisies des champs data-fid passent au rendu suivant, leur oninput rejoué (#67)', () => {
+  const {run} = load();
+  run(`var F1 = {dataset: {fid: 'run:w:intention'}, value: 'Mon idée'}, F2 = {dataset: {fid: 'ren:n:a'}, value: 'Clark'};
+    var KEPT = keepFields({querySelectorAll: () => [F1, F2]}), SYNCED = 0;
+    var N1 = {dataset: {fid: 'run:w:intention'}, value: '', oninput() { SYNCED++; }}, N2 = {dataset: {fid: 'ren:n:a'}, value: 'Clark', oninput() { SYNCED++; }},
+      N3 = {dataset: {fid: 'grp:x'}}; restoreFields({querySelectorAll: () => [N1, N2, N3]}, KEPT);`);
+  assert.deepEqual(JSON.parse(run('JSON.stringify([N1.value, N2.value, SYNCED, "value" in N3])')), ['Mon idée', 'Clark', 1, false]);
 });
 
 test('validation : trois boutons directs, chacun lié à sa ligne de gates.grows (run_id et decision relus par Kronn)', () => {
