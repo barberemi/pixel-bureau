@@ -24,6 +24,7 @@ function loop(now){
     render(now);
     loupeFrame(now); // 44-loupe.js : médaillon sur l'événement fort en cours
     drawPreview(now);
+    drawNewAgentPreview(now); // 66-newagent.js
   }
   requestAnimationFrame(loop);
 }

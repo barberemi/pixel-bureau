@@ -18,6 +18,14 @@ Un invité de passage entre par la porte, va saluer des collègues à leur burea
 
 ![Un invité de passage chez Jan](../img/invite.png)
 
+## Ajouter un agent
+
+Un workflow sans personnage ne se voit qu'en intérimaire, le jour où il tourne. Pour lui donner un agent sans toucher à la config : survole la dernière baie de la salle Serveurs (un « + » vert s'allume) et clique. La fenêtre « Nouvel agent » propose les workflows qui n'ont pas encore d'agent, un prénom, un métier (affiché sur sa fiche), une place (un siège libre, ou celui que tu choisis) et un avatar tiré au hasard (🎲 pour en tirer un autre ; il se retouche ensuite depuis sa fiche, ✎ Personnaliser).
+
+« Créer l'agent » copie un code ; colle-le dans la carte Kronn qui s'ouvre, puis Lancer. Le workflow du Bureau « Le Bureau · agents » (0 token) range l'agent dans le dataset `agents` de la page : toute l'équipe le voit au rafraîchissement suivant, sans republier. Il se comporte comme un agent de la config : fiche, relance, question, fiche de paie. Pas de « + » en mode TV, ni sans le workflow « Le Bureau · agents » (installé par `publish.py workflows`).
+
+![La fenêtre « Nouvel agent »](../img/nouvel-agent.png)
+
 ## Où ils vont
 
 - **Bureau** : étape IA ou script en cours.

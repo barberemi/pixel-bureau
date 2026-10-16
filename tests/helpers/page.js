@@ -82,7 +82,7 @@ function pageJs(owner, {demo = true, actions = true, config, layout} = {}) {
     __SNAP__: demo ? read('data', 'office_snapshot.json') : 'null',
     __TEAM__: demo ? read('data', 'team_snapshot.json') : 'null',
     __DEMO__: String(!!demo),
-    __ACTIONS__: JSON.stringify({avatar: actions, gate: actions, relaunch: actions, ask: actions, impl: actions, mep: actions, review: actions, fix: actions, comment: actions, duck: actions}),
+    __ACTIONS__: JSON.stringify({avatar: actions, gate: actions, relaunch: actions, ask: actions, impl: actions, mep: actions, review: actions, fix: actions, comment: actions, duck: actions, agent: actions}),
     // comme action_binds() de tools/assemble.py, sur les blocs du squelette (noms par défaut ; rôle facultatif repo de
     // « Corriger » retiré tant que launch.fix.vars ne le nomme pas, LAUNCH_OPTIONAL)
     __ACTION_BINDS__: JSON.stringify(Object.fromEntries([...read('page', 'office_template.html').matchAll(/data-action-id="([^"]+)">(.*?)<\/script>/gs)]

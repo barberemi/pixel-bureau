@@ -8,7 +8,7 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 
 | Fonctionnalité | En bref |
 | --- | --- |
-| [Le plan](guide/fonctionnalites/01-plan.md) | Collègues, agents en hologramme, visiteurs et invités de passage, placés selon ce qu'ils font ; lumière du jour ; loupe sur les événements forts (réouverture, mise en prod, visite, cérémonies), plan d'équipe validé par le boss, brouillon depuis un croquis ou une photo, passions de l'équipe, le canard en plastique qui se promène et grandit avec le sprint (stades, canetons, succès, petites scènes) ; l'agent qui sort de panne applaudi |
+| [Le plan](guide/fonctionnalites/01-plan.md) | Collègues, agents en hologramme (et ceux ajoutés depuis une baie de la salle Serveurs), visiteurs et invités de passage, placés selon ce qu'ils font ; lumière du jour ; loupe sur les événements forts (réouverture, mise en prod, visite, cérémonies), plan d'équipe validé par le boss, brouillon depuis un croquis ou une photo, passions de l'équipe, le canard en plastique qui se promène et grandit avec le sprint (stades, canetons, succès, petites scènes) ; l'agent qui sort de panne applaudi |
 | [Qui fait quoi](guide/fonctionnalites/03-qui-fait-quoi.md) | Une carte par personne et par agent : ce qu'il fait maintenant |
 | [Fil et récap](guide/fonctionnalites/04-fil-et-recap.md) | La journée heure par heure (ce qui t'attend en haut, tes actions, pannes, filtre par type), et son résumé depuis minuit |
 | [Rejouer la journée](guide/fonctionnalites/05-rejouer.md) | Direct, ou relecture accélérée de minuit à maintenant |
