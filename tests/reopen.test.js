@@ -81,3 +81,16 @@ test('dernier jour du sprint : pizza à midi pour toute l\'équipe ; premier jou
     assert.notEqual(st('p_andy', '10:01').st, 'kickoff');
   } finally { run(`TEAM.sprint=${JSON.stringify(sprint)};`); }
 });
+
+test('sprint clôturé le matin de sa fin, le suivant déjà ouvert : pizzas quand même à midi (fin prévue du sprint précédent)', () => {
+  const sprint = J('TEAM.sprint'), prev = run('JSON.stringify(TEAM.prev_sprint||null)');
+  try {
+    run(`TEAM.sprint={...TEAM.sprint,start:'2026-10-01T09:59:57Z',end:'2026-10-15T11:00:00Z'};
+      TEAM.prev_sprint={...(TEAM.prev_sprint||{}),end:'2026-10-01T09:59:42Z',planned_end:'2026-10-01T14:00:00Z'};`);
+    assert.deepEqual([st('p_pam', '12:10').st, st('p_pam', '12:10').bubble], ['pizza', '🍕']);
+    run(`TEAM.prev_sprint={...TEAM.prev_sprint,planned_end:'2026-09-30T14:00:00Z',end:'2026-09-30T15:00:00Z'};`);
+    assert.notEqual(st('p_pam', '12:10').st, 'pizza', 'sprint précédent fini la veille : pas de pizzas');
+    run(`delete TEAM.prev_sprint.planned_end; TEAM.prev_sprint.end='2026-10-01T09:59:42Z';`);
+    assert.equal(st('p_pam', '12:10').st, 'pizza', 'ancien dataset sans planned_end : date de clôture');
+  } finally { run(`TEAM.sprint=${JSON.stringify(sprint)};TEAM.prev_sprint=${prev};`); }
+});

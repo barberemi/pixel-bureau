@@ -270,6 +270,15 @@ print(json.dumps(val))
                 "work": {"written": [], "po_triage": None, "sm_triage": None, "qa_ok": None, "qa_back": None},
                 "roles": {"po": "", "sm": "", "qa": ""}}
 
+    def test_team_shape_prev_sprint_keeps_planned_end(self):
+        """Sprint clôturé (#pizzas) : date de clôture (end) et fin prévue (planned_end), jour des pizzas même clôturé le matin."""
+        data = self.team_input()
+        closed = {"id": 41, "name": "S41", "state": "closed", "completeDate": "2026-10-16T09:59:42Z", "endDate": "2026-10-16T14:00:00Z"}
+        data["closed"] = [{"key": "DM-90", "fields": {"summary": "Livré", "status": {"name": "Done"}, "assignee": {"accountId": "acc-1", "displayName": "Darryl Martin"},
+                                                    "issuetype": {"name": "Story"}, "customfield_10020": [closed], "customfield_10016": 2}}]
+        ps = self.run_script("team_shape.py", data)["prev_sprint"]
+        self.assertEqual((ps["name"], ps["end"], ps["planned_end"]), ("S41", "2026-10-16T09:59:42Z", "2026-10-16T14:00:00Z"))
+
     def test_team_shape_groups_tickets_and_prs(self):
         out = self.run_script("team_shape.py", self.team_input())
         names = {p["name"]: p for p in out["people"]}
