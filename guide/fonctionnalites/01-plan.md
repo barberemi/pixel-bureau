@@ -51,7 +51,7 @@ D'autres changements de colonne se jouent aussi, à l'heure exacte du changement
 | --- | --- |
 | ![Gabe apporte DM-6717 à Karen](../img/scene-livraison.png) | ![Karen valide, Michael lève les bras](../img/scene-validation.png) |
 
-Le sprint a ses rendez-vous : le premier jour, juste après le daily, l'équipe passe 5 min devant le Kanban (🏁) ; le dernier jour, des boîtes de pizza arrivent sur la table de la cuisine vers midi et tout le monde y mange de 12h à 12h40 (🍕).
+Le sprint a ses rendez-vous : le premier jour, juste après le daily, l'équipe passe 5 min devant le Kanban (🏁) ; le dernier jour (fin prévue du sprint dans Jira, même s'il a été clôturé le matin et le suivant déjà ouvert), des boîtes de pizza arrivent sur la table de la cuisine vers midi et tout le monde y mange de 12h à 12h40 (🍕).
 
 | Lancement du sprint | Pizzas du dernier jour |
 | --- | --- |

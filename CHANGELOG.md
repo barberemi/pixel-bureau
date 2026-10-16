@@ -18,6 +18,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- Les pizzas de fin de sprint ont lieu même quand le sprint est clôturé le matin de sa fin et le suivant déjà ouvert : le cron équipe garde la fin prévue du sprint clôturé (`prev_sprint.planned_end`).
 - La fenêtre « Mes pages Kronn » garde le focus clavier (Tab et Maj+Tab bouclent dedans, le reste de la page est inerte) et le rend à la fermeture (#1).
 - Les tuiles « La prod aujourd'hui » et « Les agents », les lignes du fil et le titre de la loupe s'atteignent au clavier et s'ouvrent par Entrée ou Espace (#2).
 - Avec le réglage système « réduire les animations », les effets de thème au-dessus du plan disparaissent, la loupe automatique est éteinte par défaut et les défilements sont instantanés (#3).

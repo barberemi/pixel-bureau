@@ -221,7 +221,8 @@ if last:
         a = f["assignee"]
         p = prev.setdefault(a["accountId"], {"id": a["accountId"], "name": a.get("displayName"), "tickets": []})
         p["tickets"].append({"key": it.get("key"), "summary": (f.get("summary") or "")[:110], "points": pts_of(f), "cat": "done"})
-    prev_sprint = {"name": last.get("name"), "end": last.get("completeDate"), "people": list(prev.values())}
+    # end : clôture dans Jira ; planned_end : fin prévue, jour des pizzas même si l'équipe a clôturé le matin et ouvert le suivant
+    prev_sprint = {"name": last.get("name"), "end": last.get("completeDate"), "planned_end": last.get("endDate"), "people": list(prev.values())}
 
 # ---------- travail Jira des rôles sans tickets assignés (PO, SM, QA), 7 derniers jours ----------
 # par compte Jira : tickets écrits, triés (PO, SM) sur 7 jours ; testés et réouverts (QA) depuis le dernier daily ; 50 max par requête

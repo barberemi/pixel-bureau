@@ -86,7 +86,10 @@ function validatedScene(c,t,m){
 const SCENES={reopened:reopenScene,test:deliverScene,validated:validatedScene};
 // jours du sprint (Paris) : premier jour = lancement devant le Kanban après le daily, dernier jour = pizzas
 const sprintDay=k=>{const s=TEAM&&TEAM.sprint;return s&&s[k]?parisDay(ms(s[k])):null;};
-const lastSprintDay=t=>sprintDay('end')===parisDay(t)&&!RHYTHM.weekend.includes(parisHM(t).wd);
+// dernier jour : fin prévue du sprint actif, ou celle du sprint qu'on vient de clôturer (souvent le matin même, le suivant
+// déjà ouvert : les pizzas restent ce jour-là) ; ancien dataset sans planned_end : sa date de clôture
+const prevSprintDay=()=>{const p=TEAM&&TEAM.prev_sprint,e=p&&(p.planned_end||p.end);return e?parisDay(ms(e)):null;};
+const lastSprintDay=t=>{const d=parisDay(t);return (sprintDay('end')===d||prevSprintDay()===d)&&!RHYTHM.weekend.includes(parisHM(t).wd);};
 function teamScene(c,t){
   const s=TEAM&&TEAM.sprint, m0=parisMin(t), d0=parisMidnight(t)+(DAILY_MIN+RHYTHM.daily_minutes)*60e3;
   if(s&&sprintDay('start')===parisDay(t)&&t>=d0&&t<d0+KICKOFF_MS)
