@@ -21,7 +21,7 @@ from compact import strip_css, strip_js  # noqa: E402
 # et le dépôt si ton workflow le prend (launch.fix.vars.repo) ;
 # estimate : clé du ticket, Story Points et raison saisis dans la carte)
 ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate", "__GATE_WF__"), "bureau-answer": ("answer", "__ANSWER_WF__"),
-           "bureau-relaunch": ("relaunch", "__RELAUNCH_WF__"), "bureau-ask": ("ask", "__ASK_QP__"),
+           "bureau-relaunch": ("relaunch", "__RELAUNCH_WF__"), "bureau-launch": ("relaunch", "__RELAUNCH_WF__"), "bureau-ask": ("ask", "__ASK_QP__"),
            "bureau-impl": ("impl", "__IMPL_WF__"), "bureau-mep": ("mep", "__MEP_WF__"),
            "bureau-review": ("review", "__REVIEW_WF__"), "bureau-fix": ("fix", "__FIX_WF__"),
            "bureau-comment": ("comment", "__COMMENT_WF__"), "bureau-duck": ("duck", "__DUCK_WF__"),
@@ -169,7 +169,6 @@ def page_config(cfg):
         "workflows": cfg.get("workflows") or {},  # ids des crons : calendrier et fraîcheur des données
         "schedules": cron_schedules(cfg),  # calendrier des crons du Bureau (modèles de workflows)
         "agents": cfg.get("agents") or [],
-        "agent_runs": sorted(agent_launches(cfg)),  # agents qui ont un bouton « ▶ Lancer… » (bloc bureau-run-<clé>)
         "ui": cfg.get("ui") or {},
         "skins": themes(cfg),  # thèmes d'interface (theme-*.css) proposés par le bouton 🎨
     }
@@ -352,30 +351,6 @@ def launch(cfg):
     return out
 
 
-def agent_launches(cfg):
-    """Agents qu'on lance depuis leur fiche (« ▶ Lancer… », #64) : {clé de l'agent: (id du workflow, [variables saisies
-    dans la carte Kronn])}. agents[].launch = {wf: id complet du workflow, vars: [noms de ses variables]} ; sans wf, pas
-    de bouton. Clé d'agent ou id douteux (ils entrent dans le HTML de la page) : ValueError."""
-    out = {}
-    for a in (cfg or {}).get("agents") or []:
-        run = a.get("launch") or {}
-        if not run.get("wf"):
-            continue
-        key, wf, names = str(a.get("key") or ""), str(run["wf"]), [str(v) for v in run.get("vars") or []]
-        if not re.fullmatch(r"[\w-]+", key) or not re.fullmatch(r"[\w-]+", wf) or not all(re.fullmatch(r"[\w.-]+", v) for v in names):
-            raise ValueError(f"agents.{key or '?'}.launch : clé, id ou nom de variable invalide")
-        out[key] = (wf, names)
-    return out
-
-
-def agent_blocks(cfg):
-    """Un bloc kronn-action par agent lançable (bureau-run-<clé>) : toutes ses variables sont saisies dans la carte."""
-    return "".join(f'<script type="application/kronn-action" data-action-id="bureau-run-{key}">'
-                   + json.dumps({"kind": "workflow", "target_id": wf, "values": [{"name": v, "provenance": "user_input"} for v in names]},
-                                ensure_ascii=False, separators=(",", ":")) + "</script>\n"
-                   for key, (wf, names) in agent_launches(cfg).items())
-
-
 def action_ids(cfg):
     """Id de la cible de chaque bouton : workflows du Bureau (actions), puis tes workflows (launch)."""
     return {**(cfg.get("actions") or {}), **{k: wf for k, (wf, _) in launch(cfg).items()}}
@@ -446,7 +421,6 @@ def build(demo=True, cfg=None):
     html = page_html(cfg)
     # bouton sans workflow configuré : sa carte kronn-action disparaît (la page masque le bouton)
     html = ACTION_RE.sub(lambda m: action_block(m.group(0), cfg) if acts[ACTIONS[m.group(1)][0]] else "", html)
-    html = html.replace("<!--__AGENT_RUNS__-->\n", agent_blocks(cfg))  # « ▶ Lancer… » des fiches d'agents (#64)
     cast, custom = recipes(cfg), sprites(cfg)
     html = (html.replace("__SPRITES__", json.dumps(custom))
                 .replace("__LAYERS__", Path(p("sprites", "layers.json")).read_text())

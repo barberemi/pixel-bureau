@@ -61,7 +61,7 @@ function openNewAgent(){
     </div><div class="na-av"><canvas id="naprev" width="256" height="64" aria-label="Aperçu de l'avatar"></canvas>
       <button type="button" class="na-dice">🎲 Au hasard</button><small>Retouche-le ensuite depuis sa fiche (✎ Personnaliser).</small></div></div>
     <div class="teamsave" data-kronn-action-slot-host><button type="button" class="on na-create" data-kronn-action="bureau-agent">Créer l'agent</button>
-      <div class="hint na-hint">Kronn va te demander un <b>code agent</b> : ce bouton le copie pour toi, il n'y a qu'à le coller.</div></div>`
+      <div class="hint na-hint">Kronn va te demander un <b>code agent</b> : ce bouton le copie pour toi.</div></div>`
     :`<p class="note">Tous tes workflows ont déjà un agent.</p>`);
   NA_INERT=[...document.body.children].filter(e=>!e.inert&&e.tagName!=='SCRIPT');
   NA_INERT.forEach(e=>{e.inert=true;});
@@ -136,17 +136,17 @@ function addedAgentBlock(side,c){
   if(!c.added||!ACTIONS.agent||TV)return;
   const box=foldSection(side,'added','🛠 Agent ajouté',null,false);
   const host=document.createElement('div');host.className='na-admin';host.setAttribute('data-kronn-action-slot-host','');
-  host.innerHTML=`<div class="rl-s">Ajouté depuis une baie de la salle Serveurs. Renomme-le ou retire-le du bureau : un code à coller dans la carte Kronn.</div>
+  host.innerHTML=`<div class="rl-s">Ajouté depuis la salle Serveurs : renomme-le ou retire-le (code à coller dans la carte Kronn).</div>
     <div class="na-form"><label>Prénom<input class="na-rn" type="text" maxlength="24"></label><label>Métier<input class="na-rr" type="text" maxlength="60"></label></div>`;
   const $=s=>host.querySelector(s), name=$('.na-rn'), role=$('.na-rr');
   name.value=c.name;role.value=c.role||'';
   const ren=document.createElement('button');ren.textContent='✎ Renommer';ren.setAttribute('data-kronn-action','bureau-agent');
   const del=document.createElement('button');del.textContent='✕ Retirer du bureau';del.setAttribute('data-kronn-action','bureau-agent');
-  const hint=document.createElement('div');hint.className='hint';hint.textContent='Kronn va te demander un code agent : chaque bouton le copie pour toi.';
+  const hint=document.createElement('div'), give=code=>{hint.className='hint';codeHint(hint,code,'Code agent');};
   const sync=()=>{ren.disabled=!name.value.trim()||(name.value.trim()===c.name&&role.value.trim()===(c.role||''));};
   name.oninput=sync;role.oninput=sync;sync();
-  ren.onclick=()=>codeHint(hint,renameCode(c,name.value.trim(),role.value.trim()),'Code agent');
-  del.onclick=()=>codeHint(hint,removeCode(c),'Code agent');
+  ren.onclick=()=>give(renameCode(c,name.value.trim(),role.value.trim()));
+  del.onclick=()=>give(removeCode(c));
   const acts=document.createElement('div');acts.className='na-acts';acts.append(ren,del);
   host.append(acts,hint);kronnModal(host,ren,'Renommer '+c.name);kronnModal(host,del,'Retirer '+c.name);box.appendChild(host);
 }

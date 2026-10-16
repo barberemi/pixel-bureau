@@ -46,25 +46,18 @@ function applyLayout(L){
 }
 // ---------- superposition : instantané complet (office/team, 10 min) + live (1 min) ----------
 let OFFICE=null, OFFICE_IS_LIVE=false, TEAM_BASE=null, LIVE=null;
-let GATES=[], PAYROLL=null, RELAUNCH=[], ASKABLE=[], QUESTIONS=[];
-function readAskable(src){
+let GATES=[], PAYROLL=null, RELAUNCH=[], LAUNCHABLE=[], ASKABLE=[], QUESTIONS=[];
+// listes du dataset gates : askable (agents à interroger), launchable (à lancer avec des paramètres, #64), workflows (relançables)
+function gatesList(src,key){
   try{
     if(!src||!src.datasets)return null;
     let d=src.datasets.gates;
     if(d&&d.current!==undefined)d=d.current;
     if(typeof d==='string')d=JSON.parse(d);
-    return d&&Array.isArray(d.askable)?d.askable:null;
+    return d&&Array.isArray(d[key])?d[key]:null;
   }catch(e){return null;}
 }
-function readRelaunch(src){
-  try{
-    if(!src||!src.datasets)return null;
-    let d=src.datasets.gates;
-    if(d&&d.current!==undefined)d=d.current;
-    if(typeof d==='string')d=JSON.parse(d);
-    return d&&Array.isArray(d.workflows)?d.workflows:null;
-  }catch(e){return null;}
-}
+const readAskable=src=>gatesList(src,'askable'), readLaunchable=src=>gatesList(src,'launchable'), readRelaunch=src=>gatesList(src,'workflows');
 function readPayroll(src){
   try{
     if(!src||!src.datasets)return null;
@@ -137,6 +130,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   GATES=readGates(k)||[];
   QUESTIONS=readQuestions(k)||[];
   RELAUNCH=readRelaunch(k)||[];
+  LAUNCHABLE=readLaunchable(k)||[];
   ASKABLE=readAskable(k)||[];
   {const dk=readDuckData(k);if(dk){DUCK_PROJECTS=dk.projects;DUCKS=dk.ducks;}} // 39-duck.js
   PAYROLL=readPayroll(k);
@@ -170,6 +164,8 @@ window.addEventListener('kronn:page-data',e=>{
   if(qq)QUESTIONS=qq;
   const rl=readRelaunch(k)||readRelaunch(window.KronnPageData);
   if(rl)RELAUNCH=rl;
+  const la=readLaunchable(k)||readLaunchable(window.KronnPageData);
+  if(la)LAUNCHABLE=la;
   const ak=readAskable(k)||readAskable(window.KronnPageData);
   if(ak)ASKABLE=ak;
   const dk=readDuckData(k)||readDuckData(window.KronnPageData);

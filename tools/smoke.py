@@ -7,8 +7,7 @@
     python3 tools/smoke.py --team ~/Sites/bureau-monequipe --chrome   # la démo avec un autre pack d'équipe (sa CI)
 
 Contrôles : taille < 1 000 000 octets, chaque <script> (hors kronn-action) se parse (node, new Function),
-les 14 blocs kronn-action du squelette sont présents à l'identique (ids de workflows remplacés), plus ceux des agents
-lançables (agents[].launch), leur JSON est valide,
+les 15 blocs kronn-action du squelette sont présents à l'identique (ids de workflows remplacés), leur JSON est valide,
 plus aucun marqueur __X__ ni /*__STYLES__*/ /*__SCRIPTS__*/ ne traîne.
 --chrome demande websocket-client (`.venv/bin/pip install websocket-client`) ; Chrome est lancé muet
 (--mute-audio), sur un profil jetable, puis arrêté.
@@ -59,10 +58,9 @@ def static_checks(html, cfg=None):
         key, mark = assemble.ACTIONS[re.search(r'data-action-id="([^"]+)"', b).group(1)]
         if acts.get(key):  # bouton sans workflow configuré : bloc retiré à l'assemblage
             expected.append(assemble.action_block(b, c))
-    expected += ACTION_RE.findall(assemble.agent_blocks(c))  # « ▶ Lancer… » des agents (agents[].launch, #64)
     found = ACTION_RE.findall(html)
-    check(total == 14, f"{total} blocs kronn-action dans le squelette (attendu 14)")
-    check(found == expected, f"blocs kronn-action attendus présents à l'identique ({len(expected)}/13 configurés)")
+    check(total == 15, f"{total} blocs kronn-action dans le squelette (attendu 15)")
+    check(found == expected, f"blocs kronn-action attendus présents à l'identique ({len(expected)}/14 configurés)")
     for b in found:
         body = b.split(">", 1)[1].rsplit("</script>", 1)[0]
         try:
@@ -70,7 +68,7 @@ def static_checks(html, cfg=None):
             check(True, "JSON kronn-action " + re.search(r'data-action-id="([^"]+)"', b).group(1))
         except ValueError as e:
             check(False, f"JSON kronn-action invalide : {e}")
-    left = sorted(set(re.findall(r"__(?:SPRITES|LAYERS|CAST|MUSIC|SNAP|TEAM|ROSTER|CONFIG|OWNER|DEMO|ACTIONS|AVATAR_WF|GATE_WF|RELAUNCH_WF|ASK_QP|AGENT_RUNS)__|/\*__(?:STYLES|SCRIPTS)__\*/", html)))
+    left = sorted(set(re.findall(r"__(?:SPRITES|LAYERS|CAST|MUSIC|SNAP|TEAM|ROSTER|CONFIG|OWNER|DEMO|ACTIONS|AVATAR_WF|GATE_WF|RELAUNCH_WF|ASK_QP)__|/\*__(?:STYLES|SCRIPTS)__\*/", html)))
     check(not left, "aucun marqueur restant" + (f" : {left}" if left else ""))
     scripts = [(a, s) for a, s in SCRIPT_RE.findall(html) if "kronn-action" not in a]
     check(len(scripts) == 1, f"{len(scripts)} <script> exécutable(s) (attendu 1)")

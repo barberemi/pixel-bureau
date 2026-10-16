@@ -11,7 +11,7 @@ const {load} = require('./page.js');
 // lecteur de la page -> dataset lu (page/src/*.js)
 const READERS = {
   readData: 'office', readLive: 'live', readTeam: 'team', readActs: 'actions',
-  readGates: 'gates', readQuestions: 'gates', readRelaunch: 'gates', readAskable: 'gates', readDuckData: 'gates',
+  readGates: 'gates', readQuestions: 'gates', readRelaunch: 'gates', readLaunchable: 'gates', readAskable: 'gates', readDuckData: 'gates',
   readPayroll: 'payroll', readBossPages: 'bosspages', readGitfut: 'gitfut', readPosters: 'gitfut',
   readAbsences: 'absences', readDuckGame: 'duck', readAvatars: 'avatars', readAgents: 'agents', readLayout: 'layout',
 };

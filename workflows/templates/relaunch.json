@@ -16,6 +16,15 @@
     "required": true,
     "source": null,
     "allow_manual_override": false
+   },
+   {
+    "name": "params",
+    "label": "Paramètres",
+    "placeholder": "Colle la ligne copiée : nom=valeur ; nom=valeur",
+    "description": "« ▶ Lancer… » d'une fiche d'agent vient de copier cette ligne : colle-la (⌘V), remplace chaque … par ta valeur, puis Lancer. Vide pour une simple relance.",
+    "required": false,
+    "source": null,
+    "allow_manual_override": false
    }
   ],
   "steps": [
@@ -37,7 +46,8 @@
     "exec_args": [
      "-c",
      "@@script:workflows/relaunch.py@@",
-     "{{wf_id}}"
+     "{{wf_id}}",
+     "{{params}}"
     ],
     "exec_timeout_secs": 30
    }

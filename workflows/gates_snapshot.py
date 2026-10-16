@@ -92,6 +92,16 @@ for key, wid in (CFG.get("workflows") or {}).items():
     if wid in defs:
         relaunch.append({"wf": wid, "name": defs[wid][0]["name"], "trigger": defs[wid][0].get("trigger_type"), "bureau": key})
 
+# workflows qui demandent une saisie (« ▶ Lancer… » des fiches d'agents, #64) : leurs variables à saisir, pour le modèle
+# « nom=… ; nom=… » que la page copie et que relaunch.py revérifie (même règle que l'exclusion de « Relancer » ci-dessus)
+launchable = []
+for wid, (wf, full) in defs.items():
+    if is_bureau(wf) or wid in children or not full:
+        continue
+    asked = [v for v in full.get("variables") or [] if v.get("name") and v.get("source") in (None, "", "user_input")]
+    if any(v.get("required", True) for v in asked):
+        launchable.append({"wf": wid, "name": wf["name"], "vars": [{"name": v["name"], "label": v.get("label") or v["name"],
+                                                                     "required": bool(v.get("required", True))} for v in asked]})
 # agents qu'on peut interroger sur leurs runs (page action « bureau-ask ») : tout workflow actif hors Bureau
 askable = [{"wf": wid, "name": wf["name"]} for wid, (wf, full) in defs.items() if not is_bureau(wf)]
 # le canard : un bouton par projet, et ses discussions
@@ -150,6 +160,6 @@ except Exception:
 # une ligne par décision possible de chaque gate (#45) : les boutons directs de la page (approuver, rejeter, changements)
 # en désignent une, Kronn y relit run_id et decision (page action « bureau-gate »), jamais saisis
 grows = [{"id": f"{g['run']}|{d}", "run": g["run"], "decision": d} for g in gates for d in ("approve", "reject", "request_changes")]
-print(json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "gates": gates, "workflows": relaunch, "askable": askable,
+print(json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "gates": gates, "workflows": relaunch, "launchable": launchable, "askable": askable,
                   "projects": projects, "ducks": ducks, "questions": questions, "qrows": qrows, "grows": grows,
                   "warnings": warnings}, ensure_ascii=False))

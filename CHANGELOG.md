@@ -8,7 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
-- Agents : « ▶ Lancer… » sur la fiche d'un agent dont le workflow demande une saisie (`agents[].launch`) ; « Nouvel agent » depuis le « + » d'une baie de la salle Serveurs (workflow sans agent, prénom, métier, siège, avatar), rangé dans le dataset `agents` sans republier, qui sort de la baie et rejoint sa place ; renommer ou retirer depuis sa fiche (#64).
+- Agents : « ▶ Lancer… » sur la fiche de tout agent dont un workflow demande une saisie (ligne « nom=… ; nom=… » copiée, à compléter dans la carte Kronn, revérifiée avant le lancement) ; « Nouvel agent » depuis le « + » d'une baie de la salle Serveurs (workflow sans agent, prénom, métier, siège, avatar), rangé dans le dataset `agents` sans republier, qui sort de la baie et rejoint sa place ; renommer ou retirer depuis sa fiche (#64).
 - PR de plusieurs dépôts (clé `github.pr_repos`, par défaut le dépôt principal et ceux des mises en prod) : une PR d'un autre dépôt apparaît dans la fiche du collègue et du ticket, le fil et les compteurs, s'identifie par son dépôt et son numéro (`front_api#16`), et « 🔎 Faire relire » et « 🛠 Corriger » se lancent aussi depuis la fiche d'une PR (#56).
 - Panneau Fraîcheur : les avertissements des crons (tarif non mesuré, canard sans projets, page du boss sautée, déploiements non relus…) s'affichent avec leur source, et chaque échec partiel est aussi écrit dans le run Kronn (#8).
 - Trois boutons directs sur chaque validation (✅ Approuver, ⛔ Rejeter, ✏️ Changements…) au lieu de « Décider… » et de son menu (#45).

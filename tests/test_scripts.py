@@ -119,6 +119,8 @@ class FakeKronn:
             return {"id": "dd000001", "title": body["title"]}
         if re.fullmatch(r"/discussions/[\w-]+/run", p):
             return None
+        if p == "/mcp/workflow-trigger":  # relaunch.py
+            return {"run_id": "run-lance"}  # enveloppé en {success, data} par le faux serveur
         m = re.fullmatch(r"/discussions/([\w-]+)/questions/([^/]+)/(answer|decline)", p)
         if m:  # question_answer.py : la question passe à answered / declined (id Kronn « question:<discussion>:<n> », encodé)
             q = next(x for x in self.questions[m.group(1)] if x["id"] == unquote(m.group(2)))
@@ -857,6 +859,42 @@ print(json.dumps(val))
         gates = self.run_script("gates_snapshot.py", api=self.kronn(fake))
         self.assertEqual([w["name"] for w in gates["workflows"] if "bureau" not in w], ["Revue de PR", "Saisie facultative", "Variable fournie"])
         self.assertIn(ids["b"], [w["wf"] for w in gates["askable"]])  # on peut toujours l'interroger sur ses runs
+
+    def test_gates_lists_launchable_workflows_with_their_inputs(self):
+        """« ▶ Lancer… » (#64) : chaque workflow qui demande une saisie, avec ses variables à saisir (pas celles d'une source)."""
+        fake = FakeKronn()
+        now = iso(2)
+        wid = "b" * 8 + "-1111-2222-3333-444444444444"
+        fake.workflows.append({"id": wid, "name": "Issue GitHub", "enabled": True, "trigger_type": "manual", "last_run": {"started_at": now, "finished_at": now, "status": "Success"}})
+        fake.variables = {wid: [{"name": "intention", "label": "Ce que tu veux faire", "required": True, "source": "user_input"},
+                                {"name": "repo", "required": False}, {"name": "token", "required": True, "source": "config"}]}
+        gates = self.run_script("gates_snapshot.py", api=self.kronn(fake))
+        self.assertEqual(gates["launchable"], [{"wf": wid, "name": "Issue GitHub", "vars": [
+            {"name": "intention", "label": "Ce que tu veux faire", "required": True}, {"name": "repo", "label": "repo", "required": False}]}])
+
+    def relaunch(self, fake, *args):
+        cfg_path = os.path.join(self.tmp, "bureau.config.json")
+        with open(cfg_path, "w") as fh:
+            json.dump(dict(FIXTURE, kronn=dict(FIXTURE["kronn"], api=self.kronn(fake))), fh)
+        return subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "relaunch.py"), *args], capture_output=True, text=True,
+                              env={"BUREAU_CONFIG": cfg_path, "HOME": self.tmp, "PATH": self.bin, **CLOCK}, timeout=60)
+
+    def test_relaunch_with_params_checks_each_name_then_launches(self):
+        """Paramètres « nom=valeur ; … » (#64) : noms revérifiés contre launchable, « … » = vide, obligatoires remplis."""
+        wid = "c" * 8 + "-1111-2222-3333-444444444444"
+        fake = FakeKronn()
+        fake.datasets = [{"name": "gates", "current": {"workflows": [], "launchable": [{"wf": wid, "name": "Issue GitHub", "vars": [
+            {"name": "intention", "required": True}, {"name": "repo", "required": False}]}]}}]
+        r = self.relaunch(fake, wid, "intention=Pouvoir lancer Clark = facile ; repo=…")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(fake.posts[-1], ("/mcp/workflow-trigger", {"workflow_id": wid, "variables": {"intention": "Pouvoir lancer Clark = facile"}}))
+        for params, msg in (("intention=… ; repo=x", "obligatoire à remplir : intention"), ("intent=x", "Paramètre inconnu : « intent »"),
+                            ("n'importe quoi", "Paramètre inconnu")):
+            r = self.relaunch(fake, wid, params)
+            self.assertNotEqual(r.returncode, 0, params)
+            self.assertIn(msg, r.stderr)
+        r = self.relaunch(fake, wid)  # sans paramètres : il faut être dans « workflows » (relance simple)
+        self.assertIn("ne peut pas être relancé", r.stderr)
 
     # ---------- le canard ----------
     def duck_discs(self, fake):

@@ -32,7 +32,7 @@ function themes(cfg = {}) {
 function pageConfig(cfg) {
   return {kronn_ui: (cfg.kronn || {}).ui, jira_site: (cfg.jira || {}).site, jira_flow: {triage_from: 'Proposed', test: 'To Test', validated: 'To Deploy', reopened: 'Reopen', ...((cfg.jira || {}).flow || {})}, github_repo: (cfg.github || {}).repo,
     fix_any_repo: !!((((cfg.launch || {}).fix || {}).vars || {}).repo), // comme page_config() : Corriger prend le dépôt (#56)
-    rhythm: cfg.rhythm || {}, mep_workflow: cfg.mep_workflow, workflows: cfg.workflows || {}, agents: cfg.agents || [], agent_runs: (cfg.agents || []).filter(a => a.launch && a.launch.wf).map(a => a.key).sort(), ui: cfg.ui || {}, skins: themes(cfg),
+    rhythm: cfg.rhythm || {}, mep_workflow: cfg.mep_workflow, workflows: cfg.workflows || {}, agents: cfg.agents || [], ui: cfg.ui || {}, skins: themes(cfg),
     schedules: Object.fromEntries(['office', 'live', 'team', 'payroll', 'canard'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule.replace('@@cron_hours@@', '4-20')]))}; // heures de Paris, comme cron_hours()
 }
 
