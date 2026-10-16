@@ -152,7 +152,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   if(!OFFICE)OFFICE=DEMO&&SNAP?SNAP:emptyOffice();
   TEAM_BASE=readTeam(k)||(DEMO?TEAM_SNAP:null);
   LIVE=readLive(k);
-  refreshAll();
+  if(!applyAgents(readAgents(k)||{}))refreshAll(); // 31-agents.js : agents ajoutés depuis la page (#64)
   if(!ABSENCES&&DEMO)ABSENCES=absencesDemo();
   if(!MAILS&&DEMO)MAILS=mailDemo();
 }
@@ -200,6 +200,8 @@ window.addEventListener('kronn:page-data',e=>{
   }
   const l=readLive(k)||readLive(window.KronnPageData);
   if(l)LIVE=l;
+  const ag=readAgents(k);
+  if(ag)applyAgents(ag);
   const lay=readLayout(k);
   if(lay!==undefined&&applyLayout(lay||EMBEDDED_LAYOUT))return; // applyLayout a déjà tout rafraîchi
   refreshAll();

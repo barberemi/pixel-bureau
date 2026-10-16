@@ -24,7 +24,7 @@ Existant lié : [TD-20261011-missing-security-md](tech-debt/TD-20261011-missing-
 **Injection**
 - SQL : N/A, aucune base.
 - Shell : verified absent. Tous les `subprocess.run`/`Popen` passent une liste d'arguments sans `shell=True` (`tools/install.py:164`, `tools/plan.py:155`, `tools/shots.py:198`, `workflows/_lib.py:160`). `exec(_PIL, ...)` à `workflows/_lib.py:151` exécute une constante du module, les données passent par le dict `A`.
-- Chemins de fichiers : les entrées collées depuis la page sont validées par regex avant usage (`workflows/avatar_save.py:16-20`, clé `^[a-z0-9_]{1,40}$`, pas de `.`).
+- Chemins de fichiers : les entrées collées depuis la page sont validées par regex avant usage (`workflows/avatar_save.py:16-20`, clé `^[a-z0-9_]{1,40}$`, pas de `.` ; `workflows/agent_save.py`, clé `^a_[a-z0-9_]{1,30}$` qui ne peut pas prendre celle d'une personne ou d'un agent de la config, apparence par `clean_look()` de `_lib.py`).
 - Templates / innerHTML : environ 92 puits `innerHTML`/`insertAdjacentHTML` dans `page/src/`, les valeurs externes passent par `esc()` (`page/src/50-panel.js:3`). Échantillon vérifié : `page/src/60-fiches.js:157`, `page/src/62-ticket.js:87`, `page/src/70-kpis-feed.js:103`. Reste le schéma des URL, voir TD-20261011-href-scheme-unchecked.
 - Désérialisation : verified absent (pas de `pickle`, `yaml.load`, `unserialize`) ; seulement `json.loads`.
 

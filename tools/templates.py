@@ -2,7 +2,7 @@
 
   python3 tools/templates.py export   # depuis le Kronn de bureau.config.json : valeurs de l'installation -> emplacements
   python3 tools/templates.py check    # le rendu avec bureau.config.json redonne exactement les workflows de ce Kronn
-  python3 tools/templates.py render <clé>   # affiche le rendu d'un modèle (office, live, team, payroll, canard, absences, avatar, gate, relaunch, layout, comment, duck, ask, sketch)
+  python3 tools/templates.py render <clé>   # affiche le rendu d'un modèle (office, live, team, payroll, canard, absences, avatar, agent, gate, relaunch, layout, comment, duck, ask, sketch)
 
 Emplacements, remplacés au rendu :
   @@page_id@@, @@kronn.project_id@@, @@jira.config_id@@, @@jira.project@@, @@jira.board@@, @@jira.sprint_field@@,
@@ -37,6 +37,7 @@ TEMPLATES = {
     # règles du courrier (#30) : le facteur les propose (agent), le boss les valide (gate) ; lancé par le cron courrier
     "regles": ("workflow", ("actions", "mail_rules"), {"senders": "workflows/mail_snapshot.py", "merge": "workflows/mail_snapshot.py"}),
     "avatar": ("workflow", ("actions", "avatar"), {"save": "workflows/avatar_save.py"}),
+    "agent": ("workflow", ("actions", "agent"), {"save": "workflows/agent_save.py"}),  # agents ajoutés depuis une baie (#64)
     "gate": ("workflow", ("actions", "gate"), {"decide": "workflows/gate_decide.py"}),
     "answer": ("workflow", ("actions", "answer"), {"answer": "workflows/question_answer.py"}),  # question de discussion (KT-27)
     "relaunch": ("workflow", ("actions", "relaunch"), {"relaunch": "workflows/relaunch.py"}),
