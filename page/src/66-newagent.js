@@ -139,7 +139,7 @@ function addedAgentBlock(side,c){
   host.innerHTML=`<div class="rl-s">Ajouté depuis la salle Serveurs : renomme-le ou retire-le (code à coller dans la carte Kronn).</div>
     <div class="na-form"><label>Prénom<input class="na-rn" type="text" maxlength="24"></label><label>Métier<input class="na-rr" type="text" maxlength="60"></label></div>`;
   const $=s=>host.querySelector(s), name=$('.na-rn'), role=$('.na-rr');
-  name.value=c.name;role.value=c.role||'';
+  name.value=c.name;role.value=c.role||'';name.dataset.fid='ren:n:'+c.key;role.dataset.fid='ren:r:'+c.key;
   const ren=document.createElement('button');ren.textContent='✎ Renommer';ren.setAttribute('data-kronn-action','bureau-agent');
   const del=document.createElement('button');del.textContent='✕ Retirer du bureau';del.setAttribute('data-kronn-action','bureau-agent');
   const hint=document.createElement('div'), give=code=>{hint.className='hint';codeHint(hint,code,'Code agent');};

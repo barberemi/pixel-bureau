@@ -46,6 +46,9 @@ function sideFoldButton(side){
   b.onclick=()=>{SIDE_FOLDED=!SIDE_FOLDED;renderSide(true);};
   side.appendChild(b);
 }
+// et ce qui est saisi dans ses champs (data-fid : « ▶ Lancer… », Renommer) : la saisie survit au redessin suivant (#67)
+function keepFields(side){const k={};for(const e of side.querySelectorAll('input[data-fid],textarea[data-fid],select[data-fid]'))k[e.dataset.fid]=e.value;return k;}
+function restoreFields(side,k){for(const e of side.querySelectorAll('[data-fid]'))if(e.dataset.fid in k&&e.value!==k[e.dataset.fid]){e.value=k[e.dataset.fid];if(e.oninput)e.oninput();}}
 function refocus(side,fid){const e=fid&&[...side.querySelectorAll('[data-fid]')].find(x=>x.dataset.fid===fid);if(e)e.focus();}
 let COLLAPSED={};try{COLLAPSED=JSON.parse(localStorage.getItem('bureau:collapsed')||'{}')||{};}catch(e){COLLAPSED={};}
 // appui en cours dans le panneau ou le panneau Fraîcheur (33-freshness.js) : pas de redessin automatique. Refait entre
@@ -59,15 +62,17 @@ function renderSide(force){
   if(EDIT&&!force)return; // l'éditeur d'avatar ne se redessine pas tout seul (saisie en cours)
   if(!force&&performance.now()<PRESS_HOLD)return; // clic en cours dans le panneau
   if(!force&&(KM_OPEN||document.querySelector('#side [data-kronn-action-slot]')))return; // carte Kronn ouverte (fenêtre centrée)
-  if(!force&&document.activeElement&&document.activeElement.tagName==='SELECT'&&document.activeElement.closest('#side'))return; // menu ouvert : ne pas le refermer
+  if(!force&&document.activeElement&&/^(SELECT|INPUT|TEXTAREA)$/.test(document.activeElement.tagName)&&document.activeElement.closest('#side'))return; // menu ouvert ou saisie en cours
   const side=document.getElementById('side'); if(!DATA)return;
   // le panneau se redessine chaque seconde : on garde l'élément qui a le focus clavier (data-fid)
   const fid=side.contains(document.activeElement)&&document.activeElement.dataset?document.activeElement.dataset.fid:null;
+  const kept=keepFields(side);
   side.innerHTML='';
   const folded=SIDE_FOLDED&&innerWidth>980; // sous 980 px le panneau passe sous le plan : jamais replié
   if(innerWidth>980)sideFoldButton(side);
   document.body.classList.toggle('sidefold',folded);
   if(!folded)drawSide(side);
+  restoreFields(side,kept);
   refocus(side,fid);
 }
 // ligne d'état d'une fiche : une pastille d'une ligne (pill, sinon head, sinon label ; le libellé complet au survol), puis

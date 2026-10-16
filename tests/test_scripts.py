@@ -866,11 +866,17 @@ print(json.dumps(val))
         now = iso(2)
         wid = "b" * 8 + "-1111-2222-3333-444444444444"
         fake.workflows.append({"id": wid, "name": "Issue GitHub", "enabled": True, "trigger_type": "manual", "last_run": {"started_at": now, "finished_at": now, "status": "Success"}})
-        fake.variables = {wid: [{"name": "intention", "label": "Ce que tu veux faire", "required": True, "source": "user_input"},
-                                {"name": "repo", "required": False}, {"name": "token", "required": True, "source": "config"}]}
+        fake.variables = {wid: [{"name": "intention", "label": "Ce que tu veux faire", "required": True, "source": "user_input",
+                                 "placeholder": "Ex. une idée", "control": {"type": "textarea"}},
+                                {"name": "repo", "required": False, "pattern": "[\\w.-]+/[\\w.-]+", "control": {"type": "text"}},
+                                {"name": "type", "label": "Type", "required": False, "control": {"type": "select", "default_value": "idee", "options": [
+                                    {"value": "bug", "label": "Bug"}, {"value": "idee", "label": "Idée"}, {"value": "old", "label": "Ancien", "enabled": False}]}},
+                                {"name": "token", "required": True, "source": "config"}]}
         gates = self.run_script("gates_snapshot.py", api=self.kronn(fake))
-        self.assertEqual(gates["launchable"], [{"wf": wid, "name": "Issue GitHub", "vars": [
-            {"name": "intention", "label": "Ce que tu veux faire", "required": True}, {"name": "repo", "label": "repo", "required": False}]}])
+        self.assertEqual(gates["launchable"], [{"wf": wid, "name": "Issue GitHub", "vars": [  # #67 : exemple, zone de texte, motif, liste
+            {"name": "intention", "label": "Ce que tu veux faire", "required": True, "placeholder": "Ex. une idée", "multiline": True},
+            {"name": "repo", "label": "repo", "required": False, "pattern": "[\\w.-]+/[\\w.-]+"},
+            {"name": "type", "label": "Type", "required": False, "options": [{"value": "bug", "label": "Bug"}, {"value": "idee", "label": "Idée"}], "default": "idee"}]}])
 
     def relaunch(self, fake, *args):
         cfg_path = os.path.join(self.tmp, "bureau.config.json")

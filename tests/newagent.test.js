@@ -55,7 +55,7 @@ test('agent ajouté : sa fiche propose de le renommer (entrée du dataset repris
   assert.deepEqual(dec(run('removeCode(byKey.a_clark_e5ce)')), {op: 'remove', k: 'a_clark_e5ce'});
   run(`document.createElement = t => ({tag: t, attrs: {}, kids: [], style: {}, setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; },
     appendChild(x) { this.kids.push(x); }, append(...x) { this.kids.push(...x); }, prepend() {}, addEventListener() {},
-    querySelector() { return {value: ''}; }});
+    querySelector() { return {value: '', dataset: {}}; }});
     var box = null; var _f = foldSection; foldSection = (...a) => (box = {kids: [], appendChild(x) { this.kids.push(x); }});`);
   const actions = key => JSON.parse(run(`JSON.stringify((() => { box = null; addedAgentBlock({}, byKey[${JSON.stringify(key)}]);
     return box ? box.kids[0].kids[0].kids.filter(k => k.tag === 'button').map(b => [b.textContent, b.attrs['data-kronn-action']]) : null; })())`));

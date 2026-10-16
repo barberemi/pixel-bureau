@@ -92,16 +92,34 @@ for key, wid in (CFG.get("workflows") or {}).items():
     if wid in defs:
         relaunch.append({"wf": wid, "name": defs[wid][0]["name"], "trigger": defs[wid][0].get("trigger_type"), "bureau": key})
 
-# workflows qui demandent une saisie (« ▶ Lancer… » des fiches d'agents, #64) : leurs variables à saisir, pour le modèle
-# « nom=… ; nom=… » que la page copie et que relaunch.py revérifie (même règle que l'exclusion de « Relancer » ci-dessus)
+# workflows qui demandent une saisie (« ▶ Lancer… » des fiches d'agents, #64) : leurs variables à saisir, dont la page
+# fait un champ chacune (#67 : exemple, zone de texte ou liste, motif) puis la ligne « nom=valeur ; … » que relaunch.py
+# revérifie (même règle que l'exclusion de « Relancer » ci-dessus)
+
+
+def field(v):
+    out = {"name": v["name"], "label": v.get("label") or v["name"], "required": bool(v.get("required", True))}
+    ctl = v.get("control") or {}
+    if v.get("placeholder"):
+        out["placeholder"] = str(v["placeholder"])[:120]
+    if v.get("pattern"):
+        out["pattern"] = v["pattern"]
+    if ctl.get("type") == "textarea":
+        out["multiline"] = True
+    if ctl.get("type") == "select":
+        out["options"] = [{"value": o["value"], "label": o.get("label") or o["value"]} for o in ctl.get("options") or [] if o.get("enabled", True)]
+        if ctl.get("default_value"):
+            out["default"] = ctl["default_value"]
+    return out
+
+
 launchable = []
 for wid, (wf, full) in defs.items():
     if is_bureau(wf) or wid in children or not full:
         continue
     asked = [v for v in full.get("variables") or [] if v.get("name") and v.get("source") in (None, "", "user_input")]
     if any(v.get("required", True) for v in asked):
-        launchable.append({"wf": wid, "name": wf["name"], "vars": [{"name": v["name"], "label": v.get("label") or v["name"],
-                                                                     "required": bool(v.get("required", True))} for v in asked]})
+        launchable.append({"wf": wid, "name": wf["name"], "vars": [field(v) for v in asked]})
 # agents qu'on peut interroger sur leurs runs (page action « bureau-ask ») : tout workflow actif hors Bureau
 askable = [{"wf": wid, "name": wf["name"]} for wid, (wf, full) in defs.items() if not is_bureau(wf)]
 # le canard : un bouton par projet, et ses discussions

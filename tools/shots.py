@@ -106,10 +106,13 @@ SHOTS = {
     # arrivée d'un agent ajouté (#64) : la baie s'allume, les pixels tombent, l'hologramme se forme (capturé à mi-chemin)
     "arrivee-agent": (1400, 1000, AT(11) + "applyAgents({a_clark:{name:'Clark',role:'Issue GitHub',wf:['e5ce6732'],sprite:'p_clark',at:T-30e3}});"
                       "needTeleport=false;const c=byKey.a_clark;c.present=false;c.pos=null;tick(0);setMode('pause');c.popAt=performance.now()+1750;", "#cv", 1.5),
-    # fiche d'un agent ajouté depuis une baie (#64) : arrivé ce matin, « ▶ Lancer » (son workflow demande une saisie) et « Agent ajouté » déplié
-    "fiche-agent-ajoute": (1400, 1200, AT(11) + "applyAgents({a_clark_e5ce:{name:'Clark',role:'Issue GitHub',wf:['e5ce6732'],sprite:'p_clark',at:T-2*3600e3}});"
-                           "LAUNCHABLE=[{wf:'e5ce6732-demo',name:'Issue GitHub',vars:[{name:'intention',label:'Ce que tu veux faire',required:true},{name:'repo',label:'Dépôt',required:false}]}];"
-                           "COLLAPSED['fiche:added']=false;select('a_clark_e5ce');", "#side"),
+    # fiche d'un agent ajouté depuis une baie (#64) : arrivé ce matin, « ▶ Lancer » avec un champ par paramètre (#67), l'intention
+    # remplie, et « Agent ajouté » déplié
+    "fiche-agent-ajoute": (1400, 1400, AT(11) + "applyAgents({a_clark_e5ce:{name:'Clark',role:'Issue GitHub',wf:['e5ce6732'],sprite:'p_clark',at:T-2*3600e3}});"
+                           "LAUNCHABLE=[{wf:'e5ce6732-demo',name:'Issue GitHub',vars:[{name:'intention',label:'Ce que tu veux faire',required:true,multiline:true,"
+                           "placeholder:'Ex. pouvoir trier le kanban par priorité'},{name:'repo',label:'Dépôt',required:false,placeholder:'owner/dépôt'},"
+                           "{name:'milestone',label:'Jalon',required:false}]}];COLLAPSED['fiche:added']=false;select('a_clark_e5ce');"
+                           "const f=document.querySelector('.rl-f textarea');f.value='Pouvoir éditer une étape de workflow en arrivant directement dessus';f.oninput();", "#side"),
     "fiche-agent": (1400, 1400, AT(11) + "select((chars.find(c=>!c.person&&!c.visitor&&c.runs.length)||{}).key);", "#side"),
     # Gabe, « Ses tickets » et « Ses autres PR ouvertes » dépliés : composant, points, âge (DM-7761 bloqué en review), PR de chaque ticket, un bug
     "fiche-collegue": (1400, 2000, AT(11) + "COLLAPSED['fiche:tickets']=false;COLLAPSED['fiche:prs']=false;select('p_gabe');", "#side"),

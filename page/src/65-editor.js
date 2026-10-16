@@ -69,8 +69,8 @@ function editorEntry(){
 }
 function keepLocal(e){AV_LOCAL[e.k]=e.n||e.l?{name:e.n||undefined,look:e.l||undefined,at:e.at}:{reset:true,at:e.at};saveLocal();}
 // étapes des cartes Kronn qui demandent un code (avatar, agent) : copié pour toi, à coller, puis Lancer
-function codeHint(hint,code,label,last){const ok=copyText(code);
-  hint.innerHTML=`<ol class="steps3"><li class="done">${ok?'Code copié ✓':'Copie ce code :'}</li><li>Clique dans le champ <b>${label}</b> ci-dessous et colle (<kbd>⌘V</kbd>)</li><li>Clique <b>Lancer</b>${last?' : '+last:''}</li></ol><input type="text" readonly aria-label="${label}" style="${ok?'display:none':''}">`;
+function codeHint(hint,code,label,last,done){const ok=copyText(code);
+  hint.innerHTML=`<ol class="steps3"><li class="done">${ok?done||'Code copié ✓':'Copie ce code :'}</li><li>Clique dans le champ <b>${label}</b> ci-dessous et colle (<kbd>⌘V</kbd>)</li><li>Clique <b>Lancer</b>${last?' : '+last:''}</li></ol><input type="text" readonly aria-label="${label}" style="${ok?'display:none':''}">`;
   const inp=hint.querySelector('input');inp.value=code;inp.onclick=()=>inp.select();}
 const avatarCode=e=>'BUREAU1:'+btoa(unescape(encodeURIComponent(JSON.stringify(e))));
 function copyText(t){
