@@ -11,11 +11,15 @@ Le ticket est déduit de la PR (branche, puis titre, puis description : premièr
 passe avant. Simulation (« oui ») : rien n'est poussé, mergé, créé ni déployé ; tout le reste est lu pour de vrai.
 Git : une copie du dépôt dans ~/.cache/pixel-bureau/mep/repos (jamais le dossier du projet) ; état du run dans
 ~/.cache/pixel-bureau/mep/runs/<run>.json.
+Annonce Teams (#59, clé mep.teams : {team, channel, test_team?, test_channel}) : une carte adaptative postée après la gate
+du début (⏳), éditée au merge (chargeur animé, sprites/teams/loader.png), en prod (✅) ou en échec (❌ et la raison en
+réponse dans le fil). Logo du projet : mep.logo (PNG, chemin relatif au pack d'équipe). Simulation : le canal de test.
+Jeton : « az account get-access-token » (Microsoft Graph), gardé en mémoire le temps de l'étape. Sans mep.teams : rien.
 Codes de sortie (signaux exit_N de Kronn) : 2 projet inconnu, 3 PR introuvable ou fermée, 6 ticket introuvable,
 7 conflit de rebase, 8 push refusé, 9 merge refusé, 10 tag illisible, 11 release refusée, 12 déploiement non lancé,
 4 CI ou déploiement en échec, 5 délai dépassé.
 """
-import json, os, re, subprocess, sys, time
+import base64, json, os, re, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
 from datetime import datetime, timezone
 from _lib import CFG, read_json, write_json
 
@@ -23,8 +27,12 @@ HOME = os.path.expanduser("~/.cache/pixel-bureau/mep")
 POLL, TRIES = int(os.environ.get("MEP_POLL", "20")), 75  # 25 min au plus par attente (exec_timeout_secs plafonné à 1800 s) ; MEP_POLL : tests
 
 
+LAST = [""]  # dernier message d'échec : la raison de la réponse ❌ dans le fil Teams (#59)
+
+
 def fail(code, msg):
     print(msg)
+    LAST[0] = msg
     sys.exit(code)
 
 
@@ -123,6 +131,100 @@ def now():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+# ---------- annonce Teams (#59) ----------
+GRAPH = os.environ.get("MEP_GRAPH") or "https://graph.microsoft.com/v1.0"  # MEP_GRAPH : tests
+TOKEN = [None]
+STATUS = {"wait": "⏳", "ok": "✅", "ko": "❌"}
+
+
+def channel(dry):
+    t = (CFG.get("mep") or {}).get("teams") or {}
+    team, chan = (t.get("test_team") or t.get("team"), t.get("test_channel")) if dry == "oui" else (t.get("team"), t.get("channel"))
+    return (team, chan) if team and chan else None
+
+
+def graph(method, path, body=None):
+    if not TOKEN[0]:
+        TOKEN[0] = run("az", "account", "get-access-token", "--resource", "https://graph.microsoft.com", "--query", "accessToken", "-o", "tsv")
+    req = urllib.request.Request(GRAPH + path, method=method, data=json.dumps(body).encode() if body is not None else None,
+                                 headers={"Authorization": "Bearer " + TOKEN[0], "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        raw = r.read()
+    return json.loads(raw) if raw else None
+
+
+def data_uri(path):
+    try:
+        with open(path, "rb") as f:
+            return "data:image/png;base64," + base64.b64encode(f.read()).decode()
+    except OSError:
+        return None
+
+
+def logo_of(p):
+    path = p["mep"].get("logo") or ""
+    if path and not os.path.isabs(path):
+        path = os.path.join(os.path.expanduser(str(CFG.get("team") or "")), path)
+    return data_uri(path) if path else None
+
+
+def card(p, st, state):
+    """Le message Teams : une carte adaptative sur trois lignes (projet, MEP tag, titre de la PR) à côté du logo ; devant,
+    l'état (⏳ ✅ ❌) ou le chargeur animé pendant la mise en prod. Le logo ne change jamais de taille ni de place."""
+    mid = lambda items: {"type": "Column", "width": "auto", "verticalContentAlignment": "Center", "items": items}  # noqa: E731
+    loader = data_uri(os.path.join(str(CFG.get("root") or os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))), "sprites", "teams", "loader.png"))
+    cols = [mid([{"type": "Image", "url": loader, "width": "22px", "height": "22px"}] if state == "run" and loader
+                else [{"type": "TextBlock", "text": STATUS.get(state, "⏳"), "size": "Medium"}])]
+    logo = logo_of(p)
+    if logo:
+        cols.append(mid([{"type": "Image", "url": logo, "width": "36px", "height": "36px"}]))
+    cols.append({"type": "Column", "width": "stretch", "verticalContentAlignment": "Center", "items": [
+        {"type": "TextBlock", "text": p["short"], "weight": "Bolder"},
+        {"type": "TextBlock", "text": f"MEP `{st.get('tag', '')}`", "spacing": "None"},
+        {"type": "TextBlock", "text": st.get("title", ""), "wrap": True, "spacing": "None", "isSubtle": True}]})
+    return {"body": {"contentType": "html", "content": '<attachment id="mep"></attachment>'},
+            "attachments": [{"id": "mep", "contentType": "application/vnd.microsoft.card.adaptive", "content": json.dumps(
+                {"type": "AdaptiveCard", "version": "1.4", "body": [{"type": "ColumnSet", "columns": cols}]})}]}
+
+
+def announce(p, st, state, run_id, reply=None):
+    """Poste la carte (première fois) ou l'édite ; une réponse dans le fil si reply. Une erreur Teams n'arrête jamais
+    la mise en prod : elle est seulement signalée dans le run."""
+    ch = channel(st.get("dry", "non"))
+    if not ch:
+        return
+    base = f"/teams/{ch[0]}/channels/{urllib.parse.quote(ch[1])}/messages"
+    try:
+        if st.get("msg"):
+            graph("PATCH", f"{base}/{st['msg']}", card(p, st, state))
+        else:
+            st["msg"] = graph("POST", base, card(p, st, state))["id"]
+            save(run_id, st)
+        if reply:
+            graph("POST", f"{base}/{st['msg']}/replies", {"body": {"contentType": "html", "content": reply}})
+    except (urllib.error.URLError, RuntimeError, KeyError, ValueError) as e:
+        print(f"(annonce Teams non mise à jour : {str(e)[:200]})")
+
+
+def teams_post(p, n, forced, run_id, dry):
+    st = load(run_id)
+    if not channel(dry):
+        print("Pas d'annonce Teams (mep.teams absent).")
+        return
+    announce(p, st, "wait", run_id)
+    print(f"Annonce Teams postée{' (canal de test)' if dry == 'oui' else ''} : ⏳ {p['short']} · MEP {st['tag']}.")
+
+
+def teams_failed(p, n, forced, run_id, dry):
+    """Atteinte seulement par Goto, après l'échec d'une étape : carte ❌ et la raison en réponse ; le run finit en échec."""
+    st = load(run_id)
+    err = st.get("error") or {}
+    reason = (err.get("msg") or "étape en échec").replace("<", "&lt;")
+    if st.get("msg"):
+        announce(p, st, "ko", run_id, reply=f"❌ {reason} (étape <code>{err.get('step', '?')}</code>, run {run_id[:8]} dans Kronn)")
+    fail(1, f"Mise en prod en échec à l'étape {err.get('step', '?')} : {reason}")
+
+
 # ---------- les étapes ----------
 def resolve(p, n, forced, run_id, dry):
     """PR ouverte, ticket déduit ; sortie = la clé du ticket seule (lue par l'étape Jira)."""
@@ -161,6 +263,9 @@ def tag(p, n, forced, run_id, dry):
     print(f"Ticket **{st['ticket']}** · type {issue_type or 'inconnu (fonctionnalité)'}")
     print(f"Release : `{last}` → **`{new}`** (« {new} - {st['ticket']} »)")
     print(f"Déploiements : {p['staging_workflow'] or 'pas de staging'} puis {p['prod_workflow']}")
+    ch = channel(dry)
+    if ch:
+        print(f"Annonce Teams{' (canal de test)' if dry == 'oui' else ''}, postée à l'approbation : ⏳ **{p['short']}** · MEP `{new}` · {st['title']}")
     if dry == "oui":
         print("**Simulation** : rien ne sera poussé, mergé, créé ni déployé.")
 
@@ -217,6 +322,7 @@ def citest(p, n, forced, run_id, dry):
 
 def merge(p, n, forced, run_id, dry):
     st = load(run_id)
+    announce(p, st, "run", run_id)  # merge cliqué : la mise en prod est en cours (chargeur)
     if dry == "oui":
         print(f"Simulation : {p['repo']}#{st['pr']} non mergée.")
         return
@@ -260,6 +366,7 @@ def deploy(env):
         if env == "staging" and p["mep"].get("staging_url"):
             print(f"À vérifier : {p['mep']['staging_url']}")
         if env == "prod":
+            announce(p, st, "ok", run_id)
             print(others(st))
     return step
 
@@ -287,7 +394,7 @@ def end(p, n, forced, run_id, dry):
 
 
 STEPS = {"resolve": resolve, "tag": tag, "rebase": rebase, "citest": citest, "merge": merge, "release": release,
-         "staging": deploy("staging"), "prod": deploy("prod"), "end": end}
+         "staging": deploy("staging"), "prod": deploy("prod"), "done": end, "teams_post": teams_post, "teams_failed": teams_failed}
 
 if __name__ == "__main__":
     step, name, n, forced, run_id, dry = (sys.argv[1:] + [""] * 6)[:6]
@@ -296,6 +403,13 @@ if __name__ == "__main__":
     if not proj:
         fail(2, f"Projet inconnu : « {name} » (projets : {', '.join(x['short'] for x in projects()) or 'aucun'}).")
     try:
-        STEPS[step](proj, n.strip().lstrip("#"), forced, run_id, dry)
-    except RuntimeError as e:  # une commande gh ou git a échoué hors des cas prévus
-        fail(1, str(e))
+        try:
+            STEPS[step](proj, n.strip().lstrip("#"), forced, run_id, dry)
+        except RuntimeError as e:  # une commande gh ou git a échoué hors des cas prévus
+            fail(1, str(e))
+    except SystemExit as e:  # échec : étape et raison gardées pour teams_failed (#59)
+        if e.code and step != "teams_failed":
+            st = load(run_id)
+            st["error"] = {"step": step, "msg": LAST[0][:300]}
+            save(run_id, st)
+        raise

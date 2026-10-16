@@ -164,8 +164,35 @@
     "output_format": {
      "type": "FreeText"
     },
-    "gate_message": "## 🚀 Mise en prod de {{project}}#{{pr_number}}\n\n{{steps.tag.data.stdout}}\n\nApprouver : rebase et squash, CI, puis la suite avec tes validations. « Changements » relance la lecture de la PR.\n\n_Un refus arrête la mise en prod là où elle en est._",
+    "gate_message": "## 🚀 Mise en prod de {{project}}#{{pr_number}}\n\n{{steps.tag.data.stdout}}\n\nApprouver : l'annonce part sur Teams, puis rebase et squash, CI, puis la suite avec tes validations. « Changements » relance la lecture de la PR.\n\n_Un refus arrête la mise en prod là où elle en est ; l'annonce Teams reste alors en l'état (édite-la ou supprime-la dans Teams)._",
     "gate_request_changes_target": "resolve"
+   },
+   {
+    "name": "teams_post",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Annonce Teams : la carte ⏳ dans le canal des mises en prod (canal de test en simulation, rien sans mep.teams).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mep.py@@",
+     "teams_post",
+     "{{project}}",
+     "{{pr_number}}",
+     "{{jira_ticket_key}}",
+     "{{run.id}}",
+     "{{dry_run}}"
+    ],
+    "exec_timeout_secs": 60
    },
    {
     "name": "rebase",
@@ -192,7 +219,16 @@
      "{{run.id}}",
      "{{dry_run}}"
     ],
-    "exec_timeout_secs": 600
+    "exec_timeout_secs": 600,
+    "on_result": [
+     {
+      "contains": "exit_",
+      "action": {
+       "type": "Goto",
+       "step_name": "teams_failed"
+      }
+     }
+    ]
    },
    {
     "name": "citest",
@@ -219,7 +255,16 @@
      "{{run.id}}",
      "{{dry_run}}"
     ],
-    "exec_timeout_secs": 1800
+    "exec_timeout_secs": 1800,
+    "on_result": [
+     {
+      "contains": "exit_",
+      "action": {
+       "type": "Goto",
+       "step_name": "teams_failed"
+      }
+     }
+    ]
    },
    {
     "name": "gate_approve",
@@ -235,7 +280,7 @@
     "output_format": {
      "type": "FreeText"
     },
-    "gate_message": "## Tests verts ✅ · {{project}}#{{pr_number}}\n\n{{steps.citest.data.stdout}}\n\nVérifie les approbations de la PR, puis approuve pour **merger (rebase)**.\n\n_Un refus arrête la mise en prod là où elle en est._"
+    "gate_message": "## Tests verts ✅ · {{project}}#{{pr_number}}\n\n{{steps.citest.data.stdout}}\n\nVérifie les approbations de la PR, puis approuve pour **merger (rebase)**.\n\n_Un refus arrête la mise en prod là où elle en est ; l'annonce Teams reste alors en l'état (édite-la ou supprime-la dans Teams)._"
    },
    {
     "name": "merge",
@@ -262,7 +307,16 @@
      "{{run.id}}",
      "{{dry_run}}"
     ],
-    "exec_timeout_secs": 120
+    "exec_timeout_secs": 120,
+    "on_result": [
+     {
+      "contains": "exit_",
+      "action": {
+       "type": "Goto",
+       "step_name": "teams_failed"
+      }
+     }
+    ]
    },
    {
     "name": "gate_confirm_tag",
@@ -278,7 +332,7 @@
     "output_format": {
      "type": "FreeText"
     },
-    "gate_message": "## Créer la release · {{project}}#{{pr_number}}\n\n{{steps.tag.data.stdout}}\n\nApprouve pour créer la release (notes générées) puis déployer en **staging**.\n\n_Un refus arrête la mise en prod là où elle en est._"
+    "gate_message": "## Créer la release · {{project}}#{{pr_number}}\n\n{{steps.tag.data.stdout}}\n\nApprouve pour créer la release (notes générées) puis déployer en **staging**.\n\n_Un refus arrête la mise en prod là où elle en est ; l'annonce Teams reste alors en l'état (édite-la ou supprime-la dans Teams)._"
    },
    {
     "name": "release",
@@ -305,7 +359,16 @@
      "{{run.id}}",
      "{{dry_run}}"
     ],
-    "exec_timeout_secs": 120
+    "exec_timeout_secs": 120,
+    "on_result": [
+     {
+      "contains": "exit_",
+      "action": {
+       "type": "Goto",
+       "step_name": "teams_failed"
+      }
+     }
+    ]
    },
    {
     "name": "staging",
@@ -332,7 +395,16 @@
      "{{run.id}}",
      "{{dry_run}}"
     ],
-    "exec_timeout_secs": 1800
+    "exec_timeout_secs": 1800,
+    "on_result": [
+     {
+      "contains": "exit_",
+      "action": {
+       "type": "Goto",
+       "step_name": "teams_failed"
+      }
+     }
+    ]
    },
    {
     "name": "gate_prod",
@@ -348,7 +420,7 @@
     "output_format": {
      "type": "FreeText"
     },
-    "gate_message": "## Staging déployé ✅ · {{project}}#{{pr_number}}\n\n{{steps.staging.data.stdout}}\n\nVérifie le staging, puis approuve pour déployer en **PRODUCTION**.\n\n_Un refus arrête la mise en prod là où elle en est._"
+    "gate_message": "## Staging déployé ✅ · {{project}}#{{pr_number}}\n\n{{steps.staging.data.stdout}}\n\nVérifie le staging, puis approuve pour déployer en **PRODUCTION**.\n\n_Un refus arrête la mise en prod là où elle en est ; l'annonce Teams reste alors en l'état (édite-la ou supprime-la dans Teams)._"
    },
    {
     "name": "prod",
@@ -375,7 +447,16 @@
      "{{run.id}}",
      "{{dry_run}}"
     ],
-    "exec_timeout_secs": 1800
+    "exec_timeout_secs": 1800,
+    "on_result": [
+     {
+      "contains": "exit_",
+      "action": {
+       "type": "Goto",
+       "step_name": "teams_failed"
+      }
+     }
+    ]
    },
    {
     "name": "gate_ticket_done",
@@ -479,6 +560,33 @@
       }
      }
     ]
+   },
+   {
+    "name": "teams_failed",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Atteinte seulement après un échec : carte ❌, la raison en réponse dans le fil, puis le run finit en échec.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mep.py@@",
+     "teams_failed",
+     "{{project}}",
+     "{{pr_number}}",
+     "{{jira_ticket_key}}",
+     "{{run.id}}",
+     "{{dry_run}}"
+    ],
+    "exec_timeout_secs": 60
    }
   ],
   "actions": [],

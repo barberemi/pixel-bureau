@@ -155,6 +155,10 @@ class MepTemplateTest(unittest.TestCase):
         d = templates.render(templates.load_templates()["mep"], cfg)
         names = [s["name"] for s in d["steps"]]
         self.assertLessEqual(len(names), 20, "limite Kronn")
+        self.assertEqual(names[-1], "teams_failed", "atteinte seulement par Goto, après done (Stop)")
+        for s in d["steps"]:
+            if s["name"] in ("rebase", "citest", "merge", "release", "staging", "prod"):
+                self.assertEqual(s["on_result"], [{"contains": "exit_", "action": {"type": "Goto", "step_name": "teams_failed"}}])
         self.assertEqual(names[0], "resolve")
         for s in d["steps"]:
             for target in [s.get("gate_request_changes_target")] + [(r["action"].get("step_name")) for r in s.get("on_result") or []]:
@@ -180,3 +184,104 @@ class MepTemplateTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MepTeamsTest(MepTest):
+    """Annonce Teams (#59) : faux Microsoft Graph local, faux az ; carte postée, éditée, ❌ et raison en réponse."""
+    def setUp(self):
+        super().setUp()
+        import http.server, threading
+        self.got = got = []
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def handle_one(self):
+                n = int(self.headers.get("Content-Length") or 0)
+                got.append((self.command, self.path, json.loads(self.rfile.read(n) or b"null"), self.headers.get("Authorization")))
+                self.send_response(201 if self.command == "POST" else 204)
+                self.end_headers()
+                if self.command == "POST":
+                    self.wfile.write(json.dumps({"id": "m1"}).encode())
+            do_POST = do_PATCH = handle_one
+
+            def log_message(self, *a):
+                pass
+        self.srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+        az = os.path.join(self.bin, "az")
+        Path(az).write_text("#!/bin/sh\necho jeton-az\n")
+        os.chmod(az, 0o755)
+        self.pack = os.path.join(self.tmp, "pack")
+        os.makedirs(os.path.join(self.pack, "logos"))
+        Path(self.pack, "logos", "site.png").write_bytes(Path(ROOT, "sprites", "teams", "loader.png").read_bytes()[:2000])
+
+    def tearDown(self):
+        self.srv.shutdown()
+        self.srv.server_close()
+
+    def env(self):
+        return dict(super().env(), MEP_GRAPH=f"http://127.0.0.1:{self.srv.server_port}" if hasattr(self, "srv") else "")
+
+    def cfg(self):
+        c = config(team=self.pack, root=ROOT, mep={"teams": {"team": "T1", "channel": "19:annonces@thread", "test_channel": "19:test@thread"}})
+        c["github"]["mep"] = dict(MEP, logo="logos/site.png")
+        return c
+
+    def test_card_posted_then_edited_then_failed_with_reason_in_thread(self):
+        for step, stdin in (("resolve", ""), ("tag", "Bug"), ("teams_post", "")):
+            r = self.mep(step, stdin=stdin, cfg=self.cfg())
+            self.assertEqual(r.returncode, 0, step + " : " + r.stdout + r.stderr)
+        method, path, body, auth = self.got[0]
+        self.assertEqual((method, path, auth), ("POST", "/teams/T1/channels/19%3Aannonces%40thread/messages", "Bearer jeton-az"))
+        content = json.loads(body["attachments"][0]["content"])
+        cols = content["body"][0]["columns"]
+        self.assertEqual(cols[0]["items"][0]["text"], "⏳")
+        self.assertEqual((cols[1]["items"][0]["width"], cols[1]["items"][0]["height"]), ("36px", "36px"), "logo du projet en 36 px")
+        self.assertEqual([x["text"] for x in cols[2]["items"]], ["site-web", "MEP `2.4.1`", "fix(Articles): pagination des tags vide"])
+        self.mep("rebase", cfg=self.cfg())
+        self.mep("citest", cfg=self.cfg())
+        self.mep("merge", cfg=self.cfg())
+        method, path, body, _ = self.got[1]
+        self.assertEqual((method, path), ("PATCH", "/teams/T1/channels/19%3Aannonces%40thread/messages/m1"))
+        run_cols = json.loads(body["attachments"][0]["content"])["body"][0]["columns"]
+        self.assertTrue(run_cols[0]["items"][0]["url"].startswith("data:image/png;base64,"), "chargeur animé à la place de l'état")
+        self.assertEqual(run_cols[1], cols[1], "le logo ne change ni de taille ni de place")
+        self.assertLess(len(json.dumps(body).encode()), 28_000, "édition limitée à 28 Ko par Teams")
+        self.data["fail"] = {"release create": 1}
+        self.assertEqual(self.mep("release", cfg=self.cfg()).returncode, 11)
+        r = self.mep("teams_failed", cfg=self.cfg())
+        self.assertEqual(r.returncode, 1, "le run finit en échec")
+        ko = json.loads(self.got[2][2]["attachments"][0]["content"])["body"][0]["columns"][0]["items"][0]["text"]
+        method, path, body, _ = self.got[3]
+        self.assertEqual((ko, method, path), ("❌", "POST", "/teams/T1/channels/19%3Aannonces%40thread/messages/m1/replies"))
+        self.assertIn("Release 2.4.1 refusée", body["body"]["content"])
+        self.assertIn("<code>release</code>", body["body"]["content"])
+
+    def test_dry_run_uses_the_test_channel_and_done_step_ends(self):
+        for step, stdin in (("resolve", ""), ("tag", "Story"), ("teams_post", "")):
+            self.mep(step, stdin=stdin, dry="oui", cfg=self.cfg())
+        self.assertIn("19%3Atest%40thread", self.got[0][1])
+        r = self.mep("done", cfg=self.cfg())
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_no_teams_settings_no_announce(self):
+        self.mep("resolve")
+        self.mep("tag", stdin="Bug")
+        r = self.mep("teams_post")
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("Pas d'annonce Teams", r.stdout)
+        self.assertEqual(self.got, [])
+
+
+try:
+    from PIL import Image
+except ImportError:  # Pillow : dans le venv du dépôt et sur la CI
+    Image = None
+
+
+@unittest.skipUnless(Image, "Pillow absent")
+class TeamsLogoTest(unittest.TestCase):
+    def test_loader_is_an_animated_png_and_stays_small(self):
+        path = os.path.join(ROOT, "sprites", "teams", "loader.png")
+        with Image.open(path) as im:
+            self.assertEqual((im.format, im.size, getattr(im, "n_frames", 1)), ("PNG", (48, 48), 12))
+        self.assertLess(os.path.getsize(path), 14_000, "carte éditée sous 28 Ko avec un logo")

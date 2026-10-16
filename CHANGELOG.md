@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
+- Annonce Teams des mises en prod : une carte postée après la gate du début, éditée à chaque étape (⏳, chargeur animé, ✅, ❌ avec la raison en réponse dans le fil), logo du projet, canal de test en simulation (`mep.teams`, `tools/teams_logo.py`) (#59).
 - Mise en prod d'une PR de n'importe quel dépôt réglé (`github.mep`, `github.deploys[].mep`) : modèle du Bureau « Mise en prod d'une PR » (`launch.mep_pr`), lancé depuis la fiche de son agent, d'une PR ou d'un ticket ; ticket déduit de la PR, une seule gate au début, gate de fin « ticket terminé ? », simulation (`dry_run`) (#58).
 - Écran mural « Mes pages Kronn » en salle de réunion, à la place du tableau blanc : quatre miniatures et une case « + » ; la fenêtre « Mes pages Kronn » gagne × pour retirer une page et « + Ajouter une page », par une carte Kronn (workflow « Le Bureau · pages », dataset `pagelist`, sans republier). L'ordinateur du boss est libéré (#61).
 - Prochains crons en post-it au fond de la salle Serveurs, entre les deux baies : un par cron, couleur de l'agent, il tombe quand le cron a tourné, la liste en clair au survol ; le tableau « Prochains crons » quitte le bureau du boss et le calendrier des absences glisse un peu à gauche ; `objects.planning` des plans n'est plus demandé (#60).
