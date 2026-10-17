@@ -21,7 +21,8 @@ def fail(msg):
 
 def parse(text, asked):
     """« nom=valeur ; nom=valeur » (ou une par ligne) -> {nom: valeur}, validé contre les variables à saisir."""
-    names, out = {v["name"]: v for v in asked}, {}
+    names = {v["name"]: v for v in asked}
+    out = {n: "" for n in names}  # chaque variable passée, même vide (Kronn refuse une variable facultative absente)
     for part in re.split(r"[;\n]", text):
         if not part.strip():
             continue
@@ -31,7 +32,7 @@ def parse(text, asked):
             fail(f"Paramètre inconnu : « {k or part.strip()[:40]} » (attendus : {', '.join(names)}).")
         if v and v not in ("…", "..."):
             out[k] = v[:4000]
-    missing = [n for n, v in names.items() if v.get("required") and n not in out]
+    missing = [n for n, v in names.items() if v.get("required") and not out[n]]
     if missing:
         fail("Paramètre obligatoire à remplir : " + ", ".join(missing) + ".")
     return out

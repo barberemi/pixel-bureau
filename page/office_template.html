@@ -106,6 +106,7 @@
 <script type="application/kronn-action" data-action-id="bureau-agent">{"kind":"workflow","target_id":"__AGENT_WF__","values":[{"name":"agent_code","provenance":"user_input"}]}</script>
 <script type="application/kronn-action" data-action-id="bureau-launch">{"kind":"workflow","target_id":"__RELAUNCH_WF__","values":[{"name":"wf_id","provenance":"dynamic_binding","source_ref":"<page.dataset.gates.launchable.find(wf).wf>"},{"name":"params","provenance":"user_input"}]}</script>
 <script type="application/kronn-action" data-action-id="bureau-pages">{"kind":"workflow","target_id":"__PAGES_WF__","values":[{"name":"page_code","provenance":"user_input"}]}</script>
+<script type="application/kronn-action" data-action-id="bureau-meppr">{"kind":"workflow","target_id":"__MEPPR_WF__","values":[{"name":"project","provenance":"dynamic_binding","source_ref":"<page.dataset.actions.prs.find(id).repo>"},{"name":"pr_number","provenance":"dynamic_binding","source_ref":"<page.dataset.actions.prs.find(id).n>"},{"name":"jira_ticket_key","provenance":"user_input"},{"name":"dry_run","provenance":"user_input"}]}</script>
 
 <script>
 /*__SCRIPTS__*/

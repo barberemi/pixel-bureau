@@ -1,0 +1,612 @@
+{
+ "kind": "workflow",
+ "key": "mep",
+ "definition": {
+  "name": "Mise en prod d'une PR",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "project",
+    "label": "Projet",
+    "placeholder": "",
+    "description": "Dépôt à mettre en prod (projets de github et github.deploys qui ont une clé mep).",
+    "required": true,
+    "source": null,
+    "allow_manual_override": false,
+    "_options": "mep.projects"
+   },
+   {
+    "name": "pr_number",
+    "label": "N° de PR",
+    "placeholder": "Ex. 2042",
+    "description": null,
+    "required": true,
+    "source": null,
+    "allow_manual_override": false,
+    "pattern": "\\d+"
+   },
+   {
+    "name": "jira_ticket_key",
+    "label": "Ticket (si mal trouvé)",
+    "placeholder": "Ex. EW-7675",
+    "description": "Vide : déduit de la branche, du titre ou de la description de la PR.",
+    "required": false,
+    "source": null,
+    "allow_manual_override": false
+   },
+   {
+    "name": "dry_run",
+    "label": "Simulation",
+    "placeholder": "",
+    "description": "oui : rien n'est poussé, mergé, créé ni déployé.",
+    "required": false,
+    "source": null,
+    "allow_manual_override": false,
+    "control": {
+     "type": "select",
+     "options": [
+      {
+       "value": "non",
+       "label": "Non, la vraie mise en prod",
+       "enabled": true
+      },
+      {
+       "value": "oui",
+       "label": "Oui, simulation",
+       "enabled": true
+      }
+     ],
+     "default_value": "non"
+    }
+   }
+  ],
+  "steps": [
+   {
+    "name": "resolve",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "PR ouverte du projet, ticket déduit de la branche, du titre ou de la description (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mep.py@@",
+     "resolve",
+     "{{project}}",
+     "{{pr_number}}",
+     "{{jira_ticket_key}}",
+     "{{run.id}}",
+     "{{dry_run}}"
+    ],
+    "exec_timeout_secs": 120
+   },
+   {
+    "name": "fetch_ticket_type",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Type du ticket Jira (Bug = correctif, sinon fonctionnalité).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "Structured"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/issue/{key}",
+    "api_method": "GET",
+    "api_path_params": {
+     "key": "{{steps.resolve.data.stdout}}"
+    },
+    "api_query": {
+     "fields": "issuetype,summary"
+    },
+    "api_extract": {
+     "path": "$.fields",
+     "fail_on_empty": true
+    },
+    "api_output_var": "fetch_ticket_type",
+    "_requires": "jira"
+   },
+   {
+    "name": "tag",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Tag de la release d'après le type du ticket, résumé de la MEP pour la gate du début.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mep.py@@",
+     "tag",
+     "{{project}}",
+     "{{pr_number}}",
+     "{{jira_ticket_key}}",
+     "{{run.id}}",
+     "{{dry_run}}"
+    ],
+    "exec_timeout_secs": 60,
+    "exec_stdin": "{{steps.fetch_ticket_type.data.issuetype.name}}"
+   },
+   {
+    "name": "gate_start",
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "Une seule validation au début : PR, ticket, tag.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "gate_message": "## 🚀 Mise en prod de {{project}}#{{pr_number}}\n\n{{steps.tag.data.stdout}}\n\nApprouver : l'annonce part sur Teams, puis rebase et squash, CI, puis la suite avec tes validations. « Changements » relance la lecture de la PR.\n\n_Un refus arrête la mise en prod là où elle en est ; l'annonce Teams reste alors en l'état (édite-la ou supprime-la dans Teams)._",
+    "gate_request_changes_target": "resolve"
+   },
+   {
+    "name": "teams_post",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Annonce Teams : la carte ⏳ dans le canal des mises en prod (canal de test en simulation, rien sans mep.teams).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mep.py@@",
+     "teams_post",
+     "{{project}}",
+     "{{pr_number}}",
+     "{{jira_ticket_key}}",
+     "{{run.id}}",
+     "{{dry_run}}"
+    ],
+    "exec_timeout_secs": 60
+   },
+   {
+    "name": "rebase",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Rebase sur la base de la PR, squash en un commit, push protégé (copie du dépôt dans ~/.cache).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mep.py@@",
+     "rebase",
+     "{{project}}",
+     "{{pr_number}}",
+     "{{jira_ticket_key}}",
+     "{{run.id}}",
+     "{{dry_run}}"
+    ],
+    "exec_timeout_secs": 600,
+    "on_result": [
+     {
+      "contains": "exit_",
+      "action": {
+       "type": "Goto",
+       "step_name": "teams_failed"
+      }
+     }
+    ]
+   },
+   {
+    "name": "citest",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Label de la CI reposé sur le commit final, attente du résultat (25 min au plus).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mep.py@@",
+     "citest",
+     "{{project}}",
+     "{{pr_number}}",
+     "{{jira_ticket_key}}",
+     "{{run.id}}",
+     "{{dry_run}}"
+    ],
+    "exec_timeout_secs": 1800,
+    "on_result": [
+     {
+      "contains": "exit_",
+      "action": {
+       "type": "Goto",
+       "step_name": "teams_failed"
+      }
+     }
+    ]
+   },
+   {
+    "name": "gate_approve",
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "Tests verts : merger ?",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "gate_message": "## Tests verts ✅ · {{project}}#{{pr_number}}\n\n{{steps.citest.data.stdout}}\n\nVérifie les approbations de la PR, puis approuve pour **merger (rebase)**.\n\n_Un refus arrête la mise en prod là où elle en est ; l'annonce Teams reste alors en l'état (édite-la ou supprime-la dans Teams)._"
+   },
+   {
+    "name": "merge",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Merge en rebase de la PR.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mep.py@@",
+     "merge",
+     "{{project}}",
+     "{{pr_number}}",
+     "{{jira_ticket_key}}",
+     "{{run.id}}",
+     "{{dry_run}}"
+    ],
+    "exec_timeout_secs": 120,
+    "on_result": [
+     {
+      "contains": "exit_",
+      "action": {
+       "type": "Goto",
+       "step_name": "teams_failed"
+      }
+     }
+    ]
+   },
+   {
+    "name": "gate_confirm_tag",
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "Créer la release ?",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "gate_message": "## Créer la release · {{project}}#{{pr_number}}\n\n{{steps.tag.data.stdout}}\n\nApprouve pour créer la release (notes générées) puis déployer en **staging**.\n\n_Un refus arrête la mise en prod là où elle en est ; l'annonce Teams reste alors en l'état (édite-la ou supprime-la dans Teams)._"
+   },
+   {
+    "name": "release",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Release du tag, notes générées par GitHub.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mep.py@@",
+     "release",
+     "{{project}}",
+     "{{pr_number}}",
+     "{{jira_ticket_key}}",
+     "{{run.id}}",
+     "{{dry_run}}"
+    ],
+    "exec_timeout_secs": 120,
+    "on_result": [
+     {
+      "contains": "exit_",
+      "action": {
+       "type": "Goto",
+       "step_name": "teams_failed"
+      }
+     }
+    ]
+   },
+   {
+    "name": "staging",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Déploiement staging (workflow et entrées du projet), attente du résultat.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mep.py@@",
+     "staging",
+     "{{project}}",
+     "{{pr_number}}",
+     "{{jira_ticket_key}}",
+     "{{run.id}}",
+     "{{dry_run}}"
+    ],
+    "exec_timeout_secs": 1800,
+    "on_result": [
+     {
+      "contains": "exit_",
+      "action": {
+       "type": "Goto",
+       "step_name": "teams_failed"
+      }
+     }
+    ]
+   },
+   {
+    "name": "gate_prod",
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "Staging en ligne : la prod ?",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "gate_message": "## Staging déployé ✅ · {{project}}#{{pr_number}}\n\n{{steps.staging.data.stdout}}\n\nVérifie le staging, puis approuve pour déployer en **PRODUCTION**.\n\n_Un refus arrête la mise en prod là où elle en est ; l'annonce Teams reste alors en l'état (édite-la ou supprime-la dans Teams)._"
+   },
+   {
+    "name": "prod",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Déploiement prod, attente du résultat, puis les PR du ticket pour la gate de fin.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mep.py@@",
+     "prod",
+     "{{project}}",
+     "{{pr_number}}",
+     "{{jira_ticket_key}}",
+     "{{run.id}}",
+     "{{dry_run}}"
+    ],
+    "exec_timeout_secs": 1800,
+    "on_result": [
+     {
+      "contains": "exit_",
+      "action": {
+       "type": "Goto",
+       "step_name": "teams_failed"
+      }
+     }
+    ]
+   },
+   {
+    "name": "gate_ticket_done",
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "Le ticket est-il terminé ?",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "gate_message": "## ✅ {{project}}#{{pr_number}} en prod · le ticket est-il terminé ?\n\n{{steps.prod.data.stdout}}\n\n**Approuver** : ticket terminé (retour IA, puis statut de fin). **Changements** : pas encore, le ticket reste en l'état et le run finit en succès. _Rejeter ferait finir le run en échec alors que la mise en prod a réussi._",
+    "gate_request_changes_target": "done",
+    "_requires": "jira"
+   },
+   {
+    "name": "ai_feedback",
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "Retour IA sur toutes les PR mergées du ticket (Quick Prompt mep.feedback_qp, qui les retrouve lui-même).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "quick_prompt_id": "@@mep.feedback_qp@@",
+    "quick_prompt_variables": {
+     "ticket": "{{steps.resolve.data.stdout}}"
+    },
+    "_vars_from": "mep.feedback_vars",
+    "_requires": "mep.feedback_qp"
+   },
+   {
+    "name": "transition_deployed",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Passe le ticket au statut de fin (transition mep.done_transition). Réponse 204 vide = succès.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "Structured"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/2/issue/{key}/transitions",
+    "api_method": "POST",
+    "api_path_params": {
+     "key": "{{steps.resolve.data.stdout}}"
+    },
+    "api_body": {
+     "transition": {
+      "id": "@@mep.done_transition@@"
+     }
+    },
+    "api_output_var": "transition_deployed",
+    "_requires": "mep.done_transition"
+   },
+   {
+    "name": "done",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Fin de la mise en prod (atteinte aussi par « Changements » de la gate de fin).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mep.py@@",
+     "done",
+     "{{project}}",
+     "{{pr_number}}",
+     "{{jira_ticket_key}}",
+     "{{run.id}}",
+     "{{dry_run}}"
+    ],
+    "exec_timeout_secs": 30,
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Stop"
+      }
+     }
+    ]
+   },
+   {
+    "name": "teams_failed",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Atteinte seulement après un échec : carte ❌, la raison en réponse dans le fil, puis le run finit en échec.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mep.py@@",
+     "teams_failed",
+     "{{project}}",
+     "{{pr_number}}",
+     "{{jira_ticket_key}}",
+     "{{run.id}}",
+     "{{dry_run}}"
+    ],
+    "exec_timeout_secs": 60
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": 1,
+  "guards": {
+   "timeout_seconds": 14400,
+   "max_llm_calls": 5,
+   "loop_detection_max_revisits": 300
+  },
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

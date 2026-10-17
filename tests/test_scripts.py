@@ -934,7 +934,7 @@ print(json.dumps(val))
             {"name": "intention", "required": True}, {"name": "repo", "required": False}]}]}}]
         r = self.relaunch(fake, wid, "intention=Pouvoir lancer Clark = facile ; repo=…")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertEqual(fake.posts[-1], ("/mcp/workflow-trigger", {"workflow_id": wid, "variables": {"intention": "Pouvoir lancer Clark = facile"}}))
+        self.assertEqual(fake.posts[-1], ("/mcp/workflow-trigger", {"workflow_id": wid, "variables": {"intention": "Pouvoir lancer Clark = facile", "repo": ""}}))  # vide : passé quand même
         for params, msg in (("intention=… ; repo=x", "obligatoire à remplir : intention"), ("intent=x", "Paramètre inconnu : « intent »"),
                             ("n'importe quoi", "Paramètre inconnu")):
             r = self.relaunch(fake, wid, params)

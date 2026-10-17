@@ -45,6 +45,10 @@ TEMPLATES = {
     "layout": ("workflow", ("actions", "layout"), {"save": "workflows/layout_save.py"}),
     "comment": ("workflow", ("actions", "comment"), {}),  # commentaire Jira depuis la fiche d'un ticket (sans Jira : pas créé)
     "duck": ("workflow", ("actions", "duck"), {"start": "workflows/duck_start.py"}),  # parler au canard : une discussion Kronn
+    # mise en prod d'une PR, tout projet (#58) : id rangé dans launch (jamais dans BUREAU_IDS : l'agent qui l'incarne
+    # garde sa fiche et « ▶ Lancer… ») ; launch.mep_pr, à côté de ton ancien workflow de MEP par ticket (launch.mep)
+    "mep": ("workflow", ("launch", "mep_pr"), {n: "workflows/mep.py" for n in ("resolve", "tag", "rebase", "citest", "merge", "release",
+                                                                                 "staging", "prod", "done", "teams_post", "teams_failed")}),
     "ask": ("quick_prompt", ("actions", "ask"), {}),
     "sketch": ("quick_prompt", ("actions", "sketch"), {}),
 }
@@ -127,7 +131,14 @@ def values(cfg):
         **{f"jira.role.{r}": role_ids(r, cfg) for r in ROLES},
         "jira.role_ids": ",".join(f'"{x}"' for r in ROLES for x in [role_ids(r, cfg)] if x),
         **{f"jira.flow.{k}": (j.get("flow") or {}).get(k) or v for k, v in FLOW_DEFAULTS.items()},
+        # mise en prod (#58) : Quick Prompt du retour IA et transition Jira de fin (facultatifs : étapes retirées sans eux)
+        "mep.feedback_qp": (cfg.get("mep") or {}).get("feedback_qp") or "",
+        "mep.done_transition": str((cfg.get("mep") or {}).get("done_transition") or ""),
     }
+
+
+def mep_projects(cfg):
+    return assemble.mep_projects(cfg)
 
 
 def skipped(key, cfg):
@@ -141,6 +152,8 @@ def skipped(key, cfg):
         return not (m.get("config_id") and (m.get("planning") or {}).get("site") and (m.get("planning") or {}).get("item"))
     if key in ("courrier", "regles"):
         return not (cfg.get("mail") or {}).get("accounts")
+    if key == "mep":  # aucun projet avec une clé mep (github ou github.deploys)
+        return not mep_projects(cfg)
     return False
 
 
@@ -175,8 +188,15 @@ def render(tpl, cfg):
             return not req or (has_jira and (req == "jira" or bool(vals.get(req))))
         dropped = {s["name"] for s in d["steps"] if not ok(s.get("_requires"))}
         d["steps"] = [s for s in d["steps"] if s["name"] not in dropped]
+        for v in d.get("variables") or []:  # liste des projets (#58) : choix de la variable, le dépôt principal par défaut
+            if v.pop("_options", None) == "mep.projects":
+                opts = mep_projects(cfg)
+                v["control"] = {"type": "select", "options": [{"value": r, "label": n, "enabled": True} for r, n in opts],
+                                **({"default_value": opts[0][0]} if opts else {})}
         for s in d["steps"]:
             s.pop("_requires", None)
+            if s.pop("_vars_from", None) == "mep.feedback_vars":  # variables propres au Quick Prompt du retour IA
+                s["quick_prompt_variables"] = {**((cfg.get("mep") or {}).get("feedback_vars") or {}), **s.get("quick_prompt_variables", {})}
             for name in dropped:  # entrée d'une étape suivante qui lisait une étape retirée
                 if isinstance(s.get("exec_stdin"), str):
                     s["exec_stdin"] = re.sub(r"\{\{steps\." + re.escape(name) + r"\.[\w.]+\}\}", "null", s["exec_stdin"])
