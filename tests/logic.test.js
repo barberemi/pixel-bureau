@@ -243,12 +243,12 @@ test('fraîcheur : texte d\'attente en secondes, en minutes, puis en pause hors 
   };
   assert.match(w('live', '2026-10-03T06:49:20Z', '2026-10-03T06:49:40Z').txt, /^dans \d+ s$/);
   assert.equal(w('payroll', '2026-10-03T06:07:05Z', '2026-10-03T06:20:00Z').txt, 'dans 48 min');
-  // samedi 23h30 (Paris) : dernier passage à 21h59, reprise dimanche 7h00
+  // samedi 23h30 (Paris) : dernier passage à 21h59, reprise dimanche 7h
   const p = w('live', '2026-10-03T19:59:10Z', '2026-10-03T21:30:00Z');
-  assert.equal(p.txt, 'en pause · reprise demain à 7h00');
+  assert.equal(p.txt, 'en pause · reprise demain à 7h');
   assert.equal(p.paused, true);
   // après minuit : même jour
-  assert.equal(w('live', '2026-10-03T19:59:10Z', '2026-10-03T22:30:00Z').txt, 'en pause · reprise à 7h00');
+  assert.equal(w('live', '2026-10-03T19:59:10Z', '2026-10-03T22:30:00Z').txt, 'en pause · reprise à 7h');
 });
 
 test('durées : jamais « 4 h 60 » ni « 60 min »', () => {

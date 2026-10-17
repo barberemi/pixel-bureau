@@ -213,28 +213,48 @@ function askBlock(side,c){
     host.appendChild(b);kronnModal(host,b,'Poser une question à '+c.name);box.appendChild(host);
   }
 }
+// bouton « ↻ » d'un workflow relançable (ligne de gates.workflows) : page action « bureau-relaunch », sans rien à saisir
+// (params lié à la colonne vide de la ligne, comme wf_id) ; « En cours… » tant qu'un run de ce workflow tourne
+function relaunchBtn(host,w,c,label,note){
+  const busy=c.runs.some(r=>String(r.wf).startsWith(String(w.wf).slice(0,8))&&['Running','Pending','WaitingApproval'].includes(r.status)&&r._s<=T);
+  const b=document.createElement('button');b.textContent=busy?'En cours…':label;b.disabled=busy;
+  if(busy){host.appendChild(b);return;}
+  b.setAttribute('data-kronn-action','bureau-relaunch');b.setAttribute('data-kronn-bindings',JSON.stringify({wf_id:w.wf,params:w.wf}));
+  const n=document.createElement('div');n.className='note';n.style.margin='6px 0 0';n.textContent=note;
+  new MutationObserver(()=>{
+    const v=b.getAttribute('data-kronn-action-state');
+    if(v==='succeeded')n.innerHTML='<b style="color:var(--ok)">✓ Relancé.</b> L\'agent se met au travail d\'ici une minute sur le plan.';else if(v==='failed')n.innerHTML='<b style="color:var(--err)">Relance refusée</b> (déjà en cours ?). Détail dans la carte.';
+  }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
+  host.append(b,n);kronnModal(host,b,'Relancer un workflow');
+}
+const lastRun=(c,w)=>c.top&&c.top.filter(r=>String(r.wf).startsWith(String(w.wf).slice(0,8))&&r._s<=T).slice(-1)[0];
+// agent cron : « ⏰ Son programme », un bloc par cron (programme en clair, anneau jusqu'au prochain passage, dernier run)
+// et « ↻ Passer maintenant » s'il est relançable ; ses crons ne reviennent pas dans « Relancer »
+function programmeBlock(side,c){
+  const list=cronsOf(c);if(!list.length)return;
+  const box=foldSection(side,'programme','⏰ Son programme',null,true);
+  for(const x of list){
+    const nx=cronNext(x.schedule,T), pv=cronPrev(x.schedule,T), last=lastRun(c,x);
+    const frac=nx&&pv?(T-pv)/(nx-pv):0;
+    const host=document.createElement('div');host.className='relaunch rl-cron';host.setAttribute('data-kronn-action-slot-host','');
+    host.innerHTML=`<div class="rl-n">${esc(clean(x.name))}</div><div class="cronbox"><span class="ring">${freshRing(frac,28)}</span><div><b>${esc(cronText(x.schedule,T))}</b><small>`+
+      (nx!=null?'Prochain passage '+whenTxt(nx,T,1)+' ('+inTxt(nx-T)+')':'Pas de passage cette semaine')+(last?' · dernier à '+hhm(last._s)+' : '+esc((STATUS_TXT[last.status]||last.status).toLowerCase()):'')+'</small></div></div>';
+    const w=ACTIONS.relaunch&&!TV&&RELAUNCH.find(r=>r.wf===x.wf&&!r.bureau);
+    if(w)relaunchBtn(host,w,c,'↻ Passer maintenant','Rien à remplir : un passage en plus, tout de suite. Son programme ne change pas.');
+    box.appendChild(host);
+  }
+}
 function relaunchBlock(side,c){
   if(!ACTIONS.relaunch)return;
   if(!c.wf||!c.wf.length)return;
-  const list=RELAUNCH.filter(w=>c.wf.includes(String(w.wf).slice(0,8)));if(!list.length)return;
+  const crons=cronsOf(c).map(x=>x.wf);
+  const list=RELAUNCH.filter(w=>c.wf.includes(String(w.wf).slice(0,8))&&!crons.includes(w.wf));if(!list.length)return;
   const box=foldSection(side,'relance','Relancer',list.length,true);
   for(const w of list){
     const host=document.createElement('div');host.className='relaunch';host.setAttribute('data-kronn-action-slot-host','');
-    const busy=c.runs.some(r=>String(r.wf).startsWith(String(w.wf).slice(0,8))&&['Running','Pending','WaitingApproval'].includes(r.status)&&r._s<=T);
-    const last=c.top&&c.top.filter(r=>String(r.wf).startsWith(String(w.wf).slice(0,8))&&r._s<=T).slice(-1)[0];
+    const last=lastRun(c,w);
     host.innerHTML=`<div class="rl-n">${esc(clean(w.name))}</div><div class="rl-s">${w.trigger==='cron'?'Cron':'Manuel'}${last?' · dernier run '+hm(last._s)+' : '+esc(STATUS_TXT[last.status]||last.status):' · pas encore lancé aujourd’hui'}</div>`;
-    const b=document.createElement('button');b.textContent=busy?'En cours…':'↻ Relancer';b.disabled=busy;
-    if(!busy){b.setAttribute('data-kronn-action','bureau-relaunch');b.setAttribute('data-kronn-bindings',JSON.stringify({wf_id:w.wf}));
-      const n=document.createElement('div');
-      n.className='note';
-      n.style.margin='6px 0 0';
-      n.textContent='Lance tout de suite un nouveau run de ce workflow, en plus de ses passages prévus.';
-      new MutationObserver(()=>{
-        const v=b.getAttribute('data-kronn-action-state');
-        if(v==='succeeded')n.innerHTML='<b style="color:var(--ok)">✓ Relancé.</b> L\'agent se met au travail d\'ici une minute sur le plan.';else if(v==='failed')n.innerHTML='<b style="color:var(--err)">Relance refusée</b> (déjà en cours ?). Détail dans la carte.';
-      }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
-      host.append(b,n);kronnModal(host,b,'Relancer un workflow');}
-    else host.appendChild(b);
+    relaunchBtn(host,w,c,'↻ Relancer','Lance tout de suite un nouveau run de ce workflow, en plus de ses passages prévus.');
     box.appendChild(host);
   }
 }

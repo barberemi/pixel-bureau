@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
+- Agents cron : « ⏰ Son programme » sur la fiche, le programme en clair à l'heure du bureau (Kronn lit les crons en UTC), le prochain passage avec un anneau, le dernier passage et « ↻ Passer maintenant » ; l'heure du prochain passage dans l'étiquette du plan (« ⏰ demain 8h20 ») et sous son état dans la liste du panneau.
 - Annonce Teams des mises en prod : une carte postée après la gate du début, éditée à chaque étape (⏳, chargeur animé, ✅, ❌ avec la raison en réponse dans le fil), logo du projet, canal de test en simulation (`mep.teams`, `tools/teams_logo.py`) (#59).
 - Mise en prod d'une PR de n'importe quel dépôt réglé (`github.mep`, `github.deploys[].mep`) : modèle du Bureau « Mise en prod d'une PR » (`launch.mep_pr`), lancé depuis la fiche de son agent, d'une PR ou d'un ticket ; ticket déduit de la PR, une seule gate au début, gate de fin « ticket terminé ? », simulation (`dry_run`) (#58).
 - Écran mural « Mes pages Kronn » en salle de réunion, à la place du tableau blanc : quatre miniatures et une case « + » ; la fenêtre « Mes pages Kronn » gagne × pour retirer une page et « + Ajouter une page », par une carte Kronn (workflow « Le Bureau · pages », dataset `pagelist`, sans republier). L'ordinateur du boss est libéré (#61).
@@ -24,10 +25,11 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- « ↻ Relancer » (fiche d'un agent, panneau Fraîcheur) : la carte Kronn ne demande plus de « Paramètres » (réservés à « ▶ Lancer… ») ; la ligne relançable du dataset `gates` porte une colonne `params` vide, liée par le bouton.
 - Pastilles des projets (`tools/teams_logo.py badge`) : initiales foncées sur un fond clair (africanews en jaune), blanches sinon.
 - « Mes pages Kronn » : un clic sur × ou « Ajouter » ouvre un écran de validation avec la carte Kronn juste dessous (elle s'ouvrait en bas de la fenêtre, hors de vue) ; plus de ✓ de Kronn sur tous les boutons ni de « C'est fait » avant d'avoir lancé ; la fenêtre suit les changements sans recharger ; la miniature d'une page ajoutée est faite tout de suite ; titres déjà échappés décodés (« &amp; ») ; la case « + Ajouter » ouvre la liste des pages ; grille en 4 colonnes (2 sous 900 px), qui tient sur un portable avec 6 pages.
 - `publish.py workflows` crée d'abord les workflows du Bureau manquants puis rend tous les modèles : un workflow créé au même passage (« Le Bureau · pages ») n'apparaît plus comme un agent (« Intérimaire 1 »).
-- Page plus légère : le JS assemblé recolle les lignes finies par « ; », « { » ou « , » (5 Ko).
+- Page plus légère : le JS assemblé recolle les lignes finies par « ; », « { » ou « , » (5 Ko), puis par un « + » ; le CSS assemblé, toutes ses lignes (0,7 Ko).
 - Ce qu'on tape dans un champ de fiche (Renommer un agent ajouté) n'est plus effacé par la mise à jour du panneau, chaque seconde.
 - Les pizzas de fin de sprint ont lieu même quand le sprint est clôturé le matin de sa fin et le suivant déjà ouvert : le cron équipe garde la fin prévue du sprint clôturé (`prev_sprint.planned_end`).
 - Un second placement de l'équipe (nouveau plan) ne déplace plus les agents de la config : leur siège demandé n'est plus réécrit en coordonnées (#64).

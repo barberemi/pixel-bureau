@@ -15,17 +15,11 @@ function cronOf(key){
   const id=(CFG.workflows||{})[key]; if(!id||!DATA)return null;
   const c=(DATA.crons||[]).find(x=>x.wf===id);return c&&c.schedule||null;
 }
-// prochain déclenchement du cron strictement après t (pas d'une minute, au plus 3 jours)
-function nextFire(schedule,t){
-  let m=Math.floor(t/60e3)*60e3+60e3;
-  for(let i=0;i<3*1440;i++,m+=60e3)if(cronMatch(schedule,new Date(m)))return m;
-  return null;
-}
 // état d'une source à l'instant now : âge, arrivée prévue, retard
 function freshness(src,now){
   const gen=ms(src.gen()); if(!gen)return null;
   const sch=cronOf(src.key), run=Math.min(60e3,Math.max(2e3,gen-Math.floor(gen/60e3)*60e3)); // durée du dernier run
-  const next=sch?nextFire(sch,gen):gen+src.period, eta=next!=null?next+run+3e3:null;
+  const next=sch?cronNext(sch,gen):gen+src.period, eta=next!=null?next+run+3e3:null;
   return {src,gen,age:now-gen,eta,late:eta!=null&&now>eta+src.grace?now-eta:0};
 }
 // anneau de progression (couleur = currentColor)
@@ -40,8 +34,7 @@ const DAY_FR={Mon:'lundi',Tue:'mardi',Wed:'mercredi',Thu:'jeudi',Fri:'vendredi',
 function waitTxt(f,now){
   const left=f.eta-now, frac=Math.min(1,Math.max(0,(now-f.gen)/Math.max(1,f.eta-f.gen)));
   if(f.eta-f.gen>3*f.src.period&&left>5*60e3){ // le cron ne tourne pas à ces heures-là
-    const d=parisDay(f.eta), when=d===parisDay(now)?'':d===parisDay(now+864e5)?'demain ':DAY_FR[parisHM(f.eta).wd]+' ';
-    return {txt:'en pause · reprise '+when+'à '+hm(f.eta).replace(':','h').replace(/^0/,''),frac:0,paused:true};
+    return {txt:'en pause · reprise '+whenTxt(f.eta,now,1).replace("aujourd'hui ",''),frac:0,paused:true};
   }
   if(left>=120e3)return {txt:'dans '+Math.ceil(left/60e3)+' min',frac};
   return {txt:'dans '+Math.ceil(left/1e3)+' s',frac};
@@ -128,6 +121,6 @@ function freshRelaunch(td,key,label,urgent){
   const host=document.createElement('div');host.className='relaunch fr-rl';host.setAttribute('data-kronn-action-slot-host','');
   host.innerHTML=`<div class="rl-n">${esc(label)}</div><div class="rl-s">Lance tout de suite un nouveau passage de ce cron du Bureau, en plus de ses passages prévus.</div>`;
   const b=document.createElement('button');b.textContent=urgent?'↻ Relancer':'↻';if(!urgent){b.className='rl-mini';b.title='Rafraîchir maintenant';b.setAttribute('aria-label','Rafraîchir '+label+' maintenant');}
-  b.setAttribute('data-kronn-action','bureau-relaunch');b.setAttribute('data-kronn-bindings',JSON.stringify({wf_id:w.wf}));
+  b.setAttribute('data-kronn-action','bureau-relaunch');b.setAttribute('data-kronn-bindings',JSON.stringify({wf_id:w.wf,params:w.wf}));
   host.appendChild(b);td.appendChild(host);kronnModal(host,b,'Relancer un cron du Bureau');
 }

@@ -1,12 +1,13 @@
 """Gates en attente de validation, pour que la page Le Bureau puisse les décider (page action « bureau-gate »).
 
 Sortie (stdout, JSON parsé par l'étape CollectApiData) :
-  {generated_at, gates: [{run, wf, wf_name, gate, message, since}], workflows: [{wf, name, trigger, bureau?}], askable: [{wf, name}],
+  {generated_at, gates: [{run, wf, wf_name, gate, message, since}], workflows: [{wf, name, trigger, bureau?, params}], askable: [{wf, name}],
    projects: [{id, name}], ducks: [{id, title, project, updated, created, awaiting}],
    questions: [{id, disc, title, agent, bureau, since, question, context, options, rec, multiple, items, more_items}], qrows: [{id, q, disc}],
    grows: [{id, run, decision}], warnings: [texte]}
 `workflows` = ceux que la page peut relancer (page action « bureau-relaunch ») : actifs, hors Bureau, pas
-sous-workflow d'un autre, sans variable obligatoire à saisir ; plus les crons du Bureau, avec la clé de leur source (bureau).
+sous-workflow d'un autre, sans variable obligatoire à saisir ; plus les crons du Bureau, avec la clé de leur source (bureau) ;
+chaque ligne porte params = "" (liée au bouton, pour que la carte ne demande rien).
 `projects` = les projets Kronn, « Sans projet » (id « none ») en tête : un bouton « parler au canard » chacun (page action
 « bureau-duck », find(id)). `ducks` = les discussions du canard (titre « 🦆 … », duck_start.py) des 14 derniers jours,
 15 au plus, les plus récentes d'abord ; awaiting = des questions attendent ta réponse (pending_question_count, comme
@@ -85,12 +86,14 @@ for wid, (wf, full) in defs.items():
     # au lancement (source user_input, comme Réestimer : sinon le run partirait sans ticket)
     if any(v.get("required", True) and v.get("source") in (None, "", "user_input") for v in full.get("variables") or []):
         continue
-    relaunch.append({"wf": wid, "name": wf["name"], "trigger": wf.get("trigger_type")})
+    relaunch.append({"wf": wid, "name": wf["name"], "trigger": wf.get("trigger_type"), "params": ""})
+# params : toujours vide, lié à la variable params du workflow de relance par le bouton « ↻ » (bureau-relaunch) : la carte
+# Kronn n'a plus de champ « Paramètres » à montrer (réservé à « ▶ Lancer… », bureau-launch)
 # les crons du Bureau aussi (#44), clé de leur source (bureau) : « ↻ Relancer » sur leur ligne en échec ou en retard du
 # panneau Fraîcheur ; jamais comptés comme des agents pour autant (is_bureau)
 for key, wid in (CFG.get("workflows") or {}).items():
     if wid in defs:
-        relaunch.append({"wf": wid, "name": defs[wid][0]["name"], "trigger": defs[wid][0].get("trigger_type"), "bureau": key})
+        relaunch.append({"wf": wid, "name": defs[wid][0]["name"], "trigger": defs[wid][0].get("trigger_type"), "bureau": key, "params": ""})
 
 # workflows qui demandent une saisie (« ▶ Lancer… » des fiches d'agents, #64) : leurs variables à saisir, dont la page
 # fait un champ chacune (#67 : exemple, zone de texte ou liste, motif) puis la ligne « nom=valeur ; … » que relaunch.py

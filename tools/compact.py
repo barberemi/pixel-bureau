@@ -129,12 +129,16 @@ def _glue(out, src, i):
 
 def _lines(text, join=False):
     """Indentation et blancs de fin retirés, lignes vides supprimées (y compris celles d'un commentaire retiré).
-    join (JS) : une ligne de code finie par « ; », « { » ou « , » est recollée à la suivante ; aucune insertion
-    automatique de point-virgule n'en dépend, et les sauts de ligne des chaînes et gabarits (_NL) ne sont pas touchés."""
+    join (JS) : une ligne de code finie par « ; », « { », « , » ou un « + » (pas « ++ », ni devant une ligne qui commence
+    par « + ») est recollée à la suivante ; aucune insertion automatique de point-virgule n'en dépend, et les sauts de
+    ligne des chaînes et gabarits (_NL) ne sont pas touchés. join="css" : toute ligne finie par « { », « ; » ou « } »."""
+    ends = ("{", ";", "}") if join == "css" else (";", "{", ",")
+    lines = [l for l in (l.strip() for l in text.split("\n")) if l]
     out = []
-    for l in (l.strip() for l in text.split("\n")):
-        if l:
-            out.append(l + ("" if join and l.endswith((";", "{", ",")) else "\n"))
+    for k, l in enumerate(lines):
+        glue = join and (l.endswith(ends) or join is True and l.endswith("+") and not l.endswith("++")
+                         and not (k + 1 < len(lines) and lines[k + 1].startswith("+")))
+        out.append(l + ("" if glue else "\n"))
     if out and not out[-1].endswith("\n"):
         out[-1] += "\n"  # le texte finit toujours par un saut de ligne (fichiers mis bout à bout)
     return "".join(out).replace(_NL, "\n")
@@ -160,5 +164,5 @@ def strip_css(src):
         else:
             out.append(c)
             i += 1
-    return _lines("".join(out))
+    return _lines("".join(out), "css")
 
