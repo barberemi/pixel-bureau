@@ -285,3 +285,19 @@ class TeamsLogoTest(unittest.TestCase):
         with Image.open(path) as im:
             self.assertEqual((im.format, im.size, getattr(im, "n_frames", 1)), ("PNG", (48, 48), 12))
         self.assertLess(os.path.getsize(path), 14_000, "carte éditée sous 28 Ko avec un logo")
+
+
+@unittest.skipUnless(Image, "Pillow absent")
+class BadgeInkTest(unittest.TestCase):
+    def test_initials_dark_on_a_light_badge_white_on_a_dark_one(self):
+        """Pastille jaune (africanews) : initiales foncées, lisibles ; pastille foncée : initiales blanches."""
+        import io
+        sys.path.insert(0, os.path.join(ROOT, "tools"))
+        import teams_logo
+
+        def darkest(color):
+            with Image.open(io.BytesIO(teams_logo.badge("AN", color))) as im:
+                px = [p for p in im.convert("RGBA").getdata() if p[3] > 200]
+            return min(sum(p[:3]) for p in px), max(sum(p[:3]) for p in px)
+        self.assertLess(darkest("#ffc20e")[0], 200, "écriture foncée sur le jaune")
+        self.assertGreater(darkest("#495057")[1], 700, "écriture blanche sur le gris foncé")

@@ -42,7 +42,8 @@ def badge(text, color):
         if os.path.exists(f):
             font = ImageFont.truetype(f, (20 if len(text) <= 2 else 15) * K)
             break
-    d.text((S * K / 2, S * K / 2), text, fill="white", font=font or ImageFont.load_default(), anchor="mm")
+    ink = "#1d1d1d" if rgb[0] * .299 + rgb[1] * .587 + rgb[2] * .114 > 170 else "white"  # fond clair (jaune) : écriture foncée
+    d.text((S * K / 2, S * K / 2), text, fill=ink, font=font or ImageFont.load_default(), anchor="mm")
     buf = io.BytesIO()
     im.resize((S, S), Image.LANCZOS).save(buf, "PNG", optimize=True)
     return buf.getvalue()
