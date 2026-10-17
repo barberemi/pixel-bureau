@@ -900,6 +900,8 @@ print(json.dumps(val))
         gates = self.run_script("gates_snapshot.py", api=self.kronn(fake))
         self.assertEqual([w["name"] for w in gates["workflows"] if "bureau" not in w], ["Revue de PR", "Saisie facultative", "Variable fournie"])
         self.assertIn(ids["b"], [w["wf"] for w in gates["askable"]])  # on peut toujours l'interroger sur ses runs
+        # params vide sur chaque ligne : lié par « ↻ » (bureau-relaunch), la carte Kronn n'a plus de champ « Paramètres »
+        self.assertEqual({w["params"] for w in gates["workflows"]}, {""})
 
     def test_gates_lists_launchable_workflows_with_their_inputs(self):
         """« ▶ Lancer… » (#64) : chaque workflow qui demande une saisie, avec ses variables à saisir (pas celles d'une source)."""

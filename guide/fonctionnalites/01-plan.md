@@ -75,7 +75,7 @@ L'anneau sous les pieds double la couleur par une forme (lisible par les daltoni
 
 ## Détails
 
-- Chaque agent porte une icône et son métier à côté de son prénom (« 🔎 Dwight · Reviewer de PR », « 🚨 Creed · Erreurs prod ») : sur le plan, dans Qui fait quoi, dans le panneau et sur sa fiche. L'icône est devinée depuis le nom du workflow (🔎 revue, 📰 veille, ⚡ performance, 🚨 erreurs, 🧪 tests, 🚀 MEP, 🧳 migration…). En mode TV, seul le métier s'affiche.
+- Chaque agent porte une icône et son métier à côté de son prénom (« 🔎 Dwight · Reviewer de PR », « 🚨 Creed · Erreurs prod ») : sur le plan, dans Qui fait quoi, dans le panneau et sur sa fiche. L'icône est devinée depuis le nom du workflow (🔎 revue, 📰 veille, ⚡ performance, 🚨 erreurs, 🧪 tests, 🚀 MEP, 🧳 migration…). Un agent cron au repos ajoute l'heure de son prochain passage, à l'heure du bureau : « ⏰ 12h », « ⏰ demain 8h20 », « ⏰ lundi 9h30 » (rien quand il travaille) ; dans le panneau, elle s'affiche sous son état. En mode TV, seul le métier s'affiche.
 
 ![Les agents et leur métier](../img/etiquettes-agents.png)
 - Clic sur un personnage : sa fiche (voir [Fiches](07-fiches.md)). Survol : son nom et ce qu'il fait.

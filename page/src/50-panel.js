@@ -173,7 +173,8 @@ function drawSide(side){
       b.appendChild(t);
       const s=document.createElement('div');
       s.className='s';
-      s.innerHTML=`<span class="dot" style="background:${ST_CSS[st.st]||'var(--idle)'}"></span>${esc(shortSt(st))}`;
+      const nx=famOf(c)==='wf'&&cronTag(c); // agent cron au repos : son prochain passage sous son état
+      s.innerHTML=`<span class="dot" style="background:${ST_CSS[st.st]||'var(--idle)'}"></span>${esc(shortSt(st))}${nx?`<small class="nx">${esc(nx)}</small>`:''}`;
       b.appendChild(s);box.appendChild(b);
     }
     if(fk==='misc')box.appendChild(duckRow());
@@ -250,6 +251,7 @@ function drawSide(side){
   const stats=document.createElement('div');stats.className='stats';
   stats.innerHTML=`<div><b>${done.length}</b><span>runs</span></div><div><b style="color:var(--ok)">${ok}</b><span>réussis</span></div><div><b style="color:${ko?'var(--err)':'inherit'}">${ko}</b><span>échecs</span></div><div><b>${fmtTok(tok)}</b><span>tokens</span></div>`;
   side.appendChild(stats);
+  programmeBlock(side,c);
   runBlock(side,c);
   askBlock(side,c);
   relaunchBlock(side,c);

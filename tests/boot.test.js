@@ -129,7 +129,7 @@ test('panneau Fraîcheur : « ↻ Relancer » si en retard, « ↻ » discret si
     ACTIONS.relaunch = true; TV = false;`);
   const btn = code => JSON.parse(run(`JSON.stringify((() => { const td = cell(); ${code}; const h = td.kids[0], b = h && h.kids.find(k => k.tag === 'button');
     return b ? {text: b.textContent, cls: b.className || '', action: b.attrs['data-kronn-action'], bind: b.attrs['data-kronn-bindings']} : null; })())`));
-  const bind = '{"wf_id":"wf-team"}';
+  const bind = '{"wf_id":"wf-team","params":"wf-team"}';
   assert.deepEqual(btn(`freshRelaunch(td, 'team', 'Équipe', true)`), {text: '↻ Relancer', cls: '', action: 'bureau-relaunch', bind});
   assert.deepEqual(btn(`freshRelaunch(td, 'team', 'Équipe', false)`), {text: '↻', cls: 'rl-mini', action: 'bureau-relaunch', bind});
   assert.equal(btn(`freshRelaunch(td, 'live', 'Direct', true)`), null, 'Direct : le cron live passe chaque minute');

@@ -20,7 +20,8 @@ const agentTag=c=>famOf(c)==='wf'?agentIcon(c)+' ':''; // devant un prénom d'ag
 function labelText(c){
   if(famOf(c)!=='wf')return FAM[famOf(c)].ico+(c.apprentice?'🎓 ':'')+String(c.name||'').slice(0,24);
   const mode=(CFG.ui||{}).agent_label||(TV?'metier':'both'), job=agentShort(c);
-  return agentIcon(c)+' '+(mode==='office'||!job?String(c.name||'').slice(0,24):mode==='metier'?job:String(c.name||'').slice(0,14)+' · '+job);
+  const n=cronTag(c); // agent cron au repos : l'heure de son prochain passage
+  return agentIcon(c)+' '+(mode==='office'||!job?String(c.name||'').slice(0,24):mode==='metier'?job:String(c.name||'').slice(0,14)+' · '+job)+(n&&' · '+n);
 }
 let FILTER=null; // null = tout le monde ; sinon une famille mise en avant
 // workflows en hologramme : teinte cyan, lignes de balayage qui défilent, scintillement rare ; sur le sol beige,
