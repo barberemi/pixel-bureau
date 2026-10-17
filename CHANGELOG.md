@@ -27,7 +27,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 - Pastilles des projets (`tools/teams_logo.py badge`) : initiales foncées sur un fond clair (africanews en jaune), blanches sinon.
 - « Mes pages Kronn » : un clic sur × ou « Ajouter » ouvre un écran de validation avec la carte Kronn juste dessous (elle s'ouvrait en bas de la fenêtre, hors de vue) ; plus de ✓ de Kronn sur tous les boutons ni de « C'est fait » avant d'avoir lancé ; la fenêtre suit les changements sans recharger ; la miniature d'une page ajoutée est faite tout de suite ; titres déjà échappés décodés (« &amp; ») ; la case « + Ajouter » ouvre la liste des pages ; grille en 4 colonnes (2 sous 900 px), qui tient sur un portable avec 6 pages.
 - `publish.py workflows` crée d'abord les workflows du Bureau manquants puis rend tous les modèles : un workflow créé au même passage (« Le Bureau · pages ») n'apparaît plus comme un agent (« Intérimaire 1 »).
-- Page plus légère : le JS assemblé recolle les lignes finies par « ; », « { » ou « , » (5 Ko).
+- Page plus légère : le JS assemblé recolle les lignes finies par « ; », « { » ou « , » (5 Ko), puis par un « + » ; le CSS assemblé, toutes ses lignes (0,7 Ko).
 - Ce qu'on tape dans un champ de fiche (Renommer un agent ajouté) n'est plus effacé par la mise à jour du panneau, chaque seconde.
 - Les pizzas de fin de sprint ont lieu même quand le sprint est clôturé le matin de sa fin et le suivant déjà ouvert : le cron équipe garde la fin prévue du sprint clôturé (`prev_sprint.planned_end`).
 - Un second placement de l'équipe (nouveau plan) ne déplace plus les agents de la config : leur siège demandé n'est plus réécrit en coordonnées (#64).

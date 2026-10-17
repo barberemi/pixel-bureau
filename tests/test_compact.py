@@ -42,7 +42,14 @@ class CompactTest(unittest.TestCase):
 
     def test_css_comments_removed_strings_kept(self):
         src = "/* titre */\n.a{\n  content:'/* x */'; /* fin */\n  color:red\n}\n"
-        self.assertEqual(strip_css(src), ".a{\ncontent:'/* x */';\ncolor:red\n}\n")
+        self.assertEqual(strip_css(src), ".a{content:'/* x */';color:red\n}\n")  # recollée après « { », « ; » et « } »
+        self.assertEqual(strip_css(".a{color:red}\n.b,\n.c{margin:0}\n@media(x){.d{top:0}\n}\n"), ".a{color:red}.b,\n.c{margin:0}@media(x){.d{top:0}}\n")
+
+    def test_js_lines_joined_after_a_plus_but_not_an_increment(self):
+        """« + » en fin de ligne : recollée (concaténation) ; jamais après « ++ » ni devant une ligne qui commence par « + »."""
+        self.assertEqual(strip_js("const s='a'+\n  b;\n"), "const s='a'+b;\n")
+        self.assertEqual(strip_js("i++\nf();\n"), "i++\nf();\n")
+        self.assertEqual(strip_js("a=b+\n+c;\n"), "a=b+\n+c;\n")
 
     def test_assembled_page_parses_and_is_lighter(self):
         """Le JS assemblé (démo) se lit sans erreur de syntaxe et pèse moins que ses sources."""
