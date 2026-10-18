@@ -6,6 +6,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-18
+
 ### Ajouté
 
 - Agents cron : « ⏰ Son programme » sur la fiche, le programme en clair à l'heure du bureau (Kronn lit les crons en UTC), le prochain passage avec un anneau, le dernier passage et « ↻ Passer maintenant » ; l'heure du prochain passage dans l'étiquette du plan (« ⏰ demain 8h20 ») et sous son état dans la liste du panneau.
