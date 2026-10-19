@@ -53,6 +53,10 @@ Une mise en prod d'un autre dépôt suivi peut être lancée par quelqu'un qui n
 
 ![Creed sort de panne : « ✅ Rétabli ! » et les applaudissements des autres agents](../img/agent-retabli.png)
 
+Quand un ticket entre dans le sprint après son démarrage (il n'était pas au sprint planning), une soucoupe-mère vient le livrer, à l'heure Jira de l'ajout au sprint. La lumière baisse, une ombre glisse sur le plan et la soucoupe va chercher la facilitatrice là où elle est : le faisceau s'allume, elle monte à bord. La soucoupe traverse le plan jusqu'au mur Kanban et la dépose devant avec le ticket : elle le range dans la colonne « à faire », où il clignote, « +13 pts » s'affiche au-dessus du mur et la bulle annonce « 🛸 7931 entre dans le sprint · 13 pts ». La soucoupe repart ; la facilitatrice reste au mur, puis reprend sa journée. La loupe s'ouvre au moment du dépôt. Si elle est déjà au mur, la soucoupe y vient directement et le ticket descend jusqu'à elle ; absente ce jour-là (ou pas de facilitatrice dans l'équipe), le ticket descend seul. La scène dure 13 secondes (10 quand elle est déjà au mur). Plusieurs tickets ajoutés à moins de 5 minutes d'écart font une seule visite (« 🛸 3 tickets entrent dans le sprint · 21 pts »). Les ajouts dans la demi-heure qui suit le démarrage du sprint comptent comme le planning et ne déclenchent rien. Avec « réduire les animations », pas de soucoupe. Dans le fil : « 🛸 DM-7931 arrive en cours de sprint (13 pts) pour Andy ».
+
+![La soucoupe-mère a déposé la facilitatrice devant le mur Kanban avec DM-7931 : +13 pts et la bulle d'annonce](../img/vaisseau-mere.png)
+
 Gandalf et Yoda viennent dans tous les bureaux, quelle que soit l'équipe (`team/guests.json`). Pour les retirer : `"common_guests": false` dans `bureau.config.json` ; pour en changer le nom, la réplique ou l'allure : un invité de même clé (`g_gandalf`, `g_yoda`) dans le roster de l'équipe ou dans la config.
 
 D'autres changements de colonne se jouent aussi, à l'heure exacte du changement de statut :

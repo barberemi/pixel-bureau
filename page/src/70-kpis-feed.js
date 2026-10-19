@@ -141,6 +141,8 @@ function teamEventTxt(e){
     return {c:w.c,txt:`<span style="color:${col}">➜</span> ${w.r} : ${refTk(e.key)} ${esc(jst(e.from))} → ${esc(jst(e.to))}${sum}`};}
   if(e.kind==='new'){const w=e.who?nm(e.who,null):null;
     return {c:w&&w.c,txt:`<span style="color:var(--info)">＋</span> Nouveau ticket ${refTk(e.key,true)}${w?' pour '+w.r:''}${sum}`};}
+  if(e.kind==='sprint_in'){const w=e.who?nm(e.who,e.who_name):null;
+    return {c:w&&w.c,txt:`🛸 ${refTk(e.key)} arrive en cours de sprint${e.points?' ('+e.points+' pts)':''}${w?' pour '+w.r:''}${sum}`};}
   if(e.kind==='pr'){const w=nm(e.author,e.author_name);
     return {c:w.c,txt:`<span style="color:${MEP_COLOR}">⇡</span> ${w.r} ouvre la PR ${refPr(e.n,e.url,e.repo)} <small>${esc(clip(e.title,70))}</small>`};}
   if(e.kind==='review'){

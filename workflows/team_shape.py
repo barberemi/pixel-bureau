@@ -1,5 +1,5 @@
 import json, re, sys, unicodedata
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from _lib import CFG, TZ, dumps
 
 D = json.load(sys.stdin)
@@ -161,9 +161,27 @@ for rel in D.get("releases") or []:
                  "released": rel.get("publishedAt"), "staging": s_, "prod": p_})
 meps.sort(key=lambda m: m["released"] or "")
 
-# ---------- événements d'équipe du jour : changements de statut Jira, tickets créés, PR ouvertes, reviews ----------
+# ---------- événements d'équipe du jour : changements de statut Jira, entrées au sprint, tickets créés, PR ouvertes, reviews ----------
 events = []
 by_acc = {p["id"]: p for p in people.values()}
+# Ticket entré dans le sprint en cours après son démarrage (vaisseau-mère de la page). Jira écrit le champ Sprint en liste
+# d'ids (« 41, 42 ») ; sans id de sprint, on compare les noms. La marge écarte les retouches juste après le planning.
+_SP = D.get("sprint") or {}
+SPRINT_ID, SPRINT_NAME = str(_SP.get("id") or ""), _SP.get("name") or ""
+SPRINT_GRACE = timedelta(minutes=30)
+
+
+def enters_sprint(item, at):
+    if item.get("fieldId") != SPRINT_FIELD and item.get("field") != "Sprint":
+        return False
+    if not _SP.get("startDate") or jira_ts(at) < jira_ts(_SP["startDate"]) + SPRINT_GRACE:
+        return False
+    split = lambda s: {x.strip() for x in str(s or "").split(",") if x.strip()}  # noqa: E731
+    if SPRINT_ID:
+        return SPRINT_ID in split(item.get("to")) and SPRINT_ID not in split(item.get("from"))
+    return bool(SPRINT_NAME) and SPRINT_NAME in split(item.get("toString")) and SPRINT_NAME not in split(item.get("fromString"))
+
+
 open_keys = {it.get("key") for it in D.get("issues") or []}
 # Les tickets du sprint fermé arrivent sans historique (étape jira_closed) : seuls leurs « créé aujourd'hui » comptent.
 for it in (D.get("issues") or []) + [x for x in (D.get("closed") or []) if x.get("key") not in open_keys]:
@@ -177,9 +195,15 @@ for it in (D.get("issues") or []) + [x for x in (D.get("closed") or []) if x.get
         if not is_today(h.get("created")):
             continue
         for item in h.get("items") or []:
+            a = h.get("author") or {}
+            if enters_sprint(item, h["created"]):
+                events.append({"t": h["created"], "kind": "sprint_in", "key": key, "summary": (f.get("summary") or "")[:110],
+                               "points": next((f.get(k) for k in POINTS if f.get(k) is not None), None),
+                               "who": assignee if assignee in by_acc else None, "who_name": (f.get("assignee") or {}).get("displayName"),
+                               "by": a.get("accountId"), "by_name": a.get("displayName")})
+                continue
             if item.get("field") != "status":
                 continue
-            a = h.get("author") or {}
             events.append({"t": h["created"], "kind": "move", "key": key, "summary": (f.get("summary") or "")[:110],
                            "from": item.get("fromString"), "to": item.get("toString"), "cat": CAT.get(item.get("toString") or ""),
                            "who": a.get("accountId") if a.get("accountId") in by_acc else None, "who_name": a.get("displayName")})

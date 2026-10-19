@@ -183,7 +183,7 @@
     "step_type": {
      "type": "ApiCall"
     },
-    "description": "Changements de statut seuls des tickets du sprint en cours (changelog/bulkfetch filtré sur status) : ~10 fois plus léger que expand=changelog, qui ramenait aussi chaque version de la description. Une seule page (1000 changements) : Kronn ne pagine pas un nextPageToken dans le corps ; 353 pour 57 tickets le 2026-10-09.",
+    "description": "Changements de statut et de sprint des tickets du sprint en cours (changelog/bulkfetch filtré sur status et le champ Sprint, pour les tickets entrés en cours de sprint) : ~10 fois plus léger que expand=changelog, qui ramenait aussi chaque version de la description. Une seule page (1000 changements) : Kronn ne pagine pas un nextPageToken dans le corps ; 353 pour 57 tickets le 2026-10-09.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -199,7 +199,8 @@
     "api_body": {
      "issueIdsOrKeys": "{{steps.team_keys.data}}",
      "fieldIds": [
-      "status"
+      "status",
+      "@@jira.sprint_field@@"
      ],
      "maxResults": 1000
     },

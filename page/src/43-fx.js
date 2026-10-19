@@ -1,4 +1,5 @@
 // ---------- petites scènes de 3 s : succès débloqué, éclosion, changement de stade (canard d'équipe), agent rétabli ----------
+// (et une de 10 à 13 s : la soucoupe-mère d'un ticket entré dans le sprint en cours de route, en bas du fichier)
 // Chaque événement est daté par les données (fxEvents) : la scène se joue une fois quand l'heure affichée passe sa date (direct
 // ou rejeu ; le rejeu s'arrête déjà sur la loupe), FX_MS d'animation puis FX_HOLD de bulle, à la vitesse réelle. Rien quand on
 // fait glisser l'heure ; le premier passage note ce qui est déjà en cours sans le rejouer (comme la loupe).
@@ -40,6 +41,7 @@ function fxEvents(t){
   }
   for(const c of chars)if(!c.person&&!c.visitor&&!c.guest&&c.runs)
     for(const r of agentRecoveries(c))if(recent(r.at))out.push({id:'recover:'+r.run,kind:'recover',at:r.at,c});
+  if(!REDUCED_MOTION)for(const u of ufoLandings())if(recent(u.at))out.push({id:'ufo:'+u.keys[0]+':'+u.at,kind:'ufo',...u});
   return out;
 }
 // à chaque image (avant le rendu) : nouvelles scènes, fin des anciennes
@@ -50,7 +52,7 @@ function fxFrame(now){
     if(FX.seen)for(const e of evs)if(!FX.seen.has(e.id)&&!FX.cur.has(e.id))FX.cur.set(e.id,{...e,t0:now});
     FX.seen=new Set(evs.map(e=>e.id));
   }
-  for(const [id,e] of FX.cur)if(now-e.t0>FX_MS+FX_HOLD)FX.cur.delete(id);
+  for(const [id,e] of FX.cur)if(now-e.t0>(e.kind==='ufo'?ufoPlan(e).ms:FX_MS+FX_HOLD))FX.cur.delete(id);
 }
 const fxP=(e,now)=>Math.min(1,(now-e.t0)/FX_MS); // avancement de l'animation, 0 à 1
 const fxOf=kind=>[...FX.cur.values()].find(e=>e.kind===kind);
@@ -93,7 +95,7 @@ function fxDrawDuck(x,y,now){
       fxSparkles(x,y-12*s,16*s,8,1);fxBubble(x,top,'🐣 Caneton !','#9a6a00');}
   }
 }
-const fxDuckBusy=()=>[...FX.cur.values()].some(e=>e.kind!=='recover');
+const fxDuckBusy=()=>[...FX.cur.values()].some(e=>e.kind!=='recover'&&e.kind!=='ufo');
 // l'œuf qui tremble avant d'éclore : à la place du dessin du canard
 function fxDuckWobble(now){const h=fxOf('hatch');return h&&fxP(h,now)<.7?Math.sin(now/45)*.15:0;}
 // un caneton naît juste derrière lui (début d'un sprint qui suit un sprint tenu) : un petit œuf qui tremble, puis il rejoint la file
@@ -110,4 +112,87 @@ function fxOverlay(now){
     if(now-e.t0<FX_MS+FX_HOLD/2)for(const c of chars)if(c!==e.c&&!c.person&&!c.visitor&&!c.guest&&c.present&&c.pos&&c._st&&FX_WORKING.includes(c._st.st))
       fxBubble(c.pos.x,c.pos.y-44-(Math.floor((now-e.t0)/250)%2?2:0),'👏','#2e7d4f');
   }
+}
+// ---------- soucoupe-mère : un ticket entre dans le sprint après son démarrage (team.events, kind sprint_in, #89) ----------
+// La lumière baisse, une ombre glisse, la soucoupe va chercher la facilitatrice (roleKind sm) là où elle est, la dépose avec
+// le ticket devant le mur Kanban (emplacement kanban du plan) : elle le range dans « à faire », « +13 pts » sur le mur, bulle
+// d'annonce, puis la soucoupe repart et elle reste au mur. Déjà au mur : la soucoupe y vient et le ticket descend seul jusqu'à
+// elle ; absente ou pas de facilitatrice : le ticket descend seul. Des tickets ajoutés coup sur coup (moins de 5 min d'écart)
+// font une seule visite. Loupe au dépôt (44-loupe.js). Coupé par « réduire les animations ».
+let UFO_M={};
+function ufoLandings(){
+  if(UFO_M.t===TEAM)return UFO_M.l;const l=[];
+  for(const e of ((TEAM&&TEAM.events)||[]).filter(e=>e.kind==='sprint_in').sort((a,b)=>ms(a.t)-ms(b.t))){
+    const t=ms(e.t),u=l[l.length-1];
+    if(u&&t-u.end<3e5){u.end=t;if(!u.keys.includes(e.key)){u.keys.push(e.key);u.pts+=+e.points||0;}}
+    else l.push({at:t,end:t,keys:[e.key],pts:+e.points||0});
+  }
+  UFO_M={t:TEAM,l};return l;
+}
+const ufoSm=()=>{const c=smChar();return c&&c.pos&&c._st&&!['off','absent','gone'].includes(c._st.st)?c:null;};
+// emplacement de dépôt : la case du milieu de l'emplacement kanban (le milieu du plan sans emplacement)
+function ufoSpot(){const s=((LAYOUT.spots||{}).kanban||[]).slice().sort((a,b)=>a[0]-b[0])[0|((LAYOUT.spots||{}).kanban||[]).length/2];
+  return s?{x0:s[0],y0:s[1],...tileCenter(s[0],s[1])}:tileCenter(COLS>>1,ROWS>>1);}
+// figé au début de la visite : qui, d'où (pick : on va la chercher), durée, début du dépôt (A, fraction de la visite)
+function ufoPlan(u){
+  if(u.plan)return u.plan;const sm=ufoSm(),d=ufoSpot(),wall=!!sm&&sm._st.zone==='kanban'&&!sm.moving,pick=!!sm&&!wall;
+  return u.plan={sm,d,pick,from:pick?{x:sm.pos.x,y:sm.pos.y}:d,ms:pick?13e3:1e4,A:pick?.4:.12};
+}
+const ufoHides=c=>{const u=fxOf('ufo');return !!u&&c===ufoPlan(u).sm;}; // pendant la visite, la scène la dessine
+// ellipse en lignes de pixels (vue de trois quarts) ; top : la moitié du haut seulement
+function ufoOval(x,y,a,b,col,top,st=2){for(let dy=-b;dy<(top?0:b);dy+=st){const t=(dy+st/2)/b,w=Math.round(a*Math.sqrt(Math.max(0,1-t*t))/2)*2;if(w>0)R(ctx,x-w,y+dy,w*2,st,col);}}
+function ufoSaucer(x,y,now,emit){
+  [[8,124,28,'#2b3246'],[0,130,26,'#4a5470'],[-4,124,20,'#6c7894'],[-8,108,14,'#8d98b2']].forEach(([o,a,b,c])=>ufoOval(x,y+o,a,b,c));
+  R(ctx,x-130,y-1,260,3,'#323a52');ufoOval(x,y-10,44,30,'#5e9fc4',1);ufoOval(x,y-12,36,25,'#8fd0ee',1); // arête, dôme
+  R(ctx,x-20,y-32,6,10,'#e8f8ff');R(ctx,x-13,y-35,4,4,'#e8f8ff'); // reflet
+  for(let i=0;i<14;i++){const a=i/14*Math.PI*2+now/700;if(Math.sin(a)>-.15) // couronne de feux qui tourne : ceux de devant
+    R(ctx,x+Math.cos(a)*120-3,y+1+Math.sin(a)*23,6,4,(i+Math.floor(now/180))%4?(i%2?'#ffb43a':'#ff6a3a'):'#fff6c0');}
+  ufoOval(x,y+32,36,6,emit?'#d8ffe8':'#3a4258');if(emit)ufoOval(x,y+32,22,4,'#fff'); // émetteur
+}
+function ufoBeam(x,top,bot,now,a){
+  ctx.globalAlpha=Math.max(0,a);
+  for(let y=top;y<bot;y+=2)R(ctx,x-14-30*(y-top)/(bot-top),y,28+60*(y-top)/(bot-top),2,`rgba(190,255,215,${Math.floor((y+now/30)/6)%2?.3:.2})`);
+  ufoOval(x,bot,92,12,'rgba(200,255,220,.35)');ctx.globalAlpha=1;
+}
+const ufoCard=(x,y)=>{R(ctx,x-9,y-6,18,13,'#b5481c');R(ctx,x-8,y-5,16,11,'#fff');R(ctx,x-6,y-3,12,2,'#b5481c');R(ctx,x-6,y+1,8,2,'#e0a080');};
+const ufoStand=(c,x,y,f,a=1)=>{const img=spriteOf(c);if(ready(img)){ctx.globalAlpha=a;ctx.drawImage(img,f*64,256,64,64,x-32,y-60,64,64);ctx.globalAlpha=1;}};
+const ufoSay=u=>'🛸 '+(u.keys[1]?u.keys.length+' tickets entrent':shortKey(u.keys[0])+' entre')+' dans le sprint'+(u.pts?' · '+u.pts+' pts':'');
+// bubble faux : au-dessus du voile de nuit, sous les bulles ; vrai : la bulle d'annonce
+function ufoDraw(now,bubble){
+  const u=fxOf('ufo');if(!u)return;
+  const {sm,d,pick,from:s,ms:D,A}=ufoPlan(u),p=Math.min(1,(now-u.t0)/D),k=(a,b)=>Math.min(1,Math.max(0,(p-a)/(b-a))),q=a=>A+(1-A)*a;
+  if(bubble){if(p>q(.62)&&p<q(.82))fxBubble(d.x,d.y-(sm?62:38),ufoSay(u),'#b5481c');return;}
+  const hy=Math.max(80,(KANR?KANR.y:d.y)-80),sy=Math.max(80,s.y-150);
+  ctx.fillStyle=`rgba(10,12,30,${.45*k(0,.08)*(1-k(q(.9),q(.98)))})`;ctx.fillRect(0,0,W,H); // la lumière baisse
+  if(p<.16){ctx.globalAlpha=.35*(1-k(.12,.16));ufoOval(W+120-(W+120-s.x)*k(0,.12),s.y+10,190,34,'#05060c',0,4);ctx.globalAlpha=1;} // l'ombre
+  let x=d.x,y=hy; // trajet : au-dessus d'elle, traversée en arc, au-dessus du mur, départ en haut à gauche
+  if(!pick)y=-60+(hy+60)*k(0,A);
+  else if(p<.3){x=s.x;y=-60+(sy+60)*k(.04,.16);}
+  else if(p<A){const f=k(.3,A);x=s.x+(d.x-s.x)*f;y=sy+(hy-sy)*f-50*Math.sin(f*Math.PI);}
+  if(p>q(.86)){const f=k(q(.86),q(.98));x=d.x-160*f;y=hy-(hy+120)*f;}
+  if(pick){ // prise en charge : elle se lève et monte dans le faisceau
+    if(p<.3)ufoBeam(s.x,y+36,s.y+8,now,Math.min(k(.16,.19),1-k(.28,.3)));
+    if(p<.29)ufoStand(sm,s.x,s.y-(s.y-y-44)*k(.19,.28),2,1-k(.25,.29));
+  }
+  if(p>q(.02)&&p<q(.82))ufoBeam(d.x,y+36,d.y+8,now,Math.min(k(q(.02),q(.06)),1-k(q(.78),q(.82))));
+  const top=y+44,land=k(q(.05),q(.2));
+  if(sm&&(p>q(.05)||!pick)){ // devant le mur : de face, vers le mur pour ranger le ticket, de face pour l'annonce
+    ufoStand(sm,d.x,pick?top+(d.y-top)*land:d.y,p>q(.3)&&p<q(.45)?0:2);
+    if(pick&&land>=1&&d.x0!=null){sm.pos={x:d.x,y:d.y};sm.tile=[d.x0,d.y0];sm.path=[];sm.target=null;} // elle reste au mur après la visite
+  }
+  if(p>q(.05)&&p<q(.3))ufoCard(d.x+(sm&&(pick||land>=1)?14:0),pick&&sm?top+(d.y-top)*land-30:top+(d.y-(sm?30:6)-top)*land);
+  if(!KANR)return ufoSaucer(x,y,now,p>q(.02)&&p<q(.8)||pick&&p>.16&&p<.3);
+  const t=kanbanCols()[0].list,j=Math.max(0,t.findIndex(e=>e.key===u.keys[0])),sx=KANR.x+6+j%3*6,sl=KANR.y+11+Math.floor(j/3)*5;
+  if(p>=q(.3)&&p<q(.45)){const f=k(q(.3),q(.45)),o=d.x+(sm?14:0);ufoCard(o+(sx-o)*f,d.y-30+(sl-d.y+30)*f-24*Math.sin(f*Math.PI));} // vers « à faire »
+  if(p>=q(.45)){R(ctx,sx-4,sl-4,9,8,Math.floor(now/250)%2?'#ff8a1c':'#fff'); // il clignote sur le mur, « +13 pts » au-dessus
+    if(p<q(.72)){const fy=KANR.y-8-12*k(q(.45),q(.53)),txt=u.pts?'+'+u.pts+' pts':'+'+u.keys.length+' ticket'+(u.keys[1]?'s':'');
+      ctx.font='bold 16px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.globalAlpha=1-k(q(.68),q(.72));ctx.lineWidth=3;ctx.strokeStyle='#fff';
+      ctx.strokeText(txt,KANR.x+KANR.w/2,fy);ctx.fillStyle='#d2560f';ctx.fillText(txt,KANR.x+KANR.w/2,fy);ctx.globalAlpha=1;ctx.textAlign='left';}}
+  if(y>-60)ufoSaucer(x,y,now,p>q(.02)&&p<q(.8)||pick&&p>.16&&p<.3);
+}
+// loupe : dès le dépôt, cadrée sur la soucoupe, la facilitatrice et le mur (44-loupe.js)
+function ufoLoupeEvents(now){
+  const u=fxOf('ufo');if(!u)return [];const {sm,d,A,ms:D}=ufoPlan(u);if((now-u.t0)/D<A)return [];
+  const st={st:'ufo',label:sm?sm.name+' le range dans « à faire »':'Rangé dans « à faire »'},hy=Math.max(80,(KANR?KANR.y:d.y)-80);
+  return [{id:u.id,kind:'ufo',cs:[{key:sm?sm.key:'',name:ufoSay(u).slice(3),pos:{x:d.x-2*TS,y:d.y},_st:st},{key:'',name:'',pos:{x:d.x+2*TS,y:hy+2*TS},_st:st}]}];
 }
