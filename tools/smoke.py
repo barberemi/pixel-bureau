@@ -6,7 +6,7 @@
     python3 tools/smoke.py --html dist/autre.html --chrome   # contrôler un fichier déjà assemblé
     python3 tools/smoke.py --team ~/Sites/bureau-monequipe --chrome   # la démo avec un autre pack d'équipe (sa CI)
 
-Contrôles : taille < 1 000 000 octets, chaque <script> (hors kronn-action) se parse (node, new Function),
+Contrôles : taille de la page publiée (sans démo) < 1 000 000 octets, chaque <script> (hors kronn-action) se parse (node, new Function),
 les 19 blocs kronn-action du squelette sont présents à l'identique (ids de workflows remplacés), leur JSON est valide,
 plus aucun marqueur __X__ ni /*__STYLES__*/ /*__SCRIPTS__*/ ne traîne.
 --chrome demande websocket-client (`.venv/bin/pip install websocket-client`) ; Chrome est lancé muet
@@ -43,9 +43,11 @@ def weights(w):
     print("     poids :", " · ".join(f"{k} {v / 1000:.0f} Ko ({v * 100 / LIMIT:.0f} %)" for k, v in sorted(w.items(), key=lambda x: -x[1]) if v))
 
 
-def static_checks(html, cfg=None):
-    size = len(html.encode())
-    check(size < LIMIT, f"taille {size} octets < {LIMIT}")
+def static_checks(html, cfg=None, published=None):
+    """published : taille de la page telle que publiée (sans démo) quand html est l'aperçu avec la démo ; la limite de Kronn
+    ne vaut que pour la page publiée (docs/decisions.md)."""
+    size = published if published is not None else len(html.encode())
+    check(size < LIMIT, f"taille {'publiée ' if published is not None else ''}{size} octets < {LIMIT}")
     if size >= LIMIT * WARN:  # KT-28 : prévenu avant d'être bloqué (Kronn refuse la page au-delà de LIMIT)
         print(f"ALERTE taille : {size * 100 // LIMIT} % de la limite Kronn, alléger la page (docs/tech-debt, KT-28)")
     # blocs kronn-action attendus : ceux du squelette, ids de workflows remplacés comme à l'assemblage
@@ -214,7 +216,8 @@ def main():
         Path(path).write_text(html)
         print("     assemblé :", path)
         weights(assemble.weights(cfg, demo=not a.empty))
-    static_checks(html, cfg)
+    # la limite vaut pour la page publiée (sans démo) : l'aperçu avec la démo d'un pack peut la dépasser
+    static_checks(html, cfg, None if a.html or a.empty else len(assemble.build(demo=False, cfg=cfg).encode()))
     if a.chrome or a.shot:
         w, h = (int(x) for x in a.size.split("x"))
         chrome_checks(path, a.port, a.user_data_dir, a.js, a.shot, a.wait, w, h)
