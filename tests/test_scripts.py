@@ -388,6 +388,28 @@ print(json.dumps(val))
         moves = [e for e in out["events"] if e["kind"] == "move"]
         self.assertEqual([(e["key"], e["to"]) for e in moves], [(a["key"], "To Review")])  # seul celui d'aujourd'hui
 
+    def test_team_shape_flags_tickets_that_enter_the_sprint_after_its_start(self):
+        """Vaisseau-mère : un ticket entré dans le sprint en cours après son démarrage (champ Sprint de status_log), avec ses
+        points et son assigné ; pas ceux du planning (avant le démarrage, ou dans la marge de 30 min), ni un retrait."""
+        d = self.team_input(moves=0)
+        start = NOW - timedelta(days=2)
+        d["sprint"] = {"id": 42, "name": "S42", "startDate": start.isoformat(), "endDate": (NOW + timedelta(days=8)).isoformat()}
+        ids = [it["key"] for it in d["issues"]]
+        def sprint(at, frm, to):
+            return {"created": at.isoformat(), "author": {"accountId": "sm-1", "displayName": "Kelly Kapoor"},
+                    "items": [{"field": "Sprint", "fieldId": "customfield_10020", "from": frm, "to": to}]}
+        d["issues"][0]["changelog"] = {"histories": [sprint(NOW - timedelta(minutes=5), "41", "41, 42")]}  # en cours de sprint
+        d["issues"][1]["changelog"] = {"histories": [sprint(NOW, "42", "")]}  # retiré du sprint
+        d["issues"][2]["changelog"] = {"histories": [sprint(start + timedelta(minutes=10), "", "42")]}  # retouche du planning
+        out = self.run_script("team_shape.py", d)
+        ins = [e for e in out["events"] if e["kind"] == "sprint_in"]
+        self.assertEqual([(e["key"], e["points"], e["who"], e["by"]) for e in ins], [(ids[0], 3, "acc-1", "sm-1")])
+        # sans id de sprint : par le nom
+        d["sprint"].pop("id")
+        d["issues"][0]["changelog"]["histories"][0]["items"][0].update(fromString="S41", toString="S41, S42")
+        out = self.run_script("team_shape.py", d)
+        self.assertEqual([e["key"] for e in out["events"] if e["kind"] == "sprint_in"], [ids[0]])
+
     def test_team_shape_reports_github_errors(self):
         gh = {"open": [], "merged": [], "releases": [], "staging": [], "prod": [], "errors": ["open : gh introuvable sur la machine"]}
         out = self.run_script("team_shape.py", self.team_input(github=gh))

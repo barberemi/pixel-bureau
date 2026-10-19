@@ -1,4 +1,5 @@
 // ---------- petites scènes de 3 s : succès débloqué, éclosion, changement de stade (canard d'équipe), agent rétabli ----------
+// (et une de 10 s : le vaisseau-mère d'un ticket entré dans le sprint en cours de route, en bas du fichier)
 // Chaque événement est daté par les données (fxEvents) : la scène se joue une fois quand l'heure affichée passe sa date (direct
 // ou rejeu ; le rejeu s'arrête déjà sur la loupe), FX_MS d'animation puis FX_HOLD de bulle, à la vitesse réelle. Rien quand on
 // fait glisser l'heure ; le premier passage note ce qui est déjà en cours sans le rejouer (comme la loupe).
@@ -40,6 +41,7 @@ function fxEvents(t){
   }
   for(const c of chars)if(!c.person&&!c.visitor&&!c.guest&&c.runs)
     for(const r of agentRecoveries(c))if(recent(r.at))out.push({id:'recover:'+r.run,kind:'recover',at:r.at,c});
+  if(!REDUCED_MOTION)for(const u of ufoLandings())if(recent(u.at))out.push({id:'ufo:'+u.keys[0]+':'+u.at,kind:'ufo',...u});
   return out;
 }
 // à chaque image (avant le rendu) : nouvelles scènes, fin des anciennes
@@ -50,7 +52,7 @@ function fxFrame(now){
     if(FX.seen)for(const e of evs)if(!FX.seen.has(e.id)&&!FX.cur.has(e.id))FX.cur.set(e.id,{...e,t0:now});
     FX.seen=new Set(evs.map(e=>e.id));
   }
-  for(const [id,e] of FX.cur)if(now-e.t0>FX_MS+FX_HOLD)FX.cur.delete(id);
+  for(const [id,e] of FX.cur)if(now-e.t0>(e.kind==='ufo'?UFO_MS:FX_MS+FX_HOLD))FX.cur.delete(id);
 }
 const fxP=(e,now)=>Math.min(1,(now-e.t0)/FX_MS); // avancement de l'animation, 0 à 1
 const fxOf=kind=>[...FX.cur.values()].find(e=>e.kind===kind);
@@ -93,7 +95,7 @@ function fxDrawDuck(x,y,now){
       fxSparkles(x,y-12*s,16*s,8,1);fxBubble(x,top,'🐣 Caneton !','#9a6a00');}
   }
 }
-const fxDuckBusy=()=>[...FX.cur.values()].some(e=>e.kind!=='recover');
+const fxDuckBusy=()=>[...FX.cur.values()].some(e=>e.kind!=='recover'&&e.kind!=='ufo');
 // l'œuf qui tremble avant d'éclore : à la place du dessin du canard
 function fxDuckWobble(now){const h=fxOf('hatch');return h&&fxP(h,now)<.7?Math.sin(now/45)*.15:0;}
 // un caneton naît juste derrière lui (début d'un sprint qui suit un sprint tenu) : un petit œuf qui tremble, puis il rejoint la file
@@ -110,4 +112,37 @@ function fxOverlay(now){
     if(now-e.t0<FX_MS+FX_HOLD/2)for(const c of chars)if(c!==e.c&&!c.person&&!c.visitor&&!c.guest&&c.present&&c.pos&&c._st&&FX_WORKING.includes(c._st.st))
       fxBubble(c.pos.x,c.pos.y-44-(Math.floor((now-e.t0)/250)%2?2:0),'👏','#2e7d4f');
   }
+}
+// ---------- vaisseau-mère : un ticket entre dans le sprint après son démarrage (team.events, kind sprint_in) ----------
+// La lumière baisse, le vaisseau couvre le haut du plan au-dessus du poste de l'assigné (le milieu du plan sans assigné),
+// un projecteur l'éclaire, la facilitatrice (roleKind sm) descend dans le faisceau avec le ticket puis remonte.
+// Des tickets ajoutés coup sur coup (moins de 5 min d'écart) font une seule visite. Coupé par « réduire les animations ».
+const UFO_MS=1e4;
+let UFO_M={};
+function ufoLandings(){
+  if(UFO_M.t===TEAM)return UFO_M.l;const l=[];
+  for(const e of ((TEAM&&TEAM.events)||[]).filter(e=>e.kind==='sprint_in').sort((a,b)=>ms(a.t)-ms(b.t))){
+    const t=ms(e.t),u=l[l.length-1];
+    if(u&&t-u.end<3e5){u.end=t;if(!u.keys.includes(e.key)){u.keys.push(e.key);u.pts+=+e.points||0;}}
+    else l.push({at:t,end:t,keys:[e.key],pts:+e.points||0,dev:personChar(e.who,e.who_name)});
+  }
+  UFO_M={t:TEAM,l};return l;
+}
+const ufoSm=()=>{const c=smChar();return c&&c.pos&&c._st&&!['off','absent','gone'].includes(c._st.st)?c:null;};
+const ufoHides=c=>!!fxOf('ufo')&&c===ufoSm(); // pendant la visite, elle est dans le vaisseau
+// bubble faux : sous les bulles, au-dessus du voile de nuit ; vrai : la bulle
+function ufoDraw(now,bubble){
+  const u=fxOf('ufo');if(!u)return;
+  const p=Math.min(1,(now-u.t0)/UFO_MS),k=(a,b)=>Math.min(1,Math.max(0,(p-a)/(b-a))),d=u.dev&&u.dev.seat?tileCenter(...u.dev.seat):{x:W/2,y:H/2},sm=ufoSm();
+  if(bubble){if(p>.56&&p<.84)fxBubble(d.x,d.y-70,'🛸 '+(u.keys[1]?u.keys.length+' tickets entrent':shortKey(u.keys[0])+' entre')+' dans le sprint'+(u.pts?' · '+u.pts+' pts':''),'#b5481c');return;}
+  ctx.fillStyle=`rgba(10,12,25,${.42*k(0,.15)*(1-k(.85,.97))})`;ctx.fillRect(0,0,W,H);
+  const w=Math.min(W-16,560),x=Math.max(w/2+8,Math.min(W-w/2-8,d.x)),y=-100+150*k(.12,.32)-160*k(.82,.97),b=y+80;
+  if(p>.3&&p<.82)R(ctx,d.x-30,b,60,d.y+8-b,'rgba(255,240,180,.24)'); // projecteur
+  if(p>.4&&p<.82){
+    const h=d.y+14-b-40,yy=b+40+h*k(.4,.58)-h*k(.72,.82),xx=d.x+(sm?16:0),img=sm&&spriteOf(sm);
+    if(img&&ready(img))ctx.drawImage(img,128,256,64,64,xx-32,yy-60,64,64); // de face, debout
+    if(p<.62)R(ctx,xx-14,yy-(sm?72:20),28,13,'#fff');
+  }
+  R(ctx,x-w/2,y,w,60,'#3a4258');R(ctx,x-w/2+40,y+60,w-80,12,'#2b3246');R(ctx,x-20,y+72,40,8,'#ffe9a8');
+  for(let i=0;i<w/22-1;i++)R(ctx,x-w/2+10+i*22,y+30,9,5,(Math.floor(now/200)+i)%3?'#6a6040':'#ffd04a');
 }

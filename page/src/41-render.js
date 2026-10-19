@@ -2,11 +2,12 @@
 function render(now){
   ctx.drawImage(bg,0,0); drawWindows(T,now); PILE_HITS=[];
   const list=FURN.map(f=>({y:f.y,d:f.draw}));
-  for(const c of chars)if(c.present&&c.pos&&!popHidden(c,now))list.push({y:c.pos.y,d:n=>drawChar(c,n)}); // popHidden : 66-newagent.js
+  for(const c of chars)if(c.present&&c.pos&&!popHidden(c,now)&&!ufoHides(c))list.push({y:c.pos.y,d:n=>drawChar(c,n)}); // popHidden : 66-newagent.js
   DUCK_POS=duckAt(T); if(DUCK_POS)list.push({y:DUCK_POS.y,d:drawDuck}); // 39-duck.js : le canard, trié avec les personnages
   list.sort((a,b)=>a.y-b.y);
   for(const it of list)it.d(now);
   drawLight(now); // voile du soir et de la nuit, sous les bulles et les noms
+  ufoDraw(now); // 43-fx.js : vaisseau-mère d'un ticket entré dans le sprint en cours de route
   themeOverlay(now); // 46-themes.js : chauves-souris, confettis
   const shown=c=>!FILTER||famOf(c)===FILTER||c.key===sel;
   if(FILTER){ // les autres familles passent dans l'ombre, la famille choisie est redessinée par-dessus
@@ -29,6 +30,7 @@ function render(now){
   for(const c of chars)if(c.present&&shown(c)&&!onTop(c))drawOverlay(c,now);
   for(const c of chars)if(c.present&&shown(c)&&onTop(c))drawOverlay(c,now);
   fxOverlay(now); // 43-fx.js : agent rétabli, applaudissements
+  ufoDraw(now,true);
   drawEnvelopes(now,FILTER?shown:null);
   NAME_BOXES=[];
   for(const c of chars)if(c.present&&c.key!==sel&&shown(c))drawName(c);

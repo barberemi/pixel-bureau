@@ -53,6 +53,10 @@ Une mise en prod d'un autre dépôt suivi peut être lancée par quelqu'un qui n
 
 ![Creed sort de panne : « ✅ Rétabli ! » et les applaudissements des autres agents](../img/agent-retabli.png)
 
+Quand un ticket entre dans le sprint après son démarrage (il n'était pas au sprint planning), un vaisseau-mère vient le livrer. La lumière baisse, le vaisseau couvre le haut du plan au-dessus du poste de la personne assignée (le milieu du plan si le ticket n'est assigné à personne) et un projecteur l'éclaire. La facilitatrice descend dans le faisceau avec le ticket, la bulle annonce « 🛸 7931 entre dans le sprint · 13 pts », puis elle remonte et le vaisseau repart. La scène dure dix secondes, à l'heure Jira de l'ajout au sprint. Plusieurs tickets ajoutés à moins de 5 minutes d'écart font une seule visite (« 🛸 3 tickets entrent dans le sprint · 21 pts »). Les ajouts dans la demi-heure qui suit le démarrage du sprint comptent comme le planning et ne déclenchent rien. Sans facilitatrice au bureau ce jour-là, le vaisseau dépose le ticket seul. Avec « réduire les animations », pas de vaisseau. Dans le fil : « 🛸 DM-7931 arrive en cours de sprint (13 pts) pour Andy ».
+
+![Le vaisseau-mère dépose la facilitatrice et DM-7931 au poste d'Andy](../img/vaisseau-mere.png)
+
 Gandalf et Yoda viennent dans tous les bureaux, quelle que soit l'équipe (`team/guests.json`). Pour les retirer : `"common_guests": false` dans `bureau.config.json` ; pour en changer le nom, la réplique ou l'allure : un invité de même clé (`g_gandalf`, `g_yoda`) dans le roster de l'équipe ou dans la config.
 
 D'autres changements de colonne se jouent aussi, à l'heure exacte du changement de statut :
