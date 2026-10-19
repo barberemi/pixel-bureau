@@ -6,6 +6,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ## [Unreleased]
 
+### Ajouté
+
+- Remettre une PR à jour depuis sa fiche (« ⟳ Remettre à jour ») : rebase sur sa base sans squash, push protégé, label de CI reposé ; en cas de conflit, un agent IA le résout, la commande de contrôle du dépôt tourne et tu valides avant tout push (`actions.rebase`, `github.ci_labels`, `github.checks`). La fiche d'une PR montre son état : conflit avec sa base, commits de retard ou à jour (#74).
+
 ### Modifié
 
 - Page plus légère : à l'assemblage, les appels `document.createElement` et `document.getElementById` répétés passent par un alias court (4,5 Ko).

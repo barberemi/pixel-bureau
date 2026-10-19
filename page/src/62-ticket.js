@@ -122,6 +122,13 @@ function prLaunch(box,p){
   const a=actPr(p);
   if(!a)return;
   const dr=p.draft?' (brouillon)':'', nm=prNum(p); // un brouillon se relit et se corrige aussi
+  // « ⟳ Remettre à jour » (#74) : rebase sur la base, sans squash ; en retard ou en conflit d'après le cron équipe, ou état inconnu
+  if(ACTIONS.rebase&&!p.merged&&(p.conflict||p.behind!==0)){
+    const base=p.base||'main';
+    launchBlock(box,{action:'bureau-rebase',bind:{id:a.id||prId(p)},name:'Remettre à jour · '+nm,
+      sub:p.conflict?'Conflit avec '+base+' : l\'IA propose une résolution, tu la valides avant tout push.':'Rebase sur '+base+', commits gardés, push protégé, CI relancée. Sans conflit : 0 token.',
+      label:'⟳ Remettre à jour',title:'Remettre à jour '+nm});
+  }
   if(ACTIONS.fix&&p.review==='changes'&&(!otherRepo(p.repo)||CFG.fix_any_repo))
     launchBlock(box,{action:'bureau-fix',bind:{id:a.id||prId(p)},name:'Corriger les retours · '+nm+dr,sub:'Un agent applique les commentaires de review et pousse',label:'🛠 Corriger',title:'Corriger les retours de '+nm});
   // « 🚀 Mise en prod » d'une PR (#58) : dépôt de la config (CFG.mep_repos), PR prête (ni brouillon ni changements demandés)
@@ -151,6 +158,14 @@ function prInfo(id){
   return {repo,n,pr,runs,owner,ownerName:(pr&&pr.who_name)||au||null,
     url:(pr&&pr.url)||(repo?`https://github.com/${repo}/pull/${encodeURIComponent(n)}`:'')};
 }
+// pastilles d'état d'une PR ouverte (#74, cron équipe) : en conflit avec sa base, ou commits de retard
+function prChips(pr){
+  if(!pr||pr.merged)return '';
+  const base=esc(pr.base||'main'), n=pr.behind;
+  const c=pr.conflict?`<span class="prchip err">⛔ conflit avec ${base}</span>`:'';
+  const b=n>0?`<span class="prchip warn">⟳ ${n} commit${n>1?'s':''} de retard sur ${base}</span>`:n===0&&!pr.conflict?`<span class="prchip ok">✓ à jour de ${base}</span>`:'';
+  return c||b?`<div class="prchips">${c}${b}</div>`:'';
+}
 function renderPr(side,id){
   const x=prInfo(id);
   const h=document.createElement('h2');h.textContent=prNum({repo:x.repo,n:x.n});side.appendChild(h);
@@ -159,7 +174,7 @@ function renderPr(side,id){
   const head=document.createElement('div');head.style.cssText='margin:0 0 12px';
   head.innerHTML=(x.pr&&x.pr.title?`<div style="font-size:14px;margin-bottom:6px">${esc(x.pr.title)}</div>`:'')+
     `<div style="font-size:12px;color:var(--muted)">`+(rv?`<span class="dot" style="background:${rv[1]};display:inline-block;margin-right:6px"></span>${esc(rv[0])} · `:'')+
-    (x.owner||x.ownerName?'de '+refWho(x.owner,x.ownerName)+' · ':'')+(x.repo?esc(x.repo)+' · ':'')+gh+`</div>`;
+    (x.owner||x.ownerName?'de '+refWho(x.owner,x.ownerName)+' · ':'')+(x.repo?esc(x.repo)+' · ':'')+gh+`</div>`+prChips(x.pr);
   side.appendChild(head);
   const keys=(x.pr&&x.pr.keys)||[];
   if(keys.length){

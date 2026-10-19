@@ -1,0 +1,38 @@
+// Remettre une PR à jour (#74) : pastilles d'état de la fiche d'une PR (conflit, retard sur sa base) et bouton
+// « ⟳ Remettre à jour » (page action bureau-rebase), présent seulement si la PR est en retard, en conflit, ou d'état inconnu.
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const {load} = require('./helpers/page.js');
+
+const {run} = load();
+const J = code => JSON.parse(run('JSON.stringify(' + code + ')'));
+
+test('pastilles : conflit avec la base, commits de retard, à jour ; rien pour une PR mergée ou d\'état inconnu', () => {
+  assert.match(J(`prChips({conflict:true,base:'main',behind:null})`), /⛔ conflit avec main/);
+  assert.match(J(`prChips({behind:4,base:'master'})`), /⟳ 4 commits de retard sur master/);
+  assert.match(J(`prChips({behind:1})`), /1 commit de retard sur main/);
+  assert.match(J(`prChips({behind:0})`), /✓ à jour de main/);
+  assert.equal(J(`prChips({behind:null})`), '');
+  assert.equal(J(`prChips({merged:true,conflict:true})`), '');
+  assert.equal(J(`prChips(null)`), '');
+});
+
+test('bouton « ⟳ Remettre à jour » : en retard, en conflit ou inconnu ; pas pour une PR à jour ni sans le workflow', () => {
+  run(`document.createElement = t => ({tag: t, attrs: {}, kids: [], style: {}, dataset: {}, set innerHTML(v) { this.html = v; }, get innerHTML() { return this.html || ''; },
+      setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; }, appendChild(x) { this.kids.push(x); }, append(...x) { this.kids.push(...x); }});
+    MutationObserver = function () { this.observe = () => {}; }; kronnModal = () => {};
+    ACTS = {tickets: [], prs: [{id: 'acme/web#16', n: '16', repo: 'acme/web'}]}; ACTIONS.rebase = true; ACTIONS.fix = false; ACTIONS.review = false; ACTIONS.mep_pr = false;`);
+  const btns = pr => J(`(() => { const box = {kids: [], childElementCount: 0, appendChild(x) { this.kids.push(x); }};
+    prLaunch(box, Object.assign({n: 16, repo: 'acme/web', review: 'pending'}, ${JSON.stringify(pr)}));
+    return box.kids.map(h => ({sub: h.html, b: (h.kids.find(k => k.tag === 'button') || {}).attrs})); })()`);
+  const behind = btns({behind: 3, base: 'main'});
+  assert.equal(behind.length, 1);
+  assert.equal(behind[0].b['data-kronn-action'], 'bureau-rebase');
+  assert.match(behind[0].sub, /Rebase sur main, commits gardés/);
+  assert.match(btns({conflict: true, base: 'develop'})[0].sub, /Conflit avec develop : l(&#39;|')IA propose/);
+  assert.equal(btns({}).length, 1, 'état inconnu (cron pas encore passé) : le bouton reste');
+  assert.equal(btns({behind: 0}).length, 0, 'à jour : rien à faire');
+  run('ACTIONS.rebase = false');
+  assert.equal(btns({behind: 3}).length, 0);
+});

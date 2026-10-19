@@ -6,11 +6,14 @@ PR de plusieurs dépôts (#56) : `github.pr_repos` (liste « owner/repo »), par
 `github.deploys`. Chaque PR porte son `repo` (owner/repo) : `front_api#16` et `front_web#16` ne se confondent jamais.
 Un autre dépôt illisible ne coupe pas le reste : ses PR manquent et c'est noté dans `warnings` (panneau Fraîcheur, #8).
 Releases et déploiements restent ceux du dépôt principal (ses MEP portent ticket et release).
+État de fusion de chaque PR ouverte (#74) : `merge` = mergeStateStatus de GitHub (DIRTY = conflit), `base`, et `behind` =
+commits de la base absents de la PR (comparaison GitHub), gardé dans ~/.cache/pixel-bureau/behind.json tant que ni la
+PR ni sa base ne bougent : une requête par PR seulement quand l'une des deux change.
 Sortie (stdout) : {"open": [...], "merged": [...], "releases": [...], "staging": [...], "prod": [...], "errors": [...], "warnings": [...]}
 """
-import json, subprocess, sys
+import json, os, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
-from _lib import CFG, dumps
+from _lib import CFG, dumps, read_json, write_json
 
 GH = CFG.get("github") or {}
 REPO, STAGING_WF, PROD_WF = GH.get("repo"), GH.get("staging_workflow"), GH.get("prod_workflow")
@@ -31,7 +34,8 @@ def pr_repos():
 
 REPOS = pr_repos()
 # limites par dépôt : le principal garde ses 100 PR ouvertes et 40 mergées, les autres moins (sortie sous 100 Ko)
-OPEN_FIELDS = "number,title,headRefName,author,isDraft,reviewDecision,url,updatedAt,createdAt,latestReviews,reviewRequests"
+OPEN_FIELDS = ("number,title,headRefName,author,isDraft,reviewDecision,url,updatedAt,createdAt,latestReviews,reviewRequests,"
+               "mergeStateStatus,baseRefName,headRefOid")
 CALLS = {}
 for repo in REPOS:
     main = repo.lower() == (REPO or "").lower()
@@ -78,6 +82,59 @@ for (key, repo), (rows, err) in res.items():
         for pr in rows if isinstance(rows, list) else []:
             pr["repo"] = repo
     out[key] += rows if isinstance(rows, list) else []
+BEHIND_CACHE = os.path.expanduser("~/.cache/pixel-bureau/behind.json")
+
+
+def api_text(path):
+    """Une valeur de l'API GitHub (gh api … --jq), None en cas d'échec : le retard est un plus, jamais bloquant."""
+    try:
+        r = subprocess.run(["gh", "api", path[0], "--jq", path[1]], capture_output=True, text=True, timeout=20)
+        return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def behind_counts(prs):
+    """Retard de chaque PR ouverte sur sa base ({repo#n: commits}) : la tête de chaque base (une requête par base), puis
+    une comparaison par PR dont la tête ou la base a bougé depuis le passage précédent (cache)."""
+    try:
+        cache = read_json(BEHIND_CACHE)
+    except (OSError, ValueError):
+        cache = {}
+    bases = sorted({(pr["repo"], pr["baseRefName"]) for pr in prs if pr.get("baseRefName")})
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        tips = dict(zip(bases, pool.map(api_text, [(f"repos/{r}/commits/{b}", ".sha") for r, b in bases])))
+    todo, res = {}, {}
+    for pr in prs:
+        key, tip = f"{pr['repo']}#{pr['number']}", tips.get((pr["repo"], pr.get("baseRefName")))
+        if not tip or not pr.get("headRefOid"):
+            continue
+        c = cache.get(key) or {}
+        if c.get("head") == pr["headRefOid"] and c.get("base") == tip:
+            res[key] = c["behind"]
+        else:
+            todo[key] = (tip, pr["headRefOid"], pr["repo"])
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        got = dict(zip(todo, pool.map(api_text, [(f"repos/{r}/compare/{t}...{h}", ".behind_by") for t, h, r in todo.values()])))
+    for key, v in got.items():
+        if v and v.isdigit():
+            res[key] = int(v)
+            cache[key] = {"head": todo[key][1], "base": todo[key][0], "behind": int(v)}
+    keep = {f"{pr['repo']}#{pr['number']}" for pr in prs}
+    try:
+        os.makedirs(os.path.dirname(BEHIND_CACHE), exist_ok=True)
+        write_json(BEHIND_CACHE, {k: v for k, v in cache.items() if k in keep})
+    except OSError:
+        pass  # cache seulement : refait au passage suivant
+    return res
+
+
+BEHIND = behind_counts(out["open"])
+for pr in out["open"]:
+    pr["merge"] = pr.pop("mergeStateStatus", None) or None
+    pr["base"] = pr.pop("baseRefName", None)
+    pr.pop("headRefOid", None)
+    pr["behind"] = BEHIND.get(f"{pr['repo']}#{pr['number']}")
 for w in warnings:
     print("github : " + w, file=sys.stderr)
 # Kronn coupe la sortie d'une étape Exec à 100 Ko (exec_step.rs) : on ne garde que ce que lit team_shape.py
