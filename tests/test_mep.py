@@ -134,6 +134,11 @@ class MepTest(unittest.TestCase):
         self.assertEqual(before, after, "rien poussé")
         writes = [c for c in self.calls() if c[:2] in (["pr", "edit"], ["pr", "merge"], ["release", "create"], ["workflow", "run"])]
         self.assertEqual(writes, [])
+        # Jira : le garde-fou de fin sort en 9 (renvoi vers done) pour sauter retour IA et statut de fin, sans être un échec
+        r = self.mep("dry_guard", dry="oui")
+        self.assertEqual(r.returncode, 9, r.stdout + r.stderr)
+        self.assertIn("ni commenté (retour IA) ni passé au statut de fin", r.stdout + r.stderr)
+        self.assertEqual(self.mep("dry_guard").returncode, 0, "vraie MEP : on continue vers le retour IA")
 
     def test_failures_give_their_exit_code(self):
         self.mep("resolve")
@@ -161,6 +166,11 @@ class MepTemplateTest(unittest.TestCase):
             if s["name"] in ("rebase", "citest", "merge", "release", "staging", "prod"):
                 self.assertEqual(s["on_result"], [{"contains": "ERROR", "action": {"type": "Goto", "step_name": "teams_failed"}}])
         self.assertEqual(names.index("teams_post"), names.index("rebase") + 1, "annonce Teams une fois la PR rebasée")
+        # simulation : rien dans Jira après la gate de fin (retour IA et statut sautés par dry_guard)
+        i = names.index("dry_guard")
+        self.assertEqual(names[i - 1:i + 4], ["gate_ticket_done", "dry_guard", "ai_feedback", "transition_deployed", "done"])
+        self.assertEqual(d["steps"][i]["on_result"], [{"contains": "exit_9", "action": {"type": "Goto", "step_name": "done"}}])
+        self.assertIn("{{dry_run}}", d["steps"][i]["exec_args"])
         self.assertEqual(names[0], "resolve")
         for s in d["steps"]:
             for target in [s.get("gate_request_changes_target")] + [(r["action"].get("step_name")) for r in s.get("on_result") or []]:
