@@ -166,8 +166,13 @@ function renderTicket(side,key){
     const ul=document.createElement('ul');ul.className='steps';ul.style.marginLeft='0';
     for(const p of prs){
       const r=p.draft?['brouillon','var(--idle)']:TK_REV[p.review]||TK_REV.pending;
-      const li=document.createElement('li');
-      li.innerHTML=`<span class="dot" style="background:${r[1]}"></span><a href="#" data-pr="${esc(prId(p))}" title="Fiche de la PR" style="color:var(--accent);white-space:nowrap">${esc(prNum(p))}</a><span>${esc(p.title)}${prMarks(p).map(m=>' '+m).join('')}</span><span class="k">${r[0]}</span>`;
+      // sur deux lignes comme « Ses tickets » : n°, lien GitHub et état en tête, puis le titre sur toute la largeur (sans
+      // « feat: » ni la clé du ticket, déjà en titre de la fiche), puis conflit, retard et fils de review
+      const t=String(p.title||'').replace(/^\s*\w+(\([^)]*\))?!?:\s*/,'').replace(new RegExp('^'+key.replace(/\W/g,'\\$&')+'\\b[\\s:-]*'),'')||p.title||'', m=prMarks(p);
+      const li=document.createElement('li');li.className='tkr';
+      li.innerHTML=`<div class="tk-top"><span class="dot" style="background:${r[1]}"></span><a class="tk-key" href="#" data-pr="${esc(prId(p))}" title="Fiche de la PR">${esc(prNum(p))}</a>`+
+        `<a class="tk-gh" ${hrefOf(p.url)} target="_blank" rel="noopener" title="Ouvrir sur GitHub">↗</a><span class="tk-rev">${r[0]}</span></div>`+
+        `<div class="tk-t">${esc(t)}</div>${m.length?`<div class="tk-meta">${m.join('')}</div>`:''}`;
       ul.appendChild(li);
     }
     pb.appendChild(ul);
