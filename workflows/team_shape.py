@@ -98,7 +98,10 @@ for pr in D.get("open") or []:
     row = {"n": pr["number"], "repo": repo_of(pr), "title": pr["title"][:110], "draft": pr.get("isDraft"), "review": review,
            "url": pr["url"], "updated": pr.get("updatedAt"), "created": pr.get("createdAt"),
            "keys": pr_keys(pr),
-           "req": [x for x in pr.get("reviewRequests") or [] if isinstance(x, str)]}
+           "req": [x for x in pr.get("reviewRequests") or [] if isinstance(x, str)],
+           # #74 : en conflit avec sa base (DIRTY), commits de retard (None : inconnu), branche de base
+           "conflict": pr.get("merge") == "DIRTY", "behind": pr.get("behind"), "base": pr.get("base"),
+           "threads": pr.get("threads")}  # #75 : fils de review non résolus (None : inconnu)
     p = owner(a, pr["title"])
     if p:
         p["prs"].append(row)

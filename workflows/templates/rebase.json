@@ -1,0 +1,305 @@
+{
+ "kind": "workflow",
+ "key": "rebase",
+ "definition": {
+  "name": "Le Bureau · remettre une PR à jour",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "repo",
+    "label": "Dépôt",
+    "placeholder": "owner/name",
+    "description": "Dépôt de la PR, relu par le bouton de la page.",
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   },
+   {
+    "name": "pr",
+    "label": "N° de PR",
+    "placeholder": "Ex. 2042",
+    "description": null,
+    "required": true,
+    "source": null,
+    "allow_manual_override": false,
+    "pattern": "\\d+"
+   }
+  ],
+  "steps": [
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "prepare",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "PR ouverte et pas d'un fork ; copie du dépôt en cache et dossier de travail de ce run (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/pr_update.py@@",
+     "prepare",
+     "{{repo}}",
+     "{{pr}}",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 600
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "rebase",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Rebase sur la base de la PR, commits gardés tels quels ; conflit : code 3, renvoi vers resolve (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/pr_update.py@@",
+     "rebase",
+     "{{repo}}",
+     "{{pr}}",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 600,
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "resolve"
+      }
+     }
+    ]
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "push",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Sans conflit : push protégé (--force-with-lease), label de CI reposé, dossier de travail retiré.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/pr_update.py@@",
+     "push",
+     "{{repo}}",
+     "{{pr}}",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 300
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "done",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Fin sans conflit (rien de plus à pousser).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/pr_update.py@@",
+     "done",
+     "{{repo}}",
+     "{{pr}}",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 60,
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Stop"
+      }
+     }
+    ]
+   },
+   {
+    "name": "resolve",
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "Conflit : l'agent le résout commit par commit dans le dossier de travail, sans pousser (seule étape avec des tokens).",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "prompt_template": "@@text:tools/rebase_prompt.md@@\n\nDossier de travail : ~/.cache/pixel-bureau/pr/work/{{run.id}}\nPR : {{repo}}#{{pr}}\n\n{{steps.rebase.data.stdout}}"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "verify",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Plus de rebase en cours ni de marqueur de conflit (sinon code 4, rien poussé) ; résumé de la résolution.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/pr_update.py@@",
+     "verify",
+     "{{repo}}",
+     "{{pr}}",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 120
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "check",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Après un conflit : la commande de contrôle du dépôt (github.checks), son résultat va dans la validation.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/pr_update.py@@",
+     "check",
+     "{{repo}}",
+     "{{pr}}",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 960
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "gate_conflict",
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "Le boss valide la résolution du conflit avant tout push.",
+    "gate_message": "⟳ {{repo}}#{{pr}} : conflit avec sa base, résolu par l'IA.\n\n{{steps.verify.data.stdout}}\n\n{{steps.check.data.stdout}}\n\n**Approuver** : push protégé et CI relancée. **Rejeter** ou **Changements** : rien n'est poussé, la PR reste en l'état.",
+    "gate_request_changes_target": "abort"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "push_resolved",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Conflit validé : push protégé, label de CI reposé, dossier de travail retiré.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/pr_update.py@@",
+     "push",
+     "{{repo}}",
+     "{{pr}}",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 300,
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Stop"
+      }
+     }
+    ]
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "abort",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Changements demandés sur la validation : rebase abandonné, rien poussé.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/pr_update.py@@",
+     "abort",
+     "{{repo}}",
+     "{{pr}}",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 120
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

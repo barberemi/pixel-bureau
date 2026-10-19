@@ -33,7 +33,8 @@ test('lien du fil (extA) et ligne de PR : un schéma refusé donne un lien inact
     const a = J(`extA(${JSON.stringify(u)}, 't', 'y#1')`);
     assert.doesNotMatch(a, /href=/);
     assert.match(a, />y#1<\/a>/); // le texte reste affiché
-    assert.doesNotMatch(J(`prRowHtml({n: 7, title: 'x', url: ${JSON.stringify(u)}})`), /href=/);
+    // le n° ouvre la fiche de la PR (href="#") ; le lien GitHub « ↗ » reste inactif
+    assert.doesNotMatch(J(`prRowHtml({n: 7, title: 'x', url: ${JSON.stringify(u)}})`), /href="(?!#")/);
   }
   assert.match(J(`prRowHtml({n: 7, title: 'x', url: 'https://github.com/x/y/pull/7'})`), /href="https:\/\/github\.com\/x\/y\/pull\/7"/);
 });

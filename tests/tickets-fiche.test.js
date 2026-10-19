@@ -38,7 +38,7 @@ test('âge : orange avec ⏳ en review au-delà de BLOCKED_DAYS, jamais pour un 
 test('Réouvert (statut jira_flow.reopened), PR du ticket avec leur review, bug signalé', () => {
   const h = row({key: 'DM-2', summary: 'b', cat: 'doing', status: 'Reopen', type: 'Bug', since: '2026-10-07T10:00:00+02:00'});
   assert.match(h, /<span class="tk-tag">Réouvert<\/span>/);
-  assert.match(h, /href="https:\/\/x\/12"[^>]*>#12<\/a> changements demandés/);
+  assert.match(h, /data-pr="[^"]*#12"[^>]*>#12<\/a> changements demandés/);
   assert.match(h, />#14<\/a> brouillon/);
   assert.match(h, /title="Bug">🐛/);
   assert.doesNotMatch(row({key: 'DM-9', summary: 'c', cat: 'doing', status: 'En cours'}), /tk-tag|#12/);
@@ -75,7 +75,11 @@ test('« Ses autres PR » : groupe par état de review, titre sans préfixe, tic
   assert.equal(g({review: 'bizarre'}), 'pending');
   const pr = x => run(`(() => { T = ${T11}; return prRowHtml(${JSON.stringify(x)}); })()`);
   const h = pr({n: 1432, url: 'https://x/1432', title: 'feat(DM-6305): [Devis] Corriger le tri', review: 'changes', keys: ['DM-6305'], updated: '2026-08-07T10:00:00Z'});
-  assert.match(h, /href="https:\/\/x\/1432"[^>]*>#1432<\/a><a class="tk-key tk-cite"[^>]*DM-6305[^>]*>DM-6305<\/a><span class="tk-comp">Devis<\/span>/);
+  // le numéro ouvre la fiche de la PR, « ↗ » ouvre GitHub (#74)
+  assert.match(h, /data-pr="[^"]*#1432"[^>]*>#1432<\/a><a class="tk-gh" href="https:\/\/x\/1432"[^>]*>↗<\/a><a class="tk-key tk-cite"[^>]*DM-6305[^>]*>DM-6305<\/a><span class="tk-comp">Devis<\/span>/);
+  const st = pr({n: 5, title: 'x', review: 'approved', conflict: true, behind: 3, threads: 4});
+  assert.match(st, /⛔ conflit.*⟳ 3 de retard.*💬 4 fils/);
+  assert.doesNotMatch(pr({n: 6, title: 'x', review: 'approved', behind: 0, threads: 0}), /prm/);
   assert.match(h, /<div class="tk-t">Corriger le tri<\/div>/);
   assert.match(h, /activité il y a 2 mois/);
   assert.match(pr({n: 7, title: 'chore: mettre à jour', review: 'approved', updated: '2026-10-06T10:00:00+02:00'}), /tk-t">mettre à jour<\/div>.*activité hier/);

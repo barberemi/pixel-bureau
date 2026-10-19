@@ -13,7 +13,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from compact import strip_css, strip_js  # noqa: E402
+from compact import alias_js, strip_css, strip_js  # noqa: E402
 
 # boutons de la page : bloc kronn-action du squelette -> (clé dans bureau.config.json « actions » ou « launch »,
 # marqueur de l'id). actions = workflows du Bureau (créés par l'installateur) ; launch = tes workflows lancés depuis la
@@ -27,7 +27,8 @@ ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate",
            "bureau-comment": ("comment", "__COMMENT_WF__"), "bureau-duck": ("duck", "__DUCK_WF__"),
            "bureau-estimate": ("estimate", "__ESTIMATE_WF__"), "bureau-mailrules": ("mail_rules", "__MAILRULES_WF__"),
            "bureau-agent": ("agent", "__AGENT_WF__"), "bureau-pages": ("pages", "__PAGES_WF__"),
-           "bureau-meppr": ("mep_pr", "__MEPPR_WF__")}
+           "bureau-meppr": ("mep_pr", "__MEPPR_WF__"), "bureau-rebase": ("rebase", "__REBASE_WF__"),
+           "bureau-fixpr": ("fix_pr", "__FIXPR_WF__")}
 # variables des workflows de la clé launch : rôle -> nom par défaut ; launch.<action> = id seul, ou {wf, vars: {rôle: nom
 # chez toi, ou null si ton workflow n'a pas cette variable}}
 LAUNCH_VARS = {"impl": {"ticket": "jira_ticket_key"}, "mep": {"ticket": "jira_ticket_key", "pr": "pr_number"},
@@ -94,7 +95,7 @@ def page_parts(cfg=None):
     files = [os.path.join(SRC, f) for f in ["styles.css", "pixel.css"]] + list(theme_paths(cfg).values())
     css = "".join(font(_nl(Path(f).read_text()), pack if pack and f.startswith(pack + os.sep) else ROOT) for f in files)
     css = strip_css(css)  # KT-28 : sans commentaires ni indentation (tools/compact.py), les sources gardent les leurs
-    js = strip_js("".join(_nl(Path(os.path.join(SRC, f)).read_text()) for f in JS_FILES))
+    js = alias_js(strip_js("".join(_nl(Path(os.path.join(SRC, f)).read_text()) for f in JS_FILES)))
     return css, js, fonts[0]
 
 

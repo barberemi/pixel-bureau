@@ -166,3 +166,18 @@ def strip_css(src):
             i += 1
     return _lines("".join(out), "css")
 
+
+
+# appels DOM très répétés dans la page (createElement : plus de 200) : un alias court à l'assemblage, les sources gardent
+# le nom complet. L'alias appelle document à chaque fois : un test qui remplace document.createElement le voit encore.
+ALIASES = (("document.createElement(", "_ce", "t=>document.createElement(t)"), ("document.getElementById(", "_gid", "i=>document.getElementById(i)"))
+
+
+def alias_js(js):
+    """Remplace les appels répétés (3 fois au moins) par leur alias, défini en tête du script."""
+    head = []
+    for call, name, body in ALIASES:
+        if js.count(call) >= 3 and not re.search(r"\b" + name + r"\b", js):
+            js = js.replace(call, name + "(")
+            head.append(f"const {name}={body};")
+    return "".join(head) + ("\n" if head else "") + js

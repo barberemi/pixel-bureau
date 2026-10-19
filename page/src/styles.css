@@ -298,6 +298,8 @@ body.tv #tvticker{display:block;position:fixed;left:0;right:0;bottom:0;height:48
 .relaunch>button{grid-column:2;grid-row:1/3}
 .relaunch>.note{grid-column:1/3}
 .relaunch.kmodal{display:block}
+.tk-gh{margin:0 4px;font-size:11px;color:var(--muted);text-decoration:none}.prm{font-size:11px;white-space:nowrap}.prm.err{color:var(--err);font-weight:700}
+.prchips{margin-top:6px}.prchip{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;margin:0 6px 4px 0;color:var(--ink);background:color-mix(in srgb,var(--c) 22%,transparent)}.prchip.warn{--c:var(--warn)}.prchip.err{--c:var(--err)}.prchip.ok{--c:var(--ok)}
 .rl-cron{display:block}.rl-cron>button{margin-top:6px}.cronbox{display:flex;gap:10px;align-items:center;margin:6px 0 0}.cronbox .ring{color:var(--accent);flex:none;display:flex}.cronbox b{display:block;font-size:13px}.cronbox small{color:var(--muted);font-size:11px}
 .rl-form{display:block}.rl-f{margin-top:8px}.rl-form>button{width:100%}.rl-form>button:disabled{opacity:.5;cursor:not-allowed}.rl-why{margin:6px 0 0}.rl-f textarea{resize:vertical}
 .rl-f .req{color:var(--warn)}.rl-err{display:block;color:var(--err);font-weight:400}.rl-err:empty,.rl-why:empty{display:none}

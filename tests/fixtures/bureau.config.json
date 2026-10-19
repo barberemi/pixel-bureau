@@ -105,7 +105,9 @@
   "relaunch": "2333bb6f-63cb-589d-8056-fd18810b80f4",
   "ask": "bf2eba71-bcd0-51f7-8710-1a8594ca0cbf",
   "layout": "c1d95990-12ee-5572-a7c8-4eb9b68a42f3",
-  "agent": "b7e2f0c4-91d3-5a6e-8c21-3f0d6a9e4b57"
+  "agent": "b7e2f0c4-91d3-5a6e-8c21-3f0d6a9e4b57",
+  "rebase": "4d5e6f70-1a2b-5c3d-8e4f-5a6b7c8d9e0f",
+  "fix_pr": "5e6f7081-2b3c-5d4e-9f50-6b7c8d9e0f1a"
  },
  "jira": {
   "config_id": "81ee2591-ff21-5f4c-b66f-30e8e78003f0",

@@ -209,6 +209,10 @@ call(" ".join(a))
 d = json.loads(Path({data!r}).read_text())
 key = ("open" if "open" in a else "merged") if a[0] == "pr" else "releases" if a[0] == "release" else \\
       "staging" if "NONPROD" in " ".join(a) or "staging" in " ".join(a) else "prod"
+if a[0] == "api" and "--jq" in a:  # gh api <chemin> --jq … (#74 : tête d'une base, retard d'une PR) : d["api"][chemin]
+    v = (d.get("api") or {{}}).get(a[1])
+    print(v if v is not None else "")
+    sys.exit(0 if v is not None else 1)
 if a[0] == "api":  # gh api -i [-H If-None-Match: …] …/actions/workflows/<fichier>/runs : en-têtes, ETag, 304
     body = json.dumps({{"workflow_runs": [{{"status": r["status"], "conclusion": r["conclusion"], "created_at": r["createdAt"],
         "updated_at": r["updatedAt"], "display_title": r["displayTitle"], "html_url": r["url"],
@@ -443,6 +447,24 @@ print(json.dumps(val))
         self.assertIn("acme/cassé", out["warnings"][0])
         self.assertIn("acme/cassé", self.stderr)
         self.assertEqual(Path(os.path.join(self.tmp, "gh.json.calls")).read_text().count("--repo acme/api "), 2)  # pas de doublon (casse)
+
+    def test_github_snapshot_merge_state_and_behind_cached(self):
+        """#74 : conflit (DIRTY) et commits de retard sur la base ; la comparaison n'est refaite que si la PR ou sa base bougent."""
+        pr = dict(self.gh_pr(16, "DM-1 menu"), baseRefName="main", headRefOid="h1")
+        pr2 = dict(self.gh_pr(17, "DM-2 pied"), baseRefName="main", headRefOid="h2")
+        api = {"repos/acme/web/commits/main": "m1", "repos/acme/web/compare/m1...h1": "0", "repos/acme/web/compare/m1...h2": "4",
+               "graphql": '[[16, 9, "CONFLICTING"], [17, 0, "MERGEABLE"]]'}  # fils non résolus et conflit, une requête par dépôt
+        self.fake_gh({"releases": [], "staging": [], "prod": [], "api": api, "by_repo": {"acme/web": {"open": [pr, pr2], "merged": []}}})
+        out = self.run_script("github_snapshot.py", github={"repo": "acme/web"})
+        got = {p["number"]: (p["merge"], p["behind"], p["base"]) for p in out["open"]}
+        self.assertEqual(got, {16: ("DIRTY", 0, "main"), 17: (None, 4, "main")})
+        self.assertNotIn("headRefOid", out["open"][0])
+        self.assertEqual({p["number"]: p["threads"] for p in out["open"]}, {16: 9, 17: 0})
+        calls = os.path.join(self.tmp, "gh.json.calls")
+        Path(calls).write_text("")
+        out = self.run_script("github_snapshot.py", github={"repo": "acme/web"})
+        self.assertEqual(out["open"][1]["behind"], 4)
+        self.assertNotIn("compare", Path(calls).read_text(), "rien n'a bougé : retard relu dans le cache")
 
     def test_github_snapshot_default_repos_are_main_and_deploys(self):
         self.fake_gh({"open": [], "merged": [], "releases": [], "staging": [], "prod": []})

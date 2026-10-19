@@ -89,7 +89,7 @@ function renderTicket(side,key){
     for(const p of prs){
       const r=p.draft?['brouillon','var(--idle)']:TK_REV[p.review]||TK_REV.pending;
       const li=document.createElement('li');
-      li.innerHTML=`<span class="dot" style="background:${r[1]}"></span><a ${hrefOf(p.url)} target="_blank" rel="noopener" style="color:var(--accent);white-space:nowrap">${esc(prNum(p))}</a><span>${esc(p.title)}</span><span class="k">${r[0]}</span>`;
+      li.innerHTML=`<span class="dot" style="background:${r[1]}"></span><a href="#" data-pr="${esc(prId(p))}" title="Fiche de la PR" style="color:var(--accent);white-space:nowrap">${esc(prNum(p))}</a><span>${esc(p.title)}${prMarks(p).map(m=>' '+m).join('')}</span><span class="k">${r[0]}</span>`;
       ul.appendChild(li);
     }
     pb.appendChild(ul);
@@ -122,7 +122,22 @@ function prLaunch(box,p){
   const a=actPr(p);
   if(!a)return;
   const dr=p.draft?' (brouillon)':'', nm=prNum(p); // un brouillon se relit et se corrige aussi
-  if(ACTIONS.fix&&p.review==='changes'&&(!otherRepo(p.repo)||CFG.fix_any_repo))
+  // « ⟳ Remettre à jour » (#74) : rebase sur la base, sans squash ; en retard ou en conflit d'après le cron équipe, ou état inconnu
+  if(ACTIONS.rebase&&!p.merged&&(p.conflict||p.behind!==0)){
+    const base=p.base||'main';
+    launchBlock(box,{action:'bureau-rebase',bind:{id:a.id||prId(p)},name:'Remettre à jour · '+nm,
+      sub:p.conflict?'Conflit avec '+base+' : l\'IA propose une résolution, tu la valides avant tout push.':'Rebase sur '+base+', commits gardés, push protégé, CI relancée. Sans conflit : 0 token.',
+      label:'⟳ Remettre à jour',title:'Remettre à jour '+nm});
+  }
+  // « 🛠 Corriger » (#75) : modèle du Bureau, tout dépôt, dès qu'il reste des fils de review non résolus (inconnus : changements
+  // demandés) ; sinon ton workflow de launch.fix, comme avant
+  if(ACTIONS.fix_pr){
+    const t=p.threads;
+    if(t>0||t==null&&p.review==='changes')launchBlock(box,{action:'bureau-fixpr',bind:{id:a.id||prId(p)},name:'Corriger les retours · '+nm+dr,
+      sub:(t>0?t+' fil'+(t>1?'s':'')+' de review non résolu'+(t>1?'s':'')+' : ':'')+'Nate corrige, tu valides le diff et ses réponses, puis il pousse',
+      label:'🛠 Corriger',title:'Corriger les retours de '+nm});
+  }
+  else if(ACTIONS.fix&&p.review==='changes'&&(!otherRepo(p.repo)||CFG.fix_any_repo))
     launchBlock(box,{action:'bureau-fix',bind:{id:a.id||prId(p)},name:'Corriger les retours · '+nm+dr,sub:'Un agent applique les commentaires de review et pousse',label:'🛠 Corriger',title:'Corriger les retours de '+nm});
   // « 🚀 Mise en prod » d'une PR (#58) : dépôt de la config (CFG.mep_repos), PR prête (ni brouillon ni changements demandés)
   if(ACTIONS.mep_pr&&(CFG.mep_repos||[]).some(r=>r.toLowerCase()===String(a.id||prId(p)).replace(/#\d+$/,'').toLowerCase())&&!p.draft&&p.review!=='changes'){
@@ -151,6 +166,14 @@ function prInfo(id){
   return {repo,n,pr,runs,owner,ownerName:(pr&&pr.who_name)||au||null,
     url:(pr&&pr.url)||(repo?`https://github.com/${repo}/pull/${encodeURIComponent(n)}`:'')};
 }
+// pastilles d'état d'une PR ouverte (#74, cron équipe) : en conflit avec sa base, ou commits de retard
+function prChips(pr){
+  if(!pr||pr.merged)return '';
+  const base=esc(pr.base||'main'), n=pr.behind;
+  const c=pr.conflict?`<span class="prchip err">⛔ conflit avec ${base}</span>`:'';
+  const b=n>0?`<span class="prchip warn">⟳ ${n} commit${n>1?'s':''} de retard sur ${base}</span>`:n===0&&!pr.conflict?`<span class="prchip ok">✓ à jour de ${base}</span>`:'';
+  return c||b?`<div class="prchips">${c}${b}</div>`:'';
+}
 function renderPr(side,id){
   const x=prInfo(id);
   const h=document.createElement('h2');h.textContent=prNum({repo:x.repo,n:x.n});side.appendChild(h);
@@ -159,7 +182,7 @@ function renderPr(side,id){
   const head=document.createElement('div');head.style.cssText='margin:0 0 12px';
   head.innerHTML=(x.pr&&x.pr.title?`<div style="font-size:14px;margin-bottom:6px">${esc(x.pr.title)}</div>`:'')+
     `<div style="font-size:12px;color:var(--muted)">`+(rv?`<span class="dot" style="background:${rv[1]};display:inline-block;margin-right:6px"></span>${esc(rv[0])} · `:'')+
-    (x.owner||x.ownerName?'de '+refWho(x.owner,x.ownerName)+' · ':'')+(x.repo?esc(x.repo)+' · ':'')+gh+`</div>`;
+    (x.owner||x.ownerName?'de '+refWho(x.owner,x.ownerName)+' · ':'')+(x.repo?esc(x.repo)+' · ':'')+gh+`</div>`+prChips(x.pr);
   side.appendChild(head);
   const keys=(x.pr&&x.pr.keys)||[];
   if(keys.length){

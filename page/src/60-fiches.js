@@ -215,7 +215,7 @@ function tkRowHtml(x){
   if(x.status&&x.status===FLOW.reopened)meta.push('<span class="tk-tag">Réouvert</span>');
   for(const p of prsOf(x.key)){
     const r=p.draft?['brouillon','var(--idle)']:TK_REV[p.review]||TK_REV.pending;
-    meta.push(`<span><span class="dot" style="background:${r[1]}"></span><a ${hrefOf(p.url)} target="_blank" rel="noopener">${esc(prNum(p))}</a> ${r[0]}</span>`);
+    meta.push(`<span><span class="dot" style="background:${r[1]}"></span><a href="#" data-pr="${esc(prId(p))}" title="Fiche de la PR">${esc(prNum(p))}</a> ${r[0]}</span>`,...prMarks(p));
   }
   return `<div class="tk-top">${x.type==='Bug'?'<span title="Bug">'+TYPE_ICO.Bug+'</span>':''}<a class="tk-key" href="${JIRA_BROWSE}${encodeURIComponent(x.key)}" target="_blank" rel="noopener" title="Ouvrir dans Jira">${esc(x.key)}</a>`+
     `${comp?`<span class="tk-comp">${esc(comp)}</span>`:''}${tkPts(x.points)}</div>`+
@@ -249,6 +249,14 @@ const prGroup=x=>x.draft?'draft':PR_GROUPS.some(([k])=>k===x.review)?x.review:'p
 const daysAgoTxt=d=>d<1?"aujourd'hui":d<2?'hier':d<60?'il y a '+Math.floor(d)+' j':'il y a '+Math.floor(d/30.4)+' mois';
 // une ligne : n° (lien GitHub), ticket cité (lien Jira, en gris : la PR est l'objet de la ligne), composant ; titre sans « feat(DM-1): » ni « [Composant] » ;
 // dernière activité (orange avec ⏳ si elle attend une review depuis plus de PR_STALE_H heures)
+// état d'une PR dans une liste (#74, #75) : conflit avec sa base, commits de retard, fils de review non résolus
+function prMarks(x){
+  const m=[];
+  if(x.conflict)m.push('<span class="prm err" title="Conflit avec sa base">⛔ conflit</span>');
+  if(x.behind>0)m.push(`<span class="prm" title="Commits de ${esc(x.base||'main')} absents de la PR">⟳ ${x.behind} de retard</span>`);
+  if(x.threads>0)m.push(`<span class="prm" title="Fils de review non résolus">💬 ${x.threads} fil${x.threads>1?'s':''}</span>`);
+  return m;
+}
 function prRowHtml(x){
   let t=String(x.title||'').replace(/^\s*\w+(\([^)]*\))?!?:\s*/,'');
   const {comp,title}=tkComp(t); t=title;
@@ -257,7 +265,8 @@ function prRowHtml(x){
   const stale=!x.draft&&prGroup(x)==='pending'&&s&&T-s>PR_STALE_H*36e5;
   if(stale)meta.push(`<span class="warn" title="Sans review depuis plus de ${PR_STALE_H} h">⏳ attend une review depuis ${daysAgoTxt((T-s)/864e5).replace(/^il y a /,'')}</span>`);
   else if(u&&u<=T)meta.push(`<span>activité ${daysAgoTxt((T-u)/864e5)}</span>`);
-  return `<div class="tk-top"><a class="tk-key" ${hrefOf(x.url)} target="_blank" rel="noopener" title="Ouvrir sur GitHub">${esc(prNum(x))}</a>${keys}`+
+  meta.push(...prMarks(x));
+  return `<div class="tk-top"><a class="tk-key" href="#" data-pr="${esc(prId(x))}" title="Fiche de la PR">${esc(prNum(x))}</a><a class="tk-gh" ${hrefOf(x.url)} target="_blank" rel="noopener" title="Ouvrir sur GitHub">↗</a>${keys}`+
     `${comp?`<span class="tk-comp">${esc(comp)}</span>`:''}</div><div class="tk-t">${esc(t)}</div>${meta.length?`<div class="tk-meta">${meta.join('')}</div>`:''}`;
 }
 function renderPerson(side,c){
