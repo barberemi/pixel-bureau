@@ -210,3 +210,23 @@ test('#86 « Mise en prod » d\'une PR : seulement si un de ses tickets est To D
   assert.deepEqual(mep('review', ['DM-9']), [['bureau-meppr', 'Quand le ticket sera en To Deploy (aujourd\'hui : To Review)']]);
   assert.match(mep('review', [])[0][1], /^Pas de ticket Jira : pas de mise en prod sans ticket en To Deploy$/);
 });
+
+test('fiche du ticket, « Ses PR ouvertes » : sur deux lignes (n° et état, puis le titre entier sans « feat: » ni la clé), pastilles dessous', () => {
+  const rows = J(`(() => {
+    const got = {}, lb = launchBlock, fs = foldSection, ce = document.createElement;
+    document.createElement = () => ({children: [], style: {}, appendChild(e) { this.children.push(e); }});
+    launchBlock = () => {};
+    foldSection = (side, id) => { const s = {childElementCount: 0, kids: [], appendChild(e) { this.kids.push(e); this.childElementCount++; }}; got[id] = s; return s; };
+    TEAM = {people: [{name: 'Pam', tickets: [{key: 'DM-7', cat: 'review', status: 'To Review', summary: 'z'}],
+      prs: [{n: 21, title: 'feat: DM-7 Europe and European Union themes in the apps', review: 'changes', keys: ['DM-7'], threads: 5, behind: 3, conflict: true}]}],
+      unassigned: [], other_prs: []};
+    ACTS = null;
+    try { renderTicket({appendChild() {}}, 'DM-7'); } finally { launchBlock = lb; foldSection = fs; document.createElement = ce; }
+    return got['tk-prs'].kids[0].children.map(li => ({cls: li.className, html: li.innerHTML}));
+  })()`);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].cls, 'tkr');
+  assert.match(rows[0].html, /<div class="tk-top">.*#21<\/a>.*<span class="tk-rev">changements demandés<\/span><\/div>/);
+  assert.match(rows[0].html, /<div class="tk-t">Europe and European Union themes in the apps<\/div>/);
+  assert.match(rows[0].html, /<div class="tk-meta">.*⛔ conflit.*3 de retard.*💬 5 fils.*<\/div>$/);
+});
