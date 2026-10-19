@@ -6,7 +6,7 @@ PR de plusieurs dépôts (#56) : `github.pr_repos` (liste « owner/repo »), par
 `github.deploys`. Chaque PR porte son `repo` (owner/repo) : `front_api#16` et `front_web#16` ne se confondent jamais.
 Un autre dépôt illisible ne coupe pas le reste : ses PR manquent et c'est noté dans `warnings` (panneau Fraîcheur, #8).
 Releases et déploiements restent ceux du dépôt principal (ses MEP portent ticket et release).
-État de fusion de chaque PR ouverte (#74) : `merge` = mergeStateStatus de GitHub (DIRTY = conflit), `base`, et `behind` =
+État de fusion de chaque PR ouverte (#74) : `merge` = DIRTY si GitHub la dit en conflit (mergeable, requête des fils), `base`, et `behind` =
 commits de la base absents de la PR (comparaison GitHub), gardé dans ~/.cache/pixel-bureau/behind.json tant que ni la
 PR ni sa base ne bougent : une requête par PR seulement quand l'une des deux change. `threads` (#75) = fils de review non
 résolus de la PR (une requête GraphQL par dépôt), ce que « Corriger » traiterait.
@@ -35,8 +35,10 @@ def pr_repos():
 
 REPOS = pr_repos()
 # limites par dépôt : le principal garde ses 100 PR ouvertes et 40 mergées, les autres moins (sortie sous 100 Ko)
+# l'état de fusion n'est pas demandé ici : GitHub le calcule pour chaque PR et la liste de 100 finit en 504 ; il vient de
+# la requête GraphQL des fils (mergeable), dont l'échec ne coûte que les pastilles
 OPEN_FIELDS = ("number,title,headRefName,author,isDraft,reviewDecision,url,updatedAt,createdAt,latestReviews,reviewRequests,"
-               "mergeStateStatus,baseRefName,headRefOid")
+               "baseRefName,headRefOid")
 CALLS = {}
 for repo in REPOS:
     main = repo.lower() == (REPO or "").lower()
@@ -132,17 +134,18 @@ def behind_counts(prs):
 
 
 THREADS_Q = ("query($o:String!,$r:String!){repository(owner:$o,name:$r){pullRequests(states:OPEN,first:100,"
-             "orderBy:{field:UPDATED_AT,direction:DESC}){nodes{number reviewThreads(first:100){nodes{isResolved}}}}}}")
+             "orderBy:{field:UPDATED_AT,direction:DESC}){nodes{number mergeable reviewThreads(first:100){nodes{isResolved}}}}}}")
 
 
 def thread_counts(repo):
-    """Fils de review non résolus de chaque PR ouverte du dépôt ({n: nombre}), une requête GraphQL ; {} en cas d'échec."""
+    """Fils de review non résolus et état de fusion de chaque PR ouverte du dépôt ({n: (fils, mergeable)}), une requête
+    GraphQL ; {} en cas d'échec (pas de pastilles, les PR restent)."""
     owner, name = repo.split("/", 1)
     raw = api_text(None, ["api", "graphql", "-f", "query=" + THREADS_Q, "-F", "o=" + owner, "-F", "r=" + name, "--jq",
-                          "[.data.repository.pullRequests.nodes[]|[.number,([.reviewThreads.nodes[]|select(.isResolved|not)]|length)]]"])
+                          "[.data.repository.pullRequests.nodes[]|[.number,([.reviewThreads.nodes[]|select(.isResolved|not)]|length),.mergeable]]"])
     try:
-        return {int(n): c for n, c in json.loads(raw or "[]")}
-    except (ValueError, TypeError):
+        return {int(row[0]): (row[1], row[2] if len(row) > 2 else None) for row in json.loads(raw or "[]")}
+    except (ValueError, TypeError, IndexError):
         return {}
 
 
@@ -151,11 +154,12 @@ with ThreadPoolExecutor(max_workers=8) as pool:
     _repos = sorted({pr["repo"] for pr in out["open"]})
     THREADS = dict(zip(_repos, pool.map(thread_counts, _repos)))
 for pr in out["open"]:
-    pr["merge"] = pr.pop("mergeStateStatus", None) or None
+    t = THREADS.get(pr["repo"], {}).get(pr["number"]) or (None, None)
+    pr["merge"] = "DIRTY" if t[1] == "CONFLICTING" else None
     pr["base"] = pr.pop("baseRefName", None)
     pr.pop("headRefOid", None)
     pr["behind"] = BEHIND.get(f"{pr['repo']}#{pr['number']}")
-    pr["threads"] = THREADS.get(pr["repo"], {}).get(pr["number"])
+    pr["threads"] = t[0]
 for w in warnings:
     print("github : " + w, file=sys.stderr)
 # Kronn coupe la sortie d'une étape Exec à 100 Ko (exec_step.rs) : on ne garde que ce que lit team_shape.py
