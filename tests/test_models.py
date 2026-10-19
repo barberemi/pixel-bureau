@@ -36,8 +36,15 @@ class ModelsTest(unittest.TestCase):
         for key in MODELS:
             out = json.dumps(templates.render(TPL[key], c), ensure_ascii=False)
             self.assertNotIn("@@", out, key)
-            for word in ("Euronews", "front_euronews", "DocRoms", "barberemi", "/Users/", "customfield_10102", "3784f2a6", "8e141cbd"):
-                self.assertNotIn(word, json.dumps(TPL[key], ensure_ascii=False), f"{key} : {word}")
+            text = json.dumps(TPL[key], ensure_ascii=False)
+            self.assertFalse(re.findall(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", text), key)  # aucun id Kronn
+            self.assertFalse(re.findall(r"customfield_\d+|/Users/|/home/", text), key)  # ni champ Jira ni chemin d'une machine
+            local = os.path.join(ROOT, "bureau.config.json")  # l'installation de référence, quand elle est là
+            if os.path.exists(local):
+                inst = json.loads(Path(local).read_text())
+                for word in {(inst.get("github") or {}).get("repo", "").split("/")[0], (inst.get("jira") or {}).get("project"),
+                             (inst.get("github") or {}).get("login")} - {"", None}:
+                    self.assertFalse(re.search(r"\b" + re.escape(word) + r"\b", text), f"{key} : {word}, valeur de l'installation")
 
     def test_review_uses_the_kronn_github_connection_child_and_team_guidance(self):
         c = cfg(review={"guidelines": "Tutoie l'auteur.", "skill_ids": ["php", "custom-maison"], "repos": ["vance/api", "vance/frigo"]})
