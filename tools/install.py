@@ -384,6 +384,43 @@ def github(ask, defaults, login):
     return g
 
 
+def github_config(ask, k, project_id, previous):
+    """Connexion GitHub de Kronn (serveur mcp-github) : l'API GitHub des modèles de revue de PR (#78) ; « » = aucune."""
+    configs = [c for c in (k.get("/mcps").get("configs") or []) if c.get("server_id") == "mcp-github"
+               and (c.get("is_global") or project_id in (c.get("project_ids") or []))]
+    if not configs:
+        return ""
+    opts = [(c["id"], c.get("label") or c["id"][:8]) for c in configs] + [("", "Aucune (pas de revue de PR par un agent)")]
+    return ask.choice("github_config", "Connexion GitHub (dans Kronn) pour les revues de PR", opts,
+                      previous if previous in [c["id"] for c in configs] else configs[0]["id"])
+
+
+# modèles incarnés par des agents (#78), proposés à l'installation : (clé, question, oui par défaut). Un bouton dont tu as
+# déjà ton propre workflow (launch.review, launch.estimate) ne se voit pas proposer le modèle.
+MODELS = [("review_one", "Relire une PR à la demande (bouton « Faire relire »)", True),
+          ("review_cron", "Relire automatiquement les PR ouvertes, plusieurs fois par jour (cron, avis posté sur GitHub)", False),
+          ("estimate", "Réestimer un ticket (Story Points et commentaire dans Jira)", True),
+          ("issue", "Rédiger une issue GitHub depuis une intention", True),
+          ("assign", "M'affecter un ticket (assignation et passage En cours)", True),
+          ("unassign", "Me désaffecter un ticket (retour à À faire)", True)]
+MODEL_LAUNCH = {"review_one": "review", "estimate": "estimate"}
+
+
+def models(ask, cfg, old):
+    """Modèles à créer ou garder : ceux déjà dans la config (models), plus ceux que tu acceptes ; le sous-workflow de
+    revue suit la revue à la demande ou le cron. Renvoie les clés de TEMPLATES à installer."""
+    have = {key for key, v in (old.get("models") or {}).items() if v}
+    keep = set(have)
+    for key, q, dflt in MODELS:
+        if key in have or templates.skipped(key, cfg) or (cfg.get("launch") or {}).get(MODEL_LAUNCH.get(key, "")):
+            continue
+        if ask.yes(f"model_{key}", q + " ?", dflt):
+            keep.add(key)
+    if keep & {"review_one", "review_cron"}:
+        keep.add("review_child")
+    return keep
+
+
 def ask_repos(ask, key, prompt, default):
     """Liste de dépôts « owner/repo » (virgules, espaces ; « - » = aucun), redemandée tant qu'un nom est invalide."""
     while True:
@@ -739,7 +776,11 @@ def upsert_all(k, cfg, tpls, enabled, dry):
                 cfg.setdefault(sec, {})[field] = ident or f"dry-{key}"
                 continue
             if kind == "workflow":
-                body["enabled"] = enabled if key in CRONS else True
+                # le cron des revues (#78) poste sur GitHub : créé désactivé, tu l'actives dans Kronn quand tu veux
+                if key != "review_cron":
+                    body["enabled"] = enabled if key in CRONS else True
+                elif not ident:
+                    body["enabled"] = False  # à sa création seulement : ensuite, ton choix dans Kronn est gardé
                 if ident:
                     live = k.get(f"/workflows/{ident}")
                     ids = {s["name"]: s["id"] for s in live["steps"]}
@@ -822,6 +863,9 @@ def main(argv=None):
     kronn["project_id"] = project_id
     j = jira(ask, k, project_id, defaults, tpls["team"])
     g = github(ask, defaults, login)
+    gcfg = github_config(ask, k, project_id, ((old.get("github") or {}).get("config_id")))
+    if gcfg:
+        g["config_id"] = gcfg
     if login:
         g["login"] = login  # login du boss : « PR qui attendent ta review » dans la page
     ai = ai_agent(ask, k)
@@ -865,7 +909,9 @@ def main(argv=None):
 
     title = a.title or defaults["page_title"]
     cfg["page_id"] = upsert_page(k, cfg, title, a.dry_run)
-    upsert_all(k, cfg, tpls, not a.disabled, a.dry_run)
+    chosen = models(ask, cfg, old)  # modèles d'agents (#78) : seulement ceux acceptés
+    upsert_all(k, cfg, {key: t for key, t in tpls.items() if templates.TEMPLATES[key][1][0] != "models" or key in chosen},
+               not a.disabled, a.dry_run)
     # réponses gardées pour la relance, jamais un mot de passe (comptes IMAP : il est au trousseau)
     cfg["_answers"] = {**{k_: v for k_, v in {**previous, **(ask.answers or {})}.items() if not k_.endswith("_password")}, "owner": owner, "project_id": project_id,
                        "jira_config": j.get("config_id", ""), "ai_agent": ai}

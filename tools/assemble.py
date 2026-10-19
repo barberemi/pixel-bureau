@@ -281,7 +281,7 @@ def defaults(cfg):
 # Le pack porte l'équipe, la config porte l'installation. settings.json du pack, lu à chaque assemblage et rendu des
 # modèles : rythme, GitFut, affiches du Top 3, planning des absences (sans config_id) et personnages des agents (sans
 # ids de workflows). La config peut surcharger chacun ; elle seule rattache un personnage à ses workflows (agents[].wf).
-SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents")
+SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review")
 AGENT_FIELDS = ("key", "name", "role", "wf", "seat", "sprite")  # ordre des champs d'un agent, comme l'installateur l'écrit
 
 
@@ -327,9 +327,19 @@ def merged(cfg):
         out["microsoft"] = {**m, **{k: v for k, v in pm.items() if k not in m}}
         if planning:
             out["microsoft"]["planning"] = planning
+    if "review" in s:  # revue de PR (#78) : consignes, skills, dépôts, horaire de l'équipe ; page et projet de l'installation
+        out["review"] = {**(s["review"] or {}), **(cfg.get("review") or {})}
     if "agents" in s:
-        personas = {a["key"]: a for a in s["agents"]}
+        personas = {a["key"]: {k: v for k, v in a.items() if k != "model"} for a in s["agents"]}
         out["agents"] = [_agent(personas.get(a.get("key"), {}), a) for a in cfg.get("agents") or []]
+        # personnage qui incarne un modèle du Bureau (clé model, #78) : rattaché d'office à ses workflows créés par
+        # l'installateur (models), sauf si la config le rattache déjà
+        bound, models = {a.get("key") for a in out["agents"]}, cfg.get("models") or {}
+        for a in s["agents"]:
+            want = [a["model"]] if isinstance(a.get("model"), str) else a.get("model") or []
+            wf = [models[m][:8] for m in want if models.get(m)]
+            if a["key"] not in bound and wf:
+                out["agents"].append(_agent({k: v for k, v in a.items() if k != "model"}, {"wf": wf}))
     return out
 
 
@@ -422,9 +432,17 @@ def launch(cfg):
     return out
 
 
+# boutons qu'un modèle du Bureau incarné par un agent (models, #78) fait marcher quand tu n'as pas ton propre workflow
+# dans launch : action -> clé du modèle ; ses variables portent les noms par défaut de LAUNCH_VARS
+MODEL_ACTIONS = {"review": "review_one", "estimate": "estimate"}
+
+
 def action_ids(cfg):
-    """Id de la cible de chaque bouton : workflows du Bureau (actions), puis tes workflows (launch)."""
-    return {**(cfg.get("actions") or {}), **{k: wf for k, (wf, _) in launch(cfg).items()}}
+    """Id de la cible de chaque bouton : workflows du Bureau (actions), modèles incarnés (models), puis tes workflows
+    (launch), qui l'emportent."""
+    models = cfg.get("models") or {}
+    return {**(cfg.get("actions") or {}), **{a: models[m] for a, m in MODEL_ACTIONS.items() if models.get(m)},
+            **{k: wf for k, (wf, _) in launch(cfg).items()}}
 
 
 def action_block(block, cfg):

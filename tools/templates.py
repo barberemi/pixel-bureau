@@ -55,13 +55,28 @@ TEMPLATES = {
     # corriger les commentaires d'une PR, tout dépôt (#75) : actions.fix_pr, à côté de ton workflow « Corriger » (launch.fix),
     # jamais réécrit ; quand il existe, le bouton « 🛠 Corriger » des fiches le lance
     "fix": ("workflow", ("actions", "fix_pr"), {n: "workflows/pr_update.py" for n in ("prepare", "diff", "push", "abort", "end")}),
+    # modèles du Bureau que des agents incarnent (#78) : ids rangés dans models (jamais dans BUREAU_IDS : l'agent qui les
+    # incarne garde sa fiche), lancés par les boutons quand tu n'as pas ton propre workflow (launch.review, launch.estimate)
+    # relire une PR (sous-workflow d'abord : le cron et la revue à la demande le lancent pour chaque PR, en foreach)
+    "review_child": ("workflow", ("models", "review_child"), {}),
+    "review_one": ("workflow", ("models", "review_one"), {}),
+    "review_cron": ("workflow", ("models", "review_cron"), {}),
+    "estimate": ("workflow", ("models", "estimate"), {}),  # réestimer un ticket : Story Points et commentaire
+    "issue": ("workflow", ("models", "issue"), {}),  # une intention rédigée en issue GitHub selon les modèles du dépôt
+    "assign": ("workflow", ("models", "assign"), {}),  # m'affecter un ticket (assignation puis transition vers En cours)
+    "unassign": ("workflow", ("models", "unassign"), {}),  # me le désaffecter (retour à À faire)
     "ask": ("quick_prompt", ("actions", "ask"), {}),
     "sketch": ("quick_prompt", ("actions", "sketch"), {}),
 }
 WF_KEYS = ("name", "project_id", "trigger", "variables", "steps", "actions", "safety", "workspace_config", "concurrency_limit", "exec_allowlist")
 QP_KEYS = ("name", "icon", "prompt_template", "variables", "agent", "project_id", "skill_ids", "profile_ids", "directive_ids", "tier", "description")
 TOKEN = re.compile(r"@@([a-z_.]+|(?:script|text):[\w/.]+)@@")
-TEXTS = ("tools/plan_prompt.md", "tools/mail_rules_prompt.md", "tools/rebase_prompt.md", "tools/fix_prompt.md")  # fichiers recopiés tels quels dans un prompt (@@text:…@@)
+TEXTS = ("tools/plan_prompt.md", "tools/mail_rules_prompt.md", "tools/rebase_prompt.md", "tools/fix_prompt.md", "tools/review_rubric.md")
+REVIEW_SCHEDULE = "30 7,10,13,16,19 * * 1-5"  # cron des revues de PR, heures UTC (review.schedule de l'équipe pour un autre)
+# modèles lancés en foreach (un sous-workflow par PR) : Kronn y écrit .kronn/current_task.json, il leur faut leur propre
+# copie du projet (require_isolation), jamais le dossier principal ; le sous-workflow tourne dans celle de son parent
+ISOLATED = {"review_one", "review_cron"}
+SHARED_WORKSPACE = {"review_child"}  # fichiers recopiés tels quels dans un prompt (@@text:…@@)
 
 
 def load_config():
@@ -122,6 +137,7 @@ def values(cfg):
     """Valeur de chaque emplacement pour une installation."""
     cfg = assemble.merged(cfg)
     j = cfg.get("jira") or {}
+    rv = cfg.get("review") or {}
     return {
         "page_id": cfg.get("page_id") or "",
         "kronn.project_id": (cfg.get("kronn") or {}).get("project_id") or "",
@@ -143,7 +159,31 @@ def values(cfg):
         # mise en prod (#58) : Quick Prompt du retour IA et transition Jira de fin (facultatifs : étapes retirées sans eux)
         "mep.feedback_qp": (cfg.get("mep") or {}).get("feedback_qp") or "",
         "mep.done_transition": str((cfg.get("mep") or {}).get("done_transition") or ""),
+        # modèles incarnés par des agents (#78)
+        "kronn.api": (cfg.get("kronn") or {}).get("api") or "",
+        "github.config_id": (cfg.get("github") or {}).get("config_id") or "",  # connexion GitHub de Kronn (API GitHub)
+        "jira.points_field": (j.get("points_fields") or [""])[0],  # champ Story Points du board (réestimer)
+        **{f"jira.statuses.{c}": json.dumps([s for s, k in (j.get("statuses") or {}).items() if k == c], ensure_ascii=False)
+           for c in ("todo", "doing")},  # statuts « À faire » et « En cours » du board (m'affecter, me désaffecter)
+        "models.review_child": (cfg.get("models") or {}).get("review_child") or "",
+        "review.project_id": rv.get("project_id") or (cfg.get("kronn") or {}).get("project_id") or "",
+        "review.page_id": rv.get("page_id") or "",  # page de récap des revues, facultative
+        "review.schedule": rv.get("schedule") or REVIEW_SCHEDULE,
+        "review.repos_json": json.dumps([{"repo": r} for r in review_repos(cfg)], ensure_ascii=False, separators=(",", ":")),
+        "review.guidelines": str(rv.get("guidelines") or "Aucune consigne d'équipe en plus de la grille."),
+        "issue.repo": (cfg.get("issue") or {}).get("repo") or (cfg.get("github") or {}).get("repo") or "",
+        "issue.search_dirs": ", ".join((cfg.get("issue") or {}).get("search_dirs") or ["~/Sites", "~/Projects", "~/code"]),
+        "issue.discussion": (cfg.get("issue") or {}).get("discussion") or "",  # discussion Kronn du récap, facultative
     }
+
+
+def review_repos(cfg):
+    """Dépôts que le cron des revues relit : review.repos de l'équipe, sinon les PR suivies (github.pr_repos), sinon le
+    dépôt principal puis ceux des mises en prod (comme github_snapshot.py)."""
+    g = cfg.get("github") or {}
+    repos = (cfg.get("review") or {}).get("repos") or g.get("pr_repos") or \
+        [g.get("repo")] + [d.get("repo") for d in g.get("deploys") or []]
+    return list(dict.fromkeys(r for r in repos if r))
 
 
 def mep_projects(cfg):
@@ -164,6 +204,10 @@ def skipped(key, cfg):
         return not (cfg.get("mail") or {}).get("accounts")
     if key == "mep":  # aucun projet avec une clé mep (github ou github.deploys)
         return not mep_projects(cfg)
+    if key in ("review_child", "review_one", "review_cron"):  # API GitHub : connexion GitHub de Kronn (github.config_id)
+        return not (cfg.get("github") or {}).get("config_id") or (key == "review_cron" and not review_repos(cfg))
+    if key in ("estimate", "assign", "unassign"):
+        return not (cfg.get("jira") or {}).get("config_id")
     return False
 
 
@@ -183,7 +227,7 @@ def _sub(v, vals, cfg):
     if isinstance(v, list):
         return [_sub(x, vals, cfg) for x in v]
     if isinstance(v, dict):
-        return {k: _sub(x, vals, cfg) for k, x in v.items()}
+        return {_sub(k, vals, cfg): _sub(x, vals, cfg) for k, x in v.items()}  # une clé peut être un emplacement (champ Jira)
     return v
 
 
@@ -195,10 +239,24 @@ def render(tpl, cfg):
         has_jira = bool((cfg.get("jira") or {}).get("config_id"))
         vals = values(cfg)
 
-        def ok(req):  # "jira" : connexion Jira ; "jira.role.qa", "jira.role_ids" : Jira et quelqu'un dans ce rôle
-            return not req or (has_jira and (req == "jira" or bool(vals.get(req))))
+        def ok(req):  # "jira" : connexion Jira ; "jira.role.qa", "jira.role_ids" : Jira et quelqu'un dans ce rôle ;
+            # "github" : connexion GitHub de Kronn ; une autre clé (review.page_id…) : sa valeur est posée
+            if not req:
+                return True
+            if req == "jira" or req.startswith("jira."):
+                return has_jira and (req == "jira" or bool(vals.get(req)))
+            return bool(vals.get("github.config_id" if req == "github" else req))
+        names = [s["name"] for s in d["steps"]]
         dropped = {s["name"] for s in d["steps"] if not ok(s.get("_requires"))}
+        # un renvoi (on_result Goto) vers une étape retirée va à la première étape gardée après elle (#78 : sans page de
+        # récap, « reply » en échec saute à la fin au lieu de build_row)
+        after = {n: next((m for m in names[i:] if m not in dropped), None) for i, n in enumerate(names)}
         d["steps"] = [s for s in d["steps"] if s["name"] not in dropped]
+        for s in d["steps"]:
+            for r in s.get("on_result") or []:
+                a = r.get("action") or {}
+                if a.get("type") == "Goto" and a.get("step_name") in dropped:
+                    a["step_name"] = after[a["step_name"]]
         for v in d.get("variables") or []:  # liste des projets (#58) : choix de la variable, le dépôt principal par défaut
             if v.pop("_options", None) == "mep.projects":
                 opts = mep_projects(cfg)
@@ -206,6 +264,8 @@ def render(tpl, cfg):
                                 **({"default_value": opts[0][0]} if opts else {})}
         for s in d["steps"]:
             s.pop("_requires", None)
+            if s.pop("_skills_from", None) == "review.skill_ids":  # skills de l'équipe en plus de ceux du modèle (#78)
+                s["skill_ids"] = list(dict.fromkeys(s.get("skill_ids", []) + list((cfg.get("review") or {}).get("skill_ids") or [])))
             if s.pop("_vars_from", None) == "mep.feedback_vars":  # variables propres au Quick Prompt du retour IA
                 s["quick_prompt_variables"] = {**((cfg.get("mep") or {}).get("feedback_vars") or {}), **s.get("quick_prompt_variables", {})}
             for name in dropped:  # entrée d'une étape suivante qui lisait une étape retirée

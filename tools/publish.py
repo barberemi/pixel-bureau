@@ -42,17 +42,26 @@ def workflows():
     tpls = templates.load_templates()
     for key, tpl in tpls.items():
         kind, where, _ = templates.TEMPLATES[key]
-        if not templates.config_id(CFG, where) and kind == "workflow" and not templates.skipped(key, CFG):
+        # modèles incarnés par des agents (models, #78) : jamais créés ici (un cron de revue en double posterait deux fois
+        # sur chaque PR) ; l'installateur les propose, ou ton propre workflow reçoit le modèle (son id dans models.<clé>)
+        if not templates.config_id(CFG, where) and kind == "workflow" and not templates.skipped(key, CFG) and where[0] != "models":
             # workflow du Bureau ajouté depuis l'installation (ex. commenter un ticket) : créé, son id rangé dans la config
             ident = call("POST", "/workflows", templates.render(tpl, CFG))["data"]["id"]
             CFG.setdefault(where[0], {})[where[1]] = ident
             Path(CFG_PATH).write_text(json.dumps(CFG, ensure_ascii=False, indent=1))
             print(f"{key} ({ident[:8]}) créé")
+    absent = []
     for key, tpl in tpls.items():
         kind, where, _ = templates.TEMPLATES[key]
         ident = templates.config_id(CFG, where)
+        if not ident and where[0] == "models":
+            absent.append(key)
+            continue
         if not ident:
             print(key, ": pas installé (aucun id dans la config) : relance python3 tools/install.py, qui l'ajoute sans doublon")
+            continue
+        if where[0] == "models" and templates.skipped(key, CFG):
+            print(f"{key} ({ident[:8]}) : connexion manquante (github.config_id ou Jira), non publié")
             continue
         if ident in (CFG.get("own") or []):
             print(f"{key} ({ident[:8]}) : gardé tel quel (branché à l'installation), non publié")
@@ -68,6 +77,8 @@ def workflows():
         else:
             ok = call("PUT", f"/quick-prompts/{ident}", body).get("success")
         print(f"{key} ({ident[:8]})", ok)
+    if absent:
+        print("modèles d'agents non installés (facultatifs) : " + ", ".join(absent) + " ; python3 tools/install.py les propose")
 
 
 if __name__ == "__main__":

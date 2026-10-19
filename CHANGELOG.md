@@ -12,6 +12,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 - « 🛠 Corriger » sur toute PR qui a des fils de review non résolus, quel que soit son dépôt : Nate corrige les fils actionnables (tests compris), prépare une réponse par fil, et tu valides le diff et les réponses avant le push, les réponses et la résolution des fils corrigés (`actions.fix_pr`, ne remplace pas ton workflow de `launch.fix`) (#75).
 
 - Réglages d'équipe dans le pack (`settings.json`) : rythme, GitFut, affiches du Top 3, planning des absences et personnages des agents, lus à chaque publication et surchargeables par la config ; l'installateur rattache chaque personnage à un de tes workflows (`--rattacher` pour le refaire) ; `tools/split.py` découpe une config existante sans changer la page ni les workflows (#32).
+- Modèles d'agents du Bureau, proposés à l'installation : relire une PR (à la demande, ou en cron créé désactivé, avec une grille de revue générique et les consignes de l'équipe), réestimer un ticket, rédiger une issue GitHub, m'affecter et me désaffecter un ticket. Sans valeur d'installation (connexions, page de récap facultative, champ Story Points, transitions choisies par statut) ; « Faire relire » et « Réestimer » les lancent quand tu n'as pas ton propre workflow (#78).
 
 ### Modifié
 
