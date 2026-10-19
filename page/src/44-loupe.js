@@ -1,14 +1,14 @@
 // ---------- loupe : un médaillon agrandi sur le plan quand un événement fort commence ----------
 // Réouverture (le héraut convoque l'assigné), mise en prod réussie (le sage félicite), invité qui arrive, fête de MEP,
-// pouce du testeur, daily, sprint planning, rétro, lancement et pizza du sprint, soucoupe-mère (ticket entré en cours de sprint). Le plan reste entier : un cadre entoure la
+// pouce du testeur, daily, sprint planning, rétro, lancement et pizza du sprint, soucoupe-mère (ticket entré en cours de sprint), tournée de café à la machine. Le plan reste entier : un cadre entoure la
 // scène ; une fenêtre flottante l'agrandit, en bas à gauche de l'écran (à droite si elle couvrirait la scène), avec un liseré
 // de la couleur de l'événement et sa légende (clic : la fiche, ✕ : fermer). Un événement à la fois, une fois les personnages arrivés, LOUPE_MS ;
 // en rejeu accéléré la lecture se met en pause le temps de la loupe ; rien quand on fait glisser l'heure ou qu'on survole le
 // plan. Bouton « 🔍 Loupe » de la barre (retenu dans le navigateur), ?loupe=0 dans l'adresse de l'écran mural.
 const LOUPE_MS=20e3, LOUPE_WAIT_MAX=40e3, LOUPE_HOVER_MS=5e3;
 const LOUPE_KINDS={reopen:['⛔','#b3122e'],proud:['🎉','#0172f0'],party:['🎉','#0172f0'],thumbs:['👍','#2e9e5b'],guest:['👋','#2e9e5b'],
-  daily:['☀️','#2e9e9b'],planning:['🗓','#2e9e9b'],retro:['🔄','#c25a9e'],kickoff:['🏁','#2e9e9b'],pizza:['🍕','#2e9e9b'],duck:['🦆','#c47f00'],hatch:['🐣','#c47f00'],trophy:['🏆','#c47f00'],ufo:['🛸','#b5481c']};
-const LOUPE_ORDER=['reopen','ufo','proud','guest','thumbs','kickoff','planning','retro','daily','pizza','party','trophy','hatch','duck'];
+  daily:['☀️','#2e9e9b'],planning:['🗓','#2e9e9b'],retro:['🔄','#c25a9e'],kickoff:['🏁','#2e9e9b'],pizza:['🍕','#2e9e9b'],duck:['🦆','#c47f00'],hatch:['🐣','#c47f00'],trophy:['🏆','#c47f00'],ufo:['🛸','#b5481c'],brew:['☕','#6b3e1e']};
+const LOUPE_ORDER=['reopen','ufo','brew','proud','guest','thumbs','kickoff','planning','retro','daily','pizza','party','trophy','hatch','duck'];
 // cérémonies : toute l'équipe est dans la scène, la légende la nomme au lieu d'énumérer tout le monde
 const LOUPE_CEREMONY={daily:"Daily de l'équipe",planning:'Sprint planning',retro:'Rétrospective',kickoff:'Lancement du sprint',pizza:'Pizza de fin de sprint'};
 let LOUPE_ON=!REDUCED_MOTION;try{const v=localStorage.getItem('bureau:loupe');if(v!==null)LOUPE_ON=v!=='0';}catch(e){} // un choix du bouton passe avant le réglage système

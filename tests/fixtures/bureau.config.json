@@ -292,6 +292,16 @@
     20,
     40
    ]
+  },
+  {
+   "key": "g_kevin",
+   "name": "Kevin",
+   "role": "Comptable, la tournée de café",
+   "on": "coffee",
+   "at": "16:00",
+   "jitter": 10,
+   "shout": "☕ Dunder Mifflin, c'est ma meilleure équipe aujourd'hui !",
+   "feed": "{name} apporte le café à sa meilleure équipe de la journée"
   }
  ],
  "launch": {

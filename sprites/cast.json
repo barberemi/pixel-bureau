@@ -264,5 +264,16 @@
   "shirt": "#2c3550",
   "legs": "formal",
   "legs_color": "#20242e"
+ },
+ "g_kevin": {
+  "sex": "male",
+  "skin": "light",
+  "head": "male_plump",
+  "hair": "balding",
+  "hair_color": "#6b5a48",
+  "torso": "shortsleeve/tshirt",
+  "shirt": "#7a8a5a",
+  "legs": "pants",
+  "legs_color": "#3a3f4a"
  }
 }

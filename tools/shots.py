@@ -232,6 +232,9 @@ SHOTS = {
     "vaisseau-mere": (1400, 1000, AT(14 + 21 / 60) + "setTimeout(()=>{window.fxFrame=()=>{};setLoupe(false,false);"
                       "const e={id:'x',kind:'ufo',...ufoLandings()[0]};Object.defineProperty(e,'t0',{get:()=>performance.now()-.79*13e3});"
                       "FX.cur=new Map([['x',e]]);},1800);", "#cv", 1),
+    # tournée de café (49-coffee.js) : Kevin apporte son café au boss, à gauche de son bureau ; les autres ont déjà leur tasse
+    "tournee-cafe": (1400, 1000, AT(16) + "setTimeout(()=>{setLoupe(false,false);const r=coffeeTour(byKey.g_kevin,T);"
+                     "T=r.at+(r.list.length-.5)*120e3;needTeleport=true;},1500);", "#cv", 1),
     "agent-retabli": (1400, 1000, AT(18 + 7 / 60) + "setTimeout(()=>{window.fxFrame=()=>{};setLoupe(false,false);FX_WORKING.push('idle');"
                       "FX.cur=new Map([['x',{kind:'recover',t0:performance.now()-800,c:chars.find(c=>c.name==='Creed')}]]);},1800);", "#cv", 1),
     # fiche du canard quand il attend ta réponse : la carte de la question en tête (démo : question ajoutée)
