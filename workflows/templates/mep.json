@@ -168,33 +168,6 @@
     "gate_request_changes_target": "resolve"
    },
    {
-    "name": "teams_post",
-    "step_type": {
-     "type": "Exec"
-    },
-    "description": "Annonce Teams : la carte ⏳ dans le canal des mises en prod (canal de test en simulation, rien sans mep.teams).",
-    "agent": "ClaudeCode",
-    "prompt_template": "",
-    "mode": {
-     "type": "Normal"
-    },
-    "output_format": {
-     "type": "FreeText"
-    },
-    "exec_command": "python3",
-    "exec_args": [
-     "-c",
-     "@@script:workflows/mep.py@@",
-     "teams_post",
-     "{{project}}",
-     "{{pr_number}}",
-     "{{jira_ticket_key}}",
-     "{{run.id}}",
-     "{{dry_run}}"
-    ],
-    "exec_timeout_secs": 60
-   },
-   {
     "name": "rebase",
     "step_type": {
      "type": "Exec"
@@ -222,13 +195,40 @@
     "exec_timeout_secs": 600,
     "on_result": [
      {
-      "contains": "exit_",
+      "contains": "ERROR",
       "action": {
        "type": "Goto",
        "step_name": "teams_failed"
       }
      }
     ]
+   },
+   {
+    "name": "teams_post",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Annonce Teams : la carte ⏳ dans le canal des mises en prod, une fois la PR rebasée (canal de test en simulation, rien sans mep.teams).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mep.py@@",
+     "teams_post",
+     "{{project}}",
+     "{{pr_number}}",
+     "{{jira_ticket_key}}",
+     "{{run.id}}",
+     "{{dry_run}}"
+    ],
+    "exec_timeout_secs": 60
    },
    {
     "name": "citest",
@@ -258,7 +258,7 @@
     "exec_timeout_secs": 1800,
     "on_result": [
      {
-      "contains": "exit_",
+      "contains": "ERROR",
       "action": {
        "type": "Goto",
        "step_name": "teams_failed"
@@ -310,7 +310,7 @@
     "exec_timeout_secs": 120,
     "on_result": [
      {
-      "contains": "exit_",
+      "contains": "ERROR",
       "action": {
        "type": "Goto",
        "step_name": "teams_failed"
@@ -362,7 +362,7 @@
     "exec_timeout_secs": 120,
     "on_result": [
      {
-      "contains": "exit_",
+      "contains": "ERROR",
       "action": {
        "type": "Goto",
        "step_name": "teams_failed"
@@ -398,7 +398,7 @@
     "exec_timeout_secs": 1800,
     "on_result": [
      {
-      "contains": "exit_",
+      "contains": "ERROR",
       "action": {
        "type": "Goto",
        "step_name": "teams_failed"
@@ -450,7 +450,7 @@
     "exec_timeout_secs": 1800,
     "on_result": [
      {
-      "contains": "exit_",
+      "contains": "ERROR",
       "action": {
        "type": "Goto",
        "step_name": "teams_failed"

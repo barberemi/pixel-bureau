@@ -20,8 +20,8 @@ Le **ticket** est déduit de la PR : la première clé du projet Jira (`jira.pro
 | fetch_ticket_type | type du ticket dans Jira |
 | tag | prochain tag : Bug = correctif (`2.4.0` → `2.4.1`), sinon fonctionnalité (`2.4.0` → `2.5.0`) |
 | **gate du début** | la PR, le ticket, le tag, les déploiements et l'aperçu de l'annonce : approuver lance la mise en prod |
-| teams_post | l'annonce Teams ⏳ dans le canal des mises en prod |
 | rebase | rebase sur la base de la PR, squash en un commit, push protégé (`--force-with-lease`), dans une copie du dépôt sous `~/.cache/pixel-bureau/mep` |
+| teams_post | l'annonce Teams ⏳ dans le canal des mises en prod, une fois la PR rebasée : un conflit de rebase, l'échec le plus courant, n'annonce rien |
 | citest | label de la CI reposé, attente du résultat (25 min au plus) |
 | **gate** | tests verts : merger ? |
 | merge | l'annonce passe au chargeur animé (mise en prod en cours), puis merge en rebase |

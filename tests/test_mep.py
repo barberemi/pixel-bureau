@@ -156,9 +156,11 @@ class MepTemplateTest(unittest.TestCase):
         names = [s["name"] for s in d["steps"]]
         self.assertLessEqual(len(names), 20, "limite Kronn")
         self.assertEqual(names[-1], "teams_failed", "atteinte seulement par Goto, après done (Stop)")
+        # Kronn compare une ligne qui finit par « [SIGNAL: <contains>] » : ERROR (tout code non nul), jamais « exit_ » seul
         for s in d["steps"]:
             if s["name"] in ("rebase", "citest", "merge", "release", "staging", "prod"):
-                self.assertEqual(s["on_result"], [{"contains": "exit_", "action": {"type": "Goto", "step_name": "teams_failed"}}])
+                self.assertEqual(s["on_result"], [{"contains": "ERROR", "action": {"type": "Goto", "step_name": "teams_failed"}}])
+        self.assertEqual(names.index("teams_post"), names.index("rebase") + 1, "annonce Teams une fois la PR rebasée")
         self.assertEqual(names[0], "resolve")
         for s in d["steps"]:
             for target in [s.get("gate_request_changes_target")] + [(r["action"].get("step_name")) for r in s.get("on_result") or []]:
