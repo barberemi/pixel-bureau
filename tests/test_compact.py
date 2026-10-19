@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import assemble  # noqa: E402
-from compact import strip_css, strip_js  # noqa: E402
+from compact import alias_js, strip_css, strip_js  # noqa: E402
 
 
 class CompactTest(unittest.TestCase):
@@ -32,6 +32,14 @@ class CompactTest(unittest.TestCase):
         for c in cases:
             with self.subTest(c=c):
                 self.assertEqual(strip_js(c), c.split(" //")[0].rstrip() + "\n" if " // lien" in c else c)
+
+    def test_repeated_dom_calls_get_a_short_alias(self):
+        """document.createElement répété : alias _ce défini en tête ; pas d'alias sous 3 appels ni si le nom est déjà pris."""
+        js = "a=document.createElement('a');b=document.createElement('b');c=document.createElement('c');\n"
+        self.assertEqual(alias_js(js), "const _ce=t=>document.createElement(t);\na=_ce('a');b=_ce('b');c=_ce('c');\n")
+        self.assertEqual(alias_js("x=document.createElement('a');\n"), "x=document.createElement('a');\n")
+        taken = js + "let _ce=1;\n"
+        self.assertEqual(alias_js(taken), taken)
 
     def test_js_multiline_template_keeps_its_text(self):
         src = "el.innerHTML=`<pre>\n  deux espaces\n</pre>`;\n"

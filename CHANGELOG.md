@@ -6,6 +6,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ## [Unreleased]
 
+### Modifié
+
+- Page plus légère : à l'assemblage, les appels `document.createElement` et `document.getElementById` répétés passent par un alias court (4,5 Ko).
+
 ### Corrigé
 
 - Mise en prod d'une PR en simulation : le ticket n'est plus passé au statut de fin ni commenté par le retour IA (nouvelle étape `dry_guard` après la gate de fin) ; avant, approuver la gate de fin d'une simulation écrivait dans Jira.
