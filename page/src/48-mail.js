@@ -115,7 +115,7 @@ function messengerState(c,t){
 function mailWhen(iso){
   if(!iso)return '';
   const t=ms(iso), d=parisDay(t);
-  return d===parisDay(T)?hm(t):d===parisDay(T-864e5)?'hier '+hm(t):DAY_FR[parisHM(t).wd]+' '+hm(t);
+  return d===parisDay(T)?hm(t):d===parisDay(T-864e5)?'hier '+hm(t):dtf('fr-FR',{weekday:'long',day:'numeric',month:'short'}).format(new Date(t))+' '+hm(t);
 }
 function mailRow(m,a){
   const href=safeMailUrl(m.open);
