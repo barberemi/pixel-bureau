@@ -1,5 +1,5 @@
-// Vaisseau-mère (team.events, kind sprint_in) : un ticket entre dans le sprint après son démarrage ; le vaisseau descend
-// au-dessus du poste de l'assigné et la facilitatrice y est déposée. Démo : DM-7931 (13 pts) pour Andy à 14h20.
+// Soucoupe-mère (team.events, kind sprint_in, #89) : un ticket entre dans le sprint après son démarrage ; la soucoupe va
+// chercher la facilitatrice et la dépose devant le mur Kanban avec le ticket. Démo : DM-7931 (13 pts) pour Andy à 14h20.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,8 +11,8 @@ const run = page.run;
 const J = code => JSON.parse(run('JSON.stringify(' + code + ')'));
 run('TEAM=mergedTeam();');
 
-test('la démo : une visite pour DM-7931, 13 pts, au poste d\'Andy', () => {
-  assert.deepEqual(J('ufoLandings().map(u=>[u.at,u.keys,u.pts,u.dev&&u.dev.key])'), [[at('14:20'), ['DM-7931'], 13, 'p_andy']]);
+test('la démo : une visite pour DM-7931, 13 pts', () => {
+  assert.deepEqual(J('ufoLandings().map(u=>[u.at,u.keys,u.pts])'), [[at('14:20'), ['DM-7931'], 13]]);
 });
 
 test('jouée dans les 10 min qui suivent, pas avant ni après', () => {
@@ -33,17 +33,41 @@ test('des tickets ajoutés coup sur coup : une seule visite, les points s\'addit
   } finally { run(`TEAM.events=${saved};UFO_M={};`); }
 });
 
-test('pendant la visite, la facilitatrice est dans le vaisseau ; les autres restent visibles', () => {
-  run(`FX.cur.set('x',{id:'x',kind:'ufo',t0:0,...ufoLandings()[0]});
-    byKey.p_kelly.pos={x:100,y:100};byKey.p_kelly._st={st:'work'};byKey.p_kelly.present=true;`);
-  try {
-    assert.equal(run('ufoHides(byKey.p_kelly)'), true);
-    assert.equal(run('ufoHides(byKey.p_andy)'), false);
-    run(`byKey.p_kelly._st={st:'absent'}`); // absente ce jour-là : le vaisseau vient sans elle
-    assert.equal(run('ufoSm()'), null);
-    assert.equal(run('fxDuckBusy()'), false); // le canard n'est pas en scène
-  } finally { run(`FX.cur.clear();`); }
-});
+// une visite en cours, la facilitatrice dans l'état donné (à son poste par défaut)
+function visit(st, fn) {
+  run(`byKey.p_kelly.pos={x:100,y:500};byKey.p_kelly.moving=false;byKey.p_kelly._st=${JSON.stringify(st)};byKey.p_kelly.present=true;
+    FX.cur.set('x',{id:'x',kind:'ufo',t0:0,...ufoLandings()[0]});`);
+  try { return fn(); } finally { run(`FX.cur.clear();`); }
+}
+
+test('à son poste : la soucoupe va la chercher (13 s), elle est cachée de son poste pendant la visite', () => visit({st: 'work', zone: 'desk'}, () => {
+  assert.deepEqual(J(`(p=>[p.sm.key,p.pick,p.ms,p.from])(ufoPlan(fxOf('ufo')))`), ['p_kelly', true, 13e3, {x: 100, y: 500}]);
+  assert.equal(run('ufoHides(byKey.p_kelly)'), true);
+  assert.equal(run('ufoHides(byKey.p_andy)'), false);
+  assert.equal(run('fxDuckBusy()'), false); // le canard n'est pas en scène
+}));
+
+test('déjà au mur Kanban : pas de prise en charge, la visite dure 10 s', () => visit({st: 'work', zone: 'kanban'}, () => {
+  assert.deepEqual(J(`(p=>[p.pick,p.ms,p.A])(ufoPlan(fxOf('ufo')))`), [false, 1e4, .12]);
+}));
+
+test('absente ce jour-là : le ticket descend seul', () => visit({st: 'absent'}, () => {
+  assert.deepEqual(J(`(p=>[p.sm,p.pick])(ufoPlan(fxOf('ufo')))`), [null, false]);
+}));
+
+test('déposée devant le mur, elle y reste après la visite (elle rentre ensuite à pied)', () => visit({st: 'work', zone: 'desk'}, () => {
+  const d = J('ufoSpot()');
+  run(`ufoDraw(${.4 + .6 * .3}*13e3)`); // posée, en train de ranger le ticket
+  assert.deepEqual(J('[byKey.p_kelly.pos,byKey.p_kelly.tile,byKey.p_kelly.path]'), [{x: d.x, y: d.y}, [d.x0, d.y0], []]);
+}));
+
+test('la loupe s\'ouvre au dépôt, sur la soucoupe et le mur, au nom du ticket', () => visit({st: 'work', zone: 'desk'}, () => {
+  assert.deepEqual(J('ufoLoupeEvents(.3*13e3)'), []); // encore à la prise en charge
+  const ev = J('ufoLoupeEvents(.45*13e3)')[0];
+  assert.equal(ev.kind, 'ufo');
+  assert.equal(ev.cs[0].name, 'DM-7931 entre dans le sprint · 13 pts'.replace('DM-', ''));
+  assert.equal(J(`loupeCaption(ufoLoupeEvents(.45*13e3)[0]).title`), '7931 entre dans le sprint · 13 pts');
+}));
 
 test('le fil dit qu\'un ticket arrive en cours de sprint, pour qui', () => {
   const txt = run(`teamEventTxt({kind:'sprint_in',key:'DM-7931',points:13,who:'dm:0002'}).txt`);

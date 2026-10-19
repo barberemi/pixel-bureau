@@ -1,14 +1,14 @@
 // ---------- loupe : un médaillon agrandi sur le plan quand un événement fort commence ----------
 // Réouverture (le héraut convoque l'assigné), mise en prod réussie (le sage félicite), invité qui arrive, fête de MEP,
-// pouce du testeur, daily, sprint planning, rétro, lancement et pizza du sprint. Le plan reste entier : un cadre entoure la
+// pouce du testeur, daily, sprint planning, rétro, lancement et pizza du sprint, soucoupe-mère (ticket entré en cours de sprint). Le plan reste entier : un cadre entoure la
 // scène ; une fenêtre flottante l'agrandit, en bas à gauche de l'écran (à droite si elle couvrirait la scène), avec un liseré
 // de la couleur de l'événement et sa légende (clic : la fiche, ✕ : fermer). Un événement à la fois, une fois les personnages arrivés, LOUPE_MS ;
 // en rejeu accéléré la lecture se met en pause le temps de la loupe ; rien quand on fait glisser l'heure ou qu'on survole le
 // plan. Bouton « 🔍 Loupe » de la barre (retenu dans le navigateur), ?loupe=0 dans l'adresse de l'écran mural.
 const LOUPE_MS=20e3, LOUPE_WAIT_MAX=40e3, LOUPE_HOVER_MS=5e3;
 const LOUPE_KINDS={reopen:['⛔','#b3122e'],proud:['🎉','#0172f0'],party:['🎉','#0172f0'],thumbs:['👍','#2e9e5b'],guest:['👋','#2e9e5b'],
-  daily:['☀️','#2e9e9b'],planning:['🗓','#2e9e9b'],retro:['🔄','#c25a9e'],kickoff:['🏁','#2e9e9b'],pizza:['🍕','#2e9e9b'],duck:['🦆','#c47f00'],hatch:['🐣','#c47f00'],trophy:['🏆','#c47f00']};
-const LOUPE_ORDER=['reopen','proud','guest','thumbs','kickoff','planning','retro','daily','pizza','party','trophy','hatch','duck'];
+  daily:['☀️','#2e9e9b'],planning:['🗓','#2e9e9b'],retro:['🔄','#c25a9e'],kickoff:['🏁','#2e9e9b'],pizza:['🍕','#2e9e9b'],duck:['🦆','#c47f00'],hatch:['🐣','#c47f00'],trophy:['🏆','#c47f00'],ufo:['🛸','#b5481c']};
+const LOUPE_ORDER=['reopen','ufo','proud','guest','thumbs','kickoff','planning','retro','daily','pizza','party','trophy','hatch','duck'];
 // cérémonies : toute l'équipe est dans la scène, la légende la nomme au lieu d'énumérer tout le monde
 const LOUPE_CEREMONY={daily:"Daily de l'équipe",planning:'Sprint planning',retro:'Rétrospective',kickoff:'Lancement du sprint',pizza:'Pizza de fin de sprint'};
 let LOUPE_ON=!REDUCED_MOTION;try{const v=localStorage.getItem('bureau:loupe');if(v!==null)LOUPE_ON=v!=='0';}catch(e){} // un choix du bouton passe avant le réglage système
@@ -27,7 +27,7 @@ function loupeScan(){
     const id=k==='guest'?'guest:'+c.key:k;(groups[id]=groups[id]||[]).push(c);
   }
   for(const id in groups){now.add(id);if(LOUPE.seen&&!LOUPE.seen.has(id))fresh.push({id,kind:id.split(':')[0],cs:groups[id]});}
-  for(const ev of duckLoupeEvents(T)){now.add(ev.id);if(LOUPE.seen&&!LOUPE.seen.has(ev.id))fresh.push(ev);} // canard d'équipe (39-duckgame.js)
+  for(const ev of [...duckLoupeEvents(T),...ufoLoupeEvents(performance.now())]){now.add(ev.id);if(LOUPE.seen&&!LOUPE.seen.has(ev.id))fresh.push(ev);} // canard d'équipe (39-duckgame.js), soucoupe-mère (43-fx.js)
   LOUPE.seen=now;
   // au même endroit, le plus parlant d'abord : le sage avant la fête de MEP (l'autre est écarté, même cadre)
   return fresh.sort((a,b)=>LOUPE_ORDER.indexOf(a.kind)-LOUPE_ORDER.indexOf(b.kind));
@@ -48,7 +48,7 @@ function loupeCaption(ev){
       title:LOUPE_CEREMONY[ev.kind]+' · '+ev.cs.length+(ev.cs.length>1?' personnes':' personne'),sub:(host._st&&host._st.label)||''};
   }
   const lead=ev.cs.find(c=>c.guest)||(ev.kind==='thumbs'&&ev.cs.find(c=>c.roleKind==='qa'))||ev.cs[0];
-  const others=ev.cs.filter(c=>c!==lead).map(c=>c.name);
+  const others=ev.cs.filter(c=>c!==lead&&c.name).map(c=>c.name);
   return {lead,ico:LOUPE_KINDS[ev.kind][0],color:LOUPE_KINDS[ev.kind][1],
     title:lead.name+(others.length?' · '+others.slice(0,3).join(', '):''),sub:(lead._st&&lead._st.label)||''};
 }
@@ -110,7 +110,7 @@ function drawLoupe(now){
     f.innerHTML='<canvas></canvas><div class="lh" title="Ouvrir sa fiche"><button class="lx" aria-label="Fermer">✕</button><b role="button" tabindex="0"></b><small></small><i></i></div>';
     document.body.appendChild(f);
     f.querySelector('.lx').onclick=e=>{e.stopPropagation();loupeHide();};
-    f.querySelector('.lh').onclick=()=>{const c=LOUPE.cur&&LOUPE.cur.cap.lead;loupeHide();if(c)select(c.key);};
+    f.querySelector('.lh').onclick=()=>{const c=LOUPE.cur&&LOUPE.cur.cap.lead;loupeHide();if(c&&c.key)select(c.key);};
     f.addEventListener('keydown',keyClick); // le titre (role=button, pas la légende entière : elle contient le bouton Fermer)
   }
   f.style.setProperty('--lc',k.color);
