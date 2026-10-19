@@ -6,6 +6,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ## [Unreleased]
 
+### Corrigé
+
+- Mise en prod d'une PR : l'annonce Teams part après le rebase (un conflit n'annonce plus rien), et une étape en échec passe bien la carte en ❌ avec la raison dans le fil (les renvois attendaient un signal que Kronn n'émet pas).
+
 ## [0.2.0] - 2026-10-18
 
 ### Ajouté
