@@ -89,7 +89,7 @@ function renderTicket(side,key){
     for(const p of prs){
       const r=p.draft?['brouillon','var(--idle)']:TK_REV[p.review]||TK_REV.pending;
       const li=document.createElement('li');
-      li.innerHTML=`<span class="dot" style="background:${r[1]}"></span><a ${hrefOf(p.url)} target="_blank" rel="noopener" style="color:var(--accent);white-space:nowrap">${esc(prNum(p))}</a><span>${esc(p.title)}</span><span class="k">${r[0]}</span>`;
+      li.innerHTML=`<span class="dot" style="background:${r[1]}"></span><a href="#" data-pr="${esc(prId(p))}" title="Fiche de la PR" style="color:var(--accent);white-space:nowrap">${esc(prNum(p))}</a><span>${esc(p.title)}${prMarks(p).map(m=>' '+m).join('')}</span><span class="k">${r[0]}</span>`;
       ul.appendChild(li);
     }
     pb.appendChild(ul);

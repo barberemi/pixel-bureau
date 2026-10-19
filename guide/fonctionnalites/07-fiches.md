@@ -64,6 +64,8 @@ Rôles et noms par défaut : `impl` → `ticket` (`jira_ticket_key`) ; `mep` →
 
 **PR** : clic sur une PR dans le fil. Son nom avec son dépôt, son titre, l'état de sa review, son auteur (sa fiche), le lien GitHub, le ticket qu'elle cite (sa fiche) et les runs d'agents du jour qui l'ont traitée (une revue de Dwight, une correction). Puis les mêmes boutons que dans la fiche du ticket : **Faire relire** (PR pas encore approuvée) et **Corriger les retours** (changements demandés).
 
+Dans « Ses PR ouvertes » (fiche d'un collègue, du boss ou d'un ticket), le numéro d'une PR ouvre sa fiche (« ↗ » ouvre GitHub) et chaque ligne montre son état : « ⛔ conflit », « ⟳ 3 de retard », « 💬 4 fils » non résolus.
+
 Sous l'auteur, l'état de la PR face à sa branche de base, relu à chaque passage du cron équipe : **⛔ conflit avec main**, **⟳ 4 commits de retard sur main** ou **✓ à jour de main**. **⟳ Remettre à jour** (PR en retard, en conflit, ou d'état encore inconnu) la rejoue sur sa base sans rien écraser :
 - dans une copie du dépôt dédiée au run (`~/.cache/pixel-bureau/pr`), rebase sur sa base avec ses commits gardés tels quels (ni squash ni messages changés) ;
 - sans conflit : push protégé (`--force-with-lease`, refusé si quelqu'un a poussé entre-temps), puis le label de CI du dépôt retiré et reposé ; 0 token ;
