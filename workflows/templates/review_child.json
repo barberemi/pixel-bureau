@@ -1,0 +1,872 @@
+{
+ "kind": "workflow",
+ "key": "review_child",
+ "definition": {
+  "name": "Le Bureau · relire une PR (sous-workflow)",
+  "project_id": "@@review.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "steps": [
+   {
+    "name": "prnum",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "1 — 🔢 N° de PR de l'item foreach → stdout.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "bash",
+    "exec_args": [
+     "-c",
+     "python3 -c \"import json;print(json.load(open('.kronn/current_task.json'))['number'],end='')\""
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "name": "repovar",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "1b — 📦 owner/repo de l'item foreach → stdout (templaté dans les endpoints).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "bash",
+    "exec_args": [
+     "-c",
+     "python3 -c \"import json;print(json.load(open('.kronn/current_task.json')).get('repo',''),end='')\""
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "name": "whoami",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "2 — 👤 API : login du token.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-github",
+    "api_config_id": "@@github.config_id@@",
+    "api_endpoint_path": "/user",
+    "api_method": "GET",
+    "_requires": "github"
+   },
+   {
+    "name": "setup",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "3 — 🌳 Source = workspace si origin==repo (le dossier du projet Kronn), sinon clone SSH cache .kronn/repos/<slug> ; puis worktree isolé .kronn/pr-<n>.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "bash",
+    "exec_args": [
+     "-c",
+     "set -e\nexport GIT_TERMINAL_PROMPT=0\nexport GIT_SSH_COMMAND=\"ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15\"\nf=.kronn/current_task.json\nn=\"$(python3 -c \"import json;print(json.load(open('$f'))['number'])\")\"\nrepo=\"$1\"\nslug=\"${repo//\\//_}\"\nroot=\"$(pwd)\"\nwt=\".kronn/pr-$n\"\ngit worktree remove --force \"$wt\" 2>/dev/null || true\nrm -rf \"$wt\"\norigin=\"$(git -C \"$root\" remote get-url origin 2>/dev/null || true)\"\nif printf %s \"$origin\" | grep -qE \"[:/]${repo}(\\.git)?$\"; then\n  src=\"$root\"\nelse\n  cache=\".kronn/repos/$slug\"\n  git -C \"$cache\" worktree remove --force \"$root/$wt\" 2>/dev/null || true\n  if ! git -C \"$cache\" rev-parse --git-dir >/dev/null 2>&1; then\n    rm -rf \"$cache\"; mkdir -p .kronn/repos\n    git clone --filter=blob:none \"git@github.com:${repo}.git\" \"$cache\"\n  fi\n  src=\"$cache\"\nfi\ngit -C \"$src\" fetch origin \"pull/$n/head\"\ngit -C \"$src\" worktree add \"$root/$wt\" FETCH_HEAD\necho \"setup OK PR=$n repo=$repo src=$src head=$(git -C \"$wt\" rev-parse --short HEAD)\"\nau=$(python3 -c \"import json;print(json.load(open('.kronn/current_task.json')).get('author',''),end='')\" 2>/dev/null || true)\nba=$(python3 -c \"import json;d=json.load(open('.kronn/current_task.json'));print(d.get('baseRef') or 'main',end='')\" 2>/dev/null || true)\n[ -n \"$ba\" ] || ba=main\necho \"---STATE:pr_author=$au---\"\necho \"---STATE:pr_base=$ba---\"\necho \"---STATE:head_sha=$(git -C \"$wt\" rev-parse HEAD)---\"",
+     "_",
+     "{{steps.repovar.data.stdout}}"
+    ],
+    "exec_timeout_secs": 600
+   },
+   {
+    "name": "fetch_reviews",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "5 — 🔎 API : reviews existantes.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-github",
+    "api_config_id": "@@github.config_id@@",
+    "api_endpoint_path": "/repos/{{steps.repovar.data.stdout}}/pulls/{{steps.prnum.data.stdout}}/reviews",
+    "api_method": "GET",
+    "api_query": {
+     "per_page": "100"
+    },
+    "api_pagination": {
+     "type": "LinkHeader",
+     "page_size_param": "per_page",
+     "page_size": 100,
+     "max_pages": 10
+    },
+    "_requires": "github"
+   },
+   {
+    "name": "fetch_comments",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "6 — 🔎 API : commentaires inline existants.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-github",
+    "api_config_id": "@@github.config_id@@",
+    "api_endpoint_path": "/repos/{{steps.repovar.data.stdout}}/pulls/{{steps.prnum.data.stdout}}/comments",
+    "api_method": "GET",
+    "api_query": {
+     "per_page": "100"
+    },
+    "api_pagination": {
+     "type": "LinkHeader",
+     "page_size_param": "per_page",
+     "page_size": 100,
+     "max_pages": 10
+    },
+    "_requires": "github"
+   },
+   {
+    "name": "fetch_files",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "7 — 🔎 API : fichiers du diff.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-github",
+    "api_config_id": "@@github.config_id@@",
+    "api_endpoint_path": "/repos/{{steps.repovar.data.stdout}}/pulls/{{steps.prnum.data.stdout}}/files",
+    "api_method": "GET",
+    "api_query": {
+     "per_page": "100"
+    },
+    "api_pagination": {
+     "type": "LinkHeader",
+     "page_size_param": "per_page",
+     "page_size": 100,
+     "max_pages": 10
+    },
+    "_requires": "github"
+   },
+   {
+    "name": "skip_check",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "8 — 🛡️ Si le bot (signature 'Review automatique', pas une réponse manuelle) a déjà reviewé au head : marqueur + exit 5 → Goto skip_note.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "on_result": [
+     {
+      "contains": "exit_5",
+      "action": {
+       "type": "Goto",
+       "step_name": "skip_note"
+      }
+     }
+    ],
+    "exec_command": "bash",
+    "exec_args": [
+     "-c",
+     "n=\"$1\"\nwt=\".kronn/pr-$n\"\nhead=$(git -C \"$wt\" rev-parse HEAD)\ncat > /tmp/rev.json\nv=$(ME=\"$2\" HEAD_SHA=\"$head\" python3 -c \"import json,os; revs=json.load(open('/tmp/rev.json')); me=os.environ['ME']; head=os.environ['HEAD_SHA']; print('ALREADY' if any((r.get('user') or {}).get('login')==me and 'Review automatique' in (r.get('body') or '') and r.get('commit_id')==head for r in revs) else 'NEW')\")\necho \"skip_check: $v (head $head)\"\nif [ \"$v\" = ALREADY ]; then mkdir -p .kronn; touch \".kronn/skip-$n\"; exit 5; fi\nexit 0",
+     "_",
+     "{{steps.prnum.data.stdout}}",
+     "{{steps.whoami.data.login}}"
+    ],
+    "exec_timeout_secs": 60,
+    "exec_stdin": "{{steps.fetch_reviews.data_json}}"
+   },
+   {
+    "name": "write_ctx",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "10 — 🗂️ Écrit le contexte de review + section ---PROJECT_CONVENTIONS--- (docs/ auto-découvert, sinon NO_PROJECT_CONVENTIONS).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "bash",
+    "exec_args": [
+     "-c",
+     "ME=\"$2\" PRNUM=\"$1\" python3 -c \"import json,sys,os\nd=json.load(sys.stdin); me=os.environ['ME']; nl=chr(10)\nallc=d.get('comments') or []\ncs=[c for c in allc if ((c.get('user') or {}).get('login'))!=me]\nanswered=sorted({(c.get('in_reply_to_id') or c.get('id')) for c in allc if ((c.get('user') or {}).get('login'))==me})\nrv=d.get('reviews') or []\nfiles=[(f.get('filename') or '') for f in (d.get('files') or [])]\nwt='.kronn/pr-'+os.environ['PRNUM']\nconv='NO_PROJECT_CONVENTIONS'\nfor rel in ['docs/review.md','docs/CONVENTIONS.md','docs/AGENTS.md','AGENTS.md','CLAUDE.md','.github/CONTRIBUTING.md','CONTRIBUTING.md']:\n    p=os.path.join(wt,rel)\n    if os.path.isfile(p):\n        conv='### '+rel+nl+open(p,encoding='utf-8',errors='replace').read()[:16000]; break\nout='DIFF_FILES:'+nl+nl.join(files)+nl+'---REVIEWS---'+nl+json.dumps(rv)+nl+'---COMMENTS---'+nl+json.dumps(cs)+nl+'---ANSWERED_ROOTS---'+nl+json.dumps(answered)+nl+'---PROJECT_CONVENTIONS---'+nl+conv\nopen(wt+'/.review-context.json','w').write(out)\nau=(json.load(open('.kronn/current_task.json')).get('author') or '')\nfl=d.get('files') or []\nadds=sum(int(f.get('additions') or 0) for f in fl); dels=sum(int(f.get('deletions') or 0) for f in fl)\nnpass=len([r for r in rv if ((r.get('user') or {}).get('login'))==me])+1\nprint('---STATE:is_own='+('true' if au==me else 'false')+'---')\nprint('---STATE:diff_files='+str(len(files))+'---')\nprint('---STATE:diff_add='+str(adds)+'---')\nprint('---STATE:diff_del='+str(dels)+'---')\nprint('---STATE:review_pass='+str(npass)+'---')\nprint('write_ctx OK : '+str(len(files))+' fichiers diff, '+str(len(cs))+' non-self, '+str(len(answered))+' fils repondus ; conventions='+('oui' if conv!='NO_PROJECT_CONVENTIONS' else 'non'))\"",
+     "_",
+     "{{steps.prnum.data.stdout}}",
+     "{{steps.whoami.data.login}}"
+    ],
+    "exec_timeout_secs": 60,
+    "exec_stdin": "{\"reviews\": {{steps.fetch_reviews.data_json}}, \"comments\": {{steps.fetch_comments.data_json}}, \"files\": {{steps.fetch_files.data_json}}}"
+   },
+   {
+    "name": "reason",
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "11 — 🧠 Agent RAISONNEMENT SEUL (générique, stack-neutre ; consignes de l'équipe en plus) : verdict + inline + réactions/réponses. Ne poste rien.",
+    "agent": "ClaudeCode",
+    "prompt_template": "Review la PR #{{steps.prnum.data.stdout}} (`{{steps.repovar.data.stdout}}`) en appliquant **strictement** la grille de revue ci-dessous (efficacité, ton pédagogue, review peu verbeuse, réactions et réponses), puis les consignes de l'équipe.\n\n**LANGUE — toute la review est rédigée en FRANÇAIS** : `generalComment`, chaque `comments[].body` (inline) et chaque `existingCommentReplies[].body`. Le vocabulaire technique/code reste tel quel.\n\nContexte (lis .kronn/pr-{{steps.prnum.data.stdout}}/.review-context.json) :\n- Worktree : .kronn/pr-{{steps.prnum.data.stdout}} — repo `{{steps.repovar.data.stdout}}`, base = la branche cible (baseRef) de la PR.\n- `DIFF_FILES:` = liste EXACTE des fichiers modifiés (chemins relatifs à la racine, tels quels).\n- `---REVIEWS---` / `---COMMENTS---` = reviews + commentaires inline déjà présents (avec leurs `id`).\n- `---ANSWERED_ROOTS---` = racines de fil où TU (le bot, {{steps.whoami.data.login}}) as DÉJÀ posté.\n- `---PROJECT_CONVENTIONS---` = conventions du projet (SOURCE DE VÉRITÉ). Si sa valeur est `NO_PROJECT_CONVENTIONS`, fais une review GÉNÉRIQUE = rubric + bonnes pratiques du langage détecté, SANS présumer de conventions maison ni d'un framework précis.\n- isOwnPr = {{state.is_own}}\n\n**CONSIGNES DE L'ÉQUIPE** (en plus de la grille, prioritaires sur elle en cas de conflit) :\n@@review.guidelines@@\n\n**STACK** : déduis la stack des extensions présentes dans DIFF_FILES et applique le(s) skill(s) de langage pertinents (php, typescript/JS…). N'applique JAMAIS les règles d'un langage absent du diff.\n\n**CENTRALISATION / DRY** : privilégie la factorisation. Signale le code dupliqué et la logique réimplémentée alors qu'un helper/service/util existe déjà ; propose le point de mutualisation. Duplication = motif légitime de remarque inline (ancrée sur la ligne dupliquée ; le helper cible se cite dans le body).\n\n**DESIGN PATTERNS (lentille consultative)** : ne signale un pattern GoF que si son symptôme concret est dans le diff (gros switch/if sur un « type », chaîne d'if de handlers, machine à états implicite, instanciation conditionnelle dupliquée, algos interchangeables…) ET garde-fous respectés (YAGNI ; ne pas réimplémenter ce que le framework/la lib fournit déjà ; coût d'indirection < bénéfice). CONSULTATIF : un motif purement structurel → `💡 Suggestion` inline, n'élève PAS seul le verdict à REQUEST_CHANGES.\n\n**BONNES PRATIQUES TRANSVERSALES (motifs de remarque légitimes, tout repo)** :\n- Changement de comportement sans test ajouté/mis à jour dans la MÊME PR → signaler (bloquant si logique critique).\n- Silence d'analyse statique/lint pour faire passer (`@ts-ignore`, `eslint-disable`, `@phpstan-ignore`, `#[allow]`, `# noqa`, baseline…) au lieu de corriger la cause → signaler.\n- Hook/API réservé aux tests exposé en prod (méthode/propriété publique qui n'existe que pour les tests) → préférer la réflexion côté test.\n- Diff le plus petit possible ; pas de refacto opportuniste hors sujet.\n- Suivre le nommage adjacent ; éviter les noms génériques (Helper, Utils).\n\nINLINE (règle STRICTE, sinon GitHub rejette TOUTE la review) :\n- `comments[].path` = un chemin **présent tel quel dans DIFF_FILES** (relatif à la racine, préfixe inclus). Ne commente JAMAIS un fichier absent de DIFF_FILES.\n- `comments[].line` = ligne réelle du patch (dans un hunk) ; `side` = RIGHT (LEFT si ligne supprimée).\n- Fix exact connu → bloc ```suggestion dans le body, ancré EXACTEMENT sur la/les ligne(s) à remplacer.\n- Doute sur l'ancrage → 1 puce courte du recap plutôt qu'inline.\n\nRÉACTIONS/RÉPONSES (anti-flood, voir la grille) : par défaut RÉACTION SEULE sur chaque commentaire de ---COMMENTS--- (des AUTRES ; jamais les tiens) — 👍 / 🚀 / 👀. Une `existingCommentReplies` UNIQUEMENT si info NOUVELLE et substantielle (désaccord, correction, précision) — JAMAIS pour acquiescer. Racine déjà dans ---ANSWERED_ROOTS--- → pas de nouvelle réponse (réaction OK).\n\nRECAP : `generalComment` = format HYPER concis de la grille — badge + 1 phrase + puces BLOQUANTES (exhaustives, télégraphiques, renvoyant à l'inline `fichier:ligne`) + 1 ligne « 👍 Positif : … ». Aucune ré-explication de l'inline.\n\nSelf-PR : isOwnPr=true → event=COMMENT (verdict inchangé ; clamp de la grille).\n\n**CHAMPS SUPPLÉMENTAIRES (récap Live Page)** : ajoute à ta sortie JSON `repo`, `author`, `base`, `run_at`. `repo` = `{{steps.repovar.data.stdout}}`. `author` = recopie **EXACTEMENT** cette valeur, telle quelle, sans la déduire, deviner ni la laisser vide : `{{state.pr_author}}`. `base` = recopie **EXACTEMENT** cette valeur : `{{state.pr_base}}`. `run_at` : recopie EXACTEMENT, sans reformater : {{time.now}} Ajoute aussi ces 4 entiers, recopiés EXACTEMENT (ne les recompte pas) : `diff_files` = {{state.diff_files}}, `diff_add` = {{state.diff_add}}, `diff_del` = {{state.diff_del}}, `review_pass` = {{state.review_pass}}.\n\nN'appelle AUCUNE API en écriture. Émets UNIQUEMENT la table JSON de la grille (JSON brut).\n\n---\n@@text:tools/review_rubric.md@@",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "properties": {
+       "author": {
+        "type": "string"
+       },
+       "base": {
+        "type": "string"
+       },
+       "comments": {
+        "items": {
+         "properties": {
+          "body": {
+           "type": "string"
+          },
+          "line": {
+           "type": "integer"
+          },
+          "path": {
+           "type": "string"
+          },
+          "side": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "path",
+          "line",
+          "side",
+          "body"
+         ],
+         "type": "object"
+        },
+        "type": "array"
+       },
+       "diff_add": {
+        "type": "integer"
+       },
+       "diff_del": {
+        "type": "integer"
+       },
+       "diff_files": {
+        "type": "integer"
+       },
+       "emoji": {
+        "type": "string"
+       },
+       "event": {
+        "enum": [
+         "APPROVE",
+         "COMMENT",
+         "REQUEST_CHANGES"
+        ],
+        "type": "string"
+       },
+       "existingCommentActions": {
+        "items": {
+         "properties": {
+          "commentId": {
+           "type": "integer"
+          },
+          "reaction": {
+           "enum": [
+            "+1",
+            "rocket",
+            "eyes"
+           ],
+           "type": "string"
+          }
+         },
+         "required": [
+          "commentId",
+          "reaction"
+         ],
+         "type": "object"
+        },
+        "type": "array"
+       },
+       "existingCommentReplies": {
+        "items": {
+         "properties": {
+          "body": {
+           "type": "string"
+          },
+          "commentId": {
+           "type": "integer"
+          }
+         },
+         "required": [
+          "commentId",
+          "body"
+         ],
+         "type": "object"
+        },
+        "type": "array"
+       },
+       "generalComment": {
+        "type": "string"
+       },
+       "pr": {
+        "type": "integer"
+       },
+       "rebaseNeeded": {
+        "type": "boolean"
+       },
+       "repo": {
+        "type": "string"
+       },
+       "review_pass": {
+        "type": "integer"
+       },
+       "run_at": {
+        "type": "string"
+       },
+       "skipped": {
+        "items": {
+         "properties": {
+          "line": {
+           "type": "integer"
+          },
+          "path": {
+           "type": "string"
+          },
+          "reason": {
+           "type": "string"
+          }
+         },
+         "type": "object"
+        },
+        "type": "array"
+       },
+       "verdict": {
+        "enum": [
+         "approve",
+         "comment",
+         "request_changes"
+        ],
+        "type": "string"
+       }
+      },
+      "required": [
+       "pr",
+       "verdict",
+       "event",
+       "generalComment",
+       "comments",
+       "existingCommentActions",
+       "existingCommentReplies",
+       "skipped"
+      ],
+      "type": "object"
+     },
+     "on_invalid": "Continue"
+    },
+    "agent_settings": {
+     "tier": "reasoning"
+    },
+    "stall_timeout_secs": 900,
+    "skill_ids": [
+     "security",
+     "testing"
+    ],
+    "_skills_from": "review.skill_ids"
+   },
+   {
+    "name": "map_event",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "11b — 🔀 Dérive l'action GitHub du VERDICT.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "bash",
+    "exec_args": [
+     "-c",
+     "v=\"$1\"; own=\"$2\"\ncase \"$v\" in\n  approve) e=APPROVE ;;\n  request_changes) e=REQUEST_CHANGES ;;\n  *) e=COMMENT ;;\nesac\nif [ \"$own\" = \"true\" ]; then e=COMMENT; fi\nprintf %s \"$e\"",
+     "_",
+     "{{steps.reason.data.verdict}}",
+     "{{state.is_own}}"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "name": "post",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "12 — 📤 API : review GROUPÉE. Si échec → Goto post_fallback.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "on_result": [
+     {
+      "contains": "ERROR",
+      "action": {
+       "type": "Goto",
+       "step_name": "post_fallback"
+      }
+     }
+    ],
+    "api_plugin_slug": "mcp-github",
+    "api_config_id": "@@github.config_id@@",
+    "api_endpoint_path": "/repos/{{steps.repovar.data.stdout}}/pulls/{{steps.prnum.data.stdout}}/reviews",
+    "api_method": "POST",
+    "api_body": {
+     "body": "{{steps.reason.data.generalComment}}\n\n— 🤖 *Review automatique · Le Bureau ({{steps.reason.agent}} - {{steps.reason.model}})*",
+     "comments": "{{steps.reason.data.comments}}",
+     "commit_id": "{{state.head_sha}}",
+     "event": "{{steps.map_event.data.stdout}}"
+    },
+    "_requires": "github"
+   },
+   {
+    "name": "react",
+    "step_type": {
+     "type": "BatchApiCall"
+    },
+    "description": "13 — 😀 Réactions (best-effort, cap relevé à 200 items). Échec → Goto reply.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "on_result": [
+     {
+      "contains": "ERROR",
+      "action": {
+       "type": "Goto",
+       "step_name": "reply"
+      }
+     }
+    ],
+    "batch_items_from": "{{steps.reason.data.existingCommentActions}}",
+    "batch_max_items": 200,
+    "api_plugin_slug": "mcp-github",
+    "api_config_id": "@@github.config_id@@",
+    "api_endpoint_path": "/repos/{{steps.repovar.data.stdout}}/pulls/comments/{{item.commentId}}/reactions",
+    "api_method": "POST",
+    "api_body": {
+     "content": "{{item.reaction}}"
+    },
+    "_requires": "github"
+   },
+   {
+    "name": "reply",
+    "step_type": {
+     "type": "BatchApiCall"
+    },
+    "description": "14 — 💬 Réponses threadées (best-effort, cap relevé à 200 items). Liste vide OU échec → Goto build_row.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "on_result": [
+     {
+      "contains": "ERROR",
+      "action": {
+       "type": "Goto",
+       "step_name": "build_row"
+      }
+     }
+    ],
+    "batch_items_from": "{{steps.reason.data.existingCommentReplies}}",
+    "batch_max_items": 200,
+    "api_plugin_slug": "mcp-github",
+    "api_config_id": "@@github.config_id@@",
+    "api_endpoint_path": "/repos/{{steps.repovar.data.stdout}}/pulls/{{steps.prnum.data.stdout}}/comments/{{item.commentId}}/replies",
+    "api_method": "POST",
+    "api_body": {
+     "body": "{{item.body}}"
+    },
+    "_requires": "github"
+   },
+   {
+    "name": "build_row",
+    "step_type": {
+     "type": "TransformData"
+    },
+    "description": "14b — 🧱 Ligne récap typée depuis reason.data (copy + count), avec repo. Échec → Goto skip_note.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "on_result": [
+     {
+      "contains": "ERROR",
+      "action": {
+       "type": "Goto",
+       "step_name": "skip_note"
+      }
+     }
+    ],
+    "transform_data": {
+     "input_from": "steps.reason.data",
+     "fields": [
+      {
+       "target": "pr",
+       "source": "$.pr",
+       "operation": "copy",
+       "fallback": 0,
+       "value_type": "number"
+      },
+      {
+       "target": "repo",
+       "source": "$.repo",
+       "operation": "copy",
+       "fallback": ""
+      },
+      {
+       "target": "verdict",
+       "source": "$.verdict",
+       "operation": "copy",
+       "fallback": "comment"
+      },
+      {
+       "target": "summary",
+       "source": "$.generalComment",
+       "operation": "copy",
+       "fallback": ""
+      },
+      {
+       "target": "rebase",
+       "source": "$.rebaseNeeded",
+       "operation": "copy",
+       "fallback": false,
+       "value_type": "boolean"
+      },
+      {
+       "target": "author",
+       "source": "$.author",
+       "operation": "copy",
+       "fallback": ""
+      },
+      {
+       "target": "base",
+       "source": "$.base",
+       "operation": "copy",
+       "fallback": "main"
+      },
+      {
+       "target": "run_at",
+       "source": "$.run_at",
+       "operation": "copy",
+       "fallback": ""
+      },
+      {
+       "target": "inline",
+       "source": "$.comments",
+       "operation": "count",
+       "fallback": 0,
+       "value_type": "number"
+      },
+      {
+       "target": "reactions",
+       "source": "$.existingCommentActions",
+       "operation": "count",
+       "fallback": 0,
+       "value_type": "number"
+      },
+      {
+       "target": "replies",
+       "source": "$.existingCommentReplies",
+       "operation": "count",
+       "fallback": 0,
+       "value_type": "number"
+      },
+      {
+       "target": "diff_files",
+       "source": "$.diff_files",
+       "operation": "copy"
+      },
+      {
+       "target": "diff_add",
+       "source": "$.diff_add",
+       "operation": "copy"
+      },
+      {
+       "target": "diff_del",
+       "source": "$.diff_del",
+       "operation": "copy"
+      },
+      {
+       "target": "review_pass",
+       "source": "$.review_pass",
+       "operation": "copy"
+      }
+     ]
+    },
+    "_requires": "review.page_id"
+   },
+   {
+    "name": "publish_reviews",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "14c — 📊 Append 1 ligne au dataset 'reviews' de la Live Page récap PARTAGÉE. Échec → Goto skip_note.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "on_result": [
+     {
+      "contains": "ERROR",
+      "action": {
+       "type": "Goto",
+       "step_name": "skip_note"
+      }
+     }
+    ],
+    "page_publish": {
+     "page_id": "@@review.page_id@@",
+     "writes": [
+      {
+       "dataset": "reviews",
+       "operation": "append",
+       "value_from": "steps.build_row.data"
+      }
+     ]
+    },
+    "_requires": "review.page_id"
+   },
+   {
+    "name": "meta_row",
+    "step_type": {
+     "type": "TransformData"
+    },
+    "description": "14d - 🏷️ Méta de la review postée (signature = modèle, lien, date) depuis post.data. Échec → Goto skip_note.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "on_result": [
+     {
+      "contains": "ERROR",
+      "action": {
+       "type": "Goto",
+       "step_name": "skip_note"
+      }
+     }
+    ],
+    "transform_data": {
+     "input_from": "steps.post.data",
+     "fields": [
+      {
+       "target": "pr_url",
+       "source": "$.pull_request_url",
+       "operation": "copy",
+       "fallback": ""
+      },
+      {
+       "target": "review_url",
+       "source": "$.html_url",
+       "operation": "copy",
+       "fallback": ""
+      },
+      {
+       "target": "signature",
+       "source": "$.body",
+       "operation": "copy",
+       "fallback": ""
+      },
+      {
+       "target": "submitted_at",
+       "source": "$.submitted_at",
+       "operation": "copy",
+       "fallback": ""
+      }
+     ]
+    },
+    "_requires": "review.page_id"
+   },
+   {
+    "name": "publish_meta",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "14e - 📊 Append 1 ligne au dataset 'review_meta' (jointure côté page par repo+PR+date). Échec → Goto skip_note.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "on_result": [
+     {
+      "contains": "ERROR",
+      "action": {
+       "type": "Goto",
+       "step_name": "skip_note"
+      }
+     }
+    ],
+    "page_publish": {
+     "page_id": "@@review.page_id@@",
+     "writes": [
+      {
+       "dataset": "review_meta",
+       "operation": "append",
+       "value_from": "steps.meta_row.data"
+      }
+     ]
+    },
+    "_requires": "review.page_id"
+   },
+   {
+    "name": "skip_note",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "15 — ✅ Fin : message selon marqueur. STOP ici (terminal).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Stop"
+      }
+     }
+    ],
+    "exec_command": "bash",
+    "exec_args": [
+     "-c",
+     "n=\"$1\"\nif [ -f \".kronn/skip-$n\" ]; then echo \"✅ PR #$n déjà validée au head courant — skip propre.\"; else echo \"✅ PR #$n : review postée (best-effort sur inline/réactions/réponses).\"; fi",
+     "_",
+     "{{steps.prnum.data.stdout}}"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "name": "post_fallback",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "16 — 🩹 FALLBACK (Goto depuis post) : repost SYNTHÈSE + verdict SEULS. Succès → Goto react.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Goto",
+       "step_name": "react"
+      }
+     }
+    ],
+    "api_plugin_slug": "mcp-github",
+    "api_config_id": "@@github.config_id@@",
+    "api_endpoint_path": "/repos/{{steps.repovar.data.stdout}}/pulls/{{steps.prnum.data.stdout}}/reviews",
+    "api_method": "POST",
+    "api_body": {
+     "body": "{{steps.reason.data.generalComment}}\n\n— 🤖 *Review automatique · Le Bureau ({{steps.reason.agent}} - {{steps.reason.model}})*",
+     "event": "{{steps.map_event.data.stdout}}"
+    },
+    "_requires": "github"
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "bash",
+   "git",
+   "python3",
+   "grep",
+   "rm",
+   "mkdir",
+   "ssh"
+  ]
+ }
+}

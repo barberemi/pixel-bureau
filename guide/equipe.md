@@ -83,7 +83,8 @@ La première ligne donne son nom au bouton 🎨 ; remplace partout `data-skin="c
 
 ## 6. Le reste, facultatif
 
-- `defaults.json` : le titre de la page, le rythme de l'équipe (heure du daily, jours des cérémonies), ton Jira et ton dépôt GitHub, proposés à l'installation.
+- `defaults.json` : le titre de la page, ton Jira et ton dépôt GitHub, proposés à l'installation (recopiés dans la config de chacun).
+- `settings.json` : les réglages de toute l'équipe, lus à chaque publication de la page et des crons, sans rien recopier : le rythme (fuseau, heures de bureau, heure et durée du daily, gel des mises en prod, week-end), les cartes GitFut, les affiches du Top 3, le planning des absences (site et classeur SharePoint) et les **personnages des agents** (clé, nom, métier, place, sprite). Pas d'id Kronn dedans : chacun rattache les personnages à ses propres workflows à l'installation (`python3 tools/install.py --rattacher` pour le refaire), et sa config peut surcharger n'importe quel réglage (un autre daily, par exemple). Un personnage peut incarner un modèle du Bureau (`"model": "review_one"`, ou une liste) : il est alors rattaché d'office au workflow que l'installateur a créé. La revue de PR par un agent lit aussi dans `settings.json` la clé `review` : `guidelines` (consignes de l'équipe ajoutées à la grille du Bureau, par exemple vos conventions ou la posture pour les débutants), `skill_ids` (skills Kronn de l'équipe), `repos` (dépôts relus par le cron, sinon les PR suivies) et `schedule` (heures UTC du cron).
 - `music/music.json` : le morceau de chacun, sur sa fiche (« Sa musique »).
 - Les passions de chacun (`passion` dans le roster) : [Les passions de l'équipe](fonctionnalites/01-plan.md#les-passions-de-léquipe).
 
@@ -116,4 +117,6 @@ git clone https://github.com/barberemi/pixel-bureau.git && cd pixel-bureau
 python3 tools/install.py   # « Ton équipe » : Un pack d'équipe, puis ~/Sites/bureau-dunder-mifflin
 ```
 
-L'installateur lit l'équipe dans le pack, te demande qui tu es (tu prends le bureau du boss), propose le plan du pack, puis crée la page et ses workflows dans ton Kronn ([Installer](../README.md#installer)). Ta config garde le chemin du pack (clé `team`) : un `git pull` dans le pack, puis `python3 tools/publish.py page`, et la page suit.
+L'installateur lit l'équipe dans le pack, te demande qui tu es (tu prends le bureau du boss), propose le plan du pack, puis crée la page et ses workflows dans ton Kronn ([Installer](../README.md#installer)). Ta config garde le chemin du pack (clé `team`) : un `git pull` dans le pack, puis `python3 tools/publish.py all`, et la page et les crons suivent.
+
+Une installation d'avant `settings.json` a ces réglages dans sa config : `python3 tools/split.py` montre ce qui partirait dans le pack et vérifie que la page et les workflows restent identiques octet pour octet, `--write` écrit `settings.json` dans le pack (à commiter) et allège la config (l'ancienne reste à côté, `bureau.config.json.avant-split`).

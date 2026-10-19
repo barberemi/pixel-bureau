@@ -19,6 +19,7 @@ Un pack introuvable (pas de `team.json`) est une erreur, jamais une page sans so
 | `team.json` | `name`, `layout` (chemin relatif au pack, sinon au dépôt), `github_org` (seuls ses membres actifs peuvent l'installer) | oui |
 | `roster.json` | `people` (clé, nom, rôle, `person` = nom exact dans Jira, `github`, `roleKind`, place…) et `guests` | non |
 | `defaults.json` | réglages proposés à l'installation (`page_title`, `rhythm`, `ui.skin`, `jira`, `github`, `mail.messengers` : règles de porteurs du courrier, reprises par l'installateur si l'installation n'en a pas) | non |
+| `settings.json` | réglages d'équipe lus à chaque assemblage et rendu des modèles (#32) : `rhythm`, `gitfut`, `wiki_posters`, `microsoft.planning`, `agents` (personnages : `key`, `name`, `role`, `seat`, `sprite`…, sans `wf` ; `model` = clé ou liste de clés de `models`, #78 : rattaché d'office à ces modèles installés), `review` (#78 : `guidelines`, `skill_ids`, `repos`, `schedule`, posés sous `review` de la config qui garde `page_id` et `project_id`). Posés SOUS la config (`assemble.merged`) : la config surcharge clé à clé (rythme, planning) ou en entier (GitFut, affiches) ; un agent n'apparaît que si la config le rattache (`agents[] = {key, wf}`). `microsoft.config_id` et `agents[].wf` y sont ignorés | non |
 | `cast.json` | recettes d'avatar LPC par clé de personne (composées dans le navigateur) | non |
 | `sprites/` et `sprites.json` | planches fournies telles quelles ; `sprites.json` se fabrique par `python3 sprites/build_sprites.py <pack>` | non |
 | `music/music.json` | morceau de chaque personne (carte « Sa musique »), pochette en data URI à côté | non |
@@ -27,6 +28,10 @@ Un pack introuvable (pas de `team.json`) est une erreur, jamais une page sans so
 | `themes/theme-<id>.css` | thèmes de page : première ligne `/* @nom: Nom */`, règles sous `:root[data-skin="<id>"]` ; remplace un thème de même id ; polices par `@@font:fonts/<fichier>.woff2@@`, chemin relatif au pack | non |
 
 Un exemple complet et fictif est dans `tests/fixtures/pack-exemple/`, testé par `tests/test_pack.py` et `tests/test_install.py`. Le pas-à-pas pour les humains : `guide/equipe.md`.
+
+## Le pack porte l'équipe, la config porte l'installation (#32)
+
+`assemble.merged(cfg)` pose `settings.json` sous la config [src: file: tools/assemble.py:309] ; appelé par `build`, `weights`, `templates.render`, `values`, `skipped`, `script_code` et `plan.cast`, idempotent. Le JSON de config injecté dans les scripts a ses clés de premier niveau triées (`script_code`), pour qu'un réglage passé de la config au pack ne change pas le script. L'installateur rattache les personnages aux workflows (`pack_agents`, réponses `agent_<clé>` : `keep`, un id court ou vide ; devinette par les mots du nom et du métier), n'écrit `rhythm` que pour ce que le pack ne dit pas ou ce que l'ancienne config surchargeait (`rhythm_of`), et `--rattacher` refait seulement agents et pages de l'écran du boss. `tools/split.py` découpe une config existante et refuse si la page ou un modèle rendu change. Tests : `tests/test_settings.py`.
 
 ## Ce qui est embarqué dans la page
 

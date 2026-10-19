@@ -29,9 +29,34 @@ function themes(cfg = {}) {
   if (d) add(path.join(d, 'themes'));
   return out;
 }
+// réglages d'équipe du pack (settings.json) sous la config, comme merged() de tools/assemble.py (#32)
+const AGENT_FIELDS = ['key', 'name', 'role', 'wf', 'seat', 'sprite'];
+function merged(cfg) {
+  const d = teamDir(cfg), f = d && path.join(d, 'settings.json');
+  if (!f || !fs.existsSync(f)) return cfg;
+  const s = JSON.parse(fs.readFileSync(f, 'utf8')), out = {...cfg};
+  if (s.rhythm) out.rhythm = {...s.rhythm, ...(cfg.rhythm || {})};
+  for (const k of ['gitfut', 'wiki_posters']) if (k in s && !(k in cfg)) out[k] = s[k];
+  if (Array.isArray(s.agents)) {
+    const personas = Object.fromEntries(s.agents.filter(a => a && a.key).map(a => { const {wf, ...p} = a; return [a.key, p]; }));
+    out.agents = (cfg.agents || []).map(b => {
+      const a = {...(personas[b.key] || {}), ...b};
+      return {...Object.fromEntries(AGENT_FIELDS.filter(k => k in a).map(k => [k, a[k]])), ...Object.fromEntries(Object.entries(a).filter(([k]) => !AGENT_FIELDS.includes(k)))};
+    });
+  }
+  return out;
+}
+// ids des boutons, comme action_ids() : actions, modèles (models, #78) en repli, puis launch
+function actionWf(cfg) {
+  const models = cfg.models || {}, launch = Object.fromEntries(Object.entries(cfg.launch || {}).map(([k, v]) => [k, typeof v === 'object' && v ? v.wf : v]));
+  const ids = {...(cfg.actions || {}), ...(models.review_one ? {review: models.review_one} : {}), ...(models.estimate ? {estimate: models.estimate} : {}), ...launch};
+  return Object.fromEntries(Object.entries(ids).filter(([k, v]) => v && ['impl', 'mep', 'mep_pr', 'review', 'fix', 'fix_pr', 'rebase', 'comment', 'estimate'].includes(k)).map(([k, v]) => [k, String(v).slice(0, 8)]));
+}
 function pageConfig(cfg) {
+  cfg = merged(cfg);
   return {kronn_ui: (cfg.kronn || {}).ui, jira_site: (cfg.jira || {}).site, jira_flow: {triage_from: 'Proposed', test: 'To Test', validated: 'To Deploy', reopened: 'Reopen', ...((cfg.jira || {}).flow || {})}, github_repo: (cfg.github || {}).repo,
     fix_any_repo: !!((((cfg.launch || {}).fix || {}).vars || {}).repo), // comme page_config() : Corriger prend le dépôt (#56)
+    action_wf: actionWf(cfg), // comme page_config() : préfixe du workflow de chaque bouton des fiches (#86)
     rhythm: cfg.rhythm || {}, mep_workflow: cfg.mep_workflow, workflows: cfg.workflows || {}, agents: cfg.agents || [], ui: cfg.ui || {}, skins: themes(cfg),
     schedules: Object.fromEntries(['office', 'live', 'team', 'payroll', 'canard'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule.replace('@@cron_hours@@', '4-20')]))}; // heures de Paris, comme cron_hours()
 }

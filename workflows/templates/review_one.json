@@ -1,0 +1,130 @@
+{
+ "kind": "workflow",
+ "key": "review_one",
+ "definition": {
+  "name": "Le Bureau · relire une PR",
+  "project_id": "@@review.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "repo",
+    "label": "Repo (owner/name)",
+    "placeholder": "owner/depot",
+    "description": "Repo GitHub à reviewer, format owner/name.",
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   },
+   {
+    "name": "pr",
+    "label": "N° de PR",
+    "placeholder": "42",
+    "description": "Numéro de la PR à reviewer (une seule).",
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   }
+  ],
+  "steps": [
+   {
+    "name": "fetch_meta",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "1/3 — 🔎 API GitHub : méta de la PR (number, base.ref, user.login) pour construire l'item foreach.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-github",
+    "api_config_id": "@@github.config_id@@",
+    "api_endpoint_path": "/repos/{{repo}}/pulls/{{pr}}",
+    "api_method": "GET",
+    "_requires": "github"
+   },
+   {
+    "name": "write_item",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "2/3 — ⚙️ Déterministe (0 token) : écrit .kronn/prs.json = [{number, baseRef, author, repo}] (liste à 1 élément).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "bash",
+    "exec_args": [
+     "-c",
+     "set -e\nmkdir -p .kronn\ncat > /tmp/pr.json\nREPO=\"$1\" python3 -c \"import json,os; p=json.load(open('/tmp/pr.json')); out=[{'number':p['number'],'baseRef':(p.get('base') or {}).get('ref','main'),'author':(p.get('user') or {}).get('login',''),'repo':os.environ['REPO']}]; open('.kronn/prs.json','w').write(json.dumps(out)); print('launch item:',out)\"",
+     "_",
+     "{{repo}}"
+    ],
+    "exec_timeout_secs": 60,
+    "exec_stdin": "{{steps.fetch_meta.data_json}}"
+   },
+   {
+    "name": "review",
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "3/3 — 🔁 Foreach (1 item) : appelle le child générique (clone conditionnel + docs/ + review + post inline + réactions/réponses ; skip propre si déjà reviewée au head).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "sub_workflow_id": "@@models.review_child@@",
+    "sub_workflow_foreach_file": ".kronn/prs.json"
+   },
+   {
+    "name": "cost",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "💰 Coût réel + durée de chaque review du run (sessions Claude Code du worktree, cache inclus ; estimation tarifaire si coût absent) → dataset collection 'review_sessions' (upsert session_id) de la page récap.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "bash",
+    "exec_args": [
+     "-c",
+     "python3 - \"$(pwd)\" <<'PY'\nimport json,glob,os,re,sys,urllib.request,datetime\n# Coût + durée de chaque review : sessions Claude Code du step reason (~/.claude/projects/<worktree>) -> dataset\n# collection \"review_sessions\" de la page récap, upsert sur session_id (republier met à jour, jamais de doublon).\n# Usage : python3 - <worktree> | python3 - --all   (DRY_RUN=1 : affiche sans publier)\nPAGE='@@review.page_id@@'; API='@@kronn.api@@'\n# $/M tokens : entrée, sortie, cache lu, cache écrit 5 min, cache écrit 1 h. Sert UNIQUEMENT si la session n'a pas\n# de coût réel (cost-state, absent des sessions antérieures au 24/09). Calé sur les coûts réels Opus 5.5 (écart 0 %).\nRATES={'claude-opus-5-5':(4,20,0.2,5,8),'claude-opus-4-8':(5,25,0.5,6.25,10)}\nROOT=os.environ.get('REVIEW_SESSIONS_ROOT') or os.path.expanduser('~/.claude/projects/')\narg=sys.argv[1] if len(sys.argv)>1 else os.getcwd()\ndirs=glob.glob(ROOT+'*kronn-worktrees*') if arg=='--all' else [ROOT+re.sub(r'[^A-Za-z0-9]','-',arg)]\ndef ms(ts):\n    return datetime.datetime.fromisoformat(ts.replace('Z','+00:00')).timestamp()*1000\nrows=[]; skipped=[]\nfor d in dirs:\n    for f in glob.glob(d+'/*.jsonl'):\n        first=None; cost=None; t0=t1=None; sid=None; seen={}\n        for line in open(f,encoding='utf-8',errors='replace'):\n            try: o=json.loads(line)\n            except Exception: continue\n            ts=o.get('timestamp')\n            if ts: t0=t0 or ts; t1=ts\n            sid=sid or o.get('sessionId')\n            m=o.get('message') or {}\n            if first is None and o.get('type')=='user':\n                c=m.get('content'); first=c if isinstance(c,str) else json.dumps(c,ensure_ascii=False)\n            if o.get('type')=='cost-state': cost=o\n            if o.get('type')=='assistant' and m.get('usage') and m.get('model') and not m['model'].startswith('<'):\n                seen[m.get('id') or len(seen)]=(m['model'],m['usage'])\n        g=first and re.search(r'Review la PR #(\\d+) \\(`([^`]+)`',first)\n        if not g or not (seen or cost): continue\n        per={}\n        for model,u in seen.values():\n            cc=u.get('cache_creation') or {}; t=per.setdefault(model,[0,0,0,0,0])\n            c5=cc.get('ephemeral_5m_input_tokens'); c1=cc.get('ephemeral_1h_input_tokens')\n            if c5 is None and c1 is None: c5=u.get('cache_creation_input_tokens',0)\n            for i,v in enumerate([u.get('input_tokens',0),u.get('output_tokens',0),u.get('cache_read_input_tokens',0),c5,c1]): t[i]+=v or 0\n        if cost:\n            usd=float(cost.get('totalCostUSD') or 0); est=False\n            if not per:\n                mu=cost.get('modelUsage') or {}\n                per={k:[v.get('inputTokens',0),v.get('outputTokens',0),v.get('cacheReadInputTokens',0),v.get('cacheCreationInputTokens',0),0] for k,v in mu.items()}\n        elif all(m in RATES for m in per):\n            usd=sum(sum(a*b for a,b in zip(per[m],RATES[m]))/1e6 for m in per); est=True\n        else:\n            skipped.append(os.path.basename(f)+' (modèle sans tarif connu : '+', '.join(sorted(per))+')'); continue\n        tot=[sum(p[i] for p in per.values()) for i in range(5)]\n        rows.append({'session_id':sid or os.path.basename(f)[:-6],'repo':g[2],'pr':int(g[1]),\n          'cost_usd':round(usd,4),'estimated':est,'model':max(per,key=lambda k:sum(per[k])) if per else '',\n          'input':tot[0],'output':tot[1],'cache_read':tot[2],'cache_write':tot[3]+tot[4],\n          'started_at':t0,'session_ms':int(ms(t1)-ms(t0)) if t0 and t1 else None,\n          'api_ms':int(cost.get('totalAPIDuration') or 0) if cost else None})\nfor s in skipped: print('ignoré : '+s)\nif not rows:\n    print('review_sessions : aucune session de review dans '+(arg if arg!='--all' else 'les worktrees')); sys.exit(0)\nrows.sort(key=lambda r:r['started_at'] or '')\nif os.environ.get('DRY_RUN')=='1':\n    print(json.dumps(rows[-3:],indent=1)); print('%d sessions, %.2f $'%(len(rows),sum(r['cost_usd'] for r in rows))); sys.exit(0)\nfor i in range(0,len(rows),100):\n    body={'writes':[{'dataset':'review_sessions','operation':'upsert','value':rows[i:i+100],'key_field':'session_id'}]}\n    req=urllib.request.Request(API+'/pages/'+PAGE+'/publish',data=json.dumps(body).encode(),headers={'Content-Type':'application/json'},method='POST')\n    res=json.loads(urllib.request.urlopen(req,timeout=30).read().decode(),strict=False)\n    if not res.get('success'): print('review_sessions ERREUR : '+str(res.get('error'))); sys.exit(1)\nprint('review_sessions OK : %d review(s), %.2f $'%(len(rows),sum(r['cost_usd'] for r in rows)))\nPY\n"
+    ],
+    "exec_timeout_secs": 120,
+    "_requires": "review.page_id"
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": true
+  },
+  "concurrency_limit": 1,
+  "exec_allowlist": [
+   "bash",
+   "python3"
+  ]
+ }
+}

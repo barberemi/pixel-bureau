@@ -184,11 +184,14 @@ def page_config(cfg):
         "workflows": cfg.get("workflows") or {},  # ids des crons : calendrier et fraîcheur des données
         "schedules": cron_schedules(cfg),  # calendrier des crons du Bureau (modèles de workflows)
         "agents": cfg.get("agents") or [],
+        # préfixe du workflow de chaque bouton des fiches (#86) : la page y retrouve l'agent qui l'incarne (agents[].wf)
+        "action_wf": {k: str(v)[:8] for k, v in action_ids(cfg).items() if k in FICHE_ACTIONS and v},
         "ui": cfg.get("ui") or {},
         "skins": themes(cfg),  # thèmes d'interface (theme-*.css) proposés par le bouton 🎨
     }
 
 
+FICHE_ACTIONS = ("impl", "mep", "mep_pr", "review", "fix", "fix_pr", "rebase", "comment", "estimate")
 # statuts Jira par défaut du flux de l'équipe (jira.flow) : requêtes du cron équipe et scènes de la page
 JIRA_FLOW = {"triage_from": "Proposed", "test": "To Test", "validated": "To Deploy", "reopened": "Reopen"}
 DEFAULT_LAYOUT = "layouts/open-space.json"  # plan type, sans équipe
@@ -275,6 +278,72 @@ def defaults(cfg):
             if not k.startswith("_"):
                 d[k] = {**d[k], **v} if isinstance(v, dict) and isinstance(d.get(k), dict) else v
     return d
+
+
+# ---------- réglages d'équipe du pack (settings.json, #32) ----------
+# Le pack porte l'équipe, la config porte l'installation. settings.json du pack, lu à chaque assemblage et rendu des
+# modèles : rythme, GitFut, affiches du Top 3, planning des absences (sans config_id) et personnages des agents (sans
+# ids de workflows). La config peut surcharger chacun ; elle seule rattache un personnage à ses workflows (agents[].wf).
+SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review")
+AGENT_FIELDS = ("key", "name", "role", "wf", "seat", "sprite")  # ordre des champs d'un agent, comme l'installateur l'écrit
+
+
+def pack_settings(cfg):
+    """settings.json du pack d'équipe ({} sans pack ni fichier) : seulement les clés de SETTINGS, jamais d'id Kronn
+    (microsoft.config_id et agents[].wf ignorés : ils sont propres à l'installation)."""
+    path = _team_file(cfg, "settings.json")
+    if not path:
+        return {}
+    s = {k: v for k, v in json.loads(Path(path).read_text()).items() if k in SETTINGS}
+    if isinstance(s.get("microsoft"), dict):
+        s["microsoft"] = {k: v for k, v in s["microsoft"].items() if k != "config_id"}
+    if isinstance(s.get("agents"), list):
+        s["agents"] = [{k: v for k, v in a.items() if k != "wf"} for a in s["agents"] if isinstance(a, dict) and a.get("key")]
+    return s
+
+
+def _agent(persona, binding):
+    """Agent de l'installation : le personnage du pack, surchargé par sa ligne de config (wf, place…), champs dans
+    l'ordre de l'installateur."""
+    a = {**persona, **binding}
+    return {**{k: a[k] for k in AGENT_FIELDS if k in a}, **{k: v for k, v in a.items() if k not in AGENT_FIELDS}}
+
+
+def merged(cfg):
+    """La config d'installation posée sur les réglages d'équipe du pack (settings.json) : ce que lisent la page, les
+    scripts des crons et les modèles. Rythme et planning des absences fusionnés clé à clé ; GitFut et affiches : ceux de
+    la config s'ils y sont ; agents : ceux de la config (ordre et wf), complétés par leur personnage du pack (même clé),
+    un personnage sans workflow dans la config n'apparaît pas. Idempotent : merged(merged(c)) == merged(c)."""
+    cfg = cfg or {}
+    s = pack_settings(cfg)
+    if not s:
+        return cfg
+    out = dict(cfg)
+    if "rhythm" in s:
+        out["rhythm"] = {**(s["rhythm"] or {}), **(cfg.get("rhythm") or {})}
+    for k in ("gitfut", "wiki_posters"):
+        if k in s and k not in cfg:
+            out[k] = s[k]
+    if "microsoft" in s:
+        m, pm = cfg.get("microsoft") or {}, s["microsoft"] or {}
+        planning = {**(pm.get("planning") or {}), **(m.get("planning") or {})}
+        out["microsoft"] = {**m, **{k: v for k, v in pm.items() if k not in m}}
+        if planning:
+            out["microsoft"]["planning"] = planning
+    if "review" in s:  # revue de PR (#78) : consignes, skills, dépôts, horaire de l'équipe ; page et projet de l'installation
+        out["review"] = {**(s["review"] or {}), **(cfg.get("review") or {})}
+    if "agents" in s:
+        personas = {a["key"]: {k: v for k, v in a.items() if k != "model"} for a in s["agents"]}
+        out["agents"] = [_agent(personas.get(a.get("key"), {}), a) for a in cfg.get("agents") or []]
+        # personnage qui incarne un modèle du Bureau (clé model, #78) : rattaché d'office à ses workflows créés par
+        # l'installateur (models), sauf si la config le rattache déjà
+        bound, models = {a.get("key") for a in out["agents"]}, cfg.get("models") or {}
+        for a in s["agents"]:
+            want = [a["model"]] if isinstance(a.get("model"), str) else a.get("model") or []
+            wf = [models[m][:8] for m in want if models.get(m)]
+            if a["key"] not in bound and wf:
+                out["agents"].append(_agent({k: v for k, v in a.items() if k != "model"}, {"wf": wf}))
+    return out
 
 
 def gitfut(cfg):
@@ -366,9 +435,17 @@ def launch(cfg):
     return out
 
 
+# boutons qu'un modèle du Bureau incarné par un agent (models, #78) fait marcher quand tu n'as pas ton propre workflow
+# dans launch : action -> clé du modèle ; ses variables portent les noms par défaut de LAUNCH_VARS
+MODEL_ACTIONS = {"review": "review_one", "estimate": "estimate"}
+
+
 def action_ids(cfg):
-    """Id de la cible de chaque bouton : workflows du Bureau (actions), puis tes workflows (launch)."""
-    return {**(cfg.get("actions") or {}), **{k: wf for k, (wf, _) in launch(cfg).items()}}
+    """Id de la cible de chaque bouton : workflows du Bureau (actions), modèles incarnés (models), puis tes workflows
+    (launch), qui l'emportent."""
+    models = cfg.get("models") or {}
+    return {**(cfg.get("actions") or {}), **{a: models[m] for a, m in MODEL_ACTIONS.items() if models.get(m)},
+            **{k: wf for k, (wf, _) in launch(cfg).items()}}
 
 
 def action_block(block, cfg):
@@ -444,7 +521,7 @@ def demo_snap():
 def build(demo=True, cfg=None):
     """Page complète. demo : instantanés de démo embarqués (aperçu local, tests) ; la page publiée n'en a pas.
     cfg : config d'installation (défaut : bureau.config.json)."""
-    cfg = config() if cfg is None else cfg
+    cfg = merged(config() if cfg is None else cfg)  # réglages d'équipe du pack sous la config (#32)
     ids = action_ids(cfg)
     acts = {k: ids.get(k) or "" for k, _ in ACTIONS.values()}
     html = page_html(cfg)
@@ -477,7 +554,7 @@ def weights(cfg=None, demo=True):
     """Poids de la page par bloc, en octets (KT-28, affiché par tools/smoke.py) : JS et CSS compactés, polices en base64,
     sprites fournis et calques LPC de l'éditeur, données de l'équipe (recettes, roster, plan, musique), instantanés de
     démo ; le reste (squelette, config de la page, blocs d'action) par différence avec la page assemblée."""
-    cfg = config() if cfg is None else cfg
+    cfg = merged(config() if cfg is None else cfg)
     b = lambda s: len(s.encode())  # noqa: E731
     css, js, fonts = page_parts(cfg)
     w = {"JS": b(js), "CSS": b(css) - fonts, "polices": fonts,

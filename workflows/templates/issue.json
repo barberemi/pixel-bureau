@@ -1,0 +1,182 @@
+{
+ "kind": "workflow",
+ "key": "issue",
+ "definition": {
+  "name": "Le Bureau · issue GitHub",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "intention",
+    "label": "Ce que tu veux faire",
+    "placeholder": "Ex: pouvoir éditer une étape de workflow en arrivant directement dessus, sans scroller ni enchaîner suivant/suivant",
+    "description": null,
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   },
+   {
+    "name": "repo",
+    "label": "Repo cible (URL, ssh, ou owner/repo)",
+    "placeholder": "Défaut : @@issue.repo@@",
+    "description": null,
+    "required": false,
+    "source": null,
+    "allow_manual_override": false
+   },
+   {
+    "name": "milestone",
+    "label": "Jalon (optionnel)",
+    "placeholder": "Ex: 0.2.0 (vide = aucun)",
+    "description": null,
+    "required": false,
+    "source": null,
+    "allow_manual_override": false
+   }
+  ],
+  "steps": [
+   {
+    "name": "rediger",
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "Localise le repo, lit son modèle d'issue et ses labels, rédige l'issue selon ce modèle. Exploration bornée. Ne publie rien.",
+    "agent": "ClaudeCode",
+    "prompt_template": "Tu prépares (SANS rien publier) une issue GitHub à partir d'une intention.\n\nRepo cible : {{repo}}   (si vide → @@issue.repo@@)\nIntention  : {{intention}}\n\n1. Déduis owner/repo depuis le repo cible (URL https, ssh, ou « owner/repo »). Défaut : @@issue.repo@@.\n2. Trouve le clone local : cherche parmi les projets Kronn (dossiers listés par l'outil des projets si tu l'as) puis dans @@issue.search_dirs@@ (dossier <repo>, teste les variantes de casse) et vérifie avec `git -C <chemin> remote -v` que le remote pointe bien vers owner/repo — ne te fie pas au seul nom de dossier.\n3a. CLONE INTROUVABLE → local=false, owner, repo, clone_cmd = la commande git clone appropriée (privilégie git@github.com:owner/repo.git), template=\"\", title=\"\", body=\"\", labels=[].\n3b. CLONE TROUVÉ :\n   a) MODÈLE D'ISSUE : liste `<chemin>/.github/ISSUE_TEMPLATE/` (et `<chemin>/.github/ISSUE_TEMPLATE.md`). S'il y a des modèles, choisis celui qui colle à l'intention (idée/fonctionnalité, bug, dette, doc…) et LIS-LE. Formulaire YAML : chaque champ `textarea`/`input` devient une section `## <label du champ>` dans le même ordre, remplie selon sa `description` ; reprends ses `labels:`. Modèle Markdown : garde ses titres et son ordre, reprends ses labels d'en-tête. Écris dans la langue du modèle. Mets dans `template` le nom du fichier choisi.\n   b) SANS MODÈLE : 3 sections courtes avec émojis, en français : 🎯 **But** (2-4 phrases), 🛠️ **Implémentation** (fichiers/composants, approche), 🧪 **Test** (comment vérifier). template=\"\".\n   c) Explore le code de façon BORNÉE ET RAPIDE (≈ 3 à 6 fichiers ciblés via grep/lecture directe ; PAS d'exploration exhaustive ni de sous-agents/tâches en arrière-plan — risque de timeout/overflow), juste assez pour ancrer l'issue (fichiers concernés, contraintes). Respecte les règles du dépôt si un docs/AGENTS.md ou CONTRIBUTING existe (ex. pas de tiret cadratin, langue des issues).\n   d) LABELS : lance `gh label list -R owner/repo --limit 100 --json name -q '.[].name'` et ne choisis QUE des labels de cette liste : ceux du modèle, plus au besoin un label de zone ou de priorité qui existe. Jamais de label inventé.\n   → local=true, owner, repo, clone_cmd=\"\", template, title (court, impératif, dans la langue du dépôt), body (markdown), labels.\n\nReste concis. Ne crée / ne poste RIEN : renvoie uniquement les données structurées.",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "properties": {
+       "body": {
+        "type": "string"
+       },
+       "clone_cmd": {
+        "type": "string"
+       },
+       "labels": {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       "local": {
+        "type": "boolean"
+       },
+       "owner": {
+        "type": "string"
+       },
+       "repo": {
+        "type": "string"
+       },
+       "template": {
+        "type": "string"
+       },
+       "title": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "local",
+       "owner",
+       "repo",
+       "clone_cmd",
+       "template",
+       "title",
+       "body",
+       "labels"
+      ],
+      "type": "object"
+     },
+     "on_invalid": "Continue"
+    }
+   },
+   {
+    "name": "creer",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Crée l'issue via gh SI local : labels du modèle, assignée à toi (@me), jalon si donné. Repli sans labels puis sans jalon si gh refuse. Sort TOUJOURS en exit 0 (URL sur stdout si créée, vide sinon).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "import json,sys,subprocess\nimport shutil,os\nGH=shutil.which('gh') or next((p for p in ('/opt/homebrew/bin/gh','/usr/local/bin/gh','/usr/bin/gh') if os.path.exists(p)),'gh')\nms=(sys.argv[1] if len(sys.argv)>1 else '').strip()\nd=json.load(sys.stdin)\nif isinstance(d,dict) and 'owner' not in d and isinstance(d.get('data'),dict): d=d['data']\nif not d.get('local'): sys.exit(0)\nrepo=str(d['owner'])+'/'+str(d['repo'])\nbase=[GH,'issue','create','--repo',repo,'--title',(d.get('title') or '(sans titre)'),'--body',(d.get('body') or ''),'--assignee','@me']\nlab=[x for l in (d.get('labels') or []) for x in ('--label',str(l))]\nmil=['--milestone',ms] if ms else []\nr=None\nfor args in (base+lab+mil, base+mil, base):\n    r=subprocess.run(args,capture_output=True,text=True)\n    if r.returncode==0: break\nsys.stdout.write(r.stdout); sys.stderr.write(r.stderr); sys.exit(0)",
+     "{{milestone}}"
+    ],
+    "exec_timeout_secs": 120,
+    "exec_stdin": "{{steps.rediger.data_json}}"
+   },
+   {
+    "name": "build_msg",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Compose le récap final (3 cas : pas local / créée / échec) sur stdout, pour l'étape post.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "bash",
+    "exec_args": [
+     "-c",
+     "local=\"$1\"; url=\"$2\"; owner=\"$3\"; repo=\"$4\"; clone=\"$5\"; if [ \"$local\" != \"true\" ]; then printf '%s\\n' \"❌ Le repo $owner/$repo n'est pas cloné en local — pas d'exploration possible, donc pas d'issue créée.\" \"👉 Clone-le puis relance : $clone\"; else case \"$url\" in *https://github.com/*) printf '%s\\n' \"✅ Issue créée\" \"📦 Projet : https://github.com/$owner/$repo\" \"🔗 $url\" \"💡 Ouvre une PR qui close cette issue et colle son lien ici pour tout regrouper.\" ;; *) printf '%s\\n' \"❌ La création de l'issue a échoué (voir l'étape « creer »). Projet : https://github.com/$owner/$repo\" ;; esac; fi",
+     "_",
+     "{{steps.rediger.data.local}}",
+     "{{steps.creer.data.stdout}}",
+     "{{steps.rediger.data.owner}}",
+     "{{steps.rediger.data.repo}}",
+     "{{steps.rediger.data.clone_cmd}}"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "name": "post",
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "Poste le récap VERBATIM dans la discussion Kronn dédiée (disc_append, contenu figé).",
+    "agent": "ClaudeCode",
+    "prompt_template": "Ton UNIQUE tâche : poster le bloc ci-dessous dans la discussion Kronn, SANS le modifier.\n\nAppelle l'outil `disc_append` avec EXACTEMENT :\n- `disc_id` = \"@@issue.discussion@@\"\n- `content` = le bloc entre les marqueurs, VERBATIM (aucun préambule, ne retire/n'ajoute rien)\n- `wait_for_reply` = false\n\n<<<MSG\n🧭 Intention : {{intention}}\n\n{{steps.build_msg.data.stdout}}\nMSG>>>\n\nN'appelle AUCUN autre outil et n'écris rien d'autre. Après avoir posté, réponds exactement `POSTED`. Si le bloc MSG est vide, réponds `EMPTY` sans rien poster.",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "_requires": "issue.discussion"
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "bash",
+   "python3",
+   "gh"
+  ]
+ }
+}

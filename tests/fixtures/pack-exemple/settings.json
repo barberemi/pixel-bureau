@@ -1,0 +1,14 @@
+{
+ "_doc": "Réglages de l'équipe, lus à chaque assemblage de la page et rendu des crons (la config de chaque installation peut les surcharger) : rythme, GitFut, affiches du Top 3, planning des absences (sans config_id) et personnages des agents (sans ids de workflows : chaque installation les rattache aux siens).",
+ "rhythm": {
+  "daily": "09:30",
+  "daily_minutes": 15
+ },
+ "agents": [
+  {
+   "key": "pete",
+   "name": "Pete",
+   "role": "Veille techno"
+  }
+ ]
+}

@@ -20,12 +20,13 @@ test('pastilles : conflit avec la base, commits de retard, à jour ; rien pour u
 
 test('bouton « ⟳ Remettre à jour » : en retard, en conflit ou inconnu ; pas pour une PR à jour ni sans le workflow', () => {
   run(`document.createElement = t => ({tag: t, attrs: {}, kids: [], style: {}, dataset: {}, set innerHTML(v) { this.html = v; }, get innerHTML() { return this.html || ''; },
-      setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; }, appendChild(x) { this.kids.push(x); }, append(...x) { this.kids.push(...x); }});
+      setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; }, appendChild(x) { this.kids.push(x); }, append(...x) { this.kids.push(...x); },
+      getContext() { return {drawImage() {}}; }});  // getContext : le portrait de l'agent de l'action (#86)
     MutationObserver = function () { this.observe = () => {}; }; kronnModal = () => {};
     ACTS = {tickets: [], prs: [{id: 'acme/web#16', n: '16', repo: 'acme/web'}]}; ACTIONS.rebase = true; ACTIONS.fix = false; ACTIONS.review = false; ACTIONS.mep_pr = false;`);
   const btns = pr => J(`(() => { const box = {kids: [], childElementCount: 0, appendChild(x) { this.kids.push(x); }};
     prLaunch(box, Object.assign({n: 16, repo: 'acme/web', review: 'pending'}, ${JSON.stringify(pr)}));
-    return box.kids.map(h => ({sub: h.html, b: (h.kids.find(k => k.tag === 'button') || {}).attrs})); })()`);
+    return box.kids.filter(h => h.kids).map(h => ({sub: [h.html, ...h.kids.map(k => k.html)].filter(Boolean).join(' '), b: (h.kids.filter(k => k.tag === 'button').pop() || {}).attrs})); })()`);
   const behind = btns({behind: 3, base: 'main'});
   assert.equal(behind.length, 1);
   assert.equal(behind[0].b['data-kronn-action'], 'bureau-rebase');
@@ -42,11 +43,11 @@ test('« 🛠 Corriger » (#75) : modèle du Bureau dès qu\'il reste des fils n
     ACTS = {tickets: [], prs: [{id: 'acme/web#16', n: '16', repo: 'acme/web'}, {id: 'acme/api#7', n: '7', repo: 'acme/api'}]};`);
   const btns = pr => J(`(() => { const box = {kids: [], childElementCount: 0, appendChild(x) { this.kids.push(x); }};
     prLaunch(box, Object.assign({n: 16, repo: 'acme/web', review: 'pending'}, ${JSON.stringify(pr)}));
-    return box.kids.map(h => ({sub: h.html, b: (h.kids.find(k => k.tag === 'button') || {}).attrs})); })()`);
+    return box.kids.filter(h => h.kids).map(h => ({sub: [h.html, ...h.kids.map(k => k.html)].filter(Boolean).join(' '), b: (h.kids.filter(k => k.tag === 'button').pop() || {}).attrs})); })()`);
   const three = btns({threads: 3});
   assert.equal(three.length, 1);
   assert.equal(three[0].b['data-kronn-action'], 'bureau-fixpr');
-  assert.match(three[0].sub, /3 fils de review non résolus : Nate corrige/);
+  assert.match(three[0].sub, /corrige les 3 fils de review/); // #86 : l'agent et ce qu'il fait, son nom calculé, jamais écrit en dur
   assert.equal(btns({n: 7, repo: 'acme/api', threads: 1})[0].b['data-kronn-action'], 'bureau-fixpr', 'autre dépôt aussi');
   assert.equal(btns({threads: 0, review: 'changes'}).length, 0, 'aucun fil non résolu : rien à corriger');
   assert.equal(btns({review: 'changes'}).length, 1, 'fils inconnus mais changements demandés');

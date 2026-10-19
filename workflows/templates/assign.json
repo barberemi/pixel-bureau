@@ -1,0 +1,297 @@
+{
+ "kind": "workflow",
+ "key": "assign",
+ "definition": {
+  "name": "Le Bureau · me l'affecter",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "jira_ticket_key",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket à s'affecter.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "steps": [
+   {
+    "name": "whoami",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "L'identité vient du jeton, jamais d'un identifiant écrit en dur.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/myself",
+    "api_method": "GET",
+    "_requires": "jira"
+   },
+   {
+    "name": "ticket",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "État avant écriture : c'est la base de la garde.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/issue/{{jira_ticket_key}}",
+    "api_method": "GET",
+    "api_query": {
+     "fields": "assignee,status,summary"
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "guard",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Bloque si le ticket est à quelqu'un d'autre. Déjà à moi = on continue : un second clic doit être sans effet, pas une erreur.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "import sys,json\np=sys.stdin.read().split('\\n===SEP===\\n')\nme=json.loads(p[0]) if p[0].strip() else {}\nt=json.loads(p[1]) if len(p)>1 and p[1].strip() else {}\nf=t.get('fields') or {}\na=f.get('assignee')\nmine=me.get('accountId')\nif a and a.get('accountId') != mine:\n    sys.stderr.write('Deja affecte a %s — on ne vole pas un ticket pris.\\n' % (a.get('displayName') or '?'))\n    sys.exit(1)\nsys.stdout.write(json.dumps({'key': t.get('key'), 'status': (f.get('status') or {}).get('name'), 'deja_a_moi': bool(a)}))\n"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.whoami.data}}\n===SEP===\n{{steps.ticket.data}}"
+   },
+   {
+    "name": "assign",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Edit issue plutôt que PUT /assignee : ce dernier répond 204 sans corps, que l'étape ApiCall ne sait pas traiter (KT-689). returnIssue=true rend un 200 porteur de l'issue.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/issue/{{jira_ticket_key}}",
+    "api_method": "PUT",
+    "api_query": {
+     "returnIssue": "true"
+    },
+    "api_body": {
+     "fields": {
+      "assignee": {
+       "accountId": "{{steps.whoami.data.accountId}}"
+      }
+     }
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "won",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Lire-puis-écrire n'est pas atomique : on relit l'assignee dans la réponse de l'écriture elle-même.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "import sys,json\np=sys.stdin.read().split('\\n===SEP===\\n')\nme=json.loads(p[0]) if p[0].strip() else {}\nr=json.loads(p[1]) if len(p)>1 and p[1].strip() else {}\nmine=me.get('accountId')\ngot=((r.get('fields') or {}).get('assignee') or {}).get('accountId')\nif got != mine:\n    sys.stderr.write('Course perdue : le ticket est a %s, pas a moi.\\n' % (got or 'personne'))\n    sys.exit(1)\nsys.stdout.write(json.dumps({'claimed': True, 'accountId': mine}))\n"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.whoami.data}}\n===SEP===\n{{steps.assign.data}}"
+   },
+   {
+    "name": "transitions",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Transitions possibles du ticket : la bonne se choisit à l'étape suivante, aucun id de transition écrit en dur.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/issue/{{jira_ticket_key}}/transitions",
+    "api_method": "GET",
+    "api_query": {},
+    "_requires": "jira"
+   },
+   {
+    "name": "choose",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Transition vers En cours : un statut de catégorie Jira « indeterminate », de préférence celui que la config classe ainsi (jira.statuses).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "import sys,json\nd=json.loads(sys.stdin.read() or '{}')\nwant=json.loads(sys.argv[1])\ncat=sys.argv[2]\nts=[t for t in d.get('transitions') or [] if ((t.get('to') or {}).get('statusCategory') or {}).get('key')==cat]\nts.sort(key=lambda t:((t.get('to') or {}).get('name') not in want))\nif not ts:\n    sys.stderr.write('Aucune transition vers un statut de categorie %s.\\n' % cat)\n    sys.exit(1)\nsys.stdout.write(str(ts[0]['id']))\n",
+     "@@jira.statuses.doing@@",
+     "indeterminate"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.transitions.data}}"
+   },
+   {
+    "name": "transition",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Passe par l'API bulk parce qu'elle répond 201 {taskId} : POST /issue/{key}/transitions répond 204 et casse l'étape (KT-689).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/bulk/issues/transition",
+    "api_method": "POST",
+    "api_body": {
+     "bulkTransitionInputs": [
+      {
+       "selectedIssueIdsOrKeys": [
+        "{{jira_ticket_key}}"
+       ],
+       "transitionId": "{{steps.choose.data.stdout}}"
+      }
+     ],
+     "sendBulkNotification": false
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "pause",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Attente avant relecture. Mesure : le ticket bascule a ~1,5 s apres le 201 de l'API bulk. 3 s = deux fois la marge ; « verifie » tranche si ca n'a pas suffi.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "import time\ntime.sleep(3)\nprint('pause')\n"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "name": "apres",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "État réel du ticket après écriture.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/issue/{{jira_ticket_key}}",
+    "api_method": "GET",
+    "api_query": {
+     "fields": "assignee,status"
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "verifie",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Échoue fort si l'état final n'est pas « à moi, en cours », y compris quand la boucle d'attente a épuisé ses tours.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "import sys,json\np=sys.stdin.read().split('\\n===SEP===\\n')\nme=json.loads(p[0]) if p[0].strip() else {}\nd=json.loads(p[1]) if len(p)>1 and p[1].strip() else {}\niss=d\nf=iss.get('fields') or {}\na=(f.get('assignee') or {}).get('accountId')\nst=f.get('status') or {}\ncat=(st.get('statusCategory') or {}).get('key')\nerrs=[]\nif a != me.get('accountId'):\n    errs.append('assignee=%s' % a)\nif cat != 'indeterminate':\n    errs.append('statut=%s (categorie %s)' % (st.get('name'), cat))\nif errs:\n    sys.stderr.write('Etat final inattendu : ' + ', '.join(errs) + '\\n')\n    sys.exit(1)\nsys.stdout.write(json.dumps({'key': iss.get('key'), 'status': st.get('name'), 'ok': True}))\n"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.whoami.data}}\n===SEP===\n{{steps.apres.data}}"
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": 1,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

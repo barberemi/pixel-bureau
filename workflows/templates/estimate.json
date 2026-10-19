@@ -1,0 +1,203 @@
+{
+ "kind": "workflow",
+ "key": "estimate",
+ "definition": {
+  "name": "Le Bureau · réestimer un ticket",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "jira_ticket_key",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket Jira à réestimer.",
+    "required": true,
+    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "story_points",
+    "label": "Nouveaux Story Points",
+    "placeholder": "5",
+    "description": "Nouvelle valeur, à la hausse comme à la baisse.",
+    "required": true,
+    "pattern": "^[0-9]+([.][0-9]+)?$",
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "raison",
+    "label": "Pourquoi ce changement",
+    "placeholder": "L'intégration du player demande aussi de reprendre le tracking.",
+    "description": "Explication postée en commentaire sur le ticket.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "steps": [
+   {
+    "name": "get_ticket",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Lit l'ancienne valeur de @@jira.points_field@@ (le champ Story Points du board, premier de jira.points_fields) pour l'écrire dans le commentaire.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/2/issue/{{jira_ticket_key}}",
+    "api_method": "GET",
+    "api_query": {
+     "fields": "@@jira.points_field@@,summary"
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "sp_text",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Recopie la saisie sans retour à la ligne : une variable de lancement est toujours du texte, et Jira refuse \"5\" (400 « Spécifiez un nombre »). sp_num la convertit.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "import sys\nsys.stdout.write(sys.argv[1].strip())\n",
+     "{{story_points}}"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "name": "sp_num",
+    "step_type": {
+     "type": "TransformData"
+    },
+    "description": "Texte -> nombre typé (value_type number), injecté tel quel dans le PUT.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "transform_data": {
+     "input_from": "steps.sp_text.data",
+     "fields": [
+      {
+       "target": "sp",
+       "source": "$.stdout",
+       "operation": "copy",
+       "value_type": "number"
+      }
+     ]
+    }
+   },
+   {
+    "name": "set_sp",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "returnIssue=true : sans lui Jira répond 204 sans corps, que l'étape ApiCall ne sait pas traiter (KT-689).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/2/issue/{{jira_ticket_key}}",
+    "api_method": "PUT",
+    "api_query": {
+     "fields": "@@jira.points_field@@",
+     "returnIssue": "true"
+    },
+    "api_body": {
+     "fields": {
+      "@@jira.points_field@@": "{{steps.sp_num.data.sp}}"
+     }
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "old_label",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Ancienne valeur lisible : Jira stocke 8.0, on affiche 8 ; vide = non estimé.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "import sys\nv=sys.argv[1].strip()\nif not v:\n    sys.stdout.write('non estimé')\nelse:\n    f=float(v)\n    sys.stdout.write(str(int(f)) if f.is_integer() else str(f))\n",
+     "{{steps.get_ticket.data.fields.@@jira.points_field@@ ?? \"\"}}"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "name": "comment",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Commentaire en wiki markup via REST v2 (l'outil MCP échapperait le panel). Posté seulement si set_sp a réussi.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/2/issue/{{jira_ticket_key}}/comment",
+    "api_method": "POST",
+    "api_body": {
+     "body": "{panel:title=Réestimation Story Points|bgColor=#DEEBFF}\n*{{steps.old_label.data.stdout}} → {{story_points}}*\n\n{{raison}}\n{panel}"
+    },
+    "_requires": "jira"
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": 1,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

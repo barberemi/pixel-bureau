@@ -41,8 +41,11 @@ class TemplatesTest(unittest.TestCase):
         for key, t in TPL.items():
             if t["kind"] != "workflow":
                 continue
-            self.assertEqual(t["definition"].get("workspace_config"),
-                             {"hooks": {}, "require_isolation": False, "main_tree_read_only": True}, key)
+            # revue de PR (#78) : un sous-workflow par PR en foreach, que Kronn lance dans une copie isolée du projet
+            # (jamais le dossier principal) ; le sous-workflow tourne dans la copie de son parent
+            want = {"hooks": {}, "require_isolation": True} if key in templates.ISOLATED else None if key in templates.SHARED_WORKSPACE \
+                else {"hooks": {}, "require_isolation": False, "main_tree_read_only": True}
+            self.assertEqual(t["definition"].get("workspace_config"), want, key)
 
     def test_render_for_a_colleague(self):
         cfg = colleague()
