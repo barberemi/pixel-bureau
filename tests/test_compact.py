@@ -33,6 +33,15 @@ class CompactTest(unittest.TestCase):
             with self.subTest(c=c):
                 self.assertEqual(strip_js(c), c.split(" //")[0].rstrip() + "\n" if " // lien" in c else c)
 
+    def test_static_calls_bare_names_and_div_get_aliases(self):
+        """#86 : Math.round répété -> _mr ; String nu -> _S, jamais dans toString ni x.String ; _ce('div') -> _cd()."""
+        js = "a=Math.round(1);b=Math.round(2);c=Math.round(3);\n"
+        self.assertEqual(alias_js(js), "const _mr=Math.round;\na=_mr(1);b=_mr(2);c=_mr(3);\n")
+        js = "a=String(1);b=String(2);c=String(3);d=x.toString(4);e=y.String(5);\n"
+        self.assertEqual(alias_js(js), "const _S=String;\na=_S(1);b=_S(2);c=_S(3);d=x.toString(4);e=y.String(5);\n")
+        js = "a=document.createElement('div');b=document.createElement('div');c=document.createElement('div');\n"
+        self.assertEqual(alias_js(js), "const _ce=t=>document.createElement(t);const _cd=()=>_ce('div');\na=_cd();b=_cd();c=_cd();\n")
+
     def test_repeated_dom_calls_get_a_short_alias(self):
         """document.createElement répété : alias _ce défini en tête ; pas d'alias sous 3 appels ni si le nom est déjà pris."""
         js = "a=document.createElement('a');b=document.createElement('b');c=document.createElement('c');\n"

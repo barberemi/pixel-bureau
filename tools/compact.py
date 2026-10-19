@@ -170,7 +170,19 @@ def strip_css(src):
 
 # appels DOM très répétés dans la page (createElement : plus de 200) : un alias court à l'assemblage, les sources gardent
 # le nom complet. L'alias appelle document à chaque fois : un test qui remplace document.createElement le voit encore.
-ALIASES = (("document.createElement(", "_ce", "t=>document.createElement(t)"), ("document.getElementById(", "_gid", "i=>document.getElementById(i)"))
+ALIASES = (("document.createElement(", "_ce", "t=>document.createElement(t)"), ("document.getElementById(", "_gid", "i=>document.getElementById(i)"),
+           # fonctions statiques sans this, très répétées (#86 : 3 Ko) ; Date.now jamais (les tests et captures le remplacent)
+           ("Math.round(", "_mr", "Math.round"), ("Math.floor(", "_mf", "Math.floor"), ("Math.max(", "_mx", "Math.max"),
+           ("Math.min(", "_mn", "Math.min"), ("Math.abs(", "_ma", "Math.abs"), ("Math.ceil(", "_mc", "Math.ceil"),
+           ("JSON.stringify(", "_js", "JSON.stringify"), ("JSON.parse(", "_jp", "JSON.parse"), ("Array.isArray(", "_ia", "Array.isArray"),
+           ("Object.keys(", "_ok", "Object.keys"), ("Object.entries(", "_oe", "Object.entries"), ("Object.assign(", "_oa", "Object.assign"),
+           ("Object.fromEntries(", "_of", "Object.fromEntries"), ("encodeURIComponent(", "_eu", "encodeURIComponent"),
+           ("document.querySelector(", "_qs", "s=>document.querySelector(s)"), ("new Date(", "_nd", "(...a)=>new Date(...a)"),
+           ("new Set(", "_ns", "a=>new Set(a)"), ("String(", "_S", "String"),
+           ("Math.sin(", "_si", "Math.sin"), ("Math.cos(", "_co", "Math.cos"),
+           ("_ce('div')", "_cd", "()=>_ce('div')"))  # un appel complet (sans « ( » final) : remplacé par « _cd() »
+# alias d'un nom nu (String) : seulement là où il n'est pas la fin d'un autre nom (toString) ni une propriété (x.String)
+_BARE = re.compile(r"(?<![\w$.])")
 
 
 def alias_js(js):
@@ -178,6 +190,9 @@ def alias_js(js):
     head = []
     for call, name, body in ALIASES:
         if js.count(call) >= 3 and not re.search(r"\b" + name + r"\b", js):
-            js = js.replace(call, name + "(")
+            if not call.endswith("("):
+                js = js.replace(call, name + "()")
+            else:
+                js = re.sub(_BARE.pattern + re.escape(call), name + "(", js) if call[0].isalpha() else js.replace(call, name + "(")
             head.append(f"const {name}={body};")
     return "".join(head) + ("\n" if head else "") + js

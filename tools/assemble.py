@@ -184,11 +184,14 @@ def page_config(cfg):
         "workflows": cfg.get("workflows") or {},  # ids des crons : calendrier et fraîcheur des données
         "schedules": cron_schedules(cfg),  # calendrier des crons du Bureau (modèles de workflows)
         "agents": cfg.get("agents") or [],
+        # préfixe du workflow de chaque bouton des fiches (#86) : la page y retrouve l'agent qui l'incarne (agents[].wf)
+        "action_wf": {k: str(v)[:8] for k, v in action_ids(cfg).items() if k in FICHE_ACTIONS and v},
         "ui": cfg.get("ui") or {},
         "skins": themes(cfg),  # thèmes d'interface (theme-*.css) proposés par le bouton 🎨
     }
 
 
+FICHE_ACTIONS = ("impl", "mep", "mep_pr", "review", "fix", "fix_pr", "rebase", "comment", "estimate")
 # statuts Jira par défaut du flux de l'équipe (jira.flow) : requêtes du cron équipe et scènes de la page
 JIRA_FLOW = {"triage_from": "Proposed", "test": "To Test", "validated": "To Deploy", "reopened": "Reopen"}
 DEFAULT_LAYOUT = "layouts/open-space.json"  # plan type, sans équipe

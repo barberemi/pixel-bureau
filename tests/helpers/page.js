@@ -46,10 +46,17 @@ function merged(cfg) {
   }
   return out;
 }
+// ids des boutons, comme action_ids() : actions, modèles (models, #78) en repli, puis launch
+function actionWf(cfg) {
+  const models = cfg.models || {}, launch = Object.fromEntries(Object.entries(cfg.launch || {}).map(([k, v]) => [k, typeof v === 'object' && v ? v.wf : v]));
+  const ids = {...(cfg.actions || {}), ...(models.review_one ? {review: models.review_one} : {}), ...(models.estimate ? {estimate: models.estimate} : {}), ...launch};
+  return Object.fromEntries(Object.entries(ids).filter(([k, v]) => v && ['impl', 'mep', 'mep_pr', 'review', 'fix', 'fix_pr', 'rebase', 'comment', 'estimate'].includes(k)).map(([k, v]) => [k, String(v).slice(0, 8)]));
+}
 function pageConfig(cfg) {
   cfg = merged(cfg);
   return {kronn_ui: (cfg.kronn || {}).ui, jira_site: (cfg.jira || {}).site, jira_flow: {triage_from: 'Proposed', test: 'To Test', validated: 'To Deploy', reopened: 'Reopen', ...((cfg.jira || {}).flow || {})}, github_repo: (cfg.github || {}).repo,
     fix_any_repo: !!((((cfg.launch || {}).fix || {}).vars || {}).repo), // comme page_config() : Corriger prend le dépôt (#56)
+    action_wf: actionWf(cfg), // comme page_config() : préfixe du workflow de chaque bouton des fiches (#86)
     rhythm: cfg.rhythm || {}, mep_workflow: cfg.mep_workflow, workflows: cfg.workflows || {}, agents: cfg.agents || [], ui: cfg.ui || {}, skins: themes(cfg),
     schedules: Object.fromEntries(['office', 'live', 'team', 'payroll', 'canard'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule.replace('@@cron_hours@@', '4-20')]))}; // heures de Paris, comme cron_hours()
 }

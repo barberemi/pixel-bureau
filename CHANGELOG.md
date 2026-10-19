@@ -13,6 +13,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 - Réglages d'équipe dans le pack (`settings.json`) : rythme, GitFut, affiches du Top 3, planning des absences et personnages des agents, lus à chaque publication et surchargeables par la config ; l'installateur rattache chaque personnage à un de tes workflows (`--rattacher` pour le refaire) ; `tools/split.py` découpe une config existante sans changer la page ni les workflows (#32).
 - Modèles d'agents du Bureau, proposés à l'installation : relire une PR (à la demande, ou en cron créé désactivé, avec une grille de revue générique et les consignes de l'équipe), réestimer un ticket, rédiger une issue GitHub, m'affecter et me désaffecter un ticket. Sans valeur d'installation (connexions, page de récap facultative, champ Story Points, transitions choisies par statut) ; « Faire relire » et « Réestimer » les lancent quand tu n'as pas ton propre workflow (#78).
+- Fiche d'un ticket ou d'une PR, « Lancer un workflow » : chaque action montre l'agent qui la fait (portrait, icône de métier, « Nate corrige les 5 fils de review », clic : sa fiche), calculé depuis ses workflows ; groupes par PR puis ticket ; l'action conseillée encadrée ; un bandeau implémente › corrige › relit › met en prod ; les actions pas encore possibles grisées avec leur raison ; « est dessus depuis… » quand l'agent travaille déjà dessus ; coût moyen d'un run (#86).
 
 ### Modifié
 
@@ -20,6 +21,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- « 🚀 Mise en prod » d'une PR proposée seulement quand un de ses tickets est en To Deploy (avant : dès que la PR était prête, ticket en review compris) ; « Faire relire » ne nomme plus un agent écrit en dur (#86).
 - Fiche Courrier : un mail plus ancien qu'hier montre sa date (« jeudi 24 sept. 10:13 ») et plus seulement le jour de la semaine.
 - Mise en prod d'une PR en simulation : le ticket n'est plus passé au statut de fin ni commenté par le retour IA (nouvelle étape `dry_guard` après la gate de fin) ; avant, approuver la gate de fin d'une simulation écrivait dans Jira.
 - Mise en prod d'une PR : l'annonce Teams part après le rebase (un conflit n'annonce plus rien), et une étape en échec passe bien la carte en ❌ avec la raison dans le fil (les renvois attendaient un signal que Kronn n'émet pas).

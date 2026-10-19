@@ -49,17 +49,95 @@ function bindsFor(action,row){
   const e=Object.entries(ACTION_BINDS[action]||{}).filter(([,f])=>row[f]!=null);
   return e.length?Object.fromEntries(e.map(([n,f])=>[n,String(row[f])])):null;
 }
+// ---------- qui fait quoi dans « Lancer un workflow » (#86) ----------
+// chaque bouton montre l'agent qui l'incarne : celui dont agents[].wf contient l'id du workflow de l'action (CFG.action_wf,
+// calculé à l'assemblage ; jamais un nom écrit en dur) ; « Remettre à jour » sans agent : celui de « Corriger » ;
+// « Commenter » : toi (le commentaire part avec ton compte Jira) ; sinon l'hologramme du Bureau
+const actKey=a=>({meppr:'mep_pr',fixpr:'fix_pr'})[a.slice(7)]||a.slice(7); // 'bureau-fixpr' -> clé fix_pr de la config
+function actAgent(action){
+  const wf=((CFG.action_wf||{})[actKey(action)]||'').slice(0,8);
+  return wf&&chars.find(x=>!x.person&&!x.visitor&&(x.wf||[]).includes(wf))
+    ||(action==='bureau-rebase'?actAgent('bureau-fixpr')||actAgent('bureau-fix'):action==='bureau-comment'?chars.find(x=>x.boss):null)||null;
+}
+// le run en cours de cet agent sur ce ticket ou cette PR (sa carte dit « dessus depuis… » et grise le bouton), sinon null
+function agentBusy(c,bind){
+  const id=String(bind.id||''), i=id.lastIndexOf('#');
+  return c&&!c.boss&&(c.runs||[]).find(r=>{const ref=['Running','Pending','WaitingApproval'].includes(r.status)&&r._s<=T&&runRef(r);
+    return !!ref&&(bind.key?ref.key===bind.key:ref.pr===id.slice(i+1)&&repoKey(ref.repo||CFG.github_repo)===repoKey(id.slice(0,i)));})||null;
+}
+// coût moyen d'un run de cet agent (fiche de paie, 7 jours), quand il est connu
+function runCost(c){
+  const p=c&&!c.boss&&payFor(c), v=p&&p.week.runs?usd(p.week.tok/p.week.runs):null;
+  return v==null?'':fmtUsd(v)+' par run en moyenne (7 j)';
+}
+// l'action logique d'une fiche (● conseillé) : ticket à déployer → mise en prod ; sinon sur sa première PR ouverte :
+// conflit → remettre à jour, fils ou changements demandés → corriger, retard → remettre à jour, pas approuvée → faire
+// relire ; à faire ou en cours sans PR → implémenter
+function tkNext(x,prs){
+  const A=(a,p)=>({action:'bureau-'+a,id:p&&prId(p)}), F=ACTIONS.fix_pr?'fixpr':'fix';
+  if(x&&x.cat==='deploy')return ACTIONS.mep_pr&&prs.length?A('meppr',prs[0]):A('mep');
+  for(const p of prs){
+    if(p.conflict&&ACTIONS.rebase)return A('rebase',p);
+    if((p.threads>0||p.review==='changes')&&ACTIONS[actKey('bureau-'+F)])return A(F,p);
+    if(p.behind>0&&ACTIONS.rebase)return A('rebase',p);
+    if(p.review!=='approved'&&ACTIONS.review)return A('review',p);
+  }
+  return x&&(x.cat==='todo'||x.cat==='doing')&&!prs.length?A('impl'):null;
+}
+// la chaîne du ticket (bandeau en tête) : implémente › corrige › relit › met en prod, seulement les étapes branchées ;
+// état de chaque étape (done, cur, later) d'après le statut du ticket et ses PR
+function tkChain(x,prs){
+  const st=[['impl','implémente'],[ACTIONS.fix_pr?'fixpr':'fix','corrige'],['review','relit'],[ACTIONS.mep_pr?'meppr':'mep','met en prod']]
+    .map(([a,verb],i)=>({action:'bureau-'+a,verb,i})).filter(s=>ACTIONS[actKey(s.action)]);
+  if(st.length<2||!x)return [];
+  const asked=prs.some(p=>p.threads>0||p.review==='changes'), c=x.cat;
+  const cur=c==='done'?4:c==='deploy'?3:c==='test'?2.5:c==='review'?(asked?1:2):prs.length&&asked?1:0;
+  return st.map(({action,verb,i})=>({action,verb,who:actAgent(action),state:i<cur?'done':i===cur?'cur':'later'}));
+}
+// un portrait d'agent (clic : sa fiche), ou l'hologramme du Bureau
+function agentFace(c,cls){
+  const d=document.createElement('div');d.className=cls; // pas un <button> : le cadre pixel des boutons masquerait le portrait
+  if(c){d.setAttribute('role','button');d.tabIndex=0;d.title='Fiche de '+c.name;d.appendChild(portrait(c,32));
+    d.onclick=e=>{e.stopPropagation();select(c.key);};d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.onclick(e);}};
+    if(!c.boss&&!c.person){const i=document.createElement('i');i.textContent=agentIcon(c);d.appendChild(i);}}
+  else{d.textContent='🤖';d.title='Un workflow du Bureau, sans agent';}
+  return d;
+}
+function tkChainStrip(box,steps){
+  if(!steps.length)return;
+  const ch=document.createElement('div');ch.className='la-chain';
+  steps.forEach((s,i)=>{
+    if(i)ch.insertAdjacentHTML('beforeend','<span class="la-ar">›</span>');
+    const e=document.createElement('div'), n=s.who?s.who.name:'Le Bureau';e.className='la-st '+s.state;
+    e.title=n+' '+s.verb+' : '+{done:'fait',cur:'en cours',later:'à venir'}[s.state];
+    e.appendChild(agentFace(s.who,'la-av'));e.insertAdjacentHTML('beforeend',`<div><b>${esc(n)}</b><br>${esc(s.verb)}</div>`);
+    ch.appendChild(e);
+  });
+  box.appendChild(ch);
+}
+const KM_NOTE='Chaque bouton ouvre la carte Kronn : tu valides, puis elle suit le run étape par étape.'; // une seule fois, en bas des boutons
+const actGroup=(box,t)=>{const h=document.createElement('div');h.className='la-h';h.textContent=t;box.appendChild(h);};
 // un bouton de lancement : bloc qui devient la fenêtre de la carte Kronn, note qui suit l'état du lancement (done : texte
-// du succès, sinon « l'agent se met au travail »)
-function launchBlock(box,{action,bind,name,sub,label,title,off,done}){
-  bind=bindsFor(action,bind);if(!bind)return;
+// du succès, sinon « l'agent se met au travail »). verb (fiche d'un ticket ou d'une PR, #86) : l'agent de l'action, son
+// portrait et sa phrase (« Nate corrige les 5 fils »), next = l'action conseillée ; grisé (off) ou agent déjà dessus
+function launchBlock(box,{action,bind,name,sub,label,title,off,done,verb,next}){
+  const raw=bind;bind=bindsFor(action,bind);if(!bind)return;
   const host=document.createElement('div');host.className='relaunch';host.setAttribute('data-kronn-action-slot-host','');
-  host.innerHTML=`<div class="rl-n">${esc(name)}</div><div class="rl-s">${esc(sub)}</div>`;
   const b=document.createElement('button');b.textContent=label;
+  if(verb){
+    const c=actAgent(action), busy=off?null:agentBusy(c,raw), cost=off||busy?'':runCost(c);
+    if(busy)off=c.name+' est dessus depuis '+hm(busy._s);
+    host.className='relaunch la'+(next&&!off?' next':'')+(off?' off':'');
+    host.appendChild(agentFace(c,'la-av'));
+    const t=document.createElement('div');t.className='la-t';
+    t.innerHTML=`<div class="la-n"><b>${esc(c?c.name:'Le Bureau')}</b> ${esc(verb)}${next&&!off?' <span class="la-tag">● conseillé</span>':''}</div>`+
+      `<div class="rl-s">${esc(busy?off+'.':sub)}${cost?` <span class="la-cost">${esc(cost)}</span>`:''}</div>`;
+    host.appendChild(t);
+  }else host.innerHTML=`<div class="rl-n">${esc(name)}</div><div class="rl-s">${esc(sub)}</div>`;
   if(off){b.disabled=true;b.title=off;host.appendChild(b);box.appendChild(host);return;}
   b.setAttribute('data-kronn-action',action);b.setAttribute('data-kronn-bindings',JSON.stringify(bind));
   const n=document.createElement('div');n.className='note';n.style.margin='6px 0 0';
-  n.textContent='Kronn ouvre sa carte : tu valides, puis elle suit le run étape par étape.';
+  if(!verb)n.textContent='Kronn ouvre sa carte : tu valides, puis elle suit le run étape par étape.'; // fiches : une seule note en bas
   new MutationObserver(()=>{
     const v=b.getAttribute('data-kronn-action-state');
     if(v==='succeeded')n.innerHTML=done||'<b style="color:var(--ok)">✓ Lancé.</b> L\'agent se met au travail d\'ici une minute sur le plan.';
@@ -99,33 +177,53 @@ function renderTicket(side,key){
   const note=t=>{const e=document.createElement('div');e.className='note';e.textContent=t;box.appendChild(e);};
   if(!ACTS){note('Les boutons arrivent au prochain passage du cron équipe (10 min au plus).');return;}
   const known=ACTS.tickets.some(t=>t.key===key);
+  tkChainStrip(box,tkChain(x,prs)); // #86 : où en est le ticket, avec les agents de chaque étape
+  const nx=tkNext(x,prs), isNext=(a,id)=>!!nx&&nx.action===a&&(!nx.id||nx.id===id);
   const before=box.childElementCount;
+  for(const p of prs){const k=box.childElementCount;prLaunch(box,p,{tickets:[x],isNext,group:'Sur la PR '+prNum(p)});
+    if(box.childElementCount===k+1&&box.lastChild)box.lastChild.remove();} // groupe vide : son titre part
+  const k0=box.childElementCount;
+  actGroup(box,'Sur le ticket');
   if(known&&ACTIONS.impl&&(x.cat==='todo'||x.cat==='doing')&&!prs.length)
-    launchBlock(box,{action:'bureau-impl',bind:{key},name:'Implémenter',sub:'Après ta validation du plan, le ticket t\'est assigné et passe En cours ; Ryan le code, ouvre la PR et la fait relire',label:'🤖 Implémenter',title:'Implémenter '+key});
-  if(known&&ACTIONS.mep&&x.cat==='deploy'){
-    const frozen=stageClosed(Date.now());
-    launchBlock(box,{action:'bureau-mep',bind:{key},name:'Mettre en prod',sub:frozen?'Gel des mises en prod aujourd\'hui':'Rebase, CI, merge, release, staging puis prod, avec tes validations',
-      label:'🚀 Mettre en prod',title:'Mettre en prod '+key,off:frozen?'Gel des mises en prod (rhythm.mep_freeze)':null});
+    launchBlock(box,{action:'bureau-impl',bind:{key},verb:'implémente le ticket',next:isNext('bureau-impl'),
+      sub:'Après ta validation du plan, le ticket t\'est assigné et passe En cours ; le code, la PR et sa relecture suivent',label:'🤖 Implémenter',title:'Implémenter '+key});
+  // « Mettre en prod » du ticket (launch.mep) : en To Deploy ; avant, grisé avec la raison, sauf si une PR du ticket
+  // montre déjà le sien (pas deux fois la même attente)
+  const prMep=ACTIONS.mep_pr&&prs.some(p=>mepRepo(prId(p)));
+  if(known&&ACTIONS.mep&&x.cat!=='done'&&(x.cat==='deploy'||!prMep)){
+    const frozen=stageClosed(Date.now()), later=x.cat!=='deploy'&&mepLater(x);
+    launchBlock(box,{action:'bureau-mep',bind:{key},verb:'met le ticket en prod',next:isNext('bureau-mep'),
+      sub:later||mepSub(frozen),
+      label:'🚀 Mettre en prod',title:'Mettre en prod '+key,off:later||(frozen?MEP_FROZEN:null)});
   }
-  for(const p of prs)prLaunch(box,p);
   if(known&&ACTIONS.comment) // à tout statut ; le texte se saisit dans la carte Kronn
-    launchBlock(box,{action:'bureau-comment',bind:{key},name:'Commenter',sub:'Ton commentaire part sur le ticket dans Jira',label:'💬 Commenter',title:'Commenter '+key});
-  if(known&&ACTIONS.estimate&&x.cat!=='done') // ton workflow de réestimation (launch.estimate) : Story Points et raison dans la carte
-    launchBlock(box,{action:'bureau-estimate',bind:{key},name:'Réestimer',sub:'Nouveaux Story Points et raison : le ticket est mis à jour dans Jira, avec un commentaire',label:'📏 Réestimer',title:'Réestimer '+key});
+    launchBlock(box,{action:'bureau-comment',bind:{key},verb:'commente le ticket',sub:'Ton commentaire part sur le ticket dans Jira',label:'💬 Commenter',title:'Commenter '+key});
+  if(known&&ACTIONS.estimate&&x.cat!=='done') // ton workflow de réestimation (launch.estimate), sinon le modèle du Bureau
+    launchBlock(box,{action:'bureau-estimate',bind:{key},verb:'réestime le ticket',sub:'Nouveaux Story Points et raison : le ticket est mis à jour dans Jira, avec un commentaire',label:'📏 Réestimer',title:'Réestimer '+key});
+  if(box.childElementCount===k0+1&&box.lastChild)box.lastChild.remove();
   if(box.childElementCount===before)note(known?'Rien à lancer à ce statut.':'Ticket pas encore dans les données des boutons : prochain passage du cron équipe.');
+  else note(KM_NOTE);
 }
+// mise en prod (#86) : seulement d'un ticket en To Deploy ; avant, la raison du bouton grisé (jira.flow.validated)
+const MEP_FROZEN='Gel des mises en prod (rhythm.mep_freeze)';
+const mepSub=f=>f?'Gel des mises en prod aujourd\'hui':'Rebase, CI, merge, release, staging puis prod, avec tes validations';
+const mepStatus=()=>(CFG.jira_flow||{}).validated||'To Deploy';
+const mepLater=x=>'Quand le ticket sera en '+mepStatus()+' (aujourd\'hui : '+(x.status||(TCAT[x.cat]||{}).t||'?')+')';
+const mepRepo=id=>(CFG.mep_repos||[]).some(r=>r.toLowerCase()===String(id).replace(/#\d+$/,'').toLowerCase()); // id : « owner/dépôt#n »
 // la ligne du dataset actions d'une PR (même dépôt, même numéro) ; ancien dataset sans id : son repo et son n°
 const actPr=p=>ACTS&&ACTS.prs.find(q=>String(q.id||prId(q)).toLowerCase()===prId(p).toLowerCase())||null;
 // « 🛠 Corriger » et « 🔎 Faire relire » d'une PR (fiche du ticket, fiche de la PR) : liées par « owner/dépôt#n » (#56),
 // Kronn relit le dépôt et le numéro dans actions.prs. Corriger une PR d'un autre dépôt : si ton workflow prend le dépôt.
-function prLaunch(box,p){
+function prLaunch(box,p,{tickets,isNext=()=>false,group}={}){
   const a=actPr(p);
   if(!a)return;
+  if(group)actGroup(box,group);
+  const id=a.id||prId(p), nx=act=>isNext(act,prId(p));
   const dr=p.draft?' (brouillon)':'', nm=prNum(p); // un brouillon se relit et se corrige aussi
   // « ⟳ Remettre à jour » (#74) : rebase sur la base, sans squash ; en retard ou en conflit d'après le cron équipe, ou état inconnu
   if(ACTIONS.rebase&&!p.merged&&(p.conflict||p.behind!==0)){
     const base=p.base||'main';
-    launchBlock(box,{action:'bureau-rebase',bind:{id:a.id||prId(p)},name:'Remettre à jour · '+nm,
+    launchBlock(box,{action:'bureau-rebase',bind:{id},verb:'remet la PR à jour',next:nx('bureau-rebase'),
       sub:p.conflict?'Conflit avec '+base+' : l\'IA propose une résolution, tu la valides avant tout push.':'Rebase sur '+base+', commits gardés, push protégé, CI relancée. Sans conflit : 0 token.',
       label:'⟳ Remettre à jour',title:'Remettre à jour '+nm});
   }
@@ -133,20 +231,25 @@ function prLaunch(box,p){
   // demandés) ; sinon ton workflow de launch.fix, comme avant
   if(ACTIONS.fix_pr){
     const t=p.threads;
-    if(t>0||t==null&&p.review==='changes')launchBlock(box,{action:'bureau-fixpr',bind:{id:a.id||prId(p)},name:'Corriger les retours · '+nm+dr,
-      sub:(t>0?t+' fil'+(t>1?'s':'')+' de review non résolu'+(t>1?'s':'')+' : ':'')+'Nate corrige, tu valides le diff et ses réponses, puis il pousse',
+    if(t>0||t==null&&p.review==='changes')launchBlock(box,{action:'bureau-fixpr',bind:{id},next:nx('bureau-fixpr'),
+      verb:t>0?'corrige les '+(t>1?t+' fils':'fil')+' de review'+dr:'corrige les retours'+dr,
+      sub:'Tu valides le diff et ses réponses, puis il pousse',
       label:'🛠 Corriger',title:'Corriger les retours de '+nm});
   }
   else if(ACTIONS.fix&&p.review==='changes'&&(!otherRepo(p.repo)||CFG.fix_any_repo))
-    launchBlock(box,{action:'bureau-fix',bind:{id:a.id||prId(p)},name:'Corriger les retours · '+nm+dr,sub:'Un agent applique les commentaires de review et pousse',label:'🛠 Corriger',title:'Corriger les retours de '+nm});
-  // « 🚀 Mise en prod » d'une PR (#58) : dépôt de la config (CFG.mep_repos), PR prête (ni brouillon ni changements demandés)
-  if(ACTIONS.mep_pr&&(CFG.mep_repos||[]).some(r=>r.toLowerCase()===String(a.id||prId(p)).replace(/#\d+$/,'').toLowerCase())&&!p.draft&&p.review!=='changes'){
-    const frozen=stageClosed(Date.now());
-    launchBlock(box,{action:'bureau-meppr',bind:{id:a.id||prId(p)},name:'Mettre en prod · '+nm,sub:frozen?'Gel des mises en prod aujourd\'hui':'Rebase, CI, merge, release, staging puis prod, avec tes validations',
-      label:'🚀 Mise en prod',title:'Mettre en prod '+nm,off:frozen?'Gel des mises en prod (rhythm.mep_freeze)':null});
-  }
+    launchBlock(box,{action:'bureau-fix',bind:{id},verb:'corrige les retours'+dr,next:nx('bureau-fix'),sub:'Il applique les commentaires de review et pousse',label:'🛠 Corriger',title:'Corriger les retours de '+nm});
   if(ACTIONS.review&&p.review!=='approved')
-    launchBlock(box,{action:'bureau-review',bind:{id:a.id||prId(p)},name:'Faire relire · '+nm+dr,sub:'Dwight relit la PR et poste sa review',label:'🔎 Faire relire',title:'Faire relire '+nm});
+    launchBlock(box,{action:'bureau-review',bind:{id},verb:'relit la PR'+dr,next:nx('bureau-review'),sub:'Sa review part sur GitHub',label:'🔎 Faire relire',title:'Faire relire '+nm});
+  // « 🚀 Mise en prod » d'une PR (#58) : dépôt de la config (CFG.mep_repos), PR prête (ni brouillon ni changements demandés),
+  // et un de ses tickets en To Deploy (#86) ; sinon grisé avec la raison (pas de mise en prod sans ticket à déployer)
+  if(ACTIONS.mep_pr&&mepRepo(id)&&!p.draft&&p.review!=='changes'){
+    const tks=tickets||(p.keys||[]).map(ticketOf).filter(Boolean), ready=tks.find(t=>t.cat==='deploy');
+    const later=ready?null:!tks.length?'Pas de ticket Jira : pas de mise en prod sans ticket en '+mepStatus():tks.some(t=>t.cat==='done')?null:mepLater(tks[0]);
+    const frozen=stageClosed(Date.now());
+    if(ready||later)launchBlock(box,{action:'bureau-meppr',bind:{id},verb:'met la PR en prod',next:nx('bureau-meppr'),
+      sub:later||mepSub(frozen),
+      label:'🚀 Mise en prod',title:'Mettre en prod '+nm,off:later||(frozen?MEP_FROZEN:null)});
+  }
 }
 // ---------- fiche d'une PR (lien du fil) : « owner/dépôt#n », dépôt vide = inconnu ----------
 // Ce que la page en sait : la PR de l'équipe (titre, auteur, review, tickets cités) quand elle est d'un dépôt suivi
@@ -194,13 +297,15 @@ function renderPr(side,id){
       ul.appendChild(li);}
     tb.appendChild(ul);
   }
-  if(x.pr&&!x.pr.merged&&(ACTIONS.review||ACTIONS.fix)){
+  if(x.pr&&!x.pr.merged&&(ACTIONS.review||ACTIONS.fix||ACTIONS.fix_pr||ACTIONS.rebase||ACTIONS.mep_pr)){
     const box=foldSection(side,'pr-launch','🤖 Lancer un workflow',null,true), before=box.childElementCount;
     const note=t=>{const e=document.createElement('div');e.className='note';e.textContent=t;box.appendChild(e);};
     if(!ACTS)note('Les boutons arrivent au prochain passage du cron équipe (10 min au plus).');
-    else{const p={...x.pr,repo:x.pr.repo||x.repo};prLaunch(box,p);
+    else{const p={...x.pr,repo:x.pr.repo||x.repo}, tks=(p.keys||[]).map(ticketOf).filter(Boolean), nx=tkNext(tks[0]||null,[p]);
+      prLaunch(box,p,{isNext:(a,id)=>!!nx&&nx.action===a&&(!nx.id||nx.id===id)});
       if(box.childElementCount===before)note(!actPr(p)?'PR pas encore dans les données des boutons : prochain passage du cron équipe.'
-        :p.review==='approved'?'Rien à lancer : PR approuvée.':'Rien à lancer sur cette PR.');}
+        :p.review==='approved'?'Rien à lancer : PR approuvée.':'Rien à lancer sur cette PR.');
+      else note(KM_NOTE);}
   }
   const rb=foldSection(side,'pr-runs','Les agents dessus aujourd\'hui',x.runs.length,true);
   if(!x.runs.length){const e=document.createElement('div');e.className='empty';e.textContent='Aucun run d\'agent sur cette PR aujourd\'hui.';rb.appendChild(e);return;}

@@ -39,16 +39,20 @@ Sous « Personnaliser », sa ligne d'état tient sur une ligne (« Teste 7 ticke
 
 Les PR qui citent un de ses tickets sont sur la ligne du ticket : le bloc suivant, « Ses autres PR ouvertes », ne garde que les autres (sans ticket, ou d'un ticket hors de ses tickets du sprint). Le compteur « PR ouvertes » en haut de la fiche les compte toutes. Même présentation que « Ses tickets » : un groupe par état de review, bordé de sa couleur (changements demandés, en attente de review, approuvées, puis brouillons, repliés par défaut), la plus récemment active d'abord. Chaque PR : son numéro (lien GitHub), le ticket qu'elle cite (lien Jira, en gris) et le composant, son titre sans le préfixe « feat(DM-1): », puis sa dernière activité (« il y a 6 mois » : une PR oubliée se voit), en orange avec ⏳ quand elle attend une review depuis plus de 24 h.
 
-**Ticket** : clic sur un ticket (Kanban, fiche d'un collègue) : son statut et depuis quand, qui l'a, ses points, ses PR ouvertes avec leur review, le lien Jira, et les workflows à lancer dessus selon son statut :
+**Ticket** : clic sur un ticket (Kanban, fiche d'un collègue) : son statut et depuis quand, qui l'a, ses points, ses PR ouvertes avec leur review, le lien Jira, et les workflows à lancer dessus selon son statut.
+
+Dans « 🤖 Lancer un workflow », chaque action montre **l'agent qui la fait** : son portrait pixel, l'icône de son métier, et une phrase (« **Nate** corrige les 5 fils de review »). L'agent est celui dont les workflows (`agents[].wf`, ou un personnage du pack) contiennent le workflow du bouton : son nom n'est jamais écrit en dur. « Remettre à jour » sans agent à lui est fait par l'agent de « Corriger » ; « Commenter », c'est toi (ton compte Jira) ; une action sans agent montre l'hologramme du Bureau. Un clic sur le portrait ouvre la fiche de l'agent. Les actions sont rangées par PR (« Sur la PR #1988 ») puis « Sur le ticket ». En tête, un bandeau montre **où en est le ticket** : implémente › corrige › relit › met en prod, avec l'agent de chaque étape (fait en vert, en cours en couleur, à venir en gris ; seulement les étapes que tu as branchées). L'action logique est encadrée, **● conseillé** : conflit ou retard sur la base → Remettre à jour, fils de review ouverts → Corriger, sinon Faire relire ; en To Deploy → Mettre en prod ; à faire sans PR → Implémenter. Une action pas encore possible est **grisée avec sa raison** (« quand le ticket sera en To Deploy (aujourd'hui : To Review) »). Quand l'agent est déjà dessus (un run en cours sur ce ticket ou cette PR), son bouton est grisé : « Nate est dessus depuis 10h12 ». Le coût moyen d'un run de l'agent (fiche de paie, 7 jours) s'affiche à côté quand il est connu.
+
+Les actions :
 - **Implémenter** : ticket à faire ou en cours, sans PR. Après ta validation du plan, le workflow t'assigne le ticket et le passe « En cours » dans Jira, puis code, ouvre la PR et la fait relire.
 - **Faire relire** : sur chacune de ses PR pas encore approuvées, brouillons compris (la carte dit alors « (brouillon) »).
 - **Corriger les retours** : sur une PR avec changements demandés, même en brouillon (avec des consignes facultatives).
-- **Mettre en prod** : ticket à déployer ; grisé les jours de gel des mises en prod.
-- **🚀 Mise en prod** (sur chaque PR, si son dépôt a des réglages de mise en prod) : la mise en prod de cette PR, dépôt et numéro relus par Kronn ; voir [Mise en prod](16-mise-en-prod.md).
+- **Mettre en prod** : ticket à déployer (statut `jira.flow.validated`, To Deploy par défaut) ; avant, grisé avec la raison ; grisé aussi les jours de gel des mises en prod.
+- **🚀 Mise en prod** (sur chaque PR, si son dépôt a des réglages de mise en prod) : la mise en prod de cette PR, dépôt et numéro relus par Kronn, seulement quand un de ses tickets est en To Deploy (sinon grisé avec la raison, et une PR sans ticket Jira ne se met pas en prod) ; voir [Mise en prod](16-mise-en-prod.md).
 - **Commenter** : à tout statut. Le texte se saisit dans la carte Kronn ; il part sur le ticket dans Jira avec le compte de ta connexion Atlassian, suivi de « (depuis Le Bureau) ». C'est un workflow du Bureau (« Le Bureau · commenter un ticket », un appel Jira, 0 token), créé par l'installateur quand Jira est connecté.
 - **Réestimer** (ton workflow `launch.estimate`, sinon le modèle du Bureau installé, `models.estimate`) : sur un ticket non terminé du sprint. Les nouveaux Story Points et la raison se saisissent dans la carte Kronn ; le ticket est mis à jour dans Jira avec un commentaire qui donne l'ancienne valeur, la nouvelle et la raison.
 
-Chaque bouton ouvre la carte Kronn du workflow : tu valides, puis elle suit le run étape par étape. Les workflows se choisissent dans `bureau.config.json` (clé `launch` : `impl`, `mep`, `mep_pr`, `review`, `fix`) ; sans eux, la fiche n'a pas de boutons. N'importe quel workflow Kronn convient : si ses variables ne portent pas les noms attendus, donne-les.
+Chaque bouton ouvre la carte Kronn du workflow : tu valides, puis elle suit le run étape par étape (une seule note le rappelle, en bas de la section). Les workflows se choisissent dans `bureau.config.json` (clé `launch` : `impl`, `mep`, `mep_pr`, `review`, `fix`) ; sans eux, la fiche n'a pas de boutons. N'importe quel workflow Kronn convient : si ses variables ne portent pas les noms attendus, donne-les.
 
 ```json
 "launch": {
@@ -62,7 +66,7 @@ Rôles et noms par défaut : `impl` → `ticket` (`jira_ticket_key`) ; `mep` →
 
 ![Fiche d'un ticket](../img/fiche-ticket.png)
 
-**PR** : clic sur une PR dans le fil. Son nom avec son dépôt, son titre, l'état de sa review, son auteur (sa fiche), le lien GitHub, le ticket qu'elle cite (sa fiche) et les runs d'agents du jour qui l'ont traitée (une revue de Dwight, une correction). Puis les mêmes boutons que dans la fiche du ticket : **Faire relire** (PR pas encore approuvée) et **Corriger les retours** (changements demandés).
+**PR** : clic sur une PR dans le fil. Son nom avec son dépôt, son titre, l'état de sa review, son auteur (sa fiche), le lien GitHub, le ticket qu'elle cite (sa fiche) et les runs d'agents du jour qui l'ont traitée (une revue de Dwight, une correction). Puis les mêmes boutons que dans la fiche du ticket, avec leur agent et l'action conseillée : **Remettre à jour**, **Corriger les retours**, **Faire relire** (PR pas encore approuvée) et **Mise en prod** (son ticket en To Deploy).
 
 Dans « Ses PR ouvertes » (fiche d'un collègue, du boss ou d'un ticket), le numéro d'une PR ouvre sa fiche (« ↗ » ouvre GitHub) et chaque ligne montre son état : « ⛔ conflit », « ⟳ 3 de retard », « 💬 4 fils » non résolus.
 

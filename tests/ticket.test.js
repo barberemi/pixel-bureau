@@ -29,17 +29,18 @@ function buttons(key, {acts = true, now = at('07', '11:00'), comment = false} = 
   })()`).filter(c => comment || c[0] !== 'bureau-comment');
 }
 
-test('à faire, sans PR : Implémenter, lié à la clé du ticket', () => {
-  assert.deepEqual(buttons('DM-1'), [['bureau-impl', {key: 'DM-1'}, false]]);
+test('à faire, sans PR : Implémenter, lié à la clé du ticket ; Mettre en prod grisé jusqu\'à To Deploy (#86)', () => {
+  assert.deepEqual(buttons('DM-1'), [['bureau-impl', {key: 'DM-1'}, false], ['bureau-mep', {key: 'DM-1'}, true]]);
 });
 
 const ID = n => ({id: 'dunder-mifflin/site-web#' + n}); // identité d'une PR du dépôt principal (#56)
 test('en review avec une PR en attente : Faire relire, lié au dépôt et au n° de PR', () => {
-  assert.deepEqual(buttons('DM-2'), [['bureau-review', ID(12), false]]);
+  assert.deepEqual(buttons('DM-2'), [['bureau-review', ID(12), false], ['bureau-mep', {key: 'DM-2'}, true]]);
 });
 
 test('changements demandés : Corriger et Faire relire ; un brouillon a aussi les siens ; une PR ouverte retire Implémenter', () => {
-  assert.deepEqual(buttons('DM-4'), [['bureau-fix', ID(13), false], ['bureau-review', ID(13), false], ['bureau-review', ID(14), false]]);
+  assert.deepEqual(buttons('DM-4'), [['bureau-fix', ID(13), false], ['bureau-review', ID(13), false], ['bureau-review', ID(14), false],
+    ['bureau-mep', {key: 'DM-4'}, true]]);
 });
 
 test('à déployer : Mettre en prod, grisé pendant le gel (vendredi)', () => {
@@ -101,7 +102,7 @@ const TWO16 = `TEAM = {people: [{id: 'acc-p', name: 'Pam', tickets: [{key: 'DM-5
 function prButtons(id, {fixAnyRepo = false, acts = true} = {}) {
   return J(`(() => {
     const calls = [], lb = launchBlock, fs = foldSection, f0 = CFG.fix_any_repo;
-    launchBlock = (box, o) => { calls.push([o.action, o.bind, o.name]); box.childElementCount++; };
+    launchBlock = (box, o) => { calls.push([o.action, o.bind, o.verb]); box.childElementCount++; };
     foldSection = () => ({childElementCount: 0, appendChild() { this.childElementCount++; }});
     CFG.fix_any_repo = ${fixAnyRepo};
     ${TWO16}
@@ -113,7 +114,7 @@ function prButtons(id, {fixAnyRepo = false, acts = true} = {}) {
 
 test('#56 fiche d\'une PR d\'un autre dépôt : Faire relire lié à « owner/dépôt#n », nommée « front_api#16 »', () => {
   assert.deepEqual(prButtons('dunder-mifflin/front_api#16'),
-    [['bureau-review', {id: 'dunder-mifflin/front_api#16'}, 'Faire relire · front_api#16']]); // Corriger : workflow sans repo
+    [['bureau-review', {id: 'dunder-mifflin/front_api#16'}, 'relit la PR']]); // Corriger : workflow sans repo
   assert.deepEqual(prButtons('dunder-mifflin/front_api#16', {fixAnyRepo: true}).map(c => c[0]), ['bureau-fix', 'bureau-review']);
   assert.deepEqual(prButtons('dunder-mifflin/front_api#16', {acts: false}), []); // dataset actions pas encore là
 });
@@ -144,10 +145,68 @@ test('#56 fiche du ticket : sa PR d\'un autre dépôt, ses boutons liés au bon 
 test('« 🚀 Mise en prod » d\'une PR (#58) : dépôt de mep_repos, ni brouillon ni changements demandés, gelée le vendredi', () => {
   run("var MR0 = CFG.mep_repos, MA0 = ACTIONS.mep_pr; CFG.mep_repos = ['dunder-mifflin/site-web']; ACTIONS.mep_pr = true;");
   try {
-    assert.deepEqual(buttons('DM-2'), [['bureau-meppr', ID(12), false], ['bureau-review', ID(12), false]]);
-    assert.deepEqual(buttons('DM-2', {now: at('09', '11:00')})[0], ['bureau-meppr', ID(12), true]);
+    // #86 : le ticket DM-2 est To Review : grisé avec la raison, et pas de second « Mettre en prod » grisé côté ticket
+    assert.deepEqual(buttons('DM-2'), [['bureau-review', ID(12), false], ['bureau-meppr', ID(12), true]]);
     assert.ok(!buttons('DM-4').some(b => b[0] === 'bureau-meppr'), 'changements demandés (#13) ou brouillon (#14) : pas de MEP');
     run("CFG.mep_repos = ['dunder-mifflin/intranet'];");
     assert.ok(!buttons('DM-2').some(b => b[0] === 'bureau-meppr'), 'dépôt sans réglages de MEP');
   } finally { run('CFG.mep_repos = MR0; ACTIONS.mep_pr = MA0;'); }
+});
+
+// ---------- #86 : quel agent fait quoi, l'action conseillée, la chaîne du ticket, la mise en prod réservée à To Deploy ----------
+const WITH = (code, body) => J(`(() => { const c0 = chars.slice(), a0 = CFG.action_wf, ac0 = {...ACTIONS};
+  chars.push({key: 'nate', name: 'Nate', wf: ['aaaa1111'], runs: []}, {key: 'mose', name: 'Mose', wf: ['bbbb2222'], runs: []},
+             {key: 'darryl', name: 'Darryl', wf: ['cccc3333'], runs: []}, {key: 'ryan', name: 'Ryan', wf: ['dddd4444'], runs: []});
+  CFG.action_wf = {fix_pr: 'aaaa1111', review: 'bbbb2222', mep_pr: 'cccc3333', impl: 'dddd4444', rebase: 'eeee5555'};
+  Object.assign(ACTIONS, {impl: true, review: true, fix_pr: true, rebase: true, mep_pr: true, mep: false});
+  try { ${code}; return (${body}); } finally { chars.length = 0; chars.push(...c0); CFG.action_wf = a0; Object.assign(ACTIONS, ac0); } })()`);
+
+test('#86 agent de chaque action : celui dont agents[].wf contient le workflow ; rebase sans agent : celui de Corriger ; Commenter : toi', () => {
+  assert.deepEqual(WITH('', `['bureau-fixpr', 'bureau-review', 'bureau-meppr', 'bureau-impl', 'bureau-rebase'].map(a => (actAgent(a) || {}).name)`),
+    ['Nate', 'Mose', 'Darryl', 'Ryan', 'Nate']);
+  assert.equal(WITH('', `actAgent('bureau-comment') === chars.find(c => c.boss)`), true);
+  assert.equal(WITH('CFG.action_wf = {}', `actAgent('bureau-review')`), null); // sans agent : l'hologramme du Bureau
+});
+
+test('#86 action conseillée : conflit, puis fils, puis retard, puis relecture ; à déployer : la mise en prod ; sans PR : implémenter', () => {
+  const nx = (x, prs) => WITH('', `tkNext(${JSON.stringify(x)}, ${JSON.stringify(prs)})`);
+  const pr = o => ({n: 7, repo: 'dunder-mifflin/site-web', review: 'pending', ...o});
+  const id = 'dunder-mifflin/site-web#7';
+  assert.deepEqual(nx({cat: 'review'}, [pr({conflict: true, threads: 3})]), {action: 'bureau-rebase', id});
+  assert.deepEqual(nx({cat: 'review'}, [pr({threads: 3, behind: 2})]), {action: 'bureau-fixpr', id});
+  assert.deepEqual(nx({cat: 'review'}, [pr({behind: 2})]), {action: 'bureau-rebase', id});
+  assert.deepEqual(nx({cat: 'review'}, [pr({behind: 0})]), {action: 'bureau-review', id});
+  assert.deepEqual(nx({cat: 'deploy'}, [pr({review: 'approved'})]), {action: 'bureau-meppr', id});
+  assert.deepEqual(nx({cat: 'todo'}, []), {action: 'bureau-impl'});
+  assert.equal(nx({cat: 'review'}, [pr({review: 'approved', behind: 0})]), null);
+});
+
+test('#86 chaîne du ticket : implémente › corrige › relit › met en prod, avec l\'agent et l\'état de chaque étape', () => {
+  const ch = (x, prs) => WITH('', `tkChain(${JSON.stringify(x)}, ${JSON.stringify(prs)}).map(s => [s.who && s.who.name, s.verb, s.state])`);
+  assert.deepEqual(ch({cat: 'review'}, [{n: 1, review: 'pending'}]),
+    [['Ryan', 'implémente', 'done'], ['Nate', 'corrige', 'done'], ['Mose', 'relit', 'cur'], ['Darryl', 'met en prod', 'later']]);
+  assert.deepEqual(ch({cat: 'review'}, [{n: 1, review: 'changes'}]).map(s => s[2]), ['done', 'cur', 'later', 'later']);
+  assert.deepEqual(ch({cat: 'deploy'}, []).map(s => s[2]), ['done', 'done', 'done', 'cur']);
+  assert.deepEqual(ch({cat: 'test'}, []).map(s => s[2]), ['done', 'done', 'done', 'later']);
+  assert.deepEqual(ch({cat: 'todo'}, []).map(s => s[2]), ['cur', 'later', 'later', 'later']);
+  assert.deepEqual(WITH("Object.assign(ACTIONS, {impl: false, fix_pr: false, fix: false, mep_pr: false})", `tkChain({cat: 'review'}, [])`), []); // une seule étape : pas de bandeau
+});
+
+test('#86 agent déjà dessus : son run en cours sur ce ticket ou cette PR grise le bouton, avec l\'heure', () => {
+  const busy = bind => WITH(`chars.find(c => c.key === 'mose').runs.push({status: 'Running', _s: T - 600e3, vars: {'current_task.number': '7', 'current_task.repo': CFG.github_repo}},
+      {status: 'Success', _s: T - 900e3, vars: {jira_ticket_key: 'DM-2'}})`, `!!agentBusy(chars.find(c => c.key === 'mose'), ${JSON.stringify(bind)})`);
+  assert.equal(busy({id: J('CFG.github_repo') + '#7'}), true);
+  assert.equal(busy({id: J('CFG.github_repo') + '#8'}), false);
+  assert.equal(busy({key: 'DM-2'}), false); // fini : plus dessus
+});
+
+test('#86 « Mise en prod » d\'une PR : seulement si un de ses tickets est To Deploy ; sinon grisé avec la raison ; sans ticket, grisé aussi', () => {
+  const mep = (cat, keys) => WITH(`CFG.mep_repos = [CFG.github_repo]; ACTS = {tickets: [{key: 'DM-9'}], prs: [{id: CFG.github_repo + '#7', n: '7'}]};
+      TEAM = {people: [{name: 'Pam', tickets: [{key: 'DM-9', cat: ${JSON.stringify(cat)}, status: ${JSON.stringify(cat === 'deploy' ? 'To Deploy' : 'To Review')}, summary: 'x'}], prs: []}], unassigned: [], other_prs: []}`,
+    `(() => { const calls = [], lb = launchBlock; launchBlock = (box, o) => calls.push([o.action, o.off || null]);
+      try { prLaunch({appendChild() {}}, {n: 7, repo: CFG.github_repo, review: 'approved', keys: ${JSON.stringify(keys)}}); } finally { launchBlock = lb; }
+      return calls.filter(c => c[0] === 'bureau-meppr'); })()`);
+  assert.deepEqual(mep('deploy', ['DM-9']).map(c => c[1] === null || /Gel/.test(c[1])), [true]); // prêt (grisé seulement les jours de gel)
+  assert.deepEqual(mep('review', ['DM-9']), [['bureau-meppr', 'Quand le ticket sera en To Deploy (aujourd\'hui : To Review)']]);
+  assert.match(mep('review', [])[0][1], /^Pas de ticket Jira : pas de mise en prod sans ticket en To Deploy$/);
 });
