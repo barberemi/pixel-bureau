@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- Fiche Courrier : un mail plus ancien qu'hier montre sa date (« jeudi 24 sept. 10:13 ») et plus seulement le jour de la semaine.
 - Mise en prod d'une PR en simulation : le ticket n'est plus passé au statut de fin ni commenté par le retour IA (nouvelle étape `dry_guard` après la gate de fin) ; avant, approuver la gate de fin d'une simulation écrivait dans Jira.
 - Mise en prod d'une PR : l'annonce Teams part après le rebase (un conflit n'annonce plus rien), et une étape en échec passe bien la carte en ❌ avec la raison dans le fil (les renvois attendaient un signal que Kronn n'émet pas).
 

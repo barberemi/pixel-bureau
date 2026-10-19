@@ -158,3 +158,11 @@ test('porteur : son mail lu, il repart par la porte au lieu de disparaître sur 
   assert.deepEqual(J(`[byKey.g_david._st.st, byKey.g_david.present, byKey.g_david.target && byKey.g_david.target.key]`), ['off', true, 'exit']);
   assert.equal(J(`!!walksOut({}, {st: 'off'})`), false, 'un collègue « off » ne marche pas vers la sortie');
 });
+
+test('heure d\'un mail : l\'heure seule le jour même, « hier » la veille, sinon jour de la semaine avec sa date', () => {
+  run(`T = Date.parse('2026-10-01T12:00:00+02:00');`);
+  assert.equal(J(`mailWhen('2026-10-01T08:42:00Z')`), '10:42');
+  assert.equal(J(`mailWhen('2026-09-30T08:13:00Z')`), 'hier 10:13');
+  assert.equal(J(`mailWhen('2026-09-24T08:13:00Z')`), 'jeudi 24 sept. 10:13');
+  assert.equal(J(`mailWhen('')`), '');
+});
