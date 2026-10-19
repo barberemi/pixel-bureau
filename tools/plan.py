@@ -65,7 +65,7 @@ def cmd_check(path, as_json):
 
 def cast(cfg):
     """Équipe (profil et personnes ajoutées) puis agents de l'installation ({key, name, seat?})."""
-    return assemble.roster(cfg) + [dict(a, name=a["name"] + " (agent)") for a in cfg.get("agents") or []]
+    return assemble.roster(cfg) + [dict(a, name=a["name"] + " (agent)") for a in assemble.merged(cfg).get("agents") or []]
 
 
 def cmd_seats(path):

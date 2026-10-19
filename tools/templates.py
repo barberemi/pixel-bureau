@@ -87,6 +87,7 @@ def script_code(path, cfg):
     """Le script tel qu'il tourne dans Kronn (« python3 -c », sans fichier voisin) : workflows/_lib.py et _plan.py
     recopiés à la place de leur ligne « from _lib import … », puis la config d'installation injectée à la place de
     __BUREAU_CONFIG__."""
+    cfg = assemble.merged(cfg)  # réglages d'équipe du pack (#32) : les scripts n'ont pas accès au pack
     code = Path(os.path.join(ROOT, path)).read_text()
 
     def lib(m):
@@ -94,7 +95,8 @@ def script_code(path, cfg):
         assert "@@" not in body and "{{" not in body, m.group(1) + ".py : ni @@ ni {{ (Kronn rendrait ses propres variables)"
         return body
     code = LIB_IMPORT.sub(lib, code)
-    c = {k: v for k, v in cfg.items() if not k.startswith("_")}
+    # clés de premier niveau triées : même script, que les réglages d'équipe soient dans la config ou dans le pack (#32)
+    c = {k: v for k, v in sorted(cfg.items()) if not k.startswith("_")}
     c.update(gitfut=assemble.gitfut(cfg), wiki_posters=assemble.wiki_posters(cfg),  # déduits du roster (scripts sans accès au dépôt)
              planning_names=assemble.planning_names(cfg),  # noms complets du roster, pour le planning des absences
              root=ROOT)  # dossier du dépôt : son venv (Pillow) pour réduire les images
@@ -118,6 +120,7 @@ def role_ids(role, cfg):
 
 def values(cfg):
     """Valeur de chaque emplacement pour une installation."""
+    cfg = assemble.merged(cfg)
     j = cfg.get("jira") or {}
     return {
         "page_id": cfg.get("page_id") or "",
@@ -151,6 +154,7 @@ def skipped(key, cfg):
     """Workflows du Bureau qu'une installation ne crée pas faute de connexion : commenter un ticket sans Jira, les
     absences sans planning Microsoft 365 (microsoft.config_id et microsoft.planning dans la config), le courrier sans
     compte (mail.accounts)."""
+    cfg = assemble.merged(cfg)  # planning des absences : dans le pack (#32)
     if key == "comment":
         return not (cfg.get("jira") or {}).get("config_id")
     if key == "absences":
@@ -185,6 +189,7 @@ def _sub(v, vals, cfg):
 
 def render(tpl, cfg):
     """Modèle + config d'installation -> définition prête pour l'API Kronn (sans ids)."""
+    cfg = assemble.merged(cfg)  # réglages d'équipe du pack sous la config (#32)
     d = copy.deepcopy(tpl["definition"])
     if tpl["kind"] == "workflow":
         has_jira = bool((cfg.get("jira") or {}).get("config_id"))

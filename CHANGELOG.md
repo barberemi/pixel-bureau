@@ -11,6 +11,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 - Remettre une PR à jour depuis sa fiche (« ⟳ Remettre à jour ») : rebase sur sa base sans squash, push protégé, label de CI reposé ; en cas de conflit, un agent IA le résout, la commande de contrôle du dépôt tourne et tu valides avant tout push (`actions.rebase`, `github.ci_labels`, `github.checks`). La fiche d'une PR montre son état : conflit avec sa base, commits de retard ou à jour ; dans « Ses PR ouvertes », le numéro ouvre la fiche de la PR (« ↗ » pour GitHub) et chaque ligne montre conflit, retard et fils non résolus (#74).
 - « 🛠 Corriger » sur toute PR qui a des fils de review non résolus, quel que soit son dépôt : Nate corrige les fils actionnables (tests compris), prépare une réponse par fil, et tu valides le diff et les réponses avant le push, les réponses et la résolution des fils corrigés (`actions.fix_pr`, ne remplace pas ton workflow de `launch.fix`) (#75).
 
+- Réglages d'équipe dans le pack (`settings.json`) : rythme, GitFut, affiches du Top 3, planning des absences et personnages des agents, lus à chaque publication et surchargeables par la config ; l'installateur rattache chaque personnage à un de tes workflows (`--rattacher` pour le refaire) ; `tools/split.py` découpe une config existante sans changer la page ni les workflows (#32).
+
 ### Modifié
 
 - Page plus légère : à l'assemblage, les appels `document.createElement` et `document.getElementById` répétés passent par un alias court (4,5 Ko).

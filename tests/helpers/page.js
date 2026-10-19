@@ -29,7 +29,25 @@ function themes(cfg = {}) {
   if (d) add(path.join(d, 'themes'));
   return out;
 }
+// réglages d'équipe du pack (settings.json) sous la config, comme merged() de tools/assemble.py (#32)
+const AGENT_FIELDS = ['key', 'name', 'role', 'wf', 'seat', 'sprite'];
+function merged(cfg) {
+  const d = teamDir(cfg), f = d && path.join(d, 'settings.json');
+  if (!f || !fs.existsSync(f)) return cfg;
+  const s = JSON.parse(fs.readFileSync(f, 'utf8')), out = {...cfg};
+  if (s.rhythm) out.rhythm = {...s.rhythm, ...(cfg.rhythm || {})};
+  for (const k of ['gitfut', 'wiki_posters']) if (k in s && !(k in cfg)) out[k] = s[k];
+  if (Array.isArray(s.agents)) {
+    const personas = Object.fromEntries(s.agents.filter(a => a && a.key).map(a => { const {wf, ...p} = a; return [a.key, p]; }));
+    out.agents = (cfg.agents || []).map(b => {
+      const a = {...(personas[b.key] || {}), ...b};
+      return {...Object.fromEntries(AGENT_FIELDS.filter(k => k in a).map(k => [k, a[k]])), ...Object.fromEntries(Object.entries(a).filter(([k]) => !AGENT_FIELDS.includes(k)))};
+    });
+  }
+  return out;
+}
 function pageConfig(cfg) {
+  cfg = merged(cfg);
   return {kronn_ui: (cfg.kronn || {}).ui, jira_site: (cfg.jira || {}).site, jira_flow: {triage_from: 'Proposed', test: 'To Test', validated: 'To Deploy', reopened: 'Reopen', ...((cfg.jira || {}).flow || {})}, github_repo: (cfg.github || {}).repo,
     fix_any_repo: !!((((cfg.launch || {}).fix || {}).vars || {}).repo), // comme page_config() : Corriger prend le dépôt (#56)
     rhythm: cfg.rhythm || {}, mep_workflow: cfg.mep_workflow, workflows: cfg.workflows || {}, agents: cfg.agents || [], ui: cfg.ui || {}, skins: themes(cfg),

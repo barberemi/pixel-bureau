@@ -520,30 +520,88 @@ def mail(ask, previous, team_defaults=None):
             **({"messengers": pack} if pack and not previous.get("messengers") else {})}
 
 
-def my_agents(ask, k, previous, bureau):
-    """bureau : ids et noms des workflows du Bureau (config, réutilisés, modèles) : jamais des agents."""
+def _words(s):
+    s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode().lower()
+    return {w for w in re.findall(r"[a-z0-9]+", s) if len(w) > 2}
+
+
+def persona_guess(persona, wfs):
+    """Workflow le plus proche d'un personnage du pack : son nom ou son métier dans le nom du workflow ; None sinon."""
+    want = _words(persona.get("role")) | _words(persona.get("name"))
+    best = max(wfs, key=lambda w: len(want & _words(w.get("name"))), default=None)
+    return best if best and want & _words(best.get("name")) else None
+
+
+def pack_agents(ask, wfs, personas, previous):
+    """Rattache chaque personnage du pack (settings.json, #32) à un workflow du Kronn de l'installation : celui d'avant
+    s'il y est, sinon le plus proche par son nom, sinon aucun (le personnage n'apparaît pas). Renvoie (rattachements
+    {key, wf} pour la config, workflows restés libres)."""
+    prev = {a.get("key"): a for a in previous or [] if a.get("key")}
+    full = {w["id"][:8]: w for w in wfs}
+    out, used = [], set()
+    if ask.answers is None and personas:
+        say("\nLes agents de ton équipe (pack) : à quel workflow de ton Kronn rattacher chacun ?")
+    for pa in personas:
+        old = [x for x in (prev.get(pa["key"]) or {}).get("wf") or [] if x in full]
+        free = [w for w in wfs if w["id"][:8] not in used]
+        guess = persona_guess(pa, free)
+        opts = ([("keep", "Garder : " + ", ".join(full[x]["name"] for x in old))] if old else []) \
+            + [(w["id"][:8], w["name"]) for w in free] + [("", "Aucun : pas cet agent ici")]
+        pick = ask.choice(f"agent_{pa['key']}", f"{pa.get('name')} ({pa.get('role') or 'agent'})", opts,
+                          "keep" if old else guess["id"][:8] if guess else "")
+        wf = old if pick == "keep" else [pick] if pick else []
+        if wf:
+            out.append({"key": pa["key"], "wf": wf})
+            used |= set(wf)
+    return out, [w for w in wfs if w["id"][:8] not in used]
+
+
+def my_agents(ask, k, previous, bureau, personas=None):
+    """bureau : ids et noms des workflows du Bureau (config, réutilisés, modèles) : jamais des agents.
+    personas : personnages d'agents du pack (settings.json, #32), rattachés d'abord ; les workflows restés libres
+    deviennent des agents neufs, comme sans pack."""
     wfs = [w for w in k.get("/workflows") if w.get("id") not in bureau and w.get("name") not in bureau and w.get("enabled", True)]
     if not wfs:
         return [], None
-    mode = ask.choice("agents", "Tes agents : un personnage de The Office pour chacun de tes workflows",
-                      [("auto", f"Oui, attribuer automatiquement ({min(len(wfs), len(OFFICE))} personnages)"),
+    bound = []
+    if personas:
+        bound, wfs = pack_agents(ask, wfs, personas, previous)
+        taken = {a["key"] for a in personas}
+        previous = [a for a in previous or [] if a.get("key") not in taken]
+        if not wfs:
+            return bound, None
+    office = [o for o in OFFICE if o[0] not in {a["key"] for a in personas or []}]
+    mode = ask.choice("agents", "Tes " + ("autres " if bound else "") + "agents : un personnage de The Office pour chacun de tes workflows",
+                      [("auto", f"Oui, attribuer automatiquement ({min(len(wfs), len(office))} personnages)"),
                        ("keep", "Garder ceux de ma config actuelle"), ("none", "Non, des intérimaires suffisent")],
                       "keep" if previous else "auto")
     if mode == "keep":
-        return previous or [], None
+        return bound + (previous or []), None
     if mode == "none":
-        return [], None
+        return bound, None
     def last(w):  # les plus actifs d'abord : date du dernier run
         lr = w.get("last_run")
         return str((lr or {}).get("started_at") or (lr or {}).get("finished_at") or "") if isinstance(lr, dict) else str(lr or "")
-    picked = sorted(wfs, key=last, reverse=True)[:len(OFFICE)]
-    agents = [{"key": OFFICE[i][0], "name": OFFICE[i][1], "role": re.sub(r"\s+", " ", w["name"])[:40], "wf": [w["id"][:8]]}
+    picked = sorted(wfs, key=last, reverse=True)[:len(office)]
+    agents = [{"key": office[i][0], "name": office[i][1], "role": re.sub(r"\s+", " ", w["name"])[:40], "wf": [w["id"][:8]]}
               for i, w in enumerate(picked)]  # leur place : celle que le plan leur donne
     for a in agents:
         say(f"  {a['name']:9} → {a['role']}")
     mep = ask.choice("mep_workflow", "Un de ces workflows pilote-t-il les mises en prod (scène MEP sur le plan) ?",
                      [("", "Non")] + [(w["id"][:8], w["name"]) for w in picked], "")
-    return agents, mep or None
+    return bound + agents, mep or None
+
+
+def rhythm_of(old, defaults, team_settings):
+    """Clé rhythm de la config : celle des valeurs proposées sans réglages d'équipe dans le pack ; avec eux (#32), ce que
+    le pack ne dit pas (valeurs proposées) et les valeurs de l'ancienne config qui diffèrent du pack (une surcharge de
+    l'installation) ; rien si le pack dit tout."""
+    pack = team_settings.get("rhythm")
+    if pack is None:
+        return {"rhythm": defaults["rhythm"]}
+    mine = {**{k_: v for k_, v in defaults["rhythm"].items() if k_ not in pack},
+            **{k_: v for k_, v in (old.get("rhythm") or {}).items() if pack.get(k_) != v}}
+    return {"rhythm": mine} if mine else {}
 
 
 def reuse(ask, k, ids, tpls, with_ask, page_id):
@@ -701,6 +759,31 @@ def upsert_all(k, cfg, tpls, enabled, dry):
                 say(f"✓ {key:9} {ident[:8]}" + ("" if kind != "workflow" or key not in CRONS or enabled else " (désactivé)"))
 
 
+def rebind(ask, old, a):
+    """--rattacher : agents (personnages du pack et autres) et pages de l'écran du boss seulement, puis la config écrite
+    et la page republiée. Le reste de l'installation ne bouge pas."""
+    if not old.get("page_id") or not (old.get("kronn") or {}).get("api"):
+        raise InstallError("pas encore installé : lance d'abord python3 tools/install.py")
+    k = Kronn(old["kronn"]["api"])
+    ids = {(old.get(sec) or {}).get(field) for _, (_, (sec, field), _) in templates.TEMPLATES.items()}
+    bureau = {v for v in ids if v} | {t["definition"]["name"] for t in templates.load_templates().values()}
+    agents, mep = my_agents(ask, k, old.get("agents"), bureau, assemble.pack_settings(old).get("agents"))
+    screens = boss_pages(ask, k, old.get("boss_pages"), old.get("page_id"))
+    cfg = {**old, "agents": agents, "boss_pages": screens, **({"mep_workflow": mep} if mep else {})}
+    say(f"\n  Agents : {len(agents)} · écran du boss : {len(screens)} page(s)")
+    if not ask.yes("confirm", "Écrire la config et republier la page ?"):
+        say("Rien n'a été fait.")
+        return 1
+    if a.dry_run:
+        say(json.dumps({"agents": agents, "boss_pages": screens}, ensure_ascii=False, indent=1)[:2500])
+        return 0
+    jdump(cfg, a.config)
+    html = assemble.build(demo=False, cfg=cfg)
+    k.call("PUT", f"/pages/{cfg['page_id']}/html", {"html": html})
+    say(f"✓ config écrite, page republiée ({len(html.encode()) // 1024} Ko)")
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", default=os.path.join(ROOT, "bureau.config.json"))
@@ -709,12 +792,16 @@ def main(argv=None):
     ap.add_argument("--disabled", action="store_true", help="crons créés désactivés")
     ap.add_argument("--title", help="titre de la page (défaut : team/defaults.json, ou celui du profil d'équipe)")
     ap.add_argument("--no-run", action="store_true", help="ne pas lancer le premier rafraîchissement")
+    ap.add_argument("--rattacher", action="store_true",
+                    help="refaire seulement le rattachement des agents à tes workflows et les pages de l'écran du boss (#32)")
     a = ap.parse_args(argv)
 
     old = jload(a.config) if os.path.exists(a.config) else {}
     previous = old.get("_answers") or {}
     ask = Asker(jload(a.answers) if a.answers else None, previous)
     tpls = templates.load_templates()
+    if a.rattacher:
+        return rebind(ask, old, a)
 
     say("— Le Bureau : installation —")
     k, kronn = check_kronn(ask, assemble.defaults({}))
@@ -742,7 +829,8 @@ def main(argv=None):
     tpl_ids, own = reuse(ask, k, tpl_ids, tpls, bool(ai), old.get("page_id"))
     own |= set(old.get("own") or []) & set(tpl_ids.values())
     bureau = {v for v in tpl_ids.values() if v} | {t["definition"]["name"] for t in tpls.values()}
-    agents, mep = my_agents(ask, k, old.get("agents"), bureau)
+    team_settings = assemble.pack_settings({"team": team_id})  # réglages d'équipe du pack (#32)
+    agents, mep = my_agents(ask, k, old.get("agents"), bureau, team_settings.get("agents"))
     screens = boss_pages(ask, k, old.get("boss_pages"), old.get("page_id"))
     courrier = mail(ask, old.get("mail"), defaults)
     me =next(p for p in roster_doc["people"] + people if p["key"] == owner)
@@ -751,11 +839,13 @@ def main(argv=None):
 
     cfg = {"_doc": "Propre à cette installation, jamais partagé. Créé par tools/install.py (relançable).",
            "owner": owner, "team": team_id, "people": people, "layout": layout_file, "kronn": kronn, "page_id": old.get("page_id"), "workflows": {}, "actions": {},
-           "own": sorted(own), "jira": j, "github": g, "rhythm": defaults["rhythm"],
+           "own": sorted(own), "jira": j, "github": g, **rhythm_of(old, defaults, team_settings),
            "mep_workflow": mep, "agents": agents, "boss_pages": screens, **({"mail": courrier} if courrier else {}), "ui": {**(defaults.get("ui") or {}), **(old.get("ui") or {})}, "music": old.get("music") or {},
            "_ai_agent": ai, **({"protect": True} if old.get("protect") else {})}
     # réglages posés à la main dans la config (gitfut, wiki_posters, chrome…) : gardés tels quels à la relance
-    cfg = {**{k_: v for k_, v in old.items() if not k_.startswith("_") and k_ not in cfg and k_ != "mail"}, **cfg}
+    # (sauf rhythm quand le pack le porte : seule la surcharge calculée par rhythm_of reste, #32)
+    cfg = {**{k_: v for k_, v in old.items() if not k_.startswith("_") and k_ not in cfg and k_ != "mail"
+              and not (k_ == "rhythm" and "rhythm" in team_settings)}, **cfg}
     for key, (_, (sec, field), _) in templates.TEMPLATES.items():
         if tpl_ids.get(key):
             cfg[sec][field] = tpl_ids[key]
