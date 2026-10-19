@@ -388,13 +388,24 @@ def others(st):
     return f"PR du ticket {st['ticket']} :\n" + "\n".join(lines)
 
 
+def dry_guard(p, n, forced, run_id, dry):
+    """Après la gate de fin : en simulation, sort en 9 (renvoi vers done) pour sauter le retour IA et le statut de fin,
+    seules étapes qui écrivent dans Jira ; sinon continue."""
+    st = load(run_id)
+    if dry == "oui":
+        fail(9, f"Simulation : {st.get('ticket', 'le ticket')} ni commenté (retour IA) ni passé au statut de fin.")
+    print(f"{st.get('ticket', 'Le ticket')} : retour IA puis statut de fin.")
+
+
 def end(p, n, forced, run_id, dry):
     st = load(run_id)
-    print(f"{st.get('ticket', 'Le ticket')} reste en l'état (pas encore terminé) : MEP de {st.get('short')}#{st.get('pr')} réussie.")
+    what = "simulation de la MEP" if dry == "oui" else "MEP"
+    print(f"Fin : {what} de {st.get('short')}#{st.get('pr')} réussie ; {st.get('ticket', 'le ticket')} n'a pas été touché par cette étape.")
 
 
 STEPS = {"resolve": resolve, "tag": tag, "rebase": rebase, "citest": citest, "merge": merge, "release": release,
-         "staging": deploy("staging"), "prod": deploy("prod"), "done": end, "teams_post": teams_post, "teams_failed": teams_failed}
+         "staging": deploy("staging"), "prod": deploy("prod"), "done": end, "dry_guard": dry_guard,
+         "teams_post": teams_post, "teams_failed": teams_failed}
 
 if __name__ == "__main__":
     step, name, n, forced, run_id, dry = (sys.argv[1:] + [""] * 6)[:6]
@@ -408,7 +419,7 @@ if __name__ == "__main__":
         except RuntimeError as e:  # une commande gh ou git a échoué hors des cas prévus
             fail(1, str(e))
     except SystemExit as e:  # échec : étape et raison gardées pour teams_failed (#59)
-        if e.code and step != "teams_failed":
+        if e.code and step not in ("teams_failed", "dry_guard"):  # dry_guard : renvoi voulu, pas un échec
             st = load(run_id)
             st["error"] = {"step": step, "msg": LAST[0][:300]}
             save(run_id, st)

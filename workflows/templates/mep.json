@@ -472,9 +472,45 @@
     "output_format": {
      "type": "FreeText"
     },
-    "gate_message": "## ✅ {{project}}#{{pr_number}} en prod · le ticket est-il terminé ?\n\n{{steps.prod.data.stdout}}\n\n**Approuver** : ticket terminé (retour IA, puis statut de fin). **Changements** : pas encore, le ticket reste en l'état et le run finit en succès. _Rejeter ferait finir le run en échec alors que la mise en prod a réussi._",
+    "gate_message": "## ✅ {{project}}#{{pr_number}} en prod · le ticket est-il terminé ?\n\n{{steps.prod.data.stdout}}\n\n**Approuver** : ticket terminé (retour IA, puis statut de fin ; en simulation, rien n'est écrit dans Jira). **Changements** : pas encore, le ticket reste en l'état et le run finit en succès. _Rejeter ferait finir le run en échec alors que la mise en prod a réussi._",
     "gate_request_changes_target": "done",
     "_requires": "jira"
+   },
+   {
+    "name": "dry_guard",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Simulation : saute le retour IA et le statut de fin (rien n'est écrit dans Jira), vers done. Sinon, continue.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mep.py@@",
+     "dry_guard",
+     "{{project}}",
+     "{{pr_number}}",
+     "{{jira_ticket_key}}",
+     "{{run.id}}",
+     "{{dry_run}}"
+    ],
+    "exec_timeout_secs": 30,
+    "on_result": [
+     {
+      "contains": "exit_9",
+      "action": {
+       "type": "Goto",
+       "step_name": "done"
+      }
+     }
+    ]
    },
    {
     "name": "ai_feedback",
