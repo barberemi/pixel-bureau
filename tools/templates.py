@@ -68,7 +68,8 @@ TEMPLATES = {
     "ask": ("quick_prompt", ("actions", "ask"), {}),
     "sketch": ("quick_prompt", ("actions", "sketch"), {}),
 }
-WF_KEYS = ("name", "project_id", "trigger", "variables", "steps", "actions", "safety", "workspace_config", "concurrency_limit", "exec_allowlist")
+WF_KEYS = ("name", "project_id", "trigger", "variables", "steps", "actions", "safety", "workspace_config", "concurrency_limit", "exec_allowlist",
+           "guards")  # garde-fous du run (délai, appels IA) : gardés par Kronn, comparés seulement quand ils sont posés
 QP_KEYS = ("name", "icon", "prompt_template", "variables", "agent", "project_id", "skill_ids", "profile_ids", "directive_ids", "tier", "description")
 TOKEN = re.compile(r"@@([a-z_.]+|(?:script|text):[\w/.]+)@@")
 TEXTS = ("tools/plan_prompt.md", "tools/mail_rules_prompt.md", "tools/rebase_prompt.md", "tools/fix_prompt.md", "tools/review_rubric.md")
@@ -291,7 +292,8 @@ def fetch(kind, ident, cfg):
 def clean(kind, live):
     """Définition comparable : sans ids, dates, état ; étapes sans leur id."""
     keys = WF_KEYS if kind == "workflow" else QP_KEYS
-    d = {k: copy.deepcopy(live.get(k)) for k in keys if k != "variables" or live.get(k) or kind != "workflow"}  # Kronn omet une liste vide
+    # Kronn omet une liste de variables vide ; des garde-fous absents (null) ne sont pas un champ du modèle
+    d = {k: copy.deepcopy(live.get(k)) for k in keys if k not in ("variables", "guards") or live.get(k) or kind != "workflow"}
     if kind == "workflow":
         for s in d["steps"]:
             s.pop("id", None)

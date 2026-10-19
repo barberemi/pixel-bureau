@@ -34,6 +34,15 @@ class TemplatesTest(unittest.TestCase):
             text = json.dumps(t)
             self.assertFalse(own & set(UUID.findall(text)), f"{key} contient un id de l'installation de référence")
 
+    def test_check_compares_the_run_guards(self):
+        """templates.py check : les garde-fous d'un workflow (guards, posés par le modèle de mise en prod) font partie de
+        la comparaison ; absents (null chez Kronn), ils ne comptent pas (sinon le check signalait un écart à tort)."""
+        live = {"name": "x", "steps": [{"id": "s1", "name": "a"}], "guards": {"timeout_seconds": 14400}, "variables": []}
+        self.assertEqual(templates.clean("workflow", live)["guards"], {"timeout_seconds": 14400})
+        self.assertNotIn("guards", templates.clean("workflow", {**live, "guards": None}))
+        mep = templates.render(TPL["mep"], colleague())
+        self.assertEqual(templates.clean("workflow", {**mep, "steps": [dict(s, id="i") for s in mep["steps"]]})["guards"], mep["guards"])
+
     def test_workflows_never_take_the_main_checkout_lock(self):
         """Les scripts du Bureau n'écrivent que dans ~/.cache et des dossiers temporaires : chaque workflow le déclare
         (main_tree_read_only), sinon Kronn le fait attendre le dossier du projet et le refuse au-delà de 60 s quand
