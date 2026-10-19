@@ -57,6 +57,10 @@ Quand un ticket entre dans le sprint après son démarrage (il n'était pas au s
 
 ![La soucoupe-mère a déposé la facilitatrice devant le mur Kanban avec DM-7931 : +13 pts et la bulle d'annonce](../img/vaisseau-mere.png)
 
+Tous les jours ouvrés vers 16h, un invité peut passer offrir le café à l'équipe (Kevin dans la démo). Il entre par la porte et va directement à la machine à café, avec toujours la même réplique (« ☕ Dunder Mifflin, c'est ma meilleure équipe aujourd'hui ! ») ; la loupe s'ouvre sur ce moment. Puis il apporte un café à chaque personne présente au bureau, le boss compris, où qu'elle soit : il se place derrière elle, tourné vers elle, jamais sur un bureau ; le boss, à gauche de son bureau. Ceux qui sont en télétravail ou absents n'en ont pas. Chacun garde sa tasse posée côté écran jusqu'à 17h. Dans le fil, une ligne à son arrivée : « ☕ Kevin apporte le café à sa meilleure équipe de la journée ». Réglages de l'invité (`on: "coffee"`, heure, réplique, ligne du fil) : [guide du développement](../developpement.md).
+
+![Kevin apporte son café au boss, à gauche de son bureau ; les autres ont déjà leur tasse](../img/tournee-cafe.png)
+
 Gandalf et Yoda viennent dans tous les bureaux, quelle que soit l'équipe (`team/guests.json`). Pour les retirer : `"common_guests": false` dans `bureau.config.json` ; pour en changer le nom, la réplique ou l'allure : un invité de même clé (`g_gandalf`, `g_yoda`) dans le roster de l'équipe ou dans la config.
 
 D'autres changements de colonne se jouent aussi, à l'heure exacte du changement de statut :

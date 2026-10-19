@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
+- Tournée de café : un invité `on: "coffee"` passe tous les jours ouvrés vers 16h, va à la machine à café (sa réplique, loupe), puis apporte un café à chaque présent au bureau, le boss compris, en se plaçant derrière chacun ; les tasses restent côté écran jusqu'à 17h ; une ligne dans le fil à son arrivée (#84).
 - Remettre une PR à jour depuis sa fiche (« ⟳ Remettre à jour ») : rebase sur sa base sans squash, push protégé, label de CI reposé ; en cas de conflit, un agent IA le résout, la commande de contrôle du dépôt tourne et tu valides avant tout push (`actions.rebase`, `github.ci_labels`, `github.checks`). La fiche d'une PR montre son état : conflit avec sa base, commits de retard ou à jour ; dans « Ses PR ouvertes », le numéro ouvre la fiche de la PR (« ↗ » pour GitHub) et chaque ligne montre conflit, retard et fils non résolus (#74).
 - « 🛠 Corriger » sur toute PR qui a des fils de review non résolus, quel que soit son dépôt : Nate corrige les fils actionnables (tests compris), prépare une réponse par fil, et tu valides le diff et les réponses avant le push, les réponses et la résolution des fils corrigés (`actions.fix_pr`, ne remplace pas ton workflow de `launch.fix`) (#75).
 

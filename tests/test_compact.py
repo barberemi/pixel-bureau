@@ -106,5 +106,16 @@ class CompactTest(unittest.TestCase):
         self.assertEqual(out.getvalue().strip(), "poids : JS 300 Ko (30 %) · CSS 50 Ko (5 %)")  # du plus lourd, sans bloc vide
 
 
+    def test_size_limit_applies_to_the_published_page(self):
+        """La limite de Kronn vaut pour la page publiée (sans démo) : l'aperçu d'un pack avec la démo peut la dépasser (#84)."""
+        import smoke, contextlib, io
+        cfg = assemble.demo_config()
+        html = assemble.build(demo=True, cfg=cfg)
+        for published, ok in ((900_000, True), (1_000_001, False)):
+            smoke.fails.clear()
+            with contextlib.redirect_stdout(io.StringIO()):
+                smoke.static_checks(html + " " * 200_000, cfg, published)
+            self.assertEqual(not [f for f in smoke.fails if "taille" in f], ok, smoke.fails)
+
 if __name__ == "__main__":
     unittest.main()

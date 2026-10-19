@@ -45,7 +45,7 @@ test('les deux vues concordent : un même jeton donne la même couleur sur le ca
 
 test('chaque état posé par la page a sa couleur, sauf ceux qui gardent volontairement la couleur par défaut', () => {
   // sans anneau sur le plan, pastille var(--idle) en HTML : leur donner une couleur changerait le rendu
-  const sansCouleur = new Set(['duck', 'hatch', 'off', 'passion', 'proud', 'trophy', 'ufo']); // duck, hatch, trophy, ufo : pseudo-personnages de la loupe
+  const sansCouleur = new Set(['duck', 'hatch', 'off', 'passion', 'proud', 'trophy', 'ufo', 'brew', 'serve']); // duck, hatch, trophy, ufo : pseudo-personnages de la loupe ; brew, serve : la tournée de café, couleur des invités
   const states = new Set(jsFiles.flatMap(f => [...fs.readFileSync(path.join(SRC, f), 'utf8').matchAll(/\bst:'([a-z]+)'/g)].map(m => m[1])));
   for (const st of states) assert.ok(st in t.css || sansCouleur.has(st), `état sans couleur : ${st}`);
   for (const st of sansCouleur) assert.ok(!(st in t.css), `${st} a maintenant une couleur : le retirer de la liste`);
