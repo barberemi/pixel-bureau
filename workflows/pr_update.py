@@ -1,4 +1,6 @@
-"""Remettre une PR à jour de sa base (#74, page action « bureau-rebase ») : rebase sans squash, push protégé, CI relancée.
+"""PR depuis le Bureau : la remettre à jour de sa base (#74) et corriger ses commentaires de review (#75).
+
+Remettre à jour (page action « bureau-rebase ») : rebase sans squash, push protégé, CI relancée.
 
 Sous-commandes (python3 pr_update.py <étape> <dépôt owner/name> <n° de PR> <id du run>) :
   prepare  PR ouverte et pas d'un fork ; copie du dépôt sous ~/.cache/pixel-bureau/pr/repos (clone partiel, gardé), puis
@@ -12,7 +14,12 @@ Sous-commandes (python3 pr_update.py <étape> <dépôt owner/name> <n° de PR> <
            retiré. Rien de nouveau : rien poussé.
   done     fin du chemin sans conflit (message seulement).
   abort    rebase abandonné et dossier de travail retiré : rien poussé.
-Codes : 2 réglage ou PR refusés, 3 conflit (renvoi), 4 conflit non résolu, 5 push refusé, 1 autre échec.
+Corriger les commentaires d'une PR (#75, page action « bureau-fixpr ») :
+  fix_prepare  fils de review non résolus (aucun : code 9, renvoi vers la fin), dossier de travail, dépendances reliées
+               depuis ton dossier local du dépôt, contexte de l'agent (.bureau-fix.json, jamais commité).
+  fix_diff     après l'agent : fichiers changés, diff et réponse prévue à chaque fil, pour la validation (rien : code 9).
+  fix_push     validé : commit, push protégé, une réponse dans chaque fil (résolu s'il est corrigé), CI relancée.
+Codes : 2 réglage ou PR refusés, 3 conflit (renvoi), 4 conflit non résolu, 5 push refusé, 9 rien à faire (renvoi), 1 autre échec.
 """
 import glob, json, os, re, shutil, subprocess, sys, time
 from _lib import CFG, get, read_json, write_json
@@ -102,7 +109,8 @@ def prune(clone):
     subprocess.run(["git", "-C", clone, "worktree", "prune"], capture_output=True)
 
 
-def prepare(repo, n, run_id):
+def setup(repo, n, run_id):
+    """PR ouverte et pas d'un fork, copie du dépôt en cache, dossier de travail de ce run ; l'état du run."""
     if not re.fullmatch(r"[\w.-]+/[\w.-]+", repo) or not re.fullmatch(r"\d+", n):
         fail(2, f"PR invalide : « {repo}#{n} ».")
     try:
@@ -125,9 +133,20 @@ def prepare(repo, n, run_id):
     run("git", "worktree", "add", "--detach", work, f"origin/{pr['headRefName']}", cwd=clone)
     st = {"repo": repo, "pr": int(n), "title": pr["title"], "branch": pr["headRefName"], "base": pr["baseRefName"],
           "expected": run("git", "rev-parse", f"origin/{pr['headRefName']}", cwd=clone), "clone": clone, "work": work}
+    common = run("git", "rev-parse", "--git-common-dir", cwd=work)
+    common = common if os.path.isabs(common) else os.path.join(work, common)
+    os.makedirs(os.path.join(common, "info"), exist_ok=True)
+    with open(os.path.join(common, "info", "exclude"), "a", encoding="utf-8") as f:
+        f.write("\n/.bureau-*\n")  # fichiers d'échange avec l'agent (résumé, réponses) : jamais commités
     save(run_id, st)
+    return st
+
+
+def prepare(repo, n, run_id):
+    st = setup(repo, n, run_id)
+    work = st["work"]
     behind = run("git", "rev-list", "--count", f"HEAD..origin/{st['base']}", cwd=work)
-    print(f"{repo}#{n} : {pr['title']}\nBranche {st['branch']} sur {st['base']} : {behind} commit(s) de retard. Dossier de travail : {work}")
+    print(f"{repo}#{n} : {st['title']}\nBranche {st['branch']} sur {st['base']} : {behind} commit(s) de retard. Dossier de travail : {work}")
 
 
 def rebase(repo, n, run_id):
@@ -137,8 +156,7 @@ def rebase(repo, n, run_id):
         print(f"Déjà à jour de {base} : rien à faire.")
         return
     count = run("git", "rev-list", "--count", f"origin/{base}..HEAD", cwd=work)
-    env = dict(os.environ, GIT_EDITOR="true", GIT_COMMITTER_NAME=run("git", "log", "-1", "--format=%cn", cwd=work),
-               GIT_COMMITTER_EMAIL=run("git", "log", "-1", "--format=%ce", cwd=work))
+    env = dict(os.environ, GIT_EDITOR="true")  # auteurs gardés ; committer = l'identité git de la machine, comme un rebase à la main
     r = subprocess.run(["git", "rebase", f"origin/{base}"], cwd=work, capture_output=True, text=True, env=env)
     if r.returncode:
         files = run("git", "diff", "--name-only", "--diff-filter=U", cwd=work, check=False)
@@ -223,12 +241,114 @@ def abort(repo, n, run_id):
     print(f"Rebase abandonné : rien poussé, {repo}#{n} reste en l'état.")
 
 
+# ---------- corriger les commentaires d'une PR (#75, page action « bureau-fixpr ») ----------
+THREADS_Q = ("query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100){nodes{"
+             "id isResolved isOutdated path line comments(first:30){nodes{author{login} body createdAt}}}}}}}")
+
+
+def threads(repo, n):
+    """Fils de review non résolus de la PR : [{id, path, line, outdated, comments: [{author, body}]}]."""
+    owner, name = repo.split("/", 1)
+    raw = run("gh", "api", "graphql", "-f", "query=" + THREADS_Q, "-F", "o=" + owner, "-F", "r=" + name, "-F", "n=" + n)
+    nodes = (((json.loads(raw).get("data") or {}).get("repository") or {}).get("pullRequest") or {}).get("reviewThreads", {}).get("nodes") or []
+    return [{"id": t["id"], "path": t.get("path"), "line": t.get("line"), "outdated": t.get("isOutdated"),
+             "comments": [{"author": (c.get("author") or {}).get("login"), "body": c.get("body")} for c in (t.get("comments") or {}).get("nodes") or []]}
+            for t in nodes if not t.get("isResolved")]
+
+
+def fix_prepare(repo, n, run_id):
+    """Les fils non résolus (aucun : code 9, renvoi vers la fin), le dossier de travail et ses dépendances, le contexte de l'agent."""
+    ts = threads(repo, n)
+    if not ts:
+        fail(9, f"{repo}#{n} : aucun fil de review non résolu, rien à corriger.")
+    st = setup(repo, n, run_id)
+    src = local_checkout(repo)
+    st["linked"] = link_deps(src, st["work"]) if src else []
+    st["threads"] = [t["id"] for t in ts]
+    save(run_id, st)
+    write_json(os.path.join(st["work"], ".bureau-fix.json"), ts)
+    deps = f"dépendances reliées depuis {src}" if src else "sans dépendances (dossier local du dépôt inconnu de Kronn)"
+    print(f"{repo}#{n} : {st['title']}\n{len(ts)} fil(s) de review non résolu(s), branche {st['branch']} ; {deps}.")
+
+
+def replies(st):
+    try:
+        out = read_json(os.path.join(st["work"], ".bureau-fix-replies.json"))
+    except (OSError, ValueError):
+        return []
+    return [r for r in out if isinstance(r, dict) and r.get("thread") in st.get("threads", []) and str(r.get("reply") or "").strip()]
+
+
+def staged(st):
+    """Tout ce que l'agent a changé, sans les liens de dépendances ni les fichiers d'échange : la liste des fichiers."""
+    work = st["work"]
+    run("git", "add", "-A", cwd=work)
+    for rel in st.get("linked") or []:
+        subprocess.run(["git", "reset", "-q", "--", rel], cwd=work, capture_output=True)
+    return run("git", "diff", "--cached", "--name-only", cwd=work).splitlines()
+
+
+def fix_diff(repo, n, run_id):
+    """Ce que la validation montre : fichiers changés, diff tronqué, réponse prévue à chaque fil ; rien du tout : code 9."""
+    st = load(run_id)
+    files, rs = staged(st), replies(st)
+    if not files and not rs:
+        cleanup(st)
+        fail(9, "L'agent n'a rien changé ni rien répondu : rien à pousser.")
+    diff = run("git", "diff", "--cached", "--stat", cwd=st["work"]) + "\n\n" + run("git", "diff", "--cached", "-U2", cwd=st["work"])
+    try:
+        with open(os.path.join(st["work"], ".bureau-fix-summary.md"), encoding="utf-8") as f:
+            summary = f.read().strip()[:1200]
+    except OSError:
+        summary = ""
+    lines = [f"- {'✅' if r.get('fixed') else '💬'} {str(r['reply']).strip()[:240]}" for r in rs]
+    print((summary + "\n\n" if summary else "") + f"**{len(files)} fichier(s) changé(s)**\n```\n{diff[:5000]}\n```\n\n"
+          + f"**Réponses prévues ({len(rs)} sur {len(st.get('threads', []))} fils)**\n" + "\n".join(lines))
+
+
+REPLY_Q = "mutation($t:ID!,$b:String!){addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$t,body:$b}){comment{id}}}"
+RESOLVE_Q = "mutation($t:ID!){resolveReviewThread(input:{threadId:$t}){thread{isResolved}}}"
+
+
+def fix_push(repo, n, run_id):
+    """Validé : commit des corrections, push protégé, une réponse dans chaque fil (résolu s'il est corrigé), CI relancée."""
+    st = load(run_id)
+    work, files = st["work"], staged(st)
+    pushed = ""
+    if files:
+        run("git", "commit", "--no-verify", "-m", f"fix: retours de review de #{n}", cwd=work)
+        r = subprocess.run(["git", "push", "--no-verify", f"--force-with-lease=refs/heads/{st['branch']}:{st['expected']}",
+                            "origin", f"HEAD:refs/heads/{st['branch']}"], cwd=work, capture_output=True, text=True)
+        if r.returncode:
+            fail(5, f"Push refusé : la branche {st['branch']} a bougé depuis le début du run (rien écrasé). {r.stderr.strip()[-200:]}")
+        pushed = f"{len(files)} fichier(s) poussé(s) ({run('git', 'rev-parse', '--short', 'HEAD', cwd=work)}). "
+    done, failed = 0, 0
+    for r in replies(st):
+        ok = subprocess.run(["gh", "api", "graphql", "-f", "query=" + REPLY_Q, "-F", "t=" + r["thread"], "-f", "b=" + str(r["reply"]).strip()[:4000]],
+                            capture_output=True).returncode == 0
+        if ok and r.get("fixed"):
+            subprocess.run(["gh", "api", "graphql", "-f", "query=" + RESOLVE_Q, "-F", "t=" + r["thread"]], capture_output=True)
+        done, failed = done + ok, failed + (not ok)
+    label, ci = ci_label(repo), ""
+    if label and files:
+        subprocess.run(["gh", "pr", "edit", n, "-R", repo, "--remove-label", label], capture_output=True)
+        ok = subprocess.run(["gh", "pr", "edit", n, "-R", repo, "--add-label", label], capture_output=True).returncode == 0
+        ci = f" Label {label} reposé : CI relancée." if ok else f" Label {label} non reposé (relance la CI à la main)."
+    cleanup(st)
+    print(f"{repo}#{n} : {pushed}{done} réponse(s) postée(s){f', {failed} en échec' if failed else ''}.{ci}")
+
+
 def done(repo, n, run_id):
     st = load(run_id)
     print(f"Fin : {repo}#{n} ({st['branch']}) remise à jour de {st['base']}, sans conflit.")
 
 
-STEPS = {"prepare": prepare, "rebase": rebase, "verify": verify, "check": check, "push": push, "done": done, "abort": abort}
+def end(repo, n, run_id):
+    print(f"Fin : {repo}#{n}, rien de plus à faire.")
+
+
+STEPS = {"end": end, "prepare": prepare, "rebase": rebase, "verify": verify, "check": check, "push": push, "done": done, "abort": abort,
+         "fix_prepare": fix_prepare, "fix_diff": fix_diff, "fix_push": fix_push}
 
 if __name__ == "__main__":
     step, repo, n, run_id = (sys.argv[1:] + [""] * 4)[:4]

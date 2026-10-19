@@ -8,7 +8,8 @@ Un autre dépôt illisible ne coupe pas le reste : ses PR manquent et c'est not�
 Releases et déploiements restent ceux du dépôt principal (ses MEP portent ticket et release).
 État de fusion de chaque PR ouverte (#74) : `merge` = mergeStateStatus de GitHub (DIRTY = conflit), `base`, et `behind` =
 commits de la base absents de la PR (comparaison GitHub), gardé dans ~/.cache/pixel-bureau/behind.json tant que ni la
-PR ni sa base ne bougent : une requête par PR seulement quand l'une des deux change.
+PR ni sa base ne bougent : une requête par PR seulement quand l'une des deux change. `threads` (#75) = fils de review non
+résolus de la PR (une requête GraphQL par dépôt), ce que « Corriger » traiterait.
 Sortie (stdout) : {"open": [...], "merged": [...], "releases": [...], "staging": [...], "prod": [...], "errors": [...], "warnings": [...]}
 """
 import json, os, subprocess, sys
@@ -85,10 +86,11 @@ for (key, repo), (rows, err) in res.items():
 BEHIND_CACHE = os.path.expanduser("~/.cache/pixel-bureau/behind.json")
 
 
-def api_text(path):
-    """Une valeur de l'API GitHub (gh api … --jq), None en cas d'échec : le retard est un plus, jamais bloquant."""
+def api_text(path, args=None):
+    """Une valeur de l'API GitHub (gh api <chemin> --jq <filtre>, ou les arguments args), None en cas d'échec : un plus
+    (retard, fils non résolus), jamais bloquant."""
     try:
-        r = subprocess.run(["gh", "api", path[0], "--jq", path[1]], capture_output=True, text=True, timeout=20)
+        r = subprocess.run(["gh", *(args or ["api", path[0], "--jq", path[1]])], capture_output=True, text=True, timeout=20)
         return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
     except (OSError, subprocess.TimeoutExpired):
         return None
@@ -129,12 +131,31 @@ def behind_counts(prs):
     return res
 
 
+THREADS_Q = ("query($o:String!,$r:String!){repository(owner:$o,name:$r){pullRequests(states:OPEN,first:100,"
+             "orderBy:{field:UPDATED_AT,direction:DESC}){nodes{number reviewThreads(first:100){nodes{isResolved}}}}}}")
+
+
+def thread_counts(repo):
+    """Fils de review non résolus de chaque PR ouverte du dépôt ({n: nombre}), une requête GraphQL ; {} en cas d'échec."""
+    owner, name = repo.split("/", 1)
+    raw = api_text(None, ["api", "graphql", "-f", "query=" + THREADS_Q, "-F", "o=" + owner, "-F", "r=" + name, "--jq",
+                          "[.data.repository.pullRequests.nodes[]|[.number,([.reviewThreads.nodes[]|select(.isResolved|not)]|length)]]"])
+    try:
+        return {int(n): c for n, c in json.loads(raw or "[]")}
+    except (ValueError, TypeError):
+        return {}
+
+
 BEHIND = behind_counts(out["open"])
+with ThreadPoolExecutor(max_workers=8) as pool:
+    _repos = sorted({pr["repo"] for pr in out["open"]})
+    THREADS = dict(zip(_repos, pool.map(thread_counts, _repos)))
 for pr in out["open"]:
     pr["merge"] = pr.pop("mergeStateStatus", None) or None
     pr["base"] = pr.pop("baseRefName", None)
     pr.pop("headRefOid", None)
     pr["behind"] = BEHIND.get(f"{pr['repo']}#{pr['number']}")
+    pr["threads"] = THREADS.get(pr["repo"], {}).get(pr["number"])
 for w in warnings:
     print("github : " + w, file=sys.stderr)
 # Kronn coupe la sortie d'une étape Exec à 100 Ko (exec_step.rs) : on ne garde que ce que lit team_shape.py

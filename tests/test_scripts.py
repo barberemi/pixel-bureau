@@ -452,12 +452,14 @@ print(json.dumps(val))
         """#74 : conflit (DIRTY) et commits de retard sur la base ; la comparaison n'est refaite que si la PR ou sa base bougent."""
         pr = dict(self.gh_pr(16, "DM-1 menu"), mergeStateStatus="DIRTY", baseRefName="main", headRefOid="h1")
         pr2 = dict(self.gh_pr(17, "DM-2 pied"), mergeStateStatus="UNKNOWN", baseRefName="main", headRefOid="h2")
-        api = {"repos/acme/web/commits/main": "m1", "repos/acme/web/compare/m1...h1": "0", "repos/acme/web/compare/m1...h2": "4"}
+        api = {"repos/acme/web/commits/main": "m1", "repos/acme/web/compare/m1...h1": "0", "repos/acme/web/compare/m1...h2": "4",
+               "graphql": "[[16, 9]]"}  # #75 : fils de review non résolus, une requête par dépôt
         self.fake_gh({"releases": [], "staging": [], "prod": [], "api": api, "by_repo": {"acme/web": {"open": [pr, pr2], "merged": []}}})
         out = self.run_script("github_snapshot.py", github={"repo": "acme/web"})
         got = {p["number"]: (p["merge"], p["behind"], p["base"]) for p in out["open"]}
         self.assertEqual(got, {16: ("DIRTY", 0, "main"), 17: ("UNKNOWN", 4, "main")})
         self.assertNotIn("headRefOid", out["open"][0])
+        self.assertEqual({p["number"]: p["threads"] for p in out["open"]}, {16: 9, 17: None})
         calls = os.path.join(self.tmp, "gh.json.calls")
         Path(calls).write_text("")
         out = self.run_script("github_snapshot.py", github={"repo": "acme/web"})

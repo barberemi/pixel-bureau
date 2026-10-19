@@ -52,13 +52,16 @@ TEMPLATES = {
     # remettre une PR à jour de sa base (#74) : bouton de la fiche d'une PR, rebase sans squash, conflit résolu par l'IA puis validé
     "rebase": ("workflow", ("actions", "rebase"), {n: "workflows/pr_update.py" for n in ("prepare", "rebase", "push", "done", "verify", "check",
                                                                                           "push_resolved", "abort")}),
+    # corriger les commentaires d'une PR, tout dépôt (#75) : actions.fix_pr, à côté de ton workflow « Corriger » (launch.fix),
+    # jamais réécrit ; quand il existe, le bouton « 🛠 Corriger » des fiches le lance
+    "fix": ("workflow", ("actions", "fix_pr"), {n: "workflows/pr_update.py" for n in ("prepare", "diff", "push", "abort", "end")}),
     "ask": ("quick_prompt", ("actions", "ask"), {}),
     "sketch": ("quick_prompt", ("actions", "sketch"), {}),
 }
 WF_KEYS = ("name", "project_id", "trigger", "variables", "steps", "actions", "safety", "workspace_config", "concurrency_limit", "exec_allowlist")
 QP_KEYS = ("name", "icon", "prompt_template", "variables", "agent", "project_id", "skill_ids", "profile_ids", "directive_ids", "tier", "description")
 TOKEN = re.compile(r"@@([a-z_.]+|(?:script|text):[\w/.]+)@@")
-TEXTS = ("tools/plan_prompt.md", "tools/mail_rules_prompt.md", "tools/rebase_prompt.md")  # fichiers recopiés tels quels dans un prompt (@@text:…@@)
+TEXTS = ("tools/plan_prompt.md", "tools/mail_rules_prompt.md", "tools/rebase_prompt.md", "tools/fix_prompt.md")  # fichiers recopiés tels quels dans un prompt (@@text:…@@)
 
 
 def load_config():

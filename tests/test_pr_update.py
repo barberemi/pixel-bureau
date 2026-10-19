@@ -20,6 +20,11 @@ if a[:2] == ["repo", "clone"]:  # le « dépôt GitHub » est le remote nu local
     sys.exit(subprocess.run(["git", "clone", d["remote"], a[3]], capture_output=True).returncode)
 if a[:2] == ["pr", "view"]:
     print(json.dumps(d["pr"])); sys.exit(0)
+if a[:2] == ["api", "graphql"]:  # #75 : fils non résolus (requête), réponse et résolution (mutations)
+    q = next(x for x in a if x.startswith("query="))
+    if "reviewThreads" in q:
+        print(json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {"nodes": d.get("threads", [])}}}}}))
+    sys.exit(0)
 sys.exit(0)
 '''
 
@@ -157,6 +162,53 @@ class PrUpdateTest(unittest.TestCase):
         self.assertIn(["pr", "edit", "16", "-R", REPO, "--add-label", "ci-test"], calls)
 
 
+    # ---------- corriger les commentaires (#75) ----------
+    def thread(self, tid, resolved=False):
+        return {"id": tid, "isResolved": resolved, "isOutdated": False, "path": "a.txt", "line": 2,
+                "comments": {"nodes": [{"author": {"login": "jim"}, "body": "Renomme ça", "createdAt": "2026-10-01T08:00:00Z"}]}}
+
+    def test_fix_without_unresolved_thread_ends_at_once(self):
+        self.data["threads"] = [self.thread("T1", resolved=True)]
+        r = self.step("fix_prepare")
+        self.assertEqual(r.returncode, 9, r.stdout + r.stderr)
+        self.assertIn("aucun fil de review non résolu", r.stdout)
+
+    def test_fix_prepare_diff_then_push_replies_and_resolves(self):
+        self.data["threads"] = [self.thread("T1"), self.thread("T2"), self.thread("T3", resolved=True)]
+        r = self.step("fix_prepare")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("2 fil(s) de review non résolu(s)", r.stdout)
+        work = os.path.join(self.tmp, ".cache", "pixel-bureau", "pr", "work", "run-1")
+        self.assertEqual([t["id"] for t in json.loads(Path(work, ".bureau-fix.json").read_text())], ["T1", "T2"])
+        # ce que fait l'agent : un correctif, une réponse par fil, un résumé ; rien dans git
+        Path(work, "a.txt").write_text("a\nde la PR, renommé\n")
+        Path(work, ".bureau-fix-replies.json").write_text(json.dumps([
+            {"thread": "T1", "fixed": True, "reply": "Renommé, merci."}, {"thread": "T2", "fixed": False, "reply": "Gardé : c'est voulu."},
+            {"thread": "INCONNU", "fixed": True, "reply": "ignoré"}]))
+        Path(work, ".bureau-fix-summary.md").write_text("Un renommage.")
+        d = self.step("fix_diff")
+        self.assertEqual(d.returncode, 0, d.stdout + d.stderr)
+        self.assertIn("1 fichier(s) changé(s)", d.stdout)
+        self.assertIn("Un renommage.", d.stdout)
+        self.assertIn("Réponses prévues (2 sur 2 fils)", d.stdout)
+        self.assertNotIn(".bureau-fix", d.stdout.split("Réponses prévues")[0].split("```")[1], "fichiers d'échange jamais commités")
+        p = self.step("fix_push")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(self.remote_log()[0], "fix: retours de review de #16")
+        self.assertIn("2 réponse(s) postée(s)", p.stdout)
+        calls = [json.loads(x) for x in Path(self.tmp, "gh.json.calls").read_text().splitlines()]
+        self.assertEqual(sum(1 for c in calls if "t=T1" in c), 2, "T1 : réponse puis résolution")
+        self.assertEqual(sum(1 for c in calls if "t=T2" in c), 1, "T2 : réponse seulement (pas corrigé)")
+        self.assertFalse(os.path.exists(work))
+        self.assertNotIn(".bureau", self.g("--git-dir", self.remote, "show", "--name-only", "--format=", "feat/export"))
+
+    def test_fix_with_nothing_changed_nor_answered_ends(self):
+        self.data["threads"] = [self.thread("T1")]
+        self.step("fix_prepare")
+        r = self.step("fix_diff")
+        self.assertEqual(r.returncode, 9, r.stdout + r.stderr)
+
+
 class RebaseTemplateTest(unittest.TestCase):
     def test_rendered_paths(self):
         d = templates.render(templates.load_templates()["rebase"], FIXTURE)
@@ -170,6 +222,18 @@ class RebaseTemplateTest(unittest.TestCase):
         self.assertEqual(by["gate_conflict"]["gate_request_changes_target"], "abort")
         self.assertEqual(by["resolve"]["step_type"]["type"], "Agent")
         self.assertIn("{{run.id}}", by["resolve"]["prompt_template"])
+        self.assertNotIn("@@", json.dumps(d))
+
+    def test_fix_rendered_paths(self):
+        d = templates.render(templates.load_templates()["fix"], FIXTURE)
+        names = [s["name"] for s in d["steps"]]
+        self.assertEqual(names, ["prepare", "fix", "diff", "gate", "push", "abort", "end"])
+        by = {s["name"]: s for s in d["steps"]}
+        for n in ("prepare", "diff"):  # rien à faire : renvoi vers la fin (code 9, signal exact)
+            self.assertEqual(by[n]["on_result"], [{"contains": "exit_9", "action": {"type": "Goto", "step_name": "end"}}])
+        self.assertEqual(by["gate"]["gate_request_changes_target"], "abort")
+        self.assertIn("{{notes}}", by["fix"]["prompt_template"])
+        self.assertEqual([v["name"] for v in d["variables"]], ["repo", "pr", "notes"])
         self.assertNotIn("@@", json.dumps(d))
 
 

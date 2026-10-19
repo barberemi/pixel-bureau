@@ -27,7 +27,8 @@ ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate",
            "bureau-comment": ("comment", "__COMMENT_WF__"), "bureau-duck": ("duck", "__DUCK_WF__"),
            "bureau-estimate": ("estimate", "__ESTIMATE_WF__"), "bureau-mailrules": ("mail_rules", "__MAILRULES_WF__"),
            "bureau-agent": ("agent", "__AGENT_WF__"), "bureau-pages": ("pages", "__PAGES_WF__"),
-           "bureau-meppr": ("mep_pr", "__MEPPR_WF__"), "bureau-rebase": ("rebase", "__REBASE_WF__")}
+           "bureau-meppr": ("mep_pr", "__MEPPR_WF__"), "bureau-rebase": ("rebase", "__REBASE_WF__"),
+           "bureau-fixpr": ("fix_pr", "__FIXPR_WF__")}
 # variables des workflows de la clé launch : rôle -> nom par défaut ; launch.<action> = id seul, ou {wf, vars: {rôle: nom
 # chez toi, ou null si ton workflow n'a pas cette variable}}
 LAUNCH_VARS = {"impl": {"ticket": "jira_ticket_key"}, "mep": {"ticket": "jira_ticket_key", "pr": "pr_number"},

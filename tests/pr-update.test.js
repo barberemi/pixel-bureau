@@ -36,3 +36,22 @@ test('bouton « ⟳ Remettre à jour » : en retard, en conflit ou inconnu ; pas
   run('ACTIONS.rebase = false');
   assert.equal(btns({behind: 3}).length, 0);
 });
+
+test('« 🛠 Corriger » (#75) : modèle du Bureau dès qu\'il reste des fils non résolus, tout dépôt ; sinon le workflow de launch.fix', () => {
+  run(`ACTIONS.rebase = false; ACTIONS.fix_pr = true; ACTIONS.fix = true;
+    ACTS = {tickets: [], prs: [{id: 'acme/web#16', n: '16', repo: 'acme/web'}, {id: 'acme/api#7', n: '7', repo: 'acme/api'}]};`);
+  const btns = pr => J(`(() => { const box = {kids: [], childElementCount: 0, appendChild(x) { this.kids.push(x); }};
+    prLaunch(box, Object.assign({n: 16, repo: 'acme/web', review: 'pending'}, ${JSON.stringify(pr)}));
+    return box.kids.map(h => ({sub: h.html, b: (h.kids.find(k => k.tag === 'button') || {}).attrs})); })()`);
+  const three = btns({threads: 3});
+  assert.equal(three.length, 1);
+  assert.equal(three[0].b['data-kronn-action'], 'bureau-fixpr');
+  assert.match(three[0].sub, /3 fils de review non résolus : Nate corrige/);
+  assert.equal(btns({n: 7, repo: 'acme/api', threads: 1})[0].b['data-kronn-action'], 'bureau-fixpr', 'autre dépôt aussi');
+  assert.equal(btns({threads: 0, review: 'changes'}).length, 0, 'aucun fil non résolu : rien à corriger');
+  assert.equal(btns({review: 'changes'}).length, 1, 'fils inconnus mais changements demandés');
+  run('ACTIONS.fix_pr = false; ACTS.prs.push({id: CFG.github_repo + "#16", n: "16", repo: CFG.github_repo})');
+  const main = J('CFG.github_repo');
+  assert.equal(btns({repo: main, review: 'changes'})[0].b['data-kronn-action'], 'bureau-fix', 'sans le modèle : launch.fix comme avant');
+  assert.equal(btns({review: 'changes'}).length, 0, 'et seulement pour le dépôt principal, comme avant');
+});

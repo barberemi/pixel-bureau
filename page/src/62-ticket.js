@@ -129,7 +129,15 @@ function prLaunch(box,p){
       sub:p.conflict?'Conflit avec '+base+' : l\'IA propose une résolution, tu la valides avant tout push.':'Rebase sur '+base+', commits gardés, push protégé, CI relancée. Sans conflit : 0 token.',
       label:'⟳ Remettre à jour',title:'Remettre à jour '+nm});
   }
-  if(ACTIONS.fix&&p.review==='changes'&&(!otherRepo(p.repo)||CFG.fix_any_repo))
+  // « 🛠 Corriger » (#75) : modèle du Bureau, tout dépôt, dès qu'il reste des fils de review non résolus (inconnus : changements
+  // demandés) ; sinon ton workflow de launch.fix, comme avant
+  if(ACTIONS.fix_pr){
+    const t=p.threads;
+    if(t>0||t==null&&p.review==='changes')launchBlock(box,{action:'bureau-fixpr',bind:{id:a.id||prId(p)},name:'Corriger les retours · '+nm+dr,
+      sub:(t>0?t+' fil'+(t>1?'s':'')+' de review non résolu'+(t>1?'s':'')+' : ':'')+'Nate corrige, tu valides le diff et ses réponses, puis il pousse',
+      label:'🛠 Corriger',title:'Corriger les retours de '+nm});
+  }
+  else if(ACTIONS.fix&&p.review==='changes'&&(!otherRepo(p.repo)||CFG.fix_any_repo))
     launchBlock(box,{action:'bureau-fix',bind:{id:a.id||prId(p)},name:'Corriger les retours · '+nm+dr,sub:'Un agent applique les commentaires de review et pousse',label:'🛠 Corriger',title:'Corriger les retours de '+nm});
   // « 🚀 Mise en prod » d'une PR (#58) : dépôt de la config (CFG.mep_repos), PR prête (ni brouillon ni changements demandés)
   if(ACTIONS.mep_pr&&(CFG.mep_repos||[]).some(r=>r.toLowerCase()===String(a.id||prId(p)).replace(/#\d+$/,'').toLowerCase())&&!p.draft&&p.review!=='changes'){
