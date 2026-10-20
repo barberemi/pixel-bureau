@@ -149,6 +149,8 @@ def build_custom(folder):
         walk = im.crop((0, 8 * 64, 576, 12 * 64))
         idle = im.crop((0, 22 * 64, 128, 26 * 64))
         emote = [frame(im, 36, c) for c in range(3)] if im.size[1] >= 38 * 64 else None
+        if emote and not any(f.getbbox() for f in emote):  # rangées « bras levés » vides (planche faite à la main) : la pose d'attente
+            emote = None
     else:
         pick = lambda k: next((f for f in files if k in f.lower()), None)
         walk = Image.open(os.path.join(folder, pick("walk"))).convert("RGBA")

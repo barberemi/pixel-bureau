@@ -137,6 +137,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   DUCKGAME=readDuckGame(k)||(DEMO?DUCKGAME_DEMO:null);
   ABSENCES=readAbsences(k); // 36-absences.js (démo : après refreshAll, qui crée les personnages)
   MAILS=readMails(k); // 48-mail.js
+  SUPPORT=readSupport(k); // 48-support.js (#62)
   BOSS_PAGES=readBossPages(k)||[];PAGELIST=readPageList(k); // 47-bosspages.js (#61)
   GITFUT=readGitfut(k)||{};
   ACTS=readActs(k);
@@ -150,6 +151,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   if(!applyAgents(readAgents(k)||{}))refreshAll(); // 31-agents.js : agents ajoutés depuis la page (#64)
   if(!ABSENCES&&DEMO)ABSENCES=absencesDemo();
   if(!MAILS&&DEMO)MAILS=mailDemo();
+  if(!SUPPORT&&DEMO)SUPPORT=supportDemo();
 }
 window.addEventListener('kronn:page-data',e=>{
   const k=e.detail||window.KronnPageData;
@@ -188,6 +190,9 @@ window.addEventListener('kronn:page-data',e=>{
   if(ab)ABSENCES=ab;
   const ml=readMails(k)||readMails(window.KronnPageData);
   if(ml)MAILS=ml;
+  const sp=readSupport(k)||readSupport(window.KronnPageData);
+  if(sp)SUPPORT=sp;
+  if(sp||gg)spRefresh(); // 48-support.js : la fenêtre ouverte suit (#62)
   const dg=readDuckGame(k)||readDuckGame(window.KronnPageData);
   if(dg)DUCKGAME=dg;
   const av=readAvatars(k)||readAvatars(window.KronnPageData);

@@ -46,7 +46,8 @@ ROOT = CFG.get("root") or (_os.path.dirname(_os.path.dirname(_os.path.abspath(gl
 TZ = ZoneInfo((CFG.get("rhythm") or {}).get("timezone") or "Europe/Paris")  # fuseau du bureau, été comme hiver
 ACTIVE = ("Running", "WaitingApproval", "Pending")
 # variables de lancement recopiées dans la page : seulement celles qu'elle lit (jamais un token passé en variable)
-VARS_KEPT = ("jira_ticket_key", "current_task.number", "current_task.author", "current_task.repo", "pr", "repo")
+VARS_KEPT = ("jira_ticket_key", "current_task.number", "current_task.author", "current_task.repo", "pr", "repo",
+             "message_id")  # message du canal Support (#62) : la page relie l'investigation à son fil
 # workflows et Quick Prompt du Bureau, par id (un nom se renomme) : jamais comptés comme des agents
 BUREAU_IDS = {v for part in ("workflows", "actions") for v in (CFG.get(part) or {}).values() if v}
 
@@ -81,8 +82,9 @@ def is_bureau(wf):
 
 def is_bureau_disc(d):
     """Discussions ouvertes par le Bureau : bouton « interroger » (Quick Prompt du Bureau, son nom en titre : une
-    discussion ne porte pas l'id de son Quick Prompt) et le canard (titre « 🦆 … », duck_start.py). Pas des visiteurs."""
-    return str(d.get("title") or "").startswith(("Le Bureau", "🦆"))
+    discussion ne porte pas l'id de son Quick Prompt), le canard (titre « 🦆 … », duck_start.py) et les investigations du
+    Support (« 🎧 … », support.py, #62 : l'agent Support y travaille). Pas des visiteurs."""
+    return str(d.get("title") or "").startswith(("Le Bureau", "🦆", "🎧"))
 
 
 def model_short(m):

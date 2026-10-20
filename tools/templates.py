@@ -35,6 +35,8 @@ TEMPLATES = {
     # courrier (#30) : mails non lus des comptes de mail.accounts (appli Mail du Mac, IMAP) ; sans compte : pas créé
     "courrier": ("workflow", ("workflows", "courrier"), {"mails": "workflows/mail_snapshot.py"}),
     # règles du courrier (#30) : le facteur les propose (agent), le boss les valide (gate) ; lancé par le cron courrier
+    # console Support (#62) : relevé du canal (CLI claude et connecteur Microsoft 365) ; sans support.team/channel : pas créé
+    "support_poll": ("workflow", ("workflows", "support_poll"), {"poll": "workflows/support.py"}),
     "regles": ("workflow", ("actions", "mail_rules"), {"senders": "workflows/mail_snapshot.py", "merge": "workflows/mail_snapshot.py"}),
     "avatar": ("workflow", ("actions", "avatar"), {"save": "workflows/avatar_save.py"}),
     "agent": ("workflow", ("actions", "agent"), {"save": "workflows/agent_save.py"}),  # agents ajoutés depuis une baie (#64)
@@ -65,6 +67,8 @@ TEMPLATES = {
     "issue": ("workflow", ("models", "issue"), {}),  # une intention rédigée en issue GitHub selon les modèles du dépôt
     "assign": ("workflow", ("models", "assign"), {}),  # m'affecter un ticket (assignation puis transition vers En cours)
     "unassign": ("workflow", ("models", "unassign"), {}),  # me le désaffecter (retour à À faire)
+    # investiguer un message du canal Support (#62) : discussion avec l'agent, gate, réponse en fil
+    "support": ("workflow", ("models", "support"), {n: "workflows/support.py" for n in ("open", "mark", "draft", "mark_draft", "post")}),
     "ask": ("quick_prompt", ("actions", "ask"), {}),
     "sketch": ("quick_prompt", ("actions", "sketch"), {}),
 }
@@ -194,7 +198,7 @@ def mep_projects(cfg):
 def skipped(key, cfg):
     """Workflows du Bureau qu'une installation ne crée pas faute de connexion : commenter un ticket sans Jira, les
     absences sans planning Microsoft 365 (microsoft.config_id et microsoft.planning dans la config), le courrier sans
-    compte (mail.accounts)."""
+    compte (mail.accounts), la console Support sans canal (support.team, support.channel)."""
     cfg = assemble.merged(cfg)  # planning des absences : dans le pack (#32)
     if key == "comment":
         return not (cfg.get("jira") or {}).get("config_id")
@@ -209,6 +213,9 @@ def skipped(key, cfg):
         return not (cfg.get("github") or {}).get("config_id") or (key == "review_cron" and not review_repos(cfg))
     if key in ("estimate", "assign", "unassign"):
         return not (cfg.get("jira") or {}).get("config_id")
+    if key in ("support", "support_poll"):  # console Support (#62) : canal Teams réglé (support.team, support.channel)
+        s = cfg.get("support") or {}
+        return not (s.get("team") and s.get("channel"))
     return False
 
 

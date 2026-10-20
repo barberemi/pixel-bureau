@@ -1,0 +1,291 @@
+{
+ "kind": "workflow",
+ "key": "support",
+ "definition": {
+  "name": "Le Bureau · investiguer un message de support",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "message_id",
+    "label": "Message",
+    "placeholder": "",
+    "description": "Message du canal Support (relu dans le dataset support).",
+    "required": true,
+    "pattern": "^[0-9]{1,20}$",
+    "source": null,
+    "allow_manual_override": false
+   },
+   {
+    "name": "project_id",
+    "label": "Projet",
+    "placeholder": "",
+    "description": "Projet Kronn dont l'agent lit le code (« none » : sans projet).",
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   },
+   {
+    "name": "comment",
+    "label": "Commentaire",
+    "placeholder": "Facultatif : une piste, un contexte, ce qu'il faut vérifier",
+    "description": null,
+    "required": false,
+    "source": null,
+    "allow_manual_override": false,
+    "control": {
+     "type": "textarea"
+    }
+   }
+  ],
+  "steps": [
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "open",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Relit le message dans le relevé, ouvre la discussion Kronn de l'investigation (même discussion à chaque tour : state.disc) et rédige la consigne de l'agent (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/support.py@@",
+     "open",
+     "{{message_id}}",
+     "{{project_id}}",
+     "{{run.id}}",
+     "{{comment}}"
+    ],
+    "exec_timeout_secs": 60
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "mark",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "État des fils sans relevé : celui-ci passe « investigation en cours » sur la page tout de suite.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/support.py@@",
+     "dataset"
+    ],
+    "exec_timeout_secs": 60
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "publish_run",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset support.",
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "support",
+       "operation": "replace",
+       "value_from": "steps.mark.data.stdout"
+      }
+     ]
+    }
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "{{steps.open.data.stdout}}",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "investigate",
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "L'agent Support investigue dans la discussion de l'investigation et rédige la réponse ; « changements » à la gate le relance ici, ton commentaire en tête.",
+    "room_id": "{{state.disc}}"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "draft",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "La réponse au format (une ligne par section), numérotée (version).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/support.py@@",
+     "draft",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.investigate.output}}"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "mark_draft",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "État des fils avec la réponse proposée et sa version : la fenêtre Support la montre à valider.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/support.py@@",
+     "dataset"
+    ],
+    "exec_timeout_secs": 60
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "publish_draft",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset support.",
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "support",
+       "operation": "replace",
+       "value_from": "steps.mark_draft.data.stdout"
+      }
+     ]
+    }
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "gate",
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "La réponse telle qu'elle sera postée en fil.",
+    "gate_message": "{{steps.draft.data.stdout}}\n\n---\nRéponse proposée pour le fil Teams, postée sous ton nom avec la mention « Généré de manière automatique 🤖 ». **Approuver** : postée en fil. **Changements** : ton commentaire repart à l'agent, dans la même discussion. **Rejeter** : rien n'est posté, le fil passe « ignoré ».",
+    "gate_request_changes_target": "investigate"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "post",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Réponse en fil (Microsoft Graph, jeton Azure CLI, sous ton nom), puis l'état des fils.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/support.py@@",
+     "post",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 60,
+    "exec_stdin": "{{steps.draft.data.stdout}}"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset support : le fil passe « répondu ».",
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "support",
+       "operation": "replace",
+       "value_from": "steps.post.data.stdout"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": null,
+  "guards": {
+   "timeout_seconds": 86400,
+   "max_llm_calls": 12,
+   "loop_detection_max_revisits": 50
+  },
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

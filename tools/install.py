@@ -24,8 +24,8 @@ OFFICE = [("dwight", "Dwight"), ("jim", "Jim"), ("stanley", "Stanley"), ("phylli
           ("erin", "Erin"), ("ryan", "Ryan")]
 ROLES = {"dev": ("Développeur", None), "lead": ("Tech Lead", "lead"), "qa": ("Testeur", "qa"), "po": ("Product owner", "po"),
          "sm": ("Facilitateur", "sm")}
-DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "agents", "bosspages", "pagelist", "gitfut", "layout", "actions", "duck", "absences", "mails", "mail_rules"]
-CRONS = ("office", "live", "team", "payroll", "canard", "absences", "courrier")
+DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "agents", "bosspages", "pagelist", "gitfut", "layout", "actions", "duck", "absences", "mails", "mail_rules", "support"]
+CRONS = ("office", "live", "team", "payroll", "canard", "absences", "courrier", "support_poll")
 DATASET = lambda name: {"name": name, "kind": "snapshot", "max_points": 50000}  # noqa: E731
 
 
@@ -402,7 +402,8 @@ MODELS = [("review_one", "Relire une PR à la demande (bouton « Faire relire »
           ("estimate", "Réestimer un ticket (Story Points et commentaire dans Jira)", True),
           ("issue", "Rédiger une issue GitHub depuis une intention", True),
           ("assign", "M'affecter un ticket (assignation et passage En cours)", True),
-          ("unassign", "Me désaffecter un ticket (retour à À faire)", True)]
+          ("unassign", "Me désaffecter un ticket (retour à À faire)", True),
+          ("support", "Investiguer les messages du canal Support et y répondre en fil (console Support)", True)]
 MODEL_LAUNCH = {"review_one": "review", "estimate": "estimate"}
 
 

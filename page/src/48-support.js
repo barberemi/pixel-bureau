@@ -1,0 +1,158 @@
+// ---------- console Support (#62) : l'ordinateur du boss suit un canal Teams de demandes de support ----------
+// Dataset support (cron « relevé du Support », support.py) : les fils des 7 derniers jours et leur état. Les runs du modèle
+// d'investigation (variable message_id) et les gates en attente le précisent sans attendre le relevé suivant. L'écran du
+// boss passe en alerte avec le nombre à traiter (nouveaux, à revoir, réponses à valider) ; l'infobulle au survol seulement ;
+// un clic ouvre la fenêtre : un fil par carte, « Investiguer » (projet, puis commentaire dans la carte Kronn), la réponse
+// proposée à valider (gate : valider, changements, refuser), la réponse postée. Rien en mode TV.
+let SUPPORT=null;
+function readSupport(src){try{const d=dsOf(src,'support');return d&&Array.isArray(d.threads)?d:null;}catch(e){return null;}}
+const supportOn=()=>!TV&&!!(CFG.support||SUPPORT);
+const SP_TODO=new Set(['new','gate','failed']);
+// état d'un fil à l'heure de la page : la gate en attente et le dernier run du jour l'emportent sur le relevé
+function spState(t){
+  const g=t.run&&(GATES||[]).find(x=>x.run===t.run.run);
+  if(g)return {k:'gate',g};
+  const runs=((DATA&&DATA.runs)||[]).filter(r=>r.vars&&r.vars.message_id===t.id&&(!t.run||ms(r.start)>=ms(t.run.at)||r.run===t.run.run)&&ms(r.start)<=T);
+  const r=runs.sort((a,b)=>ms(b.start)-ms(a.start))[0];
+  if(r&&t.state!=='done'){
+    if(r.status==='Running'||r.status==='Pending')return {k:'run',r};
+    if(r.status==='WaitingApproval')return {k:'gate',r};
+    if(r.status==='Failed')return {k:(r.steps||[]).some(s=>s.n==='gate')?'ignored':'failed',r};
+  }
+  return {k:t.state||'new'};
+}
+const spThreads=()=>((SUPPORT&&SUPPORT.threads)||[]).filter(t=>!t.at||ms(t.at)<=T);
+const spTodo=()=>spThreads().filter(t=>SP_TODO.has(spState(t).k));
+const spName=()=>(CFG.support&&CFG.support.name)||(SUPPORT&&SUPPORT.name)||'Support';
+const spWho=n=>{n=String(n||'?');return n.includes(',')?n.split(',')[1].trim().split(' ')[0]:n.split(' ')[0];}; // « Nom, Prénom »
+function spAgent(){const wf=((CFG.support||{}).wf||'').slice(0,8);return wf&&chars.find(c=>!c.person&&!c.visitor&&(c.wf||[]).includes(wf))||null;}
+// l'agent Support (celui qui incarne le modèle) : en intervention tant qu'un fil attend (nouveau, à valider) ou qu'il
+// travaille dessus ; sa bulle « 🚨 N à traiter » au repos, « 🧯 Feu éteint » dans les 3 min qui suivent une réponse postée
+function supportHot(c){const s=c._st&&c._st.st;return c===spAgent()&&supportOn()&&(spTodo().length>0||s==='work'||s==='gate');}
+function supportAgentState(c,s,t){
+  if(!s||!supportOn()||c!==spAgent()||['work','gate','error'].includes(s.st))return s;
+  const posted=spThreads().map(x=>x.mine&&ms(x.mine.at)).filter(a=>a&&a<=t&&t-a<3*60e3);
+  const away=s.st==='off'||s.st==='absent', at=away?{st:'idle',zone:'desk'}:{}; // en alerte, il vient à son poste même sans run du jour
+  if(posted.length)return {...s,...at,bubble:'🧯 Feu éteint',label:(away?'':s.label+' · ')+'Réponse postée en fil à '+hm(Math.max(...posted))};
+  const n=spTodo().length; // comme l'écran du boss : nouveaux, à relancer, réponses à valider
+  return n?{...s,...at,bubble:'🚨 '+n+' à traiter',label:(away?'':s.label+' · ')+plural(n,'fil','fils')+' du Support à traiter'}:s;
+}
+// l'écran du boss (bureau du boss, 40-furniture.js) : rouge qui clignote, « ! » et la pastille ; false = l'écran normal
+function supportScreen(x,y,now){
+  if(!supportOn())return false;
+  const n=spTodo().length;if(!n)return false;
+  const on=REDUCED_MOTION||Math.floor(now/600)%2;
+  R(ctx,x,y,16,10,on?'#d1453b':'#a32f27');
+  ctx.fillStyle='#fff';ctx.font='bold 9px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText('!',x+8,y+9);
+  ctx.fillStyle='#d1453b';ctx.beginPath();ctx.arc(x+18,y-3,6.5,0,7);ctx.fill();ctx.lineWidth=1.5;ctx.strokeStyle='#fff';ctx.stroke();
+  ctx.fillStyle='#fff';ctx.font='bold 9px sans-serif';ctx.fillText(n>9?'9+':String(n),x+18,y);ctx.textAlign='left';
+  return true;
+}
+function supportRect(){const o=furnAt('boss_desk')||{dx:0,dy:0};return {x:21*TS-2+5+o.dx,y:9*TS-20-14+o.dy,w:28,h:16};}
+function supportTip(){
+  const l=spTodo().sort((a,b)=>ms(b.at)-ms(a.at)), last=l[0];
+  return '💬 '+spName()+' : '+(l.length?l.length+' à traiter · dernier : '+spWho(last.from)+', '+spWhen(last.at):'rien à traiter')+' · clic : ouvrir';
+}
+const spWhen=a=>{const t=ms(a), d=parisDay(t);return d===parisDay(T)?hm(t):d===parisDay(T-864e5)?'hier '+hm(t):dtf('fr-FR',{weekday:'short',day:'numeric'}).format(new Date(t))+' '+hm(t);};
+// réponse au format du fil : libellé de section en gras, puis la mention en italique (comme support.py, html_of)
+const spReply=s=>String(s||'').trim().split('\n').filter(x=>x.trim()).map(x=>{const m=x.trim().match(/^(\W{1,4}\s*)([^:]{1,30}?)\s*:\s*(.*)$/);
+  return m?esc(m[1])+'<b>'+esc(m[2])+'</b> : '+esc(m[3]):esc(x);}).join('<br>')+'<br><br><i>Généré de manière automatique 🤖</i>';
+const SP_TAG={new:['Nouveau','var(--err)'],failed:['À relancer','var(--err)'],run:['🔎 Investigation en cours','var(--info)'],gate:['✋ Réponse à valider','var(--warn)'],
+  done:['✓ Répondu en fil','var(--ok)'],answered:['Répondu dans Teams','var(--idle)'],ignored:['Ignoré','var(--idle)']};
+const spTeams=t=>safeUrl(t.url)?`<a class="sp-l" href="${esc(t.url)}" target="_blank" rel="noopener">${t.state==='done'?'voir dans Teams':'Ouvrir dans Teams'} ↗</a>`:'';
+function spCard(t){
+  const s=spState(t), st=s.k, tag=SP_TAG[st]||SP_TAG.new, a=spAgent(), disc=t.run&&t.run.disc;
+  const el=document.createElement('div');el.className='sp-card sp-'+st;el.dataset.id=t.id;
+  let h=`<div class="sp-top"><b>${esc(spWho(t.from))}</b><span class="sp-t">${esc(spWhen(t.at))}</span><span class="sp-tag" style="background:${tag[1]}">${tag[0]}</span></div>`+
+    `<div class="sp-txt">« ${esc(t.text)} »</div>`;
+  const dl=disc?' · '+discLink(disc,'discussion Kronn ↗'):'';
+  if(st==='run')h+=`<div class="sp-s">${esc(a?a.name+' (Support)':'L\'agent Support')} investigue depuis ${esc(hm(ms((s.r&&s.r.start)||t.run.at)))}${dl}</div>`;
+  if(st==='failed')h+=`<div class="sp-s">L'investigation de ${esc(hm(ms((s.r&&s.r.start)||t.run.at)))} s'est arrêtée en route${dl} : relance-la.</div>`;
+  if(st==='gate'){
+    const txt=(t.run&&t.run.draft)||(s.g&&s.g.message?String(s.g.message).split('\n\n---\n')[0]:'');
+    h+=`<div class="sp-rep sp-w"><b>Réponse proposée</b>${t.run&&t.run.version?` <small>(version ${t.run.version})</small>`:''}<br>${spReply(txt)}</div>`;
+  }
+  if(st==='done'&&t.mine)h+=`<div class="sp-rep sp-o">${spReply(t.mine.text)}</div><div class="sp-s">Posté en fil à ${esc(spWhen(t.mine.at))} · ${spTeams(t)}</div>`;
+  else if(st==='done')h+=`<div class="sp-s">Tu as répondu dans Teams · ${spTeams(t)}</div>`;
+  if(st==='answered')h+=`<div class="sp-s">${esc(spWho(t.by))} a répondu dans le fil · ${spTeams(t)}</div>`;
+  if(st==='ignored')h+=`<div class="sp-s">Réponse refusée : rien n'a été posté${dl}.</div>`;
+  el.innerHTML=h;
+  if(st==='new'||st==='failed')spInvestigate(el,t);
+  if(st==='gate')spGate(el,t,s.g,dl);
+  return el;
+}
+// « 🔎 Investiguer » : le projet choisi ici, le commentaire dans la carte Kronn (workflow du modèle support)
+function spInvestigate(el,t){
+  const row=document.createElement('div');row.className='sp-act';row.setAttribute('data-kronn-action-slot-host','');
+  const pr=DUCK_PROJECTS||[]; // dataset gates (39-duck.js) : projets Kronn, « Sans projet » en tête
+  if(ACTIONS.support&&pr.length){
+    const sel=document.createElement('select');sel.className='sp-pj';sel.setAttribute('aria-label','Projet à investiguer');
+    for(const p of pr){const o=document.createElement('option');o.value=p.id;o.textContent=p.name;sel.appendChild(o);}
+    const b=document.createElement('button');b.className='on';b.textContent='🔎 Investiguer';b.setAttribute('data-kronn-action','bureau-support');
+    const bind=()=>b.setAttribute('data-kronn-bindings',JSON.stringify({message_id:t.id,project_id:sel.value}));
+    sel.onchange=bind;bind();
+    const n=document.createElement('div');n.className='sp-s';
+    new MutationObserver(()=>{const v=b.getAttribute('data-kronn-action-state');
+      if(v==='succeeded')n.innerHTML='<b style="color:var(--ok)">✓ Lancé.</b> '+esc((spAgent()||{name:'L\'agent Support'}).name)+' ouvre sa discussion et se met au travail.';
+      else if(v==='failed')n.innerHTML='<b style="color:var(--err)">Lancement refusé.</b> Détail dans la carte.';
+    }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
+    row.append(sel,b);el.append(row,n);
+  }else if(ACTIONS.support)el.insertAdjacentHTML('beforeend','<div class="sp-s">Les projets arrivent au prochain passage du cron live (1 min au plus).</div>');
+  el.insertAdjacentHTML('beforeend',spTeams(t));
+}
+// réponse à valider : les trois décisions de la gate (workflow « décision gate », lignes de gates.grows)
+function spGate(el,t,g,dl){
+  const row=document.createElement('div');row.className='sp-act';
+  const dk=g&&g.run+'|'+g.gate;
+  if(dk&&DECIDED[dk]){el.insertAdjacentHTML('beforeend',`<div class="sp-s"><b style="color:var(--ok)">✓ Réponse envoyée à ${hm(DECIDED[dk])}.</b>${dl}</div>`);return;}
+  for(const [d,label,cls] of [['approve','✅ Valider et poster en fil','on'],['request_changes','✏️ Demander des changements',''],['reject','✖ Refuser','']]){
+    const w=document.createElement('div');w.className='qslot';w.setAttribute('data-kronn-action-slot-host','');
+    const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;
+    if(g&&ACTIONS.gate){b.setAttribute('data-kronn-action','bureau-gate');const id=g.run+'|'+d;b.setAttribute('data-kronn-bindings',JSON.stringify({run_id:id,decision:id}));
+      new MutationObserver(()=>{if(b.getAttribute('data-kronn-action-state')==='succeeded'&&!DECIDED[dk]){DECIDED[dk]=Date.now();saveDecided();}})
+        .observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});}
+    else{b.disabled=true;b.title=g?'Workflow « décision gate » non installé : décide dans Kronn':'La gate arrive sur la page d\'ici une minute (cron live)';}
+    w.appendChild(b);row.appendChild(w);
+  }
+  el.appendChild(row);
+  el.insertAdjacentHTML('beforeend',`<div class="sp-s">« Changements » renvoie ton commentaire à ${esc((spAgent()||{name:'l\'agent'}).name)} dans la même discussion${dl}.</div>`);
+}
+function spHead(){
+  const n=spTodo().length, S=SUPPORT||{};
+  const polled=S.polled_at?'relevé à '+spWhen(S.polled_at)+(S.cost?' ('+String(S.cost).replace('.',',')+' $)':''):'pas encore relevé';
+  return `<div class="bp-head"><h2>💬 ${esc(spName())} · ${n?n+' à traiter':'rien à traiter'}</h2><button type="button" class="bp-x" aria-label="Fermer">×</button></div>`+
+    `<div class="sp-bar" data-kronn-action-slot-host><span class="sp-s">${esc(polled)}${S.demo?' (démo)':''}${S.days?' · '+S.days+' derniers jours':''}</span>`+
+    (ACTIONS.support_poll?'<button type="button" class="sp-poll" data-kronn-action="bureau-supportpoll">↻ Relever maintenant</button>':'')+'</div>'+
+    (S.error?`<p class="sp-err">Dernier relevé en échec : ${esc(S.error)}</p>`:'');
+}
+function openSupport(){
+  const back=BP_BACK||document.activeElement;
+  closeBossPages(false);if(!supportOn())return;
+  BP_BACK=back;
+  const bd=document.createElement('div');bd.className='bp-backdrop';bd.onclick=()=>closeBossPages();
+  const box=document.createElement('div');box.className='bp-modal sp-modal';box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label',spName());
+  BP_INERT=[...document.body.children].filter(e=>!e.inert&&e.tagName!=='SCRIPT');BP_INERT.forEach(e=>{e.inert=true;});
+  document.body.append(bd,box);spFill(box);
+  const first=box.querySelector('.sp-card button:not([disabled])')||box.querySelector('.bp-x');if(first)first.focus();
+}
+function spFill(box){
+  box.innerHTML=spHead();box.querySelector('.bp-x').onclick=()=>closeBossPages();
+  const l=spThreads().sort((a,b)=>ms(b.at)-ms(a.at));
+  for(const t of l)box.appendChild(spCard(t));
+  if(!l.length)box.insertAdjacentHTML('beforeend','<p class="sp-s">Aucun message ces derniers jours.</p>');
+  box.insertAdjacentHTML('beforeend',`<p class="sp-s sp-note">« Investiguer » ouvre une discussion Kronn avec l'agent Support ; sa réponse revient ici à valider, puis part en fil sous ton nom : une ligne par section avec son emoji, puis « Généré de manière automatique 🤖 » en italique.</p>`);
+}
+// la fenêtre ouverte suit les données, sauf pendant une carte Kronn ouverte dedans
+function spRefresh(){const box=document.querySelector('.sp-modal');if(box&&!box.querySelector('[data-kronn-action-slot]'))spFill(box);}
+// démo (jeudi 1er octobre) : un fil par état, demandes fictives
+function supportDemo(){
+  const at=h=>new Date(DAY0+h*36e5).toISOString(), u='https://teams.example/demo';
+  const t=(id,from,h,text,state,extra)=>({id,from,at:at(h),text,url:u,cut:false,replies:0,last_at:at(h),state,by:null,mine:null,run:null,...extra});
+  return {generated_at:at(10.9),polled_at:at(10.9),name:'Support Scranton',ok:true,error:null,cost:0.005,days:7,demo:true,threads:[
+    t('d1','Bernard, Andy',10.7,"Depuis hier 15h, les fiches produit du catalogue partenaire renvoient une 404. Celles d'avant 15h marchent toujours.",'new'),
+    t('d2','Beesly, Pam',10.33,"Sur la page des promotions, la vidéo jouée n'est pas la bonne alors que le lien est bien dans le CMS.",'run',{run:{run:'demo-r2',status:'Running',at:at(10.52),disc:null,version:0}}),
+    t('d3','Philbin, Darryl',9.08,'Le flux RSS des commandes est vide depuis ce matin.','gate',{run:{run:'demo-r3',status:'WaitingApproval',at:at(9.2),disc:null,version:2,
+      draft:"🔎 Cause : le cron du flux RSS a échoué à 8h (délai dépassé sur l'API des commandes).\n🛠️ Action : relancé à 9h20, le flux est de nouveau rempli.\n👀 Suivi : on surveille le passage de 10h."}}),
+    t('d4','Lewis, Gabe',8.2,'404 sur la page « nouveautés » du site de Scranton.','done',{mine:{at:at(9.23),text:"🔎 Cause : la route des nouveautés manquait après la mise en prod 17.107.0.\n✅ Correctif : rétablie en 17.107.1, en prod à 9h05."}}),
+    t('d5','Flax, Holly',-6.5,'Les exports CSV du stock sont-ils toujours envoyés le vendredi ?','answered',{by:'Halpert, Jim',replies:2})]};
+}

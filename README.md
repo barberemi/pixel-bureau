@@ -22,6 +22,7 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 | [Thème de la page](guide/fonctionnalites/13-theme-page.md) | Pixel art en Classique (sombre), mode TV et bandeau « EN DIRECT » compris ; les thèmes d'une équipe (son pack) au bouton 🎨 |
 | [Absences et télétravail](guide/fonctionnalites/14-absences.md) | Qui est là, d'après le planning de l'équipe : absents hors du bureau, télétravail en transparence, calendrier de deux semaines au mur du boss |
 | [Courrier](guide/fonctionnalites/15-courrier.md) | Tes mails utiles (appli Mail du Mac, Gmail ou autre par IMAP), triés par des règles que le facteur te propose : une boîte aux lettres par compte à côté du bureau du boss, le facteur qui dépose, des porteurs qui remettent certains mails en personne jusqu'à leur lecture ; jamais le contenu |
+| [Console Support](guide/fonctionnalites/17-console-support.md) | Le canal Teams des demandes de support sur l'ordinateur du boss : écran en alerte avec le nombre à traiter, fenêtre des fils de la semaine, investigation par l'agent Support dans une discussion Kronn, réponse validée (ou reprise) puis postée en fil sous ton nom |
 | [Mise en prod](guide/fonctionnalites/16-mise-en-prod.md) | Mise en prod d'une PR de n'importe quel dépôt réglé : depuis la fiche de l'agent, d'une PR ou d'un ticket ; ticket déduit de la PR, rebase, CI, merge, release, staging puis prod avec tes validations, simulation possible ; annonce Teams éditée à chaque étape (⏳, chargeur, ✅, ❌) |
 
 ## Installer
@@ -41,6 +42,7 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 | Un agent IA installé dans Kronn (Claude Code, par exemple) | « Lui poser une question », plan depuis un croquis | Boutons masqués |
 | suno.com autorisé dans Kronn (Configuration > Artifacts) | Le lecteur Suno de la carte « Son écoute » | Lien vers Suno seulement |
 | Azure CLI connecté (`az login --allow-no-subscriptions`), la connexion Kronn « Microsoft 365 » (globale) et le planning Excel de l'équipe sur SharePoint | Absences et télétravail, calendrier de l'équipe | Tout le monde au bureau, pas de calendrier |
+| La CLI `claude` connectée à claude.ai, avec le connecteur Microsoft 365, et Azure CLI connecté | Console Support : lire le canal Teams des demandes et répondre en fil | Écran du boss normal, pas de console |
 
 macOS ou Linux (Windows n'est pas testé). Pour développer : Node 20 ou plus (tests) et la CLI `claude` (plan depuis un croquis en local).
 

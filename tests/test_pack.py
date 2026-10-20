@@ -7,6 +7,10 @@ from unittest import mock
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import assemble, smoke  # noqa: E402
+try:
+    from PIL import Image
+except ImportError:  # python3 du système, sans le venv
+    Image = None
 
 PACK = os.path.join(ROOT, "tests", "fixtures", "pack-exemple")
 
@@ -122,6 +126,24 @@ class PackTest(unittest.TestCase):
         self.assertIn("bureau/tools/theme.py check", ci)
         for tool in ("plan.py", "smoke.py", "theme.py"):
             self.assertTrue(os.path.isfile(os.path.join(ROOT, "tools", tool)), tool)
+
+    @unittest.skipUnless(Image, "Pillow absent")
+    def test_provided_universal_sheet_without_emote_rows_keeps_its_idle_pose(self):
+        """Planche universelle (832 px) faite à la main, rangées « bras levés » vides (#62, le pompier) : la rangée 5 prend
+        la pose d'attente de face au lieu d'images transparentes."""
+        sys.path.insert(0, os.path.join(ROOT, "sprites"))
+        import build_sprites
+        d = os.path.join(self.tmp, "pompier")
+        os.makedirs(d)
+        im = Image.new("RGBA", (832, 54 * 64), (0, 0, 0, 0))
+        for r in list(range(8, 12)) + list(range(22, 26)):  # marche et attente seulement
+            for c in range(9 if r < 12 else 2):
+                im.paste((200, 30, 30, 255), (c * 64 + 20, r * 64 + 10, c * 64 + 44, r * 64 + 60))
+        im.save(os.path.join(d, "universal.png"))
+        sheet = Image.open(io.BytesIO(build_sprites.build_custom(d))).convert("RGBA")
+        self.assertEqual(sheet.size, (576, 384))
+        for c in range(3):
+            self.assertIsNotNone(sheet.crop((c * 64, 320, c * 64 + 64, 384)).getbbox(), f"rangée 5, image {c} vide")
 
     def test_without_pack_nothing_changes(self):
         cfg = assemble.demo_config()

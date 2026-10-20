@@ -1,0 +1,75 @@
+{
+ "kind": "workflow",
+ "key": "support_poll",
+ "definition": {
+  "name": "Le Bureau · relevé du Support (15 min)",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Cron",
+   "schedule": "7-59/15 @@cron_hours@@ * * 1-5"
+  },
+  "steps": [
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "poll",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Lit le canal Support par la CLI claude et le connecteur Microsoft 365 (petit modèle, un seul outil, un tour : environ 0,005 $), les réponses des fils qui ont bougé, l'état des investigations ; le dataset support.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/support.py@@",
+     "poll"
+    ],
+    "exec_timeout_secs": 200
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset support de la page Le Bureau.",
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "support",
+       "operation": "replace",
+       "value_from": "steps.poll.data.stdout"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": 1,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}
