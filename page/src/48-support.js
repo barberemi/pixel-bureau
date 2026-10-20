@@ -162,6 +162,16 @@ function spFill(box){
   if(pb)new MutationObserver(()=>{const v=pb.getAttribute('data-kronn-action-state'), s=box.querySelector('.sp-bar .sp-s');
     if(s&&v==='succeeded')s.innerHTML='<b style="color:var(--ok)">✓ Relevé lancé.</b> La fenêtre se met à jour toute seule, dans une minute environ.';}).observe(pb,{attributes:true,attributeFilter:['data-kronn-action-state']});
 }
+// fiche de l'agent Support : le nombre à traiter, les deux derniers fils, et la console (on y investigue : projet choisi
+// dans la liste, commentaire dans la carte Kronn)
+function spFiche(side){
+  const l=spTodo().sort((a,b)=>ms(b.at)-ms(a.at)), box=document.createElement('div');box.className='relaunch sp-fiche';
+  box.innerHTML=`<div class="rl-n">🚒 ${esc(spName())} · ${l.length?l.length+' à traiter':'rien à traiter'}</div>`+
+    l.slice(0,2).map(t=>`<div class="rl-s">${esc(spWho(t.from))}, ${esc(spWhen(t.at))} : ${esc(t.subject||String(t.text||'').split('\n')[0].slice(0,70))}</div>`).join('')+
+    `<div class="rl-s">« Investiguer » se lance depuis la console : choisis le projet, puis un commentaire si tu veux.</div>`;
+  const b=document.createElement('button');b.className='on';b.textContent='💬 Ouvrir la console Support';b.onclick=()=>openSupport();
+  box.appendChild(b);side.appendChild(box);
+}
 // la fenêtre ouverte suit les données, sauf pendant une carte Kronn ouverte dedans
 function spRefresh(){const box=document.querySelector('.sp-modal');if(box&&!box.querySelector('[data-kronn-action-slot]'))spFill(box);}
 // mode TV, « EN DIRECT » (75-tv.js) : l'arrivée d'un message du jour, puis un rappel par heure d'attente tant que personne

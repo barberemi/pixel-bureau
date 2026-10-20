@@ -114,3 +114,10 @@ test('mode TV, « EN DIRECT » : arrivée du jour et un rappel par heure d\'atte
     ['2026-10-01T09:40:00.000Z', '🚒 Support : le message de Pam attend depuis 2 h, « Flux RSS vide »']]);
   assert.equal(J(`spReacts(['✅', '👍', '👍', 'custom'])`), '<span class="sp-r">✅</span><span class="sp-r">👍 2</span><span class="sp-r">🙂+</span>');
 });
+
+test('fiche de l\'agent Support : la console au lieu d\'un « Lancer » à remplir (message et projet)', () => {
+  set([th('1', 'new', {subject: 'Flux RSS vide'})]);
+  const html = J(`(() => { const s = {kids: [], appendChild(x) { this.kids.push(x); }}; ACTIONS.relaunch = false; spFiche(s); return s.kids[0].innerHTML; })()`);
+  assert.match(html, /1 à traiter/);
+  assert.match(html, /Pam, .* : Flux RSS vide/);
+});

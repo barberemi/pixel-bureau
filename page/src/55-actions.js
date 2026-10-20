@@ -287,8 +287,10 @@ function launchLine(vars,vals){
   return {line:parts.join(' ; '),errs,missing};
 }
 function runBlock(side,c){
+  if(c===spAgent()&&supportOpenable())spFiche(side); // 48-support.js : l'agent Support investigue depuis la console (#62)
   if(!ACTIONS.relaunch||!c.wf||!c.wf.length)return;
-  const list=LAUNCHABLE.filter(w=>c.wf.includes(String(w.wf).slice(0,8)));if(!list.length)return;
+  const sw=((CFG.support||{}).wf||'').slice(0,8); // son modèle demande un message et un projet : jamais un « Lancer » à remplir à la main
+  const list=LAUNCHABLE.filter(w=>c.wf.includes(String(w.wf).slice(0,8))&&!(sw&&String(w.wf).slice(0,8)===sw));if(!list.length)return;
   const box=foldSection(side,'run','▶ Lancer',list.length,true);
   for(const w of list){
     const vars=(w.vars||[]).filter(v=>v&&v.name),vals={},tips={};
