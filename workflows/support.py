@@ -20,7 +20,8 @@ Dataset support : {generated_at, polled_at, name, url, ok, error, cost, me, days
 replies, last_at, state, by, mine, run}]} ; state = new (à investiguer), run (investigation en cours), gate (réponse à
 valider), done (répondu en fil), answered (un collègue a répondu, by = son nom), ignored (réponse refusée), failed.
 """
-import json, os, re, shutil, subprocess, sys, urllib.error, urllib.parse, urllib.request, uuid
+import html, json, os, re, shutil, subprocess, sys, urllib.error, urllib.parse, urllib.request, uuid
+from html.parser import HTMLParser
 from datetime import datetime, timedelta, timezone
 from _lib import API, CFG, get, read_json, write_json
 
@@ -134,8 +135,49 @@ def objects(content):
     return [o for o in out if isinstance(o, dict) and o.get("id")]
 
 
+class _Text(HTMLParser):
+    """HTML d'un message Teams -> texte : paragraphes et <br> en retours à la ligne, lien = son adresse complète
+    (le texte d'un lien est souvent tronqué « … ») ou « texte (adresse) », le reste des balises retiré."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.out, self.href, self.link = [], None, []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ("br", "p", "div", "li", "tr") and self.out and not self.out[-1].endswith("\n"):
+            self.out.append("\n")
+        if tag == "li":
+            self.out.append("• ")
+        if tag == "a":
+            self.href, self.link = dict(attrs).get("href"), []
+
+    def handle_endtag(self, tag):
+        if tag == "a":
+            txt, h = "".join(self.link).strip(), self.href or ""
+            self.out.append(h if h.startswith("http") and (not txt or txt.rstrip("…") in h or txt.startswith("http"))
+                            else f"{txt} ({h})" if h.startswith("http") else txt)
+            self.href = None
+        elif tag in ("p", "div", "li", "tr"):
+            self.out.append("\n")
+
+    def handle_data(self, data):
+        (self.link if self.href is not None else self.out).append(data)
+
+
+def text_of(body):
+    """Texte lisible d'un message : son HTML converti (texte brut tel quel)."""
+    s = str(body or "")
+    if "<" not in s:
+        return html.unescape(s)
+    p = _Text()
+    p.feed(s)
+    p.close()
+    return "".join(p.out)
+
+
 def clip(text, n=1000):
-    t = re.sub(r"[ \t]+", " ", str(text or "")).strip()
+    t = re.sub(r"[ \t\u00a0]+", " ", text_of(text))
+    t = re.sub(r" *\n *", "\n", t)
+    t = re.sub(r"\n{3,}", "\n\n", t).strip()
     return t if len(t) <= n else t[:n - 1].rstrip() + "…"
 
 
