@@ -120,6 +120,25 @@ test('MEP un vendredi : plateau fermé (bulle 😱)', () => {
   assert.match(st.label, /^MEP un vendredi ! Plateau fermé : Pilote la MEP DM-7/);
 });
 
+test('deux MEP de projets différents en même temps : la validation qui attend passe avant, les deux comptées et nommées', () => {
+  reset();
+  const mep = (id, project, key, status, at) => `{run:'${id}',wf:'${MEP}-x',wf_name:'Mise en prod',status:'${status}',_s:${T11 - at * MIN},_e:null,_ve:Infinity,
+    steps:[{n:'${status === 'WaitingApproval' ? 'gate_prod' : 'citest'}',k:'${status === 'WaitingApproval' ? 'Gate' : 'Exec'}',at:'2026-10-01T08:5${at % 10}:00Z'}],vars:{project:'${project}',jira_ticket_key:'${key}'}}`;
+  // la plus récente tourne, l'autre attend ta validation : il va à la porte du boss pour celle qui attend
+  const two = `${agentWith(`${mep('r1', 'acme/front_api', 'DM-1', 'WaitingApproval', 30)},${mep('r2', 'acme/front_web', 'DM-2', 'Running', 5)}`)}`;
+  const st = J(`stateAt(${two}, ${T11})`);
+  assert.deepEqual([st.st, st.run.run], ['gate', 'r1']);
+  assert.equal(st.label, 'Attend ta validation · pilote 2 MEP : front_api DM-1, front_web DM-2');
+  // les deux tournent : sur le plateau, les deux projets dans son libellé
+  const both = J(`stateAt(${agentWith(`${mep('r1', 'acme/front_api', 'DM-1', 'Running', 30)},${mep('r2', 'acme/front_web', 'DM-2', 'Running', 5)}`)}, ${T11})`);
+  assert.equal(both.st, 'mep');
+  assert.match(both.label, /^Pilote 2 MEP : front_api DM-1, front_web DM-2 · front_web DM-2 : citest$/);
+  // deux validations en attente : toutes deux dans sa fiche et dans le compteur du boss
+  run(`T=${T11};chars=[${agentWith(`${mep('r1', 'acme/front_api', 'DM-1', 'WaitingApproval', 30)},${mep('r2', 'acme/front_web', 'DM-2', 'WaitingApproval', 5)}`)}];GATES=[];chars[0]._st=stateAt(chars[0],T);`);
+  assert.deepEqual(J('gateRunsOf(chars[0]).map(r=>r.run)'), ['r1', 'r2']);
+  assert.equal(J('gateTotal()'), 2);
+});
+
 // ---------- bulles (bubbleFor) ----------
 const dev = tickets => `({key:'p_b',name:'Bob',person:'Bob',seat:[5,14],team:{tickets:${tickets},gh:[]},runs:[]})`;
 const TK = `[{key:'DM-1',cat:'doing',type:'Bug',summary:'Corriger le lecteur vidéo',updated:'2026-09-28T10:00:00.000+0200'},

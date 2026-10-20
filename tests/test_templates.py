@@ -43,6 +43,16 @@ class TemplatesTest(unittest.TestCase):
         mep = templates.render(TPL["mep"], colleague())
         self.assertEqual(templates.clean("workflow", {**mep, "steps": [dict(s, id="i") for s in mep["steps"]]})["guards"], mep["guards"])
 
+    def test_mep_runs_one_at_a_time_per_project(self):
+        """Mises en prod de projets différents en même temps, une seule à la fois par projet (concurrency_key) : la clé
+        lit la variable de lancement project ; check la compare, absente (null chez Kronn) elle ne compte pas."""
+        d = TPL["mep"]["definition"]
+        self.assertEqual((d["concurrency_limit"], d["concurrency_key"]), (1, "{{project}}"))
+        self.assertIn("project", [v["name"] for v in d["variables"]])
+        live = {"name": "x", "steps": [], "variables": [], "concurrency_key": "{{project}}"}
+        self.assertEqual(templates.clean("workflow", live)["concurrency_key"], "{{project}}")
+        self.assertNotIn("concurrency_key", templates.clean("workflow", {**live, "concurrency_key": None}))
+
     def test_workflows_never_take_the_main_checkout_lock(self):
         """Les scripts du Bureau n'écrivent que dans ~/.cache et des dossiers temporaires : chaque workflow le déclare
         (main_tree_read_only), sinon Kronn le fait attendre le dossier du projet et le refuse au-delà de 60 s quand

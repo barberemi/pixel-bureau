@@ -58,6 +58,17 @@ for(const k in DECIDED)if(Date.now()-DECIDED[k]>864e5)delete DECIDED[k];
 const saveDecided=()=>{try{localStorage.setItem('bureau:decided',JSON.stringify(DECIDED));}catch(e){}};
 // validations des workflows sans personnage sur le plan (ex. « Le Bureau · plan ») : comptées dans la bulle ✋ du boss,
 // leur carte de décision dans sa fiche
+// mise en prod d'un run : son projet (nom court du dépôt) et son ticket, pour les libellés
+const mepProject=r=>{const v=r.vars||{},p=String(v.project||'').split('/').pop();return [p,v.jira_ticket_key].filter(Boolean).join(' ')||clean(r.wf_name);};
+// validations qu'attend un personnage : tous ses runs en attente (deux MEP de projets différents en même temps), pas
+// seulement celui de son état ; un porteur de mail (gate sans run) compte pour une
+function gateRunsOf(c){
+  const s=c._st;if(!s)return [];
+  const rs=(c.runs||[]).filter(r=>r.status==='WaitingApproval'&&r._s<=T&&T<r._ve);
+  if(s.st==='gate'&&s.run&&!rs.includes(s.run))rs.unshift(s.run);
+  return rs.length?rs:s.st==='gate'?[null]:[];
+}
+const gateTotal=()=>chars.reduce((a,c)=>a+gateRunsOf(c).length,0)+loneGates().length;
 function loneGates(){return GATES.filter(g=>!postmanOwns(g)&&!chars.some(c=>c.wf&&c.wf.includes(String(g.wf).slice(0,8))));} // postmanOwns : 48-mail.js
 // gate d'un workflow sans personnage : sa carte de décision seule dans le panneau
 function renderLoneGate(side,run){

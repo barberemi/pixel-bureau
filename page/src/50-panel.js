@@ -219,10 +219,10 @@ function drawSide(side){
   if(c.boss){const pr=presenceAt(c,T); // le boss reste à son bureau sur le plan : son absence ne se lit qu'ici et au calendrier
     if(pr.abs||pr.tt){const n=document.createElement('p');n.className='note';n.textContent='📅 Selon le planning : '+(pr.abs?ABS_LABEL[pr.abs].toLowerCase():'en télétravail')+'.';side.appendChild(n);}
   }
-  if(c.boss){const p=document.createElement('p');p.style.color='var(--muted)';const gates=chars.filter(x=>x._st&&x._st.st==='gate'), lone=loneGates();
+  if(c.boss){const p=document.createElement('p');p.style.color='var(--muted)';const gates=chars.filter(x=>gateRunsOf(x).length), lone=loneGates();
     const qs=QUESTIONS.filter(q=>(ms(q.since)||0)<=T);
     if(!gates.length&&!lone.length&&!qs.length){p.textContent="Personne n'attend ta validation. Le bureau tourne tout seul.";side.appendChild(p);}
-    for(const x of gates){const r=x._st&&x._st.run;if(r)gateCard(side,r,x.name);else handCards(side,carriedFor(x,T));} // porteurs : les mails qu'ils remettent (48-mail.js)
+    for(const x of gates)for(const r of gateRunsOf(x)){if(r)gateCard(side,r,x.name);else handCards(side,carriedFor(x,T));} // porteurs : les mails qu'ils remettent (48-mail.js)
     for(const g of lone)gateCard(side,{run:g.run,wf_name:g.wf_name,_s:ms(g.since)},null); // workflows sans personnage (« Le Bureau · plan »)
     for(const q of qs)questionCard(side,q,askerOf(q)); // questions des discussions (visiteurs, canard, « interroger »)
     const imp=chars.filter(x=>x.visitor&&x.disc&&x.disc.imp>0);
@@ -237,7 +237,7 @@ function drawSide(side){
         ul.appendChild(li);
       }
       box.appendChild(ul);}}
-  if(st.st==='gate'&&st.run)gateCard(side,st.run,null);
+  if(st.st==='gate'&&st.run){for(const r of gateRunsOf(c))if(r)gateCard(side,r,null);} // toutes ses validations (deux MEP en même temps)
   else if(st.st==='gate'&&c.guest)handCards(side,carriedFor(c,T)); // porteur : les mails qu'il remet
   if(c.visitor&&c.disc)for(const q of discQuestions(c.disc.id,T))questionCard(side,q,null);
   musicCard(side,c);
