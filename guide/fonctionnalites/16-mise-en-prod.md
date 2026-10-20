@@ -10,6 +10,8 @@ Une mise en prod part d'une **PR**, de n'importe quel dépôt réglé pour : pou
 - **Fiche d'une PR**, ou chaque PR de la fiche d'un ticket : « 🚀 Mise en prod » (PR ni brouillon ni avec changements demandés, et un de ses tickets en To Deploy, `jira.flow.validated` ; sinon grisé avec la raison, comme les jours de gel ; une PR sans ticket Jira ne se met pas en prod). Kronn relit le dépôt et le numéro dans le dataset `actions` : rien à saisir.
 - **Kronn**, directement, avec les mêmes variables : `project` (dépôt ou nom court), `pr_number`, `jira_ticket_key` (facultatif), `dry_run` (`oui` = simulation).
 
+**Plusieurs à la fois** : des mises en prod de projets différents tournent en même temps ; sur un même projet, une seule à la fois (Kronn refuse la seconde tant que la première n'est pas finie, gates comprises), car deux mises en prod du même dépôt calculeraient le même tag, partageraient la copie git et pourraient déployer en prod une version plus ancienne après une plus récente. Sur le plan, l'agent va à la porte du boss dès qu'une de ses mises en prod attend une validation (« Attend ta validation · pilote 2 MEP : front_api DM-1, front_web DM-2 ») ; le panneau du boss, la fiche de l'agent et les compteurs montrent toutes ses validations en attente. Le plateau TV ne montre que la dernière mise en prod passée en prod.
+
 Le **ticket** est déduit de la PR : la première clé du projet Jira (`jira.project`) trouvée dans le nom de la branche, puis le titre, puis la description. Sans ticket, la mise en prod s'arrête tout de suite : relance avec « Ticket ».
 
 ## Les étapes

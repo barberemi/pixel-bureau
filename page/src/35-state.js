@@ -194,7 +194,7 @@ const inSlot=(m,[a,b])=>m>=a&&m<b;
 // collègues présents, assis à leur place (ceux qu'un invité de passage va saluer)
 function deskColleagues(boss){return chars.filter(x=>x!==boss&&x.person&&x.seat&&x._st&&x._st.zone==='desk');}
 function bossState(c,t){
-  const n=k=>chars.filter(x=>x._st&&x._st.st===k).length, gates=n('gate')+loneGates().length, asks=n('ask')+new Set(loneQuestions(t).map(q=>q.disc)).size, pending=gates+asks;
+  const n=k=>chars.filter(x=>x._st&&x._st.st===k).length, gates=gateTotal(), asks=n('ask')+new Set(loneQuestions(t).map(q=>q.disc)).size, pending=gates+asks;
   const waitTxt=[gates?gates+' validation'+(gates>1?'s':'')+' en attente':'',asks?asks+(asks>1?' discussions attendent':' discussion attend')+' ta réponse':''].filter(Boolean).join(' · ');
   const ret=o=>{c.atBoss=o.zone==='boss';return o;};
   const p=parisHM(t), m=p.h*60+p.m, wd=p.wd==='Sat'||p.wd==='Sun';
@@ -361,9 +361,12 @@ function stateAt0(c,t){
   if(!runs.length)return c.runs.length?{st:'absent',label:'Pas encore arrivé'}:{st:'off',label:"Absent aujourd'hui"};
   const active=runs.filter(r=>t<r._ve);
   if(active.length){
-    const r=active[active.length-1];
+    // une validation qui attend passe avant un run plus récent (deux MEP de projets différents en même temps)
+    const r=active.filter(x=>x.status==='WaitingApproval').pop()||active[active.length-1];
+    const meps=CFG.mep_workflow?active.filter(x=>(x.wf||'').startsWith(CFG.mep_workflow)):[];
+    const also=meps.length>1?' · pilote '+meps.length+' MEP : '+meps.map(mepProject).join(', '):'';
     if(c.visitor)return {st:'work',zone:c.multi?'meet':'desk',label:'En discussion',bubble:'...',run:r};
-    if(r.status==='WaitingApproval')return {st:'gate',zone:'gate',label:'Attend ta validation',bubble:'✋',run:r};
+    if(r.status==='WaitingApproval')return {st:'gate',zone:'gate',label:'Attend ta validation'+also,bubble:'✋',run:r};
     // direct plus rafraîchi (cron arrêté la nuit, Kronn ou Mac éteint) : un run « en cours » n'est plus crédible
     const fz=frozenSince();
     if(fz&&t>fz+60e3&&r.status!=='Pending'){
@@ -375,7 +378,7 @@ function stateAt0(c,t){
       return {
         st:'mep',
         zone:'stage',
-        label:'Pilote la MEP '+((r.vars&&r.vars.jira_ticket_key)||'')+(s?' : '+s.n:''),
+        label:meps.length>1?'Pilote '+meps.length+' MEP : '+meps.map(mepProject).join(', ')+(s?' · '+mepProject(r)+' : '+s.n:''):'Pilote la MEP '+((r.vars&&r.vars.jira_ticket_key)||'')+(s?' : '+s.n:''),
         bubble:'🚀',
         run:r,
         step:s

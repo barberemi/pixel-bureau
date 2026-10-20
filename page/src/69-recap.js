@@ -23,7 +23,7 @@ function recapData(t){
     created:evs.filter(e=>e.kind==='new'),
     deployed:evs.filter(e=>e.kind==='move'&&e.cat==='done'),
     approved:evs.filter(e=>e.kind==='review'&&e.state==='approved'),
-    gates:chars.filter(c=>c._st&&c._st.st==='gate').length+loneGates().length,
+    gates:gateTotal(),
     asks:askCount(T)
   };
 }

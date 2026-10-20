@@ -636,6 +636,7 @@
    "main_tree_read_only": true
   },
   "concurrency_limit": 1,
+    "concurrency_key": "{{project}}",
   "guards": {
    "timeout_seconds": 14400,
    "max_llm_calls": 5,
