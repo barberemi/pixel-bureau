@@ -190,7 +190,9 @@ function drawOverlay(c,now){
   const w=Math.ceil(ctx.measureText(txt).width)+(isIcon?8:10)+(bb.tone?3:0), h=Math.round((isIcon?18:15)*S);
   const seated=!c.moving&&c.tile&&SEATS.some(s=>s.x===c.tile[0]&&s.y===c.tile[1]);
   let bx=x-w/2, by=y-62-h-(sel===c.key?8:0);
-  if(seated){const out=c.dir==='right'?-1:1;bx=out<0?x-14-w:x+14;by=y-48;}
+  if(seated){const out=c.dir==='right'?-1:1;bx=out<0?x-14-w:x+14;by=y-48;
+    if(bx+w>W-2)bx=x-14-w;else if(bx<2)bx=x+14; // au bord du plan : de l'autre côté du personnage
+    bx=Math.max(2,Math.min(W-w-2,bx));}
   // réplique d'un héraut : large, elle ne doit pas cacher les bulles de ses voisins (l'auteur fêté, le boss) : première place libre
   // parmi centrée, étirée vers la droite, vers la gauche, puis les mêmes surélevées (une tige la relie alors à lui)
   let stem=0;

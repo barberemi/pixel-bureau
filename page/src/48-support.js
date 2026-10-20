@@ -3,10 +3,12 @@
 // d'investigation (variable message_id) et les gates en attente le précisent sans attendre le relevé suivant. L'écran du
 // boss passe en alerte avec le nombre à traiter (nouveaux, à revoir, réponses à valider) ; l'infobulle au survol seulement ;
 // un clic ouvre la fenêtre : un fil par carte, « Investiguer » (projet, puis commentaire dans la carte Kronn), la réponse
-// proposée à valider (gate : valider, changements, refuser), la réponse postée. Rien en mode TV.
+// proposée à valider (gate : valider, changements, refuser), la réponse postée. En mode TV : l'écran et l'agent, pas la fenêtre.
 let SUPPORT=null;
 function readSupport(src){try{const d=dsOf(src,'support');return d&&Array.isArray(d.threads)?d:null;}catch(e){return null;}}
-const supportOn=()=>!TV&&!!(CFG.support||SUPPORT);
+// la console existe (alerte de l'écran du boss, agent Support), en mode TV compris ; la fenêtre, elle, ne s'ouvre pas en TV
+const supportOn=()=>!!(CFG.support||SUPPORT);
+const supportOpenable=()=>!TV&&supportOn();
 const SP_TODO=new Set(['new','gate','failed']);
 // état d'un fil à l'heure de la page : la gate en attente et le dernier run du jour l'emportent sur le relevé
 function spState(t){
@@ -134,7 +136,7 @@ function spHead(){
 }
 function openSupport(){
   const back=BP_BACK||document.activeElement;
-  closeBossPages(false);if(!supportOn())return;
+  closeBossPages(false);if(!supportOpenable())return;
   BP_BACK=back;
   const bd=document.createElement('div');bd.className='bp-backdrop';bd.onclick=()=>closeBossPages();
   const box=document.createElement('div');box.className='bp-modal sp-modal';box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label',spName());

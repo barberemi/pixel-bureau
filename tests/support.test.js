@@ -24,7 +24,8 @@ test('à traiter : nouveaux, à relancer et réponses à valider ; pas ceux en c
   assert.deepEqual(J('spTodo().map(t => t.id)'), ['1', '3', '7']);
   assert.equal(J('supportOn()'), true);
   run('TV = true;');
-  assert.equal(J('supportOn()'), false, 'jamais en mode TV : la console est au boss');
+  assert.equal(J('supportOn()'), true, 'en mode TV : l\'écran du boss et l\'agent restent en alerte');
+  assert.equal(J('supportOpenable()'), false, 'mais la fenêtre ne s\'ouvre pas');
   run('TV = false;');
 });
 
@@ -88,4 +89,18 @@ test('agent Support : en alerte (hologramme rouge, « 🚨 N à traiter »), à 
   run(`T += 5 * 60e3;`);
   assert.equal(J(`supportAgentState(__a, {st: 'idle', label: 'Au repos'}, T).bubble || null`), null);
   assert.equal(J(`holoStyleOf({holo: 'rouge'}) === HOLO_STYLE.rouge && holoStyleOf({}) === null`), true, 'holo fixe, ou l\'hologramme habituel');
+});
+
+test('bulle d\'un personnage assis au bord droit du plan : de l\'autre côté de lui, jamais hors du plan', () => {
+  set([th('1', 'new')]);
+  const r = J(`(() => {
+    const c = chars.find(x => x.key === 'nellie'), s = SEATS.reduce((a, b) => b.x > a.x ? b : a);
+    Object.assign(c, {present: true, moving: false, dir: 'down', tile: [s.x, s.y], pos: {x: W - 20, y: tileCenter(s.x, s.y).y},
+      _st: {st: 'idle', bubble: '🚨 2 à traiter à traiter à traiter'}});
+    BUBBLE_BOXES = []; drawOverlay(c, 0);
+    const b = BUBBLE_BOXES[BUBBLE_BOXES.length - 1];
+    return {bx: b.x, w: b.w, W, cx: c.pos.x};
+  })()`);
+  assert.ok(r.bx + r.w <= r.W - 2, `bulle dans le plan (${r.bx} + ${r.w} > ${r.W})`);
+  assert.ok(r.bx + r.w <= r.cx, 'à gauche du personnage, qui est au bord droit');
 });

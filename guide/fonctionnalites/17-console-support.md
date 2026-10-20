@@ -10,7 +10,7 @@ Quand un message attend, l'écran de l'ordinateur du boss passe au rouge, cligno
 
 - **Au survol seulement**, l'infobulle : le canal, le nombre à traiter, l'auteur et l'heure du dernier message. Pas de bulle permanente sur le plan.
 - **Au clic** : la fenêtre du canal.
-- Rien à traiter : l'écran redevient normal. Rien en mode TV : la console est au boss.
+- Rien à traiter : l'écran redevient normal. En mode TV, l'écran du boss et l'agent Support restent en alerte ; la fenêtre, elle, ne s'ouvre pas.
 - Réglage « réduire les animations » du système : l'écran reste rouge, sans clignoter.
 
 ## La fenêtre
