@@ -64,7 +64,17 @@ class RefsWorkflowTest(unittest.TestCase):
 
     def test_awaiting_approval_run_is_deleted(self):
         wf = Path(os.path.join(ROOT, ".github", "workflows", "visual-refs.yml")).read_text()
-        self.assertIn('echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"', wf)  # seulement si un commit a été poussé
+        self.assertIn('echo "sha=$sha" >> "$GITHUB_OUTPUT"', wf)  # seulement si un commit a été créé
+
+    def test_commit_is_signed_by_github_never_pushed(self):
+        """Le ruleset de main exige des commits signés : le commit du robot est créé par l'API GraphQL
+        (createCommitOnBranch, signé par GitHub), jamais par git commit + git push (non signé, il bloquait la PR)."""
+        wf = Path(os.path.join(ROOT, ".github", "workflows", "visual-refs.yml")).read_text()
+        step = wf[wf.index("- name: Commit signé sur la branche de la PR"):wf.index("- name: Retirer le label")]
+        self.assertIn("createCommitOnBranch", step)
+        self.assertIn("expectedHeadOid", step)
+        self.assertNotIn("git push", step)
+        self.assertNotIn("git -c user.name", step)
         step = wf[wf.index("- name: Supprimer le run en attente d'approbation"):]
         self.assertIn("if: steps.commit.outputs.sha != ''", step)
         self.assertIn("head_sha=$SHA&event=pull_request", step)  # jamais le run workflow_dispatch des tests relancés
