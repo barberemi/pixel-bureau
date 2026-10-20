@@ -68,7 +68,7 @@ TEMPLATES = {
     "assign": ("workflow", ("models", "assign"), {}),  # m'affecter un ticket (assignation puis transition vers En cours)
     "unassign": ("workflow", ("models", "unassign"), {}),  # me le désaffecter (retour à À faire)
     # investiguer un message du canal Support (#62) : discussion avec l'agent, gate, réponse en fil
-    "support": ("workflow", ("models", "support"), {n: "workflows/support.py" for n in ("open", "mark", "draft", "mark_draft", "post")}),
+    "support": ("workflow", ("models", "support"), {n: "workflows/support.py" for n in ("open", "mark", "draft", "mark_draft", "post", "mark_post")}),
     "ask": ("quick_prompt", ("actions", "ask"), {}),
     "sketch": ("quick_prompt", ("actions", "sketch"), {}),
 }

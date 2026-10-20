@@ -247,8 +247,16 @@ class SupportTest(unittest.TestCase):
         self.assertEqual(steps["investigate"]["room_id"], "{{state.disc}}")
         self.assertEqual(steps["gate"]["gate_request_changes_target"], "investigate", "changements : retour à l'agent")
         self.assertTrue(steps["gate"]["gate_message"].startswith("{{steps.draft.data.stdout}}\n\n---\n"), "la page coupe au ---")
+        # le dataset support est un vrai objet (sortie JSON d'une étape CollectApiData), jamais le texte d'un stdout : Kronn y
+        # relit la ligne cliquée (threads.find(id)) pour la liaison de « Investiguer », sinon « expected an object at threads »
+        for w in (s for s in wf["steps"] if s["step_type"]["type"] == "PublishPageData"):
+            src = w["page_publish"]["writes"][0]["value_from"]
+            self.assertTrue(src.endswith(".data.sources.snap"), src)
+            self.assertEqual(steps[src.split(".")[1]]["step_type"]["type"], "CollectApiData")
         cron = templates.render(json.loads(Path(ROOT, "workflows", "templates", "support_poll.json").read_text()), cfg)
         self.assertTrue(cron["trigger"]["schedule"].startswith("7-59/15 "))
+        self.assertEqual(cron["steps"][1]["page_publish"]["writes"][0]["value_from"], "steps.poll.data.sources.snap")
+        self.assertEqual(cron["steps"][0]["step_type"]["type"], "CollectApiData")
 
 
 if __name__ == "__main__":

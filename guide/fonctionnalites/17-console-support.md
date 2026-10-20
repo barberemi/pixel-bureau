@@ -62,6 +62,8 @@ Avec le réglage `holo: "alerte"` de son personnage (pack de l'équipe), son hol
 - **une réponse vient de partir en fil** : « 🧯 Feu éteint » pendant 3 minutes, et il repasse au cyan léger ;
 - **au repos** : cyan léger, ses couleurs encore visibles sous l'hologramme.
 
+Sa fiche montre le nombre de fils à traiter, les deux derniers, et « 💬 Ouvrir la console Support » : on investigue depuis la console (le projet se choisit dans une liste), jamais par un « Lancer » à remplir à la main.
+
 `holo: "leger"` ou `holo: "rouge"` donnent ces hologrammes à n'importe quel agent, sans le lien avec le Support.
 
 ## Mise en place
