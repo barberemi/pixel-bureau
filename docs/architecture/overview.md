@@ -12,6 +12,7 @@ Pas de serveur propre : tout tourne dans un Kronn local. Le dépôt fournit une 
 | Kronn (interface) | 5173 (`http://localhost:5173/`) [src: file: team/defaults.json:6] | Kronn | Affiche la page (sandbox inline), rend les boutons `kronn-action` ; liens de la page vers l'interface (`KRONN_BASE`) [src: file: page/src/00-config.js:53] |
 | Live Page « Le Bureau » | N/A (servie par Kronn) | HTML + CSS + JS vanilla + Canvas, un seul fichier `dist/office.html` [src: file: tools/assemble.py:283] | Plan pixel art, panneau, fil, rejeu, mode TV ; lit `window.KronnPageData` et l'événement `kronn:page-data` [src: file: page/src/90-boot.js:143] |
 | Crons du Bureau (6) | N/A | Workflows Kronn : étapes Exec / CollectApiData (Python 3 stdlib), ApiCall Jira/Graph, PublishPageData | `live` (1 min), `office` et `team` (10 min), `payroll`, `canard`, `absences` (1 h) ; publient les datasets de la page [src: file: workflows/templates/live.json:9] [src: file: workflows/templates/office.json:9] [src: file: workflows/templates/team.json:9] [src: file: workflows/templates/payroll.json:9] [src: file: workflows/templates/canard.json:9] [src: file: workflows/templates/absences.json:9] |
+| Console Support (#62) | N/A | Cron `support_poll` (15 min, Exec qui lance la CLI `claude` et son connecteur Microsoft 365) et modèle `support` (Agent dans une discussion Kronn, gate, réponse en fil par Graph) | Dataset `support` ; seule exception aux crons à 0 token (voir [decisions](../decisions.md)) [src: file: workflows/support.py:1] |
 | Workflows manuels du Bureau (6) + 2 Quick Prompts | N/A | Workflows Kronn `Manual` | `gate`, `relaunch`, `avatar`, `comment`, `duck`, `layout` (avec une étape Gate) ; QP `ask` et `sketch` ; déclenchés par les boutons de la page ou `tools/plan.py share` [src: file: workflows/templates/gate.json:8] [src: file: workflows/templates/layout.json:50] |
 | Workflows d'agents de l'équipe | N/A | Workflows Kronn hors dépôt | Cibles des boutons `bureau-impl`, `bureau-mep`, `bureau-review`, `bureau-fix` (ids dans `bureau.config.json` › `actions`) [src: file: tools/assemble.py:17] |
 | Outils locaux (`tools/`) | N/A | Python 3, `sh`, Chrome headless | Assemblage, installation, publication (humain seul), tests, captures, plans [src: file: tools/publish.py:1] |
@@ -46,8 +47,8 @@ flowchart LR
     api[API locale port 3140]
     ui[Interface port 5173]
     page[Live Page Le Bureau]
-    ds[(Datasets - office, team, live, gates, actions, payroll, bosspages, pagelist, gitfut, duck, absences, avatars, layout)]
-    crons[Crons du Bureau - live, office, team, payroll, canard, absences]
+    ds[(Datasets - office, team, live, gates, actions, payroll, bosspages, pagelist, gitfut, duck, absences, avatars, layout, mails, support)]
+    crons[Crons du Bureau - live, office, team, payroll, canard, absences, courrier, support_poll]
     manual[Workflows manuels - gate, relaunch, avatar, comment, duck, layout]
     agents[Workflows d agents de l equipe]
   end

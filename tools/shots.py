@@ -261,6 +261,17 @@ SHOTS = {
                  "k=r.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(mx-9)*TS*k)+'px',"
                  "top:(r.top+scrollY+(my-5)*TS*k)+'px',width:14*TS*k+'px',height:7*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 2),
     "fiche-courrier": (1400, 1400, AT(11) + "select('mail:pro');", "#side"),
+    # console Support (#62, démo : un fil par état) : l'écran du boss en alerte, survolé (zoom sur son bureau) ; la fenêtre
+    "support-ecran": (1400, 1000, AT(11) + "setTimeout(()=>{const s=supportRect(),c=document.querySelector('#cv'),r=c.getBoundingClientRect(),k=r.width/c.width,"
+                      "d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(s.x+14-9.5*TS)*k)+'px',"
+                      "top:(r.top+scrollY+(s.y-2*TS)*k)+'px',width:19*TS*k+'px',height:5*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);"
+                      "tip.style.display='block';tip.style.left=(r.left+(s.x+14)*k)+'px';tip.style.top=(r.top+(s.y+6)*k)+'px';tip.textContent=supportTip();},2000);", "#shotclip", 2),
+    # l'agent Support en intervention (#62, démo : Nellie, holo « alerte ») : hologramme rouge sur son socle, « 🚨 2 à traiter »
+    "support-agent": (1400, 1000, AT(11) + "setTimeout(()=>{const a=spAgent(),c=document.querySelector('#cv'),r=c.getBoundingClientRect(),k=r.width/c.width,"
+                      "d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(a.pos.x-4*TS)*k)+'px',"
+                      "top:(r.top+scrollY+(a.pos.y-3.6*TS)*k)+'px',width:8*TS*k+'px',height:4.6*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2200);", "#shotclip", 2),
+    "support-fenetre": (1400, 1500, AT(11) + "ACTIONS.support=true;ACTIONS.gate=true;DUCK_PROJECTS=[{id:'none',name:'Sans projet'},{id:'p1',name:'Site de Scranton'}];"
+                        "openSupport();document.querySelector('.sp-modal').style.maxHeight='none';", ".sp-modal"),
     # règles du courrier en attente de validation (workflow « règles du courrier ») : le facteur attend devant le bureau du boss
     "facteur-regles": (1400, 1000, AT(11) + "GATES=[{run:'demo',wf:'00000000-demo',wf_name:'Le Bureau · règles du courrier',gate:'boss',"
                        "since:new Date(DAY0+10.5*36e5).toISOString(),message:'Le facteur te propose de trier ton courrier'}];refreshAll();needTeleport=true;"

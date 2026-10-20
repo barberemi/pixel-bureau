@@ -97,7 +97,8 @@
   "office": "1cf55dcb-eb7d-5834-a973-641c7442b112",
   "live": "6a5b5e80-7d43-5ddb-92c5-a8b10459fde0",
   "team": "a3f7f21c-4dec-5aff-bc8b-e6cca36d4d19",
-  "payroll": "6f3d76f4-da5c-5902-8047-fd0d00d0114c"
+  "payroll": "6f3d76f4-da5c-5902-8047-fd0d00d0114c",
+  "support_poll": "5e990002-0000-4000-8000-000000000062"
  },
  "actions": {
   "avatar": "3c3c8b06-6253-51d6-a475-49cc0a6368d3",
@@ -280,6 +281,14 @@
     "7a1c0004",
     "5e6f7081"
    ]
+  },
+  {
+   "key": "nellie",
+   "name": "Nellie",
+   "role": "Support", "holo": "alerte",
+   "wf": [
+    "5e990001"
+   ]
   }
  ],
  "ui": {},
@@ -309,5 +318,13 @@
   "mep": "7a1c0002-0000-5000-8000-000000000002",
   "review": "7a1c0003-0000-5000-8000-000000000003",
   "fix": "7a1c0004-0000-5000-8000-000000000004"
+ },
+ "models": {
+  "support": "5e990001-0000-4000-8000-000000000062"
+ },
+ "support": {
+  "name": "Support Scranton",
+  "team": "00000000-0000-4000-8000-00000000dm62",
+  "channel": "19:support-scranton@thread.tacv2"
  }
 }

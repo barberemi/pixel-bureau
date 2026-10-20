@@ -50,6 +50,16 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(m["jira"], c["jira"])
         self.assertEqual(assemble.merged(m), m)  # idempotent
 
+    def test_support_channel_from_the_pack_and_its_agent_bound_to_the_model(self):
+        """#62 : canal Support du pack (la config surcharge clé à clé), personnage rattaché au modèle support installé."""
+        self.write({"support": {"name": "Support", "team": "T1", "channel": "19:x@thread.tacv2"},
+                    "agents": [{"key": "kelly", "name": "Kelly", "role": "Support", "model": "support"}]})
+        m = assemble.merged(self.cfg(agents=[], support={"name": "Support Scranton"}, models={"support": "5e990001-0000-4000-8000-000000000000"}))
+        self.assertEqual(m["support"], {"name": "Support Scranton", "team": "T1", "channel": "19:x@thread.tacv2"})
+        self.assertEqual([(a["key"], a["wf"]) for a in m["agents"]], [("kelly", ["5e990001"])])
+        self.assertEqual(assemble.support_page(m), {"name": "Support Scranton", "wf": "5e990001"})
+        self.assertIsNone(assemble.support_page(assemble.demo_config() | {"support": {"team": "T1"}}), "sans canal : pas de console")
+
     def test_without_settings_nothing_changes(self):
         os.remove(self.settings)
         c = self.cfg(agents=[DWIGHT])

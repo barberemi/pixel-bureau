@@ -33,13 +33,24 @@ function holoSilhouette(img,sx,sy,col){
   ectx.globalCompositeOperation='source-in';ectx.fillStyle=col;ectx.fillRect(0,0,64,64);
   ectx.globalCompositeOperation='source-over';return HOLO_EDGE;
 }
-function holoFrame(img,sx,sy,now,lines){
+// style d'hologramme d'un agent (agents[].holo du pack, #62) : « leger » laisse voir ses couleurs ; « rouge » ajoute un
+// socle de projection ; « alerte » = léger au repos, rouge pendant une intervention (supportHot, 48-support.js)
+const HOLO_STYLE={leger:{tint:'rgba(70,190,255,.28)',lines:.22,glow:'#5fd4ff',dark:'#0b3a4a'},
+  rouge:{tint:'rgba(255,74,61,.22)',lines:.2,glow:'#ff6b5f',dark:'#4a0b0b',beam:'#ff6b5f'}};
+function holoStyleOf(c){const h=c&&c.holo;return h==='alerte'?HOLO_STYLE[supportHot(c)?'rouge':'leger']:HOLO_STYLE[h]||null;}
+function holoBeam(dx,dy,col){
+  ctx.save();const g=ctx.createRadialGradient(dx+32,dy+61,1,dx+32,dy+61,16);g.addColorStop(0,col+'cc');g.addColorStop(1,col+'00');
+  ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(dx+32,dy+61,16,5,0,0,7);ctx.fill();
+  const b=ctx.createLinearGradient(0,dy+62,0,dy+10);b.addColorStop(0,col+'55');b.addColorStop(1,col+'00');ctx.fillStyle=b;
+  ctx.beginPath();ctx.moveTo(dx+20,dy+62);ctx.lineTo(dx+44,dy+62);ctx.lineTo(dx+50,dy+10);ctx.lineTo(dx+14,dy+10);ctx.fill();ctx.restore();
+}
+function holoFrame(img,sx,sy,now,lines,hs){
   hctx.globalCompositeOperation='source-over';hctx.clearRect(0,0,64,64);hctx.drawImage(img,sx,sy,64,64,0,0,64,64);
   // teinte cyan ; vert fantôme à Halloween (46-themes.js)
-  hctx.globalCompositeOperation='source-atop';hctx.fillStyle=themeIs('halloween')?'rgba(150,255,170,.6)':'rgba(70,190,255,.55)';hctx.fillRect(0,0,64,64);
+  hctx.globalCompositeOperation='source-atop';hctx.fillStyle=hs?hs.tint:themeIs('halloween')?'rgba(150,255,170,.6)':'rgba(70,190,255,.55)';hctx.fillRect(0,0,64,64);
   if(lines){
     hctx.globalCompositeOperation='destination-out';
-    hctx.fillStyle='rgba(0,0,0,.4)';
+    hctx.fillStyle=`rgba(0,0,0,${hs?hs.lines:.4})`;
     const off=Math.floor(now/90)%3;
     for(let y=off;y<64;y+=3)hctx.fillRect(0,y,64,1);
   }
@@ -86,14 +97,15 @@ function drawChar0(c,now){
   const dx=x-32-(c.sprite==='boss_sax'?5:0), dy=y-60+bob;
   if(famOf(c)==='wf'){
     const glitch=(Math.floor(now/110)+Math.floor(c.phase*7))%41===0;
-    const gx=dx+(glitch?1:0);
+    const gx=dx+(glitch?1:0), hs=holoStyleOf(c);
+    if(hs&&hs.beam)holoBeam(gx,dy,hs.beam);
     ctx.save();
-    ctx.globalAlpha=glitch?.2:.35; holoSilhouette(img,fx*64,fy*64,'#5fd4ff');
+    ctx.globalAlpha=glitch?.2:.35; holoSilhouette(img,fx*64,fy*64,hs?hs.glow:'#5fd4ff');
     for(const [ox,oy] of [[-2,0],[2,0],[0,-2],[0,2]])ctx.drawImage(HOLO_EDGE,gx+ox,dy+oy);
-    ctx.globalAlpha=glitch?.45:.95; holoSilhouette(img,fx*64,fy*64,'#0b3a4a');
+    ctx.globalAlpha=glitch?.45:.95; holoSilhouette(img,fx*64,fy*64,hs?hs.dark:'#0b3a4a');
     for(const [ox,oy] of [[-1,0],[1,0],[0,-1],[0,1]])ctx.drawImage(HOLO_EDGE,gx+ox,dy+oy);
-    ctx.globalAlpha=glitch?.45:.92;
-    ctx.drawImage(holoFrame(img,fx*64,fy*64,now,true),gx,dy);ctx.restore();
+    ctx.globalAlpha=glitch?.45:hs?.95:.92;
+    ctx.drawImage(holoFrame(img,fx*64,fy*64,now,true,hs),gx,dy);ctx.restore();
   }else ctx.drawImage(img,fx*64,fy*64,64,64,dx,dy+guestBob(c,fx),64,64);
   themeOnChar(c,x,dy+(c.sprite==='boss_sax'?3:14),now); // 46-themes.js : chapeau, lunettes, couronne
   drawPassion(c,x,y,now); // 38-passions.js : volant, panier, sac de frappe, hologramme du soir

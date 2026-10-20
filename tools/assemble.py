@@ -28,7 +28,9 @@ ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate",
            "bureau-estimate": ("estimate", "__ESTIMATE_WF__"), "bureau-mailrules": ("mail_rules", "__MAILRULES_WF__"),
            "bureau-agent": ("agent", "__AGENT_WF__"), "bureau-pages": ("pages", "__PAGES_WF__"),
            "bureau-meppr": ("mep_pr", "__MEPPR_WF__"), "bureau-rebase": ("rebase", "__REBASE_WF__"),
-           "bureau-fixpr": ("fix_pr", "__FIXPR_WF__")}
+           "bureau-fixpr": ("fix_pr", "__FIXPR_WF__"),
+           # console Support (#62) : investiguer un message (modèle support), relever le canal maintenant (cron support_poll)
+           "bureau-support": ("support", "__SUPPORT_WF__"), "bureau-supportpoll": ("support_poll", "__SUPPORTPOLL_WF__")}
 # variables des workflows de la clé launch : rôle -> nom par défaut ; launch.<action> = id seul, ou {wf, vars: {rôle: nom
 # chez toi, ou null si ton workflow n'a pas cette variable}}
 LAUNCH_VARS = {"impl": {"ticket": "jira_ticket_key"}, "mep": {"ticket": "jira_ticket_key", "pr": "pr_number"},
@@ -144,7 +146,7 @@ def cron_hours(cfg):
 def cron_schedules(cfg=None):
     """Calendrier de chaque cron du Bureau : celui de ses modèles (workflows/templates), heures calées sur le bureau."""
     out = {}
-    for key in ("office", "live", "team", "payroll", "canard", "absences", "courrier"):
+    for key in ("office", "live", "team", "payroll", "canard", "absences", "courrier", "support_poll"):
         path = p("workflows", "templates", key + ".json")
         if os.path.exists(path):
             s = (json.loads(Path(path).read_text())["definition"].get("trigger") or {}).get("schedule")
@@ -188,7 +190,17 @@ def page_config(cfg):
         "action_wf": {k: str(v)[:8] for k, v in action_ids(cfg).items() if k in FICHE_ACTIONS and v},
         "ui": cfg.get("ui") or {},
         "skins": themes(cfg),  # thèmes d'interface (theme-*.css) proposés par le bouton 🎨
+        "support": support_page(cfg),  # console Support (#62)
     }
+
+
+def support_page(cfg):
+    """Console Support (#62) pour la page : nom du canal et préfixe du modèle d'investigation (l'agent qui l'incarne),
+    ou None sans canal réglé (support.team et support.channel)."""
+    s = cfg.get("support") or {}
+    if not (s.get("team") and s.get("channel")):
+        return None
+    return {"name": s.get("name") or "Support", "wf": str((cfg.get("models") or {}).get("support") or "")[:8]}
 
 
 FICHE_ACTIONS = ("impl", "mep", "mep_pr", "review", "fix", "fix_pr", "rebase", "comment", "estimate")
@@ -284,7 +296,7 @@ def defaults(cfg):
 # Le pack porte l'équipe, la config porte l'installation. settings.json du pack, lu à chaque assemblage et rendu des
 # modèles : rythme, GitFut, affiches du Top 3, planning des absences (sans config_id) et personnages des agents (sans
 # ids de workflows). La config peut surcharger chacun ; elle seule rattache un personnage à ses workflows (agents[].wf).
-SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review")
+SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "support")
 AGENT_FIELDS = ("key", "name", "role", "wf", "seat", "sprite")  # ordre des champs d'un agent, comme l'installateur l'écrit
 
 
@@ -330,6 +342,8 @@ def merged(cfg):
         out["microsoft"] = {**m, **{k: v for k, v in pm.items() if k not in m}}
         if planning:
             out["microsoft"]["planning"] = planning
+    if "support" in s:  # console Support (#62) : canal de l'équipe (team, channel, name) ; la config peut le surcharger
+        out["support"] = {**(s["support"] or {}), **(cfg.get("support") or {})}
     if "review" in s:  # revue de PR (#78) : consignes, skills, dépôts, horaire de l'équipe ; page et projet de l'installation
         out["review"] = {**(s["review"] or {}), **(cfg.get("review") or {})}
     if "agents" in s:
@@ -437,14 +451,16 @@ def launch(cfg):
 
 # boutons qu'un modèle du Bureau incarné par un agent (models, #78) fait marcher quand tu n'as pas ton propre workflow
 # dans launch : action -> clé du modèle ; ses variables portent les noms par défaut de LAUNCH_VARS
-MODEL_ACTIONS = {"review": "review_one", "estimate": "estimate"}
+MODEL_ACTIONS = {"review": "review_one", "estimate": "estimate", "support": "support"}
 
 
 def action_ids(cfg):
     """Id de la cible de chaque bouton : workflows du Bureau (actions), modèles incarnés (models), puis tes workflows
     (launch), qui l'emportent."""
     models = cfg.get("models") or {}
-    return {**(cfg.get("actions") or {}), **{a: models[m] for a, m in MODEL_ACTIONS.items() if models.get(m)},
+    poll = (cfg.get("workflows") or {}).get("support_poll")  # « Relever maintenant » lance le cron du Support (#62)
+    return {**(cfg.get("actions") or {}), **({"support_poll": poll} if poll else {}),
+            **{a: models[m] for a, m in MODEL_ACTIONS.items() if models.get(m)},
             **{k: wf for k, (wf, _) in launch(cfg).items()}}
 
 

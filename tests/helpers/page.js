@@ -36,6 +36,7 @@ function merged(cfg) {
   if (!f || !fs.existsSync(f)) return cfg;
   const s = JSON.parse(fs.readFileSync(f, 'utf8')), out = {...cfg};
   if (s.rhythm) out.rhythm = {...s.rhythm, ...(cfg.rhythm || {})};
+  if (s.support) out.support = {...s.support, ...(cfg.support || {})}; // console Support (#62)
   for (const k of ['gitfut', 'wiki_posters']) if (k in s && !(k in cfg)) out[k] = s[k];
   if (Array.isArray(s.agents)) {
     const personas = Object.fromEntries(s.agents.filter(a => a && a.key).map(a => { const {wf, ...p} = a; return [a.key, p]; }));
@@ -52,11 +53,17 @@ function actionWf(cfg) {
   const ids = {...(cfg.actions || {}), ...(models.review_one ? {review: models.review_one} : {}), ...(models.estimate ? {estimate: models.estimate} : {}), ...launch};
   return Object.fromEntries(Object.entries(ids).filter(([k, v]) => v && ['impl', 'mep', 'mep_pr', 'review', 'fix', 'fix_pr', 'rebase', 'comment', 'estimate'].includes(k)).map(([k, v]) => [k, String(v).slice(0, 8)]));
 }
+// console Support (#62), comme support_page() : nom du canal et préfixe du modèle d'investigation, null sans canal
+function supportPage(cfg) {
+  const s = cfg.support || {};
+  return s.team && s.channel ? {name: s.name || 'Support', wf: String((cfg.models || {}).support || '').slice(0, 8)} : null;
+}
 function pageConfig(cfg) {
   cfg = merged(cfg);
   return {kronn_ui: (cfg.kronn || {}).ui, jira_site: (cfg.jira || {}).site, jira_flow: {triage_from: 'Proposed', test: 'To Test', validated: 'To Deploy', reopened: 'Reopen', ...((cfg.jira || {}).flow || {})}, github_repo: (cfg.github || {}).repo,
     fix_any_repo: !!((((cfg.launch || {}).fix || {}).vars || {}).repo), // comme page_config() : Corriger prend le dépôt (#56)
     action_wf: actionWf(cfg), // comme page_config() : préfixe du workflow de chaque bouton des fiches (#86)
+    support: supportPage(cfg), // comme support_page() : console Support (#62)
     rhythm: cfg.rhythm || {}, mep_workflow: cfg.mep_workflow, workflows: cfg.workflows || {}, agents: cfg.agents || [], ui: cfg.ui || {}, skins: themes(cfg),
     schedules: Object.fromEntries(['office', 'live', 'team', 'payroll', 'canard'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule.replace('@@cron_hours@@', '4-20')]))}; // heures de Paris, comme cron_hours()
 }

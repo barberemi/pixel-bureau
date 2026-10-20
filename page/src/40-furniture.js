@@ -58,7 +58,7 @@ F.push({
     R(ctx,x0,top,3*TS+4,2,'#8a6040');
     R(ctx,x0,top+18,3*TS+4,13,'#56391f');
   R(ctx,x0+6,top-12,18,13,'#2c2f38');
-  {const b=chars.find(c=>c.boss);drawScreen(x0+7,top-11,16,10,b?screenState(b):'off',now,97);} // ses pages Kronn : écran mural de la salle de réunion (#61)
+  {const b=chars.find(c=>c.boss);if(!supportScreen(x0+7,top-11,now))drawScreen(x0+7,top-11,16,10,b?screenState(b):'off',now,97);} // ses pages Kronn : écran mural de la salle de réunion (#61) ; en alerte : la console Support (48-support.js, #62)
   R(ctx,x0+12,top+1,5,3,'#2c2f38');
   R(ctx,x0+44,top+4,15,5,'#e6e6e6');
   R(ctx,x0+76,top+2,6,7,'#fbfbf6');

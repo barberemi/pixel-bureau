@@ -119,6 +119,15 @@
   "legs": "pants",
   "legs_color": "#22252e"
  },
+ "nellie": {
+  "sex": "female",
+  "skin": "pale",
+  "hair": "bangs_bun",
+  "hair_color": "#5a3a24",
+  "shirt": "#b8322a",
+  "legs": "pants",
+  "legs_color": "#2d3142"
+ },
  "temp": {
   "sex": "male",
   "skin": "brown",
