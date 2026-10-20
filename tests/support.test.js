@@ -54,6 +54,12 @@ test('réponse au format du fil : libellés en gras, texte échappé, mention en
     '🔎 <b>Cause</b> : le cron &lt;RSS&gt; a échoué<br>🛠️ <b>Action</b> : relancé<br><br><i>Généré de manière automatique 🤖</i>');
 });
 
+test('texte d\'un message : échappé, retours à la ligne, adresses https en liens (jamais du HTML du message)', () => {
+  assert.equal(J(`spText('<b>x</b> voir https://a.example/p?q=1\\nMerci')`),
+    '&lt;b&gt;x&lt;/b&gt; voir <a href="https://a.example/p?q=1" target="_blank" rel="noopener">https://a.example/p?q=1</a><br>Merci');
+  assert.equal(J(`spText('javascript:alert(1) http://x.example')`), 'javascript:alert(1) http://x.example', 'seulement https');
+});
+
 test('écran du boss : en alerte seulement s\'il y a quelque chose à traiter', () => {
   set([th('1', 'done')]);
   assert.equal(J('supportScreen(0, 0, 0)'), false);

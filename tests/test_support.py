@@ -97,7 +97,8 @@ class SupportTest(unittest.TestCase):
         self.base = f"http://127.0.0.1:{self.srv.server_port}"
         self.data = {"tools": [TOOL, "mcp__claude_ai_Figma__get_screenshot", "mcp__claude_ai_Microsoft_365__get_me"],
                      "roots": [msg(101, "Beesly, Pam", "uid-pam", 2, "Le flux RSS FR est vide depuis ce matin"),
-                               msg(102, "Halpert, Jim", "uid-jim", 30, "404 sur la page just-in"),
+                               msg(102, "Halpert, Jim", "uid-jim", 30, '<p>404 sur la page <b>just-in</b>&nbsp;!</p> <p>Exemple :'
+                                   '<a href="https://site.example/fr/just-in?x=1">https://site.example/fr/just…</a><br />Merci &amp; bravo</p>'),
                                msg(103, None, None, 3, kind="systemEventMessage"),
                                msg(104, "Martin, Angela", "uid-angela", 24 * 9, "Trop vieux")],
                      "replies": {}}
@@ -135,6 +136,8 @@ class SupportTest(unittest.TestCase):
         d = self.poll()
         self.assertEqual([t["id"] for t in d["threads"]], ["101", "102"], "messages système et fils de plus de 7 jours écartés")
         self.assertEqual([t["state"] for t in d["threads"]], ["new", "new"])
+        self.assertEqual(d["threads"][1]["text"], "404 sur la page just-in !\n\nExemple :https://site.example/fr/just-in?x=1\nMerci & bravo",
+                         "HTML du message en texte : paragraphes, lien à son adresse complète, entités décodées")
         self.assertEqual((d["ok"], d["cost"], d["me"], d["name"]), (True, 0.0051, "Scott, Michael", "Support Scranton"))
         c = self.calls()[0]
         self.assertEqual(c["env"], "0", "la CLI attend ses connecteurs avant le premier tour")

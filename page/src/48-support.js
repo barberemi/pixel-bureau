@@ -57,6 +57,8 @@ const spWhen=a=>{const t=ms(a), d=parisDay(t);return d===parisDay(T)?hm(t):d===p
 // réponse au format du fil : libellé de section en gras, puis la mention en italique (comme support.py, html_of)
 const spReply=s=>String(s||'').trim().split('\n').filter(x=>x.trim()).map(x=>{const m=x.trim().match(/^(\W{1,4}\s*)([^:]{1,30}?)\s*:\s*(.*)$/);
   return m?esc(m[1])+'<b>'+esc(m[2])+'</b> : '+esc(m[3]):esc(x);}).join('<br>')+'<br><br><i>Généré de manière automatique 🤖</i>';
+// texte d'un message (support.py l'a déjà tiré du HTML) : échappé, retours à la ligne, adresses https en liens
+const spText=s=>esc(String(s||'').trim()).replace(/https:\/\/[^\s<>"']+/g,u=>`<a href="${u}" target="_blank" rel="noopener">${u.length>70?u.slice(0,69)+'…':u}</a>`).replace(/\n/g,'<br>');
 const SP_TAG={new:['Nouveau','var(--err)'],failed:['À relancer','var(--err)'],run:['🔎 Investigation en cours','var(--info)'],gate:['✋ Réponse à valider','var(--warn)'],
   done:['✓ Répondu en fil','var(--ok)'],answered:['Répondu dans Teams','var(--idle)'],ignored:['Ignoré','var(--idle)']};
 const spTeams=t=>safeUrl(t.url)?`<a class="sp-l" href="${esc(t.url)}" target="_blank" rel="noopener">${t.state==='done'?'voir dans Teams':'Ouvrir dans Teams'} ↗</a>`:'';
@@ -64,7 +66,7 @@ function spCard(t){
   const s=spState(t), st=s.k, tag=SP_TAG[st]||SP_TAG.new, a=spAgent(), disc=t.run&&t.run.disc;
   const el=document.createElement('div');el.className='sp-card sp-'+st;el.dataset.id=t.id;
   let h=`<div class="sp-top"><b>${esc(spWho(t.from))}</b><span class="sp-t">${esc(spWhen(t.at))}</span><span class="sp-tag" style="background:${tag[1]}">${tag[0]}</span></div>`+
-    `<div class="sp-txt">« ${esc(t.text)} »</div>`;
+    `<div class="sp-txt">${spText(t.text)}</div>`;
   const dl=disc?' · '+discLink(disc,'discussion Kronn ↗'):'';
   if(st==='run')h+=`<div class="sp-s">${esc(a?a.name+' (Support)':'L\'agent Support')} investigue depuis ${esc(hm(ms((s.r&&s.r.start)||t.run.at)))}${dl}</div>`;
   if(st==='failed')h+=`<div class="sp-s">L'investigation de ${esc(hm(ms((s.r&&s.r.start)||t.run.at)))} s'est arrêtée en route${dl} : relance-la.</div>`;
@@ -83,7 +85,8 @@ function spCard(t){
 }
 // « 🔎 Investiguer » : le projet choisi ici, le commentaire dans la carte Kronn (workflow du modèle support)
 function spInvestigate(el,t){
-  const row=document.createElement('div');row.className='sp-act';row.setAttribute('data-kronn-action-slot-host','');
+  const host=document.createElement('div');host.className='sp-host';host.setAttribute('data-kronn-action-slot-host','');
+  const row=document.createElement('div');row.className='sp-act';host.appendChild(row);
   const pr=DUCK_PROJECTS||[]; // dataset gates (39-duck.js) : projets Kronn, « Sans projet » en tête
   if(ACTIONS.support&&pr.length){
     const sel=document.createElement('select');sel.className='sp-pj';sel.setAttribute('aria-label','Projet à investiguer');
@@ -96,33 +99,37 @@ function spInvestigate(el,t){
       if(v==='succeeded')n.innerHTML='<b style="color:var(--ok)">✓ Lancé.</b> '+esc((spAgent()||{name:'L\'agent Support'}).name)+' ouvre sa discussion et se met au travail.';
       else if(v==='failed')n.innerHTML='<b style="color:var(--err)">Lancement refusé.</b> Détail dans la carte.';
     }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
-    row.append(sel,b);el.append(row,n);
+    const tm=spTeams(t);if(tm)row.insertAdjacentHTML('beforeend',tm);
+    row.prepend(sel,b);el.append(host,n);return;
   }else if(ACTIONS.support)el.insertAdjacentHTML('beforeend','<div class="sp-s">Les projets arrivent au prochain passage du cron live (1 min au plus).</div>');
   el.insertAdjacentHTML('beforeend',spTeams(t));
 }
 // réponse à valider : les trois décisions de la gate (workflow « décision gate », lignes de gates.grows)
 function spGate(el,t,g,dl){
-  const row=document.createElement('div');row.className='sp-act';
+  const host=document.createElement('div');host.className='sp-host';host.setAttribute('data-kronn-action-slot-host','');
+  const row=document.createElement('div');row.className='sp-act';host.appendChild(row);
   const dk=g&&g.run+'|'+g.gate;
   if(dk&&DECIDED[dk]){el.insertAdjacentHTML('beforeend',`<div class="sp-s"><b style="color:var(--ok)">✓ Réponse envoyée à ${hm(DECIDED[dk])}.</b>${dl}</div>`);return;}
   for(const [d,label,cls] of [['approve','✅ Valider et poster en fil','on'],['request_changes','✏️ Demander des changements',''],['reject','✖ Refuser','']]){
-    const w=document.createElement('div');w.className='qslot';w.setAttribute('data-kronn-action-slot-host','');
     const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;
     if(g&&ACTIONS.gate){b.setAttribute('data-kronn-action','bureau-gate');const id=g.run+'|'+d;b.setAttribute('data-kronn-bindings',JSON.stringify({run_id:id,decision:id}));
       new MutationObserver(()=>{if(b.getAttribute('data-kronn-action-state')==='succeeded'&&!DECIDED[dk]){DECIDED[dk]=Date.now();saveDecided();}})
         .observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});}
     else{b.disabled=true;b.title=g?'Workflow « décision gate » non installé : décide dans Kronn':'La gate arrive sur la page d\'ici une minute (cron live)';}
-    w.appendChild(b);row.appendChild(w);
+    row.appendChild(b);
   }
-  el.appendChild(row);
+  el.appendChild(host);
   el.insertAdjacentHTML('beforeend',`<div class="sp-s">« Changements » renvoie ton commentaire à ${esc((spAgent()||{name:'l\'agent'}).name)} dans la même discussion${dl}.</div>`);
 }
+// Kronn ouvre sa carte dans un bloc ajouté à la fin de l'ancêtre [data-kronn-action-slot-host] du bouton : cet ancêtre
+// enveloppe donc la rangée (bloc pleine largeur), jamais une rangée flex, sinon la carte se range en colonne à côté
 function spHead(){
   const n=spTodo().length, S=SUPPORT||{};
-  const polled=S.polled_at?'relevé à '+spWhen(S.polled_at)+(S.cost?' ('+String(S.cost).replace('.',',')+' $)':''):'pas encore relevé';
-  return `<div class="bp-head"><h2>💬 ${esc(spName())} · ${n?n+' à traiter':'rien à traiter'}</h2><button type="button" class="bp-x" aria-label="Fermer">×</button></div>`+
-    `<div class="sp-bar" data-kronn-action-slot-host><span class="sp-s">${esc(polled)}${S.demo?' (démo)':''}${S.days?' · '+S.days+' derniers jours':''}</span>`+
-    (ACTIONS.support_poll?'<button type="button" class="sp-poll" data-kronn-action="bureau-supportpoll">↻ Relever maintenant</button>':'')+'</div>'+
+  const polled=S.polled_at?'Relevé à '+spWhen(S.polled_at)+(S.days?' · '+S.days+' derniers jours':'')+(S.cost?' · '+String(S.cost).replace('.',',')+' $':''):'Pas encore relevé';
+  return `<div class="bp-head sp-head"><h2>💬 ${esc(spName())}</h2><span class="sp-pill${n?' sp-hot':''}">${n?n+' à traiter':'rien à traiter'}</span>`+
+    `<button type="button" class="bp-x" aria-label="Fermer">×</button></div>`+
+    `<div class="sp-host" data-kronn-action-slot-host><div class="sp-bar"><span class="sp-s">${esc(polled)}${S.demo?' (démo)':''}</span>`+
+    (ACTIONS.support_poll?'<button type="button" class="sp-poll" data-kronn-action="bureau-supportpoll">↻ Relever maintenant</button>':'')+'</div></div>'+
     (S.error?`<p class="sp-err">Dernier relevé en échec : ${esc(S.error)}</p>`:'');
 }
 function openSupport(){
@@ -139,8 +146,12 @@ function spFill(box){
   box.innerHTML=spHead();box.querySelector('.bp-x').onclick=()=>closeBossPages();
   const l=spThreads().sort((a,b)=>ms(b.at)-ms(a.at));
   for(const t of l)box.appendChild(spCard(t));
-  if(!l.length)box.insertAdjacentHTML('beforeend','<p class="sp-s">Aucun message ces derniers jours.</p>');
-  box.insertAdjacentHTML('beforeend',`<p class="sp-s sp-note">« Investiguer » ouvre une discussion Kronn avec l'agent Support ; sa réponse revient ici à valider, puis part en fil sous ton nom : une ligne par section avec son emoji, puis « Généré de manière automatique 🤖 » en italique.</p>`);
+  if(!l.length){const S=SUPPORT||{};box.insertAdjacentHTML('beforeend',`<div class="sp-empty"><div class="sp-e-ico">${S.polled_at?'🧯':'📡'}</div><b>${S.polled_at?'Rien à signaler':'Pas encore de relevé'}</b>`+
+    `<span>${S.polled_at?'Aucun message sur '+esc(spName())+' ces '+(S.days||7)+' derniers jours.':'Le premier relevé arrive dans les 15 minutes'+(ACTIONS.support_poll?', ou tout de suite avec « Relever maintenant »':'')+'.'}</span></div>`);}
+  box.insertAdjacentHTML('beforeend',`<p class="sp-note">« Investiguer » ouvre une discussion Kronn avec ${esc((spAgent()||{name:'l\'agent Support'}).name)} ; sa réponse revient ici à valider, puis part en fil sous ton nom.</p>`);
+  const pb=box.querySelector('.sp-poll');
+  if(pb)new MutationObserver(()=>{const v=pb.getAttribute('data-kronn-action-state'), s=box.querySelector('.sp-bar .sp-s');
+    if(s&&v==='succeeded')s.innerHTML='<b style="color:var(--ok)">✓ Relevé lancé.</b> La fenêtre se met à jour toute seule, dans une minute environ.';}).observe(pb,{attributes:true,attributeFilter:['data-kronn-action-state']});
 }
 // la fenêtre ouverte suit les données, sauf pendant une carte Kronn ouverte dedans
 function spRefresh(){const box=document.querySelector('.sp-modal');if(box&&!box.querySelector('[data-kronn-action-slot]'))spFill(box);}
