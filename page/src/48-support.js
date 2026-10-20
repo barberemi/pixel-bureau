@@ -9,7 +9,7 @@ function readSupport(src){try{const d=dsOf(src,'support');return d&&Array.isArra
 // la console existe (alerte de l'écran du boss, agent Support), en mode TV compris ; la fenêtre, elle, ne s'ouvre pas en TV
 const supportOn=()=>!!(CFG.support||SUPPORT);
 const supportOpenable=()=>!TV&&supportOn();
-const SP_TODO=new Set(['new','gate','failed']);
+const SP_TODO=new Set(['new','gate','failed','relaunched']);
 // état d'un fil à l'heure de la page : la gate en attente et le dernier run du jour l'emportent sur le relevé
 function spState(t){
   const g=t.run&&(GATES||[]).find(x=>x.run===t.run.run);
@@ -62,13 +62,18 @@ const spReply=s=>String(s||'').trim().split('\n').filter(x=>x.trim()).map(x=>{co
 // texte d'un message (support.py l'a déjà tiré du HTML) : échappé, retours à la ligne, adresses https en liens
 const spText=s=>esc(String(s||'').trim()).replace(/https:\/\/[^\s<>"']+/g,u=>`<a href="${u}" target="_blank" rel="noopener">${u.length>70?u.slice(0,69)+'…':u}</a>`).replace(/\n/g,'<br>');
 const SP_TAG={new:['Nouveau','var(--err)'],failed:['À relancer','var(--err)'],run:['🔎 Investigation en cours','var(--info)'],gate:['✋ Réponse à valider','var(--warn)'],
-  done:['✓ Répondu en fil','var(--ok)'],answered:['Répondu dans Teams','var(--idle)'],ignored:['Ignoré','var(--idle)']};
+  done:['✓ Répondu en fil','var(--ok)'],resolved:['✅ Traité','var(--ok)'],answered:['Pris en charge','var(--info)'],relaunched:['↩ Relancé','var(--err)'],
+  ignored:['Ignoré','var(--idle)']};
+// réactions du message principal, regroupées (« custom » : un emoji de l'organisation, dont le nom n'arrive pas)
+const spReacts=l=>{const n={};for(const r of l||[]){const k=r==='custom'?'🙂+':r;n[k]=(n[k]||0)+1;}
+  return Object.entries(n).map(([k,v])=>`<span class="sp-r">${esc(k)}${v>1?' '+v:''}</span>`).join('');};
 const spTeams=t=>safeUrl(t.url)?`<a class="sp-l" href="${esc(t.url)}" target="_blank" rel="noopener">${t.state==='done'?'voir dans Teams':'Ouvrir dans Teams'} ↗</a>`:'';
 function spCard(t){
   const s=spState(t), st=s.k, tag=SP_TAG[st]||SP_TAG.new, a=spAgent(), disc=t.run&&t.run.disc;
   const el=document.createElement('div');el.className='sp-card sp-'+st;el.dataset.id=t.id;
   let h=`<div class="sp-top"><b>${esc(spWho(t.from))}</b><span class="sp-t">${esc(spWhen(t.at))}</span><span class="sp-tag" style="background:${tag[1]}">${tag[0]}</span></div>`+
-    `<div class="sp-txt">${spText(t.text)}</div>`;
+    (t.subject?`<div class="sp-subj">${esc(t.subject)}</div>`:'')+`<div class="sp-txt">${spText(t.text)}</div>`+
+    ((t.reactions||[]).length?`<div class="sp-rs">${spReacts(t.reactions)}</div>`:'');
   const dl=disc?' · '+discLink(disc,'discussion Kronn ↗'):'';
   if(st==='run')h+=`<div class="sp-s">${esc(a?a.name+' (Support)':'L\'agent Support')} investigue depuis ${esc(hm(ms((s.r&&s.r.start)||t.run.at)))}${dl}</div>`;
   if(st==='failed')h+=`<div class="sp-s">L'investigation de ${esc(hm(ms((s.r&&s.r.start)||t.run.at)))} s'est arrêtée en route${dl} : relance-la.</div>`;
@@ -78,10 +83,12 @@ function spCard(t){
   }
   if(st==='done'&&t.mine)h+=`<div class="sp-rep sp-o">${spReply(t.mine.text)}</div><div class="sp-s">Posté en fil à ${esc(spWhen(t.mine.at))} · ${spTeams(t)}</div>`;
   else if(st==='done')h+=`<div class="sp-s">Tu as répondu dans Teams · ${spTeams(t)}</div>`;
-  if(st==='answered')h+=`<div class="sp-s">${esc(spWho(t.by))} a répondu dans le fil · ${spTeams(t)}</div>`;
+  if(st==='answered')h+=`<div class="sp-s">Pris par ${esc(spWho(t.by))} : il a répondu dans le fil · ${spTeams(t)}</div>`;
+  if(st==='relaunched')h+=`<div class="sp-s">${esc(spWho(t.from))} a relancé après la réponse de ${esc(spWho(t.by))} · ${spTeams(t)}</div>`;
+  if(st==='resolved')h+=`<div class="sp-s">Marqué ✅ traité dans Teams · ${spTeams(t)}</div>`;
   if(st==='ignored')h+=`<div class="sp-s">Réponse refusée : rien n'a été posté${dl}.</div>`;
   el.innerHTML=h;
-  if(st==='new'||st==='failed')spInvestigate(el,t);
+  if(st==='new'||st==='failed'||st==='relaunched')spInvestigate(el,t);
   if(st==='gate')spGate(el,t,s.g,dl);
   return el;
 }
@@ -157,15 +164,30 @@ function spFill(box){
 }
 // la fenêtre ouverte suit les données, sauf pendant une carte Kronn ouverte dedans
 function spRefresh(){const box=document.querySelector('.sp-modal');if(box&&!box.querySelector('[data-kronn-action-slot]'))spFill(box);}
+// mode TV, « EN DIRECT » (75-tv.js) : l'arrivée d'un message du jour, puis un rappel par heure d'attente tant que personne
+// ne l'a pris (nouveau, relancé) ; jamais le texte, seulement le prénom et le sujet (ou le début du message)
+function spTicker(){
+  if(!supportOn())return [];
+  const out=[], H=36e5;
+  for(const t of spThreads()){
+    const k=spState(t).k, at=ms(t.at); if(!at||!['new','relaunched'].includes(k))continue;
+    const what=t.subject||String(t.text||'').split('\n')[0].slice(0,60), who=spWho(t.from);
+    if(parisDay(at)===parisDay(T))out.push({t:at,tx:`🚒 Support : nouveau message de ${who}, « ${what} »`});
+    const n=Math.floor((T-at)/H);
+    if(n>=1)out.push({t:at+n*H,tx:`🚒 Support : le message de ${who} attend depuis ${n} h, « ${what} »`});
+  }
+  return out;
+}
 // démo (jeudi 1er octobre) : un fil par état, demandes fictives
 function supportDemo(){
   const at=h=>new Date(DAY0+h*36e5).toISOString(), u='https://teams.example/demo';
   const t=(id,from,h,text,state,extra)=>({id,from,at:at(h),text,url:u,cut:false,replies:0,last_at:at(h),state,by:null,mine:null,run:null,...extra});
   return {generated_at:at(10.9),polled_at:at(10.9),name:'Support Scranton',ok:true,error:null,cost:0.005,days:7,demo:true,threads:[
-    t('d1','Bernard, Andy',10.7,"Depuis hier 15h, les fiches produit du catalogue partenaire renvoient une 404. Celles d'avant 15h marchent toujours.",'new'),
+    t('d1','Bernard, Andy',10.7,"Depuis hier 15h, les fiches produit du catalogue partenaire renvoient une 404. Celles d'avant 15h marchent toujours.",'new',{subject:'Catalogue partenaire : fiches produit en 404'}),
     t('d2','Beesly, Pam',10.33,"Sur la page des promotions, la vidéo jouée n'est pas la bonne alors que le lien est bien dans le CMS.",'run',{run:{run:'demo-r2',status:'Running',at:at(10.52),disc:null,version:0}}),
     t('d3','Philbin, Darryl',9.08,'Le flux RSS des commandes est vide depuis ce matin.','gate',{run:{run:'demo-r3',status:'WaitingApproval',at:at(9.2),disc:null,version:2,
       draft:"🔎 Cause : le cron du flux RSS a échoué à 8h (délai dépassé sur l'API des commandes).\n🛠️ Action : relancé à 9h20, le flux est de nouveau rempli.\n👀 Suivi : on surveille le passage de 10h."}}),
     t('d4','Lewis, Gabe',8.2,'404 sur la page « nouveautés » du site de Scranton.','done',{mine:{at:at(9.23),text:"🔎 Cause : la route des nouveautés manquait après la mise en prod 17.107.0.\n✅ Correctif : rétablie en 17.107.1, en prod à 9h05."}}),
-    t('d5','Flax, Holly',-6.5,'Les exports CSV du stock sont-ils toujours envoyés le vendredi ?','answered',{by:'Halpert, Jim',replies:2})]};
+    t('d5','Flax, Holly',-6.5,'Les exports CSV du stock sont-ils toujours envoyés le vendredi ?','answered',{by:'Halpert, Jim',replies:2,reactions:['👀']}),
+    t('d6','Philbin, Darryl',-8,"L'imprimante du 2e étage n'apparaît plus dans la liste.",'resolved',{replies:3,reactions:['✅','👍','👍']})]};
 }

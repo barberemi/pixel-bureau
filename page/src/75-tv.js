@@ -82,7 +82,8 @@ function updateTv(force){
   renderTvWho();
   // fil défilant : les derniers événements d'équipe (merges, releases, MEP, daily), sans les runs des agents
   const strip=h=>{const d=document.createElement('div');d.innerHTML=h;return d.textContent.replace(/\s+/g,' ').trim();};
-  const items=FEED_EV.filter(e=>e.team).slice(0,8).map(e=>({tm:hm(e.t),tx:strip(e.txt)}));
+  const items=[...FEED_EV.filter(e=>e.team).map(e=>({t:e.t,tx:strip(e.txt)})),...spTicker()].sort((a,b)=>b.t-a.t).slice(0,8)
+    .map(e=>({tm:hm(e.t),tx:e.tx})); // 48-support.js : arrivées et rappels du Support (#62)
   const sig=items.map(i=>i.tm+i.tx).join('|');
   if(force||sig!==TICK_SIG){
     TICK_SIG=sig;

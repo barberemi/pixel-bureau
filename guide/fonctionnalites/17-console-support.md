@@ -10,7 +10,8 @@ Quand un message attend, l'écran de l'ordinateur du boss passe au rouge, cligno
 
 - **Au survol seulement**, l'infobulle : le canal, le nombre à traiter, l'auteur et l'heure du dernier message. Pas de bulle permanente sur le plan.
 - **Au clic** : la fenêtre du canal.
-- Rien à traiter : l'écran redevient normal. En mode TV, l'écran du boss et l'agent Support restent en alerte ; la fenêtre, elle, ne s'ouvre pas.
+- Rien à traiter : l'écran redevient normal.
+- **En mode TV**, l'écran du boss et l'agent Support restent en alerte (la fenêtre, elle, ne s'ouvre pas), et le bandeau « EN DIRECT » annonce chaque nouveau message du jour (« 🚒 Support : nouveau message de Pam, « sujet » »), puis rappelle toutes les heures un message que personne n'a pris (« attend depuis 2 h »). Jamais le texte du message : le prénom et le sujet, ou le début du message.
 - Réglage « réduire les animations » du système : l'écran reste rouge, sans clignoter.
 
 ## La fenêtre
@@ -27,7 +28,13 @@ Les fils des 7 derniers jours, du plus récent au plus ancien, chacun avec son �
    - **✖ Refuser** : rien n'est posté, le fil passe « ignoré » (hors du compte).
 4. **Répondu en fil** : la réponse postée, l'heure, « voir dans Teams ↗ ». Un fil auquel tu as répondu toi-même dans Teams compte aussi comme répondu.
 
-Les fils auxquels un collègue a répondu restent dans la liste, grisés (« Répondu dans Teams »), avec le nom de qui a répondu. « ↻ Relever maintenant » relit le canal sans attendre le relevé suivant.
+Chaque fil montre aussi son sujet (s'il en a un), le contenu d'un message transféré et les réactions posées sur le message principal. Ce qui se passe dans Teams compte aussi :
+
+- **✅ sur le message principal** : « ✅ Traité », en vert, hors du compte (la règle du canal : on met ✅ quand le sujet est terminé). Seul ✅ compte ; un emoji propre à l'organisation n'arrive que comme « 🙂+ », sans son nom.
+- **Un collègue a répondu dans le fil** : « Pris en charge », avec son nom, hors du compte.
+- **L'auteur relance après cette réponse**, sans ✅ : « ↩ Relancé », de nouveau à traiter.
+
+« ↻ Relever maintenant » relit le canal sans attendre le relevé suivant.
 
 ## La réponse
 

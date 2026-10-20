@@ -18,7 +18,8 @@ Fichiers : ~/.cache/pixel-bureau/support.json seulement (jamais le dossier du pr
 
 Dataset support : {generated_at, polled_at, name, url, ok, error, cost, me, days, threads: [{id, at, from, text, url,
 replies, last_at, state, by, mine, run}]} ; state = new (à investiguer), run (investigation en cours), gate (réponse à
-valider), done (répondu en fil), answered (un collègue a répondu, by = son nom), ignored (réponse refusée), failed.
+valider), done (répondu en fil), resolved (✅ sur le message), answered (pris par un collègue, by = son nom), relaunched
+(l'auteur a relancé après sa réponse), ignored (réponse refusée), failed.
 """
 import html, json, os, re, shutil, subprocess, sys, urllib.error, urllib.parse, urllib.request, uuid
 from html.parser import HTMLParser
@@ -29,6 +30,8 @@ S = CFG.get("support") or {}
 CACHE = os.path.join(os.path.expanduser("~"), ".cache", "pixel-bureau", "support.json")
 GRAPH = os.environ.get("SUPPORT_GRAPH") or "https://graph.microsoft.com/v1.0"  # SUPPORT_GRAPH : tests
 TOOL = "mcp__claude_ai_Microsoft_365__teams_list_channel_messages"
+TOOL_R = "mcp__claude_ai_Microsoft_365__read_resource"  # un message en entier : sujet, réactions, message transféré
+TOOLS = (TOOL, TOOL_R)
 DAYS = int(S.get("days") or 7)
 REPLIES_MAX = 8  # fils dont on relit les réponses à chaque relevé (les plus récents qui ont bougé)
 FOOTER = "_Généré de manière automatique 🤖_"
@@ -71,8 +74,12 @@ def claude_bin():
 
 def calls_prompt(roots):
     base = f'teamId="{S["team"]}", channelId="{S["channel"]}"'
-    lines = [f"1) {base}, limit=20"] + [f'{i + 2}) {base}, parentMessageId="{m}", limit=50' for i, m in enumerate(roots)]
-    return (f"Fais en un seul message tous ces appels de {TOOL}, en parallèle, sans rien écrire d'autre :\n" + "\n".join(lines))
+    uri = f"teams:///teams/{S['team']}/channels/{S['channel']}/messages/"
+    lines = [f"{TOOL} : {base}, limit=20"]
+    for m in roots:
+        lines += [f'{TOOL} : {base}, parentMessageId="{m}", limit=50', f'{TOOL_R} : uri="{uri}{m}"']
+    return ("Fais en un seul message tous ces appels d'outil, en parallèle, sans rien écrire d'autre :\n"
+            + "\n".join(f"{i + 1}) {x}" for i, x in enumerate(lines)))
 
 
 def run_claude(prompt, known_tools):
@@ -80,9 +87,9 @@ def run_claude(prompt, known_tools):
     exe = claude_bin()
     if not exe:
         raise RuntimeError("CLI claude introuvable (réglage support.claude)")
-    others = sorted(t for t in known_tools if t != TOOL)
+    others = sorted(t for t in known_tools if t not in TOOLS)
     cmd = [exe, "-p", "--model", S.get("model") or "haiku", "--setting-sources", "project", "--tools", "",
-           "--allowedTools", TOOL, "--disable-slash-commands", "--no-session-persistence", "--max-turns", "1",
+           "--allowedTools", *TOOLS, "--disable-slash-commands", "--no-session-persistence", "--max-turns", "1",
            "--system-prompt", "Tu fais exactement les appels d'outil demandés, sans rien écrire d'autre.",
            "--output-format", "stream-json", "--verbose"]
     if others:
@@ -101,7 +108,7 @@ def run_claude(prompt, known_tools):
         if e.get("type") == "system" and e.get("subtype") == "init":
             tools.update(t for t in e.get("tools") or [] if t.startswith("mcp__"))
         for c in ((e.get("message") or {}).get("content") or []) if e.get("type") in ("assistant", "user") else []:
-            if c.get("type") == "tool_use" and c.get("name") == TOOL:
+            if c.get("type") == "tool_use" and c.get("name") in TOOLS:
                 calls[c["id"]] = c.get("input") or {}
             elif c.get("type") == "tool_result":
                 results[c.get("tool_use_id")] = None if c.get("is_error") else c.get("content")
@@ -188,6 +195,20 @@ def msg_row(m):
             "cut": bool(m.get("bodyTruncated"))}
 
 
+def detail_of(m):
+    """Message principal lu en entier : sujet, réactions (emoji Unicode, ou « custom » pour un emoji de l'organisation, sans
+    son nom), texte complet et message transféré (pièce jointe forwardedMessageReference)."""
+    body = (m.get("body") or {}).get("content") or ""
+    for a in m.get("attachments") or []:
+        if a.get("contentType") == "forwardedMessageReference":
+            try:
+                body += "<p>↪ Message transféré :</p>" + (json.loads(a.get("content") or "{}").get("originalMessageContent") or "")
+            except ValueError:
+                pass
+    return {"subject": clip(m.get("subject"), 120) or None, "text": clip(body, 1500),
+            "reactions": [str(r.get("reactionType")) for r in m.get("reactions") or [] if r.get("reactionType")]}
+
+
 def me(c):
     """La personne connectée (jeton Azure CLI) : ses réponses à la main comptent comme répondues."""
     if not c.get("me"):
@@ -205,7 +226,7 @@ def poll(c):
     since = iso(now() - timedelta(days=DAYS))
     threads = c.setdefault("threads", {})
     # réponses à relire : les fils récents qui ont bougé depuis leur dernière lecture (ou jamais lus)
-    moved = sorted((t for t in threads.values() if (t.get("at") or "") >= since and t.get("lm") != t.get("rlm")),
+    moved = sorted((t for t in threads.values() if (t.get("at") or "") >= since and (t.get("lm") != t.get("rlm") or "detail" not in t)),
                    key=lambda t: t.get("lm") or "", reverse=True)[:REPLIES_MAX]
     calls, tools, cost = run_claude(calls_prompt([t["id"] for t in moved]), c.get("tools") or [])
     c["tools"] = sorted(tools | set(c.get("tools") or []))
@@ -213,6 +234,11 @@ def poll(c):
         if res is None:
             continue
         parent = inp.get("parentMessageId")
+        if inp.get("uri"):  # read_resource : le message principal en entier
+            mid = str(inp["uri"]).rsplit("/", 1)[-1]
+            if mid in threads and res:
+                threads[mid]["detail"] = detail_of(res[0])
+            continue
         if not parent:
             for m in res:
                 if m.get("messageType") != "message" or not m.get("from"):
@@ -261,8 +287,15 @@ def runs_by_thread(c):
     return out
 
 
+RESOLVED = "✅"  # réaction posée sur le message principal quand le sujet est traité (règle du canal)
+
+
 def state_of(t, run, mine, my_id):
-    others = [r for r in t.get("replies") or [] if r.get("uid") not in (my_id, t.get("uid"))]  # ni moi ni l'auteur
+    """État d'un fil : ✅ sur le message = traité ; puis la réponse postée et l'investigation ; puis les réponses du fil :
+    quelqu'un d'autre que l'auteur a répondu = pris par lui (hors du compte), sauf si l'auteur a écrit après sa dernière
+    réponse (relancé, de nouveau à traiter) ; personne = nouveau. Renvoie (état, qui)."""
+    if RESOLVED in ((t.get("detail") or {}).get("reactions") or []):
+        return "resolved", None
     if mine:
         return "done", None
     if run and run["status"] in ("Running", "Pending"):
@@ -271,11 +304,13 @@ def state_of(t, run, mine, my_id):
         return "gate", None
     if run and run["status"] == "Failed" and run["gate"]:
         return "ignored", None  # réponse refusée à la gate : rien n'est posté
-    mine_by_hand = [r for r in t.get("replies") or [] if my_id and r.get("uid") == my_id]
-    if mine_by_hand:
-        return "done", None
-    if others:
-        return "answered", others[0]["from"]
+    replies = t.get("replies") or []
+    helpers = [r for r in replies if r.get("uid") != t.get("uid")]  # ni l'auteur
+    if helpers:
+        last = helpers[-1]
+        if any(r.get("uid") == t.get("uid") and (r.get("at") or "") > (last.get("at") or "") for r in replies):
+            return "relaunched", last["from"]  # l'auteur relance après la dernière réponse
+        return ("done", None) if my_id and last.get("uid") == my_id else ("answered", last["from"])
     if run and run["status"] in ("Failed", "Cancelled", "StoppedByGuard", "Interrupted"):
         return "failed", None
     return "new", None
@@ -291,7 +326,9 @@ def dataset(c):
         mine = (c.get("posted") or {}).get(t["id"])
         st, by = state_of(t, runs.get(t["id"]), mine, my)
         run = runs.get(t["id"])
-        rows.append({"id": t["id"], "at": t.get("at"), "from": t.get("from"), "text": t.get("text"), "url": t.get("url"),
+        dt = t.get("detail") or {}
+        rows.append({"id": t["id"], "at": t.get("at"), "from": t.get("from"), "text": dt.get("text") or t.get("text"),
+                     "subject": dt.get("subject"), "reactions": dt.get("reactions") or [], "url": t.get("url"),
                      "cut": t.get("cut") or False, "replies": len(t.get("replies") or []),
                      "last_at": (t.get("replies") or [{}])[-1].get("at") or t.get("at"), "state": st, "by": by,
                      "mine": {"at": mine.get("at"), "text": mine.get("text")} if mine else None,
@@ -339,8 +376,10 @@ def brief(t, p, comment, who):
              "ne modifie rien.") if p else "Pas de projet : appuie-toi sur le message seul."
     cut = f"\n(Message tronqué : la suite est dans Teams, {t.get('url')})" if t.get("cut") else ""
     note = f"\nCommentaire de {who} : {comment.strip()}" if comment.strip() else ""
+    dt = t.get("detail") or {}
+    subj = f"Sujet : {dt['subject']}\n" if dt.get("subject") else ""
     return (f"Demande arrivée sur le canal Teams « {S.get('name') or 'Support'} », de {t.get('from')} le {t.get('at')} :\n"
-            f"<<<\n{t.get('text')}\n>>>{cut}\n{where}{note}")
+            f"{subj}<<<\n{dt.get('text') or t.get('text')}\n>>>{cut}\n{where}{note}")
 
 
 ASK = """Tu es l'agent Support. Lis d'abord les derniers messages de ta discussion Kronn : des remarques peuvent y avoir
