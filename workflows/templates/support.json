@@ -68,6 +68,11 @@
     "exec_timeout_secs": 60
    },
    {
+    "name": "mark",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "État des fils sans relevé : celui-ci passe « investigation en cours » sur la page tout de suite.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -76,18 +81,27 @@
     "output_format": {
      "type": "FreeText"
     },
-    "name": "mark",
-    "step_type": {
-     "type": "Exec"
-    },
-    "description": "État des fils sans relevé : celui-ci passe « investigation en cours » sur la page tout de suite.",
-    "exec_command": "python3",
-    "exec_args": [
-     "-c",
-     "@@script:workflows/support.py@@",
-     "dataset"
-    ],
-    "exec_timeout_secs": 60
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "snap",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/support.py@@",
+         "dataset"
+        ],
+        "timeout_secs": 60,
+        "output_format": "json"
+       },
+       "required": true
+      }
+     ],
+     "concurrent_limit": 1
+    }
    },
    {
     "agent": "ClaudeCode",
@@ -109,7 +123,7 @@
       {
        "dataset": "support",
        "operation": "replace",
-       "value_from": "steps.mark.data.stdout"
+       "value_from": "steps.mark.data.sources.snap"
       }
      ]
     }
@@ -155,6 +169,11 @@
     "exec_stdin": "{{steps.investigate.output}}"
    },
    {
+    "name": "mark_draft",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "État des fils avec la réponse proposée et sa version : la fenêtre Support la montre à valider.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -163,18 +182,27 @@
     "output_format": {
      "type": "FreeText"
     },
-    "name": "mark_draft",
-    "step_type": {
-     "type": "Exec"
-    },
-    "description": "État des fils avec la réponse proposée et sa version : la fenêtre Support la montre à valider.",
-    "exec_command": "python3",
-    "exec_args": [
-     "-c",
-     "@@script:workflows/support.py@@",
-     "dataset"
-    ],
-    "exec_timeout_secs": 60
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "snap",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/support.py@@",
+         "dataset"
+        ],
+        "timeout_secs": 60,
+        "output_format": "json"
+       },
+       "required": true
+      }
+     ],
+     "concurrent_limit": 1
+    }
    },
    {
     "agent": "ClaudeCode",
@@ -196,7 +224,7 @@
       {
        "dataset": "support",
        "operation": "replace",
-       "value_from": "steps.mark_draft.data.stdout"
+       "value_from": "steps.mark_draft.data.sources.snap"
       }
      ]
     }
@@ -243,6 +271,42 @@
     "exec_stdin": "{{steps.draft.data.stdout}}"
    },
    {
+    "name": "mark_post",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "État des fils après la réponse postée : le fil passe « répondu ».",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "snap",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/support.py@@",
+         "dataset"
+        ],
+        "timeout_secs": 60,
+        "output_format": "json"
+       },
+       "required": true
+      }
+     ],
+     "concurrent_limit": 1
+    }
+   },
+   {
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -262,7 +326,7 @@
       {
        "dataset": "support",
        "operation": "replace",
-       "value_from": "steps.post.data.stdout"
+       "value_from": "steps.mark_post.data.sources.snap"
       }
      ]
     }

@@ -10,6 +10,11 @@
   },
   "steps": [
    {
+    "name": "poll",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "Lit le canal Support par la CLI claude et le connecteur Microsoft 365 (petit modèle, un seul outil, un tour : environ 0,005 $), les réponses des fils qui ont bougé, l'état des investigations ; le dataset support. Sortie JSON (CollectApiData) : un vrai objet, que Kronn parcourt pour la liaison du bouton « Investiguer ».",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -18,18 +23,27 @@
     "output_format": {
      "type": "FreeText"
     },
-    "name": "poll",
-    "step_type": {
-     "type": "Exec"
-    },
-    "description": "Lit le canal Support par la CLI claude et le connecteur Microsoft 365 (petit modèle, un seul outil, un tour : environ 0,005 $), les réponses des fils qui ont bougé, l'état des investigations ; le dataset support.",
-    "exec_command": "python3",
-    "exec_args": [
-     "-c",
-     "@@script:workflows/support.py@@",
-     "poll"
-    ],
-    "exec_timeout_secs": 200
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "snap",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/support.py@@",
+         "poll"
+        ],
+        "timeout_secs": 200,
+        "output_format": "json"
+       },
+       "required": true
+      }
+     ],
+     "concurrent_limit": 1
+    }
    },
    {
     "agent": "ClaudeCode",
@@ -51,7 +65,7 @@
       {
        "dataset": "support",
        "operation": "replace",
-       "value_from": "steps.poll.data.stdout"
+       "value_from": "steps.poll.data.sources.snap"
       }
      ]
     }
