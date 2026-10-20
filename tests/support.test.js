@@ -20,11 +20,13 @@ test('lecture du dataset : objet ou chaîne JSON, current des datasets Kronn ; s
 });
 
 test('à traiter : nouveaux, à relancer et réponses à valider ; pas ceux en cours, répondus, ignorés', () => {
-  set([th('1', 'new'), th('2', 'run'), th('3', 'gate'), th('4', 'done'), th('5', 'answered', {by: 'Schrute, Dwight'}), th('6', 'ignored'), th('7', 'failed')]);
-  assert.deepEqual(J('spTodo().map(t => t.id)'), ['1', '3', '7']);
+  set([th('1', 'new'), th('2', 'run'), th('3', 'gate'), th('4', 'done'), th('5', 'answered', {by: 'Schrute, Dwight'}), th('6', 'ignored'), th('7', 'failed'),
+       th('8', 'resolved'), th('9', 'relaunched', {by: 'Schrute, Dwight'})]);
+  assert.deepEqual(J('spTodo().map(t => t.id)'), ['1', '3', '7', '9'], 'relancé : de nouveau à traiter ; ✅ traité : hors du compte');
   assert.equal(J('supportOn()'), true);
   run('TV = true;');
-  assert.equal(J('supportOn()'), false, 'jamais en mode TV : la console est au boss');
+  assert.equal(J('supportOn()'), true, 'en mode TV : l\'écran du boss et l\'agent restent en alerte');
+  assert.equal(J('supportOpenable()'), false, 'mais la fenêtre ne s\'ouvre pas');
   run('TV = false;');
 });
 
@@ -69,7 +71,7 @@ test('écran du boss : en alerte seulement s\'il y a quelque chose à traiter', 
 
 test('démo : un fil par état, deux à traiter', () => {
   run(`SUPPORT = supportDemo(); GATES = []; T = DAY0 + 11 * 36e5;`);
-  assert.deepEqual(J('SUPPORT.threads.map(t => t.state)'), ['new', 'run', 'gate', 'done', 'answered']);
+  assert.deepEqual(J('SUPPORT.threads.map(t => t.state)'), ['new', 'run', 'gate', 'done', 'answered', 'resolved']);
   assert.equal(J('spTodo().length'), 2);
 });
 
@@ -88,4 +90,27 @@ test('agent Support : en alerte (hologramme rouge, « 🚨 N à traiter »), à 
   run(`T += 5 * 60e3;`);
   assert.equal(J(`supportAgentState(__a, {st: 'idle', label: 'Au repos'}, T).bubble || null`), null);
   assert.equal(J(`holoStyleOf({holo: 'rouge'}) === HOLO_STYLE.rouge && holoStyleOf({}) === null`), true, 'holo fixe, ou l\'hologramme habituel');
+});
+
+test('bulle d\'un personnage assis au bord droit du plan : de l\'autre côté de lui, jamais hors du plan', () => {
+  set([th('1', 'new')]);
+  const r = J(`(() => {
+    const c = chars.find(x => x.key === 'nellie'), s = SEATS.reduce((a, b) => b.x > a.x ? b : a);
+    Object.assign(c, {present: true, moving: false, dir: 'down', tile: [s.x, s.y], pos: {x: W - 20, y: tileCenter(s.x, s.y).y},
+      _st: {st: 'idle', bubble: '🚨 2 à traiter à traiter à traiter'}});
+    BUBBLE_BOXES = []; drawOverlay(c, 0);
+    const b = BUBBLE_BOXES[BUBBLE_BOXES.length - 1];
+    return {bx: b.x, w: b.w, W, cx: c.pos.x};
+  })()`);
+  assert.ok(r.bx + r.w <= r.W - 2, `bulle dans le plan (${r.bx} + ${r.w} > ${r.W})`);
+  assert.ok(r.bx + r.w <= r.cx, 'à gauche du personnage, qui est au bord droit');
+});
+
+test('mode TV, « EN DIRECT » : arrivée du jour et un rappel par heure d\'attente, seulement pour les fils que personne n\'a pris', () => {
+  set([th('1', 'new', {at: '2026-10-01T07:40:00Z', subject: 'Flux RSS vide'}), th('2', 'answered', {at: '2026-10-01T07:00:00Z', by: 'Schrute, Dwight'})]);
+  run(`T = Date.parse('2026-10-01T12:10:00+02:00');`);
+  assert.deepEqual(J('spTicker().map(e => [new Date(e.t).toISOString(), e.tx])'), [
+    ['2026-10-01T07:40:00.000Z', '🚒 Support : nouveau message de Pam, « Flux RSS vide »'],
+    ['2026-10-01T09:40:00.000Z', '🚒 Support : le message de Pam attend depuis 2 h, « Flux RSS vide »']]);
+  assert.equal(J(`spReacts(['✅', '👍', '👍', 'custom'])`), '<span class="sp-r">✅</span><span class="sp-r">👍 2</span><span class="sp-r">🙂+</span>');
 });

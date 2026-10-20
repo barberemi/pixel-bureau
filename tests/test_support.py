@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 import templates  # noqa: E402
 FIXTURE = json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text())
 TOOL = "mcp__claude_ai_Microsoft_365__teams_list_channel_messages"
+TOOL_R = "mcp__claude_ai_Microsoft_365__read_resource"
 MODEL = "5uppor70-0000-4000-8000-000000000000"
 ME = "uid-boss"
 
@@ -36,14 +37,16 @@ ev = lambda o: print(json.dumps(o))
 ev({"type": "system", "subtype": "init", "tools": d.get("tools", [])})
 if d.get("broken"):
     ev({"type": "result", "subtype": "success", "total_cost_usd": 0.001}); sys.exit(0)
-calls = [None] + re.findall(r'parentMessageId="(\d+)"', prompt)
-uses = [{"type": "tool_use", "id": f"t{i}", "name": "''' + TOOL + r'''", "input": {"parentMessageId": p} if p else {}} for i, p in enumerate(calls)]
+calls = [("list", None)] + [("replies", m) for m in re.findall(r'parentMessageId="(\d+)"', prompt)] + \
+        [("read", m) for m in re.findall(r'uri="teams:///teams/[^"]*/messages/(\d+)"', prompt)]
+uses = [{"type": "tool_use", "id": f"t{i}", "name": ("''' + TOOL + r'''" if k != "read" else "''' + TOOL_R + r'''"),
+         "input": {"uri": "teams:///x/messages/" + m} if k == "read" else {"parentMessageId": m} if m else {}} for i, (k, m) in enumerate(calls)]
 ev({"type": "assistant", "message": {"content": uses}})
 res = []
-for i, p in enumerate(calls):
-    items = d["roots"] if p is None else d.get("replies", {}).get(p, [])
+for i, (k, m) in enumerate(calls):
+    items = d["roots"] if k == "list" else d.get("replies", {}).get(m, []) if k == "replies" else [d.get("details", {}).get(m, {"id": m})]
     res.append({"type": "tool_result", "tool_use_id": f"t{i}", "content": [{"type": "text", "text": json.dumps(x)} for x in items]
-                + [{"type": "text", "text": json.dumps({"moreResults": False, "nextCursor": None, "note": "x"})}]})
+                + ([{"type": "text", "text": json.dumps({"moreResults": False, "nextCursor": None, "note": "x"})}] if k == "list" else [])})
 ev({"type": "user", "message": {"content": res}})
 ev({"type": "result", "subtype": "error_max_turns", "total_cost_usd": 0.0051})
 '''
@@ -163,6 +166,23 @@ class SupportTest(unittest.TestCase):
         # troisième relevé : rien n'a bougé, pas de réponses relues
         self.poll()
         self.assertNotIn("parentMessageId", self.calls()[2]["prompt"])
+
+    def test_read_resource_brings_subject_forward_and_check_reaction(self):
+        """Message entier (read_resource) des fils qui ont bougé : sujet, message transféré ; ✅ = traité ; l'auteur qui
+        relance après la réponse d'un collègue = de nouveau à traiter."""
+        self.poll()
+        fwd = json.dumps({"originalMessageContent": "<p>Erreur API YouTube 403</p>"})
+        self.data["details"] = {"101": {"id": "101", "subject": "Flux RSS FR vide", "body": {"content": "<p>Le flux RSS FR est vide</p>"},
+                                        "reactions": [{"reactionType": "✅"}, {"reactionType": "👍"}]},
+                                "102": {"id": "102", "body": {"content": "<p>Voir</p>"}, "reactions": [{"reactionType": "custom"}],
+                                        "attachments": [{"contentType": "forwardedMessageReference", "content": fwd}]}}
+        self.data["replies"] = {"102": [msg(203, "Schrute, Dwight", "uid-dwight", 20, "Je regarde"), msg(204, "Halpert, Jim", "uid-jim", 19, "Toujours KO ?")]}
+        d = self.poll()
+        self.assertIn('read_resource : uri="teams:///teams/T1/channels/19:canal@thread.tacv2/messages/101"', self.calls()[1]["prompt"])
+        th = {t["id"]: t for t in d["threads"]}
+        self.assertEqual((th["101"]["state"], th["101"]["subject"], th["101"]["reactions"]), ("resolved", "Flux RSS FR vide", ["✅", "👍"]))
+        self.assertEqual((th["102"]["state"], th["102"]["by"]), ("relaunched", "Schrute, Dwight"), "l'auteur relance après la réponse")
+        self.assertIn("↪ Message transféré :\nErreur API YouTube 403", th["102"]["text"])
 
     def test_poll_failure_keeps_threads_and_shows_the_error(self):
         self.poll()

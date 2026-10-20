@@ -46,7 +46,7 @@ function hitZone(ev){
   const inR=o=>mx>=o.x&&mx<=o.x+o.w&&my>=o.y&&my<=o.y+o.h;
   const bs=bossPagesOn()&&wallRect(), na=newAgentOn()&&newAgentRack();
   const mb=mailAt(mx,my);
-  return mb?'mail:'+mb:duckHit(mx,my)?'duck':supportOn()&&inR(supportRect())?'support':bs&&inR(bs)?'bosspages':na&&inR(na)?'newagent':inR(PAYR)?'paie':inR(TVR)?'tv':inR(KANR)?'kanban':(()=>{const r=cronNoteRect();return r&&inR(r);})()?'planning':CALR&&ABSENCES&&inR(CALR)?'calendar':inR(EMPR)&&bestEmployee().length?'emp':null;}
+  return mb?'mail:'+mb:duckHit(mx,my)?'duck':supportOpenable()&&inR(supportRect())?'support':bs&&inR(bs)?'bosspages':na&&inR(na)?'newagent':inR(PAYR)?'paie':inR(TVR)?'tv':inR(KANR)?'kanban':(()=>{const r=cronNoteRect();return r&&inR(r);})()?'planning':CALR&&ABSENCES&&inR(CALR)?'calendar':inR(EMPR)&&bestEmployee().length?'emp':null;}
 cv.addEventListener('click',e=>{if(TV)return;const c=hitTest(e);if(c){select(c.key);return;}const z=hitZone(e);if(z==='bosspages')openBossPages();else if(z==='support')openSupport();else if(z==='newagent')openNewAgent();else select(z);});
 const slider=document.getElementById('slider'), playBtn=document.getElementById('play'), liveBtn=document.getElementById('live'), speedSel=document.getElementById('speed');
 function setMode(m){
