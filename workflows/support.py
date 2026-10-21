@@ -389,7 +389,8 @@ ASK = """Tu es l'agent Support. Lis d'abord les derniers messages de ta discussi
 été ajoutées depuis le tour précédent. Investigue, en résumant au fil de l'eau ce que tu trouves dans la discussion.
 Puis rédige la réponse qui sera postée en fil sous le nom de la personne qui t'a lancé (elle la valide d'abord).
 Fais toi-même les lectures (Read, Grep, Glob, Bash en lecture seule), sans lancer d'agent ni de tâche en
-arrière-plan, et sans rendre la main avant d'avoir la réponse. Résume ce que tu trouves dans ta discussion (disc_append).
+arrière-plan, et sans rendre la main avant d'avoir la réponse. Résume ce que tu trouves dans ta discussion en notes
+(disc_append avec channel "note" et wait_for_reply false : une note ne réveille pas l'agent de la discussion).
 Ta réponse finale, et rien d'autre : en français, concise, une ligne par section, chacune avec son emoji, par exemple
 🔎 Cause : …
 🛠️ Action : …
@@ -397,6 +398,14 @@ Ta réponse finale, et rien d'autre : en français, concise, une ligne par secti
 (d'autres sections si utile : ✅ Correctif, ❓ Question, 📎 Lien). Rien avant la première section ni après la
 dernière (ni « voici la réponse », ni « je la publie ? ») ; pas de titre, pas de signature, pas de formule de
 politesse : la mention « Généré de manière automatique » est ajoutée après."""
+
+
+def jira_hint():
+    """Lire un ticket Jira cité : api_call et la connexion Jira du Bureau (Kronn ajoute l'authentification), en lecture."""
+    cid = (CFG.get("jira") or {}).get("config_id")
+    return (f'\nUn ticket Jira cité (ex. EW-1234) : lis-le avec api_call (api_plugin_slug "mcp-atlassian", api_config_id "{cid}", '
+            'method GET, endpoint_path "/rest/api/2/issue/<clé>", query fields "summary,description,status,priority,comment"), '
+            "jamais par curl ; en lecture seulement.") if cid else ""
 
 
 def open_(msg, pid, run_id, comment):
@@ -419,7 +428,7 @@ def open_(msg, pid, run_id, comment):
     c.setdefault("runs", {})[run_id] = {"msg": msg, "disc": disc["id"], "project": pid, "version": 0, "at": iso(now())}
     save(c)
     print(f"---STATE:disc={disc['id']}---")
-    print(text + "\n\n" + ASK)
+    print(text + "\n\n" + ASK + jira_hint())
 
 
 def draft(run_id, text):

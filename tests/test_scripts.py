@@ -289,6 +289,27 @@ print(json.dumps(val))
         ps = self.run_script("team_shape.py", data)["prev_sprint"]
         self.assertEqual((ps["name"], ps["end"], ps["planned_end"]), ("S41", "2026-10-16T09:59:42Z", "2026-10-16T14:00:00Z"))
 
+    def test_team_shape_marks_events_seen_late_for_live_scenes(self):
+        """Gandalf, soucoupe-mère : un changement de statut appris en retard par ce cron (toutes les 10 min) porte l'heure
+        où il a été vu (seen), pour que la scène se joue en direct ; rien au premier passage, ni au-delà de 20 min."""
+        def data(moves):
+            d = self.team_input(n_issues=len(moves))
+            for it, ago in zip(d["issues"], moves):
+                it["changelog"]["histories"] = [{"created": iso(ago), "author": {"accountId": "acc-1", "displayName": "Darryl Martin"},
+                                                 "items": [{"field": "status", "fromString": "To Test", "toString": "Reopen"}]}]
+            return d
+        seen = lambda out: {e["key"]: e.get("seen") for e in out["events"] if e["kind"] == "move"}  # noqa: E731
+        self.assertEqual(seen(self.run_script("team_shape.py", data([6]))), {"DM-100": None}, "premier passage : rien de décalé")
+        out = seen(self.run_script("team_shape.py", data([6, 4, 30, 0.5])))
+        self.assertIsNone(out["DM-100"], "déjà vu au passage précédent, à l'heure")
+        self.assertEqual(out["DM-101"], NOW.astimezone(timezone.utc).isoformat(timespec="seconds"), "appris 4 min après : vu maintenant")
+        self.assertIsNone(out["DM-102"], "30 min de retard (cron arrêté) : la scène est passée")
+        self.assertIsNone(out["DM-103"], "moins d'une minute : à l'heure")
+        cache = json.loads(Path(self.tmp, ".cache", "pixel-bureau", "team_seen.json").read_text())
+        self.assertEqual(len(cache), 4, "seulement les événements du jour")
+        Path(self.tmp, ".cache", "pixel-bureau", "team_seen.json").write_text("{pas du json")
+        self.assertEqual(seen(self.run_script("team_shape.py", data([4]))), {"DM-100": None}, "cache illisible : comme un premier passage")
+
     def test_team_shape_groups_tickets_and_prs(self):
         out = self.run_script("team_shape.py", self.team_input())
         names = {p["name"]: p for p in out["people"]}

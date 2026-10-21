@@ -221,8 +221,8 @@ class SupportTest(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertTrue(r.stdout.startswith("---STATE:disc=disc-1---\n"), "la même discussion à chaque tour (state.disc)")
         for want in ("Le flux RSS FR est vide", "/repos/site-web", "en lecture seule", "Commentaire de Michael : Regarde le cron de 8h",
-                     "🔎 Cause"):
-            self.assertIn(want, r.stdout)
+                     "🔎 Cause", 'channel "note"', 'api_config_id "81ee2591-ff21-5f4c-b66f-30e8e78003f0"', "/rest/api/2/issue/<clé>"):
+            self.assertIn(want, r.stdout)  # résumés en notes (sans réveiller l'agent de la discussion), tickets Jira par api_call
         path, body, _ = self.srv.st["posts"][0]
         self.assertEqual((path, body["title"]), ("/api/discussions", "🎧 Pam : Le flux RSS FR est vide depuis ce matin"))
         self.assertEqual(body["project_id"], FIXTURE["kronn"]["project_id"], "la discussion du run est dans son projet (room_id)")

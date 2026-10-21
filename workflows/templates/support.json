@@ -141,7 +141,7 @@
     "step_type": {
      "type": "Agent"
     },
-    "description": "L'agent Support investigue dans la discussion de l'investigation et rédige la réponse ; « changements » à la gate le relance ici, ton commentaire en tête. Outils : lecture du code (Read, Grep, Glob, Bash) et sa discussion ; aucun agent en arrière-plan.",
+    "description": "L'agent Support investigue dans la discussion de l'investigation et rédige la réponse ; « changements » à la gate le relance ici, ton commentaire en tête. Outils : lecture du code (Read, Grep, Glob, Bash), sa discussion (en notes) et les tickets Jira cités (api_call, en lecture) ; aucun agent en arrière-plan.",
     "room_id": "{{state.disc}}",
     "agent_settings": {
      "tools": {
@@ -154,7 +154,8 @@
       "kronn_internal": [
        "disc_append",
        "disc_get_message",
-       "disc_meta"
+       "disc_meta",
+       "api_call"
       ]
      }
     }

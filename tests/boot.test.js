@@ -25,10 +25,10 @@ test('les données Kronn (window.KronnPageData) remplacent la démo', () => {
   assert.equal(run('LIVE_DATA'), true);
 });
 
-test('squelette : 21 blocs kronn-action et les marqueurs CSS / JS', () => {
+test('squelette : 20 blocs kronn-action et les marqueurs CSS / JS', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'page', 'office_template.html'), 'utf8');
   const ids = [...html.matchAll(/<script type="application\/kronn-action" data-action-id="([^"]+)">/g)].map(m => m[1]);
-  assert.deepEqual(ids, ['bureau-ask', 'bureau-relaunch', 'bureau-gate', 'bureau-answer', 'bureau-impl', 'bureau-mep', 'bureau-review', 'bureau-fix', 'bureau-comment', 'bureau-estimate', 'bureau-duck', 'bureau-mailrules', 'bureau-avatar', 'bureau-agent', 'bureau-launch', 'bureau-pages', 'bureau-rebase', 'bureau-fixpr', 'bureau-meppr', 'bureau-support', 'bureau-supportpoll']);
+  assert.deepEqual(ids, ['bureau-ask', 'bureau-relaunch', 'bureau-gate', 'bureau-answer', 'bureau-impl', 'bureau-mep', 'bureau-review', 'bureau-fix', 'bureau-comment', 'bureau-estimate', 'bureau-duck', 'bureau-mailrules', 'bureau-avatar', 'bureau-agent', 'bureau-launch', 'bureau-pages', 'bureau-rebase', 'bureau-fixpr', 'bureau-meppr', 'bureau-support']);
   assert.equal(html.split('/*__STYLES__*/\n').length, 2);
   assert.equal(html.split('/*__SCRIPTS__*/\n').length, 2);
 });

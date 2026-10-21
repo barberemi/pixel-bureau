@@ -122,3 +122,11 @@ test('fiche de l\'agent Support : la console au lieu d\'un « Lancer » à rempl
   assert.match(html, /<div class="rl-s sp-t" title="Flux RSS vide">Pam, .* : Flux RSS vide<\/div>/); // une ligne, sujet entier au survol
   assert.match(J(`(() => { const s = {kids: [], appendChild(x) { this.kids.push(x); }}; spFiche(s); return s.kids[0].className; })()`), /\bsp-fiche\b/);
 });
+
+test('fil ignoré (réponse refusée à la gate) : « Investiguer » pour réessayer, comme un fil nouveau', () => {
+  run(`var SP_CALLS = []; var spInvestigateOrig = spInvestigate; spInvestigate = (el, t) => SP_CALLS.push(t.id);`);
+  try {
+    for (const st of ['ignored', 'new', 'done']) { set([th(st, st)]); run(`spCard(SUPPORT.threads[0])`); }
+    assert.deepEqual(J('SP_CALLS'), ['ignored', 'new'], 'répondu en fil : pas de nouvelle investigation');
+  } finally { run('spInvestigate = spInvestigateOrig;'); }
+});

@@ -251,6 +251,18 @@ test('fraîcheur : texte d\'attente en secondes, en minutes, puis en pause hors 
   assert.equal(w('live', '2026-10-03T19:59:10Z', '2026-10-03T22:30:00Z').txt, 'en pause · reprise à 7h');
 });
 
+test('fraîcheur : le relevé Support a sa ligne (et son « ↻ ») comme les autres crons, son échec dans le diagnostic ; rien en démo', () => {
+  run(`CFG.schedules={}; CFG.workflows={support_poll:'wf-sp'}; DATA={crons:[{wf:'wf-sp',schedule:'7-59/15 7-19 * * 1-5'}],runs:[]};
+    SUPPORT={generated_at:'2026-10-01T08:07:20Z',error:'jeton refusé',threads:[]}; OFFICE={}; TEAM_BASE=null; WARNINGS={};`);
+  const src = 'FRESH_SRC.find(s=>s.key===\'support_poll\')';
+  const f = JSON.parse(run(`JSON.stringify(freshness(${src}, ${Date.parse('2026-10-01T08:10:00Z')}))`));
+  assert.equal(new Date(f.eta).toISOString(), '2026-10-01T08:22:23.000Z'); // 08:22 + 20 s de run + 3 s
+  assert.match(run('diagTxt()'), /Support \(Teams\) : dernier relevé en échec \(jeton refusé\)/);
+  run(`SUPPORT={...SUPPORT,demo:true}`);
+  assert.equal(run(`String(freshness(${src}, 0))`), 'null');
+  assert.doesNotMatch(run('diagTxt()'), /Support/);
+});
+
 test('durées : jamais « 4 h 60 » ni « 60 min »', () => {
   const r = code => run(code);
   assert.equal(r(`sinceTxt(${4 * 3600e3 + 59.7 * 60e3})`), '5 h 00');

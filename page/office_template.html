@@ -110,7 +110,6 @@
 <script type="application/kronn-action" data-action-id="bureau-fixpr">{"kind":"workflow","target_id":"__FIXPR_WF__","values":[{"name":"repo","provenance":"dynamic_binding","source_ref":"<page.dataset.actions.prs.find(id).repo>"},{"name":"pr","provenance":"dynamic_binding","source_ref":"<page.dataset.actions.prs.find(id).n>"},{"name":"notes","provenance":"user_input"}]}</script>
 <script type="application/kronn-action" data-action-id="bureau-meppr">{"kind":"workflow","target_id":"__MEPPR_WF__","values":[{"name":"project","provenance":"dynamic_binding","source_ref":"<page.dataset.actions.prs.find(id).repo>"},{"name":"pr_number","provenance":"dynamic_binding","source_ref":"<page.dataset.actions.prs.find(id).n>"},{"name":"jira_ticket_key","provenance":"user_input"},{"name":"dry_run","provenance":"user_input"}]}</script>
 <script type="application/kronn-action" data-action-id="bureau-support">{"kind":"workflow","target_id":"__SUPPORT_WF__","values":[{"name":"message_id","provenance":"dynamic_binding","source_ref":"<page.dataset.support.threads.find(id).id>"},{"name":"project_id","provenance":"dynamic_binding","source_ref":"<page.dataset.gates.projects.find(id).id>"},{"name":"comment","provenance":"user_input"}]}</script>
-<script type="application/kronn-action" data-action-id="bureau-supportpoll">{"kind":"workflow","target_id":"__SUPPORTPOLL_WF__","values":[]}</script>
 
 <script>
 /*__SCRIPTS__*/

@@ -123,7 +123,7 @@ let UFO_M={};
 function ufoLandings(){
   if(UFO_M.t===TEAM)return UFO_M.l;const l=[];
   for(const e of ((TEAM&&TEAM.events)||[]).filter(e=>e.kind==='sprint_in').sort((a,b)=>ms(a.t)-ms(b.t))){
-    const t=ms(e.t),u=l[l.length-1];
+    const t=ms(e.seen||e.t),u=l[l.length-1]; // seen : vue en retard par le cron équipe (37-scenes.js, teamMoves)
     if(u&&t-u.end<3e5){u.end=t;if(!u.keys.includes(e.key)){u.keys.push(e.key);u.pts+=+e.points||0;}}
     else l.push({at:t,end:t,keys:[e.key],pts:+e.points||0});
   }

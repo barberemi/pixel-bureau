@@ -25,7 +25,7 @@ Les fils des 7 derniers jours, du plus récent au plus ancien, chacun avec son �
 3. **Réponse à valider** : la réponse proposée, telle qu'elle sera postée, et sa version.
    - **✅ Valider et poster en fil** : elle part dans le fil Teams, sous ton nom.
    - **✏️ Demander des changements** : ton commentaire repart à l'agent, dans la même discussion ; il reprend sa réponse, qui revient ici à valider, autant de fois que nécessaire.
-   - **✖ Refuser** : rien n'est posté, le fil passe « ignoré » (hors du compte).
+   - **✖ Refuser** : rien n'est posté, le fil passe « ignoré » (hors du compte) ; « 🔎 Investiguer » y reste pour relancer une investigation (nouvelle consigne, autre projet ou commentaire).
 4. **Répondu en fil** : la réponse postée, l'heure, « voir dans Teams ↗ ». Un fil auquel tu as répondu toi-même dans Teams compte aussi comme répondu.
 
 Chaque fil montre aussi son sujet (s'il en a un), le contenu d'un message transféré et les réactions posées sur le message principal. Ce qui se passe dans Teams compte aussi :
@@ -34,7 +34,7 @@ Chaque fil montre aussi son sujet (s'il en a un), le contenu d'un message transf
 - **Un collègue a répondu dans le fil** : « Pris en charge », avec son nom, hors du compte.
 - **L'auteur relance après cette réponse**, sans ✅ : « ↩ Relancé », de nouveau à traiter.
 
-« ↻ Relever maintenant » relit le canal sans attendre le relevé suivant.
+Pour relire le canal sans attendre le relevé suivant : « ↻ » sur la ligne « Support (Teams) » du panneau Fraîcheur des données, comme les autres crons du Bureau.
 
 ## La réponse
 
@@ -54,7 +54,7 @@ Les libellés des sections sont en gras dans Teams. Seules les sections partent 
 
 ## L'agent Support
 
-Un agent du Bureau incarne l'investigation : c'est lui qui travaille sur le plan pendant qu'il cherche, et qui attend avec « ✋ » quand sa réponse est à valider. Il lit le message, le code du projet choisi en lecture seule, ton commentaire, et ce qui a été écrit dans sa discussion depuis le tour précédent.
+Un agent du Bureau incarne l'investigation : c'est lui qui travaille sur le plan pendant qu'il cherche, et qui attend avec « ✋ » quand sa réponse est à valider. Il lit le message, le code du projet choisi en lecture seule, les tickets Jira cités (par la connexion Jira du Bureau, `jira.config_id`, en lecture), ton commentaire, et ce qui a été écrit dans sa discussion depuis le tour précédent. Il y résume ce qu'il trouve en notes, qui ne réveillent pas l'agent de la discussion.
 
 ![L'agent Support en intervention](../img/support-agent.png)
 

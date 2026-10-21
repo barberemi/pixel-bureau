@@ -86,9 +86,9 @@ function spCard(t){
   if(st==='answered')h+=`<div class="sp-s">Pris par ${esc(spWho(t.by))} : il a répondu dans le fil · ${spTeams(t)}</div>`;
   if(st==='relaunched')h+=`<div class="sp-s">${esc(spWho(t.from))} a relancé après la réponse de ${esc(spWho(t.by))} · ${spTeams(t)}</div>`;
   if(st==='resolved')h+=`<div class="sp-s">Marqué ✅ traité dans Teams · ${spTeams(t)}</div>`;
-  if(st==='ignored')h+=`<div class="sp-s">Réponse refusée : rien n'a été posté${dl}.</div>`;
+  if(st==='ignored')h+=`<div class="sp-s">Réponse refusée : rien n'a été posté${dl}. Tu peux relancer une investigation.</div>`;
   el.innerHTML=h;
-  if(st==='new'||st==='failed'||st==='relaunched')spInvestigate(el,t);
+  if(st==='new'||st==='failed'||st==='relaunched'||st==='ignored')spInvestigate(el,t); // ignoré : réponse refusée, on peut réessayer
   if(st==='gate')spGate(el,t,s.g,dl);
   return el;
 }
@@ -137,8 +137,7 @@ function spHead(){
   const polled=S.polled_at?'Relevé à '+spWhen(S.polled_at)+(S.days?' · '+S.days+' derniers jours':'')+(S.cost?' · '+String(S.cost).replace('.',',')+' $':''):'Pas encore relevé';
   return `<div class="bp-head sp-head"><h2>💬 ${esc(spName())}</h2><span class="sp-pill${n?' sp-hot':''}">${n?n+' à traiter':'rien à traiter'}</span>`+
     `<button type="button" class="bp-x" aria-label="Fermer">×</button></div>`+
-    `<div class="sp-host" data-kronn-action-slot-host><div class="sp-bar"><span class="sp-s">${esc(polled)}${S.demo?' (démo)':''}</span>`+
-    (ACTIONS.support_poll?'<button type="button" class="sp-poll" data-kronn-action="bureau-supportpoll">↻ Relever maintenant</button>':'')+'</div></div>'+
+    `<div class="sp-bar"><span class="sp-s">${esc(polled)}${S.demo?' (démo)':''}</span></div>`+ // relever maintenant : « ↻ » du panneau Fraîcheur
     (S.error?`<p class="sp-err">Dernier relevé en échec : ${esc(S.error)}</p>`:'');
 }
 function openSupport(){
@@ -156,11 +155,8 @@ function spFill(box){
   const l=spThreads().sort((a,b)=>ms(b.at)-ms(a.at));
   for(const t of l)box.appendChild(spCard(t));
   if(!l.length){const S=SUPPORT||{};box.insertAdjacentHTML('beforeend',`<div class="sp-empty"><div class="sp-e-ico">${S.polled_at?'🧯':'📡'}</div><b>${S.polled_at?'Rien à signaler':'Pas encore de relevé'}</b>`+
-    `<span>${S.polled_at?'Aucun message sur '+esc(spName())+' ces '+(S.days||7)+' derniers jours.':'Le premier relevé arrive dans les 15 minutes'+(ACTIONS.support_poll?', ou tout de suite avec « Relever maintenant »':'')+'.'}</span></div>`);}
+    `<span>${S.polled_at?'Aucun message sur '+esc(spName())+' ces '+(S.days||7)+' derniers jours.':'Le premier relevé arrive dans les 15 minutes, ou tout de suite avec « ↻ » sur sa ligne de Fraîcheur des données.'}</span></div>`);}
   box.insertAdjacentHTML('beforeend',`<p class="sp-note">« Investiguer » ouvre une discussion Kronn avec ${esc((spAgent()||{name:'l\'agent Support'}).name)} ; sa réponse revient ici à valider, puis part en fil sous ton nom.</p>`);
-  const pb=box.querySelector('.sp-poll');
-  if(pb)new MutationObserver(()=>{const v=pb.getAttribute('data-kronn-action-state'), s=box.querySelector('.sp-bar .sp-s');
-    if(s&&v==='succeeded')s.innerHTML='<b style="color:var(--ok)">✓ Relevé lancé.</b> La fenêtre se met à jour toute seule, dans une minute environ.';}).observe(pb,{attributes:true,attributeFilter:['data-kronn-action-state']});
 }
 // fiche de l'agent Support : le nombre à traiter, les deux derniers fils, et la console (on y investigue : projet choisi
 // dans la liste, commentaire dans la carte Kronn)
