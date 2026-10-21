@@ -21,11 +21,13 @@ test('liste tirée de l\'installation : hérauts, invités, passions, petits mom
   assert.ok(L.filter(([f]) => f === 'Invités').length <= guests);
 });
 
-test('le soir : les scènes de l\'équipe sont grisées (tout le monde est rentré), les petits moments restent jouables', () => {
-  run(`T = ${at(22)};`);
-  const L = J('galleryScenes().map(x => [x.fam, x.ok])');
-  assert.ok(L.filter(([f]) => f === 'Équipe et cérémonies').every(([, ok]) => !ok));
-  assert.ok(L.filter(([f]) => f === 'Petits moments').every(([, ok]) => ok));
+test('à toute heure : tout est jouable ; le soir, la démonstration se joue à 11 h, puis la page revient à son heure', () => {
+  run(`T = ${at(22)}; setMode('pause');`);
+  assert.ok(J('galleryScenes().every(x => x.ok)'));
+  assert.equal(J(`demoTime(${at(22)})`), at(11));
+  assert.equal(J(`demoTime(${at(15)})`), at(15)); // aux heures de bureau : l'heure affichée
+  const r = J(`(() => { demoStart(galleryScenes().find(x => /^Daily/.test(x.n))); const d = T; demoEnd(); return {d, T}; })()`);
+  assert.deepEqual(r, {d: at(11), T: at(22)});
 });
 
 test('▶ voir puis fin : faux événement dans une copie des données, lecture accélérée, puis la journée revient telle quelle', () => {

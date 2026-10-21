@@ -12,8 +12,8 @@ const galTeam=(ev,mp)=>{TEAM=Object.assign({},TEAM,{events:[...((TEAM&&TEAM.even
 const galFx=(kind,extra)=>()=>{FX.cur.set('demo',{id:'demo',kind,t0:performance.now(),...extra});};
 // {fam, ico, n (nom), d (ce qu'on voit), w (quand en vrai), c (portrait), ok (jouable maintenant), why, play: {len, speed, setup(s)}}
 function galleryScenes(){
-  const out=[], add=x=>out.push(x), dev=galDev(), qa=galQa(), sm=chars.find(c=>c.roleKind==='sm'), open=officeOpen(T);
-  const team=(x,need)=>add({fam:'Équipe et cérémonies',ok:open&&need!==false,why:open?'Il manque quelqu\'un pour la jouer':'Aux heures de bureau : place le curseur dans la journée',...x});
+  const out=[], add=x=>out.push(x), dev=galDev(), qa=galQa(), sm=chars.find(c=>c.roleKind==='sm');
+  const team=(x,need)=>add({fam:'Équipe et cérémonies',ok:need!==false,why:'Il manque quelqu\'un dans l\'équipe pour la jouer',...x});
   team({ico:'🛸',n:'Soucoupe-mère',d:'Un ticket entre dans le sprint : elle va chercher '+(sm?sm.name:'la facilitatrice'),w:'Ajout au sprint après le planning',
     play:{len:20e3,speed:1,setup:s=>galTeam([{t:galIso(s),kind:'sprint_in',key:galTk(dev),summary:'Démonstration',points:5,who:dev&&dev.team.id,who_name:dev&&dev.person}])}},!REDUCED_MOTION);
   const h=chars.find(c=>c.guest&&c.on==='reopen');
@@ -30,7 +30,7 @@ function galleryScenes(){
   team({ico:'🔄',n:'Rétrospective',d:'L\'équipe en salle de réunion, l\'animateur en bout de table',w:'Selon le rythme de l\'équipe',play:{len:3*60e3,speed:10,setup:s=>{SCENE_DEMO.flag='retro';}}});
   team({ico:'🍕',n:'Pizzas de fin de sprint',d:'À la table de la cafétéria',w:'Dernier jour du sprint, midi',play:{len:2*60e3,speed:10,setup:s=>{SCENE_DEMO.flag='pizza';}}});
   for(const c of chars.filter(c=>c.guest&&!['reopen','prod','mep'].includes(c.on))){
-    const g={fam:'Invités',c,ok:open||c.days==='all',why:'Aux heures de bureau : place le curseur dans la journée'};
+    const g={fam:'Invités',c,ok:true};
     const visit=len=>s=>{SCENE_DEMO.visit={c,v:{s,e:s+len,r:rng(keySeed(c.key)*7919+daySeed(s))}};};
     if(c.on==='coffee'){const n=chars.filter(p=>p.person&&p.seat).length+1;
       add({...g,ico:'☕',n:c.name+' · tournée de café',d:c.role||'Un café pour chaque présent',w:'Vers 16 h, jours ouvrés',play:{len:n*120e3+COFFEE_BREW,speed:30,setup:visit(n*120e3+COFFEE_BREW)}});}
@@ -41,7 +41,7 @@ function galleryScenes(){
   }
   for(const c of chars.filter(c=>c.person&&c.seat&&passionOf(c)&&PASSION_MOMENTS[passionOf(c).moment])){
     const m=PASSION_MOMENTS[passionOf(c).moment];
-    add({fam:'Passions',c,ok:open,why:'Aux heures de bureau : place le curseur dans la journée',ico:m.bubble,n:c.name+' · '+passionOf(c).moment,d:m.label,w:'Une fois par jour ouvré',
+    add({fam:'Passions',c,ok:true,ico:m.bubble,n:c.name+' · '+passionOf(c).moment,d:m.label,w:'Une fois par jour ouvré',
       play:{len:m.min*60e3,speed:4,setup:s=>{SCENE_DEMO.passion={c,sl:{s,e:s+m.min*60e3}};}}});
   }
   if(DUCKGAME){add({fam:'Petits moments',ok:true,ico:'🏆',n:'Le canard : un succès',d:'L\'insigne qui se pose sur le canard',w:'Un succès débloqué',play:{len:8e3,speed:1,setup:galFx('trophy',{tr:DUCK_TROPHIES[0]})}});
@@ -61,11 +61,20 @@ function renderGallery(){
       `<span><b>${esc(x.n)}</b><small>${esc(x.d)}<br><i>${esc(x.w)}</i></small></span><button data-gal="${i}"${x.ok?'':` disabled title="${esc(x.why)}"`}>▶ voir</button></div>`).join('')}</div>`).join('');
 }
 let GAL_LIST=[];
+// heure de la démonstration : celle affichée aux heures de bureau, sinon 11 h du dernier jour ouvré (le soir, la nuit, le
+// week-end, tout le monde est rentré) ; la journée revient ensuite à l'heure d'avant
+function demoTime(t){
+  if(officeOpen(t))return t;
+  let d=parisMidnight(t);
+  for(let i=0;i<7&&RHYTHM.weekend.includes(parisHM(d+12*36e5).wd);i++)d=parisMidnight(d-12*36e5);
+  return d+11*36e5;
+}
 function demoStart(x){
   if(SCENE_DEMO)demoEnd();
+  const saved={T,mode,SPEED,TEAM,SUPPORT:typeof SUPPORT!=='undefined'?SUPPORT:null};
+  const t0=demoTime(T); if(t0!==T){T=t0;needTeleport=true;}
   const s=T+4e3;
-  SCENE_DEMO={n:x.n,s,e:s+x.play.len,hard:performance.now()+Math.max(30e3,x.play.len/x.play.speed+60e3),
-    saved:{T,mode,SPEED,TEAM,SUPPORT:typeof SUPPORT!=='undefined'?SUPPORT:null}};
+  SCENE_DEMO={n:x.n,s,e:s+x.play.len,hard:performance.now()+Math.max(30e3,x.play.len/x.play.speed+60e3),saved};
   x.play.setup(s);
   MOVES_MEMO={team:null,list:[]};UFO_M={};
   setSpeed(x.play.speed);setMode('play');
