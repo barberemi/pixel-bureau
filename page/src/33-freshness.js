@@ -9,6 +9,7 @@ const FRESH_SRC=[
   {key:'canard',label:'Canard d\'équipe',period:3600e3,grace:600e3,gen:()=>DUCKGAME&&DUCKGAME.generated_at},
   {key:'absences',label:'Absences (planning)',period:3600e3,grace:600e3,gen:()=>ABSENCES&&!ABSENCES.demo&&ABSENCES.generated_at},
   {key:'courrier',label:'Courrier',period:600e3,grace:300e3,gen:()=>MAILS&&!MAILS.demo&&MAILS.generated_at},
+  {key:'support_poll',label:'Support (Teams)',period:900e3,grace:600e3,gen:()=>SUPPORT&&!SUPPORT.demo&&SUPPORT.generated_at}, // #62
 ];
 function cronOf(key){
   if((CFG.schedules||{})[key])return CFG.schedules[key]; // modèles de workflows (assemblage)
@@ -69,6 +70,7 @@ function diagTxt(){
     out.push(`<div class="diag late">${esc(label)} : dernier passage en échec${f.at?' à '+hm(ms(f.at)):''}`+
       (f.step?` (étape ${esc(f.step)}${f.err?' : '+esc(f.err):''})`:'')+'</div>');
   }
+  if(SUPPORT&&!SUPPORT.demo&&SUPPORT.error)out.push(`<div class="diag late">Support (Teams) : dernier relevé en échec (${esc(SUPPORT.error)})</div>`);
   const src=TEAM_BASE&&TEAM_BASE.sources;
   if(src&&src.github_errors&&src.github_errors.length)
     out.push('<div class="diag late">GitHub : '+src.github_errors.slice(0,3).map(esc).join(' · ')+'</div>');
