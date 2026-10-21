@@ -388,6 +388,8 @@ function feedView(ev,mode){
   }
   return out;
 }
+// « ⏵ revoir » d'une ligne du fil (replayAt, 80-input.js) : seulement dans la journée rejouable, pas en mode TV
+const rvBtn=t=>!TV&&t>=RSTART&&t<=REND?`<button class="rv" data-rv="${t}" title="Revoir ce moment sur le plan : 20 s avant, en ×1" aria-label="Revoir ${hm(t)} sur le plan">⏵ revoir</button>`:'';
 function renderFeedList(view,all=FEED_ALL){
   FEED_VIEW=view;FEED_ALL=all;
   const box=document.getElementById('feed');
@@ -398,7 +400,7 @@ function renderFeedList(view,all=FEED_ALL){
   view.slice(0,FEED_N).forEach((e,i)=>{
     const h=parisHM(e.t).h;
     if(h!==lastH){html+=`<div class="evh">${h} h</div>`;lastH=h;}
-    html+=`<div class="ev${e.c?' fam-'+famOf(e.c):''}" data-i="${i}"${e.tv||e.duck||e.c?' tabindex="0" role="button"':''}><span class="tm">${hm(e.t)}</span><span class="x">${e.txt}</span></div>`;
+    html+=`<div class="ev${e.c?' fam-'+famOf(e.c):''}" data-i="${i}"${e.tv||e.duck||e.c?' tabindex="0" role="button"':''}><span class="tm">${hm(e.t)}</span>${rvBtn(e.t)}<span class="x">${e.txt}</span></div>`;
   });
   if(view.length>FEED_N)html+=`<button class="feedmore" data-feed-more>Voir plus (${view.length-FEED_N})</button>`;
   const ttl=document.getElementById('feedtitle'), w=dataDayWord();
@@ -417,6 +419,8 @@ function renderFeedList(view,all=FEED_ALL){
 document.getElementById('feed').addEventListener('keydown',keyClick);
 document.getElementById('feed').addEventListener('click',ev=>{
   if(ev.target.closest('[data-feed-more]')){FEED_N+=FEED_PAGE;renderFeedList(FEED_VIEW);return;}
+  const rv=ev.target.closest('[data-rv]'); // 80-input.js : revoir le moment sur le plan
+  if(rv){replayAt(+rv.dataset.rv);const s=document.querySelector('.stage');if(s)s.scrollIntoView({behavior:SCROLL_BEHAVIOR,block:'start'});return;}
   const lk=ev.target.closest('.lk');
   if(lk){ // un lien de la ligne : data-tk (fiche du ticket) est pris par le gestionnaire commun de 62-ticket.js, ↗ s'ouvre seul
     if(lk.dataset.who){ev.preventDefault();select(lk.dataset.who);}

@@ -315,8 +315,7 @@ function setData(d,live){
   const firsts=d.runs.map(r=>r._s).filter(Boolean);
   RSTART=Math.max(DAY0,(firsts.length?Math.min(...firsts):DAY0)-15*60e3);
   REND=live?Date.now():ms(d.generated_at);
-  document.getElementById('tstart').textContent=hm(RSTART);
-  document.getElementById('tend').textContent=hm(REND);
+  timeHours();
   const b=document.getElementById('badge');
   b.classList.toggle('live',live);
   b.querySelector('span').textContent=live?'Données live':'Instantané du '+hm(ms(d.generated_at))+' (démo)';

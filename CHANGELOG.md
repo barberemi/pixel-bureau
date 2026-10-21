@@ -20,6 +20,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- Rejouer la journée : un champ pour taper l'heure, une bulle d'heure sur le curseur et les heures sous la frise, la vitesse en un bouton qui défile (×1, ×2, ×10, ×60, ×480, au lieu de ×120, ×480, ×1500), « ⏵ revoir » sur chaque ligne du fil (20 s avant, en ×1 : la scène se rejoue) ; en lecture rapide les personnages marchent plus vite (Gandalf ne traîne plus vers la porte après sa scène).
 - Console Support, réponse postée en fil : seulement les sections (les phrases de l'agent avant la première et après la dernière sautent), une ligne vide entre les sections, la mention « Généré de manière automatique 🤖 » sans italique (à republier avec `publish.py workflows`) ; fiche de l'agent Support plus compacte (bouton de la console sous le texte, un fil par ligne).
 - Mise en prod d'une PR : des projets différents en même temps (une seule à la fois par projet, `concurrency_key` du modèle, à republier avec `publish.py workflows`) ; l'agent montre toutes ses validations en attente (panneau du boss, sa fiche, compteurs) et va à la porte du boss dès qu'une attend.
 - Page plus légère : à l'assemblage, les appels `document.createElement` et `document.getElementById` répétés passent par un alias court (4,5 Ko).

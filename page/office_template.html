@@ -33,14 +33,9 @@
         <div class="bar">
           <button id="live" class="on" aria-pressed="true" title="Revenir au direct">● Direct</button>
           <button id="play" aria-pressed="false" title="Rejouer la journée en accéléré">▶ Rejouer</button>
-          <span class="tlabel" id="tstart">00:00</span>
-          <input type="range" id="slider" min="0" max="1000" value="1000" aria-label="Heure affichée">
-          <span class="tlabel" id="tend">--:--</span>
-          <select id="speed" aria-label="Vitesse du replay">
-            <option value="120">x120</option>
-            <option value="480" selected>x480</option>
-            <option value="1500">x1500</option>
-          </select>
+          <input type="text" id="tgo" class="tgo" inputmode="numeric" maxlength="5" value="--:--" aria-label="Aller à l'heure (hh:mm)" title="Tape une heure (ex. 14:36) puis Entrée">
+          <div class="tl"><span class="tbub" id="tbub" aria-hidden="true">--:--</span><input type="range" id="slider" min="0" max="1000" value="1000" aria-label="Heure affichée"><div class="thours" id="thours" aria-hidden="true"></div></div>
+          <button id="speed" class="spd" title="Vitesse du replay : clic pour passer à la suivante (×1, ×2, ×10, ×60, ×480)">⏩ ×480</button>
           <button id="loupebtn" class="on" aria-pressed="true" title="Loupe : un médaillon agrandi sur le plan quand un événement fort commence (réouverture, mise en prod, visite, fête, validation, lancement du sprint)">🔍 Loupe</button>
           <button id="tvbtn" title="Plein écran pour un écran d'open space (touche T, Échap pour sortir)">📺 Mode TV</button>
         </div>
