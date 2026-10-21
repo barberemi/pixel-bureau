@@ -638,7 +638,7 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .sp-pill.sp-hot{background:var(--err);color:#fff}
 .sp-host{display:block;width:100%}
 .sp-bar{display:flex;align-items:center;gap:10px;padding:0 0 12px;margin:0 0 14px;border-bottom:1px solid var(--line)}
-.sp-bar .sp-s{margin:0;flex:1}.sp-poll{font-size:12px;padding:5px 10px}
+.sp-bar .sp-s{margin:0;flex:1}
 .sp-card{border:2px solid var(--line);border-radius:10px;padding:10px 12px;margin:0 0 12px}
 .sp-new,.sp-failed{border-color:var(--err)}.sp-gate{border-color:var(--warn)}.sp-answered,.sp-ignored{opacity:.75}
 .sp-top{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.sp-t{color:var(--muted);font-size:12px}

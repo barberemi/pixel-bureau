@@ -34,7 +34,7 @@ Chaque fil montre aussi son sujet (s'il en a un), le contenu d'un message transf
 - **Un collègue a répondu dans le fil** : « Pris en charge », avec son nom, hors du compte.
 - **L'auteur relance après cette réponse**, sans ✅ : « ↩ Relancé », de nouveau à traiter.
 
-« ↻ Relever maintenant » relit le canal sans attendre le relevé suivant.
+Pour relire le canal sans attendre le relevé suivant : « ↻ » sur la ligne « Support (Teams) » du panneau Fraîcheur des données, comme les autres crons du Bureau.
 
 ## La réponse
 

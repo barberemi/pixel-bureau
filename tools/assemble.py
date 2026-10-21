@@ -29,8 +29,8 @@ ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate",
            "bureau-agent": ("agent", "__AGENT_WF__"), "bureau-pages": ("pages", "__PAGES_WF__"),
            "bureau-meppr": ("mep_pr", "__MEPPR_WF__"), "bureau-rebase": ("rebase", "__REBASE_WF__"),
            "bureau-fixpr": ("fix_pr", "__FIXPR_WF__"),
-           # console Support (#62) : investiguer un message (modèle support), relever le canal maintenant (cron support_poll)
-           "bureau-support": ("support", "__SUPPORT_WF__"), "bureau-supportpoll": ("support_poll", "__SUPPORTPOLL_WF__")}
+           # console Support (#62) : investiguer un message (modèle support) ; relever le canal : « ↻ » du panneau Fraîcheur
+           "bureau-support": ("support", "__SUPPORT_WF__")}
 # variables des workflows de la clé launch : rôle -> nom par défaut ; launch.<action> = id seul, ou {wf, vars: {rôle: nom
 # chez toi, ou null si ton workflow n'a pas cette variable}}
 LAUNCH_VARS = {"impl": {"ticket": "jira_ticket_key"}, "mep": {"ticket": "jira_ticket_key", "pr": "pr_number"},
@@ -458,8 +458,7 @@ def action_ids(cfg):
     """Id de la cible de chaque bouton : workflows du Bureau (actions), modèles incarnés (models), puis tes workflows
     (launch), qui l'emportent."""
     models = cfg.get("models") or {}
-    poll = (cfg.get("workflows") or {}).get("support_poll")  # « Relever maintenant » lance le cron du Support (#62)
-    return {**(cfg.get("actions") or {}), **({"support_poll": poll} if poll else {}),
+    return {**(cfg.get("actions") or {}),
             **{a: models[m] for a, m in MODEL_ACTIONS.items() if models.get(m)},
             **{k: wf for k, (wf, _) in launch(cfg).items()}}
 
