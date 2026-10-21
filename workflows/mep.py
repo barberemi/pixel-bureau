@@ -3,7 +3,7 @@
   python3 -c <ce script> <étape> <projet> <n° de PR> <ticket forcé> <id du run> <simulation>
 
 Projets : le dépôt principal (github) et ceux de github.deploys qui ont une clé « mep » :
-  {"ci_workflow": "CI_Quality-test.yaml", "ci_label": "ci-test", "staging_inputs": {"envchoice": "staging",
+  {"ci_workflow": "CI_Quality-test.yaml", "ci_label": "ci-test", "staging_inputs": {"envchoice": "stg",
    "versiontags": "{tag}"}, "prod_inputs": {"versiontags": "{tag}"}, "staging_url": "https://…", "logo": "…"}
   {tag} est remplacé par le tag de la release ; staging_workflow et prod_workflow restent ceux de github / github.deploys.
 Le projet s'écrit owner/dépôt ou par son nom court (label, sinon le nom du dépôt).
