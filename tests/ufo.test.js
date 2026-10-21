@@ -79,3 +79,11 @@ test('avec « réduire les animations » : pas de vaisseau', () => {
   p.run('TEAM=mergedTeam();');
   assert.ok(!JSON.parse(p.run(`JSON.stringify(fxEvents(${at('14:21')}).map(e=>e.kind))`)).includes('ufo'));
 });
+
+test('vue en retard par le cron équipe (seen) : la soucoupe arrive à la première vue', () => {
+  const saved = run('JSON.stringify(TEAM.events)');
+  try {
+    run(`TEAM.events=TEAM.events.map(e=>e.kind==='sprint_in'?{...e,seen:'2026-10-01T14:28:00+02:00'}:e);UFO_M={};`);
+    assert.deepEqual(J('ufoLandings().map(u=>u.at)'), [at('14:28')]);
+  } finally { run(`TEAM.events=${saved};UFO_M={};`); }
+});

@@ -7,11 +7,12 @@ const FLOW=Object.assign({test:'To Test',validated:'To Deploy',reopened:'Reopen'
 const shortKey=k=>String(k).replace(/^[A-Z][A-Z0-9]*-/,'');
 const deskZone=c=>c.boss?'boss':'desk'; // le boss reste à son bureau de boss
 let MOVES_MEMO={team:null,list:[]};
-// passages du jour à tester, validé, réouvert (team.events) : {t, key, kind, author, dev (l'assigné), qa (le testeur)}
+// passages du jour à tester, validé, réouvert (team.events) : {t, key, kind, author, dev (l'assigné), qa (le testeur)} ;
+// t = première vue par le cron équipe (seen) quand il l'a appris en retard, pour que la scène se joue en direct
 function teamMoves(){
   if(MOVES_MEMO.team===TEAM)return MOVES_MEMO.list;
   const kind={[FLOW.test]:'test',[FLOW.validated]:'validated',[FLOW.reopened]:'reopened'}, qa=chars.find(x=>x.person&&x.roleKind==='qa')||null;
-  const list=((TEAM&&TEAM.events)||[]).filter(e=>e.kind==='move'&&kind[e.to]).map(e=>({t:ms(e.t),key:e.key,kind:kind[e.to],
+  const list=((TEAM&&TEAM.events)||[]).filter(e=>e.kind==='move'&&kind[e.to]).map(e=>({t:ms(e.seen||e.t),key:e.key,kind:kind[e.to],
     author:personChar(e.who,e.who_name),dev:chars.find(x=>x.person&&x.team&&(x.team.tickets||[]).some(k=>k.key===e.key))||null,qa}))
     .sort((a,b)=>a.t-b.t);
   MOVES_MEMO={team:TEAM,list};

@@ -94,3 +94,13 @@ test('sprint clôturé le matin de sa fin, le suivant déjà ouvert : pizzas qua
     assert.equal(st('p_pam', '12:10').st, 'pizza', 'ancien dataset sans planned_end : date de clôture');
   } finally { run(`TEAM.sprint=${JSON.stringify(sprint)};TEAM.prev_sprint=${prev};`); }
 });
+
+test('appris en retard par le cron équipe (seen) : la scène part de la première vue, pour se jouer en direct', () => {
+  run('TEAM=mergedTeam();');
+  const saved = run('JSON.stringify(TEAM.events)');
+  try {
+    run(`TEAM.events=TEAM.events.map(e=>e.kind==='move'&&e.key==='DM-7089'&&e.to==='Reopen'?{...e,seen:'2026-10-01T10:58:00+02:00'}:e);MOVES_MEMO={team:null,list:[]};`);
+    assert.deepEqual(J(`teamMoves().filter(m=>m.kind==='reopened').map(r=>r.t)`), [at('10:58')]);
+    assert.equal(st('g_gandalf', '10:59').st, 'reopen'); // sans seen, la scène (10h50-10h53) serait finie
+  } finally { run(`TEAM.events=${saved};MOVES_MEMO={team:null,list:[]};`); }
+});
