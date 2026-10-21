@@ -93,9 +93,10 @@ const prevSprintDay=()=>{const p=TEAM&&TEAM.prev_sprint,e=p&&(p.planned_end||p.e
 const lastSprintDay=t=>{const d=parisDay(t);return (sprintDay('end')===d||prevSprintDay()===d)&&!RHYTHM.weekend.includes(parisHM(t).wd);};
 function teamScene(c,t){
   const s=TEAM&&TEAM.sprint, m0=parisMin(t), d0=parisMidnight(t)+(DAILY_MIN+RHYTHM.daily_minutes)*60e3;
-  if(s&&sprintDay('start')===parisDay(t)&&t>=d0&&t<d0+KICKOFF_MS)
+  const dk=SCENE_DEMO&&t>=SCENE_DEMO.s&&t<SCENE_DEMO.e?SCENE_DEMO.flag:null; // 46-gallery.js : lancement ou pizzas joués maintenant
+  if(s&&(dk==='kickoff'||sprintDay('start')===parisDay(t)&&t>=d0&&t<d0+KICKOFF_MS))
     return {st:'kickoff',zone:'kanban',human:true,label:'Lancement du sprint '+(s.name||'')+' devant le Kanban',bubble:'🏁'};
-  if(lastSprintDay(t)&&m0>=PIZZA_LUNCH[0]&&m0<PIZZA_LUNCH[1])
+  if(dk==='pizza'||lastSprintDay(t)&&m0>=PIZZA_LUNCH[0]&&m0<PIZZA_LUNCH[1])
     return {st:'pizza',zone:['ktable','coffee','sofa'][keySeed(c.key)%3],human:true,label:'Pizza de fin de sprint',bubble:'🍕'};
   for(const m of teamMoves()){
     if(t<m.t||t>m.t+HERALD_MS)continue; // la plus longue : le face-à-face

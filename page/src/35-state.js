@@ -137,6 +137,7 @@ const GUEST_TOUR=[['coffee','la cafétéria'],['srv','la salle serveurs'],['meet
   ['gate','le bureau du boss'],['wc','les toilettes'],['copier','la photocopieuse'],['daily',"l'open space"]];
 // {s, e, r} : arrivée, départ (ms) et suite de tirages de la visite ; null = pas de visite ce jour-là
 function guestVisit(c,t){
+  if(SCENE_DEMO&&SCENE_DEMO.visit&&SCENE_DEMO.visit.c===c)return SCENE_DEMO.visit.v; // 46-gallery.js : sa visite, jouée maintenant
   if(c.days!=='all'&&RHYTHM.weekend.includes(parisHM(t).wd))return null;
   const r=rng(keySeed(c.key)*7919+daySeed(t));
   if(r()>=(c.chance==null?1:c.chance))return null;

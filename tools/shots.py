@@ -73,6 +73,8 @@ SHOTS = {
     "calendrier": (1400, 1600, AT(11) + "select('calendar');", "#side"),
     "recap": (1400, 1200, AT(11) + "RECAP_OPEN=true;renderRecap();", "#recap"),
     "rejouer": (1400, 1200, AT(9.7) + "setMode('play');", ".stage", 1.5),
+    # galerie des scènes (46-gallery.js), dans « Comment lire le plan » ouvert : ce que le bureau de démo sait jouer
+    "galerie": (1400, 1800, AT(11) + "const d=document.querySelector('.legend-help');d.open=true;renderGallery();", ".gal"),
     "tv": (1600, 900, AT(11) + "setTv(true);", None),
     # « Qui fait quoi » de l'écran mural, défilé jusqu'aux agents (actifs ou en panne, nommés par leur métier)
     "tv-agents": (1600, 900, AT(11) + "setTv(true);setTimeout(()=>{TVSCROLL.hold=performance.now()+1e6;const b=document.querySelector('#tvwho'),"

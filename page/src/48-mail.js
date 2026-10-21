@@ -81,6 +81,8 @@ const RULES_WF='Le Bureau · règles du courrier';
 const postmanOwns=g=>g.wf_name===RULES_WF&&!!byKey.g_facteur&&mailAccounts().length>0;
 function postmanState(c,t){
   if(!mailAccounts().length)return {st:'off',label:'Pas de courrier branché'};
+  if(SCENE_DEMO&&SCENE_DEMO.flag==='post'&&t>=SCENE_DEMO.s&&t<SCENE_DEMO.s+POST_STAY) // 46-gallery.js : sa tournée jouée maintenant
+    return {st:'idle',zone:'visit',visit:postSpot(),label:'Dépose 1 lettre dans les boîtes aux lettres',bubble:'📬 1'};
   const g=(GATES||[]).find(x=>x.wf_name===RULES_WF&&(!x.since||ms(x.since)<=t));
   if(g){c.wf=[String(g.wf).slice(0,8)]; // sa gate est la sienne (pas une validation orpheline) : sa carte dans sa fiche, comptée une fois chez le boss
     return {st:'gate',zone:'gate',run:{run:g.run,wf_name:g.wf_name,_s:ms(g.since)},label:'Te propose des règles pour trier ton courrier : attend ta validation',bubble:'✋ 📮 On trie ton courrier ?'};}
