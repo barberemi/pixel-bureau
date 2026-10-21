@@ -141,8 +141,23 @@
     "step_type": {
      "type": "Agent"
     },
-    "description": "L'agent Support investigue dans la discussion de l'investigation et rédige la réponse ; « changements » à la gate le relance ici, ton commentaire en tête.",
-    "room_id": "{{state.disc}}"
+    "description": "L'agent Support investigue dans la discussion de l'investigation et rédige la réponse ; « changements » à la gate le relance ici, ton commentaire en tête. Outils : lecture du code (Read, Grep, Glob, Bash) et sa discussion ; aucun agent en arrière-plan.",
+    "room_id": "{{state.disc}}",
+    "agent_settings": {
+     "tools": {
+      "cli": [
+       "Read",
+       "Grep",
+       "Glob",
+       "Bash"
+      ],
+      "kronn_internal": [
+       "disc_append",
+       "disc_get_message",
+       "disc_meta"
+      ]
+     }
+    }
    },
    {
     "agent": "ClaudeCode",
@@ -157,7 +172,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "La réponse au format (une ligne par section), numérotée (version).",
+    "description": "La réponse au format (une ligne par section), numérotée (version). Sans section « emoji Libellé : … » (l'agent a rendu des notes d'avancement) : retour à l'agent.",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -166,7 +181,16 @@
      "{{run.id}}"
     ],
     "exec_timeout_secs": 30,
-    "exec_stdin": "{{steps.investigate.output}}"
+    "exec_stdin": "{{steps.investigate.output}}",
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "investigate"
+      }
+     }
+    ]
    },
    {
     "name": "mark_draft",

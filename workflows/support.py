@@ -35,6 +35,7 @@ TOOLS = (TOOL, TOOL_R)
 DAYS = int(S.get("days") or 7)
 REPLIES_MAX = 8  # fils dont on relit les réponses à chaque relevé (les plus récents qui ont bougé)
 FOOTER = "_Généré de manière automatique 🤖_"
+SECTION = re.compile(r"^\W{1,4}\s*[^:]{1,30}?\s*:\s*\S")  # « 🔎 Cause : … »
 
 
 def now():
@@ -385,6 +386,8 @@ def brief(t, p, comment, who):
 ASK = """Tu es l'agent Support. Lis d'abord les derniers messages de ta discussion Kronn : des remarques peuvent y avoir
 été ajoutées depuis le tour précédent. Investigue, en résumant au fil de l'eau ce que tu trouves dans la discussion.
 Puis rédige la réponse qui sera postée en fil sous le nom de la personne qui t'a lancé (elle la valide d'abord).
+Fais toi-même les lectures (Read, Grep, Glob, Bash en lecture seule), sans lancer d'agent ni de tâche en
+arrière-plan, et sans rendre la main avant d'avoir la réponse. Résume ce que tu trouves dans ta discussion (disc_append).
 Ta réponse finale, et rien d'autre : en français, concise, une ligne par section, chacune avec son emoji, par exemple
 🔎 Cause : …
 🛠️ Action : …
@@ -423,6 +426,9 @@ def draft(run_id, text):
     body = "\n".join(ln.strip().strip("*").strip() if ln.strip().startswith("**") else ln for ln in lines).strip()
     if not body:
         fail("L'agent n'a rendu aucune réponse : demande des changements pour relancer.")
+    if not any(SECTION.match(ln.strip()) for ln in body.splitlines()):
+        print("Pas de réponse au format (une ligne « emoji Libellé : … » par section) : l'agent rend la main à l'investigation.")
+        sys.exit(3)  # on_result exit_3 : retour à l'étape investigate
     c = load()
     meta = c.setdefault("runs", {}).setdefault(run_id, {})
     meta["version"] = int(meta.get("version") or 0) + 1

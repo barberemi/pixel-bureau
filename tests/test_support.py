@@ -224,6 +224,8 @@ class SupportTest(unittest.TestCase):
         self.assertIn("Le flux RSS FR est vide", body["initial_prompt"])
         r = self.run_("draft", "run-1", stdin="**🔎 Cause : le cron a échoué à 8h.**\n\n🛠️ Action : relancé à 11h20.\n_Généré de manière automatique 🤖_\n")
         self.assertEqual(r.stdout, "🔎 Cause : le cron a échoué à 8h.\n🛠️ Action : relancé à 11h20.\n", "mention retirée, ajoutée au post")
+        r = self.run_("draft", "run-1", stdin="L'agent d'exploration tourne en arrière-plan, j'attends ses résultats.")
+        self.assertEqual(r.returncode, 3, "des notes d'avancement ne sont pas une réponse : retour à l'agent (exit_3)")
         self.run_("draft", "run-1", stdin="🔎 Cause : x")
         self.assertEqual(self.cache()["runs"]["run-1"]["version"], 2)
         r = self.run_("post", "run-1", stdin="🔎 Cause : le cron <RSS> a échoué.\n👀 Suivi : on surveille 12h.")
@@ -249,6 +251,8 @@ class SupportTest(unittest.TestCase):
         self.assertTrue(steps["gate"]["gate_message"].startswith("{{steps.draft.data.stdout}}\n\n---\n"), "la page coupe au ---")
         # le dataset support est un vrai objet (sortie JSON d'une étape CollectApiData), jamais le texte d'un stdout : Kronn y
         # relit la ligne cliquée (threads.find(id)) pour la liaison de « Investiguer », sinon « expected an object at threads »
+        self.assertNotIn("Agent", steps["investigate"]["agent_settings"]["tools"]["cli"], "aucun agent en arrière-plan")
+        self.assertEqual(steps["draft"]["on_result"][0]["action"], {"type": "Goto", "step_name": "investigate"})
         for w in (s for s in wf["steps"] if s["step_type"]["type"] == "PublishPageData"):
             src = w["page_publish"]["writes"][0]["value_from"]
             self.assertTrue(src.endswith(".data.sources.snap"), src)
