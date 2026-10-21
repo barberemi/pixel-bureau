@@ -195,6 +195,11 @@ class SupportTest(unittest.TestCase):
     def test_states_follow_the_investigation_runs(self):
         self.poll()
         tc = lambda m: {"type": "manual", "message_id": m}  # noqa: E731
+        # sans message_id dans trigger_context (variables dans un instantané) : le lien noté par open dans le cache
+        cache = self.cache(); cache.setdefault("runs", {})["r0"] = {"msg": "102"}
+        Path(self.tmp, ".cache", "pixel-bureau", "support.json").write_text(json.dumps(cache))
+        self.srv.st["runs"] = [{"id": "r0", "status": "Cancelled", "started_at": ago(1), "trigger_context": {"type": "manual"}, "step_results": []}]
+        self.assertEqual({t["id"]: t["state"] for t in self.poll()["threads"]}["102"], "failed", "run annulé : à relancer")
         self.srv.st["runs"] = [{"id": "r1", "status": "WaitingApproval", "started_at": ago(1), "trigger_context": tc("101"),
                                 "step_results": [{"step_name": "open"}, {"step_name": "investigate"}, {"step_name": "gate"}]}]
         self.assertEqual(self.poll()["threads"][0]["state"], "gate")

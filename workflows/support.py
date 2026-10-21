@@ -277,7 +277,9 @@ def runs_by_thread(c):
         return out
     for r in runs:
         tc = r.get("trigger_context") if isinstance(r.get("trigger_context"), dict) else {}
-        msg = str(tc.get("message_id") or "")
+        # le fil du run : sa variable message_id (absente de trigger_context depuis que Kronn range les variables dans un
+        # instantané), sinon le lien noté par l'étape open dans le cache
+        msg = str(tc.get("message_id") or ((c.get("runs") or {}).get(r["id"]) or {}).get("msg") or "")
         if not msg or (out.get(msg) and out[msg]["at"] >= (r.get("started_at") or "")):
             continue
         meta = (c.get("runs") or {}).get(r["id"]) or {}
