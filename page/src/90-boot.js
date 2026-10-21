@@ -8,13 +8,13 @@ function loop(now){
   if(DATA){
     REND=liveT();
     if(mode==='live')T=REND;
-    else if(mode==='play'){T+=dt*1000*(+speedSel.value);if(T>=REND){T=REND;setMode('live');}}
+    else if(mode==='play'){T+=dt*1000*SPEED;if(T>=REND){T=REND;setMode('live');}}
     if(now-lastTick>250||needTeleport){tick(now);lastTick=now;}
     for(const c of chars)step(c,dt);
     tvAutoScroll(now,dt);
     if(now-lastUi>1000){lastUi=now;
       document.getElementById('clock').textContent=hms(T);
-      document.getElementById('tend').textContent=hm(REND);
+      timeUi();
       if(document.activeElement!==slider)slider.value=Math.round((T-RSTART)/Math.max(1,REND-RSTART)*1000);
       renderRecap();renderKpis();renderWho();renderFeed();updateFresh();updateTv();if(mode!=='live')updateBadge();
       if(!document.querySelector('.side details[open]'))renderSide();else refreshStatus();

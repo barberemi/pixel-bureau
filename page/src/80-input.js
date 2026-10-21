@@ -48,7 +48,49 @@ function hitZone(ev){
   const mb=mailAt(mx,my);
   return mb?'mail:'+mb:duckHit(mx,my)?'duck':supportOpenable()&&inR(supportRect())?'support':bs&&inR(bs)?'bosspages':na&&inR(na)?'newagent':inR(PAYR)?'paie':inR(TVR)?'tv':inR(KANR)?'kanban':(()=>{const r=cronNoteRect();return r&&inR(r);})()?'planning':CALR&&ABSENCES&&inR(CALR)?'calendar':inR(EMPR)&&bestEmployee().length?'emp':null;}
 cv.addEventListener('click',e=>{if(TV)return;const c=hitTest(e);if(c){select(c.key);return;}const z=hitZone(e);if(z==='bosspages')openBossPages();else if(z==='support')openSupport();else if(z==='newagent')openNewAgent();else select(z);});
-const slider=document.getElementById('slider'), playBtn=document.getElementById('play'), liveBtn=document.getElementById('live'), speedSel=document.getElementById('speed');
+const slider=document.getElementById('slider'), playBtn=document.getElementById('play'), liveBtn=document.getElementById('live'), speedBtn=document.getElementById('speed');
+const tgo=document.getElementById('tgo'), tbub=document.getElementById('tbub');
+// vitesse du replay : un bouton qui passe à la suivante à chaque clic
+const SPEEDS=[1,2,10,60,480];
+let SPEED=480;
+function setSpeed(v){SPEED=v;speedBtn.textContent='⏩ ×'+v;speedBtn.setAttribute('aria-label','Vitesse du replay : ×'+v+', clic pour la suivante');}
+speedBtn.onclick=()=>setSpeed(SPEEDS[(SPEEDS.indexOf(SPEED)+1)%SPEEDS.length]);
+setSpeed(SPEED);
+// heure affichée dans la barre : le champ (tant qu'on n'y tape pas) et la bulle au-dessus du curseur
+function timeUi(){
+  if(!RSTART)return;
+  const f=Math.max(0,Math.min(1,(T-RSTART)/Math.max(1,REND-RSTART)));
+  tbub.textContent=hm(T);tbub.style.left=(f*100)+'%';
+  if(document.activeElement!==tgo)tgo.value=hm(T);
+  timeHours();
+}
+// repères d'heures sous la frise, toutes les 3 h (et les heures rondes quand la journée est courte)
+function timeHours(){
+  const box=document.getElementById('thours'); if(!box||!RSTART)return;
+  const span=Math.max(1,REND-RSTART), step=span>9*3600e3?3:1, out=[];
+  for(let t=parisMidnight(RSTART);t<=REND;t+=step*3600e3)if(t>=RSTART){const f=(t-RSTART)/span*100;
+    out.push(`<span style="left:${f}%${f<3?';transform:none':''}">${String(parisHM(t).h).padStart(2,'0')}h</span>`);}
+  const html=out.join(''); if(box.innerHTML!==html)box.innerHTML=html; // le direct avance : refait seulement quand ça change
+}
+// aller à une heure du jour affiché (« 14:36 », « 14h36 », « 9 ») ; refusée hors de la journée rejouable
+function parseHm(s){const m=String(s).trim().match(/^(\d{1,2})(?:[:h.](\d{1,2})?)?$/);if(!m)return null;const h=+m[1],mi=+(m[2]||0);return h<24&&mi<60?h*60+mi:null;}
+function goToTime(s){
+  const m=parseHm(s); if(m==null)return false;
+  const t=parisMidnight(RSTART)+m*60e3; if(t<RSTART-60e3||t>REND)return false;
+  setMode('pause');T=Math.max(RSTART,Math.min(REND,t));needTeleport=true;timeUi();
+  slider.value=Math.round((T-RSTART)/Math.max(1,REND-RSTART)*1000);
+  return true;
+}
+tgo.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){e.preventDefault();const ok=goToTime(tgo.value);tgo.setAttribute('aria-invalid',String(!ok));if(ok)tgo.blur();}
+  else if(e.key==='Escape'){tgo.value=hm(T);tgo.blur();}
+});
+tgo.addEventListener('focus',()=>tgo.select());
+tgo.addEventListener('blur',()=>{tgo.removeAttribute('aria-invalid');tgo.value=hm(T);});
+// « ⏵ revoir » (fil de la journée) : 20 s avant le moment, lu en ×1, pour voir la scène se jouer (soucoupe, Gandalf…)
+function replayAt(t){
+  T=Math.max(RSTART,Math.min(REND,t-20e3));needTeleport=true;setSpeed(1);setMode('play');timeUi();
+}
 function setMode(m){
   mode=m;
   liveBtn.classList.toggle('on',m==='live');liveBtn.setAttribute('aria-pressed',String(m==='live'));
@@ -58,5 +100,5 @@ function setMode(m){
 }
 liveBtn.onclick=()=>{setMode('live');needTeleport=true;};
 playBtn.onclick=()=>{if(mode==='play'){setMode('pause');return;}if(mode==='live'||T>=REND-1000){T=RSTART;needTeleport=true;}setMode('play');};
-slider.addEventListener('input',()=>{setMode('pause');T=RSTART+(REND-RSTART)*slider.value/1000;needTeleport=true;});
+slider.addEventListener('input',()=>{setMode('pause');T=RSTART+(REND-RSTART)*slider.value/1000;needTeleport=true;timeUi();});
 

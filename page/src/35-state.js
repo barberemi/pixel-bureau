@@ -571,6 +571,9 @@ function goTo(c,spot){
   const from=c.path.length?c.path[0]:c.tile;
   c.path=(c.path.length?[c.path[0]]:[]).concat(findPath(from[0],from[1],spot.x,spot.y));
 }
+// en lecture accélérée, on marche plus vite (×1 à ×10 : pas de changement, ×60 : 2 fois, ×480 : 8 fois) : sinon un trajet
+// de 12 s réelles dure 1 h 30 de journée à ×480 (Gandalf qui traîne vers la porte longtemps après sa scène)
+const walkBoost=()=>typeof mode!=='undefined'&&mode==='play'?Math.min(8,Math.max(1,SPEED/30)):1;
 function step(c,dt){
   if(!c.pos)return;
   if(!c.path.length){c.moving=false;if(c.target)c.dir=c.target.dir;
@@ -578,7 +581,7 @@ function step(c,dt){
     return;}
   const [tx,ty]=c.path[0], last=c.path.length===1&&c.target&&c.target.x===tx&&c.target.y===ty;
   const g=last?spotPos(c.target):tileCenter(tx,ty);
-  const dx=g.x-c.pos.x, dy=g.y-c.pos.y, d=Math.hypot(dx,dy), v=95*dt;
+  const dx=g.x-c.pos.x, dy=g.y-c.pos.y, d=Math.hypot(dx,dy), v=95*dt*walkBoost();
   c.moving=true;
   if(Math.abs(dx)>Math.abs(dy))c.dir=dx>0?'right':'left';else if(d>0.1)c.dir=dy>0?'down':'up';
   if(d<=v){c.pos=g;c.tile=[tx,ty];c.path.shift();}else{c.pos.x+=dx/d*v;c.pos.y+=dy/d*v;}
