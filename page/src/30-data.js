@@ -71,6 +71,12 @@ function attachTeam(){
       OUTSIDERS[key]=c;
       if(!byKey[key]){chars.push(c);byKey[key]=c;}
     }
+    // sa place gardée a pu être redonnée entre-temps à l'équipe ou à un agent (placeCast : agent ajouté, plan changé) :
+    // il en reprend une libre, jamais assis sur quelqu'un
+    if(c.outsider&&c.seat&&chars.some(x=>x!==c&&x.seat&&x.seat[0]===c.seat[0]&&x.seat[1]===c.seat[1])){
+      const f=FREE_SEATS.filter(s=>!chars.some(x=>x.seat&&x.seat[0]===s[0]&&x.seat[1]===s[1]));
+      c.seat=f.sort((a,b)=>a[0]-b[0]||a[1]-b[1]).pop()||null;
+    }
     c.team=p;
   }
   mepVisitors();

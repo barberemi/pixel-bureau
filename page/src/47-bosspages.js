@@ -138,8 +138,18 @@ function openBossPages(){
   box.querySelector('.bp-x').onclick=()=>closeBossPages();bossPagesWire(box);
   const first=box.querySelector('.bp-card')||box.querySelector('.bp-x');if(first)first.focus();
 }
+// carte Kronn ouverte dans une fenêtre qu'on ferme : Kronn la laisse à sa dernière place quand son bouton disparaît
+// (pas de successeur, rien ne la referme) et la page ne peut pas la fermer elle-même ; mais Kronn referme la carte quand
+// on reclique son bouton (même action, mêmes liaisons) : on le reclique avant de retirer la fenêtre, pendant le clic
+// de fermeture (l'activation utilisateur vaut encore ; pas avec Échap, qui n'en donne pas)
+function closeKronnCardIn(root){
+  const slot=root&&root.querySelector('[data-kronn-action-slot]'), host=slot&&slot.closest('[data-kronn-action-slot-host]');
+  const btn=host&&host.querySelector('[data-kronn-action]');
+  if(btn)btn.click();
+}
 function closeBossPages(restore=true){
   const was=!!document.querySelector('.bp-modal');
+  document.querySelectorAll('.bp-modal').forEach(closeKronnCardIn);
   document.querySelectorAll('.bp-backdrop,.bp-modal').forEach(e=>e.remove());
   BP_INERT.forEach(e=>{e.inert=false;});BP_INERT=[];
   if(!restore)return;

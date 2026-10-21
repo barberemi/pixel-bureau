@@ -200,3 +200,14 @@ test('fenêtre : 4 colonnes (6 pages et « + Ajouter » tiennent en 2 rangées s
   assert.match(css, /\.bp-grid\{display:grid;grid-template-columns:repeat\(4,1fr\)/);
   assert.match(css, /@media \(max-width:900px\)\{\.bp-grid\{grid-template-columns:repeat\(2,1fr\)\}\}/);
 });
+
+test('fenêtre fermée avec une carte Kronn ouverte dedans : son bouton est recliqué (Kronn la referme), sinon rien', () => {
+  run(`var KC_CLICKS = 0; var kcBtn = {click() { KC_CLICKS++; }};
+    var kcHost = {querySelector: s => s === '[data-kronn-action]' ? kcBtn : null};
+    var kcSlot = {closest: s => s === '[data-kronn-action-slot-host]' ? kcHost : null};`);
+  run(`closeKronnCardIn({querySelector: s => s === '[data-kronn-action-slot]' ? kcSlot : null})`);
+  assert.equal(J('KC_CLICKS'), 1);
+  run(`closeKronnCardIn({querySelector: () => null})`); // pas de carte ouverte : on ne clique pas (ça en ouvrirait une)
+  run(`closeKronnCardIn(null)`);
+  assert.equal(J('KC_CLICKS'), 1);
+});

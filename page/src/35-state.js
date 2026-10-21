@@ -481,19 +481,35 @@ function pickSpot(c,zone,taken){
   if(zone==='desk')zone='daily'; // plus un siège de libre : debout dans l'open space
   if(zone==='boss'){const s=SPOTS.boss[0];return {key:'desk',x:s[0],y:s[1],dir:s[2]};}
   if(zone==='leave')return {key:'exit',x:EXIT[0],y:EXIT[1],dir:'right'};
-  if(zone==='visit'&&c._st&&c._st.visit){const v=c._st.visit;return {key:'visit:'+v[0]+','+v[1],x:v[0],y:v[1],dir:v[2]};}
+  if(zone==='visit'&&c._st&&c._st.visit){ // deux visiteurs au même endroit (livraisons au testeur…) : le second se décale
+    const v=c._st.visit, k='visit:'+v[0]+','+v[1];
+    if(!taken.has(k)&&!taken.has('@'+v[0]+','+v[1]))return {key:k,x:v[0],y:v[1],dir:v[2]};
+    let n=1; while(taken.has(k+'~'+n))n++;
+    return {key:k+'~'+n,x:v[0],y:v[1],dir:v[2],ofs:n};
+  }
   if((zone==='stage'||zone==='stagesax')&&stageClosed(T))zone='stageout'; // plateau fermé : on attend devant le ruban
   while(!(SPOTS[zone]||[]).length&&ZONE_FALLBACK[zone])zone=ZONE_FALLBACK[zone]; // zone absente du plan : on se replie
   const list=SPOTS[zone]; if(!list||!list.length)return null;
-  if(c.spotKey&&c.spotKey.startsWith(zone+':')&&!c.spotKey.includes('~')&&!taken.has(c.spotKey)){
+  // une place est libre si ni elle ni sa case ne sont prises : des zones se partagent des cases (table de la cafétéria =
+  // places du daily, sax = une place du mur Kanban), réservées par case dans tick (claimSpot)
+  const free=i=>!taken.has(zone+':'+i)&&!taken.has('@'+list[i][0]+','+list[i][1]);
+  if(c.spotKey&&c.spotKey.startsWith(zone+':')&&!c.spotKey.includes('~')){
     const i=+c.spotKey.split(':')[1];
-    const s=list[i];
-    return {key:c.spotKey,x:s[0],y:s[1],dir:s[2]};
+    if(list[i]&&free(i)){const s=list[i];return {key:c.spotKey,x:s[0],y:s[1],dir:s[2]};}
   }
-  for(let i=0;i<list.length;i++){const k=zone+':'+i;if(!taken.has(k)){const s=list[i];return {key:k,x:s[0],y:s[1],dir:s[2]};}}
-  // zone pleine : on se serre sur la première place, chacun décalé de quelques pixels (jamais deux sprites l'un sur l'autre)
-  let n=1; while(taken.has(zone+':0~'+n))n++;
-  const s=list[0];return {key:zone+':0~'+n,x:s[0],y:s[1],dir:s[2],ofs:n};
+  for(let i=0;i<list.length;i++)if(free(i)){const s=list[i];return {key:zone+':'+i,x:s[0],y:s[1],dir:s[2]};}
+  // zone pleine (gates de plusieurs agents…) : les surnuméraires se répartissent sur toutes les places, chacun décalé de
+  // quelques pixels (jamais deux sprites l'un sur l'autre)
+  for(let n=0;;n++){
+    const i=n%list.length, lvl=1+Math.floor(n/list.length), k=zone+':'+i+'~'+lvl;
+    if(!taken.has(k)){const s=list[i];return {key:k,x:s[0],y:s[1],dir:s[2],ofs:lvl};}
+  }
+}
+// réserve une place pour ce passage : sa clé et, posée sans décalage, sa case (bureau compris : une case de zone peut
+// tomber sur un siège)
+function claimSpot(taken,spot){
+  if(spot.key!=='desk'&&spot.key!=='exit')taken.add(spot.key);
+  if(spot.key!=='exit'&&!spot.ofs)taken.add('@'+spot.x+','+spot.y);
 }
 const OFS_X=[0,12,-12,22,-22,6,-6,17,-17];
 // position en pixels d'une place : centre de la case, décalé pour les places en surnombre
@@ -523,7 +539,7 @@ function tick(real){
     }
     let zone=s.zone; if(zone==='wander')zone=wanderZone(c,real); else c.idlePlan=null;
     const spot=pickSpot(c,zone,taken); if(!spot)continue;
-    if(spot.key!=='desk'&&spot.key!=='exit')taken.add(spot.key);
+    claimSpot(taken,spot);
     c.pose=s.st==='sax'?'type':(s.st==='gate'||s.st==='party'||s.st==='cheer'||s.st==='passion'&&s.passion!=='boxe')?'hands':(s.st==='work'&&zone==='desk')?'type':'idle';
     if(!c.present||needTeleport||!c.pos){
       c.present=true;

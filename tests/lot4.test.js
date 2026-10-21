@@ -135,3 +135,32 @@ test("Âge réel : un ticket en review depuis 12 j reste bloqué même si la bas
   assert.equal(run(`tkAge(TEAM.people[0].tickets[0],${t})`), '12 j');
   run('TEAM=null');
 });
+
+test('places par case : deux zones qui partagent une case (table de la cafétéria et daily) n\'y posent qu\'une personne', () => {
+  const r = JSON.parse(run(`(()=>{
+    const saved=SPOTS; SPOTS={ktable:[[3,6,'down']],daily:[[3,6,'down'],[4,6,'down']]};
+    try{
+      const taken=new Set(), a=pickSpot({key:'a'},'ktable',taken); claimSpot(taken,a);
+      const b=pickSpot({key:'b'},'daily',taken); claimSpot(taken,b);
+      const c=pickSpot({key:'c',spotKey:'daily:0'},'daily',taken); // sa place d'avant est prise par la table : il change
+      return JSON.stringify({a:[a.x,a.y],b:[b.x,b.y,b.ofs||0],c:[c.x,c.y,c.ofs||0]});
+    }finally{SPOTS=saved;}})()`));
+  assert.deepEqual(r.a, [3, 6]);
+  assert.deepEqual(r.b, [4, 6, 0]);
+  assert.ok(r.c[2] > 0 || r.c[0] !== 3 || r.c[1] !== 6, 'jamais posé pile sur la table prise');
+});
+
+test('deux visites au même endroit : la seconde se décale ; une zone pleine répartit ses surnuméraires sur toutes ses places', () => {
+  const r = JSON.parse(run(`(()=>{
+    const taken=new Set(), v=c=>({key:c,_st:{visit:[10,4,'down']}});
+    const a=pickSpot(v('a'),'visit',taken); claimSpot(taken,a); const b=pickSpot(v('b'),'visit',taken); claimSpot(taken,b);
+    const saved=SPOTS; SPOTS={gate:[[1,1,'up'],[2,1,'up']]};
+    try{
+      const t2=new Set(), g=[];
+      for(let i=0;i<5;i++){const s=pickSpot({key:'g'+i},'gate',t2);claimSpot(t2,s);g.push([s.x,s.ofs||0]);}
+      return JSON.stringify({a:a.ofs||0,b:b.ofs||0,g});
+    }finally{SPOTS=saved;}})()`));
+  assert.equal(r.a, 0);
+  assert.equal(r.b, 1);
+  assert.deepEqual(r.g, [[1, 0], [2, 0], [1, 1], [2, 1], [1, 2]]); // avant : tous les surnuméraires sur la première place
+});

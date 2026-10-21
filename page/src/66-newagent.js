@@ -85,6 +85,7 @@ function openNewAgent(){
 }
 function closeNewAgent(restore=true){
   const was=!!document.querySelector('.na-modal');
+  document.querySelectorAll('.na-modal').forEach(closeKronnCardIn); // 47-bosspages.js
   document.querySelectorAll('.na-backdrop,.na-modal').forEach(e=>e.remove());
   NA_INERT.forEach(e=>{e.inert=false;});NA_INERT=[];NA=null;
   if(!restore||!was)return;

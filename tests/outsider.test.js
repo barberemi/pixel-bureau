@@ -47,3 +47,12 @@ test('sa mise en prod : il monte sur le plateau comme tout le monde (Yoda le fé
     try { const s = outsiderState(c, ${at('11:00')}); return [s.st, s.zone, personChar(c.team.id, 'Alexis Nouveau') === c]; } finally { stageAt = sa; } })()`);
   assert.deepEqual(r, ['party', 'stage', true]);
 });
+
+test('sa place redonnée entre-temps à un agent (agent ajouté, placeCast) : il en reprend une libre, jamais assis sur lui', () => {
+  const r = J(`(() => { const c = chars.find(x => x.person === 'Alexis Nouveau'), was = c.seat.slice();
+    const a = chars.find(x => !x.person && !x.visitor && x.seat); const keep = a.seat; a.seat = was.slice();
+    attachTeam(); const seat = c.seat; a.seat = keep;
+    return {was, seat, clash: chars.filter(x => x !== c && x.seat && seat && x.seat[0] === seat[0] && x.seat[1] === seat[1]).length}; })()`);
+  assert.notDeepEqual(r.seat, r.was);
+  assert.equal(r.clash, 0);
+});
