@@ -60,7 +60,7 @@ SHOTS = {
     # fil à 18h30 (Important) : « En ce moment » (une validation de Dwight en attente depuis 17h52, ajoutée pour la démo,
     # et les repères du jeudi), les rétablissements de Creed et Meredith, la validation de 9h01 décidée en 2 min, Stanley lancé à la main
     "fil": (1400, 1400, AT(18.5) + "const dw=byKey.dwight.runs.filter(r=>r._s<=T),iso=h=>new Date(DAY0+h*3600e3).toISOString();"
-            "dw[dw.length-1].steps=[...(dw[dw.length-1].steps||[]),{n:'publier_la_revue',k:'Gate',s:'WaitingApproval',at:iso(17+52/60),ms:0}];"
+            "dw[dw.length-1].status='WaitingApproval';dw[dw.length-1].steps=[...(dw[dw.length-1].steps||[]),{n:'publier_la_revue',k:'Gate',s:'WaitingApproval',at:iso(17+52/60),ms:0}];"
             "dw[0].steps=[...(dw[0].steps||[]),{n:'publier_la_revue',k:'Gate',s:'Success',at:iso(9+1/60),ms:120e3}];"
             "byKey.stanley.runs[0].man=1;FEED_MODE='important';renderFeed();document.querySelector('#feed').style.maxHeight='620px';"
             "document.querySelector('#feed').style.overflow='hidden';", ".feed"),
