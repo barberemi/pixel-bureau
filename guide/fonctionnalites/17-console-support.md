@@ -38,17 +38,19 @@ Chaque fil montre aussi son sujet (s'il en a un), le contenu d'un message transf
 
 ## La réponse
 
-Concise, une ligne par section avec son emoji, puis une ligne vide et la mention en italique :
+Concise, une ligne par section avec son emoji, une ligne vide entre les sections, puis la mention :
 
 ```
 🔎 Cause : le cron du flux RSS a échoué à 8h.
+
 🛠️ Action : relancé à 9h20, le flux est de nouveau rempli.
+
 👀 Suivi : on surveille le passage de 10h.
 
 Généré de manière automatique 🤖
 ```
 
-Les libellés des sections sont en gras dans Teams.
+Les libellés des sections sont en gras dans Teams. Seules les sections partent : les phrases de l'agent autour (« voici la réponse », « je la publie ? ») sont retirées.
 
 ## L'agent Support
 
