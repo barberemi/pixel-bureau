@@ -119,5 +119,6 @@ test('fiche de l\'agent Support : la console au lieu d\'un « Lancer » à rempl
   set([th('1', 'new', {subject: 'Flux RSS vide'})]);
   const html = J(`(() => { const s = {kids: [], appendChild(x) { this.kids.push(x); }}; ACTIONS.relaunch = false; spFiche(s); return s.kids[0].innerHTML; })()`);
   assert.match(html, /1 à traiter/);
-  assert.match(html, /Pam, .* : Flux RSS vide/);
+  assert.match(html, /<div class="rl-s sp-t" title="Flux RSS vide">Pam, .* : Flux RSS vide<\/div>/); // une ligne, sujet entier au survol
+  assert.match(J(`(() => { const s = {kids: [], appendChild(x) { this.kids.push(x); }}; spFiche(s); return s.kids[0].className; })()`), /\bsp-fiche\b/);
 });

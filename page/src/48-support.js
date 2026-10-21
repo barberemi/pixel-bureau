@@ -167,8 +167,9 @@ function spFill(box){
 function spFiche(side){
   const l=spTodo().sort((a,b)=>ms(b.at)-ms(a.at)), box=document.createElement('div');box.className='relaunch sp-fiche';
   box.innerHTML=`<div class="rl-n">🚒 ${esc(spName())} · ${l.length?l.length+' à traiter':'rien à traiter'}</div>`+
-    l.slice(0,2).map(t=>`<div class="rl-s">${esc(spWho(t.from))}, ${esc(spWhen(t.at))} : ${esc(t.subject||String(t.text||'').split('\n')[0].slice(0,70))}</div>`).join('')+
-    `<div class="rl-s">« Investiguer » se lance depuis la console : choisis le projet, puis un commentaire si tu veux.</div>`;
+    l.slice(0,2).map(t=>{const s=t.subject||String(t.text||'').split('\n')[0].slice(0,70);
+      return `<div class="rl-s sp-t" title="${esc(s)}">${esc(spWho(t.from))}, ${esc(spWhen(t.at))} : ${esc(s)}</div>`;}).join('')+
+    `<div class="rl-s">On investigue depuis la console (projet, puis commentaire).</div>`;
   const b=document.createElement('button');b.className='on';b.textContent='💬 Ouvrir la console Support';b.onclick=()=>openSupport();
   box.appendChild(b);side.appendChild(box);
 }
