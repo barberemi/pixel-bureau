@@ -82,6 +82,17 @@ class RefsWorkflowTest(unittest.TestCase):
         self.assertIn("gh api -X DELETE", step)
         self.assertIn("actions: write", wf)
 
+    def test_relaunched_tests_publish_the_required_status(self):
+        """Les tests relancés par workflow_dispatch ne comptent pas dans les contrôles de la PR (merge bloqué, vu sur
+        la PR #104) : tests.yml publie leur résultat en statut de commit « tests », le contrôle obligatoire de main."""
+        wf = Path(os.path.join(ROOT, ".github", "workflows", "tests.yml")).read_text()
+        self.assertIn("statuses: write", wf)
+        step = wf[wf.index("- name: Statut « tests » du commit"):]
+        self.assertIn("if: always() && github.event_name == 'workflow_dispatch'", step)
+        self.assertIn("/statuses/${{ github.sha }}", step)
+        self.assertIn("-f context=tests", step)
+        self.assertIn("job.status == 'success'", step)
+
 
 if __name__ == "__main__":
     unittest.main()
