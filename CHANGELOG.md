@@ -27,6 +27,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 ### Corrigé
 
 - Plus deux personnages au même endroit : places réservées par case (la table de la cafétéria et le daily, le sax et le mur Kanban se partageaient des cases), deux visites au même endroit côte à côte, une zone pleine (gates de plusieurs agents) répartie sur toutes ses places, et un collègue de passage ne garde plus une place redonnée à un agent.
+- Fermer une fenêtre (console Support, pages du boss, nouvel agent) referme aussi la carte Kronn ouverte dedans : elle restait affichée seule, à fermer par sa croix.
 - Gandalf (ticket réouvert) et la soucoupe-mère (ticket entré au sprint) se voient en direct : appris en retard par le cron équipe (toutes les 10 min), la scène part de l'heure où il l'a vu, au lieu d'être déjà finie quand la page l'apprend.
 - Panneau Fraîcheur : le relevé Support (`support_poll`) a sa ligne, son « ↻ Relancer » comme les autres crons du Bureau, et son dernier échec dans le diagnostic ; la fenêtre Support n'a plus son propre « Relever maintenant » (un seul endroit pour relancer un cron).
 - Console Support : l'agent Support lit les tickets Jira cités dans le message (outil `api_call` de Kronn, connexion `jira.config_id`, en lecture) et résume son investigation en notes, qui ne réveillent plus l'agent de la discussion (à republier avec `publish.py workflows`). Un fil dont la réponse a été refusée garde « 🔎 Investiguer » pour réessayer.
