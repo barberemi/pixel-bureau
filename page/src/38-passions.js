@@ -12,6 +12,7 @@ const HOLO_END=3; // le soir en hologramme : de la fin des heures de bureau à 3
 const passionOf=c=>c&&c.passion&&typeof c.passion==='object'?c.passion:null;
 // créneau du jour {s, e} (ms) ou null : week-end, pas de moment, ou personne sans place
 function passionSlot(c,t){
+  if(SCENE_DEMO&&SCENE_DEMO.passion&&SCENE_DEMO.passion.c===c)return SCENE_DEMO.passion.sl; // 46-gallery.js
   const p=passionOf(c), m=p&&PASSION_MOMENTS[p.moment];
   if(!m||!c.seat||RHYTHM.weekend.includes(parisHM(t).wd))return null;
   const r=rng(keySeed(c.key)*31+daySeed(t)), d0=parisMidnight(t);

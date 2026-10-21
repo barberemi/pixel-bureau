@@ -8,7 +8,7 @@ function loop(now){
   if(DATA){
     REND=liveT();
     if(mode==='live')T=REND;
-    else if(mode==='play'){T+=dt*1000*SPEED;if(T>=REND){T=REND;setMode('live');}}
+    else if(mode==='play'){T+=dt*1000*SPEED;if(T>=REND&&!SCENE_DEMO){T=REND;setMode('live');}} // une démonstration peut dépasser la dernière donnée
     if(now-lastTick>250||needTeleport){tick(now);lastTick=now;}
     for(const c of chars)step(c,dt);
     tvAutoScroll(now,dt);
@@ -20,6 +20,7 @@ function loop(now){
       if(!document.querySelector('.side details[open]'))renderSide();else refreshStatus();
     }
     pumpSheets(8);
+    galleryFrame(now); // 46-gallery.js : fin d'une démonstration
     fxFrame(now); // 43-fx.js : petites scènes de 3 s (succès, éclosion, stade, agent rétabli)
     render(now);
     loupeFrame(now); // 44-loupe.js : médaillon sur l'événement fort en cours
@@ -154,6 +155,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   if(!SUPPORT&&DEMO)SUPPORT=supportDemo();
 }
 window.addEventListener('kronn:page-data',e=>{
+  if(SCENE_DEMO)demoEnd(); // nouvelles données : la démonstration s'arrête, la journée reprend
   const k=e.detail||window.KronnPageData;
   applyViewParams(k);
   const d=readData(k)||readData(window.KronnPageData);

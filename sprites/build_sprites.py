@@ -178,11 +178,37 @@ def build_custom(folder):
     return buf.getvalue()
 
 
+def frozen_side_walk(png):
+    """Directions de côté (« gauche », « droite ») dont la marche glisse : une planche dessinée peut répéter la même
+    enjambée sur ses 8 images de marche (le Pompier, Stephouille et le boss au sax l'ont fait). On mesure l'écartement
+    des pieds (pixels opaques des 6 dernières lignes) : il varie quand les jambes bougent, presque pas sinon. Seuil
+    relatif, à 18 % de l'écartement maximal : mesuré à 4-14 % sur ces trois planches avant correction, 21 % pour Yoda
+    (petites jambes sous la robe), 24 % et plus ailleurs. Le halo semi-transparent (alpha <= 40) ne compte pas."""
+    im = Image.open(io.BytesIO(png)).convert("RGBA")
+    out = []
+    for name, r in (("gauche", 1), ("droite", 3)):
+        spans = []
+        for c in range(1, 9):
+            a = frame(im, r, c).getchannel("A").point(lambda v: 255 if v > 40 else 0)
+            box = a.getbbox()
+            feet = box and a.crop((0, max(0, box[3] - 6), 64, box[3])).getbbox()
+            if feet:
+                spans.append(feet[2] - feet[0])
+        if len(spans) >= 4 and max(spans) - min(spans) < 0.18 * max(spans):
+            out.append(name)
+    return out
+
+
 def sheets(custom_dir):
-    """Planches des sprites fournis d'un dossier (un sous-dossier par sprite)."""
+    """Planches des sprites fournis d'un dossier (un sous-dossier par sprite) ; avertit d'une marche de côté figée."""
     out = {}
     for name in sorted(os.listdir(custom_dir)) if os.path.isdir(custom_dir) else []:
         png = build_custom(os.path.join(custom_dir, name))
+        frozen = frozen_side_walk(png)
+        if frozen:
+            print(f"⚠ {name} : marche de côté figée ({', '.join(frozen)}) : les pieds gardent le même écartement sur les "
+                  "8 images, le personnage glisse au lieu de marcher. Redessiner l'enjambée (passage jambes serrées).",
+                  file=sys.stderr)
         out[name] = "data:image/png;base64," + base64.b64encode(png).decode()
         print(name, len(png), "(sprite fourni)")
     return out

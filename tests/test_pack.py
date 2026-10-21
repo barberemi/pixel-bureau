@@ -145,6 +145,32 @@ class PackTest(unittest.TestCase):
         for c in range(3):
             self.assertIsNotNone(sheet.crop((c * 64, 320, c * 64 + 64, 384)).getbbox(), f"rangée 5, image {c} vide")
 
+    @unittest.skipUnless(Image, "Pillow absent")
+    def test_frozen_side_walk_is_reported(self):
+        """Planche dessinée dont la marche de côté répète la même enjambée (le Pompier, Stephouille, le boss au sax) :
+        build_sprites l'avertit ; une marche dont les pieds se rapprochent et s'écartent passe."""
+        sys.path.insert(0, os.path.join(ROOT, "sprites"))
+        import build_sprites
+
+        def sheet(name, widths):
+            d = os.path.join(self.tmp, name, name)
+            os.makedirs(d)
+            im = Image.new("RGBA", (832, 54 * 64), (0, 0, 0, 0))
+            for r in range(8, 12):
+                for c in range(9):
+                    w = widths[c % len(widths)] if r in (9, 11) else 20
+                    im.paste((40, 40, 60, 255), (c * 64 + 32 - w // 2, r * 64 + 10, c * 64 + 32 + w // 2, r * 64 + 60))
+            im.save(os.path.join(d, "universal.png"))
+            return os.path.dirname(d)
+
+        for name, widths, frozen in (("glisse", [26, 27], ["gauche", "droite"]), ("marche", [26, 26, 12, 12], [])):
+            d = sheet(name, widths)
+            self.assertEqual(build_sprites.frozen_side_walk(build_sprites.build_custom(os.path.join(d, name))), frozen, name)
+            err = io.StringIO()
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+                build_sprites.sheets(d)
+            self.assertEqual("marche de côté figée" in err.getvalue(), bool(frozen), name)
+
     def test_without_pack_nothing_changes(self):
         cfg = assemble.demo_config()
         self.assertIsNone(cfg.get("team"))

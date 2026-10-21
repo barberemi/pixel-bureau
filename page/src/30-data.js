@@ -165,12 +165,14 @@ function daysLeft(end,t){
 }
 function stageClosed(t){return RHYTHM.mep_freeze.includes(parisHM(t).wd);}
 const DAILY_MIN=(([h,m])=>+h*60+(+m||0))(String(RHYTHM.daily).split(':')); // heure du daily en minutes
-function inDaily(t){const p=parisHM(t);if(p.wd==='Sat'||p.wd==='Sun')return false;const mn=p.h*60+p.m;return mn>=DAILY_MIN&&mn<DAILY_MIN+RHYTHM.daily_minutes;}
+function inDaily(t){if(SCENE_DEMO&&SCENE_DEMO.flag==='daily')return t>=SCENE_DEMO.s&&t<SCENE_DEMO.e; // 46-gallery.js
+  const p=parisHM(t);if(p.wd==='Sat'||p.wd==='Sun')return false;const mn=p.h*60+p.m;return mn>=DAILY_MIN&&mn<DAILY_MIN+RHYTHM.daily_minutes;}
 // cérémonies de l'équipe en salle de réunion : sprint planning (animé par la facilitatrice) et rétrospective (animée par un
 // collègue tiré au sort). Réglages rhythm.planning et rhythm.retro : {day:'Fri', at:'10:00', minutes:30, every?:2, from?:'AAAA-MM-JJ'}
 const CEREMONY_TITLE={planning:'Sprint planning',retro:'Rétrospective'};
 const dayNum=t=>Math.round(Date.parse(parisDay(t)+'T00:00:00Z')/864e5);
 function ceremonyAt(t){
+  if(SCENE_DEMO&&SCENE_DEMO.flag==='retro')return t>=SCENE_DEMO.s&&t<SCENE_DEMO.e?{k:'retro',title:CEREMONY_TITLE.retro,start:SCENE_DEMO.s,end:SCENE_DEMO.e}:null; // 46-gallery.js
   const p=parisHM(t), mn=p.h*60+p.m;
   for(const k of ['retro','planning']){
     const c=RHYTHM[k]; if(!c||c.day!==p.wd)continue;

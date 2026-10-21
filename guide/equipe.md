@@ -56,7 +56,7 @@ Pour qu'elle soit dans le pack dès l'installation, une recette par personne dan
 {"p_pam": {"sex": "female", "skin": "light", "hair": "bangs_bun", "hair_color": "#a0522d", "shirt": "#d9c7a0", "legs": "pants", "legs_color": "#3b3f52"}}
 ```
 
-Un personnage fait sur le [générateur LPC](https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator) (un costume, un accessoire que l'éditeur n'a pas) : sa planche exportée (832 px de large) dans un sous-dossier `sprites/<nom>/` du pack, puis `python3 sprites/build_sprites.py ~/Sites/bureau-dunder-mifflin` fabrique le `sprites.json` du pack ; la personne y renvoie par `"sprite": "<nom>"` ([Sprite fourni](fonctionnalites/09-avatars.md#sprite-fourni)).
+Un personnage fait sur le [générateur LPC](https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator) (un costume, un accessoire que l'éditeur n'a pas) : sa planche exportée (832 px de large) dans un sous-dossier `sprites/<nom>/` du pack, puis `python3 sprites/build_sprites.py ~/Sites/bureau-dunder-mifflin` fabrique le `sprites.json` du pack ; la personne y renvoie par `"sprite": "<nom>"` ([Sprite fourni](fonctionnalites/09-avatars.md#sprite-fourni)). Une planche dessinée à la main qui répète la même enjambée sur ses images de marche de côté fait glisser le personnage : `build_sprites.py` l'avertit (« ⚠ <nom> : marche de côté figée »), il faut alors redessiner le pas avec une image où les jambes se rejoignent.
 
 ## 4. Le plan de tes bureaux
 

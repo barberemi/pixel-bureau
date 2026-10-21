@@ -57,4 +57,5 @@ const VISITOR = {ClaudeCode:'v_claude', Codex:'v_codex', GeminiCli:'v_gemini', G
 function prefersReducedMotion(){try{return typeof matchMedia==='function'&&!!matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){return false;}}
 const REDUCED_MOTION = prefersReducedMotion();
 const SCROLL_BEHAVIOR = REDUCED_MOTION?'auto':'smooth';
+let SCENE_DEMO = null; // démonstration d'une scène en cours (46-gallery.js), lue par les fonctions de scène
 
