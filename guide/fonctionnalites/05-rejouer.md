@@ -15,7 +15,7 @@ La barre sous le plan déplace l'heure affichée : tout le bureau (personnages, 
 
 Dans « Comment lire le plan », la galerie liste ce que ton bureau sait jouer : les scènes de l'équipe et les cérémonies (soucoupe-mère, ticket réouvert, fête de mise en prod, ticket livré au testeur, daily, lancement du sprint, rétrospective, pizzas), tes invités (tournée de café, facteur, visites), les passions de l'équipe et les petits moments (canard, agent rétabli, « feu éteint » du Support). Elle se tire de ton installation : un invité ajouté au pack ou une passion au roster y apparaît, une console Support ou un courrier non branchés n'y sont pas. Les états qui durent (travailler, l'hologramme du soir) ne sont pas des scènes.
 
-« ▶ voir » joue la scène tout de suite, à l'heure affichée, même si elle n'a pas eu lieu aujourd'hui : un bandeau « 🎬 Démonstration » le rappelle sur le plan, la loupe s'ouvre comme en direct, puis la journée revient telle qu'elle était (ou tout de suite avec « ✕ Revenir »). Les scènes de l'équipe se jouent aux heures de bureau : le soir, place d'abord le curseur dans la journée.
+« ▶ voir » joue la scène tout de suite, à l'heure affichée, même si elle n'a pas eu lieu aujourd'hui : un bandeau « 🎬 Démonstration » le rappelle sur le plan, la loupe s'ouvre comme en direct, puis la journée revient telle qu'elle était (ou tout de suite avec « ✕ Revenir »). Le soir, la nuit ou le week-end, la démonstration se joue à 11 h du dernier jour ouvré (tout le monde est rentré à l'heure affichée), puis la page revient à ton heure.
 
 ![La galerie des scènes](../img/galerie.png)
 
