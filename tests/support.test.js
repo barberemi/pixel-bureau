@@ -51,9 +51,9 @@ test('infobulle : canal, nombre à traiter, auteur (prénom) et heure du dernier
   assert.equal(J('supportTip()'), '💬 Support Scranton : rien à traiter · clic : ouvrir');
 });
 
-test('réponse au format du fil : libellés en gras, texte échappé, mention en italique', () => {
-  assert.equal(J(`spReply('🔎 Cause : le cron <RSS> a échoué\\n\\n🛠️ Action : relancé')`),
-    '🔎 <b>Cause</b> : le cron &lt;RSS&gt; a échoué<br>🛠️ <b>Action</b> : relancé<br><br><i>Généré de manière automatique 🤖</i>');
+test('réponse au format du fil : libellés en gras, texte échappé, ligne vide entre les sections, mention sans italique', () => {
+  assert.equal(J(`spReply('🔎 Cause : le cron <RSS> a échoué\\nsuite\\n\\n🛠️ Action : relancé')`),
+    '🔎 <b>Cause</b> : le cron &lt;RSS&gt; a échoué<br>suite<br><br>🛠️ <b>Action</b> : relancé<br><br>Généré de manière automatique 🤖');
 });
 
 test('texte d\'un message : échappé, retours à la ligne, adresses https en liens (jamais du HTML du message)', () => {
@@ -119,5 +119,6 @@ test('fiche de l\'agent Support : la console au lieu d\'un « Lancer » à rempl
   set([th('1', 'new', {subject: 'Flux RSS vide'})]);
   const html = J(`(() => { const s = {kids: [], appendChild(x) { this.kids.push(x); }}; ACTIONS.relaunch = false; spFiche(s); return s.kids[0].innerHTML; })()`);
   assert.match(html, /1 à traiter/);
-  assert.match(html, /Pam, .* : Flux RSS vide/);
+  assert.match(html, /<div class="rl-s sp-t" title="Flux RSS vide">Pam, .* : Flux RSS vide<\/div>/); // une ligne, sujet entier au survol
+  assert.match(J(`(() => { const s = {kids: [], appendChild(x) { this.kids.push(x); }}; spFiche(s); return s.kids[0].className; })()`), /\bsp-fiche\b/);
 });

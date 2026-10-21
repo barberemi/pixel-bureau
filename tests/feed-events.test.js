@@ -80,7 +80,7 @@ test('visites (démo du 1er octobre) : Gandalf à la réouverture, Yoda à chaqu
 
 // un agent dont un run passe par une validation : à 10h05, décidée (s) au bout de d minutes, ou encore en attente
 function gateAgent(s, d) {
-  run(`chars = [{key: 'dwight', name: 'Dwight', runs: [{run: 'g1', wf_name: 'Revue', status: 'Success', _s: ${at('2026-10-01', '10:00')}, _ve: ${at('2026-10-01', '11:00')},
+  run(`chars = [{key: 'dwight', name: 'Dwight', runs: [{run: 'g1', wf_name: 'Revue', status: '${s === 'WaitingApproval' ? s : 'Success'}', _s: ${at('2026-10-01', '10:00')}, _ve: ${at('2026-10-01', '11:00')},
     vars: {jira_ticket_key: 'DM-1'}, steps: [{n: 'publier', k: 'Gate', s: '${s}', at: new Date(${at('2026-10-01', '10:05')}).toISOString(), ms: ${d * M}}]}]},
     {key: 'p_michael', name: 'Michael', person: 'Michael', boss: true}];
     GATES = []; DUCKS = []; TEAM = {sprint: {name: 'S9', start: new Date(${at('2026-09-18', '09:00')}).toISOString(), end: new Date(${at('2026-10-02', '13:00')}).toISOString()}, people: [], unassigned: []};`);
@@ -141,4 +141,17 @@ test('types : chaque événement du fil a le sien ; une pastille éteinte retire
   assert.equal(J(`FEED_VIEW.filter(e => e.ty === 'agents' || e.ty === 'mep').length`), 0);
   assert.equal(J(`FEED_ALL.length`) > J(`FEED_VIEW.length`), true);
   run(`FEED_OFF = new Set();`);
+});
+
+test('gate d\'un run arrêté (annulé) : plus « en attente », close à la fin du run sans « Tu valides »', () => {
+  const r = st => `{run: 'g1', wf_name: 'Support', status: '${st}', _s: 0, end: new Date(${90 * M}).toISOString(),
+    steps: [{n: 'gate', k: 'Gate', s: 'WaitingApproval', at: new Date(${10 * M}).toISOString(), ms: 0}]}`;
+  run(`chars = [{key: 'pompier', name: 'Pompier', runs: [${r('Cancelled')}]}];`);
+  const cut = J(`gateSteps(${120 * M})`)[0];
+  assert.equal(cut.waiting, false);
+  assert.equal(cut.end, 90 * M);
+  assert.equal(cut.cut, true);
+  assert.equal(J(`feedPins(${120 * M})`).filter(e => /attend ta validation/.test(e.txt)).length, 0);
+  run(`chars = [{key: 'pompier', name: 'Pompier', runs: [${r('WaitingApproval')}]}];`);
+  assert.equal(J(`gateSteps(${120 * M})`)[0].waiting, true); // run toujours en gate : elle attend
 });

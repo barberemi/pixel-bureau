@@ -20,11 +20,13 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- Console Support, réponse postée en fil : seulement les sections (les phrases de l'agent avant la première et après la dernière sautent), une ligne vide entre les sections, la mention « Généré de manière automatique 🤖 » sans italique (à republier avec `publish.py workflows`) ; fiche de l'agent Support plus compacte (bouton de la console sous le texte, un fil par ligne).
 - Mise en prod d'une PR : des projets différents en même temps (une seule à la fois par projet, `concurrency_key` du modèle, à republier avec `publish.py workflows`) ; l'agent montre toutes ses validations en attente (panneau du boss, sa fiche, compteurs) et va à la porte du boss dès qu'une attend.
 - Page plus légère : à l'assemblage, les appels `document.createElement` et `document.getElementById` répétés passent par un alias court (4,5 Ko).
 
 ### Corrigé
 
+- Fil de la journée : la validation d'un run annulé pendant sa gate ne reste plus épinglée « attend ta validation » ; la gate se ferme à la fin du run (« ⏹ … close sans décision »).
 - Fiche d'un ticket, « Ses PR ouvertes » : le titre d'une PR n'est plus écrasé dans une colonne étroite entre son numéro et son état ; chaque PR tient sur deux lignes, comme « Ses tickets » (numéro, ↗ GitHub et état, puis le titre entier, puis conflit, retard et fils de review).
 - « 🚀 Mise en prod » d'une PR proposée seulement quand un de ses tickets est en To Deploy (avant : dès que la PR était prête, ticket en review compris) ; « Faire relire » ne nomme plus un agent écrit en dur (#86).
 - Fiche Courrier : un mail plus ancien qu'hier montre sa date (« jeudi 24 sept. 10:13 ») et plus seulement le jour de la semaine.

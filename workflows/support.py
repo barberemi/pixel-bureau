@@ -34,7 +34,7 @@ TOOL_R = "mcp__claude_ai_Microsoft_365__read_resource"  # un message en entier :
 TOOLS = (TOOL, TOOL_R)
 DAYS = int(S.get("days") or 7)
 REPLIES_MAX = 8  # fils dont on relit les réponses à chaque relevé (les plus récents qui ont bougé)
-FOOTER = "_Généré de manière automatique 🤖_"
+FOOTER = "Généré de manière automatique 🤖"
 SECTION = re.compile(r"^\W{1,4}\s*[^:]{1,30}?\s*:\s*\S")  # « 🔎 Cause : … »
 
 
@@ -394,7 +394,8 @@ Ta réponse finale, et rien d'autre : en français, concise, une ligne par secti
 🔎 Cause : …
 🛠️ Action : …
 👀 Suivi : …
-(d'autres sections si utile : ✅ Correctif, ❓ Question, 📎 Lien). Pas de titre, pas de signature, pas de formule de
+(d'autres sections si utile : ✅ Correctif, ❓ Question, 📎 Lien). Rien avant la première section ni après la
+dernière (ni « voici la réponse », ni « je la publie ? ») ; pas de titre, pas de signature, pas de formule de
 politesse : la mention « Généré de manière automatique » est ajoutée après."""
 
 
@@ -422,15 +423,18 @@ def open_(msg, pid, run_id, comment):
 
 
 def draft(run_id, text):
-    """Réponse de l'agent au format : sections gardées, mention retirée (ajoutée au post), version suivante."""
+    """Réponse de l'agent au format : de la première à la dernière section (ses phrases autour sautent), mention retirée
+    (ajoutée au post), version suivante."""
     lines = [ln.rstrip() for ln in (text or "").strip().splitlines()]
     lines = [ln for ln in lines if ln.strip() and "généré de manière automatique" not in ln.lower()]
-    body = "\n".join(ln.strip().strip("*").strip() if ln.strip().startswith("**") else ln for ln in lines).strip()
-    if not body:
+    lines = [ln.strip().strip("*").strip() if ln.strip().startswith("**") else ln for ln in lines]
+    if not lines:
         fail("L'agent n'a rendu aucune réponse : demande des changements pour relancer.")
-    if not any(SECTION.match(ln.strip()) for ln in body.splitlines()):
+    idx = [i for i, ln in enumerate(lines) if SECTION.match(ln.strip())]
+    if not idx:
         print("Pas de réponse au format (une ligne « emoji Libellé : … » par section) : l'agent rend la main à l'investigation.")
         sys.exit(3)  # on_result exit_3 : retour à l'étape investigate
+    body = "\n".join(lines[idx[0]:idx[-1] + 1]).strip()
     c = load()
     meta = c.setdefault("runs", {}).setdefault(run_id, {})
     meta["version"] = int(meta.get("version") or 0) + 1
@@ -440,13 +444,14 @@ def draft(run_id, text):
 
 
 def html_of(text):
-    """Texte de la réponse -> HTML Teams : libellé de section en gras, lignes, puis la mention en italique."""
+    """Texte de la réponse -> HTML Teams : libellé de section en gras, une ligne vide entre les sections, puis la mention."""
     esc = lambda s: s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")  # noqa: E731
-    out = []
-    for ln in text.strip().splitlines():
+    out = ""
+    for ln in [x for x in text.strip().splitlines() if x.strip()]:
         m = re.match(r"^(\W{1,4}\s*)([^:]{1,30}?)\s*:\s*(.*)$", ln.strip())
-        out.append(f"{esc(m.group(1))}<b>{esc(m.group(2))}</b> : {esc(m.group(3))}" if m else esc(ln.strip()))
-    return "<br>".join(out) + "<br><br><em>" + esc(FOOTER.strip("_")) + "</em>"
+        out += (("<br><br>" if m else "<br>") if out else "") + (
+            f"{esc(m.group(1))}<b>{esc(m.group(2))}</b> : {esc(m.group(3))}" if m else esc(ln.strip()))
+    return out + "<br><br>" + esc(FOOTER)
 
 
 TOKEN = [None]

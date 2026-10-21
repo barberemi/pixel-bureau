@@ -229,16 +229,18 @@ class SupportTest(unittest.TestCase):
         self.assertIn("Le flux RSS FR est vide", body["initial_prompt"])
         r = self.run_("draft", "run-1", stdin="**🔎 Cause : le cron a échoué à 8h.**\n\n🛠️ Action : relancé à 11h20.\n_Généré de manière automatique 🤖_\n")
         self.assertEqual(r.stdout, "🔎 Cause : le cron a échoué à 8h.\n🛠️ Action : relancé à 11h20.\n", "mention retirée, ajoutée au post")
+        r = self.run_("draft", "run-1", stdin="J'ai terminé l'investigation. Voici la réponse :\n🔎 Cause : x.\n❓ Question : et en QAT ?\nJe publie cette réponse ?\n")
+        self.assertEqual(r.stdout, "🔎 Cause : x.\n❓ Question : et en QAT ?\n", "rien avant la première section ni après la dernière")
         r = self.run_("draft", "run-1", stdin="L'agent d'exploration tourne en arrière-plan, j'attends ses résultats.")
         self.assertEqual(r.returncode, 3, "des notes d'avancement ne sont pas une réponse : retour à l'agent (exit_3)")
         self.run_("draft", "run-1", stdin="🔎 Cause : x")
-        self.assertEqual(self.cache()["runs"]["run-1"]["version"], 2)
+        self.assertEqual(self.cache()["runs"]["run-1"]["version"], 3)
         r = self.run_("post", "run-1", stdin="🔎 Cause : le cron <RSS> a échoué.\n👀 Suivi : on surveille 12h.")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         path, body, auth = self.srv.st["posts"][-1]
         self.assertEqual((path, auth), ("/graph/teams/T1/channels/19%3Acanal%40thread.tacv2/messages/101/replies", "Bearer jeton-az"))
-        self.assertEqual(body["body"]["content"], "🔎 <b>Cause</b> : le cron &lt;RSS&gt; a échoué.<br>👀 <b>Suivi</b> : on surveille 12h."
-                         "<br><br><em>Généré de manière automatique 🤖</em>")
+        self.assertEqual(body["body"]["content"], "🔎 <b>Cause</b> : le cron &lt;RSS&gt; a échoué.<br><br>👀 <b>Suivi</b> : on surveille 12h."
+                         "<br><br>Généré de manière automatique 🤖")
         t = json.loads(r.stdout)["threads"][0]
         self.assertEqual((t["state"], t["mine"]["text"]), ("done", "🔎 Cause : le cron <RSS> a échoué.\n👀 Suivi : on surveille 12h."))
         self.assertEqual(self.run_("post", "run-1", stdin="encore").returncode, 1, "une seule réponse par fil")

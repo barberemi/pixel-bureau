@@ -38,17 +38,19 @@ Chaque fil montre aussi son sujet (s'il en a un), le contenu d'un message transf
 
 ## La réponse
 
-Concise, une ligne par section avec son emoji, puis une ligne vide et la mention en italique :
+Concise, une ligne par section avec son emoji, une ligne vide entre les sections, puis la mention :
 
 ```
 🔎 Cause : le cron du flux RSS a échoué à 8h.
+
 🛠️ Action : relancé à 9h20, le flux est de nouveau rempli.
+
 👀 Suivi : on surveille le passage de 10h.
 
 Généré de manière automatique 🤖
 ```
 
-Les libellés des sections sont en gras dans Teams.
+Les libellés des sections sont en gras dans Teams. Seules les sections partent : les phrases de l'agent autour (« voici la réponse », « je la publie ? ») sont retirées.
 
 ## L'agent Support
 
@@ -62,7 +64,7 @@ Avec le réglage `holo: "alerte"` de son personnage (pack de l'équipe), son hol
 - **une réponse vient de partir en fil** : « 🧯 Feu éteint » pendant 3 minutes, et il repasse au cyan léger ;
 - **au repos** : cyan léger, ses couleurs encore visibles sous l'hologramme.
 
-Sa fiche montre le nombre de fils à traiter, les deux derniers, et « 💬 Ouvrir la console Support » : on investigue depuis la console (le projet se choisit dans une liste), jamais par un « Lancer » à remplir à la main.
+Sa fiche montre, en un bloc compact, le nombre de fils à traiter, les deux derniers (une ligne chacun, le sujet entier au survol), et, en dessous, « 💬 Ouvrir la console Support » : on investigue depuis la console (le projet se choisit dans une liste), jamais par un « Lancer » à remplir à la main.
 
 `holo: "leger"` ou `holo: "rouge"` donnent ces hologrammes à n'importe quel agent, sans le lien avec le Support.
 

@@ -56,9 +56,9 @@ function supportTip(){
   return '💬 '+spName()+' : '+(l.length?l.length+' à traiter · dernier : '+spWho(last.from)+', '+spWhen(last.at):'rien à traiter')+' · clic : ouvrir';
 }
 const spWhen=a=>{const t=ms(a), d=parisDay(t);return d===parisDay(T)?hm(t):d===parisDay(T-864e5)?'hier '+hm(t):dtf('fr-FR',{weekday:'short',day:'numeric'}).format(new Date(t))+' '+hm(t);};
-// réponse au format du fil : libellé de section en gras, puis la mention en italique (comme support.py, html_of)
-const spReply=s=>String(s||'').trim().split('\n').filter(x=>x.trim()).map(x=>{const m=x.trim().match(/^(\W{1,4}\s*)([^:]{1,30}?)\s*:\s*(.*)$/);
-  return m?esc(m[1])+'<b>'+esc(m[2])+'</b> : '+esc(m[3]):esc(x);}).join('<br>')+'<br><br><i>Généré de manière automatique 🤖</i>';
+// réponse au format du fil : libellé de section en gras, une ligne vide entre les sections, puis la mention (comme support.py, html_of)
+const spReply=s=>String(s||'').trim().split('\n').filter(x=>x.trim()).reduce((o,x)=>{const m=x.trim().match(/^(\W{1,4}\s*)([^:]{1,30}?)\s*:\s*(.*)$/);
+  return o+(o?(m?'<br><br>':'<br>'):'')+(m?esc(m[1])+'<b>'+esc(m[2])+'</b> : '+esc(m[3]):esc(x));},'')+'<br><br>Généré de manière automatique 🤖';
 // texte d'un message (support.py l'a déjà tiré du HTML) : échappé, retours à la ligne, adresses https en liens
 const spText=s=>esc(String(s||'').trim()).replace(/https:\/\/[^\s<>"']+/g,u=>`<a href="${u}" target="_blank" rel="noopener">${u.length>70?u.slice(0,69)+'…':u}</a>`).replace(/\n/g,'<br>');
 const SP_TAG={new:['Nouveau','var(--err)'],failed:['À relancer','var(--err)'],run:['🔎 Investigation en cours','var(--info)'],gate:['✋ Réponse à valider','var(--warn)'],
@@ -167,8 +167,9 @@ function spFill(box){
 function spFiche(side){
   const l=spTodo().sort((a,b)=>ms(b.at)-ms(a.at)), box=document.createElement('div');box.className='relaunch sp-fiche';
   box.innerHTML=`<div class="rl-n">🚒 ${esc(spName())} · ${l.length?l.length+' à traiter':'rien à traiter'}</div>`+
-    l.slice(0,2).map(t=>`<div class="rl-s">${esc(spWho(t.from))}, ${esc(spWhen(t.at))} : ${esc(t.subject||String(t.text||'').split('\n')[0].slice(0,70))}</div>`).join('')+
-    `<div class="rl-s">« Investiguer » se lance depuis la console : choisis le projet, puis un commentaire si tu veux.</div>`;
+    l.slice(0,2).map(t=>{const s=t.subject||String(t.text||'').split('\n')[0].slice(0,70);
+      return `<div class="rl-s sp-t" title="${esc(s)}">${esc(spWho(t.from))}, ${esc(spWhen(t.at))} : ${esc(s)}</div>`;}).join('')+
+    `<div class="rl-s">On investigue depuis la console (projet, puis commentaire).</div>`;
   const b=document.createElement('button');b.className='on';b.textContent='💬 Ouvrir la console Support';b.onclick=()=>openSupport();
   box.appendChild(b);side.appendChild(box);
 }

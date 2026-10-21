@@ -213,8 +213,10 @@ function gateSteps(t){
   for(const c of chars){if(c.person||c.visitor||c.guest||!c.runs)continue;
     for(const r of c.runs){if(r._s>t)continue;
       for(const s of (r.steps||[])){if(s.k!=='Gate'||!s.at||ms(s.at)>t)continue;
-        const a=ms(s.at), e=s.s==='WaitingApproval'?Infinity:a+(s.ms||0);
-        out.push({c,r,n:s.n,since:a,end:e,ok:s.s!=='Failed',waiting:e>t});}}}
+        // run arrêté (annulé) pendant la gate : Kronn laisse l'étape en WaitingApproval, la gate se ferme à la fin du run
+        const a=ms(s.at), live=['Running','Pending','WaitingApproval'].includes(r.status), cut=s.s==='WaitingApproval'&&!live,
+          e=s.s!=='WaitingApproval'?a+(s.ms||0):cut?Math.max(a,ms(r.end)||a):Infinity;
+        out.push({c,r,n:s.n,since:a,end:e,ok:s.s!=='Failed',cut,waiting:e>t});}}}
   return out;
 }
 const waitSince=(a,t)=>`<b class="since">depuis ${hm(a)} · ${esc(fmtDur(t-a))}</b>`;
@@ -274,7 +276,8 @@ function renderFeed(){
   FEED_PIN=feedPins(T);
   // tes décisions : la gate quitte « En ce moment » et entre dans le fil
   for(const g of gateSteps(T))if(!g.waiting)ev.push({t:g.end,c:g.c,ty:'toi',
-    txt:g.ok?`<span style="color:var(--ok)">✅</span> Tu valides la gate de ${refWho(g.c)} <small>« ${esc(g.n)} » · après ${esc(fmtDur(g.end-g.since))} d'attente</small>`
+    txt:g.cut?`⏹ Gate de ${refWho(g.c)} close sans décision <small>« ${esc(g.n)} » · run arrêté après ${esc(fmtDur(g.end-g.since))} d'attente</small>`
+      :g.ok?`<span style="color:var(--ok)">✅</span> Tu valides la gate de ${refWho(g.c)} <small>« ${esc(g.n)} » · après ${esc(fmtDur(g.end-g.since))} d'attente</small>`
       :`⛔ Tu refuses la gate de ${refWho(g.c)} <small>« ${esc(g.n)} » · après ${esc(fmtDur(g.end-g.since))} d'attente</small>`});
   // pannes et rétablissements : en « Important », elles remplacent la ligne « ×16 · 16 ✗ » de l'agent (feedView)
   for(const c of chars){if(c.person||c.visitor||c.guest||!c.runs)continue;
