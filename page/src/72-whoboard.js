@@ -55,8 +55,10 @@ function bossLine(c,st,pub){ // pub : écran partagé (TV), sans ce qui n'attend
     tip:tk.length>1?tkTip(tk):''
   };
 }
+// heures de bureau d'un jour ouvré (rhythm) : hors de là, plus personne n'est au bureau, un absent n'a rien à y signaler
+const officeOpen=t=>{const p=parisHM(t);return !RHYTHM.weekend.includes(p.wd)&&p.h>=RHYTHM.office_hours[0]&&p.h<RHYTHM.office_hours[1];};
 function whoCards(t,teamOnly){
-  const list=chars.filter(c=>!c.guest&&c._st&&(!teamOnly||c.person)&&(c.person&&c._st.abs&&c._st.abs!=='ferie'||c.present!==false&&(c.boss||c.person?!['off','absent','gone'].includes(c._st.st):WHO_ACTIVE.includes(c._st.st))));
+  const list=chars.filter(c=>!c.guest&&c._st&&(!teamOnly||c.person)&&(c.person&&c._st.abs&&c._st.abs!=='ferie'&&officeOpen(t)||c.present!==false&&(c.boss||c.person?!['off','absent','gone'].includes(c._st.st):WHO_ACTIVE.includes(c._st.st))));
   const score=c=>c.boss?-1e9:c._st.abs?1e9+rank(c):(WHO_ATTN.includes(c._st.st)?0:c.person?1:2)*1000+rank(c); // les absents en dernier (36-absences.js)
   return list.sort((a,b)=>score(a)-score(b)).map(c=>{
     const st=c._st, l=whoLine(c,st,t,teamOnly), run=st.run;

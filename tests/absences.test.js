@@ -80,3 +80,11 @@ test('calendrier : cases bureau, télétravail, absence, demi-journée coupée, 
   assert.match(J(`calCell(byKey.p_pam, '${D2}')`), /class="calc split" title="matin : au bureau · après-midi : absence"><i class="b">●<\/i><i class="a">—<\/i>/);
   assert.match(J(`calCell(byKey.p_kelly, '${D}')`), /class="calc none/); // pas dans le planning
 });
+
+test('Qui fait quoi, le soir et le week-end : plus de carte d\'absence (plus personne au bureau)', () => {
+  setup({p_clark: {[D]: 'aa'}});
+  const has = t => { run(`T = ${t}; for (const c of chars) c._st = stateAt(c, T);`); return J(`whoCards(T).some(x => x.c.key === 'p_clark')`); };
+  assert.equal(has(at(D, '11:00')), true);
+  assert.equal(has(at(D, '21:30')), false);
+  assert.equal(has(at(D, '07:30')), false);
+});
