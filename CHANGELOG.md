@@ -25,6 +25,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- Fil de la journée : la validation d'un run annulé pendant sa gate ne reste plus épinglée « attend ta validation » ; la gate se ferme à la fin du run (« ⏹ … close sans décision »).
 - Fiche d'un ticket, « Ses PR ouvertes » : le titre d'une PR n'est plus écrasé dans une colonne étroite entre son numéro et son état ; chaque PR tient sur deux lignes, comme « Ses tickets » (numéro, ↗ GitHub et état, puis le titre entier, puis conflit, retard et fils de review).
 - « 🚀 Mise en prod » d'une PR proposée seulement quand un de ses tickets est en To Deploy (avant : dès que la PR était prête, ticket en review compris) ; « Faire relire » ne nomme plus un agent écrit en dur (#86).
 - Fiche Courrier : un mail plus ancien qu'hier montre sa date (« jeudi 24 sept. 10:13 ») et plus seulement le jour de la semaine.
