@@ -5,7 +5,7 @@
 ## Pipeline stages
 
 <!-- Fill: build → test → deploy stages, the provider (GitHub Actions, GitLab CI, etc.), and where the config lives -->
-GitHub Actions, workflow « Tests » (`.github/workflows/tests.yml`, KT-37) sur chaque PR et chaque push sur `main` : Ubuntu 24.04, Node 20 et Python 3.9 (versions minimales du README), `pillow` et `websocket-client`, puis `sh tools/test.sh --chrome` avec le Chrome du runner (`BUREAU_CHROME=google-chrome`, `BUREAU_CHROME_ARGS=--no-sandbox`) [src: file: .github/workflows/tests.yml:1]. Les autres étapes restent sur le poste :
+GitHub Actions, workflow « Tests » (`.github/workflows/tests.yml`, KT-37) sur chaque PR et chaque push sur `main` : Ubuntu 24.04, Node 20 et Python 3.9 (versions minimales du README), `pillow` et `websocket-client`, puis `sh tools/test.sh --chrome` avec le Chrome du runner (`BUREAU_CHROME=google-chrome`, `BUREAU_CHROME_ARGS=--no-sandbox`) [src: file: .github/workflows/tests.yml:1]. Tests relancés par `visual-refs.yml` (`workflow_dispatch`) : GitHub ne les compte pas dans les contrôles de la PR, alors leur dernière étape publie le résultat en statut de commit « tests » (le contrôle obligatoire de `main`), sans quoi le merge restait bloqué [src: file: .github/workflows/tests.yml:1]. Les autres étapes restent sur le poste :
 
 1. Tests en local avant de pousser : `sh tools/test.sh --chrome` (`node --test`, `unittest`, smoke de la page assemblée dans Chrome headless) [src: file: tools/test.sh:7]. Deux tests Python se sautent en CI, faute d'installation locale (`tests/test_templates.py`, export des modèles) et de `.venv` du dépôt.
 2. Contrôle des modèles : `python3 tools/templates.py check` (les workflows du Kronn = le rendu des modèles) [src: file: guide/developpement.md:45].

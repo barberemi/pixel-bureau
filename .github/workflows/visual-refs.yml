@@ -3,6 +3,8 @@
 # le label retiré, puis les tests relancés par workflow_dispatch. Le commit est créé par l'API (signé par GitHub,
 # exigé par le ruleset de main), jamais poussé par git. Le push du robot crée aussi un run « Tests » de la PR
 # qui attend une approbation (« awaiting approval ») et ne tournera jamais : il est supprimé, les tests relancés suffisent.
+# Ces tests relancés ne comptent pas dans les contrôles de la PR : ils publient leur résultat en statut de commit « tests »
+# (dernière étape de tests.yml), ce qui débloque le merge.
 name: Références visuelles
 
 on:

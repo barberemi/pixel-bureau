@@ -12,6 +12,7 @@ on:
 permissions:
   contents: read
   pull-requests: read  # règle du guide : labels de la PR quand les tests sont relancés par visual-refs.yml
+  statuses: write  # statut « tests » du commit quand les tests sont relancés par visual-refs.yml (dernière étape)
 
 concurrency:
   group: tests-${{ github.ref }}
@@ -65,3 +66,16 @@ jobs:
           name: visuel
           path: dist/visual/
           if-no-files-found: ignore
+
+      # tests relancés par visual-refs.yml (workflow_dispatch) : GitHub ne compte pas ce run dans le récapitulatif des
+      # contrôles de la PR, qui restait bloquée faute du contrôle obligatoire « tests ». Un statut de commit, lui, y
+      # entre : ce run publie son résultat sous ce nom sur le commit testé (celui des références refaites).
+      - name: Statut « tests » du commit (tests relancés par visual-refs.yml)
+        if: always() && github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+            -f state="${{ job.status == 'success' && 'success' || 'failure' }}" -f context=tests \
+            -f description="Tests relancés après les références visuelles" \
+            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
