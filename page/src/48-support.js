@@ -86,9 +86,9 @@ function spCard(t){
   if(st==='answered')h+=`<div class="sp-s">Pris par ${esc(spWho(t.by))} : il a répondu dans le fil · ${spTeams(t)}</div>`;
   if(st==='relaunched')h+=`<div class="sp-s">${esc(spWho(t.from))} a relancé après la réponse de ${esc(spWho(t.by))} · ${spTeams(t)}</div>`;
   if(st==='resolved')h+=`<div class="sp-s">Marqué ✅ traité dans Teams · ${spTeams(t)}</div>`;
-  if(st==='ignored')h+=`<div class="sp-s">Réponse refusée : rien n'a été posté${dl}.</div>`;
+  if(st==='ignored')h+=`<div class="sp-s">Réponse refusée : rien n'a été posté${dl}. Tu peux relancer une investigation.</div>`;
   el.innerHTML=h;
-  if(st==='new'||st==='failed'||st==='relaunched')spInvestigate(el,t);
+  if(st==='new'||st==='failed'||st==='relaunched'||st==='ignored')spInvestigate(el,t); // ignoré : réponse refusée, on peut réessayer
   if(st==='gate')spGate(el,t,s.g,dl);
   return el;
 }

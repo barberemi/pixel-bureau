@@ -25,7 +25,7 @@ Les fils des 7 derniers jours, du plus récent au plus ancien, chacun avec son �
 3. **Réponse à valider** : la réponse proposée, telle qu'elle sera postée, et sa version.
    - **✅ Valider et poster en fil** : elle part dans le fil Teams, sous ton nom.
    - **✏️ Demander des changements** : ton commentaire repart à l'agent, dans la même discussion ; il reprend sa réponse, qui revient ici à valider, autant de fois que nécessaire.
-   - **✖ Refuser** : rien n'est posté, le fil passe « ignoré » (hors du compte).
+   - **✖ Refuser** : rien n'est posté, le fil passe « ignoré » (hors du compte) ; « 🔎 Investiguer » y reste pour relancer une investigation (nouvelle consigne, autre projet ou commentaire).
 4. **Répondu en fil** : la réponse postée, l'heure, « voir dans Teams ↗ ». Un fil auquel tu as répondu toi-même dans Teams compte aussi comme répondu.
 
 Chaque fil montre aussi son sujet (s'il en a un), le contenu d'un message transféré et les réactions posées sur le message principal. Ce qui se passe dans Teams compte aussi :
