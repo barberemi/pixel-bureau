@@ -25,7 +25,7 @@ pixel-bureau/
 ├── workflows/                 # scripts Python des étapes Exec des crons Kronn
 │   ├── _lib.py, _plan.py      # socle commun et règles des plans, recopiés dans chaque script au rendu
 │   ├── *_snapshot.py          # producteurs des datasets (office, live, gates, payroll, duck, absences, pages, github, gitfut, actions)
-│   ├── *.py                   # autres étapes (team_shape, planning_jql, duck_start, gate_decide, question_answer, relaunch, layout_save, agent_save…)
+│   ├── *.py                   # autres étapes (team_shape, planning_jql, duck_start, todos, gate_decide, question_answer, relaunch, layout_save, agent_save…)
 │   └── templates/*.json       # modèles des workflows et Quick Prompts (team, live, office, canard, absences, duck, gate…)
 ├── tools/                     # outillage local (lancé à la main, jamais par Kronn)
 │   ├── assemble.py            # page -> dist/office.html

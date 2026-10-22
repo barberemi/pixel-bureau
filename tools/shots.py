@@ -263,6 +263,13 @@ SHOTS = {
                  "k=r.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(mx-9)*TS*k)+'px',"
                  "top:(r.top+scrollY+(my-5)*TS*k)+'px',width:14*TS*k+'px',height:7*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 2),
     "fiche-courrier": (1400, 1400, AT(11) + "select('mail:pro');", "#side"),
+    # Mes todos (47-todos.js, démo : 4 à faire, 1 avec le canard, 2 faites) : le tableau en liège au mur du boss, planning des
+    # absences à sa gauche ; la fenêtre en colonnes, avec un ajout et une todo cochée pas encore enregistrés
+    "todos-tableau": (1400, 1000, AT(11) + "setTimeout(()=>{const t=todoRect(),c=document.querySelector('#cv'),r=c.getBoundingClientRect(),"
+                      "k=r.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(t.x-70)*k)+'px',"
+                      "top:(r.top+scrollY+(t.y-30)*k)+'px',width:(t.w+150)*k+'px',height:(t.h+90)*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 3),
+    "todos-fenetre": (1400, 1000, AT(11) + "ACTIONS.todo=true;tdChange({op:'move',id:'t2',to:'done'});tdAdd('Appeler Jan pour la rétro','high');"
+                      "DUCKS=[{id:'dd-demo-1',awaiting:true,created:new Date(DAY0+9.5*36e5).toISOString()}];setTimeout(openTodos,300);", ".td-modal"),
     # console Support (#62, démo : un fil par état) : l'écran du boss en alerte, survolé (zoom sur son bureau) ; la fenêtre
     "support-ecran": (1400, 1000, AT(11) + "setTimeout(()=>{const s=supportRect(),c=document.querySelector('#cv'),r=c.getBoundingClientRect(),k=r.width/c.width,"
                       "d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(s.x+14-9.5*TS)*k)+'px',"

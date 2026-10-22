@@ -407,7 +407,7 @@ function buildFurniture(){
     for(const it of t.items)FURN.push({y:it.y+o.dy,fixed:it.fixed,draw:o.dx||o.dy?n=>{ctx.save();ctx.translate(o.dx,o.dy);it.draw(n,o);ctx.restore();}:n=>it.draw(n,o)});
     for(const [x,y] of t.foot)B(f.at[0]+x,f.at[1]+y);
   }
-  FURN.push(TV_SCREEN,PAY_ENVELOPE,EMP_FRAME,KANBAN_WALL,CRON_NOTES,WALL_CAL,WALL_SCREEN,MAILBOXES,RACK_PLUS,RACK_POP); // WALL_CAL : 36-absences.js ; WALL_SCREEN : 47-bosspages.js ; MAILBOXES : 48-mail.js ; RACK_PLUS, RACK_POP : 66-newagent.js
+  FURN.push(TV_SCREEN,PAY_ENVELOPE,EMP_FRAME,KANBAN_WALL,CRON_NOTES,WALL_CAL,TODO_BOARD,WALL_SCREEN,MAILBOXES,RACK_PLUS,RACK_POP); // WALL_CAL : 36-absences.js ; TODO_BOARD : 47-todos.js ; WALL_SCREEN : 47-bosspages.js ; MAILBOXES : 48-mail.js ; RACK_PLUS, RACK_POP : 66-newagent.js
   for(const [x,y] of LAYOUT.plants||[])plant(x,y);
   themeFurniture(); // 46-themes.js : décor des fêtes
   sceneFurniture(); // 37-scenes.js : pizzas du dernier jour du sprint

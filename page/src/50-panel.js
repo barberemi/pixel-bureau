@@ -219,6 +219,8 @@ function drawSide(side){
   if(c.boss){const pr=presenceAt(c,T); // le boss reste à son bureau sur le plan : son absence ne se lit qu'ici et au calendrier
     if(pr.abs||pr.tt){const n=document.createElement('p');n.className='note';n.textContent='📅 Selon le planning : '+(pr.abs?ABS_LABEL[pr.abs].toLowerCase():'en télétravail')+'.';side.appendChild(n);}
   }
+  if(c.boss&&todosOn()){const b=document.createElement('button');b.type='button';b.className='td-open'; // 47-todos.js : le tableau en liège, au clavier aussi
+    const n=tdIn('todo').length;b.textContent='📌 Mes todos'+(n?' · '+n+' à faire':'');b.onclick=openTodos;side.appendChild(b);}
   if(c.boss){const p=document.createElement('p');p.style.color='var(--muted)';const gates=chars.filter(x=>gateRunsOf(x).length), lone=loneGates();
     const qs=QUESTIONS.filter(q=>(ms(q.since)||0)<=T);
     if(!gates.length&&!lone.length&&!qs.length){p.textContent="Personne n'attend ta validation. Le bureau tourne tout seul.";side.appendChild(p);}

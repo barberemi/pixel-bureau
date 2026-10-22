@@ -108,6 +108,66 @@
       }
      ]
     }
+   },
+   {
+    "name": "todos",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "Mes todos : tâches Kronn taguées bureau-todo, pour le tableau en liège (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "snap",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/todos.py@@"
+        ],
+        "timeout_secs": 30,
+        "output_format": "json"
+       },
+       "required": true
+      }
+     ],
+     "concurrent_limit": 1
+    }
+   },
+   {
+    "name": "publish_todos",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset todos de la page Le Bureau.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "todos",
+       "operation": "replace",
+       "value_from": "steps.todos.data.sources.snap"
+      }
+     ]
+    }
    }
   ],
   "actions": [],

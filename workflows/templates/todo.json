@@ -1,0 +1,86 @@
+{
+ "kind": "workflow",
+ "key": "todo",
+ "definition": {
+  "name": "Le Bureau · todos",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "todo_code",
+    "label": "Code todos (déjà copié)",
+    "placeholder": "Colle ici avec ⌘V",
+    "description": "Le bouton « Enregistrer » du tableau Mes todos vient de copier ce code : colle-le (⌘V) puis clique Lancer.",
+    "required": true,
+    "source": null,
+    "allow_manual_override": false
+   }
+  ],
+  "steps": [
+   {
+    "name": "save",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Applique les changements du tableau (tâches Kronn taguées bureau-todo, canard compris), puis relève les todos (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/todos.py@@",
+     "save"
+    ],
+    "exec_timeout_secs": 120,
+    "exec_stdin": "{{todo_code}}"
+   },
+   {
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset todos de la page Le Bureau.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "todos",
+       "operation": "replace",
+       "value_from": "steps.save.data.stdout"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}
