@@ -158,6 +158,17 @@ def serve(fake):
             self.end_headers()
             self.wfile.write(out)
 
+        def do_PATCH(self):  # tâches Kronn (todos.py, tests/test_todos.py)
+            body = json.loads(self.rfile.read(int(self.headers.get("content-length") or 0)) or b"null")
+            try:
+                code, out = 200, json.dumps({"success": True, "data": fake.patch(self.path, body)}).encode()
+            except (KeyError, AttributeError):
+                code, out = 404, b'{"success":false}'
+            self.send_response(code)
+            self.send_header("content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(out)
+
         def do_DELETE(self):
             self.send_response(200)
             self.end_headers()

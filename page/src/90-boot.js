@@ -140,6 +140,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   MAILS=readMails(k); // 48-mail.js
   SUPPORT=readSupport(k); // 48-support.js (#62)
   BOSS_PAGES=readBossPages(k)||[];PAGELIST=readPageList(k); // 47-bosspages.js (#61)
+  TODOS=readTodos(k); // 47-todos.js
   GITFUT=readGitfut(k)||{};
   ACTS=readActs(k);
   POSTERS=readPosters(k)||{};
@@ -152,6 +153,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   if(!applyAgents(readAgents(k)||{}))refreshAll(); // 31-agents.js : agents ajoutés depuis la page (#64)
   if(!ABSENCES&&DEMO)ABSENCES=absencesDemo();
   if(!MAILS&&DEMO)MAILS=mailDemo();
+  if(!TODOS&&DEMO)TODOS=todosDemo(); // 47-todos.js
   if(!SUPPORT&&DEMO)SUPPORT=supportDemo();
 }
 window.addEventListener('kronn:page-data',e=>{
@@ -180,6 +182,8 @@ window.addEventListener('kronn:page-data',e=>{
   const pl=readPageList(k)||readPageList(window.KronnPageData);
   if(pl)PAGELIST=pl;
   if(bp||pl)bpRefresh(); // 47-bosspages.js : la fenêtre ouverte suit (#61)
+  const td=readTodos(k)||readTodos(window.KronnPageData);
+  if(td)todosArrived(td);else if(dk)tdRefresh(); // 47-todos.js : le tableau et la fenêtre suivent (canard compris)
   const gf=readGitfut(k)||readGitfut(window.KronnPageData);
   if(gf)GITFUT=gf;
   const ac=readActs(k)||readActs(window.KronnPageData);

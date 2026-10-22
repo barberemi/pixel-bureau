@@ -7,7 +7,7 @@ Chaque calque est mis à la même planche 576x384 que build_sprites.build(), pui
   - 'raw' (yeux, lunettes) : tel quel.
 Sortie : layers.json {catalog, layers{id: {m, src}}}.
 """
-import base64, io, json, os
+import base64, io, json, os, sys
 from PIL import Image
 import build_sprites
 from build_sprites import SKIN, frame, layer
@@ -87,7 +87,23 @@ def encode(im, mode):
         la.save(buf, "PNG", optimize=True)
     else:
         im.quantize(colors=32, method=Image.Quantize.FASTOCTREE).save(buf, "PNG", optimize=True)
-    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+    return "data:image/png;base64," + base64.b64encode(smallest(buf.getvalue())).decode()
+
+
+def smallest(png):
+    """Le PNG en palette indexée quand il a au plus 256 teintes (alpha compris) et qu'il relu donne exactement les mêmes
+    pixels RGBA, s'il est plus petit ; sinon tel quel. Un calque « lum » (LA) a souvent peu de couples gris / alpha :
+    environ 80 Ko de moins dans la page, pixels identiques. Aussi : python3 sprites/build_layers.py --recompress (layers.json
+    en place, sans les sources LPC)."""
+    rgba = Image.open(io.BytesIO(png)).convert("RGBA")
+    cols = rgba.getcolors(256)
+    if not cols:
+        return png
+    buf = io.BytesIO()
+    rgba.quantize(colors=len(cols), method=Image.Quantize.FASTOCTREE).save(buf, "PNG", optimize=True)
+    out = buf.getvalue()
+    same = Image.open(io.BytesIO(out)).convert("RGBA").tobytes() == rgba.tobytes()
+    return out if same and len(out) < len(png) else png
 
 
 def main():
@@ -139,5 +155,19 @@ def main():
         print("  ", k, v)
 
 
+def recompress():
+    """layers.json en place : chaque calque repassé par smallest() (pixels identiques), sans les sources LPC."""
+    path = os.path.join(HERE, "layers.json")
+    with open(path) as fh:
+        data = json.load(fh)
+    before = sum(len(v["src"]) for v in data["layers"].values())
+    for v in data["layers"].values():
+        head, b64 = v["src"].split(",", 1)
+        v["src"] = head + "," + base64.b64encode(smallest(base64.b64decode(b64))).decode()
+    with open(path, "w") as fh:
+        json.dump(data, fh, separators=(",", ":"))
+    print(before, "->", sum(len(v["src"]) for v in data["layers"].values()), "octets en data URI")
+
+
 if __name__ == "__main__":
-    main()
+    recompress() if sys.argv[1:] == ["--recompress"] else main()

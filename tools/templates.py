@@ -24,7 +24,8 @@ import assemble  # noqa: E402  (roster du profil d'équipe)
 # modèle -> (type, où trouver l'id dans la config, scripts par étape)
 TEMPLATES = {
     "office": ("workflow", ("workflows", "office"), {"snapshot": "workflows/office_snapshot.py"}),
-    "live": ("workflow", ("workflows", "live"), {"snapshot": "workflows/live_snapshot.py", "gates": "workflows/gates_snapshot.py"}),
+    "live": ("workflow", ("workflows", "live"), {"snapshot": "workflows/live_snapshot.py", "gates": "workflows/gates_snapshot.py",
+                                                    "todos": "workflows/todos.py"}),
     "team": ("workflow", ("workflows", "team"), {"github": "workflows/github_snapshot.py", "shape": "workflows/team_shape.py", "since": "workflows/standup_since.py",
                                                     "planning_jql": "workflows/planning_jql.py", "actions": "workflows/actions_snapshot.py"}),
     "payroll": ("workflow", ("workflows", "payroll"), {"payroll": "workflows/payroll_snapshot.py", "pages": "workflows/pages_snapshot.py", "gitfut": "workflows/gitfut_snapshot.py"}),
@@ -47,6 +48,7 @@ TEMPLATES = {
     "layout": ("workflow", ("actions", "layout"), {"save": "workflows/layout_save.py"}),
     "comment": ("workflow", ("actions", "comment"), {}),  # commentaire Jira depuis la fiche d'un ticket (sans Jira : pas créé)
     "duck": ("workflow", ("actions", "duck"), {"start": "workflows/duck_start.py"}),  # parler au canard : une discussion Kronn
+    "todo": ("workflow", ("actions", "todo"), {"save": "workflows/todos.py"}),  # Mes todos du boss : tâches Kronn, tableau en liège
     # mise en prod d'une PR, tout projet (#58) : id rangé dans launch (jamais dans BUREAU_IDS : l'agent qui l'incarne
     # garde sa fiche et « ▶ Lancer… ») ; launch.mep_pr, à côté de ton ancien workflow de MEP par ticket (launch.mep)
     "mep": ("workflow", ("launch", "mep_pr"), {n: "workflows/mep.py" for n in ("resolve", "tag", "rebase", "citest", "merge", "release",
