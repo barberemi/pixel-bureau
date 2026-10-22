@@ -28,6 +28,7 @@
 - Lecture d'un dataset Kronn par une fonction `readXxx(src)` : `src.datasets.<nom>`, déballage de `.current`, `JSON.parse` si c'est une chaîne, contrôle de forme, le tout dans un `try{}catch(e){return null;}` [src: file: page/src/00-config.js:5] [src: file: page/src/39-duckgame.js:7] [src: file: page/src/38-passions.js:78].
 - Constantes globales en `MAJUSCULES_SNAKE` (`SPR`, `LAYERS`, `ROSTER`, `ACTIONS`…), petites fonctions en flèche camelCase sur une ligne [src: file: page/src/00-config.js:16] [src: file: page/src/00-config.js:23] [src: file: page/src/10-world.js:10] [src: file: page/src/10-world.js:11].
 - `localStorage` toujours sous `try{}catch(e){}`, clés préfixées `bureau:` [src: file: page/src/01-skin.js:5] [src: file: page/src/01-skin.js:8] [src: file: page/src/20-sprites.js:75] [src: file: page/src/20-sprites.js:77].
+- Jamais de `<form>` ni de bouton `type="submit"` : la Live Page est un iframe `sandbox="allow-scripts"` sans `allow-forms`, où l'envoi est bloqué avant l'événement `submit` (le « ＋ » de Mes todos ne faisait rien) ; un bouton `type="button"` et la touche Entrée sur le champ [src: file: page/src/47-todos.js:121] [src: file: tests/todos.test.js:1].
 
 ### Common mistakes to avoid
 
