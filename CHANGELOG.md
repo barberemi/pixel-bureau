@@ -29,6 +29,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- Mise en prod d'une PR : une branche qui a déjà fusionné sa base ne s'arrête plus sur un faux conflit à l'étape rebase ; la base est fusionnée en local puis tout est squashé en un seul commit posé dessus, sans commit de merge poussé (à republier avec `publish.py workflows`).
 - Galerie des scènes : jouable à toute heure (le soir, la démonstration se joue à 11 h du dernier jour ouvré, puis la page revient à son heure) ; ses boutons restaient grisés une fois ouverte le soir.
 - Qui fait quoi : plus de cartes d'absence le soir, la nuit ni le week-end ; une fois tout le monde parti, le panneau ne montrait plus que les absents.
 - Plus deux personnages au même endroit : places réservées par case (la table de la cafétéria et le daily, le sax et le mur Kanban se partageaient des cases), deux visites au même endroit côte à côte, une zone pleine (gates de plusieurs agents) répartie sur toutes ses places, et un collègue de passage ne garde plus une place redonnée à un agent.
