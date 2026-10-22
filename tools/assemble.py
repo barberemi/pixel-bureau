@@ -565,6 +565,29 @@ def build(demo=True, cfg=None):
 ACTIONS_BY_MARK = {mark: key for key, mark in ACTIONS.values()}
 
 
+KRONN_LIMIT = 1_000_000  # Kronn refuse une page plus lourde (backend/src/api/live_pages.rs, MAX_PAGE_HTML_BYTES, en octets)
+KRONN_WARN = 0.9  # alerte avant d'être bloqué
+
+
+class PageTooBig(ValueError):
+    pass
+
+
+def publishable(cfg=None):
+    """La page à publier (sans démo), contrôlée avant l'envoi : au-delà de KRONN_LIMIT octets, PageTooBig (Kronn la
+    refuserait) avec le poids des blocs ; au-delà de KRONN_WARN, un avertissement sur stderr. publish.py, install.py."""
+    html = build(demo=False, cfg=cfg)
+    size = len(html.encode())
+    blocks = " · ".join(f"{k} {v / 1000:.0f} Ko" for k, v in sorted(weights(cfg, demo=False).items(), key=lambda x: -x[1]) if v)
+    if size > KRONN_LIMIT:
+        raise PageTooBig(f"page de {size} octets, {size - KRONN_LIMIT} de trop pour Kronn (limite {KRONN_LIMIT}) : rien n'est "
+                         f"publié ; alléger la page (docs/decisions.md, budget de poids). Poids : {blocks}")
+    if size >= KRONN_LIMIT * KRONN_WARN:
+        print(f"ALERTE taille : page de {size} octets, {size * 100 // KRONN_LIMIT} % de la limite Kronn ({KRONN_LIMIT - size} "
+              f"octets de marge). Poids : {blocks}", file=sys.stderr)
+    return html
+
+
 def weights(cfg=None, demo=True):
     """Poids de la page par bloc, en octets (KT-28, affiché par tools/smoke.py) : JS et CSS compactés, polices en base64,
     sprites fournis et calques LPC de l'éditeur, données de l'équipe (recettes, roster, plan, musique), instantanés de

@@ -6,9 +6,11 @@
     python3 tools/smoke.py --html dist/autre.html --chrome   # contrôler un fichier déjà assemblé
     python3 tools/smoke.py --team ~/Sites/bureau-monequipe --chrome   # la démo avec un autre pack d'équipe (sa CI)
 
-Contrôles : taille de la page publiée (sans démo) < 1 000 000 octets, chaque <script> (hors kronn-action) se parse (node, new Function),
+Contrôles : taille de la page publiée (sans démo) < 1 000 000 octets (et, en local, celle de ta config : bureau.config.json), chaque <script> (hors kronn-action) se parse (node, new Function),
 les 21 blocs kronn-action du squelette sont présents à l'identique (ids de workflows remplacés), leur JSON est valide,
 plus aucun marqueur __X__ ni /*__STYLES__*/ /*__SCRIPTS__*/ ne traîne.
+--chrome : la page seule, puis la même page dans le cadre de Kronn (iframe sandbox="allow-scripts", sa CSP) : démarrage,
+aucune erreur, rien de bloqué par la CSP, ajout d'une todo par ＋ et par Entrée.
 --chrome demande websocket-client (`.venv/bin/pip install websocket-client`) ; Chrome est lancé muet
 (--mute-audio), sur un profil jetable, puis arrêté.
 """
@@ -19,8 +21,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import assemble  # noqa: E402
 
-LIMIT = 1_000_000
-WARN = 0.9  # seuil d'alerte, en part de LIMIT
+LIMIT = assemble.KRONN_LIMIT
+WARN = assemble.KRONN_WARN  # seuil d'alerte, en part de LIMIT
 # Chrome : BUREAU_CHROME, sinon le premier trouvé (macOS, puis Linux, comme workflows/pages_snapshot.py) ;
 # BUREAU_CHROME_ARGS = options en plus (CI Linux : --no-sandbox)
 CHROMES = ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -30,6 +32,37 @@ CHROME_ARGS = os.environ.get("BUREAU_CHROME_ARGS", "").split()
 ACTION_RE = re.compile(r'<script type="application/kronn-action" data-action-id="[^"]+">.*?</script>', re.S)
 SCRIPT_RE = re.compile(r"<script([^>]*)>(.*?)</script>", re.S)
 fails = []
+# la Live Page telle que Kronn la sert : iframe sandbox="allow-scripts" (sans allow-forms ni allow-same-origin), CSP en
+# <meta> juste après <head> (Kronn frontend/src/lib/live-page-sandbox.ts, LIVE_PAGE_CSP et buildSandboxDocument)
+KRONN_CSP = ("default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; "
+             "font-src data:; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'")
+# sonde posée avant la page : erreurs, rejets de promesse, console.error, violations de la CSP (réseau, formulaire,
+# image externe…) ; puis, la page démarrée, un parcours qui écrit (ajout d'une todo par « ＋ » et par Entrée : le bug du
+# <form> bloqué, #110) ; le tout renvoyé au parent par postMessage (le cadre sandboxé est d'une autre origine)
+SANDBOX_PROBE = """<script>(()=>{const out={errors:[],csp:[]};const P=m=>out.errors.push(String(m).slice(0,300));
+addEventListener('error',e=>P(e.message||e.type));addEventListener('unhandledrejection',e=>P('rejet : '+(e.reason&&e.reason.message||e.reason)));
+document.addEventListener('securitypolicyviolation',e=>out.csp.push(e.violatedDirective+' '+(e.blockedURI||'')));
+const ce=console.error;console.error=(...a)=>{P('console.error '+a.join(' '));ce.apply(console,a);};
+addEventListener('load',()=>setTimeout(()=>{try{
+ out.chars=typeof chars!=='undefined'?chars.length:-1;
+ if(typeof openTodos==='function'&&typeof todoRect==='function'&&todoRect()){
+  ACTIONS.todo=true;openTodos();const r=document.querySelector('.td-add');
+  if(r){const i=r.querySelector('input');i.value='Essai sandbox ＋';r.querySelector('button').click();
+   const j=document.querySelector('.td-add input');j.value='Essai sandbox Entrée';j.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
+   out.todos=TD_PEND.filter(o=>o.op==='add').map(o=>o.title);}
+  closeBossPages();}
+}catch(e){P('parcours : '+e.message);}
+parent.postMessage(JSON.stringify(out),'*');},%d));})()</script>"""
+
+
+def sandbox_doc(html, wait_ms):
+    """Le document que Kronn charge dans son iframe : CSP et sonde juste après <head>, comme buildSandboxDocument."""
+    import html as _h
+    m = re.search(r"<head(?:\s[^>]*)?>", html, re.I)
+    inj = f'<meta http-equiv="Content-Security-Policy" content="{KRONN_CSP}">' + SANDBOX_PROBE % wait_ms
+    doc = html[:m.end()] + inj + html[m.end():] if m else inj + html
+    return ('<script>window.R=null;addEventListener("message",e=>{window.R=e.data;});</script>'
+            '<iframe sandbox="allow-scripts" style="width:1400px;height:1000px;border:0" srcdoc="' + _h.escape(doc, quote=True) + '"></iframe>')
 
 
 def check(ok, msg):
@@ -164,6 +197,25 @@ def chrome_checks(path, port, user_dir, js, shot, wait, width, height):
             print("     console.error", [a.get("value", a.get("description")) for a in x["args"]][:3])
         check(not exc, f"aucune exception JS ({len(exc)})")
         check(not errs, f"aucun console.error ({len(errs)})")
+        # la même page dans le cadre de Kronn : sandbox allow-scripts et sa CSP (formulaires, réseau, images externes)
+        host = os.path.join(os.path.dirname(os.path.abspath(path)), "sandbox-" + os.path.basename(path))
+        Path(host).write_text(sandbox_doc(Path(path).read_text(), int(wait * 1000)))
+        call("Page.navigate", url="file://" + host)
+        got = None
+        for _ in range(int(wait * 4) + 60):
+            time.sleep(0.25)
+            got = (call("Runtime.evaluate", expression="window.R", returnByValue=True).get("result") or {}).get("value")
+            if got:
+                break
+        res = json.loads(got) if got else None
+        check(bool(res) and res.get("chars", 0) > 0, "sandbox Kronn : page démarrée" + (f" ({res.get('chars')} personnages)" if res else " : pas de réponse du cadre"))
+        if res:
+            for x in res["errors"]:
+                print("     sandbox", x)
+            check(not res["errors"], f"sandbox Kronn : aucune erreur JS ({len(res['errors'])})")
+            check(not res["csp"], "sandbox Kronn : rien de bloqué par la CSP" + (f" : {res['csp'][:5]}" if res["csp"] else ""))
+            if "todos" in res:
+                check(len(res["todos"]) == 2, f"sandbox Kronn : Mes todos, ajout par ＋ et par Entrée ({res['todos']})")
         ws.close()
     finally:
         proc.terminate()
@@ -218,6 +270,11 @@ def main():
         weights(assemble.weights(cfg, demo=not a.empty))
     # la limite vaut pour la page publiée (sans démo) : l'aperçu avec la démo d'un pack peut la dépasser
     static_checks(html, cfg, None if a.html or a.empty else len(assemble.build(demo=False, cfg=cfg).encode()))
+    real = os.path.join(ROOT, "bureau.config.json")
+    if not (a.html or a.empty or a.team) and os.path.exists(real):  # en local : la page que publish.py enverrait vraiment
+        size = len(assemble.build(demo=False).encode())
+        check(size < LIMIT, f"taille publiée avec ta config ({os.path.relpath(real, ROOT)}) : {size} octets, "
+                            f"{size * 100 // LIMIT} % de la limite ({LIMIT - size} de marge)")
     if a.chrome or a.shot:
         w, h = (int(x) for x in a.size.split("x"))
         chrome_checks(path, a.port, a.user_data_dir, a.js, a.shot, a.wait, w, h)

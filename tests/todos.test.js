@@ -77,12 +77,3 @@ test('nouvelles données : un changement déjà fait dans Kronn sort de la liste
   assert.deepEqual(J('TD_PEND.map(o=>o.op+":"+(o.id||o.title))'), ['duck:t2'], 't1 fait et l\'ajout créé : seuls restent ceux pas encore vus');
 });
 
-test('pas de <form> dans la page : la Live Page (sandbox allow-scripts, sans allow-forms) bloque leur envoi', () => {
-  const fs = require('node:fs'), path = require('node:path'), dir = path.join(__dirname, '..', 'page', 'src');
-  const files = [path.join(__dirname, '..', 'page', 'office_template.html'), ...fs.readdirSync(dir).filter(f => /\.(js|html)$/.test(f)).map(f => path.join(dir, f))];
-  for (const f of files) {
-    const src = fs.readFileSync(f, 'utf8').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n'); // commentaires écartés
-    assert.doesNotMatch(src, /<form[\s>]|type="submit"|\.onsubmit\b/, path.basename(f));
-  }
-});
-
