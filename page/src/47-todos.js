@@ -109,17 +109,21 @@ function tdRender(box){
   const n=TD_PEND.length;
   body.innerHTML=`<div class="td-cols">`+
     col('todo','À faire',ro?'Les tâches Kronn taguées bureau-todo':'Glisse une carte pour changer de colonne',ro?'':
-      `<form class="td-add"><input type="text" maxlength="${TD_MAX_TITLE}" placeholder="Nouvelle todo…" aria-label="Nouvelle todo"><select aria-label="Priorité"><option value="normal">Normal</option><option value="high">Urgent</option><option value="low">Plus tard</option></select><button type="submit" aria-label="Ajouter">＋</button></form>`)+
+      `<div class="td-add"><input type="text" maxlength="${TD_MAX_TITLE}" placeholder="Nouvelle todo…" aria-label="Nouvelle todo"><select aria-label="Priorité"><option value="normal">Normal</option><option value="high">Urgent</option><option value="low">Plus tard</option></select><button type="button" aria-label="Ajouter">＋</button></div>`)+
     col('duck','🦆 Avec le canard','Une discussion Kronn par todo ; il vient te voir quand il a besoin de toi')+
     col('done','Faites','Aujourd\'hui et hier ; les plus anciennes restent dans Kronn')+`</div>`+
     (ro?'<p class="hint">Lecture seule : le workflow « Le Bureau · todos » n\'est pas installé (python3 tools/install.py l\'ajoute).</p>':
      `<div class="td-save" data-kronn-action-slot-host${n||TD_SENT?'':' hidden'}><div class="td-save-row"><span class="td-n">${tdN(n)}</span>`+
      `<button type="button" class="on" data-kronn-action="bureau-todo"${n?'':' disabled'}>💾 Enregistrer</button></div><div class="hint"></div></div>`);
   if(ro)return;
-  const form=body.querySelector('.td-add');
-  {const inp=form.querySelector('input');inp.value=typed;form.querySelector('select').value=priv;if(focused)inp.focus();} // relevé de chaque minute : la saisie reste
-  form.onsubmit=e=>{e.preventDefault();const inp=form.querySelector('input'),v=inp.value;inp.value='';tdAdd(v,form.querySelector('select').value);
+  const addRow=body.querySelector('.td-add');
+  {const inp=addRow.querySelector('input');inp.value=typed;addRow.querySelector('select').value=priv;if(focused)inp.focus();} // relevé de chaque minute : la saisie reste
+  // pas de <form> : la Live Page est un iframe sandbox="allow-scripts" sans allow-forms, où l'envoi d'un formulaire
+  // est bloqué avant même l'événement submit (rien ne se passait) ; ＋ et Entrée ajoutent directement
+  const add=()=>{const inp=addRow.querySelector('input'),v=inp.value;inp.value='';tdAdd(v,addRow.querySelector('select').value);
     const nf=box.querySelector('.td-add input');if(nf){nf.value='';nf.focus();}};
+  addRow.querySelector('button').onclick=add;
+  addRow.querySelector('input').onkeydown=e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();add();}};
   for(const c of body.querySelectorAll('.td-card')){
     const id=c.dataset.id;
     for(const b of c.querySelectorAll('[data-do]'))b.onclick=()=>{const a=b.dataset.do;tdChange(a==='delete'?{op:'delete',id}:a==='duck'?{op:'duck',id}:{op:'move',id,to:a});};

@@ -96,3 +96,36 @@ class RefsWorkflowTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RatioTest(unittest.TestCase):
+    """Comparaison d'une capture à sa référence : un arrondi d'1 ou 2 px de la zone capturée (Chrome 156 contre 155,
+    contenu identique) ne vaut pas 100 % d'écart ; au-delà, si."""
+
+    def setUp(self):
+        try:
+            from PIL import Image
+        except ImportError:
+            self.skipTest("Pillow absent")
+        self.Image = Image
+
+    def img(self, w, h, rows=()):
+        im = self.Image.new("RGB", (w, h), (20, 20, 30))
+        for y in rows:
+            for x in range(w):
+                im.putpixel((x, y), (250, 250, 250))
+        return im
+
+    def test_same_size(self):
+        self.assertEqual(visual.ratio(self.img(100, 50), self.img(100, 50))[0], 0)
+        self.assertAlmostEqual(visual.ratio(self.img(100, 50, rows=[3]), self.img(100, 50))[0], 0.02)
+
+    def test_one_extra_row_is_a_rounding_not_a_change(self):
+        r = visual.ratio(self.img(340, 652), self.img(340, 651))[0]
+        self.assertLess(r, visual.TOLERANCE)  # la ligne en trop compte : 1/652
+        self.assertAlmostEqual(r, 1 / 652)
+        self.assertEqual(visual.ratio(self.img(340, 651), self.img(340, 652))[0], r)
+
+    def test_real_size_change_still_fails(self):
+        self.assertEqual(visual.ratio(self.img(340, 660), self.img(340, 651))[0], 1.0)
+        self.assertGreater(visual.ratio(self.img(340, 652, rows=range(0, 40)), self.img(340, 651))[0], visual.TOLERANCE)
