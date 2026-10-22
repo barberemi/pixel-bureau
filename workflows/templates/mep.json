@@ -172,7 +172,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Rebase sur la base de la PR, squash en un commit, push protégé (copie du dépôt dans ~/.cache).",
+    "description": "Base de la PR fusionnée puis squash en un commit posé dessus, push protégé (copie du dépôt dans ~/.cache).",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {

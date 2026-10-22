@@ -140,6 +140,38 @@ class MepTest(unittest.TestCase):
         self.assertIn("ni commenté (retour IA) ni passé au statut de fin", r.stdout + r.stderr)
         self.assertEqual(self.mep("dry_guard").returncode, 0, "vraie MEP : on continue vers le retour IA")
 
+    def push_to_main_then_merge_it_into_the_branch(self):
+        """Comme front_api#16 : la branche et main modifient a.txt, la branche a fusionné main en résolvant le conflit.
+        Un rebase rejouerait le commit de la branche sur le main modifié et re-conflicterait."""
+        work = os.path.join(self.tmp, "work")
+        g = lambda *c: subprocess.run(["git", *c], cwd=work, capture_output=True, check=True, env=self.env())  # noqa: E731
+        Path(work, "a.txt").write_text("branche\n"); g("commit", "-am", "branche touche a")
+        g("checkout", "main"); Path(work, "a.txt").write_text("main\n"); g("commit", "-am", "main touche a"); g("push", "origin", "main")
+        g("checkout", "kronn/DM-7801")
+        subprocess.run(["git", "merge", "main"], cwd=work, capture_output=True, env=self.env())
+        Path(work, "a.txt").write_text("résolu\n"); g("commit", "-am", "Merge main"); g("push", "origin", "kronn/DM-7801")
+        return work, g
+
+    def test_base_already_merged_into_the_branch_squashes_without_conflict(self):
+        self.push_to_main_then_merge_it_into_the_branch()
+        self.mep("resolve")
+        self.mep("tag", stdin="Bug")
+        r = self.mep("rebase")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        git = lambda *c: subprocess.run(["git", "--git-dir", self.remote, *c], capture_output=True, text=True).stdout  # noqa: E731
+        self.assertEqual(git("show", "kronn/DM-7801:a.txt"), "résolu\n", "la résolution du merge est gardée")
+        self.assertEqual(git("rev-parse", "kronn/DM-7801^"), git("rev-parse", "main"), "un seul commit, posé sur main")
+        self.assertEqual(git("rev-list", "--count", "--merges", "main..kronn/DM-7801"), "0\n", "aucun commit de merge poussé")
+
+    def test_real_conflict_with_the_base_gives_exit_7(self):
+        work, g = self.push_to_main_then_merge_it_into_the_branch()
+        g("checkout", "main"); Path(work, "a.txt").write_text("main encore\n"); g("commit", "-am", "main retouche a"); g("push", "origin", "main")
+        self.mep("resolve")
+        self.mep("tag", stdin="Bug")
+        r = self.mep("rebase")
+        self.assertEqual(r.returncode, 7, r.stdout + r.stderr)
+        self.assertIn("rien poussé", r.stdout + r.stderr)
+
     def test_failures_give_their_exit_code(self):
         self.mep("resolve")
         self.mep("tag", stdin="Bug")

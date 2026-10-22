@@ -16,7 +16,7 @@ du début (⏳), éditée au merge (chargeur animé, sprites/teams/loader.png), 
 réponse dans le fil). Logo du projet : mep.logo (PNG, chemin relatif au pack d'équipe). Simulation : le canal de test.
 Jeton : « az account get-access-token » (Microsoft Graph), gardé en mémoire le temps de l'étape. Sans mep.teams : rien.
 Codes de sortie (signaux exit_N de Kronn) : 2 projet inconnu, 3 PR introuvable ou fermée, 6 ticket introuvable,
-7 conflit de rebase, 8 push refusé, 9 merge refusé, 10 tag illisible, 11 release refusée, 12 déploiement non lancé,
+7 conflit avec la base, 8 push refusé, 9 merge refusé, 10 tag illisible, 11 release refusée, 12 déploiement non lancé,
 4 CI ou déploiement en échec, 5 délai dépassé.
 """
 import base64, json, os, re, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
@@ -280,16 +280,18 @@ def clone(repo):
 
 
 def rebase(p, n, forced, run_id, dry):
-    """Rebase de la branche sur sa base, squash en un commit au titre de la PR, push protégé (force-with-lease)."""
+    """Branche remise sur sa base et squashée en un commit au titre de la PR, push protégé (force-with-lease).
+    Merge de la base puis squash, pas de rebase : un rebase rejoue les commits un par un et re-conflicte quand la base
+    a déjà été fusionnée dans la branche (conflits résolus dans ce merge, perdus au rejeu), alors que la PR est propre."""
     st = load(run_id)
     path = clone(p["repo"])
     b, base = st["branch"], st["base"]
     expected = run("git", "rev-parse", f"origin/{b}", cwd=path)
     run("git", "checkout", "-f", "--detach", f"origin/{b}", cwd=path)
     count = run("git", "rev-list", "--count", f"origin/{base}..HEAD", cwd=path)
-    if subprocess.run(["git", "rebase", f"origin/{base}"], cwd=path, capture_output=True).returncode:
-        subprocess.run(["git", "rebase", "--abort"], cwd=path, capture_output=True)
-        fail(7, f"CONFLIT de rebase de {b} sur origin/{base} : abandon, rien poussé.")
+    if subprocess.run(["git", "merge", "--no-edit", f"origin/{base}"], cwd=path, capture_output=True).returncode:
+        subprocess.run(["git", "merge", "--abort"], cwd=path, capture_output=True)
+        fail(7, f"CONFLIT entre {b} et origin/{base} : abandon, rien poussé.")
     run("git", "reset", "--soft", f"origin/{base}", cwd=path)
     run("git", "commit", "--no-verify", "-m", st["title"], cwd=path)
     sha = run("git", "rev-parse", "HEAD", cwd=path)

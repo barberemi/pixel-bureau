@@ -22,8 +22,8 @@ Le **ticket** est déduit de la PR : la première clé du projet Jira (`jira.pro
 | fetch_ticket_type | type du ticket dans Jira |
 | tag | prochain tag : Bug = correctif (`2.4.0` → `2.4.1`), sinon fonctionnalité (`2.4.0` → `2.5.0`) |
 | **gate du début** | la PR, le ticket, le tag, les déploiements et l'aperçu de l'annonce : approuver lance la mise en prod |
-| rebase | rebase sur la base de la PR, squash en un commit, push protégé (`--force-with-lease`), dans une copie du dépôt sous `~/.cache/pixel-bureau/mep` |
-| teams_post | l'annonce Teams ⏳ dans le canal des mises en prod, une fois la PR rebasée : un conflit de rebase, l'échec le plus courant, n'annonce rien |
+| rebase | base de la PR fusionnée dans la branche puis squash en un seul commit posé sur la base (pas de commit de merge, pas de rejeu commit par commit : une branche qui a déjà fusionné sa base ne re-conflicte pas), push protégé (`--force-with-lease`), dans une copie du dépôt sous `~/.cache/pixel-bureau/mep` |
+| teams_post | l'annonce Teams ⏳ dans le canal des mises en prod, une fois la PR remise sur sa base : un conflit avec la base, l'échec le plus courant, n'annonce rien |
 | citest | label de la CI reposé, attente du résultat (25 min au plus) |
 | **gate** | tests verts : merger ? |
 | merge | l'annonce passe au chargeur animé (mise en prod en cours), puis merge en rebase |
@@ -38,7 +38,7 @@ Le **ticket** est déduit de la PR : la première clé du projet Jira (`jira.pro
 | done | fin ; « Changements » sur la gate de fin y mène directement (le ticket reste en l'état, le run finit en succès) |
 | teams_failed | seulement après l'échec d'une étape : l'annonce passe en ❌, la raison et le run en réponse dans le fil, et le run finit en échec |
 
-Un refus sur une gate arrête la mise en prod là où elle en est ; l'annonce Teams reste alors en l'état (édite-la ou supprime-la dans Teams). Chaque échec a son code (conflit de rebase, push refusé, CI rouge, déploiement en échec, délai dépassé) et son message dans le run.
+Un refus sur une gate arrête la mise en prod là où elle en est ; l'annonce Teams reste alors en l'état (édite-la ou supprime-la dans Teams). Chaque échec a son code (conflit avec la base, push refusé, CI rouge, déploiement en échec, délai dépassé) et son message dans le run.
 
 **Simulation** (`dry_run` = oui) : tout est lu pour de vrai (PR, ticket, dernière release, CI), le rebase et le squash se font dans la copie locale, mais rien n'est poussé, mergé, créé ni déployé, et le ticket Jira n'est ni commenté ni déplacé. L'annonce part dans le canal de test (`mep.teams.test_channel`) au lieu de celui des mises en prod (`mep.teams.channel`).
 
