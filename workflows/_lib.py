@@ -5,7 +5,7 @@ fichier à la place de la ligne qui importe le socle, au rendu. En local (tests,
 Config : injectée au rendu dans _CFG ; en local, le fichier de la variable
 d'environnement BUREAU_CONFIG, sinon bureau.config.json à la racine du dépôt.
 """
-import json, os as _os, re, shutil as _shutil, subprocess as _subprocess, urllib.request
+import json, os as _os, re, shutil as _shutil, subprocess as _subprocess, urllib.error, urllib.request, uuid as _uuid
 from zoneinfo import ZoneInfo
 
 
@@ -75,6 +75,47 @@ def get_all(path, per_page=200, since=None, max_pages=50):
             break
     return out
 
+
+
+def send(method, path, body=None, timeout=30):
+    """POST / PATCH vers l'API Kronn ; renvoie data. Refus ou Kronn injoignable : RuntimeError au message lisible."""
+    req = urllib.request.Request(API + path, method=method, headers={"content-type": "application/json"},
+                                 data=json.dumps(body).encode() if body is not None else None)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            res = json.load(r)
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"Kronn a refusé {path} ({e.code}) : {e.read()[:300].decode(errors='replace')}")
+    except OSError as e:
+        raise RuntimeError(f"Kronn injoignable ({path}) : {e}")
+    if isinstance(res, dict) and res.get("success") is False:
+        raise RuntimeError(f"Kronn a refusé {path} : {str(res.get('error'))[:300]}")
+    return res.get("data", res) if isinstance(res, dict) else res
+
+
+DUCK_NOTE = "(Discussion ouverte depuis Le Bureau, par le canard. Si un numéro de ticket Jira est cité, va le lire.)"
+
+
+def open_duck(topic, title="", project=None):
+    """Discussion avec le canard (titre « 🦆 … », is_bureau_disc), agent lancé ; renvoie son id. duck_start.py, todos.py.
+    POST /discussions crée la discussion et son premier message sans lancer l'agent (l'interface de Kronn enchaîne avec
+    POST /discussions/{id}/run) : on fait de même. /run met le tour de l'agent en file (durable) avant de répondre en flux
+    SSE : on n'attend que les en-têtes, l'agent continue sans nous."""
+    first = (title or topic).splitlines()[0].strip()  # sans titre : la première ligne du sujet
+    res = send("POST", "/discussions", {"project_id": project, "title": "🦆 " + (first if len(first) <= 70 else first[:69].rstrip() + "…"),
+                                         "agent": "ClaudeCode", "language": "fr", "initial_prompt": topic + "\n\n" + DUCK_NOTE})
+    if not isinstance(res, dict) or not res.get("id"):
+        raise RuntimeError("Kronn n'a pas créé la discussion : " + str(res)[:200])
+    req = urllib.request.Request(API + f"/discussions/{res['id']}/run", method="POST", headers={"content-type": "application/json"},
+                                 data=json.dumps({"idempotency_key": str(_uuid.uuid4())}).encode())
+    try:
+        with urllib.request.urlopen(req, timeout=30):
+            pass  # file d'attente remplie : on ne lit pas le flux
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"Kronn a refusé /discussions/{res['id']}/run ({e.code}) : {e.read()[:300].decode(errors='replace')}")
+    except OSError as e:
+        raise RuntimeError(f"Kronn injoignable (/discussions/{res['id']}/run) : {e}")
+    return res["id"]
 
 def is_bureau(wf):
     return wf.get("id") in BUREAU_IDS
