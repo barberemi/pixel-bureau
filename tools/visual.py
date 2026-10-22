@@ -79,13 +79,21 @@ def capture_all(names):
     return out
 
 
+ARRONDI = 2  # écart de taille (px) pris pour un arrondi de la zone capturée, pas pour un changement
+
+
 def ratio(a, b):
-    """Part des pixels qui diffèrent de plus de SEUIL ; 1.0 si les tailles diffèrent."""
+    """Part des pixels qui diffèrent de plus de SEUIL. Tailles différentes de plus de ARRONDI px : 1.0. Jusqu'à ARRONDI px
+    (Chrome 156 arrondit la hauteur de certaines zones d'une ligne de plus que Chrome 155, contenu identique), la partie
+    commune est comparée et les lignes ou colonnes en trop comptent comme différentes."""
     from PIL import ImageChops
-    if a.size != b.size:
+    (wa, ha), (wb, hb) = a.size, b.size
+    if abs(wa - wb) > ARRONDI or abs(ha - hb) > ARRONDI:
         return 1.0, None
-    d = ImageChops.difference(a, b).convert("L").point(lambda v: 255 if v > SEUIL else 0)
-    return d.histogram()[255] / (a.size[0] * a.size[1]), d
+    w, h = min(wa, wb), min(ha, hb)
+    d = ImageChops.difference(a.crop((0, 0, w, h)), b.crop((0, 0, w, h))).convert("L").point(lambda v: 255 if v > SEUIL else 0)
+    extra = max(wa * ha, wb * hb) - w * h
+    return (d.histogram()[255] + extra) / max(wa * ha, wb * hb), d
 
 
 def update(names):
