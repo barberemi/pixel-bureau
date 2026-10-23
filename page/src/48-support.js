@@ -109,7 +109,7 @@ function spInvestigate(el,t){
       else if(v==='failed')n.innerHTML='<b style="color:var(--err)">Lancement refusé.</b> Détail dans la carte.';
     }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
     const tm=spTeams(t);if(tm)row.insertAdjacentHTML('beforeend',tm);
-    row.prepend(sel,b);kronnModal(host,b,'Investiguer : '+(t.subject||spWho(t.from)));el.append(host,n);return;
+    row.prepend(sel,b);kronnModal(host,b,'Investiguer une demande',()=>({c:spAgent(),ico:'🚒',name:t.subject||String(t.text||'').split('\n')[0].slice(0,80),small:'De '+spWho(t.from)+', '+spWhen(t.at)+' · projet : '+(sel.selectedOptions[0]||{}).textContent}));el.append(host,n);return;
   }else if(ACTIONS.support)el.insertAdjacentHTML('beforeend','<div class="sp-s">Les projets arrivent au prochain passage du cron live (1 min au plus).</div>');
   el.insertAdjacentHTML('beforeend',spTeams(t));
 }
@@ -125,7 +125,7 @@ function spGate(el,t,g,dl){
       new MutationObserver(()=>{if(b.getAttribute('data-kronn-action-state')==='succeeded'&&!DECIDED[dk]){DECIDED[dk]=Date.now();saveDecided();}})
         .observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});}
     else{b.disabled=true;b.title=g?'Workflow « décision gate » non installé : décide dans Kronn':'La gate arrive sur la page d\'ici une minute (cron live)';}
-    row.appendChild(b);if(g&&ACTIONS.gate)kronnModal(host,b,label.replace(/^\S+\s/,'')+' : réponse à '+spWho(t.from));
+    row.appendChild(b);if(g&&ACTIONS.gate)kronnModal(host,b,'Réponse proposée',()=>({c:spAgent(),ico:'🚒',tag:label,name:'Réponse à '+spWho(t.from),small:t.subject||''}));
   }
   el.appendChild(host);
   el.insertAdjacentHTML('beforeend',`<div class="sp-s">« Changements » renvoie ton commentaire à ${esc((spAgent()||{name:'l\'agent'}).name)} dans la même discussion${dl}.</div>`);

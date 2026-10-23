@@ -156,3 +156,4 @@
 :root[data-skin] .kmodal{border:0!important;padding:0 20px 20px!important;box-shadow:var(--frame),var(--drop)!important}
 :root[data-skin] .kmodal .km-title{background:var(--line);margin:0 -20px 14px;padding:10px 14px;font:400 16px/1.2 'BureauPixel',ui-monospace,monospace;
   letter-spacing:0;text-transform:none;color:var(--on-line)}
+:root[data-skin] .kmodal .km-title .bp-x{margin:0}

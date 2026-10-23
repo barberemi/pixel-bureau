@@ -137,7 +137,7 @@ function launchBlock(box,{action,bind,name,sub,label,title,off,done,verb,next}){
     if(v==='succeeded')n.innerHTML=done||'<b style="color:var(--ok)">✓ Lancé.</b> L\'agent se met au travail d\'ici une minute sur le plan.';
     else if(v==='failed')n.innerHTML='<b style="color:var(--err)">Lancement refusé</b> (déjà en cours ?). Détail dans la carte.';
   }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
-  host.append(b,n);kronnModal(host,b,title);box.appendChild(host);
+  host.append(b,n);kronnModal(host,b,title,()=>{const c=verb&&actAgent(action);return verb?{c,ico:'🤖',name:(c?c.name:'Le Bureau')+' '+verb,small:sub}:{ico:'🎫'};});box.appendChild(host);
 }
 function renderTicket(side,key){
   const x=ticketOf(key);

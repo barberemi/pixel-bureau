@@ -143,6 +143,14 @@ SHOTS = {
                    "COLLAPSED['fiche:added']=true;select('a_darryl_7f9e');const p=document.querySelector('.rl-f input');p.value='16';p.oninput();", "#side"),
     # historique du panneau : la fiche d'un agent ouverte depuis la Fiche de paie, « ← Fiche de paie » et son repère Échap
     "retour-panneau": (1400, 1000, AT(11) + "select('paie');select((chars.find(c=>!c.person&&!c.visitor&&c.runs.length)||{}).key);", "#side"),
+    # carte Kronn (55-actions.js) : la fenêtre au gabarit des autres, ouverte par « ▶ Lancer… » (hors Kronn, sans la carte elle-même)
+    "carte-kronn": (1400, 1000, AT(11) + "applyAgents({a_darryl_7f9e:{name:'Darryl',role:'Mise en prod',wf:['7f9e2b79'],sprite:'p_darryl',at:T-5*864e5}});"
+                   "LAUNCHABLE=[{wf:'7f9e2b79-demo',name:'Mise en prod d\\'une PR',vars:[{name:'project',label:'Projet',required:true,options:"
+                   "[{value:'dunder-mifflin/site-web',label:'site-web'},{value:'dunder-mifflin/intranet',label:'intranet'}],default:'dunder-mifflin/site-web'},"
+                   "{name:'pr_number',label:'N° de PR',required:true,placeholder:'Ex. 2042',pattern:'\\\\d+'},"
+                   "{name:'jira_ticket_key',label:'Ticket (si mal trouvé)',required:false,placeholder:'Ex. DM-7675'},"
+                   "{name:'dry_run',label:'Simulation',required:false,options:[{value:'non',label:'Non, la vraie mise en prod'},{value:'oui',label:'Oui, simulation'}],default:'non'}]}];"
+                   "COLLAPSED['fiche:added']=true;select('a_darryl_7f9e');const p=document.querySelector('.rl-f input');p.value='16';p.oninput();document.querySelector('#side .rl-form button[data-kronn-action]').click();", ".kmodal"),
     "fiche-agent": (1400, 1400, AT(11) + "select((chars.find(c=>!c.person&&!c.visitor&&c.runs.length)||{}).key);", "#side"),
     # Gabe, « Ses tickets » et « Ses autres PR ouvertes » dépliés : composant, points, âge (DM-7761 bloqué en review), PR de chaque ticket, un bug
     "fiche-collegue": (1400, 2000, AT(11) + "COLLAPSED['fiche:tickets']=false;COLLAPSED['fiche:prs']=false;select('p_gabe');", "#side"),

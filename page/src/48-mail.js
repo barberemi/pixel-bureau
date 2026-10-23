@@ -166,7 +166,7 @@ function renderMail(side,first){
     const host=document.createElement('div');host.className='relaunch';host.setAttribute('data-kronn-action-slot-host','');
     host.innerHTML='<div class="rl-n">Règles du tri</div><div class="rl-s">Le facteur relit tes expéditeurs des 30 derniers jours et te propose quoi garder ou ignorer ; tu valides.</div>';
     const b=document.createElement('button');b.textContent='📮 Revoir mes règles';b.setAttribute('data-kronn-action','bureau-mailrules');
-    host.appendChild(b);side.appendChild(host);kronnModal(host,b,'Règles du courrier');
+    host.appendChild(b);side.appendChild(host);kronnModal(host,b,'Règles du courrier',{ico:'📮'});
   }
 }
 // démo (jeudi 1er octobre) : un compte de l'appli Mail et un Gmail par IMAP, mails fictifs

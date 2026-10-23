@@ -6,6 +6,10 @@ Clic sur un personnage (plan, panneau ou « Qui fait quoi ») : sa fiche s'ouvre
 
 ![« ← Fiche de paie » : la fiche d'un agent ouverte depuis la Fiche de paie](../img/retour-panneau.png)
 
+**Cartes Kronn** : chaque bouton d'action du panneau (lancer, relancer, poser une question, décider une validation, investiguer…) ouvre une fenêtre, la même que Mes pages Kronn : l'action en titre, puis ce que tu lances (le portrait de l'agent, ou une icône, l'action, sa phrase et « ↩ Annuler »), les étapes (le code copié à coller, quand il y en a un), et la carte Kronn dessous. ×, « ↩ Annuler » ou un clic à côté la referment.
+
+![La fenêtre d'une carte Kronn : « ▶ Lancer », Darryl et les étapes (la carte Kronn s'ouvre dessous, dans Kronn)](../img/carte-kronn.png)
+
 | Agent | Collègue |
 | --- | --- |
 | ![Fiche d'un agent](../img/fiche-agent.png) | ![Fiche d'un collègue](../img/fiche-collegue.png) |

@@ -284,10 +284,15 @@ button.back kbd{font:10px ui-monospace,Menlo,monospace;border:1px solid var(--li
 .bp-confirm .hint{margin:0 0 10px}.bp-badge{position:absolute;left:12px;top:12px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--ok);color:var(--on-accent)}.bp-go:disabled{opacity:.5;cursor:not-allowed}
 .bp-add select{display:block;width:100%;margin-top:6px;padding:6px 8px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px}
 .km-backdrop{cursor:pointer;position:fixed;inset:0;background:rgba(10,12,22,.6);z-index:40;backdrop-filter:blur(2px)}
-.kmodal{position:fixed!important;z-index:41;top:9vh;left:max(16px,calc(50% - 300px));width:min(600px,calc(100vw - 32px));max-height:82vh;overflow:visible;
+.kmodal{position:fixed!important;z-index:41;top:8vh;left:max(16px,calc(50% - 440px))!important;width:min(880px,calc(100vw - 32px))!important;max-height:84vh;overflow:visible;
   margin:0!important;padding:18px 20px 20px!important;background:var(--panel)!important;border:1px solid var(--line)!important;border-radius:16px!important;box-shadow:0 24px 70px rgba(0,0,0,.45)!important}
-.kmodal .km-title{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-bottom:10px}
-.kmodal>[data-kronn-action]{display:none} /* la carte Kronn a ses propres boutons Annuler / × */
+.kmodal .km-title{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-bottom:14px}
+.kmodal .km-title h2{margin:0;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit}
+/* le bloc du panneau cède la place à l'en-tête commun (km-top) ; la carte Kronn a ses propres boutons Annuler / × */
+.kmodal [data-kronn-action],.kmodal>.rl-n,.kmodal>.rl-s,.kmodal>.la-av,.kmodal>.la-t,.kmodal .sp-act,.kmodal .na-acts{display:none!important}
+.bp-what>.km-pt{width:64px;height:64px;flex:none;display:flex;align-items:center;justify-content:center;font-size:30px;background:var(--chip);border-radius:10px;overflow:hidden}
+.km-pt canvas{image-rendering:pixelated}
+.bp-tag.run{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent)}
 .kmodal [data-kronn-action-slot]{margin-top:12px}
 .kmodal .hint{margin-top:0}
 .gatecard{border:1px solid color-mix(in srgb,var(--warn) 55%,var(--line));background:color-mix(in srgb,var(--warn) 9%,var(--panel));border-radius:12px;padding:10px 12px;margin:0 0 12px}
@@ -295,17 +300,14 @@ button.back kbd{font:10px ui-monospace,Menlo,monospace;border:1px solid var(--li
 .gatecard .gw{font-size:13px}
 .gatecard .gm{font-size:12px;margin:6px 0;padding:6px 8px;background:var(--panel);border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere}
 .gatecard .gs{font-size:11px;color:var(--muted)}
-/* trois décisions directes (#45) : Approuver et Rejeter côte à côte, Changements dessous ; le rappel de la décision
-   (qkm) ne s'affiche que dans la fenêtre centrée */
+/* trois décisions directes (#45) : Approuver et Rejeter côte à côte, Changements dessous ; la décision choisie
+   s'affiche dans l'en-tête de la fenêtre centrée (kronnModal, 55-actions.js) */
 .gatecard .gq{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}.gatecard .gq>.qslot:last-child{grid-column:1/3}
-.gatecard .gq button{width:100%;white-space:nowrap}.gatecard .qkm{display:none}
+.gatecard .gq button{width:100%;white-space:nowrap}
 .gatecard>button{width:100%;margin-top:8px}
 .qcard .qopts{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .qcard .qopts>.qslot>button{text-align:left;width:100%}
 .qcard .qrow>.qslot>button{width:auto}
-.qcard .qkm{display:none}
-.kmodal.qslot .qkm{display:block;font-size:13px;line-height:1.45}
-.kmodal.qslot .qkm div{margin-top:6px;color:var(--muted)}
 .qcard .qd{font-weight:400;opacity:.8}
 .qcard .qrow{display:flex;gap:6px;flex-wrap:wrap}
 .qcard .qitems{margin:4px 0 6px;padding-left:18px;font-size:12px}
@@ -367,7 +369,6 @@ body.tv #tvticker{display:block;position:fixed;left:0;right:0;bottom:0;height:48
 .rl-form{display:block}.rl-f{margin-top:8px}.rl-form>button{width:100%}.rl-form>button:disabled{opacity:.5;cursor:not-allowed}.rl-why{margin:6px 0 0}.rl-f textarea{resize:vertical}
 .rl-f .req{color:var(--warn)}.rl-err{display:block;color:var(--err);font-weight:400}.rl-err:empty,.rl-why:empty{display:none}
 .rl-form.kmodal .rl-f,.rl-form.kmodal .rl-why{display:none}
-.relaunch.kmodal .rl-n{font-size:15px}
 .music{display:flex;gap:12px;align-items:center;background:linear-gradient(135deg,color-mix(in srgb,var(--mep) 18%,var(--panel)),var(--panel));border:1px solid var(--line);border-radius:12px;padding:10px;margin:0 0 12px}
 .music img{width:64px;height:64px;border-radius:8px;flex:none;box-shadow:0 2px 8px rgba(0,0,0,.3)}
 .music .mt{min-width:0;flex:1}

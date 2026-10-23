@@ -149,5 +149,5 @@ function addedAgentBlock(side,c){
   ren.onclick=()=>give(renameCode(c,name.value.trim(),role.value.trim()));
   del.onclick=()=>give(removeCode(c));
   const acts=document.createElement('div');acts.className='na-acts';acts.append(ren,del);
-  host.append(acts,hint);kronnModal(host,ren,'Renommer '+c.name);kronnModal(host,del,'Retirer '+c.name);box.appendChild(host);
+  host.append(acts,hint);kronnModal(host,ren,'Renommer '+c.name,{c,name:c.name,small:c.role||''});kronnModal(host,del,'Retirer '+c.name,{c,name:c.name,small:'Il quitte le bureau ; son workflow, lui, reste dans Kronn.'});box.appendChild(host);
 }

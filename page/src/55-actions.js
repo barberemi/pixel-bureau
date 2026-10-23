@@ -2,8 +2,11 @@
 // Kronn ouvre sa carte dans l'ancêtre [data-kronn-action-slot-host] du bouton cliqué : au clic, on fait de cet
 // ancêtre une fenêtre centrée (fond assombri). Quand Kronn retire son emplacement (× / Annuler), on referme.
 // Tout bouton data-kronn-action placé dans un slot-host passé à kronnModal() en profite.
+// Même gabarit que les fenêtres du Bureau (Mes pages Kronn) : la barre de titre et ×, puis ce qu'on lance (portrait de
+// l'agent ou icône, l'action, la phrase, « ↩ Annuler »), les étapes, et la carte Kronn dessous. what : {c (personnage),
+// ico, tag, name, small}, ou une fonction qui le rend au clic ; sinon tiré du bloc (.rl-n, .rl-s) et du bouton.
 let KM_OPEN=null;
-function kronnModal(host,btn,title){
+function kronnModal(host,btn,title,what){
   btn.addEventListener('click',()=>{ // après le pont Kronn (capture) : on ne bloque pas son clic
     if(KM_OPEN)return; KM_OPEN=host;
     const ph=document.createElement('div');
@@ -14,12 +17,22 @@ function kronnModal(host,btn,title){
     bd.className='km-backdrop';
     (host.closest('.side')||document.body).appendChild(bd);
     document.body.classList.add('km-on');
-    // clic sur le fond : la page ne peut pas fermer la carte Kronn, mais Kronn la ferme quand on reclique son bouton ;
-    // on relaie donc le vrai clic de l'utilisateur au bouton (l'activation utilisateur est encore valable)
-    bd.title='Fermer';bd.addEventListener('click',()=>{if(had)btn.click();});
-    host.classList.add('kmodal');
-    if(title&&!host.querySelector('.km-title')){const t=document.createElement('div');t.className='km-title';t.textContent=title;host.prepend(t);}
     let had=false;
+    // la page ne peut pas fermer la carte Kronn, mais Kronn la ferme quand on reclique son bouton : le fond, × et
+    // « ↩ Annuler » relaient donc le vrai clic de l'utilisateur au bouton (l'activation utilisateur est encore valable)
+    const cancel=()=>{if(had)btn.click();else close();};
+    bd.title='Fermer';bd.addEventListener('click',cancel);
+    host.classList.add('kmodal');
+    const w=(typeof what==='function'?what():what)||{}, pick=q=>{const e=host.querySelector(q);return e?e.textContent.trim():'';};
+    const tag=w.tag||btn.textContent.replace(/…$/,'').trim(), name=w.name||pick('.rl-n')||title||tag, small=w.small!=null?w.small:pick('.rl-s');
+    const top=document.createElement('div');top.className='km-top';
+    top.innerHTML=`<div class="km-title"><h2>${esc(title||tag)}</h2><button type="button" class="bp-x" aria-label="Fermer">×</button></div>`+
+      `<div class="bp-what"><div class="km-pt" aria-hidden="true">${w.c?'':esc(w.ico||'🤖')}</div><div><span class="bp-tag run">${esc(tag)}</span><b>${esc(name)}</b>${small?`<small>${esc(small)}</small>`:''}</div>`+
+      `<button type="button" class="bp-back">↩ Annuler</button></div>`;
+    if(w.c&&typeof portrait==='function')top.querySelector('.km-pt').appendChild(portrait(w.c,56));
+    if(!host.querySelector('.hint:not(:empty)'))top.insertAdjacentHTML('beforeend','<div class="hint km-hint">Dans la carte Kronn ci-dessous : un commentaire si elle t\'en propose un, puis <b>Lancer</b>. Kronn suit ensuite le run.</div>');
+    host.prepend(top);
+    for(const x of top.querySelectorAll('.bp-x,.bp-back'))x.onclick=cancel;
     const close=()=>{
       obs.disconnect();
       clearTimeout(t0);
@@ -28,8 +41,7 @@ function kronnModal(host,btn,title){
       bd.remove();
       document.body.classList.remove('km-on');
       ph.remove();
-      const tt=host.querySelector('.km-title');
-      if(tt)tt.remove();
+      top.remove();
       KM_OPEN=null;
       renderSide(!!EDIT);
     };
@@ -105,12 +117,11 @@ function gateCard(parent,run,who){
     st.style.margin='6px 0 0';
     st.textContent='Le bouton ouvre la carte Kronn : un commentaire si tu veux (obligatoire pour des changements), puis Lancer.';
     const row=document.createElement('div');row.className='gq';
-    // un emplacement par bouton (comme les réponses aux questions) : la fenêtre centrée montre la décision choisie
+    // un emplacement par bouton (comme les réponses aux questions) : la fenêtre centrée montre la décision choisie (what)
     for(const [d,label,cls] of [['approve','✅ Approuver','on'],['reject','⛔ Rejeter',''],['request_changes','✏️ Changements…','']]){
       const w=document.createElement('div');w.className='qslot';w.setAttribute('data-kronn-action-slot-host','');
       const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;
-      const qk=document.createElement('div');qk.className='qkm';qk.innerHTML=`<b>${esc(clean(run.wf_name))}${g.gate?' · étape '+esc(g.gate):''}</b><div>Ta décision : ${label}</div>`;
-      w.append(b,qk);
+      w.append(b);
       let clicked=false;
       b.addEventListener('click',()=>{clicked=true;});
       b.setAttribute('data-kronn-action','bureau-gate');
@@ -123,7 +134,7 @@ function gateCard(parent,run,who){
           if(clicked&&!DECIDED[dk]){DECIDED[dk]=Date.now();saveDecided();}
         }else if(v==='failed')st.innerHTML='<b style="color:var(--err)">Décision refusée par Kronn</b> (gate déjà décidée ?). Détail dans la carte.';
       }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
-      kronnModal(w,b,'Décision de gate');row.appendChild(w);
+      kronnModal(w,b,'Décision de gate',()=>({c:who&&chars.find(x=>x.name===who),ico:'✋',name:clean(run.wf_name)+(g.gate?' · étape '+g.gate:''),small:who?'Validation demandée par '+who:''}));row.appendChild(w);
     }
     box.append(row,st);}
   else{
@@ -169,8 +180,7 @@ function questionCard(parent,q,who){
   const btn=(label,pick,cls,title)=>{
     const w=document.createElement('div');w.className='qslot';w.setAttribute('data-kronn-action-slot-host','');
     const b=document.createElement('button');b.innerHTML=label;if(cls)b.className=cls;
-    const qk=document.createElement('div');qk.className='qkm';qk.innerHTML=`<b>${esc(q.question)}</b><div>Ta réponse : ${label}</div>`; // visible dans la fenêtre seulement
-    w.append(b,qk);
+    w.append(b);
     let clicked=false;b.addEventListener('click',()=>{clicked=true;});
     b.setAttribute('data-kronn-action','bureau-answer');
     b.setAttribute('data-kronn-bindings',JSON.stringify({choice:q.id+'|'+pick})); // ligne de gates.qrows, relue par Kronn
@@ -179,7 +189,7 @@ function questionCard(parent,q,who){
       if(v==='succeeded'){st.innerHTML='<b style="color:var(--ok)">✓ Réponse envoyée.</b> L\'agent reprend la discussion.';if(clicked&&!ANSWERED[q.id]){ANSWERED[q.id]=Date.now();saveAnswered();}}
       else if(v==='failed')st.innerHTML='<b style="color:var(--err)">Réponse refusée par Kronn</b> (déjà répondue ?). Détail dans la carte.';
     }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
-    kronnModal(w,b,title);return w;};
+    kronnModal(w,b,title,()=>({c:who&&chars.find(x=>x.name===who),ico:'❓',tag:'Répondre',name:q.question,small:'Ta réponse : '+b.textContent.trim()}));return w;};
   for(const o of q.options||[]){
     const rec=(q.rec||[]).includes(o.id), lbl=(form?'Tout : ':'')+(rec?'★ ':'')+esc(o.label)+(o.desc?` <span class="qd">· ${esc(o.desc)}</span>`:'');
     opts.appendChild(btn(lbl,(form?'all:':'')+o.id,rec?'on':'',form?'Même réponse pour tout le formulaire':'Réponse à la question'));}
@@ -221,7 +231,7 @@ function askBlock(side,c){
     b.textContent='💬 Demander';
     b.setAttribute('data-kronn-action','bureau-ask');
     b.setAttribute('data-kronn-bindings',JSON.stringify({wf_id:w.wf}));
-    host.appendChild(b);kronnModal(host,b,'Poser une question à '+c.name);box.appendChild(host);
+    host.appendChild(b);kronnModal(host,b,'Poser une question à '+c.name,{c});box.appendChild(host);
   }
 }
 // bouton « ↻ » d'un workflow relançable (ligne de gates.workflows) : page action « bureau-relaunch », sans rien à saisir
@@ -236,7 +246,7 @@ function relaunchBtn(host,w,c,label,note){
     const v=b.getAttribute('data-kronn-action-state');
     if(v==='succeeded')n.innerHTML='<b style="color:var(--ok)">✓ Relancé.</b> L\'agent se met au travail d\'ici une minute sur le plan.';else if(v==='failed')n.innerHTML='<b style="color:var(--err)">Relance refusée</b> (déjà en cours ?). Détail dans la carte.';
   }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
-  host.append(b,n);kronnModal(host,b,'Relancer un workflow');
+  host.append(b,n);kronnModal(host,b,'Relancer un workflow',{c,tag:'↻ Relancer'});
 }
 const lastRun=(c,w)=>c.top&&c.top.filter(r=>String(r.wf).startsWith(String(w.wf).slice(0,8))&&r._s<=T).slice(-1)[0];
 // agent cron : « ⏰ Son programme », un bloc par cron (programme en clair, anneau jusqu'au prochain passage, dernier run)
@@ -320,7 +330,7 @@ function runBlock(side,c){
       const v=b.getAttribute('data-kronn-action-state');
       if(v==='succeeded')hint.innerHTML='<b style="color:var(--ok)">✓ Lancé.</b> '+esc(c.name)+' se met au travail d\'ici une minute.';else if(v==='failed')hint.innerHTML='<b style="color:var(--err)">Refusé :</b> voir la carte.';
     }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
-    sync();host.append(form,b,why,hint);kronnModal(host,b,'Lancer '+clean(w.name));box.appendChild(host);
+    sync();host.append(form,b,why,hint);kronnModal(host,b,'Lancer '+clean(w.name),()=>({c,name:c.name+' : '+clean(w.name)}));box.appendChild(host);
   }
 }
 // carte « Sa musique » : la sandbox interdit tout son externe et les iframes, d'où un lien vers la page du morceau
