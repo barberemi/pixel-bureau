@@ -23,6 +23,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- `publish.py page` et `install.py` pèsent la page avant de l'envoyer : au-delà de la limite de Kronn (1 000 000 octets), rien n'est publié et le message dit de combien elle déborde, bloc par bloc ; alerte à 90 %. `tools/smoke.py` pèse aussi ta vraie config en local et, avec `--chrome`, rejoue la page dans le cadre de Kronn (sandbox et CSP).
 - Plan type et plan d'exemple : le calendrier de l'équipe se décale de 40 px vers la gauche pour faire place au tableau des todos (`objects.todo`) ; un plan sans `objects.todo` n'a pas de tableau.
 - Page plus légère de 80 Ko : les calques de l'éditeur d'avatars passent en palette indexée quand ils ont au plus 256 teintes, pixels identiques (`build_layers.py`, `--recompress` pour `layers.json` sans les sources LPC).
 - Rejouer la journée : un champ pour taper l'heure, une bulle d'heure sur le curseur et les heures sous la frise, la vitesse en un bouton qui défile (×1, ×2, ×10, ×60, ×480, au lieu de ×120, ×480, ×1500), « ⏵ revoir » sur chaque ligne du fil (20 s avant, en ×1 : la scène se rejoue) ; en lecture rapide les personnages marchent plus vite (Gandalf ne traîne plus vers la porte après sa scène).

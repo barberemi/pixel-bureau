@@ -820,7 +820,7 @@ def rebind(ask, old, a):
         say(json.dumps({"agents": agents, "boss_pages": screens}, ensure_ascii=False, indent=1)[:2500])
         return 0
     jdump(cfg, a.config)
-    html = assemble.build(demo=False, cfg=cfg)
+    html = assemble.publishable(cfg)  # trop lourde : PageTooBig, Kronn la refuserait
     k.call("PUT", f"/pages/{cfg['page_id']}/html", {"html": html})
     say(f"✓ config écrite, page republiée ({len(html.encode()) // 1024} Ko)")
     return 0
@@ -936,7 +936,7 @@ def main(argv=None):
             cfg["music"][owner] = song
     jdump(cfg, a.config)
     say(f"✓ config écrite : {os.path.relpath(a.config, ROOT)}")
-    html = assemble.build(demo=False, cfg=cfg)
+    html = assemble.publishable(cfg)  # trop lourde : PageTooBig, Kronn la refuserait
     k.call("PUT", f"/pages/{cfg['page_id']}/html", {"html": html})
     say(f"✓ page publiée ({len(html.encode()) // 1024} Ko)")
     if not a.no_run and not a.disabled:
@@ -955,7 +955,7 @@ def main(argv=None):
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except InstallError as e:
+    except (InstallError, assemble.PageTooBig) as e:  # page trop lourde : la config est écrite, la page pas publiée
         print(f"\n✗ {e}", file=sys.stderr)
         sys.exit(2)
     except (KeyboardInterrupt, EOFError):
