@@ -168,6 +168,8 @@ SHOTS = {
     # volet du Kanban : la fiche d'un ticket à droite des colonnes compactes (démo : actions branchées, PR en conflit), puis sa PR
     "kanban-volet": (1600, 1000, AT(11) + KB_DEMO + "openKanban({who:KB_W,ticket:KB_K});", ".bp-wide"),
     "kanban-volet-pr": (1600, 1000, AT(11) + KB_DEMO + "openKanban({who:KB_W,ticket:KB_K});openPr(prId(KB_P));", ".bp-wide"),
+    # une PR sans ticket dans le sprint (« Ses autres PR ouvertes ») : le Kanban filtré sur son auteur, la PR dans le volet
+    "kanban-volet-pr-seule": (1600, 1000, AT(11) + KB_DEMO + "const _c=kbPeople().find(c=>loosePrs(c.team).length);openPr(prId(loosePrs(_c.team)[0]));", ".bp-wide"),
     # le Kanban filtré sur une personne (barre de portraits en haut)
     "kanban-personne": (1600, 1000, AT(11) + "select('kanban');KB_WHO=kbPeople()[0].key;kanbanFill(document.querySelector('.bp-wbody'));", ".bp-wide"),
     # fiche d'un ticket : ses PR et les workflows à lancer (dataset actions simulé depuis l'équipe de démo)

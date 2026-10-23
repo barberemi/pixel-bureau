@@ -24,6 +24,11 @@ function kbShow(v,fromCard){
   KB_VOL=v;const box=document.querySelector('.bp-wide[data-win="kanban"] .bp-wbody');if(box)kanbanFill(box);
 }
 function kbClose(){KB_VOL=null;KB_BACK=[];const box=document.querySelector('.bp-wide[data-win="kanban"] .bp-wbody');if(box)kanbanFill(box);}
+// une PR cite-t-elle un ticket du sprint ? (ses clés, relevées dans son titre par le cron équipe)
+function kbPrInSprint(id){
+  const x=TEAM&&[...TEAM.people.flatMap(p=>p.prs||[]),...(TEAM.other_prs||[])].find(q=>prId(q)===id);
+  return !!x&&(x.keys||[]).some(k=>ticketOf(k));
+}
 const kbLabel=v=>v.t==='pr'?'PR #'+String(v.id).split('#').pop():v.k;
 function kbCols(){
   const c=byKey[KB_WHO], keys=c&&c.team?new Set(c.team.tickets.map(x=>x.key)):null;
@@ -70,7 +75,9 @@ function kbVolet(m){
   const top=document.createElement('div');top.className='kbv-top';
   const prev=KB_BACK[KB_BACK.length-1];
   if(prev){const b=document.createElement('button');b.type='button';b.className='back';b.textContent='← '+kbLabel(prev);b.onclick=()=>{KB_VOL=KB_BACK.pop();kanbanFill(m.parentNode);};top.appendChild(b);}
-  else top.insertAdjacentHTML('beforeend','<span class="kbv-esc">Échap ferme le volet</span>');
+  // une PR dont aucun ticket n'est dans le sprint (ouverte depuis « Ses autres PR ouvertes ») : aucune carte encadrée, on le dit
+  if(KB_VOL.t==='pr'&&!kbPrInSprint(KB_VOL.id))top.insertAdjacentHTML('beforeend','<span class="kbv-tag">PR sans ticket dans le sprint</span>');
+  else if(!prev)top.insertAdjacentHTML('beforeend','<span class="kbv-esc">Échap ferme le volet</span>');
   const x=document.createElement('button');x.type='button';x.className='bp-x';x.setAttribute('aria-label','Fermer le volet');x.textContent='×';x.onclick=kbClose;top.appendChild(x);
   v.appendChild(top);m.appendChild(v);
   // un nom (auteur, agent du jour) : sa fiche dans le panneau, la fenêtre se ferme et « ← Mur Kanban » la rouvre

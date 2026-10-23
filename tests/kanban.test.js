@@ -44,3 +44,11 @@ test('un lien de ticket ouvre le Kanban filtré sur la personne qui l\'a, la fic
   assert.deepEqual(J('KB_VOL'), {t: 'pr', id: pr.id});
   assert.equal(J('byKey[KB_WHO].team.id'), pr.pid, 'filtré sur l\'auteur de la PR');
 });
+
+test('une PR sans ticket dans le sprint est signalée dans le volet', () => {
+  const r = J(`(()=>{const all=TEAM.people.flatMap(p=>p.prs||[]);
+    const a=all.find(x=>(x.keys||[]).some(k=>ticketOf(k))), b=all.find(x=>!(x.keys||[]).some(k=>ticketOf(k)));
+    return {a:a&&kbPrInSprint(prId(a)), b:b?kbPrInSprint(prId(b)):false};})()`);
+  assert.equal(r.a, true);
+  assert.equal(r.b, false);
+});
