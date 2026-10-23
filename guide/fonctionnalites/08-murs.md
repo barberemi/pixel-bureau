@@ -10,7 +10,15 @@ Les objets du plan sont cliquables, et une règle dit où ils s'ouvrent :
 | --- | --- | --- |
 | ![Kanban](../img/kanban.png) | ![Planning](../img/planning.png) | ![Mises en prod](../img/mep.png) |
 
-- **Kanban** (à droite du bureau du boss) : un clic ouvre le mur en grand, dans une fenêtre large : une colonne par état Jira, une carte par ticket (clé, composant, titre, points, personne), 7 par colonne puis « + N autres » pour la déplier. Un ticket ferme la fenêtre et ouvre sa fiche dans le panneau ; « ← Mur Kanban » rouvre la fenêtre.
+- **Kanban** (à droite du bureau du boss) : un clic ouvre le mur en grand, dans une fenêtre large. En haut, une barre de personnes (portrait, prénom, nombre de tickets) : un clic filtre les colonnes sur ses tickets (ceux de sa fiche : la testeuse voit aussi ce qui attend en test), « Tous » revient au sprint entier, « Non assigné » montre les tickets sans personne. Une colonne par état Jira, une carte par ticket (clé, composant, titre, points, personne), 7 par colonne puis « + N autres » pour la déplier. Un ticket ouvre sa fiche dans un **volet**, à droite des colonnes : la même fiche que partout (PR, chaîne des agents, actions), la carte encadrée dans sa colonne. Les colonnes passent en cartes compactes et « Déployé » se replie en bande (un clic ferme le volet). Un lien du volet ouvre l'autre fiche dedans (sa PR, son ticket), « ← » revient ; × ou Échap ferme le volet, Échap encore la fenêtre. Un portrait d'agent dans le volet ouvre sa fiche dans le panneau (la fenêtre se ferme, « ← Mur Kanban » la rouvre telle quelle). Un lien vers un ticket ou une PR, où qu'il soit sur la page, ouvre aussi le Kanban, filtré sur la personne qui a le ticket ou sur l'auteur de la PR ; une PR qui ne cite aucun ticket du sprint (« Ses autres PR ouvertes » d'une fiche) s'ouvre dans le volet avec l'étiquette « PR sans ticket dans le sprint », sans carte encadrée.
+
+![Le Mur Kanban filtré sur une personne](../img/kanban-personne.png)
+
+| Volet d'un ticket | Sa PR, dans le volet |
+| --- | --- |
+| ![Le volet d'un ticket](../img/kanban-volet.png) | ![La PR du ticket, « ← DM-7637 »](../img/kanban-volet-pr.png) |
+
+![Une PR sans ticket dans le sprint, ouverte depuis la fiche de son auteur](../img/kanban-volet-pr-seule.png)
 - **Prochains crons en post-it** (au fond de la salle Serveurs, entre les deux baies) : un post-it par cron à venir, les trois prochains de la journée (hors crons horaires), de la couleur de l'agent, avec l'heure dessus. Quand le cron a tourné, son post-it tombe et le suivant prend sa place. Au survol, la liste en clair (heure, agent) ; un clic ouvre le planning : les prochains crons de la journée et ceux déjà passés.
 
 ![Prochains crons en post-it, survolés](../img/postit-crons.png)

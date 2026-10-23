@@ -24,10 +24,19 @@ function prsOf(key){
   const all=[...TEAM.people.flatMap(p=>(p.prs||[]).map(x=>({...x,author:p.name}))),...(TEAM.other_prs||[])];
   return all.filter(x=>(x.keys||[]).includes(key));
 }
-const ficheSel=k=>/^(ticket|pr):/.test(String(k)); // fiches d'un ticket ou d'une PR
 // depuis le Kanban (fenêtre), « ← Mur Kanban » la rouvre (winGo, 50-panel.js)
-function openTicket(key){winGo('ticket:'+key);}
-function openPr(id){winGo('pr:'+id);}
+// la fiche d'un ticket ou d'une PR s'ouvre dans le volet du Mur Kanban (63-kanban.js), filtré sur la personne qui a le
+// ticket ou l'auteur de la PR (sa carte est donc visible) ; Kanban déjà ouvert : le volet seul change
+const kbCharOf=p=>p?(chars.find(c=>c.person&&c.team&&c.team.id===p.id)||{}).key||'':'';
+function openTicket(key){
+  if(WIN_OPEN==='kanban')return kbShow({t:'ticket',k:key});
+  const p=TEAM&&TEAM.people.find(q=>q.tickets.some(t=>t.key===key)), un=TEAM&&(TEAM.unassigned||[]).some(t=>t.key===key);
+  openKanban({who:p?kbCharOf(p):un?'-':'',ticket:key});
+}
+function openPr(id){
+  if(WIN_OPEN==='kanban')return kbShow({t:'pr',id});
+  openKanban({who:kbCharOf(TEAM&&TEAM.people.find(q=>(q.prs||[]).some(x=>prId(x)===id))),pr:id});
+}
 // lien vers la fiche : <a data-tk="EW-1234"> ou <a data-pr="owner/dépôt#12"> n'importe où dans la page
 document.addEventListener('click',e=>{
   const a=e.target.closest&&e.target.closest('[data-tk],[data-pr]');
@@ -35,7 +44,6 @@ document.addEventListener('click',e=>{
   e.preventDefault();
   if(a.dataset.tk)openTicket(a.dataset.tk);else openPr(a.dataset.pr);
 });
-const tkOpen=x=>`<a href="#" data-tk="${esc(x.key)}" title="Ouvrir sa fiche et ses actions" style="color:inherit">${esc(x.summary)}</a>`;
 const TK_REV={approved:['approuvée','var(--ok)'],changes:['changements demandés','var(--err)'],pending:['review en attente','var(--warn)']};
 // clés de data-kronn-bindings d'une action : chaque variable liée (son nom chez toi) -> la valeur du champ de la ligne
 // qu'elle relit (ex. {jira_ticket_key: 'EW-1', pr_number: 'EW-1'} pour une ligne {key:'EW-1'}) ; null si rien à lier
@@ -92,7 +100,7 @@ function tkChain(x,prs){
 function agentFace(c,cls){
   const d=document.createElement('div');d.className=cls; // pas un <button> : le cadre pixel des boutons masquerait le portrait
   if(c){d.setAttribute('role','button');d.tabIndex=0;d.title='Fiche de '+c.name;d.appendChild(portrait(c,32));
-    d.onclick=e=>{e.stopPropagation();select(c.key);};d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.onclick(e);}};
+    d.onclick=e=>{e.stopPropagation();winGo(c.key);}; // depuis le volet du Kanban : la fenêtre se ferme, « ← » la rouvred.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.onclick(e);}};
     if(!c.boss&&!c.person){const i=document.createElement('i');i.textContent=agentIcon(c);d.appendChild(i);}}
   else{d.textContent='🤖';d.title='Un workflow du Bureau, sans agent';}
   return d;
@@ -314,6 +322,6 @@ function renderPr(side,id){
     li.innerHTML=`<span class="dot" style="background:${ok?'var(--ok)':ko?'var(--err)':'var(--warn)'}"></span><span class="k" style="white-space:nowrap">${esc(hm(r._s))}</span>`+
       `<a href="#" data-who="${esc(c.key)}" style="color:var(--accent)">${esc(c.name)}</a><span>${esc(clean(r.wf_name))}</span>`;
     ul.appendChild(li);}
-  ul.addEventListener('click',e=>{const a=e.target.closest('[data-who]');if(a){e.preventDefault();select(a.dataset.who);}});
+  ul.addEventListener('click',e=>{const a=e.target.closest('[data-who]');if(a){e.preventDefault();e.stopPropagation();winGo(a.dataset.who);}});
   rb.appendChild(ul);
 }
