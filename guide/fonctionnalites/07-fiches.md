@@ -2,6 +2,10 @@
 
 Clic sur un personnage (plan, panneau ou « Qui fait quoi ») : sa fiche s'ouvre dans le panneau.
 
+**Revenir** : le bouton « ← » en haut du panneau ramène à la vue d'avant, pas forcément à toute l'équipe : la fiche d'un agent ouverte depuis la Fiche de paie affiche « ← Fiche de paie », un ticket ouvert depuis la fiche d'un collègue « ← Gabe », depuis le Mur Kanban « ← Mur Kanban » (la fenêtre se rouvre). **Échap** fait la même chose (pas pendant une saisie ni quand une fenêtre est ouverte : Échap la ferme d'abord).
+
+![« ← Fiche de paie » : la fiche d'un agent ouverte depuis la Fiche de paie](../img/retour-panneau.png)
+
 | Agent | Collègue |
 | --- | --- |
 | ![Fiche d'un agent](../img/fiche-agent.png) | ![Fiche d'un collègue](../img/fiche-collegue.png) |

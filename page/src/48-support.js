@@ -132,19 +132,19 @@ function spGate(el,t,g,dl){
 }
 // Kronn ouvre sa carte dans un bloc ajouté à la fin de l'ancêtre [data-kronn-action-slot-host] du bouton : cet ancêtre
 // enveloppe donc la rangée (bloc pleine largeur), jamais une rangée flex, sinon la carte se range en colonne à côté
-function spHead(panel){
+function spHead(){
   const n=spTodo().length, S=SUPPORT||{};
   const polled=S.polled_at?'Relevé à '+spWhen(S.polled_at)+(S.days?' · '+S.days+' derniers jours':'')+(S.cost?' · '+String(S.cost).replace('.',',')+' $':''):'Pas encore relevé';
   return `<div class="bp-head sp-head"><h2>💬 ${esc(spName())}</h2><span class="sp-pill${n?' sp-hot':''}">${n?n+' à traiter':'rien à traiter'}</span>`+
-    (panel?'':`<button type="button" class="bp-x" aria-label="Fermer">×</button>`)+'</div>'+
+    '</div>'+
     `<div class="sp-bar"><span class="sp-s">${esc(polled)}${S.demo?' (démo)':''}</span></div>`+ // relever maintenant : « ↻ » du panneau Fraîcheur
     (S.error?`<p class="sp-err">Dernier relevé en échec : ${esc(S.error)}</p>`:'');
 }
 // la console : dans le panneau de droite, comme la boîte aux lettres (les cartes Kronn s'ouvrent en fenêtre, 55-actions.js)
 function openSupport(){if(supportOpenable())select('support');}
-function renderSupport(side){const box=document.createElement('div');box.className='sp-side';side.appendChild(box);spFill(box,true);}
-function spFill(box,panel){
-  box.innerHTML=spHead(panel);
+function renderSupport(side){const box=document.createElement('div');box.className='sp-side';side.appendChild(box);spFill(box);}
+function spFill(box){
+  box.innerHTML=spHead();
   const l=spThreads().sort((a,b)=>ms(b.at)-ms(a.at));
   for(const t of l)box.appendChild(spCard(t));
   if(!l.length){const S=SUPPORT||{};box.insertAdjacentHTML('beforeend',`<div class="sp-empty"><div class="sp-e-ico">${S.polled_at?'🧯':'📡'}</div><b>${S.polled_at?'Rien à signaler':'Pas encore de relevé'}</b>`+

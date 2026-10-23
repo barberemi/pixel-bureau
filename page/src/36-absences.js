@@ -70,7 +70,7 @@ function renderCalendar(side){
     `<div class="calweeks"><div><h3>Cette semaine</h3>${table(d.slice(0,5))}</div><div><h3>Semaine prochaine</h3>${table(d.slice(5,10))}</div></div>`+
     `<p class="sub"><span class="calk">●</span> au bureau · 🏠 télétravail · — absence · une case coupée = demi-journée (matin | après-midi)</p>`+
     `<p class="sub">Jamais la raison d'une absence. Un nom ouvre sa fiche.</p>`;
-  box.addEventListener('click',e=>{const a=e.target.closest('[data-who]');if(a){e.preventDefault();if(WIN_OPEN)closeBossPages(false);select(a.dataset.who);}});
+  box.addEventListener('click',e=>{const a=e.target.closest('[data-who]');if(a){e.preventDefault();winGo(a.dataset.who);}});
   side.appendChild(box);
 }
 // le petit calendrier au mur du bureau du boss (layout objects.calendar), seulement avec un planning

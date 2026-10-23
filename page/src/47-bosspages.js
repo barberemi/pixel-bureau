@@ -129,6 +129,7 @@ function bossPagesWire(box){
 // revient à l'élément qui l'avait ; ouverte d'un clic sur le canvas (non focalisable), il n'y en a pas : le focus revient
 // alors au plan (tabindex -1, hors de l'ordre de tabulation), là où était l'écran cliqué, et Tab reprend aux boutons du rejeu
 let BP_BACK=null, BP_INERT=[];
+const BP_ESC='<span class="bp-esc" aria-hidden="true">Échap pour fermer</span>'; // en-tête de chaque fenêtre
 const bpFocusables=box=>[...box.querySelectorAll('a[href],button:not([disabled]),input,select,textarea')];
 function openBossPages(){
   const back=BP_BACK||document.activeElement; // réouverture : on garde l'élément d'avant la première ouverture
@@ -136,7 +137,7 @@ function openBossPages(){
   BP_BACK=back;
   const bd=document.createElement('div');bd.className='bp-backdrop';bd.onclick=()=>closeBossPages();
   const box=document.createElement('div');box.className='bp-modal';box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label','Mes pages Kronn');
-  box.innerHTML=`<div class="bp-head"><h2>Mes pages Kronn</h2><button type="button" class="bp-x" aria-label="Fermer">×</button></div><div data-kronn-action-slot-host>${ACTIONS.pages?'<div class="bp-confirm" hidden></div>':''}<div class="bp-grid">${bossPagesHtml()}</div>${ACTIONS.pages?projoInfoHtml():''}${bossAddHtml()}</div>`;
+  box.innerHTML=`<div class="bp-head"><h2>Mes pages Kronn</h2>${BP_ESC}<button type="button" class="bp-x" aria-label="Fermer">×</button></div><div data-kronn-action-slot-host>${ACTIONS.pages?'<div class="bp-confirm" hidden></div>':''}<div class="bp-grid">${bossPagesHtml()}</div>${ACTIONS.pages?projoInfoHtml():''}${bossAddHtml()}</div>`;
   BP_INERT=[...document.body.children].filter(e=>!e.inert&&e.tagName!=='SCRIPT');
   BP_INERT.forEach(e=>{e.inert=true;});
   document.body.append(bd,box);
@@ -161,7 +162,7 @@ function openWide(k,title,fill){
   closeBossPages(false);BP_BACK=back;WIN_OPEN=k;WIDE[k]=fill;
   const bd=document.createElement('div');bd.className='bp-backdrop';bd.onclick=()=>closeBossPages();
   const box=document.createElement('div');box.className='bp-modal bp-wide';box.dataset.win=k;box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label',title);
-  box.innerHTML=`<div class="bp-head"><h2>${esc(title)}</h2><button type="button" class="bp-x" aria-label="Fermer">×</button></div><div class="bp-wbody"></div>`;
+  box.innerHTML=`<div class="bp-head"><h2>${esc(title)}</h2>${BP_ESC}<button type="button" class="bp-x" aria-label="Fermer">×</button></div><div class="bp-wbody"></div>`;
   BP_INERT=[...document.body.children].filter(e=>!e.inert&&e.tagName!=='SCRIPT');BP_INERT.forEach(e=>{e.inert=true;});
   document.body.append(bd,box);box.querySelector('.bp-x').onclick=()=>closeBossPages();
   fill(box.querySelector('.bp-wbody'));box.querySelector('.bp-x').focus();

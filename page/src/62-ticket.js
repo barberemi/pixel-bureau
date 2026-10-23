@@ -3,7 +3,6 @@
 // d'action Kronn (bureau-impl, bureau-mep, bureau-review, bureau-fix ; clé launch de la config) : Kronn relit côté
 // serveur la clé du ticket ou le n° de PR dans le dataset actions (cron équipe), puis suit le run dans sa carte.
 let ACTS=null; // dataset actions : {tickets[{key,cat,pr}], prs[{id,n,repo}]} ; id = « owner/dépôt#n » (#56)
-let TICKET_BACK=null; // la vue d'où l'on vient (Kanban, un collègue) : bouton retour
 function readActs(src){
   try{
     if(!src||!src.datasets)return null;
@@ -25,16 +24,10 @@ function prsOf(key){
   const all=[...TEAM.people.flatMap(p=>(p.prs||[]).map(x=>({...x,author:p.name}))),...(TEAM.other_prs||[])];
   return all.filter(x=>(x.keys||[]).includes(key));
 }
-const ficheSel=k=>/^(ticket|pr):/.test(String(k)); // fiches d'un ticket ou d'une PR : le retour mène à la vue d'avant
-function openTicket(key){
-  if(WIN_OPEN){TICKET_BACK=WIN_OPEN;closeBossPages(false);} // depuis le Kanban (fenêtre) : « ← Mur Kanban » la rouvre
-  else if(!ficheSel(sel))TICKET_BACK=sel;
-  select('ticket:'+key);
-}
-function openPr(id){
-  if(!ficheSel(sel))TICKET_BACK=sel;
-  select('pr:'+id);
-}
+const ficheSel=k=>/^(ticket|pr):/.test(String(k)); // fiches d'un ticket ou d'une PR
+// depuis le Kanban (fenêtre), « ← Mur Kanban » la rouvre (winGo, 50-panel.js)
+function openTicket(key){winGo('ticket:'+key);}
+function openPr(id){winGo('pr:'+id);}
 // lien vers la fiche : <a data-tk="EW-1234"> ou <a data-pr="owner/dépôt#12"> n'importe où dans la page
 document.addEventListener('click',e=>{
   const a=e.target.closest&&e.target.closest('[data-tk],[data-pr]');

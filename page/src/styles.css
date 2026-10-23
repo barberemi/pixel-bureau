@@ -212,6 +212,8 @@ body.km-on .side:has(.kmodal){z-index:50} /* le panneau est sticky (plan d'empil
   padding:18px 20px 20px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.45)}
 .bp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .bp-head h2{margin:0;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.bp-esc{margin:0 10px 0 auto;font-size:11px;color:var(--muted);white-space:nowrap}@media (max-width:640px){.bp-esc{display:none}}
+button.back kbd{font:10px ui-monospace,Menlo,monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;margin-left:8px;color:var(--muted);background:var(--bg);vertical-align:1px}
 .bp-x{border:0;background:var(--chip);color:var(--ink);border-radius:8px;width:30px;height:30px;font-size:18px;line-height:1;cursor:pointer}
 /* fenêtre large (Kanban, calendrier) : la même fenêtre, sur 1200 px */
 .bp-modal.bp-wide{left:max(16px,calc(50% - 600px));width:min(1200px,calc(100vw - 32px))}

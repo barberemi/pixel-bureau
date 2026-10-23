@@ -391,6 +391,8 @@ function rank(c){
     off:8
   }[s]??5)*100+chars.indexOf(c);
 }
-function select(k){if(EDIT)closeEditor();if(k==='kanban'||k==='calendar'){(k==='kanban'?openKanban:openCalendar)();return;} // Kanban, calendrier : en fenêtre large
+// back : retour par l'historique (50-panel.js), sans y ajouter la vue quittée
+function select(k,back){if(EDIT)closeEditor();if(WIN_VIEWS[k]){WIN_VIEWS[k]();return;} // Kanban, calendrier : en fenêtre large
+  if(k==null)SEL_BACK=[];else if(!back&&k!==sel){SEL_BACK.push(sel);if(SEL_BACK.length>20)SEL_BACK.shift();}
   sel=k;if(k)SIDE_FOLDED=false;renderSide(true);} // choisir quelqu'un rouvre le panneau replié
 
