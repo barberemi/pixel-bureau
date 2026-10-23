@@ -233,6 +233,7 @@ button.back kbd{font:10px ui-monospace,Menlo,monospace;border:1px solid var(--li
 .kbp-b .n{font-size:10px;color:var(--muted);background:var(--chip);border-radius:999px;padding:0 6px}
 .kbp-b.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}.kbp-b.on .n{background:rgba(255,255,255,.25);color:inherit}
 .kbw-none{color:var(--muted);font-size:12px}
+.tk-sum{font-size:12px;color:var(--muted);margin:6px 0 10px}.tk-sum b{color:var(--ink)}.tk-go{width:100%;margin-bottom:6px}
 /* volet du Kanban : la fiche du ticket ou de la PR à droite des colonnes, qui passent en cartes compactes */
 .kbm{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
 .kb-vol .kbm{grid-template-columns:minmax(0,1fr) 400px}

@@ -177,32 +177,6 @@ function workBlock(side,c){
     d.appendChild(ul);box.appendChild(d);
   }
 }
-// une ligne de « Ses tickets » : clé (🐛 si bug), composant (le « [Panier] » du titre), points (0 compris), titre,
-// puis depuis quand il est dans sa colonne (orange : bloqué, en review ou en test depuis plus de BLOCKED_DAYS jours), « Réouvert », ses PR ouvertes
-const tkPts=v=>v==null||v===''?'':`<span class="k pts">${esc(+v)} pt${+v>1?'s':''}</span>`;
-function tkRow(x){const li=document.createElement('li');li.className='tkr';li.innerHTML=tkRowHtml(x);return li;}
-function tkRowHtml(x){
-  const {comp,title}=tkComp(x.summary), u=tkSince(x);
-  const meta=[];
-  if(x.cat!=='done'&&x.cat!=='todo'&&u&&u<=T){
-    const age=tkAge(x,T), stuck=(x.cat==='review'||x.cat==='test')&&T-u>BLOCKED_DAYS*864e5;
-    meta.push(`<span${stuck?' class="warn" title="Bloqué : sans bouger depuis plus de '+BLOCKED_DAYS+' j">⏳ ':'>'}${age?'depuis '+age:u>=DAY0?"aujourd'hui":'depuis hier'}</span>`);
-  }
-  if(x.status&&x.status===FLOW.reopened)meta.push('<span class="tk-tag">Réouvert</span>');
-  for(const p of prsOf(x.key)){
-    const r=p.draft?['brouillon','var(--idle)']:TK_REV[p.review]||TK_REV.pending;
-    meta.push(`<span><span class="dot" style="background:${r[1]}"></span><a href="#" data-pr="${esc(prId(p))}" title="Fiche de la PR">${esc(prNum(p))}</a> ${r[0]}</span>`,...prMarks(p));
-  }
-  return `<div class="tk-top">${x.type==='Bug'?'<span title="Bug">'+TYPE_ICO.Bug+'</span>':''}<a class="tk-key" href="${JIRA_BROWSE}${encodeURIComponent(x.key)}" target="_blank" rel="noopener" title="Ouvrir dans Jira">${esc(x.key)}</a>`+
-    `${comp?`<span class="tk-comp">${esc(comp)}</span>`:''}${tkPts(x.points)}</div>`+
-    `<div class="tk-t">${tkOpen({...x,summary:title})}</div>${meta.length?`<div class="tk-meta">${meta.join('')}</div>`:''}`;
-}
-// ordre dans un groupe de « Ses tickets » : le plus ancien dans sa colonne d'abord ; déployés : le plus récent d'abord
-function tkSorted(list,k){
-  if(k==='done')return list.slice().sort((a,b)=>(ms(b.updated)||0)-(ms(a.updated)||0));
-  if(k==='todo')return list;
-  return list.slice().sort((a,b)=>(tkSince(a)||Infinity)-(tkSince(b)||Infinity));
-}
 // barre en tête de « Ses tickets » : un segment par colonne, aux couleurs des groupes, en points (en tickets si aucun n'est estimé)
 function tkBarHtml(tickets){
   const byPts=tickets.some(x=>+x.points>0), w=x=>byPts?(+x.points||0):1;
@@ -284,18 +258,15 @@ function renderPerson(side,c){
     m.textContent='Sprint '+TEAM.sprint.name+(p.gh.length?' · GitHub : '+p.gh.join(', '):'');
     side.appendChild(m);
   }
-  const tb=foldSection(side,'tickets','Ses tickets',p.tickets.length);
+  // « Ses tickets » : la barre par colonne, le compte par colonne et le Mur Kanban filtré sur lui (63-kanban.js), où sont
+  // ses tickets, leurs fiches et leurs actions
+  const tb=foldSection(side,'tickets','Ses tickets',p.tickets.length,true);
   if(!p.tickets.length){const e=document.createElement('div');e.className='empty';e.textContent='Aucun ticket.';tb.appendChild(e);}
-  else{const bar=document.createElement('div');bar.innerHTML=tkBarHtml(p.tickets);tb.appendChild(bar);}
-  for(const k of TORDER){
-    const list=p.tickets.filter(x=>x.cat===k); if(!list.length)continue;
-    const d=memoDetails(document.createElement('details'),c.key+':'+k,k!=='done'&&k!=='todo');
-    const pts=list.reduce((a,x)=>a+(+x.points||0),0);
-    d.className='tkg';d.style.setProperty('--c',TCAT[k].c); // liseré aux couleurs de la colonne
-    d.innerHTML=`<summary><span class="chev" aria-hidden="true"></span><span class="wn">${TCAT[k].t}</span><span class="du">${list.length} ticket${list.length>1?'s':''}${pts?' · '+Math.round(pts)+' pts':''}</span></summary>`;
-    const ul=document.createElement('ul');ul.className='steps';
-    for(const x of tkSorted(list,k))ul.appendChild(tkRow(x));
-    d.appendChild(ul);tb.appendChild(d);
+  else{
+    const n=k=>p.tickets.filter(x=>x.cat===k).length, d=document.createElement('div');
+    d.innerHTML=tkBarHtml(p.tickets)+`<div class="tk-sum">${TORDER.filter(n).map(k=>`<b>${n(k)}</b> ${esc(TCAT[k].t.toLowerCase())}`).join(' · ')}</div>`;
+    const b=document.createElement('button');b.type='button';b.className='on tk-go';b.textContent='▦ Ses tickets dans le Kanban';b.onclick=()=>openKanban({who:c.key});
+    d.appendChild(b);tb.appendChild(d);
   }
   const loose=loosePrs(p);
   if(loose.length){
