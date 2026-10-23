@@ -27,7 +27,8 @@ function prsOf(key){
 }
 const ficheSel=k=>/^(ticket|pr):/.test(String(k)); // fiches d'un ticket ou d'une PR : le retour mène à la vue d'avant
 function openTicket(key){
-  if(!ficheSel(sel))TICKET_BACK=sel;
+  if(WIN_OPEN){TICKET_BACK=WIN_OPEN;closeBossPages(false);} // depuis le Kanban (fenêtre) : « ← Mur Kanban » la rouvre
+  else if(!ficheSel(sel))TICKET_BACK=sel;
   select('ticket:'+key);
 }
 function openPr(id){

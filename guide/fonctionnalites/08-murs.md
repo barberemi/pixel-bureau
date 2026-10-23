@@ -6,7 +6,7 @@ Les objets du plan sont cliquables et ouvrent leur détail dans le panneau.
 | --- | --- | --- |
 | ![Kanban](../img/kanban.png) | ![Planning](../img/planning.png) | ![Mises en prod](../img/mep.png) |
 
-- **Kanban** (à droite du bureau du boss) : tickets et points par colonne Jira.
+- **Kanban** (à droite du bureau du boss) : un clic ouvre le mur en grand, dans une fenêtre large : une colonne par état Jira, une carte par ticket (clé, composant, titre, points, personne), 7 par colonne puis « + N autres » pour la déplier. Un ticket ferme la fenêtre et ouvre sa fiche dans le panneau ; « ← Mur Kanban » rouvre la fenêtre.
 - **Prochains crons en post-it** (au fond de la salle Serveurs, entre les deux baies) : un post-it par cron à venir, les trois prochains de la journée (hors crons horaires), de la couleur de l'agent, avec l'heure dessus. Quand le cron a tourné, son post-it tombe et le suivant prend sa place. Au survol, la liste en clair (heure, agent) ; un clic ouvre le planning : les prochains crons de la journée et ceux déjà passés.
 
 ![Prochains crons en post-it, survolés](../img/postit-crons.png)

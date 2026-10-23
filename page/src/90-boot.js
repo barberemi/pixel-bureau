@@ -216,8 +216,8 @@ window.addEventListener('kronn:page-data',e=>{
   const ag=readAgents(k);
   if(ag)applyAgents(ag);
   const lay=readLayout(k);
-  if(lay!==undefined&&applyLayout(lay||EMBEDDED_LAYOUT))return; // applyLayout a déjà tout rafraîchi
-  refreshAll();
+  if(lay!==undefined&&applyLayout(lay||EMBEDDED_LAYOUT)){wideRefresh();return;} // applyLayout a déjà tout rafraîchi
+  refreshAll();wideRefresh(); // 47-bosspages.js : la fenêtre large ouverte suit
   });
 if(TV){document.body.classList.add('tv');NAMES_BEFORE_TV=NAMES;NAMES='all';}
 applyViewParams(window.KronnPageData); // #page/<id>?tv=1 : l'écran mural démarre en mode TV

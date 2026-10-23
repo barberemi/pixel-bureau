@@ -149,7 +149,7 @@ SHOTS = {
                        "const k=chars.find(c=>c.roleKind==='qa');k.jira_id=k.jira_id||'qa';TEAM.work=Object.assign({},TEAM.work,{[k.jira_id]:"
                        "{written:[{key:'DM-7801',summary:'[Stock] Alerter sous 10 ramettes'},{key:'DM-7802',summary:'[Panier] Garder le panier 30 jours'}],"
                        "triaged:[],tested:Array.from({length:7},(_,i)=>({key:'DM-75'+(10+i),summary:'Ticket testé'})),reopened:[]}});select(k.key);", "#side"),
-    "kanban": (1400, 1400, AT(11) + "select('kanban');", "#side"),
+    "kanban": (1600, 1000, AT(11) + "select('kanban');", ".bp-wide"),
     # fiche d'un ticket : ses PR et les workflows à lancer (dataset actions simulé depuis l'équipe de démo)
     "fiche-ticket": (1400, 1400, AT(11) + "ACTIONS.estimate=true;ACTION_BINDS['bureau-estimate']={jira_ticket_key:'key'};const all=TEAM.people.flatMap(p=>p.tickets),prs=TEAM.people.flatMap(p=>p.prs);"
                      "ACTS={tickets:all.map(t=>({key:t.key})),prs:prs.map(x=>({id:prId(x),n:String(x.n),repo:prRepo(x)}))};"

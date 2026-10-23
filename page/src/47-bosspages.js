@@ -152,7 +152,24 @@ function closeKronnCardIn(root){
   const btn=host&&host.querySelector('[data-kronn-action]');
   if(btn)btn.click();
 }
+// fenêtre large (Kanban, calendrier) : la même fenêtre que Mes pages Kronn, sur 1200 px ; WIN_OPEN dit laquelle est ouverte
+// (un ticket ou un nom cliqué dedans la referme et ouvre sa fiche dans le panneau ; « ← » la rouvre)
+let WIN_OPEN=null;
+const WIDE={};
+function openWide(k,title,fill){
+  const back=BP_BACK||document.activeElement;
+  closeBossPages(false);BP_BACK=back;WIN_OPEN=k;WIDE[k]=fill;
+  const bd=document.createElement('div');bd.className='bp-backdrop';bd.onclick=()=>closeBossPages();
+  const box=document.createElement('div');box.className='bp-modal bp-wide';box.dataset.win=k;box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label',title);
+  box.innerHTML=`<div class="bp-head"><h2>${esc(title)}</h2><button type="button" class="bp-x" aria-label="Fermer">×</button></div><div class="bp-wbody"></div>`;
+  BP_INERT=[...document.body.children].filter(e=>!e.inert&&e.tagName!=='SCRIPT');BP_INERT.forEach(e=>{e.inert=true;});
+  document.body.append(bd,box);box.querySelector('.bp-x').onclick=()=>closeBossPages();
+  fill(box.querySelector('.bp-wbody'));box.querySelector('.bp-x').focus();
+}
+// la fenêtre large ouverte suit les données (équipe, absences)
+function wideRefresh(){const box=document.querySelector('.bp-wide');if(box&&WIDE[box.dataset.win])WIDE[box.dataset.win](box.querySelector('.bp-wbody'));}
 function closeBossPages(restore=true){
+  WIN_OPEN=null;
   const was=!!document.querySelector('.bp-modal');
   document.querySelectorAll('.bp-modal').forEach(closeKronnCardIn);
   document.querySelectorAll('.bp-backdrop,.bp-modal').forEach(e=>e.remove());
