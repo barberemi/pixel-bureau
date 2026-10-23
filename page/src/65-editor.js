@@ -253,7 +253,7 @@ function renderEditor(side,c){
   const hint=document.createElement('div');hint.className='hint';hint.id='avhint';
   hint.innerHTML="Kronn va te demander un <b>code avatar</b> : ce bouton le copie pour toi, il n'y a qu'à le coller.";
   save.onclick=()=>{const e=editorEntry();keepLocal(e);EDIT.hint=e.at;codeHint(hint,avatarCode(e),'Code avatar',"toute l'équipe le verra d'ici quelques secondes");};
-  team.append(save,hint);kronnModal(team,save,'Enregistrer l’avatar pour l’équipe');
+  team.append(save,hint);kronnModal(team,save,'Enregistrer l’avatar pour l’équipe',()=>({c:EDIT&&byKey[EDIT.k],name:EDIT&&byKey[EDIT.k]?byKey[EDIT.k].name:'Avatar',small:'Toute l’équipe le verra.'}));
   // Kronn marque le bouton (data-kronn-action-state) quand le run avance : on suit pour confirmer sans attendre la relecture des données
   new MutationObserver(()=>{const st=save.getAttribute('data-kronn-action-state');if(!EDIT||!EDIT.hint)return;
     if(st==='succeeded')hint.innerHTML="<b style=\"color:var(--ok)\">✓ Enregistré pour toute l'équipe.</b> Les autres le verront au prochain rafraîchissement de la page (30 s environ).";

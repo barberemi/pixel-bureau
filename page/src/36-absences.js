@@ -57,8 +57,9 @@ function calCell(c,day){
   if(am===pm)return `<td class="calc ${am}${today}" title="${CAL_TXT[am]||''}">${CAL_ICON[am]||''}</td>`;
   return `<td class="calc split${today}" title="matin : ${CAL_TXT[am]||'?'} · après-midi : ${CAL_TXT[pm]||'?'}"><i class="${am}">${CAL_ICON[am]||''}</i><i class="${pm}">${CAL_ICON[pm]||''}</i></td>`;
 }
+// le calendrier : une fenêtre large, les deux semaines côte à côte ; un nom ferme la fenêtre et ouvre sa fiche
+function openCalendar(){openWide('calendar',"📅 Calendrier de l'équipe",box=>{box.innerHTML='';renderCalendar(box);});}
 function renderCalendar(side){
-  const h=document.createElement('h2');h.textContent="📅 Calendrier de l'équipe";side.appendChild(h);
   if(!ABSENCES){const p=document.createElement('p');p.className='muted';p.textContent='Pas encore de planning : il arrive avec le cron « absences ».';side.appendChild(p);return;}
   const ppl=chars.filter(c=>c.person&&c.sprite!=='temp'&&(ABSENCES.people||{})[c.key]);
   const fmt=d=>dtf('fr-FR',{weekday:'short',day:'numeric',timeZone:'UTC'}).format(new Date(d+'T12:00:00Z')).replace('.','');
@@ -66,10 +67,10 @@ function renderCalendar(side){
     ppl.map(c=>`<tr><th><a href="#" class="lk lk-who" data-who="${esc(c.key)}">${esc(c.name)}</a></th>${days.map(d=>calCell(c,d)).join('')}</tr>`).join('')+'</tbody></table>';
   const d=ABSENCES.days||[], box=document.createElement('div');box.className='calbox';
   box.innerHTML=`<p class="sub">Qui est là, d'après le planning de l'équipe · ${ABSENCES.demo?'démo':'mis à jour à '+hm(ms(ABSENCES.generated_at))}</p>`+
-    `<h3>Cette semaine</h3>${table(d.slice(0,5))}<h3>Semaine prochaine</h3>${table(d.slice(5,10))}`+
+    `<div class="calweeks"><div><h3>Cette semaine</h3>${table(d.slice(0,5))}</div><div><h3>Semaine prochaine</h3>${table(d.slice(5,10))}</div></div>`+
     `<p class="sub"><span class="calk">●</span> au bureau · 🏠 télétravail · — absence · une case coupée = demi-journée (matin | après-midi)</p>`+
     `<p class="sub">Jamais la raison d'une absence. Un nom ouvre sa fiche.</p>`;
-  box.addEventListener('click',e=>{const a=e.target.closest('[data-who]');if(a){e.preventDefault();select(a.dataset.who);}});
+  box.addEventListener('click',e=>{const a=e.target.closest('[data-who]');if(a){e.preventDefault();winGo(a.dataset.who);}});
   side.appendChild(box);
 }
 // le petit calendrier au mur du bureau du boss (layout objects.calendar), seulement avec un planning

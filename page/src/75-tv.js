@@ -4,7 +4,7 @@ let NAMES_BEFORE_TV=null, TICK_SIG='';
 function setTv(on,remember=true){
   TV=on;if(remember)try{localStorage.setItem('bureau:tv',on?'1':'0');}catch(e){}
   document.body.classList.toggle('tv',on);
-  if(on){NAMES_BEFORE_TV=NAMES;NAMES='all';if(EDIT)closeEditor();sel=null;renderSide(true);
+  if(on){NAMES_BEFORE_TV=NAMES;NAMES='all';if(EDIT)closeEditor();sel=null;SEL_BACK=[];renderSide(true);
     try{const el=document.documentElement;if(el.requestFullscreen&&!document.fullscreenElement)el.requestFullscreen().catch(()=>{});}catch(e){}}
   else{if(NAMES_BEFORE_TV)NAMES=NAMES_BEFORE_TV;try{if(document.fullscreenElement)document.exitFullscreen();}catch(e){}}
   updateTv(true);

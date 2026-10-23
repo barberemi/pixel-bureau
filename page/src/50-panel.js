@@ -89,26 +89,58 @@ function refreshStatus(){
   const box=document.querySelector('#side .stbox'), c=box&&byKey[box.dataset.key]; if(!c)return;
   const h=statusHtml(c._st||stateAt(c,T)); if(box.dataset.sig!==h)box.innerHTML=box.dataset.sig=h;
 }
+// historique du panneau : « ← » ramène à la vue d'avant (une personne, un ticket, la Fiche de paie…), Échap aussi.
+// Le Kanban et le calendrier s'ouvrent en fenêtre (WIN_VIEWS) : quand on en sort par un ticket ou un nom, ils entrent dans
+// l'historique, et « ← » les rouvre par-dessus la vue d'où on les avait ouverts.
+let SEL_BACK=[];
+const WIN_VIEWS={kanban:()=>openKanban(),calendar:()=>openCalendar()};
+function backLabel(k){
+  if(k==null)return "Toute l'équipe";
+  if(byKey[k])return byKey[k].name;
+  const s=String(k);
+  if(s.startsWith('ticket:'))return s.slice(7);
+  if(s.startsWith('pr:'))return 'PR #'+s.split('#').pop();
+  if(s.startsWith('mail:'))return 'Courrier';
+  if(s.startsWith('gate:'))return 'Validation';
+  return {kanban:'Mur Kanban',calendar:'Calendrier',tv:'Mises en prod',emp:'Employé du sprint',planning:'Planning des crons',paie:'Fiche de paie',duck:'Le canard',support:'Support'}[s]||"Toute l'équipe";
+}
+function goBack(){
+  const k=SEL_BACK.length?SEL_BACK.pop():null;
+  if(WIN_VIEWS[k]){select(SEL_BACK.length?SEL_BACK.pop():null,true);WIN_VIEWS[k]();return;}
+  select(k,true);
+}
+// depuis une fenêtre large : elle se ferme, la fiche s'ouvre dans le panneau, et la fenêtre entre dans l'historique
+function winGo(k){
+  const w=WIN_OPEN;
+  if(!w)return select(k);
+  closeBossPages(false);SEL_BACK.push(sel,w);select(k,true);
+}
+function backButton(side){
+  const b=document.createElement('button');b.className='back';
+  b.innerHTML='← '+esc(backLabel(SEL_BACK.length?SEL_BACK[SEL_BACK.length-1]:null))+'<kbd aria-hidden="true">Échap</kbd>';
+  b.title='Revenir (Échap)';b.onclick=goBack;side.appendChild(b);return b;
+}
+// Échap revient en arrière dans le panneau (ou referme l'éditeur d'avatar) ; pas pendant une fenêtre, une carte Kronn, la
+// loupe, le mode TV ou une saisie. En capture : on regarde avant que la fenêtre ou la loupe ne se referment sur la même touche.
+addEventListener('keydown',e=>{
+  if(e.key!=='Escape'||TV||(sel==null&&!EDIT))return;
+  if(document.querySelector('.bp-modal')||KM_OPEN||(typeof LOUPE!=='undefined'&&LOUPE.cur))return;
+  const a=document.activeElement;if(a&&/^(SELECT|INPUT|TEXTAREA)$/.test(a.tagName))return;
+  if(EDIT){closeEditor();renderSide(true);return;}
+  goBack();
+},true);
 function drawSide(side){
-  if(ficheSel(sel)){ // fiche d'un ticket ou d'une PR (62-ticket.js) : retour à la vue d'où l'on vient
-    const back=document.createElement('button');
-    back.className='back';
-    const to=TICKET_BACK&&(byKey[TICKET_BACK]||['kanban','emp'].includes(TICKET_BACK))?TICKET_BACK:null;
-    back.textContent=to==='kanban'?'← Mur Kanban':to&&byKey[to]?'← '+byKey[to].name:"← Toute l'équipe";
-    back.onclick=()=>select(to);
-    side.appendChild(back);
+  if(ficheSel(sel)){ // fiche d'un ticket ou d'une PR (62-ticket.js)
+    backButton(side);
     if(String(sel).startsWith('pr:'))renderPr(side,sel.slice(3));else renderTicket(side,sel.slice(7));
     return;
   }
-  if(sel==='tv'||sel==='emp'||sel==='kanban'||sel==='planning'||sel==='paie'||sel==='duck'||sel==='calendar'||String(sel).startsWith('gate:')||String(sel).startsWith('mail:')){
-    const back=document.createElement('button');
-    back.className='back';
-    back.textContent="← Toute l'équipe";
-    back.onclick=()=>select(null);
-    side.appendChild(back);
+  if(sel==='tv'||sel==='emp'||sel==='planning'||sel==='paie'||sel==='duck'||sel==='support'||String(sel).startsWith('gate:')||String(sel).startsWith('mail:')){
+    backButton(side);
     if(String(sel).startsWith('gate:')){renderLoneGate(side,sel.slice(5));return;}
     if(String(sel).startsWith('mail:')){renderMail(side,sel.slice(5));return;} // 48-mail.js
-    ({tv:renderTv,emp:renderEmp,kanban:renderKanban,planning:renderPlanning,paie:renderPaie,duck:renderDuck,calendar:renderCalendar})[sel](side);
+    if(sel==='support'){renderSupport(side);return;} // 48-support.js
+    ({tv:renderTv,emp:renderEmp,planning:renderPlanning,paie:renderPaie,duck:renderDuck})[sel](side);
     return;
   }
   if(!sel||!byKey[sel]){
@@ -183,11 +215,7 @@ function drawSide(side){
   }
   const c=byKey[sel], st=c._st||stateAt(c,T);
   if(EDIT&&EDIT.k===c.key){renderEditor(side,c);return;}
-  const back=document.createElement('button');
-  back.className='back';
-  back.textContent="← Toute l'équipe";
-  back.onclick=()=>select(null);
-  side.appendChild(back);
+  backButton(side);
   const f=document.createElement('div');f.className='face';f.appendChild(portrait(c,64));
   const ft=document.createElement('div');
   ft.innerHTML=`<div class="n">${esc(agentTag(c)+c.name)}${c.apprentice?' <span class="appr">🎓 apprenti</span>':''}</div><div class="r">${esc(c.role)}${c.name!==c.baseName?' · '+esc(c.baseName):''}</div>`;

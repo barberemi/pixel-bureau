@@ -15,7 +15,7 @@ Le Bureau sait qui est là : il lit le planning de l'équipe (le classeur Excel 
 
 ## Le calendrier de l'équipe
 
-Un petit calendrier est accroché au mur du bureau du boss, à gauche de son fauteuil, à côté du tableau en liège de tes todos ([Mes todos](18-todos.md)). Un clic dessus ouvre la fiche « Calendrier de l'équipe » : cette semaine et la suivante, du lundi au vendredi (le week-end, à partir du lundi qui vient).
+Un petit calendrier est accroché au mur du bureau du boss, à gauche de son fauteuil, à côté du tableau en liège de tes todos ([Mes todos](18-todos.md)). Un clic dessus ouvre la fenêtre « Calendrier de l'équipe » : cette semaine et la suivante côte à côte (l'une sous l'autre sur un écran étroit), du lundi au vendredi (le week-end, à partir du lundi qui vient). Un nom ferme la fenêtre et ouvre sa fiche dans le panneau.
 
 ![Calendrier de l'équipe](../img/calendrier.png)
 

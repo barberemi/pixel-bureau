@@ -74,7 +74,7 @@ SHOTS = {
                  "txt:'Je regarde avec Karen'},{k:'ask',at:iso(12.2),wf:byKey.creed.wf[0],q:'Pourquoi tes derniers runs échouent ?'}];FEED_MODE='all';renderFeed();document.querySelector('#feed').style.maxHeight='960px';"
                  "document.querySelector('#feed').style.overflow='hidden';", ".feed"),
     # absences (démo : Clark absent, Darryl absent le matin, Holly en télétravail) : fiche du calendrier de l'équipe
-    "calendrier": (1400, 1600, AT(11) + "select('calendar');", "#side"),
+    "calendrier": (1600, 1000, AT(11) + "select('calendar');", ".bp-wide"),
     "recap": (1400, 1200, AT(11) + "RECAP_OPEN=true;renderRecap();", "#recap"),
     "rejouer": (1400, 1200, AT(9.7) + "setMode('play');", ".stage", 1.5),
     # galerie des scènes (46-gallery.js), dans « Comment lire le plan » ouvert : ce que le bureau de démo sait jouer
@@ -141,6 +141,16 @@ SHOTS = {
                    "{name:'jira_ticket_key',label:'Ticket (si mal trouvé)',required:false,placeholder:'Ex. DM-7675'},"
                    "{name:'dry_run',label:'Simulation',required:false,options:[{value:'non',label:'Non, la vraie mise en prod'},{value:'oui',label:'Oui, simulation'}],default:'non'}]}];"
                    "COLLAPSED['fiche:added']=true;select('a_darryl_7f9e');const p=document.querySelector('.rl-f input');p.value='16';p.oninput();", "#side"),
+    # historique du panneau : la fiche d'un agent ouverte depuis la Fiche de paie, « ← Fiche de paie » et son repère Échap
+    "retour-panneau": (1400, 1000, AT(11) + "select('paie');select((chars.find(c=>!c.person&&!c.visitor&&c.runs.length)||{}).key);", "#side"),
+    # carte Kronn (55-actions.js) : la fenêtre au gabarit des autres, ouverte par « ▶ Lancer… » (hors Kronn, sans la carte elle-même)
+    "carte-kronn": (1400, 1000, AT(11) + "applyAgents({a_darryl_7f9e:{name:'Darryl',role:'Mise en prod',wf:['7f9e2b79'],sprite:'p_darryl',at:T-5*864e5}});"
+                   "LAUNCHABLE=[{wf:'7f9e2b79-demo',name:'Mise en prod d\\'une PR',vars:[{name:'project',label:'Projet',required:true,options:"
+                   "[{value:'dunder-mifflin/site-web',label:'site-web'},{value:'dunder-mifflin/intranet',label:'intranet'}],default:'dunder-mifflin/site-web'},"
+                   "{name:'pr_number',label:'N° de PR',required:true,placeholder:'Ex. 2042',pattern:'\\\\d+'},"
+                   "{name:'jira_ticket_key',label:'Ticket (si mal trouvé)',required:false,placeholder:'Ex. DM-7675'},"
+                   "{name:'dry_run',label:'Simulation',required:false,options:[{value:'non',label:'Non, la vraie mise en prod'},{value:'oui',label:'Oui, simulation'}],default:'non'}]}];"
+                   "COLLAPSED['fiche:added']=true;select('a_darryl_7f9e');const p=document.querySelector('.rl-f input');p.value='16';p.oninput();document.querySelector('#side .rl-form button[data-kronn-action]').click();", ".kmodal"),
     "fiche-agent": (1400, 1400, AT(11) + "select((chars.find(c=>!c.person&&!c.visitor&&c.runs.length)||{}).key);", "#side"),
     # Gabe, « Ses tickets » et « Ses autres PR ouvertes » dépliés : composant, points, âge (DM-7761 bloqué en review), PR de chaque ticket, un bug
     "fiche-collegue": (1400, 2000, AT(11) + "COLLAPSED['fiche:tickets']=false;COLLAPSED['fiche:prs']=false;select('p_gabe');", "#side"),
@@ -149,7 +159,7 @@ SHOTS = {
                        "const k=chars.find(c=>c.roleKind==='qa');k.jira_id=k.jira_id||'qa';TEAM.work=Object.assign({},TEAM.work,{[k.jira_id]:"
                        "{written:[{key:'DM-7801',summary:'[Stock] Alerter sous 10 ramettes'},{key:'DM-7802',summary:'[Panier] Garder le panier 30 jours'}],"
                        "triaged:[],tested:Array.from({length:7},(_,i)=>({key:'DM-75'+(10+i),summary:'Ticket testé'})),reopened:[]}});select(k.key);", "#side"),
-    "kanban": (1400, 1400, AT(11) + "select('kanban');", "#side"),
+    "kanban": (1600, 1000, AT(11) + "select('kanban');", ".bp-wide"),
     # fiche d'un ticket : ses PR et les workflows à lancer (dataset actions simulé depuis l'équipe de démo)
     "fiche-ticket": (1400, 1400, AT(11) + "ACTIONS.estimate=true;ACTION_BINDS['bureau-estimate']={jira_ticket_key:'key'};const all=TEAM.people.flatMap(p=>p.tickets),prs=TEAM.people.flatMap(p=>p.prs);"
                      "ACTS={tickets:all.map(t=>({key:t.key})),prs:prs.map(x=>({id:prId(x),n:String(x.n),repo:prRepo(x)}))};"
@@ -287,8 +297,8 @@ SHOTS = {
     "support-agent": (1400, 1000, AT(11) + "setTimeout(()=>{const a=spAgent(),c=document.querySelector('#cv'),r=c.getBoundingClientRect(),k=r.width/c.width,"
                       "d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(a.pos.x-4*TS)*k)+'px',"
                       "top:(r.top+scrollY+(a.pos.y-3.6*TS)*k)+'px',width:8*TS*k+'px',height:4.6*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2200);", "#shotclip", 2),
-    "support-fenetre": (1400, 1500, AT(11) + "ACTIONS.support=true;ACTIONS.gate=true;DUCK_PROJECTS=[{id:'none',name:'Sans projet'},{id:'p1',name:'Site de Scranton'}];"
-                        "openSupport();document.querySelector('.sp-modal').style.maxHeight='none';", ".sp-modal"),
+    "support-panneau": (1400, 2400, AT(11) + "ACTIONS.support=true;ACTIONS.gate=true;DUCK_PROJECTS=[{id:'none',name:'Sans projet'},{id:'p1',name:'Site de Scranton'}];"
+                        "openSupport();", "#side"),
     # règles du courrier en attente de validation (workflow « règles du courrier ») : le facteur attend devant le bureau du boss
     "facteur-regles": (1400, 1000, AT(11) + "GATES=[{run:'demo',wf:'00000000-demo',wf_name:'Le Bureau · règles du courrier',gate:'boss',"
                        "since:new Date(DAY0+10.5*36e5).toISOString(),message:'Le facteur te propose de trier ton courrier'}];refreshAll();needTeleport=true;"

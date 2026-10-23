@@ -1,17 +1,21 @@
 # Murs du bureau
 
-Les objets du plan sont cliquables et ouvrent leur détail dans le panneau.
+Les objets du plan sont cliquables, et une règle dit où ils s'ouvrent :
+
+- **Pour consulter**, le panneau de droite, le plan reste visible : mises en prod, Employé du sprint, post-it des crons, Fiche de paie, boîte aux lettres, console Support, canard. « ← » ramène à la vue d'avant, Échap aussi.
+- **Pour gérer, ou quand il faut de la place**, une fenêtre : Mur Kanban et calendrier (fenêtre large), Mes pages Kronn, Mes todos, Ajouter un agent. L'infobulle le dit (« ↗ s'ouvre en fenêtre ») ; Échap, × ou un clic à côté la referme.
+- **Les actions Kronn** (lancer, relancer, valider…) s'ouvrent toujours dans la même fenêtre, avec ce que tu lances et les étapes (voir [Fiches](07-fiches.md)).
 
 | Kanban du sprint | Planning des crons | Mises en prod du jour |
 | --- | --- | --- |
 | ![Kanban](../img/kanban.png) | ![Planning](../img/planning.png) | ![Mises en prod](../img/mep.png) |
 
-- **Kanban** (à droite du bureau du boss) : tickets et points par colonne Jira.
+- **Kanban** (à droite du bureau du boss) : un clic ouvre le mur en grand, dans une fenêtre large : une colonne par état Jira, une carte par ticket (clé, composant, titre, points, personne), 7 par colonne puis « + N autres » pour la déplier. Un ticket ferme la fenêtre et ouvre sa fiche dans le panneau ; « ← Mur Kanban » rouvre la fenêtre.
 - **Prochains crons en post-it** (au fond de la salle Serveurs, entre les deux baies) : un post-it par cron à venir, les trois prochains de la journée (hors crons horaires), de la couleur de l'agent, avec l'heure dessus. Quand le cron a tourné, son post-it tombe et le suivant prend sa place. Au survol, la liste en clair (heure, agent) ; un clic ouvre le planning : les prochains crons de la journée et ceux déjà passés.
 
 ![Prochains crons en post-it, survolés](../img/postit-crons.png)
 
-- **Calendrier de l'équipe** (au mur du bureau du boss, à gauche de son fauteuil) : un petit calendrier mural, affiché quand le planning des absences est branché ; un clic ouvre qui est là cette semaine et la suivante. Voir [Absences et télétravail](14-absences.md).
+- **Calendrier de l'équipe** (au mur du bureau du boss, à gauche de son fauteuil) : un petit calendrier mural, affiché quand le planning des absences est branché ; un clic ouvre, dans une fenêtre large, qui est là cette semaine et la suivante, côte à côte. Voir [Absences et télétravail](14-absences.md).
 - **Écran du plateau TV** : chaque mise en prod (release, staging, production) avec ses liens GitHub ; confettis quand elle arrive en prod, et le héraut des mises en prod qui vient féliciter l'auteur sur la scène (voir [le plan](01-plan.md)). Plateau fermé le vendredi et le week-end. Une mise en prod lancée à la main sur GitHub apparaît en moins d'une minute : les déploiements sont relus chaque minute par une requête conditionnelle, que GitHub ne décompte pas tant que rien ne bouge.
 - **Employé du sprint** (mur de la cafétéria) : le plus de points déployés.
 - **Enveloppe de paie** : la fiche de paie des agents.

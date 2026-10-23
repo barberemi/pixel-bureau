@@ -2,11 +2,11 @@
 // Dataset support (cron « relevé du Support », support.py) : les fils des 7 derniers jours et leur état. Les runs du modèle
 // d'investigation (variable message_id) et les gates en attente le précisent sans attendre le relevé suivant. L'écran du
 // boss passe en alerte avec le nombre à traiter (nouveaux, à revoir, réponses à valider) ; l'infobulle au survol seulement ;
-// un clic ouvre la fenêtre : un fil par carte, « Investiguer » (projet, puis commentaire dans la carte Kronn), la réponse
-// proposée à valider (gate : valider, changements, refuser), la réponse postée. En mode TV : l'écran et l'agent, pas la fenêtre.
+// un clic ouvre la console dans le panneau : un fil par carte, « Investiguer » (projet, puis commentaire dans la carte Kronn), la réponse
+// proposée à valider (gate : valider, changements, refuser), la réponse postée. En mode TV : l'écran et l'agent, pas la console.
 let SUPPORT=null;
 function readSupport(src){try{const d=dsOf(src,'support');return d&&Array.isArray(d.threads)?d:null;}catch(e){return null;}}
-// la console existe (alerte de l'écran du boss, agent Support), en mode TV compris ; la fenêtre, elle, ne s'ouvre pas en TV
+// la console existe (alerte de l'écran du boss, agent Support), en mode TV compris ; elle ne s'ouvre pas en TV
 const supportOn=()=>!!(CFG.support||SUPPORT);
 const supportOpenable=()=>!TV&&supportOn();
 const SP_TODO=new Set(['new','gate','failed','relaunched']);
@@ -98,18 +98,18 @@ function spInvestigate(el,t){
   const row=document.createElement('div');row.className='sp-act';host.appendChild(row);
   const pr=DUCK_PROJECTS||[]; // dataset gates (39-duck.js) : projets Kronn, « Sans projet » en tête
   if(ACTIONS.support&&pr.length){
-    const sel=document.createElement('select');sel.className='sp-pj';sel.setAttribute('aria-label','Projet à investiguer');
+    const sel=document.createElement('select');sel.className='sp-pj';sel.dataset.fid='sp-pj:'+t.id;sel.setAttribute('aria-label','Projet à investiguer'); // gardé au redessin du panneau
     for(const p of pr){const o=document.createElement('option');o.value=p.id;o.textContent=p.name;sel.appendChild(o);}
     const b=document.createElement('button');b.className='on';b.textContent='🔎 Investiguer';b.setAttribute('data-kronn-action','bureau-support');
     const bind=()=>b.setAttribute('data-kronn-bindings',JSON.stringify({message_id:t.id,project_id:sel.value}));
-    sel.onchange=bind;bind();
+    sel.onchange=sel.oninput=bind;bind();
     const n=document.createElement('div');n.className='sp-s';
     new MutationObserver(()=>{const v=b.getAttribute('data-kronn-action-state');
       if(v==='succeeded')n.innerHTML='<b style="color:var(--ok)">✓ Lancé.</b> '+esc((spAgent()||{name:'L\'agent Support'}).name)+' ouvre sa discussion et se met au travail.';
       else if(v==='failed')n.innerHTML='<b style="color:var(--err)">Lancement refusé.</b> Détail dans la carte.';
     }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
     const tm=spTeams(t);if(tm)row.insertAdjacentHTML('beforeend',tm);
-    row.prepend(sel,b);el.append(host,n);return;
+    row.prepend(sel,b);kronnModal(host,b,'Investiguer une demande',()=>({c:spAgent(),ico:'🚒',name:t.subject||String(t.text||'').split('\n')[0].slice(0,80),small:'De '+spWho(t.from)+', '+spWhen(t.at)+' · projet : '+(sel.selectedOptions[0]||{}).textContent}));el.append(host,n);return;
   }else if(ACTIONS.support)el.insertAdjacentHTML('beforeend','<div class="sp-s">Les projets arrivent au prochain passage du cron live (1 min au plus).</div>');
   el.insertAdjacentHTML('beforeend',spTeams(t));
 }
@@ -125,7 +125,7 @@ function spGate(el,t,g,dl){
       new MutationObserver(()=>{if(b.getAttribute('data-kronn-action-state')==='succeeded'&&!DECIDED[dk]){DECIDED[dk]=Date.now();saveDecided();}})
         .observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});}
     else{b.disabled=true;b.title=g?'Workflow « décision gate » non installé : décide dans Kronn':'La gate arrive sur la page d\'ici une minute (cron live)';}
-    row.appendChild(b);
+    row.appendChild(b);if(g&&ACTIONS.gate)kronnModal(host,b,'Réponse proposée',()=>({c:spAgent(),ico:'🚒',tag:label,name:'Réponse à '+spWho(t.from),small:t.subject||''}));
   }
   el.appendChild(host);
   el.insertAdjacentHTML('beforeend',`<div class="sp-s">« Changements » renvoie ton commentaire à ${esc((spAgent()||{name:'l\'agent'}).name)} dans la même discussion${dl}.</div>`);
@@ -136,22 +136,15 @@ function spHead(){
   const n=spTodo().length, S=SUPPORT||{};
   const polled=S.polled_at?'Relevé à '+spWhen(S.polled_at)+(S.days?' · '+S.days+' derniers jours':'')+(S.cost?' · '+String(S.cost).replace('.',',')+' $':''):'Pas encore relevé';
   return `<div class="bp-head sp-head"><h2>💬 ${esc(spName())}</h2><span class="sp-pill${n?' sp-hot':''}">${n?n+' à traiter':'rien à traiter'}</span>`+
-    `<button type="button" class="bp-x" aria-label="Fermer">×</button></div>`+
+    '</div>'+
     `<div class="sp-bar"><span class="sp-s">${esc(polled)}${S.demo?' (démo)':''}</span></div>`+ // relever maintenant : « ↻ » du panneau Fraîcheur
     (S.error?`<p class="sp-err">Dernier relevé en échec : ${esc(S.error)}</p>`:'');
 }
-function openSupport(){
-  const back=BP_BACK||document.activeElement;
-  closeBossPages(false);if(!supportOpenable())return;
-  BP_BACK=back;
-  const bd=document.createElement('div');bd.className='bp-backdrop';bd.onclick=()=>closeBossPages();
-  const box=document.createElement('div');box.className='bp-modal sp-modal';box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label',spName());
-  BP_INERT=[...document.body.children].filter(e=>!e.inert&&e.tagName!=='SCRIPT');BP_INERT.forEach(e=>{e.inert=true;});
-  document.body.append(bd,box);spFill(box);
-  const first=box.querySelector('.sp-card button:not([disabled])')||box.querySelector('.bp-x');if(first)first.focus();
-}
+// la console : dans le panneau de droite, comme la boîte aux lettres (les cartes Kronn s'ouvrent en fenêtre, 55-actions.js)
+function openSupport(){if(supportOpenable())select('support');}
+function renderSupport(side){const box=document.createElement('div');box.className='sp-side';side.appendChild(box);spFill(box);}
 function spFill(box){
-  box.innerHTML=spHead();box.querySelector('.bp-x').onclick=()=>closeBossPages();
+  box.innerHTML=spHead();
   const l=spThreads().sort((a,b)=>ms(b.at)-ms(a.at));
   for(const t of l)box.appendChild(spCard(t));
   if(!l.length){const S=SUPPORT||{};box.insertAdjacentHTML('beforeend',`<div class="sp-empty"><div class="sp-e-ico">${S.polled_at?'🧯':'📡'}</div><b>${S.polled_at?'Rien à signaler':'Pas encore de relevé'}</b>`+
@@ -169,8 +162,8 @@ function spFiche(side){
   const b=document.createElement('button');b.className='on';b.textContent='💬 Ouvrir la console Support';b.onclick=()=>openSupport();
   box.appendChild(b);side.appendChild(box);
 }
-// la fenêtre ouverte suit les données, sauf pendant une carte Kronn ouverte dedans
-function spRefresh(){const box=document.querySelector('.sp-modal');if(box&&!box.querySelector('[data-kronn-action-slot]'))spFill(box);}
+// la console ouverte suit les données (le panneau ne se redessine pas pendant une carte Kronn ou une saisie)
+function spRefresh(){if(sel==='support')renderSide();}
 // mode TV, « EN DIRECT » (75-tv.js) : l'arrivée d'un message du jour, puis un rappel par heure d'attente tant que personne
 // ne l'a pris (nouveau, relancé) ; jamais le texte, seulement le prénom et le sujet (ou le début du message)
 function spTicker(){

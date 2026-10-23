@@ -52,7 +52,7 @@ function openNewAgent(){
   const bd=document.createElement('div');bd.className='bp-backdrop na-backdrop';bd.onclick=()=>closeNewAgent();
   const box=document.createElement('div');box.className='bp-modal na-modal';box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label','Nouvel agent');
   const opts=list.map(w=>`<option value="${esc(w.wf)}">${esc(clean(w.name))}</option>`).join('');
-  box.innerHTML=`<div class="bp-head"><h2>Nouvel agent</h2><button type="button" class="bp-x" aria-label="Fermer">×</button></div>`+
+  box.innerHTML=`<div class="bp-head"><h2>Nouvel agent</h2>${BP_ESC}<button type="button" class="bp-x" aria-label="Fermer">×</button></div>`+
     (list.length?`<div class="na-grid"><div class="na-form">
       <label>Workflow à incarner <small>(sans agent pour l'instant)</small><select class="na-wf">${opts}</select></label>
       <label>Prénom<input class="na-name" type="text" maxlength="24" placeholder="Ex. Mose" autocomplete="off"></label>
@@ -149,5 +149,5 @@ function addedAgentBlock(side,c){
   ren.onclick=()=>give(renameCode(c,name.value.trim(),role.value.trim()));
   del.onclick=()=>give(removeCode(c));
   const acts=document.createElement('div');acts.className='na-acts';acts.append(ren,del);
-  host.append(acts,hint);kronnModal(host,ren,'Renommer '+c.name);kronnModal(host,del,'Retirer '+c.name);box.appendChild(host);
+  host.append(acts,hint);kronnModal(host,ren,'Renommer '+c.name,{c,name:c.name,small:c.role||''});kronnModal(host,del,'Retirer '+c.name,{c,name:c.name,small:'Il quitte le bureau ; son workflow, lui, reste dans Kronn.'});box.appendChild(host);
 }

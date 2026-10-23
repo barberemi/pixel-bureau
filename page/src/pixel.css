@@ -151,7 +151,9 @@
 :root[data-skin] .bp-modal>*:not(.bp-head){margin-left:20px;margin-right:20px}
 :root[data-skin] .bp-head{background:var(--line);margin:0 0 16px;padding:8px 8px 8px 14px;position:sticky;top:0;z-index:2}
 :root[data-skin] .bp-head h2{font:400 16px/1.2 'BureauPixel',ui-monospace,monospace;letter-spacing:0;text-transform:none;color:var(--on-line)}
+:root[data-skin] .bp-esc{color:var(--on-line)}
 :root[data-skin] .bp-x{width:28px;height:28px;font-size:15px;margin:0}
 :root[data-skin] .kmodal{border:0!important;padding:0 20px 20px!important;box-shadow:var(--frame),var(--drop)!important}
 :root[data-skin] .kmodal .km-title{background:var(--line);margin:0 -20px 14px;padding:10px 14px;font:400 16px/1.2 'BureauPixel',ui-monospace,monospace;
   letter-spacing:0;text-transform:none;color:var(--on-line)}
+:root[data-skin] .kmodal .km-title .bp-x{margin:0}

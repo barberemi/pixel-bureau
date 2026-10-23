@@ -100,29 +100,21 @@ function renderPlanning(side){
   block('plan-next','À venir',rows.filter(x=>!x.past),true);
   block('plan-past','Déjà passés',rows.filter(x=>x.past).reverse(),false);
 }
-function renderKanban(side){
-  const h=document.createElement('h2');
-  h.textContent='Mur Kanban'+(TEAM&&TEAM.sprint&&TEAM.sprint.name?' · sprint '+TEAM.sprint.name:'');
-  side.appendChild(h);
-  if(!TEAM){
-    const e=document.createElement('div');
-    e.className='empty';
-    e.textContent="Données de l'équipe pas encore publiées.";
-    side.appendChild(e);
-    return;
-  }
-  for(const {k,list} of kanbanCols()){
-    const d=memoDetails(document.createElement('details'),'kb:'+k,false);
-    const pts=list.reduce((a,x)=>a+(+x.points||0),0);
-    d.innerHTML=`<summary><span class="dot" style="background:${TCAT[k].c}"></span><span class="wn">${TCAT[k].t}</span><span class="du">${list.length} tickets${pts?' · '+Math.round(pts)+' pts':''}</span></summary>`;
-    const ul=document.createElement('ul');ul.className='steps';
-    for(const x of list){
-      const li=document.createElement('li');
-      li.innerHTML=`<a href="${JIRA_BROWSE}${encodeURIComponent(x.key)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;white-space:nowrap">${esc(x.key)}</a><span>${tkOpen(x)} <small style="color:var(--muted)">(${esc(x.owner?String(x.owner).split(' ')[0]:'non assigné')})</small></span>${x.points?`<span class="k pts">${esc(x.points)} pts</span>`:''}`;
-      ul.appendChild(li);
-    }
-    d.appendChild(ul);side.appendChild(d);
-  }
+// Mur Kanban : une fenêtre large, les six colonnes côte à côte, une carte par ticket (clé, composant, titre, points,
+// personne) ; 7 cartes par colonne, « + N autres » déplie la colonne. Un ticket ouvre sa fiche dans le panneau.
+const KB_MAX=7, KB_ALL={};
+function openKanban(){openWide('kanban','Mur Kanban'+(TEAM&&TEAM.sprint&&TEAM.sprint.name?' · sprint '+TEAM.sprint.name:''),kanbanFill);}
+function kanbanFill(box){
+  if(!TEAM){box.innerHTML='<div class="empty">Données de l\'équipe pas encore publiées.</div>';return;}
+  box.innerHTML='<div class="kbw">'+kanbanCols().map(({k,list})=>{
+    const pts=list.reduce((a,x)=>a+(+x.points||0),0), n=KB_ALL[k]?list.length:KB_MAX;
+    return `<section class="kbw-col" aria-label="${esc(TCAT[k].t)}"><h3><span class="dot" style="background:${TCAT[k].c}"></span>${esc(TCAT[k].t)}<small>${list.length}${pts?' · '+Math.round(pts)+' pts':''}</small></h3>`+
+      list.slice(0,n).map(x=>{const t=tkComp(x.summary);
+        return `<a href="#" class="kbw-c" data-tk="${esc(x.key)}" style="--c:${TCAT[k].c}" title="Ouvrir sa fiche et ses actions"><b>${esc(x.key)}</b>${x.points?`<em>${esc(x.points)} pts</em>`:''}`+
+          `<span class="kbw-t">${t.comp?`<span class="kbw-cp">${esc(t.comp)}</span>`:''}${esc(t.title)}</span><small>${esc(x.owner?String(x.owner).split(' ')[0]:'non assigné')}</small></a>`;}).join('')+
+      (list.length>n?`<button type="button" class="kbw-more" data-col="${k}">+ ${list.length-n} autre${list.length-n>1?'s':''}</button>`:'')+'</section>';
+  }).join('')+'</div><p class="hint">Un ticket ouvre sa fiche dans le panneau de droite ; « ← Mur Kanban » rouvre cette fenêtre.</p>';
+  for(const b of box.querySelectorAll('.kbw-more'))b.onclick=()=>{KB_ALL[b.dataset.col]=true;kanbanFill(box);};
 }
 function renderEmp(side){
   const rank=bestEmployee(), b=rank[0];
@@ -399,5 +391,8 @@ function rank(c){
     off:8
   }[s]??5)*100+chars.indexOf(c);
 }
-function select(k){if(EDIT)closeEditor();sel=k;if(k)SIDE_FOLDED=false;renderSide(true);} // choisir quelqu'un rouvre le panneau replié
+// back : retour par l'historique (50-panel.js), sans y ajouter la vue quittée
+function select(k,back){if(EDIT)closeEditor();if(WIN_VIEWS[k]){WIN_VIEWS[k]();return;} // Kanban, calendrier : en fenêtre large
+  if(k==null)SEL_BACK=[];else if(!back&&k!==sel){SEL_BACK.push(sel);if(SEL_BACK.length>20)SEL_BACK.shift();}
+  sel=k;if(k)SIDE_FOLDED=false;renderSide(true);} // choisir quelqu'un rouvre le panneau replié
 

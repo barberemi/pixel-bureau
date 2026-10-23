@@ -124,5 +124,5 @@ function freshRelaunch(td,key,label,urgent){
   host.innerHTML=`<div class="rl-n">${esc(label)}</div><div class="rl-s">Lance tout de suite un nouveau passage de ce cron du Bureau, en plus de ses passages prévus.</div>`;
   const b=document.createElement('button');b.textContent=urgent?'↻ Relancer':'↻';if(!urgent){b.className='rl-mini';b.title='Rafraîchir maintenant';b.setAttribute('aria-label','Rafraîchir '+label+' maintenant');}
   b.setAttribute('data-kronn-action','bureau-relaunch');b.setAttribute('data-kronn-bindings',JSON.stringify({wf_id:w.wf,params:w.wf}));
-  host.appendChild(b);td.appendChild(host);kronnModal(host,b,'Relancer un cron du Bureau');
+  host.appendChild(b);td.appendChild(host);kronnModal(host,b,'Relancer un cron du Bureau',{ico:'⏱',tag:'↻ Relancer'});
 }
