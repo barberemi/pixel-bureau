@@ -145,3 +145,13 @@
 :root[data-skin] #loupefly{border-radius:0;margin:var(--px);box-shadow:var(--frame),6px 6px 0 0 rgba(0,0,0,.35)}
 :root[data-skin] #loupefly .lx{box-shadow:none;margin:0}
 :root[data-skin] body.tv #loupefly{box-shadow:var(--tv-frame),6px 6px 0 0 rgba(0,0,0,.45)}
+/* fenêtres (Mes pages Kronn, Mes todos, Support, Nouvel agent, et celle d'une carte Kronn) : cadre crénelé et ombre
+   décalée des cartes, barre de titre pleine à la couleur du cadre, titre en police pixel (16 px, taille nette), × dans la barre */
+:root[data-skin] .bp-modal{border:0;margin:var(--px);padding:0 0 20px;box-shadow:var(--frame),var(--drop)}
+:root[data-skin] .bp-modal>*:not(.bp-head){margin-left:20px;margin-right:20px}
+:root[data-skin] .bp-head{background:var(--line);margin:0 0 16px;padding:8px 8px 8px 14px;position:sticky;top:0;z-index:2}
+:root[data-skin] .bp-head h2{font:400 16px/1.2 'BureauPixel',ui-monospace,monospace;letter-spacing:0;text-transform:none;color:var(--on-line)}
+:root[data-skin] .bp-x{width:28px;height:28px;font-size:15px;margin:0}
+:root[data-skin] .kmodal{border:0!important;padding:0 20px 20px!important;box-shadow:var(--frame),var(--drop)!important}
+:root[data-skin] .kmodal .km-title{background:var(--line);margin:0 -20px 14px;padding:10px 14px;font:400 16px/1.2 'BureauPixel',ui-monospace,monospace;
+  letter-spacing:0;text-transform:none;color:var(--on-line)}
