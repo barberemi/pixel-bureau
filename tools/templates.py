@@ -47,6 +47,7 @@ TEMPLATES = {
     "relaunch": ("workflow", ("actions", "relaunch"), {"relaunch": "workflows/relaunch.py"}),
     "layout": ("workflow", ("actions", "layout"), {"save": "workflows/layout_save.py"}),
     "comment": ("workflow", ("actions", "comment"), {}),  # commentaire Jira depuis la fiche d'un ticket (sans Jira : pas créé)
+    "move": ("workflow", ("actions", "move"), {}),  # déplacer un ticket d'une colonne (◀ / ▶ de sa fiche) : transition Jira, 0 token
     "duck": ("workflow", ("actions", "duck"), {"start": "workflows/duck_start.py"}),  # parler au canard : une discussion Kronn
     "todo": ("workflow", ("actions", "todo"), {"save": "workflows/todos.py"}),  # Mes todos du boss : tâches Kronn, tableau en liège
     # mise en prod d'une PR, tout projet (#58) : id rangé dans launch (jamais dans BUREAU_IDS : l'agent qui l'incarne
@@ -202,7 +203,7 @@ def skipped(key, cfg):
     absences sans planning Microsoft 365 (microsoft.config_id et microsoft.planning dans la config), le courrier sans
     compte (mail.accounts), la console Support sans canal (support.team, support.channel)."""
     cfg = assemble.merged(cfg)  # planning des absences : dans le pack (#32)
-    if key == "comment":
+    if key in ("comment", "move"):
         return not (cfg.get("jira") or {}).get("config_id")
     if key == "absences":
         m = cfg.get("microsoft") or {}

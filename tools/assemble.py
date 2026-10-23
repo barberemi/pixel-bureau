@@ -29,6 +29,7 @@ ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate",
            "bureau-agent": ("agent", "__AGENT_WF__"), "bureau-pages": ("pages", "__PAGES_WF__"),
            "bureau-meppr": ("mep_pr", "__MEPPR_WF__"), "bureau-rebase": ("rebase", "__REBASE_WF__"),
            "bureau-fixpr": ("fix_pr", "__FIXPR_WF__"), "bureau-todo": ("todo", "__TODO_WF__"),
+           "bureau-move": ("move", "__MOVE_WF__"),  # déplacer un ticket d'une colonne (statut cible relu dans actions.moves)
            # console Support (#62) : investiguer un message (modèle support) ; relever le canal : « ↻ » du panneau Fraîcheur
            "bureau-support": ("support", "__SUPPORT_WF__")}
 # variables des workflows de la clé launch : rôle -> nom par défaut ; launch.<action> = id seul, ou {wf, vars: {rôle: nom
