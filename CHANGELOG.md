@@ -23,6 +23,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- Mes pages Kronn : plus de carte « + Ajouter » vide dans la grille ; l'ajout passe par la liste « + Ajouter une page » sous la grille.
 - `publish.py page` et `install.py` pèsent la page avant de l'envoyer : au-delà de la limite de Kronn (1 000 000 octets), rien n'est publié et le message dit de combien elle déborde, bloc par bloc ; alerte à 90 %. `tools/smoke.py` pèse aussi ta vraie config en local et, avec `--chrome`, rejoue la page dans le cadre de Kronn (sandbox et CSP).
 - Fenêtres en pixel art : Mes pages Kronn, Mes todos, console Support, Nouvel agent et la fenêtre d'une carte Kronn prennent le cadre crénelé et l'ombre décalée des cartes, avec une barre de titre pleine à la couleur du cadre, le titre en police pixel et le × dans la barre (plus de bordure fine ni d'ombre floue).
 - Plan type et plan d'exemple : le calendrier de l'équipe se décale de 40 px vers la gauche pour faire place au tableau des todos (`objects.todo`) ; un plan sans `objects.todo` n'a pas de tableau.

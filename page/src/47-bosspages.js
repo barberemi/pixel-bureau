@@ -58,7 +58,7 @@ function bossPagesHtml(){
       `<b>${esc(p.title||p.id.slice(0,8))}</b><small>${nw?'Ajoutée à l\'instant':age!=null&&age>=0?'Mise à jour il y a '+esc(bpAge(age)):''}<span aria-hidden="true">↗</span></small></a>`+
       (nw?'<span class="bp-badge">✓ Ajoutée</span>':'')+
       (del?`<button type="button" class="bp-del" data-kronn-action="bureau-pages" data-id="${esc(p.id)}" aria-label="Retirer ${esc(p.title||'')}">×</button>`:'')+'</div>';
-  }).join('')+(del?'<button type="button" class="bp-card bp-plus"><span>+</span>Ajouter</button>':'');
+  }).join(''); // l'ajout se fait par la liste sous la grille (plus de carte « + » vide)
 }
 const bpOpts=()=>{const have=new Set(shownPages().map(p=>p.id)), o=BOSS_CHOICES.filter(p=>!have.has(p.id));
   return `<option value="">${o.length?'Choisir parmi tes pages Kronn…':'Aucune autre page Kronn'}</option>`+o.map(p=>`<option value="${esc(p.id)}">${esc(p.title)}</option>`).join('');};
@@ -110,9 +110,6 @@ function bpRefresh(box){
 }
 function bpWireGrid(box){
   for(const b of box.querySelectorAll('.bp-del'))bpAsk(box,b,'remove',()=>b.dataset.id);
-  // la case « + Ajouter » de la grille ouvre directement la liste des pages à ajouter (sous la grille)
-  const plus=box.querySelector('.bp-plus'), pick=box.querySelector('.bp-pick');
-  if(plus)plus.onclick=()=>{if(!pick)return;pick.scrollIntoView({block:'nearest',behavior:SCROLL_BEHAVIOR});pick.focus();try{pick.showPicker();}catch(e){}};
 }
 function bossPagesWire(box){
   if(!box.querySelector('.bp-confirm'))return;
