@@ -32,3 +32,15 @@ test('« Non assigné » : les tickets sans personne', () => {
 test('la barre ne montre que les personnages qui ont des tickets', () => {
   assert.ok(J('kbPeople().every(c=>c.person&&c.team.tickets.length>0)'));
 });
+
+test('un lien de ticket ouvre le Kanban filtré sur la personne qui l\'a, la fiche dans le volet', () => {
+  run('openWide=(k,t,f)=>{WIN_OPEN=null;};'); // la fenêtre elle-même : pas dans ce test
+  const t = J('(()=>{const p=TEAM.people.find(q=>q.tickets.length);return {key:p.tickets[0].key,id:p.id};})()');
+  run(`WIN_OPEN=null;openTicket(${JSON.stringify(t.key)});`);
+  assert.deepEqual(J('KB_VOL'), {t: 'ticket', k: t.key});
+  assert.equal(J('byKey[KB_WHO].team.id'), t.id);
+  const pr = J('(()=>{const p=TEAM.people.find(q=>(q.prs||[]).length);return {id:prId(p.prs[0]),pid:p.id};})()');
+  run(`openPr(${JSON.stringify(pr.id)});`);
+  assert.deepEqual(J('KB_VOL'), {t: 'pr', id: pr.id});
+  assert.equal(J('byKey[KB_WHO].team.id'), pr.pid, 'filtré sur l\'auteur de la PR');
+});

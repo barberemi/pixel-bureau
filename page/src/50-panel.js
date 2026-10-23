@@ -98,8 +98,6 @@ function backLabel(k){
   if(k==null)return "Toute l'équipe";
   if(byKey[k])return byKey[k].name;
   const s=String(k);
-  if(s.startsWith('ticket:'))return s.slice(7);
-  if(s.startsWith('pr:'))return 'PR #'+s.split('#').pop();
   if(s.startsWith('mail:'))return 'Courrier';
   if(s.startsWith('gate:'))return 'Validation';
   return {kanban:'Mur Kanban',calendar:'Calendrier',tv:'Mises en prod',emp:'Employé du sprint',planning:'Planning des crons',paie:'Fiche de paie',duck:'Le canard',support:'Support'}[s]||"Toute l'équipe";
@@ -130,11 +128,6 @@ addEventListener('keydown',e=>{
   goBack();
 },true);
 function drawSide(side){
-  if(ficheSel(sel)){ // fiche d'un ticket ou d'une PR (62-ticket.js)
-    backButton(side);
-    if(String(sel).startsWith('pr:'))renderPr(side,sel.slice(3));else renderTicket(side,sel.slice(7));
-    return;
-  }
   if(sel==='tv'||sel==='emp'||sel==='planning'||sel==='paie'||sel==='duck'||sel==='support'||String(sel).startsWith('gate:')||String(sel).startsWith('mail:')){
     backButton(side);
     if(String(sel).startsWith('gate:')){renderLoneGate(side,sel.slice(5));return;}

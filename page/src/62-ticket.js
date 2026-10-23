@@ -24,10 +24,19 @@ function prsOf(key){
   const all=[...TEAM.people.flatMap(p=>(p.prs||[]).map(x=>({...x,author:p.name}))),...(TEAM.other_prs||[])];
   return all.filter(x=>(x.keys||[]).includes(key));
 }
-const ficheSel=k=>/^(ticket|pr):/.test(String(k)); // fiches d'un ticket ou d'une PR
 // depuis le Kanban (fenêtre), « ← Mur Kanban » la rouvre (winGo, 50-panel.js)
-function openTicket(key){if(WIN_OPEN==='kanban')return kbShow({t:'ticket',k:key});winGo('ticket:'+key);} // 63-kanban.js : le volet
-function openPr(id){if(WIN_OPEN==='kanban')return kbShow({t:'pr',id});winGo('pr:'+id);}
+// la fiche d'un ticket ou d'une PR s'ouvre dans le volet du Mur Kanban (63-kanban.js), filtré sur la personne qui a le
+// ticket ou l'auteur de la PR (sa carte est donc visible) ; Kanban déjà ouvert : le volet seul change
+const kbCharOf=p=>p?(chars.find(c=>c.person&&c.team&&c.team.id===p.id)||{}).key||'':'';
+function openTicket(key){
+  if(WIN_OPEN==='kanban')return kbShow({t:'ticket',k:key});
+  const p=TEAM&&TEAM.people.find(q=>q.tickets.some(t=>t.key===key)), un=TEAM&&(TEAM.unassigned||[]).some(t=>t.key===key);
+  openKanban({who:p?kbCharOf(p):un?'-':'',ticket:key});
+}
+function openPr(id){
+  if(WIN_OPEN==='kanban')return kbShow({t:'pr',id});
+  openKanban({who:kbCharOf(TEAM&&TEAM.people.find(q=>(q.prs||[]).some(x=>prId(x)===id))),pr:id});
+}
 // lien vers la fiche : <a data-tk="EW-1234"> ou <a data-pr="owner/dépôt#12"> n'importe où dans la page
 document.addEventListener('click',e=>{
   const a=e.target.closest&&e.target.closest('[data-tk],[data-pr]');
@@ -314,6 +323,6 @@ function renderPr(side,id){
     li.innerHTML=`<span class="dot" style="background:${ok?'var(--ok)':ko?'var(--err)':'var(--warn)'}"></span><span class="k" style="white-space:nowrap">${esc(hm(r._s))}</span>`+
       `<a href="#" data-who="${esc(c.key)}" style="color:var(--accent)">${esc(c.name)}</a><span>${esc(clean(r.wf_name))}</span>`;
     ul.appendChild(li);}
-  ul.addEventListener('click',e=>{const a=e.target.closest('[data-who]');if(a){e.preventDefault();select(a.dataset.who);}});
+  ul.addEventListener('click',e=>{const a=e.target.closest('[data-who]');if(a){e.preventDefault();e.stopPropagation();winGo(a.dataset.who);}});
   rb.appendChild(ul);
 }

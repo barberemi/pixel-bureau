@@ -174,11 +174,11 @@ SHOTS = {
     "fiche-ticket": (1400, 1400, AT(11) + "ACTIONS.estimate=true;ACTION_BINDS['bureau-estimate']={jira_ticket_key:'key'};const all=TEAM.people.flatMap(p=>p.tickets),prs=TEAM.people.flatMap(p=>p.prs);"
                      "ACTS={tickets:all.map(t=>({key:t.key})),prs:prs.map(x=>({id:prId(x),n:String(x.n),repo:prRepo(x)}))};"
                      "const pr=prs.find(x=>x.review==='changes'&&!x.draft&&(x.keys||[]).length);"
-                     "select('ticket:'+(pr?pr.keys[0]:(all.find(t=>t.cat==='deploy')||all[0]).key));", "#side"),
+                     "openTicket(pr?pr.keys[0]:(all.find(t=>t.cat==='deploy')||all[0]).key);", ".kbv"),
     # fiche d'une PR (lien du fil) : la PR #2016 de Darryl, relue deux fois par Dwight (variables de run ajoutées pour la démo)
     "fiche-pr": (1400, 1200, AT(18.5) + "byKey.dwight.runs.filter(r=>r._s<=T&&r.status==='Success').slice(0,2).forEach(r=>r.vars={'current_task.number':'2016',"
                  "'current_task.repo':CFG.github_repo});const all=TEAM.people.flatMap(p=>p.tickets),prs=TEAM.people.flatMap(p=>p.prs);"
-                 "ACTS={tickets:all.map(t=>({key:t.key})),prs:prs.map(x=>({id:prId(x),n:String(x.n),repo:prRepo(x)}))};select('pr:'+CFG.github_repo+'#2016');", "#side"),
+                 "ACTS={tickets:all.map(t=>({key:t.key})),prs:prs.map(x=>({id:prId(x),n:String(x.n),repo:prRepo(x)}))};openPr(CFG.github_repo+'#2016');", ".kbv"),
     "planning": (1400, 1400, AT(11) + "select('planning');", "#side"),
     # prochains crons en post-it au fond de la salle Serveurs (#60), survolés : la liste en clair (zoom sur la pièce)
     "postit-crons": (1400, 1000, AT(11) + "const r=cronNoteRect(),c=cv.getBoundingClientRect(),k=c.width/W;"

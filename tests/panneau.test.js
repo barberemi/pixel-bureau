@@ -59,7 +59,8 @@ test('quitter le Kanban par le portrait d\'un agent : sa fiche dans le panneau, 
   assert.deepEqual(J('OPENED'), ['kanban']);
 });
 
-test('hors fenêtre, un ticket s\'empile comme une vue ordinaire', () => {
-  run(`select(null);select(${JSON.stringify(who)});openTicket('DM-9');`);
-  assert.equal(J('backLabel(SEL_BACK[SEL_BACK.length-1])'), J(`byKey[${JSON.stringify(who)}].name`));
+test('hors du Kanban, un lien de ticket ouvre le Kanban (son volet), sans toucher au panneau', () => {
+  run(`OPENED=[];select(null);select(${JSON.stringify(who)});openTicket('DM-9');`);
+  assert.deepEqual(J('OPENED'), ['kanban']);
+  assert.equal(J('sel'), who);
 });

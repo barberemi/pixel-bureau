@@ -52,7 +52,7 @@ const otherRepo=repo=>!!repo&&/^[\w.-]+\/[\w.-]+$/.test(repo)&&String(repo).toLo
 // identité d'une PR (#56) : son dépôt et son numéro, jamais le numéro seul (front_api#16 n'est pas front_web#16).
 // repo absent (ancien dataset) ou celui de l'équipe : le dépôt principal (github_repo).
 const prRepo=x=>otherRepo(x&&x.repo)?x.repo:(CFG.github_repo||'');
-const prId=x=>prRepo(x)+'#'+x.n; // « owner/dépôt#n » : fiche (select('pr:'+id)), liens data-pr, dataset actions (prs.find(id))
+const prId=x=>prRepo(x)+'#'+x.n; // « owner/dépôt#n » : fiche (openPr(id), volet du Kanban), liens data-pr, dataset actions (prs.find(id))
 const prNum=x=>(otherRepo(x&&x.repo)?x.repo.split('/')[1]:'')+'#'+x.n; // affiché : « #2039 », « front_api#16 » ailleurs
 const repoKey=repo=>otherRepo(repo)?String(repo).toLowerCase():'';
 const samePr=(x,repo,n)=>!!x&&String(x.n)===String(n)&&repoKey(x.repo)===repoKey(repo);

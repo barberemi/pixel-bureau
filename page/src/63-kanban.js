@@ -73,5 +73,7 @@ function kbVolet(m){
   else top.insertAdjacentHTML('beforeend','<span class="kbv-esc">Échap ferme le volet</span>');
   const x=document.createElement('button');x.type='button';x.className='bp-x';x.setAttribute('aria-label','Fermer le volet');x.textContent='×';x.onclick=kbClose;top.appendChild(x);
   v.appendChild(top);m.appendChild(v);
+  // un nom (auteur, agent du jour) : sa fiche dans le panneau, la fenêtre se ferme et « ← Mur Kanban » la rouvre
+  v.addEventListener('click',e=>{const a=e.target.closest('[data-who]');if(a&&byKey[a.dataset.who]){e.preventDefault();e.stopPropagation();winGo(a.dataset.who);}});
   if(KB_VOL.t==='pr')renderPr(v,KB_VOL.id);else renderTicket(v,KB_VOL.k);
 }
