@@ -227,6 +227,12 @@ button.back kbd{font:10px ui-monospace,Menlo,monospace;border:1px solid var(--li
 .kbw-t{display:block}.kbw-c small{display:block;color:var(--muted);margin-top:3px}
 .kbw-cp{display:inline-block;font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 4px;margin-right:4px}
 .kbw-more{width:100%;font-size:12px}
+.kbp{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px;padding:0 0 12px;border-bottom:1px solid var(--line)}
+.kbp-b{display:flex;align-items:center;gap:6px;padding:3px 10px 3px 4px;font-size:12px}.kbp-b.all,.kbp-b.none{padding-left:10px}.kbp-b.none{font-style:italic}
+.kbp-pt{display:flex;width:24px;height:24px;border-radius:50%;overflow:hidden;background:var(--chip)}.kbp-pt canvas{width:24px;height:24px;image-rendering:pixelated}
+.kbp-b .n{font-size:10px;color:var(--muted);background:var(--chip);border-radius:999px;padding:0 6px}
+.kbp-b.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}.kbp-b.on .n{background:rgba(255,255,255,.25);color:inherit}
+.kbw-none{color:var(--muted);font-size:12px}
 .bp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}@media (max-width:900px){.bp-grid{grid-template-columns:repeat(2,1fr)}}
 .bp-card{display:flex;flex-direction:column;gap:4px;padding:6px 6px 8px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);text-decoration:none}
 .bp-card:hover,.bp-card:focus-visible{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 35%,transparent)}

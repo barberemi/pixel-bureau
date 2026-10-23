@@ -93,7 +93,7 @@ function refreshStatus(){
 // Le Kanban et le calendrier s'ouvrent en fenêtre (WIN_VIEWS) : quand on en sort par un ticket ou un nom, ils entrent dans
 // l'historique, et « ← » les rouvre par-dessus la vue d'où on les avait ouverts.
 let SEL_BACK=[];
-const WIN_VIEWS={kanban:()=>openKanban(),calendar:()=>openCalendar()};
+const WIN_VIEWS={kanban:keep=>openKanban(keep||undefined),calendar:()=>openCalendar()}; // keep : retour, la fenêtre telle qu'on l'a quittée
 function backLabel(k){
   if(k==null)return "Toute l'équipe";
   if(byKey[k])return byKey[k].name;
@@ -106,7 +106,7 @@ function backLabel(k){
 }
 function goBack(){
   const k=SEL_BACK.length?SEL_BACK.pop():null;
-  if(WIN_VIEWS[k]){select(SEL_BACK.length?SEL_BACK.pop():null,true);WIN_VIEWS[k]();return;}
+  if(WIN_VIEWS[k]){select(SEL_BACK.length?SEL_BACK.pop():null,true);WIN_VIEWS[k](true);return;}
   select(k,true);
 }
 // depuis une fenêtre large : elle se ferme, la fiche s'ouvre dans le panneau, et la fenêtre entre dans l'historique
