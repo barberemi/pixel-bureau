@@ -391,6 +391,6 @@ function rank(c){
     off:8
   }[s]??5)*100+chars.indexOf(c);
 }
-function select(k){if(EDIT)closeEditor();if(k==='kanban'){openKanban();return;} // le Kanban : en fenêtre large
+function select(k){if(EDIT)closeEditor();if(k==='kanban'||k==='calendar'){(k==='kanban'?openKanban:openCalendar)();return;} // Kanban, calendrier : en fenêtre large
   sel=k;if(k)SIDE_FOLDED=false;renderSide(true);} // choisir quelqu'un rouvre le panneau replié
 

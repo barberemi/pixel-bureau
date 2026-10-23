@@ -11,7 +11,7 @@ Les objets du plan sont cliquables et ouvrent leur détail dans le panneau.
 
 ![Prochains crons en post-it, survolés](../img/postit-crons.png)
 
-- **Calendrier de l'équipe** (au mur du bureau du boss, à gauche de son fauteuil) : un petit calendrier mural, affiché quand le planning des absences est branché ; un clic ouvre qui est là cette semaine et la suivante. Voir [Absences et télétravail](14-absences.md).
+- **Calendrier de l'équipe** (au mur du bureau du boss, à gauche de son fauteuil) : un petit calendrier mural, affiché quand le planning des absences est branché ; un clic ouvre, dans une fenêtre large, qui est là cette semaine et la suivante, côte à côte. Voir [Absences et télétravail](14-absences.md).
 - **Écran du plateau TV** : chaque mise en prod (release, staging, production) avec ses liens GitHub ; confettis quand elle arrive en prod, et le héraut des mises en prod qui vient féliciter l'auteur sur la scène (voir [le plan](01-plan.md)). Plateau fermé le vendredi et le week-end. Une mise en prod lancée à la main sur GitHub apparaît en moins d'une minute : les déploiements sont relus chaque minute par une requête conditionnelle, que GitHub ne décompte pas tant que rien ne bouge.
 - **Employé du sprint** (mur de la cafétéria) : le plus de points déployés.
 - **Enveloppe de paie** : la fiche de paie des agents.

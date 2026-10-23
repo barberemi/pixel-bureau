@@ -442,6 +442,7 @@ button.wc.on{background:color-mix(in srgb,var(--accent) 14%,var(--panel));color:
 .calbox h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:14px 0 6px}
 .calbox .sub{font-size:12px;color:var(--muted);margin:4px 0}
 .calbox .calk{color:var(--ok)}
+.calweeks{display:grid;grid-template-columns:1fr 1fr;gap:0 28px}@media (max-width:900px){.calweeks{grid-template-columns:1fr}}
 .cal{border-collapse:separate;border-spacing:3px;width:100%;font-size:12px}
 .cal th{font-weight:600;color:var(--muted);text-align:center;padding:2px;white-space:nowrap}
 .cal tbody th{text-align:left}.cal tbody th .lk-who{color:var(--ink);font-weight:700;text-decoration:none}.cal tbody th .lk-who:hover{text-decoration:underline}
