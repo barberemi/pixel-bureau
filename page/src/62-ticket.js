@@ -147,6 +147,42 @@ function launchBlock(box,{action,bind,name,sub,label,title,off,done,verb,next}){
   }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
   host.append(b,n);kronnModal(host,b,title,()=>{const c=verb&&actAgent(action);return verb?{c,ico:'🤖',name:(c?c.name:'Le Bureau')+' '+verb,small:sub}:{ico:'🎫'};});box.appendChild(host);
 }
+// ◀ / ▶ : déplacer le ticket d'une colonne (workflow « déplacer un ticket », actions.move). Les sens et le statut Jira
+// visé viennent du dataset actions (moves, cron équipe) : le bouton n'envoie que l'id de la ligne, Kronn y relit le reste.
+// Avancer en bleu, reculer en gris ; chaque bouton dit la colonne visée et la raison du passage.
+const MV_ORDER=['todo','doing','review','test','deploy','done'];
+const MV_WHY={'doing>todo':'pas encore commencé','review>doing':'refusé en review','test>review':'à revoir','deploy>test':'à retester',
+  'todo>doing':'on s\'y met','doing>review':'PR prête','review>test':'review validée','test>deploy':'test validé','deploy>done':'mis en prod à la main'};
+// les boutons d'un ticket : [{m (ligne de actions.moves), to (colonne visée), why, bind}], reculer d'abord ; [] sans le workflow
+function mvRows(x){
+  if(!ACTIONS.move||!ACTS||!Array.isArray(ACTS.moves))return [];
+  return ['prev','next'].map(d=>ACTS.moves.find(m=>m.key===x.key&&m.dir===d)).filter(Boolean).map(m=>{
+    const to=MV_ORDER[MV_ORDER.indexOf(x.cat)+(m.dir==='next'?1:-1)];
+    return {m,to,why:MV_WHY[x.cat+'>'+to]||'',bind:bindsFor('bureau-move',m)};}).filter(r=>r.bind);
+}
+function moveBlock(side,x){
+  const rows=mvRows(x);if(!rows.length)return;
+  const host=document.createElement('div');host.className='mv-host';host.setAttribute('data-kronn-action-slot-host','');
+  const row=document.createElement('div');row.className='mv';host.appendChild(row);
+  const hint=document.createElement('div');hint.className='hint mv-hint'; // dans la fenêtre de la carte Kronn seulement
+  const note=document.createElement('div');note.className='note mv-note';
+  for(const {m,to,why,bind} of rows){
+    const c=TCAT[to]||{t:m.to,c:'var(--idle)'};
+    const b=document.createElement('button');b.type='button';b.className='mv-'+m.dir+(m.dir==='next'?' on':'');
+    b.title=(m.dir==='next'?'Avancer':'Reculer')+' : passer le ticket en '+m.to+' dans Jira';
+    b.innerHTML=`<span class="mv-col">${m.dir==='prev'?'◀ ':''}<span class="dot" style="background:${c.c}"></span>${esc(c.t)}${m.dir==='next'?' ▶':''}</span>${why?`<small>${esc(why)}</small>`:''}`;
+    b.setAttribute('data-kronn-action','bureau-move');b.setAttribute('data-kronn-bindings',JSON.stringify(bind));
+    b.addEventListener('click',()=>{hint.innerHTML=`<b>Lancer</b> : ${esc(x.key)} passe en <b>${esc(m.to)}</b> dans Jira (transition vérifiée par Kronn, 0 token). Sa carte change de colonne au prochain passage du cron équipe (10 min au plus).`;});
+    new MutationObserver(()=>{const v=b.getAttribute('data-kronn-action-state');
+      if(v==='succeeded')note.innerHTML=`<b style="color:var(--ok)">✓ Demandé.</b> ${esc(x.key)} passe en ${esc(m.to)} ; sa carte suivra au prochain passage du cron équipe.`;
+      else if(v==='failed')note.innerHTML='<b style="color:var(--err)">Déplacement refusé</b> : le détail est dans la carte (Jira ne propose peut-être pas ce passage).';
+    }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
+    row.appendChild(b);
+    kronnModal(host,b,'Déplacer un ticket',{ico:'🗂',tag:m.dir==='next'?'Avancer ▶':'◀ Reculer',name:x.key+' : '+(x.status||'')+' → '+m.to,small:x.summary});
+  }
+  if(rows.some(r=>r.to==='done'))host.insertAdjacentHTML('beforeend','<div class="note mv-done">D\'habitude, la mise en prod passe le ticket en Déployé toute seule ; ce bouton le fait à la main.</div>');
+  host.append(hint,note);side.appendChild(host);
+}
 function renderTicket(side,key){
   const x=ticketOf(key);
   const jira=`<a href="${JIRA_BROWSE}${encodeURIComponent(key)}" target="_blank" rel="noopener" style="color:var(--accent)">Ouvrir dans Jira ↗</a>`;
@@ -162,6 +198,7 @@ function renderTicket(side,key){
     `<div style="font-size:12px;color:var(--muted)"><span class="dot" style="background:${cat.c};display:inline-block;margin-right:6px"></span>${esc(x.status||cat.t)}`+
     `${age?' depuis '+age:''} · ${x.owner?esc(x.owner):'non assigné'}${x.points?' · '+esc(x.points)+' pts':''} · ${jira}</div>`;
   side.appendChild(head);
+  moveBlock(side,x);
   const prs=prsOf(key);
   if(prs.length){
     const pb=foldSection(side,'tk-prs','Ses PR ouvertes',prs.length,true);

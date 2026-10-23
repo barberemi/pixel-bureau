@@ -52,3 +52,14 @@ test('une PR sans ticket dans le sprint est signalée dans le volet', () => {
   assert.equal(r.a, true);
   assert.equal(r.b, false);
 });
+
+test('déplacer : ◀ puis ▶, liés à leur ligne de actions.moves (Kronn y relit clé et statut) ; rien sans le workflow', () => {
+  const t = J("TEAM.people.flatMap(p=>p.tickets).find(t=>t.cat==='review')");
+  run(`ACTIONS.move=true;ACTION_BINDS['bureau-move']={jira_ticket_key:'id',target_status:'id'};
+       ACTS={tickets:[],prs:[],moves:[{id:'${t.key}|next',key:'${t.key}',dir:'next',to:'To Test'},{id:'${t.key}|prev',key:'${t.key}',dir:'prev',to:'En cours'}]};`);
+  const r = J(`mvRows(${JSON.stringify(t)}).map(x=>[x.m.dir,x.to,x.why,x.bind])`);
+  assert.deepEqual(r, [['prev', 'doing', 'refusé en review', {jira_ticket_key: t.key + '|prev', target_status: t.key + '|prev'}],
+                       ['next', 'test', 'review validée', {jira_ticket_key: t.key + '|next', target_status: t.key + '|next'}]]);
+  run('ACTIONS.move=false;');
+  assert.deepEqual(J(`mvRows(${JSON.stringify(t)})`), []);
+});

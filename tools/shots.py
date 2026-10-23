@@ -31,8 +31,10 @@ DEMO_PROJO = (DEMO_PAGES + "BOSS_PAGES[0].kpi={value:'82 %',label:'du CA visé',
               "BOSS_PAGES[2].kpi={value:'46 avis',label:'cette semaine',parts:[[30,'#3fbf6a'],[10,'#e0a020'],[6,'#e0614f']],short:'Satisfaction'};"
               "PAGE_TV=['demo0','demo2','demo3'];")
 # démo des fiches de ticket : actions et PR branchées (comme fiche-ticket), le ticket d'une PR en conflit et son personnage
-KB_DEMO = ("ACTIONS.estimate=true;ACTION_BINDS['bureau-estimate']={jira_ticket_key:'key'};const _all=TEAM.people.flatMap(p=>p.tickets),_prs=TEAM.people.flatMap(p=>p.prs);"
-           "ACTS={tickets:_all.map(t=>({key:t.key})),prs:_prs.map(x=>({id:prId(x),n:String(x.n),repo:prRepo(x)}))};"
+KB_DEMO = ("ACTIONS.estimate=true;ACTION_BINDS['bureau-estimate']={jira_ticket_key:'key'};ACTIONS.move=true;ACTION_BINDS['bureau-move']={jira_ticket_key:'id',target_status:'id'};const _all=TEAM.people.flatMap(p=>p.tickets),_prs=TEAM.people.flatMap(p=>p.prs);"
+           "const _st={todo:'À faire',doing:'En cours',review:'To Review',test:'To Test',deploy:'To Deploy',done:'Deployed'},_o=MV_ORDER;"
+           "ACTS={tickets:_all.map(t=>({key:t.key})),prs:_prs.map(x=>({id:prId(x),n:String(x.n),repo:prRepo(x)})),"
+           "moves:_all.flatMap(t=>{const i=_o.indexOf(t.cat);return [['prev',i>=1&&i<=4?_o[i-1]:null],['next',i<=4?_o[i+1]:null]].filter(([,c])=>c).map(([d,c])=>({id:t.key+'|'+d,key:t.key,dir:d,to:_st[c]}));})};"
            "const KB_P=_prs.find(x=>x.review==='changes'&&!x.draft&&(x.keys||[]).length),KB_K=KB_P.keys[0],"
            "KB_W=(kbPeople().find(c=>c.team.tickets.some(t=>t.key===KB_K))||{}).key;")
 SHOTS = {
@@ -170,6 +172,9 @@ SHOTS = {
     "kanban-volet-pr": (1600, 1000, AT(11) + KB_DEMO + "openKanban({who:KB_W,ticket:KB_K});openPr(prId(KB_P));", ".bp-wide"),
     # une PR sans ticket dans le sprint (« Ses autres PR ouvertes ») : le Kanban filtré sur son auteur, la PR dans le volet
     "kanban-volet-pr-seule": (1600, 1000, AT(11) + KB_DEMO + "const _c=kbPeople().find(c=>loosePrs(c.team).length);openPr(prId(loosePrs(_c.team)[0]));", ".bp-wide"),
+    # déplacer un ticket (◀ / ▶ de sa fiche, workflow « déplacer un ticket ») : le volet d'un ticket en review, puis la carte Kronn
+    "kanban-deplacer": (1600, 1000, AT(11) + KB_DEMO + "openTicket(_all.find(t=>t.cat==='review').key);", ".kbv"),
+    "carte-deplacer": (1400, 1000, AT(11) + KB_DEMO + "openTicket(_all.find(t=>t.cat==='review').key);document.querySelector('.kbv .mv-next').click();", ".kmodal"),
     # le Kanban filtré sur une personne (barre de portraits en haut)
     "kanban-personne": (1600, 1000, AT(11) + "select('kanban');KB_WHO=kbPeople()[0].key;kanbanFill(document.querySelector('.bp-wbody'));", ".bp-wide"),
     # fiche d'un ticket : ses PR et les workflows à lancer (dataset actions simulé depuis l'équipe de démo)
