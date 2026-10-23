@@ -37,9 +37,21 @@ test('le Kanban et le calendrier s\'ouvrent en fenêtre, sans toucher au panneau
   assert.equal(J('sel'), 'paie');
 });
 
-test('sortir du Kanban par un ticket : la fiche dans le panneau, « ← Mur Kanban » rouvre la fenêtre', () => {
-  run(`OPENED=[];select(null);select('paie');WIN_OPEN='kanban';openTicket('DM-7');`);
-  assert.equal(J('sel'), 'ticket:DM-7');
+test('un ticket cliqué dans le Kanban s\'ouvre dans son volet, le panneau ne bouge pas', () => {
+  run(`select(null);select('paie');WIN_OPEN='kanban';KB_VOL=null;KB_BACK=[];openTicket('DM-7');`);
+  assert.equal(J('sel'), 'paie');
+  assert.deepEqual(J('KB_VOL'), {t: 'ticket', k: 'DM-7'});
+  run(`openPr('o/r#12');`);
+  assert.deepEqual(J('KB_VOL'), {t: 'pr', id: 'o/r#12'});
+  assert.deepEqual(J('KB_BACK'), [{t: 'ticket', k: 'DM-7'}], '« ← DM-7 » dans le volet de la PR');
+  run(`openTicket('DM-7');`);
+  assert.deepEqual(J('KB_BACK'), [], 'revenir au ticket ne l\'empile pas deux fois');
+  run(`WIN_OPEN=null;KB_VOL=null;`);
+});
+
+test('quitter le Kanban par le portrait d\'un agent : sa fiche dans le panneau, « ← Mur Kanban » rouvre la fenêtre', () => {
+  run(`OPENED=[];select(null);select('paie');WIN_OPEN='kanban';winGo(${JSON.stringify(who)});`);
+  assert.equal(J('sel'), who);
   assert.equal(J('WIN_OPEN'), null);
   assert.equal(J('backLabel(SEL_BACK[SEL_BACK.length-1])'), 'Mur Kanban');
   run('goBack()');

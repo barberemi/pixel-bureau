@@ -30,6 +30,11 @@ DEMO_PAGES = ("ACTIONS.pages=true;BOSS_CHOICES=[{id:'demo-a',title:'Planning des
 DEMO_PROJO = (DEMO_PAGES + "BOSS_PAGES[0].kpi={value:'82 %',label:'du CA visé',pct:82,color:'#5b8def',short:'Ventes'};"
               "BOSS_PAGES[2].kpi={value:'46 avis',label:'cette semaine',parts:[[30,'#3fbf6a'],[10,'#e0a020'],[6,'#e0614f']],short:'Satisfaction'};"
               "PAGE_TV=['demo0','demo2','demo3'];")
+# démo des fiches de ticket : actions et PR branchées (comme fiche-ticket), le ticket d'une PR en conflit et son personnage
+KB_DEMO = ("ACTIONS.estimate=true;ACTION_BINDS['bureau-estimate']={jira_ticket_key:'key'};const _all=TEAM.people.flatMap(p=>p.tickets),_prs=TEAM.people.flatMap(p=>p.prs);"
+           "ACTS={tickets:_all.map(t=>({key:t.key})),prs:_prs.map(x=>({id:prId(x),n:String(x.n),repo:prRepo(x)}))};"
+           "const KB_P=_prs.find(x=>x.review==='changes'&&!x.draft&&(x.keys||[]).length),KB_K=KB_P.keys[0],"
+           "KB_W=(kbPeople().find(c=>c.team.tickets.some(t=>t.key===KB_K))||{}).key;")
 SHOTS = {
     "plan": (1400, 1000, AT(11), "#cv", 1.5),
     # agents mis en avant (« Sur le plan » : agents) : icône, prénom et métier de chacun
@@ -160,6 +165,9 @@ SHOTS = {
                        "{written:[{key:'DM-7801',summary:'[Stock] Alerter sous 10 ramettes'},{key:'DM-7802',summary:'[Panier] Garder le panier 30 jours'}],"
                        "triaged:[],tested:Array.from({length:7},(_,i)=>({key:'DM-75'+(10+i),summary:'Ticket testé'})),reopened:[]}});select(k.key);", "#side"),
     "kanban": (1600, 1000, AT(11) + "select('kanban');", ".bp-wide"),
+    # volet du Kanban : la fiche d'un ticket à droite des colonnes compactes (démo : actions branchées, PR en conflit), puis sa PR
+    "kanban-volet": (1600, 1000, AT(11) + KB_DEMO + "openKanban({who:KB_W,ticket:KB_K});", ".bp-wide"),
+    "kanban-volet-pr": (1600, 1000, AT(11) + KB_DEMO + "openKanban({who:KB_W,ticket:KB_K});openPr(prId(KB_P));", ".bp-wide"),
     # le Kanban filtré sur une personne (barre de portraits en haut)
     "kanban-personne": (1600, 1000, AT(11) + "select('kanban');KB_WHO=kbPeople()[0].key;kanbanFill(document.querySelector('.bp-wbody'));", ".bp-wide"),
     # fiche d'un ticket : ses PR et les workflows à lancer (dataset actions simulé depuis l'équipe de démo)

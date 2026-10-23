@@ -26,8 +26,8 @@ function prsOf(key){
 }
 const ficheSel=k=>/^(ticket|pr):/.test(String(k)); // fiches d'un ticket ou d'une PR
 // depuis le Kanban (fenêtre), « ← Mur Kanban » la rouvre (winGo, 50-panel.js)
-function openTicket(key){winGo('ticket:'+key);}
-function openPr(id){winGo('pr:'+id);}
+function openTicket(key){if(WIN_OPEN==='kanban')return kbShow({t:'ticket',k:key});winGo('ticket:'+key);} // 63-kanban.js : le volet
+function openPr(id){if(WIN_OPEN==='kanban')return kbShow({t:'pr',id});winGo('pr:'+id);}
 // lien vers la fiche : <a data-tk="EW-1234"> ou <a data-pr="owner/dépôt#12"> n'importe où dans la page
 document.addEventListener('click',e=>{
   const a=e.target.closest&&e.target.closest('[data-tk],[data-pr]');
@@ -92,7 +92,7 @@ function tkChain(x,prs){
 function agentFace(c,cls){
   const d=document.createElement('div');d.className=cls; // pas un <button> : le cadre pixel des boutons masquerait le portrait
   if(c){d.setAttribute('role','button');d.tabIndex=0;d.title='Fiche de '+c.name;d.appendChild(portrait(c,32));
-    d.onclick=e=>{e.stopPropagation();select(c.key);};d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.onclick(e);}};
+    d.onclick=e=>{e.stopPropagation();winGo(c.key);}; // depuis le volet du Kanban : la fenêtre se ferme, « ← » la rouvred.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.onclick(e);}};
     if(!c.boss&&!c.person){const i=document.createElement('i');i.textContent=agentIcon(c);d.appendChild(i);}}
   else{d.textContent='🤖';d.title='Un workflow du Bureau, sans agent';}
   return d;

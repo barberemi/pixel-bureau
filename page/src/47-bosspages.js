@@ -187,7 +187,10 @@ function focusBack(back){
 }
 function bossPagesKey(e){
   const box=document.querySelector('.bp-modal');if(!box)return;
-  if(e.key==='Escape'){(/\bna-modal\b/.test(box.className)?closeNewAgent:closeBossPages)();return;} // 66-newagent.js, 47-todos.js : même fenêtre
+  if(e.key==='Escape'){
+    if(KM_OPEN&&box.contains(KM_OPEN))return; // carte Kronn ouverte dedans : Échap ne la ferme pas (seuls ×, Annuler, un clic à côté)
+    if((box.dataset||{}).win==='kanban'&&KB_VOL){kbClose();return;} // 63-kanban.js : le volet d'abord
+    (/\bna-modal\b/.test(box.className)?closeNewAgent:closeBossPages)();return;} // 66-newagent.js, 47-todos.js : même fenêtre
   if(e.key!=='Tab')return;
   const f=bpFocusables(box);if(!f.length)return;
   const a=f[0], z=f[f.length-1], cur=document.activeElement, inside=box.contains(cur);
