@@ -904,6 +904,54 @@ print(json.dumps(val))
         self.assertEqual([p["id"] for p in out["pages"]], ["pa"])  # illisible : boss_pages, et on le dit
         self.assertIn("liste de l'écran illisible", out["warnings"][0])
 
+    def test_pages_snapshot_reads_each_page_kpi_and_tv(self):
+        """Vidéoprojecteur : le kpi publié par la page (nettoyé : textes bornés, pct entre 0 et 100, parts et couleurs
+        valides seulement) et la liste tv du dataset pagelist."""
+        fake, cache, img = self.boss_pages()
+        fake.pages["pa"]["datasets"] = [{"name": "vide", "current": None}, {"name": "x", "current": json.dumps({"autre": 1})},
+            {"name": "blocks", "current": {"kpi": {"value": "55 %", "label": "blocks migrés" + "x" * 60, "pct": 140, "color": "red",
+                                                  "short": "  Migration blocks très longue  ", "extra": "<script>"}}}]
+        fake.pages["pb"]["datasets"] = [{"name": "reviews", "current": {"kpi": {"value": 31, "label": "PR relues",
+            "parts": [[45, "#3fbf6a"], [24, "#e0a020"], ["x", "#000000"], [3, "javascript:"]]}}}]
+        fake.datasets = [{"name": "pagelist", "current": {"pages": ["pa", "pb"], "tv": ["pb", "zz"]}}]
+        out = self.run_script("pages_snapshot.py", api=self.kronn(fake), chrome=False)
+        pa, pb = out["pages"]
+        self.assertEqual(pa["kpi"], {"value": "55 %", "label": ("blocks migrés" + "x" * 60)[:40], "short": "Migration blocks t", "pct": 100.0})
+        self.assertEqual(pb["kpi"], {"value": "31", "label": "PR relues", "parts": [[45.0, "#3fbf6a"], [24.0, "#e0a020"]]})
+        self.assertEqual((pa["tv"], pb["tv"]), (False, True))
+        fake.pages["pb"]["datasets"] = [{"name": "r", "current": {"kpi": {"value": "1"}}}]  # sans label : pas de kpi
+        self.assertIsNone(self.run_script("pages_snapshot.py", api=self.kronn(fake), chrome=False)["pages"][1]["kpi"])
+
+    def test_pages_save_projects_a_page_in_tv(self):
+        """« 📽 Projeter en TV » : tv_on / tv_off sur une page de l'écran ; refusé pour une page qui n'y est pas."""
+        a, b = "a" * 8 + "-1111-2222-3333-444444444444", "b" * 8 + "-1111-2222-3333-444444444444"
+        fake = FakeKronn()
+        fake.datasets = [{"name": "pagelist", "current": {"pages": [a, b], "tv": [b]}}]
+        api = self.kronn(fake)
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "pages_save.py")], input=self.pages_code(op="tv_on", id=a, at=1),
+                           capture_output=True, text=True, env=self.env_for(api), timeout=60)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(r.stdout)["tv"], [b, a])
+        fake.datasets = [{"name": "pagelist", "current": {"pages": [a, b], "tv": [b, a]}}]
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "pages_save.py")], input=self.pages_code(op="tv_off", id=b, at=1),
+                           capture_output=True, text=True, env=self.env_for(api), timeout=60)
+        self.assertEqual(json.loads(r.stdout)["tv"], [a])
+        c = "c" * 8 + "-1111-2222-3333-444444444444"
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "pages_save.py")], input=self.pages_code(op="tv_on", id=c, at=1),
+                           capture_output=True, text=True, env=self.env_for(api), timeout=60)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("pas sur l'écran mural", r.stderr)
+        fake.datasets = [{"name": "pagelist", "current": {"pages": [a, b], "tv": [b, a]}}]  # page retirée : plus projetée
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "pages_save.py")], input=self.pages_code(op="remove", id=a, at=1),
+                           capture_output=True, text=True, env=self.env_for(api), timeout=60)
+        self.assertEqual(json.loads(r.stdout)["tv"], [b])
+
+    def env_for(self, api):
+        cfg = dict(FIXTURE, kronn=dict(FIXTURE["kronn"], api=api))
+        path = os.path.join(self.tmp, "bureau.config.json")
+        Path(path).write_text(json.dumps(cfg))
+        return {"BUREAU_CONFIG": path, "HOME": self.tmp, "PATH": self.bin, **CLOCK}
+
     def pages_code(self, **req):
         return "PAGES1:" + __import__("base64").b64encode(json.dumps(req).encode()).decode()
 

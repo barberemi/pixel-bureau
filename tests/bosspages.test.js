@@ -45,12 +45,12 @@ test('liste rangée par la page (pagelist) : son ordre, retrait immédiat, page 
   assert.deepEqual(J('readBossPages({datasets:{bosspages:{current:{pages:[],choices:[{id:"pz",title:"Z"},{title:"sans id"}]}}}}) && BOSS_CHOICES'), [{id: 'pz', title: 'Z'}]);
 });
 
-test('fenêtre avec le workflow pages : × par carte, case « + Ajouter » et liste des pages pas encore sur l\'écran ; code PAGES1', () => {
+test('fenêtre avec le workflow pages : × par carte, pas de carte « + » vide, liste des pages pas encore sur l\'écran ; code PAGES1', () => {
   run(`BOSS_PAGES=${JSON.stringify(PAGES)};BOSS_CHOICES=[{id:'pa',title:'Veille'},{id:'pc',title:'Revue <de> PR'}];ACTIONS.pages=true;`);
   try {
     const html = J('bossPagesHtml()'), add = J('bossAddHtml()');
     assert.equal((html.match(/class="bp-del" data-kronn-action="bureau-pages" data-id="p[ab]"/g) || []).length, 2);
-    assert.match(html, /bp-plus/);
+    assert.doesNotMatch(html, /bp-plus/, 'l\'ajout passe par la liste sous la grille');
     assert.match(add, /<option value="pc">Revue &lt;de&gt; PR<\/option>/);
     assert.ok(!add.includes('value="pa"'), 'une page déjà sur l\'écran n\'est pas proposée');
     assert.match(add, /data-kronn-action="bureau-pages" disabled/);
@@ -189,13 +189,7 @@ test('écran de validation (× ou Ajouter) : la grille se replie, l\'aide ne sui
   } finally { run('ACTIONS.pages=false;PAGELIST=null;BP_ADDED=null;BP_SENT=null;'); }
 });
 
-test('case « + Ajouter » de la grille : ouvre directement la liste des pages à ajouter', () => {
-  run(`var OPENED=0, PK={scrollIntoView(){},focus(){},showPicker(){OPENED++;}}, PL={};
-    bpWireGrid({querySelectorAll:()=>[],querySelector:s=>s==='.bp-plus'?PL:s==='.bp-pick'?PK:null}); PL.onclick();`);
-  assert.equal(J('OPENED'), 1);
-});
-
-test('fenêtre : 4 colonnes (6 pages et « + Ajouter » tiennent en 2 rangées sur un portable), 2 sous 900 px', () => {
+test('fenêtre : 4 colonnes (8 pages tiennent en 2 rangées sur un portable), 2 sous 900 px', () => {
   const css = require('fs').readFileSync(require('path').join(__dirname, '..', 'page', 'src', 'styles.css'), 'utf8');
   assert.match(css, /\.bp-grid\{display:grid;grid-template-columns:repeat\(4,1fr\)/);
   assert.match(css, /@media \(max-width:900px\)\{\.bp-grid\{grid-template-columns:repeat\(2,1fr\)\}\}/);

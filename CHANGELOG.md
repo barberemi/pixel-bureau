@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
+- Vidéoprojecteur en mode TV : les pages de l'écran mural cochées « 📽 Projeter en TV » (fenêtre Mes pages Kronn) passent sur une toile dans la salle de réunion, une toutes les 6 s, avec leur chiffre clé (champ `kpi` que la page publie elle-même, relevé avec la miniature), sinon le haut de leur miniature ; projecteur, faisceau et pénombre ; en veille (toile remontée) dès que quelqu'un est dans la salle. La fenêtre dit pour chaque page ce qui sera projeté, avec une aide sur le contrat `kpi`.
 - Mes todos : tes todos en tâches Kronn (tag `bureau-todo`) sur un tableau en liège au mur du bureau du boss, à côté du calendrier ; au clic, une fenêtre en trois colonnes (à faire, avec le canard, faites) où ajouter, glisser, cocher, supprimer et confier une todo au canard (une discussion Kronn liée à la tâche, il vient te voir quand il a une question) ; les changements s'affichent tout de suite et partent ensemble à « Enregistrer » (un code, une carte Kronn, un run à 0 token) ; relevé chaque minute par le cron live ; « 📌 Mes todos » dans ta fiche de boss. Après la mise à jour : `python3 tools/install.py` (dataset `todos`, workflow « Le Bureau · todos »), puis `publish.py all`.
 - Galerie des scènes, dans « Comment lire le plan » : ce que le bureau sait jouer (équipe et cérémonies, invités du pack, passions, petits moments), tiré de l'installation ; « ▶ voir » joue la scène tout de suite sur le plan avec la loupe, puis la journée revient telle quelle.
 - `build_sprites.py` avertit d'une planche fournie dont la marche de côté est figée (même écartement des pieds sur toutes les images : le personnage glisse), comme l'avaient le Pompier, Stephouille et le boss au sax.
@@ -23,6 +24,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- Mes pages Kronn : plus de carte « + Ajouter » vide dans la grille ; l'ajout passe par la liste « + Ajouter une page » sous la grille.
 - `publish.py page` et `install.py` pèsent la page avant de l'envoyer : au-delà de la limite de Kronn (1 000 000 octets), rien n'est publié et le message dit de combien elle déborde, bloc par bloc ; alerte à 90 %. `tools/smoke.py` pèse aussi ta vraie config en local et, avec `--chrome`, rejoue la page dans le cadre de Kronn (sandbox et CSP).
 - Fenêtres en pixel art : Mes pages Kronn, Mes todos, console Support, Nouvel agent et la fenêtre d'une carte Kronn prennent le cadre crénelé et l'ombre décalée des cartes, avec une barre de titre pleine à la couleur du cadre, le titre en police pixel et le × dans la barre (plus de bordure fine ni d'ombre floue).
 - Plan type et plan d'exemple : le calendrier de l'équipe se décale de 40 px vers la gauche pour faire place au tableau des todos (`objects.todo`) ; un plan sans `objects.todo` n'a pas de tableau.

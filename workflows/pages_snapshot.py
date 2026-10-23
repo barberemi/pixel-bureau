@@ -2,16 +2,19 @@
 
 Liste : le dataset `pagelist` de la page (ajouts et retraits faits depuis la page, pages_save.py), sinon la clé
 boss_pages de la config (l'installation).
-Sortie (stdout) : {generated_at, pages[{id, title, updated, img}], choices[{id, title}], warnings[texte]}, pages dans
+Sortie (stdout) : {generated_at, pages[{id, title, updated, img, kpi, tv}], choices[{id, title}], warnings[texte]}, pages dans
 l'ordre de la liste ; choices : les pages Kronn qu'on peut ajouter (toutes, sauf le Bureau ; 80 au plus, sans image).
 - img : capture JPEG 320x200 en data URI, ou null. Refaite seulement quand la page change (révision du HTML ou des
   données), sinon reprise du cache ~/.cache/pixel-bureau/thumbs/<id>.json.
 - Capture : le HTML de la page et ses datasets dans un fichier local (window.KronnPageData, comme dans Kronn),
   photographié par Chrome headless, puis réduit par jpeg() du socle (Pillow, sinon sips). Sans Chrome : cartes sans image.
+- kpi : le chiffre clé que la page publie elle-même (champ « kpi » d'un de ses datasets : value, label, et au choix pct,
+  parts, color, short), nettoyé (kpi_of) ; le vidéoprojecteur de la salle de réunion le montre en mode TV. Sans : null.
+- tv : la page est projetée en mode TV (liste « tv » du dataset pagelist, réglée depuis la fenêtre Mes pages Kronn).
 - Une page supprimée ou illisible est sautée. Sortie bornée sous 90 Ko (les images en trop sont retirées).
 - warnings (#8) : page sautée, capture ratée (carte sans image) ; écrits aussi sur stderr (run Kronn).
 """
-import base64, glob, html, json, os, shutil, signal, subprocess, sys, tempfile, time
+import base64, glob, html, json, os, re, shutil, signal, subprocess, sys, tempfile, time
 from datetime import datetime
 from _lib import CFG, TZ, dumps, get, jpeg, read_json, write_json, write_text, read_bytes
 
@@ -108,13 +111,47 @@ def title(d):
     return html.unescape(str(d.get("title") or d.get("slug") or d["id"][:8]))
 
 
+HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def kpi_of(d):
+    """Le premier champ « kpi » valide des datasets de la page : value et label (textes) obligatoires ; pct (0 à 100) ou
+    parts ([[nombre, "#rrggbb"]…], 6 au plus) pour la barre, color, short (titre court sur la toile). Rien d'autre."""
+    for ds in d.get("datasets") or []:
+        c = ds.get("current")
+        try:
+            c = json.loads(c) if isinstance(c, str) else c
+        except ValueError:
+            continue
+        k = c.get("kpi") if isinstance(c, dict) else None
+        if not isinstance(k, dict) or not isinstance(k.get("value"), (str, int, float)) or not isinstance(k.get("label"), str):
+            continue
+        out = {"value": str(k["value"])[:16], "label": k["label"][:40]}
+        if isinstance(k.get("short"), str) and k["short"].strip():
+            out["short"] = k["short"].strip()[:18]
+        if isinstance(k.get("pct"), (int, float)) and not isinstance(k.get("pct"), bool):
+            out["pct"] = max(0.0, min(100.0, float(k["pct"])))
+        parts = [[float(n), col] for n, col in (p for p in k.get("parts") or [] if isinstance(p, list) and len(p) == 2)
+                 if isinstance(n, (int, float)) and not isinstance(n, bool) and n >= 0 and isinstance(col, str) and HEX.match(col)][:6]
+        if parts and sum(n for n, _ in parts) > 0:
+            out["parts"] = parts
+        if isinstance(k.get("color"), str) and HEX.match(k["color"]):
+            out["color"] = k["color"]
+        return out
+    return None
+
+
+TV = set()
+
+
 def chosen():
-    """La liste rangée par la page (dataset pagelist), sinon boss_pages."""
+    """La liste rangée par la page (dataset pagelist), sinon boss_pages ; TV : ses pages projetées en mode TV."""
     try:
         for d in get(f"/pages/{CFG['page_id']}").get("datasets") or []:
             if d.get("name") == "pagelist" and d.get("current"):
                 c = d["current"] if isinstance(d["current"], dict) else json.loads(d["current"])
                 if isinstance(c.get("pages"), list):
+                    TV.update(x for x in c.get("tv") or [] if isinstance(x, str))
                     return [x for x in c["pages"] if isinstance(x, str) and x]
     except Exception as e:
         warn(f"liste de l'écran illisible, reprise de boss_pages ({str(e)[:120] or type(e).__name__})")
@@ -137,7 +174,8 @@ for pid in ids:
         warn(f"page {pid[:8]} sautée, supprimée ou illisible ({str(e)[:120] or type(e).__name__})")
         continue
     pages.append({"id": d["id"], "title": title(d),
-                  "updated": d.get("last_published_at") or d.get("updated_at"), "img": thumb(d, exe)})
+                  "updated": d.get("last_published_at") or d.get("updated_at"), "img": thumb(d, exe),
+                  "kpi": kpi_of(d), "tv": d["id"] in TV})
 # caches des pages retirées de la liste
 for f in glob.glob(os.path.join(CACHE, "*.json")):
     if os.path.basename(f)[:-5] not in ids:

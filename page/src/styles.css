@@ -218,6 +218,15 @@ body.km-on .side:has(.kmodal){z-index:50} /* le panneau est sticky (plan d'empil
 .bp-card:hover,.bp-card:focus-visible{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 35%,transparent)}
 .bp-card img,.bp-noimg{width:100%;aspect-ratio:16/10;object-fit:cover;object-position:top;border-radius:8px;background:var(--chip);display:block}
 .bp-noimg{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
+/* vidéoprojecteur : réglage et chiffre sous chaque page de Mes pages Kronn (47-projo.js) */
+.pj-foot{display:grid;gap:4px;padding:6px 2px 0;font-size:11px}
+.pj-tv{justify-self:start;font-size:11px;padding:2px 8px}.pj-tv.on{color:var(--accent)}
+.pj-kpi{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline}.pj-kpi b{font-size:13px;white-space:nowrap}.pj-kpi span,.pj-short,.pj-none{color:var(--muted)}
+.pj-warn{color:var(--warn);font-weight:600}.pj-how{color:var(--accent);font-weight:600;text-decoration:none}
+.pj-info{margin-top:16px;padding:12px 14px;border:1px solid var(--line);background:var(--bg);display:grid;grid-template-columns:auto 1fr;gap:10px 16px;font-size:12px}
+.pj-info h3{margin:0;font-size:13px;grid-column:1/-1}.pj-info p{margin:0;color:var(--muted);grid-column:1/-1}
+.pj-info pre{margin:0;padding:8px 10px;background:var(--chip);line-height:1.5;white-space:pre}.pj-info ul{margin:0;padding-left:18px;color:var(--muted)}
+.bp-on .pj-info{display:none}
 /* Mes todos : le tableau en liège du bureau du boss (47-todos.js) */
 .td-modal{width:min(1040px,calc(100vw - 32px));left:max(16px,calc(50% - 520px))}
 .td-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}@media (max-width:760px){.td-cols{grid-template-columns:1fr}}
@@ -249,7 +258,6 @@ body.km-on .side:has(.kmodal){z-index:50} /* le panneau est sticky (plan d'empil
 .bp-card small{display:flex;justify-content:space-between;color:var(--muted);font-size:11px}
 .bp-card small span{color:var(--accent);font-weight:700}
 .bp-cell{position:relative;display:grid}.bp-del{position:absolute;top:4px;right:4px;width:22px;height:22px;padding:0;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--err);font-size:14px;line-height:1;cursor:pointer}
-.bp-plus{align-items:center;justify-content:center;border-style:dashed;font:inherit;font-size:14px;cursor:pointer}.bp-plus span{font-size:30px;line-height:1}
 .bp-add{display:flex;gap:8px;align-items:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}.bp-add label{flex:1;font-weight:600;font-size:13px}
 :root .bp-modal .bp-del{color:var(--err)}
 .bp-modal [data-kronn-action]::after{content:none}
