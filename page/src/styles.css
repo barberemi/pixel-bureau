@@ -692,8 +692,7 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .la-st.cur{color:var(--ink);font-weight:700}.la-st.cur .la-av{border-color:var(--accent)}
 .la-ar{align-self:center;color:var(--muted)}
 .relaunch .note:empty{display:none}
-/* console Support : la fenêtre de l'ordinateur du boss (48-support.js, #62) */
-.sp-modal{width:min(720px,calc(100vw - 32px));left:max(16px,calc(50% - 360px))}
+/* console Support : dans le panneau de droite (48-support.js, #62) */
 .sp-head{justify-content:flex-start;gap:10px;margin-bottom:6px}.sp-head .sp-pill{margin-right:auto} /* la croix à droite : les thèmes posent la marge des boutons */
 .sp-pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--chip);color:var(--muted)}
 .sp-pill.sp-hot{background:var(--err);color:#fff}

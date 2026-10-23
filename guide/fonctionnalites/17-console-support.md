@@ -9,18 +9,18 @@ Quand un message attend, l'écran de l'ordinateur du boss passe au rouge, cligno
 ![L'écran du boss en alerte, survolé](../img/support-ecran.png)
 
 - **Au survol seulement**, l'infobulle : le canal, le nombre à traiter, l'auteur et l'heure du dernier message. Pas de bulle permanente sur le plan.
-- **Au clic** : la fenêtre du canal.
+- **Au clic** : la console du canal, dans le panneau de droite (comme la boîte aux lettres), avec « ← » pour revenir.
 - Rien à traiter : l'écran redevient normal.
-- **En mode TV**, l'écran du boss et l'agent Support restent en alerte (la fenêtre, elle, ne s'ouvre pas), et le bandeau « EN DIRECT » annonce chaque nouveau message du jour (« 🚒 Support : nouveau message de Pam, « sujet » »), puis rappelle toutes les heures un message que personne n'a pris (« attend depuis 2 h »). Jamais le texte du message : le prénom et le sujet, ou le début du message.
+- **En mode TV**, l'écran du boss et l'agent Support restent en alerte (la console, elle, ne s'ouvre pas), et le bandeau « EN DIRECT » annonce chaque nouveau message du jour (« 🚒 Support : nouveau message de Pam, « sujet » »), puis rappelle toutes les heures un message que personne n'a pris (« attend depuis 2 h »). Jamais le texte du message : le prénom et le sujet, ou le début du message.
 - Réglage « réduire les animations » du système : l'écran reste rouge, sans clignoter.
 
-## La fenêtre
+## La console
 
 Les fils des 7 derniers jours, du plus récent au plus ancien, chacun avec son état.
 
-![La fenêtre de la console Support](../img/support-fenetre.png)
+![La console Support, dans le panneau de droite](../img/support-panneau.png)
 
-1. **Nouveau** : l'auteur, l'heure et le message ; le projet à investiguer (un de tes projets Kronn, ou « Sans projet »), « 🔎 Investiguer » et « Ouvrir dans Teams ↗ ». Investiguer ouvre la carte Kronn, pour un commentaire si tu veux (une piste, un contexte).
+1. **Nouveau** : l'auteur, l'heure et le message ; le projet à investiguer (un de tes projets Kronn, ou « Sans projet »), « 🔎 Investiguer » et « Ouvrir dans Teams ↗ ». Investiguer ouvre la carte Kronn dans une fenêtre, pour un commentaire si tu veux (une piste, un contexte).
 2. **Investigation en cours** : l'agent Support et depuis quand, le lien vers sa discussion Kronn. Tu peux y lire ce qu'il trouve et lui écrire.
 3. **Réponse à valider** : la réponse proposée, telle qu'elle sera postée, et sa version.
    - **✅ Valider et poster en fil** : elle part dans le fil Teams, sous ton nom.
