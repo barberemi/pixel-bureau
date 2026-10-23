@@ -135,8 +135,7 @@ function spGate(el,t,g,dl){
 function spHead(){
   const n=spTodo().length, S=SUPPORT||{};
   const polled=S.polled_at?'Relevé à '+spWhen(S.polled_at)+(S.days?' · '+S.days+' derniers jours':'')+(S.cost?' · '+String(S.cost).replace('.',',')+' $':''):'Pas encore relevé';
-  return `<div class="bp-head sp-head"><h2>💬 ${esc(spName())}</h2><span class="sp-pill${n?' sp-hot':''}">${n?n+' à traiter':'rien à traiter'}</span>`+
-    '</div>'+
+  return `<h2 class="sp-head">💬 ${esc(spName())}<span class="sp-pill${n?' sp-hot':''}">${n?n+' à traiter':'rien à traiter'}</span></h2>`+ // titre du panneau, comme le courrier
     `<div class="sp-bar"><span class="sp-s">${esc(polled)}${S.demo?' (démo)':''}</span></div>`+ // relever maintenant : « ↻ » du panneau Fraîcheur
     (S.error?`<p class="sp-err">Dernier relevé en échec : ${esc(S.error)}</p>`:'');
 }
