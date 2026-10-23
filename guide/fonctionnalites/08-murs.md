@@ -1,6 +1,10 @@
 # Murs du bureau
 
-Les objets du plan sont cliquables et ouvrent leur détail dans le panneau.
+Les objets du plan sont cliquables, et une règle dit où ils s'ouvrent :
+
+- **Pour consulter**, le panneau de droite, le plan reste visible : mises en prod, Employé du sprint, post-it des crons, Fiche de paie, boîte aux lettres, console Support, canard. « ← » ramène à la vue d'avant, Échap aussi.
+- **Pour gérer, ou quand il faut de la place**, une fenêtre : Mur Kanban et calendrier (fenêtre large), Mes pages Kronn, Mes todos, Ajouter un agent. L'infobulle le dit (« ↗ s'ouvre en fenêtre ») ; Échap, × ou un clic à côté la referme.
+- **Les actions Kronn** (lancer, relancer, valider…) s'ouvrent toujours dans la même fenêtre, avec ce que tu lances et les étapes (voir [Fiches](07-fiches.md)).
 
 | Kanban du sprint | Planning des crons | Mises en prod du jour |
 | --- | --- | --- |
