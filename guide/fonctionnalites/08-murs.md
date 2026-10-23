@@ -22,3 +22,32 @@ Les objets du plan sont cliquables et ouvrent leur détail dans le panneau.
 ![Mes pages Kronn, depuis l'écran mural](../img/pages-boss.png)
 
 ![Retirer une page : l'écran de validation](../img/pages-validation.png)
+
+## Projeter une page en TV
+
+En mode TV, l'écran mural laisse la place à un **vidéoprojecteur** : posé sur la table de la salle de réunion, il projette sur une toile tendue devant le tableau blanc les pages cochées **📽 Projeter en TV** dans la fenêtre Mes pages Kronn, une toutes les 6 secondes (les points sous la toile disent laquelle). La salle passe dans la pénombre, le faisceau va du projecteur à la toile.
+
+![Le vidéoprojecteur de la salle de réunion, en mode TV](../img/projecteur.png)
+
+- **Ce qui est projeté** : le **chiffre clé** de la page, lisible de loin (son titre court, le chiffre en grand, ce qu'il compte, une barre). Sans chiffre, le haut de sa miniature et son titre.
+- **En veille** dès que quelqu'un est dans la salle (une réunion, la scène d'un ticket réouvert…) : la toile remonte, le faisceau s'éteint, le voyant du projecteur passe à l'orange. Il reprend quand la salle se vide. Pendant le daily, le planning et la rétro, la TV montre ses scènes à la place du plan.
+- **Cocher ou décocher** passe par une carte Kronn, comme l'ajout et le retrait (code page à coller). Hors mode TV, rien ne change : l'écran mural et ses miniatures.
+
+![Mes pages Kronn : projeter en TV, et le chiffre de chaque page](../img/pages-projeter.png)
+
+Sous chaque page, la fenêtre dit ce que la toile montrera : **📊 55 % blocks migrés** et son titre court, ou **pas de chiffre** (en orange, « ⚠ projetée en miniature », si la page est cochée), avec **ⓘ Comment ?** qui ouvre l'aide.
+
+**Donner un chiffre à une page** : c'est la page qui le publie, dans un champ `kpi` d'un de ses datasets, rempli par le cron qui la met à jour. Le Bureau le relève chaque heure avec la miniature (`workflows/pages_snapshot.py`).
+
+```json
+"kpi": { "value": "55 %", "label": "blocks migrés", "pct": 54.9, "color": "#3fbf6a", "short": "Migration blocks" }
+```
+
+| Champ | Rôle |
+|---|---|
+| `value`, `label` | le chiffre et ce qu'il compte (obligatoires ; 16 et 40 caractères au plus) |
+| `pct` | la barre, de 0 à 100 ; sa couleur : `color` (`#rrggbb`) |
+| `parts` | à la place de `pct`, une barre en plusieurs couleurs : `[[45, "#3fbf6a"], [24, "#e0a020"], [16, "#e0614f"]]` (6 parts au plus) |
+| `short` | le titre sur la toile, 18 caractères au plus (sinon le titre de la page, coupé) |
+
+Exemples : un pourcentage (`"55 %"`, `pct`), un compteur (`"31 PR"`, `"relues, 7 j"`, `parts` par verdict).

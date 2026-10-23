@@ -26,6 +26,10 @@ WAIT = "new Promise(r=>setTimeout(r,2500))"
 # pages Kronn du boss simulées (#61) : 5 pages aux miniatures dessinées, le workflow pages branché, deux pages à ajouter
 DEMO_PAGES = ("ACTIONS.pages=true;BOSS_CHOICES=[{id:'demo-a',title:'Planning des congés'},{id:'demo-b',title:'Suivi des commandes'}];"
               "BOSS_PAGES=" + "[['Ventes du trimestre','#2f6fd6',35],['Stock de papier','#2e9e5b',180],['Satisfaction clients','#e0a020',600],['Livraisons','#7a5cc8',1500],['Notes de frais','#c8456e',2900]].map(([t,c,m],i)=>{const k=document.createElement('canvas');k.width=320;k.height=200;const g=k.getContext('2d');g.fillStyle='#1c1f26';g.fillRect(0,0,320,200);g.fillStyle='#e8e2d0';g.fillRect(14,14,150,10);for(let j=0;j<4;j++){g.fillStyle='#2a2e37';g.fillRect(14+j*76,36,68,40);g.fillStyle=c;g.fillRect(20+j*76,58,20+j*9,8);}g.fillStyle='#2a2e37';g.fillRect(14,88,292,98);g.fillStyle=c;for(let j=0;j<12;j++){const h=18+((j*37+i*11)%60);g.fillRect(24+j*23,176-h,14,h);}return {id:'demo'+i,title:t,updated:new Date(Date.now()-m*60e3).toISOString(),img:k.toDataURL('image/jpeg',.8)};});")
+# vidéoprojecteur (47-projo.js) : trois pages projetées en mode TV, deux avec un chiffre clé (kpi), une sans
+DEMO_PROJO = (DEMO_PAGES + "BOSS_PAGES[0].kpi={value:'82 %',label:'du CA visé',pct:82,color:'#5b8def',short:'Ventes'};"
+              "BOSS_PAGES[2].kpi={value:'46 avis',label:'cette semaine',parts:[[30,'#3fbf6a'],[10,'#e0a020'],[6,'#e0614f']],short:'Satisfaction'};"
+              "PAGE_TV=['demo0','demo2','demo3'];")
 SHOTS = {
     "plan": (1400, 1000, AT(11), "#cv", 1.5),
     # agents mis en avant (« Sur le plan » : agents) : icône, prénom et métier de chacun
@@ -106,6 +110,10 @@ SHOTS = {
     "passions": (1400, 1000, AT(11) + "byKey.p_gabe.passion={moment:'basket'};T=passionSlot(byKey.p_gabe,T).s+40e3;needTeleport=true;", "#cv", 1.5),
     # « Mes pages Kronn » (#61) : la fenêtre de l'écran mural, avec × par page, « + Ajouter » et la liste des autres pages
     "pages-boss": (1400, 1000, AT(11) + DEMO_PAGES + "openBossPages();", None),
+    "pages-projeter": (1400, 1100, AT(11) + DEMO_PROJO + "ACTIONS.pages=true;openBossPages();setTimeout(()=>{const i=document.querySelector('.pj-info');if(i)i.hidden=false;},200);", ".bp-modal"),
+    "projecteur": (1600, 900, AT(11) + DEMO_PROJO + "setTv(true);setTimeout(()=>{const r=projoRoom(),c=document.querySelector('#cv'),b=c.getBoundingClientRect(),"
+                   "k=b.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(b.left+scrollX+r.x*k)+'px',"
+                   "top:(b.top+scrollY+(r.y-40)*k)+'px',width:r.w*k+'px',height:(r.h+48)*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 3),
     # écran de validation (#61) : clic sur × d'une page, la grille se replie ; la carte Kronn s'ouvre juste dessous (pas en démo)
     "pages-validation": (1400, 1000, AT(11) + DEMO_PAGES + "openBossPages();document.querySelectorAll('.bp-del')[2].click();", ".bp-modal"),
     # l'écran mural de la salle de réunion (#61) : 4 miniatures et la case « + » (zoom sur la pièce)

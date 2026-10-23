@@ -30,6 +30,7 @@ function bossPageImg(p){
 // l'écran, centré sur le tableau blanc du plan (LAYOUT.wall), en pixels ; null sans tableau blanc
 function wallRect(){const w=(LAYOUT.wall||[]).find(d=>d.type==='whiteboard');return w?{x:w.at[0]*TS+48-56,y:TS+5,w:112,h:21}:null;}
 const WALL_SCREEN={y:TS+1,draw:now=>{
+  if(TV){if(projoOn())drawProjoScreen(now);return;} // 47-projo.js : le vidéoprojecteur
   if(!bossPagesOn())return;
   const r=wallRect(), l=shownPages(), n=Math.min(4,l.length), k=l.length>4?Math.floor(now/BOSS_PAGE_MS):0;
   R(ctx,r.x,r.y,r.w,r.h,'#14171e');R(ctx,r.x+1,r.y+1,r.w-2,1,'#2c313c');
@@ -56,7 +57,7 @@ function bossPagesHtml(){
     const age=p.updated?now-ms(p.updated):null, nw=p.id===BP_ADDED;
     return `<div class="bp-cell"><a class="bp-card" href="${esc(bpLink(p.id))}" target="_blank" rel="noopener">${bpImg(p,nw?'⏳ Miniature en cours…':'Pas d\'aperçu')}`+
       `<b>${esc(p.title||p.id.slice(0,8))}</b><small>${nw?'Ajoutée à l\'instant':age!=null&&age>=0?'Mise à jour il y a '+esc(bpAge(age)):''}<span aria-hidden="true">↗</span></small></a>`+
-      (nw?'<span class="bp-badge">✓ Ajoutée</span>':'')+
+      (nw?'<span class="bp-badge">✓ Ajoutée</span>':'')+(del?projoFoot(p):'')+
       (del?`<button type="button" class="bp-del" data-kronn-action="bureau-pages" data-id="${esc(p.id)}" aria-label="Retirer ${esc(p.title||'')}">×</button>`:'')+'</div>';
   }).join(''); // l'ajout se fait par la liste sous la grille (plus de carte « + » vide)
 }
@@ -70,13 +71,18 @@ function bossAddHtml(){
 // × et Ajouter (#61) : l'écran de validation remplace la grille (la carte Kronn s'ouvre juste dessous, dans le même
 // bloc data-kronn-action-slot-host) ; l'aide ne suit que la demande lancée d'ici (Kronn garde l'état de la précédente
 // sur tous les boutons de la même action)
+// textes de chaque demande : étiquette, précision, et après coup (« est sur l'écran mural ; … »)
+const BP_OPS={add:['Ajouter à l\'écran mural','Sa miniature est faite juste après, en une dizaine de secondes.','est sur l\'écran mural ; sa miniature arrive dans quelques secondes.','est sur l\'écran mural.'],
+  remove:['Retirer de l\'écran mural','Elle quitte l\'écran ; la page Kronn elle-même n\'est pas touchée.','a quitté l\'écran mural.','a quitté l\'écran mural.'],
+  tv_on:['📽 Projeter en TV','En mode TV, le vidéoprojecteur de la salle de réunion la montre (son chiffre clé s\'il y en a un).','sera projetée en mode TV.','sera projetée en mode TV.'],
+  tv_off:['Ne plus projeter en TV','Elle reste sur l\'écran mural ; seul le vidéoprojecteur ne la montre plus.','n\'est plus projetée en mode TV.','n\'est plus projetée en mode TV.']};
 function bpAsk(box,b,op,id){
   b.onclick=()=>{
     if(box.classList.contains('bp-on'))return; // second clic (Annuler) : Kronn referme sa carte
     const p=bpPageOf(id()), conf=box.querySelector('.bp-confirm');BP_SENT={b,op,p};
     box.classList.add('bp-on');conf.hidden=false;
-    conf.innerHTML=`<div class="bp-what">${bpImg(p,'Pas encore d\'aperçu')}<div><span class="bp-tag ${op}">${op==='add'?'Ajouter à l\'écran mural':'Retirer de l\'écran mural'}</span>`+
-      `<b>${esc(p.title||'')}</b><small>${op==='add'?'Sa miniature est faite juste après, en une dizaine de secondes.':'Elle quitte l\'écran ; la page Kronn elle-même n\'est pas touchée.'}</small></div>`+
+    conf.innerHTML=`<div class="bp-what">${bpImg(p,'Pas encore d\'aperçu')}<div><span class="bp-tag ${op}">${BP_OPS[op][0]}</span>`+
+      `<b>${esc(p.title||'')}</b><small>${BP_OPS[op][1]}</small></div>`+
       `<button type="button" class="bp-back">↩ Annuler</button></div><div class="hint"></div>`;
     codeHint(conf.querySelector('.hint'),pagesCode(op,p.id),'Code page','rien à retoucher');
     conf.querySelector('.bp-back').onclick=()=>bpBack(box);box.scrollTop=0;
@@ -84,8 +90,8 @@ function bpAsk(box,b,op,id){
   new MutationObserver(()=>{
     if(!BP_SENT||BP_SENT.b!==b)return;
     const st=b.getAttribute('data-kronn-action-state'), h=box.querySelector('.bp-confirm .hint'), t=esc(BP_SENT.p.title||'');if(!h)return;
-    if(st==='succeeded'){if(BP_SENT.op==='add')BP_ADDED=BP_SENT.p.id;BP_SENT.done=true;
-      h.innerHTML=`<b style="color:var(--ok)">✓ C'est fait.</b> « ${t} » ${BP_SENT.op==='add'?'est sur l\'écran mural ; sa miniature arrive dans quelques secondes.':'a quitté l\'écran mural.'}`;
+    if(st==='succeeded'){if(BP_SENT.op==='add')BP_ADDED=BP_SENT.p.id;BP_SENT.done=true;projoSent(BP_SENT.op,BP_SENT.p.id); // 47-projo.js
+      h.innerHTML=`<b style="color:var(--ok)">✓ C'est fait.</b> « ${t} » ${BP_OPS[BP_SENT.op][2]}`;
       box.querySelector('.bp-back').textContent='↩ Retour à mes pages';}
     else if(st==='failed')h.innerHTML='<b style="color:var(--err)">Code refusé.</b> Colle le code en entier (il commence par PAGES1:), puis relance.';
   }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
@@ -96,7 +102,7 @@ function bpBack(box){
   if(s&&box.querySelector('[data-kronn-action-slot]'))s.b.click();
   box.classList.remove('bp-on');const conf=box.querySelector('.bp-confirm');conf.hidden=true;conf.innerHTML='';BP_SENT=null;
   bpRefresh(box);
-  const h=box.querySelector('.bp-hint');if(s&&s.done&&h)h.innerHTML=`<b style="color:var(--ok)">✓ C'est fait.</b> « ${esc(s.p.title||'')} » ${s.op==='add'?'est sur l\'écran mural.':'a quitté l\'écran mural.'}`;
+  const h=box.querySelector('.bp-hint');if(s&&s.done&&h)h.innerHTML=`<b style="color:var(--ok)">✓ C'est fait.</b> « ${esc(s.p.title||'')} » ${BP_OPS[s.op][3]}`;
 }
 // la grille et la liste des pages à ajouter suivent les données (dataset pagelist, miniatures), sauf pendant une validation
 function bpRefresh(box){
@@ -110,6 +116,8 @@ function bpRefresh(box){
 }
 function bpWireGrid(box){
   for(const b of box.querySelectorAll('.bp-del'))bpAsk(box,b,'remove',()=>b.dataset.id);
+  for(const b of box.querySelectorAll('.pj-tv'))bpAsk(box,b,b.dataset.op,()=>b.dataset.id); // 47-projo.js
+  for(const a of box.querySelectorAll('.pj-how'))a.onclick=e=>{e.preventDefault();const i=box.querySelector('.pj-info');if(i){i.hidden=!i.hidden;if(!i.hidden)i.scrollIntoView({block:'nearest',behavior:SCROLL_BEHAVIOR});}};
 }
 function bossPagesWire(box){
   if(!box.querySelector('.bp-confirm'))return;
@@ -128,7 +136,7 @@ function openBossPages(){
   BP_BACK=back;
   const bd=document.createElement('div');bd.className='bp-backdrop';bd.onclick=()=>closeBossPages();
   const box=document.createElement('div');box.className='bp-modal';box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label','Mes pages Kronn');
-  box.innerHTML=`<div class="bp-head"><h2>Mes pages Kronn</h2><button type="button" class="bp-x" aria-label="Fermer">×</button></div><div data-kronn-action-slot-host>${ACTIONS.pages?'<div class="bp-confirm" hidden></div>':''}<div class="bp-grid">${bossPagesHtml()}</div>${bossAddHtml()}</div>`;
+  box.innerHTML=`<div class="bp-head"><h2>Mes pages Kronn</h2><button type="button" class="bp-x" aria-label="Fermer">×</button></div><div data-kronn-action-slot-host>${ACTIONS.pages?'<div class="bp-confirm" hidden></div>':''}<div class="bp-grid">${bossPagesHtml()}</div>${ACTIONS.pages?projoInfoHtml():''}${bossAddHtml()}</div>`;
   BP_INERT=[...document.body.children].filter(e=>!e.inert&&e.tagName!=='SCRIPT');
   BP_INERT.forEach(e=>{e.inert=true;});
   document.body.append(bd,box);

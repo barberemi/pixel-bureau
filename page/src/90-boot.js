@@ -139,7 +139,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   ABSENCES=readAbsences(k); // 36-absences.js (démo : après refreshAll, qui crée les personnages)
   MAILS=readMails(k); // 48-mail.js
   SUPPORT=readSupport(k); // 48-support.js (#62)
-  BOSS_PAGES=readBossPages(k)||[];PAGELIST=readPageList(k); // 47-bosspages.js (#61)
+  BOSS_PAGES=readBossPages(k)||[];PAGELIST=readPageList(k);PAGE_TV=readPageTv(k); // 47-bosspages.js (#61), 47-projo.js
   TODOS=readTodos(k); // 47-todos.js
   GITFUT=readGitfut(k)||{};
   ACTS=readActs(k);
@@ -181,6 +181,8 @@ window.addEventListener('kronn:page-data',e=>{
   if(bp)BOSS_PAGES=bp;
   const pl=readPageList(k)||readPageList(window.KronnPageData);
   if(pl)PAGELIST=pl;
+  const ptv=readPageTv(k)||readPageTv(window.KronnPageData);
+  if(ptv)PAGE_TV=ptv;
   if(bp||pl)bpRefresh(); // 47-bosspages.js : la fenêtre ouverte suit (#61)
   const td=readTodos(k)||readTodos(window.KronnPageData);
   if(td)todosArrived(td);else if(dk)tdRefresh(); // 47-todos.js : le tableau et la fenêtre suivent (canard compris)
