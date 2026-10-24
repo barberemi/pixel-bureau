@@ -1,0 +1,220 @@
+{
+ "kind": "workflow",
+ "key": "move",
+ "definition": {
+  "name": "Le Bureau · déplacer un ticket",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "jira_ticket_key",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket à déplacer.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "target_status",
+    "label": "Statut visé",
+    "placeholder": "To Review",
+    "description": "Statut Jira où passer le ticket (relu dans le dataset actions : moves).",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": 1,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "avant",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "État avant écriture : le statut actuel (déjà dans le statut visé : rien à faire).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/issue/{{jira_ticket_key}}",
+    "api_method": "GET",
+    "api_query": {
+     "fields": "status,summary"
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "transitions",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Transitions possibles du ticket : la bonne se choisit à l'étape suivante, aucun id de transition écrit en dur.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/issue/{{jira_ticket_key}}/transitions",
+    "api_method": "GET",
+    "api_query": {},
+    "_requires": "jira"
+   },
+   {
+    "name": "choose",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "La transition vers le statut visé, choisie par son nom de statut (aucun id écrit en dur) ; une transition propre au flux plutôt qu'une globale. Déjà dans ce statut : « DEJA », le run s'arrête là, réussi.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "import sys,json\np=sys.stdin.read().split('\\n===SEP===\\n')\nd=json.loads(p[0]) if p[0].strip() else {}\niss=json.loads(p[1]) if len(p)>1 and p[1].strip() else {}\nwant=sys.argv[1].strip().lower()\ncur=((iss.get('fields') or {}).get('status') or {}).get('name') or ''\nif cur.strip().lower()==want:\n    sys.stdout.write('DEJA')\n    sys.exit(0)\nts=[t for t in d.get('transitions') or [] if ((t.get('to') or {}).get('name') or '').strip().lower()==want]\nts.sort(key=lambda t:bool(t.get('isGlobal')))\nif not ts:\n    have=', '.join(sorted({(t.get('to') or {}).get('name') or '?' for t in d.get('transitions') or []}))\n    sys.stderr.write('Jira ne propose pas de passer de %s a %s (possibles : %s).\\n' % (cur or '?', sys.argv[1], have or 'aucune'))\n    sys.exit(1)\nsys.stdout.write(str(ts[0]['id']))\n",
+     "{{target_status}}"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.transitions.data}}\n===SEP===\n{{steps.avant.data}}",
+    "on_result": [
+     {
+      "contains": "DEJA",
+      "action": {
+       "type": "Stop"
+      }
+     }
+    ]
+   },
+   {
+    "name": "transition",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Passe par l'API bulk parce qu'elle répond 201 {taskId} : POST /issue/{key}/transitions répond 204 et casse l'étape (KT-689).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/bulk/issues/transition",
+    "api_method": "POST",
+    "api_body": {
+     "bulkTransitionInputs": [
+      {
+       "selectedIssueIdsOrKeys": [
+        "{{jira_ticket_key}}"
+       ],
+       "transitionId": "{{steps.choose.data.stdout}}"
+      }
+     ],
+     "sendBulkNotification": false
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "pause",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Attente avant relecture. Mesure : le ticket bascule a ~1,5 s apres le 201 de l'API bulk. 3 s = deux fois la marge ; « verifie » tranche si ca n'a pas suffi.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "import time\ntime.sleep(3)\nprint('pause')\n"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "name": "apres",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "État réel du ticket après écriture.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/issue/{{jira_ticket_key}}",
+    "api_method": "GET",
+    "api_query": {
+     "fields": "status"
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "verifie",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Échoue fort si le ticket n'est pas dans le statut visé après l'écriture.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "import sys,json\niss=json.loads(sys.stdin.read() or '{}')\nst=((iss.get('fields') or {}).get('status') or {}).get('name') or ''\nif st.strip().lower()!=sys.argv[1].strip().lower():\n    sys.stderr.write('Etat final inattendu : %s au lieu de %s.\\n' % (st or '?', sys.argv[1]))\n    sys.exit(1)\nsys.stdout.write(json.dumps({'key': iss.get('key'), 'status': st, 'ok': True}))\n",
+     "{{target_status}}"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.apres.data}}"
+   }
+  ]
+ }
+}

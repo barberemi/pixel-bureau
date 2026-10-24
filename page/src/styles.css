@@ -242,6 +242,11 @@ button.back kbd{font:10px ui-monospace,Menlo,monospace;border:1px solid var(--li
 .kbw-strip{writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:flex-end;gap:8px;min-height:220px;margin:0;padding:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
 .kbw-c.kb-on{outline:3px solid var(--accent);outline-offset:1px}
 .kbv.side{position:sticky;top:64px;max-height:calc(84vh - 150px);overflow:auto;padding:12px;margin:0;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:none}
+.mv-host{display:block;margin:0 0 12px}
+.mv{display:flex;gap:8px;align-items:stretch}
+.mv button{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:6px 10px;text-align:left}.mv button.mv-next{align-items:flex-end;text-align:right}
+.mv button small{font-size:10px;font-weight:400;opacity:.85}.mv-col{display:inline-flex;align-items:center;gap:6px;font-weight:700}
+.mv-done{font-size:11px;margin:6px 0 0}.mv-note:empty,.mv-hint{display:none}.kmodal .mv-hint{display:block}.kmodal .mv,.kmodal .mv-done,.kmodal .mv-note{display:none}
 .kbv-tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--ink)}
 .kbv-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 0 10px}.kbv-top .back{margin:0}.kbv-esc{font-size:11px;color:var(--muted)}
 @media (max-width:900px){.kb-vol .kbm{grid-template-columns:minmax(0,1fr)}.kb-vol .kbw{display:none}.kbv.side{position:static;max-height:none}}

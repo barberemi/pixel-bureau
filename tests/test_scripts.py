@@ -565,6 +565,23 @@ print(json.dumps(val))
                                       {"id": "acme/api#4", "n": "4", "repo": "acme/api"}])
         self.assertEqual(out["tickets"], [{"key": "DM-1", "cat": "deploy", "pr": ""}])  # sa seule PR est sur acme/api
 
+    def test_actions_moves_one_column_each_way(self):
+        """actions.moves : ◀ / ▶ d'un ticket vers la colonne voisine, statut visé = le premier que jira.statuses y range ;
+        rien depuis « Déployé », pas de recul depuis « À faire » ; jira.moves règle un sens (null le retire)."""
+        fake = FakeKronn()
+        team = {"people": [{"name": "Pam", "tickets": [{"key": "DM-1", "cat": "todo"}, {"key": "DM-2", "cat": "review"},
+                                                       {"key": "DM-3", "cat": "deploy"}, {"key": "DM-4", "cat": "done"}], "prs": []}]}
+        fake.datasets = [{"name": "team", "current": json.dumps(team)}]
+        st = {"À faire": "todo", "En cours": "doing", "Reopen": "doing", "To Review": "review", "To Test": "test", "To Deploy": "deploy", "Deployed": "done"}
+        out = self.run_script("actions_snapshot.py", api=self.kronn(fake), jira=dict(FIXTURE.get("jira") or {}, statuses=st))
+        self.assertEqual([(m["id"], m["to"]) for m in out["moves"]],
+                         [("DM-1|next", "En cours"), ("DM-2|prev", "En cours"), ("DM-2|next", "To Test"),
+                          ("DM-3|prev", "To Test"), ("DM-3|next", "Deployed")])
+        out = self.run_script("actions_snapshot.py", api=self.kronn(fake),
+                              jira=dict(FIXTURE.get("jira") or {}, statuses=st, moves={"deploy": {"next": None}, "review": {"prev": "Reopen"}}))
+        self.assertEqual([(m["id"], m["to"]) for m in out["moves"]],
+                         [("DM-1|next", "En cours"), ("DM-2|prev", "Reopen"), ("DM-2|next", "To Test"), ("DM-3|prev", "To Test")])
+
     # ---------- canard d'équipe ----------
     def velocity(self, done):
         """Graphique de vélocité Jira : sprints du plus récent au plus ancien, points terminés de chacun."""
