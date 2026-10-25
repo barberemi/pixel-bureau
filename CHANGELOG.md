@@ -39,6 +39,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- Mur Kanban : un ticket réouvert (statut `jira.flow.reopened`) se repère de nouveau, avec une pastille « ↺ Réouvert » et un liseré rouge sur sa carte ; l'ancienne liste « Ses tickets » le signalait, la carte du Kanban non.
 - Mes todos : « ＋ » et Entrée ajoutent bien la todo dans Kronn. Le champ était dans un `<form>`, dont l'envoi est bloqué par le bac à sable des Live Pages (iframe sans `allow-forms`) : rien ne se passait.
 - Mise en prod d'une PR : une branche qui a déjà fusionné sa base ne s'arrête plus sur un faux conflit à l'étape rebase ; la base est fusionnée en local puis tout est squashé en un seul commit posé dessus, sans commit de merge poussé (à republier avec `publish.py workflows`).
 - Galerie des scènes : jouable à toute heure (le soir, la démonstration se joue à 11 h du dernier jour ouvré, puis la page revient à son heure) ; ses boutons restaient grisés une fois ouverte le soir.

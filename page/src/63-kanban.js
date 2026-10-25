@@ -8,6 +8,8 @@
 // Volet ouvert : cartes compactes (clé, points, titre), « Déployé » repliée en bande.
 const KB_MAX=7, KB_ALL={};
 let KB_WHO='', KB_VOL=null, KB_BACK=[];
+// un ticket réouvert (statut jira.flow.reopened, rangé dans « En cours ») : pastille « ↺ Réouvert » et liseré rouge
+const kbReopened=x=>!!x.status&&x.status===FLOW.reopened;
 const kbPeople=()=>chars.filter(c=>c.person&&c.team&&c.team.tickets.length);
 function kbTitle(){
   const c=byKey[KB_WHO];
@@ -54,8 +56,9 @@ function kanbanFill(box){
     const pts=list.reduce((a,x)=>a+(+x.points||0),0), n=KB_ALL[k]?list.length:KB_MAX;
     if(KB_VOL&&k==='done')return `<button type="button" class="kbw-col kbw-strip" title="${esc(TCAT[k].t)} : ${list.length} tickets (fermer le volet pour les voir)"><span class="dot" style="background:${TCAT[k].c}"></span>${esc(TCAT[k].t)} · ${list.length}</button>`;
     return `<section class="kbw-col" aria-label="${esc(TCAT[k].t)}"><h3><span class="dot" style="background:${TCAT[k].c}"></span>${esc(TCAT[k].t)}<small>${list.length}${pts?' · '+Math.round(pts)+' pts':''}</small></h3>`+
-      list.slice(0,n).map(x=>{const t=tkComp(x.summary);
-        return `<a href="#" class="kbw-c${x.key===cur?' kb-on':''}" data-tk="${esc(x.key)}"${x.key===cur?' aria-current="true"':''} style="--c:${TCAT[k].c}" title="Ouvrir sa fiche et ses actions"><b>${esc(x.key)}</b>${x.points?`<em>${esc(x.points)} pts</em>`:''}`+
+      list.slice(0,n).map(x=>{const t=tkComp(x.summary), ro=kbReopened(x);
+        return `<a href="#" class="kbw-c${x.key===cur?' kb-on':''}${ro?' kb-ro':''}" data-tk="${esc(x.key)}"${x.key===cur?' aria-current="true"':''} style="--c:${TCAT[k].c}" title="Ouvrir sa fiche et ses actions">`+
+          (ro?'<span class="kb-rot" title="Réouvert en test : retour en cours">↺ Réouvert</span>':'')+`<b>${esc(x.key)}</b>${x.points?`<em>${esc(x.points)} pts</em>`:''}`+
           `<span class="kbw-t">${t.comp?`<span class="kbw-cp">${esc(t.comp)}</span>`:''}${esc(t.title)}</span><small>${esc(x.owner?String(x.owner).split(' ')[0]:'non assigné')}</small></a>`;}).join('')+
       (list.length>n?`<button type="button" class="kbw-more" data-col="${k}">+ ${list.length-n} autre${list.length-n>1?'s':''}</button>`:'')+
       (list.length?'':'<span class="kbw-none">—</span>')+'</section>';

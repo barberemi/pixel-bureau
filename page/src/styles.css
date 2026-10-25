@@ -240,6 +240,8 @@ button.back kbd{font:10px ui-monospace,Menlo,monospace;border:1px solid var(--li
 .kb-vol .kbw{grid-template-columns:repeat(5,minmax(0,1fr)) 44px;gap:6px}
 .kb-vol .kbw-col{padding:6px}.kb-vol .kbw-col h3 small{display:none}.kb-vol .kbw-c{padding:5px 7px}.kb-vol .kbw-c small,.kb-vol .kbw-cp{display:none}
 .kbw-strip{writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:flex-end;gap:8px;min-height:220px;margin:0;padding:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.kbw-c.kb-ro{border-left-color:var(--err);background:color-mix(in srgb,var(--err) 9%,var(--panel))}
+.kb-rot{display:table;font-size:10px;font-weight:700;padding:0 6px;border-radius:999px;margin:0 0 3px;background:var(--err);color:var(--on-accent)} /* le texte des fonds colorés de chaque thème : 5,9:1 sur le rouge clair du Classique */
 .kbw-c.kb-on{outline:3px solid var(--accent);outline-offset:1px}
 .kbv.side{position:sticky;top:64px;max-height:calc(84vh - 150px);overflow:auto;padding:12px;margin:0;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:none}
 .mv-host{display:block;margin:0 0 12px}

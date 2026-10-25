@@ -175,6 +175,8 @@ SHOTS = {
     # déplacer un ticket (◀ / ▶ de sa fiche, workflow « déplacer un ticket ») : le volet d'un ticket en review, puis la carte Kronn
     "kanban-deplacer": (1600, 1000, AT(11) + KB_DEMO + "openTicket(_all.find(t=>t.cat==='review').key);", ".kbv"),
     "carte-deplacer": (1400, 1000, AT(11) + KB_DEMO + "openTicket(_all.find(t=>t.cat==='review').key);document.querySelector('.kbv .mv-next').click();", ".kmodal"),
+    # un ticket réouvert (statut jira.flow.reopened) : pastille « ↺ Réouvert » dans la colonne En cours
+    "kanban-reouvert": (1600, 1000, AT(11) + KB_DEMO + "TEAM.people.flatMap(p=>p.tickets).filter(x=>x.cat==='doing')[1].status=FLOW.reopened;openKanban();", ".bp-wide"),
     # le Kanban filtré sur une personne (barre de portraits en haut)
     "kanban-personne": (1600, 1000, AT(11) + "select('kanban');KB_WHO=kbPeople()[0].key;kanbanFill(document.querySelector('.bp-wbody'));", ".bp-wide"),
     # fiche d'un ticket : ses PR et les workflows à lancer (dataset actions simulé depuis l'équipe de démo)
