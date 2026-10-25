@@ -482,6 +482,14 @@ def boss_pages(ask, k, previous, page_id):
 MAIL_COLORS = ("#1f3f8f", "#2e7d4f", "#8a3a8f", "#b0592c")  # boîte aux lettres de chaque compte, dans l'ordre
 
 
+def mac_notify(ask, previous):
+    """Notification du Mac quand une validation ou une question t'attend (gates_snapshot.py, clé notify_mac) : demandé
+    seulement là où osascript existe ; ailleurs, le réglage d'avant est gardé tel quel (None : pas de clé)."""
+    if not shutil.which("osascript"):
+        return previous
+    return ask.yes("notify_mac", "Te prévenir par une notification du Mac quand une validation ou une question t'attend ?", previous is not False)
+
+
 def mac_mail_accounts():
     """Comptes de l'appli Mail du Mac (osascript), [] sans Mail ni osascript."""
     if not shutil.which("osascript"):
@@ -878,6 +886,7 @@ def main(argv=None):
     agents, mep = my_agents(ask, k, old.get("agents"), bureau, team_settings.get("agents"))
     screens = boss_pages(ask, k, old.get("boss_pages"), old.get("page_id"))
     courrier = mail(ask, old.get("mail"), defaults)
+    notify = mac_notify(ask, old.get("notify_mac"))
     me =next(p for p in roster_doc["people"] + people if p["key"] == owner)
     sprite_before = me.get("sprite")
     music = avatar(ask, owner, me, a.dry_run)
@@ -885,7 +894,7 @@ def main(argv=None):
     cfg = {"_doc": "Propre à cette installation, jamais partagé. Créé par tools/install.py (relançable).",
            "owner": owner, "team": team_id, "people": people, "layout": layout_file, "kronn": kronn, "page_id": old.get("page_id"), "workflows": {}, "actions": {},
            "own": sorted(own), "jira": j, "github": g, **rhythm_of(old, defaults, team_settings),
-           "mep_workflow": mep, "agents": agents, "boss_pages": screens, **({"mail": courrier} if courrier else {}), "ui": {**(defaults.get("ui") or {}), **(old.get("ui") or {})}, "music": old.get("music") or {},
+           "mep_workflow": mep, "agents": agents, "boss_pages": screens, **({"mail": courrier} if courrier else {}), **({"notify_mac": notify} if notify is not None else {}), "ui": {**(defaults.get("ui") or {}), **(old.get("ui") or {})}, "music": old.get("music") or {},
            "_ai_agent": ai, **({"protect": True} if old.get("protect") else {})}
     # réglages posés à la main dans la config (gitfut, wiki_posters, chrome…) : gardés tels quels à la relance
     # (sauf rhythm quand le pack le porte : seule la surcharge calculée par rhythm_of reste, #32)
@@ -901,6 +910,8 @@ def main(argv=None):
     say(f"  Jira : {j['project'] + ' (board ' + str(j['board']) + ')' if j else 'non connecté : sprint, tickets, kanban masqués'}")
     say(f"  GitHub : {g['repo'] or 'aucun dépôt suivi'}" + ("" if login else " (gh non connecté : PR et MEP vides)"))
     say(f"  Écran du boss : {len(screens)} page(s) Kronn")
+    if notify is not None:
+        say("  Notification du Mac quand une décision t'attend : " + ("oui" if notify else "non"))
     say("  Courrier : " + (", ".join(f"{a['label']} ({'appli Mail' if a['provider'] == 'mac-mail' else 'IMAP'})" for a in courrier["accounts"]) if courrier else "non"))
     say(f"  Agents : {len(agents)} personnage(s) · page : {'existante' if cfg['page_id'] else 'à créer'} · crons : "
         + ("désactivés" if a.disabled else "actifs"))

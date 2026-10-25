@@ -15,8 +15,9 @@ chaque ligne porte params = "" (liée au bouton, pour que la carte ne demande ri
 `warnings` (#8) = lectures en échec dont la partie reste vide (projets, canard, questions) : le dataset est publié
 quand même, chaque échec est écrit sur stderr (visible dans le run Kronn) et affiché par le panneau Fraîcheur.
 Le dataset doit être un vrai objet : Kronn y retrouve la ligne cliquée (find(run)) côté serveur.
+Avec notify_mac (config), une notification du Mac par osascript pour chaque nouvelle validation ou question en attente.
 """
-import json, os as _os, sys
+import json, os as _os, shutil, subprocess, sys
 from datetime import datetime, timedelta, timezone
 from _lib import CFG, get, get_all, is_bureau, is_bureau_disc, read_json, write_json
 
@@ -178,6 +179,52 @@ try:  # cache seulement : un échec coûte une relecture de l'API au passage sui
     write_json(CACHE, {k: v for k, v in _cache.items() if k in defs})
 except Exception:
     pass
+# ---------- notification du Mac ----------
+# Réglage notify_mac (installateur, sur Mac) : une notification quand une validation ou une question t'attend, même page
+# fermée. Une seule fois par attente : celles déjà signalées sont retenues dans le cache. Le cache est écrit d'abord :
+# s'il ne s'écrit pas, rien n'est envoyé (sinon la même notification reviendrait chaque minute). Textes passés en
+# arguments à osascript, jamais dans le script AppleScript (ils viennent des agents).
+NOTIFIED = _os.path.join(_os.path.dirname(CACHE), "notified.json")
+
+
+def first_line(s):
+    return next((x.strip().lstrip("#>*- ").strip() for x in str(s or "").splitlines() if x.strip().lstrip("#>*- ").strip()), "")[:200]
+
+
+def notify_mac():
+    if not CFG.get("notify_mac") or not shutil.which("osascript"):
+        return
+    waiting = {f"g:{g['run']}|{g['gate']}": ("✋", g["wf_name"], first_line(g["message"]) or "attend ta validation") for g in gates}
+    waiting.update({f"q:{q['id']}": ("❓", q["title"], first_line(q["question"])) for q in questions})
+    try:
+        seen = set(read_json(NOTIFIED))
+    except Exception:  # pas encore de cache (ou illisible) : tout ce qui attend est nouveau
+        seen = set()
+    new = [v for k, v in waiting.items() if k not in seen]
+    try:
+        write_json(NOTIFIED, sorted(set(waiting) | (seen if warnings else set())))  # lecture en échec : on n'oublie rien
+    except Exception as e:
+        print("gates : notification du Mac sautée, cache non écrit (" + str(e)[:120] + ")", file=sys.stderr)
+        return
+    if not new:
+        return
+    if len(new) == 1:
+        ico, who, what = new[0]
+        title, sub, text = f"Le Bureau · {ico} " + ("validation" if ico == "✋" else "question"), who, what
+    else:
+        title, sub, text = (f"Le Bureau · ✋ {len(new)} décisions t'attendent", ", ".join(w for _, w, _ in new[:3]) + (" …" if len(new) > 3 else ""),
+                            "Décide-les depuis ta fiche de boss.")
+    try:
+        r = subprocess.run(["osascript", "-e", "on run argv", "-e",
+                            'display notification (item 1 of argv) with title (item 2 of argv) subtitle (item 3 of argv) sound name "Glass"',
+                            "-e", "end run", text, title, str(sub)[:120]], capture_output=True, text=True, timeout=15)
+        if r.returncode:
+            raise RuntimeError((r.stderr or "osascript a échoué").strip()[:120])
+    except Exception as e:
+        warn("notification du Mac non envoyée", e)
+
+
+notify_mac()
 # une ligne par décision possible de chaque gate (#45) : les boutons directs de la page (approuver, rejeter, changements)
 # en désignent une, Kronn y relit run_id et decision (page action « bureau-gate »), jamais saisis
 grows = [{"id": f"{g['run']}|{d}", "run": g["run"], "decision": d} for g in gates for d in ("approve", "reject", "request_changes")]

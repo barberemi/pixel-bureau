@@ -1255,6 +1255,41 @@ print(json.dumps(val))
         # une ligne par décision (boutons directs de la page, #45) : Kronn y relit run_id et decision
         self.assertEqual(gates["grows"], [{"id": f"{run['id']}|{d}", "run": run["id"], "decision": d} for d in ("approve", "reject", "request_changes")])
 
+    def fake_osascript(self):
+        """Faux osascript : chaque appel ajoute ses arguments (une liste JSON) à osascript.calls."""
+        log = os.path.join(self.tmp, "osascript.calls")
+        path = os.path.join(self.bin, "osascript")
+        with open(path, "w") as fh:
+            fh.write(f"#!{sys.executable}\nimport json, sys\nwith open({log!r}, 'a') as f:\n    f.write(json.dumps(sys.argv[1:]) + '\\n')\n")
+        os.chmod(path, 0o755)
+        return lambda: [json.loads(x) for x in Path(log).read_text().splitlines()] if os.path.exists(log) else []
+
+    def test_gates_notify_the_mac_once_per_wait(self):
+        """notify_mac : une notification par validation qui t'attend, une seule fois ; textes en arguments d'osascript."""
+        calls = self.fake_osascript()
+        fake = FakeKronn()
+        run = dict(run_of(950, steps=0), status="WaitingApproval",
+                   step_results=[{"step_name": "gate", "status": "WaitingApproval", "output": "## Publier la revue de #2016\ndétail", "started_at": iso(1)}])
+        fake.runs[AGENT_WF] = [run]
+        api = self.kronn(fake)
+        self.run_script("gates_snapshot.py", api=api)
+        self.assertEqual(calls(), [])  # sans le réglage : rien
+        self.run_script("gates_snapshot.py", api=api, notify_mac=True)
+        self.assertEqual(len(calls()), 1)
+        text, title, sub = calls()[0][-3:]
+        self.assertEqual((title, sub, text), ("Le Bureau · ✋ validation", "Revue de PR", "Publier la revue de #2016"))
+        self.assertNotIn("2016", " ".join(calls()[0][:-3]))  # le message n'entre jamais dans le script AppleScript
+        self.run_script("gates_snapshot.py", api=api, notify_mac=True)
+        self.assertEqual(len(calls()), 1)  # déjà signalée : pas de deuxième notification
+        # une question et une autre validation arrivent ensemble : une seule notification qui les compte
+        fake.runs[AGENT_WF].append(dict(run, id="00000951-0000-4000-8000-000000000000"))
+        fake.discussions.append({"id": "a1", "title": "Audit du dépôt", "agent": "ClaudeCode", "updated_at": iso(3), "created_at": iso(9), "pending_question_count": 1})
+        fake.questions = {"a1": [{"id": "q1", "question": "On fusionne ?", "options": [], "items": [], "state": "pending", "created_at": iso(3)}]}
+        out = self.run_script("gates_snapshot.py", api=self.kronn(fake), notify_mac=True)
+        self.assertEqual(len(calls()), 2)
+        self.assertEqual(calls()[1][-2], "Le Bureau · ✋ 2 décisions t'attendent")
+        self.assertEqual(out["warnings"], [])
+
     def test_standup_since_format(self):
         r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "standup_since.py")], capture_output=True, text=True,
                            env={"BUREAU_CONFIG": os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"), "PATH": self.bin})

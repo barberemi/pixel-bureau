@@ -358,6 +358,19 @@ class InstallTest(unittest.TestCase):
                 self.assertEqual(self.run_install({**ANSWERS, "mail": "n"}), 0)
                 self.assertNotIn("mail", json.loads(Path(self.cfg_path).read_text()))
 
+    def test_mac_notification_asked_only_with_osascript(self):
+        """notify_mac : demandé sur Mac (osascript), oui par défaut, le non est retenu ; ailleurs, aucune question ni clé."""
+        with mock.patch.object(install.shutil, "which", side_effect=lambda c: "/usr/bin/osascript" if c == "osascript" else shutil.which(c)):
+            self.assertEqual(self.run_install(ANSWERS), 0)
+            self.assertIs(json.loads(Path(self.cfg_path).read_text())["notify_mac"], True)
+            with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):  # relance sur la même installation
+                self.assertEqual(self.run_install({**ANSWERS, "notify_mac": "n"}), 0)
+            self.assertIs(json.loads(Path(self.cfg_path).read_text())["notify_mac"], False)
+        with mock.patch.object(install.shutil, "which", side_effect=lambda c: None if c == "osascript" else shutil.which(c)):
+            os.remove(self.cfg_path)
+            self.assertEqual(self.run_install(ANSWERS), 0)
+            self.assertNotIn("notify_mac", json.loads(Path(self.cfg_path).read_text()))
+
     def test_new_team_by_default_with_the_type_plan(self):
         answers = {k: v for k, v in ANSWERS.items() if k not in ("team", "owner")}
         answers.update(owner="__new__", new_name="Pam", new_person="Pam Beesly", new_role="dev", github_repo="")
