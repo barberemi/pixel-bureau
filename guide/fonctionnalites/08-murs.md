@@ -14,6 +14,10 @@ Les objets du plan sont cliquables, et une règle dit où ils s'ouvrent :
 
 ![Le Mur Kanban filtré sur une personne](../img/kanban-personne.png)
 
+Un ticket **réouvert** (statut `jira.flow.reopened`, « Reopen ») reste dans « En cours », comme dans Jira, mais sa carte porte une pastille rouge **« ↺ Réouvert »**, un liseré rouge et un fond rosé : on le repère d'un coup d'œil, en vue compacte comprise.
+
+![Deux tickets réouverts dans la colonne En cours](../img/kanban-reouvert.png)
+
 | Volet d'un ticket | Sa PR, dans le volet |
 | --- | --- |
 | ![Le volet d'un ticket](../img/kanban-volet.png) | ![La PR du ticket, « ← DM-7637 »](../img/kanban-volet-pr.png) |

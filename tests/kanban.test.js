@@ -63,3 +63,9 @@ test('déplacer : ◀ puis ▶, liés à leur ligne de actions.moves (Kronn y re
   run('ACTIONS.move=false;');
   assert.deepEqual(J(`mvRows(${JSON.stringify(t)})`), []);
 });
+
+test('un ticket réouvert (statut jira.flow.reopened) porte la pastille « ↺ Réouvert » ; les autres non', () => {
+  assert.equal(J('kbReopened({status:FLOW.reopened,cat:"doing"})'), true);
+  assert.equal(J('kbReopened({status:"En cours",cat:"doing"})'), false);
+  assert.equal(J('kbReopened({cat:"doing"})'), false);
+});
