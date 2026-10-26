@@ -227,7 +227,7 @@ if a[0] == "api" and "--jq" in a:  # gh api <chemin> --jq … (#74 : tête d'une
 if a[0] == "api":  # gh api -i [-H If-None-Match: …] …/actions/workflows/<fichier>/runs : en-têtes, ETag, 304
     body = json.dumps({{"workflow_runs": [{{"status": r["status"], "conclusion": r["conclusion"], "created_at": r["createdAt"],
         "updated_at": r["updatedAt"], "display_title": r["displayTitle"], "html_url": r["url"],
-        **({{"actor": {{"login": r["by"]}}}} if r.get("by") else {{}})}} for r in d.get(key, [])]}})
+        "head_branch": r.get("branch"), **({{"actor": {{"login": r["by"]}}}} if r.get("by") else {{}})}} for r in d.get(key, [])]}})
     etag = 'W/"' + hashlib.sha1(body.encode()).hexdigest() + '"'
     if "If-None-Match: " + etag in a:
         call("304")
@@ -283,7 +283,7 @@ print(json.dumps(val))
                 "changelog": {"histories": [{"created": today, "author": {"accountId": acc, "displayName": name},
                                              "items": [{"field": "status", "fromString": "À faire", "toString": "En cours"}]}] * moves}})
         gh = github if github is not None else {
-            "open": [{"number": 7, "title": "DM-100 corrige le menu", "author": {"login": "dmartin", "name": "Darryl Martin"},
+            "open": [{"number": 7, "title": "DM-100 corrige le menu", "author": {"login": "dmartin", "name": "Darryl Martin"}, "headRefName": "feat/DM-100-menu",
                       "isDraft": False, "reviewDecision": "APPROVED", "url": "https://x/7", "updatedAt": today, "createdAt": today,
                       "latestReviews": [], "reviewRequests": ["michaelscott"]}],
             "merged": [], "releases": [], "staging": [], "prod": [], "errors": []}
@@ -327,6 +327,7 @@ print(json.dumps(val))
         self.assertEqual(set(names), {"Darryl Martin", "Jan Dupont"})
         self.assertEqual([t["key"] for t in names["Darryl Martin"]["tickets"]], ["DM-100", "DM-102"])
         self.assertEqual(names["Darryl Martin"]["prs"][0]["req"], ["michaelscott"])
+        self.assertEqual(names["Darryl Martin"]["prs"][0]["head"], "feat/DM-100-menu")  # « 🚀 Déployer la branche »
         self.assertEqual(out["unassigned"], [])  # le ticket sans assigné est dans un statut inconnu : ignoré
         self.assertTrue(out["sources"]["jira"] and out["sources"]["github"])
         self.assertNotIn("truncated", out)
@@ -575,6 +576,19 @@ print(json.dumps(val))
         self.assertEqual(out["prs"], [{"id": "acme/web#7", "n": "7", "repo": "acme/web", "env": "reposer"}])
         out = self.run_script("actions_snapshot.py", api=api, github={"repo": "acme/web"}, launch={"env": {"wf": "wf-env", "action": "poser"}})
         self.assertEqual(out["prs"][0]["env"], "poser")
+
+    def test_actions_deploys_one_row_per_pr_and_nonprod_env(self):
+        """actions.deploys (modèle deploy installé) : une ligne par PR d'un dépôt du réglage deploy et par env, id
+        « owner/repo#n|env » ; rien sans le modèle ni pour un dépôt hors réglage."""
+        fake = FakeKronn()
+        team = {"people": [{"name": "Pam", "prs": [{"n": 7, "repo": "acme/web"}, {"n": 8, "repo": "acme/api"}]}]}
+        fake.datasets = [{"name": "team", "current": json.dumps(team)}]
+        api = self.kronn(fake)
+        dep = {"repos": {"Acme/Web": {"envs": {"dev": {}, "stg": {}}}}}
+        self.assertEqual(self.run_script("actions_snapshot.py", api=api, github={"repo": "acme/web"}, deploy=dep)["deploys"], [])
+        out = self.run_script("actions_snapshot.py", api=api, github={"repo": "acme/web"}, deploy=dep, models={"deploy": "wf-dep"})
+        self.assertEqual(out["deploys"], [{"id": "acme/web#7|dev", "n": "7", "repo": "acme/web", "env": "dev"},
+                                          {"id": "acme/web#7|stg", "n": "7", "repo": "acme/web", "env": "stg"}])
 
     def test_actions_moves_one_column_each_way(self):
         """actions.moves : ◀ / ▶ d'un ticket vers la colonne voisine, statut visé = le premier que jira.statuses y range ;
@@ -868,6 +882,28 @@ print(json.dumps(val))
         out = self.run_script("live_snapshot.py", api=api)
         self.assertEqual(out["deploys"]["prod"]["17.3.0"]["status"], "in_progress")
         self.assertIsNone(out["deploys"]["prod"]["17.3.0"]["end"])
+
+    def test_live_snapshot_envs_tell_who_occupies_each_nonprod_env(self):
+        """envs (modèle deploy) : par « dépôt|env », le dernier run du workflow hors prod dont le titre nomme l'env ;
+        ref = la branche, ou la version d'un tag ; rien sans le modèle."""
+        run = lambda title, branch, mins, by, st="completed": {"status": st, "conclusion": "success" if st == "completed" else None,
+            "createdAt": iso(mins), "updatedAt": iso(mins - 1), "displayTitle": title, "url": "https://x/" + str(mins), "by": by, "branch": branch}
+        self.fake_gh({"staging": [run("CD - Deploy stg Branch: feat/dev-outils", "feat/dev-outils", 2, "jimh", "queued"),  # pas DEV
+                                  run("CD - Deploy dev Branch: feat/DM-7", "feat/DM-7", 5, "pambeesly", "in_progress"),
+                                  run("CD - Deploy qat Version: 17.2.0", "main", 30, "jimh"),
+                                  run("CD - Deploy dev Branch: feat/DM-1", "feat/DM-1", 90, "jimh")], "prod": []})
+        dep = {"repos": {FIXTURE["github"]["repo"]: {"envs": {"dev": {}, "stg": {}, "qat": {}}}}}
+        out = self.run_script("live_snapshot.py", api=self.kronn(FakeKronn()), deploy=dep)
+        self.assertEqual(out["envs"], {})  # modèle deploy pas installé
+        out = self.run_script("live_snapshot.py", api=self.kronn(FakeKronn()), deploy=dep, models={"deploy": "wf-dep"})
+        repo = FIXTURE["github"]["repo"]
+        dep["repos"][repo]["envs"]["ppr"] = {}
+        out = self.run_script("live_snapshot.py", api=self.kronn(FakeKronn()), deploy=dep, models={"deploy": "wf-dep"})
+        self.assertEqual(set(out["envs"]), {repo + "|dev", repo + "|stg", repo + "|qat"})  # ppr : aucun run ne le nomme
+        self.assertEqual({k: out["envs"][repo + "|qat"][k] for k in ("ref", "tag", "by")}, {"ref": "17.2.0", "tag": True, "by": "jimh"})
+        dev, stg = out["envs"][repo + "|dev"], out["envs"][repo + "|stg"]
+        self.assertEqual((dev["ref"], dev["tag"], dev["by"], dev["status"], dev["end"]), ("feat/DM-7", False, "pambeesly", "in_progress", None))
+        self.assertEqual((stg["ref"], stg["tag"], stg["status"]), ("feat/dev-outils", False, "queued"))
 
     # ---------- écran du boss : ses autres pages Kronn ----------
     def boss_pages(self, img_kb=1):

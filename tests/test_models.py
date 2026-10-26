@@ -10,7 +10,7 @@ import assemble, templates  # noqa: E402
 
 BASE = json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text())
 TPL = templates.load_templates()
-MODELS = ("review_child", "review_one", "review_cron", "estimate", "issue", "assign", "unassign", "env")
+MODELS = ("review_child", "review_one", "review_cron", "estimate", "issue", "assign", "unassign", "env", "deploy")
 GH = "12121212-3434-5656-7878-909090909090"
 CHILD = "abababab-0000-4000-8000-000000000001"
 PAGE = "cdcdcdcd-0000-4000-8000-000000000002"
@@ -179,6 +179,74 @@ exit 0
         r = subprocess.run(["bash", *args[:3], "404", "vance/frigo", "env-branch"], capture_output=True, text=True, env=env)
         self.assertEqual(r.returncode, 2)
         import shutil
+        shutil.rmtree(tmp)
+
+    def test_deploy_model_targets_only_the_team_nonprod_envs(self):
+        """Modèle deploy : dépôts et envs du réglage deploy (pack), workflow du réglage ou staging_workflow du dépôt ;
+        bouton avec le n° de PR, le dépôt et l'env de la ligne actions.deploys ; rien sans dépôt réglé."""
+        import shutil
+        tmp = tempfile.mkdtemp()
+        pack = os.path.join(tmp, "pack")
+        shutil.copytree(os.path.join(ROOT, "tests", "fixtures", "pack-exemple"), pack)
+        Path(os.path.join(pack, "settings.json")).write_text(json.dumps({"deploy": {"repos": {
+            "vance/frigo": {"envs": {"dev": {"envchoice": "dev"}, "stg": {"envchoice": "stg"}}},
+            "vance/api": {"workflow": "Deploy-NonProd.yml", "envs": {"dev": {"env": "dev"}}},
+            "vance/sans": {"envs": {"dev": {}}}}}}))  # ni workflow ni staging_workflow : ignoré
+        c = {**cfg(models={"deploy": "dddd1111-0000-4000-8000-000000000000"}), "team": pack}
+        c["github"] = {**c["github"], "staging_workflow": "CD-NONPROD.yml"}
+        self.assertEqual(assemble.deploy_envs(c), {"vance/frigo": ["dev", "stg"], "vance/api": ["dev"]})
+        self.assertEqual(steps("deploy", c)["dispatch"]["exec_args"][-3:], ["{{repo}}", "{{pr_number}}", "{{env}}"])
+        self.assertEqual([v["name"] for v in templates.render(TPL["deploy"], c)["variables"]], ["pr_number", "repo", "env"])
+        html = assemble.build(demo=False, cfg=c)
+        spec = json.loads(re.search(r'data-action-id="bureau-deploy">(.*?)</script>', html, re.S).group(1))
+        self.assertEqual(spec["target_id"], c["models"]["deploy"])
+        self.assertEqual([v["source_ref"] for v in spec["values"]], ["<page.dataset.actions.deploys.find(id).n>",
+                         "<page.dataset.actions.deploys.find(id).repo>", "<page.dataset.actions.deploys.find(id).env>"])
+        self.assertFalse(templates.skipped("deploy", c))
+        self.assertTrue(templates.skipped("deploy", cfg()))  # aucun réglage deploy
+        self.assertEqual(assemble.deploy_envs({**c, "models": {}}), {})  # modèle pas installé : pas de bouton
+        shutil.rmtree(tmp)
+
+    def test_deploy_script_dispatches_the_pr_branch_and_never_prod(self):
+        """Le script : branche de la PR en --ref et inputs de l'env ; refus d'un env ou dépôt hors réglage (2), d'une PR
+        fermée ou d'une fork (3), d'un workflow de prod (4) ; refus de GitHub (5). Faux gh."""
+        import shutil
+        tmp = tempfile.mkdtemp()
+        log = os.path.join(tmp, "gh.log")
+        Path(os.path.join(tmp, "gh")).write_text(f"""#!/bin/sh
+echo "$*" >> {log}
+case "$*" in
+  *"pr view 7 "*) echo '{{"state":"CLOSED","headRefName":"x","isCrossRepository":false}}' ;;
+  *"pr view 8 "*) echo '{{"state":"OPEN","headRefName":"x","isCrossRepository":true}}' ;;
+  *"pr view 9 "*) exit 1 ;;
+  *"pr view"*) echo '{{"state":"OPEN","headRefName":"feat/EW-1-carrousel","isCrossRepository":false}}' ;;
+  *"workflow run"*vance/refus*) echo "HTTP 422" >&2; exit 1 ;;
+esac
+exit 0
+""")
+        os.chmod(os.path.join(tmp, "gh"), 0o755)
+        c = cfg(deploy={"repos": {
+            "vance/frigo": {"workflow": "CD-NONPROD.yml", "envs": {"dev": {"envchoice": "dev", "versiontags": "", "validation": "oui"}}},
+            "vance/refus": {"workflow": "CD-NONPROD.yml", "envs": {"dev": {"envchoice": "dev"}}},
+            "vance/prod1": {"workflow": "CD-PROD.yml", "envs": {"dev": {}}},
+            "vance/prod2": {"workflow": "Deploy-NonProd.yml", "envs": {"dev": {}}}}})
+        c["github"] = {**c["github"], "prod_workflow": "Deploy-NonProd.yml"}  # un prod_workflow, même nommé « nonprod »
+        path = os.path.join(tmp, "bureau.config.json")
+        Path(path).write_text(json.dumps(c))
+        env = {"PATH": tmp + ":/usr/bin:/bin", "BUREAU_CONFIG": path}
+
+        def run(*a):
+            return subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "deploy.py"), *a], capture_output=True, text=True, env=env)
+        r = run("vance/frigo", "12", "dev")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("feat/EW-1-carrousel part sur DEV", r.stdout)
+        self.assertIn("workflow run CD-NONPROD.yml -R vance/frigo --ref feat/EW-1-carrousel -f envchoice=dev -f versiontags= -f validation=oui",
+                      Path(log).read_text())
+        for a, code in [(("vance/frigo", "12", "prod"), 2), (("vance/inconnu", "12", "dev"), 2), (("vance/frigo", "7", "dev"), 3),
+                        (("vance/frigo", "8", "dev"), 3), (("vance/frigo", "9", "dev"), 3), (("vance/prod1", "12", "dev"), 4),
+                        (("vance/prod2", "12", "dev"), 4), (("vance/refus", "12", "dev"), 5)]:
+            self.assertEqual(run(*a).returncode, code, a)
+        self.assertEqual(Path(log).read_text().count("workflow run"), 2)  # frigo, puis refus (refusé par GitHub)
         shutil.rmtree(tmp)
 
     def test_publish_never_creates_a_model(self):

@@ -72,6 +72,8 @@ TEMPLATES = {
     "unassign": ("workflow", ("models", "unassign"), {}),  # me le désaffecter (retour à À faire)
     # (re)construire l'env de branche d'une PR (label retiré puis reposé) : bouton « 🌿 » des fiches quand tu n'as pas launch.env
     "env": ("workflow", ("models", "env"), {}),
+    # déployer la branche d'une PR hors prod (DEV, STG…) : bouton « 🚀 » des fiches, dépôts et envs du réglage deploy
+    "deploy": ("workflow", ("models", "deploy"), {"dispatch": "workflows/deploy.py"}),
     # investiguer un message du canal Support (#62) : discussion avec l'agent, gate, réponse en fil
     "support": ("workflow", ("models", "support"), {n: "workflows/support.py" for n in ("open", "mark", "draft", "mark_draft", "post", "mark_post")}),
     "ask": ("quick_prompt", ("actions", "ask"), {}),
@@ -221,6 +223,8 @@ def skipped(key, cfg):
         return not (cfg.get("jira") or {}).get("config_id")
     if key == "env":  # aucun dépôt où générer un env de branche
         return not assemble.env_repos({**cfg, "models": {**(cfg.get("models") or {}), "env": "?"}})
+    if key == "deploy":  # aucun dépôt ni env hors prod réglé (deploy.repos)
+        return not assemble.deploy_envs({**cfg, "models": {**(cfg.get("models") or {}), "deploy": "?"}})
     if key in ("support", "support_poll"):  # console Support (#62) : canal Teams réglé (support.team, support.channel)
         s = cfg.get("support") or {}
         return not (s.get("team") and s.get("channel"))

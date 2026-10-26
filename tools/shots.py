@@ -37,6 +37,14 @@ KB_DEMO = ("ACTIONS.estimate=true;ACTION_BINDS['bureau-estimate']={jira_ticket_k
            "moves:_all.flatMap(t=>{const i=_o.indexOf(t.cat);return [['prev',i>=1&&i<=4?_o[i-1]:null],['next',i<=4?_o[i+1]:null]].filter(([,c])=>c).map(([d,c])=>({id:t.key+'|'+d,key:t.key,dir:d,to:_st[c]}));})};"
            "const KB_P=_prs.find(x=>x.review==='changes'&&!x.draft&&(x.keys||[]).length),KB_K=KB_P.keys[0],"
            "KB_W=(kbPeople().find(c=>c.team.tickets.some(t=>t.key===KB_K))||{}).key;")
+# « 🚀 Déployer la branche » : la PR du volet a une branche, DEV et STG réglés, occupés d'après le dataset live
+DP_DEMO = ("ACTIONS.deploy=true;ACTION_BINDS['bureau-deploy']={pr_number:'id',repo:'id',env:'id'};"
+           "KB_P.head='feat/'+KB_K+'-carrousel';const _r=prRepo(KB_P),_oc=chars.find(c=>c.person&&!c.boss&&c.github),_b=chars.find(c=>c.boss);"
+           "CFG.deploy_envs={[_r]:['dev','stg']};ACTS.deploys=['dev','stg'].map(e=>({id:prId(KB_P)+'|'+e,n:String(KB_P.n),repo:_r,env:e}));"
+           "const _t=h=>new Date(T-h*36e5).toISOString();LIVE=LIVE||{runs:[],discussions:[],deploys:{}};"
+           "LIVE.envs={[_r+'|dev']:{ref:'feat/DM-6550-bouton',tag:false,by:_oc&&_oc.github,status:'completed',conclusion:'success',start:_t(2.2),end:_t(2),url:'#'},"
+           "[_r+'|stg']:{ref:'17.122.1',tag:true,by:_b&&_b.github,status:'completed',conclusion:'success',start:_t(3.2),end:_t(3),url:'#'}};"
+           "openTicket(KB_K);")
 SHOTS = {
     "plan": (1400, 1000, AT(11), "#cv", 1.5),
     # agents mis en avant (« Sur le plan » : agents) : icône, prénom et métier de chacun
@@ -311,6 +319,10 @@ SHOTS = {
     # « 🌿 Générer l'env de branche » (launch.env) : sur la PR du ticket, dans le volet du Mur Kanban
     "env-branche": (1600, 1000, AT(11) + KB_DEMO + "ACTIONS.env=true;ACTION_BINDS['bureau-env']={pr_number:'id',action:'id'};CFG.env_repos=[CFG.github_repo];"
                    "ACTS.prs.forEach(p=>{p.env='reposer';});openTicket(KB_K);", ".kbv"),
+    # « 🚀 Déployer la branche » (modèle deploy) : DEV pris par la branche d'un collègue (Remplacer…), STG par une version ;
+    # puis la fenêtre de « ⇄ Remplacer… », qui prévient avant la carte Kronn
+    "deployer-branche": (1600, 1500, AT(11) + KB_DEMO + DP_DEMO + "setTimeout(()=>{const d=document.querySelector('.dp');d&&d.scrollIntoView({block:'end'});},1200);", ".kbv"),
+    "deployer-remplacer": (1600, 1000, AT(11) + KB_DEMO + DP_DEMO + "setTimeout(()=>{document.querySelector('.dp [data-kronn-action]').click();},1200);", ".kmodal"),
     "todos-tableau": (1400, 1000, AT(11) + "setTimeout(()=>{const t=todoRect(),c=document.querySelector('#cv'),r=c.getBoundingClientRect(),"
                       "k=r.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(t.x-70)*k)+'px',"
                       "top:(r.top+scrollY+(t.y-30)*k)+'px',width:(t.w+150)*k+'px',height:(t.h+90)*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 3),

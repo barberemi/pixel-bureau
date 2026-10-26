@@ -72,6 +72,18 @@ Les actions :
   "launch": {"env": {"wf": "<id de ton workflow>", "vars": {"pr": "pr_number", "action": "action"},
                      "repos": ["owner/depot"], "action": "reposer"}}
   ```
+- **🚀 Déployer la branche** : sur chaque PR d'un dépôt réglé, une ligne par env hors prod (DEV, STG…). Chaque ligne dit ce qui occupe l'env : la branche ou la version déployée, qui l'a lancée, depuis quand, et le lien vers le run GitHub (relu chaque minute par le cron live). Le bouton suit : **🚀 Déployer** sur un env libre ou que tu occupes ; **⇄ Remplacer…** quand il porte la branche de quelqu'un d'autre (la fenêtre de la carte Kronn le prévient avant Lancer : son test s'arrête) ; **↻ Redéployer** ou **↻ Relancer** (après un échec) quand c'est déjà ta branche. Juste après le clic, « ⏳ demandé », puis « ⏳ ta branche arrive · lancé il y a 4 min » tant que le run tourne : le bouton est grisé. C'est le modèle du Bureau « déployer la branche d'une PR (hors prod) » (`models.deploy`, `gh`, 0 token), que l'installateur propose quand le pack le règle : il lance le workflow hors prod du dépôt sur la branche de la PR (`gh workflow run --ref`), avec les inputs de l'env. Il refuse tout dépôt ou env hors réglage, une PR fermée ou d'une fork, et tout workflow de prod (`prod_workflow` de la config, ou « prod » dans son nom hors « nonprod »). Une version laissée vide fait construire la branche ; un dépôt qui n'accepte qu'un tag ne se règle pas ici.
+
+  ![Déployer la branche : DEV pris par la branche d'un collègue, STG par une version](../img/deployer-branche.png)
+
+  ![« ⇄ Remplacer… » : la fenêtre prévient avant la carte Kronn](../img/deployer-remplacer.png)
+
+  ```json
+  "deploy": {"repos": {"owner/depot": {"workflow": "CD_Deploy-NONPROD.yaml",
+    "envs": {"dev": {"envchoice": "dev", "versiontags": "", "validation": "oui"},
+             "stg": {"envchoice": "stg", "versiontags": "", "validation": "oui"}}}}}
+  ```
+  dans `settings.json` du pack (ou ta config). `workflow` est facultatif (sinon le `staging_workflow` du dépôt) ; le nom de chaque env (`dev`, `stg`) doit figurer dans le titre des runs du workflow, c'est par lui que le cron live retrouve l'occupant.
 - **Commenter** : à tout statut. Le texte se saisit dans la carte Kronn ; il part sur le ticket dans Jira avec le compte de ta connexion Atlassian, suivi de « (depuis Le Bureau) ». C'est un workflow du Bureau (« Le Bureau · commenter un ticket », un appel Jira, 0 token), créé par l'installateur quand Jira est connecté.
 - **Réestimer** (ton workflow `launch.estimate`, sinon le modèle du Bureau installé, `models.estimate`) : sur un ticket non terminé du sprint. Les nouveaux Story Points et la raison se saisissent dans la carte Kronn ; le ticket est mis à jour dans Jira avec un commentaire qui donne l'ancienne valeur, la nouvelle et la raison.
 
