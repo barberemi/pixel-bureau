@@ -34,6 +34,8 @@ function galleryScenes(){
     const visit=len=>s=>{SCENE_DEMO.visit={c,v:{s,e:s+len,r:rng(keySeed(c.key)*7919+daySeed(s))}};};
     if(c.on==='coffee'){const n=chars.filter(p=>p.person&&p.seat).length+1;
       add({...g,ico:'☕',n:c.name+' · tournée de café',d:c.role||'Un café pour chaque présent',w:'Vers 16 h, jours ouvrés',play:{len:n*120e3+COFFEE_BREW,speed:30,setup:visit(n*120e3+COFFEE_BREW)}});}
+    else if(c.on==='cleaning')add({...g,ico:'🧹',n:c.name+' · ménage du soir',d:c.role||'Le tour du bureau vide, avec son chariot',w:'Le soir des jours ouvrés, une heure',
+      play:{len:CLEAN_DUR,speed:60,setup:visit(CLEAN_DUR)}});
     else if(c.on==='mail'){const acc=typeof mailAccounts==='function'?mailAccounts().filter(a=>a.ok):[];
       if(acc.length)add({...g,ico:'📮',n:c.name+' · le courrier',d:c.role||'Dépose le courrier aux boîtes',w:'À l\'arrivée d\'un courrier',
         play:{len:POST_STAY+60e3,speed:10,setup:s=>{SCENE_DEMO.flag='post';}}});}

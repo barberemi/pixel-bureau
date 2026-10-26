@@ -274,6 +274,8 @@ SHOTS = {
                       "const e={id:'x',kind:'ufo',...ufoLandings()[0]};Object.defineProperty(e,'t0',{get:()=>performance.now()-.79*13e3});"
                       "FX.cur=new Map([['x',e]]);},1800);", "#cv", 1),
     # tournée de café (49-coffee.js) : Kevin apporte son café au boss, à gauche de son bureau ; les autres ont déjà leur tasse
+    # ménage du soir (49-menage.js) : l'agent d'entretien et son chariot au bout du 4e îlot, 21 min après son arrivée
+    "menage": (1400, 1000, AT(12) + "T=cleaningVisit(byKey.g_menage,T).s+0.35*36e5;needTeleport=true;", "#cv", 1.5),
     "tournee-cafe": (1400, 1000, AT(16) + "setTimeout(()=>{setLoupe(false,false);const r=coffeeTour(byKey.g_kevin,T);"
                      "T=r.at+(r.list.length-.5)*120e3;needTeleport=true;},1500);", "#cv", 1),
     "agent-retabli": (1400, 1000, AT(18 + 7 / 60) + "setTimeout(()=>{window.fxFrame=()=>{};setLoupe(false,false);FX_WORKING.push('idle');"

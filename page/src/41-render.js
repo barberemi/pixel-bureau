@@ -5,6 +5,7 @@ function render(now){
   for(const c of chars)if(c.present&&c.pos&&!popHidden(c,now)&&!ufoHides(c))list.push({y:c.pos.y,d:n=>drawChar(c,n)}); // popHidden : 66-newagent.js
   DUCK_POS=duckAt(T); if(DUCK_POS)list.push({y:DUCK_POS.y,d:drawDuck}); // 39-duck.js : le canard, trié avec les personnages
   for(const m of coffeeMugs())list.push({y:m.z,d:n=>drawMug(m,n)}); // 49-coffee.js : les tasses de la tournée de café
+  for(const m of cleaningCarts())list.push({y:m.z,d:()=>drawCart(m)}); // 49-menage.js : le chariot du ménage du soir
   list.sort((a,b)=>a.y-b.y);
   for(const it of list)it.d(now);
   drawLight(now); // voile du soir et de la nuit, sous les bulles et les noms
