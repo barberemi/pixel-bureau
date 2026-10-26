@@ -269,6 +269,7 @@ function prLaunch(box,p,{tickets,isNext=()=>false,group}={}){
   if(ACTIONS.env&&(CFG.env_repos||[]).some(r=>repoKey(r)===repoKey(id.replace(/#\d+$/,''))))
     launchBlock(box,{action:'bureau-env',bind:{id},verb:'génère l\'env de branche'+dr,
       sub:'Retire puis repose le label : crée l\'environnement de la PR, ou le reconstruit après un push',label:'🌿 Générer l\'env de branche',title:'Env de branche de '+nm});
+  deployBlock(box,p); // « 🚀 Déployer la branche » hors prod (modèle deploy, 62-deploy.js)
   // « ⟳ Remettre à jour » (#74) : rebase sur la base, sans squash ; en retard ou en conflit d'après le cron équipe, ou état inconnu
   if(ACTIONS.rebase&&!p.merged&&(p.conflict||p.behind!==0)){
     const base=p.base||'main';

@@ -29,8 +29,9 @@ ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate",
            "bureau-agent": ("agent", "__AGENT_WF__"), "bureau-pages": ("pages", "__PAGES_WF__"),
            "bureau-meppr": ("mep_pr", "__MEPPR_WF__"), "bureau-rebase": ("rebase", "__REBASE_WF__"),
            "bureau-fixpr": ("fix_pr", "__FIXPR_WF__"), "bureau-todo": ("todo", "__TODO_WF__"),
-           "bureau-move": ("move", "__MOVE_WF__"),
-           "bureau-env": ("env", "__ENV_WF__"),  # ton workflow d'env de branche d'une PR (launch.env), sur les dépôts de launch.env.repos  # déplacer un ticket d'une colonne (statut cible relu dans actions.moves)
+           "bureau-move": ("move", "__MOVE_WF__"),  # déplacer un ticket d'une colonne (statut cible relu dans actions.moves)
+           "bureau-env": ("env", "__ENV_WF__"),  # ton workflow d'env de branche d'une PR (launch.env), sur les dépôts de launch.env.repos
+           "bureau-deploy": ("deploy", "__DEPLOY_WF__"),  # déployer la branche d'une PR hors prod (modèle deploy, ligne actions.deploys)
            # console Support (#62) : investiguer un message (modèle support) ; relever le canal : « ↻ » du panneau Fraîcheur
            "bureau-support": ("support", "__SUPPORT_WF__")}
 # variables des workflows de la clé launch : rôle -> nom par défaut ; launch.<action> = id seul, ou {wf, vars: {rôle: nom
@@ -185,6 +186,7 @@ def page_config(cfg):
         # « Corriger » sur la PR d'un autre dépôt : seulement si ton workflow prend le dépôt (launch.fix.vars.repo, #56)
         "fix_any_repo": bool(launch(cfg).get("fix", ("", {}))[1].get("repo")),
         "env_repos": env_repos(cfg),  # « 🌿 Générer l'env de branche » sur les PR de ces dépôts (launch.env)
+        "deploy_envs": deploy_envs(cfg),  # « 🚀 Déployer la branche » : {dépôt: [env]} (réglage deploy, modèle installé)
         "rhythm": cfg.get("rhythm") or {},
         "mep_workflow": cfg.get("mep_workflow"),
         "workflows": cfg.get("workflows") or {},  # ids des crons : calendrier et fraîcheur des données
@@ -209,6 +211,18 @@ def env_repos(cfg):
                 or [r for r in [(cfg.get("github") or {}).get("repo")] if r])
 
 
+def deploy_envs(cfg):
+    """Envs hors prod où déployer la branche d'une PR, par dépôt : {dépôt: [env]} du réglage deploy (pack ou config),
+    dépôts qui ont un workflow (deploy.repos.<dépôt>.workflow, sinon son staging_workflow) ; {} sans le modèle deploy."""
+    cfg = merged(cfg or {})
+    if not (cfg.get("models") or {}).get("deploy"):
+        return {}
+    g = cfg.get("github") or {}
+    staging = {d["repo"]: d.get("staging_workflow") for d in [g] + list(g.get("deploys") or []) if d.get("repo")}
+    return {repo: list(t["envs"]) for repo, t in ((cfg.get("deploy") or {}).get("repos") or {}).items()
+            if isinstance(t, dict) and isinstance(t.get("envs"), dict) and t["envs"] and (t.get("workflow") or staging.get(repo))}
+
+
 def support_page(cfg):
     """Console Support (#62) pour la page : nom du canal et préfixe du modèle d'investigation (l'agent qui l'incarne),
     ou None sans canal réglé (support.team et support.channel)."""
@@ -218,7 +232,7 @@ def support_page(cfg):
     return {"name": s.get("name") or "Support", "wf": str((cfg.get("models") or {}).get("support") or "")[:8]}
 
 
-FICHE_ACTIONS = ("impl", "mep", "mep_pr", "review", "fix", "fix_pr", "rebase", "comment", "estimate", "env")
+FICHE_ACTIONS = ("impl", "mep", "mep_pr", "review", "fix", "fix_pr", "rebase", "comment", "estimate", "env", "deploy")
 # statuts Jira par défaut du flux de l'équipe (jira.flow) : requêtes du cron équipe et scènes de la page
 JIRA_FLOW = {"triage_from": "Proposed", "test": "To Test", "validated": "To Deploy", "reopened": "Reopen"}
 DEFAULT_LAYOUT = "layouts/open-space.json"  # plan type, sans équipe
@@ -311,7 +325,7 @@ def defaults(cfg):
 # Le pack porte l'équipe, la config porte l'installation. settings.json du pack, lu à chaque assemblage et rendu des
 # modèles : rythme, GitFut, affiches du Top 3, planning des absences (sans config_id) et personnages des agents (sans
 # ids de workflows). La config peut surcharger chacun ; elle seule rattache un personnage à ses workflows (agents[].wf).
-SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "support", "env")
+SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "support", "env", "deploy")
 AGENT_FIELDS = ("key", "name", "role", "wf", "seat", "sprite")  # ordre des champs d'un agent, comme l'installateur l'écrit
 
 
@@ -361,6 +375,8 @@ def merged(cfg):
         out["support"] = {**(s["support"] or {}), **(cfg.get("support") or {})}
     if "env" in s:  # env de branche d'une PR : label et dépôts de l'équipe ; la config peut les surcharger
         out["env"] = {**(s["env"] or {}), **(cfg.get("env") or {})}
+    if "deploy" in s:  # déployer la branche d'une PR hors prod : dépôts et envs de l'équipe ; la config peut les surcharger
+        out["deploy"] = {**(s["deploy"] or {}), **(cfg.get("deploy") or {})}
     if "review" in s:  # revue de PR (#78) : consignes, skills, dépôts, horaire de l'équipe ; page et projet de l'installation
         out["review"] = {**(s["review"] or {}), **(cfg.get("review") or {})}
     if "agents" in s:
@@ -468,7 +484,7 @@ def launch(cfg):
 
 # boutons qu'un modèle du Bureau incarné par un agent (models, #78) fait marcher quand tu n'as pas ton propre workflow
 # dans launch : action -> clé du modèle ; ses variables portent les noms par défaut de LAUNCH_VARS
-MODEL_ACTIONS = {"review": "review_one", "estimate": "estimate", "support": "support", "env": "env"}
+MODEL_ACTIONS = {"review": "review_one", "estimate": "estimate", "support": "support", "env": "env", "deploy": "deploy"}
 # rôles retirés du bloc quand c'est le modèle qui fait marcher le bouton (il n'a pas ces variables)
 MODEL_OPTIONAL = {"env": ("action",)}
 

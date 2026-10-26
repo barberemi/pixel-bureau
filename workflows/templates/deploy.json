@@ -1,0 +1,84 @@
+{
+ "kind": "workflow",
+ "key": "deploy",
+ "definition": {
+  "name": "Le Bureau · déployer la branche d'une PR (hors prod)",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "pr_number",
+    "label": "N° de PR",
+    "placeholder": "1234",
+    "description": "La PR dont on déploie la branche.",
+    "required": true,
+    "pattern": "^[0-9]+$",
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "repo",
+    "label": "Dépôt",
+    "placeholder": "owner/depot",
+    "description": "Le dépôt GitHub de la PR (réglage deploy).",
+    "required": true,
+    "pattern": "^[\\w.-]+/[\\w.-]+$",
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "env",
+    "label": "Environnement",
+    "placeholder": "dev",
+    "description": "Un env du réglage deploy de ce dépôt (jamais la prod).",
+    "required": true,
+    "pattern": "^[\\w.-]+$",
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "steps": [
+   {
+    "name": "dispatch",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Vérifie le dépôt, l'env et la PR (ouverte, pas d'une fork), refuse tout workflow de prod, puis lance le workflow hors prod sur la branche de la PR. gh, 0 token ; le cron live suit le run.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/deploy.py@@",
+     "{{repo}}",
+     "{{pr_number}}",
+     "{{env}}"
+    ],
+    "exec_timeout_secs": 120
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": 1,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "concurrency_key": "{{repo}}|{{env}}"
+ }
+}

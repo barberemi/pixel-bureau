@@ -4,7 +4,7 @@ Les cartes d'action de Kronn relisent côté serveur la valeur d'un bouton (clé
 une liste et un champ (« tickets.find(key).key », « prs.find(id).repo ») : il leur faut du JSON, en listes plates. Le dataset team est publié en
 texte et range ses tickets par personne ; ce script le relit dans Kronn juste après sa publication et en tire :
 
-Sortie (stdout) : {generated_at, repo, tickets[{key, cat, pr}], prs[{id, n, repo}], warnings[texte]}
+Sortie (stdout) : {generated_at, repo, tickets[{key, cat, pr}], prs[{id, n, repo}], moves[…], deploys[…], warnings[texte]}
 - tickets : ceux du sprint (assignés ou non) ; pr = n° de la PR ouverte du dépôt principal qui cite la clé (une PR
   prête plutôt qu'un brouillon), sinon "" (le workflow de mise en prod, qui travaille sur ce dépôt, la cherche alors).
 - prs : PR ouvertes de tous les dépôts suivis (#56), chacune avec son vrai dépôt ; id = « owner/repo#n », la clé que
@@ -16,6 +16,9 @@ Sortie (stdout) : {generated_at, repo, tickets[{key, cat, pr}], prs[{id, n, repo
   Avancer d'une colonne jusqu'à « Déployé », reculer d'une colonne depuis « En cours » jusqu'à « À déployer » ; le statut
   visé est le premier que jira.statuses range dans la colonne voisine. jira.moves les règle par colonne :
   {"review": {"prev": "En cours", "next": "To Test"}}, null pour retirer un sens.
+- deploys : avec le modèle deploy (models.deploy), une ligne par PR d'un dépôt du réglage deploy et par env hors prod de
+  ce dépôt : id « owner/repo#n|env », n, repo, env, que relit le bouton « 🚀 Déployer la branche » (le workflow refuse de
+  toute façon un env ou un dépôt hors réglage).
 - warnings (#8) : dataset team illisible, listes vides publiées quand même ; écrit aussi sur stderr (run Kronn).
 """
 import json, sys
@@ -63,10 +66,14 @@ def moves_of(t):
 
 ENV = (CFG.get("launch") or {}).get("env")
 env = {"env": str((ENV.get("action") if isinstance(ENV, dict) else None) or "reposer")} if ENV else {}
+DEPLOY = {r.lower(): list(t["envs"]) for r, t in ((CFG.get("deploy") or {}).get("repos") or {}).items()
+          if isinstance(t, dict) and isinstance(t.get("envs"), dict)} if (CFG.get("models") or {}).get("deploy") else {}
 tickets = [x for p in people for x in p.get("tickets") or []] + list(team.get("unassigned") or [])
 out = {"generated_at": datetime.now(TZ).isoformat(), "repo": repo,
        "tickets": [{"key": t["key"], "cat": t.get("cat"), "pr": pr_of(t["key"])} for t in tickets if t.get("key")],
        "prs": [{"id": f"{repo_of(x)}#{x['n']}", "n": str(x["n"]), "repo": repo_of(x), **env} for x in prs if x.get("n")],
        "moves": [m for t in tickets if t.get("key") for m in moves_of(t)],
+       "deploys": [{"id": f"{repo_of(x)}#{x['n']}|{e}", "n": str(x["n"]), "repo": repo_of(x), "env": e}
+                   for x in prs if x.get("n") for e in DEPLOY.get(repo_of(x).lower(), [])],
        "warnings": warnings}
 print(dumps(out))

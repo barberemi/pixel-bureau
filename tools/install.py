@@ -404,7 +404,8 @@ MODELS = [("review_one", "Relire une PR à la demande (bouton « Faire relire »
           ("assign", "M'affecter un ticket (assignation et passage En cours)", True),
           ("unassign", "Me désaffecter un ticket (retour à À faire)", True),
           ("support", "Investiguer les messages du canal Support et y répondre en fil (console Support)", True),
-          ("env", "Générer l'env de branche d'une PR (label retiré puis reposé, bouton « 🌿 » des fiches)", None)]
+          ("env", "Générer l'env de branche d'une PR (label retiré puis reposé, bouton « 🌿 » des fiches)", None),
+          ("deploy", "Déployer la branche d'une PR sur DEV ou STG, jamais la prod (bouton « 🚀 » des fiches)", None)]
 MODEL_LAUNCH = {"review_one": "review", "estimate": "estimate", "env": "env"}
 
 
@@ -416,7 +417,7 @@ def models(ask, cfg, old):
     for key, q, dflt in MODELS:
         if key in have or templates.skipped(key, cfg) or (cfg.get("launch") or {}).get(MODEL_LAUNCH.get(key, "")):
             continue
-        if dflt is None:  # oui par défaut quand l'équipe le règle (env dans settings.json du pack)
+        if dflt is None:  # oui par défaut quand l'équipe le règle (env, deploy dans settings.json du pack)
             dflt = bool(assemble.merged(cfg).get(key))
         if ask.yes(f"model_{key}", q + " ?", dflt):
             keep.add(key)
