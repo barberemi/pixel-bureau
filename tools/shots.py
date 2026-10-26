@@ -176,6 +176,8 @@ SHOTS = {
     "kanban-deplacer": (1600, 1000, AT(11) + KB_DEMO + "openTicket(_all.find(t=>t.cat==='review').key);", ".kbv"),
     "carte-deplacer": (1400, 1000, AT(11) + KB_DEMO + "openTicket(_all.find(t=>t.cat==='review').key);document.querySelector('.kbv .mv-next').click();", ".kmodal"),
     # un ticket réouvert (statut jira.flow.reopened) : pastille « ↺ Réouvert » dans la colonne En cours
+    # tickets qui traînent : DM-6551 ramené 181 j en arrière (en cours), à côté des deux « à déployer » de la démo (6 j, 12 j)
+    "kanban-traine": (1600, 1000, AT(11) + "TEAM.people.flatMap(p=>p.tickets).filter(t=>t.key==='DM-6551').forEach(t=>{t.since=new Date(T-181*864e5).toISOString();});select('kanban');", ".bp-wide"),
     "kanban-reouvert": (1600, 1000, AT(11) + KB_DEMO + "TEAM.people.flatMap(p=>p.tickets).filter(x=>x.cat==='doing')[1].status=FLOW.reopened;openKanban();", ".bp-wide"),
     # le Kanban filtré sur une personne (barre de portraits en haut)
     "kanban-personne": (1600, 1000, AT(11) + "select('kanban');KB_WHO=kbPeople()[0].key;kanbanFill(document.querySelector('.bp-wbody'));", ".bp-wide"),

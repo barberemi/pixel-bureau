@@ -18,6 +18,10 @@ Un ticket **réouvert** (statut `jira.flow.reopened`, « Reopen ») reste dans �
 
 ![Deux tickets réouverts dans la colonne En cours](../img/kanban-reouvert.png)
 
+Un ticket qui **traîne** dans sa colonne se couvre d'une **toile d'araignée** : plus de 3 jours en review, en test ou à déployer, plus de 10 jours en cours. Elle grandit avec le retard : un coin au seuil, la moitié de la carte au double, la carte entière au-delà de 60 jours, avec son araignée, et la carte se ternit. La carte porte aussi **« 🕸 N j »** ; au survol : « Dans « En cours » depuis 181 j (seuil 10 j) ». Les jours se comptent depuis le dernier changement de statut dans Jira, pas depuis la dernière modification du ticket (qu'un passage de sprint réécrit), à l'heure affichée : en rejeu, la toile est celle de ce moment-là. « À faire » et « Déployé » n'en ont jamais. Pour d'autres seuils : `ui.stale` dans la config ou le pack, en jours par colonne (`{"doing": 10, "review": 3, "test": 3, "deploy": 3}`).
+
+![Trois tickets qui traînent : 6 j et 12 j à déployer, 181 j en cours avec son araignée](../img/kanban-traine.png)
+
 | Volet d'un ticket | Sa PR, dans le volet |
 | --- | --- |
 | ![Le volet d'un ticket](../img/kanban-volet.png) | ![La PR du ticket, « ← DM-7637 »](../img/kanban-volet-pr.png) |

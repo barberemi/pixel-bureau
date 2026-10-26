@@ -69,3 +69,25 @@ test('un ticket réouvert (statut jira.flow.reopened) porte la pastille « ↺ R
   assert.equal(J('kbReopened({status:"En cours",cat:"doing"})'), false);
   assert.equal(J('kbReopened({cat:"doing"})'), false);
 });
+
+test('ticket qui traîne : seuils par colonne (3 j en attente, 10 j en cours), trois niveaux de toile, rien ailleurs', () => {
+  const st = (col, days) => J(`kbStale({since: new Date(T - ${days} * 864e5).toISOString()}, ${JSON.stringify(col)})`);
+  assert.equal(st('review', 2), null);
+  assert.deepEqual(st('review', 3), {d: 3, lim: 3, lvl: 1});
+  assert.deepEqual(st('deploy', 6), {d: 6, lim: 3, lvl: 2});
+  assert.equal(st('doing', 9), null);
+  assert.deepEqual(st('doing', 25), {d: 25, lim: 10, lvl: 2});
+  assert.deepEqual(st('doing', 181), {d: 181, lim: 10, lvl: 3});
+  assert.equal(st('todo', 400), null); // à faire et déployé : jamais
+  assert.equal(st('done', 400), null);
+  assert.equal(J('kbStale({}, "review")'), null); // date inconnue
+  assert.match(J('kbWeb(3)'), /kb-spider/);
+  assert.doesNotMatch(J('kbWeb(2)'), /kb-spider/);
+});
+
+test('ticket qui traîne : seuils réglables (ui.stale)', () => {
+  run('CFG.ui = CFG.ui || {}; CFG.ui.stale = {review: 1};');
+  try { assert.deepEqual(J('kbStale({since: new Date(T - 864e5).toISOString()}, "review")'), {d: 1, lim: 1, lvl: 1});
+        assert.equal(J('kbStale({since: new Date(T - 50 * 864e5).toISOString()}, "doing")'), null); } // colonne absente du réglage
+  finally { run('delete CFG.ui.stale;'); }
+});
