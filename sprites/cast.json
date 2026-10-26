@@ -284,5 +284,15 @@
   "shirt": "#7a8a5a",
   "legs": "pants",
   "legs_color": "#3a3f4a"
+ },
+ "g_menage": {
+  "sex": "male",
+  "skin": "tan",
+  "hair": "buzzcut",
+  "hair_color": "#2a2018",
+  "torso": "shortsleeve/tshirt",
+  "shirt": "#2f6f8f",
+  "legs": "pants",
+  "legs_color": "#2f4d66"
  }
 }

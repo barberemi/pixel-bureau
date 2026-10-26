@@ -176,6 +176,8 @@ SHOTS = {
     "kanban-deplacer": (1600, 1000, AT(11) + KB_DEMO + "openTicket(_all.find(t=>t.cat==='review').key);", ".kbv"),
     "carte-deplacer": (1400, 1000, AT(11) + KB_DEMO + "openTicket(_all.find(t=>t.cat==='review').key);document.querySelector('.kbv .mv-next').click();", ".kmodal"),
     # un ticket réouvert (statut jira.flow.reopened) : pastille « ↺ Réouvert » dans la colonne En cours
+    # tickets qui traînent : DM-6551 ramené 181 j en arrière (en cours), à côté des deux « à déployer » de la démo (6 j, 12 j)
+    "kanban-traine": (1600, 1000, AT(11) + "TEAM.people.flatMap(p=>p.tickets).filter(t=>t.key==='DM-6551').forEach(t=>{t.since=new Date(T-181*864e5).toISOString();});select('kanban');", ".bp-wide"),
     "kanban-reouvert": (1600, 1000, AT(11) + KB_DEMO + "TEAM.people.flatMap(p=>p.tickets).filter(x=>x.cat==='doing')[1].status=FLOW.reopened;openKanban();", ".bp-wide"),
     # le Kanban filtré sur une personne (barre de portraits en haut)
     "kanban-personne": (1600, 1000, AT(11) + "select('kanban');KB_WHO=kbPeople()[0].key;kanbanFill(document.querySelector('.bp-wbody'));", ".bp-wide"),
@@ -272,6 +274,8 @@ SHOTS = {
                       "const e={id:'x',kind:'ufo',...ufoLandings()[0]};Object.defineProperty(e,'t0',{get:()=>performance.now()-.79*13e3});"
                       "FX.cur=new Map([['x',e]]);},1800);", "#cv", 1),
     # tournée de café (49-coffee.js) : Kevin apporte son café au boss, à gauche de son bureau ; les autres ont déjà leur tasse
+    # ménage du soir (49-menage.js) : l'agent d'entretien et son chariot au bout du 4e îlot, 21 min après son arrivée
+    "menage": (1400, 1000, AT(12) + "T=cleaningVisit(byKey.g_menage,T).s+0.35*36e5;needTeleport=true;", "#cv", 1.5),
     "tournee-cafe": (1400, 1000, AT(16) + "setTimeout(()=>{setLoupe(false,false);const r=coffeeTour(byKey.g_kevin,T);"
                      "T=r.at+(r.list.length-.5)*120e3;needTeleport=true;},1500);", "#cv", 1),
     "agent-retabli": (1400, 1000, AT(18 + 7 / 60) + "setTimeout(()=>{window.fxFrame=()=>{};setLoupe(false,false);FX_WORKING.push('idle');"

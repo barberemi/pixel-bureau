@@ -256,6 +256,15 @@ button.back kbd{font:10px ui-monospace,Menlo,monospace;border:1px solid var(--li
 .kbw-strip{writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:flex-end;gap:8px;min-height:220px;margin:0;padding:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
 .kbw-c.kb-ro{border-left-color:var(--err);background:color-mix(in srgb,var(--err) 9%,var(--panel))}
 .kb-rot{display:table;font-size:10px;font-weight:700;padding:0 6px;border-radius:999px;margin:0 0 3px;background:var(--err);color:var(--on-accent)} /* le texte des fonds colorés de chaque thème : 5,9:1 sur le rouge clair du Classique */
+/* ticket qui traîne (63-kanban.js) : « 🕸 N j » et une toile qui grandit avec le retard, l'araignée au-delà de 60 j */
+.kbw-c.kb-stale{position:relative;overflow:hidden}
+.kb-age{display:table;font-size:10px;font-weight:700;padding:0 6px;margin:0 0 3px;background:var(--chip);color:var(--ink);box-shadow:inset 3px 0 0 var(--muted)}
+.kb-web{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;fill:none;stroke:var(--muted);stroke-width:1;opacity:.55}
+.kb-web path{vector-effect:non-scaling-stroke}
+.kb-web3{opacity:.7}.kb-stale3{filter:saturate(.6) brightness(.95)}
+.kb-stale3 b,.kb-stale3 .kbw-t{text-shadow:0 0 3px var(--panel),0 0 2px var(--panel)}
+.kb-spider{position:absolute;top:0;right:34%;width:22px;height:40px;pointer-events:none;fill:var(--ink);stroke:var(--ink);stroke-width:1.3}
+.kb-spider .kb-silk{stroke:var(--muted);stroke-width:.8;fill:none}
 .kbw-c.kb-on{outline:3px solid var(--accent);outline-offset:1px}
 .kbv.side{position:sticky;top:64px;max-height:calc(84vh - 150px);overflow:auto;padding:12px;margin:0;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:none}
 .mv-host{display:block;margin:0 0 12px}

@@ -11,6 +11,23 @@ let KB_WHO='', KB_VOL=null, KB_BACK=[];
 // un ticket réouvert (statut jira.flow.reopened, rangé dans « En cours ») : pastille « ↺ Réouvert » et liseré rouge
 const kbReopened=x=>!!x.status&&x.status===FLOW.reopened;
 const kbPeople=()=>chars.filter(c=>c.person&&c.team&&c.team.tickets.length);
+// un ticket qui traîne dans sa colonne (depuis son dernier changement de statut, tkSince, à l'heure de la page) : une toile
+// d'araignée le recouvre, un coin au seuil, la moitié au double, la carte entière avec son araignée au-delà de 60 j, et la
+// carte porte « 🕸 N j ». Seuils en jours par colonne (ui.stale de la config ou du pack pour en changer)
+const KB_STALE={doing:10,review:3,test:3,deploy:3};
+function kbStale(x,col){
+  const lim=((CFG.ui||{}).stale||KB_STALE)[col], u=lim&&tkSince(x);if(!u)return null;
+  const d=Math.floor((T-u)/864e5);if(d<lim)return null;
+  return {d,lim,lvl:d>=60?3:d>=2*lim?2:1};
+}
+function kbWeb(lvl){
+  const R=[26,50,115][lvl-1], n=[5,7,9][lvl-1], pt=(a,r)=>(100-Math.cos(a)*r*1.6).toFixed(1)+' '+(Math.sin(a)*r).toFixed(1);
+  let p='';
+  for(let i=0;i<=n;i++)p+=`<path d="M100 0L${pt(Math.PI/2*i/n,R)}"/>`;
+  for(let r=1;r<=lvl+2;r++){let d='';for(let i=0;i<=n;i++)d+=(i?'L':'M')+pt(Math.PI/2*i/n,R*r/(lvl+2.4)+(i%2?1.5:0));p+=`<path d="${d}"/>`;}
+  return `<svg class="kb-web kb-web${lvl}" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${p}</svg>`+(lvl<3?'':
+    '<svg class="kb-spider" viewBox="0 0 22 40" aria-hidden="true"><path class="kb-silk" d="M11 0V24"/><path d="M11 28L3 22L1 18M11 29L2 28L0 25M11 30L3 33L1 37M11 28L19 22L21 18M11 29L20 28L22 25M11 30L19 33L21 37"/><ellipse cx="11" cy="29" rx="4" ry="5"/></svg>');
+}
 function kbTitle(){
   const c=byKey[KB_WHO];
   return 'Mur Kanban'+(c?' · '+c.name:KB_WHO==='-'?' · non assignés':TEAM&&TEAM.sprint&&TEAM.sprint.name?' · sprint '+TEAM.sprint.name:'');
@@ -56,10 +73,10 @@ function kanbanFill(box){
     const pts=list.reduce((a,x)=>a+(+x.points||0),0), n=KB_ALL[k]?list.length:KB_MAX;
     if(KB_VOL&&k==='done')return `<button type="button" class="kbw-col kbw-strip" title="${esc(TCAT[k].t)} : ${list.length} tickets (fermer le volet pour les voir)"><span class="dot" style="background:${TCAT[k].c}"></span>${esc(TCAT[k].t)} · ${list.length}</button>`;
     return `<section class="kbw-col" aria-label="${esc(TCAT[k].t)}"><h3><span class="dot" style="background:${TCAT[k].c}"></span>${esc(TCAT[k].t)}<small>${list.length}${pts?' · '+Math.round(pts)+' pts':''}</small></h3>`+
-      list.slice(0,n).map(x=>{const t=tkComp(x.summary), ro=kbReopened(x);
-        return `<a href="#" class="kbw-c${x.key===cur?' kb-on':''}${ro?' kb-ro':''}" data-tk="${esc(x.key)}"${x.key===cur?' aria-current="true"':''} style="--c:${TCAT[k].c}" title="Ouvrir sa fiche et ses actions">`+
-          (ro?'<span class="kb-rot" title="Réouvert en test : retour en cours">↺ Réouvert</span>':'')+`<b>${esc(x.key)}</b>${x.points?`<em>${esc(x.points)} pts</em>`:''}`+
-          `<span class="kbw-t">${t.comp?`<span class="kbw-cp">${esc(t.comp)}</span>`:''}${esc(t.title)}</span><small>${esc(x.owner?String(x.owner).split(' ')[0]:'non assigné')}</small></a>`;}).join('')+
+      list.slice(0,n).map(x=>{const t=tkComp(x.summary), ro=kbReopened(x), st=kbStale(x,k);
+        return `<a href="#" class="kbw-c${x.key===cur?' kb-on':''}${ro?' kb-ro':''}${st?' kb-stale kb-stale'+st.lvl:''}" data-tk="${esc(x.key)}"${x.key===cur?' aria-current="true"':''} style="--c:${TCAT[k].c}" title="${st?`Dans « ${esc(TCAT[k].t)} » depuis ${st.d} j (seuil ${st.lim} j). `:''}Ouvrir sa fiche et ses actions">`+
+          (ro?'<span class="kb-rot" title="Réouvert en test : retour en cours">↺ Réouvert</span>':'')+(st?`<span class="kb-age">🕸 ${st.d} j</span>`:'')+`<b>${esc(x.key)}</b>${x.points?`<em>${esc(x.points)} pts</em>`:''}`+
+          `<span class="kbw-t">${t.comp?`<span class="kbw-cp">${esc(t.comp)}</span>`:''}${esc(t.title)}</span><small>${esc(x.owner?String(x.owner).split(' ')[0]:'non assigné')}</small>${st?kbWeb(st.lvl):''}</a>`;}).join('')+
       (list.length>n?`<button type="button" class="kbw-more" data-col="${k}">+ ${list.length-n} autre${list.length-n>1?'s':''}</button>`:'')+
       (list.length?'':'<span class="kbw-none">—</span>')+'</section>';
   }).join('')+'</div></div><p class="hint">'+(KB_VOL?'Un autre ticket change le volet ; un lien de PR l\'y ouvre, « ← » revient ; Échap ferme le volet, puis la fenêtre.':

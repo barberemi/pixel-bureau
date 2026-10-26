@@ -61,7 +61,11 @@ Tous les jours ouvrés vers 16h, un invité peut passer offrir le café à l'éq
 
 ![Kevin apporte son café au boss, à gauche de son bureau ; les autres ont déjà leur tasse](../img/tournee-cafe.png)
 
-Gandalf et Yoda viennent dans tous les bureaux, quelle que soit l'équipe (`team/guests.json`). Pour les retirer : `"common_guests": false` dans `bureau.config.json` ; pour en changer le nom, la réplique ou l'allure : un invité de même clé (`g_gandalf`, `g_yoda`) dans le roster de l'équipe ou dans la config.
+Le soir des jours ouvrés, **l'agent d'entretien** fait le ménage du bureau vide pendant une heure. Il arrive à une heure tirée au sort pour la date, la même pour tout le monde et au rejeu, entre la fin des heures de bureau et 20h, avec son chariot (seau, flacon, balai). Il s'arrête au bout de chaque îlot (« 🧹 »), puis à la cafétéria, aux toilettes et en salle de réunion ; les pièces où il passe s'allument dans la pénombre, comme pour tout le monde. Dans le fil : « 🧹 L'agent d'entretien commence le ménage du soir » à son arrivée, « 🧹 L'agent d'entretien a fini le ménage, le bureau est propre » à son départ. Pour lui donner un prénom : un invité `g_menage` dans le roster de l'équipe, comme pour les autres invités communs.
+
+![L'agent d'entretien et son chariot au bout d'un îlot, le soir](../img/menage.png)
+
+Gandalf, Yoda et l'agent d'entretien viennent dans tous les bureaux, quelle que soit l'équipe (`team/guests.json`). Pour les retirer : `"common_guests": false` dans `bureau.config.json` ; pour en changer le nom, la réplique ou l'allure : un invité de même clé (`g_gandalf`, `g_yoda`, `g_menage`) dans le roster de l'équipe ou dans la config.
 
 D'autres changements de colonne se jouent aussi, à l'heure exacte du changement de statut :
 - **Ticket à tester** : le développeur porte le dossier au bureau du testeur (« 📁 6717 »), et le dossier rejoint la pile du testeur, sur le caisson à côté de son bureau.
