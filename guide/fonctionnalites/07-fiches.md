@@ -60,10 +60,14 @@ Les actions :
 - **Corriger les retours** : sur une PR avec changements demandés, même en brouillon (avec des consignes facultatives).
 - **Mettre en prod** : ticket à déployer (statut `jira.flow.validated`, To Deploy par défaut) ; avant, grisé avec la raison ; grisé aussi les jours de gel des mises en prod.
 - **🚀 Mise en prod** (sur chaque PR, si son dépôt a des réglages de mise en prod) : la mise en prod de cette PR, dépôt et numéro relus par Kronn, seulement quand un de ses tickets est en To Deploy (sinon grisé avec la raison, et une PR sans ticket Jira ne se met pas en prod) ; voir [Mise en prod](16-mise-en-prod.md).
-- **🌿 Générer l'env de branche** (ton workflow `launch.env`) : en tête des actions de chaque PR d'un dépôt de `launch.env.repos` (par défaut le dépôt principal), brouillons compris, jamais grisé. Un seul bouton : il lance ton workflow avec le numéro de la PR et une valeur d'action fixe (`launch.env.action`, `reposer` par défaut), que Kronn relit dans le dataset `actions`. Avec un workflow qui retire le label d'environnement (sans erreur s'il n'est pas posé) puis le repose, le même bouton crée l'environnement de la PR ou le reconstruit après un push.
+- **🌿 Générer l'env de branche** : en tête des actions de chaque PR d'un dépôt réglé (par défaut le dépôt principal), brouillons compris, jamais grisé. Un seul bouton : il retire le label d'environnement de la PR (sans erreur s'il n'est pas posé), attend 5 s, puis le repose ; il crée donc l'environnement de la PR, ou le reconstruit après un push. Par défaut, c'est le modèle du Bureau « env de branche d'une PR » (`models.env`, `gh`, 0 token), que l'installateur propose : label et dépôts viennent de la clé `env` du pack (`label`, défaut `env-branch`, et `repos`), toute l'équipe a donc le même bouton. Avec ton propre workflow (`launch.env`), c'est lui qui part, avec le numéro de la PR et une valeur d'action fixe (`launch.env.action`, `reposer` par défaut) que Kronn relit dans le dataset `actions` :
 
   ![Générer l'env de branche, en tête des actions de la PR](../img/env-branche.png)
 
+  ```json
+  "env": {"label": "env-branch", "repos": ["owner/depot"]}
+  ```
+  dans `settings.json` du pack pour le modèle, ou dans ta config pour ton workflow :
   ```json
   "launch": {"env": {"wf": "<id de ton workflow>", "vars": {"pr": "pr_number", "action": "action"},
                      "repos": ["owner/depot"], "action": "reposer"}}

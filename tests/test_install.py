@@ -358,6 +358,17 @@ class InstallTest(unittest.TestCase):
                 self.assertEqual(self.run_install({**ANSWERS, "mail": "n"}), 0)
                 self.assertNotIn("mail", json.loads(Path(self.cfg_path).read_text()))
 
+    def test_env_branch_model_offered_when_the_team_sets_it(self):
+        """Modèle env : oui par défaut quand le pack règle env (settings.json), non sinon ; jamais proposé à qui a launch.env."""
+        base = json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text())
+        ask = lambda: install.Asker(answers={})  # noqa: E731 : chaque question prend sa valeur par défaut
+        with mock.patch.object(install.templates, "skipped", return_value=False):
+            with mock.patch.object(install.assemble, "merged", side_effect=lambda c: {**c, "env": {"label": "env-branch"}}):
+                self.assertIn("env", install.models(ask(), base, {}))
+                self.assertNotIn("env", install.models(ask(), {**base, "launch": {"env": "wf-env"}}, {}))
+            with mock.patch.object(install.assemble, "merged", side_effect=lambda c: {k: v for k, v in c.items() if k != "env"}):
+                self.assertNotIn("env", install.models(ask(), base, {}))
+
     def test_mac_notification_asked_only_with_osascript(self):
         """notify_mac : demandé sur Mac (osascript), oui par défaut, le non est retenu ; ailleurs, aucune question ni clé."""
         with mock.patch.object(install.shutil, "which", side_effect=lambda c: "/usr/bin/osascript" if c == "osascript" else shutil.which(c)):

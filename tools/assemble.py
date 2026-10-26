@@ -199,11 +199,14 @@ def page_config(cfg):
 
 
 def env_repos(cfg):
-    """Dépôts dont les PR ont le bouton d'env de branche : launch.env.repos, sinon le dépôt principal ; [] sans launch.env."""
-    v = ((cfg or {}).get("launch") or {}).get("env")
-    if not v:
+    """Dépôts dont les PR ont le bouton d'env de branche : launch.env.repos, sinon env.repos (réglage d'équipe, pack),
+    sinon le dépôt principal ; [] sans launch.env ni modèle installé (models.env)."""
+    cfg = merged(cfg or {})
+    v = (cfg.get("launch") or {}).get("env")
+    if not v and not (cfg.get("models") or {}).get("env"):
         return []
-    return list((v.get("repos") if isinstance(v, dict) else None) or [r for r in [(cfg.get("github") or {}).get("repo")] if r])
+    return list((v.get("repos") if isinstance(v, dict) else None) or (cfg.get("env") or {}).get("repos")
+                or [r for r in [(cfg.get("github") or {}).get("repo")] if r])
 
 
 def support_page(cfg):
@@ -308,7 +311,7 @@ def defaults(cfg):
 # Le pack porte l'équipe, la config porte l'installation. settings.json du pack, lu à chaque assemblage et rendu des
 # modèles : rythme, GitFut, affiches du Top 3, planning des absences (sans config_id) et personnages des agents (sans
 # ids de workflows). La config peut surcharger chacun ; elle seule rattache un personnage à ses workflows (agents[].wf).
-SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "support")
+SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "support", "env")
 AGENT_FIELDS = ("key", "name", "role", "wf", "seat", "sprite")  # ordre des champs d'un agent, comme l'installateur l'écrit
 
 
@@ -356,6 +359,8 @@ def merged(cfg):
             out["microsoft"]["planning"] = planning
     if "support" in s:  # console Support (#62) : canal de l'équipe (team, channel, name) ; la config peut le surcharger
         out["support"] = {**(s["support"] or {}), **(cfg.get("support") or {})}
+    if "env" in s:  # env de branche d'une PR : label et dépôts de l'équipe ; la config peut les surcharger
+        out["env"] = {**(s["env"] or {}), **(cfg.get("env") or {})}
     if "review" in s:  # revue de PR (#78) : consignes, skills, dépôts, horaire de l'équipe ; page et projet de l'installation
         out["review"] = {**(s["review"] or {}), **(cfg.get("review") or {})}
     if "agents" in s:
@@ -463,7 +468,9 @@ def launch(cfg):
 
 # boutons qu'un modèle du Bureau incarné par un agent (models, #78) fait marcher quand tu n'as pas ton propre workflow
 # dans launch : action -> clé du modèle ; ses variables portent les noms par défaut de LAUNCH_VARS
-MODEL_ACTIONS = {"review": "review_one", "estimate": "estimate", "support": "support"}
+MODEL_ACTIONS = {"review": "review_one", "estimate": "estimate", "support": "support", "env": "env"}
+# rôles retirés du bloc quand c'est le modèle qui fait marcher le bouton (il n'a pas ces variables)
+MODEL_OPTIONAL = {"env": ("action",)}
 
 
 def action_ids(cfg):
@@ -480,7 +487,9 @@ def action_block(block, cfg):
     aid = re.search(r'data-action-id="([^"]+)"', block).group(1)
     key, mark = ACTIONS[aid]
     block = block.replace(mark, action_ids(cfg).get(key) or "")
-    names = {**{LAUNCH_VARS[key][r]: None for r in LAUNCH_OPTIONAL.get(key, ())}, **launch(cfg).get(key, ("", {}))[1]}
+    own = launch(cfg)
+    opt = MODEL_OPTIONAL.get(key, ()) if key not in own and key in MODEL_ACTIONS else LAUNCH_OPTIONAL.get(key, ())
+    names = {**{LAUNCH_VARS[key][r]: None for r in opt}, **own.get(key, ("", {}))[1]}
     if not names:
         return block
     m = re.match(r"(<script[^>]*>)(.*?)(</script>\n?)$", block, re.S)
