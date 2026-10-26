@@ -29,7 +29,8 @@ ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate",
            "bureau-agent": ("agent", "__AGENT_WF__"), "bureau-pages": ("pages", "__PAGES_WF__"),
            "bureau-meppr": ("mep_pr", "__MEPPR_WF__"), "bureau-rebase": ("rebase", "__REBASE_WF__"),
            "bureau-fixpr": ("fix_pr", "__FIXPR_WF__"), "bureau-todo": ("todo", "__TODO_WF__"),
-           "bureau-move": ("move", "__MOVE_WF__"),  # déplacer un ticket d'une colonne (statut cible relu dans actions.moves)
+           "bureau-move": ("move", "__MOVE_WF__"),
+           "bureau-env": ("env", "__ENV_WF__"),  # ton workflow d'env de branche d'une PR (launch.env), sur les dépôts de launch.env.repos  # déplacer un ticket d'une colonne (statut cible relu dans actions.moves)
            # console Support (#62) : investiguer un message (modèle support) ; relever le canal : « ↻ » du panneau Fraîcheur
            "bureau-support": ("support", "__SUPPORT_WF__")}
 # variables des workflows de la clé launch : rôle -> nom par défaut ; launch.<action> = id seul, ou {wf, vars: {rôle: nom
@@ -37,10 +38,11 @@ ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate",
 LAUNCH_VARS = {"impl": {"ticket": "jira_ticket_key"}, "mep": {"ticket": "jira_ticket_key", "pr": "pr_number"},
                "review": {"repo": "repo", "pr": "pr"}, "fix": {"pr": "pr", "notes": "notes", "repo": "repo"},
                "estimate": {"ticket": "jira_ticket_key", "points": "story_points", "reason": "raison"},
-               "mep_pr": {}}  # mise en prod d'une PR (#58) : le modèle mep.json du Bureau, variables fixes
+               "mep_pr": {},
+               "env": {"pr": "pr_number", "action": "action", "repo": "repo"}}  # mise en prod d'une PR (#58) : le modèle mep.json du Bureau, variables fixes
 # rôles facultatifs : absents du bloc tant que launch.<action>.vars ne les nomme pas (#56 : un workflow « Corriger »
 # d'un seul dépôt n'a pas de variable repo ; il ne reçoit alors que les PR du dépôt principal)
-LAUNCH_OPTIONAL = {"fix": ("repo",)}
+LAUNCH_OPTIONAL = {"fix": ("repo",), "env": ("action", "repo")}
 ACTION_RE = re.compile(r'<script type="application/kronn-action" data-action-id="([^"]+)">.*?</script>\n?', re.S)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -182,6 +184,7 @@ def page_config(cfg):
         "github_repo": (cfg.get("github") or {}).get("repo"),
         # « Corriger » sur la PR d'un autre dépôt : seulement si ton workflow prend le dépôt (launch.fix.vars.repo, #56)
         "fix_any_repo": bool(launch(cfg).get("fix", ("", {}))[1].get("repo")),
+        "env_repos": env_repos(cfg),  # « 🌿 Générer l'env de branche » sur les PR de ces dépôts (launch.env)
         "rhythm": cfg.get("rhythm") or {},
         "mep_workflow": cfg.get("mep_workflow"),
         "workflows": cfg.get("workflows") or {},  # ids des crons : calendrier et fraîcheur des données
@@ -195,6 +198,14 @@ def page_config(cfg):
     }
 
 
+def env_repos(cfg):
+    """Dépôts dont les PR ont le bouton d'env de branche : launch.env.repos, sinon le dépôt principal ; [] sans launch.env."""
+    v = ((cfg or {}).get("launch") or {}).get("env")
+    if not v:
+        return []
+    return list((v.get("repos") if isinstance(v, dict) else None) or [r for r in [(cfg.get("github") or {}).get("repo")] if r])
+
+
 def support_page(cfg):
     """Console Support (#62) pour la page : nom du canal et préfixe du modèle d'investigation (l'agent qui l'incarne),
     ou None sans canal réglé (support.team et support.channel)."""
@@ -204,7 +215,7 @@ def support_page(cfg):
     return {"name": s.get("name") or "Support", "wf": str((cfg.get("models") or {}).get("support") or "")[:8]}
 
 
-FICHE_ACTIONS = ("impl", "mep", "mep_pr", "review", "fix", "fix_pr", "rebase", "comment", "estimate")
+FICHE_ACTIONS = ("impl", "mep", "mep_pr", "review", "fix", "fix_pr", "rebase", "comment", "estimate", "env")
 # statuts Jira par défaut du flux de l'équipe (jira.flow) : requêtes du cron équipe et scènes de la page
 JIRA_FLOW = {"triage_from": "Proposed", "test": "To Test", "validated": "To Deploy", "reopened": "Reopen"}
 DEFAULT_LAYOUT = "layouts/open-space.json"  # plan type, sans équipe

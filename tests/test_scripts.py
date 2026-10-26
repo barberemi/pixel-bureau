@@ -565,6 +565,17 @@ print(json.dumps(val))
                                       {"id": "acme/api#4", "n": "4", "repo": "acme/api"}])
         self.assertEqual(out["tickets"], [{"key": "DM-1", "cat": "deploy", "pr": ""}])  # sa seule PR est sur acme/api
 
+    def test_actions_prs_carry_the_env_branch_action(self):
+        """launch.env : chaque PR porte la valeur fixe de la variable action (défaut « reposer »), que Kronn relit."""
+        fake = FakeKronn()
+        fake.datasets = [{"name": "team", "current": json.dumps({"people": [{"name": "Pam", "prs": [{"n": 7, "repo": "acme/web"}]}]})}]
+        api = self.kronn(fake)
+        self.assertNotIn("env", self.run_script("actions_snapshot.py", api=api, github={"repo": "acme/web"})["prs"][0])
+        out = self.run_script("actions_snapshot.py", api=api, github={"repo": "acme/web"}, launch={"env": "wf-env"})
+        self.assertEqual(out["prs"], [{"id": "acme/web#7", "n": "7", "repo": "acme/web", "env": "reposer"}])
+        out = self.run_script("actions_snapshot.py", api=api, github={"repo": "acme/web"}, launch={"env": {"wf": "wf-env", "action": "poser"}})
+        self.assertEqual(out["prs"][0]["env"], "poser")
+
     def test_actions_moves_one_column_each_way(self):
         """actions.moves : ◀ / ▶ d'un ticket vers la colonne voisine, statut visé = le premier que jira.statuses y range ;
         rien depuis « Déployé », pas de recul depuis « À faire » ; jira.moves règle un sens (null le retire)."""

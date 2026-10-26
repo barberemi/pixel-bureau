@@ -549,6 +549,21 @@ class LaunchTest(unittest.TestCase):
         binds = assemble.action_binds(assemble.build(demo=False, cfg=cfg))
         self.assertEqual((binds["bureau-mep"], binds["bureau-review"]), ({"issue_key": "key"}, {"project": "id", "mr": "id"}))
 
+    def test_env_branch_action_binds_the_pr_and_its_fixed_action(self):
+        """launch.env : n° de PR et action relus dans la ligne de la PR (actions.prs[].env), dépôt seulement s'il est nommé ;
+        la page reçoit les dépôts du bouton (launch.env.repos, sinon le dépôt principal)."""
+        import assemble
+        cfg = dict(json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text()))
+        self.assertIsNone(self.block(cfg, "bureau-env"))
+        self.assertEqual(assemble.env_repos(cfg), [])
+        cfg["launch"] = {"env": {"wf": "wf-env", "vars": {"pr": "pr_number", "action": "action"}, "repos": ["acme/front"]}}
+        spec = self.block(cfg, "bureau-env")
+        self.assertEqual(spec["target_id"], "wf-env")
+        self.assertEqual([(v["name"], v["source_ref"]) for v in spec["values"]],
+                         [("pr_number", "<page.dataset.actions.prs.find(id).n>"), ("action", "<page.dataset.actions.prs.find(id).env>")])
+        self.assertEqual(assemble.env_repos(cfg), ["acme/front"])
+        self.assertEqual(assemble.env_repos({**cfg, "launch": {"env": "wf-env"}}), [cfg["github"]["repo"]])
+
     def test_unknown_role_is_refused(self):
         import assemble
         with self.assertRaises(ValueError) as e:
