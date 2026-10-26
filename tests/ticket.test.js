@@ -230,3 +230,20 @@ test('fiche du ticket, « Ses PR ouvertes » : sur deux lignes (n° et état, pu
   assert.match(rows[0].html, /<div class="tk-t">Europe and European Union themes in the apps<\/div>/);
   assert.match(rows[0].html, /<div class="tk-meta">.*⛔ conflit.*3 de retard.*💬 5 fils.*<\/div>$/);
 });
+
+test('env de branche : bouton sur les PR des dépôts de launch.env, brouillons compris ; ailleurs, rien', () => {
+  const envCalls = (id, {draft = false, on = true} = {}) => J(`(() => {
+    const calls = [], lb = launchBlock, fs = foldSection, a0 = ACTIONS.env, r0 = CFG.env_repos;
+    launchBlock = (box, o) => { calls.push([o.action, o.bind, o.label, !!o.off]); box.childElementCount++; };
+    foldSection = () => ({childElementCount: 0, appendChild() { this.childElementCount++; }});
+    ACTIONS.env = ${on}; CFG.env_repos = ['dunder-mifflin/front_api'];
+    ${TWO16}
+    TEAM.people[0].prs[1].draft = ${draft};
+    try { renderPr({appendChild() {}}, ${JSON.stringify(id)}); } finally { launchBlock = lb; foldSection = fs; ACTIONS.env = a0; CFG.env_repos = r0; }
+    return calls.filter(c => c[0] === 'bureau-env');
+  })()`);
+  assert.deepEqual(envCalls('dunder-mifflin/front_api#16'), [['bureau-env', {id: 'dunder-mifflin/front_api#16'}, "🌿 Générer l'env de branche", false]]);
+  assert.equal(envCalls('dunder-mifflin/front_api#16', {draft: true}).length, 1); // un brouillon aussi, jamais grisé
+  assert.deepEqual(envCalls('dunder-mifflin/site-web#16'), []); // dépôt sans env de branche
+  assert.deepEqual(envCalls('dunder-mifflin/front_api#16', {on: false}), []); // pas de launch.env
+});

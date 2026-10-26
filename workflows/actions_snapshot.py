@@ -8,7 +8,9 @@ Sortie (stdout) : {generated_at, repo, tickets[{key, cat, pr}], prs[{id, n, repo
 - tickets : ceux du sprint (assignés ou non) ; pr = n° de la PR ouverte du dépôt principal qui cite la clé (une PR
   prête plutôt qu'un brouillon), sinon "" (le workflow de mise en prod, qui travaille sur ce dépôt, la cherche alors).
 - prs : PR ouvertes de tous les dépôts suivis (#56), chacune avec son vrai dépôt ; id = « owner/repo#n », la clé que
-  relisent « Faire relire » (repo, pr) et « Corriger » (pr) : deux #16 de deux dépôts ne se confondent jamais.
+  relisent « Faire relire » (repo, pr) et « Corriger » (pr) : deux #16 de deux dépôts ne se confondent jamais. Avec
+  launch.env, env = la valeur fixe de la variable action de ce workflow (launch.env.action, défaut « reposer »), que
+  Kronn relit comme le reste : une action de page n'a pas de valeur fixe.
 - moves : les déplacements d'un ticket d'une colonne (◀ / ▶ de sa fiche, workflow « déplacer un ticket »), une ligne par
   sens : id « clé|prev » ou « clé|next », key, dir, to = le statut Jira visé, que Kronn relit (le bouton n'envoie que l'id).
   Avancer d'une colonne jusqu'à « Déployé », reculer d'une colonne depuis « En cours » jusqu'à « À déployer » ; le statut
@@ -59,10 +61,12 @@ def moves_of(t):
     return [{"id": f"{t['key']}|{d}", "key": t["key"], "dir": d, "to": m[d]} for d in ("prev", "next") if m.get(d)]
 
 
+ENV = (CFG.get("launch") or {}).get("env")
+env = {"env": str((ENV.get("action") if isinstance(ENV, dict) else None) or "reposer")} if ENV else {}
 tickets = [x for p in people for x in p.get("tickets") or []] + list(team.get("unassigned") or [])
 out = {"generated_at": datetime.now(TZ).isoformat(), "repo": repo,
        "tickets": [{"key": t["key"], "cat": t.get("cat"), "pr": pr_of(t["key"])} for t in tickets if t.get("key")],
-       "prs": [{"id": f"{repo_of(x)}#{x['n']}", "n": str(x["n"]), "repo": repo_of(x)} for x in prs if x.get("n")],
+       "prs": [{"id": f"{repo_of(x)}#{x['n']}", "n": str(x["n"]), "repo": repo_of(x), **env} for x in prs if x.get("n")],
        "moves": [m for t in tickets if t.get("key") for m in moves_of(t)],
        "warnings": warnings}
 print(dumps(out))

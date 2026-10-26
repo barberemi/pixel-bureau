@@ -70,6 +70,8 @@ TEMPLATES = {
     "issue": ("workflow", ("models", "issue"), {}),  # une intention rédigée en issue GitHub selon les modèles du dépôt
     "assign": ("workflow", ("models", "assign"), {}),  # m'affecter un ticket (assignation puis transition vers En cours)
     "unassign": ("workflow", ("models", "unassign"), {}),  # me le désaffecter (retour à À faire)
+    # (re)construire l'env de branche d'une PR (label retiré puis reposé) : bouton « 🌿 » des fiches quand tu n'as pas launch.env
+    "env": ("workflow", ("models", "env"), {}),
     # investiguer un message du canal Support (#62) : discussion avec l'agent, gate, réponse en fil
     "support": ("workflow", ("models", "support"), {n: "workflows/support.py" for n in ("open", "mark", "draft", "mark_draft", "post", "mark_post")}),
     "ask": ("quick_prompt", ("actions", "ask"), {}),
@@ -182,6 +184,7 @@ def values(cfg):
         "issue.repo": (cfg.get("issue") or {}).get("repo") or (cfg.get("github") or {}).get("repo") or "",
         "issue.search_dirs": ", ".join((cfg.get("issue") or {}).get("search_dirs") or ["~/Sites", "~/Projects", "~/code"]),
         "issue.discussion": (cfg.get("issue") or {}).get("discussion") or "",  # discussion Kronn du récap, facultative
+        "env.label": (cfg.get("env") or {}).get("label") or "env-branch",  # label qui construit l'env de branche (réglage d'équipe)
     }
 
 
@@ -216,6 +219,8 @@ def skipped(key, cfg):
         return not (cfg.get("github") or {}).get("config_id") or (key == "review_cron" and not review_repos(cfg))
     if key in ("estimate", "assign", "unassign"):
         return not (cfg.get("jira") or {}).get("config_id")
+    if key == "env":  # aucun dépôt où générer un env de branche
+        return not assemble.env_repos({**cfg, "models": {**(cfg.get("models") or {}), "env": "?"}})
     if key in ("support", "support_poll"):  # console Support (#62) : canal Teams réglé (support.team, support.channel)
         s = cfg.get("support") or {}
         return not (s.get("team") and s.get("channel"))

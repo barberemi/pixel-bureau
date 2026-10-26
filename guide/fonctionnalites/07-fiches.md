@@ -60,6 +60,18 @@ Les actions :
 - **Corriger les retours** : sur une PR avec changements demandés, même en brouillon (avec des consignes facultatives).
 - **Mettre en prod** : ticket à déployer (statut `jira.flow.validated`, To Deploy par défaut) ; avant, grisé avec la raison ; grisé aussi les jours de gel des mises en prod.
 - **🚀 Mise en prod** (sur chaque PR, si son dépôt a des réglages de mise en prod) : la mise en prod de cette PR, dépôt et numéro relus par Kronn, seulement quand un de ses tickets est en To Deploy (sinon grisé avec la raison, et une PR sans ticket Jira ne se met pas en prod) ; voir [Mise en prod](16-mise-en-prod.md).
+- **🌿 Générer l'env de branche** : en tête des actions de chaque PR d'un dépôt réglé (par défaut le dépôt principal), brouillons compris, jamais grisé. Un seul bouton : il retire le label d'environnement de la PR (sans erreur s'il n'est pas posé), attend 5 s, puis le repose ; il crée donc l'environnement de la PR, ou le reconstruit après un push. Par défaut, c'est le modèle du Bureau « env de branche d'une PR » (`models.env`, `gh`, 0 token), que l'installateur propose : label et dépôts viennent de la clé `env` du pack (`label`, défaut `env-branch`, et `repos`), toute l'équipe a donc le même bouton. Avec ton propre workflow (`launch.env`), c'est lui qui part, avec le numéro de la PR et une valeur d'action fixe (`launch.env.action`, `reposer` par défaut) que Kronn relit dans le dataset `actions` :
+
+  ![Générer l'env de branche, en tête des actions de la PR](../img/env-branche.png)
+
+  ```json
+  "env": {"label": "env-branch", "repos": ["owner/depot"]}
+  ```
+  dans `settings.json` du pack pour le modèle, ou dans ta config pour ton workflow :
+  ```json
+  "launch": {"env": {"wf": "<id de ton workflow>", "vars": {"pr": "pr_number", "action": "action"},
+                     "repos": ["owner/depot"], "action": "reposer"}}
+  ```
 - **Commenter** : à tout statut. Le texte se saisit dans la carte Kronn ; il part sur le ticket dans Jira avec le compte de ta connexion Atlassian, suivi de « (depuis Le Bureau) ». C'est un workflow du Bureau (« Le Bureau · commenter un ticket », un appel Jira, 0 token), créé par l'installateur quand Jira est connecté.
 - **Réestimer** (ton workflow `launch.estimate`, sinon le modèle du Bureau installé, `models.estimate`) : sur un ticket non terminé du sprint. Les nouveaux Story Points et la raison se saisissent dans la carte Kronn ; le ticket est mis à jour dans Jira avec un commentaire qui donne l'ancienne valeur, la nouvelle et la raison.
 
@@ -77,7 +89,7 @@ Rôles et noms par défaut : `impl` → `ticket` (`jira_ticket_key`) ; `mep` →
 
 ![Fiche d'un ticket](../img/fiche-ticket.png)
 
-**PR** : un clic sur une PR (fil, fiche d'un ticket ou d'un collègue) ouvre le Mur Kanban filtré sur son auteur, et sa fiche dans le volet ; depuis son ticket, « ← » y revient. Son nom avec son dépôt, son titre, l'état de sa review, son auteur (sa fiche), le lien GitHub, le ticket qu'elle cite (sa fiche) et les runs d'agents du jour qui l'ont traitée (une revue de Dwight, une correction). Puis les mêmes boutons que dans la fiche du ticket, avec leur agent et l'action conseillée : **Remettre à jour**, **Corriger les retours**, **Faire relire** (PR pas encore approuvée) et **Mise en prod** (son ticket en To Deploy).
+**PR** : un clic sur une PR (fil, fiche d'un ticket ou d'un collègue) ouvre le Mur Kanban filtré sur son auteur, et sa fiche dans le volet ; depuis son ticket, « ← » y revient. Son nom avec son dépôt, son titre, l'état de sa review, son auteur (sa fiche), le lien GitHub, le ticket qu'elle cite (sa fiche) et les runs d'agents du jour qui l'ont traitée (une revue de Dwight, une correction). Puis les mêmes boutons que dans la fiche du ticket, avec leur agent et l'action conseillée : **🌿 Générer l'env de branche** (dépôts de `launch.env`), **Remettre à jour**, **Corriger les retours**, **Faire relire** (PR pas encore approuvée) et **Mise en prod** (son ticket en To Deploy).
 
 Dans « Ses PR ouvertes » (fiche d'un collègue, du boss ou d'un ticket), le numéro d'une PR ouvre sa fiche (« ↗ » ouvre GitHub) et chaque ligne montre son état : « ⛔ conflit », « ⟳ 3 de retard », « 💬 4 fils » non résolus.
 

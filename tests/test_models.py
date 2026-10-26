@@ -10,7 +10,7 @@ import assemble, templates  # noqa: E402
 
 BASE = json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text())
 TPL = templates.load_templates()
-MODELS = ("review_child", "review_one", "review_cron", "estimate", "issue", "assign", "unassign")
+MODELS = ("review_child", "review_one", "review_cron", "estimate", "issue", "assign", "unassign", "env")
 GH = "12121212-3434-5656-7878-909090909090"
 CHILD = "abababab-0000-4000-8000-000000000001"
 PAGE = "cdcdcdcd-0000-4000-8000-000000000002"
@@ -132,6 +132,53 @@ class ModelsTest(unittest.TestCase):
         a = assemble.merged(c)["agents"]
         self.assertEqual(a[0], {"key": "dwight", "name": "Dwight", "role": "Revue des PR", "wf": ["99999999"]})  # rattaché par la config
         self.assertEqual(a[1], {"key": "mose", "name": "Mose", "role": "Relit une PR", "wf": ["aaaa1111"]})  # d'office, par son modèle
+        shutil.rmtree(tmp)
+
+    def test_env_branch_model_relabels_the_pr_and_comes_from_the_team_pack(self):
+        """Modèle env : label de l'équipe (env.label du pack, env-branch par défaut) en argument du script, jamais dans le
+        code ; le bouton s'y rabat sans launch.env, avec le dépôt et le n° de la PR, sans variable action ; dépôts du pack."""
+        tmp = tempfile.mkdtemp()
+        pack = os.path.join(tmp, "pack")
+        import shutil
+        shutil.copytree(os.path.join(ROOT, "tests", "fixtures", "pack-exemple"), pack)
+        self.assertEqual(steps("env", cfg())["relabel"]["exec_args"][-3:], ["{{pr_number}}", "{{repo}}", "env-branch"])
+        Path(os.path.join(pack, "settings.json")).write_text(json.dumps({"env": {"label": "preview", "repos": ["vance/frigo", "vance/api"]}}))
+        c = {**cfg(models={"env": "eeee1111-0000-4000-8000-000000000000"}), "team": pack}
+        c.pop("launch", None)
+        self.assertEqual(steps("env", c)["relabel"]["exec_args"][-1], "preview")
+        self.assertEqual([v["name"] for v in templates.render(TPL["env"], c)["variables"]], ["pr_number", "repo"])
+        self.assertEqual(assemble.action_ids(c)["env"], c["models"]["env"])
+        html = assemble.build(demo=False, cfg=c)
+        spec = json.loads(re.search(r'data-action-id="bureau-env">(.*?)</script>', html, re.S).group(1))
+        self.assertEqual([v["name"] for v in spec["values"]], ["pr_number", "repo"])
+        self.assertEqual(assemble.env_repos(c), ["vance/frigo", "vance/api"])
+        self.assertFalse(templates.skipped("env", c))
+        self.assertTrue(templates.skipped("env", cfg(github={})))  # aucun dépôt
+        shutil.rmtree(tmp)
+
+    def test_env_branch_script_relabels_without_failing_when_the_label_is_absent(self):
+        """Le script : retrait du label sans erreur s'il est absent, puis ajout ; PR introuvable : code 2 (faux gh)."""
+        tmp = tempfile.mkdtemp()
+        log = os.path.join(tmp, "gh.log")
+        Path(os.path.join(tmp, "gh")).write_text(f"""#!/bin/sh
+echo "$*" >> {log}
+case "$*" in *"--json number"*) [ "$3" = "404" ] && exit 1; exit 0 ;; *--remove-label*) exit 1 ;; *isDraft*) echo true ;; esac
+exit 0
+""")
+        os.chmod(os.path.join(tmp, "gh"), 0o755)
+        Path(os.path.join(tmp, "sleep")).write_text("#!/bin/sh\nexit 0\n")
+        os.chmod(os.path.join(tmp, "sleep"), 0o755)
+        args = steps("env", cfg())["relabel"]["exec_args"]
+        env = {"PATH": tmp + ":/usr/bin:/bin"}
+        r = subprocess.run(["bash", *args[:3], "12", "vance/frigo", "env-branch"], capture_output=True, text=True, env=env)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("env-branch reposé sur vance/frigo#12", r.stdout)
+        self.assertIn("draft", r.stdout)
+        calls = Path(log).read_text().splitlines()
+        self.assertTrue(any("--remove-label env-branch" in c for c in calls) and any("--add-label env-branch" in c for c in calls))
+        r = subprocess.run(["bash", *args[:3], "404", "vance/frigo", "env-branch"], capture_output=True, text=True, env=env)
+        self.assertEqual(r.returncode, 2)
+        import shutil
         shutil.rmtree(tmp)
 
     def test_publish_never_creates_a_model(self):

@@ -94,7 +94,7 @@ def static_checks(html, cfg=None, published=None):
         if acts.get(key):  # bouton sans workflow configuré : bloc retiré à l'assemblage
             expected.append(assemble.action_block(b, c))
     found = ACTION_RE.findall(html)
-    check(total == 22, f"{total} blocs kronn-action dans le squelette (attendu 22)")
+    check(total == 23, f"{total} blocs kronn-action dans le squelette (attendu 23)")
     check(found == expected, f"blocs kronn-action attendus présents à l'identique ({len(expected)}/14 configurés)")
     for b in found:
         body = b.split(">", 1)[1].rsplit("</script>", 1)[0]

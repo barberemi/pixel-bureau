@@ -304,6 +304,9 @@ SHOTS = {
     # absences à sa gauche ; la fenêtre en colonnes, avec un ajout et une todo cochée pas encore enregistrés
     # Chercher (64-search.js) : « panier », les tickets et les PR qui en parlent
     "chercher": (1400, 1000, AT(11) + "openSearch();const i=document.querySelector('.sr-in input');i.value='panier';i.dispatchEvent(new Event('input'));", ".sr-win"),
+    # « 🌿 Générer l'env de branche » (launch.env) : sur la PR du ticket, dans le volet du Mur Kanban
+    "env-branche": (1600, 1000, AT(11) + KB_DEMO + "ACTIONS.env=true;ACTION_BINDS['bureau-env']={pr_number:'id',action:'id'};CFG.env_repos=[CFG.github_repo];"
+                   "ACTS.prs.forEach(p=>{p.env='reposer';});openTicket(KB_K);", ".kbv"),
     "todos-tableau": (1400, 1000, AT(11) + "setTimeout(()=>{const t=todoRect(),c=document.querySelector('#cv'),r=c.getBoundingClientRect(),"
                       "k=r.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(t.x-70)*k)+'px',"
                       "top:(r.top+scrollY+(t.y-30)*k)+'px',width:(t.w+150)*k+'px',height:(t.h+90)*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 3),

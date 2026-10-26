@@ -264,6 +264,11 @@ function prLaunch(box,p,{tickets,isNext=()=>false,group}={}){
   if(group)actGroup(box,group);
   const id=a.id||prId(p), nx=act=>isNext(act,prId(p));
   const dr=p.draft?' (brouillon)':'', nm=prNum(p); // un brouillon se relit et se corrige aussi
+  // « 🌿 Générer l'env de branche », en tête : ton workflow de launch.env, sur les PR de ses dépôts (CFG.env_repos), brouillons
+  // compris ; la ligne de la PR porte la valeur de sa variable action (actions.prs[].env, « reposer » par défaut)
+  if(ACTIONS.env&&(CFG.env_repos||[]).some(r=>repoKey(r)===repoKey(id.replace(/#\d+$/,''))))
+    launchBlock(box,{action:'bureau-env',bind:{id},verb:'génère l\'env de branche'+dr,
+      sub:'Retire puis repose le label : crée l\'environnement de la PR, ou le reconstruit après un push',label:'🌿 Générer l\'env de branche',title:'Env de branche de '+nm});
   // « ⟳ Remettre à jour » (#74) : rebase sur la base, sans squash ; en retard ou en conflit d'après le cron équipe, ou état inconnu
   if(ACTIONS.rebase&&!p.merged&&(p.conflict||p.behind!==0)){
     const base=p.base||'main';
