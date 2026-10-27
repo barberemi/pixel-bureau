@@ -10,7 +10,7 @@ import assemble, templates  # noqa: E402
 
 BASE = json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text())
 TPL = templates.load_templates()
-MODELS = ("review_child", "review_one", "review_cron", "estimate", "issue", "assign", "unassign", "env", "deploy")
+MODELS = ("review_child", "review_one", "review_cron", "estimate", "issue", "ticket", "assign", "unassign", "env", "deploy")
 GH = "12121212-3434-5656-7878-909090909090"
 CHILD = "abababab-0000-4000-8000-000000000001"
 PAGE = "cdcdcdcd-0000-4000-8000-000000000002"
@@ -205,6 +205,45 @@ exit 0
         self.assertFalse(templates.skipped("deploy", c))
         self.assertTrue(templates.skipped("deploy", cfg()))  # aucun réglage deploy
         self.assertEqual(assemble.deploy_envs({**c, "models": {}}), {})  # modèle pas installé : pas de bouton
+        shutil.rmtree(tmp)
+
+    def test_ticket_model_follows_the_team_create_settings(self):
+        """Modèle ticket (#77) : types et composants du réglage jira.create (pack), composant obligatoire avec une liste,
+        points recopiés dans le champ du board seulement s'il n'est pas celui de l'écran de création ; rien sans Jira."""
+        import shutil
+        tmp = tempfile.mkdtemp()
+        pack = os.path.join(tmp, "pack")
+        shutil.copytree(os.path.join(ROOT, "tests", "fixtures", "pack-exemple"), pack)
+        create = {"types": ["Story", "Bug", "Tâche"], "type": "Bug", "components": ["site-web", "intranet"],
+                  "points_field": "customfield_100", "template": "~/Sites/frigo/docs/ticket.md"}
+        Path(os.path.join(pack, "settings.json")).write_text(json.dumps({"jira": {"create": create}}))
+        c = {**cfg(models={"ticket": "tttt1111-0000-4000-8000-000000000000"}), "team": pack}
+        out = templates.render(TPL["ticket"], c)
+        var = {v["name"]: v for v in out["variables"]}
+        self.assertEqual(list(var), ["intention", "type", "points", "composant", "composant_2", "sprint", "parent"])
+        self.assertEqual([o["value"] for o in var["type"]["control"]["options"]], ["Story", "Bug", "Tâche"])
+        self.assertEqual(var["type"]["control"]["default_value"], "Bug")
+        self.assertEqual([o["value"] for o in var["composant"]["control"]["options"]], ["site-web", "intranet"])
+        self.assertTrue(var["composant"]["required"])
+        self.assertFalse(var["composant_2"]["required"])
+        self.assertEqual(var["intention"]["control"], {"type": "textarea"})
+        st = {s["name"]: s for s in out["steps"]}
+        self.assertEqual(list(st), ["rediger", "apercu", "relire", "sprints", "champs", "creer", "points_board", "resultat"])
+        self.assertIn("~/Sites/frigo/docs/ticket.md", st["rediger"]["prompt_template"])
+        self.assertEqual(st["points_board"]["api_body"], {"fields": {"customfield_200": "{{steps.champs.data.sources.f.board_sp}}"}})
+        self.assertEqual(st["creer"]["api_body"], "{{steps.champs.data.sources.f.body}}")  # corps typé, jamais réinterprété
+        self.assertEqual(assemble.page_config(assemble.merged(c))["ticket"], {"wf": "tttt1111"})
+        # même champ à la création et sur le board : pas de recopie ; sans liste de composants : champ libre facultatif
+        Path(os.path.join(pack, "settings.json")).write_text(json.dumps({"jira": {"create": {"points_field": "customfield_200"}}}))
+        out = templates.render(TPL["ticket"], c)
+        self.assertNotIn("points_board", [s["name"] for s in out["steps"]])
+        var = {v["name"]: v for v in out["variables"]}
+        self.assertNotIn("control", var["composant"])
+        self.assertFalse(var["composant"]["required"])
+        self.assertEqual([o["value"] for o in var["type"]["control"]["options"]], templates.CREATE_TYPES)
+        self.assertIn("aucun", out["steps"][0]["prompt_template"])  # pas de modèle de ticket : structure par défaut
+        self.assertTrue(templates.skipped("ticket", cfg(jira={})))
+        self.assertIsNone(assemble.page_config(cfg())["ticket"])
         shutil.rmtree(tmp)
 
     def test_deploy_script_dispatches_the_pr_branch_and_never_prod(self):

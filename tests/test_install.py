@@ -123,7 +123,7 @@ class InstallTest(unittest.TestCase):
         posts = [(p, b) for m, p, b in k.calls if m == "POST"]
         page = next(b for p, b in posts if p == "/pages")
         self.assertEqual([d["name"] for d in page["datasets"]], install.DATASETS)
-        self.assertEqual(sum(1 for p, _ in posts if p == "/workflows"), 22)  # Mes todos compris ; déplacer un ticket (Jira connecté) ; dont les 4 modèles d'agents proposés par défaut avec Jira (réestimer, issue GitHub, m'affecter, me désaffecter ; pas la revue de PR sans connexion GitHub), puis remettre une PR à jour et corriger ses commentaires, les agents et les pages de l'écran mural ajoutés depuis la page, commenter un ticket (Jira connecté), parler au canard, le canard d'équipe et répondre aux questions
+        self.assertEqual(sum(1 for p, _ in posts if p == "/workflows"), 23)  # Mes todos compris ; déplacer un ticket (Jira connecté) ; dont les 5 modèles d'agents proposés par défaut avec Jira (réestimer, issue GitHub, créer un ticket, m'affecter, me désaffecter ; pas la revue de PR sans connexion GitHub), puis remettre une PR à jour et corriger ses commentaires, les agents et les pages de l'écran mural ajoutés depuis la page, commenter un ticket (Jira connecté), parler au canard, le canard d'équipe et répondre aux questions
         self.assertEqual(sum(1 for p, _ in posts if p == "/quick-prompts"), 2)  # interroger un agent, plan vers brouillon
         cfg = json.loads(Path(self.cfg_path).read_text())
         self.assertEqual(cfg["owner"], "p_lynn")
@@ -170,7 +170,7 @@ class InstallTest(unittest.TestCase):
         with mock.patch.object(install, "Kronn", return_value=first):
             self.assertEqual(self.run_install(ANSWERS), 0)
         posts = [p for m, p, _ in first.calls if m == "POST" and p in ("/pages", "/workflows", "/quick-prompts")]
-        self.assertEqual(len(posts), 1 + 22 + 2)  # rien de recréé à la relance
+        self.assertEqual(len(posts), 1 + 23 + 2)  # rien de recréé à la relance
 
     def test_relaunch_adds_missing_datasets(self):
         self.run_install(ANSWERS)
@@ -198,7 +198,7 @@ class InstallTest(unittest.TestCase):
         k = self.fakes[-1]
         cfg = json.loads(Path(self.cfg_path).read_text())
         self.assertEqual(cfg["github"]["config_id"], gh)
-        self.assertEqual(set(cfg["models"]), {"review_child", "review_one", "review_cron", "issue", "assign", "unassign"})
+        self.assertEqual(set(cfg["models"]), {"review_child", "review_one", "review_cron", "issue", "ticket", "assign", "unassign"})
         made = {b["name"]: b for m, p_, b in k.calls if m == "POST" and p_ == "/workflows"}
         self.assertIs(made["Le Bureau · revue des PR (cron)"]["enabled"], False)
         cron = made["Le Bureau · revue des PR (cron)"]
@@ -211,7 +211,7 @@ class InstallTest(unittest.TestCase):
         k = self.fakes[-1]
         cfg = json.loads(Path(self.cfg_path).read_text())
         self.assertEqual(cfg["workflows"]["live"], FakeKronn.LIVE)
-        self.assertEqual(sum(1 for m, p, _ in k.calls if m == "POST" and p == "/workflows"), 21)
+        self.assertEqual(sum(1 for m, p, _ in k.calls if m == "POST" and p == "/workflows"), 22)
         self.assertTrue([1 for m, p, _ in k.calls if m == "PUT" and p == f"/workflows/{FakeKronn.LIVE}"])  # mis à jour
         self.assertEqual([a["name"] for a in cfg["agents"]], ["Dwight"])
 
@@ -243,7 +243,7 @@ class InstallTest(unittest.TestCase):
             self.assertFalse([1 for m, _, _ in k.calls if m == "DELETE"])
             self.assertEqual(uninstall.main(["--config", self.cfg_path, "--yes"]), 0)
         deleted = [p for m, p, _ in k.calls if m == "DELETE"]
-        self.assertEqual(len(deleted), 21 + 2 + 1)  # 21 workflows, les 2 QP, la page
+        self.assertEqual(len(deleted), 22 + 2 + 1)  # 22 workflows, les 2 QP, la page
         self.assertNotIn(f"/workflows/{mine}", deleted)
         self.assertEqual(deleted[-1], f"/pages/{cfg['page_id']}")  # la page en dernier
         after = json.loads(Path(self.cfg_path).read_text())

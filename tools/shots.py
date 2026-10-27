@@ -31,6 +31,20 @@ DEMO_PROJO = (DEMO_PAGES + "BOSS_PAGES[0].kpi={value:'82 %',label:'du CA visé',
               "BOSS_PAGES[2].kpi={value:'46 avis',label:'cette semaine',parts:[[30,'#3fbf6a'],[10,'#e0a020'],[6,'#e0614f']],short:'Satisfaction'};"
               "PAGE_TV=['demo0','demo2','demo3'];")
 # démo des fiches de ticket : actions et PR branchées (comme fiche-ticket), le ticket d'une PR en conflit et son personnage
+# créer un ticket (#77) : Karen incarne le modèle ticket (CFG.ticket), son formulaire « ▶ Lancer » et l'aperçu de sa validation
+TICKET_DEMO = ("applyAgents({a_karen_7c3a:{name:'Karen',role:'Créer un ticket',wf:['7c3a1b2e'],sprite:'p_karen',at:T-5*864e5}});CFG.ticket={wf:'7c3a1b2e'};"
+               "COLLAPSED['fiche:added']=true;const TK_O=['site-web','intranet','api'].map(v=>({value:v,label:v}));"
+               "LAUNCHABLE=[{wf:'7c3a1b2e-demo',name:'Le Bureau · créer un ticket',vars:[{name:'intention',label:'Intention',required:true,multiline:true,"
+               "placeholder:'Ce qu\\'il faut faire, en quelques phrases'},{name:'type',label:'Type',required:true,options:['Story','Bug','Tâche'].map(v=>({value:v,label:v})),"
+               "default:'Story'},{name:'points',label:'Story Points',required:true,placeholder:'3',pattern:'[0-9]+([.][0-9]+)?'},"
+               "{name:'composant',label:'Composant',required:true,options:TK_O},{name:'composant_2',label:'Composant 2',required:false,options:TK_O},"
+               "{name:'sprint',label:'Sprint',required:true,options:[{value:'backlog',label:'Backlog'},{value:'next',label:'Sprint suivant'}],default:'backlog'},"
+               "{name:'parent',label:'Épic ou parent',required:false,placeholder:'ABC-123',pattern:'[A-Z][A-Z0-9]+-[0-9]+'}]}];const TK_C=byKey.a_karen_7c3a;"
+               "const TICKET_MSG='🎫 [Recherche] Inclure les ramettes en promotion dans le filtre par grammage\\nBug · 3 pts · site-web · Sprint suivant\\n\\n"
+               "▸ De quoi on parle ?\\n│ Le filtre par grammage ignore les ramettes en promotion.\\nSignalé par le service client : une ramette 80 g en promotion "
+               "n\\'apparaît pas quand on filtre sur 80 g.\\n\\n▸ Qu\\'est-ce que l\\'on va faire ?\\n• Lire le grammage du produit d\\'origine pour les offres "
+               "en promotion\\n• Ajouter le cas aux tests du filtre\\n\\n▸ Comment on teste ?\\n│ Env de test : {{Todo}}\\nFiltrer la recherche sur 80 g : la "
+               "ramette en promotion est dans la liste.\\n\\n---\\n**Approuver** : le ticket est créé dans Jira, son lien revient sur la page. **Rejeter** : rien n\\'est créé.';")
 KB_DEMO = ("ACTIONS.estimate=true;ACTION_BINDS['bureau-estimate']={jira_ticket_key:'key'};ACTIONS.move=true;ACTION_BINDS['bureau-move']={jira_ticket_key:'id',target_status:'id'};const _all=TEAM.people.flatMap(p=>p.tickets),_prs=TEAM.people.flatMap(p=>p.prs);"
            "const _st={todo:'À faire',doing:'En cours',review:'To Review',test:'To Test',deploy:'To Deploy',done:'Deployed'},_o=MV_ORDER;"
            "ACTS={tickets:_all.map(t=>({key:t.key})),prs:_prs.map(x=>({id:prId(x),n:String(x.n),repo:prRepo(x)})),"
@@ -148,6 +162,16 @@ SHOTS = {
                       "needTeleport=false;const c=byKey.a_clark;c.present=false;c.pos=null;tick(0);setMode('pause');c.popAt=performance.now()+1750;", "#cv", 1.5),
     # fiche d'un agent ajouté depuis une baie (#64) : arrivé ce matin, « ▶ Lancer » avec un champ par paramètre (#67), l'intention
     # remplie, et « Agent ajouté » déplié
+    # créer un ticket (#77) : l'agent du modèle ticket, son dernier ticket créé puis le « ▶ Lancer » ; sa validation, le ticket tel qu'il sera créé
+    "creer-ticket": (1400, 1400, AT(11) + TICKET_DEMO + "TK_C.runs.push({wf:'7c3a1b2e-demo',run:'tk1',wf_name:'Le Bureau · créer un ticket',status:'Success',"
+                     "_s:T-50*60e3,_e:T-44*60e3,_ve:T-44*60e3,steps:[],vars:{},res:{key:'DM-7958',url:'https://dunder-mifflin.atlassian.net/browse/DM-7958',"
+                     "title:'[Panier] Ne plus proposer deux fois le même article dans « À lire aussi »',meta:'Bug · 3 pts · site-web · Sprint suivant'}});"
+                     "select('a_karen_7c3a');const f=document.querySelector('.rl-f textarea');f.value='Le filtre par grammage de la recherche oublie les ramettes en promotion';f.oninput();"
+                     "for(const [k,v] of [['points','3'],['composant','site-web'],['type','Bug']]){const x=document.querySelector(`[data-fid$=\":${k}\"]`);x.value=v;x.oninput();}", "#side"),
+    "creer-ticket-validation": (1400, 1400, AT(11) + TICKET_DEMO + "ACTIONS.gate=true;TK_C.runs.push({wf:'7c3a1b2e-demo',run:'tk2',wf_name:'Le Bureau · créer un ticket',"
+                                "status:'WaitingApproval',_s:T-4*60e3,_e:null,_ve:Infinity,steps:[],vars:{}});GATES=[{run:'tk2',wf:'7c3a1b2e-demo',"
+                                "wf_name:'Le Bureau · créer un ticket',gate:'relire',since:new Date(T-60e3).toISOString(),message:TICKET_MSG}];"
+                                "select('a_karen_7c3a');", "#side"),
     "fiche-agent-ajoute": (1400, 1400, AT(11) + "applyAgents({a_clark_e5ce:{name:'Clark',role:'Issue GitHub',wf:['e5ce6732'],sprite:'p_clark',at:T-2*3600e3}});"
                            "LAUNCHABLE=[{wf:'e5ce6732-demo',name:'Issue GitHub',vars:[{name:'intention',label:'Ce que tu veux faire',required:true,multiline:true,"
                            "placeholder:'Ex. pouvoir trier le kanban par priorité'},{name:'repo',label:'Dépôt',required:false,placeholder:'owner/dépôt'},"

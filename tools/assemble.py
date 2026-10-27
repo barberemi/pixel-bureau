@@ -198,6 +198,8 @@ def page_config(cfg):
         "ui": cfg.get("ui") or {},
         "skins": themes(cfg),  # thèmes d'interface (theme-*.css) proposés par le bouton 🎨
         "support": support_page(cfg),  # console Support (#62)
+        # créer un ticket (#77) : préfixe du modèle (l'agent qui l'incarne), pour sa validation et son dernier ticket créé
+        "ticket": {"wf": str((cfg.get("models") or {}).get("ticket") or "")[:8]} if (cfg.get("models") or {}).get("ticket") else None,
     }
 
 
@@ -326,7 +328,7 @@ def defaults(cfg):
 # Le pack porte l'équipe, la config porte l'installation. settings.json du pack, lu à chaque assemblage et rendu des
 # modèles : rythme, GitFut, affiches du Top 3, planning des absences (sans config_id) et personnages des agents (sans
 # ids de workflows). La config peut surcharger chacun ; elle seule rattache un personnage à ses workflows (agents[].wf).
-SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "support", "env", "deploy")
+SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "support", "env", "deploy", "jira")
 AGENT_FIELDS = ("key", "name", "role", "wf", "seat", "sprite")  # ordre des champs d'un agent, comme l'installateur l'écrit
 
 
@@ -339,6 +341,8 @@ def pack_settings(cfg):
     s = {k: v for k, v in json.loads(Path(path).read_text()).items() if k in SETTINGS}
     if isinstance(s.get("microsoft"), dict):
         s["microsoft"] = {k: v for k, v in s["microsoft"].items() if k != "config_id"}
+    if "jira" in s:  # de Jira, l'équipe ne règle que la création de tickets (#77) : connexion, projet et board restent à l'installation
+        s["jira"] = {"create": s["jira"]["create"]} if isinstance(s["jira"], dict) and isinstance(s["jira"].get("create"), dict) else {}
     if isinstance(s.get("agents"), list):
         s["agents"] = [{k: v for k, v in a.items() if k != "wf"} for a in s["agents"] if isinstance(a, dict) and a.get("key")]
     return s
@@ -378,6 +382,10 @@ def merged(cfg):
         out["env"] = {**(s["env"] or {}), **(cfg.get("env") or {})}
     if "deploy" in s:  # déployer la branche d'une PR hors prod : dépôts et envs de l'équipe ; la config peut les surcharger
         out["deploy"] = {**(s["deploy"] or {}), **(cfg.get("deploy") or {})}
+    if (s.get("jira") or {}).get("create"):  # créer un ticket (#77) : jira.create de l'équipe ; la config peut le surcharger
+        j = dict(cfg.get("jira") or {})
+        j["create"] = {**s["jira"]["create"], **(j.get("create") or {})}
+        out["jira"] = j
     if "review" in s:  # revue de PR (#78) : consignes, skills, dépôts, horaire de l'équipe ; page et projet de l'installation
         out["review"] = {**(s["review"] or {}), **(cfg.get("review") or {})}
     if "agents" in s:

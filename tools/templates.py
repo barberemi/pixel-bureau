@@ -70,6 +70,8 @@ TEMPLATES = {
     "review_cron": ("workflow", ("models", "review_cron"), {}),
     "estimate": ("workflow", ("models", "estimate"), {}),  # réestimer un ticket : Story Points et commentaire
     "issue": ("workflow", ("models", "issue"), {}),  # une intention rédigée en issue GitHub selon les modèles du dépôt
+    # créer un ticket Jira (#77) : l'IA rédige au modèle de l'équipe (jira.create), le boss valide, l'API REST v2 crée
+    "ticket": ("workflow", ("models", "ticket"), {n: "workflows/ticket.py" for n in ("apercu", "champs", "resultat")}),
     "assign": ("workflow", ("models", "assign"), {}),  # m'affecter un ticket (assignation puis transition vers En cours)
     "unassign": ("workflow", ("models", "unassign"), {}),  # me le désaffecter (retour à À faire)
     # (re)construire l'env de branche d'une PR (label retiré puis reposé) : bouton « 🌿 » des fiches quand tu n'as pas launch.env
@@ -177,6 +179,10 @@ def values(cfg):
         "kronn.api": (cfg.get("kronn") or {}).get("api") or "",
         "github.config_id": (cfg.get("github") or {}).get("config_id") or "",  # connexion GitHub de Kronn (API GitHub)
         "jira.points_field": (j.get("points_fields") or [""])[0],  # champ Story Points du board (réestimer)
+        # créer un ticket (#77) : modèle de ticket de l'équipe (chemin, facultatif) ; champ du board où recopier les points
+        # quand l'écran de création en a un autre (jira.create.points_field), sinon vide (étape retirée)
+        "jira.create.template": str((j.get("create") or {}).get("template") or "aucun (structure par défaut)"),
+        "jira.create.board_points": create_board_points(j),
         **{f"jira.statuses.{c}": json.dumps([s for s, k in (j.get("statuses") or {}).items() if k == c], ensure_ascii=False)
            for c in ("todo", "doing")},  # statuts « À faire » et « En cours » du board (m'affecter, me désaffecter)
         "models.review_child": (cfg.get("models") or {}).get("review_child") or "",
@@ -190,6 +196,32 @@ def values(cfg):
         "issue.discussion": (cfg.get("issue") or {}).get("discussion") or "",  # discussion Kronn du récap, facultative
         "env.label": (cfg.get("env") or {}).get("label") or "env-branch",  # label qui construit l'env de branche (réglage d'équipe)
     }
+
+
+def create_board_points(j):
+    board = (j.get("points_fields") or [""])[0]
+    return board if board and (j.get("create") or {}).get("points_field") not in (None, "", board) else ""
+
+
+CREATE_TYPES = ["Story", "Bug", "Task"]  # types proposés sans réglage jira.create.types
+
+
+def create_options(kind, v, cfg):
+    """Choix d'une variable du modèle ticket (#77) d'après jira.create : types (le type par défaut en tête), composants
+    (sans liste : champ libre, obligatoire seulement si component_required)."""
+    c = (cfg.get("jira") or {}).get("create") or {}
+    if kind == "jira.create.types":
+        types = list(c.get("types") or CREATE_TYPES)
+        dflt = c.get("type") if c.get("type") in types else types[0]
+        v["control"] = {"type": "select", "options": [{"value": t, "label": t, "enabled": True} for t in types], "default_value": dflt}
+        return
+    comps = list(c.get("components") or [])
+    if v["required"]:  # composant principal : obligatoire par défaut quand l'équipe donne la liste
+        v["required"] = bool(c.get("component_required", bool(comps)))
+    if comps:
+        v["control"] = {"type": "select", "options": [{"value": x, "label": x, "enabled": True} for x in comps]}
+    else:
+        v["placeholder"] = "nom du composant Jira"
 
 
 def review_repos(cfg):
@@ -221,7 +253,7 @@ def skipped(key, cfg):
         return not mep_projects(cfg)
     if key in ("review_child", "review_one", "review_cron"):  # API GitHub : connexion GitHub de Kronn (github.config_id)
         return not (cfg.get("github") or {}).get("config_id") or (key == "review_cron" and not review_repos(cfg))
-    if key in ("estimate", "assign", "unassign"):
+    if key in ("estimate", "assign", "unassign", "ticket"):
         return not (cfg.get("jira") or {}).get("config_id")
     if key == "env":  # aucun dépôt où générer un env de branche
         return not assemble.env_repos({**cfg, "models": {**(cfg.get("models") or {}), "env": "?"}})
@@ -280,7 +312,10 @@ def render(tpl, cfg):
                 if a.get("type") == "Goto" and a.get("step_name") in dropped:
                     a["step_name"] = after[a["step_name"]]
         for v in d.get("variables") or []:  # liste des projets (#58) : choix de la variable, le dépôt principal par défaut
-            if v.pop("_options", None) == "mep.projects":
+            opt = v.pop("_options", None)
+            if opt in ("jira.create.types", "jira.create.components"):
+                create_options(opt, v, cfg)
+            if opt == "mep.projects":
                 opts = mep_projects(cfg)
                 v["control"] = {"type": "select", "options": [{"value": r, "label": n, "enabled": True} for r, n in opts],
                                 **({"default_value": opts[0][0]} if opts else {})}

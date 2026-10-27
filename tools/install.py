@@ -401,6 +401,7 @@ MODELS = [("review_one", "Relire une PR à la demande (bouton « Faire relire »
           ("review_cron", "Relire automatiquement les PR ouvertes, plusieurs fois par jour (cron, avis posté sur GitHub)", False),
           ("estimate", "Réestimer un ticket (Story Points et commentaire dans Jira)", True),
           ("issue", "Rédiger une issue GitHub depuis une intention", True),
+          ("ticket", "Créer un ticket Jira depuis une intention (rédigé au modèle de l'équipe, validé avant création)", True),
           ("assign", "M'affecter un ticket (assignation et passage En cours)", True),
           ("unassign", "Me désaffecter un ticket (retour à À faire)", True),
           ("support", "Investiguer les messages du canal Support et y répondre en fil (console Support)", True),
