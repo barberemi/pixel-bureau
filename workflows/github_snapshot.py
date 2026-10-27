@@ -15,11 +15,14 @@ Env de branche : sur une PR qui porte le label d'env (`env.label`, défaut env-b
 = la dernière adresse de ses commentaires qui répond à `env.url` (expression régulière, réglage d'équipe ; sans elle, rien)
 et `env_at` = l'heure du commentaire. Le filtre jq ne sort que l'adresse : le reste du commentaire (des mots de passe,
 souvent) ne quitte jamais gh.
+PR ouvertes reprises : quand GitHub ne répond pas à temps, celles du dernier relevé réussi du dépôt (3 h au plus,
+~/.cache/pixel-bureau/open_prs.json), avec un avertissement, plutôt qu'une liste vide.
 Sortie (stdout) : {"open": [...], "merged": [...], "releases": [...], "staging": [...], "prod": [...], "errors": [...], "warnings": [...]}
 """
 import json, os, subprocess, sys
+from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor
-from _lib import CFG, dumps, read_json, write_json
+from _lib import CFG, TZ, dumps, read_json, write_json
 
 GH = CFG.get("github") or {}
 REPO, STAGING_WF, PROD_WF = GH.get("repo"), GH.get("staging_workflow"), GH.get("prod_workflow")
@@ -45,6 +48,7 @@ REPOS = pr_repos()
 OPEN_FIELDS = ("number,title,headRefName,author,isDraft,reviewDecision,url,updatedAt,createdAt,latestReviews,reviewRequests,"
                "baseRefName,headRefOid")
 CALLS = {}
+KEPT = []  # avertissements des PR reprises du relevé précédent
 for repo in REPOS:
     main = repo.lower() == (REPO or "").lower()
     CALLS[("open", repo)] = ["pr", "list", "--repo", repo, "--state", "open", "--limit", "100" if main else "25", "--json", OPEN_FIELDS]
@@ -58,10 +62,10 @@ CALLS[("prod", REPO)] = ["run", "list", "--repo", REPO, "--workflow", PROD_WF, "
 KEYS = ("open", "merged", "releases", "staging", "prod")
 
 
-def call(args):
-    """(liste, erreur) d'un appel gh borné à 30 s ; l'erreur est None si tout va bien."""
+def call(args, timeout=30):
+    """(liste, erreur) d'un appel gh borné à timeout secondes ; l'erreur est None si tout va bien."""
     try:
-        r = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=30)
+        r = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=timeout)
         if r.returncode != 0:
             msg = (r.stderr or r.stdout).strip()
             return [], msg.splitlines()[-1][:200] if msg else f"code {r.returncode}"
@@ -75,9 +79,35 @@ def call(args):
 todo = {k: a for k, a in CALLS.items()
         if REPO and k[1] and not (k[0] == "staging" and not STAGING_WF or k[0] == "prod" and not PROD_WF)}
 with ThreadPoolExecutor(max_workers=8) as pool:  # en parallèle : 12 dépôts tiennent dans le délai de l'étape (120 s)
-    res = dict(zip(todo, pool.map(call, todo.values())))
+    # 60 s pour les PR ouvertes du principal : la liste la plus lourde, qui dépasse 30 s certains soirs
+    res = dict(zip(todo, pool.map(lambda k: call(todo[k], 60 if k == ("open", REPO) else 30), todo)))
 
-out, errors, warnings = {k: [] for k in KEYS}, [], []
+# PR ouvertes du dernier relevé réussi, par dépôt : GitHub qui tarde au-delà du délai (vu le soir sur les 100 PR du
+# principal) ne vide plus la liste, la page garderait sinon ses fiches sans aucune PR ni bouton. Au plus 3 h.
+OPEN_CACHE = os.path.expanduser("~/.cache/pixel-bureau/open_prs.json")
+OPEN_MAX_AGE = 3 * 3600
+try:
+    open_cache = read_json(OPEN_CACHE)
+except (OSError, ValueError):
+    open_cache = {}
+now = datetime.now(timezone.utc)
+for (key, repo), (rows, err) in list(res.items()):
+    c = open_cache.get(repo) or {}
+    if key == "open" and err and isinstance(c.get("rows"), list) and c.get("at"):
+        at = datetime.fromisoformat(c["at"])
+        if (now - at).total_seconds() <= OPEN_MAX_AGE:
+            res[(key, repo)] = (c["rows"], None)
+            print(f"github : PR ouvertes de {repo} reprises du relevé de {at.astimezone(TZ):%H:%M} ({err})", file=sys.stderr)
+            KEPT.append(f"PR ouvertes de {repo} : GitHub n'a pas répondu, relevé de {at.astimezone(TZ):%H:%M} repris"[:240])
+    elif key == "open" and not err and isinstance(rows, list):
+        open_cache[repo] = {"at": now.isoformat(), "rows": [dict(pr) for pr in rows]}
+try:
+    os.makedirs(os.path.dirname(OPEN_CACHE), exist_ok=True)
+    write_json(OPEN_CACHE, open_cache)
+except OSError:
+    pass  # cache seulement : sans lui, un délai dépassé redevient une liste vide
+
+out, errors, warnings = {k: [] for k in KEYS}, [], list(KEPT)
 for (key, repo), (rows, err) in res.items():
     main = repo.lower() == (REPO or "").lower()
     if err:  # dépôt principal : une erreur GitHub (source absente) ; autre dépôt : un avertissement, le reste est lu

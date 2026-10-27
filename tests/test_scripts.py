@@ -505,6 +505,24 @@ print(json.dumps(val))
         self.assertIn("acme/cassé", self.stderr)
         self.assertEqual(Path(os.path.join(self.tmp, "gh.json.calls")).read_text().count("--repo acme/api "), 2)  # pas de doublon (casse)
 
+    def test_github_snapshot_keeps_last_open_prs_when_github_fails(self):
+        """GitHub qui ne répond pas sur les PR ouvertes : celles du relevé précédent sont reprises avec un avertissement,
+        plutôt qu'une liste vide (fiches sans PR ni bouton) ; au-delà de 3 h, c'est de nouveau une erreur."""
+        self.fake_gh({"releases": [], "staging": [], "prod": [], "by_repo": {"acme/web": {"open": [self.gh_pr(16, "DM-1 menu")], "merged": []}}})
+        self.run_script("github_snapshot.py", github={"repo": "acme/web"})
+        self.fake_gh({"releases": [], "staging": [], "prod": [], "by_repo": {"acme/web": {"open": "FAIL", "merged": []}}})
+        out = self.run_script("github_snapshot.py", github={"repo": "acme/web"})
+        self.assertEqual([p["number"] for p in out["open"]], [16])
+        self.assertEqual(out["errors"], [])
+        self.assertIn("relevé de", out["warnings"][0])
+        cache = os.path.join(self.tmp, ".cache", "pixel-bureau", "open_prs.json")
+        old = json.loads(Path(cache).read_text())
+        old["acme/web"]["at"] = "2000-01-01T00:00:00+00:00"
+        Path(cache).write_text(json.dumps(old))
+        out = self.run_script("github_snapshot.py", github={"repo": "acme/web"})
+        self.assertEqual(out["open"], [])
+        self.assertTrue(out["errors"])
+
     def test_github_snapshot_merge_state_and_behind_cached(self):
         """#74 : conflit (DIRTY) et commits de retard sur la base ; la comparaison n'est refaite que si la PR ou sa base bougent."""
         pr = dict(self.gh_pr(16, "DM-1 menu"), baseRefName="main", headRefOid="h1")
