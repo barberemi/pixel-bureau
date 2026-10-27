@@ -930,6 +930,79 @@ print(json.dumps(val))
         self.assertEqual((dev["ref"], dev["tag"], dev["by"], dev["status"], dev["end"]), ("feat/DM-7", False, "pambeesly", "in_progress", None))
         self.assertEqual((stg["ref"], stg["tag"], stg["status"]), ("feat/dev-outils", False, "queued"))
 
+    # ---------- créer un ticket (#77) ----------
+    def ticket(self, *args, **extra):
+        """workflows/ticket.py lancé comme dans Kronn (sortie texte : l'aperçu n'est pas du JSON)."""
+        cfg = dict(FIXTURE, **extra)
+        cfg_path = os.path.join(self.tmp, "bureau.config.json")
+        with open(cfg_path, "w") as fh:
+            json.dump(cfg, fh)
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "ticket.py"), *args], capture_output=True, text=True,
+                           env={"BUREAU_CONFIG": cfg_path, "HOME": self.tmp, "PATH": self.bin, **CLOCK}, timeout=60)
+        self.assertEqual(r.returncode, 0, r.stderr[-800:])
+        return r.stdout
+
+    TICKET_DRAFT = json.dumps({"summary": "[Panier] Dédoublonner « À lire aussi »", "description":
+                               "h2. +De quoi on parle ?+\n\n{panel:bgColor=#e3fcef}\nUn *doublon* dans le bloc.\n{panel}\n\n"
+                               "h2. +Qu'est-ce que l'on va faire ?+\n\n* Exclure les articles du carrousel\n** puis compléter\n\n"
+                               "h2. +Comment on teste ?+\n\n{panel:bgColor=#eae6ff}\nEnv de test : {{Todo}}\n{panel}"}, ensure_ascii=False)
+    JIRA = dict(FIXTURE["jira"], site="https://dm.atlassian.net", project="DM", points_fields=["customfield_200", "customfield_100"],
+                sprint_field="customfield_20", create={"points_field": "customfield_100"})
+
+    def test_ticket_preview_reads_like_the_ticket(self):
+        out = self.ticket("apercu", self.TICKET_DRAFT, "Bug", "3", "site-web", "", "next", "DM-6847", jira=self.JIRA)
+        lines = out.splitlines()
+        self.assertEqual(lines[0], "🎫 [Panier] Dédoublonner « À lire aussi »")
+        self.assertEqual(lines[1], "Bug · 3 pts · site-web · Sprint suivant · parent DM-6847")
+        self.assertIn("▸ De quoi on parle ?", lines)
+        self.assertIn("│ Un doublon dans le bloc.", lines)  # panneau en « │ », gras retiré
+        self.assertIn("• Exclure les articles du carrousel", lines)
+        self.assertIn("  • puis compléter", lines)
+        self.assertIn("│ Env de test : {{Todo}}", lines)  # le {{…}} du modèle de l'équipe passe tel quel
+        self.assertNotIn("{panel", out)
+
+    def test_ticket_fields_carry_typed_points_components_parent_and_next_sprint(self):
+        sprints = json.dumps({"values": [{"id": 31, "state": "future", "startDate": "2026-11-17"}, {"id": 30, "state": "future", "startDate": "2026-11-03"},
+                                         {"id": 29, "state": "active"}]})
+        out = json.loads(self.ticket("champs", self.TICKET_DRAFT, "Story", "2.5", "site-web", "intranet", "next", "DM-6847", sprints, jira=self.JIRA))
+        f = out["body"]["fields"]
+        self.assertEqual(f["project"], {"key": "DM"})
+        self.assertEqual(f["issuetype"], {"name": "Story"})
+        self.assertEqual(f["components"], [{"name": "site-web"}, {"name": "intranet"}])
+        self.assertEqual(f["parent"], {"key": "DM-6847"})
+        self.assertEqual(f["customfield_100"], 2.5)  # champ de l'écran de création, en nombre
+        self.assertNotIn("customfield_200", f)  # celui du board : recopié par l'étape points_board
+        self.assertEqual(f["customfield_20"], 30)  # le premier sprint à venir, jamais l'actif
+        self.assertIn("{{Todo}}", f["description"])
+        self.assertEqual(out["board_sp"], 2.5)
+        backlog = json.loads(self.ticket("champs", self.TICKET_DRAFT, "Bug", "3", "site-web", "site-web", "backlog", "", sprints, jira=self.JIRA))
+        f = backlog["body"]["fields"]
+        self.assertEqual(f["components"], [{"name": "site-web"}])  # le même composant deux fois : une seule fois
+        self.assertNotIn("customfield_20", f)
+        self.assertNotIn("parent", f)
+        self.assertEqual(f["customfield_100"], 3)
+        board = json.loads(self.ticket("champs", self.TICKET_DRAFT, "Bug", "3", "", "", "backlog", "", "{}", jira=dict(self.JIRA, create={})))
+        self.assertEqual(board["body"]["fields"]["customfield_200"], 3)  # sans réglage : le champ du board
+        self.assertNotIn("components", board["body"]["fields"])
+
+    def test_ticket_result_then_on_the_agent_run(self):
+        res = json.loads(self.ticket("resultat", "DM-7958", self.TICKET_DRAFT, "Bug", "3", "site-web", "", "next", jira=self.JIRA))
+        self.assertEqual(res, {"key": "DM-7958", "url": "https://dm.atlassian.net/browse/DM-7958", "title": "[Panier] Dédoublonner « À lire aussi »",
+                               "meta": "Bug · 3 pts · site-web · Sprint suivant"})
+        fake, tk = FakeKronn(), "bbbbbbbb-1111-2222-3333-444444444444"
+        fake.workflows.append({"id": tk, "name": "Le Bureau · créer un ticket", "enabled": True, "trigger_type": "manual",
+                               "last_run": {"started_at": iso(2), "finished_at": iso(1), "status": "Success"}})
+        ok, refused = run_of(700, ago=1), run_of(701, "Failed", ago=1)
+        fake.runs[tk] = [ok, refused]
+        body = json.dumps({"data": {"exit_code": 0, "stdout": json.dumps(res, ensure_ascii=False) + "\n"}, "status": "OK"}, ensure_ascii=False)
+        fake.details[ok["id"]] = [{"step_name": "resultat", "status": "Success", "output": "exit 0\n\n---STEP_OUTPUT---\n" + body + "\n---END_STEP_OUTPUT---\n[SIGNAL: OK]"}]
+        out = self.run_script("live_snapshot.py", api=self.kronn(fake), models={"ticket": tk})
+        runs = {r["run"]: r for r in out["runs"] if r["wf"] == tk}
+        self.assertEqual(runs[ok["id"]]["res"], res)
+        self.assertNotIn("res", runs[refused["id"]])
+        out = self.run_script("live_snapshot.py", api=self.kronn(fake))  # modèle pas installé : rien de lu
+        self.assertFalse([r for r in out["runs"] if r.get("res")])
+
     # ---------- écran du boss : ses autres pages Kronn ----------
     def boss_pages(self, img_kb=1):
         fake = FakeKronn()

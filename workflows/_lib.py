@@ -184,16 +184,39 @@ def step_row(s):
     return st
 
 
+TICKET_WF = str((CFG.get("models") or {}).get("ticket") or "")  # créer un ticket (#77) : son dernier ticket sur la fiche
+
+
+def run_res(wf, r):
+    """Ticket créé par un run réussi du modèle ticket (#77) : {key, url, title, meta} écrit par son étape resultat. La
+    liste des runs ne porte pas les sorties : lu dans le détail du run (quelques runs par jour), en JSON non strict (une
+    sortie d'étape peut porter des caractères de contrôle bruts)."""
+    if not TICKET_WF or wf.get("id") != TICKET_WF or r.get("status") != "Success":
+        return None
+    try:
+        with urllib.request.urlopen(f"{API}/workflows/{wf['id']}/runs/{r['id']}", timeout=60) as f:
+            detail = json.loads(f.read(), strict=False)
+        detail = detail.get("data", detail)
+        out = next((s.get("output") or "" for s in detail.get("step_results") or [] if s.get("step_name") == "resultat"), "")
+        body = out.split("---STEP_OUTPUT---")[1].split("---END_STEP_OUTPUT---")[0]
+        res = json.loads(json.loads(body, strict=False)["data"]["stdout"])
+    except Exception:
+        return None
+    return {k: str(res.get(k) or "")[:200] for k in ("key", "url", "title", "meta")} if res.get("key") else None
+
+
 def run_row(wf, r):
     """Run au format de la page (même forme dans les instantanés office et live, que la page superpose)."""
     tc = r.get("trigger_context") if isinstance(r.get("trigger_context"), dict) else {}
+    res = run_res(wf, r)
     return {"wf": wf["id"], "wf_name": wf["name"], "project": wf.get("project_name"), "trigger": wf.get("trigger_type"),
             "run": r["id"], "status": r["status"], "start": r.get("started_at"), "end": r.get("finished_at"),
             "tok": r.get("tokens_used") or 0, "parent": r.get("parent_run_id"), "tby": r.get("triggered_by_run_id"),
             "vars": {k: v for k, v in tc.items() if k in VARS_KEPT and isinstance(v, str) and len(v) < 80},
             "batch": [r.get("batch_total") or 0, r.get("batch_completed") or 0, r.get("batch_failed") or 0],
             "steps": [step_row(s) for s in r.get("step_results") or []],
-            **({"man": 1} if tc.get("type") == "manual" else {})}  # lancé à la main (bouton du Bureau ou Kronn) : « Tu lances »
+            **({"man": 1} if tc.get("type") == "manual" else {}),  # lancé à la main (bouton du Bureau ou Kronn) : « Tu lances »
+            **({"res": res} if res else {})}
 
 
 def important_count(did):

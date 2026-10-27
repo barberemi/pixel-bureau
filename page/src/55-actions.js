@@ -115,10 +115,11 @@ function gateCard(parent,run,who){
     const st=document.createElement('div');
     st.className='note';
     st.style.margin='6px 0 0';
-    st.textContent='Le bouton ouvre la carte Kronn : un commentaire si tu veux (obligatoire pour des changements), puis Lancer.';
+    const tk=isTicketWf(g.wf); // créer un ticket (#77) : un refus ne crée rien, pas de réécriture
+    st.textContent=tk?'Le bouton ouvre la carte Kronn, puis Lancer. Rejeter : rien n\'est créé dans Jira.':'Le bouton ouvre la carte Kronn : un commentaire si tu veux (obligatoire pour des changements), puis Lancer.';
     const row=document.createElement('div');row.className='gq';
     // un emplacement par bouton (comme les réponses aux questions) : la fenêtre centrée montre la décision choisie (what)
-    for(const [d,label,cls] of [['approve','✅ Approuver','on'],['reject','⛔ Rejeter',''],['request_changes','✏️ Changements…','']]){
+    for(const [d,label,cls] of [['approve','✅ Approuver','on'],['reject','⛔ Rejeter',''],['request_changes','✏️ Changements…','']].filter(x=>!tk||x[0]!=='request_changes')){
       const w=document.createElement('div');w.className='qslot';w.setAttribute('data-kronn-action-slot-host','');
       const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;
       w.append(b);
@@ -296,6 +297,17 @@ function launchLine(vars,vals){
   }
   return {line:parts.join(' ; '),errs,missing};
 }
+// créer un ticket (#77) : le modèle ticket (CFG.ticket.wf), un seul run à la fois, son dernier ticket créé (run.res, relevés)
+const isTicketWf=wf=>!!(CFG.ticket&&CFG.ticket.wf&&String(wf||'').startsWith(CFG.ticket.wf));
+const ticketBusy=c=>c.runs.find(r=>isTicketWf(r.wf)&&['Running','Pending','WaitingApproval'].includes(r.status)&&r._s<=T)||null;
+const lastTicket=c=>[...c.runs].reverse().find(r=>isTicketWf(r.wf)&&r.res&&r.res.key&&r._e&&r._e<=T)||null;
+function ticketLast(box,c){
+  const r=lastTicket(c);if(!r)return;
+  const d=document.createElement('div');d.className='tk-last';
+  d.innerHTML=`<div class="tk-h">🎫 Dernier ticket créé</div>${r.res.url?extA(r.res.url,'Ouvrir dans Jira',r.res.key+' ↗'):`<b>${esc(r.res.key)}</b>`}`+
+    `<div class="tk-t">${esc(r.res.title)}</div><small>${esc(r.res.meta)}${r.res.meta?' · ':''}créé à ${hm(r._e)}</small>`;
+  box.appendChild(d);
+}
 function runBlock(side,c){
   if(c===spAgent()&&supportOpenable())spFiche(side); // 48-support.js : l'agent Support investigue depuis la console (#62)
   if(!ACTIONS.relaunch||!c.wf||!c.wf.length)return;
@@ -303,7 +315,8 @@ function runBlock(side,c){
   const list=LAUNCHABLE.filter(w=>c.wf.includes(String(w.wf).slice(0,8))&&!(sw&&String(w.wf).slice(0,8)===sw));if(!list.length)return;
   const box=foldSection(side,'run','▶ Lancer',list.length,true);
   for(const w of list){
-    const vars=(w.vars||[]).filter(v=>v&&v.name),vals={},tips={};
+    const vars=(w.vars||[]).filter(v=>v&&v.name),vals={},tips={},fields={},tk=isTicketWf(w.wf),busy=tk&&ticketBusy(c);
+    if(tk)ticketLast(box,c);
     const host=document.createElement('div');host.className='relaunch rl-form';host.setAttribute('data-kronn-action-slot-host','');
     host.innerHTML=`<div class="rl-n">${esc(clean(w.name))}</div><div class="rl-s">${esc(c.name)} se met au travail dès que le run démarre</div>`;
     const form=document.createElement('div');form.className='na-form rl-f';
@@ -311,14 +324,14 @@ function runBlock(side,c){
     const why=document.createElement('div');why.className='note rl-why';
     const sync=()=>{const r=launchLine(vars,vals);
       for(const v of vars){tips[v.name].textContent=r.errs[v.name]||'';}
-      b.disabled=!!(r.missing.length||Object.keys(r.errs).length);
-      why.textContent=r.missing.length?'À remplir : '+r.missing.join(', '):'';return r;};
+      b.disabled=!!(busy||r.missing.length||Object.keys(r.errs).length); // ticket : jamais deux à la fois (doublon)
+      why.textContent=busy?c.name+' est dessus depuis '+hm(busy._s)+'.':r.missing.length?'À remplir : '+r.missing.join(', '):'';return r;};
     for(const v of vars){
       const l=document.createElement('label');l.innerHTML=esc(v.label||v.name)+(v.required?' <b class="req">*</b>':'');
       let f;
       if(v.options){f=document.createElement('select');f.innerHTML=(v.required&&v.default?'':'<option value=""></option>')+v.options.map(o=>`<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('');f.value=v.default||'';}
       else{f=document.createElement(v.multiline?'textarea':'input');if(!v.multiline)f.type='text';f.maxLength=4000;f.placeholder=v.placeholder||'';if(v.multiline)f.rows=2;}
-      f.dataset.fid='run:'+w.wf+':'+v.name;vals[v.name]=f.value;
+      f.dataset.fid='run:'+w.wf+':'+v.name;vals[v.name]=f.value;fields[v.name]=f;
       f.oninput=f.onchange=()=>{vals[v.name]=f.value;sync();};
       const t=document.createElement('small');t.className='rl-err';t.setAttribute('aria-live','polite');tips[v.name]=t;
       l.append(f,t);form.appendChild(l);
@@ -328,7 +341,9 @@ function runBlock(side,c){
     b.onclick=()=>{hint.className='hint';codeHint(hint,sync().line,'Paramètres','rien à retoucher','Paramètres copiés ✓');};
     new MutationObserver(()=>{
       const v=b.getAttribute('data-kronn-action-state');
-      if(v==='succeeded')hint.innerHTML='<b style="color:var(--ok)">✓ Lancé.</b> '+esc(c.name)+' se met au travail d\'ici une minute.';else if(v==='failed')hint.innerHTML='<b style="color:var(--err)">Refusé :</b> voir la carte.';
+      if(v==='succeeded'){hint.innerHTML='<b style="color:var(--ok)">✓ Lancé.</b> '+esc(c.name)+' se met au travail d\'ici une minute.';
+        if(tk)for(const x of vars){fields[x.name].value=x.options?x.default||'':'';vals[x.name]=fields[x.name].value;}} // ticket : formulaire vidé, pas de relance par erreur
+      else if(v==='failed')hint.innerHTML='<b style="color:var(--err)">Refusé :</b> voir la carte.';
     }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
     sync();host.append(form,b,why,hint);kronnModal(host,b,'Lancer '+clean(w.name),()=>({c,name:c.name+' : '+clean(w.name)}));box.appendChild(host);
   }

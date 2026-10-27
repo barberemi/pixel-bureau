@@ -64,6 +64,7 @@ function pageConfig(cfg) {
     fix_any_repo: !!((((cfg.launch || {}).fix || {}).vars || {}).repo), // comme page_config() : Corriger prend le dépôt (#56)
     action_wf: actionWf(cfg), // comme page_config() : préfixe du workflow de chaque bouton des fiches (#86)
     support: supportPage(cfg), // comme support_page() : console Support (#62)
+    ticket: (cfg.models || {}).ticket ? {wf: String(cfg.models.ticket).slice(0, 8)} : null, // créer un ticket (#77)
     rhythm: cfg.rhythm || {}, mep_workflow: cfg.mep_workflow, workflows: cfg.workflows || {}, agents: cfg.agents || [], ui: cfg.ui || {}, skins: themes(cfg),
     schedules: Object.fromEntries(['office', 'live', 'team', 'payroll', 'canard'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule.replace('@@cron_hours@@', '4-20')]))}; // heures de Paris, comme cron_hours()
 }

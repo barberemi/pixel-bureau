@@ -42,3 +42,13 @@ test('fil : « Jan crée DM-7910 » pour les tickets du jour, sans doublon « No
   const keys = txt.filter(t => /DM-7910/.test(t));
   assert.equal(keys.length, 1);
 });
+
+test('fil : un ticket créé par l\'agent du modèle ticket (#77) est « Pam crée DM-7910 », sans la ligne du créateur Jira', () => {
+  const a = J('AGENTS[0].key'), p8 = J('AGENTS[0].wf[0]');
+  run(`CFG.ticket = {wf: '${p8}'}; T=${at('11:00')}; byKey['${a}'].runs.push({wf: '${p8}-x', run: 'tk1', status: 'Success', _s: T - 9e5, _e: T - 6e5,
+    steps: [], res: {key: 'DM-7910', url: 'https://j/browse/DM-7910', title: '[Recherche] Filtre par date', meta: 'Story · 3 pts'}}); renderFeed();`);
+  const txt = J(`FEED_EV.map(e=>e.txt)`).filter(t => /DM-7910/.test(t));
+  assert.equal(txt.length, 1);
+  assert.match(txt[0], new RegExp(`🎫</span> <a [^>]*data-who="${a}"[^>]*>[^<]+</a> crée <a [^>]*browse/DM-7910"[^>]*>DM-7910</a> <small>\\[Recherche\\] Filtre par date</small>`));
+  run(`byKey['${a}'].runs.pop(); CFG.ticket = null; renderFeed();`);
+});

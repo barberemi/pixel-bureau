@@ -327,10 +327,14 @@ function renderFeed(){
     if(m.prod)push(ms(m.prod.start),m.prod.by?`<span style="color:${MEP_COLOR}">🚀</span> ${refWho(byChar(m.prod.by),m.prod.by)} met ${tag} en prod`:`<span style="color:${MEP_COLOR}">🚀</span> ${tag} part en prod`);
     if(m.prod&&m.prod.end)push(ms(m.prod.end),m.prod.conclusion==='success'?`<span style="color:var(--ok)">✓</span> ${tag} est en prod${tk}`:`<span style="color:var(--err)">✗</span> ${tag} échoue en prod`);
     }
-  const created=TEAM?teamCreated(DAY0,T):[], createdKeys=new Set(created.map(x=>x.key)); // tickets créés aujourd'hui par l'équipe
+  // tickets créés par l'agent du modèle ticket (#77, run.res) : sa ligne remplace celle du créateur Jira (le boss)
+  const made=chars.flatMap(c=>c.person||c.visitor?[]:c.runs.filter(r=>r.res&&r.res.key&&r._e&&r._e<=T&&isTicketWf(r.wf)).map(r=>({c,r})));
+  for(const {c,r} of made)ev.push({t:r._e,c,tv:true,team:true,ty:'tickets',txt:`<span style="color:var(--info)">🎫</span> ${refWho(c)} crée ${refTk(r.res.key,true)} <small>${esc(clip(r.res.title,70))}</small>`});
+  const madeKeys=new Set(made.map(x=>x.r.res.key));
+  const created=TEAM?teamCreated(DAY0,T).filter(x=>!madeKeys.has(x.key)):[], createdKeys=new Set(created.map(x=>x.key)); // tickets créés aujourd'hui par l'équipe
   for(const x of created)ev.push({t:ms(x.created),c:x.c,tv:true,team:true,ty:'tickets',
     txt:`<span style="color:var(--info)">📝</span> ${refWho(x.c)} crée ${refTk(x.key,true)} <small>${esc(clip(x.summary,70))}</small>`});
-  if(TEAM)for(const e of (TEAM.events||[])){const t=ms(e.t);if(t&&t<=T&&!(e.kind==='new'&&createdKeys.has(e.key))){const x=teamEventTxt(e);if(x)ev.push({t,c:x.c,txt:x.txt,team:true,ty:e.kind==='pr'||e.kind==='review'?'pr':'tickets'});}} // déjà « X crée »
+  if(TEAM)for(const e of (TEAM.events||[])){const t=ms(e.t);if(t&&t<=T&&!(e.kind==='new'&&(createdKeys.has(e.key)||madeKeys.has(e.key)))){const x=teamEventTxt(e);if(x)ev.push({t,c:x.c,txt:x.txt,team:true,ty:e.kind==='pr'||e.kind==='review'?'pr':'tickets'});}} // déjà « X crée »
   // relectures et travaux des agents sur le ticket ou la PR d'un collègue (A1)
   for(const c of chars){if(c.person||c.visitor)continue;
     for(const r of c.runs){if(!r._e||r._e>T||r.status!=='Success')continue;const ref=runRef(r);if(!ref)continue;
