@@ -246,6 +246,39 @@ class SupportTest(unittest.TestCase):
         self.assertEqual(self.run_("post", "run-1", stdin="encore").returncode, 1, "une seule réponse par fil")
         self.assertEqual(self.run_("open", "101", "p1", "run-2", "").returncode, 1)
 
+    def test_skip_takes_a_thread_out_of_the_queue_until_reactivated(self):
+        """🔕 skip : le fil passe « skipped » (avant tout run), skip = l'action suivante du bouton, heure gardée ; réactivé, il
+        revient ; fil ou action inconnus refusés ; un fil sorti du relevé sort aussi des ignorés. Workflow : skip, puis le
+        dataset en vrai objet (CollectApiData), publié."""
+        self.poll()
+        self.assertEqual(self.run_("skip", "101", "effacer").returncode, 1)
+        self.assertEqual(self.run_("skip", "999", "ignorer").returncode, 1, "fil inconnu du relevé")
+        r = self.run_("skip", "101", "ignorer")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("ne compte plus", r.stdout)
+        self.srv.st["runs"] = [{"id": "r1", "status": "Failed", "started_at": ago(1), "trigger_context": {"type": "manual", "message_id": "101"},
+                                "step_results": [{"step_name": "open"}]}]
+        t = {x["id"]: x for x in json.loads(self.run_("dataset").stdout)["threads"]}
+        self.assertEqual((t["101"]["state"], t["101"]["skip"]), ("skipped", "reactiver"), "ignoré l'emporte sur un vieux run en échec")
+        self.assertTrue(t["101"]["skipped_at"])
+        self.assertEqual((t["102"]["state"], t["102"]["skip"], t["102"]["skipped_at"]), ("new", "ignorer", None))
+        self.assertEqual(self.run_("skip", "101", "ignorer").returncode, 0, "idempotent")
+        self.run_("skip", "101", "reactiver")
+        self.assertEqual({x["id"]: x["state"] for x in json.loads(self.run_("dataset").stdout)["threads"]}["101"], "failed")
+        self.run_("skip", "102", "ignorer")
+        self.data["roots"] = [m for m in self.data["roots"] if "102" not in json.dumps(m)[:40]]  # plus dans le canal relu…
+        cache = self.cache(); cache["threads"]["102"]["at"] = ago(24 * 20)  # … et sorti de la fenêtre du relevé
+        Path(self.tmp, ".cache", "pixel-bureau", "support.json").write_text(json.dumps(cache))
+        self.poll()
+        self.assertNotIn("102", self.cache().get("skipped") or {})
+        cfg = dict(FIXTURE, support={"team": "T1", "channel": "19:canal@thread.tacv2"})
+        self.assertTrue(templates.skipped("support_skip", {k: v for k, v in FIXTURE.items() if k != "support"}))
+        wf = templates.render(json.loads(Path(ROOT, "workflows", "templates", "support_skip.json").read_text()), cfg)
+        steps = {x["name"]: x for x in wf["steps"]}
+        self.assertEqual(steps["skip"]["exec_args"][-3:], ["skip", "{{message_id}}", "{{action}}"])
+        self.assertEqual(steps["mark"]["step_type"]["type"], "CollectApiData")
+        self.assertEqual(steps["publish"]["page_publish"]["writes"][0]["value_from"], "steps.mark.data.sources.snap")
+
     def test_templates_render_only_with_a_channel(self):
         cfg = {k: v for k, v in FIXTURE.items() if k != "support"}
         self.assertTrue(templates.skipped("support", cfg) and templates.skipped("support_poll", cfg))

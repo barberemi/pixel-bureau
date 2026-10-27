@@ -337,7 +337,7 @@ SHOTS = {
     "support-agent": (1400, 1000, AT(11) + "setTimeout(()=>{const a=spAgent(),c=document.querySelector('#cv'),r=c.getBoundingClientRect(),k=r.width/c.width,"
                       "d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(a.pos.x-4*TS)*k)+'px',"
                       "top:(r.top+scrollY+(a.pos.y-3.6*TS)*k)+'px',width:8*TS*k+'px',height:4.6*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2200);", "#shotclip", 2),
-    "support-panneau": (1400, 2400, AT(11) + "ACTIONS.support=true;ACTIONS.gate=true;DUCK_PROJECTS=[{id:'none',name:'Sans projet'},{id:'p1',name:'Site de Scranton'}];"
+    "support-panneau": (1400, 2400, AT(11) + "ACTIONS.support=true;ACTIONS.gate=true;ACTIONS.support_skip=true;SP_FOLD=true;DUCK_PROJECTS=[{id:'none',name:'Sans projet'},{id:'p1',name:'Site de Scranton'}];"
                         "openSupport();", "#side"),
     # règles du courrier en attente de validation (workflow « règles du courrier ») : le facteur attend devant le bureau du boss
     "facteur-regles": (1400, 1000, AT(11) + "GATES=[{run:'demo',wf:'00000000-demo',wf_name:'Le Bureau · règles du courrier',gate:'boss',"

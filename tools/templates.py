@@ -49,7 +49,9 @@ TEMPLATES = {
     "comment": ("workflow", ("actions", "comment"), {}),  # commentaire Jira depuis la fiche d'un ticket (sans Jira : pas créé)
     "move": ("workflow", ("actions", "move"), {}),  # déplacer un ticket d'une colonne (◀ / ▶ de sa fiche) : transition Jira, 0 token
     "duck": ("workflow", ("actions", "duck"), {"start": "workflows/duck_start.py"}),  # parler au canard : une discussion Kronn
-    "todo": ("workflow", ("actions", "todo"), {"save": "workflows/todos.py"}),  # Mes todos du boss : tâches Kronn, tableau en liège
+    "todo": ("workflow", ("actions", "todo"), {"save": "workflows/todos.py"}),
+    # 🔕 ignorer un fil de la console Support (il ne compte plus dans les alertes), ou le réactiver : 0 token
+    "support_skip": ("workflow", ("actions", "support_skip"), {"skip": "workflows/support.py", "mark": "workflows/support.py"}),  # Mes todos du boss : tâches Kronn, tableau en liège
     # mise en prod d'une PR, tout projet (#58) : id rangé dans launch (jamais dans BUREAU_IDS : l'agent qui l'incarne
     # garde sa fiche et « ▶ Lancer… ») ; launch.mep_pr, à côté de ton ancien workflow de MEP par ticket (launch.mep)
     "mep": ("workflow", ("launch", "mep_pr"), {n: "workflows/mep.py" for n in ("resolve", "tag", "rebase", "citest", "merge", "release",
@@ -225,7 +227,7 @@ def skipped(key, cfg):
         return not assemble.env_repos({**cfg, "models": {**(cfg.get("models") or {}), "env": "?"}})
     if key == "deploy":  # aucun dépôt ni env hors prod réglé (deploy.repos)
         return not assemble.deploy_envs({**cfg, "models": {**(cfg.get("models") or {}), "deploy": "?"}})
-    if key in ("support", "support_poll"):  # console Support (#62) : canal Teams réglé (support.team, support.channel)
+    if key in ("support", "support_poll", "support_skip"):  # console Support (#62) : canal Teams réglé (support.team, support.channel)
         s = cfg.get("support") or {}
         return not (s.get("team") and s.get("channel"))
     return False

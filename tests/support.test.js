@@ -71,7 +71,7 @@ test('écran du boss : en alerte seulement s\'il y a quelque chose à traiter', 
 
 test('démo : un fil par état, deux à traiter', () => {
   run(`SUPPORT = supportDemo(); GATES = []; T = DAY0 + 11 * 36e5;`);
-  assert.deepEqual(J('SUPPORT.threads.map(t => t.state)'), ['new', 'run', 'gate', 'done', 'answered', 'resolved']);
+  assert.deepEqual(J('SUPPORT.threads.map(t => t.state)'), ['new', 'run', 'gate', 'done', 'answered', 'resolved', 'skipped']);
   assert.equal(J('spTodo().length'), 2);
 });
 
@@ -129,4 +129,46 @@ test('fil ignoré (réponse refusée à la gate) : « Investiguer » pour réess
     for (const st of ['ignored', 'new', 'done']) { set([th(st, st)]); run(`spCard(SUPPORT.threads[0])`); }
     assert.deepEqual(J('SP_CALLS'), ['ignored', 'new'], 'répondu en fil : pas de nouvelle investigation');
   } finally { run('spInvestigate = spInvestigateOrig;'); }
+});
+
+test('🔕 ignoré : hors du compte, même avec un vieux run en échec ; la gate en attente passe avant', () => {
+  set([th('1', 'skipped', {run: {run: 'r1', status: 'Failed', at: '2026-10-01T08:10:00Z'}}), th('2', 'new')]);
+  run(`DATA = {runs: [{run: 'r1', status: 'Failed', vars: {message_id: '1'}, start: '2026-10-01T08:10:00Z', steps: []}]};`);
+  assert.deepEqual(J('spTodo().map(t => t.id)'), ['2']);
+  assert.equal(J('spState(SUPPORT.threads[0]).k'), 'skipped');
+  run(`GATES = [{run: 'r1', gate: 'gate', message: 'x'}];`);
+  assert.equal(J('spState(SUPPORT.threads[0]).k'), 'gate');
+  run('GATES = []; DATA = null;');
+});
+
+test('🔕 bouton « Ignorer » sur les fils à traiter (pas sur une réponse à valider) ; « ↺ Réactiver » dans les ignorés', () => {
+  run(`var SK_CALLS = []; var spSkipOrig = spSkip, spInvOrig = spInvestigate; spSkip = (el, t, label) => SK_CALLS.push([t.id, label]); spInvestigate = () => {};`);
+  try {
+    for (const st of ['new', 'failed', 'relaunched', 'gate', 'run', 'done', 'answered', 'resolved', 'ignored']) {
+      set([th(st, st, {by: 'Schrute, Dwight', run: ['failed', 'run'].includes(st) ? {run: 'r9', status: 'Failed', at: '2026-10-01T08:10:00Z'} : null})]); run(`spCard(SUPPORT.threads[0])`);
+    }
+    assert.deepEqual(J('SK_CALLS'), [['new', '🔕 Ignorer'], ['failed', '🔕 Ignorer'], ['relaunched', '🔕 Ignorer']]);
+    run('SK_CALLS = [];');
+    set([th('1', 'skipped', {subject: 'Pot de départ'}), th('2', 'new')]);
+    run(`SP_FOLD = true; spSkipped({appendChild() {}}, SUPPORT.threads.slice(0, 1)); SP_FOLD = false;`);
+    assert.deepEqual(J('SK_CALLS'), [['1', '↺ Réactiver']]);
+  } finally { run('spSkip = spSkipOrig; spInvestigate = spInvOrig;'); }
+  assert.deepEqual(J(`bindsFor('bureau-spskip', {id: '9'})`), {message_id: '9', action: '9'}, 'Kronn relit le fil et son action (threads[].skip)');
+});
+
+test('🔕 Ignorés : une section repliée sous l\'en-tête avec le nombre ; dépliée, une ligne par fil ; sans le workflow, pas de bouton', () => {
+  set([th('1', 'skipped', {subject: 'Pot de départ', skipped_at: '2026-10-01T09:00:00Z'})]);
+  const kids = fold => J(`(() => { const out = [], box = {appendChild(x) { out.push(x.innerHTML); }}; SP_FOLD = ${fold};
+    try { spSkipped(box, SUPPORT.threads); } finally { SP_FOLD = false; } return out; })()`);
+  const shut = kids(false);
+  assert.equal(shut.length, 1);
+  assert.match(shut[0], /▸ 🔕 Ignorés · 1/);
+  const open = kids(true);
+  assert.equal(open.length, 2);
+  assert.match(open[0], /▾ 🔕 Ignorés · 1/);
+  assert.match(open[1], /<b>Pam<\/b> · Pot de départ/);
+  assert.match(open[1], /ignoré/);
+  assert.equal(J('(spSkipped({appendChild() { throw 0; }}, []), true)'), true, 'aucun ignoré : rien d\'ajouté');
+  set([th('1', 'skipped'), th('2', 'new')]);
+  assert.match(J('spHead()'), /1 à traiter/);
 });

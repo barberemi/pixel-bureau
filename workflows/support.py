@@ -5,6 +5,7 @@
   python3 -c <ce script> dataset                                # l'état des fils sans relevé (investigation lancée)
   python3 -c <ce script> draft <run>        (stdin : réponse de l'agent)  # la réponse au format, numéro de version
   python3 -c <ce script> post <run>         (stdin : réponse validée)     # réponse en fil -> dataset support
+  python3 -c <ce script> skip <message> <ignorer|reactiver>             # 🔕 un fil ignoré ne compte plus (bouton de la console)
 
 Réglage support (pack d'équipe ou config) : {name, team, channel, days (7), model (« haiku »), claude (chemin de la CLI)}.
 Lecture du canal : la permission Graph ChannelMessage.Read.All manque au jeton Azure CLI ; le connecteur Claude
@@ -19,7 +20,8 @@ Fichiers : ~/.cache/pixel-bureau/support.json seulement (jamais le dossier du pr
 Dataset support : {generated_at, polled_at, name, url, ok, error, cost, me, days, threads: [{id, at, from, text, url,
 replies, last_at, state, by, mine, run}]} ; state = new (à investiguer), run (investigation en cours), gate (réponse à
 valider), done (répondu en fil), resolved (✅ sur le message), answered (pris par un collègue, by = son nom), relaunched
-(l'auteur a relancé après sa réponse), ignored (réponse refusée), failed.
+(l'auteur a relancé après sa réponse), ignored (réponse refusée), failed, skipped (🔕 ignoré depuis la console : ne compte
+plus, jusqu'à « ↺ Réactiver ») ; skip = la valeur de l'action du bouton (ignorer ou reactiver), relue par Kronn.
 """
 import html, json, os, re, shutil, subprocess, sys, urllib.error, urllib.parse, urllib.request, uuid
 from html.parser import HTMLParser
@@ -256,6 +258,7 @@ def poll(c):
     # fils nouveaux : leurs réponses au relevé suivant (leur lm diffère de rlm, encore absent)
     for k in [k for k, t in threads.items() if (t.get("at") or "") < iso(now() - timedelta(days=DAYS + 7))]:
         threads.pop(k)
+    c["skipped"] = {k: v for k, v in (c.get("skipped") or {}).items() if k in threads}  # fils ignorés sortis du relevé
     c.update(polled_at=iso(now()), error=None, cost=round(cost, 4))
     me(c)
 
@@ -299,6 +302,8 @@ def state_of(t, run, mine, my_id):
     réponse (relancé, de nouveau à traiter) ; personne = nouveau. Renvoie (état, qui)."""
     if RESOLVED in ((t.get("detail") or {}).get("reactions") or []):
         return "resolved", None
+    if t.get("skipped"):  # 🔕 ignoré depuis la console, jusqu'à « ↺ Réactiver »
+        return "skipped", None
     if mine:
         return "done", None
     if run and run["status"] in ("Running", "Pending"):
@@ -327,13 +332,15 @@ def dataset(c):
         if (t.get("at") or "") < since:
             continue
         mine = (c.get("posted") or {}).get(t["id"])
-        st, by = state_of(t, runs.get(t["id"]), mine, my)
+        st, by = state_of({**t, "skipped": t["id"] in (c.get("skipped") or {})}, runs.get(t["id"]), mine, my)
         run = runs.get(t["id"])
         dt = t.get("detail") or {}
         rows.append({"id": t["id"], "at": t.get("at"), "from": t.get("from"), "text": dt.get("text") or t.get("text"),
                      "subject": dt.get("subject"), "reactions": dt.get("reactions") or [], "url": t.get("url"),
                      "cut": t.get("cut") or False, "replies": len(t.get("replies") or []),
                      "last_at": (t.get("replies") or [{}])[-1].get("at") or t.get("at"), "state": st, "by": by,
+                     "skip": "reactiver" if st == "skipped" else "ignorer",
+                     "skipped_at": (c.get("skipped") or {}).get(t["id"]) if st == "skipped" else None,
                      "mine": {"at": mine.get("at"), "text": mine.get("text")} if mine else None,
                      "run": {k: run[k] for k in ("run", "status", "at", "disc", "version", "draft")} if run else None})
     rows = rows[:40]
@@ -503,6 +510,22 @@ def post(run_id, text):
     print(json.dumps(dataset(c), ensure_ascii=False))
 
 
+def skip(msg, action):
+    """🔕 Ignorer un fil (il ne compte plus dans les alertes) ou le réactiver ; idempotent."""
+    if not re.fullmatch(r"\d{1,20}", msg) or action not in ("ignorer", "reactiver"):
+        fail("Fil ou action inconnus : recharge la page.")
+    c = load()
+    if msg not in (c.get("threads") or {}):
+        fail("Fil inconnu du relevé : recharge la page.")
+    sk = c.setdefault("skipped", {})
+    if action == "ignorer":
+        sk.setdefault(msg, iso(now()))
+    else:
+        sk.pop(msg, None)
+    save(c)
+    print(("Fil ignoré : il ne compte plus dans les alertes." if action == "ignorer" else "Fil réactivé : il revient dans la file."))
+
+
 if __name__ == "__main__":
     a = sys.argv[1:] + [""] * 5
     cmd = a[0]
@@ -525,5 +548,7 @@ if __name__ == "__main__":
         draft(a[1].strip() or "local", sys.stdin.read())
     elif cmd == "post":
         post(a[1].strip() or "local", sys.stdin.read())
+    elif cmd == "skip":
+        skip(a[1].strip(), a[2].strip())
     else:
-        fail("sous-commande : poll | dataset | open | draft | post", 2)
+        fail("sous-commande : poll | dataset | open | draft | post | skip", 2)
