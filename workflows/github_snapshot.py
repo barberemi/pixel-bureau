@@ -9,7 +9,12 @@ Releases et déploiements restent ceux du dépôt principal (ses MEP portent tic
 État de fusion de chaque PR ouverte (#74) : `merge` = DIRTY si GitHub la dit en conflit (mergeable, requête des fils), `base`, et `behind` =
 commits de la base absents de la PR (comparaison GitHub), gardé dans ~/.cache/pixel-bureau/behind.json tant que ni la
 PR ni sa base ne bougent : une requête par PR seulement quand l'une des deux change. `threads` (#75) = fils de review non
-résolus de la PR (une requête GraphQL par dépôt), ce que « Corriger » traiterait.
+résolus de la PR (une requête GraphQL par dépôt), ce que « Corriger » traiterait ; la même requête donne `ci` (état des
+vérifications du dernier commit : ok, ko, run, ou None sans vérification) et les labels.
+Env de branche : sur une PR qui porte le label d'env (`env.label`, défaut env-branch) d'un dépôt de `env.repos`, `env_url`
+= la dernière adresse de ses commentaires qui répond à `env.url` (expression régulière, réglage d'équipe ; sans elle, rien)
+et `env_at` = l'heure du commentaire. Le filtre jq ne sort que l'adresse : le reste du commentaire (des mots de passe,
+souvent) ne quitte jamais gh.
 Sortie (stdout) : {"open": [...], "merged": [...], "releases": [...], "staging": [...], "prod": [...], "errors": [...], "warnings": [...]}
 """
 import json, os, subprocess, sys
@@ -134,19 +139,43 @@ def behind_counts(prs):
 
 
 THREADS_Q = ("query($o:String!,$r:String!){repository(owner:$o,name:$r){pullRequests(states:OPEN,first:100,"
-             "orderBy:{field:UPDATED_AT,direction:DESC}){nodes{number mergeable reviewThreads(first:100){nodes{isResolved}}}}}}")
+             "orderBy:{field:UPDATED_AT,direction:DESC}){nodes{number mergeable reviewThreads(first:100){nodes{isResolved}} "
+             "labels(first:20){nodes{name}} commits(last:1){nodes{commit{statusCheckRollup{state}}}}}}}}")
+CI = {"SUCCESS": "ok", "FAILURE": "ko", "ERROR": "ko", "PENDING": "run", "EXPECTED": "run"}
 
 
 def thread_counts(repo):
-    """Fils de review non résolus et état de fusion de chaque PR ouverte du dépôt ({n: (fils, mergeable)}), une requête
-    GraphQL ; {} en cas d'échec (pas de pastilles, les PR restent)."""
+    """Fils de review non résolus, état de fusion, CI et labels de chaque PR ouverte du dépôt ({n: (fils, mergeable, ci,
+    labels)}), une requête GraphQL ; {} en cas d'échec (pas de pastilles, les PR restent)."""
     owner, name = repo.split("/", 1)
     raw = api_text(None, ["api", "graphql", "-f", "query=" + THREADS_Q, "-F", "o=" + owner, "-F", "r=" + name, "--jq",
-                          "[.data.repository.pullRequests.nodes[]|[.number,([.reviewThreads.nodes[]|select(.isResolved|not)]|length),.mergeable]]"])
+                          "[.data.repository.pullRequests.nodes[]|[.number,([.reviewThreads.nodes[]|select(.isResolved|not)]|length),.mergeable,"
+                          "(.commits.nodes[0].commit.statusCheckRollup.state // null),[.labels.nodes[].name]]]"])
     try:
-        return {int(row[0]): (row[1], row[2] if len(row) > 2 else None) for row in json.loads(raw or "[]")}
+        return {int(row[0]): (row[1], row[2] if len(row) > 2 else None, CI.get(row[3]) if len(row) > 3 else None,
+                              row[4] if len(row) > 4 else []) for row in json.loads(raw or "[]")}
     except (ValueError, TypeError, IndexError):
         return {}
+
+
+ENV = CFG.get("env") or {}
+ENV_LABEL = ENV.get("label") or "env-branch"
+ENV_REPOS = {r.lower() for r in (((CFG.get("launch") or {}).get("env") or {}).get("repos") if isinstance((CFG.get("launch") or {}).get("env"), dict) else None)
+             or ENV.get("repos") or [REPO] if r}
+
+
+def env_url(pr):
+    """(adresse, heure) de l'env de branche d'une PR, lue dans ses commentaires (env.url), sinon (None, None)."""
+    pat = ENV.get("url")
+    if not pat or pr["repo"].lower() not in ENV_REPOS or ENV_LABEL not in (pr.get("labels") or []):
+        return None, None
+    jq = f'[.[]|select(.body|test({json.dumps(pat)}))|[.created_at,(.body|capture({json.dumps("(?<u>" + pat + ")")}).u)]]|last'
+    raw = api_text((f"repos/{pr['repo']}/issues/{pr['number']}/comments?per_page=100", jq))
+    try:
+        at, url = json.loads(raw or "null") or (None, None)
+        return (url, at) if isinstance(url, str) and url.startswith("https://") else (None, None)
+    except (ValueError, TypeError):
+        return None, None
 
 
 BEHIND = behind_counts(out["open"])
@@ -154,12 +183,20 @@ with ThreadPoolExecutor(max_workers=8) as pool:
     _repos = sorted({pr["repo"] for pr in out["open"]})
     THREADS = dict(zip(_repos, pool.map(thread_counts, _repos)))
 for pr in out["open"]:
-    t = THREADS.get(pr["repo"], {}).get(pr["number"]) or (None, None)
+    t = THREADS.get(pr["repo"], {}).get(pr["number"]) or (None, None, None, [])
     pr["merge"] = "DIRTY" if t[1] == "CONFLICTING" else None
+    pr["labels"] = t[3]
+    if t[2]:  # seulement s'il est connu : la sortie reste sous 100 Ko
+        pr["ci"] = t[2]
     pr["base"] = pr.pop("baseRefName", None)
     pr.pop("headRefOid", None)
     pr["behind"] = BEHIND.get(f"{pr['repo']}#{pr['number']}")
     pr["threads"] = t[0]
+with ThreadPoolExecutor(max_workers=8) as pool:  # un appel par PR qui porte le label d'env, seulement
+    for pr, (url, at) in zip(out["open"], pool.map(env_url, out["open"])):
+        if url:
+            pr["env_url"], pr["env_at"] = url, at
+        pr.pop("labels", None)
 for w in warnings:
     print("github : " + w, file=sys.stderr)
 # Kronn coupe la sortie d'une étape Exec à 100 Ko (exec_step.rs) : on ne garde que ce que lit team_shape.py

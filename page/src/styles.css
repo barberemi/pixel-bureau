@@ -236,7 +236,15 @@ button.back kbd{font:10px ui-monospace,Menlo,monospace;border:1px solid var(--li
 .kbw-col h3{margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;display:flex;gap:6px;align-items:center;color:var(--ink)}
 .kbw-col h3 small{margin-left:auto;color:var(--muted);font-weight:600;letter-spacing:0;text-transform:none}
 .kbw-c{display:block;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:8px;padding:6px 8px;margin-bottom:6px;font-size:12px;line-height:1.35;color:var(--ink);text-decoration:none}
-.kbw-c:hover,.kbw-c:focus-visible{border-color:var(--accent);border-left-color:var(--c)}
+.kbw-c:hover,.kbw-c:focus-within{border-color:var(--accent);border-left-color:var(--c)}
+.kbw-a{display:block;color:inherit;text-decoration:none}.kbw-a:focus-visible{outline:none}
+/* pastilles de la PR d'un ticket, sous sa carte (kbPrChips) */
+.kbw-x{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;position:relative}
+.kbw-x i{font-style:normal;font-size:10px;line-height:15px;padding:0 5px;background:color-mix(in srgb,var(--k) 20%,transparent);box-shadow:inset 2px 0 0 var(--k);color:var(--ink);white-space:nowrap}
+.kbw-env{font-size:10px;line-height:15px;padding:0 5px;background:color-mix(in srgb,var(--ok) 22%,transparent);box-shadow:inset 2px 0 0 var(--ok);color:var(--ink);text-decoration:none;white-space:nowrap}
+.kbw-env:hover{text-decoration:underline}
+.kb-vol .kbw-x{display:none}
+.tk-env{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px;margin-top:4px;font-size:11px}.tk-env a{color:var(--accent);word-break:break-all}.tk-env small{color:var(--muted)}
 .kbw-c b{color:var(--accent);font-size:11px}.kbw-c em{font-style:normal;float:right;background:var(--chip);border-radius:999px;padding:0 6px;font-size:10px;color:var(--muted)}
 .kbw-t{display:block}.kbw-c small{display:block;color:var(--muted);margin-top:3px}
 .kbw-cp{display:inline-block;font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 4px;margin-right:4px}

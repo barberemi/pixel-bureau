@@ -22,6 +22,14 @@ Un ticket qui **traîne** dans sa colonne se couvre d'une **toile d'araignée** 
 
 ![Trois tickets qui traînent : 6 j et 12 j à déployer, 181 j en cours avec son araignée](../img/kanban-traine.png)
 
+Sous chaque carte qui a une **PR ouverte** (la prête plutôt qu'un brouillon, puis la plus récente), une rangée de pastilles : son numéro et l'état de sa **CI** (✓ verte, ✗ en échec, ⏳ en cours), **✎ brouillon** ou l'état de sa review (👀 à relire, 💬 à corriger, 👍 approuvée), **⛔ conflit**, puis les envs où tourne sa branche (**🧪 DEV**, **🎭 STG**, ⏳ pendant le déploiement : celui du bouton « 🚀 Déployer la branche ») et **🌿 env ↗**, le lien direct vers son env de branche quand il est prêt. Dans le volet du ticket, sa PR montre les mêmes infos et l'adresse complète de l'env de branche, avec l'heure où il a été prêt.
+
+![Les pastilles de PR sous les cartes : CI, review, DEV, STG et env de branche](../img/kanban-pr-env.png)
+
+![Dans le volet : la PR du ticket, sa CI, DEV depuis 2 h et l'adresse de l'env de branche](../img/kanban-volet-env.png)
+
+L'adresse de l'env de branche est relevée par le cron équipe dans les commentaires de la PR, seulement si elle porte le label d'env et que le pack donne son motif (`env.url`, une expression régulière : `"https://www\\.[a-z0-9-]+\\.preview\\.example\\.com"`) ; seule l'adresse est lue, jamais le reste du commentaire (souvent des mots de passe).
+
 | Volet d'un ticket | Sa PR, dans le volet |
 | --- | --- |
 | ![Le volet d'un ticket](../img/kanban-volet.png) | ![La PR du ticket, « ← DM-7637 »](../img/kanban-volet-pr.png) |

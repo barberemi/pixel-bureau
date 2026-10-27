@@ -76,3 +76,19 @@ function deployBlock(box,p){
   t.insertAdjacentHTML('beforeend','<div class="dp-safe">🔒 Hors prod seulement : jamais la prod.</div>');
   host.appendChild(t);box.appendChild(host);
 }
+// ---------- état d'une PR partagé par le Kanban, la fiche et les listes : CI et envs où tourne sa branche ----------
+const PR_CI={ok:['✓ CI','var(--ok)','CI verte'],ko:['✗ CI','var(--err)','CI en échec'],run:['⏳ CI','var(--warn)','CI en cours']};
+const DP_ICO={dev:'🧪',stg:'🎭',staging:'🎭'};
+// [{env, ico, run, since}] : les envs (dataset live) dont le dernier déploiement est la branche de la PR, réussi ou en cours
+function prEnvs(p){
+  if(!p||!p.head||!LIVE||!LIVE.envs)return [];
+  const r=String(prRepo(p)).toLowerCase()+'|';
+  return Object.entries(LIVE.envs).filter(([k,o])=>k.toLowerCase().startsWith(r)&&o&&!o.tag&&o.ref===p.head&&(o.status!=='completed'||o.conclusion==='success'))
+    .map(([k,o])=>{const env=k.slice(r.length);return {env,ico:DP_ICO[env]||'🚀',run:o.status!=='completed',since:o.end||o.start};});
+}
+// l'adresse de l'env de branche d'une PR (relevée dans le commentaire du bot par le cron équipe), en entier, cliquable
+function prEnvLine(p){
+  if(!p||!safeUrl(p.env_url))return '';
+  return `<div class="tk-env">🌿 <a ${hrefOf(p.env_url)} target="_blank" rel="noopener">${esc(p.env_url.replace(/^https:\/\//,''))}</a>`+
+    `<small>env de branche${p.env_at?' · prêt '+esc(spWhen(p.env_at)):''}</small></div>`;
+}

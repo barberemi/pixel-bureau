@@ -211,7 +211,7 @@ function renderTicket(side,key){
       const li=document.createElement('li');li.className='tkr';
       li.innerHTML=`<div class="tk-top"><span class="dot" style="background:${r[1]}"></span><a class="tk-key" href="#" data-pr="${esc(prId(p))}" title="Fiche de la PR">${esc(prNum(p))}</a>`+
         `<a class="tk-gh" ${hrefOf(p.url)} target="_blank" rel="noopener" title="Ouvrir sur GitHub">↗</a><span class="tk-rev">${r[0]}</span></div>`+
-        `<div class="tk-t">${esc(t)}</div>${m.length?`<div class="tk-meta">${m.join('')}</div>`:''}`;
+        `<div class="tk-t">${esc(t)}</div>${m.length?`<div class="tk-meta">${m.join('')}</div>`:''}`+prEnvLine(p);
       ul.appendChild(li);
     }
     pb.appendChild(ul);
