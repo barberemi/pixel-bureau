@@ -757,6 +757,13 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .dp-o canvas{flex:none}
 .dp-env>button{grid-column:2;justify-self:start;font-size:12px;padding:3px 8px}
 .dp-safe{font-size:11px;color:var(--muted);margin-top:6px}
+/* « 🌿 Générer l'env de branche » (62-deploy.js) : état du build, ses trois étapes, la ligne qui le sépare des envs partagés */
+.dp-env.eb-l{grid-template-columns:1fr}
+.eb-st{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:6px;font-size:10px;text-align:center}
+.eb-st>div{padding:3px 2px;border:1px dashed var(--line);color:var(--muted);overflow-wrap:anywhere}.eb-st b{display:block;font-weight:600}
+.eb-st>.done{border:1px solid var(--ok);color:var(--ink)}.eb-st>.cur{border:2px solid var(--warn);color:var(--ink)}.eb-st>.ko{border:2px solid var(--err);color:var(--ink)}
+.la>button:disabled{opacity:.5;cursor:not-allowed}
+.eb-sep{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin:8px 0 6px}.eb-sep:before,.eb-sep:after{content:'';flex:1;height:1px;background:var(--line)}
 .la.next{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .la.off .la-t,.la.off>button{opacity:.6}
 .la.off canvas,.la-st.later canvas{filter:grayscale(1)}

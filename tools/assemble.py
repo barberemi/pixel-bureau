@@ -392,11 +392,12 @@ def merged(cfg):
         personas = {a["key"]: {k: v for k, v in a.items() if k != "model"} for a in s["agents"]}
         out["agents"] = [_agent(personas.get(a.get("key"), {}), a) for a in cfg.get("agents") or []]
         # personnage qui incarne un modèle du Bureau (clé model, #78) : rattaché d'office à ses workflows créés par
-        # l'installateur (models), sauf si la config le rattache déjà
-        bound, models = {a.get("key") for a in out["agents"]}, cfg.get("models") or {}
+        # l'installateur (models), sauf si la config le rattache déjà ; aussi un bouton des fiches (« rebase », « env » :
+        # le workflow du Bureau ou le tien, action_ids), que l'installateur ne propose jamais comme agent
+        bound, models = {a.get("key") for a in out["agents"]}, {**action_ids(cfg), **(cfg.get("models") or {})}
         for a in s["agents"]:
             want = [a["model"]] if isinstance(a.get("model"), str) else a.get("model") or []
-            wf = [models[m][:8] for m in want if models.get(m)]
+            wf = [str(models[m])[:8] for m in want if models.get(m)]
             if a["key"] not in bound and wf:
                 out["agents"].append(_agent({k: v for k, v in a.items() if k != "model"}, {"wf": wf}))
     return out
