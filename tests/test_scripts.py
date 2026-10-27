@@ -219,7 +219,7 @@ def call(s):
 call(" ".join(a))
 d = json.loads(Path({data!r}).read_text())
 key = ("open" if "open" in a else "merged") if a[0] == "pr" else "releases" if a[0] == "release" else \\
-      "staging" if "NONPROD" in " ".join(a) or "staging" in " ".join(a) else "prod"
+      "branch" if "Deploy_Branch" in " ".join(a) else "staging" if "NONPROD" in " ".join(a) or "staging" in " ".join(a) else "prod"
 if a[0] == "api" and "--jq" in a:  # gh api <chemin> --jq … (#74 : tête d'une base, retard d'une PR) : d["api"][chemin]
     v = (d.get("api") or {{}}).get(a[1])
     print(v if v is not None else "")
@@ -947,6 +947,26 @@ print(json.dumps(val))
         dev, stg = out["envs"][repo + "|dev"], out["envs"][repo + "|stg"]
         self.assertEqual((dev["ref"], dev["tag"], dev["by"], dev["status"], dev["end"]), ("feat/DM-7", False, "pambeesly", "in_progress", None))
         self.assertEqual((stg["ref"], stg["tag"], stg["status"]), ("feat/dev-outils", False, "queued"))
+
+    def test_live_snapshot_branch_envs_follow_the_env_build_of_each_branch(self):
+        """branch_envs (env.workflow) : par « dépôt|branche », le dernier build de l'env de branche, hors runs « skipped »
+        (un par événement de PR) ; rien sans le réglage ni le bouton ; 30 runs lus."""
+        run = lambda branch, mins, st="completed", c="success": {"status": st, "conclusion": c if st == "completed" else None,
+            "createdAt": iso(mins), "updatedAt": iso(mins - 1), "displayTitle": "CD - Deploy branch " + branch, "url": "https://x/" + str(mins),
+            "by": "pambeesly", "branch": branch}
+        self.fake_gh({"staging": [], "prod": [], "branch": [
+            run("feat/DM-7", 1, c="skipped"),  # un push sans label : ne compte pas
+            run("feat/DM-7", 3, "in_progress"), run("feat/DM-7", 40), run("feat/DM-1", 20, c="failure"), run("feat/DM-2", 5, c="skipped")]})
+        env = {"workflow": "CD_Deploy_Branch.yaml"}
+        out = self.run_script("live_snapshot.py", api=self.kronn(FakeKronn()), env=env)
+        self.assertEqual(out["branch_envs"], {})  # ni modèle env ni launch.env : pas de bouton
+        out = self.run_script("live_snapshot.py", api=self.kronn(FakeKronn()), env=env, models={"env": "wf-env"})
+        repo = FIXTURE["github"]["repo"]
+        self.assertEqual(set(out["branch_envs"]), {repo + "|feat/DM-7", repo + "|feat/DM-1"})
+        dm7, dm1 = out["branch_envs"][repo + "|feat/DM-7"], out["branch_envs"][repo + "|feat/DM-1"]
+        self.assertEqual((dm7["status"], dm7["end"], dm7["url"]), ("in_progress", None, "https://x/3"))
+        self.assertEqual((dm1["status"], dm1["conclusion"]), ("completed", "failure"))
+        self.assertIn("Deploy_Branch.yaml/runs?per_page=30", Path(os.path.join(self.tmp, "gh.json.calls")).read_text())
 
     # ---------- créer un ticket (#77) ----------
     def ticket(self, *args, **extra):

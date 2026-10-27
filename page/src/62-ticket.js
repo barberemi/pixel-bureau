@@ -137,7 +137,7 @@ function launchBlock(box,{action,bind,name,sub,label,title,off,done,verb,next}){
       `<div class="rl-s">${esc(busy?off+'.':sub)}${cost?` <span class="la-cost">${esc(cost)}</span>`:''}</div>`;
     host.appendChild(t);
   }else host.innerHTML=`<div class="rl-n">${esc(name)}</div><div class="rl-s">${esc(sub)}</div>`;
-  if(off){b.disabled=true;b.title=off;host.appendChild(b);box.appendChild(host);return;}
+  if(off){b.disabled=true;b.title=off;host.appendChild(b);box.appendChild(host);return host;}
   b.setAttribute('data-kronn-action',action);b.setAttribute('data-kronn-bindings',JSON.stringify(bind));
   const n=document.createElement('div');n.className='note';n.style.margin='6px 0 0';
   if(!verb)n.textContent='Kronn ouvre sa carte : tu valides, puis elle suit le run étape par étape.'; // fiches : une seule note en bas
@@ -147,6 +147,7 @@ function launchBlock(box,{action,bind,name,sub,label,title,off,done,verb,next}){
     else if(v==='failed')n.innerHTML='<b style="color:var(--err)">Lancement refusé</b> (déjà en cours ?). Détail dans la carte.';
   }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
   host.append(b,n);kronnModal(host,b,title,()=>{const c=verb&&actAgent(action);return verb?{c,ico:'🤖',name:(c?c.name:'Le Bureau')+' '+verb,small:sub}:{ico:'🎫'};});box.appendChild(host);
+  return host;
 }
 // ◀ / ▶ : déplacer le ticket d'une colonne (workflow « déplacer un ticket », actions.move). Les sens et le statut Jira
 // visé viennent du dataset actions (moves, cron équipe) : le bouton n'envoie que l'id de la ligne, Kronn y relit le reste.
@@ -266,10 +267,19 @@ function prLaunch(box,p,{tickets,isNext=()=>false,group}={}){
   const id=a.id||prId(p), nx=act=>isNext(act,prId(p));
   const dr=p.draft?' (brouillon)':'', nm=prNum(p); // un brouillon se relit et se corrige aussi
   // « 🌿 Générer l'env de branche », en tête : ton workflow de launch.env, sur les PR de ses dépôts (CFG.env_repos), brouillons
-  // compris ; la ligne de la PR porte la valeur de sa variable action (actions.prs[].env, « reposer » par défaut)
-  if(ACTIONS.env&&(CFG.env_repos||[]).some(r=>repoKey(r)===repoKey(id.replace(/#\d+$/,''))))
-    launchBlock(box,{action:'bureau-env',bind:{id},verb:'génère l\'env de branche'+dr,
-      sub:'Retire puis repose le label : crée l\'environnement de la PR, ou le reconstruit après un push',label:'🌿 Générer l\'env de branche',title:'Env de branche de '+nm});
+  // compris ; la ligne de la PR porte la valeur de sa variable action (actions.prs[].env, « reposer » par défaut). Dessous,
+  // où en est son build (ebMount, 62-deploy.js) ; grisé tant qu'il tourne
+  const env=ACTIONS.env&&(CFG.env_repos||[]).some(r=>repoKey(r)===repoKey(id.replace(/#\d+$/,'')));
+  if(env){
+    const s=p.head?ebState(p):{step:'none'}, busy=s.step==='asked'||s.step==='run';
+    const h=launchBlock(box,{action:'bureau-env',bind:{id},verb:'génère l\'env de branche'+dr,
+      sub:'Retire puis repose le label : crée l\'environnement de la PR, ou le reconstruit après un push',label:'🌿 Générer l\'env de branche',title:'Env de branche de '+nm,
+      off:busy?'L\'env se construit : le bouton revient à la fin du build':null,
+      done:'<b style="color:var(--ok)">✓ Label reposé.</b> GitHub construit l\'env : son état s\'affiche au-dessus, relu chaque minute.'});
+    if(h&&p.head)ebMount(h,p);
+  }
+  // les envs partagés juste dessous : une ligne qui dit qu'ils n'ont rien à voir avec l'env de branche (on croyait déployer sur DEV)
+  if(env&&dpEnvs(p).length){const sep=document.createElement('div');sep.className='eb-sep';sep.textContent='envs partagés, sans rapport avec l\'env de branche';box.appendChild(sep);}
   deployBlock(box,p); // « 🚀 Déployer la branche » hors prod (modèle deploy, 62-deploy.js)
   // « ⟳ Remettre à jour » (#74) : rebase sur la base, sans squash ; en retard ou en conflit d'après le cron équipe, ou état inconnu
   if(ACTIONS.rebase&&!p.merged&&(p.conflict||p.behind!==0)){

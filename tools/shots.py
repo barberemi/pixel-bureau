@@ -350,8 +350,10 @@ SHOTS = {
     # Chercher (64-search.js) : « panier », les tickets et les PR qui en parlent
     "chercher": (1400, 1000, AT(11) + "openSearch();const i=document.querySelector('.sr-in input');i.value='panier';i.dispatchEvent(new Event('input'));", ".sr-win"),
     # « 🌿 Générer l'env de branche » (launch.env) : sur la PR du ticket, dans le volet du Mur Kanban
-    "env-branche": (1600, 1000, AT(11) + KB_DEMO + "ACTIONS.env=true;ACTION_BINDS['bureau-env']={pr_number:'id',action:'id'};CFG.env_repos=[CFG.github_repo];"
-                   "ACTS.prs.forEach(p=>{p.env='reposer';});openTicket(KB_K);", ".kbv"),
+    "env-branche": (1600, 1240, AT(11) + KB_DEMO + "ACTIONS.env=true;ACTION_BINDS['bureau-env']={pr_number:'id',action:'id'};CFG.env_repos=[CFG.github_repo];"
+                   "ACTS.prs.forEach(p=>{p.env='reposer';});KB_P.env_url='https://www.carrousel.testing.dunder-mifflin.com';"
+                   "LIVE=LIVE||{runs:[]};LIVE.branch_envs={[prRepo(KB_P)+'|'+KB_P.head]:{status:'in_progress',conclusion:null,start:new Date(T-2*60e3).toISOString(),"
+                   "end:null,url:'https://github.com/dunder-mifflin/site-web/actions'}};openTicket(KB_K);", ".kbv"),
     # « 🚀 Déployer la branche » (modèle deploy) : DEV pris par la branche d'un collègue (Remplacer…), STG par une version ;
     # puis la fenêtre de « ⇄ Remplacer… », qui prévient avant la carte Kronn
     "deployer-branche": (1600, 1500, AT(11) + KB_DEMO + DP_DEMO + "setTimeout(()=>{const d=document.querySelector('.dp');d&&d.scrollIntoView({block:'end'});},1200);", ".kbv"),

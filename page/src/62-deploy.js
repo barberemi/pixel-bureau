@@ -94,3 +94,40 @@ function prEnvLine(p){
   return `<div class="tk-env">🌿 <a ${hrefOf(p.env_url)} target="_blank" rel="noopener">${esc(p.env_url.replace(/^https:\/\//,''))}</a>`+
     `<small>env de branche${p.env_at?' · prêt '+esc(spWhen(p.env_at)):''}</small></div>`;
 }
+// ---------- « 🌿 Générer l'env de branche » : où en est le build de l'env de la PR ----------
+// Le dernier build de sa branche (LIVE.branch_envs, workflow env.workflow relu chaque minute par le cron live) et son
+// adresse (p.env_url, cron équipe) ; juste après un clic d'ici, « ⏳ demandé » jusqu'au run GitHub (EB_ASKED, ce
+// navigateur, 15 min au plus), comme pour les envs partagés. step : none, asked, run, ko ou ok.
+const EB_ASK_MS=15*60e3;
+let EB_ASKED={};try{EB_ASKED=JSON.parse(localStorage.getItem('bureau:envbranch')||'{}')||{};}catch(e){EB_ASKED={};}
+for(const k in EB_ASKED)if(!(Date.now()-EB_ASKED[k]<EB_ASK_MS))delete EB_ASKED[k];
+const ebSave=()=>{try{localStorage.setItem('bureau:envbranch',JSON.stringify(EB_ASKED));}catch(e){}};
+function ebState(p){
+  const r=String(prRepo(p)).toLowerCase()+'|'+p.head, all=(LIVE&&LIVE.branch_envs)||{};
+  const o=p.head&&all[Object.keys(all).find(k=>k.toLowerCase()===r.toLowerCase())]||null, a=EB_ASKED[prId(p)];
+  const asked=a&&Date.now()-a<EB_ASK_MS&&!(o&&ms(o.start)>=a-60e3)?a:null, url=safeUrl(p.env_url);
+  const step=asked?'asked':o&&o.status!=='completed'?'run':o&&o.conclusion!=='success'?'ko':o||url?'ok':'none';
+  return {k:prId(p),o,asked,url,step};
+}
+// l'état en une ligne, puis les trois étapes : label posé › build AWS › en ligne (l'adresse, cliquable)
+function ebHtml(s){
+  const run=s.o&&safeUrl(s.o.url)?` · <a ${hrefOf(s.o.url)} target="_blank" rel="noopener">run ↗</a>`:'';
+  const line={none:'<em>Pas encore d\'env</em> · le bouton pose le label',
+    asked:`<em>⏳ demandé</em> · il y a ${esc(dpSpan(Math.max(0,Date.now()-s.asked)))}, GitHub démarre`,
+    run:`<em>⏳ construction en cours</em> · lancée il y a ${esc(dpAgo(s.o&&s.o.start))}${run}`,
+    ko:`<em>❌ build en échec</em> · il y a ${esc(dpAgo(s.o&&(s.o.end||s.o.start)))}${run}`,
+    ok:`<em>✅ en ligne</em>${s.o?' · construit il y a '+esc(dpAgo(s.o.end||s.o.start)):''}${run}`}[s.step];
+  const build=s.step==='asked'?['cur','attend GitHub']:s.step==='run'?['cur','en cours']:s.step==='ko'?['ko','en échec']:s.step==='ok'?['done','fait']:['','—'];
+  const live=s.url?`<a ${hrefOf(s.url)} target="_blank" rel="noopener">${s.step==='ok'?'ouvrir ↗':'version d\'avant ↗'}</a>`:s.step==='ok'?'adresse au prochain relevé':'—';
+  return `<div class="dp-envs"><div class="dp-env eb-l${s.step==='run'||s.step==='asked'?' run':s.step==='ko'?' ko':''}"><div class="dp-o"><span>${line}</span></div></div></div>`+
+    `<div class="eb-st"><div class="${s.step==='none'?'':'done'}"><b>1 · label</b>${s.step==='none'?'à poser':'posé'}</div>`+
+    `<div class="${build[0]}"><b>2 · build</b>${build[1]}</div><div class="${s.step==='ok'&&s.url?'done':''}"><b>3 · en ligne</b>${live}</div></div>`;
+}
+// sous le bouton de l'env (launchBlock) : son état, et le clic retenu pour « ⏳ demandé »
+function ebMount(host,p){
+  const s=ebState(p), t=host.querySelector('.la-t'), b=host.querySelector('button[data-kronn-action]');
+  if(t)t.insertAdjacentHTML('beforeend',ebHtml(s));
+  host.classList.remove('off'); // grisé pendant le build : le bouton seul, l'état reste lisible
+  if(b)new MutationObserver(()=>{if(b.getAttribute('data-kronn-action-state')==='succeeded'){EB_ASKED[s.k]=Date.now();ebSave();}})
+    .observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
+}

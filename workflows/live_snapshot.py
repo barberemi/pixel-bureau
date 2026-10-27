@@ -1,7 +1,7 @@
 """Instantané « live » (toutes les minutes) : runs en cours ou récents, discussions récentes, déploiements du jour.
 
 Entrée : aucune (déploiements lus chaque minute avec `gh api` et un ETag : GitHub répond 304 sans le décompter tant que rien ne change)
-Sortie (stdout) : {generated_at, day, runs[], discussions[], deploys{staging{clé:run}, prod{clé:run}}, envs{…}, warnings[texte]}
+Sortie (stdout) : {generated_at, day, runs[], discussions[], deploys{staging{clé:run}, prod{clé:run}}, envs{…}, branch_envs{…}, warnings[texte]}
 Clé = la version pour le dépôt principal (github.repo, ses MEP ont ticket et release dans le dataset team), « projet version »
 pour les autres dépôts suivis (github.deploys : [{repo, label?, staging_workflow?, prod_workflow}]) ; run.project = ce projet,
 run.by = le login GitHub de qui a lancé le déploiement (la page en fait l'auteur de la MEP s'il n'en a pas d'autre).
@@ -9,6 +9,9 @@ envs : avec le modèle deploy (models.deploy), ce qui occupe chaque env hors pro
 {ref, tag, by, status, conclusion, start, end, url} du dernier run de son workflow dont le titre nomme l'env (mot
 entier) ; ref = la branche déployée, ou la version (tag vrai) quand le titre en porte une et pas la branche.
 Même format de runs et de discussions que office_snapshot.py, pour que la page les superpose.
+branch_envs : avec le réglage env.workflow (le workflow GitHub qui construit l'env de branche d'une PR quand son label
+est posé), « dépôt|branche » -> {status, conclusion, start, end, url, by} du dernier build de cette branche ; les runs
+« skipped » ne comptent pas (le workflow démarre à chaque événement de la PR et ne construit qu'avec le label).
 warnings (#8) : déploiements non relus (gh absent, accès refusé…), republiés depuis la lecture précédente ; écrit aussi
 sur stderr (run Kronn). Un 304 (rien n'a changé) n'en est pas un.
 """
@@ -58,7 +61,19 @@ def targets():
     # déployer la branche d'une PR (modèle deploy) : le workflow hors prod de chaque dépôt réglé, s'il n'est pas déjà lu
     seen = {(r, w) for _, r, _, w in out}
     out += [("", r, "nonprod", w) for r, w in DEPLOY.items() if (r, w) not in seen]
+    out += [("", r, "branch", w) for r, w in BRANCH_ENV.items() if (r, w) not in seen]
     return out
+
+
+def branch_env_targets():
+    """{dépôt: workflow} de l'env de branche : env.workflow sur les dépôts du bouton (launch.env.repos, sinon env.repos,
+    sinon le principal, comme assemble.env_repos) ; {} sans ce réglage ni bouton."""
+    wf, own = (CFG.get("env") or {}).get("workflow"), (CFG.get("launch") or {}).get("env")
+    if not isinstance(wf, str) or not wf or not (own or (CFG.get("models") or {}).get("env")):
+        return {}
+    repos = (own.get("repos") if isinstance(own, dict) else None) or (CFG.get("env") or {}).get("repos") \
+        or [r for r in [(CFG.get("github") or {}).get("repo")] if r]
+    return {r: wf for r in repos if isinstance(r, str) and r}
 
 
 def deploy_targets():
@@ -71,11 +86,11 @@ def deploy_targets():
             if isinstance(t, dict) and isinstance(t.get("envs"), dict) and (t.get("workflow") or staging.get(r))}
 
 
-def gh_runs(repo, workflow, prev):
-    """{runs, etag} : les 10 derniers runs du workflow (champs de « gh run list »). prev = la lecture précédente,
+def gh_runs(repo, workflow, prev, per_page=10):
+    """{runs, etag} : les per_page derniers runs du workflow (champs de « gh run list »). prev = la lecture précédente,
     rendue telle quelle si GitHub répond 304 (rien n'a changé) ou si la lecture échoue."""
     prev = prev if isinstance(prev, dict) else {"runs": [], "etag": None}
-    cmd = ["gh", "api", "-i", f"repos/{repo}/actions/workflows/{workflow}/runs?per_page=10"]
+    cmd = ["gh", "api", "-i", f"repos/{repo}/actions/workflows/{workflow}/runs?per_page={per_page}"]
     if prev.get("etag") and all("branch" in r for r in prev.get("runs") or []):  # cache d'avant « branch » : relu en entier
         cmd[3:3] = ["-H", f"If-None-Match: {prev['etag']}"]
     try:  # gh sort en erreur sur un 304 : seule la ligne d'état compte
@@ -107,10 +122,13 @@ try:
 except (OSError, ValueError):
     cache = {}
 DEPLOY = deploy_targets()
+BRANCH_ENV = branch_env_targets()
 TARGETS = targets()
 READS = sorted({(t[1], t[3]) for t in TARGETS})  # un workflow lu une fois, même suivi deux fois
+# env de branche : 30 runs, la plupart « skipped » (un par événement de chaque PR)
 with ThreadPoolExecutor(max_workers=8) as pool:  # un dépôt lent ne retarde pas les autres
-    reads = list(pool.map(lambda t: gh_runs(t[0], t[1], cache.get(t[0] + "|" + t[1])), READS))
+    reads = list(pool.map(lambda t: gh_runs(t[0], t[1], cache.get(t[0] + "|" + t[1]),
+                                            30 if BRANCH_ENV.get(t[0]) == t[1] else 10), READS))
 D = {t[0] + "|" + t[1]: r for t, r in zip(READS, reads)}
 warnings = []
 if FAILED:  # une ligne pour toutes les lectures en échec (gh absent : chaque workflow suivi échoue pareil)
@@ -160,6 +178,19 @@ def occupants():
     return out
 
 
+def branch_envs():
+    """Dernier build de l'env de branche de chaque branche : « dépôt|branche » -> run, hors runs « skipped »."""
+    out = {}
+    for repo, wf in BRANCH_ENV.items():
+        for r in sorted(D[repo + "|" + wf]["runs"], key=lambda x: x.get("createdAt") or ""):  # le plus récent l'emporte
+            if r.get("conclusion") == "skipped" or not r.get("branch"):
+                continue
+            out[repo + "|" + r["branch"]] = {"status": r.get("status"), "conclusion": r.get("conclusion"), "start": r.get("createdAt"),
+                                             "end": r.get("updatedAt") if r.get("status") == "completed" else None,
+                                             "url": r.get("url"), "by": r.get("by")}
+    return out
+
+
 print(dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "day": now.strftime("%Y-%m-%d"),
              "runs": runs, "discussions": discs,
-             "deploys": {"staging": by_tag("staging"), "prod": by_tag("prod")}, "envs": occupants(), "warnings": warnings}))
+             "deploys": {"staging": by_tag("staging"), "prod": by_tag("prod")}, "envs": occupants(), "branch_envs": branch_envs(), "warnings": warnings}))
