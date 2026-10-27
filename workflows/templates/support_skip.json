@@ -1,0 +1,134 @@
+{
+ "kind": "workflow",
+ "key": "support_skip",
+ "definition": {
+  "name": "Le Bureau · ignorer un fil du Support",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "message_id",
+    "label": "Fil",
+    "placeholder": "",
+    "description": "Le message principal du fil (console Support).",
+    "required": true,
+    "pattern": "^[0-9]+$",
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "action",
+    "label": "Action",
+    "placeholder": "ignorer",
+    "description": "ignorer : le fil ne compte plus dans les alertes ; reactiver : il revient dans la file.",
+    "required": true,
+    "pattern": "^(ignorer|reactiver)$",
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "steps": [
+   {
+    "name": "skip",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Note le fil comme ignoré (ou le réactive) dans le cache du relevé Support, 0 token.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/support.py@@",
+     "skip",
+     "{{message_id}}",
+     "{{action}}"
+    ],
+    "exec_timeout_secs": 60
+   },
+   {
+    "name": "mark",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "État des fils sans relevé : le fil passe « ignoré » (ou revient) sur la page tout de suite.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "snap",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/support.py@@",
+         "dataset"
+        ],
+        "timeout_secs": 60,
+        "output_format": "json"
+       },
+       "required": true
+      }
+     ],
+     "concurrent_limit": 1
+    }
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset support.",
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "support",
+       "operation": "replace",
+       "value_from": "steps.mark.data.sources.snap"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

@@ -14,6 +14,7 @@ const SP_TODO=new Set(['new','gate','failed','relaunched']);
 function spState(t){
   const g=t.run&&(GATES||[]).find(x=>x.run===t.run.run);
   if(g)return {k:'gate',g};
+  if(t.state==='skipped')return {k:'skipped'}; // 🔕 ignoré depuis la console : ne compte plus, même si un vieux run a échoué
   const runs=((DATA&&DATA.runs)||[]).filter(r=>r.vars&&r.vars.message_id===t.id&&(!t.run||ms(r.start)>=ms(t.run.at)||r.run===t.run.run)&&ms(r.start)<=T);
   const r=runs.sort((a,b)=>ms(b.start)-ms(a.start))[0];
   if(r&&t.state!=='done'){
@@ -63,7 +64,7 @@ const spReply=s=>String(s||'').trim().split('\n').filter(x=>x.trim()).reduce((o,
 const spText=s=>esc(String(s||'').trim()).replace(/https:\/\/[^\s<>"']+/g,u=>`<a href="${u}" target="_blank" rel="noopener">${u.length>70?u.slice(0,69)+'…':u}</a>`).replace(/\n/g,'<br>');
 const SP_TAG={new:['Nouveau','var(--err)'],failed:['À relancer','var(--err)'],run:['🔎 Investigation en cours','var(--info)'],gate:['✋ Réponse à valider','var(--warn)'],
   done:['✓ Répondu en fil','var(--ok)'],resolved:['✅ Traité','var(--ok)'],answered:['Pris en charge','var(--info)'],relaunched:['↩ Relancé','var(--err)'],
-  ignored:['Ignoré','var(--idle)']};
+  ignored:['Réponse refusée','var(--idle)'],skipped:['🔕 Ignoré','var(--idle)']};
 // réactions du message principal, regroupées (« custom » : un emoji de l'organisation, dont le nom n'arrive pas)
 const spReacts=l=>{const n={};for(const r of l||[]){const k=r==='custom'?'🙂+':r;n[k]=(n[k]||0)+1;}
   return Object.entries(n).map(([k,v])=>`<span class="sp-r">${esc(k)}${v>1?' '+v:''}</span>`).join('');};
@@ -90,7 +91,37 @@ function spCard(t){
   el.innerHTML=h;
   if(st==='new'||st==='failed'||st==='relaunched'||st==='ignored')spInvestigate(el,t); // ignoré : réponse refusée, on peut réessayer
   if(st==='gate')spGate(el,t,s.g,dl);
+  if(SP_TODO.has(st)&&st!=='gate')spSkip(el,t,'🔕 Ignorer'); // pas sur une réponse à valider : on la refuse
   return el;
+}
+// « 🔕 Ignorer » (un fil qui n'en est pas un : annonce, question réglée de vive voix) et « ↺ Réactiver » : workflow
+// « ignorer un fil du Support » (actions.support_skip, 0 token), qui relit l'action dans la ligne du fil (threads[].skip)
+function spSkip(el,t,label){
+  if(!ACTIONS.support_skip)return;
+  let host=el.querySelector('.sp-host');
+  if(!host){host=document.createElement('div');host.className='sp-host';host.setAttribute('data-kronn-action-slot-host','');
+    host.innerHTML='<div class="sp-act"></div>';el.appendChild(host);}
+  const b=document.createElement('button');b.className='sp-skip';b.textContent=label;
+  b.setAttribute('data-kronn-action','bureau-spskip');b.setAttribute('data-kronn-bindings',JSON.stringify(bindsFor('bureau-spskip',{id:t.id})));
+  host.querySelector('.sp-act').appendChild(b);
+  const what=(t.subject||String(t.text||'').split('\n')[0]).slice(0,80);
+  kronnModal(host,b,label.includes('Ignorer')?'Ignorer ce fil':'Réactiver ce fil',()=>({ico:label.slice(0,2),tag:label,name:what,
+    small:'De '+spWho(t.from)+', '+spWhen(t.at)+' · '+(label.includes('Ignorer')?'il ne compte plus dans les alertes, « ↺ Réactiver » le remet dans la file':'il revient dans la file des fils à traiter')}));
+}
+// fils ignorés : une section repliée sous l'en-tête (SP_FOLD : dépliée, gardée au redessin du panneau)
+let SP_FOLD=false;
+function spSkipped(box,l){
+  if(!l.length)return;
+  const h=document.createElement('button');h.type='button';h.className='sp-fold';h.setAttribute('aria-expanded',SP_FOLD?'true':'false');
+  h.innerHTML=`${SP_FOLD?'▾':'▸'} 🔕 Ignorés · ${l.length}<span>ne comptent plus dans les alertes</span>`;
+  h.onclick=()=>{SP_FOLD=!SP_FOLD;renderSide();};box.appendChild(h);
+  if(!SP_FOLD)return;
+  for(const t of l){
+    const el=document.createElement('div');el.className='sp-skipped';el.dataset.id=t.id;
+    el.innerHTML=`<div class="sp-sk-t"><b>${esc(spWho(t.from))}</b> · ${esc(t.subject||String(t.text||'').split('\n')[0])}</div>`+
+      `<div class="sp-s">Message de ${esc(spWhen(t.at))}${t.skipped_at?' · ignoré '+esc(spWhen(t.skipped_at)):''} · ${spTeams(t)}</div>`;
+    spSkip(el,t,'↺ Réactiver');box.appendChild(el);
+  }
 }
 // « 🔎 Investiguer » : le projet choisi ici, le commentaire dans la carte Kronn (workflow du modèle support)
 function spInvestigate(el,t){
@@ -144,8 +175,9 @@ function openSupport(){if(supportOpenable())select('support');}
 function renderSupport(side){const box=document.createElement('div');box.className='sp-side';side.appendChild(box);spFill(box);}
 function spFill(box){
   box.innerHTML=spHead();
-  const l=spThreads().sort((a,b)=>ms(b.at)-ms(a.at));
-  for(const t of l)box.appendChild(spCard(t));
+  const l=spThreads().sort((a,b)=>ms(b.at)-ms(a.at)), skip=t=>spState(t).k==='skipped';
+  spSkipped(box,l.filter(skip));
+  for(const t of l.filter(t=>!skip(t)))box.appendChild(spCard(t));
   if(!l.length){const S=SUPPORT||{};box.insertAdjacentHTML('beforeend',`<div class="sp-empty"><div class="sp-e-ico">${S.polled_at?'🧯':'📡'}</div><b>${S.polled_at?'Rien à signaler':'Pas encore de relevé'}</b>`+
     `<span>${S.polled_at?'Aucun message sur '+esc(spName())+' ces '+(S.days||7)+' derniers jours.':'Le premier relevé arrive dans les 15 minutes, ou tout de suite avec « ↻ » sur sa ligne de Fraîcheur des données.'}</span></div>`);}
   box.insertAdjacentHTML('beforeend',`<p class="sp-note">« Investiguer » ouvre une discussion Kronn avec ${esc((spAgent()||{name:'l\'agent Support'}).name)} ; sa réponse revient ici à valider, puis part en fil sous ton nom.</p>`);
@@ -188,5 +220,6 @@ function supportDemo(){
       draft:"🔎 Cause : le cron du flux RSS a échoué à 8h (délai dépassé sur l'API des commandes).\n🛠️ Action : relancé à 9h20, le flux est de nouveau rempli.\n👀 Suivi : on surveille le passage de 10h."}}),
     t('d4','Lewis, Gabe',8.2,'404 sur la page « nouveautés » du site de Scranton.','done',{mine:{at:at(9.23),text:"🔎 Cause : la route des nouveautés manquait après la mise en prod 17.107.0.\n✅ Correctif : rétablie en 17.107.1, en prod à 9h05."}}),
     t('d5','Flax, Holly',-6.5,'Les exports CSV du stock sont-ils toujours envoyés le vendredi ?','answered',{by:'Halpert, Jim',replies:2,reactions:['👀']}),
-    t('d6','Philbin, Darryl',-8,"L'imprimante du 2e étage n'apparaît plus dans la liste.",'resolved',{replies:3,reactions:['✅','👍','👍']})]};
+    t('d6','Philbin, Darryl',-8,"L'imprimante du 2e étage n'apparaît plus dans la liste.",'resolved',{replies:3,reactions:['✅','👍','👍']}),
+    t('d7','Scott, Michael',-7.3,'Rappel : pot de départ de Toby vendredi 17h en salle de réunion 🎉','skipped',{skip:'reactiver',skipped_at:at(-7)})]};
 }

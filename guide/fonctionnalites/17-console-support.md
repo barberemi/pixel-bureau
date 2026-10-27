@@ -25,8 +25,10 @@ Les fils des 7 derniers jours, du plus récent au plus ancien, chacun avec son �
 3. **Réponse à valider** : la réponse proposée, telle qu'elle sera postée, et sa version.
    - **✅ Valider et poster en fil** : elle part dans le fil Teams, sous ton nom.
    - **✏️ Demander des changements** : ton commentaire repart à l'agent, dans la même discussion ; il reprend sa réponse, qui revient ici à valider, autant de fois que nécessaire.
-   - **✖ Refuser** : rien n'est posté, le fil passe « ignoré » (hors du compte) ; « 🔎 Investiguer » y reste pour relancer une investigation (nouvelle consigne, autre projet ou commentaire).
+   - **✖ Refuser** : rien n'est posté, le fil passe « Réponse refusée » (hors du compte) ; « 🔎 Investiguer » y reste pour relancer une investigation (nouvelle consigne, autre projet ou commentaire).
 4. **Répondu en fil** : la réponse postée, l'heure, « voir dans Teams ↗ ». Un fil auquel tu as répondu toi-même dans Teams compte aussi comme répondu.
+
+**🔕 Ignorer** : sur un fil à traiter (nouveau, à relancer ou relancé par son auteur), pour un message qui n'appelle rien (une annonce, une question réglée de vive voix). Le fil sort du compte : l'écran du boss, la bulle de l'agent Support et la pastille de la console ne le comptent plus. Il passe dans la section **🔕 Ignorés**, repliée sous l'en-tête de la console avec leur nombre ; dépliée, une ligne par fil (auteur, sujet, heure du message et de l'ignorance, lien Teams) et **↺ Réactiver**, qui le remet dans la file. Rien n'est écrit dans Teams. C'est un workflow du Bureau (« Le Bureau · ignorer un fil du Support », 0 token, `actions.support_skip`), créé par l'installateur ou par `publish.py all` quand la console est réglée ; le choix est gardé avec le relevé, donc le même sur tous les écrans, mode TV compris.
 
 Chaque fil montre aussi son sujet (s'il en a un), le contenu d'un message transféré et les réactions posées sur le message principal. Ce qui se passe dans Teams compte aussi :
 

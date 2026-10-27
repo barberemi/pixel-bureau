@@ -33,7 +33,8 @@ ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate",
            "bureau-env": ("env", "__ENV_WF__"),  # ton workflow d'env de branche d'une PR (launch.env), sur les dépôts de launch.env.repos
            "bureau-deploy": ("deploy", "__DEPLOY_WF__"),  # déployer la branche d'une PR hors prod (modèle deploy, ligne actions.deploys)
            # console Support (#62) : investiguer un message (modèle support) ; relever le canal : « ↻ » du panneau Fraîcheur
-           "bureau-support": ("support", "__SUPPORT_WF__")}
+           "bureau-support": ("support", "__SUPPORT_WF__"),
+           "bureau-spskip": ("support_skip", "__SPSKIP_WF__")}  # 🔕 ignorer un fil du Support, ou le réactiver (threads[].skip)
 # variables des workflows de la clé launch : rôle -> nom par défaut ; launch.<action> = id seul, ou {wf, vars: {rôle: nom
 # chez toi, ou null si ton workflow n'a pas cette variable}}
 LAUNCH_VARS = {"impl": {"ticket": "jira_ticket_key"}, "mep": {"ticket": "jira_ticket_key", "pr": "pr_number"},
