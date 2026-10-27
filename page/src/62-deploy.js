@@ -7,6 +7,16 @@ const DP_ASK_MS=15*60e3;
 let DP_ASKED={};try{DP_ASKED=JSON.parse(localStorage.getItem('bureau:deploy')||'{}')||{};}catch(e){DP_ASKED={};}
 for(const k in DP_ASKED)if(!(Date.now()-DP_ASKED[k]<DP_ASK_MS))delete DP_ASKED[k];
 const dpSave=()=>{try{localStorage.setItem('bureau:deploy',JSON.stringify(DP_ASKED));}catch(e){}};
+// « ⏳ demandé » seulement après un clic d'ici : Kronn remet l'état d'un lancement passé (succeeded) sur chaque bouton
+// redessiné de la même ligne, ce qui n'est pas un nouveau lancement. Clé = la ligne du bouton (PR et env), heure du clic
+// gardée le temps qu'arrive le « succeeded » de ce lancement, puis oubliée (un redessin ne le recompte pas).
+const ASK_CLICK={};
+function onAsked(b,key,fn){
+  b.addEventListener('click',()=>{ASK_CLICK[key]=Date.now();});
+  new MutationObserver(()=>{
+    if(b.getAttribute('data-kronn-action-state')==='succeeded'&&Date.now()-(ASK_CLICK[key]||0)<DP_ASK_MS){delete ASK_CLICK[key];fn();}
+  }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
+}
 // [{repo, env}] où déployer la branche de cette PR ; [] hors réglage, sans le modèle ou PR mergée
 function dpEnvs(p){
   if(!ACTIONS.deploy||!p||p.merged||!p.head)return [];
@@ -66,8 +76,7 @@ function deployBlock(box,p){
     }else{
       b.textContent=label;b.setAttribute('data-kronn-action','bureau-deploy');
       b.setAttribute('data-kronn-bindings',JSON.stringify(bindsFor('bureau-deploy',{id})));
-      new MutationObserver(()=>{if(b.getAttribute('data-kronn-action-state')==='succeeded'){DP_ASKED[s.k]=Date.now();dpSave();}})
-        .observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
+      onAsked(b,'deploy|'+id,()=>{DP_ASKED[s.k]=Date.now();dpSave();});
       const warn=s.other?`⚠ ${E} porte ${s.o.tag?'la version '+s.o.ref:s.o.ref} de ${dpWho(s)} (il y a ${dpAgo(s.o.start)}) : en la remplaçant, son test s'arrête. Préviens-le s'il teste encore.`
         :'Hors prod seulement : le workflow refuse tout env ou dépôt hors réglage, et tout workflow de prod.';
       kronnModal(host,b,(s.other?'Remplacer ':'Déployer sur ')+E,{ico:'🚀',tag:label.replace(/…$/,''),name:p.head+' sur '+E,small:warn});
@@ -128,6 +137,5 @@ function ebMount(host,p){
   const s=ebState(p), t=host.querySelector('.la-t'), b=host.querySelector('button[data-kronn-action]');
   if(t)t.insertAdjacentHTML('beforeend',ebHtml(s));
   host.classList.remove('off'); // grisé pendant le build : le bouton seul, l'état reste lisible
-  if(b)new MutationObserver(()=>{if(b.getAttribute('data-kronn-action-state')==='succeeded'){EB_ASKED[s.k]=Date.now();ebSave();}})
-    .observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
+  if(b)onAsked(b,'env|'+s.k,()=>{EB_ASKED[s.k]=Date.now();ebSave();});
 }

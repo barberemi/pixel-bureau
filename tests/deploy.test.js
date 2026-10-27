@@ -145,3 +145,19 @@ test('Kanban : pastille ⏳ pendant le build, ❌ après un échec, sinon le lie
   assert.match(chips({[k]: run({conclusion: 'failure'})}), /🌿 ❌ env/);
   assert.match(chips({[k]: run()}), /🌿 env ↗/);
 });
+
+test('« ⏳ demandé » : seulement après un clic d\'ici, jamais sur l\'état d\'un lancement passé que Kronn rejoue', () => {
+  const asked = J(`(() => {
+    const mo = MutationObserver, out = [];
+    MutationObserver = function (f) { return {observe(b) { b._f = f; }}; };
+    const mk = () => ({attrs: {}, on: {}, addEventListener(t, f) { this.on[t] = f; }, getAttribute(k) { return this.attrs[k]; },
+      set(v) { this.attrs['data-kronn-action-state'] = v; this._f(); }});
+    try {
+      const b = mk(); onAsked(b, 'deploy|r#1|dev', () => out.push('rejoué')); b.set('succeeded');   // bouton redessiné, aucun clic
+      const c = mk(); onAsked(c, 'deploy|r#2|dev', () => out.push('cliqué')); c.on.click(); c.set('running'); c.set('succeeded');
+      const d = mk(); onAsked(d, 'deploy|r#2|dev', () => out.push('recompté')); d.set('succeeded');  // même ligne redessinée après
+      return out;
+    } finally { MutationObserver = mo; }
+  })()`);
+  assert.deepEqual(asked, ['cliqué']);
+});
