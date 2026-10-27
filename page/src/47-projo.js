@@ -70,7 +70,7 @@ function projoFoot(p){
   const on=projoTv(p), k=p.kpi&&p.kpi.value!=null&&p.kpi.label?p.kpi:null;
   const line=k?`<div class="pj-kpi"><b>📊 ${esc(String(k.value))}</b><span>${esc(k.label)}</span></div>${k.short?`<div class="pj-short">Sur la toile : « ${esc(k.short)} »</div>`:''}`:
     `<div class="pj-none">${on?'<span class="pj-warn">⚠ pas de chiffre : projetée en miniature</span>':'pas de chiffre'} <a href="#" class="pj-how">ⓘ Comment ?</a></div>`;
-  return `<div class="pj-foot"><button type="button" class="pj-tv${on?' on':''}" data-kronn-action="bureau-pages" data-id="${esc(p.id)}" data-op="${on?'tv_off':'tv_on'}" aria-pressed="${on}">${on?'☑':'☐'} 📽 Projeter en TV</button>${line}</div>`;
+  return `<div class="pj-foot"><button type="button" class="pj-tv${on?' on':''}" data-kronn-action="bureau-pages" data-id="${esc(p.id)}" data-op="${on?'tv_off':'tv_on'}" aria-pressed="${on}">${on?'☑':'☐'} 📽 Projeter en TV</button>${rfFoot(p)}${line}</div>`; // ↻ : 47-rafraichir.js
 }
 function projoInfoHtml(){
   return `<div class="pj-info" hidden><h3>📊 Donner un chiffre à une page projetée</h3>

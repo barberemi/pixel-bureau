@@ -51,6 +51,23 @@ L'adresse de l'env de branche est relevée par le cron équipe dans les commenta
 
 ![Retirer une page : l'écran de validation](../img/pages-validation.png)
 
+## Rafraîchir une page
+
+Sous chaque carte de la fenêtre Mes pages Kronn, **↻ Rafraîchir** relance les workflows qui remplissent la page, sans attendre leur prochain passage. Sous le bouton, l'état du jour : **✓ Rafraîchie à 10:42**, **✗ Échec à 10:42**, ou **⏳ Rafraîchissement en cours depuis 10:58** (bouton grisé quand tous ses workflows tournent déjà).
+
+![Mes pages Kronn : « ↻ Rafraîchir » et l'état du jour de chaque page](../img/pages-rafraichir.png)
+
+Le bouton ouvre un écran, comme × et 📽 : une ligne par workflow de la page, avec
+
+- son **coût** : **0 token**, ou pour un agent IA **🤖 IA · ~48 k tokens par run**, la moyenne des 7 derniers jours de la fiche de paie et son équivalent en dollars (« coût par run pas encore connu » sans run sur la semaine) ;
+- son déclencheur (automatique ou manuel) et, s'il lance un sous-workflow, lequel ;
+- son **dernier run** (heure, ✓ ou ✗) ;
+- **↻ Relancer**, qui ouvre la carte Kronn du workflow de relance du Bureau (le même que « ↻ Relancer » de la Fraîcheur), puis Lancer. Pas de bouton pour un workflow qui tourne déjà (⏳ En cours) ni pour un workflow qui demande une saisie (à lancer depuis Kronn).
+
+![Rafraîchir une page à deux workflows, dont un agent IA](../img/pages-rafraichir-ecran.png)
+
+Les workflows d'une page sont ceux qui y publient (Kronn le sait, `GET /pages/{id}/workflows`), relevés chaque heure avec la miniature (`workflows/pages_snapshot.py`, champ `feeds`). Une page remplie par un sous-workflow (lancé pour chaque PR, par exemple) propose à sa place les workflows qui le lancent. La miniature suit au passage suivant de la fiche de paie.
+
 ## Projeter une page en TV
 
 En mode TV, l'écran mural laisse la place à un **vidéoprojecteur** : posé sur la table de la salle de réunion, il projette sur une toile tendue devant le tableau blanc les pages cochées **📽 Projeter en TV** dans la fenêtre Mes pages Kronn, une toutes les 6 secondes (les points sous la toile disent laquelle). La salle passe dans la pénombre, le faisceau va du projecteur à la toile.
