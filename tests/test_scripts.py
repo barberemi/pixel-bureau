@@ -283,7 +283,7 @@ print(json.dumps(val))
                 "changelog": {"histories": [{"created": today, "author": {"accountId": acc, "displayName": name},
                                              "items": [{"field": "status", "fromString": "À faire", "toString": "En cours"}]}] * moves}})
         gh = github if github is not None else {
-            "open": [{"number": 7, "title": "DM-100 corrige le menu", "author": {"login": "dmartin", "name": "Darryl Martin"}, "headRefName": "feat/DM-100-menu",
+            "open": [{"number": 7, "title": "DM-100 corrige le menu", "author": {"login": "dmartin", "name": "Darryl Martin"}, "headRefName": "feat/DM-100-menu", "ci": "ok", "env_url": "https://www.dm100.testing.example.com", "env_at": "2026-10-01T08:00:00Z",
                       "isDraft": False, "reviewDecision": "APPROVED", "url": "https://x/7", "updatedAt": today, "createdAt": today,
                       "latestReviews": [], "reviewRequests": ["michaelscott"]}],
             "merged": [], "releases": [], "staging": [], "prod": [], "errors": []}
@@ -328,6 +328,8 @@ print(json.dumps(val))
         self.assertEqual([t["key"] for t in names["Darryl Martin"]["tickets"]], ["DM-100", "DM-102"])
         self.assertEqual(names["Darryl Martin"]["prs"][0]["req"], ["michaelscott"])
         self.assertEqual(names["Darryl Martin"]["prs"][0]["head"], "feat/DM-100-menu")  # « 🚀 Déployer la branche »
+        pr0 = names["Darryl Martin"]["prs"][0]
+        self.assertEqual((pr0["ci"], pr0["env_url"], pr0["env_at"]), ("ok", "https://www.dm100.testing.example.com", "2026-10-01T08:00:00Z"))
         self.assertEqual(out["unassigned"], [])  # le ticket sans assigné est dans un statut inconnu : ignoré
         self.assertTrue(out["sources"]["jira"] and out["sources"]["github"])
         self.assertNotIn("truncated", out)
@@ -520,6 +522,29 @@ print(json.dumps(val))
         out = self.run_script("github_snapshot.py", github={"repo": "acme/web"})
         self.assertEqual(out["open"][1]["behind"], 4)
         self.assertNotIn("compare", Path(calls).read_text(), "rien n'a bougé : retard relu dans le cache")
+
+    def test_github_snapshot_ci_and_branch_env_url(self):
+        """CI du dernier commit (requête des fils) ; adresse de l'env de branche lue seulement sur une PR qui porte le label
+        d'env, avec un motif réglé (env.url) ; rien sans motif ; champs absents quand ils sont inconnus."""
+        prs = [dict(self.gh_pr(n, f"DM-{n} x"), baseRefName="main", headRefOid=f"h{n}") for n in (16, 17, 18)]
+        api = {"graphql": '[[16, 0, "MERGEABLE", "SUCCESS", ["env-branch"]], [17, 0, "MERGEABLE", "FAILURE", []], [18, 0, "MERGEABLE", null, ["env-branch"]]]',
+               "repos/acme/web/issues/16/comments?per_page=100": '["2026-10-27T09:42:00Z", "https://www.ew16.testing.example.com"]',
+               "repos/acme/web/issues/18/comments?per_page=100": "null"}
+        self.fake_gh({"releases": [], "staging": [], "prod": [], "api": api, "by_repo": {"acme/web": {"open": prs, "merged": []}}})
+        pat = "https://www\\.[a-z0-9-]+\\.testing\\.example\\.com"
+        out = {p["number"]: p for p in self.run_script("github_snapshot.py", github={"repo": "acme/web"}, env={"url": pat})["open"]}
+        self.assertEqual((out[16].get("ci"), out[17].get("ci")), ("ok", "ko"))
+        self.assertNotIn("ci", out[18])
+        self.assertEqual((out[16]["env_url"], out[16]["env_at"]), ("https://www.ew16.testing.example.com", "2026-10-27T09:42:00Z"))
+        self.assertNotIn("env_url", out[18])  # label posé, pas encore d'adresse
+        self.assertNotIn("labels", out[16])
+        calls = Path(os.path.join(self.tmp, "gh.json.calls")).read_text()
+        self.assertNotIn("issues/17/comments", calls)  # sans label : aucun appel
+        self.assertIn("issues/16/comments?per_page=100 --jq [.[]|select(.body|test(", calls)  # filtre jq : seule l'adresse sort de gh
+        Path(os.path.join(self.tmp, "gh.json.calls")).write_text("")
+        out = self.run_script("github_snapshot.py", github={"repo": "acme/web"})
+        self.assertNotIn("comments", Path(os.path.join(self.tmp, "gh.json.calls")).read_text())  # sans motif : rien lu
+        self.assertNotIn("env_url", out["open"][0])
 
     def test_github_snapshot_default_repos_are_main_and_deploys(self):
         self.fake_gh({"open": [], "merged": [], "releases": [], "staging": [], "prod": []})

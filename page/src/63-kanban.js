@@ -74,9 +74,10 @@ function kanbanFill(box){
     if(KB_VOL&&k==='done')return `<button type="button" class="kbw-col kbw-strip" title="${esc(TCAT[k].t)} : ${list.length} tickets (fermer le volet pour les voir)"><span class="dot" style="background:${TCAT[k].c}"></span>${esc(TCAT[k].t)} · ${list.length}</button>`;
     return `<section class="kbw-col" aria-label="${esc(TCAT[k].t)}"><h3><span class="dot" style="background:${TCAT[k].c}"></span>${esc(TCAT[k].t)}<small>${list.length}${pts?' · '+Math.round(pts)+' pts':''}</small></h3>`+
       list.slice(0,n).map(x=>{const t=tkComp(x.summary), ro=kbReopened(x), st=kbStale(x,k);
-        return `<a href="#" class="kbw-c${x.key===cur?' kb-on':''}${ro?' kb-ro':''}${st?' kb-stale kb-stale'+st.lvl:''}" data-tk="${esc(x.key)}"${x.key===cur?' aria-current="true"':''} style="--c:${TCAT[k].c}" title="${st?`Dans « ${esc(TCAT[k].t)} » depuis ${st.d} j (seuil ${st.lim} j). `:''}Ouvrir sa fiche et ses actions">`+
+        // la carte : un lien vers la fiche, puis les pastilles de sa PR hors du lien (celle de l'env de branche est un lien)
+        return `<div class="kbw-c${x.key===cur?' kb-on':''}${ro?' kb-ro':''}${st?' kb-stale kb-stale'+st.lvl:''}" style="--c:${TCAT[k].c}"><a href="#" class="kbw-a" data-tk="${esc(x.key)}"${x.key===cur?' aria-current="true"':''} title="${st?`Dans « ${esc(TCAT[k].t)} » depuis ${st.d} j (seuil ${st.lim} j). `:''}Ouvrir sa fiche et ses actions">`+
           (ro?'<span class="kb-rot" title="Réouvert en test : retour en cours">↺ Réouvert</span>':'')+(st?`<span class="kb-age">🕸 ${st.d} j</span>`:'')+`<b>${esc(x.key)}</b>${x.points?`<em>${esc(x.points)} pts</em>`:''}`+
-          `<span class="kbw-t">${t.comp?`<span class="kbw-cp">${esc(t.comp)}</span>`:''}${esc(t.title)}</span><small>${esc(x.owner?String(x.owner).split(' ')[0]:'non assigné')}</small>${st?kbWeb(st.lvl):''}</a>`;}).join('')+
+          `<span class="kbw-t">${t.comp?`<span class="kbw-cp">${esc(t.comp)}</span>`:''}${esc(t.title)}</span><small>${esc(x.owner?String(x.owner).split(' ')[0]:'non assigné')}</small></a>${k==='done'?'':kbPrChips(x.key)}${st?kbWeb(st.lvl):''}</div>`;}).join('')+
       (list.length>n?`<button type="button" class="kbw-more" data-col="${k}">+ ${list.length-n} autre${list.length-n>1?'s':''}</button>`:'')+
       (list.length?'':'<span class="kbw-none">—</span>')+'</section>';
   }).join('')+'</div></div><p class="hint">'+(KB_VOL?'Un autre ticket change le volet ; un lien de PR l\'y ouvre, « ← » revient ; Échap ferme le volet, puis la fenêtre.':
@@ -86,8 +87,21 @@ function kanbanFill(box){
   for(const e of box.querySelectorAll('[data-pt]'))e.appendChild(portrait(byKey[e.dataset.pt],24));
   for(const b of box.querySelectorAll('.kbp-b'))b.onclick=()=>{KB_WHO=b.dataset.who;kanbanFill(box);};
   for(const b of box.querySelectorAll('.kbw-more'))b.onclick=()=>{KB_ALL[b.dataset.col]=true;kanbanFill(box);};
-  for(const a of box.querySelectorAll('.kbw-c'))a.onclick=e=>{e.preventDefault();e.stopPropagation();kbShow({t:'ticket',k:a.dataset.tk},true);}; // pas le lien global (62-ticket.js)
+  for(const a of box.querySelectorAll('.kbw-a'))a.onclick=e=>{e.preventDefault();e.stopPropagation();kbShow({t:'ticket',k:a.dataset.tk},true);}; // pas le lien global (62-ticket.js)
   const st=box.querySelector('.kbw-strip');if(st)st.onclick=kbClose;
+}
+// pastilles de la PR d'un ticket, sous sa carte : la PR prête plutôt qu'un brouillon, la plus récente ; n° et CI, brouillon
+// ou conflit, review, les envs où tourne sa branche (🧪 DEV, 🎭 STG, dataset live) et « 🌿 env ↗ », l'env de branche
+const KB_REV={changes:['💬 à corriger','var(--warn)'],approved:['👍 approuvée','var(--ok)'],pending:['👀 à relire','var(--info)']};
+function kbPrChips(key){
+  const p=prsOf(key).sort((a,b)=>(!!a.draft-!!b.draft)||(b.n-a.n))[0];if(!p)return '';
+  const c=(t,col,tt)=>`<i style="--k:${col}"${tt?` title="${esc(tt)}"`:''}>${t}</i>`, ci=PR_CI[p.ci];
+  let h=c(esc('#'+p.n)+(ci?' '+ci[0]:''),ci?ci[1]:'var(--idle)',ci?ci[2]:'');
+  if(p.draft)h+=c('✎ brouillon','var(--idle)');else if(KB_REV[p.review])h+=c(...KB_REV[p.review]);
+  if(p.conflict)h+=c('⛔ conflit','var(--err)');
+  for(const e of prEnvs(p))h+=c(e.ico+' '+esc(e.env.toUpperCase())+(e.run?' ⏳':''),e.run?'var(--warn)':'var(--info)',(e.run?'Déploiement en cours sur ':'Sa branche est sur ')+e.env.toUpperCase());
+  if(safeUrl(p.env_url))h+=`<a class="kbw-env" ${hrefOf(p.env_url)} target="_blank" rel="noopener" title="Env de branche : ${esc(p.env_url)}">🌿 env ↗</a>`;
+  return `<span class="kbw-x">${h}</span>`;
 }
 // le volet : « ← » (fiche d'avant) ou rien, × ; puis la fiche du ticket ou de la PR (62-ticket.js), comme dans le panneau
 function kbVolet(m){

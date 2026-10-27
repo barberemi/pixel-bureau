@@ -205,6 +205,8 @@ function prMarks(x){
   if(x.conflict)m.push('<span class="prm err" title="Conflit avec sa base">⛔ conflit</span>');
   if(x.behind>0)m.push(`<span class="prm" title="Commits de ${esc(x.base||'main')} absents de la PR">⟳ ${x.behind} de retard</span>`);
   if(x.threads>0)m.push(`<span class="prm" title="Fils de review non résolus">💬 ${x.threads} fil${x.threads>1?'s':''}</span>`);
+  const ci=PR_CI[x.ci];if(ci)m.push(`<span class="prm${x.ci==='ko'?' err':''}" title="${ci[2]}">${ci[0]}</span>`);
+  for(const e of prEnvs(x))m.push(`<span class="prm" title="${e.run?'Déploiement en cours':'Sa branche y est'}">${e.ico} ${esc(e.env.toUpperCase())}${e.run?' ⏳':' · depuis '+esc(dpAgo(e.since))}</span>`);
   return m;
 }
 function prRowHtml(x){

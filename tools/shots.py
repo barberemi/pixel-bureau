@@ -45,6 +45,11 @@ DP_DEMO = ("ACTIONS.deploy=true;ACTION_BINDS['bureau-deploy']={pr_number:'id',re
            "LIVE.envs={[_r+'|dev']:{ref:'feat/DM-6550-bouton',tag:false,by:_oc&&_oc.github,status:'completed',conclusion:'success',start:_t(2.2),end:_t(2),url:'#'},"
            "[_r+'|stg']:{ref:'17.122.1',tag:true,by:_b&&_b.github,status:'completed',conclusion:'success',start:_t(3.2),end:_t(3),url:'#'}};"
            "openTicket(KB_K);")
+# la branche d'une PR de démo déployée sur DEV (dataset live), une autre en cours de déploiement sur STG
+KB_PR_ENV = ("const _pe=TEAM.people.flatMap(p=>p.prs||[]),_p1=_pe.find(x=>x.n===2012),_p2=_pe.find(x=>x.n===1858),_r=prRepo(_p1),"
+             "_tt=h=>new Date(T-h*36e5).toISOString();LIVE=LIVE||{runs:[],discussions:[],deploys:{}};"
+             "LIVE.envs={[_r+'|dev']:{ref:_p1.head,tag:false,by:null,status:'completed',conclusion:'success',start:_tt(2.2),end:_tt(2),url:'#'},"
+             "[_r+'|stg']:{ref:_p2.head,tag:false,by:null,status:'in_progress',conclusion:null,start:_tt(.1),end:null,url:'#'}};")
 SHOTS = {
     "plan": (1400, 1000, AT(11), "#cv", 1.5),
     # agents mis en avant (« Sur le plan » : agents) : icône, prénom et métier de chacun
@@ -188,6 +193,10 @@ SHOTS = {
     "kanban-traine": (1600, 1000, AT(11) + "TEAM.people.flatMap(p=>p.tickets).filter(t=>t.key==='DM-6551').forEach(t=>{t.since=new Date(T-181*864e5).toISOString();});select('kanban');", ".bp-wide"),
     "kanban-reouvert": (1600, 1000, AT(11) + KB_DEMO + "TEAM.people.flatMap(p=>p.tickets).filter(x=>x.cat==='doing')[1].status=FLOW.reopened;openKanban();", ".bp-wide"),
     # le Kanban filtré sur une personne (barre de portraits en haut)
+    # pastilles de la PR sous chaque carte : CI, review, conflit, 🧪 DEV (branche déployée, dataset live), « 🌿 env ↗ » ; puis
+    # le volet du ticket : sa PR avec ces mêmes infos et l'adresse complète de l'env de branche
+    "kanban-pr-env": (1600, 1000, AT(11) + KB_PR_ENV + "select('kanban');", ".bp-wide"),
+    "kanban-volet-env": (1600, 1000, AT(11) + KB_DEMO + KB_PR_ENV + "openTicket('DM-7089');", ".kbv"),
     "kanban-personne": (1600, 1000, AT(11) + "select('kanban');KB_WHO=kbPeople()[0].key;kanbanFill(document.querySelector('.bp-wbody'));", ".bp-wide"),
     # fiche d'un ticket : ses PR et les workflows à lancer (dataset actions simulé depuis l'équipe de démo)
     "fiche-ticket": (1400, 1400, AT(11) + "ACTIONS.estimate=true;ACTION_BINDS['bureau-estimate']={jira_ticket_key:'key'};const all=TEAM.people.flatMap(p=>p.tickets),prs=TEAM.people.flatMap(p=>p.prs);"
