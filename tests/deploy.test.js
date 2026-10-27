@@ -70,3 +70,11 @@ test('juste après un lancement : « ⏳ demandé » (grisé) jusqu\'au run GitH
   assert.equal(dev(run({ref: 'feat/DM-1', start: at(60)}), {asked: 30e3}).label, null); // vieux run : toujours demandé
   assert.equal(dev(null, {asked: 16 * 60e3}).label, '🚀 Déployer'); // 15 min passées sans run : on oublie
 });
+
+test('en tête du bloc : l\'agent du modèle deploy (« Stanley déploie la branche »), sinon le titre seul', () => {
+  const head = wf => J(`(() => { const c0 = chars.slice(), a0 = CFG.action_wf;
+    chars.push({key: 'stanley', name: 'Stanley', wf: ['ffff6666'], runs: []}); CFG.action_wf = {deploy: '${wf}'};
+    try { return dpHead(actAgent('bureau-deploy')); } finally { chars.length = 0; chars.push(...c0); CFG.action_wf = a0; } })()`);
+  assert.equal(head('ffff6666'), '<b>Stanley</b> déploie la branche');
+  assert.equal(head('99999999'), '<b>Déployer la branche</b>');
+});

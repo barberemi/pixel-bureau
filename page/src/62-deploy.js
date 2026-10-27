@@ -43,13 +43,15 @@ function dpLabel(s){
   if(s.mine)return s.ko?'↻ Relancer':'↻ Redéployer';
   return s.other?'⇄ Remplacer…':'🚀 Déployer';
 }
+const dpHead=c=>c?`<b>${esc(c.name)}</b> déploie la branche`:'<b>Déployer la branche</b>'; // son agent, sinon le titre seul
 function deployBlock(box,p){
   const envs=dpEnvs(p);if(!envs.length)return;
   const rows=new Set(((ACTS&&ACTS.deploys)||[]).map(d=>d.id));
   const host=document.createElement('div');host.className='relaunch la dp';host.setAttribute('data-kronn-action-slot-host','');
-  host.innerHTML='<div class="la-av" aria-hidden="true">🚀</div>';
+  const c=actAgent('bureau-deploy'); // un agent par bouton des fiches ; sans agent, la fusée
+  if(c)host.appendChild(agentFace(c,'la-av'));else host.innerHTML='<div class="la-av" aria-hidden="true">🚀</div>';
   const t=document.createElement('div');t.className='la-t';
-  t.innerHTML=`<div class="la-n"><b>Déployer la branche</b></div><div class="rl-s">Construit <code class="dp-br">${esc(p.head)}</code> et la pousse sur un env partagé. Qui l'occupe en ce moment :</div>`;
+  t.innerHTML=`<div class="la-n">${dpHead(c)}</div><div class="rl-s">Construit <code class="dp-br">${esc(p.head)}</code> et la pousse sur un env partagé. Qui l'occupe en ce moment :</div>`;
   const list=document.createElement('div');list.className='dp-envs';
   for(const {repo,env} of envs){
     const s=dpState(p,repo,env), E=env.toUpperCase(), id=prId(p)+'|'+env, label=dpLabel(s);

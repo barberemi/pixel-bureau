@@ -53,13 +53,14 @@ function bindsFor(action,row){
 }
 // ---------- qui fait quoi dans « Lancer un workflow » (#86) ----------
 // chaque bouton montre l'agent qui l'incarne : celui dont agents[].wf contient l'id du workflow de l'action (CFG.action_wf,
-// calculé à l'assemblage ; jamais un nom écrit en dur) ; « Remettre à jour » sans agent : celui de « Corriger » ;
-// « Commenter » : toi (le commentaire part avec ton compte Jira) ; sinon l'hologramme du Bureau
+// calculé à l'assemblage ; jamais un nom écrit en dur), un agent par workflow, jamais celui d'un autre bouton ni un
+// intérimaire (il change chaque jour) ; « Commenter » : toi (le commentaire part avec ton compte Jira) ; sinon
+// l'hologramme du Bureau
 const actKey=a=>({meppr:'mep_pr',fixpr:'fix_pr'})[a.slice(7)]||a.slice(7); // 'bureau-fixpr' -> clé fix_pr de la config
 function actAgent(action){
   const wf=((CFG.action_wf||{})[actKey(action)]||'').slice(0,8);
-  return wf&&chars.find(x=>!x.person&&!x.visitor&&(x.wf||[]).includes(wf))
-    ||(action==='bureau-rebase'?actAgent('bureau-fixpr')||actAgent('bureau-fix'):action==='bureau-comment'?chars.find(x=>x.boss):null)||null;
+  return wf&&chars.find(x=>!x.person&&!x.visitor&&!x.temp&&(x.wf||[]).includes(wf))
+    ||(action==='bureau-comment'?chars.find(x=>x.boss):null)||null;
 }
 // le run en cours de cet agent sur ce ticket ou cette PR (sa carte dit « dessus depuis… » et grise le bouton), sinon null
 function agentBusy(c,bind){

@@ -161,9 +161,11 @@ const WITH = (code, body) => J(`(() => { const c0 = chars.slice(), a0 = CFG.acti
   Object.assign(ACTIONS, {impl: true, review: true, fix_pr: true, rebase: true, mep_pr: true, mep: false});
   try { ${code}; return (${body}); } finally { chars.length = 0; chars.push(...c0); CFG.action_wf = a0; Object.assign(ACTIONS, ac0); } })()`);
 
-test('#86 agent de chaque action : celui dont agents[].wf contient le workflow ; rebase sans agent : celui de Corriger ; Commenter : toi', () => {
+test('#86 agent de chaque action : celui dont agents[].wf contient le workflow, jamais celui d\'un autre bouton ni un intérimaire ; Commenter : toi', () => {
   assert.deepEqual(WITH('', `['bureau-fixpr', 'bureau-review', 'bureau-meppr', 'bureau-impl', 'bureau-rebase'].map(a => (actAgent(a) || {}).name)`),
-    ['Nate', 'Mose', 'Darryl', 'Ryan', 'Nate']);
+    ['Nate', 'Mose', 'Darryl', 'Ryan', null]); // rebase sans agent : l'hologramme, plus celui de « Corriger »
+  assert.equal(WITH(`chars.push({key: 'temp_eeee5555', name: 'Intérimaire 1', wf: ['eeee5555'], temp: true, runs: []})`, `actAgent('bureau-rebase')`), null);
+  assert.equal(WITH(`chars.push({key: 'jim', name: 'Jim', wf: ['eeee5555'], runs: []})`, `actAgent('bureau-rebase').name`), 'Jim');
   assert.equal(WITH('', `actAgent('bureau-comment') === chars.find(c => c.boss)`), true);
   assert.equal(WITH('CFG.action_wf = {}', `actAgent('bureau-review')`), null); // sans agent : l'hologramme du Bureau
 });

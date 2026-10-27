@@ -132,6 +132,13 @@ class ModelsTest(unittest.TestCase):
         a = assemble.merged(c)["agents"]
         self.assertEqual(a[0], {"key": "dwight", "name": "Dwight", "role": "Revue des PR", "wf": ["99999999"]})  # rattaché par la config
         self.assertEqual(a[1], {"key": "mose", "name": "Mose", "role": "Relit une PR", "wf": ["aaaa1111"]})  # d'office, par son modèle
+        # un bouton des fiches aussi : workflow du Bureau (actions.rebase) ou le tien (launch.env), jamais proposé par l'installateur
+        Path(os.path.join(pack, "settings.json")).write_text(json.dumps({"agents": [
+            {"key": "jim", "name": "Jim", "role": "Remettre une PR à jour", "model": "rebase"},
+            {"key": "kevin", "name": "Kevin", "role": "Env de branche", "model": "env"}]}))
+        c = {**cfg(actions={"rebase": "cccc3333-0000-4000-8000-000000000000"}, launch={"env": {"wf": "dddd4444-0000-4000-8000-000000000000"}}),
+             "team": pack, "agents": []}
+        self.assertEqual([(x["key"], x["wf"]) for x in assemble.merged(c)["agents"]], [("jim", ["cccc3333"]), ("kevin", ["dddd4444"])])
         shutil.rmtree(tmp)
 
     def test_env_branch_model_relabels_the_pr_and_comes_from_the_team_pack(self):
