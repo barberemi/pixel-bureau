@@ -57,7 +57,7 @@ function bossPagesHtml(){
     const age=p.updated?now-ms(p.updated):null, nw=p.id===BP_ADDED;
     return `<div class="bp-cell"><a class="bp-card" href="${esc(bpLink(p.id))}" target="_blank" rel="noopener">${bpImg(p,nw?'⏳ Miniature en cours…':'Pas d\'aperçu')}`+
       `<b>${esc(p.title||p.id.slice(0,8))}</b><small>${nw?'Ajoutée à l\'instant':age!=null&&age>=0?'Mise à jour il y a '+esc(bpAge(age)):''}<span aria-hidden="true">↗</span></small></a>`+
-      (nw?'<span class="bp-badge">✓ Ajoutée</span>':'')+(del?projoFoot(p):'')+
+      (nw?'<span class="bp-badge">✓ Ajoutée</span>':'')+(del?projoFoot(p):rfFoot(p)?`<div class="pj-foot">${rfFoot(p)}</div>`:'')+
       (del?`<button type="button" class="bp-del" data-kronn-action="bureau-pages" data-id="${esc(p.id)}" aria-label="Retirer ${esc(p.title||'')}">×</button>`:'')+'</div>';
   }).join(''); // l'ajout se fait par la liste sous la grille (plus de carte « + » vide)
 }
@@ -117,6 +117,7 @@ function bpRefresh(box){
 function bpWireGrid(box){
   for(const b of box.querySelectorAll('.bp-del'))bpAsk(box,b,'remove',()=>b.dataset.id);
   for(const b of box.querySelectorAll('.pj-tv'))bpAsk(box,b,b.dataset.op,()=>b.dataset.id); // 47-projo.js
+  for(const b of box.querySelectorAll('.rf-btn'))b.onclick=()=>rfOpen(box,b.dataset.id); // ↻ Rafraîchir, 47-rafraichir.js
   for(const a of box.querySelectorAll('.pj-how'))a.onclick=e=>{e.preventDefault();const i=box.querySelector('.pj-info');if(i){i.hidden=!i.hidden;if(!i.hidden)i.scrollIntoView({block:'nearest',behavior:SCROLL_BEHAVIOR});}};
 }
 function bossPagesWire(box){

@@ -51,6 +51,8 @@ class FakeKronn:
                      OFFICE_WF: [run_of(900)], TEAM_WF: [run_of(901, "Failed")]}
         self.datasets = []  # datasets de la page (GET /pages/{id})
         self.pages = {}  # autres pages Kronn par id (écran du boss, pages_snapshot.py)
+        self.page_wfs = {}  # id de page -> workflows qui y publient (GET /pages/{id}/workflows, « ↻ Rafraîchir »)
+        self.defs = {}  # id de workflow -> étapes de sa définition (GET /workflows/{id}), sinon celles par défaut
         self.details = {}  # id de run -> step_results du détail du run (sorties complètes)
         self.posts = []  # (chemin, corps) des POST reçus
         self.disc_details = {}  # id de discussion -> détail (GET /discussions/{id}, avec ses messages)
@@ -80,7 +82,10 @@ class FakeKronn:
         m = re.fullmatch(r"/workflows/([\w-]+)", p)
         if m:
             return {"id": m.group(1), "trigger": {"schedule": "*/10 4-20 * * *"}, "variables": self.variables.get(m.group(1), []),
-                    "steps": [{"name": "gate", "step_type": {"type": "Gate"}}] if m.group(1) == AGENT_WF else []}
+                    "steps": self.defs.get(m.group(1)) or ([{"name": "gate", "step_type": {"type": "Gate"}}] if m.group(1) == AGENT_WF else [])}
+        m = re.fullmatch(r"/pages/([\w-]+)/workflows", p)
+        if m:
+            return self.page_wfs.get(m.group(1), [])
         if p == "/pages":  # liste des pages Kronn (« + Ajouter » de l'écran mural, #61), le Bureau compris
             return [{"id": FIXTURE["page_id"], "title": "Le Bureau"}] + [{"id": k, "title": v.get("title")} for k, v in self.pages.items()]
         m = re.fullmatch(r"/pages/([\w-]+)", p)
@@ -1028,6 +1033,27 @@ print(json.dumps(val))
         self.assertIsNone(pb["img"])  # page changée et pas de Chrome : pas d'image (jamais l'ancienne)
         self.assertEqual(pa["updated"], fake.pages["pa"]["last_published_at"])
         self.assertEqual(sorted(os.listdir(cache)), ["pa.json", "pb.json"])  # cache de la page retirée supprimé
+
+    def test_pages_snapshot_lists_the_workflows_that_refresh_each_page(self):
+        """« ↻ Rafraîchir » : les workflows actifs qui publient dans la page, avec leur dernier run ; un sous-workflow est
+        remplacé par ceux qui le lancent (via), agent IA compris dans le sous-workflow ; un workflow désactivé est ignoré."""
+        fake, _, _ = self.boss_pages()
+        child, cron, off = "c0c0c0c0-1111-2222-3333-444444444444", "c1c1c1c1-1111-2222-3333-444444444444", "c2c2c2c2-1111-2222-3333-444444444444"
+        fake.workflows += [{"id": child, "name": "Relire une PR", "enabled": True, "trigger_type": "manual"},
+                           {"id": cron, "name": "Relire les PR du jour", "enabled": True, "trigger_type": "cron",
+                            "last_run": {"status": "Success", "started_at": iso(40), "finished_at": iso(30)}}]
+        fake.defs = {child: [{"name": "relire", "step_type": {"type": "Agent"}}],
+                     cron: [{"name": "chaque", "step_type": {"type": "SubWorkflow"}, "sub_workflow_id": child}]}
+        fake.page_wfs = {"pa": [{"id": AGENT_WF, "name": "Revue de PR", "enabled": True, "step_names": ["publish"]},
+                                {"id": off, "name": "Ancien", "enabled": False, "step_names": ["publish"]}],
+                         "pb": [{"id": child, "name": "Relire une PR", "enabled": True, "step_names": ["publish"]}]}
+        out = self.run_script("pages_snapshot.py", api=self.kronn(fake), boss_pages=["pa", "pb"], chrome=False)
+        pa, pb = out["pages"]
+        self.assertEqual([(f["wf"], f["trigger"], f["ai"], f["via"]) for f in pa["feeds"]], [(AGENT_WF, "cron", False, None)])
+        self.assertEqual(pa["feeds"][0]["last"]["status"], "Success")
+        self.assertEqual([(f["wf"], f["name"], f["ai"], f["via"]) for f in pb["feeds"]], [(cron, "Relire les PR du jour", True, "Relire une PR")])
+        self.assertEqual(pb["feeds"][0]["last"], {"status": "Success", "at": iso(30)})
+        self.assertEqual(out["warnings"], [])
 
     def test_pages_snapshot_captures_with_a_chrome_that_exits_by_itself(self):
         """Chrome récent : il sort seul après --screenshot ; arrêter son groupe (déjà parti) ne doit pas perdre la capture."""
