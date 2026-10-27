@@ -11,6 +11,10 @@ l'ordre de la liste ; choices : les pages Kronn qu'on peut ajouter (toutes, sauf
 - kpi : le chiffre clé que la page publie elle-même (champ « kpi » d'un de ses datasets : value, label, et au choix pct,
   parts, color, short), nettoyé (kpi_of) ; le vidéoprojecteur de la salle de réunion le montre en mode TV. Sans : null.
 - tv : la page est projetée en mode TV (liste « tv » du dataset pagelist, réglée depuis la fenêtre Mes pages Kronn).
+- feeds : les workflows actifs qui publient dans la page (Kronn, GET /pages/{id}/workflows), pour « ↻ Rafraîchir » de la
+  fenêtre : [{wf, name, trigger, ai, via, last}] ; un sous-workflow (lancé par un autre, jamais seul) est remplacé par
+  ceux qui le lancent (via = son nom) ; ai : une étape Agent (dans le sous-workflow compris) ; last : {status, at} du
+  dernier run. La page ne propose le bouton que pour ceux de sa liste des relançables (dataset gates, relaunch.py).
 - Une page supprimée ou illisible est sautée. Sortie bornée sous 90 Ko (les images en trop sont retirées).
 - warnings (#8) : page sautée, capture ratée (carte sans image) ; écrits aussi sur stderr (run Kronn).
 """
@@ -144,6 +148,53 @@ def kpi_of(d):
 TV = set()
 
 
+WFS, DEFS = {}, {}  # workflows de Kronn (liste) et leurs définitions, lues une fois par passage
+
+
+def definition(wid):
+    if wid not in DEFS:
+        try:
+            DEFS[wid] = get(f"/workflows/{wid}") or {}
+        except Exception:
+            DEFS[wid] = {}
+    return DEFS[wid]
+
+
+def has_agent(d):
+    return any((s.get("step_type") or {}).get("type") == "Agent" for s in d.get("steps") or [])
+
+
+def parents_of(wid):
+    """Workflows actifs qui lancent ce sous-workflow (une étape sub_workflow_id), définitions lues à la demande."""
+    return [w for w in WFS.values() if w.get("enabled") and w["id"] != wid
+            and any(s.get("sub_workflow_id") == wid for s in definition(w["id"]).get("steps") or [])]
+
+
+def feed(w, via=None, ai=False):
+    lr = w.get("last_run") or {}
+    return {"wf": w["id"], "name": str(w.get("name") or "")[:80], "trigger": w.get("trigger_type") or "manual",
+            "ai": ai or has_agent(definition(w["id"])), "via": via,
+            "last": {"status": lr.get("status"), "at": lr.get("finished_at") or lr.get("started_at")} if lr else None}
+
+
+def feeds(pid):
+    """Workflows à relancer pour rafraîchir la page : ceux qui y publient, les parents à la place d'un sous-workflow."""
+    try:
+        links = [x for x in get(f"/pages/{pid}/workflows") or [] if x.get("enabled", True)]
+    except Exception as e:
+        warn(f"workflows de la page {pid[:8]} illisibles : pas de « ↻ Rafraîchir » ({str(e)[:120] or type(e).__name__})")
+        return []
+    if links and not WFS:
+        WFS.update({w["id"]: w for w in get("/workflows") or [] if w.get("id")})
+    out = {}
+    for x in links:
+        w = WFS.get(x["id"]) or {"id": x["id"], "name": x.get("name"), "enabled": True}
+        ups = parents_of(w["id"]) if w.get("trigger_type") == "manual" else []
+        for f in ([feed(u, via=w.get("name"), ai=has_agent(definition(w["id"]))) for u in ups] if ups else [feed(w)]):
+            out.setdefault(f["wf"], f)
+    return list(out.values())[:6]
+
+
 def chosen():
     """La liste rangée par la page (dataset pagelist), sinon boss_pages ; TV : ses pages projetées en mode TV."""
     try:
@@ -175,7 +226,7 @@ for pid in ids:
         continue
     pages.append({"id": d["id"], "title": title(d),
                   "updated": d.get("last_published_at") or d.get("updated_at"), "img": thumb(d, exe),
-                  "kpi": kpi_of(d), "tv": d["id"] in TV})
+                  "kpi": kpi_of(d), "tv": d["id"] in TV, "feeds": feeds(d["id"])})
 # caches des pages retirées de la liste
 for f in glob.glob(os.path.join(CACHE, "*.json")):
     if os.path.basename(f)[:-5] not in ids:

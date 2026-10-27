@@ -30,6 +30,14 @@ DEMO_PAGES = ("ACTIONS.pages=true;BOSS_CHOICES=[{id:'demo-a',title:'Planning des
 DEMO_PROJO = (DEMO_PAGES + "BOSS_PAGES[0].kpi={value:'82 %',label:'du CA visé',pct:82,color:'#5b8def',short:'Ventes'};"
               "BOSS_PAGES[2].kpi={value:'46 avis',label:'cette semaine',parts:[[30,'#3fbf6a'],[10,'#e0a020'],[6,'#e0614f']],short:'Satisfaction'};"
               "PAGE_TV=['demo0','demo2','demo3'];")
+# « ↻ Rafraîchir » (47-rafraichir.js) : les workflows de chaque page, pris parmi les agents de la démo et leurs runs du jour ;
+# Livraisons a deux workflows, dont un agent IA (coût de la fiche de paie)
+DEMO_REFRESH = (DEMO_PROJO + "ACTIONS.relaunch=true;const RA=chars.filter(c=>!c.person&&!c.visitor&&!c.temp&&c.runs.length),"
+                "RF=(c,o={})=>({wf:c.runs[0].wf,name:clean(c.runs[0].wf_name),trigger:'cron',ai:false,via:null,last:null,...o});"
+                "BOSS_PAGES.forEach((p,i)=>{p.feeds=[RF(RA[i%RA.length])];});const Z={tok:0,runs:0,fail:0};"
+                "PAYROLL={...(PAYROLL||{}),rate_usd_per_mtok:3,agents:[...((PAYROLL||{}).agents||[]),{wf:'demo-ia',name:'Relecture des PR',today:Z,week:{tok:336e3,runs:7,fail:0},days:[]}]};"
+                "BOSS_PAGES[3].feeds.push({wf:'demo-ia',name:'Relecture des PR',trigger:'cron',ai:true,via:'Relire une PR',last:{status:'Success',at:new Date(T-3*36e5).toISOString()}});"
+                "RELAUNCH=[...RELAUNCH,...BOSS_PAGES.flatMap(p=>p.feeds).map(f=>({wf:f.wf,name:f.name,params:f.wf}))];")
 # démo des fiches de ticket : actions et PR branchées (comme fiche-ticket), le ticket d'une PR en conflit et son personnage
 # créer un ticket (#77) : Karen incarne le modèle ticket (CFG.ticket), son formulaire « ▶ Lancer » et l'aperçu de sa validation
 TICKET_DEMO = ("applyAgents({a_karen_7c3a:{name:'Karen',role:'Créer un ticket',wf:['7c3a1b2e'],sprite:'p_karen',at:T-5*864e5}});CFG.ticket={wf:'7c3a1b2e'};"
@@ -149,6 +157,9 @@ SHOTS = {
                    "k=b.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(b.left+scrollX+r.x*k)+'px',"
                    "top:(b.top+scrollY+(r.y-40)*k)+'px',width:r.w*k+'px',height:(r.h+48)*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 3),
     # écran de validation (#61) : clic sur × d'une page, la grille se replie ; la carte Kronn s'ouvre juste dessous (pas en démo)
+    # « ↻ Rafraîchir » sur chaque carte et l'état du jour ; l'écran d'une page à deux workflows, dont un agent IA et son coût
+    "pages-rafraichir": (1400, 1100, AT(11) + DEMO_REFRESH + "openBossPages();", ".bp-modal"),
+    "pages-rafraichir-ecran": (1400, 900, AT(11) + DEMO_REFRESH + "openBossPages();document.querySelectorAll('.rf-btn')[3].click();", ".bp-modal"),
     "pages-validation": (1400, 1000, AT(11) + DEMO_PAGES + "openBossPages();document.querySelectorAll('.bp-del')[2].click();", ".bp-modal"),
     # l'écran mural de la salle de réunion (#61) : 4 miniatures et la case « + » (zoom sur la pièce)
     "mur-pages": (1400, 1000, AT(11) + DEMO_PAGES + "const r=wallRect(),c=cv.getBoundingClientRect(),k=c.width/W,d=document.createElement('div');d.id='zoom';"
