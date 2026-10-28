@@ -90,7 +90,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Vers un statut de la colonne En cours (jira.statuses), un ticket que personne n'a est affecté au compte de la connexion Jira avant la transition ; à quelqu'un d'autre : on n'y touche pas. Sinon « PASSE » : saut aux transitions.",
+    "description": "Vers un statut de la colonne En cours (jira.statuses), un ticket que personne n'a est affecté au compte de la connexion Jira avant la transition ; à quelqu'un d'autre : on n'y touche pas. Sinon code 3 (« PASSE ») : saut aux transitions ; on_result ne lit que les signaux de Kronn (exit_3), jamais le texte écrit.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -102,7 +102,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "import sys,json\np=sys.stdin.read().split('\\n===SEP===\\n')\nme=json.loads(p[0]) if p[0].strip() else {}\nt=json.loads(p[1]) if len(p)>1 and p[1].strip() else {}\ncols={k.strip().lower():v for k,v in json.loads(sys.argv[2] or '{}').items()}\na=(t.get('fields') or {}).get('assignee')\nif cols.get(sys.argv[1].strip().lower())!='doing':\n    sys.stdout.write('PASSE : pas vers En cours')\nelif a:\n    sys.stdout.write('PASSE : deja a %s' % (a.get('displayName') or '?'))\nelif not me.get('accountId'):\n    sys.stdout.write('PASSE : compte Jira inconnu')\nelse:\n    sys.stdout.write('AFFECTER')\n",
+     "import sys,json\np=sys.stdin.read().split('\\n===SEP===\\n')\nme=json.loads(p[0]) if p[0].strip() else {}\nt=json.loads(p[1]) if len(p)>1 and p[1].strip() else {}\ncols={k.strip().lower():v for k,v in json.loads(sys.argv[2] or '{}').items()}\na=(t.get('fields') or {}).get('assignee')\nif cols.get(sys.argv[1].strip().lower())!='doing':\n    sys.stdout.write('PASSE : pas vers En cours')\n    sys.exit(3)\nif a:\n    sys.stdout.write('PASSE : deja a %s' % (a.get('displayName') or '?'))\n    sys.exit(3)\nif not me.get('accountId'):\n    sys.stdout.write('PASSE : compte Jira inconnu')\n    sys.exit(3)\nsys.stdout.write('AFFECTER')\n",
      "{{target_status}}",
      "@@jira.statuses_json@@"
     ],
@@ -110,7 +110,7 @@
     "exec_stdin": "{{steps.whoami.data}}\n===SEP===\n{{steps.avant.data}}",
     "on_result": [
      {
-      "contains": "PASSE",
+      "contains": "exit_3",
       "action": {
        "type": "Goto",
        "step_name": "transitions"
@@ -196,7 +196,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "La transition vers le statut visé, choisie par son nom de statut (aucun id écrit en dur) ; une transition propre au flux plutôt qu'une globale. Sans transition directe (Reopen -> To Review), une transition vers un autre statut de la même colonne du board (jira.statuses : Reopen -> En cours) ; le second saut suit. Déjà dans ce statut : « DEJA », le run s'arrête là, réussi.",
+    "description": "La transition vers le statut visé, choisie par son nom de statut (aucun id écrit en dur) ; une transition propre au flux plutôt qu'une globale. Sans transition directe (Reopen -> To Review), une transition vers un autre statut de la même colonne du board (jira.statuses : Reopen -> En cours) ; le second saut suit. Déjà dans ce statut : « DEJA » et code 3 : saut à « fin », le run se termine réussi (un Stop après un code non nul le laisserait en échec).",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -208,7 +208,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "import sys,json\np=sys.stdin.read().split('\\n===SEP===\\n')\nd=json.loads(p[0]) if p[0].strip() else {}\niss=json.loads(p[1]) if len(p)>1 and p[1].strip() else {}\nwant=sys.argv[1].strip().lower()\ncols={k.strip().lower():v for k,v in json.loads(sys.argv[2] or '{}').items()}\ncur=((iss.get('fields') or {}).get('status') or {}).get('name') or ''\nif cur.strip().lower()==want:\n    sys.stdout.write('DEJA')\n    sys.exit(0)\ntr=d.get('transitions') or []\nto=lambda t:((t.get('to') or {}).get('name') or '').strip().lower()\nts=[t for t in tr if to(t)==want]\ncol=cols.get(cur.strip().lower())\nif not ts and sys.argv[3]=='via' and col:\n    ts=[t for t in tr if to(t)!=cur.strip().lower() and cols.get(to(t))==col]\nrank={k:i for i,k in enumerate(cols)}\nts.sort(key=lambda t:(bool(t.get('isGlobal')),rank.get(to(t),99)))\nif not ts:\n    have=', '.join(sorted({(t.get('to') or {}).get('name') or '?' for t in tr}))\n    sys.stderr.write('Jira ne propose pas de passer de %s a %s (possibles : %s).\\n' % (cur or '?', sys.argv[1], have or 'aucune'))\n    sys.exit(1)\nsys.stdout.write(str(ts[0]['id']))\n",
+     "import sys,json\np=sys.stdin.read().split('\\n===SEP===\\n')\nd=json.loads(p[0]) if p[0].strip() else {}\niss=json.loads(p[1]) if len(p)>1 and p[1].strip() else {}\nwant=sys.argv[1].strip().lower()\ncols={k.strip().lower():v for k,v in json.loads(sys.argv[2] or '{}').items()}\ncur=((iss.get('fields') or {}).get('status') or {}).get('name') or ''\nif cur.strip().lower()==want:\n    sys.stdout.write('DEJA')\n    sys.exit(3)\ntr=d.get('transitions') or []\nto=lambda t:((t.get('to') or {}).get('name') or '').strip().lower()\nts=[t for t in tr if to(t)==want]\ncol=cols.get(cur.strip().lower())\nif not ts and sys.argv[3]=='via' and col:\n    ts=[t for t in tr if to(t)!=cur.strip().lower() and cols.get(to(t))==col]\nrank={k:i for i,k in enumerate(cols)}\nts.sort(key=lambda t:(bool(t.get('isGlobal')),rank.get(to(t),99)))\nif not ts:\n    have=', '.join(sorted({(t.get('to') or {}).get('name') or '?' for t in tr}))\n    sys.stderr.write('Jira ne propose pas de passer de %s a %s (possibles : %s).\\n' % (cur or '?', sys.argv[1], have or 'aucune'))\n    sys.exit(1)\nsys.stdout.write(str(ts[0]['id']))\n",
      "{{target_status}}",
      "@@jira.statuses_json@@",
      "via"
@@ -217,9 +217,10 @@
     "exec_stdin": "{{steps.transitions.data}}\n===SEP===\n{{steps.avant.data}}",
     "on_result": [
      {
-      "contains": "DEJA",
+      "contains": "exit_3",
       "action": {
-       "type": "Stop"
+       "type": "Goto",
+       "step_name": "fin"
       }
      }
     ]
@@ -325,7 +326,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Second saut, direct seulement : déjà dans le statut visé (premier saut direct) : « DEJA », le run s'arrête là, réussi.",
+    "description": "Second saut, direct seulement : déjà dans le statut visé (premier saut direct) : « DEJA » et code 3 : saut à « fin », le run se termine réussi (un Stop après un code non nul le laisserait en échec).",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -337,7 +338,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "import sys,json\np=sys.stdin.read().split('\\n===SEP===\\n')\nd=json.loads(p[0]) if p[0].strip() else {}\niss=json.loads(p[1]) if len(p)>1 and p[1].strip() else {}\nwant=sys.argv[1].strip().lower()\ncols={k.strip().lower():v for k,v in json.loads(sys.argv[2] or '{}').items()}\ncur=((iss.get('fields') or {}).get('status') or {}).get('name') or ''\nif cur.strip().lower()==want:\n    sys.stdout.write('DEJA')\n    sys.exit(0)\ntr=d.get('transitions') or []\nto=lambda t:((t.get('to') or {}).get('name') or '').strip().lower()\nts=[t for t in tr if to(t)==want]\ncol=cols.get(cur.strip().lower())\nif not ts and sys.argv[3]=='via' and col:\n    ts=[t for t in tr if to(t)!=cur.strip().lower() and cols.get(to(t))==col]\nrank={k:i for i,k in enumerate(cols)}\nts.sort(key=lambda t:(bool(t.get('isGlobal')),rank.get(to(t),99)))\nif not ts:\n    have=', '.join(sorted({(t.get('to') or {}).get('name') or '?' for t in tr}))\n    sys.stderr.write('Jira ne propose pas de passer de %s a %s (possibles : %s).\\n' % (cur or '?', sys.argv[1], have or 'aucune'))\n    sys.exit(1)\nsys.stdout.write(str(ts[0]['id']))\n",
+     "import sys,json\np=sys.stdin.read().split('\\n===SEP===\\n')\nd=json.loads(p[0]) if p[0].strip() else {}\niss=json.loads(p[1]) if len(p)>1 and p[1].strip() else {}\nwant=sys.argv[1].strip().lower()\ncols={k.strip().lower():v for k,v in json.loads(sys.argv[2] or '{}').items()}\ncur=((iss.get('fields') or {}).get('status') or {}).get('name') or ''\nif cur.strip().lower()==want:\n    sys.stdout.write('DEJA')\n    sys.exit(3)\ntr=d.get('transitions') or []\nto=lambda t:((t.get('to') or {}).get('name') or '').strip().lower()\nts=[t for t in tr if to(t)==want]\ncol=cols.get(cur.strip().lower())\nif not ts and sys.argv[3]=='via' and col:\n    ts=[t for t in tr if to(t)!=cur.strip().lower() and cols.get(to(t))==col]\nrank={k:i for i,k in enumerate(cols)}\nts.sort(key=lambda t:(bool(t.get('isGlobal')),rank.get(to(t),99)))\nif not ts:\n    have=', '.join(sorted({(t.get('to') or {}).get('name') or '?' for t in tr}))\n    sys.stderr.write('Jira ne propose pas de passer de %s a %s (possibles : %s).\\n' % (cur or '?', sys.argv[1], have or 'aucune'))\n    sys.exit(1)\nsys.stdout.write(str(ts[0]['id']))\n",
      "{{target_status}}",
      "@@jira.statuses_json@@",
      "direct"
@@ -346,9 +347,10 @@
     "exec_stdin": "{{steps.transitions2.data}}\n===SEP===\n{{steps.apres.data}}",
     "on_result": [
      {
-      "contains": "DEJA",
+      "contains": "exit_3",
       "action": {
-       "type": "Stop"
+       "type": "Goto",
+       "step_name": "fin"
       }
      }
     ]
@@ -450,6 +452,27 @@
     ],
     "exec_timeout_secs": 30,
     "exec_stdin": "{{steps.apres2.data}}"
+   },
+   {
+    "name": "fin",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Fin commune : le chemin normal y arrive après « verifie », « déjà dans le statut visé » y saute (code 3 de choose ou choose2).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "print('termine')\n"
+    ],
+    "exec_timeout_secs": 30
    }
   ]
  }

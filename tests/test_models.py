@@ -120,10 +120,10 @@ class ModelsTest(unittest.TestCase):
         self.assertEqual(choose("choose", reopen, "Reopen"), (0, "11"))  # En cours, le principal de la colonne, avant Bloqué
         self.assertEqual(choose("choose", tr(("21", "To Review"), ("4", "À faire")), "En cours"), (0, "21"))  # direct
         self.assertEqual(choose("choose", tr(("2", "Fermé"), ("4", "À faire")), "Reopen")[0], 1)  # jamais hors de la colonne
-        self.assertEqual(choose("choose", reopen, "To Review"), (0, "DEJA"))
+        self.assertEqual(choose("choose", reopen, "To Review"), (3, "DEJA"))  # code 3 : saut à « fin »
         self.assertEqual(choose("choose2", tr(("21", "To Review")), "En cours"), (0, "21"))  # second saut
         self.assertEqual(choose("choose2", reopen, "Reopen")[0], 1)  # le second saut ne fait jamais de détour
-        self.assertEqual(choose("choose2", reopen, "To Review"), (0, "DEJA"))  # premier saut direct : le run s'arrête là
+        self.assertEqual(choose("choose2", reopen, "To Review"), (3, "DEJA"))  # premier saut direct : saut à « fin »
         body = lambda n: st[n]["api_body"]["bulkTransitionInputs"][0]["transitionId"]  # noqa: E731
         self.assertEqual((body("transition"), body("transition2")), ("{{steps.choose.data.stdout}}", "{{steps.choose2.data.stdout}}"))
         self.assertTrue(st["choose2"]["exec_stdin"].endswith("{{steps.apres.data}}"))
@@ -137,7 +137,10 @@ class ModelsTest(unittest.TestCase):
         st = steps("move", c)
         self.assertEqual([s for s in st][:6], ["avant", "whoami", "qui", "affecte", "pris", "transitions"])
         self.assertIn("assignee", st["avant"]["api_query"]["fields"])
-        self.assertEqual(st["qui"]["on_result"], [{"contains": "PASSE", "action": {"type": "Goto", "step_name": "transitions"}}])
+        self.assertEqual(st["qui"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "transitions"}}])
+        for n in ("choose", "choose2"):
+            self.assertEqual(st[n]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "fin"}}])
+        self.assertEqual(list(st)[-1], "fin")
         self.assertEqual(st["affecte"]["api_body"]["fields"]["assignee"]["accountId"], "{{steps.whoami.data.accountId}}")
         me = json.dumps({"accountId": "moi"})
 
@@ -145,7 +148,9 @@ class ModelsTest(unittest.TestCase):
             args = [a.replace("{{target_status}}", want) for a in (steps("move", cfg(jira={**c["jira"], "statuses": statuses}))
                                                                    if statuses is not None else st)["qui"]["exec_args"]]
             t = json.dumps({"fields": {"status": {"name": "À faire"}, "assignee": assignee}})
-            return subprocess.run(["python3", *args], input=who + "\n===SEP===\n" + t, capture_output=True, text=True).stdout
+            r = subprocess.run(["python3", *args], input=who + "\n===SEP===\n" + t, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0 if r.stdout == "AFFECTER" else 3, r.stdout)  # PASSE : code 3, le signal de Kronn
+            return r.stdout
         self.assertEqual(qui("En cours"), "AFFECTER")
         self.assertEqual(qui("en cours"), "AFFECTER")  # casse ignorée
         self.assertEqual(qui("Reopen"), "AFFECTER")  # tout statut de la colonne En cours
@@ -158,6 +163,15 @@ class ModelsTest(unittest.TestCase):
             {"fields": {"assignee": {"accountId": got}}}), capture_output=True, text=True)
         self.assertEqual((pris("moi").returncode, pris("moi").stdout), (0, "affecte"))
         self.assertEqual(pris("autre").returncode, 0)  # course perdue : le déplacement continue
+
+    def test_on_result_rules_only_match_kronn_signals(self):
+        """Kronn ne compare on_result qu'aux lignes « [SIGNAL: …] » (OK, ERROR, exit_N, PARTIAL, PENDING), jamais au texte
+        écrit par l'étape : une règle sur « DEJA » ou « PASSE » ne se déclenche jamais (move publié le 2026-10-28)."""
+        for key, tpl in TPL.items():
+            for s in (tpl.get("definition") or {}).get("steps") or []:
+                for rule in s.get("on_result") or []:
+                    self.assertRegex(rule["contains"], r"^(OK|ERROR|PARTIAL|PENDING|PAGINATION_TRUNCATED|exit_\d+|http_\d+)$",
+                                     f"{key}.{s['name']}")
 
     def test_issue_finds_gh_and_its_recap_discussion_is_optional(self):
         s = steps("issue", cfg())
