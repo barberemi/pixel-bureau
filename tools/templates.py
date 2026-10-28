@@ -175,6 +175,9 @@ def values(cfg):
         # mise en prod (#58) : Quick Prompt du retour IA et transition Jira de fin (facultatifs : étapes retirées sans eux)
         "mep.feedback_qp": (cfg.get("mep") or {}).get("feedback_qp") or "",
         "mep.done_transition": str((cfg.get("mep") or {}).get("done_transition") or ""),
+        # projet Kronn du workflow : il borne les connexions de l'étape retour IA (GitHub de l'équipe), comme la revue
+        "mep.project_id": (cfg.get("mep") or {}).get("project_id") or rv.get("project_id")
+        or (cfg.get("kronn") or {}).get("project_id") or "",
         # modèles incarnés par des agents (#78)
         "kronn.api": (cfg.get("kronn") or {}).get("api") or "",
         "github.config_id": (cfg.get("github") or {}).get("config_id") or "",  # connexion GitHub de Kronn (API GitHub)
