@@ -64,6 +64,20 @@ test('déplacer : ◀ puis ▶, liés à leur ligne de actions.moves (Kronn y re
   assert.deepEqual(J(`mvRows(${JSON.stringify(t)})`), []);
 });
 
+test('déplacer : l\'infobulle dit le passage par le statut principal (Reopen) et l\'affectation d\'un ticket que personne n\'a vers En cours', () => {
+  run("CFG.jira_main={doing:'En cours',review:'To Review'};");
+  const m = {dir: 'next', to: 'To Review'};
+  assert.equal(J(`mvTitle({status:'Reopen',cat:'doing'},${JSON.stringify(m)})`),
+    "Avancer : passer le ticket en To Review dans Jira, en passant par En cours si Jira l'exige depuis Reopen");
+  assert.equal(J(`mvTitle({status:'En cours',cat:'doing'},${JSON.stringify(m)})`), 'Avancer : passer le ticket en To Review dans Jira');
+  assert.equal(J(`mvTitle({status:'À faire',cat:'todo',owner:null},${JSON.stringify(m)},'doing')`),
+    "Avancer : passer le ticket en To Review dans Jira, et t'y affecte (personne ne l'a)");
+  assert.equal(J(`mvTitle({status:'À faire',cat:'todo',owner:'Pam'},${JSON.stringify(m)},'doing')`), 'Avancer : passer le ticket en To Review dans Jira');
+  assert.equal(J(`mvTitle({status:'En cours',cat:'doing',owner:null},${JSON.stringify(m)},'review')`), 'Avancer : passer le ticket en To Review dans Jira');
+  run('CFG.jira_main=undefined;');
+  assert.equal(J(`mvTitle({status:'Reopen',cat:'doing'},${JSON.stringify(m)})`), 'Avancer : passer le ticket en To Review dans Jira');
+});
+
 test('un ticket réouvert (statut jira.flow.reopened) porte la pastille « ↺ Réouvert » ; les autres non', () => {
   assert.equal(J('kbReopened({status:FLOW.reopened,cat:"doing"})'), true);
   assert.equal(J('kbReopened({status:"En cours",cat:"doing"})'), false);

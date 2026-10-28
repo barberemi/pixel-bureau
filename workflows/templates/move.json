@@ -47,7 +47,7 @@
     "step_type": {
      "type": "ApiCall"
     },
-    "description": "État avant écriture : le statut actuel (déjà dans le statut visé : rien à faire).",
+    "description": "État avant écriture : le statut actuel (déjà dans le statut visé : rien à faire) et qui a le ticket.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -61,9 +61,114 @@
     "api_endpoint_path": "/rest/api/3/issue/{{jira_ticket_key}}",
     "api_method": "GET",
     "api_query": {
-     "fields": "status,summary"
+     "fields": "status,summary,assignee"
     },
     "_requires": "jira"
+   },
+   {
+    "name": "whoami",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "L'identité vient du jeton, jamais d'un identifiant écrit en dur.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/myself",
+    "api_method": "GET",
+    "_requires": "jira"
+   },
+   {
+    "name": "qui",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Vers un statut de la colonne En cours (jira.statuses), un ticket que personne n'a est affecté au compte de la connexion Jira avant la transition ; à quelqu'un d'autre : on n'y touche pas. Sinon « PASSE » : saut aux transitions.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "import sys,json\np=sys.stdin.read().split('\\n===SEP===\\n')\nme=json.loads(p[0]) if p[0].strip() else {}\nt=json.loads(p[1]) if len(p)>1 and p[1].strip() else {}\ncols={k.strip().lower():v for k,v in json.loads(sys.argv[2] or '{}').items()}\na=(t.get('fields') or {}).get('assignee')\nif cols.get(sys.argv[1].strip().lower())!='doing':\n    sys.stdout.write('PASSE : pas vers En cours')\nelif a:\n    sys.stdout.write('PASSE : deja a %s' % (a.get('displayName') or '?'))\nelif not me.get('accountId'):\n    sys.stdout.write('PASSE : compte Jira inconnu')\nelse:\n    sys.stdout.write('AFFECTER')\n",
+     "{{target_status}}",
+     "@@jira.statuses_json@@"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.whoami.data}}\n===SEP===\n{{steps.avant.data}}",
+    "on_result": [
+     {
+      "contains": "PASSE",
+      "action": {
+       "type": "Goto",
+       "step_name": "transitions"
+      }
+     }
+    ]
+   },
+   {
+    "name": "affecte",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Edit issue plutôt que PUT /assignee : ce dernier répond 204 sans corps, que l'étape ApiCall ne sait pas traiter (KT-689). returnIssue=true rend un 200 porteur de l'issue.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/issue/{{jira_ticket_key}}",
+    "api_method": "PUT",
+    "api_query": {
+     "returnIssue": "true"
+    },
+    "api_body": {
+     "fields": {
+      "assignee": {
+       "accountId": "{{steps.whoami.data.accountId}}"
+      }
+     }
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "pris",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Relit l'affecté dans la réponse de l'écriture (lire puis écrire n'est pas atomique) ; ne bloque jamais le déplacement.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "import sys,json\np=sys.stdin.read().split('\\n===SEP===\\n')\nme=json.loads(p[0]) if p[0].strip() else {}\nr=json.loads(p[1]) if len(p)>1 and p[1].strip() else {}\ngot=((r.get('fields') or {}).get('assignee') or {}).get('accountId')\nsys.stdout.write('affecte' if got and got==me.get('accountId') else 'pris par un autre entre-temps : le deplacement continue')\n"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.whoami.data}}\n===SEP===\n{{steps.affecte.data}}"
    },
    {
     "name": "transitions",
@@ -91,7 +196,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "La transition vers le statut visé, choisie par son nom de statut (aucun id écrit en dur) ; une transition propre au flux plutôt qu'une globale. Déjà dans ce statut : « DEJA », le run s'arrête là, réussi.",
+    "description": "La transition vers le statut visé, choisie par son nom de statut (aucun id écrit en dur) ; une transition propre au flux plutôt qu'une globale. Sans transition directe (Reopen -> To Review), une transition vers un autre statut de la même colonne du board (jira.statuses : Reopen -> En cours) ; le second saut suit. Déjà dans ce statut : « DEJA », le run s'arrête là, réussi.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -103,8 +208,10 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "import sys,json\np=sys.stdin.read().split('\\n===SEP===\\n')\nd=json.loads(p[0]) if p[0].strip() else {}\niss=json.loads(p[1]) if len(p)>1 and p[1].strip() else {}\nwant=sys.argv[1].strip().lower()\ncur=((iss.get('fields') or {}).get('status') or {}).get('name') or ''\nif cur.strip().lower()==want:\n    sys.stdout.write('DEJA')\n    sys.exit(0)\nts=[t for t in d.get('transitions') or [] if ((t.get('to') or {}).get('name') or '').strip().lower()==want]\nts.sort(key=lambda t:bool(t.get('isGlobal')))\nif not ts:\n    have=', '.join(sorted({(t.get('to') or {}).get('name') or '?' for t in d.get('transitions') or []}))\n    sys.stderr.write('Jira ne propose pas de passer de %s a %s (possibles : %s).\\n' % (cur or '?', sys.argv[1], have or 'aucune'))\n    sys.exit(1)\nsys.stdout.write(str(ts[0]['id']))\n",
-     "{{target_status}}"
+     "import sys,json\np=sys.stdin.read().split('\\n===SEP===\\n')\nd=json.loads(p[0]) if p[0].strip() else {}\niss=json.loads(p[1]) if len(p)>1 and p[1].strip() else {}\nwant=sys.argv[1].strip().lower()\ncols={k.strip().lower():v for k,v in json.loads(sys.argv[2] or '{}').items()}\ncur=((iss.get('fields') or {}).get('status') or {}).get('name') or ''\nif cur.strip().lower()==want:\n    sys.stdout.write('DEJA')\n    sys.exit(0)\ntr=d.get('transitions') or []\nto=lambda t:((t.get('to') or {}).get('name') or '').strip().lower()\nts=[t for t in tr if to(t)==want]\ncol=cols.get(cur.strip().lower())\nif not ts and sys.argv[3]=='via' and col:\n    ts=[t for t in tr if to(t)!=cur.strip().lower() and cols.get(to(t))==col]\nrank={k:i for i,k in enumerate(cols)}\nts.sort(key=lambda t:(bool(t.get('isGlobal')),rank.get(to(t),99)))\nif not ts:\n    have=', '.join(sorted({(t.get('to') or {}).get('name') or '?' for t in tr}))\n    sys.stderr.write('Jira ne propose pas de passer de %s a %s (possibles : %s).\\n' % (cur or '?', sys.argv[1], have or 'aucune'))\n    sys.exit(1)\nsys.stdout.write(str(ts[0]['id']))\n",
+     "{{target_status}}",
+     "@@jira.statuses_json@@",
+     "via"
     ],
     "exec_timeout_secs": 30,
     "exec_stdin": "{{steps.transitions.data}}\n===SEP===\n{{steps.avant.data}}",
@@ -193,6 +300,135 @@
     "_requires": "jira"
    },
    {
+    "name": "transitions2",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Transitions possibles depuis le statut atteint : le second saut, quand le premier n'est passé que par un statut de la même colonne.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/issue/{{jira_ticket_key}}/transitions",
+    "api_method": "GET",
+    "api_query": {},
+    "_requires": "jira"
+   },
+   {
+    "name": "choose2",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Second saut, direct seulement : déjà dans le statut visé (premier saut direct) : « DEJA », le run s'arrête là, réussi.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "import sys,json\np=sys.stdin.read().split('\\n===SEP===\\n')\nd=json.loads(p[0]) if p[0].strip() else {}\niss=json.loads(p[1]) if len(p)>1 and p[1].strip() else {}\nwant=sys.argv[1].strip().lower()\ncols={k.strip().lower():v for k,v in json.loads(sys.argv[2] or '{}').items()}\ncur=((iss.get('fields') or {}).get('status') or {}).get('name') or ''\nif cur.strip().lower()==want:\n    sys.stdout.write('DEJA')\n    sys.exit(0)\ntr=d.get('transitions') or []\nto=lambda t:((t.get('to') or {}).get('name') or '').strip().lower()\nts=[t for t in tr if to(t)==want]\ncol=cols.get(cur.strip().lower())\nif not ts and sys.argv[3]=='via' and col:\n    ts=[t for t in tr if to(t)!=cur.strip().lower() and cols.get(to(t))==col]\nrank={k:i for i,k in enumerate(cols)}\nts.sort(key=lambda t:(bool(t.get('isGlobal')),rank.get(to(t),99)))\nif not ts:\n    have=', '.join(sorted({(t.get('to') or {}).get('name') or '?' for t in tr}))\n    sys.stderr.write('Jira ne propose pas de passer de %s a %s (possibles : %s).\\n' % (cur or '?', sys.argv[1], have or 'aucune'))\n    sys.exit(1)\nsys.stdout.write(str(ts[0]['id']))\n",
+     "{{target_status}}",
+     "@@jira.statuses_json@@",
+     "direct"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.transitions2.data}}\n===SEP===\n{{steps.apres.data}}",
+    "on_result": [
+     {
+      "contains": "DEJA",
+      "action": {
+       "type": "Stop"
+      }
+     }
+    ]
+   },
+   {
+    "name": "transition2",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Second saut, même API bulk que le premier.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/bulk/issues/transition",
+    "api_method": "POST",
+    "api_body": {
+     "bulkTransitionInputs": [
+      {
+       "selectedIssueIdsOrKeys": [
+        "{{jira_ticket_key}}"
+       ],
+       "transitionId": "{{steps.choose2.data.stdout}}"
+      }
+     ],
+     "sendBulkNotification": false
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "pause2",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Attente avant relecture. Mesure : le ticket bascule a ~1,5 s apres le 201 de l'API bulk. 3 s = deux fois la marge ; « verifie » tranche si ca n'a pas suffi.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "import time\ntime.sleep(3)\nprint('pause')\n"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "name": "apres2",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "État réel du ticket après le second saut.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/issue/{{jira_ticket_key}}",
+    "api_method": "GET",
+    "api_query": {
+     "fields": "status"
+    },
+    "_requires": "jira"
+   },
+   {
     "name": "verifie",
     "step_type": {
      "type": "Exec"
@@ -213,7 +449,7 @@
      "{{target_status}}"
     ],
     "exec_timeout_secs": 30,
-    "exec_stdin": "{{steps.apres.data}}"
+    "exec_stdin": "{{steps.apres2.data}}"
    }
   ]
  }
