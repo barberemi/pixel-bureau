@@ -60,6 +60,8 @@ def norm(s):
 
 
 people, by_key, unassigned = {}, {}, []
+# ordre du board (étape board_rank, API Agile) : le rang de chaque ticket du sprint, absent si la lecture a échoué
+RANK = {it.get("key"): i for i, it in enumerate(D.get("rank") or []) if isinstance(it, dict) and it.get("key")}
 for it in D.get("issues") or []:
     f = it.get("fields") or {}
     st = (f.get("status") or {}).get("name") or ""
@@ -70,6 +72,10 @@ for it in D.get("issues") or []:
     t = {"key": it.get("key"), "summary": (f.get("summary") or "")[:110], "status": st, "cat": cat,
          "points": pts, "type": (f.get("issuetype") or {}).get("name"), "updated": f.get("updated"), "created": f.get("created"),
          "since": status_since(it)}
+    if (f.get("priority") or {}).get("name"):
+        t["prio"] = f["priority"]["name"]  # Highest, High, Medium, Low, Lowest (icône de la page)
+    if it.get("key") in RANK:
+        t["rank"] = RANK[it["key"]]
     a = f.get("assignee")
     if not a:
         unassigned.append(t)

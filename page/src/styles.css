@@ -837,3 +837,5 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 #tvwho .tve{background:var(--tv-card);border-radius:10px;padding:8px 12px;color:var(--tv-ink)}
 .tve-l{display:grid;grid-template-columns:34px 1fr auto;gap:8px;line-height:22px;color:var(--tv-muted)}.tve-l em{font-style:normal;font-weight:700;color:var(--tv-ink)}
 .tve-l .dep-br{color:var(--tv-ok)}.tve-l .dep-none{color:inherit}.tve-l img{width:18px;vertical-align:middle;margin-right:4px}
+.pz{display:inline-flex;vertical-align:-2px;margin-right:4px}.pz svg{display:block;shape-rendering:crispEdges}
+.pz-head{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin:0 0 6px}.pz-head b{color:var(--ink)}

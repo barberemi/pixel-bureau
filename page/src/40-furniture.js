@@ -293,7 +293,7 @@ const EMP_FRAME={y:-1,draw:()=>{
 // mur Kanban à droite du bureau du boss
 function kanbanCols(){
   const all=TEAM?[...TEAM.people.flatMap(p=>p.tickets.map(x=>({...x,owner:p.name}))),...(TEAM.unassigned||[]).map(x=>({...x,owner:null}))]:[];
-  return ['todo','doing','review','test','deploy','done'].map(k=>({k,list:all.filter(x=>x.cat===k)}));
+  return ['todo','doing','review','test','deploy','done'].map(k=>({k,list:all.filter(x=>x.cat===k).sort(kbRank)}));
 }
 const KANBAN_WALL={y:-1,draw:()=>{
   const {x,y,w,h}=KANR;

@@ -105,3 +105,16 @@ test('ticket qui traîne : seuils réglables (ui.stale)', () => {
         assert.equal(J('kbStale({since: new Date(T - 50 * 864e5).toISOString()}, "doing")'), null); } // colonne absente du réglage
   finally { run('delete CFG.ui.stale;'); }
 });
+
+test('ordre du board : les colonnes suivent le rang Jira (sans rang : l\'ordre d\'avant) ; priorité en chevrons ; rang dans la colonne', () => {
+  const r = J(`(() => { const t0 = TEAM; TEAM = {people: [{name: 'Pam', tickets: [
+      {key: 'DM-3', cat: 'doing', rank: 9, prio: 'Low'}, {key: 'DM-1', cat: 'doing', rank: 2, prio: 'High'},
+      {key: 'DM-7', cat: 'doing'}, {key: 'DM-5', cat: 'review', rank: 1, prio: 'Medium'}]}], unassigned: []};
+    try { const c = kanbanCols(); return {doing: c[1].list.map(x => x.key), line: prioLine(c[1].list[1]), first: prioLine(c[1].list[0]),
+      ico: prioIco('Highest'), none: prioIco('Inconnue') + prioLine({key: 'DM-7', cat: 'doing'})}; } finally { TEAM = t0; } })()`);
+  assert.deepEqual(r.doing, ['DM-1', 'DM-3', 'DM-7']);
+  assert.match(r.first, /Priorité <b>Haute<\/b> · 1<sup>er<\/sup> de la colonne En cours/);
+  assert.match(r.line, /Priorité <b>Basse<\/b> · 2<sup>e<\/sup> de la colonne En cours/);
+  assert.match(r.ico, /title="Priorité Jira : Très haute"/);
+  assert.equal(r.none, '');
+});

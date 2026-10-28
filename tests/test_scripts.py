@@ -339,6 +339,22 @@ print(json.dumps(val))
         self.assertTrue(out["sources"]["jira"] and out["sources"]["github"])
         self.assertNotIn("truncated", out)
 
+    def test_team_shape_carries_jira_priority_and_board_rank(self):
+        """Priorité Jira (icône de la page) et rang du board (étape board_rank, API Agile) sur chaque ticket ; sans
+        lecture du board : pas de rang, l'ordre d'avant."""
+        inp = self.team_input()
+        a, b = [i for i in inp["issues"] if i["key"] in ("DM-100", "DM-102")]
+        a["fields"]["priority"] = {"name": "High"}
+        inp["rank"] = [{"key": "DM-102"}, {"key": "DM-100"}]
+        out = self.run_script("team_shape.py", inp)
+        t = {x["key"]: x for p in out["people"] for x in p["tickets"]}
+        k0, k1 = "DM-100", "DM-102"
+        self.assertEqual((t[k0]["prio"], t[k0]["rank"], t[k1]["rank"]), ("High", 1, 0))
+        self.assertNotIn("prio", t[k1])
+        inp.pop("rank")
+        t = {x["key"]: x for p in self.run_script("team_shape.py", inp)["people"] for x in p["tickets"]}
+        self.assertNotIn("rank", t[k0])
+
     def test_team_shape_points_follow_the_field_order_and_keep_zero(self):
         """Champ du board d'abord (Story Points) ; un 0 posé compte, l'estimation ne le remplace pas (cas EW-7852)."""
         inp = self.team_input(n_issues=2)

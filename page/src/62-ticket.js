@@ -205,7 +205,7 @@ function renderTicket(side,key){
   }
   const cat=TCAT[x.cat]||{t:x.status,c:'var(--idle)'}, age=tkAge(x,T);
   const head=document.createElement('div');head.style.cssText='margin:0 0 12px';
-  head.innerHTML=`<div style="font-size:14px;margin-bottom:6px">${esc(x.summary)}</div>`+
+  head.innerHTML=prioLine(x)+`<div style="font-size:14px;margin-bottom:6px">${esc(x.summary)}</div>`+
     `<div style="font-size:12px;color:var(--muted)"><span class="dot" style="background:${cat.c};display:inline-block;margin-right:6px"></span>${esc(x.status||cat.t)}`+
     `${age?' depuis '+age:''} · ${x.owner?esc(x.owner):'non assigné'}${x.points?' · '+esc(x.points)+' pts':''} · ${jira}</div>`;
   side.appendChild(head);

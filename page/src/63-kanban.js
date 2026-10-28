@@ -44,6 +44,17 @@ function kbShow(v,fromCard){
 }
 function kbClose(){KB_VOL=null;KB_BACK=[];const box=document.querySelector('.bp-wide[data-win="kanban"] .bp-wbody');if(box)kanbanFill(box);}
 // une PR cite-t-elle un ticket du sprint ? (ses clés, relevées dans son titre par le cron équipe)
+// ordre du board Jira (rank, cron équipe), stable : sans rang, l'ordre d'avant ; priorité Jira en chevrons (couleurs façon Jira)
+const kbRank=(a,b)=>(a.rank??1e9)-(b.rank??1e9);
+const PRIO={Highest:['#e5493a','M2 7l4-4 4 4M2 11l4-4 4 4','Très haute'],High:['#f0703a','M2 9l4-4 4 4','Haute'],Medium:['#d99a0b','M2 4.5h8M2 8.5h8','Moyenne'],
+  Low:['#3d8bf2','M2 4l4 4 4-4','Basse'],Lowest:['#7f95b3','M2 2l4 4 4-4M2 6l4 4 4-4','Très basse']};
+const prioIco=(p,s=13)=>{const v=PRIO[p];return v?`<span class="pz" title="Priorité Jira : ${v[2]}"><svg width="${s}" height="${s}" viewBox="0 0 12 12" aria-hidden="true"><path d="${v[1]}" fill="none" stroke="${v[0]}" stroke-width="2.2" stroke-linecap="square"/></svg></span>`:'';};
+// « Priorité Haute · 1er de la colonne En cours » (fiche d'un ticket) ; le rang seulement si le board l'a donné
+function prioLine(x){
+  const v=PRIO[x.prio];if(!v)return '';
+  const n=x.rank==null?0:(kanbanCols().find(c=>c.k===x.cat)||{list:[]}).list.findIndex(t=>t.key===x.key)+1;
+  return `<div class="pz-head">${prioIco(x.prio,15)}<span>Priorité <b>${v[2]}</b>${n?` · ${n}<sup>${n===1?'er':'e'}</sup> de la colonne ${esc((TCAT[x.cat]||{}).t||'')}`:''}</span></div>`;
+}
 function kbPrInSprint(id){
   const x=TEAM&&[...TEAM.people.flatMap(p=>p.prs||[]),...(TEAM.other_prs||[])].find(q=>prId(q)===id);
   return !!x&&(x.keys||[]).some(k=>ticketOf(k));
@@ -76,7 +87,7 @@ function kanbanFill(box){
       list.slice(0,n).map(x=>{const t=tkComp(x.summary), ro=kbReopened(x), st=kbStale(x,k);
         // la carte : un lien vers la fiche, puis les pastilles de sa PR hors du lien (celle de l'env de branche est un lien)
         return `<div class="kbw-c${x.key===cur?' kb-on':''}${ro?' kb-ro':''}${st?' kb-stale kb-stale'+st.lvl:''}" style="--c:${TCAT[k].c}"><a href="#" class="kbw-a" data-tk="${esc(x.key)}"${x.key===cur?' aria-current="true"':''} title="${st?`Dans « ${esc(TCAT[k].t)} » depuis ${st.d} j (seuil ${st.lim} j). `:''}Ouvrir sa fiche et ses actions">`+
-          (ro?'<span class="kb-rot" title="Réouvert en test : retour en cours">↺ Réouvert</span>':'')+(st?`<span class="kb-age">🕸 ${st.d} j</span>`:'')+`<b>${esc(x.key)}</b>${x.points?`<em>${esc(x.points)} pts</em>`:''}`+
+          (ro?'<span class="kb-rot" title="Réouvert en test : retour en cours">↺ Réouvert</span>':'')+(st?`<span class="kb-age">🕸 ${st.d} j</span>`:'')+`${prioIco(x.prio)}<b>${esc(x.key)}</b>${x.points?`<em>${esc(x.points)} pts</em>`:''}`+
           `<span class="kbw-t">${t.comp?`<span class="kbw-cp">${esc(t.comp)}</span>`:''}${esc(t.title)}</span><small>${esc(x.owner?String(x.owner).split(' ')[0]:'non assigné')}</small></a>${k==='done'?'':kbPrChips(x.key)}${st?kbWeb(st.lvl):''}</div>`;}).join('')+
       (list.length>n?`<button type="button" class="kbw-more" data-col="${k}">+ ${list.length-n} autre${list.length-n>1?'s':''}</button>`:'')+
       (list.length?'':'<span class="kbw-none">—</span>')+'</section>';

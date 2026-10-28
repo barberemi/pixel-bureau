@@ -138,13 +138,43 @@
     "api_method": "GET",
     "api_query": {
      "jql": "project = @@jira.project@@ AND sprint in openSprints() ORDER BY updated DESC",
-     "fields": "summary,status,assignee,issuetype,updated,@@jira.points_fields@@,created",
+     "fields": "summary,status,assignee,issuetype,priority,updated,@@jira.points_fields@@,created",
      "maxResults": "100"
     },
     "api_extract": {
      "path": "$.issues",
      "fallback": [],
      "fail_on_empty": true
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "board_rank",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Ordre du board (rang du sprint ouvert, la priorité d'abord si le filtre du board le dit) : le Kanban et les listes suivent l'ordre de Jira ; ORDER BY Rank en JQL rend l'ordre des clés. En échec : liste vide, l'ordre reste celui d'avant.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/agile/1.0/board/@@jira.board@@/issue",
+    "api_method": "GET",
+    "api_query": {
+     "jql": "sprint in openSprints()",
+     "fields": "status",
+     "maxResults": "100"
+    },
+    "api_extract": {
+     "path": "$.issues",
+     "fallback": [],
+     "fail_on_empty": false
     },
     "_requires": "jira"
    },
@@ -484,7 +514,7 @@
      "@@script:workflows/team_shape.py@@"
     ],
     "exec_timeout_secs": 60,
-    "exec_stdin": "{\"sprint\":{{steps.sprint_info.data_json}},\"issues\":{{steps.jira_team.data_json}},\"status_log\":{{steps.status_log.data_json}},\"closed\":{{steps.jira_closed.data_json}},\"github\":{{steps.github.data.stdout}},\"work\":{\"written\":{{steps.work_written.data_json}},\"po_triage\":{{steps.work_po_triage.data_json}},\"sm_triage\":{{steps.work_sm_triage.data_json}},\"qa_ok\":{{steps.work_qa_ok.data_json}},\"qa_back\":{{steps.work_qa_back.data_json}}},\"planning\":{\"sprints\":{{steps.future_sprints.data_json}},\"issues\":{{steps.planning_tickets.data_json}}},\"new_tickets\":{{steps.new_tickets.data_json}},\"roles\":{\"po\":\"@@jira.role.po@@\",\"sm\":\"@@jira.role.sm@@\",\"qa\":\"@@jira.role.qa@@\"}}"
+    "exec_stdin": "{\"sprint\":{{steps.sprint_info.data_json}},\"issues\":{{steps.jira_team.data_json}},\"rank\":{{steps.board_rank.data_json}},\"status_log\":{{steps.status_log.data_json}},\"closed\":{{steps.jira_closed.data_json}},\"github\":{{steps.github.data.stdout}},\"work\":{\"written\":{{steps.work_written.data_json}},\"po_triage\":{{steps.work_po_triage.data_json}},\"sm_triage\":{{steps.work_sm_triage.data_json}},\"qa_ok\":{{steps.work_qa_ok.data_json}},\"qa_back\":{{steps.work_qa_back.data_json}}},\"planning\":{\"sprints\":{{steps.future_sprints.data_json}},\"issues\":{{steps.planning_tickets.data_json}}},\"new_tickets\":{{steps.new_tickets.data_json}},\"roles\":{\"po\":\"@@jira.role.po@@\",\"sm\":\"@@jira.role.sm@@\",\"qa\":\"@@jira.role.qa@@\"}}"
    },
    {
     "name": "publish",
