@@ -194,6 +194,8 @@ def values(cfg):
         "review.schedule": rv.get("schedule") or REVIEW_SCHEDULE,
         "review.repos_json": json.dumps([{"repo": r} for r in review_repos(cfg)], ensure_ascii=False, separators=(",", ":")),
         "review.guidelines": str(rv.get("guidelines") or "Aucune consigne d'équipe en plus de la grille."),
+        # corriger les commentaires d'une PR (#75) : consignes de l'équipe (section fix du pack), jamais celles de la revue
+        "fix.guidelines": str((cfg.get("fix") or {}).get("guidelines") or "Aucune consigne d'équipe en plus des règles ci-dessus."),
         "issue.repo": (cfg.get("issue") or {}).get("repo") or (cfg.get("github") or {}).get("repo") or "",
         "issue.search_dirs": ", ".join((cfg.get("issue") or {}).get("search_dirs") or ["~/Sites", "~/Projects", "~/code"]),
         "issue.discussion": (cfg.get("issue") or {}).get("discussion") or "",  # discussion Kronn du récap, facultative
@@ -324,8 +326,12 @@ def render(tpl, cfg):
                                 **({"default_value": opts[0][0]} if opts else {})}
         for s in d["steps"]:
             s.pop("_requires", None)
-            if s.pop("_skills_from", None) == "review.skill_ids":  # skills de l'équipe en plus de ceux du modèle (#78)
-                s["skill_ids"] = list(dict.fromkeys(s.get("skill_ids", []) + list((cfg.get("review") or {}).get("skill_ids") or [])))
+            src = s.pop("_skills_from", None)
+            if src in ("review.skill_ids", "fix.skill_ids"):  # skills de l'équipe en plus de ceux du modèle (#78, #75)
+                team = (cfg.get(src.split(".")[0]) or {}).get("skill_ids")
+                if team is None and src == "fix.skill_ids":  # sans skills propres à la correction : ceux de la revue
+                    team = (cfg.get("review") or {}).get("skill_ids")
+                s["skill_ids"] = list(dict.fromkeys(s.get("skill_ids", []) + list(team or [])))
             if s.pop("_vars_from", None) == "mep.feedback_vars":  # variables propres au Quick Prompt du retour IA
                 s["quick_prompt_variables"] = {**((cfg.get("mep") or {}).get("feedback_vars") or {}), **s.get("quick_prompt_variables", {})}
             for name in dropped:  # entrée d'une étape suivante qui lisait une étape retirée

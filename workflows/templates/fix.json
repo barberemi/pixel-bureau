@@ -80,7 +80,7 @@
     "step_type": {
      "type": "Agent"
     },
-    "description": "L'agent corrige les fils actionnables, ajoute les tests, prépare une réponse par fil, sans rien committer ni pousser (seule étape avec des tokens).",
+    "description": "L'agent corrige les fils actionnables (contrôles verts ou correctif annulé), ajoute les tests, prépare une réponse courte par fil traité et le message de commit, sans rien committer ni pousser (seule étape avec des tokens).",
     "agent": "ClaudeCode",
     "mode": {
      "type": "Normal"
@@ -88,7 +88,40 @@
     "output_format": {
      "type": "FreeText"
     },
-    "prompt_template": "@@text:tools/fix_prompt.md@@\n\nDossier de travail : ~/.cache/pixel-bureau/pr/work/{{run.id}}\nPR : {{repo}}#{{pr}}\n\n{{steps.prepare.data.stdout}}\n\nConsignes de l'auteur (peuvent être vides) :\n<<<CONSIGNES\n{{notes}}\nCONSIGNES>>>"
+    "prompt_template": "@@text:tools/fix_prompt.md@@\n\n**CONSIGNES DE L'ÉQUIPE** (en plus des règles ci-dessus, prioritaires sur elles en cas de conflit, jamais sur les consignes de l'auteur) :\n@@fix.guidelines@@\n\nDossier de travail : ~/.cache/pixel-bureau/pr/work/{{run.id}}\nPR : {{repo}}#{{pr}}\n\n{{steps.prepare.data.stdout}}\n\nConsignes de l'auteur (peuvent être vides) :\n<<<CONSIGNES\n{{notes}}\nCONSIGNES>>>",
+    "agent_settings": {
+     "tier": "reasoning"
+    },
+    "stall_timeout_secs": 2400,
+    "skill_ids": [
+     "testing",
+     "security"
+    ],
+    "_skills_from": "fix.skill_ids"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "check",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Commande de contrôle du dépôt (fix.checks du pack ou github.checks de ta config) sur les corrections ; verdict en tête de la validation, jamais bloquant (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "@@script:workflows/pr_update.py@@",
+     "fix_check",
+     "{{repo}}",
+     "{{pr}}",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 960
    },
    {
     "agent": "ClaudeCode",
@@ -103,7 +136,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Fichiers changés, diff et réponse prévue à chaque fil pour la validation ; rien à pousser : fin (0 token).",
+    "description": "Verdict des contrôles, message de commit, fichiers changés, diff et réponse prévue à chaque fil pour la validation ; rien à pousser : fin (0 token).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -138,7 +171,7 @@
      "type": "Gate"
     },
     "description": "Le boss valide le diff et les réponses avant tout push.",
-    "gate_message": "🛠 {{repo}}#{{pr}} : corrections des retours de review.\n\n{{steps.diff.data.stdout}}\n\n**Approuver** : commit, push protégé, une réponse dans chaque fil (résolu s'il est corrigé), CI relancée. **Rejeter** ou **Changements** : rien n'est poussé ni posté.",
+    "gate_message": "🛠 {{repo}}#{{pr}} : corrections des retours de review.\n\n{{steps.diff.data.stdout}}\n\n**Approuver** : commit signé, push protégé, une réponse dans chaque fil traité (résolu s'il est corrigé), bloc « Corrections de review » dans la description de la PR, CI relancée. **Rejeter** ou **Changements** : rien n'est poussé ni posté.",
     "gate_request_changes_target": "abort"
    },
    {
@@ -154,7 +187,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Validé : commit, push protégé, réponses dans les fils, label de CI reposé, dossier de travail retiré.",
+    "description": "Validé : commit signé, push protégé, réponses dans les fils, description de la PR, label de CI reposé, dossier de travail retiré.",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -243,9 +276,10 @@
    "require_isolation": false,
    "main_tree_read_only": true
   },
-  "concurrency_limit": null,
+  "concurrency_limit": 1,
   "exec_allowlist": [
    "python3"
-  ]
+  ],
+  "concurrency_key": "{{repo}}|{{pr}}"
  }
 }
