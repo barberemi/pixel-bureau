@@ -103,6 +103,62 @@ class ModelsTest(unittest.TestCase):
         r = subprocess.run(["python3", *ch["exec_args"]], input=json.dumps({"transitions": []}), capture_output=True, text=True)
         self.assertEqual(r.returncode, 1)
 
+    def test_move_goes_through_its_column_when_jira_has_no_direct_transition(self):
+        """Déplacer un ticket : sans transition directe (Reopen -> To Review), un premier saut vers un statut de la même
+        colonne (le principal d'abord), puis un second saut direct ; jamais par une autre colonne ; déjà arrivé : DEJA."""
+        c = cfg(jira={**cfg()["jira"], "statuses": {"À faire": "todo", "En cours": "doing", "Bloqué": "doing", "Reopen": "doing",
+                                                     "To Review": "review", "Fermé": "done"}})
+        st = steps("move", c)
+        tr = lambda *t: json.dumps({"transitions": [{"id": i, "to": {"name": n}} for i, n in t]})  # noqa: E731
+        iss = lambda name: json.dumps({"fields": {"status": {"name": name}}})  # noqa: E731
+
+        def choose(step, transitions, cur, want="To Review"):
+            args = [a.replace("{{target_status}}", want) for a in st[step]["exec_args"]]
+            r = subprocess.run(["python3", *args], input=transitions + "\n===SEP===\n" + iss(cur), capture_output=True, text=True)
+            return r.returncode, r.stdout or r.stderr.strip()
+        reopen = tr(("1", "Duplicate"), ("8", "Bloqué"), ("11", "En cours"), ("2", "Fermé"), ("4", "À faire"))
+        self.assertEqual(choose("choose", reopen, "Reopen"), (0, "11"))  # En cours, le principal de la colonne, avant Bloqué
+        self.assertEqual(choose("choose", tr(("21", "To Review"), ("4", "À faire")), "En cours"), (0, "21"))  # direct
+        self.assertEqual(choose("choose", tr(("2", "Fermé"), ("4", "À faire")), "Reopen")[0], 1)  # jamais hors de la colonne
+        self.assertEqual(choose("choose", reopen, "To Review"), (0, "DEJA"))
+        self.assertEqual(choose("choose2", tr(("21", "To Review")), "En cours"), (0, "21"))  # second saut
+        self.assertEqual(choose("choose2", reopen, "Reopen")[0], 1)  # le second saut ne fait jamais de détour
+        self.assertEqual(choose("choose2", reopen, "To Review"), (0, "DEJA"))  # premier saut direct : le run s'arrête là
+        body = lambda n: st[n]["api_body"]["bulkTransitionInputs"][0]["transitionId"]  # noqa: E731
+        self.assertEqual((body("transition"), body("transition2")), ("{{steps.choose.data.stdout}}", "{{steps.choose2.data.stdout}}"))
+        self.assertTrue(st["choose2"]["exec_stdin"].endswith("{{steps.apres.data}}"))
+        self.assertEqual(st["verifie"]["exec_stdin"], "{{steps.apres2.data}}")
+        self.assertEqual(steps("move", cfg(jira={**cfg()["jira"], "statuses": {}}))["choose"]["exec_args"][3], "")  # sans réglage
+
+    def test_move_to_doing_assigns_me_when_nobody_has_the_ticket(self):
+        """Déplacer vers la colonne En cours : un ticket que personne n'a est affecté au compte de la connexion Jira (lu
+        par /myself) avant la transition ; à moi ou à quelqu'un d'autre, ou vers une autre colonne : saut aux transitions."""
+        c = cfg(jira={**cfg()["jira"], "statuses": {"À faire": "todo", "En cours": "doing", "Reopen": "doing", "To Review": "review"}})
+        st = steps("move", c)
+        self.assertEqual([s for s in st][:6], ["avant", "whoami", "qui", "affecte", "pris", "transitions"])
+        self.assertIn("assignee", st["avant"]["api_query"]["fields"])
+        self.assertEqual(st["qui"]["on_result"], [{"contains": "PASSE", "action": {"type": "Goto", "step_name": "transitions"}}])
+        self.assertEqual(st["affecte"]["api_body"]["fields"]["assignee"]["accountId"], "{{steps.whoami.data.accountId}}")
+        me = json.dumps({"accountId": "moi"})
+
+        def qui(want, assignee=None, who=me, statuses=None):
+            args = [a.replace("{{target_status}}", want) for a in (steps("move", cfg(jira={**c["jira"], "statuses": statuses}))
+                                                                   if statuses is not None else st)["qui"]["exec_args"]]
+            t = json.dumps({"fields": {"status": {"name": "À faire"}, "assignee": assignee}})
+            return subprocess.run(["python3", *args], input=who + "\n===SEP===\n" + t, capture_output=True, text=True).stdout
+        self.assertEqual(qui("En cours"), "AFFECTER")
+        self.assertEqual(qui("en cours"), "AFFECTER")  # casse ignorée
+        self.assertEqual(qui("Reopen"), "AFFECTER")  # tout statut de la colonne En cours
+        self.assertIn("PASSE", qui("En cours", {"accountId": "autre", "displayName": "Pam"}))  # jamais volé
+        self.assertIn("PASSE", qui("En cours", {"accountId": "moi", "displayName": "Michael"}))  # déjà à moi
+        self.assertIn("PASSE", qui("To Review"))  # autre colonne
+        self.assertIn("PASSE", qui("En cours", who="{}"))  # compte inconnu
+        self.assertIn("PASSE", qui("En cours", statuses={}))  # sans jira.statuses
+        pris = lambda got: subprocess.run(["python3", *st["pris"]["exec_args"]], input=me + "\n===SEP===\n" + json.dumps(  # noqa: E731
+            {"fields": {"assignee": {"accountId": got}}}), capture_output=True, text=True)
+        self.assertEqual((pris("moi").returncode, pris("moi").stdout), (0, "affecte"))
+        self.assertEqual(pris("autre").returncode, 0)  # course perdue : le déplacement continue
+
     def test_issue_finds_gh_and_its_recap_discussion_is_optional(self):
         s = steps("issue", cfg())
         self.assertNotIn("post", s)

@@ -188,6 +188,8 @@ def values(cfg):
         "jira.create.board_points": create_board_points(j),
         **{f"jira.statuses.{c}": json.dumps([s for s, k in (j.get("statuses") or {}).items() if k == c], ensure_ascii=False)
            for c in ("todo", "doing")},  # statuts « À faire » et « En cours » du board (m'affecter, me désaffecter)
+        # statut -> colonne du board : déplacer un ticket passe par un statut de sa colonne quand Jira l'exige
+        "jira.statuses_json": json.dumps(j.get("statuses") or {}, ensure_ascii=False, separators=(",", ":")) if j.get("statuses") else "",
         "models.review_child": (cfg.get("models") or {}).get("review_child") or "",
         "review.project_id": rv.get("project_id") or (cfg.get("kronn") or {}).get("project_id") or "",
         "review.page_id": rv.get("page_id") or "",  # page de récap des revues, facultative
@@ -369,7 +371,8 @@ def templatize(key, kind, d, cfg):
         if isinstance(v, str):
             for k, val in (("page_id", vals["page_id"]), ("jira.config_id", vals["jira.config_id"]),
                            ("kronn.project_id", vals["kronn.project_id"]), ("microsoft.config_id", vals["microsoft.config_id"]),
-                           ("microsoft.site", vals["microsoft.site"]), ("microsoft.item", vals["microsoft.item"])):
+                           ("microsoft.site", vals["microsoft.site"]), ("microsoft.item", vals["microsoft.item"]),
+                           ("jira.statuses_json", vals["jira.statuses_json"])):
                 if val and v == val:
                     return f"@@{k}@@"
             if vals["jira.points_fields"]:

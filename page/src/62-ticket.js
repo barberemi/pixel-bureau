@@ -162,6 +162,15 @@ function mvRows(x){
     const to=MV_ORDER[MV_ORDER.indexOf(x.cat)+(m.dir==='next'?1:-1)];
     return {m,to,why:MV_WHY[x.cat+'>'+to]||'',bind:bindsFor('bureau-move',m)};}).filter(r=>r.bind);
 }
+// infobulle d'un bouton : un statut secondaire de la colonne (Reopen) passe d'abord par son statut principal (En cours) ;
+// vers En cours, un ticket que personne n'a t'est affecté (le workflow le fait avant la transition)
+const mvMine=(x,to)=>to==='doing'&&!x.owner;
+function mvTitle(x,m,to){
+  const via=(CFG.jira_main||{})[x.cat];
+  return (m.dir==='next'?'Avancer':'Reculer')+' : passer le ticket en '+m.to+' dans Jira'+
+    (via&&x.status&&x.status.toLowerCase()!==via.toLowerCase()?', en passant par '+via+' si Jira l\'exige depuis '+x.status:'')+
+    (mvMine(x,to)?', et t\'y affecte (personne ne l\'a)':'');
+}
 function moveBlock(side,x){
   const rows=mvRows(x);if(!rows.length)return;
   const host=document.createElement('div');host.className='mv-host';host.setAttribute('data-kronn-action-slot-host','');
@@ -171,10 +180,10 @@ function moveBlock(side,x){
   for(const {m,to,why,bind} of rows){
     const c=TCAT[to]||{t:m.to,c:'var(--idle)'};
     const b=document.createElement('button');b.type='button';b.className='mv-'+m.dir+(m.dir==='next'?' on':'');
-    b.title=(m.dir==='next'?'Avancer':'Reculer')+' : passer le ticket en '+m.to+' dans Jira';
+    b.title=mvTitle(x,m,to);
     b.innerHTML=`<span class="mv-col">${m.dir==='prev'?'◀ ':''}<span class="dot" style="background:${c.c}"></span>${esc(c.t)}${m.dir==='next'?' ▶':''}</span>${why?`<small>${esc(why)}</small>`:''}`;
     b.setAttribute('data-kronn-action','bureau-move');b.setAttribute('data-kronn-bindings',JSON.stringify(bind));
-    b.addEventListener('click',()=>{hint.innerHTML=`<b>Lancer</b> : ${esc(x.key)} passe en <b>${esc(m.to)}</b> dans Jira (transition vérifiée par Kronn, 0 token). Sa carte change de colonne au prochain passage du cron équipe (10 min au plus).`;});
+    b.addEventListener('click',()=>{hint.innerHTML=`<b>Lancer</b> : ${esc(x.key)} passe en <b>${esc(m.to)}</b> dans Jira${mvMine(x,to)?' et t\'est affecté (personne ne l\'a)':''} (transition vérifiée par Kronn, 0 token). Sa carte change de colonne au prochain passage du cron équipe (10 min au plus).`;});
     new MutationObserver(()=>{const v=b.getAttribute('data-kronn-action-state');
       if(v==='succeeded')note.innerHTML=`<b style="color:var(--ok)">✓ Demandé.</b> ${esc(x.key)} passe en ${esc(m.to)} ; sa carte suivra au prochain passage du cron équipe.`;
       else if(v==='failed')note.innerHTML='<b style="color:var(--err)">Déplacement refusé</b> : le détail est dans la carte (Jira ne propose peut-être pas ce passage).';

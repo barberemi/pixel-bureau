@@ -183,6 +183,8 @@ def page_config(cfg):
         "jira_site": (cfg.get("jira") or {}).get("site"),
         # statuts Jira des scènes d'équipe : ticket à tester, validé, réouvert
         "jira_flow": {**JIRA_FLOW, **{k: v for k, v in ((cfg.get("jira") or {}).get("flow") or {}).items() if v}},
+        # statut principal de chaque colonne (le premier de jira.statuses) : « déplacer un ticket » y passe quand Jira l'exige
+        "jira_main": {c: s for s, c in reversed(list(((cfg.get("jira") or {}).get("statuses") or {}).items()))},
         "github_repo": (cfg.get("github") or {}).get("repo"),
         # « Corriger » sur la PR d'un autre dépôt : seulement si ton workflow prend le dépôt (launch.fix.vars.repo, #56)
         "fix_any_repo": bool(launch(cfg).get("fix", ("", {}))[1].get("repo")),
