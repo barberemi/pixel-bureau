@@ -9,7 +9,7 @@ Un open space en pixel art où chaque personnage montre ce qui se passe dans Kro
 | Personnage | Ce que c'est | Où le voir |
 | --- | --- | --- |
 | Collègue (en couleur) | Une personne de l'équipe (roster du pack d'équipe, ou ajoutée à l'installation) | À sa place, ses tickets Jira en bulle |
-| Agent (hologramme bleu) | Un workflow Kronn, avec un personnage de *The Office* | Son étape dans un nuage, l'outil en cours dans une petite bulle sombre |
+| Agent (hologramme) | Un workflow Kronn, avec un personnage de *The Office* ; sa couleur dit sa famille (voir plus bas) | Son étape dans un nuage, l'outil en cours dans une petite bulle sombre |
 | Visiteur | Une discussion Kronn du jour, ou plus ancienne (14 jours) tant qu'une de ses questions t'attend | En salle de réunion, puis au café ; devant le bureau du boss avec un « ? » tant qu'une question t'attend |
 | Le boss | La personne qui a installé la page (`owner`) | Au bureau du boss, bras levés quand une validation l'attend |
 | Invité de passage | Quelqu'un qui passe voir l'équipe (clé `guests` du roster) | Au plus une fois par jour ouvré, 20 à 40 min, à une heure tirée au sort ; il se promène |
@@ -18,9 +18,23 @@ Un invité de passage entre par la porte, va saluer des collègues à leur burea
 
 ![Un invité de passage chez Jan](../img/invite.png)
 
+## Trois familles d'agents
+
+La couleur de l'hologramme dit à quoi sert un agent, la légende sous le plan la rappelle :
+
+| Famille | Hologramme | Qui | Où le voir |
+| --- | --- | --- | --- |
+| 🧰 Au quotidien | cyan | Les agents nommés : un bouton chacun (fiche d'un ticket, d'une PR, Support, créer un ticket) | À sa place quand il travaille |
+| 📺 Pages | violet | Les workflows qui remplissent une page Kronn : leur intérimaire prend le nom de la page (« Core Web Vitals »), un seul par page ; un agent nommé y entre par un cron qui publie dans une page (le reviewer de PR) | En salle de réunion, devant l'écran mural, le temps de la mise à jour |
+| 🛰 Autres | ambre | Les intérimaires de passage, sans page (« Intérimaire 1 », « Intérimaire 2 »…), et un agent nommé qui tourne seul en cron, sans page ni bouton | À sa place, ou aux places libres |
+
+La famille se calcule : la fiche de paie relève qui publie dans chaque page (`pages_snapshot.py`, `feeds` des pages de l'écran et des autres pages). Ajouter une page à l'écran ne change rien à la famille de son cron ; un agent du pack peut être forcé (`agents[].family` : `jour`, `page` ou `autre`). Dans le panneau, « ⚙ Agents » ouvre une seconde rangée pour mettre une seule famille en avant sur le plan.
+
+![Les agents d'une famille mis en avant](../img/familles-agents.png)
+
 ## Ajouter un agent
 
-Un workflow sans personnage ne se voit qu'en intérimaire, le jour où il tourne. Pour lui donner un agent sans toucher à la config : survole la dernière baie de la salle Serveurs (un « + » vert s'allume) et clique. La fenêtre « Nouvel agent » propose les workflows qui n'ont pas encore d'agent, un prénom, un métier (affiché sur sa fiche), une place (un siège libre, ou celui que tu choisis) et un avatar tiré au hasard (🎲 pour en tirer un autre ; il se retouche ensuite depuis sa fiche, ✎ Personnaliser).
+Un workflow sans personnage ne se voit qu'en intérimaire, le jour où il tourne (au nom de sa page s'il en remplit une). Pour lui donner un agent sans toucher à la config : survole la dernière baie de la salle Serveurs (un « + » vert s'allume) et clique. La fenêtre « Nouvel agent » propose les workflows qui n'ont pas encore d'agent, un prénom, un métier (affiché sur sa fiche), une place (un siège libre, ou celui que tu choisis) et un avatar tiré au hasard (🎲 pour en tirer un autre ; il se retouche ensuite depuis sa fiche, ✎ Personnaliser).
 
 « Créer l'agent » copie un code ; colle-le dans la carte Kronn qui s'ouvre, puis Lancer. Le workflow du Bureau « Le Bureau · agents » (0 token) range l'agent dans le dataset `agents` de la page : toute l'équipe le voit au rafraîchissement suivant, sans republier. Il se comporte comme un agent de la config : fiche, relance, question, fiche de paie. Pas de « + » en mode TV, ni sans le workflow « Le Bureau · agents » (installé par `publish.py workflows`).
 

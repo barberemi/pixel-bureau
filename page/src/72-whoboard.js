@@ -31,6 +31,10 @@ function whoLine(c,st,t,pub){
     const r=st.ref, what='🤖 '+(r.key||'PR '+prNum({repo:r.repo,n:r.pr}))+(r.key&&r.pr?' · PR '+prNum({repo:r.repo,n:r.pr}):'')+' '+clip(r.t?r.t.summary:r.title||'',50);
     return {what,sub:clip((st.step?'Étape '+st.step.n:st.label)+(st.act?' · '+st.act.label:''),80),tone:r.t?CAT_COLOR[r.t.cat]:null};
   }
+  if(st.run&&c.temp&&famKind(c)==='page'){ // intérimaire de page : son nom est déjà celui de la page, pas celui du workflow
+    const pg=agentPage(c);
+    return {what:(st.st==='error'?'✕ En panne sur sa page':'↻ Met sa page à jour')+(pg&&pg.wall?", sur l'écran":''),sub:clip(st.step?'Étape '+st.step.n:st.label,80)};
+  }
   if(st.run)return {what:'⚙ '+clip(st.run.wf_name,60),sub:clip((st.step?'Étape '+st.step.n:st.label)+(st.act?' · '+st.act.label:''),80)};
   return {what:st.label||'',sub:''};
 }
@@ -80,7 +84,7 @@ function renderWho(){
     const img=portraitUrl(x.c);
     const tip=[x.what,x.sub,x.tip].filter(Boolean).join('\n');
     return `<button class="wc${x.attn?' attn':''}${x.st.abs?' abs':''}${sel===x.c.key?' on':''}" data-who="${esc(x.c.key)}" title="${esc(tip)}" style="--st:${ST_CSS[x.st.st]||'var(--idle)'};--tk:${x.tone||'transparent'}">`+
-      `<span class="wp">${img?`<img src="${img}" alt="">`:''}</span>`+
+      `<span class="wp">${img?`<img src="${img}" alt="">`:''}${famBadge(x.c)}</span>`+
       `<span class="wt"><span class="wn">${esc(agentTag(x.c)+x.c.name)}<span class="ws">${esc(shortSt(x.st))}${x.since?' · '+esc(x.since):''}</span></span>`+
       `<span class="ww${x.tone?'':' nt'}">${esc(x.what)}</span>${x.sub?`<span class="wsub">${esc(x.sub)}</span>`:''}</span></button>`;
   }).join('')+'</div>';

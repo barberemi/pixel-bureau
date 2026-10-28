@@ -34,7 +34,7 @@ function portrait(c,size){
   const p=document.createElement('canvas');p.width=40;p.height=40;const x=p.getContext('2d');x.imageSmoothingEnabled=false;
   const img=spriteOf(c);if(ready(img)){const tall=c.sprite==='boss_sax'; // le saxophoniste est plus grand : tête vers y=2 au lieu de ~13
     const ox=2*64+12+(tall?5:0),oy=4*64+(tall?0:8);
-    if(famOf(c)==='wf')x.drawImage(holoFrame(img,2*64,4*64,0,false),12,8,40,40,0,0,40,40);else x.drawImage(img,ox,oy,40,40,0,0,40,40);}
+    if(famOf(c)==='wf')x.drawImage(holoFrame(img,2*64,4*64,0,false,holoStyleOf(c)),12,8,40,40,0,0,40,40);else x.drawImage(img,ox,oy,40,40,0,0,40,40);}
   p.style.width=size+'px';p.style.height=size+'px';return p;
 }
 // panneau replié en une bande étroite : le plan prend la place (bouton en haut du panneau ; un clic sur le plan le rouvre)
@@ -149,14 +149,25 @@ function drawSide(side){
         const b=document.createElement('button');
         b.textContent=t;
         b.title=tip;
-        b.className=(FILTER===v?'on ':'')+(v?'famb fam-'+v:'');
-        b.setAttribute('aria-pressed',String(FILTER===v));
+        const on=(FILTER&&FILTER.split(':')[0])===v||!FILTER&&!v; // une famille d'agents garde « Agents » allumé
+        b.className=(on?'on ':'')+(v?'famb fam-'+v:'');
+        b.setAttribute('aria-pressed',String(on));
         b.onclick=()=>{FILTER=v;if(!TV)NAMES=v?'all':'hover';renderSide();};
         seg.appendChild(b);
       }
-      fb.appendChild(seg);side.appendChild(fb);}
+      fb.appendChild(seg);side.appendChild(fb);
+      if(FILTER&&FILTER.startsWith('wf')){ // agents en avant : une famille d'agents (32-familles.js)
+        const s2=document.createElement('div');s2.className='seg famseg';s2.setAttribute('role','group');s2.setAttribute('aria-label',"Famille d'agents");
+        for(const v of ['wf',...AFAM_ORDER.map(k=>'wf:'+k)]){
+          const k=v.slice(3), b=document.createElement('button');
+          b.innerHTML=k?`<i style="background:${AFAM[k].c}"></i>${AFAM[k].ico} ${AFAM[k].t}`:'Tous les agents';
+          b.className=FILTER===v?'on':'';b.setAttribute('aria-pressed',String(FILTER===v));
+          b.onclick=()=>{FILTER=v;renderSide();};s2.appendChild(b);
+        }
+        side.appendChild(s2);
+      }}
     const groups=[["L'équipe",chars.filter(c=>c.person),'team'],['Les agents',chars.filter(c=>!c.person&&!c.visitor),'wf'],['Les visiteurs du jour',chars.filter(c=>c.visitor&&!c.guest),'vis'],
-      ['Et aussi',chars.filter(c=>c.guest&&c.present),'misc']].filter(g=>!FILTER||g[2]===FILTER); // misc : invités du moment + le canard, vue « Tous » seulement
+      ['Et aussi',chars.filter(c=>c.guest&&c.present),'misc']].filter(g=>!FILTER||g[2]===FILTER.split(':')[0]).map(([t,l,k])=>[t,l.filter(inFilter),k]); // misc : invités du moment + le canard, vue « Tous » seulement
     for(const [title,list,fk] of groups){
     if(!list.length&&fk!=='misc')continue;
     const n=list.length+(fk==='misc'?1:0); // le canard est toujours là
@@ -178,8 +189,10 @@ function drawSide(side){
       side.appendChild(n);
     }
     const box=document.createElement('div');box.className='roster';
-    const sorted=list.slice().sort((a,b)=>rank(a)-rank(b));
-    for(const c of sorted){
+    const fo=c=>fk==='wf'?(AFAM_ORDER.indexOf(famKind(c))+4)%4:0; // agents : par famille, un en-tête par famille (32-familles.js)
+    const sorted=list.slice().sort((a,b)=>fo(a)-fo(b)||rank(a)-rank(b));
+    for(const [i,c] of sorted.entries()){
+      if(fk==='wf'&&famKind(c)&&(!i||fo(sorted[i-1])!==fo(c))){const k=famKind(c);box.insertAdjacentHTML('beforeend',famHead(k,sorted.filter(x=>famKind(x)===k).length));}
       const st=c._st||stateAt(c,T);
       const b=document.createElement('button');
       b.className='who fam-'+famOf(c);b.dataset.fid='who:'+c.key;
@@ -214,6 +227,7 @@ function drawSide(side){
   ft.innerHTML=`<div class="n">${esc(agentTag(c)+c.name)}${c.apprentice?' <span class="appr">🎓 apprenti</span>':''}</div><div class="r">${esc(c.role)}${c.name!==c.baseName?' · '+esc(c.baseName):''}</div>`;
   f.appendChild(ft);
   side.appendChild(f);
+  famBlock(side,c); // 32-familles.js : à quoi il sert
   if(!c.visitor){
     const eb=document.createElement('button');
     eb.className='edit-btn';

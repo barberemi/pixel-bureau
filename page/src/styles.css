@@ -804,3 +804,19 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .sp-empty{display:flex;flex-direction:column;align-items:center;gap:6px;padding:28px 12px 30px;text-align:center;color:var(--muted);font-size:13px}
 .sp-empty b{color:var(--ink);font-size:15px}.sp-e-ico{font-size:34px;line-height:1}
 .sp-note{margin:4px 0 0;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+/* familles d'agents (32-familles.js) : en-têtes du panneau et de la fiche de paie, bloc de la fiche, pastille, légende */
+.famh{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 8px;margin:10px 0 4px;padding-top:8px;border-top:1px solid var(--line)}
+.roster>.famh:first-child{border-top:0;margin-top:0;padding-top:0}
+.famn{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.famn b{color:var(--ink)}.famn small{font-weight:400;text-transform:none;letter-spacing:0}
+.famn i,.famseg i,.lg-holo i{display:inline-block;width:8px;height:8px;border-radius:50%}
+.famx{font-size:12px;color:var(--muted)}
+.famseg{justify-content:flex-start;margin:-6px 0 12px}.famseg button{display:inline-flex;align-items:center;gap:5px}
+.famw{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:center;margin:10px 0 14px;padding:8px 10px;border-left:4px solid var(--f);background:var(--chip)}
+.famw .famk{grid-column:1/-1;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.famw img{width:64px;height:40px;object-fit:cover;border:1px solid var(--line)}
+.famw>div:only-of-type{grid-column:1/-1}
+.famw .famt{font-weight:600}.famw .fams{font-size:12px;color:var(--muted)}
+.wc .wp{position:relative}
+.famb2{position:absolute;right:0;bottom:0;width:12px;height:12px;border-radius:3px 0 0 0;background:var(--f);font-size:8px;line-height:12px;text-align:center;font-style:normal}
+.lg-holo{display:inline-flex;gap:10px;align-items:center}.lg-holo span{display:inline-flex;gap:4px;align-items:center}

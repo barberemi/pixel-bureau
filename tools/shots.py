@@ -76,6 +76,14 @@ SHOTS = {
     "plan": (1400, 1000, AT(11), "#cv", 1.5),
     # agents mis en avant (« Sur le plan » : agents) : icône, prénom et métier de chacun
     "etiquettes-agents": (1400, 1000, AT(11) + "FILTER='wf';NAMES='all';renderSide();", "#cv", 1.5),
+    # familles d'agents (32-familles.js) : deux pages de l'écran remplies par un cron de la démo (pages), un workflow sans
+    # agent (autres), le panneau en trois sous-groupes
+    "familles-agents": (1400, 1300, AT(11) + DEMO_PAGES + "const FA=chars.filter(c=>!c.person&&!c.visitor&&!c.temp&&c.runs.length);"
+                        "FA.filter(c=>cronsOf(c).length).slice(0,3).forEach((c,i)=>{BOSS_PAGES[i].feeds=[{wf:c.runs[0].wf,trigger:'cron'}];});BOSS_PAGES[3].feeds=[{wf:'feedf00d-demo',trigger:'cron'}];"
+                        "const FD=JSON.parse(JSON.stringify(DATA)),FT=new Date(T-6e4).toISOString();"
+                        "FD.runs.push({wf:'feedf00d-demo',wf_name:'Stock de papier · refresh (page)',run:'r-fa1',status:'Running',start:FT,end:null,steps:[]},"
+                        "{wf:'0ddba11-demo',wf_name:'Inventaire du mois',run:'r-fa2',status:'Success',start:FT,end:FT,steps:[]});"
+                        "setData(FD,true);FILTER='wf';NAMES='all';renderSide();", "#side"),
     # ticket réouvert à 10h50 : face-à-face de Pam avec Karen (testeuse) et le mage, devant le bureau du boss
     "reopen-testeur": (1400, 1000, AT(10 + 51 / 60), "#cv", 1.5),
     # mise en prod d'Andy finie à 10h42 : le sage le félicite sur la scène du plateau TV, Michael au sax

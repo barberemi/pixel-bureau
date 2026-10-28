@@ -29,10 +29,20 @@ function bossPageImg(p){
 }
 // l'écran, centré sur le tableau blanc du plan (LAYOUT.wall), en pixels ; null sans tableau blanc
 function wallRect(){const w=(LAYOUT.wall||[]).find(d=>d.type==='whiteboard');return w?{x:w.at[0]*TS+48-56,y:TS+5,w:112,h:21}:null;}
+// la page de l'écran qu'un agent de page met à jour (ou celle de l'agent survolé) : elle reste à l'écran, dans la dernière
+// case (devant les premières, les agents debout la cacheraient), encadrée ; WALL_CELLS : cases dessinées, pour le survol
+let WALL_CELLS=[], WALL_HOVER=false; // WALL_HOVER : survol d'une case, qui ne fait pas tourner l'écran
+function wallPin(){
+  const h=!WALL_HOVER&&hoverKey&&byKey[hoverKey], ok=c=>c&&famKind(c)==='page'&&agentPage(c)&&agentPage(c).wall;
+  const c=ok(h)?h:chars.find(x=>x.present&&x._st&&x._st.st==='work'&&x._st.zone==='meet'&&ok(x));
+  return c?agentPage(c).id:null;
+}
 const WALL_SCREEN={y:TS+1,draw:now=>{
   if(TV){if(projoOn())drawProjoScreen(now);return;} // 47-projo.js : le vidéoprojecteur
+  WALL_CELLS=[];
   if(!bossPagesOn())return;
-  const r=wallRect(), l=shownPages(), n=Math.min(4,l.length), k=l.length>4?Math.floor(now/BOSS_PAGE_MS):0;
+  const r=wallRect(), l=shownPages(), n=Math.min(4,l.length), pin=wallPin(), j=pin?l.findIndex(p=>p.id===pin):-1;
+  const k=l.length>4?(j>=0?(j-n+1+l.length)%l.length:Math.floor(now/BOSS_PAGE_MS)):0;
   R(ctx,r.x,r.y,r.w,r.h,'#14171e');R(ctx,r.x+1,r.y+1,r.w-2,1,'#2c313c');
   for(let i=0;i<5;i++){
     const x=r.x+3+i*22, y=r.y+3;
@@ -41,6 +51,8 @@ const WALL_SCREEN={y:TS+1,draw:now=>{
     R(ctx,x,y,20,15,'#1d3550');
     // les pages sont souvent sombres : à 20 px de large, une miniature éclaircie et saturée reste lisible
     if(im){ctx.save();ctx.imageSmoothingEnabled=true;ctx.filter='brightness(1.9) saturate(1.5)';ctx.drawImage(im,x,y,20,15);ctx.restore();}
+    WALL_CELLS.push({x,y,w:20,h:15,id:p.id});
+    if(p.id===pin){const on=REDUCED_MOTION||Math.floor(now/500)%2;ctx.strokeStyle=on?'#d9c2ff':'#b58cff';ctx.lineWidth=1;ctx.strokeRect(x-1.5,y-1.5,23,18);R(ctx,x+16,y+11,3,3,on?'#7cf09a':'#3fbf6a');}
   }
 }};
 const bpAge=a=>a>=864e5?Math.floor(a/864e5)+' j':agoTxt(a); // au-delà d'un jour, en jours

@@ -11,7 +11,7 @@ function render(now){
   drawLight(now); // voile du soir et de la nuit, sous les bulles et les noms
   ufoDraw(now); // 43-fx.js : vaisseau-mère d'un ticket entré dans le sprint en cours de route
   themeOverlay(now); // 46-themes.js : chauves-souris, confettis
-  const shown=c=>!FILTER||famOf(c)===FILTER||c.key===sel;
+  const shown=c=>inFilter(c)||c.key===sel;
   if(FILTER){ // les autres familles passent dans l'ombre, la famille choisie est redessinée par-dessus
     ctx.fillStyle='rgba(10,12,22,.58)';ctx.fillRect(0,0,W,H);
     for(const c of chars.filter(c=>c.present&&c.pos&&shown(c)).sort((a,b)=>a.pos.y-b.pos.y))drawChar(c,now);

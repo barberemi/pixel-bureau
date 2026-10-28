@@ -11,7 +11,7 @@ const AGENT_ICONS=[[/migration/i,'🧳'],[/mutation/i,'🧬'],[/revue|review|\bp
   [/web vitals|\bcwv\b|perf/i,'⚡'],[/erreur|error|5xx|incident|fastly/i,'🚨'],[/playwright|e2e|couverture|\btests?\b/i,'🧪'],
   [/\bmep\b|mise en prod|d[ée]ploi|deploy|release|impl[ée]mentation/i,'🚀'],[/r[ée]cap|digest|r[ée]sum[ée]|journalier/i,'🗞️'],
   [/scss|\bcss\b|style/i,'🎨'],[/adobe|analytics|\bstats?\b|statist/i,'📊'],[/jira|ticket|sprint/i,'🎫'],[/doc|wiki|confluence/i,'📚']];
-const agentIcon=c=>c.icon||(AGENT_ICONS.find(([re])=>re.test(c.role||''))||[0,'⚙'])[1];
+const agentIcon=c=>c.icon||(AGENT_ICONS.find(([re])=>re.test((c.role||'')+(c.temp?' '+c.name:'')))||[0,'⚙'])[1]; // intérimaire de page : le nom de sa page
 const wordClip=(s,n)=>{s=s.trim();if(s.length<=n)return s;const i=s.slice(0,n+1).lastIndexOf(' ');return (i>8?s.slice(0,i):s.slice(0,n-1))+'…';};
 const agentShort=c=>c.short||wordClip(clean(c.role||'').split(' · ')[0].replace(/^cron\s+/i,'') // avant le premier « — »
   .replace(/\s*\((horaire|page|\d+\s*(min|h))\)/gi,''),24);
@@ -19,11 +19,12 @@ const agentTag=c=>famOf(c)==='wf'?agentIcon(c)+' ':''; // devant un prénom d'ag
 // étiquette sur le plan : agents « 🔎 Dwight · Reviewer de PR » (ui.agent_label : both, office ou metier ; mode TV : metier)
 function labelText(c){
   if(famOf(c)!=='wf')return FAM[famOf(c)].ico+(c.apprentice?'🎓 ':'')+String(c.name||'').slice(0,24);
-  const mode=(CFG.ui||{}).agent_label||(TV?'metier':'both'), job=agentShort(c);
+  const mode=(CFG.ui||{}).agent_label||(TV?'metier':'both'), job=c.temp&&famKind(c)==='page'?'':agentShort(c); // le nom de sa page suffit
   const n=cronTag(c); // agent cron au repos : l'heure de son prochain passage
   return agentIcon(c)+' '+(mode==='office'||!job?String(c.name||'').slice(0,24):mode==='metier'?job:String(c.name||'').slice(0,14)+' · '+job)+(n&&' · '+n);
 }
-let FILTER=null; // null = tout le monde ; sinon une famille mise en avant
+let FILTER=null; // null = tout le monde ; sinon une famille mise en avant (« wf:page » : une famille d'agents, 32-familles.js)
+const inFilter=c=>!FILTER||(FILTER.startsWith('wf:')?famKind(c)===FILTER.slice(3):famOf(c)===FILTER);
 // workflows en hologramme : teinte cyan, lignes de balayage qui défilent, scintillement rare ; sur le sol beige,
 // un contour sombre de 1 px et un halo cyan (silhouette décalée) le détachent du décor
 const HOLO=document.createElement('canvas');HOLO.width=64;HOLO.height=64;const hctx=HOLO.getContext('2d');
@@ -36,8 +37,11 @@ function holoSilhouette(img,sx,sy,col){
 // style d'hologramme d'un agent (agents[].holo du pack, #62) : « leger » laisse voir ses couleurs ; « rouge » ajoute un
 // socle de projection ; « alerte » = léger au repos, rouge pendant une intervention (supportHot, 48-support.js)
 const HOLO_STYLE={leger:{tint:'rgba(70,190,255,.28)',lines:.22,glow:'#5fd4ff',dark:'#0b3a4a'},
-  rouge:{tint:'rgba(255,74,61,.22)',lines:.2,glow:'#ff6b5f',dark:'#4a0b0b',beam:'#ff6b5f'}};
-function holoStyleOf(c){const h=c&&c.holo;return h==='alerte'?HOLO_STYLE[supportHot(c)?'rouge':'leger']:HOLO_STYLE[h]||null;}
+  rouge:{tint:'rgba(255,74,61,.22)',lines:.2,glow:'#ff6b5f',dark:'#4a0b0b',beam:'#ff6b5f'},
+  // familles (32-familles.js) : même force que le cyan, violet pour les pages, ambre pour les autres
+  page:{tint:'rgba(175,125,255,.58)',lines:.4,glow:'#c9a8ff',dark:'#24104a'},
+  autre:{tint:'rgba(255,170,50,.58)',lines:.4,glow:'#ffc266',dark:'#4a2a0b'}};
+function holoStyleOf(c){const h=c&&c.holo;return h==='alerte'?HOLO_STYLE[supportHot(c)?'rouge':'leger']:HOLO_STYLE[h]||famPortraitHolo(c);}
 function holoBeam(dx,dy,col){
   ctx.save();const g=ctx.createRadialGradient(dx+32,dy+61,1,dx+32,dy+61,16);g.addColorStop(0,col+'cc');g.addColorStop(1,col+'00');
   ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(dx+32,dy+61,16,5,0,0,7);ctx.fill();
@@ -46,8 +50,8 @@ function holoBeam(dx,dy,col){
 }
 function holoFrame(img,sx,sy,now,lines,hs){
   hctx.globalCompositeOperation='source-over';hctx.clearRect(0,0,64,64);hctx.drawImage(img,sx,sy,64,64,0,0,64,64);
-  // teinte cyan ; vert fantôme à Halloween (46-themes.js)
-  hctx.globalCompositeOperation='source-atop';hctx.fillStyle=hs?hs.tint:themeIs('halloween')?'rgba(150,255,170,.6)':'rgba(70,190,255,.55)';hctx.fillRect(0,0,64,64);
+  // teinte cyan, toute l'année (le vert d'Halloween se confondait avec les familles)
+  hctx.globalCompositeOperation='source-atop';hctx.fillStyle=hs?hs.tint:'rgba(70,190,255,.55)';hctx.fillRect(0,0,64,64);
   if(lines){
     hctx.globalCompositeOperation='destination-out';
     hctx.fillStyle=`rgba(0,0,0,${hs?hs.lines:.4})`;

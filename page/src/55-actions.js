@@ -387,7 +387,13 @@ function renderPaie(side){
   n.textContent=PAYROLL.rate_usd_per_mtok?`Coût estimé à ${String(PAYROLL.rate_usd_per_mtok).replace('.',',')} $ par million de tokens : tarif moyen mesuré par Kronn sur tes discussions (${PAYROLL.rate_source}). Kronn ne mesure pas le coût des workflows eux-mêmes. Mis à jour à ${hm(ms(PAYROLL.generated_at))}.`:'Coût non estimable (aucun coût mesuré par Kronn).';
   side.appendChild(n);
   const ul=document.createElement('div');ul.className='roster';
-  for(const {c,p} of rows){
+  // par famille (32-familles.js) : un en-tête et son sous-total, puis ses agents, les plus chers d'abord
+  const fo=x=>(AFAM_ORDER.indexOf(famKind(x.c))+4)%4;rows.sort((a,b)=>fo(a)-fo(b));
+  for(const [i,{c,p}] of rows.entries()){
+    if(famKind(c)&&(!i||fo(rows[i-1])!==fo(rows[i]))){
+      const g=rows.filter(x=>fo(x)===fo(rows[i])).map(x=>x.p), tok=g.reduce((s,x)=>s+x.week.tok,0);
+      ul.insertAdjacentHTML('beforeend',famHead(famKind(c),null,`${fmtTok(tok)} · ${tok?fmtUsd(usd(tok)):'0 $'} · ${g.reduce((s,x)=>s+x.week.fail,0)}/${g.reduce((s,x)=>s+x.week.runs,0)} échecs`));
+    }
     const b=document.createElement('button');
     b.className='who fam-wf payrow';
     b.onclick=()=>select(c.key);

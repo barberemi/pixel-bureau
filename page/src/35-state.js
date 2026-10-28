@@ -392,6 +392,8 @@ function stateAt0(c,t){
     const failedNow=s&&s.s==='Failed'&&r.status==='Failed'&&s===r.steps[r.steps.length-1];
     const label=(z==='srv'?'Salle serveurs : ':z==='meet'?'En réunion : ':'Travaille sur ')+(s?s.n:'le run');
     if(failedNow)return {st:'error',zone:'wc',label:'En panne : enfermé aux toilettes ('+s.n+')',bubble:'!',run:r,step:s};
+    // 32-familles.js : un agent de page met sa page à jour en salle de réunion, devant l'écran mural
+    if(z!=='meet'&&famKind(c)==='page')return {st:'work',zone:'meet',label:"Met sa page à jour devant l'écran"+(s?' : '+s.n:''),bubble:s?s.n:'...',run:r,step:s};
     return {st:z==='desk'?'work':z,zone:z==='desk'?'desk':z,label,bubble:s?s.n:'...',run:r,step:s};
   }
   const last=runs[runs.length-1];
@@ -468,10 +470,10 @@ const ST_PALETTE={
 const ST_COLOR=Object.fromEntries(Object.entries(ST_PALETTE).filter(([,v])=>v!=='transparent').map(([k,v])=>[k,ST_TOKEN[v]||v]));
 const ST_CSS=Object.fromEntries(Object.entries(ST_PALETTE).map(([k,v])=>[k,ST_TOKEN[v]?'var(--'+v+')':v]));
 // pastilles de la légende du gabarit (office_template.html) : data-st = un état de ST_CSS, data-cat = un statut de TCAT ;
-// une pastille en anneau (.ring) prend la couleur en bordure
+// data-fam = une famille d'agents d'AFAM (32-familles.js) ; une pastille en anneau (.ring) prend la couleur en bordure
 function paintLegend(root){
-  for(const i of root.querySelectorAll('[data-st],[data-cat]')){
-    const col=i.dataset.st?ST_CSS[i.dataset.st]:TCAT[i.dataset.cat].c;
+  for(const i of root.querySelectorAll('[data-st],[data-cat],[data-fam]')){
+    const col=i.dataset.st?ST_CSS[i.dataset.st]:i.dataset.fam?AFAM[i.dataset.fam].c:TCAT[i.dataset.cat].c;
     if(i.classList.contains('ring'))i.style.borderColor=col;else i.style.background=col;
   }
 }
