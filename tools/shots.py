@@ -260,6 +260,9 @@ SHOTS = {
     # le volet du ticket : sa PR avec ces mêmes infos et l'adresse complète de l'env de branche
     "kanban-pr-env": (1600, 1000, AT(11) + KB_PR_ENV + "select('kanban');", ".bp-wide"),
     "kanban-volet-env": (1600, 1000, AT(11) + KB_DEMO + KB_PR_ENV + "openTicket('DM-7089');", ".kbv"),
+    # ordre du board et priorité Jira (63-kanban.js) : rangs et priorités posés sur les tickets de la démo
+    "kanban-priorite": (1600, 1000, AT(11) + "[...TEAM.people.flatMap(p=>p.tickets),...(TEAM.unassigned||[])].forEach((t,i)=>{t.rank=(i*7)%41;"
+                       "t.prio=['Highest','High','Medium','Medium','Low','Lowest','High'][i%7];});select('kanban');", ".bp-wide"),
     "kanban-personne": (1600, 1000, AT(11) + "select('kanban');KB_WHO=kbPeople()[0].key;kanbanFill(document.querySelector('.bp-wbody'));", ".bp-wide"),
     # fiche d'un ticket : ses PR et les workflows à lancer (dataset actions simulé depuis l'équipe de démo)
     "fiche-ticket": (1400, 1400, AT(11) + "ACTIONS.estimate=true;ACTION_BINDS['bureau-estimate']={jira_ticket_key:'key'};const all=TEAM.people.flatMap(p=>p.tickets),prs=TEAM.people.flatMap(p=>p.prs);"
