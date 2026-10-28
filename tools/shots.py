@@ -72,6 +72,21 @@ KB_PR_ENV = ("const _pe=TEAM.people.flatMap(p=>p.prs||[]),_p1=_pe.find(x=>x.n===
              "_tt=h=>new Date(T-h*36e5).toISOString();LIVE=LIVE||{runs:[],discussions:[],deploys:{}};"
              "LIVE.envs={[_r+'|dev']:{ref:_p1.head,tag:false,by:null,status:'completed',conclusion:'success',start:_tt(2.2),end:_tt(2),url:'#'},"
              "[_r+'|stg']:{ref:_p2.head,tag:false,by:null,status:'in_progress',conclusion:null,start:_tt(.1),end:null,url:'#'}};")
+# tableau des départs (62-departs.js) : le panneau à la place de l'horloge de la cafétéria (le plan type n'en a pas :
+# objects.departs facultatif), l'horloge et l'employé du sprint décalés, et les envs de cinq dépôts fictifs (dataset live)
+DEP_DEMO = ("applyLayout({...LAYOUT,clock:[9,11],plants:LAYOUT.plants.map(p=>p[0]===1&&p[1]===10?[1,9]:p),"
+            "objects:{...LAYOUT.objects,emp:{...LAYOUT.objects.emp,x:314},departs:{x:38,y:334,w:150,h:50}}});"
+            "const _dt=h=>new Date(T-h*36e5).toISOString(),_dv=(ref,tag,by,h)=>({ref,tag,by,end:_dt(h),url:'#'});"
+            "LIVE={...(LIVE||{runs:[],discussions:[],deploys:{}}),departs:["
+            "{repo:'dunder-mifflin/site-web',label:'site-web',dev:_dv('feat/DM-6550-carrousel',false,'pambeesly',2),stg:_dv('17.122.2',true,'andybernard',20),prd:_dv('17.122.2',true,'andybernard',1.5)},"
+            "{repo:'dunder-mifflin/intranet',label:'intranet',dev:_dv('feat/DM-6717-annuaire',false,'gabelewis',5),stg:_dv('3.121.0',true,'darrylphilbin',30),prd:_dv('3.121.3',true,'darrylphilbin',26)},"
+            "{repo:'dunder-mifflin/api-ventes',label:'api-ventes',dev:_dv('refactor/DM-7628-cache',false,'hollyflax',1),stg:_dv('2.5.0',true,'michaelscott',150),prd:_dv('2.5.0',true,'michaelscott',148)},"
+            "{repo:'dunder-mifflin/catalogue',label:'catalogue',dev:_dv('6.8.0',true,'darrylphilbin',60),stg:_dv('fix/DM-7837-papier-recycle',false,'pambeesly',4),prd:_dv('6.8.0',true,'darrylphilbin',60)},"
+            "{repo:'dunder-mifflin/appli-mobile',label:'appli-mobile',prd:_dv('2.6.0',true,'michaelscott',650)}]};")
+# le coin de la cafétéria où pend le panneau, agrandi
+DEP_ZOOM = ("const _q=document.getElementById('cv').getBoundingClientRect(),_k=_q.width/W,_z=document.createElement('div');_z.id='depzoom';"
+            "Object.assign(_z.style,{position:'absolute',left:(_q.left+scrollX)+'px',top:(_q.top+scrollY+9.2*TS*_k)+'px',width:(13*TS*_k)+'px',"
+            "height:(3.2*TS*_k)+'px',pointerEvents:'none'});document.body.appendChild(_z);")
 SHOTS = {
     "plan": (1400, 1000, AT(11), "#cv", 1.5),
     # agents mis en avant (« Sur le plan » : agents) : icône, prénom et métier de chacun
@@ -131,6 +146,11 @@ SHOTS = {
     "galerie": (1400, 1800, AT(11) + "const d=document.querySelector('.legend-help');d.open=true;renderGallery();", ".gal"),
     "tv": (1600, 900, AT(11) + "setTv(true);", None),
     # « Qui fait quoi » de l'écran mural, défilé jusqu'aux agents (actifs ou en panne, nommés par leur métier)
+    # tableau des départs : le panneau du plan (mises en prod), la fenêtre (DEV, STG, PRD), « Les envs » en mode TV
+    "departs-panneau": (1400, 1000, AT(11) + DEP_DEMO + "DEP_PIN=0;" + DEP_ZOOM, "#depzoom", 3),
+    "departs": (1600, 1000, AT(11) + DEP_DEMO + "openDeparts();", ".bp-wide"),
+    "tv-envs": (1600, 900, AT(11) + DEP_DEMO + "setTv(true);setTimeout(()=>{TVSCROLL.hold=performance.now()+1e6;const b=document.querySelector('#tvwho'),"
+                "h=[...b.querySelectorAll('h2')].pop();b.scrollTop=h.offsetTop-b.offsetTop-8;},600);", None),
     "tv-agents": (1600, 900, AT(11) + "setTv(true);setTimeout(()=>{TVSCROLL.hold=performance.now()+1e6;const b=document.querySelector('#tvwho'),"
                   "h=[...b.querySelectorAll('h2')][1];b.scrollTop=h?h.offsetTop-300:0;},1500);", "#tvwho"),
     "standup": (1600, 900, AT(9.7) + "setTv(true);TVSCENE.manual='daily';TVSCENE.idx=0;updateTv(true);", None),

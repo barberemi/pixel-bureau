@@ -91,7 +91,7 @@ class CompactTest(unittest.TestCase):
 
 
     def test_weights_by_block_add_up_to_the_page(self):
-        """Poids par bloc (smoke) : chaque bloc compte, la somme fait la page assemblée, la page de démo reste sous 950 Ko."""
+        """Poids par bloc (smoke) : chaque bloc compte, la somme fait la page assemblée, la page de démo reste sous 955 Ko."""
         import smoke, contextlib, io
         cfg = assemble.demo_config()
         for demo in (True, False):
@@ -100,7 +100,7 @@ class CompactTest(unittest.TestCase):
             self.assertTrue(all(v >= 0 for v in w.values()), w)
             self.assertEqual(bool(w["démo"]), demo)
         self.assertGreater(w["polices"], 0)  # police pixel des thèmes, en base64
-        self.assertLess(sum(assemble.weights(cfg).values()), 950_000)  # KT-28, relevé de 900 000 pour #89 (docs/decisions.md)
+        self.assertLess(sum(assemble.weights(cfg).values()), 955_000)  # KT-28, relevé de 900 000 pour #89, puis 950 000 pour le tableau des départs (docs/decisions.md)
         with contextlib.redirect_stdout(io.StringIO()) as out:
             smoke.weights({"JS": 300_000, "CSS": 50_000, "démo": 0})
         self.assertEqual(out.getvalue().strip(), "poids : JS 300 Ko (30 %) · CSS 50 Ko (5 %)")  # du plus lourd, sans bloc vide

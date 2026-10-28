@@ -820,3 +820,20 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .wc .wp{position:relative}
 .famb2{position:absolute;right:0;bottom:0;width:12px;height:12px;border-radius:3px 0 0 0;background:var(--f);font-size:8px;line-height:12px;text-align:center;font-style:normal}
 .lg-holo{display:inline-flex;gap:10px;align-items:center}.lg-holo span{display:inline-flex;gap:4px;align-items:center}
+/* ---------- tableau des départs (62-departs.js) : panneau d'aéroport, mêmes couleurs que son dessin sur le plan ---------- */
+:root{--dep-frame:#2a2c31;--dep-bg:#111214;--dep-row:#1b1d22;--dep-row2:#16181c;--dep-band:#ffd23f;--dep-band-ink:#111111;--dep-head:transparent;
+  --dep-head-ink:#9a9da6;--dep-name:#ffffff;--dep-ver:#c9ccd3;--dep-prd:#ffd23f;--dep-branch:#7fe08f;--dep-when:#9a9da6}
+.dep{background:var(--dep-bg);border:3px solid var(--dep-frame);border-radius:6px;padding:12px 14px;font-family:'BureauPixel',monospace;color:var(--dep-ver)}
+.dep table{width:100%;table-layout:fixed;border-spacing:0 4px}.dep th:first-child{width:19%}
+.dep th{text-align:left;font-weight:400;font-size:12px;padding:7px 10px;background:var(--dep-head);color:var(--dep-head-ink)}
+.dep td{background:var(--dep-row);padding:7px 10px;vertical-align:top;overflow:hidden}
+.dep .dep-n{color:var(--dep-name);vertical-align:middle;text-transform:uppercase;font-size:13px;overflow-wrap:anywhere}
+.dep-l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dep a{color:inherit;text-decoration:none}.dep a:hover{text-decoration:underline 2px;text-underline-offset:4px}
+.dep .dep-prd,.tve-l .dep-prd{color:var(--dep-prd)}.dep .dep-br{color:var(--dep-branch)}.dep-pr,.dep-who,.dep-key,.dep-none{color:var(--dep-when)}
+.dep-pr{font-size:10px;margin-left:6px}
+.dep-who{display:flex;align-items:center;gap:7px;margin-top:5px;font:12px system-ui,sans-serif;white-space:nowrap}
+.dep-who canvas{width:24px;height:24px;image-rendering:pixelated}.dep-key{margin:6px 0 0;font-size:11px}
+#tvwho .tve{background:var(--tv-card);border-radius:10px;padding:8px 12px;color:var(--tv-ink)}
+.tve-l{display:grid;grid-template-columns:34px 1fr auto;gap:8px;line-height:22px;color:var(--tv-muted)}.tve-l em{font-style:normal;font-weight:700;color:var(--tv-ink)}
+.tve-l .dep-br{color:var(--tv-ok)}.tve-l .dep-none{color:inherit}.tve-l img{width:18px;vertical-align:middle;margin-right:4px}

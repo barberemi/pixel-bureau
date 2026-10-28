@@ -16,7 +16,7 @@ cv.addEventListener('mousemove',e=>{
     tip.style.display='block';
     tip.style.left=e.clientX+'px';
     tip.style.top=e.clientY+'px';
-    tip.textContent=(String(z).startsWith('mail:')?mailTip(z.slice(5)):z==='duck'?'Le canard en plastique : parle-lui de ton problème':z==='support'?supportTip():z==='todo'?todoTip():z==='bosspages'?(wc?pageName((shownPages().find(p=>p.id===wc.id)||{}).title)+(wa?' · remplie par '+wa.name+(cronTag(wa)?' · '+cronTag(wa):''):'')+' · ':'')+'Mes pages Kronn ('+shownPages().length+')':z==='newagent'?'Ajouter un agent':z==='tv'&&stageClosed(T)?'Plateau fermé : pas de MEP le vendredi ni le week-end':z==='paie'?'Fiche de paie des agents':z==='tv'?'Mises en prod du jour':z==='kanban'?'Mur Kanban du sprint':z==='planning'?cronNotesTip():z==='calendar'?"Calendrier de l'équipe : qui est là":'Employé du sprint')+(WIN_ZONES.has(z)?' ↗ s\'ouvre en fenêtre':'');
+    tip.textContent=(String(z).startsWith('mail:')?mailTip(z.slice(5)):z==='duck'?'Le canard en plastique : parle-lui de ton problème':z==='support'?supportTip():z==='todo'?todoTip():z==='bosspages'?(wc?pageName((shownPages().find(p=>p.id===wc.id)||{}).title)+(wa?' · remplie par '+wa.name+(cronTag(wa)?' · '+cronTag(wa):''):'')+' · ':'')+'Mes pages Kronn ('+shownPages().length+')':z==='newagent'?'Ajouter un agent':z==='tv'&&stageClosed(T)?'Plateau fermé : pas de MEP le vendredi ni le week-end':z==='paie'?'Fiche de paie des agents':z==='tv'?'Mises en prod du jour':z==='kanban'?'Mur Kanban du sprint':z==='planning'?cronNotesTip():z==='calendar'?"Calendrier de l'équipe : qui est là":z==='departs'?'Tableau des départs : DEV, STG et PRD de chaque projet':'Employé du sprint')+(WIN_ZONES.has(z)?' ↗ s\'ouvre en fenêtre':'');
     return;
   }
   const p=c?null:pileAt(e);
@@ -52,10 +52,10 @@ function hitZone(ev){
   const inR=o=>mx>=o.x&&mx<=o.x+o.w&&my>=o.y&&my<=o.y+o.h;
   const bs=bossPagesOn()&&wallRect(), na=newAgentOn()&&newAgentRack();
   const mb=mailAt(mx,my);
-  return mb?'mail:'+mb:duckHit(mx,my)?'duck':supportOpenable()&&inR(supportRect())?'support':bs&&inR(bs)?'bosspages':na&&inR(na)?'newagent':inR(PAYR)?'paie':inR(TVR)?'tv':inR(KANR)?'kanban':(()=>{const r=cronNoteRect();return r&&inR(r);})()?'planning':todosOn()&&inR(todoRect())?'todo':CALR&&ABSENCES&&inR(CALR)?'calendar':inR(EMPR)&&bestEmployee().length?'emp':null;}
+  return mb?'mail:'+mb:duckHit(mx,my)?'duck':supportOpenable()&&inR(supportRect())?'support':bs&&inR(bs)?'bosspages':na&&inR(na)?'newagent':inR(PAYR)?'paie':inR(TVR)?'tv':inR(KANR)?'kanban':(()=>{const r=cronNoteRect();return r&&inR(r);})()?'planning':todosOn()&&inR(todoRect())?'todo':CALR&&ABSENCES&&inR(CALR)?'calendar':DEPR&&inR(DEPR)?'departs':inR(EMPR)&&bestEmployee().length?'emp':null;}
 // zones du plan qui ouvrent une fenêtre (le reste ouvre le panneau) : l'infobulle le dit
-const WIN_ZONES=new Set(['bosspages','todo','newagent','kanban','calendar']);
-cv.addEventListener('click',e=>{if(TV)return;const c=hitTest(e);if(c){select(c.key);return;}const z=hitZone(e);if(z==='bosspages')openBossPages();else if(z==='todo')openTodos();else if(z==='support')openSupport();else if(z==='newagent')openNewAgent();else select(z);});
+const WIN_ZONES=new Set(['bosspages','todo','newagent','kanban','calendar','departs']);
+cv.addEventListener('click',e=>{if(TV)return;const c=hitTest(e);if(c){select(c.key);return;}const z=hitZone(e);if(z==='bosspages')openBossPages();else if(z==='departs')openDeparts();else if(z==='todo')openTodos();else if(z==='support')openSupport();else if(z==='newagent')openNewAgent();else select(z);});
 const slider=document.getElementById('slider'), playBtn=document.getElementById('play'), liveBtn=document.getElementById('live'), speedBtn=document.getElementById('speed');
 const tgo=document.getElementById('tgo'), tbub=document.getElementById('tbub');
 // vitesse du replay : un bouton qui passe à la suivante à chaque clic
