@@ -46,8 +46,8 @@ function holoBeam(dx,dy,col){
 }
 function holoFrame(img,sx,sy,now,lines,hs){
   hctx.globalCompositeOperation='source-over';hctx.clearRect(0,0,64,64);hctx.drawImage(img,sx,sy,64,64,0,0,64,64);
-  // teinte cyan ; vert fantôme à Halloween (46-themes.js)
-  hctx.globalCompositeOperation='source-atop';hctx.fillStyle=hs?hs.tint:themeIs('halloween')?'rgba(150,255,170,.6)':'rgba(70,190,255,.55)';hctx.fillRect(0,0,64,64);
+  // teinte cyan, toute l'année (le vert d'Halloween se confondait avec les familles)
+  hctx.globalCompositeOperation='source-atop';hctx.fillStyle=hs?hs.tint:'rgba(70,190,255,.55)';hctx.fillRect(0,0,64,64);
   if(lines){
     hctx.globalCompositeOperation='destination-out';
     hctx.fillStyle=`rgba(0,0,0,${hs?hs.lines:.4})`;
