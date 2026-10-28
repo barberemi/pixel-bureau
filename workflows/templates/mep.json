@@ -3,7 +3,7 @@
  "key": "mep",
  "definition": {
   "name": "Mise en prod d'une PR",
-  "project_id": "@@kronn.project_id@@",
+  "project_id": "@@mep.project_id@@",
   "trigger": {
    "type": "Manual"
   },

@@ -221,6 +221,16 @@ class MepTemplateTest(unittest.TestCase):
         self.assertTrue(templates.skipped("mep", FIXTURE), "aucun projet avec une clé mep : pas créé")
         self.assertFalse(templates.skipped("mep", cfg))
 
+    def test_project_carries_the_team_github_connection(self):
+        """L'étape Agent du retour IA ne voit que les connexions du projet du workflow : celui de la revue (qui a GitHub de
+        l'équipe) plutôt que celui de Kronn, sauf mep.project_id explicite."""
+        tpl = templates.load_templates()["mep"]
+        kronn = dict(FIXTURE.get("kronn") or {}, project_id="p-kronn")
+        self.assertEqual(templates.render(tpl, config(kronn=kronn))["project_id"], "p-kronn")
+        self.assertEqual(templates.render(tpl, config(kronn=kronn, review={"project_id": "p-front"}))["project_id"], "p-front")
+        self.assertEqual(templates.render(tpl, config(kronn=kronn, review={"project_id": "p-front"},
+                                                      mep={"project_id": "p-mep"}))["project_id"], "p-mep")
+
     def test_its_id_never_counts_as_a_bureau_workflow(self):
         """Rangé dans launch (jamais workflows ni actions) : l'agent qui l'incarne garde sa fiche et « ▶ Lancer… »."""
         self.assertEqual(templates.TEMPLATES["mep"][1][0], "launch")

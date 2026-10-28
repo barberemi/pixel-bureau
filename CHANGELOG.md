@@ -54,6 +54,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- Mise en prod : le retour IA de fin lit de nouveau les PR du ticket. Le workflow était rattaché au projet Kronn, sans la connexion GitHub de l'équipe, et Kronn refuse désormais à l'agent une connexion hors de son projet (« outside this bridge token's scope ») : rien n'était posté dans Jira. Il prend maintenant le projet de la revue (`review.project_id`), ou `mep.project_id` s'il est donné. Après la mise à jour : `publish.py workflows`.
 - « ⏳ demandé » sous DEV/STG et sous l'env de branche d'une PR sans aucun lancement : Kronn remet l'état d'un lancement passé sur chaque bouton redessiné de la même ligne, et la page le prenait pour un nouveau clic (dès qu'on ouvrait la fiche, pour toutes les PR du dépôt pendant 15 min). Il faut maintenant un clic d'ici.
 - Les PR du dépôt principal ne disparaissent plus de la page quand GitHub tarde : la liste de ses PR ouvertes a 60 s au lieu de 30 dans le cron équipe, et si GitHub ne répond toujours pas, le relevé réussi précédent (3 h au plus) est repris avec un avertissement dans le panneau Fraîcheur. Avant, un délai dépassé publiait l'équipe sans aucune PR du principal : fiches « PR sans ticket dans le sprint », sans boutons ni env de branche. Après la mise à jour : `publish.py workflows`.
 - Mur Kanban : un ticket réouvert (statut `jira.flow.reopened`) se repère de nouveau, avec une pastille « ↺ Réouvert » et un liseré rouge sur sa carte ; l'ancienne liste « Ses tickets » le signalait, la carte du Kanban non.
