@@ -351,9 +351,10 @@ print(json.dumps(val))
         k0, k1 = "DM-100", "DM-102"
         self.assertEqual((t[k0]["prio"], t[k0]["rank"], t[k1]["rank"]), ("High", 1, 0))
         self.assertNotIn("prio", t[k1])
-        inp.pop("rank")
+        inp.pop("rank")  # jira_team lu sur le board : le rang est la position du ticket
         t = {x["key"]: x for p in self.run_script("team_shape.py", inp)["people"] for x in p["tickets"]}
-        self.assertNotIn("rank", t[k0])
+        pos = [i["key"] for i in inp["issues"]]
+        self.assertEqual((t[k0]["rank"], t[k1]["rank"]), (pos.index(k0), pos.index(k1)))
 
     def test_team_shape_points_follow_the_field_order_and_keep_zero(self):
         """Champ du board d'abord (Story Points) ; un 0 posé compte, l'estimation ne le remplace pas (cas EW-7852)."""

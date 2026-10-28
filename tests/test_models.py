@@ -164,6 +164,12 @@ class ModelsTest(unittest.TestCase):
         self.assertEqual((pris("moi").returncode, pris("moi").stdout), (0, "affecte"))
         self.assertEqual(pris("autre").returncode, 0)  # course perdue : le déplacement continue
 
+    def test_workflows_stay_within_kronn_step_limit(self):
+        """Kronn refuse un workflow de plus de 20 étapes (« Too many steps (21, max 20) » : le cron équipe n'a pas été
+        publié le 2026-10-28)."""
+        for key, tpl in TPL.items():
+            self.assertLessEqual(len((tpl.get("definition") or {}).get("steps") or []), 20, key)
+
     def test_on_result_rules_only_match_kronn_signals(self):
         """Kronn ne compare on_result qu'aux lignes « [SIGNAL: …] » (OK, ERROR, exit_N, PARTIAL, PENDING), jamais au texte
         écrit par l'étape : une règle sur « DEJA » ou « PASSE » ne se déclenche jamais (move publié le 2026-10-28)."""

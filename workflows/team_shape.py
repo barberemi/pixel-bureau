@@ -60,8 +60,9 @@ def norm(s):
 
 
 people, by_key, unassigned = {}, {}, []
-# ordre du board (étape board_rank, API Agile) : le rang de chaque ticket du sprint, absent si la lecture a échoué
-RANK = {it.get("key"): i for i, it in enumerate(D.get("rank") or []) if isinstance(it, dict) and it.get("key")}
+# ordre du board : jira_team lit le sprint sur l'API Agile du board, les tickets arrivent dans son ordre ; ancien format
+# (« rank » à part, ou recherche JQL triée par date) : le rang vient de « rank » s'il est là, sinon de la position
+RANK = {it.get("key"): i for i, it in enumerate(D.get("rank") or D.get("issues") or []) if isinstance(it, dict) and it.get("key")}
 for it in D.get("issues") or []:
     f = it.get("fields") or {}
     st = (f.get("status") or {}).get("name") or ""
