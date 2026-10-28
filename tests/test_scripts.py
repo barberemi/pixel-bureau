@@ -1093,6 +1093,22 @@ print(json.dumps(val))
         self.assertEqual(pb["feeds"][0]["last"], {"status": "Success", "at": iso(30)})
         self.assertEqual(out["warnings"], [])
 
+    def test_pages_snapshot_lists_who_publishes_in_pages_off_the_wall(self):
+        """Famille Pages (32-familles.js) : une page hors de l'écran dit qui y publie (préfixe et déclencheur), le parent à
+        la place d'un sous-workflow ; une page de l'écran garde ses feeds complets, sans doublon dans choices."""
+        fake, _, _ = self.boss_pages()
+        child, cron = "c0c0c0c0-1111-2222-3333-444444444444", "c1c1c1c1-1111-2222-3333-444444444444"
+        fake.workflows += [{"id": child, "name": "Relire une PR", "enabled": True, "trigger_type": "manual"},
+                           {"id": cron, "name": "Relire les PR du jour", "enabled": True, "trigger_type": "cron"}]
+        fake.defs = {cron: [{"name": "chaque", "step_type": {"type": "SubWorkflow"}, "sub_workflow_id": child}]}
+        fake.page_wfs = {"pa": [{"id": AGENT_WF, "name": "Revue de PR", "enabled": True, "step_names": ["publish"]}],
+                         "pb": [{"id": child, "name": "Relire une PR", "enabled": True, "step_names": ["publish"]}]}
+        out = self.run_script("pages_snapshot.py", api=self.kronn(fake), boss_pages=["pa"], chrome=False)
+        ch = {c["id"]: c for c in out["choices"]}
+        self.assertEqual(ch["pb"]["feeds"], [{"wf": cron[:8], "trigger": "cron"}])
+        self.assertNotIn("feeds", ch["pa"])  # sur l'écran : pages[].feeds
+        self.assertEqual(len(out["pages"][0]["feeds"]), 1)
+
     def test_pages_snapshot_captures_with_a_chrome_that_exits_by_itself(self):
         """Chrome récent : il sort seul après --screenshot ; arrêter son groupe (déjà parti) ne doit pas perdre la capture."""
         fake, cache, _ = self.boss_pages()

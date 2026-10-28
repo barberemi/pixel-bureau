@@ -8,15 +8,15 @@ function hitTest(ev){
 }
 const tip=document.getElementById('tip');
 cv.addEventListener('mousemove',e=>{
-  const c=hitTest(e),z=c?null:hitZone(e);
-  hoverKey=c?c.key:null;
+  const c=hitTest(e),z=c?null:hitZone(e), wc=z==='bosspages'&&wallCellAt(e), wa=wc&&wallAgent(wc.id);
+  hoverKey=c?c.key:wa?wa.key:null;WALL_HOVER=!!wa; // une miniature de l'écran : son agent ressort sur le plan (32-familles.js)
   RACK_HOVER=z==='newagent'; // 66-newagent.js : le « + » de la baie s'allume
   cv.style.cursor=(c||z)?'pointer':'default';
   if(z&&!c){
     tip.style.display='block';
     tip.style.left=e.clientX+'px';
     tip.style.top=e.clientY+'px';
-    tip.textContent=(String(z).startsWith('mail:')?mailTip(z.slice(5)):z==='duck'?'Le canard en plastique : parle-lui de ton problème':z==='support'?supportTip():z==='todo'?todoTip():z==='bosspages'?'Mes pages Kronn ('+shownPages().length+')':z==='newagent'?'Ajouter un agent':z==='tv'&&stageClosed(T)?'Plateau fermé : pas de MEP le vendredi ni le week-end':z==='paie'?'Fiche de paie des agents':z==='tv'?'Mises en prod du jour':z==='kanban'?'Mur Kanban du sprint':z==='planning'?cronNotesTip():z==='calendar'?"Calendrier de l'équipe : qui est là":'Employé du sprint')+(WIN_ZONES.has(z)?' ↗ s\'ouvre en fenêtre':'');
+    tip.textContent=(String(z).startsWith('mail:')?mailTip(z.slice(5)):z==='duck'?'Le canard en plastique : parle-lui de ton problème':z==='support'?supportTip():z==='todo'?todoTip():z==='bosspages'?(wc?pageName((shownPages().find(p=>p.id===wc.id)||{}).title)+(wa?' · remplie par '+wa.name+(cronTag(wa)?' · '+cronTag(wa):''):'')+' · ':'')+'Mes pages Kronn ('+shownPages().length+')':z==='newagent'?'Ajouter un agent':z==='tv'&&stageClosed(T)?'Plateau fermé : pas de MEP le vendredi ni le week-end':z==='paie'?'Fiche de paie des agents':z==='tv'?'Mises en prod du jour':z==='kanban'?'Mur Kanban du sprint':z==='planning'?cronNotesTip():z==='calendar'?"Calendrier de l'équipe : qui est là":'Employé du sprint')+(WIN_ZONES.has(z)?' ↗ s\'ouvre en fenêtre':'');
     return;
   }
   const p=c?null:pileAt(e);
@@ -27,6 +27,12 @@ cv.addEventListener('mousemove',e=>{
     tip.textContent=c?c.name+' · '+(c._st?c._st.label:''):pileTip(p);
   }else tip.style.display='none';
   });
+// la case de l'écran mural sous la souris (WALL_CELLS, 47-bosspages.js), et l'agent de sa page
+function wallCellAt(ev){
+  const r=cv.getBoundingClientRect(),mx=(ev.clientX-r.left)*W/r.width,my=(ev.clientY-r.top)*H/r.height;
+  return WALL_CELLS.find(h=>mx>=h.x-1&&mx<=h.x+h.w+1&&my>=h.y-2&&my<=h.y+h.h+2)||null;
+}
+const wallAgent=id=>chars.find(c=>famKind(c)==='page'&&(agentPage(c)||{}).id===id)||null;
 // piles posées sur les bureaux (40-furniture.js) : ce qu'elles comptent
 function pileAt(ev){
   const r=cv.getBoundingClientRect(),mx=(ev.clientX-r.left)*W/r.width,my=(ev.clientY-r.top)*H/r.height;
@@ -40,7 +46,7 @@ function pileTip(h){
   for(const x of open)by[x.cat]=(by[x.cat]||0)+1;
   return h.o.name+' : '+plural(open.length,'ticket ouvert','tickets ouverts')+' · '+TORDER.filter(k=>by[k]).map(k=>by[k]+' '+TCAT[k].t.toLowerCase()).join(', ')+(open.length>5?' (5 sur la pile)':'');
 }
-cv.addEventListener('mouseleave',()=>{tip.style.display='none';hoverKey=null;RACK_HOVER=false;});
+cv.addEventListener('mouseleave',()=>{tip.style.display='none';hoverKey=null;WALL_HOVER=false;RACK_HOVER=false;});
 function hitZone(ev){
   const r=cv.getBoundingClientRect(),mx=(ev.clientX-r.left)*W/r.width,my=(ev.clientY-r.top)*H/r.height;
   const inR=o=>mx>=o.x&&mx<=o.x+o.w&&my>=o.y&&my<=o.y+o.h;

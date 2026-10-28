@@ -14,7 +14,7 @@ Clic sur un personnage (plan, panneau ou « Qui fait quoi ») : sa fiche s'ouvre
 | --- | --- |
 | ![Fiche d'un agent](../img/fiche-agent.png) | ![Fiche d'un collègue](../img/fiche-collegue.png) |
 
-**Agent** : runs, réussites, échecs et tokens du jour, workflows, sa journée run par run avec les étapes et les erreurs. Boutons (cartes Kronn, sans token sauf « interroger ») :
+**Agent** : sous son nom, à quoi il sert, selon sa [famille](01-plan.md#trois-familles-dagents) : « Son bouton : ⟳ Remettre à jour, sur la fiche d'une PR » (au quotidien), « Remplit Core Web Vitals ↗ » avec la miniature de la page et « Sur l'écran mural » ou « + l'y ajouter » (pages), « De passage : aucun agent pour ce workflow » ou « Tourne seul, sans bouton ni page » avec son programme (autres). Puis runs, réussites, échecs et tokens du jour, workflows, sa journée run par run avec les étapes et les erreurs. Boutons (cartes Kronn, sans token sauf « interroger ») :
 - **⏰ Son programme** (agent cron) : pour chaque cron de l'agent, son programme en clair à l'heure du bureau (« Du lundi au vendredi toutes les 3 heures de 9h30 à 21h30 » : Kronn lit les crons en heure UTC, la fiche les traduit), un anneau qui se remplit jusqu'au prochain passage (« Prochain passage aujourd'hui à 12h (dans 1 h) ») et son dernier passage du jour. **↻ Passer maintenant** lance un passage en plus, tout de suite, sans rien à remplir : son programme ne change pas.
 - **Relancer** : relance un workflow manuel, sans variables (refusé s'il tourne déjà) ; la carte Kronn ne demande rien. Absent pour un workflow qui attend une saisie obligatoire, comme Réestimer : celui-là se lance depuis la fiche du ticket, qui envoie la clé et te demande le reste.
 - **▶ Lancer…** : pour chaque workflow de l'agent qui demande une saisie (une intention, un dépôt…), un champ par paramètre, avec son libellé, son exemple et * sur les obligatoires (zone de texte ou liste quand le workflow le déclare). Le bouton reste grisé tant qu'un obligatoire est vide ou qu'une valeur est refusée, avec la raison sous le champ : le « ; » sépare les paramètres (remplace-le par une virgule), et une valeur doit suivre le format déclaré par le workflow ; les retours à la ligne deviennent des espaces. Il copie alors la ligne déjà remplie : colle-la dans le champ **Paramètres** de la carte Kronn, puis Lancer, rien à retoucher. Ta saisie tient pendant que la fiche se met à jour. Le workflow « Le Bureau · relancer un workflow » revérifie chaque nom avant de lancer ; l'agent se met au travail sur le plan dès que le run démarre. Tous les agents l'ont, ceux ajoutés depuis une baie compris, sans rien régler.
@@ -130,7 +130,7 @@ Une PR se reconnaît à son dépôt et à son numéro : `#2039` pour le dépôt 
 
 ![Le canard attend ta réponse : sa question en tête de sa fiche](../img/canard-question.png)
 
-La **fiche de paie** (enveloppe sur le bureau du boss) donne tokens, runs et échecs par agent sur 7 jours, avec un coût estimé.
+La **fiche de paie** (enveloppe sur le bureau du boss) donne tokens, runs et échecs par agent sur 7 jours, avec un coût estimé, rangés par famille (au quotidien, pages, autres) avec le sous-total de chacune. Un intérimaire n'existe que les jours où son workflow tourne : une page mise à jour une fois par semaine n'y figure que ce jour-là.
 
 ## Cartes de passion
 

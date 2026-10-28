@@ -39,7 +39,7 @@ test('une PR par son numéro, avec son auteur', () => {
 test('une personne et un agent par leur nom ou leur rôle', () => {
   const c = J('chars.find(c=>c.person)'), a = J("chars.find(c=>famOf(c)==='wf'&&c.role)");
   assert.ok(find(c.name.toUpperCase()).some(s => s.startsWith('Personnes:') && s.endsWith(c.name)));
-  assert.ok(find(a.role.split(' ')[0]).some(s => s.startsWith('Agents:') && s.endsWith(a.name)));
+  assert.ok(find(a.role.split(' ')[0]).some(s => s.startsWith('Agents · ') && s.endsWith(a.name)));
 });
 
 test('une page Kronn de l\'écran du boss, ouverte dans Kronn', () => {

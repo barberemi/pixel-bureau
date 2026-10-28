@@ -68,7 +68,7 @@ test('légende du gabarit : pastilles sans couleur en dur, peintes depuis les ta
   const html = read('page', 'office_template.html');
   const legend = html.slice(html.indexOf('<div class="legend">'), html.indexOf('<h4>Enveloppes'));
   assert.doesNotMatch(legend, /<i[^>]*style=/); // plus de couleur en dur
-  const swatches = [...legend.matchAll(/<i( class="([^"]*)")? data-(st|cat)="(\w+)"><\/i>/g)]
+  const swatches = [...legend.matchAll(/<i( class="([^"]*)")? data-(st|cat|fam)="(\w+)"><\/i>/g)]
     .map(([, , cls = '', kind, key]) => ({classList: {contains: c => cls.split(' ').includes(c)}, dataset: {[kind]: key}, style: {}}));
   assert.equal(swatches.length, (legend.match(/<i\b/g) || []).length);
   page.ctx.__swatches = swatches;
@@ -76,6 +76,7 @@ test('légende du gabarit : pastilles sans couleur en dur, peintes depuis les ta
   // les couleurs que le gabarit portait en dur avant #10
   const before = [
     ['background', 'var(--ok)'], ['background', 'var(--info)'], ['borderColor', 'var(--warn)'], ['borderColor', 'var(--err)'], ['background', 'var(--idle)'],
+    ['background', '#5fd4ff'], ['background', '#b58cff'], ['background', '#ffb547'], // hologrammes des familles d'agents
     ['background', '#2e9e5b'], ['background', '#4a7fe0'], ['background', '#7a5cc8'], ['background', '#2e9e9b'], ['background', '#8a8478'],
     ['background', 'var(--ok)'], ['background', 'var(--info)'], ['borderColor', 'var(--warn)'], ['borderColor', 'var(--err)'],
     ['background', '#7a5cc8'], ['background', '#2e9e9b'], ['borderColor', '#d97757'], ['background', '#7d8fa3'], ['background', 'var(--idle)'],

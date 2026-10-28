@@ -21,7 +21,7 @@ Chaque mot tapé doit se trouver dans la ligne, sans tenir compte des accents ni
 | Tickets | le numéro (7637 ou DM-7637) et le titre, tickets du sprint et non assignés | numéro, titre, colonne, personne ; ceux en cours d'abord, les déployés à la fin |
 | PR | le numéro (#2012) et le titre, PR de l'équipe et des autres dépôts suivis | numéro, titre, état de la review, auteur |
 | Personnes | le prénom et le rôle | prénom, rôle |
-| Agents | le nom et le métier | icône, nom, métier |
+| Agents · au quotidien, · pages, · autres | le nom, le métier et le titre de sa page | icône, nom ; son bouton, ou « 📺 remplit sa page, sur l'écran » ; un groupe par famille |
 | Pages Kronn | le titre des pages de l'écran du boss | titre |
 
 Cinq lignes par groupe au plus ; au-delà, la fenêtre dit combien d'autres et invite à préciser.

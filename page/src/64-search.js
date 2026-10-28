@@ -15,14 +15,17 @@ function srFind(q){
     ...tk.filter(o=>srHit(q,o.t.key+' '+o.t.summary)).sort((a,b)=>TORDER.indexOf(a.t.cat)-TORDER.indexOf(b.t.cat))
       .map(o=>({g:'Tickets',k:String(o.t.key).replace(/^[A-Z]+-/,''),txt:o.t.summary,cat:o.t.cat,who:kbCharOf(o.p),go:()=>openTicket(o.t.key)})),
     ...pr.filter(o=>srHit(q,'#'+o.x.n+' '+o.x.title)).map(o=>({g:'PR',k:'#'+o.x.n,txt:o.x.title,rev:o.x.review,who:kbCharOf(o.p),go:()=>openPr(prId(o.x))})),
-    ...chars.filter(c=>c.name&&srHit(q,c.name+' '+(c.role||''))).map(c=>{const wf=famOf(c)==='wf';
-      return {g:wf?'Agents':'Personnes',k:(wf?agentIcon(c)+' ':'')+c.name,txt:wf?agentShort(c):c.role||'',who:c.key,go:()=>select(c.key)};}),
+    // agents : un groupe par famille (32-familles.js) ; le titre de sa page trouve un agent de page
+    ...chars.filter(c=>c.name&&srHit(q,c.name+' '+(c.role||'')+' '+((agentPage(c)||{}).title||''))).map(c=>{const k=famKind(c),pg=k==='page'&&agentPage(c),b=k==='jour'&&agentButtons(c)[0];
+      return {g:k?'Agents · '+AFAM[k].t.toLowerCase():'Personnes',fam:k,k:(k?agentIcon(c)+' ':'')+c.name,
+        txt:pg?(c.temp?'📺 remplit sa page':'📺 '+pageName(pg.title))+(pg.wall?", sur l'écran":''):b?b[0]:k?agentShort(c):c.role||'',who:c.key,go:()=>select(c.key)};})
+      .sort((a,b)=>(a.fam?AFAM_ORDER.indexOf(a.fam)+1:0)-(b.fam?AFAM_ORDER.indexOf(b.fam)+1:0)),
     ...shownPages().filter(p=>srHit(q,p.title)).map(p=>({g:'Pages Kronn',k:'📊',txt:p.title,href:bpLink(p.id)}))];
 }
 function srRow(r,i){
   const c=r.who&&byKey[r.who], on=i===SR_I?' on':'';
   const side=(r.cat?`<span class="sr-chip" style="--c:${TCAT[r.cat].c}">${TCAT[r.cat].t}</span>`:'')+
-    (r.rev&&TK_REV[r.rev]?`<span class="sr-w">${TK_REV[r.rev][0]}</span>`:'')+(c&&r.g!=='Personnes'&&r.g!=='Agents'?`<span class="sr-w">${esc(c.name)}</span>`:'');
+    (r.rev&&TK_REV[r.rev]?`<span class="sr-w">${TK_REV[r.rev][0]}</span>`:'')+(c&&r.g!=='Personnes'&&!r.fam?`<span class="sr-w">${esc(c.name)}</span>`:'');
   const body=`<b class="k">${esc(r.k)}</b><span class="t">${esc(r.txt)}</span>${side}`;
   return r.href?`<a class="sr-r${on}" id="sr-${i}" role="option" aria-selected="${!!on}" data-i="${i}" href="${esc(r.href)}" target="_blank" rel="noopener">${body}</a>`:
     `<div class="sr-r${on}" id="sr-${i}" role="option" aria-selected="${!!on}" data-i="${i}">${body}</div>`;

@@ -262,9 +262,12 @@ function setData(d,live){
     r._ve=(r.status==='Running'||r.status==='WaitingApproval'||r.status==='Pending')?Infinity:Math.max(realEnd||r._s,r._s+VIS_MIN);
     const p8=(r.wf||'').slice(0,8);
     let c=chars.find(x=>x.wf&&x.wf.includes(p8));
-    if(!c){
-      const key='temp_'+p8;
-      c=byKey[key]||add({key,sprite:'temp',name:'Intérimaire '+(++tempN),role:clean(r.wf_name),wf:[p8],seat:free.shift()||null,temp:true});
+    if(!c){ // 32-familles.js : un workflow qui publie dans une page a l'intérimaire de la page, au nom de la page
+      const pg=pageFeed(p8), key=pg?'page_'+pg.id.slice(0,8):'temp_'+p8;
+      c=byKey[key];
+      if(c)c.wf.push(p8);
+      else c=add(pg?{key,sprite:'temp',name:pageName(pg.title),role:'Intérimaire de la page',wf:[p8],seat:free.shift()||null,temp:true}
+        :{key,sprite:'temp',name:'Intérimaire '+(++tempN),role:clean(r.wf_name),wf:[p8],seat:free.shift()||null,temp:true});
     }
     c.runs.push(r);
   }

@@ -2,8 +2,9 @@
 
 Liste : le dataset `pagelist` de la page (ajouts et retraits faits depuis la page, pages_save.py), sinon la clé
 boss_pages de la config (l'installation).
-Sortie (stdout) : {generated_at, pages[{id, title, updated, img, kpi, tv}], choices[{id, title}], warnings[texte]}, pages dans
-l'ordre de la liste ; choices : les pages Kronn qu'on peut ajouter (toutes, sauf le Bureau ; 80 au plus, sans image).
+Sortie (stdout) : {generated_at, pages[{id, title, updated, img, kpi, tv, feeds}], choices[{id, title, feeds}], warnings[texte]},
+pages dans l'ordre de la liste ; choices : les pages Kronn qu'on peut ajouter (toutes, sauf le Bureau ; 80 au plus, sans
+image) ; choices[].feeds, hors écran seulement : [{wf (préfixe de 8), trigger}] (publishers), la famille Pages de la page.
 - img : capture JPEG 320x200 en data URI, ou null. Refaite seulement quand la page change (révision du HTML ou des
   données), sinon reprise du cache ~/.cache/pixel-bureau/thumbs/<id>.json.
 - Capture : le HTML de la page et ses datasets dans un fichier local (window.KronnPageData, comme dans Kronn),
@@ -195,6 +196,23 @@ def feeds(pid):
     return list(out.values())[:6]
 
 
+def publishers(pid):
+    """Pages hors de l'écran (choices[].feeds) : les workflows qui y publient, {wf (préfixe), trigger}, sans le reste de
+    feeds ; la page y range leurs agents dans la famille Pages (32-familles.js)."""
+    try:
+        links = [x for x in get(f"/pages/{pid}/workflows") or [] if x.get("enabled", True)]
+    except Exception:
+        return []
+    if links and not WFS:
+        WFS.update({w["id"]: w for w in get("/workflows") or [] if w.get("id")})
+    out = {}
+    for x in links:
+        w = WFS.get(x["id"]) or {"id": x["id"], "trigger_type": "manual"}
+        for u in (parents_of(w["id"]) if w.get("trigger_type") == "manual" else []) or [w]:
+            out.setdefault(u["id"][:8], {"wf": u["id"][:8], "trigger": u.get("trigger_type") or "manual"})
+    return list(out.values())[:6]
+
+
 def chosen():
     """La liste rangée par la page (dataset pagelist), sinon boss_pages ; TV : ses pages projetées en mode TV."""
     try:
@@ -227,6 +245,10 @@ for pid in ids:
     pages.append({"id": d["id"], "title": title(d),
                   "updated": d.get("last_published_at") or d.get("updated_at"), "img": thumb(d, exe),
                   "kpi": kpi_of(d), "tv": d["id"] in TV, "feeds": feeds(d["id"])})
+for c in choices:  # rien quand personne n'y publie : sortie plus courte
+    pub = publishers(c["id"]) if c["id"] not in ids else []
+    if pub:
+        c["feeds"] = pub
 # caches des pages retirées de la liste
 for f in glob.glob(os.path.join(CACHE, "*.json")):
     if os.path.basename(f)[:-5] not in ids:
