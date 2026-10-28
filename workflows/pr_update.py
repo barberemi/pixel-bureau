@@ -17,8 +17,12 @@ Sous-commandes (python3 pr_update.py <étape> <dépôt owner/name> <n° de PR> <
 Corriger les commentaires d'une PR (#75, page action « bureau-fixpr ») :
   fix_prepare  fils de review non résolus (aucun : code 9, renvoi vers la fin), dossier de travail, dépendances reliées
                depuis ton dossier local du dépôt, contexte de l'agent (.bureau-fix.json, jamais commité).
-  fix_diff     après l'agent : fichiers changés, diff et réponse prévue à chaque fil, pour la validation (rien : code 9).
-  fix_push     validé : commit, push protégé, une réponse dans chaque fil (résolu s'il est corrigé), CI relancée.
+  fix_check    après l'agent : la commande de contrôle du dépôt (fix.checks du pack ou github.checks de ta config) sur le
+               dossier de travail ; son verdict part en tête de la validation, jamais bloquant.
+  fix_diff     après l'agent : verdict des contrôles, fichiers changés, diff et réponse prévue à chaque fil, pour la
+               validation (rien : code 9).
+  fix_push     validé : commit signé (-s, message de l'agent), push protégé, une réponse dans chaque fil (résolu s'il est
+               corrigé), bloc « Corrections de review » dans la description de la PR, CI relancée.
 Codes : 2 réglage ou PR refusés, 3 conflit (renvoi), 4 conflit non résolu, 5 push refusé, 9 rien à faire (renvoi), 1 autre échec.
 """
 import glob, json, os, re, shutil, subprocess, sys, time
@@ -191,20 +195,30 @@ def verify(repo, n, run_id):
     print(f"Conflit résolu : {count} commit(s) rejoués sur {st['base']}.\n\n{summary or '(pas de résumé de l’agent)'}")
 
 
+def check_cmd(repo):
+    """Commande de contrôle du dépôt : github.checks de ta config, sinon fix.checks du pack d'équipe ; vide sans réglage."""
+    return (GH.get("checks") or {}).get(repo) or ((CFG.get("fix") or {}).get("checks") or {}).get(repo) or ""
+
+
+def run_check(cmd, work):
+    """Lance la commande dans le dossier de travail (15 min au plus) : (verdict, fin de la sortie)."""
+    try:
+        r = subprocess.run(cmd, shell=True, cwd=work, capture_output=True, text=True, timeout=900)
+        tail = "\n".join((r.stdout + r.stderr).strip().splitlines()[-12:])
+        return ("verts ✅" if r.returncode == 0 else f"en échec ❌ (code {r.returncode})"), tail
+    except subprocess.TimeoutExpired:
+        return "trop longs (15 min) ⏱", ""
+
+
 def check(repo, n, run_id):
     st = load(run_id)
-    cmd = (GH.get("checks") or {}).get(repo)
+    cmd = check_cmd(repo)
     if not st.get("conflict") or not cmd:
         print("Pas de contrôle : " + ("aucun conflit." if not st.get("conflict") else f"aucune commande pour {repo} (github.checks)."))
         return
     src = local_checkout(repo)
     linked = link_deps(src, st["work"]) if src else []
-    try:
-        r = subprocess.run(cmd, shell=True, cwd=st["work"], capture_output=True, text=True, timeout=900)
-        tail = "\n".join((r.stdout + r.stderr).strip().splitlines()[-12:])
-        verdict = "verts ✅" if r.returncode == 0 else f"en échec ❌ (code {r.returncode})"
-    except subprocess.TimeoutExpired:
-        tail, verdict = "", "trop longs (15 min) ⏱"
+    verdict, tail = run_check(cmd, st["work"])
     deps = f" ; dépendances reliées depuis {src} ({len(linked)})" if src else " ; dépendances absentes (dépôt local inconnu de Kronn)"
     print(f"Contrôle « {cmd} » : {verdict}{deps}.\n{tail}"[:2500])
 
@@ -271,6 +285,28 @@ def fix_prepare(repo, n, run_id):
     print(f"{repo}#{n} : {st['title']}\n{len(ts)} fil(s) de review non résolu(s), branche {st['branch']} ; {deps}.")
 
 
+def fix_check(repo, n, run_id):
+    """Après l'agent : la commande de contrôle du dépôt sur ses corrections ; verdict gardé pour la validation et la PR."""
+    st = load(run_id)
+    cmd = check_cmd(repo)
+    if not cmd:
+        st["check"] = {"verdict": "non lancés par le Bureau (aucune commande pour ce dépôt : fix.checks ou github.checks)"}
+        save(run_id, st)
+        print(f"Pas de contrôle : aucune commande pour {repo} (fix.checks du pack ou github.checks de ta config).")
+        return
+    verdict, tail = run_check(cmd, st["work"])
+    st["check"] = {"cmd": cmd, "verdict": verdict, "tail": tail[-1200:]}
+    save(run_id, st)
+    print(f"Contrôle « {cmd} » : {verdict}.\n{tail}"[:2500])
+
+
+def check_line(st):
+    c = st.get("check") or {}
+    if not c:
+        return ""
+    return f"🧪 **Contrôles du Bureau** : {c['verdict']}" + (f" (`{c['cmd']}`)" if c.get("cmd") else "")
+
+
 def replies(st):
     try:
         out = read_json(os.path.join(st["work"], ".bureau-fix-replies.json"))
@@ -301,9 +337,52 @@ def fix_diff(repo, n, run_id):
             summary = f.read().strip()[:1200]
     except OSError:
         summary = ""
-    lines = [f"- {'✅' if r.get('fixed') else '💬'} {str(r['reply']).strip()[:240]}" for r in rs]
-    print((summary + "\n\n" if summary else "") + f"**{len(files)} fichier(s) changé(s)**\n```\n{diff[:5000]}\n```\n\n"
+    c = st.get("check") or {}
+    head = check_line(st) + (f"\n```\n{c['tail'][-800:]}\n```" if c.get("tail") and not c["verdict"].startswith("verts") else "")
+    msg = commit_message(st)
+    lines = [f"- {'résolu' if r.get('fixed') else 'laissé ouvert'} : {str(r['reply']).strip()[:300]}" for r in rs]
+    print((head + "\n\n" if head else "") + (summary + "\n\n" if summary else "")
+          + (f"**Commit** : `{msg.splitlines()[0]}`\n\n" if files else "")
+          + f"**{len(files)} fichier(s) changé(s)**\n```\n{diff[:5000]}\n```\n\n"
           + f"**Réponses prévues ({len(rs)} sur {len(st.get('threads', []))} fils)**\n" + "\n".join(lines))
+
+
+def commit_message(st):
+    """Message de commit écrit par l'agent (.bureau-fix-commit.txt, conventions du dépôt), sinon un message par défaut."""
+    try:
+        with open(os.path.join(st["work"], ".bureau-fix-commit.txt"), encoding="utf-8") as f:
+            msg = f.read().strip()
+    except OSError:
+        msg = ""
+    lines = msg.splitlines()
+    if not lines or not lines[0].strip():
+        return f"fix: retours de review de #{st['pr']}"
+    return "\n".join([lines[0].strip()[:100]] + lines[1:])[:4000]
+
+
+START, END = "<!-- bureau-fix:start -->", "<!-- bureau-fix:end -->"
+OLD = ("<!-- kronn-fix:start -->", "<!-- kronn-fix:end -->")  # bloc de l'ancien workflow « Fix comments on Review »
+
+
+def pr_body(body, st, rs, sha):
+    """Description de la PR avec le bloc « Corrections de review » à jour : l'ancien bloc (le sien ou celui de l'ancien
+    workflow) retiré, puis reposé en fin ; rejouable sans empiler."""
+    for a, b in ((START, END), OLD):
+        body = re.sub(re.escape(a) + ".*?" + re.escape(b), "", body or "", flags=re.S)
+    try:
+        with open(os.path.join(st["work"], ".bureau-fix-summary.md"), encoding="utf-8") as f:
+            summary = f.read().strip()[:1500]
+    except OSError:
+        summary = ""
+    fixed = sum(1 for r in rs if r.get("fixed"))
+    lines = [f"- ✅ {fixed} fil(s) corrigé(s) et résolu(s) · ⏭️ {len(rs) - fixed} laissé(s) ouvert(s) avec une réponse"]
+    if sha:
+        lines.append(f"- 📦 Commit {sha}")
+    if check_line(st):
+        lines.append("- " + check_line(st))
+    blk = START + "\n---\n### 🤖 Corrections de review\n\n" + (summary + "\n\n" if summary else "") + "\n".join(lines) + "\n" + END
+    body = body.rstrip()
+    return (body + "\n\n" + blk) if body else blk
 
 
 REPLY_Q = "mutation($t:ID!,$b:String!){addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$t,body:$b}){comment{id}}}"
@@ -316,14 +395,18 @@ def fix_push(repo, n, run_id):
     work, files = st["work"], staged(st)
     pushed = ""
     if files:
-        run("git", "commit", "--no-verify", "-m", f"fix: retours de review de #{n}", cwd=work)
+        msg = os.path.join(HOME, "runs", re.sub(r"[^\w-]", "", run_id) + ".msg")
+        with open(msg, "w", encoding="utf-8") as f:
+            f.write(commit_message(st) + "\n")
+        run("git", "commit", "--no-verify", "--signoff", "-F", msg, cwd=work)  # signé (DCO) avec ton identité git
+        os.remove(msg)
         r = subprocess.run(["git", "push", "--no-verify", f"--force-with-lease=refs/heads/{st['branch']}:{st['expected']}",
                             "origin", f"HEAD:refs/heads/{st['branch']}"], cwd=work, capture_output=True, text=True)
         if r.returncode:
             fail(5, f"Push refusé : la branche {st['branch']} a bougé depuis le début du run (rien écrasé). {r.stderr.strip()[-200:]}")
         pushed = f"{len(files)} fichier(s) poussé(s) ({run('git', 'rev-parse', '--short', 'HEAD', cwd=work)}). "
-    done, failed = 0, 0
-    for r in replies(st):
+    done, failed, rs = 0, 0, replies(st)
+    for r in rs:
         ok = subprocess.run(["gh", "api", "graphql", "-f", "query=" + REPLY_Q, "-F", "t=" + r["thread"], "-f", "b=" + str(r["reply"]).strip()[:4000]],
                             capture_output=True).returncode == 0
         if ok and r.get("fixed"):
@@ -334,8 +417,17 @@ def fix_push(repo, n, run_id):
         subprocess.run(["gh", "pr", "edit", n, "-R", repo, "--remove-label", label], capture_output=True)
         ok = subprocess.run(["gh", "pr", "edit", n, "-R", repo, "--add-label", label], capture_output=True).returncode == 0
         ci = f" Label {label} reposé : CI relancée." if ok else f" Label {label} non reposé (relance la CI à la main)."
+    desc = ""
+    if files or done:  # bloc « Corrections de review » de la description, best-effort
+        try:
+            body = json.loads(run("gh", "pr", "view", n, "-R", repo, "--json", "body")).get("body") or ""
+            sha = run("git", "rev-parse", "--short", "HEAD", cwd=work) if files else ""
+            run("gh", "pr", "edit", n, "-R", repo, "--body", pr_body(body, st, rs, sha))
+            desc = " Description de la PR mise à jour."
+        except (RuntimeError, ValueError):
+            desc = " Description de la PR non mise à jour."
     cleanup(st)
-    print(f"{repo}#{n} : {pushed}{done} réponse(s) postée(s){f', {failed} en échec' if failed else ''}.{ci}")
+    print(f"{repo}#{n} : {pushed}{done} réponse(s) postée(s){f', {failed} en échec' if failed else ''}.{desc}{ci}")
 
 
 def done(repo, n, run_id):
@@ -348,7 +440,7 @@ def end(repo, n, run_id):
 
 
 STEPS = {"end": end, "prepare": prepare, "rebase": rebase, "verify": verify, "check": check, "push": push, "done": done, "abort": abort,
-         "fix_prepare": fix_prepare, "fix_diff": fix_diff, "fix_push": fix_push}
+         "fix_prepare": fix_prepare, "fix_check": fix_check, "fix_diff": fix_diff, "fix_push": fix_push}
 
 if __name__ == "__main__":
     step, repo, n, run_id = (sys.argv[1:] + [""] * 4)[:4]

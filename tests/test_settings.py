@@ -60,6 +60,16 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(assemble.support_page(m), {"name": "Support Scranton", "wf": "5e990001"})
         self.assertIsNone(assemble.support_page(assemble.demo_config() | {"support": {"team": "T1"}}), "sans canal : pas de console")
 
+    def test_fix_section_of_the_pack(self):
+        """#75 : consignes, skills et contrôles de la correction des commentaires ; la config surcharge, contrôles clé à clé."""
+        self.write({"fix": {"guidelines": "Conventions front : un seul dépôt.", "skill_ids": ["php"],
+                            "checks": {"vance/front": "make lint", "vance/api": "make test"}}})
+        m = assemble.merged(self.cfg(fix={"checks": {"vance/api": "make test-api", "moi/outil": "make check"}}))
+        self.assertEqual(m["fix"], {"guidelines": "Conventions front : un seul dépôt.", "skill_ids": ["php"],
+                                    "checks": {"vance/front": "make lint", "vance/api": "make test-api", "moi/outil": "make check"}})
+        self.assertEqual(assemble.merged(m), m)  # idempotent
+        self.assertEqual(templates.values(m)["fix.guidelines"], "Conventions front : un seul dépôt.")
+
     def test_without_settings_nothing_changes(self):
         os.remove(self.settings)
         c = self.cfg(agents=[DWIGHT])

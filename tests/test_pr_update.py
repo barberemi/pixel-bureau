@@ -201,6 +201,50 @@ class PrUpdateTest(unittest.TestCase):
         self.assertEqual(sum(1 for c in calls if "t=T2" in c), 1, "T2 : réponse seulement (pas corrigé)")
         self.assertFalse(os.path.exists(work))
         self.assertNotIn(".bureau", self.g("--git-dir", self.remote, "show", "--name-only", "--format=", "feat/export"))
+        self.assertIn("Signed-off-by: t <t@t>", self.g("--git-dir", self.remote, "log", "-1", "--format=%B", "feat/export"), "commit signé (DCO)")
+        edit = next(c for c in calls if c[:2] == ["pr", "edit"] and "--body" in c)
+        body = edit[edit.index("--body") + 1]
+        self.assertIn("### 🤖 Corrections de review", body)
+        self.assertIn("✅ 1 fil(s) corrigé(s) et résolu(s) · ⏭️ 1 laissé(s) ouvert(s)", body)
+        self.assertIn("Un renommage.", body)
+
+    def test_fix_commit_message_checks_and_description_block(self):
+        self.data["threads"] = [self.thread("T1")]
+        self.data["pr"]["body"] = ("Ma description.\n\n<!-- kronn-fix:start -->\nancien bloc\n<!-- kronn-fix:end -->\n\n"
+                                   "<!-- bureau-fix:start -->\nbloc d'avant\n<!-- bureau-fix:end -->")
+        cfg = dict(FIXTURE, fix={"checks": {REPO: "test -f a.txt && echo tout vert"}})
+        self.assertEqual(self.step("fix_prepare", cfg).returncode, 0)
+        work = os.path.join(self.tmp, ".cache", "pixel-bureau", "pr", "work", "run-1")
+        Path(work, "a.txt").write_text("a\nrenommé\n")
+        Path(work, ".bureau-fix-replies.json").write_text(json.dumps([{"thread": "T1", "fixed": True, "reply": "✅ **Corrigé** : renommé."}]))
+        Path(work, ".bureau-fix-commit.txt").write_text("fix(export): renomme la colonne demandée en review\n\nDétail.\n")
+        c = self.step("fix_check", cfg)
+        self.assertEqual(c.returncode, 0, c.stdout + c.stderr)
+        self.assertIn("verts ✅", c.stdout)
+        d = self.step("fix_diff", cfg)
+        self.assertTrue(d.stdout.startswith("🧪 **Contrôles du Bureau** : verts ✅"), d.stdout[:200])
+        self.assertIn("**Commit** : `fix(export): renomme la colonne demandée en review`", d.stdout)
+        self.assertIn("résolu : ✅ **Corrigé** : renommé.", d.stdout)
+        self.assertEqual(self.step("fix_push", cfg).returncode, 0)
+        self.assertEqual(self.remote_log()[0], "fix(export): renomme la colonne demandée en review")
+        calls = [json.loads(x) for x in Path(self.tmp, "gh.json.calls").read_text().splitlines()]
+        edit = next(c for c in calls if c[:2] == ["pr", "edit"] and "--body" in c)
+        body = edit[edit.index("--body") + 1]
+        self.assertTrue(body.startswith("Ma description."))
+        self.assertNotIn("ancien bloc", body)
+        self.assertNotIn("bloc d'avant", body)
+        self.assertEqual(body.count("<!-- bureau-fix:start -->"), 1, "rejouable sans empiler")
+        self.assertIn("verts ✅", body)
+
+    def test_fix_check_without_command_says_so(self):
+        self.data["threads"] = [self.thread("T1")]
+        self.step("fix_prepare")
+        r = self.step("fix_check")
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("aucune commande", r.stdout)
+        work = os.path.join(self.tmp, ".cache", "pixel-bureau", "pr", "work", "run-1")
+        Path(work, ".bureau-fix-replies.json").write_text(json.dumps([{"thread": "T1", "fixed": False, "reply": "💬 **Réponse** : voulu."}]))
+        self.assertIn("non lancés par le Bureau", self.step("fix_diff").stdout)
 
     def test_fix_with_nothing_changed_nor_answered_ends(self):
         self.data["threads"] = [self.thread("T1")]
@@ -227,7 +271,7 @@ class RebaseTemplateTest(unittest.TestCase):
     def test_fix_rendered_paths(self):
         d = templates.render(templates.load_templates()["fix"], FIXTURE)
         names = [s["name"] for s in d["steps"]]
-        self.assertEqual(names, ["prepare", "fix", "diff", "gate", "push", "abort", "end"])
+        self.assertEqual(names, ["prepare", "fix", "check", "diff", "gate", "push", "abort", "end"])
         by = {s["name"]: s for s in d["steps"]}
         for n in ("prepare", "diff"):  # rien à faire : renvoi vers la fin (code 9, signal exact)
             self.assertEqual(by[n]["on_result"], [{"contains": "exit_9", "action": {"type": "Goto", "step_name": "end"}}])
@@ -235,6 +279,21 @@ class RebaseTemplateTest(unittest.TestCase):
         self.assertIn("{{notes}}", by["fix"]["prompt_template"])
         self.assertEqual([v["name"] for v in d["variables"]], ["repo", "pr", "notes"])
         self.assertNotIn("@@", json.dumps(d))
+        self.assertEqual((d["concurrency_limit"], d["concurrency_key"]), (1, "{{repo}}|{{pr}}"), "un seul run par PR")
+        self.assertEqual(by["fix"]["agent_settings"], {"tier": "reasoning"})
+        self.assertEqual(by["fix"]["skill_ids"][:2], ["testing", "security"])
+        self.assertNotIn("_skills_from", by["fix"])
+        self.assertIn("Aucune consigne d'équipe", by["fix"]["prompt_template"])
+
+    def test_fix_team_section(self):
+        cfg = dict(FIXTURE, review={"skill_ids": ["php"], "guidelines": "consigne de revue"})
+        by = {s["name"]: s for s in templates.render(templates.load_templates()["fix"], cfg)["steps"]}
+        self.assertEqual(by["fix"]["skill_ids"], ["testing", "security", "php"], "sans section fix : skills de la revue")
+        self.assertNotIn("consigne de revue", by["fix"]["prompt_template"], "jamais les consignes de la revue")
+        cfg = dict(cfg, fix={"skill_ids": ["typescript"], "guidelines": "Conventions maison : dunder/paper seulement."})
+        by = {s["name"]: s for s in templates.render(templates.load_templates()["fix"], cfg)["steps"]}
+        self.assertEqual(by["fix"]["skill_ids"], ["testing", "security", "typescript"])
+        self.assertIn("Conventions maison : dunder/paper seulement.", by["fix"]["prompt_template"])
 
 
 if __name__ == "__main__":
