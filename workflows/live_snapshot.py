@@ -12,6 +12,8 @@ Même format de runs et de discussions que office_snapshot.py, pour que la page 
 branch_envs : avec le réglage env.workflow (le workflow GitHub qui construit l'env de branche d'une PR quand son label
 est posé), « dépôt|branche » -> {status, conclusion, start, end, url, by} du dernier build de cette branche ; les runs
 « skipped » ne comptent pas (le workflow démarre à chaque événement de la PR et ne construit qu'avec le label).
+departs : le tableau des départs, [{repo, label, dev?, stg?, prd?}] dans l'ordre des dépôts suivis, chaque env =
+{ref, tag, by, end, url} de son dernier déploiement réussi (DEV/STG : titre du workflow hors prod, PRD : workflow de prod).
 warnings (#8) : déploiements non relus (gh absent, accès refusé…), republiés depuis la lecture précédente ; écrit aussi
 sur stderr (run Kronn). Un 304 (rien n'a changé) n'en est pas un.
 """
@@ -125,10 +127,12 @@ DEPLOY = deploy_targets()
 BRANCH_ENV = branch_env_targets()
 TARGETS = targets()
 READS = sorted({(t[1], t[3]) for t in TARGETS})  # un workflow lu une fois, même suivi deux fois
-# env de branche : 30 runs, la plupart « skipped » (un par événement de chaque PR)
+# env de branche : 30 runs, la plupart « skipped » (un par événement de chaque PR) ; hors prod : 20, pour retrouver DEV
+# et STG du tableau des départs derrière une série de déploiements de branche
+NONPROD = {(t[1], t[3]) for t in TARGETS if t[2] in ("staging", "nonprod")}
 with ThreadPoolExecutor(max_workers=8) as pool:  # un dépôt lent ne retarde pas les autres
     reads = list(pool.map(lambda t: gh_runs(t[0], t[1], cache.get(t[0] + "|" + t[1]),
-                                            30 if BRANCH_ENV.get(t[0]) == t[1] else 10), READS))
+                                            30 if BRANCH_ENV.get(t[0]) == t[1] else 20 if t in NONPROD else 10), READS))
 D = {t[0] + "|" + t[1]: r for t, r in zip(READS, reads)}
 warnings = []
 if FAILED:  # une ligne pour toutes les lectures en échec (gh absent : chaque workflow suivi échoue pareil)
@@ -178,6 +182,56 @@ def occupants():
     return out
 
 
+# ---------- tableau des départs : ce qui tourne sur DEV, STG et PRD de chaque dépôt suivi ----------
+DEPART_ENVS = (("dev", ("dev",)), ("stg", ("stg", "staging")))
+# image de test, construite depuis un ticket sur la branche principale (« dev_EW-7712-2 », « Vdev-EW-7638 »)
+TEST_TAG = re.compile(r"(?<![\w-])V?(\w*[_-]?[A-Za-z]+-\d+[\w-]*)")
+
+
+def names_env(run, words):
+    """Le titre du run nomme-t-il l'un de ces envs (mot entier, hors du nom de la branche) ?"""
+    title = (run.get("displayTitle") or "").replace(run.get("branch") or "\0", " ")
+    return any(re.search(r"(?<![\w-])" + re.escape(w) + r"(?![\w-])", title, re.I) for w in words)
+
+
+def deployed(run):
+    """{ref, tag, by, end, url} d'un déploiement réussi : la version (tag vrai) quand le titre en porte une et pas la
+    branche, sinon la branche, sinon l'image de test nommée dans le titre (tag vrai aussi)."""
+    title, branch = run.get("displayTitle") or "", run.get("branch") or ""
+    m = VER.search(title)
+    if m and not (branch and branch in title):
+        ref, tag = m.group(1), True
+    elif branch and branch not in ("main", "master"):
+        ref, tag = branch, False
+    else:
+        t = TEST_TAG.search(title.replace(branch or "\0", " "))
+        ref, tag = (t.group(1), True) if t else (branch or None, False)
+    return {"ref": ref, "tag": tag, "by": run.get("by"), "end": run.get("updatedAt"), "url": run.get("url")}
+
+
+def departs():
+    """[{repo, label, dev?, stg?, prd?}] dans l'ordre des dépôts suivis : le dernier déploiement réussi de chaque env
+    (un essai annulé ou en échec ne change pas ce qui tourne). PRD : le workflow de prod, une version dans le titre."""
+    g, out = CFG.get("github") or {}, []
+    rows = ([(g["repo"], "", g.get("staging_workflow"), g.get("prod_workflow"))] if g.get("repo") else []) + [
+        (d["repo"], d.get("label") or "", d.get("staging_workflow"), d.get("prod_workflow"))
+        for d in g.get("deploys") or [] if d.get("repo") and d["repo"] != g.get("repo")]
+    for repo, label, st, pr in rows:
+        row = {"repo": repo, "label": label or repo.split("/")[-1].replace("front_", "")}
+        ok = lambda wf: sorted((r for r in D.get(repo + "|" + (wf or ""), {}).get("runs") or []
+                                if r.get("status") == "completed" and r.get("conclusion") == "success"),
+                               key=lambda x: x.get("createdAt") or "", reverse=True)
+        for env, words in DEPART_ENVS:
+            r = next((x for x in ok(DEPLOY.get(repo) or st) if names_env(x, words)), None)
+            if r:
+                row[env] = deployed(r)
+        r = next((x for x in ok(pr) if VER.search(x.get("displayTitle") or "")), None)
+        if r:
+            row["prd"] = dict(deployed(r), ref=VER.search(r["displayTitle"]).group(1), tag=True)
+        out.append(row)
+    return out
+
+
 def branch_envs():
     """Dernier build de l'env de branche de chaque branche : « dépôt|branche » -> run, hors runs « skipped »."""
     out = {}
@@ -193,4 +247,4 @@ def branch_envs():
 
 print(dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "day": now.strftime("%Y-%m-%d"),
              "runs": runs, "discussions": discs,
-             "deploys": {"staging": by_tag("staging"), "prod": by_tag("prod")}, "envs": occupants(), "branch_envs": branch_envs(), "warnings": warnings}))
+             "deploys": {"staging": by_tag("staging"), "prod": by_tag("prod")}, "envs": occupants(), "branch_envs": branch_envs(), "departs": departs(), "warnings": warnings}))

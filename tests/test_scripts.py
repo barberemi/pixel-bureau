@@ -953,6 +953,30 @@ print(json.dumps(val))
         self.assertEqual((dev["ref"], dev["tag"], dev["by"], dev["status"], dev["end"]), ("feat/DM-7", False, "pambeesly", "in_progress", None))
         self.assertEqual((stg["ref"], stg["tag"], stg["status"]), ("feat/dev-outils", False, "queued"))
 
+    def test_live_snapshot_departs_show_what_runs_on_each_env(self):
+        """departs (tableau des départs) : par dépôt suivi, le dernier déploiement réussi de DEV, STG et PRD ; un essai
+        annulé ou en échec ne change pas ce qui tourne ; ref = branche, version ou image de test ; sans le modèle deploy."""
+        run = lambda title, branch, mins, by, c="success": {"status": "completed", "conclusion": c, "createdAt": iso(mins),
+            "updatedAt": iso(mins - 1), "displayTitle": title, "url": "https://x/" + str(mins), "by": by, "branch": branch}
+        self.fake_gh({"staging": [run("CD - Deploy dev Branch: feat/DM-9", "feat/DM-9", 3, "jimh", "cancelled"),
+                                  run("CD - Deploy stg Branch: feat/dev-outils", "feat/dev-outils", 4, "jimh", "failure"),
+                                  run("CD - deploy image dev_DM-12-2 on dev", "main", 10, "pambeesly"),
+                                  run("CD - Deploy staging Version: 17.2.0", "main", 60, "jimh"),
+                                  run("CD - Deploy dev Branch: feat/DM-7", "feat/DM-7", 90, "jimh")],
+                      "prod": [run("CD - Deploy V17.3.0 on PRODUCTION", "main", 20, "pambeesly", "failure"),
+                               run("CD - Deploy V17.2.0 on PRODUCTION", "main", 50, "michaelscott")]})
+        out = self.run_script("live_snapshot.py", api=self.kronn(FakeKronn()))
+        site, intranet = out["departs"]
+        self.assertEqual((site["repo"], site["label"], intranet["label"]), (FIXTURE["github"]["repo"], "site-web", "intranet"))
+        self.assertEqual((site["dev"]["ref"], site["dev"]["tag"], site["dev"]["by"]), ("dev_DM-12-2", True, "pambeesly"))
+        self.assertEqual((site["stg"]["ref"], site["stg"]["tag"]), ("17.2.0", True))  # « staging » compte pour STG
+        self.assertEqual((site["prd"]["ref"], site["prd"]["by"], site["prd"]["url"]), ("17.2.0", "michaelscott", "https://x/50"))
+        self.assertEqual(set(intranet), {"repo", "label", "prd"})  # pas de workflow hors prod : seulement la PRD
+        self.fake_gh({"staging": [run("CD - Deploy dev Branch: feat/DM-7", "feat/DM-7", 90, "jimh")], "prod": []})
+        site = self.run_script("live_snapshot.py", api=self.kronn(FakeKronn()))["departs"][0]
+        self.assertEqual((site["dev"]["ref"], site["dev"]["tag"]), ("feat/DM-7", False))
+        self.assertNotIn("prd", site)
+
     def test_live_snapshot_branch_envs_follow_the_env_build_of_each_branch(self):
         """branch_envs (env.workflow) : par « dépôt|branche », le dernier build de l'env de branche, hors runs « skipped »
         (un par événement de PR) ; rien sans le réglage ni le bouton ; 30 runs lus."""
