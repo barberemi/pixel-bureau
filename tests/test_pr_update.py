@@ -280,6 +280,9 @@ class RebaseTemplateTest(unittest.TestCase):
         self.assertEqual([v["name"] for v in d["variables"]], ["repo", "pr", "notes"])
         self.assertNotIn("@@", json.dumps(d))
         self.assertEqual((d["concurrency_limit"], d["concurrency_key"]), (1, "{{repo}}|{{pr}}"), "un seul run par PR")
+        for st in d["steps"]:  # forme python3 -c CODE ARGS, la seule que Kronn vérifie seul (KT-1017)
+            if st["step_type"]["type"] == "Exec":
+                self.assertEqual(st["exec_args"][0], "-c", st["name"])
         self.assertEqual(by["fix"]["agent_settings"], {"tier": "reasoning"})
         self.assertEqual(by["fix"]["skill_ids"][:2], ["testing", "security"])
         self.assertNotIn("_skills_from", by["fix"])

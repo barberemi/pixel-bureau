@@ -115,6 +115,7 @@
     "description": "Commande de contrôle du dépôt (fix.checks du pack ou github.checks de ta config) sur les corrections ; verdict en tête de la validation, jamais bloquant (0 token).",
     "exec_command": "python3",
     "exec_args": [
+     "-c",
      "@@script:workflows/pr_update.py@@",
      "fix_check",
      "{{repo}}",
