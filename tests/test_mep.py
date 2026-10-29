@@ -205,7 +205,7 @@ class MepTest(unittest.TestCase):
 
 class MepTemplateTest(unittest.TestCase):
     def test_rendered_for_two_projects(self):
-        cfg = config(launch={"mep_pr": "w"}, mep={"feedback_qp": "qp-1", "feedback_vars": {"prs": ""}, "done_transition": "3"})
+        cfg = config(launch={"mep_pr": "w"}, mep={"done_transition": "3"}, models={"ai_time": "wf-ai"})
         d = templates.render(templates.load_templates()["mep"], cfg)
         names = [s["name"] for s in d["steps"]]
         self.assertLessEqual(len(names), 20, "limite Kronn")
@@ -217,7 +217,7 @@ class MepTemplateTest(unittest.TestCase):
         self.assertEqual(names.index("teams_post"), names.index("rebase") + 1, "annonce Teams une fois la PR rebasée")
         # simulation : rien dans Jira après la gate de fin (retour IA et statut sautés par dry_guard)
         i = names.index("dry_guard")
-        self.assertEqual(names[i - 1:i + 4], ["gate_ticket_done", "dry_guard", "ai_feedback", "transition_deployed", "done"])
+        self.assertEqual(names[i - 1:i + 4], ["gate_ticket_done", "dry_guard", "ai_time", "transition_deployed", "done"])
         self.assertEqual(d["steps"][i]["on_result"], [{"contains": "exit_9", "action": {"type": "Goto", "step_name": "done"}}])
         self.assertIn("{{dry_run}}", d["steps"][i]["exec_args"])
         self.assertEqual(names[0], "resolve")
@@ -228,46 +228,37 @@ class MepTemplateTest(unittest.TestCase):
         project = d["variables"][0]
         self.assertEqual([o["value"] for o in project["control"]["options"]], ["dunder-mifflin/site-web", "dunder-mifflin/intranet"])
         self.assertEqual(project["control"]["default_value"], "dunder-mifflin/site-web")
-        fb = next(s for s in d["steps"] if s["name"] == "ai_feedback")
-        self.assertEqual((fb["quick_prompt_id"], fb["quick_prompt_variables"]), ("qp-1", {"prs": "", "ticket": "{{steps.resolve.data.stdout}}"}))
         self.assertEqual(next(s for s in d["steps"] if s["name"] == "transition_deployed")["api_body"], {"transition": {"id": "3"}})
         self.assertNotIn("@@", json.dumps(d))
         bare = templates.render(templates.load_templates()["mep"], dict(config(), jira={}))
-        self.assertEqual({"fetch_ticket_type", "gate_ticket_done", "ai_feedback", "transition_deployed"} & {s["name"] for s in bare["steps"]}, set(),
+        self.assertEqual({"fetch_ticket_type", "gate_ticket_done", "ai_time", "transition_deployed"} & {s["name"] for s in bare["steps"]}, set(),
                          "sans Jira (ni retour IA ni transition) : ces étapes sont retirées")
         self.assertTrue(templates.skipped("mep", FIXTURE), "aucun projet avec une clé mep : pas créé")
         self.assertFalse(templates.skipped("mep", cfg))
 
-    def test_ai_time_model_replaces_the_feedback_quick_prompt(self):
+    def test_ai_time_model_launched_at_the_end(self):
         """#79 : modèle du Bureau installé, la mise en prod le lance (TriggerWorkflow : un sous-workflow ne peut pas avoir de
-        gate) sans sa validation, et l'étape du Quick Prompt disparaît ; sans le modèle, le Quick Prompt reste. Toujours 20
-        étapes au plus."""
+        gate) sans sa validation ; sans le modèle, pas de temps gagné en fin de mise en prod. 20 étapes au plus."""
         tpl = templates.load_templates()["mep"]
-        mep = {"feedback_qp": "qp-1", "done_transition": "3"}
-        for models, kept, gone in (({"ai_time": "wf-ai"}, "ai_time", "ai_feedback"), ({}, "ai_feedback", "ai_time")):
-            d = templates.render(tpl, config(launch={"mep_pr": "w"}, mep=mep, models=models))
-            names = [s["name"] for s in d["steps"]]
+        mep = {"done_transition": "3"}
+        for models, has in (({"ai_time": "wf-ai"}, True), ({}, False)):
+            names = [s["name"] for s in templates.render(tpl, config(launch={"mep_pr": "w"}, mep=mep, models=models))["steps"]]
             self.assertLessEqual(len(names), 20, "limite Kronn")
-            self.assertIn(kept, names)
-            self.assertNotIn(gone, names)
-            i = names.index("dry_guard")
-            self.assertEqual(names[i - 1:i + 4], ["gate_ticket_done", "dry_guard", kept, "transition_deployed", "done"])
+            self.assertEqual("ai_time" in names, has)
+            self.assertNotIn("ai_feedback", names, "plus de Quick Prompt de retour IA")
         step = next(s for s in templates.render(tpl, config(mep=mep, models={"ai_time": "wf-ai"}))["steps"] if s["name"] == "ai_time")
         self.assertEqual(step["step_type"], {"type": "TriggerWorkflow"})
         self.assertEqual((step["sub_workflow_id"], step["sub_workflow_variables"]), ("wf-ai", {"ticket": "{{steps.resolve.data.stdout}}", "gate": "non"}))
         self.assertEqual(step["on_result"][0]["action"], {"type": "Goto", "step_name": "transition_deployed"})
         self.assertEqual(set(step["sub_workflow_variables"]) - {v["name"] for v in templates.load_templates()["ai_time"]["definition"]["variables"]},
                          set(), "Kronn refuse une variable que le modèle ne déclare pas")
-        for c in (config(models={"ai_time": "wf-ai"}), dict(config(models={"ai_time": "wf-ai"}, mep=mep), jira={})):
-            names = [s["name"] for s in templates.render(tpl, c)["steps"]]
-            self.assertLessEqual(len(names), 20)
         bare = [s["name"] for s in templates.render(tpl, dict(config(models={"ai_time": "wf-ai"}), jira={}))["steps"]]
-        self.assertNotIn("ai_time", bare, "sans Jira : ni modèle ni Quick Prompt")
-        self.assertEqual(len(templates.load_templates()["mep"]["definition"]["steps"]), 20, "l'ancien retour IA est le _fallback de ai_time")
+        self.assertNotIn("ai_time", bare, "sans Jira : pas de temps gagné")
+        self.assertNotIn("_fallback", json.dumps(tpl))
 
     def test_project_carries_the_team_github_connection(self):
-        """L'étape Agent du retour IA ne voit que les connexions du projet du workflow : celui de la revue (qui a GitHub de
-        l'équipe) plutôt que celui de Kronn, sauf mep.project_id explicite."""
+        """Projet Kronn du workflow : celui de la revue (dépôts de l'équipe) plutôt que celui de Kronn, sauf mep.project_id
+        explicite."""
         tpl = templates.load_templates()["mep"]
         kronn = dict(FIXTURE.get("kronn") or {}, project_id="p-kronn")
         self.assertEqual(templates.render(tpl, config(kronn=kronn))["project_id"], "p-kronn")

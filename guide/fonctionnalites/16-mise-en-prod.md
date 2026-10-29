@@ -34,7 +34,7 @@ Le **ticket** est déduit de la PR : la première clé du projet Jira (`jira.pro
 | prod | déploiement prod, attente, l'annonce passe en ✅, puis les PR du ticket dans tous les projets |
 | **gate de fin** | le ticket est-il terminé ? |
 | dry_guard | en simulation, saute directement à done : ni retour IA ni statut de fin, rien n'est écrit dans Jira |
-| ai_time, transition_deployed | si terminé : lance le modèle « estimer le temps gagné par l'IA » sur le ticket (sans sa validation : la gate de fin en tient lieu ; il tourne à côté, la mise en prod ne l'attend pas), puis statut de fin ; sans le modèle, l'ancien Quick Prompt `mep.feedback_qp` (étape `ai_feedback`) |
+| ai_time, transition_deployed | si terminé : lance le modèle « estimer le temps gagné par l'IA » sur le ticket (sans sa validation : la gate de fin en tient lieu ; il tourne à côté, la mise en prod ne l'attend pas), puis statut de fin ; sans le modèle, seulement le statut de fin |
 | done | fin ; « Changements » sur la gate de fin y mène directement (le ticket reste en l'état, le run finit en succès) |
 | teams_failed | seulement après l'échec d'une étape : l'annonce passe en ❌, la raison et le run en réponse dans le fil, et le run finit en échec |
 
@@ -60,6 +60,6 @@ Images : `tools/teams_logo.py` (Pillow) fait le chargeur commun (`sprites/teams/
   ```
   `{tag}` devient le tag de la release. Sans `ci_workflow`, l'étape de CI est passée. `logo` : PNG du projet, chemin relatif au pack d'équipe (`logos/front_api.png`).
 - `mep.teams` : `{"team": "<id de l'équipe>", "channel": "<id du canal>", "test_channel": "<canal des simulations>"}` (et `test_team` s'il est dans une autre équipe). Sans elle, pas d'annonce.
-- Temps gagné par l'IA : le modèle du Bureau `models.ai_time` quand il est installé (voir [Temps gagné par l'IA](22-temps-gagne-ia.md)) ; sinon `mep.feedback_qp` (ancien Quick Prompt du retour IA) et `mep.feedback_vars` (ses autres variables, passées vides). `mep.done_transition` : id de la transition Jira de fin. Sans eux, ces étapes sont retirées ; sans Jira, aussi la gate de fin.
-- `mep.project_id` : projet Kronn du workflow, qui borne les connexions de l'étape Agent de l'ancien retour IA (`mep.feedback_qp`). Il doit avoir la connexion GitHub de l'équipe (`github.config_id`), sinon le Quick Prompt ne lit pas les PR (« outside this bridge token's scope »). Par défaut `review.project_id`, puis `kronn.project_id`.
+- Temps gagné par l'IA : le modèle du Bureau `models.ai_time` quand il est installé (voir [Temps gagné par l'IA](22-temps-gagne-ia.md)). `mep.done_transition` : id de la transition Jira de fin. Sans eux, ces étapes sont retirées ; sans Jira, aussi la gate de fin.
+- `mep.project_id` : projet Kronn du workflow. Par défaut `review.project_id`, puis `kronn.project_id`.
 - L'id du workflow est rangé dans `launch.mep_pr` (jamais dans `workflows` ni `actions`) : l'agent qui l'incarne (préfixe de l'id dans `agents[].wf`) garde sa fiche, « ▶ Lancer… » et sa fiche de paie. L'ancien bouton « Mettre en prod » du ticket (`launch.mep`) reste tant que cette clé existe.

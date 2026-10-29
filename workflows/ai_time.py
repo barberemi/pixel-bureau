@@ -227,7 +227,10 @@ def discover(key, prs, force, run_id):
         except (RuntimeError, ValueError) as e:
             ignored.append(f"{r} (illisible : {str(e)[:80]})")
             continue
-        if source == "recherche GitHub" and key not in (pr.get("title") or "").upper() + " " + (pr.get("headRefName") or "").upper():
+        # panneau Jira comme recherche GitHub : une PR qui ne fait que citer le ticket (celle d'un autre ticket qui le
+        # mentionne) n'en est pas une ; la clé doit être dans son titre ou sa branche, entière (EW-785 ≠ EW-7851)
+        if source != "liste imposée" and not re.search(r"(?<![A-Z0-9])" + re.escape(key) + r"(?!\d)",
+                                                       (pr.get("title") or "").upper() + " " + (pr.get("headRefName") or "").upper()):
             ignored.append(f"{r} (cite seulement {key} dans son texte)")
             continue
         state = pr.get("state")

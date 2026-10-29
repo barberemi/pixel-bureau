@@ -540,28 +540,7 @@
       }
      }
     ],
-    "_requires": "mep.ai_time",
-    "_fallback": {
-     "name": "ai_feedback",
-     "step_type": {
-      "type": "Agent"
-     },
-     "description": "Ancien retour IA : le Quick Prompt mep.feedback_qp, seulement quand le modèle du Bureau « temps gagné par l'IA » n'est pas installé.",
-     "agent": "ClaudeCode",
-     "prompt_template": "",
-     "mode": {
-      "type": "Normal"
-     },
-     "output_format": {
-      "type": "FreeText"
-     },
-     "quick_prompt_id": "@@mep.feedback_qp@@",
-     "quick_prompt_variables": {
-      "ticket": "{{steps.resolve.data.stdout}}"
-     },
-     "_vars_from": "mep.feedback_vars",
-     "_requires": "mep.feedback_qp"
-    }
+    "_requires": "mep.ai_time"
    },
    {
     "name": "transition_deployed",

@@ -178,13 +178,11 @@ def values(cfg):
         **{f"jira.role.{r}": role_ids(r, cfg) for r in ROLES},
         "jira.role_ids": ",".join(f'"{x}"' for r in ROLES for x in [role_ids(r, cfg)] if x),
         **{f"jira.flow.{k}": (j.get("flow") or {}).get(k) or v for k, v in FLOW_DEFAULTS.items()},
-        # mise en prod (#58) : Quick Prompt du retour IA et transition Jira de fin (facultatifs : étapes retirées sans eux)
-        "mep.feedback_qp": (cfg.get("mep") or {}).get("feedback_qp") or "",
-        # temps gagné par l'IA en fin de mise en prod (#79) : le modèle du Bureau s'il est installé (et Jira connecté), sinon
-        # l'étape _fallback, l'ancien Quick Prompt mep.feedback_qp
+        # mise en prod (#58) : temps gagné par l'IA (#79, le modèle du Bureau s'il est installé et Jira connecté) et
+        # transition Jira de fin (facultatifs : étapes retirées sans eux)
         "mep.ai_time": mep_ai_time(cfg),
         "mep.done_transition": str((cfg.get("mep") or {}).get("done_transition") or ""),
-        # projet Kronn du workflow : il borne les connexions de l'étape retour IA (GitHub de l'équipe), comme la revue
+        # projet Kronn du workflow : celui de la revue (dépôts de l'équipe), sinon celui de Kronn
         "mep.project_id": (cfg.get("mep") or {}).get("project_id") or rv.get("project_id")
         or (cfg.get("kronn") or {}).get("project_id") or "",
         # modèles incarnés par des agents (#78)
@@ -320,11 +318,6 @@ def render(tpl, cfg):
             if req == "jira" or req.startswith("jira."):
                 return has_jira and (req == "jira" or bool(vals.get(req)))
             return bool(vals.get("github.config_id" if req == "github" else req))
-        # une étape sans ce qu'elle demande laisse la place à son « _fallback » (#79 : le modèle ai_time, sinon l'ancien
-        # Quick Prompt du retour IA) : une seule des deux dans le modèle, qui reste à 20 étapes
-        d["steps"] = [s.get("_fallback") if not ok(s.get("_requires")) and s.get("_fallback") else s for s in d["steps"]]
-        for s in d["steps"]:
-            s.pop("_fallback", None)
         names = [s["name"] for s in d["steps"]]
         dropped = {s["name"] for s in d["steps"] if not ok(s.get("_requires"))}
         # un renvoi (on_result Goto) vers une étape retirée va à la première étape gardée après elle (#78 : sans page de
@@ -352,8 +345,6 @@ def render(tpl, cfg):
                 if team is None and src == "fix.skill_ids":  # sans skills propres à la correction : ceux de la revue
                     team = (cfg.get("review") or {}).get("skill_ids")
                 s["skill_ids"] = list(dict.fromkeys(s.get("skill_ids", []) + list(team or [])))
-            if s.pop("_vars_from", None) == "mep.feedback_vars":  # variables propres au Quick Prompt du retour IA
-                s["quick_prompt_variables"] = {**((cfg.get("mep") or {}).get("feedback_vars") or {}), **s.get("quick_prompt_variables", {})}
             for name in dropped:  # entrée d'une étape suivante qui lisait une étape retirée
                 if isinstance(s.get("exec_stdin"), str):
                     s["exec_stdin"] = re.sub(r"\{\{steps\." + re.escape(name) + r"\.[\w.]+\}\}", "null", s["exec_stdin"])
