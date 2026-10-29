@@ -91,7 +91,7 @@ class CompactTest(unittest.TestCase):
 
 
     def test_weights_by_block_add_up_to_the_page(self):
-        """Poids par bloc (smoke) : chaque bloc compte, la somme fait la page assemblée, la page de démo reste sous 955 Ko."""
+        """Poids par bloc (smoke) : chaque bloc compte, la somme fait la page assemblée."""
         import smoke, contextlib, io
         cfg = assemble.demo_config()
         for demo in (True, False):
@@ -100,10 +100,9 @@ class CompactTest(unittest.TestCase):
             self.assertTrue(all(v >= 0 for v in w.values()), w)
             self.assertEqual(bool(w["démo"]), demo)
         self.assertGreater(w["polices"], 0)  # police pixel des thèmes, en base64
-        self.assertLess(sum(assemble.weights(cfg).values()), 955_000)  # KT-28, relevé de 900 000 pour #89, puis 950 000 pour le tableau des départs (docs/decisions.md)
         with contextlib.redirect_stdout(io.StringIO()) as out:
             smoke.weights({"JS": 300_000, "CSS": 50_000, "démo": 0})
-        self.assertEqual(out.getvalue().strip(), "poids : JS 300 Ko (30 %) · CSS 50 Ko (5 %)")  # du plus lourd, sans bloc vide
+        self.assertEqual(out.getvalue().strip(), "poids : JS 300 Ko · CSS 50 Ko")  # du plus lourd, sans bloc vide
 
 
     def test_size_limit_applies_to_the_published_page(self):
@@ -111,7 +110,7 @@ class CompactTest(unittest.TestCase):
         import smoke, contextlib, io
         cfg = assemble.demo_config()
         html = assemble.build(demo=True, cfg=cfg)
-        for published, ok in ((900_000, True), (1_000_001, False)):
+        for published, ok in ((900_000, True), (smoke.LIMIT + 1, False)):
             smoke.fails.clear()
             with contextlib.redirect_stdout(io.StringIO()):
                 smoke.static_checks(html + " " * 200_000, cfg, published)

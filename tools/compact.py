@@ -1,7 +1,7 @@
 """Compacte le JS et le CSS de la page à l'assemblage (KT-28) : commentaires et indentation retirés, rien d'autre.
 
-Les sources de page/src/ gardent leurs commentaires ; seule la page assemblée (limite Kronn de 1 000 000 octets)
-est allégée. Les sauts de ligne sont gardés (insertion automatique des points-virgules du JS), sauf dans le JS après « ; », « { » et
+Les sources de page/src/ gardent leurs commentaires ; seule la page assemblée est allégée
+(moins à transférer à chaque rechargement). Les sauts de ligne sont gardés (insertion automatique des points-virgules du JS), sauf dans le JS après « ; », « { » et
 « , », où aucune insertion n'en dépend ; une ligne qui ne contenait qu'un commentaire disparaît.
 Le JS est lu par un petit lecteur qui connaît les chaînes, les gabarits (`…${…}…`, imbriqués) et les expressions
 régulières (/…/ après un opérateur ou un mot-clé, division sinon) : un « // » dans « https:// » n'est pas un commentaire.

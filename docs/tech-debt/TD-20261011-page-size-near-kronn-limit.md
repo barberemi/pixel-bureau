@@ -4,6 +4,10 @@ description: La page assemblée pèse 961 621 octets pour une limite Kronn de 1 
 metadata:
   type: tech-debt
   audit_history:
+    - date: 2026-10-29
+      status: Resolved
+      reviewer: mainteneur
+      note: Kronn a retiré la limite de 1 000 000 octets (#252, main après le tag 0.15.1) ; KRONN_LIMIT = 24 Mio, budget de 955 000 de la démo retiré
     - date: 2026-10-11
       status: Verified in source
       reviewer: Full audit

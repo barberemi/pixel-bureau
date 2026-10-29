@@ -43,7 +43,7 @@ class PublishWorkflowsTest(unittest.TestCase):
 
 
 class PublishPageSizeTest(unittest.TestCase):
-    """Kronn refuse une page de plus de 1 000 000 octets : publish.py et install.py la pèsent avant l'envoi (assemble.publishable)
+    """Kronn refuse une page de plus de 24 Mio (garde-fou) : publish.py et install.py la pèsent avant l'envoi (assemble.publishable)
     et ne l'envoient pas, en disant de combien elle déborde ; à 90 % de la limite, une alerte."""
 
     def setUp(self):

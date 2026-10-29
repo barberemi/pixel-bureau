@@ -58,7 +58,7 @@ Terms marked `<!-- TODO: ask user -->` need human confirmation.
 | Environment | Chrome headless | Navigateur piloté (via websocket-client) pour `test.sh --chrome`, captures et miniatures [src: file: tools/smoke.py:96] [src: file: workflows/pages_snapshot.py:7] | [testing-quality](testing-quality.md) |
 | Environment | venv du dépôt | `.venv` avec Pillow et websocket-client pour les outils [src: file: guide/developpement.md:42] | |
 | External | Kronn | Plateforme hôte : Live Pages, datasets, workflows, crons, Quick Prompts, API locale [src: file: README.md:3] [src: file: tools/install.py:1] | |
-| External | Live Page | Page HTML hébergée par Kronn, sandbox inline seulement, moins de 1 Mo [src: file: guide/developpement.md:48] | |
+| External | Live Page | Page HTML hébergée par Kronn, sandbox inline seulement, garde-fou de 24 Mio [src: file: guide/developpement.md:48] | |
 | External | Étape Exec | Étape de workflow Kronn qui lance un script ; sortie limitée à 100 Ko [src: file: guide/developpement.md:76] | |
 | External | `PublishPageData`, `CollectApiData`, `ApiCall`, `Gate`, `SubWorkflow` | Types d'étapes de workflow Kronn [src: file: page/src/35-state.js:2] | |
 | External | Quick Prompt | Prompt Kronn réutilisable, lancé depuis la page (ex. « interroger un agent », « plan vers brouillon ») [src: file: page/src/55-actions.js:136] [src: file: tools/plan.py:24] | |
