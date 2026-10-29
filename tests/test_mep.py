@@ -100,6 +100,23 @@ class MepTest(unittest.TestCase):
         self.assertIn(["workflow", "run", "deploy-production.yml", "-R", "dunder-mifflin/site-web", "--ref", "main", "-f", "versionTag=2.4.1"], c)
         self.assertIn("PR du ticket DM-7801", r.stdout)  # la liste lue par la gate de fin
 
+    def test_squash_keeps_co_authors_and_sign_offs_without_duplicates(self):
+        """Le commit unique garde qui a écrit le code (trailers des commits squashés, une fois chacun) : le modèle « temps
+        gagné par l'IA » y lit l'outil et le modèle."""
+        work = os.path.join(self.tmp, "work")
+        g = lambda *c: subprocess.run(["git", *c], cwd=work, capture_output=True, check=True, env=self.env())  # noqa: E731
+        claude = "Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+        Path(work, "c.txt").write_text("c\n"); g("add", "."); g("commit", "-m", f"feat: c\n\nCo-Authored-By: {claude}\nSigned-off-by: Pam <pam@dm.test>")
+        Path(work, "d.txt").write_text("d\n"); g("add", "."); g("commit", "-m", f"fix: d\n\nco-authored-by: {claude}")
+        g("push", "origin", "kronn/DM-7801")
+        self.mep("resolve")
+        self.mep("tag", stdin="Bug")
+        r = self.mep("rebase")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        body = subprocess.run(["git", "--git-dir", self.remote, "log", "-1", "--format=%B", "kronn/DM-7801"], capture_output=True, text=True).stdout
+        self.assertEqual(body.strip().split("\n"), ["fix(Articles): pagination des tags vide", "", f"Co-Authored-By: {claude}",
+                                                     "Signed-off-by: Pam <pam@dm.test>"])
+
     def test_ticket_from_title_then_body_or_forced_and_refusals(self):
         self.data["pr"].update(headRefName="feature/x", title="Corrige DM-12 et DM-13", body="")
         self.assertEqual(self.mep("resolve").stdout, "DM-12")
