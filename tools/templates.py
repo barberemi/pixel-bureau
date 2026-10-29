@@ -166,6 +166,8 @@ def values(cfg):
         "jira.board": str(j.get("board") or ""),
         "jira.sprint_field": j.get("sprint_field") or "",
         "jira.points_fields": ",".join(j.get("points_fields") or []),
+        # temps gagné par l'IA (#79) : le champ des points « avec l'IA », lu avec le ticket (« ,customfield_… » ou rien)
+        "jira.ai_points_q": "".join("," + f for f in [((j.get("ai_feedback") or {}).get("points") or {}).get("field")] if f),
         "microsoft.config_id": (cfg.get("microsoft") or {}).get("config_id") or "",  # planning des absences (Graph)
         "microsoft.site": ((cfg.get("microsoft") or {}).get("planning") or {}).get("site") or "",
         "microsoft.item": ((cfg.get("microsoft") or {}).get("planning") or {}).get("item") or "",
@@ -422,6 +424,8 @@ def templatize(key, kind, d, cfg):
                     return f"@@{k}@@"
             if vals["jira.points_fields"]:
                 v = v.replace(vals["jira.points_fields"], "@@jira.points_fields@@")
+            if vals["jira.ai_points_q"] and v.startswith("labels"):  # champs lus et écrits par le temps gagné IA (#79)
+                v = v.replace(vals["jira.ai_points_q"], "@@jira.ai_points_q@@")
             if vals["jira.sprint_field"]:
                 v = v.replace(vals["jira.sprint_field"], "@@jira.sprint_field@@")
             if j.get("project"):

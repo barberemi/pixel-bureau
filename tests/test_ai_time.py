@@ -79,14 +79,17 @@ class AiTimeScriptTest(unittest.TestCase):
         return subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "ai_time.py"), *args], input=stdin,
                               capture_output=True, text=True, env=env, timeout=60)
 
-    def ticket(self, labels=()):
-        return json.dumps({"id": "10042", "key": "DM-7", "fields": {"summary": "Carrousel", "labels": list(labels), "status": {"name": "Done"}}})
+    def ticket(self, labels=(), points=None):
+        f = {"summary": "Carrousel", "labels": list(labels), "status": {"name": "Done"}}
+        if points is not None:
+            f["customfield_99"] = points
+        return json.dumps({"id": "10042", "key": "DM-7", "fields": f})
 
     def detail(self, *urls):
         return json.dumps({"detail": [{"pullRequests": [{"url": u, "status": "MERGED"} for u in urls]}]})
 
-    def discover(self, labels=(), detail=None, prs="", force="non"):
-        stdin = self.ticket(labels) + "\n===SEP===\n" + (detail if detail is not None else "null")
+    def discover(self, labels=(), detail=None, prs="", force="non", points=None):
+        stdin = self.ticket(labels, points) + "\n===SEP===\n" + (detail if detail is not None else "null")
         return self.run_("discover", "DM-7", prs, force, "run-1", stdin=stdin)
 
     def test_instance_key_is_read_in_by_instance_type(self):
@@ -186,6 +189,38 @@ class AiTimeScriptTest(unittest.TestCase):
         self.assertEqual(self.run_("compose", "run-1", partial).returncode, 2, "une PR sans estimation : rien n'est posté")
         self.assertEqual(self.run_("compose", "run-2", self.estimate()).returncode, 2, "sans découverte")
 
+    def test_ai_points_from_the_hours_with_ai_in_fibonacci(self):
+        """Points « avec l'IA » (l'effort restant avec l'assistant) : total des heures avec IA converti en Fibonacci,
+        écrits avec le label dans le champ réglé ; une valeur déjà posée est gardée, sauf « Forcer »."""
+        sys.path.insert(0, os.path.join(ROOT, "workflows"))
+        old = os.environ.get("BUREAU_CONFIG")
+        os.environ["BUREAU_CONFIG"] = os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")
+        try:
+            import importlib, ai_time
+            importlib.reload(ai_time)
+        finally:
+            os.environ.pop("BUREAU_CONFIG") if old is None else os.environ.__setitem__("BUREAU_CONFIG", old)
+        self.assertEqual([ai_time.ai_points(h) for h in (0, 0.75, 1, 1.5, 3, 4, 5, 8, 12, 30, 100)],
+                         [1, 1, 1, 2, 3, 3, 5, 8, 13, 21, 21])
+        self.assertEqual(ai_time.ai_points(3, [[2, 1], [10, 2]]), 2, "barème de l'équipe")
+        url = self.detail("https://github.com/dm/site/pull/12", "https://github.com/dm/api/pull/3")
+        self.config = cfg(jira=dict(cfg()["jira"], ai_feedback={"points": {"field": "customfield_99"}}))
+        self.discover(detail=url)
+        out = json.loads(self.run_("compose", "run-1", self.estimate()).stdout)
+        self.assertEqual(out["labels"]["fields"], {"customfield_99": 3}, "3 h avec l'IA : 3 points")
+        self.assertIn("**Points avec l'IA : 3** (~3 h avec l'IA, champ `customfield_99`)", out["preview"])
+        self.discover(detail=url, points=5)
+        out = json.loads(self.run_("compose", "run-1", self.estimate()).stdout)
+        self.assertNotIn("fields", out["labels"], "valeur déjà posée : gardée")
+        self.assertIn("non écrits, le ticket en a déjà (5)", out["preview"])
+        self.discover(detail=url, points=5, force="oui")
+        self.assertEqual(json.loads(self.run_("compose", "run-1", self.estimate()).stdout)["labels"]["fields"], {"customfield_99": 3})
+        self.config = cfg()
+        self.discover(detail=url)
+        out = json.loads(self.run_("compose", "run-1", self.estimate()).stdout)
+        self.assertNotIn("fields", out["labels"], "sans champ réglé : rien d'écrit")
+        self.assertNotIn("Points avec l'IA", out["preview"])
+
     def test_gate_skipped_only_when_asked(self):
         self.assertEqual(self.run_("gate", "non").returncode, 3)
         self.assertEqual(self.run_("gate", "oui").returncode, 0)
@@ -193,6 +228,14 @@ class AiTimeScriptTest(unittest.TestCase):
 
 
 class AiTimeTemplateTest(unittest.TestCase):
+    def test_points_field_read_with_the_ticket_and_written_with_the_label(self):
+        st = lambda c: {s["name"]: s for s in templates.render(TPL, c)["steps"]}  # noqa: E731
+        s = st(cfg())
+        self.assertEqual((s["ticket"]["api_query"]["fields"], s["label"]["api_query"]["fields"]), ("labels,summary,status", "labels"))
+        s = st(cfg(jira=dict(cfg()["jira"], ai_feedback={"points": {"field": "customfield_99"}})))
+        self.assertEqual(s["ticket"]["api_query"]["fields"], "labels,summary,status,customfield_99")
+        self.assertEqual(s["label"]["api_query"]["fields"], "labels,customfield_99")
+
     def test_rendered_zero_token_but_one_agent_and_jumps_to_existing_steps(self):
         d = templates.render(TPL, cfg())
         out = json.dumps(d, ensure_ascii=False)

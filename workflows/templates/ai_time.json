@@ -98,7 +98,7 @@
     "api_endpoint_path": "/rest/api/2/issue/{{ticket}}",
     "api_method": "GET",
     "api_query": {
-     "fields": "labels,summary,status"
+     "fields": "labels,summary,status@@jira.ai_points_q@@"
     },
     "_requires": "jira"
    },
@@ -325,7 +325,7 @@
     "step_type": {
      "type": "CollectApiData"
     },
-    "description": "Le commentaire au gabarit de l'équipe (jira.ai_feedback : champs, langue, outil et modèle par défaut), le corps du label et l'aperçu de la validation, en JSON typé. 0 token.",
+    "description": "Le commentaire au gabarit de l'équipe (jira.ai_feedback : champs, langue, outil et modèle par défaut), le corps du label (et des points avec l'IA si jira.ai_feedback.points est réglé) et l'aperçu de la validation, en JSON typé. 0 token.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -447,7 +447,7 @@
     "api_method": "PUT",
     "api_query": {
      "returnIssue": "true",
-     "fields": "labels"
+     "fields": "labels@@jira.ai_points_q@@"
     },
     "api_body": "{{steps.compose.data.sources.f.labels}}",
     "_requires": "jira"

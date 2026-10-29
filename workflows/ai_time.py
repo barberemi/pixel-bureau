@@ -18,7 +18,10 @@ Garde-fous : label de suivi déjà posé (sauf force = oui) code 3 ; aucune PR m
 (la liste trouvée, relancer avec « prs ») ; une PR fermée sans merge est écartée. Ticket illisible ou « prs » invalide : 2.
 État du run dans ~/.cache/pixel-bureau/ai_time/<run>.json, relu par compose et done.
 Réglage jira.ai_feedback (config ou pack) : label, lang (fr, en), title, fields ([libellé, valeur] ; valeurs avec
-{tool}, {model}, {challenged}, {went_well}, {saved}, {per_pr}, {confidence}, {ticket}), tool et model par défaut.
+{tool}, {model}, {challenged}, {went_well}, {saved}, {per_pr}, {confidence}, {ticket}, {ai_points}), tool et model par
+défaut ; points (facultatif) : {field, scale} le champ Jira des points « avec l'IA » (l'effort restant avec l'assistant),
+rempli d'après le total des heures « avec IA » converti en Fibonacci (scale : [[heures au plus, points], …]) ; une
+valeur déjà posée est gardée, sauf force = oui.
 """
 import json, os, re, subprocess, sys
 from _lib import CFG, dumps, read_json, write_json
@@ -46,6 +49,21 @@ DEFAULT = {"label": "temps_gagne_ia", "lang": "fr", "title": "Temps gagné grâc
                       ["Ce qui a moins bien marché", "Rien"], ["Temps perdu (estimation)", "Aucun"],
                       ["Confiance dans l'estimation", "{confidence}"], ["Documentation mise à jour avec l'IA", "Non"],
                       ["Détail", "{per_pr}"]]}
+
+
+# heures « avec IA » au plus -> points (Fibonacci) : moins d'1 h = 1, une demi-journée = 3, une journée = 8
+SCALE = [[1, 1], [2, 2], [4, 3], [6, 5], [8, 8], [16, 13], [40, 21]]
+
+
+def ai_points(h, scale=None):
+    """Points de l'effort restant avec l'IA pour h heures « avec IA » : le premier palier qui les contient, sinon le
+    dernier. 0 h (rien à faire) : 1 point, le minimum d'un ticket livré."""
+    scale = sorted(scale or SCALE)
+    return next((int(p) for m, p in scale if float(h) <= float(m)), int(scale[-1][1]))
+
+
+def points_field(s):
+    return str(((s.get("points") or {}).get("field")) or "").strip()
 
 
 def settings():
@@ -233,7 +251,9 @@ def discover(key, prs, force, run_id):
         tools += t
         models += m
         challenged += challenged_of(pr)
+    pf = points_field(s)
     st = {"ticket": key, "summary": fields.get("summary") or "", "source": source, "ignored": ignored,
+          "points_before": fields.get(pf) if pf else None, "force": force.strip().lower() in ("oui", "yes"),
           "tool": ", ".join(uniq(tools)) or s.get("tool") or w["unknown"],
           "model": ", ".join(uniq(models)) or s.get("model") or w["unknown"],
           "challenged": ", ".join(uniq(challenged)) or w["no"],
@@ -278,11 +298,15 @@ def compose(run_id, raw):
         tot_without, tot_with = tot_without + a, tot_with + b
         per.append((p, a, b, str(x.get("why") or "").strip()))
     gain = max(tot_without - tot_with, 0)
+    pf, before = points_field(s), st.get("points_before")
+    pts = ai_points(tot_with, (s.get("points") or {}).get("scale")) if pf else None
+    write_pts = pts is not None and (before in (None, "") or st.get("force"))
     short = lambda p: p["id"].split("/", 1)[-1]  # noqa: E731  (dépôt#n, sans le propriétaire)
     vals = {"tool": st["tool"], "model": st["model"], "challenged": st["challenged"], "ticket": st["ticket"],
             "went_well": str(est.get("went_well") or "").strip() or w["unknown"],
             "confidence": w["conf"].get(str(est.get("confidence") or "").lower(), str(est.get("confidence") or w["unknown"])),
             "saved": w["total"].replace("{gain}", hours(gain, lang)).replace("{without}", hours(tot_without, lang)).replace("{with}", hours(tot_with, lang)),
+            "ai_points": str(pts if pts is not None else w["unknown"]),
             "per_pr": w["prs"].replace("{n}", str(len(per))).replace("{list}", ", ".join(f"{short(p)} ~{hours(a - b, lang)}" for p, a, b, _ in per))}
 
     def fill(t):
@@ -294,7 +318,14 @@ def compose(run_id, raw):
                 + (f". {why}" if why else "") for p, a, b, why in per]
     preview += ["", f"Source des PR : {st['source']}." + (f" Écartées : {', '.join(st['ignored'])}." if st["ignored"] else ""),
                 "", f"Commentaire posté sur {st['ticket']}, puis label `{s['label']}` :", "", "```", body, "```"]
-    print(dumps({"comment": {"body": body}, "labels": {"update": {"labels": [{"add": s["label"]}]}}, "preview": "\n".join(preview)}))
+    if pts is not None:
+        why = f"~{hours(tot_with, 'fr')} avec l'IA"
+        preview[4:4] = [f"**Points avec l'IA : {pts}** ({why}, champ `{pf}`)" + ("" if write_pts else
+                        f" : non écrits, le ticket en a déjà ({before}) ; « Forcer » pour les remplacer"), ""]
+    labels = {"update": {"labels": [{"add": s["label"]}]}}
+    if write_pts:
+        labels["fields"] = {pf: pts}
+    print(dumps({"comment": {"body": body}, "labels": labels, "preview": "\n".join(preview)}))
 
 
 def gate(ask):
