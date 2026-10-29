@@ -209,6 +209,8 @@ class SupportTest(unittest.TestCase):
                                        "step_results": [{"step_name": "open"}]})
         t = self.poll()["threads"][0]
         self.assertEqual((t["state"], t["run"]["run"]), ("run", "r2"), "le run le plus récent du fil")
+        self.srv.st["runs"][0].update(status="WaitingQuota")  # Kronn 0.15.1 : en attente du quota, reprendra seul
+        self.assertEqual(self.poll()["threads"][0]["state"], "run")
         self.srv.st["runs"][0].update(status="Failed")
         self.assertEqual(self.poll()["threads"][0]["state"], "failed", "échec avant la gate : à relancer")
 

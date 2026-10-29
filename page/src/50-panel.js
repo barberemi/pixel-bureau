@@ -17,6 +17,7 @@ const STATUS_TXT={
   Failed:'Échec',
   Running:'En cours',
   WaitingApproval:'Attend validation',
+  WaitingQuota:'Attend le quota',
   Pending:'En attente',
   Cancelled:'Annulé',
   Skipped:'Ignoré'
@@ -26,6 +27,7 @@ const STATUS_COL={
   Failed:'var(--err)',
   Running:'var(--info)',
   WaitingApproval:'var(--warn)',
+  WaitingQuota:'var(--warn)',
   Pending:'var(--idle)',
   Cancelled:'var(--idle)',
   Skipped:'var(--idle)'

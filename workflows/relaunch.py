@@ -8,7 +8,7 @@ Revérifie aussi qu'aucun run n'est déjà en cours, puis le lance via POST /api
 run et rend la main, sans flux SSE).
 """
 import json, re, sys, urllib.request, urllib.error
-from _lib import API, CFG, get
+from _lib import ACTIVE, API, CFG, get
 
 PAGE = CFG["page_id"]
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -49,7 +49,7 @@ row = next((w for w in cur.get("launchable" if params else "workflows") or [] if
 if not row:
     fail("Ce workflow ne peut pas être " + ("lancé avec ces paramètres" if params else "relancé") + " depuis la page.")
 variables = parse(params, row.get("vars") or []) if params else {}
-busy = [r for r in get(f"/workflows/{wf_id}/runs?limit=5") if r.get("status") in ("Running", "Pending", "WaitingApproval")]
+busy = [r for r in get(f"/workflows/{wf_id}/runs?limit=5") if r.get("status") in ACTIVE]
 if busy:
     fail(f"« {row['name']} » tourne déjà (run {busy[0]['id'][:8]}, {busy[0]['status']}) : attends qu'il finisse.")
 

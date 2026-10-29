@@ -270,3 +270,10 @@ test('durées : jamais « 4 h 60 » ni « 60 min »', () => {
   assert.equal(r(`agoTxt(${2 * 3600e3 + 5 * 60e3})`), '2 h 05');
   assert.equal(r(`agoTxt(${12 * 60e3})`), '12 min');
 });
+
+test('run en attente du quota (Kronn 0.15.1, WaitingQuota) : pas fini, comme Running ; libellé et couleur dans le panneau', () => {
+  assert.deepEqual(J('RUN_ACTIVE'), ['Running', 'Pending', 'WaitingApproval', 'WaitingQuota']);
+  assert.equal(J('RF_ACTIVE === RUN_ACTIVE'), true, 'bouton ↻ : grisé pendant un run en attente du quota');
+  assert.equal(J('STATUS_TXT.WaitingQuota'), 'Attend le quota');
+  assert.equal(J('STATUS_COL.WaitingQuota'), 'var(--warn)');
+});

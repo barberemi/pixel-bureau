@@ -18,7 +18,7 @@ function spState(t){
   const runs=((DATA&&DATA.runs)||[]).filter(r=>r.vars&&r.vars.message_id===t.id&&(!t.run||ms(r.start)>=ms(t.run.at)||r.run===t.run.run)&&ms(r.start)<=T);
   const r=runs.sort((a,b)=>ms(b.start)-ms(a.start))[0];
   if(r&&t.state!=='done'){
-    if(r.status==='Running'||r.status==='Pending')return {k:'run',r};
+    if(r.status==='Running'||r.status==='Pending'||r.status==='WaitingQuota')return {k:'run',r};
     if(r.status==='WaitingApproval')return {k:'gate',r};
     if(r.status==='Failed')return {k:(r.steps||[]).some(s=>s.n==='gate')?'ignored':'failed',r};
   }

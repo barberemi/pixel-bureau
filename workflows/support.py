@@ -306,7 +306,7 @@ def state_of(t, run, mine, my_id):
         return "skipped", None
     if mine:
         return "done", None
-    if run and run["status"] in ("Running", "Pending"):
+    if run and run["status"] in ("Running", "Pending", "WaitingQuota"):  # WaitingQuota : reprend après le quota
         return "run", None
     if run and run["status"] == "WaitingApproval":
         return "gate", None
