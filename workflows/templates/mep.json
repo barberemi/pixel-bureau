@@ -2,7 +2,7 @@
  "kind": "workflow",
  "key": "mep",
  "definition": {
-  "name": "Mise en prod d'une PR",
+  "name": "Le Bureau · mettre en prod une PR",
   "project_id": "@@mep.project_id@@",
   "trigger": {
    "type": "Manual"

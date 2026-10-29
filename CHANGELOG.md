@@ -40,6 +40,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- Le modèle « Mise en prod d'une PR » s'appelle désormais « Le Bureau · mettre en prod une PR », comme les autres modèles du Bureau (même id, mêmes runs, même agent). Après la mise à jour : `publish.py workflows`.
 - Poids de la page : plus de limite de 1 000 000 octets, seulement le garde-fou de 24 Mio de Kronn (`assemble.KRONN_LIMIT`, `publish.py`, `install.py`, `smoke.py`) ; le budget de 955 000 octets de la démo est retiré. Il faut un Kronn à jour de main (#252, après le tag 0.15.1) : un Kronn plus ancien refuse toujours une page de plus de 1 000 000 octets.
 - Déplacer un ticket vers la colonne En cours (« ▶ En cours », « ◀ En cours ») t'y affecte si personne ne l'a, avant la transition (compte de ta connexion Atlassian, comme « m'affecter ») ; un ticket déjà pris garde son affecté. L'infobulle et la carte Kronn du bouton le disent. Après la mise à jour : `publish.py all`.
 - Halloween : les agents gardent leur hologramme (cyan, ou la couleur de leur famille) au lieu du vert fantôme, qui se confondait avec les familles.
