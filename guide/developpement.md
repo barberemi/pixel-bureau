@@ -189,7 +189,7 @@ Le plan n'est plus codé en dur : `10-world.js` construit grille, sols, portes, 
 
 ## Repères
 
-- Plan : grille 40 x 20 cases de 32 px (canvas 1280 x 640). Crons Kronn en UTC : leurs heures (`@@cron_hours@@` dans les modèles) sont calculées depuis `rhythm.timezone` et `rhythm.office_hours`, 2 h avant l'ouverture et 1 h après la fermeture, été comme hiver (`cron_hours()` dans `assemble.py` ; Paris 8h-20h = 4h-20h59 UTC). Les jours (`1-5` du cron équipe) restent ceux d'UTC. Page et scripts en heure du bureau.
+- Plan : grille 40 x 20 cases de 32 px (canvas 1280 x 640). Crons Kronn en UTC (le rendu pose `timezone: "UTC"`, sinon Kronn 0.15.1 les lirait dans son propre fuseau) : leurs heures (`@@cron_hours@@` dans les modèles) sont calculées depuis `rhythm.timezone` et `rhythm.office_hours`, 2 h avant l'ouverture et 1 h après la fermeture, été comme hiver (`cron_hours()` dans `assemble.py` ; Paris 8h-20h = 4h-20h59 UTC). Les jours (`1-5` du cron équipe) restent ceux d'UTC. Page et scripts en heure du bureau.
 - Rendu à 30 images par seconde ; meubles immobiles cuits une fois (`bakeFurniture`).
 - Démo (aperçu local, captures, tests) : équipe fictive Dunder Mifflin, `data/*.json` et `tests/fixtures/bureau.config.json` (`assemble.demo_config()`), sur le plan type. Rien de réel : une vraie installation lit ses données dans Kronn.
 - Feuille de route : https://claude.ai/code/artifact/56db95ed-d247-4574-aeef-9990cd9360bc

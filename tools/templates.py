@@ -339,7 +339,27 @@ def render(tpl, cfg):
             for name in dropped:  # entrée d'une étape suivante qui lisait une étape retirée
                 if isinstance(s.get("exec_stdin"), str):
                     s["exec_stdin"] = re.sub(r"\{\{steps\." + re.escape(name) + r"\.[\w.]+\}\}", "null", s["exec_stdin"])
+        pin_tz(d)
     return _sub(d, values(cfg), cfg)
+
+
+# fuseau des crons : leurs heures sont calculées en UTC (assemble.cron_hours) ; depuis Kronn 0.15.1, un cron sans fuseau
+# suit celui de Kronn (souvent Europe/Paris) et partirait 1 ou 2 h plus tôt. 0.14 ignore ce champ.
+CRON_TZ = "UTC"
+
+
+def pin_tz(d):
+    """Pose le fuseau d'un déclencheur Cron qui n'en a pas (rendu, et lecture d'un Kronn d'avant 0.15)."""
+    t = d.get("trigger") or {}
+    if t.get("type") == "Cron" and not t.get("timezone"):
+        t["timezone"] = CRON_TZ
+
+
+def legacy_kronn(cfg):
+    """Kronn d'avant 0.15 : ses crons n'ont pas de fuseau (toujours UTC), templates.py check en pose un pour comparer."""
+    with urllib.request.urlopen(f"{_api(cfg)}/health", timeout=10) as r:
+        version = str(json.load(r).get("version", "0"))
+    return tuple(int(x) for x in re.findall(r"\d+", version)[:3]) < (0, 15, 0)
 
 
 # ---------- export depuis un Kronn ----------
@@ -356,14 +376,17 @@ def fetch(kind, ident, cfg):
     return next(q for q in body.get("data", body) if q["id"] == ident)
 
 
-def clean(kind, live):
-    """Définition comparable : sans ids, dates, état ; étapes sans leur id."""
+def clean(kind, live, legacy=False):
+    """Définition comparable : sans ids, dates, état ; étapes sans leur id. legacy : Kronn d'avant 0.15 (crons en UTC
+    sans fuseau écrit), le fuseau est posé comme au rendu."""
     keys = WF_KEYS if kind == "workflow" else QP_KEYS
     # Kronn omet une liste de variables vide ; des garde-fous absents (null) ne sont pas un champ du modèle
     d = {k: copy.deepcopy(live.get(k)) for k in keys if k not in ("variables", "guards", "concurrency_key") or live.get(k) or kind != "workflow"}
     if kind == "workflow":
         for s in d["steps"]:
             s.pop("id", None)
+        if legacy:
+            pin_tz(d)
     return d
 
 
@@ -409,6 +432,8 @@ def templatize(key, kind, d, cfg):
         return v
 
     d = walk(d)
+    if (d.get("trigger") or {}).get("timezone") == CRON_TZ:  # posé au rendu (pin_tz) : le modèle reste sans fuseau
+        d["trigger"].pop("timezone")
     sch = (d.get("trigger") or {}).get("schedule")
     if isinstance(sch, str) and len(sch.split()) == 5 and sch.split()[1] == vals["cron_hours"]:
         f = sch.split()
@@ -459,14 +484,14 @@ def main():
             left = sorted(set(re.findall(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", json.dumps(t))))
             print(f"{key} : exporté" + (f" (ids restants : {left})" if left else ""))
     elif cmd == "check":
-        bad = 0
+        bad, legacy = 0, legacy_kronn(cfg)
         for key, tpl in load_templates().items():
             kind, where, _ = TEMPLATES[key]
             ident = config_id(cfg, where)
             if not ident or ident in (cfg.get("own") or []):
                 print(f"--   {key} : " + ("pas installé" if not ident else f"workflow {ident[:8]} gardé tel quel, non comparé"))
                 continue
-            same = render(tpl, cfg) == clean(kind, fetch(kind, ident, cfg))
+            same = render(tpl, cfg) == clean(kind, fetch(kind, ident, cfg), legacy)
             bad += not same
             print(("ok   " if same else "DIFF ") + f"{key} : rendu {'identique au' if same else 'différent du'} workflow {ident[:8]}")
         sys.exit(1 if bad else 0)
