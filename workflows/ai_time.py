@@ -19,9 +19,9 @@ Garde-fous : label de suivi déjà posé (sauf force = oui) code 3 ; aucune PR m
 État du run dans ~/.cache/pixel-bureau/ai_time/<run>.json, relu par compose et done.
 Réglage jira.ai_feedback (config ou pack) : label, lang (fr, en), title, fields ([libellé, valeur] ; valeurs avec
 {tool}, {model}, {challenged}, {went_well}, {saved}, {per_pr}, {confidence}, {ticket}, {ai_points}), tool et model par
-défaut ; points (facultatif) : {field, scale} le champ Jira des points « avec l'IA » (l'effort restant avec l'assistant),
-rempli d'après le total des heures « avec IA » converti en Fibonacci (scale : [[heures au plus, points], …]) ; une
-valeur déjà posée est gardée, sauf force = oui.
+défaut ; points (facultatif) : {field} le champ Jira des points « avec l'IA » (l'effort restant avec l'assistant) :
+Story Points du ticket (jira.points_fields, le premier rempli) × heures avec IA / heures sans IA, arrondi en Fibonacci ;
+sans Story Points, rien n'est calculé ; une valeur déjà posée est gardée, sauf force = oui.
 """
 import json, os, re, subprocess, sys
 from _lib import CFG, dumps, read_json, write_json
@@ -51,15 +51,20 @@ DEFAULT = {"label": "temps_gagne_ia", "lang": "fr", "title": "Temps gagné grâc
                       ["Détail", "{per_pr}"]]}
 
 
-# heures « avec IA » au plus -> points (Fibonacci) : moins d'1 h = 1, une demi-journée = 3, une journée = 8
-SCALE = [[1, 1], [2, 2], [4, 3], [6, 5], [8, 8], [16, 13], [40, 21]]
+FIB = [0.5, 1, 2, 3, 5, 8, 13, 21]
 
 
-def ai_points(h, scale=None):
-    """Points de l'effort restant avec l'IA pour h heures « avec IA » : le premier palier qui les contient, sinon le
-    dernier. 0 h (rien à faire) : 1 point, le minimum d'un ticket livré."""
-    scale = sorted(scale or SCALE)
-    return next((int(p) for m, p in scale if float(h) <= float(m)), int(scale[-1][1]))
+def ai_points(sp, without_h, with_h):
+    """Points de l'effort restant avec l'IA : les Story Points du ticket (l'effort humain fixé par l'équipe) réduits du
+    rapport heures avec IA / heures sans IA de l'estimation, puis la valeur de Fibonacci la plus proche (la plus haute en
+    cas d'égalité). Sans heures sans IA, le rapport vaut 1."""
+    ratio = float(with_h) / float(without_h) if float(without_h) > 0 else 1.0
+    v = float(sp) * min(ratio, 1.0)
+    return min(FIB, key=lambda f: (abs(f - v), -f))
+
+
+def sp_fields():
+    return [f for f in ((CFG.get("jira") or {}).get("points_fields") or []) if f]
 
 
 def points_field(s):
@@ -257,6 +262,7 @@ def discover(key, prs, force, run_id):
     pf = points_field(s)
     st = {"ticket": key, "summary": fields.get("summary") or "", "source": source, "ignored": ignored,
           "points_before": fields.get(pf) if pf else None, "force": force.strip().lower() in ("oui", "yes"),
+          "sp": next((fields.get(f) for f in sp_fields() if fields.get(f) not in (None, "")), None),
           "tool": ", ".join(uniq(tools)) or s.get("tool") or w["unknown"],
           "model": ", ".join(uniq(models)) or s.get("model") or w["unknown"],
           "challenged": ", ".join(uniq(challenged)) or w["no"],
@@ -302,7 +308,8 @@ def compose(run_id, raw):
         per.append((p, a, b, str(x.get("why") or "").strip()))
     gain = max(tot_without - tot_with, 0)
     pf, before = points_field(s), st.get("points_before")
-    pts = ai_points(tot_with, (s.get("points") or {}).get("scale")) if pf else None
+    sp = st.get("sp")
+    pts = ai_points(sp, tot_without, tot_with) if pf and sp not in (None, "") else None
     write_pts = pts is not None and (before in (None, "") or st.get("force"))
     short = lambda p: p["id"].split("/", 1)[-1]  # noqa: E731  (dépôt#n, sans le propriétaire)
     vals = {"tool": st["tool"], "model": st["model"], "challenged": st["challenged"], "ticket": st["ticket"],
@@ -321,8 +328,10 @@ def compose(run_id, raw):
                 + (f". {why}" if why else "") for p, a, b, why in per]
     preview += ["", f"Source des PR : {st['source']}." + (f" Écartées : {', '.join(st['ignored'])}." if st["ignored"] else ""),
                 "", f"Commentaire posté sur {st['ticket']}, puis label `{s['label']}` :", "", "```", body, "```"]
+    if pf and pts is None:
+        preview[4:4] = ["**Points avec l'IA** : non calculés, le ticket n'a pas de Story Points.", ""]
     if pts is not None:
-        why = f"~{hours(tot_with, 'fr')} avec l'IA"
+        why = f"{sp:g} Story Points × {hours(tot_with, 'fr')} / {hours(tot_without, 'fr')}"
         preview[4:4] = [f"**Points avec l'IA : {pts}** ({why}, champ `{pf}`)" + ("" if write_pts else
                         f" : non écrits, le ticket en a déjà ({before}) ; « Forcer » pour les remplacer"), ""]
     labels = {"update": {"labels": [{"add": s["label"]}]}}

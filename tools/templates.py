@@ -167,7 +167,8 @@ def values(cfg):
         "jira.sprint_field": j.get("sprint_field") or "",
         "jira.points_fields": ",".join(j.get("points_fields") or []),
         # temps gagné par l'IA (#79) : le champ des points « avec l'IA », lu avec le ticket (« ,customfield_… » ou rien)
-        "jira.ai_points_q": "".join("," + f for f in [((j.get("ai_feedback") or {}).get("points") or {}).get("field")] if f),
+        "jira.ai_points_q": "".join("," + f for f in [((j.get("ai_feedback") or {}).get("points") or {}).get("field")] if f)
+        + ("".join("," + f for f in j.get("points_fields") or [] if f) if ((j.get("ai_feedback") or {}).get("points") or {}).get("field") else ""),
         "microsoft.config_id": (cfg.get("microsoft") or {}).get("config_id") or "",  # planning des absences (Graph)
         "microsoft.site": ((cfg.get("microsoft") or {}).get("planning") or {}).get("site") or "",
         "microsoft.item": ((cfg.get("microsoft") or {}).get("planning") or {}).get("item") or "",
