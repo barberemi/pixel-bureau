@@ -56,7 +56,7 @@ function bindsFor(action,row){
 // calculé à l'assemblage ; jamais un nom écrit en dur), un agent par workflow, jamais celui d'un autre bouton ni un
 // intérimaire (il change chaque jour) ; « Commenter » : toi (le commentaire part avec ton compte Jira) ; sinon
 // l'hologramme du Bureau
-const actKey=a=>({meppr:'mep_pr',fixpr:'fix_pr'})[a.slice(7)]||a.slice(7); // 'bureau-fixpr' -> clé fix_pr de la config
+const actKey=a=>({meppr:'mep_pr',fixpr:'fix_pr',aitime:'ai_time'})[a.slice(7)]||a.slice(7); // 'bureau-fixpr' -> clé fix_pr de la config
 function actAgent(action){
   const wf=((CFG.action_wf||{})[actKey(action)]||'').slice(0,8);
   return wf&&chars.find(x=>!x.person&&!x.visitor&&!x.temp&&(x.wf||[]).includes(wf))
@@ -227,7 +227,7 @@ function renderTicket(side,key){
     }
     pb.appendChild(ul);
   }
-  if(!(ACTIONS.impl||ACTIONS.mep||ACTIONS.mep_pr||ACTIONS.review||ACTIONS.fix||ACTIONS.comment))return;
+  if(!(ACTIONS.impl||ACTIONS.mep||ACTIONS.mep_pr||ACTIONS.review||ACTIONS.fix||ACTIONS.comment||ACTIONS.ai_time))return;
   const box=foldSection(side,'tk-launch','🤖 Lancer un workflow',null,true);
   const note=t=>{const e=document.createElement('div');e.className='note';e.textContent=t;box.appendChild(e);};
   if(!ACTS){note('Les boutons arrivent au prochain passage du cron équipe (10 min au plus).');return;}
@@ -255,6 +255,12 @@ function renderTicket(side,key){
     launchBlock(box,{action:'bureau-comment',bind:{key},verb:'commente le ticket',sub:'Ton commentaire part sur le ticket dans Jira',label:'💬 Commenter',title:'Commenter '+key});
   if(known&&ACTIONS.estimate&&x.cat!=='done') // ton workflow de réestimation (launch.estimate), sinon le modèle du Bureau
     launchBlock(box,{action:'bureau-estimate',bind:{key},verb:'réestime le ticket',sub:'Nouveaux Story Points et raison : le ticket est mis à jour dans Jira, avec un commentaire',label:'📏 Réestimer',title:'Réestimer '+key});
+  // temps gagné par l'IA (#79, modèle ai_time) : sur un ticket terminé ; grisé quand son label de suivi est déjà posé
+  // (ai_fb, cron équipe), « Forcer » dans la carte Kronn pour le reposter quand même
+  if(known&&ACTIONS.ai_time&&x.cat==='done')
+    launchBlock(box,{action:'bureau-aitime',bind:{key},verb:'estime le temps gagné par l\'IA',
+      sub:'Ses PR mergées sont retrouvées sans IA, l\'IA estime d\'après leurs diffs ; tu relis le commentaire avant qu\'il parte sur le ticket, avec son label',
+      label:'⏱ Temps gagné IA',title:'Temps gagné IA sur '+key,off:x.ai_fb?'Déjà posté : le label de suivi est sur le ticket':null});
   if(box.childElementCount===k0+1&&box.lastChild)box.lastChild.remove();
   if(box.childElementCount===before)note(known?'Rien à lancer à ce statut.':'Ticket pas encore dans les données des boutons : prochain passage du cron équipe.');
   else note(KM_NOTE);

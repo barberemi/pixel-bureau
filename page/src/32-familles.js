@@ -32,7 +32,7 @@ function famKind(c){
   return agentPage(c)?'page':c.temp||!agentButtons(c).length&&cronsOf(c).length?'autre':'jour';
 }
 // boutons des fiches (CFG.action_wf, #86) et modèles incarnés : ce que l'agent fait, et où l'on clique
-const FAM_BTN={impl:['🤖 Implémenter','t'],mep:['🚀 Mettre en prod','t'],estimate:['📏 Réestimer','t'],mep_pr:['🚀 Mise en prod','p'],
+const FAM_BTN={impl:['🤖 Implémenter','t'],mep:['🚀 Mettre en prod','t'],estimate:['📏 Réestimer','t'],ai_time:['⏱ Temps gagné IA','t'],mep_pr:['🚀 Mise en prod','p'],
   review:['🔎 Faire relire','p'],fix:['🛠 Corriger','p'],fix_pr:['🛠 Corriger','p'],rebase:['⟳ Remettre à jour','p'],
   env:["🌿 Générer l'env de branche",'p'],deploy:['🚀 Déployer','p']};
 const FAM_WHERE={t:"la fiche d'un ticket",p:"la fiche d'une PR",s:'la fenêtre Support',m:'ta fiche'};

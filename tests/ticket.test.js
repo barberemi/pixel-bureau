@@ -91,6 +91,24 @@ test('Réestimer (launch.estimate) : sur un ticket non terminé du sprint seulem
   assert.deepEqual(est('DM-8', 'done'), []); // déployé : rien à réestimer
 });
 
+test('Temps gagné IA (#79, modèle ai_time) : sur un ticket terminé seulement, grisé quand son label est déjà posé', () => {
+  const ai = (key, cat, fb) => J(`(() => {
+    const calls = [], lb = launchBlock, fs = foldSection, a0 = ACTIONS.ai_time;
+    launchBlock = (box, o) => { calls.push([o.action, o.bind, o.off || null]); box.childElementCount++; };
+    foldSection = () => ({childElementCount: 0, appendChild() { this.childElementCount++; }});
+    ACTIONS.ai_time = true;
+    TEAM = {people: [{name: 'Pam', tickets: [{key: ${JSON.stringify(key)}, cat: ${JSON.stringify(cat)}, status: 's', summary: 'a', ai_fb: ${fb}}], prs: []}],
+      unassigned: [], other_prs: []};
+    ACTS = {tickets: [{key: ${JSON.stringify(key)}}], prs: []};
+    try { renderTicket({appendChild() {}}, ${JSON.stringify(key)}); } finally { launchBlock = lb; foldSection = fs; ACTIONS.ai_time = a0; }
+    return calls.filter(c => c[0] === 'bureau-aitime');
+  })()`);
+  assert.deepEqual(ai('DM-7', 'done', false), [['bureau-aitime', {key: 'DM-7'}, null]]);
+  assert.match(ai('DM-7', 'done', true)[0][2], /Déjà posté/);
+  for (const cat of ['todo', 'doing', 'review', 'test', 'deploy']) assert.deepEqual(ai('DM-7', cat, false), [], cat);
+  assert.deepEqual(J(`bindsFor('bureau-aitime', {key: 'DM-7'})`), {ticket: 'DM-7'}); // variable « ticket » du modèle
+});
+
 // ---------- #56 : PR de plusieurs dépôts, identifiées par « owner/dépôt#n » ----------
 // deux #16 : front_web (dépôt principal du test, dunder-mifflin/site-web) et front_api ; boutons de la fiche d'une PR
 const TWO16 = `TEAM = {people: [{id: 'acc-p', name: 'Pam', tickets: [{key: 'DM-5', cat: 'review', status: 'To Review', summary: 'e'}],

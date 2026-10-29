@@ -269,6 +269,10 @@ SHOTS = {
                      "ACTS={tickets:all.map(t=>({key:t.key})),prs:prs.map(x=>({id:prId(x),n:String(x.n),repo:prRepo(x)}))};"
                      "const pr=prs.find(x=>x.review==='changes'&&!x.draft&&(x.keys||[]).length);"
                      "openTicket(pr?pr.keys[0]:(all.find(t=>t.cat==='deploy')||all[0]).key);", ".kbv"),
+    # temps gagné par l'IA (#79) : « ⏱ Temps gagné IA » sur la fiche d'un ticket terminé (modèle ai_time simulé)
+    "temps-gagne-ia": (1400, 1000, AT(11) + "ACTIONS.ai_time=true;ACTION_BINDS['bureau-aitime']={ticket:'key'};"
+                       "const all=[...TEAM.people.flatMap(p=>p.tickets),...(TEAM.unassigned||[])];ACTS={tickets:all.map(t=>({key:t.key})),prs:[]};"
+                       "openTicket(all.find(t=>t.cat==='done').key);", ".kbv"),
     # fiche d'une PR (lien du fil) : la PR #2016 de Darryl, relue deux fois par Dwight (variables de run ajoutées pour la démo)
     "fiche-pr": (1400, 1200, AT(18.5) + "byKey.dwight.runs.filter(r=>r._s<=T&&r.status==='Success').slice(0,2).forEach(r=>r.vars={'current_task.number':'2016',"
                  "'current_task.repo':CFG.github_repo});const all=TEAM.people.flatMap(p=>p.tickets),prs=TEAM.people.flatMap(p=>p.prs);"

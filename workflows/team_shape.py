@@ -28,6 +28,8 @@ J = CFG["jira"]
 CAT = J["statuses"]                       # statut Jira -> colonne du Bureau (todo, doing, review, test, deploy, done)
 KEY = re.compile(r"\b" + re.escape(J["project"]) + r"-\d+\b", re.I)
 POINTS = J["points_fields"]              # champ(s) de story points, le premier non vide gagne (0 compte)
+# label du temps gagné par l'IA (#79, réglage jira.ai_feedback, défaut de workflows/ai_time.py) : bouton grisé sur la fiche
+AI_LABEL = (J.get("ai_feedback") or {}).get("label") or "temps_gagne_ia"
 SPRINT_FIELD = J["sprint_field"]
 DONE = J["done_status"]
 # dépôt de chaque PR (#56) : owner/repo complet, celui du dépôt principal quand l'entrée ne le dit pas (ancien format)
@@ -75,6 +77,8 @@ for it in D.get("issues") or []:
          "since": status_since(it)}
     if (f.get("priority") or {}).get("name"):
         t["prio"] = f["priority"]["name"]  # Highest, High, Medium, Low, Lowest (icône de la page)
+    if AI_LABEL in (f.get("labels") or []):
+        t["ai_fb"] = True  # temps gagné par l'IA déjà posté (seul label publié : le dataset reste léger)
     if it.get("key") in RANK:
         t["rank"] = RANK[it["key"]]
     a = f.get("assignee")
