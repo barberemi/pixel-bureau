@@ -10,7 +10,7 @@ import assemble, templates  # noqa: E402
 
 BASE = json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text())
 TPL = templates.load_templates()
-MODELS = ("review_child", "review_one", "review_cron", "estimate", "issue", "ticket", "assign", "unassign", "env", "deploy")
+MODELS = ("review_child", "review_one", "review_cron", "estimate", "issue", "ticket", "assign", "unassign", "env", "deploy", "ai_time")
 GH = "12121212-3434-5656-7878-909090909090"
 CHILD = "abababab-0000-4000-8000-000000000001"
 PAGE = "cdcdcdcd-0000-4000-8000-000000000002"

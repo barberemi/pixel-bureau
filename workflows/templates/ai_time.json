@@ -1,0 +1,524 @@
+{
+ "kind": "workflow",
+ "key": "ai_time",
+ "definition": {
+  "name": "Le Bureau · estimer le temps gagné par l'IA",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "ticket",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket Jira terminé : ses PR mergées sont trouvées toutes seules.",
+    "required": true,
+    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "prs",
+    "label": "PR (si mal trouvées)",
+    "placeholder": "owner/depot#12, owner/depot#13",
+    "description": "Vide : PR liées au ticket dans Jira, sinon cherchées sur GitHub. Sinon : exactement ces PR.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "force",
+    "label": "Forcer",
+    "placeholder": "",
+    "description": "oui : reposte même si le label de suivi est déjà sur le ticket.",
+    "required": false,
+    "control": {
+     "type": "select",
+     "options": [
+      {
+       "value": "non",
+       "label": "Non",
+       "enabled": true
+      },
+      {
+       "value": "oui",
+       "label": "Oui, reposter",
+       "enabled": true
+      }
+     ],
+     "default_value": "non"
+    },
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "gate",
+    "label": "Validation",
+    "placeholder": "",
+    "description": "oui : tu relis le commentaire avant qu'il parte. non : posté directement (appel de la mise en prod).",
+    "required": false,
+    "control": {
+     "type": "select",
+     "options": [
+      {
+       "value": "oui",
+       "label": "Oui, je relis",
+       "enabled": true
+      },
+      {
+       "value": "non",
+       "label": "Non, poster directement",
+       "enabled": true
+      }
+     ],
+     "default_value": "oui"
+    },
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "steps": [
+   {
+    "name": "ticket",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Id numérique (dev-status le demande), labels (déjà posté ?) et résumé du ticket.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/2/issue/{{ticket}}",
+    "api_method": "GET",
+    "api_query": {
+     "fields": "labels,summary,status"
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "summary",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Panneau Development : PR liées, par clé d'instance. Refusé ou en échec : recherche GitHub.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/dev-status/1.0/issue/summary",
+    "api_method": "GET",
+    "api_query": {
+     "issueId": "{{steps.ticket.data.id}}"
+    },
+    "on_result": [
+     {
+      "contains": "ERROR",
+      "action": {
+       "type": "Goto",
+       "step_name": "discover"
+      }
+     }
+    ],
+    "_requires": "jira"
+   },
+   {
+    "name": "instance",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Clé d'instance des PR (byInstanceType) : « GitHub » renverrait une liste vide. Aucune PR liée : code 3, recherche GitHub.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/ai_time.py@@",
+     "instance"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.summary.data_json}}",
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "discover"
+      }
+     }
+    ]
+   },
+   {
+    "name": "detail",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Les PR liées au ticket (url, état). En échec : recherche GitHub.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/dev-status/1.0/issue/detail",
+    "api_method": "GET",
+    "api_query": {
+     "issueId": "{{steps.ticket.data.id}}",
+     "dataType": "pullrequest",
+     "applicationType": "{{steps.instance.data.stdout}}"
+    },
+    "on_result": [
+     {
+      "contains": "ERROR",
+      "action": {
+       "type": "Goto",
+       "step_name": "discover"
+      }
+     }
+    ],
+    "_requires": "jira"
+   },
+   {
+    "name": "discover",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "PR mergées (dev-status, sinon recherche GitHub, ou « prs »), diffs bornés, outil et modèle (Co-Authored-By), relecture par un autre modèle (gh, 0 token). Label déjà posé (3), aucune PR mergée (4), PR ouverte (5) : arrêt.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/ai_time.py@@",
+     "discover",
+     "{{ticket}}",
+     "{{prs}}",
+     "{{force}}",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 300,
+    "exec_stdin": "{{steps.ticket.data_json}}\n===SEP===\n{{steps.detail.data_json ?? \"null\"}}",
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "stop"
+      }
+     },
+     {
+      "contains": "exit_4",
+      "action": {
+       "type": "Goto",
+       "step_name": "stop"
+      }
+     },
+     {
+      "contains": "exit_5",
+      "action": {
+       "type": "Goto",
+       "step_name": "stop"
+      }
+     }
+    ]
+   },
+   {
+    "name": "estimate",
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "Seule étape IA : lit les diffs préparés par discover et estime, par PR, le temps sans IA et avec IA. Aucun outil, aucune écriture.",
+    "agent": "ClaudeCode",
+    "prompt_template": "Tu estimes le temps gagné grâce à l'IA sur les PR mergées d'un ticket Jira, d'après leurs diffs ci-dessous. Tu RAISONNES seulement : n'appelle aucun outil, ne lis rien d'autre, n'écris rien nulle part. Le Bureau a déjà trouvé les PR, l'outil et le modèle ; il poste lui-même le commentaire.\n\n{{steps.discover.data.stdout}}\n\nPour CHAQUE PR ci-dessus, en heures (arrondi au quart d'heure) :\n- without_ai_h : un développeur compétent, à la main (lire l'existant, écrire, déboguer, tester) ;\n- with_ai_h : le temps réel avec l'assistant IA (cadrer, relire, corriger, tester) ;\n- why : une phrase courte en français, la nature du travail qui justifie l'écart.\nJuge la NATURE du travail, pas le seul volume de lignes : code délicat ou à fort contexte = gain modeste ; boilerplate, configuration, refacto répétitive, tests = gain élevé. Diff tronqué ou trop maigre pour trancher : estimation prudente, et confidence = low.\nwent_well : UNE phrase (15 mots au plus), dans la langue indiquée plus haut, le point le plus marquant toutes PR confondues, concret, sans marketing.\nconfidence : high, medium ou low, ta confiance dans l'estimation.\npr : l'identifiant exact « owner/dépôt#n » donné plus haut. N'invente aucune PR ni aucun chiffre. Pas de tiret cadratin.",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "prs": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "pr": {
+           "type": "string"
+          },
+          "without_ai_h": {
+           "type": "number"
+          },
+          "with_ai_h": {
+           "type": "number"
+          },
+          "why": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "pr",
+          "without_ai_h",
+          "with_ai_h",
+          "why"
+         ]
+        }
+       },
+       "went_well": {
+        "type": "string"
+       },
+       "confidence": {
+        "type": "string",
+        "enum": [
+         "high",
+         "medium",
+         "low"
+        ]
+       }
+      },
+      "required": [
+       "prs",
+       "went_well",
+       "confidence"
+      ]
+     },
+     "on_invalid": "Continue"
+    },
+    "agent_settings": {
+     "tier": "default",
+     "tools": {
+      "cli": [],
+      "kronn_internal": []
+     }
+    }
+   },
+   {
+    "name": "compose",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "Le commentaire au gabarit de l'équipe (jira.ai_feedback : champs, langue, outil et modèle par défaut), le corps du label et l'aperçu de la validation, en JSON typé. 0 token.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "f",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/ai_time.py@@",
+         "compose",
+         "{{run.id}}",
+         "{{steps.estimate.data_json}}"
+        ],
+        "timeout_secs": 30,
+        "output_format": "json"
+       },
+       "required": true
+      }
+     ],
+     "concurrent_limit": 1
+    }
+   },
+   {
+    "name": "need_gate",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Lancé par la mise en prod (gate = non) : code 3, le commentaire part sans validation (elle a déjà sa gate « ticket terminé ? »).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/ai_time.py@@",
+     "gate",
+     "{{gate}}"
+    ],
+    "exec_timeout_secs": 30,
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "comment"
+      }
+     }
+    ]
+   },
+   {
+    "name": "gate",
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "Le boss relit le commentaire tel qu'il sera posté (lancement depuis la fiche du ticket).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "gate_message": "{{steps.compose.data.sources.f.preview}}\n\n---\n**Approuver** : le commentaire est posté sur le ticket et le label posé. **Rejeter** : rien n'est écrit dans Jira."
+   },
+   {
+    "name": "comment",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Commentaire en wiki markup par l'API REST v2 (l'outil MCP échapperait la mise en forme). Corps entier venu de compose.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/2/issue/{{ticket}}/comment",
+    "api_method": "POST",
+    "api_body": "{{steps.compose.data.sources.f.comment}}",
+    "_requires": "jira"
+   },
+   {
+    "name": "label",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Label de suivi ajouté (rien d'enlevé). returnIssue=true : sans lui Jira répond 204 sans corps (KT-689).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/2/issue/{{ticket}}",
+    "api_method": "PUT",
+    "api_query": {
+     "returnIssue": "true",
+     "fields": "labels"
+    },
+    "api_body": "{{steps.compose.data.sources.f.labels}}",
+    "_requires": "jira"
+   },
+   {
+    "name": "done",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Fin : commentaire et label posés.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/ai_time.py@@",
+     "done",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 30,
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Stop"
+      }
+     }
+    ]
+   },
+   {
+    "name": "stop",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Atteinte seulement par un garde-fou de discover (label déjà posé, aucune PR mergée, PR ouverte) : la raison est dans discover, rien n'est écrit.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "print(\"Arrêt sans rien écrire dans Jira : la raison est dans l'étape discover.\")\n"
+    ],
+    "exec_timeout_secs": 30
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": 1,
+  "concurrency_key": "{{ticket}}",
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

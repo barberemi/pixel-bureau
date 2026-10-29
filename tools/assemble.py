@@ -343,8 +343,10 @@ def pack_settings(cfg):
     s = {k: v for k, v in json.loads(Path(path).read_text()).items() if k in SETTINGS}
     if isinstance(s.get("microsoft"), dict):
         s["microsoft"] = {k: v for k, v in s["microsoft"].items() if k != "config_id"}
-    if "jira" in s:  # de Jira, l'équipe ne règle que la création de tickets (#77) : connexion, projet et board restent à l'installation
-        s["jira"] = {"create": s["jira"]["create"]} if isinstance(s["jira"], dict) and isinstance(s["jira"].get("create"), dict) else {}
+    if "jira" in s:  # de Jira, l'équipe ne règle que la création de tickets (#77) et le temps gagné par l'IA (#79) :
+        # connexion, projet et board restent à l'installation
+        j = s["jira"] if isinstance(s["jira"], dict) else {}
+        s["jira"] = {k: j[k] for k in ("create", "ai_feedback") if isinstance(j.get(k), dict)}
     if isinstance(s.get("agents"), list):
         s["agents"] = [{k: v for k, v in a.items() if k != "wf"} for a in s["agents"] if isinstance(a, dict) and a.get("key")]
     return s
@@ -384,10 +386,12 @@ def merged(cfg):
         out["env"] = {**(s["env"] or {}), **(cfg.get("env") or {})}
     if "deploy" in s:  # déployer la branche d'une PR hors prod : dépôts et envs de l'équipe ; la config peut les surcharger
         out["deploy"] = {**(s["deploy"] or {}), **(cfg.get("deploy") or {})}
-    if (s.get("jira") or {}).get("create"):  # créer un ticket (#77) : jira.create de l'équipe ; la config peut le surcharger
-        j = dict(cfg.get("jira") or {})
-        j["create"] = {**s["jira"]["create"], **(j.get("create") or {})}
-        out["jira"] = j
+    # créer un ticket (#77), temps gagné par l'IA (#79) : jira.create et jira.ai_feedback de l'équipe ; la config les surcharge
+    for k in ("create", "ai_feedback"):
+        if (s.get("jira") or {}).get(k):
+            j = dict(out.get("jira") or {})
+            j[k] = {**s["jira"][k], **(j.get(k) or {})}
+            out["jira"] = j
     if "review" in s:  # revue de PR (#78) : consignes, skills, dépôts, horaire de l'équipe ; page et projet de l'installation
         out["review"] = {**(s["review"] or {}), **(cfg.get("review") or {})}
     if "fix" in s:  # corriger les commentaires d'une PR (#75) : consignes, skills et contrôles de l'équipe ; la config surcharge

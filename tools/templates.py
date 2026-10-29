@@ -69,6 +69,10 @@ TEMPLATES = {
     "review_one": ("workflow", ("models", "review_one"), {}),
     "review_cron": ("workflow", ("models", "review_cron"), {}),
     "estimate": ("workflow", ("models", "estimate"), {}),  # réestimer un ticket : Story Points et commentaire
+    # estimer le temps gagné par l'IA sur un ticket terminé (#79) : PR mergées trouvées sans IA, estimation par l'IA,
+    # commentaire et label de suivi (jira.ai_feedback) ; lancé par le bouton de la fiche ou en fin de mise en prod
+    "ai_time": ("workflow", ("models", "ai_time"), {n: "workflows/ai_time.py" for n in ("instance", "discover", "compose", "need_gate",
+                                                                                        "done")}),
     "issue": ("workflow", ("models", "issue"), {}),  # une intention rédigée en issue GitHub selon les modèles du dépôt
     # créer un ticket Jira (#77) : l'IA rédige au modèle de l'équipe (jira.create), le boss valide, l'API REST v2 crée
     "ticket": ("workflow", ("models", "ticket"), {n: "workflows/ticket.py" for n in ("apercu", "champs", "resultat")}),
@@ -174,6 +178,9 @@ def values(cfg):
         **{f"jira.flow.{k}": (j.get("flow") or {}).get(k) or v for k, v in FLOW_DEFAULTS.items()},
         # mise en prod (#58) : Quick Prompt du retour IA et transition Jira de fin (facultatifs : étapes retirées sans eux)
         "mep.feedback_qp": (cfg.get("mep") or {}).get("feedback_qp") or "",
+        # temps gagné par l'IA en fin de mise en prod (#79) : le modèle du Bureau s'il est installé, sinon l'ancien Quick Prompt
+        "models.ai_time": (cfg.get("models") or {}).get("ai_time") or "",
+        "mep.feedback_qp_fallback": "" if (cfg.get("models") or {}).get("ai_time") else (cfg.get("mep") or {}).get("feedback_qp") or "",
         "mep.done_transition": str((cfg.get("mep") or {}).get("done_transition") or ""),
         # projet Kronn du workflow : il borne les connexions de l'étape retour IA (GitHub de l'équipe), comme la revue
         "mep.project_id": (cfg.get("mep") or {}).get("project_id") or rv.get("project_id")
@@ -260,7 +267,7 @@ def skipped(key, cfg):
         return not mep_projects(cfg)
     if key in ("review_child", "review_one", "review_cron"):  # API GitHub : connexion GitHub de Kronn (github.config_id)
         return not (cfg.get("github") or {}).get("config_id") or (key == "review_cron" and not review_repos(cfg))
-    if key in ("estimate", "assign", "unassign", "ticket"):
+    if key in ("estimate", "assign", "unassign", "ticket", "ai_time"):
         return not (cfg.get("jira") or {}).get("config_id")
     if key == "env":  # aucun dépôt où générer un env de branche
         return not assemble.env_repos({**cfg, "models": {**(cfg.get("models") or {}), "env": "?"}})
@@ -447,7 +454,8 @@ def templatize(key, kind, d, cfg):
                 continue
             tok = f"@@script:{path}@@"
             if s.get("collect_api_data"):
-                s["collect_api_data"]["sources"][0]["quick_exec"]["args"] = ["-c", tok]
+                qe = s["collect_api_data"]["sources"][0]["quick_exec"]
+                qe["args"] = ["-c", tok] + (qe.get("args") or [])[2:]  # arguments de la sous-commande gardés
             else:
                 s["exec_args"] = ["-c", tok] + (s.get("exec_args") or [])[2:]
     else:
