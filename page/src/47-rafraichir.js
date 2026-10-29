@@ -3,7 +3,7 @@
 // sous-workflow. Le bouton de la carte ouvre un écran (comme × et 📽) : une ligne par workflow, son coût (0 token, ou
 // tokens par run de la fiche de paie pour un agent IA), son dernier run, et « ↻ Relancer » (bureau-relaunch, relaunch.py)
 // s'il est dans la liste des relançables (dataset gates). L'état du jour vient des runs (office et live).
-const RF_ACTIVE=['Running','Pending','WaitingApproval'];
+const RF_ACTIVE=RUN_ACTIVE;
 const rfFeeds=p=>(p&&Array.isArray(p.feeds)?p.feeds:[]).filter(f=>f&&typeof f.wf==='string');
 const rfRuns=wf=>chars.flatMap(c=>c.runs.filter(r=>r.wf===wf&&r._s<=T));
 const rfCan=f=>!!ACTIONS.relaunch&&RELAUNCH.some(w=>w.wf===f.wf);

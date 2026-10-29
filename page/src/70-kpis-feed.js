@@ -217,7 +217,7 @@ function gateSteps(t){
     for(const r of c.runs){if(r._s>t)continue;
       for(const s of (r.steps||[])){if(s.k!=='Gate'||!s.at||ms(s.at)>t)continue;
         // run arrêté (annulé) pendant la gate : Kronn laisse l'étape en WaitingApproval, la gate se ferme à la fin du run
-        const a=ms(s.at), live=['Running','Pending','WaitingApproval'].includes(r.status), cut=s.s==='WaitingApproval'&&!live,
+        const a=ms(s.at), live=RUN_ACTIVE.includes(r.status), cut=s.s==='WaitingApproval'&&!live,
           e=s.s!=='WaitingApproval'?a+(s.ms||0):cut?Math.max(a,ms(r.end)||a):Infinity;
         out.push({c,r,n:s.n,since:a,end:e,ok:s.s!=='Failed',cut,waiting:e>t});}}}
   return out;

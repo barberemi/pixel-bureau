@@ -6,7 +6,7 @@
     python3 tools/smoke.py --html dist/autre.html --chrome   # contrôler un fichier déjà assemblé
     python3 tools/smoke.py --team ~/Sites/bureau-monequipe --chrome   # la démo avec un autre pack d'équipe (sa CI)
 
-Contrôles : taille de la page publiée (sans démo) < 1 000 000 octets (et, en local, celle de ta config : bureau.config.json), chaque <script> (hors kronn-action) se parse (node, new Function),
+Contrôles : taille de la page publiée (sans démo) < 24 Mio (garde-fou de Kronn) (et, en local, celle de ta config : bureau.config.json), chaque <script> (hors kronn-action) se parse (node, new Function),
 les 21 blocs kronn-action du squelette sont présents à l'identique (ids de workflows remplacés), leur JSON est valide,
 plus aucun marqueur __X__ ni /*__STYLES__*/ /*__SCRIPTS__*/ ne traîne.
 --chrome : la page seule, puis la même page dans le cadre de Kronn (iframe sandbox="allow-scripts", sa CSP) : démarrage,
@@ -72,8 +72,8 @@ def check(ok, msg):
 
 
 def weights(w):
-    """Poids de chaque bloc de la page (KT-28), du plus lourd au plus léger, en Ko et en part de la limite Kronn."""
-    print("     poids :", " · ".join(f"{k} {v / 1000:.0f} Ko ({v * 100 / LIMIT:.0f} %)" for k, v in sorted(w.items(), key=lambda x: -x[1]) if v))
+    """Poids de chaque bloc de la page (KT-28), du plus lourd au plus léger, en Ko."""
+    print("     poids :", " · ".join(f"{k} {v / 1000:.0f} Ko" for k, v in sorted(w.items(), key=lambda x: -x[1]) if v))
 
 
 def static_checks(html, cfg=None, published=None):

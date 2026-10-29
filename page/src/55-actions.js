@@ -238,7 +238,7 @@ function askBlock(side,c){
 // bouton « ↻ » d'un workflow relançable (ligne de gates.workflows) : page action « bureau-relaunch », sans rien à saisir
 // (params lié à la colonne vide de la ligne, comme wf_id) ; « En cours… » tant qu'un run de ce workflow tourne
 function relaunchBtn(host,w,c,label,note){
-  const busy=c.runs.some(r=>String(r.wf).startsWith(String(w.wf).slice(0,8))&&['Running','Pending','WaitingApproval'].includes(r.status)&&r._s<=T);
+  const busy=c.runs.some(r=>String(r.wf).startsWith(String(w.wf).slice(0,8))&&RUN_ACTIVE.includes(r.status)&&r._s<=T);
   const b=document.createElement('button');b.textContent=busy?'En cours…':label;b.disabled=busy;
   if(busy){host.appendChild(b);return;}
   b.setAttribute('data-kronn-action','bureau-relaunch');b.setAttribute('data-kronn-bindings',JSON.stringify({wf_id:w.wf,params:w.wf}));
@@ -299,7 +299,7 @@ function launchLine(vars,vals){
 }
 // créer un ticket (#77) : le modèle ticket (CFG.ticket.wf), un seul run à la fois, son dernier ticket créé (run.res, relevés)
 const isTicketWf=wf=>!!(CFG.ticket&&CFG.ticket.wf&&String(wf||'').startsWith(CFG.ticket.wf));
-const ticketBusy=c=>c.runs.find(r=>isTicketWf(r.wf)&&['Running','Pending','WaitingApproval'].includes(r.status)&&r._s<=T)||null;
+const ticketBusy=c=>c.runs.find(r=>isTicketWf(r.wf)&&RUN_ACTIVE.includes(r.status)&&r._s<=T)||null;
 const lastTicket=c=>[...c.runs].reverse().find(r=>isTicketWf(r.wf)&&r.res&&r.res.key&&r._e&&r._e<=T)||null;
 function ticketLast(box,c){
   const r=lastTicket(c);if(!r)return;

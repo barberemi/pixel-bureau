@@ -65,7 +65,7 @@ function actAgent(action){
 // le run en cours de cet agent sur ce ticket ou cette PR (sa carte dit « dessus depuis… » et grise le bouton), sinon null
 function agentBusy(c,bind){
   const id=String(bind.id||''), i=id.lastIndexOf('#');
-  return c&&!c.boss&&(c.runs||[]).find(r=>{const ref=['Running','Pending','WaitingApproval'].includes(r.status)&&r._s<=T&&runRef(r);
+  return c&&!c.boss&&(c.runs||[]).find(r=>{const ref=RUN_ACTIVE.includes(r.status)&&r._s<=T&&runRef(r);
     return !!ref&&(bind.key?ref.key===bind.key:ref.pr===id.slice(i+1)&&repoKey(ref.repo||CFG.github_repo)===repoKey(id.slice(0,i)));})||null;
 }
 // coût moyen d'un run de cet agent (fiche de paie, 7 jours), quand il est connu

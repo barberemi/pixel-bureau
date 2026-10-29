@@ -259,7 +259,7 @@ function setData(d,live){
   for(const r of d.runs){
     r._s=ms(r.start); r._e=ms(r.end);
     const realEnd=r._e||null;
-    r._ve=(r.status==='Running'||r.status==='WaitingApproval'||r.status==='Pending')?Infinity:Math.max(realEnd||r._s,r._s+VIS_MIN);
+    r._ve=RUN_ACTIVE.includes(r.status)?Infinity:Math.max(realEnd||r._s,r._s+VIS_MIN);
     const p8=(r.wf||'').slice(0,8);
     let c=chars.find(x=>x.wf&&x.wf.includes(p8));
     if(!c){ // 32-familles.js : un workflow qui publie dans une page a l'intérimaire de la page, au nom de la page

@@ -44,7 +44,8 @@ API = (CFG.get("kronn") or {}).get("api", "")
 ROOT = CFG.get("root") or (_os.path.dirname(_os.path.dirname(_os.path.abspath(globals()["__file__"])))
                            if "__file__" in globals() else "")
 TZ = ZoneInfo((CFG.get("rhythm") or {}).get("timezone") or "Europe/Paris")  # fuseau du bureau, été comme hiver
-ACTIVE = ("Running", "WaitingApproval", "Pending")
+# runs pas encore finis ; WaitingQuota (Kronn 0.15.1) : étape Agent en attente du quota, reprise ensuite
+ACTIVE = ("Running", "WaitingApproval", "Pending", "WaitingQuota")
 # variables de lancement recopiées dans la page : seulement celles qu'elle lit (jamais un token passé en variable)
 VARS_KEPT = ("jira_ticket_key", "current_task.number", "current_task.author", "current_task.repo", "pr", "repo",
              "message_id")  # message du canal Support (#62) : la page relie l'investigation à son fil

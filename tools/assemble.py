@@ -617,7 +617,8 @@ def build(demo=True, cfg=None):
 ACTIONS_BY_MARK = {mark: key for key, mark in ACTIONS.values()}
 
 
-KRONN_LIMIT = 1_000_000  # Kronn refuse une page plus lourde (backend/src/api/live_pages.rs, MAX_PAGE_HTML_BYTES, en octets)
+KRONN_LIMIT = 24 * 1024 * 1024  # garde-fou de Kronn (backend/src/api/live_pages.rs, PAGE_HTML_SAFETY_BYTES, #252) : plus
+# de limite de 1 000 000 octets depuis main après le tag 0.15.1 ; la page est seulement dite « lourde » au-delà de 1 Mio
 KRONN_WARN = 0.9  # alerte avant d'être bloqué
 
 
@@ -660,4 +661,4 @@ if __name__ == "__main__":
     html = build()
     os.makedirs(p("dist"), exist_ok=True)
     Path(p("dist", "office.html")).write_text(html)
-    print("dist/office.html", len(html.encode()), "octets (limite Kronn : 1 000 000)")
+    print("dist/office.html", len(html.encode()), f"octets (limite Kronn : {KRONN_LIMIT})")

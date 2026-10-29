@@ -43,6 +43,30 @@ class TemplatesTest(unittest.TestCase):
         mep = templates.render(TPL["mep"], colleague())
         self.assertEqual(templates.clean("workflow", {**mep, "steps": [dict(s, id="i") for s in mep["steps"]]})["guards"], mep["guards"])
 
+    def test_crons_pinned_to_utc(self):
+        """Heures des crons calculées en UTC (assemble.cron_hours) : le rendu pose timezone UTC sur chaque Cron, sinon
+        Kronn 0.15.1 les lirait dans son fuseau (Europe/Paris) au premier PUT. Le modèle reste sans fuseau (export), un
+        Kronn d'avant 0.15 (pas de fuseau écrit) se compare avec legacy, un autre fuseau reste un écart."""
+        crons = [k for k, t in TPL.items() if (t["definition"].get("trigger") or {}).get("type") == "Cron"]
+        self.assertGreaterEqual(len(crons), 9)
+        for key in crons:
+            self.assertNotIn("timezone", TPL[key]["definition"]["trigger"], f"{key} : modèle sans fuseau")
+            self.assertEqual(templates.render(TPL[key], colleague())["trigger"]["timezone"], "UTC", key)
+        self.assertNotIn("timezone", templates.render(TPL["relaunch"], colleague())["trigger"], "manuel : pas de fuseau")
+        live = {"name": "x", "steps": [], "trigger": {"type": "Cron", "schedule": "0 7 * * *"}}
+        self.assertEqual(templates.clean("workflow", live, legacy=True)["trigger"]["timezone"], "UTC")
+        self.assertNotIn("timezone", templates.clean("workflow", live)["trigger"], "0.15 sans fuseau : écart signalé")
+        paris = {**live, "trigger": {**live["trigger"], "timezone": "Europe/Paris"}}
+        self.assertEqual(templates.clean("workflow", paris, legacy=True)["trigger"]["timezone"], "Europe/Paris")
+        utc = templates.render(TPL["office"], colleague())
+        self.assertNotIn("timezone", templates.templatize("office", "workflow", utc, colleague())["definition"]["trigger"])
+
+    def test_review_run_at_stays_utc(self):
+        """{{time.now}} suit le fuseau de Kronn depuis 0.15.1 : run_at de la revue reste en UTC (tri de la page récap)."""
+        text = json.dumps(TPL["review_child"])
+        self.assertIn("{{time.now|tz:UTC}}", text)
+        self.assertNotIn("{{time.now}}", text)
+
     def test_mep_runs_one_at_a_time_per_project(self):
         """Mises en prod de projets différents en même temps, une seule à la fois par projet (concurrency_key) : la clé
         lit la variable de lancement project ; check la compare, absente (null chez Kronn) elle ne compte pas."""

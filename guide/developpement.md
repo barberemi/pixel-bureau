@@ -72,7 +72,7 @@ Réglages du dépôt seulement (pas `--global`) : les agents qui commitent dans 
 
 La CI GitHub Actions (`.github/workflows/tests.yml`) relance `sh tools/test.sh --chrome` sur chaque PR et chaque push sur `main`, avec Node 20 et Python 3.9. Chrome se choisit par `BUREAU_CHROME` (sinon le premier trouvé : macOS, puis `google-chrome`, `chromium`) et reçoit les options de `BUREAU_CHROME_ARGS` (CI : `--no-sandbox`).
 
-- On édite `page/src/*` et `page/office_template.html`, jamais `dist/`. Pas d'`import` ni de ressource externe : la sandbox des pages n'accepte que du inline (images en `data:`), HTML de moins de 1 Mo.
+- On édite `page/src/*` et `page/office_template.html`, jamais `dist/`. Pas d'`import` ni de ressource externe : la sandbox des pages n'accepte que du inline (images en `data:`). Plus de limite de 1 Mo depuis Kronn main après le tag 0.15.1 (garde-fou de 24 Mio), mais une page plus légère se recharge plus vite.
 - Un nouveau fichier `page/src/NN-nom.js` est pris à sa place dans l'ordre.
 - Poids de la page (KT-28) : `tools/assemble.py` retire commentaires et indentation du JS et du CSS (`tools/compact.py`, les sources gardent les leurs ; une ligne vide ou de commentaire disparaît, les sauts de ligne restent) et n'embarque que les sprites fournis qu'un personnage peut porter (`used_sprites` : clé ou sprite du roster, des invités et des agents, nom cité entre apostrophes dans le JS). `smoke.py` affiche le poids de chaque bloc (`assemble.weights` : sprites et calques, JS, démo, CSS, polices, équipe et plan, squelette) et une alerte à partir de 90 % de la limite.
 - Captures de la documentation : `.venv/bin/python tools/shots.py [nom...]` (page de démo, dans `guide/img/`). Si Chrome affiche les barres de défilement (réglage de macOS), `BUREAU_CHROME_ARGS=--hide-scrollbars` : sinon tout le cadrage se décale.
@@ -189,7 +189,7 @@ Le plan n'est plus codé en dur : `10-world.js` construit grille, sols, portes, 
 
 ## Repères
 
-- Plan : grille 40 x 20 cases de 32 px (canvas 1280 x 640). Crons Kronn en UTC : leurs heures (`@@cron_hours@@` dans les modèles) sont calculées depuis `rhythm.timezone` et `rhythm.office_hours`, 2 h avant l'ouverture et 1 h après la fermeture, été comme hiver (`cron_hours()` dans `assemble.py` ; Paris 8h-20h = 4h-20h59 UTC). Les jours (`1-5` du cron équipe) restent ceux d'UTC. Page et scripts en heure du bureau.
+- Plan : grille 40 x 20 cases de 32 px (canvas 1280 x 640). Crons Kronn en UTC (le rendu pose `timezone: "UTC"`, sinon Kronn 0.15.1 les lirait dans son propre fuseau) : leurs heures (`@@cron_hours@@` dans les modèles) sont calculées depuis `rhythm.timezone` et `rhythm.office_hours`, 2 h avant l'ouverture et 1 h après la fermeture, été comme hiver (`cron_hours()` dans `assemble.py` ; Paris 8h-20h = 4h-20h59 UTC). Les jours (`1-5` du cron équipe) restent ceux d'UTC. Page et scripts en heure du bureau.
 - Rendu à 30 images par seconde ; meubles immobiles cuits une fois (`bakeFurniture`).
 - Démo (aperçu local, captures, tests) : équipe fictive Dunder Mifflin, `data/*.json` et `tests/fixtures/bureau.config.json` (`assemble.demo_config()`), sur le plan type. Rien de réel : une vraie installation lit ses données dans Kronn.
 - Feuille de route : https://claude.ai/code/artifact/56db95ed-d247-4574-aeef-9990cd9360bc

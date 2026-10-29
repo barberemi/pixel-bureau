@@ -36,6 +36,8 @@ test('la gate en attente et les runs du jour (message_id) passent avant le relev
   assert.equal(J("spState(SUPPORT.threads[0]).k"), 'gate');
   run(`GATES = []; DATA = {...DATA, runs: [{run: 'r2', status: 'Running', start: '2026-10-01T09:00:00Z', vars: {message_id: '1'}, steps: []}]};`);
   assert.equal(J("spState(SUPPORT.threads[0]).k"), 'run');
+  run(`DATA.runs[0].status = 'WaitingQuota';`); // Kronn 0.15.1 : étape Agent en attente du quota, le run reprendra
+  assert.equal(J("spState(SUPPORT.threads[0]).k"), 'run');
   run(`DATA.runs[0].status = 'Failed'; DATA.runs[0].steps = [{n: 'investigate'}, {n: 'gate'}];`);
   assert.equal(J("spState(SUPPORT.threads[0]).k"), 'ignored', 'refusée à la gate : rien de posté');
   run(`DATA.runs[0].steps = [{n: 'investigate'}];`);
