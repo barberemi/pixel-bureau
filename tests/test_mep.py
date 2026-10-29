@@ -238,6 +238,33 @@ class MepTemplateTest(unittest.TestCase):
         self.assertTrue(templates.skipped("mep", FIXTURE), "aucun projet avec une clé mep : pas créé")
         self.assertFalse(templates.skipped("mep", cfg))
 
+    def test_ai_time_model_replaces_the_feedback_quick_prompt(self):
+        """#79 : modèle du Bureau installé, la mise en prod le lance (TriggerWorkflow : un sous-workflow ne peut pas avoir de
+        gate) sans sa validation, et l'étape du Quick Prompt disparaît ; sans le modèle, le Quick Prompt reste. Toujours 20
+        étapes au plus."""
+        tpl = templates.load_templates()["mep"]
+        mep = {"feedback_qp": "qp-1", "done_transition": "3"}
+        for models, kept, gone in (({"ai_time": "wf-ai"}, "ai_time", "ai_feedback"), ({}, "ai_feedback", "ai_time")):
+            d = templates.render(tpl, config(launch={"mep_pr": "w"}, mep=mep, models=models))
+            names = [s["name"] for s in d["steps"]]
+            self.assertLessEqual(len(names), 20, "limite Kronn")
+            self.assertIn(kept, names)
+            self.assertNotIn(gone, names)
+            i = names.index("dry_guard")
+            self.assertEqual(names[i - 1:i + 4], ["gate_ticket_done", "dry_guard", kept, "transition_deployed", "done"])
+        step = next(s for s in templates.render(tpl, config(mep=mep, models={"ai_time": "wf-ai"}))["steps"] if s["name"] == "ai_time")
+        self.assertEqual(step["step_type"], {"type": "TriggerWorkflow"})
+        self.assertEqual((step["sub_workflow_id"], step["sub_workflow_variables"]), ("wf-ai", {"ticket": "{{steps.resolve.data.stdout}}", "gate": "non"}))
+        self.assertEqual(step["on_result"][0]["action"], {"type": "Goto", "step_name": "transition_deployed"})
+        self.assertEqual(set(step["sub_workflow_variables"]) - {v["name"] for v in templates.load_templates()["ai_time"]["definition"]["variables"]},
+                         set(), "Kronn refuse une variable que le modèle ne déclare pas")
+        for c in (config(models={"ai_time": "wf-ai"}), dict(config(models={"ai_time": "wf-ai"}, mep=mep), jira={})):
+            names = [s["name"] for s in templates.render(tpl, c)["steps"]]
+            self.assertLessEqual(len(names), 20)
+        bare = [s["name"] for s in templates.render(tpl, dict(config(models={"ai_time": "wf-ai"}), jira={}))["steps"]]
+        self.assertNotIn("ai_time", bare, "sans Jira : ni modèle ni Quick Prompt")
+        self.assertEqual(len(templates.load_templates()["mep"]["definition"]["steps"]), 20, "l'ancien retour IA est le _fallback de ai_time")
+
     def test_project_carries_the_team_github_connection(self):
         """L'étape Agent du retour IA ne voit que les connexions du projet du workflow : celui de la revue (qui a GitHub de
         l'équipe) plutôt que celui de Kronn, sauf mep.project_id explicite."""

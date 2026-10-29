@@ -41,6 +41,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- La mise en prod d'une PR lance le modèle « estimer le temps gagné par l'IA » (`models.ai_time`) quand le ticket est terminé, sans sa validation (la gate « le ticket est-il terminé ? » en tient lieu) et sans l'attendre (étape `TriggerWorkflow` : un sous-workflow ne peut pas avoir de gate). Sans le modèle installé, l'ancien Quick Prompt `mep.feedback_qp` reste ; une seule des deux étapes au rendu, 20 au plus. Après la mise à jour : `python3 tools/install.py` (le modèle), puis `publish.py all`.
 - Mise en prod d'une PR : le commit unique du squash garde les lignes `Co-Authored-By` et `Signed-off-by` des commits de la branche (une fois chacune), au lieu du seul titre de la PR. On sait encore, après la mise en prod, quel outil et quel modèle ont écrit le code. Après la mise à jour : `publish.py workflows`.
 - Le modèle « Mise en prod d'une PR » s'appelle désormais « Le Bureau · mettre en prod une PR », comme les autres modèles du Bureau (même id, mêmes runs, même agent). Après la mise à jour : `publish.py workflows`.
 - Poids de la page : plus de limite de 1 000 000 octets, seulement le garde-fou de 24 Mio de Kronn (`assemble.KRONN_LIMIT`, `publish.py`, `install.py`, `smoke.py`) ; le budget de 955 000 octets de la démo est retiré. Il faut un Kronn à jour de main (#252, après le tag 0.15.1) : un Kronn plus ancien refuse toujours une page de plus de 1 000 000 octets.

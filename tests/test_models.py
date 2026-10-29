@@ -176,7 +176,7 @@ class ModelsTest(unittest.TestCase):
         for key, tpl in TPL.items():
             for s in (tpl.get("definition") or {}).get("steps") or []:
                 for rule in s.get("on_result") or []:
-                    self.assertRegex(rule["contains"], r"^(OK|ERROR|PARTIAL|PENDING|PAGINATION_TRUNCATED|exit_\d+|http_\d+)$",
+                    self.assertRegex(rule["contains"], r"^(OK|ERROR|PARTIAL|PENDING|PAGINATION_TRUNCATED|TRIGGER_REFUSED|exit_\d+|http_\d+)$",
                                      f"{key}.{s['name']}")
 
     def test_issue_finds_gh_and_its_recap_discussion_is_optional(self):

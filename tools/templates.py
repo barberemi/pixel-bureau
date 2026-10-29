@@ -178,9 +178,9 @@ def values(cfg):
         **{f"jira.flow.{k}": (j.get("flow") or {}).get(k) or v for k, v in FLOW_DEFAULTS.items()},
         # mise en prod (#58) : Quick Prompt du retour IA et transition Jira de fin (facultatifs : étapes retirées sans eux)
         "mep.feedback_qp": (cfg.get("mep") or {}).get("feedback_qp") or "",
-        # temps gagné par l'IA en fin de mise en prod (#79) : le modèle du Bureau s'il est installé, sinon l'ancien Quick Prompt
-        "models.ai_time": (cfg.get("models") or {}).get("ai_time") or "",
-        "mep.feedback_qp_fallback": "" if (cfg.get("models") or {}).get("ai_time") else (cfg.get("mep") or {}).get("feedback_qp") or "",
+        # temps gagné par l'IA en fin de mise en prod (#79) : le modèle du Bureau s'il est installé (et Jira connecté), sinon
+        # l'étape _fallback, l'ancien Quick Prompt mep.feedback_qp
+        "mep.ai_time": mep_ai_time(cfg),
         "mep.done_transition": str((cfg.get("mep") or {}).get("done_transition") or ""),
         # projet Kronn du workflow : il borne les connexions de l'étape retour IA (GitHub de l'équipe), comme la revue
         "mep.project_id": (cfg.get("mep") or {}).get("project_id") or rv.get("project_id")
@@ -210,6 +210,10 @@ def values(cfg):
         "issue.discussion": (cfg.get("issue") or {}).get("discussion") or "",  # discussion Kronn du récap, facultative
         "env.label": (cfg.get("env") or {}).get("label") or "env-branch",  # label qui construit l'env de branche (réglage d'équipe)
     }
+
+
+def mep_ai_time(cfg):
+    return (cfg.get("models") or {}).get("ai_time") or "" if (cfg.get("jira") or {}).get("config_id") else ""
 
 
 def create_board_points(j):
@@ -314,6 +318,11 @@ def render(tpl, cfg):
             if req == "jira" or req.startswith("jira."):
                 return has_jira and (req == "jira" or bool(vals.get(req)))
             return bool(vals.get("github.config_id" if req == "github" else req))
+        # une étape sans ce qu'elle demande laisse la place à son « _fallback » (#79 : le modèle ai_time, sinon l'ancien
+        # Quick Prompt du retour IA) : une seule des deux dans le modèle, qui reste à 20 étapes
+        d["steps"] = [s.get("_fallback") if not ok(s.get("_requires")) and s.get("_fallback") else s for s in d["steps"]]
+        for s in d["steps"]:
+            s.pop("_fallback", None)
         names = [s["name"] for s in d["steps"]]
         dropped = {s["name"] for s in d["steps"] if not ok(s.get("_requires"))}
         # un renvoi (on_result Goto) vers une étape retirée va à la première étape gardée après elle (#78 : sans page de
