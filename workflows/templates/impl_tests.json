@@ -116,8 +116,12 @@
      "type": "Agent"
     },
     "description": "Écrit ou complète les tests du diff, puis les commite.",
-    "prompt_template": "Tu es le poste 🧪 Tests.\n\n{{steps.entree.data.stdout}}\n\n## Résultat du lancement précédent (vide au premier essai)\n{{steps.lance.data.stdout ?? \"aucun\"}}\n\nPour chaque comportement ajouté ou modifié par le diff, vérifie qu'un test le couvre, en suivant les conventions de test du dépôt (doc, tests voisins) ; écris ou complète ceux qui manquent, sans toucher au code de production (s'il est faux, dis-le en constat bloquant). Si le lancement précédent est rouge, corrige les tests fautifs. Commite (`git commit --no-verify -s`, jamais `.kronn/`). Rends tes constats (tests manquants que tu n'as pas pu écrire, code de production fautif) au format demandé.\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
-    "_poste": "tests"
+    "prompt_template": "Tu es le poste 🧪 Tests.\n\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\n## Résultat du lancement précédent (vide au premier essai)\n{{steps.lance.data.stdout ?? \"aucun\"}}\n\nPour chaque comportement ajouté ou modifié par le diff, vérifie qu'un test le couvre, en suivant les conventions de test du dépôt (doc, tests voisins) ; écris ou complète ceux qui manquent, sans toucher au code de production (s'il est faux, dis-le en constat bloquant). Si le lancement précédent est rouge, corrige les tests fautifs. Commite (`git commit --no-verify -s`, jamais `.kronn/`). Rends tes constats (tests manquants que tu n'as pas pu écrire, code de production fautif) au format demandé.\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
+    "_poste": "tests",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
    },
    {
     "name": "lance",
@@ -161,7 +165,7 @@
      "tri_tests"
     ],
     "exec_timeout_secs": 30,
-    "exec_stdin": "{{steps.lance.data.stdout}}",
+    "exec_stdin": "{{steps.lance.data.stdout ?? \"null\"}}",
     "on_result": [
      {
       "contains": "exit_4",

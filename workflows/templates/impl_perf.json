@@ -116,8 +116,12 @@
      "type": "Agent"
     },
     "description": "⚡ perf · a11y : les constats.",
-    "prompt_template": "Tu es le poste ⚡ Perf · a11y (du front est touché).\n\n{{steps.entree.data.stdout}}\n\nCherche dans le diff : poids ajouté (images, polices, JS ou CSS chargés partout), rendu bloquant, décalages de mise en page (CLS : dimensions manquantes), images sans lazy-loading hors écran, requêtes en cascade ; accessibilité : contraste, alternatives textuelles, rôles et libellés ARIA, ordre et focus clavier, tailles de cible.\n\nLis le diff de la branche (`git diff origin/<base>...HEAD`, base dans le contexte). Tu ne modifies aucun fichier. Chaque constat : `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant.\n\n## Tour précédent\nTa proposition précédente : {{steps.propose.data_json ?? \"aucune (premier tour)\"}}\nRemarques du critique à traiter (vide au premier tour) : {{steps.critique.data.remarques ?? \"aucune\"}}\nSi des remarques sont listées, traite CHACUNE (corrige, ou dis pourquoi tu la refuses) ; sinon, propose d'emblée ce que tu as de mieux.\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
-    "_poste": "perf"
+    "prompt_template": "Tu es le poste ⚡ Perf · a11y (du front est touché).\n\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\nCherche dans le diff : poids ajouté (images, polices, JS ou CSS chargés partout), rendu bloquant, décalages de mise en page (CLS : dimensions manquantes), images sans lazy-loading hors écran, requêtes en cascade ; accessibilité : contraste, alternatives textuelles, rôles et libellés ARIA, ordre et focus clavier, tailles de cible.\n\nLis le diff de la branche (`git diff origin/<base>...HEAD`, base dans le contexte). Tu ne modifies aucun fichier. Chaque constat : `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant.\n\n## Tour précédent\nTa proposition précédente : {{steps.propose.data_json ?? \"aucune (premier tour)\"}}\nRemarques du critique à traiter (vide au premier tour) : {{steps.critique.data.remarques ?? \"aucune\"}}\nSi des remarques sont listées, traite CHACUNE (corrige, ou dis pourquoi tu la refuses) ; sinon, propose d'emblée ce que tu as de mieux.\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
+    "_poste": "perf",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
    },
    {
     "name": "critique",
@@ -158,8 +162,12 @@
      "type": "Agent"
     },
     "description": "⚡ perf · a11y : un second agent vérifie chaque constat (faux positifs, oublis).",
-    "prompt_template": "Tu es le critique du poste ⚡ Perf · a11y.\n\n{{steps.entree.data.stdout}}\n\nConstats proposés :\n{{steps.propose.data_json}}\n\nChaque constat a-t-il un effet réel mesurable ou vérifiable sur la page ? Écarte le théorique.\n\nRends `verdict` = `ok` si la proposition est utilisable telle quelle (des détails perfectibles ne justifient pas un nouveau tour), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
-    "_poste": "perf.critique"
+    "prompt_template": "Tu es le critique du poste ⚡ Perf · a11y.\n\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\nConstats proposés :\n{{steps.propose.data_json ?? \"(absent)\"}}\n\nChaque constat a-t-il un effet réel mesurable ou vérifiable sur la page ? Écarte le théorique.\n\nRends `verdict` = `ok` si la proposition est utilisable telle quelle (des détails perfectibles ne justifient pas un nouveau tour), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
+    "_poste": "perf.critique",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
    },
    {
     "name": "tri",
@@ -182,7 +190,7 @@
      "perf"
     ],
     "exec_timeout_secs": 30,
-    "exec_stdin": "{{steps.critique.data_json}}",
+    "exec_stdin": "{{steps.critique.data_json ?? \"null\"}}",
     "on_result": [
      {
       "contains": "exit_3",

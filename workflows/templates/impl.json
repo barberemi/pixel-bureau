@@ -114,7 +114,7 @@
      "{{depot}}"
     ],
     "exec_timeout_secs": 180,
-    "exec_stdin": "{{steps.ticket.data_json}}"
+    "exec_stdin": "{{steps.ticket.data_json ?? \"null\"}}"
    }
   ]
  }

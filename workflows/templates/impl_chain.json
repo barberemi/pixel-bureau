@@ -112,7 +112,7 @@
      "{{run.id}}"
     ],
     "exec_timeout_secs": 180,
-    "exec_stdin": "{{steps.ticket.data_json}}"
+    "exec_stdin": "{{steps.ticket.data_json ?? \"null\"}}"
    },
    {
     "name": "cadrage",
@@ -183,7 +183,7 @@
      "type": "Gate"
     },
     "description": "Le cadrage a des questions bloquantes.",
-    "gate_message": "## ❓ Questions du cadrage, {{ticket}}\n\n{{steps.questions.data.stdout}}\n\n---\n**Changements** : écris tes réponses, le cadrage repart avec. **Approuver** : on continue avec les hypothèses. **Rejeter** : on arrête.",
+    "gate_message": "## ❓ Questions du cadrage, {{ticket}}\n\n{{steps.questions.data.stdout ?? \"(absent)\"}}\n\n---\n**Changements** : écris tes réponses, le cadrage repart avec. **Approuver** : on continue avec les hypothèses. **Rejeter** : on arrête.",
     "gate_request_changes_target": "cadrage"
    },
    {
@@ -241,6 +241,27 @@
       }
      }
     ]
+   },
+   {
+    "name": "dossier",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le dossier (ticket, retours, trois rapports) recopié pour l'orchestrateur, 0 token.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "dossier"
+    ],
+    "exec_timeout_secs": 30
    },
    {
     "name": "orchestrateur_plan",
@@ -325,8 +346,12 @@
      "type": "Agent"
     },
     "description": "L'orchestrateur valide les trois postes et compose le plan : lots, postes de contrôle à lancer.",
-    "prompt_template": "Tu es l'orchestrateur d'une chaîne d'implémentation. Les postes Cadrage, Schéma d'impact et Patterns ont rendu leurs rapports dans `.kronn/chaine/` (cadrage.json, schema.json, patterns.json ; le ticket dans ticket.md, les retours de l'humain dans retours.md s'il existe). Lis-les. Un rapport absent = un poste en panne : fais son travail toi-même, rapidement, et dis-le dans `decisions`. Tu ne modifies aucun fichier du dépôt.\n\n1. Valide : les trois rapports sont-ils cohérents entre eux et avec le ticket ? Tranche les contradictions (dis-le dans `decisions`).\n2. Découpe le travail en lots ordonnés (6 au plus), chacun petit, commitable seul et vérifiable : `titre`, `objectif`, `fichiers`, `verification`.\n3. Dispatch : `postes` = les postes de contrôle utiles à CE ticket parmi regles, securite, tests, perf, revue (perf seulement si du front change ; regles et tests presque toujours).\n4. `apercu` : le plan en Markdown court pour l'humain qui valide (compréhension, lots, risques, questions restées en hypothèse).\n5. `commentaire_jira` : le même plan en wiki markup Jira (h3., *, listes), en français, sans emoji, signé « Plan proposé par la chaîne d'implémentation du Bureau ».\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
-    "_poste": "orchestrateur"
+    "prompt_template": "Tu es l'orchestrateur d'une chaîne d'implémentation. Voici le dossier du ticket : le ticket, les retours de l'humain et les rapports des postes Cadrage, Schéma d'impact et Patterns. Tout est ci-dessous : tu peux ouvrir un fichier du dépôt pour trancher un doute, mais tu ne modifies rien.\n\n{{steps.dossier.data.stdout ?? \"(absent)\"}}\n\n1. Valide : les trois rapports sont-ils cohérents entre eux et avec le ticket ? Tranche les contradictions (dis-le dans `decisions`).\n2. Découpe le travail en lots ordonnés (6 au plus), chacun petit, commitable seul et vérifiable : `titre`, `objectif`, `fichiers`, `verification`.\n3. Dispatch : `postes` = les postes de contrôle utiles à CE ticket parmi regles, securite, tests, perf, revue (perf seulement si du front change ; regles et tests presque toujours).\n4. `apercu` : le plan en Markdown court pour l'humain qui valide (compréhension, lots, risques, questions restées en hypothèse).\n5. `commentaire_jira` : le même plan en wiki markup Jira (h3., *, listes), en français, sans emoji, signé « Plan proposé par la chaîne d'implémentation du Bureau ».\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
+    "_poste": "orchestrateur",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
    },
    {
     "name": "gate_plan",
@@ -341,7 +366,7 @@
      "type": "Gate"
     },
     "description": "✋ Ton plan : rien n'est codé ni écrit dans Jira avant ton accord.",
-    "gate_message": "## ✋ Plan pour {{ticket}} (mode {{mode}})\n\n{{steps.orchestrateur_plan.data.apercu}}\n\n**Contrôles prévus** : {{steps.orchestrateur_plan.data.postes}}\n\n---\n**Approuver** : le plan part en commentaire du ticket (et le code commence en mode complet). **Changements** : ton commentaire relance schéma, patterns et plan. **Rejeter** : on arrête.",
+    "gate_message": "## ✋ Plan pour {{ticket}} (mode {{mode}})\n\n{{steps.orchestrateur_plan.data.apercu ?? \"(absent)\"}}\n\n**Contrôles prévus** : {{steps.orchestrateur_plan.data.postes ?? \"(absent)\"}}\n\n---\n**Approuver** : le plan part en commentaire du ticket (et le code commence en mode complet). **Changements** : ton commentaire relance schéma, patterns et plan. **Rejeter** : on arrête.",
     "gate_request_changes_target": "schema"
    },
    {
@@ -421,7 +446,7 @@
     "sub_workflow_variables": {
      "ticket": "{{ticket}}",
      "retours": "{{state.last_human_feedback ?? \"\"}}",
-     "plan": "{{steps.orchestrateur_plan.data_json}}",
+     "plan": "{{steps.orchestrateur_plan.data_json ?? \"\"}}",
      "consignes": "{{steps.orchestrateur.data.consignes ?? \"\"}}"
     }
    },
@@ -481,8 +506,12 @@
      "type": "Agent"
     },
     "description": "L'orchestrateur lit les contrôles : livrer, renvoyer au Code avec des consignes, ou appeler un humain.",
-    "prompt_template": "Tu es l'orchestrateur de la chaîne. Le poste Code a écrit le plan, les postes de contrôle ont rendu leurs rapports.\n\nBilan des contrôles : {{steps.controles.data.last_output}}\n\nLis `.kronn/chaine/controles.json`, les rapports des postes et `.kronn/chaine/code.json` (commits) ; l'état des tours dans `etat.json`. Tu ne modifies aucun fichier.\n\n- `livrer` : aucun bloquant (des avis peuvent rester, ils iront dans la PR).\n- `retour_code` : des bloquants à corriger ; `consignes` = la liste ordonnée et dédoublonnée de ce que le Code doit faire (fichier, problème, correction), en écartant ce qui se contredit entre postes.\n- `humain` : un bloquant qu'un nouveau tour ne réglera pas (choix produit, conflit entre postes, rien n'a été écrit), ou le même bloquant revient après correction.\n`resume` : 3 lignes pour l'humain.\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
-    "_poste": "orchestrateur"
+    "prompt_template": "Tu es l'orchestrateur de la chaîne. Le poste Code a écrit le plan, les postes de contrôle ont rendu leurs rapports.\n\nBilan des contrôles, commits du poste Code et tours déjà faits (tout est là, aucun fichier à ouvrir) :\n{{steps.controles.data.last_output ?? \"(absent)\"}}\n\nTu ne modifies aucun fichier.\n\n- `livrer` : aucun bloquant (des avis peuvent rester, ils iront dans la PR).\n- `retour_code` : des bloquants à corriger ; `consignes` = la liste ordonnée et dédoublonnée de ce que le Code doit faire (fichier, problème, correction), en écartant ce qui se contredit entre postes.\n- `humain` : un bloquant qu'un nouveau tour ne réglera pas (choix produit, conflit entre postes, rien n'a été écrit), ou le même bloquant revient après correction.\n`resume` : 3 lignes pour l'humain.\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
+    "_poste": "orchestrateur",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
    },
    {
     "name": "aiguillage",
@@ -504,7 +533,7 @@
      "aiguillage"
     ],
     "exec_timeout_secs": 30,
-    "exec_stdin": "{{steps.orchestrateur.data_json}}",
+    "exec_stdin": "{{steps.orchestrateur.data_json ?? \"null\"}}",
     "on_result": [
      {
       "contains": "exit_3",
@@ -536,7 +565,7 @@
      "type": "Gate"
     },
     "description": "La chaîne ne s'en sort pas seule : à toi de trancher.",
-    "gate_message": "## 🧑‍⚖️ {{ticket}} : la chaîne demande un humain\n\n{{steps.orchestrateur.data.resume}}\n\n**Ce qui bloque** :\n{{steps.orchestrateur.data.consignes}}\n\n---\n**Approuver** : on livre quand même en PR brouillon (les bloquants y sont listés). **Changements** : ta consigne repart au poste Code. **Rejeter** : on arrête (la branche reste locale).",
+    "gate_message": "## 🧑‍⚖️ {{ticket}} : la chaîne demande un humain\n\n{{steps.orchestrateur.data.resume ?? \"(absent)\"}}\n\n**Ce qui bloque** :\n{{steps.orchestrateur.data.consignes ?? \"(absent)\"}}\n\n---\n**Approuver** : on livre quand même en PR brouillon (les bloquants y sont listés). **Changements** : ta consigne repart au poste Code. **Rejeter** : on arrête (la branche reste locale).",
     "gate_request_changes_target": "code"
    },
    {
@@ -570,7 +599,7 @@
      "type": "Gate"
     },
     "description": "Relis la PR brouillon avant qu'elle parte en relecture humaine.",
-    "gate_message": "## 👀 PR de {{ticket}} prête en brouillon\n\n{{steps.livraison.data.last_output}}\n\n---\n**Approuver** : la PR sort du brouillon, les relecteurs sont demandés, le lien va dans le ticket. **Changements** : ta consigne repart au poste Code (puis contrôles et livraison). **Rejeter** : on s'arrête là, la PR reste en brouillon.",
+    "gate_message": "## 👀 PR de {{ticket}} prête en brouillon\n\n{{steps.livraison.data.last_output ?? \"(absent)\"}}\n\n---\n**Approuver** : la PR sort du brouillon, les relecteurs sont demandés, le lien va dans le ticket. **Changements** : ta consigne repart au poste Code (puis contrôles et livraison). **Rejeter** : on s'arrête là, la PR reste en brouillon.",
     "gate_request_changes_target": "code"
    },
    {

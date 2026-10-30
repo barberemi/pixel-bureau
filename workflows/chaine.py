@@ -11,6 +11,7 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
   existe                            # stdin proposition du schéma : chemins cités qui n'existent pas
   tri <poste>                       # stdin avis du critique : code 3 = « revoir » (Goto la proposition, 3 tours au plus)
   rapport <poste>                   # stdin proposition ===SEP=== critique : rapport du poste dans le dossier
+  dossier                           # rapports cadrage, schéma, patterns pour le prompt de l'orchestrateur
   questions                         # code 3 : questions bloquantes du cadrage (vers ta gate), code 0 : aucune
   mode <plan|complet>               # code 0 : plan seulement (Stop), code 3 : on code
   plan [consignes] [retours]        # stdin plan de l'orchestrateur : plan.json en lots ; consignes ou retours : code 3
@@ -359,6 +360,20 @@ def cmd_rapport(p):
     out({"poste": p, "statut": rep["statut"], "resume": prop.get("resume") or ""})
 
 
+def cmd_dossier():
+    """Le dossier pour l'orchestrateur, dans son prompt : il n'a aucun fichier à lire (essai du 2026-10-30 : une lecture
+    du dossier par l'agent a été coupée par les garde-fous de l'API)."""
+    parts = [section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else "")]
+    if os.path.exists(dossier("retours.md")):
+        parts.append(section("Retours de l'humain", open(dossier("retours.md"), encoding="utf-8").read()))
+    for p in ("cadrage", "schema", "patterns"):
+        r = load(p + ".json")
+        body = json.dumps({"proposition": r.get("resultat"), "critique": r.get("critique")}, ensure_ascii=False, indent=1)[:16000] \
+            if r else "ABSENT : poste en panne, fais son travail toi-même et dis-le dans decisions"
+        parts.append(section(f"Rapport du poste {p}", body))
+    out("".join(parts))
+
+
 def cmd_questions():
     c = (load("cadrage.json") or {}).get("resultat") or {}
     qs = [q for q in c.get("questions") or [] if isinstance(q, dict) and q.get("bloquante")]
@@ -515,7 +530,9 @@ def cmd_bilan_controles():
             item = {"poste": p, **x}
             (rep["bloquants"] if x.get("gravite") == "bloquant" and r.get("bloquant_poste", p in BLOQUANTS) else rep["avis"]).append(item)
     write_json(dossier("controles.json"), rep)
-    out(rep)
+    code = load("code.json") or {}
+    out({**rep, "code": {"commits": code.get("commits"), "fichiers": code.get("fichiers"), "lots": code.get("lots")},
+         "tours": etat().get("tours", 0)})  # tout ce que l'orchestrateur lit, sans fichier à ouvrir
 
 
 def cmd_aiguillage():
@@ -645,7 +662,7 @@ def cmd_fin():
 
 def main(argv):
     cmd, args = (argv[1] if len(argv) > 1 else ""), argv[2:]
-    simple = {"releve": cmd_releve, "existe": cmd_existe, "questions": cmd_questions, "lot": cmd_lot,
+    simple = {"releve": cmd_releve, "dossier": cmd_dossier, "existe": cmd_existe, "questions": cmd_questions, "lot": cmd_lot,
               "tri_lot": cmd_tri_lot, "tri_tests": cmd_tri_tests, "bilan_code": cmd_bilan_code, "quoi": cmd_quoi, "bilan_controles": cmd_bilan_controles,
               "aiguillage": cmd_aiguillage, "pousse": cmd_pousse, "pr": cmd_pr, "ci": cmd_ci, "env": cmd_env, "pret": cmd_pret,
               "reviewers": cmd_reviewers, "fin": cmd_fin}
