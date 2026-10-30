@@ -8,9 +8,10 @@ Un ticket avance sur une chaîne de postes. Un poste = un sous-workflow Kronn à
 
 ```
 impl (lanceur, 0 token)          composant Jira -> dépôt -> projet Kronn ; un seul passage par ticket ; POST /workflows/{chaîne}/trigger avec project_id
-└─ impl_chain (parent, 19 étapes, project_scope All, require_isolation, concurrency_limit 4)
-   ticket · prepare · [cadrage] · questions · ✋gate_questions · [schema] · [patterns] · orchestrateur_plan · ✋gate_plan
-   · commente_plan · mode · [code] · [controles] · orchestrateur · aiguillage · ✋gate_escalade · [livraison] · ✋gate_pr · [publication]
+└─ impl_chain (parent, 20 étapes, project_scope All, require_isolation, concurrency_limit 4)
+   ticket · prepare · [cadrage] · questions · ✋gate_questions · [schema] · [patterns] · dossier · orchestrateur_plan · ✋gate_plan
+   · mode · commente_plan (Plan seulement, puis Stop) · [code] · [controles] · orchestrateur · aiguillage · ✋gate_escalade
+   · [livraison] · ✋gate_pr · [publication]
    controles = quoi · [regles] · [securite] · [tests] · [perf] · [revue] · bilan
 ```
 
@@ -22,7 +23,17 @@ impl (lanceur, 0 token)          composant Jira -> dépôt -> projet Kronn ; un 
 - Un sous-workflow sans projet tourne dans le projet et la copie de travail de son parent : les postes n'ont pas de `project_id` (`SHARED_WORKSPACE`), le parent a `project_scope: All` et pas de projet ; c'est le lanceur qui choisit le projet au lancement (`project_id` du trigger). Une étape `TriggerWorkflow` ne sait pas passer de projet, d'où l'Exec du lanceur qui appelle l'API.
 - Le commentaire d'une gate « Changements » n'est injecté que dans le prompt d'une étape Agent. Une gate qui renvoie à un sous-workflow perdrait le commentaire : la chaîne le passe aux postes par leur variable `retours` (`{{state.last_human_feedback ?? ""}}`), le poste l'ajoute au dossier (`retours.md`, une seule fois par texte).
 - `on_result` ne lit que les signaux : `exit_3`/`exit_4` d'un Exec pour brancher, `SUBWF_FAILED` pour un poste en panne.
-- Un Goto compte ses passages par arête (source, cible) sur tout le run : les essais par lot sont comptés par le script (`lots.json`), pas par `max_iterations`.
+- Un Goto compte ses passages par arête (source, cible) sur tout le run, et une étape en code non nul dont le Goto a épuisé `max_iterations` **échoue** au lieu de continuer : tous les tours (propositions, essais par lot, tests, tours de contrôle) sont comptés par le script, qui rend 0 au dernier ; `max_iterations` n'est qu'un filet.
+- Une référence `{{steps.x.data_json}}` à une sortie d'agent sans enveloppe (`on_invalid: Continue`) est inconnue et Kronn refuse de rendre l'étape : toute référence à une sortie d'étape a un repli `?? …` (posé par le générateur).
+- Le shadow de Kronn ne rejoue pas un workflow à variables : l'instantané chiffré des variables est rangé sous l'id du run normal, le run shadow s'arrête sur « snapshot unavailable ». D'où le mode **essai** : toute la chaîne sans push, sans PR, sans Jira (le script saute ces étapes, `reviewers` sort en 5 pour sauter le commentaire Jira).
+
+## Robustesse (essais du 2026-10-30)
+
+- Sorties d'agent : champs exigés au premier niveau seulement, `on_invalid: Continue` partout sauf le plan de l'orchestrateur (une clé mal écrite dans un élément de liste faisait tomber la chaîne).
+- Schéma ou Patterns en panne : la chaîne continue, l'orchestrateur fait leur travail et le signale. Un contrôle en panne : le bilan le signale.
+- L'orchestrateur reçoit le dossier dans son prompt (étape `dossier`, bilan des contrôles) : une lecture de fichiers par l'agent a été coupée par un faux positif des garde-fous de l'API.
+- Une nouvelle tentative par étape Agent (`retry`).
+- Le lanceur passe par `/mcp/workflow-trigger` (JSON, détaché) : `/workflows/{id}/trigger` est un flux SSE qui ne répond qu'à la première pause du run. Les variables d'un run étant chiffrées, il reconnaît un ticket déjà sur la chaîne à la sortie de l'étape `prepare` des runs actifs.
 
 ## Le dossier du ticket
 
