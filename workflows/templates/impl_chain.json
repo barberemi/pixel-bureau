@@ -23,7 +23,7 @@
     "name": "mode",
     "label": "Mode",
     "placeholder": "",
-    "description": "plan : s'arrête au plan validé (en commentaire du ticket). complet : jusqu'à la PR.",
+    "description": "plan : s'arrête au plan validé (en commentaire du ticket). complet : jusqu'à la PR. essai : tout, sans rien envoyer.",
     "required": false,
     "source": "user_input",
     "allow_manual_override": false,
@@ -38,6 +38,11 @@
       {
        "value": "complet",
        "label": "Jusqu'à la PR",
+       "enabled": true
+      },
+      {
+       "value": "essai",
+       "label": "Essai sans effet (ni push, ni PR, ni Jira)",
        "enabled": true
       }
      ],
@@ -109,7 +114,8 @@
      "prepare",
      "{{ticket}}",
      "{{mode}}",
-     "{{run.id}}"
+     "{{run.id}}",
+     "{{run.variant}}"
     ],
     "exec_timeout_secs": 180,
     "exec_stdin": "{{steps.ticket.data_json ?? \"null\"}}"
@@ -346,7 +352,7 @@
      "type": "Agent"
     },
     "description": "L'orchestrateur valide les trois postes et compose le plan : lots, postes de contrôle à lancer.",
-    "prompt_template": "Tu es l'orchestrateur d'une chaîne d'implémentation. Voici le dossier du ticket : le ticket, les retours de l'humain et les rapports des postes Cadrage, Schéma d'impact et Patterns. Tout est ci-dessous : tu peux ouvrir un fichier du dépôt pour trancher un doute, mais tu ne modifies rien.\n\n{{steps.dossier.data.stdout ?? \"(absent)\"}}\n\n1. Valide : les trois rapports sont-ils cohérents entre eux et avec le ticket ? Tranche les contradictions (dis-le dans `decisions`).\n2. Découpe le travail en lots ordonnés (6 au plus), chacun petit, commitable seul et vérifiable : `titre`, `objectif`, `fichiers`, `verification`.\n3. Dispatch : `postes` = les postes de contrôle utiles à CE ticket parmi regles, securite, tests, perf, revue (perf seulement si du front change ; regles et tests presque toujours).\n4. `apercu` : le plan en Markdown court pour l'humain qui valide (compréhension, lots, risques, questions restées en hypothèse).\n5. `commentaire_jira` : le même plan en wiki markup Jira (h3., *, listes), en français, sans emoji, signé « Plan proposé par la chaîne d'implémentation du Bureau ».\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
+    "prompt_template": "Tu es l'orchestrateur d'une chaîne d'implémentation. Voici le dossier du ticket : le ticket, les retours de l'humain et les rapports des postes Cadrage, Schéma d'impact et Patterns. Tout est ci-dessous : tu peux ouvrir un fichier du dépôt pour trancher un doute, mais tu ne modifies rien.\n\n{{steps.dossier.data.stdout ?? \"(absent)\"}}\n\n1. Valide : les trois rapports sont-ils cohérents entre eux et avec le ticket ? Tranche les contradictions (dis-le dans `decisions`).\n2. Découpe le travail en lots ordonnés (6 au plus), chacun petit, commitable seul et vérifiable : `titre`, `objectif`, `fichiers`, `verification`.\n3. Dispatch : `postes` = les postes de contrôle utiles à CE ticket parmi regles, securite, tests, perf, revue (perf seulement si du front change). regles, securite et tests tournent de toute façon (postes bloquants) : liste-les quand même.\n4. `apercu` : le plan en Markdown court pour l'humain qui valide (compréhension, lots, risques, questions restées en hypothèse).\n5. `commentaire_jira` : le même plan en wiki markup Jira (h3., *, listes), en français, sans emoji, signé « Plan proposé par la chaîne d'implémentation du Bureau ».\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
     "_poste": "orchestrateur",
     "retry": {
      "max_retries": 1,
@@ -366,31 +372,8 @@
      "type": "Gate"
     },
     "description": "✋ Ton plan : rien n'est codé ni écrit dans Jira avant ton accord.",
-    "gate_message": "## ✋ Plan pour {{ticket}} (mode {{mode}})\n\n{{steps.orchestrateur_plan.data.apercu ?? \"(absent)\"}}\n\n**Contrôles prévus** : {{steps.orchestrateur_plan.data.postes ?? \"(absent)\"}}\n\n---\n**Approuver** : le plan part en commentaire du ticket (et le code commence en mode complet). **Changements** : ton commentaire relance schéma, patterns et plan. **Rejeter** : on arrête.",
+    "gate_message": "## ✋ Plan pour {{ticket}} (mode {{mode}})\n\n{{steps.orchestrateur_plan.data.apercu ?? \"(absent)\"}}\n\n**Contrôles prévus** : {{steps.orchestrateur_plan.data.postes ?? \"(absent)\"}}\n\n---\n**Approuver** : en Plan seulement, le plan part en commentaire du ticket ; en mode complet ou essai, le code commence. **Changements** : ton commentaire relance schéma, patterns et plan. **Rejeter** : on arrête.",
     "gate_request_changes_target": "schema"
-   },
-   {
-    "name": "commente_plan",
-    "agent": "ClaudeCode",
-    "mode": {
-     "type": "Normal"
-    },
-    "output_format": {
-     "type": "FreeText"
-    },
-    "step_type": {
-     "type": "ApiCall"
-    },
-    "description": "Le plan en commentaire du ticket (API REST v2, wiki markup).",
-    "api_plugin_slug": "mcp-atlassian",
-    "api_config_id": "@@jira.config_id@@",
-    "api_endpoint_path": "/rest/api/2/issue/{{ticket}}/comment",
-    "api_method": "POST",
-    "api_body": {
-     "body": "{{steps.orchestrateur_plan.data.commentaire_jira}}"
-    },
-    "external_effect": true,
-    "_requires": "jira"
    },
    {
     "name": "mode",
@@ -404,7 +387,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "« Plan seulement » : la chaîne s'arrête ici ; mode complet : au poste Code (code 3).",
+    "description": "Plan seulement : le plan part dans le ticket puis on s'arrête ; complet ou essai : au poste Code (code 3).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -420,7 +403,32 @@
        "type": "Goto",
        "step_name": "code"
       }
-     },
+     }
+    ]
+   },
+   {
+    "name": "commente_plan",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Plan seulement : le plan en commentaire du ticket (API REST v2), fin.",
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/2/issue/{{ticket}}/comment",
+    "api_method": "POST",
+    "api_body": {
+     "body": "{{steps.orchestrateur_plan.data.commentaire_jira}}"
+    },
+    "external_effect": true,
+    "_requires": "jira",
+    "on_result": [
      {
       "contains": "OK",
       "action": {

@@ -4,7 +4,7 @@ Le dossier du ticket vit dans la copie de travail du run, `.kronn/chaine/` (igno
 sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les précédents et y dépose son rapport.
 
   lance <ticket> <mode> <dépôt>     # lanceur : stdin ticket Jira ; projet Kronn déduit du composant, lance la chaîne
-  prepare <ticket> <mode> <run>     # stdin ticket Jira : dossier, réglages du dépôt, branche kronn/<ticket>
+  prepare <ticket> <mode> <run> [variante]   # stdin ticket Jira : dossier, réglages du dépôt, branche kronn/<ticket>
   entree <poste> <ticket> [retours] [extra]
                                     # contexte du poste ; retours d'une gate ajoutés au dossier ; code 3 : poste non concerné
   releve                            # schéma d'impact : fichiers du dépôt qui parlent du ticket (git grep), 0 token
@@ -13,7 +13,7 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
   rapport <poste>                   # stdin proposition ===SEP=== critique : rapport du poste dans le dossier
   dossier                           # rapports cadrage, schéma, patterns pour le prompt de l'orchestrateur
   questions                         # code 3 : questions bloquantes du cadrage (vers ta gate), code 0 : aucune
-  mode <plan|complet>               # code 0 : plan seulement (Stop), code 3 : on code
+  mode <plan|complet|essai>         # code 0 : plan seulement (commentaire Jira puis Stop), code 3 : on code
   plan [consignes] [retours]        # stdin plan de l'orchestrateur : plan.json en lots ; consignes ou retours : code 3
   lot                               # lot suivant du plan ; code 3 : plus de lot
   verif <regles|tests>              # commandes de vérification du dépôt (réglage impl.repos), en conteneur si réglé
@@ -193,13 +193,14 @@ def cmd_lance(ticket, mode, depot):
     print(f"{ticket} posé sur la chaîne ({mode or 'plan'}) : {repo}, run {str(run)[:8]}")
 
 
-def cmd_prepare(ticket, mode, run):
+def cmd_prepare(ticket, mode, run, variant=""):
     t = parse(read_stdin()) or {}
     repo = repo_of()
     reg = reglages(repo)
     base = reg["base"]
     git("fetch", "origin", base, check=True)
-    branch = f"kronn/{ticket}"
+    # run shadow de Kronn (essai sans effet externe, à côté d'un run normal) : sa propre branche, l'autre la tient déjà
+    branch = f"kronn/{ticket}" + ("-shadow" if (variant or "").strip() == "shadow" else "")
     git("checkout", "-f", "-B", branch, f"origin/{base}", check=True)
     write_text(dossier("ticket.md"), ticket_md(t))
     docs = git("ls-files", "docs", "AGENTS.md", "CLAUDE.md", ".github/pull_request_template.md").splitlines()
@@ -386,11 +387,26 @@ def cmd_questions():
 
 
 def cmd_mode(mode):
+    """Plan seulement : code 0, l'étape suivante commente le plan dans le ticket puis la chaîne s'arrête. Complet ou
+    essai : code 3, droit au poste Code (en complet, le plan ira dans la PR)."""
     if (mode or "plan").strip().lower() in ("plan", "plan seulement", "plan_seulement"):
-        print("Plan seulement : le plan est en commentaire du ticket, la chaîne s'arrête ici.")
+        print("Plan seulement : le plan part en commentaire du ticket, puis la chaîne s'arrête.")
         return
-    print("Mode complet : on passe au poste Code.")
+    print("Mode " + ("essai : tout jusqu'à la PR, sans rien pousser ni écrire dans Jira." if essai() else "complet : au poste Code."))
     sys.exit(3)
+
+
+def essai():
+    """Mode essai : la chaîne entière, sans effet externe (ni push, ni PR, ni Jira) : le shadow de Kronn ne sait pas
+    rejouer un workflow à variables (instantané chiffré rangé sous l'id du run normal)."""
+    return (etat().get("mode") or "").strip().lower() == "essai"
+
+
+def sauter(what):
+    if essai():
+        print(f"Mode essai : {what} sauté, rien n'est envoyé.")
+        return True
+    return False
 
 
 def given(v):
@@ -565,6 +581,8 @@ def pr_number():
 
 
 def cmd_pousse():
+    if sauter("push de la branche"):
+        return
     e = etat()
     git("push", "--no-verify", "--force-with-lease", "origin", f"HEAD:{e['branch']}", check=True)
     print(f"{e['branch']} poussée")
@@ -576,6 +594,9 @@ def cmd_pr():
     body = (d.get("body") or "") + "\n\n<!-- bureau-chaine -->"
     path = dossier("pr_body.md")
     write_text(path, body)
+    if sauter("création de la PR"):  # le titre et la description restent dans le dossier (pr_body.md)
+        print(f"Titre : {d.get('title')}\nDescription : .kronn/chaine/pr_body.md ({len(body)} caractères)")
+        return
     n = pr_number()
     if n:
         gh("pr", "edit", n, "-R", e["repo"], "--title", d.get("title") or e["ticket"], "--body-file", path)
@@ -591,6 +612,8 @@ def cmd_pr():
 
 
 def cmd_ci():
+    if sauter("label et attente de la CI"):
+        return
     e, reg = etat(), reglages()
     n = e.get("pr") or pr_number()
     lab = reg.get("ci_label")
@@ -614,6 +637,8 @@ def cmd_ci():
 
 
 def cmd_env():
+    if sauter("env de branche"):
+        return
     e, reg = etat(), reglages()
     lab = reg.get("env_label")
     n = e.get("pr") or pr_number()
@@ -638,6 +663,8 @@ def cmd_env():
 
 
 def cmd_pret():
+    if sauter("passage en prête"):
+        return
     e = etat()
     n = e.get("pr") or pr_number()
     code, _, err = gh("pr", "ready", n, "-R", e["repo"])
@@ -645,6 +672,8 @@ def cmd_pret():
 
 
 def cmd_reviewers():
+    if sauter("demande de relecture et commentaire Jira"):
+        sys.exit(5)  # code 5 : le modèle saute l'étape Jira qui suit
     e, reg = etat(), reglages()
     n = e.get("pr") or pr_number()
     who = [r for r in reg.get("reviewers") or [] if r]
@@ -671,7 +700,7 @@ def main(argv):
     if cmd == "lance":
         return cmd_lance(*(args + ["", "", ""])[:3])
     if cmd == "prepare":
-        return cmd_prepare(*(args + ["", "", ""])[:3])
+        return cmd_prepare(*(args + ["", "", "", ""])[:4])
     if cmd == "entree":
         return cmd_entree(*(args + ["", "", "", ""])[:4])
     if cmd in ("tri", "rapport"):

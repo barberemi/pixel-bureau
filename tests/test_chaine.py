@@ -168,6 +168,27 @@ class ChaineScriptTest(unittest.TestCase):
     def test_plan_only_mode_stops(self):
         self.assertEqual(self.sh("mode", "plan")[0], 0)
         self.assertEqual(self.sh("mode", "complet")[0], 3)
+        st = steps("impl_chain")  # plan seulement : le commentaire Jira, puis Stop ; complet et essai sautent au code
+        self.assertEqual(st["mode"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "code"}}])
+        self.assertEqual(st["commente_plan"]["on_result"], [{"contains": "OK", "action": {"type": "Stop"}}])
+
+    def test_essai_mode_sends_nothing(self):
+        """Mode essai : la chaîne entière sans effet externe (le shadow de Kronn ne rejoue pas un workflow à variables)."""
+        self.prepare()
+        e = self.dossier("etat.json")
+        e["mode"] = "essai"
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        self.assertEqual(self.sh("mode", "essai")[0], 3)
+        for cmd in ("pousse", "ci", "env", "pret"):
+            code, outp = self.sh(cmd)
+            self.assertEqual(code, 0, outp)
+            self.assertIn("Mode essai", outp)
+        code, outp = self.sh("pr", stdin=json.dumps({"title": "fix: AB-12 x", "body": "corps"}))
+        self.assertIn("Mode essai", outp)
+        self.assertIn("corps", Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text())
+        self.assertEqual(self.sh("reviewers")[0], 5)  # code 5 : l'étape Jira suivante est sautée
+        self.assertEqual(steps("impl_publication")["reviewers"]["on_result"], [{"contains": "exit_5", "action": {"type": "Skip"}}])
+        self.assertEqual(subprocess.run(["git", "ls-remote", "--heads", self.origin, "kronn/AB-12"], capture_output=True, text=True).stdout, "")
 
     def test_lots_retry_three_times_then_move_on(self):
         self.prepare()

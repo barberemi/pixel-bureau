@@ -23,7 +23,7 @@
     "name": "mode",
     "label": "Mode",
     "placeholder": "",
-    "description": "plan : s'arrête au plan validé, en commentaire du ticket. complet : jusqu'à la PR.",
+    "description": "plan : s'arrête au plan validé, en commentaire du ticket. complet : jusqu'à la PR. essai : tout, sans rien envoyer.",
     "required": false,
     "source": "user_input",
     "allow_manual_override": false,
@@ -38,6 +38,11 @@
       {
        "value": "complet",
        "label": "Jusqu'à la PR",
+       "enabled": true
+      },
+      {
+       "value": "essai",
+       "label": "Essai sans effet (ni push, ni PR, ni Jira)",
        "enabled": true
       }
      ],

@@ -65,7 +65,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Relecteurs du dépôt (réglage reviewers) ; le texte du commentaire Jira.",
+    "description": "Relecteurs du dépôt (réglage reviewers) ; le texte du commentaire Jira. Mode essai : code 5, Jira sauté.",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -73,7 +73,15 @@
      "reviewers"
     ],
     "exec_timeout_secs": 60,
-    "external_effect": true
+    "external_effect": true,
+    "on_result": [
+     {
+      "contains": "exit_5",
+      "action": {
+       "type": "Skip"
+      }
+     }
+    ]
    },
    {
     "name": "jira",
