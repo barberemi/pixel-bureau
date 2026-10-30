@@ -120,11 +120,25 @@ def parse(s):
 
 
 # ---------- ticket ----------
-def ticket_md(t):
+def quand(s):
+    """Date ISO (Jira : 2026-10-28T15:33:23.868+0100, git : 2026-10-26T10:32:55+01:00) en UTC, ou None."""
+    import datetime
+    m = re.match(r"(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.\d+)?(Z|[+-]\d\d:?\d\d)?", str(s or ""))
+    if not m:
+        return None
+    tz = (m.group(2) or "+00:00").replace("Z", "+00:00")
+    tz = tz if ":" in tz else tz[:3] + ":" + tz[3:]
+    return datetime.datetime.fromisoformat(m.group(1) + tz).astimezone(datetime.timezone.utc)
+
+
+def ticket_md(t, avant=None):
+    """Le ticket en Markdown ; essai rejoué (avant = date du commit rejoué) : ni statut ni commentaire postérieur,
+    essai d'EW-7945 : le retour d'usage de l'IA, posté après la livraison, donnait ses suites à la PR."""
     f = t.get("fields") or {}
+    statut = "(essai rejoué : statut masqué)" if avant else (f.get('status') or {}).get('name') or '?'
     lines = [f"# {t.get('key')} : {f.get('summary') or ''}", "",
              f"- Type : {(f.get('issuetype') or {}).get('name') or '?'} ; priorité : {(f.get('priority') or {}).get('name') or '?'}"
-             f" ; statut : {(f.get('status') or {}).get('name') or '?'}",
+             f" ; statut : {statut}",
              f"- Composants : {', '.join(c.get('name', '') for c in f.get('components') or []) or 'aucun'}",
              f"- Labels : {', '.join(f.get('labels') or []) or 'aucun'}", "", "## Description", "", f.get("description") or "(vide)"]
     subs = f.get("subtasks") or []
@@ -136,7 +150,10 @@ def ticket_md(t):
         for ln in links:
             o = ln.get("outwardIssue") or ln.get("inwardIssue") or {}
             lines.append(f"- {(ln.get('type') or {}).get('name')} {o.get('key')} : {(o.get('fields') or {}).get('summary')}")
-    comments = ((f.get("comment") or {}).get("comments") or [])[-8:]
+    comments = (f.get("comment") or {}).get("comments") or []
+    if avant:
+        comments = [c for c in comments if (quand(c.get("created")) or avant) < avant]
+    comments = comments[-8:]
     if comments:
         lines += ["", "## Derniers commentaires"]
         lines += [f"- {(c.get('author') or {}).get('displayName')} ({str(c.get('created'))[:10]}) : {(c.get('body') or '')[:1200]}"
@@ -359,7 +376,7 @@ def cmd_prepare(ticket, mode, run, variant="", depot="", soeurs="", reprise="", 
     for f in os.listdir(dossier()):  # le dossier d'un autre passage, s'il en reste un
         if os.path.isfile(dossier(f)):
             os.remove(dossier(f))
-    write_text(dossier("ticket.md"), ticket_md(t))
+    write_text(dossier("ticket.md"), ticket_md(t, quand(git("show", "-s", "--format=%cI", fixed)) if fixed else None))
     docs = git("ls-files", "docs", "AGENTS.md", "CLAUDE.md", ".github/pull_request_template.md").splitlines()
     f = t.get("fields") or {}
     write_json(dossier("etat.json"), {"ticket": ticket, "mode": mode, "repo": repo, "base": base, "branch": branch,

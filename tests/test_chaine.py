@@ -333,10 +333,18 @@ class ChaineScriptTest(unittest.TestCase):
         subprocess.run(g + ["add", "-A"], cwd=self.wt, check=True)
         subprocess.run(g + ["commit", "-qm", "ticket livré"], cwd=self.wt, check=True)
         subprocess.run(["git", "push", "-q", "origin", "main"], cwd=self.wt, check=True)
-        code, outp = self.sh("prepare", "AB-12", "essai", "run1", "", "", "", "", first, stdin=json.dumps(TICKET))
+        t = copy.deepcopy(TICKET)  # un commentaire d'avant le rejeu, un d'après (posté après la livraison)
+        t["fields"].update(status={"name": "Deployed"}, comment={"comments": [
+            {"created": "2000-01-01T10:00:00.000+0100", "body": "question d'avant"},
+            {"created": "2999-01-01T10:00:00.000+0100", "body": "retour d'usage de l'IA"}]})
+        code, outp = self.sh("prepare", "AB-12", "essai", "run1", "", "", "", "", first, stdin=json.dumps(t))
         self.assertEqual(code, 0, outp)
         self.assertFalse(Path(self.wt, "app", "B.php").exists())  # l'état d'avant la livraison
         self.assertEqual(self.dossier("etat.json")["depart"], first)
+        md = Path(self.wt, ".kronn", "chaine", "ticket.md").read_text()
+        self.assertIn("question d'avant", md)
+        self.assertNotIn("retour d'usage", md)
+        self.assertNotIn("Deployed", md)
         Path(self.wt, "app", "C.php").write_text("<?php\n")
         self.assertEqual(json.loads(self.sh("quoi")[1])["fichiers"], ["app/C.php"])  # diff contre le commit rejoué
         self.assertIn("ne rebase pas dessus", self.sh("entree", "revue", "AB-12")[1])  # la base distante a déjà le ticket
