@@ -2,6 +2,7 @@
 let TV=false;try{TV=localStorage.getItem('bureau:tv')==='1';}catch(e){}
 let NAMES_BEFORE_TV=null, TICK_SIG='';
 function setTv(on,remember=true){
+  if(on&&FLOOR)setFloor(0); // 68-atelier.js : la TV montre l'open space, jamais l'atelier
   TV=on;if(remember)try{localStorage.setItem('bureau:tv',on?'1':'0');}catch(e){}
   document.body.classList.toggle('tv',on);
   if(on){NAMES_BEFORE_TV=NAMES;NAMES='all';if(EDIT)closeEditor();sel=null;SEL_BACK=[];renderSide(true);

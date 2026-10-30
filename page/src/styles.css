@@ -863,3 +863,4 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .atelier .at-box{border-left:4px solid var(--warn);background:var(--chip);padding:8px 10px;margin:8px 0;font:12.5px/1.45 system-ui,sans-serif;overflow-wrap:anywhere}
 .atelier .at-box.bloq{border-color:var(--err)}.atelier .at-box.run{border-color:var(--info)}
 .atelier .at-link{display:inline-block;margin:4px 0 8px;font:600 13px system-ui,sans-serif}
+body.tv .floors{display:none} /* mode TV : pas d'onglets d'étage */
