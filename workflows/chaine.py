@@ -405,8 +405,12 @@ def cmd_prepare(ticket, mode, run, variant="", depot="", soeurs="", reprise="", 
         git("fetch", "origin", base, check=True)
     start, fixed = f"origin/{base}", ""
     if given(rejoue):  # rejouer un ticket sur un état passé (essai comparé à une PR déjà faite) : branche ou commit
-        git("fetch", "origin", rejoue.strip(), check=True)
-        start = fixed = git("rev-parse", "FETCH_HEAD", check=True)
+        ref = rejoue.strip()
+        fixed = git("rev-parse", "--verify", "-q", ref + "^{commit}")  # SHA court ou branche déjà connus en local
+        if not fixed or "/" in ref or not re.fullmatch(r"[0-9a-f]{7,40}", ref):
+            git("fetch", "origin", ref, check=True)  # GitHub ne sert un commit que par son SHA complet
+            fixed = git("rev-parse", "FETCH_HEAD", check=True)
+        start = fixed
     # run shadow de Kronn (essai sans effet externe, à côté d'un run normal) : sa propre branche, l'autre la tient déjà
     branch = f"kronn/{ticket}" + ("-shadow" if (variant or "").strip() == "shadow" else "")
     git("checkout", "-f", "-B", branch, start, check=True)

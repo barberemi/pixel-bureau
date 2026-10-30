@@ -363,7 +363,7 @@ class ChaineScriptTest(unittest.TestCase):
         t["fields"].update(status={"name": "Deployed"}, comment={"comments": [
             {"created": "2000-01-01T10:00:00.000+0100", "body": "question d'avant"},
             {"created": "2999-01-01T10:00:00.000+0100", "body": "retour d'usage de l'IA"}]})
-        code, outp = self.sh("prepare", "AB-12", "essai", "run1", "", "", "", "", first, stdin=json.dumps(t))
+        code, outp = self.sh("prepare", "AB-12", "essai", "run1", "", "", "", "", first[:10], stdin=json.dumps(t))  # SHA court
         self.assertEqual(code, 0, outp)
         self.assertFalse(Path(self.wt, "app", "B.php").exists())  # l'état d'avant la livraison
         self.assertEqual(self.dossier("etat.json")["depart"], first)
