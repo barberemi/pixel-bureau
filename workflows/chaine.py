@@ -5,7 +5,7 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
 
   lance <ticket> <mode> <dépôt> [reprise]
                                     # lanceur : stdin ticket Jira ; une chaîne par dépôt (composants Jira), chacune dans
-                                    # son projet Kronn ; reprise auto|oui|non (auto : reprend si le dernier run a échoué)
+                                    # son projet Kronn ; reprise auto|oui|non (auto : reprend si le dernier run a échoué, pas s'il a été rejeté)
   prepare <ticket> <mode> <run> [variante] [dépôt] [sœurs] [reprise] [base]
                                     # base : branche ou commit d'où rejouer le ticket (essai) ; stdin ticket Jira : dossier, réglages du dépôt, branche kronn/<ticket> ; en reprise,
                                     # dossier et branche du run d'avant, code 3/4/5 : on reprend au Code/aux contrôles/à la PR
@@ -186,6 +186,9 @@ def chain_runs(chain, limit=50):
         done += not act
         steps = (get(f"/workflows/{chain}/runs/{r['id']}") or {}).get("step_results") or []
         r["active"], r["prep"] = act, next((x.get("output") or "" for x in steps if x.get("step_name") == "prepare"), "")
+        # un rejet à une gate finit lui aussi en Failed : sa dernière étape est la gate refusée, pas une panne
+        last = steps[-1] if steps else {}
+        r["rejete"] = str(last.get("step_name") or "").startswith("gate_") and last.get("status") == "Failed"
     return runs
 
 
@@ -218,7 +221,7 @@ def cmd_lance(ticket, mode, depot, reprise=""):
         if busy:
             lines.append(f"- {repo} : déjà sur la chaîne (run {busy['id'][:8]}, {busy['status']}), pas relancé")
             continue
-        rep = reprise if reprise != "auto" else "oui" if mine and mine[0].get("status") == "Failed" else "non"
+        rep = reprise if reprise != "auto" else "oui" if mine and mine[0].get("status") == "Failed" and not mine[0].get("rejete") else "non"
         soeurs = [r for r in repos if r != repo]
         partie = f"h3. Partie {repo} ({i} sur {len(targets)})\n\n" if len(repos) > 1 else ""
         # route JSON qui lance détaché : /workflows/{id}/trigger est un flux SSE qui ne répond qu'à la première pause du run

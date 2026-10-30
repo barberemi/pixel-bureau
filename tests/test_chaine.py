@@ -424,7 +424,7 @@ class LanceurTest(unittest.TestCase):
             if path.endswith("runs?limit=50"):
                 return [{k: v for k, v in r.items() if k != "prep"} for r in self.runs]
             r = next(x for x in self.runs if path.endswith(x["id"]))
-            return {"step_results": [{"step_name": "prepare", "output": r["prep"]}] if r["prep"] else []}
+            return {"step_results": ([{"step_name": "prepare", "output": r["prep"]}] if r["prep"] else []) + r.get("steps", [])}
         chaine.get = get
 
     def tearDown(self):
@@ -470,6 +470,11 @@ class LanceurTest(unittest.TestCase):
         code, outp = self.lance(["site", "API"])
         self.assertIn("dm/site : déjà sur la chaîne", outp)
         self.assertEqual([(b["variables"]["depot"], b["variables"]["reprise"]) for b in self.sent], [("dm/api", "oui")])
+        self.sent.clear()
+        self.runs[1]["steps"] = [{"step_name": "gate_plan", "status": "Failed"}]  # rejeté à ta gate : pas de reprise
+        self.lance(["API"])
+        self.assertEqual(self.sent[0]["variables"]["reprise"], "non")
+        del self.runs[1]["steps"]
         self.sent.clear()
         self.lance(["API"], reprise="non")
         self.assertEqual(self.sent[0]["variables"]["reprise"], "non")
@@ -529,6 +534,8 @@ class AtelierSnapshotTest(unittest.TestCase):
                     prep("AB-2", "dm/api"), {"step_name": "orchestrateur_plan", "status": "Failed"}]},
                 "f3": {"id": "f3", "status": "Failed", "started_at": "2026-10-30T07:00:00Z", "step_results": [prep("AB-3", "dm/api")]},
                 "s3": {"id": "s3", "status": "Success", "started_at": "2026-10-30T07:30:00Z", "step_results": [prep("AB-3", "dm/api")]},
+                "rej": {"id": "rej", "status": "Failed", "started_at": "2026-10-30T06:00:00Z", "step_results": [
+                    prep("AB-5", "dm/api"), {"step_name": "gate_plan", "status": "Failed"}]},
                 "old": {"id": "old", "status": "Failed", "started_at": "2026-10-28T07:00:00Z", "step_results": [prep("AB-4", "dm/api")]}}
         ctrl = {"id": "k", "parent_run_id": "f1", "step_results": [{"step_name": "securite", "status": "Failed"}]}
         api = {"/workflows/c/runs?limit=40": [{k: v for k, v in r.items() if k != "step_results"} for r in runs.values()],
@@ -543,4 +550,4 @@ class AtelierSnapshotTest(unittest.TestCase):
             a.CFG.clear()
             a.CFG.update(old[1])
         self.assertEqual([(p["ticket"], p["repo"], p["poste"]) for p in snap["pannes"]],
-                         [("AB-1", "dm/site", "securite"), ("AB-2", "dm/api", "orchestrateur_plan")])  # AB-3 repris, AB-4 trop vieux
+                         [("AB-1", "dm/site", "securite"), ("AB-2", "dm/api", "orchestrateur_plan")])  # AB-3 repris, AB-5 rejeté à ta gate, AB-4 trop vieux

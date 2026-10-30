@@ -148,7 +148,9 @@ def snapshot(now_iso=None):
         m = KEY.search((last_steps(full).get("prepare") or {}).get("output") or "")
         if not m:
             continue
-        if r.get("status") == "Failed" and m.groups() not in seen:
+        last = (full.get("step_results") or [{}])[-1]
+        rejete = str(last.get("step_name") or "").startswith("gate_")  # gate refusée : finit en Failed, mais pas une panne
+        if r.get("status") == "Failed" and not rejete and m.groups() not in seen:
             out["pannes"].append(panne(full, models, cache))
         seen.add(m.groups())
     return out
