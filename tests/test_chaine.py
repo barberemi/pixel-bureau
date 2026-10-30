@@ -492,6 +492,25 @@ class LanceurTest(unittest.TestCase):
         self.lance(["site"])
         self.assertEqual((self.sent[0]["variables"]["soeurs"], self.sent[0]["variables"]["partie"]), ("", ""))
 
+    def test_missing_project_is_found_or_cloned_then_added(self):
+        """Un dépôt sans projet Kronn : sa copie locale dans le dossier des clones est ajoutée à Kronn ; sans copie, clonée
+        seulement avec impl.auto_projet."""
+        clones = tempfile.mkdtemp()
+        subprocess.run(["git", "init", "-q", os.path.join(clones, "app")], check=True)
+        subprocess.run(["git", "-C", os.path.join(clones, "app"), "remote", "add", "origin", "git@github.com:dm/app.git"], check=True)
+        self.c.CFG["impl"]["clones"] = clones
+        added = []
+        self.c.send = lambda m, p, body=None, timeout=30: (added.append(body) or {"data": {"id": "p3"}}) if p == "/projects/add-folder" \
+            else self.sent.append(body) or {"run_id": "r"}
+        code, outp = self.lance(["site", "app", "outil"])
+        self.assertEqual(added, [{"path": os.path.join(clones, "app")}])
+        self.assertEqual([b["project_id"] for b in self.sent], ["p1", "p3"])
+        self.assertIn("copie locale trouvée", outp)
+        self.assertIn("dm/outil : aucun projet Kronn", outp)  # pas de copie, pas d'auto_projet : signalé, pas cloné
+        self.assertIn("impl.auto_projet", outp)
+        import shutil
+        shutil.rmtree(clones, ignore_errors=True)
+
     def test_guard_is_per_ticket_and_repo_and_resumes_after_a_failure(self):
         self.runs = [{"id": "a", "status": "Running", "started_at": "2", "prep": "AB-12 sur dm/site : branche kronn/AB-12"},
                      {"id": "b", "status": "Failed", "started_at": "1", "prep": "AB-12 sur dm/api : branche kronn/AB-12"}]

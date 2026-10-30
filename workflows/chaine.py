@@ -171,6 +171,37 @@ def project_for(repo):
     return None
 
 
+def origine(path):
+    """owner/dépôt GitHub de la copie locale, ou ""."""
+    r = subprocess.run(["git", "-C", path, "config", "--get", "remote.origin.url"], capture_output=True, text=True)
+    m = re.search(r"github\.com[:/]([\w.-]+/[\w.-]+?)(?:\.git)?/?$", r.stdout.strip())
+    return m.group(1) if m else ""
+
+
+def projet_auto(repo):
+    """Aucun projet Kronn pour ce dépôt : sa copie locale dans le dossier des clones (impl.clones, ~/Sites par défaut),
+    sinon clonée là si impl.auto_projet, puis ajoutée à Kronn comme projet. Rend (id du projet, ce qui a été fait) ou
+    (None, pourquoi). Essai d'EW-7945 : front_api était cloné dans ~/Sites mais n'avait pas de projet Kronn."""
+    base = os.path.expanduser(impl().get("clones") or "~/Sites")
+    path = next((os.path.join(base, d) for d in sorted(os.listdir(base)) if os.path.isdir(os.path.join(base, d, ".git"))
+                 and origine(os.path.join(base, d)).lower() == repo.lower()), None) if os.path.isdir(base) else None
+    fait = "copie locale trouvée"
+    if not path:
+        if not impl().get("auto_projet"):
+            return None, f"aucune copie locale dans {base} (impl.auto_projet : la cloner d'office)"
+        path, fait = os.path.join(base, repo.split("/")[-1]), "cloné"
+        if os.path.exists(path):
+            return None, f"{path} existe déjà et n'est pas une copie de {repo}"
+        r = subprocess.run(["gh", "repo", "clone", repo, path], capture_output=True, text=True, timeout=1800)
+        if r.returncode:
+            return None, "clonage impossible : " + (r.stderr or r.stdout).strip()[:300]
+    res = send("POST", "/projects/add-folder", {"path": path}) or {}
+    pid = (res.get("data") or res).get("id") if isinstance(res, dict) else None
+    if not pid:
+        return None, f"{path} : ajout à Kronn refusé ({str(res.get('error') if isinstance(res, dict) else res)[:200]})"
+    return pid, f"{fait} ({path}) et ajouté à Kronn"
+
+
 def repos_for(t, depot):
     """Dépôts du ticket, un par composant Jira (impl.components, sinon un dépôt réglé du même nom, sinon owner/composant) ;
     le champ dépôt (owner/dépôt, ou un nom de composant) force un seul dépôt."""
@@ -221,7 +252,10 @@ def cmd_lance(ticket, mode, depot, reprise=""):
     chain = (CFG.get("models") or {}).get("impl_chain")
     if not chain:
         sys.exit("La chaîne n'est pas installée (models.impl_chain) : python3 tools/install.py la propose.")
-    pids = {r: project_for(r) for r in repos}
+    pids, notes = {r: project_for(r) for r in repos}, {}
+    for r in repos:
+        if not pids[r]:
+            pids[r], notes[r] = projet_auto(r)
     manque = [r for r in repos if not pids[r]]
     runs = chain_runs(chain)
     pending = next((r for r in runs if r.get("active") and not r.get("prep")), None)
@@ -247,9 +281,11 @@ def cmd_lance(ticket, mode, depot, reprise=""):
             timeout=120)
         run = str((res or {}).get("run_id") or "?")
         launched.append(repo)
-        lines.append(f"- {repo} : run {run[:8]}" + (" (reprise là où le run d'avant s'est arrêté)" if rep == "oui" else ""))
+        lines.append(f"- {repo} : run {run[:8]}" + (" (reprise là où le run d'avant s'est arrêté)" if rep == "oui" else "")
+                     + (f", projet Kronn : {notes[repo]}" if notes.get(repo) else ""))
     for r in manque:
-        lines.append(f"- {r} : aucun projet Kronn n'a ce dépôt pour origine, pas de bureau (ajoute-le dans Kronn, Projets, puis relance)")
+        lines.append(f"- {r} : aucun projet Kronn n'a ce dépôt pour origine, pas de bureau ({notes.get(r)} ; ajoute-le dans Kronn, "
+                     "Projets, puis relance)")
     head = (f"{ticket} posé sur la chaîne ({mode or 'plan'}) : {len(launched)} bureau(x), une PR par dépôt"
             if launched else f"{ticket} : aucun bureau lancé")
     print(head + "\n" + "\n".join(lines))
