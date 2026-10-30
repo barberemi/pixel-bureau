@@ -77,12 +77,20 @@ def room(run, models, cache):
         states["gate"] = "ok"
     poste = None
     if "controles" in steps:
-        c = children(models.get("impl_controles"), run["id"], cache)
-        for k, s in last_steps(c or {}).items():
-            if k in CONTROLES:
+        c = last_steps(children(models.get("impl_controles"), run["id"], cache) or {})
+        for k, s in c.items():
+            if k in CONTROLES:  # tests et revue : un sous-workflow chacun
                 st = st_of(s)
                 rs = rapport_statut(s.get("output"))
                 states[k] = "bloq" if rs == "a_corriger" else "skip" if rs == "non_concerne" else st
+        # règles, sécurité, perf et besoin : sous-agents d'une même étape ; lancés = « Postes à lancer » de missions,
+        # verdicts = sortie de range
+        lances = re.search(r"## Postes à lancer\\{0,2}n\\{0,2}n([a-z, ]+)", (c.get("missions") or {}).get("output") or "")
+        if lances and st_of(c.get("parallele")) in ("run", "err"):
+            for k in [x.strip() for x in lances.group(1).split(",") if x.strip() in CONTROLES]:
+                states[k] = st_of(c.get("parallele"))
+        for k, v in re.findall(r'\\?"(regles|securite|perf|besoin)\\?":\s*\\?"(\w+)', (c.get("range") or {}).get("output") or ""):
+            states[k] = {"a_corriger": "bloq", "non_concerne": "skip", "en_panne": "err"}.get(v, "ok")
     if "livraison" in steps:
         c = children(models.get("impl_livraison"), run["id"], cache)
         for k, s in last_steps(c or {}).items():
@@ -99,12 +107,11 @@ def room(run, models, cache):
     if gate == "gate_plan":
         states["gate"], poste = "wait", "gate"
     lot = None
-    if poste == "code":
+    if poste == "code":  # le Code écrit tout en une session : on montre son essai à partir du 2e (vérifs ou relecture)
         c = children(models.get("impl_code"), run["id"], cache)
-        lo = (last_steps(c or {}).get("lot") or {}).get("output") or ""
-        n, e, r = (re.search(p, lo) for p in (r'\\?"n\\?":\s*(\d+)', r'\\?"essai\\?":\s*(\d+)', r'\\?"reste\\?":\s*(\d+)'))
-        if n:
-            lot = f"lot {n.group(1)}/{int(n.group(1)) + int(r.group(1) if r else 0)}" + (f" · essai {e.group(1)}" if e else "")
+        n = sum(1 for x in (c or {}).get("step_results") or [] if x.get("step_name") == "code")
+        if n > 1:
+            lot = f"essai {n}/3"
     back = any(v == "bloq" for v in states.values()) and poste in ("code", None)
     note = GATES.get(gate) or ("🔒 bloquant → retour au code" if back else None)
     ui = (CFG.get("kronn") or {}).get("ui") or ""

@@ -47,6 +47,7 @@ SEP = "\n===SEP===\n"
 KEY = re.compile(r"^[A-Z][A-Z0-9]+-\d+$")
 POSTES = ("cadrage", "schema", "patterns", "code", "regles", "securite", "tests", "perf", "revue", "besoin", "pr", "revue_pr", "retours")
 CONTROLES = ("regles", "securite", "tests", "perf", "revue", "besoin")
+PARALLELES = ("regles", "securite", "perf", "besoin")  # en lecture seule : sous-agents d'une même étape, en même temps
 BLOQUANTS = {"regles", "securite", "tests", "besoin"}  # par défaut ; perf et revue : avis
 FRONT = ["*.scss", "*.css", "*.twig", "*.html", "*.vue", "*.tsx", "*.jsx", "*.ts", "*.js"]
 MAX_OUT = 60_000  # sortie Exec sous 100 Ko
@@ -526,6 +527,27 @@ def perimetre():
                    "ce qui leur revient et ce qui en dépend (contrat d'API, ordre de mise en prod).")
 
 
+def correction(p):
+    """Tour suivant des contrôles : ce que le Code a changé depuis leur dernier passage, et le rapport précédent du poste.
+    Tous les postes repassent (une correction peut casser autre chose), mais en relisant surtout ce diff ; 🎯 Besoin
+    juge toujours l'ensemble."""
+    e = etat()
+    sha = e.get("controle_sha")
+    if not sha:
+        return ""
+    stat = git("diff", "--stat", f"{sha}..HEAD")
+    if not stat:  # rien de corrigé depuis le dernier passage
+        return ""
+    prev = load(f"precedent_{p}.json") or {}
+    body = (f"Les contrôles ont déjà relu la branche jusqu'à {sha[:10]}. Depuis, le Code a corrigé (`git diff {sha}..HEAD`) :\n"
+            + stat[-2500:] + "\n\n" + ("Juge le résultat d'ensemble, correction comprise." if p == "besoin" else
+            "Relis surtout cette correction : ce qu'elle règle de ton rapport précédent, et ce qu'elle a pu casser. Ne refais pas "
+            "le reste du diff, déjà relu ; garde les constats précédents encore vrais."))
+    if prev:
+        body += "\n\nTon rapport précédent :\n" + json.dumps(prev.get("resultat") or prev, ensure_ascii=False, indent=1)[:6000]
+    return section("Tour suivant : la correction", body)
+
+
 def deja_fait(p):
     """Reprise : le rapport d'un poste fait au run d'avant (le Code efface ceux des contrôles à chaque passage)."""
     r = load(p + ".json") or {}
@@ -546,7 +568,7 @@ def cmd_entree(p, ticket, retours="", extra=""):
     if p == "code" and not given(extra) and e.get("consignes_reprise"):
         extra = e["consignes_reprise"]
     note_retours(retours, p)
-    for f in (f"essais_{p}.json",) + (("tests_essais.json",) if p == "tests" else ()):  # nouveau passage du poste : tours à zéro
+    for f in (f"essais_{p}.json",) + (("tests_essais.json",) if p == "tests" else ()):  # nouveau passage du poste : essais à zéro
         if os.path.exists(dossier(f)):
             os.remove(dossier(f))
     files = changed() if p in CONTROLES + ("livraison",) else []
@@ -579,6 +601,7 @@ def cmd_entree(p, ticket, retours="", extra=""):
     if p in CONTROLES:
         stat = git("diff", "--stat", f"{depart()}...HEAD")
         parts.append(section("Volume du diff", stat[-3000:]))
+        parts.append(correction(p))
     if extra and not extra.startswith("{" + "{"):
         parts.append(section("Consignes de l'orchestrateur", extra))
     out("".join(parts))
@@ -633,16 +656,10 @@ def cmd_tri(p):
     print(f"{p} : proposition retenue")
 
 
-def cmd_rapport(p):
-    raw = read_stdin().split(SEP)
-    prop, crit = parse(raw[0]) if raw else None, parse(raw[1]) if len(raw) > 1 else None
-    if prop is None:
-        prev = load(p + ".json") or {"poste": p, "statut": "non_concerne"}
-        out(prev)
-        return
+def ecrit_rapport(p, prop, crit=None):
     rep = {"poste": p, "statut": "ok", "resultat": prop, "critique": crit, "at": time.strftime("%Y-%m-%dT%H:%M:%S")}
     if p == "tests" and isinstance(crit, dict) and crit.get("ok") is False:  # lancement rouge : bloquant, sorties citées
-        rouges = [x for x in crit.get("sorties") or [] if x.get("code")]
+        rouges = [x for x in crit.get("sorties") or [] if x.get("code") and not x.get("deja_la")]
         prop.setdefault("constats", []).append({"gravite": "bloquant", "probleme": "tests rouges après 3 essais",
                                                 "correction": "\n".join(f"{x.get('cmd')} : {x.get('sortie', '')[-1500:]}" for x in rouges)})
     if p in CONTROLES:
@@ -651,7 +668,81 @@ def cmd_rapport(p):
         rep["bloquant_poste"] = poste_conf(p).get("bloquant", p in BLOQUANTS)
         rep["statut"] = "a_corriger" if bl and rep["bloquant_poste"] else "ok"
     write_json(dossier(p + ".json"), rep)
+    return rep
+
+
+def cmd_rapport(p):
+    raw = read_stdin().split(SEP)
+    prop, crit = parse(raw[0]) if raw else None, parse(raw[1]) if len(raw) > 1 else None
+    if prop is None:
+        prev = load(p + ".json") or {"poste": p, "statut": "non_concerne"}
+        out(prev)
+        return
+    rep = ecrit_rapport(p, prop, crit)
     out({"poste": p, "statut": rep["statut"], "resume": prop.get("resume") or ""})
+
+
+def cmd_missions():
+    """Contrôles en parallèle : le contexte commun et les postes à lancer (règles, sécurité, perf, besoin) pour l'étape
+    Agent qui les confie à des sous-agents en même temps ; vérifications des règles lancées ici (0 token). Kronn ne lance
+    pas de sous-workflows en parallèle (foreach séquentiel) : 45 min par tour en série à l'essai d'EW-7851. Aucun poste
+    à lancer : code 3, saut à la revue."""
+    files = changed()
+    postes, ecartes = [], []
+    for p in PARALLELES:
+        if deja_fait(p):
+            ecartes.append(f"{p} : déjà fait au run d'avant (reprise)")
+            continue
+        ok, why = actif(p, files)
+        if ok:
+            postes.append(p)
+        else:
+            write_json(dossier(p + ".json"), {"poste": p, "statut": "non_concerne", "raison": why})
+            ecartes.append(f"{p} : non concerné ({why})")
+    write_json(dossier("missions.json"), {"postes": postes})
+    if not postes:
+        print("Aucun contrôle parallèle à lancer.\n" + "\n".join(ecartes))
+        sys.exit(3)
+    e = etat()
+    parts = [f"Ticket {e.get('ticket')}, dépôt {e.get('repo')}, branche {e.get('branch')}, tour {e.get('tours', 0) + 1}. "
+             f"Point de départ du diff : {depart()} (`git diff {depart()}...HEAD`).",
+             section("Postes à lancer", ", ".join(postes) + ("\n\nÉcartés : " + " ; ".join(ecartes) if ecartes else "")),
+             perimetre(), lecture(), rejoue(),
+             section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else "")]
+    if os.path.exists(dossier("retours.md")):
+        parts.append(section("Retours de l'humain (à respecter en priorité)", open(dossier("retours.md"), encoding="utf-8").read()))
+    for d in ("cadrage", "schema"):
+        r = load(d + ".json")
+        if r:
+            parts.append(section(f"Rapport du poste {d}", json.dumps(r.get("resultat") or r, ensure_ascii=False, indent=1)[:10000]))
+    parts.append(section("Fichiers modifiés", "\n".join(files)))
+    parts.append(section("Plan validé", json.dumps((load("plan.json") or {}).get("lots") or [], ensure_ascii=False, indent=1)[:6000]))
+    parts.append(section("Volume du diff", git("diff", "--stat", f"{depart()}...HEAD")[-3000:]))
+    if "regles" in postes:
+        v = verifie("regles", files)
+        parts.append(section("Vérifications des règles lancées (0 token, pour le poste regles)", json.dumps(v, ensure_ascii=False, indent=1)[-8000:]))
+    for p in postes:
+        c = correction(p)
+        if c:
+            parts.append(c.replace("## Tour suivant : la correction", f"## Tour suivant, poste {p} : la correction"))
+    out("".join(parts))
+
+
+def cmd_range():
+    """Les rapports des sous-agents (stdin : la sortie de l'étape parallèle) rangés poste par poste ; un poste lancé sans
+    rapport est noté en panne (le bilan le signale)."""
+    d = parse(read_stdin()) or {}
+    postes = (load("missions.json") or {}).get("postes") or []
+    res = {}
+    for p in postes:
+        prop = d.get(p) if isinstance(d, dict) else None
+        if isinstance(prop, dict) and ("constats" in prop or "exigences" in prop or "resume" in prop):
+            prop.setdefault("constats", [])
+            res[p] = ecrit_rapport(p, prop)["statut"]
+        else:
+            write_json(dossier(p + ".json"), {"poste": p, "statut": "en_panne", "raison": "aucun rapport du sous-agent"})
+            res[p] = "en_panne"
+    out({"postes": res})
 
 
 def cmd_dossier():
@@ -743,16 +834,24 @@ def given(v):
 
 
 def cmd_plan(consignes="", retours=""):
-    """Premier passage : le plan en lots. Consignes de l'orchestrateur ou retours de l'humain : mode correction (code 3)."""
+    """Ce que le poste Code a à faire, en une session : le plan en lots au premier passage, sinon les consignes de
+    l'orchestrateur ou les retours de l'humain (mode correction). Toujours code 0 : l'étape code suit."""
     # le commentaire d'une approbation arrive aussi dans retours (essai du 2026-10-30) : au premier passage du Code, il
     # s'ajoute au dossier mais ne déclenche pas le mode correction ; ensuite, consignes ou retours = correction
-    if given(consignes) or etat().get("consignes_reprise") or (given(retours) and os.path.exists(dossier("code.json"))):
-        print("Mode correction : consignes ou retours à traiter, pas de nouveau découpage.")
-        sys.exit(3)
+    e = etat()
+    cons = consignes if given(consignes) else e.get("consignes_reprise") or ""
+    if cons or (given(retours) and os.path.exists(dossier("code.json"))):
+        out("MODE CORRECTION : pas de nouveau découpage, traite ces points dans l'ordre, un commit par sujet."
+            + section("Consignes de l'orchestrateur", cons or "(aucune)")
+            + section("Retours de l'humain", retours if given(retours) else "(voir le dossier)")
+            + section("Rapports des contrôles", "Lis `.kronn/chaine/controles.json` et `.kronn/chaine/<poste>.json`."))
+        return
     plan = parse(read_stdin())
-    if not plan and load("plan.json"):  # reprise : le plan validé au run d'avant, lots déjà écrits gardés
-        st = load("lots.json") or {}
-        print(f"Plan du run d'avant repris : lots déjà écrits {st.get('fait') or []}")
+    if not plan and load("plan.json"):  # reprise : le plan validé au run d'avant ; les lots déjà commités restent
+        plan = load("plan.json")
+        deja = git("log", "--oneline", f"{depart()}..HEAD")
+        out("PLAN DU RUN D'AVANT (reprise) : des lots sont peut-être déjà commités, ne les refais pas.\n\nCommits déjà faits :\n"
+            + (deja or "(aucun)") + "\n\nLots :\n" + json.dumps(plan.get("lots") or [], ensure_ascii=False, indent=1))
         return
     plan = plan or {}
     lots = [x for x in plan.get("lots") or [] if isinstance(x, dict)][: int(impl().get("max_lots") or 6)]
@@ -760,30 +859,16 @@ def cmd_plan(consignes="", retours=""):
         x["n"] = i
     plan["lots"] = lots
     write_json(dossier("plan.json"), plan)
-    write_json(dossier("lots.json"), {"fait": [], "essais": {}})
-    print(f"Plan : {len(lots)} lot(s), postes de contrôle : {', '.join(plan.get('postes') or CONTROLES)}")
+    out(f"PLAN VALIDÉ : {len(lots)} lot(s), un commit par lot, dans l'ordre.\n\n" + json.dumps(lots, ensure_ascii=False, indent=1))
 
 
-def cmd_lot():
-    plan = load("plan.json") or {}
-    st = load("lots.json") or {"fait": [], "essais": {}}
-    for x in plan.get("lots") or []:
-        if x["n"] not in st["fait"]:
-            st["courant"] = x["n"]
-            write_json(dossier("lots.json"), st)
-            out({"lot": x, "essai": st["essais"].get(str(x["n"]), 0) + 1, "reste": len(plan["lots"]) - len(st["fait"]) - 1})
-            return
-    print("Tous les lots sont écrits.")
-    sys.exit(3)
-
-
-def fill(check, files):
+def fill(check, files, wt=None):
     """Une commande de vérification : chaîne, ou {cmd, subdir} (chemins relatifs à ce sous-dossier, fichiers hors de lui
     écartés). Emplacements : {worktree}, {main}, {base}, {files}, {php}, {ts}, {tests}, {tests_php}, {tests_ts}."""
     cmd, sub = (check, "") if isinstance(check, str) else (check.get("cmd") or "", (check.get("subdir") or "").strip("/"))
     if sub:
         files = [f[len(sub) + 1:] for f in files if f.startswith(sub + "/")]
-    files = [f for f in files if os.path.exists(os.path.join(root(), sub, f))]  # fichiers supprimés : rien à vérifier
+    files = [f for f in files if os.path.exists(os.path.join(wt or root(), sub, f))]  # absents (supprimés, ou nouveaux au départ)
     main = ""
     common = git("rev-parse", "--path-format=absolute", "--git-common-dir")
     if common.endswith("/.git"):
@@ -793,19 +878,52 @@ def fill(check, files):
              "tests": [f for f in files if re.search(r"(test|spec)", f, re.I)],
              "tests_php": [f for f in files if f.endswith("Test.php")],
              "tests_ts": [f for f in files if re.search(r"\.(test|spec)\.(ts|tsx|js)$", f)]}
-    rep = {"worktree": root(), "main": main, "base": etat().get("base") or "main"}
+    rep = {"worktree": wt or root(), "main": main, "base": etat().get("base") or "main"}
     rep.update({k: " ".join(v) for k, v in kinds.items()})
     for k, v in rep.items():
         cmd = cmd.replace("{" + k + "}", v)
     return cmd, kinds
 
 
-def cmd_verif(phase):
-    files = changed()
+def norm(txt):
+    """Lignes d'une sortie de vérification sans chiffres ni chemins de copie de travail : une erreur déjà là au départ
+    se retrouve à l'identique, même décalée de quelques lignes."""
+    out_ = set()
+    for ln in (txt or "").splitlines():
+        ln = re.sub(r"\x1b\[[0-9;]*m", "", ln)
+        ln = re.sub(r"/\S*?/(?=application/|src/|tests/)", "", ln)
+        ln = re.sub(r"\d+", "#", ln).strip(" -|─━═│┃")
+        if len(ln) > 8 and not re.fullmatch(r"[#\s:.,/()%a-z]*", ln):
+            out_.add(ln)
+    return out_
+
+
+def lance(cmd, cwd):
+    try:
+        r = subprocess.run(["sh", "-c", cmd], cwd=cwd, capture_output=True, text=True, timeout=900)
+        return r.returncode, (r.stdout + r.stderr)
+    except subprocess.TimeoutExpired:
+        return 124, "délai dépassé (15 min)"
+
+
+def base_worktree():
+    """Copie du point de départ (git worktree détaché, dans le dossier) pour relancer une vérification rouge : ce qui
+    était déjà rouge au départ n'est pas à corriger (essai d'EW-6550 : PHPStan signalait des erreurs anciennes des
+    fichiers touchés, le Code bouclait dessus)."""
+    path = dossier("depart")
+    if not os.path.isdir(os.path.join(path, ".git")) and not os.path.isfile(os.path.join(path, ".git")):
+        if os.path.exists(path):
+            subprocess.run(["rm", "-rf", path])
+        if not git_ok("worktree", "add", "--detach", "-f", path, depart()):
+            return None
+    return path
+
+
+def verifie(phase, files=None):
+    files = changed() if files is None else files
     checks = ((reglages().get("checks") or {}).get(phase)) or []
     if not checks:
-        out({"ok": True, "phase": phase, "sorties": [], "note": f"aucune vérification « {phase} » réglée pour ce dépôt (impl.repos)"})
-        return
+        return {"ok": True, "phase": phase, "sorties": [], "note": f"aucune vérification « {phase} » réglée pour ce dépôt (impl.repos)"}
     res, ok = [], True
     for c in checks:
         raw = c if isinstance(c, str) else c.get("cmd") or ""
@@ -814,32 +932,42 @@ def cmd_verif(phase):
         if need and not any(kinds[k] for k in need):
             res.append({"cmd": raw[:200], "saute": "aucun fichier concerné"})
             continue
-        try:
-            r = subprocess.run(["sh", "-c", cmd], cwd=root(), capture_output=True, text=True, timeout=900)
-            code, txt = r.returncode, (r.stdout + r.stderr)
-        except subprocess.TimeoutExpired:
-            code, txt = 124, "délai dépassé (15 min)"
-        ok = ok and code == 0
-        res.append({"cmd": raw[:200], "code": code, "sortie": txt[-6000:]})
-    out({"ok": ok, "phase": phase, "sorties": res})
+        code, txt = lance(cmd, root())
+        item = {"cmd": raw[:200], "code": code, "sortie": txt[-6000:]}
+        if code:  # rouge : est-ce déjà rouge au point de départ, sur les mêmes fichiers ?
+            base = base_worktree()
+            if base:
+                bcmd, _ = fill(c, files, base)
+                bcode, btxt = lance(bcmd, base)
+                nouveaux = sorted(norm(txt) - norm(btxt))
+                if bcode and not nouveaux:
+                    item.update(code=0, deja_la=True, note="rouge, mais déjà rouge au point de départ : rien de nouveau")
+                elif bcode:
+                    item["nouveau"] = nouveaux[:60]
+        ok = ok and not item["code"]
+        res.append(item)
+    return {"ok": ok, "phase": phase, "sorties": res}
 
 
-def cmd_tri_lot():
+def cmd_verif(phase):
+    out(verifie(phase))
+
+
+def cmd_tri_code():
+    """Après les vérifications et la relecture : code 4 = le Code reprend (3 essais, compteur du script : un Goto épuisé
+    sur un code non nul fait échouer l'étape), 0 = fini (encore rouge au 3e essai : les contrôles trancheront)."""
     raw = read_stdin().split(SEP)
     v, rel = parse(raw[0]) or {}, parse(raw[1]) if len(raw) > 1 else None
-    st = load("lots.json") or {"fait": [], "essais": {}}
-    n = str(st.get("courant"))
-    st["essais"][n] = st["essais"].get(n, 0) + 1
+    st = load("essais_code.json", {"n": 0}) or {"n": 0}
+    st["n"] += 1
+    write_json(dossier("essais_code.json"), st)
     bad = (not v.get("ok", True)) or str((rel or {}).get("verdict") or "").lower() == "revoir"
-    if bad and st["essais"][n] < 3:
-        write_json(dossier("lots.json"), st)
-        print(f"Lot {n} : à reprendre (essai {st['essais'][n]} sur 3)")
+    if bad and st["n"] < 3:
+        print(f"Code : à reprendre (essai {st['n']} sur 3)")
         sys.exit(4)
-    if n.isdigit():
-        st["fait"].append(int(n))
-    st.setdefault("notes", {})[n] = "vérifs rouges après 3 essais : laissé aux contrôles" if bad else "ok"
-    write_json(dossier("lots.json"), st)
-    print(f"Lot {n} : terminé" + (" (encore rouge, les contrôles trancheront)" if bad else ""))
+    st["note"] = "vérifs rouges ou relecture « revoir » après 3 essais : laissé aux contrôles" if bad else "ok"
+    write_json(dossier("essais_code.json"), st)
+    print("Code : terminé" + (" (encore rouge, les contrôles trancheront)" if bad else ""))
 
 
 def cmd_tri_tests():
@@ -857,10 +985,13 @@ def cmd_tri_tests():
 def cmd_bilan_code():
     e = etat()
     log = git("log", "--oneline", f"{depart()}..HEAD")
-    st = load("lots.json") or {}
-    rep = {"poste": "code", "statut": "ok" if log else "vide", "commits": log.splitlines(), "fichiers": changed(), "lots": st.get("notes")}
+    st = load("essais_code.json") or {}
+    rep = {"poste": "code", "statut": "ok" if log else "vide", "commits": log.splitlines(), "fichiers": changed(), "note": st.get("note")}
     write_json(dossier("code.json"), rep)
-    for f in [c + ".json" for c in CONTROLES] + ["controles.json", "quoi.json"]:  # nouveau code : les contrôles sont à refaire
+    for c in CONTROLES:  # nouveau code : les contrôles sont à refaire ; leur rapport sert au tour suivant (correction)
+        if os.path.exists(dossier(c + ".json")):
+            os.replace(dossier(c + ".json"), dossier(f"precedent_{c}.json"))
+    for f in ("controles.json", "quoi.json", "missions.json", "essais_code.json"):
         if os.path.exists(dossier(f)):
             os.remove(dossier(f))
     avance("controles", consignes_reprise="")
@@ -885,9 +1016,9 @@ def cmd_bilan_controles():
             item = {"poste": p, **x}
             (rep["bloquants"] if x.get("gravite") == "bloquant" and r.get("bloquant_poste", p in BLOQUANTS) else rep["avis"]).append(item)
     write_json(dossier("controles.json"), rep)
-    avance("orchestrateur")
+    avance("orchestrateur", controle_sha=git("rev-parse", "HEAD"))
     code = load("code.json") or {}
-    out({**rep, "code": {"commits": code.get("commits"), "fichiers": code.get("fichiers"), "lots": code.get("lots")},
+    out({**rep, "code": {"commits": code.get("commits"), "fichiers": code.get("fichiers"), "note": code.get("note")},
          "tours": etat().get("tours", 0), **({"essai_rejoue": rejoue().strip()} if etat().get("depart") else {})})  # tout ce que l'orchestrateur lit, sans fichier à ouvrir
 
 
@@ -1122,6 +1253,8 @@ def cmd_reviewers():
 def cmd_fin():
     """Fin du poste PR (ta relecture attend) ou de la publication (le ticket est au bout de la chaîne)."""
     avance("fini" if etat().get("etape") == "publication" else "relecture")
+    if os.path.exists(dossier("depart")):  # copie du point de départ des vérifications : plus utile
+        git("worktree", "remove", "--force", dossier("depart"))
     e = etat()
     e["dossier"] = garde()
     out({"ticket": e.get("ticket"), "repo": e.get("repo"), "pr": e.get("pr"), "tours": e.get("tours"), "dossier": e["dossier"],
@@ -1130,8 +1263,9 @@ def cmd_fin():
 
 def main(argv):
     cmd, args = (argv[1] if len(argv) > 1 else ""), argv[2:]
-    simple = {"releve": cmd_releve, "dossier": cmd_dossier, "existe": cmd_existe, "questions": cmd_questions, "lot": cmd_lot,
-              "tri_lot": cmd_tri_lot, "tri_tests": cmd_tri_tests, "bilan_code": cmd_bilan_code, "quoi": cmd_quoi, "bilan_controles": cmd_bilan_controles,
+    simple = {"releve": cmd_releve, "dossier": cmd_dossier, "existe": cmd_existe, "questions": cmd_questions, "missions": cmd_missions,
+              "range": cmd_range, "tri_code": cmd_tri_code, "tri_tests": cmd_tri_tests, "bilan_code": cmd_bilan_code, "quoi": cmd_quoi,
+              "bilan_controles": cmd_bilan_controles,
               "aiguillage": cmd_aiguillage, "pousse": cmd_pousse, "pr": cmd_pr, "pret": cmd_pret,
               "reviewers": cmd_reviewers, "fin": cmd_fin, "revue_prep": cmd_revue_prep, "retours_lire": cmd_retours_lire,
               "reponds": cmd_reponds}

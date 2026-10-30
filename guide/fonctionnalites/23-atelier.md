@@ -11,7 +11,7 @@ Les onglets au-dessus du plan (« 🏢 RDC · open space », « 🏭 1er · atel
 ## Ce qu'on y voit
 
 - **Le tableau mural** : une colonne par poste (cadrage, schéma, patterns, ton plan, code, règles, sécurité, tests, perf · a11y, revue croisée, conformité au besoin, PR, revue de la PR, retours), une ligne par bureau. Les barres disent ce qui est validé, en cours, bloquant, en avis ou sauté ; la carte du ticket est sous son poste courant, avec son tour de contrôle ; un retour au code est tracé en pointillé rouge.
-- **Les quatre bureaux** : la plaque (ticket, dépôt, tour, jetons), la barre d'avancement, la table avec un carton par poste et sa lampe d'état. Les deux agents du poste en cours s'y assoient ; une note en bas de la pièce résume la situation (plan à valider, lot en cours, retour au code, commentaires à traiter). La porte d'un bureau qui attend ta décision est barrée de ruban jaune et noir.
+- **Les quatre bureaux** : la plaque (ticket, dépôt, tour, jetons), la barre d'avancement, la table avec un carton par poste et sa lampe d'état. Les deux agents du poste en cours s'y assoient ; une note en bas de la pièce résume la situation (plan à valider, nouvel essai du Code, retour au code, commentaires à traiter). La porte d'un bureau qui attend ta décision est barrée de ruban jaune et noir.
 - **Le couloir** : l'orchestrateur et ses quatre écrans, puis ton pupitre de validations, une lampe par bureau qui clignote quand une gate t'attend.
 - **La file d'attente**, sur le palier : les tickets qui attendent un bureau libre.
 

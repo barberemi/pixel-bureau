@@ -13,7 +13,8 @@ impl (lanceur, 0 token)          composants Jira -> dépôts -> projets Kronn ; 
    ticket · prepare · [cadrage] · questions · ✋gate_questions · [schema] · [patterns] · dossier · orchestrateur_plan · ✋gate_plan
    · mode · [code] · [controles] · orchestrateur · aiguillage · ✋gate_escalade
    · [livraison = 📤 PR · [revue_pr] · [retours]] · ✋gate_pr · [publication] (Stop) · commente_plan (Plan seulement, puis Stop)
-   controles = quoi · [regles] · [securite] · [tests] · [perf] · [revue] · [besoin] · bilan
+   controles = [tests] · missions · parallele (📏 règles, 🔒 sécurité, ⚡ perf · a11y, 🎯 besoin : un sous-agent chacun, en même temps) · range · [revue] · bilan
+   code = entree · [affecter] · plan · code (une session, un commit par lot) · verif · relecture · tri (3 essais) · bilan
 ```
 
 `[x]` = sous-workflow `impl_x`. Chaque poste a de la place pour grandir : 20 étapes par workflow, comptées séparément pour chaque sous-workflow [src: url: https://github.com/DocRoms/Kronn/blob/main/backend/src/api/workflows.rs].
@@ -62,7 +63,7 @@ La variable `base` de la chaîne (commit ou branche) fait partir la branche d'un
 
 ## Conformité au besoin et description de la PR
 
-Le poste 🎯 Besoin (`impl_besoin`, dans les contrôles, bloquant par défaut) confronte le diff aux exigences du ticket (critères d'acceptation, « Qu'est-ce qu'on va faire », « Comment on teste », retours de l'humain) : `exigences` = une ligne par exigence, `fait`, `partiel`, `non`, `autrement` ou `hors_scope` ; une exigence non faite qui revient au dépôt est bloquante. Les autres contrôles jugent la qualité du code, aucun ne vérifiait le résultat demandé.
+Le poste 🎯 Besoin (mission de l'étape parallèle des contrôles, bloquant par défaut) confronte le diff aux exigences du ticket (critères d'acceptation, « Qu'est-ce qu'on va faire », « Comment on teste », retours de l'humain) : `exigences` = une ligne par exigence, `fait`, `partiel`, `non`, `autrement` ou `hors_scope` ; une exigence non faite qui revient au dépôt est bloquante. Les autres contrôles jugent la qualité du code, aucun ne vérifiait le résultat demandé.
 
 La description de la PR suit le modèle du dépôt avec un emoji par section (🎯 De quoi on parle, 🔧 Comment j'ai réglé, 🧪 Comment on teste, ✅ Validation, 🚦 Avant / après le merge), courte, sans texte d'aide laissé. Deux blocs y sont écrits par le script, pas par l'agent : « 📋 Ce que le ticket demandait, et où ça atterrit » (le tableau du poste Besoin, à l'emplacement `<!-- bureau-exigences -->`) et « ⚠️ Points ouverts » (bloquants restés et avis des contrôles, sans doublon, `<!-- bureau-points -->`). Essai d'EW-7945 : l'orchestrateur disait « avis à reporter dans la PR », le rédacteur les a omis et annonçait « qat retiré ».
 
@@ -77,7 +78,7 @@ La chaîne s'arrête à la PR et à sa vie de revue : `impl_livraison` (« 📤 
 ## Robustesse (essais du 2026-10-30)
 
 - Sorties d'agent : champs exigés au premier niveau seulement, `on_invalid: Continue` partout sauf le plan de l'orchestrateur (une clé mal écrite dans un élément de liste faisait tomber la chaîne).
-- Schéma ou Patterns en panne : la chaîne continue, l'orchestrateur fait leur travail et le signale. Un contrôle en panne : le bilan le signale.
+- Schéma ou Patterns en panne : la chaîne continue, l'orchestrateur fait leur travail et le signale. Un contrôle en panne (sous-agent sans rapport : `en_panne`) : le bilan le signale.
 - L'orchestrateur reçoit le dossier dans son prompt (étape `dossier`, bilan des contrôles) : une lecture de fichiers par l'agent a été coupée par un faux positif des garde-fous de l'API.
 - Une nouvelle tentative par étape Agent (`retry`).
 - Le lanceur passe par `/mcp/workflow-trigger` (JSON, détaché) : `/workflows/{id}/trigger` est un flux SSE qui ne répond qu'à la première pause du run. Les variables d'un run étant chiffrées, il reconnaît un ticket déjà sur la chaîne à la sortie de l'étape `prepare` des runs actifs.
@@ -88,10 +89,13 @@ La chaîne s'arrête à la PR et à sa vie de revue : `impl_livraison` (« 📤 
 
 ## Allers-retours
 
-- Dans un poste d'analyse ou de contrôle : `propose` (agent) puis `critique` (un second agent, sans écriture), `tri` renvoie à `propose` tant que le critique dit `revoir`, 3 propositions au plus.
-- Dans le code : par lot, `code_lot` puis `verif` (commandes du dépôt) puis `relecture` ; `tri_lot` refait le lot tant que c'est rouge, 3 essais.
+- Cadrage et revue croisée : `propose` (agent) puis `critique` (un second agent, sans écriture), `tri` renvoie à `propose` tant que le critique dit `revoir`, 3 propositions au plus. Schéma et patterns n'ont plus de critique : ta gate du cadrage et l'orchestrateur tranchent (essai d'EW-7851 : 7 sessions d'agent avant le code, chacune relisant le dépôt).
+- Le Code écrit tout en une session (un commit par lot, ou par sujet en correction), comme un développeur seul ; puis `verif` (commandes du dépôt) et `relecture` ; `tri` le relance tant que c'est rouge, 3 essais. L'essai d'EW-7851 écrivait lot par lot (une session, une vérification et une relecture par lot) : 5 lots, 15 sessions.
+- Une vérification rouge est relancée sur une copie du point de départ (`git worktree` détaché dans le dossier) : seules les lignes d'erreur nouvelles comptent (chiffres et chemins ignorés), ce qui était déjà rouge au départ est noté `deja_la` et ne fait pas boucler le Code.
+- Contrôles : 🧪 tests d'abord (le poste écrit des tests), puis règles, sécurité, perf · a11y et besoin dans une seule étape Agent qui lance un sous-agent par poste, tous en même temps (Kronn ne lance pas de sous-workflows en parallèle : son `foreach` est séquentiel), `range` range leurs rapports poste par poste ; puis la 🔁 revue croisée par une autre famille de modèle. En série, un tour prenait 45 à 50 min à l'essai d'EW-7851.
+- Tour suivant : tous les contrôles repassent (une correction peut casser autre chose), avec le diff de la correction depuis leur dernier passage (`controle_sha`) et leur rapport précédent (`precedent_<poste>.json`) ; ils relisent surtout la correction. 🎯 Besoin juge toujours l'ensemble.
 - Entre les contrôles et le code : l'orchestrateur décide `livrer`, `retour_code` (consignes) ou `humain` ; `aiguillage` compte les tours (`impl.max_tours`, 3) puis passe la main à la gate d'escalade.
-- Un poste bloquant (règles, sécurité, tests par défaut ; `impl.postes.<poste>.bloquant`) ne s'écarte que par les réglages ; l'orchestrateur peut écarter perf et revue d'un ticket.
+- Un poste bloquant (règles, sécurité, tests, besoin par défaut ; `impl.postes.<poste>.bloquant`) ne s'écarte que par les réglages ; l'orchestrateur peut écarter perf et revue d'un ticket.
 
 ## Réglage `impl`
 

@@ -22,7 +22,7 @@ TPL_DIR = os.path.join(ROOT, "workflows", "templates")
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import assemble  # noqa: E402  (roster du profil d'équipe)
 # postes de la chaîne d'implémentation (#76) appelés par le parent ou par le poste des contrôles, dans l'ordre de création
-IMPL_POSTES = ("cadrage", "schema", "patterns", "code", "regles", "securite", "tests", "perf", "revue", "besoin", "revue_pr", "retours", "livraison",
+IMPL_POSTES = ("cadrage", "schema", "patterns", "code", "tests", "revue", "revue_pr", "retours", "livraison",
                "publication")
 # modèle -> (type, où trouver l'id dans la config, scripts par étape)
 TEMPLATES = {
@@ -375,19 +375,17 @@ def render(tpl, cfg):
 # Réglage impl.postes.<rôle> du pack ou de la config : agent (ClaudeCode, CopilotCli, Codex…), tier, model, skills (ajoutés).
 IMPL_AGENTS = {
     "cadrage": ("economy", []), "cadrage.critique": ("economy", []),
-    "schema": ("economy", []), "schema.critique": ("economy", []),
-    "patterns": ("default", []), "patterns.critique": ("default", []),
+    "schema": ("economy", []), "patterns": ("default", []),  # sans critique : ta gate du cadrage et l'orchestrateur tranchent
     "orchestrateur": ("default", []),  # en reasoning, Opus 5.5 a coupé deux fois (filtre reasoning_extraction)
     "code": ("reasoning", ["verification-before-completion"]), "code.relecture": ("default", []),
-    "regles": ("economy", []), "regles.critique": ("economy", []),
-    "securite": ("reasoning", ["security"]), "securite.critique": ("default", ["security"]),
+    # règles, sécurité, perf · a11y et besoin : une étape, un sous-agent par poste, en même temps (Kronn ne lance pas de
+    # sous-workflows en parallèle) ; ses skills couvrent les quatre
+    "controles": ("reasoning", ["security", "web-performance", "accessibility"]),
     "tests": ("default", ["testing", "test-driven-development"]),
-    "perf": ("default", ["web-performance", "accessibility"]), "perf.critique": ("economy", []),
     "revue": ("reasoning", ["requesting-code-review"]), "revue.critique": ("default", ["receiving-code-review"]),
-    "besoin": ("reasoning", []), "besoin.critique": ("default", []),  # le diff fait-il ce que demande le ticket
     "livraison": ("economy", []), "retours": ("reasoning", ["receiving-code-review"]),
 }
-IMPL_TEAM_SKILLS = {"code", "code.relecture", "regles", "tests", "revue", "retours"}  # + impl.skills de l'équipe (langages, conventions)
+IMPL_TEAM_SKILLS = {"code", "code.relecture", "controles", "tests", "revue", "retours"}  # + impl.skills de l'équipe (langages, conventions)
 
 
 def impl_agent(step, role, cfg):

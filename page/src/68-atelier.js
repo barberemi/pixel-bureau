@@ -29,7 +29,7 @@ function atelierDemo(){
     {run:'demo-a1',ticket:'DM-7305',title:'Lien « Gérer mon consentement » dans le pied de page',repo:'dm/site',poste:'gate',gate:'gate_plan',
      states:{...ok(3),gate:'wait'},tour:null,tok:97e3,since:at(9.2),note:'✋ ton plan'},
     {run:'demo-a2',ticket:'DM-7911',title:'Passer les tests du site sur la nouvelle version du framework',repo:'dm/site',poste:'code',
-     states:{...ok(4),code:'run'},tour:'1/3',tok:64e3,since:at(9.6),lot:'lot 2/4 · essai 1'},
+     states:{...ok(4),code:'run'},tour:'1/3',tok:64e3,since:at(9.6),lot:'essai 2/3'},
     {run:'demo-a3',ticket:'DM-7854',title:'Retirer un attribut codé en dur du bloc média',repo:'dm/site',poste:'code',back:true,
      states:{...ok(6),securite:'bloq',code:'run'},tour:'2/3',tok:121e3,since:at(8.4),note:'🔒 bloquant → retour au code'},
     {run:'demo-a4',ticket:'DM-412',title:'Cache des listes de rubriques',repo:'dm/api',poste:'retours',

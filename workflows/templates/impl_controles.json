@@ -1,7 +1,7 @@
 {
  "kind": "workflow",
  "key": "impl_controles",
- "doc": "Postes 5 à 10 l'un après l'autre (règles, sécurité, tests, perf · a11y, revue croisée, conformité au besoin), puis leur bilan.",
+ "doc": "🧪 Tests d'abord (ils écrivent), puis 📏 règles, 🔒 sécurité, ⚡ perf · a11y et 🎯 besoin en parallèle (sous-agents), 🔁 revue croisée par une autre famille de modèle, puis leur bilan.",
  "definition": {
   "name": "Le Bureau · chaîne · contrôles",
   "project_id": null,
@@ -32,81 +32,6 @@
   ],
   "steps": [
    {
-    "name": "quoi",
-    "agent": "ClaudeCode",
-    "mode": {
-     "type": "Normal"
-    },
-    "output_format": {
-     "type": "FreeText"
-    },
-    "step_type": {
-     "type": "Exec"
-    },
-    "description": "Fichiers touchés et postes de contrôle à lancer (réglages, plan validé, front touché ?), 0 token.",
-    "exec_command": "python3",
-    "exec_args": [
-     "-c",
-     "@@script:workflows/chaine.py@@",
-     "quoi"
-    ],
-    "exec_timeout_secs": 60
-   },
-   {
-    "name": "regles",
-    "agent": "ClaudeCode",
-    "mode": {
-     "type": "Normal"
-    },
-    "output_format": {
-     "type": "FreeText"
-    },
-    "step_type": {
-     "type": "SubWorkflow"
-    },
-    "description": "Poste 📏 règles ; en panne, on passe au suivant (le bilan le signale).",
-    "sub_workflow_id": "@@models.impl_regles@@",
-    "sub_workflow_variables": {
-     "ticket": "{{ticket}}"
-    },
-    "on_result": [
-     {
-      "contains": "SUBWF_FAILED",
-      "action": {
-       "type": "Goto",
-       "step_name": "securite"
-      }
-     }
-    ]
-   },
-   {
-    "name": "securite",
-    "agent": "ClaudeCode",
-    "mode": {
-     "type": "Normal"
-    },
-    "output_format": {
-     "type": "FreeText"
-    },
-    "step_type": {
-     "type": "SubWorkflow"
-    },
-    "description": "Poste 🔒 sécurité ; en panne, on passe au suivant (le bilan le signale).",
-    "sub_workflow_id": "@@models.impl_securite@@",
-    "sub_workflow_variables": {
-     "ticket": "{{ticket}}"
-    },
-    "on_result": [
-     {
-      "contains": "SUBWF_FAILED",
-      "action": {
-       "type": "Goto",
-       "step_name": "tests"
-      }
-     }
-    ]
-   },
-   {
     "name": "tests",
     "agent": "ClaudeCode",
     "mode": {
@@ -128,13 +53,13 @@
       "contains": "SUBWF_FAILED",
       "action": {
        "type": "Goto",
-       "step_name": "perf"
+       "step_name": "missions"
       }
      }
     ]
    },
    {
-    "name": "perf",
+    "name": "missions",
     "agent": "ClaudeCode",
     "mode": {
      "type": "Normal"
@@ -143,22 +68,237 @@
      "type": "FreeText"
     },
     "step_type": {
-     "type": "SubWorkflow"
+     "type": "Exec"
     },
-    "description": "Poste ⚡ perf · a11y ; en panne, on passe au suivant (le bilan le signale).",
-    "sub_workflow_id": "@@models.impl_perf@@",
-    "sub_workflow_variables": {
-     "ticket": "{{ticket}}"
-    },
+    "description": "Contexte commun et postes à lancer en parallèle (règles, sécurité, perf · a11y, besoin) ; vérifications des règles lancées ici (0 token). Aucun : code 3, saut à la revue.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "missions"
+    ],
+    "exec_timeout_secs": 1200,
     "on_result": [
      {
-      "contains": "SUBWF_FAILED",
+      "contains": "exit_3",
       "action": {
        "type": "Goto",
        "step_name": "revue"
       }
      }
     ]
+   },
+   {
+    "name": "parallele",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "regles": {
+        "type": "object",
+        "properties": {
+         "resume": {
+          "type": "string"
+         },
+         "constats": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "gravite": {
+             "type": "string",
+             "enum": [
+              "bloquant",
+              "avis"
+             ]
+            },
+            "fichier": {
+             "type": "string"
+            },
+            "ligne": {
+             "type": "integer"
+            },
+            "probleme": {
+             "type": "string"
+            },
+            "correction": {
+             "type": "string"
+            }
+           }
+          }
+         }
+        }
+       },
+       "securite": {
+        "type": "object",
+        "properties": {
+         "resume": {
+          "type": "string"
+         },
+         "constats": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "gravite": {
+             "type": "string",
+             "enum": [
+              "bloquant",
+              "avis"
+             ]
+            },
+            "fichier": {
+             "type": "string"
+            },
+            "ligne": {
+             "type": "integer"
+            },
+            "probleme": {
+             "type": "string"
+            },
+            "correction": {
+             "type": "string"
+            }
+           }
+          }
+         }
+        }
+       },
+       "perf": {
+        "type": "object",
+        "properties": {
+         "resume": {
+          "type": "string"
+         },
+         "constats": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "gravite": {
+             "type": "string",
+             "enum": [
+              "bloquant",
+              "avis"
+             ]
+            },
+            "fichier": {
+             "type": "string"
+            },
+            "ligne": {
+             "type": "integer"
+            },
+            "probleme": {
+             "type": "string"
+            },
+            "correction": {
+             "type": "string"
+            }
+           }
+          }
+         }
+        }
+       },
+       "besoin": {
+        "type": "object",
+        "properties": {
+         "resume": {
+          "type": "string"
+         },
+         "constats": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "gravite": {
+             "type": "string",
+             "enum": [
+              "bloquant",
+              "avis"
+             ]
+            },
+            "fichier": {
+             "type": "string"
+            },
+            "ligne": {
+             "type": "integer"
+            },
+            "probleme": {
+             "type": "string"
+            },
+            "correction": {
+             "type": "string"
+            }
+           }
+          }
+         },
+         "exigences": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "exigence": {
+             "type": "string"
+            },
+            "etat": {
+             "type": "string",
+             "enum": [
+              "fait",
+              "partiel",
+              "non",
+              "autrement",
+              "hors_scope"
+             ]
+            },
+            "detail": {
+             "type": "string"
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "on_invalid": "Continue"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "📏 🔒 ⚡ 🎯 Les contrôles en lecture seule, chacun par un sous-agent, tous en même temps.",
+    "prompt_template": "Tu coordonnes les contrôles en lecture seule d'une chaîne d'implémentation. Le contexte commun et la liste des postes à lancer sont ci-dessous.\n\n{{steps.missions.data.stdout ?? \"(absent)\"}}\n\n## Comment faire\nLance **un sous-agent par poste listé dans « Postes à lancer », tous en même temps** (un seul message, plusieurs appels à l'outil de sous-agent). Donne à chacun : sa mission ci-dessous, en entier, et le contexte commun ci-dessus en entier (il ne voit rien d'autre). Aucun sous-agent ne modifie de fichier. Un poste qui n'est pas listé n'est pas lancé.\nQuand ils ont tous fini, rends leurs rapports **tels quels** : une clé par poste lancé (`regles`, `securite`, `perf`, `besoin`), chacune au format demandé à ce poste. Tu ne juges pas, tu ne fusionnes pas, tu n'enlèves rien.\n\n## Format commun d'un rapport\n`resume` (une phrase) et `constats` : chaque constat a `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant. Au tour suivant, la section « Tour suivant, poste X » du contexte dit au poste X quoi relire.\n\n## Mission regles : 📏 Règles du projet\n\n## Vérifications lancées (0 token)\n(section « Vérifications des règles lancées » du contexte)\n\nLes vérifications rouges sont des constats bloquants (cite l'erreur). Puis lis les conventions du dépôt (`docs/AGENTS.md`, section DO NOT, règles de code) et vérifie que le diff les respecte : nommage, emplacement, langue des commentaires, tests exigés, interdits.\n\nLis le diff de la branche (`git diff <départ>...HEAD`, point de départ dans le contexte). Tu ne modifies aucun fichier. Chaque constat : `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant.\n\nConsignes de l'équipe : @@impl.guidelines@@\n\n## Mission securite : 🔒 Sécurité\n\nCherche dans le diff : injections (SQL, commande, template, XSS, en-têtes), secrets ou jetons écrits en dur, données personnelles exposées ou journalisées, contrôle d'accès manquant, désérialisation, redirections ouvertes, SSRF, dépendances ajoutées ou montées (lis le diff des fichiers de dépendances et leurs verrous).\n\nLis le diff de la branche (`git diff <départ>...HEAD`, point de départ dans le contexte). Tu ne modifies aucun fichier. Chaque constat : `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant.\n\n## Mission perf : ⚡ Perf · a11y (du front est touché)\n\nCherche dans le diff : poids ajouté (images, polices, JS ou CSS chargés partout), rendu bloquant, décalages de mise en page (CLS : dimensions manquantes), images sans lazy-loading hors écran, requêtes en cascade ; accessibilité : contraste, alternatives textuelles, rôles et libellés ARIA, ordre et focus clavier, tailles de cible.\n\nLis le diff de la branche (`git diff <départ>...HEAD`, point de départ dans le contexte). Tu ne modifies aucun fichier. Chaque constat : `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant.\n\n## Mission besoin : 🎯 Conformité au besoin\n\n1. Liste les exigences du ticket : critères d'acceptation du cadrage, phrases « Qu'est-ce qu'on va faire » et « Comment on teste » du ticket, retours de l'humain. Une ligne par exigence, dans les mots du ticket.\n2. Pour chacune, lis le diff (`git diff <départ>...HEAD`, point de départ dans le contexte) et le code autour : `etat` = `fait`, `partiel`, `non`, `autrement` (fait d'une autre façon que demandé) ou `hors_scope` (le ticket ou le périmètre de ce bureau l'exclut) ; `detail` = où c'est fait (fichier), ou ce qui manque. Vérifie le résultat que verrait l'utilisateur, pas seulement la présence de code : une donnée récupérée mais jamais affichée n'est pas un affichage.\n3. `constats` : une exigence `non` ou `partiel` qui revient à ce dépôt est `bloquant` (`probleme` = ce qui manque, `correction` = quoi faire, où) ; `autrement` est un `avis` qui dit pourquoi c'est discutable ; une affirmation de la branche (commit, doc) que le diff ne prouve pas est un `avis`.\nTu ne modifies aucun fichier. `resume` : une phrase.\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "_poste": "controles",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
+   },
+   {
+    "name": "range",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Les rapports des sous-agents rangés poste par poste ; un poste sans rapport est noté en panne (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "range"
+    ],
+    "exec_timeout_secs": 60,
+    "exec_stdin": "{{steps.parallele.data_json ?? \"null\"}}"
    },
    {
     "name": "revue",
@@ -174,33 +314,6 @@
     },
     "description": "Poste 👀 revue croisée ; en panne, on passe au suivant (le bilan le signale).",
     "sub_workflow_id": "@@models.impl_revue@@",
-    "sub_workflow_variables": {
-     "ticket": "{{ticket}}"
-    },
-    "on_result": [
-     {
-      "contains": "SUBWF_FAILED",
-      "action": {
-       "type": "Goto",
-       "step_name": "besoin"
-      }
-     }
-    ]
-   },
-   {
-    "name": "besoin",
-    "agent": "ClaudeCode",
-    "mode": {
-     "type": "Normal"
-    },
-    "output_format": {
-     "type": "FreeText"
-    },
-    "step_type": {
-     "type": "SubWorkflow"
-    },
-    "description": "🎯 conformité au besoin : le diff fait-il ce que demande le ticket ?",
-    "sub_workflow_id": "@@models.impl_besoin@@",
     "sub_workflow_variables": {
      "ticket": "{{ticket}}"
     },
