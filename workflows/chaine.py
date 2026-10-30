@@ -11,7 +11,7 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
   existe                            # stdin proposition du schéma : chemins cités qui n'existent pas
   tri <poste>                       # stdin avis du critique : code 3 = « revoir » (Goto la proposition, 3 tours au plus)
   rapport <poste>                   # stdin proposition ===SEP=== critique : rapport du poste dans le dossier
-  questions                         # code 0 : questions bloquantes du cadrage sans réponse (gate), code 3 : aucune
+  questions                         # code 3 : questions bloquantes du cadrage (vers ta gate), code 0 : aucune
   mode <plan|complet>               # code 0 : plan seulement (Stop), code 3 : on code
   plan [consignes] [retours]        # stdin plan de l'orchestrateur : plan.json en lots ; consignes ou retours : code 3
   lot                               # lot suivant du plan ; code 3 : plus de lot
@@ -256,6 +256,9 @@ def section(title, body):
 
 def cmd_entree(p, ticket, retours="", extra=""):
     note_retours(retours, p)
+    for f in (f"essais_{p}.json",) + (("tests_essais.json",) if p == "tests" else ()):  # nouveau passage du poste : tours à zéro
+        if os.path.exists(dossier(f)):
+            os.remove(dossier(f))
     e = etat()
     files = changed() if p in CONTROLES + ("livraison",) else []
     ok, why = actif(p, files) if p in CONTROLES else (True, "")
@@ -320,10 +323,18 @@ def cmd_existe():
 
 
 def cmd_tri(p):
+    """Le script compte les tours : un Goto qui a épuisé son max_iterations sur un code non nul fait échouer l'étape
+    (essai du 2026-10-30), donc au 3e avis « revoir » on rend 0 et la dernière proposition est gardée."""
     c = parse(read_stdin()) or {}
+    st = load(f"essais_{p}.json", {"n": 0}) or {"n": 0}
+    st["n"] += 1
+    write_json(dossier(f"essais_{p}.json"), st)
     if str(c.get("verdict") or "").lower() in ("revoir", "a_revoir", "rejet") and (c.get("remarques") or []):
-        print(f"{p} : le critique demande un nouveau tour ({len(c['remarques'])} remarque(s))")
-        sys.exit(3)
+        if st["n"] < 3:
+            print(f"{p} : le critique demande un nouveau tour ({len(c['remarques'])} remarque(s)), proposition {st['n'] + 1} sur 3")
+            sys.exit(3)
+        print(f"{p} : 3 propositions faites, la dernière est gardée ; remarques restantes dans le rapport")
+        return
     print(f"{p} : proposition retenue")
 
 
@@ -351,11 +362,12 @@ def cmd_rapport(p):
 def cmd_questions():
     c = (load("cadrage.json") or {}).get("resultat") or {}
     qs = [q for q in c.get("questions") or [] if isinstance(q, dict) and q.get("bloquante")]
-    if not qs:
+    if not qs:  # le cas courant sort en 0 (étape verte) : saut au schéma ; des questions : code 3, vers ta gate
         print("Aucune question bloquante : on continue sans gate.")
-        sys.exit(3)
+        return
     print("\n".join(f"{i}. {q.get('question')}" + (f" (hypothèse si pas de réponse : {q['hypothese']})" if q.get("hypothese") else "")
                     for i, q in enumerate(qs, 1)))
+    sys.exit(3)
 
 
 def cmd_mode(mode):

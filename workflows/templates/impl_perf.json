@@ -193,7 +193,7 @@
       "action": {
        "type": "Goto",
        "step_name": "propose",
-       "max_iterations": 2
+       "max_iterations": 5
       }
      }
     ]

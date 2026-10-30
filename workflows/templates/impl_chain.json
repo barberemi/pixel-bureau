@@ -145,7 +145,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Questions bloquantes sans réponse : ta gate ; aucune : on continue (code 3).",
+    "description": "Questions bloquantes : ta gate (code 3) ; aucune : on saute au schéma.",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -156,6 +156,13 @@
     "on_result": [
      {
       "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "gate_questions"
+      }
+     },
+     {
+      "contains": "OK",
       "action": {
        "type": "Goto",
        "step_name": "schema"

@@ -78,7 +78,7 @@ class ChaineModelesTest(unittest.TestCase):
     def test_proposals_loop_three_times_at_most(self):
         for key in ("impl_cadrage", "impl_schema", "impl_patterns", "impl_regles", "impl_securite", "impl_perf", "impl_revue"):
             tri = steps(key)["tri"]
-            self.assertEqual(tri["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "propose", "max_iterations": 2}}], key)
+            self.assertEqual(tri["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "propose", "max_iterations": 5}}], key)
             # essai du 2026-10-30 : un critique qui rend une analyse sans JSON faisait échouer le poste ; sa proposition est gardée
             self.assertEqual(steps(key)["critique"]["output_format"]["on_invalid"], "Continue", key)
             self.assertEqual(steps(key)["propose"]["output_format"]["on_invalid"], "Fail", key)
@@ -149,18 +149,21 @@ class ChaineScriptTest(unittest.TestCase):
 
     def test_critique_review_and_questions(self):
         self.prepare()
-        self.assertEqual(self.sh("tri", "cadrage", stdin=json.dumps({"verdict": "revoir", "remarques": ["x"]}))[0], 3)
+        revoir = json.dumps({"verdict": "revoir", "remarques": ["x"]})
+        self.assertEqual([self.sh("tri", "cadrage", stdin=revoir)[0] for _ in range(3)], [3, 3, 0])  # 3 propositions, puis gardée
+        self.sh("entree", "cadrage", "AB-12")  # nouveau passage du poste : compteur à zéro
+        self.assertEqual(self.sh("tri", "cadrage", stdin=revoir)[0], 3)
         self.assertEqual(self.sh("tri", "cadrage", stdin=json.dumps({"verdict": "revoir", "remarques": []}))[0], 0)  # sans remarque
         self.assertEqual(self.sh("tri", "cadrage", stdin=json.dumps({"verdict": "ok", "remarques": []}))[0], 0)
         prop = {"resume": "r", "comprehension": "c", "criteres_acceptation": ["a"],
                 "questions": [{"question": "Quels réseaux ?", "bloquante": True, "hypothese": "X et Bluesky"}]}
         self.sh("rapport", "cadrage", stdin=json.dumps(prop) + SEP + json.dumps({"verdict": "ok"}))
         code, q = self.sh("questions")
-        self.assertEqual(code, 0)
+        self.assertEqual(code, 3)
         self.assertIn("Quels réseaux ?", q)
         prop["questions"][0]["bloquante"] = False
         self.sh("rapport", "cadrage", stdin=json.dumps(prop) + SEP + "null")
-        self.assertEqual(self.sh("questions")[0], 3)  # plus de question bloquante : pas de gate
+        self.assertEqual(self.sh("questions")[0], 0)  # plus de question bloquante : pas de gate
 
     def test_plan_only_mode_stops(self):
         self.assertEqual(self.sh("mode", "plan")[0], 0)
