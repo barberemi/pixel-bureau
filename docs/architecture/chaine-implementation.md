@@ -51,6 +51,10 @@ Kronn ne reprend qu'un run interrompu (redémarrage), pas un run en échec, et s
 
 Dans l'atelier, un run en échec des dernières 24 h reste dans « 🧯 En panne » (poste où il s'est arrêté) jusqu'à ce qu'un run plus récent du même ticket et du même dépôt le reprenne.
 
+## Rejouer un ticket déjà livré (essai comparé)
+
+La variable `base` de la chaîne (commit ou branche) fait partir la branche d'un état passé, en mode essai, pour comparer le travail de la chaîne à la PR humaine déjà livrée. Le futur ne doit pas fuiter : chaque poste et l'orchestrateur reçoivent la consigne de juger par rapport à ce commit (la base distante contient la livraison), le diff part de ce commit (`depart` dans `etat.json`), le ticket ne montre ni son statut ni les commentaires postérieurs. Reste visible : l'état actuel de GitHub (environnements, rulesets) quand un agent l'interroge.
+
 ## Périmètre : implémentation, PR et retours
 
 La chaîne s'arrête à la PR et à sa vie de revue : `impl_livraison` (« 📤 PR ») pousse et ouvre la PR brouillon, puis appelle `impl_revue_pr` (le modèle de revue `review_child` en foreach sur `.kronn/prs.json`, sans gate, donc imbriquable) et `impl_retours` (commentaires sans réponse corrigés, poussés, une réponse par fil). Ni label de CI ni env de branche : le déploiement reste au RDC. Le modèle « corriger » (`fix`) contient une gate : il ne peut pas être un poste, il reste le bouton « 🛠 Corriger » pour les retours humains qui arrivent après.
@@ -80,7 +84,7 @@ La chaîne s'arrête à la PR et à sa vie de revue : `impl_livraison` (« 📤 
 
 ## Réglage `impl`
 
-`repos.<owner/dépôt>` : `base`, `checks.regles` et `checks.tests` (commandes `sh`, chaîne ou `{cmd, subdir}`, emplacements `{worktree}`, `{main}`, `{php}`, `{ts}`, `{tests_php}`, `{tests_ts}`, `{files}` ; une commande dont les fichiers visés manquent est sautée), `ci_label`, `env_label`, `env_url`, `reviewers`. `components.<composant>` quand un composant ne porte pas le nom de son dépôt. `postes.<rôle>` (`cadrage`, `cadrage.critique`, `code`, `revue`…) : `agent`, `tier`, `model`, `skills` en plus, `actif`, `bloquant`. `skills` et `guidelines` de l'équipe pour le code et les contrôles. `max_tours`, `max_lots`.
+`repos.<owner/dépôt>` : `base` (sinon `main` ; absente du dépôt distant : sa branche par défaut, front_tools est sur `master`), `checks.regles` et `checks.tests` (commandes `sh`, chaîne ou `{cmd, subdir}`, emplacements `{worktree}`, `{main}`, `{php}`, `{ts}`, `{tests_php}`, `{tests_ts}`, `{files}` ; une commande dont les fichiers visés manquent est sautée), `ci_label`, `env_label`, `env_url`, `reviewers`. `components.<composant>` quand un composant ne porte pas le nom de son dépôt. `postes.<rôle>` (`cadrage`, `cadrage.critique`, `code`, `revue`…) : `agent`, `tier`, `model`, `skills` en plus, `actif`, `bloquant`. `skills` et `guidelines` de l'équipe pour le code et les contrôles. `max_tours`, `max_lots`. `references` : dépôts standard de l'équipe (ex. front_euronews) que chaque bureau peut lire, comme ses dépôts sœurs, par leur copie locale (projet Kronn), jamais modifiés.
 
 Vérifier en conteneur jetable depuis la copie de travail : le projet Compose d'une copie de travail n'a pas de conteneur (nom de dossier), un `docker compose exec` y échouerait sans bruit ; `docker run --rm -v {worktree}/…:/app -v {main}/…/vendor:/app/vendor:ro …` marche (dépendances partagées tant que le verrou n'a pas changé).
 
