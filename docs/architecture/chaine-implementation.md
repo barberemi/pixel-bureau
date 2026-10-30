@@ -1,13 +1,14 @@
 # Chaîne d'implémentation d'un ticket (#76, #125)
 
-> Modèles `workflows/templates/impl*.json`, script `workflows/chaine.py`, réglage `impl` (pack ou config). Relevé le 2026-10-30.
+> Modèles `workflows/templates/impl*.json`, script `workflows/chaine.py`, réglage `impl` (pack ou config). Relevé le 2026-10-30, plusieurs dépôts et reprise le 2026-10-30.
 
 ## Forme
 
 Un ticket avance sur une chaîne de postes. Un poste = un sous-workflow Kronn à but unique, avec son agent, son modèle et ses skills [src: file: tools/templates.py:IMPL_AGENTS].
 
 ```
-impl (lanceur, 0 token)          composant Jira -> dépôt -> projet Kronn ; un seul passage par ticket ; POST /workflows/{chaîne}/trigger avec project_id
+impl (lanceur, 0 token)          composants Jira -> dépôts -> projets Kronn ; une chaîne par dépôt ; un passage par ticket et par dépôt ;
+                                 POST /mcp/workflow-trigger avec project_id et ticket, mode, depot, soeurs, partie, reprise
 └─ impl_chain (parent, 20 étapes, project_scope All, require_isolation, concurrency_limit 4)
    ticket · prepare · [cadrage] · questions · ✋gate_questions · [schema] · [patterns] · dossier · orchestrateur_plan · ✋gate_plan
    · mode · commente_plan (Plan seulement, puis Stop) · [code] · [controles] · orchestrateur · aiguillage · ✋gate_escalade
@@ -25,7 +26,30 @@ impl (lanceur, 0 token)          composant Jira -> dépôt -> projet Kronn ; un 
 - `on_result` ne lit que les signaux : `exit_3`/`exit_4` d'un Exec pour brancher, `SUBWF_FAILED` pour un poste en panne.
 - Un Goto compte ses passages par arête (source, cible) sur tout le run, et une étape en code non nul dont le Goto a épuisé `max_iterations` **échoue** au lieu de continuer : tous les tours (propositions, essais par lot, tests, tours de contrôle) sont comptés par le script, qui rend 0 au dernier ; `max_iterations` n'est qu'un filet.
 - Une référence `{{steps.x.data_json}}` à une sortie d'agent sans enveloppe (`on_invalid: Continue`) est inconnue et Kronn refuse de rendre l'étape : toute référence à une sortie d'étape a un repli `?? …` (posé par le générateur).
-- Le shadow de Kronn ne rejoue pas un workflow à variables : l'instantané chiffré des variables est rangé sous l'id du run normal, le run shadow s'arrête sur « snapshot unavailable ». D'où le mode **essai** : toute la chaîne sans push, sans PR, sans Jira (le script saute ces étapes, `reviewers` sort en 5 pour sauter le commentaire Jira).
+- Le shadow de Kronn ne rejoue pas un workflow à variables : l'instantané chiffré des variables est rangé sous l'id du run normal, le run shadow s'arrête sur « snapshot unavailable ». D'où le mode **essai** : toute la chaîne sans push, sans PR, sans Jira (le script saute ces étapes, `reviewers` sort en 5 pour sauter le commentaire Jira, l'`entree` du Code sort en 5 pour sauter l'étape `affecter`).
+
+## Un ticket, plusieurs dépôts : un bureau et une PR par dépôt
+
+Un ticket Jira à plusieurs composants touche plusieurs dépôts. Kronn ne donne qu'une copie de travail par run : le lanceur pose **une chaîne par dépôt** (méthode A), chacune dans le projet Kronn de son dépôt, sur son bureau de l'atelier.
+
+- `repos_for` : un dépôt par composant (`impl.components`, sinon un dépôt réglé du même nom, sinon `owner/composant`), sans doublon. Le champ « Dépôt » du lanceur (owner/dépôt ou nom de composant) force un seul bureau. Un composant dont le dépôt n'a pas de projet Kronn est signalé dans la sortie du lanceur, les autres partent quand même.
+- Garde-fou : un passage par ticket **et par dépôt**, lu dans la sortie `prepare` des runs actifs (« <ticket> sur <dépôt> »). Un run actif pas encore préparé bloque le lancement (on ne sait pas encore ce qu'il porte).
+- Périmètre : la chaîne reçoit `depot` et `soeurs` ; `prepare` refuse une copie de travail d'un autre dépôt et range les sœurs dans `etat.json`. Chaque poste (et l'orchestrateur, par le dossier) reçoit une section « Périmètre de ce bureau » : ne traiter que la part du dépôt, noter ce qui revient aux autres et ce qui en dépend.
+- PR sœurs : un bloc « PR sœurs » (`<!-- bureau-soeurs -->`) dans la description de chaque PR liste les autres dépôts et leur PR (ou « pas encore ouverte », branche `kronn/<ticket>`) ; la PR qui s'ouvre après réécrit ce bloc dans celles déjà ouvertes, chacune finit par lister toutes les autres.
+- Plan seulement : le commentaire Jira commence par `h3. Partie <dépôt> (i sur n)` (variable `partie`, vide pour un seul dépôt).
+- Limites assumées : une gate du plan par bureau ; aucun ordre de sortie entre dépôts (la relecture et la mise en prod ensemble se gèrent à la main).
+
+## Reprise après une panne
+
+Kronn ne reprend qu'un run interrompu (redémarrage), pas un run en échec, et supprime la copie de travail d'un run fini ou en échec ; les commits restent sur la branche `kronn/<ticket>`. La chaîne se reprend donc elle-même, sans rien changer à Kronn :
+
+- Après chaque étape Exec, le dossier est recopié dans `~/.cache/pixel-bureau/chaine/<ticket>/<owner__dépôt>/courant/`. `etat.json` porte l'étape atteinte (`etape`) : `cadrage`, `code` (plan validé), `controles`, `orchestrateur`, `escalade`, `livraison`, `relecture`, `publication`, `fini`.
+- Le lanceur a une variable `reprise` : `auto` (défaut) reprend si le dernier run de ce ticket sur ce dépôt est en échec, `oui` reprend quoi qu'il arrive (par exemple un « plan seulement » relancé en complet repart au Code sans refaire le plan), `non` repart de zéro (et efface le dossier gardé).
+- En reprise, `prepare` recopie le dossier, revient sur la branche `kronn/<ticket>` (locale, sinon celle poussée) et sort en 3 (Goto `code`), 4 (Goto `controles`) ou 5 (Goto `livraison`) ; 0 avant le plan validé : cadrage, schéma et patterns déjà faits sautent à leur rapport (`entree` sort en 5), l'orchestrateur refait le plan et la gate du plan revient.
+- Au Code, le plan validé et les lots déjà écrits sont gardés ; si l'orchestrateur avait renvoyé au Code, ses consignes reviennent (`consignes_reprise`). Aux contrôles, un rapport déjà rendu saute (`entree` sort en 3) : le Code efface les rapports des contrôles à chaque passage, ceux qui restent valent pour ce code. Une PR déjà ouverte et relue saute à ta relecture.
+- Découper la chaîne en workflows lancés un par un a été écarté : chaque run aurait sa copie de travail, les gates ne seraient plus dans un parent commun, et le dossier devrait vivre hors de la copie de toute façon.
+
+Dans l'atelier, un run en échec des dernières 24 h reste dans « 🧯 En panne » (poste où il s'est arrêté) jusqu'à ce qu'un run plus récent du même ticket et du même dépôt le reprenne.
 
 ## Périmètre : implémentation, PR et retours
 
@@ -45,7 +69,7 @@ La chaîne s'arrête à la PR et à sa vie de revue : `impl_livraison` (« 📤 
 
 ## Le dossier du ticket
 
-`.kronn/chaine/` dans la copie de travail (ignoré par git) : `ticket.md`, `etat.json` (dépôt, base, branche `kronn/<ticket>`, tours, PR, CI, env), un rapport par poste (`<poste>.json`), `plan.json` et `lots.json`, `controles.json`, `retours.md`. Les postes lisent ce qu'ont écrit les précédents ; l'orchestrateur lit tout.
+`.kronn/chaine/` dans la copie de travail (ignoré par git), recopié dans le cache après chaque étape (reprise) : `ticket.md`, `etat.json` (dépôt, sœurs, base, branche `kronn/<ticket>`, étape atteinte, tours, PR), un rapport par poste (`<poste>.json`), `plan.json` et `lots.json`, `controles.json`, `retours.md`. Les postes lisent ce qu'ont écrit les précédents ; l'orchestrateur lit tout.
 
 ## Allers-retours
 
@@ -62,4 +86,4 @@ Vérifier en conteneur jetable depuis la copie de travail : le projet Compose d'
 
 ## Tests
 
-`tests/test_chaine.py` : rendu des modèles (gates, sous-workflows, agents par poste) et `workflows/chaine.py` étape par étape dans un dépôt git jetable.
+`tests/test_chaine.py` : rendu des modèles (gates, sous-workflows, agents par poste, sauts de reprise), `workflows/chaine.py` étape par étape dans un dépôt git jetable (dont une reprise après une panne au Code, aux contrôles et après un retour au Code, un bureau par dépôt et ses PR sœurs), le lanceur (un dépôt par composant, garde-fou par ticket et dépôt, reprise auto) et le relevé de l'atelier (bureaux, file, pannes).
