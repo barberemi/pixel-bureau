@@ -42,7 +42,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Ouvre une discussion Kronn avec le canard sur le sujet donné et lance l'agent (0 token ici).",
+    "description": "Ouvre une discussion Kronn avec le canard sur le sujet donné et lance l'agent (0 token ici). Relance ensuite le cron live (sauf s'il tourne déjà) : la page le montre tout de suite.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -59,7 +59,7 @@
      "{{topic}}",
      "{{title}}"
     ],
-    "exec_timeout_secs": 30
+    "exec_timeout_secs": 60
    }
   ],
   "actions": [],

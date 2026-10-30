@@ -17,7 +17,6 @@ class Refused(ts.FakeKronn):
     """Kronn qui refuse le lancement (404, comme une route absente)."""
 
     def post(self, path, body):
-        self.posts.append((path, body))
         raise KeyError(path)
 
 
@@ -55,8 +54,8 @@ class RefreshTest(unittest.TestCase):
         return subprocess.run([sys.executable, os.path.join(ts.ROOT, "workflows", script), *args], input=stdin, capture_output=True,
                               text=True, env={"BUREAU_CONFIG": path, "HOME": self.tmp, "PATH": "/usr/bin:/bin", **ts.CLOCK}, timeout=60)
 
-    def triggers(self, fake):
-        return [b for p, b in fake.posts if p == TRIGGER]
+    def triggers(self, fake):  # lancements reçus : ceux de l'action, puis les relances de crons du Bureau
+        return [b for p, b in fake.posts if p == TRIGGER] + fake.refreshes
 
     # ---------- refresh() ----------
     def test_launches_the_cron_when_it_is_idle(self):
@@ -64,7 +63,7 @@ class RefreshTest(unittest.TestCase):
         r = self.run_py("refresh.py", "team", api=self.kronn(fake))
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(self.triggers(fake), [{"workflow_id": TEAM, "variables": {}}])
-        self.assertIn("Rafraîchissement du cron team : relancé (run run-lanc)", r.stdout)
+        self.assertIn("Rafraîchissement du cron team : relancé (run run-cron)", r.stdout)
 
     def test_nothing_when_a_run_is_active(self):
         for status in ("Running", "Pending", "WaitingApproval", "WaitingQuota"):
@@ -133,6 +132,43 @@ class RefreshTest(unittest.TestCase):
         self.assertEqual(self.triggers(fake), [{"workflow_id": TEAM, "variables": {}}])
         self.assertIn("Temps gagné posté", r.stdout)
         self.assertIn("Rafraîchissement du cron team : relancé", r.stderr)
+
+    # ---------- cron live ----------
+    def test_live_models_refresh_at_the_end_of_their_script(self):
+        for key, script in (("gate", "gate_decide"), ("relaunch", "relaunch"), ("answer", "question_answer"), ("duck", "duck_start"),
+                            ("deploy", "deploy")):
+            tpl = TPL[key]["definition"]["steps"]
+            self.assertEqual(len(tpl), 1, key + " : pas d'étape de plus")
+            self.assertGreaterEqual(tpl[0]["exec_timeout_secs"], 60, key)
+            with open(os.path.join(ts.ROOT, "workflows", script + ".py"), encoding="utf-8") as fh:
+                code = fh.read()
+            self.assertIn('refresh("live")', code, script)
+            self.assertNotIn('refresh("team")', code, script)
+        env = TPL["env"]["definition"]
+        self.assertEqual([s["name"] for s in env["steps"]], ["relabel", "refresh"])
+        self.assertEqual(env["steps"][-1]["exec_args"][2:], ["live"])
+        self.assertIn("python3", env["exec_allowlist"])
+        self.assertFalse(env["steps"][0].get("on_result"), "label non reposé : le run s'arrête avant le refresh")
+
+    def test_duck_start_launches_the_live_cron_and_keeps_its_json_output(self):
+        fake = ts.FakeKronn()
+        r = self.run_py("duck_start.py", "p1", "Le menu casse", api=self.kronn(fake))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(r.stdout)["discussion_id"], "dd000001", "stdout reste le JSON lu par la page")
+        self.assertEqual(self.triggers(fake), [{"workflow_id": LIVE, "variables": {}}])
+
+    def test_relaunch_then_live_unless_live_runs(self):
+        fake = ts.FakeKronn()
+        fake.datasets = [{"name": "gates", "current": {"workflows": [{"wf": ts.AGENT_WF, "name": "Revue de PR"}]}}]
+        r = self.run_py("relaunch.py", ts.AGENT_WF, api=self.kronn(fake))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.triggers(fake), [{"workflow_id": ts.AGENT_WF, "variables": {}}, {"workflow_id": LIVE, "variables": {}}])
+        fake.posts.clear(), fake.refreshes.clear()
+        fake.runs[LIVE] = [ts.run_of(903, "Running")]
+        r = self.run_py("relaunch.py", ts.AGENT_WF, api="http://127.0.0.1:%d/api" % self.srv.server_address[1])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.triggers(fake), [{"workflow_id": ts.AGENT_WF, "variables": {}}], "live tourne déjà : rien de plus")
+        self.assertIn("Rafraîchissement du cron live : déjà en cours", r.stderr)
 
 
 if __name__ == "__main__":

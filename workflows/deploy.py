@@ -13,7 +13,7 @@ Codes de sortie (signaux exit_N de Kronn) : 2 dépôt ou env hors réglage, 3 PR
 4 workflow de prod refusé, 5 déploiement refusé par GitHub.
 """
 import json, re, subprocess, sys
-from _lib import CFG
+from _lib import CFG, refresh
 
 
 def fail(code, msg):
@@ -68,6 +68,7 @@ def main(repo, n, env):
     if r.returncode:
         fail(5, f"GitHub refuse le déploiement de {branch} sur {env} : {(r.stderr or r.stdout).strip()[:300]}")
     print(f"{branch} part sur {env.upper()} ({repo}, {wf}). Le Bureau suit le run sur la fiche de la PR.")
+    refresh("live")  # le cron live le montre tout de suite (sauf s'il tourne déjà), sans faire échouer l'action
 
 
 if __name__ == "__main__":

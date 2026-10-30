@@ -55,6 +55,7 @@ class FakeKronn:
         self.defs = {}  # id de workflow -> étapes de sa définition (GET /workflows/{id}), sinon celles par défaut
         self.details = {}  # id de run -> step_results du détail du run (sorties complètes)
         self.posts = []  # (chemin, corps) des POST reçus
+        self.refreshes = []  # corps des relances d'un cron du Bureau (refresh() de _lib.py, à la fin d'une action), hors posts
         self.disc_details = {}  # id de discussion -> détail (GET /discussions/{id}, avec ses messages)
         self.questions = {}  # id de discussion -> questions (GET /discussions/{id}/questions)
         self.variables = {}  # id de workflow -> variables de lancement (GET /workflows/{id})
@@ -122,6 +123,9 @@ class FakeKronn:
 
     def post(self, path, body):
         """POST reçus (duck_start.py) : création d'une discussion, puis lancement de l'agent (/run, flux SSE)."""
+        if urlparse(path).path.removeprefix("/api") == "/mcp/workflow-trigger" and body.get("workflow_id") in FIXTURE["workflows"].values():
+            self.refreshes.append(body)  # tests/test_refresh.py
+            return {"run_id": "run-cron"}
         self.posts.append((urlparse(path).path.removeprefix("/api"), body))
         p = self.posts[-1][0]
         if p == "/discussions":

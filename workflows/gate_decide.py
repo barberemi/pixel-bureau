@@ -8,7 +8,7 @@ Appelle POST /api/workflows/{wf}/runs/{run}/decide avec gate_step : Kronn refuse
 n'attend plus CETTE gate (décision périmée), donc rien d'autre ne peut être validé par erreur.
 """
 import json, re, sys, urllib.request, urllib.error
-from _lib import API, CFG
+from _lib import API, CFG, refresh
 
 PAGE = CFG["page_id"]
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -49,3 +49,4 @@ except urllib.error.HTTPError as e:
 if not res.get("success"):
     fail("Kronn a refusé la décision : " + str(res.get("error")))
 print(f"Gate « {gate} » {LABEL[decision]}. Nouveau statut du run : {res['data'].get('new_status')}")
+refresh("live")  # le cron live le montre tout de suite (sauf s'il tourne déjà), sans faire échouer l'action

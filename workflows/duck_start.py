@@ -7,7 +7,7 @@ Titre « 🦆 … » : is_bureau_disc (_lib.py) le retire des visiteurs ; la pag
 Sortie : {discussion_id, url}.
 """
 import json, sys
-from _lib import CFG, open_duck
+from _lib import CFG, open_duck, refresh
 
 
 def fail(msg):
@@ -27,3 +27,4 @@ try:
 except RuntimeError as e:
     fail(str(e))
 print(json.dumps({"discussion_id": did, "url": ((CFG.get("kronn") or {}).get("ui") or "") + "#discussion-" + did}, ensure_ascii=False))
+refresh("live")  # le cron live le montre tout de suite (sauf s'il tourne déjà), sans faire échouer l'action
