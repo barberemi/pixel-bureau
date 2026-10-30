@@ -1,7 +1,8 @@
 """Implémenter un ticket en chaîne de postes (#76, #125 ; python3 -m unittest tests/test_chaine.py) : les modèles impl_*
 rendus (postes en sous-workflows, gates dans le parent, 20 étapes au plus, agents par poste), puis workflows/chaine.py
 étape par étape dans un vrai dépôt git jetable : dossier du ticket, propositions et critiques (3 tours), questions,
-plan seulement, lots du code et leurs essais, contrôles écartés ou obligatoires, aiguillage de l'orchestrateur."""
+plan seulement, lots du code et leurs essais, contrôles écartés ou obligatoires, aiguillage de l'orchestrateur ; un
+bureau par dépôt (composants Jira), reprise après une panne, mode essai sans effet."""
 import copy, json, os, subprocess, sys, tempfile, unittest
 from pathlib import Path
 
@@ -97,6 +98,23 @@ class ChaineModelesTest(unittest.TestCase):
         self.assertNotIn('"ci"', text)
         self.assertNotIn("env de branche (réglage", text)
 
+    def test_resume_jumps_and_skips(self):
+        """Reprise : prepare saute au Code (3), aux contrôles (4) ou à la PR (5) ; un poste d'analyse déjà fait saute à son
+        rapport (5) ; le Code en mode essai saute l'étape affecter (5) ; la PR déjà relue saute à la fin (5)."""
+        st = steps("impl_chain")
+        self.assertEqual({r["contains"]: r["action"]["step_name"] for r in st["prepare"]["on_result"]},
+                         {"exit_3": "code", "exit_4": "controles", "exit_5": "livraison"})
+        self.assertEqual(st["prepare"]["exec_args"][-3:], ['{{depot ?? ""}}', '{{soeurs ?? ""}}', '{{reprise ?? "non"}}'])
+        self.assertEqual(st["commente_plan"]["api_body"]["body"], '{{partie ?? ""}}{{steps.orchestrateur_plan.data.commentaire_jira}}')
+        for key in ("impl_cadrage", "impl_schema", "impl_patterns"):
+            self.assertEqual(steps(key)["entree"]["on_result"], [{"contains": "exit_5", "action": {"type": "Goto", "step_name": "rapport"}}])
+        self.assertEqual(steps("impl_code")["entree"]["on_result"], [{"contains": "exit_5", "action": {"type": "Goto", "step_name": "plan"}}])
+        self.assertEqual(steps("impl_livraison")["entree"]["on_result"], [{"contains": "exit_5", "action": {"type": "Goto", "step_name": "fin"}}])
+        lance = steps("impl")["lance"]
+        self.assertEqual(lance["exec_args"][-1], '{{reprise ?? "auto"}}')
+        names = {v["name"] for v in templates.render(TPL["impl_chain"], cfg())["variables"]}
+        self.assertTrue({"depot", "soeurs", "partie", "reprise"} <= names)
+
     def test_assign_step_needs_the_model(self):
         self.assertIn("affecter", steps("impl_code"))
         c = cfg()
@@ -122,7 +140,9 @@ class ChaineScriptTest(unittest.TestCase):
         run(*g, "add", "-A", cwd=self.wt)
         run(*g, "commit", "-qm", "init", cwd=self.wt)
         run("git", "push", "-q", "origin", "main", cwd=self.wt)
-        run("git", "remote", "set-url", "origin", origin, cwd=self.wt)
+        # origin a une adresse GitHub (le dépôt se lit dedans) réécrite vers le dépôt nu jetable
+        run("git", "remote", "set-url", "origin", "https://github.com/dm/site.git", cwd=self.wt)
+        run("git", "config", f"url.{origin}.insteadOf", "https://github.com/dm/site.git", cwd=self.wt)
         self.origin = origin
         self.code = templates.script_code("workflows/chaine.py", cfg())
 
@@ -131,7 +151,7 @@ class ChaineScriptTest(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def sh(self, *args, stdin=""):
-        env = {**os.environ, "KRONN_WORKTREE": self.wt}
+        env = {**os.environ, "KRONN_WORKTREE": self.wt, "HOME": os.path.join(self.tmp, "home")}  # cache du dossier : jetable
         r = subprocess.run(["python3", "-c", self.code, *args], input=stdin, capture_output=True, text=True, cwd=self.wt, env=env)
         return r.returncode, r.stdout + r.stderr
 
@@ -139,13 +159,9 @@ class ChaineScriptTest(unittest.TestCase):
         return json.loads(Path(self.wt, ".kronn", "chaine", name).read_text())
 
     def prepare(self):
-        # dépôt de test : origin est un chemin, pas GitHub ; on lui donne le nom du dépôt réglé
-        subprocess.run(["git", "remote", "set-url", "origin", self.origin], cwd=self.wt, check=True)
         code, outp = self.sh("prepare", "AB-12", "plan", "run1", stdin=json.dumps(TICKET))
         self.assertEqual(code, 0, outp)
-        e = self.dossier("etat.json")
-        e["repo"] = "dm/site"
-        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        self.assertEqual(self.dossier("etat.json")["repo"], "dm/site")
 
     def test_prepare_then_cadrage_with_human_feedback(self):
         self.prepare()
@@ -217,6 +233,93 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(steps("impl_publication")["reviewers"]["on_result"], [{"contains": "exit_5", "action": {"type": "Skip"}}])
         self.assertEqual(subprocess.run(["git", "ls-remote", "--heads", self.origin, "kronn/AB-12"], capture_output=True, text=True).stdout, "")
 
+    def test_essai_skips_the_assign_step(self):
+        """Mode essai : rien dans Jira, l'étape affecter du poste Code est sautée (code 5, Goto plan)."""
+        self.prepare()
+        self.assertEqual(self.sh("entree", "code", "AB-12")[0], 0)
+        e = self.dossier("etat.json")
+        e["mode"] = "essai"
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        code, ctx = self.sh("entree", "code", "AB-12")
+        self.assertEqual(code, 5)
+        self.assertIn("Bouton partager", ctx)  # le contexte reste la sortie de l'étape, lue par code_lot
+
+    def test_one_bureau_per_repo_knows_its_scope_and_sisters(self):
+        """Méthode A : le bureau ne traite que son dépôt, sait quels dépôts ont leur bureau ; la PR liste ses sœurs."""
+        code, outp = self.sh("prepare", "AB-12", "essai", "run1", "", "", "dm/api,dm/app", "non", stdin=json.dumps(TICKET))
+        self.assertEqual(code, 0, outp)
+        self.assertIn("dépôts sœurs : dm/api, dm/app", outp)
+        self.assertEqual(self.dossier("etat.json")["soeurs"], ["dm/api", "dm/app"])
+        code, ctx = self.sh("entree", "cadrage", "AB-12")
+        self.assertIn("Périmètre de ce bureau", ctx)
+        self.assertIn("dm/api, dm/app : chacun a son propre bureau", ctx)
+        self.assertIn("Périmètre de ce bureau", self.sh("dossier")[1])  # l'orchestrateur aussi
+        self.sh("pr", stdin=json.dumps({"title": "feat: AB-12", "body": "corps\n\n<!-- bureau-soeurs -->vieux<!-- /bureau-soeurs -->"}))
+        body = Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text()
+        self.assertIn("### PR sœurs", body)
+        self.assertIn("- dm/api : pas encore ouverte (branche `kronn/AB-12`)", body)
+        self.assertNotIn("vieux", body)
+        self.assertEqual(body.count("<!-- bureau-soeurs -->"), 1)
+        code, outp = self.sh("prepare", "AB-12", "plan", "run2", "", "dm/autre", "", "", stdin=json.dumps(TICKET))
+        self.assertNotEqual(code, 0)  # copie de travail d'un autre dépôt que celui du bureau
+        self.assertIn("pas de dm/autre", outp)
+
+    def test_resume_after_a_failure(self):
+        """Une panne aux contrôles : le dossier est dans le cache après chaque étape ; le run suivant, en reprise, repart
+        de la branche et du dossier, saute au poste Contrôles et ne refait que les contrôles qui manquent."""
+        self.prepare()
+        self.sh("rapport", "cadrage", stdin=json.dumps({"resume": "r", "questions": []}) + SEP + "null")
+        self.assertEqual(self.sh("mode", "complet")[0], 3)
+        self.sh("plan", "", "", stdin=json.dumps({"lots": [{"titre": "L1"}, {"titre": "L2"}], "postes": ["regles"]}))
+        self.sh("lot")
+        self.sh("tri_lot", stdin=json.dumps({"ok": True}) + SEP + json.dumps({"verdict": "ok"}))
+        Path(self.wt, "app", "A.php").write_text("<?php // lot 1\n")
+        g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        subprocess.run(g + ["commit", "-qam", "lot 1"], cwd=self.wt, check=True)
+        cache = Path(self.tmp, "home", ".cache", "pixel-bureau", "chaine", "AB-12", "dm__site", "courant")
+        self.assertEqual(json.loads((cache / "etat.json").read_text())["etape"], "code")  # recopié après chaque étape
+        # panne au Code (lot 2) : nouveau run, nouvelle copie de travail (sur main), dossier vide
+        subprocess.run(["git", "checkout", "-q", "-f", "main"], cwd=self.wt, check=True)
+        import shutil
+        shutil.rmtree(os.path.join(self.wt, ".kronn"))
+        code, outp = self.sh("prepare", "AB-12", "complet", "run2", "", "", "", "oui", stdin=json.dumps(TICKET))
+        self.assertEqual(code, 3, outp)  # droit au poste Code
+        self.assertIn("reprise au poste Code", outp)
+        self.assertEqual(subprocess.run(["git", "log", "-1", "--format=%s"], cwd=self.wt, capture_output=True, text=True).stdout.strip(), "lot 1")
+        self.assertEqual(self.sh("plan", "", "", stdin="")[0], 0)  # plan du run d'avant gardé, lot 1 déjà écrit
+        self.assertIn('"titre": "L2"', self.sh("lot")[1])
+        self.sh("tri_lot", stdin=json.dumps({"ok": True}) + SEP + json.dumps({"verdict": "ok"}))
+        self.sh("bilan_code")
+        self.sh("entree", "regles", "AB-12")
+        self.sh("rapport", "regles", stdin=json.dumps({"resume": "ok", "constats": []}) + SEP + "null")
+        # panne à la sécurité : la reprise saute aux contrôles, règles déjà faites, sécurité à faire
+        shutil.rmtree(os.path.join(self.wt, ".kronn"))
+        code, outp = self.sh("prepare", "AB-12", "complet", "run3", "", "", "", "oui", stdin=json.dumps(TICKET))
+        self.assertEqual(code, 4, outp)
+        self.assertIn("déjà fait", self.sh("entree", "regles", "AB-12")[1])
+        self.assertEqual(self.sh("entree", "regles", "AB-12")[0], 3)
+        self.assertEqual(self.sh("entree", "securite", "AB-12")[0], 0)
+        self.assertEqual(self.sh("entree", "cadrage", "AB-12")[0], 5)  # poste d'analyse déjà fait : droit au rapport
+        self.assertEqual(self.sh("entree", "cadrage", "AB-12", "Refais le cadrage")[0], 0)  # sauf avec un retour de l'humain
+        # un retour au Code demandé par l'orchestrateur, puis une panne : la reprise rend ses consignes au Code
+        self.sh("aiguillage", stdin=json.dumps({"decision": "retour_code", "consignes": "Échapper le titre", "resume": "r"}))
+        shutil.rmtree(os.path.join(self.wt, ".kronn"))
+        code, outp = self.sh("prepare", "AB-12", "complet", "run4", "", "", "", "oui", stdin=json.dumps(TICKET))
+        self.assertEqual(code, 3, outp)
+        self.assertIn("Échapper le titre", self.sh("entree", "code", "AB-12", "", "")[1])
+        self.assertEqual(self.sh("plan", "", "", stdin="")[0], 3)  # mode correction
+        self.sh("bilan_code")
+        self.assertEqual(self.dossier("etat.json")["consignes_reprise"], "")
+        # un nouveau départ (reprise non) efface le dossier gardé
+        self.sh("prepare", "AB-12", "complet", "run5", "", "", "", "non", stdin=json.dumps(TICKET))
+        self.assertEqual(json.loads((cache / "etat.json").read_text())["run"], "run5")
+
+    def test_nothing_to_resume_starts_over(self):
+        code, outp = self.sh("prepare", "AB-12", "plan", "run1", "", "", "", "oui", stdin=json.dumps(TICKET))
+        self.assertEqual(code, 0, outp)
+        self.assertIn("Rien à reprendre", outp)
+        self.assertEqual(self.dossier("etat.json")["etape"], "cadrage")
+
     def test_lots_retry_three_times_then_move_on(self):
         self.prepare()
         plan = {"lots": [{"titre": "L1", "objectif": "o", "fichiers": ["app/A.php"]}, {"titre": "L2", "objectif": "o", "fichiers": []}],
@@ -268,6 +371,80 @@ class ChaineScriptTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LanceurTest(unittest.TestCase):
+    """Le lanceur (méthode A) : un dépôt par composant Jira, une chaîne par dépôt, un passage par ticket et par dépôt,
+    reprise auto après un échec ; un composant sans projet Kronn est signalé."""
+
+    def setUp(self):
+        sys.path.insert(0, os.path.join(ROOT, "workflows"))
+        import chaine
+        self.c = chaine
+        self.old = (chaine.get, chaine.send, chaine.project_for, dict(chaine.CFG))
+        chaine.CFG.clear()
+        chaine.CFG.update(cfg(impl={"components": {"API": "dm/api"}, "repos": {"dm/site": {}}}))
+        self.sent, self.runs = [], []
+        chaine.send = lambda m, p, body=None, timeout=30: self.sent.append(body) or {"run_id": f"run{len(self.sent)}"}
+        chaine.project_for = lambda r: {"dm/site": "p1", "dm/api": "p2"}.get(r)
+
+        def get(path):
+            if path.endswith("runs?limit=50"):
+                return [{k: v for k, v in r.items() if k != "prep"} for r in self.runs]
+            r = next(x for x in self.runs if path.endswith(x["id"]))
+            return {"step_results": [{"step_name": "prepare", "output": r["prep"]}] if r["prep"] else []}
+        chaine.get = get
+
+    def tearDown(self):
+        self.c.get, self.c.send, self.c.project_for = self.old[:3]
+        self.c.CFG.clear()
+        self.c.CFG.update(self.old[3])
+
+    def lance(self, comps, depot="", reprise="auto"):
+        import io
+        from contextlib import redirect_stdout
+        t = {"key": "AB-12", "fields": {"components": [{"name": c} for c in comps]}}
+        sys.stdin, buf, code = io.StringIO(json.dumps(t)), io.StringIO(), 0
+        try:
+            with redirect_stdout(buf):
+                self.c.cmd_lance("AB-12", "complet", depot, reprise)
+        except SystemExit as e:
+            code = e.code
+        finally:
+            sys.stdin = sys.__stdin__
+        return code, buf.getvalue()
+
+    def test_repos_from_components(self):
+        t = lambda *cs: {"fields": {"components": [{"name": c} for c in cs]}}  # noqa: E731
+        self.assertEqual(self.c.repos_for(t("site", "API", "site"), ""), ["dm/site", "dm/api"])  # réglé, mappé, sans doublon
+        self.assertEqual(self.c.repos_for(t("app"), ""), ["dm/app"])  # owner du dépôt principal
+        self.assertEqual(self.c.repos_for(t("site", "API"), "dm/x"), ["dm/x"])  # le champ dépôt force un seul bureau
+        self.assertEqual(self.c.repos_for(t("site", "API"), "API"), ["dm/api"])
+
+    def test_one_chain_per_repo_with_its_sisters(self):
+        code, outp = self.lance(["site", "API", "app"])
+        self.assertEqual(code, 0, outp)
+        self.assertEqual([(b["project_id"], b["variables"]["depot"], b["variables"]["soeurs"]) for b in self.sent],
+                         [("p1", "dm/site", "dm/api,dm/app"), ("p2", "dm/api", "dm/site,dm/app")])
+        self.assertEqual(self.sent[1]["variables"]["partie"], "h3. Partie dm/api (2 sur 2)\n\n")
+        self.assertIn("dm/app : aucun projet Kronn", outp)  # signalé, pas ignoré en silence
+        self.sent.clear()
+        self.lance(["site"])
+        self.assertEqual((self.sent[0]["variables"]["soeurs"], self.sent[0]["variables"]["partie"]), ("", ""))
+
+    def test_guard_is_per_ticket_and_repo_and_resumes_after_a_failure(self):
+        self.runs = [{"id": "a", "status": "Running", "started_at": "2", "prep": "AB-12 sur dm/site : branche kronn/AB-12"},
+                     {"id": "b", "status": "Failed", "started_at": "1", "prep": "AB-12 sur dm/api : branche kronn/AB-12"}]
+        code, outp = self.lance(["site", "API"])
+        self.assertIn("dm/site : déjà sur la chaîne", outp)
+        self.assertEqual([(b["variables"]["depot"], b["variables"]["reprise"]) for b in self.sent], [("dm/api", "oui")])
+        self.sent.clear()
+        self.lance(["API"], reprise="non")
+        self.assertEqual(self.sent[0]["variables"]["reprise"], "non")
+        self.runs[0]["prep"] = ""  # un run pas encore préparé : on ne sait pas quel ticket il porte
+        self.sent.clear()
+        self.assertNotEqual(self.lance(["API"])[0], 0)
+        self.assertEqual(self.sent, [])
 
 
 class AtelierSnapshotTest(unittest.TestCase):

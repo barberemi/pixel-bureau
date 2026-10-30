@@ -52,7 +52,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Contexte du poste 🧩 patterns : ticket, retours de l'humain, docs du dépôt, rapports des postes d'avant (0 token).",
+    "description": "Contexte du poste 🧩 patterns : ticket, retours de l'humain, docs du dépôt, rapports des postes d'avant (0 token). Reprise : poste déjà fait au run d'avant, droit au rapport gardé (code 5).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -62,7 +62,16 @@
      "{{ticket}}",
      "{{retours}}"
     ],
-    "exec_timeout_secs": 60
+    "exec_timeout_secs": 60,
+    "on_result": [
+     {
+      "contains": "exit_5",
+      "action": {
+       "type": "Goto",
+       "step_name": "rapport"
+      }
+     }
+    ]
    },
    {
     "name": "propose",

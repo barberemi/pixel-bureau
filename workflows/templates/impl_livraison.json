@@ -43,7 +43,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Contexte de la PR : ticket, rapports, fichiers modifiés (0 token).",
+    "description": "Contexte de la PR : ticket, rapports, fichiers modifiés (0 token). Reprise : PR déjà ouverte et relue au run d'avant, droit à ta relecture (code 5).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -52,7 +52,16 @@
      "livraison",
      "{{ticket}}"
     ],
-    "exec_timeout_secs": 60
+    "exec_timeout_secs": 60,
+    "on_result": [
+     {
+      "contains": "exit_5",
+      "action": {
+       "type": "Goto",
+       "step_name": "fin"
+      }
+     }
+    ]
    },
    {
     "name": "redige",

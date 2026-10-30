@@ -1,7 +1,7 @@
 {
  "kind": "workflow",
  "key": "impl",
- "doc": "Pose un ticket sur la chaîne d'implémentation, dans le projet de son composant Jira.",
+ "doc": "Pose un ticket sur la chaîne d'implémentation : un bureau et une PR par dépôt (composants Jira), chacun dans le projet de son dépôt.",
  "definition": {
   "name": "Le Bureau · implémenter un ticket",
   "project_id": "@@kronn.project_id@@",
@@ -51,12 +51,42 @@
    },
    {
     "name": "depot",
-    "label": "Dépôt (si pas de composant)",
+    "label": "Dépôt (sinon : les composants)",
     "placeholder": "owner/depot",
-    "description": "owner/dépôt ; vide : déduit du composant Jira du ticket.",
+    "description": "owner/dépôt (ou un nom de composant) pour un seul bureau ; vide : un bureau et une PR par composant Jira du ticket.",
     "required": false,
     "source": "user_input",
     "allow_manual_override": false
+   },
+   {
+    "name": "reprise",
+    "label": "Reprise",
+    "placeholder": "",
+    "description": "auto : si le dernier run de ce ticket sur ce dépôt a échoué, la chaîne reprend là où il s'est arrêté (dossier et branche gardés). oui : reprendre quoi qu'il arrive (ex. après un plan seulement). non : repartir de zéro.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "control": {
+     "type": "select",
+     "options": [
+      {
+       "value": "auto",
+       "label": "Auto (reprend après un échec)",
+       "enabled": true
+      },
+      {
+       "value": "oui",
+       "label": "Reprendre là où le run d'avant s'est arrêté",
+       "enabled": true
+      },
+      {
+       "value": "non",
+       "label": "Repartir de zéro",
+       "enabled": true
+      }
+     ],
+     "default_value": "auto"
+    }
    }
   ],
   "actions": [],
@@ -108,7 +138,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Dépôt du composant Jira, son projet Kronn, un seul passage par ticket, puis la chaîne lancée sur ce projet (0 token).",
+    "description": "Un dépôt par composant Jira, son projet Kronn, un passage par ticket et par dépôt, puis une chaîne par dépôt (0 token).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -116,7 +146,8 @@
      "lance",
      "{{jira_ticket_key}}",
      "{{mode}}",
-     "{{depot}}"
+     "{{depot}}",
+     "{{reprise ?? \"auto\"}}"
     ],
     "exec_timeout_secs": 180,
     "exec_stdin": "{{steps.ticket.data_json ?? \"null\"}}"

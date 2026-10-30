@@ -73,7 +73,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Contexte du poste Code : ticket, retours, rapports cadrage, schéma et patterns (0 token).",
+    "description": "Contexte du poste Code : ticket, retours, rapports cadrage, schéma et patterns (0 token). Mode essai : l'étape affecter (Jira) est sautée (code 5).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -84,7 +84,16 @@
      "{{retours}}",
      "{{consignes}}"
     ],
-    "exec_timeout_secs": 60
+    "exec_timeout_secs": 60,
+    "on_result": [
+     {
+      "contains": "exit_5",
+      "action": {
+       "type": "Goto",
+       "step_name": "plan"
+      }
+     }
+    ]
    },
    {
     "name": "affecter",

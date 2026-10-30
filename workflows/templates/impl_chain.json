@@ -48,6 +48,58 @@
      ],
      "default_value": "plan"
     }
+   },
+   {
+    "name": "depot",
+    "label": "Dépôt",
+    "placeholder": "owner/depot",
+    "description": "Dépôt de ce bureau (posé par le lanceur) ; vide : celui du projet.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "soeurs",
+    "label": "Dépôts sœurs",
+    "placeholder": "owner/a,owner/b",
+    "description": "Les autres dépôts du ticket, chacun sur son bureau (posé par le lanceur).",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "partie",
+    "label": "Titre de la partie",
+    "placeholder": "",
+    "description": "En tête du plan dans Jira quand le ticket a plusieurs dépôts (posé par le lanceur).",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "reprise",
+    "label": "Reprise",
+    "placeholder": "",
+    "description": "oui : reprendre là où le dernier run de ce ticket sur ce dépôt s'est arrêté (le lanceur le pose après un échec). non : du début.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "control": {
+     "type": "select",
+     "options": [
+      {
+       "value": "oui",
+       "label": "Reprendre là où le run d'avant s'est arrêté",
+       "enabled": true
+      },
+      {
+       "value": "non",
+       "label": "Repartir de zéro",
+       "enabled": true
+      }
+     ],
+     "default_value": "non"
+    }
    }
   ],
   "actions": [],
@@ -106,7 +158,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Dossier du ticket, réglages du dépôt, branche kronn/<ticket> depuis la base à jour (0 token).",
+    "description": "Dossier du ticket, réglages du dépôt, branche kronn/<ticket> depuis la base à jour ; en reprise, dossier et branche du run d'avant, saut au poste où il s'est arrêté (0 token).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -115,10 +167,36 @@
      "{{ticket}}",
      "{{mode}}",
      "{{run.id}}",
-     "{{run.variant}}"
+     "{{run.variant}}",
+     "{{depot ?? \"\"}}",
+     "{{soeurs ?? \"\"}}",
+     "{{reprise ?? \"non\"}}"
     ],
     "exec_timeout_secs": 180,
-    "exec_stdin": "{{steps.ticket.data_json ?? \"null\"}}"
+    "exec_stdin": "{{steps.ticket.data_json ?? \"null\"}}",
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "code"
+      }
+     },
+     {
+      "contains": "exit_4",
+      "action": {
+       "type": "Goto",
+       "step_name": "controles"
+      }
+     },
+     {
+      "contains": "exit_5",
+      "action": {
+       "type": "Goto",
+       "step_name": "livraison"
+      }
+     }
+    ]
    },
    {
     "name": "cadrage",
@@ -424,7 +502,7 @@
     "api_endpoint_path": "/rest/api/2/issue/{{ticket}}/comment",
     "api_method": "POST",
     "api_body": {
-     "body": "{{steps.orchestrateur_plan.data.commentaire_jira}}"
+     "body": "{{partie ?? \"\"}}{{steps.orchestrateur_plan.data.commentaire_jira}}"
     },
     "external_effect": true,
     "_requires": "jira",

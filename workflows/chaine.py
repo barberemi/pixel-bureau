@@ -3,10 +3,16 @@
 Le dossier du ticket vit dans la copie de travail du run, `.kronn/chaine/` (ignoré par git) : chaque poste (un
 sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les précédents et y dépose son rapport.
 
-  lance <ticket> <mode> <dépôt>     # lanceur : stdin ticket Jira ; projet Kronn déduit du composant, lance la chaîne
-  prepare <ticket> <mode> <run> [variante]   # stdin ticket Jira : dossier, réglages du dépôt, branche kronn/<ticket>
+  lance <ticket> <mode> <dépôt> [reprise]
+                                    # lanceur : stdin ticket Jira ; une chaîne par dépôt (composants Jira), chacune dans
+                                    # son projet Kronn ; reprise auto|oui|non (auto : reprend si le dernier run a échoué)
+  prepare <ticket> <mode> <run> [variante] [dépôt] [sœurs] [reprise]
+                                    # stdin ticket Jira : dossier, réglages du dépôt, branche kronn/<ticket> ; en reprise,
+                                    # dossier et branche du run d'avant, code 3/4/5 : on reprend au Code/aux contrôles/à la PR
   entree <poste> <ticket> [retours] [extra]
                                     # contexte du poste ; retours d'une gate ajoutés au dossier ; code 3 : poste non concerné
+                                    # ou déjà fait (reprise) ; code 5 : cadrage/schéma/patterns déjà faits (reprise), Code
+                                    # en mode essai (affecter sauté), PR déjà ouverte (reprise)
   releve                            # schéma d'impact : fichiers du dépôt qui parlent du ticket (git grep), 0 token
   existe                            # stdin proposition du schéma : chemins cités qui n'existent pas
   tri <poste>                       # stdin avis du critique : code 3 = « revoir » (Goto la proposition, 3 tours au plus)
@@ -27,6 +33,8 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
   pret | reviewers | fin                              # publication après ta relecture (gh)
 
 L'étage ne traite que l'implémentation, la PR et ses retours : ni CI, ni env de branche, ni déploiement (le RDC s'en charge).
+Le dossier est recopié après chaque étape dans ~/.cache/pixel-bureau/chaine/<ticket>/<owner__dépôt>/courant : Kronn
+supprime la copie de travail d'un run (réussi ou non), la reprise y relit tout (étape atteinte dans etat.json « etape »).
 Réglage impl (pack ou config) : repos.<owner/dépôt>.{base, checks.{regles,tests}, reviewers, front}, components.<composant> = owner/dépôt, postes.<poste>.{actif, bloquant}, max_tours, max_lots.
 Une commande de vérification reçoit {worktree}, {main} (dossier du projet), {files}, {php}, {ts}, {tests} (fichiers
 modifiés par rapport à la base, par type).
@@ -72,7 +80,7 @@ def git(*args, check=False):
 
 
 def repo_of():
-    url = git("remote", "get-url", "origin")
+    url = git("config", "--get", "remote.origin.url")  # l'adresse écrite, pas celle réécrite par url.*.insteadOf
     m = re.search(r"github\.com[:/]([\w.-]+/[\w.-]+?)(?:\.git)?$", url)
     return m.group(1) if m else ""
 
@@ -146,73 +154,200 @@ def project_for(repo):
     return None
 
 
-def repo_for(t, depot):
-    """Dépôt du ticket : celui donné, sinon le composant Jira (impl.components, sinon un dépôt réglé du même nom)."""
-    if depot and "/" in depot:
-        return depot
-    comps = [c.get("name") for c in ((t.get("fields") or {}).get("components") or [])]
+def repos_for(t, depot):
+    """Dépôts du ticket, un par composant Jira (impl.components, sinon un dépôt réglé du même nom, sinon owner/composant) ;
+    le champ dépôt (owner/dépôt, ou un nom de composant) force un seul dépôt."""
+    depot = (depot or "").strip()
+    if "/" in depot:
+        return [depot]
+    comps = [depot] if depot else [c.get("name") for c in ((t.get("fields") or {}).get("components") or [])]
     mapping = impl().get("components") or {}
     known = list((impl().get("repos") or {}).keys())
     owner = ((CFG.get("github") or {}).get("repo") or "/").split("/")[0]
-    for c in ([depot] if depot else []) + comps:
-        if c in mapping:
-            return mapping[c]
-        for r in known:
-            if r.split("/")[-1] == c:
-                return r
-        if owner and c:
-            return f"{owner}/{c}"
-    return ""
+    out = []
+    for c in comps:
+        r = mapping.get(c) or next((k for k in known if k.split("/")[-1] == c), None) or (f"{owner}/{c}" if owner and c else "")
+        if r and r.lower() not in [x.lower() for x in out]:
+            out.append(r)
+    return out
 
 
-def cmd_lance(ticket, mode, depot):
+def chain_runs(chain, limit=50):
+    """Runs de la chaîne, les plus récents d'abord, avec leur sortie prepare (« <ticket> sur <dépôt> ») : les variables
+    d'un run sont chiffrées (instantané), le ticket et le dépôt ne se lisent que là. Détail lu pour les runs actifs et les
+    15 plus récents des autres (reprise)."""
+    runs = sorted(get(f"/workflows/{chain}/runs?limit={limit}") or [], key=lambda r: r.get("started_at") or "", reverse=True)
+    done = 0
+    for r in runs:
+        act = r.get("status") in ("Running", "WaitingApproval", "Pending", "WaitingQuota")
+        if not act and done >= 15:
+            r["prep"] = None
+            continue
+        done += not act
+        steps = (get(f"/workflows/{chain}/runs/{r['id']}") or {}).get("step_results") or []
+        r["active"], r["prep"] = act, next((x.get("output") or "" for x in steps if x.get("step_name") == "prepare"), "")
+    return runs
+
+
+def cmd_lance(ticket, mode, depot, reprise=""):
+    """Une chaîne par dépôt du ticket (méthode A) : chacune dans le projet Kronn du dépôt, sur son bureau, avec ses sœurs
+    (les autres dépôts) pour son périmètre et ses liens de PR. Un passage par ticket ET par dépôt."""
     if not KEY.match(ticket or ""):
         sys.exit(f"Clé de ticket invalide : {ticket!r}")
     t = parse(read_stdin()) or {}
-    repo = repo_for(t, (depot or "").strip())
-    if not repo:
+    repos = repos_for(t, depot)
+    if not repos:
         sys.exit("Aucun dépôt : pose un composant Jira sur le ticket, ou donne le dépôt (owner/dépôt) au lancement.")
-    pid = project_for(repo)
-    if not pid:
-        sys.exit(f"Aucun projet Kronn n'a {repo} pour origine : ajoute-le dans Kronn (Projets), puis relance.")
     chain = (CFG.get("models") or {}).get("impl_chain")
     if not chain:
         sys.exit("La chaîne n'est pas installée (models.impl_chain) : python3 tools/install.py la propose.")
-    for r in get(f"/workflows/{chain}/runs?limit=50") or []:
-        if r.get("status") not in ("Running", "WaitingApproval", "Pending", "WaitingQuota"):
+    pids = {r: project_for(r) for r in repos}
+    manque = [r for r in repos if not pids[r]]
+    runs = chain_runs(chain)
+    pending = next((r for r in runs if r.get("active") and not r.get("prep")), None)
+    if pending:  # un run pas encore préparé : on ne sait pas encore quel ticket il porte
+        sys.exit(f"Un run de la chaîne n'est pas encore préparé ({pending['id'][:8]}, {pending['status']}) : "
+                 f"{ticket} y est peut-être déjà, réessaie dans une minute.")
+    lines, launched = [], []
+    targets = [r for r in repos if pids[r]]
+    reprise = (reprise or "auto").strip().lower()
+    reprise = reprise if reprise in ("oui", "non") else "auto"
+    for i, repo in enumerate(targets, 1):
+        mine = [r for r in runs if r.get("prep") and f"{ticket} sur {repo}".lower() in r["prep"].lower()]
+        busy = next((r for r in mine if r.get("active")), None)
+        if busy:
+            lines.append(f"- {repo} : déjà sur la chaîne (run {busy['id'][:8]}, {busy['status']}), pas relancé")
             continue
-        # les variables d'un run sont chiffrées (instantané) : le ticket se lit dans la sortie de son étape prepare
-        steps = (get(f"/workflows/{chain}/runs/{r['id']}") or {}).get("step_results") or []
-        prep = next((x.get("output") or "" for x in steps if x.get("step_name") == "prepare"), "")
-        if f"{ticket} sur " in prep or not prep:
-            sys.exit(f"{ticket} est peut-être déjà sur la chaîne (run {r['id'][:8]}, {r['status']}"
-                     + (", pas encore préparé" if not prep else "") + ") : un poste de travail par ticket, réessaie plus tard.")
-    # route JSON qui lance détaché : /workflows/{id}/trigger est un flux SSE qui ne répond qu'à la première pause du run
-    res = send("POST", "/mcp/workflow-trigger", {"workflow_id": chain, "variables": {"ticket": ticket, "mode": mode or "plan"},
-                                                 "project_id": pid}, timeout=120)
-    run = (res or {}).get("run_id") or "?"
-    print(f"{ticket} posé sur la chaîne ({mode or 'plan'}) : {repo}, run {str(run)[:8]}")
+        rep = reprise if reprise != "auto" else "oui" if mine and mine[0].get("status") == "Failed" else "non"
+        soeurs = [r for r in repos if r != repo]
+        partie = f"h3. Partie {repo} ({i} sur {len(targets)})\n\n" if len(repos) > 1 else ""
+        # route JSON qui lance détaché : /workflows/{id}/trigger est un flux SSE qui ne répond qu'à la première pause du run
+        res = send("POST", "/mcp/workflow-trigger", {"workflow_id": chain, "project_id": pids[repo], "variables": {
+            "ticket": ticket, "mode": mode or "plan", "depot": repo, "soeurs": ",".join(soeurs), "partie": partie, "reprise": rep}},
+            timeout=120)
+        run = str((res or {}).get("run_id") or "?")
+        launched.append(repo)
+        lines.append(f"- {repo} : run {run[:8]}" + (" (reprise là où le run d'avant s'est arrêté)" if rep == "oui" else ""))
+    for r in manque:
+        lines.append(f"- {r} : aucun projet Kronn n'a ce dépôt pour origine, pas de bureau (ajoute-le dans Kronn, Projets, puis relance)")
+    head = (f"{ticket} posé sur la chaîne ({mode or 'plan'}) : {len(launched)} bureau(x), une PR par dépôt"
+            if launched else f"{ticket} : aucun bureau lancé")
+    print(head + "\n" + "\n".join(lines))
+    if not launched:
+        sys.exit(1)
 
 
-def cmd_prepare(ticket, mode, run, variant=""):
+def cache_dir(ticket=None, repo=None):
+    """Copie du dossier hors de la copie de travail, par ticket et par dépôt : la reprise y relit tout."""
+    e = etat() if not (ticket and repo) else {}
+    ticket, repo = ticket or e.get("ticket"), repo or e.get("repo")
+    if not (ticket and repo):
+        return ""
+    return os.path.join(os.path.expanduser("~/.cache/pixel-bureau/chaine"), ticket, repo.replace("/", "__"), "courant")
+
+
+def copie(src, dest):
+    if not (src and dest and os.path.isdir(src)):
+        return
+    os.makedirs(dest, exist_ok=True)
+    for f in os.listdir(src):
+        if os.path.isfile(os.path.join(src, f)):
+            with open(os.path.join(src, f), "rb") as a, open(os.path.join(dest, f), "wb") as b:
+                b.write(a.read())
+
+
+def sauve():
+    """Après chaque étape : le dossier recopié dans le cache (Kronn supprime la copie de travail d'un run en échec)."""
+    if os.path.isdir(os.path.join(root(), ".kronn", "chaine")) and etat().get("ticket"):
+        copie(dossier(), cache_dir())
+
+
+# étape atteinte (etat.json « etape ») -> où la reprise repart : 0 du début (postes déjà faits sautés), 3 au Code,
+# 4 aux contrôles (ceux déjà faits sautés), 5 à la PR (déjà ouverte : droit à ta relecture)
+REPRISE = {"code": 3, "controles": 4, "orchestrateur": 4, "escalade": 4, "livraison": 5, "relecture": 5, "publication": 5}
+
+
+def avance(etape, **more):
+    e = etat()
+    e.update(etape=etape, **more)
+    write_json(dossier("etat.json"), e)
+
+
+def git_ok(*args):
+    return subprocess.run(["git", *args], cwd=root(), capture_output=True).returncode == 0
+
+
+def reprend(ticket, repo, mode, run):
+    """Reprise : dossier et branche du run d'avant ; rend le code de sortie de prepare, ou None (rien à reprendre)."""
+    src = cache_dir(ticket, repo)
+    try:
+        old = read_json(os.path.join(src, "etat.json"))
+    except (OSError, ValueError):
+        return None, "aucun dossier gardé pour ce ticket et ce dépôt"
+    if old.get("etape") in (None, "fini"):
+        return None, "le run d'avant est allé au bout"
+    branch = old.get("branch") or f"kronn/{ticket}"
+    step = old.get("etape")
+    if git_ok("rev-parse", "--verify", "-q", f"refs/heads/{branch}"):
+        git("checkout", "-f", "-B", branch, branch, check=True)
+    elif git_ok("fetch", "origin", branch):
+        git("checkout", "-f", "-B", branch, f"origin/{branch}", check=True)
+    elif REPRISE.get(step, 0) >= 3:
+        return None, f"branche {branch} introuvable, le code est perdu"
+    copie(src, dossier())
+    e = etat()
+    if step == "publication":
+        step = "relecture"
+    cons = ""
+    o = load("orchestrateur.json") or {}
+    if step == "code" and str(o.get("decision") or "").lower() == "retour_code":
+        cons = o.get("consignes") or ""
+    e.update(mode=mode, run=run, reprise=True, etape=step, reprises=int(e.get("reprises") or 0) + 1, consignes_reprise=cons)
+    write_json(dossier("etat.json"), e)
+    return REPRISE.get(step, 0), {"code": "au poste Code" + (" (consignes de l'orchestrateur)" if cons else ""),
+                                  "controles": "aux contrôles", "orchestrateur": "aux contrôles", "escalade": "aux contrôles",
+                                  "livraison": "à la PR", "relecture": "à ta relecture de la PR"}.get(step, "au début, postes déjà faits sautés")
+
+
+def cmd_prepare(ticket, mode, run, variant="", depot="", soeurs="", reprise=""):
     t = parse(read_stdin()) or {}
     repo = repo_of()
+    if given(depot) and depot.strip().lower() != repo.lower():
+        sys.exit(f"Cette copie de travail est celle de {repo or '?'}, pas de {depot} : lance la chaîne dans le projet du dépôt.")
+    sisters = [x.strip() for x in (soeurs if given(soeurs) else "").split(",") if x.strip()]
+    if (reprise or "").strip().lower() == "oui":
+        code, why = reprend(ticket, repo, mode, run)
+        if code is not None:
+            e = etat()
+            e["soeurs"] = sisters or e.get("soeurs") or []
+            write_json(dossier("etat.json"), e)
+            print(f"{ticket} sur {repo} : reprise {why}, branche {e.get('branch')}, mode {mode}")
+            sauve()
+            if code:
+                sys.exit(code)
+            return
+        print(f"Rien à reprendre ({why}) : on repart du début.")
     reg = reglages(repo)
     base = reg["base"]
     git("fetch", "origin", base, check=True)
     # run shadow de Kronn (essai sans effet externe, à côté d'un run normal) : sa propre branche, l'autre la tient déjà
     branch = f"kronn/{ticket}" + ("-shadow" if (variant or "").strip() == "shadow" else "")
     git("checkout", "-f", "-B", branch, f"origin/{base}", check=True)
+    for f in os.listdir(dossier()):  # le dossier d'un autre passage, s'il en reste un
+        if os.path.isfile(dossier(f)):
+            os.remove(dossier(f))
     write_text(dossier("ticket.md"), ticket_md(t))
     docs = git("ls-files", "docs", "AGENTS.md", "CLAUDE.md", ".github/pull_request_template.md").splitlines()
     f = t.get("fields") or {}
     write_json(dossier("etat.json"), {"ticket": ticket, "mode": mode, "repo": repo, "base": base, "branch": branch,
-                                      "run": run, "tours": 0, "docs": docs[:200],
+                                      "run": run, "tours": 0, "docs": docs[:200], "soeurs": sisters, "etape": "cadrage",
                                       "texte": f"{f.get('summary') or ''}\n{f.get('description') or ''}"[:8000]})
-    for f in ("retours.md", "plan.json", "lots.json", "controles.json", "orchestrateur.json"):
-        if os.path.exists(dossier(f)):
-            os.remove(dossier(f))
-    print(f"{ticket} sur {repo} : branche {branch} depuis origin/{base}, {len(docs)} fichiers de doc, mode {mode}")
+    src = cache_dir(ticket, repo)
+    if src and os.path.isdir(src):  # nouveau départ : l'ancien dossier ne doit plus servir à une reprise
+        for x in os.listdir(src):
+            os.remove(os.path.join(src, x))
+    print(f"{ticket} sur {repo} : branche {branch} depuis origin/{base}, {len(docs)} fichiers de doc, mode {mode}"
+          + (f", dépôts sœurs : {', '.join(sisters)}" if sisters else ""))
 
 
 # ---------- postes ----------
@@ -257,12 +392,40 @@ def section(title, body):
     return f"\n\n## {title}\n\n{body.strip() if body and body.strip() else '(rien)'}"
 
 
+def perimetre():
+    """Ticket à plusieurs dépôts : un bureau par dépôt, chacun ne traite que sa part."""
+    e = etat()
+    if not e.get("soeurs"):
+        return ""
+    return section("Périmètre de ce bureau (un bureau et une PR par dépôt)",
+                   f"Ce ticket touche plusieurs dépôts. Ce bureau ne traite QUE la part du ticket qui concerne {e.get('repo')}. "
+                   f"{', '.join(e['soeurs'])} : chacun a son propre bureau et sa propre PR, n'y touche pas. Note dans ton rapport "
+                   "ce qui leur revient et ce qui en dépend (contrat d'API, ordre de mise en prod).")
+
+
+def deja_fait(p):
+    """Reprise : le rapport d'un poste fait au run d'avant (le Code efface ceux des contrôles à chaque passage)."""
+    r = load(p + ".json") or {}
+    return bool(etat().get("reprise")) and r.get("statut") in ("ok", "a_corriger", "non_concerne")
+
+
 def cmd_entree(p, ticket, retours="", extra=""):
+    if p in ("cadrage", "schema", "patterns") and not given(retours) and deja_fait(p):
+        print(f"{p} : déjà fait au run d'avant (reprise), rapport gardé")
+        sys.exit(5)
+    if p in CONTROLES and deja_fait(p):
+        print(f"{p} : déjà fait au run d'avant (reprise), rapport gardé")
+        sys.exit(3)
+    e = etat()
+    if p == "livraison" and e.get("reprise") and e.get("etape") == "relecture":
+        print("PR déjà ouverte et relue au run d'avant (reprise) : droit à ta relecture")
+        sys.exit(5)
+    if p == "code" and not given(extra) and e.get("consignes_reprise"):
+        extra = e["consignes_reprise"]
     note_retours(retours, p)
     for f in (f"essais_{p}.json",) + (("tests_essais.json",) if p == "tests" else ()):  # nouveau passage du poste : tours à zéro
         if os.path.exists(dossier(f)):
             os.remove(dossier(f))
-    e = etat()
     files = changed() if p in CONTROLES + ("livraison",) else []
     ok, why = actif(p, files) if p in CONTROLES else (True, "")
     if not ok:
@@ -270,6 +433,7 @@ def cmd_entree(p, ticket, retours="", extra=""):
         print(f"{p} : non concerné ({why})")
         sys.exit(3)
     parts = [f"Ticket {ticket}, dépôt {e.get('repo')}, branche {e.get('branch')} (base {e.get('base')}), tour {e.get('tours', 0) + 1}."]
+    parts.append(perimetre())
     parts.append(section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else ""))
     if os.path.exists(dossier("retours.md")):
         parts.append(section("Retours de l'humain (à respecter en priorité)", open(dossier("retours.md"), encoding="utf-8").read()))
@@ -292,6 +456,8 @@ def cmd_entree(p, ticket, retours="", extra=""):
     if extra and not extra.startswith("{" + "{"):
         parts.append(section("Consignes de l'orchestrateur", extra))
     out("".join(parts))
+    if p == "code" and essai():  # mode essai : l'étape affecter (Jira) est sautée, droit au plan
+        sys.exit(5)
 
 
 def cmd_releve():
@@ -365,7 +531,7 @@ def cmd_rapport(p):
 def cmd_dossier():
     """Le dossier pour l'orchestrateur, dans son prompt : il n'a aucun fichier à lire (essai du 2026-10-30 : une lecture
     du dossier par l'agent a été coupée par les garde-fous de l'API)."""
-    parts = [section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else "")]
+    parts = [perimetre(), section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else "")]
     if os.path.exists(dossier("retours.md")):
         parts.append(section("Retours de l'humain", open(dossier("retours.md"), encoding="utf-8").read()))
     for p in ("cadrage", "schema", "patterns"):
@@ -388,23 +554,19 @@ def cmd_questions():
 
 
 def garde():
-    """Copie du dossier dans ~/.cache/pixel-bureau/chaine/<ticket>/ : Kronn supprime la copie de travail d'un run réussi."""
+    """Copie du dossier dans ~/.cache/pixel-bureau/chaine/<ticket>/<run>/ : Kronn supprime la copie de travail d'un run."""
     e = etat()
     if not e.get("ticket"):
         return ""
     dest = os.path.join(os.path.expanduser("~/.cache/pixel-bureau/chaine"), e["ticket"], str(e.get("run") or "run")[:8])
-    os.makedirs(dest, exist_ok=True)
-    for f in os.listdir(dossier()):
-        src = dossier(f)
-        if os.path.isfile(src):
-            with open(src, "rb") as a, open(os.path.join(dest, f), "wb") as b:
-                b.write(a.read())
+    copie(dossier(), dest)
     return dest
 
 
 def cmd_mode(mode):
     """Plan seulement : code 0, l'étape suivante commente le plan dans le ticket puis la chaîne s'arrête. Complet ou
     essai : code 3, droit au poste Code (en complet, le plan ira dans la PR)."""
+    avance("code")  # plan validé : une reprise (même en plan seulement, relancé en complet) repart au Code
     if (mode or "plan").strip().lower() in ("plan", "plan seulement", "plan_seulement"):
         print(f"Plan seulement : le plan part en commentaire du ticket, puis la chaîne s'arrête. Dossier gardé : {garde()}")
         return
@@ -434,10 +596,15 @@ def cmd_plan(consignes="", retours=""):
     """Premier passage : le plan en lots. Consignes de l'orchestrateur ou retours de l'humain : mode correction (code 3)."""
     # le commentaire d'une approbation arrive aussi dans retours (essai du 2026-10-30) : au premier passage du Code, il
     # s'ajoute au dossier mais ne déclenche pas le mode correction ; ensuite, consignes ou retours = correction
-    if given(consignes) or (given(retours) and os.path.exists(dossier("code.json"))):
+    if given(consignes) or etat().get("consignes_reprise") or (given(retours) and os.path.exists(dossier("code.json"))):
         print("Mode correction : consignes ou retours à traiter, pas de nouveau découpage.")
         sys.exit(3)
-    plan = parse(read_stdin()) or {}
+    plan = parse(read_stdin())
+    if not plan and load("plan.json"):  # reprise : le plan validé au run d'avant, lots déjà écrits gardés
+        st = load("lots.json") or {}
+        print(f"Plan du run d'avant repris : lots déjà écrits {st.get('fait') or []}")
+        return
+    plan = plan or {}
     lots = [x for x in plan.get("lots") or [] if isinstance(x, dict)][: int(impl().get("max_lots") or 6)]
     for i, x in enumerate(lots, 1):
         x["n"] = i
@@ -543,6 +710,10 @@ def cmd_bilan_code():
     st = load("lots.json") or {}
     rep = {"poste": "code", "statut": "ok" if log else "vide", "commits": log.splitlines(), "fichiers": changed(), "lots": st.get("notes")}
     write_json(dossier("code.json"), rep)
+    for f in [c + ".json" for c in CONTROLES] + ["controles.json", "quoi.json"]:  # nouveau code : les contrôles sont à refaire
+        if os.path.exists(dossier(f)):
+            os.remove(dossier(f))
+    avance("controles", consignes_reprise="")
     out(rep)
 
 
@@ -564,6 +735,7 @@ def cmd_bilan_controles():
             item = {"poste": p, **x}
             (rep["bloquants"] if x.get("gravite") == "bloquant" and r.get("bloquant_poste", p in BLOQUANTS) else rep["avis"]).append(item)
     write_json(dossier("controles.json"), rep)
+    avance("orchestrateur")
     code = load("code.json") or {}
     out({**rep, "code": {"commits": code.get("commits"), "fichiers": code.get("fichiers"), "lots": code.get("lots")},
          "tours": etat().get("tours", 0)})  # tout ce que l'orchestrateur lit, sans fichier à ouvrir
@@ -578,11 +750,14 @@ def cmd_aiguillage():
     dec = str(d.get("decision") or "").lower()
     maxt = int(impl().get("max_tours") or 3)
     if dec == "livrer":
+        avance("livraison")
         print(f"Tour {e['tours']} : l'orchestrateur livre.")
         sys.exit(3)
     if dec == "retour_code" and e["tours"] < maxt:
+        avance("code")
         print(f"Tour {e['tours']} sur {maxt} : retour au poste Code avec les consignes de l'orchestrateur.")
         sys.exit(4)
+    avance("escalade")
     print(f"Tour {e['tours']} : un humain tranche ({'plus de tours' if dec == 'retour_code' else dec or 'décision illisible'}).")
 
 
@@ -606,10 +781,45 @@ def cmd_pousse():
     print(f"{e['branch']} poussée")
 
 
+SOEURS = re.compile(r"\n*<!-- bureau-soeurs -->.*?<!-- /bureau-soeurs -->", re.S)
+
+
+def pr_of(repo, branch):
+    code, o, _ = gh("pr", "list", "-R", repo, "--head", branch, "--state", "all", "--json", "number", "-q", ".[0].number")
+    return o if code == 0 and o.isdigit() else ""
+
+
+def soeurs_md(ticket, repos, prs):
+    """Bloc « PR sœurs » d'une PR : les autres dépôts du ticket, leur PR si elle est ouverte."""
+    rows = [f"- {r} : " + (f"https://github.com/{r}/pull/{prs[r]}" if prs.get(r) else f"pas encore ouverte (branche `kronn/{ticket}`)")
+            for r in repos]
+    return ("\n\n<!-- bureau-soeurs -->\n### PR sœurs\n\nCe ticket touche plusieurs dépôts : une PR par dépôt, à relire et à "
+            "mettre en prod ensemble.\n\n" + "\n".join(rows) + "\n<!-- /bureau-soeurs -->")
+
+
+def lie_soeurs(e, n):
+    """Notre PR ajoutée au bloc « PR sœurs » des PR déjà ouvertes des autres dépôts (chacune liste toutes les autres)."""
+    tous = [e["repo"]] + e["soeurs"]
+    prs = {r: pr_of(r, f"kronn/{e['ticket']}") for r in e["soeurs"]}
+    prs[e["repo"]] = n
+    for r, m in prs.items():
+        if r == e["repo"] or not m:
+            continue
+        code, body, _ = gh("pr", "view", m, "-R", r, "--json", "body", "-q", ".body")
+        if code:
+            continue
+        path = dossier(f"pr_soeur_{r.replace('/', '__')}.md")
+        write_text(path, SOEURS.sub("", body) + soeurs_md(e["ticket"], [x for x in tous if x != r], prs))
+        gh("pr", "edit", m, "-R", r, "--body-file", path)
+    return prs
+
+
 def cmd_pr():
     d = parse(read_stdin()) or {}
     e = etat()
-    body = (d.get("body") or "") + "\n\n<!-- bureau-chaine -->"
+    sisters = e.get("soeurs") or []
+    prs = {} if essai() else {r: pr_of(r, f"kronn/{e['ticket']}") for r in sisters}
+    body = SOEURS.sub("", d.get("body") or "") + (soeurs_md(e["ticket"], sisters, prs) if sisters else "") + "\n\n<!-- bureau-chaine -->"
     path = dossier("pr_body.md")
     write_text(path, body)
     if sauter("création de la PR"):  # le titre et la description restent dans le dossier (pr_body.md)
@@ -626,7 +836,8 @@ def cmd_pr():
         n = o.rstrip("/").split("/")[-1]
     e["pr"] = n
     write_json(dossier("etat.json"), e)
-    print(f"PR #{n} (brouillon) : https://github.com/{e['repo']}/pull/{n}")
+    linked = [r for r, m in (lie_soeurs(e, n) if sisters else {}).items() if m and r != e["repo"]]
+    print(f"PR #{n} (brouillon) : https://github.com/{e['repo']}/pull/{n}" + (f" ; liée à ses sœurs : {', '.join(linked)}" if linked else ""))
 
 
 def cmd_revue_prep():
@@ -684,6 +895,7 @@ def cmd_reponds():
 
 
 def cmd_pret():
+    avance("publication")
     if sauter("passage en prête"):
         return
     e = etat()
@@ -705,6 +917,8 @@ def cmd_reviewers():
 
 
 def cmd_fin():
+    """Fin du poste PR (ta relecture attend) ou de la publication (le ticket est au bout de la chaîne)."""
+    avance("fini" if etat().get("etape") == "publication" else "relecture")
     e = etat()
     e["dossier"] = garde()
     out({"ticket": e.get("ticket"), "repo": e.get("repo"), "pr": e.get("pr"), "tours": e.get("tours"), "dossier": e["dossier"],
@@ -721,9 +935,9 @@ def main(argv):
     if cmd in simple:
         return simple[cmd]()
     if cmd == "lance":
-        return cmd_lance(*(args + ["", "", ""])[:3])
+        return cmd_lance(*(args + ["", "", "", ""])[:4])
     if cmd == "prepare":
-        return cmd_prepare(*(args + ["", "", "", ""])[:4])
+        return cmd_prepare(*(args + [""] * 7)[:7])
     if cmd == "entree":
         return cmd_entree(*(args + ["", "", "", ""])[:4])
     if cmd in ("tri", "rapport"):
@@ -738,4 +952,11 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    main(sys.argv)
+    try:
+        main(sys.argv)
+    finally:  # même en sortie 3/4/5 ou en erreur : la reprise relit le dossier dans le cache
+        if len(sys.argv) > 1 and sys.argv[1] != "lance":
+            try:
+                sauve()
+            except OSError:
+                pass
