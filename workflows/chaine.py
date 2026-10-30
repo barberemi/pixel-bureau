@@ -364,6 +364,7 @@ def cmd_prepare(ticket, mode, run, variant="", depot="", soeurs="", reprise="", 
     f = t.get("fields") or {}
     write_json(dossier("etat.json"), {"ticket": ticket, "mode": mode, "repo": repo, "base": base, "branch": branch,
                                       "run": run, "tours": 0, "docs": docs[:200], "soeurs": sisters, "etape": "cadrage", "depart": fixed,
+                                      "lecture": chemins([r for r in sisters + list(impl().get("references") or []) if r.lower() != repo.lower()]),
                                       "texte": f"{f.get('summary') or ''}\n{f.get('description') or ''}"[:8000]})
     src = cache_dir(ticket, repo)
     if src and os.path.isdir(src):  # nouveau départ : l'ancien dossier ne doit plus servir à une reprise
@@ -425,6 +426,37 @@ def rejoue():
                    "avec, ne rebase pas dessus, ne le signale pas. Juge le travail par rapport à ta base seulement.")
 
 
+def lecture():
+    """Dépôts à lire, jamais à modifier : les sœurs et les références de l'équipe (impl.references) qui ont une copie
+    locale dans Kronn. Essais d'EW-6550 et EW-7945 : un bureau qui ne voit que son dépôt ne sait pas que le travail se fait
+    dans un dépôt sœur, ni reprendre le job déjà écrit dans le dépôt de référence."""
+    e = etat()
+    paths = e.get("lecture") or {}
+    if not paths:
+        return ""
+    return section("Dépôts à lire (jamais à modifier)", "Copies locales : la branche courante peut être une autre que la "
+                   "principale, lis la version de référence avec `git -C <chemin> show origin/<branche>:<fichier>` ou "
+                   "`git -C <chemin> grep <motif> origin/<branche>`. Reprends ce qui y est déjà fait plutôt que de réinventer.\n"
+                   + "\n".join(f"- {r} : {p}" for r, p in paths.items()))
+
+
+def chemins(repos):
+    """Copie locale (projet Kronn) de chaque dépôt, quand elle existe."""
+    if not repos:
+        return {}
+    try:
+        projects = get("/projects") or []
+    except Exception:  # Kronn injoignable : pas de dépôt à lire, la chaîne continue
+        return {}
+    out = {}
+    for r in repos:
+        for p in projects:
+            m = re.search(r"github\.com[:/]([\w.-]+/[\w.-]+?)(?:\.git)?/?$", str(p.get("repo_url") or ""))
+            if m and m.group(1).lower() == r.lower() and p.get("path"):
+                out[r] = p["path"]
+    return out
+
+
 def perimetre():
     """Ticket à plusieurs dépôts : un bureau par dépôt, chacun ne traite que sa part."""
     e = etat()
@@ -465,8 +497,10 @@ def cmd_entree(p, ticket, retours="", extra=""):
         write_json(dossier(p + ".json"), {"poste": p, "statut": "non_concerne", "raison": why})
         print(f"{p} : non concerné ({why})")
         sys.exit(3)
-    parts = [f"Ticket {ticket}, dépôt {e.get('repo')}, branche {e.get('branch')} (base {e.get('base')}), tour {e.get('tours', 0) + 1}."]
+    parts = [f"Ticket {ticket}, dépôt {e.get('repo')}, branche {e.get('branch')} (base {e.get('base')}), tour {e.get('tours', 0) + 1}. "
+             f"Point de départ du diff : {depart()} (`git diff {depart()}...HEAD`)."]
     parts.append(perimetre())
+    parts.append(lecture())
     parts.append(rejoue())
     parts.append(section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else ""))
     if os.path.exists(dossier("retours.md")):
@@ -565,7 +599,7 @@ def cmd_rapport(p):
 def cmd_dossier():
     """Le dossier pour l'orchestrateur, dans son prompt : il n'a aucun fichier à lire (essai du 2026-10-30 : une lecture
     du dossier par l'agent a été coupée par les garde-fous de l'API)."""
-    parts = [perimetre(), rejoue(), section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else "")]
+    parts = [perimetre(), lecture(), rejoue(), section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else "")]
     if os.path.exists(dossier("retours.md")):
         parts.append(section("Retours de l'humain", open(dossier("retours.md"), encoding="utf-8").read()))
     for p in ("cadrage", "schema", "patterns"):

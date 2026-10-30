@@ -254,6 +254,13 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("Périmètre de ce bureau", ctx)
         self.assertIn("dm/api, dm/app : chacun a son propre bureau", ctx)
         self.assertIn("Périmètre de ce bureau", self.sh("dossier")[1])  # l'orchestrateur aussi
+        e = self.dossier("etat.json")  # copies locales des sœurs et des références (projets Kronn), à lire seulement
+        e["lecture"] = {"dm/api": "/src/api"}
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        ctx = self.sh("entree", "code", "AB-12")[1]
+        self.assertIn("Dépôts à lire (jamais à modifier)", ctx)
+        self.assertIn("- dm/api : /src/api", ctx)
+        self.assertIn("Point de départ du diff : origin/main", ctx)
         self.sh("pr", stdin=json.dumps({"title": "feat: AB-12", "body": "corps\n\n<!-- bureau-soeurs -->vieux<!-- /bureau-soeurs -->"}))
         body = Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text()
         self.assertIn("### PR sœurs", body)
