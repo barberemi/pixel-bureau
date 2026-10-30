@@ -11,7 +11,7 @@ impl (lanceur, 0 token)          composant Jira -> dépôt -> projet Kronn ; un 
 └─ impl_chain (parent, 20 étapes, project_scope All, require_isolation, concurrency_limit 4)
    ticket · prepare · [cadrage] · questions · ✋gate_questions · [schema] · [patterns] · dossier · orchestrateur_plan · ✋gate_plan
    · mode · commente_plan (Plan seulement, puis Stop) · [code] · [controles] · orchestrateur · aiguillage · ✋gate_escalade
-   · [livraison] · ✋gate_pr · [publication]
+   · [livraison = 📤 PR · [revue_pr] · [retours]] · ✋gate_pr · [publication]
    controles = quoi · [regles] · [securite] · [tests] · [perf] · [revue] · bilan
 ```
 
@@ -26,6 +26,14 @@ impl (lanceur, 0 token)          composant Jira -> dépôt -> projet Kronn ; un 
 - Un Goto compte ses passages par arête (source, cible) sur tout le run, et une étape en code non nul dont le Goto a épuisé `max_iterations` **échoue** au lieu de continuer : tous les tours (propositions, essais par lot, tests, tours de contrôle) sont comptés par le script, qui rend 0 au dernier ; `max_iterations` n'est qu'un filet.
 - Une référence `{{steps.x.data_json}}` à une sortie d'agent sans enveloppe (`on_invalid: Continue`) est inconnue et Kronn refuse de rendre l'étape : toute référence à une sortie d'étape a un repli `?? …` (posé par le générateur).
 - Le shadow de Kronn ne rejoue pas un workflow à variables : l'instantané chiffré des variables est rangé sous l'id du run normal, le run shadow s'arrête sur « snapshot unavailable ». D'où le mode **essai** : toute la chaîne sans push, sans PR, sans Jira (le script saute ces étapes, `reviewers` sort en 5 pour sauter le commentaire Jira).
+
+## Périmètre : implémentation, PR et retours
+
+La chaîne s'arrête à la PR et à sa vie de revue : `impl_livraison` (« 📤 PR ») pousse et ouvre la PR brouillon, puis appelle `impl_revue_pr` (le modèle de revue `review_child` en foreach sur `.kronn/prs.json`, sans gate, donc imbriquable) et `impl_retours` (commentaires sans réponse corrigés, poussés, une réponse par fil). Ni label de CI ni env de branche : le déploiement reste au RDC. Le modèle « corriger » (`fix`) contient une gate : il ne peut pas être un poste, il reste le bouton « 🛠 Corriger » pour les retours humains qui arrivent après.
+
+## L'étage (page)
+
+`page/src/68-atelier.js` : onglets d'étage (`FLOOR`), plan du 1er dessiné à la place de l'open space (toile `AT_W × AT_H`), panneau des bureaux et fiche (carte de décision `gateCard` pour une gate). Données : dataset `atelier` du cron `live`, étape `atelier` (`workflows/atelier_snapshot.py`) : un bureau par run actif de la chaîne, états des postes lus dans les étapes du parent, des contrôles (statut du rapport) et du poste PR.
 
 ## Robustesse (essais du 2026-10-30)
 
