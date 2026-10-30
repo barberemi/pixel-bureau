@@ -142,7 +142,7 @@
      "type": "Agent"
     },
     "description": "📏 règles du projet : les constats.",
-    "prompt_template": "Tu es le poste 📏 Règles du projet.\n\n{{steps.entree.data.stdout}}\n\n## Vérifications lancées (0 token)\n{{steps.verif.data.stdout}}\n\nLes vérifications rouges sont des constats bloquants (cite l'erreur). Puis lis les conventions du dépôt (`docs/AGENTS.md`, section DO NOT, règles de code) et vérifie que le diff les respecte : nommage, emplacement, langue des commentaires, tests exigés, interdits.\n\nLis le diff de la branche (`git diff origin/<base>...HEAD`, base dans le contexte). Tu ne modifies aucun fichier. Chaque constat : `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant.\n\n## Consignes de l'équipe\n@@impl.guidelines@@\n\n## Tour précédent\nTa proposition précédente : {{steps.propose.data_json ?? \"aucune (premier tour)\"}}\nRemarques du critique à traiter (vide au premier tour) : {{steps.critique.data.remarques ?? \"aucune\"}}\nSi des remarques sont listées, traite CHACUNE (corrige, ou dis pourquoi tu la refuses) ; sinon, propose d'emblée ce que tu as de mieux.",
+    "prompt_template": "Tu es le poste 📏 Règles du projet.\n\n{{steps.entree.data.stdout}}\n\n## Vérifications lancées (0 token)\n{{steps.verif.data.stdout}}\n\nLes vérifications rouges sont des constats bloquants (cite l'erreur). Puis lis les conventions du dépôt (`docs/AGENTS.md`, section DO NOT, règles de code) et vérifie que le diff les respecte : nommage, emplacement, langue des commentaires, tests exigés, interdits.\n\nLis le diff de la branche (`git diff origin/<base>...HEAD`, base dans le contexte). Tu ne modifies aucun fichier. Chaque constat : `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant.\n\n## Consignes de l'équipe\n@@impl.guidelines@@\n\n## Tour précédent\nTa proposition précédente : {{steps.propose.data_json ?? \"aucune (premier tour)\"}}\nRemarques du critique à traiter (vide au premier tour) : {{steps.critique.data.remarques ?? \"aucune\"}}\nSi des remarques sont listées, traite CHACUNE (corrige, ou dis pourquoi tu la refuses) ; sinon, propose d'emblée ce que tu as de mieux.\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
     "_poste": "regles"
    },
    {
@@ -178,13 +178,13 @@
        "remarques"
       ]
      },
-     "on_invalid": "Fail"
+     "on_invalid": "Continue"
     },
     "step_type": {
      "type": "Agent"
     },
     "description": "📏 règles du projet : un second agent vérifie chaque constat (faux positifs, oublis).",
-    "prompt_template": "Tu es le critique du poste 📏 Règles.\n\n{{steps.entree.data.stdout}}\n\nConstats proposés :\n{{steps.propose.data_json}}\n\nPour chaque constat, va voir la règle citée dans la doc du dépôt : existe-t-elle vraiment ? Un bloquant est-il un simple avis ? Une vérification rouge a-t-elle été oubliée ?\n\nRends `verdict` = `ok` si la proposition est utilisable telle quelle (des détails perfectibles ne justifient pas un nouveau tour), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.",
+    "prompt_template": "Tu es le critique du poste 📏 Règles.\n\n{{steps.entree.data.stdout}}\n\nConstats proposés :\n{{steps.propose.data_json}}\n\nPour chaque constat, va voir la règle citée dans la doc du dépôt : existe-t-elle vraiment ? Un bloquant est-il un simple avis ? Une vérification rouge a-t-elle été oubliée ?\n\nRends `verdict` = `ok` si la proposition est utilisable telle quelle (des détails perfectibles ne justifient pas un nouveau tour), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
     "_poste": "regles.critique"
    },
    {

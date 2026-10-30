@@ -124,7 +124,7 @@
      "type": "Agent"
     },
     "description": "🧩 patterns : la proposition (3 tours au plus avec la critique).",
-    "prompt_template": "Tu es le poste 🧩 Patterns. Tu ne modifies aucun fichier.\n\n{{steps.entree.data.stdout}}\n\n## Ta mission\nPour chaque décision de structure que le ticket impose (où mettre le code, quelle abstraction, réutiliser quoi), choisis en suivant les patterns DÉJÀ présents dans le dépôt (cherche un cas voisin et imite-le) et la doc du dépôt. N'introduis un pattern que si une douleur réelle le justifie (YAGNI, ne pas réimplémenter le framework). `a_eviter` : les pièges vus dans le dépôt. Reste court : 2 à 6 choix.\n\n## Tour précédent\nTa proposition précédente : {{steps.propose.data_json ?? \"aucune (premier tour)\"}}\nRemarques du critique à traiter (vide au premier tour) : {{steps.critique.data.remarques ?? \"aucune\"}}\nSi des remarques sont listées, traite CHACUNE (corrige, ou dis pourquoi tu la refuses) ; sinon, propose d'emblée ce que tu as de mieux.",
+    "prompt_template": "Tu es le poste 🧩 Patterns. Tu ne modifies aucun fichier.\n\n{{steps.entree.data.stdout}}\n\n## Ta mission\nPour chaque décision de structure que le ticket impose (où mettre le code, quelle abstraction, réutiliser quoi), choisis en suivant les patterns DÉJÀ présents dans le dépôt (cherche un cas voisin et imite-le) et la doc du dépôt. N'introduis un pattern que si une douleur réelle le justifie (YAGNI, ne pas réimplémenter le framework). `a_eviter` : les pièges vus dans le dépôt. Reste court : 2 à 6 choix.\n\n## Tour précédent\nTa proposition précédente : {{steps.propose.data_json ?? \"aucune (premier tour)\"}}\nRemarques du critique à traiter (vide au premier tour) : {{steps.critique.data.remarques ?? \"aucune\"}}\nSi des remarques sont listées, traite CHACUNE (corrige, ou dis pourquoi tu la refuses) ; sinon, propose d'emblée ce que tu as de mieux.\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
     "_poste": "patterns"
    },
    {
@@ -160,13 +160,13 @@
        "remarques"
       ]
      },
-     "on_invalid": "Fail"
+     "on_invalid": "Continue"
     },
     "step_type": {
      "type": "Agent"
     },
     "description": "🧩 patterns : un second agent la critique, sans rien modifier.",
-    "prompt_template": "Tu es le critique du poste 🧩 Patterns.\n\n{{steps.entree.data.stdout}}\n\nProposition :\n{{steps.propose.data_json}}\n\nVérifie : chaque choix suit-il un précédent du dépôt (cherche-le) ? Y a-t-il de la sur-ingénierie, ou au contraire une duplication qu'un existant éviterait ?\n\nRends `verdict` = `ok` si la proposition est utilisable telle quelle (des détails perfectibles ne justifient pas un nouveau tour), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.",
+    "prompt_template": "Tu es le critique du poste 🧩 Patterns.\n\n{{steps.entree.data.stdout}}\n\nProposition :\n{{steps.propose.data_json}}\n\nVérifie : chaque choix suit-il un précédent du dépôt (cherche-le) ? Y a-t-il de la sur-ingénierie, ou au contraire une duplication qu'un existant éviterait ?\n\nRends `verdict` = `ok` si la proposition est utilisable telle quelle (des détails perfectibles ne justifient pas un nouveau tour), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
     "_poste": "patterns.critique"
    },
    {

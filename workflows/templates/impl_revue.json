@@ -120,7 +120,7 @@
      "type": "Agent"
     },
     "description": "👀 revue croisée : les constats.",
-    "prompt_template": "Tu es le poste 👀 Revue croisée : un relecteur indépendant de celui qui a écrit le code.\n\n{{steps.entree.data.stdout}}\n\nRelis le diff comme un relecteur exigeant : correction (cas limites, erreurs, concurrence), lisibilité, duplication, cohérence avec le plan et le ticket, régressions possibles. Ne refais pas le travail des postes Règles, Sécurité et Tests (leurs rapports sont dans `.kronn/chaine/`).\n\nLis le diff de la branche (`git diff origin/<base>...HEAD`, base dans le contexte). Tu ne modifies aucun fichier. Chaque constat : `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant.\n\n## Tour précédent\nTa proposition précédente : {{steps.propose.data_json ?? \"aucune (premier tour)\"}}\nRemarques du critique à traiter (vide au premier tour) : {{steps.critique.data.remarques ?? \"aucune\"}}\nSi des remarques sont listées, traite CHACUNE (corrige, ou dis pourquoi tu la refuses) ; sinon, propose d'emblée ce que tu as de mieux.",
+    "prompt_template": "Tu es le poste 👀 Revue croisée : un relecteur indépendant de celui qui a écrit le code.\n\n{{steps.entree.data.stdout}}\n\nRelis le diff comme un relecteur exigeant : correction (cas limites, erreurs, concurrence), lisibilité, duplication, cohérence avec le plan et le ticket, régressions possibles. Ne refais pas le travail des postes Règles, Sécurité et Tests (leurs rapports sont dans `.kronn/chaine/`).\n\nLis le diff de la branche (`git diff origin/<base>...HEAD`, base dans le contexte). Tu ne modifies aucun fichier. Chaque constat : `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant.\n\n## Tour précédent\nTa proposition précédente : {{steps.propose.data_json ?? \"aucune (premier tour)\"}}\nRemarques du critique à traiter (vide au premier tour) : {{steps.critique.data.remarques ?? \"aucune\"}}\nSi des remarques sont listées, traite CHACUNE (corrige, ou dis pourquoi tu la refuses) ; sinon, propose d'emblée ce que tu as de mieux.\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
     "_poste": "revue"
    },
    {
@@ -156,13 +156,13 @@
        "remarques"
       ]
      },
-     "on_invalid": "Fail"
+     "on_invalid": "Continue"
     },
     "step_type": {
      "type": "Agent"
     },
     "description": "👀 revue croisée : un second agent vérifie chaque constat (faux positifs, oublis).",
-    "prompt_template": "Tu confrontes la revue croisée d'un autre modèle.\n\n{{steps.entree.data.stdout}}\n\nConstats proposés :\n{{steps.propose.data_json}}\n\nPour chaque constat, va lire le code : est-il juste ? Un bloquant est-il vraiment bloquant ?\n\nRends `verdict` = `ok` si la proposition est utilisable telle quelle (des détails perfectibles ne justifient pas un nouveau tour), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.",
+    "prompt_template": "Tu confrontes la revue croisée d'un autre modèle.\n\n{{steps.entree.data.stdout}}\n\nConstats proposés :\n{{steps.propose.data_json}}\n\nPour chaque constat, va lire le code : est-il juste ? Un bloquant est-il vraiment bloquant ?\n\nRends `verdict` = `ok` si la proposition est utilisable telle quelle (des détails perfectibles ne justifient pas un nouveau tour), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
     "_poste": "revue.critique"
    },
    {

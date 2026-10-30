@@ -83,7 +83,7 @@
      "type": "Agent"
     },
     "description": "Titre et description de la PR au modèle du dépôt.",
-    "prompt_template": "Tu rédiges la PR du ticket {{ticket}}, sans rien modifier dans le dépôt.\n\n{{steps.entree.data.stdout}}\n\nLis le modèle de PR du dépôt (`.github/pull_request_template.md`, ou `docs/` s'il en parle) et suis-le EXACTEMENT (sections, cases à cocher). Concis, aucune redite, un emoji par section si le modèle n'en impose pas. Dis ce qui change et pourquoi, les décisions notables (plan validé), les vérifications faites (rapports des contrôles : verts, avis restants), et lie le ticket. `title` au format des commits du dépôt avec la clé {{ticket}}.",
+    "prompt_template": "Tu rédiges la PR du ticket {{ticket}}, sans rien modifier dans le dépôt.\n\n{{steps.entree.data.stdout}}\n\nLis le modèle de PR du dépôt (`.github/pull_request_template.md`, ou `docs/` s'il en parle) et suis-le EXACTEMENT (sections, cases à cocher). Concis, aucune redite, un emoji par section si le modèle n'en impose pas. Dis ce qui change et pourquoi, les décisions notables (plan validé), les vérifications faites (rapports des contrôles : verts, avis restants), et lie le ticket. `title` au format des commits du dépôt avec la clé {{ticket}}.\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
     "_poste": "livraison"
    },
    {

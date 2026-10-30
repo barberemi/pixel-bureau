@@ -160,7 +160,7 @@
      "type": "Agent"
     },
     "description": "🗺 schéma d'impact : la proposition (3 tours au plus avec la critique).",
-    "prompt_template": "Tu es le poste 🗺 Schéma d'impact. Tu ne modifies aucun fichier.\n\n{{steps.entree.data.stdout}}\n\n## Relevé du dépôt (0 token, à vérifier)\n{{steps.releve.data.stdout}}\n\n## Ta mission\nExplore le dépôt (lis le code, suis les appels) et dresse l'impact du ticket : chaque fichier à modifier, créer ou supprimer, et ceux à lire pour comprendre (`action` = lire), avec son rôle ; les modules et les données touchés (tables, API, caches, configs, traductions) ; un graphe `mermaid` (flowchart) court ; les zones à risque (code partagé, régression possible). Les chemins sont relatifs à la racine et doivent exister, sauf `creer`.\n\n## Tour précédent\nTa proposition précédente : {{steps.propose.data_json ?? \"aucune (premier tour)\"}}\nRemarques du critique à traiter (vide au premier tour) : {{steps.critique.data.remarques ?? \"aucune\"}}\nSi des remarques sont listées, traite CHACUNE (corrige, ou dis pourquoi tu la refuses) ; sinon, propose d'emblée ce que tu as de mieux.",
+    "prompt_template": "Tu es le poste 🗺 Schéma d'impact. Tu ne modifies aucun fichier.\n\n{{steps.entree.data.stdout}}\n\n## Relevé du dépôt (0 token, à vérifier)\n{{steps.releve.data.stdout}}\n\n## Ta mission\nExplore le dépôt (lis le code, suis les appels) et dresse l'impact du ticket : chaque fichier à modifier, créer ou supprimer, et ceux à lire pour comprendre (`action` = lire), avec son rôle ; les modules et les données touchés (tables, API, caches, configs, traductions) ; un graphe `mermaid` (flowchart) court ; les zones à risque (code partagé, régression possible). Les chemins sont relatifs à la racine et doivent exister, sauf `creer`.\n\n## Tour précédent\nTa proposition précédente : {{steps.propose.data_json ?? \"aucune (premier tour)\"}}\nRemarques du critique à traiter (vide au premier tour) : {{steps.critique.data.remarques ?? \"aucune\"}}\nSi des remarques sont listées, traite CHACUNE (corrige, ou dis pourquoi tu la refuses) ; sinon, propose d'emblée ce que tu as de mieux.\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
     "_poste": "schema"
    },
    {
@@ -218,13 +218,13 @@
        "remarques"
       ]
      },
-     "on_invalid": "Fail"
+     "on_invalid": "Continue"
     },
     "step_type": {
      "type": "Agent"
     },
     "description": "🗺 schéma d'impact : un second agent la critique, sans rien modifier.",
-    "prompt_template": "Tu es le critique du poste 🗺 Schéma d'impact.\n\n{{steps.entree.data.stdout}}\n\nProposition :\n{{steps.propose.data_json}}\n\nContrôle automatique des chemins : {{steps.existe.data.stdout}}\n\nVérifie dans le dépôt : un fichier manque-t-il (appelant, test, traduction, config) ? Un chemin est-il faux ? Le graphe est-il cohérent avec les fichiers ?\n\nRends `verdict` = `ok` si la proposition est utilisable telle quelle (des détails perfectibles ne justifient pas un nouveau tour), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.",
+    "prompt_template": "Tu es le critique du poste 🗺 Schéma d'impact.\n\n{{steps.entree.data.stdout}}\n\nProposition :\n{{steps.propose.data_json}}\n\nContrôle automatique des chemins : {{steps.existe.data.stdout}}\n\nVérifie dans le dépôt : un fichier manque-t-il (appelant, test, traduction, config) ? Un chemin est-il faux ? Le graphe est-il cohérent avec les fichiers ?\n\nRends `verdict` = `ok` si la proposition est utilisable telle quelle (des détails perfectibles ne justifient pas un nouveau tour), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
     "_poste": "schema.critique"
    },
    {

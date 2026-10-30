@@ -79,6 +79,9 @@ class ChaineModelesTest(unittest.TestCase):
         for key in ("impl_cadrage", "impl_schema", "impl_patterns", "impl_regles", "impl_securite", "impl_perf", "impl_revue"):
             tri = steps(key)["tri"]
             self.assertEqual(tri["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "propose", "max_iterations": 2}}], key)
+            # essai du 2026-10-30 : un critique qui rend une analyse sans JSON faisait échouer le poste ; sa proposition est gardée
+            self.assertEqual(steps(key)["critique"]["output_format"]["on_invalid"], "Continue", key)
+            self.assertEqual(steps(key)["propose"]["output_format"]["on_invalid"], "Fail", key)
 
     def test_assign_step_needs_the_model(self):
         self.assertIn("affecter", steps("impl_code"))
