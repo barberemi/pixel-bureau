@@ -329,6 +329,8 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(self.dossier("etat.json")["depart"], first)
         Path(self.wt, "app", "C.php").write_text("<?php\n")
         self.assertEqual(json.loads(self.sh("quoi")[1])["fichiers"], ["app/C.php"])  # diff contre le commit rejoué
+        self.assertIn("ne rebase pas dessus", self.sh("entree", "revue", "AB-12")[1])  # la base distante a déjà le ticket
+        self.assertIn("essai_rejoue", self.sh("bilan_controles")[1])
         subprocess.run(["git", "push", "-q", "origin", "main:master"], cwd=self.wt, check=True)
         subprocess.run(["git", "symbolic-ref", "HEAD", "refs/heads/master"], cwd=self.origin, check=True)
         subprocess.run(["git", "push", "-q", "origin", "--delete", "main"], cwd=self.wt, check=True)

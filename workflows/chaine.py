@@ -411,6 +411,18 @@ def section(title, body):
     return f"\n\n## {title}\n\n{body.strip() if body and body.strip() else '(rien)'}"
 
 
+def rejoue():
+    """Essai rejoué depuis un commit passé : la base distante contient peut-être déjà le ticket (livré depuis) ; essai
+    d'EW-7945 : la revue l'a vu et le Code a rebasé sur main."""
+    e = etat()
+    if not e.get("depart"):
+        return ""
+    return section("Essai rejoué (à respecter)",
+                   f"Ce ticket est rejoué depuis le commit {e['depart'][:10]} : c'est TA base, l'état du dépôt avant le ticket. "
+                   f"origin/{e.get('base') or 'main'} peut déjà contenir une livraison de ce ticket : ne le lis pas, ne compare pas "
+                   "avec, ne rebase pas dessus, ne le signale pas. Juge le travail par rapport à ta base seulement.")
+
+
 def perimetre():
     """Ticket à plusieurs dépôts : un bureau par dépôt, chacun ne traite que sa part."""
     e = etat()
@@ -453,6 +465,7 @@ def cmd_entree(p, ticket, retours="", extra=""):
         sys.exit(3)
     parts = [f"Ticket {ticket}, dépôt {e.get('repo')}, branche {e.get('branch')} (base {e.get('base')}), tour {e.get('tours', 0) + 1}."]
     parts.append(perimetre())
+    parts.append(rejoue())
     parts.append(section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else ""))
     if os.path.exists(dossier("retours.md")):
         parts.append(section("Retours de l'humain (à respecter en priorité)", open(dossier("retours.md"), encoding="utf-8").read()))
@@ -550,7 +563,7 @@ def cmd_rapport(p):
 def cmd_dossier():
     """Le dossier pour l'orchestrateur, dans son prompt : il n'a aucun fichier à lire (essai du 2026-10-30 : une lecture
     du dossier par l'agent a été coupée par les garde-fous de l'API)."""
-    parts = [perimetre(), section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else "")]
+    parts = [perimetre(), rejoue(), section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else "")]
     if os.path.exists(dossier("retours.md")):
         parts.append(section("Retours de l'humain", open(dossier("retours.md"), encoding="utf-8").read()))
     for p in ("cadrage", "schema", "patterns"):
@@ -761,7 +774,7 @@ def cmd_bilan_controles():
     avance("orchestrateur")
     code = load("code.json") or {}
     out({**rep, "code": {"commits": code.get("commits"), "fichiers": code.get("fichiers"), "lots": code.get("lots")},
-         "tours": etat().get("tours", 0)})  # tout ce que l'orchestrateur lit, sans fichier à ouvrir
+         "tours": etat().get("tours", 0), **({"essai_rejoue": rejoue().strip()} if etat().get("depart") else {})})  # tout ce que l'orchestrateur lit, sans fichier à ouvrir
 
 
 def cmd_aiguillage():
