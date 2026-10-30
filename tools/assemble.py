@@ -32,6 +32,7 @@ ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate",
            "bureau-move": ("move", "__MOVE_WF__"),  # déplacer un ticket d'une colonne (statut cible relu dans actions.moves)
            "bureau-env": ("env", "__ENV_WF__"),  # ton workflow d'env de branche d'une PR (launch.env), sur les dépôts de launch.env.repos
            "bureau-deploy": ("deploy", "__DEPLOY_WF__"),  # déployer la branche d'une PR hors prod (modèle deploy, ligne actions.deploys)
+           "bureau-aitime": ("ai_time", "__AITIME_WF__"),  # temps gagné par l'IA sur un ticket terminé (modèle ai_time, #79)
            # console Support (#62) : investiguer un message (modèle support) ; relever le canal : « ↻ » du panneau Fraîcheur
            "bureau-support": ("support", "__SUPPORT_WF__"),
            "bureau-spskip": ("support_skip", "__SPSKIP_WF__")}  # 🔕 ignorer un fil du Support, ou le réactiver (threads[].skip)
@@ -237,7 +238,7 @@ def support_page(cfg):
     return {"name": s.get("name") or "Support", "wf": str((cfg.get("models") or {}).get("support") or "")[:8]}
 
 
-FICHE_ACTIONS = ("impl", "mep", "mep_pr", "review", "fix", "fix_pr", "rebase", "comment", "estimate", "env", "deploy")
+FICHE_ACTIONS = ("impl", "mep", "mep_pr", "review", "fix", "fix_pr", "rebase", "comment", "estimate", "env", "deploy", "ai_time")
 # statuts Jira par défaut du flux de l'équipe (jira.flow) : requêtes du cron équipe et scènes de la page
 JIRA_FLOW = {"triage_from": "Proposed", "test": "To Test", "validated": "To Deploy", "reopened": "Reopen"}
 DEFAULT_LAYOUT = "layouts/open-space.json"  # plan type, sans équipe
@@ -343,8 +344,10 @@ def pack_settings(cfg):
     s = {k: v for k, v in json.loads(Path(path).read_text()).items() if k in SETTINGS}
     if isinstance(s.get("microsoft"), dict):
         s["microsoft"] = {k: v for k, v in s["microsoft"].items() if k != "config_id"}
-    if "jira" in s:  # de Jira, l'équipe ne règle que la création de tickets (#77) : connexion, projet et board restent à l'installation
-        s["jira"] = {"create": s["jira"]["create"]} if isinstance(s["jira"], dict) and isinstance(s["jira"].get("create"), dict) else {}
+    if "jira" in s:  # de Jira, l'équipe ne règle que la création de tickets (#77) et le temps gagné par l'IA (#79) :
+        # connexion, projet et board restent à l'installation
+        j = s["jira"] if isinstance(s["jira"], dict) else {}
+        s["jira"] = {k: j[k] for k in ("create", "ai_feedback") if isinstance(j.get(k), dict)}
     if isinstance(s.get("agents"), list):
         s["agents"] = [{k: v for k, v in a.items() if k != "wf"} for a in s["agents"] if isinstance(a, dict) and a.get("key")]
     return s
@@ -384,10 +387,12 @@ def merged(cfg):
         out["env"] = {**(s["env"] or {}), **(cfg.get("env") or {})}
     if "deploy" in s:  # déployer la branche d'une PR hors prod : dépôts et envs de l'équipe ; la config peut les surcharger
         out["deploy"] = {**(s["deploy"] or {}), **(cfg.get("deploy") or {})}
-    if (s.get("jira") or {}).get("create"):  # créer un ticket (#77) : jira.create de l'équipe ; la config peut le surcharger
-        j = dict(cfg.get("jira") or {})
-        j["create"] = {**s["jira"]["create"], **(j.get("create") or {})}
-        out["jira"] = j
+    # créer un ticket (#77), temps gagné par l'IA (#79) : jira.create et jira.ai_feedback de l'équipe ; la config les surcharge
+    for k in ("create", "ai_feedback"):
+        if (s.get("jira") or {}).get(k):
+            j = dict(out.get("jira") or {})
+            j[k] = {**s["jira"][k], **(j.get(k) or {})}
+            out["jira"] = j
     if "review" in s:  # revue de PR (#78) : consignes, skills, dépôts, horaire de l'équipe ; page et projet de l'installation
         out["review"] = {**(s["review"] or {}), **(cfg.get("review") or {})}
     if "fix" in s:  # corriger les commentaires d'une PR (#75) : consignes, skills et contrôles de l'équipe ; la config surcharge
@@ -499,7 +504,7 @@ def launch(cfg):
 
 # boutons qu'un modèle du Bureau incarné par un agent (models, #78) fait marcher quand tu n'as pas ton propre workflow
 # dans launch : action -> clé du modèle ; ses variables portent les noms par défaut de LAUNCH_VARS
-MODEL_ACTIONS = {"review": "review_one", "estimate": "estimate", "support": "support", "env": "env", "deploy": "deploy"}
+MODEL_ACTIONS = {"review": "review_one", "estimate": "estimate", "support": "support", "env": "env", "deploy": "deploy", "ai_time": "ai_time"}
 # rôles retirés du bloc quand c'est le modèle qui fait marcher le bouton (il n'a pas ces variables)
 MODEL_OPTIONAL = {"env": ("action",)}
 

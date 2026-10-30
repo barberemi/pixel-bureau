@@ -279,8 +279,22 @@ def clone(repo):
     return path
 
 
+TRAILER = re.compile(r"^\s*(co-authored-by|signed-off-by)\s*:\s*(.+?)\s*$", re.I | re.M)
+
+
+def trailers(log):
+    """Lignes Co-Authored-By et Signed-off-by des commits squashés, sans doublon : le commit unique garde qui a écrit le
+    code (un modèle d'IA compris, relu ensuite par le modèle « temps gagné par l'IA »)."""
+    seen = {}
+    for kind, who in TRAILER.findall(log or ""):
+        name = "Co-Authored-By" if kind.lower() == "co-authored-by" else "Signed-off-by"
+        seen.setdefault((name, who.lower()), f"{name}: {who}")
+    return sorted(seen.values(), key=lambda t: not t.startswith("Co-"))
+
+
 def rebase(p, n, forced, run_id, dry):
-    """Branche remise sur sa base et squashée en un commit au titre de la PR, push protégé (force-with-lease).
+    """Branche remise sur sa base et squashée en un commit au titre de la PR (Co-Authored-By et Signed-off-by des commits
+    gardés), push protégé (force-with-lease).
     Merge de la base puis squash, pas de rebase : un rebase rejoue les commits un par un et re-conflicte quand la base
     a déjà été fusionnée dans la branche (conflits résolus dans ce merge, perdus au rejeu), alors que la PR est propre."""
     st = load(run_id)
@@ -292,8 +306,9 @@ def rebase(p, n, forced, run_id, dry):
     if subprocess.run(["git", "merge", "--no-edit", f"origin/{base}"], cwd=path, capture_output=True).returncode:
         subprocess.run(["git", "merge", "--abort"], cwd=path, capture_output=True)
         fail(7, f"CONFLIT entre {b} et origin/{base} : abandon, rien poussé.")
+    kept = trailers(run("git", "log", "--format=%B", f"origin/{base}..HEAD", cwd=path))
     run("git", "reset", "--soft", f"origin/{base}", cwd=path)
-    run("git", "commit", "--no-verify", "-m", st["title"], cwd=path)
+    run("git", "commit", "--no-verify", "-m", st["title"] + ("\n\n" + "\n".join(kept) if kept else ""), cwd=path)
     sha = run("git", "rev-parse", "HEAD", cwd=path)
     if dry == "oui":
         print(f"Simulation : rebase et squash faits en local ({count} commit(s) → 1, {sha[:8]}), rien poussé.")

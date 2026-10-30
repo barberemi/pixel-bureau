@@ -138,7 +138,7 @@
     "api_method": "GET",
     "api_query": {
      "jql": "project = @@jira.project@@ AND sprint in openSprints()",
-     "fields": "summary,status,assignee,issuetype,priority,updated,@@jira.points_fields@@,created",
+     "fields": "summary,status,assignee,issuetype,priority,updated,@@jira.points_fields@@,created,labels",
      "maxResults": "100"
     },
     "api_extract": {

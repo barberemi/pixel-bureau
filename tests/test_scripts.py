@@ -356,6 +356,20 @@ print(json.dumps(val))
         pos = [i["key"] for i in inp["issues"]]
         self.assertEqual((t[k0]["rank"], t[k1]["rank"]), (pos.index(k0), pos.index(k1)))
 
+    def test_team_shape_flags_tickets_whose_ai_time_is_posted(self):
+        """#79 : label de suivi du temps gagné par l'IA (jira.ai_feedback.label, sinon temps_gagne_ia) -> ai_fb, qui grise
+        le bouton de la fiche ; aucun autre label n'est publié."""
+        inp = self.team_input()
+        a, b = [i for i in inp["issues"] if i["key"] in ("DM-100", "DM-102")]
+        a["fields"]["labels"] = ["front", "temps_gagne_ia"]
+        b["fields"]["labels"] = ["feedback_ia"]
+        t = {x["key"]: x for p in self.run_script("team_shape.py", inp)["people"] for x in p["tickets"]}
+        self.assertEqual((t["DM-100"].get("ai_fb"), t["DM-102"].get("ai_fb")), (True, None))
+        self.assertNotIn("labels", t["DM-100"])
+        jira = dict(FIXTURE["jira"], ai_feedback={"label": "feedback_ia"})
+        t = {x["key"]: x for p in self.run_script("team_shape.py", inp, jira=jira)["people"] for x in p["tickets"]}
+        self.assertEqual((t["DM-100"].get("ai_fb"), t["DM-102"].get("ai_fb")), (None, True))
+
     def test_team_shape_points_follow_the_field_order_and_keep_zero(self):
         """Champ du board d'abord (Story Points) ; un 0 posé compte, l'estimation ne le remplace pas (cas EW-7852)."""
         inp = self.team_input(n_issues=2)

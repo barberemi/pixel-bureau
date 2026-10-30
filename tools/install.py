@@ -400,6 +400,7 @@ def github_config(ask, k, project_id, previous):
 MODELS = [("review_one", "Relire une PR à la demande (bouton « Faire relire »)", True),
           ("review_cron", "Relire automatiquement les PR ouvertes, plusieurs fois par jour (cron, avis posté sur GitHub)", False),
           ("estimate", "Réestimer un ticket (Story Points et commentaire dans Jira)", True),
+          ("ai_time", "Estimer le temps gagné par l'IA sur un ticket terminé (commentaire et label dans Jira, aussi en fin de mise en prod)", True),
           ("issue", "Rédiger une issue GitHub depuis une intention", True),
           ("ticket", "Créer un ticket Jira depuis une intention (rédigé au modèle de l'équipe, validé avant création)", True),
           ("assign", "M'affecter un ticket (assignation et passage En cours)", True),

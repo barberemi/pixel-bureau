@@ -513,11 +513,11 @@
     ]
    },
    {
-    "name": "ai_feedback",
+    "name": "ai_time",
     "step_type": {
-     "type": "Agent"
+     "type": "TriggerWorkflow"
     },
-    "description": "Retour IA sur toutes les PR mergées du ticket (Quick Prompt mep.feedback_qp, qui les retrouve lui-même).",
+    "description": "Temps gagné par l'IA sur le ticket : lance le modèle du Bureau (models.ai_time) sans sa validation (gate = non : la gate « ticket terminé ? » en tient lieu), puis continue sans l'attendre. Lancement refusé (déjà en cours sur ce ticket) : la suite passe quand même.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -526,12 +526,21 @@
     "output_format": {
      "type": "FreeText"
     },
-    "quick_prompt_id": "@@mep.feedback_qp@@",
-    "quick_prompt_variables": {
-     "ticket": "{{steps.resolve.data.stdout}}"
+    "sub_workflow_id": "@@mep.ai_time@@",
+    "sub_workflow_variables": {
+     "ticket": "{{steps.resolve.data.stdout}}",
+     "gate": "non"
     },
-    "_vars_from": "mep.feedback_vars",
-    "_requires": "mep.feedback_qp"
+    "on_result": [
+     {
+      "contains": "TRIGGER_REFUSED",
+      "action": {
+       "type": "Goto",
+       "step_name": "transition_deployed"
+      }
+     }
+    ],
+    "_requires": "mep.ai_time"
    },
    {
     "name": "transition_deployed",
@@ -636,7 +645,7 @@
    "main_tree_read_only": true
   },
   "concurrency_limit": 1,
-    "concurrency_key": "{{project}}",
+  "concurrency_key": "{{project}}",
   "guards": {
    "timeout_seconds": 14400,
    "max_llm_calls": 5,

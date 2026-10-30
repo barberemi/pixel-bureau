@@ -10,7 +10,7 @@ import assemble, templates  # noqa: E402
 
 BASE = json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text())
 TPL = templates.load_templates()
-MODELS = ("review_child", "review_one", "review_cron", "estimate", "issue", "ticket", "assign", "unassign", "env", "deploy")
+MODELS = ("review_child", "review_one", "review_cron", "estimate", "issue", "ticket", "assign", "unassign", "env", "deploy", "ai_time")
 GH = "12121212-3434-5656-7878-909090909090"
 CHILD = "abababab-0000-4000-8000-000000000001"
 PAGE = "cdcdcdcd-0000-4000-8000-000000000002"
@@ -176,7 +176,7 @@ class ModelsTest(unittest.TestCase):
         for key, tpl in TPL.items():
             for s in (tpl.get("definition") or {}).get("steps") or []:
                 for rule in s.get("on_result") or []:
-                    self.assertRegex(rule["contains"], r"^(OK|ERROR|PARTIAL|PENDING|PAGINATION_TRUNCATED|exit_\d+|http_\d+)$",
+                    self.assertRegex(rule["contains"], r"^(OK|ERROR|PARTIAL|PENDING|PAGINATION_TRUNCATED|TRIGGER_REFUSED|exit_\d+|http_\d+)$",
                                      f"{key}.{s['name']}")
 
     def test_issue_finds_gh_and_its_recap_discussion_is_optional(self):

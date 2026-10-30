@@ -86,6 +86,7 @@ Les actions :
   dans `settings.json` du pack (ou ta config). `workflow` est facultatif (sinon le `staging_workflow` du dépôt) ; le nom de chaque env (`dev`, `stg`) doit figurer dans le titre des runs du workflow, c'est par lui que le cron live retrouve l'occupant.
 - **Commenter** : à tout statut. Le texte se saisit dans la carte Kronn ; il part sur le ticket dans Jira avec le compte de ta connexion Atlassian, suivi de « (depuis Le Bureau) ». C'est un workflow du Bureau (« Le Bureau · commenter un ticket », un appel Jira, 0 token), créé par l'installateur quand Jira est connecté.
 - **Réestimer** (ton workflow `launch.estimate`, sinon le modèle du Bureau installé, `models.estimate`) : sur un ticket non terminé du sprint. Les nouveaux Story Points et la raison se saisissent dans la carte Kronn ; le ticket est mis à jour dans Jira avec un commentaire qui donne l'ancienne valeur, la nouvelle et la raison.
+- **⏱ Temps gagné IA** (modèle du Bureau `models.ai_time`) : sur un ticket terminé ; grisé quand son label de suivi est déjà posé. Voir [Temps gagné par l'IA](22-temps-gagne-ia.md).
 
 Chaque bouton ouvre la carte Kronn du workflow : tu valides, puis elle suit le run étape par étape (une seule note le rappelle, en bas de la section). Les workflows se choisissent dans `bureau.config.json` (clé `launch` : `impl`, `mep`, `mep_pr`, `review`, `fix`) ; sans eux, la fiche n'a pas de boutons. N'importe quel workflow Kronn convient : si ses variables ne portent pas les noms attendus, donne-les.
 

@@ -69,6 +69,10 @@ TEMPLATES = {
     "review_one": ("workflow", ("models", "review_one"), {}),
     "review_cron": ("workflow", ("models", "review_cron"), {}),
     "estimate": ("workflow", ("models", "estimate"), {}),  # réestimer un ticket : Story Points et commentaire
+    # estimer le temps gagné par l'IA sur un ticket terminé (#79) : PR mergées trouvées sans IA, estimation par l'IA,
+    # commentaire et label de suivi (jira.ai_feedback) ; lancé par le bouton de la fiche ou en fin de mise en prod
+    "ai_time": ("workflow", ("models", "ai_time"), {n: "workflows/ai_time.py" for n in ("instance", "discover", "compose", "need_gate",
+                                                                                        "done")}),
     "issue": ("workflow", ("models", "issue"), {}),  # une intention rédigée en issue GitHub selon les modèles du dépôt
     # créer un ticket Jira (#77) : l'IA rédige au modèle de l'équipe (jira.create), le boss valide, l'API REST v2 crée
     "ticket": ("workflow", ("models", "ticket"), {n: "workflows/ticket.py" for n in ("apercu", "champs", "resultat")}),
@@ -162,6 +166,9 @@ def values(cfg):
         "jira.board": str(j.get("board") or ""),
         "jira.sprint_field": j.get("sprint_field") or "",
         "jira.points_fields": ",".join(j.get("points_fields") or []),
+        # temps gagné par l'IA (#79) : le champ des points « avec l'IA », lu avec le ticket (« ,customfield_… » ou rien)
+        "jira.ai_points_q": "".join("," + f for f in [((j.get("ai_feedback") or {}).get("points") or {}).get("field")] if f)
+        + ("".join("," + f for f in j.get("points_fields") or [] if f) if ((j.get("ai_feedback") or {}).get("points") or {}).get("field") else ""),
         "microsoft.config_id": (cfg.get("microsoft") or {}).get("config_id") or "",  # planning des absences (Graph)
         "microsoft.site": ((cfg.get("microsoft") or {}).get("planning") or {}).get("site") or "",
         "microsoft.item": ((cfg.get("microsoft") or {}).get("planning") or {}).get("item") or "",
@@ -172,10 +179,11 @@ def values(cfg):
         **{f"jira.role.{r}": role_ids(r, cfg) for r in ROLES},
         "jira.role_ids": ",".join(f'"{x}"' for r in ROLES for x in [role_ids(r, cfg)] if x),
         **{f"jira.flow.{k}": (j.get("flow") or {}).get(k) or v for k, v in FLOW_DEFAULTS.items()},
-        # mise en prod (#58) : Quick Prompt du retour IA et transition Jira de fin (facultatifs : étapes retirées sans eux)
-        "mep.feedback_qp": (cfg.get("mep") or {}).get("feedback_qp") or "",
+        # mise en prod (#58) : temps gagné par l'IA (#79, le modèle du Bureau s'il est installé et Jira connecté) et
+        # transition Jira de fin (facultatifs : étapes retirées sans eux)
+        "mep.ai_time": mep_ai_time(cfg),
         "mep.done_transition": str((cfg.get("mep") or {}).get("done_transition") or ""),
-        # projet Kronn du workflow : il borne les connexions de l'étape retour IA (GitHub de l'équipe), comme la revue
+        # projet Kronn du workflow : celui de la revue (dépôts de l'équipe), sinon celui de Kronn
         "mep.project_id": (cfg.get("mep") or {}).get("project_id") or rv.get("project_id")
         or (cfg.get("kronn") or {}).get("project_id") or "",
         # modèles incarnés par des agents (#78)
@@ -203,6 +211,10 @@ def values(cfg):
         "issue.discussion": (cfg.get("issue") or {}).get("discussion") or "",  # discussion Kronn du récap, facultative
         "env.label": (cfg.get("env") or {}).get("label") or "env-branch",  # label qui construit l'env de branche (réglage d'équipe)
     }
+
+
+def mep_ai_time(cfg):
+    return (cfg.get("models") or {}).get("ai_time") or "" if (cfg.get("jira") or {}).get("config_id") else ""
 
 
 def create_board_points(j):
@@ -260,7 +272,7 @@ def skipped(key, cfg):
         return not mep_projects(cfg)
     if key in ("review_child", "review_one", "review_cron"):  # API GitHub : connexion GitHub de Kronn (github.config_id)
         return not (cfg.get("github") or {}).get("config_id") or (key == "review_cron" and not review_repos(cfg))
-    if key in ("estimate", "assign", "unassign", "ticket"):
+    if key in ("estimate", "assign", "unassign", "ticket", "ai_time"):
         return not (cfg.get("jira") or {}).get("config_id")
     if key == "env":  # aucun dépôt où générer un env de branche
         return not assemble.env_repos({**cfg, "models": {**(cfg.get("models") or {}), "env": "?"}})
@@ -334,8 +346,6 @@ def render(tpl, cfg):
                 if team is None and src == "fix.skill_ids":  # sans skills propres à la correction : ceux de la revue
                     team = (cfg.get("review") or {}).get("skill_ids")
                 s["skill_ids"] = list(dict.fromkeys(s.get("skill_ids", []) + list(team or [])))
-            if s.pop("_vars_from", None) == "mep.feedback_vars":  # variables propres au Quick Prompt du retour IA
-                s["quick_prompt_variables"] = {**((cfg.get("mep") or {}).get("feedback_vars") or {}), **s.get("quick_prompt_variables", {})}
             for name in dropped:  # entrée d'une étape suivante qui lisait une étape retirée
                 if isinstance(s.get("exec_stdin"), str):
                     s["exec_stdin"] = re.sub(r"\{\{steps\." + re.escape(name) + r"\.[\w.]+\}\}", "null", s["exec_stdin"])
@@ -406,6 +416,8 @@ def templatize(key, kind, d, cfg):
                     return f"@@{k}@@"
             if vals["jira.points_fields"]:
                 v = v.replace(vals["jira.points_fields"], "@@jira.points_fields@@")
+            if vals["jira.ai_points_q"] and v.startswith("labels"):  # champs lus et écrits par le temps gagné IA (#79)
+                v = v.replace(vals["jira.ai_points_q"], "@@jira.ai_points_q@@")
             if vals["jira.sprint_field"]:
                 v = v.replace(vals["jira.sprint_field"], "@@jira.sprint_field@@")
             if j.get("project"):
@@ -447,7 +459,8 @@ def templatize(key, kind, d, cfg):
                 continue
             tok = f"@@script:{path}@@"
             if s.get("collect_api_data"):
-                s["collect_api_data"]["sources"][0]["quick_exec"]["args"] = ["-c", tok]
+                qe = s["collect_api_data"]["sources"][0]["quick_exec"]
+                qe["args"] = ["-c", tok] + (qe.get("args") or [])[2:]  # arguments de la sous-commande gardés
             else:
                 s["exec_args"] = ["-c", tok] + (s.get("exec_args") or [])[2:]
     else:

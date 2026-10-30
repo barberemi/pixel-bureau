@@ -22,7 +22,7 @@ Le **ticket** est déduit de la PR : la première clé du projet Jira (`jira.pro
 | fetch_ticket_type | type du ticket dans Jira |
 | tag | prochain tag : Bug = correctif (`2.4.0` → `2.4.1`), sinon fonctionnalité (`2.4.0` → `2.5.0`) |
 | **gate du début** | la PR, le ticket, le tag, les déploiements et l'aperçu de l'annonce : approuver lance la mise en prod |
-| rebase | base de la PR fusionnée dans la branche puis squash en un seul commit posé sur la base (pas de commit de merge, pas de rejeu commit par commit : une branche qui a déjà fusionné sa base ne re-conflicte pas), push protégé (`--force-with-lease`), dans une copie du dépôt sous `~/.cache/pixel-bureau/mep` |
+| rebase | base de la PR fusionnée dans la branche puis squash en un seul commit posé sur la base, qui garde les lignes `Co-Authored-By` et `Signed-off-by` des commits (qui a écrit le code, un modèle d'IA compris) (pas de commit de merge, pas de rejeu commit par commit : une branche qui a déjà fusionné sa base ne re-conflicte pas), push protégé (`--force-with-lease`), dans une copie du dépôt sous `~/.cache/pixel-bureau/mep` |
 | teams_post | l'annonce Teams ⏳ dans le canal des mises en prod, une fois la PR remise sur sa base : un conflit avec la base, l'échec le plus courant, n'annonce rien |
 | citest | label de la CI reposé, attente du résultat (25 min au plus) |
 | **gate** | tests verts : merger ? |
@@ -34,7 +34,7 @@ Le **ticket** est déduit de la PR : la première clé du projet Jira (`jira.pro
 | prod | déploiement prod, attente, l'annonce passe en ✅, puis les PR du ticket dans tous les projets |
 | **gate de fin** | le ticket est-il terminé ? |
 | dry_guard | en simulation, saute directement à done : ni retour IA ni statut de fin, rien n'est écrit dans Jira |
-| ai_feedback, transition_deployed | si terminé : retour IA sur toutes les PR mergées du ticket, puis statut de fin |
+| ai_time, transition_deployed | si terminé : lance le modèle « estimer le temps gagné par l'IA » sur le ticket (sans sa validation : la gate de fin en tient lieu ; il tourne à côté, la mise en prod ne l'attend pas), puis statut de fin ; sans le modèle, seulement le statut de fin |
 | done | fin ; « Changements » sur la gate de fin y mène directement (le ticket reste en l'état, le run finit en succès) |
 | teams_failed | seulement après l'échec d'une étape : l'annonce passe en ❌, la raison et le run en réponse dans le fil, et le run finit en échec |
 
@@ -60,6 +60,6 @@ Images : `tools/teams_logo.py` (Pillow) fait le chargeur commun (`sprites/teams/
   ```
   `{tag}` devient le tag de la release. Sans `ci_workflow`, l'étape de CI est passée. `logo` : PNG du projet, chemin relatif au pack d'équipe (`logos/front_api.png`).
 - `mep.teams` : `{"team": "<id de l'équipe>", "channel": "<id du canal>", "test_channel": "<canal des simulations>"}` (et `test_team` s'il est dans une autre équipe). Sans elle, pas d'annonce.
-- `mep.feedback_qp` (Quick Prompt du retour IA, qui retrouve lui-même les PR mergées du ticket), `mep.feedback_vars` (ses autres variables, passées vides), `mep.done_transition` (id de la transition Jira de fin). Sans eux, ces étapes sont retirées ; sans Jira, aussi la gate de fin.
-- `mep.project_id` : projet Kronn du workflow, qui borne les connexions de l'étape Agent du retour IA. Il doit avoir la connexion GitHub de l'équipe (`github.config_id`), sinon le Quick Prompt ne lit pas les PR (« outside this bridge token's scope »). Par défaut `review.project_id`, puis `kronn.project_id`.
+- Temps gagné par l'IA : le modèle du Bureau `models.ai_time` quand il est installé (voir [Temps gagné par l'IA](22-temps-gagne-ia.md)). `mep.done_transition` : id de la transition Jira de fin. Sans eux, ces étapes sont retirées ; sans Jira, aussi la gate de fin.
+- `mep.project_id` : projet Kronn du workflow. Par défaut `review.project_id`, puis `kronn.project_id`.
 - L'id du workflow est rangé dans `launch.mep_pr` (jamais dans `workflows` ni `actions`) : l'agent qui l'incarne (préfixe de l'id dans `agents[].wf`) garde sa fiche, « ▶ Lancer… » et sa fiche de paie. L'ancien bouton « Mettre en prod » du ticket (`launch.mep`) reste tant que cette clé existe.

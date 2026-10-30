@@ -50,8 +50,8 @@ function merged(cfg) {
 // ids des boutons, comme action_ids() : actions, modèles (models, #78) en repli, puis launch
 function actionWf(cfg) {
   const models = cfg.models || {}, launch = Object.fromEntries(Object.entries(cfg.launch || {}).map(([k, v]) => [k, typeof v === 'object' && v ? v.wf : v]));
-  const ids = {...(cfg.actions || {}), ...(models.review_one ? {review: models.review_one} : {}), ...(models.estimate ? {estimate: models.estimate} : {}), ...launch};
-  return Object.fromEntries(Object.entries(ids).filter(([k, v]) => v && ['impl', 'mep', 'mep_pr', 'review', 'fix', 'fix_pr', 'rebase', 'comment', 'estimate'].includes(k)).map(([k, v]) => [k, String(v).slice(0, 8)]));
+  const ids = {...(cfg.actions || {}), ...(models.review_one ? {review: models.review_one} : {}), ...(models.estimate ? {estimate: models.estimate} : {}), ...(models.ai_time ? {ai_time: models.ai_time} : {}), ...launch};
+  return Object.fromEntries(Object.entries(ids).filter(([k, v]) => v && ['impl', 'mep', 'mep_pr', 'review', 'fix', 'fix_pr', 'rebase', 'comment', 'estimate', 'ai_time'].includes(k)).map(([k, v]) => [k, String(v).slice(0, 8)]));
 }
 // console Support (#62), comme support_page() : nom du canal et préfixe du modèle d'investigation, null sans canal
 function supportPage(cfg) {
