@@ -172,6 +172,16 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(st["mode"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "code"}}])
         self.assertEqual(st["commente_plan"]["on_result"], [{"contains": "OK", "action": {"type": "Stop"}}])
 
+    def test_dossier_is_kept_after_the_run(self):
+        """Kronn supprime la copie de travail d'un run réussi : fin et plan seulement gardent le dossier dans ~/.cache."""
+        self.prepare()
+        home = os.path.join(self.tmp, "home")
+        env = {**os.environ, "KRONN_WORKTREE": self.wt, "HOME": home}
+        r = subprocess.run(["python3", "-c", self.code, "fin"], capture_output=True, text=True, cwd=self.wt, env=env)
+        dest = json.loads(r.stdout)["dossier"]
+        self.assertTrue(dest.startswith(home), dest)
+        self.assertTrue(os.path.exists(os.path.join(dest, "ticket.md")))
+
     def test_essai_mode_sends_nothing(self):
         """Mode essai : la chaîne entière sans effet externe (le shadow de Kronn ne rejoue pas un workflow à variables)."""
         self.prepare()
@@ -197,6 +207,11 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(self.sh("plan", "", "", stdin=json.dumps(plan))[0], 0)
         self.assertEqual(self.sh("plan", "corrige X", "", stdin=json.dumps(plan))[0], 3)  # consignes : mode correction
         self.assertEqual(self.sh("plan", "{{steps.orchestrateur.data.consignes}}", "", stdin=json.dumps(plan))[0], 0)
+        self.assertEqual(self.sh("plan", "", "Approuvé, vas-y", stdin=json.dumps(plan))[0], 0)  # commentaire d'une approbation
+        Path(self.wt, ".kronn", "chaine", "code.json").write_text("{}")  # le Code est déjà passé : un retour = correction
+        self.assertEqual(self.sh("plan", "", "Renomme la méthode", stdin=json.dumps(plan))[0], 3)
+        os.remove(os.path.join(self.wt, ".kronn", "chaine", "code.json"))
+        self.sh("plan", "", "", stdin=json.dumps(plan))
         self.assertIn('"titre": "L1"', self.sh("lot")[1])
         red = json.dumps({"ok": False}) + SEP + json.dumps({"verdict": "ok"})
         self.assertEqual(self.sh("tri_lot", stdin=red)[0], 4)

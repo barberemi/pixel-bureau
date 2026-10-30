@@ -386,11 +386,26 @@ def cmd_questions():
     sys.exit(3)
 
 
+def garde():
+    """Copie du dossier dans ~/.cache/pixel-bureau/chaine/<ticket>/ : Kronn supprime la copie de travail d'un run réussi."""
+    e = etat()
+    if not e.get("ticket"):
+        return ""
+    dest = os.path.join(os.path.expanduser("~/.cache/pixel-bureau/chaine"), e["ticket"], str(e.get("run") or "run")[:8])
+    os.makedirs(dest, exist_ok=True)
+    for f in os.listdir(dossier()):
+        src = dossier(f)
+        if os.path.isfile(src):
+            with open(src, "rb") as a, open(os.path.join(dest, f), "wb") as b:
+                b.write(a.read())
+    return dest
+
+
 def cmd_mode(mode):
     """Plan seulement : code 0, l'étape suivante commente le plan dans le ticket puis la chaîne s'arrête. Complet ou
     essai : code 3, droit au poste Code (en complet, le plan ira dans la PR)."""
     if (mode or "plan").strip().lower() in ("plan", "plan seulement", "plan_seulement"):
-        print("Plan seulement : le plan part en commentaire du ticket, puis la chaîne s'arrête.")
+        print(f"Plan seulement : le plan part en commentaire du ticket, puis la chaîne s'arrête. Dossier gardé : {garde()}")
         return
     print("Mode " + ("essai : tout jusqu'à la PR, sans rien pousser ni écrire dans Jira." if essai() else "complet : au poste Code."))
     sys.exit(3)
@@ -416,7 +431,9 @@ def given(v):
 
 def cmd_plan(consignes="", retours=""):
     """Premier passage : le plan en lots. Consignes de l'orchestrateur ou retours de l'humain : mode correction (code 3)."""
-    if given(consignes) or given(retours):
+    # le commentaire d'une approbation arrive aussi dans retours (essai du 2026-10-30) : au premier passage du Code, il
+    # s'ajoute au dossier mais ne déclenche pas le mode correction ; ensuite, consignes ou retours = correction
+    if given(consignes) or (given(retours) and os.path.exists(dossier("code.json"))):
         print("Mode correction : consignes ou retours à traiter, pas de nouveau découpage.")
         sys.exit(3)
     plan = parse(read_stdin()) or {}
@@ -686,7 +703,9 @@ def cmd_reviewers():
 
 def cmd_fin():
     e = etat()
-    out({"ticket": e.get("ticket"), "repo": e.get("repo"), "pr": e.get("pr"), "ci": e.get("ci"), "env": e.get("env"), "tours": e.get("tours")})
+    e["dossier"] = garde()
+    out({"ticket": e.get("ticket"), "repo": e.get("repo"), "pr": e.get("pr"), "ci": e.get("ci"), "env": e.get("env"), "tours": e.get("tours"),
+         "dossier": e["dossier"]})
 
 
 def main(argv):
