@@ -83,6 +83,20 @@ class ChaineModelesTest(unittest.TestCase):
             self.assertEqual(steps(key)["critique"]["output_format"]["on_invalid"], "Continue", key)
             self.assertEqual(steps(key)["propose"]["output_format"]["on_invalid"], "Continue", key)
 
+    def test_the_floor_stops_at_the_pr_and_its_reviews(self):
+        """L'étage ne déploie rien : la PR, sa revue par le modèle du Bureau, les retours traités ; ni CI ni env de branche."""
+        liv = steps("impl_livraison")
+        self.assertEqual(list(liv), ["entree", "redige", "pousse", "pr", "revue", "retours", "fin"])
+        self.assertEqual(liv["revue"]["sub_workflow_id"], cfg()["models"]["impl_revue_pr"])
+        rv = steps("impl_revue_pr", cfg(models={**cfg()["models"], "review_child": "abababab-0000-4000-8000-000000000009"}))
+        self.assertEqual((rv["revue"]["sub_workflow_id"], rv["revue"]["sub_workflow_foreach_file"]),
+                         ("abababab-0000-4000-8000-000000000009", ".kronn/prs.json"))
+        self.assertNotIn("revue", steps("impl_revue_pr"))  # sans modèle de revue installé : pas de revue
+        self.assertEqual(list(steps("impl_retours")), ["entree", "corrige", "pousse", "reponds", "fin"])
+        text = json.dumps([TPL[k] for k in KEYS], ensure_ascii=False)
+        self.assertNotIn('"ci"', text)
+        self.assertNotIn("env de branche (réglage", text)
+
     def test_assign_step_needs_the_model(self):
         self.assertIn("affecter", steps("impl_code"))
         c = cfg()
@@ -189,10 +203,13 @@ class ChaineScriptTest(unittest.TestCase):
         e["mode"] = "essai"
         Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
         self.assertEqual(self.sh("mode", "essai")[0], 3)
-        for cmd in ("pousse", "ci", "env", "pret"):
+        for cmd in ("pousse", "pret"):
             code, outp = self.sh(cmd)
             self.assertEqual(code, 0, outp)
             self.assertIn("Mode essai", outp)
+        self.assertEqual(self.sh("revue_prep")[0], 3)  # ni revue de la PR ni retours : pas de PR en mode essai
+        self.assertEqual(self.sh("retours_lire")[0], 3)
+        self.assertIn("Mode essai", self.sh("reponds", stdin=json.dumps({"replies": [{"commentId": 1, "body": "✅"}]}))[1])
         code, outp = self.sh("pr", stdin=json.dumps({"title": "fix: AB-12 x", "body": "corps"}))
         self.assertIn("Mode essai", outp)
         self.assertIn("corps", Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text())

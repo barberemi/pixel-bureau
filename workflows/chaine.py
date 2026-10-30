@@ -23,10 +23,11 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
   quoi                              # contrôles : fichiers touchés, postes à lancer (réglages et plan)
   bilan_controles                   # rapports des postes de contrôle : bloquants et avis
   aiguillage                        # stdin décision de l'orchestrateur : 3 livrer, 4 retour au code, 0 humain
-  pousse | pr | ci | env | pret | reviewers | fin     # livraison et publication (gh)
+  pousse | pr | revue_prep | retours_lire | reponds   # PR, revue de la PR, retours des relecteurs (gh)
+  pret | reviewers | fin                              # publication après ta relecture (gh)
 
-Réglage impl (pack ou config) : repos.<owner/dépôt>.{base, checks.{regles,tests}, image, signoff, reviewers, ci_label,
-env_label, front}, components.<composant> = owner/dépôt, postes.<poste>.{actif, bloquant}, max_tours, max_lots.
+L'étage ne traite que l'implémentation, la PR et ses retours : ni CI, ni env de branche, ni déploiement (le RDC s'en charge).
+Réglage impl (pack ou config) : repos.<owner/dépôt>.{base, checks.{regles,tests}, reviewers, front}, components.<composant> = owner/dépôt, postes.<poste>.{actif, bloquant}, max_tours, max_lots.
 Une commande de vérification reçoit {worktree}, {main} (dossier du projet), {files}, {php}, {ts}, {tests} (fichiers
 modifiés par rapport à la base, par type).
 """
@@ -35,7 +36,7 @@ from _lib import CFG, get, read_json, send, write_json, write_text
 
 SEP = "\n===SEP===\n"
 KEY = re.compile(r"^[A-Z][A-Z0-9]+-\d+$")
-POSTES = ("cadrage", "schema", "patterns", "code", "regles", "securite", "tests", "perf", "revue", "livraison")
+POSTES = ("cadrage", "schema", "patterns", "code", "regles", "securite", "tests", "perf", "revue", "pr", "revue_pr", "retours")
 CONTROLES = ("regles", "securite", "tests", "perf", "revue")
 BLOQUANTS = {"regles", "securite", "tests"}  # par défaut ; perf et revue : avis
 FRONT = ["*.scss", "*.css", "*.twig", "*.html", "*.vue", "*.tsx", "*.jsx", "*.ts", "*.js"]
@@ -628,55 +629,58 @@ def cmd_pr():
     print(f"PR #{n} (brouillon) : https://github.com/{e['repo']}/pull/{n}")
 
 
-def cmd_ci():
-    if sauter("label et attente de la CI"):
-        return
-    e, reg = etat(), reglages()
-    n = e.get("pr") or pr_number()
-    lab = reg.get("ci_label")
-    if lab:
-        gh("pr", "edit", n, "-R", e["repo"], "--remove-label", lab)
-        time.sleep(3)
-        gh("pr", "edit", n, "-R", e["repo"], "--add-label", lab)
-    end = time.time() + int(reg.get("ci_wait_min") or 25) * 60
-    state = "absente"
-    while time.time() < end:
-        code, o, _ = gh("pr", "checks", n, "-R", e["repo"], "--json", "state", "-q", "[.[].state] | join(\",\")")
-        states = [s for s in o.split(",") if s]
-        if states and not any(s in ("PENDING", "QUEUED", "IN_PROGRESS", "EXPECTED", "WAITING") for s in states):
-            state = "verte" if all(s in ("SUCCESS", "SKIPPED", "NEUTRAL") for s in states) else "rouge"
-            break
-        state = "en cours" if states else state
-        time.sleep(30)
-    e["ci"] = state
-    write_json(dossier("etat.json"), e)
-    print(f"CI de la PR #{n} : {state}")
+def cmd_revue_prep():
+    """Revue de la PR par le modèle de revue du Bureau (sous-workflow en foreach) : la PR en .kronn/prs.json. Mode essai
+    ou pas de PR : code 3, rien n'est relu."""
+    e = etat()
+    n = e.get("pr") or ("" if essai() else pr_number())
+    if essai() or not n:
+        print("Mode essai : pas de PR à relire." if essai() else "Aucune PR ouverte : rien à relire.")
+        sys.exit(3)
+    _, me, _ = gh("api", "user", "--jq", ".login")
+    os.makedirs(os.path.join(root(), ".kronn"), exist_ok=True)
+    write_json(os.path.join(root(), ".kronn", "prs.json"), [{"number": int(n), "author": me, "repo": e["repo"]}])
+    print(f"PR #{n} confiée à la revue")
 
 
-def cmd_env():
-    if sauter("env de branche"):
+def cmd_retours_lire():
+    """Commentaires de revue de la PR qui n'ont pas encore de réponse (fils ouverts) ; aucun, ou mode essai : code 3."""
+    e = etat()
+    n = e.get("pr") or ("" if essai() else pr_number())
+    if essai() or not n:
+        print("Mode essai : pas de retours à traiter." if essai() else "Aucune PR ouverte : pas de retours.")
+        sys.exit(3)
+    code, o, err = gh("api", f"repos/{e['repo']}/pulls/{n}/comments", "--paginate")
+    try:
+        cs = json.loads(o) if code == 0 and o else []
+    except ValueError:
+        cs = []
+    answered = {c.get("in_reply_to_id") for c in cs if c.get("in_reply_to_id")}
+    todo = [{"id": c["id"], "path": c.get("path"), "line": c.get("line") or c.get("original_line"), "body": (c.get("body") or "")[:3000]}
+            for c in cs if not c.get("in_reply_to_id") and c["id"] not in answered]
+    if not todo:
+        print(f"PR #{n} : aucun commentaire sans réponse")
+        sys.exit(3)
+    write_json(dossier("retours.json"), {"pr": n, "fils": todo})
+    out({"pr": n, "fils": todo})
+
+
+def cmd_reponds():
+    """Réponses de l'agent dans les fils de la PR (gh) ; mode essai : rien n'est posté."""
+    d = parse(read_stdin()) or {}
+    replies = [r for r in d.get("replies") or [] if isinstance(r, dict) and r.get("commentId") and r.get("body")]
+    if sauter("réponses dans les fils de la PR"):
         return
-    e, reg = etat(), reglages()
-    lab = reg.get("env_label")
+    e = etat()
     n = e.get("pr") or pr_number()
-    if not lab:
-        print("Pas d'env de branche réglé pour ce dépôt.")
-        return
-    if reg.get("env_needs_ready"):  # dépôt dont l'env ne se construit pas sur un brouillon
-        gh("pr", "ready", n, "-R", e["repo"])
-    gh("pr", "edit", n, "-R", e["repo"], "--add-label", lab)
-    pat = reg.get("env_url") or (CFG.get("env") or {}).get("url") or ""
-    url = ""
-    for _ in range(16 if pat else 0):
-        _, o, _ = gh("pr", "view", n, "-R", e["repo"], "--json", "comments", "-q", ".comments[].body")
-        m = re.search(pat, o)
-        if m:
-            url = m.group(0)
-            break
-        time.sleep(30)
-    e["env"] = url
-    write_json(dossier("etat.json"), e)
-    print(f"Env de branche : {url or 'en construction (adresse pas encore publiée)'}")
+    ok = 0
+    for r in replies:
+        code, _, _ = gh("api", "-X", "POST", f"repos/{e['repo']}/pulls/{n}/comments/{r['commentId']}/replies", "-f", f"body={r['body']}")
+        ok += code == 0
+    st = load("retours.json", {}) or {}
+    st.update({"reponses": ok, "resume": d.get("resume")})
+    write_json(dossier("retours.json"), st)
+    print(f"PR #{n} : {ok} réponse(s) postée(s) sur {len(replies)}")
 
 
 def cmd_pret():
@@ -697,23 +701,23 @@ def cmd_reviewers():
     if who:
         gh("pr", "edit", n, "-R", e["repo"], "--add-reviewer", ",".join(who))
     url = f"https://github.com/{e['repo']}/pull/{n}"
-    out(f"PR prête à relire : [{url}|{url}]" + (f" ; env de branche : {e['env']}" if e.get("env") else "")
-        + f" ; CI : {e.get('ci') or '?'} (chaîne d'implémentation du Bureau, {e.get('tours', 0)} tour(s) de contrôle).")
+    out(f"PR prête à relire : [{url}|{url}] (chaîne d'implémentation du Bureau, {e.get('tours', 0)} tour(s) de contrôle, revue IA traitée).")
 
 
 def cmd_fin():
     e = etat()
     e["dossier"] = garde()
-    out({"ticket": e.get("ticket"), "repo": e.get("repo"), "pr": e.get("pr"), "ci": e.get("ci"), "env": e.get("env"), "tours": e.get("tours"),
-         "dossier": e["dossier"]})
+    out({"ticket": e.get("ticket"), "repo": e.get("repo"), "pr": e.get("pr"), "tours": e.get("tours"), "dossier": e["dossier"],
+         "retours": (load("retours.json") or {}).get("reponses")})
 
 
 def main(argv):
     cmd, args = (argv[1] if len(argv) > 1 else ""), argv[2:]
     simple = {"releve": cmd_releve, "dossier": cmd_dossier, "existe": cmd_existe, "questions": cmd_questions, "lot": cmd_lot,
               "tri_lot": cmd_tri_lot, "tri_tests": cmd_tri_tests, "bilan_code": cmd_bilan_code, "quoi": cmd_quoi, "bilan_controles": cmd_bilan_controles,
-              "aiguillage": cmd_aiguillage, "pousse": cmd_pousse, "pr": cmd_pr, "ci": cmd_ci, "env": cmd_env, "pret": cmd_pret,
-              "reviewers": cmd_reviewers, "fin": cmd_fin}
+              "aiguillage": cmd_aiguillage, "pousse": cmd_pousse, "pr": cmd_pr, "pret": cmd_pret,
+              "reviewers": cmd_reviewers, "fin": cmd_fin, "revue_prep": cmd_revue_prep, "retours_lire": cmd_retours_lire,
+              "reponds": cmd_reponds}
     if cmd in simple:
         return simple[cmd]()
     if cmd == "lance":

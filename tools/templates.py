@@ -22,7 +22,8 @@ TPL_DIR = os.path.join(ROOT, "workflows", "templates")
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import assemble  # noqa: E402  (roster du profil d'équipe)
 # postes de la chaîne d'implémentation (#76) appelés par le parent ou par le poste des contrôles, dans l'ordre de création
-IMPL_POSTES = ("cadrage", "schema", "patterns", "code", "regles", "securite", "tests", "perf", "revue", "livraison", "publication")
+IMPL_POSTES = ("cadrage", "schema", "patterns", "code", "regles", "securite", "tests", "perf", "revue", "revue_pr", "retours", "livraison",
+               "publication")
 # modèle -> (type, où trouver l'id dans la config, scripts par étape)
 TEMPLATES = {
     "office": ("workflow", ("workflows", "office"), {"snapshot": "workflows/office_snapshot.py"}),
@@ -383,9 +384,9 @@ IMPL_AGENTS = {
     "tests": ("default", ["testing", "test-driven-development"]),
     "perf": ("default", ["web-performance", "accessibility"]), "perf.critique": ("economy", []),
     "revue": ("reasoning", ["requesting-code-review"]), "revue.critique": ("default", ["receiving-code-review"]),
-    "livraison": ("economy", []),
+    "livraison": ("economy", []), "retours": ("reasoning", ["receiving-code-review"]),
 }
-IMPL_TEAM_SKILLS = {"code", "code.relecture", "regles", "tests", "revue"}  # + impl.skills de l'équipe (langages, conventions)
+IMPL_TEAM_SKILLS = {"code", "code.relecture", "regles", "tests", "revue", "retours"}  # + impl.skills de l'équipe (langages, conventions)
 
 
 def impl_agent(step, role, cfg):

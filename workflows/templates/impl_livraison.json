@@ -1,9 +1,9 @@
 {
  "kind": "workflow",
  "key": "impl_livraison",
- "doc": "PR au modèle du dépôt (brouillon), CI, env de branche ; 0 token sauf la description.",
+ "doc": "PR brouillon au modèle du dépôt, revue de la PR, retours traités ; ni CI, ni env de branche.",
  "definition": {
-  "name": "Le Bureau · chaîne · 🚀 livraison",
+  "name": "Le Bureau · chaîne · 📤 PR",
   "project_id": null,
   "trigger": {
    "type": "Manual"
@@ -43,7 +43,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Contexte de la livraison : ticket, rapports, fichiers modifiés (0 token).",
+    "description": "Contexte de la PR : ticket, rapports, fichiers modifiés (0 token).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -136,7 +136,7 @@
     "exec_stdin": "{{steps.redige.data_json ?? \"null\"}}"
    },
    {
-    "name": "ci",
+    "name": "revue",
     "agent": "ClaudeCode",
     "mode": {
      "type": "Normal"
@@ -145,20 +145,25 @@
      "type": "FreeText"
     },
     "step_type": {
-     "type": "Exec"
+     "type": "SubWorkflow"
     },
-    "description": "Label de CI du dépôt (réglage ci_label) puis attente du verdict, 25 min au plus.",
-    "exec_command": "python3",
-    "exec_args": [
-     "-c",
-     "@@script:workflows/chaine.py@@",
-     "ci"
-    ],
-    "exec_timeout_secs": 1800,
-    "external_effect": true
+    "description": "Poste 👀 revue de la PR ; en panne, on continue.",
+    "sub_workflow_id": "@@models.impl_revue_pr@@",
+    "sub_workflow_variables": {
+     "ticket": "{{ticket}}"
+    },
+    "on_result": [
+     {
+      "contains": "SUBWF_FAILED",
+      "action": {
+       "type": "Goto",
+       "step_name": "retours"
+      }
+     }
+    ]
    },
    {
-    "name": "env",
+    "name": "retours",
     "agent": "ClaudeCode",
     "mode": {
      "type": "Normal"
@@ -167,17 +172,22 @@
      "type": "FreeText"
     },
     "step_type": {
-     "type": "Exec"
+     "type": "SubWorkflow"
     },
-    "description": "Env de branche (réglage env_label) et son adresse, 8 min au plus.",
-    "exec_command": "python3",
-    "exec_args": [
-     "-c",
-     "@@script:workflows/chaine.py@@",
-     "env"
-    ],
-    "exec_timeout_secs": 600,
-    "external_effect": true
+    "description": "Poste 💬 retours : les commentaires de la revue traités ; en panne, on continue.",
+    "sub_workflow_id": "@@models.impl_retours@@",
+    "sub_workflow_variables": {
+     "ticket": "{{ticket}}"
+    },
+    "on_result": [
+     {
+      "contains": "SUBWF_FAILED",
+      "action": {
+       "type": "Goto",
+       "step_name": "fin"
+      }
+     }
+    ]
    },
    {
     "name": "fin",
@@ -191,7 +201,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Bilan de la livraison : PR, CI, env.",
+    "description": "Bilan : PR, retours traités.",
     "exec_command": "python3",
     "exec_args": [
      "-c",

@@ -588,7 +588,7 @@
     "step_type": {
      "type": "SubWorkflow"
     },
-    "description": "Poste 10 : PR au modèle du dépôt, CI, env de branche.",
+    "description": "Postes 10 à 12 : PR au modèle du dépôt, revue de la PR, retours traités.",
     "sub_workflow_id": "@@models.impl_livraison@@",
     "sub_workflow_variables": {
      "ticket": "{{ticket}}"
@@ -606,7 +606,7 @@
     "step_type": {
      "type": "Gate"
     },
-    "description": "Relis la PR brouillon avant qu'elle parte en relecture humaine.",
+    "description": "Relis la PR brouillon (revue IA traitée) avant qu'elle parte en relecture humaine.",
     "gate_message": "## 👀 PR de {{ticket}} prête en brouillon\n\n{{steps.livraison.data.last_output ?? \"(absent)\"}}\n\n---\n**Approuver** : la PR sort du brouillon, les relecteurs sont demandés, le lien va dans le ticket. **Changements** : ta consigne repart au poste Code (puis contrôles et livraison). **Rejeter** : on s'arrête là, la PR reste en brouillon.",
     "gate_request_changes_target": "code"
    },
