@@ -576,7 +576,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Fin de la mise en prod (atteinte aussi par « Changements » de la gate de fin).",
+    "description": "Fin de la mise en prod (atteinte aussi par « Changements » de la gate de fin). Relance aussi le cron équipe (sauf s'il tourne déjà) pour que la page le montre tout de suite.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -596,7 +596,7 @@
      "{{run.id}}",
      "{{dry_run}}"
     ],
-    "exec_timeout_secs": 30,
+    "exec_timeout_secs": 60,
     "on_result": [
      {
       "contains": "OK",

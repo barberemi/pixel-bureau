@@ -21,7 +21,7 @@ Codes de sortie (signaux exit_N de Kronn) : 2 projet inconnu, 3 PR introuvable o
 """
 import base64, json, os, re, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
 from datetime import datetime, timezone
-from _lib import CFG, read_json, write_json
+from _lib import CFG, read_json, refresh, write_json
 
 HOME = os.path.expanduser("~/.cache/pixel-bureau/mep")
 POLL, TRIES = int(os.environ.get("MEP_POLL", "20")), 75  # 25 min au plus par attente (exec_timeout_secs plafonné à 1800 s) ; MEP_POLL : tests
@@ -418,6 +418,8 @@ def end(p, n, forced, run_id, dry):
     st = load(run_id)
     what = "simulation de la MEP" if dry == "oui" else "MEP"
     print(f"Fin : {what} de {st.get('short')}#{st.get('pr')} réussie ; {st.get('ticket', 'le ticket')} n'a pas été touché par cette étape.")
+    if dry != "oui":  # PR mergée, release, ticket : le cron équipe les relit tout de suite (sauf s'il tourne déjà), sans
+        refresh("team")  # étape de plus (20 étapes, le plafond de Kronn) ; jamais d'échec de la MEP à cause de lui
 
 
 STEPS = {"resolve": resolve, "tag": tag, "rebase": rebase, "citest": citest, "merge": merge, "release": release,
