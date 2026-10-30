@@ -376,7 +376,7 @@ IMPL_AGENTS = {
     "cadrage": ("economy", []), "cadrage.critique": ("economy", []),
     "schema": ("economy", []), "schema.critique": ("economy", []),
     "patterns": ("default", []), "patterns.critique": ("default", []),
-    "orchestrateur": ("reasoning", ["writing-plans"]),
+    "orchestrateur": ("default", []),  # en reasoning, Opus 5.5 a coupé deux fois (filtre reasoning_extraction)
     "code": ("reasoning", ["verification-before-completion"]), "code.relecture": ("default", []),
     "regles": ("economy", []), "regles.critique": ("economy", []),
     "securite": ("reasoning", ["security"]), "securite.critique": ("default", ["security"]),
