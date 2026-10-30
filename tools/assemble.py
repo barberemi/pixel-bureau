@@ -203,6 +203,8 @@ def page_config(cfg):
         "support": support_page(cfg),  # console Support (#62)
         # créer un ticket (#77) : préfixe du modèle (l'agent qui l'incarne), pour sa validation et son dernier ticket créé
         "ticket": {"wf": str((cfg.get("models") or {}).get("ticket") or "")[:8]} if (cfg.get("models") or {}).get("ticket") else None,
+        # 1er étage, l'atelier d'implémentation (#125) : ses onglets quand la chaîne est installée (models.impl_chain)
+        "atelier": bool((cfg.get("models") or {}).get("impl_chain")),
     }
 
 

@@ -28,7 +28,7 @@ IMPL_POSTES = ("cadrage", "schema", "patterns", "code", "regles", "securite", "t
 TEMPLATES = {
     "office": ("workflow", ("workflows", "office"), {"snapshot": "workflows/office_snapshot.py"}),
     "live": ("workflow", ("workflows", "live"), {"snapshot": "workflows/live_snapshot.py", "gates": "workflows/gates_snapshot.py",
-                                                    "todos": "workflows/todos.py"}),
+                                                    "todos": "workflows/todos.py", "atelier": "workflows/atelier_snapshot.py"}),
     "team": ("workflow", ("workflows", "team"), {"github": "workflows/github_snapshot.py", "shape": "workflows/team_shape.py", "since": "workflows/standup_since.py",
                                                     "planning_jql": "workflows/planning_jql.py", "actions": "workflows/actions_snapshot.py"}),
     "payroll": ("workflow", ("workflows", "payroll"), {"payroll": "workflows/payroll_snapshot.py", "pages": "workflows/pages_snapshot.py", "gitfut": "workflows/gitfut_snapshot.py"}),

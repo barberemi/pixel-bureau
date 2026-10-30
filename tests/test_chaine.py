@@ -268,3 +268,43 @@ class ChaineScriptTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AtelierSnapshotTest(unittest.TestCase):
+    """workflows/atelier_snapshot.py : un bureau par run actif de la chaîne, états des postes lus dans les étapes du parent,
+    des contrôles (statut du rapport) et du poste PR ; la file = les runs en attente."""
+
+    def test_rooms_and_queue_from_the_chain_runs(self):
+        sys.path.insert(0, os.path.join(ROOT, "workflows"))
+        import atelier_snapshot as a
+        env = lambda d: "x\n---STEP_OUTPUT---\n" + json.dumps({"data": d}) + "\n---END_STEP_OUTPUT---"  # noqa: E731
+        parent = {"id": "r1", "workflow_id": "c", "status": "Running", "tokens_used": 5000, "started_at": "2026-10-01T09:00:00Z", "step_results": [
+            {"step_name": "ticket", "status": "Success", "output": env({"fields": {"summary": "Bouton partager"}})},
+            {"step_name": "prepare", "status": "Success", "output": "AB-12 sur dm/site : branche kronn/AB-12"},
+            {"step_name": "cadrage", "status": "Success"}, {"step_name": "gate_plan", "status": "Success"},
+            {"step_name": "code", "status": "Success"}, {"step_name": "controles", "status": "Success"},
+            {"step_name": "aiguillage", "status": "Success", "output": "Tour 2 sur 3 : retour au poste Code"},
+            {"step_name": "code", "status": "Running"}]}
+        ctrl = {"id": "k", "parent_run_id": "r1", "step_results": [{"step_name": "regles", "status": "Success", "output": '"statut": "ok"'},
+                                                                   {"step_name": "securite", "status": "Success", "output": '\\"statut\\": \\"a_corriger\\"'},
+                                                                   {"step_name": "perf", "status": "Success", "output": '"statut": "non_concerne"'}]}
+        api = {"/workflows/c/runs?limit=40": [{"id": "r1", "status": "Running"}, {"id": "r2", "status": "Pending", "started_at": "t"},
+                                               {"id": "r3", "status": "Success"}],
+               "/workflows/c/runs/r1": parent, "/workflows/k/runs?limit=60": [ctrl], "/workflows/k/runs/k": ctrl,
+               "/workflows/code/runs?limit=60": []}
+        old = (a.get, dict(a.CFG))
+        a.get = lambda p: api.get(p)
+        a.CFG.update(models={"impl_chain": "c", "impl_controles": "k", "impl_code": "code"}, impl={"max_tours": 3})
+        try:
+            snap = a.snapshot("now")
+        finally:
+            a.get = old[0]
+            a.CFG.clear()
+            a.CFG.update(old[1])
+        self.assertEqual(snap["queue"], [{"run": "r2", "since": "t"}])
+        r = snap["rooms"][0]
+        self.assertEqual((r["ticket"], r["repo"], r["title"], r["tour"], r["poste"]), ("AB-12", "dm/site", "Bouton partager", "2/3", "code"))
+        self.assertEqual({k: r["states"][k] for k in ("gate", "regles", "securite", "perf", "code")},
+                         {"gate": "ok", "regles": "ok", "securite": "bloq", "perf": "skip", "code": "run"})
+        self.assertTrue(r["back"])
+        self.assertEqual(r["note"], "🔒 bloquant → retour au code")
