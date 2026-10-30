@@ -13,7 +13,7 @@ impl (lanceur, 0 token)          composants Jira -> dépôts -> projets Kronn ; 
    ticket · prepare · [cadrage] · questions · ✋gate_questions · [schema] · [patterns] · dossier · orchestrateur_plan · ✋gate_plan
    · mode · [code] · [controles] · orchestrateur · aiguillage · ✋gate_escalade
    · [livraison = 📤 PR · [revue_pr] · [retours]] · ✋gate_pr · [publication] (Stop) · commente_plan (Plan seulement, puis Stop)
-   controles = quoi · [regles] · [securite] · [tests] · [perf] · [revue] · bilan
+   controles = quoi · [regles] · [securite] · [tests] · [perf] · [revue] · [besoin] · bilan
 ```
 
 `[x]` = sous-workflow `impl_x`. Chaque poste a de la place pour grandir : 20 étapes par workflow, comptées séparément pour chaque sous-workflow [src: url: https://github.com/DocRoms/Kronn/blob/main/backend/src/api/workflows.rs].
@@ -28,6 +28,10 @@ impl (lanceur, 0 token)          composants Jira -> dépôts -> projets Kronn ; 
 - Un Goto compte ses passages par arête (source, cible) sur tout le run, et une étape en code non nul dont le Goto a épuisé `max_iterations` **échoue** au lieu de continuer : tous les tours (propositions, essais par lot, tests, tours de contrôle) sont comptés par le script, qui rend 0 au dernier ; `max_iterations` n'est qu'un filet.
 - Une référence `{{steps.x.data_json}}` à une sortie d'agent sans enveloppe (`on_invalid: Continue`) est inconnue et Kronn refuse de rendre l'étape : toute référence à une sortie d'étape a un repli `?? …` (posé par le générateur).
 - Le shadow de Kronn ne rejoue pas un workflow à variables : l'instantané chiffré des variables est rangé sous l'id du run normal, le run shadow s'arrête sur « snapshot unavailable ». D'où le mode **essai** : toute la chaîne sans push, sans PR, sans Jira (le script saute ces étapes, `reviewers` sort en 5 pour sauter le commentaire Jira, l'`entree` du Code sort en 5 pour sauter l'étape `affecter`).
+
+## ✋ Ce que j'ai compris : la gate du cadrage
+
+Après le cadrage, la gate `gate_questions` s'ouvre à chaque ticket (`questions` sort en 0, la gate suit). Elle montre la compréhension, l'inclus et l'exclus, les critères d'acceptation, les questions avec leur hypothèse, un dépôt qui semble hors périmètre et, si le critique du cadrage n'est pas d'accord après 3 propositions, ses remarques restées. « Changements » renvoie au cadrage avec ton message (`retours.md` garde tout l'échange), autant de tours que tu veux, avant le schéma et le plan. `impl.gate_cadrage: false` : la gate ne s'ouvre que s'il y a à trancher (question bloquante, désaccord du critique, hors périmètre), sinon `questions` sort en 3 (saut au schéma). Essai d'EW-6550 : le cadrage avait compris « le front envoie des données, le mobile affiche » pour une page rendue en HTML par le front, son critique l'avait vu, et la chaîne a filé jusqu'au code.
 
 ## Un ticket, plusieurs dépôts : un bureau et une PR par dépôt
 
@@ -55,6 +59,12 @@ Dans l'atelier, un run en échec des dernières 24 h reste dans « 🧯 En panne
 ## Rejouer un ticket déjà livré (essai comparé)
 
 La variable `base` de la chaîne (commit ou branche) fait partir la branche d'un état passé, en mode essai, pour comparer le travail de la chaîne à la PR humaine déjà livrée. Le futur ne doit pas fuiter : chaque poste et l'orchestrateur reçoivent la consigne de juger par rapport à ce commit (la base distante contient la livraison), le diff part de ce commit (`depart` dans `etat.json`), le ticket ne montre ni son statut ni les commentaires postérieurs. Reste visible : l'état actuel de GitHub (environnements, rulesets) quand un agent l'interroge.
+
+## Conformité au besoin et description de la PR
+
+Le poste 🎯 Besoin (`impl_besoin`, dans les contrôles, bloquant par défaut) confronte le diff aux exigences du ticket (critères d'acceptation, « Qu'est-ce qu'on va faire », « Comment on teste », retours de l'humain) : `exigences` = une ligne par exigence, `fait`, `partiel`, `non`, `autrement` ou `hors_scope` ; une exigence non faite qui revient au dépôt est bloquante. Les autres contrôles jugent la qualité du code, aucun ne vérifiait le résultat demandé.
+
+La description de la PR suit le modèle du dépôt avec un emoji par section (🎯 De quoi on parle, 🔧 Comment j'ai réglé, 🧪 Comment on teste, ✅ Validation, 🚦 Avant / après le merge), courte, sans texte d'aide laissé. Deux blocs y sont écrits par le script, pas par l'agent : « 📋 Ce que le ticket demandait, et où ça atterrit » (le tableau du poste Besoin, à l'emplacement `<!-- bureau-exigences -->`) et « ⚠️ Points ouverts » (bloquants restés et avis des contrôles, sans doublon, `<!-- bureau-points -->`). Essai d'EW-7945 : l'orchestrateur disait « avis à reporter dans la PR », le rédacteur les a omis et annonçait « qat retiré ».
 
 ## Périmètre : implémentation, PR et retours
 
@@ -85,7 +95,7 @@ La chaîne s'arrête à la PR et à sa vie de revue : `impl_livraison` (« 📤 
 
 ## Réglage `impl`
 
-`repos.<owner/dépôt>` : `base` (sinon `main` ; absente du dépôt distant : sa branche par défaut, front_tools est sur `master`), `checks.regles` et `checks.tests` (commandes `sh`, chaîne ou `{cmd, subdir}`, emplacements `{worktree}`, `{main}`, `{php}`, `{ts}`, `{tests_php}`, `{tests_ts}`, `{files}` ; une commande dont les fichiers visés manquent est sautée), `ci_label`, `env_label`, `env_url`, `reviewers`. `components.<composant>` quand un composant ne porte pas le nom de son dépôt. `postes.<rôle>` (`cadrage`, `cadrage.critique`, `code`, `revue`…) : `agent`, `tier`, `model`, `skills` en plus, `actif`, `bloquant`. `skills` et `guidelines` de l'équipe pour le code et les contrôles. `max_tours`, `max_lots`. `clones` (dossier des copies locales, `~/Sites` par défaut) et `auto_projet` (cloner un dépôt absent). `references` : dépôts standard de l'équipe (ex. front_euronews) que chaque bureau peut lire, comme ses dépôts sœurs, par leur copie locale (projet Kronn), jamais modifiés.
+`repos.<owner/dépôt>` : `base` (sinon `main` ; absente du dépôt distant : sa branche par défaut, ex. `master`), `checks.regles` et `checks.tests` (commandes `sh`, chaîne ou `{cmd, subdir}`, emplacements `{worktree}`, `{main}`, `{php}`, `{ts}`, `{tests_php}`, `{tests_ts}`, `{files}` ; une commande dont les fichiers visés manquent est sautée), `ci_label`, `env_label`, `env_url`, `reviewers`. `components.<composant>` quand un composant ne porte pas le nom de son dépôt. `postes.<rôle>` (`cadrage`, `cadrage.critique`, `code`, `revue`…) : `agent`, `tier`, `model`, `skills` en plus, `actif`, `bloquant`. `skills` et `guidelines` de l'équipe pour le code et les contrôles. `max_tours`, `max_lots`. `clones` (dossier des copies locales, `~/Sites` par défaut) et `auto_projet` (cloner un dépôt absent). `references` : dépôts standard de l'équipe (celui qui fixe les conventions) que chaque bureau peut lire, comme ses dépôts sœurs, par leur copie locale (projet Kronn), jamais modifiés.
 
 Vérifier en conteneur jetable depuis la copie de travail : le projet Compose d'une copie de travail n'a pas de conteneur (nom de dossier), un `docker compose exec` y échouerait sans bruit ; `docker run --rm -v {worktree}/…:/app -v {main}/…/vendor:/app/vendor:ro …` marche (dépendances partagées tant que le verrou n'a pas changé).
 
