@@ -1,6 +1,6 @@
 {
  "platform": "linux",
- "chrome": "Google Chrome 155.0.8059.39",
+ "chrome": "Google Chrome 156.0.8078.47",
  "names": [
   "plan",
   "fiche-agent",
@@ -9,6 +9,7 @@
   "fil",
   "kanban",
   "tv",
-  "mobile"
+  "mobile",
+  "atelier"
  ]
 }
