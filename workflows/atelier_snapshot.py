@@ -2,14 +2,17 @@
 lus dans l'API Kronn, 0 token ; stdout JSON du dataset atelier (cron live).
 
   {generated_at, rooms: [{run, ticket, title, repo, status, poste, gate, states: {poste: ok|run|bloq|avis|skip|wait|err},
-                          tour, tok, since, lot, note, url}], queue: [{run, since}], postes: [clé]}
+                          tour, tok, since, lot, note, url}], queue: [{run, since}], pannes: [{run, ticket, repo, title,
+                          poste, since, url}], postes: [clé]}
 
-Un bureau = un run actif de la chaîne (4 au plus, concurrency_limit) ; la file = les runs en attente d'un bureau libre.
+Un bureau = un run actif de la chaîne (4 au plus, concurrency_limit) ; la file = les runs en attente d'un bureau libre ;
+les pannes = les runs en échec des dernières 24 h qu'aucun run plus récent du même ticket et du même dépôt n'a repris
+(relancer le ticket les reprend là où ils se sont arrêtés).
 L'état d'un poste vient de l'étape du parent (cadrage, schema, patterns, code…), de celle du sous-workflow des contrôles
 (regles…revue, avec le statut de leur rapport : « a_corriger » = bloquant, « non_concerne » = sauté) et de celle du poste
 PR (pr, revue, retours). Le ticket, le dépôt et le tour se lisent dans les sorties des étapes prepare, ticket et aiguillage.
 """
-import json, re, sys
+import datetime, json, re, sys
 from _lib import ACTIVE, CFG, get
 
 POSTES = ["cadrage", "schema", "patterns", "gate", "code", "regles", "securite", "tests", "perf", "revue", "pr", "revue_pr", "retours"]
@@ -112,26 +115,56 @@ def room(run, models, cache):
             "url": f"{ui.rstrip('/')}/#workflows/{run.get('workflow_id')}" if ui else None}
 
 
+def panne(run, models, cache):
+    """Un run en échec : son bureau (ticket, dépôt) et le poste où il s'est arrêté."""
+    r = room(run, models, cache)
+    steps = last_steps(run)
+    failed = next((k for k in POSTES if r["states"].get(k) == "err"), None)
+    if not failed:  # étape du parent hors postes (prepare, orchestrateur…), ou poste PR (livraison)
+        failed = next((n for n, s in reversed(list(steps.items())) if s.get("status") == "Failed"), None)
+    return {**{k: r[k] for k in ("run", "ticket", "repo", "title", "since", "url")}, "poste": failed}
+
+
 def snapshot(now_iso=None):
     models = CFG.get("models") or {}
     chain = models.get("impl_chain")
-    out = {"generated_at": now_iso, "postes": POSTES, "rooms": [], "queue": []}
+    out = {"generated_at": now_iso, "postes": POSTES, "rooms": [], "queue": [], "pannes": []}
     if not chain:
         return out
     runs = get(f"/workflows/{chain}/runs?limit=40") or []
-    cache = {}
+    cache, seen = {}, set()
     for r in sorted(runs, key=lambda r: r.get("started_at") or ""):
         if r.get("status") == "Pending":
             out["queue"].append({"run": r["id"], "since": r.get("started_at")})
         elif r.get("status") in ACTIVE:
             out["rooms"].append(room(get(f"/workflows/{chain}/runs/{r['id']}"), models, cache))
+    # pannes : du plus récent au plus ancien (24 h, 12 runs lus au plus), une par ticket et dépôt, si aucun run plus
+    # récent du même ticket et du même dépôt ne l'a reprise
+    limit = day_before(now_iso) if now_iso else ""
+    for r in sorted(runs, key=lambda r: r.get("started_at") or "", reverse=True)[:12]:
+        if len(out["pannes"]) >= 3 or (r.get("started_at") or "") < limit:
+            break
+        full = get(f"/workflows/{chain}/runs/{r['id']}") or {}
+        m = KEY.search((last_steps(full).get("prepare") or {}).get("output") or "")
+        if not m:
+            continue
+        if r.get("status") == "Failed" and m.groups() not in seen:
+            out["pannes"].append(panne(full, models, cache))
+        seen.add(m.groups())
     return out
 
 
+def day_before(iso):
+    try:
+        t = datetime.datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except ValueError:
+        return ""
+    return (t - datetime.timedelta(hours=24)).isoformat(timespec="seconds")
+
+
 if __name__ == "__main__":
-    import datetime
     try:
         data = snapshot(datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"))
     except Exception as e:  # Kronn injoignable : un dataset vide plutôt qu'un cron en échec
-        data = {"generated_at": None, "postes": POSTES, "rooms": [], "queue": [], "error": str(e)[:300]}
+        data = {"generated_at": None, "postes": POSTES, "rooms": [], "queue": [], "pannes": [], "error": str(e)[:300]}
     sys.stdout.write(json.dumps(data, ensure_ascii=False))

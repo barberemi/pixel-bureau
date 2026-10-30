@@ -857,6 +857,7 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .atelier .at-tag{font:700 11px system-ui,sans-serif;padding:1px 6px;white-space:nowrap}
 .atelier .at-tag.wait{background:var(--warn);color:#1c1c1c}.atelier .at-tag.bloq{background:var(--err);color:#fff}.atelier .at-tag.run{background:var(--info);color:#fff}
 .atelier .at-q{font:12.5px system-ui,sans-serif;padding:3px 0}.atelier .at-scope{margin-top:12px}
+.atelier .at-panne{border-left:4px solid var(--err);background:var(--chip);padding:6px 10px;margin:0 0 8px;line-height:1.45}
 .atelier .at-back{font:600 13px system-ui,sans-serif;padding:5px 10px;border:3px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;margin:0 0 8px}
 .atelier .at-t{width:100%;border-collapse:collapse;font:12.5px system-ui,sans-serif;margin:6px 0}.atelier .at-t td{padding:4px;border-bottom:1px solid var(--line)}
 .atelier .at-t tr.cur td{font-weight:700}.atelier .at-t .dot{display:inline-block;width:9px;height:9px;margin-right:6px}

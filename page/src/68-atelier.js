@@ -1,7 +1,8 @@
 // ---------- 1er étage : l'atelier d'implémentation (#76, #125) ----------
 // Un bureau par ticket sur la chaîne de postes (models.impl_chain, 4 en parallèle) et, au mur, le tableau postes × tickets.
 // L'étage ne traite que l'implémentation, la PR et ses retours : ni CI, ni env, ni déploiement (le RDC s'en charge).
-// Données : dataset atelier (workflows/atelier_snapshot.py, cron live) ; démo : atelierDemo(). Onglets d'étage au-dessus
+// Données : dataset atelier (workflows/atelier_snapshot.py, cron live) ; démo : atelierDemo(). Un ticket à plusieurs
+// dépôts occupe un bureau par dépôt ; un run en échec reste dans « En panne » : relancer le ticket le reprend là. Onglets d'étage au-dessus
 // du plan ; sur le 1er, la toile prend la taille de l'étage (AT_W × AT_H) et le panneau montre les bureaux et leur fiche.
 const AT_POSTES=[
   {k:'cadrage',i:'📋',n:'Cadrage'},{k:'schema',i:'🗺',n:'Schéma'},{k:'patterns',i:'🧩',n:'Patterns'},{k:'gate',i:'✋',n:'Ton plan',gate:true},
@@ -33,9 +34,14 @@ function atelierDemo(){
      states:{...ok(6),securite:'bloq',code:'run'},tour:'2/3',tok:121e3,since:at(8.4),note:'🔒 bloquant → retour au code'},
     {run:'demo-a4',ticket:'DM-412',title:'Cache des listes de rubriques',repo:'dm/api',poste:'retours',
      states:{...ok(8),perf:'skip',revue:'avis',pr:'ok',revue_pr:'ok',retours:'run'},tour:'1/3',tok:138e3,since:at(7.9),note:'💬 3 commentaires à traiter'}],
-    queue:[{run:'demo-q1',ticket:'DM-7606',since:at(10.5)},{run:'demo-q2',ticket:'DM-7948',since:at(10.8)}]};
+    queue:[{run:'demo-q1',ticket:'DM-7606',since:at(10.5)},{run:'demo-q2',ticket:'DM-7948',since:at(10.8)}],
+    pannes:[{run:'demo-p1',ticket:'DM-7702',title:'Bandeau d\'alerte sur les pages direct',repo:'dm/api',poste:'securite',since:at(8.1)}]};
 }
 const atelierOn=()=>!!(CFG.atelier||DEMO);
+// poste ou étape où un run en échec s'est arrêté : nom du poste, sinon celui de l'étape du parent
+const AT_STEP={prepare:'Préparation',orchestrateur_plan:'Plan de l\'orchestrateur',orchestrateur:'Orchestrateur',livraison:'PR',publication:'Publication',
+  controles:'Contrôles',ticket:'Lecture du ticket',dossier:'Dossier',aiguillage:'Aiguillage',questions:'Questions',mode:'Mode'};
+const atStepName=k=>{const p=AT_POSTES.find(x=>x.k===k);return p?p.i+' '+p.n:AT_STEP[k]||k||'?';};
 const atRooms=()=>((ATELIER&&ATELIER.rooms)||[]).slice(0,4);
 // ---------- onglets d'étage ----------
 function atelierTabs(){
@@ -146,13 +152,15 @@ function atelierHover(e){const r=atRoomAt(e);cv.style.cursor=r?'pointer':'defaul
 const atBar=r=>'<div class="at-bar">'+AT_POSTES.map(p=>{const s=(r.states||{})[p.k];return `<i class="${s||''}" title="${esc(p.n+(s?' : '+AT_ST[s][1]:''))}"></i>`;}).join('')+'</div>';
 function atTag(r){const p=AT_POSTES.find(x=>x.k===r.poste);
   return r.gate?'<span class="at-tag wait">✋ t\'attend</span>':r.back?'<span class="at-tag bloq">🔒 retour au code</span>':p?`<span class="at-tag run">${p.i} ${esc(p.n)}</span>`:'';}
-function atelierListHtml(rooms,q){
+function atelierListHtml(rooms,q,pn){pn=pn||[];
   return `<h2 class="at-h">🏭 Atelier d'implémentation <span class="cnt">${rooms.length}/4</span></h2>`+
     (rooms.length?rooms.map((x,i)=>`<button class="at-room" data-run="${esc(x.run)}"><span class="at-top"><span><span class="mut">Bureau ${i+1}</span> · <b class="mono">${esc(x.ticket||'…')}</b></span>${atTag(x)}</span>
       <span class="at-title">${esc(x.title||'')}</span>${atBar(x)}<span class="mut">${esc(String(x.repo||'').split('/').pop())}${x.tour?' · tour '+esc(x.tour):''} · ${Math.round((x.tok||0)/1e3)} k jetons${x.lot?' · '+esc(x.lot):''}</span></button>`).join('')
     :'<div class="note">Aucun ticket sur la chaîne. Lance-le depuis la fiche d\'un ticket (▶ Implémenter) : plan seulement, complet ou essai.</div>')+
     `<h2 class="at-h">⏳ File d'attente <span class="cnt">${q.length}</span></h2>`+
     (q.length?q.map(x=>`<div class="at-q"><b class="mono">${esc(x.ticket||'…')}</b> <span class="mut">attend un bureau libre depuis ${esc(hm(ms(x.since)))}</span></div>`).join(''):'<div class="mut">Personne n\'attend.</div>')+
+    (pn.length?`<h2 class="at-h">🧯 En panne <span class="cnt">${pn.length}</span></h2>`+pn.map(x=>`<div class="at-q at-panne"><b class="mono">${esc(x.ticket||'…')}</b> <span class="mut">${esc(String(x.repo||'').split('/').pop())}</span> · arrêté à <b>${esc(atStepName(x.poste))}</b>${x.url?` <a href="${esc(x.url)}" target="_blank" rel="noopener">↗</a>`:''}<br><span class="mut">${esc(x.title||'')}</span></div>`).join('')+
+      '<div class="note">Relance le ticket (▶ Implémenter) : la chaîne reprend où elle s\'est arrêtée, avec le dossier et la branche du run en panne.</div>':'')+
     '<div class="note at-scope">Cet étage implémente, ouvre la PR et traite sa revue et ses retours. La CI, l\'env de branche et les mises en prod restent au RDC.</div>';
 }
 function atelierFicheHtml(r,i){
@@ -174,6 +182,6 @@ function drawAtelierSide(side){
     const g=atGate(r);if(g)gateCard(box,g,null);
     return;
   }
-  box.innerHTML=atelierListHtml(rooms,(ATELIER&&ATELIER.queue)||[]);
+  box.innerHTML=atelierListHtml(rooms,(ATELIER&&ATELIER.queue)||[],(ATELIER&&ATELIER.pannes)||[]);
   box.querySelectorAll('.at-room').forEach(b=>b.addEventListener('click',()=>{ATSEL=b.dataset.run;renderSide(true);}));
 }

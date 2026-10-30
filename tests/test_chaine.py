@@ -485,3 +485,30 @@ class AtelierSnapshotTest(unittest.TestCase):
                          {"gate": "ok", "regles": "ok", "securite": "bloq", "perf": "skip", "code": "run"})
         self.assertTrue(r["back"])
         self.assertEqual(r["note"], "🔒 bloquant → retour au code")
+
+    def test_failed_runs_wait_to_be_resumed(self):
+        """Pannes : un run en échec des dernières 24 h, une par ticket et dépôt, tant qu'aucun run plus récent ne l'a repris."""
+        sys.path.insert(0, os.path.join(ROOT, "workflows"))
+        import atelier_snapshot as a
+        prep = lambda t, r: {"step_name": "prepare", "status": "Success", "output": f"{t} sur {r} : branche kronn/{t}"}  # noqa: E731
+        runs = {"f1": {"id": "f1", "workflow_id": "c", "status": "Failed", "started_at": "2026-10-30T09:00:00Z", "step_results": [
+                    prep("AB-1", "dm/site"), {"step_name": "cadrage", "status": "Success"}, {"step_name": "controles", "status": "Failed"}]},
+                "f2": {"id": "f2", "status": "Failed", "started_at": "2026-10-30T08:00:00Z", "step_results": [
+                    prep("AB-2", "dm/api"), {"step_name": "orchestrateur_plan", "status": "Failed"}]},
+                "f3": {"id": "f3", "status": "Failed", "started_at": "2026-10-30T07:00:00Z", "step_results": [prep("AB-3", "dm/api")]},
+                "s3": {"id": "s3", "status": "Success", "started_at": "2026-10-30T07:30:00Z", "step_results": [prep("AB-3", "dm/api")]},
+                "old": {"id": "old", "status": "Failed", "started_at": "2026-10-28T07:00:00Z", "step_results": [prep("AB-4", "dm/api")]}}
+        ctrl = {"id": "k", "parent_run_id": "f1", "step_results": [{"step_name": "securite", "status": "Failed"}]}
+        api = {"/workflows/c/runs?limit=40": [{k: v for k, v in r.items() if k != "step_results"} for r in runs.values()],
+               "/workflows/k/runs?limit=60": [ctrl], "/workflows/k/runs/k": ctrl, **{f"/workflows/c/runs/{k}": v for k, v in runs.items()}}
+        old = (a.get, dict(a.CFG))
+        a.get = lambda p: api.get(p)
+        a.CFG.update(models={"impl_chain": "c", "impl_controles": "k"})
+        try:
+            snap = a.snapshot("2026-10-30T12:00:00+00:00")
+        finally:
+            a.get = old[0]
+            a.CFG.clear()
+            a.CFG.update(old[1])
+        self.assertEqual([(p["ticket"], p["repo"], p["poste"]) for p in snap["pannes"]],
+                         [("AB-1", "dm/site", "securite"), ("AB-2", "dm/api", "orchestrateur_plan")])  # AB-3 repris, AB-4 trop vieux
