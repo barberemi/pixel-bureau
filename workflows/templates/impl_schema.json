@@ -119,11 +119,7 @@
           "role": {
            "type": "string"
           }
-         },
-         "required": [
-          "chemin",
-          "action"
-         ]
+         }
         }
        },
        "modules": {
@@ -154,7 +150,7 @@
        "mermaid"
       ]
      },
-     "on_invalid": "Fail"
+     "on_invalid": "Continue"
     },
     "step_type": {
      "type": "Agent"

@@ -113,11 +113,7 @@
           "hypothese": {
            "type": "string"
           }
-         },
-         "required": [
-          "question",
-          "bloquante"
-         ]
+         }
         }
        },
        "docs_lues": {
@@ -140,7 +136,7 @@
        "questions"
       ]
      },
-     "on_invalid": "Fail"
+     "on_invalid": "Continue"
     },
     "step_type": {
      "type": "Agent"

@@ -198,12 +198,21 @@
     "step_type": {
      "type": "SubWorkflow"
     },
-    "description": "Poste 2 : schéma d'impact.",
+    "description": "Poste 2 : schéma d'impact ; en panne, on continue (l'orchestrateur le voit).",
     "sub_workflow_id": "@@models.impl_schema@@",
     "sub_workflow_variables": {
      "ticket": "{{ticket}}",
      "retours": "{{state.last_human_feedback ?? \"\"}}"
-    }
+    },
+    "on_result": [
+     {
+      "contains": "SUBWF_FAILED",
+      "action": {
+       "type": "Goto",
+       "step_name": "patterns"
+      }
+     }
+    ]
    },
    {
     "name": "patterns",
@@ -217,12 +226,21 @@
     "step_type": {
      "type": "SubWorkflow"
     },
-    "description": "Poste 3 : choix d'architecture.",
+    "description": "Poste 3 : choix d'architecture ; en panne, on continue (l'orchestrateur le voit).",
     "sub_workflow_id": "@@models.impl_patterns@@",
     "sub_workflow_variables": {
      "ticket": "{{ticket}}",
      "retours": "{{state.last_human_feedback ?? \"\"}}"
-    }
+    },
+    "on_result": [
+     {
+      "contains": "SUBWF_FAILED",
+      "action": {
+       "type": "Goto",
+       "step_name": "orchestrateur_plan"
+      }
+     }
+    ]
    },
    {
     "name": "orchestrateur_plan",
@@ -261,12 +279,7 @@
           "verification": {
            "type": "string"
           }
-         },
-         "required": [
-          "titre",
-          "objectif",
-          "fichiers"
-         ]
+         }
         }
        },
        "postes": {
@@ -312,7 +325,7 @@
      "type": "Agent"
     },
     "description": "L'orchestrateur valide les trois postes et compose le plan : lots, postes de contrôle à lancer.",
-    "prompt_template": "Tu es l'orchestrateur d'une chaîne d'implémentation. Les postes Cadrage, Schéma d'impact et Patterns ont rendu leurs rapports dans `.kronn/chaine/` (cadrage.json, schema.json, patterns.json ; le ticket dans ticket.md, les retours de l'humain dans retours.md s'il existe). Lis-les. Tu ne modifies aucun fichier du dépôt.\n\n1. Valide : les trois rapports sont-ils cohérents entre eux et avec le ticket ? Tranche les contradictions (dis-le dans `decisions`).\n2. Découpe le travail en lots ordonnés (6 au plus), chacun petit, commitable seul et vérifiable : `titre`, `objectif`, `fichiers`, `verification`.\n3. Dispatch : `postes` = les postes de contrôle utiles à CE ticket parmi regles, securite, tests, perf, revue (perf seulement si du front change ; regles et tests presque toujours).\n4. `apercu` : le plan en Markdown court pour l'humain qui valide (compréhension, lots, risques, questions restées en hypothèse).\n5. `commentaire_jira` : le même plan en wiki markup Jira (h3., *, listes), en français, sans emoji, signé « Plan proposé par la chaîne d'implémentation du Bureau ».\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
+    "prompt_template": "Tu es l'orchestrateur d'une chaîne d'implémentation. Les postes Cadrage, Schéma d'impact et Patterns ont rendu leurs rapports dans `.kronn/chaine/` (cadrage.json, schema.json, patterns.json ; le ticket dans ticket.md, les retours de l'humain dans retours.md s'il existe). Lis-les. Un rapport absent = un poste en panne : fais son travail toi-même, rapidement, et dis-le dans `decisions`. Tu ne modifies aucun fichier du dépôt.\n\n1. Valide : les trois rapports sont-ils cohérents entre eux et avec le ticket ? Tranche les contradictions (dis-le dans `decisions`).\n2. Découpe le travail en lots ordonnés (6 au plus), chacun petit, commitable seul et vérifiable : `titre`, `objectif`, `fichiers`, `verification`.\n3. Dispatch : `postes` = les postes de contrôle utiles à CE ticket parmi regles, securite, tests, perf, revue (perf seulement si du front change ; regles et tests presque toujours).\n4. `apercu` : le plan en Markdown court pour l'humain qui valide (compréhension, lots, risques, questions restées en hypothèse).\n5. `commentaire_jira` : le même plan en wiki markup Jira (h3., *, listes), en français, sans emoji, signé « Plan proposé par la chaîne d'implémentation du Bureau ».\n\nTermine par le JSON demandé, complet ; pas de longue analyse rédigée avant : mets ton raisonnement dans les champs prévus.",
     "_poste": "orchestrateur"
    },
    {

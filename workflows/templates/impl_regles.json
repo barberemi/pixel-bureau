@@ -123,11 +123,7 @@
           "correction": {
            "type": "string"
           }
-         },
-         "required": [
-          "gravite",
-          "probleme"
-         ]
+         }
         }
        }
       },
@@ -136,7 +132,7 @@
        "constats"
       ]
      },
-     "on_invalid": "Fail"
+     "on_invalid": "Continue"
     },
     "step_type": {
      "type": "Agent"
