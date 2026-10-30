@@ -15,10 +15,10 @@ PR (pr, revue, retours). Le ticket, le dépôt et le tour se lisent dans les sor
 import datetime, json, re, sys
 from _lib import ACTIVE, CFG, get
 
-POSTES = ["cadrage", "schema", "patterns", "gate", "code", "regles", "securite", "tests", "perf", "revue", "pr", "revue_pr", "retours"]
+POSTES = ["cadrage", "schema", "patterns", "gate", "code", "regles", "securite", "tests", "perf", "revue", "besoin", "pr", "revue_pr", "retours"]
 PARENT = {"cadrage": "cadrage", "schema": "schema", "patterns": "patterns", "gate_plan": "gate", "code": "code"}
 LIVRAISON = {"pr": "pr", "revue": "revue_pr", "retours": "retours"}
-CONTROLES = ("regles", "securite", "tests", "perf", "revue")
+CONTROLES = ("regles", "securite", "tests", "perf", "revue", "besoin")
 GATES = {"gate_questions": "❓ questions du cadrage", "gate_plan": "✋ ton plan", "gate_escalade": "🧑‍⚖️ la chaîne demande un humain",
          "gate_pr": "👀 relire la PR brouillon"}
 KEY = re.compile(r"\b([A-Z][A-Z0-9]+-\d+) sur ([\w.-]+/[\w.-]+)")

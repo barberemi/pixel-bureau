@@ -1,0 +1,255 @@
+{
+ "kind": "workflow",
+ "key": "impl_besoin",
+ "doc": "Le diff fait-il ce que demande le ticket ? Exigence par exigence, contre les critères d'acceptation et le « Comment on teste ».",
+ "definition": {
+  "name": "Le Bureau · chaîne · 🎯 conformité au besoin",
+  "project_id": null,
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "ticket",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket Jira sur la chaîne.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "entree",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le poste 🎯 conformité au besoin est-il concerné (réglages, plan, fichiers touchés) ? Sinon : rapport « non concerné » (code 3).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "entree",
+     "besoin",
+     "{{ticket}}"
+    ],
+    "exec_timeout_secs": 60,
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "rapport"
+      }
+     }
+    ]
+   },
+   {
+    "name": "propose",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "resume": {
+        "type": "string"
+       },
+       "constats": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "gravite": {
+           "type": "string",
+           "enum": [
+            "bloquant",
+            "avis"
+           ]
+          },
+          "fichier": {
+           "type": "string"
+          },
+          "ligne": {
+           "type": "integer"
+          },
+          "probleme": {
+           "type": "string"
+          },
+          "correction": {
+           "type": "string"
+          }
+         }
+        }
+       },
+       "exigences": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "exigence": {
+           "type": "string"
+          },
+          "etat": {
+           "type": "string",
+           "enum": [
+            "fait",
+            "partiel",
+            "non",
+            "autrement",
+            "hors_scope"
+           ]
+          },
+          "detail": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      },
+      "required": [
+       "resume",
+       "exigences",
+       "constats"
+      ]
+     },
+     "on_invalid": "Continue"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "🎯 conformité au besoin : chaque exigence du ticket, faite ou pas, et ce qui manque.",
+    "prompt_template": "Tu es le poste 🎯 Conformité au besoin. Les autres contrôles jugent la qualité du code ; toi, tu juges si le diff fait ce que le ticket demande.\n\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\n1. Liste les exigences du ticket : critères d'acceptation du cadrage, phrases « Qu'est-ce qu'on va faire » et « Comment on teste » du ticket, retours de l'humain. Une ligne par exigence, dans les mots du ticket.\n2. Pour chacune, lis le diff (`git diff <départ>...HEAD`, point de départ dans le contexte) et le code autour : `etat` = `fait`, `partiel`, `non`, `autrement` (fait d'une autre façon que demandé) ou `hors_scope` (le ticket ou le périmètre de ce bureau l'exclut) ; `detail` = où c'est fait (fichier), ou ce qui manque. Vérifie le résultat que verrait l'utilisateur, pas seulement la présence de code : une donnée récupérée mais jamais affichée n'est pas un affichage.\n3. `constats` : une exigence `non` ou `partiel` qui revient à ce dépôt est `bloquant` (`probleme` = ce qui manque, `correction` = quoi faire, où) ; `autrement` est un `avis` qui dit pourquoi c'est discutable ; une affirmation de la branche (commit, doc) que le diff ne prouve pas est un `avis`.\nTu ne modifies aucun fichier. `resume` : une phrase.\n\n## Tour précédent\nTa proposition précédente : {{steps.propose.data_json ?? \"aucune (premier tour)\"}}\nRemarques du critique à traiter (vide au premier tour) : {{steps.critique.data.remarques ?? \"aucune\"}}\nSi des remarques sont listées, traite CHACUNE (corrige, ou dis pourquoi tu la refuses) ; sinon, propose d'emblée ce que tu as de mieux.\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "_poste": "besoin",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
+   },
+   {
+    "name": "critique",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "verdict": {
+        "type": "string",
+        "enum": [
+         "ok",
+         "revoir"
+        ]
+       },
+       "remarques": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "resume": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "verdict",
+       "remarques"
+      ]
+     },
+     "on_invalid": "Continue"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "🎯 conformité au besoin : un second agent vérifie chaque constat (faux positifs, oublis).",
+    "prompt_template": "Tu confrontes le contrôle de conformité au besoin.\n\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\nExigences et constats proposés :\n{{steps.propose.data_json ?? \"(absent)\"}}\n\nRelis le ticket : manque-t-il une exigence ? Pour chaque exigence marquée faite, va lire le code : est-ce vraiment fait, du point de vue de l'utilisateur ? Un bloquant est-il vraiment dans le périmètre de ce dépôt ?\n\nRends `verdict` = `ok` si la proposition est utilisable telle quelle (des détails perfectibles ne justifient pas un nouveau tour), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "_poste": "besoin.critique",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
+   },
+   {
+    "name": "tri",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Critique « revoir » : nouveaux constats, 3 au plus.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "tri",
+     "besoin"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.critique.data_json ?? \"null\"}}",
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "propose",
+       "max_iterations": 5
+      }
+     }
+    ]
+   },
+   {
+    "name": "rapport",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Rapport du poste 🎯 conformité au besoin : bloquants (retour au Code si le poste est bloquant) et avis.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "rapport",
+     "besoin"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.propose.data_json ?? \"null\"}}\n===SEP===\n{{steps.critique.data_json ?? \"null\"}}"
+   }
+  ]
+ }
+}

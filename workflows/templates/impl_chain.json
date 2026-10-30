@@ -239,7 +239,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Questions bloquantes : ta gate (code 3) ; aucune : on saute au schéma.",
+    "description": "« Ce que j'ai compris » pour ta gate : compréhension, inclus et exclus, critères, questions, désaccord du critique (0 token). Réglage impl.gate_cadrage false : la gate ne s'ouvre que s'il y a à trancher (sinon code 3, saut au schéma).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -250,13 +250,6 @@
     "on_result": [
      {
       "contains": "exit_3",
-      "action": {
-       "type": "Goto",
-       "step_name": "gate_questions"
-      }
-     },
-     {
-      "contains": "OK",
       "action": {
        "type": "Goto",
        "step_name": "schema"
@@ -276,8 +269,8 @@
     "step_type": {
      "type": "Gate"
     },
-    "description": "Le cadrage a des questions bloquantes.",
-    "gate_message": "## ❓ Questions du cadrage, {{ticket}}\n\n{{steps.questions.data.stdout ?? \"(absent)\"}}\n\n---\n**Changements** : écris tes réponses, le cadrage repart avec. **Approuver** : on continue avec les hypothèses. **Rejeter** : on arrête.",
+    "description": "✋ Ce que la chaîne a compris du ticket : tu corriges autant de fois que tu veux avant le schéma et le plan.",
+    "gate_message": "## ✋ Ce que j'ai compris, {{ticket}}\n\n{{steps.questions.data.stdout ?? \"(absent)\"}}\n\n---\n**Changements** : corrige, réponds aux questions ou précise ; le cadrage repart avec ton message (autant de tours que tu veux). **Approuver** : on continue vers le schéma d'impact et le plan. **Rejeter** : on arrête (ou ce dépôt n'est pas concerné).",
     "gate_request_changes_target": "cadrage"
    },
    {

@@ -50,8 +50,13 @@ class ChaineModelesTest(unittest.TestCase):
                 self.assertNotIn("Gate", [s["step_type"]["type"] for s in TPL[key]["definition"]["steps"]], key)
         ctrl = steps("impl_controles", c)
         self.assertEqual([n for n, s in ctrl.items() if s["step_type"]["type"] == "SubWorkflow"],
-                         ["regles", "securite", "tests", "perf", "revue"])
-        self.assertEqual(ctrl["revue"]["on_result"][0]["action"]["step_name"], "bilan")  # poste en panne : on continue
+                         ["regles", "securite", "tests", "perf", "revue", "besoin"])
+        self.assertEqual(ctrl["revue"]["on_result"][0]["action"]["step_name"], "besoin")  # poste en panne : on continue
+        self.assertEqual(ctrl["besoin"]["on_result"][0]["action"]["step_name"], "bilan")
+        self.assertEqual(ctrl["besoin"]["sub_workflow_id"], c["models"]["impl_besoin"])
+        chain = {s["name"]: s for s in chain["steps"]}  # « ce que j'ai compris » : la gate suit les questions, saut au schéma sinon
+        self.assertEqual(chain["questions"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "schema"}}])
+        self.assertIn("Ce que j'ai compris", chain["gate_questions"]["gate_message"])
 
     def test_human_feedback_reaches_the_postes(self):
         """Le commentaire d'une gate n'est injecté que dans le prompt d'une étape Agent : la chaîne le passe aux postes
@@ -188,12 +193,25 @@ class ChaineScriptTest(unittest.TestCase):
         prop = {"resume": "r", "comprehension": "c", "criteres_acceptation": ["a"],
                 "questions": [{"question": "Quels réseaux ?", "bloquante": True, "hypothese": "X et Bluesky"}]}
         self.sh("rapport", "cadrage", stdin=json.dumps(prop) + SEP + json.dumps({"verdict": "ok"}))
-        code, q = self.sh("questions")
-        self.assertEqual(code, 3)
-        self.assertIn("Quels réseaux ?", q)
+        code, q = self.sh("questions")  # « ce que j'ai compris » : la gate s'ouvre à chaque ticket (code 0, elle suit)
+        self.assertEqual(code, 0)
+        for part in ("🎯 Compréhension", "✅ Critères d'acceptation", "(bloquante) Quels réseaux ?", "Hypothèse si pas de réponse : X et Bluesky"):
+            self.assertIn(part, q)
+        self.assertNotIn("pas d'accord", q)
+        # gate seulement s'il y a à trancher (impl.gate_cadrage false) : sans question bloquante ni désaccord, saut au schéma
+        c = cfg()
+        c["impl"]["gate_cadrage"] = False
+        self.code = templates.script_code("workflows/chaine.py", c)
+        self.assertEqual(self.sh("questions")[0], 0)  # une question bloquante : la gate
         prop["questions"][0]["bloquante"] = False
         self.sh("rapport", "cadrage", stdin=json.dumps(prop) + SEP + "null")
-        self.assertEqual(self.sh("questions")[0], 0)  # plus de question bloquante : pas de gate
+        self.assertEqual(self.sh("questions")[0], 3)
+        # le critique n'est pas d'accord après 3 propositions : ses remarques dans la gate, qui s'ouvre (A)
+        self.sh("rapport", "cadrage", stdin=json.dumps(prop) + SEP + json.dumps({"verdict": "revoir", "remarques": ["la page est une WebView"]}))
+        code, q = self.sh("questions")
+        self.assertEqual(code, 0)
+        self.assertIn("⚠️ Le critique n'est pas d'accord", q)
+        self.assertIn("la page est une WebView", q)
 
     def test_plan_only_mode_stops(self):
         self.assertEqual(self.sh("mode", "plan")[0], 4)
@@ -370,7 +388,8 @@ class ChaineScriptTest(unittest.TestCase):
         self.sh("rapport", "cadrage", stdin=json.dumps({"resume": "r", "questions": [], "concerne": False,
                                                         "hors_perimetre": "tout est dans dm/api"}) + SEP + "null")
         code, outp = self.sh("questions")
-        self.assertEqual(code, 3)
+        self.assertEqual(code, 0)
+        self.assertIn("🚫 Rien à faire dans dm/site ?", outp)
         self.assertIn("tout est dans dm/api", outp)
         self.assertIn("Rejeter : ce bureau s'arrête", outp)
 
@@ -379,6 +398,31 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(code, 0, outp)
         self.assertIn("Rien à reprendre", outp)
         self.assertEqual(self.dossier("etat.json")["etape"], "cadrage")
+
+    def test_pr_gets_the_requirements_table_and_open_points(self):
+        """Le tableau exigence par exigence (poste 🎯 Besoin) et les points ouverts (avis des contrôles) sont écrits dans la
+        PR par le script, à l'emplacement laissé par le rédacteur ou à la fin ; l'agent ne peut ni les omettre ni les
+        réécrire (essai d'EW-7945 : « qat retiré » alors que deux workflows le proposaient encore)."""
+        self.prepare()
+        e = self.dossier("etat.json")
+        e["mode"] = "essai"
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        self.sh("rapport", "besoin", stdin=json.dumps({"resume": "r", "constats": [], "exigences": [
+            {"exigence": "qat retiré des actions non-prod", "etat": "partiel", "detail": "reste CD_BUILD_APP.yaml | ligne 12"},
+            {"exigence": "guard en prod", "etat": "fait", "detail": "CD_Deploy-PRODUCTION.yaml"}]}) + SEP + "null")
+        Path(self.wt, ".kronn", "chaine", "controles.json").write_text(json.dumps({"bloquants": [], "avis": [
+            {"poste": "revue", "fichier": "README.md", "ligne": 75, "probleme": "qat encore listé", "correction": "retirer la ligne"},
+            {"poste": "revue", "fichier": "README.md", "ligne": 75, "probleme": "qat encore listé"}]}))
+        self.sh("pr", stdin=json.dumps({"title": "t", "body": "## 🎯 De quoi on parle ?\n\nx\n\n<!-- bureau-exigences -->\n\n## 🧪 Comment on teste ?\n\n1. y"}))
+        body = Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text()
+        self.assertLess(body.index("📋 Ce que le ticket demandait"), body.index("🧪 Comment on teste ?"))  # à l'emplacement laissé
+        self.assertIn("| qat retiré des actions non-prod | 🟡 partiel | reste CD_BUILD_APP.yaml \\| ligne 12 |", body)
+        self.assertIn("| guard en prod | ✅ livré |", body)
+        self.assertIn("## ⚠️ Points ouverts", body)
+        self.assertEqual(body.count("qat encore listé"), 1)  # doublon écarté
+        self.assertIn("(🔁 revue) `README.md:75` : qat encore listé ; piste : retirer la ligne", body)
+        self.sh("pr", stdin=json.dumps({"title": "t", "body": body}))  # une PR remise à jour ne double pas les blocs
+        self.assertEqual(Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text().count("📋 Ce que le ticket demandait"), 1)
 
     def test_lots_retry_three_times_then_move_on(self):
         self.prepare()

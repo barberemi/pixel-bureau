@@ -18,7 +18,8 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
   tri <poste>                       # stdin avis du critique : code 3 = « revoir » (Goto la proposition, 3 tours au plus)
   rapport <poste>                   # stdin proposition ===SEP=== critique : rapport du poste dans le dossier
   dossier                           # rapports cadrage, schéma, patterns pour le prompt de l'orchestrateur
-  questions                         # code 3 : questions bloquantes du cadrage (vers ta gate), code 0 : aucune
+  questions                         # « ce que j'ai compris » pour ta gate (code 0) ; impl.gate_cadrage false et rien à
+                                    # trancher : code 3, saut au schéma
   mode <plan|complet|essai>         # code 4 : plan seulement (commentaire Jira puis Stop), code 0 : on code
   plan [consignes] [retours]        # stdin plan de l'orchestrateur : plan.json en lots ; consignes ou retours : code 3
   lot                               # lot suivant du plan ; code 3 : plus de lot
@@ -44,9 +45,9 @@ from _lib import CFG, get, read_json, send, write_json, write_text
 
 SEP = "\n===SEP===\n"
 KEY = re.compile(r"^[A-Z][A-Z0-9]+-\d+$")
-POSTES = ("cadrage", "schema", "patterns", "code", "regles", "securite", "tests", "perf", "revue", "pr", "revue_pr", "retours")
-CONTROLES = ("regles", "securite", "tests", "perf", "revue")
-BLOQUANTS = {"regles", "securite", "tests"}  # par défaut ; perf et revue : avis
+POSTES = ("cadrage", "schema", "patterns", "code", "regles", "securite", "tests", "perf", "revue", "besoin", "pr", "revue_pr", "retours")
+CONTROLES = ("regles", "securite", "tests", "perf", "revue", "besoin")
+BLOQUANTS = {"regles", "securite", "tests", "besoin"}  # par défaut ; perf et revue : avis
 FRONT = ["*.scss", "*.css", "*.twig", "*.html", "*.vue", "*.tsx", "*.jsx", "*.ts", "*.js"]
 MAX_OUT = 60_000  # sortie Exec sous 100 Ko
 
@@ -663,19 +664,39 @@ def cmd_dossier():
     out("".join(parts))
 
 
+def liste(items):
+    return "\n".join(f"- {x}" for x in items if x) or "- (rien)"
+
+
 def cmd_questions():
-    c = (load("cadrage.json") or {}).get("resultat") or {}
-    if c.get("concerne") is False:  # ticket à plusieurs dépôts dont aucune part ne revient à celui-ci : ta gate tranche
-        print(f"Le cadrage ne trouve rien à faire dans {etat().get('repo')} pour ce ticket : {c.get('hors_perimetre') or '(sans raison)'}\n"
-              "Rejeter : ce bureau s'arrête sans PR. Approuver : on continue quand même.")
+    """« ✋ Ce que j'ai compris » : la compréhension du cadrage, à chaque ticket, pour ta gate (sortie 0 : l'étape suivante
+    est la gate). Changements = ta correction repart au cadrage, autant de tours que tu veux. impl.gate_cadrage false :
+    la gate ne s'ouvre que pour une question bloquante, un dépôt hors périmètre ou un critique pas d'accord (sinon code 3,
+    saut au schéma). Essai d'EW-6550 : le cadrage avait compris de travers et son critique l'avait dit, la chaîne a filé."""
+    r = load("cadrage.json") or {}
+    c = r.get("resultat") or {}
+    crit = r.get("critique") or {}
+    qs = [q for q in c.get("questions") or [] if isinstance(q, dict) and q.get("question")]
+    bloq = [q for q in qs if q.get("bloquante")]
+    desaccord = str(crit.get("verdict") or "").lower() in ("revoir", "a_revoir", "rejet") and crit.get("remarques")
+    hors = c.get("concerne") is False
+    parts = []
+    if hors:
+        parts.append(f"**🚫 Rien à faire dans {etat().get('repo')} ?** {c.get('hors_perimetre') or '(sans raison)'}\n"
+                     "Rejeter : ce bureau s'arrête sans PR. Approuver : on continue quand même.")
+    parts.append("**🎯 Compréhension**\n" + (c.get("comprehension") or c.get("resume") or "(absente)"))
+    if c.get("inclus") or c.get("exclus"):
+        parts.append("**📦 Inclus**\n" + liste(c.get("inclus") or []) + "\n\n**🚧 Exclus**\n" + liste(c.get("exclus") or []))
+    parts.append("**✅ Critères d'acceptation**\n" + liste(c.get("criteres_acceptation") or []))
+    if qs:
+        parts.append("**❓ Questions**\n" + "\n".join(
+            f"{i}. {'(bloquante) ' if q.get('bloquante') else ''}{q.get('question')}"
+            + (f"\n   Hypothèse si pas de réponse : {q['hypothese']}" if q.get("hypothese") else "") for i, q in enumerate(qs, 1)))
+    if desaccord:
+        parts.append("**⚠️ Le critique n'est pas d'accord** (3 propositions faites, ses remarques restent)\n" + liste(crit["remarques"]))
+    print("\n\n".join(parts))
+    if impl().get("gate_cadrage") is False and not (bloq or desaccord or hors):
         sys.exit(3)
-    qs = [q for q in c.get("questions") or [] if isinstance(q, dict) and q.get("bloquante")]
-    if not qs:  # le cas courant sort en 0 (étape verte) : saut au schéma ; des questions : code 3, vers ta gate
-        print("Aucune question bloquante : on continue sans gate.")
-        return
-    print("\n".join(f"{i}. {q.get('question')}" + (f" (hypothèse si pas de réponse : {q['hypothese']})" if q.get("hypothese") else "")
-                    for i, q in enumerate(qs, 1)))
-    sys.exit(3)
 
 
 def garde():
@@ -939,12 +960,65 @@ def lie_soeurs(e, n):
     return prs
 
 
+ETATS = {"fait": "✅ livré", "partiel": "🟡 partiel", "non": "❌ pas fait", "autrement": "🔀 autrement", "hors_scope": "⏭️ hors scope"}
+NOMS = {"regles": "📏 règles", "securite": "🔒 sécurité", "tests": "🧪 tests", "perf": "⚡ perf", "revue": "🔁 revue", "besoin": "🎯 besoin"}
+
+
+def cellule(x):
+    return " ".join(str(x or "").split()).replace("|", "\\|")
+
+
+def bloc(nom, corps):
+    return f"<!-- bureau-{nom} -->\n{corps}\n<!-- /bureau-{nom} -->" if corps else ""
+
+
+def exigences_md():
+    """Le tableau exigence par exigence, tiré du rapport du poste 🎯 Besoin (pas réécrit par l'agent qui rédige)."""
+    ex = [x for x in ((load("besoin.json") or {}).get("resultat") or {}).get("exigences") or [] if isinstance(x, dict)]
+    if not ex:
+        return ""
+    return ("## 📋 Ce que le ticket demandait, et où ça atterrit\n\n| Exigence | État | Détail |\n|---|---|---|\n"
+            + "\n".join(f"| {cellule(x.get('exigence'))} | {ETATS.get(x.get('etat'), cellule(x.get('etat')))} | {cellule(x.get('detail'))} |"
+                        for x in ex))
+
+
+def points_md():
+    """Points ouverts : bloquants restés (gate d'escalade approuvée) et avis des contrôles, écrits par le script. Essai
+    d'EW-7945 : l'orchestrateur disait « à reporter dans la PR », le rédacteur les a omis et la PR annonçait « qat retiré »."""
+    c = load("controles.json") or {}
+    rows, seen = [], set()
+    for kind, items in (("bloquant", c.get("bloquants") or []), ("avis", c.get("avis") or [])):
+        for x in items:
+            where = f"`{x.get('fichier')}" + (f":{x.get('ligne')}" if x.get("ligne") else "") + "` : " if x.get("fichier") else ""
+            key = (where, str(x.get("probleme"))[:120])
+            if key in seen or not x.get("probleme"):
+                continue
+            seen.add(key)
+            rows.append(f"- {'**Bloquant** ' if kind == 'bloquant' else ''}({NOMS.get(x.get('poste'), x.get('poste'))}) {where}"
+                        f"{cellule(x.get('probleme'))}" + (f" ; piste : {cellule(x.get('correction'))}" if x.get("correction") else ""))
+    if not rows:
+        return ""
+    more = f"\n- … et {len(rows) - 15} autres (rapports des contrôles)" if len(rows) > 15 else ""
+    return "## ⚠️ Points ouverts\n\nRelevés par les contrôles de la chaîne, non corrigés dans cette PR.\n\n" + "\n".join(rows[:15]) + more
+
+
+def place(body, nom, corps):
+    """Le bloc généré à l'emplacement <!-- bureau-<nom> --> laissé par le rédacteur, sinon à la fin."""
+    body = re.sub(rf"<!-- bureau-{nom} -->.*?<!-- /bureau-{nom} -->", f"<!-- bureau-{nom} -->", body, flags=re.S)
+    if not corps:
+        return body.replace(f"<!-- bureau-{nom} -->", "")
+    if f"<!-- bureau-{nom} -->" in body:
+        return body.replace(f"<!-- bureau-{nom} -->", bloc(nom, corps), 1)
+    return body.rstrip() + "\n\n" + bloc(nom, corps)
+
+
 def cmd_pr():
     d = parse(read_stdin()) or {}
     e = etat()
     sisters = e.get("soeurs") or []
     prs = {} if essai() else {r: pr_of(r, f"kronn/{e['ticket']}") for r in sisters}
-    body = SOEURS.sub("", d.get("body") or "") + (soeurs_md(e["ticket"], sisters, prs) if sisters else "") + "\n\n<!-- bureau-chaine -->"
+    body = place(place(SOEURS.sub("", d.get("body") or ""), "exigences", exigences_md()), "points", points_md())
+    body += (soeurs_md(e["ticket"], sisters, prs) if sisters else "") + "\n\n<!-- bureau-chaine -->"
     path = dossier("pr_body.md")
     write_text(path, body)
     if sauter("création de la PR"):  # le titre et la description restent dans le dossier (pr_body.md)
