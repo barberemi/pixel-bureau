@@ -2,7 +2,7 @@
  "kind": "workflow",
  "key": "review_child",
  "definition": {
-  "name": "Le Bureau · relire une PR (sous-workflow)",
+  "name": "Le Bureau · relire une PR (étape commune)",
   "project_id": "@@review.project_id@@",
   "trigger": {
    "type": "Manual"

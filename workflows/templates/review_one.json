@@ -2,7 +2,7 @@
  "kind": "workflow",
  "key": "review_one",
  "definition": {
-  "name": "Le Bureau · relire une PR",
+  "name": "Le Bureau · relire une PR à la demande",
   "project_id": "@@review.project_id@@",
   "trigger": {
    "type": "Manual"
