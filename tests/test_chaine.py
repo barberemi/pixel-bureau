@@ -427,7 +427,8 @@ class ChaineScriptTest(unittest.TestCase):
             {"exigence": "guard en prod", "etat": "fait", "detail": "CD_Deploy-PRODUCTION.yaml"}]}) + SEP + "null")
         Path(self.wt, ".kronn", "chaine", "controles.json").write_text(json.dumps({"bloquants": [], "avis": [
             {"poste": "revue", "fichier": "README.md", "ligne": 75, "probleme": "qat encore listé", "correction": "retirer la ligne"},
-            {"poste": "revue", "fichier": "README.md", "ligne": 75, "probleme": "qat encore listé"}]}))
+            {"poste": "revue", "fichier": "README.md", "ligne": 75, "probleme": "qat encore listé"},
+            {"poste": "tests", "probleme": "tests rouges", "correction": "\x1b[31mFAIL\x1b[39m " + "x" * 900}]}))
         self.sh("pr", stdin=json.dumps({"title": "t", "body": "## 🎯 De quoi on parle ?\n\nx\n\n<!-- bureau-exigences -->\n\n## 🧪 Comment on teste ?\n\n1. y"}))
         body = Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text()
         self.assertLess(body.index("📋 Ce que le ticket demandait"), body.index("🧪 Comment on teste ?"))  # à l'emplacement laissé
@@ -436,6 +437,9 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("## ⚠️ Points ouverts", body)
         self.assertEqual(body.count("qat encore listé"), 1)  # doublon écarté
         self.assertIn("(🔁 revue) `README.md:75` : qat encore listé ; piste : retirer la ligne", body)
+        self.assertIn("piste : FAIL xxx", body)  # sortie de terminal sans codes couleur, tronquée
+        self.assertNotIn("\x1b", body)
+        self.assertIn("x…", body)
         self.sh("pr", stdin=json.dumps({"title": "t", "body": body}))  # une PR remise à jour ne double pas les blocs
         self.assertEqual(Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text().count("📋 Ce que le ticket demandait"), 1)
 

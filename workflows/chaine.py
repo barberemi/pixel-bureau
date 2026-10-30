@@ -1099,8 +1099,13 @@ ETATS = {"fait": "✅ livré", "partiel": "🟡 partiel", "non": "❌ pas fait",
 NOMS = {"regles": "📏 règles", "securite": "🔒 sécurité", "tests": "🧪 tests", "perf": "⚡ perf", "revue": "🔁 revue", "besoin": "🎯 besoin"}
 
 
-def cellule(x):
-    return " ".join(str(x or "").split()).replace("|", "\\|")
+ANSI = re.compile(r"\x1b\[[0-9;]*m|\[[0-9;]{1,8}m")
+
+
+def cellule(x, n=None):
+    """Une ligne de tableau ou de liste Markdown : sans codes couleur de terminal, sans retour à la ligne, tronquée."""
+    s = " ".join(ANSI.sub("", str(x or "")).split()).replace("|", "\\|")
+    return s if not n or len(s) <= n else s[: n - 1] + "…"
 
 
 def bloc(nom, corps):
@@ -1130,7 +1135,7 @@ def points_md():
                 continue
             seen.add(key)
             rows.append(f"- {'**Bloquant** ' if kind == 'bloquant' else ''}({NOMS.get(x.get('poste'), x.get('poste'))}) {where}"
-                        f"{cellule(x.get('probleme'))}" + (f" ; piste : {cellule(x.get('correction'))}" if x.get("correction") else ""))
+                        f"{cellule(x.get('probleme'), 600)}" + (f" ; piste : {cellule(x.get('correction'), 600)}" if x.get("correction") else ""))
     if not rows:
         return ""
     more = f"\n- … et {len(rows) - 15} autres (rapports des contrôles)" if len(rows) > 15 else ""
