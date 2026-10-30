@@ -292,7 +292,9 @@ def reprend(ticket, repo, mode, run):
     branch = old.get("branch") or f"kronn/{ticket}"
     step = old.get("etape")
     if git_ok("rev-parse", "--verify", "-q", f"refs/heads/{branch}"):
-        git("checkout", "-f", "-B", branch, branch, check=True)
+        # Kronn garde la copie de travail d'un run en échec qui a des fichiers non commités : elle tient encore la branche
+        # (essai d'EW-7945, gigya) ; ce run est fini, on reprend la branche quand même
+        git("checkout", "--ignore-other-worktrees", "-f", "-B", branch, branch, check=True)
     elif git_ok("fetch", "origin", branch):
         git("checkout", "-f", "-B", branch, f"origin/{branch}", check=True)
     elif REPRISE.get(step, 0) >= 3:

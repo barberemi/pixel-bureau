@@ -292,7 +292,10 @@ class ChaineScriptTest(unittest.TestCase):
         self.sh("bilan_code")
         self.sh("entree", "regles", "AB-12")
         self.sh("rapport", "regles", stdin=json.dumps({"resume": "ok", "constats": []}) + SEP + "null")
-        # panne à la sécurité : la reprise saute aux contrôles, règles déjà faites, sécurité à faire
+        # panne à la sécurité : la reprise saute aux contrôles, règles déjà faites, sécurité à faire ; la copie de travail
+        # du run en panne, gardée par Kronn (fichiers non commités), tient encore la branche
+        subprocess.run(["git", "checkout", "-q", "-f", "--detach"], cwd=self.wt, check=True)
+        subprocess.run(["git", "worktree", "add", "-q", os.path.join(self.tmp, "vieux"), "kronn/AB-12"], cwd=self.wt, check=True)
         shutil.rmtree(os.path.join(self.wt, ".kronn"))
         code, outp = self.sh("prepare", "AB-12", "complet", "run3", "", "", "", "oui", stdin=json.dumps(TICKET))
         self.assertEqual(code, 4, outp)
