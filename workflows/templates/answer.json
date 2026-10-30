@@ -36,7 +36,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Répond à la question de discussion via l'API locale (0 token).",
+    "description": "Répond à la question de discussion via l'API locale (0 token). Relance ensuite le cron live (sauf s'il tourne déjà) : la page le montre tout de suite.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -52,7 +52,7 @@
      "{{choice}}",
      "{{text}}"
     ],
-    "exec_timeout_secs": 30
+    "exec_timeout_secs": 60
    }
   ],
   "actions": [],

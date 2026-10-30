@@ -458,7 +458,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Fin commune : le chemin normal y arrive après « verifie », « déjà dans le statut visé » y saute (code 3 de choose ou choose2).",
+    "description": "Fin commune : le chemin normal y arrive après « verifie », « déjà dans le statut visé » y saute (code 3 de choose ou choose2). Relance le cron équipe (sauf s'il tourne déjà) : la fiche et le tableau montrent la nouvelle colonne sans attendre son passage suivant. 0 token, ne fait jamais échouer le run.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -470,9 +470,10 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "print('termine')\n"
+     "@@script:workflows/refresh.py@@",
+     "team"
     ],
-    "exec_timeout_secs": 30
+    "exec_timeout_secs": 60
    }
   ]
  }

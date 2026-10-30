@@ -45,7 +45,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Vérifie le dépôt, l'env et la PR (ouverte, pas d'une fork), refuse tout workflow de prod, puis lance le workflow hors prod sur la branche de la PR. gh, 0 token ; le cron live suit le run.",
+    "description": "Vérifie le dépôt, l'env et la PR (ouverte, pas d'une fork), refuse tout workflow de prod, puis lance le workflow hors prod sur la branche de la PR. gh, 0 token ; le cron live suit le run. Relance ensuite le cron live (sauf s'il tourne déjà) : la page le montre tout de suite.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {

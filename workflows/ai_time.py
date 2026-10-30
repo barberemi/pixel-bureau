@@ -24,7 +24,7 @@ Story Points du ticket (jira.points_fields, le premier rempli) × heures avec IA
 sans Story Points, rien n'est calculé ; une valeur déjà posée est gardée, sauf force = oui.
 """
 import json, os, re, subprocess, sys
-from _lib import CFG, dumps, read_json, write_json
+from _lib import CFG, dumps, read_json, refresh, write_json
 
 HOME = os.path.expanduser("~/.cache/pixel-bureau/ai_time")
 SEP = "\n===SEP===\n"
@@ -354,6 +354,7 @@ def done(run_id):
     except (OSError, ValueError):
         st = {}
     print(f"Temps gagné posté sur {st.get('ticket', 'le ticket')}, label {settings()['label']} posé.")
+    refresh("team")  # le cron équipe relit le ticket tout de suite (label, temps gagné), sauf s'il tourne déjà
 
 
 if __name__ == "__main__":

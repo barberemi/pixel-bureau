@@ -457,7 +457,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Fin : commentaire et label posés.",
+    "description": "Fin : commentaire et label posés. Relance aussi le cron équipe (sauf s'il tourne déjà) pour que la page le montre tout de suite.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -473,7 +473,7 @@
      "done",
      "{{run.id}}"
     ],
-    "exec_timeout_secs": 30,
+    "exec_timeout_secs": 60,
     "on_result": [
      {
       "contains": "OK",

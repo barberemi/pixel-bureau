@@ -5,7 +5,7 @@ fichier à la place de la ligne qui importe le socle, au rendu. En local (tests,
 Config : injectée au rendu dans _CFG ; en local, le fichier de la variable
 d'environnement BUREAU_CONFIG, sinon bureau.config.json à la racine du dépôt.
 """
-import json, os as _os, re, shutil as _shutil, subprocess as _subprocess, urllib.error, urllib.request, uuid as _uuid
+import json, os as _os, re, shutil as _shutil, subprocess as _subprocess, sys as _sys, urllib.error, urllib.request, uuid as _uuid
 from zoneinfo import ZoneInfo
 
 
@@ -92,6 +92,31 @@ def send(method, path, body=None, timeout=30):
     if isinstance(res, dict) and res.get("success") is False:
         raise RuntimeError(f"Kronn a refusé {path} : {str(res.get('error'))[:300]}")
     return res.get("data", res) if isinstance(res, dict) else res
+
+
+def refresh(which, out=None):
+    """Relance tout de suite le cron du Bureau `which` (« team » ou « live », id dans workflows de la config), pour
+    que la page voie l'effet d'une action sans attendre son passage suivant ; rien s'il tourne déjà (un run de ACTIVE :
+    sa publication arrive). team et live n'ont pas de concurrency_limit : Kronn lancerait un second run en parallèle,
+    d'où la vérification ici. Best-effort : jamais d'exception ni de code de sortie, une ligne sur stderr (stdout reste
+    la sortie de l'étape), ou sur out (refresh.py, dont c'est toute la sortie)."""
+    wf = (CFG.get("workflows") or {}).get(which)
+    try:
+        if not wf:
+            raise RuntimeError("pas dans la config")
+        busy = [r for r in get(f"/workflows/{wf}/runs?limit=3", timeout=10) or [] if r.get("status") in ACTIVE]
+        if busy:
+            msg = f"déjà en cours (run {str(busy[0].get('id'))[:8]})"
+        else:
+            res = send("POST", "/mcp/workflow-trigger", {"workflow_id": wf, "variables": {}}, timeout=10)
+            msg = f"relancé (run {str(res.get('run_id') if isinstance(res, dict) else '?')[:8]})"
+    except urllib.error.HTTPError as e:  # refus de Kronn (liste des runs) : l'action, elle, a réussi
+        msg = f"pas relancé (Kronn a refusé la liste des runs ({e.code}))"
+    except OSError as e:
+        msg = f"pas relancé (Kronn injoignable : {e})"
+    except Exception as e:  # refus du lancement (send), réponse illisible
+        msg = f"pas relancé ({str(e)[:200]})"
+    print(f"Rafraîchissement du cron {which} : {msg}", file=out or _sys.stderr)
 
 
 DUCK_NOTE = "(Discussion ouverte depuis Le Bureau, par le canard. Si un numéro de ticket Jira est cité, va le lire.)"

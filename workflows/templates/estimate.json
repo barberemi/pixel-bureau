@@ -183,6 +183,28 @@
      "body": "{panel:title=Réestimation Story Points|bgColor=#DEEBFF}\n*{{steps.old_label.data.stdout}} → {{story_points}}*\n\n{{raison}}\n{panel}"
     },
     "_requires": "jira"
+   },
+   {
+    "name": "refresh",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Relance le cron équipe (sauf s'il tourne déjà) : la page montre les nouveaux Story Points sans attendre son passage suivant. Atteinte seulement si les étapes d'avant ont réussi. 0 token, ne fait jamais échouer le run.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/refresh.py@@",
+     "team"
+    ],
+    "exec_timeout_secs": 60
    }
   ],
   "actions": [],

@@ -110,6 +110,28 @@
     ],
     "exec_timeout_secs": 120,
     "_requires": "review.page_id"
+   },
+   {
+    "name": "refresh",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Relance le cron équipe (sauf s'il tourne déjà) : la page montre la revue postée sur la PR sans attendre son passage suivant. Atteinte seulement si les étapes d'avant ont réussi. 0 token, ne fait jamais échouer le run.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/refresh.py@@",
+     "team"
+    ],
+    "exec_timeout_secs": 60
    }
   ],
   "actions": [],

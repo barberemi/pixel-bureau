@@ -8,7 +8,7 @@ Revérifie aussi qu'aucun run n'est déjà en cours, puis le lance via POST /api
 run et rend la main, sans flux SSE).
 """
 import json, re, sys, urllib.request, urllib.error
-from _lib import ACTIVE, API, CFG, get
+from _lib import ACTIVE, API, CFG, get, refresh
 
 PAGE = CFG["page_id"]
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -63,3 +63,4 @@ except urllib.error.HTTPError as e:
 if not res.get("success"):
     fail("Kronn a refusé le lancement : " + str(res.get("error")))
 print(f"« {row['name']} » {'lancé' if params else 'relancé'} : run {res['data']['run_id']}")
+refresh("live")  # le cron live le montre tout de suite (sauf s'il tourne déjà), sans faire échouer l'action

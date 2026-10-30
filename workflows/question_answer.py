@@ -9,7 +9,7 @@ La question est relue dans Kronn : déjà décidée ou disparue, rien n'est envo
 (POST /api/discussions/{d}/questions/{q}/answer ou /decline) ; la clé d'idempotence évite une double réponse.
 """
 import hashlib, json, re, sys, urllib.parse, urllib.request, urllib.error
-from _lib import API, CFG
+from _lib import API, CFG, refresh
 
 PAGE = CFG["page_id"]
 ROW = re.compile(r"^([\w:.-]{1,160})\|(all:[\w-]{1,80}|_text|_decline|[\w-]{1,80})$")  # id Kronn : « question:<discussion>:<n> »
@@ -55,6 +55,7 @@ labels = {o["id"]: o.get("label") or o["id"] for o in q.get("options") or []}
 if pick == "_decline":
     call(f"/discussions/{disc}/questions/{qpath}/decline", {"idempotency_key": key, "reason": text or None})
     print("Question refusée" + (f" : {text}" if text else "") + ". L'agent est prévenu.")
+    refresh("live")
     sys.exit(0)
 if pick == "_text":
     if not text:
@@ -72,3 +73,4 @@ else:
 call(f"/discussions/{disc}/questions/{qpath}/answer", dict(body, idempotency_key=key))
 what = f"« {labels[pick[4:]]} » pour les {len(q['items'])} items" if pick.startswith("all:") else f"« {labels[pick]} »" if pick in labels else "ta réponse libre"
 print(f"Réponse envoyée : {what}. L'agent reprend la discussion.")
+refresh("live")  # le cron live le montre tout de suite (sauf s'il tourne déjà), sans faire échouer l'action
