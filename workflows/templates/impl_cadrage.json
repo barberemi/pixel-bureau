@@ -136,6 +136,12 @@
         "items": {
          "type": "string"
         }
+       },
+       "concerne": {
+        "type": "boolean"
+       },
+       "hors_perimetre": {
+        "type": "string"
        }
       },
       "required": [
@@ -151,7 +157,7 @@
      "type": "Agent"
     },
     "description": "📋 cadrage : la proposition (3 tours au plus avec la critique).",
-    "prompt_template": "Tu es le poste 📋 Cadrage d'une chaîne d'implémentation. Tu ne codes rien et ne modifies aucun fichier.\n\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\n## Ta mission\n1. Lis le ticket ci-dessus, puis la doc du dépôt : `docs/AGENTS.md` d'abord s'il existe (il dit quoi charger), puis seulement les fichiers de `docs/` utiles à CE ticket (3 au plus), `CLAUDE.md` ou `AGENTS.md` à la racine sinon.\n2. Reformule le besoin (`comprehension`), le périmètre (`inclus`, `exclus`) et des critères d'acceptation vérifiables.\n3. Pose tes questions. Ce que le dépôt peut trancher (un fichier, une classe, un flag, un format existe-t-il ?) n'est PAS une question : cherche-le (grep, lecture) et écris la réponse dans `comprehension`. `bloquante` = true seulement pour un choix produit ou métier que seul un humain peut faire, qui change ce qu'on code, sans hypothèse raisonnable ; donne toujours l'`hypothese` que tu prendrais sans réponse. Une question déjà répondue dans les retours de l'humain n'est plus bloquante.\n4. `docs_lues` : les fichiers lus ; `risques` : ce qui peut mal tourner.\n\n## Tour précédent\nTa proposition précédente : {{steps.propose.data_json ?? \"aucune (premier tour)\"}}\nRemarques du critique à traiter (vide au premier tour) : {{steps.critique.data.remarques ?? \"aucune\"}}\nSi des remarques sont listées, traite CHACUNE (corrige, ou dis pourquoi tu la refuses) ; sinon, propose d'emblée ce que tu as de mieux.\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "prompt_template": "Tu es le poste 📋 Cadrage d'une chaîne d'implémentation. Tu ne codes rien et ne modifies aucun fichier.\n\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\n## Ta mission\n1. Lis le ticket ci-dessus, puis la doc du dépôt : `docs/AGENTS.md` d'abord s'il existe (il dit quoi charger), puis seulement les fichiers de `docs/` utiles à CE ticket (3 au plus), `CLAUDE.md` ou `AGENTS.md` à la racine sinon.\n2. Reformule le besoin (`comprehension`), le périmètre (`inclus`, `exclus`) et des critères d'acceptation vérifiables.\n3. Pose tes questions. Ce que le dépôt peut trancher (un fichier, une classe, un flag, un format existe-t-il ?) n'est PAS une question : cherche-le (grep, lecture) et écris la réponse dans `comprehension`. `bloquante` = true seulement pour un choix produit ou métier que seul un humain peut faire, qui change ce qu'on code, sans hypothèse raisonnable ; donne toujours l'`hypothese` que tu prendrais sans réponse. Une question déjà répondue dans les retours de l'humain n'est plus bloquante.\n4. `docs_lues` : les fichiers lus ; `risques` : ce qui peut mal tourner.\n5. `concerne` : true par défaut. Si une section « Périmètre de ce bureau » est présente et qu'aucune part du ticket ne revient à CE dépôt (le travail est tout entier dans un dépôt sœur), `concerne` = false et `hors_perimetre` dit pourquoi en une phrase, après avoir vérifié dans le dépôt.\n\n## Tour précédent\nTa proposition précédente : {{steps.propose.data_json ?? \"aucune (premier tour)\"}}\nRemarques du critique à traiter (vide au premier tour) : {{steps.critique.data.remarques ?? \"aucune\"}}\nSi des remarques sont listées, traite CHACUNE (corrige, ou dis pourquoi tu la refuses) ; sinon, propose d'emblée ce que tu as de mieux.\n\nRéponds par le JSON demandé, complet, sans texte autour.",
     "_poste": "cadrage",
     "retry": {
      "max_retries": 1,
@@ -197,7 +203,7 @@
      "type": "Agent"
     },
     "description": "📋 cadrage : un second agent la critique, sans rien modifier.",
-    "prompt_template": "Tu es le critique du poste 📋 Cadrage. Contexte :\n\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\nProposition du cadrage :\n{{steps.propose.data_json ?? \"(absent)\"}}\n\nVérifie : le besoin est-il bien compris (relis le ticket) ? Les critères d'acceptation sont-ils vérifiables et complets ? Une question bloquante pourrait-elle être une hypothèse (ou l'inverse) ? Une question porte-t-elle sur ce que le dépôt dit déjà (vérifie-le : c'est une remarque à faire) ? Un retour de l'humain est-il ignoré ?\n\nRends `verdict` = `ok` si la proposition est utilisable telle quelle (des détails perfectibles ne justifient pas un nouveau tour), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "prompt_template": "Tu es le critique du poste 📋 Cadrage. Contexte :\n\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\nProposition du cadrage :\n{{steps.propose.data_json ?? \"(absent)\"}}\n\nVérifie : le besoin est-il bien compris (relis le ticket) ? Les critères d'acceptation sont-ils vérifiables et complets ? Une question bloquante pourrait-elle être une hypothèse (ou l'inverse) ? Une question porte-t-elle sur ce que le dépôt dit déjà (vérifie-le : c'est une remarque à faire) ? Un retour de l'humain est-il ignoré ? Si `concerne` vaut false, est-ce vrai (rien du ticket dans ce dépôt) ?\n\nRends `verdict` = `ok` si la proposition est utilisable telle quelle (des détails perfectibles ne justifient pas un nouveau tour), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.\n\nRéponds par le JSON demandé, complet, sans texte autour.",
     "_poste": "cadrage.critique",
     "retry": {
      "max_retries": 1,

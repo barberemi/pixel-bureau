@@ -6,8 +6,8 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
   lance <ticket> <mode> <dépôt> [reprise]
                                     # lanceur : stdin ticket Jira ; une chaîne par dépôt (composants Jira), chacune dans
                                     # son projet Kronn ; reprise auto|oui|non (auto : reprend si le dernier run a échoué)
-  prepare <ticket> <mode> <run> [variante] [dépôt] [sœurs] [reprise]
-                                    # stdin ticket Jira : dossier, réglages du dépôt, branche kronn/<ticket> ; en reprise,
+  prepare <ticket> <mode> <run> [variante] [dépôt] [sœurs] [reprise] [base]
+                                    # base : branche ou commit d'où rejouer le ticket (essai) ; stdin ticket Jira : dossier, réglages du dépôt, branche kronn/<ticket> ; en reprise,
                                     # dossier et branche du run d'avant, code 3/4/5 : on reprend au Code/aux contrôles/à la PR
   entree <poste> <ticket> [retours] [extra]
                                     # contexte du poste ; retours d'une gate ajoutés au dossier ; code 3 : poste non concerné
@@ -309,7 +309,19 @@ def reprend(ticket, repo, mode, run):
                                   "livraison": "à la PR", "relecture": "à ta relecture de la PR"}.get(step, "au début, postes déjà faits sautés")
 
 
-def cmd_prepare(ticket, mode, run, variant="", depot="", soeurs="", reprise=""):
+def default_branch():
+    """Branche par défaut du dépôt distant (front_tools est sur master)."""
+    m = re.search(r"ref: refs/heads/(\S+)\s+HEAD", git("ls-remote", "--symref", "origin", "HEAD"))
+    return m.group(1) if m else ""
+
+
+def depart():
+    """Le point de départ de la branche : un commit fixé (essai rejoué), sinon la base distante."""
+    e = etat()
+    return e.get("depart") or f"origin/{e.get('base') or 'main'}"
+
+
+def cmd_prepare(ticket, mode, run, variant="", depot="", soeurs="", reprise="", rejoue=""):
     t = parse(read_stdin()) or {}
     repo = repo_of()
     if given(depot) and depot.strip().lower() != repo.lower():
@@ -329,10 +341,16 @@ def cmd_prepare(ticket, mode, run, variant="", depot="", soeurs="", reprise=""):
         print(f"Rien à reprendre ({why}) : on repart du début.")
     reg = reglages(repo)
     base = reg["base"]
-    git("fetch", "origin", base, check=True)
+    if not git_ok("fetch", "origin", base):  # base réglée absente (front_tools : master) : la branche par défaut
+        base = default_branch() or base
+        git("fetch", "origin", base, check=True)
+    start, fixed = f"origin/{base}", ""
+    if given(rejoue):  # rejouer un ticket sur un état passé (essai comparé à une PR déjà faite) : branche ou commit
+        git("fetch", "origin", rejoue.strip(), check=True)
+        start = fixed = git("rev-parse", "FETCH_HEAD", check=True)
     # run shadow de Kronn (essai sans effet externe, à côté d'un run normal) : sa propre branche, l'autre la tient déjà
     branch = f"kronn/{ticket}" + ("-shadow" if (variant or "").strip() == "shadow" else "")
-    git("checkout", "-f", "-B", branch, f"origin/{base}", check=True)
+    git("checkout", "-f", "-B", branch, start, check=True)
     for f in os.listdir(dossier()):  # le dossier d'un autre passage, s'il en reste un
         if os.path.isfile(dossier(f)):
             os.remove(dossier(f))
@@ -340,13 +358,13 @@ def cmd_prepare(ticket, mode, run, variant="", depot="", soeurs="", reprise=""):
     docs = git("ls-files", "docs", "AGENTS.md", "CLAUDE.md", ".github/pull_request_template.md").splitlines()
     f = t.get("fields") or {}
     write_json(dossier("etat.json"), {"ticket": ticket, "mode": mode, "repo": repo, "base": base, "branch": branch,
-                                      "run": run, "tours": 0, "docs": docs[:200], "soeurs": sisters, "etape": "cadrage",
+                                      "run": run, "tours": 0, "docs": docs[:200], "soeurs": sisters, "etape": "cadrage", "depart": fixed,
                                       "texte": f"{f.get('summary') or ''}\n{f.get('description') or ''}"[:8000]})
     src = cache_dir(ticket, repo)
     if src and os.path.isdir(src):  # nouveau départ : l'ancien dossier ne doit plus servir à une reprise
         for x in os.listdir(src):
             os.remove(os.path.join(src, x))
-    print(f"{ticket} sur {repo} : branche {branch} depuis origin/{base}, {len(docs)} fichiers de doc, mode {mode}"
+    print(f"{ticket} sur {repo} : branche {branch} depuis {fixed[:10] or 'origin/' + base}, {len(docs)} fichiers de doc, mode {mode}"
           + (f", dépôts sœurs : {', '.join(sisters)}" if sisters else ""))
 
 
@@ -363,10 +381,8 @@ def note_retours(retours, source):
     write_text(path, old + f"\n## Retour humain ({source}, {time.strftime('%Y-%m-%d %H:%M')}) <!-- {h} -->\n\n{retours}\n")
 
 
-def changed(base=None):
-    e = etat()
-    b = base or e.get("base") or "main"
-    files = git("diff", "--name-only", f"origin/{b}...HEAD").splitlines()
+def changed():
+    files = git("diff", "--name-only", f"{depart()}...HEAD").splitlines()
     files += git("diff", "--name-only", "HEAD").splitlines() + git("ls-files", "--others", "--exclude-standard").splitlines()  # pas commités
     return sorted(set(f for f in files if f and not f.startswith(".kronn/")))
 
@@ -451,7 +467,7 @@ def cmd_entree(p, ticket, retours="", extra=""):
         parts.append(section("Fichiers modifiés", "\n".join(files)))
         parts.append(section("Plan validé", json.dumps((load("plan.json") or {}).get("lots") or [], ensure_ascii=False, indent=1)[:8000]))
     if p in CONTROLES:
-        stat = git("diff", "--stat", f"origin/{e.get('base', 'main')}...HEAD")
+        stat = git("diff", "--stat", f"{depart()}...HEAD")
         parts.append(section("Volume du diff", stat[-3000:]))
     if extra and not extra.startswith("{" + "{"):
         parts.append(section("Consignes de l'orchestrateur", extra))
@@ -544,6 +560,10 @@ def cmd_dossier():
 
 def cmd_questions():
     c = (load("cadrage.json") or {}).get("resultat") or {}
+    if c.get("concerne") is False:  # ticket à plusieurs dépôts dont aucune part ne revient à celui-ci : ta gate tranche
+        print(f"Le cadrage ne trouve rien à faire dans {etat().get('repo')} pour ce ticket : {c.get('hors_perimetre') or '(sans raison)'}\n"
+              "Rejeter : ce bureau s'arrête sans PR. Approuver : on continue quand même.")
+        sys.exit(3)
     qs = [q for q in c.get("questions") or [] if isinstance(q, dict) and q.get("bloquante")]
     if not qs:  # le cas courant sort en 0 (étape verte) : saut au schéma ; des questions : code 3, vers ta gate
         print("Aucune question bloquante : on continue sans gate.")
@@ -706,7 +726,7 @@ def cmd_tri_tests():
 
 def cmd_bilan_code():
     e = etat()
-    log = git("log", "--oneline", f"origin/{e.get('base', 'main')}..HEAD")
+    log = git("log", "--oneline", f"{depart()}..HEAD")
     st = load("lots.json") or {}
     rep = {"poste": "code", "statut": "ok" if log else "vide", "commits": log.splitlines(), "fichiers": changed(), "lots": st.get("notes")}
     write_json(dossier("code.json"), rep)
@@ -937,7 +957,7 @@ def main(argv):
     if cmd == "lance":
         return cmd_lance(*(args + ["", "", "", ""])[:4])
     if cmd == "prepare":
-        return cmd_prepare(*(args + [""] * 7)[:7])
+        return cmd_prepare(*(args + [""] * 8)[:8])
     if cmd == "entree":
         return cmd_entree(*(args + ["", "", "", ""])[:4])
     if cmd in ("tri", "rapport"):

@@ -100,6 +100,15 @@
      ],
      "default_value": "non"
     }
+   },
+   {
+    "name": "base",
+    "label": "Rejouer depuis",
+    "placeholder": "commit ou branche",
+    "description": "Essai seulement : la branche part de ce commit (ou de cette branche) au lieu de la base à jour, pour rejouer un ticket déjà livré et comparer à sa PR.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
    }
   ],
   "actions": [],
@@ -170,7 +179,8 @@
      "{{run.variant}}",
      "{{depot ?? \"\"}}",
      "{{soeurs ?? \"\"}}",
-     "{{reprise ?? \"non\"}}"
+     "{{reprise ?? \"non\"}}",
+     "{{base ?? \"\"}}"
     ],
     "exec_timeout_secs": 180,
     "exec_stdin": "{{steps.ticket.data_json ?? \"null\"}}",

@@ -104,7 +104,7 @@ class ChaineModelesTest(unittest.TestCase):
         st = steps("impl_chain")
         self.assertEqual({r["contains"]: r["action"]["step_name"] for r in st["prepare"]["on_result"]},
                          {"exit_3": "code", "exit_4": "controles", "exit_5": "livraison"})
-        self.assertEqual(st["prepare"]["exec_args"][-3:], ['{{depot ?? ""}}', '{{soeurs ?? ""}}', '{{reprise ?? "non"}}'])
+        self.assertEqual(st["prepare"]["exec_args"][-4:], ['{{depot ?? ""}}', '{{soeurs ?? ""}}', '{{reprise ?? "non"}}', '{{base ?? ""}}'])
         self.assertEqual(st["commente_plan"]["api_body"]["body"], '{{partie ?? ""}}{{steps.orchestrateur_plan.data.commentaire_jira}}')
         for key in ("impl_cadrage", "impl_schema", "impl_patterns"):
             self.assertEqual(steps(key)["entree"]["on_result"], [{"contains": "exit_5", "action": {"type": "Goto", "step_name": "rapport"}}])
@@ -313,6 +313,38 @@ class ChaineScriptTest(unittest.TestCase):
         # un nouveau départ (reprise non) efface le dossier gardé
         self.sh("prepare", "AB-12", "complet", "run5", "", "", "", "non", stdin=json.dumps(TICKET))
         self.assertEqual(json.loads((cache / "etat.json").read_text())["run"], "run5")
+
+    def test_replay_from_a_past_commit_and_default_branch(self):
+        """Essai rejoué : la branche part d'un commit passé (ticket déjà livré, comparé à sa PR) ; une base réglée absente
+        du dépôt distant (front_tools : master) laisse la place à sa branche par défaut."""
+        g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        first = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.wt, capture_output=True, text=True).stdout.strip()
+        Path(self.wt, "app", "B.php").write_text("<?php // livré\n")
+        subprocess.run(g + ["add", "-A"], cwd=self.wt, check=True)
+        subprocess.run(g + ["commit", "-qm", "ticket livré"], cwd=self.wt, check=True)
+        subprocess.run(["git", "push", "-q", "origin", "main"], cwd=self.wt, check=True)
+        code, outp = self.sh("prepare", "AB-12", "essai", "run1", "", "", "", "", first, stdin=json.dumps(TICKET))
+        self.assertEqual(code, 0, outp)
+        self.assertFalse(Path(self.wt, "app", "B.php").exists())  # l'état d'avant la livraison
+        self.assertEqual(self.dossier("etat.json")["depart"], first)
+        Path(self.wt, "app", "C.php").write_text("<?php\n")
+        self.assertEqual(json.loads(self.sh("quoi")[1])["fichiers"], ["app/C.php"])  # diff contre le commit rejoué
+        subprocess.run(["git", "push", "-q", "origin", "main:master"], cwd=self.wt, check=True)
+        subprocess.run(["git", "symbolic-ref", "HEAD", "refs/heads/master"], cwd=self.origin, check=True)
+        subprocess.run(["git", "push", "-q", "origin", "--delete", "main"], cwd=self.wt, check=True)
+        code, outp = self.sh("prepare", "AB-12", "essai", "run2", stdin=json.dumps(TICKET))
+        self.assertEqual(code, 0, outp)
+        self.assertIn("depuis origin/master", outp)
+
+    def test_cadrage_out_of_scope_goes_to_the_gate(self):
+        """Ticket à plusieurs dépôts dont rien ne revient à ce bureau : la gate des questions propose de l'arrêter."""
+        self.prepare()
+        self.sh("rapport", "cadrage", stdin=json.dumps({"resume": "r", "questions": [], "concerne": False,
+                                                        "hors_perimetre": "tout est dans dm/api"}) + SEP + "null")
+        code, outp = self.sh("questions")
+        self.assertEqual(code, 3)
+        self.assertIn("tout est dans dm/api", outp)
+        self.assertIn("Rejeter : ce bureau s'arrête", outp)
 
     def test_nothing_to_resume_starts_over(self):
         code, outp = self.sh("prepare", "AB-12", "plan", "run1", "", "", "", "oui", stdin=json.dumps(TICKET))
