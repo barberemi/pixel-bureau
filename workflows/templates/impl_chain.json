@@ -111,7 +111,7 @@
      "{{mode}}",
      "{{run.id}}"
     ],
-    "exec_timeout_secs": 300,
+    "exec_timeout_secs": 180,
     "exec_stdin": "{{steps.ticket.data_json}}"
    },
    {

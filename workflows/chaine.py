@@ -176,20 +176,19 @@ def cmd_lance(ticket, mode, depot):
     chain = (CFG.get("models") or {}).get("impl_chain")
     if not chain:
         sys.exit("La chaîne n'est pas installée (models.impl_chain) : python3 tools/install.py la propose.")
-    runs = get(f"/workflows/{chain}/runs?limit=50") or []
-    for r in runs:
-        ctx = r.get("trigger_context") or {}
-        if isinstance(ctx, str):
-            try:
-                ctx = json.loads(ctx)
-            except ValueError:
-                ctx = {}
-        if r.get("status") in ("Running", "WaitingApproval", "Pending", "WaitingQuota") and ctx.get("ticket") == ticket:
-            sys.exit(f"{ticket} est déjà sur la chaîne (run {r['id'][:8]}, {r['status']}) : un poste de travail par ticket.")
-    res = send("POST", f"/workflows/{chain}/trigger", {"variables": {"ticket": ticket, "mode": mode or "plan"},
-                                                        "state": {"ticket": ticket}, "project_id": pid},
-               timeout=280)  # Kronn répond une fois la copie du projet créée : plus d'une minute sur un gros dépôt
-    run = (res or {}).get("id") or (res or {}).get("run_id") or "?"
+    for r in get(f"/workflows/{chain}/runs?limit=50") or []:
+        if r.get("status") not in ("Running", "WaitingApproval", "Pending", "WaitingQuota"):
+            continue
+        # les variables d'un run sont chiffrées (instantané) : le ticket se lit dans la sortie de son étape prepare
+        steps = (get(f"/workflows/{chain}/runs/{r['id']}") or {}).get("step_results") or []
+        prep = next((x.get("output") or "" for x in steps if x.get("step_name") == "prepare"), "")
+        if f"{ticket} sur " in prep or not prep:
+            sys.exit(f"{ticket} est peut-être déjà sur la chaîne (run {r['id'][:8]}, {r['status']}"
+                     + (", pas encore préparé" if not prep else "") + ") : un poste de travail par ticket, réessaie plus tard.")
+    # route JSON qui lance détaché : /workflows/{id}/trigger est un flux SSE qui ne répond qu'à la première pause du run
+    res = send("POST", "/mcp/workflow-trigger", {"workflow_id": chain, "variables": {"ticket": ticket, "mode": mode or "plan"},
+                                                 "project_id": pid}, timeout=120)
+    run = (res or {}).get("run_id") or "?"
     print(f"{ticket} posé sur la chaîne ({mode or 'plan'}) : {repo}, run {str(run)[:8]}")
 
 
