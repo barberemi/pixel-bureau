@@ -200,8 +200,8 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(cfg["github"]["config_id"], gh)
         self.assertEqual(set(cfg["models"]), {"review_child", "review_one", "review_cron", "issue", "ticket", "assign", "unassign", "ai_time"})
         made = {b["name"]: b for m, p_, b in k.calls if m == "POST" and p_ == "/workflows"}
-        self.assertIs(made["Le Bureau · revue des PR (cron)"]["enabled"], False)
-        cron = made["Le Bureau · revue des PR (cron)"]
+        self.assertIs(made["Le Bureau · relire les PR ouvertes (cron)"]["enabled"], False)
+        cron = made["Le Bureau · relire les PR ouvertes (cron)"]
         self.assertTrue(all(s.get("sub_workflow_id") != "" for s in cron["steps"]))
         self.assertNotIn("Le Bureau · réestimer un ticket", made)
 

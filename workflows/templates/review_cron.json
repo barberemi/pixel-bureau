@@ -2,7 +2,7 @@
  "kind": "workflow",
  "key": "review_cron",
  "definition": {
-  "name": "Le Bureau · revue des PR (cron)",
+  "name": "Le Bureau · relire les PR ouvertes (cron)",
   "project_id": "@@review.project_id@@",
   "trigger": {
    "type": "Cron",
