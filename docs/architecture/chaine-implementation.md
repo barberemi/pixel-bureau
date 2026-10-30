@@ -11,8 +11,8 @@ impl (lanceur, 0 token)          composants Jira -> dépôts -> projets Kronn ; 
                                  POST /mcp/workflow-trigger avec project_id et ticket, mode, depot, soeurs, partie, reprise
 └─ impl_chain (parent, 20 étapes, project_scope All, require_isolation, concurrency_limit 4)
    ticket · prepare · [cadrage] · questions · ✋gate_questions · [schema] · [patterns] · dossier · orchestrateur_plan · ✋gate_plan
-   · mode · commente_plan (Plan seulement, puis Stop) · [code] · [controles] · orchestrateur · aiguillage · ✋gate_escalade
-   · [livraison = 📤 PR · [revue_pr] · [retours]] · ✋gate_pr · [publication]
+   · mode · [code] · [controles] · orchestrateur · aiguillage · ✋gate_escalade
+   · [livraison = 📤 PR · [revue_pr] · [retours]] · ✋gate_pr · [publication] (Stop) · commente_plan (Plan seulement, puis Stop)
    controles = quoi · [regles] · [securite] · [tests] · [perf] · [revue] · bilan
 ```
 
@@ -23,6 +23,7 @@ impl (lanceur, 0 token)          composants Jira -> dépôts -> projets Kronn ; 
 - Kronn refuse un sous-workflow qui contient une gate : les quatre gates sont dans le parent.
 - Un sous-workflow sans projet tourne dans le projet et la copie de travail de son parent : les postes n'ont pas de `project_id` (`SHARED_WORKSPACE`), le parent a `project_scope: All` et pas de projet ; c'est le lanceur qui choisit le projet au lancement (`project_id` du trigger). Une étape `TriggerWorkflow` ne sait pas passer de projet, d'où l'Exec du lanceur qui appelle l'API.
 - Le commentaire d'une gate « Changements » n'est injecté que dans le prompt d'une étape Agent. Une gate qui renvoie à un sous-workflow perdrait le commentaire : la chaîne le passe aux postes par leur variable `retours` (`{{state.last_human_feedback ?? ""}}`), le poste l'ajoute au dossier (`retours.md`, une seule fois par texte).
+- Après « Changements » à une gate, Kronn coupe le run au premier passage de l'étape cible et reprend à l'étape qui SUIT, dans la définition, la dernière étape gardée : si celle-ci avait sauté par un Goto, la reprise tombe sur l'étape sautée. À l'essai d'EW-6550, un retour au Code depuis l'escalade a ainsi exécuté `commente_plan` (le plan posté dans Jira en mode essai). D'où l'ordre : le Code suit `mode` (code 0), le commentaire du plan est la dernière étape (`mode` y saute en code 4), la publication s'arrête par un Stop. Reste exposé, sans effet externe : un « Changements » au plan sur un ticket sans question repasse par la gate des questions (vide) ; une reprise qui a sauté au Code ou aux contrôles repartirait du cadrage.
 - `on_result` ne lit que les signaux : `exit_3`/`exit_4` d'un Exec pour brancher, `SUBWF_FAILED` pour un poste en panne.
 - Un Goto compte ses passages par arête (source, cible) sur tout le run, et une étape en code non nul dont le Goto a épuisé `max_iterations` **échoue** au lieu de continuer : tous les tours (propositions, essais par lot, tests, tours de contrôle) sont comptés par le script, qui rend 0 au dernier ; `max_iterations` n'est qu'un filet.
 - Une référence `{{steps.x.data_json}}` à une sortie d'agent sans enveloppe (`on_invalid: Continue`) est inconnue et Kronn refuse de rendre l'étape : toute référence à une sortie d'étape a un repli `?? …` (posé par le générateur).

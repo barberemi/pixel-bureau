@@ -475,7 +475,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Plan seulement : le plan part dans le ticket puis on s'arrête ; complet ou essai : au poste Code (code 3).",
+    "description": "Plan seulement : code 4, saut au commentaire Jira en fin de chaîne puis Stop. Complet ou essai : code 0, le Code suit (une gate « Changements » vers le Code y retombe bien).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -486,41 +486,10 @@
     "exec_timeout_secs": 30,
     "on_result": [
      {
-      "contains": "exit_3",
+      "contains": "exit_4",
       "action": {
        "type": "Goto",
-       "step_name": "code"
-      }
-     }
-    ]
-   },
-   {
-    "name": "commente_plan",
-    "agent": "ClaudeCode",
-    "mode": {
-     "type": "Normal"
-    },
-    "output_format": {
-     "type": "FreeText"
-    },
-    "step_type": {
-     "type": "ApiCall"
-    },
-    "description": "Plan seulement : le plan en commentaire du ticket (API REST v2), fin.",
-    "api_plugin_slug": "mcp-atlassian",
-    "api_config_id": "@@jira.config_id@@",
-    "api_endpoint_path": "/rest/api/2/issue/{{ticket}}/comment",
-    "api_method": "POST",
-    "api_body": {
-     "body": "{{partie ?? \"\"}}{{steps.orchestrateur_plan.data.commentaire_jira}}"
-    },
-    "external_effect": true,
-    "_requires": "jira",
-    "on_result": [
-     {
-      "contains": "OK",
-      "action": {
-       "type": "Stop"
+       "step_name": "commente_plan"
       }
      }
     ]
@@ -714,7 +683,46 @@
     "sub_workflow_id": "@@models.impl_publication@@",
     "sub_workflow_variables": {
      "ticket": "{{ticket}}"
-    }
+    },
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Stop"
+      }
+     }
+    ]
+   },
+   {
+    "name": "commente_plan",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Plan seulement : le plan en commentaire du ticket (API REST v2), fin.",
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/2/issue/{{ticket}}/comment",
+    "api_method": "POST",
+    "api_body": {
+     "body": "{{partie ?? \"\"}}{{steps.orchestrateur_plan.data.commentaire_jira}}"
+    },
+    "external_effect": true,
+    "_requires": "jira",
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Stop"
+      }
+     }
+    ]
    }
   ]
  }

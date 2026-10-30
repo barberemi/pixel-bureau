@@ -196,11 +196,19 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(self.sh("questions")[0], 0)  # plus de question bloquante : pas de gate
 
     def test_plan_only_mode_stops(self):
-        self.assertEqual(self.sh("mode", "plan")[0], 0)
-        self.assertEqual(self.sh("mode", "complet")[0], 3)
-        st = steps("impl_chain")  # plan seulement : le commentaire Jira, puis Stop ; complet et essai sautent au code
-        self.assertEqual(st["mode"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "code"}}])
+        self.assertEqual(self.sh("mode", "plan")[0], 4)
+        self.assertEqual(self.sh("mode", "complet")[0], 0)
+        # plan seulement : saut au commentaire Jira, dernière étape, puis Stop ; complet et essai : le Code suit dans
+        # l'ordre. Kronn reprend un « Changements » de gate à l'étape qui suit la dernière gardée (essai d'EW-6550 :
+        # commente_plan juste après mode a posté le plan dans Jira en mode essai) : le Code doit suivre mode.
+        c = templates.render(TPL["impl_chain"], cfg())
+        names = [s["name"] for s in c["steps"]]
+        st = {s["name"]: s for s in c["steps"]}
+        self.assertEqual(names[names.index("mode") + 1], "code")
+        self.assertEqual(names[-1], "commente_plan")
+        self.assertEqual(st["mode"]["on_result"], [{"contains": "exit_4", "action": {"type": "Goto", "step_name": "commente_plan"}}])
         self.assertEqual(st["commente_plan"]["on_result"], [{"contains": "OK", "action": {"type": "Stop"}}])
+        self.assertEqual(st["publication"]["on_result"], [{"contains": "OK", "action": {"type": "Stop"}}])
 
     def test_dossier_is_kept_after_the_run(self):
         """Kronn supprime la copie de travail d'un run réussi : fin et plan seulement gardent le dossier dans ~/.cache."""
@@ -218,7 +226,7 @@ class ChaineScriptTest(unittest.TestCase):
         e = self.dossier("etat.json")
         e["mode"] = "essai"
         Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
-        self.assertEqual(self.sh("mode", "essai")[0], 3)
+        self.assertEqual(self.sh("mode", "essai")[0], 0)
         for cmd in ("pousse", "pret"):
             code, outp = self.sh(cmd)
             self.assertEqual(code, 0, outp)
@@ -276,7 +284,7 @@ class ChaineScriptTest(unittest.TestCase):
         de la branche et du dossier, saute au poste Contrôles et ne refait que les contrôles qui manquent."""
         self.prepare()
         self.sh("rapport", "cadrage", stdin=json.dumps({"resume": "r", "questions": []}) + SEP + "null")
-        self.assertEqual(self.sh("mode", "complet")[0], 3)
+        self.assertEqual(self.sh("mode", "complet")[0], 0)
         self.sh("plan", "", "", stdin=json.dumps({"lots": [{"titre": "L1"}, {"titre": "L2"}], "postes": ["regles"]}))
         self.sh("lot")
         self.sh("tri_lot", stdin=json.dumps({"ok": True}) + SEP + json.dumps({"verdict": "ok"}))

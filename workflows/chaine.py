@@ -19,7 +19,7 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
   rapport <poste>                   # stdin proposition ===SEP=== critique : rapport du poste dans le dossier
   dossier                           # rapports cadrage, schéma, patterns pour le prompt de l'orchestrateur
   questions                         # code 3 : questions bloquantes du cadrage (vers ta gate), code 0 : aucune
-  mode <plan|complet|essai>         # code 0 : plan seulement (commentaire Jira puis Stop), code 3 : on code
+  mode <plan|complet|essai>         # code 4 : plan seulement (commentaire Jira puis Stop), code 0 : on code
   plan [consignes] [retours]        # stdin plan de l'orchestrateur : plan.json en lots ; consignes ou retours : code 3
   lot                               # lot suivant du plan ; code 3 : plus de lot
   verif <regles|tests>              # commandes de vérification du dépôt (réglage impl.repos), en conteneur si réglé
@@ -653,14 +653,14 @@ def garde():
 
 
 def cmd_mode(mode):
-    """Plan seulement : code 0, l'étape suivante commente le plan dans le ticket puis la chaîne s'arrête. Complet ou
-    essai : code 3, droit au poste Code (en complet, le plan ira dans la PR)."""
+    """Plan seulement : code 4, saut au commentaire Jira (dernière étape) puis Stop. Complet ou essai : code 0, le poste
+    Code suit dans l'ordre. Essai d'EW-6550 : Kronn reprend un « Changements » de gate à l'étape qui SUIT la dernière
+    gardée ; avec commente_plan juste après mode, un retour au Code a posté le plan dans Jira en mode essai."""
     avance("code")  # plan validé : une reprise (même en plan seulement, relancé en complet) repart au Code
     if (mode or "plan").strip().lower() in ("plan", "plan seulement", "plan_seulement"):
         print(f"Plan seulement : le plan part en commentaire du ticket, puis la chaîne s'arrête. Dossier gardé : {garde()}")
-        return
+        sys.exit(4)
     print("Mode " + ("essai : tout jusqu'à la PR, sans rien pousser ni écrire dans Jira." if essai() else "complet : au poste Code."))
-    sys.exit(3)
 
 
 def essai():
