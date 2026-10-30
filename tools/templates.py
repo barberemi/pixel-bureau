@@ -21,6 +21,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TPL_DIR = os.path.join(ROOT, "workflows", "templates")
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import assemble  # noqa: E402  (roster du profil d'équipe)
+# postes de la chaîne d'implémentation (#76) appelés par le parent ou par le poste des contrôles, dans l'ordre de création
+IMPL_POSTES = ("cadrage", "schema", "patterns", "code", "regles", "securite", "tests", "perf", "revue", "livraison", "publication")
 # modèle -> (type, où trouver l'id dans la config, scripts par étape)
 TEMPLATES = {
     "office": ("workflow", ("workflows", "office"), {"snapshot": "workflows/office_snapshot.py"}),
@@ -84,6 +86,12 @@ TEMPLATES = {
     "deploy": ("workflow", ("models", "deploy"), {"dispatch": "workflows/deploy.py"}),
     # investiguer un message du canal Support (#62) : discussion avec l'agent, gate, réponse en fil
     "support": ("workflow", ("models", "support"), {n: "workflows/support.py" for n in ("open", "mark", "draft", "mark_draft", "post", "mark_post")}),
+    # implémenter un ticket en chaîne de postes (#76, #125) : un poste = un sous-workflow (un agent, ses skills, son modèle),
+    # créés avant ceux qui les appellent (enfants d'abord : Kronn vérifie la cible d'un SubWorkflow à l'enregistrement)
+    **{f"impl_{p}": ("workflow", ("models", f"impl_{p}"), {"chaine": "workflows/chaine.py"}) for p in IMPL_POSTES},
+    "impl_controles": ("workflow", ("models", "impl_controles"), {"chaine": "workflows/chaine.py"}),
+    "impl_chain": ("workflow", ("models", "impl_chain"), {"chaine": "workflows/chaine.py"}),
+    "impl": ("workflow", ("models", "impl"), {"chaine": "workflows/chaine.py"}),  # lanceur : projet déduit du composant Jira
     "ask": ("quick_prompt", ("actions", "ask"), {}),
     "sketch": ("quick_prompt", ("actions", "sketch"), {}),
 }
@@ -95,8 +103,9 @@ TEXTS = ("tools/plan_prompt.md", "tools/mail_rules_prompt.md", "tools/rebase_pro
 REVIEW_SCHEDULE = "30 7,10,13,16,19 * * 1-5"  # cron des revues de PR, heures UTC (review.schedule de l'équipe pour un autre)
 # modèles lancés en foreach (un sous-workflow par PR) : Kronn y écrit .kronn/current_task.json, il leur faut leur propre
 # copie du projet (require_isolation), jamais le dossier principal ; le sous-workflow tourne dans celle de son parent
-ISOLATED = {"review_one", "review_cron"}
-SHARED_WORKSPACE = {"review_child"}  # fichiers recopiés tels quels dans un prompt (@@text:…@@)
+ISOLATED = {"review_one", "review_cron", "impl_chain"}  # la chaîne : une copie du projet par ticket, 4 en parallèle
+# sous-workflows qui tournent dans la copie de leur parent : relire une PR, les postes de la chaîne d'implémentation
+SHARED_WORKSPACE = {"review_child", "impl_controles", *(f"impl_{p}" for p in IMPL_POSTES)}
 
 
 def load_config():
@@ -210,6 +219,10 @@ def values(cfg):
         "issue.search_dirs": ", ".join((cfg.get("issue") or {}).get("search_dirs") or ["~/Sites", "~/Projects", "~/code"]),
         "issue.discussion": (cfg.get("issue") or {}).get("discussion") or "",  # discussion Kronn du récap, facultative
         "env.label": (cfg.get("env") or {}).get("label") or "env-branch",  # label qui construit l'env de branche (réglage d'équipe)
+        # chaîne d'implémentation (#76) : ids des postes (enfants créés d'abord), consignes de l'équipe pour le code et les contrôles
+        **{f"models.{k}": (cfg.get("models") or {}).get(k) or "" for k in ("assign", "impl_controles", "impl_chain",
+                                                                          *(f"impl_{p}" for p in IMPL_POSTES))},
+        "impl.guidelines": str((cfg.get("impl") or {}).get("guidelines") or "Aucune consigne d'équipe en plus de la doc du dépôt."),
     }
 
 
@@ -272,6 +285,8 @@ def skipped(key, cfg):
         return not mep_projects(cfg)
     if key in ("review_child", "review_one", "review_cron"):  # API GitHub : connexion GitHub de Kronn (github.config_id)
         return not (cfg.get("github") or {}).get("config_id") or (key == "review_cron" and not review_repos(cfg))
+    if key.startswith("impl"):  # la chaîne lit le ticket dans Jira et livre sur GitHub (gh)
+        return not (cfg.get("jira") or {}).get("config_id")
     if key in ("estimate", "assign", "unassign", "ticket", "ai_time"):
         return not (cfg.get("jira") or {}).get("config_id")
     if key == "env":  # aucun dépôt où générer un env de branche
@@ -340,6 +355,8 @@ def render(tpl, cfg):
                                 **({"default_value": opts[0][0]} if opts else {})}
         for s in d["steps"]:
             s.pop("_requires", None)
+            if "_poste" in s:  # chaîne d'implémentation : agent, modèle et skills du poste (défauts, puis réglage impl.postes)
+                impl_agent(s, s.pop("_poste"), cfg)
             src = s.pop("_skills_from", None)
             if src in ("review.skill_ids", "fix.skill_ids"):  # skills de l'équipe en plus de ceux du modèle (#78, #75)
                 team = (cfg.get(src.split(".")[0]) or {}).get("skill_ids")
@@ -351,6 +368,34 @@ def render(tpl, cfg):
                     s["exec_stdin"] = re.sub(r"\{\{steps\." + re.escape(name) + r"\.[\w.]+\}\}", "null", s["exec_stdin"])
         pin_tz(d)
     return _sub(d, values(cfg), cfg)
+
+
+# chaîne d'implémentation (#76) : (tier, skills Kronn) par rôle d'agent ; léger pour lire et cadrer, fort pour coder et juger.
+# Réglage impl.postes.<rôle> du pack ou de la config : agent (ClaudeCode, CopilotCli, Codex…), tier, model, skills (ajoutés).
+IMPL_AGENTS = {
+    "cadrage": ("economy", []), "cadrage.critique": ("economy", []),
+    "schema": ("economy", []), "schema.critique": ("economy", []),
+    "patterns": ("default", []), "patterns.critique": ("default", []),
+    "orchestrateur": ("reasoning", ["writing-plans"]),
+    "code": ("reasoning", ["verification-before-completion"]), "code.relecture": ("default", []),
+    "regles": ("economy", []), "regles.critique": ("economy", []),
+    "securite": ("reasoning", ["security"]), "securite.critique": ("default", ["security"]),
+    "tests": ("default", ["testing", "test-driven-development"]),
+    "perf": ("default", ["web-performance", "accessibility"]), "perf.critique": ("economy", []),
+    "revue": ("reasoning", ["requesting-code-review"]), "revue.critique": ("default", ["receiving-code-review"]),
+    "livraison": ("economy", []),
+}
+IMPL_TEAM_SKILLS = {"code", "code.relecture", "regles", "tests", "revue"}  # + impl.skills de l'équipe (langages, conventions)
+
+
+def impl_agent(step, role, cfg):
+    tier, skills = IMPL_AGENTS[role]
+    imp = cfg.get("impl") or {}
+    conf = (imp.get("postes") or {}).get(role) or {}
+    step["agent"] = conf.get("agent") or step.get("agent") or "ClaudeCode"
+    step["agent_settings"] = {"tier": conf.get("tier") or tier, **({"model": conf["model"]} if conf.get("model") else {})}
+    extra = list(conf.get("skills") or []) + (list(imp.get("skills") or []) if role in IMPL_TEAM_SKILLS else [])
+    step["skill_ids"] = list(dict.fromkeys(skills + extra))
 
 
 # fuseau des crons : leurs heures sont calculées en UTC (assemble.cron_hours) ; depuis Kronn 0.15.1, un cron sans fuseau

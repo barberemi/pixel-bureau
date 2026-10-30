@@ -1,0 +1,248 @@
+{
+ "kind": "workflow",
+ "key": "impl_regles",
+ "doc": "Conventions de docs/, lint, analyse statique (commandes du dépôt, en conteneur).",
+ "definition": {
+  "name": "Le Bureau · chaîne · 📏 règles du projet",
+  "project_id": null,
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "ticket",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket Jira sur la chaîne.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "entree",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le poste 📏 règles du projet est-il concerné (réglages, plan, fichiers touchés) ? Sinon : rapport « non concerné » (code 3).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "entree",
+     "regles",
+     "{{ticket}}"
+    ],
+    "exec_timeout_secs": 60,
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "rapport"
+      }
+     }
+    ]
+   },
+   {
+    "name": "verif",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Lint et analyse statique du dépôt (impl.repos.<dépôt>.checks.regles), en conteneur si réglé.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "verif",
+     "regles"
+    ],
+    "exec_timeout_secs": 1800
+   },
+   {
+    "name": "propose",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "resume": {
+        "type": "string"
+       },
+       "constats": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "gravite": {
+           "type": "string",
+           "enum": [
+            "bloquant",
+            "avis"
+           ]
+          },
+          "fichier": {
+           "type": "string"
+          },
+          "ligne": {
+           "type": "integer"
+          },
+          "probleme": {
+           "type": "string"
+          },
+          "correction": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "gravite",
+          "probleme"
+         ]
+        }
+       }
+      },
+      "required": [
+       "resume",
+       "constats"
+      ]
+     },
+     "on_invalid": "Fail"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "📏 règles du projet : les constats.",
+    "prompt_template": "Tu es le poste 📏 Règles du projet.\n\n{{steps.entree.data.stdout}}\n\n## Vérifications lancées (0 token)\n{{steps.verif.data.stdout}}\n\nLes vérifications rouges sont des constats bloquants (cite l'erreur). Puis lis les conventions du dépôt (`docs/AGENTS.md`, section DO NOT, règles de code) et vérifie que le diff les respecte : nommage, emplacement, langue des commentaires, tests exigés, interdits.\n\nLis le diff de la branche (`git diff origin/<base>...HEAD`, base dans le contexte). Tu ne modifies aucun fichier. Chaque constat : `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant.\n\n## Consignes de l'équipe\n@@impl.guidelines@@\n\n## Tour précédent\nTa proposition précédente : {{steps.propose.data_json ?? \"aucune (premier tour)\"}}\nRemarques du critique à traiter (vide au premier tour) : {{steps.critique.data.remarques ?? \"aucune\"}}\nSi des remarques sont listées, traite CHACUNE (corrige, ou dis pourquoi tu la refuses) ; sinon, propose d'emblée ce que tu as de mieux.",
+    "_poste": "regles"
+   },
+   {
+    "name": "critique",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "verdict": {
+        "type": "string",
+        "enum": [
+         "ok",
+         "revoir"
+        ]
+       },
+       "remarques": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "resume": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "verdict",
+       "remarques"
+      ]
+     },
+     "on_invalid": "Fail"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "📏 règles du projet : un second agent vérifie chaque constat (faux positifs, oublis).",
+    "prompt_template": "Tu es le critique du poste 📏 Règles.\n\n{{steps.entree.data.stdout}}\n\nConstats proposés :\n{{steps.propose.data_json}}\n\nPour chaque constat, va voir la règle citée dans la doc du dépôt : existe-t-elle vraiment ? Un bloquant est-il un simple avis ? Une vérification rouge a-t-elle été oubliée ?\n\nRends `verdict` = `ok` si la proposition est utilisable telle quelle (des détails perfectibles ne justifient pas un nouveau tour), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.",
+    "_poste": "regles.critique"
+   },
+   {
+    "name": "tri",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Critique « revoir » : nouveaux constats, 3 au plus.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "tri",
+     "regles"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.critique.data_json}}",
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "propose",
+       "max_iterations": 2
+      }
+     }
+    ]
+   },
+   {
+    "name": "rapport",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Rapport du poste 📏 règles du projet : bloquants (retour au Code si le poste est bloquant) et avis.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "rapport",
+     "regles"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.propose.data_json ?? \"null\"}}\n===SEP===\n{{steps.critique.data_json ?? \"null\"}}"
+   }
+  ]
+ }
+}

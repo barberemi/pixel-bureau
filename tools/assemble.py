@@ -331,7 +331,7 @@ def defaults(cfg):
 # Le pack porte l'équipe, la config porte l'installation. settings.json du pack, lu à chaque assemblage et rendu des
 # modèles : rythme, GitFut, affiches du Top 3, planning des absences (sans config_id) et personnages des agents (sans
 # ids de workflows). La config peut surcharger chacun ; elle seule rattache un personnage à ses workflows (agents[].wf).
-SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "fix", "support", "env", "deploy", "jira")
+SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "fix", "support", "env", "deploy", "jira", "impl")
 AGENT_FIELDS = ("key", "name", "role", "wf", "seat", "sprite")  # ordre des champs d'un agent, comme l'installateur l'écrit
 
 
@@ -398,6 +398,9 @@ def merged(cfg):
     if "fix" in s:  # corriger les commentaires d'une PR (#75) : consignes, skills et contrôles de l'équipe ; la config surcharge
         f = cfg.get("fix") or {}
         out["fix"] = {**(s["fix"] or {}), **f, "checks": {**((s["fix"] or {}).get("checks") or {}), **(f.get("checks") or {})}}
+    if "impl" in s:  # chaîne d'implémentation (#76) : dépôts, postes et consignes de l'équipe ; la config surcharge clé à clé
+        i, si = cfg.get("impl") or {}, s["impl"] or {}
+        out["impl"] = {**si, **i, **{k: {**(si.get(k) or {}), **(i.get(k) or {})} for k in ("repos", "postes", "components")}}
     if "agents" in s:
         personas = {a["key"]: {k: v for k, v in a.items() if k != "model"} for a in s["agents"]}
         out["agents"] = [_agent(personas.get(a.get("key"), {}), a) for a in cfg.get("agents") or []]

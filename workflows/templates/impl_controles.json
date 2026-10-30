@@ -1,0 +1,213 @@
+{
+ "kind": "workflow",
+ "key": "impl_controles",
+ "doc": "Postes 5 à 9 l'un après l'autre (règles, sécurité, tests, perf · a11y, revue croisée), puis leur bilan.",
+ "definition": {
+  "name": "Le Bureau · chaîne · contrôles",
+  "project_id": null,
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "ticket",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket Jira sur la chaîne.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "quoi",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Fichiers touchés et postes de contrôle à lancer (réglages, plan validé, front touché ?), 0 token.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "quoi"
+    ],
+    "exec_timeout_secs": 60
+   },
+   {
+    "name": "regles",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Poste 📏 règles ; en panne, on passe au suivant (le bilan le signale).",
+    "sub_workflow_id": "@@models.impl_regles@@",
+    "sub_workflow_variables": {
+     "ticket": "{{ticket}}"
+    },
+    "on_result": [
+     {
+      "contains": "SUBWF_FAILED",
+      "action": {
+       "type": "Goto",
+       "step_name": "securite"
+      }
+     }
+    ]
+   },
+   {
+    "name": "securite",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Poste 🔒 sécurité ; en panne, on passe au suivant (le bilan le signale).",
+    "sub_workflow_id": "@@models.impl_securite@@",
+    "sub_workflow_variables": {
+     "ticket": "{{ticket}}"
+    },
+    "on_result": [
+     {
+      "contains": "SUBWF_FAILED",
+      "action": {
+       "type": "Goto",
+       "step_name": "tests"
+      }
+     }
+    ]
+   },
+   {
+    "name": "tests",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Poste 🧪 tests ; en panne, on passe au suivant (le bilan le signale).",
+    "sub_workflow_id": "@@models.impl_tests@@",
+    "sub_workflow_variables": {
+     "ticket": "{{ticket}}"
+    },
+    "on_result": [
+     {
+      "contains": "SUBWF_FAILED",
+      "action": {
+       "type": "Goto",
+       "step_name": "perf"
+      }
+     }
+    ]
+   },
+   {
+    "name": "perf",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Poste ⚡ perf · a11y ; en panne, on passe au suivant (le bilan le signale).",
+    "sub_workflow_id": "@@models.impl_perf@@",
+    "sub_workflow_variables": {
+     "ticket": "{{ticket}}"
+    },
+    "on_result": [
+     {
+      "contains": "SUBWF_FAILED",
+      "action": {
+       "type": "Goto",
+       "step_name": "revue"
+      }
+     }
+    ]
+   },
+   {
+    "name": "revue",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Poste 👀 revue croisée ; en panne, on passe au suivant (le bilan le signale).",
+    "sub_workflow_id": "@@models.impl_revue@@",
+    "sub_workflow_variables": {
+     "ticket": "{{ticket}}"
+    },
+    "on_result": [
+     {
+      "contains": "SUBWF_FAILED",
+      "action": {
+       "type": "Goto",
+       "step_name": "bilan"
+      }
+     }
+    ]
+   },
+   {
+    "name": "bilan",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Bilan des contrôles : bloquants (postes bloquants) et avis, lu par l'orchestrateur.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "bilan_controles"
+    ],
+    "exec_timeout_secs": 60
+   }
+  ]
+ }
+}

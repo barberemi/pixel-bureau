@@ -1,0 +1,201 @@
+{
+ "kind": "workflow",
+ "key": "impl_livraison",
+ "doc": "PR au modèle du dépôt (brouillon), CI, env de branche ; 0 token sauf la description.",
+ "definition": {
+  "name": "Le Bureau · chaîne · 🚀 livraison",
+  "project_id": null,
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "ticket",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket Jira sur la chaîne.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "entree",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Contexte de la livraison : ticket, rapports, fichiers modifiés (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "entree",
+     "livraison",
+     "{{ticket}}"
+    ],
+    "exec_timeout_secs": 60
+   },
+   {
+    "name": "redige",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "title": {
+        "type": "string"
+       },
+       "body": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "title",
+       "body"
+      ]
+     },
+     "on_invalid": "Fail"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "Titre et description de la PR au modèle du dépôt.",
+    "prompt_template": "Tu rédiges la PR du ticket {{ticket}}, sans rien modifier dans le dépôt.\n\n{{steps.entree.data.stdout}}\n\nLis le modèle de PR du dépôt (`.github/pull_request_template.md`, ou `docs/` s'il en parle) et suis-le EXACTEMENT (sections, cases à cocher). Concis, aucune redite, un emoji par section si le modèle n'en impose pas. Dis ce qui change et pourquoi, les décisions notables (plan validé), les vérifications faites (rapports des contrôles : verts, avis restants), et lie le ticket. `title` au format des commits du dépôt avec la clé {{ticket}}.",
+    "_poste": "livraison"
+   },
+   {
+    "name": "pousse",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Pousse la branche du ticket (--force-with-lease, sans hook).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "pousse"
+    ],
+    "exec_timeout_secs": 180,
+    "external_effect": true
+   },
+   {
+    "name": "pr",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Crée la PR en brouillon (assignée à moi), ou met à jour celle qui existe.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "pr"
+    ],
+    "exec_timeout_secs": 120,
+    "external_effect": true,
+    "exec_stdin": "{{steps.redige.data_json}}"
+   },
+   {
+    "name": "ci",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Label de CI du dépôt (réglage ci_label) puis attente du verdict, 25 min au plus.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "ci"
+    ],
+    "exec_timeout_secs": 1800,
+    "external_effect": true
+   },
+   {
+    "name": "env",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Env de branche (réglage env_label) et son adresse, 8 min au plus.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "env"
+    ],
+    "exec_timeout_secs": 600,
+    "external_effect": true
+   },
+   {
+    "name": "fin",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Bilan de la livraison : PR, CI, env.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "fin"
+    ],
+    "exec_timeout_secs": 30
+   }
+  ]
+ }
+}

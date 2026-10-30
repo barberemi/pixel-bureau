@@ -1,0 +1,230 @@
+{
+ "kind": "workflow",
+ "key": "impl_patterns",
+ "doc": "Choix d'architecture du ticket, sans sur-ingénierie.",
+ "definition": {
+  "name": "Le Bureau · chaîne · 🧩 patterns",
+  "project_id": null,
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "ticket",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket Jira sur la chaîne.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+   },
+   {
+    "name": "retours",
+    "label": "Retours de l'humain",
+    "placeholder": "",
+    "description": "Commentaire d'une gate « Changements » : ajouté au dossier, à respecter en priorité.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "entree",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Contexte du poste 🧩 patterns : ticket, retours de l'humain, docs du dépôt, rapports des postes d'avant (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "entree",
+     "patterns",
+     "{{ticket}}",
+     "{{retours}}"
+    ],
+    "exec_timeout_secs": 60
+   },
+   {
+    "name": "propose",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "resume": {
+        "type": "string"
+       },
+       "choix": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "sujet": {
+           "type": "string"
+          },
+          "decision": {
+           "type": "string"
+          },
+          "pourquoi": {
+           "type": "string"
+          },
+          "alternatives": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          }
+         },
+         "required": [
+          "sujet",
+          "decision",
+          "pourquoi"
+         ]
+        }
+       },
+       "a_eviter": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       }
+      },
+      "required": [
+       "resume",
+       "choix"
+      ]
+     },
+     "on_invalid": "Fail"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "🧩 patterns : la proposition (3 tours au plus avec la critique).",
+    "prompt_template": "Tu es le poste 🧩 Patterns. Tu ne modifies aucun fichier.\n\n{{steps.entree.data.stdout}}\n\n## Ta mission\nPour chaque décision de structure que le ticket impose (où mettre le code, quelle abstraction, réutiliser quoi), choisis en suivant les patterns DÉJÀ présents dans le dépôt (cherche un cas voisin et imite-le) et la doc du dépôt. N'introduis un pattern que si une douleur réelle le justifie (YAGNI, ne pas réimplémenter le framework). `a_eviter` : les pièges vus dans le dépôt. Reste court : 2 à 6 choix.\n\n## Tour précédent\nTa proposition précédente : {{steps.propose.data_json ?? \"aucune (premier tour)\"}}\nRemarques du critique à traiter (vide au premier tour) : {{steps.critique.data.remarques ?? \"aucune\"}}\nSi des remarques sont listées, traite CHACUNE (corrige, ou dis pourquoi tu la refuses) ; sinon, propose d'emblée ce que tu as de mieux.",
+    "_poste": "patterns"
+   },
+   {
+    "name": "critique",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "verdict": {
+        "type": "string",
+        "enum": [
+         "ok",
+         "revoir"
+        ]
+       },
+       "remarques": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "resume": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "verdict",
+       "remarques"
+      ]
+     },
+     "on_invalid": "Fail"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "🧩 patterns : un second agent la critique, sans rien modifier.",
+    "prompt_template": "Tu es le critique du poste 🧩 Patterns.\n\n{{steps.entree.data.stdout}}\n\nProposition :\n{{steps.propose.data_json}}\n\nVérifie : chaque choix suit-il un précédent du dépôt (cherche-le) ? Y a-t-il de la sur-ingénierie, ou au contraire une duplication qu'un existant éviterait ?\n\nRends `verdict` = `ok` si la proposition est utilisable telle quelle (des détails perfectibles ne justifient pas un nouveau tour), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.",
+    "_poste": "patterns.critique"
+   },
+   {
+    "name": "tri",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Critique « revoir » : nouvelle proposition, 3 au plus ; au-delà, la dernière est gardée.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "tri",
+     "patterns"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.critique.data_json}}",
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "propose",
+       "max_iterations": 2
+      }
+     }
+    ]
+   },
+   {
+    "name": "rapport",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Rapport du poste 🧩 patterns dans le dossier du ticket, lu par les postes suivants et l'orchestrateur.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "rapport",
+     "patterns"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.propose.data_json ?? \"null\"}}\n===SEP===\n{{steps.critique.data_json ?? \"null\"}}"
+   }
+  ]
+ }
+}

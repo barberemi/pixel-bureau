@@ -1,0 +1,121 @@
+{
+ "kind": "workflow",
+ "key": "impl",
+ "doc": "Pose un ticket sur la chaîne d'implémentation, dans le projet de son composant Jira.",
+ "definition": {
+  "name": "Le Bureau · implémenter un ticket",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "jira_ticket_key",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket Jira à implémenter.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+   },
+   {
+    "name": "mode",
+    "label": "Mode",
+    "placeholder": "",
+    "description": "plan : s'arrête au plan validé, en commentaire du ticket. complet : jusqu'à la PR.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "control": {
+     "type": "select",
+     "options": [
+      {
+       "value": "plan",
+       "label": "Plan seulement",
+       "enabled": true
+      },
+      {
+       "value": "complet",
+       "label": "Jusqu'à la PR",
+       "enabled": true
+      }
+     ],
+     "default_value": "plan"
+    }
+   },
+   {
+    "name": "depot",
+    "label": "Dépôt (si pas de composant)",
+    "placeholder": "owner/depot",
+    "description": "owner/dépôt ; vide : déduit du composant Jira du ticket.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "ticket",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Composants du ticket : ils donnent le dépôt.",
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/2/issue/{{jira_ticket_key}}",
+    "api_method": "GET",
+    "api_query": {
+     "fields": "summary,components"
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "lance",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Dépôt du composant Jira, son projet Kronn, un seul passage par ticket, puis la chaîne lancée sur ce projet (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "lance",
+     "{{jira_ticket_key}}",
+     "{{mode}}",
+     "{{depot}}"
+    ],
+    "exec_timeout_secs": 300,
+    "exec_stdin": "{{steps.ticket.data_json}}"
+   }
+  ]
+ }
+}
