@@ -1,0 +1,222 @@
+{
+ "kind": "workflow",
+ "key": "impl_schema",
+ "doc": "Graphe des fichiers, modules et données touchés, vérifié contre le dépôt.",
+ "definition": {
+  "name": "Le Bureau · chaîne · 🗺 schéma d'impact",
+  "project_id": null,
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "ticket",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket Jira sur la chaîne.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+   },
+   {
+    "name": "retours",
+    "label": "Retours de l'humain",
+    "placeholder": "",
+    "description": "Commentaire d'une gate « Changements » : ajouté au dossier, à respecter en priorité.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "entree",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Contexte du poste 🗺 schéma d'impact : ticket, retours de l'humain, docs du dépôt, rapports des postes d'avant (0 token). Reprise : poste déjà fait au run d'avant, droit au rapport gardé (code 5).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "entree",
+     "schema",
+     "{{ticket}}",
+     "{{retours}}"
+    ],
+    "exec_timeout_secs": 60,
+    "on_result": [
+     {
+      "contains": "exit_5",
+      "action": {
+       "type": "Goto",
+       "step_name": "rapport"
+      }
+     }
+    ]
+   },
+   {
+    "name": "releve",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Fichiers qui citent les mots du ticket et carte du dépôt (git grep, 0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "releve"
+    ],
+    "exec_timeout_secs": 120
+   },
+   {
+    "name": "propose",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "resume": {
+        "type": "string"
+       },
+       "fichiers": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "chemin": {
+           "type": "string"
+          },
+          "action": {
+           "type": "string",
+           "enum": [
+            "modifier",
+            "creer",
+            "supprimer",
+            "lire"
+           ]
+          },
+          "role": {
+           "type": "string"
+          }
+         }
+        }
+       },
+       "modules": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "donnees": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "mermaid": {
+        "type": "string"
+       },
+       "zones_risque": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       }
+      },
+      "required": [
+       "resume",
+       "fichiers",
+       "mermaid"
+      ]
+     },
+     "on_invalid": "Continue"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "🗺 schéma d'impact : la proposition (3 tours au plus avec la critique).",
+    "prompt_template": "Tu es le poste 🗺 Schéma d'impact. Tu ne modifies aucun fichier.\n\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\n## Relevé du dépôt (0 token, à vérifier)\n{{steps.releve.data.stdout ?? \"(absent)\"}}\n\n## Ta mission\nExplore le dépôt (lis le code, suis les appels) et dresse l'impact du ticket : chaque fichier à modifier, créer ou supprimer, et ceux à lire pour comprendre (`action` = lire), avec son rôle ; les modules et les données touchés (tables, API, caches, configs, traductions) ; un graphe `mermaid` (flowchart) court ; les zones à risque (code partagé, régression possible). Les chemins sont relatifs à la racine et doivent exister, sauf `creer`.\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "_poste": "schema",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
+   },
+   {
+    "name": "existe",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Chaque chemin cité comme existant existe-t-il ? (0 token)",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "existe"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.propose.data_json ?? \"null\"}}"
+   },
+   {
+    "name": "rapport",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Rapport du poste 🗺 schéma d'impact dans le dossier du ticket, lu par les postes suivants et l'orchestrateur.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "rapport",
+     "schema"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.propose.data_json ?? \"null\"}}\n===SEP===\nnull"
+   }
+  ]
+ }
+}

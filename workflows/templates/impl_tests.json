@@ -1,0 +1,205 @@
+{
+ "kind": "workflow",
+ "key": "impl_tests",
+ "doc": "Écrit ou complète les tests du diff et les lance (en conteneur si réglé), 3 essais.",
+ "definition": {
+  "name": "Le Bureau · chaîne · 🧪 tests",
+  "project_id": null,
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "ticket",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket Jira sur la chaîne.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "entree",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le poste 🧪 Tests est-il concerné ? Sinon : rapport « non concerné » (code 3).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "entree",
+     "tests",
+     "{{ticket}}"
+    ],
+    "exec_timeout_secs": 60,
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "rapport"
+      }
+     }
+    ]
+   },
+   {
+    "name": "propose",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "resume": {
+        "type": "string"
+       },
+       "constats": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "gravite": {
+           "type": "string",
+           "enum": [
+            "bloquant",
+            "avis"
+           ]
+          },
+          "fichier": {
+           "type": "string"
+          },
+          "ligne": {
+           "type": "integer"
+          },
+          "probleme": {
+           "type": "string"
+          },
+          "correction": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      },
+      "required": [
+       "resume",
+       "constats"
+      ]
+     },
+     "on_invalid": "Continue"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "Écrit ou complète les tests du diff, puis les commite.",
+    "prompt_template": "Tu es le poste 🧪 Tests.\n\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\n## Résultat du lancement précédent (vide au premier essai)\n{{steps.lance.data.stdout ?? \"aucun\"}}\n\nPour chaque comportement ajouté ou modifié par le diff, vérifie qu'un test le couvre, en suivant les conventions de test du dépôt (doc, tests voisins) ; écris ou complète ceux qui manquent, sans toucher au code de production (s'il est faux, dis-le en constat bloquant). Si le lancement précédent est rouge, corrige les tests fautifs. Commite (`git commit --no-verify -s`, jamais `.kronn/`). Rends tes constats (tests manquants que tu n'as pas pu écrire, code de production fautif) au format demandé.\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "_poste": "tests",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
+   },
+   {
+    "name": "lance",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Lance les tests du dépôt (impl.repos.<dépôt>.checks.tests), en conteneur si réglé.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "verif",
+     "tests"
+    ],
+    "exec_timeout_secs": 1800
+   },
+   {
+    "name": "tri",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Tests rouges : le poste reprend (3 essais) ; sinon rapport.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "tri_tests"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.lance.data.stdout ?? \"null\"}}",
+    "on_result": [
+     {
+      "contains": "exit_4",
+      "action": {
+       "type": "Goto",
+       "step_name": "propose",
+       "max_iterations": 5
+      }
+     }
+    ]
+   },
+   {
+    "name": "rapport",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Rapport du poste 🧪 Tests : tests rouges et manques = bloquants.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "rapport",
+     "tests"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.propose.data_json ?? \"null\"}}\n===SEP===\n{{steps.lance.data.stdout ?? \"null\"}}"
+   }
+  ]
+ }
+}

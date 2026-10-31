@@ -168,6 +168,68 @@
       }
      ]
     }
+   },
+   {
+    "name": "atelier",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "Bureaux de l'atelier d'implémentation (1er étage) : runs de la chaîne et de ses postes, 0 token.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "snap",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/atelier_snapshot.py@@"
+        ],
+        "timeout_secs": 30,
+        "output_format": "json"
+       },
+       "required": false
+      }
+     ],
+     "concurrent_limit": 1
+    },
+    "_requires": "models.impl_chain"
+   },
+   {
+    "name": "publish_atelier",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset atelier de la page Le Bureau.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "atelier",
+       "operation": "replace",
+       "value_from": "steps.atelier.data.sources.snap"
+      }
+     ]
+    },
+    "_requires": "models.impl_chain"
    }
   ],
   "actions": [],

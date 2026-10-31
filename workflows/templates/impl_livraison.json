@@ -1,0 +1,224 @@
+{
+ "kind": "workflow",
+ "key": "impl_livraison",
+ "doc": "PR brouillon au modèle du dépôt, revue de la PR, retours traités ; ni CI, ni env de branche.",
+ "definition": {
+  "name": "Le Bureau · chaîne · 📤 PR",
+  "project_id": null,
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "ticket",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket Jira sur la chaîne.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "entree",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Contexte de la PR : ticket, rapports, fichiers modifiés (0 token). Reprise : PR déjà ouverte et relue au run d'avant, droit à ta relecture (code 5).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "entree",
+     "livraison",
+     "{{ticket}}"
+    ],
+    "exec_timeout_secs": 60,
+    "on_result": [
+     {
+      "contains": "exit_5",
+      "action": {
+       "type": "Goto",
+       "step_name": "fin"
+      }
+     }
+    ]
+   },
+   {
+    "name": "redige",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "title": {
+        "type": "string"
+       },
+       "body": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "title",
+       "body"
+      ]
+     },
+     "on_invalid": "Continue"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "Titre et description de la PR au modèle du dépôt.",
+    "prompt_template": "Tu rédiges la PR du ticket {{ticket}}, sans rien modifier dans le dépôt.\n\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\nLis le modèle de PR du dépôt (`.github/pull_request_template.md`, ou `docs/` s'il en parle) : garde ses sections et ses cases à cocher, dans son ordre, et ajoute un emoji en tête de chaque titre de section. Puis écris dans la forme ci-dessous, celle des PR de l'équipe : des sections courtes, aérées, un emoji par section ; une section qui n'a rien à dire disparaît ; aucune redite, aucun texte d'aide du modèle laissé tel quel.\n\n- **🎯 De quoi on parle ?** : le ticket (lien) en une phrase, puis 2 à 4 puces en gras d'abord : ce qui change pour le visiteur ou l'équipe, l'invariant à vérifier en priorité, le point le plus discutable.\n- **🔧 Comment j'ai réglé le problème ?** : une puce par changement, le pourquoi d'abord (le problème corrigé, le piège évité), puis le fichier ; les tests ajoutés et ce qu'ils prouvent.\n- Laisse la ligne `<!-- bureau-exigences -->` juste après : le script y écrit le tableau « 📋 Ce que le ticket demandait, et où ça atterrit » (poste Besoin). Ne l'écris pas toi-même.\n- **🧪 Comment on teste ?** : des étapes numérotées et concrètes, avec le résultat attendu, reprises du « Comment on teste » du ticket et complétées par ce que le code change.\n- **✅ Validation** : ce qui a vraiment tourné (vérifications et contrôles de la chaîne, commandes lancées), et ce qui n'est pas prouvé.\n- **🚦 Avant / après le merge** : seulement s'il y a quelque chose : réglage GitHub ou admin, environnement à créer, check à rendre obligatoire, ordre de merge avec les PR sœurs.\n- Laisse la ligne `<!-- bureau-points -->` à la fin : le script y écrit les « ⚠️ Points ouverts » (avis des contrôles). Ne les recopie pas et n'écris rien qui les contredise.\n\nRien d'inventé : n'affirme que ce qui se voit dans le diff ou les rapports (« X retiré » seulement si plus aucune occurrence ne reste). `title` au format des commits du dépôt avec la clé {{ticket}}.\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "_poste": "livraison",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
+   },
+   {
+    "name": "pousse",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Pousse la branche du ticket (--force-with-lease, sans hook).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "pousse"
+    ],
+    "exec_timeout_secs": 180,
+    "external_effect": true
+   },
+   {
+    "name": "pr",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Crée la PR en brouillon (assignée à moi), ou met à jour celle qui existe.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "pr"
+    ],
+    "exec_timeout_secs": 120,
+    "external_effect": true,
+    "exec_stdin": "{{steps.redige.data_json ?? \"null\"}}"
+   },
+   {
+    "name": "revue",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Poste 👀 revue de la PR ; en panne, on continue.",
+    "sub_workflow_id": "@@models.impl_revue_pr@@",
+    "sub_workflow_variables": {
+     "ticket": "{{ticket}}"
+    },
+    "on_result": [
+     {
+      "contains": "SUBWF_FAILED",
+      "action": {
+       "type": "Goto",
+       "step_name": "retours"
+      }
+     }
+    ]
+   },
+   {
+    "name": "retours",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Poste 💬 retours : les commentaires de la revue traités ; en panne, on continue.",
+    "sub_workflow_id": "@@models.impl_retours@@",
+    "sub_workflow_variables": {
+     "ticket": "{{ticket}}"
+    },
+    "on_result": [
+     {
+      "contains": "SUBWF_FAILED",
+      "action": {
+       "type": "Goto",
+       "step_name": "fin"
+      }
+     }
+    ]
+   },
+   {
+    "name": "fin",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Bilan : PR, retours traités.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "fin"
+    ],
+    "exec_timeout_secs": 30
+   }
+  ]
+ }
+}

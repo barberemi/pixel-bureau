@@ -22,10 +22,13 @@ function loop(now){
     pumpSheets(8);
     galleryFrame(now); // 46-gallery.js : fin d'une démonstration
     fxFrame(now); // 43-fx.js : petites scènes de 3 s (succès, éclosion, stade, agent rétabli)
-    render(now);
-    loupeFrame(now); // 44-loupe.js : médaillon sur l'événement fort en cours
-    drawPreview(now);
-    drawNewAgentPreview(now); // 66-newagent.js
+    if(FLOOR)renderAtelier(now); // 68-atelier.js : le 1er étage, à la place de l'open space
+    else{
+      render(now);
+      loupeFrame(now); // 44-loupe.js : médaillon sur l'événement fort en cours
+      drawPreview(now);
+      drawNewAgentPreview(now); // 66-newagent.js
+    }
   }
   requestAnimationFrame(loop);
 }
@@ -155,6 +158,9 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   if(!MAILS&&DEMO)MAILS=mailDemo();
   if(!TODOS&&DEMO)TODOS=todosDemo(); // 47-todos.js
   if(!SUPPORT&&DEMO)SUPPORT=supportDemo();
+  ATELIER=readAtelier(k)||(DEMO?atelierDemo():null); // 68-atelier.js : 1er étage
+  atelierTabs();
+  if(FLOOR&&atelierOn())setFloor(1);else FLOOR=0;
 }
 window.addEventListener('kronn:page-data',e=>{
   if(SCENE_DEMO)demoEnd(); // nouvelles données : la démonstration s'arrête, la journée reprend
@@ -198,6 +204,8 @@ window.addEventListener('kronn:page-data',e=>{
   if(ab)ABSENCES=ab;
   const ml=readMails(k)||readMails(window.KronnPageData);
   if(ml)MAILS=ml;
+  const at=readAtelier(k)||readAtelier(window.KronnPageData);
+  if(at){ATELIER=at;atelierTabs();} // 68-atelier.js
   const sp=readSupport(k)||readSupport(window.KronnPageData);
   if(sp)SUPPORT=sp;
   if(sp||gg)spRefresh(); // 48-support.js : la fenêtre ouverte suit (#62)
@@ -216,7 +224,7 @@ window.addEventListener('kronn:page-data',e=>{
   const ag=readAgents(k);
   if(ag)applyAgents(ag);
   const lay=readLayout(k);
-  if(lay!==undefined&&applyLayout(lay||EMBEDDED_LAYOUT)){wideRefresh();return;} // applyLayout a déjà tout rafraîchi
+  if(lay!==undefined&&applyLayout(lay||EMBEDDED_LAYOUT)){if(FLOOR)setFloor(1);wideRefresh();return;} // applyLayout a déjà tout rafraîchi (la toile reprend la taille de l'étage)
   refreshAll();wideRefresh(); // 47-bosspages.js : la fenêtre large ouverte suit
   });
 if(TV){document.body.classList.add('tv');NAMES_BEFORE_TV=NAMES;NAMES='all';}

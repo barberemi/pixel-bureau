@@ -25,8 +25,8 @@ import shots  # noqa: E402
 REF = os.path.join(ROOT, "tests", "visual")
 DIFF = os.path.join(ROOT, "dist", "visual")
 META = os.path.join(REF, "references.json")
-# captures clés : le plan (personnages, bureaux, scènes), les fiches, le fil, les murs, la TV, le mobile
-NAMES = ["plan", "fiche-agent", "fiche-collegue", "fiche-ticket", "fil", "kanban", "tv", "mobile"]
+# captures clés : le plan (personnages, bureaux, scènes), les fiches, le fil, les murs, la TV, le mobile, le 1er étage
+NAMES = ["plan", "fiche-agent", "fiche-collegue", "fiche-ticket", "fil", "kanban", "tv", "mobile", "atelier"]  # atelier : le 1er étage (#125)
 SEUIL = 24
 FRAMES = 60  # images jouées avant chaque capture (2 s de temps virtuel)
 TOLERANCE = 0.003

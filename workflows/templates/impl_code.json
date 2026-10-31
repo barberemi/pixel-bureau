@@ -1,0 +1,318 @@
+{
+ "kind": "workflow",
+ "key": "impl_code",
+ "doc": "Écrit le plan en une session (un commit par lot), ou les corrections demandées ; vérifications (erreurs nouvelles seulement) et relecture, 3 essais.",
+ "definition": {
+  "name": "Le Bureau · chaîne · ⌨ code",
+  "project_id": null,
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "ticket",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket Jira sur la chaîne.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+   },
+   {
+    "name": "retours",
+    "label": "Retours de l'humain",
+    "placeholder": "",
+    "description": "Commentaire d'une gate « Changements » : ajouté au dossier, à respecter en priorité.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "plan",
+    "label": "Plan validé",
+    "placeholder": "",
+    "description": "Plan de l'orchestrateur (JSON), découpé en lots.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "consignes",
+    "label": "Consignes",
+    "placeholder": "",
+    "description": "Consignes de l'orchestrateur après les contrôles (mode correction).",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "guards": {
+   "loop_detection_max_revisits": 25
+  },
+  "steps": [
+   {
+    "name": "entree",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Contexte du poste Code : ticket, retours, rapports cadrage, schéma et patterns (0 token). Mode essai : l'étape affecter (Jira) est sautée (code 5).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "entree",
+     "code",
+     "{{ticket}}",
+     "{{retours}}",
+     "{{consignes}}"
+    ],
+    "exec_timeout_secs": 60,
+    "on_result": [
+     {
+      "contains": "exit_5",
+      "action": {
+       "type": "Goto",
+       "step_name": "plan"
+      }
+     }
+    ]
+   },
+   {
+    "name": "affecter",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Le ticket à moi et En cours (modèle « me l'affecter »), sans effet s'il l'est déjà ; en échec, on code quand même.",
+    "sub_workflow_id": "@@models.assign@@",
+    "sub_workflow_variables": {
+     "jira_ticket_key": "{{ticket}}"
+    },
+    "_requires": "models.assign",
+    "on_result": [
+     {
+      "contains": "SUBWF_FAILED",
+      "action": {
+       "type": "Goto",
+       "step_name": "plan"
+      }
+     }
+    ]
+   },
+   {
+    "name": "plan",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Ce que le Code a à faire : le plan en lots au premier passage, sinon les consignes ou les retours (mode correction), 0 token.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "plan",
+     "{{consignes}}",
+     "{{retours}}"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{plan}}"
+   },
+   {
+    "name": "code",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "resume": {
+        "type": "string"
+       },
+       "fichiers": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "commit": {
+        "type": "string"
+       },
+       "verifs": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "resume",
+       "fichiers"
+      ]
+     },
+     "on_invalid": "Continue"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "⌨ Code en une session : tous les lots du plan (un commit par lot), ou les corrections demandées.",
+    "prompt_template": "Tu es le poste ⌨ Code d'une chaîne d'implémentation. Tu fais TOUT le travail ci-dessous dans cette session, comme un développeur seul sur le ticket.\n\n## À faire\n{{steps.plan.data.stdout ?? \"(absent)\"}}\n\n## Dossier\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\n## Vérifications et relecture de ton essai précédent (vide au premier essai ; rouge = à corriger d'abord)\n{{steps.verif.data.stdout ?? \"aucune\"}}\nRelecture : {{steps.relecture.data_json ?? \"aucune\"}}\n\n## Règles\n- Tu es sur la branche du ticket ; ne change pas de branche, ne pousse pas (le poste PR pousse).\n- Plan : écris les lots dans l'ordre, **un commit par lot**. Correction : un commit par sujet ; un point que tu refuses, dis pourquoi dans `resume`.\n- Suis les choix du poste Patterns et la doc du dépôt ; imite le code voisin ; reprends ce qui existe dans les dépôts à lire. Commentaires rares et utiles.\n- Pour chaque valeur que le ticket retire ou renomme, `git grep` dans tout le dépôt, doc comprise, et traite chaque occurrence.\n- Commits : `git add` des fichiers voulus (jamais `.kronn/`), `git commit --no-verify -s -m \"<type>(<portée>): {{ticket}} <sujet>\"` (les hooks cassent dans Kronn).\n- Lance des vérifications ciblées en cours de route (test du fichier touché), sans installer ni monter de stack. Une erreur déjà présente avant ton travail n'est pas à toi.\n\n## Consignes de l'équipe\n@@impl.guidelines@@\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "_poste": "code",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
+   },
+   {
+    "name": "verif",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Vérifications rapides du dépôt (réglage impl.repos.<dépôt>.checks.regles), en conteneur si réglé.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "verif",
+     "regles"
+    ],
+    "exec_timeout_secs": 1800
+   },
+   {
+    "name": "relecture",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "verdict": {
+        "type": "string",
+        "enum": [
+         "ok",
+         "revoir"
+        ]
+       },
+       "remarques": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "resume": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "verdict",
+       "remarques"
+      ]
+     },
+     "on_invalid": "Continue"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "Un second agent relit le lot contre le plan, sans rien modifier.",
+    "prompt_template": "Tu relis le travail que le poste Code vient de commiter, sans rien modifier.\n\nCe qui était à faire : {{steps.plan.data.stdout ?? \"(absent)\"}}\n\nCe qu'il dit avoir fait : {{steps.code.data_json ?? \"(absent)\"}}\n\nVérifications (seules les erreurs nouvelles comptent) : {{steps.verif.data.stdout ?? \"(absent)\"}}\n\nLis les commits de la branche depuis le point de départ (`git log` puis le diff). Le travail fait-il ce que le plan ou les consignes demandent, sans déborder ? Une erreur évidente, un oubli (import, traduction, appelant, occurrence restée d'une valeur retirée) ? Rends `revoir` seulement pour un vrai défaut.\n\nRends `verdict` = `ok` si c'est utilisable tel quel (des détails perfectibles ne justifient pas un nouvel essai), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "_poste": "code.relecture",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
+   },
+   {
+    "name": "tri",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Vérifs rouges (erreurs nouvelles) ou relecture « revoir » : le Code reprend (code 4, 3 essais), sinon fini.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "tri_code"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.verif.data.stdout ?? \"null\"}}\n===SEP===\n{{steps.relecture.data_json ?? \"null\"}}",
+    "on_result": [
+     {
+      "contains": "exit_4",
+      "action": {
+       "type": "Goto",
+       "step_name": "code",
+       "max_iterations": 5
+      }
+     }
+    ]
+   },
+   {
+    "name": "bilan",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Commits et fichiers de la branche : rapport du poste Code.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "bilan_code"
+    ],
+    "exec_timeout_secs": 60
+   }
+  ]
+ }
+}

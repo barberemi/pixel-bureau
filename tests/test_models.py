@@ -171,12 +171,13 @@ class ModelsTest(unittest.TestCase):
             self.assertLessEqual(len((tpl.get("definition") or {}).get("steps") or []), 20, key)
 
     def test_on_result_rules_only_match_kronn_signals(self):
-        """Kronn ne compare on_result qu'aux lignes « [SIGNAL: …] » (OK, ERROR, exit_N, PARTIAL, PENDING), jamais au texte
-        écrit par l'étape : une règle sur « DEJA » ou « PASSE » ne se déclenche jamais (move publié le 2026-10-28)."""
+        """Kronn ne compare on_result qu'aux lignes « [SIGNAL: …] » (OK, ERROR, exit_N, PARTIAL, PENDING ; SUBWF_FAILED d'un
+        sous-workflow en échec), jamais au texte écrit par l'étape : une règle sur « DEJA » ou « PASSE » ne se déclenche
+        jamais (move publié le 2026-10-28)."""
         for key, tpl in TPL.items():
             for s in (tpl.get("definition") or {}).get("steps") or []:
                 for rule in s.get("on_result") or []:
-                    self.assertRegex(rule["contains"], r"^(OK|ERROR|PARTIAL|PENDING|PAGINATION_TRUNCATED|TRIGGER_REFUSED|exit_\d+|http_\d+)$",
+                    self.assertRegex(rule["contains"], r"^(OK|ERROR|PARTIAL|PENDING|PAGINATION_TRUNCATED|TRIGGER_REFUSED|SUBWF_FAILED|exit_\d+|http_\d+)$",
                                      f"{key}.{s['name']}")
 
     def test_issue_finds_gh_and_its_recap_discussion_is_optional(self):

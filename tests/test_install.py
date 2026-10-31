@@ -176,7 +176,7 @@ class InstallTest(unittest.TestCase):
         self.run_install(ANSWERS)
         first = self.fakes[-1]
         page_id = json.loads(Path(self.cfg_path).read_text())["page_id"]
-        first.store[page_id]["datasets"] = [d for d in first.store[page_id]["datasets"] if d["name"] not in ("layout", "actions", "duck", "absences", "mails", "mail_rules", "support", "todos")]  # page d'avant
+        first.store[page_id]["datasets"] = [d for d in first.store[page_id]["datasets"] if d["name"] not in ("layout", "actions", "duck", "absences", "mails", "mail_rules", "support", "todos", "atelier")]  # page d'avant
         with mock.patch.object(install, "Kronn", return_value=first):
             self.assertEqual(self.run_install(ANSWERS), 0)
         self.assertEqual([d["name"] for d in first.store[page_id]["datasets"]], install.DATASETS)

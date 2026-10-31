@@ -73,7 +73,7 @@ function renderSide(force){
   const folded=SIDE_FOLDED&&innerWidth>980; // sous 980 px le panneau passe sous le plan : jamais replié
   if(innerWidth>980)sideFoldButton(side);
   document.body.classList.toggle('sidefold',folded);
-  if(!folded)drawSide(side);
+  if(!folded)(FLOOR?drawAtelierSide:drawSide)(side); // 68-atelier.js : sur le 1er étage, les bureaux de l'atelier
   restoreFields(side,kept);
   refocus(side,fid);
 }

@@ -1,0 +1,163 @@
+{
+ "kind": "workflow",
+ "key": "impl_patterns",
+ "doc": "Choix d'architecture du ticket, sans sur-ingénierie.",
+ "definition": {
+  "name": "Le Bureau · chaîne · 🧩 patterns",
+  "project_id": null,
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "ticket",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket Jira sur la chaîne.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+   },
+   {
+    "name": "retours",
+    "label": "Retours de l'humain",
+    "placeholder": "",
+    "description": "Commentaire d'une gate « Changements » : ajouté au dossier, à respecter en priorité.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "entree",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Contexte du poste 🧩 patterns : ticket, retours de l'humain, docs du dépôt, rapports des postes d'avant (0 token). Reprise : poste déjà fait au run d'avant, droit au rapport gardé (code 5).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "entree",
+     "patterns",
+     "{{ticket}}",
+     "{{retours}}"
+    ],
+    "exec_timeout_secs": 60,
+    "on_result": [
+     {
+      "contains": "exit_5",
+      "action": {
+       "type": "Goto",
+       "step_name": "rapport"
+      }
+     }
+    ]
+   },
+   {
+    "name": "propose",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "resume": {
+        "type": "string"
+       },
+       "choix": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "sujet": {
+           "type": "string"
+          },
+          "decision": {
+           "type": "string"
+          },
+          "pourquoi": {
+           "type": "string"
+          },
+          "alternatives": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          }
+         }
+        }
+       },
+       "a_eviter": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       }
+      },
+      "required": [
+       "resume",
+       "choix"
+      ]
+     },
+     "on_invalid": "Continue"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "🧩 patterns : la proposition (3 tours au plus avec la critique).",
+    "prompt_template": "Tu es le poste 🧩 Patterns. Tu ne modifies aucun fichier.\n\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\n## Ta mission\nPour chaque décision de structure que le ticket impose (où mettre le code, quelle abstraction, réutiliser quoi), choisis en suivant les patterns DÉJÀ présents dans le dépôt (cherche un cas voisin et imite-le) et la doc du dépôt. N'introduis un pattern que si une douleur réelle le justifie (YAGNI, ne pas réimplémenter le framework). `a_eviter` : les pièges vus dans le dépôt. Reste court : 2 à 6 choix.\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "_poste": "patterns",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
+   },
+   {
+    "name": "rapport",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Rapport du poste 🧩 patterns dans le dossier du ticket, lu par les postes suivants et l'orchestrateur.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "rapport",
+     "patterns"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.propose.data_json ?? \"null\"}}\n===SEP===\nnull"
+   }
+  ]
+ }
+}

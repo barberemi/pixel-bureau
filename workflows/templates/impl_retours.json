@@ -1,0 +1,179 @@
+{
+ "kind": "workflow",
+ "key": "impl_retours",
+ "doc": "Les commentaires des relecteurs traités : correction, push, réponse dans chaque fil.",
+ "definition": {
+  "name": "Le Bureau · chaîne · 💬 retours",
+  "project_id": null,
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "ticket",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket Jira sur la chaîne.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "entree",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Commentaires de la PR sans réponse ; aucun, ou mode essai : fin (code 3).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "retours_lire"
+    ],
+    "exec_timeout_secs": 120,
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "fin"
+      }
+     }
+    ]
+   },
+   {
+    "name": "corrige",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "replies": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "commentId": {
+           "type": "integer"
+          },
+          "body": {
+           "type": "string"
+          }
+         }
+        }
+       },
+       "resume": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "replies",
+       "resume"
+      ]
+     },
+     "on_invalid": "Continue"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "Corrige ce qui est pertinent, commite, et rédige une réponse par fil.",
+    "prompt_template": "Tu es le poste 💬 Retours : des relecteurs (revue IA ou humains) ont commenté la PR du ticket {{ticket}}.\n\n## Fils sans réponse\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\nPour CHAQUE fil : juge s'il est pertinent (lis le code autour). Pertinent : corrige sur la branche du ticket (ne change pas de branche, ne pousse pas), un commit par sujet (`git commit --no-verify -s`, jamais `.kronn/`). Pas pertinent : explique pourquoi, poliment. Réponse en français, courte, une icône en tête : ✅ corrigé, 🧪 test ajouté, ⏭️ laissé tel quel, 💬 réponse.\n\n## Consignes de l'équipe\n@@impl.guidelines@@\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "_poste": "retours",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
+   },
+   {
+    "name": "pousse",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Pousse les corrections (--force-with-lease, sans hook) ; mode essai : rien.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "pousse"
+    ],
+    "exec_timeout_secs": 180,
+    "external_effect": true
+   },
+   {
+    "name": "reponds",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Une réponse dans chaque fil ; mode essai : rien.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "reponds"
+    ],
+    "exec_timeout_secs": 180,
+    "external_effect": true,
+    "exec_stdin": "{{steps.corrige.data_json ?? \"null\"}}"
+   },
+   {
+    "name": "fin",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Fin des retours.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "fin"
+    ],
+    "exec_timeout_secs": 30
+   }
+  ]
+ }
+}

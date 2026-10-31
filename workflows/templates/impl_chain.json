@@ -1,0 +1,722 @@
+{
+ "kind": "workflow",
+ "key": "impl_chain",
+ "doc": "Un ticket, une copie du projet, dix postes : cadrage, schéma, patterns, ton plan, code, contrôles, PR. 4 en parallèle.",
+ "definition": {
+  "name": "Le Bureau · implémenter un ticket (chaîne)",
+  "project_id": null,
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "ticket",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket Jira sur la chaîne.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+   },
+   {
+    "name": "mode",
+    "label": "Mode",
+    "placeholder": "",
+    "description": "plan : s'arrête au plan validé (en commentaire du ticket). complet : jusqu'à la PR. essai : tout, sans rien envoyer.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "control": {
+     "type": "select",
+     "options": [
+      {
+       "value": "plan",
+       "label": "Plan seulement",
+       "enabled": true
+      },
+      {
+       "value": "complet",
+       "label": "Jusqu'à la PR",
+       "enabled": true
+      },
+      {
+       "value": "essai",
+       "label": "Essai sans effet (ni push, ni PR, ni Jira)",
+       "enabled": true
+      }
+     ],
+     "default_value": "plan"
+    }
+   },
+   {
+    "name": "depot",
+    "label": "Dépôt",
+    "placeholder": "owner/depot",
+    "description": "Dépôt de ce bureau (posé par le lanceur) ; vide : celui du projet.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "soeurs",
+    "label": "Dépôts sœurs",
+    "placeholder": "owner/a,owner/b",
+    "description": "Les autres dépôts du ticket, chacun sur son bureau (posé par le lanceur).",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "partie",
+    "label": "Titre de la partie",
+    "placeholder": "",
+    "description": "En tête du plan dans Jira quand le ticket a plusieurs dépôts (posé par le lanceur).",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "reprise",
+    "label": "Reprise",
+    "placeholder": "",
+    "description": "oui : reprendre là où le dernier run de ce ticket sur ce dépôt s'est arrêté (le lanceur le pose après un échec). non : du début.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "control": {
+     "type": "select",
+     "options": [
+      {
+       "value": "oui",
+       "label": "Reprendre là où le run d'avant s'est arrêté",
+       "enabled": true
+      },
+      {
+       "value": "non",
+       "label": "Repartir de zéro",
+       "enabled": true
+      }
+     ],
+     "default_value": "non"
+    }
+   },
+   {
+    "name": "base",
+    "label": "Rejouer depuis",
+    "placeholder": "commit ou branche",
+    "description": "Essai seulement : la branche part de ce commit (ou de cette branche) au lieu de la base à jour, pour rejouer un ticket déjà livré et comparer à sa PR.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": true
+  },
+  "concurrency_limit": 4,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "project_scope": {
+   "type": "All"
+  },
+  "guards": {
+   "timeout_seconds": 21600,
+   "max_llm_calls": 200,
+   "loop_detection_max_revisits": 12
+  },
+  "steps": [
+   {
+    "name": "ticket",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Le ticket (API REST v2 : description en texte).",
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/2/issue/{{ticket}}",
+    "api_method": "GET",
+    "api_query": {
+     "fields": "summary,description,issuetype,components,labels,priority,status,subtasks,issuelinks,comment"
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "prepare",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Dossier du ticket, réglages du dépôt, branche kronn/<ticket> depuis la base à jour ; en reprise, dossier et branche du run d'avant, saut au poste où il s'est arrêté (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "prepare",
+     "{{ticket}}",
+     "{{mode}}",
+     "{{run.id}}",
+     "{{run.variant}}",
+     "{{depot ?? \"\"}}",
+     "{{soeurs ?? \"\"}}",
+     "{{reprise ?? \"non\"}}",
+     "{{base ?? \"\"}}"
+    ],
+    "exec_timeout_secs": 180,
+    "exec_stdin": "{{steps.ticket.data_json ?? \"null\"}}",
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "code"
+      }
+     },
+     {
+      "contains": "exit_4",
+      "action": {
+       "type": "Goto",
+       "step_name": "controles"
+      }
+     },
+     {
+      "contains": "exit_5",
+      "action": {
+       "type": "Goto",
+       "step_name": "livraison"
+      }
+     }
+    ]
+   },
+   {
+    "name": "cadrage",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Poste 1 : comprendre le ticket et poser les questions.",
+    "sub_workflow_id": "@@models.impl_cadrage@@",
+    "sub_workflow_variables": {
+     "ticket": "{{ticket}}",
+     "retours": "{{state.last_human_feedback ?? \"\"}}"
+    }
+   },
+   {
+    "name": "questions",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "« Ce que j'ai compris » pour ta gate : compréhension, inclus et exclus, critères, questions, désaccord du critique (0 token). Réglage impl.gate_cadrage false : la gate ne s'ouvre que s'il y a à trancher (sinon code 3, saut au schéma).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "questions"
+    ],
+    "exec_timeout_secs": 30,
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "schema"
+      }
+     }
+    ]
+   },
+   {
+    "name": "gate_questions",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "✋ Ce que la chaîne a compris du ticket : tu corriges autant de fois que tu veux avant le schéma et le plan.",
+    "gate_message": "## ✋ Ce que j'ai compris, {{ticket}}\n\n{{steps.questions.data.stdout ?? \"(absent)\"}}\n\n---\n**Changements** : corrige, réponds aux questions ou précise ; le cadrage repart avec ton message (autant de tours que tu veux). **Approuver** : on continue vers le schéma d'impact et le plan. **Rejeter** : on arrête (ou ce dépôt n'est pas concerné).",
+    "gate_request_changes_target": "cadrage"
+   },
+   {
+    "name": "schema",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Poste 2 : schéma d'impact ; en panne, on continue (l'orchestrateur le voit).",
+    "sub_workflow_id": "@@models.impl_schema@@",
+    "sub_workflow_variables": {
+     "ticket": "{{ticket}}",
+     "retours": "{{state.last_human_feedback ?? \"\"}}"
+    },
+    "on_result": [
+     {
+      "contains": "SUBWF_FAILED",
+      "action": {
+       "type": "Goto",
+       "step_name": "patterns"
+      }
+     }
+    ]
+   },
+   {
+    "name": "patterns",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Poste 3 : choix d'architecture ; en panne, on continue (l'orchestrateur le voit).",
+    "sub_workflow_id": "@@models.impl_patterns@@",
+    "sub_workflow_variables": {
+     "ticket": "{{ticket}}",
+     "retours": "{{state.last_human_feedback ?? \"\"}}"
+    },
+    "on_result": [
+     {
+      "contains": "SUBWF_FAILED",
+      "action": {
+       "type": "Goto",
+       "step_name": "orchestrateur_plan"
+      }
+     }
+    ]
+   },
+   {
+    "name": "dossier",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le dossier (ticket, retours, trois rapports) recopié pour l'orchestrateur, 0 token.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "dossier"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "name": "orchestrateur_plan",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "resume": {
+        "type": "string"
+       },
+       "apercu": {
+        "type": "string"
+       },
+       "lots": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "titre": {
+           "type": "string"
+          },
+          "objectif": {
+           "type": "string"
+          },
+          "fichiers": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          },
+          "verification": {
+           "type": "string"
+          }
+         }
+        }
+       },
+       "postes": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "enum": [
+          "regles",
+          "securite",
+          "tests",
+          "perf",
+          "revue"
+         ]
+        }
+       },
+       "risques": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "decisions": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "commentaire_jira": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "resume",
+       "apercu",
+       "lots",
+       "postes",
+       "commentaire_jira"
+      ]
+     },
+     "on_invalid": "Fail"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "L'orchestrateur valide les trois postes et compose le plan : lots, postes de contrôle à lancer.",
+    "prompt_template": "Tu es l'orchestrateur d'une chaîne d'implémentation. Voici le dossier du ticket : le ticket, les retours de l'humain et les rapports des postes Cadrage, Schéma d'impact et Patterns. Tout est ci-dessous : tu peux ouvrir un fichier du dépôt pour trancher un doute, mais tu ne modifies rien.\n\n{{steps.dossier.data.stdout ?? \"(absent)\"}}\n\n1. Valide : les trois rapports sont-ils cohérents entre eux et avec le ticket ? Tranche les contradictions (dis-le dans `decisions`).\n2. Découpe le travail en lots ordonnés (6 au plus), chacun petit, commitable seul et vérifiable : `titre`, `objectif`, `fichiers`, `verification`.\n   Sois exhaustif sur les fichiers : pour chaque valeur que le ticket retire, renomme ou remplace (option, environnement, nom de fichier, clé, commande), cherche TOUTES ses occurrences dans le dépôt (`git grep`) et mets chaque fichier concerné dans un lot. La doc fait partie du travail : README, `docs/`, `AGENTS.md`, `ai/` ou tout fichier qui décrit ce qui change va dans un lot.\n   Un modèle existe déjà dans un dépôt à lire (section « Dépôts à lire ») : reprends-le tel quel plutôt que d'en écrire un autre.\n3. Dispatch : `postes` = les postes de contrôle utiles à CE ticket parmi regles, securite, tests, perf, revue (perf seulement si du front change). regles, securite et tests tournent de toute façon (postes bloquants) : liste-les quand même.\n4. `apercu` : le plan en Markdown court pour l'humain qui valide (compréhension, lots, risques, questions restées en hypothèse).\n5. `commentaire_jira` : le même plan en wiki markup Jira (h3., *, listes), en français, sans emoji, signé « Plan proposé par la chaîne d'implémentation du Bureau ».\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "_poste": "orchestrateur",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
+   },
+   {
+    "name": "gate_plan",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "✋ Ton plan : rien n'est codé ni écrit dans Jira avant ton accord.",
+    "gate_message": "## ✋ Plan pour {{ticket}} (mode {{mode}})\n\n{{steps.orchestrateur_plan.data.apercu ?? \"(absent)\"}}\n\n**Contrôles prévus** : {{steps.orchestrateur_plan.data.postes ?? \"(absent)\"}}\n\n---\n**Approuver** : en Plan seulement, le plan part en commentaire du ticket ; en mode complet ou essai, le code commence. **Changements** : ton commentaire relance schéma, patterns et plan. **Rejeter** : on arrête.",
+    "gate_request_changes_target": "schema"
+   },
+   {
+    "name": "mode",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Plan seulement : code 4, saut au commentaire Jira en fin de chaîne puis Stop. Complet ou essai : code 0, le Code suit (une gate « Changements » vers le Code y retombe bien).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "mode",
+     "{{mode}}"
+    ],
+    "exec_timeout_secs": 30,
+    "on_result": [
+     {
+      "contains": "exit_4",
+      "action": {
+       "type": "Goto",
+       "step_name": "commente_plan"
+      }
+     }
+    ]
+   },
+   {
+    "name": "code",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Poste 4 : le code, lot par lot (ou les corrections demandées).",
+    "sub_workflow_id": "@@models.impl_code@@",
+    "sub_workflow_variables": {
+     "ticket": "{{ticket}}",
+     "retours": "{{state.last_human_feedback ?? \"\"}}",
+     "plan": "{{steps.orchestrateur_plan.data_json ?? \"\"}}",
+     "consignes": "{{steps.orchestrateur.data.consignes ?? \"\"}}"
+    }
+   },
+   {
+    "name": "controles",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Postes 5 à 9 : règles, sécurité, tests, perf · a11y, revue croisée.",
+    "sub_workflow_id": "@@models.impl_controles@@",
+    "sub_workflow_variables": {
+     "ticket": "{{ticket}}"
+    }
+   },
+   {
+    "name": "orchestrateur",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "decision": {
+        "type": "string",
+        "enum": [
+         "livrer",
+         "retour_code",
+         "humain"
+        ]
+       },
+       "consignes": {
+        "type": "string"
+       },
+       "resume": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "decision",
+       "consignes",
+       "resume"
+      ]
+     },
+     "on_invalid": "Continue"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "L'orchestrateur lit les contrôles : livrer, renvoyer au Code avec des consignes, ou appeler un humain.",
+    "prompt_template": "Tu es l'orchestrateur de la chaîne. Le poste Code a écrit le plan, les postes de contrôle ont rendu leurs rapports.\n\nBilan des contrôles, commits du poste Code et tours déjà faits (tout est là, aucun fichier à ouvrir) :\n{{steps.controles.data.last_output ?? \"(absent)\"}}\n\nTu ne modifies aucun fichier.\n\n- `livrer` : aucun bloquant (des avis peuvent rester, ils iront dans la PR).\n- `retour_code` : des bloquants à corriger ; `consignes` = la liste ordonnée et dédoublonnée de ce que le Code doit faire (fichier, problème, correction), en écartant ce qui se contredit entre postes.\n- `humain` : un bloquant qu'un nouveau tour ne réglera pas (choix produit, conflit entre postes, rien n'a été écrit), ou le même bloquant revient après correction.\n`resume` : 3 lignes pour l'humain.\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "_poste": "orchestrateur",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
+   },
+   {
+    "name": "aiguillage",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Livrer (code 3), retour au Code (code 4, 3 tours au plus), sinon ta gate.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "aiguillage"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.orchestrateur.data_json ?? \"null\"}}",
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "livraison"
+      }
+     },
+     {
+      "contains": "exit_4",
+      "action": {
+       "type": "Goto",
+       "step_name": "code",
+       "max_iterations": 5
+      }
+     }
+    ]
+   },
+   {
+    "name": "gate_escalade",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "La chaîne ne s'en sort pas seule : à toi de trancher.",
+    "gate_message": "## 🧑‍⚖️ {{ticket}} : la chaîne demande un humain\n\n{{steps.orchestrateur.data.resume ?? \"(absent)\"}}\n\n**Ce qui bloque** :\n{{steps.orchestrateur.data.consignes ?? \"(absent)\"}}\n\n---\n**Approuver** : on livre quand même en PR brouillon (les bloquants y sont listés). **Changements** : ta consigne repart au poste Code. **Rejeter** : on arrête (la branche reste locale).",
+    "gate_request_changes_target": "code"
+   },
+   {
+    "name": "livraison",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Postes 10 à 12 : PR au modèle du dépôt, revue de la PR, retours traités.",
+    "sub_workflow_id": "@@models.impl_livraison@@",
+    "sub_workflow_variables": {
+     "ticket": "{{ticket}}"
+    }
+   },
+   {
+    "name": "gate_pr",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "Relis la PR brouillon (revue IA traitée) avant qu'elle parte en relecture humaine.",
+    "gate_message": "## 👀 PR de {{ticket}} prête en brouillon\n\n{{steps.livraison.data.last_output ?? \"(absent)\"}}\n\n---\n**Approuver** : la PR sort du brouillon, les relecteurs sont demandés, le lien va dans le ticket. **Changements** : ta consigne repart au poste Code (puis contrôles et livraison). **Rejeter** : on s'arrête là, la PR reste en brouillon.",
+    "gate_request_changes_target": "code"
+   },
+   {
+    "name": "publication",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "PR prête, relecteurs, lien dans le ticket.",
+    "sub_workflow_id": "@@models.impl_publication@@",
+    "sub_workflow_variables": {
+     "ticket": "{{ticket}}"
+    },
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Stop"
+      }
+     }
+    ]
+   },
+   {
+    "name": "commente_plan",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Plan seulement : le plan en commentaire du ticket (API REST v2), fin.",
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/2/issue/{{ticket}}/comment",
+    "api_method": "POST",
+    "api_body": {
+     "body": "{{partie ?? \"\"}}{{steps.orchestrateur_plan.data.commentaire_jira}}"
+    },
+    "external_effect": true,
+    "_requires": "jira",
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Stop"
+      }
+     }
+    ]
+   }
+  ]
+ }
+}

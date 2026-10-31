@@ -1,0 +1,114 @@
+{
+ "kind": "workflow",
+ "key": "impl_revue_pr",
+ "doc": "La PR relue par le modèle de revue du Bureau (avis et commentaires sur GitHub).",
+ "definition": {
+  "name": "Le Bureau · chaîne · 👀 revue de la PR",
+  "project_id": null,
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "ticket",
+    "label": "Clé du ticket",
+    "placeholder": "ABC-123",
+    "description": "Ticket Jira sur la chaîne.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "entree",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "La PR confiée au modèle de revue (.kronn/prs.json) ; mode essai ou pas de PR : fin (code 3).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "revue_prep"
+    ],
+    "exec_timeout_secs": 60,
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "fin"
+      }
+     }
+    ]
+   },
+   {
+    "name": "revue",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Revue de la PR par le modèle de revue du Bureau, avis posté sur GitHub ; en panne, on continue.",
+    "sub_workflow_id": "@@models.review_child@@",
+    "sub_workflow_variables": {},
+    "sub_workflow_foreach_file": ".kronn/prs.json",
+    "_requires": "models.review_child",
+    "on_result": [
+     {
+      "contains": "SUBWF_FAILED",
+      "action": {
+       "type": "Goto",
+       "step_name": "fin"
+      }
+     }
+    ]
+   },
+   {
+    "name": "fin",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Fin de la revue de la PR.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "fin"
+    ],
+    "exec_timeout_secs": 30
+   }
+  ]
+ }
+}
