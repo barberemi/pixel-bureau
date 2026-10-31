@@ -2,8 +2,6 @@
 
 Le 1er étage montre les tickets en cours d'implémentation par la chaîne de postes : un bureau par ticket et par dépôt (quatre en parallèle ; un ticket à plusieurs composants Jira prend un bureau et ouvre une PR par dépôt, les PR sœurs se citent entre elles), et au mur un tableau qui croise les postes et les tickets. L'étage ne traite que l'implémentation, la PR et ses retours : la CI, l'env de branche et les mises en prod restent au rez-de-chaussée.
 
-![Le 1er étage : le tableau mural et les quatre bureaux](../img/atelier.png)
-
 ## Monter à l'étage
 
 Les onglets au-dessus du plan (« 🏢 RDC · open space », « 🏭 1er · atelier d'implémentation ») apparaissent quand la chaîne est installée (`models.impl_chain`). Le chiffre sur l'onglet du 1er compte les bureaux occupés, « ✋ n » les validations qui t'y attendent ; l'étage choisi est retenu par le navigateur.
@@ -12,14 +10,25 @@ Les workflows de l'étage (le lanceur, la chaîne et ses postes, modèles `impl*
 
 ## Ce qu'on y voit
 
-- **Le tableau mural** : une colonne par poste (cadrage, schéma, patterns, ton plan, code, règles, sécurité, tests, perf · a11y, revue croisée, conformité au besoin, PR, revue de la PR, retours), une ligne par bureau. Les barres disent ce qui est validé, en cours, bloquant, en avis ou sauté ; la carte du ticket est sous son poste courant, avec son tour de contrôle ; un retour au code est tracé en pointillé rouge.
-- **Les quatre bureaux** : la plaque (ticket, dépôt, tour, jetons), la barre d'avancement, la table avec un carton par poste et sa lampe d'état. Les deux agents du poste en cours s'y assoient, sous le nom de leur poste et en hologramme bleu, comme les agents du quotidien (jamais en intérimaire ambre) ; une note en bas de la pièce résume la situation (plan à valider, nouvel essai du Code, retour au code, commentaires à traiter). La porte d'un bureau qui attend ta décision est barrée de ruban jaune et noir.
-- **Le couloir** : l'orchestrateur et ses quatre écrans, puis ton pupitre de validations, une lampe par bureau qui clignote quand une gate t'attend.
-- **La file d'attente**, sur le palier : les tickets qui attendent un bureau libre.
+![Le 1er étage : quatre bureaux à tapis roulant, le grand tableau de l'orchestrateur et l'entrepôt](../img/atelier.png)
+
+- **Quatre bureaux sur toute la largeur**, autour d'un couloir central et d'un couloir horizontal ; chaque bureau a sa porte au milieu, côté couloir horizontal. Les titres : bureau 1 en haut à gauche, 2 en haut à droite, 3 en bas à gauche, 4 en bas à droite. Un ticket garde son bureau jusqu'à sa sortie.
+- **Le tapis roulant** : le carton du ticket entre par une trappe côté couloir central, avance de poste en poste (rangée du haut vers le mur, virage, rangée du bas) et ressort par la trappe de sortie, toujours côté couloir central (les bureaux 1 et 3 sont en miroir). Quand le ticket change de poste, le carton glisse ; après un bloquant, il recule jusqu'au Code, sous une flèche rouge en pointillé. La barrière jaune et noire est « Ton plan ».
+- **Un agent par poste**, derrière son bureau, sous le nom de son poste :
+  - **au travail** : hologramme vif, il tape, son écran est allumé, une lumière l'éclaire et une bulle dit ce qu'il fait ;
+  - **a travaillé** : une pastille ✓ (ou ! pour un avis) apparaît avec un petit saut, et l'agent s'étire ;
+  - **attend son tour** : silhouette grise derrière un écran éteint ;
+  - **bloquant** : pastille ! rouge, écran rouge ; **en panne** : fumée et étincelles sur l'écran, un agent arrive avec un extincteur.
+- **Un bureau libre** s'éteint doucement ; ses agents somnolent à leur poste. De temps en temps, l'un d'eux va au café, sur un canapé ou dans le couloir, puis revient (4 promeneurs au plus sur l'étage, 2 par bureau). Quand un ticket arrive, les lumières se rallument et les promeneurs rentrent.
+- **Le grand tableau de l'orchestrateur**, en haut : une colonne par bureau, avec le ticket, le poste en cours ou la décision, la barre des postes, le tour et les jetons.
+- **Le boss**, dans son fauteuil rouge derrière son bureau à quatre boutons (un par bureau, jaune quand ce bureau t'attend). Quand une gate t'attend, il se lève et va à la porte du bureau, puis revient s'asseoir. Une escalade (« la chaîne demande un humain ») allume un gyrophare au-dessus de la porte.
+- **L'entrepôt**, en bas du couloir central : les tickets en attente sur les rayonnages, les tickets en panne sur des palettes (🧯, à relancer).
+- **Les livraisons** : un ticket qui arrive est apporté de l'entrepôt à la trappe d'entrée par **Bernard** (le manutentionnaire : âgé, dégarni, lunettes, blouse bleue) et son transpalette ; un ticket qui sort (PR ouverte) attend à la trappe de sortie, Bernard vient le chercher et repart par la porte de sortie. Il n'y a qu'un Bernard : les livraisons passent l'une après l'autre, et entre deux il attend à l'entrepôt, à droite, où un compteur dit combien de tickets sont sortis aujourd'hui. Le café est au bout gauche du couloir, avec deux canapés comme au RDC.
+- Les scènes ne se jouent que sur l'étage affiché : en montant, l'étage se pose tel qu'il est ; au retour au RDC, chacun reprend sa place.
 
 ## Le panneau
 
-Sur le 1er étage, le panneau liste les bureaux (ticket, poste en cours, barre des postes, tour, jetons), la file et les pannes. Un clic sur un bureau, dans le panneau ou sur le plan, ouvre sa fiche : le verdict de chaque poste, la note, le lien vers le run dans Kronn et, quand une gate t'attend (« ce que j'ai compris » après le cadrage, ton plan, escalade, relecture de la PR), la carte de décision habituelle. La gate du cadrage s'ouvre à chaque ticket : tu corriges la compréhension de la chaîne autant de fois que tu veux avant qu'elle planifie.
+Sur le 1er étage, le panneau liste les bureaux (ticket, poste en cours, barre des postes, tour, jetons), la file et les pannes. Un clic sur un agent dit ce qu'il fait et où est sa place (le chemin jusqu'à son bureau est tracé quand il se promène) ; un clic sur un carton de l'entrepôt dit depuis quand il attend, ou où il est tombé en panne. Un clic sur un bureau, son carton ou sa colonne du tableau, dans le panneau ou sur le plan, ouvre sa fiche : le verdict de chaque poste, la note, le lien vers le run dans Kronn et, quand une gate t'attend (« ce que j'ai compris » après le cadrage, ton plan, escalade, relecture de la PR), la carte de décision habituelle. La gate du cadrage s'ouvre à chaque ticket : tu corriges la compréhension de la chaîne autant de fois que tu veux avant qu'elle planifie.
 
 ![Fiche d'un bureau : le verdict de chaque poste](../img/atelier-fiche.png)
 

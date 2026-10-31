@@ -4,6 +4,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {load} = require('./helpers/page.js');
+const fs = require('fs');
+const path = require('path');
 
 const page = load();
 const run = page.run;
@@ -94,4 +96,89 @@ test("retour au RDC : le décor cuit une fois (bg) n'est pas effacé, la toile r
     setFloor(1); setFloor(0);`);
   assert.equal(J('globalThis.__bgSets'), 0);
   assert.deepEqual(J('[cv.width, cv.height]'), J('[W, H]'));
+});
+
+// ---------- le plan à tapis roulant (4 bureaux, couloirs, scènes) ----------
+const fresh = p => p.run(`AT_MEM.slot = {}; AT_MEM.rooms = {}; AT_MEM.cart = {}; AT_MEM.scenes = []; AT_MEM.leaving = [null, null, null, null];
+  AT_MEM.wander = []; AT_MEM.okAt = {}; AT_MEM.backAt = {}; AT_MEM.fresh = true; AT_MEM.lit = [0, 0, 0, 0];`);
+
+test('bureaux : titres 1 en haut à gauche, 2 en haut à droite, 3 en bas à gauche, 4 en bas à droite ; 1 et 3 en miroir, sortie côté couloir central', () => {
+  const g = J('AT_G.map(g => ({L: g.L, top: g.top, head: g.head, b1: g.b1, b2: g.b2, ex: g.ex, bx0: g.bx0, bx1: g.bx1, wall: g.wallX}))');
+  assert.deepEqual(g.map(x => [x.L, x.top]), [[true, true], [false, true], [true, false], [false, false]]);
+  assert.ok(g[0].head < g[0].b1 && g[1].head < g[1].b1, 'titres des bureaux du haut en haut');
+  assert.ok(g[2].head > g[2].b2 && g[3].head > g[3].b2, 'titres des bureaux du bas en bas');
+  for (const x of g) assert.ok(x.L ? x.ex > x.bx1 : x.ex < x.bx0, 'le tapis entre et sort côté couloir central');
+});
+
+test('tapis : chaque poste plus loin que le précédent, du cadrage aux retours, de la trappe d\'entrée à la trappe de sortie', () => {
+  for (let i = 0; i < 4; i++) {
+    const s = J(`AT_POSTES.map(p => atBeltS(AT_G[${i}], p.k))`);
+    for (let k = 1; k < s.length; k++) assert.ok(s[k] > s[k - 1], `bureau ${i + 1}, poste ${k}`);
+    const [a, z, len] = J(`[atBeltAt(AT_G[${i}], 0), atBeltAt(AT_G[${i}], atBeltLen(AT_G[${i}])), atBeltLen(AT_G[${i}])]`);
+    assert.ok(Math.abs(a.x - z.x) < 1 && z.y > a.y && s[s.length - 1] < len, 'entrée et sortie l\'une au-dessus de l\'autre');
+  }
+});
+
+test("un ticket garde son bureau ; le suivant prend le premier bureau libre", () => {
+  const p = load();fresh(p);
+  p.run(`ATELIER = {rooms: ${JSON.stringify(['a', 'b', 'c'].map(x => room(x)))}, queue: []};`);
+  assert.deepEqual(JSON.parse(p.run('JSON.stringify(atSlots().map(r => r && r.run))')), ['a', 'b', 'c', null]);
+  p.run(`ATELIER = {rooms: ${JSON.stringify(['b', 'c'].map(x => room(x)))}, queue: []};`);
+  assert.deepEqual(JSON.parse(p.run('JSON.stringify(atSlots().map(r => r && r.run))')), [null, 'b', 'c', null]);
+  p.run(`ATELIER = {rooms: ${JSON.stringify(['b', 'c', 'd'].map(x => room(x)))}, queue: []};`);
+  assert.deepEqual(JSON.parse(p.run('JSON.stringify(atSlots().map(r => r && r.run))')), ['d', 'b', 'c', null]);
+});
+
+test('scènes : rien à rejouer en montant ; puis arrivée, sortie (pas pour une panne), ✓ qui apparaît, retour au code', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
+  p.run(`ATELIER = {rooms: ${JSON.stringify([room('a', {poste: 'code', states: {cadrage: 'ok'}}), room('b'), room('c')])}, queue: [], pannes: []}; atDiff(1000);`);
+  assert.equal(J2('AT_MEM.scenes.length'), 0);
+  p.run(`ATELIER = {rooms: ${JSON.stringify([room('a', {poste: 'code', back: true, states: {cadrage: 'ok', schema: 'ok', securite: 'bloq'}}), room('d')])},
+    queue: [], pannes: [{run: 'c', ticket: 'DM-c'}]}; atDiff(2000);`);
+  assert.deepEqual(J2('AT_MEM.scenes.map(s => s.kind + ":" + s.ticket).sort()'), ['arrive:DM-d', 'exit:DM-b']);
+  assert.equal(J2('AT_MEM.leaving[1].ticket'), 'DM-b');
+  assert.equal(J2("AT_MEM.cart.d.hidden"), true, 'le carton arrive avec le livreur');
+  assert.equal(J2("AT_MEM.okAt['a|schema']"), 2000);
+  assert.equal(J2("AT_MEM.okAt['a|cadrage'] || null"), null, 'déjà validé : pas de nouveau ✓');
+  assert.equal(J2('AT_MEM.backAt.a'), 2000);
+  assert.equal(J2("atSlots().findIndex(r => r && r.run === 'd')"), 2, 'pas dans le bureau que le transporteur vide');
+});
+
+test('promeneurs : seulement des bureaux libres, 4 au plus sur l\'étage et 2 par bureau ; ils rentrent quand un ticket arrive', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
+  p.run(`ATELIER = {rooms: [${JSON.stringify(room('a'))}], queue: []}; AT_MEM.lit = [1, 0, 0, 0];
+    for (let n = 0; n < 50; n++) atWanderTick(atSlots(), n * 100, .1, () => 0);`);
+  const w = J2('AT_MEM.wander.map(w => w.i)');
+  assert.equal(w.length, 4);
+  assert.ok(!w.includes(0), 'pas le bureau occupé');
+  for (const i of [1, 2, 3]) assert.ok(w.filter(x => x === i).length <= 2);
+  const i = w[0];
+  p.run(`ATELIER.rooms.push(${JSON.stringify(room('z'))}); AT_MEM.slot.z = ${i}; atWanderTick(atSlots(), 6000, .1, () => 1);`);
+  assert.ok(J2(`AT_MEM.wander.filter(w => w.i === ${i}).every(w => w.phase === 'back')`));
+});
+
+test("fiche d'un agent : son poste, son bureau et sa place, même quand il se promène", () => {
+  const p = load();fresh(p);
+  p.run(`ATELIER = {rooms: [], queue: []}; AT_MEM.wander = [{i: 1, k: 'tests', spot: AT_SPOTS[0], phase: 'stay', walk: atWalker([AT_SPOTS[0]])}];`);
+  const html = p.run(`atAgentHtml({kind: 'agent', i: 1, k: 'tests'}, atSlots())`);
+  assert.match(html, /Tests/);
+  assert.match(html, /Se promène sur le canapé/);
+  assert.match(html, /Sa place : bureau 2, rangée du bas/);
+});
+
+test("seul l'étage affiché vit : en montant l'atelier se pose sans rejouer, en descendant le RDC replace chacun", () => {
+  const p = load();
+  p.run('AT_MEM.fresh = false; setFloor(1);');
+  assert.equal(p.run('AT_MEM.fresh'), true);
+  p.run('needTeleport = false; setFloor(0);');
+  assert.equal(p.run('needTeleport'), true);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'page', 'src', '90-boot.js'), 'utf8'), /if\(!FLOOR\)for\(const c of chars\)step\(c,dt\)/);
+});
+
+test("tickets sortis aujourd'hui : runs réussis de la chaîne depuis minuit, sinon le chiffre de la démo", () => {
+  const p = load();
+  p.run(`CFG.atelier_chain = 'cccc1111'; ATELIER = {rooms: [], livres: 0};
+    AT_RUNS = [{wf: 'cccc1111-x', status: 'Success', end: new Date(DAY0 + 3600e3).toISOString()}, {wf: 'cccc1111-x', status: 'Failed', end: new Date(DAY0 + 3600e3).toISOString()},
+      {wf: 'cccc1111-x', status: 'Success', end: new Date(DAY0 - 3600e3).toISOString()}, {wf: 'dddd2222-x', status: 'Success', end: new Date(DAY0 + 3600e3).toISOString()}];`);
+  assert.equal(p.run('atDelivered()'), 1);
 });
