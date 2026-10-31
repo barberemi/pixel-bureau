@@ -75,6 +75,8 @@ La chaîne s'arrête à la PR et à sa vie de revue : `impl_livraison` (« 📤 
 
 `page/src/68-atelier.js` : onglets d'étage (`FLOOR`), plan du 1er dessiné à la place de l'open space (toile `AT_W × AT_H`), panneau des bureaux et fiche (carte de décision `gateCard` pour une gate). Données : dataset `atelier` du cron `live`, étape `atelier` (`workflows/atelier_snapshot.py`) : un bureau par run actif de la chaîne, états des postes lus dans les étapes du parent, des contrôles (statut du rapport) et du poste PR.
 
+Hors du RDC : `page_config` donne `atelier_wf` (préfixes des modèles `impl*`) ; `setData` retire de `DATA.runs` leurs runs et les sous-runs qu'ils lancent (`parent`/`tby`, ex. `review_child` lancé par `impl_revue_pr`), `loneGates` ignore leurs gates, `workflowsWithoutAgent` (« Nouvel agent ») ne les propose pas. Les agents dessinés à l'étage (`atWorker`) prennent l'apparence d'un agent nommé du Bureau mais le nom de leur poste et la famille `jour` (hologramme cyan).
+
 ## Robustesse (essais du 2026-10-30)
 
 - Sorties d'agent : champs exigés au premier niveau seulement, `on_invalid: Continue` partout sauf le plan de l'orchestrateur (une clé mal écrite dans un élément de liste faisait tomber la chaîne).

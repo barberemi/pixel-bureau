@@ -81,7 +81,7 @@ function gateRunsOf(c){
   return rs.length?rs:s.st==='gate'?[null]:[];
 }
 const gateTotal=()=>chars.reduce((a,c)=>a+gateRunsOf(c).length,0)+loneGates().length;
-function loneGates(){return GATES.filter(g=>!postmanOwns(g)&&!chars.some(c=>c.wf&&c.wf.includes(String(g.wf).slice(0,8))));} // postmanOwns : 48-mail.js
+function loneGates(){return GATES.filter(g=>!postmanOwns(g)&&!atWf(g.wf)&&!chars.some(c=>c.wf&&c.wf.includes(String(g.wf).slice(0,8))));} // postmanOwns : 48-mail.js ; atWf : 68-atelier.js (gates du 1er étage)
 // gate d'un workflow sans personnage : sa carte de décision seule dans le panneau
 function renderLoneGate(side,run){
   const g=GATES.find(x=>x.run===run);
