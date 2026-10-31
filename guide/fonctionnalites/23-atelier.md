@@ -6,12 +6,14 @@ Le 1er étage montre les tickets en cours d'implémentation par la chaîne de po
 
 ## Monter à l'étage
 
-Les onglets au-dessus du plan (« 🏢 RDC · open space », « 🏭 1er · atelier d'implémentation ») apparaissent quand la chaîne est installée (`models.impl_chain`). Le chiffre sur l'onglet du 1er compte les bureaux occupés ; l'étage choisi est retenu par le navigateur.
+Les onglets au-dessus du plan (« 🏢 RDC · open space », « 🏭 1er · atelier d'implémentation ») apparaissent quand la chaîne est installée (`models.impl_chain`). Le chiffre sur l'onglet du 1er compte les bureaux occupés, « ✋ n » les validations qui t'y attendent ; l'étage choisi est retenu par le navigateur.
+
+Les workflows de l'étage (le lanceur, la chaîne et ses postes, modèles `impl*`) ne passent plus au rez-de-chaussée : pas d'intérimaire pour eux dans l'open space, leurs validations ne sont pas comptées chez le boss, et « Nouvel agent » (la baie de la salle Serveurs) ne les propose pas.
 
 ## Ce qu'on y voit
 
 - **Le tableau mural** : une colonne par poste (cadrage, schéma, patterns, ton plan, code, règles, sécurité, tests, perf · a11y, revue croisée, conformité au besoin, PR, revue de la PR, retours), une ligne par bureau. Les barres disent ce qui est validé, en cours, bloquant, en avis ou sauté ; la carte du ticket est sous son poste courant, avec son tour de contrôle ; un retour au code est tracé en pointillé rouge.
-- **Les quatre bureaux** : la plaque (ticket, dépôt, tour, jetons), la barre d'avancement, la table avec un carton par poste et sa lampe d'état. Les deux agents du poste en cours s'y assoient ; une note en bas de la pièce résume la situation (plan à valider, nouvel essai du Code, retour au code, commentaires à traiter). La porte d'un bureau qui attend ta décision est barrée de ruban jaune et noir.
+- **Les quatre bureaux** : la plaque (ticket, dépôt, tour, jetons), la barre d'avancement, la table avec un carton par poste et sa lampe d'état. Les deux agents du poste en cours s'y assoient, sous le nom de leur poste et en hologramme bleu, comme les agents du quotidien (jamais en intérimaire ambre) ; une note en bas de la pièce résume la situation (plan à valider, nouvel essai du Code, retour au code, commentaires à traiter). La porte d'un bureau qui attend ta décision est barrée de ruban jaune et noir.
 - **Le couloir** : l'orchestrateur et ses quatre écrans, puis ton pupitre de validations, une lampe par bureau qui clignote quand une gate t'attend.
 - **La file d'attente**, sur le palier : les tickets qui attendent un bureau libre.
 

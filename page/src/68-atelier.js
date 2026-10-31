@@ -38,6 +38,14 @@ function atelierDemo(){
     pannes:[{run:'demo-p1',ticket:'DM-7702',title:'Bandeau d\'alerte sur les pages direct',repo:'dm/api',poste:'securite',since:at(8.1)}]};
 }
 const atelierOn=()=>!!(CFG.atelier||DEMO);
+// workflows de l'étage (modèles impl*, CFG.atelier_wf) : leurs runs, et les sous-runs qu'ils lancent (revue de la PR),
+// quittent le RDC (setData) ; leurs gates ne sont pas comptées chez le boss et « Nouvel agent » ne les propose pas
+const atWf=w=>!!w&&(CFG.atelier_wf||[]).includes(String(w).slice(0,8));
+function atelierRunIds(runs){
+  const ids=new Set((runs||[]).filter(r=>atWf(r.wf)).map(r=>r.run));
+  for(let n=-1;n!==ids.size;){n=ids.size;for(const r of runs)if(!ids.has(r.run)&&(ids.has(r.parent)||ids.has(r.tby)))ids.add(r.run);}
+  return ids;
+}
 // poste ou étape où un run en échec s'est arrêté : nom du poste, sinon celui de l'étape du parent
 const AT_STEP={prepare:'Préparation',orchestrateur_plan:'Plan de l\'orchestrateur',orchestrateur:'Orchestrateur',livraison:'PR',publication:'Publication',
   controles:'Contrôles',ticket:'Lecture du ticket',dossier:'Dossier',aiguillage:'Aiguillage',questions:'Questions',mode:'Mode'};
@@ -50,14 +58,15 @@ function atelierTabs(){
   if(!t){t=document.createElement('div');t.id='floors';t.className='floors';t.setAttribute('role','tablist');
     const w=document.querySelector('.stage .cv-wrap');w.parentElement.insertBefore(t,w);
     t.addEventListener('click',e=>{const b=e.target.closest('button[data-floor]');if(b)setFloor(+b.dataset.floor);});}
-  const n=atRooms().length, h=`<button role="tab" data-floor="0" aria-selected="${!FLOOR}"${FLOOR?'':' class="on"'}>🏢 RDC · open space</button>`+
-    `<button role="tab" data-floor="1" aria-selected="${!!FLOOR}"${FLOOR?' class="on"':''}>🏭 1er · atelier d'implémentation${n?` <b>${n}</b>`:''}</button>`;
+  const n=atRooms().length, w=atRooms().filter(r=>r.gate).length, h=`<button role="tab" data-floor="0" aria-selected="${!FLOOR}"${FLOOR?'':' class="on"'}>🏢 RDC · open space</button>`+
+    `<button role="tab" data-floor="1" aria-selected="${!!FLOOR}"${FLOOR?' class="on"':''}>🏭 1er · atelier d'implémentation${n?` <b>${n}</b>`:''}${w?` <b>✋ ${w}</b>`:''}</button>`;
   if(t.dataset.sig!==h)t.innerHTML=t.dataset.sig=h;
 }
 function setFloor(f){
   FLOOR=f?1:0;ATSEL=null;try{localStorage.setItem('bureau:floor',String(FLOOR));}catch(e){}
   if(FLOOR){cv.width=AT_W;cv.height=AT_H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(AT_W/AT_H));}
-  else sizeCanvas();
+  else{cv.width=W;cv.height=H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(W/H));}
+  // pas sizeCanvas() : il redimensionne aussi bg, le décor du RDC cuit une fois, et redimensionner une toile l'efface
   atelierTabs();renderSide(true);
 }
 // ---------- le plan de l'étage ----------
@@ -95,10 +104,14 @@ function atBoard(now){ // tableau mural : une colonne par poste, une ligne par b
   });
   if(!atRooms().length)atTxt('Aucun ticket sur la chaîne : lance-le depuis la fiche d\'un ticket (▶ Implémenter).',bx+bw/2,by+bh/2,'#5a5248','bold 12px system-ui,sans-serif');
 }
-function atWorker(k,x,y,dir,err){ // agents de l'atelier : les hologrammes des agents du Bureau, posés au poste en cours
-  const ag=chars.filter(c=>!c.person&&!c.visitor&&!c.boss&&c.sprite);if(!ag.length)return null;
+// agents de l'atelier, posés au poste en cours : l'apparence d'un agent du Bureau (un intérimaire en dernier recours), mais
+// le nom de ce qu'ils font et l'hologramme bleu des agents du quotidien, jamais l'ambre des intérimaires
+function atWorker(k,x,y,dir,err,name){
+  const all=chars.filter(c=>!c.person&&!c.visitor&&!c.boss&&c.sprite), named=all.filter(c=>!c.temp&&c.sprite!=='temp'), ag=named.length?named:all;
+  if(!ag.length)return null;
   const src=ag[k%ag.length];
-  return Object.assign(Object.create(Object.getPrototypeOf(src)),src,{pos:{x,y},tile:null,dir,moving:false,pose:'type',present:true,_st:{st:err?'error':'work'},phase:(x*7+y)%5});
+  return Object.assign(Object.create(Object.getPrototypeOf(src)),src,{key:'at_'+k,name,baseName:name,role:name,temp:false,family:'jour',holo:null,
+    pos:{x,y},tile:null,dir,moving:false,pose:'type',present:true,_st:{st:err?'error':'work'},phase:(x*7+y)%5});
 }
 function renderAtelier(now){
   const T=AT_TS;if(!AT_BG)AT_BG=atBackground();
@@ -118,7 +131,7 @@ function renderAtelier(now){
     seats.forEach((p,k)=>{const top=k<n2, sx=cx-tw/2+(k%n2+.5)*tw/n2, sy=top?cy-th/2-.5*T:cy+th/2+.5*T, s=(r.states||{})[p.k];
       R(ctx,sx-9,sy-6,18,12,'#3a3d45');if(AT_ST[s]){ctx.fillStyle=AT_ST[s][0];ctx.beginPath();ctx.arc(sx+13,sy-4,5,0,7);ctx.fill();}
       late.push(()=>atPill(p.i+' '+p.n,sx,top?sy-13:sy+21,s==='run'?'#2f6fd6':s==='bloq'?'#a8323a':'#f4efe4',s==='run'||s==='bloq'?'#fff':'#3a3530','bold 9px system-ui,sans-serif'));
-      if(r.poste===p.k){for(const [d,o] of [[0,-8],[1,12]]){const a=atWorker(i*3+d,sx+o,sy+(top?6:4),top?'down':'up',r.back&&d===0);if(a)people.push(a);}}
+      if(r.poste===p.k){for(const [d,o] of [[0,-8],[1,12]]){const a=atWorker(i*3+d,sx+o,sy+(top?6:4),top?'down':'up',r.back&&d===0,p.n);if(a)people.push(a);}}
     });
     if(r.gate){for(let k=0;k<4;k++)R(ctx,x1*T-6,12.5*T-24+k*12+(i>1?9*T:0),12,12,k%2?'#1c1c1c':'#f2c230');}
     const ny=(y1-.55)*T, nt=r.note||r.lot;
@@ -129,7 +142,7 @@ function renderAtelier(now){
   // couloir : l'orchestrateur et ton pupitre (une lampe par bureau, allumée si une gate t'attend)
   const ox=25.5*T;atTxt('ORCHESTRATEUR',ox,10.1*T,'#5a4636');R(ctx,ox-1.9*T,11*T,3.8*T,22,'#6b5543');
   atRooms().forEach((r,k)=>{const x=ox-1.35*T+k*.9*T;R(ctx,x-13,11*T-16,26,17,'#1c1f26');R(ctx,x-11,11*T-14,22,12,r.gate?'#ffcf4a':r.back?'#ff8a80':'#8fe3a8');});
-  const o=atWorker(99,ox,13.2*T,'up');if(o)people.push(o);
+  const o=atWorker(99,ox,13.2*T,'up',false,'Orchestrateur');if(o)people.push(o);
   atTxt('TES VALIDATIONS',ox,19.4*T,'#5a4636');R(ctx,ox-1.9*T,20.2*T,3.8*T,22,'#3a3530');
   [0,1,2,3].forEach(k=>{const r=atRooms()[k], on=r&&r.gate&&Math.floor(now/450)%2;ctx.fillStyle=r&&r.gate?(on?'#ffcf4a':'#a37a10'):'#4a4a4a';ctx.beginPath();ctx.arc(ox-1.35*T+k*.9*T,20.65*T,7,0,7);ctx.fill();});
   const boss=chars.find(c=>c.boss), waiting=atRooms().filter(r=>r.gate).length;

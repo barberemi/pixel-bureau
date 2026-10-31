@@ -205,6 +205,8 @@ def page_config(cfg):
         "ticket": {"wf": str((cfg.get("models") or {}).get("ticket") or "")[:8]} if (cfg.get("models") or {}).get("ticket") else None,
         # 1er étage, l'atelier d'implémentation (#125) : ses onglets quand la chaîne est installée (models.impl_chain)
         "atelier": bool((cfg.get("models") or {}).get("impl_chain")),
+        # ses workflows (modèles impl*) : leurs runs vont au 1er, ni au RDC ni dans « Nouvel agent »
+        "atelier_wf": sorted({str(v)[:8] for k, v in (cfg.get("models") or {}).items() if k.startswith("impl") and v}),
     }
 
 

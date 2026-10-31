@@ -330,6 +330,12 @@ exit 0
         self.assertIsNone(assemble.page_config(cfg())["ticket"])
         shutil.rmtree(tmp)
 
+    def test_atelier_wf(self):
+        """1er étage (#125) : préfixes des modèles impl* pour la page, qui sort leurs runs du RDC."""
+        c = cfg(models={"impl": "aaaa1111-x", "impl_chain": "bbbb2222-x", "impl_code": "cccc3333-x", "review_child": "dddd4444-x"})
+        self.assertEqual(assemble.page_config(c)["atelier_wf"], ["aaaa1111", "bbbb2222", "cccc3333"])
+        self.assertEqual(assemble.page_config(cfg())["atelier_wf"], [])
+
     def test_deploy_script_dispatches_the_pr_branch_and_never_prod(self):
         """Le script : branche de la PR en --ref et inputs de l'env ; refus d'un env ou dépôt hors réglage (2), d'une PR
         fermée ou d'une fork (3), d'un workflow de prod (4) ; refus de GitHub (5). Faux gh."""
