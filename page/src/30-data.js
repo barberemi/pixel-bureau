@@ -256,6 +256,7 @@ function setData(d,live){
   const free=FREE_SEATS.filter(s=>!CAST.some(c=>sameSeat(c,s))&&!Object.values(OUTSIDERS).some(o=>sameSeat(o,s))); // places des de passage : réservées
   let tempN=0; DISC_BY_RUN={};
   DAY0=parisMidnight(ms(d.generated_at));
+  const atIds=atelierRunIds(d.runs);if(atIds.size)d.runs=d.runs.filter(r=>!atIds.has(r.run)); // 68-atelier.js : au 1er étage
   for(const r of d.runs){
     r._s=ms(r.start); r._e=ms(r.end);
     const realEnd=r._e||null;

@@ -61,3 +61,37 @@ test("la fiche d'un bureau qui attend ta gate reçoit la carte de décision du B
 test("onglets d'étage : seulement quand la chaîne est installée (ou en démo)", () => {
   assert.equal(J('typeof atelierOn()'), 'boolean');
 });
+
+test("workflows de l'étage (CFG.atelier_wf) : ni au RDC (eux et leurs sous-runs), ni chez le boss, ni dans « Nouvel agent »", () => {
+  const p = load(), J2 = code => JSON.parse(p.run('JSON.stringify(' + code + ')'));
+  p.run(`(() => {
+    CFG.atelier_wf = ['1a1a1a1a', '2b2b2b2b'];
+    const d = JSON.parse(JSON.stringify(DATA)), at = new Date(T - 60e3).toISOString();
+    const r = (wf, run, extra) => ({wf, wf_name: 'wf ' + run, run, status: 'Running', start: at, end: null, steps: [], ...extra});
+    d.runs.push(r('1a1a1a1a-0000', 'chaine'), r('2b2b2b2b-0000', 'poste', {parent: 'chaine'}), r('3c3c3c3c-0000', 'revue', {parent: 'poste'}),
+      r('4d4d4d4d-0000', 'ailleurs'));
+    setData(d, true);
+    GATES = [{run: 'chaine', wf: '1a1a1a1a-0000', wf_name: 'Chaîne', gate: 'gate_plan', since: at}];
+    ASKABLE = [{wf: '1a1a1a1a-0000', name: 'Chaîne'}, {wf: '5e5e5e5e-0000', name: 'Autre'}];
+  })()`);
+  assert.deepEqual(J2("DATA.runs.filter(r=>['chaine','poste','revue','ailleurs'].includes(r.run)).map(r=>r.run)"), ['ailleurs']);
+  assert.equal(J2("chars.some(c=>c.temp&&c.wf.some(w=>['1a1a1a1a','2b2b2b2b','3c3c3c3c'].includes(w)))"), false);
+  assert.equal(J2("chars.some(c=>c.temp&&c.wf.includes('4d4d4d4d'))"), true);
+  assert.deepEqual(J2('loneGates()'), []);
+  assert.deepEqual(J2('workflowsWithoutAgent().map(w=>w.name)'), ['Autre']);
+});
+
+test("agents de l'étage : le nom de leur poste, l'hologramme bleu des agents du quotidien, jamais un intérimaire", () => {
+  const w = J("(a=>({n:a.name,t:a.temp,f:famKind(a),h:holoStyleOf(a)}))(atWorker(0,10,10,'down',false,'Cadrage'))");
+  assert.deepEqual(w, {n: 'Cadrage', t: false, f: 'jour', h: null}); // null : le cyan des agents du quotidien
+});
+
+test("retour au RDC : le décor cuit une fois (bg) n'est pas effacé, la toile reprend la taille de l'open space", () => {
+  // redimensionner une toile l'efface : setFloor(0) appelait sizeCanvas(), qui redimensionnait aussi bg
+  run(`globalThis.__bgSets = 0; const __w = bg.width, __h = bg.height;
+    Object.defineProperty(bg, 'width', {configurable: true, get: () => __w, set: () => { globalThis.__bgSets++; }});
+    Object.defineProperty(bg, 'height', {configurable: true, get: () => __h, set: () => { globalThis.__bgSets++; }});
+    setFloor(1); setFloor(0);`);
+  assert.equal(J('globalThis.__bgSets'), 0);
+  assert.deepEqual(J('[cv.width, cv.height]'), J('[W, H]'));
+});
