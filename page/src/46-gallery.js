@@ -12,6 +12,7 @@ const galTeam=(ev,mp)=>{TEAM=Object.assign({},TEAM,{events:[...((TEAM&&TEAM.even
 const galFx=(kind,extra)=>()=>{FX.cur.set('demo',{id:'demo',kind,t0:performance.now(),...extra});};
 // {fam, ico, n (nom), d (ce qu'on voit), w (quand en vrai), c (portrait), ok (jouable maintenant), why, play: {len, speed, setup(s)}}
 function galleryScenes(){
+  if(FLOOR)return atGalleryScenes(); // 68-atelier.js : au 1er étage, seulement ses scènes
   const out=[], add=x=>out.push(x), dev=galDev(), qa=galQa(), sm=chars.find(c=>c.roleKind==='sm');
   const team=(x,need)=>add({fam:'Équipe et cérémonies',ok:need!==false,why:'Il manque quelqu\'un dans l\'équipe pour la jouer',...x});
   team({ico:'🛸',n:'Soucoupe-mère',d:'Un ticket entre dans le sprint : elle va chercher '+(sm?sm.name:'la facilitatrice'),w:'Ajout au sprint après le planning',
@@ -58,7 +59,7 @@ function galleryScenes(){
 function renderGallery(){
   const box=document.getElementById('gallery'); if(!box||!DATA)return;
   const L=galleryScenes(); GAL_LIST=L; const fams=[...new Set(L.map(x=>x.fam))];
-  box.innerHTML=`<h3>🎬 Les scènes du bureau</h3><p class="gal-s">Ce que ton bureau sait jouer, tiré de ton équipe, de tes invités et de ce qui est branché. « ▶ voir » la joue tout de suite sur le plan, avec la loupe ; ta journée reprend ensuite.</p>`+
+  box.innerHTML=`<h3>🎬 Les scènes ${FLOOR?'du 1er étage':'du bureau'}</h3><p class="gal-s">${FLOOR?'Ce que l\'atelier d\'implémentation sait jouer.':'Ce que ton bureau sait jouer, tiré de ton équipe, de tes invités et de ce qui est branché.'} « ▶ voir » la joue tout de suite sur le plan, avec la loupe ; ta journée reprend ensuite.${atelierOn()?(FLOOR?' Les scènes du rez-de-chaussée sont sur le RDC.':' Celles du 1er étage sont sur le 1er.'):''}</p>`+
     fams.map(f=>`<h4>${esc(f)}</h4><div class="gal-grid">${L.map((x,i)=>x.fam!==f?'':`<div class="gal-c">${x.c&&portraitUrl(x.c)?`<img class="gal-pt" src="${portraitUrl(x.c)}" alt="">`:`<span class="gal-i" aria-hidden="true">${x.ico}</span>`}`+
       `<span><b>${esc(x.n)}</b><small>${esc(x.d)}<br><i>${esc(x.w)}</i></small></span><button data-gal="${i}"${x.ok?'':` disabled title="${esc(x.why)}"`}>▶ voir</button></div>`).join('')}</div>`).join('');
 }
@@ -73,7 +74,7 @@ function demoTime(t){
 }
 function demoStart(x){
   if(SCENE_DEMO)demoEnd();
-  const saved={T,mode,SPEED,TEAM,SUPPORT:typeof SUPPORT!=='undefined'?SUPPORT:null};
+  const saved={T,mode,SPEED,TEAM,SUPPORT:typeof SUPPORT!=='undefined'?SUPPORT:null,ATELIER}; // ATELIER : 68-atelier.js
   const t0=demoTime(T); if(t0!==T){T=t0;needTeleport=true;}
   const s=T+4e3;
   SCENE_DEMO={n:x.n,s,e:s+x.play.len,hard:performance.now()+Math.max(30e3,x.play.len/x.play.speed+60e3),saved};
@@ -91,6 +92,7 @@ function demoEnd(){
   if(!SCENE_DEMO)return;
   const v=SCENE_DEMO.saved; SCENE_DEMO=null;
   TEAM=v.TEAM; if(v.SUPPORT!==null)SUPPORT=v.SUPPORT;
+  if(ATELIER!==v.ATELIER){ATELIER=v.ATELIER;AT_MEM.fresh=true;AT_MEM.src=null;AT_MEM.scenes=[];AT_MEM.leaving=[null,null,null,null];} // l'atelier revient tel quel, sans rejouer
   MOVES_MEMO={team:null,list:[]};UFO_M={};FX.cur.clear();
   LOUPE.queue=[];LOUPE.resume=false;if(LOUPE.cur)loupeHide();
   T=v.T;setSpeed(v.SPEED);setMode(v.mode);needTeleport=true;

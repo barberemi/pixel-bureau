@@ -69,7 +69,9 @@ function setFloor(f){
   // pas sizeCanvas() : il redimensionne aussi bg, le décor du RDC cuit une fois, et redimensionner une toile l'efface
   // seul l'étage affiché vit : en montant, l'atelier se pose sans rejouer ce qui s'est passé ; en descendant, chacun reprend sa place
   if(FLOOR){AT_MEM.fresh=true;AT_MEM.src=null;AT_MEM.boss=null;AT_MEM.scenes=[];AT_MEM.leaving=[null,null,null,null];}else needTeleport=true;
-  atelierTabs();renderSide(true);
+  if(typeof LOUPE!=='undefined'){LOUPE.seen=null;LOUPE.queue=[];if(LOUPE.cur)loupeHide();}
+  atelierTabs();renderSide(true);if(TV)updateTv(true); // 75-tv.js : la colonne et le bouton d'étage
+  {const det=document.querySelector('.legend-help');if(det&&det.open&&typeof renderGallery==='function')renderGallery();} // 46-gallery.js : les scènes de cet étage
 }
 // ---------- le plan de l'étage ----------
 // Quatre bureaux pleine largeur autour d'un couloir central (vertical) et d'un couloir horizontal ; une porte au milieu de
@@ -83,17 +85,20 @@ const atTxt=(s,x,y,col,font,al)=>{ctx.font=font||'bold 10px ui-monospace,Menlo,m
 function atPill(s,x,y,bgc,fg,font){ctx.font=font||'bold 10px ui-monospace,Menlo,monospace';const w=ctx.measureText(s).width+10;R(ctx,x-w/2,y-11,w,15,bgc);atTxt(s,x,y,fg||'#fff',font);}
 const AT_CX0=20, AT_CX1=26, AT_HY0=13.5, AT_HY1=15.5, AT_DESKS=AT_POSTES.filter(p=>p.bureau!==false), AT_R1=AT_DESKS.slice(0,7), AT_R2=AT_DESKS.slice(7);
 const AT_ROOMS=[[0,3,AT_CX0,AT_HY0,1,1],[AT_CX1,3,46,AT_HY0,0,1],[0,AT_HY1,AT_CX0,27,1,0],[AT_CX1,AT_HY1,46,27,0,0]]; // x0,y0,x1,y1, miroir, en haut
-const AT_MX=(AT_CX0+AT_CX1)/2*AT_TS, AT_MY=(AT_HY0+AT_HY1)/2*AT_TS, AT_LANE=AT_MX+2.5*AT_TS;
-const AT_CHAIR={x:AT_MX,y:6.9*AT_TS-8}, AT_DOCK={x:AT_MX,y:21.4*AT_TS}, AT_EXIT={x:45.4*AT_TS,y:AT_MY+6};
+const AT_MX=(AT_CX0+AT_CX1)/2*AT_TS, AT_MY=AT_HY1*AT_TS-8, AT_LANE=AT_MX+2.5*AT_TS; // AT_MY : la ligne de marche du couloir horizontal, devant les canapés
+const AT_CHAIR={x:AT_MX,y:6.4*AT_TS}, AT_DOCK={x:AT_MX,y:21.4*AT_TS}, AT_EXIT={x:45.4*AT_TS,y:AT_MY};
 const AT_WANDER_MAX=4, AT_WANDER_ROOM=2; // promeneurs des bureaux libres : sur tout l'étage, et par bureau
 // géométrie d'un bureau : rangées, tapis, trappes, porte ; les bureaux du bas ont leur titre en bas, le contenu remonte
 function atGeo(i){
   const [x0,y0,x1,y1,L,top]=AT_ROOMS[i], T=AT_TS, o=top?0:-.9, Y=v=>(y0+v+o)*T;
-  const g={i,x0,y0,x1,y1,L:!!L,top:!!top,bx0:(x0+1.7)*T,bx1:(x1-1.7)*T,H:.6*T,b1:Y(4.8),b2:Y(6.2),lab1:Y(2.3),desk1:Y(3.65),feet1:Y(3.85),
+  const g={i,x0,y0,x1,y1,L:!!L,top:!!top,bx0:(x0+(L?2.6:1.7))*T,bx1:(x1-(L?1.7:2.6))*T,H:.6*T,b1:Y(4.8),b2:Y(6.2),lab1:Y(2.3),desk1:Y(3.65),feet1:Y(3.85),
     desk2:Y(7.1),feet2:Y(9.35),lab2:Y(10.0),head:top?(y0-.45)*T:(y1-.45)*T,noteY:top?(y0+.3)*T:(y1-1.15)*T,wallX:(L?AT_CX0:AT_CX1)*T};
   g.sw=(g.bx1-g.bx0)/7;g.ex=L?g.bx1+.6*T:g.bx0-.6*T;g.turnX=L?g.bx0-1.05*T:g.bx1+.35*T;g.tm=g.turnX+.35*T;
   g.door={x:(x0+x1)/2*T,y:(top?AT_HY0:AT_HY1)*T};g.aisle=top?(y1-.45)*T:(y0+.55)*T;
   g.hatch=row=>({x:g.wallX+(L?.7:-.7)*T,y:(row===1?g.b1:g.b2)+g.H/2+12});
+  // allées pour marcher sans passer sur le tapis ni sur les autres : derrière la rangée du haut, devant celle du bas,
+  // et le long du mur extérieur (à gauche des bureaux 1 et 3, à droite des bureaux 2 et 4), jusqu'à la porte
+  g.ax=(L?x0+.75:x1-.75)*T;g.back1=g.feet1-.75*T;g.front2=top?(y1-.45)*T:g.feet2+.8*T;g.inDoor={x:g.door.x,y:top?(y1-.45)*T:(y0+.55)*T};
   return g;
 }
 const AT_G=[0,1,2,3].map(atGeo);
@@ -180,14 +185,23 @@ function atBossPath(from,i){
   return pts;
 }
 // promeneurs : dans un bureau libre, de temps en temps un agent sort (café, canapé, couloir), puis revient à sa place
-const AT_SPOTS=[{x:4.3*AT_TS,y:AT_HY0*AT_TS+42,dir:'down',sit:1},{x:5.7*AT_TS,y:AT_HY0*AT_TS+42,dir:'down',sit:1},
-  {x:37.3*AT_TS,y:AT_HY0*AT_TS+42,dir:'down',sit:1},{x:38.7*AT_TS,y:AT_HY0*AT_TS+42,dir:'down',sit:1},
-  {x:2.3*AT_TS,y:AT_HY1*AT_TS-8,dir:'left'},{x:12*AT_TS,y:AT_MY+8,dir:'down'},{x:33*AT_TS,y:AT_MY+8,dir:'down'}];
+const AT_SPOTS=[{x:14.3*AT_TS,y:AT_HY0*AT_TS+38,dir:'down',sit:1},{x:15.7*AT_TS,y:AT_HY0*AT_TS+38,dir:'down',sit:1},
+  {x:30.3*AT_TS,y:AT_HY0*AT_TS+38,dir:'down',sit:1},{x:31.7*AT_TS,y:AT_HY0*AT_TS+38,dir:'down',sit:1},
+  {x:2.3*AT_TS,y:AT_HY1*AT_TS-8,dir:'left'},{x:6*AT_TS,y:AT_MY,dir:'down'},{x:40*AT_TS,y:AT_MY,dir:'down'}];
 function atHome(i,k){const g=AT_G[i], s=atSpot(g,k);return {x:s.x,y:s.row===1?g.feet1:g.feet2};}
-function atWanderPath(i,k,spot){const g=AT_G[i], h=atHome(i,k);return [h,{x:h.x,y:g.aisle},{x:g.door.x,y:g.aisle},{x:g.door.x,y:AT_MY},{x:spot.x,y:spot.y}];}
+// de sa place au couloir horizontal, par les allées et la porte (jamais à travers le tapis) ; la rangée du côté de la
+// porte y va directement, l'autre fait le tour par l'allée du mur extérieur
+function atRouteOut(i,k){
+  const g=AT_G[i], h=atHome(i,k), row=atSpot(g,k).row, pts=[h];
+  if(g.top){if(row===1)pts.push({x:h.x,y:g.back1},{x:g.ax,y:g.back1},{x:g.ax,y:g.inDoor.y});else pts.push({x:h.x,y:g.front2});}
+  else{if(row===2)pts.push({x:h.x,y:g.front2},{x:g.ax,y:g.front2},{x:g.ax,y:g.back1});else pts.push({x:h.x,y:g.back1});pts.push({x:g.door.x,y:g.back1});}
+  pts.push(g.inDoor,{x:g.door.x,y:AT_MY});
+  return pts;
+}
+function atWanderPath(i,k,spot){return [...atRouteOut(i,k),{x:spot.x,y:spot.y}];}
 // une image : sorties, retours à la place, nouveaux promeneurs (rnd : tirage, remplaçable pour les tests)
 function atWanderTick(slots,now,dt,rnd){
-  if(REDUCED_MOTION&&!rnd){AT_MEM.wander=[];return;}
+  if(REDUCED_MOTION&&!rnd||!atOpen()){AT_MEM.wander=[];return;}
   rnd=rnd||Math.random;
   const free=i=>!slots[i]&&!AT_MEM.leaving[i];
   for(const w of AT_MEM.wander){
@@ -208,7 +222,6 @@ function atBackground(){ // sols, murs, cloisons vitrées et portes : cuits une 
   const c=document.createElement('canvas');c.width=AT_W;c.height=AT_H;const g=c.getContext('2d'), T=AT_TS;
   for(let y=0;y<27;y++)for(let x=0;x<46;x++)drawFloor(g,x,y,(x>=AT_CX0&&x<AT_CX1&&y>=2)||y===13||y===14||y===15?'wood':'carpet');
   R(g,0,0,AT_W,T,'#4b4a52');R(g,0,T,AT_W,8,'#efe9dc');R(g,0,T+8,AT_W,24,'#d9d2c3');R(g,0,T+28,AT_W,4,'#a99f8c');
-  g.fillStyle='#5a4636';g.font='bold 11px ui-monospace,Menlo,monospace';g.fillText("1ER ÉTAGE · ATELIER D'IMPLÉMENTATION",12,T+20);
   const wh=(x0,x1,y)=>{R(g,x0*T,y*T-5,(x1-x0)*T,10,'#bfe0ee');R(g,x0*T,y*T-5,(x1-x0)*T,1,'#cfc6b4');};
   const wv=(x,y0,y1)=>{R(g,x*T-5,y0*T,10,(y1-y0)*T,'#bfe0ee');R(g,x*T-5,y0*T,1,(y1-y0)*T,'#cfc6b4');};
   for(const [x0,x1] of [[0,AT_CX0],[AT_CX1,46]]){const m=(x0+x1)/2;for(const y of [AT_HY0,AT_HY1]){wh(x0,m-.9,y);wh(m+.9,x1,y);}}
@@ -241,8 +254,12 @@ function atDesk(x,y,on,col){R(ctx,x-24,y,48,12,'#a0703f');R(ctx,x-24,y,48,3,'#b9
   R(ctx,x-9,y-10,18,12,'#2b2e36');R(ctx,x-7,y-8,14,8,on?(col||'#7dffb0'):'#3d4250');if(on){R(ctx,x-5,y-6,7,1,'#0b3a1a');R(ctx,x-5,y-3,10,1,'#0b3a1a');}}
 function atCoffee(x,y){R(ctx,x-11,y-32,22,32,'#2f2f36');R(ctx,x-11,y-32,22,4,'#4a4a55');R(ctx,x-7,y-24,14,6,'#7dd3ff');R(ctx,x-4,y-13,8,8,'#1a1a1f');R(ctx,x-3,y-8,6,5,'#f2efe6');R(ctx,x-14,y,28,4,'#5a4636');}
 function atPlant(x,y){R(ctx,x-7,y-8,14,10,'#9a5a3a');ctx.fillStyle='#3f9a4f';for(const [dx,dy,r] of [[0,-16,8],[-6,-12,6],[6,-12,6],[0,-22,5]]){ctx.beginPath();ctx.arc(x+dx,y+dy,r,0,7);ctx.fill();}}
-function atSofa(x,y){R(ctx,x-50,y-22,100,16,'#3f6b8a');R(ctx,x-50,y-22,100,3,'#4f80a3');}
-function atSofaFront(x,y){R(ctx,x-54,y,108,14,'#355c77');R(ctx,x-54,y-12,8,26,'#2d4f66');R(ctx,x+46,y-12,8,26,'#2d4f66');}
+// canapé vu de face, contre le mur du couloir : dossier à deux coussins (derrière ceux qui s'y assoient), puis l'assise,
+// les accoudoirs et les pieds (devant eux) ; une table basse devant
+function atSofa(x,y){R(ctx,x-48,y-26,96,22,'#2d4f66');R(ctx,x-44,y-23,42,17,'#4f80a3');R(ctx,x+2,y-23,42,17,'#4f80a3');R(ctx,x-44,y-23,42,3,'#6a9cc0');R(ctx,x+2,y-23,42,3,'#6a9cc0');}
+function atSofaFront(x,y){R(ctx,x-46,y-6,92,12,'#3f6b8a');R(ctx,x-46,y-6,92,3,'#5a8ab0');R(ctx,x-1,y-6,2,12,'#2d4f66');
+  R(ctx,x-54,y-16,9,24,'#2d4f66');R(ctx,x+45,y-16,9,24,'#2d4f66');R(ctx,x-54,y-16,9,3,'#4f80a3');R(ctx,x+45,y-16,9,3,'#4f80a3');
+  R(ctx,x-50,y+8,4,4,'#1c1f26');R(ctx,x+46,y+8,4,4,'#1c1f26');R(ctx,x-20,y+12,40,6,'#8a6040');R(ctx,x-18,y+18,3,3,'#5a4636');R(ctx,x+15,y+18,3,3,'#5a4636');R(ctx,x-6,y+8,6,4,'#f2efe6');}
 function atDoor(x,y){R(ctx,x-10,y-2,10,2*AT_TS+4,'#3a2a1e');R(ctx,x-8,y,8,2*AT_TS,'#6b4a2e');R(ctx,x-8,y+AT_TS-2,8,4,'#8a6040');R(ctx,x-6,y+AT_TS+8,3,4,'#e0c070');}
 function atHatchBox(x,y,h,out){R(ctx,x-6,y-4,12,h+8,'#2b2e36');R(ctx,x-4,y-2,8,h+4,out?'#1f5a35':'#1a1c22');}
 function atPallet(x,y){R(ctx,x-18,y,36,6,'#a8824e');R(ctx,x-18,y+2,36,1,'#7d5a2c');R(ctx,x-16,y+6,6,3,'#7d5a2c');R(ctx,x-3,y+6,6,3,'#7d5a2c');R(ctx,x+10,y+6,6,3,'#7d5a2c');}
@@ -303,13 +320,13 @@ function atRoom(r,i,now,dt){
     }else if(s==='bloq'||s==='err'){
       a._st={st:'error'};a.pose=s==='bloq'&&AT_MEM.backAt[r.run]&&now-AT_MEM.backAt[r.run]<8e3?'hands':'stand';people.push([a,()=>atDesk(sp.x,deskY,true,'#ff9a8a'),top]);
       late.push(()=>atBadge(sp.x+18,feet-42,'!','#d0392b'));
-      if(s==='err'){late.push(()=>atSmoke(sp.x,deskY-12,now));atExtinguisher(r,i,p.k,sp.x,feet,now,dt,people);}
+      if(s==='err'){late.push(()=>{atSmoke(sp.x,deskY-12,now);atPill('🧯 '+p.n+' en panne : le pompier arrive',sp.x,top?g.lab1-18:g.lab2+18,'#a8323a');});atExtinguisher(r,i,p.k,sp.x,feet,now,dt,people);}
     }else if(s==='ok'||s==='avis'){
       const t=AT_MEM.okAt[r.run+'|'+p.k], age=t?now-t:1e9, pop=age<600?Math.min(1,age/300)*(1+.4*Math.sin(age/600*Math.PI)):1;
       a._st={st:'idle'};a.pose=age<1800?'hands':'stand';people.push([a,()=>atDesk(sp.x,deskY,false),top]);
       late.push(()=>{atBadge(sp.x+18,feet-42,s==='ok'?'✓':'!',s==='ok'?'#2f9e55':'#d08a10',pop);if(themeIs('saint-valentin')&&age<2500)E('❤',sp.x,feet-70-age/40,12,1-age/2500);});
     }
-    else if(s==='idle'){a._st={st:'idle'};a.pose='stand';sleepers.push([a,sp.x,feet,deskY,top]);}
+    else if(s==='idle'){if(!atOpen()){atDesk(sp.x,deskY,false);return;}a._st={st:'idle'};a.pose='stand';sleepers.push([a,sp.x,feet,deskY,top]);}
     else {a._st={st:'idle'};a.pose='stand';ghosts.push([a,sp.x,deskY]);}
   });
   if(ghosts.length){const gg=atLayer();ghosts.forEach(([a])=>atDrawInto(gg,a,now));ctx.save();ctx.globalAlpha=.38;ctx.filter='grayscale(1)';ctx.drawImage(AT_OFF,0,0);ctx.restore();ghosts.forEach(([,x,y])=>atDesk(x,y,false));}
@@ -330,16 +347,18 @@ function atRoom(r,i,now,dt){
   const sweep=AT_MEM.clean&&!AT_MEM.clean.moving&&AT_MEM.clean.stop.i===i, dark=(1-AT_MEM.lit[i])*(sweep?.35:1);
   if(dark>.01){ctx.fillStyle=`rgba(10,14,34,${(.55*dark).toFixed(3)})`;ctx.fillRect(g.x0*T+5,g.y0*T+5,(g.x1-g.x0)*T-10,(g.y1-g.y0)*T-10);
     if(dark>.9||sweep&&!r){sleepers.forEach(([,x,f],k)=>atTxt('z Z',x+12,f-58-(Math.floor(now/800+k)%2)*4,'#bfe6ff','bold 11px ui-monospace,Menlo,monospace'));
-      atPill('💤 Libre : ils somnolent à leur poste',(g.x0+g.x1)/2*T,g.b1+H+.35*T,'#1c2440','#bfe6ff');}}
+      atPill(atOpen()?'💤 Libre : ils somnolent à leur poste':'🌙 Libre : tout le monde est rentré',(g.x0+g.x1)/2*T,g.b1+H+.35*T,'#1c2440','#bfe6ff');}}
   atHit('room',g.x0*T,g.y0*T,(g.x1-g.x0)*T,(g.y1-g.y0)*T,{i});
 }
 // poste en panne : un agent arrive de la porte avec un extincteur et arrose l'écran tant que le poste reste en panne
 function atExtinguisher(r,i,k,x,feet,now,dt,people){
   const key=r.run+'|'+k, g=AT_G[i], to={x:x+30,y:feet+2};
   let e=AT_MEM.ext[key];
-  if(!e){e=AT_MEM.ext[key]={walk:atWalker(REDUCED_MOTION?[to]:[{x:g.door.x,y:g.door.y+(g.top?-8:8)},{x:g.door.x,y:g.aisle},{x:to.x,y:g.aisle},to],80)};}
+  if(!e){const r=atRouteOut(i,k).reverse(), row=atSpot(g,k).row, side={x:x+30,y:row===1?g.back1:g.front2};r[r.length-1]=side;
+    e=AT_MEM.ext[key]={walk:atWalker(REDUCED_MOTION?[side]:r,80)};}
   e.seen=now;
   const done=atStep(e.walk,dt), a=atWorker(90+i,e.walk.pos.x,e.walk.pos.y,done?'left':e.walk.dir,false,'Pompier');if(!a)return;
+  atHit('pompier',e.walk.pos.x-14,e.walk.pos.y-56,28,58,{i,k});
   a.moving=!done;a.pose='stand';a._st={st:'work'};
   people.push([a,()=>{R(ctx,e.walk.pos.x-14,e.walk.pos.y-26,6,14,'#d0392b');if(done)for(let n=0;n<4;n++){const t=((now/400)+n/4)%1;ctx.fillStyle=`rgba(255,255,255,${.8*(1-t)})`;ctx.beginPath();ctx.arc(e.walk.pos.x-16-t*18,e.walk.pos.y-34-t*8,3+t*4,0,7);ctx.fill();}},true]);
 }
@@ -356,7 +375,8 @@ function atBoard(slots){
     if(!r){atTxt('rien en cours',x+10,by+52,'#6b7280','10px system-ui,sans-serif','left');return;}
     atTxt((r.title||'').slice(0,30)+((r.title||'').length>30?'…':''),x+10,by+50,'#c9c3b4','9px system-ui,sans-serif','left');
     const p=AT_POSTES.find(q=>q.k===r.poste);
-    atTxt(r.gate==='gate_escalade'?'🚨 demande un humain':r.gate?'✋ attend ta décision':r.back?'↩ renvoyé au code':(p?p.i+' '+p.n+(r.lot?' · '+r.lot:''):''),x+10,by+68,col,'bold 10px system-ui,sans-serif','left');
+    const pe=AT_POSTES.find(q=>(r.states||{})[q.k]==='err');
+    atTxt(r.gate==='gate_escalade'?'🚨 demande un humain':r.gate?'✋ attend ta décision':r.back?'↩ renvoyé au code':pe?'🧯 '+pe.n+' en panne':(p?p.i+' '+p.n+(r.lot?' · '+r.lot:''):''),x+10,by+68,col,'bold 10px system-ui,sans-serif','left');
     const sw=(cw-20)/AT_POSTES.length;AT_POSTES.forEach((q,j)=>{const s=(r.states||{})[q.k];R(ctx,x+10+j*sw,by+78,sw-2,6,(AT_ST[s]||['#2b3240'])[0]);});
     atTxt((r.tour?'tour '+r.tour+' · ':'')+Math.round((r.tok||0)/1e3)+' k jetons',x+10,by+96,'#8a93a6','9px ui-monospace,Menlo,monospace','left');
     atHit('room',x,by,cw,bh,{i:k});
@@ -370,22 +390,25 @@ function atBoss(slots,now,dt,people){
   if(!b||REDUCED_MOTION&&b.target!==target)b=AT_MEM.boss={target,walk:atWalker(target==null?[AT_CHAIR]:[atBossPath(AT_CHAIR,target).pop()])};
   if(b.target!==target){b.target=target;b.walk=atWalker(atBossPath(b.walk.pos,target),90);}
   const arrived=atStep(b.walk,dt), seated=arrived&&target==null;
-  const ox=AT_MX, dy=6.9*AT_TS;
-  R(ctx,ox-18,dy-50,36,30,'#5a2e2e');R(ctx,ox-18,dy-50,36,4,'#723a3a');R(ctx,ox-22,dy-36,6,18,'#4a2424');R(ctx,ox+16,dy-36,6,18,'#4a2424');
-  const desk=()=>{const x0=ox-2.1*AT_TS, top=dy-14, w=4.2*AT_TS;
-    R(ctx,x0,top+31,w,3,'rgba(0,0,0,.2)');R(ctx,x0,top,w,18,'#6e4a2c');R(ctx,x0,top,w,2,'#8a6040');R(ctx,x0,top+18,w,14,'#56391f');
-    slots.forEach((r,k)=>{const x=ox-1.5*AT_TS+k*AT_TS, on=r&&r.gate;
-      ctx.fillStyle='#1c1c1c';ctx.beginPath();ctx.ellipse(x,top+9,10,6,0,0,7);ctx.fill();
-      ctx.fillStyle=!r?'#555':on?(Math.floor(now/450)%2?'#ffcf4a':'#a37a10'):r.back?'#e0614f':'#3fbf6a';ctx.beginPath();ctx.ellipse(x,top+7,8,5,0,0,7);ctx.fill();
-      atHit('room',x-10,top,20,16,{i:k});});
-    if(themeIs('saint-valentin'))E('🌹',x0+w-12,top-2,12);
-    ctx.fillStyle='#f3e6d2';ctx.font='bold 8px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText("WORLD'S BEST BOSS",ox,top+28);ctx.textAlign='left';};
-  if(!boss){desk();return;}
-  const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:b.walk.pos.x,y:b.walk.pos.y},tile:null,moving:!arrived,pose:'stand',present:true,
+  // bureau, fauteuil et boss aux mesures du RDC (40-furniture.js) : fauteuil 44 px au-dessus de ses pieds, bureau de 100 px
+  // 16 px au-dessus, son écran, sa tasse, « WORLD'S BEST BOSS » ; les quatre voyants des bureaux à la place de la feuille
+  const ox=AT_CHAIR.x, F=AT_CHAIR.y, x0=ox-50, top=F-16;
+  R(ctx,ox-18,F-44,36,30,'#5a2e2e');R(ctx,ox-18,F-44,36,4,'#723a3a');R(ctx,ox-22,F-30,6,18,'#4a2424');R(ctx,ox+16,F-30,6,18,'#4a2424');
+  R(ctx,ox-22,F-30,6,2,'#6a3434');R(ctx,ox+16,F-30,6,2,'#6a3434');
+  const desk=()=>{
+    R(ctx,x0,top+30,3*AT_TS+4,3,'rgba(0,0,0,.2)');R(ctx,x0,top,3*AT_TS+4,18,'#6e4a2c');R(ctx,x0,top,3*AT_TS+4,2,'#8a6040');R(ctx,x0,top+18,3*AT_TS+4,13,'#56391f');
+    R(ctx,x0+6,top-12,18,13,'#2c2f38');drawScreen(x0+7,top-11,16,10,boss&&atOpen()?screenState(boss):'off',now,97);R(ctx,x0+12,top+1,5,3,'#2c2f38');
+    slots.forEach((r,k)=>{const x=x0+42+k*8, on=r&&r.gate;R(ctx,x-3,top+4,7,7,'#1c1c1c');
+      R(ctx,x-2,top+5,5,5,!r?'#555':on?(Math.floor(now/450)%2?'#ffcf4a':'#a37a10'):r.back?'#e0614f':'#3fbf6a');atHit('room',x-4,top+2,9,11,{i:k});});
+    R(ctx,x0+76,top+2,6,7,'#fbfbf6');R(ctx,x0+77,top+4,4,2,'#d1453b');
+    if(themeIs('saint-valentin'))E('🌹',x0+92,top-2,12);
+    ctx.fillStyle='#f3e6d2';ctx.font='bold 8px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText("WORLD'S BEST BOSS",ox,top+27);ctx.textAlign='left';};
+  if(!boss||!atOpen()){desk();return;} // le soir : le fauteuil reste, vide
+  const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:b.walk.pos.x,y:b.walk.pos.y},tile:seated?BOSS_SEAT.slice():null,moving:!arrived,pose:'stand',present:true,
     dir:arrived?(target==null?'down':AT_G[target].top?'up':'down'):b.walk.dir,_st:{st:gates.length?'gate':'idle'}});
   if(seated){drawChar(c,now);desk();}
   else{desk();people.push([c,null,false,()=>{if(arrived&&target!=null)atBubble(c.pos.x+44,c.pos.y-30,'✋ '+(slots[target]?slots[target].ticket:''),'#8a5a00');}]);}
-  if(seated&&gates.length)atBubble(ox,dy-60,'✋ '+gates.length);
+  if(seated&&gates.length)atBubble(ox,F-58,'✋ '+gates.length);
 }
 function atWarehouse(q,pn,now){ // en bas du couloir central : sol béton, bande de sécurité, deux rayonnages, les pannes sur palettes
   const T=AT_TS, x0=AT_CX0*T+6, x1=AT_CX1*T-6, y0=21.6*T, y1=27*T;
@@ -411,7 +434,7 @@ function atDelivered(){
 function atCorridor(now){
   const T=AT_TS, yb=AT_HY1*T-6;
   atCoffee(1.1*T,yb);atTxt('CAFÉ',1.1*T,AT_HY0*T+14,'#5a4636','bold 8px ui-monospace,Menlo,monospace');
-  atSofa(5*T,AT_HY0*T+30);atSofa(38*T,AT_HY0*T+30);
+  atSofa(15*T,AT_HY0*T+30);atSofa(31*T,AT_HY0*T+30);
   atDoor(46*T,AT_HY0*T);const n=atDelivered();
   atPill('SORTIE'+(n?' · 📦 '+n+' aujourd\'hui':''),46*T-14-(n?62:22),AT_HY0*T+16,n?'#2f7a45':'#5a4636','#fff','bold 9px ui-monospace,Menlo,monospace');
   atPlant(18.9*T,yb);atPlant(27.1*T,yb);
@@ -442,7 +465,7 @@ function atGhost(c,now){
 // ---------- scènes : livraison d'un ticket (entrepôt -> trappe d'entrée), sortie (trappe de sortie -> porte) ----------
 function atScenes(now,dt,people){
   const sc=AT_MEM.scenes[0];
-  if(!sc){const b=atBernard(AT_BERNARD_HOME,'down',false);people.push([b,null,false]);atHit('bernard',b.pos.x-14,b.pos.y-56,28,58,{});return;}
+  if(!sc){if(!atOpen())return;const b=atBernard(AT_BERNARD_HOME,'down',false);people.push([b,null,false]);atHit('bernard',b.pos.x-14,b.pos.y-56,28,58,{});return;}
   {
     const g=AT_G[sc.i];
     if(!sc.walk){
@@ -495,11 +518,86 @@ function atCleanerAt(c,t){
   return {x:b.x,y:b.y,dir:Math.floor(t/2000)%2?'left':'right',moving:false,stop:st[j+1],v};
 }
 const atCleanLabel=m=>m.moving?'Fait le ménage du 1er étage : va vers '+m.stop.room:'Fait le ménage du 1er étage : '+m.stop.room+' · repart vers '+hm(m.v.e);
+// ---------- loupe (44-loupe.js) au 1er étage : les événements forts de l'atelier ----------
+// Un ticket qui sort (Bernard l'emporte), qui arrive, le boss à la porte d'un bureau qui l'attend, un retour au code, un
+// poste en panne, le ménage du soir. Chaque événement : des points du plan (le cadre les englobe), une légende.
+const atPt=(x,y,name,label,kind)=>({pos:{x,y},moving:false,name,_st:{st:kind,label}});
+function atLoupeEvents(now){
+  const out=[], slots=atSlots(), add=(id,kind,cs)=>out.push({id,kind,cs});
+  for(const sc of AT_MEM.scenes){const g=AT_G[sc.i];
+    if(sc.kind==='exit'){const h=g.hatch(2);add('atx:'+sc.ticket+':'+sc.t0,'at_exit',[atPt(h.x,h.y,'Bernard','📦 '+sc.ticket+' sort du bureau '+(sc.i+1)+' : PR ouverte, Bernard l\'emporte','at_exit'),atPt(AT_EXIT.x,AT_EXIT.y,'','','at_exit')]);}
+    else{const h=g.hatch(1);add('ata:'+sc.run+':'+sc.t0,'at_arrive',[atPt(AT_DOCK.x,AT_DOCK.y,'Bernard','🎫 '+sc.ticket+' arrive au bureau '+(sc.i+1),'at_arrive'),atPt(h.x,h.y,'','','at_arrive')]);}}
+  slots.forEach((r,i)=>{if(!r)return;const g=AT_G[i], boss=chars.find(c=>c.boss);
+    if(r.gate)add('atg:'+r.run+':'+r.gate,'at_gate',[atPt(g.door.x,g.door.y+(g.top?22:-6),boss?boss.name:'Le boss',(r.gate==='gate_escalade'?'🚨 La chaîne demande un humain : ':'✋ Ta décision : ')+r.ticket+' au bureau '+(i+1),'at_gate'),atPt(g.door.x,g.top?g.feet2:g.feet1,'','','at_gate')]);
+    const b=AT_MEM.backAt[r.run];
+    if(b&&now-b<30e3){const q=AT_POSTES.find(p=>(r.states||{})[p.k]==='bloq'), a=q&&atSpot(g,q.k), c=atSpot(g,'code');
+      if(a)add('atb:'+r.run+':'+b,'at_back',[atPt(a.x,g.feet1,'Retour au code',q.i+' '+q.n+' bloque '+r.ticket+' : retour au code','at_back'),atPt(c.x,g.feet1,'','','at_back')]);}
+    for(const p of AT_POSTES){if((r.states||{})[p.k]!=='err')continue;const sp=atSpot(g,p.k), y=sp.row===1?g.feet1:g.feet2;
+      add('ate:'+r.run+':'+p.k,'at_err',[atPt(sp.x,y,'Pompier','🧯 '+p.i+' '+p.n+' en panne au bureau '+(i+1)+' : le pompier arrive','at_err'),atPt(g.door.x,g.door.y,'','','at_err')]);}
+  });
+  if(AT_MEM.clean){const m=AT_MEM.clean, c=atCleaner();add('atc:'+m.v.s,'at_clean',[atPt(m.x,m.y,c?c.name:'L\'agent d\'entretien',atCleanLabel(m),'at_clean')]);}
+  return out;
+}
+// ---------- scènes de l'étage pour la galerie (46-gallery.js), jouables par « ▶ voir » ----------
+// Chacune joue sur une copie du dataset atelier (rendue à la fin de la démonstration) : la page voit un ticket arriver,
+// sortir, une gate, un retour au code, une panne, comme si le cron l'avait publié. Le ménage du soir avance l'heure du plan.
+function atDemo(mut){return ()=>{const d=JSON.parse(JSON.stringify(ATELIER||{rooms:[],queue:[],pannes:[]}));d.rooms=d.rooms||[];d.queue=d.queue||[];mut(d);ATELIER=d;};}
+const atFirst=d=>d.rooms.find(r=>!r.gate)||d.rooms[0];
+function atGalleryScenes(){
+  const fam='1er étage', n=atRooms().length, none='Aucun ticket sur la chaîne', cl=atCleaner(), out=[];
+  out.push({fam,ico:'🎫',n:'Un ticket arrive',d:'Bernard l\'apporte de l\'entrepôt à la trappe d\'entrée, le bureau s\'allume',w:'Un ticket lancé (▶ Implémenter) trouve un bureau libre',ok:n<4,why:'Les quatre bureaux sont occupés',
+    play:{len:25e3,speed:1,setup:atDemo(d=>{const q=d.queue.shift();d.rooms.push({run:'demo-arrive',ticket:q?q.ticket:'DM-1000',title:'Démonstration',repo:'dm/site',poste:'cadrage',states:{cadrage:'run'},tok:0,since:new Date().toISOString()});})}});
+  out.push({fam,ico:'📦',n:'Un ticket sort',d:'PR ouverte : Bernard récupère le carton à la trappe de sortie et l\'emporte par la porte',w:'Fin de la chaîne (PR, revue et retours traités)',ok:n>0,why:none,
+    play:{len:45e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);d.rooms=d.rooms.filter(x=>x!==r);})}});
+  out.push({fam,ico:'✓',n:'Un poste rend son verdict',d:'Le ✓ apparaît, l\'agent s\'étire, le carton glisse au poste suivant',w:'Chaque poste qui finit',ok:n>0,why:none,
+    play:{len:12e3,speed:1,setup:atDemo(d=>{const r=atFirst(d), ks=AT_DESKS.filter(p=>!p.gate).map(p=>p.k), j=Math.max(0,ks.indexOf(r.poste));r.states=r.states||{};r.states[ks[j]]='ok';r.poste=ks[Math.min(ks.length-1,j+1)];r.states[r.poste]='run';r.gate=null;r.back=false;})}});
+  out.push({fam,ico:'✋',n:'Le boss va à la porte',d:'Une gate t\'attend : il quitte son fauteuil pour la porte du bureau, son bouton clignote',w:'Ce que j\'ai compris, ton plan, l\'escalade, la relecture de la PR',ok:n>0,why:none,
+    play:{len:25e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.gate='gate_plan';r.poste='gate';r.states=r.states||{};r.states.gate='wait';r.note='✋ ton plan';})}});
+  out.push({fam,ico:'🚨',n:'Escalade',d:'Après 3 tours, la chaîne demande un humain : gyrophare au-dessus de la porte',w:'L\'orchestrateur n\'arrive pas à conclure',ok:n>0,why:none,
+    play:{len:20e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.gate='gate_escalade';r.note='🧑‍⚖️ la chaîne demande un humain';})}});
+  out.push({fam,ico:'↩',n:'Retour au code',d:'Un contrôle bloque : le carton recule jusqu\'au Code, « encore ? »',w:'Un poste de contrôle rend un bloquant',ok:n>0,why:none,
+    play:{len:15e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.states=r.states||{};for(const k of ['cadrage','schema','patterns','gate','code','regles'])r.states[k]='ok';r.states.securite='bloq';r.poste='code';r.back=true;r.gate=null;r.note='🔒 bloquant → retour au code';})}});
+  out.push({fam,ico:'🧯',n:'Poste en panne',d:'Son sous-workflow a échoué : fumée sur l\'écran, un pompier arrive avec un extincteur',w:'Un poste plante (API d\'un agent indisponible…)',ok:n>0,why:none,
+    play:{len:20e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.states=r.states||{};r.states.tests='err';})}});
+  if(cl)out.push({fam,ico:'🧹',n:cl.name+' · ménage du 1er',d:'Après le RDC, chaque bureau et l\'entrepôt, avec son chariot',w:'Le soir des jours ouvrés, après le RDC',c:cl,ok:!!atCleanVisit(cl,T),why:'Pas de ménage ce jour-là',
+    play:{len:AT_CLEAN_DUR,speed:60,setup:s=>{const u=atCleanVisit(cl,s);if(!u)return;T=u.s;SCENE_DEMO.e=u.e;needTeleport=true;}}});
+  return out;
+}
+// ---------- jour et nuit (42-light.js) : fenêtres, voile du soir, l'étage se vide hors des heures de bureau ----------
+// Comme au RDC : le ciel des fenêtres suit le soleil à Paris, le voile de nuit s'ouvre seulement là où ça travaille.
+// Hors des heures de bureau, le boss est rentré (son fauteuil reste), Bernard aussi, les bureaux libres sont vides et
+// personne ne se promène ; un bureau qui a un ticket garde ses agents (la chaîne tourne aussi la nuit).
+const AT_WINDOWS=[1,3.5,6,8.5,35,37.5,40,42.5]; // en cases : au-dessus des bureaux 1 et 2, de part et d'autre du grand tableau
+const atOpen=()=>officeOpen(T);
+function atWindows(now){
+  const sky=skyColor(T), T_=AT_TS;
+  for(const x of AT_WINDOWS){R(ctx,x*T_+4,T_+4,T_*1.5,20,'#e7e1d3');R(ctx,x*T_+6,T_+6,T_*1.5-4,16,sky);drawStars(x*T_+6,T_+6,T_*1.5-4,16,now);
+    themeWindow(x*T_+6,T_+6,T_*1.5-4,16,now,x);R(ctx,x*T_+4+T_*.75,T_+4,2,20,'#e7e1d3');}
+}
+let AT_NIGHT_CV=null, AT_NIGHT_AT=0;
+function atNight(slots,now){
+  const d=daylight(T), dark=(1-d.k)*NIGHT_MAX;if(dark<.02)return;
+  const W_=AT_W/LQ, H_=AT_H/LQ;
+  if(!AT_NIGHT_CV){AT_NIGHT_CV=[lightCanvas(W_,H_),lightCanvas(W_,H_)];}
+  if(now-AT_NIGHT_AT>200||!AT_NIGHT_AT){AT_NIGHT_AT=now;
+    const tint=mixC([10,14,40],d.morning?[70,40,24]:[66,30,52],d.twi*.7), m=AT_NIGHT_CV[0].getContext('2d');
+    m.setTransform(1,0,0,1,0,0);m.globalCompositeOperation='source-over';m.clearRect(0,0,W_,H_);
+    m.fillStyle=`rgba(${tint[0]},${tint[1]},${tint[2]},${dark})`;m.fillRect(0,0,W_,H_);
+    m.setTransform(1/LQ,0,0,1/LQ,0,0);m.globalCompositeOperation='destination-out';
+    slots.forEach((r,i)=>{if(!r&&!(AT_MEM.clean&&AT_MEM.clean.stop.i===i))return;const g=AT_G[i];m.fillStyle='rgba(0,0,0,.25)';m.fillRect(g.x0*AT_TS,g.y0*AT_TS,(g.x1-g.x0)*AT_TS,(g.y1-g.y0)*AT_TS);
+      for(let x=g.x0+2;x<g.x1;x+=4)for(const y of [g.y0+3,g.y0+7.5])softSpot(m,x*AT_TS,y*AT_TS,2.6*AT_TS,.6);});
+    for(const h of AT_HITS)if(h.kind==='agent'||h.kind==='bernard'||h.kind==='cleaner'||h.kind==='pompier')softSpot(m,h.x+14,h.y+30,30,.8);
+    softSpot(m,23*AT_TS,2.6*AT_TS,6*AT_TS,.7); // le grand tableau
+    softSpot(m,46*AT_TS-10,AT_HY0*AT_TS+20,40,.5);softSpot(m,1.1*AT_TS,AT_HY1*AT_TS-20,30,.5); // la sortie, la machine à café
+    const l=AT_NIGHT_CV[1].getContext('2d');l.clearRect(0,0,W_,H_);l.filter='blur(3px)';l.drawImage(AT_NIGHT_CV[0],0,0);l.filter='none';
+  }
+  const sm=ctx.imageSmoothingEnabled;ctx.imageSmoothingEnabled=true;ctx.drawImage(AT_NIGHT_CV[1],0,0,AT_W,AT_H);ctx.imageSmoothingEnabled=sm;
+}
 // ---------- l'image ----------
 function renderAtelier(now){
   const dt=AT_MEM.last?Math.min(.1,(now-AT_MEM.last)/1000):0;AT_MEM.last=now;
   if(!AT_BG)AT_BG=atBackground();
-  ctx.drawImage(AT_BG,0,0);AT_HITS=[];
+  ctx.drawImage(AT_BG,0,0);atWindows(now);AT_HITS=[];
   if(AT_MEM.src!==ATELIER){AT_MEM.src=ATELIER;atDiff(now);}
   const slots=atSlots(), d=ATELIER||{}, cl=atCleaner();AT_MEM.clean=cl&&atCleanerAt(cl,T);
   atCorridor(now);
@@ -516,8 +614,9 @@ function renderAtelier(now){
     const [dx,dy]={left:[-20,0],right:[20,0]}[m.dir]||[20,2];
     people.push([a,()=>drawCart({x:m.x+dx,y:m.y+dy}),false,()=>{if(!m.moving)E('🧹',m.x,m.y-66,12);}]);atHit('cleaner',m.x-14,m.y-56,28,58,{});}
   atBoss(slots,now,dt,people);
+  people.push([{pos:{x:0,y:AT_HY0*AT_TS+44}},null,false,()=>{atSofaFront(15*AT_TS,AT_HY0*AT_TS+40);atSofaFront(31*AT_TS,AT_HY0*AT_TS+40);}]); // devant ceux qui y sont assis, derrière ceux qui passent
   people.sort((a,b)=>a[0].pos.y-b[0].pos.y).forEach(([c,d,before,after])=>{if(before&&d)d();if(c.ghost)atGhost(c,now);else drawChar(c,now);if(!before&&d)d();if(after)after();});
-  atSofaFront(5*AT_TS,AT_HY0*AT_TS+44);atSofaFront(38*AT_TS,AT_HY0*AT_TS+44);
+  atNight(slots,now);
   atBoard(slots);
   atPicked(slots,now);
 }
@@ -549,6 +648,7 @@ function atelierHover(e){
   let s='';
   if(h&&h.kind==='agent'){const r=slots[h.i], w=atWandering(h.i,h.k);s=atLabel(h.k)+' · bureau '+(h.i+1)+' · '+(w?'se promène':atStateText(r,h.k));}
   else if(h&&h.kind==='cleaner'&&AT_MEM.clean)s=(atCleaner()||{}).name+' · '+atCleanLabel(AT_MEM.clean);
+  else if(h&&h.kind==='pompier')s='Pompier · le poste '+atLabel(h.k)+' du bureau '+(h.i+1)+' est en panne (son sous-workflow a échoué) : il éteint le feu tant que la panne dure';
   else if(h&&h.kind==='bernard')s='Bernard · apporte les tickets de l\'entrepôt et emporte ceux qui sortent';
   else if(h&&h.kind==='queue'){const q=((ATELIER&&ATELIER.queue)||[]).find(x=>x.run===h.run);s=q?q.ticket+' · attend un bureau libre':'';}
   else if(h&&h.kind==='panne'){const p=((ATELIER&&ATELIER.pannes)||[]).find(x=>x.run===h.run);s=p?p.ticket+' · en panne à '+atStepName(p.poste):'';}
@@ -557,7 +657,7 @@ function atelierHover(e){
 }
 function atStateText(r,k){
   const s=atState(r,AT_POSTES.find(p=>p.k===k)||{k});
-  return {idle:'somnole à sa place',run:'au travail'+(r&&r.lot?' : '+r.lot:''),bloq:'bloquant : renvoie au code',err:'en panne',ok:'a rendu son verdict : validé',
+  return {idle:'somnole à sa place',run:'au travail'+(r&&r.lot?' : '+r.lot:''),bloq:'bloquant : renvoie au code',err:'en panne (son sous-workflow a échoué) : un pompier arrive avec un extincteur',ok:'a rendu son verdict : validé',
     avis:'a rendu un avis',skip:'sauté pour ce ticket',wait:'attend son tour'}[s]||'';
 }
 // ---------- panneau : les bureaux, la fiche d'un ticket ----------

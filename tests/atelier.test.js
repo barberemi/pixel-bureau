@@ -151,7 +151,7 @@ test('scènes : rien à rejouer en montant ; puis arrivée, sortie (pas pour une
 
 test('promeneurs : seulement des bureaux libres, 4 au plus sur l\'étage et 2 par bureau ; ils rentrent quand un ticket arrive', () => {
   const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
-  p.run(`ATELIER = {rooms: [${JSON.stringify(room('a'))}], queue: []}; AT_MEM.lit = [1, 0, 0, 0];
+  p.run(`T = DAY0 + 11 * 36e5; ATELIER = {rooms: [${JSON.stringify(room('a'))}], queue: []}; AT_MEM.lit = [1, 0, 0, 0];
     for (let n = 0; n < 50; n++) atWanderTick(atSlots(), n * 100, .1, () => 0);`);
   const w = J2('AT_MEM.wander.map(w => w.i)');
   assert.equal(w.length, 4);
@@ -202,4 +202,74 @@ test("ménage du soir : après le RDC, l'agent d'entretien fait le 1er étage, r
   assert.deepEqual([m.moving, m.stop.i], [false, 1], 'il balaie le bureau 2');
   assert.deepEqual(J2(`atCleanerAt(__cl, __u.s + ${slot * 0.6})`), m, 'même heure, même place');
   assert.match(J2('atCleanLabel(' + JSON.stringify(m) + ')'), /bureau 2/);
+});
+
+// ---------- correctifs : allées, canapés, loupe, TV, scènes par étage ----------
+test('trajets : de sa place à la porte par les allées, jamais à travers le tapis ; la rangée loin de la porte fait le tour par le mur extérieur', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  for (let i = 0; i < 4; i++) {
+    const g = J2(`(g=>({x0:Math.min(g.turnX,g.ex),x1:Math.max(g.turnX,g.ex)+.7*AT_TS,y0:g.b1,y1:g.b2+g.H,ax:g.ax,L:g.L}))(AT_G[${i}])`);
+    for (const k of J2('AT_DESKS.filter(p=>!p.gate).map(p=>p.k)')) {
+      const r = J2(`atRouteOut(${i}, '${k}')`);
+      for (let n = 1; n < r.length; n++) {
+        const a = r[n - 1], b = r[n], sx = [Math.min(a.x, b.x), Math.max(a.x, b.x)], sy = [Math.min(a.y, b.y), Math.max(a.y, b.y)];
+        assert.ok(sx[1] < g.x0 || sx[0] > g.x1 || sy[1] < g.y0 || sy[0] > g.y1, `bureau ${i + 1}, ${k}, segment ${n}`);
+      }
+    }
+    assert.ok(g.L ? g.ax < g.x0 : g.ax > g.x1, 'allée entre le tapis et le mur extérieur');
+  }
+});
+
+test('canapés : ni devant une porte ni dans le couloir central', () => {
+  const doors = J('AT_G.map(g=>g.door.x)'), T = J('AT_TS'), seats = J('AT_SPOTS.filter(s=>s.sit).map(s=>s.x)');
+  for (const x of seats) {
+    for (const d of doors) assert.ok(Math.abs(x - d) > 2.4 * T, 'loin de la porte');
+    assert.ok(x < 20 * T || x > 26 * T);
+  }
+});
+
+test("loupe au 1er : un ticket qui sort, ta décision, un poste en panne ; rien du RDC", () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  p.run(`AT_MEM.slot={};AT_MEM.scenes=[{kind:'exit',i:1,ticket:'DM-9',t0:1}];
+    ATELIER={rooms:[${JSON.stringify(room('g', {gate: 'gate_plan', poste: 'gate'}))},${JSON.stringify(room('e', {states: {tests: 'err'}}))}],queue:[]};`);
+  const kinds = J2('atLoupeEvents(5).map(e=>e.kind)').sort();
+  assert.deepEqual(kinds, ['at_err', 'at_exit', 'at_gate']);
+  assert.ok(J2('atLoupeEvents(5).every(e=>LOUPE_KINDS[e.kind])'));
+  p.run('FLOOR=1;LOUPE.seen=new Set();');
+  assert.deepEqual(J2('loupeScan().map(e=>e.kind)'), ['at_exit', 'at_gate', 'at_err']);
+});
+
+test("mode TV au 1er : la TV reste sur l'étage, la colonne montre les bureaux et l'entrepôt", () => {
+  const p = load();
+  p.run('setFloor(1);setTv(true,false);');
+  assert.equal(p.run('FLOOR'), 1);
+  assert.match(p.run('tvAtelierHtml()'), /Atelier d'implémentation[\s\S]*Bureau 1[\s\S]*Entrepôt/);
+  p.run('setTv(false,false);');
+});
+
+test("galerie : seulement les scènes de l'étage affiché ; une scène du 1er rend l'atelier tel quel à la fin", () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  p.run('FLOOR=0;');
+  assert.ok(!J2('galleryScenes().some(x=>x.fam==="1er étage")'));
+  p.run('FLOOR=1;');
+  const fams = J2('[...new Set(galleryScenes().map(x=>x.fam))]');
+  assert.deepEqual(fams, ['1er étage']);
+  assert.ok(J2('galleryScenes().map(x=>x.n)').includes('Un ticket sort'));
+  p.run(`var __A=ATELIER;demoStart(galleryScenes().find(x=>x.n==='Un ticket sort'));`);
+  assert.equal(J2('ATELIER.rooms.length'), J2('__A.rooms.length') - 1);
+  p.run('demoEnd();');
+  assert.equal(p.run('ATELIER===__A'), true);
+  assert.equal(p.run('AT_MEM.fresh'), true, 'sans rejouer le retour');
+});
+
+test("le soir, comme au RDC : fenêtres au ciel de l'heure, plus de promeneurs ; de jour ils reviennent", () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
+  assert.ok(J2('AT_WINDOWS.length') >= 6);
+  const T = J2('AT_TS'), board = [12.2 * T, 33.8 * T];
+  for (const x of J2('AT_WINDOWS')) assert.ok(x * T + 1.5 * T < board[0] || x * T > board[1], 'pas derrière le grand tableau');
+  p.run(`ATELIER = {rooms: [], queue: []}; T = DAY0 + 22 * 36e5; for (let n = 0; n < 30; n++) atWanderTick(atSlots(), n * 100, .1, () => 0);`);
+  assert.equal(J2('atOpen()'), false);
+  assert.equal(J2('AT_MEM.wander.length'), 0, 'personne le soir');
+  p.run(`T = DAY0 + 11 * 36e5; for (let n = 0; n < 30; n++) atWanderTick(atSlots(), n * 100, .1, () => 0);`);
+  assert.ok(J2('AT_MEM.wander.length') > 0);
 });

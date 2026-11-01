@@ -11,7 +11,7 @@ function loop(now){
     else if(mode==='play'){T+=dt*1000*SPEED;if(T>=REND&&!SCENE_DEMO){T=REND;setMode('live');}} // une démonstration peut dépasser la dernière donnée
     if(now-lastTick>250||needTeleport){tick(now);lastTick=now;}
     if(!FLOOR)for(const c of chars)step(c,dt); // seul l'étage affiché vit : au 1er, le RDC ne marche pas (setFloor(0) replace chacun)
-    tvAutoScroll(now,dt);
+    tvAutoScroll(now,dt);tvFloorTick(now); // 75-tv.js : alternance des étages de l'écran mural
     if(now-lastUi>1000){lastUi=now;
       document.getElementById('clock').textContent=hms(T);
       timeUi();
@@ -22,7 +22,7 @@ function loop(now){
     pumpSheets(8);
     galleryFrame(now); // 46-gallery.js : fin d'une démonstration
     fxFrame(now); // 43-fx.js : petites scènes de 3 s (succès, éclosion, stade, agent rétabli)
-    if(FLOOR)renderAtelier(now); // 68-atelier.js : le 1er étage, à la place de l'open space
+    if(FLOOR){renderAtelier(now);loupeFrame(now);} // 68-atelier.js : le 1er étage, à la place de l'open space, avec sa loupe
     else{
       render(now);
       loupeFrame(now); // 44-loupe.js : médaillon sur l'événement fort en cours
