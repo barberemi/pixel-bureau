@@ -44,5 +44,8 @@ test('le fil : son arrivée et son départ', () => {
   assert.equal(lines.length, 2);
   assert.ok(lines.every(l => l[0]));
   assert.match(lines[0][1], /commence le ménage du soir/);
-  assert.match(lines[1][1], /a fini le ménage/);
+  assert.match(lines[1][1], /a fini le RDC, il monte au 1er étage/); // la démo a le 1er étage (68-atelier.js)
+  const up = J(`(()=>{const v=cleaningVisit(${HANK},DAY0+12*36e5);return feedLifeEvents(v.e+AT_CLEAN_DUR+6e4).filter(e=>e.c&&e.c.on==='cleaning').map(e=>e.txt.replace(/<[^>]+>/g,''));})()`);
+  assert.equal(up.length, 3);
+  assert.match(up[2], /a fini le ménage, tout est propre/);
 });

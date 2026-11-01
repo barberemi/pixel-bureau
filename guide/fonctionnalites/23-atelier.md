@@ -25,6 +25,10 @@ Les workflows de l'étage (le lanceur, la chaîne et ses postes, modèles `impl*
 - **L'entrepôt**, en bas du couloir central : les tickets en attente sur les rayonnages, les tickets en panne sur des palettes (🧯, à relancer).
 - **Les livraisons** : un ticket qui arrive est apporté de l'entrepôt à la trappe d'entrée par **Bernard** (le manutentionnaire : âgé, un peu dégarni, lunettes, blouse bleue) et son transpalette ; un ticket qui sort (PR ouverte) attend à la trappe de sortie, Bernard vient le chercher et repart par la porte de sortie. Il n'y a qu'un Bernard : les livraisons passent l'une après l'autre, et entre deux il attend à l'entrepôt, à droite, où un compteur dit combien de tickets sont sortis aujourd'hui. Le café est au bout gauche du couloir, avec deux canapés comme au RDC.
 - **Les thèmes** : les agents portent les chapeaux du RDC. À Noël, Bernard devient le Père Noël, les cartons sont des paquets cadeaux, une guirlande court sur le grand tableau et un sapin attend dans le couloir ; à Halloween, Bernard passe en fantôme avec sa citrouille, les cartons sont des citrouilles et une toile d'araignée pend au tableau ; au Nouvel an et à la Saint-Valentin, des ballons dans le couloir (et un cœur qui s'envole quand un poste rend son ✓, une rose sur le bureau du boss).
+- **Le ménage du soir** : après sa tournée du RDC, l'agent d'entretien monte au 1er pour 40 minutes, avec son chariot. Il entre par la porte de sortie, balaie chaque bureau (2, 4, 3, 1, le bureau où il passe s'éclaire), puis l'entrepôt, et repart. Comme au RDC, sa tournée suit l'heure du plan : « Rejouer » la montre, et le fil le dit (« a fini le RDC, il monte au 1er étage », puis « a fini le ménage, tout est propre »).
+
+![Le ménage du soir au 1er étage : l'agent d'entretien balaie le bureau 4](../img/atelier-menage.png)
+
 - Les scènes ne se jouent que sur l'étage affiché : en montant, l'étage se pose tel qu'il est ; au retour au RDC, chacun reprend sa place.
 
 ![Le 1er étage au calme : deux bureaux libres, éteints, Bernard à l'entrepôt](../img/atelier-calme.png)

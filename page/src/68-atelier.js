@@ -325,9 +325,9 @@ function atRoom(r,i,now,dt){
   late.forEach(f=>f());
   // lumières : s'allument à l'arrivée d'un ticket, s'éteignent doucement quand le bureau se libère
   const want=r||leave?1:0;AT_MEM.lit[i]+=Math.sign(want-AT_MEM.lit[i])*Math.min(Math.abs(want-AT_MEM.lit[i]),dt/(REDUCED_MOTION?.01:2.5));
-  const dark=1-AT_MEM.lit[i];
+  const sweep=AT_MEM.clean&&!AT_MEM.clean.moving&&AT_MEM.clean.stop.i===i, dark=(1-AT_MEM.lit[i])*(sweep?.35:1);
   if(dark>.01){ctx.fillStyle=`rgba(10,14,34,${(.55*dark).toFixed(3)})`;ctx.fillRect(g.x0*T+5,g.y0*T+5,(g.x1-g.x0)*T-10,(g.y1-g.y0)*T-10);
-    if(dark>.9){sleepers.forEach(([,x,f],k)=>atTxt('z Z',x+12,f-58-(Math.floor(now/800+k)%2)*4,'#bfe6ff','bold 11px ui-monospace,Menlo,monospace'));
+    if(dark>.9||sweep&&!r){sleepers.forEach(([,x,f],k)=>atTxt('z Z',x+12,f-58-(Math.floor(now/800+k)%2)*4,'#bfe6ff','bold 11px ui-monospace,Menlo,monospace'));
       atPill('💤 Libre : ils somnolent à leur poste',(g.x0+g.x1)/2*T,g.b1+H+.35*T,'#1c2440','#bfe6ff');}}
   atHit('room',g.x0*T,g.y0*T,(g.x1-g.x0)*T,(g.y1-g.y0)*T,{i});
 }
@@ -465,13 +465,41 @@ function atScenes(now,dt,people){
   AT_MEM.scenes=AT_MEM.scenes.filter(s=>!s.done);
   if(AT_MEM.scenes.length>8)AT_MEM.scenes.splice(0,AT_MEM.scenes.length-8);
 }
+// ---------- le ménage du soir (49-menage.js) : après le RDC, l'agent d'entretien fait le 1er étage ----------
+// Rejouable comme au RDC : tout se lit dans l'heure du plan (T) et la tournée du RDC (cleaningVisit, tirée au sort pour la
+// date). Il entre par la porte de sortie, passe dans chaque bureau (2, 4, 3, 1), puis à l'entrepôt, et repart par la
+// porte : un quart de chaque étape à marcher, le reste à balayer. Le bureau où il passe s'éclaire.
+const AT_CLEAN_DUR=40*60e3;
+const atCleaner=()=>chars.find(c=>c.on==='cleaning')||null;
+function atCleanVisit(c,t){const v=c&&atelierOn()&&cleaningVisit(c,t);return v?{s:v.e,e:v.e+AT_CLEAN_DUR}:null;}
+function atCleanStops(){
+  const st=[{p:AT_EXIT,room:'la porte',i:null}];
+  for(const i of [1,3,2,0]){const g=AT_G[i];st.push({p:{x:g.door.x,y:g.aisle},room:'le bureau '+(i+1),i});}
+  return st.concat([{p:{x:AT_MX+1.4*AT_TS,y:20.3*AT_TS},room:'l\'entrepôt',i:null},{p:AT_EXIT,room:'la porte',i:null}]);
+}
+// point à la fraction f d'une ligne brisée, et la direction du segment
+function atAlong(pts,f){
+  const seg=[];let tot=0;for(let k=1;k<pts.length;k++){const d=Math.hypot(pts[k].x-pts[k-1].x,pts[k].y-pts[k-1].y);seg.push(d);tot+=d;}
+  let r=Math.max(0,Math.min(1,f))*tot;
+  for(let k=0;k<seg.length;k++){const a=pts[k], b=pts[k+1];if(r<=seg[k]||k===seg.length-1){const u=seg[k]?r/seg[k]:1, dx=b.x-a.x, dy=b.y-a.y;
+    return {x:a.x+dx*u,y:a.y+dy*u,dir:Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up')};}r-=seg[k];}
+  return {...pts[pts.length-1],dir:'down'};
+}
+// où il est à l'heure t : null hors de sa tournée du 1er étage
+function atCleanerAt(c,t){
+  const v=atCleanVisit(c,t);if(!v||t<v.s||t>=v.e)return null;
+  const st=atCleanStops(), n=st.length-1, k=(t-v.s)/(v.e-v.s)*n, j=Math.min(n-1,Math.floor(k)), f=k-j, a=st[j].p, b=st[j+1].p;
+  if(f<.25){const q=atAlong([a,{x:a.x,y:AT_MY},{x:b.x,y:AT_MY},b],f/.25);return {x:q.x,y:q.y,dir:q.dir,moving:true,stop:st[j+1],v};}
+  return {x:b.x,y:b.y,dir:Math.floor(t/2000)%2?'left':'right',moving:false,stop:st[j+1],v};
+}
+const atCleanLabel=m=>m.moving?'Fait le ménage du 1er étage : va vers '+m.stop.room:'Fait le ménage du 1er étage : '+m.stop.room+' · repart vers '+hm(m.v.e);
 // ---------- l'image ----------
 function renderAtelier(now){
-  const T=AT_TS, dt=AT_MEM.last?Math.min(.1,(now-AT_MEM.last)/1000):0;AT_MEM.last=now;
+  const dt=AT_MEM.last?Math.min(.1,(now-AT_MEM.last)/1000):0;AT_MEM.last=now;
   if(!AT_BG)AT_BG=atBackground();
   ctx.drawImage(AT_BG,0,0);AT_HITS=[];
   if(AT_MEM.src!==ATELIER){AT_MEM.src=ATELIER;atDiff(now);}
-  const slots=atSlots(), d=ATELIER||{};
+  const slots=atSlots(), d=ATELIER||{}, cl=atCleaner();AT_MEM.clean=cl&&atCleanerAt(cl,T);
   atCorridor(now);
   for(const k of Object.keys(AT_MEM.ext))if(now-AT_MEM.ext[k].seen>3e3)delete AT_MEM.ext[k];
   slots.forEach((r,i)=>atRoom(r,i,now,dt));
@@ -482,9 +510,12 @@ function renderAtelier(now){
     if(!a)continue;a.moving=w.phase!=='stay';a.pose='stand';a._st={st:'idle'};a._at={i:w.i,k:w.k,s:'wander'};people.push([a,null,false]);
     atHit('agent',w.walk.pos.x-14,w.walk.pos.y-56,28,58,{i:w.i,k:w.k});}
   atScenes(now,dt,people);
+  if(AT_MEM.clean){const m=AT_MEM.clean, a=Object.assign(Object.create(Object.getPrototypeOf(cl)),cl,{pos:{x:m.x,y:m.y},tile:null,dir:m.dir,moving:m.moving,pose:'stand',present:true,_st:{st:'idle'}});
+    const [dx,dy]={left:[-20,0],right:[20,0]}[m.dir]||[20,2];
+    people.push([a,()=>drawCart({x:m.x+dx,y:m.y+dy}),false,()=>{if(!m.moving)E('🧹',m.x,m.y-66,12);}]);atHit('cleaner',m.x-14,m.y-56,28,58,{});}
   atBoss(slots,now,dt,people);
   people.sort((a,b)=>a[0].pos.y-b[0].pos.y).forEach(([c,d,before,after])=>{if(before&&d)d();if(c.ghost)atGhost(c,now);else drawChar(c,now);if(!before&&d)d();if(after)after();});
-  atSofaFront(5*T,AT_HY0*T+44);atSofaFront(38*T,AT_HY0*T+44);
+  atSofaFront(5*AT_TS,AT_HY0*AT_TS+44);atSofaFront(38*AT_TS,AT_HY0*AT_TS+44);
   atBoard(slots);
   atPicked(slots,now);
 }
@@ -515,6 +546,7 @@ function atelierHover(e){
   const h=atHitAt(e), slots=atSlots();cv.style.cursor=h&&(h.kind!=='room'||slots[h.i])?'pointer':'default';
   let s='';
   if(h&&h.kind==='agent'){const r=slots[h.i], w=atWandering(h.i,h.k);s=atLabel(h.k)+' · bureau '+(h.i+1)+' · '+(w?'se promène':atStateText(r,h.k));}
+  else if(h&&h.kind==='cleaner'&&AT_MEM.clean)s=(atCleaner()||{}).name+' · '+atCleanLabel(AT_MEM.clean);
   else if(h&&h.kind==='bernard')s='Bernard · apporte les tickets de l\'entrepôt et emporte ceux qui sortent';
   else if(h&&h.kind==='queue'){const q=((ATELIER&&ATELIER.queue)||[]).find(x=>x.run===h.run);s=q?q.ticket+' · attend un bureau libre':'';}
   else if(h&&h.kind==='panne'){const p=((ATELIER&&ATELIER.pannes)||[]).find(x=>x.run===h.run);s=p?p.ticket+' · en panne à '+atStepName(p.poste):'';}

@@ -182,3 +182,19 @@ test("tickets sortis aujourd'hui : runs réussis de la chaîne depuis minuit, si
       {wf: 'cccc1111-x', status: 'Success', end: new Date(DAY0 - 3600e3).toISOString()}, {wf: 'dddd2222-x', status: 'Success', end: new Date(DAY0 + 3600e3).toISOString()}];`);
   assert.equal(p.run('atDelivered()'), 1);
 });
+
+test("ménage du soir : après le RDC, l'agent d'entretien fait le 1er étage, rejouable par l'heure du plan", () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  p.run(`CFG.atelier = true; var __cl = atCleaner(), __v = cleaningVisit(__cl, DAY0 + 12 * 36e5), __u = atCleanVisit(__cl, DAY0 + 12 * 36e5);`);
+  assert.ok(J2('!!__v && !!__u'), 'un jour ouvré de la démo');
+  assert.equal(J2('__u.s === __v.e && __u.e - __u.s === AT_CLEAN_DUR'), true, 'juste après le RDC');
+  assert.equal(J2('atCleanerAt(__cl, __u.s - 1)'), null);
+  assert.equal(J2('atCleanerAt(__cl, __u.e)'), null);
+  const a = J2('atCleanerAt(__cl, __u.s + 1000)');
+  assert.equal(a.moving, true, 'il entre par la porte');
+  const n = J2('atCleanStops().length - 1'), slot = J2('AT_CLEAN_DUR') / n;
+  const m = J2(`atCleanerAt(__cl, __u.s + ${slot * 0.6})`);
+  assert.deepEqual([m.moving, m.stop.i], [false, 1], 'il balaie le bureau 2');
+  assert.deepEqual(J2(`atCleanerAt(__cl, __u.s + ${slot * 0.6})`), m, 'même heure, même place');
+  assert.match(J2('atCleanLabel(' + JSON.stringify(m) + ')'), /bureau 2/);
+});

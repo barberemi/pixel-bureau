@@ -275,6 +275,9 @@ SHOTS = {
     "atelier": (1600, 1100, AT(11) + "setFloor(1);", None),
     "atelier-fiche": (1600, 1100, AT(11) + "setFloor(1);ATSEL='demo-a3';renderSide(true);", None),
     # le 1er étage au calme : deux bureaux libres, éteints, Bernard à l'entrepôt, personne en file
+    # le ménage du soir au 1er étage : l'agent d'entretien balaie le bureau 4, son chariot à côté (bureaux libres)
+    "atelier-menage": (1600, 1100, AT(11) + "ATELIER={...ATELIER,rooms:[],queue:[],pannes:[]};{const c=atCleaner(),u=atCleanVisit(c,DAY0+12*36e5);"
+                      "T=u.s+AT_CLEAN_DUR/(atCleanStops().length-1)*1.6;}setFloor(1);", None),
     "atelier-calme": (1600, 1100, AT(11) + "ATELIER={...ATELIER,rooms:ATELIER.rooms.slice(0,2),queue:[],pannes:[]};setFloor(1);", None),
     "temps-gagne-ia": (1400, 1000, AT(11) + "ACTIONS.ai_time=true;ACTION_BINDS['bureau-aitime']={ticket:'key'};"
                        "const all=[...TEAM.people.flatMap(p=>p.tickets),...(TEAM.unassigned||[])];ACTS={tickets:all.map(t=>({key:t.key})),prs:[]};"
