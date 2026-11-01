@@ -1,0 +1,75 @@
+{
+ "kind": "workflow",
+ "key": "chaine_bilan",
+ "doc": "Bilan de la chaîne d'implémentation : historique des runs, jetons par poste, versions, allers-retours (page « Chaîne · bilan »).",
+ "definition": {
+  "name": "Le Bureau · bilan de la chaîne (15 min)",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Cron",
+   "schedule": "4,19,34,49 @@cron_hours@@ * * *"
+  },
+  "steps": [
+   {
+    "name": "bilan",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Bilans des runs de la chaîne (historique de chaine.py) complétés par l'API Kronn : jetons par poste, attente aux gates, issue finale (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine_bilan.py@@"
+    ],
+    "exec_timeout_secs": 300
+   },
+   {
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset bilan de la page « Chaîne · bilan ».",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@bilan.page_id@@",
+     "writes": [
+      {
+       "dataset": "bilan",
+       "operation": "replace",
+       "value_from": "steps.bilan.data.stdout"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

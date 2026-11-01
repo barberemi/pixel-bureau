@@ -588,6 +588,66 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("verif A.php", res["sorties"][0]["sortie"])
         self.assertIn("aucune vérification", json.loads(self.sh("verif", "tests")[1])["note"])
 
+    def test_run_bilan_is_kept_in_the_history(self):
+        """Après chaque étape, le bilan du run est réécrit hors du cache de reprise (page « Chaîne · bilan ») : tours,
+        retours humains et leur cause, schéma prévu contre fichiers touchés, diff par sorte, contrôles trouvés et corrigés."""
+        self.prepare()
+        revoir = json.dumps({"verdict": "revoir", "remarques": ["x"]})
+        self.sh("tri", "cadrage", stdin=revoir)
+        self.sh("tri", "cadrage", stdin=json.dumps({"verdict": "ok"}))
+        self.sh("rapport", "cadrage", stdin=json.dumps({"resume": "r", "comprehension": "Un bouton partager"}) + SEP + "null")
+        self.sh("entree", "schema", "AB-12", "Ne touche pas au pied de page, hors périmètre")
+        self.sh("rapport", "schema", stdin=json.dumps({"resume": "s", "mermaid": "flowchart LR\n A-->B", "fichiers": [
+            {"chemin": "app/A.php", "action": "modifier"}, {"chemin": "app/B.php", "action": "creer"},
+            {"chemin": "docs/AGENTS.md", "action": "lire"}]}) + SEP + "null")
+        self.sh("plan", "", "", stdin=json.dumps({"lots": [{"titre": "le bouton"}], "postes": []}))
+        Path(self.wt, "app", "A.php").write_text("<?php // partager\n")
+        Path(self.wt, "tests").mkdir()
+        Path(self.wt, "tests", "ATest.php").write_text("<?php\n")
+        Path(self.wt, "docs", "partage.md").write_text("# Partager\n\nLe bouton.\n")
+        g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        subprocess.run([*g, "add", "-A"], cwd=self.wt, check=True)
+        subprocess.run([*g, "commit", "-qm", "bouton"], cwd=self.wt, check=True)
+        self.sh("tri_code", stdin=json.dumps({"ok": True}) + SEP + json.dumps({"verdict": "ok"}))
+        self.sh("bilan_code")
+        bl = {"resume": "s", "constats": [{"gravite": "bloquant", "probleme": "XSS ligne 3", "fichier": "app/A.php"}]}
+        self.sh("rapport", "securite", stdin=json.dumps(bl) + SEP + "null")
+        self.sh("rapport", "revue", stdin=json.dumps({"resume": "s", "constats": [{"gravite": "mineur", "probleme": "nom"}]}) + SEP + "null")
+        self.sh("bilan_controles")
+        self.sh("aiguillage", stdin=json.dumps({"decision": "retour_code", "consignes": "XSS", "resume": "r"}))
+        self.sh("bilan_code")  # tour 2 : la XSS est corrigée, l'avis de la revue reste
+        self.sh("rapport", "securite", stdin=json.dumps({"resume": "s", "constats": []}) + SEP + "null")
+        self.sh("rapport", "revue", stdin=json.dumps({"resume": "s", "constats": [{"gravite": "mineur", "probleme": "nom"}]}) + SEP + "null")
+        self.sh("bilan_controles")
+        self.sh("aiguillage", stdin=json.dumps({"decision": "livrer", "resume": "Livré après une correction"}))
+        path = Path(self.tmp, "home", ".local", "share", "pixel-bureau", "historique", "AB-12", "dm__site", "run1.json")
+        b = json.loads(path.read_text())
+        self.assertEqual((b["ticket"], b["repo"], b["run"], b["titre"], b["essai"]), ("AB-12", "dm/site", "run1", "Bouton partager sur la fiche", False))
+        self.assertEqual(b["tours"], {"propositions": {"cadrage": 2}, "essais_code": 1, "controles": 2, "escalades": 0})
+        self.assertEqual((b["retours"]["n"], b["retours"]["par_gate"], b["retours"]["par_cause"]), (1, {"plan": 1}, {"perimetre": 1}))
+        s = b["schema"]
+        self.assertEqual((s["prevus"], s["prevus_touches"], s["prevus_non_touches"]), (["app/A.php", "app/B.php"], 1, ["app/B.php"]))
+        self.assertEqual(s["touches_non_prevus"], ["docs/partage.md", "tests/ATest.php"])
+        self.assertIn("flowchart", s["mermaid"])
+        self.assertEqual({k: v["fichiers"] for k, v in b["diff"].items()}, {"code": 1, "tests": 1, "doc": 1})
+        self.assertEqual(b["doc"]["fichiers"], [{"fichier": "docs/partage.md", "plus": 3, "moins": 0}])
+        self.assertEqual(b["controles"]["securite"]["bloquants"], {"trouves": 1, "corriges": 1, "restes": 0})
+        self.assertEqual(b["controles"]["revue"]["avis"], {"trouves": 1, "corriges": 0, "restes": 1})
+        self.assertEqual((b["plan"]["lots"], b["resume"]["comprehension"], b["resume"]["decision"]), (1, "Un bouton partager", "livrer"))
+        self.assertEqual((b["etape"], b["issue"]), ("livraison", "en_cours"))
+        self.assertEqual(set(b["version"]), {"hash", "commit", "sujet"})  # injectée au rendu du script
+        debut = b["debut"]
+        self.sh("fin")  # relecture : PR en brouillon ; le début du run est gardé d'une écriture à l'autre
+        b = json.loads(path.read_text())
+        self.assertEqual((b["issue"], b["debut"]), ("pr_brouillon", debut))
+        e = self.dossier("etat.json")  # un id de run tordu reste dans le dossier de l'historique
+        e["run"] = "run1/../../x"
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        self.assertEqual(self.sh("bilan")[0], 0)
+        self.assertTrue(path.with_name("run1_.._.._x.json").exists())
+        self.assertEqual(self.sh("mode", "plan")[0], 4)  # plan seulement : le run s'arrête au commentaire Jira
+        self.assertEqual(json.loads(path.with_name("run1_.._.._x.json").read_text())["issue"], "plan_seul")
+
     def test_controls_dispatch_and_orchestrator_rounds(self):
         self.prepare()
         Path(self.wt, "app", "A.php").write_text("<?php // x\n")
