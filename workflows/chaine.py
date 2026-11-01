@@ -33,10 +33,14 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
   aiguillage                        # stdin décision de l'orchestrateur : 3 livrer, 4 retour au code, 0 humain
   pousse | pr | revue_prep | retours_lire | reponds   # PR, revue de la PR, retours des relecteurs (gh)
   pret | reviewers | fin                              # publication après ta relecture (gh)
+  bilan                             # bilan du run (historique de la page « Chaîne · bilan »), aussi écrit après chaque étape
 
 L'étage ne traite que l'implémentation, la PR et ses retours : ni CI, ni env de branche, ni déploiement (le RDC s'en charge).
 Le dossier est recopié après chaque étape dans ~/.cache/pixel-bureau/chaine/<ticket>/<owner__dépôt>/courant : Kronn
 supprime la copie de travail d'un run (réussi ou non), la reprise y relit tout (étape atteinte dans etat.json « etape »).
+Après chaque étape aussi, le bilan du run est réécrit dans l'historique (impl.historique, sinon
+~/.local/share/pixel-bureau/historique/<ticket>/<owner__dépôt>/<run>.json), jamais vidé : le dernier écrit vaut pour un
+run fini, rejeté à une gate ou en panne (Kronn ne lance aucune étape après une panne).
 Réglage impl (pack ou config) : repos.<owner/dépôt>.{base, checks.{regles,tests}, reviewers, front, docs}, components.<composant> = owner/dépôt, postes.<poste>.{actif, bloquant}, max_tours, max_lots.
 Une commande de vérification reçoit {worktree}, {main} (dossier du projet), {files}, {php}, {ts}, {tests} (fichiers
 modifiés par rapport à la base, par type).
@@ -318,14 +322,32 @@ def copie(src, dest):
 
 
 def sauve():
-    """Après chaque étape : le dossier recopié dans le cache (Kronn supprime la copie de travail d'un run en échec)."""
+    """Après chaque étape : le dossier recopié dans le cache (Kronn supprime la copie de travail d'un run en échec), et
+    le bilan du run réécrit dans l'historique (jamais au prix de l'étape : une erreur du bilan est ignorée)."""
     if os.path.isdir(os.path.join(root(), ".kronn", "chaine")) and etat().get("ticket"):
         copie(dossier(), cache_dir())
+        try:
+            ecrit_bilan()
+        except Exception as x:  # noqa: BLE001  le bilan ne doit jamais faire tomber la chaîne
+            sys.stderr.write(f"bilan non écrit : {x}\n")
 
 
 # étape atteinte (etat.json « etape ») -> où la reprise repart : 0 du début (postes déjà faits sautés), 3 au Code,
 # 4 aux contrôles (ceux déjà faits sautés), 5 à la PR (déjà ouverte : droit à ta relecture)
 REPRISE = {"code": 3, "controles": 4, "orchestrateur": 4, "escalade": 4, "livraison": 5, "relecture": 5, "publication": 5}
+
+
+def compte(key, sub=None):
+    """Compteur du run dans etat.json (bilan) : les fichiers d'essais du dossier repartent de zéro à chaque passage."""
+    e = etat()
+    if not e.get("ticket"):
+        return
+    if sub:
+        d = e.setdefault(key, {})
+        d[sub] = int(d.get(sub) or 0) + 1
+    else:
+        e[key] = int(e.get(key) or 0) + 1
+    write_json(dossier("etat.json"), e)
 
 
 def avance(etape, **more):
@@ -650,6 +672,7 @@ def cmd_tri(p):
     st = load(f"essais_{p}.json", {"n": 0}) or {"n": 0}
     st["n"] += 1
     write_json(dossier(f"essais_{p}.json"), st)
+    compte("propositions", p)
     if str(c.get("verdict") or "").lower() in ("revoir", "a_revoir", "rejet") and (c.get("remarques") or []):
         if st["n"] < 3:
             print(f"{p} : le critique demande un nouveau tour ({len(c['remarques'])} remarque(s)), proposition {st['n'] + 1} sur 3")
@@ -1015,6 +1038,7 @@ def cmd_tri_code():
     st = load("essais_code.json", {"n": 0}) or {"n": 0}
     st["n"] += 1
     write_json(dossier("essais_code.json"), st)
+    compte("essais_code")
     bad = (not v.get("ok", True)) or str((rel or {}).get("verdict") or "").lower() == "revoir"
     if bad and st["n"] < 3:
         print(f"Code : à reprendre (essai {st['n']} sur 3)")
@@ -1070,6 +1094,7 @@ def cmd_bilan_controles():
             item = {"poste": p, **x}
             (rep["bloquants"] if x.get("gravite") == "bloquant" and r.get("bloquant_poste", p in BLOQUANTS) else rep["avis"]).append(item)
     write_json(dossier("controles.json"), rep)
+    tour_controles()
     avance("orchestrateur", controle_sha=git("rev-parse", "HEAD"))
     code = load("code.json") or {}
     out({**rep, "code": {"commits": code.get("commits"), "fichiers": code.get("fichiers"), "note": code.get("note")},
@@ -1093,6 +1118,7 @@ def cmd_aiguillage():
         print(f"Tour {e['tours']} sur {maxt} : retour au poste Code avec les consignes de l'orchestrateur.")
         sys.exit(4)
     avance("escalade")
+    compte("escalades")
     print(f"Tour {e['tours']} : un humain tranche ({'plus de tours' if dec == 'retour_code' else dec or 'décision illisible'}).")
 
 
@@ -1320,6 +1346,192 @@ def cmd_fin():
          "retours": (load("retours.json") or {}).get("reponses")})
 
 
+# ---------- bilan du run (historique, page « Chaîne · bilan ») ----------
+# Ce que le dossier sait du run, réécrit après chaque étape (sauve) : le dernier vaut pour un run fini, rejeté ou en
+# panne. Jetons, durées, modèles et issue finale (panne, rejet) ne sont pas dans le dossier : le cron de la page les lit
+# dans l'API Kronn. Causes des retours humains : mots-clés, 0 token (la première cause trouvée, dans cet ordre).
+CAUSES = (("convention", ("convention", "nommage", "naming", "style", "règle", "regle", "lint", "format", "pattern", "comme d'habitude")),
+          ("decoupage", ("lot", "découp", "decoup", "sépare", "separe", "ordre", "d'abord", "commit", "étape", "etape")),
+          ("perimetre", ("périmètre", "perimetre", "scope", "hors", "pas besoin", "inutile", "ne touche pas", "ne pas toucher",
+                         "uniquement", "seulement", "en trop", "aussi", "oublie", "manque")),
+          ("lecture", ("compris", "pas ça", "pas ca", "en fait", "plutôt", "plutot", "faux", "erreur", "ce n'est pas", "c'est pas")))
+GATE_DE = {"cadrage": "compris", "schema": "plan", "patterns": "plan", "code": "code"}  # poste qui reçoit le retour -> gate
+
+
+def historique():
+    return os.path.expanduser(impl().get("historique") or "~/.local/share/pixel-bureau/historique")
+
+
+def bilan_path(e):
+    seg = lambda v: re.sub(r"[^\w.-]", "_", str(v)).strip(".") or "_"  # noqa: E731  (jamais hors du dossier)
+    return os.path.join(historique(), seg(e["ticket"]), seg(e["repo"].replace("/", "__")), seg(e["run"]) + ".json")
+
+
+def sorte(f):
+    """code, tests ou doc : d'après le chemin."""
+    base = f.rsplit("/", 1)[-1]
+    if f.startswith(("docs/", "doc/", "ai/", "guide/")) or base.endswith((".md", ".rst", ".adoc")) or base.upper().startswith("README"):
+        return "doc"
+    if re.search(r"(^|/)(tests?|spec|__tests__)/|[._-](test|spec)\.\w+$|Test\.php$", f):
+        return "tests"
+    return "code"
+
+
+def numstat():
+    """Lignes ajoutées et retirées depuis le départ, par sorte de fichier, et le détail des docs."""
+    tot = {k: {"fichiers": 0, "plus": 0, "moins": 0} for k in ("code", "tests", "doc")}
+    docs = []
+    for ln in git("diff", "--numstat", f"{depart()}...HEAD").splitlines():
+        parts = ln.split("\t")
+        if len(parts) != 3 or parts[2].startswith(".kronn/"):
+            continue
+        a, d = (int(x) if x.isdigit() else 0 for x in parts[:2])
+        k = sorte(parts[2])
+        tot[k]["fichiers"] += 1
+        tot[k]["plus"] += a
+        tot[k]["moins"] += d
+        if k == "doc":
+            docs.append({"fichier": parts[2], "plus": a, "moins": d})
+    return tot, docs[:30]
+
+
+def cle(x):
+    """Un constat d'un tour de contrôles, reconnaissable au tour suivant (fichier et début du problème, sans chiffres)."""
+    txt = re.sub(r"\d+", "#", " ".join(str(x.get("probleme") or "").lower().split()))[:80]
+    return f"{x.get('fichier') or ''}|{txt}"
+
+
+def tour_controles():
+    """Chaque tour de contrôles gardé (controles_tours.json) : le bilan compte ce qui a été trouvé, corrigé ou est resté."""
+    snap = {}
+    for p in CONTROLES:
+        r = load(p + ".json") or {}
+        cs = [x for x in (r.get("resultat") or {}).get("constats") or [] if isinstance(x, dict) and x.get("probleme")]
+        bloq = r.get("bloquant_poste", p in BLOQUANTS)
+        snap[p] = {"statut": r.get("statut") or "en_panne",
+                   "bloquants": sorted({cle(x) for x in cs if x.get("gravite") == "bloquant" and bloq}),
+                   "avis": sorted({cle(x) for x in cs if not (x.get("gravite") == "bloquant" and bloq)})}
+    tours = load("controles_tours.json", []) or []
+    tours.append({"tour": int(etat().get("tours") or 0) + 1, "postes": snap})
+    write_json(dossier("controles_tours.json"), tours)
+
+
+def controles_bilan():
+    tours = load("controles_tours.json", []) or []
+    if not tours:
+        return {}
+    last = tours[-1]["postes"]
+    res = {}
+    for p in dict.fromkeys(k for t in tours for k in t["postes"]):
+        ran = [t["postes"][p] for t in tours if p in t["postes"] and t["postes"][p].get("statut") != "non_concerne"]
+        item = {"statut": (last.get(p) or {}).get("statut"), "tours": len(ran)}
+        for kind in ("bloquants", "avis"):
+            seen = set().union(*[set(x.get(kind) or []) for x in ran]) if ran else set()
+            rest = set((last.get(p) or {}).get(kind) or [])
+            item[kind] = {"trouves": len(seen), "corriges": len(seen - rest), "restes": len(rest & seen)}
+        res[p] = item
+    return res
+
+
+def retours_bilan():
+    """Retours humains (retours.md) : un par texte, la gate d'où il vient (poste qui l'a reçu) et sa cause."""
+    path = dossier("retours.md")
+    txt = open(path, encoding="utf-8").read() if os.path.exists(path) else ""
+    items = []
+    for m in re.finditer(r"^## Retour humain \(([^,]+), [^)]*\)[^\n]*\n(.*?)(?=^## Retour humain |\Z)", txt, re.S | re.M):
+        body = " ".join(m.group(2).split())
+        low = body.lower()
+        cause = next((c for c, kws in CAUSES if any(k in low for k in kws)), "autre")
+        items.append({"gate": GATE_DE.get(m.group(1).strip(), m.group(1).strip()), "cause": cause, "texte": body[:160]})
+    par_gate, par_cause = {}, {}
+    for x in items:
+        par_gate[x["gate"]] = par_gate.get(x["gate"], 0) + 1
+        par_cause[x["cause"]] = par_cause.get(x["cause"], 0) + 1
+    return {"n": len(items), "par_gate": par_gate, "par_cause": par_cause, "liste": items[-10:]}
+
+
+def issue_de(e):
+    """Où le run en est d'après le dossier ; le cron de la page corrige d'après Kronn (panne, rejet à une gate)."""
+    etape = e.get("etape")
+    if etape == "fini":
+        return "pr_prete"
+    if etape in ("relecture", "publication"):
+        return "pr_brouillon"
+    if etape == "code" and (e.get("mode") or "").strip().lower() in ("plan", "plan seulement", "plan_seulement"):
+        return "plan_seul"
+    if etape == "escalade":
+        return "escalade"
+    return "en_cours"
+
+
+def bilan():
+    e = etat()
+    old = {}
+    try:
+        old = read_json(bilan_path(e))
+    except (OSError, ValueError):
+        pass
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    touched = changed()
+    sch = (load("schema.json") or {}).get("resultat") or {}
+    prevus = sorted({n.get("chemin") for n in sch.get("fichiers") or [] if isinstance(n, dict) and n.get("chemin")
+                     and n.get("action") in ("modifier", "creer", "supprimer")})
+    plan = load("plan.json") or {}
+    lots = [x for x in plan.get("lots") or [] if isinstance(x, dict)]
+    ex = [x for x in ((load("besoin.json") or {}).get("resultat") or {}).get("exigences") or [] if isinstance(x, dict)]
+    compte_ex = {}
+    for x in ex:
+        compte_ex[x.get("etat") or "?"] = compte_ex.get(x.get("etat") or "?", 0) + 1
+    doc = (load("doc.json") or {}).get("resultat") or {}
+    statuts_doc = {}
+    for x in doc.get("docs") or []:
+        if isinstance(x, dict):
+            statuts_doc[x.get("statut") or "?"] = statuts_doc.get(x.get("statut") or "?", 0) + 1
+    diff, docs = numstat()
+    cad = (load("cadrage.json") or {}).get("resultat") or {}
+    orch = load("orchestrateur.json") or {}
+    title = (e.get("texte") or "").split("\n", 1)[0]
+    return {
+        "v": 1, "ticket": e.get("ticket"), "titre": title[:200], "repo": e.get("repo"), "run": e.get("run"),
+        "mode": e.get("mode"), "essai": essai(), "reprise": bool(e.get("reprise")), "soeurs": e.get("soeurs") or [],
+        "debut": old.get("debut") or now, "maj": now, "etape": e.get("etape"), "issue": issue_de(e),
+        "pr": {"n": e.get("pr"), "url": f"https://github.com/{e.get('repo')}/pull/{e.get('pr')}"} if e.get("pr") else None,
+        "version": CFG.get("impl_version") or {},
+        "tours": {"propositions": e.get("propositions") or {}, "essais_code": int(e.get("essais_code") or 0),
+                  "controles": int(e.get("tours") or 0), "escalades": int(e.get("escalades") or 0)},
+        "retours": retours_bilan(),
+        "schema": {"mermaid": str(sch.get("mermaid") or "")[:4000], "prevus": prevus[:60], "touches": touched[:120],
+                   "prevus_touches": len(set(prevus) & set(touched)), "touches_non_prevus": sorted(set(touched) - set(prevus))[:30],
+                   "prevus_non_touches": sorted(set(prevus) - set(touched))[:30]},
+        "plan": {"lots": len(lots), "titres": [str(x.get("titre") or x.get("nom") or x.get("objet") or "")[:120] for x in lots][:10]},
+        "exigences": {"compte": compte_ex, "liste": [{"exigence": str(x.get("exigence") or "")[:200], "etat": x.get("etat")} for x in ex][:20]},
+        "doc": {"statuts": statuts_doc, "fichiers": docs,
+                "a_mettre_a_jour": [str(x.get("doc") or x.get("fichier") or "")[:160] for x in doc.get("docs") or []
+                                    if isinstance(x, dict) and x.get("statut") == "a_mettre_a_jour"][:10]},
+        "diff": diff,
+        "controles": controles_bilan(),
+        "resume": {"comprehension": str(cad.get("comprehension") or cad.get("resume") or "")[:600],
+                   "orchestrateur": str(orch.get("resume") or "")[:600], "decision": orch.get("decision")},
+    }
+
+
+def ecrit_bilan():
+    e = etat()
+    if not (e.get("ticket") and e.get("repo") and e.get("run")) or str(e["run"]).startswith("{" + "{"):
+        return None
+    b = bilan()
+    path = bilan_path(e)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    write_json(path, b)
+    return path
+
+
+def cmd_bilan():
+    if not etat().get("ticket"):
+        sys.exit("Aucun dossier de ticket dans cette copie de travail.")
+    out(bilan())
+
+
 def main(argv):
     cmd, args = (argv[1] if len(argv) > 1 else ""), argv[2:]
     simple = {"releve": cmd_releve, "dossier": cmd_dossier, "existe": cmd_existe, "questions": cmd_questions, "missions": cmd_missions,
@@ -1327,7 +1539,7 @@ def main(argv):
               "bilan_controles": cmd_bilan_controles,
               "aiguillage": cmd_aiguillage, "pousse": cmd_pousse, "pr": cmd_pr, "pret": cmd_pret,
               "reviewers": cmd_reviewers, "fin": cmd_fin, "revue_prep": cmd_revue_prep, "retours_lire": cmd_retours_lire,
-              "reponds": cmd_reponds}
+              "reponds": cmd_reponds, "bilan": cmd_bilan}
     if cmd in simple:
         return simple[cmd]()
     if cmd == "lance":
