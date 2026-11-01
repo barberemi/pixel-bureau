@@ -86,7 +86,7 @@ function atPill(s,x,y,bgc,fg,font){ctx.font=font||'bold 10px ui-monospace,Menlo,
 const AT_CX0=20, AT_CX1=26, AT_HY0=13.5, AT_HY1=15.5, AT_DESKS=AT_POSTES.filter(p=>p.bureau!==false), AT_R1=AT_DESKS.slice(0,7), AT_R2=AT_DESKS.slice(7);
 const AT_ROOMS=[[0,3,AT_CX0,AT_HY0,1,1],[AT_CX1,3,46,AT_HY0,0,1],[0,AT_HY1,AT_CX0,27,1,0],[AT_CX1,AT_HY1,46,27,0,0]]; // x0,y0,x1,y1, miroir, en haut
 const AT_MX=(AT_CX0+AT_CX1)/2*AT_TS, AT_MY=AT_HY1*AT_TS-8, AT_LANE=AT_MX+2.5*AT_TS; // AT_MY : la ligne de marche du couloir horizontal, devant les canapés
-const AT_CHAIR={x:AT_MX,y:6.9*AT_TS-8}, AT_DOCK={x:AT_MX,y:21.4*AT_TS}, AT_EXIT={x:45.4*AT_TS,y:AT_MY};
+const AT_CHAIR={x:AT_MX,y:6.4*AT_TS}, AT_DOCK={x:AT_MX,y:21.4*AT_TS}, AT_EXIT={x:45.4*AT_TS,y:AT_MY};
 const AT_WANDER_MAX=4, AT_WANDER_ROOM=2; // promeneurs des bureaux libres : sur tout l'étage, et par bureau
 // géométrie d'un bureau : rangées, tapis, trappes, porte ; les bureaux du bas ont leur titre en bas, le contenu remonte
 function atGeo(i){
@@ -390,22 +390,25 @@ function atBoss(slots,now,dt,people){
   if(!b||REDUCED_MOTION&&b.target!==target)b=AT_MEM.boss={target,walk:atWalker(target==null?[AT_CHAIR]:[atBossPath(AT_CHAIR,target).pop()])};
   if(b.target!==target){b.target=target;b.walk=atWalker(atBossPath(b.walk.pos,target),90);}
   const arrived=atStep(b.walk,dt), seated=arrived&&target==null;
-  const ox=AT_MX, dy=6.9*AT_TS;
-  R(ctx,ox-18,dy-50,36,30,'#5a2e2e');R(ctx,ox-18,dy-50,36,4,'#723a3a');R(ctx,ox-22,dy-36,6,18,'#4a2424');R(ctx,ox+16,dy-36,6,18,'#4a2424');
-  const desk=()=>{const x0=ox-2.1*AT_TS, top=dy-14, w=4.2*AT_TS;
-    R(ctx,x0,top+31,w,3,'rgba(0,0,0,.2)');R(ctx,x0,top,w,18,'#6e4a2c');R(ctx,x0,top,w,2,'#8a6040');R(ctx,x0,top+18,w,14,'#56391f');
-    slots.forEach((r,k)=>{const x=ox-1.5*AT_TS+k*AT_TS, on=r&&r.gate;
-      ctx.fillStyle='#1c1c1c';ctx.beginPath();ctx.ellipse(x,top+9,10,6,0,0,7);ctx.fill();
-      ctx.fillStyle=!r?'#555':on?(Math.floor(now/450)%2?'#ffcf4a':'#a37a10'):r.back?'#e0614f':'#3fbf6a';ctx.beginPath();ctx.ellipse(x,top+7,8,5,0,0,7);ctx.fill();
-      atHit('room',x-10,top,20,16,{i:k});});
-    if(themeIs('saint-valentin'))E('🌹',x0+w-12,top-2,12);
-    ctx.fillStyle='#f3e6d2';ctx.font='bold 8px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText("WORLD'S BEST BOSS",ox,top+28);ctx.textAlign='left';};
+  // bureau, fauteuil et boss aux mesures du RDC (40-furniture.js) : fauteuil 44 px au-dessus de ses pieds, bureau de 100 px
+  // 16 px au-dessus, son écran, sa tasse, « WORLD'S BEST BOSS » ; les quatre voyants des bureaux à la place de la feuille
+  const ox=AT_CHAIR.x, F=AT_CHAIR.y, x0=ox-50, top=F-16;
+  R(ctx,ox-18,F-44,36,30,'#5a2e2e');R(ctx,ox-18,F-44,36,4,'#723a3a');R(ctx,ox-22,F-30,6,18,'#4a2424');R(ctx,ox+16,F-30,6,18,'#4a2424');
+  R(ctx,ox-22,F-30,6,2,'#6a3434');R(ctx,ox+16,F-30,6,2,'#6a3434');
+  const desk=()=>{
+    R(ctx,x0,top+30,3*AT_TS+4,3,'rgba(0,0,0,.2)');R(ctx,x0,top,3*AT_TS+4,18,'#6e4a2c');R(ctx,x0,top,3*AT_TS+4,2,'#8a6040');R(ctx,x0,top+18,3*AT_TS+4,13,'#56391f');
+    R(ctx,x0+6,top-12,18,13,'#2c2f38');drawScreen(x0+7,top-11,16,10,boss&&atOpen()?screenState(boss):'off',now,97);R(ctx,x0+12,top+1,5,3,'#2c2f38');
+    slots.forEach((r,k)=>{const x=x0+42+k*8, on=r&&r.gate;R(ctx,x-3,top+4,7,7,'#1c1c1c');
+      R(ctx,x-2,top+5,5,5,!r?'#555':on?(Math.floor(now/450)%2?'#ffcf4a':'#a37a10'):r.back?'#e0614f':'#3fbf6a');atHit('room',x-4,top+2,9,11,{i:k});});
+    R(ctx,x0+76,top+2,6,7,'#fbfbf6');R(ctx,x0+77,top+4,4,2,'#d1453b');
+    if(themeIs('saint-valentin'))E('🌹',x0+92,top-2,12);
+    ctx.fillStyle='#f3e6d2';ctx.font='bold 8px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText("WORLD'S BEST BOSS",ox,top+27);ctx.textAlign='left';};
   if(!boss||!atOpen()){desk();return;} // le soir : le fauteuil reste, vide
-  const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:b.walk.pos.x,y:b.walk.pos.y},tile:null,moving:!arrived,pose:'stand',present:true,
+  const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:b.walk.pos.x,y:b.walk.pos.y},tile:seated?BOSS_SEAT.slice():null,moving:!arrived,pose:'stand',present:true,
     dir:arrived?(target==null?'down':AT_G[target].top?'up':'down'):b.walk.dir,_st:{st:gates.length?'gate':'idle'}});
   if(seated){drawChar(c,now);desk();}
   else{desk();people.push([c,null,false,()=>{if(arrived&&target!=null)atBubble(c.pos.x+44,c.pos.y-30,'✋ '+(slots[target]?slots[target].ticket:''),'#8a5a00');}]);}
-  if(seated&&gates.length)atBubble(ox,dy-60,'✋ '+gates.length);
+  if(seated&&gates.length)atBubble(ox,F-58,'✋ '+gates.length);
 }
 function atWarehouse(q,pn,now){ // en bas du couloir central : sol béton, bande de sécurité, deux rayonnages, les pannes sur palettes
   const T=AT_TS, x0=AT_CX0*T+6, x1=AT_CX1*T-6, y0=21.6*T, y1=27*T;
