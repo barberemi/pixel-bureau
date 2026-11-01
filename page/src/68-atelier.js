@@ -90,7 +90,7 @@ const AT_WANDER_MAX=4, AT_WANDER_ROOM=2; // promeneurs des bureaux libres : sur 
 function atGeo(i){
   const [x0,y0,x1,y1,L,top]=AT_ROOMS[i], T=AT_TS, o=top?0:-.9, Y=v=>(y0+v+o)*T;
   const g={i,x0,y0,x1,y1,L:!!L,top:!!top,bx0:(x0+1.7)*T,bx1:(x1-1.7)*T,H:.6*T,b1:Y(4.8),b2:Y(6.2),lab1:Y(2.3),desk1:Y(3.65),feet1:Y(3.85),
-    desk2:Y(7.1),feet2:Y(9.35),lab2:Y(10.0),head:top?(y0+.75)*T:(y1-.45)*T,noteY:top?(y0+1.5)*T:(y1-1.15)*T,wallX:(L?AT_CX0:AT_CX1)*T};
+    desk2:Y(7.1),feet2:Y(9.35),lab2:Y(10.0),head:top?(y0-.45)*T:(y1-.45)*T,noteY:top?(y0+.3)*T:(y1-1.15)*T,wallX:(L?AT_CX0:AT_CX1)*T};
   g.sw=(g.bx1-g.bx0)/7;g.ex=L?g.bx1+.6*T:g.bx0-.6*T;g.turnX=L?g.bx0-1.05*T:g.bx1+.35*T;g.tm=g.turnX+.35*T;
   g.door={x:(x0+x1)/2*T,y:(top?AT_HY0:AT_HY1)*T};g.aisle=top?(y1-.45)*T:(y0+.55)*T;
   g.hatch=row=>({x:g.wallX+(L?.7:-.7)*T,y:(row===1?g.b1:g.b2)+g.H/2+12});
@@ -185,6 +185,7 @@ function atHome(i,k){const g=AT_G[i], s=atSpot(g,k);return {x:s.x,y:s.row===1?g.
 function atWanderPath(i,k,spot){const g=AT_G[i], h=atHome(i,k);return [h,{x:h.x,y:g.aisle},{x:g.door.x,y:g.aisle},{x:g.door.x,y:AT_MY},{x:spot.x,y:spot.y}];}
 // une image : sorties, retours à la place, nouveaux promeneurs (rnd : tirage, remplaçable pour les tests)
 function atWanderTick(slots,now,dt,rnd){
+  if(REDUCED_MOTION&&!rnd){AT_MEM.wander=[];return;}
   rnd=rnd||Math.random;
   const free=i=>!slots[i]&&!AT_MEM.leaving[i];
   for(const w of AT_MEM.wander){
@@ -420,11 +421,22 @@ function xmasTreeAt(x,y,now){ctx.fillStyle='#2f7a3a';for(let k=0;k<3;k++){ctx.be
 // ---------- Bernard : il apporte les tickets de l'entrepôt et emporte ceux qui sortent ----------
 // Un vrai personnage (pas un hologramme) : homme âgé, dégarni, lunettes, blouse de travail. Un seul Bernard : les
 // livraisons passent l'une après l'autre ; entre deux, il attend à l'entrepôt.
-RECIPES.at_bernard=RECIPES.at_bernard||{sex:'male',head:'male_elderly',skin:'light',hair:'balding',hair_color:'#c9c9c9',glasses:'glasses',
+// Noël : il devient le Père Noël (tenue rouge, barbe blanche, le bonnet du thème) ; Halloween : un fantôme sous son drap
+RECIPES.at_bernard=RECIPES.at_bernard||{sex:'male',head:'male_elderly',skin:'light',hair:'high_and_tight',hair_color:'#c9c9c9',glasses:'glasses',
   torso:'longsleeve/longsleeve',shirt:'#4a6b8a',legs:'pants',legs_color:'#3a3f4a',shoes:'#2a1f18'};
-const AT_BERNARD_HOME={x:AT_MX-1.6*AT_TS,y:21.3*AT_TS};
-function atBernard(pos,dir,moving){return {key:'at_bernard',sprite:'at_bernard',name:'Bernard',role:'Manutentionnaire',person:true,pos:{x:pos.x,y:pos.y},tile:null,
+RECIPES.at_bernard_noel=RECIPES.at_bernard_noel||{...RECIPES.at_bernard,hair_color:'#f4f4f4',beard:'beard/basic',shirt:'#c8323a',legs_color:'#c8323a',shoes:'#1c1c1c'};
+const AT_BERNARD_HOME={x:AT_MX-1.6*AT_TS,y:20.75*AT_TS};
+function atBernard(pos,dir,moving){return {key:'at_bernard',sprite:themeIs('noel')?'at_bernard_noel':'at_bernard',ghost:themeIs('halloween'),name:'Bernard',role:'Manutentionnaire',person:true,pos:{x:pos.x,y:pos.y},tile:null,
   dir:dir||'down',moving:!!moving,pose:'stand',present:true,phase:1.3,_st:{st:moving?'work':'idle'}};}
+function atGhost(c,now){
+  const x=Math.round(c.pos.x), y=Math.round(c.pos.y)-4-Math.round(Math.sin(now/300)*2), side=c.dir==='left'?-1:c.dir==='right'?1:0;
+  ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.ellipse(x,c.pos.y+1,11,4,0,0,7);ctx.fill();
+  ctx.fillStyle='#f4f2ee';ctx.beginPath();ctx.arc(x,y-36,13,Math.PI,0);ctx.lineTo(x+13,y-4);
+  for(let k=0;k<4;k++){const w=26/4;ctx.lineTo(x+13-w*(k+.5),y-(k%2?6:0)-((Math.floor(now/200)+k)%2)*2);ctx.lineTo(x+13-w*(k+1),y-4);}ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#c9c4ba';ctx.lineWidth=1;ctx.stroke();
+  if(c.dir!=='up'){R(ctx,x-6+side*3,y-40,3,5,'#1c1c1c');R(ctx,x+3+side*3,y-40,3,5,'#1c1c1c');R(ctx,x-2+side*3,y-31,4,3,'#1c1c1c');}
+  E('🎃',x+(side||1)*14,y-12,12);
+}
 // ---------- scènes : livraison d'un ticket (entrepôt -> trappe d'entrée), sortie (trappe de sortie -> porte) ----------
 function atScenes(now,dt,people){
   const sc=AT_MEM.scenes[0];
@@ -471,7 +483,7 @@ function renderAtelier(now){
     atHit('agent',w.walk.pos.x-14,w.walk.pos.y-56,28,58,{i:w.i,k:w.k});}
   atScenes(now,dt,people);
   atBoss(slots,now,dt,people);
-  people.sort((a,b)=>a[0].pos.y-b[0].pos.y).forEach(([c,d,before,after])=>{if(before&&d)d();drawChar(c,now);if(!before&&d)d();if(after)after();});
+  people.sort((a,b)=>a[0].pos.y-b[0].pos.y).forEach(([c,d,before,after])=>{if(before&&d)d();if(c.ghost)atGhost(c,now);else drawChar(c,now);if(!before&&d)d();if(after)after();});
   atSofaFront(5*T,AT_HY0*T+44);atSofaFront(38*T,AT_HY0*T+44);
   atBoard(slots);
   atPicked(slots,now);

@@ -17,7 +17,7 @@ CI GitHub Actions (`.github/workflows/tests.yml`) : `sh tools/test.sh --chrome` 
 | Chargement Chrome headless | `sh tools/test.sh --chrome` (passe `--chrome` aux deux smoke) | Aucune exception JS, zéro `console.error` ; puis la même page dans le cadre de Kronn (iframe `sandbox="allow-scripts"`, CSP de Kronn en `<meta>` après `<head>`) : démarrage, aucune erreur, rien de bloqué par la CSP, ajout d'une todo par ＋ et Entrée [src: file: tools/smoke.py:37] |
 | Rien de bloqué par la sandbox | `node --test tests/sandbox.test.js` | Aucun formulaire, appel réseau, `window.open`, worker ni ressource externe dans `page/` [src: file: tests/sandbox.test.js:1] |
 | Poids de ta vraie page | `python3 tools/smoke.py` (en local, avec `bureau.config.json`) ; `publish.py page` et `install.py` | Taille de la page que publish enverrait ; au-delà de 24 Mio (garde-fou de Kronn), rien n'est envoyé (`assemble.publishable`, `PageTooBig`), alerte à 90 % [src: file: tools/assemble.py:576] |
-| Régression visuelle | `.venv/bin/python tools/visual.py` (lancée par `tools/test.sh --chrome`) | 8 captures clés comparées à `tests/visual/` (temps figé et virtuel : deux rendus identiques ; tolérance 0,3 %) ; stricte sur la plateforme des références (Linux, CI), indicative ailleurs [src: file: tools/visual.py:1] |
+| Régression visuelle | `.venv/bin/python tools/visual.py` (lancée par `tools/test.sh --chrome`) | 10 captures clés comparées à `tests/visual/` (temps figé et virtuel : deux rendus identiques ; tolérance 0,3 %), dont le 1er étage occupé (`atelier`) et au calme (`atelier-calme`) ; stricte sur la plateforme des références (Linux, CI), indicative ailleurs. Toute retouche du dessin (RDC ou 1er étage) refait ses références par le label « références visuelles » sur la PR, avec la page du guide et ses captures [src: file: tools/visual.py:1] |
 | Règle du guide (PR) | `python3 tools/visual.py --guide-rule origin/main` | Références visuelles changées ⇒ `guide/` changé ; levée par le label « références seules » [src: file: .github/workflows/tests.yml:1] |
 | Modèles = workflows du Kronn | `python3 tools/templates.py check` | `DIFF` si le rendu d'un modèle diffère du workflow installé ; code de sortie 1 [src: file: tools/templates.py:289] |
 
@@ -92,7 +92,7 @@ Vérifié par recherche du nom de module dans `tests/` (2026-10-11) :
 - `workflows/gate_decide.py` : aucun test ne le référence (`avatar_save.py` et `payroll_snapshot.py` sont couverts par le test de contrat, 2026-10-12).
 - `tools/publish.py` (publication vers Kronn, lancée par l'humain seul), `tools/shots.py` (captures), `tools/cdp.py` (pilotage Chrome) : pas de test.
 - `tools/smoke.py` n'a pas de test propre (c'est lui-même un contrôle).
-- Rendu visuel : 8 captures clés comparées (`tools/visual.py`) ; les autres vues (scènes, thèmes saisonniers, éditeur…) restent relues à l'oeil.
+- Rendu visuel : 10 captures clés comparées (`tools/visual.py`), le RDC et le 1er étage ; les autres vues (scènes animées, thèmes saisonniers, éditeur…) restent relues à l'oeil.
 - Appels réels à Kronn, GitHub, Jira, Microsoft Graph : remplacés par des faux dans les tests ; la conformité des workflows installés se vérifie avec `python3 tools/templates.py check` (demande un Kronn joignable).
 
 ## Smoke checks (pre-commit)
