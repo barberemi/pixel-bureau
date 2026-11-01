@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chaîne · bilan</title>
+<!-- Page Kronn « Chaîne · bilan » : l'historique de la chaîne d'implémentation (dataset bilan, workflows/chaine_bilan.py,
+     cron chaine_bilan). Vanilla, sans ressource externe (CSP de Kronn : script et style en ligne seulement). Couleurs : les
+     jetons de page/src/styles.css. Le chiffre clé du vidéoprojecteur vient du champ kpi du dataset. -->
+<style>
+:root{
+  --bg:#f3efe6; --panel:#fffdf8; --ink:#25221d; --muted:#6f685c; --line:#e2dccf; --chip:#f0ebe0;
+  --accent:#2f6fd6; --ok:#2e9e5b; --warn:#d89614; --err:#d1453b; --info:#4a7fe0; --idle:#7a7266; --on-accent:#ffffff;
+  --h0:#f0ebe0; --h1:#cfe0f7; --h2:#86aee9; --h3:#2f6fd6; --hx:#d1453b; --sign:#22232b; --sign-ink:#ece8df; --sign-mut:#a29c90;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#17181c; --panel:#202228; --ink:#ece8df; --muted:#a29c90; --line:#2f323a; --chip:#2a2d34;
+  --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#9a9284; --on-accent:#0d1b33;
+  --h0:#2a2d34; --h1:#2c3d5c; --h2:#3f63a3; --h3:#6b9cf0; --hx:#f06a5f;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#17181c; --panel:#202228; --ink:#ece8df; --muted:#a29c90; --line:#2f323a; --chip:#2a2d34;
+  --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#9a9284; --on-accent:#0d1b33;
+  --h0:#2a2d34; --h1:#2c3d5c; --h2:#3f63a3; --h3:#6b9cf0; --hx:#f06a5f;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:16px 16px 32px}
+.wrap{max-width:1360px;margin:0 auto;display:grid;gap:14px}
+.num,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.mut{color:var(--muted);font-size:12px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--sign);color:var(--sign-ink);padding:10px 14px;border-radius:8px}
+h1{font:700 18px/1.3 ui-monospace,Menlo,monospace;margin:0;letter-spacing:.02em}
+header .mut{color:var(--sign-mut)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.filters select,.filters label{font:12px system-ui,sans-serif;color:var(--sign-ink)}
+.filters select{background:#2f313a;border:2px solid #444754;padding:3px 6px;color:#ece8df}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.kpi{border:3px solid var(--line);padding:8px 12px;background:var(--panel)}
+.kpi b{display:block;font:600 22px/1.15 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.kpi span{color:var(--muted);font-size:12px}
+.kpi.err b{color:var(--err)}
+.up{color:var(--ok);font-weight:700}.down{color:var(--err);font-weight:700}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:14px}
+.box{border:3px solid var(--line);padding:10px 12px;background:var(--panel);min-width:0}
+.h{font:700 12px system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px;display:flex;justify-content:space-between;gap:8px}
+.h .mut{text-transform:none;letter-spacing:0;font-weight:400}
+.why{color:var(--muted);font-size:12px;margin:0 0 10px}
+.hb{display:grid;grid-template-columns:150px minmax(0,1fr) 56px;gap:4px 8px;align-items:center;font-size:12.5px}
+.hb .bar{height:12px;background:var(--chip);position:relative}
+.hb .bar i{position:absolute;inset:0 auto 0 0;background:var(--info)}
+.hb .bar i.hot{background:var(--warn)}.hb .bar i.ok{background:var(--ok)}.hb .bar i.idle{background:var(--idle)}.hb .bar i.err{background:var(--err)}
+.hb .v{text-align:right}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;font-size:12.5px;width:100%}
+th{color:var(--muted);font-weight:600;text-align:left}
+td,th{padding:4px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.r,th.r{text-align:right}
+.heat td.c{width:46px;height:26px;text-align:center;font-family:ui-monospace,Menlo,monospace;font-weight:700;border:2px solid var(--panel)}
+.heat th{text-align:center}.heat th:first-child{text-align:left}
+.l0{background:var(--h0);color:var(--muted)}.l1{background:var(--h1)}.l2{background:var(--h2);color:#fff}.l3{background:var(--h3);color:var(--on-accent)}.lx{background:var(--hx);color:#fff}
+.stack{display:flex;height:10px;width:110px;background:var(--chip)}.stack i{display:block;height:100%}
+.pill{display:inline-block;font:700 10.5px system-ui;padding:1px 6px;white-space:nowrap}
+.pill.ok{background:var(--ok);color:#fff}.pill.warn{background:var(--warn);color:#1c1c1c}.pill.err{background:var(--err);color:#fff}
+.pill.idle{background:var(--chip);color:var(--muted)}.pill.info{background:var(--info);color:#fff}
+svg text{fill:var(--muted);font:11px system-ui,sans-serif}
+svg .ax{stroke:var(--line)}svg .ln{stroke:var(--accent);fill:none;stroke-width:2.5}svg .ar{fill:var(--accent);opacity:.12}
+svg .pt{fill:var(--accent)}svg .mk{stroke:var(--warn);stroke-dasharray:3 3}svg .mkt{fill:var(--ink);font-weight:600}
+svg .nd{fill:var(--chip);stroke:var(--line);stroke-width:2}svg .nt{fill:var(--ink)}svg .ed{stroke:var(--muted);fill:none;stroke-width:1.5}
+svg .ed.dash{stroke-dasharray:4 3;stroke:var(--warn)}
+tr.row{cursor:pointer}tr.row:hover td,tr.row:focus-visible td{background:var(--chip)}tr.row.on td{background:var(--chip);font-weight:600}
+.fiche{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;margin-top:10px}
+.sec.wide{grid-column:1/-1}
+.sec h4{font:700 11.5px system-ui;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px;color:var(--muted)}
+.gantt{display:grid;grid-template-columns:96px minmax(0,1fr);gap:3px 6px;font-size:11.5px;align-items:center}
+.gantt .tr{position:relative;height:11px;background:var(--chip)}
+.gantt .tr i{position:absolute;top:0;bottom:0;background:var(--info);min-width:2px}
+.gantt .tr i.g{background:var(--warn)}.gantt .tr i.x{background:var(--err)}.gantt .tr i.o{background:var(--ok)}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:4px}
+.legend i{display:inline-block;width:9px;height:9px;margin-right:4px;vertical-align:-1px}
+.note{border-left:4px solid var(--warn);background:var(--chip);padding:6px 10px;font-size:12.5px;overflow-wrap:anywhere;white-space:normal}
+.note.ok{border-color:var(--ok)}
+.diff{font-family:ui-monospace,Menlo,monospace;font-size:12px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px}
+.diff span{overflow-wrap:anywhere}.p{color:var(--ok)}.m{color:var(--err)}
+.mm{background:var(--chip);padding:6px;overflow-x:auto}
+.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+button:focus-visible,select:focus-visible,tr.row:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="empty">Chargement du bilan…</div></div>
+<script>
+'use strict';
+(function(){
+const POSTES=[['code','⌨ Code'],['tests','🧪 Tests'],['cadrage','📋 Cadrage'],['revue','🔁 Croisée'],['revue_pr','👀 Revue PR'],
+  ['plan','🧠 Plan'],['orchestrateur','🧭 Orchestrateur'],['schema','🗺 Schéma'],['patterns','🧩 Patterns'],
+  ['paralleles','🔎 Contrôles parallèles'],['retours','💬 Retours'],['pr','📤 PR'],['autre','Autre']];
+const CTRL=[['regles','📏 Règles'],['securite','🔒 Sécurité'],['tests','🧪 Tests'],['perf','⚡ Perf·a11y'],['besoin','🎯 Besoin'],
+  ['doc','📚 Doc'],['revue','🔁 Croisée']];
+const ISSUES={pr_prete:['ok','PR prête'],pr_brouillon:['info','PR brouillon'],plan_seul:['idle','plan seul'],escalade:['warn','escalade'],
+  en_cours:['info','en cours'],panne:['err','en panne'],rejete:['idle','rejeté'],annule:['idle','annulé'],termine:['ok','terminé']};
+const CAUSES={perimetre:'périmètre',lecture:'mauvaise lecture',convention:'convention',decoupage:'découpage',autre:'autre'};
+const ROW={ticket:'Préparation',prepare:'Préparation',cadrage:'📋 Cadrage',questions:'📋 Cadrage',gate_questions:'✋ compris',
+  schema:'🗺🧩 Plan',patterns:'🗺🧩 Plan',dossier:'🗺🧩 Plan',orchestrateur_plan:'🗺🧩 Plan',gate_plan:'✋ plan',code:'⌨ Code',
+  controles:'🔎 Contrôles',orchestrateur:'🔎 Contrôles',gate_escalade:'✋ escalade',livraison:'📤 PR',gate_pr:'✋ PR',
+  publication:'📤 PR',commente_plan:'📤 PR'};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtTok=n=>!n?'0':n>=1e6?(n/1e6).toFixed(1).replace('.',',')+' M':Math.round(n/1e3)+' k';
+const fmtDur=s=>{if(s==null)return '–';const m=Math.round(s/60);return m<60?m+' min':Math.floor(m/60)+' h '+String(m%60).padStart(2,'0');};
+const pct=(a,b)=>b?Math.round(a/b*100):0;
+const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+const sum=o=>Object.values(o||{}).reduce((x,y)=>x+(+y||0),0);
+const median=a=>{if(!a.length)return 0;const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;};
+
+function readBilan(k){
+  try{
+    if(!k||!k.datasets)return null;
+    let d=k.datasets.bilan;
+    if(d&&d.current!==undefined)d=d.current;
+    if(typeof d==='string')d=JSON.parse(d);
+    return d&&Array.isArray(d.tickets)?d:null;
+  }catch(e){return null;}
+}
+// les lignes retenues par les filtres (période en jours, dépôt, essais)
+function pick(data,f){
+  const now=Date.parse(data.generated_at||'')||Date.now(), lim=now-(f.jours||30)*864e5;
+  return (data.tickets||[]).filter(t=>(Date.parse(t.debut||'')||now)>=lim&&(!f.repo||t.repo===f.repo)&&(f.essais||!t.essai));
+}
+function aggregate(data,f){
+  const rows=pick(data,f), fin=rows.filter(t=>t.issue!=='en_cours'&&t.tok);
+  const a={rows,n:rows.length};
+  a.livres=rows.filter(t=>t.issue==='pr_prete'||t.issue==='pr_brouillon').length;
+  a.tok=avg(fin.map(t=>t.tok));
+  a.tours=avg(rows.map(t=>(t.tours||{}).controles||0));
+  let fait=0,tot=0;for(const t of rows){fait+=(t.exig||{}).fait||0;tot+=sum(t.exig);}
+  a.exig=tot?pct(fait,tot):null;
+  const withDoc=rows.filter(t=>t.doc);a.docN=withDoc.filter(t=>t.doc.fichiers>0).length;a.docTot=withDoc.length;
+  a.docPlus=withDoc.reduce((x,t)=>x+t.doc.plus,0);a.docMoins=withDoc.reduce((x,t)=>x+t.doc.moins,0);
+  a.perdu=avg(fin.map(t=>sum(t.perdu)));a.perduPct=pct(fin.reduce((x,t)=>x+sum(t.perdu),0),fin.reduce((x,t)=>x+t.tok,0));
+  a.perduPar={echec:avg(fin.map(t=>(t.perdu||{}).echec||0)),panne:avg(fin.map(t=>(t.perdu||{}).panne||0))};
+  const waits=rows.map(t=>sum(t.gates)/1e3);a.attente=waits.reduce((x,y)=>x+y,0);a.attenteMed=median(waits.filter(x=>x>0));
+  a.postes={};for(const t of fin)for(const[k,v]of Object.entries(t.postes||{}))a.postes[k]=(a.postes[k]||0)+v;
+  for(const k in a.postes)a.postes[k]/=fin.length||1;
+  // versions : moyenne par version, dans l'ordre d'arrivée
+  a.versions=(data.versions||[]).map(v=>{const ts=fin.filter(t=>t.version===v.hash);const all=rows.filter(t=>t.version===v.hash);
+    let f2=0,t2=0;for(const t of all){f2+=(t.exig||{}).fait||0;t2+=sum(t.exig);}
+    return {...v,n:all.length,tok:avg(ts.map(t=>t.tok)),tours:avg(all.map(t=>(t.tours||{}).controles||0)),exig:t2?pct(f2,t2):null};})
+    .filter(v=>v.n);
+  const vs=a.versions.filter(v=>v.tok);
+  a.delta=vs.length>=2&&vs[vs.length-2].tok?Math.round((vs[vs.length-1].tok-vs[vs.length-2].tok)/vs[vs.length-2].tok*100):null;
+  // contrôles : trouvés, corrigés, restés (bloquants et avis)
+  a.ctrl={};for(const t of rows)for(const[p,v]of Object.entries(t.controles||{})){const c=a.ctrl[p]||(a.ctrl[p]=[0,0,0]);
+    for(const k of ['bloquants','avis'])if(v[k])for(let i=0;i<3;i++)c[i]+=v[k][i];}
+  // schéma : prévus et touchés, touchés pas prévus, prévus pas touchés
+  a.schema=[0,0,0];for(const t of rows)if(t.schema){a.schema[0]+=t.schema.prevus_touches;a.schema[1]+=t.schema.touches_non_prevus;a.schema[2]+=t.schema.prevus_non_touches;}
+  a.causes={};for(const t of rows)for(const[k,v]of Object.entries((t.retours||{}).par_cause||{}))a.causes[k]=(a.causes[k]||0)+v;
+  a.weeks=weeks(fin,a.versions);
+  return a;
+}
+function isoWeek(ms){const d=new Date(ms);d.setUTCHours(0,0,0,0);d.setUTCDate(d.getUTCDate()+3-((d.getUTCDay()+6)%7));
+  const y=new Date(Date.UTC(d.getUTCFullYear(),0,4));return 1+Math.round(((d-y)/864e5-3+((y.getUTCDay()+6)%7))/7);}
+function weeks(fin,versions){
+  const by={};for(const t of fin){const ms=Date.parse(t.debut||'');if(!ms)continue;const w=isoWeek(ms),k=new Date(ms).getUTCFullYear()*100+w;
+    (by[k]||(by[k]={k,w,tok:[]})).tok.push(t.tok);}
+  const out=Object.values(by).sort((x,y)=>x.k-y.k).slice(-8).map(x=>({w:'S'+x.w,k:x.k,tok:avg(x.tok)}));
+  for(const v of versions){const ms=Date.parse(v.debut||'');if(!ms)continue;const k=new Date(ms).getUTCFullYear()*100+isoWeek(ms);
+    const i=out.findIndex(x=>x.k===k);if(i>0)out[i].mark=v.sujet||v.hash;}
+  return out;
+}
+const issuePill=i=>{const[c,l]=ISSUES[i]||['idle',i||'?'];return `<span class="pill ${c}">${esc(l)}</span>`;};
+const bars=(items,max,cls)=>items.map(([label,v,txt,c])=>`<span>${esc(label)}</span><span class="bar"><i class="${c||cls||''}" style="width:${max?Math.max(1,Math.round(v/max*100)):0}%"></i></span><span class="v num">${esc(txt)}</span>`).join('');
+
+function kpis(a){
+  const d=a.delta==null?'':` · <span class="${a.delta<=0?'up':'down'}">${a.delta>0?'+':'−'}${Math.abs(a.delta)} %</span> vs version d'avant`;
+  return `<div class="kpis">
+  <div class="kpi"><b>${a.livres}</b><span>tickets livrés en PR sur ${a.n}</span></div>
+  <div class="kpi"><b>${fmtTok(a.tok)}</b><span>jetons par ticket${d}</span></div>
+  <div class="kpi"><b>${a.tours.toFixed(1).replace('.',',')}</b><span>tours de contrôles par ticket</span></div>
+  <div class="kpi"><b>${a.exig==null?'–':a.exig+' %'}</b><span>exigences « fait » (🎯 Besoin)</span></div>
+  <div class="kpi"><b>${a.docN} / ${a.docTot}</b><span>PR qui touchent la doc · <span class="num">+${a.docPlus} −${a.docMoins}</span> lignes</span></div>
+  <div class="kpi err"><b>${fmtTok(a.perdu)}</b><span>jetons perdus par ticket · ${a.perduPct} %</span></div>
+  <div class="kpi"><b>${fmtDur(a.attente)}</b><span>attente humaine aux gates (médiane ${fmtDur(a.attenteMed)})</span></div>
+</div>`;
+}
+function tokens(a){
+  const items=POSTES.filter(([k])=>a.postes[k]).map(([k,l])=>[l,a.postes[k],fmtTok(a.postes[k])]).sort((x,y)=>y[1]-x[1]);
+  const tot=sum(a.postes),max=items.length?items[0][1]:0;
+  for(const it of items)if(tot&&it[1]/tot>.25)it[3]='hot';
+  return `<div class="box"><div class="h">Où partent les jetons <span class="mut">moyenne par ticket</span></div>
+  <p class="why">En orange, un poste qui pèse plus de 25 % du total : premier endroit où gagner.</p>
+  ${items.length?`<div class="hb">${bars(items,max)}</div>`:'<p class="mut">Aucun run fini sur la période.</p>'}</div>`;
+}
+function curve(a){
+  const w=a.weeks;
+  if(w.length<2)return `<div class="box"><div class="h">Jetons par ticket, semaine par semaine</div><p class="mut">Il faut deux semaines de runs pour tracer la courbe.</p></div>`;
+  const W=400,H=210,x0=50,x1=385,y0=20,y1=180,top=Math.max(...w.map(x=>x.tok))*1.15||1;
+  const X=i=>x0+(x1-x0)*i/(w.length-1),Y=v=>y1-(y1-y0)*v/top;
+  const pts=w.map((p,i)=>`${X(i).toFixed(1)} ${Y(p.tok).toFixed(1)}`);
+  const grid=[0,.5,1].map(f=>`<line class="ax" x1="${x0}" y1="${Y(top*f)}" x2="${x1}" y2="${Y(top*f)}"/><text x="${x0-6}" y="${Y(top*f)+4}" text-anchor="end">${fmtTok(top*f)}</text>`).join('');
+  const marks=w.map((p,i)=>p.mark?`<line class="mk" x1="${X(i)-((x1-x0)/(w.length-1))/2}" y1="${y0}" x2="${X(i)-((x1-x0)/(w.length-1))/2}" y2="${y1}"/><text class="mkt" x="${X(i)-((x1-x0)/(w.length-1))/2+4}" y="${y0+12+(i%2)*14}">${esc(String(p.mark).slice(0,28))}</text>`:'').join('');
+  const last=w[w.length-1];
+  return `<div class="box"><div class="h">Jetons par ticket, semaine par semaine</div>
+  <p class="why">Chaque trait orange est une nouvelle version de la chaîne : on voit si elle a payé.</p>
+  <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(w.map(p=>p.w+' '+fmtTok(p.tok)).join(', '))}">${grid}
+  <path class="ar" d="M${pts.join(' L')} L${X(w.length-1)} ${y1} L${X(0)} ${y1} Z"/><path class="ln" d="M${pts.join(' L')}"/>${marks}
+  ${w.map((p,i)=>`<circle class="pt" cx="${X(i)}" cy="${Y(p.tok)}" r="${i===w.length-1?5:3.5}"/><text x="${X(i)}" y="200" text-anchor="middle">${p.w}</text>`).join('')}
+  <text x="${X(w.length-1)}" y="${Y(last.tok)-10}" text-anchor="end" style="fill:var(--ink);font-weight:700">${fmtTok(last.tok)}</text></svg></div>`;
+}
+function versions(a){
+  const vs=[...a.versions].reverse();
+  const rows=vs.map((v,i)=>{const prev=vs[i+1];const d=prev&&prev.tok&&v.tok?Math.round((v.tok-prev.tok)/prev.tok*100):null;
+    return `<tr><td class="mono"><b>${esc(v.hash)}</b></td><td>${esc((v.sujet||'').slice(0,60))}</td><td class="r num">${v.n}</td>
+    <td class="r num">${fmtTok(v.tok)}${d==null?'':` <span class="${d<=0?'up':'down'}">${d>0?'+':'−'}${Math.abs(d)} %</span>`}</td>
+    <td class="r num">${v.tours.toFixed(1).replace('.',',')}</td><td class="r num">${v.exig==null?'–':v.exig+' %'}</td></tr>`;}).join('');
+  return `<div class="box"><div class="h">Versions de la chaîne</div>
+  <p class="why">Chaque run garde l'empreinte des modèles <span class="mono">impl*.json</span> : une modification se juge sur les tickets qui l'ont suivie.</p>
+  ${rows?`<div class="scroll"><table><tr><th>Version</th><th>Changement</th><th class="r">tickets</th><th class="r">jetons</th><th class="r">tours</th><th class="r">exigences</th></tr>${rows}</table></div>`:'<p class="mut">Aucune version relevée (runs d\'avant l\'historique).</p>'}</div>`;
+}
+function lost(a){
+  const items=[['étape en échec puis relancée',a.perduPar.echec],['run en panne',a.perduPar.panne]].map(([l,v])=>[l,v,fmtTok(v),'err']);
+  const max=Math.max(...items.map(x=>x[1]),0);
+  return `<div class="box"><div class="h">Jetons perdus <span class="mut">${fmtTok(a.perdu)} par ticket</span></div>
+  <p class="why">Ce qu'ont coûté les étapes d'agent qui ont échoué : relancées par Kronn, ou dans un run tombé en panne.</p>
+  <div class="hb" style="grid-template-columns:190px minmax(0,1fr) 56px">${bars(items,max)}</div></div>`;
+}
+function heat(a){
+  const lv=(v,lim)=>v>=lim?'lx':v>=3?'l3':v===2?'l2':v===1?'l1':'l0';
+  const cols=[['📋 propositions',t=>t.tours.cadrage||0,3],['✋ compris',t=>((t.retours||{}).par_gate||{}).compris||0,9],
+    ['✋ plan',t=>((t.retours||{}).par_gate||{}).plan||0,9],['⌨ essais',t=>t.tours.essais_code||0,3],
+    ['🔄 tours contrôles',t=>t.tours.controles||0,3],['✋ code · PR',t=>((t.retours||{}).par_gate||{}).code||0,9],
+    ['🧑‍⚖️ escalades',t=>t.tours.escalades||0,1]];
+  const rows=a.rows.slice(0,14).map(t=>`<tr><td><b>${esc(t.ticket)}</b> <span class="mut">${esc(String(t.repo||'').split('/').pop())}</span></td>${cols.map(([,f,lim])=>{const v=f(t);return `<td class="c ${lv(v,lim)}">${v}</td>`;}).join('')}</tr>`).join('');
+  return `<div class="box"><div class="h">Allers-retours par ticket</div>
+  <p class="why">Une case = combien de fois on est repassé par là. Rouge : la limite est atteinte. Une colonne foncée sur plusieurs tickets = un poste ou une gate à revoir.</p>
+  ${rows?`<div class="scroll"><table class="heat"><tr><th>Ticket</th>${cols.map(c=>`<th>${c[0]}</th>`).join('')}</tr>${rows}</table></div>`:'<p class="mut">Aucun ticket sur la période.</p>'}</div>`;
+}
+function verdict(c){if(!c[0])return ['idle','silencieux'];const r=c[1]/c[0];return r>=.6?['ok','utile']:r>=.35?['warn','bavard']:['err','à revoir'];}
+function controls(a){
+  const rows=CTRL.filter(([k])=>a.ctrl[k]).map(([k,l])=>{const c=a.ctrl[k],[cl,vt]=verdict(c);
+    return `<tr><td>${l}</td><td class="r num">${c[0]}</td><td class="r num">${c[1]}</td><td class="r num">${c[2]}</td>
+    <td><span class="stack"><i style="width:${pct(c[1],c[0])}%;background:var(--ok)"></i><i style="width:${pct(c[2],c[0])}%;background:var(--idle)"></i></span></td>
+    <td><span class="pill ${cl}">${vt}</span></td></tr>`;}).join('');
+  return `<div class="box"><div class="h">Ce que trouvent les contrôles</div>
+  <p class="why">Bloquants et avis trouvés, corrigés au tour suivant, ou restés jusqu'à la livraison. Beaucoup de restés = du bruit qui coûte des jetons.</p>
+  ${rows?`<div class="scroll"><table><tr><th>Poste</th><th class="r">trouvés</th><th class="r">corrigés</th><th class="r">restés</th><th></th><th>verdict</th></tr>${rows}</table></div>`:'<p class="mut">Aucun tour de contrôles relevé.</p>'}</div>`;
+}
+function schema(a){
+  const[s0,s1,s2]=a.schema,tot=s0+s1+s2;
+  const causes=Object.entries(a.causes).sort((x,y)=>y[1]-x[1]);const cmax=causes.length?causes[0][1]:0;
+  return `<div class="box"><div class="h">Le schéma d'impact a-t-il vu juste ?</div>
+  <p class="why">Fichiers prévus par 🗺 Schéma comparés à ceux que le diff touche vraiment.</p>
+  ${tot?`<div class="hb" style="grid-template-columns:130px minmax(0,1fr) 56px">${bars([['prévus et touchés',s0,pct(s0,tot)+' %','ok'],
+    ['touchés, pas prévus',s1,pct(s1,tot)+' %','hot'],['prévus, pas touchés',s2,pct(s2,tot)+' %','idle']],tot)}</div>`:'<p class="mut">Aucun schéma relevé.</p>'}
+  <div class="h" style="margin-top:14px">Pourquoi tu dis « Changements »</div>
+  <p class="why">Tes retours aux gates, classés par mots-clés.</p>
+  ${causes.length?`<div class="hb">${bars(causes.map(([k,v])=>[CAUSES[k]||k,v,String(v)]),cmax)}</div>`:'<p class="mut">Aucun retour sur la période.</p>'}</div>`;
+}
+function table(a,sel){
+  const rows=a.rows.map(t=>{const ex=t.exig||{};const n=sum(ex);
+    return `<tr class="row${t.run===sel?' on':''}" data-run="${esc(t.run)}" tabindex="0"><td><b>${esc(t.ticket)}</b> <span class="mut">${esc(String(t.repo||'').split('/').pop())}</span>${t.essai?' <span class="pill idle">essai</span>':''}${t.partiel?' <span class="pill idle">partiel</span>':''}</td>
+    <td style="white-space:normal">${esc(t.titre)}</td><td>${issuePill(t.issue)}</td><td class="mono">${esc(t.version||'–')}</td>
+    <td class="r num">${fmtTok(t.tok)}</td><td class="r num">${fmtDur(t.duree)}</td><td class="r num">${(t.tours||{}).controles||0}</td>
+    <td class="r num">${n?(ex.fait||0)+'/'+n:'–'}</td><td class="r num">${t.doc&&t.doc.fichiers?'+'+t.doc.plus+' −'+t.doc.moins:t.doc?'<span class="pill idle">aucune</span>':'–'}</td></tr>`;}).join('');
+  return `<div class="box"><div class="h">Tickets passés <span class="mut">${a.n} · le plus récent d'abord · clic : sa fiche</span></div>
+  <div class="scroll"><table><tr><th>Ticket</th><th>Sujet</th><th>Fin</th><th>version</th><th class="r">jetons</th><th class="r">durée</th><th class="r">tours</th><th class="r">exigences</th><th class="r">doc</th></tr>${rows}</table></div>`;
+}
+// le flowchart mermaid du schéma, dessiné ici (la CSP de Kronn n'autorise aucun script externe)
+function flowchart(src){
+  const nodes={},edges=[],order=[];
+  const node=tok=>{const m=/^\s*([\w.-]+)\s*(?:\[\(?"?(.*?)"?\)?\]|\(\(?"?(.*?)"?\)?\)|\{"?(.*?)"?\})?\s*$/.exec(tok||'');if(!m)return null;
+    const id=m[1];if(!nodes[id]){nodes[id]={id,label:id};order.push(id);}const l=m[2]||m[3]||m[4];if(l)nodes[id].label=l;return id;};
+  for(let line of String(src||'').split(/\n|;/)){
+    line=line.trim();if(!line||/^(flowchart|graph|%%|classDef|class |style |subgraph|end$|click )/.test(line))continue;
+    const parts=line.split(/\s*(-\.[^>]*?\.->|-->\|[^|]*\||--[^->]+-->|-->|==>|---|-\.->)\s*/);
+    if(parts.length<3){node(parts[0]);continue;}
+    for(let i=0;i+2<parts.length;i+=2){const dash=/^-\./.test(parts[i+1]);const lbl=(/\|([^|]*)\|/.exec(parts[i+1])||/-\.(.*?)\.->/.exec(parts[i+1])||[])[1]||'';
+      const as=parts[i].split('&').map(node),bs=parts[i+2].split('&').map(node);
+      for(const x of as)for(const y of bs)if(x&&y)edges.push({a:x,b:y,dash,label:lbl.trim()});}
+  }
+  if(!order.length)return '';
+  const rank={};for(const id of order)rank[id]=0;
+  for(let it=0;it<order.length;it++)for(const e of edges)if(e.a!==e.b&&rank[e.b]<rank[e.a]+1&&rank[e.a]<order.length)rank[e.b]=rank[e.a]+1;
+  const cols={};for(const id of order)(cols[rank[id]]||(cols[rank[id]]=[])).push(id);
+  const BW=124,BH=28,GX=30,GY=12,pos={};let h=0;
+  Object.keys(cols).sort((x,y)=>x-y).forEach((r,ci)=>{cols[r].forEach((id,ri)=>{pos[id]={x:8+ci*(BW+GX),y:8+ri*(BH+GY)};h=Math.max(h,pos[id].y+BH);});});
+  const w=8+Object.keys(cols).length*(BW+GX)-GX+8;
+  const lines=edges.map(e=>{const p=pos[e.a],q=pos[e.b];if(!p||!q)return '';const x1=p.x+BW,y1=p.y+BH/2,x2=q.x,y2=q.y+BH/2,mx=(x1+x2)/2;
+    return `<path class="ed${e.dash?' dash':''}" d="M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2-4} ${y2}" marker-end="url(#fa)"/>`+(e.label?`<text x="${mx}" y="${(y1+y2)/2-4}" text-anchor="middle">${esc(e.label.slice(0,16))}</text>`:'');}).join('');
+  const boxes=order.map(id=>{const p=pos[id],l=nodes[id].label;return `<rect class="nd" x="${p.x}" y="${p.y}" width="${BW}" height="${BH}" rx="3"/><text class="nt" x="${p.x+BW/2}" y="${p.y+BH/2+4}" text-anchor="middle">${esc(l.length>21?l.slice(0,20)+'…':l)}</text>`;}).join('');
+  return `<svg viewBox="0 0 ${w} ${h+8}" width="${w}" style="max-width:100%;height:auto" role="img" aria-label="Schéma d'impact"><defs><marker id="fa" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 Z" style="fill:var(--muted)"/></marker></defs>${lines}${boxes}</svg>`;
+}
+function gantt(der){
+  const pts=(der||[]).map(s=>({...s,t:Date.parse(s.at||'')})).filter(s=>s.t&&ROW[s.n]);
+  if(!pts.length)return '<p class="mut">Déroulé indisponible.</p>';
+  const t0=Math.min(...pts.map(s=>s.t)),t1=Math.max(...pts.map(s=>s.t+s.ms)),span=Math.max(1,t1-t0);
+  const rows={};for(const s of pts)(rows[ROW[s.n]]||(rows[ROW[s.n]]=[])).push(s);
+  const order=[...new Set(Object.values(ROW))].filter(r=>rows[r]);
+  return `<div class="gantt">${order.map(r=>`<span>${esc(r)}</span><span class="tr">${rows[r].map(s=>{const c=/^gate_/.test(s.n)?'g':s.s==='Failed'?'x':/^(livraison|publication)$/.test(s.n)&&s.s==='Success'?'o':'';
+    return `<i class="${c}" style="left:${((s.t-t0)/span*100).toFixed(1)}%;width:${(s.ms/span*100).toFixed(1)}%"></i>`;}).join('')}</span>`).join('')}</div>
+  <div class="legend"><span><i style="background:var(--info)"></i>agent</span><span><i style="background:var(--warn)"></i>t'attend</span><span><i style="background:var(--err)"></i>en échec</span><span><i style="background:var(--ok)"></i>livré</span></div>`;
+}
+function fiche(data,t){
+  if(!t)return '';
+  const f=(data.fiches||{})[t.run];
+  const ex=f?f.exigences:[];
+  const head=`<div><b style="font-size:15px">${esc(t.ticket)} · ${esc(t.titre)}</b><div class="mut">${esc(t.repo)} · version <span class="mono">${esc(t.version||'–')}</span> · ${esc((t.debut||'').slice(0,10))}${t.pr&&t.pr.n?' · PR #'+esc(t.pr.n):''} · ${fmtTok(t.tok)} jetons${sum(t.perdu)?' (dont '+fmtTok(sum(t.perdu))+' perdus)':''} · ${fmtDur(t.duree)}</div></div>`;
+  if(!f)return `<div class="box">${head}<p class="mut">Fiche détaillée gardée pour les tickets les plus récents seulement.</p></div>`;
+  const items=POSTES.filter(([k])=>(t.postes||{})[k]).map(([k,l])=>[l,t.postes[k],fmtTok(t.postes[k])]).sort((x,y)=>y[1]-x[1]);
+  const r=f.resume||{};
+  const ETAT={fait:'ok',partiel:'warn',non:'err',autrement:'info',hors_scope:'idle'};
+  return `<div class="box">${head}<div class="fiche">
+  <div class="sec"><h4>Déroulé</h4>${gantt(f.deroule)}</div>
+  <div class="sec"><h4>Ce qui en est sorti</h4><div class="note ok">${esc(r.orchestrateur||r.comprehension||'(pas de résumé)')}</div>
+    ${r.comprehension&&r.orchestrateur?`<p class="mut" style="margin:6px 0 0">Compris au cadrage : ${esc(r.comprehension)}</p>`:''}</div>
+  <div class="sec"><h4>Exigences du ticket · ${(t.exig||{}).fait||0} / ${sum(t.exig)}</h4>${ex.length?`<table>${ex.map(x=>`<tr><td><span class="pill ${ETAT[x.etat]||'idle'}">${esc(x.etat)}</span></td><td style="white-space:normal">${esc(x.exigence)}</td></tr>`).join('')}</table>`:'<p class="mut">Aucune (poste 🎯 Besoin pas passé).</p>'}</div>
+  <div class="sec"><h4>Documentation · 📚 Doc</h4>${f.doc.fichiers.length?`<div class="diff">${f.doc.fichiers.map(d=>`<span>${esc(d.fichier)}</span><span><b class="p">+${d.plus}</b> <b class="m">−${d.moins}</b></span>`).join('')}</div>`:'<p class="mut">Aucune doc modifiée.</p>'}
+    ${f.doc.a_mettre_a_jour.length?`<div class="note" style="margin-top:6px">Restée à mettre à jour : ${f.doc.a_mettre_a_jour.map(esc).join(', ')}</div>`:''}</div>
+  <div class="sec wide"><h4>Schéma d'impact</h4>${f.mermaid?`<div class="mm">${flowchart(f.mermaid)}</div>`:'<p class="mut">Pas de schéma.</p>'}
+    ${f.touches_non_prevus.length?`<p class="mut" style="margin:6px 0 0">Touchés sans être prévus : ${f.touches_non_prevus.slice(0,6).map(esc).join(', ')}</p>`:''}</div>
+  <div class="sec"><h4>Jetons par poste</h4>${items.length?`<div class="hb" style="grid-template-columns:150px minmax(0,1fr) 50px">${bars(items,items[0][1])}</div>`:'<p class="mut">–</p>'}</div>
+  ${f.retours.length?`<div class="sec"><h4>Tes retours</h4>${f.retours.map(x=>`<p class="mut" style="margin:0 0 4px">✋ ${esc(x.gate)} · ${esc(CAUSES[x.cause]||x.cause)} : ${esc(x.texte)}</p>`).join('')}</div>`:''}
+  </div></div>`;
+}
+function render(data,st){
+  if(!data||!(data.tickets||[]).length)return `<header><h1>🗄 Chaîne · bilan</h1></header><div class="box empty">Aucun run de la chaîne d'implémentation pour l'instant. Le bilan se remplit à chaque ticket posé sur la chaîne.</div>`;
+  const a=aggregate(data,st);
+  const repos=[...new Set((data.tickets||[]).map(t=>t.repo).filter(Boolean))].sort();
+  const sel=a.rows.find(t=>t.run===st.sel)||a.rows[0];
+  return `<header><div><h1>🗄 Chaîne · bilan</h1><div class="mut">Historique de la chaîne d'implémentation · mis à jour ${esc((data.generated_at||'').slice(11,16))} UTC</div></div>
+  <div class="filters"><label for="f-jours">Période</label><select id="f-jours"><option value="7"${st.jours==7?' selected':''}>7 jours</option><option value="30"${st.jours==30?' selected':''}>30 jours</option></select>
+  <label for="f-repo">Dépôt</label><select id="f-repo"><option value="">Tous</option>${repos.map(r=>`<option${r===st.repo?' selected':''}>${esc(r)}</option>`).join('')}</select>
+  <label><input type="checkbox" id="f-essais"${st.essais?' checked':''}> essais</label></div></header>
+  ${kpis(a)}<div class="grid2">${tokens(a)}${curve(a)}</div><div class="grid2">${versions(a)}${lost(a)}</div>${heat(a)}
+  <div class="grid2">${controls(a)}${schema(a)}</div>${table(a,sel&&sel.run)}${fiche(data,sel)}`;
+}
+const B={readBilan,aggregate,render,flowchart,gantt,fmtTok,fmtDur,verdict,isoWeek};
+if(typeof window!=='undefined')window.BILAN=B;
+if(typeof document==='undefined'||!document.getElementById('app'))return;
+let DATA=readBilan(window.KronnPageData);
+const ST={jours:30,repo:'',essais:false,sel:null};
+const app=document.getElementById('app');
+function draw(){app.innerHTML=render(DATA,ST);}
+app.addEventListener('change',e=>{const t=e.target;if(t.id==='f-jours')ST.jours=+t.value;else if(t.id==='f-repo')ST.repo=t.value;else if(t.id==='f-essais')ST.essais=t.checked;else return;draw();});
+const choose=e=>{const r=e.target.closest('tr.row');if(!r)return;ST.sel=r.dataset.run;draw();const n=app.querySelector('tr.row.on');if(n)n.focus();};
+app.addEventListener('click',choose);
+app.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){if(e.target.closest('tr.row')){e.preventDefault();choose(e);}}});
+window.addEventListener('kronn:page-data',e=>{const d=readBilan(e.detail||window.KronnPageData);if(d){DATA=d;draw();}});
+draw();
+})();
+</script>
+</body>
+</html>

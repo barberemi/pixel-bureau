@@ -5,7 +5,7 @@
   python3 tools/templates.py render <clé>   # affiche le rendu d'un modèle (office, live, team, payroll, canard, absences, avatar, agent, gate, relaunch, layout, comment, duck, ask, sketch)
 
 Emplacements, remplacés au rendu :
-  @@page_id@@, @@kronn.project_id@@, @@jira.config_id@@, @@jira.project@@, @@jira.board@@, @@jira.sprint_field@@,
+  @@page_id@@, @@bilan.page_id@@ (page « Chaîne · bilan »), @@kronn.project_id@@, @@jira.config_id@@, @@jira.project@@, @@jira.board@@, @@jira.sprint_field@@,
   @@jira.points_fields@@ (liste jointe par des virgules), @@owner_name@@ (prénom du boss),
   @@microsoft.config_id@@, @@microsoft.site@@, @@microsoft.item@@ (planning des absences, connexion Microsoft 365 de Kronn),
   @@script:workflows/x.py@@ (le script, config d'installation injectée comme le fait publish.py),
@@ -93,6 +93,9 @@ TEMPLATES = {
     "impl_controles": ("workflow", ("models", "impl_controles"), {"chaine": "workflows/chaine.py"}),
     "impl_chain": ("workflow", ("models", "impl_chain"), {"chaine": "workflows/chaine.py"}),
     "impl": ("workflow", ("models", "impl"), {"chaine": "workflows/chaine.py"}),  # lanceur : projet déduit du composant Jira
+    # page « Chaîne · bilan » : l'historique des runs de la chaîne (bilans de chaine.py et API Kronn), page Kronn à part
+    # (bilan_page_id) ; sans chaîne installée ou sans cette page : pas créé
+    "chaine_bilan": ("workflow", ("workflows", "chaine_bilan"), {"bilan": "workflows/chaine_bilan.py"}),
     "ask": ("quick_prompt", ("actions", "ask"), {}),
     "sketch": ("quick_prompt", ("actions", "sketch"), {}),
 }
@@ -191,6 +194,7 @@ def values(cfg):
     rv = cfg.get("review") or {}
     return {
         "page_id": cfg.get("page_id") or "",
+        "bilan.page_id": cfg.get("bilan_page_id") or "",  # page « Chaîne · bilan » (installée avec la chaîne)
         "kronn.project_id": (cfg.get("kronn") or {}).get("project_id") or "",
         "jira.config_id": j.get("config_id") or "",
         "jira.project": j.get("project") or "",
@@ -307,6 +311,8 @@ def skipped(key, cfg):
         return not mep_projects(cfg)
     if key in ("review_child", "review_one", "review_cron"):  # API GitHub : connexion GitHub de Kronn (github.config_id)
         return not (cfg.get("github") or {}).get("config_id") or (key == "review_cron" and not review_repos(cfg))
+    if key == "chaine_bilan":  # la page du bilan de la chaîne : chaîne installée et page créée (install.py)
+        return not ((cfg.get("models") or {}).get("impl_chain") and cfg.get("bilan_page_id"))
     if key.startswith("impl"):  # la chaîne lit le ticket dans Jira et livre sur GitHub (gh)
         return not (cfg.get("jira") or {}).get("config_id")
     if key in ("estimate", "assign", "unassign", "ticket", "ai_time"):
