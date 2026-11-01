@@ -839,3 +839,39 @@ class AtelierSnapshotTest(unittest.TestCase):
             a.CFG.update(old[1])
         self.assertEqual([(p["ticket"], p["repo"], p["poste"]) for p in snap["pannes"]],
                          [("AB-1", "dm/site", "securite"), ("AB-2", "dm/api", "orchestrateur_plan")])  # AB-3 repris, AB-5 rejeté à ta gate, AB-4 trop vieux
+
+    def test_events_for_the_ground_floor_feed(self):
+        """Fil du RDC : arrivée, gate, retour au Code, panne et PR ouverte, datés par les étapes ; une gate refusée n'est pas
+        une panne ; livres = PR ouvertes depuis minuit (fuseau du bureau), un run de plus de 24 h ne compte pas."""
+        sys.path.insert(0, os.path.join(ROOT, "workflows"))
+        import atelier_snapshot as a
+        prep = {"step_name": "prepare", "status": "Success", "output": "AB-7 sur dm/site : branche kronn/AB-7"}
+        st = lambda n, s, at, ms=0: {"step_name": n, "status": s, "started_at": at, "duration_ms": ms}  # noqa: E731
+        runs = {"d1": {"id": "d1", "status": "Success", "started_at": "2026-10-30T07:00:00Z", "step_results": [
+                    st("ticket", "Success", "2026-10-30T07:00:00Z"), prep, st("gate_plan", "Success", "2026-10-30T07:20:00Z", 60000),
+                    st("code", "Success", "2026-10-30T07:30:00Z"), st("controles", "Failed", "2026-10-30T07:50:00Z", 120000),
+                    st("code", "Success", "2026-10-30T08:10:00Z"), st("livraison", "Success", "2026-10-30T08:30:00Z", 300000)]},
+                "rej": {"id": "rej", "status": "Failed", "started_at": "2026-10-30T09:00:00Z", "step_results": [
+                    st("ticket", "Success", "2026-10-30T09:00:00Z"), {**prep, "output": "AB-8 sur dm/api : x"},
+                    st("gate_plan", "Failed", "2026-10-30T09:10:00Z")]},
+                "vieux": {"id": "vieux", "status": "Success", "started_at": "2026-10-28T07:00:00Z", "step_results": [
+                    prep, st("livraison", "Success", "2026-10-28T08:00:00Z")]}}
+        api = {"/workflows/c/runs?limit=40": [{k: v for k, v in r.items() if k != "step_results"} for r in runs.values()],
+               **{f"/workflows/c/runs/{k}": v for k, v in runs.items()}}
+        old = (a.get, dict(a.CFG))
+        a.get = lambda p: api.get(p)
+        a.CFG.update(models={"impl_chain": "c"})
+        try:
+            snap = a.snapshot("2026-10-30T12:00:00+00:00")
+        finally:
+            a.get = old[0]
+            a.CFG.clear()
+            a.CFG.update(old[1])
+        self.assertEqual([(e["ticket"], e["k"], e["t"]) for e in snap["events"]], [
+            ("AB-7", "arrive", "2026-10-30T07:00:00+00:00"), ("AB-7", "gate", "2026-10-30T07:20:00+00:00"),
+            ("AB-7", "panne", "2026-10-30T07:52:00+00:00"), ("AB-7", "back", "2026-10-30T08:10:00+00:00"),
+            ("AB-7", "sort", "2026-10-30T08:35:00+00:00"), ("AB-8", "arrive", "2026-10-30T09:00:00+00:00"),
+            ("AB-8", "gate", "2026-10-30T09:10:00+00:00")])
+        self.assertEqual(snap["events"][1]["gate"], "gate_plan")
+        self.assertEqual(snap["events"][2]["poste"], "controles")
+        self.assertEqual(snap["livres"], 1)

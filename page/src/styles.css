@@ -25,6 +25,7 @@ h1{font-size:22px;margin:0;letter-spacing:-.01em}
 .badge i{width:8px;height:8px;border-radius:50%;background:var(--idle);display:inline-block}
 .badge.live i{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 25%,transparent)}
 .kpis{display:grid;grid-template-columns:minmax(320px,1.6fr) minmax(240px,1fr) minmax(200px,.8fr);gap:10px;margin-bottom:14px;align-items:stretch}
+.kpis.n4{grid-template-columns:minmax(300px,1.5fr) minmax(220px,1fr) minmax(190px,.8fr) minmax(200px,.85fr)} /* la tuile du 1er étage (69-atelier-rdc.js) */
 .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;box-shadow:var(--shadow)}
 .kpi b{display:block;font:600 22px/1.15 ui-monospace,Menlo,monospace}
 .kpi span{color:var(--muted);font-size:12px}
@@ -468,9 +469,9 @@ kbd{font:11px ui-monospace,Menlo,monospace;background:var(--panel);border:1px so
 .hint input{width:100%;font:11px ui-monospace,Menlo,monospace;margin-top:6px;padding:5px 6px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px}
 .note{font-size:12px;color:var(--muted);margin:-4px 0 10px}
 .tip{position:fixed;pointer-events:none;background:#1d1e24;color:#f2efe8;font-size:12px;padding:5px 8px;border-radius:6px;transform:translate(-50%,-120%);white-space:nowrap;display:none;z-index:5}
-@media (max-width:1180px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1180px){.kpis,.kpis.n4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:980px){.main{grid-template-columns:minmax(0,1fr)}.side{position:static;max-height:none}}
-@media (max-width:620px){.kpis{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:620px){.kpis,.kpis.n4{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:520px){.clock{text-align:left}}
 /* bandeau « Qui fait quoi » */
 .whoboard{padding:12px 14px;margin-top:14px}
@@ -480,6 +481,8 @@ kbd{font:11px ui-monospace,Menlo,monospace;background:var(--panel);border:1px so
 .whoboard h2 .cnt{font-weight:600;background:var(--chip);border-radius:999px;padding:0 7px;letter-spacing:0}
 .whoboard h2 .cnt.attn{background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--ink);text-transform:none}
 .who-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.who-sub{margin:12px 0 7px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:flex;align-items:center;gap:6px} /* les postes du 1er (69-atelier-rdc.js) */
+.wc .wp.ic{display:grid;place-items:center;font-size:15px}
 .wc{display:flex;gap:9px;align-items:flex-start;text-align:left;background:var(--bg);border:1px solid var(--line);border-left:4px solid var(--st);border-radius:10px;padding:7px 9px;color:inherit;font:inherit;cursor:pointer;min-width:0}
 .wc:hover,.wc.on{border-color:var(--accent);border-left-color:var(--st)}
 /* sélectionnée : plus forte que button.on (fond accent plein, texte illisible sur les textes atténués) */

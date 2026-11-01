@@ -1,6 +1,6 @@
 // ---------- tuiles KPI du haut et fil de la journée ----------
 document.getElementById('kpis').addEventListener('click',e=>{
-  const k=e.target.closest('[data-open]');if(k)select(k.dataset.open);
+  const k=e.target.closest('[data-open]');if(k){if(k.dataset.open==='atelier')atGoto();else select(k.dataset.open);} // 69-atelier-rdc.js : monter au 1er
 });
 document.getElementById('kpis').addEventListener('keydown',keyClick);
 // redessin d'une zone par innerHTML : le focus clavier revient à l'élément de même attr (sinon il tombe sur <body>)
@@ -78,9 +78,11 @@ function renderKpis(){
     fig.push([a.runs,a.ok,a.ko,down].join());
     out.push(`<section class="dash agents click${down?' err':a.ko?' warn':''}" data-open="paie" tabindex="0" role="button" title="Voir la fiche de paie"><h3>Les agents</h3><div class="cap">${a.runs} runs · <span style="color:var(--ok)">${a.ok} ✓</span> · <span style="color:${a.ko?'var(--err)':'inherit'}">${a.ko} ✗</span></div><div class="cap">${fmtTok(a.tok)} tokens · fiche de paie ›</div></section>`);
   }
+  if(atelierOn()){const a=atKpi(T);fig.push([a.rooms,a.wait,a.out,a.queue,a.pannes].join());out.push(atKpiHtml(a));} // 4. le 1er étage (69-atelier-rdc.js)
   const html=out.join('');
   if(html===KPI_SIG)return;
   const box=document.getElementById('kpis'), first=!KPI_SIG;
+  box.classList?.toggle('n4',out.length>3);
   KPI_SIG=html;keepFocus(box,'data-open',()=>{box.innerHTML=html;});
   // une tuile dont un chiffre change clignote une fois (pas au premier affichage, ni en rejeu)
   fig.forEach((f,i)=>{if(!first&&mode==='live'&&KPI_FIG[i]!==undefined&&KPI_FIG[i]!==f&&box.children[i])box.children[i].classList.add('flash');});
@@ -252,6 +254,7 @@ function feedPins(t){
     out.push({t:a,c:chars.find(x=>x.boss)||null,txt:`💬 <b>${esc(askerOf(q))}</b> attend ta réponse <small>« ${esc(clip(clean(q.title),60))} »</small> ${waitSince(a,t)}`});}
   for(const d of DUCKS)if(d.awaiting){const a=ms(d.updated);if(a&&a<=t)out.push({t:a,duck:true,
     txt:`🦆 ${duckLink('Le canard')} attend ta réponse <small>« ${esc(clip(String(d.title).replace(/^🦆\s*/,''),60))} »</small> ${waitSince(a,t)}`});}
+  out.push(...atFeedPins(t)); // 69-atelier-rdc.js : les gates du 1er
   out.sort((a,b)=>a.t-b.t);
   const lm=landmarks(t); if(lm)out.push({t:null,txt:lm});
   return out;
@@ -355,7 +358,7 @@ function renderFeed(){
       txt:`<span style="color:#2e9e9b">●</span> Daily de l'équipe en cafétéria`
     });
   }
-  ev.push(...feedLifeEvents(T).map(e=>({ty:'equipe',...e})),...feedMyActions(T).map(e=>({ty:'toi',...e})));
+  ev.push(...feedLifeEvents(T).map(e=>({ty:'equipe',...e})),...feedMyActions(T).map(e=>({ty:'toi',...e})),...atFeedEvents(T)); // 69-atelier-rdc.js : le 1er étage
   ev.sort((a,b)=>b.t-a.t);
   FEED_EV=ev;
   showFeed();
@@ -403,13 +406,13 @@ function renderFeedList(view,all=FEED_ALL){
   FEED_VIEW=view;FEED_ALL=all;
   const box=document.getElementById('feed');
   let html=FEED_PIN.length?`<div class="feedpin"><div class="pinh">En ce moment</div>${FEED_PIN.map((e,i)=>
-    `<div class="ev" data-pin="${i}"${e.duck||e.c?' tabindex="0" role="button"':''}><span class="tm">${e.t?hm(e.t):'auj.'}</span><span class="x">${e.txt}</span></div>`).join('')}</div>`:'';
+    `<div class="ev" data-pin="${i}"${e.duck||e.c||e.at?' tabindex="0" role="button"':''}><span class="tm">${e.t?hm(e.t):'auj.'}</span><span class="x">${e.txt}</span></div>`).join('')}</div>`:'';
   if(!view.length)html+=`<div class="empty">${all.length?'Rien pour ces types : rallume une pastille.':FEED_MODE==='important'&&FEED_EV.length?'Rien d\'important pour l\'instant.':'Rien pour l\'instant. Le bureau est encore vide.'}</div>`;
   let lastH=null;
   view.slice(0,FEED_N).forEach((e,i)=>{
     const h=parisHM(e.t).h;
     if(h!==lastH){html+=`<div class="evh">${h} h</div>`;lastH=h;}
-    html+=`<div class="ev${e.c?' fam-'+famOf(e.c):''}" data-i="${i}"${e.tv||e.duck||e.c?' tabindex="0" role="button"':''}><span class="tm">${hm(e.t)}</span>${rvBtn(e.t)}<span class="x">${e.txt}</span></div>`;
+    html+=`<div class="ev${e.c?' fam-'+famOf(e.c):''}" data-i="${i}"${e.tv||e.duck||e.c||e.at?' tabindex="0" role="button"':''}><span class="tm">${hm(e.t)}</span>${rvBtn(e.t)}<span class="x">${e.txt}</span></div>`;
   });
   if(view.length>FEED_N)html+=`<button class="feedmore" data-feed-more>Voir plus (${view.length-FEED_N})</button>`;
   const ttl=document.getElementById('feedtitle'), w=dataDayWord();
@@ -439,10 +442,10 @@ document.getElementById('feed').addEventListener('click',ev=>{
     return;
   }
   const pin=ev.target.closest('[data-pin]');
-  if(pin){const e=FEED_PIN[+pin.dataset.pin];if(e&&e.duck)select('duck');else if(e&&e.c)select(e.c.key);return;}
+  if(pin){const e=FEED_PIN[+pin.dataset.pin];if(e&&e.at)atGoto(e.at);else if(e&&e.duck)select('duck');else if(e&&e.c)select(e.c.key);return;}
   const d=ev.target.closest('[data-i]');if(!d)return;
   const e=FEED_VIEW[+d.dataset.i];if(!e)return;
-  if(e.tv)select('tv');else if(e.duck)select('duck');else if(e.c)select(e.c.key);
+  if(e.at)atGoto(e.at);else if(e.tv)select('tv');else if(e.duck)select('duck');else if(e.c)select(e.c.key);
 });
 // survol d'un nom du fil : la personne s'allume sur le plan (comme une carte de « Qui fait quoi »)
 document.getElementById('feed').addEventListener('mouseover',e=>{const a=e.target.closest('.lk-who');hoverKey=a?a.dataset.who:null;});

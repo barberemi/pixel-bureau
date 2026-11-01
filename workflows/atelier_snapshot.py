@@ -3,7 +3,8 @@ lus dans l'API Kronn, 0 token ; stdout JSON du dataset atelier (cron live).
 
   {generated_at, rooms: [{run, ticket, title, repo, status, poste, gate, states: {poste: ok|run|bloq|avis|skip|wait|err},
                           tour, tok, since, lot, note, url}], queue: [{run, since}], pannes: [{run, ticket, repo, title,
-                          poste, since, url}], postes: [clé]}
+                          poste, since, url}], postes: [clé],
+   events: [{t, k: arrive|gate|back|panne|sort, run, ticket, repo, title, gate?, poste?}], livres}
 
 Un bureau = un run actif de la chaîne (4 au plus, concurrency_limit) ; la file = les runs en attente d'un bureau libre ;
 les pannes = les runs en échec des dernières 24 h qu'aucun run plus récent du même ticket et du même dépôt n'a repris
@@ -11,9 +12,12 @@ les pannes = les runs en échec des dernières 24 h qu'aucun run plus récent du
 L'état d'un poste vient de l'étape du parent (cadrage, schema, patterns, code…), de celle du sous-workflow des contrôles
 (regles…revue, avec le statut de leur rapport : « a_corriger » = bloquant, « non_concerne » = sauté) et de celle du poste
 PR (pr, revue, retours). Le ticket, le dépôt et le tour se lisent dans les sorties des étapes prepare, ticket et aiguillage.
+Les événements, pour le fil du RDC : un ticket arrive (première étape), une gate s'ouvre, un retour au Code (un passage de
+plus à l'étape code), une étape en panne, la PR ouverte (livraison réussie), datés par les étapes des runs des dernières
+24 h ; livres = PR ouvertes depuis minuit (fuseau du bureau).
 """
 import datetime, json, re, sys
-from _lib import ACTIVE, CFG, get
+from _lib import ACTIVE, CFG, TZ, get
 
 POSTES = ["cadrage", "schema", "patterns", "gate", "code", "regles", "securite", "tests", "perf", "revue", "besoin", "doc", "pr", "revue_pr", "retours"]
 PARENT = {"cadrage": "cadrage", "schema": "schema", "patterns": "patterns", "gate_plan": "gate", "code": "code"}
@@ -132,6 +136,43 @@ def panne(run, models, cache):
     return {**{k: r[k] for k in ("run", "ticket", "repo", "title", "since", "url")}, "poste": failed}
 
 
+def when(iso):
+    try:
+        return datetime.datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def step_end(s):
+    t = when(s.get("started_at"))
+    return t + datetime.timedelta(milliseconds=int(s.get("duration_ms") or 0)) if t else None
+
+
+def events(run):
+    """Les moments d'un run de la chaîne, dans l'ordre : arrivée, gates, retours au Code, pannes, PR ouverte."""
+    steps, last = run.get("step_results") or [], last_steps(run)
+    m = KEY.search((last.get("prepare") or {}).get("output") or "")
+    if not m:
+        return []
+    tk = envelope((last.get("ticket") or {}).get("output")) or {}
+    base = {"run": run["id"], "ticket": m.group(1), "repo": m.group(2),
+            "title": ((tk.get("fields") or {}) if isinstance(tk, dict) else {}).get("summary")}
+    out, codes = [{"t": when((steps[0] if steps else {}).get("started_at")) or when(run.get("started_at")), "k": "arrive"}], 0
+    for s in steps:
+        n, st = s.get("step_name"), s.get("status")
+        if n in GATES:
+            out.append({"t": when(s.get("started_at")), "k": "gate", "gate": n})
+        if n == "code":
+            codes += 1
+            if codes > 1:
+                out.append({"t": when(s.get("started_at")), "k": "back"})
+        if st == "Failed" and n not in GATES:  # une gate refusée finit en Failed : pas une panne
+            out.append({"t": step_end(s), "k": "panne", "poste": PARENT.get(n, n)})
+        if n == "livraison" and st == "Success":
+            out.append({"t": step_end(s), "k": "sort"})
+    return [{**base, **e, "t": e["t"].isoformat(timespec="seconds")} for e in out if e["t"]]
+
+
 def snapshot(now_iso=None):
     models = CFG.get("models") or {}
     chain = models.get("impl_chain")
@@ -139,19 +180,24 @@ def snapshot(now_iso=None):
     if not chain:
         return out
     runs = get(f"/workflows/{chain}/runs?limit=40") or []
-    cache, seen = {}, set()
+    cache, seen, fulls = {}, set(), {}
+
+    def full_of(rid):  # un run lu une fois pour les bureaux, les pannes et les événements
+        if rid not in fulls:
+            fulls[rid] = get(f"/workflows/{chain}/runs/{rid}") or {}
+        return fulls[rid]
     for r in sorted(runs, key=lambda r: r.get("started_at") or ""):
         if r.get("status") == "Pending":
             out["queue"].append({"run": r["id"], "since": r.get("started_at")})
         elif r.get("status") in ACTIVE:
-            out["rooms"].append(room(get(f"/workflows/{chain}/runs/{r['id']}"), models, cache))
+            out["rooms"].append(room(full_of(r["id"]), models, cache))
     # pannes : du plus récent au plus ancien (24 h, 12 runs lus au plus), une par ticket et dépôt, si aucun run plus
     # récent du même ticket et du même dépôt ne l'a reprise
     limit = day_before(now_iso) if now_iso else ""
     for r in sorted(runs, key=lambda r: r.get("started_at") or "", reverse=True)[:12]:
         if len(out["pannes"]) >= 3 or (r.get("started_at") or "") < limit:
             break
-        full = get(f"/workflows/{chain}/runs/{r['id']}") or {}
+        full = full_of(r["id"])
         m = KEY.search((last_steps(full).get("prepare") or {}).get("output") or "")
         if not m:
             continue
@@ -160,6 +206,15 @@ def snapshot(now_iso=None):
         if r.get("status") == "Failed" and not rejete and m.groups() not in seen:
             out["pannes"].append(panne(full, models, cache))
         seen.add(m.groups())
+    # fil du RDC : les runs des dernières 24 h (12 au plus), leurs moments dans l'ordre
+    ev = []
+    for r in sorted(runs, key=lambda r: r.get("started_at") or "", reverse=True)[:12]:
+        if r.get("status") != "Pending" and (r.get("started_at") or "") >= limit:
+            ev += events(full_of(r["id"]))
+    out["events"] = sorted(ev, key=lambda e: e["t"])
+    now = when(now_iso)
+    midnight = now.astimezone(TZ).replace(hour=0, minute=0, second=0, microsecond=0) if now else None
+    out["livres"] = sum(1 for e in ev if e["k"] == "sort" and (not midnight or when(e["t"]) >= midnight))
     return out
 
 
@@ -175,5 +230,5 @@ if __name__ == "__main__":
     try:
         data = snapshot(datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"))
     except Exception as e:  # Kronn injoignable : un dataset vide plutôt qu'un cron en échec
-        data = {"generated_at": None, "postes": POSTES, "rooms": [], "queue": [], "pannes": [], "error": str(e)[:300]}
+        data = {"generated_at": None, "postes": POSTES, "rooms": [], "queue": [], "pannes": [], "events": [], "livres": 0, "error": str(e)[:300]}
     sys.stdout.write(json.dumps(data, ensure_ascii=False))
