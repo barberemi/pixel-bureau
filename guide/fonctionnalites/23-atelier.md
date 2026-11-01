@@ -29,7 +29,7 @@ Les workflows de l'étage (le lanceur, la chaîne et ses postes, modèles `impl*
 
 ![Le ménage du soir au 1er étage : l'agent d'entretien balaie le bureau 4](../img/atelier-menage.png)
 
-- **Jour et nuit**, comme au RDC : des fenêtres au-dessus des bureaux 1 et 2 prennent la couleur du ciel (soleil à Paris, étoiles la nuit). Hors des heures de bureau, l'éclairage baisse ; seuls restent allumés les bureaux qui ont un ticket (la chaîne tourne aussi la nuit), le grand tableau et la sortie. Le boss est rentré (son fauteuil reste), Bernard aussi, les bureaux libres sont vides et personne ne se promène.
+- **Jour et nuit**, comme au RDC : des fenêtres au-dessus des bureaux 1 et 2 prennent la couleur du ciel (soleil à Paris, étoiles la nuit). Hors des heures de bureau, l'éclairage baisse ; seuls restent allumés les bureaux qui ont un ticket (la chaîne tourne aussi la nuit), le grand tableau et la sortie. Comme au RDC, le boss reste à son fauteuil le soir et le week-end, et les agents restent à leur poste (ceux des bureaux libres somnolent et se promènent comme en journée) ; seul Bernard rentre chez lui.
 - **Les trajets** : le tapis laisse une allée le long du mur extérieur (à gauche des bureaux 1 et 3, à droite des bureaux 2 et 4). Un agent qui sort passe derrière sa rangée, fait le tour par cette allée si sa rangée est loin de la porte, puis sort par la porte : il ne marche plus sur le tapis ni sur les autres.
 - Les scènes ne se jouent que sur l'étage affiché : en montant, l'étage se pose tel qu'il est ; au retour au RDC, chacun reprend sa place.
 
@@ -39,7 +39,7 @@ Les workflows de l'étage (le lanceur, la chaîne et ses postes, modèles `impl*
 
 - **La loupe** (bouton « 🔍 Loupe ») suit aussi l'étage : un ticket qui sort (Bernard l'emporte), un ticket qui arrive, le boss à la porte d'un bureau qui attend ta décision, un retour au code, un poste en panne, le ménage du soir.
 - **Le mode TV** reste sur l'étage choisi : la colonne de droite montre les bureaux (ticket, poste, barre des postes), l'entrepôt et les pannes. Le bouton « 🏭 1er étage / 🏢 RDC » de la barre (ou la touche E) change d'étage ; l'adresse de l'écran mural peut fixer l'étage (`?tv=1&floor=1`) ou alterner les deux (`?tv=1&floor=alt` : 60 s sur l'open space, 40 s sur l'atelier quand des tickets y sont).
-- **Les scènes du bureau** (« Comment lire le plan ») ne montrent que celles de l'étage affiché. Au 1er : un ticket arrive, un ticket sort, un poste rend son verdict, le boss va à la porte, l'escalade, le retour au code, le poste en panne, le ménage du soir ; « ▶ voir » la joue sur le plan, puis l'atelier revient tel qu'il était.
+- **Les scènes du bureau** (« Comment lire le plan ») ne montrent que celles de l'étage affiché. Au 1er : un ticket arrive, un ticket sort, un poste rend son verdict, le boss va à la porte, l'escalade, le retour au code, le poste en panne, le ménage du soir ; « ▶ voir » la joue sur le plan à n'importe quelle heure, même sans ticket sur la chaîne, avec les quatre bureaux pris ou un jour sans ménage (la scène part alors de bureaux de démonstration), puis l'atelier revient tel qu'il était.
 
 ## Le panneau
 
