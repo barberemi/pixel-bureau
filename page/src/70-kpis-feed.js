@@ -188,7 +188,9 @@ function feedLifeEvents(t){
       ev.push({t:r.s,c,imp:false,txt:'☕ '+String(c.feed||"{name} apporte le café à l'équipe").split('{name}').map(esc).join(refWho(c))});continue;}
     if(c.on==='cleaning'){const v=cleaningVisit(c,DAY0+12*36e5);if(v&&today(v.s)){ // 49-menage.js : son arrivée et son départ
       ev.push({t:v.s,c,imp:false,txt:`🧹 ${refWho(c)} commence le ménage du soir`});
-      if(today(v.e))ev.push({t:v.e,c,imp:false,txt:`🧹 ${refWho(c)} a fini le ménage, le bureau est propre`});}continue;}
+      const up=atCleanVisit(c,v.s); // 68-atelier.js : puis le 1er étage, quand il existe
+      if(today(v.e))ev.push({t:v.e,c,imp:false,txt:up?`🧹 ${refWho(c)} a fini le RDC, il monte au 1er étage`:`🧹 ${refWho(c)} a fini le ménage, le bureau est propre`});
+      if(up&&today(up.e))ev.push({t:up.e,c,imp:false,txt:`🧹 ${refWho(c)} a fini le ménage, tout est propre`});}continue;}
     if(c.on)continue;
     const v=guestVisit(c,DAY0+12*36e5); if(!v||!today(v.s))continue;
     const p=/^Passe voir (.+?) ·/.exec((guestState(c,v.s+1e3)||{}).label||''), pc=p&&chars.find(x=>x.person&&x.name===p[1]);

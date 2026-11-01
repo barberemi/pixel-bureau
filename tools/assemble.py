@@ -207,6 +207,7 @@ def page_config(cfg):
         "atelier": bool((cfg.get("models") or {}).get("impl_chain")),
         # ses workflows (modèles impl*) : leurs runs vont au 1er, ni au RDC ni dans « Nouvel agent »
         "atelier_wf": sorted({str(v)[:8] for k, v in (cfg.get("models") or {}).items() if k.startswith("impl") and v}),
+        "atelier_chain": str((cfg.get("models") or {}).get("impl_chain") or "")[:8],  # tickets sortis aujourd'hui (runs de la chaîne)
     }
 
 

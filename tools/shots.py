@@ -20,7 +20,8 @@ from smoke import CHROME, CHROME_ARGS, TAB_WAIT, free_port, team_config, wait_ta
 OUT = os.path.join(ROOT, "guide", "img")
 PORT = 9335
 # avant chaque capture : hors mode TV (mémorisé par le navigateur), lecture en pause à 11h, personnages posés à leur place
-AT = lambda h: f"applySkin('classique');if(TV)setTv(false);setMode('pause');T=DAY0+{h}*3600e3;needTeleport=true;"  # noqa: E731
+# récap du matin fermé : il s'ouvre seul avant midi (heure réelle), la capture ne dépend pas de l'heure où on la prend
+AT = lambda h: f"applySkin('classique');if(TV)setTv(false);setMode('pause');T=DAY0+{h}*3600e3;needTeleport=true;RECAP_OPEN=false;renderRecap();"  # noqa: E731
 WAIT = "new Promise(r=>setTimeout(r,2500))"
 # nom -> (largeur, hauteur, JS de mise en scène, sélecteur à rogner ; None = la fenêtre[, échelle de la capture[, autre plan]])
 # pages Kronn du boss simulées (#61) : 5 pages aux miniatures dessinées, le workflow pages branché, deux pages à ajouter
@@ -273,6 +274,11 @@ SHOTS = {
     # 1er étage, l'atelier d'implémentation (#125) : les quatre bureaux de la démo, puis la fiche du bureau qui a un bloquant
     "atelier": (1600, 1100, AT(11) + "setFloor(1);", None),
     "atelier-fiche": (1600, 1100, AT(11) + "setFloor(1);ATSEL='demo-a3';renderSide(true);", None),
+    # le 1er étage au calme : deux bureaux libres, éteints, Bernard à l'entrepôt, personne en file
+    # le ménage du soir au 1er étage : l'agent d'entretien balaie le bureau 4, son chariot à côté (bureaux libres)
+    "atelier-menage": (1600, 1100, AT(11) + "ATELIER={...ATELIER,rooms:[],queue:[],pannes:[]};{const c=atCleaner(),u=atCleanVisit(c,DAY0+12*36e5);"
+                      "T=u.s+AT_CLEAN_DUR/(atCleanStops().length-1)*1.6;}setFloor(1);", None),
+    "atelier-calme": (1600, 1100, AT(11) + "ATELIER={...ATELIER,rooms:ATELIER.rooms.slice(0,2),queue:[],pannes:[]};setFloor(1);", None),
     "temps-gagne-ia": (1400, 1000, AT(11) + "ACTIONS.ai_time=true;ACTION_BINDS['bureau-aitime']={ticket:'key'};"
                        "const all=[...TEAM.people.flatMap(p=>p.tickets),...(TEAM.unassigned||[])];ACTS={tickets:all.map(t=>({key:t.key})),prs:[]};"
                        "openTicket(all.find(t=>t.cat==='done').key);", ".kbv"),

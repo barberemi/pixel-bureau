@@ -14,7 +14,7 @@ GitHub Actions, workflow « Tests » (`.github/workflows/tests.yml`, KT-37) sur 
 ## Quality gates
 
 <!-- Fill: what blocks a merge/deploy (tests, lint, security scan, manual approval) -->
-La CI « Tests » doit être verte (exigée par la protection de `main`, KT-58). Pas de linter ni de hook. Garde manuelle avant publication : `sh tools/test.sh --chrome` vert avec zéro `console.error` [src: file: docs/briefing.md:22]. `tools/publish.py page` refuse de publier un plan de bureau invalide [src: file: tools/publish.py:28] ; le smoke vérifie une page de moins de 1 000 000 octets [src: file: tools/smoke.py:20].
+La CI « Tests » doit être verte (exigée par la protection de `main`, KT-58). Pas de linter ni de hook. Garde manuelle avant publication : `sh tools/test.sh --chrome` vert avec zéro `console.error` [src: file: docs/briefing.md:22]. `tools/publish.py page` refuse de publier un plan de bureau invalide [src: file: tools/publish.py:28] ; le smoke vérifie une page publiée de moins de 24 Mio, garde-fou de Kronn (`assemble.KRONN_LIMIT`) [src: file: tools/smoke.py:9].
 
 ## Deployment targets
 
