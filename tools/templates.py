@@ -125,6 +125,25 @@ def owner_name(cfg):
     return p["name"] if p else "le boss"
 
 
+_VERSION = {}
+
+
+def impl_version():
+    """Version de la chaîne d'implémentation rendue : empreinte des modèles impl*.json et de workflows/chaine.py, et le
+    dernier commit qui les a touchés (une modification de la chaîne se juge sur les tickets qui l'ont suivie)."""
+    if not _VERSION:
+        import glob, hashlib, subprocess
+        files = sorted(glob.glob(os.path.join(TPL_DIR, "impl*.json"))) + [os.path.join(ROOT, "workflows", "chaine.py")]
+        h = hashlib.sha1()
+        for f in files:
+            h.update(Path(f).read_bytes())
+        r = subprocess.run(["git", "-C", ROOT, "log", "-1", "--format=%h%x09%s", "--", "workflows/templates/impl*.json",
+                            "workflows/chaine.py"], capture_output=True, text=True)
+        commit, _, sujet = r.stdout.strip().partition("\t")
+        _VERSION.update(hash=h.hexdigest()[:7], commit=commit, sujet=re.sub(r"[{}@]", "", sujet)[:120])  # ni {{ ni @@ dans un script
+    return dict(_VERSION)
+
+
 LIB_IMPORT = re.compile(r"^from (_lib|_plan) import [\w, ]+$", re.M)
 
 
@@ -145,6 +164,8 @@ def script_code(path, cfg):
     c.update(gitfut=assemble.gitfut(cfg), wiki_posters=assemble.wiki_posters(cfg),  # déduits du roster (scripts sans accès au dépôt)
              planning_names=assemble.planning_names(cfg),  # noms complets du roster, pour le planning des absences
              root=ROOT)  # dossier du dépôt : son venv (Pillow) pour réduire les images
+    if path == "workflows/chaine.py":  # version de la chaîne gardée dans le bilan de chaque run (page « Chaîne · bilan »)
+        c["impl_version"] = impl_version()
     blob = json.dumps(c, ensure_ascii=False)
     assert '"""' not in blob and "__BUREAU_CONFIG__" in code, path
     return code.replace("__BUREAU_CONFIG__", blob, 1)

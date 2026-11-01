@@ -95,7 +95,22 @@ Hors du RDC : `page_config` donne `atelier_wf` (préfixes des modèles `impl*`) 
 
 ## Le dossier du ticket
 
-`.kronn/chaine/` dans la copie de travail (ignoré par git), recopié dans le cache après chaque étape (reprise) : `ticket.md`, `etat.json` (dépôt, sœurs, base, branche `kronn/<ticket>`, étape atteinte, tours, PR), un rapport par poste (`<poste>.json`), `plan.json` et `lots.json`, `controles.json`, `retours.md`. Les postes lisent ce qu'ont écrit les précédents ; l'orchestrateur lit tout.
+`.kronn/chaine/` dans la copie de travail (ignoré par git), recopié dans le cache après chaque étape (reprise) : `ticket.md`, `etat.json` (dépôt, sœurs, base, branche `kronn/<ticket>`, étape atteinte, tours, PR), un rapport par poste (`<poste>.json`), `plan.json` et `lots.json`, `controles.json`, `controles_tours.json` (un instantané par tour de contrôles, pour le bilan), `retours.md`. Les postes lisent ce qu'ont écrit les précédents ; l'orchestrateur lit tout.
+
+## Bilan et historique
+
+Chaque run laisse un `bilan.json` dans l'historique, hors du cache de reprise (que `prepare` vide à chaque nouveau départ) : `~/.local/share/pixel-bureau/historique/<ticket>/<owner__dépôt>/<run>.json` (réglage `impl.historique`), jamais vidé. Il est réécrit par `sauve()` après **chaque** étape Exec, comme la copie du dossier : aucune étape de plus dans la chaîne (pas de Goto à replacer, 20 étapes respectées), et le dernier écrit vaut pour un run fini, rejeté à une gate ou en panne (Kronn ne lance aucune étape après une panne). Une erreur du bilan est écrite sur stderr et n'arrête jamais l'étape. `chaine.py bilan` l'affiche.
+
+- Contenu : ticket, titre, dépôt, run, mode (`essai` marqué), reprise, début et dernière mise à jour, étape atteinte et issue d'après le dossier (`pr_prete`, `pr_brouillon`, `plan_seul`, `escalade`, `en_cours`), PR, version de la chaîne.
+- Version : empreinte des modèles `impl*.json` et de `chaine.py`, et dernier commit qui les a touchés, calculées au rendu (`templates.impl_version`, injectées dans la config du script `chaine.py` seulement) : une modification se juge sur les tickets qui l'ont suivie.
+- Tours : propositions par poste (`tri`), essais du Code (`tri_code`), tours de contrôles, escalades ; comptés dans `etat.json` (les fichiers d'essais repartent de zéro à chaque passage).
+- Retours humains (`retours.md`) : la gate d'où ils viennent (poste qui les a reçus : cadrage = « compris », schéma = « plan », code = escalade ou PR) et leur cause par mots-clés, 0 token : convention, découpage, périmètre, mauvaise lecture, autre. Le commentaire d'une approbation arrive aussi par `retours` : il est compté.
+- Schéma d'impact : le mermaid, les fichiers prévus (créer, modifier, supprimer) contre ceux que le diff touche.
+- Diff : fichiers et lignes par sorte (code, tests, doc) et le détail des docs ; rapport du poste 📚 Doc (`doc.json`) quand il existe.
+- Exigences du poste 🎯 Besoin, lots du plan, résumé du cadrage et de l'orchestrateur.
+- Contrôles, par poste : bloquants et avis trouvés sur tous les tours, corrigés (absents du dernier tour), restés (encore là au dernier tour : livrés en points ouverts ou tranchés à l'escalade). Un constat se reconnaît d'un tour à l'autre à son fichier et au début de son problème, chiffres ignorés.
+
+Pas dans le dossier, donc pas dans le bilan : jetons, durées, agents et modèles par étape, attente aux gates, issue finale (panne, rejet). Ils se lisent dans l'API Kronn (runs de `impl_chain` et de leurs sous-workflows) ; un run dont aucune étape Exec n'a tourné n'a pas de bilan.
 
 ## Allers-retours
 
@@ -109,10 +124,10 @@ Hors du RDC : `page_config` donne `atelier_wf` (préfixes des modèles `impl*`) 
 
 ## Réglage `impl`
 
-`repos.<owner/dépôt>` : `base` (sinon `main` ; absente du dépôt distant : sa branche par défaut, ex. `master`), `checks.regles` et `checks.tests` (commandes `sh`, chaîne ou `{cmd, subdir}`, emplacements `{worktree}`, `{main}`, `{php}`, `{ts}`, `{tests_php}`, `{tests_ts}`, `{files}` ; une commande dont les fichiers visés manquent est sautée), `ci_label`, `env_label`, `env_url`, `reviewers`, `docs` (docs relevées pour le poste 📚 Doc en plus de `docs/`, `ai/`, `README*`, `AGENTS.md`, `CLAUDE.md`). `components.<composant>` quand un composant ne porte pas le nom de son dépôt. `postes.<rôle>` (`cadrage`, `cadrage.critique`, `code`, `revue`, `doc`…) : `agent`, `tier`, `model`, `skills` en plus, `actif`, `bloquant`. `skills` et `guidelines` de l'équipe pour le code et les contrôles. `max_tours`, `max_lots`. `clones` (dossier des copies locales, `~/Sites` par défaut) et `auto_projet` (cloner un dépôt absent). `references` : dépôts standard de l'équipe (celui qui fixe les conventions) que chaque bureau peut lire, comme ses dépôts sœurs, par leur copie locale (projet Kronn), jamais modifiés.
+`repos.<owner/dépôt>` : `base` (sinon `main` ; absente du dépôt distant : sa branche par défaut, ex. `master`), `checks.regles` et `checks.tests` (commandes `sh`, chaîne ou `{cmd, subdir}`, emplacements `{worktree}`, `{main}`, `{php}`, `{ts}`, `{tests_php}`, `{tests_ts}`, `{files}` ; une commande dont les fichiers visés manquent est sautée), `ci_label`, `env_label`, `env_url`, `reviewers`, `docs` (docs relevées pour le poste 📚 Doc en plus de `docs/`, `ai/`, `README*`, `AGENTS.md`, `CLAUDE.md`). `components.<composant>` quand un composant ne porte pas le nom de son dépôt. `postes.<rôle>` (`cadrage`, `cadrage.critique`, `code`, `revue`, `doc`…) : `agent`, `tier`, `model`, `skills` en plus, `actif`, `bloquant`. `skills` et `guidelines` de l'équipe pour le code et les contrôles. `max_tours`, `max_lots`. `clones` (dossier des copies locales, `~/Sites` par défaut) et `auto_projet` (cloner un dépôt absent). `historique` : dossier des bilans de run (`~/.local/share/pixel-bureau/historique` par défaut). `references` : dépôts standard de l'équipe (celui qui fixe les conventions) que chaque bureau peut lire, comme ses dépôts sœurs, par leur copie locale (projet Kronn), jamais modifiés.
 
 Vérifier en conteneur jetable depuis la copie de travail : le projet Compose d'une copie de travail n'a pas de conteneur (nom de dossier), un `docker compose exec` y échouerait sans bruit ; `docker run --rm -v {worktree}/…:/app -v {main}/…/vendor:/app/vendor:ro …` marche (dépendances partagées tant que le verrou n'a pas changé).
 
 ## Tests
 
-`tests/test_chaine.py` : rendu des modèles (gates, sous-workflows, agents par poste, sauts de reprise), `workflows/chaine.py` étape par étape dans un dépôt git jetable (dont une reprise après une panne au Code, aux contrôles et après un retour au Code, un bureau par dépôt et ses PR sœurs), le lanceur (un dépôt par composant, garde-fou par ticket et dépôt, reprise auto) et le relevé de l'atelier (bureaux, file, pannes).
+`tests/test_chaine.py` : rendu des modèles (gates, sous-workflows, agents par poste, sauts de reprise), `workflows/chaine.py` étape par étape dans un dépôt git jetable (dont une reprise après une panne au Code, aux contrôles et après un retour au Code, un bureau par dépôt et ses PR sœurs, le bilan du run gardé dans l'historique), le lanceur (un dépôt par composant, garde-fou par ticket et dépôt, reprise auto) et le relevé de l'atelier (bureaux, file, pannes).
