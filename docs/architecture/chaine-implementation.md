@@ -112,6 +112,14 @@ Chaque run laisse un `bilan.json` dans l'historique, hors du cache de reprise (q
 
 Pas dans le dossier, donc pas dans le bilan : jetons, durées, agents et modèles par étape, attente aux gates, issue finale (panne, rejet). Ils se lisent dans l'API Kronn (runs de `impl_chain` et de leurs sous-workflows) ; un run dont aucune étape Exec n'a tourné n'a pas de bilan.
 
+## La page « Chaîne · bilan »
+
+Page Kronn à part (`bilan_page_id`, titre « Chaîne · bilan », dataset `bilan`), créée par `tools/install.py` avec la chaîne ; son HTML est `page/bilan.html`, autonome (ni assemblage ni démo), publié par `install.py` et `publish.py page`. La CSP de Kronn n'admet que du script en ligne : le mermaid du schéma est dessiné par la page (SVG, flowchart simple), sans bibliothèque.
+
+Cron `chaine_bilan` (`workflows/chaine_bilan.py`, 0 token, toutes les 15 min aux heures des crons, créé seulement avec la chaîne et sa page) : les bilans de l'historique complétés par l'API Kronn. Jetons par poste : étapes d'agent du parent (`orchestrateur_plan` = plan, `orchestrateur`) et des runs de ses sous-workflows (`parent_run_id`, un poste par modèle `impl_*`, `parallele` des contrôles à part, la revue du Bureau comptée avec la revue de la PR) ; l'étape SubWorkflow du parent n'est pas comptée (pas de double compte). Jetons perdus : étapes en échec (relancées) et celles d'un run en panne. Attente : durée des étapes Gate. Issue finale : `panne`, `rejete` (dernière étape une gate refusée), `annule`, sinon celle du bilan. Un run fini n'est relu qu'une fois (`~/.cache/pixel-bureau/chaine_bilan/<run>.json`). Un run sans bilan (avant l'historique) est repris de l'API seule (`partiel`). 30 jours, 50 runs, fiches détaillées des 12 plus récents, sortie sous 90 Ko (fiches puis lignes retirées). Le champ `kpi` (jetons par ticket hors essais, écart avec la version d'avant dans le libellé) est le chiffre du vidéoprojecteur (`pages_snapshot.kpi_of`).
+
+Non mesuré : une sortie d'agent invalide (`on_invalid: Continue`) n'est pas reconnaissable dans les runs ; ses jetons ne sont pas comptés à part.
+
 ## Allers-retours
 
 - Cadrage et revue croisée : `propose` (agent) puis `critique` (un second agent, sans écriture), `tri` renvoie à `propose` tant que le critique dit `revoir`, 3 propositions au plus. Schéma et patterns n'ont plus de critique : ta gate du cadrage et l'orchestrateur tranchent (essai d'EW-7851 : 7 sessions d'agent avant le code, chacune relisant le dépôt).
@@ -130,4 +138,4 @@ Vérifier en conteneur jetable depuis la copie de travail : le projet Compose d'
 
 ## Tests
 
-`tests/test_chaine.py` : rendu des modèles (gates, sous-workflows, agents par poste, sauts de reprise), `workflows/chaine.py` étape par étape dans un dépôt git jetable (dont une reprise après une panne au Code, aux contrôles et après un retour au Code, un bureau par dépôt et ses PR sœurs, le bilan du run gardé dans l'historique), le lanceur (un dépôt par composant, garde-fou par ticket et dépôt, reprise auto) et le relevé de l'atelier (bureaux, file, pannes).
+`tests/test_chaine.py` : rendu des modèles (gates, sous-workflows, agents par poste, sauts de reprise), `workflows/chaine.py` étape par étape dans un dépôt git jetable (dont une reprise après une panne au Code, aux contrôles et après un retour au Code, un bureau par dépôt et ses PR sœurs, le bilan du run gardé dans l'historique), `tests/test_chaine_bilan.py` (cron de la page, API bouchonnée), `tests/bilan-page.test.js` (agrégats et rendu de la page), le lanceur (un dépôt par composant, garde-fou par ticket et dépôt, reprise auto) et le relevé de l'atelier (bureaux, file, pannes).

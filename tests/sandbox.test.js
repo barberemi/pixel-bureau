@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path');
 
 const dir = path.join(__dirname, '..', 'page', 'src');
-const files = [path.join(__dirname, '..', 'page', 'office_template.html'),
+const files = [path.join(__dirname, '..', 'page', 'office_template.html'), path.join(__dirname, '..', 'page', 'bilan.html'),
   ...fs.readdirSync(dir).filter(f => /\.(js|html)$/.test(f)).map(f => path.join(dir, f))];
 const code = f => fs.readFileSync(f, 'utf8').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n'); // commentaires écartés
 
