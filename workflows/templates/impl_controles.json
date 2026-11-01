@@ -1,7 +1,7 @@
 {
  "kind": "workflow",
  "key": "impl_controles",
- "doc": "🧪 Tests d'abord (ils écrivent), puis 📏 règles, 🔒 sécurité, ⚡ perf · a11y et 🎯 besoin en parallèle (sous-agents), 🔁 revue croisée par une autre famille de modèle, puis leur bilan.",
+ "doc": "🧪 Tests d'abord (ils écrivent), puis 📏 règles, 🔒 sécurité, ⚡ perf · a11y, 🎯 besoin et 📚 doc en parallèle (sous-agents), 🔁 revue croisée par une autre famille de modèle, puis leur bilan.",
  "definition": {
   "name": "Le Bureau · chaîne · contrôles",
   "project_id": null,
@@ -70,7 +70,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Contexte commun et postes à lancer en parallèle (règles, sécurité, perf · a11y, besoin) ; vérifications des règles lancées ici (0 token). Aucun : code 3, saut à la revue.",
+    "description": "Contexte commun et postes à lancer en parallèle (règles, sécurité, perf · a11y, besoin, doc) ; vérifications des règles et relevé de la doc ici (0 token). Aucun : code 3, saut à la revue.",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -262,6 +262,64 @@
           }
          }
         }
+       },
+       "doc": {
+        "type": "object",
+        "properties": {
+         "resume": {
+          "type": "string"
+         },
+         "constats": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "gravite": {
+             "type": "string",
+             "enum": [
+              "bloquant",
+              "avis"
+             ]
+            },
+            "fichier": {
+             "type": "string"
+            },
+            "ligne": {
+             "type": "integer"
+            },
+            "probleme": {
+             "type": "string"
+            },
+            "correction": {
+             "type": "string"
+            }
+           }
+          }
+         },
+         "docs": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "doc": {
+             "type": "string"
+            },
+            "etat": {
+             "type": "string",
+             "enum": [
+              "a_jour",
+              "a_mettre_a_jour",
+              "non_concernee",
+              "manquante"
+             ]
+            },
+            "detail": {
+             "type": "string"
+            }
+           }
+          }
+         }
+        }
        }
       }
      },
@@ -270,8 +328,8 @@
     "step_type": {
      "type": "Agent"
     },
-    "description": "📏 🔒 ⚡ 🎯 Les contrôles en lecture seule, chacun par un sous-agent, tous en même temps.",
-    "prompt_template": "Tu coordonnes les contrôles en lecture seule d'une chaîne d'implémentation. Le contexte commun et la liste des postes à lancer sont ci-dessous.\n\n{{steps.missions.data.stdout ?? \"(absent)\"}}\n\n## Comment faire\nLance **un sous-agent par poste listé dans « Postes à lancer », tous en même temps** (un seul message, plusieurs appels à l'outil de sous-agent). Donne à chacun : sa mission ci-dessous, en entier, et le contexte commun ci-dessus en entier (il ne voit rien d'autre). Aucun sous-agent ne modifie de fichier. Un poste qui n'est pas listé n'est pas lancé.\nQuand ils ont tous fini, rends leurs rapports **tels quels** : une clé par poste lancé (`regles`, `securite`, `perf`, `besoin`), chacune au format demandé à ce poste. Tu ne juges pas, tu ne fusionnes pas, tu n'enlèves rien.\n\n## Format commun d'un rapport\n`resume` (une phrase) et `constats` : chaque constat a `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant. Au tour suivant, la section « Tour suivant, poste X » du contexte dit au poste X quoi relire.\n\n## Mission regles : 📏 Règles du projet\n\n## Vérifications lancées (0 token)\n(section « Vérifications des règles lancées » du contexte)\n\nLes vérifications rouges sont des constats bloquants (cite l'erreur). Puis lis les conventions du dépôt (`docs/AGENTS.md`, section DO NOT, règles de code) et vérifie que le diff les respecte : nommage, emplacement, langue des commentaires, tests exigés, interdits.\n\nLis le diff de la branche (`git diff <départ>...HEAD`, point de départ dans le contexte). Tu ne modifies aucun fichier. Chaque constat : `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant.\n\nConsignes de l'équipe : @@impl.guidelines@@\n\n## Mission securite : 🔒 Sécurité\n\nCherche dans le diff : injections (SQL, commande, template, XSS, en-têtes), secrets ou jetons écrits en dur, données personnelles exposées ou journalisées, contrôle d'accès manquant, désérialisation, redirections ouvertes, SSRF, dépendances ajoutées ou montées (lis le diff des fichiers de dépendances et leurs verrous).\n\nLis le diff de la branche (`git diff <départ>...HEAD`, point de départ dans le contexte). Tu ne modifies aucun fichier. Chaque constat : `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant.\n\n## Mission perf : ⚡ Perf · a11y (du front est touché)\n\nCherche dans le diff : poids ajouté (images, polices, JS ou CSS chargés partout), rendu bloquant, décalages de mise en page (CLS : dimensions manquantes), images sans lazy-loading hors écran, requêtes en cascade ; accessibilité : contraste, alternatives textuelles, rôles et libellés ARIA, ordre et focus clavier, tailles de cible.\n\nLis le diff de la branche (`git diff <départ>...HEAD`, point de départ dans le contexte). Tu ne modifies aucun fichier. Chaque constat : `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant.\n\n## Mission besoin : 🎯 Conformité au besoin\n\n1. Liste les exigences du ticket : critères d'acceptation du cadrage, phrases « Qu'est-ce qu'on va faire » et « Comment on teste » du ticket, retours de l'humain. Une ligne par exigence, dans les mots du ticket.\n2. Pour chacune, lis le diff (`git diff <départ>...HEAD`, point de départ dans le contexte) et le code autour : `etat` = `fait`, `partiel`, `non`, `autrement` (fait d'une autre façon que demandé) ou `hors_scope` (le ticket ou le périmètre de ce bureau l'exclut) ; `detail` = où c'est fait (fichier), ou ce qui manque. Vérifie le résultat que verrait l'utilisateur, pas seulement la présence de code : une donnée récupérée mais jamais affichée n'est pas un affichage.\n3. `constats` : une exigence `non` ou `partiel` qui revient à ce dépôt est `bloquant` (`probleme` = ce qui manque, `correction` = quoi faire, où) ; `autrement` est un `avis` qui dit pourquoi c'est discutable ; une affirmation de la branche (commit, doc) que le diff ne prouve pas est un `avis`.\nTu ne modifies aucun fichier. `resume` : une phrase.\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "description": "📏 🔒 ⚡ 🎯 📚 Les contrôles en lecture seule, chacun par un sous-agent, tous en même temps.",
+    "prompt_template": "Tu coordonnes les contrôles en lecture seule d'une chaîne d'implémentation. Le contexte commun et la liste des postes à lancer sont ci-dessous.\n\n{{steps.missions.data.stdout ?? \"(absent)\"}}\n\n## Comment faire\nLance **un sous-agent par poste listé dans « Postes à lancer », tous en même temps** (un seul message, plusieurs appels à l'outil de sous-agent). Donne à chacun : sa mission ci-dessous, en entier, et le contexte commun ci-dessus en entier (il ne voit rien d'autre). Aucun sous-agent ne modifie de fichier. Un poste qui n'est pas listé n'est pas lancé.\nQuand ils ont tous fini, rends leurs rapports **tels quels** : une clé par poste lancé (`regles`, `securite`, `perf`, `besoin`, `doc`), chacune au format demandé à ce poste. Tu ne juges pas, tu ne fusionnes pas, tu n'enlèves rien.\n\n## Format commun d'un rapport\n`resume` (une phrase) et `constats` : chaque constat a `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant. Au tour suivant, la section « Tour suivant, poste X » du contexte dit au poste X quoi relire.\n\n## Mission regles : 📏 Règles du projet\n\n## Vérifications lancées (0 token)\n(section « Vérifications des règles lancées » du contexte)\n\nLes vérifications rouges sont des constats bloquants (cite l'erreur). Puis lis les conventions du dépôt (`docs/AGENTS.md`, section DO NOT, règles de code) et vérifie que le diff les respecte : nommage, emplacement, langue des commentaires, tests exigés, interdits.\n\nLis le diff de la branche (`git diff <départ>...HEAD`, point de départ dans le contexte). Tu ne modifies aucun fichier. Chaque constat : `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant.\n\nConsignes de l'équipe : @@impl.guidelines@@\n\n## Mission securite : 🔒 Sécurité\n\nCherche dans le diff : injections (SQL, commande, template, XSS, en-têtes), secrets ou jetons écrits en dur, données personnelles exposées ou journalisées, contrôle d'accès manquant, désérialisation, redirections ouvertes, SSRF, dépendances ajoutées ou montées (lis le diff des fichiers de dépendances et leurs verrous).\n\nLis le diff de la branche (`git diff <départ>...HEAD`, point de départ dans le contexte). Tu ne modifies aucun fichier. Chaque constat : `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant.\n\n## Mission perf : ⚡ Perf · a11y (du front est touché)\n\nCherche dans le diff : poids ajouté (images, polices, JS ou CSS chargés partout), rendu bloquant, décalages de mise en page (CLS : dimensions manquantes), images sans lazy-loading hors écran, requêtes en cascade ; accessibilité : contraste, alternatives textuelles, rôles et libellés ARIA, ordre et focus clavier, tailles de cible.\n\nLis le diff de la branche (`git diff <départ>...HEAD`, point de départ dans le contexte). Tu ne modifies aucun fichier. Chaque constat : `gravite` (`bloquant` = à corriger avant la PR, `avis` = amélioration), `fichier`, `ligne`, `probleme`, `correction` concrète. Aucun constat hors du diff ; pas de goût personnel en bloquant.\n\n## Mission besoin : 🎯 Conformité au besoin\n\n1. Liste les exigences du ticket : critères d'acceptation du cadrage, phrases « Qu'est-ce qu'on va faire » et « Comment on teste » du ticket, retours de l'humain. Une ligne par exigence, dans les mots du ticket.\n2. Pour chacune, lis le diff (`git diff <départ>...HEAD`, point de départ dans le contexte) et le code autour : `etat` = `fait`, `partiel`, `non`, `autrement` (fait d'une autre façon que demandé) ou `hors_scope` (le ticket ou le périmètre de ce bureau l'exclut) ; `detail` = où c'est fait (fichier), ou ce qui manque. Vérifie le résultat que verrait l'utilisateur, pas seulement la présence de code : une donnée récupérée mais jamais affichée n'est pas un affichage.\n3. `constats` : une exigence `non` ou `partiel` qui revient à ce dépôt est `bloquant` (`probleme` = ce qui manque, `correction` = quoi faire, où) ; `autrement` est un `avis` qui dit pourquoi c'est discutable ; une affirmation de la branche (commit, doc) que le diff ne prouve pas est un `avis`.\nTu ne modifies aucun fichier. `resume` : une phrase.\n\n## Mission doc : 📚 Documentation du dépôt\n\nLe relevé (section « Relevé de la doc » du contexte, 0 token) dit où regarder : `modifiees` = docs déjà changées par la branche (lignes + et -), `citent_le_diff` = docs qui citent un fichier modifié ou un symbole touché, `sans_doc` = fichiers modifiés qu'aucune doc ne cite.\n1. Lis le diff (`git diff <départ>...HEAD`, point de départ dans le contexte), puis chaque doc citée ou modifiée, à la version de la branche.\n2. `docs` : une ligne par doc lue. `etat` = `a_jour` (dit vrai après le diff, ou a été mise à jour), `a_mettre_a_jour` (décrit ce que le diff change et le dit faux ou incomplet), `non_concernee` (la citation ne porte pas sur ce qui change), `manquante` (un comportement, une commande, un réglage ou une option ajouté que nulle doc ne décrit : `doc` = où il devrait l'être). `detail` = la phrase devenue fausse et ce qu'il faut écrire, ou pourquoi c'est à jour.\n3. `constats` : une doc `a_mettre_a_jour` est `bloquant` (`fichier` = la doc, `ligne`, `probleme` = ce qui est faux, `correction` = le texte à écrire) ; `manquante` est `bloquant` si l'utilisateur ou le développeur en a besoin pour se servir du changement, `avis` sinon. Respecte la langue et le format de chaque doc (`docs/AGENTS.md` : langue de la documentation, citations). Pas de doc à créer pour un détail interne.\nTu ne modifies aucun fichier. `resume` : une phrase.\n\nRéponds par le JSON demandé, complet, sans texte autour.",
     "_poste": "controles",
     "retry": {
      "max_retries": 1,

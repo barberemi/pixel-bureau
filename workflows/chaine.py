@@ -28,6 +28,7 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
   tri_tests                         # stdin lancement des tests : code 4 = le poste Tests reprend (3 essais)
   bilan_code                        # commits et fichiers de la branche
   quoi                              # contrôles : fichiers touchés, postes à lancer (réglages et plan)
+  missions | range                  # contrôles en parallèle : contexte, vérifications des règles, relevé de la doc ; rapports rangés
   bilan_controles                   # rapports des postes de contrôle : bloquants et avis
   aiguillage                        # stdin décision de l'orchestrateur : 3 livrer, 4 retour au code, 0 humain
   pousse | pr | revue_prep | retours_lire | reponds   # PR, revue de la PR, retours des relecteurs (gh)
@@ -36,7 +37,7 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
 L'étage ne traite que l'implémentation, la PR et ses retours : ni CI, ni env de branche, ni déploiement (le RDC s'en charge).
 Le dossier est recopié après chaque étape dans ~/.cache/pixel-bureau/chaine/<ticket>/<owner__dépôt>/courant : Kronn
 supprime la copie de travail d'un run (réussi ou non), la reprise y relit tout (étape atteinte dans etat.json « etape »).
-Réglage impl (pack ou config) : repos.<owner/dépôt>.{base, checks.{regles,tests}, reviewers, front}, components.<composant> = owner/dépôt, postes.<poste>.{actif, bloquant}, max_tours, max_lots.
+Réglage impl (pack ou config) : repos.<owner/dépôt>.{base, checks.{regles,tests}, reviewers, front, docs}, components.<composant> = owner/dépôt, postes.<poste>.{actif, bloquant}, max_tours, max_lots.
 Une commande de vérification reçoit {worktree}, {main} (dossier du projet), {files}, {php}, {ts}, {tests} (fichiers
 modifiés par rapport à la base, par type).
 """
@@ -45,10 +46,12 @@ from _lib import CFG, get, read_json, send, write_json, write_text
 
 SEP = "\n===SEP===\n"
 KEY = re.compile(r"^[A-Z][A-Z0-9]+-\d+$")
-POSTES = ("cadrage", "schema", "patterns", "code", "regles", "securite", "tests", "perf", "revue", "besoin", "pr", "revue_pr", "retours")
-CONTROLES = ("regles", "securite", "tests", "perf", "revue", "besoin")
-PARALLELES = ("regles", "securite", "perf", "besoin")  # en lecture seule : sous-agents d'une même étape, en même temps
-BLOQUANTS = {"regles", "securite", "tests", "besoin"}  # par défaut ; perf et revue : avis
+POSTES = ("cadrage", "schema", "patterns", "code", "regles", "securite", "tests", "perf", "revue", "besoin", "doc", "pr", "revue_pr", "retours")
+CONTROLES = ("regles", "securite", "tests", "perf", "revue", "besoin", "doc")
+PARALLELES = ("regles", "securite", "perf", "besoin", "doc")  # en lecture seule : sous-agents d'une même étape, en même temps
+BLOQUANTS = {"regles", "securite", "tests", "besoin", "doc"}  # par défaut ; perf et revue : avis
+# doc du dépôt relevée pour le poste 📚 doc ; impl.repos.<dépôt>.docs en ajoute (ex. guide/)
+DOCS = ["docs", "ai", ":(glob)**/README*", ":(glob)**/AGENTS.md", ":(glob)**/CLAUDE.md"]
 FRONT = ["*.scss", "*.css", "*.twig", "*.html", "*.vue", "*.tsx", "*.jsx", "*.ts", "*.js"]
 MAX_OUT = 60_000  # sortie Exec sous 100 Ko
 
@@ -683,8 +686,8 @@ def cmd_rapport(p):
 
 
 def cmd_missions():
-    """Contrôles en parallèle : le contexte commun et les postes à lancer (règles, sécurité, perf, besoin) pour l'étape
-    Agent qui les confie à des sous-agents en même temps ; vérifications des règles lancées ici (0 token). Kronn ne lance
+    """Contrôles en parallèle : le contexte commun et les postes à lancer (règles, sécurité, perf, besoin, doc) pour
+    l'étape Agent qui les confie à des sous-agents en même temps ; vérifications des règles et relevé de la doc ici (0 token). Kronn ne lance
     pas de sous-workflows en parallèle (foreach séquentiel) : 45 min par tour en série à l'essai d'EW-7851. Aucun poste
     à lancer : code 3, saut à la revue."""
     files = changed()
@@ -721,11 +724,62 @@ def cmd_missions():
     if "regles" in postes:
         v = verifie("regles", files)
         parts.append(section("Vérifications des règles lancées (0 token, pour le poste regles)", json.dumps(v, ensure_ascii=False, indent=1)[-8000:]))
+    if "doc" in postes:
+        parts.append(section("Relevé de la doc (0 token, pour le poste doc)", json.dumps(releve_doc(files), ensure_ascii=False, indent=1)[:8000]))
     for p in postes:
         c = correction(p)
         if c:
             parts.append(c.replace("## Tour suivant : la correction", f"## Tour suivant, poste {p} : la correction"))
     out("".join(parts))
+
+
+SYMBOLE = re.compile(r"^[+-](?![+-]).*?\b(?:def|class|function|const|let|var|interface|type|enum|trait|func|fn)\s+([A-Za-z_]\w{3,})")
+GENERIQUES = {"index", "readme", "main", "config", "settings", "utils", "helpers", "test", "tests"}
+
+
+def termes_doc(f):
+    """Ce qu'une doc citerait d'un fichier modifié : son chemin, son nom, et les symboles ajoutés ou retirés par le diff."""
+    base = os.path.basename(f)
+    terms = [f, base]
+    stem = os.path.splitext(base)[0]
+    if len(stem) >= 6 and stem.lower() not in GENERIQUES:
+        terms.append(stem)
+    for line in git("diff", "-U0", f"{depart()}...HEAD", "--", f).splitlines():
+        m = SYMBOLE.match(line)
+        if m:
+            terms.append(m.group(1))
+    return list(dict.fromkeys(terms))[:8]
+
+
+def releve_doc(files):
+    """Poste 📚 doc (0 token) : docs du dépôt déjà modifiées par le diff (lignes + et -), docs qui citent un fichier
+    modifié ou un symbole touché (git grep), fichiers modifiés qu'aucune doc ne cite. Le relevé dit où regarder ; le
+    sous-agent juge si chaque doc citée dit encore vrai."""
+    spec = DOCS + list(reglages().get("docs") or [])
+    docs = set(git("ls-files", "--", *spec).splitlines())
+    modifiees = []
+    for line in git("diff", "--numstat", f"{depart()}...HEAD", "--", *spec).splitlines():
+        a, r, path = (line.split("\t") + ["", "", ""])[:3]
+        if path:
+            modifiees.append({"doc": path, "ajout": int(a) if a.isdigit() else 0, "retrait": int(r) if r.isdigit() else 0})
+    code = [f for f in files if f not in docs]
+    cite, sans = {}, []
+    for f in code[:40]:
+        hit = False
+        for t in termes_doc(f):
+            for d in git("grep", "-l", "-F", t, "--", *spec).splitlines()[:30]:
+                cite.setdefault(d, {}).setdefault(f, []).append(t)
+                hit = True
+        if not hit:
+            sans.append(f)
+    faites = {m["doc"] for m in modifiees}
+    rep = {"docs_du_depot": len(docs), "modifiees": modifiees,
+           "citent_le_diff": [{"doc": d, "modifiee": d in faites, "cite": {f: ts[:4] for f, ts in fs.items()}}
+                              for d, fs in sorted(cite.items(), key=lambda kv: (-len(kv[1]), kv[0]))[:40]],
+           "sans_doc": sans}
+    if len(code) > 40:
+        rep["non_releves"] = len(code) - 40
+    return rep
 
 
 def cmd_range():
@@ -736,7 +790,7 @@ def cmd_range():
     res = {}
     for p in postes:
         prop = d.get(p) if isinstance(d, dict) else None
-        if isinstance(prop, dict) and ("constats" in prop or "exigences" in prop or "resume" in prop):
+        if isinstance(prop, dict) and ("constats" in prop or "exigences" in prop or "docs" in prop or "resume" in prop):
             prop.setdefault("constats", [])
             res[p] = ecrit_rapport(p, prop)["statut"]
         else:
@@ -1096,7 +1150,7 @@ def lie_soeurs(e, n):
 
 
 ETATS = {"fait": "✅ livré", "partiel": "🟡 partiel", "non": "❌ pas fait", "autrement": "🔀 autrement", "hors_scope": "⏭️ hors scope"}
-NOMS = {"regles": "📏 règles", "securite": "🔒 sécurité", "tests": "🧪 tests", "perf": "⚡ perf", "revue": "🔁 revue", "besoin": "🎯 besoin"}
+NOMS = {"regles": "📏 règles", "securite": "🔒 sécurité", "tests": "🧪 tests", "perf": "⚡ perf", "revue": "🔁 revue", "besoin": "🎯 besoin", "doc": "📚 doc"}
 
 
 ANSI = re.compile(r"\x1b\[[0-9;]*m|\[[0-9;]{1,8}m")
