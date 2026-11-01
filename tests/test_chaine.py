@@ -49,14 +49,16 @@ class ChaineModelesTest(unittest.TestCase):
             if key != "impl_chain":
                 self.assertNotIn("Gate", [s["step_type"]["type"] for s in TPL[key]["definition"]["steps"]], key)
         ctrl = steps("impl_controles", c)
-        # tests d'abord (ils écrivent), puis règles, sécurité, perf et besoin en parallèle (sous-agents d'une même étape :
-        # Kronn ne lance pas de sous-workflows en parallèle), puis la revue par une autre famille de modèle
+        # tests d'abord (ils écrivent), puis règles, sécurité, perf, besoin et doc en parallèle (sous-agents d'une même
+        # étape : Kronn ne lance pas de sous-workflows en parallèle), puis la revue par une autre famille de modèle
         self.assertEqual(list(ctrl), ["tests", "missions", "parallele", "range", "revue", "bilan"])
         self.assertEqual(ctrl["tests"]["on_result"][0]["action"]["step_name"], "missions")  # poste en panne : on continue
         self.assertEqual(ctrl["missions"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "revue"}}])
-        self.assertEqual(set(ctrl["parallele"]["output_format"]["schema"]["properties"]), {"regles", "securite", "perf", "besoin"})
+        self.assertEqual(set(ctrl["parallele"]["output_format"]["schema"]["properties"]), {"regles", "securite", "perf", "besoin", "doc"})
+        doc = ctrl["parallele"]["output_format"]["schema"]["properties"]["doc"]["properties"]["docs"]["items"]["properties"]["etat"]
+        self.assertEqual(doc["enum"], ["a_jour", "a_mettre_a_jour", "non_concernee", "manquante"])
         self.assertIn("tous en même temps", ctrl["parallele"]["prompt_template"])
-        for m in ("Mission regles", "Mission securite", "Mission perf", "Mission besoin"):
+        for m in ("Mission regles", "Mission securite", "Mission perf", "Mission besoin", "Mission doc", "Relevé de la doc"):
             self.assertIn(m, ctrl["parallele"]["prompt_template"])
         self.assertNotIn("{{steps.propose", ctrl["parallele"]["prompt_template"])
         self.assertEqual(ctrl["parallele"]["skill_ids"][:3], ["security", "web-performance", "accessibility"])
@@ -349,7 +351,7 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(code, 4, outp)
         m = self.sh("missions")[1]  # règles déjà faites, sécurité à faire
         self.assertIn("regles : déjà fait au run d'avant", m)
-        self.assertEqual(self.dossier("missions.json")["postes"], ["securite", "besoin"])
+        self.assertEqual(self.dossier("missions.json")["postes"], ["securite", "besoin", "doc"])
         self.assertEqual(self.sh("entree", "cadrage", "AB-12")[0], 5)  # poste d'analyse déjà fait : droit au rapport
         self.assertEqual(self.sh("entree", "cadrage", "AB-12", "Refais le cadrage")[0], 0)  # sauf avec un retour de l'humain
         # un retour au Code demandé par l'orchestrateur, puis une panne : la reprise rend ses consignes au Code
@@ -504,6 +506,78 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("app/A.php", m)
         self.assertIn('"probleme": "nom"', m)  # son rapport précédent
         self.assertIn("Juge le résultat d'ensemble", m)  # besoin : tout le diff
+
+    def test_doc_poste_gets_the_doc_survey_and_blocks(self):
+        """📚 Doc : le relevé (0 token) dit quelles docs citent un fichier ou un symbole touché, lesquelles le diff a déjà
+        changées (lignes + et -) et quels fichiers aucune doc ne cite ; une doc à mettre à jour est bloquante."""
+        g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        Path(self.wt, "app", "Share.php").write_text("<?php\nfunction oldShare() {}\n")
+        Path(self.wt, "docs", "partage.md").write_text("Le bouton appelle `oldShare` (app/Share.php).\n")
+        Path(self.wt, "README.md").write_text("# site\n\nVoir Share.php.\n")
+        Path(self.wt, "guide").mkdir()
+        Path(self.wt, "guide", "faq.md").write_text("oldShare\n")  # hors des docs relevées par défaut
+        subprocess.run(g + ["add", "-A"], cwd=self.wt, check=True)
+        subprocess.run(g + ["commit", "-qm", "partage"], cwd=self.wt, check=True)
+        subprocess.run(["git", "push", "-q", "origin", "main"], cwd=self.wt, check=True)
+        self.prepare()
+        Path(self.wt, "app", "Share.php").write_text("<?php\nfunction shareButton() {}\n")
+        Path(self.wt, "app", "Autre.php").write_text("<?php\n")
+        Path(self.wt, "docs", "AGENTS.md").write_text("# règles\n\nshareButton remplace l'ancien.\nDeux lignes.\n")
+        subprocess.run(g + ["add", "-A"], cwd=self.wt, check=True)
+        subprocess.run(g + ["commit", "-qm", "v1"], cwd=self.wt, check=True)
+        self.sh("bilan_code")
+        m = self.sh("missions")[1]
+        self.assertIn("doc", self.dossier("missions.json")["postes"])  # bloquant : toujours lancé
+        r = json.loads(m.split("## Relevé de la doc (0 token, pour le poste doc)\n\n")[1].split("\n\n## ")[0])
+        self.assertEqual(r["modifiees"], [{"doc": "docs/AGENTS.md", "ajout": 3, "retrait": 0}])
+        cites = {x["doc"]: x for x in r["citent_le_diff"]}
+        self.assertEqual(cites["docs/partage.md"]["cite"]["app/Share.php"], ["app/Share.php", "Share.php", "oldShare"])  # symbole retiré
+        self.assertIn("Share.php", cites["README.md"]["cite"]["app/Share.php"])
+        self.assertTrue(cites["docs/AGENTS.md"]["modifiee"])  # cite shareButton, déjà mise à jour
+        self.assertNotIn("guide/faq.md", cites)
+        self.assertEqual(r["sans_doc"], ["app/Autre.php"])
+        self.sh("range", stdin=json.dumps({"doc": {"resume": "une doc fausse", "docs": [
+            {"doc": "docs/partage.md", "etat": "a_mettre_a_jour", "detail": "cite oldShare"}],
+            "constats": [{"gravite": "bloquant", "fichier": "docs/partage.md", "ligne": 1, "probleme": "cite oldShare",
+                          "correction": "écrire shareButton"}]}}))
+        self.assertEqual(self.dossier("doc.json")["statut"], "a_corriger")
+        self.assertEqual(self.dossier("doc.json")["resultat"]["docs"][0]["etat"], "a_mettre_a_jour")
+        b = json.loads(self.sh("bilan_controles")[1])
+        self.assertEqual([x["poste"] for x in b["bloquants"]], ["doc"])
+        self.assertEqual(b["postes"]["doc"], "a_corriger")
+        e = self.dossier("etat.json")
+        e["mode"] = "essai"
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        self.sh("pr", stdin=json.dumps({"title": "t", "body": "x"}))  # resté après une escalade approuvée : dans la PR
+        self.assertIn("**Bloquant** (📚 doc) `docs/partage.md:1` : cite oldShare ; piste : écrire shareButton",
+                      Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text())
+
+    def test_doc_poste_settings(self):
+        """impl.repos.<dépôt>.docs ajoute des docs au relevé ; impl.postes.doc.bloquant false en fait un avis ; actif false
+        le coupe."""
+        c = cfg()
+        c["impl"]["repos"]["dm/site"]["docs"] = ["guide"]
+        c["impl"]["postes"]["doc"] = {"bloquant": False}
+        self.code = templates.script_code("workflows/chaine.py", c)
+        g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        Path(self.wt, "guide").mkdir()
+        Path(self.wt, "guide", "faq.md").write_text("Voir A.php.\n")
+        subprocess.run(g + ["add", "-A"], cwd=self.wt, check=True)
+        subprocess.run(g + ["commit", "-qm", "guide"], cwd=self.wt, check=True)
+        subprocess.run(["git", "push", "-q", "origin", "main"], cwd=self.wt, check=True)
+        self.prepare()
+        Path(self.wt, "app", "A.php").write_text("<?php // x\n")
+        subprocess.run(g + ["commit", "-qam", "v1"], cwd=self.wt, check=True)
+        self.sh("bilan_code")
+        self.assertIn('"doc": "guide/faq.md"', self.sh("missions")[1])
+        self.sh("range", stdin=json.dumps({"doc": {"resume": "r", "constats": [{"gravite": "bloquant", "probleme": "faq"}]}}))
+        self.assertEqual(self.dossier("doc.json")["statut"], "ok")  # poste non bloquant : un avis
+        self.assertEqual([x["poste"] for x in json.loads(self.sh("bilan_controles")[1])["avis"]], ["doc"])
+        c["impl"]["postes"]["doc"] = {"actif": False}
+        self.code = templates.script_code("workflows/chaine.py", c)
+        self.sh("bilan_code")
+        self.assertNotIn("doc", self.sh("missions")[1].split("## Postes à lancer")[1].split("Écartés")[0])
+        self.assertEqual(self.dossier("doc.json")["statut"], "non_concerne")
 
     def test_checks_run_on_changed_files_relative_to_subdir(self):
         self.prepare()

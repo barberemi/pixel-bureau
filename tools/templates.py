@@ -378,8 +378,8 @@ IMPL_AGENTS = {
     "schema": ("economy", []), "patterns": ("default", []),  # sans critique : ta gate du cadrage et l'orchestrateur tranchent
     "orchestrateur": ("default", []),  # en reasoning, Opus 5.5 a coupé deux fois (filtre reasoning_extraction)
     "code": ("reasoning", ["verification-before-completion"]), "code.relecture": ("default", []),
-    # règles, sécurité, perf · a11y et besoin : une étape, un sous-agent par poste, en même temps (Kronn ne lance pas de
-    # sous-workflows en parallèle) ; ses skills couvrent les quatre
+    # règles, sécurité, perf · a11y, besoin et doc : une étape, un sous-agent par poste, en même temps (Kronn ne lance pas
+    # de sous-workflows en parallèle) ; ses skills couvrent les cinq
     "controles": ("reasoning", ["security", "web-performance", "accessibility"]),
     "tests": ("default", ["testing", "test-driven-development"]),
     "revue": ("reasoning", ["requesting-code-review"]), "revue.critique": ("default", ["receiving-code-review"]),

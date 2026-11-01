@@ -112,11 +112,16 @@ test('bureaux : titres 1 en haut à gauche, 2 en haut à droite, 3 en bas à gau
 
 test('tapis : chaque poste plus loin que le précédent, du cadrage aux retours, de la trappe d\'entrée à la trappe de sortie', () => {
   for (let i = 0; i < 4; i++) {
-    const s = J(`AT_POSTES.map(p => atBeltS(AT_G[${i}], p.k))`);
+    const s = J(`AT_DESKS.map(p => atBeltS(AT_G[${i}], p.k))`);
     for (let k = 1; k < s.length; k++) assert.ok(s[k] > s[k - 1], `bureau ${i + 1}, poste ${k}`);
     const [a, z, len] = J(`[atBeltAt(AT_G[${i}], 0), atBeltAt(AT_G[${i}], atBeltLen(AT_G[${i}])), atBeltLen(AT_G[${i}])]`);
     assert.ok(Math.abs(a.x - z.x) < 1 && z.y > a.y && s[s.length - 1] < len, 'entrée et sortie l\'une au-dessus de l\'autre');
   }
+});
+
+test('📚 Doc : pas de bureau sur le tapis (7 par rangée), sa place est celle du poste d\'avant', () => {
+  assert.deepEqual(J(`[AT_R1.length, AT_R2.length, AT_DESKS.some(p => p.k === 'doc'), AT_POSTES.some(p => p.k === 'doc')]`), [7, 7, false, true]);
+  assert.deepEqual(J(`atSpot(AT_G[0], 'doc')`), J(`atSpot(AT_G[0], 'besoin')`));
 });
 
 test("un ticket garde son bureau ; le suivant prend le premier bureau libre", () => {

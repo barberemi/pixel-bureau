@@ -7,7 +7,7 @@
 const AT_POSTES=[
   {k:'cadrage',i:'📋',n:'Cadrage'},{k:'schema',i:'🗺',n:'Schéma'},{k:'patterns',i:'🧩',n:'Patterns'},{k:'gate',i:'✋',n:'Ton plan',gate:true},
   {k:'code',i:'⌨',n:'Code'},{k:'regles',i:'📏',n:'Règles'},{k:'securite',i:'🔒',n:'Sécurité'},{k:'tests',i:'🧪',n:'Tests'},
-  {k:'perf',i:'⚡',n:'Perf·a11y'},{k:'revue',i:'🔁',n:'Croisée'},{k:'besoin',i:'🎯',n:'Besoin'},{k:'pr',i:'📤',n:'PR'},{k:'revue_pr',i:'👀',n:'Revue PR'},{k:'retours',i:'💬',n:'Retours'}];
+  {k:'perf',i:'⚡',n:'Perf·a11y'},{k:'revue',i:'🔁',n:'Croisée'},{k:'besoin',i:'🎯',n:'Besoin'},{k:'doc',i:'📚',n:'Doc',bureau:false},{k:'pr',i:'📤',n:'PR'},{k:'revue_pr',i:'👀',n:'Revue PR'},{k:'retours',i:'💬',n:'Retours'}];
 const AT_ST={ok:['#3fbf6a','validé'],run:['#5b8def','en cours'],bloq:['#e0614f','bloquant'],avis:['#e0a020','avis'],wait:['#e0a020','t\'attend'],
   skip:['#5b6070','sauté'],err:['#e0614f','en panne']};
 const AT_TS=32, AT_W=46*AT_TS, AT_H=27*AT_TS;
@@ -33,7 +33,7 @@ function atelierDemo(){
     {run:'demo-a3',ticket:'DM-7854',title:'Retirer un attribut codé en dur du bloc média',repo:'dm/site',poste:'code',back:true,
      states:{...ok(6),securite:'bloq',code:'run'},tour:'2/3',tok:121e3,since:at(8.4),note:'🔒 bloquant → retour au code'},
     {run:'demo-a4',ticket:'DM-412',title:'Cache des listes de rubriques',repo:'dm/api',poste:'retours',
-     states:{...ok(8),perf:'err',revue:'avis',besoin:'ok',pr:'ok',revue_pr:'ok',retours:'run'},tour:'1/3',tok:138e3,since:at(7.9),note:'💬 3 commentaires à traiter'}],
+     states:{...ok(8),perf:'err',revue:'avis',besoin:'ok',doc:'ok',pr:'ok',revue_pr:'ok',retours:'run'},tour:'1/3',tok:138e3,since:at(7.9),note:'💬 3 commentaires à traiter'}],
     queue:[{run:'demo-q1',ticket:'DM-7606',since:at(10.5)},{run:'demo-q2',ticket:'DM-7948',since:at(10.8)}],
     livres:3,pannes:[{run:'demo-p1',ticket:'DM-7702',title:'Bandeau d\'alerte sur les pages direct',repo:'dm/api',poste:'securite',since:at(8.1)}]};
 }
@@ -81,7 +81,7 @@ function setFloor(f){
 // l'entrepôt (tickets en attente, pannes à relancer) ; à gauche le café, deux canapés, à droite la porte de sortie.
 const atTxt=(s,x,y,col,font,al)=>{ctx.font=font||'bold 10px ui-monospace,Menlo,monospace';ctx.fillStyle=col;ctx.textAlign=al||'center';ctx.fillText(s,x,y);ctx.textAlign='left';};
 function atPill(s,x,y,bgc,fg,font){ctx.font=font||'bold 10px ui-monospace,Menlo,monospace';const w=ctx.measureText(s).width+10;R(ctx,x-w/2,y-11,w,15,bgc);atTxt(s,x,y,fg||'#fff',font);}
-const AT_CX0=20, AT_CX1=26, AT_HY0=13.5, AT_HY1=15.5, AT_R1=AT_POSTES.slice(0,7), AT_R2=AT_POSTES.slice(7);
+const AT_CX0=20, AT_CX1=26, AT_HY0=13.5, AT_HY1=15.5, AT_DESKS=AT_POSTES.filter(p=>p.bureau!==false), AT_R1=AT_DESKS.slice(0,7), AT_R2=AT_DESKS.slice(7);
 const AT_ROOMS=[[0,3,AT_CX0,AT_HY0,1,1],[AT_CX1,3,46,AT_HY0,0,1],[0,AT_HY1,AT_CX0,27,1,0],[AT_CX1,AT_HY1,46,27,0,0]]; // x0,y0,x1,y1, miroir, en haut
 const AT_MX=(AT_CX0+AT_CX1)/2*AT_TS, AT_MY=(AT_HY0+AT_HY1)/2*AT_TS, AT_LANE=AT_MX+2.5*AT_TS;
 const AT_CHAIR={x:AT_MX,y:6.9*AT_TS-8}, AT_DOCK={x:AT_MX,y:21.4*AT_TS}, AT_EXIT={x:45.4*AT_TS,y:AT_MY+6};
@@ -97,8 +97,10 @@ function atGeo(i){
   return g;
 }
 const AT_G=[0,1,2,3].map(atGeo);
+// 📚 Doc (bureau:false) n'a pas de bureau sur le tapis (7 par rangée) : il est dans la barre des postes et la fiche
 // place d'un poste : x sur sa rangée (1 en haut, depuis le couloir central ; 2 en bas, vers la sortie)
 function atSpot(g,k){
+  const d=AT_POSTES.findIndex(p=>p.k===k);if(d>0&&AT_POSTES[d].bureau===false)k=AT_POSTES[d-1].k; // 📚 Doc : pas de bureau, au bureau d'avant
   let j=AT_R1.findIndex(p=>p.k===k);
   if(j>=0)return {x:g.L?g.bx1-(j+.5)*g.sw:g.bx0+(j+.5)*g.sw,row:1};
   j=Math.max(0,AT_R2.findIndex(p=>p.k===k));return {x:g.L?g.bx1-(6-j+.5)*g.sw:g.bx0+(6-j+.5)*g.sw,row:2};
@@ -195,7 +197,7 @@ function atWanderTick(slots,now,dt,rnd){
   AT_MEM.wander=AT_MEM.wander.filter(w=>!w.done);
   if(AT_MEM.wander.length>=AT_WANDER_MAX||rnd()>dt*.25)return;
   const rooms=[0,1,2,3].filter(i=>free(i)&&AT_MEM.wander.filter(w=>w.i===i).length<AT_WANDER_ROOM&&AT_MEM.lit[i]<.05);if(!rooms.length)return;
-  const i=rooms[Math.floor(rnd()*rooms.length)], ks=AT_POSTES.filter(p=>!p.gate&&!AT_MEM.wander.some(w=>w.i===i&&w.k===p.k));
+  const i=rooms[Math.floor(rnd()*rooms.length)], ks=AT_DESKS.filter(p=>!p.gate&&!AT_MEM.wander.some(w=>w.i===i&&w.k===p.k));
   const spots=AT_SPOTS.filter(s=>!AT_MEM.wander.some(w=>w.spot===s));if(!ks.length||!spots.length)return;
   const k=ks[Math.floor(rnd()*ks.length)].k, spot=spots[Math.floor(rnd()*spots.length)];
   AT_MEM.wander.push({i,k,spot,phase:'out',walk:atWalker(atWanderPath(i,k,spot),60),until:now+40e3+rnd()*50e3});
@@ -280,7 +282,7 @@ function atRoom(r,i,now,dt){
   atBelt(x_,g.b1,w_,H,live,now,g.L?-1:1);atBelt(g.turnX,g.b1+H,.7*T,g.b2-g.b1-H,live,now,2);atBelt(x_,g.b2,w_,H,live,now,g.L?1:-1);
   atHatchBox(g.wallX,g.b1,H,false);atHatchBox(g.wallX,g.b2,H,true);
   const people=[], ghosts=[], sleepers=[], late=[];
-  AT_POSTES.forEach((p,idx)=>{
+  AT_DESKS.forEach((p,idx)=>{
     const sp=atSpot(g,p.k), top=sp.row===1, s=atState(r,p);
     if(p.gate){R(ctx,sp.x-14,g.b1-20,3,20,'#8a8478');R(ctx,sp.x+12,g.b1-20,3,20,'#8a8478');for(let k=0;k<4;k++)R(ctx,sp.x-14+k*7,g.b1-20,7,5,k%2?'#1c1c1c':'#f2c230');
       late.push(()=>atPill('✋ Ton plan',sp.x,g.lab1,r&&r.gate?'#8a5a00':'#e9dcb8',r&&r.gate?'#fff':'#6a5a30','bold 9px system-ui,sans-serif'));return;}

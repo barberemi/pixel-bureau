@@ -15,10 +15,10 @@ PR (pr, revue, retours). Le ticket, le dépôt et le tour se lisent dans les sor
 import datetime, json, re, sys
 from _lib import ACTIVE, CFG, get
 
-POSTES = ["cadrage", "schema", "patterns", "gate", "code", "regles", "securite", "tests", "perf", "revue", "besoin", "pr", "revue_pr", "retours"]
+POSTES = ["cadrage", "schema", "patterns", "gate", "code", "regles", "securite", "tests", "perf", "revue", "besoin", "doc", "pr", "revue_pr", "retours"]
 PARENT = {"cadrage": "cadrage", "schema": "schema", "patterns": "patterns", "gate_plan": "gate", "code": "code"}
 LIVRAISON = {"pr": "pr", "revue": "revue_pr", "retours": "retours"}
-CONTROLES = ("regles", "securite", "tests", "perf", "revue", "besoin")
+CONTROLES = ("regles", "securite", "tests", "perf", "revue", "besoin", "doc")
 GATES = {"gate_questions": "❓ questions du cadrage", "gate_plan": "✋ ton plan", "gate_escalade": "🧑‍⚖️ la chaîne demande un humain",
          "gate_pr": "👀 relire la PR brouillon"}
 KEY = re.compile(r"\b([A-Z][A-Z0-9]+-\d+) sur ([\w.-]+/[\w.-]+)")
@@ -83,13 +83,13 @@ def room(run, models, cache):
                 st = st_of(s)
                 rs = rapport_statut(s.get("output"))
                 states[k] = "bloq" if rs == "a_corriger" else "skip" if rs == "non_concerne" else st
-        # règles, sécurité, perf et besoin : sous-agents d'une même étape ; lancés = « Postes à lancer » de missions,
+        # règles, sécurité, perf, besoin et doc : sous-agents d'une même étape ; lancés = « Postes à lancer » de missions,
         # verdicts = sortie de range
         lances = re.search(r"## Postes à lancer\\{0,2}n\\{0,2}n([a-z, ]+)", (c.get("missions") or {}).get("output") or "")
         if lances and st_of(c.get("parallele")) in ("run", "err"):
             for k in [x.strip() for x in lances.group(1).split(",") if x.strip() in CONTROLES]:
                 states[k] = st_of(c.get("parallele"))
-        for k, v in re.findall(r'\\?"(regles|securite|perf|besoin)\\?":\s*\\?"(\w+)', (c.get("range") or {}).get("output") or ""):
+        for k, v in re.findall(r'\\?"(regles|securite|perf|besoin|doc)\\?":\s*\\?"(\w+)', (c.get("range") or {}).get("output") or ""):
             states[k] = {"a_corriger": "bloq", "non_concerne": "skip", "en_panne": "err"}.get(v, "ok")
     if "livraison" in steps:
         c = children(models.get("impl_livraison"), run["id"], cache)
