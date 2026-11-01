@@ -201,7 +201,7 @@ function atRouteOut(i,k){
 function atWanderPath(i,k,spot){return [...atRouteOut(i,k),{x:spot.x,y:spot.y}];}
 // une image : sorties, retours à la place, nouveaux promeneurs (rnd : tirage, remplaçable pour les tests)
 function atWanderTick(slots,now,dt,rnd){
-  if(REDUCED_MOTION&&!rnd||!atOpen()){AT_MEM.wander=[];return;}
+  if(REDUCED_MOTION&&!rnd){AT_MEM.wander=[];return;}
   rnd=rnd||Math.random;
   const free=i=>!slots[i]&&!AT_MEM.leaving[i];
   for(const w of AT_MEM.wander){
@@ -326,7 +326,7 @@ function atRoom(r,i,now,dt){
       a._st={st:'idle'};a.pose=age<1800?'hands':'stand';people.push([a,()=>atDesk(sp.x,deskY,false),top]);
       late.push(()=>{atBadge(sp.x+18,feet-42,s==='ok'?'✓':'!',s==='ok'?'#2f9e55':'#d08a10',pop);if(themeIs('saint-valentin')&&age<2500)E('❤',sp.x,feet-70-age/40,12,1-age/2500);});
     }
-    else if(s==='idle'){if(!atOpen()){atDesk(sp.x,deskY,false);return;}a._st={st:'idle'};a.pose='stand';sleepers.push([a,sp.x,feet,deskY,top]);}
+    else if(s==='idle'){a._st={st:'idle'};a.pose='stand';sleepers.push([a,sp.x,feet,deskY,top]);}
     else {a._st={st:'idle'};a.pose='stand';ghosts.push([a,sp.x,deskY]);}
   });
   if(ghosts.length){const gg=atLayer();ghosts.forEach(([a])=>atDrawInto(gg,a,now));ctx.save();ctx.globalAlpha=.38;ctx.filter='grayscale(1)';ctx.drawImage(AT_OFF,0,0);ctx.restore();ghosts.forEach(([,x,y])=>atDesk(x,y,false));}
@@ -347,7 +347,7 @@ function atRoom(r,i,now,dt){
   const sweep=AT_MEM.clean&&!AT_MEM.clean.moving&&AT_MEM.clean.stop.i===i, dark=(1-AT_MEM.lit[i])*(sweep?.35:1);
   if(dark>.01){ctx.fillStyle=`rgba(10,14,34,${(.55*dark).toFixed(3)})`;ctx.fillRect(g.x0*T+5,g.y0*T+5,(g.x1-g.x0)*T-10,(g.y1-g.y0)*T-10);
     if(dark>.9||sweep&&!r){sleepers.forEach(([,x,f],k)=>atTxt('z Z',x+12,f-58-(Math.floor(now/800+k)%2)*4,'#bfe6ff','bold 11px ui-monospace,Menlo,monospace'));
-      atPill(atOpen()?'💤 Libre : ils somnolent à leur poste':'🌙 Libre : tout le monde est rentré',(g.x0+g.x1)/2*T,g.b1+H+.35*T,'#1c2440','#bfe6ff');}}
+      atPill('💤 Libre : ils somnolent à leur poste',(g.x0+g.x1)/2*T,g.b1+H+.35*T,'#1c2440','#bfe6ff');}}
   atHit('room',g.x0*T,g.y0*T,(g.x1-g.x0)*T,(g.y1-g.y0)*T,{i});
 }
 // poste en panne : un agent arrive de la porte avec un extincteur et arrose l'écran tant que le poste reste en panne
@@ -397,13 +397,13 @@ function atBoss(slots,now,dt,people){
   R(ctx,ox-22,F-30,6,2,'#6a3434');R(ctx,ox+16,F-30,6,2,'#6a3434');
   const desk=()=>{
     R(ctx,x0,top+30,3*AT_TS+4,3,'rgba(0,0,0,.2)');R(ctx,x0,top,3*AT_TS+4,18,'#6e4a2c');R(ctx,x0,top,3*AT_TS+4,2,'#8a6040');R(ctx,x0,top+18,3*AT_TS+4,13,'#56391f');
-    R(ctx,x0+6,top-12,18,13,'#2c2f38');drawScreen(x0+7,top-11,16,10,boss&&atOpen()?screenState(boss):'off',now,97);R(ctx,x0+12,top+1,5,3,'#2c2f38');
+    R(ctx,x0+6,top-12,18,13,'#2c2f38');drawScreen(x0+7,top-11,16,10,boss?screenState(boss):'off',now,97);R(ctx,x0+12,top+1,5,3,'#2c2f38');
     slots.forEach((r,k)=>{const x=x0+42+k*8, on=r&&r.gate;R(ctx,x-3,top+4,7,7,'#1c1c1c');
       R(ctx,x-2,top+5,5,5,!r?'#555':on?(Math.floor(now/450)%2?'#ffcf4a':'#a37a10'):r.back?'#e0614f':'#3fbf6a');atHit('room',x-4,top+2,9,11,{i:k});});
     R(ctx,x0+76,top+2,6,7,'#fbfbf6');R(ctx,x0+77,top+4,4,2,'#d1453b');
     if(themeIs('saint-valentin'))E('🌹',x0+92,top-2,12);
     ctx.fillStyle='#f3e6d2';ctx.font='bold 8px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText("WORLD'S BEST BOSS",ox,top+27);ctx.textAlign='left';};
-  if(!boss||!atOpen()){desk();return;} // le soir : le fauteuil reste, vide
+  if(!boss){desk();return;}
   const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:b.walk.pos.x,y:b.walk.pos.y},tile:seated?BOSS_SEAT.slice():null,moving:!arrived,pose:'stand',present:true,
     dir:arrived?(target==null?'down':AT_G[target].top?'up':'down'):b.walk.dir,_st:{st:gates.length?'gate':'idle'}});
   if(seated){drawChar(c,now);desk();}
@@ -540,33 +540,40 @@ function atLoupeEvents(now){
 }
 // ---------- scènes de l'étage pour la galerie (46-gallery.js), jouables par « ▶ voir » ----------
 // Chacune joue sur une copie du dataset atelier (rendue à la fin de la démonstration) : la page voit un ticket arriver,
-// sortir, une gate, un retour au code, une panne, comme si le cron l'avait publié. Le ménage du soir avance l'heure du plan.
-function atDemo(mut){return ()=>{const d=JSON.parse(JSON.stringify(ATELIER||{rooms:[],queue:[],pannes:[]}));d.rooms=d.rooms||[];d.queue=d.queue||[];mut(d);ATELIER=d;};}
+// sortir, une gate, un retour au code, une panne, comme si le cron l'avait publié. Comme au RDC, toutes se jouent à toute
+// heure : sans ticket sur la chaîne, la copie part des bureaux de la démo ; un jour sans ménage, sa tournée est inventée.
+// prep : la copie de départ (posée sans scène, comme au chargement), mut : ce que la scène change ensuite
+function atDemo(mut,prep){return ()=>{const src=ATELIER&&(ATELIER.rooms||[]).length?ATELIER:atelierDemo(), cp=x=>JSON.parse(JSON.stringify(x));
+  const base=cp(src);base.rooms=base.rooms||[];base.queue=base.queue||[];base.pannes=base.pannes||[];if(prep)prep(base);
+  ATELIER=base;AT_MEM.fresh=true;atDiff(performance.now());
+  const d=cp(base);mut(d);ATELIER=d;};}
 const atFirst=d=>d.rooms.find(r=>!r.gate)||d.rooms[0];
 function atGalleryScenes(){
-  const fam='1er étage', n=atRooms().length, none='Aucun ticket sur la chaîne', cl=atCleaner(), out=[];
-  out.push({fam,ico:'🎫',n:'Un ticket arrive',d:'Bernard l\'apporte de l\'entrepôt à la trappe d\'entrée, le bureau s\'allume',w:'Un ticket lancé (▶ Implémenter) trouve un bureau libre',ok:n<4,why:'Les quatre bureaux sont occupés',
-    play:{len:25e3,speed:1,setup:atDemo(d=>{const q=d.queue.shift();d.rooms.push({run:'demo-arrive',ticket:q?q.ticket:'DM-1000',title:'Démonstration',repo:'dm/site',poste:'cadrage',states:{cadrage:'run'},tok:0,since:new Date().toISOString()});})}});
-  out.push({fam,ico:'📦',n:'Un ticket sort',d:'PR ouverte : Bernard récupère le carton à la trappe de sortie et l\'emporte par la porte',w:'Fin de la chaîne (PR, revue et retours traités)',ok:n>0,why:none,
+  const fam='1er étage', ok=true, cl=atCleaner(), out=[];
+  out.push({fam,ico:'🎫',n:'Un ticket arrive',d:'Bernard l\'apporte de l\'entrepôt à la trappe d\'entrée, le bureau s\'allume',w:'Un ticket lancé (▶ Implémenter) trouve un bureau libre',ok,
+    play:{len:25e3,speed:1,setup:atDemo(d=>{const q=d.queue.shift();d.rooms.push({run:'demo-arrive',ticket:q?q.ticket:'DM-1000',title:'Démonstration',repo:'dm/site',poste:'cadrage',states:{cadrage:'run'},tok:0,since:new Date().toISOString()});},d=>{d.rooms=d.rooms.slice(0,3);})}}); // quatre bureaux pris : un se libère d'abord, sans scène
+  out.push({fam,ico:'📦',n:'Un ticket sort',d:'PR ouverte : Bernard récupère le carton à la trappe de sortie et l\'emporte par la porte',w:'Fin de la chaîne (PR, revue et retours traités)',ok,
     play:{len:45e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);d.rooms=d.rooms.filter(x=>x!==r);})}});
-  out.push({fam,ico:'✓',n:'Un poste rend son verdict',d:'Le ✓ apparaît, l\'agent s\'étire, le carton glisse au poste suivant',w:'Chaque poste qui finit',ok:n>0,why:none,
+  out.push({fam,ico:'✓',n:'Un poste rend son verdict',d:'Le ✓ apparaît, l\'agent s\'étire, le carton glisse au poste suivant',w:'Chaque poste qui finit',ok,
     play:{len:12e3,speed:1,setup:atDemo(d=>{const r=atFirst(d), ks=AT_DESKS.filter(p=>!p.gate).map(p=>p.k), j=Math.max(0,ks.indexOf(r.poste));r.states=r.states||{};r.states[ks[j]]='ok';r.poste=ks[Math.min(ks.length-1,j+1)];r.states[r.poste]='run';r.gate=null;r.back=false;})}});
-  out.push({fam,ico:'✋',n:'Le boss va à la porte',d:'Une gate t\'attend : il quitte son fauteuil pour la porte du bureau, son bouton clignote',w:'Ce que j\'ai compris, ton plan, l\'escalade, la relecture de la PR',ok:n>0,why:none,
+  out.push({fam,ico:'✋',n:'Le boss va à la porte',d:'Une gate t\'attend : il quitte son fauteuil pour la porte du bureau, son bouton clignote',w:'Ce que j\'ai compris, ton plan, l\'escalade, la relecture de la PR',ok,
     play:{len:25e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.gate='gate_plan';r.poste='gate';r.states=r.states||{};r.states.gate='wait';r.note='✋ ton plan';})}});
-  out.push({fam,ico:'🚨',n:'Escalade',d:'Après 3 tours, la chaîne demande un humain : gyrophare au-dessus de la porte',w:'L\'orchestrateur n\'arrive pas à conclure',ok:n>0,why:none,
+  out.push({fam,ico:'🚨',n:'Escalade',d:'Après 3 tours, la chaîne demande un humain : gyrophare au-dessus de la porte',w:'L\'orchestrateur n\'arrive pas à conclure',ok,
     play:{len:20e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.gate='gate_escalade';r.note='🧑‍⚖️ la chaîne demande un humain';})}});
-  out.push({fam,ico:'↩',n:'Retour au code',d:'Un contrôle bloque : le carton recule jusqu\'au Code, « encore ? »',w:'Un poste de contrôle rend un bloquant',ok:n>0,why:none,
+  out.push({fam,ico:'↩',n:'Retour au code',d:'Un contrôle bloque : le carton recule jusqu\'au Code, « encore ? »',w:'Un poste de contrôle rend un bloquant',ok,
     play:{len:15e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.states=r.states||{};for(const k of ['cadrage','schema','patterns','gate','code','regles'])r.states[k]='ok';r.states.securite='bloq';r.poste='code';r.back=true;r.gate=null;r.note='🔒 bloquant → retour au code';})}});
-  out.push({fam,ico:'🧯',n:'Poste en panne',d:'Son sous-workflow a échoué : fumée sur l\'écran, un pompier arrive avec un extincteur',w:'Un poste plante (API d\'un agent indisponible…)',ok:n>0,why:none,
+  out.push({fam,ico:'🧯',n:'Poste en panne',d:'Son sous-workflow a échoué : fumée sur l\'écran, un pompier arrive avec un extincteur',w:'Un poste plante (API d\'un agent indisponible…)',ok,
     play:{len:20e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.states=r.states||{};r.states.tests='err';})}});
-  if(cl)out.push({fam,ico:'🧹',n:cl.name+' · ménage du 1er',d:'Après le RDC, chaque bureau et l\'entrepôt, avec son chariot',w:'Le soir des jours ouvrés, après le RDC',c:cl,ok:!!atCleanVisit(cl,T),why:'Pas de ménage ce jour-là',
-    play:{len:AT_CLEAN_DUR,speed:60,setup:s=>{const u=atCleanVisit(cl,s);if(!u)return;T=u.s;SCENE_DEMO.e=u.e;needTeleport=true;}}});
+  if(cl)out.push({fam,ico:'🧹',n:cl.name+' · ménage du 1er',d:'Après le RDC, chaque bureau et l\'entrepôt, avec son chariot',w:'Le soir des jours ouvrés, après le RDC',c:cl,ok,
+    play:{len:AT_CLEAN_DUR,speed:60,setup:s=>{const u=atCleanVisit(cl,s);
+      if(!u){SCENE_DEMO.visit={c:cl,v:{s:s-CLEAN_DUR,e:s,r:rng(keySeed(cl.key)*7919+daySeed(s))}};SCENE_DEMO.e=s+AT_CLEAN_DUR;return;} // pas de ménage ce jour-là : il monte maintenant
+      T=u.s;SCENE_DEMO.e=u.e;needTeleport=true;}}});
   return out;
 }
-// ---------- jour et nuit (42-light.js) : fenêtres, voile du soir, l'étage se vide hors des heures de bureau ----------
+// ---------- jour et nuit (42-light.js) : fenêtres, voile du soir ----------
 // Comme au RDC : le ciel des fenêtres suit le soleil à Paris, le voile de nuit s'ouvre seulement là où ça travaille.
-// Hors des heures de bureau, le boss est rentré (son fauteuil reste), Bernard aussi, les bureaux libres sont vides et
-// personne ne se promène ; un bureau qui a un ticket garde ses agents (la chaîne tourne aussi la nuit).
+// Comme au RDC aussi, le boss et les agents restent le soir et le week-end (la chaîne tourne à toute heure) : seul
+// Bernard, un humain, rentre chez lui hors des heures de bureau.
 const AT_WINDOWS=[1,3.5,6,8.5,35,37.5,40,42.5]; // en cases : au-dessus des bureaux 1 et 2, de part et d'autre du grand tableau
 const atOpen=()=>officeOpen(T);
 function atWindows(now){

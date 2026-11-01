@@ -262,14 +262,71 @@ test("galerie : seulement les scènes de l'étage affiché ; une scène du 1er r
   assert.equal(p.run('AT_MEM.fresh'), true, 'sans rejouer le retour');
 });
 
-test("le soir, comme au RDC : fenêtres au ciel de l'heure, plus de promeneurs ; de jour ils reviennent", () => {
+test("le soir, comme au RDC : fenêtres au ciel de l'heure ; les promeneurs restent, la chaîne tourne à toute heure", () => {
   const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
   assert.ok(J2('AT_WINDOWS.length') >= 6);
   const T = J2('AT_TS'), board = [12.2 * T, 33.8 * T];
   for (const x of J2('AT_WINDOWS')) assert.ok(x * T + 1.5 * T < board[0] || x * T > board[1], 'pas derrière le grand tableau');
   p.run(`ATELIER = {rooms: [], queue: []}; T = DAY0 + 22 * 36e5; for (let n = 0; n < 30; n++) atWanderTick(atSlots(), n * 100, .1, () => 0);`);
   assert.equal(J2('atOpen()'), false);
-  assert.equal(J2('AT_MEM.wander.length'), 0, 'personne le soir');
-  p.run(`T = DAY0 + 11 * 36e5; for (let n = 0; n < 30; n++) atWanderTick(atSlots(), n * 100, .1, () => 0);`);
-  assert.ok(J2('AT_MEM.wander.length') > 0);
+  assert.ok(J2('AT_MEM.wander.length') > 0, 'les agents se promènent aussi le soir');
+});
+
+// un samedi à 22 h : hors des heures de bureau et en week-end
+const saturdayNight = p => p.run(`(() => {let d = DAY0; for (let k = 0; k < 7 && !(RHYTHM.weekend.includes(parisHM(d + 12 * 36e5).wd) && parisHM(d + 12 * 36e5).wd === RHYTHM.weekend[0]); k++) d += 864e5;
+  T = d + 22 * 36e5;})()`);
+test('un samedi à 22 h, comme au RDC : le boss à son fauteuil, écran allumé, et les agents des bureaux libres à leur poste ; Bernard est rentré', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
+  p.run('CFG.atelier = true; ATELIER = {rooms: [], queue: [], pannes: []};');
+  saturdayNight(p);
+  assert.equal(J2('RHYTHM.weekend.includes(parisHM(T).wd) && !atOpen()'), true);
+  p.run(`var __drawn = [], __dc = drawChar, __ds = drawScreen; var __scr = [];
+    drawChar = (c, now) => __drawn.push(c.boss ? 'boss' : c.key === 'at_bernard' ? 'bernard' : 'agent');
+    drawScreen = (x, y, w, h, st) => __scr.push(st);
+    var __b = chars.find(c => c.boss); __b.present = true; __b._st = stateAt(__b, T);
+    AT_MEM.boss = null; atBoss([null, null, null, null], 0, 1, []);
+    atRoom(null, 0, 0, .1);
+    var __people = []; atScenes(0, .1, __people);
+    drawChar = __dc; drawScreen = __ds;`);
+  assert.ok(J2('__drawn.includes("boss")'), 'le boss est assis');
+  assert.equal(J2('__scr[0]'), 'work', 'son écran est allumé, comme au RDC');
+  assert.ok(J2('__drawn.filter(x => x === "agent").length') >= 6, 'les agents du bureau libre somnolent à leur poste');
+  assert.equal(J2('__people.length'), 0, 'Bernard est rentré');
+});
+
+test("toutes les scènes du 1er se jouent à toute heure : sans ticket, avec les quatre bureaux pris, un jour sans ménage", () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  p.run('FLOOR = 1; CFG.atelier = true;');
+  for (const setup of ['ATELIER = null;', 'ATELIER = {rooms: [], queue: [], pannes: []};', 'ATELIER = atelierDemo();']) {
+    fresh(p);p.run(setup);saturdayNight(p);
+    const sc = J2('atGalleryScenes().map(x => ({n: x.n, ok: x.ok}))');
+    assert.ok(sc.length >= 7, setup);
+    for (const x of sc) assert.equal(x.ok, true, setup + ' ' + x.n);
+  }
+  // sans ticket : la scène part des bureaux de la démo, sans arrivée parasite, et l'atelier revient vide
+  fresh(p);p.run('ATELIER = {rooms: [], queue: [], pannes: []}; var __A = ATELIER;');
+  p.run('demoStart(atGalleryScenes().find(x => x.n === "Un ticket sort"));');
+  assert.equal(J2('ATELIER.rooms.length'), J2('atelierDemo().rooms.length') - 1);
+  assert.deepEqual(J2('AT_MEM.scenes'), [], 'les bureaux de la démo se posent sans scène');
+  p.run('atDiff(1000);');
+  assert.deepEqual(J2('AT_MEM.scenes.map(s => s.kind)'), ['exit']);
+  p.run('demoEnd();');
+  assert.equal(p.run('ATELIER === __A'), true);
+  // quatre bureaux pris : un se libère sans scène, le ticket arrive
+  fresh(p);p.run('ATELIER = atelierDemo(); atDiff(500); var __B = ATELIER;');
+  p.run('demoStart(atGalleryScenes().find(x => x.n === "Un ticket arrive")); atDiff(1000);');
+  assert.equal(J2('ATELIER.rooms.length'), 4);
+  assert.deepEqual(J2('AT_MEM.scenes.map(s => s.kind)'), ['arrive']);
+  p.run('demoEnd();');
+  // un jour sans ménage (le samedi) : sa tournée du 1er commence tout de suite
+  fresh(p);p.run('ATELIER = atelierDemo(); var __cl = atCleaner();');saturdayNight(p);
+  assert.equal(J2('cleaningVisit(__cl, T)'), null, 'pas de ménage le samedi');
+  p.run('demoStart(atGalleryScenes().find(x => x.n.endsWith("ménage du 1er")));');
+  assert.ok(J2('!!atCleanerAt(__cl, T + 60e3)'), 'il fait le 1er étage pendant la scène');
+  p.run('demoEnd();');
+  // jour sans aucune tournée (ni la veille ouvrée) : elle est inventée à l'heure de la scène
+  p.run('var __cv = cleaningVisit; cleaningVisit = (c, t) => SCENE_DEMO && SCENE_DEMO.visit && SCENE_DEMO.visit.c === c ? SCENE_DEMO.visit.v : null;');
+  p.run('demoStart(atGalleryScenes().find(x => x.n.endsWith("ménage du 1er"))); var __s = SCENE_DEMO.s;');
+  assert.ok(J2('!!atCleanerAt(__cl, __s + 60e3) && SCENE_DEMO.e === __s + AT_CLEAN_DUR'), 'il monte tout de suite');
+  p.run('demoEnd(); cleaningVisit = __cv;');
 });
