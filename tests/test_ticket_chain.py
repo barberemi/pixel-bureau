@@ -50,5 +50,36 @@ class TicketChainTest(unittest.TestCase):
         self.assertEqual(self.t("bilan", "r2").stdout.strip(), "{}")
 
 
+class RedactionSnapshotTest(unittest.TestCase):
+    def test_tables_tickets_and_events(self):
+        os.environ.setdefault("BUREAU_CONFIG", FIXTURE)
+        sys.path.insert(0, os.path.join(ROOT, "workflows"))
+        import redaction_snapshot as r
+        tmp = tempfile.mkdtemp()
+        os.makedirs(os.path.join(tmp, "r1"))
+        Path(tmp, "r1", "demande.json").write_text(json.dumps({"intention": "Refondre le lecteur", "tour": 2, "composants": ["dm/site"]}))
+        Path(tmp, "r1", "tickets.json").write_text(json.dumps({"version": 2, "tickets": [{"summary": "A", "composant": "dm/site", "points": 3},
+                                                                                       {"summary": "B", "composant": "dm/api", "points": 2}]}))
+        api = {"/workflows/tk/runs?limit=20": [{"id": "r1", "status": "Running", "started_at": "2026-10-30T09:00:00Z"}],
+               "/workflows/tk/runs/r1": {"id": "r1", "workflow_id": "tk", "status": "Running", "started_at": "2026-10-30T09:00:00Z",
+                                          "step_results": [{"step_name": "dossier"}, {"step_name": "recherche"}, {"step_name": "chaque"}]},
+               "/workflows/un/runs?limit=40": [{"id": "k1"}],
+               "/workflows/un/runs/k1": {"id": "k1", "parent_run_id": "r1", "status": "WaitingApproval", "started_at": "2026-10-30T09:30:00Z",
+                                          "step_results": [{"step_name": "lot"}, {"step_name": "relire", "started_at": "2026-10-30T09:31:00Z"}]}}
+        old = (r.get, r.HOME, dict(r.CFG))
+        r.get, r.HOME = (lambda p: api.get(p)), tmp
+        r.CFG.update(models={"ticket": "tk", "ticket_un": "un"})
+        try:
+            snap = r.snapshot("2026-10-30T10:00:00+00:00")
+        finally:
+            r.get, r.HOME = old[0], old[1]
+            r.CFG.clear()
+            r.CFG.update(old[2])
+        t = snap["tables"][0]
+        self.assertEqual((t["poste"], t["tour"], t["intention"]), ("valider", 2, "Refondre le lecteur"))
+        self.assertEqual([(x["summary"], x["etat"]) for x in t["tickets"]], [("A", "gate"), ("B", "wait")])
+        self.assertEqual([e["k"] for e in snap["events"]], ["arrive", "gate"])
+
+
 if __name__ == "__main__":
     unittest.main()

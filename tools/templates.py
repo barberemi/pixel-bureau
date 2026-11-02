@@ -37,7 +37,7 @@ TEMPLATES = {
     "office": ("workflow", ("workflows", "office"), {"snapshot": "workflows/office_snapshot.py"}),
     "live": ("workflow", ("workflows", "live"), {"snapshot": "workflows/live_snapshot.py", "gates": "workflows/gates_snapshot.py",
                                                     "todos": "workflows/todos.py", "atelier": "workflows/atelier_snapshot.py",
-                                                    "retours": "workflows/retours_snapshot.py"}),
+                                                    "retours": "workflows/retours_snapshot.py", "redaction": "workflows/redaction_snapshot.py"}),
     "team": ("workflow", ("workflows", "team"), {"github": "workflows/github_snapshot.py", "shape": "workflows/team_shape.py", "since": "workflows/standup_since.py",
                                                     "planning_jql": "workflows/planning_jql.py", "actions": "workflows/actions_snapshot.py"}),
     "payroll": ("workflow", ("workflows", "payroll"), {"payroll": "workflows/payroll_snapshot.py", "pages": "workflows/pages_snapshot.py", "gitfut": "workflows/gitfut_snapshot.py"}),
@@ -256,6 +256,7 @@ def values(cfg):
         "jira.statuses_json": json.dumps(j.get("statuses") or {}, ensure_ascii=False, separators=(",", ":")) if j.get("statuses") else "",
         # retours de PR (3e étage) : le modèle « corriger les commentaires d'une PR » installé (son relevé dans le cron live)
         "actions.fix_pr": (cfg.get("actions") or {}).get("fix_pr") or "",
+        "models.ticket": (cfg.get("models") or {}).get("ticket") or "",  # salle de rédaction (2e étage) : son relevé dans le cron live
         "models.review_child": (cfg.get("models") or {}).get("review_child") or "",
         "review.project_id": rv.get("project_id") or (cfg.get("kronn") or {}).get("project_id") or "",
         "review.page_id": rv.get("page_id") or "",  # page de récap des revues, facultative

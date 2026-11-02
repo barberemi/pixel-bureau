@@ -1,6 +1,6 @@
 # Créer un ticket
 
-Un ticket Jira écrit au modèle de ton équipe, sans ouvrir Jira : tu donnes l'intention, l'agent du modèle « créer un ticket » la rédige, tu relis le ticket tel qu'il sera créé, puis le Bureau le crée et son lien revient sur la page.
+Un ou plusieurs tickets Jira écrits au modèle de ton équipe, sans ouvrir Jira : tu donnes l'intention, une chaîne de postes la rédige (recherche, rédaction, critique) et la découpe quand elle touche plusieurs projets, tu relis chaque ticket tel qu'il sera créé, puis le Bureau le crée et son lien revient sur la page. Tout se voit au 2e étage, dans [la salle de rédaction](28-redaction.md).
 
 ![Fiche de l'agent : son dernier ticket créé, puis le formulaire « ▶ Lancer »](../img/creer-ticket.png)
 
@@ -18,20 +18,21 @@ Depuis la **fiche de l'agent** qui incarne le modèle (Karen sur les captures), 
 | Sprint | Backlog (par défaut) ou Sprint suivant : le premier sprint à venir du board, jamais le sprint en cours |
 | Épic ou parent | facultatif (ABC-123) |
 
-« Lancer… » reste grisé tant qu'il manque un champ obligatoire, et tant qu'un ticket est en cours de rédaction ou attend ta validation : jamais deux à la fois. Une fois lancé, le formulaire se vide.
+« Lancer… » reste grisé tant qu'il manque un champ obligatoire, et quand trois intentions sont déjà en cours (trois à la fois au plus). Une fois lancé, le formulaire se vide. Les Story Points sont ceux du ticket, ou le total quand l'intention est découpée : l'IA les répartit.
 
 ## Le relire
 
-L'agent lit le modèle de ticket de l'équipe (`jira.create.template`), regarde au besoin quelques fichiers du dépôt du composant, puis rédige le titre et la description en wiki Jira. Il ne crée rien.
+Trois postes, un agent chacun : 📚 la recherche lit quelques fichiers des dépôts des composants ; ✍ la rédaction écrit le ou les tickets au modèle de l'équipe (`jira.create.template`), titre et description en wiki Jira, un composant et des points chacun, et découpe l'intention qui touche plusieurs projets ou livrables ; 🧐 la critique relit, et renvoie à la rédaction ce qui est à retoucher (trois tours au plus). Personne ne crée rien.
 
 La validation arrive sur sa fiche, avec l'alerte ✋ habituelle : le titre, le type, les points, les composants, le sprint et l'épic, puis la description en texte lisible (titres en ▸, panneaux en │).
 
 ![La validation : le ticket tel qu'il sera créé](../img/creer-ticket-validation.png)
 
-- **✅ Approuver** : le ticket est créé.
-- **⛔ Rejeter** : rien n'est envoyé à Jira. Relance avec une autre intention si besoin.
+Chaque ticket a sa validation (« Ticket 2 sur 3 »), l'un après l'autre :
 
-Pas de « Changements » : un refus ne fait pas réécrire le ticket.
+- **✅ Approuver** : ce ticket est créé.
+- **Changements** : ce ticket est écarté, on passe au suivant.
+- **⛔ Rejeter** : on s'arrête là, plus rien n'est créé.
 
 ## La création
 

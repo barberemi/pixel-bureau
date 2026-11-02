@@ -38,12 +38,15 @@ test('dernier ticket créé : le plus récent run réussi qui a un résultat, av
   assert.equal(J('QB.kids[0].className'), 'relaunch rl-form', 'aucun résultat : pas de bloc');
 });
 
-test('un run en cours ou en attente de validation grise « Lancer… » : jamais deux tickets à la fois', () => {
+test('trois intentions en cours ou en attente de validation grisent « Lancer… » (2e étage : trois à la fois au plus)', () => {
   const {run, J} = setup();
   run(`QC.runs = [qmk('WaitingApproval', 4)]; var QB = qgrab(), QH = qform(QB), QLB = QH.kids.find(k => k.tag === 'button');
     for (const l of QH.kids[0].kids) { const f = l.kids[0]; f.value = f.tag === 'textarea' ? 'Dédoublonner le bloc' : f.tag === 'input' ? '3' : 'Bug'; f.oninput(); }`);
+  assert.equal(J('QLB.disabled'), false, 'une seule en cours : on peut en lancer une autre');
+  run(`QC.runs = [qmk('WaitingApproval', 4), qmk('Running', 3), qmk('Running', 2)]; QB = qgrab(); QH = qform(QB); QLB = QH.kids.find(k => k.tag === 'button');
+    for (const l of QH.kids[0].kids) { const f = l.kids[0]; f.value = f.tag === 'textarea' ? 'Dédoublonner le bloc' : f.tag === 'input' ? '3' : 'Bug'; f.oninput(); }`);
   assert.equal(J('QLB.disabled'), true);
-  assert.match(J('QH.kids.find(k => k.className === "note rl-why").textContent'), /est dessus depuis \d\d:\d\d\.$/);
+  assert.match(J('QH.kids.find(k => k.className === "note rl-why").textContent'), /rédige déjà 3 intentions \(la plus ancienne depuis \d\d:\d\d\)\.$/);
   run(`QC.runs = []; QB = qgrab(); QH = qform(QB); QLB = QH.kids.find(k => k.tag === 'button');
     var QF = QH.kids[0].kids.map(l => l.kids[0]); QF[0].value = 'Dédoublonner'; QF[0].oninput(); QF[1].value = 'Bug'; QF[1].oninput(); QF[2].value = '3'; QF[2].oninput();`);
   assert.equal(J('QLB.disabled'), false);

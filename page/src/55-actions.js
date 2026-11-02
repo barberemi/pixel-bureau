@@ -299,7 +299,8 @@ function launchLine(vars,vals){
 }
 // créer un ticket (#77) : le modèle ticket (CFG.ticket.wf), un seul run à la fois, son dernier ticket créé (run.res, relevés)
 const isTicketWf=wf=>!!(CFG.ticket&&CFG.ticket.wf&&String(wf||'').startsWith(CFG.ticket.wf));
-const ticketBusy=c=>c.runs.find(r=>isTicketWf(r.wf)&&RUN_ACTIVE.includes(r.status)&&r._s<=T)||null;
+// trois intentions en même temps au plus (concurrency_limit du modèle, une copie isolée par run, 2e étage) : la plus ancienne
+const TICKET_MAX=3, ticketBusy=c=>{const l=c.runs.filter(r=>isTicketWf(r.wf)&&RUN_ACTIVE.includes(r.status)&&r._s<=T).sort((a,b)=>a._s-b._s);return l.length>=TICKET_MAX?l[0]:null;};
 const lastTicket=c=>[...c.runs].reverse().find(r=>isTicketWf(r.wf)&&r.res&&r.res.key&&r._e&&r._e<=T)||null;
 function ticketLast(box,c){
   const r=lastTicket(c);if(!r)return;
@@ -324,8 +325,8 @@ function runBlock(side,c){
     const why=document.createElement('div');why.className='note rl-why';
     const sync=()=>{const r=launchLine(vars,vals);
       for(const v of vars){tips[v.name].textContent=r.errs[v.name]||'';}
-      b.disabled=!!(busy||r.missing.length||Object.keys(r.errs).length); // ticket : jamais deux à la fois (doublon)
-      why.textContent=busy?c.name+' est dessus depuis '+hm(busy._s)+'.':r.missing.length?'À remplir : '+r.missing.join(', '):'';return r;};
+      b.disabled=!!(busy||r.missing.length||Object.keys(r.errs).length); // ticket : trois intentions à la fois au plus
+      why.textContent=busy?c.name+' rédige déjà '+TICKET_MAX+' intentions (la plus ancienne depuis '+hm(busy._s)+').':r.missing.length?'À remplir : '+r.missing.join(', '):'';return r;};
     for(const v of vars){
       const l=document.createElement('label');l.innerHTML=esc(v.label||v.name)+(v.required?' <b class="req">*</b>':'');
       let f;
