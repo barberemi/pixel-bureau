@@ -1,7 +1,8 @@
 // ---------- Chercher dans le bureau : une fenêtre, ⌘K (Ctrl+K) ou « / » ----------
-// Tickets et PR de l'équipe, personnes et agents du plan, pages Kronn de l'écran du boss : un champ, des résultats
-// groupés (5 par groupe). ↑ ↓ choisir, ↵ ouvrir (ticket, PR : volet du Mur Kanban ; personne, agent : sa fiche ; page :
-// dans Kronn), ⇧↵ la montrer sur le plan (la personne du ticket, l'auteur de la PR : sa fiche, le plan assombri autour).
+// Tickets et PR de l'équipe, tickets de la chaîne (1er étage), personnes et agents du plan, pages Kronn de l'écran du boss :
+// un champ, des résultats groupés (5 par groupe). ↑ ↓ choisir, ↵ ouvrir (ticket, PR : volet du Mur Kanban ; ticket du 1er :
+// sa fiche à l'étage ; personne, agent : sa fiche ; page : dans Kronn), ⇧↵ la montrer sur le plan (la personne du ticket,
+// l'auteur de la PR : sa fiche, le plan assombri autour).
 // Chaque mot tapé doit se trouver dans la ligne, sans tenir compte des accents ni de la casse.
 const SR_MAX=5;
 let SR_Q='', SR_I=0, SR_ROWS=[];
@@ -14,6 +15,7 @@ function srFind(q){
   return [
     ...tk.filter(o=>srHit(q,o.t.key+' '+o.t.summary)).sort((a,b)=>TORDER.indexOf(a.t.cat)-TORDER.indexOf(b.t.cat))
       .map(o=>({g:'Tickets',k:String(o.t.key).replace(/^[A-Z]+-/,''),txt:o.t.summary,cat:o.t.cat,who:kbCharOf(o.p),go:()=>openTicket(o.t.key)})),
+    ...atSearchRows(q), // 69-atelier-rdc.js : les tickets de la chaîne, au 1er
     ...pr.filter(o=>srHit(q,'#'+o.x.n+' '+o.x.title)).map(o=>({g:'PR',k:'#'+o.x.n,txt:o.x.title,rev:o.x.review,who:kbCharOf(o.p),go:()=>openPr(prId(o.x))})),
     // agents : un groupe par famille (32-familles.js) ; le titre de sa page trouve un agent de page
     ...chars.filter(c=>c.name&&srHit(q,c.name+' '+(c.role||'')+' '+((agentPage(c)||{}).title||''))).map(c=>{const k=famKind(c),pg=k==='page'&&agentPage(c),b=k==='jour'&&agentButtons(c)[0];

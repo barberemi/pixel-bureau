@@ -47,10 +47,19 @@ Sur le 1er étage, le panneau liste les bureaux (ticket, poste en cours, barre d
 
 ![Fiche d'un bureau : le verdict de chaque poste](../img/atelier-fiche.png)
 
+## Depuis le rez-de-chaussée
+
+L'étage se suit aussi sans y monter, comme les agents du RDC. Chaque élément ci-dessous mène à l'étage, sur la fiche du ticket (ou son carton à l'entrepôt, sa palette en panne).
+
+- **Le fil de la journée** raconte la chaîne, à l'heure où c'est arrivé (le rejeu suit) : « 🎫 DM-7854 arrive au 1er étage », « ✋ … t'attend au 1er « ton plan » », « 🔒 Sécurité bloque … : retour au code », « 🧯 … : 🧪 Tests en panne », « 📦 … sort en PR ». Une gate du 1er qui t'attend est en haut, dans « En ce moment », avec depuis quand. Arrivées et sorties passent aussi dans le bandeau défilant du mode TV.
+- **⌘K** trouve un ticket de la chaîne par sa clé, son titre ou son dépôt (« DM-7854 · bureau 3 · 🔒 retour au code »), et un poste trouve les bureaux où il travaille ou qu'il bloque (« sécurité », « code »).
+- **Qui fait quoi** ajoute un bloc « 1er étage » : un poste au travail par bureau (ou la gate qui t'attend, comptée dans « pour toi »), son ticket, son bureau et depuis quand. En mode TV, le même bloc vient sous les agents dans la colonne du RDC.
+- **Les chiffres du haut** ont une 4e tuile, « Le 1er étage » : les bureaux occupés, puis sur une ligne ce qui t'attend, les pannes, les tickets sortis aujourd'hui et la file (le tout au survol). Un clic monte à l'étage.
+
 ## En panne : reprendre là où ça s'est arrêté
 
 Un run de la chaîne qui échoue (un poste qui plante, l'API d'un agent indisponible) reste dans « 🧯 En panne » pendant 24 h, avec le poste où il s'est arrêté. Relance le ticket (▶ Implémenter) : la chaîne reprend là, avec le dossier du ticket et la branche du run en panne. Le plan déjà validé n'est pas redemandé, les lots déjà écrits et les contrôles déjà rendus ne sont pas refaits. Au lancement, « Reprise » vaut « Auto » ; « Reprendre » force la reprise (par exemple un plan seulement relancé jusqu'à la PR), « Repartir de zéro » recommence tout.
 
 ## Données
 
-Le cron `live` lit chaque minute les runs de la chaîne et de ses postes dans l'API Kronn (0 token) et publie le dataset `atelier`. Sans la chaîne installée, ni ses étapes ni les onglets n'existent.
+Le cron `live` lit chaque minute les runs de la chaîne et de ses postes dans l'API Kronn (0 token) et publie le dataset `atelier`, avec les moments des dernières 24 h (arrivée, gate, retour au code, panne, PR ouverte, datés par les étapes des runs) pour le fil du RDC, et le nombre de PR ouvertes depuis minuit. Sans la chaîne installée, ni ses étapes ni les onglets n'existent.

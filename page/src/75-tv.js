@@ -79,7 +79,7 @@ function renderTvWho(){
   if(FLOOR){const h=tvAtelierHtml();if(h!==TVWHO_SIG){TVWHO_SIG=h;box.innerHTML=h;}return;}
   const team=whoCards(T,true), agents=whoCards(T).filter(x=>!x.c.person&&!x.c.visitor&&!x.c.guest);
   const html='<h2>Qui fait quoi</h2>'+team.map(x=>tvWhoCard(x,x.c.name)).join('')+
-    (agents.length?`<h2>Les agents</h2>`+agents.map(x=>tvWhoCard(x,labelText(x.c))).join(''):'')+tvDeparts(); // 62-departs.js
+    (agents.length?`<h2>Les agents</h2>`+agents.map(x=>tvWhoCard(x,labelText(x.c))).join(''):'')+atTvWhoHtml(T)+tvDeparts(); // 69-atelier-rdc.js, 62-departs.js
   if(html!==TVWHO_SIG){TVWHO_SIG=html;box.innerHTML=html;}
 }
 // puce « direct » : anneau du prochain passage du cron live, orange en cas de retard (même calcul que le badge)

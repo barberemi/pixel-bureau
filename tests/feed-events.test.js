@@ -83,7 +83,7 @@ function gateAgent(s, d) {
   run(`chars = [{key: 'dwight', name: 'Dwight', runs: [{run: 'g1', wf_name: 'Revue', status: '${s === 'WaitingApproval' ? s : 'Success'}', _s: ${at('2026-10-01', '10:00')}, _ve: ${at('2026-10-01', '11:00')},
     vars: {jira_ticket_key: 'DM-1'}, steps: [{n: 'publier', k: 'Gate', s: '${s}', at: new Date(${at('2026-10-01', '10:05')}).toISOString(), ms: ${d * M}}]}]},
     {key: 'p_michael', name: 'Michael', person: 'Michael', boss: true}];
-    GATES = []; DUCKS = []; TEAM = {sprint: {name: 'S9', start: new Date(${at('2026-09-18', '09:00')}).toISOString(), end: new Date(${at('2026-10-02', '13:00')}).toISOString()}, people: [], unassigned: []};`);
+    GATES = []; DUCKS = []; ATELIER = null; TEAM = {sprint: {name: 'S9', start: new Date(${at('2026-09-18', '09:00')}).toISOString(), end: new Date(${at('2026-10-02', '13:00')}).toISOString()}, people: [], unassigned: []};`);
 }
 
 test('validation en attente : en haut (« En ce moment »), avec depuis quand ; décidée : ta décision dans le fil', () => {
@@ -132,7 +132,7 @@ test('tes actions : lancements à la main en « Important », commentaires, ques
 });
 
 test('types : chaque événement du fil a le sien ; une pastille éteinte retire ses lignes, et elle est retenue', () => {
-  run(`TEAM = mergedTeam(); refreshAll(); DUCKGAME = null; DUCKS = []; GATES = []; T = DAY0 + 18.5 * 3600e3; FEED_MODE = 'all'; FEED_OFF = new Set(); renderFeed();`);
+  run(`TEAM = mergedTeam(); refreshAll(); DUCKGAME = null; DUCKS = []; GATES = []; ATELIER = null; T = DAY0 + 18.5 * 3600e3; FEED_MODE = 'all'; FEED_OFF = new Set(); renderFeed();`);
   const tys = J(`[...new Set(FEED_ALL.map(e => e.ty))].sort()`);
   assert.deepEqual(tys, ['agents', 'equipe', 'mep', 'pr', 'tickets']);
   assert.equal(J(`FEED_EV.filter(e => !e.ty).length`), 0);

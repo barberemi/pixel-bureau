@@ -1,4 +1,4 @@
-// ---------- bandeau « Qui fait quoi » : une carte par collègue présent et par agent actif ----------
+// ---------- bandeau « Qui fait quoi » : une carte par collègue présent et par agent actif, puis les postes du 1er ----------
 const WHO_ACTIVE=['work','srv','meet','gate','error','mep','ask','party','daily','planning','retro'];
 const WHO_ATTN=['gate','ask','error'];
 const PORTRAIT_URL={};
@@ -77,9 +77,9 @@ function whoCards(t,teamOnly){
 let WHO_SIG='';
 function renderWho(){
   const box=document.getElementById('who'); if(!box||!DATA)return;
-  const cards=whoCards(T);
-  const attn=cards.filter(x=>x.attn).length;
-  const head=`<h2 class="grp" data-who-toggle role="button" tabindex="0" aria-expanded="${!COLLAPSED.who}"><span class="chev">${COLLAPSED.who?'▸':'▾'}</span>Qui fait quoi <span class="cnt">${cards.length}</span>${attn?`<span class="cnt attn">${attn} pour toi</span>`:''}</h2>`;
+  const cards=whoCards(T), up=atWhoRows(T); // 69-atelier-rdc.js : les postes du 1er
+  const attn=cards.filter(x=>x.attn).length+up.filter(x=>x.attn).length;
+  const head=`<h2 class="grp" data-who-toggle role="button" tabindex="0" aria-expanded="${!COLLAPSED.who}"><span class="chev">${COLLAPSED.who?'▸':'▾'}</span>Qui fait quoi <span class="cnt">${cards.length+up.length}</span>${attn?`<span class="cnt attn">${attn} pour toi</span>`:''}</h2>`;
   const body=COLLAPSED.who?'':'<div class="who-grid">'+cards.map(x=>{
     const img=portraitUrl(x.c);
     const tip=[x.what,x.sub,x.tip].filter(Boolean).join('\n');
@@ -87,7 +87,7 @@ function renderWho(){
       `<span class="wp">${img?`<img src="${img}" alt="">`:''}${famBadge(x.c)}</span>`+
       `<span class="wt"><span class="wn">${esc(agentTag(x.c)+x.c.name)}<span class="ws">${esc(shortSt(x.st))}${x.since?' · '+esc(x.since):''}</span></span>`+
       `<span class="ww${x.tone?'':' nt'}">${esc(x.what)}</span>${x.sub?`<span class="wsub">${esc(x.sub)}</span>`:''}</span></button>`;
-  }).join('')+'</div>';
+  }).join('')+'</div>'+atWhoHtml(T);
   const html=head+body;
   if(html===WHO_SIG)return;
   WHO_SIG=html;box.innerHTML=html;
@@ -97,6 +97,7 @@ function renderWho(){
   if(box){
     box.addEventListener('click',e=>{
       if(e.target.closest('[data-who-toggle]')){COLLAPSED.who=!COLLAPSED.who;try{localStorage.setItem('bureau:collapsed',JSON.stringify(COLLAPSED));}catch(err){}renderWho();return;}
+      const u=e.target.closest('[data-at-run]');if(u){atGoto(u.dataset.atRun);return;}
       const b=e.target.closest('[data-who]');if(b)select(b.dataset.who);
     });
     box.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.closest('[data-who-toggle]')){e.preventDefault();e.target.click();}});
