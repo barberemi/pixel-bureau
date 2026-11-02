@@ -1,0 +1,120 @@
+{
+ "kind": "workflow",
+ "key": "support_bilan",
+ "doc": "Bilan du Support : l'historique des demandes du canal et de leurs investigations, postes, gate, projets et catégories (page « Support · bilan »).",
+ "definition": {
+  "name": "Le Bureau · bilan du Support (15 min)",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Cron",
+   "schedule": "11-59/15 @@cron_hours@@ * * 1-5"
+  },
+  "steps": [
+   {
+    "name": "archive",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Les fils du relevé dans l'historique : état, réactions, réponse postée, investigations (support.py, seul à écrire l'historique ; 0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/support.py@@",
+     "archive"
+    ],
+    "exec_timeout_secs": 120
+   },
+   {
+    "name": "releve",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "L'API Kronn : agents de chaque investigation et de ses postes (durée, jetons, coût, modèle), passages à la gate ; un run fini est gardé en cache (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/support_bilan.py@@",
+     "releve"
+    ],
+    "exec_timeout_secs": 300
+   },
+   {
+    "name": "bilan",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Historique et relevé assemblés en dataset : une ligne par demande, fiches des plus récentes, temps de réponse en heures ouvrées (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/support_bilan.py@@",
+     "bilan"
+    ],
+    "exec_timeout_secs": 120
+   },
+   {
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset support_bilan de la page « Support · bilan ».",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@support_bilan.page_id@@",
+     "writes": [
+      {
+       "dataset": "support_bilan",
+       "operation": "replace",
+       "value_from": "steps.bilan.data.stdout"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}
