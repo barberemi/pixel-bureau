@@ -14,6 +14,9 @@ const SP_TODO=new Set(['new','gate','failed','relaunched']);
 // à l'heure du plan (T, rejeu compris) : la gate en attente n'est sûre qu'en direct ; un run pas encore fini à T est en cours
 // (ou à sa gate si l'étape gate est ouverte à T) ; un fil n'est « répondu » qu'à partir de l'heure de la réponse postée
 const spLive=()=>typeof mode==='undefined'||mode==='live';
+// un run d'investigation est celui d'un fil par sa variable message_id, ou par l'id de run que le relevé a noté pour ce fil
+// (t.run.run) : Kronn range désormais les variables d'un run dans un instantané, que les runs du jour n'ont plus
+const spRunOfThread=(r,t)=>!!(r.vars&&r.vars.message_id===t.id||t.run&&t.run.run&&r.run===t.run.run);
 function spRunAt(r,t){
   const act=['Running','Pending','WaitingQuota','WaitingApproval'].includes(r.status);
   if(r.end?ms(r.end)<=t:!act)return r.status; // fini à t (ou fini sans heure de fin connue) : son issue
@@ -25,7 +28,7 @@ function spState(t){
   const g=spLive()&&t.run&&(GATES||[]).find(x=>x.run===t.run.run);
   if(g)return {k:'gate',g};
   if(t.state==='skipped')return {k:'skipped'}; // 🔕 ignoré depuis la console : ne compte plus, même si un vieux run a échoué
-  const runs=((DATA&&DATA.runs)||[]).filter(r=>!r.parent&&r.vars&&r.vars.message_id===t.id&&(!t.run||ms(r.start)>=ms(t.run.at)||r.run===t.run.run)&&ms(r.start)<=T);
+  const runs=((DATA&&DATA.runs)||[]).filter(r=>!r.parent&&spRunOfThread(r,t)&&(!t.run||ms(r.start)>=ms(t.run.at)||r.run===t.run.run)&&ms(r.start)<=T);
   const r=runs.sort((a,b)=>ms(b.start)-ms(a.start))[0];
   const done=t.state==='done'&&(!t.mine||!t.mine.at||ms(t.mine.at)<=T);
   if(r&&!done){const st=spRunAt(r,T);
