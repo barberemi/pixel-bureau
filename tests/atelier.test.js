@@ -330,3 +330,53 @@ test("toutes les scènes du 1er se jouent à toute heure : sans ticket, avec les
   assert.ok(J2('!!atCleanerAt(__cl, __s + 60e3) && SCENE_DEMO.e === __s + AT_CLEAN_DUR'), 'il monte tout de suite');
   p.run('demoEnd(); cleaningVisit = __cv;');
 });
+
+test('le soir, comme au RDC : le boss et ceux qui se promènent ont leur lumière, qui les suit', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
+  p.run(`CFG.atelier = true; FLOOR = 1; ATELIER = {rooms: [${JSON.stringify(room('n', {gate: 'gate_plan', poste: 'gate'}))}], queue: [], pannes: []};`);
+  saturdayNight(p);
+  p.run(`AT_MEM.wander = []; for (let n = 0; n < 40; n++) atWanderTick(atSlots(), n * 100, .1, () => 0);
+    var __sp = [], __so = softSpot; softSpot = (g, x, y, r, a, c) => { __sp.push([Math.round(x), Math.round(y)]); __so(g, x, y, r, a, c); };
+    AT_NIGHT_AT = 0; renderAtelier(1000); AT_NIGHT_AT = 0; __sp = []; renderAtelier(1300); softSpot = __so;`);
+  assert.ok(J2('AT_MEM.wander.length') > 0, 'des agents se promènent');
+  const lit = (x, y) => J2(`__sp.some(([a, b]) => a === ${Math.round(x)} && b === ${Math.round(y)})`);
+  const b = J2('AT_MEM.boss.walk.pos');
+  assert.ok(lit(b.x, b.y - 26), 'le boss, en route vers la porte du bureau qui l\'attend');
+  for (const w of J2('AT_MEM.wander.map(w => w.walk.pos)')) assert.ok(lit(w.x, w.y - 26), 'un promeneur');
+  assert.ok(J2('AT_HITS.some(h => h.kind === "boss")'), 'le boss se clique');
+});
+
+test('le boss a la même fiche qu\'au RDC à l\'étage ; un lien vers le RDC y redescend, le retour revient à l\'atelier', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  p.run(`CFG.atelier = true; ATELIER = atelierDemo(); setFloor(1); var __b = chars.find(c => c.boss), __o = chars.find(c => c.person && !c.boss);
+    var __ds = drawSide, __drawn = []; drawSide = side => __drawn.push(sel);
+    var __hit = atHitAt; atHitAt = () => ({kind: 'boss'}); atelierClick({}); atHitAt = __hit;`);
+  assert.equal(J2('FLOOR'), 1);
+  assert.equal(J2('sel === __b.key'), true, 'clic sur le boss : sa fiche');
+  assert.equal(J2('__drawn[__drawn.length - 1] === __b.key'), true, 'la fiche du RDC, dans le panneau de l\'étage');
+  assert.equal(J2('backLabel(null)'), "L'atelier", '« ← L\'atelier »');
+  p.run('select(__o.key);');
+  assert.equal(J2('FLOOR'), 0, 'un collègue (lien de la fiche) : on redescend au RDC');
+  assert.equal(J2('sel === __o.key && __drawn[__drawn.length - 1] === __o.key'), true, 'et sa fiche s\'ouvre au RDC');
+  p.run('setFloor(1);');
+  assert.equal(J2('sel'), null, 'en montant, la fiche d\'un collègue se ferme');
+  p.run('select(__b.key); setFloor(0); setFloor(1);');
+  assert.equal(J2('sel === __b.key'), true, 'celle du boss reste ouverte, à tous les étages');
+  p.run('goBack();');
+  assert.equal(J2('sel === null && FLOOR === 1'), true, 'retour : l\'atelier');
+  p.run('drawSide = __ds;');
+});
+
+test('au clic sur un agent ou le boss, comme au RDC : le plan s\'assombrit autour de lui, et le halo le suit', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
+  p.run(`CFG.atelier = true; ATELIER = atelierDemo(); FLOOR = 1; sel = null; var __h = [], __sh = selHalo; selHalo = (x, y) => __h.push([x, y]);`);
+  p.run('renderAtelier(1000);');
+  assert.equal(J2('__h.length'), 0, 'personne de choisi : pas de halo');
+  p.run(`AT_PICK = {kind: 'agent', i: 0, k: 'code'}; renderAtelier(1100);`);
+  const home = J2('atHome(0, "code")');
+  assert.deepEqual(J2('__h[0]'), [home.x, home.y - 26], 'l\'agent choisi, à sa place');
+  p.run(`AT_PICK = null; __h = []; select(chars.find(c => c.boss).key); renderAtelier(1200);`);
+  const b = J2('AT_MEM.boss.walk.pos');
+  assert.deepEqual(J2('__h[0]'), [b.x, b.y - 26], 'le boss, là où il est');
+  p.run('selHalo = __sh; select(null);');
+});

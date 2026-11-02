@@ -68,7 +68,8 @@ function atelierTabs(){
 // étages qui existent, de haut en bas
 const floorsOn=()=>[...(atelierOn()?[1]:[]),0,...(caserneOn()?[-1]:[])];
 function setFloor(f){
-  FLOOR=f===1&&atelierOn()?1:f===-1&&caserneOn()?-1:0;ATSEL=null;AT_PICK=null;try{localStorage.setItem('bureau:floor',String(FLOOR));}catch(e){}
+  FLOOR=f===1&&atelierOn()?1:f===-1&&caserneOn()?-1:0;ATSEL=null;AT_PICK=null;if(FLOOR){SEL_BACK=[];if(!(FLOOR===1&&byKey[sel]&&byKey[sel].boss))sel=null;} // au 1er, seul le boss garde sa fiche du RDC (drawAtelierSide) ; à la caserne, aucune
+  try{localStorage.setItem('bureau:floor',String(FLOOR));}catch(e){}
   if(FLOOR){cv.width=AT_W;cv.height=AT_H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(AT_W/AT_H));}
   else{cv.width=W;cv.height=H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(W/H));}
   // pas sizeCanvas() : il redimensionne aussi bg, le décor du RDC cuit une fois, et redimensionner une toile l'efface
@@ -292,7 +293,8 @@ function atWorker(k,x,y,dir,err,name){
 let AT_OFF=null;
 function atLayer(){if(!AT_OFF){AT_OFF=document.createElement('canvas');AT_OFF.width=AT_W;AT_OFF.height=AT_H;}const g=AT_OFF.getContext('2d');g.imageSmoothingEnabled=false;g.clearRect(0,0,AT_W,AT_H);return g;}
 function atDrawInto(g,c,now){const s=ctx;ctx=g;try{drawChar(c,now);}finally{ctx=s;}}
-let AT_HITS=[], AT_PICK=null; // zones cliquables de l'image ; agent, ticket en attente ou panne choisi (sinon ATSEL : un bureau)
+let AT_HITS=[], AT_PICK=null, AT_LIT=[]; // zones cliquables de l'image ; agent, ticket en attente ou panne choisi (sinon ATSEL : un bureau) ;
+// AT_LIT : où sont les personnages qui marchent ou se promènent, et le boss, pour la lumière du soir (atNight)
 const atHit=(kind,x,y,w,h,ref)=>AT_HITS.push({kind,x,y,w,h,...ref});
 // ---------- un bureau ----------
 function atRoom(r,i,now,dt){
@@ -412,6 +414,7 @@ function atBoss(slots,now,dt,people){
   if(!boss){desk();return;}
   const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:b.walk.pos.x,y:b.walk.pos.y},tile:seated?BOSS_SEAT.slice():null,moving:!arrived,pose:'stand',present:true,
     dir:arrived?(target==null?'down':AT_G[target].top?'up':'down'):b.walk.dir,_st:{st:gates.length?'gate':'idle'}});
+  AT_LIT.push(c.pos);atHit('boss',c.pos.x-14,c.pos.y-56,28,58,{});
   if(seated){drawChar(c,now);desk();}
   else{desk();people.push([c,null,false,()=>{if(arrived&&target!=null)atBubble(c.pos.x+44,c.pos.y-30,'✋ '+(slots[target]?slots[target].ticket:''),'#8a5a00');}]);}
   if(seated&&gates.length)atBubble(ox,F-58,'✋ '+gates.length);
@@ -587,12 +590,14 @@ function atWindows(now){
   for(const x of AT_WINDOWS){R(ctx,x*T_+4,T_+4,T_*1.5,20,'#e7e1d3');R(ctx,x*T_+6,T_+6,T_*1.5-4,16,sky);drawStars(x*T_+6,T_+6,T_*1.5-4,16,now);
     themeWindow(x*T_+6,T_+6,T_*1.5-4,16,now,x);R(ctx,x*T_+4+T_*.75,T_+4,2,20,'#e7e1d3');}
 }
-let AT_NIGHT_CV=null, AT_NIGHT_AT=0;
+let AT_NIGHT_CV=null, AT_NIGHT_AT=0, AT_NIGHT_SIG='';
 function atNight(slots,now){
   const d=daylight(T), dark=(1-d.k)*NIGHT_MAX;if(dark<.02)return;
   const W_=AT_W/LQ, H_=AT_H/LQ;
   if(!AT_NIGHT_CV){AT_NIGHT_CV=[lightCanvas(W_,H_),lightCanvas(W_,H_)];}
-  if(now-AT_NIGHT_AT>200||!AT_NIGHT_AT){AT_NIGHT_AT=now;
+  // le masque se refait toutes les 200 ms, comme au RDC ; plus souvent quand quelqu'un marche, pour que sa lumière le suive
+  const sig=AT_LIT.map(q=>Math.round(q.x/4)+','+Math.round(q.y/4)).join(' ');
+  if(now-AT_NIGHT_AT>200||!AT_NIGHT_AT||sig!==AT_NIGHT_SIG&&now-AT_NIGHT_AT>40){AT_NIGHT_AT=now;AT_NIGHT_SIG=sig;
     const tint=mixC([10,14,40],d.morning?[70,40,24]:[66,30,52],d.twi*.7), m=AT_NIGHT_CV[0].getContext('2d');
     m.setTransform(1,0,0,1,0,0);m.globalCompositeOperation='source-over';m.clearRect(0,0,W_,H_);
     m.fillStyle=`rgba(${tint[0]},${tint[1]},${tint[2]},${dark})`;m.fillRect(0,0,W_,H_);
@@ -600,6 +605,7 @@ function atNight(slots,now){
     slots.forEach((r,i)=>{if(!r&&!(AT_MEM.clean&&AT_MEM.clean.stop.i===i))return;const g=AT_G[i];m.fillStyle='rgba(0,0,0,.25)';m.fillRect(g.x0*AT_TS,g.y0*AT_TS,(g.x1-g.x0)*AT_TS,(g.y1-g.y0)*AT_TS);
       for(let x=g.x0+2;x<g.x1;x+=4)for(const y of [g.y0+3,g.y0+7.5])softSpot(m,x*AT_TS,y*AT_TS,2.6*AT_TS,.6);});
     for(const h of AT_HITS)if(h.kind==='agent'||h.kind==='bernard'||h.kind==='cleaner'||h.kind==='pompier')softSpot(m,h.x+14,h.y+30,30,.8);
+    for(const q of AT_LIT)softSpot(m,q.x,q.y-26,30,.8); // comme au RDC (42-light.js) : le boss, et ceux qui marchent, dans leur lumière
     softSpot(m,23*AT_TS,2.6*AT_TS,6*AT_TS,.7); // le grand tableau
     softSpot(m,46*AT_TS-10,AT_HY0*AT_TS+20,40,.5);softSpot(m,1.1*AT_TS,AT_HY1*AT_TS-20,30,.5); // la sortie, la machine à café
     const l=AT_NIGHT_CV[1].getContext('2d');l.clearRect(0,0,W_,H_);l.filter='blur(3px)';l.drawImage(AT_NIGHT_CV[0],0,0);l.filter='none';
@@ -610,7 +616,7 @@ function atNight(slots,now){
 function renderAtelier(now){
   const dt=AT_MEM.last?Math.min(.1,(now-AT_MEM.last)/1000):0;AT_MEM.last=now;
   if(!AT_BG)AT_BG=atBackground();
-  ctx.drawImage(AT_BG,0,0);atWindows(now);AT_HITS=[];
+  ctx.drawImage(AT_BG,0,0);atWindows(now);AT_HITS=[];AT_LIT=[];
   if(AT_MEM.src!==ATELIER){AT_MEM.src=ATELIER;atDiff(now);}
   const slots=atSlots(), d=ATELIER||{}, cl=atCleaner();AT_MEM.clean=cl&&atCleanerAt(cl,T);
   atCorridor(now);
@@ -629,9 +635,16 @@ function renderAtelier(now){
   atBoss(slots,now,dt,people);
   people.push([{pos:{x:0,y:AT_HY0*AT_TS+44}},null,false,()=>{atSofaFront(15*AT_TS,AT_HY0*AT_TS+40);atSofaFront(31*AT_TS,AT_HY0*AT_TS+40);}]); // devant ceux qui y sont assis, derrière ceux qui passent
   people.sort((a,b)=>a[0].pos.y-b[0].pos.y).forEach(([c,d,before,after])=>{if(before&&d)d();if(c.ghost)atGhost(c,now);else drawChar(c,now);if(!before&&d)d();if(after)after();});
+  for(const [c] of people)if(c.name&&!c.ghost)AT_LIT.push(c.pos); // promeneurs, Bernard, l'agent d'entretien, le boss en route
   atNight(slots,now);
   atBoard(slots);
+  const hp=atPickedAt();if(hp)selHalo(hp.x,hp.y-26,AT_W,AT_H); // comme au RDC : le plan s'assombrit autour de celui qu'on a choisi
   atPicked(slots,now);
+}
+// où est celui qu'on a choisi : un agent (à sa place ou en promenade), ou le boss (sa fiche ouverte à l'étage)
+function atPickedAt(){
+  if(AT_PICK&&AT_PICK.kind==='agent'){const w=atWandering(AT_PICK.i,AT_PICK.k);return w?w.walk.pos:atHome(AT_PICK.i,AT_PICK.k);}
+  const b=chars.find(c=>c.boss);return b&&sel===b.key&&AT_MEM.boss?AT_MEM.boss.walk.pos:null;
 }
 // l'agent choisi : un anneau sous ses pieds, et le chemin jusqu'à sa place quand il n'y est pas
 function atPicked(slots,now){
@@ -650,7 +663,8 @@ function atHitAt(e){
   return null;
 }
 function atelierClick(e){
-  const h=atHitAt(e), slots=atSlots();AT_PICK=null;ATSEL=null;
+  const h=atHitAt(e), slots=atSlots();AT_PICK=null;ATSEL=null;sel=null;SEL_BACK=[];
+  if(h&&h.kind==='boss'){const b=chars.find(c=>c.boss);if(b){select(b.key);return;}} // la même fiche qu'au RDC, dans le panneau
   if(h&&h.kind==='agent'){AT_PICK={kind:'agent',i:h.i,k:h.k};ATSEL=slots[h.i]?slots[h.i].run:null;}
   else if(h&&(h.kind==='queue'||h.kind==='panne'))AT_PICK={kind:h.kind,run:h.run};
   else if(h&&h.kind==='room')ATSEL=slots[h.i]?slots[h.i].run:null;
@@ -662,6 +676,7 @@ function atelierHover(e){
   if(h&&h.kind==='agent'){const r=slots[h.i], w=atWandering(h.i,h.k);s=atLabel(h.k)+' · bureau '+(h.i+1)+' · '+(w?'se promène':atStateText(r,h.k));}
   else if(h&&h.kind==='cleaner'&&AT_MEM.clean)s=(atCleaner()||{}).name+' · '+atCleanLabel(AT_MEM.clean);
   else if(h&&h.kind==='pompier')s='Pompier · le poste '+atLabel(h.k)+' du bureau '+(h.i+1)+' est en panne (son sous-workflow a échoué) : il éteint le feu tant que la panne dure';
+  else if(h&&h.kind==='boss')s=((chars.find(c=>c.boss)||{}).name||'Le boss')+' · sa fiche, comme au RDC';
   else if(h&&h.kind==='bernard')s='Bernard · apporte les tickets de l\'entrepôt et emporte ceux qui sortent';
   else if(h&&h.kind==='queue'){const q=((ATELIER&&ATELIER.queue)||[]).find(x=>x.run===h.run);s=q?q.ticket+' · attend un bureau libre':'';}
   else if(h&&h.kind==='panne'){const p=((ATELIER&&ATELIER.pannes)||[]).find(x=>x.run===h.run);s=p?p.ticket+' · en panne à '+atStepName(p.poste):'';}
@@ -708,6 +723,11 @@ function atAgentHtml(pick,slots){
     <div class="mut">Sa place : bureau ${pick.i+1}, ${atSpot(g,pick.k).row===1?'rangée du haut':'rangée du bas'}${w?' (le chemin est tracé sur le plan)':''}.</div>`;
 }
 function drawAtelierSide(side){
+  const boss=chars.find(c=>c.boss);
+  // la fiche du boss, la même qu'au RDC ; un de ses liens qui mène ailleurs (un collègue, un agent, une fiche du RDC) redescend
+  // au RDC, où il s'ouvre ; ses tickets et ses PR ouvrent le Kanban, en fenêtre, à n'importe quel étage
+  if(sel!=null&&!(boss&&sel===boss.key)){setFloor(0);return;}
+  if(sel!=null){drawSide(side);return;}
   const box=document.createElement('div');box.className='atelier';side.appendChild(box);
   const slots=atSlots(), back=()=>box.querySelector('.at-back').addEventListener('click',()=>{ATSEL=null;AT_PICK=null;renderSide(true);});
   if(AT_PICK&&AT_PICK.kind==='agent'){box.innerHTML=atAgentHtml(AT_PICK,slots);back();return;}
