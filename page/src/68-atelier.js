@@ -285,14 +285,39 @@ function atSmoke(x,y,now){for(let k=0;k<4;k++){const t=((now/900)+k/4)%1;ctx.fil
   if(Math.floor(now/120)%3===0)for(let k=0;k<3;k++)R(ctx,x-8+((now/37+k*13)%16),y+2-((now/23+k*7)%10),2,2,'#ffd84a');}
 function atBeacon(x,y,now){const a=now/250;R(ctx,x-6,y-4,12,8,'#5a3a10');ctx.fillStyle='#ff9a1a';ctx.beginPath();ctx.arc(x,y-6,6,0,7);ctx.fill();
   ctx.fillStyle='rgba(255,154,26,.25)';ctx.beginPath();ctx.moveTo(x,y-6);ctx.arc(x,y-6,60,a,a+.6);ctx.fill();ctx.beginPath();ctx.moveTo(x,y-6);ctx.arc(x,y-6,60,a+Math.PI,a+Math.PI+.6);ctx.fill();}
+// l'étage est un chantier : bande jaune et noire au seuil de la sortie, panneau « casque obligatoire », deux plots
+function atChantier(T){
+  const x0=45.55*T, y0=AT_HY0*T+2, y1=AT_HY1*T-2;
+  for(let y=y0,k=0;y<y1;y+=8,k++)R(ctx,x0,y,8,8,k%2?'#1c1c1c':'#f2c200');
+  const sx=43.2*T, sy=AT_HY1*T-30;R(ctx,sx-1,sy+18,2,12,'#6b6f7a');
+  R(ctx,sx-17,sy-2,34,22,'#1c4fa0');R(ctx,sx-16,sy-1,32,20,'#2f6fd6');
+  ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(sx,sy+9,6,Math.PI,0);ctx.fill();R(ctx,sx-8,sy+9,16,2,'#ffffff');
+  atTxt('CASQUE',sx,sy+17,'#ffffff','bold 5px ui-monospace,Menlo,monospace');
+  for(const cx of [40.6*T,41.4*T]){ctx.fillStyle='#ff7a1a';ctx.beginPath();ctx.moveTo(cx-5,AT_HY1*T-4);ctx.lineTo(cx,AT_HY1*T-18);ctx.lineTo(cx+5,AT_HY1*T-4);ctx.fill();
+    R(ctx,cx-3,AT_HY1*T-12,6,2,'#ffffff');R(ctx,cx-7,AT_HY1*T-4,14,2,'#c85a10');}
+}
+// tenue de chantier, dessinée par-dessus le personnage (drawChar, 41-people.js) : casque (jaune, blanc pour la sécurité)
+// et gilet orange à bandes réfléchissantes ; assis à son poste, la tête est plus bas
+const GEAR={chantier:'#f6c419',securite:'#f2f2f2'};
+function drawGear(c){
+  const col=GEAR[c.gear];if(!col)return;
+  const seated=c.pose==='type'&&!c.moving, x=Math.round(c.pos.x), y=Math.round(c.pos.y), dir=c.dir;
+  const top=y-29+(seated?6:0);
+  R(ctx,x-8,top,16,13,'#ff7a1a');if(dir!=='up')R(ctx,x-2,top,4,13,'#3f5a7a');
+  R(ctx,x-8,top+5,16,2,'#e6eef2');R(ctx,x-8,top+9,16,2,'#e6eef2');
+  const hx=x+(dir==='left'?-2:dir==='right'?2:0), hy=y-(seated?36:42), rim=c.gear==='securite'?'#9aa2ac':'#b8860b';
+  ctx.fillStyle=rim;ctx.beginPath();ctx.arc(hx,hy,11,Math.PI,0);ctx.fill();
+  ctx.fillStyle=col;ctx.beginPath();ctx.arc(hx,hy,10,Math.PI,0);ctx.fill();
+  R(ctx,hx-13,hy-1,26,3,col);R(ctx,hx-13,hy+2,26,1,rim);R(ctx,hx-1,hy-10,2,10,'rgba(0,0,0,.18)');R(ctx,hx-6,hy-7,3,4,'rgba(255,255,255,.55)');
+}
 // un agent de l'étage : l'apparence d'un agent du Bureau (un intérimaire en dernier recours), le nom de ce qu'il fait,
-// l'hologramme bleu des agents du quotidien
+// l'hologramme bleu des agents du quotidien, en tenue de chantier (le pompier : casque blanc de la sécurité)
 function atWorker(k,x,y,dir,err,name){
   const all=chars.filter(c=>!c.person&&!c.visitor&&!c.boss&&c.sprite), named=all.filter(c=>!c.temp&&c.sprite!=='temp'), ag=named.length?named:all;
   if(!ag.length)return null;
   const src=ag[k%ag.length];
   return Object.assign(Object.create(Object.getPrototypeOf(src)),src,{key:'at_'+k,name,baseName:name,role:name,temp:false,family:'jour',holo:null,
-    pos:{x,y},tile:null,dir,moving:false,pose:'type',present:true,_st:{st:err?'error':'work'},phase:(x*7+y)%5});
+    pos:{x,y},tile:null,dir,moving:false,pose:'type',present:true,_st:{st:err?'error':'work'},phase:(x*7+y)%5,gear:name==='Pompier'?'securite':'chantier'});
 }
 let AT_OFF=null;
 function atLayer(){if(!AT_OFF){AT_OFF=document.createElement('canvas');AT_OFF.width=AT_W;AT_OFF.height=AT_H;}const g=AT_OFF.getContext('2d');g.imageSmoothingEnabled=false;g.clearRect(0,0,AT_W,AT_H);return g;}
@@ -454,6 +479,7 @@ function atCorridor(now){
   atDoor(46*T,AT_HY0*T);const n=atDelivered();
   atPill('SORTIE'+(n?' · 📦 '+n+' aujourd\'hui':''),46*T-14-(n?62:22),AT_HY0*T+16,n?'#2f7a45':'#5a4636','#fff','bold 9px ui-monospace,Menlo,monospace');
   atPlant(18.9*T,yb);atPlant(27.1*T,yb);
+  atChantier(T);
   if(themeIs('noel')){xmasTreeAt(8.5*T,AT_HY1*T-4,now);}
   if(themeIs('nouvel-an')||themeIs('saint-valentin'))[[9*T,AT_HY0*T+20],[37*T,AT_HY0*T+20]].forEach(([x,y],k)=>balloon(themeIs('nouvel-an')?'🎈':'💗',x,y,now,k));
 }

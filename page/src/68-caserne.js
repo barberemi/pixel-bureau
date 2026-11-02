@@ -31,7 +31,8 @@ let CS_MEM=csMem0(), CS_SEL=null, CS_PICK=null, CS_HITS=[], CS_LIT=[];
 // CS_PICK : le pompier choisi ({b, k}) pour son halo ; CS_LIT : où est le capitaine, pour la lumière du soir (csNight)
 // CS_MEM.arr[b] : l'arrivée en cours de l'équipe de la baie b ; CS_MEM.walk : les pompiers qui repartent (café, barre)
 function csReset(){CS_MEM=csMem0();CS_SEL=null;CS_PICK=null;}
-// pompiers de la caserne : tenue de sapeur-pompier (veste et pantalon marine), visages variés ; le casque se pose par-dessus
+// pompiers de la caserne : des agents, donc des hologrammes bleus comme au RDC et au 1er (csPompier : person false) ; tenue de
+// sapeur-pompier (veste et pantalon marine), visages variés ; le casque se pose par-dessus
 const CS_CREW=[['male','tan','buzzcut','#2a1a10'],['female','pale','bangs_bun','#c08a3a'],['male','dark','plain','#1a1a1a'],['female','light','long','#6b4426'],
   ['male','pale','messy1','#b0652a'],['female','brown','bob','#1a1a1a'],['male','light','spiked','#d9b44a'],['female','tan','curly_short','#3a2414'],['male','brown','balding','#2a1a10']];
 CS_CREW.forEach(([sex,skin,hair,hc],k)=>{RECIPES['cs_pomp'+k]=RECIPES['cs_pomp'+k]||{sex,skin,hair,hair_color:hc,torso:'longsleeve/longsleeve',shirt:'#2b2f45',legs:'pants',legs_color:'#2b2f45',shoes:'#1c1c1c'};});
@@ -180,7 +181,7 @@ function csHelmet(g,x,y,dir,chief){
 }
 // un pompier : s = ok (a travaillé, ✓), run (au travail, halo), err (en panne), wait (attend son tour, gris), idle (de garde)
 function csPompier(k,x,y,s,dir){
-  return {key:'cs_'+k,sprite:'cs_pomp'+(k%CS_CREW.length),name:'Pompier',person:true,pos:{x,y},tile:null,dir:dir||'down',moving:false,pose:'stand',present:true,
+  return {key:'cs_'+k,sprite:'cs_pomp'+(k%CS_CREW.length),name:'Pompier',person:false,family:'jour',pos:{x,y},tile:null,dir:dir||'down',moving:false,pose:'stand',present:true,
     phase:(k*.37)%1,_st:{st:s==='run'?'work':s==='err'?'error':'idle'}};
 }
 function csGrey(c,now,f){ // attend son tour : la silhouette grise, comme au 1er étage (f : fondu à l'arrivée)
