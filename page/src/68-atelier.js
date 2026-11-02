@@ -53,17 +53,21 @@ const atStepName=k=>{const p=AT_POSTES.find(x=>x.k===k);return p?p.i+' '+p.n:AT_
 const atRooms=()=>((ATELIER&&ATELIER.rooms)||[]).slice(0,4);
 // ---------- onglets d'étage ----------
 // RDC (l'open space, par défaut), 1er (l'atelier, s'il existe), -1 (la caserne Support, si la console Support existe)
-function atelierTabs(){
+function atelierTabs(){ // le gyrophare du -1 suit csAlarm à chaque relevé
   let t=document.getElementById('floors');
   if(!atelierOn()&&!caserneOn()){if(t)t.remove();return;}
   if(!t){t=document.createElement('div');t.id='floors';t.className='floors';t.setAttribute('role','tablist');
     const w=document.querySelector('.stage .cv-wrap');w.parentElement.insertBefore(t,w);
     t.addEventListener('click',e=>{const b=e.target.closest('button[data-floor]');if(b)setFloor(+b.dataset.floor);});}
+  const h=floorTabsHtml();
+  if(t.dataset.sig!==h)t.innerHTML=t.dataset.sig=h;
+}
+function floorTabsHtml(){
   const tab=(f,label)=>`<button role="tab" data-floor="${f}" aria-selected="${FLOOR===f}"${FLOOR===f?' class="on"':''}>${label}</button>`;
   const n=atRooms().length, w=atRooms().filter(r=>r.gate).length, cs=caserneOn()?csActive():[], cg=cs.filter(x=>x.s.k==='gate').length;
-  const h=tab(0,'🏢 RDC · open space')+(atelierOn()?tab(1,`🏭 1er · atelier d'implémentation${n?` <b>${n}</b>`:''}${w?` <b>✋ ${w}</b>`:''}`):'')+
-    (caserneOn()?tab(-1,`🚒 -1 · caserne Support${cs.length?` <b>${cs.length}</b>`:''}${cg?` <b>✋ ${cg}</b>`:''}`):'');
-  if(t.dataset.sig!==h)t.innerHTML=t.dataset.sig=h;
+  // dans l'ordre des étages, comme les boutons d'un ascenseur : -1, RDC, 1er ; le gyrophare du -1 tourne tant qu'un appel attend ou qu'une intervention est en cours (csAlarm)
+  return (caserneOn()?tab(-1,`${csAlarm()?'<span class="gyro" role="img" aria-label="à traiter"></span>':''}🚒 -1 · caserne Support${cs.length?` <b>${cs.length}</b>`:''}${cg?` <b>✋ ${cg}</b>`:''}`):'')+
+    tab(0,'🏢 RDC · open space')+(atelierOn()?tab(1,`🏭 1er · atelier d'implémentation${n?` <b>${n}</b>`:''}${w?` <b>✋ ${w}</b>`:''}`):'');
 }
 // étages qui existent, de haut en bas
 const floorsOn=()=>[...(atelierOn()?[1]:[]),0,...(caserneOn()?[-1]:[])];
