@@ -12,7 +12,7 @@ const CS_POSTES=[{k:'tri',i:'🏷',n:'Tri'},{k:'logs',i:'🔎',n:'Logs'},{k:'cau
   {k:'relecture',i:'🧐',n:'Relecture'},{k:'gate',i:'✋',n:'Toi',gate:true},{k:'post',i:'📣',n:'Teams'}];
 const CS_ST={ok:['ok','a travaillé'],run:['run','au travail'],err:['err','en panne'],gate:['wait','t\'attend'],wait:['','attend son tour']};
 const CS_BAYS=3, CS_BX=[1,12.25,23.5], CS_BW=10.25, CS_DY0=3.1, CS_DY1=10.1, CS_Z0=10.8, CS_Z1=20.7, CS_R1=14.3, CS_R2=18.7;
-const CS_DESK={x:17*AT_TS,y:24.4*AT_TS}, CS_POLE={x:43.6*AT_TS,y0:9*AT_TS,y1:13.4*AT_TS}, CS_TABLE={x:39*AT_TS,y:16*AT_TS};
+const CS_DESK={x:17*AT_TS,y:24.6*AT_TS}, CS_POLE={x:43.6*AT_TS,y0:9*AT_TS,y1:13.4*AT_TS}, CS_TABLE={x:39*AT_TS,y:16*AT_TS};
 const CS_DEP_MS=8e3; // le départ d'un camion : gyrophares, sortie par la baie, rideau qui se referme
 const caserneOn=()=>supportOn();
 // les postes de l'investigation (sous-workflows support_*, CFG.support.postes_wf) : leurs runs ne passent pas au RDC
@@ -218,31 +218,59 @@ function csGuard(now,people){ // la garde : aux cartes le jour, sur les lits de 
   csPole();atDoor(46*T,AT_HY0*T);
   csLate(people,()=>atPill('⬆ RDC · 1er',46*T-48,AT_HY0*T+16,'#5a4636','#fff','bold 9px ui-monospace,Menlo,monospace'),AT_HY0*T);
 }
-// ---------- le capitaine (le boss) : à son poste de commandement, à la vanne quand une réponse attend sa validation ----------
+// ---------- le capitaine (le boss) : à son bureau de chef de centre, à la vanne quand une réponse attend sa validation ----------
+// Vu de face derrière son bureau (comme le boss au 1er) : plaque « CHEF DE CENTRE », fauteuil rouge, radio, casque posé, corbeille
+// d'appels ; à côté, le tableau de garde sur pied, un voyant par baie. Le meuble est agrandi (CS_K) ; le capitaine reste à
+// l'échelle des autres personnages. CS_DESK : ses pieds à son poste.
+const CS_K=1.75, CS_KB=1.35, CS_BACK=16; // échelle du bureau, du tableau de garde ; le capitaine se tient CS_BACK px derrière le bureau
 const csCaptainSprite=b=>b&&b.captain_sprite&&(SPR[b.captain_sprite]||RECIPES[b.captain_sprite])?b.captain_sprite:null;
+function csBayCol(slots,b,now){const s=slots[b];if(!s)return '#3d4250';if(s.dep)return '#3fbf6a';const k=s.s.k;
+  return k==='gate'?(REDUCED_MOTION||Math.floor(now/450)%2?'#ffcf4a':'#a37a10'):k==='failed'?'#e0614f':'#5b8def';}
+function csDesk(slots,now,calls,open){ // le bureau, devant le capitaine : dessiné après lui
+  const {x,y:F}=CS_DESK, K=CS_K, q=(dx,dy,w,h,c)=>R(ctx,Math.round(x+dx*K),Math.round(F+dy*K),Math.round(w*K),Math.round(h*K),c);
+  q(-56,-12,112,24,'#6e4a2c');q(-56,-14,112,4,'#8a6040');q(-56,8,112,6,'#56391f');q(-56,14,112,3,'rgba(0,0,0,.2)');
+  q(-52,17,4,6,'#3e2a18');q(48,17,4,6,'#3e2a18'); // les pieds
+  q(-32,-6,64,11,'#2a2a30');q(-31,-5,62,1,'#4a4a52'); // la plaque
+  ctx.font='bold '+Math.round(7*K)+'px ui-monospace,Menlo,monospace';ctx.fillStyle='#f2d22a';ctx.textAlign='center';ctx.fillText('CHEF DE CENTRE',x,Math.round(F+3*K));ctx.textAlign='left';
+  q(-54,-22,26,8,'#a0703f');q(-54,-22,26,2,'#b98552'); // la corbeille d'appels
+  for(let k=0;k<Math.min(4,calls.length);k++)q(-52+k*5,-20-8-k*2,18,9,'#c8323a');
+  ctx.fillStyle='#c9cfd6';ctx.beginPath();ctx.arc(x+40*K,F-14*K,8*K,Math.PI,0);ctx.fill();q(30,-15,20,3,'#2a2a30');q(33,-19,14,2,'#f2d22a'); // le casque posé
+  q(16,-14-12,8,12,'#1c1c1c');q(18,-14-17,1.5,5,'#1c1c1c'); // la radio
+  ctx.fillStyle=open?'#7dffb0':'#3d4250';ctx.beginPath();ctx.arc(x+20*K,F-19*K,1.8*K,0,7);ctx.fill();
+}
+function csGarde(slots,now){ // le tableau de garde sur pied, à droite du bureau : un voyant par baie
+  const K=CS_KB, bx=CS_DESK.x+5.6*AT_TS, base=CS_DESK.y+10, q=(dx,dy,w,h,c)=>R(ctx,Math.round(bx+dx*K),Math.round(base+dy*K),Math.round(w*K),Math.round(h*K),c);
+  q(-28,-24,3,24,'#6a655c');q(25,-24,3,24,'#6a655c'); // les pieds
+  q(-34,-73,68,46,'#e9e4d8');q(-34,-73,68,3,'#8a8478');q(-34,-27,68,3,'#8a8478');
+  ctx.font='bold '+Math.round(8*K)+'px ui-monospace,Menlo,monospace';ctx.fillStyle='#5a3a2a';ctx.textAlign='center';ctx.fillText('GARDE',bx,Math.round(base-61*K));ctx.textAlign='left';
+  for(let b=0;b<3;b++){q(-28,-55+b*9,7,6,csBayCol(slots,b,now));q(-17,-53+b*9,30+(b*11)%18,3,'#b9b2a4');}
+  atHitCs('garde',Math.round(bx-34*K),Math.round(base-73*K),Math.round(68*K),Math.round(73*K),{});
+}
 function csCaptain(slots,now,dt,people){
-  const T=AT_TS, boss=chars.find(c=>c.boss), d=CS_DESK, open=atOpen();
-  R(ctx,d.x-1.8*T,d.y-.2*T,3.6*T,22,'#6e4a2c');R(ctx,d.x-1.8*T,d.y-.2*T,3.6*T,3,'#8a6040');R(ctx,d.x-1.8*T,d.y+.2*T+14,3.6*T,10,'#56391f');
-  R(ctx,d.x+30,d.y-.2*T-18,14,18,'#1c1c1c');R(ctx,d.x+33,d.y-.2*T-28,2,10,'#1c1c1c');ctx.fillStyle=open?'#7dffb0':'#3d4250';ctx.beginPath();ctx.arc(d.x+37,d.y-.2*T-8,3,0,7);ctx.fill(); // la radio
-  const calls=csCalls();R(ctx,d.x-3.6*T,d.y-.1*T,2*T,18,'#a0703f');R(ctx,d.x-3.6*T,d.y-.1*T,2*T,3,'#b98552');
-  for(let k=0;k<Math.min(4,calls.length);k++)R(ctx,d.x-3.4*T+k*12,d.y-.1*T-10-k*2,24,12,'#c8323a');
-  csLate(people,()=>{atPill('📥 '+(calls.length?plural(calls.length,'appel','appels'):'aucun appel'),d.x-2.6*T,d.y+1.3*T,calls.length?'#8a1f17':'#5b6070','#fff','bold 9px system-ui,sans-serif');
-    const n=csDoneToday();atPill('🧯 '+(n?plural(n,'feu éteint','feux éteints')+' aujourd\'hui':'aucun feu aujourd\'hui'),d.x+3.6*T,d.y+1.3*T,n?'#2f7a45':'#5b6070','#fff','bold 9px system-ui,sans-serif');},d.y+1.4*T);
-  atHitCs('calls',d.x-3.8*T,d.y-1*T,2.4*T,2.4*T,{});
+  const T=AT_TS, boss=chars.find(c=>c.boss), d=CS_DESK, F=d.y, K=CS_K, open=atOpen(), calls=csCalls();
+  csGarde(slots,now);
+  if(boss){const cx=d.x, f=F-CS_BACK;R(ctx,cx-20,f-50,40,34,'#5a2e2e');R(ctx,cx-20,f-50,40,4,'#723a3a');R(ctx,cx-25,f-32,6,20,'#4a2424');R(ctx,cx+19,f-32,6,20,'#4a2424'); // le fauteuil
+    R(ctx,cx-25,f-32,6,2,'#6a3434');R(ctx,cx+19,f-32,6,2,'#6a3434');}
+  csLate(people,()=>csDesk(slots,now,calls,open),F+2);
+  csLate(people,()=>{atPill('📥 '+(calls.length?plural(calls.length,'appel','appels'):'aucun appel'),d.x-4.4*T,F+1.55*T,calls.length?'#8a1f17':'#5b6070','#fff','bold 9px system-ui,sans-serif');
+    const n=csDoneToday();atPill('🧯 '+(n?plural(n,'feu éteint','feux éteints')+' aujourd\'hui':'aucun feu aujourd\'hui'),d.x+4.6*T,F+1.55*T,n?'#2f7a45':'#5b6070','#fff','bold 9px system-ui,sans-serif');},F+1.6*T);
+  atHitCs('calls',Math.round(d.x-56*K),Math.round(F-30*K),Math.round(30*K),Math.round(18*K),{});
   if(!boss)return; // le soir et le week-end, il reste, comme le boss au 1er (sous l'éclairage réduit)
-  const gi=slots.findIndex(s=>s&&!s.dep&&s.s.k==='gate'), home={x:d.x,y:d.y-.25*T}, target=gi<0?null:gi;
+  const gi=slots.findIndex(s=>s&&!s.dep&&s.s.k==='gate'), home={x:d.x,y:F-CS_BACK}, target=gi<0?null:gi;
   let m=CS_MEM.boss;
+  // vers la vanne : il remonte derrière son bureau, longe les baies, puis descend à la vanne
   const path=i=>{const z=CS_G[i], v=z.pts[5];return [{x:m?m.walk.pos.x:home.x,y:m?m.walk.pos.y:home.y},{x:m?m.walk.pos.x:home.x,y:(CS_Z1+.9)*T},{x:v.x,y:(CS_Z1+.9)*T},{x:v.x,y:v.y}];};
   if(!m||REDUCED_MOTION&&m.target!==target){m=CS_MEM.boss={target,walk:atWalker([target==null?home:CS_G[target].pts[5]])};}
   if(m.target!==target){m.target=target;m.walk=atWalker(target==null?[{...m.walk.pos},{x:m.walk.pos.x,y:(CS_Z1+.9)*T},{x:home.x,y:(CS_Z1+.9)*T},home]:path(target),90);}
-  const arrived=atStep(m.walk,dt), p=m.walk.pos, dir=arrived?(target==null?'up':'down'):m.walk.dir;
+  const arrived=atStep(m.walk,dt), p=m.walk.pos, dir=arrived?'down':m.walk.dir, home_=arrived&&target==null;
   // son dessin de capitaine : captain_sprite de la personne du boss (roster du pack) s'il est réglé et embarqué, sinon le sien
   // avec le casque du chef ; il garde son nom, sa fiche et son rôle
   const look=csCaptainSprite(boss);
   const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:p.x,y:p.y},tile:null,dir,moving:!arrived,pose:'stand',present:true,_st:{st:target==null?'idle':'gate'},sprite:look||boss.sprite});
   people.push([c,null,false,()=>{if(!look)csHelmet(ctx,p.x,p.y,dir,true);
-    atPill(boss.name+' · capitaine',p.x,p.y+16,'#8a1f17','#fff','bold 10px system-ui,sans-serif');
+    if(!home_)atPill(boss.name+' · capitaine',p.x,p.y+16,'#8a1f17','#fff','bold 10px system-ui,sans-serif');
     if(arrived&&target!=null)atBubble(p.x,p.y-66,'✋ j\'ouvre la vanne ?','#8a5a00');}]);
+  if(home_)csLate(people,()=>atPill(boss.name+' · capitaine',p.x,Math.round(F+17*K+12),'#8a1f17','#fff','bold 10px system-ui,sans-serif'),F+3); // sous le bureau
   CS_LIT.push(p);atHitCs('captain',p.x-16,p.y-56,32,60,{});
 }
 // ---------- nuit : hors des heures de bureau, la caserne passe en veilleuse ----------
@@ -307,7 +335,8 @@ function caserneHover(e){
   else if(h&&h.kind==='captain')s=(chars.find(c=>c.boss)||{}).name+' · capitaine : ouvre la vanne (✋) quand une réponse attend sa validation ; clic : sa fiche, comme au RDC';
   else if(h&&h.kind==='calls'){const n=csCalls().length;s=n?plural(n,'appel','appels')+' à prendre : clic pour les voir':'Aucun appel à prendre';}
   else if(h&&h.kind==='board')s='Le tableau des interventions';
-  cv.style.cursor=h&&h.kind!=='pole'&&h.kind!=='guard'&&h.kind!=='board'?'pointer':'default';
+  else if(h&&h.kind==='garde')s='Le tableau de garde : un voyant par baie (bleu : au travail, jaune : t\'attend, rouge : en panne, vert : en route)';
+  cv.style.cursor=h&&h.kind!=='pole'&&h.kind!=='guard'&&h.kind!=='board'&&h.kind!=='garde'?'pointer':'default';
   if(s){tip.style.display='block';tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px';tip.textContent=s;}else tip.style.display='none';
 }
 // ---------- panneau : les baies, les appels, la fiche d'une intervention ----------
