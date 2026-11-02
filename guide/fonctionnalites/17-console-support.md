@@ -80,6 +80,8 @@ L'investigation est une chaîne de postes, un agent chacun, tous dans la discuss
 4. **✉ Réponse** : la réponse au format du fil (une ligne par section, « 🔎 Cause : … »).
 5. **🧐 Relecture** : exacte, utile, claire, au format ; « revoir » la renvoie au poste ✉ avec ses remarques, deux fois au plus.
 
+Le 🏷 Tri donne aussi une catégorie (réglage `support.categories`) et dit si la demande est déjà traitée ; le 🧩 Cause dit si la cause est établie ou supposée, et propose une piste de fond (ce qui éviterait que ça se reproduise). Ces lignes alimentent la page [« Support · bilan »](26-support-bilan.md).
+
 Puis ta validation (✋) et la réponse en fil (📣). Chaque poste a son modèle : léger pour le tri et la relecture, standard pour les logs, la cause et la réponse ; le réglage `support.postes.<poste>` du pack ou de la config (`agent`, `tier`, `model`, `skills`) les change. Les postes sont des sous-workflows (« Le Bureau · support · 🏷 tri »…) : leurs runs ne passent pas au RDC, ils travaillent à la caserne.
 
 ## Mise en place

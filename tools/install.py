@@ -25,8 +25,7 @@ OFFICE = [("dwight", "Dwight"), ("jim", "Jim"), ("stanley", "Stanley"), ("phylli
 ROLES = {"dev": ("Développeur", None), "lead": ("Tech Lead", "lead"), "qa": ("Testeur", "qa"), "po": ("Product owner", "po"),
          "sm": ("Facilitateur", "sm")}
 DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "agents", "bosspages", "pagelist", "gitfut", "layout", "actions", "duck", "absences", "mails", "mail_rules", "support", "todos", "atelier"]
-CRONS = ("office", "live", "team", "payroll", "canard", "absences", "courrier", "support_poll", "chaine_bilan")
-BILAN_TITLE, BILAN_DATASETS = "Chaîne · bilan", ["bilan"]  # page Kronn du bilan de la chaîne d'implémentation
+CRONS = ("office", "live", "team", "payroll", "canard", "absences", "courrier", "support_poll", "chaine_bilan", "support_bilan")
 DATASET = lambda name: {"name": name, "kind": "snapshot", "max_points": 50000}  # noqa: E731
 
 
@@ -774,35 +773,45 @@ def upsert_page(k, cfg, title, dry):
     return p["id"]
 
 
-def bilan_html():
-    """La page « Chaîne · bilan » (page/bilan.html, autonome : ni assemblage ni donnée de démo)."""
-    with open(os.path.join(ROOT, "page", "bilan.html"), encoding="utf-8") as f:
+def side_html(key):
+    """Une page à part (templates.SIDE_PAGES : page/<fichier>, autonome, ni assemblage ni donnée de démo)."""
+    with open(os.path.join(ROOT, "page", templates.SIDE_PAGES[key][2]), encoding="utf-8") as f:
         return f.read()
 
 
-def upsert_bilan_page(k, cfg, dry):
-    """La page « Chaîne · bilan » quand la chaîne d'implémentation est installée : créée une fois (bilan_page_id), son
-    dataset ajouté s'il manque. Son HTML est publié avec la page du Bureau (install.py, publish.py page)."""
-    pid = cfg.get("bilan_page_id")
+def bilan_html():
+    return side_html("bilan_page_id")
+
+
+def upsert_side_page(k, cfg, key, dry):
+    """Une page à part (« Chaîne · bilan », « Support · bilan ») : créée une fois (son id dans cfg[key]), ses datasets
+    ajoutés s'ils manquent. Son HTML est publié avec la page du Bureau (install.py, publish.py page)."""
+    title, datasets, _ = templates.SIDE_PAGES[key]
+    pid = cfg.get(key)
     if pid:
         try:
             page = k.get(f"/pages/{pid}")
             have = {d.get("name") for d in page.get("datasets") or []}
-            for n in BILAN_DATASETS:
+            for n in datasets:
                 if n not in have and not dry:
                     k.call("POST", f"/pages/{pid}/datasets", DATASET(n))
             return pid
         except InstallError:
-            say("(i) la page « Chaîne · bilan » de la config n'existe plus : nouvelle page")
+            say(f"(i) la page « {title} » de la config n'existe plus : nouvelle page")
     if dry:
-        return "00000000-0000-0000-0000-0000000000b1"
+        return "00000000-0000-0000-0000-0000000000b" + str(list(templates.SIDE_PAGES).index(key) + 1)
     try:
-        p = k.call("POST", "/pages", {"title": BILAN_TITLE, "html": bilan_html(), "datasets": [DATASET(n) for n in BILAN_DATASETS]})
+        p = k.call("POST", "/pages", {"title": title, "html": side_html(key), "datasets": [DATASET(n) for n in datasets]})
     except InstallError as e:
-        say(f"(!) page « {BILAN_TITLE} » non créée : {e}")
+        say(f"(!) page « {title} » non créée : {e}")
         return None
-    say(f"✓ page « {BILAN_TITLE} » créée {p['id'][:8]} (à projeter depuis « Mes pages Kronn »)")
+    say(f"✓ page « {title} » créée {p['id'][:8]} (à projeter depuis « Mes pages Kronn »)")
     return p["id"]
+
+
+def upsert_bilan_page(k, cfg, dry):
+    """La page « Chaîne · bilan », quand la chaîne d'implémentation est installée."""
+    return upsert_side_page(k, cfg, "bilan_page_id", dry)
 
 
 def upsert_all(k, cfg, tpls, enabled, dry):
@@ -965,10 +974,12 @@ def main(argv=None):
     title = a.title or defaults["page_title"]
     cfg["page_id"] = upsert_page(k, cfg, title, a.dry_run)
     chosen = models(ask, cfg, old)  # modèles d'agents (#78) : seulement ceux acceptés
-    if "impl_chain" in chosen and not templates.skipped("impl_chain", cfg):  # avant les workflows : le cron du bilan publie dans cette page
-        bid = upsert_bilan_page(k, cfg, a.dry_run)
-        if bid:
-            cfg["bilan_page_id"] = bid
+    # pages à part, avant les workflows : le cron de chaque bilan publie dans sa page
+    for model, key in (("impl_chain", "bilan_page_id"), ("support", "support_bilan_page_id")):
+        if model in chosen and not templates.skipped(model, cfg):
+            bid = upsert_side_page(k, cfg, key, a.dry_run)
+            if bid:
+                cfg[key] = bid
     upsert_all(k, cfg, {key: t for key, t in tpls.items() if templates.TEMPLATES[key][1][0] != "models" or key in chosen},
                not a.disabled, a.dry_run)
     # réponses gardées pour la relance, jamais un mot de passe (comptes IMAP : il est au trousseau)
@@ -997,9 +1008,10 @@ def main(argv=None):
     html = assemble.publishable(cfg)  # trop lourde : PageTooBig, Kronn la refuserait
     k.call("PUT", f"/pages/{cfg['page_id']}/html", {"html": html})
     say(f"✓ page publiée ({len(html.encode()) // 1024} Ko)")
-    if cfg.get("bilan_page_id"):
-        k.call("PUT", f"/pages/{cfg['bilan_page_id']}/html", {"html": bilan_html()})
-        say(f"✓ page « {BILAN_TITLE} » publiée")
+    for key, (title, _, _f) in templates.SIDE_PAGES.items():
+        if cfg.get(key):
+            k.call("PUT", f"/pages/{cfg[key]}/html", {"html": side_html(key)})
+            say(f"✓ page « {title} » publiée")
     if not a.no_run and not a.disabled:
         for key in CRONS:
             wid = cfg["workflows"].get(key)
