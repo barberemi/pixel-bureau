@@ -54,7 +54,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Relit le message dans le relevé, ouvre la discussion Kronn de l'investigation (même discussion à chaque tour : state.disc) et rédige la consigne de l'agent (0 token).",
+    "description": "Relit le message dans le relevé, ouvre la discussion Kronn de l'investigation (state.disc, la même pour tous les postes) et pose le dossier du message : la demande et ton commentaire (0 token).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -129,35 +129,103 @@
     }
    },
    {
+    "name": "tri",
     "agent": "ClaudeCode",
-    "prompt_template": "{{steps.open.data.stdout}}",
     "mode": {
      "type": "Normal"
     },
     "output_format": {
      "type": "FreeText"
     },
-    "name": "investigate",
     "step_type": {
-     "type": "Agent"
+     "type": "SubWorkflow"
     },
-    "description": "L'agent Support investigue dans la discussion de l'investigation et rédige la réponse ; « changements » à la gate le relance ici, ton commentaire en tête. Outils : lecture du code (Read, Grep, Glob, Bash), sa discussion (en notes) et les tickets Jira cités (api_call, en lecture) ; aucun agent en arrière-plan.",
-    "room_id": "{{state.disc}}",
-    "agent_settings": {
-     "tools": {
-      "cli": [
-       "Read",
-       "Grep",
-       "Glob",
-       "Bash"
-      ],
-      "kronn_internal": [
-       "disc_append",
-       "disc_get_message",
-       "disc_meta",
-       "api_call"
-      ]
-     }
+    "description": "Poste 🏷 tri (sous-workflow, un agent) : il lit le dossier du message et y range son rapport.",
+    "sub_workflow_id": "@@models.support_tri@@",
+    "sub_workflow_variables": {
+     "message_id": "{{message_id}}",
+     "retours": "{{state.last_human_feedback ?? \"\"}}",
+     "disc": "{{state.disc ?? \"\"}}"
+    }
+   },
+   {
+    "name": "logs",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Poste 🔎 logs (sous-workflow, un agent) : il lit le dossier du message et y range son rapport.",
+    "sub_workflow_id": "@@models.support_logs@@",
+    "sub_workflow_variables": {
+     "message_id": "{{message_id}}",
+     "retours": "{{state.last_human_feedback ?? \"\"}}",
+     "disc": "{{state.disc ?? \"\"}}"
+    }
+   },
+   {
+    "name": "cause",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Poste 🧩 cause (sous-workflow, un agent) : il lit le dossier du message et y range son rapport.",
+    "sub_workflow_id": "@@models.support_cause@@",
+    "sub_workflow_variables": {
+     "message_id": "{{message_id}}",
+     "retours": "{{state.last_human_feedback ?? \"\"}}",
+     "disc": "{{state.disc ?? \"\"}}"
+    }
+   },
+   {
+    "name": "reponse",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Poste ✉ réponse (sous-workflow, un agent) : il lit le dossier du message et y range son rapport. « Changements » à la gate reprend ici, ton commentaire en tête du dossier.",
+    "sub_workflow_id": "@@models.support_reponse@@",
+    "sub_workflow_variables": {
+     "message_id": "{{message_id}}",
+     "retours": "{{state.last_human_feedback ?? \"\"}}",
+     "disc": "{{state.disc ?? \"\"}}"
+    }
+   },
+   {
+    "name": "relecture",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "SubWorkflow"
+    },
+    "description": "Poste 🧐 relecture (sous-workflow, un agent) : il lit le dossier du message et y range son rapport.",
+    "sub_workflow_id": "@@models.support_relecture@@",
+    "sub_workflow_variables": {
+     "message_id": "{{message_id}}",
+     "retours": "{{state.last_human_feedback ?? \"\"}}",
+     "disc": "{{state.disc ?? \"\"}}"
     }
    },
    {
@@ -173,22 +241,23 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "La réponse au format (une ligne par section), numérotée (version). Sans section « emoji Libellé : … » (l'agent a rendu des notes d'avancement) : retour à l'agent.",
+    "description": "La réponse du poste ✉ au format, numérotée (version). La relecture qui dit « revoir », ou une réponse sans section « emoji Libellé : … », la renvoie au poste ✉ (2 fois au plus, puis elle part à ta validation avec les remarques restées).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
      "@@script:workflows/support.py@@",
      "draft",
-     "{{run.id}}"
+     "{{run.id}}",
+     "{{message_id}}"
     ],
     "exec_timeout_secs": 30,
-    "exec_stdin": "{{steps.investigate.output}}",
     "on_result": [
      {
       "contains": "exit_3",
       "action": {
        "type": "Goto",
-       "step_name": "investigate"
+       "step_name": "reponse",
+       "max_iterations": 4
       }
      }
     ]
@@ -268,8 +337,8 @@
      "type": "Gate"
     },
     "description": "La réponse telle qu'elle sera postée en fil.",
-    "gate_message": "{{steps.draft.data.stdout}}\n\n---\nRéponse proposée pour le fil Teams, postée sous ton nom avec la mention « Généré de manière automatique 🤖 ». **Approuver** : postée en fil. **Changements** : ton commentaire repart à l'agent, dans la même discussion. **Rejeter** : rien n'est posté, le fil passe « ignoré ».",
-    "gate_request_changes_target": "investigate"
+    "gate_message": "{{steps.draft.data.stdout}}\n\n---\nRéponse proposée pour le fil Teams, postée sous ton nom avec la mention « Généré de manière automatique 🤖 ». **Approuver** : postée en fil. **Changements** : ton commentaire repart au poste ✉ Réponse (puis à la relecture), dans la même discussion. **Rejeter** : rien n'est posté, le fil passe « ignoré ».",
+    "gate_request_changes_target": "reponse"
    },
    {
     "agent": "ClaudeCode",
@@ -370,7 +439,7 @@
   "concurrency_limit": null,
   "guards": {
    "timeout_seconds": 86400,
-   "max_llm_calls": 12,
+   "max_llm_calls": 40,
    "loop_detection_max_revisits": 50
   },
   "exec_allowlist": [

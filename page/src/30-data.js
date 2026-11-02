@@ -257,6 +257,7 @@ function setData(d,live){
   let tempN=0; DISC_BY_RUN={};
   DAY0=parisMidnight(ms(d.generated_at));
   const atIds=atelierRunIds(d.runs);if(atIds.size){AT_RUNS=d.runs.filter(r=>atIds.has(r.run));d.runs=d.runs.filter(r=>!atIds.has(r.run));} // 68-atelier.js : au 1er étage
+  d.runs=d.runs.filter(r=>!csWf(r.wf)); // 68-caserne.js : les postes de l'investigation Support travaillent à la caserne, pas au RDC
   for(const r of d.runs){
     r._s=ms(r.start); r._e=ms(r.end);
     const realEnd=r._e||null;

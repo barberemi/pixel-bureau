@@ -240,7 +240,10 @@ def support_page(cfg):
     s = cfg.get("support") or {}
     if not (s.get("team") and s.get("channel")):
         return None
-    return {"name": s.get("name") or "Support", "wf": str((cfg.get("models") or {}).get("support") or "")[:8]}
+    m = cfg.get("models") or {}
+    # postes (sous-workflows support_*) : leurs runs ne passent pas au RDC, ils sont dans la caserne (68-caserne.js)
+    return {"name": s.get("name") or "Support", "wf": str(m.get("support") or "")[:8],
+            "postes_wf": sorted({str(v)[:8] for k, v in m.items() if k.startswith("support_") and k not in ("support_poll", "support_skip") and v})}
 
 
 FICHE_ACTIONS = ("impl", "mep", "mep_pr", "review", "fix", "fix_pr", "rebase", "comment", "estimate", "env", "deploy", "ai_time")

@@ -15,7 +15,7 @@ function spState(t){
   const g=t.run&&(GATES||[]).find(x=>x.run===t.run.run);
   if(g)return {k:'gate',g};
   if(t.state==='skipped')return {k:'skipped'}; // 🔕 ignoré depuis la console : ne compte plus, même si un vieux run a échoué
-  const runs=((DATA&&DATA.runs)||[]).filter(r=>r.vars&&r.vars.message_id===t.id&&(!t.run||ms(r.start)>=ms(t.run.at)||r.run===t.run.run)&&ms(r.start)<=T);
+  const runs=((DATA&&DATA.runs)||[]).filter(r=>!r.parent&&r.vars&&r.vars.message_id===t.id&&(!t.run||ms(r.start)>=ms(t.run.at)||r.run===t.run.run)&&ms(r.start)<=T);
   const r=runs.sort((a,b)=>ms(b.start)-ms(a.start))[0];
   if(r&&t.state!=='done'){
     if(r.status==='Running'||r.status==='Pending'||r.status==='WaitingQuota')return {k:'run',r};

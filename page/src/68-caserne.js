@@ -6,8 +6,8 @@
 // Teams : l'équipe remonte à bord, le camion sort par sa baie et le rideau se referme. Les baies libres restent
 // fermées, l'équipe de garde joue aux cartes ; le soir et le week-end la garde reste, sous un éclairage réduit, et dort
 // sur les lits de camp. À droite, la porte des autres étages et la barre de pompier.
-// Données : dataset support (48-support.js) ; l'état des postes vient de t.run.postes quand le relevé le donne, sinon des
-// étapes du run (une étape par poste, ou le modèle d'avant : une seule investigation). Toile de l'atelier (AT_W × AT_H).
+// Données : dataset support (48-support.js) ; l'état des postes vient des étapes du run (cron live, chaque minute : une
+// étape par poste, ou le modèle d'avant, une seule investigation), sinon de t.run.postes (relevé, plus espacé). Toile de l'atelier (AT_W × AT_H).
 const CS_POSTES=[{k:'tri',i:'🏷',n:'Tri'},{k:'logs',i:'🔎',n:'Logs'},{k:'cause',i:'🧩',n:'Cause'},{k:'reponse',i:'✉',n:'Réponse'},
   {k:'relecture',i:'🧐',n:'Relecture'},{k:'gate',i:'✋',n:'Toi',gate:true},{k:'post',i:'📣',n:'Teams'}];
 const CS_ST={ok:['ok','a travaillé'],run:['run','au travail'],err:['err','en panne'],gate:['wait','t\'attend'],wait:['','attend son tour']};
@@ -15,6 +15,8 @@ const CS_BAYS=3, CS_BX=[1,12.25,23.5], CS_BW=10.25, CS_DY0=3.1, CS_DY1=10.1, CS_
 const CS_DESK={x:17*AT_TS,y:24.4*AT_TS}, CS_POLE={x:43.6*AT_TS,y0:9*AT_TS,y1:13.4*AT_TS}, CS_TABLE={x:39*AT_TS,y:16*AT_TS};
 const CS_DEP_MS=8e3; // le départ d'un camion : gyrophares, sortie par la baie, rideau qui se referme
 const caserneOn=()=>supportOn();
+// les postes de l'investigation (sous-workflows support_*, CFG.support.postes_wf) : leurs runs ne passent pas au RDC
+const csWf=w=>!!w&&((CFG.support&&CFG.support.postes_wf)||[]).includes(String(w).slice(0,8));
 let CS_MEM={fresh:true,slots:[null,null,null],dep:[null,null,null],door:[0,0,0],boss:null,last:0}, CS_SEL=null, CS_PICK=null, CS_HITS=[], CS_LIT=[];
 // CS_PICK : le pompier choisi ({b, k}) pour son halo ; CS_LIT : où est le capitaine, pour la lumière du soir (csNight)
 function csReset(){CS_MEM={fresh:true,slots:[null,null,null],dep:[null,null,null],door:[0,0,0],boss:null,last:0};CS_SEL=null;CS_PICK=null;}
@@ -36,14 +38,14 @@ const CS_STEP={open:['tri'],mark:['tri'],publish_run:['tri'],investigate:['logs'
   tri:['tri'],logs:['logs'],cause:['cause'],reponse:['reponse'],relecture:['relecture'],gate:['gate'],post:['post'],mark_post:['post'],publish:['post']};
 const CS_RANK={ok:0,gate:1,run:2,err:3};
 function csRunOf(t){
-  const l=((DATA&&DATA.runs)||[]).filter(r=>r.vars&&r.vars.message_id===t.id&&ms(r.start)<=T);
+  const l=((DATA&&DATA.runs)||[]).filter(r=>!r.parent&&r.vars&&r.vars.message_id===t.id&&ms(r.start)<=T);
   return l.sort((a,b)=>ms(b.start)-ms(a.start))[0]||null;
 }
 // état de chaque poste d'une intervention : ok, run, err, gate (✋ t'attend) ; absent = attend son tour
 function csStates(t,s){
-  const out={}, k=s?s.k:spState(t).k;
-  if(t.run&&t.run.postes)Object.assign(out,t.run.postes);
-  else{const r=(s&&s.r)||csRunOf(t);
+  const out={}, k=s?s.k:spState(t).k, r=(s&&s.r)||csRunOf(t);
+  if(!(r&&(r.steps||[]).length)&&t.run&&t.run.postes)Object.assign(out,t.run.postes);
+  else{
     for(const st of (r&&r.steps)||[]){const v=st.s==='Success'||st.s==='Skipped'?'ok':st.s==='Failed'?'err':st.s==='WaitingApproval'?'gate':'run';
       for(const p of CS_STEP[st.n]||[])if(!(p in out)||CS_RANK[v]>CS_RANK[out[p]])out[p]=v;}}
   const keys=CS_POSTES.map(p=>p.k), g=keys.indexOf('gate');

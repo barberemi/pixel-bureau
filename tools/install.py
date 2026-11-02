@@ -427,6 +427,8 @@ def models(ask, cfg, old):
             keep.add(key)
     if keep & {"review_one", "review_cron"}:
         keep.add("review_child")
+    if "support" in keep:  # l'investigation Support : un sous-workflow par poste (tri, logs, cause, réponse, relecture)
+        keep |= {f"support_{p}" for p in templates.SUPPORT_POSTES}
     if "impl" in keep:  # la chaîne : son lanceur, son parent, le poste des contrôles et chaque poste (sous-workflows)
         keep |= {k for k in templates.TEMPLATES if k.startswith("impl_")}
     return keep

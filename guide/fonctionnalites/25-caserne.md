@@ -34,4 +34,4 @@ Un clic sur le capitaine ouvre la fiche du boss, la même qu'au RDC et au 1er, a
 
 ## Données
 
-Le dataset `support` (cron « relevé du Support », 0 token) et les runs de l'investigation. L'état de chaque poste vient du relevé quand il le donne (`run.postes`), sinon des étapes du run : une étape par poste, ou, avec le modèle d'investigation d'aujourd'hui (un seul agent), Logs, Cause et Réponse ensemble pendant l'investigation et Relecture pendant la mise en forme du brouillon.
+Le dataset `support` (cron « relevé du Support », 0 token) et les runs de l'investigation. L'état de chaque poste vient des étapes du run de l'investigation (cron live, chaque minute : une étape par poste, voir [les postes de l'investigation](17-console-support.md#les-postes-de-linvestigation)), sinon du relevé (`run.postes`). Avec l'ancien modèle à un seul agent, Logs, Cause et Réponse s'allument ensemble pendant l'investigation.

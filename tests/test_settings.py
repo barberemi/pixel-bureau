@@ -57,7 +57,10 @@ class SettingsTest(unittest.TestCase):
         m = assemble.merged(self.cfg(agents=[], support={"name": "Support Scranton"}, models={"support": "5e990001-0000-4000-8000-000000000000"}))
         self.assertEqual(m["support"], {"name": "Support Scranton", "team": "T1", "channel": "19:x@thread.tacv2"})
         self.assertEqual([(a["key"], a["wf"]) for a in m["agents"]], [("kelly", ["5e990001"])])
-        self.assertEqual(assemble.support_page(m), {"name": "Support Scranton", "wf": "5e990001"})
+        self.assertEqual(assemble.support_page(m), {"name": "Support Scranton", "wf": "5e990001", "postes_wf": []})
+        # les postes de l'investigation (sous-workflows support_*) : leurs runs vont à la caserne, pas au RDC
+        m2 = {**m, "models": {**(m.get("models") or {}), "support_tri": "7a110001-x", "support_poll": "99990000-x", "support_skip": "88880000-x"}}
+        self.assertEqual(assemble.support_page(m2)["postes_wf"], ["7a110001"])
         self.assertIsNone(assemble.support_page(assemble.demo_config() | {"support": {"team": "T1"}}), "sans canal : pas de console")
 
     def test_fix_section_of_the_pack(self):

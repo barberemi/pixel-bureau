@@ -51,7 +51,7 @@ test("réponse postée : le camion part (sauf en arrivant à l'étage), puis la 
   assert.deepEqual(J('csSlots(0)'), [null, null, null], 'en arrivant : rien ne se rejoue');
 });
 
-test("état des postes : le relevé (run.postes) d'abord, sinon les étapes du run", () => {
+test("état des postes : les étapes du run (cron live) d'abord, sinon le relevé (run.postes)", () => {
   const {p, J, set} = page();
   set([th('a', 'run', `, run: {run: 'ra', status: 'Running', at: ${at(9)}, postes: {tri: 'ok', logs: 'run'}}`)]);
   assert.deepEqual(J("csStates(SUPPORT.threads[0])"), {tri: 'ok', logs: 'run'});
@@ -66,7 +66,28 @@ test("état des postes : le relevé (run.postes) d'abord, sinon les étapes du r
   assert.deepEqual(J("csStates(SUPPORT.threads[0])"), {tri: 'ok', logs: 'run', cause: 'run', reponse: 'run'});
   // panne : le poste en échec
   p.run(`DATA.runs[0].status = 'Failed'; DATA.runs[0].steps = [{n: 'tri', s: 'Success'}, {n: 'logs', s: 'Failed'}];`);
-  assert.deepEqual(J("[spState(SUPPORT.threads[0]).k, csStates(SUPPORT.threads[0])]"), ['failed', {tri: 'ok', logs: 'err'}]);
+  assert.deepEqual(J("[spState(SUPPORT.threads[0]).k, csStates(SUPPORT.threads[0])]"), ['failed', {tri: 'ok', logs: 'err'}]);  // le relevé est plus espacé que le cron live : ses postes ne l'emportent pas sur les étapes
+  p.run(`SUPPORT.threads[0].run.postes = {tri: 'run'};`);
+  assert.deepEqual(J("csStates(SUPPORT.threads[0])"), {tri: 'ok', logs: 'err'});
+  // un poste (sous-run, parent = le run de l'investigation) n'est jamais pris pour l'investigation
+  p.run(`DATA.runs.push({run: 'rb-tri', parent: 'rb', status: 'Success', start: ${at(9.5)}, vars: {message_id: 'b'}, steps: [{n: 'agent', s: 'Success'}]});`);
+  assert.equal(J("csRunOf(SUPPORT.threads[0]).run"), 'rb');
+  assert.equal(J("spState(SUPPORT.threads[0]).r.run"), 'rb');
+});
+
+test("les postes de l'investigation (CFG.support.postes_wf) travaillent à la caserne : ni au RDC, ni dans « Nouvel agent »", () => {
+  const {p, J} = page();
+  p.run(`(() => {
+    CFG.support = {name: 'Support', wf: 'aaaaaaaa', postes_wf: ['bbbbbbbb']};
+    const d = JSON.parse(JSON.stringify(DATA)), at = new Date(T - 60e3).toISOString();
+    d.runs.push({wf: 'aaaaaaaa-0000', wf_name: 'Support', run: 'inv', status: 'Running', start: at, end: null, steps: [], vars: {message_id: '1'}},
+      {wf: 'bbbbbbbb-0000', wf_name: 'Support · 🔎 logs', run: 'logs', parent: 'inv', status: 'Running', start: at, end: null, steps: [], vars: {message_id: '1'}});
+    setData(d, true);
+    ASKABLE = [{wf: 'bbbbbbbb-0000', name: 'Support · 🔎 logs'}, {wf: 'cccccccc-0000', name: 'Autre'}];
+  })()`);
+  assert.deepEqual(J("DATA.runs.filter(r => ['inv', 'logs'].includes(r.run)).map(r => r.run)"), ['inv']);
+  assert.equal(J("chars.some(c => c.temp && (c.wf || []).includes('bbbbbbbb'))"), false);
+  assert.deepEqual(J('workflowsWithoutAgent().map(w => w.name)').filter(n => n.startsWith('Support')), []);
 });
 
 test("réponse à valider : tous les postes d'avant ont travaillé, ✋ t'attend", () => {

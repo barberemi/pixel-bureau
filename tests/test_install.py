@@ -379,6 +379,18 @@ class InstallTest(unittest.TestCase):
             with mock.patch.object(install.assemble, "merged", side_effect=lambda c: {k: v for k, v in c.items() if k != "deploy"}):
                 self.assertNotIn("deploy", install.models(ask(), base, {}))
 
+    def test_support_model_brings_its_posts(self):
+        """Modèle support : ses postes (tri, logs, cause, réponse, relecture) viennent avec lui, y compris pour qui l'avait déjà
+        (une installation d'avant le découpage les reçoit en relançant install.py)."""
+        base = json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text())
+        ask = lambda: install.Asker(answers={})  # noqa: E731
+        posts = {"support_" + p for p in install.templates.SUPPORT_POSTES}
+        with mock.patch.object(install.templates, "skipped", return_value=False):
+            self.assertLessEqual(posts, install.models(ask(), base, {"models": {"support": "wf-support"}}))
+        self.assertFalse(posts & install.models(install.Asker(answers={"model_support": "n"}), {**base, "support": {}}, {}))
+        keys = list(install.templates.TEMPLATES)
+        self.assertTrue(all(keys.index(p) < keys.index("support") for p in posts), "enfants créés avant le parent")
+
     def test_mac_notification_asked_only_with_osascript(self):
         """notify_mac : demandé sur Mac (osascript), oui par défaut, le non est retenu ; ailleurs, aucune question ni clé."""
         with mock.patch.object(install.shutil, "which", side_effect=lambda c: "/usr/bin/osascript" if c == "osascript" else shutil.which(c)):

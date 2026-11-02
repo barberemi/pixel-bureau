@@ -222,8 +222,11 @@ class SupportTest(unittest.TestCase):
         r = self.run_("open", "101", "p1", "run-1", "Regarde le cron de 8h")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertTrue(r.stdout.startswith("---STATE:disc=disc-1---\n"), "la même discussion à chaque tour (state.disc)")
-        for want in ("Le flux RSS FR est vide", "/repos/site-web", "en lecture seule", "Commentaire de Michael : Regarde le cron de 8h",
-                     "🔎 Cause", 'channel "note"', 'api_config_id "81ee2591-ff21-5f4c-b66f-30e8e78003f0"', "/rest/api/2/issue/<clé>"):
+        for want in ("Le flux RSS FR est vide", "/repos/site-web", "en lecture seule", "Commentaire de Michael : Regarde le cron de 8h"):
+            self.assertIn(want, r.stdout)  # la demande, rangée dans le dossier du message pour les postes
+        r = self.run_("poste", "tri", "101", "")
+        for want in ("poste 🏷 Tri", "Le flux RSS FR est vide", 'channel "note"', 'api_config_id "81ee2591-ff21-5f4c-b66f-30e8e78003f0"',
+                     "/rest/api/2/issue/<clé>"):
             self.assertIn(want, r.stdout)  # résumés en notes (sans réveiller l'agent de la discussion), tickets Jira par api_call
         path, body, _ = self.srv.st["posts"][0]
         self.assertEqual((path, body["title"]), ("/api/discussions", "🎧 Pam : Le flux RSS FR est vide depuis ce matin"))
@@ -247,6 +250,45 @@ class SupportTest(unittest.TestCase):
         self.assertEqual((t["state"], t["mine"]["text"]), ("done", "🔎 Cause : le cron <RSS> a échoué.\n👀 Suivi : on surveille 12h."))
         self.assertEqual(self.run_("post", "run-1", stdin="encore").returncode, 1, "une seule réponse par fil")
         self.assertEqual(self.run_("open", "101", "p1", "run-2", "").returncode, 1)
+
+    def test_postes_share_the_message_folder_and_the_relecture_sends_back(self):
+        """Chaîne des postes : chacun lit la demande, tes retours et les rapports d'avant, et range le sien ; la relecture
+        « revoir » renvoie la réponse au poste ✉ (exit 3) avec ses remarques, deux fois au plus, puis la réponse part à ta
+        validation avec les remarques restées, jamais postées dans Teams. État des postes d'après les étapes du parent."""
+        self.poll()
+        self.run_("open", "101", "p1", "run-1", "")
+        self.assertEqual(self.run_("poste", "inconnu", "101", "").returncode, 1)
+        self.assertEqual(self.run_("poste", "tri", "102", "").returncode, 1, "pas de dossier sans investigation lancée")
+        for k, txt in (("tri", "Sujet : le flux RSS FR"), ("logs", "Traces dans la demande : vide depuis 8h"), ("cause", "Cause probable : le cron de 8h")):
+            self.assertEqual(self.run_("rapport", k, "101", stdin=txt).returncode, 0)
+        r = self.run_("poste", "reponse", "101", "Sois bref")
+        for want in ("poste ✉ Réponse", "Sujet : le flux RSS FR", "vide depuis 8h", "le cron de 8h", "Retours de la personne qui valide", "Sois bref", "🔎 Cause : …"):
+            self.assertIn(want, r.stdout)
+        self.run_("poste", "reponse", "101", "Sois bref")
+        self.assertEqual(Path(self.tmp, ".cache", "pixel-bureau", "support", "101", "retours.md").read_text().count("Sois bref"), 1, "une seule fois par texte")
+        self.run_("rapport", "reponse", "101", stdin="🔎 Cause : le cron de 8h a échoué.\n🛠️ Action : relancé.")
+        r = self.run_("poste", "relecture", "101", "")
+        self.assertIn("## La réponse proposée\n🔎 Cause : le cron de 8h a échoué.", r.stdout)
+        self.run_("rapport", "relecture", "101", stdin="VERDICT : revoir\nDire quand le flux revient.")
+        r = self.run_("draft", "run-1", "101")
+        self.assertEqual(r.returncode, 3, "retour au poste ✉")
+        self.assertIn("Dire quand le flux revient.", self.run_("poste", "reponse", "101", "").stdout, "la réponse reçoit les remarques")
+        self.run_("rapport", "relecture", "101", stdin="VERDICT : revoir\nToujours pas d'heure.")
+        self.assertEqual(self.run_("draft", "run-1", "101").returncode, 3)
+        self.run_("rapport", "relecture", "101", stdin="VERDICT : revoir\nEncore.")
+        r = self.run_("draft", "run-1", "101")
+        self.assertEqual(r.returncode, 0, "deux renvois au plus : la réponse part à ta validation")
+        self.assertTrue(r.stdout.startswith("🔎 Cause : le cron de 8h a échoué.\n🛠️ Action : relancé."))
+        self.assertIn("Remarques de la relecture restées :\nEncore.", r.stdout)
+        self.assertEqual(self.cache()["runs"]["run-1"]["draft"], "🔎 Cause : le cron de 8h a échoué.\n🛠️ Action : relancé.")
+        self.assertEqual(self.run_("post", "run-1", stdin=r.stdout).returncode, 0)
+        self.assertNotIn("Remarques", self.srv.st["posts"][-1][1]["body"]["content"], "les remarques ne partent jamais dans Teams")
+        # la caserne : l'état des postes d'après les étapes du parent
+        self.srv.st["runs"] = [{"id": "run-9", "status": "Running", "started_at": ago(0), "trigger_context": {"type": "manual", "message_id": "102"},
+                                "step_results": [{"step_name": "open", "status": "Success"}, {"step_name": "tri", "status": "Success"},
+                                                 {"step_name": "logs", "status": "Running"}]}]
+        t = {x["id"]: x for x in json.loads(self.run_("dataset").stdout)["threads"]}
+        self.assertEqual(t["102"]["run"]["postes"], {"tri": "ok", "logs": "run"})
 
     def test_skip_takes_a_thread_out_of_the_queue_until_reactivated(self):
         """🔕 skip : le fil passe « skipped » (avant tout run), skip = l'action suivante du bouton, heure gardée ; réactivé, il
@@ -288,13 +330,31 @@ class SupportTest(unittest.TestCase):
         self.assertFalse(templates.skipped("support", cfg) or templates.skipped("support_poll", cfg))
         wf = templates.render(json.loads(Path(ROOT, "workflows", "templates", "support.json").read_text()), cfg)
         steps = {s["name"]: s for s in wf["steps"]}
-        self.assertEqual(steps["investigate"]["room_id"], "{{state.disc}}")
-        self.assertEqual(steps["gate"]["gate_request_changes_target"], "investigate", "changements : retour à l'agent")
+        # une chaîne de postes : un sous-workflow chacun, dans l'ordre, avec le fil, tes retours et la discussion
+        subs = [s["name"] for s in wf["steps"] if s["step_type"]["type"] == "SubWorkflow"]
+        self.assertEqual(subs, list(templates.SUPPORT_POSTES))
+        self.assertLessEqual(len(wf["steps"]), 20, "20 étapes au plus par workflow")
+        self.assertEqual(steps["tri"]["sub_workflow_variables"], {"message_id": "{{message_id}}", "retours": '{{state.last_human_feedback ?? ""}}',
+                                                                  "disc": '{{state.disc ?? ""}}'})
+        self.assertEqual(steps["gate"]["gate_request_changes_target"], "reponse", "changements : retour au poste ✉, puis la relecture")
+        self.assertNotIn("Gate", [s["step_type"]["type"] for k in templates.SUPPORT_POSTES
+                                  for s in templates.render(json.loads(Path(ROOT, "workflows", "templates", f"support_{k}.json").read_text()), cfg)["steps"]],
+                         "Kronn refuse une gate dans un sous-workflow")
+        for k in templates.SUPPORT_POSTES:
+            self.assertFalse(templates.skipped("support_" + k, cfg))
+            child = templates.render(json.loads(Path(ROOT, "workflows", "templates", f"support_{k}.json").read_text()), cfg)
+            agent = next(s for s in child["steps"] if s["step_type"]["type"] == "Agent")
+            self.assertEqual(agent["room_id"], "{{disc}}", "la discussion de l'investigation")
+            self.assertNotIn("Agent", agent["agent_settings"]["tools"]["cli"], "aucun agent en arrière-plan")
+            self.assertEqual(agent["agent_settings"]["tier"], templates.SUPPORT_AGENTS[k][0])
+            self.assertIsNone(child["workspace_config"], "dans la copie de travail du parent")
+        cfg2 = dict(cfg, support=dict(cfg["support"], postes={"cause": {"tier": "reasoning", "model": "opus", "skills": ["debugging"]}}))
+        cause = templates.render(json.loads(Path(ROOT, "workflows", "templates", "support_cause.json").read_text()), cfg2)["steps"][1]
+        self.assertEqual((cause["agent_settings"]["tier"], cause["agent_settings"]["model"], cause["skill_ids"]), ("reasoning", "opus", ["debugging"]))
         self.assertTrue(steps["gate"]["gate_message"].startswith("{{steps.draft.data.stdout}}\n\n---\n"), "la page coupe au ---")
         # le dataset support est un vrai objet (sortie JSON d'une étape CollectApiData), jamais le texte d'un stdout : Kronn y
         # relit la ligne cliquée (threads.find(id)) pour la liaison de « Investiguer », sinon « expected an object at threads »
-        self.assertNotIn("Agent", steps["investigate"]["agent_settings"]["tools"]["cli"], "aucun agent en arrière-plan")
-        self.assertEqual(steps["draft"]["on_result"][0]["action"], {"type": "Goto", "step_name": "investigate"})
+        self.assertEqual(steps["draft"]["on_result"][0]["action"], {"type": "Goto", "step_name": "reponse", "max_iterations": 4})
         for w in (s for s in wf["steps"] if s["step_type"]["type"] == "PublishPageData"):
             src = w["page_publish"]["writes"][0]["value_from"]
             self.assertTrue(src.endswith(".data.sources.snap"), src)

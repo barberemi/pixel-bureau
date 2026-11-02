@@ -40,6 +40,30 @@ class PublishWorkflowsTest(unittest.TestCase):
         office = next(b for m, u, b in calls if m == "PUT" and u == f"/workflows/{cfg['workflows']['office']}")
         self.assertIn("11111111-2222-3333-4444-555555555555", json.dumps(office), "le cron du bureau connaît le nouveau workflow")
 
+    def test_parent_without_its_posts_is_not_published(self):
+        """Une installation d'avant le découpage du Support (#62) : le modèle support existe, ses postes pas encore ; le
+        parent n'est pas poussé avec des étapes SubWorkflow vides, publish.py dit de relancer l'installateur."""
+        cfg = json.loads(json.dumps(FIXTURE))
+        cfg["support"] = {"team": "T1", "channel": "19:canal@thread.tacv2"}
+        cfg.setdefault("models", {})["support"] = "5e990001-0000-0000-0000-000000000000"
+        tmp = tempfile.mkdtemp()
+        path = os.path.join(tmp, "bureau.config.json")
+        Path(path).write_text(json.dumps(cfg))
+        os.environ["BUREAU_CONFIG"] = path
+        out = io.StringIO()
+        try:
+            sys.path.insert(0, os.path.join(ROOT, "tools"))
+            publish = importlib.reload(importlib.import_module("publish"))
+            calls = []
+            publish.call = lambda method, url, body=None: calls.append((method, url)) or (
+                {"data": {"id": "x"}} if method == "POST" else {"data": {"steps": []}} if method == "GET" else {"success": True})
+            with contextlib.redirect_stdout(out):
+                publish.workflows()
+        finally:
+            os.environ.pop("BUREAU_CONFIG", None)
+        self.assertNotIn(("PUT", "/workflows/5e990001-0000-0000-0000-000000000000"), calls)
+        self.assertIn("postes pas encore installés (tri, logs, cause, reponse, relecture)", out.getvalue())
+
 
 
 class PublishPageSizeTest(unittest.TestCase):
