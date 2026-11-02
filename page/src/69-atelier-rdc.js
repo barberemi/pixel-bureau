@@ -6,7 +6,7 @@ const AT_GATE_TXT={gate_questions:'ce que j\'ai compris',gate_plan:'ton plan',ga
 // monter au 1er et ouvrir la fiche du ticket : son bureau, sinon son carton de l'entrepôt ou sa palette en panne
 function atGoto(run){
   if(!atelierOn())return;
-  if(!FLOOR)setFloor(1);
+  if(FLOOR!==1)setFloor(1);
   const d=ATELIER||{};AT_PICK=null;ATSEL=null;
   if(atSlots().some(r=>r&&r.run===run))ATSEL=run;
   else if((d.queue||[]).some(x=>x.run===run))AT_PICK={kind:'queue',run};

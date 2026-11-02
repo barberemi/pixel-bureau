@@ -160,7 +160,7 @@ function csBay(slot,b,now,dt,people){
   csLate(people,()=>atPill('🚨 '+csTitle(t).slice(0,34),z.cx,(CS_Z0+.55)*T,k==='failed'?'#a8323a':'#8a1f17','#fff','bold 9px system-ui,sans-serif'));
   CS_POSTES.forEach((p,j)=>{const {x,y}=z.pts[j], s=st[p.k]||'';
     if(p.gate){csValve(x,y,s==='ok',now);
-      const boss=k==='gate'&&atOpen();
+      const boss=k==='gate'&&!!chars.find(c=>c.boss);
       if(!boss){R(ctx,x-2,y-30,4,30,'#8a8478');for(let q=0;q<4;q++)R(ctx,x-14+q*7,y-32,7,6,q%2?'#1c1c1c':'#f2c230');}
       csLate(people,()=>{if(!boss)csPostePill(p,s,x,y+16);if(s==='gate'&&!boss&&(REDUCED_MOTION||Math.floor(now/500)%2))atBadge(x,y-44,'✋','#d08a10');},y+2);
       atHitCs('agent',x-16,y-56,32,74,{b,k:p.k});return;}
@@ -225,7 +225,7 @@ function csCaptain(slots,now,dt,people){
   csLate(people,()=>{atPill('📥 '+(calls.length?plural(calls.length,'appel','appels'):'aucun appel'),d.x-2.6*T,d.y+1.3*T,calls.length?'#8a1f17':'#5b6070','#fff','bold 9px system-ui,sans-serif');
     const n=csDoneToday();atPill('🧯 '+(n?plural(n,'feu éteint','feux éteints')+' aujourd\'hui':'aucun feu aujourd\'hui'),d.x+3.6*T,d.y+1.3*T,n?'#2f7a45':'#5b6070','#fff','bold 9px system-ui,sans-serif');},d.y+1.4*T);
   atHitCs('calls',d.x-3.8*T,d.y-1*T,2.4*T,2.4*T,{});
-  if(!boss||!open){csLate(people,()=>atPill('🌙 le capitaine est rentré',d.x,d.y-1.6*T,'#1c2440','#bfe6ff','bold 9px system-ui,sans-serif'),d.y);return;}
+  if(!boss)return; // le soir et le week-end, il reste, comme le boss au 1er (sous l'éclairage réduit)
   const gi=slots.findIndex(s=>s&&!s.dep&&s.s.k==='gate'), home={x:d.x,y:d.y-.25*T}, target=gi<0?null:gi;
   let m=CS_MEM.boss;
   const path=i=>{const z=CS_G[i], v=z.pts[5];return [{x:m?m.walk.pos.x:home.x,y:m?m.walk.pos.y:home.y},{x:m?m.walk.pos.x:home.x,y:(CS_Z1+.9)*T},{x:v.x,y:(CS_Z1+.9)*T},{x:v.x,y:v.y}];};
@@ -332,25 +332,30 @@ function tvCaserneHtml(){
 }
 // ---------- scènes de la caserne pour la galerie (46-gallery.js) ----------
 // Chacune joue sur une copie du dataset support (rendue à la fin de la démonstration).
-function csDemo(mut){return s=>{const d=JSON.parse(JSON.stringify(SUPPORT||{threads:[]}));d.threads=d.threads||[];mut(d,new Date(s).toISOString(),s);SUPPORT=d;};}
+// Comme au 1er, toutes se jouent à toute heure : sans intervention en cours, la copie part des fils de la démo ; trois baies
+// prises, la plus récente se libère d'abord (prep : posée sans scène, comme en arrivant à l'étage)
+function csDemo(mut,prep){return s=>{const src=csActive().length?SUPPORT:supportDemo(), d=JSON.parse(JSON.stringify(src||{threads:[]}));d.threads=d.threads||[];
+  if(prep){prep(d);SUPPORT=JSON.parse(JSON.stringify(d));csReset();csSlots(performance.now());CS_MEM.door=CS_MEM.slots.map(x=>x?1:0);}
+  mut(d,new Date(s).toISOString(),s);SUPPORT=d;};}
+const csFreeOne=d=>{const l=d.threads.filter(t=>spState(t).k in CS_LIVE);if(l.length>=CS_BAYS){const t=l.sort((a,b)=>ms(b.run&&b.run.at)-ms(a.run&&a.run.at))[0];t.state='skipped';}};
 const csIn=(d,k)=>d.threads.find(t=>spState(t).k===k);
 function csGalleryScenes(){
-  const fam='Sous-sol', a=csActive(), none='Aucune intervention en cours', free=CS_MEM.slots.some((x,b)=>!x&&!CS_MEM.dep[b]), out=[];
+  const fam='Sous-sol', ok=true, out=[];
   const demoRun=(id,at,postes)=>({run:'demo-'+id,status:'Running',at,disc:null,version:0,postes});
-  out.push({fam,ico:'📟',n:'Un appel arrive',d:'Le voyant du tableau clignote, l\'appel rejoint la pile sur le bureau du capitaine',w:'Un nouveau message dans le canal Support',ok:true,why:'',
+  out.push({fam,ico:'📟',n:'Un appel arrive',d:'Le voyant du tableau clignote, l\'appel rejoint la pile sur le bureau du capitaine',w:'Un nouveau message dans le canal Support',ok,
     play:{len:15e3,speed:1,setup:csDemo((d,at)=>{d.threads.push({id:'demo-call',from:'Halpert, Jim',at,text:'Le formulaire de contact renvoie une erreur 500 depuis ce matin.',subject:'Formulaire de contact en 500',url:null,state:'new',run:null,mine:null,replies:0,last_at:at});})}});
-  out.push({fam,ico:'🚒',n:'Une intervention démarre',d:'Le rideau d\'une baie se lève, le camion est là, l\'équipe se range et le tuyau part vers le Tri',w:'« 🔎 Investiguer » sur un appel',ok:free,why:'Les trois baies sont occupées',
-    play:{len:20e3,speed:1,setup:csDemo((d,at)=>{d.threads.push({id:'demo-start',from:'Martin, Angela',at,text:'Les reçus PDF des commandes sont vides.',subject:'Reçus PDF vides',url:null,state:'run',run:demoRun('start',at,{tri:'run'}),mine:null,replies:0,last_at:at});})}});
-  out.push({fam,ico:'💧',n:'Le tuyau avance',d:'Un pompier a fini (✓), le tuyau se remplit jusqu\'au poste suivant qui se met à arroser',w:'Chaque poste qui finit',ok:a.some(x=>x.s.k==='run'),why:none,
+  out.push({fam,ico:'🚒',n:'Une intervention démarre',d:'Le rideau d\'une baie se lève, le camion est là, l\'équipe se range et le tuyau part vers le Tri',w:'« 🔎 Investiguer » sur un appel',ok,
+    play:{len:20e3,speed:1,setup:csDemo((d,at)=>{d.threads.push({id:'demo-start',from:'Martin, Angela',at,text:'Les reçus PDF des commandes sont vides.',subject:'Reçus PDF vides',url:null,state:'run',run:demoRun('start',at,{tri:'run'}),mine:null,replies:0,last_at:at});},csFreeOne)}});
+  out.push({fam,ico:'💧',n:'Le tuyau avance',d:'Un pompier a fini (✓), le tuyau se remplit jusqu\'au poste suivant qui se met à arroser',w:'Chaque poste qui finit',ok,
     play:{len:12e3,speed:1,setup:csDemo(d=>{const t=csIn(d,'run');if(!t)return;const st=csStates(t), ks=CS_POSTES.filter(p=>!p.gate).map(p=>p.k), j=Math.max(0,ks.findIndex(k=>st[k]==='run'));
-      const p={};ks.slice(0,j+1).forEach(k=>{p[k]='ok';});p[ks[Math.min(ks.length-2,j+1)]]='run';t.run.postes=p;})}});
-  out.push({fam,ico:'✋',n:'À toi de valider',d:'La réponse est relue : le capitaine quitte son bureau et va ouvrir la vanne de la baie',w:'La réponse proposée attend ta validation',ok:a.some(x=>x.s.k==='run'),why:none,
-    play:{len:20e3,speed:1,setup:csDemo(d=>{const t=csIn(d,'run');if(!t)return;t.state='gate';t.run.status='WaitingApproval';t.run.postes=null;t.run.draft=t.run.draft||'🔎 Cause : …';})}});
-  out.push({fam,ico:'📣',n:'Le camion part',d:'Réponse postée dans Teams : l\'équipe monte à bord, gyrophares, le camion sort et le rideau se referme',w:'Tu valides la réponse',ok:a.some(x=>x.s.k==='gate'),why:'Aucune réponse à valider',
-    play:{len:15e3,speed:1,setup:csDemo((d,at)=>{const t=csIn(d,'gate');if(!t)return;t.state='done';t.mine={at,text:(t.run&&t.run.draft)||'…'};})}});
-  out.push({fam,ico:'🧯',n:'Intervention en panne',d:'Un poste a planté : fumée, le tuyau s\'arrête là, la baie attend une relance',w:'Un poste échoue (API d\'un agent indisponible…)',ok:a.some(x=>x.s.k==='run'),why:none,
-    play:{len:15e3,speed:1,setup:csDemo(d=>{const t=csIn(d,'run');if(!t)return;const st=csStates(t), cur=csCur(st);t.state='failed';t.run.status='Failed';t.run.postes={...st,[cur?cur.k:'tri']:'err'};})}});
-  out.push({fam,ico:'🌙',n:'La garde de nuit',d:'Le soir et le week-end : la caserne en veilleuse, la garde dort sur les lits de camp, les interventions continuent',w:'Hors des heures de bureau',ok:true,why:'',
+      const p={};ks.slice(0,j+1).forEach(k=>{p[k]='ok';});p[ks[Math.min(ks.length-2,j+1)]]='run';t.run.postes=p;},()=>{})}});
+  out.push({fam,ico:'✋',n:'À toi de valider',d:'La réponse est relue : le capitaine quitte son bureau et va ouvrir la vanne de la baie',w:'La réponse proposée attend ta validation',ok,
+    play:{len:20e3,speed:1,setup:csDemo(d=>{const t=csIn(d,'run');if(!t)return;t.state='gate';t.run.status='WaitingApproval';t.run.postes=null;t.run.draft=t.run.draft||'🔎 Cause : …';},()=>{})}});
+  out.push({fam,ico:'📣',n:'Le camion part',d:'Réponse postée dans Teams : l\'équipe monte à bord, gyrophares, le camion sort et le rideau se referme',w:'Tu valides la réponse',ok,
+    play:{len:15e3,speed:1,setup:csDemo((d,at)=>{const t=csIn(d,'gate');if(!t)return;t.state='done';t.mine={at,text:(t.run&&t.run.draft)||'…'};},()=>{})}});
+  out.push({fam,ico:'🧯',n:'Intervention en panne',d:'Un poste a planté : fumée, le tuyau s\'arrête là, la baie attend une relance',w:'Un poste échoue (API d\'un agent indisponible…)',ok,
+    play:{len:15e3,speed:1,setup:csDemo(d=>{const t=csIn(d,'run');if(!t)return;const st=csStates(t), cur=csCur(st);t.state='failed';t.run.status='Failed';t.run.postes={...st,[cur?cur.k:'tri']:'err'};},()=>{})}});
+  out.push({fam,ico:'🌙',n:'La garde de nuit',d:'Le soir et le week-end : la caserne en veilleuse, la garde dort sur les lits de camp, les interventions continuent',w:'Hors des heures de bureau',ok,
     play:{len:20e3,speed:60,setup:s=>{const n=parisMidnight(s)+22.5*36e5;T=n;SCENE_DEMO.e=n+20e3*60;}}});
   return out;
 }

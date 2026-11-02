@@ -93,7 +93,7 @@ test("l'étage dessine sans erreur, de jour comme de nuit, et le panneau liste l
   assert.ok(J('CS_HITS.some(h => h.kind === "pole")'), 'la barre de pompier');
   assert.ok(J('CS_HITS.some(h => h.kind === "captain")'), 'le capitaine à son poste');
   p.run('T = DAY0 + 22.5 * 36e5; renderCaserne(1200);');
-  assert.equal(J('CS_HITS.some(h => h.kind === "captain")'), false, 'le soir, le capitaine est rentré');
+  assert.equal(J('CS_HITS.some(h => h.kind === "captain")'), true, 'le soir, le capitaine reste, comme le boss au 1er');
   assert.equal(J('CS_HITS.some(h => h.kind === "guard")'), false, 'la garde dort sur les lits de camp');
   const html = J('caserneListHtml(csSlots(1300))');
   assert.match(html, /Caserne Support <span class="cnt">2\/3/);
@@ -122,4 +122,10 @@ test("galerie : au -1, les scènes de la caserne ; « Le camion part » rend le 
   assert.equal(J("SUPPORT.threads.find(t => t.id === 'd3').state"), 'done');
   p.run('demoEnd();');
   assert.equal(p.run('SUPPORT === __S'), true);
+  // à toute heure, même sans intervention : la scène part des fils de la démo
+  p.run(`SUPPORT = {threads: []}; csReset();`);
+  assert.ok(J('galleryScenes().every(x => x.ok)'));
+  p.run(`demoStart(galleryScenes().find(x => x.n === 'Le camion part'));`);
+  assert.equal(J("SUPPORT.threads.find(t => t.id === 'd3').state"), 'done');
+  p.run('demoEnd();');
 });
