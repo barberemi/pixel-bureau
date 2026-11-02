@@ -24,7 +24,8 @@ function loupeKind(c){
 // événements qui commencent depuis le dernier passage ; le premier passage ne fait que noter ce qui est déjà en cours
 function loupeScan(){
   const groups={}, now=new Set(), fresh=[];
-  if(FLOOR){ // 1er étage : seulement ses événements (68-atelier.js)
+  if(FLOOR===-1){LOUPE.seen=new Set();return [];} // la caserne (68-caserne.js) : ses scènes se voient sur le plan entier
+  if(FLOOR===1){ // 1er étage : seulement ses événements (68-atelier.js)
     for(const ev of atLoupeEvents(performance.now())){now.add(ev.id);if(LOUPE.seen&&!LOUPE.seen.has(ev.id))fresh.push(ev);}
     LOUPE.seen=now;return fresh.sort((a,b)=>LOUPE_ORDER.indexOf(a.kind)-LOUPE_ORDER.indexOf(b.kind));
   }
