@@ -73,7 +73,7 @@ function renderSide(force){
   const folded=SIDE_FOLDED&&innerWidth>980; // sous 980 px le panneau passe sous le plan : jamais replié
   if(innerWidth>980)sideFoldButton(side);
   document.body.classList.toggle('sidefold',folded);
-  if(!folded)(FLOOR?drawAtelierSide:drawSide)(side); // 68-atelier.js : sur le 1er étage, les bureaux de l'atelier
+  if(!folded)(FLOOR===1?drawAtelierSide:FLOOR===-1?drawCaserneSide:drawSide)(side); // sur le 1er étage, les bureaux de l'atelier (68-atelier.js) ; au -1, les baies (68-caserne.js)
   restoreFields(side,kept);
   refocus(side,fid);
 }
@@ -97,7 +97,7 @@ function refreshStatus(){
 let SEL_BACK=[];
 const WIN_VIEWS={kanban:keep=>openKanban(keep||undefined),calendar:()=>openCalendar()}; // keep : retour, la fenêtre telle qu'on l'a quittée
 function backLabel(k){
-  if(k==null)return FLOOR?"L'atelier":"Toute l'équipe"; // 68-atelier.js : la fiche du boss ouverte à l'étage revient à l'atelier
+  if(k==null)return FLOOR===1?"L'atelier":"Toute l'équipe"; // 68-atelier.js : la fiche du boss ouverte à l'étage revient à l'atelier
   if(byKey[k])return byKey[k].name;
   const s=String(k);
   if(s.startsWith('mail:'))return 'Courrier';

@@ -8,7 +8,7 @@ function hitTest(ev){
 }
 const tip=document.getElementById('tip');
 cv.addEventListener('mousemove',e=>{
-  if(FLOOR){atelierHover(e);return;} // 68-atelier.js
+  if(FLOOR){(FLOOR===1?atelierHover:caserneHover)(e);return;} // 68-atelier.js, 68-caserne.js
   const c=hitTest(e),z=c?null:hitZone(e), wc=z==='bosspages'&&wallCellAt(e), wa=wc&&wallAgent(wc.id);
   hoverKey=c?c.key:wa?wa.key:null;WALL_HOVER=!!wa; // une miniature de l'écran : son agent ressort sur le plan (32-familles.js)
   RACK_HOVER=z==='newagent'; // 66-newagent.js : le « + » de la baie s'allume
@@ -56,7 +56,7 @@ function hitZone(ev){
   return mb?'mail:'+mb:duckHit(mx,my)?'duck':supportOpenable()&&inR(supportRect())?'support':bs&&inR(bs)?'bosspages':na&&inR(na)?'newagent':inR(PAYR)?'paie':inR(TVR)?'tv':inR(KANR)?'kanban':(()=>{const r=cronNoteRect();return r&&inR(r);})()?'planning':todosOn()&&inR(todoRect())?'todo':CALR&&ABSENCES&&inR(CALR)?'calendar':DEPR&&inR(DEPR)?'departs':inR(EMPR)&&bestEmployee().length?'emp':null;}
 // zones du plan qui ouvrent une fenêtre (le reste ouvre le panneau) : l'infobulle le dit
 const WIN_ZONES=new Set(['bosspages','todo','newagent','kanban','calendar','departs']);
-cv.addEventListener('click',e=>{if(TV)return;if(FLOOR){atelierClick(e);return;}const c=hitTest(e);if(c){select(c.key);return;}const z=hitZone(e);if(z==='bosspages')openBossPages();else if(z==='departs')openDeparts();else if(z==='todo')openTodos();else if(z==='support')openSupport();else if(z==='newagent')openNewAgent();else select(z);});
+cv.addEventListener('click',e=>{if(TV)return;if(FLOOR){(FLOOR===1?atelierClick:caserneClick)(e);return;}const c=hitTest(e);if(c){select(c.key);return;}const z=hitZone(e);if(z==='bosspages')openBossPages();else if(z==='departs')openDeparts();else if(z==='todo')openTodos();else if(z==='support')openSupport();else if(z==='newagent')openNewAgent();else select(z);});
 const slider=document.getElementById('slider'), playBtn=document.getElementById('play'), liveBtn=document.getElementById('live'), speedBtn=document.getElementById('speed');
 const tgo=document.getElementById('tgo'), tbub=document.getElementById('tbub');
 // vitesse du replay : un bouton qui passe à la suivante à chaque clic
