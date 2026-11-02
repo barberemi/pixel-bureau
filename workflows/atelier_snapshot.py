@@ -4,7 +4,7 @@ lus dans l'API Kronn, 0 token ; stdout JSON du dataset atelier (cron live).
   {generated_at, rooms: [{run, ticket, title, repo, status, poste, gate, states: {poste: ok|run|bloq|avis|skip|wait|err},
                           tour, tok, since, lot, note, url}], queue: [{run, since}], pannes: [{run, ticket, repo, title,
                           poste, since, url}], postes: [clé],
-   events: [{t, k: arrive|gate|back|panne|sort, run, ticket, repo, title, gate?, poste?}], livres}
+   events: [{t, k: arrive|poste|gate|back|panne|sort, run, ticket, repo, title, gate?, poste?}], livres}
 
 Un bureau = un run actif de la chaîne (4 au plus, concurrency_limit) ; la file = les runs en attente d'un bureau libre ;
 les pannes = les runs en échec des dernières 24 h qu'aucun run plus récent du même ticket et du même dépôt n'a repris
@@ -23,6 +23,9 @@ POSTES = ["cadrage", "schema", "patterns", "gate", "code", "regles", "securite",
 PARENT = {"cadrage": "cadrage", "schema": "schema", "patterns": "patterns", "gate_plan": "gate", "code": "code"}
 LIVRAISON = {"pr": "pr", "revue": "revue_pr", "retours": "retours"}
 CONTROLES = ("regles", "securite", "tests", "perf", "revue", "besoin", "doc")
+# étape du parent -> poste où est le carton (rejeu du 1er étage : le carton au bon poste à l'heure du curseur)
+POSTE_DE = {"cadrage": "cadrage", "schema": "schema", "patterns": "patterns", "code": "code", "controles": "regles",
+            "livraison": "pr", "publication": "pr"}
 GATES = {"gate_questions": "❓ questions du cadrage", "gate_plan": "✋ ton plan", "gate_escalade": "🧑‍⚖️ la chaîne demande un humain",
          "gate_pr": "👀 relire la PR brouillon"}
 KEY = re.compile(r"\b([A-Z][A-Z0-9]+-\d+) sur ([\w.-]+/[\w.-]+)")
@@ -160,6 +163,8 @@ def events(run):
     out, codes = [{"t": when((steps[0] if steps else {}).get("started_at")) or when(run.get("started_at")), "k": "arrive"}], 0
     for s in steps:
         n, st = s.get("step_name"), s.get("status")
+        if n in POSTE_DE:  # le carton arrive à ce poste (rejeu de la page)
+            out.append({"t": when(s.get("started_at")), "k": "poste", "poste": POSTE_DE[n]})
         if n in GATES:
             out.append({"t": when(s.get("started_at")), "k": "gate", "gate": n})
         if n == "code":

@@ -112,3 +112,18 @@ test('sans atelier installé : rien au RDC', () => {
   p.run('ATELIER = {rooms: [], queue: [], pannes: [], livres: 7};');
   assert.equal(Jp('atKpi(1e15).out'), 7, 'un dataset d\'avant les moments : le compte publié par le cron');
 });
+
+test('Ryan (lanceur de la chaîne) : casque et gilet, il porte le carton à l\'entrée pendant la minute qui suit l\'arrivée', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  p.run(`CFG.atelier = true; CFG.atelier_launcher = '14e45f68'; mode = 'pause';
+    var __r = {key: 'ryan', name: 'Ryan', wf: ['14e45f68-aaaa'], person: false}, __o = {key: 'oscar', wf: ['99999999']};
+    ATELIER = {rooms: [], queue: [], pannes: [], events: [{run: 'a', ticket: 'DM-1', t: '2026-10-01T09:00:00Z', k: 'arrive'}]};`);
+  assert.equal(J2('atIsLauncher(__r) && !atIsLauncher(__o)'), true);
+  const at = s => `Date.parse('2026-10-01T09:00:${s}Z')`;
+  assert.equal(J2(`atLauncherCarry(__r, ${at('05')}).zone`), 'desk', 'il prend d\'abord le carton à son bureau');
+  assert.equal(J2(`atLauncherCarry(__r, ${at('30')}) && [atLauncherCarry(__r, ${at('30')}).zone, atLauncherCarry(__r, ${at('30')}).carry]`).join(), 'leave,true');
+  assert.equal(J2(`atLauncherCarry(__r, ${at('30')}).bubble`), '📦 DM-1 → 1er étage');
+  assert.equal(J2(`atLauncherCarry(__r, Date.parse('2026-10-01T09:01:30Z'))`), null, 'une minute après : il est revenu');
+  assert.equal(J2(`atLauncherCarry(__o, ${at('30')})`), null);
+  assert.match(J2(`rvBtn(${at('00')}, 1)`), /data-fl="1"/, '« revoir » d\'un moment du 1er y monte');
+});

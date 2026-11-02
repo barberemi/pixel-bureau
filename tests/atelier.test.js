@@ -398,3 +398,32 @@ test('au clic sur un agent ou le boss, comme au RDC : le plan s\'assombrit autou
   assert.deepEqual(J2('__h[0]'), [b.x, b.y - 26], 'le boss, là où il est');
   p.run('selHalo = __sh; select(null);');
 });
+
+test('rejeu : l\'étage reconstruit à l\'heure du curseur, scènes au fil du curseur, rattrapage des moments récents', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
+  const at = h => `'2026-10-01T${h}:00Z'`;
+  p.run(`CFG.atelier = true; FLOOR = 1; mode = 'pause';
+    ATELIER = {rooms: [${JSON.stringify(room('a', {poste: 'code', states: {cadrage: 'ok', code: 'bloq'}}))}], queue: [], pannes: [], events: [
+      {run: 'a', ticket: 'DM-a', t: ${at('09:00')}, k: 'arrive'}, {run: 'a', t: ${at('09:01')}, k: 'poste', poste: 'cadrage'},
+      {run: 'a', t: ${at('09:30')}, k: 'gate', gate: 'gate_plan'}, {run: 'a', t: ${at('09:40')}, k: 'poste', poste: 'code'},
+      {run: 'b', ticket: 'DM-b', title: 'Sorti', repo: 'dm/api', t: ${at('08:00')}, k: 'arrive'}, {run: 'b', t: ${at('09:20')}, k: 'sort'}]};`);
+  const rooms = h => J2(`(T = Date.parse(${at(h)}), atRooms().map(r => [r.run, r.poste, r.gate, r.states.cadrage || null]))`);
+  assert.deepEqual(rooms('07:59'), [], 'avant toute arrivée : l\'étage est vide');
+  assert.deepEqual(rooms('09:10'), [['b', 'cadrage', null, 'run'], ['a', 'cadrage', null, 'run']], 'b encore là (sans poste relevé : au cadrage), a au cadrage');
+  assert.deepEqual(rooms('09:35'), [['a', 'gate', 'gate_plan', 'ok']], 'b est sorti, a t\'attend');
+  assert.deepEqual(J2(`(T = Date.parse(${at('10:00')}), atRooms()[0].states)`), {cadrage: 'ok', code: 'bloq'}, 'plus rien après : l\'état du relevé, tel quel');
+  p.run('mode = "live";');
+  assert.deepEqual(J2('atRooms().map(r => r.run)'), ['a'], 'en direct : le relevé');
+  // scènes : le curseur qui avance joue la sortie ; un saut pose l'étage ; une arrivée de moins de 2 min se joue quand même
+  p.run(`mode = 'pause'; T = Date.parse(${at('09:19')}); AT_MEM.lastT = null; renderAtelier(1000); renderAtelier(1016);
+    T = Date.parse(${at('09:21')}); renderAtelier(1032);`);
+  assert.deepEqual(J2('AT_MEM.scenes.map(s => s.kind)'), ['exit'], 'b sort pendant la lecture : Bernard l\'emporte');
+  p.run(`T = Date.parse(${at('09:00')}) + 30e3; renderAtelier(1048);`);
+  assert.deepEqual(J2('AT_MEM.scenes.map(s => [s.kind, s.ticket])'), [['arrive', 'DM-a']], 'saut juste après une arrivée : elle se joue');
+  p.run(`T = Date.parse(${at('09:10')}); renderAtelier(1064);`);
+  assert.deepEqual(J2('AT_MEM.scenes'), [], 'saut loin d\'un moment : l\'étage se pose');
+  // Bernard va d'abord chercher le colis qui apparaît dans l'entrepôt
+  p.run(`AT_MEM.scenes = [{kind: 'arrive', i: 0, run: 'a', ticket: 'DM-a', t0: 0}]; atScenes(2000, .016, []);`);
+  assert.equal(J2('AT_MEM.scenes[0].phase'), -1);
+  assert.deepEqual(J2('AT_MEM.scenes[0].walk.path.pop()'), J2('AT_POP'), 'il va au colis');
+});

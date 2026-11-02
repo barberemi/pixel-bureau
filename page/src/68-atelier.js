@@ -50,7 +50,33 @@ function atelierRunIds(runs){
 const AT_STEP={prepare:'Préparation',orchestrateur_plan:'Plan de l\'orchestrateur',orchestrateur:'Orchestrateur',livraison:'PR',publication:'Publication',
   controles:'Contrôles',ticket:'Lecture du ticket',dossier:'Dossier',aiguillage:'Aiguillage',questions:'Questions',mode:'Mode'};
 const atStepName=k=>{const p=AT_POSTES.find(x=>x.k===k);return p?p.i+' '+p.n:AT_STEP[k]||k||'?';};
-const atRooms=()=>((ATELIER&&ATELIER.rooms)||[]).slice(0,4);
+// les bureaux : en direct, ceux du relevé ; en rejeu, l'étage reconstruit à l'heure du curseur (atRoomsAt)
+const atLive=()=>typeof mode==='undefined'||mode==='live'||(typeof SCENE_DEMO!=='undefined'&&!!SCENE_DEMO); // une scène de la galerie joue sur sa copie
+const atRooms=()=>(atLive()?((ATELIER&&ATELIER.rooms)||[]):atRoomsAt(T)).slice(0,4);
+// l'étage à l'heure t, d'après les moments datés du relevé (atEvents, 24 h) : un ticket occupe un bureau de son arrivée à
+// sa sortie (ou sa panne) ; son carton est au dernier poste commencé, une gate ouverte t'attend jusqu'à l'étape suivante ;
+// un ticket encore là garde ce que le relevé en sait (titre, dépôt, jetons)
+function atRoomsAt(t){
+  const by={}, now={}, later=new Set();
+  for(const r of (ATELIER&&ATELIER.rooms)||[])now[r.run]=r;
+  for(const e of atEvents()){const a=ms(e.t);if(!a)continue;if(a>t){later.add(e.run);continue;}(by[e.run]||(by[e.run]={e:[],b:e})).e.push(e);}
+  const out=[];
+  for(const [run,{e,b}] of Object.entries(by)){
+    e.sort((x,y)=>ms(x.t)-ms(y.t));
+    if(!e.some(x=>x.k==='arrive')||e.some(x=>x.k==='sort'||x.k==='panne'))continue;
+    if(now[run]&&!later.has(run)){out.push(now[run]);continue;} // rien de plus tard : l'état du relevé, tel quel
+    const base=now[run]||{run,ticket:b.ticket,title:b.title,repo:b.repo,tok:0}, last=e[e.length-1];
+    const pos=e.filter(x=>x.k==='poste').pop(), poste=pos?pos.poste:base.poste||'cadrage', i=AT_POSTES.findIndex(p=>p.k===poste);
+    const gate=last.k==='gate'?last.gate:null, states={};
+    // à une gate, ce qui la précède est fait (tout le plan pour « ton plan », le poste en cours sinon)
+    const done=gate?(gate==='gate_plan'?AT_POSTES.findIndex(p=>p.k==='gate'):i+1):i;
+    AT_POSTES.forEach((p,k)=>{if(k<done)states[p.k]='ok';else if(k===i&&!gate)states[p.k]='run';});
+    out.push({...base,run,poste:gate?'gate':poste,gate,back:last.k==='back',states,since:e.find(x=>x.k==='arrive').t,note:null});
+  }
+  return out.sort((a,b)=>ms(a.since)-ms(b.since));
+}
+// ce qui change sur l'étage : à chaque changement (relevé ou curseur), atDiff joue les scènes
+const atSig=()=>atRooms().map(r=>r.run+':'+(r.gate||r.poste)+(r.back?'!':'')).join('|');
 // ---------- onglets d'étage ----------
 // RDC (l'open space, par défaut), 1er (l'atelier, s'il existe), -1 (la caserne Support, si la console Support existe)
 function atelierTabs(){ // le gyrophare du -1 suit csAlarm à chaque relevé
@@ -160,12 +186,17 @@ function atDiff(now){
     delete AT_MEM.cart[run];
     if(!fresh&&!pannes.has(run)&&!REDUCED_MOTION&&!AT_MEM.leaving[prev.i]){AT_MEM.leaving[prev.i]={ticket:prev.ticket,t0:now};AT_MEM.scenes.push({kind:'exit',i:prev.i,ticket:prev.ticket,t0:now});}
   }
+  if(fresh&&!REDUCED_MOTION)for(const e of atEvents()){ // une sortie toute récente, vue en arrivant : Bernard emporte quand même le carton
+    if(e.k!=='sort'||!atRecent(e.t)||live.has(e.run))continue;
+    const used=Object.values(AT_MEM.slot), i=[0,1,2,3].find(k=>!AT_MEM.leaving[k]&&!used.includes(k));if(i==null)continue;
+    AT_MEM.leaving[i]={ticket:e.ticket,t0:now};AT_MEM.scenes.push({kind:'exit',i,ticket:e.ticket,t0:now});
+  }
   const slots=atSlots();
   slots.forEach((r,i)=>{if(!r)return;const g=AT_G[i], prev=seen[r.run], k=r.gate?'gate':r.poste, target=atBeltS(g,k||'cadrage');
     next[r.run]={i,poste:r.poste,states:{...(r.states||{})},back:!!r.back,ticket:r.ticket};
     const c=AT_MEM.cart[r.run];
     if(!prev){
-      if(fresh||REDUCED_MOTION)AT_MEM.cart[r.run]={s:target,target};
+      if((fresh&&!atRecent(r.since))||REDUCED_MOTION)AT_MEM.cart[r.run]={s:target,target};
       else{AT_MEM.cart[r.run]={s:0,target,hidden:true};AT_MEM.arrivedAt[r.run]=now;AT_MEM.scenes.push({kind:'arrive',i,run:r.run,ticket:r.ticket,t0:now});}
       return;
     }
@@ -176,6 +207,8 @@ function atDiff(now){
   AT_MEM.rooms=next;AT_MEM.fresh=false;
   return slots;
 }
+// arrivé ou sorti il y a moins de 2 min (heure du plan) : la scène se joue même en arrivant à l'étage ou après un saut
+const atRecent=iso=>{const a=ms(iso);return !!a&&a<=T&&T-a<120e3;};
 // un marcheur : suit une ligne de points à vitesse constante
 function atWalker(path,speed){return {path:path.slice(1).map(p=>({x:p.x,y:p.y})),pos:{x:path[0].x,y:path[0].y},speed:speed||95,dir:'down'};}
 function atStep(w,dt){
@@ -299,13 +332,13 @@ function atChantier(T){
 // tenue de chantier, dessinée par-dessus le personnage (drawChar, 41-people.js) : casque (jaune, blanc pour la sécurité)
 // et gilet orange à bandes réfléchissantes ; assis à son poste, la tête est plus bas
 const GEAR={chantier:'#f6c419',securite:'#f2f2f2'};
-function drawGear(c){
-  const col=GEAR[c.gear];if(!col)return;
+function drawGear(c,gear){
+  gear=gear||c.gear;const col=GEAR[gear];if(!col)return;
   const seated=c.pose==='type'&&!c.moving, x=Math.round(c.pos.x), y=Math.round(c.pos.y), dir=c.dir;
   const top=y-29+(seated?6:0);
   R(ctx,x-8,top,16,13,'#ff7a1a');if(dir!=='up')R(ctx,x-2,top,4,13,'#3f5a7a');
   R(ctx,x-8,top+5,16,2,'#e6eef2');R(ctx,x-8,top+9,16,2,'#e6eef2');
-  const hx=x+(dir==='left'?-2:dir==='right'?2:0), hy=y-(seated?36:42), rim=c.gear==='securite'?'#9aa2ac':'#b8860b';
+  const hx=x+(dir==='left'?-2:dir==='right'?2:0), hy=y-(seated?36:42), rim=gear==='securite'?'#9aa2ac':'#b8860b';
   ctx.fillStyle=rim;ctx.beginPath();ctx.arc(hx,hy,11,Math.PI,0);ctx.fill();
   ctx.fillStyle=col;ctx.beginPath();ctx.arc(hx,hy,10,Math.PI,0);ctx.fill();
   R(ctx,hx-13,hy-1,26,3,col);R(ctx,hx-13,hy+2,26,1,rim);R(ctx,hx-1,hy-10,2,10,'rgba(0,0,0,.18)');R(ctx,hx-6,hy-7,3,4,'rgba(255,255,255,.55)');
@@ -493,6 +526,14 @@ RECIPES.at_bernard=RECIPES.at_bernard||{sex:'male',head:'male_elderly',skin:'lig
   torso:'longsleeve/longsleeve',shirt:'#4a6b8a',legs:'pants',legs_color:'#3a3f4a',shoes:'#2a1f18'};
 RECIPES.at_bernard_noel=RECIPES.at_bernard_noel||{...RECIPES.at_bernard,hair_color:'#f4f4f4',beard:'beard/basic',shirt:'#c8323a',legs_color:'#c8323a',shoes:'#1c1c1c'};
 const AT_BERNARD_HOME={x:AT_MX-1.6*AT_TS,y:20.75*AT_TS};
+// le colis d'un ticket lancé : Ryan l'a sorti par l'entrée du RDC, il apparaît au fond de l'entrepôt, dans l'allée
+const AT_POP={x:AT_MX,y:AT_H-58};
+function atPop(now,ticket){
+  const k=(now/600)%1;ctx.fillStyle=`rgba(255,240,160,${(.7*(1-k)).toFixed(3)})`;ctx.beginPath();ctx.arc(AT_POP.x,AT_POP.y+6,10+k*16,0,7);ctx.fill();
+  for(let n=0;n<6;n++){const a=n/6*6.28+now/500;R(ctx,AT_POP.x+Math.cos(a)*(14+k*10),AT_POP.y+6+Math.sin(a)*(10+k*8),2,2,'#ffe27a');}
+  R(ctx,AT_POP.x-9,AT_POP.y,18,13,'#b7864b');R(ctx,AT_POP.x-9,AT_POP.y,18,2,'#8a6232');R(ctx,AT_POP.x-1,AT_POP.y,2,13,'#d9c39a');
+  atPill('✨ '+(ticket||'')+' arrive du RDC',AT_POP.x,AT_POP.y-12,'#2f6fd6');
+}
 function atBernard(pos,dir,moving){return {key:'at_bernard',sprite:themeIs('noel')?'at_bernard_noel':'at_bernard',ghost:themeIs('halloween'),name:'Bernard',role:'Manutentionnaire',person:true,pos:{x:pos.x,y:pos.y},tile:null,
   dir:dir||'down',moving:!!moving,pose:'stand',present:true,phase:1.3,_st:{st:moving?'work':'idle'}};}
 function atGhost(c,now){
@@ -511,11 +552,11 @@ function atScenes(now,dt,people){
   {
     const g=AT_G[sc.i];
     if(!sc.walk){
-      if(sc.kind==='arrive')sc.walk=atWalker([AT_BERNARD_HOME,...atToHatch(g,1,AT_DOCK)],85);
-      else sc.walk=atWalker([AT_BERNARD_HOME,...atToHatch(g,2,AT_DOCK)],85);
-      sc.phase=0;
+      if(sc.kind==='arrive'){sc.walk=atWalker([AT_BERNARD_HOME,{x:AT_MX,y:AT_BERNARD_HOME.y},AT_POP],90);sc.phase=-1;}
+      else{sc.walk=atWalker([AT_BERNARD_HOME,...atToHatch(g,2,AT_DOCK)],85);sc.phase=0;}
     }
-    const arrived=atStep(sc.walk,dt);
+    let arrived=atStep(sc.walk,dt);
+    if(sc.phase===-1){people.push([{pos:{x:AT_POP.x,y:AT_POP.y+13}},null,false,()=>atPop(now,sc.ticket)]);if(arrived){sc.phase=0;sc.walk=atWalker([AT_POP,AT_DOCK,...atToHatch(g,1,AT_DOCK).slice(1)],85);arrived=false;}}
     if(arrived&&sc.phase===0){sc.phase=1;sc.hold=now;
       if(sc.kind==='arrive'){const c=AT_MEM.cart[sc.run];if(c)c.hidden=false;}
       else{const l=AT_MEM.leaving[sc.i];if(l)l.picked=true;}}
@@ -650,7 +691,12 @@ function renderAtelier(now){
   const dt=AT_MEM.last?Math.min(.1,(now-AT_MEM.last)/1000):0;AT_MEM.last=now;
   if(!AT_BG)AT_BG=atBackground();
   ctx.drawImage(AT_BG,0,0);atWindows(now);AT_HITS=[];AT_LIT=[];
-  if(AT_MEM.src!==ATELIER){AT_MEM.src=ATELIER;atDiff(now);}
+  // un saut du curseur (plus de 2 min de l'heure du plan) ou un passage du direct au rejeu : l'étage se pose sans rejouer
+  const live=atLive(), jump=AT_MEM.lastT!=null&&(Math.abs(T-AT_MEM.lastT)>120e3||live!==AT_MEM.live), sig=atSig();
+  if(jump){AT_MEM.fresh=true;AT_MEM.scenes=[];AT_MEM.leaving=[null,null,null,null];AT_MEM.rooms={};AT_MEM.cart={};}
+  AT_MEM.lastT=T;AT_MEM.live=live;
+  if(AT_MEM.src!==ATELIER||AT_MEM.sig!==sig){AT_MEM.src=ATELIER;AT_MEM.sig=sig;atDiff(now);}
+
   const slots=atSlots(), d=ATELIER||{}, cl=atCleaner();AT_MEM.clean=cl&&atCleanerAt(cl,T);
   atCorridor(now);
   for(const k of Object.keys(AT_MEM.ext))if(now-AT_MEM.ext[k].seen>3e3)delete AT_MEM.ext[k];
@@ -673,6 +719,7 @@ function renderAtelier(now){
   atBoard(slots);
   const hp=atPickedAt();if(hp)selHalo(hp.x,hp.y-26,AT_W,AT_H); // comme au RDC : le plan s'assombrit autour de celui qu'on a choisi
   atPicked(slots,now);
+  if(!atLive()){const s='⏪ Rejeu · '+hm(T)+' · l\'étage à cette heure-là';ctx.font='bold 12px system-ui,sans-serif';atPill(s,14+ctx.measureText(s).width/2,14,'#c9a227','#1c1c1c','bold 12px system-ui,sans-serif');}
 }
 // où est celui qu'on a choisi : un agent (à sa place ou en promenade), ou le boss (sa fiche ouverte à l'étage)
 function atPickedAt(){

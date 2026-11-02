@@ -32,6 +32,31 @@ function atDemoEvents(d){
     .slice(0,d.livres||0).forEach(([ticket,title,x],i)=>out.push({run:'demo-l'+i,ticket,repo:'dm/site',title,t:at(x),k:'sort'}));
   return out.sort((a,b)=>ms(a.t)-ms(b.t));
 }
+// ---------- Ryan (l'agent qui incarne le lanceur de la chaîne, CFG.atelier_launcher) ----------
+// Un homme de chantier : casque et gilet (drawGear, 68-atelier.js). Quand un ticket arrive au 1er, il porte son carton
+// jusqu'à l'entrée principale (la zone « leave » du plan, comme ceux qui rentrent chez eux) après l'avoir pris à son
+// bureau (les 15 premières secondes) ; le colis apparaît alors dans
+// l'entrepôt du 1er, où Bernard le prend (atPop). Une minute de l'heure du plan : rejouable au curseur comme le reste du RDC.
+// En direct, un ticket relevé en retard (cron live, chaque minute) compte de l'heure où la page l'a vu.
+const AT_CARRY_MS=60e3, AT_SEEN={};
+const atIsLauncher=c=>!!c&&!c.person&&!c.visitor&&!!CFG.atelier_launcher&&(c.wf||[]).some(w=>String(w).slice(0,8)===CFG.atelier_launcher);
+function atLauncherCarry(c,t){
+  if(!atIsLauncher(c)||!atelierOn())return null;
+  const live=typeof mode==='undefined'||mode==='live';
+  for(const e of atEvents()){if(e.k!=='arrive')continue;
+    let a=ms(e.t);if(!a)continue;
+    if(live){if(!AT_SEEN[e.run])AT_SEEN[e.run]=Math.max(a,t);a=Math.max(a,Math.min(AT_SEEN[e.run],a+AT_CARRY_MS));}
+    if(t>=a&&t<a+AT_CARRY_MS)return {st:'work',zone:t<a+15e3?'desk':'leave',carry:true,ticket:e.ticket,label:'Porte '+(e.ticket||'le ticket')+' au 1er étage',
+      bubble:'📦 '+(e.ticket||'')+' → 1er étage'};
+  }
+  return null;
+}
+// le carton dans les bras (au-dessus des mains, vu de face ou de côté ; caché derrière lui quand il s'éloigne vers le haut)
+function drawCarry(c){
+  if(c.dir==='up')return;
+  const x=Math.round(c.pos.x)+(c.dir==='left'?-8:c.dir==='right'?8:0), y=Math.round(c.pos.y)-30;
+  R(ctx,x-8,y,16,12,'#b7864b');R(ctx,x-8,y,16,2,'#8a6232');R(ctx,x-1,y,2,12,'#d9c39a');
+}
 // ---------- fil de la journée (70-kpis-feed.js) ----------
 function atFeedEvents(t){
   if(!atelierOn())return [];
@@ -44,7 +69,7 @@ function atFeedEvents(t){
       back:q?`🔒 ${esc(q.n)} bloque ${tk} : retour au code`:`🔒 Un contrôle bloque ${tk} : retour au code`,
       panne:`🧯 ${tk} : ${esc(atStepName(e.poste))} en panne`}[e.k];
     if(!txt)continue;
-    out.push({t:a,at:e.run,ty:{arrive:'tickets',sort:'pr',gate:'toi'}[e.k]||'agents',team:e.k==='arrive'||e.k==='sort',
+    out.push({t:a,at:e.run,fl:1,ty:{arrive:'tickets',sort:'pr',gate:'toi'}[e.k]||'agents',team:e.k==='arrive'||e.k==='sort',
       txt:txt+(sub?` <small>${sub}</small>`:'')});
   }
   return out;

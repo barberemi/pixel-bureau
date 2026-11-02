@@ -58,7 +58,9 @@ function csStates(t,s){
   const out={}, k=s?s.k:spState(t).k, r=(s&&s.r)||csRunOf(t);
   if(!(r&&(r.steps||[]).length)&&t.run&&t.run.postes)Object.assign(out,t.run.postes);
   else{
-    for(const st of (r&&r.steps)||[]){const v=st.s==='Success'||st.s==='Skipped'?'ok':st.s==='Failed'?'err':st.s==='WaitingApproval'?'gate':'run';
+    for(const st of (r&&r.steps)||[]){if(st.at&&ms(st.at)>T)continue; // rejeu : une étape pas encore commencée à l'heure du plan
+      const going=st.at&&ms(st.at)+(st.ms||0)>T&&st.s!=='WaitingApproval'; // commencée, pas finie à T : au travail (ou à la gate)
+      const v=going?(st.n==='gate'?'gate':'run'):st.s==='Success'||st.s==='Skipped'?'ok':st.s==='Failed'?'err':st.s==='WaitingApproval'?'gate':'run';
       for(const p of CS_STEP[st.n]||[])if(!(p in out)||CS_RANK[v]>CS_RANK[out[p]])out[p]=v;}}
   const keys=CS_POSTES.map(p=>p.k), g=keys.indexOf('gate');
   if(k==='gate'){keys.slice(0,g).forEach(p=>{out[p]='ok';});out.gate='gate';}
@@ -81,7 +83,8 @@ function csSlots(now){
   });
   M.dep.forEach((d,b)=>{if(d&&now-d.t0>CS_DEP_MS){M.dep[b]=null;M.slots[b]=null;M.door[b]=0;}});
   for(const id of ids)if(!M.slots.includes(id)){const b=M.slots.findIndex((x,i)=>!x&&!M.dep[i]);if(b<0)break;M.slots[b]=id;
-    if(M.fresh||REDUCED_MOTION){M.door[b]=1;M.arr[b]=null;}else M.arr[b]=csArrive(b,now);}
+    const x=act.find(a=>a.t.id===id), t0=ms((x.t.run&&x.t.run.at)||(x.s.r&&x.s.r.start)||''), recent=t0&&t0<=T&&T-t0<120e3;
+    if((M.fresh&&!recent)||REDUCED_MOTION){M.door[b]=1;M.arr[b]=null;}else M.arr[b]=csArrive(b,now);} // partie il y a moins de 2 min : l'arrivée se joue
   M.walk=M.walk.filter(w=>!w.gone);
   M.fresh=false;
   return M.slots.map((id,b)=>{if(!id)return null;if(M.dep[b])return {t:M.dep[b].t,s:{k:'done'},dep:M.dep[b]};const a=act.find(x=>x.t.id===id);if(!a)return null;const st=csStates(a.t,a.s);M.st[b]=st;return {...a,st};});
@@ -389,6 +392,9 @@ function renderCaserne(now){
   const dt=CS_MEM.last?Math.min(.1,(now-CS_MEM.last)/1000):0;CS_MEM.last=now;
   if(!CS_BG)CS_BG=csBackground();
   ctx.drawImage(CS_BG,0,0);CS_HITS=[];CS_LIT=[];
+  // comme au 1er (renderAtelier) : un saut du curseur ou un passage du direct au rejeu pose la caserne sans rejouer
+  const live=spLive();if(CS_MEM.lastT!=null&&(Math.abs(T-CS_MEM.lastT)>120e3||live!==CS_MEM.live)){const keep=CS_MEM.last;CS_MEM=csMem0();CS_MEM.last=keep;}
+  CS_MEM.lastT=T;CS_MEM.live=live;
   const slots=csSlots(now), people=[];
   slots.forEach((s,b)=>csBay(s,b,now,dt,people));
   csBoard(slots,now);csGuard(now,people);csWalkers(now,dt,people);csCaptain(slots,now,dt,people);csBeacon(now);

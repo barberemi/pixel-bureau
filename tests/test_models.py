@@ -331,9 +331,11 @@ exit 0
         shutil.rmtree(tmp)
 
     def test_atelier_wf(self):
-        """1er étage (#125) : préfixes des modèles impl* pour la page, qui sort leurs runs du RDC."""
+        """1er étage (#125) : préfixes des modèles impl* pour la page, qui sort leurs runs du RDC ; le lanceur (impl) reste
+        au RDC, son agent y porte le carton de chaque ticket lancé (atelier_launcher)."""
         c = cfg(models={"impl": "aaaa1111-x", "impl_chain": "bbbb2222-x", "impl_code": "cccc3333-x", "review_child": "dddd4444-x"})
-        self.assertEqual(assemble.page_config(c)["atelier_wf"], ["aaaa1111", "bbbb2222", "cccc3333"])
+        self.assertEqual(assemble.page_config(c)["atelier_wf"], ["bbbb2222", "cccc3333"])
+        self.assertEqual((assemble.page_config(c)["atelier_launcher"], assemble.page_config(cfg())["atelier_launcher"]), ("aaaa1111", ""))
         self.assertEqual(assemble.page_config(cfg())["atelier_wf"], [])
         self.assertEqual(assemble.page_config(c)["atelier_chain"], "bbbb2222")  # tickets sortis aujourd'hui
         self.assertEqual(assemble.page_config(cfg())["atelier_chain"], "")

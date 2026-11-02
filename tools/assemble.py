@@ -206,7 +206,9 @@ def page_config(cfg):
         # 1er étage, l'atelier d'implémentation (#125) : ses onglets quand la chaîne est installée (models.impl_chain)
         "atelier": bool((cfg.get("models") or {}).get("impl_chain")),
         # ses workflows (modèles impl*) : leurs runs vont au 1er, ni au RDC ni dans « Nouvel agent »
-        "atelier_wf": sorted({str(v)[:8] for k, v in (cfg.get("models") or {}).items() if k.startswith("impl") and v}),
+        "atelier_wf": sorted({str(v)[:8] for k, v in (cfg.get("models") or {}).items() if k.startswith("impl") and k != "impl" and v}),
+        # le lanceur (models.impl) reste au RDC : l'agent qui l'incarne (Ryan) y travaille et porte le carton à l'entrée
+        "atelier_launcher": str((cfg.get("models") or {}).get("impl") or "")[:8],
         "atelier_chain": str((cfg.get("models") or {}).get("impl_chain") or "")[:8],  # tickets sortis aujourd'hui (runs de la chaîne)
     }
 
