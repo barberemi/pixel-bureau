@@ -343,7 +343,25 @@ test('le soir, comme au RDC : le boss et ceux qui se promènent ont leur lumièr
   const b = J2('AT_MEM.boss.walk.pos');
   assert.ok(lit(b.x, b.y - 26), 'le boss, en route vers la porte du bureau qui l\'attend');
   for (const w of J2('AT_MEM.wander.map(w => w.walk.pos)')) assert.ok(lit(w.x, w.y - 26), 'un promeneur');
-  assert.ok(J2('AT_HITS.some(h => h.kind === "boss")'), 'le boss se clique');
+  assert.ok(J2('AT_HITS.some(h => h.kind === "boss" || h.kind === "gate")'), 'le boss se clique (à la porte : la décision)');
+});
+
+test('une gate du 1er : le boss à la porte et son étiquette mènent à la décision, comptée chez le boss', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
+  p.run(`CFG.atelier = true; FLOOR = 1; ATELIER = {rooms: [${JSON.stringify(room('n', {gate: 'gate_plan', poste: 'gate'}))}], queue: [], pannes: []};
+    AT_MEM.boss = null; renderAtelier(1000); renderAtelier(1100);`);
+  const g = J2('AT_HITS.filter(h => h.kind === "gate").map(h => h.i)');
+  assert.ok(g.length >= 2 && g.every(i => i === 0), 'le boss et son étiquette « décider »');
+  assert.equal(J2('AT_HITS.some(h => h.kind === "boss")'), false, 'à la porte, le boss mène à la décision, pas à sa fiche');
+  assert.deepEqual(J2('atGateRooms().map(x => [x.i, x.r.run])'), [[0, 'n']]);
+  p.run('GATES = []; var __n0 = gateTotal(); ATELIER = {rooms: [], queue: [], pannes: []}; var __n1 = gateTotal();');
+  assert.equal(J2('__n0 - __n1'), 1, 'la gate du 1er compte dans le ✋ du boss');
+  p.run(`ATELIER = {rooms: [${JSON.stringify(room('n', {gate: 'gate_plan', poste: 'gate'}))}], queue: [], pannes: []};
+    var __ds = renderSide; renderSide = () => {}; var __hit = atHitAt; atHitAt = () => ({kind: 'gate', i: 0}); atelierClick({}); atHitAt = __hit; renderSide = __ds;`);
+  assert.equal(J2('ATSEL'), 'n', 'le clic ouvre la fiche du bureau');
+  assert.equal(J2('sel'), null);
+  assert.ok(J2(`atelierFicheHtml(atSlots()[0], 0)`).indexOf('class="at-gate"') < J2(`atelierFicheHtml(atSlots()[0], 0)`).indexOf('class="at-t"'),
+    'la décision avant la liste des postes');
 });
 
 test('le boss a la même fiche qu\'au RDC à l\'étage ; un lien vers le RDC y redescend, le retour revient à l\'atelier', () => {

@@ -418,9 +418,12 @@ function atBoss(slots,now,dt,people){
   if(!boss){desk();return;}
   const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:b.walk.pos.x,y:b.walk.pos.y},tile:seated?BOSS_SEAT.slice():null,moving:!arrived,pose:'stand',present:true,
     dir:arrived?(target==null?'down':AT_G[target].top?'up':'down'):b.walk.dir,_st:{st:gates.length?'gate':'idle'}});
-  AT_LIT.push(c.pos);atHit('boss',c.pos.x-14,c.pos.y-56,28,58,{});
+  // à la porte d'un bureau qui l'attend, le boss et son étiquette mènent à la décision (atelierClick : kind gate)
+  const at=arrived&&target!=null&&slots[target], gl=at?'✋ '+(at.ticket||'')+' · '+(AT_GATE_TXT[at.gate]||'à décider')+' · décider ›':'';
+  AT_LIT.push(c.pos);atHit(at?'gate':'boss',c.pos.x-14,c.pos.y-56,28,58,at?{i:target}:{});
   if(seated){drawChar(c,now);desk();}
-  else{desk();people.push([c,null,false,()=>{if(arrived&&target!=null)atBubble(c.pos.x+44,c.pos.y-30,'✋ '+(slots[target]?slots[target].ticket:''),'#8a5a00');}]);}
+  else{desk();people.push([c,null,false,()=>{if(at){ctx.font='bold 10px system-ui,sans-serif';const w=ctx.measureText(gl).width+12, bx=c.pos.x+18+w/2;
+    atBubble(bx,c.pos.y-30,gl,'#8a5a00');atHit('gate',bx-w/2,c.pos.y-47,w,21,{i:target});}}]);}
   if(seated&&gates.length)atBubble(ox,F-58,'✋ '+gates.length);
 }
 function atWarehouse(q,pn,now){ // en bas du couloir central : sol béton, bande de sécurité, deux rayonnages, les pannes sur palettes
@@ -669,6 +672,7 @@ function atHitAt(e){
 function atelierClick(e){
   const h=atHitAt(e), slots=atSlots();AT_PICK=null;ATSEL=null;sel=null;SEL_BACK=[];
   if(h&&h.kind==='boss'){const b=chars.find(c=>c.boss);if(b){select(b.key);return;}} // la même fiche qu'au RDC, dans le panneau
+  if(h&&h.kind==='gate'){ATSEL=slots[h.i]?slots[h.i].run:null;renderSide(true);atGateFocus();return;} // la décision, en haut de la fiche du bureau
   if(h&&h.kind==='agent'){AT_PICK={kind:'agent',i:h.i,k:h.k};ATSEL=slots[h.i]?slots[h.i].run:null;}
   else if(h&&(h.kind==='queue'||h.kind==='panne'))AT_PICK={kind:h.kind,run:h.run};
   else if(h&&h.kind==='room')ATSEL=slots[h.i]?slots[h.i].run:null;
@@ -681,6 +685,7 @@ function atelierHover(e){
   else if(h&&h.kind==='cleaner'&&AT_MEM.clean)s=(atCleaner()||{}).name+' · '+atCleanLabel(AT_MEM.clean);
   else if(h&&h.kind==='pompier')s='Pompier · le poste '+atLabel(h.k)+' du bureau '+(h.i+1)+' est en panne (son sous-workflow a échoué) : il éteint le feu tant que la panne dure';
   else if(h&&h.kind==='boss')s=((chars.find(c=>c.boss)||{}).name||'Le boss')+' · sa fiche, comme au RDC';
+  else if(h&&h.kind==='gate'){const r=atSlots()[h.i];s=r?'✋ '+r.ticket+' · '+(AT_GATE_TXT[r.gate]||'à décider')+' : clique pour décider':'';}
   else if(h&&h.kind==='bernard')s='Bernard · apporte les tickets de l\'entrepôt et emporte ceux qui sortent';
   else if(h&&h.kind==='queue'){const q=((ATELIER&&ATELIER.queue)||[]).find(x=>x.run===h.run);s=q?q.ticket+' · attend un bureau libre':'';}
   else if(h&&h.kind==='panne'){const p=((ATELIER&&ATELIER.pannes)||[]).find(x=>x.run===h.run);s=p?p.ticket+' · en panne à '+atStepName(p.poste):'';}
@@ -711,10 +716,15 @@ function atelierFicheHtml(r,i){
   return `<button class="at-back">‹ L'atelier</button><h2 class="at-h">🎫 ${esc(r.ticket||'…')} <span class="cnt">bureau ${i+1}</span></h2>
     <div class="at-title big">${esc(r.title||'')}</div>
     <div class="mut">${esc(r.repo||'')}${r.tour?' · tour <b>'+esc(r.tour)+'</b>':''} · ${Math.round((r.tok||0)/1e3)} k jetons${r.since?' · depuis '+esc(hm(ms(r.since))):''}</div>${atBar(r)}
+    ${r.gate?`<div class="at-gate"></div>${r.url?`<a class="at-link" href="${esc(r.url)}" target="_blank" rel="noopener">↗ Lire en entier dans Kronn</a>`:''}`:''}
     <table class="at-t">${AT_POSTES.map(p=>{const s=(r.states||{})[p.k];return `<tr${r.poste===p.k?' class="cur"':''}><td>${p.i} ${esc(p.n)}</td><td>${s?`<span class="dot" style="background:${AT_ST[s][0]}"></span>${AT_ST[s][1]}`:'<span class="mut">à venir</span>'}</td></tr>`;}).join('')}</table>`+
     (r.note?`<div class="at-box${r.back?' bloq':''}">${esc(r.note)}${r.lot?' · '+esc(r.lot):''}</div>`:r.lot?`<div class="at-box run">${esc(r.lot)}</div>`:'')+
     (r.url?`<a class="at-link" href="${esc(r.url)}" target="_blank" rel="noopener">↗ Le run dans Kronn</a>`:'');
 }
+// les bureaux dont une gate t'attend : comptés et décidés aussi depuis la fiche du boss (50-panel.js, gateTotal)
+const atGateRooms=()=>typeof atelierOn==='function'&&atelierOn()?atSlots().map((r,i)=>r&&r.gate?{r,i}:null).filter(Boolean):[];
+// la carte de décision de la fiche ouverte, montrée (clic sur le boss à la porte ou sur son étiquette)
+function atGateFocus(){const n=document.querySelector('.atelier .gatecard');if(n&&n.scrollIntoView)n.scrollIntoView({block:'nearest'});}
 // gate du bureau : la carte de décision du Bureau (55-actions.js), ou null quand rien n'attend
 const atGate=r=>{if(!r.gate)return null;const g=GATES.find(x=>x.run===r.run);return {run:r.run,wf_name:g?g.wf_name:'Implémenter un ticket',_s:ms(r.since)};};
 // fiche d'un agent de l'étage : son poste, son bureau, ce qu'il fait, et où est sa place
@@ -746,7 +756,7 @@ function drawAtelierSide(side){
   if(r){
     box.innerHTML=atelierFicheHtml(r,i);
     back();
-    const g=atGate(r);if(g)gateCard(box,g,null);
+    const g=atGate(r), slot=box.querySelector('.at-gate');if(g)gateCard(slot||box,g,null);
     return;
   }
   box.innerHTML=atelierListHtml(slots.map((x,k)=>x&&{...x,_b:k+1}).filter(Boolean),(ATELIER&&ATELIER.queue)||[],(ATELIER&&ATELIER.pannes)||[]);

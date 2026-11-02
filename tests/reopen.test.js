@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 const {load} = require('./helpers/page.js');
 
 const page = load();
+page.run('ATELIER=null'); // la gate de démo du 1er compterait chez le boss : hors de ces tests (atelier.test.js)
 const run = page.run;
 const J = code => JSON.parse(run('JSON.stringify(' + code + ')'));
 const at = hm => Date.parse(`2026-10-01T${hm}:00+02:00`);
