@@ -12,7 +12,7 @@ const AT_ST={ok:['#3fbf6a','validé'],run:['#5b8def','en cours'],bloq:['#e0614f'
   skip:['#5b6070','sauté'],err:['#e0614f','en panne']};
 const AT_TS=32, AT_W=46*AT_TS, AT_H=27*AT_TS;
 let FLOOR=0, ATELIER=null, ATSEL=null;
-try{FLOOR=+localStorage.getItem('bureau:floor')===1?1:0;}catch(e){FLOOR=0;}
+try{const f=+localStorage.getItem('bureau:floor');FLOOR=f===1||f===-1?f:0;}catch(e){FLOOR=0;} // -1 : la caserne Support (68-caserne.js)
 function readAtelier(src){
   try{
     if(!src||!src.datasets)return null;
@@ -52,23 +52,29 @@ const AT_STEP={prepare:'Préparation',orchestrateur_plan:'Plan de l\'orchestrate
 const atStepName=k=>{const p=AT_POSTES.find(x=>x.k===k);return p?p.i+' '+p.n:AT_STEP[k]||k||'?';};
 const atRooms=()=>((ATELIER&&ATELIER.rooms)||[]).slice(0,4);
 // ---------- onglets d'étage ----------
+// RDC (l'open space, par défaut), 1er (l'atelier, s'il existe), -1 (la caserne Support, si la console Support existe)
 function atelierTabs(){
   let t=document.getElementById('floors');
-  if(!atelierOn()){if(t)t.remove();return;}
+  if(!atelierOn()&&!caserneOn()){if(t)t.remove();return;}
   if(!t){t=document.createElement('div');t.id='floors';t.className='floors';t.setAttribute('role','tablist');
     const w=document.querySelector('.stage .cv-wrap');w.parentElement.insertBefore(t,w);
     t.addEventListener('click',e=>{const b=e.target.closest('button[data-floor]');if(b)setFloor(+b.dataset.floor);});}
-  const n=atRooms().length, w=atRooms().filter(r=>r.gate).length, h=`<button role="tab" data-floor="0" aria-selected="${!FLOOR}"${FLOOR?'':' class="on"'}>🏢 RDC · open space</button>`+
-    `<button role="tab" data-floor="1" aria-selected="${!!FLOOR}"${FLOOR?' class="on"':''}>🏭 1er · atelier d'implémentation${n?` <b>${n}</b>`:''}${w?` <b>✋ ${w}</b>`:''}</button>`;
+  const tab=(f,label)=>`<button role="tab" data-floor="${f}" aria-selected="${FLOOR===f}"${FLOOR===f?' class="on"':''}>${label}</button>`;
+  const n=atRooms().length, w=atRooms().filter(r=>r.gate).length, cs=caserneOn()?csActive():[], cg=cs.filter(x=>x.s.k==='gate').length;
+  const h=tab(0,'🏢 RDC · open space')+(atelierOn()?tab(1,`🏭 1er · atelier d'implémentation${n?` <b>${n}</b>`:''}${w?` <b>✋ ${w}</b>`:''}`):'')+
+    (caserneOn()?tab(-1,`🚒 -1 · caserne Support${cs.length?` <b>${cs.length}</b>`:''}${cg?` <b>✋ ${cg}</b>`:''}`):'');
   if(t.dataset.sig!==h)t.innerHTML=t.dataset.sig=h;
 }
+// étages qui existent, de haut en bas
+const floorsOn=()=>[...(atelierOn()?[1]:[]),0,...(caserneOn()?[-1]:[])];
 function setFloor(f){
-  FLOOR=f?1:0;ATSEL=null;AT_PICK=null;try{localStorage.setItem('bureau:floor',String(FLOOR));}catch(e){}
+  FLOOR=f===1&&atelierOn()?1:f===-1&&caserneOn()?-1:0;ATSEL=null;AT_PICK=null;try{localStorage.setItem('bureau:floor',String(FLOOR));}catch(e){}
   if(FLOOR){cv.width=AT_W;cv.height=AT_H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(AT_W/AT_H));}
   else{cv.width=W;cv.height=H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(W/H));}
   // pas sizeCanvas() : il redimensionne aussi bg, le décor du RDC cuit une fois, et redimensionner une toile l'efface
-  // seul l'étage affiché vit : en montant, l'atelier se pose sans rejouer ce qui s'est passé ; en descendant, chacun reprend sa place
-  if(FLOOR){AT_MEM.fresh=true;AT_MEM.src=null;AT_MEM.boss=null;AT_MEM.scenes=[];AT_MEM.leaving=[null,null,null,null];}else needTeleport=true;
+  // seul l'étage affiché vit : en arrivant à un étage, il se pose sans rejouer ce qui s'est passé ; au RDC, chacun reprend sa place
+  if(FLOOR===1){AT_MEM.fresh=true;AT_MEM.src=null;AT_MEM.boss=null;AT_MEM.scenes=[];AT_MEM.leaving=[null,null,null,null];}
+  else if(FLOOR===-1)csReset();else needTeleport=true;
   if(typeof LOUPE!=='undefined'){LOUPE.seen=null;LOUPE.queue=[];if(LOUPE.cur)loupeHide();}
   atelierTabs();renderSide(true);if(TV)updateTv(true); // 75-tv.js : la colonne et le bouton d'étage
   {const det=document.querySelector('.legend-help');if(det&&det.open&&typeof renderGallery==='function')renderGallery();} // 46-gallery.js : les scènes de cet étage

@@ -215,7 +215,7 @@ function supportDemo(){
   const t=(id,from,h,text,state,extra)=>({id,from,at:at(h),text,url:u,cut:false,replies:0,last_at:at(h),state,by:null,mine:null,run:null,...extra});
   return {generated_at:at(10.9),polled_at:at(10.9),name:'Support Scranton',ok:true,error:null,cost:0.005,days:7,demo:true,threads:[
     t('d1','Bernard, Andy',10.7,"Depuis hier 15h, les fiches produit du catalogue partenaire renvoient une 404. Celles d'avant 15h marchent toujours.",'new',{subject:'Catalogue partenaire : fiches produit en 404'}),
-    t('d2','Beesly, Pam',10.33,"Sur la page des promotions, la vidéo jouée n'est pas la bonne alors que le lien est bien dans le CMS.",'run',{run:{run:'demo-r2',status:'Running',at:at(10.52),disc:null,version:0}}),
+    t('d2','Beesly, Pam',10.33,"Sur la page des promotions, la vidéo jouée n'est pas la bonne alors que le lien est bien dans le CMS.",'run',{run:{run:'demo-r2',status:'Running',at:at(10.52),disc:null,version:0,postes:{tri:'ok',logs:'ok',cause:'run'}}}),
     t('d3','Philbin, Darryl',9.08,'Le flux RSS des commandes est vide depuis ce matin.','gate',{run:{run:'demo-r3',status:'WaitingApproval',at:at(9.2),disc:null,version:2,
       draft:"🔎 Cause : le cron du flux RSS a échoué à 8h (délai dépassé sur l'API des commandes).\n🛠️ Action : relancé à 9h20, le flux est de nouveau rempli.\n👀 Suivi : on surveille le passage de 10h."}}),
     t('d4','Lewis, Gabe',8.2,'404 sur la page « nouveautés » du site de Scranton.','done',{mine:{at:at(9.23),text:"🔎 Cause : la route des nouveautés manquait après la mise en prod 17.107.0.\n✅ Correctif : rétablie en 17.107.1, en prod à 9h05."}}),
