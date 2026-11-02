@@ -24,6 +24,8 @@ import assemble  # noqa: E402  (roster du profil d'équipe)
 # postes de la chaîne d'implémentation (#76) appelés par le parent ou par le poste des contrôles, dans l'ordre de création
 IMPL_POSTES = ("cadrage", "schema", "patterns", "code", "tests", "revue", "revue_pr", "retours", "livraison",
                "publication")
+# postes de l'investigation Support (#62) : un sous-workflow chacun, appelés par le parent support dans cet ordre
+SUPPORT_POSTES = ("tri", "logs", "cause", "reponse", "relecture")
 # modèle -> (type, où trouver l'id dans la config, scripts par étape)
 TEMPLATES = {
     "office": ("workflow", ("workflows", "office"), {"snapshot": "workflows/office_snapshot.py"}),
@@ -85,7 +87,9 @@ TEMPLATES = {
     "env": ("workflow", ("models", "env"), {}),
     # déployer la branche d'une PR hors prod (DEV, STG…) : bouton « 🚀 » des fiches, dépôts et envs du réglage deploy
     "deploy": ("workflow", ("models", "deploy"), {"dispatch": "workflows/deploy.py"}),
-    # investiguer un message du canal Support (#62) : discussion avec l'agent, gate, réponse en fil
+    # investiguer un message du canal Support (#62) : une chaîne de postes (sous-workflows, un agent chacun, créés avant le
+    # parent), puis ta validation (gate) et la réponse en fil
+    **{f"support_{p}": ("workflow", ("models", f"support_{p}"), {n: "workflows/support.py" for n in ("entree", "rapport")}) for p in SUPPORT_POSTES},
     "support": ("workflow", ("models", "support"), {n: "workflows/support.py" for n in ("open", "mark", "draft", "mark_draft", "post", "mark_post")}),
     # implémenter un ticket en chaîne de postes (#76, #125) : un poste = un sous-workflow (un agent, ses skills, son modèle),
     # créés avant ceux qui les appellent (enfants d'abord : Kronn vérifie la cible d'un SubWorkflow à l'enregistrement)
@@ -109,7 +113,7 @@ REVIEW_SCHEDULE = "30 7,10,13,16,19 * * 1-5"  # cron des revues de PR, heures UT
 # copie du projet (require_isolation), jamais le dossier principal ; le sous-workflow tourne dans celle de son parent
 ISOLATED = {"review_one", "review_cron", "impl_chain"}  # la chaîne : une copie du projet par ticket, 4 en parallèle
 # sous-workflows qui tournent dans la copie de leur parent : relire une PR, les postes de la chaîne d'implémentation
-SHARED_WORKSPACE = {"review_child", "impl_controles", *(f"impl_{p}" for p in IMPL_POSTES)}
+SHARED_WORKSPACE = {"review_child", "impl_controles", *(f"impl_{p}" for p in IMPL_POSTES), *(f"support_{p}" for p in SUPPORT_POSTES)}
 
 
 def load_config():
@@ -247,7 +251,8 @@ def values(cfg):
         "env.label": (cfg.get("env") or {}).get("label") or "env-branch",  # label qui construit l'env de branche (réglage d'équipe)
         # chaîne d'implémentation (#76) : ids des postes (enfants créés d'abord), consignes de l'équipe pour le code et les contrôles
         **{f"models.{k}": (cfg.get("models") or {}).get(k) or "" for k in ("assign", "impl_controles", "impl_chain",
-                                                                          *(f"impl_{p}" for p in IMPL_POSTES))},
+                                                                          *(f"impl_{p}" for p in IMPL_POSTES),
+                                                                          *(f"support_{p}" for p in SUPPORT_POSTES))},  # postes Support (#62)
         "impl.guidelines": str((cfg.get("impl") or {}).get("guidelines") or "Aucune consigne d'équipe en plus de la doc du dépôt."),
     }
 
@@ -321,7 +326,7 @@ def skipped(key, cfg):
         return not assemble.env_repos({**cfg, "models": {**(cfg.get("models") or {}), "env": "?"}})
     if key == "deploy":  # aucun dépôt ni env hors prod réglé (deploy.repos)
         return not assemble.deploy_envs({**cfg, "models": {**(cfg.get("models") or {}), "deploy": "?"}})
-    if key in ("support", "support_poll", "support_skip"):  # console Support (#62) : canal Teams réglé (support.team, support.channel)
+    if key in ("support", "support_poll", "support_skip") or key.startswith("support_"):  # console Support (#62) : canal Teams réglé (support.team, support.channel)
         s = cfg.get("support") or {}
         return not (s.get("team") and s.get("channel"))
     return False
@@ -383,8 +388,9 @@ def render(tpl, cfg):
                                 **({"default_value": opts[0][0]} if opts else {})}
         for s in d["steps"]:
             s.pop("_requires", None)
-            if "_poste" in s:  # chaîne d'implémentation : agent, modèle et skills du poste (défauts, puis réglage impl.postes)
-                impl_agent(s, s.pop("_poste"), cfg)
+            if "_poste" in s:  # chaîne d'implémentation ou investigation Support : agent, modèle et skills du poste
+                role = s.pop("_poste")
+                (support_agent if role.startswith("support.") else impl_agent)(s, role, cfg)
             src = s.pop("_skills_from", None)
             if src in ("review.skill_ids", "fix.skill_ids"):  # skills de l'équipe en plus de ceux du modèle (#78, #75)
                 team = (cfg.get(src.split(".")[0]) or {}).get("skill_ids")
@@ -423,6 +429,21 @@ def impl_agent(step, role, cfg):
     step["agent_settings"] = {"tier": conf.get("tier") or tier, **({"model": conf["model"]} if conf.get("model") else {})}
     extra = list(conf.get("skills") or []) + (list(imp.get("skills") or []) if role in IMPL_TEAM_SKILLS else [])
     step["skill_ids"] = list(dict.fromkeys(skills + extra))
+
+
+# investigation Support (#62) : (tier, skills Kronn) par poste ; léger pour trier et relire, plus fort pour chercher et
+# rédiger. Réglage support.postes.<poste> du pack ou de la config : agent, tier, model, skills (ajoutés).
+SUPPORT_AGENTS = {"tri": ("economy", []), "logs": ("default", []), "cause": ("default", []), "reponse": ("default", []),
+                  "relecture": ("economy", [])}
+
+
+def support_agent(step, role, cfg):
+    k = role.split(".", 1)[1]
+    tier, skills = SUPPORT_AGENTS[k]
+    conf = (((cfg.get("support") or {}).get("postes")) or {}).get(k) or {}
+    step["agent"] = conf.get("agent") or step.get("agent") or "ClaudeCode"
+    step["agent_settings"] = {**(step.get("agent_settings") or {}), "tier": conf.get("tier") or tier, **({"model": conf["model"]} if conf.get("model") else {})}
+    step["skill_ids"] = list(dict.fromkeys(skills + list(conf.get("skills") or [])))
 
 
 # fuseau des crons : leurs heures sont calculées en UTC (assemble.cron_hours) ; depuis Kronn 0.15.1, un cron sans fuseau

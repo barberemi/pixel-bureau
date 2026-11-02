@@ -21,10 +21,10 @@ Les fils des 7 derniers jours, du plus récent au plus ancien, chacun avec son �
 ![La console Support, dans le panneau de droite](../img/support-panneau.png)
 
 1. **Nouveau** : l'auteur, l'heure et le message ; le projet à investiguer (un de tes projets Kronn, ou « Sans projet »), « 🔎 Investiguer » et « Ouvrir dans Teams ↗ ». Investiguer ouvre la carte Kronn dans une fenêtre, pour un commentaire si tu veux (une piste, un contexte).
-2. **Investigation en cours** : l'agent Support et depuis quand, le lien vers sa discussion Kronn. Tu peux y lire ce qu'il trouve et lui écrire.
+2. **Investigation en cours** : l'agent Support et depuis quand, le lien vers sa discussion Kronn. Tu peux y lire ce que trouve chaque poste et y écrire. L'avancement poste par poste se suit à la [caserne Support](25-caserne.md), au -1.
 3. **Réponse à valider** : la réponse proposée, telle qu'elle sera postée, et sa version.
    - **✅ Valider et poster en fil** : elle part dans le fil Teams, sous ton nom.
-   - **✏️ Demander des changements** : ton commentaire repart à l'agent, dans la même discussion ; il reprend sa réponse, qui revient ici à valider, autant de fois que nécessaire.
+   - **✏️ Demander des changements** : ton commentaire repart au poste ✉ Réponse (puis à la relecture), dans la même discussion ; la réponse reprise revient ici à valider, autant de fois que nécessaire. Sous la réponse, les remarques que la relecture n'a pas vu corrigées après deux renvois (elles ne partent jamais dans Teams).
    - **✖ Refuser** : rien n'est posté, le fil passe « Réponse refusée » (hors du compte) ; « 🔎 Investiguer » y reste pour relancer une investigation (nouvelle consigne, autre projet ou commentaire).
 4. **Répondu en fil** : la réponse postée, l'heure, « voir dans Teams ↗ ». Un fil auquel tu as répondu toi-même dans Teams compte aussi comme répondu.
 
@@ -70,9 +70,22 @@ Sa fiche montre, en un bloc compact, le nombre de fils à traiter, les deux dern
 
 `holo: "leger"` ou `holo: "rouge"` donnent ces hologrammes à n'importe quel agent, sans le lien avec le Support.
 
+## Les postes de l'investigation
+
+L'investigation est une chaîne de postes, un agent chacun, tous dans la discussion Kronn de l'investigation ; chacun lit la demande, ton commentaire, tes retours et les rapports des postes d'avant (le dossier du message), et y range le sien :
+
+1. **🏷 Tri** : de quoi parle la demande, quel projet et quel code, l'urgence, si c'est déjà traité ou hors sujet, ce qu'il faut chercher.
+2. **🔎 Logs** : les traces (erreurs, heures, adresses) de la demande et du fil, et où le code les produit. Il n'a accès à aucun outil de logs de production : il liste, prêtes à copier, les vérifications à lancer à la main (CloudWatch, Fastly, Sentry…).
+3. **🧩 Cause** : la cause la plus probable, en lisant le code et son historique, ce qui est établi et ce qui est supposé.
+4. **✉ Réponse** : la réponse au format du fil (une ligne par section, « 🔎 Cause : … »).
+5. **🧐 Relecture** : exacte, utile, claire, au format ; « revoir » la renvoie au poste ✉ avec ses remarques, deux fois au plus.
+
+Puis ta validation (✋) et la réponse en fil (📣). Chaque poste a son modèle : léger pour le tri et la relecture, standard pour les logs, la cause et la réponse ; le réglage `support.postes.<poste>` du pack ou de la config (`agent`, `tier`, `model`, `skills`) les change. Les postes sont des sous-workflows (« Le Bureau · support · 🏷 tri »…) : leurs runs ne passent pas au RDC, ils travaillent à la caserne.
+
 ## Mise en place
 
 - Le canal se règle dans le pack de ton équipe (ou dans ta config) : clé `support` (`name`, `team`, `channel`). Sans canal, rien n'est créé et l'écran reste normal.
 - La lecture du canal passe par le **connecteur Claude Microsoft 365** de ton compte claude.ai (il a le droit de lire les messages d'un canal, que la connexion Azure CLI n'a pas) et la CLI `claude` : un relevé toutes les 15 minutes aux heures de bureau, en semaine, pour environ 0,005 $ chacun.
 - La réponse en fil part avec ta connexion Azure CLI (`az login`), sous ton nom.
+- Les postes de l'investigation sont créés avec elle par l'installateur ; une installation d'avant le découpage les reçoit en relançant `python3 tools/install.py`, puis `python3 tools/publish.py workflows`.
 - Détails techniques : [guide de développement](../developpement.md#console-support-cron-relevé-du-support).

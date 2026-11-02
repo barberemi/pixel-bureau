@@ -1,0 +1,139 @@
+{
+ "kind": "workflow",
+ "key": "support_relecture",
+ "doc": "Relit la réponse : exacte, utile, claire, au format ; « VERDICT : ok » ou « revoir » avec ses remarques.",
+ "definition": {
+  "name": "Le Bureau · support · 🧐 relecture",
+  "project_id": null,
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "message_id",
+    "label": "Message",
+    "placeholder": "",
+    "description": "Message du canal Support (son dossier dans le cache du Bureau).",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "pattern": "^[0-9]{1,20}$"
+   },
+   {
+    "name": "retours",
+    "label": "Retours de l'humain",
+    "placeholder": "",
+    "description": "Commentaire d'une gate « Changements » : ajouté au dossier, à respecter en priorité.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "disc",
+    "label": "Discussion",
+    "placeholder": "",
+    "description": "Discussion Kronn de l'investigation, où l'agent note ce qu'il trouve.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "entree",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Consigne du poste 🧐 relecture : sa mission, la demande, tes retours et les rapports des postes d'avant (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/support.py@@",
+     "poste",
+     "relecture",
+     "{{message_id}}",
+     "{{retours}}"
+    ],
+    "exec_timeout_secs": 60
+   },
+   {
+    "name": "agent",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "🧐 relecture : Relit la réponse : exacte, utile, claire, au format ; « VERDICT : ok » ou « revoir » avec ses remarques. Outils : lecture du code (Read, Grep, Glob, Bash), la discussion de l'investigation (en notes) et les tickets Jira cités (api_call, en lecture).",
+    "prompt_template": "{{steps.entree.data.stdout}}",
+    "room_id": "{{disc}}",
+    "agent_settings": {
+     "tools": {
+      "cli": [
+       "Read",
+       "Grep",
+       "Glob",
+       "Bash"
+      ],
+      "kronn_internal": [
+       "disc_append",
+       "disc_get_message",
+       "disc_meta",
+       "api_call"
+      ]
+     }
+    },
+    "_poste": "support.relecture",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
+   },
+   {
+    "name": "rapport",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le rapport du poste 🧐 relecture, rangé dans le dossier du message (et le verdict de la relecture).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/support.py@@",
+     "rapport",
+     "relecture",
+     "{{message_id}}"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.agent.output ?? \"\"}}"
+   }
+  ]
+ }
+}

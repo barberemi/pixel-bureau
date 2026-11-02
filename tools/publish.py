@@ -73,6 +73,10 @@ def workflows():
             print(f"{key} ({ident[:8]}) : gardé tel quel (branché à l'installation), non publié")
             continue
         body = templates.render(tpl, CFG)
+        orphans = [st["name"] for st in body.get("steps") or [] if (st.get("step_type") or {}).get("type") == "SubWorkflow" and not st.get("sub_workflow_id")]
+        if orphans:  # un poste pas encore créé (ex. les postes Support après le découpage) : le parent garderait une étape vide
+            print(f"{key} ({ident[:8]}) : postes pas encore installés ({', '.join(orphans)}), non publié ; relance python3 tools/install.py")
+            continue
         if kind == "workflow":
             live = call("GET", f"/workflows/{ident}")["data"]
             ids = {st["name"]: st["id"] for st in live["steps"]}

@@ -1,9 +1,11 @@
 """Console Support (#62) : les demandes d'un canal Teams, leur investigation par l'agent Support et la réponse en fil.
 
   python3 -c <ce script> poll                                   # relevé du canal -> dataset support (cron, « Relever »)
-  python3 -c <ce script> open <message> <projet> <run> <commentaire>   # début d'une investigation : discussion Kronn
+  python3 -c <ce script> open <message> <projet> <run> <commentaire>   # début d'une investigation : discussion Kronn, dossier
   python3 -c <ce script> dataset                                # l'état des fils sans relevé (investigation lancée)
-  python3 -c <ce script> draft <run>        (stdin : réponse de l'agent)  # la réponse au format, numéro de version
+  python3 -c <ce script> poste <poste> <message> <retours>      # consigne d'un poste : sa mission et le dossier (0 token)
+  python3 -c <ce script> rapport <poste> <message>  (stdin : sortie de l'agent)  # le rapport du poste, rangé dans le dossier
+  python3 -c <ce script> draft <run> <message>              # la réponse du poste ✉ au format, relue, numéro de version
   python3 -c <ce script> post <run>         (stdin : réponse validée)     # réponse en fil -> dataset support
   python3 -c <ce script> skip <message> <ignorer|reactiver>             # 🔕 un fil ignoré ne compte plus (bouton de la console)
 
@@ -15,7 +17,12 @@ seule lecture des messages du canal autorisée, les autres outils interdits (leu
 l'autre), réglages utilisateur ignorés, un seul tour. Le modèle fait les appels ; leurs résultats bruts sont lus dans
 le flux de la CLI et publiés tels quels, sans qu'il les relise. Les réponses d'un fil ne sont relues que s'il a bougé.
 Réponse en fil : « az account get-access-token » (Microsoft Graph), sous le nom de la personne connectée.
-Fichiers : ~/.cache/pixel-bureau/support.json seulement (jamais le dossier du projet).
+Postes (sous-workflows support_<poste>) : 🏷 tri, 🔎 logs, 🧩 cause, ✉ reponse, 🧐 relecture, un agent chacun, dans la
+discussion de l'investigation ; chacun lit le dossier du message (la demande, les rapports des postes d'avant, tes retours)
+et y range son rapport. La relecture peut renvoyer à la réponse (2 fois au plus) ; ta validation (gate) et la réponse en
+fil restent dans le parent.
+Fichiers : ~/.cache/pixel-bureau/support.json et le dossier ~/.cache/pixel-bureau/support/<message>/ (jamais le dossier
+du projet).
 
 Dataset support : {generated_at, polled_at, name, url, ok, error, cost, me, days, threads: [{id, at, from, text, url,
 replies, last_at, state, by, mine, run}]} ; state = new (à investiguer), run (investigation en cours), gate (réponse à
@@ -30,6 +37,7 @@ from _lib import API, CFG, get, read_json, write_json
 
 S = CFG.get("support") or {}
 CACHE = os.path.join(os.path.expanduser("~"), ".cache", "pixel-bureau", "support.json")
+DOSSIERS = os.path.join(os.path.dirname(CACHE), "support")  # un dossier par message : la demande, les rapports des postes
 GRAPH = os.environ.get("SUPPORT_GRAPH") or "https://graph.microsoft.com/v1.0"  # SUPPORT_GRAPH : tests
 TOOL = "mcp__claude_ai_Microsoft_365__teams_list_channel_messages"
 TOOL_R = "mcp__claude_ai_Microsoft_365__read_resource"  # un message en entier : sujet, réactions, message transféré
@@ -289,7 +297,25 @@ def runs_by_thread(c):
         steps = [s.get("step_name") for s in r.get("step_results") or []]
         out[msg] = {"run": r["id"], "status": r.get("status"), "at": r.get("started_at"), "end": r.get("finished_at"),
                     "disc": meta.get("disc"), "version": meta.get("version") or 0, "draft": meta.get("draft"),
-                    "gate": "gate" in steps}
+                    "gate": "gate" in steps, "postes": postes_of(r.get("step_results") or [])}
+    return out
+
+
+POSTES = ("tri", "logs", "cause", "reponse", "relecture")
+POSTE_OF = {**{p: p for p in POSTES}, "gate": "gate", "post": "post", "mark_post": "post", "publish": "post"}
+
+
+def postes_of(steps):
+    """État des postes d'après les étapes du run parent (une étape par poste) : ok, run, err, gate ; {} sans aucune."""
+    rank, out = {"ok": 0, "gate": 1, "run": 2, "err": 3}, {}
+    for s in steps:
+        k = POSTE_OF.get(s.get("step_name"))
+        if not k:
+            continue
+        st = s.get("status")
+        v = "ok" if st in ("Success", "Skipped") else "err" if st == "Failed" else "gate" if st == "WaitingApproval" else "run"
+        if k not in out or rank[v] > rank[out[k]]:
+            out[k] = v
     return out
 
 
@@ -342,7 +368,7 @@ def dataset(c):
                      "skip": "reactiver" if st == "skipped" else "ignorer",
                      "skipped_at": (c.get("skipped") or {}).get(t["id"]) if st == "skipped" else None,
                      "mine": {"at": mine.get("at"), "text": mine.get("text")} if mine else None,
-                     "run": {k: run[k] for k in ("run", "status", "at", "disc", "version", "draft")} if run else None})
+                     "run": {k: run.get(k) for k in ("run", "status", "at", "disc", "version", "draft", "postes")} if run else None})
     rows = rows[:40]
     out = {"generated_at": iso(now()), "polled_at": c.get("polled_at"), "name": S.get("name") or "Support",
            "ok": not c.get("error"), "error": c.get("error"), "cost": c.get("cost"), "days": DAYS,
@@ -392,19 +418,118 @@ def brief(t, p, comment, who):
             f"{subj}<<<\n{dt.get('text') or t.get('text')}\n>>>{cut}\n{where}{note}")
 
 
-ASK = """Tu es l'agent Support. Lis d'abord les derniers messages de ta discussion Kronn : des remarques peuvent y avoir
-été ajoutées depuis le tour précédent. Investigue, en résumant au fil de l'eau ce que tu trouves dans la discussion.
-Puis rédige la réponse qui sera postée en fil sous le nom de la personne qui t'a lancé (elle la valide d'abord).
-Fais toi-même les lectures (Read, Grep, Glob, Bash en lecture seule), sans lancer d'agent ni de tâche en
-arrière-plan, et sans rendre la main avant d'avoir la réponse. Résume ce que tu trouves dans ta discussion en notes
-(disc_append avec channel "note" et wait_for_reply false : une note ne réveille pas l'agent de la discussion).
-Ta réponse finale, et rien d'autre : en français, concise, une ligne par section, chacune avec son emoji, par exemple
+# ---------- les postes : une mission chacun, un dossier commun ----------
+FORMAT = """Ta réponse finale, et rien d'autre : en français, concise, une ligne par section, chacune avec son emoji, par exemple
 🔎 Cause : …
 🛠️ Action : …
 👀 Suivi : …
 (d'autres sections si utile : ✅ Correctif, ❓ Question, 📎 Lien). Rien avant la première section ni après la
 dernière (ni « voici la réponse », ni « je la publie ? ») ; pas de titre, pas de signature, pas de formule de
 politesse : la mention « Généré de manière automatique » est ajoutée après."""
+COMMON = """Fais toi-même les lectures (Read, Grep, Glob, Bash en lecture seule), sans lancer d'agent ni de tâche en arrière-plan,
+sans rien modifier. Résume ce que tu trouves dans la discussion de l'investigation en notes
+(disc_append avec channel "note" et wait_for_reply false : une note ne réveille personne)."""
+MISSIONS = {
+    "tri": ("🏷 Tri", """Qualifie la demande : de quoi parle-t-elle (page, fonctionnalité, outil), quel projet et quel code sont concernés,
+est-ce urgent (production cassée, beaucoup d'utilisateurs) ; est-ce déjà traité ou hors sujet (annonce, question
+réglée) ; ce qu'il faut chercher ensuite. Rends un rapport court :
+Sujet : …
+Projet et code concernés : …
+Urgence : basse | moyenne | haute, et pourquoi
+À chercher : …"""),
+    "logs": ("🔎 Logs", """Rassemble les traces : messages d'erreur, codes HTTP, heures, adresses, captures citées dans la demande et le fil ;
+dans le code, où ces erreurs sont produites et journalisées (fichiers, lignes). Tu n'as accès à aucun outil de logs
+de production : liste, prêtes à copier, les commandes ou recherches qu'un humain devrait lancer pour confirmer
+(CloudWatch, Fastly, Sentry…), avec la période. Rends un rapport court :
+Traces dans la demande : …
+Où le code les produit : …
+À vérifier à la main : …"""),
+    "cause": ("🧩 Cause", """À partir du tri et des traces, trouve la cause la plus probable en lisant le code (git log et git blame compris :
+une mise en prod récente ?). Distingue ce qui est établi de ce qui est supposé. Rends un rapport court :
+Cause probable : …
+Preuves : fichiers, lignes, commits
+Incertain : …
+Ce qui réglerait le problème : …"""),
+    "reponse": ("✉ Réponse", """Rédige la réponse qui sera postée en fil, sous le nom de la personne qui t'a lancé (elle la valide d'abord), à partir
+des rapports du dossier : ce qu'on a trouvé, ce qu'on fait ou ce qu'il faut faire, le suivi. Ne promets rien que le
+dossier n'établit pas ; une question à l'auteur si une information manque. Si la relecture a laissé des remarques,
+corrige-les.
+""" + FORMAT),
+    "relecture": ("🧐 Relecture", """Relis la réponse proposée (en fin de dossier) avant ta validation humaine : exacte au regard des rapports (rien
+d'inventé, aucune promesse sans preuve), utile à l'auteur, claire, polie et concise, au format (une ligne par section
+« emoji Libellé : … »). Ta première ligne, et elle seule : « VERDICT : ok » ou « VERDICT : revoir » ; puis tes
+remarques, une par ligne, que le poste ✉ Réponse corrigera (revoir seulement pour un vrai défaut)."""),
+}
+REMARKS = "\n\n---\n🧐"  # sous la réponse à valider : les remarques de la relecture restées (jamais postées)
+RELECTURE_MAX = 2  # renvois de la relecture à la réponse ; au-delà, la réponse part à ta validation avec les remarques
+
+
+def dossier(msg):
+    return os.path.join(DOSSIERS, re.sub(r"\D", "", msg) or "0")
+
+
+def dread(msg, name):
+    try:
+        with open(os.path.join(dossier(msg), name), encoding="utf-8") as h:
+            return h.read()
+    except OSError:
+        return ""
+
+
+def dwrite(msg, name, text):
+    os.makedirs(dossier(msg), exist_ok=True)
+    with open(os.path.join(dossier(msg), name), "w", encoding="utf-8") as h:
+        h.write(text)
+
+
+def etat(msg):
+    try:
+        e = json.loads(dread(msg, "etat.json") or "{}")
+        return e if isinstance(e, dict) else {}
+    except ValueError:
+        return {}
+
+
+def poste(k, msg, retours):
+    """Consigne d'un poste : sa mission, la demande, tes retours (gate « Changements »), les rapports des postes d'avant."""
+    if k not in MISSIONS:
+        fail("Poste inconnu : " + k)
+    if not dread(msg, "demande.md"):
+        fail("Dossier introuvable pour ce message : relance l'investigation depuis la console.")
+    retours = (retours or "").strip()
+    if retours and retours not in dread(msg, "retours.md"):  # une seule fois par texte
+        dwrite(msg, "retours.md", (dread(msg, "retours.md") + "\n\n" + retours).strip())
+    titre, mission = MISSIONS[k]
+    parts = [f"Tu es le poste {titre} de l'investigation d'une demande de support (une chaîne de postes : 🏷 Tri, 🔎 Logs, "
+             "🧩 Cause, ✉ Réponse, 🧐 Relecture, puis la validation humaine et la réponse en fil).", COMMON,
+             "## La demande\n" + dread(msg, "demande.md")]
+    if dread(msg, "retours.md"):
+        parts.append("## Retours de la personne qui valide (à respecter en priorité)\n" + dread(msg, "retours.md"))
+    for p in POSTES[:POSTES.index(k)]:
+        r = dread(msg, p + ".md")
+        if r and not (k == "relecture" and p == "reponse"):
+            parts.append(f"## Rapport du poste {MISSIONS[p][0]}\n{r}")
+    if k == "reponse" and dread(msg, "relecture.md"):
+        parts.append("## Remarques de la relecture sur ta version précédente\n" + dread(msg, "relecture.md"))
+    if k == "relecture":
+        parts.append("## La réponse proposée\n" + (dread(msg, "reponse.md") or "(absente)"))
+    parts.append("## Ta mission\n" + mission + jira_hint())
+    print("\n\n".join(parts))
+
+
+def rapport(k, msg, text):
+    """Rapport d'un poste rangé dans le dossier (la sortie de son agent, telle quelle)."""
+    if k not in MISSIONS:
+        fail("Poste inconnu : " + k)
+    text = (text or "").strip()
+    if not text:
+        fail(f"Le poste {MISSIONS[k][0]} n'a rien rendu.")
+    dwrite(msg, k + ".md", text)
+    if k == "relecture":
+        e = etat(msg)
+        e["verdict"] = "revoir" if re.search(r"VERDICT\s*:\s*revoir", text.splitlines()[0], re.I) else "ok"
+        dwrite(msg, "etat.json", json.dumps(e))
+    print(text[:2000])
 
 
 def jira_hint():
@@ -434,28 +559,49 @@ def open_(msg, pid, run_id, comment):
         fail("Kronn n'a pas créé la discussion.")
     c.setdefault("runs", {})[run_id] = {"msg": msg, "disc": disc["id"], "project": pid, "version": 0, "at": iso(now())}
     save(c)
+    shutil.rmtree(dossier(msg), ignore_errors=True)  # une nouvelle investigation repart d'un dossier vide
+    dwrite(msg, "demande.md", text)
+    dwrite(msg, "etat.json", json.dumps({"run": run_id, "relectures": 0}))
     print(f"---STATE:disc={disc['id']}---")
-    print(text + "\n\n" + ASK + jira_hint())
+    print(text)
 
 
-def draft(run_id, text):
-    """Réponse de l'agent au format : de la première à la dernière section (ses phrases autour sautent), mention retirée
-    (ajoutée au post), version suivante."""
+def draft(run_id, msg, text=""):
+    """Réponse du poste ✉ au format : de la première à la dernière section (ses phrases autour sautent), mention retirée
+    (ajoutée au post), version suivante. La relecture qui dit « revoir » la renvoie au poste ✉ (code 3), deux fois au plus :
+    ensuite, la réponse part à ta validation avec les remarques restées."""
+    text = (text or "").strip() or dread(msg, "reponse.md")
     lines = [ln.rstrip() for ln in (text or "").strip().splitlines()]
     lines = [ln for ln in lines if ln.strip() and "généré de manière automatique" not in ln.lower()]
     lines = [ln.strip().strip("*").strip() if ln.strip().startswith("**") else ln for ln in lines]
-    if not lines:
-        fail("L'agent n'a rendu aucune réponse : demande des changements pour relancer.")
+    e = etat(msg) if msg else {}
+    again = int(e.get("relectures") or 0) < RELECTURE_MAX
     idx = [i for i, ln in enumerate(lines) if SECTION.match(ln.strip())]
+    if not lines:
+        fail("Le poste ✉ Réponse n'a rendu aucune réponse : demande des changements pour relancer.")
+    if (not idx or e.get("verdict") == "revoir") and again:
+        e["relectures"] = int(e.get("relectures") or 0) + 1
+        if msg:
+            if not idx:  # remarque de forme pour le poste ✉, comme celles de la relecture
+                dwrite(msg, "relecture.md", "VERDICT : revoir\nPas de réponse au format : une ligne « emoji Libellé : … » par section, rien autour.")
+            e["verdict"] = None
+            dwrite(msg, "etat.json", json.dumps(e))
+        print("La relecture renvoie la réponse au poste ✉ (" + ("pas au format" if not idx else "remarques") + f", {e['relectures']}/{RELECTURE_MAX}).")
+        sys.exit(3)  # on_result exit_3 : retour au poste reponse
     if not idx:
-        print("Pas de réponse au format (une ligne « emoji Libellé : … » par section) : l'agent rend la main à l'investigation.")
-        sys.exit(3)  # on_result exit_3 : retour à l'étape investigate
+        fail("Pas de réponse au format après les relectures : demande des changements pour relancer.")
     body = "\n".join(lines[idx[0]:idx[-1] + 1]).strip()
     c = load()
     meta = c.setdefault("runs", {}).setdefault(run_id, {})
     meta["version"] = int(meta.get("version") or 0) + 1
     meta["draft"] = body
     save(c)
+    if msg and e.get("verdict") == "revoir":  # relectures épuisées : les remarques restées, sous la réponse à valider
+        rest = [ln for ln in dread(msg, "relecture.md").splitlines()[1:] if ln.strip()]
+        if rest:
+            body += REMARKS + " Remarques de la relecture restées :\n" + "\n".join(rest[:6])
+    if msg:  # la version suivante repart d'une relecture neuve
+        dwrite(msg, "etat.json", json.dumps({**e, "verdict": None, "relectures": 0}))
     print(body)
 
 
@@ -495,7 +641,7 @@ def post(run_id, text):
         fail("Run inconnu du Bureau : rien n'est posté.")
     if (c.get("posted") or {}).get(msg):
         fail("Ce fil a déjà sa réponse postée.")
-    text = (text or "").strip() or meta.get("draft") or ""
+    text = (text or "").split(REMARKS)[0].strip() or meta.get("draft") or ""  # les remarques de la relecture ne partent jamais
     if not text:
         fail("Réponse vide : rien n'est posté.")
     path = f"/teams/{S['team']}/channels/{urllib.parse.quote(S['channel'])}/messages/{msg}/replies"
@@ -544,11 +690,15 @@ if __name__ == "__main__":
         if not re.fullmatch(r"\d{1,20}", a[1].strip()):
             fail("Message manquant : recharge la page.")
         open_(a[1].strip(), a[2].strip(), a[3].strip() or "local", a[4])
-    elif cmd == "draft":
-        draft(a[1].strip() or "local", sys.stdin.read())
+    elif cmd == "poste":
+        poste(a[1].strip(), a[2].strip(), a[3])
+    elif cmd == "rapport":
+        rapport(a[1].strip(), a[2].strip(), sys.stdin.read())
+    elif cmd == "draft":  # stdin : la réponse (ancien modèle), sinon celle du poste ✉ dans le dossier
+        draft(a[1].strip() or "local", a[2].strip(), "" if sys.stdin.isatty() else sys.stdin.read())
     elif cmd == "post":
         post(a[1].strip() or "local", sys.stdin.read())
     elif cmd == "skip":
         skip(a[1].strip(), a[2].strip())
     else:
-        fail("sous-commande : poll | dataset | open | draft | post | skip", 2)
+        fail("sous-commande : poll | dataset | open | poste | rapport | draft | post | skip", 2)
