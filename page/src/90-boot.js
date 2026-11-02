@@ -24,6 +24,7 @@ function loop(now){
     fxFrame(now); // 43-fx.js : petites scènes de 3 s (succès, éclosion, stade, agent rétabli)
     if(FLOOR===1){renderAtelier(now);loupeFrame(now);} // 68-atelier.js : le 1er étage, à la place de l'open space, avec sa loupe
     else if(FLOOR===-1){renderCaserne(now);loupeFrame(now);} // 68-caserne.js : le sous-sol, avec sa loupe (et la pause du rejeu)
+    else if(FLOOR===3){renderRetours(now);loupeFrame(now);} // 68-retours.js : le 3e, les retours de PR
     else{
       render(now);
       loupeFrame(now); // 44-loupe.js : médaillon sur l'événement fort en cours
@@ -160,6 +161,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   if(!TODOS&&DEMO)TODOS=todosDemo(); // 47-todos.js
   if(!SUPPORT&&DEMO)SUPPORT=supportDemo();
   ATELIER=readAtelier(k)||(DEMO?atelierDemo():null); // 68-atelier.js : 1er étage
+  RETOURS=readRetours(k)||(DEMO?retoursDemo():null); // 68-retours.js : 3e étage
   atelierTabs();
   if(FLOOR&&floorsOn().includes(FLOOR))setFloor(FLOOR);else FLOOR=0;
 }
@@ -207,6 +209,8 @@ window.addEventListener('kronn:page-data',e=>{
   if(ml)MAILS=ml;
   const at=readAtelier(k)||readAtelier(window.KronnPageData);
   if(at){ATELIER=at;atelierTabs();} // 68-atelier.js
+  const rt=readRetours(k)||readRetours(window.KronnPageData);
+  if(rt){RETOURS=rt;atelierTabs();} // 68-retours.js : l'onglet du 3e compte ses PR
   const sp=readSupport(k)||readSupport(window.KronnPageData);
   if(sp){SUPPORT=sp;atelierTabs();} // l'onglet de la caserne compte ses interventions
   if(sp||gg)spRefresh(); // 48-support.js : la fenêtre ouverte suit (#62)

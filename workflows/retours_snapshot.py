@@ -6,7 +6,7 @@
   {generated_at, rooms: [{run, repo, pr, title, author, status, poste, gate, states: {poste: ok|run|gate|err},
                           since, url, fils: [{id, path, line, who, text, col, cur}]}],
    queue: [{run, repo, pr, since}], pannes: [{run, repo, pr, title, poste, since, url}],
-   events: [{t, k: arrive|gate|push|panne, run, repo, pr, poste?}], pousses}
+   events: [{t, k: arrive|gate|push|panne|fin, run, repo, pr, poste?}], pousses}
 
 Un bureau = un run actif (6 au plus sur la page) ; la file = les runs en attente ; les pannes = les runs en échec des
 dernières 24 h qu'aucun run plus récent de la même PR n'a repris. Colonne d'un fil : celle de la réponse prévue
@@ -91,7 +91,8 @@ def step_end(s):
 
 
 def events(run):
-    """Les moments d'un run, pour le fil du RDC : arrivée, gate, push réussi, panne."""
+    """Les moments d'un run, pour le fil du RDC et le rejeu : arrivée, gate, push réussi, panne ; fin (run fini autrement :
+    rien à corriger, changements demandés) pour que le rejeu libère son bureau."""
     repo, pr = vars_of(run)
     st = state(run["id"])
     base = {"run": run["id"], "repo": st.get("repo") or repo, "pr": str(st.get("pr") or pr)}
@@ -105,6 +106,8 @@ def events(run):
             out.append({"t": step_end(s), "k": "push"})
         if stt == "Failed" and n != "gate":
             out.append({"t": step_end(s), "k": "panne", "poste": n})
+    if run.get("status") not in ACTIVE and not any(e["k"] in ("push", "panne") for e in out):
+        out.append({"t": when(run.get("finished_at")) or step_end(steps[-1] if steps else {}), "k": "fin"})
     return [{**base, **e, "t": e["t"].isoformat(timespec="seconds")} for e in out if e["t"]]
 
 

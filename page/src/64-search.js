@@ -16,6 +16,7 @@ function srFind(q){
     ...tk.filter(o=>srHit(q,o.t.key+' '+o.t.summary)).sort((a,b)=>TORDER.indexOf(a.t.cat)-TORDER.indexOf(b.t.cat))
       .map(o=>({g:'Tickets',k:String(o.t.key).replace(/^[A-Z]+-/,''),txt:o.t.summary,cat:o.t.cat,who:kbCharOf(o.p),go:()=>openTicket(o.t.key)})),
     ...atSearchRows(q), // 69-atelier-rdc.js : les tickets de la chaîne, au 1er
+    ...rtSearchRows(q), // 68-retours.js : les PR en correction, au 3e
     ...pr.filter(o=>srHit(q,'#'+o.x.n+' '+o.x.title)).map(o=>({g:'PR',k:'#'+o.x.n,txt:o.x.title,rev:o.x.review,who:kbCharOf(o.p),go:()=>openPr(prId(o.x))})),
     // agents : un groupe par famille (32-familles.js) ; le titre de sa page trouve un agent de page
     ...chars.filter(c=>c.name&&srHit(q,c.name+' '+(c.role||'')+' '+((agentPage(c)||{}).title||''))).map(c=>{const k=famKind(c),pg=k==='page'&&agentPage(c),b=k==='jour'&&agentButtons(c)[0];

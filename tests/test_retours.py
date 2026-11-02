@@ -81,6 +81,7 @@ class RetoursSnapshotTest(unittest.TestCase):
         self.assertIn(("r3", "push"), ks)
         self.assertIn(("f1", "panne"), ks)
         self.assertEqual(snap["pousses"], 1)
+        self.assertIn(("rej", "fin"), ks, "fini sans push (gate refusée) : le rejeu libère son bureau")
 
     def test_without_the_model_nothing(self):
         self.r.CFG.pop("actions", None)
