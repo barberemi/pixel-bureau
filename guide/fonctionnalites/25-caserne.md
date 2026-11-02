@@ -13,11 +13,11 @@ L'onglet « 🚒 -1 · caserne Support » apparaît à côté de « 🏢 RDC · 
 - **Trois baies de camion.** Un fil du Support en investigation, une réponse à valider ou une investigation en panne occupe une baie : le rideau se lève, le camion est là. Un fil garde sa baie jusqu'à la fin ; au-delà de trois, le tableau des interventions dit combien attendent une baie libre. Une baie libre reste fermée.
 - **L'équipe devant son camion**, dans la zone peinte en jaune au sol, rangée dans l'ordre des postes : 🏷 Tri, 🔎 Logs, 🧩 Cause, ✉ Réponse au premier rang, puis 🧐 Relecture, ✋ Toi et 📣 Teams au second. Tous portent la tenue des sapeurs-pompiers : casque F1 chromé, veste marine à bandes jaune et argent. Même langage qu'au 1er étage : **au travail** (un halo, une bulle, il arrose), **a travaillé** (✓), **attend son tour** (silhouette grise), **en panne** (! rouge et fumée, « relance l'investigation »).
 - **Le tuyau** part de l'arrière du camion et passe de main en main dans l'ordre des postes : plein et jaune jusqu'au poste au travail, en pointillé gris pour ceux qui viennent ensuite. On lit l'avancement à la longueur de tuyau plein.
-- **✋ La vanne** : quand la réponse est relue, elle attend ta validation. Le capitaine (le boss, casque à bande rouge) quitte son poste de commandement et vient ouvrir la vanne de la baie.
+- **✋ La vanne** : quand la réponse est relue, elle attend ta validation. Le capitaine (le boss, casque à bande rouge) quitte son poste de commandement et vient ouvrir la vanne de la baie. Le pack d'équipe peut lui donner un dessin de pompier à part : `captain_sprite` sur la personne du boss dans `roster.json` (un sprite du pack, comme `boss_sprite`) ; il garde son nom, sa fiche et son rôle, seul son dessin change, et seulement à la caserne.
 - **Le camion part** quand la réponse est postée dans Teams : l'équipe remonte à bord, les gyrophares s'allument, le camion sort par la baie et le rideau se referme. Un fil traité autrement (pris par un collègue, ignoré) libère sa baie sans sortie.
 - **Le poste de commandement**, en bas : le bureau du capitaine et sa radio, la pile des appels à prendre (les nouveaux fils) et le compteur des feux éteints aujourd'hui (réponses postées).
 - **La salle de garde**, à droite : le tableau des interventions (une ligne par baie, les appels à prendre, le voyant qui clignote quand un appel attend), les casiers, la machine à café, la garde qui joue aux cartes, les lits de camp. La porte des autres étages et la barre de pompier sont contre le mur de droite.
-- **Le soir et le week-end**, la garde reste : la caserne passe en veilleuse, le capitaine reste à son poste, seules les baies occupées, le tableau, la porte et les lits de camp restent éclairés, et la garde dort, prête à partir. Les interventions continuent.
+- **Le soir et le week-end**, la garde reste : la caserne passe en veilleuse, le capitaine reste à son poste et garde sa lumière, qui le suit jusqu'à la vanne, seules les baies occupées, le tableau, la porte et les lits de camp restent éclairés, et la garde dort, prête à partir. Les interventions continuent.
 
 ![La caserne le soir : la garde dort sur les lits de camp](../img/caserne-calme.png)
 
@@ -28,7 +28,9 @@ L'onglet « 🚒 -1 · caserne Support » apparaît à côté de « 🏢 RDC · 
 
 ## Le panneau
 
-Au -1, le panneau liste les baies (qui a écrit, le sujet, le poste en cours, la barre des postes) puis les appels à prendre, avec les mêmes cartes que la console (« 🔎 Investiguer », « 🔕 Ignorer »). Un clic sur une baie ou un pompier, dans le panneau ou sur le plan, ouvre sa fiche : l'état de chaque poste, puis la carte du fil, avec la réponse proposée et ses trois décisions quand elle attend ta validation.
+Au -1, le panneau liste les baies (qui a écrit, le sujet, le poste en cours, la barre des postes) puis les appels à prendre, avec les mêmes cartes que la console (« 🔎 Investiguer », « 🔕 Ignorer »). Un clic sur une baie ou un pompier, dans le panneau ou sur le plan, ouvre sa fiche : l'état de chaque poste, puis la carte du fil, avec la réponse proposée et ses trois décisions quand elle attend ta validation. Comme au RDC, le pompier choisi reste dans la lumière et le plan s'assombrit autour de lui ; Échap ou un clic ailleurs l'enlève.
+
+Un clic sur le capitaine ouvre la fiche du boss, la même qu'au RDC et au 1er, avec « ← La caserne » (ou Échap) pour revenir aux baies ; il est lui aussi dans la lumière, qui le suit quand il va à la vanne. Ses tickets, ses PR (le Kanban en fenêtre), ses todos et ses validations restent à la caserne ; un lien vers un collègue, un agent ou une autre fiche du RDC remonte au RDC et l'y ouvre. Sa fiche reste ouverte d'un étage à l'autre.
 
 ## Données
 

@@ -15,8 +15,9 @@ const CS_BAYS=3, CS_BX=[1,12.25,23.5], CS_BW=10.25, CS_DY0=3.1, CS_DY1=10.1, CS_
 const CS_DESK={x:17*AT_TS,y:24.4*AT_TS}, CS_POLE={x:43.6*AT_TS,y0:9*AT_TS,y1:13.4*AT_TS}, CS_TABLE={x:39*AT_TS,y:16*AT_TS};
 const CS_DEP_MS=8e3; // le départ d'un camion : gyrophares, sortie par la baie, rideau qui se referme
 const caserneOn=()=>supportOn();
-let CS_MEM={fresh:true,slots:[null,null,null],dep:[null,null,null],door:[0,0,0],boss:null,last:0}, CS_SEL=null, CS_HITS=[];
-function csReset(){CS_MEM={fresh:true,slots:[null,null,null],dep:[null,null,null],door:[0,0,0],boss:null,last:0};CS_SEL=null;}
+let CS_MEM={fresh:true,slots:[null,null,null],dep:[null,null,null],door:[0,0,0],boss:null,last:0}, CS_SEL=null, CS_PICK=null, CS_HITS=[], CS_LIT=[];
+// CS_PICK : le pompier choisi ({b, k}) pour son halo ; CS_LIT : où est le capitaine, pour la lumière du soir (csNight)
+function csReset(){CS_MEM={fresh:true,slots:[null,null,null],dep:[null,null,null],door:[0,0,0],boss:null,last:0};CS_SEL=null;CS_PICK=null;}
 // pompiers de la caserne : tenue de sapeur-pompier (veste et pantalon marine), visages variés ; le casque se pose par-dessus
 const CS_CREW=[['male','tan','buzzcut','#2a1a10'],['female','pale','bangs_bun','#c08a3a'],['male','dark','plain','#1a1a1a'],['female','light','long','#6b4426'],
   ['male','pale','messy1','#b0652a'],['female','brown','bob','#1a1a1a'],['male','light','spiked','#d9b44a'],['female','tan','curly_short','#3a2414'],['male','brown','balding','#2a1a10']];
@@ -216,6 +217,7 @@ function csGuard(now,people){ // la garde : aux cartes le jour, sur les lits de 
   csLate(people,()=>atPill('⬆ RDC · 1er',46*T-48,AT_HY0*T+16,'#5a4636','#fff','bold 9px ui-monospace,Menlo,monospace'),AT_HY0*T);
 }
 // ---------- le capitaine (le boss) : à son poste de commandement, à la vanne quand une réponse attend sa validation ----------
+const csCaptainSprite=b=>b&&b.captain_sprite&&(SPR[b.captain_sprite]||RECIPES[b.captain_sprite])?b.captain_sprite:null;
 function csCaptain(slots,now,dt,people){
   const T=AT_TS, boss=chars.find(c=>c.boss), d=CS_DESK, open=atOpen();
   R(ctx,d.x-1.8*T,d.y-.2*T,3.6*T,22,'#6e4a2c');R(ctx,d.x-1.8*T,d.y-.2*T,3.6*T,3,'#8a6040');R(ctx,d.x-1.8*T,d.y+.2*T+14,3.6*T,10,'#56391f');
@@ -232,23 +234,29 @@ function csCaptain(slots,now,dt,people){
   if(!m||REDUCED_MOTION&&m.target!==target){m=CS_MEM.boss={target,walk:atWalker([target==null?home:CS_G[target].pts[5]])};}
   if(m.target!==target){m.target=target;m.walk=atWalker(target==null?[{...m.walk.pos},{x:m.walk.pos.x,y:(CS_Z1+.9)*T},{x:home.x,y:(CS_Z1+.9)*T},home]:path(target),90);}
   const arrived=atStep(m.walk,dt), p=m.walk.pos, dir=arrived?(target==null?'up':'down'):m.walk.dir;
-  const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:p.x,y:p.y},tile:null,dir,moving:!arrived,pose:'stand',present:true,_st:{st:target==null?'idle':'gate'}});
-  people.push([c,null,false,()=>{csHelmet(ctx,p.x,p.y,dir,true);
+  // son dessin de capitaine : captain_sprite de la personne du boss (roster du pack) s'il est réglé et embarqué, sinon le sien
+  // avec le casque du chef ; il garde son nom, sa fiche et son rôle
+  const look=csCaptainSprite(boss);
+  const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:p.x,y:p.y},tile:null,dir,moving:!arrived,pose:'stand',present:true,_st:{st:target==null?'idle':'gate'},sprite:look||boss.sprite});
+  people.push([c,null,false,()=>{if(!look)csHelmet(ctx,p.x,p.y,dir,true);
     atPill(boss.name+' · capitaine',p.x,p.y+16,'#8a1f17','#fff','bold 10px system-ui,sans-serif');
     if(arrived&&target!=null)atBubble(p.x,p.y-66,'✋ j\'ouvre la vanne ?','#8a5a00');}]);
-  atHitCs('captain',p.x-16,p.y-56,32,60,{});
+  CS_LIT.push(p);atHitCs('captain',p.x-16,p.y-56,32,60,{});
 }
 // ---------- nuit : hors des heures de bureau, la caserne passe en veilleuse ----------
-let CS_NIGHT_CV=null, CS_NIGHT_AT=0;
+let CS_NIGHT_CV=null, CS_NIGHT_AT=0, CS_NIGHT_SIG='';
 function csNight(slots,now){
   if(atOpen())return;
   const W_=AT_W/LQ, H_=AT_H/LQ, T=AT_TS;
   if(!CS_NIGHT_CV)CS_NIGHT_CV=[lightCanvas(W_,H_),lightCanvas(W_,H_)];
-  if(now-CS_NIGHT_AT>200||!CS_NIGHT_AT){CS_NIGHT_AT=now;
+  // comme au 1er (#154) : le masque se refait toutes les 200 ms, plus souvent quand le capitaine marche, pour que sa lumière le suive
+  const sig=CS_LIT.map(q=>Math.round(q.x/4)+','+Math.round(q.y/4)).join(' ');
+  if(now-CS_NIGHT_AT>200||!CS_NIGHT_AT||sig!==CS_NIGHT_SIG&&now-CS_NIGHT_AT>40){CS_NIGHT_AT=now;CS_NIGHT_SIG=sig;
     const m=CS_NIGHT_CV[0].getContext('2d');m.setTransform(1,0,0,1,0,0);m.globalCompositeOperation='source-over';m.clearRect(0,0,W_,H_);
     m.fillStyle='rgba(10,14,40,.5)';m.fillRect(0,0,W_,H_);m.setTransform(1/LQ,0,0,1/LQ,0,0);m.globalCompositeOperation='destination-out';
     slots.forEach((s,b)=>{if(!s)return;const z=CS_G[b];softSpot(m,z.cx,(CS_DY1-1)*T,4*T,.7);softSpot(m,z.cx,(CS_R1+.5)*T,4.5*T,.8);softSpot(m,z.cx,(CS_R2+.3)*T,4*T,.7);});
     softSpot(m,40.5*T,23.4*T,4.5*T,.55);softSpot(m,40.6*T,4.2*T,5*T,.7);softSpot(m,CS_POLE.x,CS_POLE.y1,1.6*T,.5);softSpot(m,46*T-10,AT_HY0*T+20,40,.5);softSpot(m,CS_DESK.x,CS_DESK.y,2.5*T,.45);
+    for(const q of CS_LIT)softSpot(m,q.x,q.y-26,30,.8); // le capitaine dans sa lumière, à son bureau ou en route vers la vanne
     const l=CS_NIGHT_CV[1].getContext('2d');l.clearRect(0,0,W_,H_);l.filter='blur(3px)';l.drawImage(CS_NIGHT_CV[0],0,0);l.filter='none';}
   const sm=ctx.imageSmoothingEnabled;ctx.imageSmoothingEnabled=true;ctx.drawImage(CS_NIGHT_CV[1],0,0,AT_W,AT_H);ctx.imageSmoothingEnabled=sm;
 }
@@ -256,13 +264,19 @@ function csNight(slots,now){
 function renderCaserne(now){
   const dt=CS_MEM.last?Math.min(.1,(now-CS_MEM.last)/1000):0;CS_MEM.last=now;
   if(!CS_BG)CS_BG=csBackground();
-  ctx.drawImage(CS_BG,0,0);CS_HITS=[];
+  ctx.drawImage(CS_BG,0,0);CS_HITS=[];CS_LIT=[];
   const slots=csSlots(now), people=[];
   slots.forEach((s,b)=>csBay(s,b,now,dt,people));
   csBoard(slots,now);csGuard(now,people);csCaptain(slots,now,dt,people);
   people.sort((a,b)=>a[0].pos.y-b[0].pos.y).forEach(([c,d,before,after])=>{if(before&&d)d();if(c.sprite)drawChar(c,now);if(!before&&d)d();if(after)after();});
   csNight(slots,now);
+  const hp=csPickedAt();if(hp)selHalo(hp.x,hp.y-26,AT_W,AT_H); // comme au RDC et au 1er : le plan s'assombrit autour de celui qu'on a choisi
   if(CS_SEL!=null){const b=CS_MEM.slots.indexOf(CS_SEL);if(b>=0){const z=CS_G[b];ctx.save();ctx.strokeStyle='#ffffff';ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.lineDashOffset=-now/60;ctx.strokeRect(z.x0+1,CS_DY0*AT_TS-20,z.w-2,(CS_Z1-CS_DY0)*AT_TS+24);ctx.restore();}}
+}
+// où est celui qu'on a choisi : un pompier d'une baie occupée, ou le capitaine (sa fiche ouverte à la caserne)
+function csPickedAt(){
+  if(CS_PICK){const s=CS_MEM.slots[CS_PICK.b], j=CS_POSTES.findIndex(p=>p.k===CS_PICK.k);return s&&!s.dep&&j>=0?CS_G[CS_PICK.b].pts[j]:null;}
+  const b=chars.find(c=>c.boss);return b&&sel===b.key&&CS_MEM.boss?CS_MEM.boss.walk.pos:null;
 }
 function atHitCs(kind,x,y,w,h,ref){CS_HITS.push({kind,x,y,w,h,...ref});}
 // les zones cliquables de la caserne (atHit sert à l'atelier)
@@ -274,8 +288,10 @@ function csHitAt(e){
 }
 // ---------- clic et survol ----------
 function caserneClick(e){
-  const h=csHitAt(e);
+  const h=csHitAt(e);sel=null;SEL_BACK=[];
+  if(h&&h.kind==='captain'){const b=chars.find(c=>c.boss);if(b){CS_SEL=null;CS_PICK=null;select(b.key);return;}} // la même fiche qu'au RDC, dans le panneau
   CS_SEL=h&&(h.kind==='bay'||h.kind==='agent')?CS_MEM.slots[h.b]||null:null;
+  CS_PICK=h&&h.kind==='agent'&&CS_SEL?{b:h.b,k:h.k}:null;
   renderSide(true);
 }
 function caserneHover(e){
@@ -286,7 +302,7 @@ function caserneHover(e){
   else if(h&&h.kind==='bay')s=slot?(slot.dep?'Baie '+(h.b+1)+' · réponse postée, le camion part':'Baie '+(h.b+1)+' · '+csTitle(slot.t)+' · de '+spWho(slot.t.from)):'Baie '+(h.b+1)+' · libre';
   else if(h&&h.kind==='pole')s='La barre de pompier : on descend du RDC en glissant';
   else if(h&&h.kind==='guard')s='La garde : l\'équipe des baies libres, prête à partir';
-  else if(h&&h.kind==='captain')s=(chars.find(c=>c.boss)||{}).name+' · capitaine : ouvre la vanne (✋) quand une réponse attend sa validation';
+  else if(h&&h.kind==='captain')s=(chars.find(c=>c.boss)||{}).name+' · capitaine : ouvre la vanne (✋) quand une réponse attend sa validation ; clic : sa fiche, comme au RDC';
   else if(h&&h.kind==='calls'){const n=csCalls().length;s=n?plural(n,'appel','appels')+' à prendre : clic pour les voir':'Aucun appel à prendre';}
   else if(h&&h.kind==='board')s='Le tableau des interventions';
   cv.style.cursor=h&&h.kind!=='pole'&&h.kind!=='guard'&&h.kind!=='board'?'pointer':'default';
@@ -312,11 +328,16 @@ function csFicheHtml(x,b){
     <table class="at-t">${CS_POSTES.map(p=>{const s=st[p.k];return `<tr${csCur(st)===p?' class="cur"':''}><td>${p.i} ${esc(p.n)}</td><td>${s?`<span class="dot" style="background:${{ok:'var(--ok)',run:'var(--info)',err:'var(--err)',gate:'var(--warn)'}[s]}"></span>${CS_ST[s][1]}`:'<span class="mut">à venir</span>'}</td></tr>`;}).join('')}</table>`;
 }
 function drawCaserneSide(side){
+  const boss=chars.find(c=>c.boss);
+  // la fiche du capitaine : celle du boss, comme au RDC et au 1er ; un de ses liens qui mène ailleurs (un collègue, un agent, une
+  // fiche du RDC) redescend au RDC, où il s'ouvre ; ses tickets et ses PR ouvrent le Kanban, en fenêtre, à n'importe quel étage
+  if(sel!=null&&!(boss&&sel===boss.key)){setFloor(0);return;}
+  if(sel!=null){drawSide(side);return;}
   const box=document.createElement('div');box.className='atelier caserne';side.appendChild(box);
   const slots=csSlots(performance.now()), b=CS_SEL!=null?slots.findIndex(x=>x&&!x.dep&&x.t.id===CS_SEL):-1;
-  if(b>=0){box.innerHTML=csFicheHtml(slots[b],b);box.querySelector('.at-back').addEventListener('click',()=>{CS_SEL=null;renderSide(true);});box.appendChild(spCard(slots[b].t));return;}
+  if(b>=0){box.innerHTML=csFicheHtml(slots[b],b);box.querySelector('.at-back').addEventListener('click',()=>{CS_SEL=null;CS_PICK=null;renderSide(true);});box.appendChild(spCard(slots[b].t));return;}
   box.innerHTML=caserneListHtml(slots);
-  box.querySelectorAll('.at-room').forEach(x=>x.addEventListener('click',()=>{CS_SEL=x.dataset.id;renderSide(true);}));
+  box.querySelectorAll('.at-room').forEach(x=>x.addEventListener('click',()=>{CS_SEL=x.dataset.id;CS_PICK=null;renderSide(true);}));
   const calls=csCalls();
   if(calls.length)for(const t of calls)box.appendChild(spCard(t));else box.insertAdjacentHTML('beforeend','<div class="mut">Aucun appel.</div>');
 }

@@ -478,10 +478,10 @@ def sprites(cfg):
 
 def used_sprites(cfg):
     """Noms de sprite qu'un personnage peut porter (KT-28 : seules ces planches sont embarquées) : clé ou sprite du
-    roster, des invités et des agents (sprite d'un personnage = son sprite, sinon sa clé), boss_sprite, et tout nom
-    cité entre apostrophes dans le JS de la page (« 'temp' », VISITOR)."""
+    roster, des invités et des agents (sprite d'un personnage = son sprite, sinon sa clé), boss_sprite, captain_sprite (le
+    boss en capitaine à la caserne), et tout nom cité entre apostrophes dans le JS de la page (« 'temp' », VISITOR)."""
     defs = roster(cfg) + guests(cfg) + list((cfg or {}).get("agents") or [])
-    names = {d.get(f) for d in defs for f in ("key", "sprite", "boss_sprite")} - {None}
+    names = {d.get(f) for d in defs for f in ("key", "sprite", "boss_sprite", "captain_sprite")} - {None}
     js = "".join(Path(os.path.join(SRC, f)).read_text() for f in JS_FILES)
     return names | set(re.findall(r"'([\w-]+)'", js))
 

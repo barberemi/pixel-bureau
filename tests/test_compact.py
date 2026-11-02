@@ -89,6 +89,15 @@ class CompactTest(unittest.TestCase):
         self.assertNotIn("g_inconnu", used)
         self.assertEqual(sorted(assemble.sprites(cfg)), sorted(k for k in json.loads(Path(os.path.join(ROOT, "sprites", "common.json")).read_text()) if k in used))
 
+    def test_captain_sprite_of_the_boss_is_embedded(self):
+        """captain_sprite (le boss en capitaine à la caserne) est embarqué comme boss_sprite."""
+        from unittest import mock
+        cfg = assemble.demo_config()
+        boss = {"key": "p_bob", "name": "Bob", "boss_sprite": "zz_boss", "captain_sprite": "zz_capitaine"}
+        with mock.patch.object(assemble, "roster", lambda c: [boss]):
+            used = assemble.used_sprites(cfg)
+        self.assertTrue({"zz_boss", "zz_capitaine"} <= used)
+
 
     def test_weights_by_block_add_up_to_the_page(self):
         """Poids par bloc (smoke) : chaque bloc compte, la somme fait la page assemblée."""
