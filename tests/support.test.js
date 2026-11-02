@@ -189,3 +189,13 @@ test('rejeu : un run pas encore fini à l\'heure du plan est en cours, à sa gat
   assert.equal(J2(`(T = ${at('09:15')}, spState(__t).k)`), 'gate', 'à 9h15, la réponse attendait ta validation');
   assert.equal(J2(`(T = ${at('09:42')}, spState(__t).k)`), 'done');
 });
+
+test('rejeu : un run sans sa variable message_id (instantané de Kronn) se relie à son fil par l\'id noté par le relevé', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  p.run(`mode = 'pause'; GATES = []; DATA = {runs: [{run: 'r9', status: 'Success', start: '2026-10-01T10:15:00Z', end: '2026-10-01T10:31:00Z', vars: {},
+      steps: [{n: 'investigate', s: 'Success', at: '2026-10-01T10:15:30Z', ms: 104000}, {n: 'gate', s: 'Success', at: '2026-10-01T10:17:10Z', ms: 846000}]}]};
+    var __t = {id: 'm9', at: '2026-10-01T08:00:00Z', state: 'done', mine: {at: '2026-10-01T10:31:18Z'}, run: {run: 'r9', at: '2026-10-01T10:15:00Z'}};`);
+  assert.equal(J2(`(T = Date.parse('2026-10-01T10:16:00Z'), spState(__t).k)`), 'run', 'en intervention à 10h16');
+  assert.equal(J2(`(T = Date.parse('2026-10-01T10:20:00Z'), spState(__t).k)`), 'gate', 'à la vanne à 10h20');
+  assert.equal(J2(`(T = Date.parse('2026-10-01T10:16:00Z'), csRunOf(__t).run)`), 'r9');
+});

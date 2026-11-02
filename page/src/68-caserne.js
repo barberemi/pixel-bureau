@@ -50,7 +50,7 @@ const CS_STEP={open:['tri'],mark:['tri'],publish_run:['tri'],investigate:['logs'
   tri:['tri'],logs:['logs'],cause:['cause'],reponse:['reponse'],relecture:['relecture'],gate:['gate'],post:['post'],mark_post:['post'],publish:['post']};
 const CS_RANK={ok:0,gate:1,run:2,err:3};
 function csRunOf(t){
-  const l=((DATA&&DATA.runs)||[]).filter(r=>!r.parent&&r.vars&&r.vars.message_id===t.id&&ms(r.start)<=T);
+  const l=((DATA&&DATA.runs)||[]).filter(r=>!r.parent&&spRunOfThread(r,t)&&ms(r.start)<=T);
   return l.sort((a,b)=>ms(b.start)-ms(a.start))[0]||null;
 }
 // état de chaque poste d'une intervention : ok, run, err, gate (✋ t'attend) ; absent = attend son tour
