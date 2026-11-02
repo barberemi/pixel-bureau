@@ -68,7 +68,7 @@ function atelierTabs(){
 // étages qui existent, de haut en bas
 const floorsOn=()=>[...(atelierOn()?[1]:[]),0,...(caserneOn()?[-1]:[])];
 function setFloor(f){
-  FLOOR=f===1&&atelierOn()?1:f===-1&&caserneOn()?-1:0;ATSEL=null;AT_PICK=null;if(FLOOR){SEL_BACK=[];if(!(FLOOR===1&&byKey[sel]&&byKey[sel].boss))sel=null;} // au 1er, seul le boss garde sa fiche du RDC (drawAtelierSide) ; à la caserne, aucune
+  FLOOR=f===1&&atelierOn()?1:f===-1&&caserneOn()?-1:0;ATSEL=null;AT_PICK=null;if(FLOOR){SEL_BACK=[];if(!(byKey[sel]&&byKey[sel].boss))sel=null;} // hors du RDC, seul le boss garde sa fiche du RDC (drawAtelierSide, drawCaserneSide)
   try{localStorage.setItem('bureau:floor',String(FLOOR));}catch(e){}
   if(FLOOR){cv.width=AT_W;cv.height=AT_H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(AT_W/AT_H));}
   else{cv.width=W;cv.height=H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(W/H));}

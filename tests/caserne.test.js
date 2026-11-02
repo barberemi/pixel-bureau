@@ -129,3 +129,73 @@ test("galerie : au -1, les scènes de la caserne ; « Le camion part » rend le 
   assert.equal(J("SUPPORT.threads.find(t => t.id === 'd3').state"), 'done');
   p.run('demoEnd();');
 });
+
+test('le soir, comme au 1er : le capitaine a sa lumière, qui le suit jusqu\'à la vanne', () => {
+  const {p, J} = page();
+  p.run(`SUPPORT = supportDemo(); setFloor(-1); T = DAY0 + 22.5 * 36e5; renderCaserne(1000);
+    var __sp = [], __so = softSpot; softSpot = (g, x, y, r, a, c) => { __sp.push([Math.round(x), Math.round(y)]); __so(g, x, y, r, a, c); };
+    CS_NIGHT_AT = 0; renderCaserne(1100); softSpot = __so;`);
+  const lit = q => J(`__sp.some(([a, b]) => a === ${Math.round(q.x)} && b === ${Math.round(q.y - 26)})`);
+  assert.ok(lit(J('CS_MEM.boss.walk.pos')), 'le capitaine, là où il est');
+  p.run(`__sp = []; softSpot = (g, x, y, r, a, c) => { __sp.push([Math.round(x), Math.round(y)]); __so(g, x, y, r, a, c); };
+    for (let n = 0; n < 8; n++) renderCaserne(1100 + 50 * (n + 1)); softSpot = __so;`);
+  assert.ok(lit(J('CS_MEM.boss.walk.pos')), 'il a marché : le masque s\'est refait sur sa nouvelle place');
+});
+
+test('le capitaine a la même fiche que le boss au RDC ; un lien vers le RDC y redescend, le retour revient à la caserne', () => {
+  const {p, J} = page();
+  p.run(`SUPPORT = supportDemo(); setFloor(-1); renderCaserne(1000); var __b = chars.find(c => c.boss), __o = chars.find(c => c.person && !c.boss);
+    var __ds = drawSide, __drawn = []; drawSide = side => __drawn.push(sel);
+    var __hit = csHitAt; csHitAt = () => ({kind: 'captain'}); caserneClick({}); csHitAt = __hit;`);
+  assert.equal(J('FLOOR'), -1);
+  assert.equal(J('sel === __b.key'), true, 'clic sur le capitaine : la fiche du boss');
+  assert.equal(J('__drawn[__drawn.length - 1] === __b.key'), true, 'la fiche du RDC, dans le panneau de la caserne');
+  assert.equal(J('backLabel(null)'), 'La caserne', '« ← La caserne »');
+  p.run('select(__o.key);');
+  assert.equal(J('FLOOR'), 0, 'un collègue (lien de la fiche) : on redescend au RDC');
+  assert.equal(J('sel === __o.key && __drawn[__drawn.length - 1] === __o.key'), true, 'et sa fiche s\'ouvre au RDC');
+  p.run('setFloor(-1);');
+  assert.equal(J('sel'), null, 'en descendant, la fiche d\'un collègue se ferme');
+  p.run('select(__b.key); setFloor(0); setFloor(-1);');
+  assert.equal(J('sel === __b.key'), true, 'celle du boss reste ouverte, à tous les étages');
+  p.run('goBack();');
+  assert.equal(J('sel === null && FLOOR === -1'), true, 'retour : la caserne');
+  p.run('drawSide = __ds;');
+});
+
+test('au clic sur un pompier ou le capitaine, comme au RDC : le plan s\'assombrit autour de lui ; un clic ailleurs l\'enlève', () => {
+  const {p, J} = page();
+  p.run(`SUPPORT = supportDemo(); setFloor(-1); sel = null; for (let n = 0; n < 40; n++) renderCaserne(1000 + n * 100);
+    var __h = [], __sh = selHalo; selHalo = (x, y) => __h.push([x, y]); renderCaserne(5000);`);
+  assert.equal(J('__h.length'), 0, 'personne de choisi : pas de halo');
+  const b = J('CS_MEM.slots.findIndex(s => s && !s.dep)');
+  p.run(`var __hit = csHitAt; csHitAt = () => ({kind: 'agent', b: ${b}, k: 'logs'}); caserneClick({}); csHitAt = __hit; renderCaserne(5100);`);
+  const pt = J(`CS_G[${b}].pts[CS_POSTES.findIndex(p => p.k === 'logs')]`);
+  assert.deepEqual(J('__h[0]'), [pt.x, pt.y - 26], 'le pompier choisi, à son poste');
+  assert.ok(J('CS_SEL !== null'), 'et la fiche de sa baie');
+  p.run(`csHitAt = () => null; caserneClick({}); csHitAt = __hit; __h = []; renderCaserne(5200);`);
+  assert.equal(J('CS_SEL === null && CS_PICK === null && __h.length === 0'), true, 'clic ailleurs : plus de choix, plus de halo');
+  p.run(`csHitAt = () => ({kind: 'captain'}); caserneClick({}); csHitAt = __hit; __h = []; renderCaserne(5300);`);
+  const c = J('CS_MEM.boss.walk.pos');
+  assert.deepEqual(J('__h[0]'), [c.x, c.y - 26], 'le capitaine, là où il est');
+  p.run('selHalo = __sh; select(null);');
+});
+
+test('captain_sprite : le capitaine est dessiné avec ce sprite à la caserne, sinon avec le sien et le casque du chef', () => {
+  const {p, J} = page();
+  p.run(`SUPPORT = supportDemo(); setFloor(-1); var __b = chars.find(c => c.boss), __d = drawChar, __seen = [];
+    drawChar = (c, now) => { if (c.key === __b.key) __seen.push(c.sprite); __d(c, now); };`);
+  const drawn = () => { p.run('__seen = []; renderCaserne(2000);'); return J('__seen[0]'); };
+  assert.equal(drawn(), J('__b.sprite'), 'sans réglage : son sprite de boss');
+  p.run(`__b.captain_sprite = 'cs_pomp0';`);
+  assert.equal(drawn(), 'cs_pomp0', 'réglé : le capitaine prend ce sprite');
+  assert.equal(J('__b.sprite !== "cs_pomp0"'), true, 'le boss garde son sprite (RDC, fiche)');
+  p.run(`__b.captain_sprite = 'absent_du_pack';`);
+  assert.equal(drawn(), J('__b.sprite'), 'sprite introuvable : repli sur le sien');
+  p.run('delete __b.captain_sprite; drawChar = __d;');
+});
+
+test('captain_sprite du roster : seul le boss le porte', () => {
+  const {J} = page();
+  assert.equal(J('CAST.filter(c => "captain_sprite" in c).length'), 0, 'le pack de démo ne le règle pas');
+});

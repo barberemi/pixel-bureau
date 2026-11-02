@@ -45,9 +45,10 @@ const DTF_CACHE={};
 function dtf(locale,opts){const k=locale+JSON.stringify(opts);return DTF_CACHE[k]||(DTF_CACHE[k]=new Intl.DateTimeFormat(locale,Object.assign({timeZone:TZ},opts)));}
 // agents : un personnage par groupe de workflows (préfixes d'id), propres à cette installation
 const AGENTS = (CFG.agents||[]).map(a=>({...a,wf:a.wf||[]}));
-// casting : le propriétaire devient le boss (bureau du boss, sprite de boss s'il en a un), les autres gardent leur place
+// casting : le propriétaire devient le boss (bureau du boss, sprite de boss s'il en a un ; captain_sprite : son dessin en
+// capitaine à la caserne, 68-caserne.js), les autres gardent leur place
 const CAST = [
-  ...ROSTER.map(({boss_sprite,...p})=>p.key===OWNER?{...p,wf:[],boss:true,seat:null,role:'Le boss',sprite:boss_sprite||p.sprite}:{...p,wf:[]}),
+  ...ROSTER.map(({boss_sprite,captain_sprite,...p})=>p.key===OWNER?{...p,wf:[],boss:true,seat:null,role:'Le boss',sprite:boss_sprite||p.sprite,...(captain_sprite?{captain_sprite}:{})}:{...p,wf:[]}),
   ...AGENTS.map(a=>({...a})), // copies : placeCast() y écrit la place [x, y], AGENTS garde le siège demandé (#64)
 ];
 const FREE_SEATS = []; // places des intérimaires et des collègues sans place, remplies par 10-world.js
