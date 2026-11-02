@@ -582,8 +582,10 @@ const atCleaner=()=>chars.find(c=>c.on==='cleaning')||null;
 function atCleanVisit(c,t){const v=c&&atelierOn()&&cleaningVisit(c,t);return v?{s:v.e,e:v.e+AT_CLEAN_DUR}:null;}
 function atCleanStops(){
   const st=[{p:AT_EXIT,room:'la porte',i:null}];
-  for(const i of [1,3,2,0]){const g=AT_G[i];st.push({p:{x:g.door.x,y:g.aisle},room:'le bureau '+(i+1),i});}
-  return st.concat([{p:{x:AT_MX+1.4*AT_TS,y:20.3*AT_TS},room:'l\'entrepôt',i:null},{p:AT_EXIT,room:'la porte',i:null}]);
+  for(const i of [1,3,2,0]){const g=AT_G[i], p={x:g.door.x,y:g.aisle}, a=(g.x0+1.2)*AT_TS, b=(g.x1-1.2)*AT_TS;
+    st.push({p,room:'le bureau '+(i+1),i,sweep:[p,{x:a,y:g.aisle},{x:b,y:g.aisle},p]});} // l'allée du bureau, d'un bout à l'autre
+  const e={x:AT_MX,y:AT_DOCK.y};
+  return st.concat([{p:e,room:'l\'entrepôt',i:null,sweep:[e,{x:AT_MX,y:AT_POP.y},e]},{p:AT_EXIT,room:'la porte',i:null}]);
 }
 // point à la fraction f d'une ligne brisée, et la direction du segment
 function atAlong(pts,f){
@@ -598,7 +600,9 @@ function atCleanerAt(c,t){
   const v=atCleanVisit(c,t);if(!v||t<v.s||t>=v.e)return null;
   const st=atCleanStops(), n=st.length-1, k=(t-v.s)/(v.e-v.s)*n, j=Math.min(n-1,Math.floor(k)), f=k-j, a=st[j].p, b=st[j+1].p;
   if(f<.25){const q=atAlong([a,{x:a.x,y:AT_MY},{x:b.x,y:AT_MY},b],f/.25);return {x:q.x,y:q.y,dir:q.dir,moving:true,stop:st[j+1],v};}
-  return {x:b.x,y:b.y,dir:Math.floor(t/2000)%2?'left':'right',moving:false,stop:st[j+1],v};
+  // il balaie en avançant lentement dans la pièce (jamais planté à la porte à se tourner de gauche à droite)
+  const sw=st[j+1].sweep;if(!sw)return null; // arrivé à la porte de sortie : il est reparti (jamais planté à l'attendre)
+  const q=atAlong(sw,(f-.25)/.75);return {x:q.x,y:q.y,dir:q.dir,moving:false,sweeping:true,stop:st[j+1],v};
 }
 const atCleanLabel=m=>m.moving?'Fait le ménage du 1er étage : va vers '+m.stop.room:'Fait le ménage du 1er étage : '+m.stop.room+' · repart vers '+hm(m.v.e);
 // ---------- loupe (44-loupe.js) au 1er étage : les événements forts de l'atelier ----------
@@ -676,10 +680,14 @@ function atNight(slots,now){
     m.setTransform(1,0,0,1,0,0);m.globalCompositeOperation='source-over';m.clearRect(0,0,W_,H_);
     m.fillStyle=`rgba(${tint[0]},${tint[1]},${tint[2]},${dark})`;m.fillRect(0,0,W_,H_);
     m.setTransform(1/LQ,0,0,1/LQ,0,0);m.globalCompositeOperation='destination-out';
-    slots.forEach((r,i)=>{if(!r&&!(AT_MEM.clean&&AT_MEM.clean.stop.i===i))return;const g=AT_G[i];m.fillStyle='rgba(0,0,0,.25)';m.fillRect(g.x0*AT_TS,g.y0*AT_TS,(g.x1-g.x0)*AT_TS,(g.y1-g.y0)*AT_TS);
-      for(let x=g.x0+2;x<g.x1;x+=4)for(const y of [g.y0+3,g.y0+7.5])softSpot(m,x*AT_TS,y*AT_TS,2.6*AT_TS,.6);});
-    for(const h of AT_HITS)if(h.kind==='agent'||h.kind==='bernard'||h.kind==='cleaner'||h.kind==='pompier')softSpot(m,h.x+14,h.y+30,30,.8);
-    for(const q of AT_LIT)softSpot(m,q.x,q.y-26,30,.8); // comme au RDC (42-light.js) : le boss, et ceux qui marchent, dans leur lumière
+    slots.forEach((r,i)=>{const sweep=AT_MEM.clean&&AT_MEM.clean.stop.i===i;if(!r&&!sweep)return;const g=AT_G[i];
+      m.fillStyle=r?'rgba(0,0,0,.45)':'rgba(0,0,0,.25)';m.fillRect(g.x0*AT_TS,g.y0*AT_TS,(g.x1-g.x0)*AT_TS,(g.y1-g.y0)*AT_TS);
+      if(!r)return;
+      for(const p of AT_DESKS){const s=atSpot(g,p.k), y=s.row===1?g.feet1:g.feet2;softSpot(m,s.x,y-24,1.7*AT_TS,.9);} // chaque poste, sous sa lampe
+      softSpot(m,(g.bx0+g.bx1)/2,(g.b1+g.b2)/2+g.H/2,(g.bx1-g.bx0)/2,.5);}); // le tapis
+    for(const h of AT_HITS)if(h.kind==='agent'||h.kind==='bernard'||h.kind==='cleaner'||h.kind==='pompier')softSpot(m,h.x+14,h.y+30,42,.95);
+    for(const q of AT_LIT)softSpot(m,q.x,q.y-26,42,.95); // comme au RDC (42-light.js) : le boss, et ceux qui marchent, dans leur lumière
+    softSpot(m,AT_CHAIR.x,AT_CHAIR.y-14,3.2*AT_TS,.9); // la lampe du bureau du boss, toujours allumée
     softSpot(m,23*AT_TS,2.6*AT_TS,6*AT_TS,.7); // le grand tableau
     softSpot(m,46*AT_TS-10,AT_HY0*AT_TS+20,40,.5);softSpot(m,1.1*AT_TS,AT_HY1*AT_TS-20,30,.5); // la sortie, la machine à café
     const l=AT_NIGHT_CV[1].getContext('2d');l.clearRect(0,0,W_,H_);l.filter='blur(3px)';l.drawImage(AT_NIGHT_CV[0],0,0);l.filter='none';
@@ -708,7 +716,7 @@ function renderAtelier(now){
     if(!a)continue;a.moving=w.phase!=='stay';a.pose='stand';a._st={st:'idle'};a._at={i:w.i,k:w.k,s:'wander'};people.push([a,null,false]);
     atHit('agent',w.walk.pos.x-14,w.walk.pos.y-56,28,58,{i:w.i,k:w.k});}
   atScenes(now,dt,people);
-  if(AT_MEM.clean){const m=AT_MEM.clean, a=Object.assign(Object.create(Object.getPrototypeOf(cl)),cl,{pos:{x:m.x,y:m.y},tile:null,dir:m.dir,moving:m.moving,pose:'stand',present:true,_st:{st:'idle'}});
+  if(AT_MEM.clean){const m=AT_MEM.clean, a=Object.assign(Object.create(Object.getPrototypeOf(cl)),cl,{pos:{x:m.x,y:m.y},tile:null,dir:m.dir,moving:m.moving||!!m.sweeping,pose:'stand',present:true,_st:{st:'idle'}});
     const [dx,dy]={left:[-20,0],right:[20,0]}[m.dir]||[20,2];
     people.push([a,()=>drawCart({x:m.x+dx,y:m.y+dy}),false,()=>{if(!m.moving)E('🧹',m.x,m.y-66,12);}]);atHit('cleaner',m.x-14,m.y-56,28,58,{});}
   atBoss(slots,now,dt,people);

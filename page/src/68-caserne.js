@@ -382,8 +382,9 @@ function csNight(slots,now){
     const m=CS_NIGHT_CV[0].getContext('2d');m.setTransform(1,0,0,1,0,0);m.globalCompositeOperation='source-over';m.clearRect(0,0,W_,H_);
     m.fillStyle='rgba(10,14,40,.5)';m.fillRect(0,0,W_,H_);m.setTransform(1/LQ,0,0,1/LQ,0,0);m.globalCompositeOperation='destination-out';
     slots.forEach((s,b)=>{if(!s)return;const z=CS_G[b];softSpot(m,z.cx,(CS_DY1-1)*T,4*T,.7);softSpot(m,z.cx,(CS_R1+.5)*T,4.5*T,.8);softSpot(m,z.cx,(CS_R2+.3)*T,4*T,.7);});
-    softSpot(m,40.5*T,23.4*T,4.5*T,.55);softSpot(m,40.6*T,4.2*T,5*T,.7);softSpot(m,CS_POLE.x,CS_POLE.y1-1.2*T,2.2*T,.6);softSpot(m,CS_DESK.x,CS_DESK.y,2.5*T,.45);
-    for(const q of CS_LIT)softSpot(m,q.x,q.y-26,30,.8); // le capitaine dans sa lumière, à son bureau ou en route vers la vanne
+    softSpot(m,40.5*T,23.4*T,4.5*T,.55);softSpot(m,40.6*T,4.2*T,5*T,.7);softSpot(m,CS_POLE.x,CS_POLE.y1-1.2*T,2.2*T,.6);softSpot(m,CS_DESK.x,CS_DESK.y-10,3.6*T,.9); // la lampe du bureau du chef de centre, toujours allumée
+    for(const q of CS_LIT)softSpot(m,q.x,q.y-26,42,.95); // le capitaine dans sa lumière, à son bureau ou en route vers la vanne
+    for(const w of CS_MEM.walk||[])if(w.pos)softSpot(m,w.pos.x,w.pos.y-26,40,.9); // les pompiers qui descendent, courent ou remontent
     const l=CS_NIGHT_CV[1].getContext('2d');l.clearRect(0,0,W_,H_);l.filter='blur(3px)';l.drawImage(CS_NIGHT_CV[0],0,0);l.filter='none';}
   const sm=ctx.imageSmoothingEnabled;ctx.imageSmoothingEnabled=true;ctx.drawImage(CS_NIGHT_CV[1],0,0,AT_W,AT_H);ctx.imageSmoothingEnabled=sm;
 }

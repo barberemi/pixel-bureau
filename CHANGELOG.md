@@ -6,6 +6,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ## [Unreleased]
 
+### Corrigé
+
+- 1er étage : l'agent d'entretien ne reste plus planté à la porte d'un bureau à se tourner de gauche à droite ; il balaie en parcourant chaque bureau d'un bout à l'autre et l'allée de l'entrepôt, et repart dès qu'il a rejoint la sortie (il y attendait plusieurs minutes). La nuit, les bureaux occupés sont bien éclairés (chaque poste sous sa lampe, rangées du haut comme du bas, le tapis), ceux qui marchent ont une lumière plus large, et la lampe du bureau du boss (1er) comme celle du chef de centre (-1) reste allumée ; au -1, les pompiers en route ont leur lumière. Guides : [L'atelier](guide/fonctionnalites/23-atelier.md), [La caserne](guide/fonctionnalites/25-caserne.md). Après la mise à jour : `publish.py page`.
+
 ### Ajouté
 
 - Rejouer aux étages : le 1er et le -1 suivent l'heure du curseur, comme le RDC. Le 1er se reconstruit d'après les moments datés du relevé (le relevé note désormais le début de chaque poste), avec le bandeau « ⏪ Rejeu » ; au -1, un run pas encore fini à l'heure du plan est en cours (ou à sa gate) et un fil n'est répondu qu'après sa réponse. Les scènes (Bernard, l'arrivée des pompiers, le camion) se jouent quand le curseur passe dessus ; un saut pose l'étage, sauf un moment de moins de 2 min, rattrapé aussi en direct en montant à l'étage. « ⏵ revoir » sur une ligne du 1er monte à l'étage. Guides : [Rejouer](guide/fonctionnalites/05-rejouer.md), [L'atelier](guide/fonctionnalites/23-atelier.md), [La caserne](guide/fonctionnalites/25-caserne.md). Après la mise à jour : `publish.py all`.

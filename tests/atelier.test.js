@@ -427,3 +427,16 @@ test('rejeu : l\'étage reconstruit à l\'heure du curseur, scènes au fil du cu
   assert.equal(J2('AT_MEM.scenes[0].phase'), -1);
   assert.deepEqual(J2('AT_MEM.scenes[0].walk.path.pop()'), J2('AT_POP'), 'il va au colis');
 });
+
+test('le ménage du 1er : il balaie en parcourant chaque bureau et l\'entrepôt, jamais planté, et repart à la porte', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  p.run(`CFG.atelier = true; var __c = atCleaner(), __v = {s: 0, e: AT_CLEAN_DUR}; var __cv = atCleanVisit; atCleanVisit = () => __v;`);
+  const pts = J2(`Array.from({length: 81}, (_, k) => atCleanerAt(__c, __v.s + (__v.e - __v.s) * k / 81)).map(m => m && [m.stop.room, Math.round(m.x), Math.round(m.y), !!m.sweeping])`);
+  for (const room of ['le bureau 2', 'le bureau 4', 'le bureau 3', 'le bureau 1', 'l\'entrepôt']) {
+    const sw = pts.filter(x => x && x[0] === room && x[3]);
+    assert.ok(sw.length >= 3, room);
+    assert.ok(new Set(sw.map(x => x[1] + ',' + x[2])).size >= 3, room + ' : il avance en balayant');
+  }
+  assert.equal(pts[80], null, 'arrivé à la sortie, il est reparti');
+  p.run('atCleanVisit = __cv;');
+});
