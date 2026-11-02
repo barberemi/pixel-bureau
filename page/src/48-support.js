@@ -11,18 +11,29 @@ const supportOn=()=>!!(CFG.support||SUPPORT);
 const supportOpenable=()=>!TV&&supportOn();
 const SP_TODO=new Set(['new','gate','failed','relaunched']);
 // état d'un fil à l'heure de la page : la gate en attente et le dernier run du jour l'emportent sur le relevé
+// à l'heure du plan (T, rejeu compris) : la gate en attente n'est sûre qu'en direct ; un run pas encore fini à T est en cours
+// (ou à sa gate si l'étape gate est ouverte à T) ; un fil n'est « répondu » qu'à partir de l'heure de la réponse postée
+const spLive=()=>typeof mode==='undefined'||mode==='live';
+function spRunAt(r,t){
+  const act=['Running','Pending','WaitingQuota','WaitingApproval'].includes(r.status);
+  if(r.end?ms(r.end)<=t:!act)return r.status; // fini à t (ou fini sans heure de fin connue) : son issue
+  if(r.status==='Pending'||r.status==='WaitingQuota')return r.status;
+  const g=(r.steps||[]).find(s=>s.n==='gate'&&s.at&&ms(s.at)<=t&&(s.s==='WaitingApproval'||ms(s.at)+(s.ms||0)>t));
+  return g?'WaitingApproval':'Running'; // pas encore fini à t : à sa gate, ou en cours
+}
 function spState(t){
-  const g=t.run&&(GATES||[]).find(x=>x.run===t.run.run);
+  const g=spLive()&&t.run&&(GATES||[]).find(x=>x.run===t.run.run);
   if(g)return {k:'gate',g};
   if(t.state==='skipped')return {k:'skipped'}; // 🔕 ignoré depuis la console : ne compte plus, même si un vieux run a échoué
   const runs=((DATA&&DATA.runs)||[]).filter(r=>!r.parent&&r.vars&&r.vars.message_id===t.id&&(!t.run||ms(r.start)>=ms(t.run.at)||r.run===t.run.run)&&ms(r.start)<=T);
   const r=runs.sort((a,b)=>ms(b.start)-ms(a.start))[0];
-  if(r&&t.state!=='done'){
-    if(r.status==='Running'||r.status==='Pending'||r.status==='WaitingQuota')return {k:'run',r};
-    if(r.status==='WaitingApproval')return {k:'gate',r};
-    if(r.status==='Failed')return {k:(r.steps||[]).some(s=>s.n==='gate')?'ignored':'failed',r};
+  const done=t.state==='done'&&(!t.mine||!t.mine.at||ms(t.mine.at)<=T);
+  if(r&&!done){const st=spRunAt(r,T);
+    if(st==='Running'||st==='Pending'||st==='WaitingQuota')return {k:'run',r};
+    if(st==='WaitingApproval')return {k:'gate',r};
+    if(st==='Failed')return {k:(r.steps||[]).some(s=>s.n==='gate')?'ignored':'failed',r};
   }
-  return {k:t.state||'new'};
+  return {k:t.state==='done'&&!done?'new':t.state||'new'};
 }
 const spThreads=()=>((SUPPORT&&SUPPORT.threads)||[]).filter(t=>!t.at||ms(t.at)<=T);
 const spTodo=()=>spThreads().filter(t=>SP_TODO.has(spState(t).k));

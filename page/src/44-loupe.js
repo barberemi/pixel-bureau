@@ -9,8 +9,9 @@ const LOUPE_MS=20e3, LOUPE_WAIT_MAX=40e3, LOUPE_HOVER_MS=5e3;
 const LOUPE_KINDS={reopen:['⛔','#b3122e'],proud:['🎉','#0172f0'],party:['🎉','#0172f0'],thumbs:['👍','#2e9e5b'],guest:['👋','#2e9e5b'],
   daily:['☀️','#2e9e9b'],planning:['🗓','#2e9e9b'],retro:['🔄','#c25a9e'],kickoff:['🏁','#2e9e9b'],pizza:['🍕','#2e9e9b'],duck:['🦆','#c47f00'],hatch:['🐣','#c47f00'],trophy:['🏆','#c47f00'],ufo:['🛸','#b5481c'],brew:['☕','#6b3e1e'],
   // 1er étage (68-atelier.js, atLoupeEvents) : ticket qui sort, qui arrive, ta décision, retour au code, panne, ménage
-  at_exit:['📦','#2e9e5b'],at_arrive:['🎫','#0172f0'],at_gate:['✋','#c47f00'],at_back:['↩','#b3122e'],at_err:['🧯','#b3122e'],at_clean:['🧹','#6b3e1e']};
-const LOUPE_ORDER=['at_exit','at_gate','at_back','at_err','at_arrive','at_clean','reopen','ufo','brew','proud','guest','thumbs','kickoff','planning','retro','daily','pizza','party','trophy','hatch','duck'];
+  at_exit:['📦','#2e9e5b'],at_arrive:['🎫','#0172f0'],at_gate:['✋','#c47f00'],at_back:['↩','#b3122e'],at_err:['🧯','#b3122e'],at_clean:['🧹','#6b3e1e'],
+  cs_arrive:['🚒','#d0392b'],cs_gate:['✋','#c47f00'],cs_err:['🔥','#b3122e'],cs_depart:['📣','#2e9e5b']};
+const LOUPE_ORDER=['cs_depart','cs_gate','cs_err','cs_arrive','at_exit','at_gate','at_back','at_err','at_arrive','at_clean','reopen','ufo','brew','proud','guest','thumbs','kickoff','planning','retro','daily','pizza','party','trophy','hatch','duck'];
 // cérémonies : toute l'équipe est dans la scène, la légende la nomme au lieu d'énumérer tout le monde
 const LOUPE_CEREMONY={daily:"Daily de l'équipe",planning:'Sprint planning',retro:'Rétrospective',kickoff:'Lancement du sprint',pizza:'Pizza de fin de sprint'};
 let LOUPE_ON=!REDUCED_MOTION;try{const v=localStorage.getItem('bureau:loupe');if(v!==null)LOUPE_ON=v!=='0';}catch(e){} // un choix du bouton passe avant le réglage système
@@ -24,9 +25,8 @@ function loupeKind(c){
 // événements qui commencent depuis le dernier passage ; le premier passage ne fait que noter ce qui est déjà en cours
 function loupeScan(){
   const groups={}, now=new Set(), fresh=[];
-  if(FLOOR===-1){LOUPE.seen=new Set();return [];} // la caserne (68-caserne.js) : ses scènes se voient sur le plan entier
-  if(FLOOR===1){ // 1er étage : seulement ses événements (68-atelier.js)
-    for(const ev of atLoupeEvents(performance.now())){now.add(ev.id);if(LOUPE.seen&&!LOUPE.seen.has(ev.id))fresh.push(ev);}
+  if(FLOOR===1||FLOOR===-1){ // un étage : seulement ses événements (68-atelier.js, 68-caserne.js)
+    for(const ev of (FLOOR===1?atLoupeEvents:csLoupeEvents)(performance.now())){now.add(ev.id);if(LOUPE.seen&&!LOUPE.seen.has(ev.id))fresh.push(ev);}
     LOUPE.seen=now;return fresh.sort((a,b)=>LOUPE_ORDER.indexOf(a.kind)-LOUPE_ORDER.indexOf(b.kind));
   }
   for(const c of chars){

@@ -262,9 +262,12 @@ function drawSide(side){
     const n=tdIn('todo').length;b.textContent='📌 Mes todos'+(n?' · '+n+' à faire':'');b.onclick=openTodos;side.appendChild(b);}
   if(c.boss){const p=document.createElement('p');p.style.color='var(--muted)';const gates=chars.filter(x=>gateRunsOf(x).length), lone=loneGates();
     const qs=QUESTIONS.filter(q=>(ms(q.since)||0)<=T);
-    if(!gates.length&&!lone.length&&!qs.length){p.textContent="Personne n'attend ta validation. Le bureau tourne tout seul.";side.appendChild(p);}
+    const up=typeof atGateRooms==="function"?atGateRooms():[]; // 68-atelier.js : les bureaux du 1er dont une gate t'attend
+    if(!gates.length&&!lone.length&&!qs.length&&!up.length){p.textContent="Personne n'attend ta validation. Le bureau tourne tout seul.";side.appendChild(p);}
     for(const x of gates)for(const r of gateRunsOf(x)){if(r)gateCard(side,r,x.name);else handCards(side,carriedFor(x,T));} // porteurs : les mails qu'ils remettent (48-mail.js)
     for(const g of lone)gateCard(side,{run:g.run,wf_name:g.wf_name,_s:ms(g.since)},null); // workflows sans personnage (« Le Bureau · plan »)
+    for(const {r,i} of up){const g=atGate(r);if(!g)continue;gateCard(side,{...g,wf_name:'🏭 1er étage · bureau '+(i+1)+' · '+(r.ticket||'')+' · '+(AT_GATE_TXT[r.gate]||g.wf_name)},null);
+      const a=document.createElement('button');a.type='button';a.className='at-link';a.textContent='🏭 Voir le bureau '+(i+1)+' au 1er ›';a.onclick=()=>atGoto(r.run);side.appendChild(a);}
     for(const q of qs)questionCard(side,q,askerOf(q)); // questions des discussions (visiteurs, canard, « interroger »)
     const imp=chars.filter(x=>x.visitor&&x.disc&&x.disc.imp>0);
     if(imp.length){

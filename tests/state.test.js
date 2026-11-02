@@ -6,6 +6,7 @@ const {load} = require('./helpers/page.js');
 const MEP = require('./fixtures/bureau.config.json').mep_workflow; // workflow de mise en prod de la démo
 
 const page = load();
+page.run('ATELIER=null'); // la gate de démo du 1er compterait chez le boss : hors de ces tests (atelier.test.js)
 const run = page.run;
 const J = code => JSON.parse(run('JSON.stringify(' + code + ')'));
 const Z = s => Date.parse(s);

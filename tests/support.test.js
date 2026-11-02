@@ -174,3 +174,18 @@ test('🔕 Ignorés : une section repliée sous l\'en-tête avec le nombre ; dé
   set([th('1', 'skipped'), th('2', 'new')]);
   assert.match(J('spHead()'), /1 à traiter/);
 });
+
+test('rejeu : un run pas encore fini à l\'heure du plan est en cours, à sa gate si elle est ouverte ; répondu après la réponse seulement', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  const r = `{run: 'r1', status: 'Success', start: '2026-10-01T09:00:00Z', end: '2026-10-01T09:40:00Z',
+    steps: [{n: 'tri', s: 'Success', at: '2026-10-01T09:00:00Z', ms: 60000}, {n: 'gate', s: 'Success', at: '2026-10-01T09:10:00Z', ms: 1200000}]}`;
+  const at = h => `Date.parse('2026-10-01T${h}:00Z')`;
+  assert.equal(J2(`spRunAt(${r}, ${at('09:05')})`), 'Running');
+  assert.equal(J2(`spRunAt(${r}, ${at('09:15')})`), 'WaitingApproval', 'la gate est ouverte à 9h15');
+  assert.equal(J2(`spRunAt(${r}, ${at('09:45')})`), 'Success');
+  assert.equal(J2(`spRunAt({status: 'Failed', steps: []}, ${at('09:45')})`), 'Failed', 'fini sans heure de fin : son issue');
+  p.run(`mode = 'pause'; GATES = []; DATA = {runs: [{...${r}, vars: {message_id: 'm1'}}]};
+    var __t = {id: 'm1', at: '2026-10-01T08:55:00Z', state: 'done', mine: {at: '2026-10-01T09:41:00Z'}, run: {run: 'r1', at: '2026-10-01T09:00:00Z'}};`);
+  assert.equal(J2(`(T = ${at('09:15')}, spState(__t).k)`), 'gate', 'à 9h15, la réponse attendait ta validation');
+  assert.equal(J2(`(T = ${at('09:42')}, spState(__t).k)`), 'done');
+});

@@ -841,7 +841,7 @@ class AtelierSnapshotTest(unittest.TestCase):
                          [("AB-1", "dm/site", "securite"), ("AB-2", "dm/api", "orchestrateur_plan")])  # AB-3 repris, AB-5 rejeté à ta gate, AB-4 trop vieux
 
     def test_events_for_the_ground_floor_feed(self):
-        """Fil du RDC : arrivée, gate, retour au Code, panne et PR ouverte, datés par les étapes ; une gate refusée n'est pas
+        """Fil du RDC et rejeu du 1er : arrivée, postes, gate, retour au Code, panne et PR ouverte, datés par les étapes ; une gate refusée n'est pas
         une panne ; livres = PR ouvertes depuis minuit (fuseau du bureau), un run de plus de 24 h ne compte pas."""
         sys.path.insert(0, os.path.join(ROOT, "workflows"))
         import atelier_snapshot as a
@@ -867,6 +867,11 @@ class AtelierSnapshotTest(unittest.TestCase):
             a.get = old[0]
             a.CFG.clear()
             a.CFG.update(old[1])
+        # rejeu du 1er étage : le carton à chaque poste commencé (code, contrôles, code, PR)
+        self.assertEqual([(e["poste"], e["t"]) for e in snap["events"] if e["k"] == "poste"], [
+            ("code", "2026-10-30T07:30:00+00:00"), ("regles", "2026-10-30T07:50:00+00:00"), ("code", "2026-10-30T08:10:00+00:00"),
+            ("pr", "2026-10-30T08:30:00+00:00")])
+        snap["events"] = [e for e in snap["events"] if e["k"] != "poste"]
         self.assertEqual([(e["ticket"], e["k"], e["t"]) for e in snap["events"]], [
             ("AB-7", "arrive", "2026-10-30T07:00:00+00:00"), ("AB-7", "gate", "2026-10-30T07:20:00+00:00"),
             ("AB-7", "panne", "2026-10-30T07:52:00+00:00"), ("AB-7", "back", "2026-10-30T08:10:00+00:00"),

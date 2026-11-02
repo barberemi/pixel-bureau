@@ -74,6 +74,7 @@ function besideSeat(seat){
 }
 function stateAt(c,t){
   if(c.outsider)return outsiderState(c,t);
+  {const ls=typeof atLauncherCarry==='function'&&atLauncherCarry(c,t);if(ls)return ls;} // 69-atelier-rdc.js : le carton d'un ticket lancé
   let s0=stateAt0(c,t);
   if(!s0)return s0;
   // outil en cours de l'étape IA (données live, seulement si récentes)
