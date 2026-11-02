@@ -1,0 +1,113 @@
+{
+ "kind": "workflow",
+ "key": "ticket_recherche",
+ "doc": "Cherche dans les dépôts des composants ce qui sert à rédiger le ou les tickets.",
+ "definition": {
+  "name": "Le Bureau · ticket · 📚 recherche",
+  "project_id": null,
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "run_id",
+    "label": "Run",
+    "placeholder": "",
+    "description": "Le run du modèle ticket (son dossier dans le cache du Bureau).",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "entree",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Consigne du poste 📚 recherche : sa mission, la demande, les rapports et les versions d'avant (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/ticket.py@@",
+     "poste",
+     "recherche",
+     "{{run_id}}"
+    ],
+    "exec_timeout_secs": 60
+   },
+   {
+    "name": "agent",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "📚 recherche : Cherche dans les dépôts des composants ce qui sert à rédiger le ou les tickets.",
+    "prompt_template": "{{steps.entree.data.stdout}}",
+    "agent_settings": {
+     "tier": "economy",
+     "tools": {
+      "cli": [
+       "Read",
+       "Grep",
+       "Glob",
+       "Bash"
+      ],
+      "kronn_internal": []
+     }
+    },
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    }
+   },
+   {
+    "name": "rapport",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le rapport du poste 📚 recherche, rangé dans le dossier du run.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/ticket.py@@",
+     "rapport",
+     "recherche",
+     "{{run_id}}"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.agent.output ?? \"\"}}"
+   }
+  ]
+ }
+}

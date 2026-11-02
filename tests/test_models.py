@@ -312,21 +312,28 @@ exit 0
         self.assertFalse(var["composant_2"]["required"])
         self.assertEqual(var["intention"]["control"], {"type": "textarea"})
         st = {s["name"]: s for s in out["steps"]}
-        self.assertEqual(list(st), ["rediger", "apercu", "relire", "sprints", "champs", "creer", "points_board", "resultat"])
-        self.assertIn("~/Sites/frigo/docs/ticket.md", st["rediger"]["prompt_template"])
+        # 2e étage : les postes (un sous-workflow chacun), l'aiguillage (3 tours au plus), puis un sous-workflow par ticket
+        self.assertEqual(list(st), ["dossier", "recherche", "redaction", "critique", "aiguillage", "chaque", "resultat"])
+        self.assertEqual(st["aiguillage"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "redaction", "max_iterations": 2}}])
+        self.assertEqual(st["chaque"]["sub_workflow_foreach_file"], ".kronn/tickets.json")
+        self.assertTrue(out["workspace_config"]["require_isolation"], "le foreach écrit dans le dossier de travail du run")
+        un = {s["name"]: s for s in templates.render(TPL["ticket_un"], c)["steps"]}
+        self.assertEqual(list(un), ["lot", "relire", "sprints", "champs", "creer", "points_board", "resultat", "ecarte"])
+        self.assertEqual(un["relire"]["gate_request_changes_target"], "ecarte", "Changements : ce ticket est écarté, on passe au suivant")
+        st = un
         self.assertEqual(st["points_board"]["api_body"], {"fields": {"customfield_200": "{{steps.champs.data.sources.f.board_sp}}"}})
         self.assertEqual(st["creer"]["api_body"], "{{steps.champs.data.sources.f.body}}")  # corps typé, jamais réinterprété
         self.assertEqual(assemble.page_config(assemble.merged(c))["ticket"], {"wf": "tttt1111"})
         # même champ à la création et sur le board : pas de recopie ; sans liste de composants : champ libre facultatif
         Path(os.path.join(pack, "settings.json")).write_text(json.dumps({"jira": {"create": {"points_field": "customfield_200"}}}))
         out = templates.render(TPL["ticket"], c)
-        self.assertNotIn("points_board", [s["name"] for s in out["steps"]])
+        self.assertNotIn("points_board", [s["name"] for s in templates.render(TPL["ticket_un"], c)["steps"]])
         var = {v["name"]: v for v in out["variables"]}
         self.assertNotIn("control", var["composant"])
         self.assertFalse(var["composant"]["required"])
         self.assertEqual([o["value"] for o in var["type"]["control"]["options"]], templates.CREATE_TYPES)
-        self.assertIn("aucun", out["steps"][0]["prompt_template"])  # pas de modèle de ticket : structure par défaut
         self.assertTrue(templates.skipped("ticket", cfg(jira={})))
+        self.assertTrue(templates.skipped("ticket_un", cfg(jira={})))
         self.assertIsNone(assemble.page_config(cfg())["ticket"])
         shutil.rmtree(tmp)
 

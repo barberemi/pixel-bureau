@@ -1,0 +1,229 @@
+{
+ "kind": "workflow",
+ "key": "ticket_un",
+ "definition": {
+  "name": "Le Bureau · ticket · 🎫 un ticket",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [],
+  "steps": [
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "lot",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le ticket tel qu'il sera créé (n sur N), en texte lisible, pour ta validation. 0 token.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/ticket.py@@",
+     "lot",
+     "apercu"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "relire",
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "Le tampon : tu valides ce ticket avant sa création.",
+    "gate_message": "{{steps.lot.data.stdout}}\n\n---\n**Approuver** : ce ticket est créé dans Jira. **Changements** : celui-ci est écarté, on passe au suivant. **Rejeter** : on s'arrête là, plus rien n'est créé.",
+    "gate_request_changes_target": "ecarte"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "sprints",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Sprints à venir du board : le premier reçoit le ticket quand on choisit « Sprint suivant ».",
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/agile/1.0/board/@@jira.board@@/sprint",
+    "api_method": "GET",
+    "api_query": {
+     "state": "future",
+     "maxResults": "50"
+    }
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "champs",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "Champs de création typés (points en nombre, id du sprint) : la sortie JSON du script, lue telle quelle par creer.",
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "f",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/ticket.py@@",
+         "lot",
+         "champs",
+         "{{steps.sprints.data_json}}"
+        ],
+        "timeout_secs": 30,
+        "output_format": "json"
+       },
+       "required": true
+      }
+     ],
+     "concurrent_limit": 1
+    }
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "creer",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Création par l'API REST v2 (wiki markup : panneaux gardés). Le corps entier vient de champs, rien n'est réinterprété.",
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/2/issue",
+    "api_method": "POST",
+    "api_body": "{{steps.champs.data.sources.f.body}}",
+    "external_effect": true
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "points_board",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Recopie les points dans le champ du board quand il n'est pas celui de l'écran de création. returnIssue=true : sans lui Jira répond 204 sans corps (KT-689).",
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/2/issue/{{steps.creer.data.key}}",
+    "api_method": "PUT",
+    "api_query": {
+     "fields": "@@jira.create.board_points@@",
+     "returnIssue": "true"
+    },
+    "api_body": {
+     "fields": {
+      "@@jira.create.board_points@@": "{{steps.champs.data.sources.f.board_sp}}"
+     }
+    },
+    "_requires": "jira.create.board_points",
+    "external_effect": true
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "resultat",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Clé, lien et résumé du ticket créé, relus par les relevés pour la fiche de l'agent (dernier ticket créé). 0 token.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/ticket.py@@",
+     "lot",
+     "resultat",
+     "{{steps.creer.data.key}}"
+    ],
+    "exec_timeout_secs": 30,
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Stop"
+      }
+     }
+    ]
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "ecarte",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Changements demandés : ce ticket n'est pas créé, on passe au suivant (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "print('Ticket écarté : rien créé, on passe au suivant.')"
+    ],
+    "exec_timeout_secs": 30
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ },
+ "doc": "Un ticket de l'intention (foreach) : son aperçu, ta validation au tampon, sa création dans Jira."
+}
