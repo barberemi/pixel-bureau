@@ -290,6 +290,54 @@ class SupportTest(unittest.TestCase):
         t = {x["id"]: x for x in json.loads(self.run_("dataset").stdout)["threads"]}
         self.assertEqual(t["102"]["run"]["postes"], {"tri": "ok", "logs": "run"})
 
+    def test_history_keeps_each_investigation_and_what_the_postes_found(self):
+        """Page « Support · bilan » : chaque étape réécrit le bilan du fil dans l'historique (jamais vidé) ; ce qu'a rendu
+        chaque poste y est en données (catégorie, urgence, vérifications à la main et outils, certitude, piste de fond,
+        verdicts), avec tes retours datés, les renvois de la relecture et la réponse postée ; une investigation relancée
+        vide le dossier, pas l'historique ; « archive » range tous les fils du relevé."""
+        self.poll()
+        hist = lambda m: json.loads(Path(self.tmp, ".local", "share", "pixel-bureau", "historique", "support", m + ".json").read_text())  # noqa: E731
+        self.run_("open", "101", "p1", "run-1", "Regarde le cron de 8h")
+        h = hist("101")
+        self.assertEqual((h["subject"], h["state"], h["runs"]["run-1"]["comment"], h["runs"]["run-1"]["project_name"]),
+                         (None, "new", "Regarde le cron de 8h", "site-web"))
+        self.assertIn("Le flux RSS FR est vide", h["extrait"])
+        mission = self.run_("poste", "tri", "101", "").stdout
+        self.assertIn("Catégorie : une seule parmi bug | accès | données | contenu | publication | déploiement | question | autre", mission)
+        self.assertIn("Piste de fond", self.run_("poste", "cause", "101", "").stdout)
+        self.run_("rapport", "tri", "101", stdin="Sujet : flux RSS\n**Urgence** : haute, la home FR est vide\n**Catégorie** : Données (flux)\nDéjà traité : non")
+        self.run_("rapport", "logs", "101", stdin="Traces : aucune\nÀ vérifier à la main :\n- CloudWatch : erreurs du cron à 8h\n- Sentry : issue RSS\nRemarque : rien")
+        self.run_("rapport", "cause", "101", stdin="Cause probable : le cron\nCertitude : supposée\nPiste de fond : alerter quand le flux est vide")
+        self.run_("poste", "reponse", "101", "Sois bref")
+        self.run_("rapport", "reponse", "101", stdin="🔎 Cause : le cron.")
+        self.run_("rapport", "relecture", "101", stdin="VERDICT : revoir\nTrop vague.")
+        self.assertEqual(self.run_("draft", "run-1", "101").returncode, 3)
+        self.run_("rapport", "reponse", "101", stdin="🔎 Cause : le cron de 8h.")
+        self.run_("rapport", "relecture", "101", stdin="VERDICT : ok")
+        r = self.run_("draft", "run-1", "101")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.run_("post", "run-1", stdin=r.stdout)
+        h = hist("101")
+        run = h["runs"]["run-1"]
+        self.assertEqual(run["postes"]["tri"], {"categorie": "données", "urgence": "haute", "deja_traite": False, "passages": 1})
+        self.assertEqual(run["postes"]["logs"], {"verifs": 2, "outils": ["CloudWatch", "Sentry"], "passages": 1})
+        self.assertEqual(run["postes"]["cause"], {"certitude": "supposee", "piste": "alerter quand le flux est vide", "passages": 1})
+        self.assertEqual((run["postes"]["relecture"]["verdicts"], run["postes"]["reponse"]["passages"]), (["revoir", "ok"], 2))
+        self.assertEqual((run["renvois"], run["version"], [x["texte"] for x in run["retours"]]), (1, 1, ["Sois bref"]))
+        self.assertEqual((h["state"], h["reponse"]["run"], h["reponse"]["texte"]), ("done", "run-1", "🔎 Cause : le cron de 8h."))
+        # une investigation relancée repart d'un dossier vide ; l'historique garde la première
+        self.run_("open", "102", "p1", "run-2", "")
+        self.run_("rapport", "tri", "102", stdin="Catégorie : bug")
+        self.run_("open", "102", "none", "run-3", "")
+        h = hist("102")
+        self.assertEqual((h["runs"]["run-2"]["postes"]["tri"]["categorie"], sorted(h["runs"])), ("bug", ["run-2", "run-3"]))
+        self.assertFalse(Path(self.tmp, ".cache", "pixel-bureau", "support", "102", "tri.md").exists())
+        Path(self.tmp, ".local", "share", "pixel-bureau", "historique", "support", "102.json").unlink()
+        r = self.run_("archive")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(r.stdout.startswith("3 fil(s) dans l'historique"), r.stdout)  # 104 : hors de la console (9 jours), pas du relevé
+        self.assertEqual(sorted(hist("102")["runs"]), ["run-2", "run-3"], "le relevé garde le lien run -> fil")
+
     def test_skip_takes_a_thread_out_of_the_queue_until_reactivated(self):
         """🔕 skip : le fil passe « skipped » (avant tout run), skip = l'action suivante du bouton, heure gardée ; réactivé, il
         revient ; fil ou action inconnus refusés ; un fil sorti du relevé sort aussi des ignorés. Workflow : skip, puis le

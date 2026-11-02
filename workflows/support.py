@@ -8,6 +8,7 @@
   python3 -c <ce script> draft <run> <message>              # la réponse du poste ✉ au format, relue, numéro de version
   python3 -c <ce script> post <run>         (stdin : réponse validée)     # réponse en fil -> dataset support
   python3 -c <ce script> skip <message> <ignorer|reactiver>             # 🔕 un fil ignoré ne compte plus (bouton de la console)
+  python3 -c <ce script> archive                                # les fils du relevé dans l'historique (cron support_bilan)
 
 Réglage support (pack d'équipe ou config) : {name, team, channel, days (7), model (« haiku »), claude (chemin de la CLI)}.
 Lecture du canal : la permission Graph ChannelMessage.Read.All manque au jeton Azure CLI ; le connecteur Claude
@@ -22,7 +23,10 @@ discussion de l'investigation ; chacun lit le dossier du message (la demande, le
 et y range son rapport. La relecture peut renvoyer à la réponse (2 fois au plus) ; ta validation (gate) et la réponse en
 fil restent dans le parent.
 Fichiers : ~/.cache/pixel-bureau/support.json et le dossier ~/.cache/pixel-bureau/support/<message>/ (jamais le dossier
-du projet).
+du projet). Historique (page « Support · bilan », jamais vidé) : ~/.local/share/pixel-bureau/historique/support/<message>.json
+(réglage support.historique), réécrit à chaque étape d'une investigation et par le cron support_bilan ; ce qu'a rendu chaque
+poste y est en données (catégorie du 🏷 Tri, réglage support.categories ; vérifications à la main de 🔎 Logs ; certitude et
+piste de fond du 🧩 Cause ; verdicts de la relecture).
 
 Dataset support : {generated_at, polled_at, name, url, ok, error, cost, me, days, threads: [{id, at, from, text, url,
 replies, last_at, state, by, mine, run}]} ; state = new (à investiguer), run (investigation en cours), gate (réponse à
@@ -30,7 +34,7 @@ valider), done (répondu en fil), resolved (✅ sur le message), answered (pris 
 (l'auteur a relancé après sa réponse), ignored (réponse refusée), failed, skipped (🔕 ignoré depuis la console : ne compte
 plus, jusqu'à « ↺ Réactiver ») ; skip = la valeur de l'action du bouton (ignorer ou reactiver), relue par Kronn.
 """
-import html, json, os, re, shutil, subprocess, sys, urllib.error, urllib.parse, urllib.request, uuid
+import html, json, os, re, shutil, subprocess, sys, unicodedata, urllib.error, urllib.parse, urllib.request, uuid
 from html.parser import HTMLParser
 from datetime import datetime, timedelta, timezone
 from _lib import API, CFG, get, read_json, write_json
@@ -46,6 +50,9 @@ DAYS = int(S.get("days") or 7)
 REPLIES_MAX = 8  # fils dont on relit les réponses à chaque relevé (les plus récents qui ont bougé)
 FOOTER = "Généré de manière automatique 🤖"
 SECTION = re.compile(r"^\W{1,4}\s*[^:]{1,30}?\s*:\s*\S")  # « 🔎 Cause : … »
+# page « Support · bilan » : catégories que donne le 🏷 Tri (réglage support.categories), outils de logs cités par 🔎 Logs
+CATEGORIES = tuple(S.get("categories") or ("bug", "accès", "données", "contenu", "publication", "déploiement", "question", "autre"))
+OUTILS = ("CloudWatch", "Fastly", "Sentry", "Grafana", "Datadog", "Kibana", "New Relic", "Azure", "SpeedCurve", "GitHub Actions")
 
 
 def now():
@@ -350,8 +357,8 @@ def state_of(t, run, mine, my_id):
     return "new", None
 
 
-def dataset(c):
-    since = iso(now() - timedelta(days=DAYS))
+def thread_rows(c, since=""):
+    """Les fils du relevé arrivés depuis since, le plus récent d'abord : état et dernière investigation de chacun."""
     runs, my = runs_by_thread(c), (c.get("me") or {}).get("id")
     rows = []
     for t in sorted(c.get("threads", {}).values(), key=lambda t: t.get("at") or "", reverse=True):
@@ -369,7 +376,11 @@ def dataset(c):
                      "skipped_at": (c.get("skipped") or {}).get(t["id"]) if st == "skipped" else None,
                      "mine": {"at": mine.get("at"), "text": mine.get("text")} if mine else None,
                      "run": {k: run.get(k) for k in ("run", "status", "at", "disc", "version", "draft", "postes")} if run else None})
-    rows = rows[:40]
+    return rows
+
+
+def dataset(c):
+    rows = thread_rows(c, iso(now() - timedelta(days=DAYS)))[:40]
     out = {"generated_at": iso(now()), "polled_at": c.get("polled_at"), "name": S.get("name") or "Support",
            "ok": not c.get("error"), "error": c.get("error"), "cost": c.get("cost"), "days": DAYS,
            "me": (c.get("me") or {}).get("name"), "threads": rows}
@@ -436,6 +447,8 @@ réglée) ; ce qu'il faut chercher ensuite. Rends un rapport court :
 Sujet : …
 Projet et code concernés : …
 Urgence : basse | moyenne | haute, et pourquoi
+Catégorie : une seule parmi """ + " | ".join(CATEGORIES) + """
+Déjà traité : oui | non
 À chercher : …"""),
     "logs": ("🔎 Logs", """Rassemble les traces : messages d'erreur, codes HTTP, heures, adresses, captures citées dans la demande et le fil ;
 dans le code, où ces erreurs sont produites et journalisées (fichiers, lignes). Tu n'as accès à aucun outil de logs
@@ -449,7 +462,9 @@ une mise en prod récente ?). Distingue ce qui est établi de ce qui est suppos�
 Cause probable : …
 Preuves : fichiers, lignes, commits
 Incertain : …
-Ce qui réglerait le problème : …"""),
+Certitude : établie | supposée
+Ce qui réglerait le problème : …
+Piste de fond : ce qui éviterait que ça se reproduise (code, contrôle, doc), ou « aucune »"""),
     "reponse": ("✉ Réponse", """Rédige la réponse qui sera postée en fil, sous le nom de la personne qui t'a lancé (elle la valide d'abord), à partir
 des rapports du dossier : ce qu'on a trouvé, ce qu'on fait ou ce qu'il faut faire, le suivi. Ne promets rien que le
 dossier n'établit pas ; une question à l'auteur si une information manque. Si la relecture a laissé des remarques,
@@ -499,6 +514,9 @@ def poste(k, msg, retours):
     retours = (retours or "").strip()
     if retours and retours not in dread(msg, "retours.md"):  # une seule fois par texte
         dwrite(msg, "retours.md", (dread(msg, "retours.md") + "\n\n" + retours).strip())
+        e = etat(msg)
+        e.setdefault("retours", []).append({"at": iso(now()), "texte": retours[:600]})  # page « Support · bilan »
+        dwrite(msg, "etat.json", json.dumps(e))
     titre, mission = MISSIONS[k]
     parts = [f"Tu es le poste {titre} de l'investigation d'une demande de support (une chaîne de postes : 🏷 Tri, 🔎 Logs, "
              "🧩 Cause, ✉ Réponse, 🧐 Relecture, puis la validation humaine et la réponse en fil).", COMMON,
@@ -525,11 +543,61 @@ def rapport(k, msg, text):
     if not text:
         fail(f"Le poste {MISSIONS[k][0]} n'a rien rendu.")
     dwrite(msg, k + ".md", text)
+    e = etat(msg)
     if k == "relecture":
-        e = etat(msg)
         e["verdict"] = "revoir" if re.search(r"VERDICT\s*:\s*revoir", text.splitlines()[0], re.I) else "ok"
-        dwrite(msg, "etat.json", json.dumps(e))
+    old = (e.get("postes") or {}).get(k) or {}
+    e.setdefault("postes", {})[k] = {**champs(k, text), "passages": int(old.get("passages") or 0) + 1,
+                                     **({"verdicts": (old.get("verdicts") or []) + [e["verdict"]]} if k == "relecture" else {})}
+    dwrite(msg, "etat.json", json.dumps(e))
+    archive(load(), [msg])
     print(text[:2000])
+
+
+def _plain(s):
+    """Minuscules sans accents : « Déjà traité » et « deja traite » se valent."""
+    return "".join(ch for ch in unicodedata.normalize("NFD", str(s or "").lower()) if unicodedata.category(ch) != "Mn")
+
+
+def champ(text, label):
+    """La valeur d'une ligne « Libellé : valeur » d'un rapport (premier trouvé ; gras, puces et emoji autour ignorés)."""
+    lab = _plain(label)
+    for ln in str(text or "").splitlines():
+        m = re.match(r"^[\W_]*(.+?)[*_\s]*:\s*(.*)$", ln.strip())
+        if m and _plain(m.group(1)).strip(" *_") == lab:
+            return m.group(2).strip().strip("*_ ").strip()
+    return ""
+
+
+def champs(k, text):
+    """Ce qu'un poste a rendu, en données (0 token) : catégorie, urgence et « déjà traité » du 🏷 Tri ; vérifications à
+    la main et outils de logs cités par 🔎 Logs ; certitude et piste de fond du 🧩 Cause."""
+    if k == "tri":
+        cat = _plain(champ(text, "Catégorie"))
+        urg = _plain(champ(text, "Urgence"))
+        return {"categorie": next((c for c in CATEGORIES if _plain(c) in cat), "autre" if cat else None),
+                "urgence": next((u for u in ("haute", "moyenne", "basse") if u in urg), None),
+                "deja_traite": _plain(champ(text, "Déjà traité")).startswith("oui")}
+    if k == "logs":
+        part = re.split(r"(?im)^[\W_]*[àa] v[ée]rifier [àa] la main[^:\n]*:", str(text or ""), maxsplit=1)
+        rest = part[1] if len(part) > 1 else ""
+        items = []
+        for ln in rest.splitlines()[1:] if rest.strip() and not rest.splitlines()[0].strip() else rest.splitlines():
+            if re.match(r"^[\W_]*[A-Za-zÀ-ÿ' ]{2,40}\s*:\s*\S", ln.strip()) and not re.match(r"^\s*[-*•\d]", ln) and items:
+                break  # la section suivante du rapport
+            if re.match(r"^\s*(?:[-*•]|\d+[.)])\s+\S", ln):
+                items.append(ln)
+        inline = rest.splitlines()[0].strip() if rest.strip() else ""
+        if not items and inline and not _plain(inline).startswith(("aucun", "rien", "-")):
+            items = [inline]  # une seule vérification, sur la ligne du libellé
+        low = _plain(text)
+        return {"verifs": len(items), "outils": [o for o in OUTILS if _plain(o) in low]}
+    if k == "cause":
+        cert = _plain(champ(text, "Certitude"))
+        piste = champ(text, "Piste de fond")
+        return {"certitude": "etablie" if "etabli" in cert else "supposee" if "suppos" in cert else None,
+                "piste": None if not piste or _plain(piste).startswith(("aucun", "rien", "non", "-")) else piste[:240]}
+    return {}
 
 
 def jira_hint():
@@ -557,11 +625,13 @@ def open_(msg, pid, run_id, comment):
                                          "initial_prompt": text + "\n\n(Investigation lancée depuis Le Bureau : l'agent Support y travaille.)"})
     if not isinstance(disc, dict) or not disc.get("id"):
         fail("Kronn n'a pas créé la discussion.")
-    c.setdefault("runs", {})[run_id] = {"msg": msg, "disc": disc["id"], "project": pid, "version": 0, "at": iso(now())}
+    c.setdefault("runs", {})[run_id] = {"msg": msg, "disc": disc["id"], "project": pid, "project_name": (p or {}).get("name"),
+                                        "version": 0, "at": iso(now()), "comment": comment.strip()[:300]}
     save(c)
-    shutil.rmtree(dossier(msg), ignore_errors=True)  # une nouvelle investigation repart d'un dossier vide
+    shutil.rmtree(dossier(msg), ignore_errors=True)  # une nouvelle investigation repart d'un dossier vide (le run d'avant est dans l'historique)
     dwrite(msg, "demande.md", text)
     dwrite(msg, "etat.json", json.dumps({"run": run_id, "relectures": 0}))
+    archive(c, [msg])
     print(f"---STATE:disc={disc['id']}---")
     print(text)
 
@@ -581,11 +651,13 @@ def draft(run_id, msg, text=""):
         fail("Le poste ✉ Réponse n'a rendu aucune réponse : demande des changements pour relancer.")
     if (not idx or e.get("verdict") == "revoir") and again:
         e["relectures"] = int(e.get("relectures") or 0) + 1
+        e["renvois"] = int(e.get("renvois") or 0) + 1  # tout le run (relectures repart de zéro à chaque version)
         if msg:
             if not idx:  # remarque de forme pour le poste ✉, comme celles de la relecture
                 dwrite(msg, "relecture.md", "VERDICT : revoir\nPas de réponse au format : une ligne « emoji Libellé : … » par section, rien autour.")
             e["verdict"] = None
             dwrite(msg, "etat.json", json.dumps(e))
+        archive(load(), [msg] if msg else [])
         print("La relecture renvoie la réponse au poste ✉ (" + ("pas au format" if not idx else "remarques") + f", {e['relectures']}/{RELECTURE_MAX}).")
         sys.exit(3)  # on_result exit_3 : retour au poste reponse
     if not idx:
@@ -602,6 +674,7 @@ def draft(run_id, msg, text=""):
             body += REMARKS + " Remarques de la relecture restées :\n" + "\n".join(rest[:6])
     if msg:  # la version suivante repart d'une relecture neuve
         dwrite(msg, "etat.json", json.dumps({**e, "verdict": None, "relectures": 0}))
+        archive(c, [msg])
     print(body)
 
 
@@ -653,6 +726,7 @@ def post(run_id, text):
         fail(f"Réponse non postée : {e}")
     c.setdefault("posted", {})[msg] = {"at": iso(now()), "text": text, "id": (res or {}).get("id"), "run": run_id}
     save(c)
+    archive(c, [msg])
     print(json.dumps(dataset(c), ensure_ascii=False))
 
 
@@ -669,7 +743,63 @@ def skip(msg, action):
     else:
         sk.pop(msg, None)
     save(c)
+    archive(c, [msg])
     print(("Fil ignoré : il ne compte plus dans les alertes." if action == "ignorer" else "Fil réactivé : il revient dans la file."))
+
+
+# ---------- historique : la page « Support · bilan » ----------
+def historique():
+    return os.path.expanduser(S.get("historique") or "~/.local/share/pixel-bureau/historique/support")
+
+
+def archive(c, msgs=None):
+    """Le bilan de chaque fil (msgs, sinon tous ceux du relevé) réécrit dans l'historique, jamais vidé (le relevé oublie un
+    fil au bout de 14 jours, une nouvelle investigation vide le dossier du message) : le fil (sujet, début du message,
+    état), ses investigations (projet, commentaire, versions, ce qu'a rendu chaque poste, renvois de la relecture, tes
+    retours) et la réponse postée. Jetons, durées, modèles et décisions aux gates : le cron de la page les lit dans l'API
+    Kronn. Jamais au prix de l'étape : une erreur va sur stderr. Renvoie le nombre de fils écrits."""
+    n = 0
+    try:
+        rows = {r["id"]: r for r in thread_rows(c)}
+        for msg in (msgs if msgs is not None else list(rows)):
+            if msg in rows:
+                archive_one(c, rows[msg])
+                n += 1
+    except Exception as e:  # noqa: BLE001  l'historique ne fait jamais tomber une étape
+        print(f"support : historique non écrit ({str(e)[:160]})", file=sys.stderr)
+    return n
+
+
+def archive_one(c, row):
+    msg = row["id"]
+    path = os.path.join(historique(), (re.sub(r"\D", "", msg) or "0") + ".json")
+    try:
+        rec = read_json(path)
+        rec = rec if isinstance(rec, dict) else {}
+    except (OSError, ValueError):
+        rec = {}
+    st = row["state"]
+    rec.update({"v": 1, "msg": msg, "at": row["at"], "from": row["from"], "subject": row["subject"],
+                "extrait": clip(row["text"], 280), "url": row["url"], "state": st, "by": row["by"],
+                "reactions": row["reactions"], "replies": row["replies"], "last_at": row["last_at"],
+                "skipped_at": row["skipped_at"], "vu": iso(now())})
+    if st == "relaunched":  # l'auteur a relancé après une réponse : gardé même quand le fil passe ✅ ensuite
+        rec["relance"] = True
+    if st == "resolved" and not rec.get("resolu_vu"):
+        rec["resolu_vu"] = iso(now())
+    mine = (c.get("posted") or {}).get(msg)
+    if mine:
+        rec["reponse"] = {"at": mine.get("at"), "run": mine.get("run"), "texte": mine.get("text")}
+    runs = rec.setdefault("runs", {})
+    for rid, meta in (c.get("runs") or {}).items():
+        if meta.get("msg") == msg:
+            runs.setdefault(rid, {}).update({k: meta[k] for k in ("at", "project", "project_name", "disc", "comment", "version")
+                                             if meta.get(k) is not None})
+    e = etat(msg)
+    if e.get("run") in runs:
+        runs[e["run"]].update(postes=e.get("postes") or {}, renvois=int(e.get("renvois") or 0), retours=e.get("retours") or [])
+    os.makedirs(historique(), exist_ok=True)
+    write_json(path, rec)
 
 
 if __name__ == "__main__":
@@ -684,6 +814,8 @@ if __name__ == "__main__":
             print("support : " + cache["error"], file=sys.stderr)
         save(cache)
         print(json.dumps(dataset(cache), ensure_ascii=False))
+    elif cmd == "archive":  # cron de la page « Support · bilan » : tous les fils du relevé dans l'historique
+        print(f"{archive(load())} fil(s) dans l'historique {historique()}")
     elif cmd == "dataset":  # sans relevé : l'état des fils (investigation lancée), publié tout de suite
         print(json.dumps(dataset(load()), ensure_ascii=False))
     elif cmd == "open":
