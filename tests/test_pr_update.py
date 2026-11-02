@@ -188,6 +188,10 @@ class PrUpdateTest(unittest.TestCase):
         Path(work, ".bureau-fix-summary.md").write_text("Un renommage.")
         d = self.step("fix_diff")
         self.assertEqual(d.returncode, 0, d.stdout + d.stderr)
+        # le Kanban du 3e étage : les fils en bref et leur colonne restent dans l'état du run, après le dossier de travail
+        st = json.loads(Path(self.tmp, ".cache", "pixel-bureau", "pr", "runs", "run-1.json").read_text())
+        self.assertEqual([f["id"] for f in st["fils"]], ["T1", "T2"])
+        self.assertEqual(st["cols"], {"T1": "reponse", "T2": "reponse"})
         self.assertIn("1 fichier(s) changé(s)", d.stdout)
         self.assertIn("Un renommage.", d.stdout)
         self.assertIn("Réponses prévues (2 sur 2 fils)", d.stdout)

@@ -26,7 +26,7 @@ Corriger les commentaires d'une PR (#75, page action « bureau-fixpr ») :
 Codes : 2 réglage ou PR refusés, 3 conflit (renvoi), 4 conflit non résolu, 5 push refusé, 9 rien à faire (renvoi), 1 autre échec.
 """
 import glob, json, os, re, shutil, subprocess, sys, time
-from _lib import CFG, get, read_json, write_json
+from _lib import CFG, fil_col, get, read_json, write_json
 
 HOME = os.path.expanduser("~/.cache/pixel-bureau/pr")
 GH = CFG.get("github") or {}
@@ -119,7 +119,7 @@ def setup(repo, n, run_id):
         fail(2, f"PR invalide : « {repo}#{n} ».")
     try:
         pr = json.loads(run("gh", "pr", "view", n, "-R", repo, "--json",
-                            "number,title,state,headRefName,headRefOid,baseRefName,isCrossRepository,url"))
+                            "number,title,state,headRefName,headRefOid,baseRefName,isCrossRepository,url,author"))
     except (RuntimeError, ValueError) as e:
         fail(2, f"PR {repo}#{n} introuvable ({e}).")
     if pr.get("state") != "OPEN":
@@ -136,6 +136,7 @@ def setup(repo, n, run_id):
     subprocess.run(["git", "-C", clone, "worktree", "remove", "--force", work], capture_output=True)
     run("git", "worktree", "add", "--detach", work, f"origin/{pr['headRefName']}", cwd=clone)
     st = {"repo": repo, "pr": int(n), "title": pr["title"], "branch": pr["headRefName"], "base": pr["baseRefName"],
+          "author": (pr.get("author") or {}).get("login"),
           "expected": run("git", "rev-parse", f"origin/{pr['headRefName']}", cwd=clone), "clone": clone, "work": work}
     common = run("git", "rev-parse", "--git-common-dir", cwd=work)
     common = common if os.path.isabs(common) else os.path.join(work, common)
@@ -279,6 +280,9 @@ def fix_prepare(repo, n, run_id):
     src = local_checkout(repo)
     st["linked"] = link_deps(src, st["work"]) if src else []
     st["threads"] = [t["id"] for t in ts]
+    # le Kanban du 3e étage (retours_snapshot.py) : chaque fil en bref, gardé après le dossier de travail
+    st["fils"] = [{"id": t["id"], "path": t.get("path"), "line": t.get("line"), "who": (t["comments"][0] if t["comments"] else {}).get("author"),
+                   "text": str((t["comments"][0] if t["comments"] else {}).get("body") or "").strip()[:160]} for t in ts]
     save(run_id, st)
     write_json(os.path.join(st["work"], ".bureau-fix.json"), ts)
     deps = f"dépendances reliées depuis {src}" if src else "sans dépendances (dossier local du dépôt inconnu de Kronn)"
@@ -328,6 +332,9 @@ def fix_diff(repo, n, run_id):
     """Ce que la validation montre : fichiers changés, diff tronqué, réponse prévue à chaque fil ; rien du tout : code 9."""
     st = load(run_id)
     files, rs = staged(st), replies(st)
+    by = {r["thread"]: r["reply"] for r in rs}
+    st["cols"] = {t: fil_col(by.get(t)) for t in st.get("threads", [])}  # la colonne de chaque fil, pour le Kanban du 3e étage
+    save(run_id, st)
     if not files and not rs:
         cleanup(st)
         fail(9, "L'agent n'a rien changé ni rien répondu : rien à pousser.")
