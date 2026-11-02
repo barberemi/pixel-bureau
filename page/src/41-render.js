@@ -1,4 +1,9 @@
 // ---------- une image : sol, meubles et personnages triés en profondeur, voile, bulles, noms ----------
+// personnage choisi : le plan s'assombrit autour de lui, qui reste dans la lumière (RDC, et 1er étage : 68-atelier.js)
+function selHalo(x,y,w,h){
+  const g=ctx.createRadialGradient(x,y,30,x,y,120);
+  g.addColorStop(0,'rgba(10,12,22,0)');g.addColorStop(1,'rgba(10,12,22,.52)');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+}
 function render(now){
   ctx.drawImage(bg,0,0); drawWindows(T,now); PILE_HITS=[];
   const list=FURN.map(f=>({y:f.y,d:f.draw}));
@@ -17,15 +22,8 @@ function render(now){
     for(const c of chars.filter(c=>c.present&&c.pos&&shown(c)).sort((a,b)=>a.pos.y-b.pos.y))drawChar(c,now);
   }
   const sc=sel&&byKey[sel];
-  if(sc&&sc.present&&sc.pos){
-    const gx=sc.pos.x, gy=sc.pos.y-26, g=ctx.createRadialGradient(gx,gy,30,gx,gy,120);
-    g.addColorStop(0,'rgba(10,12,22,0)');g.addColorStop(1,'rgba(10,12,22,.52)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-    drawSeatTrail(sc,now);
-  }
-  if(sel==='duck'&&DUCK_POS){ // fiche du canard ouverte : le plan s'assombrit autour de lui, comme autour d'un personnage
-    const gx=DUCK_POS.x, gy=DUCK_POS.y-14, g=ctx.createRadialGradient(gx,gy,30,gx,gy,120);
-    g.addColorStop(0,'rgba(10,12,22,0)');g.addColorStop(1,'rgba(10,12,22,.52)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-  }
+  if(sc&&sc.present&&sc.pos){selHalo(sc.pos.x,sc.pos.y-26,W,H);drawSeatTrail(sc,now);}
+  if(sel==='duck'&&DUCK_POS)selHalo(DUCK_POS.x,DUCK_POS.y-14,W,H); // fiche du canard ouverte : comme autour d'un personnage
   // bulles : celui qui vient voir quelqu'un (ticket livré, réouvert, prod fêtée) passe par-dessus la bulle de la personne visitée
   const onTop=c=>c._st&&(c._st.st==='deliver'||c._st.st==='reopen'||c._st.st==='proud');
   BUBBLE_BOXES=[];

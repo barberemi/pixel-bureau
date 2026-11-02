@@ -97,7 +97,7 @@ function refreshStatus(){
 let SEL_BACK=[];
 const WIN_VIEWS={kanban:keep=>openKanban(keep||undefined),calendar:()=>openCalendar()}; // keep : retour, la fenêtre telle qu'on l'a quittée
 function backLabel(k){
-  if(k==null)return "Toute l'équipe";
+  if(k==null)return FLOOR?"L'atelier":"Toute l'équipe"; // 68-atelier.js : la fiche du boss ouverte à l'étage revient à l'atelier
   if(byKey[k])return byKey[k].name;
   const s=String(k);
   if(s.startsWith('mail:'))return 'Courrier';
@@ -123,10 +123,12 @@ function backButton(side){
 // Échap revient en arrière dans le panneau (ou referme l'éditeur d'avatar) ; pas pendant une fenêtre, une carte Kronn, la
 // loupe, le mode TV ou une saisie. En capture : on regarde avant que la fenêtre ou la loupe ne se referment sur la même touche.
 addEventListener('keydown',e=>{
-  if(e.key!=='Escape'||TV||(sel==null&&!EDIT))return;
+  const atPick=FLOOR&&sel==null&&!EDIT&&!!(AT_PICK||ATSEL); // 68-atelier.js : un agent, un bureau choisi à l'étage
+  if(e.key!=='Escape'||TV||(sel==null&&!EDIT&&!atPick))return;
   if(document.querySelector('.bp-modal')||KM_OPEN||(typeof LOUPE!=='undefined'&&LOUPE.cur))return;
   const a=document.activeElement;if(a&&/^(SELECT|INPUT|TEXTAREA)$/.test(a.tagName))return;
   if(EDIT){closeEditor();renderSide(true);return;}
+  if(atPick){AT_PICK=null;ATSEL=null;renderSide(true);return;}
   goBack();
 },true);
 function drawSide(side){
