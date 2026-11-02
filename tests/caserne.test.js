@@ -35,9 +35,10 @@ test("une intervention garde sa baie ; la suivante prend la première baie libre
   set([th('a', 'run', run(8)), th('b', 'run', run(9))]);
   J('csSlots(0)');
   p.run(`SUPPORT.threads[0].state = 'skipped';`);
-  assert.deepEqual(J('csSlots(100).map(x => x && x.t.id)'), [null, 'b', null], 'un fil ignoré libère sa baie sans faire partir de camion');
+  assert.deepEqual(J('csSlots(100).map(x => x && x.dep && x.dep.posted)'), [false, null, null], 'un fil ignoré : le camion rentre, sans réponse postée');
   p.run(`SUPPORT.threads.push(${th('c', 'run', run(10))});`);
-  assert.deepEqual(J('csSlots(200).map(x => x && x.t.id)'), ['c', 'b', null]);
+  assert.deepEqual(J('csSlots(200).map(x => x && x.t.id)'), ['a', 'b', 'c'], 'la baie 1 se ferme encore : la suivante prend la baie 3');
+  assert.deepEqual(J('csSlots(100 + CS_DEP_MS + 1).map(x => x && x.t.id)'), [null, 'b', 'c'], 'puis la baie 1 est libre');
 });
 
 test("réponse postée : le camion part (sauf en arrivant à l'étage), puis la baie se libère", () => {
@@ -99,6 +100,7 @@ test("réponse à valider : tous les postes d'avant ont travaillé, ✋ t'attend
 
 test("onglets : le RDC par défaut, la caserne au -1 quand la console Support existe ; la toile prend la taille de l'étage", () => {
   const {p, J} = page();
+  assert.deepEqual(J("[...floorTabsHtml().matchAll(/data-floor=\"(-?\\d)\"/g)].map(m => +m[1])"), [-1, 0, 1], "dans l'ordre des étages, comme un ascenseur");
   assert.equal(J('caserneOn()'), true, 'la démo a sa console Support');
   assert.deepEqual(J('floorsOn()'), [1, 0, -1]);
   p.run('setFloor(-1);');
@@ -237,4 +239,86 @@ test('le bureau du chef de centre : le capitaine de face derrière son bureau, l
   assert.ok(J('CS_MEM.boss.walk.pos.y < CS_DESK.y - CS_BACK'), 'une réponse attend : il est parti vers la vanne, par le haut');
   assert.ok(J('__order.some(o => o[0] === "bureau")'), 'le bureau reste, vide');
   p.run('csSlots = __o; drawChar = __d; csDesk = __dk; ctx.fillText = __ft;');
+});
+
+// ---------- rien n'apparaît ni ne disparaît d'un coup ----------
+const runTh = (id, h) => th(id, 'run', `, run: {run: 'r${id}', status: 'Running', at: ${at(h)}}`);
+// joue la caserne image par image (dt de 100 ms) jusqu'à t ms
+function play(p, from, to) {p.run(`for (let t = ${from}; t <= ${to}; t += 100) renderCaserne(t);`);}
+
+test("nouvelle intervention : le rideau se lève, le camion sort, les pompiers descendent la barre un par un et vont à leur place", () => {
+  const {p, J, set} = page();
+  set([runTh('a', 9)]);
+  p.run('setFloor(-1); renderCaserne(1000);');
+  assert.equal(J('CS_MEM.arr[0]'), null, "en arrivant à l'étage, l'équipe est déjà là");
+  p.run(`SUPPORT.threads.push(${runTh('b', 10)});`);
+  play(p, 1100, 1100);
+  assert.equal(J('!!CS_MEM.arr[1]'), true, "l'arrivée de la baie 2 commence");
+  assert.ok(J('CS_MEM.door[1]') < 0.1, 'le rideau commence à se lever');
+  assert.deepEqual(J('CS_MEM.arr[1].w.map(x => x[0])'), [0, 1, 2, 3, 6, 4], 'premier rang de gauche à droite, puis le second');
+  // chacun part du trou de la barre, après le précédent, et passe par l'allée sous les baies
+  assert.ok(J('CS_MEM.arr[1].w.every(([j, w]) => w.pos.x === CS_PX && w.pos.y === CS_POLE.y0)'));
+  const holds = J('CS_MEM.arr[1].w.map(([j, w]) => w.pts[0].hold)');
+  assert.ok(holds.every((h, i) => !i || h > holds[i - 1]), 'un par un');
+  assert.ok(J('CS_MEM.arr[1].w.every(([j, w]) => w.pts.some(q => q.y === CS_LANE))'));
+  // personne ne passe dans une autre baie : au-dessus de l'allée, chacun reste dans la colonne de sa place
+  assert.ok(J(`CS_MEM.arr[1].w.every(([j, w]) => w.pts.filter(q => q.y < CS_LANE && q.x !== CS_PX).every(q => q.x === CS_G[1].pts[j].x))`));
+  play(p, 1200, 2800);
+  assert.ok(J('CS_MEM.door[1]') > 0.99, 'rideau levé en 1,6 s');
+  play(p, 2700, 40000);
+  assert.equal(J('CS_MEM.arr[1]'), null, 'tous à leur place, le tuyau déroulé');
+});
+
+test("réponse postée : le tuyau s'enroule, le camion rentre, le rideau se ferme ; l'équipe prend un café et remonte la barre", () => {
+  const {p, J, set} = page();
+  set([th('a', 'gate', `, run: {run: 'ra', status: 'WaitingApproval', at: ${at(9)}}`)]);
+  p.run('setFloor(-1); renderCaserne(1000);');
+  p.run(`SUPPORT.threads[0].state = 'done'; SUPPORT.threads[0].mine = {at: ${at(10.9)}, text: '…'};`);
+  play(p, 1100, 1100);
+  assert.equal(J('CS_MEM.dep[0].posted'), true);
+  assert.equal(J('CS_MEM.walk.length'), 6, 'les six pompiers qui ont travaillé');
+  assert.ok(J("CS_MEM.walk.every(w => w.pts.some(q => q.act === 'coffee') && w.pts.at(-1).act === 'climb')"), 'café, puis la barre');
+  assert.deepEqual(J('CS_MEM.walk.map(w => w.k)'), [4, 6, 3, 2, 1, 0], 'le second rang part le premier');
+  play(p, 1200, 1100 + 2500);
+  assert.ok(J('CS_MEM.door[0]') > 0.9, 'le camion rentre, le rideau est encore levé');
+  play(p, 3700, 1100 + 6500 + 100);
+  assert.equal(J('CS_MEM.dep[0]'), null, 'le rideau fermé, la baie est libre');
+  assert.equal(J('CS_MEM.door[0]'), 0);
+  assert.ok(J('CS_MEM.walk.length') > 0, "l'équipe est encore en route vers le café");
+  play(p, 7800, 60000);
+  assert.equal(J('CS_MEM.walk.length'), 0, 'tous remontés par la barre');
+});
+
+test("un fil traité autrement : le camion rentre aussi, l'équipe remonte sans café", () => {
+  const {p, J, set} = page();
+  set([runTh('a', 9)]);
+  p.run('setFloor(-1); renderCaserne(1000);');
+  p.run(`SUPPORT.threads[0].state = 'skipped';`);
+  play(p, 1100, 1100);
+  assert.equal(J('CS_MEM.dep[0].posted'), false);
+  assert.ok(J("CS_MEM.walk.length && CS_MEM.walk.every(w => !w.pts.some(q => q.act === 'coffee'))"));
+});
+
+test("REDUCED_MOTION : tout est posé directement, sans arrivée ni départ", () => {
+  const p = load({globals: {matchMedia: () => ({matches: true})}}), J = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  p.run(`GATES = []; DATA.runs = []; T = DAY0 + 11 * 36e5; SUPPORT = {threads: [${runTh('a', 9)}]}; setFloor(-1); renderCaserne(1000);`);
+  assert.equal(J('REDUCED_MOTION'), true);
+  p.run(`SUPPORT.threads.push(${runTh('b', 10)}); renderCaserne(1100);`);
+  assert.deepEqual(J('[CS_MEM.arr[1], CS_MEM.door[1]]'), [null, 1], "l'équipe et le camion sont là");
+  p.run(`SUPPORT.threads[0].state = 'done'; SUPPORT.threads[0].mine = {at: ${at(10.9)}, text: '…'}; renderCaserne(1200);`);
+  assert.deepEqual(J('[CS_MEM.slots[0], CS_MEM.dep[0], CS_MEM.walk.length, CS_MEM.door[0]]'), [null, null, 0, 0], 'la baie se ferme, sans sortie');
+});
+
+test("plus de porte des étages : la barre de pompier seule ; le gyrophare tourne tant qu'il y a un appel ou une intervention", () => {
+  const {p, J, set} = page();
+  set([runTh('a', 9)]);
+  p.run('setFloor(-1); renderCaserne(1000);');
+  assert.ok(J('CS_HITS.some(h => h.kind === "pole")'));
+  assert.equal(J('csAlarm()'), true, 'une intervention en cours');
+  assert.match(J('floorTabsHtml()'), /data-floor="-1"[^>]*><span class="gyro"/, "le gyrophare de l'onglet du -1");
+  set([th('n', 'new')]);
+  assert.equal(J('csAlarm()'), true, 'un appel à prendre');
+  set([th('f', 'done')]);
+  assert.equal(J('csAlarm()'), false);
+  assert.doesNotMatch(J('floorTabsHtml()'), /gyro/);
 });
