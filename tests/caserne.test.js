@@ -220,3 +220,21 @@ test('captain_sprite du roster : seul le boss le porte', () => {
   const {J} = page();
   assert.equal(J('CAST.filter(c => "captain_sprite" in c).length'), 0, 'le pack de démo ne le règle pas');
 });
+
+test('le bureau du chef de centre : le capitaine de face derrière son bureau, le tableau de garde à côté ; il part, le bureau reste', () => {
+  const {p, J} = page();
+  p.run(`SUPPORT = supportDemo(); setFloor(-1); var __b = chars.find(c => c.boss), __o = csSlots, __d = drawChar, __dk = csDesk, __txt = [], __order = [];
+    csSlots = n => __o(n).map(s => s && s.s && s.s.k === 'gate' ? {...s, s: {...s.s, k: 'run'}} : s); CS_MEM.boss = null;
+    drawChar = (c, now) => { if (c.key === __b.key) __order.push(['capitaine', c.dir]); __d(c, now); };
+    csDesk = (...a) => { __order.push(['bureau']); __dk(...a); };
+    var __ft = ctx.fillText; ctx.fillText = function (t, ...r) { __txt.push(t); return __ft.call(this, t, ...r); };
+    for (let n = 0; n < 20; n++) renderCaserne(1000 + n * 100); __order = []; __txt = []; renderCaserne(3100);`);
+  assert.deepEqual(J('CS_MEM.boss.walk.pos'), J('({x: CS_DESK.x, y: CS_DESK.y - CS_BACK})'), 'chez lui : derrière son bureau');
+  assert.deepEqual(J('__order'), [['capitaine', 'down'], ['bureau']], 'de face, et le bureau dessiné devant lui');
+  assert.ok(J('__txt.includes("CHEF DE CENTRE") && __txt.includes("GARDE")'), 'la plaque et le tableau de garde');
+  assert.ok(J('CS_HITS.some(h => h.kind === "calls") && CS_HITS.some(h => h.kind === "garde") && CS_HITS.some(h => h.kind === "captain")'), 'corbeille d\'appels, tableau et capitaine cliquables');
+  p.run(`csSlots = __o; CS_MEM.boss = null; for (let n = 0; n < 60; n++) renderCaserne(4000 + n * 100); __order = []; renderCaserne(10100);`);
+  assert.ok(J('CS_MEM.boss.walk.pos.y < CS_DESK.y - CS_BACK'), 'une réponse attend : il est parti vers la vanne, par le haut');
+  assert.ok(J('__order.some(o => o[0] === "bureau")'), 'le bureau reste, vide');
+  p.run('csSlots = __o; drawChar = __d; csDesk = __dk; ctx.fillText = __ft;');
+});
