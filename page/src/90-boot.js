@@ -23,7 +23,7 @@ function loop(now){
     galleryFrame(now); // 46-gallery.js : fin d'une démonstration
     fxFrame(now); // 43-fx.js : petites scènes de 3 s (succès, éclosion, stade, agent rétabli)
     if(FLOOR===1){renderAtelier(now);loupeFrame(now);} // 68-atelier.js : le 1er étage, à la place de l'open space, avec sa loupe
-    else if(FLOOR===-1)renderCaserne(now); // 68-caserne.js : le sous-sol
+    else if(FLOOR===-1){renderCaserne(now);loupeFrame(now);} // 68-caserne.js : le sous-sol, avec sa loupe (et la pause du rejeu)
     else{
       render(now);
       loupeFrame(now); // 44-loupe.js : médaillon sur l'événement fort en cours

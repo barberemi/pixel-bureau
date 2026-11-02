@@ -322,3 +322,17 @@ test("plus de porte des étages : la barre de pompier seule ; le gyrophare tourn
   assert.equal(J('csAlarm()'), false);
   assert.doesNotMatch(J('floorTabsHtml()'), /gyro/);
 });
+
+test('alignés sur le 1er : la loupe du -1 (gate, arrivée, départ), le ménage par la barre, la marche accélérée en rejeu', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  p.run(`CS_MEM = csMem0(); CS_MEM.slots = ['m1', 'm2', null]; CS_MEM.st = [{tri: 'ok', gate: 'gate'}, {tri: 'err'}, null]; CS_MEM.arr = [null, {}, null];
+    SUPPORT = {threads: [{id: 'm1', from: 'Beesly, Pam', subject: 'Flux vide'}, {id: 'm2', from: 'Halpert, Jim', text: 'Erreur 500'}]};`);
+  assert.deepEqual(J2('csLoupeEvents().map(e => e.kind)'), ['cs_gate', 'cs_arrive', 'cs_err']);
+  assert.match(J2('csLoupeEvents()[0].cs[0]._st.label'), /attend ta validation · Pam · Flux vide/);
+  p.run(`var __c = {key: 'menage'}, __v = {s: 0, e: 1e6}; var __av = atCleanVisit; atCleanVisit = () => __v;`);
+  const m = J2(`Array.from({length: 40}, (_, k) => csCleanerAt(__c, 1e6 + CS_CLEAN_DUR * k / 40)).filter(Boolean).map(m => [m.stop.room, !!m.sweeping])`);
+  for (const r of ['la baie 1', 'la baie 2', 'la baie 3', 'la salle de garde']) assert.ok(m.some(([x, s]) => x === r && s), r);
+  assert.equal(J2(`csCleanerAt(__c, 1e6 + CS_CLEAN_DUR - 1)`), null, 'remonté par la barre');
+  p.run('atCleanVisit = __av; mode = "play"; setSpeed(480);');
+  assert.equal(J2('walkBoost()'), 8, 'rejeu ×480 : on marche 8 fois plus vite, aux étages aussi');
+});

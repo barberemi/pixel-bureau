@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- Les étages se comportent comme le RDC : la loupe suit aussi le -1 (départ en intervention, vanne, panne, camion qui rentre), avec la pause du rejeu accéléré ; en lecture rapide, on marche plus vite au 1er et au -1 ; les thèmes décorent le -1 ; le soir, l'agent d'entretien fait aussi le -1, par la barre de pompier. Guide : [La caserne](guide/fonctionnalites/25-caserne.md). Après la mise à jour : `publish.py page`.
 - 1er étage : l'agent d'entretien ne reste plus planté à la porte d'un bureau à se tourner de gauche à droite ; il balaie en parcourant chaque bureau d'un bout à l'autre et l'allée de l'entrepôt, et repart dès qu'il a rejoint la sortie (il y attendait plusieurs minutes). La nuit, les bureaux occupés sont bien éclairés (chaque poste sous sa lampe, rangées du haut comme du bas, le tapis), ceux qui marchent ont une lumière plus large, et la lampe du bureau du boss (1er) comme celle du chef de centre (-1) reste allumée ; au -1, les pompiers en route ont leur lumière. Guides : [L'atelier](guide/fonctionnalites/23-atelier.md), [La caserne](guide/fonctionnalites/25-caserne.md). Après la mise à jour : `publish.py page`.
 
 ### Ajouté

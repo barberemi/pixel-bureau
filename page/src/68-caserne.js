@@ -388,9 +388,50 @@ function csNight(slots,now){
     const l=CS_NIGHT_CV[1].getContext('2d');l.clearRect(0,0,W_,H_);l.filter='blur(3px)';l.drawImage(CS_NIGHT_CV[0],0,0);l.filter='none';}
   const sm=ctx.imageSmoothingEnabled;ctx.imageSmoothingEnabled=true;ctx.drawImage(CS_NIGHT_CV[1],0,0,AT_W,AT_H);ctx.imageSmoothingEnabled=sm;
 }
+// ---------- le ménage du soir au -1 : après le 1er (atCleanVisit, 68-atelier.js), l'agent d'entretien descend la barre ----------
+// Rejouable comme au 1er : tout se lit dans l'heure du plan. Il descend par la barre (le seul accès), balaie l'allée devant
+// chaque baie d'un bout à l'autre, puis la salle de garde, et remonte : un quart de chaque étape à marcher, le reste à balayer.
+const CS_CLEAN_DUR=25*60e3;
+function csCleanVisit(c,t){const v=atCleanVisit(c,t-AT_CLEAN_DUR)||atCleanVisit(c,t);return v?{s:v.e,e:v.e+CS_CLEAN_DUR}:null;}
+function csCleanStops(){
+  const T_=AT_TS, pole={x:CS_PX,y:CS_POLE.y1}, st=[{p:pole,room:'la barre'}];
+  CS_G.forEach((z,b)=>{const p={x:z.cx,y:CS_LANE};st.push({p,room:'la baie '+(b+1),sweep:[p,{x:z.cx-4.5*T_,y:CS_LANE},{x:z.cx+4.5*T_,y:CS_LANE},p]});});
+  const g={x:CS_TABLE.x,y:CS_TABLE.y+1.6*T_};st.push({p:g,room:'la salle de garde',sweep:[g,{x:g.x-2*T_,y:g.y},{x:g.x+3*T_,y:g.y},g]});
+  return st.concat([{p:pole,room:'la barre'}]);
+}
+function csCleanerAt(c,t){
+  const v=csCleanVisit(c,t);if(!v||t<v.s||t>=v.e)return null;
+  const st=csCleanStops(), n=st.length-1, k=(t-v.s)/(v.e-v.s)*n, j=Math.min(n-1,Math.floor(k)), f=k-j, a=st[j].p, b=st[j+1].p;
+  if(f<.25){const q=atAlong([a,{x:a.x,y:CS_LANE},{x:b.x,y:CS_LANE},b],f/.25);return {x:q.x,y:q.y,dir:q.dir,moving:true,stop:st[j+1],v};}
+  const sw=st[j+1].sweep;if(!sw)return null; // remonté par la barre
+  const q=atAlong(sw,(f-.25)/.75);return {x:q.x,y:q.y,dir:q.dir,moving:false,sweeping:true,stop:st[j+1],v};
+}
+// ---------- thèmes (46-themes.js) au -1, comme au 1er étage ----------
+function csTheme(now){
+  const T_=AT_TS, y=CS_DY0*T_-4;
+  if(themeIs('noel')){xmasTreeAt(CS_TABLE.x+2.6*T_,CS_TABLE.y+1.4*T_,now);
+    for(let k=0;k<40;k++){ctx.fillStyle=['#ff4a4a','#ffd84a','#4aff8a','#4ac8ff'][(k+Math.floor(now/500))%4];ctx.beginPath();ctx.arc(1.2*T_+k*(33.6*T_/39),y+Math.sin(k*.9)*3,3,0,7);ctx.fill();}}
+  if(themeIs('halloween'))CS_G.forEach(z=>{E('🎃',z.cx-4.2*T_,(CS_DY1+.4)*T_,14);E('🎃',z.cx+4.2*T_,(CS_DY1+.4)*T_,14);});
+  if(themeIs('nouvel-an')||themeIs('saint-valentin'))[[CS_TABLE.x-1.5*T_,CS_TABLE.y-2*T_],[CS_TABLE.x+3*T_,CS_TABLE.y-2*T_]].forEach(([x,yy],k)=>balloon(themeIs('nouvel-an')?'🎈':'💗',x,yy,now,k));
+}
+// ---------- loupe (44-loupe.js) au -1 : l'arrivée des pompiers, la vanne, une panne, le départ du camion ----------
+// Chaque événement : des points du plan (le cadre les englobe) et sa légende ; un id par fil, montré une fois.
+function csLoupeEvents(){
+  const out=[], M=CS_MEM, T_=AT_TS, boss=chars.find(c=>c.boss);
+  const who=id=>{const t=spThreads().find(x=>x.id===id)||{};return (spWho(t.from)||'?')+' · '+(t.subject||clip(t.text||'',40));};
+  M.slots.forEach((id,b)=>{if(!id)return;const z=CS_G[b], truck=atPt(z.cx,(CS_DY1-1)*T_,'','','x'), crew=y=>atPt(z.cx,y*T_,'','','x');
+    const add=(k,label,pts)=>{pts[0].name=k==='cs_gate'?(boss?boss.name:'Le capitaine'):'Pompiers';pts.forEach(p=>{p._st={st:k,label};});out.push({id:k+':'+id,kind:k,cs:pts});};
+    if(M.dep[b])add('cs_depart','📣 Réponse postée : le camion rentre · '+who(id),[crew(CS_R1+.5),truck]);
+    else if(M.arr[b])add('cs_arrive','🚒 Départ en intervention, baie '+(b+1)+' · '+who(id),[truck,crew(CS_R2+.3)]);
+    const st=M.st[b]||{};
+    if(st.gate==='gate')add('cs_gate','✋ La réponse attend ta validation · '+who(id),[crew(CS_R2+.3),crew(CS_R1+.5)]);
+    if(Object.values(st).includes('err'))add('cs_err','🔥 Un poste en panne · '+who(id),[crew(CS_R1+.5),crew(CS_R2+.3)]);
+  });
+  return out;
+}
 // ---------- l'image ----------
 function renderCaserne(now){
-  const dt=CS_MEM.last?Math.min(.1,(now-CS_MEM.last)/1000):0;CS_MEM.last=now;
+  const dt=(CS_MEM.last?Math.min(.1,(now-CS_MEM.last)/1000):0)*walkBoost();CS_MEM.last=now; // rejeu rapide : comme au 1er et au RDC
   if(!CS_BG)CS_BG=csBackground();
   ctx.drawImage(CS_BG,0,0);CS_HITS=[];CS_LIT=[];
   // comme au 1er (renderAtelier) : un saut du curseur ou un passage du direct au rejeu pose la caserne sans rejouer
@@ -398,8 +439,13 @@ function renderCaserne(now){
   CS_MEM.lastT=T;CS_MEM.live=live;
   const slots=csSlots(now), people=[];
   slots.forEach((s,b)=>csBay(s,b,now,dt,people));
+  {const cl=atCleaner(), m=cl&&csCleanerAt(cl,T); // le ménage du -1, après celui du 1er
+    if(m){const a=Object.assign(Object.create(Object.getPrototypeOf(cl)),cl,{pos:{x:m.x,y:m.y},tile:null,dir:m.dir,moving:m.moving||!!m.sweeping,pose:'stand',present:true,_st:{st:'idle'}});
+      const [dx,dy]={left:[-20,0],right:[20,0]}[m.dir]||[20,2];CS_LIT.push(a.pos);
+      people.push([a,()=>drawCart({x:m.x+dx,y:m.y+dy}),false,()=>{if(m.sweeping)E('🧹',m.x,m.y-66,12);}]);}}
   csBoard(slots,now);csGuard(now,people);csWalkers(now,dt,people);csCaptain(slots,now,dt,people);csBeacon(now);
   people.sort((a,b)=>a[0].pos.y-b[0].pos.y).forEach(([c,d,before,after])=>{if(before&&d)d();if(c.sprite)drawChar(c,now);if(!before&&d)d();if(after)after();});
+  csTheme(now); // comme au 1er : sapin et guirlande à Noël, citrouilles à Halloween, ballons
   csNight(slots,now);
   const hp=csPickedAt();if(hp)selHalo(hp.x,hp.y-26,AT_W,AT_H); // comme au RDC et au 1er : le plan s'assombrit autour de celui qu'on a choisi
   if(CS_SEL!=null){const b=CS_MEM.slots.indexOf(CS_SEL);if(b>=0){const z=CS_G[b];ctx.save();ctx.strokeStyle='#ffffff';ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.lineDashOffset=-now/60;ctx.strokeRect(z.x0+1,CS_DY0*AT_TS-20,z.w-2,(CS_Z1-CS_DY0)*AT_TS+24);ctx.restore();}}

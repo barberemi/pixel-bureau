@@ -696,7 +696,8 @@ function atNight(slots,now){
 }
 // ---------- l'image ----------
 function renderAtelier(now){
-  const dt=AT_MEM.last?Math.min(.1,(now-AT_MEM.last)/1000):0;AT_MEM.last=now;
+  // en rejeu rapide, on marche plus vite, comme au RDC (walkBoost, 35-state.js) : les scènes suivent le curseur
+  const dt=(AT_MEM.last?Math.min(.1,(now-AT_MEM.last)/1000):0)*walkBoost();AT_MEM.last=now;
   if(!AT_BG)AT_BG=atBackground();
   ctx.drawImage(AT_BG,0,0);atWindows(now);AT_HITS=[];AT_LIT=[];
   // un saut du curseur (plus de 2 min de l'heure du plan) ou un passage du direct au rejeu : l'étage se pose sans rejouer
