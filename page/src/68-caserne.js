@@ -548,7 +548,7 @@ function csGalleryScenes(){
     play:{len:34e3,speed:1,setup:csDemo((d,at)=>{const t=csIn(d,'gate');if(!t)return;t.state='done';t.mine={at,text:(t.run&&t.run.draft)||'…'};},()=>{})}});
   out.push({fam,ico:'🧯',n:'Intervention en panne',d:'Un poste a planté : fumée, le tuyau s\'arrête là, la baie attend une relance',w:'Un poste échoue (API d\'un agent indisponible…)',ok,
     play:{len:15e3,speed:1,setup:csDemo(d=>{const t=csIn(d,'run');if(!t)return;const st=csStates(t), cur=csCur(st);t.state='failed';t.run.status='Failed';t.run.postes={...st,[cur?cur.k:'tri']:'err'};},()=>{})}});
-  out.push({fam,ico:'🌙',n:'La garde de nuit',d:'Le soir et le week-end : la caserne en veilleuse, la garde dort sur les lits de camp, les interventions continuent',w:'Hors des heures de bureau',ok,
+  out.push({fam,ico:'🌙',n:'La garde de nuit',d:'Le soir et le week-end, comme au RDC : chaque baie en intervention s\'allume, la garde dort sur les lits de camp sous sa veilleuse, la lampe du chef de centre reste allumée',w:'Hors des heures de bureau',ok,
     play:{len:20e3,speed:60,setup:s=>{const n=parisMidnight(s)+22.5*36e5;T=n;SCENE_DEMO.e=n+20e3*60;}}});
   return out;
 }

@@ -104,3 +104,15 @@ test("redaction_sprite : le boss du 2e est dessiné avec son dessin de l'étage,
   assert.equal(drawn(), J('__b.sprite'), 'sprite introuvable : repli sur le sien');
   p.run('delete __b.redaction_sprite; drawChar = __d;');
 });
+
+test("la scène « Le soir au 2e » : la nuit tombe, la salle de rédaction et les bureaux de revue occupés s'allument, puis la page revient", () => {
+  const {p, J} = page();
+  p.run('setFloor(2); var __R = REDACTION, __T = T;');
+  assert.ok(J("galleryScenes().some(x => x.n === 'Le soir au 2e' && x.ok)"));
+  p.run(`demoStart(galleryScenes().find(x => x.n === 'Le soir au 2e')); renderRedaction(1000);`);
+  assert.equal(J('atOpen()'), false, 'hors des heures de bureau');
+  assert.equal(J('RD_NIGHT.lv[0]'), 1, 'la salle de rédaction est allumée');
+  assert.ok(J('RD_NIGHT.lv.slice(1).includes(0)'), 'un bureau de revue libre reste dans l\'ombre');
+  p.run('demoEnd();');
+  assert.equal(p.run('REDACTION === __R && T === __T'), true, 'la page revient à ses données et à son heure');
+});

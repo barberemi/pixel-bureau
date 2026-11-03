@@ -407,7 +407,7 @@ function rtGalleryScenes(){
     play:{len:25e3,speed:1,setup:rtDemo(d=>{const k=d.rooms.findIndex(x=>x.poste==='push');if(k>=0)d.rooms.splice(k,1);else d.rooms.shift();})}});
   out.push({fam,ico:'🧯',n:'Contrôles rouges',d:'Les contrôles du dépôt échouent : le correctif est annulé (fumée), la PR attend une relance',w:'La commande de contrôle du dépôt échoue',ok,
     play:{len:12e3,speed:1,setup:rtDemo(d=>{const r=d.rooms.find(x=>x.poste==='fix');if(r){r.poste='check';r.states={prepare:'ok',fix:'ok',check:'err'};r.fils.forEach(f=>{f.cur=false;});}})}});
-  out.push({fam,ico:'🌙',n:'Le soir au 3e',d:'Le soir et le week-end : l\'étage en veilleuse, les agents au travail et le boss gardent leur lumière',w:'Hors des heures de bureau',ok,
+  out.push({fam,ico:'🌙',n:'Le soir au 3e',d:'Le soir et le week-end, comme au RDC : chaque bureau occupé s\'allume comme une pièce, les bureaux libres restent dans l\'ombre, la lampe du boss reste allumée',w:'Hors des heures de bureau',ok,
     play:{len:20e3,speed:60,setup:s=>{const n=parisMidnight(s)+22.5*36e5;T=n;SCENE_DEMO.e=n+20e3*60;}}});
   return out;
 }

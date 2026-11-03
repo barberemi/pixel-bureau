@@ -32,7 +32,7 @@ L'étage passe en veilleuse, comme le RDC la nuit : la salle de rédaction s'all
 
 ## Depuis le RDC
 
-Le fil de la journée (une intention qui arrive, un ticket qui attend ton tampon, un ticket créé), ⌘K (les intentions par leur texte, leurs tickets, leurs composants), le mode TV (touche E et `?floor=alt`), et les scènes de l'étage dans la galerie : une intention découpée, le tampon, les tickets qui partent dans Jira.
+Le fil de la journée (une intention qui arrive, un ticket qui attend ton tampon, un ticket créé), ⌘K (les intentions par leur texte, leurs tickets, leurs composants), le mode TV (touche E et `?floor=alt`), et les scènes de l'étage dans la galerie : une intention découpée, le tampon, les tickets qui partent dans Jira, le soir au 2e.
 
 ## Données
 
