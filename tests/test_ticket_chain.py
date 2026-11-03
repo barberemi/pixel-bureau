@@ -60,6 +60,16 @@ class TicketChainTest(unittest.TestCase):
         self.t("rapport", "redaction", "r3", stdin='{"tickets": [{"summary": "B", "description": "h2. Contexte", "composant": "dm/site", "points": 1}]}')
         self.assertNotIn("réserves", self.t("apercus", "r3").stdout)
 
+    def test_language_and_research_report_without_narration(self):
+        """Chaque poste rédige dans la langue de l'équipe (jira.create.language, le français par défaut) ; le rapport de la
+        recherche commence à sa ligne « Composants : », sans la narration de l'agent (premier vrai run)."""
+        self.t("dossier", "r4", "x", "Tâche", "1", "dm/site", "", "backlog", "")
+        self.assertIn("## Langue\nRédige en français : le rapport, le titre (summary)", self.t("poste", "redaction", "r4").stdout)
+        self.assertIn("Rends UNIQUEMENT le rapport", self.t("poste", "recherche", "r4").stdout)
+        out = self.t("rapport", "recherche", "r4", stdin="Je vais chercher.\n\nParfait ! J'ai trouvé.\n\n**Composants :** dm/site\n- src/Modal.twig:12").stdout
+        self.assertTrue(out.startswith("**Composants :** dm/site"), out[:60])
+        self.assertNotIn("Je vais chercher", self.t("poste", "redaction", "r4").stdout)
+
     def test_nothing_drafted_fails_and_nothing_created_gives_no_result(self):
         self.t("dossier", "r2", "x", "Bug", "1", "dm/site", "", "backlog", "")
         self.assertNotEqual(self.t("rapport", "redaction", "r2", stdin="pas de JSON").returncode, 0)

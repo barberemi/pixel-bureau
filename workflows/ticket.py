@@ -140,7 +140,7 @@ POSTES = {
     "recherche": ("📚 Recherche", "Cherche dans les dépôts des composants ce qui sert à rédiger : les fichiers, fonctions et tests "
                   "concernés, les tickets ou PR proches, ce qui existe déjà. Lis QUELQUES fichiers (5 à 10, grep ou lecture "
                   "directe) dans le clone local de chaque dépôt, cherché dans les dossiers de travail habituels (~/Sites, "
-                  "~/Projects, ~/code ; vérifie le remote avec `git -C <chemin> remote -v`). Rends un rapport court en "
+                  "~/Projects, ~/code ; vérifie le remote avec `git -C <chemin> remote -v`). Rends UNIQUEMENT le rapport, sans raconter tes recherches : un rapport court en "
                   "Markdown : une ligne `Composants : <liste>` (ceux que l'intention touche vraiment, parmi la liste "
                   "donnée), puis les pistes, une puce chacune, avec le fichier. N'invente rien ; rien trouvé : dis-le."),
     "redaction": ("✍ Rédaction", "Rédige le ou les tickets. Une intention qui touche plusieurs projets ou plusieurs livrables "
@@ -182,6 +182,17 @@ def options():
     """Composants proposés (jira.create.components) : les dépôts de l'équipe."""
     c = (CFG.get("jira") or {}).get("create") or {}
     return [str(x.get("name") if isinstance(x, dict) else x) for x in c.get("components") or []]
+
+
+def langue():
+    """Langue des tickets (réglage jira.create.language de l'équipe), le français par défaut."""
+    return str(((CFG.get("jira") or {}).get("create") or {}).get("language") or "français")
+
+
+def sans_narration(text):
+    """Le rapport de la recherche à partir de sa ligne « Composants : » : l'agent raconte parfois ses recherches avant."""
+    m = re.search(r"^[ \t*_#-]*Composants\s*\**\s*:", text, re.M | re.I)
+    return text[m.start():].strip() if m else text
 
 
 def dossier(run, intention, type_, points, c1, c2, sprint, parent):
@@ -237,6 +248,8 @@ def poste(k, run, retours=""):
     c = dget(run, "critique.json")
     if k == "redaction" and c and c.get("verdict") == "a_retoucher":
         parts.append("## Remarques de la critique (à corriger)\n" + "\n".join(f"- ticket {n.get('ticket')} : {n.get('note')}" for n in c.get("notes") or []))
+    parts.append("## Langue\nRédige en " + langue() + " : le rapport, le titre (summary) et la description des tickets. Les "
+                 "noms de fichiers, de classes, de fonctions et le code restent tels quels.")
     parts.append("## Ta mission\n" + mission)
     print("\n\n".join(parts))
 
@@ -246,6 +259,7 @@ def rapport(k, run, text):
     if not text:
         sys.exit(f"Le poste {POSTES.get(k, (k,))[0]} n'a rien rendu.")
     if k == "recherche":
+        text = sans_narration(text)
         m = re.search(r"Composants\s*:\s*(.+)", text)
         touched = [x.strip(" *`") for x in re.split(r"[,;]", m.group(1))] if m else []
         dput(run, "recherche.json", {"texte": text[:6000], "composants": [x for x in touched if x]})

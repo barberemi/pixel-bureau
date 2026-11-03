@@ -195,7 +195,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "À retoucher et moins de 3 tours : retour à la rédaction ; sinon un élément par ticket pour la suite (0 token).",
+    "description": "À retoucher et moins de 3 tours : retour à la rédaction ; sinon un élément par ticket pour la suite (0 token). Le retour sort en code 3 (seul signal qu'un renvoi sait lire) : Kronn marque alors l'étape en échec, c'est voulu.",
     "exec_command": "python3",
     "exec_args": [
      "-c",
