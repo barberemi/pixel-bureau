@@ -1,0 +1,123 @@
+{
+ "kind": "workflow",
+ "key": "review_lecture",
+ "doc": "Lit le diff et le code autour : correction, tests, passe « mutation », duplication, lisibilité, patterns ; des constats, pas l'avis.",
+ "definition": {
+  "name": "Le Bureau · revue de PR · 🔍 lecture",
+  "project_id": null,
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "pr",
+    "label": "PR",
+    "placeholder": "",
+    "description": "Numéro de la PR relue (son worktree .kronn/pr-<n> dans la copie de travail du parent).",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "repo",
+    "label": "Dépôt",
+    "placeholder": "owner/depot",
+    "description": "Dépôt de la PR, format owner/name.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "entree",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Consigne du poste 🔍 lecture : sa mission, où lire la PR, le cadrage du contexte (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/review.py@@",
+     "poste",
+     "lecture",
+     "{{pr}}",
+     "{{repo}}"
+    ],
+    "exec_timeout_secs": 60
+   },
+   {
+    "name": "agent",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "🔍 lecture : Lit le diff et le code autour : correction, tests, passe « mutation », duplication, lisibilité, patterns ; des constats, pas l'avis. Outils : lecture du code (Read, Grep, Glob, Bash en lecture).",
+    "prompt_template": "{{steps.entree.data.stdout}}",
+    "agent_settings": {
+     "tools": {
+      "cli": [
+       "Read",
+       "Grep",
+       "Glob",
+       "Bash"
+      ],
+      "kronn_internal": []
+     }
+    },
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    },
+    "_poste": "review.lecture"
+   },
+   {
+    "name": "rapport",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le rapport du poste 🔍 lecture, rangé dans le dossier de la revue (.kronn/review-<n>/).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/review.py@@",
+     "rapport",
+     "lecture",
+     "{{pr}}"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.agent.output ?? \"\"}}"
+   }
+  ]
+ }
+}

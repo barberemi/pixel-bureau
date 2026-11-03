@@ -62,10 +62,13 @@ class TemplatesTest(unittest.TestCase):
         self.assertNotIn("timezone", templates.templatize("office", "workflow", utc, colleague())["definition"]["trigger"])
 
     def test_review_run_at_stays_utc(self):
-        """{{time.now}} suit le fuseau de Kronn depuis 0.15.1 : run_at de la revue reste en UTC (tri de la page récap)."""
+        """run_at de la revue : posé en UTC par write_ctx dès le départ (tri de la page récap, et son coût rapproché à moins
+        de 5 min du début de la revue, les postes passés), jamais {{time.now}} qui suit le fuseau de Kronn depuis 0.15.1."""
         text = json.dumps(TPL["review_child"])
-        self.assertIn("{{time.now|tz:UTC}}", text)
-        self.assertNotIn("{{time.now}}", text)
+        self.assertIn("{{state.run_at}}", text)
+        self.assertNotIn("{{time.now", text)
+        ctx = next(s for s in TPL["review_child"]["definition"]["steps"] if s["name"] == "write_ctx")
+        self.assertEqual(ctx["exec_args"][:3], ["-c", "@@script:workflows/review.py@@", "contexte"])
 
     def test_mep_runs_one_at_a_time_per_project(self):
         """Mises en prod de projets différents en même temps, une seule à la fois par projet (concurrency_key) : la clé

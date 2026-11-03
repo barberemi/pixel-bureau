@@ -28,6 +28,8 @@ IMPL_POSTES = ("cadrage", "schema", "patterns", "code", "tests", "revue", "revue
 SUPPORT_POSTES = ("tri", "logs", "cause", "reponse", "relecture")
 # salle de rédaction (2e étage) : les postes du modèle ticket (un sous-workflow chacun), puis un sous-workflow par ticket
 TICKET_POSTES = ("recherche", "redaction", "critique")
+# revue de PR (2e étage, salle de revue) : les postes du sous-workflow review_child (un sous-workflow chacun), puis son avis
+REVIEW_POSTES = ("contexte", "docs", "lecture", "securite")
 # pages Kronn à part, à projeter (HTML autonome de page/, ni assemblage ni démo) : clé de leur id dans la config ->
 # (titre, datasets, fichier) ; créées par install.py, publiées par install.py et publish.py page
 SIDE_PAGES = {"bilan_page_id": ("Chaîne · bilan", ["bilan"], "bilan.html"),
@@ -76,10 +78,12 @@ TEMPLATES = {
     "fix": ("workflow", ("actions", "fix_pr"), {n: "workflows/pr_update.py" for n in ("prepare", "diff", "push", "abort", "end")}),
     # modèles du Bureau que des agents incarnent (#78) : ids rangés dans models (jamais dans BUREAU_IDS : l'agent qui les
     # incarne garde sa fiche), lancés par les boutons quand tu n'as pas ton propre workflow (launch.review, launch.estimate)
-    # relire une PR (sous-workflow d'abord : le cron et la revue à la demande le lancent pour chaque PR, en foreach)
-    "review_child": ("workflow", ("models", "review_child"), {}),
-    "review_one": ("workflow", ("models", "review_one"), {}),
-    "review_cron": ("workflow", ("models", "review_cron"), {}),
+    # relire une PR (sous-workflow d'abord : le cron et la revue à la demande le lancent pour chaque PR, en foreach) ; ses
+    # postes avant lui (un sous-workflow chacun : contexte, docs, lecture, sécurité), son avis dans lui
+    **{f"review_{p}": ("workflow", ("models", f"review_{p}"), {n: "workflows/review.py" for n in ("entree", "rapport")}) for p in REVIEW_POSTES},
+    "review_child": ("workflow", ("models", "review_child"), {"write_ctx": "workflows/review.py"}),
+    "review_one": ("workflow", ("models", "review_one"), {"cost": "workflows/review.py"}),
+    "review_cron": ("workflow", ("models", "review_cron"), {"costs": "workflows/review.py"}),
     "estimate": ("workflow", ("models", "estimate"), {}),  # réestimer un ticket : Story Points et commentaire
     # estimer le temps gagné par l'IA sur un ticket terminé (#79) : PR mergées trouvées sans IA, estimation par l'IA,
     # commentaire et label de suivi (jira.ai_feedback) ; lancé par le bouton de la fiche ou en fin de mise en prod
@@ -128,7 +132,7 @@ REVIEW_SCHEDULE = "30 7,10,13,16,19 * * 1-5"  # cron des revues de PR, heures UT
 # copie du projet (require_isolation), jamais le dossier principal ; le sous-workflow tourne dans celle de son parent
 ISOLATED = {"review_one", "review_cron", "impl_chain", "ticket"}  # la chaîne : une copie du projet par ticket, 4 en parallèle
 # sous-workflows qui tournent dans la copie de leur parent : relire une PR, les postes de la chaîne d'implémentation
-SHARED_WORKSPACE = {"review_child", "impl_controles", *(f"impl_{p}" for p in IMPL_POSTES), *(f"support_{p}" for p in SUPPORT_POSTES),
+SHARED_WORKSPACE = {"review_child", *(f"review_{p}" for p in REVIEW_POSTES), "impl_controles", *(f"impl_{p}" for p in IMPL_POSTES), *(f"support_{p}" for p in SUPPORT_POSTES),
                     *(f"ticket_{p}" for p in TICKET_POSTES), "ticket_un"}  # la salle de rédaction (2e étage)
 
 
@@ -273,7 +277,8 @@ def values(cfg):
         **{f"models.{k}": (cfg.get("models") or {}).get(k) or "" for k in ("assign", "impl_controles", "impl_chain",
                                                                           *(f"impl_{p}" for p in IMPL_POSTES),
                                                                           *(f"support_{p}" for p in SUPPORT_POSTES),  # postes Support (#62)
-                                                                          *(f"ticket_{p}" for p in TICKET_POSTES), "ticket_un")},  # salle de rédaction
+                                                                          *(f"ticket_{p}" for p in TICKET_POSTES), "ticket_un",  # salle de rédaction
+                                                                          *(f"review_{p}" for p in REVIEW_POSTES))},  # postes de la revue
         "impl.guidelines": str((cfg.get("impl") or {}).get("guidelines") or "Aucune consigne d'équipe en plus de la doc du dépôt."),
     }
 
@@ -335,7 +340,7 @@ def skipped(key, cfg):
         return not (cfg.get("mail") or {}).get("accounts")
     if key == "mep":  # aucun projet avec une clé mep (github ou github.deploys)
         return not mep_projects(cfg)
-    if key in ("review_child", "review_one", "review_cron"):  # API GitHub : connexion GitHub de Kronn (github.config_id)
+    if key in ("review_child", "review_one", "review_cron") or key.startswith("review_"):  # API GitHub : connexion GitHub de Kronn (github.config_id)
         return not (cfg.get("github") or {}).get("config_id") or (key == "review_cron" and not review_repos(cfg))
     if key == "chaine_bilan":  # la page du bilan de la chaîne : chaîne installée et page créée (install.py)
         return not ((cfg.get("models") or {}).get("impl_chain") and cfg.get("bilan_page_id"))
@@ -414,7 +419,7 @@ def render(tpl, cfg):
             s.pop("_requires", None)
             if "_poste" in s:  # chaîne d'implémentation ou investigation Support : agent, modèle et skills du poste
                 role = s.pop("_poste")
-                (support_agent if role.startswith("support.") else impl_agent)(s, role, cfg)
+                (poste_agent if role.split(".")[0] in POSTE_AGENTS else impl_agent)(s, role, cfg)
             src = s.pop("_skills_from", None)
             if src in ("review.skill_ids", "fix.skill_ids"):  # skills de l'équipe en plus de ceux du modèle (#78, #75)
                 team = (cfg.get(src.split(".")[0]) or {}).get("skill_ids")
@@ -459,15 +464,24 @@ def impl_agent(step, role, cfg):
 # rédiger. Réglage support.postes.<poste> du pack ou de la config : agent, tier, model, skills (ajoutés).
 SUPPORT_AGENTS = {"tri": ("economy", []), "logs": ("default", []), "cause": ("default", []), "reponse": ("default", []),
                   "relecture": ("economy", [])}
+# revue de PR : léger pour cadrer, fort pour lire le code ; l'avis trie des constats déjà lus. Réglage review.postes.<poste>
+# du pack ou de la config : agent, tier, model, skills (ajoutés) ; review.skill_ids de l'équipe pour ceux qui lisent le code
+REVIEW_AGENTS = {"contexte": ("economy", []), "docs": ("default", []), "lecture": ("reasoning", ["testing"]),
+                 "securite": ("default", ["security"]), "avis": ("default", [])}
+REVIEW_TEAM_SKILLS = {"lecture", "securite", "avis"}
+POSTE_AGENTS = {"support": SUPPORT_AGENTS, "review": REVIEW_AGENTS}
 
 
-def support_agent(step, role, cfg):
-    k = role.split(".", 1)[1]
-    tier, skills = SUPPORT_AGENTS[k]
-    conf = (((cfg.get("support") or {}).get("postes")) or {}).get(k) or {}
+def poste_agent(step, role, cfg):
+    """Agent, modèle et skills d'un poste du Support ou de la revue (rôle « support.cause », « review.lecture »)."""
+    part, k = role.split(".", 1)
+    tier, skills = POSTE_AGENTS[part][k]
+    sec = cfg.get(part) or {}
+    conf = (sec.get("postes") or {}).get(k) or {}
+    team = list(sec.get("skill_ids") or []) if part == "review" and k in REVIEW_TEAM_SKILLS else []
     step["agent"] = conf.get("agent") or step.get("agent") or "ClaudeCode"
     step["agent_settings"] = {**(step.get("agent_settings") or {}), "tier": conf.get("tier") or tier, **({"model": conf["model"]} if conf.get("model") else {})}
-    step["skill_ids"] = list(dict.fromkeys(skills + list(conf.get("skills") or [])))
+    step["skill_ids"] = list(dict.fromkeys(skills + team + list(conf.get("skills") or [])))
 
 
 # fuseau des crons : leurs heures sont calculées en UTC (assemble.cron_hours) ; depuis Kronn 0.15.1, un cron sans fuseau

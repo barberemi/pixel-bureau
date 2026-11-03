@@ -432,6 +432,8 @@ def models(ask, cfg, old):
         keep |= {f"support_{p}" for p in templates.SUPPORT_POSTES}
     if "impl" in keep:  # la chaîne : son lanceur, son parent, le poste des contrôles et chaque poste (sous-workflows)
         keep |= {k for k in templates.TEMPLATES if k.startswith("impl_")}
+    if "review_child" in keep or "impl" in keep:  # la revue d'une PR (aussi celle de la chaîne) : un sous-workflow par poste
+        keep |= {f"review_{p}" for p in templates.REVIEW_POSTES}
     return keep
 
 

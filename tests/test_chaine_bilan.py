@@ -105,6 +105,19 @@ class ChaineBilanTest(unittest.TestCase):
         self.assertIn("mermaid", out["fiches"]["r1"])
         self.assertEqual(out["fiches"]["r1"]["deroule"][0]["n"], "prepare")
 
+    def test_review_postes_count_with_the_pr_review(self):
+        """La revue de la PR (impl_revue_pr -> review_child -> ses postes review_<poste>) : les jetons des postes, quatre
+        niveaux sous la chaîne, comptent avec la revue de la PR ; l'étape SubWorkflow, elle, ne compte pas."""
+        self.m.CFG["models"] = {**MODELS, "impl_livraison": "wliv", "impl_revue_pr": "wrpr", "review_child": "wrc", "review_lecture": "wrl"}
+        st = lambda n, tok: {"step_name": n, "tokens_used": tok, "status": "Success", "duration_ms": 1, "started_at": "2026-10-30T11:00:00Z"}  # noqa: E731
+        self.runs.update(wliv=[{"id": "l1", "parent_run_id": "r1"}], wrpr=[{"id": "p1", "parent_run_id": "l1"}],
+                         wrc=[{"id": "rc1", "parent_run_id": "p1"}], wrl=[{"id": "rl1", "parent_run_id": "rc1"}])
+        self.details.update(l1={"step_results": []}, p1={"step_results": [{**st("revue", 5000), "step_kind": "SubWorkflow"}]},
+                            rc1={"step_results": [st("avis", 3000), {**st("lecture", 7000), "step_kind": "SubWorkflow"}]},
+                            rl1={"step_results": [st("agent", 9000)]})
+        r1 = {t["run"]: t for t in self.m.snapshot(NOW)["tickets"]}["r1"]
+        self.assertEqual(r1["postes"]["revue_pr"], 12000)
+
     def test_kpi_leaves_out_trials_and_compares_versions(self):
         out = self.m.snapshot(NOW)
         # r1 (v2, 285 k), r2 (v1, 430 k), r3 (en panne, pas de version, 7 k) ; r4 : un essai, écarté

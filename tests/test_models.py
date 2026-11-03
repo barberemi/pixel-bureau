@@ -50,10 +50,23 @@ class ModelsTest(unittest.TestCase):
         c = cfg(review={"guidelines": "Tutoie l'auteur.", "skill_ids": ["php", "custom-maison"], "repos": ["vance/api", "vance/frigo"]})
         child = steps("review_child", c)
         self.assertEqual(child["fetch_files"]["api_config_id"], GH)
-        reason = child["reason"]
-        self.assertIn("Tutoie l'auteur.", reason["prompt_template"])
-        self.assertIn("Grille de revue de PR", reason["prompt_template"])  # tools/review_rubric.md recopié
-        self.assertEqual(reason["skill_ids"], ["security", "testing", "php", "custom-maison"])
+        avis = child["avis"]
+        self.assertIn("Tutoie l'auteur.", avis["prompt_template"])
+        self.assertIn("Grille de revue de PR", avis["prompt_template"])  # tools/review_rubric.md recopié
+        self.assertTrue(avis["prompt_template"].startswith("Review la PR #{{state.pr}} (`{{state.repo}}`) · poste avis"))  # coût
+        self.assertEqual((avis["agent_settings"]["tier"], avis["skill_ids"]), ("default", ["php", "custom-maison"]))
+        # postes : un sous-workflow chacun, leur modèle et leurs skills (l'équipe en plus pour ceux qui lisent le code)
+        self.assertEqual([s["name"] for s in templates.render(TPL["review_child"], c)["steps"]][5:11],
+                         ["write_ctx", "contexte", "docs", "lecture", "securite", "avis"])
+        want = {"contexte": ("economy", []), "docs": ("default", []), "lecture": ("reasoning", ["testing", "php", "custom-maison"]),
+                "securite": ("default", ["security", "php", "custom-maison"])}
+        for p, (tier, skills) in want.items():
+            agent = steps(f"review_{p}", c)["agent"]
+            self.assertEqual((agent["agent_settings"]["tier"], agent["skill_ids"]), (tier, skills), p)
+            self.assertEqual(child[p]["sub_workflow_variables"], {"pr": "{{state.pr}}", "repo": "{{state.repo}}"})
+        self.assertEqual(len(templates.render(TPL["review_child"], cfg(review={"page_id": PAGE}))["steps"]), 20)  # plafond de Kronn
+        tuned = steps("review_lecture", cfg(review={"postes": {"lecture": {"tier": "default", "model": "sonnet"}}}))["agent"]
+        self.assertEqual(tuned["agent_settings"], {"tools": {"cli": ["Read", "Grep", "Glob", "Bash"], "kronn_internal": []}, "tier": "default", "model": "sonnet"})
         self.assertIn("Le Bureau", child["post"]["api_body"]["body"])  # signature reconnue par skip_check
         self.assertIn("Review automatique", child["post"]["api_body"]["body"])
         cron = steps("review_cron", c)
@@ -64,17 +77,18 @@ class ModelsTest(unittest.TestCase):
 
     def test_without_recap_page_its_steps_go_and_jumps_follow(self):
         child = steps("review_child", cfg())
-        for gone in ("build_row", "publish_reviews", "meta_row", "publish_meta"):
+        for gone in ("build_row", "meta_row", "publish"):
             self.assertNotIn(gone, child)
         self.assertEqual(child["reply"]["on_result"][0]["action"]["step_name"], "skip_note")  # au lieu de build_row
         self.assertNotIn("cost", steps("review_one", cfg()))
         with_page = steps("review_child", cfg(review={"page_id": PAGE}))
-        self.assertEqual(with_page["publish_reviews"]["page_publish"]["page_id"], PAGE)
-        self.assertIn(f"PAGE='{PAGE}'", steps("review_one", cfg(review={"page_id": PAGE}))["cost"]["exec_args"][1])
+        self.assertEqual(with_page["publish"]["page_publish"]["page_id"], PAGE)
+        self.assertEqual([w["dataset"] for w in with_page["publish"]["page_publish"]["writes"]], ["reviews", "review_meta"])  # la page
+        self.assertIn(f'"page_id": "{PAGE}"', steps("review_one", cfg(review={"page_id": PAGE}))["cost"]["exec_args"][1])
 
     def test_skipped_without_their_connection(self):
         no_gh = cfg(github={"repo": "vance/frigo"})
-        for key in ("review_child", "review_one", "review_cron"):
+        for key in ("review_child", "review_one", "review_cron", *(f"review_{p}" for p in templates.REVIEW_POSTES)):
             self.assertTrue(templates.skipped(key, no_gh), key)
             self.assertFalse(templates.skipped(key, cfg()), key)
         no_jira = cfg(jira={})

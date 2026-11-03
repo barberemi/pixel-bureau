@@ -22,7 +22,7 @@ L'onglet « ✍ 2e · rédaction » apparaît entre le 1er et le 3e dès que le 
 ## La salle de revue
 
 - **Un bureau par PR en revue**, six au plus : le relecteur, la visière verte des correcteurs, derrière son écran, et en face, de dos, l'auteur de la PR. Pour ta PR, ou celle de quelqu'un hors de l'équipe, l'auteur est un agent remplaçant.
-- **Sous chaque bureau, les étapes de son run**, telles que le workflow les déclare (📥 fils, 🔒 sécu, 🧠 lecture, ✍ avis…) : une étape ajoutée à la revue y apparaît d'elle-même.
+- **Sous chaque bureau, les postes de sa revue**, lus du run : 🗺 contexte (le sens de la PR, ce qui est à risque), 📚 docs (les conventions du projet et la doc tenue à jour), 🔍 lecture (le code et ses tests), 🔒 sécu (sautée quand le diff ne touche rien de sensible), puis 🧐 avis (il vérifie les constats et rédige la review) et ✍ postée. La bulle du relecteur dit quel poste travaille.
 - **Le tableau noir des revues du jour** : les PR en lecture, les revues postées, les jetons.
 - **Un banc** pour les relecteurs libres.
 

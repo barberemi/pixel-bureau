@@ -55,6 +55,9 @@ def bilans():
     return out
 
 
+REVUE = ("review_child", "review_contexte", "review_docs", "review_lecture", "review_securite")
+
+
 class Arbre:
     """Les runs des sous-workflows de la chaîne, lus une fois par passage (parent_run_id)."""
 
@@ -65,7 +68,8 @@ class Arbre:
 
     def enfants(self, run_id):
         out = []
-        for wf in list(self.wf_poste) + ([self.models["review_child"]] if self.models.get("review_child") else []):
+        # la revue du Bureau (review_child) et ses postes (review_<poste>, un niveau plus bas) : comptés avec la revue de la PR
+        for wf in list(self.wf_poste) + [self.models[k] for k in REVUE if self.models.get(k)]:
             if wf not in self.runs:
                 try:
                     self.runs[wf] = get(f"/workflows/{wf}/runs?limit=200") or []
