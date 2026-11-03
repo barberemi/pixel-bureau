@@ -175,6 +175,7 @@
  "agents": [
   {
    "key": "dwight",
+   "metier": "revue",
    "name": "Dwight",
    "role": "Reviewer de PR",
    "wf": [
@@ -270,6 +271,7 @@
   },
   {
    "key": "ryan",
+   "metier": "impl",
    "name": "Ryan",
    "role": "Implémentation et MEP",
    "wf": [
@@ -284,6 +286,7 @@
   },
   {
    "key": "nellie",
+   "metier": "support",
    "name": "Nellie",
    "role": "Support", "holo": "alerte",
    "wf": [

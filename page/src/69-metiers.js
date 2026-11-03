@@ -1,0 +1,108 @@
+// ---------- les agents des étages, au RDC : Support, Ticket, Revue, Retours, Implé ----------
+// Un agent du pack ou de la config qui porte « metier » est l'agent d'un étage. Au RDC, il reste toujours à sa place du plan
+// (pas d'absence, comme l'agent Support en alerte), en couleurs pleines (pas d'hologramme) et dans la tenue de son étage ;
+// son étiquette est son métier, pas son prénom. La barre « AGENTS », au-dessus des onglets d'étage, le montre à tous les
+// étages : un clic ouvre ce qu'il lance (la console Support, sinon sa fiche au RDC avec ses boutons de lancement).
+const METIERS={
+  support:{lbl:'Support',ico:'🚒',fl:-1,kit:'pompier'},
+  ticket:{lbl:'Ticket',ico:'📰',fl:2,kit:'presse'},
+  revue:{lbl:'Revue',ico:'🔍',fl:2,kit:'visiere'},
+  retours:{lbl:'Retours',ico:'🩹',fl:3,kit:'chirurgien'},
+  impl:{lbl:'Implé',ico:'🏗',fl:1,kit:'chantier'}};
+const MT_FLOOR={'-1':'-1',1:'1er',2:'2e',3:'3e'};
+// les copies d'un agent dessinées aux étages (atWorker, rdAgent…) gardent son champ metier : seul le personnage du RDC compte
+const metierOf=c=>c&&!c.person&&!c.visitor&&METIERS[c.metier]&&byKey[c.key]===c?METIERS[c.metier]:null;
+// un agent par métier, dans l'ordre de la barre (le premier de la config si deux le revendiquent)
+const mtAgents=()=>Object.keys(METIERS).map(k=>chars.find(c=>c.metier===k&&!c.person&&!c.visitor)).filter(Boolean);
+// toujours là : sans run du jour (ou reparti), il est à sa place, au repos ; un workflow désactivé dans Kronn le reste aussi
+function mtState(c,s){
+  if(!s||!['off','absent','gone'].includes(s.st))return s;
+  return {...s,st:'idle',zone:'desk',label:'À son poste · '+s.label};
+}
+// ---------- la tenue, par-dessus le personnage (drawChar, 41-people.js) ----------
+// assis à son îlot (pose 'type'), la tête descend de 6 px ; gilet du chantier : à sa hauteur d'origine assis, 3 px plus
+// bas debout, pour dégager le menton
+function mtChirurgien(g,x,y,dir,seated){
+  const d=seated?6:0, hx=x+(dir==='left'?-2:dir==='right'?2:0), hy=y-42+d;
+  R(g,x-8,y-26+d,16,12,'#4f9a8a');R(g,x-8,y-26+d,16,1,'#3f7a6e');if(dir!=='up')R(g,x-2,y-26+d,4,3,'#3f7a6e'); // la blouse
+  g.fillStyle='#5fb0a0';g.beginPath();g.arc(hx,hy+1,10,Math.PI,0);g.fill();R(g,hx-10,hy,20,3,'#4f9a8a'); // le calot
+  if(dir!=='up'){const w=dir==='down'?12:8, mx=dir==='left'?hx-7:dir==='right'?hx-1:hx-6;R(g,mx,hy+11,w,5,'#cfe8e2');R(g,mx,hy+11,w,1,'#a8cfc6');} // le masque
+}
+function mtKit(c,m){
+  m=m||metierOf(c);if(!m||!c.pos)return;
+  const x=Math.round(c.pos.x), y=Math.round(c.pos.y), seated=c.pose==='type'&&!c.moving, d=seated?6:0;
+  if(m.kit==='pompier')csHelmet(ctx,x,y+d,c.dir,false); // 68-caserne.js
+  else if(m.kit==='presse'||m.kit==='visiere')rdHat(ctx,m.kit,x,y+d,c.dir); // 68-redaction.js
+  else if(m.kit==='chirurgien')mtChirurgien(ctx,x,y,c.dir,seated);
+  else if(m.kit==='chantier')drawGear(c,'chantier',26); // 68-atelier.js
+}
+// ---------- ce qu'il lance : la console Support, sinon sa fiche et ses boutons ----------
+function mtOpen(c){
+  if(!c)return;
+  if(c.metier==='support'&&supportOpenable())return openSupport();
+  if(FLOOR!==0)setFloor(0);
+  select(c.key);SIDE_FOLDED=false;renderSide(true);
+}
+const MT_MAX=6; // lignes par liste ; au-delà, ⌘K ou le Kanban
+const mtPrs=()=>TEAM?[...TEAM.people.flatMap(p=>(p.prs||[]).map(x=>({...x,author:p.name}))),...(TEAM.other_prs||[])].filter(p=>!p.merged&&actPr(p)):[];
+const mtTickets=()=>TEAM?[...TEAM.people.flatMap(p=>p.tickets.map(t=>({...t,owner:p.name}))),...(TEAM.unassigned||[])]:[];
+// les lignes à lancer d'un métier : [{bind, name, sub}] (PR à relire, PR avec des fils, tickets à implémenter)
+function mtRows(k){
+  const pr=p=>({bind:{id:prId(p)},name:prNum(p)+(p.title?' '+clip(p.title,60):''),sub:p.author?'de '+p.author:''});
+  if(k==='revue')return ACTIONS.review?mtPrs().filter(p=>!p.draft&&p.review!=='approved').map(pr):[];
+  if(k==='retours'){
+    if(ACTIONS.fix_pr)return mtPrs().filter(p=>p.threads>0||p.threads==null&&p.review==='changes').map(p=>({...pr(p),sub:(p.threads>0?plural(p.threads,'fil','fils')+' à traiter':'changements demandés')+(p.author?' · de '+p.author:'')}));
+    return ACTIONS.fix?mtPrs().filter(p=>p.review==='changes'&&(!otherRepo(p.repo)||CFG.fix_any_repo)).map(pr):[];
+  }
+  if(k==='impl'){
+    if(!ACTIONS.impl||!ACTS)return [];
+    const known=new Set(ACTS.tickets.map(t=>t.key));
+    return mtTickets().filter(t=>known.has(t.key)&&(t.cat==='todo'||t.cat==='doing')&&!prsOf(t.key).length)
+      .map(t=>({bind:{key:t.key},name:t.key+' '+clip(tkComp(t.summary).title,60),sub:t.owner?'à '+t.owner:'sans responsable'}));
+  }
+  return [];
+}
+const MT_ACT={revue:['bureau-review','🔎 Relire','Relire '],retours:[null,'🛠 Corriger','Corriger les retours de '],impl:['bureau-impl','🤖 Implémenter','Implémenter ']};
+// en tête de la fiche d'un agent de métier : ce qu'il peut lancer maintenant, sans passer par le Kanban
+function mtBlock(side,c){
+  const m=metierOf(c);if(!m||!MT_ACT[c.metier])return; // Support : la console (spFiche) ; Ticket : « ▶ Lancer… » (runBlock)
+  const [a0,label,title]=MT_ACT[c.metier], action=a0||(ACTIONS.fix_pr?'bureau-fixpr':'bureau-fix'), rows=mtRows(c.metier);
+  const box=foldSection(side,'mt-'+c.metier,m.ico+' À lancer',ACTS?rows.length:null,true);
+  if(!ACTS){const e=document.createElement('div');e.className='note';e.textContent='Les boutons arrivent au prochain passage du cron équipe (10 min au plus).';box.appendChild(e);return;}
+  if(!rows.length){const e=document.createElement('div');e.className='empty';e.textContent=c.metier==='impl'?'Aucun ticket à implémenter.':c.metier==='revue'?'Aucune PR à relire.':'Aucune PR avec des fils à traiter.';box.appendChild(e);return;}
+  for(const r of rows.slice(0,MT_MAX))launchBlock(box,{action,bind:r.bind,name:r.name,sub:r.sub,label,title:title+(r.bind.key||r.bind.id)});
+  if(rows.length>MT_MAX){const e=document.createElement('div');e.className='note';e.textContent='Et '+(rows.length-MT_MAX)+' de plus : ⌘K ou le Kanban.';box.appendChild(e);}
+}
+// ---------- la barre « AGENTS », au-dessus des onglets d'étage, à tous les étages (hors mode TV) ----------
+function mtFace(c){ // le portrait en tenue : le personnage debout de face, coupé à la taille
+  const p=document.createElement('canvas');p.width=40;p.height=46;const g=p.getContext('2d');g.imageSmoothingEnabled=false;
+  const img=spriteOf(c);if(!ready(img))return null;
+  const a={...c,pos:{x:20,y:62},dir:'down',moving:false,pose:'stand',_st:{st:'idle'}};
+  const s=ctx;ctx=g;try{ctx.drawImage(img,2*64,4*64,64,64,a.pos.x-32,a.pos.y-60,64,64);mtKit(a,METIERS[c.metier]);}finally{ctx=s;}
+  return p.toDataURL();
+}
+const MT_FACE={};
+// l'état en une ligne et sa pastille : ce qui attend (validation, panne, fils du Support), sinon au travail ou libre
+function mtStatus(c){
+  const st=(c._st||{}).st;
+  if(c.metier==='support'&&supportOn()){const n=spTodo().length;if(n)return {txt:plural(n,'fil','fils')+' à traiter',b:String(n),col:'var(--err)'};}
+  if(st==='gate'||st==='ask')return {txt:'t\'attend',b:'✋',col:'var(--warn)'};
+  if(st==='error')return {txt:'en panne',b:'!',col:'var(--err)'};
+  if(st==='work'||st==='srv'||st==='meet')return {txt:'au travail',b:'●',col:'var(--ok)'};
+  return {txt:'libre',b:'',col:''};
+}
+function mtBarHtml(){
+  return '<div class="mt-t" aria-hidden="true">AGENTS</div>'+mtAgents().map(c=>{const m=metierOf(c), s=mtStatus(c);
+    const f=MT_FACE[c.key]||(MT_FACE[c.key]=mtFace(c)||'');
+    return `<button type="button" class="mt-a" data-mt="${esc(c.key)}" title="${esc(m.lbl+' · '+c.name+' : '+s.txt)}">`+
+      (f?`<img src="${f}" alt="">`:'<span class="mt-f"></span>')+(s.b?`<span class="mt-b" style="background:${s.col}">${esc(s.b)}</span>`:'')+
+      `<span class="mt-x"><b>${m.ico} ${esc(m.lbl)}<span class="mt-fl">${MT_FLOOR[m.fl]}</span></b><small>${esc(s.txt)}</small></span><span class="mt-go" aria-hidden="true">▸</span></button>`;}).join('');
+}
+function mtBar(){
+  let b=document.getElementById('mtbar');
+  if(TV||!mtAgents().length){if(b)b.remove();return;}
+  if(!b){b=document.createElement('div');b.id='mtbar';b.className='mtbar';b.setAttribute('role','toolbar');b.setAttribute('aria-label','Les agents des étages');
+    const st=document.querySelector('.stage');if(!st)return;st.insertBefore(b,document.getElementById('floors')||st.querySelector('.cv-wrap'));
+    b.addEventListener('click',e=>{const a=e.target.closest('[data-mt]');if(a)mtOpen(byKey[a.dataset.mt]);});}
+  const h=mtBarHtml();if(b.dataset.sig!==h)b.innerHTML=b.dataset.sig=h;
+}

@@ -355,12 +355,13 @@ function atChantier(T){
     R(ctx,cx-3,AT_HY1*T-12,6,2,'#ffffff');R(ctx,cx-7,AT_HY1*T-4,14,2,'#c85a10');}
 }
 // tenue de chantier, dessinée par-dessus le personnage (drawChar, 41-people.js) : casque (jaune, blanc pour la sécurité)
-// et gilet orange à bandes réfléchissantes ; assis à son poste, la tête est plus bas
+// et gilet orange à bandes réfléchissantes ; assis à son poste, la tête est plus bas ; up : haut du gilet debout, en px
+// au-dessus des pieds (29 par défaut ; 26 pour l'agent Implé du RDC, 69-metiers.js, qui dégage le menton)
 const GEAR={chantier:'#f6c419',securite:'#f2f2f2'};
-function drawGear(c,gear){
+function drawGear(c,gear,up){
   gear=gear||c.gear;const col=GEAR[gear];if(!col)return;
   const seated=c.pose==='type'&&!c.moving, x=Math.round(c.pos.x), y=Math.round(c.pos.y), dir=c.dir;
-  const top=y-29+(seated?6:0);
+  const top=seated?y-23:y-(up||29);
   R(ctx,x-8,top,16,13,'#ff7a1a');if(dir!=='up')R(ctx,x-2,top,4,13,'#3f5a7a');
   R(ctx,x-8,top+5,16,2,'#e6eef2');R(ctx,x-8,top+9,16,2,'#e6eef2');
   const hx=x+(dir==='left'?-2:dir==='right'?2:0), hy=y-(seated?36:42), rim=gear==='securite'?'#9aa2ac':'#b8860b';
