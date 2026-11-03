@@ -83,5 +83,51 @@ class RedactionSnapshotTest(unittest.TestCase):
         self.assertEqual([e["k"] for e in snap["events"]], ["arrive", "gate"])
 
 
+class RevueFileTest(unittest.TestCase):
+    """La file de la salle de revue (2e étage) : les PR retenues par le cron, dans l'ordre, et les verdicts des revues."""
+    def test_finalize_prints_the_kept_prs_in_order(self):
+        sys.path.insert(0, os.path.join(ROOT, "tools"))
+        import templates
+        cfg = json.loads(Path(FIXTURE).read_text())
+        cfg["github"] = {**cfg.get("github", {}), "config_id": "12121212-3434-5656-7878-909090909090", "pr_repos": ["dm/site"]}
+        step = next(s for s in templates.render(templates.load_templates()["review_cron"], cfg)["steps"] if s["name"] == "finalize")
+        tmp = tempfile.mkdtemp()
+        os.makedirs(os.path.join(tmp, ".kronn"))
+        cand = [{"repo": "dm/site", "number": 12, "author": "hollyflax", "baseRef": "main", "head": "a"},
+                {"repo": "dm/api", "number": 7, "author": "pambeesly", "baseRef": "main", "head": "b"},
+                {"repo": "dm/site", "number": 9, "author": "hollyflax", "baseRef": "main", "head": "c"}]
+        Path(tmp, ".kronn", "prs_candidates.json").write_text(json.dumps(cand))
+        done = {"items": [{"input": {"repo": "dm/api", "number": 7}, "response": [{"user": {"login": "bot"}, "body": "Review automatique", "commit_id": "b"}]}]}
+        out = subprocess.run([step["exec_command"], *step["exec_args"][:2], "_", "bot"], cwd=tmp, input=json.dumps(done), capture_output=True, text=True)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn('PRS=[["dm/site",12,"hollyflax"],["dm/site",9,"hollyflax"]]', out.stdout)
+
+    def test_snapshot_reads_batches_and_verdicts_once(self):
+        os.environ.setdefault("BUREAU_CONFIG", FIXTURE)
+        sys.path.insert(0, os.path.join(ROOT, "workflows"))
+        import redaction_snapshot as r
+        out = lambda d: "x\n---STEP_OUTPUT---\n" + json.dumps({"data": d}) + "\n---END_STEP_OUTPUT---\n[SIGNAL: OK]"  # noqa: E731
+        api = {"/workflows/cr/runs?limit=8": [{"id": "c1", "status": "Success", "started_at": "2026-10-30T09:30:00Z"},
+                                              {"id": "c0", "status": "Success", "started_at": "2026-10-28T09:30:00Z"}],
+               "/workflows/cr/runs/c1": {"step_results": [{"step_name": "finalize", "output": out({"stdout": '3 candidates\nPRS=[["dm/site",12,"hollyflax"],["dm/api",7,"pambeesly"]]\n'})}]},
+               "/workflows/ch/runs?limit=60": [{"id": "k1", "parent_run_id": "c1", "status": "Success"}, {"id": "k2", "parent_run_id": "c1", "status": "Running"},
+                                                {"id": "k9", "parent_run_id": "autre", "status": "Success"}],
+               "/workflows/ch/runs/k1": {"step_results": [{"step_name": "avis", "output": out({"verdict": "comment", "pr": 12})}]}}
+        calls = []
+        old = (r.get, r.RV_HOME, dict(r.CFG))
+        r.get, r.RV_HOME = (lambda p: calls.append(p) or api.get(p)), tempfile.mkdtemp()
+        r.CFG.update(models={"review_cron": "cr", "review_child": "ch"})
+        try:
+            snap = r.snapshot("2026-10-30T10:00:00+00:00")
+            self.assertEqual(snap["revue"], {"batches": {"c1": [["dm/site", 12, "hollyflax"], ["dm/api", 7, "pambeesly"]]}, "verdicts": {"k1": "comment"}})
+            n = len(calls)
+            self.assertEqual(r.snapshot("2026-10-30T10:01:00+00:00")["revue"], snap["revue"])
+            self.assertEqual([c for c in calls[n:] if "/runs/" in c], [], "un run fini n'est lu qu'une fois")
+        finally:
+            r.get, r.RV_HOME = old[0], old[1]
+            r.CFG.clear()
+            r.CFG.update(old[2])
+
+
 if __name__ == "__main__":
     unittest.main()
