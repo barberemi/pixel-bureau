@@ -456,6 +456,31 @@ function atBoard(slots){
     atHit('room',x,by,cw,bh,{i:k});
   });
 }
+// la porte en bois de l'entrée du RDC (le sol 'mat' de 40-floor.js : cadre #5a4636, panneau #6b5543), posée dans
+// l'ouverture d'un mur ; n panneaux côte à côte (mur horizontal) ou l'un sous l'autre (vert : mur vertical)
+function woodDoor(g,x,y,w,h,n,vert){R(g,x,y,w,h,'#5a4636');
+  for(let k=0;k<n;k++){if(vert){const ph=h/n;R(g,x+3,y+k*ph+3,w-6,ph-6,'#6b5543');}else{const pw=w/n;R(g,x+k*pw+3,y+3,pw-6,h-6,'#6b5543');}}}
+// ---------- le bureau du boss, le même à chaque étage (le 1er, le 2e, le 3e) : celui du RDC (40-furniture.js) ----------
+// Le fauteuil 44 px au-dessus des pieds du boss (F), le bureau de 100 px 16 px au-dessus ; mid(x0,top) pose ce qui est
+// propre à l'étage au milieu du bureau (sinon la feuille du RDC) ; la tasse à x0+mug.
+function atBossChair(ox,F){R(ctx,ox-18,F-44,36,30,'#5a2e2e');R(ctx,ox-18,F-44,36,4,'#723a3a');R(ctx,ox-22,F-30,6,18,'#4a2424');R(ctx,ox+16,F-30,6,18,'#4a2424');
+  R(ctx,ox-22,F-30,6,2,'#6a3434');R(ctx,ox+16,F-30,6,2,'#6a3434');}
+function atBossDesk(ox,F,now,boss,mid,mug){
+  const x0=ox-50, top=F-16, m=mug||76;
+  R(ctx,x0,top+30,3*AT_TS+4,3,'rgba(0,0,0,.2)');R(ctx,x0,top,3*AT_TS+4,18,'#6e4a2c');R(ctx,x0,top,3*AT_TS+4,2,'#8a6040');R(ctx,x0,top+18,3*AT_TS+4,13,'#56391f');
+  R(ctx,x0+6,top-12,18,13,'#2c2f38');drawScreen(x0+7,top-11,16,10,boss?screenState(boss):'off',now,97);R(ctx,x0+12,top+1,5,3,'#2c2f38');
+  if(mid)mid(x0,top);else R(ctx,x0+44,top+4,15,5,'#e6e6e6');
+  R(ctx,x0+m,top+2,6,7,'#fbfbf6');R(ctx,x0+m+1,top+4,4,2,'#d1453b');
+  if(themeIs('saint-valentin'))E('🌹',x0+92,top-2,12);
+  ctx.fillStyle='#f3e6d2';ctx.font='bold 8px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText("WORLD'S BEST BOSS",ox,top+27);ctx.textAlign='left';
+}
+// le dessin du boss à un étage : la clé du roster (captain_sprite au -1, atelier_sprite au 1er, redaction_sprite au 2e) si
+// elle est réglée et son sprite embarqué, sinon null (il garde le sien). Sa fiche garde son portrait de partout.
+const bossFloorSprite=(b,k)=>b&&b[k]&&(SPR[b[k]]||RECIPES[b[k]])?b[k]:null;
+const withFloorSprite=(c,b,k)=>{const s=bossFloorSprite(b,k);if(s)c.sprite=s;return c;};
+// le boss assis à son bureau : la case BOSS_SEAT le fait descendre de 9 px dans le fauteuil (41-people.js), de face, sans
+// la pose de frappe (ses deux images alternées le faisaient danser)
+const atSeatedBoss=(boss,ox,F,st)=>Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:ox,y:F},tile:BOSS_SEAT.slice(),moving:false,pose:'stand',dir:'down',present:true,_st:{st}});
 // le boss : dans son fauteuil (de face, comme au RDC) ; quand une gate attend, il se lève et va à la porte de ce bureau
 function atBoss(slots,now,dt,people){
   const boss=chars.find(c=>c.boss), gates=slots.map((r,i)=>r&&r.gate?{i,t:ms(r.since)||0}:null).filter(Boolean).sort((a,b)=>a.t-b.t);
@@ -464,22 +489,15 @@ function atBoss(slots,now,dt,people){
   if(!b||REDUCED_MOTION&&b.target!==target)b=AT_MEM.boss={target,walk:atWalker(target==null?[AT_CHAIR]:[atBossPath(AT_CHAIR,target).pop()])};
   if(b.target!==target){b.target=target;b.walk=atWalker(atBossPath(b.walk.pos,target),90);}
   const arrived=atStep(b.walk,dt), seated=arrived&&target==null;
-  // bureau, fauteuil et boss aux mesures du RDC (40-furniture.js) : fauteuil 44 px au-dessus de ses pieds, bureau de 100 px
-  // 16 px au-dessus, son écran, sa tasse, « WORLD'S BEST BOSS » ; les quatre voyants des bureaux à la place de la feuille
-  const ox=AT_CHAIR.x, F=AT_CHAIR.y, x0=ox-50, top=F-16;
-  R(ctx,ox-18,F-44,36,30,'#5a2e2e');R(ctx,ox-18,F-44,36,4,'#723a3a');R(ctx,ox-22,F-30,6,18,'#4a2424');R(ctx,ox+16,F-30,6,18,'#4a2424');
-  R(ctx,ox-22,F-30,6,2,'#6a3434');R(ctx,ox+16,F-30,6,2,'#6a3434');
-  const desk=()=>{
-    R(ctx,x0,top+30,3*AT_TS+4,3,'rgba(0,0,0,.2)');R(ctx,x0,top,3*AT_TS+4,18,'#6e4a2c');R(ctx,x0,top,3*AT_TS+4,2,'#8a6040');R(ctx,x0,top+18,3*AT_TS+4,13,'#56391f');
-    R(ctx,x0+6,top-12,18,13,'#2c2f38');drawScreen(x0+7,top-11,16,10,boss?screenState(boss):'off',now,97);R(ctx,x0+12,top+1,5,3,'#2c2f38');
-    slots.forEach((r,k)=>{const x=x0+42+k*8, on=r&&r.gate;R(ctx,x-3,top+4,7,7,'#1c1c1c');
-      R(ctx,x-2,top+5,5,5,!r?'#555':on?(Math.floor(now/450)%2?'#ffcf4a':'#a37a10'):r.back?'#e0614f':'#3fbf6a');atHit('room',x-4,top+2,9,11,{i:k});});
-    R(ctx,x0+76,top+2,6,7,'#fbfbf6');R(ctx,x0+77,top+4,4,2,'#d1453b');
-    if(themeIs('saint-valentin'))E('🌹',x0+92,top-2,12);
-    ctx.fillStyle='#f3e6d2';ctx.font='bold 8px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText("WORLD'S BEST BOSS",ox,top+27);ctx.textAlign='left';};
+  // bureau, fauteuil et boss aux mesures du RDC (atBossChair, atBossDesk) ; les quatre voyants des bureaux à la place de la feuille
+  const ox=AT_CHAIR.x, F=AT_CHAIR.y;
+  atBossChair(ox,F);
+  const desk=()=>atBossDesk(ox,F,now,boss,(x0,top)=>slots.forEach((r,k)=>{const x=x0+42+k*8, on=r&&r.gate;R(ctx,x-3,top+4,7,7,'#1c1c1c');
+    R(ctx,x-2,top+5,5,5,!r?'#555':on?(Math.floor(now/450)%2?'#ffcf4a':'#a37a10'):r.back?'#e0614f':'#3fbf6a');atHit('room',x-4,top+2,9,11,{i:k});}));
   if(!boss){desk();return;}
   const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:b.walk.pos.x,y:b.walk.pos.y},tile:seated?BOSS_SEAT.slice():null,moving:!arrived,pose:'stand',present:true,
     dir:arrived?(target==null?'down':AT_G[target].top?'up':'down'):b.walk.dir,_st:{st:gates.length?'gate':'idle'}});
+  withFloorSprite(c,boss,'atelier_sprite'); // au 1er, son dessin de l'étage s'il en a un
   // à la porte d'un bureau qui l'attend, le boss et son étiquette mènent à la décision (atelierClick : kind gate)
   const at=arrived&&target!=null&&slots[target], gl=at?'✋ '+(at.ticket||'')+' · '+(AT_GATE_TXT[at.gate]||'à décider')+' · décider ›':'';
   AT_LIT.push(c.pos);atHit(at?'gate':'boss',c.pos.x-14,c.pos.y-56,28,58,at?{i:target}:{});
@@ -667,36 +685,71 @@ function atGalleryScenes(){
 // Bernard, un humain, rentre chez lui hors des heures de bureau.
 const AT_WINDOWS=[1,3.5,6,8.5,35,37.5,40,42.5]; // en cases : au-dessus des bureaux 1 et 2, de part et d'autre du grand tableau
 const atOpen=()=>officeOpen(T);
-function atWindows(now){
+// en rejeu, à chaque étage : la pastille qui dit qu'on regarde le passé
+function atReplayPill(){if(atLive())return;const s='⏪ Rejeu · '+hm(T)+' · l\'étage à cette heure-là';ctx.font='bold 12px system-ui,sans-serif';
+  atPill(s,14+ctx.measureText(s).width/2,14,'#c9a227','#1c1c1c','bold 12px system-ui,sans-serif');}
+// xs : les fenêtres d'un étage, en cases (celles du 1er par défaut)
+function atWindows(now,xs){
   const sky=skyColor(T), T_=AT_TS;
-  for(const x of AT_WINDOWS){R(ctx,x*T_+4,T_+4,T_*1.5,20,'#e7e1d3');R(ctx,x*T_+6,T_+6,T_*1.5-4,16,sky);drawStars(x*T_+6,T_+6,T_*1.5-4,16,now);
+  for(const x of xs||AT_WINDOWS){R(ctx,x*T_+4,T_+4,T_*1.5,20,'#e7e1d3');R(ctx,x*T_+6,T_+6,T_*1.5-4,16,sky);drawStars(x*T_+6,T_+6,T_*1.5-4,16,now);
     themeWindow(x*T_+6,T_+6,T_*1.5-4,16,now,x);R(ctx,x*T_+4+T_*.75,T_+4,2,20,'#e7e1d3');}
 }
-let AT_NIGHT_CV=null, AT_NIGHT_AT=0, AT_NIGHT_SIG='';
-function atNight(slots,now){
-  const d=daylight(T), dark=(1-d.k)*NIGHT_MAX;if(dark<.02)return;
-  const W_=AT_W/LQ, H_=AT_H/LQ;
-  if(!AT_NIGHT_CV){AT_NIGHT_CV=[lightCanvas(W_,H_),lightCanvas(W_,H_)];}
-  // le masque se refait toutes les 200 ms, comme au RDC ; plus souvent quand quelqu'un marche, pour que sa lumière le suive
-  const sig=AT_LIT.map(q=>Math.round(q.x/4)+','+Math.round(q.y/4)).join(' ');
-  if(now-AT_NIGHT_AT>200||!AT_NIGHT_AT||sig!==AT_NIGHT_SIG&&now-AT_NIGHT_AT>40){AT_NIGHT_AT=now;AT_NIGHT_SIG=sig;
-    const tint=mixC([10,14,40],d.morning?[70,40,24]:[66,30,52],d.twi*.7), m=AT_NIGHT_CV[0].getContext('2d');
+// La nuit des étages, la même au 1er, au 2e, au 3e et au -1 : le voile du RDC (42-light.js), qui suit le soleil.
+// S : la mémoire de l'étage ; o.rooms : ses pièces [x0,y0,x1,y1,allumée] en cases (bornes comprises, comme
+// LAYOUT.light_rooms), qui s'allument et s'éteignent en fondu avec leurs plafonniers, comme la cantine du RDC ; o.rects :
+// des aplats retirés au voile [x,y,w,h,a] ; o.spots : {x,y,r,a,c} (c : halo coloré, comme les lampes du RDC) ; o.track :
+// ceux qui marchent (le masque se refait plus souvent quand ils bougent, pour que leur lumière les suive) ; o.closed :
+// hors des heures de bureau, la veilleuse même si le soleil est levé (le soir d'été, le week-end)
+function floorNight(S,o,now){
+  const d=daylight(T), dark=Math.max((1-d.k)*NIGHT_MAX,o.closed?NIGHT_MAX:0);if(dark<.02){S.lv=null;return;}
+  const W_=AT_W/LQ, H_=AT_H/LQ, rooms=o.rooms||[], spots=o.spots||[], halo=rooms.length>0||spots.some(q=>q.c);
+  if(!S.cv)S.cv=[lightCanvas(W_,H_),lightCanvas(W_,H_),lightCanvas(AT_W,AT_H)];
+  if(!S.lv||S.lv.length!==rooms.length)S.lv=rooms.map(z=>z[4]?1:0);
+  const sig=(o.track||[]).map(q=>Math.round(q.x/4)+','+Math.round(q.y/4)).join(' ');
+  if(now-S.at>200||!S.at||sig!==S.sig&&now-S.at>40){const dt=S.at?Math.min(1000,now-S.at):LIGHT_FADE;S.at=now;S.sig=sig;
+    rooms.forEach((z,i)=>{S.lv[i]+=((z[4]?1:0)-S.lv[i])*Math.min(1,dt/LIGHT_FADE);});
+    const tint=mixC([10,14,40],d.morning?[70,40,24]:[66,30,52],d.twi*.7), m=S.cv[0].getContext('2d');
     m.setTransform(1,0,0,1,0,0);m.globalCompositeOperation='source-over';m.clearRect(0,0,W_,H_);
     m.fillStyle=`rgba(${tint[0]},${tint[1]},${tint[2]},${dark})`;m.fillRect(0,0,W_,H_);
     m.setTransform(1/LQ,0,0,1/LQ,0,0);m.globalCompositeOperation='destination-out';
-    slots.forEach((r,i)=>{const sweep=AT_MEM.clean&&AT_MEM.clean.stop.i===i;if(!r&&!sweep)return;const g=AT_G[i];
-      m.fillStyle=r?'rgba(0,0,0,.45)':'rgba(0,0,0,.25)';m.fillRect(g.x0*AT_TS,g.y0*AT_TS,(g.x1-g.x0)*AT_TS,(g.y1-g.y0)*AT_TS);
-      if(!r)return;
-      for(const p of AT_DESKS){const s=atSpot(g,p.k), y=s.row===1?g.feet1:g.feet2;softSpot(m,s.x,y-24,1.7*AT_TS,.9);} // chaque poste, sous sa lampe
-      softSpot(m,(g.bx0+g.bx1)/2,(g.b1+g.b2)/2+g.H/2,(g.bx1-g.bx0)/2,.5);}); // le tapis
-    for(const h of AT_HITS)if(h.kind==='agent'||h.kind==='bernard'||h.kind==='cleaner'||h.kind==='pompier')softSpot(m,h.x+14,h.y+30,42,.95);
-    for(const q of AT_LIT)softSpot(m,q.x,q.y-26,42,.95); // comme au RDC (42-light.js) : le boss, et ceux qui marchent, dans leur lumière
-    softSpot(m,AT_CHAIR.x,AT_CHAIR.y-14,3.2*AT_TS,.9); // la lampe du bureau du boss, toujours allumée
-    softSpot(m,23*AT_TS,2.6*AT_TS,6*AT_TS,.7); // le grand tableau
-    softSpot(m,46*AT_TS-10,AT_HY0*AT_TS+20,40,.5);softSpot(m,1.1*AT_TS,AT_HY1*AT_TS-20,30,.5); // la sortie, la machine à café
-    const l=AT_NIGHT_CV[1].getContext('2d');l.clearRect(0,0,W_,H_);l.filter='blur(3px)';l.drawImage(AT_NIGHT_CV[0],0,0);l.filter='none';
-  }
-  const sm=ctx.imageSmoothingEnabled;ctx.imageSmoothingEnabled=true;ctx.drawImage(AT_NIGHT_CV[1],0,0,AT_W,AT_H);ctx.imageSmoothingEnabled=sm;
+    for(const [x,y,w,h,a] of o.rects||[]){m.fillStyle=`rgba(0,0,0,${a})`;m.fillRect(x,y,w,h);}
+    rooms.forEach((z,i)=>{const lv=S.lv[i];if(lv<.01)return;const [x0,y0,x1,y1]=z;
+      m.fillStyle=`rgba(0,0,0,${(.22*lv).toFixed(3)})`;m.fillRect(x0*AT_TS,y0*AT_TS-6,(x1-x0+1)*AT_TS,(y1-y0+1)*AT_TS+6);
+      for(const [x,y] of floorLamps(z))softSpot(m,x,y,2.6*AT_TS,.7*lv);});
+    for(const q of spots)softSpot(m,q.x,q.y,q.r,q.a);
+    const l=S.cv[1].getContext('2d');l.clearRect(0,0,W_,H_);l.filter='blur(3px)';l.drawImage(S.cv[0],0,0);l.filter='none';
+    const h=S.cv[2].getContext('2d'), f=Math.min(1,dark/NIGHT_MAX*1.4);h.clearRect(0,0,AT_W,AT_H);
+    if(halo){for(const q of spots)if(q.c)softSpot(h,q.x,q.y,q.r*.9,0,q.c.replace(/[\d.]+\)$/,mm=>(parseFloat(mm)*f).toFixed(3)+')'));
+      rooms.forEach((z,i)=>{const lv=S.lv[i];if(lv<.01)return;for(const [x,y] of floorLamps(z))softSpot(h,x,y,2.2*AT_TS,0,`rgba(255,226,170,${(.07*lv*f).toFixed(3)})`);});}}
+  const sm=ctx.imageSmoothingEnabled;ctx.imageSmoothingEnabled=true;ctx.drawImage(S.cv[1],0,0,AT_W,AT_H);ctx.imageSmoothingEnabled=sm;
+  if(halo){ctx.save();ctx.globalCompositeOperation='lighter';ctx.drawImage(S.cv[2],0,0);ctx.restore();}
+}
+// les plafonniers d'une pièce : une flaque de lumière toutes les 3 cases (ceilingLamps du RDC, aux cases des étages)
+function floorLamps([x0,y0,x1,y1]){const xs=[], ys=[], w=x1-x0+1, h=y1-y0+1;
+  if(w<=3)xs.push((x0+x1+1)/2);else for(let x=x0+1.5;x<=x1+.5;x+=3)xs.push(x);
+  if(h<=3)ys.push((y0+y1+1)/2);else for(let y=y0+1.5;y<=y1+.5;y+=3)ys.push(y);
+  return xs.flatMap(x=>ys.map(y=>[x*AT_TS,y*AT_TS]));}
+// chacun lisible (le voile s'ouvre autour de lui, comme au RDC) ; ceux qui travaillent ont leur lampe de bureau et leur écran
+function floorPeopleSpots(people){const out=[];
+  for(const [c] of people){if(!c.sprite||!c.pos||c.ghost)continue;const {x,y}=c.pos;out.push({x,y:y-26,r:30,a:.8});
+    if(c._st&&['run','gate','err'].includes(c._st.st)&&!c.moving)out.push({x:x+10,y:y-20,r:30,a:.85,c:'rgba(255,214,150,.18)'},{x,y:y-34,r:16,a:.6,c:'rgba(120,200,255,.14)'});}
+  return out;}
+// la lampe du bureau du boss, toujours allumée (comme au RDC)
+const floorBossLamp=(x,F)=>({x,y:F-14,r:46,a:.85,c:'rgba(255,214,150,.2)'});
+const AT_NIGHT={};
+function atNight(slots,now){
+  const rects=[], spots=[];
+  slots.forEach((r,i)=>{const sweep=AT_MEM.clean&&AT_MEM.clean.stop.i===i;if(!r&&!sweep)return;const g=AT_G[i];
+    rects.push([g.x0*AT_TS,g.y0*AT_TS,(g.x1-g.x0)*AT_TS,(g.y1-g.y0)*AT_TS,r?.45:.25]);
+    if(!r)return;
+    for(const p of AT_DESKS){const s=atSpot(g,p.k), y=s.row===1?g.feet1:g.feet2;spots.push({x:s.x,y:y-24,r:1.7*AT_TS,a:.9});} // chaque poste, sous sa lampe
+    spots.push({x:(g.bx0+g.bx1)/2,y:(g.b1+g.b2)/2+g.H/2,r:(g.bx1-g.bx0)/2,a:.5});}); // le tapis
+  for(const h of AT_HITS)if(h.kind==='agent'||h.kind==='bernard'||h.kind==='cleaner'||h.kind==='pompier')spots.push({x:h.x+14,y:h.y+30,r:42,a:.95});
+  for(const q of AT_LIT)spots.push({x:q.x,y:q.y-26,r:42,a:.95}); // comme au RDC (42-light.js) : le boss, et ceux qui marchent, dans leur lumière
+  spots.push({x:AT_CHAIR.x,y:AT_CHAIR.y-14,r:3.2*AT_TS,a:.9}, // la lampe du bureau du boss, toujours allumée
+    {x:23*AT_TS,y:2.6*AT_TS,r:6*AT_TS,a:.7}, // le grand tableau
+    {x:46*AT_TS-10,y:AT_HY0*AT_TS+20,r:40,a:.5},{x:1.1*AT_TS,y:AT_HY1*AT_TS-20,r:30,a:.5}); // la sortie, la machine à café
+  floorNight(AT_NIGHT,{rects,spots,track:AT_LIT},now);
 }
 // ---------- l'image ----------
 function renderAtelier(now){
@@ -732,7 +785,7 @@ function renderAtelier(now){
   atBoard(slots);
   const hp=atPickedAt();if(hp)selHalo(hp.x,hp.y-26,AT_W,AT_H); // comme au RDC : le plan s'assombrit autour de celui qu'on a choisi
   atPicked(slots,now);
-  if(!atLive()){const s='⏪ Rejeu · '+hm(T)+' · l\'étage à cette heure-là';ctx.font='bold 12px system-ui,sans-serif';atPill(s,14+ctx.measureText(s).width/2,14,'#c9a227','#1c1c1c','bold 12px system-ui,sans-serif');}
+  atReplayPill();
 }
 // où est celui qu'on a choisi : un agent (à sa place ou en promenade), ou le boss (sa fiche ouverte à l'étage)
 function atPickedAt(){

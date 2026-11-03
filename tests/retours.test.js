@@ -134,3 +134,32 @@ test("galerie : au 3e, ses scènes ; la démonstration rend le relevé tel quel"
   p.run('demoEnd();');
   assert.equal(p.run('RETOURS === __R'), true);
 });
+
+test("le boss du couloir : assis au bureau du RDC quand rien ne l'attend, debout pour aller à la barrière", () => {
+  const {p, J} = page();
+  p.run(`RETOURS = retoursDemo(); var __dc = drawChar, __b = []; drawChar = (c, n) => { if (c.boss) __b.push({tile: c.tile, pose: c.pose}); return __dc(c, n); };
+    RETOURS.rooms.forEach(r => { r.gate = null; }); RT_MEM = rtMem0(); setFloor(3); renderRetours(1000);`);
+  assert.deepEqual(J('__b.pop()'), {tile: J('BOSS_SEAT'), pose: 'stand'}, 'assis, sans danser');
+  p.run(`RETOURS = retoursDemo(); RT_MEM = rtMem0(); renderRetours(1100); drawChar = __dc;`);
+  assert.equal(J('__b.pop().tile'), null, 'une PR attend : il est debout à la barrière');
+});
+
+test("les portes des bureaux : la porte en bois de l'entrée du RDC, sur le couloir (comme au 2e)", () => {
+  const {p, J} = page();
+  p.run(`var __d = []; var __ad = woodDoor; woodDoor = (...a) => { __d.push(a.slice(1)); return __ad(...a); }; rtBackground(); rdBackground(); woodDoor = __ad;`);
+  const d = J('__d'), T = J('AT_TS');
+  assert.equal(d.length, 8, 'une par bureau du 3e, deux au 2e');
+  for (const [x, y, w, h, n, vert] of d.slice(0, 6)) { assert.deepEqual([w, n, vert], [2 * T, 2, false]); assert.ok(h >= 8); }
+  for (const [, , w, h, n, vert] of d.slice(6)) assert.deepEqual([w, h, n, vert], [12, 2.5 * T, 2, true]);
+});
+
+test("comme au 1er : les fenêtres au ciel de l'heure aux 2e et 3e, et la pastille du rejeu aux 2e, 3e et -1", () => {
+  const {p, J} = page();
+  const T = J('AT_TS'), name = 7 * T; // le nom de l'étage, en haut à gauche
+  for (const w of ['RD_WINDOWS', 'RT_WINDOWS']) { assert.ok(J(w + '.length') >= 8); assert.ok(J(w).every(x => x * T > name - 20 && x * T + 1.5 * T < 46 * T), w); }
+  p.run(`RETOURS = retoursDemo(); SUPPORT = supportDemo(); var __ap = atPill, __pl = []; atPill = (s, ...a) => { __pl.push(s); return __ap(s, ...a); };
+    setMode('pause'); setFloor(2); renderRedaction(1000); setFloor(3); renderRetours(1000); setFloor(-1); renderCaserne(1000);`);
+  assert.equal(J("__pl.filter(s => /^⏪ Rejeu/.test(s)).length"), 3, 'une par étage');
+  p.run(`__pl = []; setMode('live'); setFloor(3); renderRetours(1100); atPill = __ap;`);
+  assert.equal(J("__pl.some(s => /^⏪ Rejeu/.test(s))"), false, 'en direct, pas de pastille');
+});

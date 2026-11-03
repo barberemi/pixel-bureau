@@ -6,8 +6,17 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ## [Unreleased]
 
+### Ajouté
+
+- Un dessin du boss par étage : `atelier_sprite` (1er) et `redaction_sprite` (2e) dans le roster du pack, comme `captain_sprite` au -1 ; sa fiche garde son portrait.
+- `tools/lpc_sheet.py` : une planche LPC générée devient une planche du Bureau, avec la marche de côté réparée (images tournées, pieds à l'envers, jambes qui ne se rejoignent pas), le liseré du détourage retiré, et au besoin un personnage étoffé (tête plus grande, jambes plus larges).
+
 ### Corrigé
 
+- 2e, 3e et -1 : en rejeu, la pastille « ⏪ Rejeu · l'étage à cette heure-là » du 1er ; aux 2e et 3e, les fenêtres du RDC, dont le ciel suit le soleil (étoiles la nuit, effets des thèmes).
+- 2e, 3e et -1 : la nuit comme au RDC. Le voile monte au crépuscule avec la teinte du soir (il basculait d'un coup), chaque pièce où l'on travaille s'allume en fondu avec ses plafonniers (salle de rédaction, bureaux de revue, bureaux du 3e, baies du -1), chaque agent au travail a sa lampe et son écran, et la lampe du bureau du boss reste allumée. Hors des heures de bureau, la veilleuse reste, même en plein jour le week-end. Une seule lumière du soir pour tous les étages (floorNight). Une scène « Le soir au 2e » dans la galerie ; celles du 3e et du -1 décrivent la nouvelle nuit.
+- 2e et 3e étages : leurs portes sont la porte en bois de l'entrée du RDC (au 3e, à la place d'un trait clair sur le mur).
+- 2e et 3e étages : le boss ne danse plus à son bureau ; il y est assis, plus bas, au bureau du RDC (« WORLD'S BEST BOSS », écran, tasse), le tampon posé dessus au 2e.
 - 2e étage : il se dessine de nouveau (seul le sol s'affichait depuis son arrivée) ; un test vérifie que la page n'appelle que de vrais membres du canvas.
 - Créer un ticket : la validation se fait sur la liste des tickets, dans le parent, car Kronn refuse une gate dans un sous-workflow (le modèle d'avant ne s'installait pas). **Changements** renvoie à la rédaction avec tes retours (« retire T2 », « fusionne T1 et T3 ») ; chaque ticket n'a plus que sa création. Un test vérifie qu'aucun modèle lancé en sous-workflow n'a de gate. Après la mise à jour : `python3 tools/install.py`, puis `publish.py all`.
 - Fil de la journée : le ménage du soir passe aussi par le -1 (« a fini le 1er étage, il descend au -1 ») ; « tout est propre » arrive à la fin de sa tournée, plus à la fin du 1er. Après la mise à jour : `publish.py page`.

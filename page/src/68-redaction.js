@@ -11,6 +11,7 @@
 const RD_POSTES=[{k:'recherche',i:'📚',n:'Recherche'},{k:'redaction',i:'✍',n:'Rédaction'},{k:'critique',i:'🧐',n:'Critique'},{k:'valider',i:'✋',n:'Toi'}];
 const RD_TK={wait:['#f7e07a','attend la critique'],run:['#9fd4ff','en cours'],gate:['#ffcf4a','t\'attend'],ok:['#b6e3a8','créé'],ecarte:['#d8d2c4','écarté'],err:['#f4a3a3','en panne']};
 const RD_X1=19.5, RD_VX=23, RD_SH0=['dm/site','dm/mobile','dm/api','dm/outils'];
+const RD_WINDOWS=[7.5,10.5,13.5,16.5,25,28.5,32,35.5,39,42.5]; // en cases : à droite du nom de l'étage, comme au RDC
 const RD_DESK={x:15.6*AT_TS,y:23.4*AT_TS}, RD_JIRA={x:17.8*AT_TS,y:25.6*AT_TS}, RD_CORK={x:1.6*AT_TS,y:9.4*AT_TS};
 let REDACTION=null, RDSEL=null, RD_HITS=[], RD_LIT=[], RD_MEM={last:0};
 function readRedaction(src){
@@ -58,6 +59,7 @@ function rdBackground(){
   for(let y=0;y<27;y++)for(let x=0;x<46;x++)drawFloor(g,x,y,x<RD_X1?'wood':x<RD_VX?'tiles':'carpet');
   R(g,0,0,AT_W,T,'#4b4a52');R(g,0,T,AT_W,8,'#efe9dc');R(g,0,T+8,AT_W,24,'#d9d2c3');R(g,0,T+28,AT_W,4,'#a99f8c');
   for(const x of [RD_X1,RD_VX]){R(g,x*T-3,2*T,6,10.5*T,'#7d776c');R(g,x*T-3,15*T,6,12*T,'#7d776c');}
+  for(const x of [RD_X1,RD_VX])woodDoor(g,x*T-6,12.5*T,12,2.5*T,2,true); // les portes de la rédaction et de la revue, sur le couloir
   const sx=(RD_X1+RD_VX)/2*T;R(g,sx-40,24*T,80,2.6*T,'#8a8478');for(let k=0;k<5;k++)R(g,sx-40,24*T+k*16,80,3,'#a9a397');
   g.font='bold 11px ui-monospace,Menlo,monospace';g.fillStyle='#5a4636';g.fillText('2E · RÉDACTION ET REVUE',12,T+20);
   return c;
@@ -123,12 +125,15 @@ function rdRoom(now,people){
   rdBench(people,3.4*T,24.6*T,[63,64],'presse');
 }
 function rdBoss(people,tks,now){
-  const {x,y}=RD_DESK, boss=chars.find(c=>c.boss);R(ctx,x-22,y-52,44,32,'#5a2e2e');R(ctx,x-22,y-52,44,4,'#723a3a');
-  const g=tks.findIndex(t=>t.etat==='gate');
-  if(boss){const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x,y:y-14},tile:null,dir:'down',moving:false,pose:'type',present:true,_st:{st:g>=0?'gate':'idle'}});
-    people.push([c,null,false,()=>{if(g>=0)atBubble(x,y-80,'✋ '+plural(tks.filter(t=>t.etat==='gate').length,'ticket','tickets')+' : je tamponne ?','#8a5a00');}]);RD_LIT.push({x,y:y-14});atHitRd('boss',x-16,y-70,32,60,{});}
-  rdLate(people,()=>{R(ctx,x-56,y-22,112,26,'#6e4a2c');R(ctx,x-56,y-24,112,4,'#8a6040');R(ctx,x-30,y-12,60,10,'#2a2a30');atTxt('LE BOSS',x,y-4,'#f2d22a','bold 8px ui-monospace,Menlo,monospace');
-    R(ctx,x+26,y-34,12,10,'#c8323a');R(ctx,x+29,y-40,6,6,'#1c1c1c');atPill('✋ le tampon : tu valides les tickets, puis ils partent un par un',x-40,y+18,g>=0?'#8a5a00':'#f4efe4',g>=0?'#fff':'#3a3530','bold 9px system-ui,sans-serif');},y);
+  const {x,y}=RD_DESK, boss=chars.find(c=>c.boss), g=tks.filter(t=>t.etat==='gate').length;
+  atBossChair(x,y);
+  // le bureau du RDC ; au milieu, l'encreur et le tampon (la tasse poussée au bout)
+  const desk=()=>{atBossDesk(x,y,now,boss,(x0,top)=>{R(ctx,x0+40,top+5,22,8,'#2a2a30');R(ctx,x0+42,top+6,18,5,'#7a1f24');
+      R(ctx,x0+66,top-2,12,9,'#c8323a');R(ctx,x0+66,top-2,12,2,'#e0525a');R(ctx,x0+70,top-9,4,7,'#1c1c1c');R(ctx,x0+68,top-12,8,4,'#2c2c2c');},84);
+    if(g)atBubble(x,y-62,'✋ '+plural(g,'ticket','tickets')+' : je tamponne ?','#8a5a00');};
+  if(boss){people.push([withFloorSprite(atSeatedBoss(boss,x,y,g?'gate':'idle'),boss,'redaction_sprite'),null,false,desk]);RD_LIT.push({x,y});atHitRd('boss',x-16,y-60,32,60,{});}
+  else rdLate(people,desk,y);
+  rdLate(people,()=>atPill('✋ le tampon : tu valides les tickets, puis ils partent un par un',x-40,y+30,g?'#8a5a00':'#f4efe4',g?'#fff':'#3a3530','bold 9px system-ui,sans-serif'),y);
 }
 // un banc comme au 1er : ceux qui ne travaillent pas s'y assoient (descendus dans l'assise, qui leur cache les jambes)
 function rdBench(people,x,y,ks,hat){atSofa(x,y);ks.forEach((k,j)=>{const a=atWorker(k,x+(j?22:-22),y+9,'down',false,'');if(!a)return;a._st={st:'idle'};a.pose='stand';
@@ -157,24 +162,23 @@ function rdRevue(now,people){
   const sx=(RD_X1+RD_VX)/2*T;atCoffee(sx,6.4*T);atPlant(sx-36,20*T);atPlant(sx+36,20*T);
   rdLate(people,()=>atPill('⇅ escalier · RDC',sx,23.6*T,'#5a4636','#fff','bold 9px ui-monospace,Menlo,monospace'),1e6);
 }
-// ---------- nuit : la veilleuse ; ceux au travail et le boss gardent leur lumière ----------
-let RD_NIGHT_CV=null, RD_NIGHT_AT=0;
-function rdNight(now){
-  if(atOpen())return;
-  const W_=AT_W/LQ, H_=AT_H/LQ;if(!RD_NIGHT_CV)RD_NIGHT_CV=[lightCanvas(W_,H_),lightCanvas(W_,H_)];
-  if(now-RD_NIGHT_AT>200||!RD_NIGHT_AT){RD_NIGHT_AT=now;const m=RD_NIGHT_CV[0].getContext('2d');m.setTransform(1,0,0,1,0,0);m.globalCompositeOperation='source-over';m.clearRect(0,0,W_,H_);
-    m.fillStyle='rgba(10,14,40,.55)';m.fillRect(0,0,W_,H_);m.setTransform(1/LQ,0,0,1/LQ,0,0);m.globalCompositeOperation='destination-out';
-    for(const q of RD_LIT)softSpot(m,q.x,q.y-26,40,.85);
-    const l=RD_NIGHT_CV[1].getContext('2d');l.clearRect(0,0,W_,H_);l.filter='blur(3px)';l.drawImage(RD_NIGHT_CV[0],0,0);l.filter='none';}
-  const sm=ctx.imageSmoothingEnabled;ctx.imageSmoothingEnabled=true;ctx.drawImage(RD_NIGHT_CV[1],0,0,AT_W,AT_H);ctx.imageSmoothingEnabled=sm;
+// ---------- la nuit, comme au RDC (floorNight) : la salle de rédaction s'allume tant qu'une intention y est, chaque bureau de
+// la revue quand une PR y est lue ; la lampe du bureau du boss reste allumée ; hors des heures de bureau, la veilleuse ----------
+const RD_NIGHT={};
+function rdNight(people,now){
+  const T_=AT_TS, l=rvActive(), rooms=[[0,2,Math.ceil(RD_X1)-1,26,!!rdTable()]];
+  for(let k=0;k<6;k++){const cx=28.5+(k%3)*6.3, f=k<3?9.2:18.4;rooms.push([Math.round(cx-2.5),Math.round(f-3),Math.round(cx+2.5),Math.round(f+3),!!l[k]]);}
+  floorNight(RD_NIGHT,{rooms,closed:!atOpen(),track:RD_LIT,spots:[...floorPeopleSpots(people),...RD_LIT.map(q=>({x:q.x,y:q.y-26,r:42,a:.95})),
+    floorBossLamp(RD_DESK.x,RD_DESK.y),{x:(RD_X1+RD_VX)/2*T_,y:24.6*T_,r:1.6*T_,a:.45}]},now); // l'escalier
 }
 function rdReset(){RD_MEM={last:0};RDSEL=null;}
 function renderRedaction(now){
-  RD_MEM.last=now;if(!RD_BG)RD_BG=rdBackground();ctx.drawImage(RD_BG,0,0);RD_HITS=[];RD_LIT=[];
+  RD_MEM.last=now;if(!RD_BG)RD_BG=rdBackground();ctx.drawImage(RD_BG,0,0);atWindows(now,RD_WINDOWS);RD_HITS=[];RD_LIT=[];
   const people=[];rdRoom(now,people);rdRevue(now,people);
   people.sort((a,b)=>a[0].pos.y-b[0].pos.y).forEach(([c,d,before,after])=>{if(d)d();if(c.sprite)drawChar(c,now);if(after)after();});
-  rdNight(now);
-  const b=chars.find(c=>c.boss);if(b&&sel===b.key)selHalo(RD_DESK.x,RD_DESK.y-40,AT_W,AT_H);
+  rdNight(people,now);
+  const b=chars.find(c=>c.boss);if(b&&sel===b.key)selHalo(RD_DESK.x,RD_DESK.y-26,AT_W,AT_H);
+  atReplayPill();
 }
 function atHitRd(kind,x,y,w,h,ref){RD_HITS.push({kind,x,y,w,h,...ref});}
 function rdHitAt(e){const r=cv.getBoundingClientRect(), mx=(e.clientX-r.left)*AT_W/r.width, my=(e.clientY-r.top)*AT_H/r.height;
@@ -217,7 +221,7 @@ function tvRedactionHtml(){
 // ---------- la loupe, le fil du RDC, ⌘K, la galerie ----------
 function rdLoupeEvents(){
   const out=[], t=rdTable(), boss=chars.find(c=>c.boss);
-  if(t&&(t.tickets||[]).some(x=>x.etat==='gate')){const p=atPt(RD_DESK.x,RD_DESK.y-14,boss?boss.name:'Le boss','','rd_gate');p._st={st:'rd_gate',label:'✋ Un ticket attend ton tampon'};out.push({id:'rd_gate:'+t.run,kind:'rd_gate',cs:[p,atPt(RD_JIRA.x,RD_JIRA.y,'','','rd_gate')]});}
+  if(t&&(t.tickets||[]).some(x=>x.etat==='gate')){const p=atPt(RD_DESK.x,RD_DESK.y,boss?boss.name:'Le boss','','rd_gate');p._st={st:'rd_gate',label:'✋ Un ticket attend ton tampon'};out.push({id:'rd_gate:'+t.run,kind:'rd_gate',cs:[p,atPt(RD_JIRA.x,RD_JIRA.y,'','','rd_gate')]});}
   return out;
 }
 function rdGoto(run){if(!redactionOn())return;if(FLOOR!==2)setFloor(2);RDSEL=run;SIDE_FOLDED=false;renderSide(true);}
@@ -239,5 +243,7 @@ function rdGalleryScenes(){
     {fam,ico:'✋',n:'Le tampon',d:'Les tickets sont relus : le boss les tamponne, tes changements renvoient à la rédaction',w:'Avant leur création',ok,
       play:{len:15e3,speed:1,setup:rdDemo(d=>{const t=d.tables[0];if(t){t.poste='valider';t.tickets.forEach(x=>{x.etat='gate';});}})}},
     {fam,ico:'🎫',n:'Les tickets partent dans Jira',d:'Tamponnés, ils sont créés un par un : les brins du fil rouge vont jusqu\'à la boîte Jira',w:'Tu approuves chaque ticket',ok,
-      play:{len:15e3,speed:1,setup:rdDemo(d=>{const t=d.tables[0];if(t){t.poste='valider';t.tickets.forEach(x=>{x.etat='ok';});}})}}];
+      play:{len:15e3,speed:1,setup:rdDemo(d=>{const t=d.tables[0];if(t){t.poste='valider';t.tickets.forEach(x=>{x.etat='ok';});}})}},
+    {fam,ico:'🌙',n:'Le soir au 2e',d:'Le soir et le week-end, comme au RDC : la salle de rédaction et les bureaux de revue occupés s\'allument comme des pièces, les bureaux libres restent dans l\'ombre, le boss lit sous sa lampe',w:'Hors des heures de bureau',ok,
+      play:{len:20e3,speed:60,setup:s=>{rdDemo(()=>{})();const n=parisMidnight(s)+22.5*36e5;T=n;SCENE_DEMO.e=n+20e3*60;}}}];
 }

@@ -32,7 +32,8 @@ pixel-bureau/
 │   ├── install.py, uninstall.py, publish.py, templates.py
 │   ├── plan.py, plan_prompt.md  # vérif/aperçu/partage des plans, brouillon depuis une image (CLI claude)
 │   ├── test.sh, smoke.py, cdp.py  # tests + contrôle de fumée (Chrome headless) ; theme.py : contrastes d'un thème
-│   └── shots.py               # captures de la doc -> guide/img/
+│   ├── shots.py               # captures de la doc -> guide/img/
+│   └── lpc_sheet.py           # planche LPC générée -> planche du Bureau (marche de côté réparée), pour un pack
 ├── tests/                     # *.test.js (node --test), test_*.py (unittest), fixtures/, helpers/page.js
 ├── layouts/                   # plans de bureau bureau-layout/1 : open-space (type), exemple-startup
 ├── team/                      # defaults.json (valeurs proposées à l'installation), guests.json (invités communs)

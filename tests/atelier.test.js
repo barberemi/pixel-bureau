@@ -337,7 +337,7 @@ test('le soir, comme au RDC : le boss et ceux qui se promènent ont leur lumièr
   saturdayNight(p);
   p.run(`AT_MEM.wander = []; for (let n = 0; n < 40; n++) atWanderTick(atSlots(), n * 100, .1, () => 0);
     var __sp = [], __so = softSpot; softSpot = (g, x, y, r, a, c) => { __sp.push([Math.round(x), Math.round(y)]); __so(g, x, y, r, a, c); };
-    AT_NIGHT_AT = 0; renderAtelier(1000); AT_NIGHT_AT = 0; __sp = []; renderAtelier(1300); softSpot = __so;`);
+    AT_NIGHT.at = 0; renderAtelier(1000); AT_NIGHT.at = 0; __sp = []; renderAtelier(1300); softSpot = __so;`);
   assert.ok(J2('AT_MEM.wander.length') > 0, 'des agents se promènent');
   const lit = (x, y) => J2(`__sp.some(([a, b]) => a === ${Math.round(x)} && b === ${Math.round(y)})`);
   const b = J2('AT_MEM.boss.walk.pos');
@@ -439,4 +439,18 @@ test('le ménage du 1er : il balaie en parcourant chaque bureau et l\'entrepôt,
   }
   assert.equal(pts[80], null, 'arrivé à la sortie, il est reparti');
   p.run('atCleanVisit = __cv;');
+});
+
+test("atelier_sprite : le boss du 1er est dessiné avec son dessin de l'étage, sinon avec le sien ; ailleurs, le sien", () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
+  p.run(`CFG.atelier = true; FLOOR = 1; ATELIER = {rooms: [], queue: [], pannes: []}; var __b = chars.find(c => c.boss), __d = drawChar, __seen = [];
+    drawChar = (c, now) => { if (c.key === __b.key) __seen.push(c.sprite); __d(c, now); };`);
+  const drawn = () => { p.run('__seen = []; renderAtelier(2000);'); return J2('__seen[0]'); };
+  assert.equal(drawn(), J2('__b.sprite'), 'sans réglage : son sprite de boss');
+  p.run(`__b.atelier_sprite = 'cs_pomp0';`);
+  assert.equal(drawn(), 'cs_pomp0', 'réglé : il prend ce sprite au 1er');
+  assert.equal(J2('__b.sprite !== "cs_pomp0"'), true, 'le boss garde son sprite (RDC, 3e, fiche)');
+  p.run(`__b.atelier_sprite = 'absent_du_pack';`);
+  assert.equal(drawn(), J2('__b.sprite'), 'sprite introuvable : repli sur le sien');
+  p.run('delete __b.atelier_sprite; drawChar = __d;');
 });
