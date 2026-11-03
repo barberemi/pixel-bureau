@@ -9,6 +9,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 ### Ajouté
 
 - Un dessin du boss par étage : `atelier_sprite` (1er) et `redaction_sprite` (2e) dans le roster du pack, comme `captain_sprite` au -1 ; sa fiche garde son portrait.
+- `tools/lpc_sheet.py` : une planche LPC générée devient une planche du Bureau, avec la marche de côté réparée (images tournées, pieds à l'envers, jambes qui ne se rejoignent pas), le liseré du détourage retiré, et au besoin un personnage étoffé (tête plus grande, jambes plus larges).
 
 ### Corrigé
 
