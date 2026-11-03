@@ -8,11 +8,14 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
+- Étages : « Comment lire le plan » suit l'étage affiché, un onglet à la fois (au RDC Qui, Où, États, Enveloppes ; aux étages Qui, Où, Postes, Moments ; partout 🎬 Scènes) ; la légende sous le plan aussi. L'onglet Postes se tire de la liste des postes de l'étage : un poste ajouté y paraît avec sa phrase. Les boutons d'étage passent en court (🏢 RDC, 🏭 1er…), le nom entier au survol. Guide : [Le plan](guide/fonctionnalites/01-plan.md). Après la mise à jour : `publish.py page`.
+- 2e et 3e étages : l'escalier devient la porte en bois de l'entrée du RDC, collée au bord ; Bernard et les auteurs en sortent par derrière, elle s'ouvre à leur passage, et la nuit le panneau SORTIE vert s'allume au-dessus, comme au RDC. Au 2e, cinq scènes de la revue des PR dans la galerie (la fournée du cron, le relecteur prend un dossier, l'avis est posté, l'auteur repart, une revue à la demande) ; au 1er, « Le soir au 1er ».
 - Un dessin du boss par étage : `atelier_sprite` (1er) et `redaction_sprite` (2e) dans le roster du pack, comme `captain_sprite` au -1 ; sa fiche garde son portrait.
 - `tools/lpc_sheet.py` : une planche LPC générée devient une planche du Bureau, avec la marche de côté réparée (images tournées, pieds à l'envers, jambes qui ne se rejoignent pas), le liseré du détourage retiré, et au besoin un personnage étoffé (tête plus grande, jambes plus larges).
 
 ### Corrigé
 
+- Galerie des scènes : au 1er, une scène ne se jouait qu'au deuxième clic (passer en démonstration était pris pour un saut du curseur) ; au 3e, « Une PR monte au 3e » et « La PR est poussée » ne se jouaient jamais.
 - Les étages se lisent mieux : la page n'est plus plafonnée à 1360 px, le plan prend toute la colonne sans dépasser la hauteur de l'écran ; aux étages, aucun texte sous 10 px, et un poste au repos ou fini ne montre que son icône (le nom au survol) ; au 1er, le tableau de l'orchestrateur garde le tour et les jetons, en plus gros, sans le titre du ticket ; au RDC, les étiquettes des personnages passent à 10 px.
 - 2e, 3e et -1 : en rejeu, la pastille « ⏪ Rejeu · l'étage à cette heure-là » du 1er ; aux 2e et 3e, les fenêtres du RDC, dont le ciel suit le soleil (étoiles la nuit, effets des thèmes).
 - 2e, 3e et -1 : la nuit comme au RDC. Le voile monte au crépuscule avec la teinte du soir (il basculait d'un coup), chaque pièce où l'on travaille s'allume en fondu avec ses plafonniers (salle de rédaction, bureaux de revue, bureaux du 3e, baies du -1), chaque agent au travail a sa lampe et son écran, et la lampe du bureau du boss reste allumée. Hors des heures de bureau, la veilleuse reste, même en plein jour le week-end. Une seule lumière du soir pour tous les étages (floorNight). Une scène « Le soir au 2e » dans la galerie ; celles du 3e et du -1 décrivent la nouvelle nuit.
