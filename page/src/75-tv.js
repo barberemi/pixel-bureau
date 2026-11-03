@@ -69,8 +69,8 @@ function tvAtelierHtml(){
 // alternance de l'écran mural (?floor=alt) : 60 s sur l'open space, 40 s sur un étage occupé (tickets à l'atelier,
 // interventions à la caserne), dans l'ordre RDC, 1er, -1 ; un étage qui se vide rend la main au RDC
 let TV_FLOOR_ALT=false, TV_FLOOR_AT=0;
-const floorBusy=f=>f===0||(f===1?atRooms().length>0:f===-1?csActive().length>0:false);
-const FLOOR_CYCLE=[0,1,-1], FLOOR_NAME={0:'🏢 RDC',1:'🏭 1er étage','-1':'🚒 -1 caserne'};
+const floorBusy=f=>f===0||(f===1?atRooms().length>0:f===-1?csActive().length>0:f===3?rtRooms().length>0:false);
+const FLOOR_CYCLE=[0,1,3,-1], FLOOR_NAME={0:'🏢 RDC',1:'🏭 1er étage',3:'🛠 3e retours','-1':'🚒 -1 caserne'};
 function nextFloor(busy){const l=FLOOR_CYCLE.filter(f=>floorsOn().includes(f)&&(!busy||floorBusy(f)));return l[(l.indexOf(FLOOR)+1)%l.length]??0;}
 function tvFloorTick(now){
   if(!TV||!TV_FLOOR_ALT||floorsOn().length<2)return;
@@ -81,7 +81,7 @@ function tvFloorTick(now){
 }
 function renderTvWho(){
   const box=document.getElementById('tvwho');if(!box)return;
-  if(FLOOR){const h=FLOOR===1?tvAtelierHtml():tvCaserneHtml();if(h!==TVWHO_SIG){TVWHO_SIG=h;box.innerHTML=h;}return;} // 68-caserne.js : au -1, les baies
+  if(FLOOR){const h=FLOOR===1?tvAtelierHtml():FLOOR===3?tvRetoursHtml():tvCaserneHtml();if(h!==TVWHO_SIG){TVWHO_SIG=h;box.innerHTML=h;}return;} // 68-caserne.js : au -1, les baies
   const team=whoCards(T,true), agents=whoCards(T).filter(x=>!x.c.person&&!x.c.visitor&&!x.c.guest);
   const html='<h2>Qui fait quoi</h2>'+team.map(x=>tvWhoCard(x,x.c.name)).join('')+
     (agents.length?`<h2>Les agents</h2>`+agents.map(x=>tvWhoCard(x,labelText(x.c))).join(''):'')+atTvWhoHtml(T)+tvDeparts(); // 69-atelier-rdc.js, 62-departs.js

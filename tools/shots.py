@@ -282,6 +282,11 @@ SHOTS = {
     # -1, la caserne Support : deux interventions de la démo (une au poste Cause, une réponse à valider, le capitaine à
     # la vanne) et une baie libre ; puis la caserne au calme, le soir : la garde dort sur les lits de camp
     "caserne": (1600, 1100, AT(11) + "setFloor(-1);", None),
+    # 3e étage, les retours de PR : les cinq PR de la démo (deux validations, le boss à la plus ancienne, l'autre en file),
+    # puis la fenêtre Kanban du bureau 1 (le fil traité encadré de rouge), puis l'étage le soir
+    "retours": (1600, 1100, AT(11) + "setFloor(3);", None),
+    "retours-kanban": (1600, 1100, AT(11) + "setFloor(3);rtKbOpen('demo-f1');", None),
+    "retours-calme": (1600, 1100, AT(22.5) + "RETOURS={...RETOURS,rooms:RETOURS.rooms.filter(r=>r.poste==='fix'),events:RETOURS.events.filter(e=>e.run==='demo-f1')};setFloor(3);", None),
     "caserne-calme": (1600, 1100, AT(22.5) + "SUPPORT={...SUPPORT,threads:SUPPORT.threads.filter(t=>!['run','gate'].includes(t.state))};setFloor(-1);", None),
     "temps-gagne-ia": (1400, 1000, AT(11) + "ACTIONS.ai_time=true;ACTION_BINDS['bureau-aitime']={ticket:'key'};"
                        "const all=[...TEAM.people.flatMap(p=>p.tickets),...(TEAM.unassigned||[])];ACTS={tickets:all.map(t=>({key:t.key})),prs:[]};"

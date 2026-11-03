@@ -53,6 +53,22 @@ VARS_KEPT = ("jira_ticket_key", "current_task.number", "current_task.author", "c
 BUREAU_IDS = {v for part in ("workflows", "actions") for v in (CFG.get(part) or {}).values() if v}
 
 
+# retours d'une PR (3e étage) : la colonne du Kanban d'un fil d'après la réponse prévue de l'agent (son icône de tête) ;
+# sans réponse : laissé (fil obsolète ou déjà traité, l'agent ne répond pas pour rien)
+FIL_COLS = ("a_traiter", "corrige", "test", "laisse", "reponse")
+
+
+def fil_col(reply):
+    r = str(reply or "")
+    if "⏭" in r or not r.strip():
+        return "laisse"
+    if "🧪" in r:
+        return "test"
+    if "✅" in r:
+        return "corrige"
+    return "reponse"
+
+
 def get(path, timeout=120):
     with urllib.request.urlopen(API + path, timeout=timeout) as r:
         body = json.load(r)

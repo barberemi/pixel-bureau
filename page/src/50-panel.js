@@ -73,7 +73,7 @@ function renderSide(force){
   const folded=SIDE_FOLDED&&innerWidth>980; // sous 980 px le panneau passe sous le plan : jamais replié
   if(innerWidth>980)sideFoldButton(side);
   document.body.classList.toggle('sidefold',folded);
-  if(!folded)(FLOOR===1?drawAtelierSide:FLOOR===-1?drawCaserneSide:drawSide)(side); // sur le 1er étage, les bureaux de l'atelier (68-atelier.js) ; au -1, les baies (68-caserne.js)
+  if(!folded)(FLOOR===1?drawAtelierSide:FLOOR===-1?drawCaserneSide:FLOOR===3?drawRetoursSide:drawSide)(side); // sur le 1er étage, les bureaux de l'atelier (68-atelier.js) ; au -1, les baies (68-caserne.js)
   restoreFields(side,kept);
   refocus(side,fid);
 }
@@ -97,7 +97,7 @@ function refreshStatus(){
 let SEL_BACK=[];
 const WIN_VIEWS={kanban:keep=>openKanban(keep||undefined),calendar:()=>openCalendar()}; // keep : retour, la fenêtre telle qu'on l'a quittée
 function backLabel(k){
-  if(k==null)return FLOOR===1?"L'atelier":FLOOR===-1?"La caserne":"Toute l'équipe"; // 68-atelier.js, 68-caserne.js : la fiche du boss ouverte à un étage revient à cet étage
+  if(k==null)return FLOOR===1?"L'atelier":FLOOR===-1?"La caserne":FLOOR===3?"Les retours":"Toute l'équipe"; // 68-atelier.js, 68-caserne.js : la fiche du boss ouverte à un étage revient à cet étage
   if(byKey[k])return byKey[k].name;
   const s=String(k);
   if(s.startsWith('mail:'))return 'Courrier';
@@ -123,7 +123,7 @@ function backButton(side){
 // Échap revient en arrière dans le panneau (ou referme l'éditeur d'avatar) ; pas pendant une fenêtre, une carte Kronn, la
 // loupe, le mode TV ou une saisie. En capture : on regarde avant que la fenêtre ou la loupe ne se referment sur la même touche.
 addEventListener('keydown',e=>{
-  const atPick=FLOOR&&sel==null&&!EDIT&&!!(FLOOR===-1?CS_SEL!=null||CS_PICK:AT_PICK||ATSEL); // 68-atelier.js, 68-caserne.js : un agent, un bureau, une baie choisis à l'étage
+  const atPick=FLOOR&&sel==null&&!EDIT&&!!(FLOOR===-1?CS_SEL!=null||CS_PICK:FLOOR===3?RTSEL!=null:AT_PICK||ATSEL); // 68-atelier.js, 68-caserne.js : un agent, un bureau, une baie choisis à l'étage
   if(e.key!=='Escape'||TV||(sel==null&&!EDIT&&!atPick))return;
   if(document.querySelector('.bp-modal')||KM_OPEN||(typeof LOUPE!=='undefined'&&LOUPE.cur))return;
   const a=document.activeElement;if(a&&/^(SELECT|INPUT|TEXTAREA)$/.test(a.tagName))return;

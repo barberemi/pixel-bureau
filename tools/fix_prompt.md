@@ -16,6 +16,8 @@ Réponses dans les fils : concises (2 à 4 lignes), en français, polies, sans f
 - `⏭️ **Laissé tel quel** : <pourquoi>` pour un point volontairement écarté ou un correctif annulé ;
 - `💬 **Réponse** : <la réponse>` pour une question ou un avis.
 
+Avancement, fil par fil (le Bureau le montre en direct) : avant de traiter un fil, puis après, réécris `.bureau-fix-progress.json` à la racine du dossier de travail : `{"current": "<id du fil en cours, ou null>", "done": {"<id>": "corrige" | "test" | "laisse" | "reponse", ...}}` (`test` : corrigé avec un test ; `laisse` : écarté, annulé ou sans réponse). Un fichier court, réécrit en entier à chaque fois ; jamais commité.
+
 À la fin, écris à la racine du dossier de travail (ces fichiers ne sont jamais commités) :
 1. `.bureau-fix-replies.json` : une liste, un objet par fil auquel tu réponds, `{"thread": "<id du fil>", "fixed": true|false, "reply": "<réponse au format ci-dessus>"}` ; `fixed` = true seulement si le point est corrigé et ses contrôles verts.
 2. `.bureau-fix-summary.md` : 3 à 6 lignes, une icône par ligne (✅ corrigé · 🧪 test · 🔁 factorisation · ⏭️ laissé de côté), puis une dernière ligne `🧪 Contrôles : <commandes lancées et verdict, ou pourquoi aucune>`.

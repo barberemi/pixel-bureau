@@ -230,6 +230,68 @@
      ]
     },
     "_requires": "models.impl_chain"
+   },
+   {
+    "name": "retours",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "Bureaux de l'étage des retours de PR (3e étage) : runs du modèle « corriger les commentaires d'une PR » et le Kanban de leurs fils, 0 token.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "snap",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/retours_snapshot.py@@"
+        ],
+        "timeout_secs": 30,
+        "output_format": "json"
+       },
+       "required": false
+      }
+     ],
+     "concurrent_limit": 1
+    },
+    "_requires": "actions.fix_pr"
+   },
+   {
+    "name": "publish_retours",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset retours de la page Le Bureau.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "retours",
+       "operation": "replace",
+       "value_from": "steps.retours.data.sources.snap"
+      }
+     ]
+    },
+    "_requires": "actions.fix_pr"
    }
   ],
   "actions": [],

@@ -12,7 +12,7 @@ const AT_ST={ok:['#3fbf6a','validé'],run:['#5b8def','en cours'],bloq:['#e0614f'
   skip:['#5b6070','sauté'],err:['#e0614f','en panne']};
 const AT_TS=32, AT_W=46*AT_TS, AT_H=27*AT_TS;
 let FLOOR=0, ATELIER=null, ATSEL=null;
-try{const f=+localStorage.getItem('bureau:floor');FLOOR=f===1||f===-1?f:0;}catch(e){FLOOR=0;} // -1 : la caserne Support (68-caserne.js)
+try{const f=+localStorage.getItem('bureau:floor');FLOOR=f===1||f===-1||f===3?f:0;}catch(e){FLOOR=0;} // -1 : la caserne Support (68-caserne.js) ; 3 : les retours de PR (68-retours.js)
 function readAtelier(src){
   try{
     if(!src||!src.datasets)return null;
@@ -81,7 +81,7 @@ const atSig=()=>atRooms().map(r=>r.run+':'+(r.gate||r.poste)+(r.back?'!':'')).jo
 // RDC (l'open space, par défaut), 1er (l'atelier, s'il existe), -1 (la caserne Support, si la console Support existe)
 function atelierTabs(){ // le gyrophare du -1 suit csAlarm à chaque relevé
   let t=document.getElementById('floors');
-  if(!atelierOn()&&!caserneOn()){if(t)t.remove();return;}
+  if(!atelierOn()&&!caserneOn()&&!retoursOn()){if(t)t.remove();return;}
   if(!t){t=document.createElement('div');t.id='floors';t.className='floors';t.setAttribute('role','tablist');
     const w=document.querySelector('.stage .cv-wrap');w.parentElement.insertBefore(t,w);
     t.addEventListener('click',e=>{const b=e.target.closest('button[data-floor]');if(b)setFloor(+b.dataset.floor);});}
@@ -91,21 +91,23 @@ function atelierTabs(){ // le gyrophare du -1 suit csAlarm à chaque relevé
 function floorTabsHtml(){
   const tab=(f,label)=>`<button role="tab" data-floor="${f}" aria-selected="${FLOOR===f}"${FLOOR===f?' class="on"':''}>${label}</button>`;
   const n=atRooms().length, w=atRooms().filter(r=>r.gate).length, cs=caserneOn()?csActive():[], cg=cs.filter(x=>x.s.k==='gate').length;
+  const rr=retoursOn()?rtRooms():[], rn=rr.length, rw=rr.filter(r=>r.gate).length;
   // dans l'ordre des étages, comme les boutons d'un ascenseur : -1, RDC, 1er ; le gyrophare du -1 tourne tant qu'un appel attend ou qu'une intervention est en cours (csAlarm)
   return (caserneOn()?tab(-1,`${csAlarm()?'<span class="gyro" role="img" aria-label="à traiter"></span>':''}🚒 -1 · caserne Support${cs.length?` <b>${cs.length}</b>`:''}${cg?` <b>✋ ${cg}</b>`:''}`):'')+
-    tab(0,'🏢 RDC · open space')+(atelierOn()?tab(1,`🏭 1er · atelier d'implémentation${n?` <b>${n}</b>`:''}${w?` <b>✋ ${w}</b>`:''}`):'');
+    tab(0,'🏢 RDC · open space')+(atelierOn()?tab(1,`🏭 1er · atelier d'implémentation${n?` <b>${n}</b>`:''}${w?` <b>✋ ${w}</b>`:''}`):'')+
+    (retoursOn()?tab(3,`🛠 3e · retours de PR${rn?` <b>${rn}</b>`:''}${rw?` <b>✋ ${rw}</b>`:''}`):''); // 68-retours.js
 }
 // étages qui existent, de haut en bas
-const floorsOn=()=>[...(atelierOn()?[1]:[]),0,...(caserneOn()?[-1]:[])];
+const floorsOn=()=>[...(retoursOn()?[3]:[]),...(atelierOn()?[1]:[]),0,...(caserneOn()?[-1]:[])];
 function setFloor(f){
-  FLOOR=f===1&&atelierOn()?1:f===-1&&caserneOn()?-1:0;ATSEL=null;AT_PICK=null;if(FLOOR){SEL_BACK=[];if(!(byKey[sel]&&byKey[sel].boss))sel=null;} // hors du RDC, seul le boss garde sa fiche du RDC (drawAtelierSide, drawCaserneSide)
+  FLOOR=f===1&&atelierOn()?1:f===-1&&caserneOn()?-1:f===3&&retoursOn()?3:0;ATSEL=null;AT_PICK=null;if(FLOOR){SEL_BACK=[];if(!(byKey[sel]&&byKey[sel].boss))sel=null;} // hors du RDC, seul le boss garde sa fiche du RDC (drawAtelierSide, drawCaserneSide)
   try{localStorage.setItem('bureau:floor',String(FLOOR));}catch(e){}
   if(FLOOR){cv.width=AT_W;cv.height=AT_H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(AT_W/AT_H));}
   else{cv.width=W;cv.height=H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(W/H));}
   // pas sizeCanvas() : il redimensionne aussi bg, le décor du RDC cuit une fois, et redimensionner une toile l'efface
   // seul l'étage affiché vit : en arrivant à un étage, il se pose sans rejouer ce qui s'est passé ; au RDC, chacun reprend sa place
   if(FLOOR===1){AT_MEM.fresh=true;AT_MEM.src=null;AT_MEM.boss=null;AT_MEM.scenes=[];AT_MEM.leaving=[null,null,null,null];}
-  else if(FLOOR===-1)csReset();else needTeleport=true;
+  else if(FLOOR===-1)csReset();else if(FLOOR===3)rtReset();else needTeleport=true;
   if(typeof LOUPE!=='undefined'){LOUPE.seen=null;LOUPE.queue=[];if(LOUPE.cur)loupeHide();}
   atelierTabs();renderSide(true);if(TV)updateTv(true); // 75-tv.js : la colonne et le bouton d'étage
   {const det=document.querySelector('.legend-help');if(det&&det.open&&typeof renderGallery==='function')renderGallery();} // 46-gallery.js : les scènes de cet étage
@@ -229,8 +231,8 @@ function atBossPath(from,i){
   return pts;
 }
 // promeneurs : dans un bureau libre, de temps en temps un agent sort (café, canapé, couloir), puis revient à sa place
-const AT_SPOTS=[{x:14.3*AT_TS,y:AT_HY0*AT_TS+38,dir:'down',sit:1},{x:15.7*AT_TS,y:AT_HY0*AT_TS+38,dir:'down',sit:1},
-  {x:30.3*AT_TS,y:AT_HY0*AT_TS+38,dir:'down',sit:1},{x:31.7*AT_TS,y:AT_HY0*AT_TS+38,dir:'down',sit:1},
+const AT_SPOTS=[{x:14.3*AT_TS,y:AT_HY0*AT_TS+47,dir:'down',sit:1},{x:15.7*AT_TS,y:AT_HY0*AT_TS+47,dir:'down',sit:1}, // assis : descendus dans l'assise
+  {x:30.3*AT_TS,y:AT_HY0*AT_TS+47,dir:'down',sit:1},{x:31.7*AT_TS,y:AT_HY0*AT_TS+47,dir:'down',sit:1},
   {x:2.3*AT_TS,y:AT_HY1*AT_TS-8,dir:'left'},{x:6*AT_TS,y:AT_MY,dir:'down'},{x:40*AT_TS,y:AT_MY,dir:'down'}];
 function atHome(i,k){const g=AT_G[i], s=atSpot(g,k);return {x:s.x,y:s.row===1?g.feet1:g.feet2};}
 // de sa place au couloir horizontal, par les allées et la porte (jamais à travers le tapis) ; la rangée du côté de la
@@ -721,7 +723,7 @@ function renderAtelier(now){
     const [dx,dy]={left:[-20,0],right:[20,0]}[m.dir]||[20,2];
     people.push([a,()=>drawCart({x:m.x+dx,y:m.y+dy}),false,()=>{if(!m.moving)E('🧹',m.x,m.y-66,12);}]);atHit('cleaner',m.x-14,m.y-56,28,58,{});}
   atBoss(slots,now,dt,people);
-  people.push([{pos:{x:0,y:AT_HY0*AT_TS+44}},null,false,()=>{atSofaFront(15*AT_TS,AT_HY0*AT_TS+40);atSofaFront(31*AT_TS,AT_HY0*AT_TS+40);}]); // devant ceux qui y sont assis, derrière ceux qui passent
+  people.push([{pos:{x:0,y:AT_HY0*AT_TS+48}},null,false,()=>{atSofaFront(15*AT_TS,AT_HY0*AT_TS+40);atSofaFront(31*AT_TS,AT_HY0*AT_TS+40);}]); // devant ceux qui y sont assis, derrière ceux qui passent
   people.sort((a,b)=>a[0].pos.y-b[0].pos.y).forEach(([c,d,before,after])=>{if(before&&d)d();if(c.ghost)atGhost(c,now);else drawChar(c,now);if(!before&&d)d();if(after)after();});
   for(const [c] of people)if(c.name&&!c.ghost)AT_LIT.push(c.pos); // promeneurs, Bernard, l'agent d'entretien, le boss en route
   atNight(slots,now);

@@ -360,7 +360,7 @@ function renderFeed(){
       txt:`<span style="color:#2e9e9b">●</span> Daily de l'équipe en cafétéria`
     });
   }
-  ev.push(...feedLifeEvents(T).map(e=>({ty:'equipe',...e})),...feedMyActions(T).map(e=>({ty:'toi',...e})),...atFeedEvents(T)); // 69-atelier-rdc.js : le 1er étage
+  ev.push(...feedLifeEvents(T).map(e=>({ty:'equipe',...e})),...feedMyActions(T).map(e=>({ty:'toi',...e})),...atFeedEvents(T),...rtFeedEvents(T)); // 69-atelier-rdc.js : le 1er étage ; 68-retours.js : le 3e
   ev.sort((a,b)=>b.t-a.t);
   FEED_EV=ev;
   showFeed();
@@ -415,7 +415,7 @@ function renderFeedList(view,all=FEED_ALL){
   view.slice(0,FEED_N).forEach((e,i)=>{
     const h=parisHM(e.t).h;
     if(h!==lastH){html+=`<div class="evh">${h} h</div>`;lastH=h;}
-    html+=`<div class="ev${e.c?' fam-'+famOf(e.c):''}" data-i="${i}"${e.tv||e.duck||e.c||e.at?' tabindex="0" role="button"':''}><span class="tm">${hm(e.t)}</span>${rvBtn(e.t,e.fl)}<span class="x">${e.txt}</span></div>`;
+    html+=`<div class="ev${e.c?' fam-'+famOf(e.c):''}" data-i="${i}"${e.tv||e.duck||e.c||e.at||e.rt?' tabindex="0" role="button"':''}><span class="tm">${hm(e.t)}</span>${rvBtn(e.t,e.fl)}<span class="x">${e.txt}</span></div>`;
   });
   if(view.length>FEED_N)html+=`<button class="feedmore" data-feed-more>Voir plus (${view.length-FEED_N})</button>`;
   const ttl=document.getElementById('feedtitle'), w=dataDayWord();
@@ -448,7 +448,7 @@ document.getElementById('feed').addEventListener('click',ev=>{
   if(pin){const e=FEED_PIN[+pin.dataset.pin];if(e&&e.at)atGoto(e.at);else if(e&&e.duck)select('duck');else if(e&&e.c)select(e.c.key);return;}
   const d=ev.target.closest('[data-i]');if(!d)return;
   const e=FEED_VIEW[+d.dataset.i];if(!e)return;
-  if(e.at)atGoto(e.at);else if(e.tv)select('tv');else if(e.duck)select('duck');else if(e.c)select(e.c.key);
+  if(e.at)atGoto(e.at);else if(e.rt)rtGoto(e.rt);else if(e.tv)select('tv');else if(e.duck)select('duck');else if(e.c)select(e.c.key);
 });
 // survol d'un nom du fil : la personne s'allume sur le plan (comme une carte de « Qui fait quoi »)
 document.getElementById('feed').addEventListener('mouseover',e=>{const a=e.target.closest('.lk-who');hoverKey=a?a.dataset.who:null;});
