@@ -43,6 +43,7 @@ Full grammar and cascade: [`docs/conventions/agents-md-format-v1.md`](convention
 | Équipe, profil `teams/<id>/` ou pack d'équipe hors du dépôt (roster, avatars, musique, plan, thèmes) [src: file: tools/assemble.py:177] | [conventions/pack-equipe](conventions/pack-equipe.md), [repo-map](repo-map.md) |
 | Ajouter un dataset de page ou un workflow / cron du Bureau [src: file: tools/templates.py:24] | [conventions/ajouter-dataset-ou-workflow](conventions/ajouter-dataset-ou-workflow.md), [architecture/overview](architecture/overview.md) |
 | Chaîne d'implémentation d'un ticket (modèles `impl*.json`, `workflows/chaine.py`, réglage `impl`) [src: file: tools/templates.py:25] | [architecture/chaine-implementation](architecture/chaine-implementation.md), [conventions/ajouter-dataset-ou-workflow](conventions/ajouter-dataset-ou-workflow.md) |
+| Revue de PR (`review_*.json`, `workflows/review.py`, page de récap des revues) [src: file: workflows/review.py:1] | [architecture/revue-pr](architecture/revue-pr.md), [conventions/ajouter-dataset-ou-workflow](conventions/ajouter-dataset-ou-workflow.md) |
 | Corriger ou ajouter un test (`tests/`) [src: file: tools/test.sh:7] | [testing-quality](testing-quality.md) |
 | Nouvelle fonctionnalité visible (page + `guide/fonctionnalites/NN-*.md` + ligne du README + captures) [src: file: README.md:9] | [architecture/overview](architecture/overview.md), [repo-map](repo-map.md) |
 | Plan du bureau (`layouts/*.json`, `tools/plan.py`) [src: file: guide/developpement.md:85] | [repo-map](repo-map.md) |

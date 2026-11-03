@@ -5,7 +5,8 @@
 // bureau du boss, son tampon posé dessus (chaque ticket passe un par un), puis la boîte Jira. Les agents de la rédaction
 // sont des reporters (chapeau mou, carte de presse). À droite, la revue des PR (sous-workflow review_child) : à chaque
 // bureau, le relecteur (visière verte de correcteur) derrière son écran et, en face, l'auteur de la PR (un agent
-// remplaçant pour ta PR ou celle de quelqu'un hors de l'équipe) ; sous le bureau, les étapes de son run, lues du run.
+// remplaçant pour ta PR ou celle de quelqu'un hors de l'équipe) ; sous le bureau, les postes de son run, lus du run
+// (🗺 contexte, 📚 docs, 🔍 lecture, 🔒 sécu : un sous-workflow review_<poste> chacun ; puis 🧐 avis et ✍ postée).
 // Au mur, le tableau noir des revues du jour. Le soir et le week-end, la veilleuse : seuls ceux au travail et le boss.
 // Données : dataset redaction (workflows/redaction_snapshot.py, cron live) et les runs de la revue (DATA.runs) ; démo : redactionDemo().
 const RD_POSTES=[{k:'recherche',i:'📚',n:'Recherche'},{k:'redaction',i:'✍',n:'Rédaction'},{k:'critique',i:'🧐',n:'Critique'},{k:'valider',i:'✋',n:'Toi'}];
@@ -38,20 +39,28 @@ const rdTables=()=>((REDACTION&&REDACTION.tables)||[]).slice(0,3);
 const rdTable=()=>{const l=rdTables();return l.find(t=>t.run===RDSEL)||l[0]||null;};
 // ---------- la revue : les runs de relecture d'une PR (review_child), lus du run ----------
 const rvWf=w=>!!w&&(CFG.revue_wf||[]).includes(String(w).slice(0,8));
+// les postes de la revue (sous-workflows review_<poste>, CFG.revue_postes_wf) : leurs runs ne passent pas au RDC, ils se
+// lisent comme des étapes du run de la revue
+const rvPosteWf=w=>!!w&&(CFG.revue_postes_wf||[]).includes(String(w).slice(0,8));
 function rvRuns(){
   const l=((DATA&&DATA.runs)||[]).filter(r=>rvWf(r.wf)&&r._s<=T);
   if(!l.length&&DEMO)return rvDemo();
   return l.sort((a,b)=>a._s-b._s);
 }
+const RV_DEMO=['whoami','setup','fetch_files','write_ctx','contexte','docs','lecture','securite','avis','map_event','post'];
 function rvDemo(){
   const s=DAY0+10*36e5, st=(n,x)=>n.map((k,j)=>({n:k,s:j<x?'Success':j===x?'Running':'Pending'}));
-  return [{run:'demo-r1',status:'Running',_s:s,vars:{'current_task.number':'2042','current_task.repo':'dm/site','current_task.author':'hollyflax'},steps:st(['fetch_reviews','reason','post'],1)},
-    {run:'demo-r2',status:'Running',_s:s+6e5,vars:{'current_task.number':'2051','current_task.repo':'dm/api','current_task.author':'michaelscott'},steps:st(['fetch_reviews','reason','post'],0)},
-    {run:'demo-r3',status:'Running',_s:s+9e5,vars:{'current_task.number':'2037','current_task.repo':'dm/api','current_task.author':'darrylphilbin'},steps:st(['fetch_reviews','securite','reason','post'],2)},
+  return [{run:'demo-r1',status:'Running',_s:s,vars:{'current_task.number':'2042','current_task.repo':'dm/site','current_task.author':'hollyflax'},steps:st(RV_DEMO,6)},
+    {run:'demo-r2',status:'Running',_s:s+6e5,vars:{'current_task.number':'2051','current_task.repo':'dm/api','current_task.author':'michaelscott'},steps:st(RV_DEMO,4)},
+    {run:'demo-r3',status:'Running',_s:s+9e5,vars:{'current_task.number':'2037','current_task.repo':'dm/api','current_task.author':'darrylphilbin'},steps:st(RV_DEMO,7)},
     ...[1,2,3,4,5].map(k=>({run:'demo-rd'+k,status:'Success',_s:DAY0+(7+k/2)*36e5,vars:{},steps:[]}))];
 }
 const rvActive=()=>rvRuns().filter(r=>RUN_ACTIVE.includes(r.status)).slice(0,6);
-const rvStepName=n=>({fetch_reviews:'📥 fils',fetch_comments:'📥 fils',fetch_files:'📥 fichiers',reason:'🧠 lecture',post:'✍ avis',securite:'🔒 sécu'})[n]||n;
+const RV_STEP={contexte:['🗺 contexte','je cadre la PR…'],docs:['📚 docs','je lis la doc…'],lecture:['🔍 lecture','je lis le diff…'],
+  securite:['🔒 sécu','je cherche la faille…'],avis:['🧐 avis','je rédige l\'avis…'],post:['✍ postée',null]};
+const rvStepName=n=>(RV_STEP[n]||[n])[0];
+const rvSteps=r=>(r.steps||[]).filter(s=>RV_STEP[s.n]); // les postes et l'avis posté ; le reste (API, worktree) ne se montre pas
+const rvBubble=r=>{const s=rvSteps(r).find(x=>x.s==='Running');return s?RV_STEP[s.n][1]:null;};
 // ---------- décor ----------
 const RD_T=AT_TS;
 function rdBackground(){
@@ -150,12 +159,12 @@ function rdRevue(now,people){
   for(let k=0;k<6;k++){const r=l[k], cx=(28.5+(k%3)*6.3)*T, feet=(k<3?9.2:18.4)*T, rf=feet+2.3*T;
     if(!r){atDesk(cx,feet-6,false);ctx.fillStyle='rgba(30,26,22,.22)';ctx.fillRect(cx-90,feet-90,180,150);rdLate(people,()=>atPill('bureau libre',cx,feet+40,'#f4efe4','#6a6050','bold 9px system-ui,sans-serif'),feet);continue;}
     const v=r.vars||{}, who=v['current_task.author'], au=who&&typeof ghChar==='function'?ghChar(who):null, mine=au&&boss&&au.key===boss.key;
-    rdAgent(people,100+k,cx,feet,'run',{hat:'visiere',desk:true,bubble:(r.steps||[]).some(s=>s.n==='reason'&&s.s==='Running')?'je lis le diff…':null},now);
+    rdAgent(people,100+k,cx,feet,'run',{hat:'visiere',desk:true,bubble:rvBubble(r)},now);
     if(au&&!mine){const c=Object.assign(Object.create(Object.getPrototypeOf(au)),au,{pos:{x:cx,y:rf},tile:null,dir:'up',moving:false,pose:'stand',present:true,_st:{st:'idle'}});people.push([c,null,false,null]);}
     else rdAgent(people,110+k,cx,rf,'idle',{dir:'up'},now);
     const pr=(String(v['current_task.repo']||'').split('/').pop()||'?')+'#'+(v['current_task.number']||'?'), name=au&&!mine?au.name:mine?'🤖 remplaçant (ta PR)':who?'@'+who:'';
     rdLate(people,()=>{atPill(pr+(name?' · '+name:''),cx,rf+24,'#0b2a4a','#fff','bold 9px ui-monospace,Menlo,monospace');
-      const steps=(r.steps||[]).filter(s=>s.n);ctx.font='bold 8px system-ui,sans-serif';const ws=steps.map(s=>ctx.measureText(rvStepName(s.n)).width+10), tot=ws.reduce((a,b)=>a+b,0)+Math.max(0,steps.length-1)*3;let x=cx-tot/2;
+      const steps=rvSteps(r);ctx.font='bold 8px system-ui,sans-serif';const ws=steps.map(s=>ctx.measureText(rvStepName(s.n)).width+10), tot=ws.reduce((a,b)=>a+b,0)+Math.max(0,steps.length-1)*3;let x=cx-tot/2;
       steps.forEach((s,j)=>{const c=s.s==='Success'?'#2f7a45':s.s==='Running'?'#2f6fd6':s.s==='Failed'?'#a8323a':'#e8e2d0';atPill(rvStepName(s.n),x+ws[j]/2,rf+42,c,c==='#e8e2d0'?'#6a6050':'#fff','bold 8px system-ui,sans-serif');x+=ws[j]+3;});},rf+1);
     atHitRd('review',cx-60,feet-60,120,rf-feet+80,{run:r.run});}
   if(l.length<6)rdBench(people,41.6*T,25.2*T,[96,97],'visiere');
@@ -204,7 +213,7 @@ function redactionListHtml(){
   const l=rdTables(), rv=rvActive();
   return `<h2 class="at-h">✍ Rédaction <span class="cnt">${l.length}</span></h2>`+(l.length?l.map(t=>`<button class="at-room" data-run="${esc(t.run)}"><span class="at-top"><span class="at-title">${esc(clip(t.intention,80))}</span>${(t.tickets||[]).some(x=>x.etat==='gate')?'<span class="at-tag wait">✋ t\'attend</span>':`<span class="at-tag run">${esc((RD_POSTES.find(p=>p.k===t.poste)||{}).i||'')} ${esc((RD_POSTES.find(p=>p.k===t.poste)||{}).n||'')}</span>`}</span>
     ${(t.tickets||[]).map((x,k)=>`<span class="mut">T${k+1} · ${esc(x.summary)} · ${esc(x.composant||'?')} · ${esc(String(x.points||'?'))} pts · ${esc((RD_TK[x.etat]||RD_TK.wait)[1])}</span>`).join('<br>')||'<span class="mut">les tickets arrivent avec la rédaction</span>'}</button>`).join(''):'<div class="note">Aucune intention en cours. « ▶ Lancer » sur la fiche de l\'agent des tickets en démarre une.</div>')+
-    `<div class="at-gate"></div><h2 class="at-h">👀 Revue des PR <span class="cnt">${rv.length}</span></h2>`+(rv.length?rv.map(r=>{const v=r.vars||{};return `<div class="at-q"><b class="mono">${esc((String(v['current_task.repo']||'').split('/').pop()||'?')+'#'+(v['current_task.number']||'?'))}</b> <span class="mut">${esc((r.steps||[]).map(s=>rvStepName(s.n)+(s.s==='Success'?' ✓':s.s==='Running'?' …':'')).join(' · '))}</span></div>`;}).join(''):'<div class="mut">Aucune revue en cours.</div>');
+    `<div class="at-gate"></div><h2 class="at-h">👀 Revue des PR <span class="cnt">${rv.length}</span></h2>`+(rv.length?rv.map(r=>{const v=r.vars||{};return `<div class="at-q"><b class="mono">${esc((String(v['current_task.repo']||'').split('/').pop()||'?')+'#'+(v['current_task.number']||'?'))}</b> <span class="mut">${esc(rvSteps(r).map(s=>rvStepName(s.n)+(s.s==='Success'?' ✓':s.s==='Running'?' …':'')).join(' · '))}</span></div>`;}).join(''):'<div class="mut">Aucune revue en cours.</div>');
 }
 function drawRedactionSide(side){
   const boss=chars.find(c=>c.boss);

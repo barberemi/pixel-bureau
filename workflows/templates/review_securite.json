@@ -1,0 +1,160 @@
+{
+ "kind": "workflow",
+ "key": "review_securite",
+ "doc": "Passe sécurité du diff (entrées, injections, droits, secrets, SSRF, en-têtes, dépendances), sautée quand le contexte n'a rien vu de sensible.",
+ "definition": {
+  "name": "Le Bureau · revue de PR · 🔒 sécurité",
+  "project_id": null,
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "pr",
+    "label": "PR",
+    "placeholder": "",
+    "description": "Numéro de la PR relue (son worktree .kronn/pr-<n> dans la copie de travail du parent).",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
+    "name": "repo",
+    "label": "Dépôt",
+    "placeholder": "owner/depot",
+    "description": "Dépôt de la PR, format owner/name.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": null,
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "entree",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Consigne du poste 🔒 sécurité : sa mission, où lire la PR, le cadrage du contexte (0 token). Le contexte a écrit « Sécurité : non » (et review.securite n'est pas \"toujours\") : code 5, Goto saute, sans agent.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/review.py@@",
+     "poste",
+     "securite",
+     "{{pr}}",
+     "{{repo}}"
+    ],
+    "exec_timeout_secs": 60,
+    "on_result": [
+     {
+      "contains": "exit_5",
+      "action": {
+       "type": "Goto",
+       "step_name": "saute"
+      }
+     }
+    ]
+   },
+   {
+    "name": "agent",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "🔒 sécurité : Passe sécurité du diff (entrées, injections, droits, secrets, SSRF, en-têtes, dépendances), sautée quand le contexte n'a rien vu de sensible. Outils : lecture du code (Read, Grep, Glob, Bash en lecture).",
+    "prompt_template": "{{steps.entree.data.stdout}}",
+    "agent_settings": {
+     "tools": {
+      "cli": [
+       "Read",
+       "Grep",
+       "Glob",
+       "Bash"
+      ],
+      "kronn_internal": []
+     }
+    },
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    },
+    "_poste": "review.securite"
+   },
+   {
+    "name": "rapport",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le rapport du poste 🔒 sécurité, rangé dans le dossier de la revue (.kronn/review-<n>/) ; fin du poste (saute n'est atteint que par le code 5 de l'entrée).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/review.py@@",
+     "rapport",
+     "securite",
+     "{{pr}}"
+    ],
+    "exec_timeout_secs": 30,
+    "exec_stdin": "{{steps.agent.output ?? \"\"}}",
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Stop"
+      }
+     }
+    ]
+   },
+   {
+    "name": "saute",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Passe sautée : aucun rapport, l'avis le lit comme tel (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "print('Passe sécurité sautée : le contexte n’a rien vu de sensible dans le diff.')"
+    ],
+    "exec_timeout_secs": 30
+   }
+  ]
+ }
+}

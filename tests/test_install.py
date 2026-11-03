@@ -5,7 +5,7 @@ from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
-import install  # noqa: E402
+import install, templates  # noqa: E402
 
 PROJECT = "99999999-8888-7777-6666-555555555555"
 JIRA = "abcdefab-cdef-abcd-efab-cdefabcdefab"
@@ -198,11 +198,18 @@ class InstallTest(unittest.TestCase):
         k = self.fakes[-1]
         cfg = json.loads(Path(self.cfg_path).read_text())
         self.assertEqual(cfg["github"]["config_id"], gh)
-        self.assertEqual(set(cfg["models"]), {"review_child", "review_one", "review_cron", "issue", "ticket", "ticket_recherche", "ticket_redaction", "ticket_critique", "ticket_un", "assign", "unassign", "ai_time"})
+        self.assertEqual(set(cfg["models"]), {"review_child", "review_one", "review_cron", "review_contexte", "review_docs", "review_lecture", "review_securite", "issue",
+                                              "ticket", "ticket_recherche", "ticket_redaction", "ticket_critique", "ticket_un", "assign", "unassign", "ai_time"})
         made = {b["name"]: b for m, p_, b in k.calls if m == "POST" and p_ == "/workflows"}
         self.assertIs(made["Le Bureau · relire les PR ouvertes (cron)"]["enabled"], False)
         cron = made["Le Bureau · relire les PR ouvertes (cron)"]
         self.assertTrue(all(s.get("sub_workflow_id") != "" for s in cron["steps"]))
+        # la revue d'une PR : ses postes créés avant elle (Kronn vérifie la cible d'un SubWorkflow à l'enregistrement)
+        names = [b["name"] for m, p_, b in k.calls if m == "POST" and p_ == "/workflows"]
+        child = names.index("Le Bureau · relire une PR (étape commune)")
+        self.assertTrue(all(names.index(f"Le Bureau · revue de PR · {t}") < child for t in ("🗺 contexte", "📚 docs", "🔍 lecture", "🔒 sécurité")))
+        steps = {s["name"]: s for s in made["Le Bureau · relire une PR (étape commune)"]["steps"]}
+        self.assertTrue(all(steps[p]["sub_workflow_id"] for p in templates.REVIEW_POSTES))
         self.assertNotIn("Le Bureau · réestimer un ticket", made)
 
     def test_reuses_same_named_workflow_instead_of_creating(self):

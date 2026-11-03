@@ -38,7 +38,11 @@ test("la table : l'intention la plus ancienne, un clic sur le liège passe à la
 test("la revue : l'auteur de la PR en face du relecteur, un remplaçant pour la PR du boss, les étapes lues du run", () => {
   const {p, J} = page();
   assert.equal(J('rvActive().length'), 3);
-  assert.equal(J("rvActive().find(r => r.run === 'demo-r3').steps.map(s => rvStepName(s.n)).join(' ')"), '📥 fils 🔒 sécu 🧠 lecture ✍ avis');
+  // les postes de la revue (sous-workflows) et l'avis, lus du run ; les étapes d'API et du worktree ne se montrent pas
+  assert.equal(J("rvSteps(rvActive().find(r => r.run === 'demo-r3')).map(s => rvStepName(s.n)).join(' ')"), '🗺 contexte 📚 docs 🔍 lecture 🔒 sécu 🧐 avis ✍ postée');
+  assert.deepEqual(J("rvActive().map(rvBubble)"), ['je lis le diff…', 'je cadre la PR…', 'je cherche la faille…']);
+  p.run("CFG.revue_postes_wf = ['abcd1234'];");
+  assert.deepEqual(J("[rvPosteWf('abcd1234-0000'), rvPosteWf('ffff0000-0000'), rvWf('abcd1234-0000')]"), [true, false, false], 'un poste ne passe pas au RDC');
   p.run('setFloor(2); renderRedaction(1000);');
   const html = J('redactionListHtml()');
   assert.match(html, /Rédaction <span class="cnt">2/);

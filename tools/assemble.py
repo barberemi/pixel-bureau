@@ -211,6 +211,8 @@ def page_config(cfg):
         # 2e étage, la salle de rédaction : une bibliothèque par composant de l'équipe (jira.create.components)
         "redaction_shelves": [str(c.get("name") if isinstance(c, dict) else c) for c in (((cfg.get("jira") or {}).get("create") or {}).get("components") or [])][:4],
         "revue_wf": sorted({str((cfg.get("models") or {}).get(k) or "")[:8] for k in ("review_child", "review_one") if (cfg.get("models") or {}).get(k)}),
+        # ses postes (sous-workflows review_<poste>) : lus comme des étapes du run de la revue, jamais au RDC
+        "revue_postes_wf": sorted({str(v)[:8] for k, v in (cfg.get("models") or {}).items() if k.startswith("review_") and k not in ("review_child", "review_one", "review_cron") and v}),
         # ses workflows (modèles impl*) : leurs runs vont au 1er, ni au RDC ni dans « Nouvel agent »
         "atelier_wf": sorted({str(v)[:8] for k, v in (cfg.get("models") or {}).items() if k.startswith("impl") and k != "impl" and v}),
         # le lanceur (models.impl) reste au RDC : l'agent qui l'incarne (Ryan) y travaille et porte le carton à l'entrée
