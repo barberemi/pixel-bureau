@@ -36,6 +36,7 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 paintLegend(document); // 35-state.js : pastilles de la légende aux couleurs des tables d'états et de statuts
+renderLegend(); // 46-legende.js : la légende de l'étage retenu, un onglet de « Comment lire le plan »
 buildFurniture();
 buildBg();
 bakeFurniture();

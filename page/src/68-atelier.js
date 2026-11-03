@@ -4,12 +4,26 @@
 // Données : dataset atelier (workflows/atelier_snapshot.py, cron live) ; démo : atelierDemo(). Un ticket à plusieurs
 // dépôts occupe un bureau par dépôt ; un run en échec reste dans « En panne » : relancer le ticket le reprend là. Onglets d'étage au-dessus
 // du plan ; sur le 1er, la toile prend la taille de l'étage (AT_W × AT_H) et le panneau montre les bureaux et leur fiche.
+// d : ce que fait le poste, en une phrase ; « Comment lire le plan » (46-legende.js) la montre, un poste ajouté y apparaît
 const AT_POSTES=[
-  {k:'cadrage',i:'📋',n:'Cadrage'},{k:'schema',i:'🗺',n:'Schéma'},{k:'patterns',i:'🧩',n:'Patterns'},{k:'gate',i:'✋',n:'Ton plan',gate:true},
-  {k:'code',i:'⌨',n:'Code'},{k:'regles',i:'📏',n:'Règles'},{k:'securite',i:'🔒',n:'Sécurité'},{k:'tests',i:'🧪',n:'Tests'},
-  {k:'perf',i:'⚡',n:'Perf·a11y'},{k:'revue',i:'🔁',n:'Croisée'},{k:'besoin',i:'🎯',n:'Besoin'},{k:'doc',i:'📚',n:'Doc',bureau:false},{k:'pr',i:'📤',n:'PR'},{k:'revue_pr',i:'👀',n:'Revue PR'},{k:'retours',i:'💬',n:'Retours'}];
+  {k:'cadrage',i:'📋',n:'Cadrage',d:'lit le ticket et dit ce qu\'il a compris'},{k:'schema',i:'🗺',n:'Schéma',d:'propose le plan : où le changement passe dans le code'},
+  {k:'patterns',i:'🧩',n:'Patterns',d:'relève les façons de faire du dépôt à suivre'},{k:'gate',i:'✋',n:'Ton plan',gate:true,d:'tu valides le plan avant le code'},
+  {k:'code',i:'⌨',n:'Code',d:'écrit le changement, lot par lot'},{k:'regles',i:'📏',n:'Règles',d:'passe les règles du dépôt'},
+  {k:'securite',i:'🔒',n:'Sécurité',d:'cherche les failles du changement'},{k:'tests',i:'🧪',n:'Tests',d:'écrit et lance les tests'},
+  {k:'perf',i:'⚡',n:'Perf·a11y',d:'vérifie la performance et l\'accessibilité'},{k:'revue',i:'🔁',n:'Croisée',d:'un autre agent relit le code'},
+  {k:'besoin',i:'🎯',n:'Besoin',d:'confronte le diff aux exigences du ticket'},{k:'doc',i:'📚',n:'Doc',bureau:false,d:'vérifie que la doc a suivi'},
+  {k:'pr',i:'📤',n:'PR',d:'pousse la branche et ouvre la PR brouillon'},{k:'revue_pr',i:'👀',n:'Revue PR',d:'fait la revue de la PR'},
+  {k:'retours',i:'💬',n:'Retours',d:'traite les commentaires de la revue'}];
 const AT_ST={ok:['#3fbf6a','validé'],run:['#5b8def','en cours'],bloq:['#e0614f','bloquant'],avis:['#e0a020','avis'],wait:['#e0a020','t\'attend'],
   skip:['#5b6070','sauté'],err:['#e0614f','en panne']};
+// « Comment lire le plan » au 1er (46-legende.js) : la légende sous le plan, puis les onglets ; les postes viennent d'AT_POSTES
+const AT_HELP={bar:()=>legSwatches(AT_ST)+'<span>🧯 fumée : poste en panne</span>',postes:()=>[['',AT_POSTES]],
+  qui:'<p><b>Agents</b> : un par poste, en hologramme bleu, casque jaune et gilet orange.</p><p><b>Bernard</b> apporte les cartons de l\'entrepôt et emporte ceux qui sortent.</p>'+
+    '<p><b>Le boss</b>, sous le grand tableau, va à la porte du bureau qui attend ta décision.</p><p><b>Le pompier</b> vient quand un poste est en panne ; le soir, <b>l\'agent d\'entretien</b> passe.</p>',
+  ou:'<p><b>Quatre bureaux</b> : un ticket par bureau, quatre à la fois.</p><p><b>Le tapis</b> : le carton du ticket avance de poste en poste.</p>'+
+    '<p><b>Le grand tableau</b> de l\'orchestrateur : le poste, le tour et les jetons de chaque bureau.</p><p><b>L\'entrepôt</b> : les tickets en attente, et ceux en panne sur des palettes, à relancer.</p>',
+  moments:'<p><b>✋ Une gate</b> : ce que j\'ai compris, ton plan, la relecture de la PR ; le boss va à la porte.</p><p><b>🚨 L\'escalade</b> : après trois tours, la chaîne demande un humain (gyrophare).</p>'+
+    '<p><b>↩ Retour au code</b> : un contrôle a bloqué, le carton recule.</p><p><b>🧯 Une panne</b> : un poste a échoué, le pompier arrive.</p>'};
 const AT_TS=32, AT_W=46*AT_TS, AT_H=27*AT_TS;
 let FLOOR=0, ATELIER=null, ATSEL=null;
 try{const f=+localStorage.getItem('bureau:floor');FLOOR=f===1||f===-1||f===2||f===3?f:0;}catch(e){FLOOR=0;} // -1 : la caserne Support (68-caserne.js) ; 3 : les retours de PR (68-retours.js)
@@ -114,7 +128,7 @@ function setFloor(f){
   else if(FLOOR===-1)csReset();else if(FLOOR===3)rtReset();else if(FLOOR===2)rdReset();else needTeleport=true;
   if(typeof LOUPE!=='undefined'){LOUPE.seen=null;LOUPE.queue=[];if(LOUPE.cur)loupeHide();}
   atelierTabs();renderSide(true);if(TV)updateTv(true); // 75-tv.js : la colonne et le bouton d'étage
-  {const det=document.querySelector('.legend-help');if(det&&det.open&&typeof renderGallery==='function')renderGallery();} // 46-gallery.js : les scènes de cet étage
+  if(typeof renderLegend==='function')renderLegend(); // 46-legende.js : la légende et « Comment lire le plan » de cet étage, ses scènes
 }
 // ---------- le plan de l'étage ----------
 // Quatre bureaux pleine largeur autour d'un couloir central (vertical) et d'un couloir horizontal ; une porte au milieu de

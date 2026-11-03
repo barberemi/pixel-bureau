@@ -8,10 +8,18 @@
 // l'escalier (sa porte, au bout du couloir) et les redescend une fois poussées. Les agents portent le bleu de mécanicien (la casquette). Le soir et le
 // week-end, l'étage passe en veilleuse : seuls les agents au travail et le boss gardent leur lumière.
 // Données : dataset retours (workflows/retours_snapshot.py, cron live) ; démo : retoursDemo(). Toile de l'atelier (AT_W × AT_H).
-const RT_POSTES=[{k:'prepare',i:'🗂',n:'Préparation'},{k:'fix',i:'🛠',n:'Correction'},{k:'check',i:'🧪',n:'Contrôles'},{k:'diff',i:'🔍',n:'Diff'},
-  {k:'gate',i:'✋',n:'Toi',gate:true},{k:'push',i:'📤',n:'Push'}];
+const RT_POSTES=[{k:'prepare',i:'🗂',n:'Préparation',d:'récupère les fils de commentaires de la PR'},{k:'fix',i:'🛠',n:'Correction',d:'corrige fil par fil'},
+  {k:'check',i:'🧪',n:'Contrôles',d:'lance les contrôles du dépôt'},{k:'diff',i:'🔍',n:'Diff',d:'prépare le diff et les réponses'},
+  {k:'gate',i:'✋',n:'Toi',gate:true,d:'tu valides les corrections'},{k:'push',i:'📤',n:'Push',d:'pousse et répond sur chaque fil'}];
 const RT_COLS=[{k:'a_traiter',n:'À traiter',c:'#e8e2d0'},{k:'corrige',n:'✅ Corrigé',c:'#b6e3a8'},{k:'test',n:'🧪 Test',c:'#c9b6f2'},
   {k:'laisse',n:'⏭ Laissé',c:'#d8d2c4'},{k:'reponse',n:'💬 Réponse',c:'#9fd4ff'}];
+// « Comment lire le plan » au 3e (46-legende.js) : la légende du Kanban, puis les onglets ; les postes viennent de RT_POSTES
+const RT_HELP={bar:()=>'<span>Kanban des fils :</span>'+legSwatches(Object.fromEntries(RT_COLS.map(c=>[c.k,[c.c,c.n]])))+'<span>cadre rouge : le fil en cours</span>',postes:()=>[['',RT_POSTES]],
+  qui:'<p><b>Agents</b> : un par poste, en bleu de mécanicien et casquette.</p><p><b>Bernard</b> sort de la porte de l\'escalier avec la PR et la redescend une fois poussée.</p>'+
+    '<p><b>Le boss</b>, à son bureau du couloir, va à la barrière du bureau qui attend depuis le plus longtemps ; les autres attendent leur tour.</p>',
+  ou:'<p><b>Six bureaux</b> : une PR par bureau, avec son dépôt, son numéro et son auteur.</p><p><b>Le Kanban</b> au mur : un post-it par fil de commentaire, qui change de colonne quand il est traité ; un clic l\'agrandit.</p>'+
+    '<p><b>Le couloir</b> : les PR qui attendent un bureau, le café, le banc.</p>',
+  moments:'<p><b>✋ À toi</b> : les corrections attendent ta validation.</p><p><b>🧯 Contrôles rouges</b> : le correctif est annulé, la PR attend une relance.</p><p><b>📤 Poussée</b> : les réponses sont postées, Bernard redescend la PR.</p>'};
 const RT_ST={ok:['ok','a travaillé'],run:['run','au travail'],err:['err','en panne'],gate:['wait','t\'attend'],wait:['','attend son tour']};
 const RT_N=6, RT_W=46/3, RT_H=11.2, RT_Y=[2,15.8], RT_HALL=[13.2,15.8], RT_LANE=14.5*AT_TS;
 const RT_WINDOWS=[7,10,13,17,20,23,27,30,33,37,40,43]; // en cases : à droite du nom de l'étage, comme au RDC
