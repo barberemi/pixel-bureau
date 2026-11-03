@@ -7,11 +7,17 @@ ticket (models.ticket_un), lus dans l'API Kronn, et le dossier de chaque run (~/
 
 Une table = une intention en cours (trois au plus) ; poste = recherche, redaction, critique, ou valider quand les
 tickets attendent ton tampon, puis sont créés un par un. Chaque ticket : son sous-workflow (le n-ième lancé par le run est le ticket n).
+
+La file de la salle de revue : revue = {batches: {run du cron: [[repo, n°, auteur], …]}, verdicts: {run d'une revue:
+approve|comment|request_changes}}. Les PR que chaque passage du cron des revues (models.review_cron, 24 h) a retenues,
+dans l'ordre, lues dans la sortie de son étape finalize (ligne PRS=) ; le verdict de chaque revue finie de ces passages,
+lu dans la sortie de son avis. Un run fini n'est lu qu'une fois (~/.cache/pixel-bureau/revue/<run>.json).
 """
 import datetime, json, os, re, sys
 from _lib import ACTIVE, CFG, TZ, get, read_json
 
 HOME = os.path.expanduser("~/.cache/pixel-bureau/ticket")
+RV_HOME = os.path.expanduser("~/.cache/pixel-bureau/revue")
 POSTES = {"recherche": "recherche", "redaction": "redaction", "critique": "critique", "aiguillage": "critique", "apercu": "valider", "relire": "valider", "chaque": "valider"}
 
 
@@ -53,9 +59,68 @@ def table(run, kids):
             "tickets": ts, "url": f"{ui.rstrip('/')}/#workflows/{run.get('workflow_id')}" if ui else None}
 
 
+def step_data(run, names):
+    """La sortie d'une étape du run (la première des noms donnés) : son objet data, ou {}."""
+    out = next((st.get("output") or "" for n in names for st in run.get("step_results") or [] if st.get("step_name") == n), "")
+    try:
+        return json.loads(out.split("---STEP_OUTPUT---")[1].split("---END_STEP_OUTPUT---")[0], strict=False).get("data") or {}
+    except (IndexError, ValueError, AttributeError):
+        return {}
+
+
+def rv_cached(wf, run, read):
+    """read(détail du run), gardé en cache une fois le run fini ; None si illisible."""
+    path = os.path.join(RV_HOME, re.sub(r"[^\w-]", "", run["id"]) + ".json")
+    if run.get("status") not in ACTIVE:
+        try:
+            return read_json(path)["v"]
+        except (OSError, ValueError, KeyError):
+            pass
+    d = get(f"/workflows/{wf}/runs/{run['id']}")
+    if not d:
+        return None
+    v = read(d)
+    if run.get("status") not in ACTIVE:
+        os.makedirs(RV_HOME, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"v": v}, f)
+    return v
+
+
+def prs_of(d):
+    for line in str(step_data(d, ["finalize"]).get("stdout") or "").splitlines():
+        if line.startswith("PRS="):
+            try:
+                return [[str(p[0]), int(p[1]), str(p[2] or "")] for p in json.loads(line[4:])][:30]
+            except (ValueError, TypeError, IndexError):
+                return []
+    return []
+
+
+def revue(m, limit):
+    """La file de la salle de revue : les PR retenues par chaque passage du cron, les verdicts des revues finies."""
+    out = {"batches": {}, "verdicts": {}}
+    if not (m.get("review_cron") and m.get("review_child")):
+        return out
+    for r in get(f"/workflows/{m['review_cron']}/runs?limit=8") or []:
+        if (r.get("started_at") or "") >= limit:
+            prs = rv_cached(m["review_cron"], r, prs_of)
+            if prs:
+                out["batches"][r["id"]] = prs
+    if out["batches"]:
+        for k in get(f"/workflows/{m['review_child']}/runs?limit=60") or []:
+            if k.get("parent_run_id") in out["batches"] and k.get("status") not in ACTIVE:
+                v = rv_cached(m["review_child"], k, lambda d: str(step_data(d, ["avis", "reason"]).get("verdict") or ""))
+                if v:
+                    out["verdicts"][k["id"]] = v
+    return out
+
+
 def snapshot(now_iso=None):
     m = CFG.get("models") or {}
     out = {"generated_at": now_iso, "tables": [], "events": [], "crees": 0}
+    now0 = when(now_iso)
+    out["revue"] = revue(m, (now0 - datetime.timedelta(hours=24)).isoformat() if now0 else "")
     if not m.get("ticket"):
         return out
     runs = get(f"/workflows/{m['ticket']}/runs?limit=20") or []
@@ -89,5 +154,5 @@ if __name__ == "__main__":
     try:
         data = snapshot(datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"))
     except Exception as e:  # Kronn injoignable : un dataset vide plutôt qu'un cron en échec
-        data = {"generated_at": None, "tables": [], "events": [], "crees": 0, "error": str(e)[:300]}
+        data = {"generated_at": None, "tables": [], "events": [], "crees": 0, "revue": {"batches": {}, "verdicts": {}}, "error": str(e)[:300]}
     sys.stdout.write(json.dumps(data, ensure_ascii=False))

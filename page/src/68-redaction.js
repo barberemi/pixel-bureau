@@ -28,7 +28,10 @@ const redactionOn=()=>!!((CFG.ticket&&CFG.ticket.wf)||DEMO);
 // démo : une intention découpée en trois tickets (le premier relu, le deuxième en critique), une autre en recherche
 function redactionDemo(){
   const at=h=>new Date(DAY0+h*36e5).toISOString();
-  return {generated_at:at(11),crees:2,tables:[
+  // la file de la revue : le cron de 9 h 30 a retenu 5 PR ; les deux de Holly sont postées, celle de Pam est lue (demo-r1)
+  const revue={batches:{'demo-c1':[['dm/site',2042,'hollyflax'],['dm/site',2060,'hollyflax'],['dm/api',2051,'pambeesly'],['dm/mobile',311,'darrylphilbin'],['dm/api',2063,'pambeesly']]},
+    verdicts:{'demo-k1':'comment','demo-k2':'approve'},starts:{'demo-c1':at(9.5)}};
+  return {generated_at:at(11),crees:2,revue,tables:[
     {run:'demo-t1',status:'Running',since:at(10.2),intention:'Refondre le lecteur vidéo : sous-titres, pistes audio et reprise de lecture',poste:'critique',tour:2,
      composants:['dm/site','dm/mobile','dm/api'],tickets:[{i:0,summary:'Lecteur : les sous-titres',composant:'dm/api',points:3,etat:'wait'},
        {i:1,summary:'Pistes audio dans le menu du lecteur',composant:'dm/site',points:2,etat:'wait'},{i:2,summary:'Reprise de lecture',composant:'dm/mobile',points:3,etat:'wait'}]},
@@ -50,8 +53,10 @@ function rvRuns(){
 const RV_DEMO=['whoami','setup','fetch_files','write_ctx','contexte','docs','lecture','securite','avis','map_event','post'];
 function rvDemo(){
   const s=DAY0+10*36e5, st=(n,x)=>n.map((k,j)=>({n:k,s:j<x?'Success':j===x?'Running':'Pending'}));
-  return [{run:'demo-r1',status:'Running',_s:s,vars:{'current_task.number':'2042','current_task.repo':'dm/site','current_task.author':'hollyflax'},steps:st(RV_DEMO,6)},
-    {run:'demo-r2',status:'Running',_s:s+6e5,vars:{'current_task.number':'2051','current_task.repo':'dm/api','current_task.author':'michaelscott'},steps:st(RV_DEMO,4)},
+  const k=(run,n,repo,who,h0,h1)=>({run,status:'Success',parent:'demo-c1',_s:DAY0+h0*36e5,_e:DAY0+h1*36e5,vars:{'current_task.number':n,'current_task.repo':repo,'current_task.author':who},steps:st(RV_DEMO,99)});
+  return [k('demo-k1','2042','dm/site','hollyflax',9.52,9.7),k('demo-k2','2060','dm/site','hollyflax',9.7,9.98),
+    {run:'demo-r1',status:'Running',parent:'demo-c1',_s:s,vars:{'current_task.number':'2051','current_task.repo':'dm/api','current_task.author':'pambeesly'},steps:st(RV_DEMO,6)},
+    {run:'demo-r2',status:'Running',_s:s+6e5,vars:{'current_task.number':'2058','current_task.repo':'dm/api','current_task.author':'michaelscott'},steps:st(RV_DEMO,4)},
     {run:'demo-r3',status:'Running',_s:s+9e5,vars:{'current_task.number':'2037','current_task.repo':'dm/api','current_task.author':'darrylphilbin'},steps:st(RV_DEMO,7)},
     ...[1,2,3,4,5].map(k=>({run:'demo-rd'+k,status:'Success',_s:DAY0+(7+k/2)*36e5,vars:{},steps:[]}))];
 }
@@ -149,14 +154,16 @@ function rdBench(people,x,y,ks,hat){atSofa(x,y);ks.forEach((k,j)=>{const a=atWor
   people.push([a,null,false,()=>{rdHat(ctx,hat,x+(j?22:-22),y+9,'down');if(j===ks.length-1)atSofaFront(x,y);}]);});}
 // ---------- la salle de revue ----------
 function rdRevue(now,people){
-  const T=RD_T, l=rvActive(), done=rvRuns().filter(r=>r.status==='Success'&&r._s>=DAY0).length;
+  const file=rvfOn(), kids=file?rvfKids():new Set(), F=file?rvfDraw(now,people):null, wait=F&&F.st?F.st.queue.length:0;
+  const T=RD_T, l=rvActive().filter(r=>!kids.has(r.run)), done=rvRuns().filter(r=>r.status==='Success'&&r._s>=DAY0).length;
   atTxt('👀 REVUE DES PR',(RD_VX+.6)*T,2.7*T,'#5a4636','bold 10px ui-monospace,Menlo,monospace','left');
   const bx=30*T, by=2.1*T, bw=11*T, bh=3.4*T;R(ctx,bx-6,by-6,bw+12,bh+12,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+4,by+bh-6,bw-8,4,'#a37650');
   atTxt('REVUES DU JOUR',bx+bw/2,by+18,'#f4efe4','bold 11px ui-monospace,Menlo,monospace');R(ctx,bx+16,by+24,bw-32,1,'rgba(244,239,228,.4)');
-  [['#5b8def',plural(l.length,'PR en lecture','PR en lecture')],['#3fbf6a',plural(done,'revue postée','revues postées')+' aujourd\'hui'],['#e0a020','~'+Math.round(rvRuns().filter(r=>r._s>=DAY0).reduce((a,r)=>a+(r.tok||0),0)/1e3)+' k tokens']]
+  [['#5b8def',plural(rvActive().length,'PR en lecture','PR en lecture')],...(file?[['#e0a020',plural(wait,'PR en attente','PR en attente')+(F.st?' (cron '+hm(F.st.b.s)+')':'')]]:[]),['#3fbf6a',plural(done,'revue postée','revues postées')+' aujourd\'hui'],['#e0a020','~'+Math.round(rvRuns().filter(r=>r._s>=DAY0).reduce((a,r)=>a+(r.tok||0),0)/1e3)+' k tokens']]
     .forEach(([c,t],k)=>{R(ctx,bx+16,by+36+k*18,8,8,c);atTxt(t,bx+30,by+44+k*18,'#e8e2d0','10px ui-monospace,Menlo,monospace','left');});
   const boss=chars.find(c=>c.boss);
-  for(let k=0;k<6;k++){const r=l[k], cx=(28.5+(k%3)*6.3)*T, feet=(k<3?9.2:18.4)*T, rf=feet+2.3*T;
+  if(file)rvfDesk(people,now,F);
+  for(let k=file?1:0;k<6;k++){const r=l[k-(file?1:0)], cx=(28.5+(k%3)*6.3)*T, feet=(k<3?9.2:18.4)*T, rf=feet+2.3*T;
     if(!r){atDesk(cx,feet-6,false);ctx.fillStyle='rgba(30,26,22,.22)';ctx.fillRect(cx-90,feet-90,180,150);rdLate(people,()=>atPill('bureau libre',cx,feet+40,'#f4efe4','#6a6050','bold 9px system-ui,sans-serif'),feet);continue;}
     const v=r.vars||{}, who=v['current_task.author'], au=who&&typeof ghChar==='function'?ghChar(who):null, mine=au&&boss&&au.key===boss.key;
     rdAgent(people,100+k,cx,feet,'run',{hat:'visiere',desk:true,bubble:rvBubble(r)},now);
@@ -167,7 +174,7 @@ function rdRevue(now,people){
       const steps=rvSteps(r);ctx.font='bold 8px system-ui,sans-serif';const ws=steps.map(s=>ctx.measureText(rvStepName(s.n)).width+10), tot=ws.reduce((a,b)=>a+b,0)+Math.max(0,steps.length-1)*3;let x=cx-tot/2;
       steps.forEach((s,j)=>{const c=s.s==='Success'?'#2f7a45':s.s==='Running'?'#2f6fd6':s.s==='Failed'?'#a8323a':'#e8e2d0';atPill(rvStepName(s.n),x+ws[j]/2,rf+42,c,c==='#e8e2d0'?'#6a6050':'#fff','bold 8px system-ui,sans-serif');x+=ws[j]+3;});},rf+1);
     atHitRd('review',cx-60,feet-60,120,rf-feet+80,{run:r.run});}
-  if(l.length<6)rdBench(people,41.6*T,25.2*T,[96,97],'visiere');
+  if(l.length<6)rdBench(people,41.6*T,25.2*T,file&&F.M.rel?[96]:[96,97],'visiere'); // le relecteur de la file quitte le banc
   const sx=(RD_X1+RD_VX)/2*T;atCoffee(sx,6.4*T);atPlant(sx-36,20*T);atPlant(sx+36,20*T);
   rdLate(people,()=>atPill('⇅ escalier · RDC',sx,23.6*T,'#5a4636','#fff','bold 9px ui-monospace,Menlo,monospace'),1e6);
 }
@@ -175,12 +182,14 @@ function rdRevue(now,people){
 // la revue quand une PR y est lue ; la lampe du bureau du boss reste allumée ; hors des heures de bureau, la veilleuse ----------
 const RD_NIGHT={};
 function rdNight(people,now){
-  const T_=AT_TS, l=rvActive(), rooms=[[0,2,Math.ceil(RD_X1)-1,26,!!rdTable()]];
-  for(let k=0;k<6;k++){const cx=28.5+(k%3)*6.3, f=k<3?9.2:18.4;rooms.push([Math.round(cx-2.5),Math.round(f-3),Math.round(cx+2.5),Math.round(f+3),!!l[k]]);}
+  const T_=AT_TS, file=rvfOn(), kids=file?rvfKids():new Set(), l=rvActive().filter(r=>!kids.has(r.run)), st=file?rvfState():null, rooms=[[0,2,Math.ceil(RD_X1)-1,26,!!rdTable()]];
+  // le premier bureau est celui de la file du cron (68-revue.js) : allumé quand une PR y est lue ; les revues à la demande ensuite
+  const lit=k=>file?(k===0?!!(st&&st.reading):!!l[k-1]):!!l[k];
+  for(let k=0;k<6;k++){const cx=28.5+(k%3)*6.3, f=k<3?9.2:18.4;rooms.push([Math.round(cx-2.5),Math.round(f-3),Math.round(cx+2.5),Math.round(f+3),lit(k)]);}
   floorNight(RD_NIGHT,{rooms,closed:!atOpen(),track:RD_LIT,spots:[...floorPeopleSpots(people),...RD_LIT.map(q=>({x:q.x,y:q.y-26,r:42,a:.95})),
     floorBossLamp(RD_DESK.x,RD_DESK.y),{x:(RD_X1+RD_VX)/2*T_,y:24.6*T_,r:1.6*T_,a:.45}]},now); // l'escalier
 }
-function rdReset(){RD_MEM={last:0};RDSEL=null;}
+function rdReset(){RD_MEM={last:0};RDSEL=null;if(typeof rvfReset==='function')rvfReset();}
 function renderRedaction(now){
   RD_MEM.last=now;if(!RD_BG)RD_BG=rdBackground();ctx.drawImage(RD_BG,0,0);atWindows(now,RD_WINDOWS);RD_HITS=[];RD_LIT=[];
   const people=[];rdRoom(now,people);rdRevue(now,people);
@@ -204,6 +213,7 @@ function redactionHover(e){
   else if(h&&h.kind==='table')s=t?'La table de rédaction : '+t.intention:'La table de rédaction : aucune intention en cours';
   else if(h&&h.kind==='cork')s=rdTables().length>1?'Les intentions en cours : clic pour passer à la suivante':'L\'intention en cours';
   else if(h&&h.kind==='boss')s=(chars.find(c=>c.boss)||{}).name+' : tamponne chaque ticket avant sa création ; clic : sa fiche';
+  else if(h&&(h.kind==='casier'||h.kind==='author'))s=rvfHover(h);
   else if(h&&h.kind==='review'){const r=rvRuns().find(x=>x.run===h.run), v=(r&&r.vars)||{};s='Revue de '+(v['current_task.repo']||'?')+'#'+(v['current_task.number']||'?')+' : les étapes de son run, sous le bureau';}
   cv.style.cursor=h?'pointer':'default';
   if(s){tip.style.display='block';tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px';tip.textContent=s;}else tip.style.display='none';

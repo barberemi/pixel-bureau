@@ -120,3 +120,58 @@ test("la scène « Le soir au 2e » : la nuit tombe, la salle de rédaction et l
   p.run('demoEnd();');
   assert.equal(p.run('REDACTION === __R && T === __T'), true, 'la page revient à ses données et à son heure');
 });
+
+// la file de la salle de revue (68-revue.js) : les PR retenues par le cron attendent au casier, leurs auteurs en salle d'attente
+function frames(p, n, from) { // n images de 100 ms : les marcheurs avancent
+  p.run(`for (let i = 0; i < ${n}; i++) renderRedaction(${from} + i * 100);`);
+}
+test("la file : posée en arrivant (casier dans l'ordre du cron, corbeille, une chaise par auteur, l'auteur lu au bureau)", () => {
+  const {p, J} = page();
+  p.run('setFloor(2); renderRedaction(1000);');
+  assert.deepEqual(J('RVF_M.cas.map(f => f.p.key)'), ['dm/mobile#311', 'dm/api#2063']);
+  assert.deepEqual(J('RVF_M.basket'), ['comment', 'approve']);
+  assert.deepEqual(J('Object.fromEntries(Object.entries(RVF_M.who).map(([a, h]) => [a, h.spot]))'), {pambeesly: {k: 'face'}, darrylphilbin: {k: 'chair', j: 0}});
+  assert.equal(J('RVF_M.rel.seat'), true);
+  assert.equal(J('rvActive().length'), 3, 'la PR de la file compte parmi les PR en lecture');
+  assert.match(J("rvfHover({kind: 'casier'})"), /cron de 09:30, dans l'ordre\) : mobile#311, api#2063/);
+  assert.match(J("rvfHover({kind: 'author', author: 'pambeesly'})"), /sa PR est lue, encore 1 PR au casier/);
+});
+
+test("la file : Holly reste au bureau entre ses deux PR ; le relecteur tamponne, pose à la corbeille et prend le dossier suivant", () => {
+  const {p, J} = page();
+  p.run('setFloor(2); T = DAY0 + 9.69 * 36e5; rdReset(); renderRedaction(1000);');
+  assert.deepEqual(J('RVF_M.cas.map(f => f.p.n)'), [2060, 2051, 311, 2063]);
+  assert.deepEqual(J('RVF_M.who.hollyflax.spot'), {k: 'face'});
+  p.run('T = DAY0 + 9.71 * 36e5;');
+  frames(p, 1, 1100);
+  assert.equal(J('RVF_M.who.hollyflax.w'), null, 'sa PR suivante est la prochaine : elle ne bouge pas');
+  assert.ok(J('RVF_M.rel.w') && J('RVF_M.stamp.v') === 'comment', 'le verdict tamponné au bureau');
+  frames(p, 200, 1200);
+  assert.deepEqual(J('RVF_M.basket'), ['comment']);
+  assert.deepEqual(J('RVF_M.cas.map(f => f.p.n)'), [2051, 311, 2063], 'le dossier pris, les autres remontent');
+  assert.equal(J('RVF_M.rel.seat'), true);
+});
+
+test("la file : Pam retourne s'asseoir quand quelqu'un passe avant sa PR suivante ; on ne redescend qu'après sa dernière", () => {
+  const {J} = page();
+  assert.deepEqual(J("rvfSpots({reading: {author: 'pam'}, queue: [{author: 'darryl'}, {author: 'pam'}]})"), {pam: {k: 'face'}, darryl: {k: 'chair', j: 0}});
+  assert.deepEqual(J("rvfSpots({reading: {author: 'darryl'}, queue: [{author: 'pam'}]})"), {darryl: {k: 'face'}, pam: {k: 'chair', j: 0}});
+  assert.deepEqual(J("rvfSpots({reading: {author: 'pam'}, queue: []})"), {pam: {k: 'face'}});
+  const r = J("rvfRoute({k: 'face'}, {k: 'chair', j: 0}).map(q => [Math.round(q.x / AT_TS * 10) / 10, Math.round(q.y / AT_TS * 10) / 10])");
+  assert.deepEqual(r, [[28.5, 11.5], [27.6, 11.5], [27.6, 22.9], [26.6, 22.9], [26.6, 24.6]], 'par la colonne à droite du casier, jamais à travers');
+});
+
+test("la file : au passage suivant du cron, Bernard vide la corbeille et range la fournée ; au-delà de six dossiers, « +n »", () => {
+  const {p, J} = page();
+  p.run(`setFloor(2); renderRedaction(1000);
+    REDACTION.revue.batches['demo-c2'] = Array.from({length: 9}, (_, i) => ['dm/site', 3000 + i, 'gabelewis']);
+    REDACTION.revue.starts['demo-c2'] = new Date(DAY0 + 10.99 * 36e5).toISOString();`);
+  frames(p, 1, 1100);
+  assert.ok(J('RVF_M.bern'), 'Bernard monte');
+  assert.equal(J('RVF_M.cas.filter(f => f.filed).length'), 0, 'rien n\'apparaît avant qu\'il range (le cron reprend lui-même les PR non relues)');
+  frames(p, 400, 1200);
+  assert.deepEqual(J('RVF_M.basket'), [], 'corbeille vidée');
+  assert.equal(J('RVF_M.cas.filter(f => f.filed).length'), 9);
+  assert.equal(J('RVF_M.bern'), null, 'il est redescendu');
+  assert.ok(J('RVF_M.cas.length') > 6);
+});

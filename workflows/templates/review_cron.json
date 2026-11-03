@@ -121,7 +121,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "6/7 — 🎯 Exclut les PR déjà reviewées par le bot (signature 'Review automatique') AU head courant, tri n° décroissant, cap 30 avec log du reliquat → .kronn/prs.json. Si 0 PR à reviewer → exit 3 → Stop propre (pas de foreach vide).",
+    "description": "6/7 — 🎯 Exclut les PR déjà reviewées par le bot (signature 'Review automatique') AU head courant, tri n° décroissant, cap 30 avec log du reliquat → .kronn/prs.json. Si 0 PR à reviewer → exit 3 → Stop propre (pas de foreach vide). Imprime aussi PRS=[[repo, n°, auteur], …] dans l'ordre : la file de la salle de revue (2e étage), lue par le relevé live.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -141,7 +141,7 @@
     "exec_command": "bash",
     "exec_args": [
      "-c",
-     "set -e\ncat > /tmp/reviews.json\nME=\"$1\" python3 -c \"\nimport json,sys,os\nme=os.environ['ME']\ncand=json.load(open('.kronn/prs_candidates.json'))\nbatch=json.load(open('/tmp/reviews.json'))\nitems=batch.get('items') if isinstance(batch,dict) else batch\nrevd=set()\nfor it in (items or []):\n    inp=it.get('input') or {}\n    repo=inp.get('repo'); num=inp.get('number')\n    for r in (it.get('response') or []):\n        if (r.get('user') or {}).get('login')==me and 'Review automatique' in (r.get('body') or '') and r.get('commit_id'):\n            revd.add((repo,num,r.get('commit_id')))\nkeep=[p for p in cand if (p['repo'],p['number'],p.get('head','')) not in revd]\nkept=keep[:30]\njson.dump([{k:p[k] for k in ('number','baseRef','author','repo')} for p in kept], open('.kronn/prs.json','w'))\nprint(str(len(cand))+' candidates, '+str(len(cand)-len(keep))+' deja reviewees@head, '+str(len(keep))+' a reviewer, garde '+str(len(kept))+', reporte '+str(max(0,len(keep)-30)))\nif not kept: sys.exit(3)\n\"",
+     "set -e\ncat > /tmp/reviews.json\nME=\"$1\" python3 -c \"\nimport json,sys,os\nme=os.environ['ME']\ncand=json.load(open('.kronn/prs_candidates.json'))\nbatch=json.load(open('/tmp/reviews.json'))\nitems=batch.get('items') if isinstance(batch,dict) else batch\nrevd=set()\nfor it in (items or []):\n    inp=it.get('input') or {}\n    repo=inp.get('repo'); num=inp.get('number')\n    for r in (it.get('response') or []):\n        if (r.get('user') or {}).get('login')==me and 'Review automatique' in (r.get('body') or '') and r.get('commit_id'):\n            revd.add((repo,num,r.get('commit_id')))\nkeep=[p for p in cand if (p['repo'],p['number'],p.get('head','')) not in revd]\nkept=keep[:30]\njson.dump([{k:p[k] for k in ('number','baseRef','author','repo')} for p in kept], open('.kronn/prs.json','w'))\nprint(str(len(cand))+' candidates, '+str(len(cand)-len(keep))+' deja reviewees@head, '+str(len(keep))+' a reviewer, garde '+str(len(kept))+', reporte '+str(max(0,len(keep)-30)))\nprint('PRS='+json.dumps([[p['repo'],p['number'],p.get('author') or ''] for p in kept],separators=(',',':')))\nif not kept: sys.exit(3)\n\"",
      "_",
      "{{steps.whoami.data.login}}"
     ],
