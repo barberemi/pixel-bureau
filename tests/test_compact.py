@@ -98,6 +98,15 @@ class CompactTest(unittest.TestCase):
             used = assemble.used_sprites(cfg)
         self.assertTrue({"zz_boss", "zz_capitaine"} <= used)
 
+    def test_floor_sprites_of_the_boss_are_embedded(self):
+        """atelier_sprite (1er) et redaction_sprite (2e) : ses dessins d'étage, embarqués comme captain_sprite."""
+        from unittest import mock
+        cfg = assemble.demo_config()
+        boss = {"key": "p_bob", "name": "Bob", "atelier_sprite": "zz_constructeur", "redaction_sprite": "zz_libraire"}
+        with mock.patch.object(assemble, "roster", lambda c: [boss]):
+            used = assemble.used_sprites(cfg)
+        self.assertTrue({"zz_constructeur", "zz_libraire"} <= used)
+
 
     def test_weights_by_block_add_up_to_the_page(self):
         """Poids par bloc (smoke) : chaque bloc compte, la somme fait la page assemblée."""

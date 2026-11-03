@@ -474,6 +474,10 @@ function atBossDesk(ox,F,now,boss,mid,mug){
   if(themeIs('saint-valentin'))E('🌹',x0+92,top-2,12);
   ctx.fillStyle='#f3e6d2';ctx.font='bold 8px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText("WORLD'S BEST BOSS",ox,top+27);ctx.textAlign='left';
 }
+// le dessin du boss à un étage : la clé du roster (captain_sprite au -1, atelier_sprite au 1er, redaction_sprite au 2e) si
+// elle est réglée et son sprite embarqué, sinon null (il garde le sien). Sa fiche garde son portrait de partout.
+const bossFloorSprite=(b,k)=>b&&b[k]&&(SPR[b[k]]||RECIPES[b[k]])?b[k]:null;
+const withFloorSprite=(c,b,k)=>{const s=bossFloorSprite(b,k);if(s)c.sprite=s;return c;};
 // le boss assis à son bureau : la case BOSS_SEAT le fait descendre de 9 px dans le fauteuil (41-people.js), de face, sans
 // la pose de frappe (ses deux images alternées le faisaient danser)
 const atSeatedBoss=(boss,ox,F,st)=>Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:ox,y:F},tile:BOSS_SEAT.slice(),moving:false,pose:'stand',dir:'down',present:true,_st:{st}});
@@ -493,6 +497,7 @@ function atBoss(slots,now,dt,people){
   if(!boss){desk();return;}
   const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:b.walk.pos.x,y:b.walk.pos.y},tile:seated?BOSS_SEAT.slice():null,moving:!arrived,pose:'stand',present:true,
     dir:arrived?(target==null?'down':AT_G[target].top?'up':'down'):b.walk.dir,_st:{st:gates.length?'gate':'idle'}});
+  withFloorSprite(c,boss,'atelier_sprite'); // au 1er, son dessin de l'étage s'il en a un
   // à la porte d'un bureau qui l'attend, le boss et son étiquette mènent à la décision (atelierClick : kind gate)
   const at=arrived&&target!=null&&slots[target], gl=at?'✋ '+(at.ticket||'')+' · '+(AT_GATE_TXT[at.gate]||'à décider')+' · décider ›':'';
   AT_LIT.push(c.pos);atHit(at?'gate':'boss',c.pos.x-14,c.pos.y-56,28,58,at?{i:target}:{});

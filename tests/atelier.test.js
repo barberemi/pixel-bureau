@@ -440,3 +440,17 @@ test('le ménage du 1er : il balaie en parcourant chaque bureau et l\'entrepôt,
   assert.equal(pts[80], null, 'arrivé à la sortie, il est reparti');
   p.run('atCleanVisit = __cv;');
 });
+
+test("atelier_sprite : le boss du 1er est dessiné avec son dessin de l'étage, sinon avec le sien ; ailleurs, le sien", () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
+  p.run(`CFG.atelier = true; FLOOR = 1; ATELIER = {rooms: [], queue: [], pannes: []}; var __b = chars.find(c => c.boss), __d = drawChar, __seen = [];
+    drawChar = (c, now) => { if (c.key === __b.key) __seen.push(c.sprite); __d(c, now); };`);
+  const drawn = () => { p.run('__seen = []; renderAtelier(2000);'); return J2('__seen[0]'); };
+  assert.equal(drawn(), J2('__b.sprite'), 'sans réglage : son sprite de boss');
+  p.run(`__b.atelier_sprite = 'cs_pomp0';`);
+  assert.equal(drawn(), 'cs_pomp0', 'réglé : il prend ce sprite au 1er');
+  assert.equal(J2('__b.sprite !== "cs_pomp0"'), true, 'le boss garde son sprite (RDC, 3e, fiche)');
+  p.run(`__b.atelier_sprite = 'absent_du_pack';`);
+  assert.equal(drawn(), J2('__b.sprite'), 'sprite introuvable : repli sur le sien');
+  p.run('delete __b.atelier_sprite; drawChar = __d;');
+});

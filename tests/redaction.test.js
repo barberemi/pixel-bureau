@@ -90,3 +90,17 @@ test("floorNight : le voile suit le soleil ; hors des heures de bureau (le week-
   p.run('floorNight(__S, {...__R, closed: true}, 1300);');
   assert.deepEqual(J('__S.lv'), [1], 'le week-end, la veilleuse et la pièce allumée');
 });
+
+test("redaction_sprite : le boss du 2e est dessiné avec son dessin de l'étage, sinon avec le sien ; seul le boss le porte", () => {
+  const {p, J} = page();
+  assert.equal(J('CAST.filter(c => "redaction_sprite" in c || "atelier_sprite" in c).length'), 0, 'le pack de démo ne les règle pas');
+  p.run(`setFloor(2); var __b = chars.find(c => c.boss), __d = drawChar, __seen = [];
+    drawChar = (c, now) => { if (c.key === __b.key) __seen.push(c.sprite); __d(c, now); };`);
+  const drawn = () => { p.run('__seen = []; renderRedaction(2000);'); return J('__seen[0]'); };
+  assert.equal(drawn(), J('__b.sprite'));
+  p.run(`__b.redaction_sprite = 'cs_pomp0';`);
+  assert.equal(drawn(), 'cs_pomp0');
+  p.run(`__b.redaction_sprite = 'absent_du_pack';`);
+  assert.equal(drawn(), J('__b.sprite'), 'sprite introuvable : repli sur le sien');
+  p.run('delete __b.redaction_sprite; drawChar = __d;');
+});

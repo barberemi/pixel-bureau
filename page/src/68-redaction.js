@@ -131,7 +131,7 @@ function rdBoss(people,tks,now){
   const desk=()=>{atBossDesk(x,y,now,boss,(x0,top)=>{R(ctx,x0+40,top+5,22,8,'#2a2a30');R(ctx,x0+42,top+6,18,5,'#7a1f24');
       R(ctx,x0+66,top-2,12,9,'#c8323a');R(ctx,x0+66,top-2,12,2,'#e0525a');R(ctx,x0+70,top-9,4,7,'#1c1c1c');R(ctx,x0+68,top-12,8,4,'#2c2c2c');},84);
     if(g)atBubble(x,y-62,'✋ '+plural(g,'ticket','tickets')+' : je tamponne ?','#8a5a00');};
-  if(boss){people.push([atSeatedBoss(boss,x,y,g?'gate':'idle'),null,false,desk]);RD_LIT.push({x,y});atHitRd('boss',x-16,y-60,32,60,{});}
+  if(boss){people.push([withFloorSprite(atSeatedBoss(boss,x,y,g?'gate':'idle'),boss,'redaction_sprite'),null,false,desk]);RD_LIT.push({x,y});atHitRd('boss',x-16,y-60,32,60,{});}
   else rdLate(people,desk,y);
   rdLate(people,()=>atPill('✋ le tampon : tu valides les tickets, puis ils partent un par un',x-40,y+30,g?'#8a5a00':'#f4efe4',g?'#fff':'#3a3530','bold 9px system-ui,sans-serif'),y);
 }

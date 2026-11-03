@@ -6,6 +6,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ## [Unreleased]
 
+### Ajouté
+
+- Un dessin du boss par étage : `atelier_sprite` (1er) et `redaction_sprite` (2e) dans le roster du pack, comme `captain_sprite` au -1 ; sa fiche garde son portrait.
+
 ### Corrigé
 
 - 2e, 3e et -1 : en rejeu, la pastille « ⏪ Rejeu · l'étage à cette heure-là » du 1er ; aux 2e et 3e, les fenêtres du RDC, dont le ciel suit le soleil (étoiles la nuit, effets des thèmes).

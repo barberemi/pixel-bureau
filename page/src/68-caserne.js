@@ -320,7 +320,7 @@ function csBeacon(now){
 // d'appels ; à côté, le tableau de garde sur pied, un voyant par baie. Le meuble est agrandi (CS_K) ; le capitaine reste à
 // l'échelle des autres personnages. CS_DESK : ses pieds à son poste.
 const CS_K=1.75, CS_KB=1.35, CS_BACK=16; // échelle du bureau, du tableau de garde ; le capitaine se tient CS_BACK px derrière le bureau
-const csCaptainSprite=b=>b&&b.captain_sprite&&(SPR[b.captain_sprite]||RECIPES[b.captain_sprite])?b.captain_sprite:null;
+const csCaptainSprite=b=>bossFloorSprite(b,'captain_sprite');
 function csBayCol(slots,b,now){const s=slots[b];if(!s)return '#3d4250';if(s.dep)return '#3fbf6a';const k=s.s.k;
   return k==='gate'?(REDUCED_MOTION||Math.floor(now/450)%2?'#ffcf4a':'#a37a10'):k==='failed'?'#e0614f':'#5b8def';}
 function csDesk(slots,now,calls,open){ // le bureau, devant le capitaine : dessiné après lui
