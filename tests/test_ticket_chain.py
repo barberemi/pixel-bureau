@@ -48,6 +48,18 @@ class TicketChainTest(unittest.TestCase):
         b = json.loads(self.t("bilan", "r1").stdout)
         self.assertEqual((b["key"], b["title"], b["meta"]), ("DM-9", "API : pistes", "DM-9"))
 
+    def test_gate_preview_shows_the_critique_reservations_left_after_the_last_round(self):
+        """Trois tours faits et la critique encore « à retoucher » : l'aperçu du tampon montre ses réserves ; une critique
+        d'une version d'avant (la rédaction a repris depuis) ne s'affiche pas."""
+        self.t("dossier", "r3", "x", "Tâche", "1", "dm/site", "", "backlog", "")
+        self.t("rapport", "redaction", "r3", stdin='{"tickets": [{"summary": "A", "description": "h2. Contexte", "composant": "dm/site", "points": 1}]}')
+        self.t("rapport", "critique", "r3", stdin='{"verdict": "a_retoucher", "notes": [{"ticket": 1, "note": "alt existe déjà"}]}')
+        ap = self.t("apercus", "r3").stdout
+        self.assertIn("⚠ La critique a encore des réserves après 3 tours", ap)
+        self.assertIn("- T1 : alt existe déjà", ap)
+        self.t("rapport", "redaction", "r3", stdin='{"tickets": [{"summary": "B", "description": "h2. Contexte", "composant": "dm/site", "points": 1}]}')
+        self.assertNotIn("réserves", self.t("apercus", "r3").stdout)
+
     def test_nothing_drafted_fails_and_nothing_created_gives_no_result(self):
         self.t("dossier", "r2", "x", "Bug", "1", "dm/site", "", "backlog", "")
         self.assertNotEqual(self.t("rapport", "redaction", "r2", stdin="pas de JSON").returncode, 0)
