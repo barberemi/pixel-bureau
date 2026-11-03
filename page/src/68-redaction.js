@@ -126,9 +126,9 @@ function rdBoss(people,tks,now){
   const {x,y}=RD_DESK, boss=chars.find(c=>c.boss);R(ctx,x-22,y-52,44,32,'#5a2e2e');R(ctx,x-22,y-52,44,4,'#723a3a');
   const g=tks.findIndex(t=>t.etat==='gate');
   if(boss){const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x,y:y-14},tile:null,dir:'down',moving:false,pose:'type',present:true,_st:{st:g>=0?'gate':'idle'}});
-    people.push([c,null,false,()=>{if(g>=0)atBubble(x,y-80,'✋ T'+(g+1)+' : je tamponne ?','#8a5a00');}]);RD_LIT.push({x,y:y-14});atHitRd('boss',x-16,y-70,32,60,{});}
+    people.push([c,null,false,()=>{if(g>=0)atBubble(x,y-80,'✋ '+plural(tks.filter(t=>t.etat==='gate').length,'ticket','tickets')+' : je tamponne ?','#8a5a00');}]);RD_LIT.push({x,y:y-14});atHitRd('boss',x-16,y-70,32,60,{});}
   rdLate(people,()=>{R(ctx,x-56,y-22,112,26,'#6e4a2c');R(ctx,x-56,y-24,112,4,'#8a6040');R(ctx,x-30,y-12,60,10,'#2a2a30');atTxt('LE BOSS',x,y-4,'#f2d22a','bold 8px ui-monospace,Menlo,monospace');
-    R(ctx,x+26,y-34,12,10,'#c8323a');R(ctx,x+29,y-40,6,6,'#1c1c1c');atPill('✋ le tampon : chaque ticket, un par un',x-40,y+18,g>=0?'#8a5a00':'#f4efe4',g>=0?'#fff':'#3a3530','bold 9px system-ui,sans-serif');},y);
+    R(ctx,x+26,y-34,12,10,'#c8323a');R(ctx,x+29,y-40,6,6,'#1c1c1c');atPill('✋ le tampon : tu valides les tickets, puis ils partent un par un',x-40,y+18,g>=0?'#8a5a00':'#f4efe4',g>=0?'#fff':'#3a3530','bold 9px system-ui,sans-serif');},y);
 }
 // un banc comme au 1er : ceux qui ne travaillent pas s'y assoient (descendus dans l'assise, qui leur cache les jambes)
 function rdBench(people,x,y,ks,hat){atSofa(x,y);ks.forEach((k,j)=>{const a=atWorker(k,x+(j?22:-22),y+9,'down',false,'');if(!a)return;a._st={st:'idle'};a.pose='stand';
@@ -236,8 +236,8 @@ function rdGalleryScenes(){
   const fam='2e étage', ok=true;
   return [{fam,ico:'✂',n:'Une intention découpée',d:'La rédaction découpe l\'intention en trois tickets : le fil rouge se divise en trois brins',w:'Une intention qui touche plusieurs projets',ok,
       play:{len:15e3,speed:1,setup:rdDemo(d=>{const t=d.tables[0];if(t){t.poste='critique';t.tickets.forEach(x=>{x.etat='wait';});}})}},
-    {fam,ico:'✋',n:'Le tampon',d:'Les tickets sont relus : le boss tamponne le premier, les autres attendent leur tour',w:'Chaque ticket avant sa création',ok,
-      play:{len:15e3,speed:1,setup:rdDemo(d=>{const t=d.tables[0];if(t){t.poste='valider';t.tickets.forEach((x,k)=>{x.etat=k===0?'gate':'wait';});}})}},
-    {fam,ico:'🎫',n:'Les tickets partent dans Jira',d:'Tamponnés un par un : les brins du fil rouge vont jusqu\'à la boîte Jira',w:'Tu approuves chaque ticket',ok,
+    {fam,ico:'✋',n:'Le tampon',d:'Les tickets sont relus : le boss les tamponne, tes changements renvoient à la rédaction',w:'Avant leur création',ok,
+      play:{len:15e3,speed:1,setup:rdDemo(d=>{const t=d.tables[0];if(t){t.poste='valider';t.tickets.forEach(x=>{x.etat='gate';});}})}},
+    {fam,ico:'🎫',n:'Les tickets partent dans Jira',d:'Tamponnés, ils sont créés un par un : les brins du fil rouge vont jusqu\'à la boîte Jira',w:'Tu approuves chaque ticket',ok,
       play:{len:15e3,speed:1,setup:rdDemo(d=>{const t=d.tables[0];if(t){t.poste='valider';t.tickets.forEach(x=>{x.etat='ok';});}})}}];
 }

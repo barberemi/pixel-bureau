@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- Créer un ticket : la validation se fait sur la liste des tickets, dans le parent, car Kronn refuse une gate dans un sous-workflow (le modèle d'avant ne s'installait pas). **Changements** renvoie à la rédaction avec tes retours (« retire T2 », « fusionne T1 et T3 ») ; chaque ticket n'a plus que sa création. Un test vérifie qu'aucun modèle lancé en sous-workflow n'a de gate. Après la mise à jour : `python3 tools/install.py`, puis `publish.py all`.
 - Fil de la journée : le ménage du soir passe aussi par le -1 (« a fini le 1er étage, il descend au -1 ») ; « tout est propre » arrive à la fin de sa tournée, plus à la fin du 1er. Après la mise à jour : `publish.py page`.
 - Caserne Support (-1) : en rejeu, le camion et l'équipe sortent bien pendant une investigation. Le run d'un fil se retrouve aussi par l'id que le relevé a noté pour ce fil : Kronn range désormais les variables d'un run dans un instantané, et la variable `message_id` manquait aux runs du jour (le fil passait pour un appel à prendre). Après la mise à jour : `publish.py page`.
 - Les étages se comportent comme le RDC : la loupe suit aussi le -1 (départ en intervention, vanne, panne, camion qui rentre), avec la pause du rejeu accéléré ; en lecture rapide, on marche plus vite au 1er et au -1 ; les thèmes décorent le -1 ; le soir, l'agent d'entretien fait aussi le -1, par la barre de pompier. Guide : [La caserne](guide/fonctionnalites/25-caserne.md). Après la mise à jour : `publish.py page`.

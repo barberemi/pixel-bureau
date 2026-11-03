@@ -13,7 +13,7 @@ L'onglet « ✍ 2e · rédaction » apparaît entre le 1er et le 3e dès que le 
 - **Les bibliothèques**, une par composant Jira de l'équipe (les quatre premiers de `jira.create.components`, puis « autres ») : celles que l'intention touche s'allument.
 - **Les postes**, des reporters en chapeau mou et carte de presse : 📚 Recherche (à la bibliothèque), ✍ Rédaction et 🧐 Critique, face à face à la table. Les versions des tickets sont posées sur la table, et « ↺ critique → rédaction · tour 2/3 » dit quand la critique renvoie à la rédaction (trois tours au plus). Même langage qu'aux autres étages : au travail (halo, bulle), a travaillé (✓), attend son tour (gris).
 - **Le fil rouge** part de ton intention, punaisée au liège, passe par la recherche et la rédaction, puis se divise en un brin par ticket quand l'intention est découpée. Une carte par ticket, à sa couleur : attend la critique, en cours, t'attend, créé, écarté.
-- **Le bureau du boss**, le tampon posé dessus : le boss y est toujours, et tamponne les tickets un par un (« ✋ T2 : je tamponne ? »). Les brins des tickets créés vont jusqu'à la boîte Jira.
+- **Le bureau du boss**, le tampon posé dessus : le boss y est toujours, et tamponne la liste des tickets (« ✋ 3 tickets : je tamponne ? ») ; tes « Changements » renvoient à la rédaction. Les tickets partent ensuite un par un : les brins des tickets créés vont jusqu'à la boîte Jira.
 - **Le banc**, en bas à gauche, pour les reporters qui ne travaillent pas, comme au 1er.
 - Jusqu'à trois intentions en même temps : la table montre la plus ancienne, un clic sur le liège passe à la suivante.
 

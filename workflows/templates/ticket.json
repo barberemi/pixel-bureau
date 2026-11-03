@@ -160,7 +160,8 @@
     "description": "Poste ✍ rédaction (sous-workflow, un agent) : le ou les tickets, l'intention découpée quand elle touche plusieurs projets ou livrables.",
     "sub_workflow_id": "@@models.ticket_redaction@@",
     "sub_workflow_variables": {
-     "run_id": "{{run.id}}"
+     "run_id": "{{run.id}}",
+     "retours": "{{state.last_human_feedback ?? \"\"}}"
     }
    },
    {
@@ -213,6 +214,46 @@
       }
      }
     ]
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "apercu",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Les tickets tels qu'ils seront créés, en texte lisible, pour ta validation. 0 token.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/ticket.py@@",
+     "apercus",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "relire",
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "Le tampon : tu valides les tickets avant leur création (une gate ne peut pas être dans un sous-workflow).",
+    "gate_message": "{{steps.apercu.data.stdout}}\n\n---\n**Approuver** : les tickets sont créés dans Jira, l'un après l'autre. **Changements** : dis ce qui change (« retire T2 », « fusionne T1 et T3 », « T2 : 5 points ») ; la rédaction reprend avec tes retours. **Rejeter** : rien n'est créé.",
+    "gate_request_changes_target": "redaction"
    },
    {
     "name": "chaque",

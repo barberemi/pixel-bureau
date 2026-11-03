@@ -6,13 +6,13 @@ ticket (models.ticket_un), lus dans l'API Kronn, et le dossier de chaque run (~/
                            points, etat: wait|run|gate|ok|ecarte|err}], url}], events: [{t, k: arrive|gate|cree|fin, run}], crees}
 
 Une table = une intention en cours (trois au plus) ; poste = recherche, redaction, critique, ou valider quand les
-tickets passent un par un au tampon. Chaque ticket : son sous-workflow (le n-ième lancé par le run est le ticket n).
+tickets attendent ton tampon, puis sont créés un par un. Chaque ticket : son sous-workflow (le n-ième lancé par le run est le ticket n).
 """
 import datetime, json, os, re, sys
 from _lib import ACTIVE, CFG, TZ, get, read_json
 
 HOME = os.path.expanduser("~/.cache/pixel-bureau/ticket")
-POSTES = {"recherche": "recherche", "redaction": "redaction", "critique": "critique", "aiguillage": "critique", "chaque": "valider"}
+POSTES = {"recherche": "recherche", "redaction": "redaction", "critique": "critique", "aiguillage": "critique", "apercu": "valider", "relire": "valider", "chaque": "valider"}
 
 
 def dget(run, name, default=None):
@@ -46,7 +46,7 @@ def table(run, kids):
     poste = next((POSTES[n] for n in reversed(steps) if n in POSTES), "recherche")
     mine = sorted([k for k in kids if k.get("parent_run_id") == run["id"]], key=lambda k: k.get("started_at") or "")
     ts = [{"i": i, "summary": str(x.get("summary") or "")[:120], "composant": x.get("composant"), "points": x.get("points"),
-           "etat": child_st(mine[i]) if i < len(mine) else "wait"} for i, x in enumerate(t.get("tickets") or [])]
+           "etat": child_st(mine[i]) if i < len(mine) else "gate" if run.get("status") == "WaitingApproval" else "wait"} for i, x in enumerate(t.get("tickets") or [])]
     ui = (CFG.get("kronn") or {}).get("ui") or ""
     return {"run": run["id"], "status": run.get("status"), "since": run.get("started_at"), "intention": str(d.get("intention") or "")[:200],
             "poste": poste, "tour": d.get("tour") or 1, "composants": (dget(run["id"], "recherche.json", {}) or {}).get("composants") or d.get("composants") or [],
@@ -72,11 +72,11 @@ def snapshot(now_iso=None):
         for k in kids:
             if k.get("parent_run_id") != r["id"]:
                 continue
-            g = next((s for s in k.get("step_results") or [] if s.get("step_name") == "relire"), None)
-            if g and g.get("started_at"):
-                ev.append({"t": g["started_at"], "k": "gate", "run": r["id"]})
             if child_st(k) == "ok" and k.get("finished_at"):
                 ev.append({"t": k["finished_at"], "k": "cree", "run": r["id"]})
+        g = next((s for s in full.get("step_results") or [] if s.get("step_name") == "relire"), None)
+        if g and g.get("started_at"):
+            ev.append({"t": g["started_at"], "k": "gate", "run": r["id"]})
         if r.get("status") not in ACTIVE and r.get("finished_at"):
             ev.append({"t": r["finished_at"], "k": "fin", "run": r["id"]})
     out["events"] = sorted([e for e in ev if e["t"]], key=lambda e: e["t"])
