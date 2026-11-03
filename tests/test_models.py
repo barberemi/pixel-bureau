@@ -347,7 +347,7 @@ exit 0
         st = un
         self.assertEqual(st["points_board"]["api_body"], {"fields": {"customfield_200": "{{steps.champs.data.sources.f.board_sp}}"}})
         self.assertEqual(st["creer"]["api_body"], "{{steps.champs.data.sources.f.body}}")  # corps typé, jamais réinterprété
-        self.assertEqual(assemble.page_config(assemble.merged(c))["ticket"], {"wf": "tttt1111"})
+        self.assertEqual(assemble.page_config(assemble.merged(c))["ticket"], {"wf": "tttt1111", "postes_wf": []})
         # même champ à la création et sur le board : pas de recopie ; sans liste de composants : champ libre facultatif
         Path(os.path.join(pack, "settings.json")).write_text(json.dumps({"jira": {"create": {"points_field": "customfield_200"}}}))
         out = templates.render(TPL["ticket"], c)
