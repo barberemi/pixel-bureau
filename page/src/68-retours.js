@@ -121,7 +121,7 @@ function rtBackground(){
   for(const z of RT_G){R(g,z.x0,z.y0,z.w,4,'#7d776c');R(g,z.x0,z.y0+z.h-4,z.w,4,'#7d776c');R(g,z.x0,z.y0,4,z.h,'#7d776c');R(g,z.x0+z.w-4,z.y0,4,z.h,'#7d776c');
     woodDoor(g,z.door.x-T,z.top?z.y0+z.h-8:z.y0-4,2*T,12,2,false);} // la porte en bois, sur le couloir
   const {x:sx,y:sy}=RT_STAIRS;R(g,sx-40,sy-26,80,52,'#8a8478');for(let k=0;k<4;k++)R(g,sx-40,sy-22+k*14,80,3,'#a9a397'); // l'escalier
-  g.font='bold 11px ui-monospace,Menlo,monospace';g.fillStyle='#5a4636';g.fillText('3E · RETOURS DE PR',12,T+20);
+  g.font='bold 13px ui-monospace,Menlo,monospace';g.fillStyle='#5a4636';g.fillText('3E · RETOURS DE PR',12,T+20);
   return c;
 }
 let RT_BG=null;
@@ -134,32 +134,32 @@ function rtBoard(z,r){
   const {x,y,w,h}=z.kb;R(ctx,x-4,y-4,w+8,h+8,'#7a5a3c');R(ctx,x,y,w,h,'#f4efe4');
   const cw=w/RT_COLS.length;let hl=null;
   RT_COLS.forEach((c,j)=>{const cx=x+j*cw, l=r?(r.fils||[]).filter(f=>f.col===c.k):[];if(j)R(ctx,cx,y+4,1,h-8,'#d9d2c3');
-    atTxt(c.n+(r?' '+l.length:''),cx+cw/2,y+11,'#5a4636','bold 8px system-ui,sans-serif');
+    atTxt(c.n+(r?' '+l.length:''),cx+cw/2,y+11,'#5a4636','bold 10px system-ui,sans-serif');
     l.slice(0,6).forEach((f,q)=>{const px=cx+cw/2-10+(q%2?6:-6), py=y+16+q*12;rtPostit(px,py,c.c,f.cur);if(f.cur)hl={x:px+10,y:py+7};});});
   atHitRt('board',x,y,w,h,{i:z.i});
   return hl;
 }
 function rtLate(people,f,y){people.push([{pos:{x:0,y:y==null?1e6:y}},null,false,f]);}
-const rtPill=(p,s,x,y)=>atPill(p.i+' '+p.n,x,y,{run:'#2f6fd6',ok:'#2f7a45',err:'#a8323a',gate:'#8a5a00'}[s]||'#f4efe4',s?'#fff':'#3a3530','bold 9px system-ui,sans-serif');
+const rtPill=(p,s,x,y)=>atPill(atPosteLbl(p,['run','err','gate'].includes(s)),x,y,{run:'#2f6fd6',ok:'#2f7a45',err:'#a8323a',gate:'#8a5a00'}[s]||'#f4efe4',s?'#fff':'#3a3530','bold 11px system-ui,sans-serif');
 // ---------- un bureau ----------
 function rtRoom(r,i,now,people){
   const z=RT_G[i], T=AT_TS, lv=RT_MEM.leaving[i];
-  rtLate(people,()=>atPill('BUREAU '+(i+1),z.x0+38,z.y0+16,'#5a4636','#fff','bold 9px ui-monospace,Menlo,monospace'),1);
+  rtLate(people,()=>atPill('BUREAU '+(i+1),z.x0+38,z.y0+16,'#5a4636','#fff','bold 11px ui-monospace,Menlo,monospace'),1);
   const hl=rtBoard(z,r);
   atBelt(z.x0+.5*T,z.ry,z.w-T,.6*T,!!r,now,1);
   if(!r){ // libre : les bureaux éteints, personne
     RT_POSTES.forEach((p,j)=>{if(!p.gate)atDesk(z.pts[j].x,z.pts[j].y-6,false);});
     ctx.fillStyle='rgba(20,22,30,.35)';ctx.fillRect(z.x0+4,z.y0+4,z.w-8,z.h-8);
-    if(!lv)rtLate(people,()=>atPill('libre',z.x0+z.w/2,z.y0+z.h/2+18,'#1c2440','#bfe6ff','bold 10px ui-monospace,Menlo,monospace'),1);
+    if(!lv)rtLate(people,()=>atPill('libre',z.x0+z.w/2,z.y0+z.h/2+18,'#1c2440','#bfe6ff','bold 12px ui-monospace,Menlo,monospace'),1);
     if(lv&&lv.carton)rtLate(people,()=>{ctx.save();ctx.globalAlpha=lv.carton;atCarton(z.pts[RT_POSTES.length-1].x,z.ry+.2*T,null);ctx.restore();},z.ry+1);
     atHitRt('room',z.x0,z.y0,z.w,z.h,{i});return;
   }
   const cur=rtCur(r), boss=RT_MEM.boss, here=boss&&boss.target===i&&boss.arrived;
-  rtLate(people,()=>{atPill('🛠 '+rtName(r),z.x0+z.w/2,z.y0+16,'#0b2a4a','#fff','bold 10px ui-monospace,Menlo,monospace');const w=rtWho(r);if(w)atTxt('de '+w,z.x0+z.w-12,z.y0+19,'#5a4636','bold 9px system-ui','right');},1);
+  rtLate(people,()=>{atPill('🛠 '+rtName(r),z.x0+z.w/2,z.y0+16,'#0b2a4a','#fff','bold 12px ui-monospace,Menlo,monospace');const w=rtWho(r);if(w)atTxt('de '+w,z.x0+z.w-12,z.y0+19,'#5a4636','bold 11px system-ui','right');},1);
   RT_POSTES.forEach((p,j)=>{const {x,y}=z.pts[j], s=rtState(r,p);
     if(p.gate){R(ctx,x-14,z.ry-20,3,20,'#8a8478');R(ctx,x+12,z.ry-20,3,20,'#8a8478');for(let q=0;q<4;q++)R(ctx,x-14+q*7,z.ry-20,7,5,q%2?'#1c1c1c':'#f2c230');
       if(s==='gate'&&!here)rtLate(people,()=>{if(REDUCED_MOTION||Math.floor(now/500)%2)atBadge(x,z.ry-34,'✋','#d08a10');
-        if(boss&&boss.target!=null&&boss.target!==i)atPill('✋ en file : le boss est au bureau '+(boss.target+1),x,z.ry-56,'#8a5a00','#fff','bold 9px system-ui,sans-serif');},1e6);
+        if(boss&&boss.target!=null&&boss.target!==i)atPill('✋ en file : le boss est au bureau '+(boss.target+1),x,z.ry-56,'#8a5a00','#fff','bold 11px system-ui,sans-serif');},1e6);
       rtLate(people,()=>rtPill(p,s,x,z.ry+.6*T+12),1e6-2);atHitRt('agent',x-16,z.ry-40,32,48,{i,k:p.k});return;}
     const a=atWorker(i*7+j,x,y,'down',s==='err',p.n);if(!a)return;
     a._st={st:s==='run'?'work':s==='err'?'error':'idle'};a.pose='type';
@@ -191,7 +191,7 @@ function rtBubble(r,p){
 function rtHall(slots,now,people){
   const T=AT_TS, y=(RT_HALL[0]+RT_HALL[1])/2*T, q=(RETOURS&&RETOURS.queue)||[], free=slots.filter(x=>!x).length;
   for(let k=0;k<Math.min(3,q.length);k++)atCarton(1.4*T+k*34,y+10,null);
-  if(q.length)rtLate(people,()=>atPill('📥 '+plural(q.length,'PR attend','PR attendent')+' un bureau',1.4*T+150,y+8,'#1c2440','#bfe6ff','bold 9px system-ui,sans-serif'),1e6);
+  if(q.length)rtLate(people,()=>atPill('📥 '+plural(q.length,'PR attend','PR attendent')+' un bureau',1.4*T+150,y+8,'#1c2440','#bfe6ff','bold 11px system-ui,sans-serif'),1e6);
   atHitRt('queue',.6*T,y-20,4*T,40,{});
   atCoffee(20*T,y+18);atPlant(17.6*T,y+20);atPlant(26*T,y+20);
   // le banc, comme au 1er : ceux des bureaux libres s'y assoient (descendus dans l'assise, qui leur cache les jambes)
@@ -199,7 +199,7 @@ function rtHall(slots,now,people){
   const sit=Math.min(2,free);for(let k=0;k<sit;k++){const x=bx+(k?22:-22), a=atWorker(60+k,x,by+9,'down',false,'');if(!a)continue;a._st={st:'idle'};a.pose='stand';
     people.push([a,null,false,()=>{rtCap(ctx,x,by+9,'down');if(k===sit-1)atSofaFront(bx,by);}]);}
   if(!sit)rtLate(people,()=>atSofaFront(bx,by),by+10);
-  rtLate(people,()=>atPill('⇅ escalier · RDC',RT_STAIRS.x,RT_STAIRS.y+42,'#5a4636','#fff','bold 9px ui-monospace,Menlo,monospace'),1e6);
+  rtLate(people,()=>atPill('⇅ escalier · RDC',RT_STAIRS.x,RT_STAIRS.y+42,'#5a4636','#fff','bold 11px ui-monospace,Menlo,monospace'),1e6);
 }
 // ---------- le boss : à son bureau, ou à la barrière ✋ du bureau qui attend depuis le plus longtemps ----------
 function rtBoss(slots,now,dt,people){

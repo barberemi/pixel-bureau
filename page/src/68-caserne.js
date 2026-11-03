@@ -149,12 +149,12 @@ function csBackground(){ // sous-sol : murs de béton, tuyaux au plafond, sol de
   R(g,35*T-4,2*T,4,CS_LANE-1.4*T-2*T,'#7d776c');R(g,35*T-4,CS_LANE+.6*T,4,27*T-CS_LANE-.6*T,'#7d776c'); // la salle de garde, séparée par un muret ouvert sur l'allée
   for(let b=0;b<CS_BAYS;b++){const z=CS_G[b];g.save();g.strokeStyle='#f2c230';g.lineWidth=3;g.setLineDash([12,7]);g.strokeRect(z.x0+4,CS_Z0*T,z.w-8,(CS_Z1-CS_Z0)*T);g.restore();
     for(let k=0;k<6;k++)R(g,z.cx-2.5*T+k*T,(CS_Z1+.25)*T,T*.55,6,k%2?'#1c1c1c':'#f2c230');} // bande devant la baie
-  g.font='bold 11px ui-monospace,Menlo,monospace';g.fillStyle='#4a3f36';g.fillText('-1 · CASERNE SUPPORT',12,T+20);
+  g.font='bold 13px ui-monospace,Menlo,monospace';g.fillStyle='#4a3f36';g.fillText('-1 · CASERNE SUPPORT',12,T+20);
   return c;
 }
 let CS_BG=null;
 function csDoorBack(z,b){const d=z.door;R(ctx,d.x-6,d.y-6,d.w+12,d.h+6,'#5a3a2a');R(ctx,d.x,d.y,d.w,d.h,'#1f1b18');
-  atPill('BAIE '+(b+1),z.cx,d.y-12,'#5a3a2a','#fff','bold 10px ui-monospace,Menlo,monospace');}
+  atPill('BAIE '+(b+1),z.cx,d.y-12,'#5a3a2a','#fff','bold 12px ui-monospace,Menlo,monospace');}
 function csCurtain(z,k){ // rideau de la baie : k = part fermée (1 fermé) ; il descend au pixel près, lame après lame
   const d=z.door, h=Math.round(d.h*k);if(h<=0)return;
   ctx.save();ctx.beginPath();ctx.rect(d.x,d.y,d.w,h);ctx.clip();
@@ -201,7 +201,7 @@ function csHose(z,st,L,fd){ // du camion au premier pompier, puis de main en mai
 }
 function csValve(x,y,open,now){R(ctx,x+14,y-24,4,24,'#5d6370');ctx.strokeStyle=open?'#e0a020':'#c8323a';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x+16,y-28,7,0,7);ctx.stroke();
   R(ctx,x+15,y-35,2,14,ctx.strokeStyle);R(ctx,x+9,y-29,14,2,ctx.strokeStyle);}
-const csPostePill=(p,s,x,y)=>atPill(p.i+' '+p.n,x,y,{run:'#2f6fd6',ok:'#2f7a45',err:'#a8323a',gate:'#8a5a00'}[s]||'#f4efe4',s?'#fff':'#3a3530','bold 9px system-ui,sans-serif');
+const csPostePill=(p,s,x,y)=>atPill(atPosteLbl(p,['run','err','gate'].includes(s)),x,y,{run:'#2f6fd6',ok:'#2f7a45',err:'#a8323a',gate:'#8a5a00'}[s]||'#f4efe4',s?'#fff':'#3a3530','bold 11px system-ui,sans-serif');
 // ---------- une baie ----------
 const csEase=u=>u<=0?0:u>=1?1:u*u*(3-2*u), csClamp=u=>u<0?0:u>1?1:u;
 function csBay(slot,b,now,dt,people){
@@ -221,10 +221,10 @@ function csBay(slot,b,now,dt,people){
     const f=1-csClamp((u-.4)/1);
     if(f>0){ctx.save();ctx.globalAlpha=f;csValve(z.pts[5].x,z.pts[5].y,true,now);ctx.restore();}
     if(slot.dep.st&&!REDUCED_MOTION)csHose(z,slot.dep.st,2600*(1-csClamp(u/1.2)),f);
-    if(slot.dep.posted&&u<5)csLate(people,()=>{ctx.save();ctx.globalAlpha=1-csClamp((u-4)/1);atPill('📣 Réponse postée dans Teams : feu éteint',z.cx,(CS_Z0+1.2)*T,'#2f7a45','#fff','bold 10px system-ui,sans-serif');ctx.restore();});
+    if(slot.dep.posted&&u<5)csLate(people,()=>{ctx.save();ctx.globalAlpha=1-csClamp((u-4)/1);atPill('📣 Réponse postée dans Teams : feu éteint',z.cx,(CS_Z0+1.2)*T,'#2f7a45','#fff','bold 12px system-ui,sans-serif');ctx.restore();});
     atHitCs('bay',z.x0,d.y,z.w,(CS_Z1-CS_DY0)*T,{b});return;
   }
-  if(!slot){atHitCs('bay',z.x0,d.y,z.w,(CS_Z1-CS_DY0)*T,{b});if(open<.05)atPill('libre',z.cx,d.y+d.h/2,'#1c2440','#bfe6ff','bold 10px ui-monospace,Menlo,monospace');return;}
+  if(!slot){atHitCs('bay',z.x0,d.y,z.w,(CS_Z1-CS_DY0)*T,{b});if(open<.05)atPill('libre',z.cx,d.y+d.h/2,'#1c2440','#bfe6ff','bold 12px ui-monospace,Menlo,monospace');return;}
   const t=slot.t, k=slot.s.k, st=slot.st||{};
   // arrivée : le titre puis la vanne apparaissent en fondu, chacun prend sa place, le tuyau se déroule quand tous sont là
   const fa=a?csClamp((u-2)/1):1, fv=a?csClamp((u-3)/1):1;
@@ -234,7 +234,7 @@ function csBay(slot,b,now,dt,people){
     if(a.all){const s=(now-a.all)/1000;L=s*900;fd=csClamp((s-1.4)/.8);if(s>3)M.arr[b]=null;}else{L=0;fd=0;}}
   if(L>0)csHose(z,st,L,fd);
   const cur=csCur(st);
-  if(fa>0)csLate(people,()=>{ctx.save();ctx.globalAlpha=fa;atPill('🚨 '+csTitle(t).slice(0,34),z.cx,(CS_Z0+.55)*T,k==='failed'?'#a8323a':'#8a1f17','#fff','bold 9px system-ui,sans-serif');ctx.restore();});
+  if(fa>0)csLate(people,()=>{ctx.save();ctx.globalAlpha=fa;atPill('🚨 '+csTitle(t).slice(0,34),z.cx,(CS_Z0+.55)*T,k==='failed'?'#a8323a':'#8a1f17','#fff','bold 11px system-ui,sans-serif');ctx.restore();});
   CS_POSTES.forEach((p,j)=>{const {x,y}=z.pts[j], s=st[p.k]||'';
     if(p.gate){if(fv<=0)return;ctx.save();ctx.globalAlpha=fv;csValve(x,y,s==='ok',now);
       const boss=k==='gate'&&!!chars.find(c=>c.boss);
@@ -257,18 +257,18 @@ function csBay(slot,b,now,dt,people){
       csPostePill(p,s,x,y+16);ctx.restore();}]);
     atHitCs('agent',x-16,y-56,32,74,{b,k:p.k});
   });
-  if(k==='failed')csLate(people,()=>atPill('🧯 en panne : relance l\'investigation',z.cx,(CS_Z1-.4)*T,'#a8323a','#fff','bold 9px system-ui,sans-serif'));
+  if(k==='failed')csLate(people,()=>atPill('🧯 en panne : relance l\'investigation',z.cx,(CS_Z1-.4)*T,'#a8323a','#fff','bold 11px system-ui,sans-serif'));
   atHitCs('bay',z.x0,d.y,z.w,(CS_Z1-CS_DY0)*T,{b});
 }
 function csLate(people,f,y){people.push([{pos:{x:0,y:y==null?1e6:y}},null,false,f]);}
 // ---------- la salle de garde et la barre de pompier ----------
 function csBoard(slots,now){ // le tableau des interventions, au mur de la salle de garde
   const T=AT_TS, x=35.6*T, y=2.1*T, w=9.8*T, h=4.4*T;R(ctx,x-6,y-6,w+12,h+12,'#3a3530');R(ctx,x,y,w,h,'#10141c');R(ctx,x,y,w,18,'#8a1f17');
-  atTxt('📋 INTERVENTIONS',x+8,y+13,'#fff','bold 10px ui-monospace,Menlo,monospace','left');
+  atTxt('📋 INTERVENTIONS',x+8,y+13,'#fff','bold 12px ui-monospace,Menlo,monospace','left');
   slots.forEach((s,b)=>{const c=!s?'#5d6370':s.dep?'#3fbf6a':s.s.k==='gate'?'#e0a020':s.s.k==='failed'?'#e0614f':'#5b8def', cur=s&&!s.dep&&csCur(s.st||{});
-    R(ctx,x+10,y+28+b*19,8,8,c);atTxt('B'+(b+1)+' · '+(!s?'libre':s.dep?(s.dep.posted?'feu éteint':'fin'):(csTitle(s.t).slice(0,22)+(cur?' · '+cur.i:''))),x+24,y+36+b*19,s?'#e8e2d0':'#8a93a6','10px ui-monospace,Menlo,monospace','left');});
+    R(ctx,x+10,y+28+b*19,8,8,c);atTxt('B'+(b+1)+' · '+(!s?'libre':s.dep?(s.dep.posted?'feu éteint':'fin'):(csTitle(s.t).slice(0,22)+(cur?' · '+cur.i:''))),x+24,y+36+b*19,s?'#e8e2d0':'#8a93a6','12px ui-monospace,Menlo,monospace','left');});
   const n=csCalls().length, q=csWaiting();
-  atTxt('📟 '+(n?plural(n,'appel','appels')+' à prendre':'aucun appel')+(q?' · '+q+' en attente de baie':''),x+10,y+h-12,n?'#ff9a8a':'#8a93a6','bold 10px ui-monospace,Menlo,monospace','left');
+  atTxt('📟 '+(n?plural(n,'appel','appels')+' à prendre':'aucun appel')+(q?' · '+q+' en attente de baie':''),x+10,y+h-12,n?'#ff9a8a':'#8a93a6','bold 12px ui-monospace,Menlo,monospace','left');
   if(n){const on=REDUCED_MOTION||Math.floor(now/400)%2;ctx.fillStyle=on?'#ff4a3a':'#6a1a14';ctx.beginPath();ctx.arc(x+w-14,y+9,6,0,7);ctx.fill();}
   atHitCs('board',x,y,w,h,{});
 }
@@ -292,9 +292,9 @@ function csGuard(now,people){ // la garde : aux cartes le jour, sur les lits de 
     [[-20,-6],[-4,-8],[12,-5],[0,4]].forEach(([dx,dy],j)=>R(ctx,x+dx,y+dy,9,12,j===3?'#d0392b':'#fbfbf6'));
     [[-1.9,.3,'right'],[1.9,.3,'left'],[0,-.8,'down']].forEach(([dx,dy,dir],j)=>{const c=csPompier(30+j,x+dx*T,y+dy*T,'idle',dir);
       people.push([c,null,false,()=>csHelmet(ctx,c.pos.x,c.pos.y,dir,false)]);atHitCs('guard',c.pos.x-16,c.pos.y-56,32,60,{});});
-    csLate(people,()=>atPill('🃏 la garde : partie de cartes',x,y+1.7*T,'#1c2440','#bfe6ff','bold 9px system-ui,sans-serif'),y+1);}
-  else csLate(people,()=>atPill('🌙 la garde dort, prête à partir',40.5*T,25.4*T,'#1c2440','#bfe6ff','bold 9px system-ui,sans-serif'),25*T);
-  csPole();csLate(people,()=>atPill('⇅ RDC · 1er',CS_POLE.x,CS_POLE.y0-14,'#5a4636','#fff','bold 9px ui-monospace,Menlo,monospace'),CS_POLE.y0);
+    csLate(people,()=>atPill('🃏 la garde : partie de cartes',x,y+1.7*T,'#1c2440','#bfe6ff','bold 11px system-ui,sans-serif'),y+1);}
+  else csLate(people,()=>atPill('🌙 la garde dort, prête à partir',40.5*T,25.4*T,'#1c2440','#bfe6ff','bold 11px system-ui,sans-serif'),25*T);
+  csPole();csLate(people,()=>atPill('⇅ RDC · 1er',CS_POLE.x,CS_POLE.y0-14,'#5a4636','#fff','bold 11px ui-monospace,Menlo,monospace'),CS_POLE.y0);
 }
 function csWalkers(now,dt,people){for(const w of CS_MEM.walk){if(csStepW(w,dt))w.gone=true;else csDrawWalker(w,people,now);}}
 // le gyrophare de la caserne, au mur entre les baies et la salle de garde (et sur l'onglet du -1) : il tourne tant qu'un
@@ -349,8 +349,8 @@ function csCaptain(slots,now,dt,people){
   if(boss){const cx=d.x, f=F-CS_BACK;R(ctx,cx-20,f-50,40,34,'#5a2e2e');R(ctx,cx-20,f-50,40,4,'#723a3a');R(ctx,cx-25,f-32,6,20,'#4a2424');R(ctx,cx+19,f-32,6,20,'#4a2424'); // le fauteuil
     R(ctx,cx-25,f-32,6,2,'#6a3434');R(ctx,cx+19,f-32,6,2,'#6a3434');}
   csLate(people,()=>csDesk(slots,now,calls,open),F+2);
-  csLate(people,()=>{atPill('📥 '+(calls.length?plural(calls.length,'appel','appels'):'aucun appel'),d.x-4.4*T,F+1.55*T,calls.length?'#8a1f17':'#5b6070','#fff','bold 9px system-ui,sans-serif');
-    const n=csDoneToday();atPill('🧯 '+(n?plural(n,'feu éteint','feux éteints')+' aujourd\'hui':'aucun feu aujourd\'hui'),d.x+4.6*T,F+1.55*T,n?'#2f7a45':'#5b6070','#fff','bold 9px system-ui,sans-serif');},F+1.6*T);
+  csLate(people,()=>{atPill('📥 '+(calls.length?plural(calls.length,'appel','appels'):'aucun appel'),d.x-4.4*T,F+1.55*T,calls.length?'#8a1f17':'#5b6070','#fff','bold 11px system-ui,sans-serif');
+    const n=csDoneToday();atPill('🧯 '+(n?plural(n,'feu éteint','feux éteints')+' aujourd\'hui':'aucun feu aujourd\'hui'),d.x+4.6*T,F+1.55*T,n?'#2f7a45':'#5b6070','#fff','bold 11px system-ui,sans-serif');},F+1.6*T);
   atHitCs('calls',Math.round(d.x-56*K),Math.round(F-30*K),Math.round(30*K),Math.round(18*K),{});
   if(!boss)return; // le soir et le week-end, il reste, comme le boss au 1er (sous l'éclairage réduit)
   const gi=slots.findIndex(s=>s&&!s.dep&&s.s.k==='gate'), home={x:d.x,y:F-CS_BACK}, target=gi<0?null:gi;
@@ -365,9 +365,9 @@ function csCaptain(slots,now,dt,people){
   const look=csCaptainSprite(boss);
   const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:p.x,y:p.y},tile:null,dir,moving:!arrived,pose:'stand',present:true,_st:{st:target==null?'idle':'gate'},sprite:look||boss.sprite});
   people.push([c,null,false,()=>{if(!look)csHelmet(ctx,p.x,p.y,dir,true);
-    if(!home_)atPill(boss.name+' · capitaine',p.x,p.y+16,'#8a1f17','#fff','bold 10px system-ui,sans-serif');
+    if(!home_)atPill(boss.name+' · capitaine',p.x,p.y+16,'#8a1f17','#fff','bold 12px system-ui,sans-serif');
     if(arrived&&target!=null)atBubble(p.x,p.y-66,'✋ j\'ouvre la vanne ?','#8a5a00');}]);
-  if(home_)csLate(people,()=>atPill(boss.name+' · capitaine',p.x,Math.round(F+17*K+12),'#8a1f17','#fff','bold 10px system-ui,sans-serif'),F+3); // sous le bureau
+  if(home_)csLate(people,()=>atPill(boss.name+' · capitaine',p.x,Math.round(F+17*K+12),'#8a1f17','#fff','bold 12px system-ui,sans-serif'),F+3); // sous le bureau
   CS_LIT.push(p);atHitCs('captain',p.x-16,p.y-56,32,60,{});
 }
 // ---------- la nuit, comme au RDC (floorNight) : chaque baie en intervention s'allume ; la salle de garde tant que la garde

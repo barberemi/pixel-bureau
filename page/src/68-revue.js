@@ -165,7 +165,7 @@ function rvfDraw(now,people){
   // le casier « À relire » : six cases, les dossiers glissent vers leur case ; au-delà, « +n »
   rdLate(people,()=>{R(ctx,c.x-36,c.y-30,72,RVF_SLOTS*c.h+34,'#6b4a2e');R(ctx,c.x-32,c.y-26,64,RVF_SLOTS*c.h+26,'#3a2a1e');
     for(let k=0;k<RVF_SLOTS;k++)R(ctx,c.x-32,c.y+k*c.h+c.h-10,64,3,'#6b4a2e');
-    atPill('📥 À RELIRE'+(st?' · cron '+hm(st.b.s):''),c.x,c.y-38,'#5a4636','#fff','bold 9px ui-monospace,Menlo,monospace');},c.y-40);
+    atPill('📥 À RELIRE'+(st?' · cron '+hm(st.b.s):''),c.x,c.y-38,'#5a4636','#fff','bold 11px ui-monospace,Menlo,monospace');},c.y-40);
   atHitRd('casier',c.x-36,c.y-44,72,RVF_SLOTS*c.h+50,{});
   rdLate(people,()=>{let i=0;
     for(const f of M.cas){if(f.taken)continue;const slot=i++;if(slot>=RVF_SLOTS)continue;
@@ -174,14 +174,14 @@ function rvfDraw(now,people){
       if(!f.filed){if(f.fly==null||now<f.fly)continue;const k=Math.min(1,(now-f.fly)/RVF_FLY), e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
         x=RVF.park.x+(x-RVF.park.x)*e;y=RVF.park.y-16+(ty-RVF.park.y+16)*e-Math.sin(k*Math.PI)*14;if(k>=1)f.filed=true;}
       rvfFolder(x,y);if(f.filed){const nm=rvfName(f.p.author);atTxt((f.p.repo.split('/').pop()+' #'+f.p.n)+(nm?' · '+nm.name.split(' ')[0]:''),x+13,y+2,'#f4efe4','bold 7px ui-monospace,Menlo,monospace','left');}}
-    const more=M.cas.filter(f=>!f.taken).length-RVF_SLOTS;if(more>0)atPill('+'+more,c.x,c.y+RVF_SLOTS*c.h+12,'#0b2a4a','#fff','bold 9px ui-monospace,Menlo,monospace');},c.y+RVF_SLOTS*c.h);
+    const more=M.cas.filter(f=>!f.taken).length-RVF_SLOTS;if(more>0)atPill('+'+more,c.x,c.y+RVF_SLOTS*c.h+12,'#0b2a4a','#fff','bold 11px ui-monospace,Menlo,monospace');},c.y+RVF_SLOTS*c.h);
   // la corbeille « Postées » : vidée par Bernard au passage suivant du cron
   rdLate(people,()=>{const b=RVF.basket;R(ctx,b.x-20,b.y-6,40,14,'#8a8478');R(ctx,b.x-20,b.y-6,40,3,'#a9a397');rvfStack(b.x,b.y-6,M.basket.slice(-6));
-    atPill('📤 POSTÉES'+(M.basket.length?' · '+M.basket.length:''),b.x,b.y+22,'#5a4636','#fff','bold 8px ui-monospace,Menlo,monospace');},RVF.basket.y);
+    atPill('📤 POSTÉES'+(M.basket.length?' · '+M.basket.length:''),b.x,b.y+22,'#5a4636','#fff','bold 10px ui-monospace,Menlo,monospace');},RVF.basket.y);
   // la salle d'attente : une chaise par auteur qui attend (cinq au moins)
   const nch=Math.max(5,Object.values(M.who).filter(h=>h.spot.k==='chair').length);
   rdLate(people,()=>{for(let k=0;k<Math.min(nch,7);k++){const q=rvfChair(k);R(ctx,q.x-12,q.y-26,24,12,'#7a8296');R(ctx,q.x-12,q.y-14,24,6,'#5d6370');R(ctx,q.x-10,q.y-8,3,8,'#3a3d45');R(ctx,q.x+7,q.y-8,3,8,'#3a3d45');}
-    atPill('🪑 SALLE D\'ATTENTE',rvfChair(2).x,rvfChair(0).y+22,'#5a4636','#fff','bold 9px ui-monospace,Menlo,monospace');},rvfChair(0).y-30);
+    atPill('🪑 SALLE D\'ATTENTE',rvfChair(2).x,rvfChair(0).y+22,'#5a4636','#fff','bold 11px ui-monospace,Menlo,monospace');},rvfChair(0).y-30);
   // Bernard et son transpalette
   if(M.bern){const B=M.bern;rvfJack(people,B,now);rvfPerson(people,atBernard(B.w.pos,B.w.dir,B.w.moving),B.w.pos,B.w.dir,B.w.moving,now);}
   // le relecteur en marche (assis, il est dessiné avec le bureau)
@@ -191,7 +191,7 @@ function rvfDraw(now,people){
   const left=a=>st?st.queue.filter(p=>p.author===a).length+(st.reading&&st.reading.author===a?1:0):0;
   Object.keys(M.who).forEach((a,i)=>{const h=M.who[a], src=rvfName(a)||atWorker(110+i,0,0,'down',false,''), nm=rvfName(a)?rvfName(a).name.split(' ')[0]:'🤖 remplaçant';
     const vs=st?st.done.filter(d=>d.author===a).map(d=>d.v):[];
-    rvfPerson(people,src,h.pos,h.dir,h.moving,now,q=>{const n=left(a);if(n)atPill(nm+' · '+plural(n,'PR','PR'),q.x,q.y-62,'#0b2a4a','#fff','bold 8px ui-monospace,Menlo,monospace');
+    rvfPerson(people,src,h.pos,h.dir,h.moving,now,q=>{const n=left(a);if(n)atPill(nm+' · '+plural(n,'PR','PR'),q.x,q.y-62,'#0b2a4a','#fff','bold 10px ui-monospace,Menlo,monospace');
       vs.slice(-4).forEach((v,j)=>atBadge(q.x+14+j*14,q.y-50,(RVF_V[v]||RVF_V.comment)[0],(RVF_V[v]||RVF_V.comment)[1]));});
     atHitRd('author',h.pos.x-14,h.pos.y-56,28,58,{author:a});});
   return {M,st};
@@ -201,13 +201,13 @@ function rvfDesk(people,now,F){
   const {M,st}=F, d=RVF.desk, r=st&&st.reading&&M.rel&&M.rel.seat?st.reading.r:null;
   if(!r){atDesk(d.x,d.y-6,false);ctx.fillStyle='rgba(30,26,22,.22)';ctx.fillRect(d.x-90,d.y-90,180,150);
     if(M.stamp){const k=Math.min(1,(now-M.stamp.t0)/300);rdAgent(people,100,d.x,d.y,'idle',{hat:'visiere',desk:true,front:()=>rvfFolder(d.x+32,d.y+2,M.stamp.v,k*1.4-.4*Math.max(0,k-.7)/.3)},now);}
-    else if(!(M.rel&&M.rel.w))rdLate(people,()=>atPill('bureau libre',d.x,d.y+40,'#f4efe4','#6a6050','bold 9px system-ui,sans-serif'),d.y);
+    else if(!(M.rel&&M.rel.w))rdLate(people,()=>atPill('bureau libre',d.x,d.y+40,'#f4efe4','#6a6050','bold 11px system-ui,sans-serif'),d.y);
     return;}
   rdAgent(people,100,d.x,d.y,'run',{hat:'visiere',desk:true,bubble:rvBubble(r),front:()=>rvfFolder(d.x+32,d.y+2)},now);
   const v=r.vars||{}, nm=rvfName(st.reading.author), pr=(st.reading.repo.split('/').pop()||'?')+'#'+st.reading.n;
-  rdLate(people,()=>{atPill(pr+' · '+(nm?nm.name:'🤖 remplaçant'),d.x,RVF.face.y+24,'#0b2a4a','#fff','bold 9px ui-monospace,Menlo,monospace');
-    const steps=rvSteps(r);ctx.font='bold 8px system-ui,sans-serif';const ws=steps.map(s=>ctx.measureText(rvStepName(s.n)).width+10), tot=ws.reduce((a,b)=>a+b,0)+Math.max(0,steps.length-1)*3;let x=d.x-tot/2;
-    steps.forEach((s,j)=>{const c=s.s==='Success'?'#2f7a45':s.s==='Running'?'#2f6fd6':s.s==='Failed'?'#a8323a':'#e8e2d0';atPill(rvStepName(s.n),x+ws[j]/2,RVF.face.y+42,c,c==='#e8e2d0'?'#6a6050':'#fff','bold 8px system-ui,sans-serif');x+=ws[j]+3;});},RVF.face.y+1);
+  rdLate(people,()=>{atPill(pr+' · '+(nm?nm.name:'🤖 remplaçant'),d.x,RVF.face.y+24,'#0b2a4a','#fff','bold 11px ui-monospace,Menlo,monospace');
+    const steps=rvSteps(r);ctx.font='bold 10px system-ui,sans-serif';const ws=steps.map(s=>ctx.measureText(rvStepLbl(s)).width+10), tot=ws.reduce((a,b)=>a+b,0)+Math.max(0,steps.length-1)*3;let x=d.x-tot/2;
+    steps.forEach((s,j)=>{const c=s.s==='Success'?'#2f7a45':s.s==='Running'?'#2f6fd6':s.s==='Failed'?'#a8323a':'#e8e2d0';atPill(rvStepLbl(s),x+ws[j]/2,RVF.face.y+42,c,c==='#e8e2d0'?'#6a6050':'#fff','bold 10px system-ui,sans-serif');x+=ws[j]+3;});},RVF.face.y+1);
   atHitRd('review',d.x-60,d.y-60,120,RVF.face.y-d.y+80,{run:r.run});
 }
 const rvfKids=()=>{const bs=rvfData().batches||{};return new Set(rvRuns().filter(r=>bs[r.parent]).map(r=>r.run));};
