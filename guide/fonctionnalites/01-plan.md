@@ -111,7 +111,8 @@ L'anneau sous les pieds double la couleur par une forme (lisible par les daltoni
 - En bas du panneau, « Et aussi » liste les invités du moment (Yoda, Gandalf, un invité de passage…), tant qu'ils sont dans le bureau, et le canard, avec ce qu'il fait (« se promène · cafétéria », « attend ta réponse »). Survol : il ressort sur le plan. Clic : sa fiche. Ce groupe n'apparaît que dans la vue « Tous ».
 
 ![« Et aussi » : un invité de passage et le canard](../img/panneau-et-aussi.png)
-- « Replier ⟩ » en haut du panneau le réduit à une bande : le plan prend presque toute la largeur (×1 sur un écran de 1440 px au lieu de ×0,77). Un clic sur un personnage le rouvre.
+- Le plan prend toute la largeur de l'écran, sans dépasser sa hauteur : un étage et la barre du rejeu tiennent à l'écran (×0,9 au RDC et ×0,79 aux étages sur un écran de 1600 px, ×1 aux étages en 1920 px).
+- « Replier ⟩ » en haut du panneau le réduit à une bande : le plan prend presque toute la largeur (×1 sur un écran de 1440 px au lieu de ×0,8). Un clic sur un personnage le rouvre.
 - Au clavier : Tab jusqu'à la liste de l'équipe, flèches pour passer d'une personne à l'autre (elle ressort sur le plan), Entrée pour ouvrir sa fiche.
 
 ![Panneau replié : le plan prend la place](../img/panneau-replie.png)

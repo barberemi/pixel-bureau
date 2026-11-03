@@ -122,8 +122,13 @@ function setFloor(f){
 // bulle), a travaillé (✓ ou !), attend son tour (silhouette grise). En haut, le grand tableau de l'orchestrateur ; dessous,
 // le boss dans son fauteuil (il se lève et va à la porte du bureau qui attend sa décision). En bas du couloir central,
 // l'entrepôt (tickets en attente, pannes à relancer) ; à gauche le café, deux canapés, à droite la porte de sortie.
-const atTxt=(s,x,y,col,font,al)=>{ctx.font=font||'bold 10px ui-monospace,Menlo,monospace';ctx.fillStyle=col;ctx.textAlign=al||'center';ctx.fillText(s,x,y);ctx.textAlign='left';};
-function atPill(s,x,y,bgc,fg,font){ctx.font=font||'bold 10px ui-monospace,Menlo,monospace';const w=ctx.measureText(s).width+10;R(ctx,x-w/2,y-11,w,15,bgc);atTxt(s,x,y,fg||'#fff',font);}
+const atTxt=(s,x,y,col,font,al)=>{ctx.font=font||'bold 12px ui-monospace,Menlo,monospace';ctx.fillStyle=col;ctx.textAlign=al||'center';ctx.fillText(s,x,y);ctx.textAlign='left';};
+// un poste au repos, fini ou sauté ne montre que son icône (le ✓ au-dessus de l'agent dit qu'il a fini) ; le nom reste sur le poste
+// actif, en panne ou qui attend ta décision : les rangées de postes restent lisibles en grand (1er, 3e, -1)
+const atPosteLbl=(p,on)=>on?p.i+' '+p.n:p.i;
+// la hauteur de l'étiquette suit sa police (base y : la ligne du texte)
+function atPill(s,x,y,bgc,fg,font){ctx.font=font||'bold 12px ui-monospace,Menlo,monospace';const w=ctx.measureText(s).width+10, px=+(/(\d+)px/.exec(ctx.font)||[0,12])[1];
+  R(ctx,x-w/2,y-px-1,w,px+6,bgc);atTxt(s,x,y,fg||'#fff',font);}
 const AT_CX0=20, AT_CX1=26, AT_HY0=13.5, AT_HY1=15.5, AT_DESKS=AT_POSTES.filter(p=>p.bureau!==false), AT_R1=AT_DESKS.slice(0,7), AT_R2=AT_DESKS.slice(7);
 const AT_ROOMS=[[0,3,AT_CX0,AT_HY0,1,1],[AT_CX1,3,46,AT_HY0,0,1],[0,AT_HY1,AT_CX0,27,1,0],[AT_CX1,AT_HY1,46,27,0,0]]; // x0,y0,x1,y1, miroir, en haut
 const AT_MX=(AT_CX0+AT_CX1)/2*AT_TS, AT_MY=AT_HY1*AT_TS-8, AT_LANE=AT_MX+2.5*AT_TS; // AT_MY : la ligne de marche du couloir horizontal, devant les canapés
@@ -291,13 +296,13 @@ function atCarton(x,y,label,col,dy){
   if(themeIs('noel')){R(ctx,x-14,y-12,28,19,'#c8323a');R(ctx,x-2,y-12,4,19,'#f2c230');R(ctx,x-14,y-4,28,3,'#f2c230');}
   else if(themeIs('halloween')){R(ctx,x-14,y-12,28,19,'#e07a1a');R(ctx,x-9,y-7,4,3,'#1c1c1c');R(ctx,x+5,y-7,4,3,'#1c1c1c');R(ctx,x-6,y,12,2,'#1c1c1c');}
   else if(themeIs('saint-valentin'))E('❤',x,y-2,10);
-  if(label)atPill(label,x,y+(dy||24),col||'#0b2a4a','#fff','bold 9px ui-monospace,Menlo,monospace');
+  if(label)atPill(label,x,y+(dy||24),col||'#0b2a4a','#fff','bold 11px ui-monospace,Menlo,monospace');
 }
 function atBadge(x,y,ch,bgc,k){const s=k==null?1:k;if(s<=0)return;ctx.fillStyle=bgc;ctx.beginPath();ctx.arc(x,y,8*s,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
   if(s>.6)atTxt(ch,x,y+4,'#fff','bold 11px system-ui,sans-serif');}
-function atBubble(x,y,s,col){ctx.font='bold 10px system-ui,sans-serif';const w=ctx.measureText(s).width+12;
-  R(ctx,x-w/2-1,y-17,w+2,19,col||'#1c1f26');R(ctx,x-w/2,y-16,w,17,'#ffffff');R(ctx,x-3,y+1,6,3,col||'#1c1f26');R(ctx,x-2,y+1,4,2,'#ffffff');
-  atTxt(s,x,y-4,col||'#1c1f26','bold 10px system-ui,sans-serif');}
+function atBubble(x,y,s,col){ctx.font='bold 12px system-ui,sans-serif';const w=ctx.measureText(s).width+12;
+  R(ctx,x-w/2-1,y-19,w+2,21,col||'#1c1f26');R(ctx,x-w/2,y-18,w,19,'#ffffff');R(ctx,x-3,y+1,6,3,col||'#1c1f26');R(ctx,x-2,y+1,4,2,'#ffffff');
+  atTxt(s,x,y-4,col||'#1c1f26','bold 12px system-ui,sans-serif');}
 function atDesk(x,y,on,col){R(ctx,x-24,y,48,12,'#a0703f');R(ctx,x-24,y,48,3,'#b98552');R(ctx,x-24,y+12,48,8,'#7d5530');
   R(ctx,x-9,y-10,18,12,'#2b2e36');R(ctx,x-7,y-8,14,8,on?(col||'#7dffb0'):'#3d4250');if(on){R(ctx,x-5,y-6,7,1,'#0b3a1a');R(ctx,x-5,y-3,10,1,'#0b3a1a');}}
 function atCoffee(x,y){R(ctx,x-11,y-32,22,32,'#2f2f36');R(ctx,x-11,y-32,22,4,'#4a4a55');R(ctx,x-7,y-24,14,6,'#7dd3ff');R(ctx,x-4,y-13,8,8,'#1a1a1f');R(ctx,x-3,y-8,6,5,'#f2efe6');R(ctx,x-14,y,28,4,'#5a4636');}
@@ -365,10 +370,10 @@ const atHit=(kind,x,y,w,h,ref)=>AT_HITS.push({kind,x,y,w,h,...ref});
 // ---------- un bureau ----------
 function atRoom(r,i,now,dt){
   const g=AT_G[i], T=AT_TS, H=g.H, leave=AT_MEM.leaving[i], live=r&&!r.gate, al=g.L?'left':'right', hx=g.L?(g.x0+.5)*T:(g.x1-.5)*T;
-  if(r){atTxt('BUREAU '+(i+1)+' · '+r.ticket+' · '+String(r.repo||'').split('/').pop()+(r.tour?' · tour '+r.tour:'')+' · '+Math.round((r.tok||0)/1e3)+' k jetons',hx,g.head,'#1c1f26','bold 11px ui-monospace,Menlo,monospace',al);
+  if(r){atTxt('BUREAU '+(i+1)+' · '+r.ticket+' · '+String(r.repo||'').split('/').pop()+(r.tour?' · tour '+r.tour:'')+' · '+Math.round((r.tok||0)/1e3)+' k jetons',hx,g.head,'#1c1f26','bold 13px ui-monospace,Menlo,monospace',al);
     const nt=r.note||(r.lot?'⌨ Code · '+r.lot:'');
-    if(nt){ctx.font='bold 10px ui-monospace,Menlo,monospace';const w=ctx.measureText(nt).width+10;atPill(nt,g.L?hx+w/2:hx-w/2,g.noteY,r.gate?'#8a5a00':r.back?'#a8323a':'#2a4a7a');}}
-  else atTxt('BUREAU '+(i+1)+' · '+(leave?leave.ticket+' · sorti':'libre'),hx,g.head,'#8a8478','bold 11px ui-monospace,Menlo,monospace',al);
+    if(nt){ctx.font='bold 12px ui-monospace,Menlo,monospace';const w=ctx.measureText(nt).width+10;atPill(nt,g.L?hx+w/2:hx-w/2,g.noteY,r.gate?'#8a5a00':r.back?'#a8323a':'#2a4a7a');}}
+  else atTxt('BUREAU '+(i+1)+' · '+(leave?leave.ticket+' · sorti':'libre'),hx,g.head,'#8a8478','bold 13px ui-monospace,Menlo,monospace',al);
   const x_=g.L?g.turnX:g.ex, w_=Math.abs(g.ex-g.turnX)+.7*T;
   atBelt(x_,g.b1,w_,H,live,now,g.L?-1:1);atBelt(g.turnX,g.b1+H,.7*T,g.b2-g.b1-H,live,now,2);atBelt(x_,g.b2,w_,H,live,now,g.L?1:-1);
   atHatchBox(g.wallX,g.b1,H,false);atHatchBox(g.wallX,g.b2,H,true);
@@ -376,10 +381,10 @@ function atRoom(r,i,now,dt){
   AT_DESKS.forEach((p,idx)=>{
     const sp=atSpot(g,p.k), top=sp.row===1, s=atState(r,p);
     if(p.gate){R(ctx,sp.x-14,g.b1-20,3,20,'#8a8478');R(ctx,sp.x+12,g.b1-20,3,20,'#8a8478');for(let k=0;k<4;k++)R(ctx,sp.x-14+k*7,g.b1-20,7,5,k%2?'#1c1c1c':'#f2c230');
-      late.push(()=>atPill('✋ Ton plan',sp.x,g.lab1,r&&r.gate?'#8a5a00':'#e9dcb8',r&&r.gate?'#fff':'#6a5a30','bold 9px system-ui,sans-serif'));return;}
+      late.push(()=>atPill(r&&r.gate?'✋ Ton plan':'✋',sp.x,g.lab1,r&&r.gate?'#8a5a00':'#e9dcb8',r&&r.gate?'#fff':'#6a5a30','bold 11px system-ui,sans-serif'));return;}
     const deskY=top?g.desk1:g.desk2, feet=top?g.feet1:g.feet2, labelY=top?g.lab1:g.lab2;
     const col={run:'#2f6fd6',bloq:'#a8323a',err:'#a8323a',ok:'#2f7a45',avis:'#9a6a10',skip:'#d8d2c4'}[s]||'#f4efe4';
-    late.push(()=>atPill(p.i+' '+p.n,sp.x,labelY,col,['run','bloq','err','ok','avis'].includes(s)?'#fff':s==='skip'?'#8a8478':'#3a3530','bold 9px system-ui,sans-serif'));
+    late.push(()=>atPill(atPosteLbl(p,['run','bloq','err','avis'].includes(s)),sp.x,labelY,col,['run','bloq','err','ok','avis'].includes(s)?'#fff':s==='skip'?'#8a8478':'#3a3530','bold 11px system-ui,sans-serif'));
     const a=atWorker(i*20+idx,sp.x,feet,'down',false,p.n);if(!a)return;
     a._at={i,k:p.k,s};
     if(s==='skip'){atDesk(sp.x,deskY,false);return;}
@@ -420,7 +425,7 @@ function atRoom(r,i,now,dt){
   const want=r||leave?1:0;AT_MEM.lit[i]+=Math.sign(want-AT_MEM.lit[i])*Math.min(Math.abs(want-AT_MEM.lit[i]),dt/(REDUCED_MOTION?.01:2.5));
   const sweep=AT_MEM.clean&&!AT_MEM.clean.moving&&AT_MEM.clean.stop.i===i, dark=(1-AT_MEM.lit[i])*(sweep?.35:1);
   if(dark>.01){ctx.fillStyle=`rgba(10,14,34,${(.55*dark).toFixed(3)})`;ctx.fillRect(g.x0*T+5,g.y0*T+5,(g.x1-g.x0)*T-10,(g.y1-g.y0)*T-10);
-    if(dark>.9||sweep&&!r){sleepers.forEach(([,x,f],k)=>atTxt('z Z',x+12,f-58-(Math.floor(now/800+k)%2)*4,'#bfe6ff','bold 11px ui-monospace,Menlo,monospace'));
+    if(dark>.9||sweep&&!r){sleepers.forEach(([,x,f],k)=>atTxt('z Z',x+12,f-58-(Math.floor(now/800+k)%2)*4,'#bfe6ff','bold 13px ui-monospace,Menlo,monospace'));
       atPill('💤 Libre : ils somnolent à leur poste',(g.x0+g.x1)/2*T,g.b1+H+.35*T,'#1c2440','#bfe6ff');}}
   atHit('room',g.x0*T,g.y0*T,(g.x1-g.x0)*T,(g.y1-g.y0)*T,{i});
 }
@@ -440,19 +445,19 @@ function atExtinguisher(r,i,k,x,feet,now,dt,people){
 function atBoard(slots){
   const T=AT_TS, bx=12.2*T, by=1.15*T, bw=21.6*T, bh=3.15*T, cw=bw/4;
   R(ctx,bx-6,by-6,bw+12,bh+12,'#3a3530');R(ctx,bx,by,bw,bh,'#10141c');R(ctx,bx,by,bw,16,'#1c2230');
-  atTxt('ORCHESTRATEUR',bx+bw/2,by+12,'#9fc4ff','bold 10px ui-monospace,Menlo,monospace');
+  atTxt('ORCHESTRATEUR',bx+bw/2,by+12,'#9fc4ff','bold 12px ui-monospace,Menlo,monospace');
   if(themeIs('noel'))for(let k=0;k<26;k++){ctx.fillStyle=['#ff4a4a','#ffd84a','#4aff8a','#4ac8ff'][(k+Math.floor(performance.now()/500))%4];ctx.beginPath();ctx.arc(bx+8+k*(bw-16)/25,by-4,3,0,7);ctx.fill();}
   if(themeIs('halloween')){ctx.strokeStyle='rgba(230,230,230,.7)';ctx.lineWidth=1;for(let k=0;k<5;k++){ctx.beginPath();ctx.moveTo(bx+bw,by);ctx.lineTo(bx+bw-30+k*6,by+30-k*6);ctx.stroke();}}
   slots.forEach((r,k)=>{const x=bx+k*cw, col=!r?'#4a5060':r.gate?'#ffcf4a':r.back?'#ff8a80':'#8fe3a8';
     if(k)R(ctx,x,by+18,1,bh-22,'#2b3240');
-    atTxt('B'+(k+1)+(r?' · '+r.ticket:' · libre'),x+10,by+34,col,'bold 11px ui-monospace,Menlo,monospace','left');
-    if(!r){atTxt('rien en cours',x+10,by+52,'#6b7280','10px system-ui,sans-serif','left');return;}
-    atTxt((r.title||'').slice(0,30)+((r.title||'').length>30?'…':''),x+10,by+50,'#c9c3b4','9px system-ui,sans-serif','left');
+    atTxt('B'+(k+1)+(r?' · '+r.ticket:' · libre'),x+10,by+34,col,'bold 13px ui-monospace,Menlo,monospace','left');
+    if(!r){atTxt('rien en cours',x+10,by+52,'#6b7280','12px system-ui,sans-serif','left');return;}
+    // le titre du ticket est dans le panneau de droite : ici le bureau, l'état, l'avancée, le tour et les jetons, en grand
     const p=AT_POSTES.find(q=>q.k===r.poste);
     const pe=AT_POSTES.find(q=>(r.states||{})[q.k]==='err');
-    atTxt(r.gate==='gate_escalade'?'🚨 demande un humain':r.gate?'✋ attend ta décision':r.back?'↩ renvoyé au code':pe?'🧯 '+pe.n+' en panne':(p?p.i+' '+p.n+(r.lot?' · '+r.lot:''):''),x+10,by+68,col,'bold 10px system-ui,sans-serif','left');
-    const sw=(cw-20)/AT_POSTES.length;AT_POSTES.forEach((q,j)=>{const s=(r.states||{})[q.k];R(ctx,x+10+j*sw,by+78,sw-2,6,(AT_ST[s]||['#2b3240'])[0]);});
-    atTxt((r.tour?'tour '+r.tour+' · ':'')+Math.round((r.tok||0)/1e3)+' k jetons',x+10,by+96,'#8a93a6','9px ui-monospace,Menlo,monospace','left');
+    atTxt(r.gate==='gate_escalade'?'🚨 demande un humain':r.gate?'✋ attend ta décision':r.back?'↩ renvoyé au code':pe?'🧯 '+pe.n+' en panne':(p?p.i+' '+p.n+(r.lot?' · '+r.lot:''):''),x+10,by+54,col,'bold 12px system-ui,sans-serif','left');
+    const sw=(cw-20)/AT_POSTES.length;AT_POSTES.forEach((q,j)=>{const s=(r.states||{})[q.k];R(ctx,x+10+j*sw,by+64,sw-2,6,(AT_ST[s]||['#2b3240'])[0]);});
+    atTxt((r.tour?'tour '+r.tour+' · ':'')+Math.round((r.tok||0)/1e3)+' k jetons',x+10,by+90,'#b8c0d0','bold 12px system-ui,sans-serif','left');
     atHit('room',x,by,cw,bh,{i:k});
   });
 }
@@ -502,7 +507,7 @@ function atBoss(slots,now,dt,people){
   const at=arrived&&target!=null&&slots[target], gl=at?'✋ '+(at.ticket||'')+' · '+(AT_GATE_TXT[at.gate]||'à décider')+' · décider ›':'';
   AT_LIT.push(c.pos);atHit(at?'gate':'boss',c.pos.x-14,c.pos.y-56,28,58,at?{i:target}:{});
   if(seated){drawChar(c,now);desk();}
-  else{desk();people.push([c,null,false,()=>{if(at){ctx.font='bold 10px system-ui,sans-serif';const w=ctx.measureText(gl).width+12, bx=c.pos.x+18+w/2;
+  else{desk();people.push([c,null,false,()=>{if(at){ctx.font='bold 12px system-ui,sans-serif';const w=ctx.measureText(gl).width+12, bx=c.pos.x+18+w/2;
     atBubble(bx,c.pos.y-30,gl,'#8a5a00');atHit('gate',bx-w/2,c.pos.y-47,w,21,{i:target});}}]);}
   if(seated&&gates.length)atBubble(ox,F-58,'✋ '+gates.length);
 }
@@ -529,10 +534,10 @@ function atDelivered(){
 }
 function atCorridor(now){
   const T=AT_TS, yb=AT_HY1*T-6;
-  atCoffee(1.1*T,yb);atTxt('CAFÉ',1.1*T,AT_HY0*T+14,'#5a4636','bold 8px ui-monospace,Menlo,monospace');
+  atCoffee(1.1*T,yb);atTxt('CAFÉ',1.1*T,AT_HY0*T+14,'#5a4636','bold 10px ui-monospace,Menlo,monospace');
   atSofa(15*T,AT_HY0*T+30);atSofa(31*T,AT_HY0*T+30);
   atDoor(46*T,AT_HY0*T);const n=atDelivered();
-  atPill('SORTIE'+(n?' · 📦 '+n+' aujourd\'hui':''),46*T-14-(n?62:22),AT_HY0*T+16,n?'#2f7a45':'#5a4636','#fff','bold 9px ui-monospace,Menlo,monospace');
+  atPill('SORTIE'+(n?' · 📦 '+n+' aujourd\'hui':''),46*T-14-(n?62:22),AT_HY0*T+16,n?'#2f7a45':'#5a4636','#fff','bold 11px ui-monospace,Menlo,monospace');
   atPlant(18.9*T,yb);atPlant(27.1*T,yb);
   atChantier(T);
   if(themeIs('noel')){xmasTreeAt(8.5*T,AT_HY1*T-4,now);}
@@ -686,8 +691,8 @@ function atGalleryScenes(){
 const AT_WINDOWS=[1,3.5,6,8.5,35,37.5,40,42.5]; // en cases : au-dessus des bureaux 1 et 2, de part et d'autre du grand tableau
 const atOpen=()=>officeOpen(T);
 // en rejeu, à chaque étage : la pastille qui dit qu'on regarde le passé
-function atReplayPill(){if(atLive())return;const s='⏪ Rejeu · '+hm(T)+' · l\'étage à cette heure-là';ctx.font='bold 12px system-ui,sans-serif';
-  atPill(s,14+ctx.measureText(s).width/2,14,'#c9a227','#1c1c1c','bold 12px system-ui,sans-serif');}
+function atReplayPill(){if(atLive())return;const s='⏪ Rejeu · '+hm(T)+' · l\'étage à cette heure-là';ctx.font='bold 13px system-ui,sans-serif';
+  atPill(s,14+ctx.measureText(s).width/2,14,'#c9a227','#1c1c1c','bold 13px system-ui,sans-serif');}
 // xs : les fenêtres d'un étage, en cases (celles du 1er par défaut)
 function atWindows(now,xs){
   const sky=skyColor(T), T_=AT_TS;
