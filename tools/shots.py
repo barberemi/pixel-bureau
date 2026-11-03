@@ -123,7 +123,7 @@ SHOTS = {
                   "RELAUNCH=['office','team','payroll'].map(k=>({wf:'wf-'+k,name:'Le Bureau · '+k,bureau:k}));"
                   "WARNINGS={payroll:['tarif non mesuré, coûts non estimés (HTTP Error 500: Internal Server Error)']};updateFresh();"
                   "document.getElementById('freshpop').style.display='block';document.getElementById('badge').style.marginBottom='260px';", "#freshpop", 1.5),
-    "legende": (1400, 1600, AT(11) + "document.querySelector('.legend-help').open=true;", ".legend-help"),
+    "legende": (1400, 1600, AT(11) + "setFloor(0);document.querySelector('.legend-help').open=true;", ".legend-help"),
     # thème Classique (le seul du dépôt ; un pack d'équipe apporte les autres), fiche d'un collègue ouverte
     "theme-classique": (1400, 1000, AT(11) + "select((chars.find(c=>c.person&&c.team&&c.team.tickets.length)||{}).key);scrollTo(0,0);", None),
     "qui-fait-quoi": (1400, 1400, AT(11), "#who"),
@@ -144,7 +144,8 @@ SHOTS = {
     "recap": (1400, 1200, AT(11) + "RECAP_OPEN=true;renderRecap();", "#recap"),
     "rejouer": (1400, 1200, AT(9.7) + "setMode('play');", ".stage", 1.5),
     # galerie des scènes (46-gallery.js), dans « Comment lire le plan » ouvert : ce que le bureau de démo sait jouer
-    "galerie": (1400, 1800, AT(11) + "const d=document.querySelector('.legend-help');d.open=true;renderGallery();", ".gal"),
+    "galerie": (1400, 1800, AT(11) + "setFloor(0);const d=document.querySelector('.legend-help');d.open=true;LEG_TAB='scenes';renderLegend();", ".gal"),
+    "legende-etage": (1400, 1600, AT(11) + "setFloor(2);const d=document.querySelector('.legend-help');d.open=true;LEG_TAB='postes';renderLegend();", ".legend-help"),
     "tv": (1600, 900, AT(11) + "setTv(true);", None),
     # « Qui fait quoi » de l'écran mural, défilé jusqu'aux agents (actifs ou en panne, nommés par leur métier)
     # tableau des départs : le panneau du plan (mises en prod), la fenêtre (DEV, STG, PRD), « Les envs » en mode TV

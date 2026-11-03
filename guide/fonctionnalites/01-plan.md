@@ -97,7 +97,11 @@ Le sprint a ses rendez-vous : le premier jour, juste après le daily, l'équipe 
 
 L'anneau sous les pieds double la couleur par une forme (lisible par les daltoniens) : plein = au travail, pointillés = attend une validation, tirets = en panne.
 
-![Légende « Comment lire le plan »](../img/legende.png)
+Sous le plan, la légende suit l'étage affiché : au RDC les états et les hologrammes, au 1er les couleurs des postes, au 2e celles des tickets et les verdicts des revues, au 3e les colonnes du Kanban des fils, au -1 les états des pompiers. « ? Comment lire le plan » s'ouvre sur un onglet à la fois : au RDC Qui, Où, États, Enveloppes ; aux étages Qui, Où, Postes et Moments ; partout 🎬 Scènes en dernier (la [galerie](05-rejouer.md#les-scènes-du-bureau)). L'onglet Postes se tire de la liste des postes que l'étage dessine, chacun avec sa phrase : un poste ajouté ou renommé y paraît de lui-même.
+
+| Au RDC | Au 2e, l'onglet Postes |
+| --- | --- |
+| ![Légende « Comment lire le plan » au RDC](../img/legende.png) | ![Les postes de la rédaction et les étapes d'une revue](../img/legende-etage.png) |
 
 ## Détails
 
