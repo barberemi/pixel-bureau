@@ -30,7 +30,7 @@ test("la table : l'intention la plus ancienne, un clic sur le liège passe à la
   assert.equal(J('rdTable().run'), 'demo-t2');
   p.run(`RDSEL = null; REDACTION.tables[0].poste = 'valider'; REDACTION.tables[0].tickets.forEach((x, k) => { x.etat = k === 1 ? 'gate' : 'wait'; }); renderRedaction(1100);`);
   assert.ok(J('RD_HITS.some(h => h.kind === "boss")'));
-  assert.match(J('floorTabsHtml()'), /2e · rédaction <b>5<\/b> <b>✋ 1<\/b>/, 'deux intentions et trois revues, un tampon');
+  assert.match(J('floorTabsHtml()'), />✍<\/span>2e<b>5<\/b><b class="h">✋1<\/b>/, 'deux intentions et trois revues, un tampon');
   p.run('T = DAY0 + 22.5 * 36e5; renderRedaction(1200);');
   assert.ok(J('RD_LIT.length') > 0, 'le soir : ceux au travail et le boss gardent leur lumière');
 });

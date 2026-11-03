@@ -846,10 +846,12 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .pz{display:inline-flex;vertical-align:-2px;margin-right:4px}.pz svg{display:block;shape-rendering:crispEdges}
 .pz-head{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin:0 0 6px}.pz-head b{color:var(--ink)}
 /* 1er étage : l'atelier d'implémentation (68-atelier.js) */
-.floors{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
-.floors button{font:600 13px system-ui,sans-serif;padding:6px 9px;border:3px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.floors{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 6px}
+.floors button{font:600 13px system-ui,sans-serif;padding:4px 8px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:5px;line-height:1.2}
 .floors button.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
-.floors b{background:var(--warn);color:#1c1c1c;padding:0 6px;margin-left:4px}
+.floors .fi{font-size:15px}
+.floors b{background:var(--warn);color:#1c1c1c;padding:0 4px;font-size:11px;border-radius:2px}
+.floors b.h{background:#ffcf4a}
 /* 3e étage (68-retours.js) : la fenêtre Kanban d'un bureau, les fils en colonnes, le fil choisi à droite */
 .rt-kb{position:fixed;inset:0;z-index:60;background:rgba(10,12,20,.6);display:flex;align-items:center;justify-content:center;padding:16px}
 .rt-kbw{background:var(--panel);color:var(--ink);border:3px solid var(--line);width:min(1180px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;gap:10px;padding:12px 14px;overflow:hidden}

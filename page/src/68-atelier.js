@@ -88,16 +88,18 @@ function atelierTabs(){ // le gyrophare du -1 suit csAlarm à chaque relevé
   const h=floorTabsHtml();
   if(t.dataset.sig!==h)t.innerHTML=t.dataset.sig=h;
 }
+// en court : l'icône et le numéro de l'étage, ce qui y tourne, ✋ ce qui t'attend ; son nom en entier au survol (et lu)
 function floorTabsHtml(){
-  const tab=(f,label)=>`<button role="tab" data-floor="${f}" aria-selected="${FLOOR===f}"${FLOOR===f?' class="on"':''}>${label}</button>`;
+  const tab=(f,ico,n,full,cnt,wait,pre)=>{const tip=n+' · '+full+(cnt?' · '+cnt+' en cours':'')+(wait?' · ✋ '+wait+' t\'attend':'');
+    return `<button role="tab" data-floor="${f}" aria-selected="${FLOOR===f}" title="${esc(tip)}" aria-label="${esc(tip)}"${FLOOR===f?' class="on"':''}>${pre||''}<span class="fi" aria-hidden="true">${ico}</span>${n}${cnt?`<b>${cnt}</b>`:''}${wait?`<b class="h">✋${wait}</b>`:''}</button>`;};
   const n=atRooms().length, w=atRooms().filter(r=>r.gate).length, cs=caserneOn()?csActive():[], cg=cs.filter(x=>x.s.k==='gate').length;
   const rr=retoursOn()?rtRooms():[], rn=rr.length, rw=rr.filter(r=>r.gate).length;
   const rdt=redactionOn()?rdTables():[], rdn=rdt.length+(redactionOn()?rvActive().length:0), rdw=rdt.reduce((a,t)=>a+(t.tickets||[]).filter(x=>x.etat==='gate').length,0);
-  // dans l'ordre des étages, comme les boutons d'un ascenseur : -1, RDC, 1er ; le gyrophare du -1 tourne tant qu'un appel attend ou qu'une intervention est en cours (csAlarm)
-  return (caserneOn()?tab(-1,`${csAlarm()?'<span class="gyro" role="img" aria-label="à traiter"></span>':''}🚒 -1 · caserne${cs.length?` <b>${cs.length}</b>`:''}${cg?` <b>✋ ${cg}</b>`:''}`):'')+
-    tab(0,'🏢 RDC · open space')+(atelierOn()?tab(1,`🏭 1er · atelier${n?` <b>${n}</b>`:''}${w?` <b>✋ ${w}</b>`:''}`):'')+
-    (redactionOn()?tab(2,`✍ 2e · rédaction${rdn?` <b>${rdn}</b>`:''}${rdw?` <b>✋ ${rdw}</b>`:''}`):'')+ // 68-redaction.js
-    (retoursOn()?tab(3,`🛠 3e · retours${rn?` <b>${rn}</b>`:''}${rw?` <b>✋ ${rw}</b>`:''}`):''); // 68-retours.js
+  // dans l'ordre des étages, comme les boutons d'un ascenseur ; le gyrophare du -1 tourne tant qu'un appel attend ou qu'une intervention est en cours (csAlarm)
+  return (caserneOn()?tab(-1,'🚒','-1','caserne Support',cs.length,cg,csAlarm()?'<span class="gyro" role="img" aria-label="à traiter"></span>':''):'')+
+    tab(0,'🏢','RDC','open space')+(atelierOn()?tab(1,'🏭','1er','atelier',n,w):'')+
+    (redactionOn()?tab(2,'✍','2e','rédaction et revue',rdn,rdw):'')+ // 68-redaction.js
+    (retoursOn()?tab(3,'🛠','3e','retours de PR',rn,rw):''); // 68-retours.js
 }
 // étages qui existent, de haut en bas
 const floorsOn=()=>[...(retoursOn()?[3]:[]),...(redactionOn()?[2]:[]),...(atelierOn()?[1]:[]),0,...(caserneOn()?[-1]:[])];
