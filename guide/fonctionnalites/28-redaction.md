@@ -28,7 +28,7 @@ L'onglet « ✍ 2e · rédaction » apparaît entre le 1er et le 3e dès que le 
 
 ## Le soir et le week-end
 
-L'étage passe en veilleuse : seuls ceux qui travaillent et le boss gardent leur lumière.
+L'étage passe en veilleuse, comme le RDC la nuit : la salle de rédaction s'allume comme une pièce tant qu'une intention y est, et chaque bureau de la revue quand une PR y est lue ; les bureaux libres restent dans l'ombre. Chaque agent au travail a sa lampe et son écran, et la lampe du bureau du boss reste allumée.
 
 ## Depuis le RDC
 

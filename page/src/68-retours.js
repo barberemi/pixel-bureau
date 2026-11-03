@@ -243,20 +243,13 @@ function rtDiff(now){
   slots.forEach((r,i)=>{if(!r||seen[r.run])return;seen[r.run]={i,fade:fresh?1:0};if(!fresh)RT_MEM.scenes.push({kind:'arrive',i,run:r.run,t0:now});});
   RT_MEM.fresh=false;
 }
-// ---------- nuit : hors des heures de bureau, l'étage en veilleuse ; les agents au travail et le boss gardent leur lumière ----------
-let RT_NIGHT_CV=null, RT_NIGHT_AT=0, RT_NIGHT_SIG='';
-function rtNight(now){
-  if(atOpen())return;
-  const W_=AT_W/LQ, H_=AT_H/LQ, T=AT_TS;
-  if(!RT_NIGHT_CV)RT_NIGHT_CV=[lightCanvas(W_,H_),lightCanvas(W_,H_)];
-  const sig=RT_LIT.map(q=>Math.round(q.x/4)+','+Math.round(q.y/4)).join(' ');
-  if(now-RT_NIGHT_AT>200||!RT_NIGHT_AT||sig!==RT_NIGHT_SIG&&now-RT_NIGHT_AT>40){RT_NIGHT_AT=now;RT_NIGHT_SIG=sig;
-    const m=RT_NIGHT_CV[0].getContext('2d');m.setTransform(1,0,0,1,0,0);m.globalCompositeOperation='source-over';m.clearRect(0,0,W_,H_);
-    m.fillStyle='rgba(10,14,40,.55)';m.fillRect(0,0,W_,H_);m.setTransform(1/LQ,0,0,1/LQ,0,0);m.globalCompositeOperation='destination-out';
-    for(const q of RT_LIT)softSpot(m,q.x,q.y-26,40,.85);
-    softSpot(m,RT_DESK.x,RT_DESK.y-20,2*T,.5);softSpot(m,RT_STAIRS.x,RT_STAIRS.y,1.6*T,.45);
-    const l=RT_NIGHT_CV[1].getContext('2d');l.clearRect(0,0,W_,H_);l.filter='blur(3px)';l.drawImage(RT_NIGHT_CV[0],0,0);l.filter='none';}
-  const sm=ctx.imageSmoothingEnabled;ctx.imageSmoothingEnabled=true;ctx.drawImage(RT_NIGHT_CV[1],0,0,AT_W,AT_H);ctx.imageSmoothingEnabled=sm;
+// ---------- la nuit, comme au RDC (floorNight) : chaque bureau occupé s'allume ; la lampe du bureau du boss reste allumée ;
+// hors des heures de bureau, la veilleuse ----------
+const RT_NIGHT={};
+function rtNight(slots,people,now){
+  const T_=AT_TS, rooms=RT_G.map((z,i)=>[Math.round(z.x0/T_),Math.round(z.y0/T_),Math.round((z.x0+z.w)/T_)-1,Math.round((z.y0+z.h)/T_)-1,!!slots[i]]);
+  floorNight(RT_NIGHT,{rooms,closed:!atOpen(),track:RT_LIT,spots:[...floorPeopleSpots(people),...RT_LIT.map(q=>({x:q.x,y:q.y-26,r:42,a:.95})),
+    floorBossLamp(RT_DESK.x,RT_DESK.y),{x:RT_STAIRS.x,y:RT_STAIRS.y,r:1.6*T_,a:.45}]},now); // l'escalier
 }
 // ---------- l'image ----------
 const rtSig=()=>rtRooms().map(r=>r.run).join('|');
@@ -272,7 +265,7 @@ function renderRetours(now){
   slots.forEach((r,i)=>rtRoom(r,i,now,people));
   rtHall(slots,now,people);rtBoss(slots,now,dt,people);rtScenes(now,dt,people);
   people.sort((a,b)=>a[0].pos.y-b[0].pos.y).forEach(([c,d,before,after])=>{if(d)d();if(c.sprite)drawChar(c,now);if(after)after();});
-  rtNight(now);
+  rtNight(slots,people,now);
   if(RTSEL!=null){const i=slots.findIndex(r=>r&&r.run===RTSEL);if(i>=0){const z=RT_G[i];ctx.save();ctx.strokeStyle='#ffffff';ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.lineDashOffset=-now/60;ctx.strokeRect(z.x0+3,z.y0+3,z.w-6,z.h-6);ctx.restore();}}
   const b=chars.find(c=>c.boss);if(b&&sel===b.key&&RT_MEM.boss)selHalo(RT_MEM.boss.walk.pos.x,RT_MEM.boss.walk.pos.y-26,AT_W,AT_H);
 }

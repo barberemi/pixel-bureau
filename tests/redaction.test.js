@@ -72,3 +72,21 @@ test("le boss au tampon : assis au bureau du RDC, sans la pose de frappe (il ne 
   assert.equal(b.pose, 'stand');
   assert.equal(b.y, J('RD_DESK.y'));
 });
+
+test("la nuit comme au RDC : la salle de rédaction et les bureaux de revue occupés s'allument, les bureaux libres restent dans l'ombre", () => {
+  const {p, J} = page();
+  p.run('setFloor(2); T = DAY0 + 22.5 * 36e5; renderRedaction(1000);');
+  const lv = J('RD_NIGHT.lv'), l = J('rvActive().length');
+  assert.equal(lv.length, 7, 'la salle de rédaction et les six bureaux de la revue');
+  assert.equal(lv[0], 1, 'une intention est sur la table');
+  assert.deepEqual(lv.slice(1), [...Array(6).keys()].map(k => (k < l ? 1 : 0)));
+});
+
+test("floorNight : le voile suit le soleil ; hors des heures de bureau (le week-end à midi), la veilleuse quand même", () => {
+  const {p, J} = page();
+  const day = 'T = DAY0 + 2 * 864e5 + 12 * 36e5;'; // le samedi à midi
+  p.run(day + 'var __S = {}, __R = {rooms: [[0, 0, 3, 3, true]]}; floorNight(__S, __R, 1000);');
+  assert.equal(J('__S.lv'), null, 'en plein jour, pas de voile');
+  p.run('floorNight(__S, {...__R, closed: true}, 1300);');
+  assert.deepEqual(J('__S.lv'), [1], 'le week-end, la veilleuse et la pièce allumée');
+});

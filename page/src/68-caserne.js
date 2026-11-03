@@ -370,23 +370,16 @@ function csCaptain(slots,now,dt,people){
   if(home_)csLate(people,()=>atPill(boss.name+' · capitaine',p.x,Math.round(F+17*K+12),'#8a1f17','#fff','bold 10px system-ui,sans-serif'),F+3); // sous le bureau
   CS_LIT.push(p);atHitCs('captain',p.x-16,p.y-56,32,60,{});
 }
-// ---------- nuit : hors des heures de bureau, la caserne passe en veilleuse ----------
-let CS_NIGHT_CV=null, CS_NIGHT_AT=0, CS_NIGHT_SIG='';
-function csNight(slots,now){
-  if(atOpen())return;
-  const W_=AT_W/LQ, H_=AT_H/LQ, T=AT_TS;
-  if(!CS_NIGHT_CV)CS_NIGHT_CV=[lightCanvas(W_,H_),lightCanvas(W_,H_)];
-  // comme au 1er (#154) : le masque se refait toutes les 200 ms, plus souvent quand le capitaine marche, pour que sa lumière le suive
-  const sig=CS_LIT.map(q=>Math.round(q.x/4)+','+Math.round(q.y/4)).join(' ');
-  if(now-CS_NIGHT_AT>200||!CS_NIGHT_AT||sig!==CS_NIGHT_SIG&&now-CS_NIGHT_AT>40){CS_NIGHT_AT=now;CS_NIGHT_SIG=sig;
-    const m=CS_NIGHT_CV[0].getContext('2d');m.setTransform(1,0,0,1,0,0);m.globalCompositeOperation='source-over';m.clearRect(0,0,W_,H_);
-    m.fillStyle='rgba(10,14,40,.5)';m.fillRect(0,0,W_,H_);m.setTransform(1/LQ,0,0,1/LQ,0,0);m.globalCompositeOperation='destination-out';
-    slots.forEach((s,b)=>{if(!s)return;const z=CS_G[b];softSpot(m,z.cx,(CS_DY1-1)*T,4*T,.7);softSpot(m,z.cx,(CS_R1+.5)*T,4.5*T,.8);softSpot(m,z.cx,(CS_R2+.3)*T,4*T,.7);});
-    softSpot(m,40.5*T,23.4*T,4.5*T,.55);softSpot(m,40.6*T,4.2*T,5*T,.7);softSpot(m,CS_POLE.x,CS_POLE.y1-1.2*T,2.2*T,.6);softSpot(m,CS_DESK.x,CS_DESK.y-10,3.6*T,.9); // la lampe du bureau du chef de centre, toujours allumée
-    for(const q of CS_LIT)softSpot(m,q.x,q.y-26,42,.95); // le capitaine dans sa lumière, à son bureau ou en route vers la vanne
-    for(const w of CS_MEM.walk||[])if(w.pos)softSpot(m,w.pos.x,w.pos.y-26,40,.9); // les pompiers qui descendent, courent ou remontent
-    const l=CS_NIGHT_CV[1].getContext('2d');l.clearRect(0,0,W_,H_);l.filter='blur(3px)';l.drawImage(CS_NIGHT_CV[0],0,0);l.filter='none';}
-  const sm=ctx.imageSmoothingEnabled;ctx.imageSmoothingEnabled=true;ctx.drawImage(CS_NIGHT_CV[1],0,0,AT_W,AT_H);ctx.imageSmoothingEnabled=sm;
+// ---------- la nuit, comme au RDC (floorNight) : chaque baie en intervention s'allume ; la salle de garde tant que la garde
+// veille (la nuit, elle dort : sa veilleuse seulement) ; la lampe du bureau du chef de centre reste allumée ; le capitaine et
+// les pompiers qui descendent la barre, courent ou remontent ont leur lumière ; hors des heures de bureau, la veilleuse ----------
+const CS_NIGHT={};
+function csNight(slots,people,now){
+  const T_=AT_TS, open=atOpen(), walk=(CS_MEM.walk||[]).filter(w=>w.pos).map(w=>w.pos), lit=[...CS_LIT,...walk];
+  const rooms=CS_G.map((z,b)=>[CS_BX[b],CS_DY1,CS_BX[b]+CS_BW-1,Math.floor(CS_Z1),!!slots[b]]).concat([[35,2,45,26,open]]);
+  floorNight(CS_NIGHT,{rooms,closed:!open,track:lit,spots:[...floorPeopleSpots(people),...lit.map(q=>({x:q.x,y:q.y-26,r:42,a:.95})),
+    floorBossLamp(CS_DESK.x,CS_DESK.y),{x:40.5*T_,y:23.4*T_,r:2.2*T_,a:.5,c:'rgba(255,190,120,.12)'}, // la veilleuse de la garde
+    {x:CS_POLE.x,y:CS_POLE.y1-1.2*T_,r:2.2*T_,a:.6}]},now); // la barre
 }
 // ---------- le ménage du soir au -1 : après le 1er (atCleanVisit, 68-atelier.js), l'agent d'entretien descend la barre ----------
 // Rejouable comme au 1er : tout se lit dans l'heure du plan. Il descend par la barre (le seul accès), balaie l'allée devant
@@ -446,7 +439,7 @@ function renderCaserne(now){
   csBoard(slots,now);csGuard(now,people);csWalkers(now,dt,people);csCaptain(slots,now,dt,people);csBeacon(now);
   people.sort((a,b)=>a[0].pos.y-b[0].pos.y).forEach(([c,d,before,after])=>{if(before&&d)d();if(c.sprite)drawChar(c,now);if(!before&&d)d();if(after)after();});
   csTheme(now); // comme au 1er : sapin et guirlande à Noël, citrouilles à Halloween, ballons
-  csNight(slots,now);
+  csNight(slots,people,now);
   const hp=csPickedAt();if(hp)selHalo(hp.x,hp.y-26,AT_W,AT_H); // comme au RDC et au 1er : le plan s'assombrit autour de celui qu'on a choisi
   if(CS_SEL!=null){const b=CS_MEM.slots.indexOf(CS_SEL);if(b>=0){const z=CS_G[b];ctx.save();ctx.strokeStyle='#ffffff';ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.lineDashOffset=-now/60;ctx.strokeRect(z.x0+1,CS_DY0*AT_TS-20,z.w-2,(CS_Z1-CS_DY0)*AT_TS+24);ctx.restore();}}
 }

@@ -161,23 +161,21 @@ function rdRevue(now,people){
   const sx=(RD_X1+RD_VX)/2*T;atCoffee(sx,6.4*T);atPlant(sx-36,20*T);atPlant(sx+36,20*T);
   rdLate(people,()=>atPill('⇅ escalier · RDC',sx,23.6*T,'#5a4636','#fff','bold 9px ui-monospace,Menlo,monospace'),1e6);
 }
-// ---------- nuit : la veilleuse ; ceux au travail et le boss gardent leur lumière ----------
-let RD_NIGHT_CV=null, RD_NIGHT_AT=0;
-function rdNight(now){
-  if(atOpen())return;
-  const W_=AT_W/LQ, H_=AT_H/LQ;if(!RD_NIGHT_CV)RD_NIGHT_CV=[lightCanvas(W_,H_),lightCanvas(W_,H_)];
-  if(now-RD_NIGHT_AT>200||!RD_NIGHT_AT){RD_NIGHT_AT=now;const m=RD_NIGHT_CV[0].getContext('2d');m.setTransform(1,0,0,1,0,0);m.globalCompositeOperation='source-over';m.clearRect(0,0,W_,H_);
-    m.fillStyle='rgba(10,14,40,.55)';m.fillRect(0,0,W_,H_);m.setTransform(1/LQ,0,0,1/LQ,0,0);m.globalCompositeOperation='destination-out';
-    for(const q of RD_LIT)softSpot(m,q.x,q.y-26,40,.85);
-    const l=RD_NIGHT_CV[1].getContext('2d');l.clearRect(0,0,W_,H_);l.filter='blur(3px)';l.drawImage(RD_NIGHT_CV[0],0,0);l.filter='none';}
-  const sm=ctx.imageSmoothingEnabled;ctx.imageSmoothingEnabled=true;ctx.drawImage(RD_NIGHT_CV[1],0,0,AT_W,AT_H);ctx.imageSmoothingEnabled=sm;
+// ---------- la nuit, comme au RDC (floorNight) : la salle de rédaction s'allume tant qu'une intention y est, chaque bureau de
+// la revue quand une PR y est lue ; la lampe du bureau du boss reste allumée ; hors des heures de bureau, la veilleuse ----------
+const RD_NIGHT={};
+function rdNight(people,now){
+  const T_=AT_TS, l=rvActive(), rooms=[[0,2,Math.ceil(RD_X1)-1,26,!!rdTable()]];
+  for(let k=0;k<6;k++){const cx=28.5+(k%3)*6.3, f=k<3?9.2:18.4;rooms.push([Math.round(cx-2.5),Math.round(f-3),Math.round(cx+2.5),Math.round(f+3),!!l[k]]);}
+  floorNight(RD_NIGHT,{rooms,closed:!atOpen(),track:RD_LIT,spots:[...floorPeopleSpots(people),...RD_LIT.map(q=>({x:q.x,y:q.y-26,r:42,a:.95})),
+    floorBossLamp(RD_DESK.x,RD_DESK.y),{x:(RD_X1+RD_VX)/2*T_,y:24.6*T_,r:1.6*T_,a:.45}]},now); // l'escalier
 }
 function rdReset(){RD_MEM={last:0};RDSEL=null;}
 function renderRedaction(now){
   RD_MEM.last=now;if(!RD_BG)RD_BG=rdBackground();ctx.drawImage(RD_BG,0,0);RD_HITS=[];RD_LIT=[];
   const people=[];rdRoom(now,people);rdRevue(now,people);
   people.sort((a,b)=>a[0].pos.y-b[0].pos.y).forEach(([c,d,before,after])=>{if(d)d();if(c.sprite)drawChar(c,now);if(after)after();});
-  rdNight(now);
+  rdNight(people,now);
   const b=chars.find(c=>c.boss);if(b&&sel===b.key)selHalo(RD_DESK.x,RD_DESK.y-26,AT_W,AT_H);
 }
 function atHitRd(kind,x,y,w,h,ref){RD_HITS.push({kind,x,y,w,h,...ref});}

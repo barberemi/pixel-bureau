@@ -16,7 +16,7 @@ L'onglet « 🛠 3e · retours de PR » apparaît après « 🏭 1er » dès que
 - **Le boss est toujours là**, assis à son bureau du couloir, le même qu'au RDC. Quand une PR attend ta validation, il se lève, longe le couloir, entre par la porte du bureau et va à la barrière ✋. Il n'y a qu'un boss : il va d'abord au bureau qui attend depuis le plus longtemps, les autres clignotent à leur barrière (« en file : le boss est au bureau 2 ») et il y passe ensuite. Il ressort par où il est entré.
 - **Bernard** monte une PR par l'escalier jusqu'à son bureau, y pose le carton, et la redescend une fois les corrections poussées ; le bureau s'éteint.
 - **Le couloir** : les PR qui attendent un bureau, le café, un banc où s'assoient les agents des bureaux libres, le bureau du boss, l'escalier vers les autres étages.
-- **Le soir et le week-end**, l'étage passe en veilleuse : seuls les agents au travail et le boss gardent leur lumière, qui le suit quand il marche.
+- **Le soir et le week-end**, l'étage passe en veilleuse, comme le RDC la nuit : chaque bureau occupé s'allume comme une pièce, avec ses plafonniers, les bureaux libres restent dans l'ombre ; chaque agent au travail a sa lampe et son écran, la lampe du bureau du boss reste allumée, et sa lumière le suit quand il marche.
 
 ![Le 3e le soir : une PR en correction, le boss à son bureau](../img/retours-calme.png)
 

@@ -337,7 +337,7 @@ test('le soir, comme au RDC : le boss et ceux qui se promènent ont leur lumièr
   saturdayNight(p);
   p.run(`AT_MEM.wander = []; for (let n = 0; n < 40; n++) atWanderTick(atSlots(), n * 100, .1, () => 0);
     var __sp = [], __so = softSpot; softSpot = (g, x, y, r, a, c) => { __sp.push([Math.round(x), Math.round(y)]); __so(g, x, y, r, a, c); };
-    AT_NIGHT_AT = 0; renderAtelier(1000); AT_NIGHT_AT = 0; __sp = []; renderAtelier(1300); softSpot = __so;`);
+    AT_NIGHT.at = 0; renderAtelier(1000); AT_NIGHT.at = 0; __sp = []; renderAtelier(1300); softSpot = __so;`);
   assert.ok(J2('AT_MEM.wander.length') > 0, 'des agents se promènent');
   const lit = (x, y) => J2(`__sp.some(([a, b]) => a === ${Math.round(x)} && b === ${Math.round(y)})`);
   const b = J2('AT_MEM.boss.walk.pos');

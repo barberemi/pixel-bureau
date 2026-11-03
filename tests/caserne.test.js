@@ -161,7 +161,7 @@ test('le soir, comme au 1er : le capitaine a sa lumière, qui le suit jusqu\'à 
   const {p, J} = page();
   p.run(`SUPPORT = supportDemo(); setFloor(-1); T = DAY0 + 22.5 * 36e5; renderCaserne(1000);
     var __sp = [], __so = softSpot; softSpot = (g, x, y, r, a, c) => { __sp.push([Math.round(x), Math.round(y)]); __so(g, x, y, r, a, c); };
-    CS_NIGHT_AT = 0; renderCaserne(1100); softSpot = __so;`);
+    CS_NIGHT.at = 0; renderCaserne(1100); softSpot = __so;`);
   const lit = q => J(`__sp.some(([a, b]) => a === ${Math.round(q.x)} && b === ${Math.round(q.y - 26)})`);
   assert.ok(lit(J('CS_MEM.boss.walk.pos')), 'le capitaine, là où il est');
   p.run(`__sp = []; softSpot = (g, x, y, r, a, c) => { __sp.push([Math.round(x), Math.round(y)]); __so(g, x, y, r, a, c); };
