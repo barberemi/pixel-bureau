@@ -79,7 +79,7 @@ function rtRoomsAt(t){
 // quand on regarde l'étage, et en y montant (fresh) tout est posé sans rejouer
 const rtMem0=()=>({fresh:true,slot:{},seen:{},scenes:[],leaving:Array(RT_N).fill(null),boss:null,last:0,lastT:null,live:null,sig:''});
 let RT_MEM=rtMem0();
-function rtReset(){RT_MEM=rtMem0();RTSEL=null;rtKbClose();}
+function rtReset(){const slot=RT_MEM.slot;RT_MEM=rtMem0();RT_MEM.slot=slot;RTSEL=null;rtKbClose();} // une PR garde son numéro de bureau, vue du RDC comme à l'étage
 function rtSlots(){
   const rooms=rtRooms(), out=Array(RT_N).fill(null), live=new Set(rooms.map(r=>r.run));
   for(const run of Object.keys(RT_MEM.slot))if(!live.has(run))delete RT_MEM.slot[run];

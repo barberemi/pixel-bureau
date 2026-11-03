@@ -32,6 +32,8 @@ Au 3e, le panneau liste les bureaux (la PR, son auteur, le poste en cours, la ba
 
 ## Depuis le RDC
 
+- **La tuile « Le 3e étage »** en haut de page, après celle du 1er : les PR en correction sur les six bureaux, celles dont les corrections t'attendent, les pannes, les PR poussées aujourd'hui et la file. Bordure orange quand une validation t'attend, rouge pour une panne ; un clic monte au 3e.
+- **« Qui fait quoi »** : sous les postes du 1er, une carte par bureau du 3e (« 🛠 3e étage ») : le poste en cours, ✋ quand ses corrections t'attendent, 🧯 quand un poste est en panne, les fils à traiter et corrigés, l'auteur. Le même numéro de bureau qu'à l'étage ; un clic y monte et ouvre le bureau. Le mode TV les montre aussi.
 - **Le fil de la journée** : une PR qui monte au 3e, ses corrections qui t'attendent, les corrections poussées et les réponses postées, un poste en panne. Un clic monte au 3e et ouvre le bureau de la PR ; « ⏵ revoir » rejoue le moment sur le plan du 3e.
 - **⌘K** trouve les PR du 3e par leur nom, leur dépôt, leur titre, leur auteur ou le poste en cours.
 - **Le mode TV** : le bouton d'étage (ou la touche E) passe par le 3e ; `?tv=1&floor=alt` y passe quand il a une PR.
