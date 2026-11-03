@@ -456,6 +456,10 @@ function atBoard(slots){
     atHit('room',x,by,cw,bh,{i:k});
   });
 }
+// la porte en bois de l'entrée du RDC (le sol 'mat' de 40-floor.js : cadre #5a4636, panneau #6b5543), posée dans
+// l'ouverture d'un mur ; n panneaux côte à côte (mur horizontal) ou l'un sous l'autre (vert : mur vertical)
+function woodDoor(g,x,y,w,h,n,vert){R(g,x,y,w,h,'#5a4636');
+  for(let k=0;k<n;k++){if(vert){const ph=h/n;R(g,x+3,y+k*ph+3,w-6,ph-6,'#6b5543');}else{const pw=w/n;R(g,x+k*pw+3,y+3,pw-6,h-6,'#6b5543');}}}
 // ---------- le bureau du boss, le même à chaque étage (le 1er, le 2e, le 3e) : celui du RDC (40-furniture.js) ----------
 // Le fauteuil 44 px au-dessus des pieds du boss (F), le bureau de 100 px 16 px au-dessus ; mid(x0,top) pose ce qui est
 // propre à l'étage au milieu du bureau (sinon la feuille du RDC) ; la tasse à x0+mug.

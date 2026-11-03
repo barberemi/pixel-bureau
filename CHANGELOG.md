@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- 2e et 3e étages : leurs portes sont la porte en bois de l'entrée du RDC (au 3e, à la place d'un trait clair sur le mur).
 - 2e et 3e étages : le boss ne danse plus à son bureau ; il y est assis, plus bas, au bureau du RDC (« WORLD'S BEST BOSS », écran, tasse), le tampon posé dessus au 2e.
 - 2e étage : il se dessine de nouveau (seul le sol s'affichait depuis son arrivée) ; un test vérifie que la page n'appelle que de vrais membres du canvas.
 - Créer un ticket : la validation se fait sur la liste des tickets, dans le parent, car Kronn refuse une gate dans un sous-workflow (le modèle d'avant ne s'installait pas). **Changements** renvoie à la rédaction avec tes retours (« retire T2 », « fusionne T1 et T3 ») ; chaque ticket n'a plus que sa création. Un test vérifie qu'aucun modèle lancé en sous-workflow n'a de gate. Après la mise à jour : `python3 tools/install.py`, puis `publish.py all`.

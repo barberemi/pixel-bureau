@@ -143,3 +143,12 @@ test("le boss du couloir : assis au bureau du RDC quand rien ne l'attend, debout
   p.run(`RETOURS = retoursDemo(); RT_MEM = rtMem0(); renderRetours(1100); drawChar = __dc;`);
   assert.equal(J('__b.pop().tile'), null, 'une PR attend : il est debout à la barrière');
 });
+
+test("les portes des bureaux : la porte en bois de l'entrée du RDC, sur le couloir (comme au 2e)", () => {
+  const {p, J} = page();
+  p.run(`var __d = []; var __ad = woodDoor; woodDoor = (...a) => { __d.push(a.slice(1)); return __ad(...a); }; rtBackground(); rdBackground(); woodDoor = __ad;`);
+  const d = J('__d'), T = J('AT_TS');
+  assert.equal(d.length, 8, 'une par bureau du 3e, deux au 2e');
+  for (const [x, y, w, h, n, vert] of d.slice(0, 6)) { assert.deepEqual([w, n, vert], [2 * T, 2, false]); assert.ok(h >= 8); }
+  for (const [, , w, h, n, vert] of d.slice(6)) assert.deepEqual([w, h, n, vert], [12, 2.5 * T, 2, true]);
+});

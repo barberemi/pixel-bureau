@@ -118,7 +118,7 @@ function rtBackground(){
   for(let y=0;y<27;y++)for(let x=0;x<46;x++)drawFloor(g,x,y,y>=RT_HALL[0]&&y<RT_HALL[1]?'tiles':'carpet');
   R(g,0,0,AT_W,T,'#4b4a52');R(g,0,T,AT_W,8,'#efe9dc');R(g,0,T+8,AT_W,24,'#d9d2c3');R(g,0,T+28,AT_W,4,'#a99f8c');
   for(const z of RT_G){R(g,z.x0,z.y0,z.w,4,'#7d776c');R(g,z.x0,z.y0+z.h-4,z.w,4,'#7d776c');R(g,z.x0,z.y0,4,z.h,'#7d776c');R(g,z.x0+z.w-4,z.y0,4,z.h,'#7d776c');
-    R(g,z.door.x-T,z.top?z.y0+z.h-4:z.y0,2*T,4,'#b98a5c');} // la porte, sur le couloir
+    woodDoor(g,z.door.x-T,z.top?z.y0+z.h-8:z.y0-4,2*T,12,2,false);} // la porte en bois, sur le couloir
   const {x:sx,y:sy}=RT_STAIRS;R(g,sx-40,sy-26,80,52,'#8a8478');for(let k=0;k<4;k++)R(g,sx-40,sy-22+k*14,80,3,'#a9a397'); // l'escalier
   g.font='bold 11px ui-monospace,Menlo,monospace';g.fillStyle='#5a4636';g.fillText('3E · RETOURS DE PR',12,T+20);
   return c;
