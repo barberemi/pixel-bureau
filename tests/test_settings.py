@@ -63,6 +63,12 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(assemble.support_page(m2)["postes_wf"], ["7a110001"])
         self.assertIsNone(assemble.support_page(assemble.demo_config() | {"support": {"team": "T1"}}), "sans canal : pas de console")
 
+    def test_ticket_page_lists_its_postes(self):
+        """Créer un ticket : le préfixe du modèle et de ses postes (rédaction, un ticket), lus au 2e, jamais au RDC."""
+        self.assertIsNone(assemble.ticket_page({"models": {}}))
+        m = {"models": {"ticket": "71c4e700-1", "ticket_recherche": "aaaa0001-1", "ticket_un": "bbbb0001-1", "review_child": "cccc0001-1"}}
+        self.assertEqual(assemble.ticket_page(m), {"wf": "71c4e700", "postes_wf": ["aaaa0001", "bbbb0001"]})
+
     def test_fix_section_of_the_pack(self):
         """#75 : consignes, skills et contrôles de la correction des commentaires ; la config surcharge, contrôles clé à clé."""
         self.write({"fix": {"guidelines": "Conventions front : un seul dépôt.", "skill_ids": ["php"],

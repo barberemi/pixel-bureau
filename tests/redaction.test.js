@@ -175,3 +175,20 @@ test("la file : au passage suivant du cron, Bernard vide la corbeille et range l
   assert.equal(J('RVF_M.bern'), null, 'il est redescendu');
   assert.ok(J('RVF_M.cas.length') > 6);
 });
+
+test("les postes du ticket (CFG.ticket.postes_wf) et ceux de la revue travaillent au 2e : ni au RDC, ni dans « Nouvel agent »", () => {
+  const {p, J} = page();
+  p.run(`(() => {
+    CFG.ticket = {wf: 'aaaaaaaa', postes_wf: ['bbbbbbbb', 'dddddddd']}; CFG.revue_postes_wf = ['eeeeeeee'];
+    const d = JSON.parse(JSON.stringify(DATA)), at = new Date(T - 60e3).toISOString();
+    d.runs.push({wf: 'aaaaaaaa-0000', wf_name: 'Le Bureau · créer un ticket', run: 'tk', status: 'Running', start: at, end: null, steps: [], vars: {}},
+      {wf: 'bbbbbbbb-0000', wf_name: 'Le Bureau · ticket · 📚 recherche', run: 'rech', parent: 'tk', status: 'Running', start: at, end: null, steps: [], vars: {}},
+      {wf: 'dddddddd-0000', wf_name: 'Le Bureau · ticket · 🎫 un ticket', run: 'un', parent: 'tk', status: 'Running', start: at, end: null, steps: [], vars: {}},
+      {wf: 'eeeeeeee-0000', wf_name: 'Le Bureau · revue de PR · 🔍 lecture', run: 'lect', status: 'Running', start: at, end: null, steps: [], vars: {}});
+    setData(d, true);
+    ASKABLE = [{wf: 'bbbbbbbb-0000', name: 'ticket recherche'}, {wf: 'eeeeeeee-0000', name: 'revue lecture'}, {wf: 'cccccccc-0000', name: 'Autre'}];
+  })()`);
+  assert.deepEqual(J("DATA.runs.filter(r => ['tk', 'rech', 'un', 'lect'].includes(r.run)).map(r => r.run)"), ['tk']);
+  assert.equal(J("chars.some(c => c.temp && (c.wf || []).some(w => ['bbbbbbbb', 'dddddddd', 'eeeeeeee'].includes(w)))"), false, 'aucun intérimaire');
+  assert.deepEqual(J('workflowsWithoutAgent().map(w => w.name)').filter(n => /recherche|lecture/.test(n)), []);
+});

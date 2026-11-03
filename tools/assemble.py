@@ -202,7 +202,7 @@ def page_config(cfg):
         "skins": themes(cfg),  # thèmes d'interface (theme-*.css) proposés par le bouton 🎨
         "support": support_page(cfg),  # console Support (#62)
         # créer un ticket (#77) : préfixe du modèle (l'agent qui l'incarne), pour sa validation et son dernier ticket créé
-        "ticket": {"wf": str((cfg.get("models") or {}).get("ticket") or "")[:8]} if (cfg.get("models") or {}).get("ticket") else None,
+        "ticket": ticket_page(cfg),
         # 1er étage, l'atelier d'implémentation (#125) : ses onglets quand la chaîne est installée (models.impl_chain)
         "atelier": bool((cfg.get("models") or {}).get("impl_chain")),
         # 3e étage, les retours de PR : ses onglets quand le modèle « corriger les commentaires d'une PR » est installé
@@ -244,6 +244,16 @@ def deploy_envs(cfg):
     staging = {d["repo"]: d.get("staging_workflow") for d in [g] + list(g.get("deploys") or []) if d.get("repo")}
     return {repo: list(t["envs"]) for repo, t in ((cfg.get("deploy") or {}).get("repos") or {}).items()
             if isinstance(t, dict) and isinstance(t.get("envs"), dict) and t["envs"] and (t.get("workflow") or staging.get(repo))}
+
+
+def ticket_page(cfg):
+    """Créer un ticket (#77) pour la page : préfixe du modèle (l'agent qui l'incarne) et de ses postes, ceux de la salle de
+    rédaction (ticket_recherche, ticket_redaction, ticket_critique) et le sous-workflow par ticket (ticket_un) : leurs runs
+    se lisent au 2e étage, jamais au RDC ni dans « Nouvel agent ». None sans le modèle."""
+    m = cfg.get("models") or {}
+    if not m.get("ticket"):
+        return None
+    return {"wf": str(m["ticket"])[:8], "postes_wf": sorted({str(v)[:8] for k, v in m.items() if k.startswith("ticket_") and v})}
 
 
 def support_page(cfg):

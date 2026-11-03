@@ -301,6 +301,12 @@ def one(run, i):
 def apercus(run):
     d, t = dget(run, "demande.json") or {}, (dget(run, "tickets.json") or {}).get("tickets") or []
     print(f"{len(t)} ticket(s) à créer :")
+    c = dget(run, "critique.json") or {}
+    if c.get("verdict") == "a_retoucher" and c.get("version") == (dget(run, "tickets.json") or {}).get("version"):
+        # trois tours faits sans accord : la critique garde ses réserves, le tampon les montre plutôt que de les taire
+        print(f"\n⚠ La critique a encore des réserves après {TOURS} tours (à toi de trancher, « Changements » pour les corriger) :")
+        for n in c.get("notes") or []:
+            print(f"- {'découpage' if n.get('ticket') in (0, '0') else 'T' + str(n.get('ticket'))} : {n.get('note')}")
     for i, x in enumerate(t):
         print(f"\n━━ T{i + 1} ━━")
         raw = json.dumps({"summary": x.get("summary") or "", "description": x.get("description") or ""}, ensure_ascii=False)

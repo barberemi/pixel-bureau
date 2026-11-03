@@ -14,10 +14,11 @@ const RACK_PLUS={get y(){const r=newAgentRack();return r?r.y+r.h+1:-1;},draw:()=
   R(ctx,x+3,y+1,3,7,on?'#ffffff':'#5ff08a');R(ctx,x+1,y+3,7,3,on?'#ffffff':'#5ff08a');
 }};
 // workflows actifs hors Bureau qu'aucun agent n'incarne (les intérimaires du jour comptent comme « sans agent ») ;
-// pas ceux du 1er étage (68-atelier.js) ni les postes du Support (68-caserne.js) : ils y travaillent sous leur propre nom
+// pas ceux du 1er étage (68-atelier.js) ni les postes du Support (68-caserne.js), de la revue et de la rédaction (68-redaction.js) :
+// ils y travaillent sous leur propre nom
 function workflowsWithoutAgent(){
   const has=p=>chars.some(c=>!c.temp&&!c.person&&!c.visitor&&(c.wf||[]).includes(p));
-  return ASKABLE.filter(w=>w&&w.wf&&!atWf(w.wf)&&!csWf(w.wf)&&!has(String(w.wf).slice(0,8))).slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),'fr'));
+  return ASKABLE.filter(w=>w&&w.wf&&!atWf(w.wf)&&!csWf(w.wf)&&!rvPosteWf(w.wf)&&!rdPosteWf(w.wf)&&!has(String(w.wf).slice(0,8))).slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),'fr'));
 }
 const pickOf=l=>l[Math.floor(Math.random()*l.length)];
 function randomLook(){

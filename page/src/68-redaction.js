@@ -45,6 +45,9 @@ const rvWf=w=>!!w&&(CFG.revue_wf||[]).includes(String(w).slice(0,8));
 // les postes de la revue (sous-workflows review_<poste>, CFG.revue_postes_wf) : leurs runs ne passent pas au RDC, ils se
 // lisent comme des étapes du run de la revue
 const rvPosteWf=w=>!!w&&(CFG.revue_postes_wf||[]).includes(String(w).slice(0,8));
+// les postes de la rédaction et le sous-workflow par ticket (CFG.ticket.postes_wf) : lus au 2e (redaction_snapshot.py),
+// jamais au RDC
+const rdPosteWf=w=>!!w&&((CFG.ticket&&CFG.ticket.postes_wf)||[]).includes(String(w).slice(0,8));
 function rvRuns(){
   const l=((DATA&&DATA.runs)||[]).filter(r=>rvWf(r.wf)&&r._s<=T);
   if(!l.length&&DEMO)return rvDemo();
