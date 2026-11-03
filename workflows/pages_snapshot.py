@@ -16,7 +16,8 @@ image) ; choices[].feeds, hors écran seulement : [{wf (préfixe de 8), trigger}
   fenêtre : [{wf, name, trigger, ai, via, last}] ; un sous-workflow (lancé par un autre, jamais seul) est remplacé par
   ceux qui le lancent (via = son nom) ; ai : une étape Agent (dans le sous-workflow compris) ; last : {status, at} du
   dernier run. La page ne propose le bouton que pour ceux de sa liste des relançables (dataset gates, relaunch.py).
-- Une page supprimée ou illisible est sautée. Sortie bornée sous 90 Ko (les images en trop sont retirées).
+- Une page supprimée ou illisible est sautée. Sortie bornée sous 90 Ko : les images recompressées
+  (qualité 40 puis 28), et en dernier recours les dernières retirées.
 - warnings (#8) : page sautée, capture ratée (carte sans image) ; écrits aussi sur stderr (run Kronn).
 """
 import base64, glob, html, json, os, re, shutil, signal, subprocess, sys, tempfile, time
@@ -108,6 +109,23 @@ def thumb(d, exe):
         os.makedirs(CACHE, exist_ok=True)
         write_json(path, {"key": key, "img": img})
     return img
+
+
+def recompress(img, q):
+    """La miniature réencodée en qualité q, si elle y gagne ; sinon (réduction impossible) telle quelle."""
+    tmp = tempfile.mkdtemp(prefix="bureau-thumb-")
+    try:
+        src, jpg = os.path.join(tmp, "a.jpg"), os.path.join(tmp, "b.jpg")
+        with open(src, "wb") as fh:
+            fh.write(base64.b64decode(img.split(",", 1)[1]))
+        if not jpeg(src, jpg, size=(320, 200), quality=q):
+            return img
+        new = "data:image/jpeg;base64," + base64.b64encode(read_bytes(jpg)).decode()
+        return new if len(new) < len(img) else img
+    except Exception:
+        return img
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def title(d):
@@ -254,6 +272,11 @@ for f in glob.glob(os.path.join(CACHE, "*.json")):
     if os.path.basename(f)[:-5] not in ids:
         os.remove(f)
 out = {"generated_at": datetime.now(TZ).isoformat(), "pages": pages, "choices": choices, "warnings": warnings}
+for q in (40, 28):  # trop lourd : les miniatures recompressées d'abord, retirées seulement en dernier recours
+    if len(dumps(out)) <= MAX_OUT:
+        break
+    for p in pages:
+        p["img"] = p["img"] and recompress(p["img"], q)
 dropped = 0
 for p in reversed(pages):  # sortie Exec tronquée à 100 Ko : les dernières images sautent d'abord
     if len(dumps(out)) <= MAX_OUT:
