@@ -442,6 +442,7 @@ function renderCaserne(now){
   csNight(slots,people,now);
   const hp=csPickedAt();if(hp)selHalo(hp.x,hp.y-26,AT_W,AT_H); // comme au RDC et au 1er : le plan s'assombrit autour de celui qu'on a choisi
   if(CS_SEL!=null){const b=CS_MEM.slots.indexOf(CS_SEL);if(b>=0){const z=CS_G[b];ctx.save();ctx.strokeStyle='#ffffff';ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.lineDashOffset=-now/60;ctx.strokeRect(z.x0+1,CS_DY0*AT_TS-20,z.w-2,(CS_Z1-CS_DY0)*AT_TS+24);ctx.restore();}}
+  atReplayPill();
 }
 // où est celui qu'on a choisi : un pompier d'une baie occupée, ou le capitaine (sa fiche ouverte à la caserne)
 function csPickedAt(){

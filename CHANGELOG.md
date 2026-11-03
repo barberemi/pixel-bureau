@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- 2e, 3e et -1 : en rejeu, la pastille « ⏪ Rejeu · l'étage à cette heure-là » du 1er ; aux 2e et 3e, les fenêtres du RDC, dont le ciel suit le soleil (étoiles la nuit, effets des thèmes).
 - 2e, 3e et -1 : la nuit comme au RDC. Le voile monte au crépuscule avec la teinte du soir (il basculait d'un coup), chaque pièce où l'on travaille s'allume en fondu avec ses plafonniers (salle de rédaction, bureaux de revue, bureaux du 3e, baies du -1), chaque agent au travail a sa lampe et son écran, et la lampe du bureau du boss reste allumée. Hors des heures de bureau, la veilleuse reste, même en plein jour le week-end. Une seule lumière du soir pour tous les étages (floorNight).
 - 2e et 3e étages : leurs portes sont la porte en bois de l'entrée du RDC (au 3e, à la place d'un trait clair sur le mur).
 - 2e et 3e étages : le boss ne danse plus à son bureau ; il y est assis, plus bas, au bureau du RDC (« WORLD'S BEST BOSS », écran, tasse), le tampon posé dessus au 2e.

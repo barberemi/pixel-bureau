@@ -14,6 +14,7 @@ const RT_COLS=[{k:'a_traiter',n:'À traiter',c:'#e8e2d0'},{k:'corrige',n:'✅ Co
   {k:'laisse',n:'⏭ Laissé',c:'#d8d2c4'},{k:'reponse',n:'💬 Réponse',c:'#9fd4ff'}];
 const RT_ST={ok:['ok','a travaillé'],run:['run','au travail'],err:['err','en panne'],gate:['wait','t\'attend'],wait:['','attend son tour']};
 const RT_N=6, RT_W=46/3, RT_H=11.2, RT_Y=[2,15.8], RT_HALL=[13.2,15.8], RT_LANE=14.5*AT_TS;
+const RT_WINDOWS=[7,10,13,17,20,23,27,30,33,37,40,43]; // en cases : à droite du nom de l'étage, comme au RDC
 const RT_DESK={x:31*AT_TS,y:15.2*AT_TS}, RT_STAIRS={x:43*AT_TS,y:14.5*AT_TS};
 let RETOURS=null, RTSEL=null, RT_KB=null, RT_HITS=[], RT_LIT=[];
 function readRetours(src){
@@ -256,7 +257,7 @@ const rtSig=()=>rtRooms().map(r=>r.run).join('|');
 function renderRetours(now){
   const dt=(RT_MEM.last?Math.min(.1,(now-RT_MEM.last)/1000):0)*(typeof walkBoost==='function'?walkBoost():1);RT_MEM.last=now;
   if(!RT_BG)RT_BG=rtBackground();
-  ctx.drawImage(RT_BG,0,0);RT_HITS=[];RT_LIT=[];
+  ctx.drawImage(RT_BG,0,0);atWindows(now,RT_WINDOWS);RT_HITS=[];RT_LIT=[];
   const live=rtLive(), jump=RT_MEM.lastT!=null&&(Math.abs(T-RT_MEM.lastT)>120e3||live!==RT_MEM.live);
   if(jump){RT_MEM.fresh=true;RT_MEM.scenes=[];RT_MEM.leaving=Array(RT_N).fill(null);RT_MEM.seen={};}
   RT_MEM.lastT=T;RT_MEM.live=live;
@@ -268,6 +269,7 @@ function renderRetours(now){
   rtNight(slots,people,now);
   if(RTSEL!=null){const i=slots.findIndex(r=>r&&r.run===RTSEL);if(i>=0){const z=RT_G[i];ctx.save();ctx.strokeStyle='#ffffff';ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.lineDashOffset=-now/60;ctx.strokeRect(z.x0+3,z.y0+3,z.w-6,z.h-6);ctx.restore();}}
   const b=chars.find(c=>c.boss);if(b&&sel===b.key&&RT_MEM.boss)selHalo(RT_MEM.boss.walk.pos.x,RT_MEM.boss.walk.pos.y-26,AT_W,AT_H);
+  atReplayPill();
 }
 function atHitRt(kind,x,y,w,h,ref){RT_HITS.push({kind,x,y,w,h,...ref});}
 function rtHitAt(e){

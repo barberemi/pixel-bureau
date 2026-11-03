@@ -680,9 +680,13 @@ function atGalleryScenes(){
 // Bernard, un humain, rentre chez lui hors des heures de bureau.
 const AT_WINDOWS=[1,3.5,6,8.5,35,37.5,40,42.5]; // en cases : au-dessus des bureaux 1 et 2, de part et d'autre du grand tableau
 const atOpen=()=>officeOpen(T);
-function atWindows(now){
+// en rejeu, à chaque étage : la pastille qui dit qu'on regarde le passé
+function atReplayPill(){if(atLive())return;const s='⏪ Rejeu · '+hm(T)+' · l\'étage à cette heure-là';ctx.font='bold 12px system-ui,sans-serif';
+  atPill(s,14+ctx.measureText(s).width/2,14,'#c9a227','#1c1c1c','bold 12px system-ui,sans-serif');}
+// xs : les fenêtres d'un étage, en cases (celles du 1er par défaut)
+function atWindows(now,xs){
   const sky=skyColor(T), T_=AT_TS;
-  for(const x of AT_WINDOWS){R(ctx,x*T_+4,T_+4,T_*1.5,20,'#e7e1d3');R(ctx,x*T_+6,T_+6,T_*1.5-4,16,sky);drawStars(x*T_+6,T_+6,T_*1.5-4,16,now);
+  for(const x of xs||AT_WINDOWS){R(ctx,x*T_+4,T_+4,T_*1.5,20,'#e7e1d3');R(ctx,x*T_+6,T_+6,T_*1.5-4,16,sky);drawStars(x*T_+6,T_+6,T_*1.5-4,16,now);
     themeWindow(x*T_+6,T_+6,T_*1.5-4,16,now,x);R(ctx,x*T_+4+T_*.75,T_+4,2,20,'#e7e1d3');}
 }
 // La nuit des étages, la même au 1er, au 2e, au 3e et au -1 : le voile du RDC (42-light.js), qui suit le soleil.
@@ -776,7 +780,7 @@ function renderAtelier(now){
   atBoard(slots);
   const hp=atPickedAt();if(hp)selHalo(hp.x,hp.y-26,AT_W,AT_H); // comme au RDC : le plan s'assombrit autour de celui qu'on a choisi
   atPicked(slots,now);
-  if(!atLive()){const s='⏪ Rejeu · '+hm(T)+' · l\'étage à cette heure-là';ctx.font='bold 12px system-ui,sans-serif';atPill(s,14+ctx.measureText(s).width/2,14,'#c9a227','#1c1c1c','bold 12px system-ui,sans-serif');}
+  atReplayPill();
 }
 // où est celui qu'on a choisi : un agent (à sa place ou en promenade), ou le boss (sa fiche ouverte à l'étage)
 function atPickedAt(){

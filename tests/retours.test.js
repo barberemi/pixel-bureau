@@ -152,3 +152,14 @@ test("les portes des bureaux : la porte en bois de l'entrée du RDC, sur le coul
   for (const [x, y, w, h, n, vert] of d.slice(0, 6)) { assert.deepEqual([w, n, vert], [2 * T, 2, false]); assert.ok(h >= 8); }
   for (const [, , w, h, n, vert] of d.slice(6)) assert.deepEqual([w, h, n, vert], [12, 2.5 * T, 2, true]);
 });
+
+test("comme au 1er : les fenêtres au ciel de l'heure aux 2e et 3e, et la pastille du rejeu aux 2e, 3e et -1", () => {
+  const {p, J} = page();
+  const T = J('AT_TS'), name = 7 * T; // le nom de l'étage, en haut à gauche
+  for (const w of ['RD_WINDOWS', 'RT_WINDOWS']) { assert.ok(J(w + '.length') >= 8); assert.ok(J(w).every(x => x * T > name - 20 && x * T + 1.5 * T < 46 * T), w); }
+  p.run(`RETOURS = retoursDemo(); SUPPORT = supportDemo(); var __ap = atPill, __pl = []; atPill = (s, ...a) => { __pl.push(s); return __ap(s, ...a); };
+    setMode('pause'); setFloor(2); renderRedaction(1000); setFloor(3); renderRetours(1000); setFloor(-1); renderCaserne(1000);`);
+  assert.equal(J("__pl.filter(s => /^⏪ Rejeu/.test(s)).length"), 3, 'une par étage');
+  p.run(`__pl = []; setMode('live'); setFloor(3); renderRetours(1100); atPill = __ap;`);
+  assert.equal(J("__pl.some(s => /^⏪ Rejeu/.test(s))"), false, 'en direct, pas de pastille');
+});
