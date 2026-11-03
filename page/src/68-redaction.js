@@ -10,7 +10,7 @@
 // Données : dataset redaction (workflows/redaction_snapshot.py, cron live) et les runs de la revue (DATA.runs) ; démo : redactionDemo().
 const RD_POSTES=[{k:'recherche',i:'📚',n:'Recherche'},{k:'redaction',i:'✍',n:'Rédaction'},{k:'critique',i:'🧐',n:'Critique'},{k:'valider',i:'✋',n:'Toi'}];
 const RD_TK={wait:['#f7e07a','attend la critique'],run:['#9fd4ff','en cours'],gate:['#ffcf4a','t\'attend'],ok:['#b6e3a8','créé'],ecarte:['#d8d2c4','écarté'],err:['#f4a3a3','en panne']};
-const RD_X1=19.5, RD_VX=23, RD_SH=['front_euronews','front_apollo','front_api','front_tools'];
+const RD_X1=19.5, RD_VX=23, RD_SH0=['dm/site','dm/mobile','dm/api','dm/outils'];
 const RD_DESK={x:15.6*AT_TS,y:23.4*AT_TS}, RD_JIRA={x:17.8*AT_TS,y:25.6*AT_TS}, RD_CORK={x:1.6*AT_TS,y:9.4*AT_TS};
 let REDACTION=null, RDSEL=null, RD_HITS=[], RD_LIT=[], RD_MEM={last:0};
 function readRedaction(src){
@@ -28,9 +28,9 @@ function redactionDemo(){
   const at=h=>new Date(DAY0+h*36e5).toISOString();
   return {generated_at:at(11),crees:2,tables:[
     {run:'demo-t1',status:'Running',since:at(10.2),intention:'Refondre le lecteur vidéo : sous-titres, pistes audio et reprise de lecture',poste:'critique',tour:2,
-     composants:['front_euronews','front_apollo','front_api'],tickets:[{i:0,summary:'Lecteur : les sous-titres',composant:'front_api',points:3,etat:'wait'},
-       {i:1,summary:'Pistes audio dans le menu du lecteur',composant:'front_euronews',points:2,etat:'wait'},{i:2,summary:'Reprise de lecture',composant:'front_apollo',points:3,etat:'wait'}]},
-    {run:'demo-t2',status:'Running',since:at(10.8),intention:'Export CSV des abonnés',poste:'recherche',tour:1,composants:['front_tools'],tickets:[]}],
+     composants:['dm/site','dm/mobile','dm/api'],tickets:[{i:0,summary:'Lecteur : les sous-titres',composant:'dm/api',points:3,etat:'wait'},
+       {i:1,summary:'Pistes audio dans le menu du lecteur',composant:'dm/site',points:2,etat:'wait'},{i:2,summary:'Reprise de lecture',composant:'dm/mobile',points:3,etat:'wait'}]},
+    {run:'demo-t2',status:'Running',since:at(10.8),intention:'Export CSV des abonnés',poste:'recherche',tour:1,composants:['dm/outils'],tickets:[]}],
     events:[{t:at(10.2),k:'arrive',run:'demo-t1'},{t:at(10.8),k:'arrive',run:'demo-t2'},{t:at(8.5),k:'arrive',run:'demo-t0'},{t:at(9.1),k:'gate',run:'demo-t0'},{t:at(9.2),k:'cree',run:'demo-t0'},{t:at(9.3),k:'cree',run:'demo-t0'},{t:at(9.4),k:'fin',run:'demo-t0'}]};
 }
 const rdTables=()=>((REDACTION&&REDACTION.tables)||[]).slice(0,3);
@@ -79,7 +79,8 @@ function rdAgent(people,k,x,y,s,o,now){
 function rdShelf(x,y,label,lit){R(ctx,x,y,84,74,'#6b4a2e');[4,40].forEach(dy=>{R(ctx,x+4,y+dy,76,30,'#3a2a1e');['#d0392b','#2f6fd6','#e0a020','#3fbf6a','#9b6fe0','#e8e2d0'].forEach((c,k)=>R(ctx,x+7+k*12,y+dy+3,10,26,c));});
   if(!lit){ctx.fillStyle='rgba(30,26,22,.35)';ctx.fillRect(x,y,84,74);}
   atPill('📚 '+label,x+42,y+88,lit?'#2f6fd6':'#f4efe4',lit?'#fff':'#6a6050','bold 9px ui-monospace,Menlo,monospace');}
-const rdShelves=t=>{const own=[...((t&&t.composants)||[])], base=[...RD_SH];for(const c of own)if(!base.includes(c))base.splice(base.length-1,0,c);return [...base.slice(0,4),'autres'];};
+// les bibliothèques : les composants de l'équipe (jira.create.components du pack ou de la config), sinon ceux de la démo
+const rdShelves=t=>{const own=[...((t&&t.composants)||[])], base=[...((CFG.redaction_shelves||[]).length?CFG.redaction_shelves:RD_SH0)].slice(0,4);for(const c of own)if(!base.includes(c))base.splice(base.length-1,0,c);return [...base.slice(0,4),'autres'];};
 function rdPin(q,col){ctx.fillStyle=col;ctx.beginPath();ctx.arc(q.x,q.y,5,0,7);ctx.fill();ctx.fillStyle='rgba(255,255,255,.7)';ctx.fillRect(q.x-2,q.y-3,2,2);}
 function rdStrand(a,b,on){ctx.save();ctx.beginPath();ctx.moveTo(a.x,a.y);if(on){ctx.lineTo(b.x,b.y);ctx.etatrokeStyle='#c0392b';ctx.lineWidth=3;}
   else{ctx.quadraticCurveTo((a.x+b.x)/2,(a.y+b.y)/2+22,b.x,b.y);ctx.setLineDash([5,5]);ctx.etatrokeStyle='#9a958a';ctx.lineWidth=2;}ctx.etatroke();ctx.restore();}

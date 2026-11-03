@@ -42,7 +42,7 @@ test("la revue : l'auteur de la PR en face du relecteur, un remplaçant pour la 
   p.run('setFloor(2); renderRedaction(1000);');
   const html = J('redactionListHtml()');
   assert.match(html, /Rédaction <span class="cnt">2/);
-  assert.match(html, /T2 · Pistes audio dans le menu du lecteur · front_euronews · 2 pts/);
+  assert.match(html, /T2 · Pistes audio dans le menu du lecteur · dm\/site · 2 pts/);
   assert.match(html, /Revue des PR <span class="cnt">3/);
   assert.match(J('tvRedactionHtml()'), /Rédaction[\s\S]*Revue des PR · 3/);
 });
