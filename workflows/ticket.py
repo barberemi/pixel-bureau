@@ -15,7 +15,8 @@ Réglage jira.create (config ou pack) : types, type, components, component_requi
 
 La salle de rédaction (2e étage) : une intention peut donner plusieurs tickets, sur un ou plusieurs projets. Le modèle
 ticket enchaîne des postes, un sous-workflow chacun (ticket_recherche, ticket_redaction, ticket_critique), puis un
-sous-workflow par ticket (ticket_un, foreach) : son aperçu, ta validation (le tampon), sa création. Le dossier du run
+sous-workflow par ticket (ticket_un, foreach) une fois la liste validée au tampon (la gate est dans le parent : Kronn
+refuse une gate dans un sous-workflow) : sa création. Le dossier du run
 (~/.cache/pixel-bureau/ticket/<run>/) garde la demande, les rapports, les versions et les tickets créés.
 
   python3 -c <ce script> dossier <run> <intention> <type> <points> <composant> <composant 2> <sprint> <parent>
@@ -23,7 +24,8 @@ sous-workflow par ticket (ticket_un, foreach) : son aperçu, ta validation (le t
   python3 -c <ce script> rapport <recherche|redaction|critique> <run>     sortie de l'agent (stdin) rangée au dossier
   python3 -c <ce script> aiguillage <run>     critique « à retoucher » et moins de 3 tours : code 3 (retour à la
                                              rédaction) ; sinon .kronn/tickets.json, un élément par ticket (foreach)
-  python3 -c <ce script> lot <apercu|champs|resultat> [<sprints JSON> | <clé créée>]   un ticket (.kronn/current_task.json)
+  python3 -c <ce script> apercus <run>         les tickets tels qu'ils seront créés, pour ta validation (gate du parent)
+  python3 -c <ce script> lot <champs|resultat> [<sprints JSON> | <clé créée>]   un ticket (.kronn/current_task.json)
   python3 -c <ce script> bilan <run>          {key, url, title, meta} des tickets créés, pour la page (run.res)
 """
 import json, os, re, sys
@@ -205,7 +207,7 @@ def json_of(text):
     return None
 
 
-def poste(k, run):
+def poste(k, run, retours=""):
     if k not in POSTES:
         sys.exit(f"Poste inconnu : {k}")
     d = dget(run, "demande.json")
@@ -225,6 +227,13 @@ def poste(k, run):
     t = dget(run, "tickets.json")
     if k == "critique" or (k == "redaction" and t):
         parts.append("## Les tickets proposés" + (f" (version {t['version']})" if t else "") + "\n" + json.dumps((t or {}).get("tickets") or [], ensure_ascii=False, indent=1))
+    retours = (retours or "").strip()
+    if k == "redaction" and retours:  # « Changements » à la validation : tes retours, gardés au dossier
+        old = dget(run, "retours.json", [])
+        if retours not in old:
+            dput(run, "retours.json", old + [retours])
+    if k == "redaction" and dget(run, "retours.json"):
+        parts.append("## Retours du boss à la validation (à appliquer en priorité)\n" + "\n".join("- " + x for x in dget(run, "retours.json")))
     c = dget(run, "critique.json")
     if k == "redaction" and c and c.get("verdict") == "a_retoucher":
         parts.append("## Remarques de la critique (à corriger)\n" + "\n".join(f"- ticket {n.get('ticket')} : {n.get('note')}" for n in c.get("notes") or []))
@@ -289,14 +298,20 @@ def one(run, i):
     return d, x, pts, comp, len(t)
 
 
+def apercus(run):
+    d, t = dget(run, "demande.json") or {}, (dget(run, "tickets.json") or {}).get("tickets") or []
+    print(f"{len(t)} ticket(s) à créer :")
+    for i, x in enumerate(t):
+        print(f"\n━━ T{i + 1} ━━")
+        raw = json.dumps({"summary": x.get("summary") or "", "description": x.get("description") or ""}, ensure_ascii=False)
+        apercu(raw, d.get("type") or "", str(x.get("points") or d.get("points") or "1"), str(x.get("composant") or "") or ((d.get("composants") or [""])[0]), "", d.get("sprint") or "", d.get("parent") or "")
+
+
 def lot(cmd, arg=""):
     run, i = current()
     d, x, pts, comp, n = one(run, i)
     raw = json.dumps({"summary": x.get("summary") or "", "description": x.get("description") or ""}, ensure_ascii=False)
-    if cmd == "apercu":
-        print(f"Ticket {i + 1} sur {n}")
-        apercu(raw, d.get("type") or "", pts, comp, "", d.get("sprint") or "", d.get("parent") or "")
-    elif cmd == "champs":
+    if cmd == "champs":
         champs(raw, d.get("type") or "", pts, comp, "", d.get("sprint") or "", d.get("parent") or "", arg)
     elif cmd == "resultat":
         made = dget(run, "crees.json", [])
@@ -329,7 +344,9 @@ if __name__ == "__main__":
     elif cmd == "dossier":
         dossier(*a[:8])
     elif cmd == "poste":
-        poste(a[0], a[1])
+        poste(a[0], a[1], a[2])
+    elif cmd == "apercus":
+        apercus(a[0])
     elif cmd == "rapport":
         rapport(a[0], a[1], sys.stdin.read())
     elif cmd == "aiguillage":

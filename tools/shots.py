@@ -286,7 +286,7 @@ SHOTS = {
     # puis la fenêtre Kanban du bureau 1 (le fil traité encadré de rouge), puis l'étage le soir
     # 2e étage : une intention découpée en trois tickets (critique, tour 2), une autre en recherche ; trois revues en cours
     "redaction": (1600, 1100, AT(11) + "setFloor(2);", None),
-    "redaction-tampon": (1600, 1100, AT(11) + "REDACTION.tables[0].poste='valider';REDACTION.tables[0].tickets.forEach((x,k)=>{x.etat=k===0?'ok':k===1?'gate':'wait';});setFloor(2);", None),
+    "redaction-tampon": (1600, 1100, AT(11) + "REDACTION.tables[0].poste='valider';REDACTION.tables[0].tickets.forEach((x,k)=>{x.etat='gate';});setFloor(2);", None),
     "retours": (1600, 1100, AT(11) + "setFloor(3);", None),
     "retours-kanban": (1600, 1100, AT(11) + "setFloor(3);rtKbOpen('demo-f1');", None),
     "retours-calme": (1600, 1100, AT(22.5) + "RETOURS={...RETOURS,rooms:RETOURS.rooms.filter(r=>r.poste==='fix'),events:RETOURS.events.filter(e=>e.run==='demo-f1')};setFloor(3);", None),

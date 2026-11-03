@@ -21,7 +21,7 @@ test("l'étage existe en démo ; ses onglets dans l'ordre des étages", () => {
   assert.equal(J('FLOOR'), 2);
 });
 
-test("la table : l'intention la plus ancienne, un clic sur le liège passe à la suivante ; le boss tamponne un ticket à la fois", () => {
+test("la table : l'intention la plus ancienne, un clic sur le liège passe à la suivante ; le boss tamponne les tickets", () => {
   const {p, J} = page();
   p.run('setFloor(2); renderRedaction(1000);');
   assert.equal(J('rdTable().run'), 'demo-t1');

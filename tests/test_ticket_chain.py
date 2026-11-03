@@ -35,9 +35,13 @@ class TicketChainTest(unittest.TestCase):
         self.assertEqual(self.t("aiguillage", "r1").returncode, 0, "au 3e tour, on passe à la validation")
         items = json.loads(Path(self.tmp, ".kronn", "tickets.json").read_text())
         self.assertEqual([(x["run"], x["i"]) for x in items], [("r1", 0), ("r1", 1)])
-        # chaque ticket : son aperçu (n sur N), ses champs (son composant, ses points), sa création notée au dossier
+        # ta validation : tous les tickets d'un coup ; tes « Changements » passent à la rédaction
+        ap = self.t("apercus", "r1").stdout
+        self.assertIn("2 ticket(s) à créer", ap)
+        self.assertIn("━━ T2 ━━\n🎫 API : pistes\nStory · 2 pts · dm/api", ap)
+        self.assertIn("- retire T2", self.t("poste", "redaction", "r1", "retire T2").stdout)
+        # chaque ticket : ses champs (son composant, ses points), sa création notée au dossier
         Path(self.tmp, ".kronn", "current_task.json").write_text(json.dumps(items[1]))
-        self.assertIn("Ticket 2 sur 2\n🎫 API : pistes\nStory · 2 pts · dm/api", self.t("lot", "apercu").stdout)
         f = json.loads(self.t("lot", "champs", "{}").stdout)["body"]["fields"]
         self.assertEqual((f["summary"], f["components"]), ("API : pistes", [{"name": "dm/api"}]))
         self.assertEqual(json.loads(self.t("lot", "resultat", "DM-9").stdout)["key"], "DM-9")
@@ -61,11 +65,9 @@ class RedactionSnapshotTest(unittest.TestCase):
         Path(tmp, "r1", "tickets.json").write_text(json.dumps({"version": 2, "tickets": [{"summary": "A", "composant": "dm/site", "points": 3},
                                                                                        {"summary": "B", "composant": "dm/api", "points": 2}]}))
         api = {"/workflows/tk/runs?limit=20": [{"id": "r1", "status": "Running", "started_at": "2026-10-30T09:00:00Z"}],
-               "/workflows/tk/runs/r1": {"id": "r1", "workflow_id": "tk", "status": "Running", "started_at": "2026-10-30T09:00:00Z",
-                                          "step_results": [{"step_name": "dossier"}, {"step_name": "recherche"}, {"step_name": "chaque"}]},
-               "/workflows/un/runs?limit=40": [{"id": "k1"}],
-               "/workflows/un/runs/k1": {"id": "k1", "parent_run_id": "r1", "status": "WaitingApproval", "started_at": "2026-10-30T09:30:00Z",
-                                          "step_results": [{"step_name": "lot"}, {"step_name": "relire", "started_at": "2026-10-30T09:31:00Z"}]}}
+               "/workflows/tk/runs/r1": {"id": "r1", "workflow_id": "tk", "status": "WaitingApproval", "started_at": "2026-10-30T09:00:00Z",
+                                          "step_results": [{"step_name": "dossier"}, {"step_name": "recherche"}, {"step_name": "relire", "started_at": "2026-10-30T09:31:00Z"}]},
+               "/workflows/un/runs?limit=40": []}
         old = (r.get, r.HOME, dict(r.CFG))
         r.get, r.HOME = (lambda p: api.get(p)), tmp
         r.CFG.update(models={"ticket": "tk", "ticket_un": "un"})
@@ -77,7 +79,7 @@ class RedactionSnapshotTest(unittest.TestCase):
             r.CFG.update(old[2])
         t = snap["tables"][0]
         self.assertEqual((t["poste"], t["tour"], t["intention"]), ("valider", 2, "Refondre le lecteur"))
-        self.assertEqual([(x["summary"], x["etat"]) for x in t["tickets"]], [("A", "gate"), ("B", "wait")])
+        self.assertEqual([(x["summary"], x["etat"]) for x in t["tickets"]], [("A", "gate"), ("B", "gate")])
         self.assertEqual([e["k"] for e in snap["events"]], ["arrive", "gate"])
 
 

@@ -291,6 +291,15 @@ exit 0
         self.assertEqual(assemble.deploy_envs({**c, "models": {}}), {})  # modèle pas installé : pas de bouton
         shutil.rmtree(tmp)
 
+    def test_no_gate_inside_a_sub_workflow(self):
+        """Kronn refuse une gate dans un workflow lancé en sous-workflow (« un gate imbriqué n'est pas encore reprenable »)."""
+        subs = {s.get("sub_workflow_id") for t in TPL.values() if t["kind"] == "workflow" for s in t["definition"].get("steps") or []
+                if (s.get("step_type") or {}).get("type") == "SubWorkflow"}
+        for key, t in TPL.items():
+            if t["kind"] == "workflow" and f"@@models.{key}@@" in subs:
+                gates = [s["name"] for s in t["definition"]["steps"] if (s.get("step_type") or {}).get("type") == "Gate"]
+                self.assertEqual(gates, [], key)
+
     def test_ticket_model_follows_the_team_create_settings(self):
         """Modèle ticket (#77) : types et composants du réglage jira.create (pack), composant obligatoire avec une liste,
         points recopiés dans le champ du board seulement s'il n'est pas celui de l'écran de création ; rien sans Jira."""
@@ -313,13 +322,14 @@ exit 0
         self.assertEqual(var["intention"]["control"], {"type": "textarea"})
         st = {s["name"]: s for s in out["steps"]}
         # 2e étage : les postes (un sous-workflow chacun), l'aiguillage (3 tours au plus), puis un sous-workflow par ticket
-        self.assertEqual(list(st), ["dossier", "recherche", "redaction", "critique", "aiguillage", "chaque", "resultat"])
+        self.assertEqual(list(st), ["dossier", "recherche", "redaction", "critique", "aiguillage", "apercu", "relire", "chaque", "resultat"])
+        self.assertEqual(st["relire"]["gate_request_changes_target"], "redaction", "Changements : la rédaction reprend avec tes retours")
+        self.assertIn("last_human_feedback", st["redaction"]["sub_workflow_variables"]["retours"])
         self.assertEqual(st["aiguillage"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "redaction", "max_iterations": 2}}])
         self.assertEqual(st["chaque"]["sub_workflow_foreach_file"], ".kronn/tickets.json")
         self.assertTrue(out["workspace_config"]["require_isolation"], "le foreach écrit dans le dossier de travail du run")
         un = {s["name"]: s for s in templates.render(TPL["ticket_un"], c)["steps"]}
-        self.assertEqual(list(un), ["lot", "relire", "sprints", "champs", "creer", "points_board", "resultat", "ecarte"])
-        self.assertEqual(un["relire"]["gate_request_changes_target"], "ecarte", "Changements : ce ticket est écarté, on passe au suivant")
+        self.assertEqual(list(un), ["sprints", "champs", "creer", "points_board", "resultat"], "chaque ticket : sa création seulement")
         st = un
         self.assertEqual(st["points_board"]["api_body"], {"fields": {"customfield_200": "{{steps.champs.data.sources.f.board_sp}}"}})
         self.assertEqual(st["creer"]["api_body"], "{{steps.champs.data.sources.f.body}}")  # corps typé, jamais réinterprété

@@ -17,6 +17,15 @@
     "required": true,
     "source": "user_input",
     "allow_manual_override": false
+   },
+   {
+    "name": "retours",
+    "label": "Tes retours",
+    "placeholder": "",
+    "description": "Tes retours à la validation (Changements), à appliquer.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
    }
   ],
   "actions": [],
@@ -49,7 +58,8 @@
      "@@script:workflows/ticket.py@@",
      "poste",
      "redaction",
-     "{{run_id}}"
+     "{{run_id}}",
+     "{{retours}}"
     ],
     "exec_timeout_secs": 60
    },

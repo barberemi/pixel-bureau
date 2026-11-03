@@ -28,11 +28,11 @@ La validation arrive sur sa fiche, avec l'alerte ✋ habituelle : le titre, le t
 
 ![La validation : le ticket tel qu'il sera créé](../img/creer-ticket-validation.png)
 
-Chaque ticket a sa validation (« Ticket 2 sur 3 »), l'un après l'autre :
+Une validation pour la liste, avec chaque ticket tel qu'il sera créé (T1, T2…) :
 
-- **✅ Approuver** : ce ticket est créé.
-- **Changements** : ce ticket est écarté, on passe au suivant.
-- **⛔ Rejeter** : on s'arrête là, plus rien n'est créé.
+- **✅ Approuver** : les tickets sont créés, l'un après l'autre.
+- **Changements** : dis ce qui change (« retire T2 », « fusionne T1 et T3 », « T2 : 5 points ») ; la rédaction reprend avec tes retours, puis la critique, puis la validation.
+- **⛔ Rejeter** : rien n'est créé.
 
 ## La création
 
