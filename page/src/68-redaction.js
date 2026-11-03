@@ -82,8 +82,8 @@ function rdShelf(x,y,label,lit){R(ctx,x,y,84,74,'#6b4a2e');[4,40].forEach(dy=>{R
 // les bibliothèques : les composants de l'équipe (jira.create.components du pack ou de la config), sinon ceux de la démo
 const rdShelves=t=>{const own=[...((t&&t.composants)||[])], base=[...((CFG.redaction_shelves||[]).length?CFG.redaction_shelves:RD_SH0)].slice(0,4);for(const c of own)if(!base.includes(c))base.splice(base.length-1,0,c);return [...base.slice(0,4),'autres'];};
 function rdPin(q,col){ctx.fillStyle=col;ctx.beginPath();ctx.arc(q.x,q.y,5,0,7);ctx.fill();ctx.fillStyle='rgba(255,255,255,.7)';ctx.fillRect(q.x-2,q.y-3,2,2);}
-function rdStrand(a,b,on){ctx.save();ctx.beginPath();ctx.moveTo(a.x,a.y);if(on){ctx.lineTo(b.x,b.y);ctx.etatrokeStyle='#c0392b';ctx.lineWidth=3;}
-  else{ctx.quadraticCurveTo((a.x+b.x)/2,(a.y+b.y)/2+22,b.x,b.y);ctx.setLineDash([5,5]);ctx.etatrokeStyle='#9a958a';ctx.lineWidth=2;}ctx.etatroke();ctx.restore();}
+function rdStrand(a,b,on){ctx.save();ctx.beginPath();ctx.moveTo(a.x,a.y);if(on){ctx.lineTo(b.x,b.y);ctx.strokeStyle='#c0392b';ctx.lineWidth=3;}
+  else{ctx.quadraticCurveTo((a.x+b.x)/2,(a.y+b.y)/2+22,b.x,b.y);ctx.setLineDash([5,5]);ctx.strokeStyle='#9a958a';ctx.lineWidth=2;}ctx.stroke();ctx.restore();}
 // ---------- la salle de rédaction ----------
 function rdRoom(now,people){
   const T=RD_T, t=rdTable(), shelves=rdShelves(t), sw=3.1*T, sh0=(RD_X1*T-(4*sw+84))/2;
