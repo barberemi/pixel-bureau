@@ -111,7 +111,7 @@ function rtBossPath(from,i,prev){
   if(i==null)pts.push({x:RT_DESK.x,y:RT_LANE},rtHome());else pts.push(...rtInside(i));
   return pts;
 }
-const rtHome=()=>({x:RT_DESK.x,y:RT_DESK.y-14});
+const rtHome=()=>({x:RT_DESK.x,y:RT_DESK.y}); // assis à son bureau du couloir
 // ---------- décor ----------
 function rtBackground(){
   const c=document.createElement('canvas');c.width=AT_W;c.height=AT_H;const g=c.getContext('2d'), T=AT_TS;
@@ -198,21 +198,24 @@ function rtHall(slots,now,people){
   const sit=Math.min(2,free);for(let k=0;k<sit;k++){const x=bx+(k?22:-22), a=atWorker(60+k,x,by+9,'down',false,'');if(!a)continue;a._st={st:'idle'};a.pose='stand';
     people.push([a,null,false,()=>{rtCap(ctx,x,by+9,'down');if(k===sit-1)atSofaFront(bx,by);}]);}
   if(!sit)rtLate(people,()=>atSofaFront(bx,by),by+10);
-  // le bureau du boss : il y est quand rien ne l'attend
-  const {x:dx,y:dy}=RT_DESK;R(ctx,dx-20,dy-46,40,30,'#5a2e2e');R(ctx,dx-20,dy-46,40,4,'#723a3a');
-  rtLate(people,()=>{R(ctx,dx-44,dy-16,88,20,'#6e4a2c');R(ctx,dx-44,dy-18,88,4,'#8a6040');R(ctx,dx-24,dy-8,48,9,'#2a2a30');atTxt('LE BOSS',dx,dy-1,'#f2d22a','bold 7px ui-monospace,Menlo,monospace');},dy);
   rtLate(people,()=>atPill('⇅ escalier · RDC',RT_STAIRS.x,RT_STAIRS.y+42,'#5a4636','#fff','bold 9px ui-monospace,Menlo,monospace'),1e6);
 }
 // ---------- le boss : à son bureau, ou à la barrière ✋ du bureau qui attend depuis le plus longtemps ----------
 function rtBoss(slots,now,dt,people){
-  const boss=chars.find(c=>c.boss);if(!boss)return;
+  const boss=chars.find(c=>c.boss), {x:ox,y:F}=RT_DESK;
+  atBossChair(ox,F); // le bureau du RDC, dans le couloir
+  if(!boss){rtLate(people,()=>atBossDesk(ox,F,now,null),F);return;}
   const target=rtGateTarget(slots);let m=RT_MEM.boss;
   if(!m||REDUCED_MOTION&&m.target!==target){const p=target==null?rtHome():RT_G[target].gate;m=RT_MEM.boss={target,walk:atWalker([p]),arrived:true};}
   if(m.target!==target){const prev=m.arrived||m.target!=null?m.target:null;m.target=target;m.walk=atWalker(rtBossPath(m.walk.pos,target,prev),95);}
   m.arrived=atStep(m.walk,dt);
-  const p=m.walk.pos, dir=m.arrived?(target==null?'down':RT_G[target].top?'up':'down'):m.walk.dir;
-  const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:p.x,y:p.y},tile:null,dir,moving:!m.arrived,pose:target==null&&m.arrived?'type':'stand',present:true,_st:{st:target==null?'idle':'gate'}});
-  people.push([c,null,false,()=>{if(m.arrived&&target!=null){const r=slots[target];atBubble(p.x,p.y-66,'✋ '+rtName(r)+' : je valide ?','#8a5a00');}}]);
+  const p=m.walk.pos;
+  // rien ne l'attend : assis à son bureau, comme au RDC ; sinon debout, en route ou à la barrière
+  if(m.arrived&&target==null)people.push([atSeatedBoss(boss,ox,F,'idle'),null,false,()=>atBossDesk(ox,F,now,boss)]);
+  else{rtLate(people,()=>atBossDesk(ox,F,now,boss),F);
+    const dir=m.arrived?(RT_G[target].top?'up':'down'):m.walk.dir;
+    const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:p.x,y:p.y},tile:null,dir,moving:!m.arrived,pose:'stand',present:true,_st:{st:'gate'}});
+    people.push([c,null,false,()=>{if(m.arrived&&target!=null)atBubble(p.x,p.y-66,'✋ '+rtName(slots[target])+' : je valide ?','#8a5a00');}]);}
   RT_LIT.push(p);atHitRt('boss',p.x-16,p.y-56,32,60,{});
 }
 // ---------- Bernard : il monte une PR par l'escalier jusqu'à son bureau, et la redescend une fois poussée ----------

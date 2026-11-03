@@ -62,3 +62,13 @@ test("depuis le RDC : le fil et ⌘K ; la loupe du tampon ; la galerie rend le r
   p.run(`var __R = REDACTION; demoStart(galleryScenes().find(x => x.n === 'Le tampon')); demoEnd();`);
   assert.equal(p.run('REDACTION === __R'), true);
 });
+
+test("le boss au tampon : assis au bureau du RDC, sans la pose de frappe (il ne danse plus)", () => {
+  const {p, J} = page();
+  p.run(`setFloor(2); var __dc = drawChar, __b = []; drawChar = (c, n) => { if (c.boss) __b.push({tile: c.tile, pose: c.pose, y: c.pos.y}); return __dc(c, n); };
+    renderRedaction(1000); drawChar = __dc;`);
+  const b = J('__b[0]');
+  assert.deepEqual(b.tile, J('BOSS_SEAT'), 'dans le fauteuil : 9 px plus bas, comme au RDC');
+  assert.equal(b.pose, 'stand');
+  assert.equal(b.y, J('RD_DESK.y'));
+});

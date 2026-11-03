@@ -456,6 +456,23 @@ function atBoard(slots){
     atHit('room',x,by,cw,bh,{i:k});
   });
 }
+// ---------- le bureau du boss, le même à chaque étage (le 1er, le 2e, le 3e) : celui du RDC (40-furniture.js) ----------
+// Le fauteuil 44 px au-dessus des pieds du boss (F), le bureau de 100 px 16 px au-dessus ; mid(x0,top) pose ce qui est
+// propre à l'étage au milieu du bureau (sinon la feuille du RDC) ; la tasse à x0+mug.
+function atBossChair(ox,F){R(ctx,ox-18,F-44,36,30,'#5a2e2e');R(ctx,ox-18,F-44,36,4,'#723a3a');R(ctx,ox-22,F-30,6,18,'#4a2424');R(ctx,ox+16,F-30,6,18,'#4a2424');
+  R(ctx,ox-22,F-30,6,2,'#6a3434');R(ctx,ox+16,F-30,6,2,'#6a3434');}
+function atBossDesk(ox,F,now,boss,mid,mug){
+  const x0=ox-50, top=F-16, m=mug||76;
+  R(ctx,x0,top+30,3*AT_TS+4,3,'rgba(0,0,0,.2)');R(ctx,x0,top,3*AT_TS+4,18,'#6e4a2c');R(ctx,x0,top,3*AT_TS+4,2,'#8a6040');R(ctx,x0,top+18,3*AT_TS+4,13,'#56391f');
+  R(ctx,x0+6,top-12,18,13,'#2c2f38');drawScreen(x0+7,top-11,16,10,boss?screenState(boss):'off',now,97);R(ctx,x0+12,top+1,5,3,'#2c2f38');
+  if(mid)mid(x0,top);else R(ctx,x0+44,top+4,15,5,'#e6e6e6');
+  R(ctx,x0+m,top+2,6,7,'#fbfbf6');R(ctx,x0+m+1,top+4,4,2,'#d1453b');
+  if(themeIs('saint-valentin'))E('🌹',x0+92,top-2,12);
+  ctx.fillStyle='#f3e6d2';ctx.font='bold 8px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText("WORLD'S BEST BOSS",ox,top+27);ctx.textAlign='left';
+}
+// le boss assis à son bureau : la case BOSS_SEAT le fait descendre de 9 px dans le fauteuil (41-people.js), de face, sans
+// la pose de frappe (ses deux images alternées le faisaient danser)
+const atSeatedBoss=(boss,ox,F,st)=>Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:ox,y:F},tile:BOSS_SEAT.slice(),moving:false,pose:'stand',dir:'down',present:true,_st:{st}});
 // le boss : dans son fauteuil (de face, comme au RDC) ; quand une gate attend, il se lève et va à la porte de ce bureau
 function atBoss(slots,now,dt,people){
   const boss=chars.find(c=>c.boss), gates=slots.map((r,i)=>r&&r.gate?{i,t:ms(r.since)||0}:null).filter(Boolean).sort((a,b)=>a.t-b.t);
@@ -464,19 +481,11 @@ function atBoss(slots,now,dt,people){
   if(!b||REDUCED_MOTION&&b.target!==target)b=AT_MEM.boss={target,walk:atWalker(target==null?[AT_CHAIR]:[atBossPath(AT_CHAIR,target).pop()])};
   if(b.target!==target){b.target=target;b.walk=atWalker(atBossPath(b.walk.pos,target),90);}
   const arrived=atStep(b.walk,dt), seated=arrived&&target==null;
-  // bureau, fauteuil et boss aux mesures du RDC (40-furniture.js) : fauteuil 44 px au-dessus de ses pieds, bureau de 100 px
-  // 16 px au-dessus, son écran, sa tasse, « WORLD'S BEST BOSS » ; les quatre voyants des bureaux à la place de la feuille
-  const ox=AT_CHAIR.x, F=AT_CHAIR.y, x0=ox-50, top=F-16;
-  R(ctx,ox-18,F-44,36,30,'#5a2e2e');R(ctx,ox-18,F-44,36,4,'#723a3a');R(ctx,ox-22,F-30,6,18,'#4a2424');R(ctx,ox+16,F-30,6,18,'#4a2424');
-  R(ctx,ox-22,F-30,6,2,'#6a3434');R(ctx,ox+16,F-30,6,2,'#6a3434');
-  const desk=()=>{
-    R(ctx,x0,top+30,3*AT_TS+4,3,'rgba(0,0,0,.2)');R(ctx,x0,top,3*AT_TS+4,18,'#6e4a2c');R(ctx,x0,top,3*AT_TS+4,2,'#8a6040');R(ctx,x0,top+18,3*AT_TS+4,13,'#56391f');
-    R(ctx,x0+6,top-12,18,13,'#2c2f38');drawScreen(x0+7,top-11,16,10,boss?screenState(boss):'off',now,97);R(ctx,x0+12,top+1,5,3,'#2c2f38');
-    slots.forEach((r,k)=>{const x=x0+42+k*8, on=r&&r.gate;R(ctx,x-3,top+4,7,7,'#1c1c1c');
-      R(ctx,x-2,top+5,5,5,!r?'#555':on?(Math.floor(now/450)%2?'#ffcf4a':'#a37a10'):r.back?'#e0614f':'#3fbf6a');atHit('room',x-4,top+2,9,11,{i:k});});
-    R(ctx,x0+76,top+2,6,7,'#fbfbf6');R(ctx,x0+77,top+4,4,2,'#d1453b');
-    if(themeIs('saint-valentin'))E('🌹',x0+92,top-2,12);
-    ctx.fillStyle='#f3e6d2';ctx.font='bold 8px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText("WORLD'S BEST BOSS",ox,top+27);ctx.textAlign='left';};
+  // bureau, fauteuil et boss aux mesures du RDC (atBossChair, atBossDesk) ; les quatre voyants des bureaux à la place de la feuille
+  const ox=AT_CHAIR.x, F=AT_CHAIR.y;
+  atBossChair(ox,F);
+  const desk=()=>atBossDesk(ox,F,now,boss,(x0,top)=>slots.forEach((r,k)=>{const x=x0+42+k*8, on=r&&r.gate;R(ctx,x-3,top+4,7,7,'#1c1c1c');
+    R(ctx,x-2,top+5,5,5,!r?'#555':on?(Math.floor(now/450)%2?'#ffcf4a':'#a37a10'):r.back?'#e0614f':'#3fbf6a');atHit('room',x-4,top+2,9,11,{i:k});}));
   if(!boss){desk();return;}
   const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:b.walk.pos.x,y:b.walk.pos.y},tile:seated?BOSS_SEAT.slice():null,moving:!arrived,pose:'stand',present:true,
     dir:arrived?(target==null?'down':AT_G[target].top?'up':'down'):b.walk.dir,_st:{st:gates.length?'gate':'idle'}});

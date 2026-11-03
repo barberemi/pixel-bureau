@@ -123,12 +123,15 @@ function rdRoom(now,people){
   rdBench(people,3.4*T,24.6*T,[63,64],'presse');
 }
 function rdBoss(people,tks,now){
-  const {x,y}=RD_DESK, boss=chars.find(c=>c.boss);R(ctx,x-22,y-52,44,32,'#5a2e2e');R(ctx,x-22,y-52,44,4,'#723a3a');
-  const g=tks.findIndex(t=>t.etat==='gate');
-  if(boss){const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x,y:y-14},tile:null,dir:'down',moving:false,pose:'type',present:true,_st:{st:g>=0?'gate':'idle'}});
-    people.push([c,null,false,()=>{if(g>=0)atBubble(x,y-80,'✋ '+plural(tks.filter(t=>t.etat==='gate').length,'ticket','tickets')+' : je tamponne ?','#8a5a00');}]);RD_LIT.push({x,y:y-14});atHitRd('boss',x-16,y-70,32,60,{});}
-  rdLate(people,()=>{R(ctx,x-56,y-22,112,26,'#6e4a2c');R(ctx,x-56,y-24,112,4,'#8a6040');R(ctx,x-30,y-12,60,10,'#2a2a30');atTxt('LE BOSS',x,y-4,'#f2d22a','bold 8px ui-monospace,Menlo,monospace');
-    R(ctx,x+26,y-34,12,10,'#c8323a');R(ctx,x+29,y-40,6,6,'#1c1c1c');atPill('✋ le tampon : tu valides les tickets, puis ils partent un par un',x-40,y+18,g>=0?'#8a5a00':'#f4efe4',g>=0?'#fff':'#3a3530','bold 9px system-ui,sans-serif');},y);
+  const {x,y}=RD_DESK, boss=chars.find(c=>c.boss), g=tks.filter(t=>t.etat==='gate').length;
+  atBossChair(x,y);
+  // le bureau du RDC ; au milieu, l'encreur et le tampon (la tasse poussée au bout)
+  const desk=()=>{atBossDesk(x,y,now,boss,(x0,top)=>{R(ctx,x0+40,top+5,22,8,'#2a2a30');R(ctx,x0+42,top+6,18,5,'#7a1f24');
+      R(ctx,x0+66,top-2,12,9,'#c8323a');R(ctx,x0+66,top-2,12,2,'#e0525a');R(ctx,x0+70,top-9,4,7,'#1c1c1c');R(ctx,x0+68,top-12,8,4,'#2c2c2c');},84);
+    if(g)atBubble(x,y-62,'✋ '+plural(g,'ticket','tickets')+' : je tamponne ?','#8a5a00');};
+  if(boss){people.push([atSeatedBoss(boss,x,y,g?'gate':'idle'),null,false,desk]);RD_LIT.push({x,y});atHitRd('boss',x-16,y-60,32,60,{});}
+  else rdLate(people,desk,y);
+  rdLate(people,()=>atPill('✋ le tampon : tu valides les tickets, puis ils partent un par un',x-40,y+30,g?'#8a5a00':'#f4efe4',g?'#fff':'#3a3530','bold 9px system-ui,sans-serif'),y);
 }
 // un banc comme au 1er : ceux qui ne travaillent pas s'y assoient (descendus dans l'assise, qui leur cache les jambes)
 function rdBench(people,x,y,ks,hat){atSofa(x,y);ks.forEach((k,j)=>{const a=atWorker(k,x+(j?22:-22),y+9,'down',false,'');if(!a)return;a._st={st:'idle'};a.pose='stand';
@@ -174,7 +177,7 @@ function renderRedaction(now){
   const people=[];rdRoom(now,people);rdRevue(now,people);
   people.sort((a,b)=>a[0].pos.y-b[0].pos.y).forEach(([c,d,before,after])=>{if(d)d();if(c.sprite)drawChar(c,now);if(after)after();});
   rdNight(now);
-  const b=chars.find(c=>c.boss);if(b&&sel===b.key)selHalo(RD_DESK.x,RD_DESK.y-40,AT_W,AT_H);
+  const b=chars.find(c=>c.boss);if(b&&sel===b.key)selHalo(RD_DESK.x,RD_DESK.y-26,AT_W,AT_H);
 }
 function atHitRd(kind,x,y,w,h,ref){RD_HITS.push({kind,x,y,w,h,...ref});}
 function rdHitAt(e){const r=cv.getBoundingClientRect(), mx=(e.clientX-r.left)*AT_W/r.width, my=(e.clientY-r.top)*AT_H/r.height;
@@ -217,7 +220,7 @@ function tvRedactionHtml(){
 // ---------- la loupe, le fil du RDC, ⌘K, la galerie ----------
 function rdLoupeEvents(){
   const out=[], t=rdTable(), boss=chars.find(c=>c.boss);
-  if(t&&(t.tickets||[]).some(x=>x.etat==='gate')){const p=atPt(RD_DESK.x,RD_DESK.y-14,boss?boss.name:'Le boss','','rd_gate');p._st={st:'rd_gate',label:'✋ Un ticket attend ton tampon'};out.push({id:'rd_gate:'+t.run,kind:'rd_gate',cs:[p,atPt(RD_JIRA.x,RD_JIRA.y,'','','rd_gate')]});}
+  if(t&&(t.tickets||[]).some(x=>x.etat==='gate')){const p=atPt(RD_DESK.x,RD_DESK.y,boss?boss.name:'Le boss','','rd_gate');p._st={st:'rd_gate',label:'✋ Un ticket attend ton tampon'};out.push({id:'rd_gate:'+t.run,kind:'rd_gate',cs:[p,atPt(RD_JIRA.x,RD_JIRA.y,'','','rd_gate')]});}
   return out;
 }
 function rdGoto(run){if(!redactionOn())return;if(FLOOR!==2)setFloor(2);RDSEL=run;SIDE_FOLDED=false;renderSide(true);}

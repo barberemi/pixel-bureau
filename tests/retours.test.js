@@ -134,3 +134,12 @@ test("galerie : au 3e, ses scènes ; la démonstration rend le relevé tel quel"
   p.run('demoEnd();');
   assert.equal(p.run('RETOURS === __R'), true);
 });
+
+test("le boss du couloir : assis au bureau du RDC quand rien ne l'attend, debout pour aller à la barrière", () => {
+  const {p, J} = page();
+  p.run(`RETOURS = retoursDemo(); var __dc = drawChar, __b = []; drawChar = (c, n) => { if (c.boss) __b.push({tile: c.tile, pose: c.pose}); return __dc(c, n); };
+    RETOURS.rooms.forEach(r => { r.gate = null; }); RT_MEM = rtMem0(); setFloor(3); renderRetours(1000);`);
+  assert.deepEqual(J('__b.pop()'), {tile: J('BOSS_SEAT'), pose: 'stand'}, 'assis, sans danser');
+  p.run(`RETOURS = retoursDemo(); RT_MEM = rtMem0(); renderRetours(1100); drawChar = __dc;`);
+  assert.equal(J('__b.pop().tile'), null, 'une PR attend : il est debout à la barrière');
+});
