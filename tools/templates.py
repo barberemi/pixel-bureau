@@ -26,6 +26,8 @@ IMPL_POSTES = ("cadrage", "schema", "patterns", "code", "tests", "revue", "revue
                "publication")
 # postes de l'investigation Support (#62) : un sous-workflow chacun, appelés par le parent support dans cet ordre
 SUPPORT_POSTES = ("tri", "logs", "cause", "reponse", "relecture")
+# salle de rédaction (2e étage) : les postes du modèle ticket (un sous-workflow chacun), puis un sous-workflow par ticket
+TICKET_POSTES = ("recherche", "redaction", "critique")
 # pages Kronn à part, à projeter (HTML autonome de page/, ni assemblage ni démo) : clé de leur id dans la config ->
 # (titre, datasets, fichier) ; créées par install.py, publiées par install.py et publish.py page
 SIDE_PAGES = {"bilan_page_id": ("Chaîne · bilan", ["bilan"], "bilan.html"),
@@ -35,7 +37,7 @@ TEMPLATES = {
     "office": ("workflow", ("workflows", "office"), {"snapshot": "workflows/office_snapshot.py"}),
     "live": ("workflow", ("workflows", "live"), {"snapshot": "workflows/live_snapshot.py", "gates": "workflows/gates_snapshot.py",
                                                     "todos": "workflows/todos.py", "atelier": "workflows/atelier_snapshot.py",
-                                                    "retours": "workflows/retours_snapshot.py"}),
+                                                    "retours": "workflows/retours_snapshot.py", "redaction": "workflows/redaction_snapshot.py"}),
     "team": ("workflow", ("workflows", "team"), {"github": "workflows/github_snapshot.py", "shape": "workflows/team_shape.py", "since": "workflows/standup_since.py",
                                                     "planning_jql": "workflows/planning_jql.py", "actions": "workflows/actions_snapshot.py"}),
     "payroll": ("workflow", ("workflows", "payroll"), {"payroll": "workflows/payroll_snapshot.py", "pages": "workflows/pages_snapshot.py", "gitfut": "workflows/gitfut_snapshot.py"}),
@@ -85,7 +87,11 @@ TEMPLATES = {
                                                                                         "done")}),
     "issue": ("workflow", ("models", "issue"), {}),  # une intention rédigée en issue GitHub selon les modèles du dépôt
     # créer un ticket Jira (#77) : l'IA rédige au modèle de l'équipe (jira.create), le boss valide, l'API REST v2 crée
-    "ticket": ("workflow", ("models", "ticket"), {n: "workflows/ticket.py" for n in ("apercu", "champs", "resultat")}),
+    # une intention peut donner plusieurs tickets (2e étage) : postes recherche, rédaction, critique (sous-workflows), puis un
+    # sous-workflow par ticket (ticket_un : aperçu, ta validation, création) ; enfants créés avant le parent
+    **{f"ticket_{p}": ("workflow", ("models", f"ticket_{p}"), {n: "workflows/ticket.py" for n in ("entree", "rapport")}) for p in TICKET_POSTES},
+    "ticket_un": ("workflow", ("models", "ticket_un"), {n: "workflows/ticket.py" for n in ("lot", "champs", "resultat")}),
+    "ticket": ("workflow", ("models", "ticket"), {n: "workflows/ticket.py" for n in ("dossier", "aiguillage", "resultat")}),
     "assign": ("workflow", ("models", "assign"), {}),  # m'affecter un ticket (assignation puis transition vers En cours)
     "unassign": ("workflow", ("models", "unassign"), {}),  # me le désaffecter (retour à À faire)
     # (re)construire l'env de branche d'une PR (label retiré puis reposé) : bouton « 🌿 » des fiches quand tu n'as pas launch.env
@@ -120,9 +126,10 @@ TEXTS = ("tools/plan_prompt.md", "tools/mail_rules_prompt.md", "tools/rebase_pro
 REVIEW_SCHEDULE = "30 7,10,13,16,19 * * 1-5"  # cron des revues de PR, heures UTC (review.schedule de l'équipe pour un autre)
 # modèles lancés en foreach (un sous-workflow par PR) : Kronn y écrit .kronn/current_task.json, il leur faut leur propre
 # copie du projet (require_isolation), jamais le dossier principal ; le sous-workflow tourne dans celle de son parent
-ISOLATED = {"review_one", "review_cron", "impl_chain"}  # la chaîne : une copie du projet par ticket, 4 en parallèle
+ISOLATED = {"review_one", "review_cron", "impl_chain", "ticket"}  # la chaîne : une copie du projet par ticket, 4 en parallèle
 # sous-workflows qui tournent dans la copie de leur parent : relire une PR, les postes de la chaîne d'implémentation
-SHARED_WORKSPACE = {"review_child", "impl_controles", *(f"impl_{p}" for p in IMPL_POSTES), *(f"support_{p}" for p in SUPPORT_POSTES)}
+SHARED_WORKSPACE = {"review_child", "impl_controles", *(f"impl_{p}" for p in IMPL_POSTES), *(f"support_{p}" for p in SUPPORT_POSTES),
+                    *(f"ticket_{p}" for p in TICKET_POSTES), "ticket_un"}  # la salle de rédaction (2e étage)
 
 
 def load_config():
@@ -249,6 +256,7 @@ def values(cfg):
         "jira.statuses_json": json.dumps(j.get("statuses") or {}, ensure_ascii=False, separators=(",", ":")) if j.get("statuses") else "",
         # retours de PR (3e étage) : le modèle « corriger les commentaires d'une PR » installé (son relevé dans le cron live)
         "actions.fix_pr": (cfg.get("actions") or {}).get("fix_pr") or "",
+        "models.ticket": (cfg.get("models") or {}).get("ticket") or "",  # salle de rédaction (2e étage) : son relevé dans le cron live
         "models.review_child": (cfg.get("models") or {}).get("review_child") or "",
         "review.project_id": rv.get("project_id") or (cfg.get("kronn") or {}).get("project_id") or "",
         "review.page_id": rv.get("page_id") or "",  # page de récap des revues, facultative
@@ -264,7 +272,8 @@ def values(cfg):
         # chaîne d'implémentation (#76) : ids des postes (enfants créés d'abord), consignes de l'équipe pour le code et les contrôles
         **{f"models.{k}": (cfg.get("models") or {}).get(k) or "" for k in ("assign", "impl_controles", "impl_chain",
                                                                           *(f"impl_{p}" for p in IMPL_POSTES),
-                                                                          *(f"support_{p}" for p in SUPPORT_POSTES))},  # postes Support (#62)
+                                                                          *(f"support_{p}" for p in SUPPORT_POSTES),  # postes Support (#62)
+                                                                          *(f"ticket_{p}" for p in TICKET_POSTES), "ticket_un")},  # salle de rédaction
         "impl.guidelines": str((cfg.get("impl") or {}).get("guidelines") or "Aucune consigne d'équipe en plus de la doc du dépôt."),
     }
 
@@ -335,7 +344,7 @@ def skipped(key, cfg):
         return not ((cfg.get("models") or {}).get("support") and cfg.get("support_bilan_page_id") and s.get("team") and s.get("channel"))
     if key.startswith("impl"):  # la chaîne lit le ticket dans Jira et livre sur GitHub (gh)
         return not (cfg.get("jira") or {}).get("config_id")
-    if key in ("estimate", "assign", "unassign", "ticket", "ai_time"):
+    if key in ("estimate", "assign", "unassign", "ticket", "ai_time") or key.startswith("ticket_"):  # ses postes et chaque ticket aussi
         return not (cfg.get("jira") or {}).get("config_id")
     if key == "env":  # aucun dépôt où générer un env de branche
         return not assemble.env_repos({**cfg, "models": {**(cfg.get("models") or {}), "env": "?"}})

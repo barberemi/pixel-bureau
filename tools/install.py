@@ -24,7 +24,7 @@ OFFICE = [("dwight", "Dwight"), ("jim", "Jim"), ("stanley", "Stanley"), ("phylli
           ("erin", "Erin"), ("ryan", "Ryan")]
 ROLES = {"dev": ("Développeur", None), "lead": ("Tech Lead", "lead"), "qa": ("Testeur", "qa"), "po": ("Product owner", "po"),
          "sm": ("Facilitateur", "sm")}
-DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "agents", "bosspages", "pagelist", "gitfut", "layout", "actions", "duck", "absences", "mails", "mail_rules", "support", "todos", "atelier", "retours"]
+DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "agents", "bosspages", "pagelist", "gitfut", "layout", "actions", "duck", "absences", "mails", "mail_rules", "support", "todos", "atelier", "retours", "redaction"]
 CRONS = ("office", "live", "team", "payroll", "canard", "absences", "courrier", "support_poll", "chaine_bilan", "support_bilan")
 DATASET = lambda name: {"name": name, "kind": "snapshot", "max_points": 50000}  # noqa: E731
 
@@ -426,6 +426,8 @@ def models(ask, cfg, old):
             keep.add(key)
     if keep & {"review_one", "review_cron"}:
         keep.add("review_child")
+    if "ticket" in keep:  # la salle de rédaction (2e étage) : un sous-workflow par poste, puis un par ticket
+        keep |= {f"ticket_{p}" for p in templates.TICKET_POSTES} | {"ticket_un"}
     if "support" in keep:  # l'investigation Support : un sous-workflow par poste (tri, logs, cause, réponse, relecture)
         keep |= {f"support_{p}" for p in templates.SUPPORT_POSTES}
     if "impl" in keep:  # la chaîne : son lanceur, son parent, le poste des contrôles et chaque poste (sous-workflows)

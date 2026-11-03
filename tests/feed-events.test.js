@@ -132,7 +132,7 @@ test('tes actions : lancements à la main en « Important », commentaires, ques
 });
 
 test('types : chaque événement du fil a le sien ; une pastille éteinte retire ses lignes, et elle est retenue', () => {
-  run(`TEAM = mergedTeam(); refreshAll(); DUCKGAME = null; DUCKS = []; GATES = []; ATELIER = null; RETOURS = null; T = DAY0 + 18.5 * 3600e3; FEED_MODE = 'all'; FEED_OFF = new Set(); renderFeed();`);
+  run(`TEAM = mergedTeam(); refreshAll(); DUCKGAME = null; DUCKS = []; GATES = []; ATELIER = null; RETOURS = null; REDACTION = null; T = DAY0 + 18.5 * 3600e3; FEED_MODE = 'all'; FEED_OFF = new Set(); renderFeed();`);
   const tys = J(`[...new Set(FEED_ALL.map(e => e.ty))].sort()`);
   assert.deepEqual(tys, ['agents', 'equipe', 'mep', 'pr', 'tickets']);
   assert.equal(J(`FEED_EV.filter(e => !e.ty).length`), 0);

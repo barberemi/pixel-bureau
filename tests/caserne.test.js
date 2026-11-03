@@ -100,9 +100,9 @@ test("réponse à valider : tous les postes d'avant ont travaillé, ✋ t'attend
 
 test("onglets : le RDC par défaut, la caserne au -1 quand la console Support existe ; la toile prend la taille de l'étage", () => {
   const {p, J} = page();
-  assert.deepEqual(J("[...floorTabsHtml().matchAll(/data-floor=\"(-?\\d)\"/g)].map(m => +m[1])"), [-1, 0, 1, 3], "dans l'ordre des étages, comme un ascenseur (le 3e : 68-retours.js)");
+  assert.deepEqual(J("[...floorTabsHtml().matchAll(/data-floor=\"(-?\\d)\"/g)].map(m => +m[1])"), [-1, 0, 1, 2, 3], "dans l'ordre des étages, comme un ascenseur (le 3e : 68-retours.js)");
   assert.equal(J('caserneOn()'), true, 'la démo a sa console Support');
-  assert.deepEqual(J('floorsOn()'), [3, 1, 0, -1]);
+  assert.deepEqual(J('floorsOn()'), [3, 2, 1, 0, -1]);
   p.run('setFloor(-1);');
   assert.equal(J('FLOOR'), -1);
   assert.deepEqual(J('[cv.width, cv.height]'), J('[AT_W, AT_H]'));
@@ -129,13 +129,15 @@ test("mode TV : E fait le tour des étages ; en alternance, seulement les étage
   p.run('FLOOR = 0;');
   assert.deepEqual(J('[nextFloor(false)]'), [1]);
   p.run('setFloor(1);');
+  assert.equal(J('nextFloor(false)'), 2);
+  p.run('setFloor(2);');
   assert.equal(J('nextFloor(false)'), 3);
   p.run('setFloor(3);');
   assert.equal(J('nextFloor(false)'), -1);
   p.run('setFloor(-1);');
   assert.equal(J('nextFloor(false)'), 0);
-  p.run('ATELIER = {rooms: [], queue: []}; RETOURS = {rooms: [], queue: []}; setFloor(0);');
-  assert.equal(J('nextFloor(true)'), -1, "l'atelier et le 3e vides sont sautés");
+  p.run('ATELIER = {rooms: [], queue: []}; RETOURS = {rooms: [], queue: []}; REDACTION = {tables: []}; rvDemo = () => []; setFloor(0);');
+  assert.equal(J('nextFloor(true)'), -1, "l'atelier, le 2e et le 3e vides sont sautés");
   assert.match(J('tvCaserneHtml()'), /Caserne Support[\s\S]*Baie 1[\s\S]*Appels à prendre/);
 });
 

@@ -292,6 +292,68 @@
      ]
     },
     "_requires": "actions.fix_pr"
+   },
+   {
+    "name": "redaction",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "Tables de la salle de rédaction (2e étage) : runs du modèle « créer un ticket », leurs tickets et le dossier de chaque run, 0 token.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "snap",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/redaction_snapshot.py@@"
+        ],
+        "timeout_secs": 30,
+        "output_format": "json"
+       },
+       "required": false
+      }
+     ],
+     "concurrent_limit": 1
+    },
+    "_requires": "models.ticket"
+   },
+   {
+    "name": "publish_redaction",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset redaction de la page Le Bureau.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "redaction",
+       "operation": "replace",
+       "value_from": "steps.redaction.data.sources.snap"
+      }
+     ]
+    },
+    "_requires": "models.ticket"
    }
   ],
   "actions": [],

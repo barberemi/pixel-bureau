@@ -14,6 +14,7 @@ const galFx=(kind,extra)=>()=>{FX.cur.set('demo',{id:'demo',kind,t0:performance.
 function galleryScenes(){
   if(FLOOR===1)return atGalleryScenes(); // 68-atelier.js : au 1er étage, seulement ses scènes
   if(FLOOR===-1)return csGalleryScenes(); // 68-caserne.js : au sous-sol, celles de la caserne
+  if(FLOOR===2)return rdGalleryScenes(); // 68-redaction.js : au 2e, celles de la rédaction
   if(FLOOR===3)return rtGalleryScenes(); // 68-retours.js : au 3e, celles des retours de PR
   const out=[], add=x=>out.push(x), dev=galDev(), qa=galQa(), sm=chars.find(c=>c.roleKind==='sm');
   const team=(x,need)=>add({fam:'Équipe et cérémonies',ok:need!==false,why:'Il manque quelqu\'un dans l\'équipe pour la jouer',...x});
@@ -61,7 +62,7 @@ function galleryScenes(){
 function renderGallery(){
   const box=document.getElementById('gallery'); if(!box||!DATA)return;
   const L=galleryScenes(); GAL_LIST=L; const fams=[...new Set(L.map(x=>x.fam))];
-  box.innerHTML=`<h3>🎬 Les scènes ${FLOOR===1?'du 1er étage':FLOOR===-1?'de la caserne':FLOOR===3?'du 3e étage':'du bureau'}</h3><p class="gal-s">${FLOOR===1?'Ce que l\'atelier d\'implémentation sait jouer.':FLOOR===3?'Ce que l\'étage des retours de PR sait jouer.':FLOOR===-1?'Ce que la caserne Support sait jouer.':'Ce que ton bureau sait jouer, tiré de ton équipe, de tes invités et de ce qui est branché.'} « ▶ voir » la joue tout de suite sur le plan${FLOOR===-1?'':', avec la loupe'} ; ta journée reprend ensuite.${FLOOR?' Les scènes du rez-de-chaussée sont sur le RDC.':[atelierOn()&&'du 1er étage sont sur le 1er',caserneOn()&&'de la caserne sont au -1',retoursOn()&&'des retours de PR sont au 3e'].filter(Boolean).map(x=>' Celles '+x+'.').join('')}</p>`+
+  box.innerHTML=`<h3>🎬 Les scènes ${FLOOR===1?'du 1er étage':FLOOR===-1?'de la caserne':FLOOR===3?'du 3e étage':FLOOR===2?'du 2e étage':'du bureau'}</h3><p class="gal-s">${FLOOR===1?'Ce que l\'atelier d\'implémentation sait jouer.':FLOOR===3?'Ce que l\'étage des retours de PR sait jouer.':FLOOR===2?'Ce que la rédaction et la revue savent jouer.':FLOOR===-1?'Ce que la caserne Support sait jouer.':'Ce que ton bureau sait jouer, tiré de ton équipe, de tes invités et de ce qui est branché.'} « ▶ voir » la joue tout de suite sur le plan${FLOOR===-1?'':', avec la loupe'} ; ta journée reprend ensuite.${FLOOR?' Les scènes du rez-de-chaussée sont sur le RDC.':[atelierOn()&&'du 1er étage sont sur le 1er',caserneOn()&&'de la caserne sont au -1',redactionOn()&&'de la rédaction sont au 2e',retoursOn()&&'des retours de PR sont au 3e'].filter(Boolean).map(x=>' Celles '+x+'.').join('')}</p>`+
     fams.map(f=>`<h4>${esc(f)}</h4><div class="gal-grid">${L.map((x,i)=>x.fam!==f?'':`<div class="gal-c">${x.c&&portraitUrl(x.c)?`<img class="gal-pt" src="${portraitUrl(x.c)}" alt="">`:`<span class="gal-i" aria-hidden="true">${x.ico}</span>`}`+
       `<span><b>${esc(x.n)}</b><small>${esc(x.d)}<br><i>${esc(x.w)}</i></small></span><button data-gal="${i}"${x.ok?'':` disabled title="${esc(x.why)}"`}>▶ voir</button></div>`).join('')}</div>`).join('');
 }
@@ -76,7 +77,7 @@ function demoTime(t){
 }
 function demoStart(x){
   if(SCENE_DEMO)demoEnd();
-  const saved={T,mode,SPEED,TEAM,SUPPORT:typeof SUPPORT!=='undefined'?SUPPORT:null,ATELIER,RETOURS}; // ATELIER : 68-atelier.js ; RETOURS : 68-retours.js
+  const saved={T,mode,SPEED,TEAM,SUPPORT:typeof SUPPORT!=='undefined'?SUPPORT:null,ATELIER,RETOURS,REDACTION}; // ATELIER : 68-atelier.js ; RETOURS : 68-retours.js ; REDACTION : 68-redaction.js
   const t0=demoTime(T); if(t0!==T){T=t0;needTeleport=true;}
   const s=T+4e3;
   SCENE_DEMO={n:x.n,s,e:s+x.play.len,hard:performance.now()+Math.max(30e3,x.play.len/x.play.speed+60e3),saved};
@@ -94,6 +95,7 @@ function demoEnd(){
   if(!SCENE_DEMO)return;
   const v=SCENE_DEMO.saved; SCENE_DEMO=null;
   TEAM=v.TEAM; if(v.SUPPORT!==null)SUPPORT=v.SUPPORT;
+  if(REDACTION!==v.REDACTION){REDACTION=v.REDACTION;if(FLOOR===2)rdReset();} // le 2e revient tel quel
   if(RETOURS!==v.RETOURS){RETOURS=v.RETOURS;if(FLOOR===3)rtReset();} // 68-retours.js : le 3e revient tel quel, sans rejouer
   if(typeof csReset==='function'&&FLOOR===-1)csReset(); // 68-caserne.js : la caserne revient telle quelle, sans faire partir de camion
   if(ATELIER!==v.ATELIER){ATELIER=v.ATELIER;AT_MEM.fresh=true;AT_MEM.src=null;AT_MEM.scenes=[];AT_MEM.leaving=[null,null,null,null];} // l'atelier revient tel quel, sans rejouer

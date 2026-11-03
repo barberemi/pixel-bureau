@@ -17,9 +17,9 @@ function page(opts) {
 test("l'étage existe en démo ; ses onglets dans l'ordre des étages, le 3e en dernier", () => {
   const {p, J} = page();
   assert.equal(J('retoursOn()'), true);
-  assert.deepEqual(J('floorsOn()'), [3, 1, 0, -1], 'de haut en bas');
-  assert.deepEqual(J("[...floorTabsHtml().matchAll(/data-floor=\"(-?\\d)\"/g)].map(m => +m[1])"), [-1, 0, 1, 3]);
-  assert.match(J('floorTabsHtml()'), /3e · retours de PR <b>5<\/b> <b>✋ 2<\/b>/, 'la démo : cinq PR, deux validations');
+  assert.deepEqual(J('floorsOn()'), [3, 2, 1, 0, -1], 'de haut en bas');
+  assert.deepEqual(J("[...floorTabsHtml().matchAll(/data-floor=\"(-?\\d)\"/g)].map(m => +m[1])"), [-1, 0, 1, 2, 3]);
+  assert.match(J('floorTabsHtml()'), /3e · retours <b>5<\/b> <b>✋ 2<\/b>/, 'la démo : cinq PR, deux validations');
   p.run('setFloor(3);');
   assert.equal(J('FLOOR'), 3);
   assert.deepEqual(J('[cv.width, cv.height]'), J('[AT_W, AT_H]'));
