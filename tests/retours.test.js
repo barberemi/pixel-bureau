@@ -163,3 +163,24 @@ test("comme au 1er : les fenêtres au ciel de l'heure aux 2e et 3e, et la pastil
   p.run(`__pl = []; setMode('live'); setFloor(3); renderRetours(1100); atPill = __ap;`);
   assert.equal(J("__pl.some(s => /^⏪ Rejeu/.test(s))"), false, 'en direct, pas de pastille');
 });
+
+test("galerie : Bernard monte la PR et la redescend dès le premier clic (l'étage d'avant la scène est posé, pas rejoué)", () => {
+  const {p, J} = page();
+  p.run(`RETOURS = retoursDemo(); setFloor(3); setMode('pause'); renderRetours(500); renderRetours(600);`);
+  p.run(`demoStart(galleryScenes().find(x => x.n === 'Une PR monte au 3e')); renderRetours(700); renderRetours(800);`);
+  assert.deepEqual(J('RT_MEM.scenes.map(s => s.kind)'), ['arrive']);
+  p.run(`demoEnd(); demoStart(galleryScenes().find(x => x.n === 'La PR est poussée')); renderRetours(900); renderRetours(1000);`);
+  assert.deepEqual(J('RT_MEM.scenes.map(s => s.kind)'), ['exit']);
+  p.run('demoEnd();');
+});
+
+test("la porte de l'escalier : au bout du couloir, dans le mur de droite ; Bernard part de derrière elle, qui s'ouvre à son passage", () => {
+  const {p, J} = page();
+  assert.ok(J('RT_STAIRS.x > AT_W'), 'il part hors du plan');
+  assert.equal(J('RT_STAIR.x + RT_STAIR.w'), J('AT_W'), 'collée au bord');
+  assert.ok(J('RT_STAIR.y <= RT_LANE && RT_STAIR.y + RT_STAIR.h >= RT_LANE'), 'dans l\'axe du couloir');
+  assert.equal(J('stairOpen(RT_STAIR, [{x: AT_W - 20, y: RT_LANE}])'), true);
+  assert.equal(J('stairOpen(RT_STAIR, [{x: AT_W - 300, y: RT_LANE}])'), false);
+  p.run(`RETOURS = retoursDemo(); setFloor(3); RT_MEM.scenes = [{kind: 'arrive', i: 0, run: 'x', t0: 0}]; renderRetours(1000);`);
+  assert.equal(J('stairOpen(RT_STAIR, RT_MEM.scenes.map(s => s.w.pos))'), true, 'Bernard sur le seuil : la porte est ouverte');
+});

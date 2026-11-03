@@ -62,7 +62,7 @@ test("depuis le RDC : le fil et ⌘K ; la loupe du tampon ; la galerie rend le r
   assert.deepEqual(J('[FLOOR, RDSEL]'), [2, 'demo-t2']);
   p.run(`REDACTION.tables[0].poste = 'valider'; REDACTION.tables[0].tickets[0].etat = 'gate'; RDSEL = null;`);
   assert.ok(J("rdLoupeEvents().some(e => e.kind === 'rd_gate')"));
-  assert.deepEqual(J('[...new Set(galleryScenes().map(x => x.fam))]'), ['2e étage']);
+  assert.deepEqual(J('[...new Set(galleryScenes().map(x => x.fam))]'), ['2e étage · rédaction', '2e étage · revue des PR']);
   p.run(`var __R = REDACTION; demoStart(galleryScenes().find(x => x.n === 'Le tampon')); demoEnd();`);
   assert.equal(p.run('REDACTION === __R'), true);
 });
@@ -191,4 +191,37 @@ test("les postes du ticket (CFG.ticket.postes_wf) et ceux de la revue travaillen
   assert.deepEqual(J("DATA.runs.filter(r => ['tk', 'rech', 'un', 'lect'].includes(r.run)).map(r => r.run)"), ['tk']);
   assert.equal(J("chars.some(c => c.temp && (c.wf || []).some(w => ['bbbbbbbb', 'dddddddd', 'eeeeeeee'].includes(w)))"), false, 'aucun intérimaire');
   assert.deepEqual(J('workflowsWithoutAgent().map(w => w.name)').filter(n => /recherche|lecture/.test(n)), []);
+});
+
+test("la porte de l'escalier du 2e : en bas du couloir, collée au bord ; les auteurs et Bernard partent de derrière elle", () => {
+  const p = load(), J = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  assert.equal(J('RD_STAIR.y + RD_STAIR.h'), J('AT_H'), 'collée au bord du bas');
+  assert.ok(J('RD_STAIR.x > RD_X1 * RD_T && RD_STAIR.x + RD_STAIR.w < RD_VX * RD_T'), 'entre la rédaction et la revue');
+  assert.ok(J('RVF.stairLow.y > AT_H && rvfOut(RVF.stairLow)'), 'ils attendent hors du plan, sans pancarte');
+  assert.equal(J('rvfOut(RVF.stair)'), false, 'puis sortent par la porte');
+  assert.equal(J('typeof rvfStairA'), 'undefined', 'plus de fondu sur des marches');
+});
+
+test("galerie : les scènes de la revue des PR se jouent sur la journée de démo, à l'heure du moment, et la journée revient", () => {
+  const {p, J} = page();
+  p.run('setFloor(2); renderRedaction(500); var __R = REDACTION, __T = T;');
+  const sc = J("galleryScenes().filter(x => x.fam === '2e étage · revue des PR').map(x => [x.n, x.ok])");
+  assert.deepEqual(sc.map(x => x[0]), ['La fournée du cron', 'Le relecteur prend un dossier', "L'avis est posté", "L'auteur repart", 'Une revue à la demande']);
+  assert.ok(sc.every(x => x[1]));
+  // la fournée : 1,5 s avant le passage du cron, rien ; puis Bernard monte avec le transpalette
+  p.run(`demoStart(galleryScenes().find(x => x.n === 'La fournée du cron')); renderRedaction(1000);`);
+  assert.equal(J('RVF_M.bern'), null);
+  p.run('T += 2000; renderRedaction(1100);');
+  assert.ok(J('!!RVF_M.bern && RVF_M.bern.fresh.length === 5'), 'cinq dossiers à ranger');
+  assert.ok(J('RVF_M.bern.w.pos.y > AT_H'), 'il part de derrière la porte');
+  p.run('demoEnd();');
+  assert.equal(p.run('REDACTION === __R && T === __T'), true);
+  // le relecteur : le dossier du haut est à lui
+  p.run(`demoStart(galleryScenes().find(x => x.n === 'Le relecteur prend un dossier')); renderRedaction(2000); T += 2000; renderRedaction(2100);`);
+  assert.equal(J('RVF_M.reading'), 'dm/site#2042');
+  p.run('demoEnd();');
+  // sans revue installée (hors démo), rien à jouer
+  const q = load({demo: false});
+  q.run('CFG.revue_cron_wf = []; CFG.revue_wf = [];');
+  assert.equal(q.run("rvGalleryScenes().every(x => !x.ok && !!x.why)"), true);
 });

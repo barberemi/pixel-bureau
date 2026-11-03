@@ -465,6 +465,22 @@ function atBoard(slots){
 // l'ouverture d'un mur ; n panneaux côte à côte (mur horizontal) ou l'un sous l'autre (vert : mur vertical)
 function woodDoor(g,x,y,w,h,n,vert){R(g,x,y,w,h,'#5a4636');
   for(let k=0;k<n;k++){if(vert){const ph=h/n;R(g,x+3,y+k*ph+3,w-6,ph-6,'#6b5543');}else{const pw=w/n;R(g,x+k*pw+3,y+3,pw-6,h-6,'#6b5543');}}}
+// ---------- la porte de l'escalier (2e, 3e) : la porte de l'entrée du RDC, dans le mur du bord du plan ----------
+// Ceux qui montent partent de derrière elle, hors du plan : dessinée après les personnages, avec son pan de mur, elle cache
+// ce qui est encore dans l'escalier ; elle s'ouvre (battants rabattus contre le mur) quand quelqu'un passe à moins d'une
+// case. d : {x,y,w,h,vert, wall:[x,y,w,h]} ; pts : les pieds de ceux qui marchent sur l'étage
+const stairOpen=(d,pts)=>pts.some(p=>Math.abs(p.x-(d.x+d.w/2))<(d.vert?70:40)&&Math.abs(p.y-(d.y+d.h/2))<(d.vert?40:70));
+function stairDoor(d,pts){
+  R(ctx,...d.wall,'#7d776c');
+  if(!stairOpen(d,pts)){woodDoor(ctx,d.x,d.y,d.w,d.h,2,d.vert);return;}
+  R(ctx,d.x,d.y,d.w,d.h,'#5a4636');R(ctx,d.x+2,d.y+2,d.w-4,d.h-4,'#2a2420');
+  if(d.vert){R(ctx,d.x-14,d.y+2,14,4,'#6b5543');R(ctx,d.x-14,d.y+d.h-6,14,4,'#6b5543');}
+  else{R(ctx,d.x+2,d.y-14,4,14,'#6b5543');R(ctx,d.x+d.w-6,d.y-14,4,14,'#6b5543');}
+}
+// le panneau « Sortie » au-dessus de la porte, net par-dessus le voile du soir, comme celui de l'entrée du RDC (42-light.js)
+function exitSign(x,y){ctx.fillStyle='#1d7a3c';ctx.fillRect(x,y,26,9);
+  ctx.fillStyle='#d8ffe2';ctx.font='bold 6px ui-monospace,Menlo,monospace';ctx.textAlign='left';ctx.fillText('SORTIE',x+2,y+7);}
+const exitHalo=(x,y)=>({x:x+13,y:y+4,r:26,a:.4,c:'rgba(80,230,120,.22)'});
 // ---------- le bureau du boss, le même à chaque étage (le 1er, le 2e, le 3e) : celui du RDC (40-furniture.js) ----------
 // Le fauteuil 44 px au-dessus des pieds du boss (F), le bureau de 100 px 16 px au-dessus ; mid(x0,top) pose ce qui est
 // propre à l'étage au milieu du bureau (sinon la feuille du RDC) ; la tasse à x0+mug.
@@ -660,7 +676,7 @@ function atLoupeEvents(now){
 function atDemo(mut,prep){return ()=>{const src=ATELIER&&(ATELIER.rooms||[]).length?ATELIER:atelierDemo(), cp=x=>JSON.parse(JSON.stringify(x));
   const base=cp(src);base.rooms=base.rooms||[];base.queue=base.queue||[];base.pannes=base.pannes||[];if(prep)prep(base);
   ATELIER=base;AT_MEM.fresh=true;atDiff(performance.now());
-  const d=cp(base);mut(d);ATELIER=d;};}
+  const d=cp(base);mut(d);ATELIER=d;AT_MEM.lastT=null;};} // passer en démonstration (depuis la pause, ou à 11 h le soir) n'est pas un saut du curseur : la scène se joue au premier clic
 const atFirst=d=>d.rooms.find(r=>!r.gate)||d.rooms[0];
 function atGalleryScenes(){
   const fam='1er étage', ok=true, cl=atCleaner(), out=[];
@@ -678,6 +694,8 @@ function atGalleryScenes(){
     play:{len:15e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.states=r.states||{};for(const k of ['cadrage','schema','patterns','gate','code','regles'])r.states[k]='ok';r.states.securite='bloq';r.poste='code';r.back=true;r.gate=null;r.note='🔒 bloquant → retour au code';})}});
   out.push({fam,ico:'🧯',n:'Poste en panne',d:'Son sous-workflow a échoué : fumée sur l\'écran, un pompier arrive avec un extincteur',w:'Un poste plante (API d\'un agent indisponible…)',ok,
     play:{len:20e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.states=r.states||{};r.states.tests='err';})}});
+  out.push({fam,ico:'🌙',n:'Le soir au 1er',d:'Le soir et le week-end, comme au RDC : les bureaux où un ticket tourne restent éclairés, chaque poste sous sa lampe, le boss sous la sienne ; Bernard est rentré',w:'Hors des heures de bureau',ok,
+    play:{len:20e3,speed:60,setup:s=>{atDemo(()=>{})();T=parisMidnight(s)+22.5*36e5;SCENE_DEMO.e=T+20e3*60;}}});
   if(cl)out.push({fam,ico:'🧹',n:cl.name+' · ménage du 1er',d:'Après le RDC, chaque bureau et l\'entrepôt, avec son chariot',w:'Le soir des jours ouvrés, après le RDC',c:cl,ok,
     play:{len:AT_CLEAN_DUR,speed:60,setup:s=>{const u=atCleanVisit(cl,s);
       if(!u){SCENE_DEMO.visit={c:cl,v:{s:s-CLEAN_DUR,e:s,r:rng(keySeed(cl.key)*7919+daySeed(s))}};SCENE_DEMO.e=s+AT_CLEAN_DUR;return;} // pas de ménage ce jour-là : il monte maintenant
