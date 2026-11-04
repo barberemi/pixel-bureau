@@ -347,7 +347,12 @@ exit 0
         self.assertEqual(st["chaque"]["sub_workflow_foreach_file"], ".kronn/tickets.json")
         self.assertTrue(out["workspace_config"]["require_isolation"], "le foreach écrit dans le dossier de travail du run")
         un = {s["name"]: s for s in templates.render(TPL["ticket_un"], c)["steps"]}
-        self.assertEqual(list(un), ["sprints", "champs", "creer", "points_board", "resultat"], "chaque ticket : sa création seulement")
+        self.assertEqual(list(un), ["sprints", "champs", "creer", "points_board", "resultat", "liens_corps", "liens"],
+                         "chaque ticket : sa création, noté créé, puis ses liens « Blocks » avec ceux déjà créés")
+        self.assertNotIn("on_result", un["resultat"], "les liens viennent après")
+        self.assertEqual((un["liens"]["api_method"], un["liens"]["api_endpoint_path"], un["liens"]["api_body"]),
+                         ("PUT", "/rest/api/2/issue/{{steps.creer.data.key}}", "{{steps.liens_corps.data.sources.l.body}}"))
+        self.assertEqual(un["liens_corps"]["collect_api_data"]["sources"][0]["quick_exec"]["args"][2:], ["lot", "liens", "{{steps.creer.data.key}}"])
         st = un
         self.assertEqual(st["points_board"]["api_body"], {"fields": {"customfield_200": "{{steps.champs.data.sources.f.board_sp}}"}})
         self.assertEqual(st["creer"]["api_body"], "{{steps.champs.data.sources.f.body}}")  # corps typé, jamais réinterprété
@@ -356,6 +361,10 @@ exit 0
         Path(os.path.join(pack, "settings.json")).write_text(json.dumps({"jira": {"create": {"points_field": "customfield_200"}}}))
         out = templates.render(TPL["ticket"], c)
         self.assertNotIn("points_board", [s["name"] for s in templates.render(TPL["ticket_un"], c)["steps"]])
+        # jira.create.board_copy à false : seule l'estimation de points_field est remplie, rien de recopié sur le board
+        Path(os.path.join(pack, "settings.json")).write_text(json.dumps({"jira": {"create": {"points_field": "customfield_300", "board_copy": False}}}))
+        self.assertNotIn("points_board", [s["name"] for s in templates.render(TPL["ticket_un"], c)["steps"]])
+        Path(os.path.join(pack, "settings.json")).write_text(json.dumps({"jira": {"create": {"points_field": "customfield_200"}}}))
         var = {v["name"]: v for v in out["variables"]}
         self.assertNotIn("control", var["composant"])
         self.assertFalse(var["composant"]["required"])

@@ -159,6 +159,59 @@ class TicketChainTest(unittest.TestCase):
         self.assertEqual([(c["key"], c["title"], c["points"]) for c in h["crees"]], [("DM-12", "Exporter les abonnés en CSV", "2")])
         self.assertTrue(h["at"] <= h["vu"])
 
+    def cfg_with(self, **create):
+        """Une config de test : jira.create complété, Kronn sur un port fermé (le projet Kronn d'un dépôt introuvable)."""
+        c = json.loads(Path(FIXTURE).read_text())
+        c["kronn"]["api"] = "http://127.0.0.1:9/api"
+        c["jira"]["create"] = {**(c["jira"].get("create") or {}), **create}
+        c["impl"] = {"clones": os.path.join(self.tmp, "clones")}
+        p = os.path.join(self.tmp, "cfg.json")
+        Path(p).write_text(json.dumps(c))
+        return p
+
+    def test_team_template_file_is_copied_into_the_prompt(self):
+        """« <chemin> du dépôt <dépôt> » : le fichier, lu dans la copie locale du dépôt, recopié dans la consigne de la
+        rédaction et de la critique (l'agent n'a plus à le chercher) ; introuvable : le réglage tel quel."""
+        tpl = Path(self.tmp, "clones", "dm_site", "docs", "templates")
+        tpl.mkdir(parents=True)
+        Path(tpl, "jira-ticket.md").write_text("h2. +De quoi on parle ?+\n{panel:bgColor=#e3fcef}")
+        cfg = self.cfg_with(template="docs/templates/jira-ticket.md du dépôt dm_site")
+        self.t("dossier", "m1", "x", "Story", "3", "dm/site", "", "backlog", "", cfg=cfg)
+        for poste in ("redaction", "critique"):
+            out = self.t("poste", poste, "m1", cfg=cfg).stdout
+            self.assertIn("## Modèle de ticket de l'équipe\n(fichier docs/templates/jira-ticket.md du dépôt dm_site)\n\nh2. +De quoi on parle ?+", out)
+        self.assertIn("le modèle de ticket de l'équipe est suivi", self.t("poste", "critique", "m1", cfg=cfg).stdout)
+        cfg = self.cfg_with(template="dm_site:docs/autre.md")
+        r = self.t("poste", "redaction", "m1", cfg=cfg)
+        self.assertIn("## Modèle de ticket de l'équipe\ndm_site:docs/autre.md", r.stdout)
+        self.assertIn("modèle docs/autre.md introuvable", r.stderr)
+        cfg = self.cfg_with(template="Trois sections, en français.")
+        self.assertIn("## Modèle de ticket de l'équipe\nTrois sections, en français.", self.t("poste", "redaction", "m1", cfg=cfg).stdout)
+
+    def test_dependencies_are_cleaned_shown_at_the_stamp_and_linked_in_jira(self):
+        """bloque_par : numéros valides, sans boucle ; montré au tampon ; à la création, chaque ticket est lié (« Blocks »)
+        à ceux déjà créés, vu de lui-même : inwardIssue = il est bloqué par, outwardIssue = il bloque."""
+        self.t("dossier", "l1", "Contrat d'API puis client", "Story", "8", "dm/api", "dm/site", "backlog", "")
+        three = {"tickets": [{"summary": "API : le contrat", "description": "h2. x", "composant": "dm/api", "points": 3, "bloque_par": []},
+                             {"summary": "Site : le client", "description": "h2. x", "composant": "dm/site", "points": 3, "bloque_par": ["T1", 3, 2, 9]},
+                             {"summary": "Doc", "description": "h2. x", "composant": "dm/site", "points": 2, "bloque_par": [2]}]}
+        out = self.t("rapport", "redaction", "l1", stdin=json.dumps(three)).stdout
+        self.assertIn("2. Site : le client · dm/site · 3 pts · bloqué par T1, T3", out)
+        t = json.loads(Path(self.tmp, ".cache/pixel-bureau/ticket/l1/tickets.json").read_text())["tickets"]
+        self.assertEqual([x["bloque_par"] for x in t], [[], [1, 3], []], "lui-même et T9 retirés ; T3 bloqué par T2 fermerait une boucle")
+        ap = self.t("apercus", "l1").stdout
+        self.assertIn("T2 · Site : le client · Story · 3 pts · dm/site · bloqué par T1, T3", ap)
+        self.assertIn("Liens Jira « Blocks » posés à la création", ap)
+        lot = lambda i, key: (Path(self.tmp, ".kronn").mkdir(exist_ok=True), Path(self.tmp, ".kronn", "current_task.json").write_text(json.dumps({"run": "l1", "i": i})),  # noqa: E731
+                              self.t("lot", "resultat", key), json.loads(self.t("lot", "liens", key).stdout))[-1]
+        self.assertEqual(lot(0, "DM-1"), {"body": {}, "n": 0, "texte": "aucun lien"}, "le premier créé n'a rien à lier")
+        b = lot(1, "DM-2")
+        self.assertEqual(b["body"]["update"]["issuelinks"], [{"add": {"type": {"name": "Blocks"}, "inwardIssue": {"key": "DM-1"}}}])
+        self.assertEqual(b["texte"], "bloqué par DM-1", "T3 pas encore créé : son lien viendra avec lui")
+        b = lot(2, "DM-3")
+        self.assertEqual(b["body"]["update"]["issuelinks"], [{"add": {"type": {"name": "Blocks"}, "outwardIssue": {"key": "DM-2"}}}])
+        self.assertEqual(b["texte"], "bloque DM-2")
+
     def test_history_never_fails_the_step(self):
         Path(self.tmp, ".local/share/pixel-bureau/historique").mkdir(parents=True)
         Path(self.tmp, ".local/share/pixel-bureau/historique/ticket").write_text("un fichier, pas un dossier")

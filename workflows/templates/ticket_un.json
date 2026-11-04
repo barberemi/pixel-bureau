@@ -143,15 +143,70 @@
      "resultat",
      "{{steps.creer.data.key}}"
     ],
-    "exec_timeout_secs": 30,
-    "on_result": [
-     {
-      "contains": "OK",
-      "action": {
-       "type": "Stop"
+    "exec_timeout_secs": 30
+   },
+   {
+    "name": "liens_corps",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "Les liens « Blocks » du ticket créé avec ceux déjà créés de l'intention (bloque_par de la rédaction), vus de ce ticket : la sortie JSON du script, lue telle quelle par liens. 0 token.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "l",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/ticket.py@@",
+         "lot",
+         "liens",
+         "{{steps.creer.data.key}}"
+        ],
+        "timeout_secs": 30,
+        "output_format": "json"
+       },
+       "required": true
       }
-     }
-    ]
+     ],
+     "concurrent_limit": 1
+    }
+   },
+   {
+    "name": "liens",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Pose les liens dans Jira (update.issuelinks : inwardIssue « is blocked by », outwardIssue « blocks », vus du ticket créé) ; rien à lier : un PUT vide, sans effet. Après resultat : le ticket est noté créé même si un lien échoue. returnIssue=true : sans lui Jira répond 204 sans corps (KT-689).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/2/issue/{{steps.creer.data.key}}",
+    "api_method": "PUT",
+    "api_query": {
+     "fields": "issuelinks",
+     "returnIssue": "true"
+    },
+    "api_body": "{{steps.liens_corps.data.sources.l.body}}",
+    "external_effect": true
    }
   ],
   "actions": [],

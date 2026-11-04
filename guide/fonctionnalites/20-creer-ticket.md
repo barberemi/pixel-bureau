@@ -22,13 +22,13 @@ Depuis la **fiche de l'agent** qui incarne le modèle (Karen sur les captures), 
 
 ## Le relire
 
-Trois postes, un agent chacun : 📚 la recherche lit quelques fichiers des dépôts des composants ; ✍ la rédaction écrit le ou les tickets au modèle de l'équipe (`jira.create.template`), titre et description en wiki Jira, un composant et des points chacun, et découpe l'intention qui touche plusieurs projets ou livrables ; 🧐 la critique relit, et renvoie à la rédaction ce qui est à retoucher (trois tours au plus). Personne ne crée rien.
+Trois postes, un agent chacun : 📚 la recherche lit quelques fichiers des dépôts des composants ; ✍ la rédaction écrit le ou les tickets au modèle de l'équipe (`jira.create.template`, recopié en entier dans sa consigne quand c'est un fichier d'un dépôt), titre et description en wiki Jira, un composant et des points chacun, et découpe l'intention qui touche plusieurs projets ou livrables ; quand elle découpe, elle dit aussi quel ticket est bloqué par quel autre (celui dont il consomme le résultat) ; 🧐 la critique relit (modèle suivi, dépendances dans le bon sens), et renvoie à la rédaction ce qui est à retoucher (trois tours au plus). Personne ne crée rien.
 
 La validation arrive sur sa fiche, avec l'alerte ✋ habituelle : le titre, le type, les points, les composants, le sprint et l'épic, puis la description en texte lisible (titres en ▸, panneaux en │).
 
 ![La validation : le ticket tel qu'il sera créé](../img/creer-ticket-validation.png)
 
-Une validation pour la liste. Elle commence par le récap, une ligne par ticket (T1, T2… : titre, type, points, composant), puis les réserves de la critique s'il en reste. Le détail de chaque ticket suit quand la liste est courte (3 500 caractères au plus). Sinon, il est au 2e étage, au clic sur la carte du ticket ou sur sa ligne du panneau ([La rédaction et la revue](28-redaction.md)). Les réponses :
+Une validation pour la liste. Elle commence par le récap, une ligne par ticket (T1, T2… : titre, type, points, composant, « bloqué par T1 » s'il dépend d'un autre), puis les réserves de la critique s'il en reste. Le détail de chaque ticket suit quand la liste est courte (3 500 caractères au plus). Sinon, il est au 2e étage, au clic sur la carte du ticket ou sur sa ligne du panneau ([La rédaction et la revue](28-redaction.md)). Les réponses :
 
 - **✅ Approuver** : les tickets sont créés, l'un après l'autre.
 - **Changements** : dis ce qui change (« retire T2 », « fusionne T1 et T3 », « T2 : 5 points ») ; la rédaction reprend avec tes retours, puis la critique, puis la validation.
@@ -36,7 +36,9 @@ Une validation pour la liste. Elle commence par le récap, une ligne par ticket 
 
 ## La création
 
-Par l'API REST v2 de Jira, sans IA : la description garde ses panneaux, et les `{{…}}` du modèle de l'équipe passent tels quels. Les points vont dans le champ de l'écran de création (`jira.create.points_field`), puis dans celui du board (premier de `jira.points_fields`) s'il est différent.
+Par l'API REST v2 de Jira, sans IA : la description garde ses panneaux, et les `{{…}}` du modèle de l'équipe passent tels quels. Les points vont dans le champ de l'écran de création (`jira.create.points_field`), puis dans celui du board (premier de `jira.points_fields`) s'il est différent, sauf avec `jira.create.board_copy` à `false` : seule l'estimation est alors remplie.
+
+Quand l'intention est découpée, chaque ticket créé est lié dans Jira (« Blocks » : *blocks* / *is blocked by*) à ceux déjà créés : il est bloqué par ceux à livrer avant lui, et bloque ceux qui l'attendent. Les tickets sont créés l'un après l'autre, chaque lien est posé dès que ses deux tickets existent ; un lien en échec ne défait pas la création.
 
 Le ticket revient sur la page :
 
@@ -56,7 +58,9 @@ Modèle du Bureau `ticket`, proposé par l'installateur quand Jira est connecté
 | `components` | aucune liste | composants proposés ; sans liste, le champ est libre |
 | `component_required` | oui avec une liste | composant obligatoire |
 | `points_field` | le champ du board | champ des points de l'écran de création |
-| `template` | aucun | le modèle de ticket de l'équipe : un fichier, ou un chemin dans un dépôt (cherché dans les clones locaux) |
+| `board_copy` | oui | recopier les points dans le champ du board quand `points_field` en est un autre ; `false` : seule l'estimation est remplie |
+| `template` | aucun | le modèle de ticket de l'équipe : un texte, ou « `<chemin> du dépôt <dépôt>` » (ou « `<dépôt>:<chemin>` »), un fichier lu dans la copie locale du dépôt (le projet Kronn du même nom, sinon `impl.clones`, `~/Sites` par défaut) et recopié dans la consigne de la rédaction et de la critique |
+| `link_type` | Blocks | type de lien Jira des dépendances entre les tickets d'une intention découpée |
 | `language` | français | langue des tickets rédigés (titre, description) et des rapports des postes ; le code et les noms de fichiers restent tels quels |
 | `title_language` | celle de `language` | langue du titre seul, quand le modèle de l'équipe veut par exemple des titres en anglais et des descriptions en français ; elle passe avant les consignes de langue du modèle, pour que la rédaction et la critique ne se contredisent pas d'un tour à l'autre |
 
