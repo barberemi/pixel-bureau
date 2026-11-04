@@ -13,7 +13,7 @@ sauf jira.create.board_copy à false.
 sprint : « next » = le premier sprint futur du board (liste lue par l'étape sprints), sinon le backlog.
 resultat : {key, url, title, meta} sur stdout, relu par les relevés office et live pour la fiche de l'agent (run.res).
 Réglage jira.create (config ou pack) : types, type, components, component_required, points_field, board_copy, template,
-link_type, language, title_language, historique.
+link_type, language, title_language, historique, labels (posés sur chaque ticket créé).
 
 La salle de rédaction (2e étage) : une intention peut donner plusieurs tickets, sur un ou plusieurs projets. Le modèle
 ticket enchaîne des postes, un sous-workflow chacun (ticket_recherche, ticket_redaction, ticket_critique), puis un
@@ -78,6 +78,13 @@ def apercu(raw, type_, points, c1, c2, sprint, parent):
     print(readable(d.get("description") or ""))
 
 
+def labels():
+    """Labels posés sur chaque ticket créé (jira.create.labels de l'équipe : repérer les tickets rédigés par le Bureau),
+    sans espace (Jira refuse un label qui en a)."""
+    ls = ((CFG.get("jira") or {}).get("create") or {}).get("labels") or []
+    return list(dict.fromkeys(str(x).strip().replace(" ", "_") for x in ([ls] if isinstance(ls, str) else ls) if str(x).strip()))
+
+
 def board_field():
     return ((CFG.get("jira") or {}).get("points_fields") or [""])[0]
 
@@ -109,6 +116,8 @@ def champs(raw, type_, points, c1, c2, sprint, parent, sprints):
         f["components"] = [{"name": c} for c in comps]
     if parent.strip():
         f["parent"] = {"key": parent.strip()}
+    if labels():
+        f["labels"] = labels()
     if create_field():
         f[create_field()] = sp
     sid = next_sprint(sprints) if sprint == "next" else None
@@ -494,6 +503,8 @@ def apercus(run):
         print(f"T{i + 1} · {(x.get('summary') or '(sans titre)').strip()} · {d.get('type') or '?'} · {number(pts(x)):g} pts · {comp(x) or 'sans composant'}{bloque(x)}")
     if any(x.get("bloque_par") for x in t):
         print(f"Liens Jira « {link_type()} » posés à la création, dans ce sens (« bloqué par » : à livrer avant).")
+    if labels():
+        print("Labels : " + ", ".join(labels()))
     c = dget(run, "critique.json") or {}
     if c.get("verdict") == "a_retoucher" and c.get("version") == (dget(run, "tickets.json") or {}).get("version"):
         # trois tours faits sans accord : la critique garde ses réserves, le tampon les montre plutôt que de les taire

@@ -169,6 +169,17 @@ class TicketChainTest(unittest.TestCase):
         Path(p).write_text(json.dumps(c))
         return p
 
+    def test_labels_on_every_created_ticket(self):
+        cfg = self.cfg_with(labels=["ia_framed", "Rédigé par le Bureau", "ia_framed"])
+        self.t("dossier", "l1", "x", "Tâche", "1", "dm/site", "", "backlog", "", cfg=cfg)
+        self.t("rapport", "redaction", "l1", stdin='{"tickets": [{"summary": "A", "description": "h2. Contexte", "composant": "dm/site", "points": 1}]}', cfg=cfg)
+        self.t("aiguillage", "l1", cfg=cfg)
+        self.assertIn("Labels : ia_framed, Rédigé_par_le_Bureau", self.t("apercus", "l1", cfg=cfg).stdout)
+        Path(self.tmp, ".kronn", "current_task.json").write_text(json.dumps(json.loads(Path(self.tmp, ".kronn", "tickets.json").read_text())[0]))
+        f = json.loads(self.t("lot", "champs", "{}", cfg=cfg).stdout)["body"]["fields"]
+        self.assertEqual(f["labels"], ["ia_framed", "Rédigé_par_le_Bureau"])
+        self.assertNotIn("labels", json.loads(self.t("lot", "champs", "{}").stdout)["body"]["fields"], "sans réglage : aucun label")
+
     def test_team_template_file_is_copied_into_the_prompt(self):
         """« <chemin> du dépôt <dépôt> » : le fichier, lu dans la copie locale du dépôt, recopié dans la consigne de la
         rédaction et de la critique (l'agent n'a plus à le chercher) ; introuvable : le réglage tel quel."""
