@@ -85,6 +85,10 @@ class ReviewTest(unittest.TestCase):
         self.assertIn("## Rapport du poste 🗺 contexte\nSens : x", lecture)
         self.assertIn("R<ligne>", lecture)
         self.assertIn("docs/AGENTS.md", self.run_("poste", "docs", "12", "dm/site").stdout)
+        # chemins absolus, dans la copie de travail du run : jamais à reconstruire sous le dossier du projet
+        self.assertRegex(lecture, r"le worktree `/[^`]*%s/\.kronn/pr-12`" % os.path.basename(self.tmp))
+        self.assertRegex(lecture, r"`/[^`]*%s/\.kronn/review-12/diff\.md`" % os.path.basename(self.tmp))
+        self.assertIn("ne conclus jamais qu'ils manquent", lecture)
         self.assertNotEqual(self.run_("poste", "inconnu", "12", "dm/site").returncode, 0)
         self.assertNotEqual(self.run_("rapport", "lecture", "12", stdin="  ").returncode, 0)  # rien rendu : en échec
 
@@ -128,3 +132,21 @@ class ReviewTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CronCap(unittest.TestCase):
+    def test_six_prs_per_pass_the_rest_waits(self):
+        """Six PR au plus par passage du cron : séquentielles, 10 à 25 min chacune, sous la limite de 2 h du run."""
+        d = json.load(open(os.path.join(os.path.dirname(__file__), "..", "workflows", "templates", "review_cron.json")))
+        fin = next(s for s in d["definition"]["steps"] if s["name"] == "finalize")
+        tmp = tempfile.mkdtemp()
+        try:
+            os.makedirs(os.path.join(tmp, ".kronn"))
+            cand = [{"number": n, "baseRef": "main", "author": "pam", "repo": "dm/site", "head": "h%d" % n} for n in range(9)]
+            Path(tmp, ".kronn", "prs_candidates.json").write_text(json.dumps(cand))
+            r = subprocess.run([fin["exec_command"], *fin["exec_args"][:3], "bot"], cwd=tmp, input=json.dumps({"items": []}),
+                               capture_output=True, text=True)
+            self.assertIn("9 a reviewer, garde 6, reporte 3", r.stdout)
+            self.assertEqual(len(json.load(open(os.path.join(tmp, ".kronn", "prs.json")))), 6)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)

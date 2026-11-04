@@ -183,15 +183,19 @@ def poste(k, pr, repo):
     if k == "securite" and not securite_utile(pr):  # code 5 : le sous-workflow saute à sa fin, sans agent
         print("Passe sécurité sautée : le contexte n'a rien vu de sensible dans le diff.")
         sys.exit(5)
-    wt = ".kronn/pr-%s" % pr
+    # chemins absolus : un agent qui voit le nom du dépôt reconstruisait parfois `.kronn/pr-<n>` sous le dossier du projet
+    # (où rien n'existe) au lieu de sa copie de travail, et rendait un rapport vide (« fichiers introuvables »)
+    wt, dd = os.path.abspath(".kronn/pr-%s" % pr), os.path.abspath(ddir(pr))
     parts = ["Review la PR #%s (`%s`) · poste %s" % (pr, repo, k),
              "Tu es le poste %s de la revue de PR du Bureau : une chaîne de postes (🗺 contexte, 📚 docs, 🔍 lecture, 🔒 "
              "sécurité) lit la PR, puis le poste 🧐 avis vérifie leurs constats, tranche et rédige la review. Tu ne postes "
              "RIEN, n'appelles aucune API en écriture et ne modifies aucun fichier : tu lis et tu rends ton rapport, en "
              "français (le vocabulaire technique reste tel quel)." % TITRES[k],
              "## Où lire\n- Le code de la PR : le worktree `%s` (lecture, grep, git en lecture seule).\n- Le diff annoté : "
-             "`%s/diff.md`.\n- Les fichiers modifiés (DIFF_FILES), les reviews et commentaires déjà postés : `%s/.review-context.json`."
-             % (wt, ddir(pr), wt),
+             "`%s/diff.md`.\n- Les fichiers modifiés (DIFF_FILES), les reviews et commentaires déjà postés : `%s/.review-context.json`.\n"
+             "Ces chemins sont dans ta copie de travail (ton dossier courant), pas dans le dossier du projet : ils existent, "
+             "lis-les tels quels ; ne conclus jamais qu'ils manquent sans les avoir ouverts."
+             % (wt, dd, wt),
              "## Consignes de l'équipe (prioritaires)\n" + guidelines()]
     if k != "contexte" and dread(pr, "contexte.md"):  # le cadrage seul : chaque poste lit le code sans parti pris
         parts.append("## Rapport du poste %s\n%s" % (TITRES["contexte"], dread(pr, "contexte.md")))
