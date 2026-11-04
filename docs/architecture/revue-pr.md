@@ -34,7 +34,7 @@ Ne pas le casser en touchant à la revue [src: file: workflows/templates/review_
 
 Le cron relit ses PR l'une après l'autre (foreach séquentiel) ; la salle montre celles qui attendent, sans rien faire apparaître d'un coup [src: file: page/src/68-revue.js:1] :
 
-- `finalize` du cron imprime `PRS=[[repo, n°, auteur], …]`, dans l'ordre du cron (jamais regroupé par auteur) ; `workflows/redaction_snapshot.py` en tire `revue.batches` (par passage du cron, 24 h) et `revue.verdicts` (verdict de l'avis de chaque revue finie), un run fini lu une fois (`~/.cache/pixel-bureau/revue/`) [src: file: workflows/redaction_snapshot.py:revue].
+- `finalize` du cron garde six PR au plus par passage (`kept=keep[:6]`, le reliquat dans « reporte n ») : les revues sont séquentielles, 10 à 25 min chacune, et le run s'arrête à 2 h (`Timeout guard`, le 2026-11-04 avec 9 PR). Il imprime `PRS=[[repo, n°, auteur], …]`, dans l'ordre du cron (jamais regroupé par auteur) ; `workflows/redaction_snapshot.py` en tire `revue.batches` (par passage du cron, 24 h) et `revue.verdicts` (verdict de l'avis de chaque revue finie), un run fini lu une fois (`~/.cache/pixel-bureau/revue/`) [src: file: workflows/redaction_snapshot.py:revue].
 - La page compare l'état voulu à l'heure T (`rvfState` : PR au casier, PR lue, revues finies) à ce qu'elle a déjà posé (`RVF_M`), comme la caserne : Bernard et son transpalette pour une nouvelle fournée (il vide la corbeille « Postées » du passage d'avant), le relecteur qui tamponne, pose à la corbeille et prend le dossier suivant, les auteurs (une personne par auteur) qui restent au bureau si leur PR suivante est la prochaine, retournent s'asseoir sinon, et redescendent après leur dernière. Six cases au casier, puis « +n ». En arrivant à l'étage, après un saut du curseur de plus de 2 min ou avec REDUCED_MOTION, tout est posé.
 - Le premier bureau est celui de la file (`rvfDesk`) ; les revues à la demande prennent les cinq autres. Config de la page : `CFG.revue_cron_wf`.
 
@@ -44,3 +44,4 @@ Le cron relit ses PR l'une après l'autre (foreach séquentiel) ; la salle montr
 - Bilan de la chaîne : les jetons des postes comptent avec la revue de la PR (`REVUE` de `workflows/chaine_bilan.py`).
 
 Tests : `tests/test_review.py` (script), `tests/test_models.py` (rendu, niveaux, 20 étapes), `tests/redaction.test.js` (salle), `tests/test_chaine_bilan.py`.
+- Les consignes des postes (`review.py poste`) donnent des chemins absolus : avec `.kronn/pr-<n>` en relatif, un agent reconstruisait parfois le chemin sous le dossier du projet (où rien n'existe) et rendait un rapport vide, quel que soit le modèle [src: file: workflows/review.py:186].
