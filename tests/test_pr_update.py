@@ -295,6 +295,32 @@ class PrUpdateTest(unittest.TestCase):
         c = self.step("fix_check", cfg)
         self.assertIn("Contrôles (echo à part) : verts ✅", c.stdout)
 
+    def test_fix_version_of_the_pass(self):
+        """Passe n : « **Version n** » en tête de chaque réponse, compteur dans le bloc de la description ; sans bloc, le
+        plus grand « Version N » déjà posté en tête d'une réponse (fil résolu compris) ou d'un commentaire, plus un."""
+        self.data["threads"] = [self.thread("T1")]
+        r, _ = self.fix_run(FIXTURE)
+        self.assertIn("Passe de corrections : Version 1.", r.stdout)
+        self.assertIn("🔢 **Version 1**", self.step("fix_diff").stdout)
+        self.assertEqual(self.step("fix_push").returncode, 0)
+        calls = [json.loads(x) for x in Path(self.tmp, "gh.json.calls").read_text().splitlines()]
+        reply = next(c for c in calls if any("addPullRequestReviewThreadReply" in x for x in c))
+        self.assertIn("b=**Version 1**\n\n✅ **Corrigé** : renommé.", reply)
+        edit = next(c for c in calls if c[:2] == ["pr", "edit"] and "--body" in c)
+        body = edit[edit.index("--body") + 1]
+        self.assertIn("<!-- bureau-fix:version=1 -->", body)
+        self.assertIn("### 🤖 Corrections de review · Version 1", body)
+        # passe suivante : le compteur de la description
+        self.data["pr"]["body"] = body
+        self.assertIn("Version 2.", self.step("fix_prepare").stdout)
+        # sans bloc : une passe faite à la main (« Version 3 » en tête d'une réponse, fil résolu) et un commentaire
+        resolved = self.thread("T0", resolved=True)
+        resolved["comments"]["nodes"].append({"author": {"login": "moi"}, "body": "**Version 3**\n\n✅ Corrigé à la main.", "createdAt": ""})
+        self.data["threads"] = [resolved, self.thread("T1")]
+        self.data["pr"]["body"] = "Ma description."
+        self.data["pr"]["comments"] = [{"body": "Version 2 : merci pour les retours"}, {"body": "La version 9 de PHP"}]
+        self.assertIn("Version 4.", self.step("fix_prepare").stdout)
+
     def test_fix_with_nothing_changed_nor_answered_ends(self):
         self.data["threads"] = [self.thread("T1")]
         self.step("fix_prepare")
