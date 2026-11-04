@@ -67,7 +67,7 @@ const guestBob=(c,fx)=>c.guest&&c.moving&&fx%4<2?-1:0;
 // en télétravail : le personnage en transparence à sa place (36-absences.js)
 function drawChar(c,now){if(c._st&&c._st.tt){ctx.save();ctx.globalAlpha=TT_ALPHA;try{drawChar0(c,now);}finally{ctx.restore();}}else drawChar0(c,now);
   if(c.pos&&metierOf(c))mtKit(c); // 69-metiers.js : la tenue de son étage
-  else if(c.pos&&typeof drawGear==='function'){const g=c.gear||(typeof atIsLauncher==='function'&&atIsLauncher(c)?'chantier':null);if(g)drawGear(c,g);} // 68-atelier.js : casque et gilet de chantier
+  else if(c.pos&&typeof drawGear==='function'){const g=c.gear!==undefined?c.gear:typeof atIsLauncher==='function'&&atIsLauncher(c)?'chantier':null;if(g)drawGear(c,g);} // 68-atelier.js : casque et gilet de chantier (gear null : aucune)
   if(c.pos&&c._st&&c._st.carry&&typeof drawCarry==='function')drawCarry(c);} // 69-atelier-rdc.js : le carton porté
 function drawChar0(c,now){
   const img=spriteOf(c); if(!ready(img)||!c.pos)return;

@@ -34,7 +34,7 @@ function mtKit(c,m){
   if(m.kit==='pompier')csHelmet(ctx,x,y+d,c.dir,false); // 68-caserne.js
   else if(m.kit==='presse'||m.kit==='visiere')rdHat(ctx,m.kit,x,y+d,c.dir); // 68-redaction.js
   else if(m.kit==='chirurgien')mtChirurgien(ctx,x,y,c.dir,seated);
-  else if(m.kit==='chantier')drawGear(c,'chantier',26); // 68-atelier.js
+  else if(m.kit==='chantier')drawGear(c,'chantier'); // 68-atelier.js
 }
 // ---------- ce qu'il lance : la console Support, sinon sa fiche et ses boutons ----------
 function mtOpen(c){
