@@ -118,6 +118,7 @@ If T0–T2 are insufficient, state which additional file you need and why. Never
 ## 4. Constraints
 
 - If no command output: ask user to paste it.
+- **Maquettes avant le code** : tout changement visible (dessin, personnages, déplacements, mise en page, nouvel étage ou nouvelle salle) commence par des maquettes montrées au mainteneur (captures dessinées dans la vraie page, plusieurs variantes avec une recommandée, publiées en artefact), et n'est codé qu'après son choix. Toute retouche d'un rendu existant montre aussi des captures avant/après [src: user:mainteneur:2026-11-04].
 - Changement visible = dans le même commit : la page `guide/fonctionnalites/NN-*.md`, la ligne du tableau du README et les captures `tools/shots.py` ; ne commiter que les captures qui changent vraiment (le rendu fait du bruit) [src: file: README.md:9] [src: file: guide/developpement.md:50].
 - Un commit par changement, format `type(portée): sujet` en français (`feat`, `fix`, `style`, `docs`…), trailer `Co-Authored-By` ; DCO non requis [src: file: docs/briefing.md:21].
 - Modifier `bureau.config.json` fait apparaître tous les workflows en DIFF dans le contrôle des modèles : attendu, pas une dérive [src: file: docs/briefing.md:25].
