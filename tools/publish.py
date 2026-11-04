@@ -1,6 +1,6 @@
 """Publie dans Kronn (API locale) : la page et/ou les scripts des workflows du Bureau.
 
-  python3 tools/publish.py page        # assemble la page (sans démo) et la pousse dans la page Le Bureau (et les pages à part : « Chaîne · bilan », « Support · bilan »)
+  python3 tools/publish.py page        # assemble la page (sans démo) et la pousse dans la page Le Bureau (et les pages à part : « Chaîne · bilan », « Support · bilan », « Rédaction · bilan »)
   python3 tools/publish.py workflows   # pousse le rendu des modèles (workflows/templates) : étapes, scripts, crons, QP
   python3 tools/publish.py all
 """
@@ -33,7 +33,7 @@ def page():
     except assemble.PageTooBig as e:
         sys.exit(f"page non publiée : {e}")
     print("page", call("PUT", f"/pages/{PAGE_ID}/html", {"html": html}).get("success"), f"({len(html.encode())} octets)")
-    for key, (title, _, fichier) in templates.SIDE_PAGES.items():  # pages à part (créées par install.py : chaîne, Support)
+    for key, (title, _, fichier) in templates.SIDE_PAGES.items():  # pages à part (créées par install.py : chaîne, Support, rédaction)
         if CFG.get(key):
             html = Path(os.path.join(ROOT, "page", fichier)).read_text(encoding="utf-8")
             print(f"page « {title} »", call("PUT", f"/pages/{CFG[key]}/html", {"html": html}).get("success"))

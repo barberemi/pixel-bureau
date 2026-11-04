@@ -25,7 +25,7 @@ OFFICE = [("dwight", "Dwight"), ("jim", "Jim"), ("stanley", "Stanley"), ("phylli
 ROLES = {"dev": ("Développeur", None), "lead": ("Tech Lead", "lead"), "qa": ("Testeur", "qa"), "po": ("Product owner", "po"),
          "sm": ("Facilitateur", "sm")}
 DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "agents", "bosspages", "pagelist", "gitfut", "layout", "actions", "duck", "absences", "mails", "mail_rules", "support", "todos", "atelier", "retours", "redaction"]
-CRONS = ("office", "live", "team", "payroll", "canard", "absences", "courrier", "support_poll", "chaine_bilan", "support_bilan")
+CRONS = ("office", "live", "team", "payroll", "canard", "absences", "courrier", "support_poll", "chaine_bilan", "support_bilan", "redaction_bilan")
 DATASET = lambda name: {"name": name, "kind": "snapshot", "max_points": 50000}  # noqa: E731
 
 
@@ -788,7 +788,7 @@ def bilan_html():
 
 
 def upsert_side_page(k, cfg, key, dry):
-    """Une page à part (« Chaîne · bilan », « Support · bilan ») : créée une fois (son id dans cfg[key]), ses datasets
+    """Une page à part (« Chaîne · bilan », « Support · bilan », « Rédaction · bilan ») : créée une fois (son id dans cfg[key]), ses datasets
     ajoutés s'ils manquent. Son HTML est publié avec la page du Bureau (install.py, publish.py page)."""
     title, datasets, _ = templates.SIDE_PAGES[key]
     pid = cfg.get(key)
@@ -979,7 +979,7 @@ def main(argv=None):
     cfg["page_id"] = upsert_page(k, cfg, title, a.dry_run)
     chosen = models(ask, cfg, old)  # modèles d'agents (#78) : seulement ceux acceptés
     # pages à part, avant les workflows : le cron de chaque bilan publie dans sa page
-    for model, key in (("impl_chain", "bilan_page_id"), ("support", "support_bilan_page_id")):
+    for model, key in (("impl_chain", "bilan_page_id"), ("support", "support_bilan_page_id"), ("ticket", "redaction_bilan_page_id")):
         if model in chosen and not templates.skipped(model, cfg):
             bid = upsert_side_page(k, cfg, key, a.dry_run)
             if bid:

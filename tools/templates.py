@@ -5,7 +5,7 @@
   python3 tools/templates.py render <clé>   # affiche le rendu d'un modèle (office, live, team, payroll, canard, absences, avatar, agent, gate, relaunch, layout, comment, duck, ask, sketch)
 
 Emplacements, remplacés au rendu :
-  @@page_id@@, @@bilan.page_id@@ (page « Chaîne · bilan »), @@support_bilan.page_id@@ (page « Support · bilan »), @@kronn.project_id@@, @@jira.config_id@@, @@jira.project@@, @@jira.board@@, @@jira.sprint_field@@,
+  @@page_id@@, @@bilan.page_id@@ (page « Chaîne · bilan »), @@support_bilan.page_id@@ (page « Support · bilan »), @@redaction_bilan.page_id@@ (page « Rédaction · bilan »), @@kronn.project_id@@, @@jira.config_id@@, @@jira.project@@, @@jira.board@@, @@jira.sprint_field@@,
   @@jira.points_fields@@ (liste jointe par des virgules), @@owner_name@@ (prénom du boss),
   @@microsoft.config_id@@, @@microsoft.site@@, @@microsoft.item@@ (planning des absences, connexion Microsoft 365 de Kronn),
   @@script:workflows/x.py@@ (le script, config d'installation injectée comme le fait publish.py),
@@ -33,7 +33,8 @@ REVIEW_POSTES = ("contexte", "docs", "lecture", "securite")
 # pages Kronn à part, à projeter (HTML autonome de page/, ni assemblage ni démo) : clé de leur id dans la config ->
 # (titre, datasets, fichier) ; créées par install.py, publiées par install.py et publish.py page
 SIDE_PAGES = {"bilan_page_id": ("Chaîne · bilan", ["bilan"], "bilan.html"),
-              "support_bilan_page_id": ("Support · bilan", ["support_bilan"], "support-bilan.html")}
+              "support_bilan_page_id": ("Support · bilan", ["support_bilan"], "support-bilan.html"),
+              "redaction_bilan_page_id": ("Rédaction · bilan", ["redaction_bilan"], "redaction-bilan.html")}
 # modèle -> (type, où trouver l'id dans la config, scripts par étape)
 TEMPLATES = {
     "office": ("workflow", ("workflows", "office"), {"snapshot": "workflows/office_snapshot.py"}),
@@ -119,6 +120,9 @@ TEMPLATES = {
     # API Kronn), page Kronn à part (support_bilan_page_id) ; sans investigation Support installée ou sans cette page : pas créé
     "support_bilan": ("workflow", ("workflows", "support_bilan"), {"archive": "workflows/support.py", "releve": "workflows/support_bilan.py",
                                                                    "bilan": "workflows/support_bilan.py"}),
+    # page « Rédaction · bilan » : l'historique des intentions de la salle de rédaction et des tickets créés (historique de
+    # ticket.py et API Kronn), page Kronn à part (redaction_bilan_page_id) ; sans modèle ticket installé ou sans cette page : pas créé
+    "redaction_bilan": ("workflow", ("workflows", "redaction_bilan"), {"releve": "workflows/redaction_bilan.py", "bilan": "workflows/redaction_bilan.py"}),
     "ask": ("quick_prompt", ("actions", "ask"), {}),
     "sketch": ("quick_prompt", ("actions", "sketch"), {}),
 }
@@ -219,6 +223,7 @@ def values(cfg):
     return {
         "page_id": cfg.get("page_id") or "",
         "bilan.page_id": cfg.get("bilan_page_id") or "",  # page « Chaîne · bilan » (installée avec la chaîne)
+        "redaction_bilan.page_id": cfg.get("redaction_bilan_page_id") or "",  # page « Rédaction · bilan » (installée avec le modèle ticket)
         "support_bilan.page_id": cfg.get("support_bilan_page_id") or "",  # page « Support · bilan » (installée avec l'investigation)
         "kronn.project_id": (cfg.get("kronn") or {}).get("project_id") or "",
         "jira.config_id": j.get("config_id") or "",
@@ -347,6 +352,8 @@ def skipped(key, cfg):
     if key == "support_bilan":  # la page du bilan du Support : investigation installée, canal réglé et page créée (install.py)
         s = cfg.get("support") or {}
         return not ((cfg.get("models") or {}).get("support") and cfg.get("support_bilan_page_id") and s.get("team") and s.get("channel"))
+    if key == "redaction_bilan":  # la page du bilan de la rédaction : modèle ticket installé et page créée (install.py)
+        return not ((cfg.get("models") or {}).get("ticket") and cfg.get("redaction_bilan_page_id"))
     if key.startswith("impl"):  # la chaîne lit le ticket dans Jira et livre sur GitHub (gh)
         return not (cfg.get("jira") or {}).get("config_id")
     if key in ("estimate", "assign", "unassign", "ticket", "ai_time") or key.startswith("ticket_"):  # ses postes et chaque ticket aussi
