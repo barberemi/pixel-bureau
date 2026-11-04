@@ -54,7 +54,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Relit le message dans le relevé, ouvre la discussion Kronn de l'investigation (state.disc, la même pour tous les postes) et pose le dossier du message : la demande et ton commentaire (0 token).",
+    "description": "Relit le fil dans Teams (message et réponses, connecteur Microsoft 365), ouvre la discussion Kronn de l'investigation (state.disc, la même pour tous les postes) et pose le dossier du message : la demande, les réponses déjà dans le fil et ton commentaire (un appel au petit modèle pour relire le fil).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -65,7 +65,7 @@
      "{{run.id}}",
      "{{comment}}"
     ],
-    "exec_timeout_secs": 60
+    "exec_timeout_secs": 120
    },
    {
     "name": "mark",
