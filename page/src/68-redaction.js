@@ -7,7 +7,7 @@
 // bureau, le relecteur (visière verte de correcteur) derrière son écran et, en face, l'auteur de la PR (un agent
 // remplaçant pour ta PR ou celle de quelqu'un hors de l'équipe) ; sous le bureau, les postes de son run, lus du run
 // (🗺 contexte, 📚 docs, 🔍 lecture, 🔒 sécu : un sous-workflow review_<poste> chacun ; puis 🧐 avis et ✍ postée).
-// Au mur, le tableau noir des revues du jour. Le soir et le week-end, la veilleuse : seuls ceux au travail et le boss.
+// Au mur, le tableau noir des revues du jour ; dans la rédaction, son jumeau des tickets du jour, sur un chevalet. Le soir et le week-end, la veilleuse : seuls ceux au travail et le boss.
 // Données : dataset redaction (workflows/redaction_snapshot.py, cron live) et les runs de la revue (DATA.runs) ; démo : redactionDemo().
 const RD_POSTES=[{k:'recherche',i:'📚',n:'Recherche',d:'cherche ce que l\'intention touche, projet par projet'},{k:'redaction',i:'✍',n:'Rédaction',d:'écrit les tickets, un par projet touché'},
   {k:'critique',i:'🧐',n:'Critique',d:'relit les tickets et renvoie à la rédaction (trois tours au plus)'},{k:'valider',i:'✋',n:'Toi',d:'tu tamponnes chaque ticket, ou tu demandes des changements'}];
@@ -17,7 +17,7 @@ const RD_HELP={bar:()=>'<span>Tickets :</span>'+legSwatches(RD_TK)+'<span>Verdic
   postes:()=>[['Rédaction',RD_POSTES],['Revue d\'une PR',Object.values(RV_STEP).map(([l,,d])=>({i:l.split(' ')[0],n:l.slice(l.indexOf(' ')+1),d}))]],
   qui:'<p><b>Rédaction</b> : les agents en reporters, chapeau mou et carte de presse.</p><p><b>Revue</b> : les relecteurs à visière verte ; l\'auteur de la PR assis en face, de dos ; un agent remplaçant pour ta propre PR.</p>'+
     '<p><b>Bernard</b> monte la fournée du cron des revues. <b>Le boss</b> tamponne les tickets.</p>',
-  ou:'<p><b>Bibliothèques</b> : une par composant Jira. <b>La table</b> : une intention et ses tickets ; <b>le fil rouge</b> relie les postes qui y ont travaillé. <b>Le liège</b> : les autres intentions.</p>'+
+  ou:'<p><b>Bibliothèques</b> : une par composant Jira. <b>La table</b> : une intention et ses tickets ; <b>le fil rouge</b> relie les postes qui y ont travaillé. <b>Le liège</b> : les autres intentions. <b>Le tableau noir</b> : les tickets du jour (l\'historique : page « Rédaction · bilan »).</p>'+
     '<p><b>Casier « À relire »</b> : la file du cron, dans l\'ordre. <b>Corbeille « Postées »</b> : les avis du passage. <b>Six bureaux</b> de revue, le premier pour la file. <b>Salle d\'attente</b> : une chaise par auteur.</p>',
   moments:'<p><b>✋ Le tampon</b> : les tickets relus attendent ta validation, un par un.</p><p><b>✂ Le découpage</b> : une intention qui touche plusieurs projets devient plusieurs tickets, un brin de fil chacun.</p>'+
     '<p><b>📥 La fournée</b> : à chaque passage du cron des revues, Bernard range un dossier par PR dans le casier.</p>'};
@@ -42,7 +42,7 @@ function redactionDemo(){
   // la file de la revue : le cron de 9 h 30 a retenu 5 PR ; les deux de Holly sont postées, celle de Pam est lue (demo-r1)
   const revue={batches:{'demo-c1':[['dm/site',2042,'hollyflax'],['dm/site',2060,'hollyflax'],['dm/api',2051,'pambeesly'],['dm/mobile',311,'darrylphilbin'],['dm/api',2063,'pambeesly']]},
     verdicts:{'demo-k1':'comment','demo-k2':'approve'},starts:{'demo-c1':at(9.5)}};
-  return {generated_at:at(11),crees:2,revue,tables:[
+  return {generated_at:at(11),crees:2,tok_jour:38400,revue,tables:[
     {run:'demo-t1',status:'Running',since:at(10.2),intention:'Refondre le lecteur vidéo : sous-titres, pistes audio et reprise de lecture',poste:'critique',tour:2,
      composants:['dm/site','dm/mobile','dm/api'],type:'Story',tickets:[{i:0,summary:'Lecteur : les sous-titres',composant:'dm/api',points:3,etat:'wait',
        detail:'▸ De quoi on parle ?\n\n│ Les vidéos n\'ont pas de sous-titres : le lecteur ne lit pas les pistes WebVTT.\n\n▸ Qu\'est-ce que l\'on va faire ?\n\n• Servir les pistes WebVTT de chaque vidéo\n• Les déclarer dans le manifeste du lecteur\n\n▸ Comment on teste ?\n\n• Une vidéo avec deux pistes : les deux s\'affichent dans le menu'},
@@ -158,6 +158,24 @@ function rdRoom(now,people){
   rdBoss(people,tks,now);
   rdLate(people,()=>{R(ctx,jira.x-18,jira.y-30,36,30,'#2f6fd6');R(ctx,jira.x-18,jira.y-34,36,6,'#2559b8');R(ctx,jira.x-10,jira.y-20,20,3,'#0b2a4a');atPill('🎫 Jira',jira.x-44,jira.y-14,'#f4efe4','#3a3530','bold 11px system-ui,sans-serif');},jira.y);
   rdBench(people,3.4*T,24.6*T,[63,64],'presse');
+  rdBoard(people);
+}
+// le tableau noir des tickets du jour, jumeau de REVUES DU JOUR, sur un chevalet entre les tickets épinglés et le tampon
+// (rien au clic : le détail est dans la page « Rédaction · bilan ») ; créés et jetons depuis minuit : dataset redaction
+const RD_BOARD={x:5.9*RD_T,y:20.8*RD_T,w:7.3*RD_T,h:3*RD_T};
+function rdTicketsDuJour(){
+  const d=REDACTION||{};
+  return {crees:d.crees||0,tampon:rdTables().reduce((a,t)=>a+(t.tickets||[]).filter(x=>x.etat==='gate').length,0),cours:rdTables().length,tok:d.tok_jour||0};
+}
+function rdBoard(people){
+  const {x:bx,y:by,w:bw,h:bh}=RD_BOARD, j=rdTicketsDuJour();
+  // sous le bandeau du tampon (dessiné à la hauteur du bureau du boss) : ses pieds passent derrière
+  rdLate(people,()=>{R(ctx,bx+14,by+bh,5,18,'#5a3e28');R(ctx,bx+bw-19,by+bh,5,18,'#5a3e28');R(ctx,bx+bw/2-2,by+bh,4,12,'#4a3424');
+    R(ctx,bx-6,by-6,bw+12,bh+12,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+4,by+bh-6,bw-8,4,'#a37650');
+    atTxt('TICKETS DU JOUR',bx+bw/2,by+18,'#f4efe4','bold 13px ui-monospace,Menlo,monospace');R(ctx,bx+16,by+24,bw-32,1,'rgba(244,239,228,.4)');
+    [['#3fbf6a',plural(j.crees,'ticket créé','tickets créés')+' aujourd\'hui'],['#ffcf4a',plural(j.tampon,'ticket','tickets')+' au tampon'],
+     ['#5b8def',plural(j.cours,'intention en cours','intentions en cours')],['#e0a020','~'+Math.round(j.tok/1e3)+' k tokens']]
+      .forEach(([c,t],k)=>{R(ctx,bx+16,by+34+k*15,8,8,c);atTxt(t,bx+30,by+42+k*15,'#e8e2d0','12px ui-monospace,Menlo,monospace','left');});},RD_DESK.y-1);
 }
 function rdBoss(people,tks,now){
   const {x,y}=RD_DESK, boss=chars.find(c=>c.boss), g=tks.filter(t=>t.etat==='gate').length;

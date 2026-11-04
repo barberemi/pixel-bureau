@@ -178,7 +178,8 @@ class RedactionSnapshotTest(unittest.TestCase):
         Path(tmp, "r1", "tickets.json").write_text(json.dumps({"version": 2, "tickets": [{"summary": "A", "composant": "dm/site", "points": 3,
                                                                                         "description": "h2. Contexte\n{panel}\nLe lecteur\n{panel}\n* sous-titres"},
                                                                                        {"summary": "B", "composant": "dm/api", "points": 2}]}))
-        api = {"/workflows/tk/runs?limit=20": [{"id": "r1", "status": "Running", "started_at": "2026-10-30T09:00:00Z"}],
+        api = {"/workflows/tk/runs?limit=20": [{"id": "r1", "status": "Running", "started_at": "2026-10-30T09:00:00Z", "tokens_used": 21000},
+                                               {"id": "r0", "status": "Success", "started_at": "2026-10-29T22:30:00Z", "tokens_used": 5000}],
                "/workflows/tk/runs/r1": {"id": "r1", "workflow_id": "tk", "status": "WaitingApproval", "started_at": "2026-10-30T09:00:00Z",
                                           "step_results": [{"step_name": "dossier"}, {"step_name": "recherche"}, {"step_name": "relire", "started_at": "2026-10-30T09:31:00Z"}]},
                "/workflows/un/runs?limit=40": []}
@@ -194,9 +195,10 @@ class RedactionSnapshotTest(unittest.TestCase):
         t = snap["tables"][0]
         self.assertEqual((t["poste"], t["tour"], t["intention"]), ("valider", 2, "Refondre le lecteur"))
         self.assertEqual([(x["summary"], x["etat"]) for x in t["tickets"]], [("A", "gate"), ("B", "gate")])
-        self.assertEqual([e["k"] for e in snap["events"]], ["arrive", "gate"])
+        self.assertEqual([e["k"] for e in snap["events"]], ["arrive", "arrive", "gate"], "r0 (la veille) arrive aussi")
         self.assertEqual(t["tickets"][0]["detail"], "▸ Contexte\n│ Le lecteur\n• sous-titres")  # le texte lisible, pour la fiche au 2e
         self.assertNotIn("detail", t["tickets"][1])
+        self.assertEqual(snap["tok_jour"], 21000, "les jetons depuis minuit à Paris (le run de 23 h 30 la veille ne compte pas)")
 
 
 class RevueFileTest(unittest.TestCase):
