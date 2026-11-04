@@ -138,8 +138,11 @@ HOME = os.path.expanduser("~/.cache/pixel-bureau/ticket")
 TOURS = 3  # rédaction et critique : trois tours au plus
 POSTES = {
     "recherche": ("📚 Recherche", "Cherche dans les dépôts des composants ce qui sert à rédiger : les fichiers, fonctions et tests "
-                  "concernés, les tickets ou PR proches, ce qui existe déjà. Lis QUELQUES fichiers (5 à 10, grep ou lecture "
-                  "directe) dans le clone local de chaque dépôt, cherché dans les dossiers de travail habituels (~/Sites, "
+                  "concernés, les tickets ou PR proches, ce qui existe déjà. Ne t'arrête pas aux composants donnés : cherche "
+                  "aussi, parmi les dépôts de l'équipe, ceux qui appellent ou consomment ce qui change (un client de l'API, "
+                  "une page, un sitemap, un script) ou que l'intention décrit sans les nommer, et dis ce qu'ils font aujourd'hui. "
+                  "Couvre chaque livrable de l'intention, pas seulement le premier. Lis 5 à 10 fichiers par dépôt touché "
+                  "(grep ou lecture directe) dans le clone local de chaque dépôt, cherché dans les dossiers de travail habituels (~/Sites, "
                   "~/Projects, ~/code ; vérifie le remote avec `git -C <chemin> remote -v`). Rends UNIQUEMENT le rapport, sans raconter tes recherches : un rapport court en "
                   "Markdown : une ligne `Composants : <liste>` (ceux que l'intention touche vraiment, parmi la liste "
                   "donnée), puis les pistes, une puce chacune, avec le fichier. N'invente rien ; rien trouvé : dis-le."),
@@ -187,6 +190,13 @@ def options():
 def langue():
     """Langue des tickets (réglage jira.create.language de l'équipe), le français par défaut."""
     return str(((CFG.get("jira") or {}).get("create") or {}).get("language") or "français")
+
+
+def langue_titre():
+    """Langue du titre (jira.create.title_language), sinon celle des tickets : le modèle d'une équipe peut vouloir des
+    titres en anglais et des descriptions en français. Sans ce réglage, la rédaction et la critique se contredisent
+    d'un tour à l'autre (consigne contre modèle de ticket)."""
+    return str(((CFG.get("jira") or {}).get("create") or {}).get("title_language") or langue())
 
 
 def sans_narration(text):
@@ -248,8 +258,11 @@ def poste(k, run, retours=""):
     c = dget(run, "critique.json")
     if k == "redaction" and c and c.get("verdict") == "a_retoucher":
         parts.append("## Remarques de la critique (à corriger)\n" + "\n".join(f"- ticket {n.get('ticket')} : {n.get('note')}" for n in c.get("notes") or []))
-    parts.append("## Langue\nRédige en " + langue() + " : le rapport, le titre (summary) et la description des tickets. Les "
-                 "noms de fichiers, de classes, de fonctions et le code restent tels quels.")
+    lt = langue_titre()
+    parts.append("## Langue\n" + ("Rédige en " + langue() + " : le rapport, le titre (summary) et la description des tickets."
+                 if lt == langue() else "Rédige en " + langue() + " le rapport et la description des tickets, et le titre (summary) "
+                 "en " + lt + " ; cette règle passe avant toute autre consigne de langue.") + " Les noms de fichiers, de classes, "
+                 "de fonctions et le code restent tels quels.")
     parts.append("## Ta mission\n" + mission)
     print("\n\n".join(parts))
 

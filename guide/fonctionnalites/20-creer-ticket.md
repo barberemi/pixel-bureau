@@ -58,5 +58,6 @@ Modèle du Bureau `ticket`, proposé par l'installateur quand Jira est connecté
 | `points_field` | le champ du board | champ des points de l'écran de création |
 | `template` | aucun | le modèle de ticket de l'équipe : un fichier, ou un chemin dans un dépôt (cherché dans les clones locaux) |
 | `language` | français | langue des tickets rédigés (titre, description) et des rapports des postes ; le code et les noms de fichiers restent tels quels |
+| `title_language` | celle de `language` | langue du titre seul, quand le modèle de l'équipe veut par exemple des titres en anglais et des descriptions en français ; elle passe avant les consignes de langue du modèle, pour que la rédaction et la critique ne se contredisent pas d'un tour à l'autre |
 
 Le personnage vient du pack (`agents[]` avec `model: "ticket"`), comme les autres modèles.

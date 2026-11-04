@@ -12,9 +12,9 @@ class TicketChainTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
 
-    def t(self, *a, stdin=None):
+    def t(self, *a, stdin=None, cfg=FIXTURE):
         return subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "ticket.py"), *a], input=stdin, capture_output=True, text=True,
-                              cwd=self.tmp, env={"PATH": "/usr/bin:/bin", "HOME": self.tmp, "BUREAU_CONFIG": FIXTURE}, timeout=30)
+                              cwd=self.tmp, env={"PATH": "/usr/bin:/bin", "HOME": self.tmp, "BUREAU_CONFIG": cfg}, timeout=30)
 
     def test_intention_split_reviewed_then_one_ticket_each(self):
         self.assertEqual(self.t("dossier", "r1", "Refondre le lecteur vidéo", "Story", "5", "dm/site", "", "next", "").returncode, 0)
@@ -65,10 +65,23 @@ class TicketChainTest(unittest.TestCase):
         recherche commence à sa ligne « Composants : », sans la narration de l'agent (premier vrai run)."""
         self.t("dossier", "r4", "x", "Tâche", "1", "dm/site", "", "backlog", "")
         self.assertIn("## Langue\nRédige en français : le rapport, le titre (summary)", self.t("poste", "redaction", "r4").stdout)
-        self.assertIn("Rends UNIQUEMENT le rapport", self.t("poste", "recherche", "r4").stdout)
+        rech = self.t("poste", "recherche", "r4").stdout
+        self.assertIn("Rends UNIQUEMENT le rapport", rech)
+        self.assertIn("ceux qui appellent ou consomment ce qui change", rech)  # pas seulement les composants donnés
         out = self.t("rapport", "recherche", "r4", stdin="Je vais chercher.\n\nParfait ! J'ai trouvé.\n\n**Composants :** dm/site\n- src/Modal.twig:12").stdout
         self.assertTrue(out.startswith("**Composants :** dm/site"), out[:60])
         self.assertNotIn("Je vais chercher", self.t("poste", "redaction", "r4").stdout)
+
+    def test_title_language_apart(self):
+        """jira.create.title_language : le titre dans sa langue (modèle d'équipe « titres en anglais »), la description
+        et le rapport dans la langue des tickets ; la règle passe avant les autres consignes de langue."""
+        c = json.loads(Path(FIXTURE).read_text())
+        c.setdefault("jira", {}).setdefault("create", {})["title_language"] = "anglais"
+        cfg = os.path.join(self.tmp, "cfg.json")
+        Path(cfg).write_text(json.dumps(c))
+        self.t("dossier", "r5", "x", "Tâche", "1", "dm/site", "", "backlog", "", cfg=cfg)
+        out = self.t("poste", "critique", "r5", cfg=cfg).stdout
+        self.assertIn("Rédige en français le rapport et la description des tickets, et le titre (summary) en anglais", out)
 
     def test_nothing_drafted_fails_and_nothing_created_gives_no_result(self):
         self.t("dossier", "r2", "x", "Bug", "1", "dm/site", "", "backlog", "")
