@@ -475,7 +475,8 @@ class ChaineScriptTest(unittest.TestCase):
         os.chmod(os.path.join(b, "gh"), 0o755)
         Path(self.tmp, "gh.json").write_text(json.dumps(data or {}))
         self.env_extra = {"PATH": b + os.pathsep + os.environ.get("PATH", ""), "GH_LOG": os.path.join(self.tmp, "gh.log"),
-                          "GH_DATA": os.path.join(self.tmp, "gh.json")}
+                          "GH_DATA": os.path.join(self.tmp, "gh.json"),  # une identité git : la CI n'en a pas (le squash commite)
+                          "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 
     def gh_calls(self):
         p = Path(self.tmp, "gh.log")
