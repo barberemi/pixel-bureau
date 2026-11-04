@@ -15,8 +15,8 @@ const RD_TK={wait:['#f7e07a','attend la critique'],run:['#9fd4ff','en cours'],ga
 // « Comment lire le plan » au 2e (46-legende.js) : les postes de la rédaction, puis les étapes d'une revue (RV_STEP)
 const RD_HELP={bar:()=>'<span>Tickets :</span>'+legSwatches(RD_TK)+'<span>Verdicts : '+Object.entries({approve:'approuvée',comment:'commentée',request_changes:'changements',err:'en échec'}).map(([k,t])=>RVF_V[k][0]+' '+t).join(' · ')+'</span>',
   postes:()=>[['Rédaction',RD_POSTES],['Revue d\'une PR',Object.values(RV_STEP).map(([l,,d])=>({i:l.split(' ')[0],n:l.slice(l.indexOf(' ')+1),d}))]],
-  qui:'<p><b>Rédaction</b> : les agents en reporters, chapeau mou et carte de presse.</p><p><b>Revue</b> : les relecteurs à visière verte ; l\'auteur de la PR assis en face, de dos ; un agent remplaçant pour ta propre PR.</p>'+
-    '<p><b>Bernard</b> monte la fournée du cron des revues. <b>Le boss</b> tamponne les tickets.</p>',
+  qui:'<p><b>Rédaction</b> : les agents en reporters, chapeau mou et carte de presse. Toujours là : à leur poste pendant une intention, en promenade sinon, endormis le soir.</p><p><b>Revue</b> : les relecteurs à visière verte ; l\'auteur de la PR assis en face, de dos ; un agent remplaçant pour ta propre PR.</p>'+
+    '<p><b>Bernard</b> monte la fournée du cron des revues. <b>Le boss</b> épingle chaque intention au liège, tamponne les tickets et les porte à la boîte Jira.</p>',
   ou:'<p><b>Bibliothèques</b> : une par composant Jira. <b>La table</b> : une intention et ses tickets ; <b>le fil rouge</b> relie les postes qui y ont travaillé. <b>Le liège</b> : les autres intentions. <b>Le tableau noir</b> : les tickets du jour (l\'historique : page « Rédaction · bilan »).</p>'+
     '<p><b>Casier « À relire »</b> : la file du cron, dans l\'ordre. <b>Corbeille « Postées »</b> : les avis du passage. <b>Six bureaux</b> de revue, le premier pour la file. <b>Salle d\'attente</b> : une chaise par auteur.</p>',
   moments:'<p><b>✋ Le tampon</b> : les tickets relus attendent ta validation, un par un.</p><p><b>✂ Le découpage</b> : une intention qui touche plusieurs projets devient plusieurs tickets, un brin de fil chacun.</p>'+
@@ -105,11 +105,12 @@ function rdHat(g,kind,x,y,dir){const hx=x+(dir==='left'?-2:dir==='right'?2:0), h
   if(kind==='presse'){R(g,hx-13,hy+2,26,3,'#4a3a2a');R(g,hx-8,hy-7,16,10,'#5a4636');R(g,hx-8,hy-1,16,3,'#2a2018');if(dir!=='up')R(g,hx+1,hy-6,7,5,'#fbfbf6');}
   else{R(g,hx-9,hy+3,18,2,'#2a6a3a');if(dir!=='up'){g.fillStyle='rgba(60,180,90,.75)';g.fillRect(hx-10,hy+5,20,5);}}}
 function rdLate(people,f,y){people.push([{pos:{x:0,y:y==null?1e6:y}},null,false,f]);}
-// un agent : s = run (au travail, halo), ok (✓), wait (gris), idle ; o.hat, o.dir, o.desk (bureau devant lui), o.bubble
+// un agent : s = run (au travail, halo), wait (gris), idle ; o.hat (assis, il descend avec la tête), o.dir, o.desk (bureau
+// devant lui), o.bubble, o.badge (✓ ou ! à côté de lui, comme au 1er ; o.pop : il apparaît en grossissant)
 function rdAgent(people,k,x,y,s,o,now){
-  o=o||{};const a=atWorker(k,x,y,o.dir||'down',false,'');if(!a)return;a._st={st:s==='run'?'work':'idle'};a.pose=o.pose||'type';
-  const after=()=>{if(o.hat)rdHat(ctx,o.hat,x,y,o.dir||'down');if(o.desk)atDesk(x,y-6,s==='run');if(o.front)o.front();if(s==='ok')atBadge(x+16,y-50,'✓','#2f9e55');if(o.bubble)atBubble(x,y-66,o.bubble);};
-  if(s==='wait'){people.push([{pos:{x,y}},null,false,()=>{const g=atLayer();atDrawInto(g,a,now);if(o.hat)rdHat(g,o.hat,x,y,o.dir||'down');ctx.save();ctx.globalAlpha=.38;ctx.filter='grayscale(1)';ctx.drawImage(AT_OFF,0,0);ctx.restore();if(o.desk)atDesk(x,y-6,false);}]);return;}
+  o=o||{};const a=atWorker(k,x,y,o.dir||'down',false,'',null);if(!a)return;a._st={st:s==='run'?'work':'idle'};a.pose=o.pose||'type';const hy=y+(a.pose==='type'?6:0);
+  const after=()=>{if(o.hat)rdHat(ctx,o.hat,x,hy,o.dir||'down');if(o.desk)atDesk(x,y-6,s==='run');if(o.front)o.front();if(o.badge)atBadge(x+18,y-42,o.badge,o.badgeCol||'#2f9e55',o.pop);if(o.bubble)atBubble(x,y-66,o.bubble);};
+  if(s==='wait'){people.push([{pos:{x,y}},null,false,()=>{const g=atLayer();atDrawInto(g,a,now);if(o.hat)rdHat(g,o.hat,x,hy,o.dir||'down');ctx.save();ctx.globalAlpha=.38;ctx.filter='grayscale(1)';ctx.drawImage(AT_OFF,0,0);ctx.restore();if(o.desk)atDesk(x,y-6,false);}]);return;}
   if(s==='run'){const gl=ctx.createRadialGradient(x,y-24,4,x,y-24,46);gl.addColorStop(0,'rgba(255,246,190,.6)');gl.addColorStop(1,'rgba(255,246,190,0)');ctx.fillStyle=gl;ctx.fillRect(x-48,y-72,96,96);RD_LIT.push({x,y});}
   people.push([a,null,false,after]);
 }
@@ -121,43 +122,99 @@ const rdShelves=t=>{const own=[...((t&&t.composants)||[])], base=[...((CFG.redac
 function rdPin(q,col){ctx.fillStyle=col;ctx.beginPath();ctx.arc(q.x,q.y,5,0,7);ctx.fill();ctx.fillStyle='rgba(255,255,255,.7)';ctx.fillRect(q.x-2,q.y-3,2,2);}
 function rdStrand(a,b,on){ctx.save();ctx.beginPath();ctx.moveTo(a.x,a.y);if(on){ctx.lineTo(b.x,b.y);ctx.strokeStyle='#c0392b';ctx.lineWidth=3;}
   else{ctx.quadraticCurveTo((a.x+b.x)/2,(a.y+b.y)/2+22,b.x,b.y);ctx.setLineDash([5,5]);ctx.strokeStyle='#9a958a';ctx.lineWidth=2;}ctx.stroke();ctx.restore();}
+// ---------- les reporters et le boss : ils marchent (67-vie.js) ----------
+// Les trois reporters sont toujours là. Une intention en cours : chacun à son poste jusqu'à la fin (gris tant que son poste
+// n'a pas commencé, ✓ une fois fini). Sans intention, le jour, ils se promènent (café, canapé, un livre, leur poste) ; le
+// soir et le week-end, ils somnolent à leur poste (z Z), comme au 1er. Le boss épingle chaque nouvelle intention au liège
+// avant qu'elle démarre, et porte chaque ticket tamponné à la boîte Jira.
+let RD_LV=null;
+const rdLv0=()=>Object.assign(lvMem(),{wan:{},sleep:false,seen:new Set(),tk:{},pend:{},gate:new Set(),jobs:[],job:null,want:{},run:null});
+const RDP=(x,y)=>({x:x*RD_T,y:y*RD_T}), RD_KS={recherche:60,redaction:61,critique:62}, RD_COFFEE=RDP(18.4,18);
+const RD_H=RDP(21.25,13.75), RD_IN=[RD_H,RDP(RD_X1,13.75),RDP(18.6,13.75)];
+const rdEntry=()=>[RVF.stairLow,RVF.stair,RD_H]; // 68-revue.js : de derrière la porte de l'escalier au palier
+function rdGeo(t){const T=RD_T, shelves=rdShelves(t), sw=3.1*T, sh0=(RD_X1*T-(4*sw+84))/2, lit=new Set((t&&t.composants)||[]), shi=t?Math.max(0,shelves.findIndex(n=>lit.has(n))):1, tx=8.8*T, ty=12.4*T;
+  return {T,shelves,sw,sh0,lit,shi,tx,ty,rech:{x:sh0+shi*sw+42,y:7.3*T},red:{x:tx,y:ty-1.2*T},cri:{x:tx,y:ty+2.4*T}};}
+// les places : par l'allée du haut (au-dessus de la table) ou celle du bas (au-dessus des tickets épinglés)
+function rdSpots(G){const T=RD_T, U=[...RD_IN,RDP(18.6,9.2)], L=[...RD_IN,RDP(18.6,16.4)], sofa=RDP(3.4,24.6);
+  const seat=j=>{const x=sofa.x+(j?22:-22);return {id:'sofa'+j,path:[...L,RDP(1.2,16.4),RDP(1.2,22.6),{x,y:22.6*T},{x,y:sofa.y}],dir:'down',sofa:true,front:()=>atSofaFront(sofa.x,sofa.y)};};
+  return {recherche:{id:'p:rech',path:[...U,{x:G.rech.x,y:9.2*T},G.rech],dir:'up',seat:true},redaction:{id:'p:red',path:[...U,{x:G.red.x,y:9.2*T},G.red],dir:'down',seat:true},
+    critique:{id:'p:cri',path:[...L,{x:G.cri.x,y:16.4*T},G.cri],dir:'up',seat:true},
+    pool:[{id:'cafe1',path:[...L,RDP(17.2,16.4),RDP(17.2,19.1),RDP(18.4,19.1)],dir:'up'},{id:'cafe2',path:[...L,RDP(17.2,16.4),RDP(17.2,19.1)],dir:'right'},seat(0),seat(1),
+      {id:'livre',path:[...U,{x:G.sh0+3*G.sw+42,y:9.2*T},{x:G.sh0+3*G.sw+42,y:7.3*T}],dir:'up'}]};}
+// qui doit être où ; rnd : tirage (remplaçable pour les tests)
+function rdWant(t,G,now,rnd){
+  const M=RD_LV, S=rdSpots(G), want={}, ks=Object.keys(RD_KS);rnd=rnd||Math.random;
+  for(const k of ks)M.spec[k]={k:RD_KS[k],kit:'presse'};
+  M.sleep=!t&&!atOpen();
+  if(t||M.sleep){for(const k of ks)want[k]=S[k];M.wan={};return want;}
+  for(const k of ks){let w=M.wan[k];
+    if(!w||now>w.until){const used=new Set(ks.filter(j=>j!==k&&M.wan[j]).map(j=>M.wan[j].s.id)), opts=S.pool.filter(s=>!used.has(s.id));
+      const s=rnd()<.35||!opts.length?S[k]:opts[Math.floor(rnd()*opts.length)];
+      w=M.wan[k]={s,until:now+(15e3+rnd()*25e3)/walkBoost()};}
+    want[k]=w.s;}
+  return want;
+}
+// le boss : une intention arrive, il va l'épingler au liège ; un ticket tamponné, il le porte à Jira. Un trajet à la fois.
+const RD_UP=RDP(15.6,22.2), RD_TRIP={intro:[RD_DESK,RD_UP,RDP(17.2,22.2),RDP(17.2,16.4),RDP(1.4,16.4),RDP(1.4,10.6)],jira:[RD_DESK,RD_UP,RDP(18.9,22.2),RDP(18.9,25.4)]};
+function rdJobs(t,now,dt){
+  const M=RD_LV, boost=walkBoost();
+  if(t&&!M.seen.has(t.run)){M.seen.add(t.run);if(!M.fresh&&!REDUCED_MOTION){M.gate.add(t.run);M.jobs.push({kind:'intro',run:t.run});}}
+  for(const x of (t&&t.tickets)||[]){const key=t.run+':'+x.i, prev=M.tk[key];M.tk[key]=x.etat;
+    if(prev&&prev!=='ok'&&x.etat==='ok'&&!M.fresh&&!REDUCED_MOTION){M.pend[key]=true;M.jobs.push({kind:'jira',key});}}
+  if(!M.job&&M.jobs.length){const j=M.jobs.shift();M.job={...j,w:atWalker(RD_TRIP[j.kind],LV_V),ph:'go'};}
+  const J=M.job;if(!J)return;
+  if(J.ph==='go'&&atStep(J.w,dt)){J.ph='act';J.t=now;J.w.dir=J.kind==='intro'?'up':'left';}
+  if(J.ph==='act'&&now-J.t>1100/boost){if(J.kind==='intro')M.gate.delete(J.run);else delete M.pend[J.key];J.ph='back';J.w=atWalker([...RD_TRIP[J.kind]].reverse(),LV_V);}
+  if(J.ph==='back'&&atStep(J.w,dt))M.job=null;
+}
+// ce qu'il porte : la fiche de l'intention (jaune), le ticket tamponné (bande verte, tampon rouge)
+function rdSheet(x,y,kind){if(kind==='intro'){R(ctx,x-9,y-11,18,14,'#f7e07a');for(let l=0;l<3;l++)R(ctx,x-6,y-8+l*4,12,1,'rgba(0,0,0,.3)');}
+  else{R(ctx,x-9,y-12,18,16,'#fbfbf6');R(ctx,x-9,y-12,18,3,'#b6e3a8');for(let l=0;l<3;l++)R(ctx,x-6,y-6+l*3,12,1,'#b8b2a4');ctx.strokeStyle='#c0392b';ctx.lineWidth=1.5;ctx.strokeRect(x-2,y-4,8,6);}}
 // ---------- la salle de rédaction ----------
+const RD_LBL={recherche:'📚 Recherche',redaction:'✍ Rédaction',critique:'🧐 Critique'};
 function rdRoom(now,people){
-  const T=RD_T, t=rdTable(), shelves=rdShelves(t), sw=3.1*T, sh0=(RD_X1*T-(4*sw+84))/2;
-  const lit=new Set((t&&t.composants)||[]);
-  shelves.forEach((n,k)=>rdShelf(sh0+k*sw,2.3*T,n,lit.has(n)||n==='autres'&&[...lit].some(c=>!shelves.includes(c))));
-  const S=RD_CORK;R(ctx,S.x-24,S.y-52,48,46,'#7a5a3c');R(ctx,S.x-20,S.y-48,40,38,'#c9a26a');if(t){R(ctx,S.x-14,S.y-42,26,22,'#f7e07a');for(let l=0;l<3;l++)R(ctx,S.x-10,S.y-36+l*5,18,2,'rgba(0,0,0,.3)');}
+  const M=RD_LV, t0=rdTable();
+  if(t0&&M.run!==t0.run){if(M.run!=null)M.fresh=true;M.run=t0.run;} // une autre intention choisie au liège : tout se pose
+  const t=t0&&M.gate.has(t0.run)?null:t0, G=rdGeo(t0), T=G.T, {shelves,sw,sh0,lit,tx,ty,rech,red,cri}=G; // t : l'intention, une fois épinglée
+  shelves.forEach((n,k)=>rdShelf(sh0+k*sw,2.3*T,n,!!t&&(lit.has(n)||n==='autres'&&[...lit].some(c=>!shelves.includes(c)))));
+  const S=RD_CORK, pinning=t0&&!t&&M.job&&M.job.kind==='intro'&&M.job.ph==='act';
+  R(ctx,S.x-24,S.y-52,48,46,'#7a5a3c');R(ctx,S.x-20,S.y-48,40,38,'#c9a26a');if(t||pinning){R(ctx,S.x-14,S.y-42,26,22,'#f7e07a');for(let l=0;l<3;l++)R(ctx,S.x-10,S.y-36+l*5,18,2,'rgba(0,0,0,.3)');}
   atHitRd('cork',S.x-24,S.y-52,48,46,{});
-  const others=rdTables().filter(x=>x!==t);
-  rdLate(people,()=>{atPill(t?'📌 '+clip(t.intention,34):'📌 aucune intention en cours',S.x+(t?96:70),S.y+10,'#1c1f26','#fff','bold 11px system-ui,sans-serif');
+  const others=rdTables().filter(x=>x!==t0);
+  rdLate(people,()=>{atPill(t?'📌 '+clip(t.intention,34):t0?'📌 le boss apporte une intention…':'📌 aucune intention en cours',S.x+(t?96:t0?100:70),S.y+10,'#1c1f26','#fff','bold 11px system-ui,sans-serif');
     if(others.length)atPill('+ '+plural(others.length,'autre intention','autres intentions')+' : clic sur le liège',S.x+70,S.y+28,'#5d6370','#fff','bold 11px system-ui,sans-serif');},1e6);
-  const shi=t?Math.max(0,shelves.findIndex(n=>lit.has(n))):1, rech={x:sh0+shi*sw+42,y:7.3*T}, tx=8.8*T, ty=12.4*T, red={x:tx,y:ty-1.2*T}, cri={x:tx,y:ty+2.4*T};
   const p=t?t.poste:null, st=k=>!t?'idle':k===p?'run':RD_POSTES.findIndex(x=>x.k===k)<RD_POSTES.findIndex(x=>x.k===p)?'ok':'wait';
-  const tks=(t&&t.tickets)||[];
+  const tks=((t&&t.tickets)||[]).map(x=>M.pend[t.run+':'+x.i]?{...x,etat:'gate'}:x); // le ticket que le boss porte n'est pas encore dans Jira
   rdLate(people,()=>{R(ctx,tx-4.4*T,ty-.9*T,8.8*T,1.8*T,'#7a5a3c');R(ctx,tx-4.4*T,ty-.9*T,8.8*T,6,'#94704c');R(ctx,tx-4.2*T,ty+.9*T,6,10,'#4a3424');R(ctx,tx+4.2*T-6,ty+.9*T,6,10,'#4a3424');
     tks.slice(0,4).forEach((x,k)=>{const sx=tx+(-2.6+k*1.3)*T;R(ctx,sx-12,ty-15,24,30,'#fbfbf6');R(ctx,sx-12,ty-15,24,4,RD_TK[x.etat]?RD_TK[x.etat][0]:'#2f6fd6');for(let l=0;l<4;l++)R(ctx,sx-8,ty-6+l*5,16,2,'#b8b2a4');atPill('T'+(k+1),sx+12,ty-14,'#0b2a4a','#fff','bold 10px ui-monospace,Menlo,monospace');});
     if(t&&t.tour>1)atPill('↺ critique → rédaction · tour '+t.tour+'/3',tx+5.4*T,ty+2.6*T,'#0b2a4a','#fff','bold 11px system-ui,sans-serif');},ty-.6*T);
   atHitRd('table',tx-4.4*T,ty-2.2*T,8.8*T,5*T,{});
+  // les plaques des postes (leur nom, toujours au même endroit, même quand l'agent se promène) : le fil rouge y est épinglé
+  const plq={recherche:{x:rech.x,y:rech.y+16},redaction:{x:red.x+80,y:red.y-22},critique:{x:cri.x,y:cri.y+16}}, pin={};
+  ctx.font='bold 11px system-ui,sans-serif';for(const k in plq)pin[k]={x:plq[k].x-(ctx.measureText(RD_LBL[k]).width+10)/2-4,y:plq[k].y-2};
   // le fil rouge : le liège, la recherche, la rédaction, puis un brin par ticket ; tous finissent au tampon, puis à Jira
-  const desk=RD_DESK, jira=RD_JIRA, p0={x:S.x+20,y:S.y-14}, p1={x:rech.x,y:rech.y-20}, p2={x:red.x,y:red.y-20};
+  const desk=RD_DESK, jira=RD_JIRA, p0={x:S.x+20,y:S.y-14}, p1=pin.recherche, p2=pin.redaction;
   const cards=tks.slice(0,4).map((x,k,l)=>({x:(2.2+k*(14.6/Math.max(1,l.length)))*T+(14.6/Math.max(1,l.length))*T/2-.6*T,y:19.6*T}));
-  if(t){rdStrand(p0,p1,p!=='recherche'||true);rdStrand(p1,p2,p!=='recherche');
+  if(t){rdStrand(p0,p1,true);rdStrand(p1,p2,p!=='recherche');
     cards.forEach((c,k)=>{rdStrand(p2,{x:c.x,y:c.y-24},tks[k].etat!=='wait'||p==='valider');rdStrand({x:c.x,y:c.y+14},{x:desk.x,y:desk.y-30},tks[k].etat==='ok');});
     rdStrand({x:desk.x,y:desk.y-30},{x:jira.x,y:jira.y-34},tks.some(x=>x.etat==='ok'));
     rdLate(people,()=>{rdPin(p0,'#d0392b');rdPin(p1,'#d0392b');if(p!=='recherche')rdPin(p2,'#d0392b');
       cards.forEach((c,k)=>{const x=tks[k], col=(RD_TK[x.etat]||RD_TK.wait);R(ctx,c.x-56,c.y-24,112,38,x.etat==='wait'&&p==='critique'&&k===0?'#9fd4ff':col[0]);rdPin({x:c.x,y:c.y-24},'#d0392b');
         atTxt('T'+(k+1)+' · '+(x.composant||'?'),c.x,c.y-8,'#1c1f26','bold 11px ui-monospace,Menlo,monospace');atTxt(clip(x.summary||'',20),c.x,c.y+5,'#3a3530','11px system-ui');
         atHitRd('ticket',c.x-56,c.y-24,112,38,{k});});},1e6-1);}
-  rdAgent(people,60,rech.x,rech.y,st('recherche'),{dir:'up',hat:'presse',bubble:p==='recherche'?'je fouille '+(t.composants||[]).length+' dépôt(s)…':null},now);
-  rdLate(people,()=>atPill('📚 Recherche',rech.x,rech.y+16,st('recherche')==='run'?'#2f6fd6':st('recherche')==='ok'?'#2f7a45':'#f4efe4',st('recherche')==='wait'||!t?'#3a3530':'#fff','bold 11px system-ui,sans-serif'),1e6);
-  rdAgent(people,61,red.x,red.y,st('redaction'),{hat:'presse',bubble:p==='redaction'?(tks.length?'version '+(t.tour||1)+', je reprends…':'je rédige…'):null},now);
-  rdLate(people,()=>atPill('✍ Rédaction',red.x+80,red.y-22,st('redaction')==='run'?'#2f6fd6':st('redaction')==='ok'?'#2f7a45':'#f4efe4',st('redaction')==='wait'||!t?'#3a3530':'#fff','bold 11px system-ui,sans-serif'),1e6);
-  rdAgent(people,62,cri.x,cri.y,st('critique'),{dir:'up',hat:'presse',bubble:p==='critique'?'je relis T1…':null},now);
-  rdLate(people,()=>atPill('🧐 Critique',cri.x,cri.y+16,st('critique')==='run'?'#2f6fd6':st('critique')==='ok'?'#2f7a45':'#f4efe4',st('critique')==='wait'||!t?'#3a3530':'#fff','bold 11px system-ui,sans-serif'),1e6);
+  // les reporters assis à leur poste ; les autres marchent, prennent un café, lisent ou sont au canapé (lvDraw)
+  Object.assign(M.want,rdWant(t,G,now));
+  const bub={recherche:p==='recherche'?'je fouille '+(t.composants||[]).length+' dépôt(s)…':null,redaction:p==='redaction'?(tks.length?'version '+(t.tour||1)+', je reprends…':'je rédige…'):null,critique:p==='critique'?'je relis T1…':null};
+  const at={recherche:[rech,'up'],redaction:[red,'down'],critique:[cri,'up']};let zk=0;
+  for(const k in at){const s=st(k), pop=lvPop(M,k,!!t&&s==='ok',now), [q,d]=at[k];
+    if(lvSeated(M,k)){rdAgent(people,RD_KS[k],q.x,q.y,!t?'idle':s==='wait'?'wait':s==='run'?'run':'idle',{dir:d,hat:'presse',bubble:bub[k],badge:t&&s==='ok'?'✓':null,pop},now);
+      if(M.sleep){const j=zk++;rdLate(people,()=>lvZz(q.x,q.y,j,now),1e6);}}
+    rdLate(people,()=>atPill(RD_LBL[k],plq[k].x,plq[k].y,s==='run'?'#2f6fd6':s==='ok'?'#2f7a45':'#f4efe4',s==='wait'||!t?'#3a3530':'#fff','bold 11px system-ui,sans-serif'),1e6);}
   // le bureau du boss, le tampon posé dessus : il y est, et tamponne les tickets un par un
   rdBoss(people,tks,now);
   rdLate(people,()=>{R(ctx,jira.x-18,jira.y-30,36,30,'#2f6fd6');R(ctx,jira.x-18,jira.y-34,36,6,'#2559b8');R(ctx,jira.x-10,jira.y-20,20,3,'#0b2a4a');atPill('🎫 Jira',jira.x-44,jira.y-14,'#f4efe4','#3a3530','bold 11px system-ui,sans-serif');},jira.y);
-  rdBench(people,3.4*T,24.6*T,[63,64],'presse');
+  atCoffee(RD_COFFEE.x,RD_COFFEE.y); // la machine à café de la rédaction
+  const sofa=RDP(3.4,24.6);atSofa(sofa.x,sofa.y);if(!Object.values(M.who).some(h=>!h.w&&h.spot.sofa))rdLate(people,()=>atSofaFront(sofa.x,sofa.y),sofa.y+10);
   rdBoard(people);
 }
 // le tableau noir des tickets du jour, jumeau de REVUES DU JOUR, sur un chevalet entre les tickets épinglés et le tampon
@@ -178,20 +235,25 @@ function rdBoard(people){
       .forEach(([c,t],k)=>{R(ctx,bx+16,by+34+k*15,8,8,c);atTxt(t,bx+30,by+42+k*15,'#e8e2d0','12px ui-monospace,Menlo,monospace','left');});},RD_DESK.y-1);
 }
 function rdBoss(people,tks,now){
-  const {x,y}=RD_DESK, boss=chars.find(c=>c.boss), g=tks.filter(t=>t.etat==='gate').length;
+  const {x,y}=RD_DESK, boss=chars.find(c=>c.boss), g=tks.filter(t=>t.etat==='gate').length, J=RD_LV.job;
   atBossChair(x,y);
-  // le bureau du RDC ; au milieu, l'encreur et le tampon (la tasse poussée au bout)
-  const desk=()=>{atBossDesk(x,y,now,boss,(x0,top)=>{R(ctx,x0+40,top+5,22,8,'#2a2a30');R(ctx,x0+42,top+6,18,5,'#7a1f24');
-      R(ctx,x0+66,top-2,12,9,'#c8323a');R(ctx,x0+66,top-2,12,2,'#e0525a');R(ctx,x0+70,top-9,4,7,'#1c1c1c');R(ctx,x0+68,top-12,8,4,'#2c2c2c');},84);
-    if(g)atBubble(x,y-62,'✋ '+plural(g,'ticket','tickets')+' : je tamponne ?','#8a5a00');};
-  if(boss){people.push([withFloorSprite(atSeatedBoss(boss,x,y,g?'gate':'idle'),boss,'redaction_sprite'),null,false,desk]);RD_LIT.push({x,y});atHitRd('boss',x-16,y-60,32,60,{});}
-  else rdLate(people,desk,y);
+  // le bureau du RDC ; au milieu, l'encreur et le tampon (la tasse poussée au bout) ; le tampon part avec lui à Jira
+  const desk=away=>{atBossDesk(x,y,now,boss,(x0,top)=>{R(ctx,x0+40,top+5,22,8,'#2a2a30');R(ctx,x0+42,top+6,18,5,'#7a1f24');
+      if(!(J&&J.kind==='jira')){R(ctx,x0+66,top-2,12,9,'#c8323a');R(ctx,x0+66,top-2,12,2,'#e0525a');R(ctx,x0+70,top-9,4,7,'#1c1c1c');R(ctx,x0+68,top-12,8,4,'#2c2c2c');}},84);
+    if(g&&!away)atBubble(x,y-62,'✋ '+plural(g,'ticket','tickets')+' : je tamponne ?','#8a5a00');};
+  if(boss&&J){const p=J.w.pos, c=withFloorSprite(Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:p.x,y:p.y},tile:null,dir:J.w.dir,moving:J.ph!=='act',pose:'stand',present:true,_st:{st:'idle'}}),boss,'redaction_sprite');
+    rdLate(people,()=>desk(true),y);
+    people.push([c,null,false,()=>{if(J.ph==='go')rdSheet(p.x+(J.w.dir==='left'?-14:14),p.y-30,J.kind);if(J.ph==='act')atBubble(p.x,p.y-62,J.kind==='intro'?'📌 je l\'épingle…':'🎫 dans la boîte Jira…');}]);
+    RD_LIT.push(p);atHitRd('boss',p.x-16,p.y-56,32,60,{});}
+  else if(boss){people.push([withFloorSprite(atSeatedBoss(boss,x,y,g?'gate':'idle'),boss,'redaction_sprite'),null,false,()=>desk(false)]);RD_LIT.push({x,y});atHitRd('boss',x-16,y-60,32,60,{});}
+  else rdLate(people,()=>desk(false),y);
   rdLate(people,()=>atPill('✋ le tampon : tu valides les tickets, puis ils partent un par un',x-40,y+30,g?'#8a5a00':'#f4efe4',g?'#fff':'#3a3530','bold 11px system-ui,sans-serif'),y);
 }
 // un banc comme au 1er : ceux qui ne travaillent pas s'y assoient (descendus dans l'assise, qui leur cache les jambes)
-function rdBench(people,x,y,ks,hat){atSofa(x,y);ks.forEach((k,j)=>{const a=atWorker(k,x+(j?22:-22),y+9,'down',false,'');if(!a)return;a._st={st:'idle'};a.pose='stand';
+function rdBench(people,x,y,ks,hat){atSofa(x,y);ks.forEach((k,j)=>{const a=atWorker(k,x+(j?22:-22),y+9,'down',false,'',null);if(!a)return;a._st={st:'idle'};a.pose='stand';
   people.push([a,null,false,()=>{rdHat(ctx,hat,x+(j?22:-22),y+9,'down');if(j===ks.length-1)atSofaFront(x,y);}]);});}
 // ---------- la salle de revue ----------
+const RD_RV=[RD_H,RDP(RD_VX,13.75),RDP(24.4,13.75)]; // du palier, par la porte de la revue
 function rdRevue(now,people){
   const file=rvfOn(), kids=file?rvfKids():new Set(), F=file?rvfDraw(now,people):null, wait=F&&F.st?F.st.queue.length:0;
   const T=RD_T, l=rvActive().filter(r=>!kids.has(r.run)), done=rvRuns().filter(r=>r.status==='Success'&&r._s>=DAY0).length;
@@ -205,9 +267,13 @@ function rdRevue(now,people){
   for(let k=file?1:0;k<6;k++){const r=l[k-(file?1:0)], cx=(28.5+(k%3)*6.3)*T, feet=(k<3?9.2:18.4)*T, rf=feet+2.3*T;
     if(!r){atDesk(cx,feet-6,false);ctx.fillStyle='rgba(30,26,22,.22)';ctx.fillRect(cx-90,feet-90,180,150);rdLate(people,()=>atPill('bureau libre',cx,feet+40,'#f4efe4','#6a6050','bold 11px system-ui,sans-serif'),feet);continue;}
     const v=r.vars||{}, who=v['current_task.author'], au=who&&typeof ghChar==='function'?ghChar(who):null, mine=au&&boss&&au.key===boss.key;
-    rdAgent(people,100+k,cx,feet,'run',{hat:'visiere',desk:true,bubble:rvBubble(r)},now);
-    if(au&&!mine){const c=Object.assign(Object.create(Object.getPrototypeOf(au)),au,{pos:{x:cx,y:rf},tile:null,dir:'up',moving:false,pose:'stand',present:true,_st:{st:'idle'}});people.push([c,null,false,null]);}
-    else rdAgent(people,110+k,cx,rf,'idle',{dir:'up'},now);
+    // le relecteur et l'auteur arrivent par la porte de l'escalier, et repartent la revue finie (67-vie.js)
+    const ri='rel:'+r.run, ai='au:'+r.run, side=cx+2.2*T, top=k<3, M=RD_LV;
+    M.spec[ri]={k:100+k,kit:'visiere'};M.spec[ai]=au&&!mine?{src:()=>au}:{k:110+k};
+    M.want[ri]={id:'rv'+k,path:[...RD_RV,{x:side,y:13.75*T},{x:side,y:(top?7.6:16.8)*T},{x:cx,y:(top?7.6:16.8)*T},{x:cx,y:feet}],dir:'down',seat:true};
+    M.want[ai]={id:'au'+k,path:top?[...RD_RV,{x:cx,y:13.75*T},{x:cx,y:rf}]:[...RD_RV,{x:side,y:13.75*T},{x:side,y:rf+1.2*T},{x:cx,y:rf+1.2*T},{x:cx,y:rf}],dir:'up'};
+    if(lvSeated(M,ri))rdAgent(people,100+k,cx,feet,'run',{hat:'visiere',desk:true,bubble:rvBubble(r)},now);
+    else{atDesk(cx,feet-6,false);ctx.fillStyle='rgba(30,26,22,.22)';ctx.fillRect(cx-90,feet-90,180,150);}
     const pr=(String(v['current_task.repo']||'').split('/').pop()||'?')+'#'+(v['current_task.number']||'?'), name=au&&!mine?au.name:mine?'🤖 remplaçant (ta PR)':who?'@'+who:'';
     rdLate(people,()=>{atPill(pr+(name?' · '+name:''),cx,rf+24,'#0b2a4a','#fff','bold 11px ui-monospace,Menlo,monospace');
       const steps=rvSteps(r);ctx.font='bold 10px system-ui,sans-serif';const ws=steps.map(s=>ctx.measureText(rvStepLbl(s)).width+10), tot=ws.reduce((a,b)=>a+b,0)+Math.max(0,steps.length-1)*3;let x=cx-tot/2;
@@ -229,10 +295,14 @@ function rdNight(people,now){
     floorBossLamp(RD_DESK.x,RD_DESK.y),{x:(RD_X1+RD_VX)/2*T_,y:26.2*T_,r:1.6*T_,a:.45},exitHalo(RD_EXIT.x,RD_EXIT.y)]},now); // la porte de l'escalier
   if(RD_NIGHT.lv)exitSign(RD_EXIT.x,RD_EXIT.y);
 }
-function rdReset(){RD_MEM={last:0};RDSEL=null;RDTK=null;if(typeof rvfReset==='function')rvfReset();}
+function rdReset(){RD_MEM={last:0};RDSEL=null;RDTK=null;RD_LV=rdLv0();if(typeof rvfReset==='function')rvfReset();}
 function renderRedaction(now){
+  if(!RD_LV)RD_LV=rdLv0();
+  const M=RD_LV, dt=lvTick(M,now);if(M.fresh){M.jobs=[];M.job=null;M.gate.clear();M.pend={};}
   RD_MEM.last=now;if(!RD_BG)RD_BG=rdBackground();ctx.drawImage(RD_BG,0,0);atWindows(now,RD_WINDOWS);RD_HITS=[];RD_LIT=[];
-  const people=[];rdRoom(now,people);rdRevue(now,people);
+  rdJobs(rdTable(),now,dt);
+  const people=[];M.want={};rdRoom(now,people);rdRevue(now,people);
+  lvUpdate(M,M.want,rdEntry(),dt);lvDraw(M,people,now,q=>q.y>AT_H+48);
   people.sort((a,b)=>a[0].pos.y-b[0].pos.y).forEach(([c,d,before,after])=>{if(d)d();if(c.sprite)drawChar(c,now);if(after)after();});
   stairDoor(RD_STAIR,people.map(q=>q[0].pos));
   rdNight(people,now);

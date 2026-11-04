@@ -5,7 +5,10 @@
 // PR (une colonne par section de la réponse de l'agent) ; un fil rouge relie le fil traité à l'agent qui s'en occupe. Un
 // clic sur le Kanban l'ouvre en grand. Le boss est toujours là, à son bureau du couloir : il se lève pour aller à la
 // barrière ✋ du bureau qui attend depuis le plus longtemps, les autres attendent leur tour. Bernard monte les PR par
-// l'escalier (sa porte, au bout du couloir) et les redescend une fois poussées. Les agents portent le bleu de mécanicien (la casquette). Le soir et le
+// l'escalier (sa porte, au bout du couloir) et les redescend une fois poussées. Les agents sont en chirurgiens (calot, masque, blouse,
+// la tenue de l'agent des retours au RDC). Dès qu'une PR a un bureau, toute l'équipe du bureau monte derrière Bernard, l'un
+// après l'autre, et reste à son poste jusqu'au push (gris tant que son poste n'a pas commencé, ✓ une fois fini, comme au
+// 1er) ; la PR partie, elle redescend. Seul le bureau 1 garde son équipe quand il est libre : elle somnole à son poste. Le soir et le
 // week-end, l'étage passe en veilleuse : seuls les agents au travail et le boss gardent leur lumière.
 // Données : dataset retours (workflows/retours_snapshot.py, cron live) ; démo : retoursDemo(). Toile de l'atelier (AT_W × AT_H).
 const RT_POSTES=[{k:'prepare',i:'🗂',n:'Préparation',d:'récupère les fils de commentaires de la PR'},{k:'fix',i:'🛠',n:'Correction',d:'corrige fil par fil'},
@@ -15,7 +18,7 @@ const RT_COLS=[{k:'a_traiter',n:'À traiter',c:'#e8e2d0'},{k:'corrige',n:'✅ Co
   {k:'laisse',n:'⏭ Laissé',c:'#d8d2c4'},{k:'reponse',n:'💬 Réponse',c:'#9fd4ff'}];
 // « Comment lire le plan » au 3e (46-legende.js) : la légende du Kanban, puis les onglets ; les postes viennent de RT_POSTES
 const RT_HELP={bar:()=>'<span>Kanban des fils :</span>'+legSwatches(Object.fromEntries(RT_COLS.map(c=>[c.k,[c.c,c.n]])))+'<span>cadre rouge : le fil en cours</span>',postes:()=>[['',RT_POSTES]],
-  qui:'<p><b>Agents</b> : un par poste, en bleu de mécanicien et casquette.</p><p><b>Bernard</b> sort de la porte de l\'escalier avec la PR et la redescend une fois poussée.</p>'+
+  qui:'<p><b>Agents</b> : un par poste, en chirurgiens. Toute l\'équipe monte avec la PR et reste jusqu\'au push ; au bureau 1 libre, elle somnole.</p><p><b>Bernard</b> sort de la porte de l\'escalier avec la PR et la redescend une fois poussée.</p>'+
     '<p><b>Le boss</b>, à son bureau du couloir, va à la barrière du bureau qui attend depuis le plus longtemps ; les autres attendent leur tour.</p>',
   ou:'<p><b>Six bureaux</b> : une PR par bureau, avec son dépôt, son numéro et son auteur.</p><p><b>Le Kanban</b> au mur : un post-it par fil de commentaire, qui change de colonne quand il est traité ; un clic l\'agrandit.</p>'+
     '<p><b>Le couloir</b> : les PR qui attendent un bureau, le café, le banc.</p>',
@@ -90,7 +93,7 @@ function rtRoomsAt(t){
 // quand on regarde l'étage, et en y montant (fresh) tout est posé sans rejouer
 const rtMem0=()=>({fresh:true,slot:{},seen:{},scenes:[],leaving:Array(RT_N).fill(null),boss:null,last:0,lastT:null,live:null,sig:''});
 let RT_MEM=rtMem0();
-function rtReset(){const slot=RT_MEM.slot;RT_MEM=rtMem0();RT_MEM.slot=slot;RTSEL=null;rtKbClose();} // une PR garde son numéro de bureau, vue du RDC comme à l'étage
+function rtReset(){const slot=RT_MEM.slot;RT_MEM=rtMem0();RT_MEM.slot=slot;RTSEL=null;rtKbClose();RT_LV=lvMem();} // une PR garde son numéro de bureau, vue du RDC comme à l'étage
 function rtSlots(){
   const rooms=rtRooms(), out=Array(RT_N).fill(null), live=new Set(rooms.map(r=>r.run));
   for(const run of Object.keys(RT_MEM.slot))if(!live.has(run))delete RT_MEM.slot[run];
@@ -135,9 +138,8 @@ function rtBackground(){
   return c;
 }
 let RT_BG=null;
-// la casquette du bleu de mécanicien, par-dessus l'agent
-function rtCap(g,x,y,dir){const hx=x+(dir==='left'?-2:dir==='right'?2:0), hy=y-44;R(g,hx-9,hy-4,18,7,'#24407a');R(g,hx-9,hy-4,18,2,'#3a5ca0');
-  if(dir!=='up')R(g,hx-(dir==='left'?13:dir==='right'?5:9),hy+2,dir==='down'?18:14,3,'#1a2e5a');}
+// la tenue de chirurgien (69-metiers.js), sur l'agent assis à son poste
+const rtKit=(g,x,y,dir)=>mtChirurgien(g,x,y,dir,true);
 function rtPostit(x,y,c,hl){R(ctx,x,y,20,14,c);R(ctx,x+3,y+4,13,2,'rgba(0,0,0,.25)');R(ctx,x+3,y+8,9,2,'rgba(0,0,0,.25)');if(hl){ctx.strokeStyle='#c0392b';ctx.lineWidth=2;ctx.strokeRect(x-2,y-2,24,18);}}
 // le Kanban au mur : une colonne par section de la réponse, un post-it par fil ; renvoie où est le fil en cours
 function rtBoard(z,r){
@@ -157,10 +159,13 @@ function rtRoom(r,i,now,people){
   rtLate(people,()=>atPill('BUREAU '+(i+1),z.x0+38,z.y0+16,'#5a4636','#fff','bold 11px ui-monospace,Menlo,monospace'),1);
   const hl=rtBoard(z,r);
   atBelt(z.x0+.5*T,z.ry,z.w-T,.6*T,!!r,now,1);
-  if(!r){ // libre : les bureaux éteints, personne
-    RT_POSTES.forEach((p,j)=>{if(!p.gate)atDesk(z.pts[j].x,z.pts[j].y-6,false);});
+  if(!r){ // libre : les bureaux éteints ; au bureau 1, l'équipe somnole à son poste, ailleurs personne
     ctx.fillStyle='rgba(20,22,30,.35)';ctx.fillRect(z.x0+4,z.y0+4,z.w-8,z.h-8);
-    if(!lv)rtLate(people,()=>atPill('libre',z.x0+z.w/2,z.y0+z.h/2+18,'#1c2440','#bfe6ff','bold 12px ui-monospace,Menlo,monospace'),1);
+    let zk=0;RT_POSTES.forEach((p,j)=>{if(p.gate)return;const {x,y}=z.pts[j];
+      if(!lvSeated(RT_LV,rtCrewId(i,p.k))){rtLate(people,()=>atDesk(x,y-6,false),y);return;}
+      const a=atWorker(i*7+j,x,y,'down',false,p.n,null);if(!a)return;a._st={st:'idle'};a.pose='type';const k=zk++;
+      people.push([a,null,false,()=>{rtKit(ctx,x,y,'down');atDesk(x,y-6,false);lvZz(x,y,k,now);}]);atHitRt('agent',x-16,y-56,32,60,{i,k:p.k});});
+    if(!lv)rtLate(people,()=>atPill(zk?'💤 Libre : ils somnolent à leur poste':'libre',z.x0+z.w/2,zk?z.y0+4.7*T:z.y0+z.h/2+18,'#1c2440','#bfe6ff','bold 12px ui-monospace,Menlo,monospace'),1);
     if(lv&&lv.carton)rtLate(people,()=>{ctx.save();ctx.globalAlpha=lv.carton;atCarton(z.pts[RT_POSTES.length-1].x,z.ry+.2*T,null);ctx.restore();},z.ry+1);
     atHitRt('room',z.x0,z.y0,z.w,z.h,{i});return;
   }
@@ -171,16 +176,18 @@ function rtRoom(r,i,now,people){
       if(s==='gate'&&!here)rtLate(people,()=>{if(REDUCED_MOTION||Math.floor(now/500)%2)atBadge(x,z.ry-34,'✋','#d08a10');
         if(boss&&boss.target!=null&&boss.target!==i)atPill('✋ en file : le boss est au bureau '+(boss.target+1),x,z.ry-56,'#8a5a00','#fff','bold 11px system-ui,sans-serif');},1e6);
       rtLate(people,()=>rtPill(p,s,x,z.ry+.6*T+12),1e6-2);atHitRt('agent',x-16,z.ry-40,32,48,{i,k:p.k});return;}
-    const a=atWorker(i*7+j,x,y,'down',s==='err',p.n);if(!a)return;
+    rtLate(people,()=>rtPill(p,s,x,z.ry+.6*T+12),1e6-2);
+    const id=rtCrewId(i,p.k), pop=lvPop(RT_LV,id,s==='ok',now);
+    if(!lvSeated(RT_LV,id)){rtLate(people,()=>atDesk(x,y-6,false),y);return;} // il monte encore : le bureau éteint
+    const a=atWorker(i*7+j,x,y,'down',s==='err',p.n,null);if(!a)return;
     a._st={st:s==='run'?'work':s==='err'?'error':'idle'};a.pose='type';
     const desk=()=>atDesk(x,y-6,s==='run'||s==='err',s==='err'?'#ff9a8a':null);
-    if(!s){people.push([{pos:{x,y}},null,false,()=>{const g=atLayer();atDrawInto(g,a,now);rtCap(g,x,y,'down');ctx.save();ctx.globalAlpha=.38;ctx.filter='grayscale(1)';ctx.drawImage(AT_OFF,0,0);ctx.restore();desk();}]);}
+    if(!s){people.push([{pos:{x,y}},null,false,()=>{const g=atLayer();atDrawInto(g,a,now);rtKit(g,x,y,'down');ctx.save();ctx.globalAlpha=.38;ctx.filter='grayscale(1)';ctx.drawImage(AT_OFF,0,0);ctx.restore();desk();}]);} // là, pas encore lancé : gris
     else{if(s==='run'){const gl=ctx.createRadialGradient(x,y-24,4,x,y-24,46);gl.addColorStop(0,'rgba(255,246,190,.6)');gl.addColorStop(1,'rgba(255,246,190,0)');ctx.fillStyle=gl;ctx.fillRect(x-48,y-72,96,96);RT_LIT.push({x,y});}
-      people.push([a,null,false,()=>{rtCap(ctx,x,y,'down');desk();
-        if(s==='ok')atBadge(x+16,y-50,'✓','#2f9e55');
-        if(s==='err'){atBadge(x+16,y-50,'!','#d0392b');atSmoke(x,y-30,now);}
+      people.push([a,null,false,()=>{rtKit(ctx,x,y,'down');desk();
+        if(s==='ok')atBadge(x+18,y-42,'✓','#2f9e55',pop); // à côté de l'agent, comme au 1er
+        if(s==='err'){atBadge(x+18,y-42,'!','#d0392b');atSmoke(x,y-30,now);}
         if(cur===p&&s!=='gate')atBubble(x,y-66,rtBubble(r,p));}]);}
-    rtLate(people,()=>rtPill(p,s,x,z.ry+.6*T+12),1e6-2);
     atHitRt('agent',x-16,y-56,32,60,{i,k:p.k});
   });
   // la PR : son carton devant le poste en cours (il apparaît quand Bernard la pose)
@@ -188,7 +195,7 @@ function rtRoom(r,i,now,people){
   if(fade>0)rtLate(people,()=>{ctx.save();ctx.globalAlpha=fade;const cx=z.pts[ci].x;atCarton(cx,z.ry+.2*T,null);RT_COLS.slice(1,4).forEach((c,q)=>R(ctx,cx-11+q*8,z.ry+.2*T-16,6,5,c.c));ctx.restore();},z.ry+1);
   // le fil rouge : du post-it en cours à l'agent de la correction qui le traite
   const fx=RT_POSTES.findIndex(p=>p.k==='fix');
-  if(hl&&rtState(r,RT_POSTES[fx])==='run'){const a={x:z.pts[fx].x,y:z.pts[fx].y-40};rtLate(people,()=>{ctx.save();ctx.strokeStyle='#c0392b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(hl.x,hl.y);
+  if(hl&&rtState(r,RT_POSTES[fx])==='run'&&lvSeated(RT_LV,rtCrewId(i,'fix'))){const a={x:z.pts[fx].x,y:z.pts[fx].y-40};rtLate(people,()=>{ctx.save();ctx.strokeStyle='#c0392b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(hl.x,hl.y);
     ctx.quadraticCurveTo((hl.x+a.x)/2+30,(hl.y+a.y)/2,a.x,a.y);ctx.stroke();ctx.restore();for(const q of [hl,a]){ctx.fillStyle='#d0392b';ctx.beginPath();ctx.arc(q.x,q.y,4,0,7);ctx.fill();}},1e6-1);}
   atHitRt('room',z.x0,z.y0,z.w,z.h,{i});
 }
@@ -199,17 +206,25 @@ function rtBubble(r,p){
 }
 // ---------- le couloir : le bureau du boss, la file des PR, le café, le banc, la porte de l'escalier ----------
 function rtHall(slots,now,people){
-  const T=AT_TS, y=(RT_HALL[0]+RT_HALL[1])/2*T, q=(RETOURS&&RETOURS.queue)||[], free=slots.filter(x=>!x).length;
+  const T=AT_TS, y=(RT_HALL[0]+RT_HALL[1])/2*T, q=(RETOURS&&RETOURS.queue)||[];
   for(let k=0;k<Math.min(3,q.length);k++)atCarton(1.4*T+k*34,y+10,null);
   if(q.length)rtLate(people,()=>atPill('📥 '+plural(q.length,'PR attend','PR attendent')+' un bureau',1.4*T+150,y+8,'#1c2440','#bfe6ff','bold 11px system-ui,sans-serif'),1e6);
   atHitRt('queue',.6*T,y-20,4*T,40,{});
   atCoffee(20*T,y+18);atPlant(17.6*T,y+20);atPlant(26*T,y+20);
-  // le banc, comme au 1er : ceux des bureaux libres s'y assoient (descendus dans l'assise, qui leur cache les jambes)
-  const bx=9*T, by=RT_HALL[1]*T-6;atSofa(bx,by);
-  const sit=Math.min(2,free);for(let k=0;k<sit;k++){const x=bx+(k?22:-22), a=atWorker(60+k,x,by+9,'down',false,'');if(!a)continue;a._st={st:'idle'};a.pose='stand';
-    people.push([a,null,false,()=>{rtCap(ctx,x,by+9,'down');if(k===sit-1)atSofaFront(bx,by);}]);}
-  if(!sit)rtLate(people,()=>atSofaFront(bx,by),by+10);
+  const bx=9*T, by=RT_HALL[1]*T-6;atSofa(bx,by);rtLate(people,()=>atSofaFront(bx,by),by+10); // le banc
   rtLate(people,()=>atPill('⇅ escalier · RDC',46*T-74,RT_STAIR.y+RT_STAIR.h+22,'#5a4636','#fff','bold 11px ui-monospace,Menlo,monospace'),1e6);
+}
+// ---------- les équipes : dès qu'une PR a un bureau, ses cinq agents montent derrière Bernard, l'un après l'autre, et
+// restent jusqu'au push ; le bureau 1 garde toujours la sienne (67-vie.js) ----------
+let RT_LV=lvMem();
+const RT_LV_H={x:44.6*AT_TS,y:RT_LANE}, rtCrewId=(i,k)=>'b'+i+':'+k;
+function rtCrewSpot(i,j){const g=RT_G[i], T=AT_TS, p=g.pts[j], lane={x:g.door.x,y:RT_LANE}, yy=g.top?g.y0+g.h-.9*T:g.y0+4.9*T; // en haut, sous le tapis (la porte est en dessous)
+  return {id:'d'+i+':'+j,path:[RT_LV_H,lane,{x:g.door.x,y:yy},{x:p.x,y:yy},p],dir:'down',seat:true};}
+function rtCrewWant(slots){
+  const want={};
+  slots.forEach((r,i)=>{if(!r&&i!==0)return;let n=0;
+    RT_POSTES.forEach((p,j)=>{if(p.gate)return;const id=rtCrewId(i,p.k);RT_LV.spec[id]={k:i*7+j,kit:'chirurgien'};want[id]={...rtCrewSpot(i,j),delay:.8*n++};});});
+  return want;
 }
 // ---------- le boss : à son bureau, ou à la barrière ✋ du bureau qui attend depuis le plus longtemps ----------
 function rtBoss(slots,now,dt,people){
@@ -270,12 +285,14 @@ function renderRetours(now){
   if(!RT_BG)RT_BG=rtBackground();
   ctx.drawImage(RT_BG,0,0);atWindows(now,RT_WINDOWS);RT_HITS=[];RT_LIT=[];
   const live=rtLive(), jump=RT_MEM.lastT!=null&&(Math.abs(T-RT_MEM.lastT)>120e3||live!==RT_MEM.live);
-  if(jump){RT_MEM.fresh=true;RT_MEM.scenes=[];RT_MEM.leaving=Array(RT_N).fill(null);RT_MEM.seen={};}
+  if(jump){RT_MEM.fresh=true;RT_MEM.scenes=[];RT_MEM.leaving=Array(RT_N).fill(null);RT_MEM.seen={};RT_LV.fresh=true;}
   RT_MEM.lastT=T;RT_MEM.live=live;
   const sig=rtSig();if(RT_MEM.sig!==sig||RT_MEM.fresh){RT_MEM.sig=sig;rtDiff(now);}
   const slots=rtSlots(), people=[];
+  lvTick(RT_LV,now);RT_LV.f0=RT_LV.fresh;lvUpdate(RT_LV,rtCrewWant(slots),[RT_STAIRS,RT_LV_H],dt);
   slots.forEach((r,i)=>rtRoom(r,i,now,people));
   rtHall(slots,now,people);rtBoss(slots,now,dt,people);rtScenes(now,dt,people);
+  lvDraw(RT_LV,people,now,p=>p.x>AT_W+8); // les équipes qui montent ou redescendent
   people.sort((a,b)=>a[0].pos.y-b[0].pos.y).forEach(([c,d,before,after])=>{if(d)d();if(c.sprite)drawChar(c,now);if(after)after();});
   stairDoor(RT_STAIR,people.map(q=>q[0].pos));
   rtNight(slots,people,now);

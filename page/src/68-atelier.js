@@ -185,7 +185,24 @@ function atBeltAt(g,s){
 // Un ticket garde son bureau tant qu'il est sur la chaîne (le suivant prend le premier bureau libre). Les scènes se
 // jouent seulement quand on regarde l'étage : en y montant (fresh), tout est posé sans rejouer ce qui s'est passé avant.
 const AT_MEM={src:null,fresh:true,slot:{},rooms:{},cart:{},okAt:{},backAt:{},lit:[0,0,0,0],scenes:[],leaving:[null,null,null,null],
-  wander:[],boss:null,ext:{},last:0,arrivedAt:{}};
+  wander:[],boss:null,ext:{},last:0,arrivedAt:{},crew:{occ:[true,false,false,false],walk:[]}};
+// ---------- les équipes : seul le bureau 1 garde la sienne (elle somnole quand il est libre, et parfois se promène) ; les
+// bureaux 2 à 4 sont vides sans ticket : l'équipe monte par la porte de sortie, l'un après l'autre, quand un ticket
+// arrive, et redescend quand Bernard emporte le carton ----------
+const atCrewOcc=(slots,i)=>i===0||!!(slots[i]||AT_MEM.leaving[i]);
+function atCrewTick(slots,dt,fresh){
+  const C=AT_MEM.crew;
+  for(let i=1;i<4;i++){const o=atCrewOcc(slots,i);
+    if(fresh||REDUCED_MOTION){C.occ[i]=o;C.walk=C.walk.filter(w=>w.i!==i);continue;}
+    if(o===C.occ[i])continue;
+    C.occ[i]=o;C.walk=C.walk.filter(w=>w.i!==i);let n=0;
+    for(const p of AT_DESKS){if(p.gate)continue;const out=atRouteOut(i,p.k), door={x:AT_EXIT.x+50,y:AT_MY};
+      C.walk.push({i,k:p.k,in:o,delay:(o?.7:.35)*n++,w:atWalker(o?[door,AT_EXIT,...out.slice().reverse()]:[...out,AT_EXIT,door],95)});}}
+  for(const w of C.walk){if(w.delay>0){w.delay-=dt;continue;}if(atStep(w.w,dt))w.done=true;}
+  C.walk=C.walk.filter(w=>!w.done);
+}
+// à son poste : son bureau a une équipe et il n'est pas encore dans l'escalier ou en chemin
+const atAtDesk=(i,k)=>AT_MEM.crew.occ[i]&&!AT_MEM.crew.walk.some(w=>w.i===i&&w.k===k);
 function atSlots(){
   const rooms=atRooms(), out=[null,null,null,null], live=new Set(rooms.map(r=>r.run));
   for(const run of Object.keys(AT_MEM.slot))if(!live.has(run))delete AT_MEM.slot[run];
@@ -279,7 +296,7 @@ function atWanderTick(slots,now,dt,rnd){
   }
   AT_MEM.wander=AT_MEM.wander.filter(w=>!w.done);
   if(AT_MEM.wander.length>=AT_WANDER_MAX||rnd()>dt*.25)return;
-  const rooms=[0,1,2,3].filter(i=>free(i)&&AT_MEM.wander.filter(w=>w.i===i).length<AT_WANDER_ROOM&&AT_MEM.lit[i]<.05);if(!rooms.length)return;
+  const rooms=[0,1,2,3].filter(i=>free(i)&&AT_MEM.crew.occ[i]&&AT_MEM.wander.filter(w=>w.i===i).length<AT_WANDER_ROOM&&AT_MEM.lit[i]<.05);if(!rooms.length)return;
   const i=rooms[Math.floor(rnd()*rooms.length)], ks=AT_DESKS.filter(p=>!p.gate&&!AT_MEM.wander.some(w=>w.i===i&&w.k===p.k));
   const spots=AT_SPOTS.filter(s=>!AT_MEM.wander.some(w=>w.spot===s));if(!ks.length||!spots.length)return;
   const k=ks[Math.floor(rnd()*ks.length)].k, spot=spots[Math.floor(rnd()*spots.length)];
@@ -356,12 +373,12 @@ function atChantier(T){
 }
 // tenue de chantier, dessinée par-dessus le personnage (drawChar, 41-people.js) : casque (jaune, blanc pour la sécurité)
 // et gilet orange à bandes réfléchissantes ; assis à son poste, la tête est plus bas ; up : haut du gilet debout, en px
-// au-dessus des pieds (29 par défaut ; 26 pour l'agent Implé du RDC, 69-metiers.js, qui dégage le menton)
+// au-dessus des pieds (26 par défaut, au 1er comme pour l'agent Implé du RDC, 69-metiers.js : il dégage le menton)
 const GEAR={chantier:'#f6c419',securite:'#f2f2f2'};
 function drawGear(c,gear,up){
   gear=gear||c.gear;const col=GEAR[gear];if(!col)return;
   const seated=c.pose==='type'&&!c.moving, x=Math.round(c.pos.x), y=Math.round(c.pos.y), dir=c.dir;
-  const top=seated?y-23:y-(up||29);
+  const top=seated?y-23:y-(up||26);
   R(ctx,x-8,top,16,13,'#ff7a1a');if(dir!=='up')R(ctx,x-2,top,4,13,'#3f5a7a');
   R(ctx,x-8,top+5,16,2,'#e6eef2');R(ctx,x-8,top+9,16,2,'#e6eef2');
   const hx=x+(dir==='left'?-2:dir==='right'?2:0), hy=y-(seated?36:42), rim=gear==='securite'?'#9aa2ac':'#b8860b';
@@ -370,13 +387,14 @@ function drawGear(c,gear,up){
   R(ctx,hx-13,hy-1,26,3,col);R(ctx,hx-13,hy+2,26,1,rim);R(ctx,hx-1,hy-10,2,10,'rgba(0,0,0,.18)');R(ctx,hx-6,hy-7,3,4,'rgba(255,255,255,.55)');
 }
 // un agent de l'étage : l'apparence d'un agent du Bureau (un intérimaire en dernier recours), le nom de ce qu'il fait,
-// l'hologramme bleu des agents du quotidien, en tenue de chantier (le pompier : casque blanc de la sécurité)
-function atWorker(k,x,y,dir,err,name){
+// l'hologramme bleu des agents du quotidien, en tenue de chantier (le pompier : casque blanc de la sécurité) ; gear :
+// une autre tenue, ou null pour aucune (aux 2e et 3e, l'étage pose la sienne : 67-vie.js)
+function atWorker(k,x,y,dir,err,name,gear){
   const all=chars.filter(c=>!c.person&&!c.visitor&&!c.boss&&c.sprite), named=all.filter(c=>!c.temp&&c.sprite!=='temp'), ag=named.length?named:all;
   if(!ag.length)return null;
   const src=ag[k%ag.length];
   return Object.assign(Object.create(Object.getPrototypeOf(src)),src,{key:'at_'+k,name,baseName:name,role:name,temp:false,family:'jour',holo:null,
-    pos:{x,y},tile:null,dir,moving:false,pose:'type',present:true,_st:{st:err?'error':'work'},phase:(x*7+y)%5,gear:name==='Pompier'?'securite':'chantier'});
+    pos:{x,y},tile:null,dir,moving:false,pose:'type',present:true,_st:{st:err?'error':'work'},phase:(x*7+y)%5,gear:gear!==undefined?gear:name==='Pompier'?'securite':'chantier'});
 }
 let AT_OFF=null;
 function atLayer(){if(!AT_OFF){AT_OFF=document.createElement('canvas');AT_OFF.width=AT_W;AT_OFF.height=AT_H;}const g=AT_OFF.getContext('2d');g.imageSmoothingEnabled=false;g.clearRect(0,0,AT_W,AT_H);return g;}
@@ -402,6 +420,7 @@ function atRoom(r,i,now,dt){
     const deskY=top?g.desk1:g.desk2, feet=top?g.feet1:g.feet2, labelY=top?g.lab1:g.lab2;
     const col={run:'#2f6fd6',bloq:'#a8323a',err:'#a8323a',ok:'#2f7a45',avis:'#9a6a10',skip:'#d8d2c4'}[s]||'#f4efe4';
     late.push(()=>atPill(atPosteLbl(p,['run','bloq','err','avis'].includes(s)),sp.x,labelY,col,['run','bloq','err','ok','avis'].includes(s)?'#fff':s==='skip'?'#8a8478':'#3a3530','bold 11px system-ui,sans-serif'));
+    if(!atAtDesk(i,p.k)){atDesk(sp.x,deskY,false);return;} // personne (bureau vide, ou il monte encore) : le bureau seul
     const a=atWorker(i*20+idx,sp.x,feet,'down',false,p.n);if(!a)return;
     a._at={i,k:p.k,s};
     if(s==='skip'){atDesk(sp.x,deskY,false);return;}
@@ -442,7 +461,7 @@ function atRoom(r,i,now,dt){
   const want=r||leave?1:0;AT_MEM.lit[i]+=Math.sign(want-AT_MEM.lit[i])*Math.min(Math.abs(want-AT_MEM.lit[i]),dt/(REDUCED_MOTION?.01:2.5));
   const sweep=AT_MEM.clean&&!AT_MEM.clean.moving&&AT_MEM.clean.stop.i===i, dark=(1-AT_MEM.lit[i])*(sweep?.35:1);
   if(dark>.01){ctx.fillStyle=`rgba(10,14,34,${(.55*dark).toFixed(3)})`;ctx.fillRect(g.x0*T+5,g.y0*T+5,(g.x1-g.x0)*T-10,(g.y1-g.y0)*T-10);
-    if(dark>.9||sweep&&!r){sleepers.forEach(([,x,f],k)=>atTxt('z Z',x+12,f-58-(Math.floor(now/800+k)%2)*4,'#bfe6ff','bold 13px ui-monospace,Menlo,monospace'));
+    if((dark>.9||sweep&&!r)&&sleepers.length){sleepers.forEach(([,x,f],k)=>atTxt('z Z',x+12,f-58-(Math.floor(now/800+k)%2)*4,'#bfe6ff','bold 13px ui-monospace,Menlo,monospace'));
       atPill('💤 Libre : ils somnolent à leur poste',(g.x0+g.x1)/2*T,g.b1+H+.35*T,'#1c2440','#bfe6ff');}}
   atHit('room',g.x0*T,g.y0*T,(g.x1-g.x0)*T,(g.y1-g.y0)*T,{i});
 }
@@ -801,9 +820,11 @@ function renderAtelier(now){
   const live=atLive(), jump=AT_MEM.lastT!=null&&(Math.abs(T-AT_MEM.lastT)>120e3||live!==AT_MEM.live), sig=atSig();
   if(jump){AT_MEM.fresh=true;AT_MEM.scenes=[];AT_MEM.leaving=[null,null,null,null];AT_MEM.rooms={};AT_MEM.cart={};}
   AT_MEM.lastT=T;AT_MEM.live=live;
+  const crewFresh=AT_MEM.fresh;
   if(AT_MEM.src!==ATELIER||AT_MEM.sig!==sig){AT_MEM.src=ATELIER;AT_MEM.sig=sig;atDiff(now);}
 
   const slots=atSlots(), d=ATELIER||{}, cl=atCleaner();AT_MEM.clean=cl&&atCleanerAt(cl,T);
+  atCrewTick(slots,dt,crewFresh);
   atCorridor(now);
   for(const k of Object.keys(AT_MEM.ext))if(now-AT_MEM.ext[k].seen>3e3)delete AT_MEM.ext[k];
   slots.forEach((r,i)=>atRoom(r,i,now,dt));
@@ -813,6 +834,8 @@ function renderAtelier(now){
   for(const w of AT_MEM.wander){const a=atWorker(w.i*20+AT_POSTES.findIndex(p=>p.k===w.k),w.walk.pos.x,w.walk.pos.y,w.walk.dir,false,(AT_POSTES.find(p=>p.k===w.k)||{}).n);
     if(!a)continue;a.moving=w.phase!=='stay';a.pose='stand';a._st={st:'idle'};a._at={i:w.i,k:w.k,s:'wander'};people.push([a,null,false]);
     atHit('agent',w.walk.pos.x-14,w.walk.pos.y-56,28,58,{i:w.i,k:w.k});}
+  for(const w of AT_MEM.crew.walk){if(w.delay>0)continue;const p=w.w.pos, a=atWorker(w.i*20+AT_DESKS.findIndex(q=>q.k===w.k),p.x,p.y,w.w.dir,false,(AT_POSTES.find(q=>q.k===w.k)||{}).n);
+    if(!a)continue;a.moving=true;a.pose='stand';a._st={st:'idle'};people.push([a,null,false]);} // les équipes qui montent ou redescendent
   atScenes(now,dt,people);
   if(AT_MEM.clean){const m=AT_MEM.clean, a=Object.assign(Object.create(Object.getPrototypeOf(cl)),cl,{pos:{x:m.x,y:m.y},tile:null,dir:m.dir,moving:m.moving||!!m.sweeping,pose:'stand',present:true,_st:{st:'idle'}});
     const [dx,dy]={left:[-20,0],right:[20,0]}[m.dir]||[20,2];

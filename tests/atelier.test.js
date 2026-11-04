@@ -149,17 +149,33 @@ test('scènes : rien à rejouer en montant ; puis arrivée, sortie (pas pour une
   assert.equal(J2("atSlots().findIndex(r => r && r.run === 'd')"), 2, 'pas dans le bureau que le transporteur vide');
 });
 
-test('promeneurs : seulement des bureaux libres, 4 au plus sur l\'étage et 2 par bureau ; ils rentrent quand un ticket arrive', () => {
+test('promeneurs : seulement l\'équipe du bureau 1, quand il est libre (2 au plus) ; ils rentrent quand un ticket arrive', () => {
   const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
-  p.run(`T = DAY0 + 11 * 36e5; ATELIER = {rooms: [${JSON.stringify(room('a'))}], queue: []}; AT_MEM.lit = [1, 0, 0, 0];
+  p.run(`T = DAY0 + 11 * 36e5; ATELIER = {rooms: [${JSON.stringify(room('a'))}], queue: []}; AT_MEM.slot.a = 1; AT_MEM.lit = [0, 1, 0, 0];
     for (let n = 0; n < 50; n++) atWanderTick(atSlots(), n * 100, .1, () => 0);`);
   const w = J2('AT_MEM.wander.map(w => w.i)');
-  assert.equal(w.length, 4);
-  assert.ok(!w.includes(0), 'pas le bureau occupé');
-  for (const i of [1, 2, 3]) assert.ok(w.filter(x => x === i).length <= 2);
-  const i = w[0];
-  p.run(`ATELIER.rooms.push(${JSON.stringify(room('z'))}); AT_MEM.slot.z = ${i}; atWanderTick(atSlots(), 6000, .1, () => 1);`);
-  assert.ok(J2(`AT_MEM.wander.filter(w => w.i === ${i}).every(w => w.phase === 'back')`));
+  assert.deepEqual(w, [0, 0], 'les bureaux 2 à 4 n\'ont pas d\'équipe sans ticket : seul le bureau 1 se promène');
+  p.run(`ATELIER.rooms.push(${JSON.stringify(room('z'))}); AT_MEM.slot.z = 0; atWanderTick(atSlots(), 6000, .1, () => 1);`);
+  assert.ok(J2('AT_MEM.wander.every(w => w.phase === "back")'));
+});
+
+test('équipes du 1er : le bureau 1 garde la sienne ; ailleurs, elle monte avec le ticket et redescend avec le carton', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
+  p.run(`ATELIER = {rooms: [], queue: []}; atCrewTick(atSlots(), 0, true);`);
+  assert.deepEqual(J2('AT_MEM.crew.occ'), [true, false, false, false]);
+  assert.equal(J2('atAtDesk(1, "tests")'), false, 'bureau 2 libre : personne à son poste');
+  p.run(`ATELIER.rooms.push(${JSON.stringify(room('m'))}); AT_MEM.slot.m = 2; atCrewTick(atSlots(), .1, false);`);
+  const n = J2('AT_DESKS.filter(p => !p.gate).length');
+  assert.equal(J2('AT_MEM.crew.walk.filter(w => w.i === 2 && w.in).length'), n, 'toute l\'équipe monte');
+  assert.ok(J2('AT_MEM.crew.walk.filter(w => w.i === 2).every((w, k) => k === 0 || w.delay > 0)'), 'l\'un après l\'autre');
+  assert.equal(J2('atAtDesk(2, "tests")'), false, 'encore en chemin : sa place est vide');
+  p.run('for (let k = 0; k < 400; k++) atCrewTick(atSlots(), .1, false);');
+  assert.equal(J2('AT_MEM.crew.walk.length'), 0);
+  assert.equal(J2('atAtDesk(2, "tests")'), true, 'arrivé');
+  p.run('ATELIER.rooms = []; atCrewTick(atSlots(), .1, false);');
+  assert.equal(J2('AT_MEM.crew.walk.filter(w => w.i === 2 && !w.in).length'), n, 'le ticket parti, l\'équipe redescend');
+  p.run('atCrewTick(atSlots(), .1, true);');
+  assert.equal(J2('AT_MEM.crew.walk.length'), 0, 'en arrivant à l\'étage, tout est posé');
 });
 
 test("fiche d'un agent : son poste, son bureau et sa place, même quand il se promène", () => {
@@ -333,7 +349,7 @@ test("toutes les scènes du 1er se jouent à toute heure : sans ticket, avec les
 
 test('le soir, comme au RDC : le boss et ceux qui se promènent ont leur lumière, qui les suit', () => {
   const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
-  p.run(`CFG.atelier = true; FLOOR = 1; ATELIER = {rooms: [${JSON.stringify(room('n', {gate: 'gate_plan', poste: 'gate'}))}], queue: [], pannes: []};`);
+  p.run(`CFG.atelier = true; FLOOR = 1; ATELIER = {rooms: [${JSON.stringify(room('n', {gate: 'gate_plan', poste: 'gate'}))}], queue: [], pannes: []}; AT_MEM.slot.n = 1;`);
   saturdayNight(p);
   p.run(`AT_MEM.wander = []; for (let n = 0; n < 40; n++) atWanderTick(atSlots(), n * 100, .1, () => 0);
     var __sp = [], __so = softSpot; softSpot = (g, x, y, r, a, c) => { __sp.push([Math.round(x), Math.round(y)]); __so(g, x, y, r, a, c); };
