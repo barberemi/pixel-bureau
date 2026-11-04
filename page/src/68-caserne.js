@@ -538,7 +538,7 @@ function tvCaserneHtml(){
 // Comme au 1er, toutes se jouent à toute heure : sans intervention en cours, la copie part des fils de la démo ; trois baies
 // prises, la plus récente se libère d'abord (prep : posée sans scène, comme en arrivant à l'étage)
 function csDemo(mut,prep){return s=>{const src=csActive().length?SUPPORT:supportDemo(), d=JSON.parse(JSON.stringify(src||{threads:[]}));d.threads=d.threads||[];
-  if(prep){prep(d);SUPPORT=JSON.parse(JSON.stringify(d));csReset();csSlots(performance.now());}
+  if(prep){prep(d);SUPPORT=JSON.parse(JSON.stringify(d));csReset();csSlots(performance.now());loupeNoteSeen();}
   mut(d,new Date(s).toISOString(),s);SUPPORT=d;};}
 const csFreeOne=d=>{const l=d.threads.filter(t=>spState(t).k in CS_LIVE);if(l.length>=CS_BAYS){const t=l.sort((a,b)=>ms(b.run&&b.run.at)-ms(a.run&&a.run.at))[0];t.state='skipped';}};
 const csIn=(d,k)=>d.threads.find(t=>spState(t).k===k);
@@ -553,7 +553,8 @@ function csGalleryScenes(){
     play:{len:12e3,speed:1,setup:csDemo(d=>{const t=csIn(d,'run');if(!t)return;const st=csStates(t), ks=CS_POSTES.filter(p=>!p.gate).map(p=>p.k), j=Math.max(0,ks.findIndex(k=>st[k]==='run'));
       const p={};ks.slice(0,j+1).forEach(k=>{p[k]='ok';});p[ks[Math.min(ks.length-2,j+1)]]='run';t.run.postes=p;},()=>{})}});
   out.push({fam,ico:'✋',n:'À toi de valider',d:'La réponse est relue : le capitaine quitte son bureau et va ouvrir la vanne de la baie',w:'La réponse proposée attend ta validation',ok,
-    play:{len:20e3,speed:1,setup:csDemo(d=>{const t=csIn(d,'run');if(!t)return;t.state='gate';t.run.status='WaitingApproval';t.run.postes=null;t.run.draft=t.run.draft||'🔎 Cause : …';},()=>{})}});
+    play:{len:20e3,speed:1,setup:csDemo(d=>{const t=csIn(d,'run');if(!t)return;t.state='gate';t.run.status='WaitingApproval';t.run.postes=null;t.run.draft=t.run.draft||'🔎 Cause : …';CS_MEM.boss={target:null,walk:atWalker([{x:CS_DESK.x,y:CS_DESK.y-CS_BACK}])};},
+      d=>{for(const t of d.threads)if(t.state==='gate'){t.state='run';t.run=Object.assign(t.run||{},{status:'Running',postes:{tri:'ok',logs:'ok',cause:'ok',reponse:'ok',relecture:'run'}});}})}});
   out.push({fam,ico:'📣',n:'Le camion part',d:'Réponse postée dans Teams : le tuyau s\'enroule, le camion rentre et le rideau se ferme sur lui ; l\'équipe prend un café et remonte la barre',w:'Tu valides la réponse',ok,
     play:{len:34e3,speed:1,setup:csDemo((d,at)=>{const t=csIn(d,'gate');if(!t)return;t.state='done';t.mine={at,text:(t.run&&t.run.draft)||'…'};},()=>{})}});
   out.push({fam,ico:'🧯',n:'Intervention en panne',d:'Un poste a planté : fumée, le tuyau s\'arrête là, la baie attend une relance',w:'Un poste échoue (API d\'un agent indisponible…)',ok,

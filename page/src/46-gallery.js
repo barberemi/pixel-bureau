@@ -81,6 +81,7 @@ function demoStart(x){
   const t0=demoTime(T); if(t0!==T){T=t0;needTeleport=true;}
   const s=T+4e3;
   SCENE_DEMO={n:x.n,s,e:s+x.play.len,hard:performance.now()+Math.max(30e3,x.play.len/x.play.speed+60e3),saved};
+  loupeNoteSeen(); // depuis la pause, la loupe n'a rien noté : la scène passerait pour déjà vue (les étages la reposent aussi)
   x.play.setup(s);
   MOVES_MEMO={team:null,list:[]};UFO_M={};
   setSpeed(x.play.speed);setMode('play');
