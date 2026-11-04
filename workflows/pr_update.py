@@ -25,7 +25,8 @@ Corriger les commentaires d'une PR (#75, page action « bureau-fixpr ») :
                validation (rien : code 9).
   fix_push     validé : commit signé (-s, message de l'agent), push protégé, une réponse dans chaque fil (résolu s'il est
                corrigé), « **Version N** » en tête de chaque réponse, bloc « Corrections de review » (et le compteur des
-               versions) dans la description de la PR, CI relancée.
+               versions) dans la description de la PR, CI relancée, review redemandée à chaque reviewer humain (voir
+               reviewers) quand du code est poussé.
 Codes : 2 réglage ou PR refusés, 3 conflit (renvoi), 4 conflit non résolu, 5 push refusé, 9 rien à faire (renvoi), 1 autre échec.
 """
 import glob, json, os, re, shutil, subprocess, sys, time
@@ -319,7 +320,7 @@ def abort(repo, n, run_id):
 
 # ---------- corriger les commentaires d'une PR (#75, page action « bureau-fixpr ») ----------
 THREADS_Q = ("query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100){nodes{"
-             "id isResolved isOutdated path line comments(first:30){nodes{author{login} body createdAt}}}} "
+             "id isResolved isOutdated path line comments(first:30){nodes{author{login __typename} body createdAt}}}} "
              "reviews(last:50){nodes{id state body submittedAt author{login __typename}}} "
              "comments(last:100){nodes{id body createdAt author{login __typename}}}}}}")
 
@@ -381,6 +382,26 @@ def generaux(pr):
     return out
 
 
+def humain(who):
+    """Un auteur GitHub qui n'est pas un bot (Copilot, github-actions…)."""
+    login = str((who or {}).get("login") or "")
+    return bool(login) and (who or {}).get("__typename") != "Bot" and not login.endswith("[bot]")
+
+
+def reviewers(pr, exclus=()):
+    """Les personnes à qui redemander une review après une passe poussée : qui a rendu une review (approuvée, changements
+    demandés, commentaire, approbation retirée) ou écrit dans un fil, sans les bots ni les logins exclus (l'auteur de la
+    PR, toi) ; dans l'ordre de leur première apparition."""
+    out, skip = [], {str(x).lower() for x in exclus if x}
+    whos = [r.get("author") for r in ((pr.get("reviews") or {}).get("nodes")) or [] if r.get("state") != "PENDING"]
+    whos += [c.get("author") for t in ((pr.get("reviewThreads") or {}).get("nodes")) or [] for c in (t.get("comments") or {}).get("nodes") or []]
+    for who in whos:
+        login = str((who or {}).get("login") or "")
+        if humain(who) and login.lower() not in skip and login not in out:
+            out.append(login)
+    return out
+
+
 VERSION_MARK = re.compile(r"<!-- bureau-fix:version=(\d+) -->")
 VERSION_HEAD = re.compile(r"^\W*Version\s+(\d+)\b", re.I)
 
@@ -435,6 +456,7 @@ def fix_prepare(repo, n, run_id):
     st["threads"] = [t["id"] for t in ts]
     st["generaux"] = [{"id": g["id"], "quoi": g["quoi"], "who": g["comments"][0]["author"], "text": g["comments"][0]["body"][:160]} for g in gs]
     st["me"] = me()
+    st["reviewers"] = reviewers(pr, (st.get("author"), st["me"]))
     # le Kanban du 3e étage (retours_snapshot.py) : chaque fil en bref, gardé après le dossier de travail
     st["fils"] = [{"id": t["id"], "path": t.get("path"), "line": t.get("line"), "who": (t["comments"][0] if t["comments"] else {}).get("author"),
                    "text": str((t["comments"][0] if t["comments"] else {}).get("body") or "").strip()[:160]} for t in ts]
@@ -532,6 +554,7 @@ def fix_diff(repo, n, run_id):
         "⚠ **Fichiers nouveaux non déclarés, laissés hors du commit** : " + ", ".join(f"`{x}`" for x in st["ecartes"]) + "\n\n" if st.get("ecartes") else "")
     print(warn + (head + "\n\n" if head else "") + ver + (summary + "\n\n" if summary else "")
           + (f"**Commit** : `{msg.splitlines()[0]}`\n\n" if files else "")
+          + (f"🔁 **Review redemandée** après le push à {', '.join('@' + x for x in st['reviewers'])}\n\n" if files and st.get("reviewers") else "")
           + f"**{len(files)} fichier(s) changé(s)**\n```\n{diff[:5000]}\n```\n\n"
           + f"**Réponses prévues ({len(rs)} sur {len(st.get('threads', []))} fils"
           + (f" et {len(st.get('generaux') or [])} commentaire(s) hors fil, regroupés en un commentaire de la PR" if st.get("generaux") else "")
@@ -630,6 +653,12 @@ def fix_push(repo, n, run_id):
         subprocess.run(["gh", "pr", "edit", n, "-R", repo, "--remove-label", label], capture_output=True)
         ok = subprocess.run(["gh", "pr", "edit", n, "-R", repo, "--add-label", label], capture_output=True).returncode == 0
         ci = f" Label {label} reposé : CI relancée." if ok else f" Label {label} non reposé (relance la CI à la main)."
+    revs = ""
+    if files and st.get("reviewers"):  # nouveau code : chaque reviewer est sollicité de nouveau (approbation à redonner)
+        ko = [x for x in st["reviewers"] if not gh_ok(["pr", "edit", n, "-R", repo, "--add-reviewer", x])]
+        ok = [x for x in st["reviewers"] if x not in ko]
+        revs = ((f" Review redemandée à {', '.join('@' + x for x in ok)}." if ok else "")
+                + (f" Review non redemandée à {', '.join('@' + x for x in ko)} (à faire sur GitHub)." if ko else ""))
     desc = ""
     if files or done:  # bloc « Corrections de review » de la description, best-effort
         try:
@@ -641,7 +670,7 @@ def fix_push(repo, n, run_id):
             desc = " Description de la PR non mise à jour."
     cleanup(st)
     print(f"{repo}#{n} : {pushed}{done} réponse(s) postée(s){f', {failed} en échec' if failed else ''}"
-          f"{f', {unresolved} fil(s) corrigé(s) non marqué(s) résolu(s) (à faire sur GitHub)' if unresolved else ''}.{desc}{ci}")
+          f"{f', {unresolved} fil(s) corrigé(s) non marqué(s) résolu(s) (à faire sur GitHub)' if unresolved else ''}.{desc}{ci}{revs}")
 
 
 def done(repo, n, run_id):

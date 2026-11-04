@@ -20,6 +20,8 @@ if a[:2] == ["repo", "clone"]:  # le « dépôt GitHub » est le remote nu local
     sys.exit(subprocess.run(["git", "clone", d["remote"], a[3]], capture_output=True).returncode)
 if a[:2] == ["pr", "view"]:
     print(json.dumps(d["pr"])); sys.exit(0)
+if a[:2] == ["pr", "edit"] and "--add-reviewer" in a and a[a.index("--add-reviewer") + 1] in d.get("reviewer_fails", []):
+    sys.exit(1)
 if a[:2] == ["api", "user"]:  # ton login (le jeton de gh)
     print(d.get("me", "")); sys.exit(0)
 if a[:2] == ["api", "graphql"]:  # #75 : fils, reviews et commentaires (requête), réponse et résolution (mutations)
@@ -368,6 +370,49 @@ class PrUpdateTest(unittest.TestCase):
         self.assertFalse(any("addPullRequestReviewThreadReply" in x for c in calls for x in c))
         edit = next(c for c in calls if c[:2] == ["pr", "edit"] and "--body" in c)
         self.assertIn("💬 2 commentaire(s) hors fil", edit[edit.index("--body") + 1])
+
+    def test_fix_rerequests_reviews_after_a_push(self):
+        """Code poussé : review redemandée à chaque humain qui a relu (review rendue ou fil), sans bots, auteur ni toi ;
+        un refus de GitHub est dit à la fin. Rien poussé : personne n'est sollicité."""
+        self.data["pr"]["author"] = {"login": "bob"}
+        self.data["me"] = "moi"
+        t = self.thread("T1")
+        t["comments"]["nodes"] += [{"author": {"login": "bob"}, "body": "Pourquoi ?", "createdAt": "2026-10-01T09:00:00Z"},
+                                   {"author": {"login": "zoe"}, "body": "+1", "createdAt": "2026-10-01T10:00:00Z"},
+                                   {"author": {"login": "copilot", "__typename": "Bot"}, "body": "Suggestion", "createdAt": "2026-10-01T11:00:00Z"}]
+        self.data["threads"] = [t]
+        self.data["reviews"] = [
+            {"id": "R1", "state": "APPROVED", "body": "", "submittedAt": "2026-10-01T07:00:00Z", "author": {"login": "pam", "__typename": "User"}},
+            {"id": "R2", "state": "CHANGES_REQUESTED", "body": "", "submittedAt": "2026-10-01T08:00:00Z", "author": {"login": "jim", "__typename": "User"}},
+            {"id": "R3", "state": "COMMENTED", "body": "", "submittedAt": "2026-10-01T08:30:00Z", "author": {"login": "moi", "__typename": "User"}},
+            {"id": "R4", "state": "PENDING", "body": "", "submittedAt": None, "author": {"login": "lea", "__typename": "User"}},
+            {"id": "R5", "state": "COMMENTED", "body": "", "submittedAt": "2026-10-01T09:00:00Z", "author": {"login": "sonar[bot]", "__typename": "Bot"}}]
+        self.data["reviewer_fails"] = ["zoe"]
+        self.assertEqual(self.step("fix_prepare").returncode, 0)
+        work = os.path.join(self.tmp, ".cache", "pixel-bureau", "pr", "work", "run-1")
+        Path(work, "a.txt").write_text("a\nde la PR, renommé\n")
+        Path(work, ".bureau-fix-replies.json").write_text(json.dumps([{"thread": "T1", "fixed": True, "reply": "Renommé."}]))
+        self.assertIn("🔁 **Review redemandée** après le push à @pam, @jim, @zoe", self.step("fix_diff").stdout)
+        p = self.step("fix_push")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("Review redemandée à @pam, @jim. Review non redemandée à @zoe (à faire sur GitHub).", p.stdout)
+        calls = [json.loads(x) for x in Path(self.tmp, "gh.json.calls").read_text().splitlines()]
+        asked = [c[c.index("--add-reviewer") + 1] for c in calls if "--add-reviewer" in c]
+        self.assertEqual(sorted(set(asked)), ["jim", "pam", "zoe"])
+        self.assertEqual(asked.count("zoe"), 2, "un refus est relancé une fois")
+
+    def test_fix_without_push_rerequests_no_review(self):
+        self.data["threads"] = [self.thread("T1")]
+        self.data["reviews"] = [{"id": "R1", "state": "CHANGES_REQUESTED", "body": "", "submittedAt": "2026-10-01T08:00:00Z",
+                                 "author": {"login": "jim", "__typename": "User"}}]
+        self.assertEqual(self.step("fix_prepare").returncode, 0)
+        work = os.path.join(self.tmp, ".cache", "pixel-bureau", "pr", "work", "run-1")
+        Path(work, ".bureau-fix-replies.json").write_text(json.dumps([{"thread": "T1", "fixed": False, "reply": "Gardé : voulu."}]))
+        self.assertNotIn("Review redemandée", self.step("fix_diff").stdout)
+        p = self.step("fix_push")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertNotIn("Review", p.stdout)
+        self.assertNotIn("--add-reviewer", Path(self.tmp, "gh.json.calls").read_text())
 
     def test_fix_knows_the_threads_it_already_answered(self):
         mine = lambda tid, *extra: {**self.thread(tid), "comments": {"nodes": [  # noqa: E731
