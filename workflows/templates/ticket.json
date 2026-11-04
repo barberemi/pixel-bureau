@@ -128,6 +128,75 @@
     "exec_timeout_secs": 30
    },
    {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "parent_cle",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "L'adresse Jira du parent donné (sans parent : un appel sans effet), 0 token.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/ticket.py@@",
+     "parent_cle",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "parent_jira",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Le parent dans Jira : son type et son épic.",
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "{{steps.parent_cle.data.stdout}}",
+    "api_method": "GET",
+    "api_query": {
+     "fields": "issuetype,parent,summary"
+    }
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "parent",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le parent est une épic, sinon son épic prend sa place, sinon le run s'arrête ici, avant la rédaction (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/ticket.py@@",
+     "parent_check",
+     "{{run.id}}",
+     "{{steps.parent_jira.data_json}}"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
     "name": "recherche",
     "agent": "ClaudeCode",
     "mode": {
