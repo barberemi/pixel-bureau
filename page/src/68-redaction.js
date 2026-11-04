@@ -25,6 +25,7 @@ const RD_X1=19.5, RD_VX=23, RD_SH0=['dm/site','dm/mobile','dm/api','dm/outils'];
 const RD_WINDOWS=[7.5,10.5,13.5,16.5,25,28.5,32,35.5,39,42.5]; // en cases : à droite du nom de l'étage, comme au RDC
 const RD_DESK={x:15.6*AT_TS,y:23.4*AT_TS}, RD_JIRA={x:17.8*AT_TS,y:25.6*AT_TS}, RD_CORK={x:1.6*AT_TS,y:9.4*AT_TS};
 let REDACTION=null, RDSEL=null, RD_HITS=[], RD_LIT=[], RD_MEM={last:0};
+let RDTK=null; // le ticket ouvert dans le panneau : {run, k} (clic sur sa carte à la table ou sur sa ligne du panneau)
 function readRedaction(src){
   try{
     if(!src||!src.datasets)return null;
@@ -43,7 +44,8 @@ function redactionDemo(){
     verdicts:{'demo-k1':'comment','demo-k2':'approve'},starts:{'demo-c1':at(9.5)}};
   return {generated_at:at(11),crees:2,revue,tables:[
     {run:'demo-t1',status:'Running',since:at(10.2),intention:'Refondre le lecteur vidéo : sous-titres, pistes audio et reprise de lecture',poste:'critique',tour:2,
-     composants:['dm/site','dm/mobile','dm/api'],tickets:[{i:0,summary:'Lecteur : les sous-titres',composant:'dm/api',points:3,etat:'wait'},
+     composants:['dm/site','dm/mobile','dm/api'],type:'Story',tickets:[{i:0,summary:'Lecteur : les sous-titres',composant:'dm/api',points:3,etat:'wait',
+       detail:'▸ De quoi on parle ?\n\n│ Les vidéos n\'ont pas de sous-titres : le lecteur ne lit pas les pistes WebVTT.\n\n▸ Qu\'est-ce que l\'on va faire ?\n\n• Servir les pistes WebVTT de chaque vidéo\n• Les déclarer dans le manifeste du lecteur\n\n▸ Comment on teste ?\n\n• Une vidéo avec deux pistes : les deux s\'affichent dans le menu'},
        {i:1,summary:'Pistes audio dans le menu du lecteur',composant:'dm/site',points:2,etat:'wait'},{i:2,summary:'Reprise de lecture',composant:'dm/mobile',points:3,etat:'wait'}]},
     {run:'demo-t2',status:'Running',since:at(10.8),intention:'Export CSV des abonnés',poste:'recherche',tour:1,composants:['dm/outils'],tickets:[]}],
     events:[{t:at(10.2),k:'arrive',run:'demo-t1'},{t:at(10.8),k:'arrive',run:'demo-t2'},{t:at(8.5),k:'arrive',run:'demo-t0'},{t:at(9.1),k:'gate',run:'demo-t0'},{t:at(9.2),k:'cree',run:'demo-t0'},{t:at(9.3),k:'cree',run:'demo-t0'},{t:at(9.4),k:'fin',run:'demo-t0'}]};
@@ -209,7 +211,7 @@ function rdNight(people,now){
     floorBossLamp(RD_DESK.x,RD_DESK.y),{x:(RD_X1+RD_VX)/2*T_,y:26.2*T_,r:1.6*T_,a:.45},exitHalo(RD_EXIT.x,RD_EXIT.y)]},now); // la porte de l'escalier
   if(RD_NIGHT.lv)exitSign(RD_EXIT.x,RD_EXIT.y);
 }
-function rdReset(){RD_MEM={last:0};RDSEL=null;if(typeof rvfReset==='function')rvfReset();}
+function rdReset(){RD_MEM={last:0};RDSEL=null;RDTK=null;if(typeof rvfReset==='function')rvfReset();}
 function renderRedaction(now){
   RD_MEM.last=now;if(!RD_BG)RD_BG=rdBackground();ctx.drawImage(RD_BG,0,0);atWindows(now,RD_WINDOWS);RD_HITS=[];RD_LIT=[];
   const people=[];rdRoom(now,people);rdRevue(now,people);
@@ -225,12 +227,13 @@ function rdHitAt(e){const r=cv.getBoundingClientRect(), mx=(e.clientX-r.left)*AT
 function redactionClick(e){
   const h=rdHitAt(e);sel=null;SEL_BACK=[];
   if(h&&h.kind==='boss'){const b=chars.find(c=>c.boss);if(b){select(b.key);return;}}
-  if(h&&h.kind==='cork'){const l=rdTables();if(l.length>1){const i=l.indexOf(rdTable());RDSEL=l[(i+1)%l.length].run;}}
+  if(h&&h.kind==='cork'){const l=rdTables();if(l.length>1){const i=l.indexOf(rdTable());RDSEL=l[(i+1)%l.length].run;}RDTK=null;}
+  if(h&&h.kind==='ticket'){const t=rdTable();if(t)RDTK={run:t.run,k:h.k};}
   renderSide(true);
 }
 function redactionHover(e){
   const h=rdHitAt(e), t=rdTable();let s='';
-  if(h&&h.kind==='ticket'&&t){const x=t.tickets[h.k];s='T'+(h.k+1)+' · '+(x.composant||'?')+' · '+(x.points||'?')+' pts · '+(RD_TK[x.etat]||RD_TK.wait)[1]+' · '+x.summary;}
+  if(h&&h.kind==='ticket'&&t){const x=t.tickets[h.k];s='T'+(h.k+1)+' · '+(x.composant||'?')+' · '+(x.points||'?')+' pts · '+(RD_TK[x.etat]||RD_TK.wait)[1]+' · '+x.summary+' · clic : son détail';}
   else if(h&&h.kind==='table')s=t?'La table de rédaction : '+t.intention:'La table de rédaction : aucune intention en cours';
   else if(h&&h.kind==='cork')s=rdTables().length>1?'Les intentions en cours : clic pour passer à la suivante':'L\'intention en cours';
   else if(h&&h.kind==='boss')s=(chars.find(c=>c.boss)||{}).name+' : tamponne chaque ticket avant sa création ; clic : sa fiche';
@@ -243,15 +246,31 @@ function redactionHover(e){
 function redactionListHtml(){
   const l=rdTables(), rv=rvActive();
   return `<h2 class="at-h">✍ Rédaction <span class="cnt">${l.length}</span></h2>`+(l.length?l.map(t=>`<button class="at-room" data-run="${esc(t.run)}"><span class="at-top"><span class="at-title">${esc(clip(t.intention,80))}</span>${(t.tickets||[]).some(x=>x.etat==='gate')?'<span class="at-tag wait">✋ t\'attend</span>':`<span class="at-tag run">${esc((RD_POSTES.find(p=>p.k===t.poste)||{}).i||'')} ${esc((RD_POSTES.find(p=>p.k===t.poste)||{}).n||'')}</span>`}</span>
-    ${(t.tickets||[]).map((x,k)=>`<span class="mut">T${k+1} · ${esc(x.summary)} · ${esc(x.composant||'?')} · ${esc(String(x.points||'?'))} pts · ${esc((RD_TK[x.etat]||RD_TK.wait)[1])}</span>`).join('<br>')||'<span class="mut">les tickets arrivent avec la rédaction</span>'}</button>`).join(''):'<div class="note">Aucune intention en cours. « ▶ Lancer » sur la fiche de l\'agent des tickets en démarre une.</div>')+
+    ${(t.tickets||[]).length?'':'<span class="mut">les tickets arrivent avec la rédaction</span>'}</button>${(t.tickets||[]).map((x,k)=>`<button class="rd-tk" data-run="${esc(t.run)}" data-k="${k}" title="Son détail"><b>T${k+1}</b> ${esc(x.summary)} <span class="mut">· ${esc(x.composant||'?')} · ${esc(String(x.points||'?'))} pts · ${esc((RD_TK[x.etat]||RD_TK.wait)[1])}</span></button>`).join('')}`).join(''):'<div class="note">Aucune intention en cours. « ▶ Lancer » sur la fiche de l\'agent des tickets en démarre une.</div>')+
     `<div class="at-gate"></div><h2 class="at-h">👀 Revue des PR <span class="cnt">${rv.length}</span></h2>`+(rv.length?rv.map(r=>{const v=r.vars||{};return `<div class="at-q"><b class="mono">${esc((String(v['current_task.repo']||'').split('/').pop()||'?')+'#'+(v['current_task.number']||'?'))}</b> <span class="mut">${esc(rvSteps(r).map(s=>rvStepName(s.n)+(s.s==='Success'?' ✓':s.s==='Running'?' …':'')).join(' · '))}</span></div>`;}).join(''):'<div class="mut">Aucune revue en cours.</div>');
+}
+// la fiche d'un ticket : ce qui sera créé pour lui seul (le tampon ne montre que le récap de la liste)
+function rdTicketOpen(){
+  if(!RDTK)return null;const t=rdTables().find(x=>x.run===RDTK.run), x=t&&(t.tickets||[])[RDTK.k];
+  if(!x){RDTK=null;return null;}return {t,k:RDTK.k};
+}
+function rdTicketHtml(t,k){
+  const x=t.tickets[k], st=RD_TK[x.etat]||RD_TK.wait, meta=[t.type,(x.points||'?')+' pts',x.composant||'sans composant',t.parent?'parent '+t.parent:''].filter(Boolean).join(' · ');
+  return `<button class="rd-back">← Les tickets</button><h2 class="at-h">T${k+1} <span class="at-tag" style="background:${st[0]};color:#1c1c1c">${esc(st[1])}</span></h2>`+
+    `<div class="rd-tt">${esc(x.summary)}</div><div class="mut">${esc(meta)}</div>`+
+    (x.detail?`<div class="rd-det">${esc(x.detail)}</div>`:'<div class="note">Le détail arrive au prochain relevé de la rédaction (une minute au plus).</div>')+
+    '<div class="at-gate"></div>';
 }
 function drawRedactionSide(side){
   const boss=chars.find(c=>c.boss);
   if(sel!=null&&!(boss&&sel===boss.key)){setFloor(0);return;}
   if(sel!=null){drawSide(side);return;}
-  const box=document.createElement('div');box.className='atelier';side.appendChild(box);box.innerHTML=redactionListHtml();
-  box.querySelectorAll('.at-room').forEach(b=>b.addEventListener('click',()=>{RDSEL=b.dataset.run;renderSide(true);}));
+  const box=document.createElement('div');box.className='atelier';side.appendChild(box);
+  const tk=rdTicketOpen();
+  if(tk){box.innerHTML=rdTicketHtml(tk.t,tk.k);box.querySelector('.rd-back').addEventListener('click',()=>{RDTK=null;renderSide(true);});}
+  else{box.innerHTML=redactionListHtml();
+    box.querySelectorAll('.at-room').forEach(b=>b.addEventListener('click',()=>{RDSEL=b.dataset.run;renderSide(true);}));
+    box.querySelectorAll('.rd-tk').forEach(b=>b.addEventListener('click',()=>{RDSEL=b.dataset.run;RDTK={run:b.dataset.run,k:+b.dataset.k};renderSide(true);}));}
   for(const g of GATES)if(/un ticket/.test(String(g.wf_name||'')))gateCard(box.querySelector('.at-gate')||box,{run:g.run,wf_name:g.wf_name,_s:ms(g.since)},null); // le tampon : chaque ticket qui t'attend
 }
 function tvRedactionHtml(){

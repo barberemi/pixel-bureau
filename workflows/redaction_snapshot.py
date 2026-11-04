@@ -2,8 +2,11 @@
 ticket (models.ticket_un), lus dans l'API Kronn, et le dossier de chaque run (~/.cache/pixel-bureau/ticket/<run>/,
 écrit par ticket.py) ; 0 token ; stdout JSON du dataset redaction (cron live).
 
-  {generated_at, tables: [{run, status, since, intention, poste, tour, composants, tickets: [{i, summary, composant,
-                           points, etat: wait|run|gate|ok|ecarte|err}], url}], events: [{t, k: arrive|gate|cree|fin, run}], crees}
+  {generated_at, tables: [{run, status, since, intention, type, parent, poste, tour, composants, tickets: [{i, summary,
+                           composant, points, etat: wait|run|gate|ok|ecarte|err, detail}], url}], events: [{t, k: arrive|gate|cree|fin, run}], crees}
+
+detail : la description du ticket en texte lisible (readable de _lib : ▸ titres, │ panneaux, • puces), pour la fiche du
+ticket au clic au 2e ; DETAIL_MAX caractères chacun, DETAIL_BUDGET en tout (la sortie d'une étape Exec reste sous 100 Ko).
 
 Une table = une intention en cours (trois au plus) ; poste = recherche, redaction, critique, ou valider quand les
 tickets attendent ton tampon, puis sont créés un par un. Chaque ticket : son sous-workflow (le n-ième lancé par le run est le ticket n).
@@ -14,7 +17,7 @@ dans l'ordre, lues dans la sortie de son étape finalize (ligne PRS=) ; le verdi
 lu dans la sortie de son avis. Un run fini n'est lu qu'une fois (~/.cache/pixel-bureau/revue/<run>.json).
 """
 import datetime, json, os, re, sys
-from _lib import ACTIVE, CFG, TZ, get, read_json
+from _lib import ACTIVE, CFG, TZ, get, read_json, readable
 
 HOME = os.path.expanduser("~/.cache/pixel-bureau/ticket")
 RV_HOME = os.path.expanduser("~/.cache/pixel-bureau/revue")
@@ -46,15 +49,25 @@ def child_st(c):
     return "err" if c.get("status") == "Failed" else "run"
 
 
-def table(run, kids):
+DETAIL_MAX, DETAIL_BUDGET = 3000, 40000
+
+
+def table(run, kids, budget):
     d, t = dget(run["id"], "demande.json", {}), dget(run["id"], "tickets.json", {})
     steps = [s.get("step_name") for s in run.get("step_results") or []]
     poste = next((POSTES[n] for n in reversed(steps) if n in POSTES), "recherche")
     mine = sorted([k for k in kids if k.get("parent_run_id") == run["id"]], key=lambda k: k.get("started_at") or "")
     ts = [{"i": i, "summary": str(x.get("summary") or "")[:120], "composant": x.get("composant"), "points": x.get("points"),
            "etat": child_st(mine[i]) if i < len(mine) else "gate" if run.get("status") == "WaitingApproval" else "wait"} for i, x in enumerate(t.get("tickets") or [])]
+    for x, src in zip(ts, t.get("tickets") or []):
+        txt = readable(str(src.get("description") or ""))
+        if len(txt) > DETAIL_MAX:
+            txt = txt[:DETAIL_MAX - 1].rstrip() + "…"
+        if txt and budget[0] >= len(txt):
+            x["detail"], budget[0] = txt, budget[0] - len(txt)
     ui = (CFG.get("kronn") or {}).get("ui") or ""
     return {"run": run["id"], "status": run.get("status"), "since": run.get("started_at"), "intention": str(d.get("intention") or "")[:200],
+            "type": d.get("type") or "", "parent": d.get("parent") or "",
             "poste": poste, "tour": d.get("tour") or 1, "composants": (dget(run["id"], "recherche.json", {}) or {}).get("composants") or d.get("composants") or [],
             "tickets": ts, "url": f"{ui.rstrip('/')}/#workflows/{run.get('workflow_id')}" if ui else None}
 
@@ -125,14 +138,14 @@ def snapshot(now_iso=None):
         return out
     runs = get(f"/workflows/{m['ticket']}/runs?limit=20") or []
     kids = [get(f"/workflows/{m['ticket_un']}/runs/{k['id']}") or k for k in (get(f"/workflows/{m['ticket_un']}/runs?limit=40") or [])] if m.get("ticket_un") else []
-    now, ev = when(now_iso), []
+    now, ev, budget = when(now_iso), [], [DETAIL_BUDGET]
     limit = (now - datetime.timedelta(hours=24)).isoformat() if now else ""
     for r in sorted(runs, key=lambda r: r.get("started_at") or ""):
         if (r.get("started_at") or "") < limit:
             continue
         full = get(f"/workflows/{m['ticket']}/runs/{r['id']}") or r
         if r.get("status") in ACTIVE and r.get("status") != "Pending":
-            out["tables"].append(table(full, kids))
+            out["tables"].append(table(full, kids, budget))
         ev.append({"t": r.get("started_at"), "k": "arrive", "run": r["id"]})
         for k in kids:
             if k.get("parent_run_id") != r["id"]:

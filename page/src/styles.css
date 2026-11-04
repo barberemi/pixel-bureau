@@ -918,3 +918,9 @@ body.tv #tvwho .at-bar i.avis,body.tv #tvwho .at-bar i.wait{background:var(--war
 .mtbar .mt-fl{font:700 10px ui-monospace,Menlo,monospace;border:1px solid currentColor;color:var(--muted);padding:0 3px;margin-left:5px;vertical-align:1px}
 .mtbar .mt-b{position:absolute;left:32px;top:0;min-width:16px;height:16px;padding:0 3px;border-radius:8px;color:#fff;font:700 10px system-ui,sans-serif;display:flex;align-items:center;justify-content:center;border:2px solid var(--panel)}
 body.tv .mtbar{display:none}
+/* 2e étage (68-redaction.js) : les tickets d'une intention, et la fiche d'un ticket */
+.atelier .rd-tk{display:block;width:100%;text-align:left;font:12px system-ui,sans-serif;padding:4px 8px;margin:0 0 4px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.atelier .rd-tk:hover,.atelier .rd-tk:focus-visible{border-color:var(--accent)}
+.atelier .rd-back{font:600 12px system-ui,sans-serif;padding:4px 8px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;margin:0 0 8px}
+.atelier .rd-tt{font:600 14px system-ui,sans-serif;margin:0 0 4px}
+.atelier .rd-det{white-space:pre-wrap;font:12px/1.5 system-ui,sans-serif;margin:10px 0;padding:8px;border:2px solid var(--line);background:var(--bg,transparent);max-height:60vh;overflow:auto}

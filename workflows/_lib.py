@@ -351,3 +351,23 @@ def jpeg(src, out, size=None, fit=None, crop=None, quality=80):
     scale = ["-z", str(size[1]), str(size[0])] if size else (["-Z", str(fit)] if fit else [])
     run("-s", "format", "jpeg", "-s", "formatOptions", str(quality), *scale, cur, "--out", out)
     return _os.path.exists(out)
+
+
+def readable(wiki):
+    """Wiki Jira -> texte lisible : titres en « ▸ », panneaux en « │ », puces en « • », gras et soulignés retirés."""
+    out, panel = [], False
+    for line in (wiki or "").replace("\r", "").split("\n"):
+        s = line.strip()
+        if re.match(r"^\{panel(:[^}]*)?\}$", s):
+            panel = not panel if s == "{panel}" else True
+            continue
+        m = re.match(r"^h[1-6]\.\s*(.*)$", s)
+        if m:
+            out += ["", "▸ " + re.sub(r"^\+(.*)\+$", r"\1", m.group(1).strip())]
+            continue
+        m = re.match(r"^([*#-]+)\s+(.*)$", s)
+        if m:
+            s = "  " * (len(m.group(1)) - 1) + "• " + m.group(2)
+        s = re.sub(r"(?<![\w*])\*([^*\n]+)\*(?![\w*])", r"\1", s)
+        out.append(("│ " + s) if panel and s else s)
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(out)).strip()
