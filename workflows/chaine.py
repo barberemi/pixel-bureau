@@ -11,15 +11,13 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
                                     # dossier et branche du run d'avant, code 3/4/5 : on reprend au Code/aux contrôles/à la PR
   entree <poste> <ticket> [retours] [extra]
                                     # contexte du poste ; retours d'une gate ajoutés au dossier ; code 3 : poste non concerné
-                                    # ou déjà fait (reprise) ; code 5 : cadrage/schéma/patterns déjà faits (reprise), Code
+                                    # ou déjà fait (reprise) ; code 5 : poste Plan (cadrage) déjà fait (reprise), Code
                                     # en mode essai (affecter sauté), PR déjà ouverte (reprise)
-  releve                            # schéma d'impact : fichiers du dépôt qui parlent du ticket (git grep), 0 token
-  existe                            # stdin proposition du schéma : chemins cités qui n'existent pas
-  tri <poste>                       # stdin avis du critique : code 3 = « revoir » (Goto la proposition, 3 tours au plus)
-  rapport <poste>                   # stdin proposition ===SEP=== critique : rapport du poste dans le dossier
-  dossier                           # rapports cadrage, schéma, patterns pour le prompt de l'orchestrateur
-  questions                         # « ce que j'ai compris » pour ta gate (code 0) ; impl.gate_cadrage false et rien à
-                                    # trancher : code 3, saut au schéma
+  releve                            # poste Plan : fichiers du dépôt qui parlent du ticket (git grep), 0 token
+  existe                            # stdin proposition du poste Plan : chemins cités qui n'existent pas
+  rapport <poste>                   # stdin proposition ===SEP=== vérification : rapport du poste dans le dossier
+  dossier                           # rapport du poste Plan (cadrage.json) pour le prompt de l'orchestrateur
+  compris                           # « ce que j'ai compris » et les questions à trancher, en tête de ta gate du plan
   mode <plan|complet|essai>         # code 4 : plan seulement (commentaire Jira puis Stop), code 0 : on code
   plan [consignes] [retours]        # stdin plan de l'orchestrateur : plan.json en lots ; consignes ou retours : code 3
   lot                               # lot suivant du plan ; code 3 : plus de lot
@@ -51,10 +49,12 @@ from _checks import check_fill, check_run
 
 SEP = "\n===SEP===\n"
 KEY = re.compile(r"^[A-Z][A-Z0-9]+-\d+$")
-POSTES = ("cadrage", "schema", "patterns", "code", "regles", "securite", "tests", "perf", "revue", "besoin", "doc", "pr", "revue_pr", "retours")
-CONTROLES = ("regles", "securite", "tests", "perf", "revue", "besoin", "doc")
+# cadrage = le poste 📋 Plan (compris, fichiers impactés, façons de faire du dépôt : tout dans cadrage.json) ; schéma,
+# patterns et revue croisée n'existent plus, un dossier d'avant qui a leurs rapports reste lisible (ignorés)
+POSTES = ("cadrage", "code", "regles", "securite", "tests", "perf", "besoin", "doc", "pr", "revue_pr", "retours")
+CONTROLES = ("regles", "securite", "tests", "perf", "besoin", "doc")
 PARALLELES = ("regles", "securite", "perf", "besoin", "doc")  # en lecture seule : sous-agents d'une même étape, en même temps
-BLOQUANTS = {"regles", "securite", "tests", "besoin", "doc"}  # par défaut ; perf et revue : avis
+BLOQUANTS = {"regles", "securite", "tests", "besoin", "doc"}  # par défaut ; perf : avis
 # doc du dépôt relevée pour le poste 📚 doc ; impl.repos.<dépôt>.docs en ajoute (ex. guide/)
 DOCS = ["docs", "ai", ":(glob)**/README*", ":(glob)**/AGENTS.md", ":(glob)**/CLAUDE.md"]
 FRONT = ["*.scss", "*.css", "*.twig", "*.html", "*.vue", "*.tsx", "*.jsx", "*.ts", "*.js"]
@@ -479,7 +479,8 @@ def changed():
 
 
 def actif(p, files):
-    """Un poste tourne s'il n'est pas coupé (réglages), s'il est dans les postes du plan et, pour perf, si du front est touché."""
+    """Un poste tourne s'il n'est pas coupé (réglages) et s'il est dans les postes du plan. Perf tourne sur tout diff : le cache
+    HTTP et le CDN se cassent aussi côté serveur (#2048, #2042) ; son volet a11y ne vise que le front (front_touche)."""
     c = poste_conf(p)
     if c.get("actif") is False:
         return False, "coupé dans les réglages"
@@ -488,11 +489,12 @@ def actif(p, files):
     bloquant = c.get("bloquant", p in BLOQUANTS)  # un poste bloquant ne s'écarte que par les réglages, jamais par le plan
     if isinstance(wanted, list) and p in CONTROLES and wanted and p not in wanted and not bloquant:
         return False, "écarté par l'orchestrateur (plan)"
-    if p == "perf":
-        pats = reglages().get("front") or FRONT
-        if not any(fnmatch.fnmatch(f, x) for f in files for x in pats):
-            return False, "aucun fichier front touché"
     return True, ""
+
+
+def front_touche(files):
+    pats = reglages().get("front") or FRONT
+    return any(fnmatch.fnmatch(f, x) for f in files for x in pats)
 
 
 def section(title, body):
@@ -581,7 +583,7 @@ def deja_fait(p):
 
 
 def cmd_entree(p, ticket, retours="", extra=""):
-    if p in ("cadrage", "schema", "patterns") and not given(retours) and deja_fait(p):
+    if p == "cadrage" and not given(retours) and deja_fait(p):
         print(f"{p} : déjà fait au run d'avant (reprise), rapport gardé")
         sys.exit(5)
     if p in CONTROLES and deja_fait(p):
@@ -611,16 +613,20 @@ def cmd_entree(p, ticket, retours="", extra=""):
     parts.append(section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else ""))
     if os.path.exists(dossier("retours.md")):
         parts.append(section("Retours de l'humain (à respecter en priorité)", open(dossier("retours.md"), encoding="utf-8").read()))
-    if p in ("cadrage", "schema", "patterns"):
+    if p == "cadrage":
         docs = e.get("docs") or []
         parts.append(section("Documentation du dépôt (à lire avant tout)", "\n".join(docs[:80]) + (f"\n… et {len(docs) - 80} autres" if len(docs) > 80 else "")
                              if docs else "aucune"))
-    deps = {"schema": ["cadrage"], "patterns": ["cadrage", "schema"], "code": ["cadrage", "schema", "patterns"],
-            "livraison": ["cadrage"] + list(CONTROLES)}.get(p, ["cadrage", "schema"] if p in CONTROLES else [])
+        prev = load("cadrage.json")  # après un « Changements » à la gate du plan : il corrige son rapport au lieu de tout refaire
+        if prev and prev.get("resultat"):
+            parts.append(section("Ton rapport précédent (à corriger d'après les retours de l'humain)",
+                                 json.dumps(prev["resultat"], ensure_ascii=False, indent=1)[:12000]))
+    deps = {"code": ["cadrage"], "livraison": ["cadrage"] + list(CONTROLES)}.get(p, ["cadrage"] if p in CONTROLES else [])
     for d in deps:
         r = load(d + ".json")
         if r:
-            parts.append(section(f"Rapport du poste {d}", json.dumps(r.get("resultat") or r, ensure_ascii=False, indent=1)[:12000]))
+            cap = 24000 if d == "cadrage" else 12000  # le poste Plan porte aussi les fichiers impactés et les façons de faire
+            parts.append(section(f"Rapport du poste {d}", json.dumps(r.get("resultat") or r, ensure_ascii=False, indent=1)[:cap]))
     if p in CONTROLES or p == "livraison":
         parts.append(section("Fichiers modifiés", "\n".join(files)))
         parts.append(section("Plan validé", json.dumps((load("plan.json") or {}).get("lots") or [], ensure_ascii=False, indent=1)[:8000]))
@@ -636,7 +642,7 @@ def cmd_entree(p, ticket, retours="", extra=""):
 
 
 def cmd_releve():
-    """Schéma d'impact : fichiers du dépôt qui citent les mots du ticket (git grep), du plus cité au moins cité."""
+    """Poste 📋 Plan : fichiers du dépôt qui citent les mots du ticket (git grep), du plus cité au moins cité."""
     t = etat().get("texte") or ""  # résumé et description seulement : pas les intitulés du dossier
     words = {w.lower() for w in re.findall(r"[A-Za-z_][A-Za-z0-9_]{4,}", t) if not w.isupper()}
     stop = {"should", "would", "because", "which", "there", "their", "about", "after", "before", "where", "these", "those",
@@ -664,23 +670,6 @@ def cmd_existe():
         if path and not new and not os.path.exists(os.path.join(root(), path)):
             missing.append(path)
     out({"absents": missing, "note": "chemins cités comme existants mais introuvables : à corriger" if missing else "tous les chemins existent"})
-
-
-def cmd_tri(p):
-    """Le script compte les tours : un Goto qui a épuisé son max_iterations sur un code non nul fait échouer l'étape
-    (essai du 2026-10-30), donc au 3e avis « revoir » on rend 0 et la dernière proposition est gardée."""
-    c = parse(read_stdin()) or {}
-    st = load(f"essais_{p}.json", {"n": 0}) or {"n": 0}
-    st["n"] += 1
-    write_json(dossier(f"essais_{p}.json"), st)
-    compte("propositions", p)
-    if str(c.get("verdict") or "").lower() in ("revoir", "a_revoir", "rejet") and (c.get("remarques") or []):
-        if st["n"] < 3:
-            print(f"{p} : le critique demande un nouveau tour ({len(c['remarques'])} remarque(s)), proposition {st['n'] + 1} sur 3")
-            sys.exit(3)
-        print(f"{p} : 3 propositions faites, la dernière est gardée ; remarques restantes dans le rapport")
-        return
-    print(f"{p} : proposition retenue")
 
 
 def ecrit_rapport(p, prop, crit=None):
@@ -713,7 +702,7 @@ def cmd_missions():
     """Contrôles en parallèle : le contexte commun et les postes à lancer (règles, sécurité, perf, besoin, doc) pour
     l'étape Agent qui les confie à des sous-agents en même temps ; vérifications des règles et relevé de la doc ici (0 token). Kronn ne lance
     pas de sous-workflows en parallèle (foreach séquentiel) : 45 min par tour en série à l'essai d'EW-7851. Aucun poste
-    à lancer : code 3, saut à la revue."""
+    à lancer : code 3, saut au bilan."""
     files = changed()
     postes, ecartes = [], []
     for p in PARALLELES:
@@ -733,15 +722,15 @@ def cmd_missions():
     e = etat()
     parts = [f"Ticket {e.get('ticket')}, dépôt {e.get('repo')}, branche {e.get('branch')}, tour {e.get('tours', 0) + 1}. "
              f"Point de départ du diff : {depart()} (`git diff {depart()}...HEAD`).",
-             section("Postes à lancer", ", ".join(postes) + ("\n\nÉcartés : " + " ; ".join(ecartes) if ecartes else "")),
+             section("Postes à lancer", ", ".join(postes) + ("\n\nÉcartés : " + " ; ".join(ecartes) if ecartes else "")
+                     + "\n\nFront touché (templates, CSS, JS de page) : " + ("oui" if front_touche(files) else "non, le poste perf saute l'a11y")),
              perimetre(), lecture(), rejoue(),
              section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else "")]
     if os.path.exists(dossier("retours.md")):
         parts.append(section("Retours de l'humain (à respecter en priorité)", open(dossier("retours.md"), encoding="utf-8").read()))
-    for d in ("cadrage", "schema"):
-        r = load(d + ".json")
-        if r:
-            parts.append(section(f"Rapport du poste {d}", json.dumps(r.get("resultat") or r, ensure_ascii=False, indent=1)[:10000]))
+    r = load("cadrage.json")
+    if r:
+        parts.append(section("Rapport du poste cadrage", json.dumps(r.get("resultat") or r, ensure_ascii=False, indent=1)[:10000]))
     parts.append(section("Fichiers modifiés", "\n".join(files)))
     parts.append(section("Plan validé", json.dumps((load("plan.json") or {}).get("lots") or [], ensure_ascii=False, indent=1)[:6000]))
     parts.append(section("Volume du diff", git("diff", "--stat", f"{depart()}...HEAD")[-3000:]))
@@ -829,11 +818,10 @@ def cmd_dossier():
     parts = [perimetre(), lecture(), rejoue(), section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else "")]
     if os.path.exists(dossier("retours.md")):
         parts.append(section("Retours de l'humain", open(dossier("retours.md"), encoding="utf-8").read()))
-    for p in ("cadrage", "schema", "patterns"):
-        r = load(p + ".json")
-        body = json.dumps({"proposition": r.get("resultat"), "critique": r.get("critique")}, ensure_ascii=False, indent=1)[:16000] \
-            if r else "ABSENT : poste en panne, fais son travail toi-même et dis-le dans decisions"
-        parts.append(section(f"Rapport du poste {p}", body))
+    r = load("cadrage.json")
+    body = json.dumps({"proposition": r.get("resultat"), "chemins": r.get("critique")}, ensure_ascii=False, indent=1)[:24000] \
+        if r else "ABSENT : poste en panne, fais son travail toi-même et dis-le dans decisions"
+    parts.append(section("Rapport du poste Plan (cadrage : compris, fichiers impactés, façons de faire du dépôt)", body))
     out("".join(parts))
 
 
@@ -841,20 +829,17 @@ def liste(items):
     return "\n".join(f"- {x}" for x in items if x) or "- (rien)"
 
 
-def cmd_questions():
-    """« ✋ Ce que j'ai compris » : la compréhension du cadrage, à chaque ticket, pour ta gate (sortie 0 : l'étape suivante
-    est la gate). Changements = ta correction repart au cadrage, autant de tours que tu veux. impl.gate_cadrage false :
-    la gate ne s'ouvre que pour une question bloquante, un dépôt hors périmètre ou un critique pas d'accord (sinon code 3,
-    saut au schéma). Essai d'EW-6550 : le cadrage avait compris de travers et son critique l'avait dit, la chaîne a filé."""
+def cmd_compris():
+    """« ✋ Ce que j'ai compris », en tête de ta gate du plan (une seule gate avant le code, à chaque ticket) : la
+    compréhension du poste Plan, ce qui est à trancher, les chemins qu'il cite et qui n'existent pas. Changements = ta
+    correction repart au poste Plan puis à l'orchestrateur, autant de tours que tu veux. Essai d'EW-6550 : le cadrage avait
+    compris de travers, la chaîne a filé jusqu'au code ; la gate s'ouvre donc toujours (impl.gate_cadrage n'a plus d'effet)."""
     r = load("cadrage.json") or {}
     c = r.get("resultat") or {}
-    crit = r.get("critique") or {}
     qs = [q for q in c.get("questions") or [] if isinstance(q, dict) and q.get("question")]
-    bloq = [q for q in qs if q.get("bloquante")]
-    desaccord = str(crit.get("verdict") or "").lower() in ("revoir", "a_revoir", "rejet") and crit.get("remarques")
-    hors = c.get("concerne") is False
+    absents = (r.get("critique") or {}).get("absents") if isinstance(r.get("critique"), dict) else None
     parts = []
-    if hors:
+    if c.get("concerne") is False:
         parts.append(f"**🚫 Rien à faire dans {etat().get('repo')} ?** {c.get('hors_perimetre') or '(sans raison)'}\n"
                      "Rejeter : ce bureau s'arrête sans PR. Approuver : on continue quand même.")
     parts.append("**🎯 Compréhension**\n" + (c.get("comprehension") or c.get("resume") or "(absente)"))
@@ -862,14 +847,13 @@ def cmd_questions():
         parts.append("**📦 Inclus**\n" + liste(c.get("inclus") or []) + "\n\n**🚧 Exclus**\n" + liste(c.get("exclus") or []))
     parts.append("**✅ Critères d'acceptation**\n" + liste(c.get("criteres_acceptation") or []))
     if qs:
-        parts.append("**❓ Questions**\n" + "\n".join(
+        bloq = [q for q in qs if q.get("bloquante")]
+        parts.append(f"**❓ À trancher** ({len(bloq)} bloquante{'s' if len(bloq) > 1 else ''})\n" + "\n".join(
             f"{i}. {'(bloquante) ' if q.get('bloquante') else ''}{q.get('question')}"
             + (f"\n   Hypothèse si pas de réponse : {q['hypothese']}" if q.get("hypothese") else "") for i, q in enumerate(qs, 1)))
-    if desaccord:
-        parts.append("**⚠️ Le critique n'est pas d'accord** (3 propositions faites, ses remarques restent)\n" + liste(crit["remarques"]))
+    if absents:
+        parts.append("**⚠️ Chemins cités introuvables** (l'orchestrateur les a vus)\n" + liste(absents[:10]))
     print("\n\n".join(parts))
-    if impl().get("gate_cadrage") is False and not (bloq or desaccord or hors):
-        sys.exit(3)
 
 
 def garde():
@@ -964,13 +948,47 @@ def base_worktree():
     return path
 
 
+COMMENT_KEY = re.compile(r"(//|/\*|^\s*\*|#|\{#|<!--).*\b[A-Z][A-Z0-9]+-\d+\b")
+SENSIBLE = re.compile(r"Access-Control-Allow-Origin['\"]?\s*[:=,]\s*['\"]?\*|X-[\w-]*Bypass|api[_-]?key['\"]?\s*[:=]\s*['\"][A-Za-z0-9_\-]{12,}", re.I)
+PROVISOIRE = re.compile(r"^(temp|tmp|wip|fixup!|squash!|do not merge)\b", re.I)
+
+
+def garde_fous():
+    """Ce que les relecteurs bloquent à coup sûr, cherché sans agent dans les lignes ajoutées par la branche : une clé de
+    ticket dans un commentaire de code (« Never a ticket number in code »), un en-tête ou une clé sensible (CORS *, en-tête
+    de contournement, clé d'API en dur), un commit provisoire (TEMP, WIP, fixup!). Revues des PR #1858 et #1678."""
+    hits, cur = [], ""
+    for ln in git("diff", "-U0", f"{depart()}...HEAD").splitlines():
+        if ln.startswith("+++ "):
+            cur = ln[6:] if ln.startswith("+++ b/") else ""
+        elif ln.startswith("+") and cur and not cur.endswith(".md"):
+            if COMMENT_KEY.search(ln[1:]):
+                hits.append(f"{cur} : clé de ticket dans un commentaire : {ln[1:].strip()[:140]}")
+            if SENSIBLE.search(ln[1:]):
+                hits.append(f"{cur} : en-tête ou clé sensible : {ln[1:].strip()[:140]}")
+    for sub in git("log", "--format=%s", f"{depart()}..HEAD").splitlines():
+        if PROVISOIRE.match(sub.strip()):
+            hits.append(f"commit provisoire à retirer : {sub.strip()[:140]}")
+    return hits
+
+
 def verifie(phase, files=None):
+    """Les vérifications réglées du dépôt (impl.repos.<dépôt>.checks) : « regles », « tests », ou « code » (les deux, au
+    poste Code : les tests tournent dès le lot, pas seulement aux contrôles) ; avec les règles, les garde-fous du diff."""
     files = changed() if files is None else files
-    checks = ((reglages().get("checks") or {}).get(phase)) or []
-    if not checks:
-        return {"ok": True, "phase": phase, "sorties": [], "note": f"aucune vérification « {phase} » réglée pour ce dépôt (impl.repos)"}
-    r = check_run(checks, files, root(), main_dir(), etat().get("base") or "main", depart=base_worktree)
-    return {"ok": r["ok"], "phase": phase, "sorties": r["sorties"]}
+    conf = reglages().get("checks") or {}
+    checks = (list(conf.get("regles") or []) + list(conf.get("tests") or [])) if phase == "code" else list(conf.get(phase) or [])
+    res = {"ok": True, "phase": phase, "sorties": []}
+    if checks:
+        r = check_run(checks, files, root(), main_dir(), etat().get("base") or "main", depart=base_worktree)
+        res.update(ok=r["ok"], sorties=r["sorties"])
+    else:
+        res["note"] = f"aucune vérification « {phase} » réglée pour ce dépôt (impl.repos)"
+    if phase in ("regles", "code"):
+        hits = garde_fous()
+        res["sorties"].append({"cmd": "garde-fous du diff (0 token)", "code": 1 if hits else 0, "sortie": "\n".join(hits) or "rien"})
+        res["ok"] = res["ok"] and not hits
+    return res
 
 
 def cmd_verif(phase):
@@ -1123,7 +1141,7 @@ def lie_soeurs(e, n):
 
 
 ETATS = {"fait": "✅ livré", "partiel": "🟡 partiel", "non": "❌ pas fait", "autrement": "🔀 autrement", "hors_scope": "⏭️ hors scope"}
-NOMS = {"regles": "📏 règles", "securite": "🔒 sécurité", "tests": "🧪 tests", "perf": "⚡ perf", "revue": "🔁 revue", "besoin": "🎯 besoin", "doc": "📚 doc"}
+NOMS = {"regles": "📏 règles", "securite": "🔒 sécurité", "tests": "🧪 tests", "perf": "⚡ perf", "besoin": "🎯 besoin", "doc": "📚 doc"}
 
 
 ANSI = re.compile(r"\x1b\[[0-9;]*m|\[[0-9;]{1,8}m")
@@ -1144,7 +1162,7 @@ def exigences_md():
     ex = [x for x in ((load("besoin.json") or {}).get("resultat") or {}).get("exigences") or [] if isinstance(x, dict)]
     if not ex:
         return ""
-    return ("## 📋 Ce que le ticket demandait, et où ça atterrit\n\n| Exigence | État | Détail |\n|---|---|---|\n"
+    return ("## Ce que le ticket demandait, et où ça atterrit\n\n| Exigence du ticket | État | Détail |\n|---|---|---|\n"
             + "\n".join(f"| {cellule(x.get('exigence'))} | {ETATS.get(x.get('etat'), cellule(x.get('etat')))} | {cellule(x.get('detail'))} |"
                         for x in ex))
 
@@ -1166,7 +1184,7 @@ def points_md():
     if not rows:
         return ""
     more = f"\n- … et {len(rows) - 15} autres (rapports des contrôles)" if len(rows) > 15 else ""
-    return "## ⚠️ Points ouverts\n\nRelevés par les contrôles de la chaîne, non corrigés dans cette PR.\n\n" + "\n".join(rows[:15]) + more
+    return "## Points ouverts\n\nRelevés par les contrôles de la chaîne, non corrigés dans cette PR.\n\n" + "\n".join(rows[:15]) + more
 
 
 def place(body, nom, corps):
@@ -1188,6 +1206,7 @@ def cmd_pr():
     body += (soeurs_md(e["ticket"], sisters, prs) if sisters else "") + "\n\n<!-- bureau-chaine -->"
     path = dossier("pr_body.md")
     write_text(path, body)
+    write_text(dossier("commit.txt"), (str(d.get("commit") or "").strip() or d.get("title") or e["ticket"]) + "\n")  # le commit unique (pret)
     if sauter("création de la PR"):  # le titre et la description restent dans le dossier (pr_body.md)
         print(f"Titre : {d.get('title')}\nDescription : .kronn/chaine/pr_body.md ({len(body)} caractères)")
         return
@@ -1257,7 +1276,41 @@ def cmd_reponds():
     st = load("retours.json", {}) or {}
     st.update({"reponses": ok, "resume": d.get("resume")})
     write_json(dossier("retours.json"), st)
-    print(f"PR #{n} : {ok} réponse(s) postée(s) sur {len(replies)}")
+    # la description relue après les corrections (le poste retours la réécrit si elle a vieilli) : blocs du script à jour
+    path, maj = dossier("pr_body.md"), ""
+    if os.path.exists(path) and n:
+        body = open(path, encoding="utf-8").read()
+        write_text(path, place(place(body, "exigences", exigences_md()), "points", points_md()))
+        maj = " ; description remise à jour" if gh("pr", "edit", n, "-R", e["repo"], "--body-file", path)[0] == 0 else ""
+    print(f"PR #{n} : {ok} réponse(s) postée(s) sur {len(replies)}{maj}")
+
+
+def ci_label():
+    """Le label qui lance la CI complète, posé au passage en prête : impl.repos.<dépôt>.ci_label, sinon impl.ci_label ; « »
+    ou absent : aucun."""
+    reg = reglages()
+    return str(reg["ci_label"] if "ci_label" in reg else impl().get("ci_label") or "").strip()
+
+
+def squash():
+    """Les commits de la branche (un par lot, puis ceux de la revue et des retours) en un seul, au format des commits du
+    dépôt (le message du rédacteur, commit.txt) : les PR de l'équipe sont mergées en un commit (règle de leur
+    doc/GIT-workflow.md). impl.squash (ou impl.repos.<dépôt>.squash) à false : rien. Rend le texte du compte rendu."""
+    reg = reglages()
+    if not reg.get("squash", impl().get("squash", True)):
+        return "commits gardés (squash coupé)"
+    n = git("rev-list", "--count", f"{depart()}..HEAD").strip()
+    if not n.isdigit() or int(n) < 2:
+        return "un seul commit"
+    msg = dossier("commit.txt")
+    if not os.path.exists(msg):
+        write_text(msg, (etat().get("ticket") or "chore") + "\n")
+    if not git_ok("reset", "--soft", depart()) or not git_ok("commit", "--no-verify", "-s", "-F", msg):
+        git("reset", "--soft", "ORIG_HEAD")
+        return "squash impossible, commits gardés"
+    e = etat()
+    git("push", "--no-verify", "--force-with-lease", "origin", f"HEAD:{e['branch']}", check=True)
+    return f"{n} commits réunis en un"
 
 
 def cmd_pret():
@@ -1266,8 +1319,16 @@ def cmd_pret():
         return
     e = etat()
     n = e.get("pr") or pr_number()
+    sq = squash()
     code, _, err = gh("pr", "ready", n, "-R", e["repo"])
-    print(f"PR #{n} prête à relire" if code == 0 else f"PR #{n} : passage en prête impossible ({err[:200]})")
+    label = ci_label()
+    if label and code == 0:
+        gh("pr", "edit", n, "-R", e["repo"], "--remove-label", label)
+        lc, _, _ = gh("pr", "edit", n, "-R", e["repo"], "--add-label", label)
+        label = f", label {label} posé (CI complète)" if lc == 0 else f", label {label} non posé"
+    else:
+        label = ""
+    print((f"PR #{n} prête à relire" if code == 0 else f"PR #{n} : passage en prête impossible ({err[:200]})") + f" ; {sq}{label}")
 
 
 def cmd_reviewers():
@@ -1279,7 +1340,27 @@ def cmd_reviewers():
     if who:
         gh("pr", "edit", n, "-R", e["repo"], "--add-reviewer", ",".join(who))
     url = f"https://github.com/{e['repo']}/pull/{n}"
-    out(f"PR prête à relire : [{url}|{url}] (chaîne d'implémentation du Bureau, {e.get('tours', 0)} tour(s) de contrôle, revue IA traitée).")
+    out(f"PR prête à relire : [{url}|{url}] (chaîne d'implémentation du Bureau, {e.get('tours', 0)} tour(s) de contrôle, revue IA traitée)."
+        + ecarts_jira())
+
+
+def ecarts_jira():
+    """Les écarts au ticket, actés dans Jira (wiki) : les relecteurs lisent la PR contre le ticket, et un écart qui n'est
+    écrit que dans la PR bloque (#2038, #2031) ; ce que le diff fait sans exigence (périmètre) aussi."""
+    b = (load("besoin.json") or {}).get("resultat") or {}
+    ex = [x for x in b.get("exigences") or [] if isinstance(x, dict) and x.get("etat") not in (None, "fait")]
+    hors = [x for x in b.get("hors_ticket") or [] if isinstance(x, dict)]
+    if not ex and not hors:
+        return ""
+    t = ""
+    if ex:
+        t += "\n\nh4. Écarts au ticket (à valider)\n||Exigence||État||Détail||\n" + "\n".join(
+            f"|{cellule(x.get('exigence'), 300) or ' '}|{ETATS.get(x.get('etat'), cellule(x.get('etat')))}|{cellule(x.get('detail'), 400) or ' '}|" for x in ex)
+    if hors:
+        t += "\n\nh4. Changé sans exigence du ticket\n" + "\n".join(
+            f"* {{{{{cellule(x.get('fichier'), 160)}}}}} : {cellule(x.get('changement'), 300)}" + (f" ({cellule(x.get('justification'), 300)})" if x.get("justification") else "")
+            for x in hors)
+    return t
 
 
 def cmd_fin():
@@ -1302,7 +1383,8 @@ CAUSES = (("convention", ("convention", "nommage", "naming", "style", "règle", 
           ("perimetre", ("périmètre", "perimetre", "scope", "hors", "pas besoin", "inutile", "ne touche pas", "ne pas toucher",
                          "uniquement", "seulement", "en trop", "aussi", "oublie", "manque")),
           ("lecture", ("compris", "pas ça", "pas ca", "en fait", "plutôt", "plutot", "faux", "erreur", "ce n'est pas", "c'est pas")))
-GATE_DE = {"cadrage": "compris", "schema": "plan", "patterns": "plan", "code": "code"}  # poste qui reçoit le retour -> gate
+# poste qui reçoit le retour -> gate ; le poste Plan (cadrage) reçoit ceux de la gate du plan, schema et patterns : dossiers d'avant
+GATE_DE = {"cadrage": "plan", "schema": "plan", "patterns": "plan", "code": "code"}
 
 
 def historique():
@@ -1420,7 +1502,7 @@ def bilan():
         pass
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     touched = changed()
-    sch = (load("schema.json") or {}).get("resultat") or {}
+    sch = (load("cadrage.json") or {}).get("resultat") or {}  # le poste Plan porte le schéma d'impact (fichiers, mermaid)
     prevus = sorted({n.get("chemin") for n in sch.get("fichiers") or [] if isinstance(n, dict) and n.get("chemin")
                      and n.get("action") in ("modifier", "creer", "supprimer")})
     plan = load("plan.json") or {}
@@ -1481,7 +1563,7 @@ def cmd_bilan():
 
 def main(argv):
     cmd, args = (argv[1] if len(argv) > 1 else ""), argv[2:]
-    simple = {"releve": cmd_releve, "dossier": cmd_dossier, "existe": cmd_existe, "questions": cmd_questions, "missions": cmd_missions,
+    simple = {"releve": cmd_releve, "dossier": cmd_dossier, "existe": cmd_existe, "compris": cmd_compris, "missions": cmd_missions,
               "range": cmd_range, "tri_code": cmd_tri_code, "tri_tests": cmd_tri_tests, "bilan_code": cmd_bilan_code, "quoi": cmd_quoi,
               "bilan_controles": cmd_bilan_controles,
               "aiguillage": cmd_aiguillage, "pousse": cmd_pousse, "pr": cmd_pr, "pret": cmd_pret,
@@ -1495,8 +1577,8 @@ def main(argv):
         return cmd_prepare(*(args + [""] * 8)[:8])
     if cmd == "entree":
         return cmd_entree(*(args + ["", "", "", ""])[:4])
-    if cmd in ("tri", "rapport"):
-        return (cmd_tri if cmd == "tri" else cmd_rapport)(args[0] if args else "?")
+    if cmd == "rapport":
+        return cmd_rapport(args[0] if args else "?")
     if cmd == "plan":
         return cmd_plan(*(args + ["", ""])[:2])
     if cmd == "mode":

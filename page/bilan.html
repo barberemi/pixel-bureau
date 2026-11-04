@@ -94,16 +94,17 @@ button:focus-visible,select:focus-visible,tr.row:focus-visible{outline:3px solid
 <script>
 'use strict';
 (function(){
-const POSTES=[['code','⌨ Code'],['tests','🧪 Tests'],['cadrage','📋 Cadrage'],['revue','🔁 Croisée'],['revue_pr','👀 Revue PR'],
-  ['plan','🧠 Plan'],['orchestrateur','🧭 Orchestrateur'],['schema','🗺 Schéma'],['patterns','🧩 Patterns'],
+// cadrage = le poste 📋 Plan ; revue, schema et patterns : runs d'avant (postes retirés), gardés pour leurs jetons
+const POSTES=[['code','⌨ Code'],['tests','🧪 Tests'],['cadrage','📋 Poste Plan'],['revue','🔁 Croisée'],['revue_pr','👀 Revue PR'],
+  ['plan','🧠 Plan de l\'orchestrateur'],['orchestrateur','🧭 Orchestrateur'],['schema','🗺 Schéma'],['patterns','🧩 Patterns'],
   ['paralleles','🔎 Contrôles parallèles'],['retours','💬 Retours'],['pr','📤 PR'],['autre','Autre']];
 const CTRL=[['regles','📏 Règles'],['securite','🔒 Sécurité'],['tests','🧪 Tests'],['perf','⚡ Perf·a11y'],['besoin','🎯 Besoin'],
   ['doc','📚 Doc'],['revue','🔁 Croisée']];
 const ISSUES={pr_prete:['ok','PR prête'],pr_brouillon:['info','PR brouillon'],plan_seul:['idle','plan seul'],escalade:['warn','escalade'],
   en_cours:['info','en cours'],panne:['err','en panne'],rejete:['idle','rejeté'],annule:['idle','annulé'],termine:['ok','terminé']};
 const CAUSES={perimetre:'périmètre',lecture:'mauvaise lecture',convention:'convention',decoupage:'découpage',autre:'autre'};
-const ROW={ticket:'Préparation',prepare:'Préparation',cadrage:'📋 Cadrage',questions:'📋 Cadrage',gate_questions:'✋ compris',
-  schema:'🗺🧩 Plan',patterns:'🗺🧩 Plan',dossier:'🗺🧩 Plan',orchestrateur_plan:'🗺🧩 Plan',gate_plan:'✋ plan',code:'⌨ Code',
+const ROW={ticket:'Préparation',prepare:'Préparation',cadrage:'📋 Plan',compris:'📋 Plan',questions:'📋 Plan',gate_questions:'✋ compris',
+  schema:'📋 Plan',patterns:'📋 Plan',dossier:'📋 Plan',orchestrateur_plan:'📋 Plan',gate_plan:'✋ plan',code:'⌨ Code',
   controles:'🔎 Contrôles',orchestrateur:'🔎 Contrôles',gate_escalade:'✋ escalade',livraison:'📤 PR',gate_pr:'✋ PR',
   publication:'📤 PR',commente_plan:'📤 PR'};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

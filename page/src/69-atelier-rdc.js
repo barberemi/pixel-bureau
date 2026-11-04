@@ -2,6 +2,7 @@
 // L'atelier (68-atelier.js) ne se dessine qu'à l'étage ; le RDC en montre ce qu'il montre de ses propres agents : les
 // moments de la chaîne dans le fil (events du dataset atelier, datés par les étapes des runs), ses tickets dans ⌘K, ses
 // postes au travail et ses gates dans « Qui fait quoi », une tuile en haut de page. Tout mène à l'étage (atGoto).
+// gate_questions : runs d'avant le poste Plan (une seule gate avant le code, gate_plan)
 const AT_GATE_TXT={gate_questions:'ce que j\'ai compris',gate_plan:'ton plan',gate_escalade:'escalade : la chaîne demande un humain',gate_pr:'relire la PR brouillon'};
 // monter au 1er et ouvrir la fiche du ticket : son bureau, sinon son carton de l'entrepôt ou sa palette en panne
 function atGoto(run){

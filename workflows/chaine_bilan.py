@@ -21,12 +21,14 @@ MAX_OUT = 90_000
 JOURS, MAX_TICKETS = 30, 50
 CACHE = os.path.expanduser("~/.cache/pixel-bureau/chaine_bilan")
 KEY = re.compile(r"\b([A-Z][A-Z0-9]+-\d+) sur ([\w.-]+/[\w.-]+)")
-# sous-workflow -> poste dont il porte les jetons ; une étape Agent du parent porte le sien
-POSTE_DE = {"impl_cadrage": "cadrage", "impl_schema": "schema", "impl_patterns": "patterns", "impl_code": "code",
-            "impl_tests": "tests", "impl_revue": "revue", "impl_livraison": "pr", "impl_revue_pr": "revue_pr",
-            "impl_retours": "retours", "impl_publication": "pr", "impl_controles": "controles"}
+# sous-workflow -> poste dont il porte les jetons ; une étape Agent du parent porte le sien. impl_cadrage est le poste 📋 Plan.
+# Schéma, patterns et revue croisée ne sont plus appelés : leurs ids restent dans la config des installations d'avant, leurs
+# runs des 30 derniers jours gardent leurs jetons (ANCIENS) ; une installation neuve ne les a pas
+POSTE_DE = {"impl_cadrage": "cadrage", "impl_code": "code", "impl_tests": "tests", "impl_livraison": "pr",
+            "impl_revue_pr": "revue_pr", "impl_retours": "retours", "impl_publication": "pr", "impl_controles": "controles"}
+ANCIENS = {"impl_schema": "schema", "impl_patterns": "patterns", "impl_revue": "revue"}
 ETAPE_DE = {"orchestrateur_plan": "plan", "orchestrateur": "orchestrateur", "parallele": "paralleles"}
-GATES = ("gate_questions", "gate_plan", "gate_escalade", "gate_pr")
+GATES = ("gate_questions", "gate_plan", "gate_escalade", "gate_pr")  # gate_questions : runs d'avant le poste Plan
 
 
 def historique():
@@ -63,7 +65,7 @@ class Arbre:
 
     def __init__(self, models):
         self.models = models
-        self.wf_poste = {models[k]: p for k, p in POSTE_DE.items() if models.get(k)}
+        self.wf_poste = {models[k]: p for k, p in {**ANCIENS, **POSTE_DE}.items() if models.get(k)}
         self.runs = {}  # wf -> runs (liste)
 
     def enfants(self, run_id):

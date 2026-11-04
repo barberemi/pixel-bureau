@@ -1,6 +1,6 @@
 """Implémenter un ticket en chaîne de postes (#76, #125 ; python3 -m unittest tests/test_chaine.py) : les modèles impl_*
 rendus (postes en sous-workflows, gates dans le parent, 20 étapes au plus, agents par poste), puis workflows/chaine.py
-étape par étape dans un vrai dépôt git jetable : dossier du ticket, propositions et critiques (3 tours), questions,
+étape par étape dans un vrai dépôt git jetable : dossier du ticket, poste Plan et « ce que j'ai compris » de sa gate,
 plan seulement, lots du code et leurs essais, contrôles écartés ou obligatoires, aiguillage de l'orchestrateur ; un
 bureau par dépôt (composants Jira), reprise après une panne, mode essai sans effet."""
 import copy, json, os, subprocess, sys, tempfile, unittest
@@ -24,7 +24,7 @@ def cfg(**over):
     c["github"] = {**c.get("github", {}), "repo": "dm/site"}
     c["models"] = {k: f"0000000{i % 10}-0000-4000-8000-0000000000{i:02d}" for i, k in enumerate(KEYS + ["assign"])}
     c["impl"] = {"repos": {"dm/site": {"base": "main", "checks": {"regles": [{"cmd": "echo verif {php}", "subdir": "app"}]}}},
-                 "postes": {"revue": {"agent": "CopilotCli"}, "patterns": {"skills": ["maison-patterns"]}}, "skills": ["php"]}
+                 "postes": {"cadrage": {"agent": "CopilotCli", "skills": ["maison-patterns"]}}, "skills": ["php"]}
     c.update(over)
     return c
 
@@ -37,23 +37,23 @@ class ChaineModelesTest(unittest.TestCase):
     def test_postes_are_subworkflows_and_gates_stay_in_the_parent(self):
         c = cfg()
         chain = templates.render(TPL["impl_chain"], c)
-        self.assertLessEqual(len(chain["steps"]), 20)
+        self.assertLessEqual(len(chain["steps"]), 17)  # 20 avant le poste Plan (cadrage, schéma, patterns, questions)
         self.assertEqual((chain["concurrency_limit"], chain["project_scope"]), (4, {"type": "All"}))  # 4 chaînes, tout projet
         self.assertEqual(chain["workspace_config"], {"hooks": {}, "require_isolation": True})  # une copie par ticket
         subs = {s["name"]: s["sub_workflow_id"] for s in chain["steps"] if s["step_type"]["type"] == "SubWorkflow"}
-        self.assertEqual(set(subs), {"cadrage", "schema", "patterns", "code", "controles", "livraison", "publication"})
+        self.assertEqual(set(subs), {"cadrage", "code", "controles", "livraison", "publication"})
         self.assertEqual(subs["code"], c["models"]["impl_code"])
         gates = [s["name"] for s in chain["steps"] if s["step_type"]["type"] == "Gate"]
-        self.assertEqual(gates, ["gate_questions", "gate_plan", "gate_escalade", "gate_pr"])
+        self.assertEqual(gates, ["gate_plan", "gate_escalade", "gate_pr"])  # une seule gate avant le code
         for key in KEYS:  # Kronn refuse un sous-workflow qui contient une gate
             if key != "impl_chain":
                 self.assertNotIn("Gate", [s["step_type"]["type"] for s in TPL[key]["definition"]["steps"]], key)
         ctrl = steps("impl_controles", c)
         # tests d'abord (ils écrivent), puis règles, sécurité, perf, besoin et doc en parallèle (sous-agents d'une même
-        # étape : Kronn ne lance pas de sous-workflows en parallèle), puis la revue par une autre famille de modèle
-        self.assertEqual(list(ctrl), ["tests", "missions", "parallele", "range", "revue", "bilan"])
+        # étape : Kronn ne lance pas de sous-workflows en parallèle), puis leur bilan ; plus de revue croisée
+        self.assertEqual(list(ctrl), ["tests", "missions", "parallele", "range", "bilan"])
         self.assertEqual(ctrl["tests"]["on_result"][0]["action"]["step_name"], "missions")  # poste en panne : on continue
-        self.assertEqual(ctrl["missions"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "revue"}}])
+        self.assertEqual(ctrl["missions"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "bilan"}}])
         self.assertEqual(set(ctrl["parallele"]["output_format"]["schema"]["properties"]), {"regles", "securite", "perf", "besoin", "doc"})
         doc = ctrl["parallele"]["output_format"]["schema"]["properties"]["doc"]["properties"]["docs"]["items"]["properties"]["etat"]
         self.assertEqual(doc["enum"], ["a_jour", "a_mettre_a_jour", "non_concernee", "manquante"])
@@ -63,46 +63,58 @@ class ChaineModelesTest(unittest.TestCase):
         self.assertNotIn("{{steps.propose", ctrl["parallele"]["prompt_template"])
         self.assertEqual(ctrl["parallele"]["skill_ids"][:3], ["security", "web-performance", "accessibility"])
         self.assertEqual(ctrl["range"]["exec_stdin"], '{{steps.parallele.data_json ?? "null"}}')
-        chain = {s["name"]: s for s in chain["steps"]}  # « ce que j'ai compris » : la gate suit les questions, saut au schéma sinon
-        self.assertEqual(chain["questions"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "schema"}}])
-        self.assertIn("Ce que j'ai compris", chain["gate_questions"]["gate_message"])
+        names = [s["name"] for s in chain["steps"]]
+        self.assertEqual(names[:7], ["ticket", "prepare", "cadrage", "compris", "dossier", "orchestrateur_plan", "gate_plan"])
+        for gone in ("questions", "gate_questions", "schema", "patterns"):
+            self.assertNotIn(gone, names)
+        chain = {s["name"]: s for s in chain["steps"]}  # « ce que j'ai compris » et le plan : une seule gate, toujours ouverte
+        self.assertNotIn("on_result", chain["compris"])
+        msg = chain["gate_plan"]["gate_message"]
+        self.assertIn("Ce que j'ai compris", msg)
+        self.assertLess(msg.index("{{steps.compris.data.stdout"), msg.index("{{steps.orchestrateur_plan.data.apercu"))
+        self.assertNotIn("revue", chain["orchestrateur_plan"]["output_format"]["schema"]["properties"]["postes"]["items"]["enum"])
+        self.assertNotIn("Schéma", chain["orchestrateur_plan"]["prompt_template"])
+        for key in ("impl_schema", "impl_patterns", "impl_revue"):  # plus appelés : plus rendus ni installés
+            self.assertNotIn(key, templates.TEMPLATES)
+            self.assertNotIn(f"@@models.{key}@@", json.dumps([TPL[k] for k in KEYS]))
 
     def test_human_feedback_reaches_the_postes(self):
         """Le commentaire d'une gate n'est injecté que dans le prompt d'une étape Agent : la chaîne le passe aux postes
         par leur variable retours, et chaque gate renvoie au bon poste."""
         st = steps("impl_chain")
-        for n in ("cadrage", "schema", "patterns", "code"):
+        for n in ("cadrage", "code"):
             self.assertEqual(st[n]["sub_workflow_variables"]["retours"], '{{state.last_human_feedback ?? ""}}', n)
-        self.assertEqual({n: st[n]["gate_request_changes_target"] for n in ("gate_questions", "gate_plan", "gate_escalade", "gate_pr")},
-                         {"gate_questions": "cadrage", "gate_plan": "schema", "gate_escalade": "code", "gate_pr": "code"})
+        self.assertEqual({n: st[n]["gate_request_changes_target"] for n in ("gate_plan", "gate_escalade", "gate_pr")},
+                         {"gate_plan": "cadrage", "gate_escalade": "code", "gate_pr": "code"})
         self.assertEqual(st["aiguillage"]["on_result"][0]["action"]["step_name"], "livraison")
         self.assertTrue(st["commente_plan"]["external_effect"])
 
     def test_each_poste_has_its_agent_tier_and_skills(self):
         c = cfg()
-        self.assertEqual(steps("impl_cadrage", c)["propose"]["agent_settings"], {"tier": "economy"})
+        plan = steps("impl_cadrage", c)["propose"]  # le poste Plan : réglage impl.postes.cadrage
+        self.assertEqual((plan["agent"], plan["agent_settings"], plan["skill_ids"]), ("CopilotCli", {"tier": "reasoning"}, ["maison-patterns"]))
+        self.assertEqual(steps("impl_cadrage")["propose"]["agent_settings"], {"tier": "reasoning"})
         code = steps("impl_code", c)["code"]
         self.assertEqual((code["agent_settings"]["tier"], code["skill_ids"]), ("reasoning", ["verification-before-completion", "php"]))
-        self.assertEqual(steps("impl_revue", c)["propose"]["agent"], "CopilotCli")  # une autre famille de modèle
-        self.assertIn("maison-patterns", steps("impl_patterns", c)["propose"]["skill_ids"])
         for key in KEYS:
             for s in templates.render(TPL[key], c)["steps"]:
                 self.assertNotIn("_poste", s, key)
 
-    def test_proposals_loop_three_times_at_most(self):
-        for key in ("impl_schema", "impl_patterns"):  # sans critique : ta gate du cadrage et l'orchestrateur tranchent
-            self.assertNotIn("critique", steps(key))
-            self.assertEqual(steps(key)["rapport"]["exec_stdin"], '{{steps.propose.data_json ?? "null"}}\n===SEP===\nnull')
-            self.assertNotIn("Tour précédent", steps(key)["propose"]["prompt_template"])
+    def test_plan_is_one_agent_and_code_loops_three_times_at_most(self):
+        """Le poste 📋 Plan : un agent, sans critique (ta gate du plan tranche), le relevé git grep avant lui et la
+        vérification des chemins après, rangée dans son rapport ; il fait ce que faisaient cadrage, schéma et patterns."""
+        plan = steps("impl_cadrage")
+        self.assertEqual(list(plan), ["entree", "releve", "propose", "existe", "rapport"])
+        self.assertEqual(plan["rapport"]["exec_stdin"], '{{steps.propose.data_json ?? "null"}}\n===SEP===\n{{steps.existe.data.stdout ?? "null"}}')
+        self.assertEqual(plan["propose"]["output_format"]["on_invalid"], "Continue")
+        props = plan["propose"]["output_format"]["schema"]["properties"]
+        for k in ("comprehension", "criteres_acceptation", "questions", "fichiers", "mermaid", "zones_risque", "choix", "a_eviter", "concerne"):
+            self.assertIn(k, props)
+        self.assertIn("{{steps.releve.data.stdout", plan["propose"]["prompt_template"])
+        self.assertNotIn("critique", plan["propose"]["prompt_template"])
         code = steps("impl_code")  # le Code en une session, 3 essais comptés par le script
         self.assertEqual(list(code), ["entree", "affecter", "plan", "code", "verif", "relecture", "tri", "bilan"])
         self.assertEqual(code["tri"]["on_result"], [{"contains": "exit_4", "action": {"type": "Goto", "step_name": "code", "max_iterations": 5}}])
-        for key in ("impl_cadrage", "impl_revue"):
-            tri = steps(key)["tri"]
-            self.assertEqual(tri["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "propose", "max_iterations": 5}}], key)
-            # essai du 2026-10-30 : un critique qui rend une analyse sans JSON faisait échouer le poste ; sa proposition est gardée
-            self.assertEqual(steps(key)["critique"]["output_format"]["on_invalid"], "Continue", key)
-            self.assertEqual(steps(key)["propose"]["output_format"]["on_invalid"], "Continue", key)
 
     def test_the_floor_stops_at_the_pr_and_its_reviews(self):
         """L'étage ne déploie rien : la PR, sa revue par le modèle du Bureau, les retours traités ; ni CI ni env de branche."""
@@ -126,8 +138,7 @@ class ChaineModelesTest(unittest.TestCase):
                          {"exit_3": "code", "exit_4": "controles", "exit_5": "livraison"})
         self.assertEqual(st["prepare"]["exec_args"][-4:], ['{{depot ?? ""}}', '{{soeurs ?? ""}}', '{{reprise ?? "non"}}', '{{base ?? ""}}'])
         self.assertEqual(st["commente_plan"]["api_body"]["body"], '{{partie ?? ""}}{{steps.orchestrateur_plan.data.commentaire_jira}}')
-        for key in ("impl_cadrage", "impl_schema", "impl_patterns"):
-            self.assertEqual(steps(key)["entree"]["on_result"], [{"contains": "exit_5", "action": {"type": "Goto", "step_name": "rapport"}}])
+        self.assertEqual(steps("impl_cadrage")["entree"]["on_result"], [{"contains": "exit_5", "action": {"type": "Goto", "step_name": "rapport"}}])
         self.assertEqual(steps("impl_code")["entree"]["on_result"], [{"contains": "exit_5", "action": {"type": "Goto", "step_name": "plan"}}])
         self.assertEqual(steps("impl_livraison")["entree"]["on_result"], [{"contains": "exit_5", "action": {"type": "Goto", "step_name": "fin"}}])
         lance = steps("impl")["lance"]
@@ -171,7 +182,7 @@ class ChaineScriptTest(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def sh(self, *args, stdin=""):
-        env = {**os.environ, "KRONN_WORKTREE": self.wt, "HOME": os.path.join(self.tmp, "home")}  # cache du dossier : jetable
+        env = {**os.environ, "KRONN_WORKTREE": self.wt, "HOME": os.path.join(self.tmp, "home"), **getattr(self, "env_extra", {})}  # cache du dossier : jetable
         r = subprocess.run(["python3", "-c", self.code, *args], input=stdin, capture_output=True, text=True, cwd=self.wt, env=env)
         return r.returncode, r.stdout + r.stderr
 
@@ -192,41 +203,50 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("Bouton partager", ctx)
         self.assertIn("Garde le style actuel", ctx)
         self.assertIn("docs/AGENTS.md", ctx)
-        self.sh("entree", "schema", "AB-12", "Garde le style actuel")  # le même retour n'est noté qu'une fois
+        self.sh("entree", "code", "AB-12", "Garde le style actuel")  # le même retour n'est noté qu'une fois
         self.assertEqual(Path(self.wt, ".kronn", "chaine", "retours.md").read_text().count("Garde le style actuel"), 1)
-        self.sh("entree", "schema", "AB-12", "{{state.last_human_feedback}}")  # référence restée telle quelle : ignorée
+        self.sh("entree", "code", "AB-12", "{{state.last_human_feedback}}")  # référence restée telle quelle : ignorée
         self.assertNotIn("state.last", Path(self.wt, ".kronn", "chaine", "retours.md").read_text())
 
-    def test_critique_review_and_questions(self):
+    def test_plan_report_and_what_i_understood(self):
+        """Le poste Plan : son rapport (cadrage.json) porte compris, fichiers et façons de faire, avec les chemins
+        introuvables ; « ce que j'ai compris » ouvre la gate du plan à chaque ticket (plus de saut, impl.gate_cadrage sans
+        effet) ; après un « Changements », le poste reprend son rapport précédent."""
         self.prepare()
-        revoir = json.dumps({"verdict": "revoir", "remarques": ["x"]})
-        self.assertEqual([self.sh("tri", "cadrage", stdin=revoir)[0] for _ in range(3)], [3, 3, 0])  # 3 propositions, puis gardée
-        self.sh("entree", "cadrage", "AB-12")  # nouveau passage du poste : compteur à zéro
-        self.assertEqual(self.sh("tri", "cadrage", stdin=revoir)[0], 3)
-        self.assertEqual(self.sh("tri", "cadrage", stdin=json.dumps({"verdict": "revoir", "remarques": []}))[0], 0)  # sans remarque
-        self.assertEqual(self.sh("tri", "cadrage", stdin=json.dumps({"verdict": "ok", "remarques": []}))[0], 0)
+        Path(self.wt, "app").mkdir(exist_ok=True)
+        Path(self.wt, "app", "Share.php").write_text("<?php\n")
         prop = {"resume": "r", "comprehension": "c", "criteres_acceptation": ["a"],
-                "questions": [{"question": "Quels réseaux ?", "bloquante": True, "hypothese": "X et Bluesky"}]}
-        self.sh("rapport", "cadrage", stdin=json.dumps(prop) + SEP + json.dumps({"verdict": "ok"}))
-        code, q = self.sh("questions")  # « ce que j'ai compris » : la gate s'ouvre à chaque ticket (code 0, elle suit)
+                "questions": [{"question": "Quels réseaux ?", "bloquante": True, "hypothese": "X et Bluesky"}],
+                "fichiers": [{"chemin": "app/Share.php", "action": "modifier"}, {"chemin": "app/Absent.php", "action": "modifier"},
+                             {"chemin": "app/Neuf.php", "action": "creer"}],
+                "mermaid": "flowchart LR\n A-->B", "choix": [{"sujet": "où", "decision": "comme app/Share.php"}]}
+        code, ex = self.sh("existe", stdin=json.dumps(prop))
+        self.assertEqual(json.loads(ex)["absents"], ["app/Absent.php"])
+        self.sh("rapport", "cadrage", stdin=json.dumps(prop) + SEP + ex)
+        rep = self.dossier("cadrage.json")
+        self.assertEqual((rep["resultat"]["choix"][0]["sujet"], rep["critique"]["absents"]), ("où", ["app/Absent.php"]))
+        code, q = self.sh("compris")
         self.assertEqual(code, 0)
-        for part in ("🎯 Compréhension", "✅ Critères d'acceptation", "(bloquante) Quels réseaux ?", "Hypothèse si pas de réponse : X et Bluesky"):
+        for part in ("🎯 Compréhension", "✅ Critères d'acceptation", "❓ À trancher** (1 bloquante)", "(bloquante) Quels réseaux ?",
+                     "Hypothèse si pas de réponse : X et Bluesky", "⚠️ Chemins cités introuvables", "app/Absent.php"):
             self.assertIn(part, q)
-        self.assertNotIn("pas d'accord", q)
-        # gate seulement s'il y a à trancher (impl.gate_cadrage false) : sans question bloquante ni désaccord, saut au schéma
-        c = cfg()
+        c = cfg()  # réglage d'avant : la gate s'ouvre quand même, rien à trancher compris
         c["impl"]["gate_cadrage"] = False
         self.code = templates.script_code("workflows/chaine.py", c)
-        self.assertEqual(self.sh("questions")[0], 0)  # une question bloquante : la gate
-        prop["questions"][0]["bloquante"] = False
+        prop["questions"] = []
         self.sh("rapport", "cadrage", stdin=json.dumps(prop) + SEP + "null")
-        self.assertEqual(self.sh("questions")[0], 3)
-        # le critique n'est pas d'accord après 3 propositions : ses remarques dans la gate, qui s'ouvre (A)
-        self.sh("rapport", "cadrage", stdin=json.dumps(prop) + SEP + json.dumps({"verdict": "revoir", "remarques": ["la page est une WebView"]}))
-        code, q = self.sh("questions")
+        code, q = self.sh("compris")
         self.assertEqual(code, 0)
-        self.assertIn("⚠️ Le critique n'est pas d'accord", q)
-        self.assertIn("la page est une WebView", q)
+        self.assertNotIn("À trancher", q)
+        self.assertNotIn("introuvables", q)
+        code, ctx = self.sh("entree", "cadrage", "AB-12", "Pas de Bluesky")  # « Changements » à la gate du plan
+        self.assertIn("Ton rapport précédent", ctx)
+        self.assertIn("comme app/Share.php", ctx)
+        code, dos = self.sh("dossier")  # l'orchestrateur lit le rapport du poste Plan, rien d'autre
+        self.assertIn("Rapport du poste Plan", dos)
+        self.assertIn("app/Share.php", dos)
+        self.assertNotIn("ABSENT", dos)
+        self.assertNotEqual(self.sh("tri", "cadrage", stdin="{}")[0], 0)  # plus de critique : la sous-commande n'existe plus
 
     def test_plan_only_mode_stops(self):
         self.assertEqual(self.sh("mode", "plan")[0], 4)
@@ -390,7 +410,7 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertNotIn("Deployed", md)
         Path(self.wt, "app", "C.php").write_text("<?php\n")
         self.assertEqual(json.loads(self.sh("quoi")[1])["fichiers"], ["app/C.php"])  # diff contre le commit rejoué
-        self.assertIn("ne rebase pas dessus", self.sh("entree", "revue", "AB-12")[1])  # la base distante a déjà le ticket
+        self.assertIn("ne rebase pas dessus", self.sh("entree", "besoin", "AB-12")[1])  # la base distante a déjà le ticket
         self.assertIn("essai_rejoue", self.sh("bilan_controles")[1])
         subprocess.run(["git", "push", "-q", "origin", "main:master"], cwd=self.wt, check=True)
         subprocess.run(["git", "symbolic-ref", "HEAD", "refs/heads/master"], cwd=self.origin, check=True)
@@ -400,11 +420,11 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("depuis origin/master", outp)
 
     def test_cadrage_out_of_scope_goes_to_the_gate(self):
-        """Ticket à plusieurs dépôts dont rien ne revient à ce bureau : la gate des questions propose de l'arrêter."""
+        """Ticket à plusieurs dépôts dont rien ne revient à ce bureau : la gate du plan propose de l'arrêter."""
         self.prepare()
         self.sh("rapport", "cadrage", stdin=json.dumps({"resume": "r", "questions": [], "concerne": False,
                                                         "hors_perimetre": "tout est dans dm/api"}) + SEP + "null")
-        code, outp = self.sh("questions")
+        code, outp = self.sh("compris")
         self.assertEqual(code, 0)
         self.assertIn("🚫 Rien à faire dans dm/site ?", outp)
         self.assertIn("tout est dans dm/api", outp)
@@ -428,22 +448,98 @@ class ChaineScriptTest(unittest.TestCase):
             {"exigence": "qat retiré des actions non-prod", "etat": "partiel", "detail": "reste CD_BUILD_APP.yaml | ligne 12"},
             {"exigence": "guard en prod", "etat": "fait", "detail": "CD_Deploy-PRODUCTION.yaml"}]}) + SEP + "null")
         Path(self.wt, ".kronn", "chaine", "controles.json").write_text(json.dumps({"bloquants": [], "avis": [
-            {"poste": "revue", "fichier": "README.md", "ligne": 75, "probleme": "qat encore listé", "correction": "retirer la ligne"},
-            {"poste": "revue", "fichier": "README.md", "ligne": 75, "probleme": "qat encore listé"},
+            {"poste": "perf", "fichier": "README.md", "ligne": 75, "probleme": "qat encore listé", "correction": "retirer la ligne"},
+            {"poste": "perf", "fichier": "README.md", "ligne": 75, "probleme": "qat encore listé"},
             {"poste": "tests", "probleme": "tests rouges", "correction": "\x1b[31mFAIL\x1b[39m " + "x" * 900}]}))
         self.sh("pr", stdin=json.dumps({"title": "t", "body": "## 🎯 De quoi on parle ?\n\nx\n\n<!-- bureau-exigences -->\n\n## 🧪 Comment on teste ?\n\n1. y"}))
         body = Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text()
-        self.assertLess(body.index("📋 Ce que le ticket demandait"), body.index("🧪 Comment on teste ?"))  # à l'emplacement laissé
+        self.assertLess(body.index("## Ce que le ticket demandait"), body.index("🧪 Comment on teste ?"))  # à l'emplacement laissé
         self.assertIn("| qat retiré des actions non-prod | 🟡 partiel | reste CD_BUILD_APP.yaml \\| ligne 12 |", body)
         self.assertIn("| guard en prod | ✅ livré |", body)
-        self.assertIn("## ⚠️ Points ouverts", body)
+        self.assertIn("## Points ouverts", body)
         self.assertEqual(body.count("qat encore listé"), 1)  # doublon écarté
-        self.assertIn("(🔁 revue) `README.md:75` : qat encore listé ; piste : retirer la ligne", body)
+        self.assertIn("(⚡ perf) `README.md:75` : qat encore listé ; piste : retirer la ligne", body)
         self.assertIn("piste : FAIL xxx", body)  # sortie de terminal sans codes couleur, tronquée
         self.assertNotIn("\x1b", body)
         self.assertIn("x…", body)
         self.sh("pr", stdin=json.dumps({"title": "t", "body": body}))  # une PR remise à jour ne double pas les blocs
-        self.assertEqual(Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text().count("📋 Ce que le ticket demandait"), 1)
+        self.assertEqual(Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text().count("## Ce que le ticket demandait"), 1)
+
+    def fake_gh(self, data=None):
+        """Un gh de test (PATH) : réponses par sous-commande, appels notés ; jamais GitHub."""
+        b = os.path.join(self.tmp, "bin")
+        os.makedirs(b, exist_ok=True)
+        Path(b, "gh").write_text("#!" + sys.executable + "\nimport json, os, sys\na = sys.argv[1:]\n"
+                                 "open(os.environ['GH_LOG'], 'a').write(json.dumps(a) + '\\n')\n"
+                                 "d = json.load(open(os.environ['GH_DATA']))\nprint(d.get(' '.join(a[:2]), ''))\n")
+        os.chmod(os.path.join(b, "gh"), 0o755)
+        Path(self.tmp, "gh.json").write_text(json.dumps(data or {}))
+        self.env_extra = {"PATH": b + os.pathsep + os.environ.get("PATH", ""), "GH_LOG": os.path.join(self.tmp, "gh.log"),
+                          "GH_DATA": os.path.join(self.tmp, "gh.json"),  # une identité git : la CI n'en a pas (le squash commite)
+                          "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
+
+    def gh_calls(self):
+        p = Path(self.tmp, "gh.log")
+        return [json.loads(x) for x in p.read_text().splitlines()] if p.exists() else []
+
+    def commit(self, name, text, msg):
+        Path(self.wt, name).write_text(text)
+        g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        subprocess.run([*g, "add", "-A"], cwd=self.wt, check=True, capture_output=True)
+        subprocess.run([*g, "commit", "-qm", msg], cwd=self.wt, check=True, capture_output=True)
+
+    def test_code_checks_run_rules_tests_and_guardrails(self):
+        """Au poste Code, les vérifications « code » : règles et tests réglés, puis les garde-fous du diff (clé de ticket
+        dans un commentaire, en-tête sensible, commit provisoire) ; rouges, le Code reprend."""
+        self.prepare()
+        self.commit("app/A.php", "<?php\n$a = 1;\n", "feat(site): AB-12 lot 1")
+        v = json.loads(self.sh("verif", "code")[1])
+        self.assertTrue(v["ok"], v)
+        self.assertEqual([x["cmd"] for x in v["sorties"]][-1], "garde-fous du diff (0 token)")
+        self.commit("app/B.php", "<?php\n// AB-12 : à cause du ticket\nheader('Access-Control-Allow-Origin: *');\n", "TEMP debug")
+        v = json.loads(self.sh("verif", "code")[1])
+        self.assertFalse(v["ok"])
+        sortie = v["sorties"][-1]["sortie"]
+        self.assertIn("app/B.php : clé de ticket dans un commentaire", sortie)
+        self.assertIn("app/B.php : en-tête ou clé sensible", sortie)
+        self.assertIn("commit provisoire à retirer : TEMP debug", sortie)
+        self.assertNotIn("A.php", sortie)
+        self.assertEqual(steps("impl_code")["verif"]["exec_args"][3], "code")
+
+    def test_ready_squashes_into_one_commit_labels_and_notes_the_gaps_in_jira(self):
+        """Après la revue et les retours de la chaîne : un seul commit au format du dépôt (message du rédacteur), poussé,
+        la PR prête avec le label de CI ; le commentaire Jira acte les écarts au ticket et ce qui est changé sans exigence."""
+        self.prepare()
+        e = self.dossier("etat.json")
+        e["mode"] = "complet"
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        for i in (1, 2, 3):
+            self.commit("app/A.php", "<?php\n$a = %d;\n" % i, "feat(site): AB-12 lot %d" % i)
+        self.fake_gh({"pr list": "", "pr create": "https://github.com/dm/site/pull/7"})
+        self.code = templates.script_code("workflows/chaine.py", cfg(impl={**cfg()["impl"], "ci_label": "ci-test"}))
+        code, outp = self.sh("pr", stdin=json.dumps({"title": "feat(Site):AB-12 Bouton partager", "body": "corps",
+                                                     "commit": "feat(Site):AB-12 Bouton partager\n\nDétail."}))
+        self.assertEqual(code, 0, outp)
+        code, outp = self.sh("pret")
+        self.assertEqual(code, 0, outp)
+        self.assertIn("3 commits réunis en un", outp)
+        self.assertIn("label ci-test posé", outp)
+        log = subprocess.run(["git", "--git-dir", self.origin, "log", "--format=%B", "-n", "2", e["branch"]], capture_output=True, text=True).stdout
+        self.assertTrue(log.startswith("feat(Site):AB-12 Bouton partager\n\nDétail.\n\nSigned-off-by: "), log)
+        self.assertEqual(subprocess.run(["git", "--git-dir", self.origin, "rev-list", "--count", f"main..{e['branch']}"],
+                                        capture_output=True, text=True).stdout.strip(), "1")
+        calls = self.gh_calls()
+        self.assertIn(["pr", "ready", "7", "-R", "dm/site"], calls)
+        self.assertIn(["pr", "edit", "7", "-R", "dm/site", "--add-label", "ci-test"], calls)
+        self.sh("rapport", "besoin", stdin=json.dumps({"resume": "r", "constats": [], "exigences": [
+            {"exigence": "bouton sur la fiche", "etat": "fait", "detail": "app/A.php"},
+            {"exigence": "partage par mail", "etat": "hors_scope", "detail": "ticket de suite"}],
+            "hors_ticket": [{"fichier": "composer.lock", "changement": "symfony 7.3", "justification": ""}]}) + SEP + "null")
+        code, outp = self.sh("reviewers")
+        self.assertIn("h4. Écarts au ticket (à valider)", outp)
+        self.assertIn("|partage par mail|⏭️ hors scope|ticket de suite|", outp)
+        self.assertNotIn("bouton sur la fiche", outp)
+        self.assertIn("* {{composer.lock}} : symfony 7.3", outp)
 
     def test_code_in_one_session_retries_three_times(self):
         self.prepare()
@@ -494,9 +590,9 @@ class ChaineScriptTest(unittest.TestCase):
         self.sh("missions")
         self.sh("range", stdin=json.dumps({"regles": {"resume": "r", "constats": [{"gravite": "bloquant", "probleme": "nom"}]},
                                            "securite": {"resume": "s", "constats": []}, "besoin": {"resume": "b", "constats": [], "exigences": []}}))
-        self.assertNotIn("Tour suivant", self.sh("entree", "revue", "AB-12")[1])  # premier tour
+        self.assertNotIn("Tour suivant", self.sh("entree", "besoin", "AB-12")[1])  # premier tour
         self.sh("bilan_controles")
-        self.assertNotIn("Tour suivant", self.sh("entree", "revue", "AB-12")[1])  # rien de corrigé depuis
+        self.assertNotIn("Tour suivant", self.sh("entree", "besoin", "AB-12")[1])  # rien de corrigé depuis
         Path(self.wt, "app", "A.php").write_text("<?php // v2\n")
         subprocess.run(g + ["commit", "-qam", "correction"], cwd=self.wt, check=True)
         self.sh("bilan_code")
@@ -592,14 +688,11 @@ class ChaineScriptTest(unittest.TestCase):
         """Après chaque étape, le bilan du run est réécrit hors du cache de reprise (page « Chaîne · bilan ») : tours,
         retours humains et leur cause, schéma prévu contre fichiers touchés, diff par sorte, contrôles trouvés et corrigés."""
         self.prepare()
-        revoir = json.dumps({"verdict": "revoir", "remarques": ["x"]})
-        self.sh("tri", "cadrage", stdin=revoir)
-        self.sh("tri", "cadrage", stdin=json.dumps({"verdict": "ok"}))
-        self.sh("rapport", "cadrage", stdin=json.dumps({"resume": "r", "comprehension": "Un bouton partager"}) + SEP + "null")
-        self.sh("entree", "schema", "AB-12", "Ne touche pas au pied de page, hors périmètre")
-        self.sh("rapport", "schema", stdin=json.dumps({"resume": "s", "mermaid": "flowchart LR\n A-->B", "fichiers": [
-            {"chemin": "app/A.php", "action": "modifier"}, {"chemin": "app/B.php", "action": "creer"},
-            {"chemin": "docs/AGENTS.md", "action": "lire"}]}) + SEP + "null")
+        # le poste Plan porte le schéma d'impact (fichiers prévus, mermaid) ; un retour à la gate du plan lui revient
+        self.sh("rapport", "cadrage", stdin=json.dumps({"resume": "r", "comprehension": "Un bouton partager", "mermaid": "flowchart LR\n A-->B",
+                                                        "fichiers": [{"chemin": "app/A.php", "action": "modifier"}, {"chemin": "app/B.php", "action": "creer"},
+                                                                     {"chemin": "docs/AGENTS.md", "action": "lire"}]}) + SEP + "null")
+        self.sh("entree", "cadrage", "AB-12", "Ne touche pas au pied de page, hors périmètre")
         self.sh("plan", "", "", stdin=json.dumps({"lots": [{"titre": "le bouton"}], "postes": []}))
         Path(self.wt, "app", "A.php").write_text("<?php // partager\n")
         Path(self.wt, "tests").mkdir()
@@ -612,18 +705,18 @@ class ChaineScriptTest(unittest.TestCase):
         self.sh("bilan_code")
         bl = {"resume": "s", "constats": [{"gravite": "bloquant", "probleme": "XSS ligne 3", "fichier": "app/A.php"}]}
         self.sh("rapport", "securite", stdin=json.dumps(bl) + SEP + "null")
-        self.sh("rapport", "revue", stdin=json.dumps({"resume": "s", "constats": [{"gravite": "mineur", "probleme": "nom"}]}) + SEP + "null")
+        self.sh("rapport", "perf", stdin=json.dumps({"resume": "s", "constats": [{"gravite": "mineur", "probleme": "nom"}]}) + SEP + "null")
         self.sh("bilan_controles")
         self.sh("aiguillage", stdin=json.dumps({"decision": "retour_code", "consignes": "XSS", "resume": "r"}))
-        self.sh("bilan_code")  # tour 2 : la XSS est corrigée, l'avis de la revue reste
+        self.sh("bilan_code")  # tour 2 : la XSS est corrigée, l'avis de perf reste
         self.sh("rapport", "securite", stdin=json.dumps({"resume": "s", "constats": []}) + SEP + "null")
-        self.sh("rapport", "revue", stdin=json.dumps({"resume": "s", "constats": [{"gravite": "mineur", "probleme": "nom"}]}) + SEP + "null")
+        self.sh("rapport", "perf", stdin=json.dumps({"resume": "s", "constats": [{"gravite": "mineur", "probleme": "nom"}]}) + SEP + "null")
         self.sh("bilan_controles")
         self.sh("aiguillage", stdin=json.dumps({"decision": "livrer", "resume": "Livré après une correction"}))
         path = Path(self.tmp, "home", ".local", "share", "pixel-bureau", "historique", "AB-12", "dm__site", "run1.json")
         b = json.loads(path.read_text())
         self.assertEqual((b["ticket"], b["repo"], b["run"], b["titre"], b["essai"]), ("AB-12", "dm/site", "run1", "Bouton partager sur la fiche", False))
-        self.assertEqual(b["tours"], {"propositions": {"cadrage": 2}, "essais_code": 1, "controles": 2, "escalades": 0})
+        self.assertEqual(b["tours"], {"propositions": {}, "essais_code": 1, "controles": 2, "escalades": 0})  # plus de critique
         self.assertEqual((b["retours"]["n"], b["retours"]["par_gate"], b["retours"]["par_cause"]), (1, {"plan": 1}, {"perimetre": 1}))
         s = b["schema"]
         self.assertEqual((s["prevus"], s["prevus_touches"], s["prevus_non_touches"]), (["app/A.php", "app/B.php"], 1, ["app/B.php"]))
@@ -632,7 +725,7 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual({k: v["fichiers"] for k, v in b["diff"].items()}, {"code": 1, "tests": 1, "doc": 1})
         self.assertEqual(b["doc"]["fichiers"], [{"fichier": "docs/partage.md", "plus": 3, "moins": 0}])
         self.assertEqual(b["controles"]["securite"]["bloquants"], {"trouves": 1, "corriges": 1, "restes": 0})
-        self.assertEqual(b["controles"]["revue"]["avis"], {"trouves": 1, "corriges": 0, "restes": 1})
+        self.assertEqual(b["controles"]["perf"]["avis"], {"trouves": 1, "corriges": 0, "restes": 1})
         self.assertEqual((b["plan"]["lots"], b["resume"]["comprehension"], b["resume"]["decision"]), (1, "Un bouton partager", "livrer"))
         self.assertEqual((b["etape"], b["issue"]), ("livraison", "en_cours"))
         self.assertEqual(set(b["version"]), {"hash", "commit", "sujet"})  # injectée au rendu du script
@@ -653,15 +746,16 @@ class ChaineScriptTest(unittest.TestCase):
         Path(self.wt, "app", "A.php").write_text("<?php // x\n")
         self.sh("plan", "", "", stdin=json.dumps({"lots": [], "postes": ["regles"]}))
         q = json.loads(self.sh("quoi")[1])["postes"]
-        self.assertFalse(q["revue"]["actif"])  # écarté par le plan
+        self.assertNotIn("revue", q)  # plus de revue croisée
         self.assertTrue(q["securite"]["actif"])  # bloquant : jamais écarté par le plan
-        self.assertFalse(q["perf"]["actif"])  # aucun fichier front
+        self.assertFalse(q["perf"]["actif"])  # écarté par le plan (il tourne sinon sur tout diff : cache HTTP)
         self.sh("missions")
         self.assertEqual(self.dossier("perf.json")["statut"], "non_concerne")
         self.sh("rapport", "securite", stdin=json.dumps({"resume": "s", "constats": [{"gravite": "bloquant", "probleme": "XSS"}]}) + SEP + "null")
-        self.sh("rapport", "revue", stdin=json.dumps({"resume": "s", "constats": [{"gravite": "bloquant", "probleme": "nom"}]}) + SEP + "null")
+        self.sh("rapport", "perf", stdin=json.dumps({"resume": "s", "constats": [{"gravite": "bloquant", "probleme": "lent"}]}) + SEP + "null")
         b = json.loads(self.sh("bilan_controles")[1])
-        self.assertEqual([x["poste"] for x in b["bloquants"]], ["securite"])  # revue : un avis, pas un poste bloquant
+        self.assertEqual([x["poste"] for x in b["bloquants"]], ["securite"])  # perf : un avis, pas un poste bloquant
+        self.assertNotIn("revue", b["postes"])
         back = json.dumps({"decision": "retour_code", "consignes": "XSS", "resume": "r"})
         self.assertEqual([self.sh("aiguillage", stdin=back)[0] for _ in range(3)], [4, 4, 0])  # 3e tour : un humain
         self.assertEqual(self.sh("aiguillage", stdin=json.dumps({"decision": "livrer"}))[0], 3)

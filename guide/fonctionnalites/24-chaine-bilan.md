@@ -17,9 +17,9 @@ En haut, les filtres : période (7 ou 30 jours), dépôt, et les essais (écart�
 - **Jetons par ticket, semaine par semaine**, avec un trait à chaque nouvelle version de la chaîne : on voit si une modification a payé.
 - **Versions de la chaîne** : pour chaque version (empreinte des modèles `impl*.json`, et le dernier commit qui les a changés), tickets, jetons, tours et exigences faites.
 - **Jetons perdus** : étapes d'agent en échec relancées, runs tombés en panne.
-- **Allers-retours par ticket** : propositions du cadrage, tes retours à chaque gate, essais du Code, tours de contrôles, escalades. Une colonne foncée sur plusieurs tickets montre un poste ou une gate à revoir.
+- **Allers-retours par ticket** : propositions du cadrage (runs d'avant le poste 📋 Plan, qui n'a plus de critique), tes retours à chaque gate, essais du Code, tours de contrôles, escalades. Une colonne foncée sur plusieurs tickets montre un poste ou une gate à revoir.
 - **Ce que trouvent les contrôles** : bloquants et avis trouvés, corrigés au tour suivant, ou restés jusqu'à la livraison ; un contrôle qui trouve beaucoup sans rien faire corriger est marqué « à revoir ».
-- **Le schéma d'impact a-t-il vu juste ?** Les fichiers prévus par 🗺 Schéma comparés à ceux que le diff touche vraiment.
+- **Le schéma d'impact a-t-il vu juste ?** Les fichiers prévus par le poste 📋 Plan (🗺 Schéma pour les runs d'avant) comparés à ceux que le diff touche vraiment.
 - **Pourquoi tu dis « Changements »** : tes retours aux gates, classés par mots-clés (périmètre, mauvaise lecture, convention, découpage).
 - **Tickets passés**, le plus récent d'abord ; un clic ouvre la fiche du ticket.
 

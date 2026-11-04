@@ -119,9 +119,29 @@ test('tapis : chaque poste plus loin que le précédent, du cadrage aux retours,
   }
 });
 
-test('📚 Doc : pas de bureau sur le tapis (7 par rangée), sa place est celle du poste d\'avant', () => {
-  assert.deepEqual(J(`[AT_R1.length, AT_R2.length, AT_DESKS.some(p => p.k === 'doc'), AT_POSTES.some(p => p.k === 'doc')]`), [7, 7, false, true]);
+test('📚 Doc : pas de bureau sur le tapis (6 + 5 bureaux), sa place est celle du poste d\'avant', () => {
+  assert.deepEqual(J(`[AT_R1.length, AT_R2.length, AT_DESKS.some(p => p.k === 'doc'), AT_POSTES.some(p => p.k === 'doc')]`), [6, 5, false, true]);
   assert.deepEqual(J(`atSpot(AT_G[0], 'doc')`), J(`atSpot(AT_G[0], 'besoin')`));
+});
+
+test('6 emplacements par rangée sur le tapis de toujours : la rangée du haut les remplit, celle du bas part du virage', () => {
+  for (let i = 0; i < 4; i++) {
+    const [sw, w, xs1, xs2, turn] = J(`(g => [g.sw, g.bx1 - g.bx0, AT_R1.map(p => atSpot(g, p.k).x), AT_R2.map(p => atSpot(g, p.k).x), g.tm])(AT_G[${i}])`);
+    assert.ok(Math.abs(sw * 6 - w) < 1e-6, 'six emplacements sur toute la longueur');
+    const near = a => Math.abs(a - turn);
+    assert.ok(near(xs2[0]) < near(xs2[xs2.length - 1]), 'le premier bureau du bas est au virage');
+    assert.ok(Math.abs(Math.abs(xs1[5] - xs1[0]) - 5 * sw) < 1e-6 && Math.abs(Math.abs(xs2[4] - xs2[0]) - 4 * sw) < 1e-6);
+    assert.ok(Math.abs(xs1[5] - xs2[0]) < 1e-6, 'le dernier du haut au-dessus du premier du bas');
+  }
+});
+
+test('un run d\'avant le poste Plan (schéma, patterns, revue croisée) : ramené au poste voisin, ses états ignorés', () => {
+  const d = J(`readAtelier({datasets: {atelier: {current: ${JSON.stringify(JSON.stringify({rooms: [
+    room('o1', {poste: 'schema', states: {cadrage: 'ok', schema: 'run', patterns: 'ok'}}), room('o2', {poste: 'revue', states: {revue: 'avis'}})],
+    pannes: [{run: 'o3', ticket: 'DM-o3', poste: 'patterns'}], events: [{run: 'o1', t: 'S', k: 'poste', poste: 'schema'}]}))}}}})`);
+  assert.deepEqual([d.rooms[0].poste, d.rooms[1].poste, d.pannes[0].poste, d.events[0].poste], ['cadrage', 'besoin', 'cadrage', 'cadrage']);
+  run(`GATES = []; ATELIER = readAtelier({datasets: {atelier: {current: ${JSON.stringify({rooms: [room('o1', {poste: 'schema', states: {schema: 'run', revue: 'avis'}})], queue: [], pannes: []})}}}});`);
+  assert.doesNotThrow(() => run('atDiff(1000); atRoom(atRooms()[0], 0, 1000, .03); atelierFicheHtml(atRooms()[0], 0); atelierListHtml(atRooms(), [])'));
 });
 
 test("un ticket garde son bureau ; le suivant prend le premier bureau libre", () => {
@@ -138,12 +158,12 @@ test('scènes : rien à rejouer en montant ; puis arrivée, sortie (pas pour une
   const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
   p.run(`ATELIER = {rooms: ${JSON.stringify([room('a', {poste: 'code', states: {cadrage: 'ok'}}), room('b'), room('c')])}, queue: [], pannes: []}; atDiff(1000);`);
   assert.equal(J2('AT_MEM.scenes.length'), 0);
-  p.run(`ATELIER = {rooms: ${JSON.stringify([room('a', {poste: 'code', back: true, states: {cadrage: 'ok', schema: 'ok', securite: 'bloq'}}), room('d')])},
+  p.run(`ATELIER = {rooms: ${JSON.stringify([room('a', {poste: 'code', back: true, states: {cadrage: 'ok', gate: 'ok', securite: 'bloq'}}), room('d')])},
     queue: [], pannes: [{run: 'c', ticket: 'DM-c'}]}; atDiff(2000);`);
   assert.deepEqual(J2('AT_MEM.scenes.map(s => s.kind + ":" + s.ticket).sort()'), ['arrive:DM-d', 'exit:DM-b']);
   assert.equal(J2('AT_MEM.leaving[1].ticket'), 'DM-b');
   assert.equal(J2("AT_MEM.cart.d.hidden"), true, 'le carton arrive avec le livreur');
-  assert.equal(J2("AT_MEM.okAt['a|schema']"), 2000);
+  assert.equal(J2("AT_MEM.okAt['a|gate']"), 2000);
   assert.equal(J2("AT_MEM.okAt['a|cadrage'] || null"), null, 'déjà validé : pas de nouveau ✓');
   assert.equal(J2('AT_MEM.backAt.a'), 2000);
   assert.equal(J2("atSlots().findIndex(r => r && r.run === 'd')"), 2, 'pas dans le bureau que le transporteur vide');
@@ -180,11 +200,12 @@ test('équipes du 1er : le bureau 1 garde la sienne ; ailleurs, elle monte avec 
 
 test("fiche d'un agent : son poste, son bureau et sa place, même quand il se promène", () => {
   const p = load();fresh(p);
-  p.run(`ATELIER = {rooms: [], queue: []}; AT_MEM.wander = [{i: 1, k: 'tests', spot: AT_SPOTS[0], phase: 'stay', walk: atWalker([AT_SPOTS[0]])}];`);
-  const html = p.run(`atAgentHtml({kind: 'agent', i: 1, k: 'tests'}, atSlots())`);
-  assert.match(html, /Tests/);
+  p.run(`ATELIER = {rooms: [], queue: []}; AT_MEM.wander = [{i: 1, k: 'perf', spot: AT_SPOTS[0], phase: 'stay', walk: atWalker([AT_SPOTS[0]])}];`);
+  const html = p.run(`atAgentHtml({kind: 'agent', i: 1, k: 'perf'}, atSlots())`);
+  assert.match(html, /Perf·a11y/);
   assert.match(html, /Se promène sur le canapé/);
   assert.match(html, /Sa place : bureau 2, rangée du bas/);
+  assert.match(p.run(`atAgentHtml({kind: 'agent', i: 1, k: 'tests'}, atSlots())`), /rangée du haut/, '🧪 Tests : 6e bureau, en haut');
 });
 
 test("seul l'étage affiché vit : en montant l'atelier se pose sans rejouer, en descendant le RDC replace chacun", () => {

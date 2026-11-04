@@ -43,14 +43,14 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "La PR sort du brouillon.",
+    "description": "Les commits de la branche réunis en un (message du rédacteur, format des commits du dépôt ; impl.squash à false : gardés), poussés ; la PR passe en prête et reçoit le label de CI (impl.ci_label).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
      "@@script:workflows/chaine.py@@",
      "pret"
     ],
-    "exec_timeout_secs": 60,
+    "exec_timeout_secs": 300,
     "external_effect": true
    },
    {
