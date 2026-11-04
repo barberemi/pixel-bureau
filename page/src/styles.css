@@ -910,12 +910,11 @@ body.tv #tvwho .at-bar i.avis,body.tv #tvwho .at-bar i.wait{background:var(--war
 /* la barre des agents des étages (69-metiers.js), au-dessus des onglets d'étage */
 .mtbar{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px;align-items:stretch}
 .mtbar .mt-t{font:700 11px ui-monospace,Menlo,monospace;color:var(--muted);writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;letter-spacing:.08em}
-.mtbar .mt-a{flex:1 1 150px;display:flex;gap:8px;align-items:center;position:relative;padding:3px 8px 3px 3px;border:3px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;text-align:left;font:12px system-ui,sans-serif}
+.mtbar .mt-a{flex:1 1 150px;display:flex;gap:8px;align-items:center;position:relative;padding:3px 10px 3px 3px;border:3px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;text-align:left;font:12px system-ui,sans-serif}
 .mtbar .mt-a:hover,.mtbar .mt-a:focus-visible{border-color:var(--accent)}
 .mtbar img,.mtbar .mt-f{width:40px;height:46px;image-rendering:pixelated;flex:none}
 .mtbar .mt-x{display:flex;flex-direction:column;min-width:0}
 .mtbar .mt-x b{font-size:13px;white-space:nowrap}.mtbar small{color:var(--muted);font-size:12px}
-.mtbar .mt-fl{font:700 10px ui-monospace,Menlo,monospace;background:var(--line);color:var(--ink);padding:0 4px;margin-left:5px}
-.mtbar .mt-go{margin-left:auto;background:var(--ok);color:#fff;padding:2px 8px;font-weight:700}
+.mtbar .mt-fl{font:700 10px ui-monospace,Menlo,monospace;border:1px solid currentColor;color:var(--muted);padding:0 3px;margin-left:5px;vertical-align:1px}
 .mtbar .mt-b{position:absolute;left:32px;top:0;min-width:16px;height:16px;padding:0 3px;border-radius:8px;color:#fff;font:700 10px system-ui,sans-serif;display:flex;align-items:center;justify-content:center;border:2px solid var(--panel)}
 body.tv .mtbar{display:none}

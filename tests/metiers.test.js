@@ -72,6 +72,7 @@ test('la barre : métier, étage et état ; pas de prénom affiché', () => {
   assert.match(h, /🏗 Implé<span class="mt-fl">1er<\/span>/);
   assert.match(h, /data-mt="dwight"/);
   assert.doesNotMatch(h.replace(/title="[^"]*"/g, ''), /Dwight|Ryan|Nellie/); // le prénom seulement dans l'infobulle
+  assert.doesNotMatch(h, /mt-go|▸/); // toute la carte se clique : pas de bouton ▸ à part
 });
 
 test('état d\'un agent dans la barre : sa validation passe avant le travail', () => {
