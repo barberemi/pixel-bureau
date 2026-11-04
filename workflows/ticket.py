@@ -157,19 +157,30 @@ POSTES = {
                   "points (l'estimation en story points, suite de Fibonacci ; un seul ticket : les points de la demande ; "
                   "plusieurs : répartis-les) ; bloque_par (plusieurs tickets seulement : les numéros, à partir de 1, des "
                   "tickets à livrer AVANT celui-ci, parce qu'il en consomme le résultat ; [] s'il peut partir seul ; jamais "
-                  "de boucle). Tiens compte des remarques de la critique s'il y en a. Des tickets Jira ouverts proches de "
-                  "l'intention sont listés plus haut : ne rédige pas un ticket qui existe déjà ; un ticket proche, cite-le "
-                  "dans la description (« voir EW-… »). Pas de tiret cadratin ; n'invente ni "
-                  "lien, ni chiffre, ni personne. Ne crée RIEN dans Jira. Rends UNIQUEMENT un objet JSON : "
-                  '{"tickets": [{"summary": "…", "description": "…", "composant": "…", "points": 3, "bloque_par": []}]}.'),
+                  "de boucle). Corrige les notes bloquantes de la critique ; ses conseils, suis-les s'ils sont justes. Pour chaque note "
+                  "de la critique, dis en une ligne dans reponses ce que tu as fait, ou pourquoi tu ne la suis pas (preuve à "
+                  "l'appui) : elle les relira. Des tickets Jira ouverts proches de l'intention sont listés plus haut : ne "
+                  "rédige pas un ticket qui existe déjà ; un ticket proche, cite-le dans la description (« voir EW-… »). "
+                  "Pas de tiret cadratin ; n'invente ni lien, ni chiffre, ni personne. Ne crée RIEN dans Jira. Rends "
+                  "UNIQUEMENT un objet JSON : "
+                  '{"tickets": [{"summary": "…", "description": "…", "composant": "…", "points": 3, "bloque_par": []}], '
+                  '"reponses": ["ticket 1 : …"]}.'),
     "critique": ("🧐 Critique", "Relis les tickets proposés comme le ferait un relecteur exigeant : chacun se comprend seul, "
                  "se teste, a le bon composant et des points crédibles ; le découpage est juste (ni trop, ni trop peu) ; "
                  "le modèle de ticket de l'équipe est suivi (sections, panneaux, titre) ; les dépendances (bloque_par) sont "
                  "dans le bon sens (un ticket est bloqué par celui dont il consomme le résultat) et sans boucle ; "
-                 "rien d'inventé, rien de flou ; aucun ticket ne refait un ticket Jira ouvert listé plus haut. Rends "
+                 "rien d'inventé, rien de flou ; aucun ticket ne refait un ticket Jira ouvert listé plus haut. Chaque note "
+                 "a une gravité : « bloquant » pour un défaut qui empêche de créer le ticket tel quel (cadrage faux, ticket "
+                 "qu'on ne peut pas tester, composant faux, doublon d'un ticket ouvert, modèle de l'équipe pas suivi, "
+                 "dépendance à l'envers, chose inventée) ; « conseil » pour le reste (formulation, détail, préférence) : il "
+                 "est montré au boss, sans renvoyer à la rédaction. Avant d'écrire qu'une chose manque, n'existe pas ou n'est "
+                 "appuyée par rien, vérifie-le dans le code (Grep, Glob, Read). Tes relectures précédentes et les réponses "
+                 "de la rédaction sont plus haut : ne rouvre pas un point traité, ni un point que la rédaction refuse avec une "
+                 "raison valable ; ne contredis ni une de tes notes d'avant, ni un retour du boss (ils sont tranchés). Rends "
                  "UNIQUEMENT un objet JSON : "
                  '{"verdict": "ok" | "a_retoucher", "notes": [{"ticket": <numéro à partir de 1, ou 0 pour le découpage>, '
-                 '"note": "…"}]}. « a_retoucher » seulement pour un vrai défaut, avec une note qui dit quoi changer.'),
+                 '"gravite": "bloquant" | "conseil", "note": "…"}]}. « a_retoucher » seulement s\'il reste au moins une '
+                 "note bloquante, qui dit quoi changer."),
 }
 
 
@@ -454,7 +465,6 @@ def poste(k, run, retours=""):
     if k != "recherche" and dget(run, "doublons.json"):
         parts.append("## Tickets Jira ouverts proches de l'intention (doublons possibles, du plus proche au moins proche)\n"
                      + "\n".join(f"- {x['key']} · {x['summary']} ({x.get('status') or '?'})" for x in dget(run, "doublons.json")))
-
     t = dget(run, "tickets.json")
     if k == "critique" or (k == "redaction" and t):
         parts.append("## Les tickets proposés" + (f" (version {t['version']})" if t else "") + "\n" + json.dumps((t or {}).get("tickets") or [], ensure_ascii=False, indent=1))
@@ -463,12 +473,29 @@ def poste(k, run, retours=""):
         old = dget(run, "retours.json", [])
         if retours not in old:
             dput(run, "retours.json", old + [retours])
+            # tes « Changements » relancent la boucle : la critique relit la nouvelle version et peut la renvoyer une fois
+            d["tour"] = TOURS - 1
+            dput(run, "demande.json", d)
             archive(run, retours={"texte": retours[:1500], "v": (dget(run, "tickets.json") or {}).get("version")})
-    if k == "redaction" and dget(run, "retours.json"):
-        parts.append("## Retours du boss à la validation (à appliquer en priorité)\n" + "\n".join("- " + x for x in dget(run, "retours.json")))
+    if k in ("redaction", "critique") and dget(run, "retours.json"):
+        parts.append("## Retours du boss à la validation (" + ("à appliquer en priorité" if k == "redaction" else "tranchés : ne les conteste pas")
+                     + ")\n" + "\n".join("- " + x for x in dget(run, "retours.json")))
     c = dget(run, "critique.json")
-    if k == "redaction" and c and c.get("verdict") == "a_retoucher":
-        parts.append("## Remarques de la critique (à corriger)\n" + "\n".join(f"- ticket {n.get('ticket')} : {n.get('note')}" for n in c.get("notes") or []))
+    if k == "redaction" and c and c.get("notes") and c.get("version") == (t or {}).get("version"):
+        notes = c.get("notes") or []
+        bl = [n for n in notes if n.get("gravite") != "conseil"]
+        co = [n for n in notes if n.get("gravite") == "conseil"]
+        if bl and c.get("verdict") == "a_retoucher":
+            parts.append("## Notes bloquantes de la critique (à corriger)\n" + "\n".join(f"- ticket {n.get('ticket')} : {n.get('note')}" for n in bl))
+        if co:
+            parts.append("## Conseils de la critique (à suivre s'ils sont justes)\n" + "\n".join(f"- ticket {n.get('ticket')} : {n.get('note')}" for n in co))
+    if k == "critique":
+        old = [x for x in dget(run, "critiques.json", []) if x.get("notes")]
+        if old:
+            parts.append("## Tes relectures précédentes (ne les rouvre pas, ne les contredis pas)\n" + "\n".join(
+                f"- version {x.get('version')} · ticket {n.get('ticket')} · {n.get('gravite') or 'bloquant'} : {n.get('note')}" for x in old for n in x["notes"]))
+        if (t or {}).get("reponses"):
+            parts.append("## Réponses de la rédaction à tes notes\n" + "\n".join("- " + str(x) for x in t["reponses"]))
     lt = langue_titre()
     parts.append("## Langue\n" + ("Rédige en " + langue() + " : le rapport, le titre (summary) et la description des tickets."
                  if lt == langue() else "Rédige en " + langue() + " le rapport et la description des tickets, et le titre (summary) "
@@ -498,18 +525,26 @@ def rapport(k, run, text):
         ts = dependances(ts[:8])
         old = dget(run, "tickets.json") or {}
         v = int(old.get("version") or 0) + 1
-        dput(run, "tickets.json", {"version": v, "tickets": ts})
+        reps = [str(x).strip()[:400] for x in o.get("reponses") or [] if str(x).strip()][:12]
+        dput(run, "tickets.json", {"version": v, "tickets": ts, "reponses": reps})
         archive(run, versions={"v": v, "tickets": [{"summary": str(t.get("summary") or "")[:200], "composant": t.get("composant"),
                                                     "points": t.get("points"), "bloque_par": t["bloque_par"]} for t in ts]})
         print("\n".join(f"{i}. {t['summary']} · {t.get('composant') or '?'} · {t.get('points') or '?'} pts{bloque(t)}" for i, t in enumerate(ts, 1)))
         return
     if k == "critique":
-        v = "a_retoucher" if str(o.get("verdict") or "").strip() == "a_retoucher" else "ok"
-        notes = [n for n in o.get("notes") or [] if isinstance(n, dict)][:12]
-        dput(run, "critique.json", {"verdict": v, "notes": notes, "version": (dget(run, "tickets.json") or {}).get("version")})
-        archive(run, critiques={"v": (dget(run, "tickets.json") or {}).get("version"), "verdict": v,
-                                "notes": [{"ticket": n.get("ticket"), "note": str(n.get("note") or "")[:400]} for n in notes]})
-        print(("✓ relu, rien à retoucher" if v == "ok" else "↺ à retoucher") + "".join(f"\n- ticket {n.get('ticket')} : {n.get('note')}" for n in o.get("notes") or []))
+        # une note sans gravité compte comme bloquante ; « à retoucher » seulement s'il en reste une (les conseils vont au tampon)
+        notes = [{**n, "gravite": "conseil" if str(n.get("gravite") or "").strip().lower() == "conseil" else "bloquant"}
+                 for n in o.get("notes") or [] if isinstance(n, dict)][:12]
+        bloquant = any(n["gravite"] == "bloquant" for n in notes)
+        v = "a_retoucher" if str(o.get("verdict") or "").strip() == "a_retoucher" and bloquant else "ok"
+        ver = (dget(run, "tickets.json") or {}).get("version")
+        dput(run, "critique.json", {"verdict": v, "notes": notes, "version": ver})
+        hist = [x for x in dget(run, "critiques.json", []) if x.get("version") != ver]
+        dput(run, "critiques.json", (hist + [{"version": ver, "verdict": v, "notes": notes}])[-6:])
+        archive(run, critiques={"v": ver, "verdict": v,
+                                "notes": [{"ticket": n.get("ticket"), "gravite": n["gravite"], "note": str(n.get("note") or "")[:400]} for n in notes]})
+        print(("✓ relu, rien à retoucher" if v == "ok" else "↺ à retoucher")
+              + "".join(f"\n- ticket {n.get('ticket')} ({n['gravite']}) : {n.get('note')}" for n in notes))
         return
     sys.exit(f"Poste inconnu : {k}")
 
@@ -602,11 +637,19 @@ def apercus(run):
     if labels():
         print("Labels : " + ", ".join(labels()))
     c = dget(run, "critique.json") or {}
-    if c.get("verdict") == "a_retoucher" and c.get("version") == (dget(run, "tickets.json") or {}).get("version"):
-        # trois tours faits sans accord : la critique garde ses réserves, le tampon les montre plutôt que de les taire
-        print(f"\n⚠ La critique a encore des réserves après {TOURS} tours (à toi de trancher, « Changements » pour les corriger) :")
-        for n in c.get("notes") or []:
-            print(f"- {'découpage' if n.get('ticket') in (0, '0') else 'T' + str(n.get('ticket'))} : {n.get('note')}")
+    if c.get("version") == (dget(run, "tickets.json") or {}).get("version"):
+        qui = lambda n: "découpage" if n.get("ticket") in (0, "0") else "T" + str(n.get("ticket"))  # noqa: E731
+        if c.get("verdict") == "a_retoucher":
+            # tours épuisés sans accord : la critique garde ses réserves, le tampon les montre plutôt que de les taire
+            print("\n⚠ La critique a encore des réserves bloquantes (à toi de trancher, « Changements » pour les corriger) :")
+            for n in c.get("notes") or []:
+                if n.get("gravite") != "conseil":
+                    print(f"- {qui(n)} : {n.get('note')}")
+        conseils = [n for n in c.get("notes") or [] if n.get("gravite") == "conseil"]
+        if conseils:
+            print("\n💡 Conseils de la critique (non bloquants) :")
+            for n in conseils:
+                print(f"- {qui(n)} : {n.get('note')}")
     proches = dget(run, "doublons.json", [])[:3]
     if proches:
         print("\n🔎 Tickets Jira ouverts proches (doublons possibles) :")

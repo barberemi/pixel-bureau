@@ -19,6 +19,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 - Un dessin du boss par étage : `atelier_sprite` (1er) et `redaction_sprite` (2e) dans le roster du pack, comme `captain_sprite` au -1 ; sa fiche garde son portrait.
 - `tools/lpc_sheet.py` : une planche LPC générée devient une planche du Bureau, avec la marche de côté réparée (images tournées, pieds à l'envers, jambes qui ne se rejoignent pas), le liseré du détourage retiré, et au besoin un personnage étoffé (tête plus grande, jambes plus larges).
 
+### Modifié
+
+- Créer un ticket : la critique converge. Chaque remarque est bloquante ou un conseil ; seules les bloquantes renvoient à la rédaction, les conseils vont à la validation (💡). Elle relit ses notes d'avant et les réponses de la rédaction, reçoit tes retours comme tranchés, et vérifie dans le code (Grep, Glob) avant d'affirmer qu'une chose manque. Après tes « Changements », elle peut encore renvoyer une fois. (Sur 3 vrais runs, elle disait « à retoucher » à presque chaque tour.)
+
 ### Corrigé
 
 - Galerie des scènes : au 1er, une scène ne se jouait qu'au deuxième clic (passer en démonstration était pris pour un saut du curseur) ; au 3e, « Une PR monte au 3e » et « La PR est poussée » ne se jouaient jamais.

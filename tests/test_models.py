@@ -347,6 +347,8 @@ exit 0
         self.assertEqual(st["doublons_jira"]["on_result"], [{"contains": "ERROR", "action": {"type": "Goto", "step_name": "doublons"}}])
         self.assertNotIn("external_effect", st["doublons_jira"])
         self.assertEqual(st["doublons"]["exec_args"][-1], "{{steps.doublons_jira.data_json}}")
+        crit = next(s for s in templates.render(TPL["ticket_critique"], c)["steps"] if s["step_type"]["type"] == "Agent")
+        self.assertEqual(crit["agent_settings"]["tools"]["cli"], ["Read", "Grep", "Glob"], "la critique vérifie dans le code avant d'affirmer")
         self.assertEqual(st["relire"]["gate_request_changes_target"], "redaction", "Changements : la rédaction reprend avec tes retours")
         self.assertIn("last_human_feedback", st["redaction"]["sub_workflow_variables"]["retours"])
         self.assertEqual(st["aiguillage"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "redaction", "max_iterations": 2}}])
