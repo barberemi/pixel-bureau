@@ -52,6 +52,31 @@ test("réponse postée : le camion part (sauf en arrivant à l'étage), puis la 
   assert.deepEqual(J('csSlots(0)'), [null, null, null], 'en arrivant : rien ne se rejoue');
 });
 
+test("en revenant à l'étage : une arrivée déjà vue ne se rejoue pas ; partie pendant l'absence, elle se joue une fois", () => {
+  const {p, J, set} = page();
+  set([th('a', 'run', `, run: {run: 'ra', status: 'Running', at: ${at(11 - 1 / 60)}}`)]);
+  assert.equal(J('!!csSlots(0)[0] && !!CS_MEM.arr[0]'), true, 'partie il y a une minute, vue pour la première fois : l\'arrivée se joue');
+  p.run('setFloor(0); setFloor(-1);');
+  assert.equal(J('!!csSlots(0)[0] && !!CS_MEM.arr[0]'), false, 'on change d\'étage et on revient : la baie est posée, personne ne redescend la barre');
+  p.run(`SUPPORT.threads.push(${th('b', 'run', `, run: {run: 'rb', status: 'Running', at: ${at(11 - 1 / 60)}}`)}); setFloor(0); setFloor(-1);`);
+  assert.deepEqual(J('csSlots(0).map((x, b) => x && [x.t.id, !!CS_MEM.arr[b]])'), [['a', false], ['b', true], null], 'partie pendant qu\'on était ailleurs : son arrivée se joue, une fois');
+  p.run('setFloor(0); setFloor(-1);');
+  assert.deepEqual(J('csSlots(0).map((x, b) => x && !!CS_MEM.arr[b])'), [false, false, null]);
+});
+
+test("loupe : juste après un changement d'étage, ce qui est en cours n'est pas présenté comme nouveau", () => {
+  const {p, J, set} = page();
+  set([th('a', 'gate', `, run: {run: 'ra', status: 'WaitingApproval', at: ${at(9)}}`)]);
+  p.run('setFloor(-1); performance.now = () => 0;');
+  assert.deepEqual(J('loupeScan()'), [], 'premier relevé : l\'étage n\'est pas encore dessiné');
+  J('csSlots(0)');
+  assert.deepEqual(J('loupeScan()'), [], 'l\'étage dessiné : la validation déjà en cours n\'est pas nouvelle');
+  p.run('performance.now = () => 1000;');
+  p.run(`SUPPORT.threads.push(${th('b', 'failed', `, run: {run: 'rb', status: 'Failed', at: ${at(10)}}`)});`);
+  J('csSlots(1000)');
+  assert.deepEqual(J('loupeScan().map(e => e.kind)'), ['cs_err', 'cs_arrive'], 'ce qui commence ensuite, si : le camion qui part, la panne');
+});
+
 test("état des postes : les étapes du run (cron live) d'abord, sinon le relevé (run.postes)", () => {
   const {p, J, set} = page();
   set([th('a', 'run', `, run: {run: 'ra', status: 'Running', at: ${at(9)}, postes: {tri: 'ok', logs: 'run'}}`)]);

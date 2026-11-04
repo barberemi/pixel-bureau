@@ -17,7 +17,7 @@ const LOUPE_ORDER=['rd_gate','rt_exit','rt_gate','rt_err','rt_arrive','cs_depart
 // cérémonies : toute l'équipe est dans la scène, la légende la nomme au lieu d'énumérer tout le monde
 const LOUPE_CEREMONY={daily:"Daily de l'équipe",planning:'Sprint planning',retro:'Rétrospective',kickoff:'Lancement du sprint',pizza:'Pizza de fin de sprint'};
 let LOUPE_ON=!REDUCED_MOTION;try{const v=localStorage.getItem('bureau:loupe');if(v!==null)LOUPE_ON=v!=='0';}catch(e){} // un choix du bouton passe avant le réglage système
-const LOUPE={seen:null,queue:[],cur:null,resume:false,hoverUntil:0,lastScan:0};
+const LOUPE={seen:null,queue:[],cur:null,resume:false,hoverUntil:0,lastScan:0,settle:0};
 // le type d'événement que vit ce personnage (null : rien à montrer) ; un invité qui n'est pas en scène de héraut = une visite
 function loupeKind(c){
   const st=c._st&&c._st.st;
@@ -28,7 +28,10 @@ function loupeKind(c){
 function loupeScan(){
   const groups={}, now=new Set(), fresh=[];
   if(FLOOR===1||FLOOR===-1||FLOOR===3||FLOOR===2){ // un étage : seulement ses événements (68-atelier.js, 68-caserne.js, 68-retours.js)
-    for(const ev of (FLOOR===1?atLoupeEvents:FLOOR===3?rtLoupeEvents:FLOOR===2?rdLoupeEvents:csLoupeEvents)(performance.now())){now.add(ev.id);if(LOUPE.seen&&!LOUPE.seen.has(ev.id))fresh.push(ev);}
+    // juste après un changement d'étage (setFloor), l'étage n'est peut-être pas encore dessiné : on note ce qui est en cours
+    // sans le présenter comme nouveau
+    const quiet=performance.now()<LOUPE.settle;
+    for(const ev of (FLOOR===1?atLoupeEvents:FLOOR===3?rtLoupeEvents:FLOOR===2?rdLoupeEvents:csLoupeEvents)(performance.now())){now.add(ev.id);if(LOUPE.seen&&!quiet&&!LOUPE.seen.has(ev.id))fresh.push(ev);}
     LOUPE.seen=now;return fresh.sort((a,b)=>LOUPE_ORDER.indexOf(a.kind)-LOUPE_ORDER.indexOf(b.kind));
   }
   for(const c of chars){

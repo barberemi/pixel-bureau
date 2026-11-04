@@ -35,6 +35,9 @@ const caserneOn=()=>supportOn();
 const csWf=w=>!!w&&((CFG.support&&CFG.support.postes_wf)||[]).includes(String(w).slice(0,8));
 const csMem0=()=>({fresh:true,slots:[null,null,null],dep:[null,null,null],arr:[null,null,null],st:[null,null,null],door:[0,0,0],walk:[],boss:null,last:0});
 let CS_MEM=csMem0(), CS_SEL=null, CS_PICK=null, CS_HITS=[], CS_LIT=[];
+// les interventions dont l'arrivée a déjà été montrée (ou posée) : en revenant à l'étage, elle ne se rejoue pas ; un saut du
+// curseur l'oublie (renderCaserne)
+const CS_SEEN=new Set();
 // CS_PICK : le pompier choisi ({b, k}) pour son halo ; CS_LIT : où est le capitaine, pour la lumière du soir (csNight)
 // CS_MEM.arr[b] : l'arrivée en cours de l'équipe de la baie b ; CS_MEM.walk : les pompiers qui repartent (café, barre)
 function csReset(){CS_MEM=csMem0();CS_SEL=null;CS_PICK=null;}
@@ -90,8 +93,8 @@ function csSlots(now){
   });
   M.dep.forEach((d,b)=>{if(d&&now-d.t0>CS_DEP_MS){M.dep[b]=null;M.slots[b]=null;M.door[b]=0;}});
   for(const id of ids)if(!M.slots.includes(id)){const b=M.slots.findIndex((x,i)=>!x&&!M.dep[i]);if(b<0)break;M.slots[b]=id;
-    const x=act.find(a=>a.t.id===id), t0=ms((x.t.run&&x.t.run.at)||(x.s.r&&x.s.r.start)||''), recent=t0&&t0<=T&&T-t0<120e3;
-    if((M.fresh&&!recent)||REDUCED_MOTION){M.door[b]=1;M.arr[b]=null;}else M.arr[b]=csArrive(b,now);} // partie il y a moins de 2 min : l'arrivée se joue
+    const x=act.find(a=>a.t.id===id), t0=ms((x.t.run&&x.t.run.at)||(x.s.r&&x.s.r.start)||''), recent=t0&&t0<=T&&T-t0<120e3, seen=CS_SEEN.has(id);CS_SEEN.add(id);
+    if((M.fresh&&(!recent||seen))||REDUCED_MOTION){M.door[b]=1;M.arr[b]=null;}else M.arr[b]=csArrive(b,now);} // partie il y a moins de 2 min, pas encore vue : l'arrivée se joue
   M.walk=M.walk.filter(w=>!w.gone);
   M.fresh=false;
   return M.slots.map((id,b)=>{if(!id)return null;if(M.dep[b])return {t:M.dep[b].t,s:{k:'done'},dep:M.dep[b]};const a=act.find(x=>x.t.id===id);if(!a)return null;const st=csStates(a.t,a.s);M.st[b]=st;return {...a,st};});
@@ -435,7 +438,7 @@ function renderCaserne(now){
   if(!CS_BG)CS_BG=csBackground();
   ctx.drawImage(CS_BG,0,0);CS_HITS=[];CS_LIT=[];
   // comme au 1er (renderAtelier) : un saut du curseur ou un passage du direct au rejeu pose la caserne sans rejouer
-  const live=spLive();if(CS_MEM.lastT!=null&&(Math.abs(T-CS_MEM.lastT)>120e3||live!==CS_MEM.live)){const keep=CS_MEM.last;CS_MEM=csMem0();CS_MEM.last=keep;}
+  const live=spLive();if(CS_MEM.lastT!=null&&(Math.abs(T-CS_MEM.lastT)>120e3||live!==CS_MEM.live)){const keep=CS_MEM.last;CS_MEM=csMem0();CS_MEM.last=keep;CS_SEEN.clear();}
   CS_MEM.lastT=T;CS_MEM.live=live;
   const slots=csSlots(now), people=[];
   slots.forEach((s,b)=>csBay(s,b,now,dt,people));
