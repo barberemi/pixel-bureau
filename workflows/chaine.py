@@ -1358,7 +1358,7 @@ def ecarts_jira():
             f"|{cellule(x.get('exigence'), 300) or ' '}|{ETATS.get(x.get('etat'), cellule(x.get('etat')))}|{cellule(x.get('detail'), 400) or ' '}|" for x in ex)
     if hors:
         t += "\n\nh4. Changé sans exigence du ticket\n" + "\n".join(
-            f"* {{{{{cellule(x.get('fichier'), 160)}}}}} : {cellule(x.get('changement'), 300)}" + (f" ({cellule(x.get('justification'), 300)})" if x.get("justification") else "")
+            "* " + "{" * 2 + cellule(x.get("fichier"), 160) + "}" * 2 + f" : {cellule(x.get('changement'), 300)}"  # accolades doubles : monospace Jira, jamais écrites telles quelles (Kronn y verrait une variable) + (f" ({cellule(x.get('justification'), 300)})" if x.get("justification") else "")
             for x in hors)
     return t
 
