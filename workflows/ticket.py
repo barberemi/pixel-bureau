@@ -8,10 +8,12 @@ Brouillon = la sortie de l'étape rediger, {summary, description} (description e
 apercu : le ticket tel qu'il sera créé, en texte lisible (wiki simplifié), pour le message de la gate.
 champs : {"body": corps du POST /rest/api/2/issue, "board_sp": points du champ du board}, lu en JSON par l'étape
 CollectApiData (typé : les points restent un nombre, le sprint un id). Les points vont dans le champ de création
-(jira.create.points_field, sinon le champ du board) ; l'étape suivante les recopie dans le champ du board s'il diffère.
+(jira.create.points_field, sinon le champ du board) ; l'étape suivante les recopie dans le champ du board s'il diffère,
+sauf jira.create.board_copy à false.
 sprint : « next » = le premier sprint futur du board (liste lue par l'étape sprints), sinon le backlog.
 resultat : {key, url, title, meta} sur stdout, relu par les relevés office et live pour la fiche de l'agent (run.res).
-Réglage jira.create (config ou pack) : types, type, components, component_required, points_field, template.
+Réglage jira.create (config ou pack) : types, type, components, component_required, points_field, board_copy, template,
+link_type, language, title_language, historique.
 
 La salle de rédaction (2e étage) : une intention peut donner plusieurs tickets, sur un ou plusieurs projets. Le modèle
 ticket enchaîne des postes, un sous-workflow chacun (ticket_recherche, ticket_redaction, ticket_critique), puis un
@@ -28,7 +30,8 @@ refuse une gate dans un sous-workflow) : sa création. Le dossier du run
   python3 -c <ce script> aiguillage <run>     critique « à retoucher » et moins de 3 tours : code 3 (retour à la
                                              rédaction) ; sinon .kronn/tickets.json, un élément par ticket (foreach)
   python3 -c <ce script> apercus <run>         les tickets tels qu'ils seront créés, pour ta validation (gate du parent)
-  python3 -c <ce script> lot <champs|resultat> [<sprints JSON> | <clé créée>]   un ticket (.kronn/current_task.json)
+  python3 -c <ce script> lot <champs|resultat|liens> [<sprints JSON> | <clé créée>]   un ticket (.kronn/current_task.json) ;
+                                             liens : le corps qui le lie (« Blocks ») aux tickets déjà créés du run
   python3 -c <ce script> bilan <run>          {key, url, title, meta} des tickets créés, pour la page (run.res) ; relance
                                              le cron redaction_bilan (page « Rédaction · bilan » à jour tout de suite)
 
@@ -38,7 +41,7 @@ du run ne garde que la dernière version des tickets et la dernière critique ; 
 critique, tes retours datés et les tickets créés. Jamais au prix de l'étape : une erreur va sur stderr.
 """
 import datetime, json, os, re, sys
-from _lib import CFG, read_json, readable, refresh, write_json
+from _lib import CFG, get, read_json, readable, refresh, write_json
 
 SPRINTS = {"backlog": "Backlog", "next": "Sprint suivant"}
 
@@ -139,14 +142,18 @@ POSTES = {
                   "indépendants se DÉCOUPE en plusieurs tickets (un par projet ou par livrable) ; sinon, un seul ticket. "
                   "Pour chacun : summary (le titre seul, court et impératif, sans clé ni type), description en WIKI MARKUP "
                   "Jira (REST v2 : h2., {panel:…}…{panel}, * puces, {code}…{code}, jamais de Markdown), au modèle de "
-                  "ticket de l'équipe s'il est donné (lis-le et suis-le à la lettre), sinon trois sections h2. Contexte, "
-                  "h2. À faire, h2. Comment tester ; composant (un de la liste) ; points (Story Points, suite de Fibonacci ; "
-                  "un seul ticket : les points de la demande ; plusieurs : répartis-les). Tiens compte des remarques de la "
-                  "critique s'il y en a. Pas de tiret cadratin ; n'invente ni lien, ni chiffre, ni personne. Ne crée RIEN "
-                  "dans Jira. Rends UNIQUEMENT un objet JSON : "
-                  '{"tickets": [{"summary": "…", "description": "…", "composant": "…", "points": 3}]}.'),
+                  "ticket de l'équipe s'il est donné (il est recopié plus haut en entier : suis-le à la lettre, titre "
+                  "compris), sinon trois sections h2. Contexte, h2. À faire, h2. Comment tester ; composant (un de la liste) ; "
+                  "points (l'estimation en story points, suite de Fibonacci ; un seul ticket : les points de la demande ; "
+                  "plusieurs : répartis-les) ; bloque_par (plusieurs tickets seulement : les numéros, à partir de 1, des "
+                  "tickets à livrer AVANT celui-ci, parce qu'il en consomme le résultat ; [] s'il peut partir seul ; jamais "
+                  "de boucle). Tiens compte des remarques de la critique s'il y en a. Pas de tiret cadratin ; n'invente ni "
+                  "lien, ni chiffre, ni personne. Ne crée RIEN dans Jira. Rends UNIQUEMENT un objet JSON : "
+                  '{"tickets": [{"summary": "…", "description": "…", "composant": "…", "points": 3, "bloque_par": []}]}.'),
     "critique": ("🧐 Critique", "Relis les tickets proposés comme le ferait un relecteur exigeant : chacun se comprend seul, "
                  "se teste, a le bon composant et des points crédibles ; le découpage est juste (ni trop, ni trop peu) ; "
+                 "le modèle de ticket de l'équipe est suivi (sections, panneaux, titre) ; les dépendances (bloque_par) sont "
+                 "dans le bon sens (un ticket est bloqué par celui dont il consomme le résultat) et sans boucle ; "
                  "rien d'inventé, rien de flou. Rends UNIQUEMENT un objet JSON : "
                  '{"verdict": "ok" | "a_retoucher", "notes": [{"ticket": <numéro à partir de 1, ou 0 pour le découpage>, '
                  '"note": "…"}]}. « a_retoucher » seulement pour un vrai défaut, avec une note qui dit quoi changer.'),
@@ -214,6 +221,35 @@ def options():
     """Composants proposés (jira.create.components) : les dépôts de l'équipe."""
     c = (CFG.get("jira") or {}).get("create") or {}
     return [str(x.get("name") if isinstance(x, dict) else x) for x in c.get("components") or []]
+
+
+TEMPLATE_MAX = 8000
+
+
+def modele():
+    """Le modèle de ticket de l'équipe (jira.create.template). « <chemin> du dépôt <dépôt> » ou « <dépôt>:<chemin> » : le
+    fichier, lu dans la copie locale du dépôt (le projet Kronn du même nom, sinon le dossier des clones impl.clones, ~/Sites
+    par défaut) et recopié dans la consigne : l'agent n'a plus à le chercher (run ed873fc9 : pas trouvé, structure par
+    défaut). Un texte libre, ou un fichier introuvable : le réglage tel quel (une ligne sur stderr pour le fichier)."""
+    t = str(((CFG.get("jira") or {}).get("create") or {}).get("template") or "").strip()
+    m = re.fullmatch(r"(\S+\.\w+)\s+du dépôt\s+(\S+)", t) or re.fullmatch(r"([\w.-]+):(\S+\.\w+)", t)
+    if not m:
+        return t
+    path, repo = (m.group(1), m.group(2)) if " " in t else (m.group(2), m.group(1))
+    name = repo.split("/")[-1]
+    roots = []
+    try:
+        roots += [p.get("path") for p in get("/projects", timeout=10) or [] if p.get("name") == name and p.get("path")]
+    except Exception:  # noqa: BLE001  Kronn injoignable : le dossier des clones
+        pass
+    roots.append(os.path.join(os.path.expanduser((CFG.get("impl") or {}).get("clones") or "~/Sites"), name))
+    for root in roots:
+        f = os.path.join(root, path)
+        if os.path.isfile(f):
+            with open(f, encoding="utf-8") as fh:
+                return f"(fichier {path} du dépôt {name})\n\n" + fh.read()[:TEMPLATE_MAX]
+    print(f"ticket : modèle {path} introuvable dans {', '.join(roots)}", file=sys.stderr)
+    return t
 
 
 def langue():
@@ -305,14 +341,13 @@ def poste(k, run, retours=""):
     if not d:
         sys.exit("Dossier introuvable pour ce run : l'étape dossier n'a pas tourné.")
     titre, mission = POSTES[k]
-    j = (CFG.get("jira") or {}).get("create") or {}
     parts = [f"Tu es le poste {titre} de la salle de rédaction du Bureau : une chaîne de postes (📚 Recherche, ✍ Rédaction, "
              "🧐 Critique) rédige un ou plusieurs tickets Jira à partir d'une intention ; puis le boss valide chaque ticket "
              "avant que le Bureau le crée lui-même. Tu ne crées, ne modifies et ne commentes RIEN dans Jira.",
-             "## La demande\n" + d["intention"] + f"\n\nType : {d['type']} · Story Points : {d['points']} · Composants donnés : "
+             "## La demande\n" + d["intention"] + f"\n\nType : {d['type']} · Estimation : {d['points']} story points · Composants donnés : "
              + (", ".join(d["composants"]) or "aucun") + (f" · Parent : {d['parent']}" if d["parent"] else ""),
              "## Composants possibles (les dépôts de l'équipe)\n" + (", ".join(options()) or ", ".join(d["composants"]) or "aucun"),
-             "## Modèle de ticket de l'équipe\n" + str(j.get("template") or "aucun (structure par défaut)")]
+             "## Modèle de ticket de l'équipe\n" + (modele() or "aucun (structure par défaut)")]
     if k != "recherche" and dget(run, "recherche.json"):
         parts.append("## Rapport de la recherche\n" + dget(run, "recherche.json")["texte"])
     t = dget(run, "tickets.json")
@@ -355,12 +390,13 @@ def rapport(k, run, text):
         ts = [t for t in (o.get("tickets") or []) if isinstance(t, dict) and str(t.get("summary") or "").strip()]
         if not ts:
             sys.exit("La rédaction n'a rendu aucun ticket (objet JSON {\"tickets\": [...]} attendu).")
+        ts = dependances(ts[:8])
         old = dget(run, "tickets.json") or {}
         v = int(old.get("version") or 0) + 1
-        dput(run, "tickets.json", {"version": v, "tickets": ts[:8]})
+        dput(run, "tickets.json", {"version": v, "tickets": ts})
         archive(run, versions={"v": v, "tickets": [{"summary": str(t.get("summary") or "")[:200], "composant": t.get("composant"),
-                                                    "points": t.get("points")} for t in ts[:8]]})
-        print("\n".join(f"{i}. {t['summary']} · {t.get('composant') or '?'} · {t.get('points') or '?'} pts" for i, t in enumerate(ts[:8], 1)))
+                                                    "points": t.get("points"), "bloque_par": t["bloque_par"]} for t in ts]})
+        print("\n".join(f"{i}. {t['summary']} · {t.get('composant') or '?'} · {t.get('points') or '?'} pts{bloque(t)}" for i, t in enumerate(ts, 1)))
         return
     if k == "critique":
         v = "a_retoucher" if str(o.get("verdict") or "").strip() == "a_retoucher" else "ok"
@@ -371,6 +407,45 @@ def rapport(k, run, text):
         print(("✓ relu, rien à retoucher" if v == "ok" else "↺ à retoucher") + "".join(f"\n- ticket {n.get('ticket')} : {n.get('note')}" for n in o.get("notes") or []))
         return
     sys.exit(f"Poste inconnu : {k}")
+
+
+def dependances(ts):
+    """bloque_par de chaque ticket : des numéros (à partir de 1) d'autres tickets de la liste, sans doublon ni boucle (un lien
+    qui fermerait une boucle est retiré : Jira l'accepterait, mais personne ne pourrait commencer)."""
+    n, deps = len(ts), []
+    for i, t in enumerate(ts, 1):
+        raw = t.get("bloque_par")
+        raw = raw if isinstance(raw, list) else [raw] if raw not in (None, "") else []
+        out = []
+        for x in raw:
+            try:
+                k = int(str(x).strip().lstrip("Tt#"))
+            except ValueError:
+                continue
+            if 1 <= k <= n and k != i and k not in out:
+                out.append(k)
+        deps.append(out)
+
+    def atteint(a, b, kept):  # b est-il bloqué, de proche en proche, par a ?
+        seen, todo = set(), [b]
+        while todo:
+            c = todo.pop()
+            if c == a:
+                return True
+            if c not in seen:
+                seen.add(c)
+                todo += kept[c - 1]
+        return False
+    kept = [[] for _ in ts]
+    for i, out in enumerate(deps, 1):
+        for k in out:
+            if not atteint(i, k, kept):  # i bloqué par k, sauf si k l'est déjà (de proche en proche) par i
+                kept[i - 1].append(k)
+    return [{**t, "bloque_par": kept[i]} for i, t in enumerate(ts)]
+
+
+def bloque(t):
+    return (" · bloqué par " + ", ".join(f"T{k}" for k in t.get("bloque_par") or [])) if t.get("bloque_par") else ""
 
 
 def aiguillage(run):
@@ -416,7 +491,9 @@ def apercus(run):
     if d.get("parent_de"):
         print(f"Parent : {d.get('parent')}, l'épic de {d['parent_de']} (Jira n'accepte qu'une épic pour parent)")
     for i, x in enumerate(t):
-        print(f"T{i + 1} · {(x.get('summary') or '(sans titre)').strip()} · {d.get('type') or '?'} · {number(pts(x)):g} pts · {comp(x) or 'sans composant'}")
+        print(f"T{i + 1} · {(x.get('summary') or '(sans titre)').strip()} · {d.get('type') or '?'} · {number(pts(x)):g} pts · {comp(x) or 'sans composant'}{bloque(x)}")
+    if any(x.get("bloque_par") for x in t):
+        print(f"Liens Jira « {link_type()} » posés à la création, dans ce sens (« bloqué par » : à livrer avant).")
     c = dget(run, "critique.json") or {}
     if c.get("verdict") == "a_retoucher" and c.get("version") == (dget(run, "tickets.json") or {}).get("version"):
         # trois tours faits sans accord : la critique garde ses réserves, le tampon les montre plutôt que de les taire
@@ -434,6 +511,27 @@ def apercus(run):
         print("\nLe détail de chaque ticket : au 2e étage du Bureau, clic sur sa carte à la table ou sur sa ligne du panneau.")
 
 
+def link_type():
+    """Type de lien Jira des dépendances (jira.create.link_type), « Blocks » par défaut (blocks / is blocked by)."""
+    return str(((CFG.get("jira") or {}).get("create") or {}).get("link_type") or "Blocks")
+
+
+def liens(run, i, key):
+    """Le corps du PUT /rest/api/2/issue/<key> qui lie le ticket créé à ceux déjà créés du même run : il est bloqué par
+    ceux de son bloque_par, et bloque ceux qui l'attendent. Vu du ticket mis à jour (comme Jira les montre sur sa fiche) :
+    inwardIssue = « is blocked by » ce ticket-là, outwardIssue = « blocks » ce ticket-là. Les tickets sont créés l'un
+    après l'autre : chaque lien est posé quand le second des deux existe. Rien à lier : {} (Jira ne change rien)."""
+    t = (dget(run, "tickets.json") or {}).get("tickets") or []
+    made = {int(m["i"]): m["key"] for m in dget(run, "crees.json", []) if m.get("key") and m.get("i") is not None and int(m["i"]) != i}
+    me = t[i] if 0 <= i < len(t) else {}
+    ty = {"name": link_type()}
+    adds = [{"add": {"type": ty, "inwardIssue": {"key": made[k - 1]}}} for k in me.get("bloque_par") or [] if k - 1 in made]
+    adds += [{"add": {"type": ty, "outwardIssue": {"key": made[j]}}} for j, x in enumerate(t) if j in made and i + 1 in (x.get("bloque_par") or [])]
+    return {"body": {"update": {"issuelinks": adds}} if adds else {}, "n": len(adds),
+            "texte": ", ".join([f"bloqué par {made[k - 1]}" for k in me.get("bloque_par") or [] if k - 1 in made] +
+                               [f"bloque {made[j]}" for j, x in enumerate(t) if j in made and i + 1 in (x.get("bloque_par") or [])]) or "aucun lien"}
+
+
 def lot(cmd, arg=""):
     run, i = current()
     d, x, pts, comp, n = one(run, i)
@@ -446,6 +544,8 @@ def lot(cmd, arg=""):
         dput(run, "crees.json", made)
         archive(run, crees={"i": i, "key": arg.strip(), "title": (x.get("summary") or "")[:160], "composant": comp, "points": pts})
         resultat(arg, raw, d.get("type") or "", pts, comp, "", d.get("sprint") or "")
+    elif cmd == "liens":
+        print(json.dumps(liens(run, i, arg.strip()), ensure_ascii=False))
     else:
         sys.exit(f"commande inconnue : lot {cmd}")
 

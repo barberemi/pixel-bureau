@@ -293,8 +293,10 @@ def mep_ai_time(cfg):
 
 
 def create_board_points(j):
-    board = (j.get("points_fields") or [""])[0]
-    return board if board and (j.get("create") or {}).get("points_field") not in (None, "", board) else ""
+    """Le champ du board où recopier les points après la création (étape points_board), quand il n'est pas celui de l'écran
+    de création ; jira.create.board_copy à false : jamais (seule l'estimation de jira.create.points_field est remplie)."""
+    board, c = (j.get("points_fields") or [""])[0], j.get("create") or {}
+    return board if board and c.get("points_field") not in (None, "", board) and c.get("board_copy") is not False else ""
 
 
 CREATE_TYPES = ["Story", "Bug", "Task"]  # types proposés sans réglage jira.create.types
