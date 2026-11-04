@@ -6,11 +6,11 @@
 // du plan ; sur le 1er, la toile prend la taille de l'étage (AT_W × AT_H) et le panneau montre les bureaux et leur fiche.
 // d : ce que fait le poste, en une phrase ; « Comment lire le plan » (46-legende.js) la montre, un poste ajouté y apparaît
 const AT_POSTES=[
-  {k:'cadrage',i:'📋',n:'Cadrage',d:'lit le ticket et dit ce qu\'il a compris'},{k:'schema',i:'🗺',n:'Schéma',d:'propose le plan : où le changement passe dans le code'},
-  {k:'patterns',i:'🧩',n:'Patterns',d:'relève les façons de faire du dépôt à suivre'},{k:'gate',i:'✋',n:'Ton plan',gate:true,d:'tu valides le plan avant le code'},
+  {k:'cadrage',i:'📋',n:'Plan',d:'lit le ticket, trouve où le changement passe et comment le dépôt fait, propose les lots'},
+  {k:'gate',i:'✋',n:'Ton plan',gate:true,d:'tu valides le plan avant le code'},
   {k:'code',i:'⌨',n:'Code',d:'écrit le changement, lot par lot'},{k:'regles',i:'📏',n:'Règles',d:'passe les règles du dépôt'},
   {k:'securite',i:'🔒',n:'Sécurité',d:'cherche les failles du changement'},{k:'tests',i:'🧪',n:'Tests',d:'écrit et lance les tests'},
-  {k:'perf',i:'⚡',n:'Perf·a11y',d:'vérifie la performance et l\'accessibilité'},{k:'revue',i:'🔁',n:'Croisée',d:'un autre agent relit le code'},
+  {k:'perf',i:'⚡',n:'Perf·a11y',d:'vérifie la performance et l\'accessibilité'},
   {k:'besoin',i:'🎯',n:'Besoin',d:'confronte le diff aux exigences du ticket'},{k:'doc',i:'📚',n:'Doc',bureau:false,d:'vérifie que la doc a suivi'},
   {k:'pr',i:'📤',n:'PR',d:'pousse la branche et ouvre la PR brouillon'},{k:'revue_pr',i:'👀',n:'Revue PR',d:'fait la revue de la PR'},
   {k:'retours',i:'💬',n:'Retours',d:'traite les commentaires de la revue'}];
@@ -22,7 +22,7 @@ const AT_HELP={bar:()=>legSwatches(AT_ST)+'<span>🧯 fumée : poste en panne</s
     '<p><b>Le boss</b>, sous le grand tableau, va à la porte du bureau qui attend ta décision.</p><p><b>Le pompier</b> vient quand un poste est en panne ; le soir, <b>l\'agent d\'entretien</b> passe.</p>',
   ou:'<p><b>Quatre bureaux</b> : un ticket par bureau, quatre à la fois.</p><p><b>Le tapis</b> : le carton du ticket avance de poste en poste.</p>'+
     '<p><b>Le grand tableau</b> de l\'orchestrateur : le poste, le tour et les jetons de chaque bureau.</p><p><b>L\'entrepôt</b> : les tickets en attente, et ceux en panne sur des palettes, à relancer.</p>',
-  moments:'<p><b>✋ Une gate</b> : ce que j\'ai compris, ton plan, la relecture de la PR ; le boss va à la porte.</p><p><b>🚨 L\'escalade</b> : après trois tours, la chaîne demande un humain (gyrophare).</p>'+
+  moments:'<p><b>✋ Une gate</b> : ton plan (avec ce que j\'ai compris), la relecture de la PR ; le boss va à la porte.</p><p><b>🚨 L\'escalade</b> : après trois tours, la chaîne demande un humain (gyrophare).</p>'+
     '<p><b>↩ Retour au code</b> : un contrôle a bloqué, le carton recule.</p><p><b>🧯 Une panne</b> : un poste a échoué, le pompier arrive.</p>'};
 const AT_TS=32, AT_W=46*AT_TS, AT_H=27*AT_TS;
 let FLOOR=0, ATELIER=null, ATSEL=null;
@@ -33,21 +33,28 @@ function readAtelier(src){
     let d=src.datasets.atelier;
     if(d&&d.current!==undefined)d=d.current;
     if(typeof d==='string')d=JSON.parse(d);
-    return d&&Array.isArray(d.rooms)?d:null;
+    return d&&Array.isArray(d.rooms)?atLegacy(d):null;
   }catch(e){return null;}
+}
+// postes retirés (schéma et patterns fondus dans le poste Plan, revue croisée retirée) : un run d'avant qui y est encore
+// est ramené au poste voisin ; ses états pour ces postes sont ignorés (on ne parcourt qu'AT_POSTES)
+const AT_OLD={schema:'cadrage',patterns:'cadrage',revue:'besoin'};
+function atLegacy(d){
+  for(const o of [...d.rooms,...(d.pannes||[]),...(d.events||[])])if(o&&AT_OLD[o.poste])o.poste=AT_OLD[o.poste];
+  return d;
 }
 // démo : quatre bureaux occupés, deux tickets dans la file (équipe fictive, dépôts dm/*)
 function atelierDemo(){
   const ok=n=>Object.fromEntries(AT_POSTES.slice(0,n).map(p=>[p.k,'ok'])), at=h=>new Date(DAY0+h*3600e3).toISOString();
   return {generated_at:at(11),rooms:[
     {run:'demo-a1',ticket:'DM-7305',title:'Lien « Gérer mon consentement » dans le pied de page',repo:'dm/site',poste:'gate',gate:'gate_plan',
-     states:{...ok(3),gate:'wait'},tour:null,tok:97e3,since:at(9.2),note:'✋ ton plan'},
+     states:{...ok(1),gate:'wait'},tour:null,tok:97e3,since:at(9.2),note:'✋ ton plan'},
     {run:'demo-a2',ticket:'DM-7911',title:'Passer les tests du site sur la nouvelle version du framework',repo:'dm/site',poste:'code',
-     states:{...ok(4),code:'run'},tour:'1/3',tok:64e3,since:at(9.6),lot:'essai 2/3'},
+     states:{...ok(2),code:'run'},tour:'1/3',tok:64e3,since:at(9.6),lot:'essai 2/3'},
     {run:'demo-a3',ticket:'DM-7854',title:'Retirer un attribut codé en dur du bloc média',repo:'dm/site',poste:'code',back:true,
-     states:{...ok(6),securite:'bloq',code:'run'},tour:'2/3',tok:121e3,since:at(8.4),note:'🔒 bloquant → retour au code'},
+     states:{...ok(4),securite:'bloq',code:'run'},tour:'2/3',tok:121e3,since:at(8.4),note:'🔒 bloquant → retour au code'},
     {run:'demo-a4',ticket:'DM-412',title:'Cache des listes de rubriques',repo:'dm/api',poste:'retours',
-     states:{...ok(8),perf:'err',revue:'avis',besoin:'ok',doc:'ok',pr:'ok',revue_pr:'ok',retours:'run'},tour:'1/3',tok:138e3,since:at(7.9),note:'💬 3 commentaires à traiter'}],
+     states:{...ok(6),perf:'err',besoin:'avis',doc:'ok',pr:'ok',revue_pr:'ok',retours:'run'},tour:'1/3',tok:138e3,since:at(7.9),note:'💬 3 commentaires à traiter'}],
     queue:[{run:'demo-q1',ticket:'DM-7606',since:at(10.5)},{run:'demo-q2',ticket:'DM-7948',since:at(10.8)}],
     livres:3,pannes:[{run:'demo-p1',ticket:'DM-7702',title:'Bandeau d\'alerte sur les pages direct',repo:'dm/api',poste:'securite',since:at(8.1)}]};
 }
@@ -62,7 +69,7 @@ function atelierRunIds(runs){
 }
 // poste ou étape où un run en échec s'est arrêté : nom du poste, sinon celui de l'étape du parent
 const AT_STEP={prepare:'Préparation',orchestrateur_plan:'Plan de l\'orchestrateur',orchestrateur:'Orchestrateur',livraison:'PR',publication:'Publication',
-  controles:'Contrôles',ticket:'Lecture du ticket',dossier:'Dossier',aiguillage:'Aiguillage',questions:'Questions',mode:'Mode'};
+  controles:'Contrôles',ticket:'Lecture du ticket',dossier:'Dossier',aiguillage:'Aiguillage',compris:'Ce que j\'ai compris',questions:'Questions',mode:'Mode'};
 const atStepName=k=>{const p=AT_POSTES.find(x=>x.k===k);return p?p.i+' '+p.n:AT_STEP[k]||k||'?';};
 // les bureaux : en direct, ceux du relevé ; en rejeu, l'étage reconstruit à l'heure du curseur (atRoomsAt)
 const atLive=()=>typeof mode==='undefined'||mode==='live'||(typeof SCENE_DEMO!=='undefined'&&!!SCENE_DEMO); // une scène de la galerie joue sur sa copie
@@ -145,7 +152,8 @@ const atPosteLbl=(p,on)=>on?p.i+' '+p.n:p.i;
 // la hauteur de l'étiquette suit sa police (base y : la ligne du texte)
 function atPill(s,x,y,bgc,fg,font){ctx.font=font||'bold 12px ui-monospace,Menlo,monospace';const w=ctx.measureText(s).width+10, px=+(/(\d+)px/.exec(ctx.font)||[0,12])[1];
   R(ctx,x-w/2,y-px-1,w,px+6,bgc);atTxt(s,x,y,fg||'#fff',font);}
-const AT_CX0=20, AT_CX1=26, AT_HY0=13.5, AT_HY1=15.5, AT_DESKS=AT_POSTES.filter(p=>p.bureau!==false), AT_R1=AT_DESKS.slice(0,7), AT_R2=AT_DESKS.slice(7);
+const AT_CX0=20, AT_CX1=26, AT_HY0=13.5, AT_HY1=15.5, AT_DESKS=AT_POSTES.filter(p=>p.bureau!==false), AT_N=6, AT_R1=AT_DESKS.slice(0,AT_N), AT_R2=AT_DESKS.slice(AT_N);
+// AT_N emplacements par rangée (6 + 5 bureaux : maquette « D ») ; le tapis garde sa longueur, les bureaux s'y répartissent
 const AT_ROOMS=[[0,3,AT_CX0,AT_HY0,1,1],[AT_CX1,3,46,AT_HY0,0,1],[0,AT_HY1,AT_CX0,27,1,0],[AT_CX1,AT_HY1,46,27,0,0]]; // x0,y0,x1,y1, miroir, en haut
 const AT_MX=(AT_CX0+AT_CX1)/2*AT_TS, AT_MY=AT_HY1*AT_TS-8, AT_LANE=AT_MX+2.5*AT_TS; // AT_MY : la ligne de marche du couloir horizontal, devant les canapés
 const AT_CHAIR={x:AT_MX,y:6.4*AT_TS}, AT_DOCK={x:AT_MX,y:21.4*AT_TS}, AT_EXIT={x:45.4*AT_TS,y:AT_MY};
@@ -155,7 +163,7 @@ function atGeo(i){
   const [x0,y0,x1,y1,L,top]=AT_ROOMS[i], T=AT_TS, o=top?0:-.9, Y=v=>(y0+v+o)*T;
   const g={i,x0,y0,x1,y1,L:!!L,top:!!top,bx0:(x0+(L?2.6:1.7))*T,bx1:(x1-(L?1.7:2.6))*T,H:.6*T,b1:Y(4.8),b2:Y(6.2),lab1:Y(2.3),desk1:Y(3.65),feet1:Y(3.85),
     desk2:Y(7.1),feet2:Y(9.35),lab2:Y(10.0),head:top?(y0-.45)*T:(y1-.45)*T,noteY:top?(y0+.3)*T:(y1-1.15)*T,wallX:(L?AT_CX0:AT_CX1)*T};
-  g.sw=(g.bx1-g.bx0)/7;g.ex=L?g.bx1+.6*T:g.bx0-.6*T;g.turnX=L?g.bx0-1.05*T:g.bx1+.35*T;g.tm=g.turnX+.35*T;
+  g.sw=(g.bx1-g.bx0)/AT_N;g.ex=L?g.bx1+.6*T:g.bx0-.6*T;g.turnX=L?g.bx0-1.05*T:g.bx1+.35*T;g.tm=g.turnX+.35*T;
   g.door={x:(x0+x1)/2*T,y:(top?AT_HY0:AT_HY1)*T};g.aisle=top?(y1-.45)*T:(y0+.55)*T;
   g.hatch=row=>({x:g.wallX+(L?.7:-.7)*T,y:(row===1?g.b1:g.b2)+g.H/2+12});
   // allées pour marcher sans passer sur le tapis ni sur les autres : derrière la rangée du haut, devant celle du bas,
@@ -164,13 +172,13 @@ function atGeo(i){
   return g;
 }
 const AT_G=[0,1,2,3].map(atGeo);
-// 📚 Doc (bureau:false) n'a pas de bureau sur le tapis (7 par rangée) : il est dans la barre des postes et la fiche
+// 📚 Doc (bureau:false) n'a pas de bureau sur le tapis (AT_N emplacements par rangée) : il est dans la barre des postes et la fiche
 // place d'un poste : x sur sa rangée (1 en haut, depuis le couloir central ; 2 en bas, vers la sortie)
 function atSpot(g,k){
   const d=AT_POSTES.findIndex(p=>p.k===k);if(d>0&&AT_POSTES[d].bureau===false)k=AT_POSTES[d-1].k; // 📚 Doc : pas de bureau, au bureau d'avant
   let j=AT_R1.findIndex(p=>p.k===k);
   if(j>=0)return {x:g.L?g.bx1-(j+.5)*g.sw:g.bx0+(j+.5)*g.sw,row:1};
-  j=Math.max(0,AT_R2.findIndex(p=>p.k===k));return {x:g.L?g.bx1-(6-j+.5)*g.sw:g.bx0+(6-j+.5)*g.sw,row:2};
+  j=Math.max(0,AT_R2.findIndex(p=>p.k===k));return {x:g.L?g.bx1-(AT_N-1-j+.5)*g.sw:g.bx0+(AT_N-1-j+.5)*g.sw,row:2};
 }
 // le tapis comme une ligne : distance parcourue depuis la trappe d'entrée (0) jusqu'à la trappe de sortie (atBeltLen)
 const atBeltLen=g=>2*Math.abs(g.ex-g.tm)+(g.b2-g.b1);
@@ -722,12 +730,12 @@ function atGalleryScenes(){
     play:{len:45e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);d.rooms=d.rooms.filter(x=>x!==r);})}});
   out.push({fam,ico:'✓',n:'Un poste rend son verdict',d:'Le ✓ apparaît, l\'agent s\'étire, le carton glisse au poste suivant',w:'Chaque poste qui finit',ok,
     play:{len:12e3,speed:1,setup:atDemo(d=>{const r=atFirst(d), ks=AT_DESKS.filter(p=>!p.gate).map(p=>p.k), j=Math.max(0,ks.indexOf(r.poste));r.states=r.states||{};r.states[ks[j]]='ok';r.poste=ks[Math.min(ks.length-1,j+1)];r.states[r.poste]='run';r.gate=null;r.back=false;})}});
-  out.push({fam,ico:'✋',n:'Le boss va à la porte',d:'Une gate t\'attend : il quitte son fauteuil pour la porte du bureau, son bouton clignote',w:'Ce que j\'ai compris, ton plan, l\'escalade, la relecture de la PR',ok,
+  out.push({fam,ico:'✋',n:'Le boss va à la porte',d:'Une gate t\'attend : il quitte son fauteuil pour la porte du bureau, son bouton clignote',w:'Ton plan (avec ce que j\'ai compris), l\'escalade, la relecture de la PR',ok,
     play:{len:25e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.gate='gate_plan';r.poste='gate';r.states=r.states||{};r.states.gate='wait';r.note='✋ ton plan';})}});
   out.push({fam,ico:'🚨',n:'Escalade',d:'Après 3 tours, la chaîne demande un humain : gyrophare au-dessus de la porte',w:'L\'orchestrateur n\'arrive pas à conclure',ok,
     play:{len:20e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.gate='gate_escalade';r.note='🧑‍⚖️ la chaîne demande un humain';})}});
   out.push({fam,ico:'↩',n:'Retour au code',d:'Un contrôle bloque : le carton recule jusqu\'au Code, « encore ? »',w:'Un poste de contrôle rend un bloquant',ok,
-    play:{len:15e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.states=r.states||{};for(const k of ['cadrage','schema','patterns','gate','code','regles'])r.states[k]='ok';r.states.securite='bloq';r.poste='code';r.back=true;r.gate=null;r.note='🔒 bloquant → retour au code';})}});
+    play:{len:15e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.states=r.states||{};for(const k of ['cadrage','gate','code','regles'])r.states[k]='ok';r.states.securite='bloq';r.poste='code';r.back=true;r.gate=null;r.note='🔒 bloquant → retour au code';})}});
   out.push({fam,ico:'🧯',n:'Poste en panne',d:'Son sous-workflow a échoué : fumée sur l\'écran, un pompier arrive avec un extincteur',w:'Un poste plante (API d\'un agent indisponible…)',ok,
     play:{len:20e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.states=r.states||{};r.states.tests='err';})}});
   out.push({fam,ico:'🌙',n:'Le soir au 1er',d:'Le soir et le week-end, comme au RDC : les bureaux où un ticket tourne restent éclairés, chaque poste sous sa lampe, le boss sous la sienne ; Bernard est rentré',w:'Hors des heures de bureau',ok,

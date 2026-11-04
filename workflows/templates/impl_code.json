@@ -73,7 +73,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Contexte du poste Code : ticket, retours, rapports cadrage, schéma et patterns (0 token). Mode essai : l'étape affecter (Jira) est sautée (code 5).",
+    "description": "Contexte du poste Code : ticket, retours, rapport du poste Plan (0 token). Mode essai : l'étape affecter (Jira) est sautée (code 5).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -185,7 +185,7 @@
      "type": "Agent"
     },
     "description": "⌨ Code en une session : tous les lots du plan (un commit par lot), ou les corrections demandées.",
-    "prompt_template": "Tu es le poste ⌨ Code d'une chaîne d'implémentation. Tu fais TOUT le travail ci-dessous dans cette session, comme un développeur seul sur le ticket.\n\n## À faire\n{{steps.plan.data.stdout ?? \"(absent)\"}}\n\n## Dossier\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\n## Vérifications et relecture de ton essai précédent (vide au premier essai ; rouge = à corriger d'abord)\n{{steps.verif.data.stdout ?? \"aucune\"}}\nRelecture : {{steps.relecture.data_json ?? \"aucune\"}}\n\n## Règles\n- Tu es sur la branche du ticket ; ne change pas de branche, ne pousse pas (le poste PR pousse).\n- Plan : écris les lots dans l'ordre, **un commit par lot**. Correction : un commit par sujet ; un point que tu refuses, dis pourquoi dans `resume`.\n- Suis les choix du poste Patterns et la doc du dépôt ; imite le code voisin ; reprends ce qui existe dans les dépôts à lire. Commentaires rares et utiles.\n- Pour chaque valeur que le ticket retire ou renomme, `git grep` dans tout le dépôt, doc comprise, et traite chaque occurrence.\n- Commits : `git add` des fichiers voulus (jamais `.kronn/`), `git commit --no-verify -s -m \"<type>(<portée>): {{ticket}} <sujet>\"` (les hooks cassent dans Kronn).\n- Lance des vérifications ciblées en cours de route (test du fichier touché), sans installer ni monter de stack. Une erreur déjà présente avant ton travail n'est pas à toi.\n\n## Consignes de l'équipe\n@@impl.guidelines@@\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "prompt_template": "Tu es le poste ⌨ Code d'une chaîne d'implémentation. Tu fais TOUT le travail ci-dessous dans cette session, comme un développeur seul sur le ticket.\n\n## À faire\n{{steps.plan.data.stdout ?? \"(absent)\"}}\n\n## Dossier\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\n## Vérifications et relecture de ton essai précédent (vide au premier essai ; rouge = à corriger d'abord)\n{{steps.verif.data.stdout ?? \"aucune\"}}\nRelecture : {{steps.relecture.data_json ?? \"aucune\"}}\n\n## Règles\n- Tu es sur la branche du ticket ; ne change pas de branche, ne pousse pas (le poste PR pousse).\n- Plan : écris les lots dans l'ordre, **un commit par lot, avec ses tests** (écris d'abord le test qui rougit, puis le code qui le fait passer) : chaque garde, branche, borne ou statut HTTP ajouté a un test qui rougirait si on l'enlevait ; ne mocke pas la règle que tu testes. Correction : un commit par sujet ; un point que tu refuses, dis pourquoi dans `resume`. Les commits seront réunis en un seul avant la relecture humaine : ne t'occupe pas de leur nombre.\n- Suis les choix du poste Patterns et la doc du dépôt ; imite le code voisin ; reprends ce qui existe dans les dépôts à lire. Commentaires rares et utiles.\n- Pour chaque valeur que le ticket retire ou renomme, `git grep` dans tout le dépôt, doc comprise, et traite chaque occurrence.\n- Commits : `git add` des fichiers voulus (jamais `.kronn/`), `git commit --no-verify -s -m \"<type>(<portée>): {{ticket}} <sujet>\"` (les hooks cassent dans Kronn).\n- Lance des vérifications ciblées en cours de route (test du fichier touché), sans installer ni monter de stack. Une erreur déjà présente avant ton travail n'est pas à toi. Après toi, le Bureau lance les vérifications du dépôt (règles et tests) et les garde-fous du diff : rouges, tu reprends.\n- Avant d'écrire : inventorie les appelants de ce que tu modifies (`git grep` sur la méthode, le template, le sélecteur, le flag) et cherche l'existant à réutiliser (getter, partial, fixture, helper) ; ne recopie jamais un constructeur ou une logique qui existe.\n- Pour chaque appel HTTP ou service amont touché : décide et teste le comportement par statut (2xx, 204, 401, 404, 408, 429, 5xx, délai dépassé) : action, cache, réessai ; une panne amont ne fige pas le cache ni ne bloque la requête.\n- Cache HTTP et CDN : un contenu qui change fait bouger l'ETag ou la clé de cache ; Cache-Control et Vary justes ; pas de TTL long sur une réponse d'erreur.\n- i18n : toute traduction rendue reçoit la locale de la requête ; pense aux langues RTL et non latines.\n- Commentaires : jamais de clé de ticket ni de commentaire qui paraphrase une déclaration ; pas de prose dans les tests (`docs/coding-rules.md` du dépôt s'il existe).\n- Le diff ne contient que le ticket : rien de provisoire (TEMP, WIP), aucune montée de version ni réglage hors sujet.\n- Doc : chaque comportement changé que décrit `docs/` (ou un swagger) est mis à jour dans le même lot.\n\n## Consignes de l'équipe\n@@impl.guidelines@@\n\nRéponds par le JSON demandé, complet, sans texte autour.",
     "_poste": "code",
     "retry": {
      "max_retries": 1,
@@ -204,13 +204,13 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Vérifications rapides du dépôt (réglage impl.repos.<dépôt>.checks.regles), en conteneur si réglé.",
+    "description": "Vérifications du dépôt sur le travail du Code (0 token) : règles et tests (impl.repos.<dépôt>.checks), plus les garde-fous du diff (clé de ticket dans un commentaire, en-tête sensible, commit provisoire) ; seules les erreurs nouvelles comptent.",
     "exec_command": "python3",
     "exec_args": [
      "-c",
      "@@script:workflows/chaine.py@@",
      "verif",
-     "regles"
+     "code"
     ],
     "exec_timeout_secs": 1800
    },
@@ -253,7 +253,7 @@
      "type": "Agent"
     },
     "description": "Un second agent relit le lot contre le plan, sans rien modifier.",
-    "prompt_template": "Tu relis le travail que le poste Code vient de commiter, sans rien modifier.\n\nCe qui était à faire : {{steps.plan.data.stdout ?? \"(absent)\"}}\n\nCe qu'il dit avoir fait : {{steps.code.data_json ?? \"(absent)\"}}\n\nVérifications (seules les erreurs nouvelles comptent) : {{steps.verif.data.stdout ?? \"(absent)\"}}\n\nLis les commits de la branche depuis le point de départ (`git log` puis le diff). Le travail fait-il ce que le plan ou les consignes demandent, sans déborder ? Une erreur évidente, un oubli (import, traduction, appelant, occurrence restée d'une valeur retirée) ? Rends `revoir` seulement pour un vrai défaut.\n\nRends `verdict` = `ok` si c'est utilisable tel quel (des détails perfectibles ne justifient pas un nouvel essai), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "prompt_template": "Tu relis le travail que le poste Code vient de commiter, sans rien modifier.\n\nCe qui était à faire : {{steps.plan.data.stdout ?? \"(absent)\"}}\n\nCe qu'il dit avoir fait : {{steps.code.data_json ?? \"(absent)\"}}\n\nVérifications (seules les erreurs nouvelles comptent) : {{steps.verif.data.stdout ?? \"(absent)\"}}\n\nLis les commits de la branche depuis le point de départ (`git log` puis le diff). Le travail fait-il ce que le plan ou les consignes demandent, sans déborder ? Une erreur évidente, un oubli (import, traduction, appelant, occurrence restée d'une valeur retirée, doc devenue fausse) ? Chaque garde, branche ou statut ajouté a-t-il un test qui rougirait sans lui ? Un cas limite oublié (null, vide, 404, ordre, autre langue) ? Rends `revoir` seulement pour un vrai défaut.\n\nRends `verdict` = `ok` si c'est utilisable tel quel (des détails perfectibles ne justifient pas un nouvel essai), `revoir` seulement pour un manque ou une erreur qui ferait échouer la suite, avec des `remarques` précises et actionnables. Pas plus de 5 remarques. Tu ne modifies aucun fichier.\n\nRéponds par le JSON demandé, complet, sans texte autour.",
     "_poste": "code.relecture",
     "retry": {
      "max_retries": 1,

@@ -9,8 +9,8 @@ lus dans l'API Kronn, 0 token ; stdout JSON du dataset atelier (cron live).
 Un bureau = un run actif de la chaîne (4 au plus, concurrency_limit) ; la file = les runs en attente d'un bureau libre ;
 les pannes = les runs en échec des dernières 24 h qu'aucun run plus récent du même ticket et du même dépôt n'a repris
 (relancer le ticket les reprend là où ils se sont arrêtés).
-L'état d'un poste vient de l'étape du parent (cadrage, schema, patterns, code…), de celle du sous-workflow des contrôles
-(regles…revue, avec le statut de leur rapport : « a_corriger » = bloquant, « non_concerne » = sauté) et de celle du poste
+L'état d'un poste vient de l'étape du parent (cadrage = le poste 📋 Plan, gate_plan, code…), de celle du sous-workflow
+des contrôles (regles…doc, avec le statut de leur rapport : « a_corriger » = bloquant, « non_concerne » = sauté) et de celle du poste
 PR (pr, revue, retours). Le ticket, le dépôt et le tour se lisent dans les sorties des étapes prepare, ticket et aiguillage.
 Les événements, pour le fil du RDC : un ticket arrive (première étape), une gate s'ouvre, un retour au Code (un passage de
 plus à l'étape code), une étape en panne, la PR ouverte (livraison réussie), datés par les étapes des runs des dernières
@@ -19,14 +19,16 @@ plus à l'étape code), une étape en panne, la PR ouverte (livraison réussie),
 import datetime, json, re, sys
 from _lib import ACTIVE, CFG, TZ, get
 
-POSTES = ["cadrage", "schema", "patterns", "gate", "code", "regles", "securite", "tests", "perf", "revue", "besoin", "doc", "pr", "revue_pr", "retours"]
-PARENT = {"cadrage": "cadrage", "schema": "schema", "patterns": "patterns", "gate_plan": "gate", "code": "code"}
+# cadrage = le poste 📋 Plan ; les étapes schema, patterns, gate_questions et le contrôle revue des runs d'avant sont
+# ignorées, ou ramenées au poste Plan pour le carton
+POSTES = ["cadrage", "gate", "code", "regles", "securite", "tests", "perf", "besoin", "doc", "pr", "revue_pr", "retours"]
+PARENT = {"cadrage": "cadrage", "gate_plan": "gate", "code": "code"}
 LIVRAISON = {"pr": "pr", "revue": "revue_pr", "retours": "retours"}
-CONTROLES = ("regles", "securite", "tests", "perf", "revue", "besoin", "doc")
+CONTROLES = ("regles", "securite", "tests", "perf", "besoin", "doc")
 # étape du parent -> poste où est le carton (rejeu du 1er étage : le carton au bon poste à l'heure du curseur)
-POSTE_DE = {"cadrage": "cadrage", "schema": "schema", "patterns": "patterns", "code": "code", "controles": "regles",
+POSTE_DE = {"cadrage": "cadrage", "schema": "cadrage", "patterns": "cadrage", "code": "code", "controles": "regles",
             "livraison": "pr", "publication": "pr"}
-GATES = {"gate_questions": "❓ questions du cadrage", "gate_plan": "✋ ton plan", "gate_escalade": "🧑‍⚖️ la chaîne demande un humain",
+GATES = {"gate_questions": "❓ ce que j'ai compris", "gate_plan": "✋ ton plan", "gate_escalade": "🧑‍⚖️ la chaîne demande un humain",
          "gate_pr": "👀 relire la PR brouillon"}
 KEY = re.compile(r"\b([A-Z][A-Z0-9]+-\d+) sur ([\w.-]+/[\w.-]+)")
 
@@ -86,7 +88,7 @@ def room(run, models, cache):
     if "controles" in steps:
         c = last_steps(children(models.get("impl_controles"), run["id"], cache) or {})
         for k, s in c.items():
-            if k in CONTROLES:  # tests et revue : un sous-workflow chacun
+            if k in CONTROLES:  # tests : un sous-workflow
                 st = st_of(s)
                 rs = rapport_statut(s.get("output"))
                 states[k] = "bloq" if rs == "a_corriger" else "skip" if rs == "non_concerne" else st

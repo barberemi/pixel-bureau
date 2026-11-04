@@ -22,8 +22,9 @@ TPL_DIR = os.path.join(ROOT, "workflows", "templates")
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import assemble  # noqa: E402  (roster du profil d'équipe)
 # postes de la chaîne d'implémentation (#76) appelés par le parent ou par le poste des contrôles, dans l'ordre de création
-IMPL_POSTES = ("cadrage", "schema", "patterns", "code", "tests", "revue", "revue_pr", "retours", "livraison",
-               "publication")
+# (impl_cadrage est le poste 📋 Plan : la clé garde son nom pour les installations ; schéma, patterns et revue croisée y
+# ont été fondus ou retirés, leurs modèles ne sont plus rendus)
+IMPL_POSTES = ("cadrage", "code", "tests", "revue_pr", "retours", "livraison", "publication")
 # postes de l'investigation Support (#62) : un sous-workflow chacun, appelés par le parent support dans cet ordre
 SUPPORT_POSTES = ("tri", "logs", "cause", "reponse", "relecture")
 # salle de rédaction (2e étage) : les postes du modèle ticket (un sous-workflow chacun), puis un sous-workflow par ticket
@@ -445,18 +446,16 @@ def render(tpl, cfg):
 # chaîne d'implémentation (#76) : (tier, skills Kronn) par rôle d'agent ; léger pour lire et cadrer, fort pour coder et juger.
 # Réglage impl.postes.<rôle> du pack ou de la config : agent (ClaudeCode, CopilotCli, Codex…), tier, model, skills (ajoutés).
 IMPL_AGENTS = {
-    "cadrage": ("economy", []), "cadrage.critique": ("economy", []),
-    "schema": ("economy", []), "patterns": ("default", []),  # sans critique : ta gate du cadrage et l'orchestrateur tranchent
+    "cadrage": ("reasoning", []),  # 📋 Plan : compris, fichiers impactés, façons de faire ; ta gate du plan tient lieu de critique
     "orchestrateur": ("default", []),  # en reasoning, Opus 5.5 a coupé deux fois (filtre reasoning_extraction)
     "code": ("reasoning", ["verification-before-completion"]), "code.relecture": ("default", []),
     # règles, sécurité, perf · a11y, besoin et doc : une étape, un sous-agent par poste, en même temps (Kronn ne lance pas
     # de sous-workflows en parallèle) ; ses skills couvrent les cinq
     "controles": ("reasoning", ["security", "web-performance", "accessibility"]),
     "tests": ("default", ["testing", "test-driven-development"]),
-    "revue": ("reasoning", ["requesting-code-review"]), "revue.critique": ("default", ["receiving-code-review"]),
     "livraison": ("economy", []), "retours": ("reasoning", ["receiving-code-review"]),
 }
-IMPL_TEAM_SKILLS = {"code", "code.relecture", "controles", "tests", "revue", "retours"}  # + impl.skills de l'équipe (langages, conventions)
+IMPL_TEAM_SKILLS = {"code", "code.relecture", "controles", "tests", "retours"}  # + impl.skills de l'équipe (langages, conventions)
 
 
 def impl_agent(step, role, cfg):
