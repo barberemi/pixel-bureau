@@ -46,7 +46,7 @@ test("la revue : l'auteur de la PR en face du relecteur, un remplaçant pour la 
   p.run('setFloor(2); renderRedaction(1000);');
   const html = J('redactionListHtml()');
   assert.match(html, /Rédaction <span class="cnt">2/);
-  assert.match(html, /T2 · Pistes audio dans le menu du lecteur · dm\/site · 2 pts/);
+  assert.match(html, /<b>T2<\/b> Pistes audio dans le menu du lecteur <span class="mut">· dm\/site · 2 pts/);
   assert.match(html, /Revue des PR <span class="cnt">3/);
   assert.match(J('tvRedactionHtml()'), /Rédaction[\s\S]*Revue des PR · 3/);
 });
@@ -224,4 +224,24 @@ test("galerie : les scènes de la revue des PR se jouent sur la journée de dém
   const q = load({demo: false});
   q.run('CFG.revue_cron_wf = []; CFG.revue_wf = [];');
   assert.equal(q.run("rvGalleryScenes().every(x => !x.ok && !!x.why)"), true);
+});
+
+test("au clic sur un ticket (sa carte à la table, ou sa ligne du panneau) : sa fiche, ce qui sera créé pour lui seul", () => {
+  const {p, J} = page();
+  p.run('setFloor(2); renderRedaction(1000);');
+  const h = J('RD_HITS.find(h => h.kind === "ticket" && h.k === 0)');
+  p.run(`rdHitAt = () => RD_HITS.find(h => h.kind === "ticket" && h.k === 0); redactionClick({clientX: 0, clientY: 0});`);
+  assert.deepEqual(J('RDTK'), {run: 'demo-t1', k: 0});
+  assert.ok(h);
+  const html = J('rdTicketHtml(rdTables()[0], 0)');
+  assert.match(html, /← Les tickets/);
+  assert.match(html, /T1 /);
+  assert.match(html, /Lecteur : les sous-titres/);
+  assert.match(html, /Story · 3 pts · dm\/api/);
+  assert.match(html, /Servir les pistes WebVTT/);
+  assert.match(J('rdTicketHtml(rdTables()[0], 1)'), /Le détail arrive au prochain relevé/); // pas encore de détail
+  assert.match(J('redactionListHtml()'), /class="rd-tk" data-run="demo-t1" data-k="2"/); // chaque ticket : son bouton
+  p.run('RDTK = {run: "disparu", k: 0};');
+  assert.equal(J('rdTicketOpen()'), null); // l'intention n'est plus en cours : retour à la liste
+  assert.equal(J('RDTK'), null);
 });

@@ -28,7 +28,7 @@ La validation arrive sur sa fiche, avec l'alerte ✋ habituelle : le titre, le t
 
 ![La validation : le ticket tel qu'il sera créé](../img/creer-ticket-validation.png)
 
-Une validation pour la liste, avec chaque ticket tel qu'il sera créé (T1, T2…) :
+Une validation pour la liste. Elle commence par le récap, une ligne par ticket (T1, T2… : titre, type, points, composant), puis les réserves de la critique s'il en reste. Le détail de chaque ticket suit quand la liste est courte (3 500 caractères au plus). Sinon, il est au 2e étage, au clic sur la carte du ticket ou sur sa ligne du panneau ([La rédaction et la revue](28-redaction.md)). Les réponses :
 
 - **✅ Approuver** : les tickets sont créés, l'un après l'autre.
 - **Changements** : dis ce qui change (« retire T2 », « fusionne T1 et T3 », « T2 : 5 points ») ; la rédaction reprend avec tes retours, puis la critique, puis la validation.

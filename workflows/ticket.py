@@ -29,7 +29,7 @@ refuse une gate dans un sous-workflow) : sa création. Le dossier du run
   python3 -c <ce script> bilan <run>          {key, url, title, meta} des tickets créés, pour la page (run.res)
 """
 import json, os, re, sys
-from _lib import CFG, read_json, write_json
+from _lib import CFG, read_json, readable, write_json
 
 SPRINTS = {"backlog": "Backlog", "next": "Sprint suivant"}
 
@@ -56,26 +56,6 @@ def components(c1, c2):
 def meta(type_, points, comps, sprint, parent=""):
     bits = [type_, f"{number(points):g} pts", ", ".join(comps) or "sans composant", SPRINTS.get(sprint, sprint or "Backlog")]
     return " · ".join(bits + ([f"parent {parent}"] if parent else []))
-
-
-def readable(wiki):
-    """Wiki Jira -> texte lisible : titres en « ▸ », panneaux en « │ », puces en « • », gras et soulignés retirés."""
-    out, panel = [], False
-    for line in (wiki or "").replace("\r", "").split("\n"):
-        s = line.strip()
-        if re.match(r"^\{panel(:[^}]*)?\}$", s):
-            panel = not panel if s == "{panel}" else True
-            continue
-        m = re.match(r"^h[1-6]\.\s*(.*)$", s)
-        if m:
-            out += ["", "▸ " + re.sub(r"^\+(.*)\+$", r"\1", m.group(1).strip())]
-            continue
-        m = re.match(r"^([*#-]+)\s+(.*)$", s)
-        if m:
-            s = "  " * (len(m.group(1)) - 1) + "• " + m.group(2)
-        s = re.sub(r"(?<![\w*])\*([^*\n]+)\*(?![\w*])", r"\1", s)
-        out.append(("│ " + s) if panel and s else s)
-    return re.sub(r"\n{3,}", "\n\n", "\n".join(out)).strip()
 
 
 def apercu(raw, type_, points, c1, c2, sprint, parent):
@@ -306,7 +286,7 @@ def aiguillage(run):
     ts = t.get("tickets") or []
     os.makedirs(".kronn", exist_ok=True)
     write_json(os.path.join(".kronn", "tickets.json"), [{"id": f"{run}-{i}", "run": run, "i": i, "summary": x["summary"][:120]} for i, x in enumerate(ts)])
-    print(f"{len(ts)} ticket(s) à valider, un par un :\n" + "\n".join(f"{i}. {x['summary']}" for i, x in enumerate(ts, 1)))
+    print(f"{len(ts)} ticket(s) à valider ensemble, puis créés un par un :\n" + "\n".join(f"{i}. {x['summary']}" for i, x in enumerate(ts, 1)))
 
 
 def current():
@@ -325,19 +305,33 @@ def one(run, i):
     return d, x, pts, comp, len(t)
 
 
+GATE_FULL = 3500  # au-delà, la gate ne garde que le récap (le relevé des gates coupe un message à 4 000 caractères)
+
+
 def apercus(run):
+    """Le message du tampon : le récap des tickets (une ligne chacun) et les réserves de la critique, puis leur détail
+    s'il tient en GATE_FULL caractères ; sinon le détail de chaque ticket est au 2e étage du Bureau, au clic sur sa carte."""
     d, t = dget(run, "demande.json") or {}, (dget(run, "tickets.json") or {}).get("tickets") or []
+    pts = lambda x: str(x.get("points") or d.get("points") or "1")
+    comp = lambda x: str(x.get("composant") or "") or ((d.get("composants") or [""])[0])
     print(f"{len(t)} ticket(s) à créer :")
+    for i, x in enumerate(t):
+        print(f"T{i + 1} · {(x.get('summary') or '(sans titre)').strip()} · {d.get('type') or '?'} · {number(pts(x)):g} pts · {comp(x) or 'sans composant'}")
     c = dget(run, "critique.json") or {}
     if c.get("verdict") == "a_retoucher" and c.get("version") == (dget(run, "tickets.json") or {}).get("version"):
         # trois tours faits sans accord : la critique garde ses réserves, le tampon les montre plutôt que de les taire
         print(f"\n⚠ La critique a encore des réserves après {TOURS} tours (à toi de trancher, « Changements » pour les corriger) :")
         for n in c.get("notes") or []:
             print(f"- {'découpage' if n.get('ticket') in (0, '0') else 'T' + str(n.get('ticket'))} : {n.get('note')}")
+    full = []
     for i, x in enumerate(t):
-        print(f"\n━━ T{i + 1} ━━")
-        raw = json.dumps({"summary": x.get("summary") or "", "description": x.get("description") or ""}, ensure_ascii=False)
-        apercu(raw, d.get("type") or "", str(x.get("points") or d.get("points") or "1"), str(x.get("composant") or "") or ((d.get("composants") or [""])[0]), "", d.get("sprint") or "", d.get("parent") or "")
+        full.append(f"\n━━ T{i + 1} ━━\n🎫 {(x.get('summary') or '(sans titre)').strip()}\n"
+                    f"{meta(d.get('type') or '', pts(x), [comp(x)] if comp(x) else [], d.get('sprint') or '', d.get('parent') or '')}\n\n"
+                    + readable(x.get("description") or ""))
+    if sum(len(f) for f in full) <= GATE_FULL:
+        print("\n".join(full))
+    else:
+        print("\nLe détail de chaque ticket : au 2e étage du Bureau, clic sur sa carte à la table ou sur sa ligne du panneau.")
 
 
 def lot(cmd, arg=""):

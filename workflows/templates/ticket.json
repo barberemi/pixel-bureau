@@ -252,7 +252,7 @@
      "type": "Gate"
     },
     "description": "Le tampon : tu valides les tickets avant leur création (une gate ne peut pas être dans un sous-workflow).",
-    "gate_message": "{{steps.apercu.data.stdout}}\n\n---\n**Approuver** : les tickets sont créés dans Jira, l'un après l'autre. **Changements** : dis ce qui change (« retire T2 », « fusionne T1 et T3 », « T2 : 5 points ») ; la rédaction reprend avec tes retours. **Rejeter** : rien n'est créé.",
+    "gate_message": "{{steps.apercu.data.stdout}}\n\n---\n**Approuver** : les tickets sont créés dans Jira, l'un après l'autre (le détail de chacun : au 2e étage du Bureau, clic sur sa carte). **Changements** : dis ce qui change (« retire T2 », « fusionne T1 et T3 », « T2 : 5 points ») ; la rédaction reprend avec tes retours. **Rejeter** : rien n'est créé.",
     "gate_request_changes_target": "redaction"
    },
    {

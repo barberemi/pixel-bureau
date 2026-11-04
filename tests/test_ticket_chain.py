@@ -83,6 +83,23 @@ class TicketChainTest(unittest.TestCase):
         out = self.t("poste", "critique", "r5", cfg=cfg).stdout
         self.assertIn("Rédige en français le rapport et la description des tickets, et le titre (summary) en anglais", out)
 
+    def test_gate_recap_then_detail_only_if_short(self):
+        """Le tampon : une ligne par ticket ; le détail suit s'il tient en GATE_FULL caractères, sinon il est au 2e."""
+        self.t("dossier", "r6", "x", "Story", "3", "dm/site", "", "backlog", "")
+        short = {"tickets": [{"summary": "A", "description": "h2. Contexte\nCourt", "composant": "dm/site", "points": 1},
+                             {"summary": "B", "description": "h2. Contexte\nCourt", "composant": "dm/api", "points": 2}]}
+        self.t("rapport", "redaction", "r6", stdin=json.dumps(short))
+        ap = self.t("apercus", "r6").stdout
+        self.assertIn("2 ticket(s) à créer :\nT1 · A · Story · 1 pts · dm/site\nT2 · B · Story · 2 pts · dm/api", ap)
+        self.assertIn("━━ T2 ━━", ap)
+        long = {"tickets": [{"summary": f"T{k}", "description": "h2. Contexte\n" + "x" * 1500, "composant": "dm/site", "points": 1} for k in range(4)]}
+        self.t("rapport", "redaction", "r6", stdin=json.dumps(long))
+        ap = self.t("apercus", "r6").stdout
+        self.assertIn("T4 · T3 · Story · 1 pts · dm/site", ap)
+        self.assertNotIn("━━", ap)
+        self.assertIn("au 2e étage du Bureau, clic sur sa carte", ap)
+        self.assertLess(len(ap), 1000)
+
     def test_nothing_drafted_fails_and_nothing_created_gives_no_result(self):
         self.t("dossier", "r2", "x", "Bug", "1", "dm/site", "", "backlog", "")
         self.assertNotEqual(self.t("rapport", "redaction", "r2", stdin="pas de JSON").returncode, 0)
@@ -97,7 +114,8 @@ class RedactionSnapshotTest(unittest.TestCase):
         tmp = tempfile.mkdtemp()
         os.makedirs(os.path.join(tmp, "r1"))
         Path(tmp, "r1", "demande.json").write_text(json.dumps({"intention": "Refondre le lecteur", "tour": 2, "composants": ["dm/site"]}))
-        Path(tmp, "r1", "tickets.json").write_text(json.dumps({"version": 2, "tickets": [{"summary": "A", "composant": "dm/site", "points": 3},
+        Path(tmp, "r1", "tickets.json").write_text(json.dumps({"version": 2, "tickets": [{"summary": "A", "composant": "dm/site", "points": 3,
+                                                                                        "description": "h2. Contexte\n{panel}\nLe lecteur\n{panel}\n* sous-titres"},
                                                                                        {"summary": "B", "composant": "dm/api", "points": 2}]}))
         api = {"/workflows/tk/runs?limit=20": [{"id": "r1", "status": "Running", "started_at": "2026-10-30T09:00:00Z"}],
                "/workflows/tk/runs/r1": {"id": "r1", "workflow_id": "tk", "status": "WaitingApproval", "started_at": "2026-10-30T09:00:00Z",
@@ -116,6 +134,8 @@ class RedactionSnapshotTest(unittest.TestCase):
         self.assertEqual((t["poste"], t["tour"], t["intention"]), ("valider", 2, "Refondre le lecteur"))
         self.assertEqual([(x["summary"], x["etat"]) for x in t["tickets"]], [("A", "gate"), ("B", "gate")])
         self.assertEqual([e["k"] for e in snap["events"]], ["arrive", "gate"])
+        self.assertEqual(t["tickets"][0]["detail"], "▸ Contexte\n│ Le lecteur\n• sous-titres")  # le texte lisible, pour la fiche au 2e
+        self.assertNotIn("detail", t["tickets"][1])
 
 
 class RevueFileTest(unittest.TestCase):
