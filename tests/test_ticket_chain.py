@@ -58,7 +58,7 @@ class TicketChainTest(unittest.TestCase):
         self.t("rapport", "redaction", "r3", stdin='{"tickets": [{"summary": "A", "description": "h2. Contexte", "composant": "dm/site", "points": 1}]}')
         self.t("rapport", "critique", "r3", stdin='{"verdict": "a_retoucher", "notes": [{"ticket": 1, "note": "alt existe déjà"}]}')
         ap = self.t("apercus", "r3").stdout
-        self.assertIn("⚠ La critique a encore des réserves après 3 tours", ap)
+        self.assertIn("⚠ La critique a encore des réserves bloquantes", ap)
         self.assertIn("- T1 : alt existe déjà", ap)
         self.t("rapport", "redaction", "r3", stdin='{"tickets": [{"summary": "B", "description": "h2. Contexte", "composant": "dm/site", "points": 1}]}')
         self.assertNotIn("réserves", self.t("apercus", "r3").stdout)
@@ -154,7 +154,7 @@ class TicketChainTest(unittest.TestCase):
         self.assertEqual((h["intention"], h["tour"], h["recherche"]["composants"]), ("[ESSAI du Bureau] Export CSV", 2, ["dm/outils"]))
         self.assertEqual([(v["v"], v["tickets"][0]["summary"]) for v in h["versions"]], [(1, "Export CSV"), (2, "Exporter les abonnés en CSV")])
         self.assertEqual([(c["v"], c["verdict"]) for c in h["critiques"]], [(1, "a_retoucher"), (2, "ok")])
-        self.assertEqual(h["critiques"][0]["notes"], [{"ticket": 1, "note": "titre en anglais"}])
+        self.assertEqual(h["critiques"][0]["notes"], [{"ticket": 1, "gravite": "bloquant", "note": "titre en anglais"}])
         self.assertEqual([(r["texte"], r["v"]) for r in h["retours"]], [("plus court", 1)])
         self.assertEqual([(c["key"], c["title"], c["points"]) for c in h["crees"]], [("DM-12", "Exporter les abonnés en CSV", "2")])
         self.assertTrue(h["at"] <= h["vu"])
@@ -168,6 +168,90 @@ class TicketChainTest(unittest.TestCase):
         p = os.path.join(self.tmp, "cfg.json")
         Path(p).write_text(json.dumps(c))
         return p
+
+    def test_critique_converges_blocking_notes_only_with_its_memory(self):
+        """La critique note chaque remarque « bloquant » ou « conseil » : seuls les bloquants renvoient à la rédaction, les
+        conseils vont au tampon. Elle relit ses notes d'avant et les réponses de la rédaction ; tes « Changements » sont
+        tranchés pour elle, et lui rouvrent un tour."""
+        self.t("dossier", "c1", "Bouton fermer de la modale", "Story", "2", "dm/site", "", "backlog", "")
+        self.t("rapport", "redaction", "c1", stdin='{"tickets": [{"summary": "A", "description": "h2. Contexte", "composant": "dm/site", "points": 2}]}')
+        r = self.t("rapport", "critique", "c1", stdin=json.dumps({"verdict": "a_retoucher", "notes": [
+            {"ticket": 1, "gravite": "conseil", "note": "titre plus court"}]}))
+        self.assertIn("✓ relu", r.stdout, "que des conseils : rien à retoucher, quoi que dise le verdict")
+        self.assertEqual(self.t("aiguillage", "c1").returncode, 0)
+        ap = self.t("apercus", "c1").stdout
+        self.assertIn("💡 Conseils de la critique (non bloquants) :\n- T1 : titre plus court", ap)
+        self.assertNotIn("réserves", ap)
+        # un bloquant : retour à la rédaction, qui le voit à corriger et le conseil à part, et répond
+        self.t("rapport", "critique", "c1", stdin=json.dumps({"verdict": "a_retoucher", "notes": [
+            {"ticket": 1, "gravite": "bloquant", "note": "comment tester ?"}, {"ticket": 1, "gravite": "conseil", "note": "titre plus court"}]}))
+        self.assertEqual(self.t("aiguillage", "c1").returncode, 3)
+        red = self.t("poste", "redaction", "c1").stdout
+        self.assertIn("## Notes bloquantes de la critique (à corriger)\n- ticket 1 : comment tester ?", red)
+        self.assertIn("## Conseils de la critique (à suivre s'ils sont justes)\n- ticket 1 : titre plus court", red)
+        self.t("rapport", "redaction", "c1", stdin=json.dumps({"tickets": [{"summary": "A", "description": "h2. Comment tester", "composant": "dm/site",
+                                                                          "points": 2}], "reponses": ["ticket 1 : section Comment tester ajoutée"]}))
+        crit = self.t("poste", "critique", "c1").stdout
+        self.assertIn("## Tes relectures précédentes (ne les rouvre pas, ne les contredis pas)", crit)
+        self.assertIn("- version 1 · ticket 1 · bloquant : comment tester ?", crit)
+        self.assertIn("## Réponses de la rédaction à tes notes\n- ticket 1 : section Comment tester ajoutée", crit)
+        self.assertIn('"gravite": "bloquant" | "conseil"', crit)
+        # une note sans gravité compte comme bloquante
+        self.t("rapport", "critique", "c1", stdin='{"verdict": "a_retoucher", "notes": [{"ticket": 1, "note": "composant faux"}]}')
+        self.assertEqual(self.t("aiguillage", "c1").returncode, 3)
+        self.assertEqual(self.t("aiguillage", "c1").returncode, 0, "3 tours au plus")
+        self.assertIn("⚠ La critique a encore des réserves bloquantes", self.t("apercus", "c1").stdout)
+        # tes « Changements » : la critique les reçoit comme tranchés, et peut encore renvoyer une fois
+        self.t("poste", "redaction", "c1", "garde le composant dm/site")
+        self.assertIn("## Retours du boss à la validation (tranchés : ne les conteste pas)\n- garde le composant dm/site",
+                      self.t("poste", "critique", "c1").stdout)
+        self.t("rapport", "redaction", "c1", stdin='{"tickets": [{"summary": "B", "description": "h2. Contexte", "composant": "dm/site", "points": 2}]}')
+        self.t("rapport", "critique", "c1", stdin='{"verdict": "a_retoucher", "notes": [{"ticket": 1, "gravite": "bloquant", "note": "x"}]}')
+        self.assertEqual(self.t("aiguillage", "c1").returncode, 3, "un tour de plus après tes Changements")
+        self.assertEqual(self.t("aiguillage", "c1").returncode, 0)
+
+    def test_near_duplicates_from_jira(self):
+        """Les tickets ouverts proches : un JQL par racine des mots forts de l'intention (sans les mots de la maison), puis
+        le tri par racines communes ; donnés à la rédaction et à la critique, montrés au tampon. Jira en erreur : sans."""
+        cfg = self.cfg_with(components=["dm_site", "dm_api"])
+        self.t("dossier", "d1", "Publier le contrat OpenAPI des keywords en paquet Composer, servir les keywords par préfixe",
+               "Story", "3", "dm_api", "", "backlog", "", cfg=cfg)
+        jql = self.t("doublons_jql", "d1", cfg=cfg).stdout
+        self.assertTrue(jql.startswith("project = DM AND statusCategory != Done AND (summary ~ \"keywor*\""), jql)
+        for w in ('"contra*"', '"compos*"', '"prefix*"', '"openap*"'):
+            self.assertIn(w, jql)
+        self.assertNotIn('"dunder', jql, "le site Jira n'est pas un mot de l'intention")
+        issues = {"issues": [{"key": "DM-1", "fields": {"summary": "[Keywords] Publish the OpenAPI contract as a Composer package", "status": {"name": "To Do"}}},
+                             {"key": "DM-2", "fields": {"summary": "Fix the contract tests", "status": {"name": "To Do"}}},
+                             {"key": "DM-3", "fields": {"summary": "Serve keywords by prefix", "status": {"name": "En cours"}}}]}
+        out = self.t("doublons", "d1", json.dumps(issues), cfg=cfg).stdout
+        self.assertIn("2 ticket(s) ouvert(s) proche(s)", out)
+        self.assertLess(out.index("DM-1"), out.index("DM-3"), "le plus proche d'abord")
+        self.assertNotIn("DM-2", out, "un seul mot commun : pas un doublon")
+        self.assertIn("## Tickets Jira ouverts proches de l'intention", self.t("poste", "redaction", "d1", cfg=cfg).stdout)
+        self.assertIn("- DM-3 · Serve keywords by prefix (En cours)", self.t("poste", "critique", "d1", cfg=cfg).stdout)
+        self.assertNotIn("Tickets Jira ouverts", self.t("poste", "recherche", "d1", cfg=cfg).stdout)
+        self.t("rapport", "redaction", "d1", stdin='{"tickets": [{"summary": "A", "description": "h2. Contexte", "composant": "dm_api", "points": 3}]}', cfg=cfg)
+        self.assertIn("🔎 Tickets Jira ouverts proches (doublons possibles) :\n- DM-1 ·", self.t("apercus", "d1", cfg=cfg).stdout)
+        # Jira en erreur (le Goto de l'étape passe un texte d'erreur) : aucun, sans échec
+        r = self.t("doublons", "d1", "HTTP 400 on GET", cfg=cfg)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("indisponible", r.stdout)
+        self.assertNotIn("🔎", self.t("apercus", "d1", cfg=cfg).stdout)
+        # sans mot fort : une recherche qui ne ramène rien
+        self.t("dossier", "d2", "Fix it", "Bug", "1", "", "", "backlog", "", cfg=cfg)
+        self.assertTrue(self.t("doublons_jql", "d2", cfg=cfg).stdout.endswith("AND created > now()"))
+
+    def test_labels_on_every_created_ticket(self):
+        cfg = self.cfg_with(labels=["ia_framed", "Rédigé par le Bureau", "ia_framed"])
+        self.t("dossier", "l1", "x", "Tâche", "1", "dm/site", "", "backlog", "", cfg=cfg)
+        self.t("rapport", "redaction", "l1", stdin='{"tickets": [{"summary": "A", "description": "h2. Contexte", "composant": "dm/site", "points": 1}]}', cfg=cfg)
+        self.t("aiguillage", "l1", cfg=cfg)
+        self.assertIn("Labels : ia_framed, Rédigé_par_le_Bureau", self.t("apercus", "l1", cfg=cfg).stdout)
+        Path(self.tmp, ".kronn", "current_task.json").write_text(json.dumps(json.loads(Path(self.tmp, ".kronn", "tickets.json").read_text())[0]))
+        f = json.loads(self.t("lot", "champs", "{}", cfg=cfg).stdout)["body"]["fields"]
+        self.assertEqual(f["labels"], ["ia_framed", "Rédigé_par_le_Bureau"])
+        self.assertNotIn("labels", json.loads(self.t("lot", "champs", "{}").stdout)["body"]["fields"], "sans réglage : aucun label")
 
     def test_team_template_file_is_copied_into_the_prompt(self):
         """« <chemin> du dépôt <dépôt> » : le fichier, lu dans la copie locale du dépôt, recopié dans la consigne de la

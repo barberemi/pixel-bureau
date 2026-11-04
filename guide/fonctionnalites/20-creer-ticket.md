@@ -22,21 +22,23 @@ Depuis la **fiche de l'agent** qui incarne le modèle (Karen sur les captures), 
 
 ## Le relire
 
-Trois postes, un agent chacun : 📚 la recherche lit quelques fichiers des dépôts des composants ; ✍ la rédaction écrit le ou les tickets au modèle de l'équipe (`jira.create.template`, recopié en entier dans sa consigne quand c'est un fichier d'un dépôt), titre et description en wiki Jira, un composant et des points chacun, et découpe l'intention qui touche plusieurs projets ou livrables ; quand elle découpe, elle dit aussi quel ticket est bloqué par quel autre (celui dont il consomme le résultat) ; 🧐 la critique relit (modèle suivi, dépendances dans le bon sens), et renvoie à la rédaction ce qui est à retoucher (trois tours au plus). Personne ne crée rien.
+Avant les postes, le Bureau cherche dans Jira les tickets ouverts dont le titre partage plusieurs mots forts de l'intention (sans IA ; par racine, pour qu'une intention en français retrouve un titre en anglais) : ce sont les doublons possibles, donnés à la rédaction (qui ne réécrit pas un ticket qui existe, et cite un ticket proche) et à la critique.
+
+Trois postes, un agent chacun : 📚 la recherche lit quelques fichiers des dépôts des composants ; ✍ la rédaction écrit le ou les tickets au modèle de l'équipe (`jira.create.template`, recopié en entier dans sa consigne quand c'est un fichier d'un dépôt), titre et description en wiki Jira, un composant et des points chacun, et découpe l'intention qui touche plusieurs projets ou livrables ; quand elle découpe, elle dit aussi quel ticket est bloqué par quel autre (celui dont il consomme le résultat) ; 🧐 la critique relit (modèle suivi, dépendances dans le bon sens, pas de doublon) et vérifie dans le code avant d'affirmer qu'une chose manque. Chaque remarque est **bloquante** (cadrage faux, ticket qu'on ne peut pas tester, composant faux, doublon, modèle pas suivi, dépendance à l'envers, chose inventée) ou un **conseil** : seules les bloquantes renvoient à la rédaction (trois tours au plus), les conseils vont à ta validation. Pour converger, la critique relit ses notes d'avant et ce que la rédaction en a fait (elle répond à chaque note) : elle ne rouvre pas un point traité et ne contredit ni ses notes, ni tes retours. Personne ne crée rien.
 
 La validation arrive sur sa fiche, avec l'alerte ✋ habituelle : le titre, le type, les points, les composants, le sprint et l'épic, puis la description en texte lisible (titres en ▸, panneaux en │).
 
 ![La validation : le ticket tel qu'il sera créé](../img/creer-ticket-validation.png)
 
-Une validation pour la liste. Elle commence par le récap, une ligne par ticket (T1, T2… : titre, type, points, composant, « bloqué par T1 » s'il dépend d'un autre), puis les réserves de la critique s'il en reste. Le détail de chaque ticket suit quand la liste est courte (3 500 caractères au plus). Sinon, il est au 2e étage, au clic sur la carte du ticket ou sur sa ligne du panneau ([La rédaction et la revue](28-redaction.md)). Les réponses :
+Une validation pour la liste. Elle commence par le récap, une ligne par ticket (T1, T2… : titre, type, points, composant, « bloqué par T1 » s'il dépend d'un autre), puis les réserves bloquantes de la critique s'il en reste, ses conseils (💡), les tickets Jira ouverts proches (🔎, trois au plus) et les labels posés. Le détail de chaque ticket suit quand la liste est courte (3 500 caractères au plus). Sinon, il est au 2e étage, au clic sur la carte du ticket ou sur sa ligne du panneau ([La rédaction et la revue](28-redaction.md)). Les réponses :
 
 - **✅ Approuver** : les tickets sont créés, l'un après l'autre.
-- **Changements** : dis ce qui change (« retire T2 », « fusionne T1 et T3 », « T2 : 5 points ») ; la rédaction reprend avec tes retours, puis la critique, puis la validation.
+- **Changements** : dis ce qui change (« retire T2 », « fusionne T1 et T3 », « T2 : 5 points ») ; la rédaction reprend avec tes retours, puis la critique (tes retours sont tranchés pour elle ; elle peut encore renvoyer une fois), puis la validation.
 - **⛔ Rejeter** : rien n'est créé.
 
 ## La création
 
-Par l'API REST v2 de Jira, sans IA : la description garde ses panneaux, et les `{{…}}` du modèle de l'équipe passent tels quels. Les points vont dans le champ de l'écran de création (`jira.create.points_field`), puis dans celui du board (premier de `jira.points_fields`) s'il est différent, sauf avec `jira.create.board_copy` à `false` : seule l'estimation est alors remplie.
+Par l'API REST v2 de Jira, sans IA : la description garde ses panneaux, et les `{{…}}` du modèle de l'équipe passent tels quels. Les labels de l'équipe (`jira.create.labels`) sont posés sur chaque ticket. Les points vont dans le champ de l'écran de création (`jira.create.points_field`), puis dans celui du board (premier de `jira.points_fields`) s'il est différent, sauf avec `jira.create.board_copy` à `false` : seule l'estimation est alors remplie.
 
 Quand l'intention est découpée, chaque ticket créé est lié dans Jira (« Blocks » : *blocks* / *is blocked by*) à ceux déjà créés : il est bloqué par ceux à livrer avant lui, et bloque ceux qui l'attendent. Les tickets sont créés l'un après l'autre, chaque lien est posé dès que ses deux tickets existent ; un lien en échec ne défait pas la création.
 
@@ -62,6 +64,8 @@ Modèle du Bureau `ticket`, proposé par l'installateur quand Jira est connecté
 | `template` | aucun | le modèle de ticket de l'équipe : un texte, ou « `<chemin> du dépôt <dépôt>` » (ou « `<dépôt>:<chemin>` »), un fichier lu dans la copie locale du dépôt (le projet Kronn du même nom, sinon `impl.clones`, `~/Sites` par défaut) et recopié dans la consigne de la rédaction et de la critique |
 | `link_type` | Blocks | type de lien Jira des dépendances entre les tickets d'une intention découpée |
 | `language` | français | langue des tickets rédigés (titre, description) et des rapports des postes ; le code et les noms de fichiers restent tels quels |
+| `labels` | aucun | labels posés sur chaque ticket créé, pour repérer ceux rédigés par le Bureau (une espace devient `_`) |
+| `mots_vides` | aucun | mots de la maison que la recherche des doublons ignore, en plus des morceaux communs aux noms des composants et du site Jira |
 | `title_language` | celle de `language` | langue du titre seul, quand le modèle de l'équipe veut par exemple des titres en anglais et des descriptions en français ; elle passe avant les consignes de langue du modèle, pour que la rédaction et la critique ne se contredisent pas d'un tour à l'autre |
 
 Le personnage vient du pack (`agents[]` avec `model: "ticket"`), comme les autres modèles.

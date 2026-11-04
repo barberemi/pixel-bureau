@@ -8,6 +8,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
+- Créer un ticket : avant la rédaction, le Bureau cherche dans Jira les tickets ouverts proches de l'intention (titres qui partagent plusieurs mots forts, par racine ; sans IA). La rédaction et la critique les voient, la validation montre les trois plus proches (🔎). Jira en erreur : on continue sans. Après la mise à jour : `publish.py workflows`.
+- Créer un ticket : labels posés sur chaque ticket créé (`jira.create.labels` du pack ou de la config), montrés à la validation.
 - Créer un ticket : quand l'intention est découpée, la rédaction dit quel ticket est bloqué par quel autre (`bloque_par`, vérifié par la critique, sans boucle, montré au tampon : « bloqué par T1 ») ; à la création, chaque ticket est lié dans Jira (« Blocks », réglage `jira.create.link_type`) à ceux déjà créés, dans le bon sens. Le modèle de ticket de l'équipe (`jira.create.template` : « `<chemin> du dépôt <dépôt>` ») est lu dans la copie locale du dépôt et recopié dans la consigne de la rédaction et de la critique : elles n'ont plus à le chercher (une intention l'avait manqué). `jira.create.board_copy` à `false` : seule l'estimation (`points_field`) est remplie, rien n'est recopié dans le champ du board. Après la mise à jour : `publish.py workflows` (et `board_copy: false` dans le pack pour ne garder que l'estimation).
 - 🛠 Corriger les commentaires d'une PR et ⟳ Remettre à jour lancent les mêmes contrôles que la chaîne d'implémentation (`impl.repos.<dépôt>.checks` du pack, par exemple PHPStan, PHPUnit et Vitest) sur les fichiers de la PR, au lieu de rien quand le dépôt n'avait pas de commande à part ; une commande rouge est relancée sur la PR d'avant les corrections, pour ne pas compter ce qui était déjà rouge. Après la mise à jour : `publish.py workflows`.
 - 🛠 Corriger les commentaires d'une PR : chaque réponse commence par « **Version N** », le numéro de la passe de corrections sur la PR (la 1re est la Version 1). Le compteur est gardé dans le bloc « Corrections de review » de la description ; sans lui, le Bureau reprend le plus grand « Version N » déjà posté en tête d'une réponse ou d'un commentaire (tes passes faites à la main comptent si tu gardes ce format). La validation montre le numéro.
@@ -16,6 +18,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 - 2e et 3e étages : l'escalier devient la porte en bois de l'entrée du RDC, collée au bord ; Bernard et les auteurs en sortent par derrière, elle s'ouvre à leur passage, et la nuit le panneau SORTIE vert s'allume au-dessus, comme au RDC. Au 2e, cinq scènes de la revue des PR dans la galerie (la fournée du cron, le relecteur prend un dossier, l'avis est posté, l'auteur repart, une revue à la demande) ; au 1er, « Le soir au 1er ».
 - Un dessin du boss par étage : `atelier_sprite` (1er) et `redaction_sprite` (2e) dans le roster du pack, comme `captain_sprite` au -1 ; sa fiche garde son portrait.
 - `tools/lpc_sheet.py` : une planche LPC générée devient une planche du Bureau, avec la marche de côté réparée (images tournées, pieds à l'envers, jambes qui ne se rejoignent pas), le liseré du détourage retiré, et au besoin un personnage étoffé (tête plus grande, jambes plus larges).
+
+### Modifié
+
+- Créer un ticket : la critique converge. Chaque remarque est bloquante ou un conseil ; seules les bloquantes renvoient à la rédaction, les conseils vont à la validation (💡). Elle relit ses notes d'avant et les réponses de la rédaction, reçoit tes retours comme tranchés, et vérifie dans le code (Grep, Glob) avant d'affirmer qu'une chose manque. Après tes « Changements », elle peut encore renvoyer une fois. (Sur 3 vrais runs, elle disait « à retoucher » à presque chaque tour.)
 
 ### Corrigé
 
