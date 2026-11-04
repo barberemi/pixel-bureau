@@ -254,7 +254,9 @@ def controle(repo, st):
     names = ", ".join(dict.fromkeys(label(c) for c in cmds)) + ("" if src in ("github.checks", "fix.checks") else f" · {src}")
     if not st.get("src") and any("{main}" in (c if isinstance(c, str) else c.get("cmd") or "") for c in cmds):
         return {"cmd": names, "verdict": "non lancés : ton dossier local du dépôt est inconnu de Kronn (les commandes ont besoin de {main})"}
-    r = check_run(cmds, pr_files(st), st["work"], st.get("src") or "", st["base"], depart=lambda: depart(st), budget=1500, timeout=600)
+    # l'étape check a 1800 s au plus (le maximum de Kronn) : une commande lancée juste avant la fin du budget peut encore
+    # durer 600 s, d'où 1100 s de budget (1700 s au pire, avec la marge du reste de l'étape)
+    r = check_run(cmds, pr_files(st), st["work"], st.get("src") or "", st["base"], depart=lambda: depart(st), budget=1100, timeout=600)
     lanc = [x for x in r["sorties"] if "saute" not in x]
     if not lanc:
         return {"cmd": names, "verdict": "rien à contrôler (aucun fichier concerné)"}

@@ -209,7 +209,7 @@
      "{{pr}}",
      "{{run.id}}"
     ],
-    "exec_timeout_secs": 2400
+    "exec_timeout_secs": 1800
    },
    {
     "agent": "ClaudeCode",
