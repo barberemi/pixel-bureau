@@ -43,6 +43,14 @@ class TemplatesTest(unittest.TestCase):
         mep = templates.render(TPL["mep"], colleague())
         self.assertEqual(templates.clean("workflow", {**mep, "steps": [dict(s, id="i") for s in mep["steps"]]})["guards"], mep["guards"])
 
+    def test_exec_timeouts_within_kronn_limit(self):
+        """Kronn refuse un Exec dont exec_timeout_secs dépasse 1800 s (le workflow entier n'est alors pas publié : #189)."""
+        for key, tpl in templates.load_templates().items():
+            for st in (tpl.get("definition") or tpl).get("steps") or []:
+                t = st.get("exec_timeout_secs")
+                if t is not None:
+                    self.assertTrue(1 <= t <= 1800, "%s · %s : exec_timeout_secs %s" % (key, st.get("name"), t))
+
     def test_crons_pinned_to_utc(self):
         """Heures des crons calculées en UTC (assemble.cron_hours) : le rendu pose timezone UTC sur chaque Cron, sinon
         Kronn 0.15.1 les lirait dans son fuseau (Europe/Paris) au premier PUT. Le modèle reste sans fuseau (export), un
