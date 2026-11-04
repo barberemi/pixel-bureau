@@ -29,10 +29,16 @@ refuse une gate dans un sous-workflow) : sa création. Le dossier du run
                                              rédaction) ; sinon .kronn/tickets.json, un élément par ticket (foreach)
   python3 -c <ce script> apercus <run>         les tickets tels qu'ils seront créés, pour ta validation (gate du parent)
   python3 -c <ce script> lot <champs|resultat> [<sprints JSON> | <clé créée>]   un ticket (.kronn/current_task.json)
-  python3 -c <ce script> bilan <run>          {key, url, title, meta} des tickets créés, pour la page (run.res)
+  python3 -c <ce script> bilan <run>          {key, url, title, meta} des tickets créés, pour la page (run.res) ; relance
+                                             le cron redaction_bilan (page « Rédaction · bilan » à jour tout de suite)
+
+Historique (page « Rédaction · bilan », jamais vidé) : ~/.local/share/pixel-bureau/historique/ticket/<run>.json (réglage
+jira.create.historique), réécrit par dossier, parent_check, rapport, poste (tes retours), aiguillage et lot resultat. Le dossier
+du run ne garde que la dernière version des tickets et la dernière critique ; l'historique garde chaque version, chaque
+critique, tes retours datés et les tickets créés. Jamais au prix de l'étape : une erreur va sur stderr.
 """
-import json, os, re, sys
-from _lib import CFG, read_json, readable, write_json
+import datetime, json, os, re, sys
+from _lib import CFG, read_json, readable, refresh, write_json
 
 SPRINTS = {"backlog": "Backlog", "next": "Sprint suivant"}
 
@@ -164,6 +170,46 @@ def dput(run, name, obj):
     write_json(os.path.join(ddir(run), name), obj)
 
 
+# ---------- historique : la page « Rédaction · bilan » ----------
+def historique():
+    return os.path.expanduser(((CFG.get("jira") or {}).get("create") or {}).get("historique") or "~/.local/share/pixel-bureau/historique/ticket")
+
+
+def iso_now():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+
+
+def archive(run, **ajout):
+    """L'intention du run réécrite dans l'historique : la demande (dossier), le rapport de la recherche, puis ce que donne
+    l'étape (ajout : version, critique, retour ou ticket créé, ajoutés à leur liste ; la même version n'est gardée qu'une
+    fois). Durées, jetons et passages au tampon : le cron de la page les lit dans l'API Kronn."""
+    try:
+        path = os.path.join(historique(), re.sub(r"[^\w-]", "", run or "x") + ".json")
+        try:
+            rec = read_json(path)
+            rec = rec if isinstance(rec, dict) else {}
+        except (OSError, ValueError):
+            rec = {}
+        d = dget(run, "demande.json") or {}
+        rec.setdefault("at", iso_now())
+        rec.update({"v": 1, "run": run, "vu": iso_now(), **{k: d[k] for k in ("intention", "type", "points", "composants", "sprint", "parent",
+                                                                              "parent_de", "tour") if k in d}})
+        rec["essai"] = bool(re.match(r"\s*\[\s*essai", str(d.get("intention") or ""), re.I))
+        r = dget(run, "recherche.json")
+        if r:
+            rec["recherche"] = {"composants": r.get("composants") or [], "texte": str(r.get("texte") or "")[:4000]}
+        for liste, item in ajout.items():
+            l = rec.setdefault(liste, [])
+            if liste in ("versions", "critiques"):
+                l[:] = [x for x in l if x.get("v") != item.get("v")]
+            l.append({"at": iso_now(), **item})
+            del l[:-12]
+        os.makedirs(historique(), exist_ok=True)
+        write_json(path, rec)
+    except Exception as e:  # noqa: BLE001  l'historique ne fait jamais tomber une étape
+        print(f"ticket : historique non écrit ({str(e)[:160]})", file=sys.stderr)
+
+
 def options():
     """Composants proposés (jira.create.components) : les dépôts de l'équipe."""
     c = (CFG.get("jira") or {}).get("create") or {}
@@ -192,6 +238,7 @@ def dossier(run, intention, type_, points, c1, c2, sprint, parent):
     d = {"intention": intention.strip(), "type": type_.strip(), "points": points.strip(), "composants": components(c1, c2),
          "sprint": sprint.strip() or "backlog", "parent": parent.strip(), "tour": 1}
     dput(run, "demande.json", d)
+    archive(run)
     print(f"🎫 {d['intention'][:300]}\n{meta(d['type'], d['points'] or 0, d['composants'], d['sprint'], d['parent'])}")
 
 
@@ -227,6 +274,7 @@ def parent_check(run, raw):
     if up.get("key") and (((up.get("fields") or {}).get("issuetype") or {}).get("hierarchyLevel")) == 1:
         d["parent"], d["parent_de"] = up["key"], p
         dput(run, "demande.json", d)
+        archive(run)
         print(f"Parent {p} : {it.get('name') or 'pas une épic'}. Jira n'accepte qu'une épic : les tickets iront sous son épic "
               f"{up['key']} « {(up.get('fields') or {}).get('summary') or ''} ».")
         return
@@ -275,6 +323,7 @@ def poste(k, run, retours=""):
         old = dget(run, "retours.json", [])
         if retours not in old:
             dput(run, "retours.json", old + [retours])
+            archive(run, retours={"texte": retours[:1500], "v": (dget(run, "tickets.json") or {}).get("version")})
     if k == "redaction" and dget(run, "retours.json"):
         parts.append("## Retours du boss à la validation (à appliquer en priorité)\n" + "\n".join("- " + x for x in dget(run, "retours.json")))
     c = dget(run, "critique.json")
@@ -298,6 +347,7 @@ def rapport(k, run, text):
         m = re.search(r"Composants\s*:\s*(.+)", text)
         touched = [x.strip(" *`") for x in re.split(r"[,;]", m.group(1))] if m else []
         dput(run, "recherche.json", {"texte": text[:6000], "composants": [x for x in touched if x]})
+        archive(run)
         print(text[:2000])
         return
     o = json_of(text) or {}
@@ -306,13 +356,18 @@ def rapport(k, run, text):
         if not ts:
             sys.exit("La rédaction n'a rendu aucun ticket (objet JSON {\"tickets\": [...]} attendu).")
         old = dget(run, "tickets.json") or {}
-        dput(run, "tickets.json", {"version": int(old.get("version") or 0) + 1, "tickets": ts[:8]})
+        v = int(old.get("version") or 0) + 1
+        dput(run, "tickets.json", {"version": v, "tickets": ts[:8]})
+        archive(run, versions={"v": v, "tickets": [{"summary": str(t.get("summary") or "")[:200], "composant": t.get("composant"),
+                                                    "points": t.get("points")} for t in ts[:8]]})
         print("\n".join(f"{i}. {t['summary']} · {t.get('composant') or '?'} · {t.get('points') or '?'} pts" for i, t in enumerate(ts[:8], 1)))
         return
     if k == "critique":
         v = "a_retoucher" if str(o.get("verdict") or "").strip() == "a_retoucher" else "ok"
-        dput(run, "critique.json", {"verdict": v, "notes": [n for n in o.get("notes") or [] if isinstance(n, dict)][:12],
-                                    "version": (dget(run, "tickets.json") or {}).get("version")})
+        notes = [n for n in o.get("notes") or [] if isinstance(n, dict)][:12]
+        dput(run, "critique.json", {"verdict": v, "notes": notes, "version": (dget(run, "tickets.json") or {}).get("version")})
+        archive(run, critiques={"v": (dget(run, "tickets.json") or {}).get("version"), "verdict": v,
+                                "notes": [{"ticket": n.get("ticket"), "note": str(n.get("note") or "")[:400]} for n in notes]})
         print(("✓ relu, rien à retoucher" if v == "ok" else "↺ à retoucher") + "".join(f"\n- ticket {n.get('ticket')} : {n.get('note')}" for n in o.get("notes") or []))
         return
     sys.exit(f"Poste inconnu : {k}")
@@ -323,6 +378,7 @@ def aiguillage(run):
     if c.get("verdict") == "a_retoucher" and int(d.get("tour") or 1) < TOURS:
         d["tour"] = int(d.get("tour") or 1) + 1
         dput(run, "demande.json", d)
+        archive(run)
         print(f"↺ critique → rédaction · tour {d['tour']}/{TOURS}")
         sys.exit(3)
     ts = t.get("tickets") or []
@@ -388,6 +444,7 @@ def lot(cmd, arg=""):
         made = dget(run, "crees.json", [])
         made.append({"i": i, "key": arg.strip(), "title": (x.get("summary") or "")[:160], "composant": comp})
         dput(run, "crees.json", made)
+        archive(run, crees={"i": i, "key": arg.strip(), "title": (x.get("summary") or "")[:160], "composant": comp, "points": pts})
         resultat(arg, raw, d.get("type") or "", pts, comp, "", d.get("sprint") or "")
     else:
         sys.exit(f"commande inconnue : lot {cmd}")
@@ -402,6 +459,7 @@ def bilan(run):
     k0 = made[0]["key"]
     print(json.dumps({"key": k0, "url": f"{site}/browse/{k0}" if site else "", "title": made[0]["title"] if len(made) == 1 else f"{len(made)} tickets créés",
                       "meta": ", ".join(m["key"] for m in made)}, ensure_ascii=False))
+    refresh("redaction_bilan")  # la page « Rédaction · bilan » à jour tout de suite, sans attendre le cron (stderr, jamais d'échec)
 
 
 if __name__ == "__main__":

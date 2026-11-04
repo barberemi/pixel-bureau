@@ -45,7 +45,10 @@ class TicketChainTest(unittest.TestCase):
         f = json.loads(self.t("lot", "champs", "{}").stdout)["body"]["fields"]
         self.assertEqual((f["summary"], f["components"]), ("API : pistes", [{"name": "dm/api"}]))
         self.assertEqual(json.loads(self.t("lot", "resultat", "DM-9").stdout)["key"], "DM-9")
-        b = json.loads(self.t("bilan", "r1").stdout)
+        r = self.t("bilan", "r1")
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("Rafraîchissement du cron redaction_bilan", r.stderr, "la page du bilan relancée, sans faire échouer l'étape")
+        b = json.loads(r.stdout)
         self.assertEqual((b["key"], b["title"], b["meta"]), ("DM-9", "API : pistes", "DM-9"))
 
     def test_gate_preview_shows_the_critique_reservations_left_after_the_last_round(self):
@@ -131,6 +134,38 @@ class TicketChainTest(unittest.TestCase):
         self.assertNotEqual(self.t("rapport", "redaction", "r2", stdin="pas de JSON").returncode, 0)
         self.assertEqual(self.t("bilan", "r2").stdout.strip(), "{}")
 
+    def test_history_keeps_every_version_critique_feedback_and_created_ticket(self):
+        """L'historique de la page « Rédaction · bilan » : le dossier ne garde que la dernière version et la dernière
+        critique, l'historique les garde toutes, avec tes retours et les tickets créés ; un essai est marqué."""
+        self.t("dossier", "h1", "[ESSAI du Bureau] Export CSV", "Tâche", "2", "dm/outils", "", "backlog", "")
+        self.t("rapport", "recherche", "h1", stdin="Composants : dm/outils\n- tools/export.py")
+        one = lambda s: json.dumps({"tickets": [{"summary": s, "description": "h2. Contexte", "composant": "dm/outils", "points": 2}]})
+        self.t("rapport", "redaction", "h1", stdin=one("Export CSV"))
+        self.t("rapport", "critique", "h1", stdin=json.dumps({"verdict": "a_retoucher", "notes": [{"ticket": 1, "note": "titre en anglais"}]}))
+        self.assertEqual(self.t("aiguillage", "h1").returncode, 3)
+        self.t("poste", "redaction", "h1", "plus court")
+        self.t("rapport", "redaction", "h1", stdin=one("Exporter les abonnés en CSV"))
+        self.t("rapport", "critique", "h1", stdin='{"verdict": "ok", "notes": []}')
+        self.t("aiguillage", "h1")
+        Path(self.tmp, ".kronn", "current_task.json").write_text(json.dumps({"run": "h1", "i": 0}))
+        self.t("lot", "resultat", "DM-12")
+        h = json.loads(Path(self.tmp, ".local/share/pixel-bureau/historique/ticket/h1.json").read_text())
+        self.assertTrue(h["essai"])
+        self.assertEqual((h["intention"], h["tour"], h["recherche"]["composants"]), ("[ESSAI du Bureau] Export CSV", 2, ["dm/outils"]))
+        self.assertEqual([(v["v"], v["tickets"][0]["summary"]) for v in h["versions"]], [(1, "Export CSV"), (2, "Exporter les abonnés en CSV")])
+        self.assertEqual([(c["v"], c["verdict"]) for c in h["critiques"]], [(1, "a_retoucher"), (2, "ok")])
+        self.assertEqual(h["critiques"][0]["notes"], [{"ticket": 1, "note": "titre en anglais"}])
+        self.assertEqual([(r["texte"], r["v"]) for r in h["retours"]], [("plus court", 1)])
+        self.assertEqual([(c["key"], c["title"], c["points"]) for c in h["crees"]], [("DM-12", "Exporter les abonnés en CSV", "2")])
+        self.assertTrue(h["at"] <= h["vu"])
+
+    def test_history_never_fails_the_step(self):
+        Path(self.tmp, ".local/share/pixel-bureau/historique").mkdir(parents=True)
+        Path(self.tmp, ".local/share/pixel-bureau/historique/ticket").write_text("un fichier, pas un dossier")
+        r = self.t("dossier", "h2", "x", "Bug", "1", "dm/site", "", "backlog", "")
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("historique non écrit", r.stderr)
+
 
 class RedactionSnapshotTest(unittest.TestCase):
     def test_tables_tickets_and_events(self):
@@ -143,7 +178,8 @@ class RedactionSnapshotTest(unittest.TestCase):
         Path(tmp, "r1", "tickets.json").write_text(json.dumps({"version": 2, "tickets": [{"summary": "A", "composant": "dm/site", "points": 3,
                                                                                         "description": "h2. Contexte\n{panel}\nLe lecteur\n{panel}\n* sous-titres"},
                                                                                        {"summary": "B", "composant": "dm/api", "points": 2}]}))
-        api = {"/workflows/tk/runs?limit=20": [{"id": "r1", "status": "Running", "started_at": "2026-10-30T09:00:00Z"}],
+        api = {"/workflows/tk/runs?limit=20": [{"id": "r1", "status": "Running", "started_at": "2026-10-30T09:00:00Z", "tokens_used": 21000},
+                                               {"id": "r0", "status": "Success", "started_at": "2026-10-29T22:30:00Z", "tokens_used": 5000}],
                "/workflows/tk/runs/r1": {"id": "r1", "workflow_id": "tk", "status": "WaitingApproval", "started_at": "2026-10-30T09:00:00Z",
                                           "step_results": [{"step_name": "dossier"}, {"step_name": "recherche"}, {"step_name": "relire", "started_at": "2026-10-30T09:31:00Z"}]},
                "/workflows/un/runs?limit=40": []}
@@ -159,9 +195,10 @@ class RedactionSnapshotTest(unittest.TestCase):
         t = snap["tables"][0]
         self.assertEqual((t["poste"], t["tour"], t["intention"]), ("valider", 2, "Refondre le lecteur"))
         self.assertEqual([(x["summary"], x["etat"]) for x in t["tickets"]], [("A", "gate"), ("B", "gate")])
-        self.assertEqual([e["k"] for e in snap["events"]], ["arrive", "gate"])
+        self.assertEqual([e["k"] for e in snap["events"]], ["arrive", "arrive", "gate"], "r0 (la veille) arrive aussi")
         self.assertEqual(t["tickets"][0]["detail"], "▸ Contexte\n│ Le lecteur\n• sous-titres")  # le texte lisible, pour la fiche au 2e
         self.assertNotIn("detail", t["tickets"][1])
+        self.assertEqual(snap["tok_jour"], 21000, "les jetons depuis minuit à Paris (le run de 23 h 30 la veille ne compte pas)")
 
 
 class RevueFileTest(unittest.TestCase):

@@ -3,7 +3,7 @@ ticket (models.ticket_un), lus dans l'API Kronn, et le dossier de chaque run (~/
 écrit par ticket.py) ; 0 token ; stdout JSON du dataset redaction (cron live).
 
   {generated_at, tables: [{run, status, since, intention, type, parent, poste, tour, composants, tickets: [{i, summary,
-                           composant, points, etat: wait|run|gate|ok|ecarte|err, detail}], url}], events: [{t, k: arrive|gate|cree|fin, run}], crees}
+                           composant, points, etat: wait|run|gate|ok|ecarte|err, detail}], url}], events: [{t, k: arrive|gate|cree|fin, run}], crees, tok_jour}
 
 detail : la description du ticket en texte lisible (readable de _lib : ▸ titres, │ panneaux, • puces), pour la fiche du
 ticket au clic au 2e ; DETAIL_MAX caractères chacun, DETAIL_BUDGET en tout (la sortie d'une étape Exec reste sous 100 Ko).
@@ -160,6 +160,8 @@ def snapshot(now_iso=None):
     out["events"] = sorted([e for e in ev if e["t"]], key=lambda e: e["t"])
     midnight = now.astimezone(TZ).replace(hour=0, minute=0, second=0, microsecond=0) if now else None
     out["crees"] = sum(1 for e in out["events"] if e["k"] == "cree" and (not midnight or when(e["t"]) >= midnight))
+    # le tableau des tickets du jour : les jetons des intentions lancées depuis minuit (le run parent compte ceux de ses postes)
+    out["tok_jour"] = sum(int(r.get("tokens_used") or 0) for r in runs if not midnight or (when(r.get("started_at")) or midnight) >= midnight)
     return out
 
 
