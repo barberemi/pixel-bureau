@@ -19,7 +19,7 @@ test("l'étage existe en démo ; ses onglets dans l'ordre des étages, le 3e en 
   assert.equal(J('retoursOn()'), true);
   assert.deepEqual(J('floorsOn()'), [3, 2, 1, 0, -1], 'de haut en bas');
   assert.deepEqual(J("[...floorTabsHtml().matchAll(/data-floor=\"(-?\\d)\"/g)].map(m => +m[1])"), [-1, 0, 1, 2, 3]);
-  assert.match(J('floorTabsHtml()'), /3e · retours <b>5<\/b> <b>✋ 2<\/b>/, 'la démo : cinq PR, deux validations');
+  assert.match(J('floorTabsHtml()'), /title="3e · retours de PR · 5 en cours · ✋ 2 t&#39;attend"[^>]*><span class="fi" aria-hidden="true">🛠<\/span>3e<b>5<\/b><b class="h">✋2<\/b>/, 'la démo : cinq PR, deux validations ; en court, le nom entier au survol');
   p.run('setFloor(3);');
   assert.equal(J('FLOOR'), 3);
   assert.deepEqual(J('[cv.width, cv.height]'), J('[AT_W, AT_H]'));
@@ -162,4 +162,25 @@ test("comme au 1er : les fenêtres au ciel de l'heure aux 2e et 3e, et la pastil
   assert.equal(J("__pl.filter(s => /^⏪ Rejeu/.test(s)).length"), 3, 'une par étage');
   p.run(`__pl = []; setMode('live'); setFloor(3); renderRetours(1100); atPill = __ap;`);
   assert.equal(J("__pl.some(s => /^⏪ Rejeu/.test(s))"), false, 'en direct, pas de pastille');
+});
+
+test("galerie : Bernard monte la PR et la redescend dès le premier clic (l'étage d'avant la scène est posé, pas rejoué)", () => {
+  const {p, J} = page();
+  p.run(`RETOURS = retoursDemo(); setFloor(3); setMode('pause'); renderRetours(500); renderRetours(600);`);
+  p.run(`demoStart(galleryScenes().find(x => x.n === 'Une PR monte au 3e')); renderRetours(700); renderRetours(800);`);
+  assert.deepEqual(J('RT_MEM.scenes.map(s => s.kind)'), ['arrive']);
+  p.run(`demoEnd(); demoStart(galleryScenes().find(x => x.n === 'La PR est poussée')); renderRetours(900); renderRetours(1000);`);
+  assert.deepEqual(J('RT_MEM.scenes.map(s => s.kind)'), ['exit']);
+  p.run('demoEnd();');
+});
+
+test("la porte de l'escalier : au bout du couloir, dans le mur de droite ; Bernard part de derrière elle, qui s'ouvre à son passage", () => {
+  const {p, J} = page();
+  assert.ok(J('RT_STAIRS.x > AT_W'), 'il part hors du plan');
+  assert.equal(J('RT_STAIR.x + RT_STAIR.w'), J('AT_W'), 'collée au bord');
+  assert.ok(J('RT_STAIR.y <= RT_LANE && RT_STAIR.y + RT_STAIR.h >= RT_LANE'), 'dans l\'axe du couloir');
+  assert.equal(J('stairOpen(RT_STAIR, [{x: AT_W - 20, y: RT_LANE}])'), true);
+  assert.equal(J('stairOpen(RT_STAIR, [{x: AT_W - 300, y: RT_LANE}])'), false);
+  p.run(`RETOURS = retoursDemo(); setFloor(3); RT_MEM.scenes = [{kind: 'arrive', i: 0, run: 'x', t0: 0}]; renderRetours(1000);`);
+  assert.equal(J('stairOpen(RT_STAIR, RT_MEM.scenes.map(s => s.w.pos))'), true, 'Bernard sur le seuil : la porte est ouverte');
 });

@@ -4,12 +4,26 @@
 // Données : dataset atelier (workflows/atelier_snapshot.py, cron live) ; démo : atelierDemo(). Un ticket à plusieurs
 // dépôts occupe un bureau par dépôt ; un run en échec reste dans « En panne » : relancer le ticket le reprend là. Onglets d'étage au-dessus
 // du plan ; sur le 1er, la toile prend la taille de l'étage (AT_W × AT_H) et le panneau montre les bureaux et leur fiche.
+// d : ce que fait le poste, en une phrase ; « Comment lire le plan » (46-legende.js) la montre, un poste ajouté y apparaît
 const AT_POSTES=[
-  {k:'cadrage',i:'📋',n:'Cadrage'},{k:'schema',i:'🗺',n:'Schéma'},{k:'patterns',i:'🧩',n:'Patterns'},{k:'gate',i:'✋',n:'Ton plan',gate:true},
-  {k:'code',i:'⌨',n:'Code'},{k:'regles',i:'📏',n:'Règles'},{k:'securite',i:'🔒',n:'Sécurité'},{k:'tests',i:'🧪',n:'Tests'},
-  {k:'perf',i:'⚡',n:'Perf·a11y'},{k:'revue',i:'🔁',n:'Croisée'},{k:'besoin',i:'🎯',n:'Besoin'},{k:'doc',i:'📚',n:'Doc',bureau:false},{k:'pr',i:'📤',n:'PR'},{k:'revue_pr',i:'👀',n:'Revue PR'},{k:'retours',i:'💬',n:'Retours'}];
+  {k:'cadrage',i:'📋',n:'Cadrage',d:'lit le ticket et dit ce qu\'il a compris'},{k:'schema',i:'🗺',n:'Schéma',d:'propose le plan : où le changement passe dans le code'},
+  {k:'patterns',i:'🧩',n:'Patterns',d:'relève les façons de faire du dépôt à suivre'},{k:'gate',i:'✋',n:'Ton plan',gate:true,d:'tu valides le plan avant le code'},
+  {k:'code',i:'⌨',n:'Code',d:'écrit le changement, lot par lot'},{k:'regles',i:'📏',n:'Règles',d:'passe les règles du dépôt'},
+  {k:'securite',i:'🔒',n:'Sécurité',d:'cherche les failles du changement'},{k:'tests',i:'🧪',n:'Tests',d:'écrit et lance les tests'},
+  {k:'perf',i:'⚡',n:'Perf·a11y',d:'vérifie la performance et l\'accessibilité'},{k:'revue',i:'🔁',n:'Croisée',d:'un autre agent relit le code'},
+  {k:'besoin',i:'🎯',n:'Besoin',d:'confronte le diff aux exigences du ticket'},{k:'doc',i:'📚',n:'Doc',bureau:false,d:'vérifie que la doc a suivi'},
+  {k:'pr',i:'📤',n:'PR',d:'pousse la branche et ouvre la PR brouillon'},{k:'revue_pr',i:'👀',n:'Revue PR',d:'fait la revue de la PR'},
+  {k:'retours',i:'💬',n:'Retours',d:'traite les commentaires de la revue'}];
 const AT_ST={ok:['#3fbf6a','validé'],run:['#5b8def','en cours'],bloq:['#e0614f','bloquant'],avis:['#e0a020','avis'],wait:['#e0a020','t\'attend'],
   skip:['#5b6070','sauté'],err:['#e0614f','en panne']};
+// « Comment lire le plan » au 1er (46-legende.js) : la légende sous le plan, puis les onglets ; les postes viennent d'AT_POSTES
+const AT_HELP={bar:()=>legSwatches(AT_ST)+'<span>🧯 fumée : poste en panne</span>',postes:()=>[['',AT_POSTES]],
+  qui:'<p><b>Agents</b> : un par poste, en hologramme bleu, casque jaune et gilet orange.</p><p><b>Bernard</b> apporte les cartons de l\'entrepôt et emporte ceux qui sortent.</p>'+
+    '<p><b>Le boss</b>, sous le grand tableau, va à la porte du bureau qui attend ta décision.</p><p><b>Le pompier</b> vient quand un poste est en panne ; le soir, <b>l\'agent d\'entretien</b> passe.</p>',
+  ou:'<p><b>Quatre bureaux</b> : un ticket par bureau, quatre à la fois.</p><p><b>Le tapis</b> : le carton du ticket avance de poste en poste.</p>'+
+    '<p><b>Le grand tableau</b> de l\'orchestrateur : le poste, le tour et les jetons de chaque bureau.</p><p><b>L\'entrepôt</b> : les tickets en attente, et ceux en panne sur des palettes, à relancer.</p>',
+  moments:'<p><b>✋ Une gate</b> : ce que j\'ai compris, ton plan, la relecture de la PR ; le boss va à la porte.</p><p><b>🚨 L\'escalade</b> : après trois tours, la chaîne demande un humain (gyrophare).</p>'+
+    '<p><b>↩ Retour au code</b> : un contrôle a bloqué, le carton recule.</p><p><b>🧯 Une panne</b> : un poste a échoué, le pompier arrive.</p>'};
 const AT_TS=32, AT_W=46*AT_TS, AT_H=27*AT_TS;
 let FLOOR=0, ATELIER=null, ATSEL=null;
 try{const f=+localStorage.getItem('bureau:floor');FLOOR=f===1||f===-1||f===2||f===3?f:0;}catch(e){FLOOR=0;} // -1 : la caserne Support (68-caserne.js) ; 3 : les retours de PR (68-retours.js)
@@ -88,16 +102,18 @@ function atelierTabs(){ // le gyrophare du -1 suit csAlarm à chaque relevé
   const h=floorTabsHtml();
   if(t.dataset.sig!==h)t.innerHTML=t.dataset.sig=h;
 }
+// en court : l'icône et le numéro de l'étage, ce qui y tourne, ✋ ce qui t'attend ; son nom en entier au survol (et lu)
 function floorTabsHtml(){
-  const tab=(f,label)=>`<button role="tab" data-floor="${f}" aria-selected="${FLOOR===f}"${FLOOR===f?' class="on"':''}>${label}</button>`;
+  const tab=(f,ico,n,full,cnt,wait,pre)=>{const tip=n+' · '+full+(cnt?' · '+cnt+' en cours':'')+(wait?' · ✋ '+wait+' t\'attend':'');
+    return `<button role="tab" data-floor="${f}" aria-selected="${FLOOR===f}" title="${esc(tip)}" aria-label="${esc(tip)}"${FLOOR===f?' class="on"':''}>${pre||''}<span class="fi" aria-hidden="true">${ico}</span>${n}${cnt?`<b>${cnt}</b>`:''}${wait?`<b class="h">✋${wait}</b>`:''}</button>`;};
   const n=atRooms().length, w=atRooms().filter(r=>r.gate).length, cs=caserneOn()?csActive():[], cg=cs.filter(x=>x.s.k==='gate').length;
   const rr=retoursOn()?rtRooms():[], rn=rr.length, rw=rr.filter(r=>r.gate).length;
   const rdt=redactionOn()?rdTables():[], rdn=rdt.length+(redactionOn()?rvActive().length:0), rdw=rdt.reduce((a,t)=>a+(t.tickets||[]).filter(x=>x.etat==='gate').length,0);
-  // dans l'ordre des étages, comme les boutons d'un ascenseur : -1, RDC, 1er ; le gyrophare du -1 tourne tant qu'un appel attend ou qu'une intervention est en cours (csAlarm)
-  return (caserneOn()?tab(-1,`${csAlarm()?'<span class="gyro" role="img" aria-label="à traiter"></span>':''}🚒 -1 · caserne${cs.length?` <b>${cs.length}</b>`:''}${cg?` <b>✋ ${cg}</b>`:''}`):'')+
-    tab(0,'🏢 RDC · open space')+(atelierOn()?tab(1,`🏭 1er · atelier${n?` <b>${n}</b>`:''}${w?` <b>✋ ${w}</b>`:''}`):'')+
-    (redactionOn()?tab(2,`✍ 2e · rédaction${rdn?` <b>${rdn}</b>`:''}${rdw?` <b>✋ ${rdw}</b>`:''}`):'')+ // 68-redaction.js
-    (retoursOn()?tab(3,`🛠 3e · retours${rn?` <b>${rn}</b>`:''}${rw?` <b>✋ ${rw}</b>`:''}`):''); // 68-retours.js
+  // dans l'ordre des étages, comme les boutons d'un ascenseur ; le gyrophare du -1 tourne tant qu'un appel attend ou qu'une intervention est en cours (csAlarm)
+  return (caserneOn()?tab(-1,'🚒','-1','caserne Support',cs.length,cg,csAlarm()?'<span class="gyro" role="img" aria-label="à traiter"></span>':''):'')+
+    tab(0,'🏢','RDC','open space')+(atelierOn()?tab(1,'🏭','1er','atelier',n,w):'')+
+    (redactionOn()?tab(2,'✍','2e','rédaction et revue',rdn,rdw):'')+ // 68-redaction.js
+    (retoursOn()?tab(3,'🛠','3e','retours de PR',rn,rw):''); // 68-retours.js
 }
 // étages qui existent, de haut en bas
 const floorsOn=()=>[...(retoursOn()?[3]:[]),...(redactionOn()?[2]:[]),...(atelierOn()?[1]:[]),0,...(caserneOn()?[-1]:[])];
@@ -112,7 +128,7 @@ function setFloor(f){
   else if(FLOOR===-1)csReset();else if(FLOOR===3)rtReset();else if(FLOOR===2)rdReset();else needTeleport=true;
   if(typeof LOUPE!=='undefined'){LOUPE.seen=null;LOUPE.queue=[];if(LOUPE.cur)loupeHide();}
   atelierTabs();renderSide(true);if(TV)updateTv(true); // 75-tv.js : la colonne et le bouton d'étage
-  {const det=document.querySelector('.legend-help');if(det&&det.open&&typeof renderGallery==='function')renderGallery();} // 46-gallery.js : les scènes de cet étage
+  if(typeof renderLegend==='function')renderLegend(); // 46-legende.js : la légende et « Comment lire le plan » de cet étage, ses scènes
 }
 // ---------- le plan de l'étage ----------
 // Quatre bureaux pleine largeur autour d'un couloir central (vertical) et d'un couloir horizontal ; une porte au milieu de
@@ -465,6 +481,22 @@ function atBoard(slots){
 // l'ouverture d'un mur ; n panneaux côte à côte (mur horizontal) ou l'un sous l'autre (vert : mur vertical)
 function woodDoor(g,x,y,w,h,n,vert){R(g,x,y,w,h,'#5a4636');
   for(let k=0;k<n;k++){if(vert){const ph=h/n;R(g,x+3,y+k*ph+3,w-6,ph-6,'#6b5543');}else{const pw=w/n;R(g,x+k*pw+3,y+3,pw-6,h-6,'#6b5543');}}}
+// ---------- la porte de l'escalier (2e, 3e) : la porte de l'entrée du RDC, dans le mur du bord du plan ----------
+// Ceux qui montent partent de derrière elle, hors du plan : dessinée après les personnages, avec son pan de mur, elle cache
+// ce qui est encore dans l'escalier ; elle s'ouvre (battants rabattus contre le mur) quand quelqu'un passe à moins d'une
+// case. d : {x,y,w,h,vert, wall:[x,y,w,h]} ; pts : les pieds de ceux qui marchent sur l'étage
+const stairOpen=(d,pts)=>pts.some(p=>Math.abs(p.x-(d.x+d.w/2))<(d.vert?70:40)&&Math.abs(p.y-(d.y+d.h/2))<(d.vert?40:70));
+function stairDoor(d,pts){
+  R(ctx,...d.wall,'#7d776c');
+  if(!stairOpen(d,pts)){woodDoor(ctx,d.x,d.y,d.w,d.h,2,d.vert);return;}
+  R(ctx,d.x,d.y,d.w,d.h,'#5a4636');R(ctx,d.x+2,d.y+2,d.w-4,d.h-4,'#2a2420');
+  if(d.vert){R(ctx,d.x-14,d.y+2,14,4,'#6b5543');R(ctx,d.x-14,d.y+d.h-6,14,4,'#6b5543');}
+  else{R(ctx,d.x+2,d.y-14,4,14,'#6b5543');R(ctx,d.x+d.w-6,d.y-14,4,14,'#6b5543');}
+}
+// le panneau « Sortie » au-dessus de la porte, net par-dessus le voile du soir, comme celui de l'entrée du RDC (42-light.js)
+function exitSign(x,y){ctx.fillStyle='#1d7a3c';ctx.fillRect(x,y,26,9);
+  ctx.fillStyle='#d8ffe2';ctx.font='bold 6px ui-monospace,Menlo,monospace';ctx.textAlign='left';ctx.fillText('SORTIE',x+2,y+7);}
+const exitHalo=(x,y)=>({x:x+13,y:y+4,r:26,a:.4,c:'rgba(80,230,120,.22)'});
 // ---------- le bureau du boss, le même à chaque étage (le 1er, le 2e, le 3e) : celui du RDC (40-furniture.js) ----------
 // Le fauteuil 44 px au-dessus des pieds du boss (F), le bureau de 100 px 16 px au-dessus ; mid(x0,top) pose ce qui est
 // propre à l'étage au milieu du bureau (sinon la feuille du RDC) ; la tasse à x0+mug.
@@ -660,7 +692,7 @@ function atLoupeEvents(now){
 function atDemo(mut,prep){return ()=>{const src=ATELIER&&(ATELIER.rooms||[]).length?ATELIER:atelierDemo(), cp=x=>JSON.parse(JSON.stringify(x));
   const base=cp(src);base.rooms=base.rooms||[];base.queue=base.queue||[];base.pannes=base.pannes||[];if(prep)prep(base);
   ATELIER=base;AT_MEM.fresh=true;atDiff(performance.now());
-  const d=cp(base);mut(d);ATELIER=d;};}
+  const d=cp(base);mut(d);ATELIER=d;AT_MEM.lastT=null;};} // passer en démonstration (depuis la pause, ou à 11 h le soir) n'est pas un saut du curseur : la scène se joue au premier clic
 const atFirst=d=>d.rooms.find(r=>!r.gate)||d.rooms[0];
 function atGalleryScenes(){
   const fam='1er étage', ok=true, cl=atCleaner(), out=[];
@@ -678,6 +710,8 @@ function atGalleryScenes(){
     play:{len:15e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.states=r.states||{};for(const k of ['cadrage','schema','patterns','gate','code','regles'])r.states[k]='ok';r.states.securite='bloq';r.poste='code';r.back=true;r.gate=null;r.note='🔒 bloquant → retour au code';})}});
   out.push({fam,ico:'🧯',n:'Poste en panne',d:'Son sous-workflow a échoué : fumée sur l\'écran, un pompier arrive avec un extincteur',w:'Un poste plante (API d\'un agent indisponible…)',ok,
     play:{len:20e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.states=r.states||{};r.states.tests='err';})}});
+  out.push({fam,ico:'🌙',n:'Le soir au 1er',d:'Le soir et le week-end, comme au RDC : les bureaux où un ticket tourne restent éclairés, chaque poste sous sa lampe, le boss sous la sienne ; Bernard est rentré',w:'Hors des heures de bureau',ok,
+    play:{len:20e3,speed:60,setup:s=>{atDemo(()=>{})();T=parisMidnight(s)+22.5*36e5;SCENE_DEMO.e=T+20e3*60;}}});
   if(cl)out.push({fam,ico:'🧹',n:cl.name+' · ménage du 1er',d:'Après le RDC, chaque bureau et l\'entrepôt, avec son chariot',w:'Le soir des jours ouvrés, après le RDC',c:cl,ok,
     play:{len:AT_CLEAN_DUR,speed:60,setup:s=>{const u=atCleanVisit(cl,s);
       if(!u){SCENE_DEMO.visit={c:cl,v:{s:s-CLEAN_DUR,e:s,r:rng(keySeed(cl.key)*7919+daySeed(s))}};SCENE_DEMO.e=s+AT_CLEAN_DUR;return;} // pas de ménage ce jour-là : il monte maintenant

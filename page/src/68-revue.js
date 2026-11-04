@@ -11,7 +11,8 @@
 // Données : REDACTION.revue (workflows/redaction_snapshot.py : les PR retenues par passage du cron, les verdicts) et les
 // runs des revues (DATA.runs, leur parent est le passage du cron). Dessiné par rdRevue (68-redaction.js).
 const RVF_TS=AT_TS, RVP=(x,y)=>({x:x*RVF_TS,y:y*RVF_TS});
-const RVF={stairLow:RVP(21.25,26.6),stair:RVP(21.25,24.2),hall:RVP(21.25,13.75),door:RVP(23.2,13.75),in:RVP(24.4,13.75),
+// stairLow : derrière la porte de l'escalier, hors du plan (RD_STAIR, 68-redaction.js) ; stair : juste devant
+const RVF={stairLow:RVP(21.25,28.9),stair:RVP(21.25,26.4),hall:RVP(21.25,13.75),door:RVP(23.2,13.75),in:RVP(24.4,13.75),
   desk:RVP(28.5,9.2),face:RVP(28.5,11.5),bench:RVP(41.6,25.2),cas:{x:24.5*RVF_TS,y:16.2*RVF_TS,h:1.05*RVF_TS},
   stand:RVP(26.7,18.4),pick:RVP(26.7,16.2),basket:RVP(24.6,10.4),bk:RVP(25.8,10.4),relx:26.7*RVF_TS,rely:23.5*RVF_TS,
   col:27.6*RVF_TS,lane:22.9*RVF_TS};
@@ -140,23 +141,24 @@ function rvfUpdate(now){
 const rvfSpot=s=>s.k==='chair'?rvfChair(s.j):s.k==='face'?RVF.face:RVF.stairLow;
 const rvfFiled=(f,now)=>f.filed||(f.fly!=null&&now>=f.fly+RVF_FLY);
 // ---------- le dessin ----------
-const rvfStairA=p=>p.y>RVF.stair.y?Math.max(0,Math.min(1,1-(p.y-RVF.stair.y)/(RVF.stairLow.y-RVF.stair.y))):1; // sur l'escalier : on s'efface
+const rvfOut=p=>p.y>AT_H+48; // encore dans l'escalier, tout entier derrière le mur : ni lui ni sa pancarte
 function rvfFolder(x,y,stamp,k){
   R(ctx,x-11,y-9,22,15,'#d9b46a');R(ctx,x-11,y-12,9,4,'#d9b46a');R(ctx,x-11,y-9,22,3,'#e8c987');R(ctx,x-9,y-4,16,1,'#a8843e');R(ctx,x-9,y-1,12,1,'#a8843e');
   const v=stamp&&RVF_V[stamp];if(v&&(k==null||k>0)){const s=k==null?1:k;ctx.save();ctx.translate(x+3,y-1);ctx.rotate(-.25);ctx.scale(s,s);ctx.strokeStyle=v[1];ctx.lineWidth=2;ctx.strokeRect(-9,-6,18,12);ctx.restore();}}
 const rvfStack=(x,y,vs)=>vs.forEach((v,k)=>rvfFolder(x,y-k*4,v));
-function rvfPerson(people,src,p,dir,moving,now,after){if(!src)return;const a=rvfStairA(p);if(a<=0)return;
+function rvfPerson(people,src,p,dir,moving,now,after){if(!src||rvfOut(p))return;
   const c=Object.assign(Object.create(Object.getPrototypeOf(src)),src,{pos:{x:p.x,y:p.y},tile:null,dir:dir||'down',moving:!!moving,pose:'stand',present:true,_st:{st:'idle'}});
-  people.push([{pos:{x:p.x,y:p.y}},null,false,()=>{ctx.save();ctx.globalAlpha=a;drawChar(c,now);if(after)after(p);ctx.restore();}]);}
+  people.push([{pos:{x:p.x,y:p.y}},null,false,()=>{drawChar(c,now);if(after)after(p);}]);}
 // le transpalette : poussé 36 px devant Bernard, garé sous lui pendant qu'il range
 function rvfJack(people,B,now){
-  const p=B.w.pos, v={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]}[B.w.dir]||[0,1], j=B.parked?RVF.park:{x:p.x+v[0]*36,y:p.y+v[1]*36}, a=rvfStairA(p);
+  const p=B.w.pos, v={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]}[B.w.dir]||[0,1], j=B.parked?RVF.park:{x:p.x+v[0]*36,y:p.y+v[1]*36};
+  if(rvfOut(j))return;
   const load=[...B.fresh.filter(f=>f.fly==null||now<f.fly).map(()=>null),...B.old];
-  people.push([{pos:{x:j.x,y:j.y}},null,false,()=>{ctx.save();ctx.globalAlpha=a;const x=Math.round(j.x), y=Math.round(j.y), side=!B.parked&&(B.w.dir==='left'||B.w.dir==='right'), w=side?40:32;
+  people.push([{pos:{x:j.x,y:j.y}},null,false,()=>{const x=Math.round(j.x), y=Math.round(j.y), side=!B.parked&&(B.w.dir==='left'||B.w.dir==='right'), w=side?40:32;
     ctx.strokeStyle='#3a3530';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y-6);ctx.lineTo(p.x,p.y-26);ctx.stroke();
     ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(x,y+3,20,5,0,0,7);ctx.fill();
     R(ctx,x-w/2,y-4,w,5,'#7d776c');R(ctx,x-w/2+2,y-12,w-4,9,'#b98a4e');for(let k=0;k<3;k++)R(ctx,x-w/2+2+k*((w-8)/2),y-12,4,9,'#8a6a3a');
-    R(ctx,x-5,y-8,10,10,'#c8323a');R(ctx,x-5,y-8,10,2,'#e05a5a');rvfStack(x,y-16,load);ctx.restore();}]);
+    R(ctx,x-5,y-8,10,10,'#c8323a');R(ctx,x-5,y-8,10,2,'#e05a5a');rvfStack(x,y-16,load);}]);
 }
 const rvfName=a=>{const c=a&&typeof ghChar==='function'?ghChar(a):null, boss=chars.find(x=>x.boss);return c&&!(boss&&c.key===boss.key)?c:null;};
 // le casier, la corbeille, la salle d'attente, Bernard, le relecteur en marche, les auteurs ; le premier bureau (lecture)

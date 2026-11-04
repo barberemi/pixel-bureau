@@ -11,9 +11,16 @@
 // le gyrophare tourne tant qu'il y a un appel à prendre ou une intervention en cours.
 // Données : dataset support (48-support.js) ; l'état des postes vient des étapes du run (cron live, chaque minute : une
 // étape par poste, ou le modèle d'avant, une seule investigation), sinon de t.run.postes (relevé, plus espacé). Toile de l'atelier (AT_W × AT_H).
-const CS_POSTES=[{k:'tri',i:'🏷',n:'Tri'},{k:'logs',i:'🔎',n:'Logs'},{k:'cause',i:'🧩',n:'Cause'},{k:'reponse',i:'✉',n:'Réponse'},
-  {k:'relecture',i:'🧐',n:'Relecture'},{k:'gate',i:'✋',n:'Toi',gate:true},{k:'post',i:'📣',n:'Teams'}];
+const CS_POSTES=[{k:'tri',i:'🏷',n:'Tri',d:'trie l\'appel : de quoi on parle, est-ce urgent'},{k:'logs',i:'🔎',n:'Logs',d:'relève ce que le fil donne et les commandes à lancer'},
+  {k:'cause',i:'🧩',n:'Cause',d:'cherche la cause'},{k:'reponse',i:'✉',n:'Réponse',d:'rédige la réponse'},{k:'relecture',i:'🧐',n:'Relecture',d:'relit la réponse'},
+  {k:'gate',i:'✋',n:'Toi',gate:true,d:'tu valides la réponse'},{k:'post',i:'📣',n:'Teams',d:'poste la réponse dans le fil Teams'}];
 const CS_ST={ok:['ok','a travaillé'],run:['run','au travail'],err:['err','en panne'],gate:['wait','t\'attend'],wait:['','attend son tour']};
+// « Comment lire le plan » au -1 (46-legende.js) ; les postes viennent de CS_POSTES
+const CS_HELP={bar:()=>'<span class="lk"><i data-st="work"></i>au travail</span><span class="lk"><i class="ring dot" data-st="gate"></i>t\'attend</span><span class="lk"><i class="ring dash" data-st="error"></i>en panne</span><span>🚨 gyrophare : un appel attend ou une intervention tourne</span>',
+  postes:()=>[['',CS_POSTES]],
+  qui:'<p><b>Pompiers</b> : les agents, en tenue de sapeur-pompier, un par poste.</p><p><b>Le capitaine</b> (le boss), à son bureau, va ouvrir la vanne quand une réponse attend ta validation.</p><p>La garde reste le soir et le week-end, sous la veilleuse.</p>',
+  ou:'<p><b>Trois baies</b> : trois interventions à la fois, chacune avec son camion.</p><p><b>Le tableau</b> : son voyant clignote à chaque appel. <b>La pile</b> sur le bureau du capitaine : les appels à prendre.</p><p><b>La barre</b> : les pompiers y descendent et y remontent.</p>',
+  moments:'<p><b>🚒 Une intervention démarre</b> : le rideau se lève, le camion sort, le tuyau se déroule jusqu\'au Tri.</p><p><b>💧 Le tuyau</b> se remplit jusqu\'au poste qui travaille.</p><p><b>📣 Le camion part</b> : la réponse est postée dans Teams, le camion rentre.</p>'};
 const CS_BAYS=3, CS_BX=[1,12.25,23.5], CS_BW=10.25, CS_DY0=3.1, CS_DY1=10.1, CS_Z0=10.8, CS_Z1=20.7, CS_R1=14.3, CS_R2=18.7;
 const CS_DESK={x:17*AT_TS,y:24.6*AT_TS}, CS_POLE={x:43.6*AT_TS,y0:9*AT_TS,y1:13.4*AT_TS}, CS_TABLE={x:39*AT_TS,y:16*AT_TS};
 const CS_DEP_MS=6.5e3; // la fin d'une intervention : le tuyau s'enroule, le camion rentre dans sa baie, le rideau se ferme sur lui

@@ -16,8 +16,8 @@ test('la page est large et le plan tient dans la hauteur de l\'écran (hors mode
   assert.match(css, /body:not\(\.tv\) \.cv-wrap>#cv\{width:min\(100%,calc\(\(100vh - 150px\) \* var\(--plan-ratio,2\)\)\);margin:0 auto\}/);
 });
 
-test('aux étages, aucun texte sous 10 px, sauf le décor (le casque, la plaque du boss, les dossiers du casier)', () => {
-  const DECOR = ["'CASQUE'", "WORLD'S BEST BOSS", 'rvfFolder(']; // le casque, la plaque du boss, l'étiquette d'un dossier du casier (2e)
+test('aux étages, aucun texte sous 10 px, sauf le décor (le casque, la plaque du boss, les dossiers du casier, le panneau Sortie)', () => {
+  const DECOR = ["'CASQUE'", "WORLD'S BEST BOSS", 'rvfFolder(', "'SORTIE'"]; // le casque, la plaque du boss, l'étiquette d'un dossier du casier (2e), le panneau Sortie de la porte de l'escalier (celui du RDC)
   for (const f of ['68-atelier.js', '68-caserne.js', '68-redaction.js', '68-retours.js', '68-revue.js']) {
     read(f).split('\n').forEach((l, i) => {
       for (const m of l.matchAll(/\b(\d+)px (?:ui-monospace|system-ui|ui-sans-serif|sans-serif)/g))

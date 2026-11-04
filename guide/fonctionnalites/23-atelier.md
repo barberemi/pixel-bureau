@@ -4,7 +4,7 @@ Le 1er étage montre les tickets en cours d'implémentation par la chaîne de po
 
 ## Monter à l'étage
 
-Les onglets au-dessus du plan (« 🏢 RDC · open space », « 🏭 1er · atelier d'implémentation ») apparaissent quand la chaîne est installée (`models.impl_chain`). Le chiffre sur l'onglet du 1er compte les bureaux occupés, « ✋ n » les validations qui t'y attendent ; l'étage choisi est retenu par le navigateur.
+Les boutons d'étage au-dessus du plan (« 🏢 RDC », « 🏭 1er », le nom de l'étage en entier au survol) apparaissent quand la chaîne est installée (`models.impl_chain`). Le chiffre sur l'onglet du 1er compte les bureaux occupés, « ✋ n » les validations qui t'y attendent ; l'étage choisi est retenu par le navigateur.
 
 Les workflows de l'étage (la chaîne et ses postes, modèles `impl*`) ne passent plus au rez-de-chaussée : pas d'intérimaire pour eux dans l'open space, et « Nouvel agent » (la baie de la salle Serveurs) ne les propose pas. Le **lanceur** (`models.impl`, « ▶ Implémenter ») reste au RDC : l'agent qui l'incarne est un homme de chantier, casque jaune et gilet orange. Quand un ticket arrive au 1er, il va prendre son carton à son bureau et le porte jusqu'à l'entrée principale (« 📦 DM-7305 → 1er étage »), pendant une minute ; le colis apparaît alors dans l'entrepôt du 1er.
 
@@ -39,7 +39,7 @@ Les workflows de l'étage (la chaîne et ses postes, modèles `impl*`) ne passen
 
 - **La loupe** (bouton « 🔍 Loupe ») suit aussi l'étage : un ticket qui sort (Bernard l'emporte), un ticket qui arrive, le boss à la porte d'un bureau qui attend ta décision, un retour au code, un poste en panne, le ménage du soir.
 - **Le mode TV** reste sur l'étage choisi : la colonne de droite montre les bureaux (ticket, poste, barre des postes), l'entrepôt et les pannes. Le bouton « 🏭 1er étage / 🏢 RDC » de la barre (ou la touche E) change d'étage ; l'adresse de l'écran mural peut fixer l'étage (`?tv=1&floor=1`) ou alterner les deux (`?tv=1&floor=alt` : 60 s sur l'open space, 40 s sur l'atelier quand des tickets y sont).
-- **Les scènes du bureau** (« Comment lire le plan ») ne montrent que celles de l'étage affiché. Au 1er : un ticket arrive, un ticket sort, un poste rend son verdict, le boss va à la porte, l'escalade, le retour au code, le poste en panne, le ménage du soir ; « ▶ voir » la joue sur le plan à n'importe quelle heure, même sans ticket sur la chaîne, avec les quatre bureaux pris ou un jour sans ménage (la scène part alors de bureaux de démonstration), puis l'atelier revient tel qu'il était.
+- **Les scènes du bureau** (« Comment lire le plan ») ne montrent que celles de l'étage affiché. Au 1er : un ticket arrive, un ticket sort, un poste rend son verdict, le boss va à la porte, l'escalade, le retour au code, le poste en panne, le ménage du soir, le soir au 1er ; « ▶ voir » la joue dès le premier clic, sur le plan à n'importe quelle heure, même sans ticket sur la chaîne, avec les quatre bureaux pris ou un jour sans ménage (la scène part alors de bureaux de démonstration), puis l'atelier revient tel qu'il était.
 
 ## Le panneau
 

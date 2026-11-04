@@ -628,6 +628,15 @@ body.tv .recap,body.tv .recapbtn{display:none!important}
 .lh-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px 18px;margin-top:6px}
 .lh-grid h4{margin:6px 0 2px;font-size:12px;color:var(--ink)}
 .lh-grid p{margin:2px 0;line-height:1.45}
+/* « Comment lire le plan » en onglets (46-legende.js) : un onglet à la fois, le titre du bloc est l'onglet */
+.lh-tabs{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.lh-tabs button{font:600 12px system-ui,sans-serif;padding:4px 10px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.lh-tabs button.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.legend-help .lh-grid h4{display:none}
+.lh-grid.lh-floor{display:flex;flex-wrap:wrap;gap:2px 18px}
+.lh-floor p{flex:1 1 260px}
+.lh-floor h5{flex-basis:100%;margin:6px 0 0;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
+.legend[hidden],.lh-grid[hidden],.lh-grid>div[hidden],.gal[hidden]{display:none}
 .lh-grid .lk{display:inline-flex;align-items:center;margin-right:10px;white-space:nowrap}
 .lh-grid i{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px}
 .lh-grid i.sq{border-radius:1px;outline:1px solid #1a1320}
@@ -846,10 +855,12 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .pz{display:inline-flex;vertical-align:-2px;margin-right:4px}.pz svg{display:block;shape-rendering:crispEdges}
 .pz-head{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin:0 0 6px}.pz-head b{color:var(--ink)}
 /* 1er étage : l'atelier d'implémentation (68-atelier.js) */
-.floors{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
-.floors button{font:600 13px system-ui,sans-serif;padding:6px 9px;border:3px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.floors{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 6px}
+.floors button{font:600 13px system-ui,sans-serif;padding:4px 8px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:5px;line-height:1.2}
 .floors button.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
-.floors b{background:var(--warn);color:#1c1c1c;padding:0 6px;margin-left:4px}
+.floors .fi{font-size:15px}
+.floors b{background:var(--warn);color:#1c1c1c;padding:0 4px;font-size:11px;border-radius:2px}
+.floors b.h{background:#ffcf4a}
 /* 3e étage (68-retours.js) : la fenêtre Kanban d'un bureau, les fils en colonnes, le fil choisi à droite */
 .rt-kb{position:fixed;inset:0;z-index:60;background:rgba(10,12,20,.6);display:flex;align-items:center;justify-content:center;padding:16px}
 .rt-kbw{background:var(--panel);color:var(--ink);border:3px solid var(--line);width:min(1180px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;gap:10px;padding:12px 14px;overflow:hidden}

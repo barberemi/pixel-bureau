@@ -9,8 +9,18 @@
 // (🗺 contexte, 📚 docs, 🔍 lecture, 🔒 sécu : un sous-workflow review_<poste> chacun ; puis 🧐 avis et ✍ postée).
 // Au mur, le tableau noir des revues du jour. Le soir et le week-end, la veilleuse : seuls ceux au travail et le boss.
 // Données : dataset redaction (workflows/redaction_snapshot.py, cron live) et les runs de la revue (DATA.runs) ; démo : redactionDemo().
-const RD_POSTES=[{k:'recherche',i:'📚',n:'Recherche'},{k:'redaction',i:'✍',n:'Rédaction'},{k:'critique',i:'🧐',n:'Critique'},{k:'valider',i:'✋',n:'Toi'}];
+const RD_POSTES=[{k:'recherche',i:'📚',n:'Recherche',d:'cherche ce que l\'intention touche, projet par projet'},{k:'redaction',i:'✍',n:'Rédaction',d:'écrit les tickets, un par projet touché'},
+  {k:'critique',i:'🧐',n:'Critique',d:'relit les tickets et renvoie à la rédaction (trois tours au plus)'},{k:'valider',i:'✋',n:'Toi',d:'tu tamponnes chaque ticket, ou tu demandes des changements'}];
 const RD_TK={wait:['#f7e07a','attend la critique'],run:['#9fd4ff','en cours'],gate:['#ffcf4a','t\'attend'],ok:['#b6e3a8','créé'],ecarte:['#d8d2c4','écarté'],err:['#f4a3a3','en panne']};
+// « Comment lire le plan » au 2e (46-legende.js) : les postes de la rédaction, puis les étapes d'une revue (RV_STEP)
+const RD_HELP={bar:()=>'<span>Tickets :</span>'+legSwatches(RD_TK)+'<span>Verdicts : '+Object.entries({approve:'approuvée',comment:'commentée',request_changes:'changements',err:'en échec'}).map(([k,t])=>RVF_V[k][0]+' '+t).join(' · ')+'</span>',
+  postes:()=>[['Rédaction',RD_POSTES],['Revue d\'une PR',Object.values(RV_STEP).map(([l,,d])=>({i:l.split(' ')[0],n:l.slice(l.indexOf(' ')+1),d}))]],
+  qui:'<p><b>Rédaction</b> : les agents en reporters, chapeau mou et carte de presse.</p><p><b>Revue</b> : les relecteurs à visière verte ; l\'auteur de la PR assis en face, de dos ; un agent remplaçant pour ta propre PR.</p>'+
+    '<p><b>Bernard</b> monte la fournée du cron des revues. <b>Le boss</b> tamponne les tickets.</p>',
+  ou:'<p><b>Bibliothèques</b> : une par composant Jira. <b>La table</b> : une intention et ses tickets ; <b>le fil rouge</b> relie les postes qui y ont travaillé. <b>Le liège</b> : les autres intentions.</p>'+
+    '<p><b>Casier « À relire »</b> : la file du cron, dans l\'ordre. <b>Corbeille « Postées »</b> : les avis du passage. <b>Six bureaux</b> de revue, le premier pour la file. <b>Salle d\'attente</b> : une chaise par auteur.</p>',
+  moments:'<p><b>✋ Le tampon</b> : les tickets relus attendent ta validation, un par un.</p><p><b>✂ Le découpage</b> : une intention qui touche plusieurs projets devient plusieurs tickets, un brin de fil chacun.</p>'+
+    '<p><b>📥 La fournée</b> : à chaque passage du cron des revues, Bernard range un dossier par PR dans le casier.</p>'};
 const RD_X1=19.5, RD_VX=23, RD_SH0=['dm/site','dm/mobile','dm/api','dm/outils'];
 const RD_WINDOWS=[7.5,10.5,13.5,16.5,25,28.5,32,35.5,39,42.5]; // en cases : à droite du nom de l'étage, comme au RDC
 const RD_DESK={x:15.6*AT_TS,y:23.4*AT_TS}, RD_JIRA={x:17.8*AT_TS,y:25.6*AT_TS}, RD_CORK={x:1.6*AT_TS,y:9.4*AT_TS};
@@ -50,7 +60,7 @@ const rvPosteWf=w=>!!w&&(CFG.revue_postes_wf||[]).includes(String(w).slice(0,8))
 const rdPosteWf=w=>!!w&&((CFG.ticket&&CFG.ticket.postes_wf)||[]).includes(String(w).slice(0,8));
 function rvRuns(){
   const l=((DATA&&DATA.runs)||[]).filter(r=>rvWf(r.wf)&&r._s<=T);
-  if(!l.length&&DEMO)return rvDemo();
+  if(!l.length&&DEMO||SCENE_DEMO&&SCENE_DEMO.revue)return rvDemo(); // une scène de la revue (galerie) se joue sur la journée de démo
   return l.sort((a,b)=>a._s-b._s);
 }
 const RV_DEMO=['whoami','setup','fetch_files','write_ctx','contexte','docs','lecture','securite','avis','map_event','post'];
@@ -64,8 +74,10 @@ function rvDemo(){
     ...[1,2,3,4,5].map(k=>({run:'demo-rd'+k,status:'Success',_s:DAY0+(7+k/2)*36e5,vars:{},steps:[]}))];
 }
 const rvActive=()=>rvRuns().filter(r=>RUN_ACTIVE.includes(r.status)).slice(0,6);
-const RV_STEP={contexte:['🗺 contexte','je cadre la PR…'],docs:['📚 docs','je lis la doc…'],lecture:['🔍 lecture','je lis le diff…'],
-  securite:['🔒 sécu','je cherche la faille…'],avis:['🧐 avis','je rédige l\'avis…'],post:['✍ postée',null]};
+// [nom, bulle, ce que fait l'étape (« Comment lire le plan »)]
+const RV_STEP={contexte:['🗺 contexte','je cadre la PR…','cadre la PR : le ticket, le dépôt, ce qui change'],docs:['📚 docs','je lis la doc…','lit la doc du dépôt'],
+  lecture:['🔍 lecture','je lis le diff…','lit le diff'],securite:['🔒 sécu','je cherche la faille…','cherche les failles'],avis:['🧐 avis','je rédige l\'avis…','rédige l\'avis'],
+  post:['✍ postée',null,'poste l\'avis sur la PR']};
 const rvStepName=n=>(RV_STEP[n]||[n])[0];
 // une étape finie ou à venir ne montre que son icône ; l'étape en cours ou en échec, son nom aussi (comme les postes des étages)
 const rvStepLbl=s=>{const t=rvStepName(s.n), k=t.indexOf(' ');return k<0||s.s==='Running'||s.s==='Failed'?t:t.slice(0,k);};
@@ -79,11 +91,13 @@ function rdBackground(){
   R(g,0,0,AT_W,T,'#4b4a52');R(g,0,T,AT_W,8,'#efe9dc');R(g,0,T+8,AT_W,24,'#d9d2c3');R(g,0,T+28,AT_W,4,'#a99f8c');
   for(const x of [RD_X1,RD_VX]){R(g,x*T-3,2*T,6,10.5*T,'#7d776c');R(g,x*T-3,15*T,6,12*T,'#7d776c');}
   for(const x of [RD_X1,RD_VX])woodDoor(g,x*T-6,12.5*T,12,2.5*T,2,true); // les portes de la rédaction et de la revue, sur le couloir
-  const sx=(RD_X1+RD_VX)/2*T;R(g,sx-40,24*T,80,2.6*T,'#8a8478');for(let k=0;k<5;k++)R(g,sx-40,24*T+k*16,80,3,'#a9a397');
   g.font='bold 13px ui-monospace,Menlo,monospace';g.fillStyle='#5a4636';g.fillText('2E · RÉDACTION ET REVUE',12,T+20);
   return c;
 }
 let RD_BG=null;
+// la porte de l'escalier : en bas du couloir, entre la rédaction et la revue (stairDoor, 68-atelier.js)
+const RD_STAIR={x:(RD_X1+RD_VX)/2*RD_T-RD_T,y:27*RD_T-12,w:2*RD_T,h:12,vert:false,wall:[RD_X1*RD_T+3,27*RD_T-12,(RD_VX-RD_X1)*RD_T-6,12]};
+const RD_EXIT={x:(RD_X1+RD_VX)/2*RD_T-13,y:27*RD_T-23};
 // le chapeau mou et la carte de presse des reporters ; la visière verte des correcteurs
 function rdHat(g,kind,x,y,dir){const hx=x+(dir==='left'?-2:dir==='right'?2:0), hy=y-44;
   if(kind==='presse'){R(g,hx-13,hy+2,26,3,'#4a3a2a');R(g,hx-8,hy-7,16,10,'#5a4636');R(g,hx-8,hy-1,16,3,'#2a2018');if(dir!=='up')R(g,hx+1,hy-6,7,5,'#fbfbf6');}
@@ -181,7 +195,7 @@ function rdRevue(now,people){
     atHitRd('review',cx-60,feet-60,120,rf-feet+80,{run:r.run});}
   if(l.length<6)rdBench(people,41.6*T,25.2*T,file&&F.M.rel?[96]:[96,97],'visiere'); // le relecteur de la file quitte le banc
   const sx=(RD_X1+RD_VX)/2*T;atCoffee(sx,6.4*T);atPlant(sx-36,20*T);atPlant(sx+36,20*T);
-  rdLate(people,()=>atPill('⇅ escalier · RDC',sx,23.6*T,'#5a4636','#fff','bold 11px ui-monospace,Menlo,monospace'),1e6);
+  rdLate(people,()=>atPill('⇅ escalier · RDC',sx,27*T-30,'#5a4636','#fff','bold 11px ui-monospace,Menlo,monospace'),27*T-40); // au sol : ceux qui sortent de la porte passent devant
 }
 // ---------- la nuit, comme au RDC (floorNight) : la salle de rédaction s'allume tant qu'une intention y est, chaque bureau de
 // la revue quand une PR y est lue ; la lampe du bureau du boss reste allumée ; hors des heures de bureau, la veilleuse ----------
@@ -192,13 +206,15 @@ function rdNight(people,now){
   const lit=k=>file?(k===0?!!(st&&st.reading):!!l[k-1]):!!l[k];
   for(let k=0;k<6;k++){const cx=28.5+(k%3)*6.3, f=k<3?9.2:18.4;rooms.push([Math.round(cx-2.5),Math.round(f-3),Math.round(cx+2.5),Math.round(f+3),lit(k)]);}
   floorNight(RD_NIGHT,{rooms,closed:!atOpen(),track:RD_LIT,spots:[...floorPeopleSpots(people),...RD_LIT.map(q=>({x:q.x,y:q.y-26,r:42,a:.95})),
-    floorBossLamp(RD_DESK.x,RD_DESK.y),{x:(RD_X1+RD_VX)/2*T_,y:24.6*T_,r:1.6*T_,a:.45}]},now); // l'escalier
+    floorBossLamp(RD_DESK.x,RD_DESK.y),{x:(RD_X1+RD_VX)/2*T_,y:26.2*T_,r:1.6*T_,a:.45},exitHalo(RD_EXIT.x,RD_EXIT.y)]},now); // la porte de l'escalier
+  if(RD_NIGHT.lv)exitSign(RD_EXIT.x,RD_EXIT.y);
 }
 function rdReset(){RD_MEM={last:0};RDSEL=null;if(typeof rvfReset==='function')rvfReset();}
 function renderRedaction(now){
   RD_MEM.last=now;if(!RD_BG)RD_BG=rdBackground();ctx.drawImage(RD_BG,0,0);atWindows(now,RD_WINDOWS);RD_HITS=[];RD_LIT=[];
   const people=[];rdRoom(now,people);rdRevue(now,people);
   people.sort((a,b)=>a[0].pos.y-b[0].pos.y).forEach(([c,d,before,after])=>{if(d)d();if(c.sprite)drawChar(c,now);if(after)after();});
+  stairDoor(RD_STAIR,people.map(q=>q[0].pos));
   rdNight(people,now);
   const b=chars.find(c=>c.boss);if(b&&sel===b.key)selHalo(RD_DESK.x,RD_DESK.y-26,AT_W,AT_H);
   atReplayPill();
@@ -261,7 +277,7 @@ function rdSearchRows(q){
 }
 function rdDemo(mut){return ()=>{const d=JSON.parse(JSON.stringify((REDACTION&&rdTables().length)?REDACTION:redactionDemo()));mut(d);REDACTION=d;rdReset();};}
 function rdGalleryScenes(){
-  const fam='2e étage', ok=true;
+  const fam='2e étage · rédaction', ok=true;
   return [{fam,ico:'✂',n:'Une intention découpée',d:'La rédaction découpe l\'intention en trois tickets : le fil rouge se divise en trois brins',w:'Une intention qui touche plusieurs projets',ok,
       play:{len:15e3,speed:1,setup:rdDemo(d=>{const t=d.tables[0];if(t){t.poste='critique';t.tickets.forEach(x=>{x.etat='wait';});}})}},
     {fam,ico:'✋',n:'Le tampon',d:'Les tickets sont relus : le boss les tamponne, tes changements renvoient à la rédaction',w:'Avant leur création',ok,
@@ -269,5 +285,16 @@ function rdGalleryScenes(){
     {fam,ico:'🎫',n:'Les tickets partent dans Jira',d:'Tamponnés, ils sont créés un par un : les brins du fil rouge vont jusqu\'à la boîte Jira',w:'Tu approuves chaque ticket',ok,
       play:{len:15e3,speed:1,setup:rdDemo(d=>{const t=d.tables[0];if(t){t.poste='valider';t.tickets.forEach(x=>{x.etat='ok';});}})}},
     {fam,ico:'🌙',n:'Le soir au 2e',d:'Le soir et le week-end, comme au RDC : la salle de rédaction et les bureaux de revue occupés s\'allument comme des pièces, les bureaux libres restent dans l\'ombre, le boss lit sous sa lampe',w:'Hors des heures de bureau',ok,
-      play:{len:20e3,speed:60,setup:s=>{rdDemo(()=>{})();const n=parisMidnight(s)+22.5*36e5;T=n;SCENE_DEMO.e=n+20e3*60;}}}];
+      play:{len:20e3,speed:60,setup:s=>{rdDemo(()=>{})();const n=parisMidnight(s)+22.5*36e5;T=n;SCENE_DEMO.e=n+20e3*60;}}},...rvGalleryScenes()];
+}
+// ---------- les scènes de la revue (68-revue.js) : rejouées sur la journée de démo, à l'heure où elle les joue ----------
+// h : l'heure du moment dans redactionDemo / rvDemo ; la scène commence 1,5 s avant, en ×1
+function rvScene(h,len){return {len,speed:1,setup:()=>{REDACTION=redactionDemo();rdReset();SCENE_DEMO.revue=true;T=DAY0+h*36e5-1500;SCENE_DEMO.s=T;SCENE_DEMO.e=T+len;}};}
+function rvGalleryScenes(){
+  const fam='2e étage · revue des PR', file=rvfOn(), ask=!!(CFG.revue_wf||[]).length||DEMO, why='La revue des PR n\'est pas installée';
+  return [{fam,ico:'📥',n:'La fournée du cron',d:'Bernard monte les PR sur son transpalette, vide la corbeille et range un dossier par PR dans le casier ; les auteurs s\'assoient en salle d\'attente',w:'Chaque passage du cron des revues',ok:file,why,play:rvScene(9.5,45e3)},
+    {fam,ico:'🗂',n:'Le relecteur prend un dossier',d:'Il va chercher le dossier du haut du casier, les autres remontent d\'une case ; l\'auteur quitte sa chaise et s\'assoit en face',w:'Une revue commence',ok:file,why,play:rvScene(9.52,15e3)},
+    {fam,ico:'🔖',n:'L\'avis est posté',d:'Le relecteur tamponne le verdict (✅ 💬 🔧) et pose le dossier dans la corbeille « Postées »',w:'L\'avis est posté sur la PR',ok:file,why,play:rvScene(9.7,15e3)},
+    {fam,ico:'🚶',n:'L\'auteur repart',d:'Sa dernière PR relue, il redescend avec ses verdicts au-dessus de la tête ; s\'il en a une autre juste après, il reste au bureau',w:'Fin des PR d\'un auteur',ok:file,why,play:rvScene(9.98,20e3)},
+    {fam,ico:'🔍',n:'Une revue à la demande',d:'Hors de la file : un autre bureau de revue s\'allume, le relecteur à son bureau, l\'auteur en face ; pour ta propre PR, un agent remplaçant',w:'« 🔍 Review » sur une PR',ok:ask,why,play:rvScene(10+10/60,10e3)}];
 }

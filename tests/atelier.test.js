@@ -454,3 +454,28 @@ test("atelier_sprite : le boss du 1er est dessiné avec son dessin de l'étage, 
   assert.equal(drawn(), J2('__b.sprite'), 'sprite introuvable : repli sur le sien');
   p.run('delete __b.atelier_sprite; drawChar = __d;');
 });
+
+test("galerie : la scène se joue au premier clic, depuis la pause comme le soir (passer en démonstration n'est pas un saut du curseur)", () => {
+  for (const h of [11, 22.5]) {
+    const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+    p.run(`CFG.atelier = true; ATELIER = atelierDemo(); setFloor(1); setMode('pause'); T = DAY0 + ${h} * 36e5; renderAtelier(500); renderAtelier(600);`);
+    assert.deepEqual(J2('AT_MEM.scenes'), [], 'rien ne se joue en arrivant');
+    p.run('demoStart(atGalleryScenes().find(x => x.n === "Un ticket arrive")); renderAtelier(700); renderAtelier(800);');
+    assert.deepEqual(J2('AT_MEM.scenes.map(s => s.kind)'), ['arrive'], h + ' h : Bernard apporte le carton');
+    p.run('demoEnd(); demoStart(atGalleryScenes().find(x => x.n === "Un ticket sort")); renderAtelier(900); renderAtelier(1000);');
+    assert.deepEqual(J2('AT_MEM.scenes.map(s => s.kind)'), ['exit'], h + ' h : Bernard emporte le carton');
+    p.run('demoEnd();');
+  }
+});
+
+test('« Le soir au 1er » : comme aux autres étages, la scène passe à 22 h 30 et rend la journée telle quelle', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  p.run(`CFG.atelier = true; ATELIER = atelierDemo(); setFloor(1); T = DAY0 + 11 * 36e5; var __T = T;`);
+  const x = J2("atGalleryScenes().filter(x => x.n === 'Le soir au 1er').map(x => x.ok)");
+  assert.deepEqual(x, [true]);
+  p.run(`demoStart(atGalleryScenes().find(x => x.n === 'Le soir au 1er')); renderAtelier(1000);`);
+  assert.equal(J2('parisHM(T).h'), 22);
+  assert.equal(J2('officeOpen(T)'), false);
+  p.run('demoEnd();');
+  assert.equal(J2('T === __T'), true);
+});
