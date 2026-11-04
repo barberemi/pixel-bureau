@@ -112,7 +112,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Commande de contrôle du dépôt (fix.checks du pack ou github.checks de ta config) sur les corrections ; verdict en tête de la validation, jamais bloquant (0 token).",
+    "description": "Contrôles du dépôt sur les fichiers de la PR (ceux de la chaîne, impl.repos.<dépôt>.checks, sauf fix.checks du pack ou github.checks de ta config) ; une commande rouge est relancée sur la PR d'avant les corrections ; verdict en tête de la validation, jamais bloquant (0 token).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -122,7 +122,7 @@
      "{{pr}}",
      "{{run.id}}"
     ],
-    "exec_timeout_secs": 960
+    "exec_timeout_secs": 2400
    },
    {
     "agent": "ClaudeCode",

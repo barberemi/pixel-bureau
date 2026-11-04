@@ -175,11 +175,11 @@ def impl_version():
     return dict(_VERSION)
 
 
-LIB_IMPORT = re.compile(r"^from (_lib|_plan) import [\w, ]+$", re.M)
+LIB_IMPORT = re.compile(r"^from (_lib|_plan|_checks) import [\w, ]+$", re.M)
 
 
 def script_code(path, cfg):
-    """Le script tel qu'il tourne dans Kronn (« python3 -c », sans fichier voisin) : workflows/_lib.py et _plan.py
+    """Le script tel qu'il tourne dans Kronn (« python3 -c », sans fichier voisin) : workflows/_lib.py, _plan.py et _checks.py
     recopiés à la place de leur ligne « from _lib import … », puis la config d'installation injectée à la place de
     __BUREAU_CONFIG__."""
     cfg = assemble.merged(cfg)  # réglages d'équipe du pack (#32) : les scripts n'ont pas accès au pack

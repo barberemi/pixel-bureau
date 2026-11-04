@@ -8,8 +8,8 @@ Sous-commandes (python3 pr_update.py <étape> <dépôt owner/name> <n° de PR> <
   rebase   rebase sur la base de la PR, commits gardés tels quels. Déjà à jour : rien à faire. Conflit : le rebase reste
            en cours pour l'agent qui le résout, code 3 (renvoi vers resolve).
   verify   après l'agent : plus de rebase en cours ni de marqueur de conflit (sinon code 4) ; résumé de la résolution.
-  check    après un conflit seulement : la commande de contrôle du dépôt (github.checks), dépendances reliées depuis ton
-           dossier local du dépôt s'il est un projet Kronn ; son résultat part dans la validation, jamais bloquant.
+  check    après un conflit seulement : les contrôles du dépôt (voir checks_of), dépendances reliées depuis ton dossier
+           local du dépôt s'il est un projet Kronn ; leur résultat part dans la validation, jamais bloquant.
   push     push protégé (--force-with-lease sur la tête lue au départ), label de CI retiré puis reposé, dossier de travail
            retiré. Rien de nouveau : rien poussé.
   done     fin du chemin sans conflit (message seulement).
@@ -17,8 +17,9 @@ Sous-commandes (python3 pr_update.py <étape> <dépôt owner/name> <n° de PR> <
 Corriger les commentaires d'une PR (#75, page action « bureau-fixpr ») :
   fix_prepare  fils de review non résolus (aucun : code 9, renvoi vers la fin), dossier de travail, dépendances reliées
                depuis ton dossier local du dépôt, contexte de l'agent (.bureau-fix.json, jamais commité).
-  fix_check    après l'agent : la commande de contrôle du dépôt (fix.checks du pack ou github.checks de ta config) sur le
-               dossier de travail ; son verdict part en tête de la validation, jamais bloquant.
+  fix_check    après l'agent : les contrôles du dépôt (voir checks_of) sur les fichiers de la PR ; une commande rouge
+               est relancée sur la tête de la PR d'avant les corrections (déjà rouge pareil : rien de nouveau) ; le
+               verdict part en tête de la validation, jamais bloquant.
   fix_diff     après l'agent : verdict des contrôles, fichiers changés, diff et réponse prévue à chaque fil, pour la
                validation (rien : code 9).
   fix_push     validé : commit signé (-s, message de l'agent), push protégé, une réponse dans chaque fil (résolu s'il est
@@ -27,6 +28,7 @@ Codes : 2 réglage ou PR refusés, 3 conflit (renvoi), 4 conflit non résolu, 5 
 """
 import glob, json, os, re, shutil, subprocess, sys, time
 from _lib import CFG, fil_col, get, read_json, write_json
+from _checks import check_run
 
 HOME = os.path.expanduser("~/.cache/pixel-bureau/pr")
 GH = CFG.get("github") or {}
@@ -196,37 +198,91 @@ def verify(repo, n, run_id):
     print(f"Conflit résolu : {count} commit(s) rejoués sur {st['base']}.\n\n{summary or '(pas de résumé de l’agent)'}")
 
 
-def check_cmd(repo):
-    """Commande de contrôle du dépôt : github.checks de ta config, sinon fix.checks du pack d'équipe ; vide sans réglage."""
-    return (GH.get("checks") or {}).get(repo) or ((CFG.get("fix") or {}).get("checks") or {}).get(repo) or ""
+def checks_of(repo):
+    """Les contrôles du dépôt et d'où ils viennent : github.checks de ta config, sinon fix.checks du pack d'équipe, sinon
+    ceux de la chaîne d'implémentation (impl.repos.<dépôt>.checks, règles puis tests, mêmes emplacements {worktree},
+    {main}, {php}, {tests_php}…) ; ([], "") sans réglage."""
+    for src, cmds in (("github.checks", GH.get("checks")), ("fix.checks", (CFG.get("fix") or {}).get("checks"))):
+        own = next((v for k, v in (cmds or {}).items() if k.lower() == repo.lower()), None)
+        if own:
+            return ([own] if isinstance(own, (str, dict)) else list(own)), src
+    conf = next((v for k, v in ((CFG.get("impl") or {}).get("repos") or {}).items() if k.lower() == repo.lower()), None) or {}
+    c = conf.get("checks") or {}
+    cmds = list(c.get("regles") or []) + list(c.get("tests") or [])
+    return cmds, ("impl.repos" if cmds else "")
 
 
-def run_check(cmd, work):
-    """Lance la commande dans le dossier de travail (15 min au plus) : (verdict, fin de la sortie)."""
-    try:
-        r = subprocess.run(cmd, shell=True, cwd=work, capture_output=True, text=True, timeout=900)
-        tail = "\n".join((r.stdout + r.stderr).strip().splitlines()[-12:])
-        return ("verts ✅" if r.returncode == 0 else f"en échec ❌ (code {r.returncode})"), tail
-    except subprocess.TimeoutExpired:
-        return "trop longs (15 min) ⏱", ""
+TOOLS = re.compile(r"\b(phpstan|phpunit|vitest|jest|eslint|stylelint|tsc|psalm|php-cs-fixer|(?:make|npm run|yarn|pnpm|composer) [\w:.-]+)")
+
+
+def label(cmd):
+    """Nom court d'une commande pour la validation et la PR : l'outil lancé (phpstan, vitest…), sinon la commande."""
+    raw = cmd if isinstance(cmd, str) else cmd.get("cmd") or ""
+    found = TOOLS.findall(raw)
+    return found[-1] if found and len(raw) > 60 else raw[:60]
+
+
+def pr_files(st):
+    """Fichiers de la PR après les corrections (modifiés par rapport à sa base, ou nouveaux), sans les liens de dépendances."""
+    work = st["work"]
+    mb = run("git", "merge-base", f"origin/{st['base']}", "HEAD", cwd=work)
+    out = run("git", "diff", "--name-only", mb, cwd=work).splitlines() + run("git", "ls-files", "--others", "--exclude-standard", cwd=work).splitlines()
+    skip = set(st.get("linked") or [])
+    return sorted({f for f in out if f and f not in skip and not f.startswith(".bureau-")})
+
+
+def depart(st):
+    """Copie de la tête de la PR d'avant le run (worktree détaché, dépendances reliées) pour relancer un contrôle rouge."""
+    path = st["work"] + "-depart"
+    if not os.path.exists(os.path.join(path, ".git")):
+        shutil.rmtree(path, ignore_errors=True)
+        if subprocess.run(["git", "-C", st["clone"], "worktree", "add", "--detach", path, st["expected"]], capture_output=True).returncode:
+            return None
+        if st.get("src"):
+            link_deps(st["src"], path)
+    return path
+
+
+def controle(repo, st):
+    """Les contrôles du dépôt sur la copie de travail : {cmd, verdict, tail} (cmd : les outils et leur source)."""
+    cmds, src = checks_of(repo)
+    if not cmds:
+        return {"verdict": "non lancés par le Bureau (aucune commande pour ce dépôt : impl.repos.<dépôt>.checks, fix.checks ou github.checks)"}
+    names = ", ".join(dict.fromkeys(label(c) for c in cmds)) + ("" if src in ("github.checks", "fix.checks") else f" · {src}")
+    if not st.get("src") and any("{main}" in (c if isinstance(c, str) else c.get("cmd") or "") for c in cmds):
+        return {"cmd": names, "verdict": "non lancés : ton dossier local du dépôt est inconnu de Kronn (les commandes ont besoin de {main})"}
+    r = check_run(cmds, pr_files(st), st["work"], st.get("src") or "", st["base"], depart=lambda: depart(st), budget=1500, timeout=600)
+    lanc = [x for x in r["sorties"] if "saute" not in x]
+    if not lanc:
+        return {"cmd": names, "verdict": "rien à contrôler (aucun fichier concerné)"}
+    rouges = [x for x in lanc if x["code"]]
+    if rouges:
+        verdict = f"en échec ❌ ({len(rouges)} sur {len(lanc)})" + (" ⏱ délai dépassé" if any(x["code"] == 124 for x in rouges) else "")
+    else:
+        verdict = "verts ✅" + (" (déjà rouge avant les corrections, rien de nouveau)" if any(x.get("deja_la") for x in lanc) else "")
+    tail = "\n\n".join(f"$ {label(x['cmd'])}\n" + ("\n".join(x["nouveau"]) if x.get("nouveau") else
+                                                  "\n".join(x["sortie"].strip().splitlines()[-12:])) for x in rouges)
+    return {"cmd": names, "verdict": verdict, "tail": tail[-2400:]}
 
 
 def check(repo, n, run_id):
     st = load(run_id)
-    cmd = check_cmd(repo)
-    if not st.get("conflict") or not cmd:
-        print("Pas de contrôle : " + ("aucun conflit." if not st.get("conflict") else f"aucune commande pour {repo} (github.checks)."))
+    if not st.get("conflict") or not checks_of(repo)[0]:
+        print("Pas de contrôle : " + ("aucun conflit." if not st.get("conflict") else f"aucune commande pour {repo} (impl.repos, fix.checks ou github.checks)."))
         return
-    src = local_checkout(repo)
-    linked = link_deps(src, st["work"]) if src else []
-    verdict, tail = run_check(cmd, st["work"])
-    deps = f" ; dépendances reliées depuis {src} ({len(linked)})" if src else " ; dépendances absentes (dépôt local inconnu de Kronn)"
-    print(f"Contrôle « {cmd} » : {verdict}{deps}.\n{tail}"[:2500])
+    st["src"] = local_checkout(repo)
+    linked = link_deps(st["src"], st["work"]) if st["src"] else []
+    st["linked"] = linked
+    save(run_id, st)
+    c = controle(repo, st)
+    deps = f" ; dépendances reliées depuis {st['src']} ({len(linked)})" if st["src"] else " ; dépendances absentes (dépôt local inconnu de Kronn)"
+    print(f"Contrôles ({c.get('cmd', '')}) : {c['verdict']}{deps}.\n{c.get('tail', '')}"[:2500])
 
 
 def cleanup(st):
-    subprocess.run(["git", "-C", st["clone"], "worktree", "remove", "--force", st["work"]], capture_output=True)
-    shutil.rmtree(st["work"], ignore_errors=True)
+    for path in (st["work"], st["work"] + "-depart"):
+        subprocess.run(["git", "-C", st["clone"], "worktree", "remove", "--force", path], capture_output=True)
+        shutil.rmtree(path, ignore_errors=True)
 
 
 def push(repo, n, run_id):
@@ -271,13 +327,14 @@ def threads(repo, n):
             for t in nodes if not t.get("isResolved")]
 
 
+
 def fix_prepare(repo, n, run_id):
     """Les fils non résolus (aucun : code 9, renvoi vers la fin), le dossier de travail et ses dépendances, le contexte de l'agent."""
     ts = threads(repo, n)
     if not ts:
         fail(9, f"{repo}#{n} : aucun fil de review non résolu, rien à corriger.")
     st = setup(repo, n, run_id)
-    src = local_checkout(repo)
+    src = st["src"] = local_checkout(repo)
     st["linked"] = link_deps(src, st["work"]) if src else []
     st["threads"] = [t["id"] for t in ts]
     # le Kanban du 3e étage (retours_snapshot.py) : chaque fil en bref, gardé après le dossier de travail
@@ -290,18 +347,12 @@ def fix_prepare(repo, n, run_id):
 
 
 def fix_check(repo, n, run_id):
-    """Après l'agent : la commande de contrôle du dépôt sur ses corrections ; verdict gardé pour la validation et la PR."""
+    """Après l'agent : les contrôles du dépôt sur la PR corrigée ; verdict gardé pour la validation et la PR."""
     st = load(run_id)
-    cmd = check_cmd(repo)
-    if not cmd:
-        st["check"] = {"verdict": "non lancés par le Bureau (aucune commande pour ce dépôt : fix.checks ou github.checks)"}
-        save(run_id, st)
-        print(f"Pas de contrôle : aucune commande pour {repo} (fix.checks du pack ou github.checks de ta config).")
-        return
-    verdict, tail = run_check(cmd, st["work"])
-    st["check"] = {"cmd": cmd, "verdict": verdict, "tail": tail[-1200:]}
+    st["check"] = controle(repo, st)
     save(run_id, st)
-    print(f"Contrôle « {cmd} » : {verdict}.\n{tail}"[:2500])
+    c = st["check"]
+    print(f"Contrôles ({c['cmd']}) : {c['verdict']}.\n{c.get('tail', '')}"[:2500] if c.get("cmd") else f"Pas de contrôle : {c['verdict']}.")
 
 
 def check_line(st):
