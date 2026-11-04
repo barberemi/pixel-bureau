@@ -7,7 +7,7 @@ function setTv(on,remember=true){
   if(on){NAMES_BEFORE_TV=NAMES;NAMES='all';if(EDIT)closeEditor();sel=null;SEL_BACK=[];renderSide(true);
     try{const el=document.documentElement;if(el.requestFullscreen&&!document.fullscreenElement)el.requestFullscreen().catch(()=>{});}catch(e){}}
   else{if(NAMES_BEFORE_TV)NAMES=NAMES_BEFORE_TV;try{if(document.fullscreenElement)document.exitFullscreen();}catch(e){}}
-  updateTv(true);
+  updateTv(true);mtBar(); // 69-metiers.js : la barre des agents, hors mode TV
 }
 // paramètres d'affichage de l'adresse Kronn (#page/<id>?tv=1&scene=standup, reçus dans KronnPageData.page.params) :
 // appliqués une seule fois, au premier envoi qui en contient, sans toucher au réglage mémorisé ; tv=0 force le plan

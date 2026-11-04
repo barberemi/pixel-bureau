@@ -90,6 +90,8 @@ DEP_ZOOM = ("const _q=document.getElementById('cv').getBoundingClientRect(),_k=_
             "height:(3.2*TS*_k)+'px',pointerEvents:'none'});document.body.appendChild(_z);")
 SHOTS = {
     "plan": (1400, 1000, AT(11), "#cv", 1.5),
+    # les agents des étages (69-metiers.js) : la barre « AGENTS » au-dessus des onglets, et le plan
+    "agents-etages": (1600, 1100, AT(11), ".stage"),
     # agents mis en avant (« Sur le plan » : agents) : icône, prénom et métier de chacun
     "etiquettes-agents": (1400, 1000, AT(11) + "FILTER='wf';NAMES='all';renderSide();", "#cv", 1.5),
     # familles d'agents (32-familles.js) : deux pages de l'écran remplies par un cron de la démo (pages), un workflow sans
