@@ -337,10 +337,16 @@ exit 0
         st = {s["name"]: s for s in out["steps"]}
         # 2e étage : les postes (un sous-workflow chacun), l'aiguillage (3 tours au plus), puis un sous-workflow par ticket
         # le parent vérifié dans Jira dès le dossier, avant la rédaction (Jira n'accepte qu'une épic)
-        self.assertEqual(list(st), ["dossier", "parent_cle", "parent_jira", "parent", "recherche", "redaction", "critique", "aiguillage",
-                                    "apercu", "relire", "chaque", "resultat"])
+        self.assertEqual(list(st), ["dossier", "parent_cle", "parent_jira", "parent", "doublons_cle", "doublons_jira", "doublons", "recherche",
+                                    "redaction", "critique", "aiguillage", "apercu", "relire", "chaque", "resultat"])
         self.assertEqual(st["parent_jira"]["api_endpoint_path"], "{{steps.parent_cle.data.stdout}}")
         self.assertNotIn("external_effect", st["parent_jira"])  # une lecture
+        # les tickets ouverts proches, avant la rédaction ; Jira en erreur : on continue sans
+        self.assertEqual((st["doublons_jira"]["api_endpoint_path"], st["doublons_jira"]["api_query"]["jql"]),
+                         ("/rest/api/3/search/jql", "{{steps.doublons_cle.data.stdout}}"))
+        self.assertEqual(st["doublons_jira"]["on_result"], [{"contains": "ERROR", "action": {"type": "Goto", "step_name": "doublons"}}])
+        self.assertNotIn("external_effect", st["doublons_jira"])
+        self.assertEqual(st["doublons"]["exec_args"][-1], "{{steps.doublons_jira.data_json}}")
         self.assertEqual(st["relire"]["gate_request_changes_target"], "redaction", "Changements : la rédaction reprend avec tes retours")
         self.assertIn("last_human_feedback", st["redaction"]["sub_workflow_variables"]["retours"])
         self.assertEqual(st["aiguillage"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "redaction", "max_iterations": 2}}])

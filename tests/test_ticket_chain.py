@@ -169,6 +169,38 @@ class TicketChainTest(unittest.TestCase):
         Path(p).write_text(json.dumps(c))
         return p
 
+    def test_near_duplicates_from_jira(self):
+        """Les tickets ouverts proches : un JQL par racine des mots forts de l'intention (sans les mots de la maison), puis
+        le tri par racines communes ; donnés à la rédaction et à la critique, montrés au tampon. Jira en erreur : sans."""
+        cfg = self.cfg_with(components=["dm_site", "dm_api"])
+        self.t("dossier", "d1", "Publier le contrat OpenAPI des keywords en paquet Composer, servir les keywords par préfixe",
+               "Story", "3", "dm_api", "", "backlog", "", cfg=cfg)
+        jql = self.t("doublons_jql", "d1", cfg=cfg).stdout
+        self.assertTrue(jql.startswith("project = DM AND statusCategory != Done AND (summary ~ \"keywor*\""), jql)
+        for w in ('"contra*"', '"compos*"', '"prefix*"', '"openap*"'):
+            self.assertIn(w, jql)
+        self.assertNotIn('"dunder', jql, "le site Jira n'est pas un mot de l'intention")
+        issues = {"issues": [{"key": "DM-1", "fields": {"summary": "[Keywords] Publish the OpenAPI contract as a Composer package", "status": {"name": "To Do"}}},
+                             {"key": "DM-2", "fields": {"summary": "Fix the contract tests", "status": {"name": "To Do"}}},
+                             {"key": "DM-3", "fields": {"summary": "Serve keywords by prefix", "status": {"name": "En cours"}}}]}
+        out = self.t("doublons", "d1", json.dumps(issues), cfg=cfg).stdout
+        self.assertIn("2 ticket(s) ouvert(s) proche(s)", out)
+        self.assertLess(out.index("DM-1"), out.index("DM-3"), "le plus proche d'abord")
+        self.assertNotIn("DM-2", out, "un seul mot commun : pas un doublon")
+        self.assertIn("## Tickets Jira ouverts proches de l'intention", self.t("poste", "redaction", "d1", cfg=cfg).stdout)
+        self.assertIn("- DM-3 · Serve keywords by prefix (En cours)", self.t("poste", "critique", "d1", cfg=cfg).stdout)
+        self.assertNotIn("Tickets Jira ouverts", self.t("poste", "recherche", "d1", cfg=cfg).stdout)
+        self.t("rapport", "redaction", "d1", stdin='{"tickets": [{"summary": "A", "description": "h2. Contexte", "composant": "dm_api", "points": 3}]}', cfg=cfg)
+        self.assertIn("🔎 Tickets Jira ouverts proches (doublons possibles) :\n- DM-1 ·", self.t("apercus", "d1", cfg=cfg).stdout)
+        # Jira en erreur (le Goto de l'étape passe un texte d'erreur) : aucun, sans échec
+        r = self.t("doublons", "d1", "HTTP 400 on GET", cfg=cfg)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("indisponible", r.stdout)
+        self.assertNotIn("🔎", self.t("apercus", "d1", cfg=cfg).stdout)
+        # sans mot fort : une recherche qui ne ramène rien
+        self.t("dossier", "d2", "Fix it", "Bug", "1", "", "", "backlog", "", cfg=cfg)
+        self.assertTrue(self.t("doublons_jql", "d2", cfg=cfg).stdout.endswith("AND created > now()"))
+
     def test_labels_on_every_created_ticket(self):
         cfg = self.cfg_with(labels=["ia_framed", "Rédigé par le Bureau", "ia_framed"])
         self.t("dossier", "l1", "x", "Tâche", "1", "dm/site", "", "backlog", "", cfg=cfg)

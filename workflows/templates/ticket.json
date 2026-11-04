@@ -197,6 +197,86 @@
     "exec_timeout_secs": 30
    },
    {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "doublons_cle",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le JQL des tickets ouverts du projet dont le titre partage un mot fort de l'intention (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/ticket.py@@",
+     "doublons_jql",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "doublons_jira",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Les tickets Jira ouverts proches de l'intention (doublons possibles) ; Jira en erreur : on continue sans.",
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/search/jql",
+    "api_method": "GET",
+    "api_query": {
+     "jql": "{{steps.doublons_cle.data.stdout}}",
+     "fields": "summary,status",
+     "maxResults": "30"
+    },
+    "on_result": [
+     {
+      "contains": "ERROR",
+      "action": {
+       "type": "Goto",
+       "step_name": "doublons"
+      }
+     }
+    ]
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "doublons",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Les tickets proches rangés par mots communs avec l'intention, gardés pour la rédaction, la critique et le tampon (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/ticket.py@@",
+     "doublons",
+     "{{run.id}}",
+     "{{steps.doublons_jira.data_json}}"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
     "name": "recherche",
     "agent": "ClaudeCode",
     "mode": {

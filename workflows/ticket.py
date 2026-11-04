@@ -13,7 +13,8 @@ sauf jira.create.board_copy à false.
 sprint : « next » = le premier sprint futur du board (liste lue par l'étape sprints), sinon le backlog.
 resultat : {key, url, title, meta} sur stdout, relu par les relevés office et live pour la fiche de l'agent (run.res).
 Réglage jira.create (config ou pack) : types, type, components, component_required, points_field, board_copy, template,
-link_type, language, title_language, historique, labels (posés sur chaque ticket créé).
+link_type, language, title_language, historique, labels (posés sur chaque ticket créé), mots_vides (mots de la maison
+ignorés par la recherche des doublons).
 
 La salle de rédaction (2e étage) : une intention peut donner plusieurs tickets, sur un ou plusieurs projets. Le modèle
 ticket enchaîne des postes, un sous-workflow chacun (ticket_recherche, ticket_redaction, ticket_critique), puis un
@@ -40,7 +41,7 @@ jira.create.historique), réécrit par dossier, parent_check, rapport, poste (te
 du run ne garde que la dernière version des tickets et la dernière critique ; l'historique garde chaque version, chaque
 critique, tes retours datés et les tickets créés. Jamais au prix de l'étape : une erreur va sur stderr.
 """
-import datetime, json, os, re, sys
+import datetime, json, os, re, sys, unicodedata
 from _lib import CFG, get, read_json, readable, refresh, write_json
 
 SPRINTS = {"backlog": "Backlog", "next": "Sprint suivant"}
@@ -156,14 +157,17 @@ POSTES = {
                   "points (l'estimation en story points, suite de Fibonacci ; un seul ticket : les points de la demande ; "
                   "plusieurs : répartis-les) ; bloque_par (plusieurs tickets seulement : les numéros, à partir de 1, des "
                   "tickets à livrer AVANT celui-ci, parce qu'il en consomme le résultat ; [] s'il peut partir seul ; jamais "
-                  "de boucle). Tiens compte des remarques de la critique s'il y en a. Pas de tiret cadratin ; n'invente ni "
+                  "de boucle). Tiens compte des remarques de la critique s'il y en a. Des tickets Jira ouverts proches de "
+                  "l'intention sont listés plus haut : ne rédige pas un ticket qui existe déjà ; un ticket proche, cite-le "
+                  "dans la description (« voir EW-… »). Pas de tiret cadratin ; n'invente ni "
                   "lien, ni chiffre, ni personne. Ne crée RIEN dans Jira. Rends UNIQUEMENT un objet JSON : "
                   '{"tickets": [{"summary": "…", "description": "…", "composant": "…", "points": 3, "bloque_par": []}]}.'),
     "critique": ("🧐 Critique", "Relis les tickets proposés comme le ferait un relecteur exigeant : chacun se comprend seul, "
                  "se teste, a le bon composant et des points crédibles ; le découpage est juste (ni trop, ni trop peu) ; "
                  "le modèle de ticket de l'équipe est suivi (sections, panneaux, titre) ; les dépendances (bloque_par) sont "
                  "dans le bon sens (un ticket est bloqué par celui dont il consomme le résultat) et sans boucle ; "
-                 "rien d'inventé, rien de flou. Rends UNIQUEMENT un objet JSON : "
+                 "rien d'inventé, rien de flou ; aucun ticket ne refait un ticket Jira ouvert listé plus haut. Rends "
+                 "UNIQUEMENT un objet JSON : "
                  '{"verdict": "ok" | "a_retoucher", "notes": [{"ticket": <numéro à partir de 1, ou 0 pour le découpage>, '
                  '"note": "…"}]}. « a_retoucher » seulement pour un vrai défaut, avec une note qui dit quoi changer.'),
 }
@@ -211,6 +215,9 @@ def archive(run, **ajout):
         rec.update({"v": 1, "run": run, "vu": iso_now(), **{k: d[k] for k in ("intention", "type", "points", "composants", "sprint", "parent",
                                                                               "parent_de", "tour") if k in d}})
         rec["essai"] = bool(re.match(r"\s*\[\s*essai", str(d.get("intention") or ""), re.I))
+        dj = dget(run, "doublons.json")
+        if dj:
+            rec["doublons"] = [{k: x.get(k) for k in ("key", "summary", "status")} for x in dj]
         r = dget(run, "recherche.json")
         if r:
             rec["recherche"] = {"composants": r.get("composants") or [], "texte": str(r.get("texte") or "")[:4000]}
@@ -327,6 +334,91 @@ def parent_check(run, raw):
              "relance sans parent, ou avec la clé d'une épic.")
 
 
+# ---------- doublons : les tickets Jira ouverts proches de l'intention, avant la rédaction ----------
+MOTS_VIDES = set("""avec dans pour sans sous vers chez entre depuis pendant aussi plus moins tres tout tous toute toutes cette ceci cela
+celle celui ceux elles nous vous leur leurs autre autres faire fait faut doit peut etre sont avoir comme mais donc alors ainsi encore
+quand quoi dont elle ticket tickets volet ajouter mettre utiliser plutot afin chaque meme deja apres avant without from with into that
+this these those then than when what which where there their about would should could have been were will just only also into over
+under make need needs used using want""".split())
+DOUBLONS_MAX = 8
+
+
+def plat(texte):
+    """Minuscules sans accents : « Préfixe » et « prefixe » se rejoignent."""
+    return "".join(ch for ch in unicodedata.normalize("NFD", str(texte or "").lower()) if unicodedata.category(ch) != "Mn")
+
+
+def mots_maison():
+    """Les mots de la maison, dans presque tous les titres : les morceaux des noms de composants (« front » de front_api,
+    gardé entier) et du site Jira, et jira.create.mots_vides de l'équipe."""
+    c = (CFG.get("jira") or {}).get("create") or {}
+    vus = {}
+    for o in options():  # un morceau commun à deux composants au moins (« front »), pas un nom à lui (« apollo »)
+        for x in set(re.split(r"[_\W]+", plat(o))):
+            vus[x] = vus.get(x, 0) + 1
+    bouts = [x for x, k in vus.items() if k >= 2]
+    bouts += re.split(r"\W+", plat(re.sub(r"^https?://", "", str((CFG.get("jira") or {}).get("site") or ""))))
+    return {x for x in bouts + [plat(m) for m in c.get("mots_vides") or []] if x}
+
+
+def mots(texte, n=None):
+    """Les mots qui portent le sens d'un texte (5 lettres au moins, ni mot vide, ni mot de la maison, ni nombre), du plus
+    fréquent au plus long."""
+    vus, vides = {}, MOTS_VIDES | mots_maison()
+    for w in re.findall(r"[a-z][a-z0-9_]{4,}", plat(texte)):
+        if w not in vides:
+            vus[w] = vus.get(w, 0) + 1
+    return sorted(vus, key=lambda w: (-vus[w], -len(w)))[:n]
+
+
+def racine(w):
+    """Les 6 premières lettres d'un mot : « contrat » et « contract », « préfixe » et « prefixes » se retrouvent."""
+    return w if "_" in w or len(w) <= 6 else w[:6]
+
+
+def doublons_jql(run):
+    """Le JQL des tickets ouverts du projet dont le titre partage un mot fort de l'intention, par sa racine (« contra* » :
+    une intention en français trouve un titre en anglais ; OU : le plein texte de Jira veut tous les mots), lu par
+    l'étape suivante ; le tri par proximité se fait ensuite (doublons). Sans mot : aucun résultat (created > now())."""
+    d = dget(run, "demande.json") or {}
+    proj = str((CFG.get("jira") or {}).get("project") or "").strip()
+    ws = list(dict.fromkeys(w if racine(w) == w else racine(w) + "*" for w in mots(d.get("intention"), 8)))
+    base = (f"project = {proj} AND " if re.fullmatch(r"[A-Z][A-Z0-9_]*", proj) else "") + "statusCategory != Done"
+    print(base + (" AND (" + " OR ".join(f'summary ~ "{w}"' for w in ws) + ") ORDER BY updated DESC" if ws else " AND created > now()"), end="")
+
+
+def doublons(run, raw):
+    """Les tickets trouvés, rangés par nombre de racines communes avec l'intention (deux au moins, trois
+    pour une intention de 12 mots forts ou plus), gardés au dossier
+    pour la rédaction, la critique et le tampon. Jira injoignable ou réponse illisible : aucun, sans faire échouer le run."""
+    try:
+        o = json.loads(raw or "{}")
+    except ValueError:
+        o = {}
+    if isinstance(o, dict) and "issues" not in o and isinstance(o.get("data"), dict):
+        o = o["data"]
+    issues = (o.get("issues") if isinstance(o, dict) else o if isinstance(o, list) else None) or []
+    ref = {racine(w) for w in mots((dget(run, "demande.json") or {}).get("intention"))}
+    seuil = 3 if len(ref) >= 12 else 2  # une longue intention partage vite deux mots avec n'importe quel titre
+    out = []
+    for x in issues:
+        f = (x.get("fields") if isinstance(x, dict) else None) or {}
+        if not x.get("key") or not f.get("summary"):
+            continue
+        commun = ref & {racine(w) for w in mots(f["summary"])}
+        if len(commun) >= seuil:
+            out.append({"key": x["key"], "summary": str(f["summary"])[:200], "status": (f.get("status") or {}).get("name") or "",
+                        "communs": sorted(commun)})
+    out.sort(key=lambda x: -len(x["communs"]))
+    out = out[:DOUBLONS_MAX]
+    dput(run, "doublons.json", out)
+    archive(run)
+    if not out:
+        print("Aucun ticket ouvert proche dans Jira." if issues or isinstance(o, dict) and "issues" in o else "Recherche des doublons indisponible : on continue sans.")
+        return
+    print(f"{len(out)} ticket(s) ouvert(s) proche(s) dans Jira :\n" + "\n".join(f"- {x['key']} · {x['summary']} ({x['status']}) · {', '.join(x['communs'])}" for x in out))
+
+
 def json_of(text):
     """Le dernier objet JSON d'une sortie d'agent (dans un bloc ```json, ou nu)."""
     text = text or ""
@@ -359,6 +451,10 @@ def poste(k, run, retours=""):
              "## Modèle de ticket de l'équipe\n" + (modele() or "aucun (structure par défaut)")]
     if k != "recherche" and dget(run, "recherche.json"):
         parts.append("## Rapport de la recherche\n" + dget(run, "recherche.json")["texte"])
+    if k != "recherche" and dget(run, "doublons.json"):
+        parts.append("## Tickets Jira ouverts proches de l'intention (doublons possibles, du plus proche au moins proche)\n"
+                     + "\n".join(f"- {x['key']} · {x['summary']} ({x.get('status') or '?'})" for x in dget(run, "doublons.json")))
+
     t = dget(run, "tickets.json")
     if k == "critique" or (k == "redaction" and t):
         parts.append("## Les tickets proposés" + (f" (version {t['version']})" if t else "") + "\n" + json.dumps((t or {}).get("tickets") or [], ensure_ascii=False, indent=1))
@@ -511,6 +607,11 @@ def apercus(run):
         print(f"\n⚠ La critique a encore des réserves après {TOURS} tours (à toi de trancher, « Changements » pour les corriger) :")
         for n in c.get("notes") or []:
             print(f"- {'découpage' if n.get('ticket') in (0, '0') else 'T' + str(n.get('ticket'))} : {n.get('note')}")
+    proches = dget(run, "doublons.json", [])[:3]
+    if proches:
+        print("\n🔎 Tickets Jira ouverts proches (doublons possibles) :")
+        for x in proches:
+            print(f"- {x['key']} · {x['summary']} ({x.get('status') or '?'})")
     full = []
     for i, x in enumerate(t):
         full.append(f"\n━━ T{i + 1} ━━\n🎫 {(x.get('summary') or '(sans titre)').strip()}\n"
@@ -589,6 +690,10 @@ if __name__ == "__main__":
         parent_cle(a[0])
     elif cmd == "parent_check":
         parent_check(a[0], a[1])
+    elif cmd == "doublons_jql":
+        doublons_jql(a[0])
+    elif cmd == "doublons":
+        doublons(a[0], a[1])
     elif cmd == "apercus":
         apercus(a[0])
     elif cmd == "rapport":
