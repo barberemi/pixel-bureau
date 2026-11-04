@@ -56,7 +56,7 @@ Les libellés des sections sont en gras dans Teams. Seules les sections partent 
 
 ## L'agent Support
 
-Un agent du Bureau incarne l'investigation : c'est lui qui travaille sur le plan pendant qu'il cherche, et qui attend avec « ✋ » quand sa réponse est à valider. Il lit le message, le code du projet choisi en lecture seule, les tickets Jira cités (par la connexion Jira du Bureau, `jira.config_id`, en lecture), ton commentaire, et ce qui a été écrit dans sa discussion depuis le tour précédent. Il y résume ce qu'il trouve en notes, qui ne réveillent pas l'agent de la discussion.
+Un agent du Bureau incarne l'investigation : c'est lui qui travaille sur le plan pendant qu'il cherche, et qui attend avec « ✋ » quand sa réponse est à valider. Il lit le message et les réponses déjà dans son fil (relu dans Teams au lancement, pour partir de la discussion la plus récente ; si la relecture échoue, celles du dernier relevé, avec sa date), le code du projet choisi en lecture seule, les tickets Jira cités (par la connexion Jira du Bureau, `jira.config_id`, en lecture), ton commentaire, et ce qui a été écrit dans sa discussion depuis le tour précédent. Il y résume ce qu'il trouve en notes, qui ne réveillent pas l'agent de la discussion.
 
 ![L'agent Support en intervention](../img/support-agent.png)
 

@@ -251,6 +251,26 @@ class SupportTest(unittest.TestCase):
         self.assertEqual(self.run_("post", "run-1", stdin="encore").returncode, 1, "une seule réponse par fil")
         self.assertEqual(self.run_("open", "101", "p1", "run-2", "").returncode, 1)
 
+    def test_open_rereads_the_thread_and_gives_its_replies(self):
+        """Au lancement, le fil est relu (réponses arrivées depuis le relevé comprises) et ses réponses vont dans la
+        demande ; relecture en échec : celles du relevé, avec sa date."""
+        self.data["replies"] = {"101": [msg(201, "Halpert, Jim", "uid-jim", 1.5, "Même souci en DE")]}
+        self.poll()
+        self.data["replies"]["101"].append(msg(202, "Beesly, Pam", "uid-pam", 0.5, "Vider le cache n'a rien changé"))
+        r = self.run_("open", "101", "p1", "run-1", "")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        for want in ("Réponses déjà dans le fil, des plus anciennes", "Jim : Même souci en DE", "Pam : Vider le cache n'a rien changé"):
+            self.assertIn(want, r.stdout.replace("Halpert, ", "").replace("Beesly, ", ""))
+        self.assertLess(r.stdout.index("Même souci"), r.stdout.index("Vider le cache"), "les plus anciennes d'abord")
+        prompt = json.loads(Path(self.tmp, "claude.json.calls").read_text().splitlines()[-1])["prompt"]
+        self.assertIn('parentMessageId="101"', prompt)
+        self.assertNotIn("limit=20", prompt, "le fil seul, pas tout le canal")
+        self.data["broken"] = True
+        r = self.run_("open", "101", "p1", "run-2", "")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("au relevé du", r.stdout)
+        self.assertIn("Vider le cache", r.stdout, "les réponses de la dernière lecture restent")
+
     def test_postes_share_the_message_folder_and_the_relecture_sends_back(self):
         """Chaîne des postes : chacun lit la demande, tes retours et les rapports d'avant, et range le sien ; la relecture
         « revoir » renvoie la réponse au poste ✉ (exit 3) avec ses remarques, deux fois au plus, puis la réponse part à ta

@@ -1,7 +1,7 @@
 """Console Support (#62) : les demandes d'un canal Teams, leur investigation par l'agent Support et la réponse en fil.
 
   python3 -c <ce script> poll                                   # relevé du canal -> dataset support (cron, « Relever »)
-  python3 -c <ce script> open <message> <projet> <run> <commentaire>   # début d'une investigation : discussion Kronn, dossier
+  python3 -c <ce script> open <message> <projet> <run> <commentaire>   # début d'une investigation : fil relu, discussion Kronn, dossier
   python3 -c <ce script> dataset                                # l'état des fils sans relevé (investigation lancée)
   python3 -c <ce script> poste <poste> <message> <retours>      # consigne d'un poste : sa mission et le dossier (0 token)
   python3 -c <ce script> rapport <poste> <message>  (stdin : sortie de l'agent)  # le rapport du poste, rangé dans le dossier
@@ -16,7 +16,8 @@ Microsoft 365 de la personne connectée l'a. Le relevé lance donc la CLI claude
 coupe les connecteurs claude.ai avec --strict-mcp-config), réglée au plus juste : petit modèle, aucun outil intégré, la
 seule lecture des messages du canal autorisée, les autres outils interdits (leur liste est gardée d'un relevé à
 l'autre), réglages utilisateur ignorés, un seul tour. Le modèle fait les appels ; leurs résultats bruts sont lus dans
-le flux de la CLI et publiés tels quels, sans qu'il les relise. Les réponses d'un fil ne sont relues que s'il a bougé.
+le flux de la CLI et publiés tels quels, sans qu'il les relise. Les réponses d'un fil ne sont relues que s'il a bougé,
+et toujours au lancement d'une investigation : la demande des postes contient les réponses déjà dans le fil.
 Réponse en fil : « az account get-access-token » (Microsoft Graph), sous le nom de la personne connectée.
 Postes (sous-workflows support_<poste>) : 🏷 tri, 🔎 logs, 🧩 cause, ✉ reponse, 🧐 relecture, un agent chacun, dans la
 discussion de l'investigation ; chacun lit le dossier du message (la demande, les rapports des postes d'avant, tes retours)
@@ -48,6 +49,7 @@ TOOL_R = "mcp__claude_ai_Microsoft_365__read_resource"  # un message en entier :
 TOOLS = (TOOL, TOOL_R)
 DAYS = int(S.get("days") or 7)
 REPLIES_MAX = 8  # fils dont on relit les réponses à chaque relevé (les plus récents qui ont bougé)
+REPLIES_BRIEF = 15  # réponses du fil données à l'investigation (les plus récentes)
 FOOTER = "Généré de manière automatique 🤖"
 SECTION = re.compile(r"^\W{1,4}\s*[^:]{1,30}?\s*:\s*\S")  # « 🔎 Cause : … »
 # page « Support · bilan » : catégories que donne le 🏷 Tri (réglage support.categories), outils de logs cités par 🔎 Logs
@@ -90,17 +92,17 @@ def claude_bin():
     return c
 
 
-def calls_prompt(roots):
+def calls_prompt(roots, channel=True):
     base = f'teamId="{S["team"]}", channelId="{S["channel"]}"'
     uri = f"teams:///teams/{S['team']}/channels/{S['channel']}/messages/"
-    lines = [f"{TOOL} : {base}, limit=20"]
+    lines = [f"{TOOL} : {base}, limit=20"] if channel else []
     for m in roots:
         lines += [f'{TOOL} : {base}, parentMessageId="{m}", limit=50', f'{TOOL_R} : uri="{uri}{m}"']
     return ("Fais en un seul message tous ces appels d'outil, en parallèle, sans rien écrire d'autre :\n"
             + "\n".join(f"{i + 1}) {x}" for i, x in enumerate(lines)))
 
 
-def run_claude(prompt, known_tools):
+def run_claude(prompt, known_tools, timeout=150):
     """Appels faits par la CLI : ({id d'appel: (entrée, [objets du résultat] ou None si en erreur)}, outils vus, coût)."""
     exe = claude_bin()
     if not exe:
@@ -115,7 +117,7 @@ def run_claude(prompt, known_tools):
     # MCP_CONNECTION_NONBLOCKING=0 : la CLI attend ses connecteurs avant le premier tour (sinon : aucun outil)
     env = {**os.environ, "MCP_CONNECTION_NONBLOCKING": "0"}
     os.makedirs(os.path.dirname(CACHE), exist_ok=True)
-    r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=150, env=env,
+    r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=timeout, env=env,
                        cwd=os.path.dirname(CACHE))  # un dossier sans .mcp.json ni CLAUDE.md
     calls, results, tools, cost = {}, {}, set(), 0.0
     for line in r.stdout.splitlines():
@@ -248,6 +250,17 @@ def poll(c):
                    key=lambda t: t.get("lm") or "", reverse=True)[:REPLIES_MAX]
     calls, tools, cost = run_claude(calls_prompt([t["id"] for t in moved]), c.get("tools") or [])
     c["tools"] = sorted(tools | set(c.get("tools") or []))
+    absorb(threads, calls)
+    # fils nouveaux : leurs réponses au relevé suivant (leur lm diffère de rlm, encore absent)
+    for k in [k for k, t in threads.items() if (t.get("at") or "") < iso(now() - timedelta(days=DAYS + 7))]:
+        threads.pop(k)
+    c["skipped"] = {k: v for k, v in (c.get("skipped") or {}).items() if k in threads}  # fils ignorés sortis du relevé
+    c.update(polled_at=iso(now()), error=None, cost=round(cost, 4))
+    me(c)
+
+
+def absorb(threads, calls):
+    """Résultats des appels dans les fils : la liste du canal, le message principal en entier, les réponses d'un fil."""
     for inp, res in calls.values():
         if res is None:
             continue
@@ -270,12 +283,19 @@ def poll(c):
                             if r["from"] != "?"]
             t["replies"].sort(key=lambda r: r.get("at") or "")
             t["rlm"] = t.get("lm")
-    # fils nouveaux : leurs réponses au relevé suivant (leur lm diffère de rlm, encore absent)
-    for k in [k for k, t in threads.items() if (t.get("at") or "") < iso(now() - timedelta(days=DAYS + 7))]:
-        threads.pop(k)
-    c["skipped"] = {k: v for k, v in (c.get("skipped") or {}).items() if k in threads}  # fils ignorés sortis du relevé
-    c.update(polled_at=iso(now()), error=None, cost=round(cost, 4))
-    me(c)
+
+
+def reread(c, msg):
+    """Le fil relu juste avant l'investigation (message en entier et réponses) : la discussion a pu avancer depuis le
+    dernier relevé. En échec, les réponses du relevé servent, avec leur date."""
+    try:
+        calls, tools, _ = run_claude(calls_prompt([msg], channel=False), c.get("tools") or [], timeout=40)
+        c["tools"] = sorted(tools | set(c.get("tools") or []))
+        absorb(c["threads"], calls)
+        return True
+    except Exception as e:  # CLI absente, connecteur débranché, délai dépassé
+        print(f"support : fil non relu ({str(e)[:160]})", file=sys.stderr)
+        return False
 
 
 # ---------- runs du modèle d'investigation ----------
@@ -418,15 +438,23 @@ def first_name(name):
     return name.split(",", 1)[1].strip().split(" ")[0] if "," in name else name.split(" ")[0]
 
 
-def brief(t, p, comment, who):
+def brief(t, p, comment, who, stale=None):
     where = (f"Projet : {p.get('name')} (dossier {p.get('path')}). Lis son code en lecture seule (Read, Grep, git log) ; "
              "ne modifie rien.") if p else "Pas de projet : appuie-toi sur le message seul."
     cut = f"\n(Message tronqué : la suite est dans Teams, {t.get('url')})" if t.get("cut") else ""
     note = f"\nCommentaire de {who} : {comment.strip()}" if comment.strip() else ""
     dt = t.get("detail") or {}
     subj = f"Sujet : {dt['subject']}\n" if dt.get("subject") else ""
+    replies = t.get("replies") or []
+    fil = ""
+    if replies:
+        when = f" (au relevé du {stale}, peut-être plus à jour dans Teams)" if stale else ""
+        more = f" ; les {len(replies) - REPLIES_BRIEF} plus anciennes sont dans Teams" if len(replies) > REPLIES_BRIEF else ""
+        fil = (f"\nRéponses déjà dans le fil{when}, des plus anciennes aux plus récentes{more} : tiens-en compte (ce qui a été "
+               "essayé, demandé, répondu) et ne répète pas ce qui a déjà été dit.\n<<<\n"
+               + "\n".join(f"[{r.get('at')}] {r.get('from')} : {r.get('text')}" for r in replies[-REPLIES_BRIEF:]) + "\n>>>")
     return (f"Demande arrivée sur le canal Teams « {S.get('name') or 'Support'} », de {t.get('from')} le {t.get('at')} :\n"
-            f"{subj}<<<\n{dt.get('text') or t.get('text')}\n>>>{cut}\n{where}{note}")
+            f"{subj}<<<\n{dt.get('text') or t.get('text')}\n>>>{cut}{fil}\n{where}{note}")
 
 
 # ---------- les postes : une mission chacun, un dossier commun ----------
@@ -615,9 +643,11 @@ def open_(msg, pid, run_id, comment):
         fail(f"Message inconnu : il n'est plus dans les {DAYS} derniers jours du relevé ; relève le canal puis relance.")
     if (c.get("posted") or {}).get(msg):
         fail("Ce fil a déjà sa réponse postée.")
+    stale = None if reread(c, msg) else c.get("polled_at") or "?"
+    t = c["threads"][msg]
     p = project_of(pid)
     who = first_name((c.get("me") or {}).get("name")) if (c.get("me") or {}).get("name") else "la personne qui t'a lancé"
-    text = brief(t, p, comment, who)
+    text = brief(t, p, comment, who, stale)
     first = (t.get("text") or "").splitlines()[0] if t.get("text") else ""
     title = "🎧 " + first_name(t.get("from")) + " : " + (first if len(first) <= 60 else first[:59].rstrip() + "…")
     disc = kronn("POST", "/discussions", {"project_id": (CFG.get("kronn") or {}).get("project_id") or None, "title": title,
