@@ -319,17 +319,66 @@ def abort(repo, n, run_id):
 
 # ---------- corriger les commentaires d'une PR (#75, page action « bureau-fixpr ») ----------
 THREADS_Q = ("query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100){nodes{"
-             "id isResolved isOutdated path line comments(first:30){nodes{author{login} body createdAt}}}}}}}")
+             "id isResolved isOutdated path line comments(first:30){nodes{author{login} body createdAt}}}} "
+             "reviews(last:50){nodes{id state body submittedAt author{login __typename}}} "
+             "comments(last:100){nodes{id body createdAt author{login __typename}}}}}}")
 
 
-def threads(repo, n, resolved=False):
-    """Fils de review non résolus de la PR (resolved : tous) : [{id, path, line, outdated, resolved, comments: [{author, body}]}]."""
+def pr_feedback(repo, n):
+    """Ce que le fix relit de la PR, en une requête : ses fils de review, le corps de ses reviews, ses commentaires."""
     owner, name = repo.split("/", 1)
     raw = run("gh", "api", "graphql", "-f", "query=" + THREADS_Q, "-F", "o=" + owner, "-F", "r=" + name, "-F", "n=" + n)
-    nodes = (((json.loads(raw).get("data") or {}).get("repository") or {}).get("pullRequest") or {}).get("reviewThreads", {}).get("nodes") or []
-    return [{"id": t["id"], "path": t.get("path"), "line": t.get("line"), "outdated": t.get("isOutdated"), "resolved": bool(t.get("isResolved")),
-             "comments": [{"author": (c.get("author") or {}).get("login"), "body": c.get("body")} for c in (t.get("comments") or {}).get("nodes") or []]}
-            for t in nodes if resolved or not t.get("isResolved")]
+    return ((json.loads(raw).get("data") or {}).get("repository") or {}).get("pullRequest") or {}
+
+
+def deja(comments):
+    """Le fil a déjà une réponse du Bureau (« Version N » en tête) : « Version N », et relance = quelqu'un a écrit depuis."""
+    last = max((i for i, c in enumerate(comments) if VERSION_HEAD.match(str(c.get("body") or "").strip())), default=None)
+    if last is None:
+        return None, False
+    m = VERSION_HEAD.match(str(comments[last].get("body") or "").strip())
+    return f"Version {m.group(1)}", any(c.get("author") != comments[last].get("author") for c in comments[last + 1:])
+
+
+def threads(repo, n, resolved=False, pr=None):
+    """Fils de review non résolus de la PR (resolved : tous) : [{id, kind « fil », path, line, outdated, resolved,
+    deja_repondu (« Version N » de la dernière réponse du Bureau, ou None), relance (écrit depuis par un autre),
+    comments: [{author, body}]}]."""
+    nodes = ((pr if pr is not None else pr_feedback(repo, n)).get("reviewThreads") or {}).get("nodes") or []
+    out = []
+    for t in nodes:
+        if not resolved and t.get("isResolved"):
+            continue
+        cs = [{"author": (c.get("author") or {}).get("login"), "body": c.get("body")} for c in (t.get("comments") or {}).get("nodes") or []]
+        v, relance = deja(cs)
+        out.append({"id": t["id"], "kind": "fil", "path": t.get("path"), "line": t.get("line"), "outdated": t.get("isOutdated"),
+                    "resolved": bool(t.get("isResolved")), "deja_repondu": v, "relance": relance, "comments": cs})
+    return out
+
+
+REVIEW_STATES = {"CHANGES_REQUESTED": "changements demandés", "COMMENTED": "commentaire de review"}
+
+
+def generaux(pr):
+    """Ce qui est dit hors des fils : le corps des reviews (changements demandés, commentaire) et les commentaires de la
+    PR, sans les bots, postés après la dernière réponse générale du Bureau (« Version N » en tête : ce qui vient avant est
+    déjà traité) ; [{id, kind « general », quoi, comments: [{author, body}]}], du plus ancien au plus récent."""
+    coms = ((pr.get("comments") or {}).get("nodes")) or []
+    depuis = max((c.get("createdAt") or "" for c in coms if VERSION_HEAD.match(str(c.get("body") or "").strip())), default="")
+    items = []
+    for r in ((pr.get("reviews") or {}).get("nodes")) or []:
+        items.append((r.get("submittedAt") or "", "review:" + str(r.get("id")), REVIEW_STATES.get(r.get("state")), r))
+    for c in coms:
+        items.append((c.get("createdAt") or "", "comment:" + str(c.get("id")), "commentaire de la PR", c))
+    out = []
+    for at, id_, quoi, x in sorted(items, key=lambda i: i[0]):
+        body, who = str(x.get("body") or "").strip(), x.get("author") or {}
+        if not quoi or not body or at <= depuis or who.get("__typename") == "Bot" or str(who.get("login") or "").endswith("[bot]"):
+            continue
+        if VERSION_HEAD.match(body):
+            continue
+        out.append({"id": id_, "kind": "general", "quoi": quoi, "path": None, "line": None, "comments": [{"author": who.get("login"), "body": body}]})
+    return out
 
 
 VERSION_MARK = re.compile(r"<!-- bureau-fix:version=(\d+) -->")
@@ -346,27 +395,56 @@ def version_of(st, ts):
     return max(seen, default=0) + 1
 
 
+def me():
+    """Ton login GitHub (celui du jeton de gh), pour signaler à la validation une PR qui n'est pas la tienne ; inconnu : « »."""
+    r = subprocess.run(["gh", "api", "user", "-q", ".login"], capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+
+def checks_hint(repo, st):
+    """Pour l'agent : les contrôles que le Bureau lancera après lui (checks_of), dossiers déjà remplis, pour qu'il vérifie
+    avec les mêmes commandes que le verdict de la validation."""
+    cmds, src = checks_of(repo)
+    if not cmds:
+        return "Contrôles du Bureau : aucun réglé pour ce dépôt ; lance ceux que décrit docs/AGENTS.md."
+    lines = []
+    for c in cmds:
+        raw, sub = (c, "") if isinstance(c, str) else (c.get("cmd") or "", (c.get("subdir") or "").strip("/"))
+        cmd = raw.replace("{worktree}", st["work"]).replace("{main}", st.get("src") or "{main}").replace("{base}", st["base"])
+        lines.append(f"- `{cmd}`" + (f" (chemins relatifs au sous-dossier {sub}/)" if sub else ""))
+    return ("Contrôles que le Bureau lancera après toi sur les fichiers de la PR (" + src + ") : lance les MÊMES sur ce que tu "
+            "touches, en remplaçant {files}, {php}, {ts}, {tests}, {tests_php}, {tests_ts} par les fichiers concernés "
+            "(séparés par une espace ; aucun fichier de ce type : saute la commande).\n" + "\n".join(lines))
+
+
 def fix_prepare(repo, n, run_id):
     """Les fils non résolus (aucun : code 9, renvoi vers la fin), le dossier de travail et ses dépendances, le contexte de l'agent."""
-    tous = threads(repo, n, resolved=True)
+    pr = pr_feedback(repo, n)
+    tous = threads(repo, n, resolved=True, pr=pr)
     ts = [t for t in tous if not t["resolved"]]
-    if not ts:
-        fail(9, f"{repo}#{n} : aucun fil de review non résolu, rien à corriger.")
+    gs = generaux(pr)
+    if not ts and not gs:
+        fail(9, f"{repo}#{n} : aucun fil de review non résolu ni commentaire de review, rien à corriger.")
     st = setup(repo, n, run_id)
     src = st["src"] = local_checkout(repo)
     st["linked"] = link_deps(src, st["work"]) if src else []
+    st["comments"] = list(st.get("comments") or []) + [str(c.get("body") or "") for c in (pr.get("comments") or {}).get("nodes") or []]
     st["version"] = version_of(st, tous)
     for k in ("body", "comments"):
         st.pop(k, None)
     st["threads"] = [t["id"] for t in ts]
+    st["generaux"] = [{"id": g["id"], "quoi": g["quoi"], "who": g["comments"][0]["author"], "text": g["comments"][0]["body"][:160]} for g in gs]
+    st["me"] = me()
     # le Kanban du 3e étage (retours_snapshot.py) : chaque fil en bref, gardé après le dossier de travail
     st["fils"] = [{"id": t["id"], "path": t.get("path"), "line": t.get("line"), "who": (t["comments"][0] if t["comments"] else {}).get("author"),
                    "text": str((t["comments"][0] if t["comments"] else {}).get("body") or "").strip()[:160]} for t in ts]
     save(run_id, st)
-    write_json(os.path.join(st["work"], ".bureau-fix.json"), ts)
+    write_json(os.path.join(st["work"], ".bureau-fix.json"), ts + gs)
     deps = f"dépendances reliées depuis {src}" if src else "sans dépendances (dossier local du dépôt inconnu de Kronn)"
-    print(f"{repo}#{n} : {st['title']}\n{len(ts)} fil(s) de review non résolu(s), branche {st['branch']} ; {deps}.\n"
-          f"Passe de corrections : Version {st['version']}.")
+    dj = sum(1 for t in ts if t["deja_repondu"] and not t["relance"])
+    print(f"{repo}#{n} : {st['title']}\n{len(ts)} fil(s) de review non résolu(s)" + (f" (dont {dj} déjà répondu(s) par le Bureau, sans relance)" if dj else "")
+          + (f", {len(gs)} commentaire(s) hors fil" if gs else "") + f", branche {st['branch']} ; {deps}.\n"
+          f"Passe de corrections : Version {st['version']}.\n\n" + checks_hint(repo, st))
 
 
 def fix_check(repo, n, run_id):
@@ -396,15 +474,34 @@ def replies(st):
         out = read_json(os.path.join(st["work"], ".bureau-fix-replies.json"))
     except (OSError, ValueError):
         return []
-    return [r for r in out if isinstance(r, dict) and r.get("thread") in st.get("threads", []) and str(r.get("reply") or "").strip()]
+    ids = set(st.get("threads", [])) | {g["id"] for g in st.get("generaux") or []}
+    return [r for r in out if isinstance(r, dict) and r.get("thread") in ids and str(r.get("reply") or "").strip()]
+
+
+def declares(st):
+    """Les fichiers nouveaux que l'agent a déclarés (.bureau-fix-new.txt, un chemin par ligne) : seuls ceux-là sont commités."""
+    try:
+        with open(os.path.join(st["work"], ".bureau-fix-new.txt"), encoding="utf-8") as f:
+            return {ln.strip().lstrip("./") for ln in f if ln.strip() and not ln.strip().startswith("#")}
+    except OSError:
+        return set()
 
 
 def staged(st):
-    """Tout ce que l'agent a changé, sans les liens de dépendances ni les fichiers d'échange : la liste des fichiers."""
+    """Ce que l'agent a changé : les fichiers suivis modifiés ou supprimés, et les nouveaux qu'il a déclarés ; un nouveau
+    fichier non déclaré (cache, rapport de tests…) reste hors du commit, noté dans st["ecartes"]. La liste des fichiers."""
     work = st["work"]
-    run("git", "add", "-A", cwd=work)
-    for rel in st.get("linked") or []:
-        subprocess.run(["git", "reset", "-q", "--", rel], cwd=work, capture_output=True)
+    run("git", "add", "-u", cwd=work)
+    linked, new = set(st.get("linked") or []), declares(st)
+    ecartes = []
+    for rel in run("git", "ls-files", "--others", "--exclude-standard", cwd=work).splitlines():
+        if rel in linked or rel.startswith(".bureau-"):
+            continue
+        if rel in new:
+            run("git", "add", "--", rel, cwd=work)
+        else:
+            ecartes.append(rel)
+    st["ecartes"] = ecartes[:30]
     return run("git", "diff", "--cached", "--name-only", cwd=work).splitlines()
 
 
@@ -427,12 +524,18 @@ def fix_diff(repo, n, run_id):
     c = st.get("check") or {}
     head = check_line(st) + (f"\n```\n{c['tail'][-800:]}\n```" if c.get("tail") and not c["verdict"].startswith("verts") else "")
     msg = commit_message(st)
-    lines = [f"- {'résolu' if r.get('fixed') else 'laissé ouvert'} : {str(r['reply']).strip()[:300]}" for r in rs]
+    gids = {g["id"] for g in st.get("generaux") or []}
+    lines = [f"- {'hors fil' if r['thread'] in gids else 'résolu' if r.get('fixed') else 'laissé ouvert'} : {str(r['reply']).strip()[:300]}" for r in rs]
     ver = f"🔢 **Version {st['version']}** : en tête de chaque réponse, passe n° {st['version']} de corrections sur cette PR\n\n" if st.get("version") else ""
-    print((head + "\n\n" if head else "") + ver + (summary + "\n\n" if summary else "")
+    autre = st.get("author") and st.get("me") and st["author"].lower() != st["me"].lower()
+    warn = (f"⚠ **PR de {st['author']}** : le commit et le push iront sur sa branche, signés de ton nom.\n\n" if autre else "") + (
+        "⚠ **Fichiers nouveaux non déclarés, laissés hors du commit** : " + ", ".join(f"`{x}`" for x in st["ecartes"]) + "\n\n" if st.get("ecartes") else "")
+    print(warn + (head + "\n\n" if head else "") + ver + (summary + "\n\n" if summary else "")
           + (f"**Commit** : `{msg.splitlines()[0]}`\n\n" if files else "")
           + f"**{len(files)} fichier(s) changé(s)**\n```\n{diff[:5000]}\n```\n\n"
-          + f"**Réponses prévues ({len(rs)} sur {len(st.get('threads', []))} fils)**\n" + "\n".join(lines))
+          + f"**Réponses prévues ({len(rs)} sur {len(st.get('threads', []))} fils"
+          + (f" et {len(st.get('generaux') or [])} commentaire(s) hors fil, regroupés en un commentaire de la PR" if st.get("generaux") else "")
+          + ")**\n" + "\n".join(lines))
 
 
 def commit_message(st):
@@ -462,8 +565,11 @@ def pr_body(body, st, rs, sha):
             summary = f.read().strip()[:1500]
     except OSError:
         summary = ""
-    fixed = sum(1 for r in rs if r.get("fixed"))
-    lines = [f"- ✅ {fixed} fil(s) corrigé(s) et résolu(s) · ⏭️ {len(rs) - fixed} laissé(s) ouvert(s) avec une réponse"]
+    gids = {g["id"] for g in st.get("generaux") or []}
+    fils = [r for r in rs if r["thread"] not in gids]
+    fixed = sum(1 for r in fils if r.get("fixed"))
+    lines = [f"- ✅ {fixed} fil(s) corrigé(s) et résolu(s) · ⏭️ {len(fils) - fixed} laissé(s) ouvert(s) avec une réponse"
+             + (f" · 💬 {len(rs) - len(fils)} commentaire(s) hors fil, réponse en commentaire de la PR" if len(rs) > len(fils) else "")]
     if sha:
         lines.append(f"- 📦 Commit {sha}")
     if check_line(st):
@@ -478,6 +584,16 @@ def pr_body(body, st, rs, sha):
 
 REPLY_Q = "mutation($t:ID!,$b:String!){addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$t,body:$b}){comment{id}}}"
 RESOLVE_Q = "mutation($t:ID!){resolveReviewThread(input:{threadId:$t}){thread{isResolved}}}"
+
+
+def gh_ok(args, tries=2):
+    """Un appel gh d'écriture, relancé une fois s'il échoue (réseau) : réussi ou non."""
+    for i in range(tries):
+        if subprocess.run(["gh", *args], capture_output=True).returncode == 0:
+            return True
+        if i + 1 < tries:
+            time.sleep(2)
+    return False
 
 
 def fix_push(repo, n, run_id):
@@ -496,13 +612,19 @@ def fix_push(repo, n, run_id):
         if r.returncode:
             fail(5, f"Push refusé : la branche {st['branch']} a bougé depuis le début du run (rien écrasé). {r.stderr.strip()[-200:]}")
         pushed = f"{len(files)} fichier(s) poussé(s) ({run('git', 'rev-parse', '--short', 'HEAD', cwd=work)}). "
-    done, failed, rs = 0, 0, replies(st)
-    for r in rs:
-        ok = subprocess.run(["gh", "api", "graphql", "-f", "query=" + REPLY_Q, "-F", "t=" + r["thread"], "-f", "b=" + versioned(st, r["reply"])[:4000]],
-                            capture_output=True).returncode == 0
-        if ok and r.get("fixed"):
-            subprocess.run(["gh", "api", "graphql", "-f", "query=" + RESOLVE_Q, "-F", "t=" + r["thread"]], capture_output=True)
+    done, failed, unresolved, rs = 0, 0, 0, replies(st)
+    gens = {g["id"]: g for g in st.get("generaux") or []}
+    for r in [r for r in rs if r["thread"] not in gens]:
+        ok = gh_ok(["api", "graphql", "-f", "query=" + REPLY_Q, "-F", "t=" + r["thread"], "-f", "b=" + versioned(st, r["reply"])[:4000]])
+        if ok and r.get("fixed") and not gh_ok(["api", "graphql", "-f", "query=" + RESOLVE_Q, "-F", "t=" + r["thread"]]):
+            unresolved += 1
         done, failed = done + ok, failed + (not ok)
+    hors = [r for r in rs if r["thread"] in gens]
+    if hors:  # les commentaires hors fil : une seule réponse, un commentaire de la PR qui cite chacun
+        body = "\n\n".join(f"> **@{gens[r['thread']]['who']}** ({gens[r['thread']]['quoi']}) : "
+                            + re.sub(r"\s+", " ", gens[r["thread"]]["text"])[:160] + "\n\n" + str(r["reply"]).strip() for r in hors)
+        ok = gh_ok(["pr", "comment", n, "-R", repo, "--body", versioned(st, body)[:60000]])
+        done, failed = done + (len(hors) if ok else 0), failed + (0 if ok else len(hors))
     label, ci = ci_label(repo), ""
     if label and files:
         subprocess.run(["gh", "pr", "edit", n, "-R", repo, "--remove-label", label], capture_output=True)
@@ -518,7 +640,8 @@ def fix_push(repo, n, run_id):
         except (RuntimeError, ValueError):
             desc = " Description de la PR non mise à jour."
     cleanup(st)
-    print(f"{repo}#{n} : {pushed}{done} réponse(s) postée(s){f', {failed} en échec' if failed else ''}.{desc}{ci}")
+    print(f"{repo}#{n} : {pushed}{done} réponse(s) postée(s){f', {failed} en échec' if failed else ''}"
+          f"{f', {unresolved} fil(s) corrigé(s) non marqué(s) résolu(s) (à faire sur GitHub)' if unresolved else ''}.{desc}{ci}")
 
 
 def done(repo, n, run_id):

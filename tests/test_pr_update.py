@@ -20,10 +20,16 @@ if a[:2] == ["repo", "clone"]:  # le « dépôt GitHub » est le remote nu local
     sys.exit(subprocess.run(["git", "clone", d["remote"], a[3]], capture_output=True).returncode)
 if a[:2] == ["pr", "view"]:
     print(json.dumps(d["pr"])); sys.exit(0)
-if a[:2] == ["api", "graphql"]:  # #75 : fils non résolus (requête), réponse et résolution (mutations)
+if a[:2] == ["api", "user"]:  # ton login (le jeton de gh)
+    print(d.get("me", "")); sys.exit(0)
+if a[:2] == ["api", "graphql"]:  # #75 : fils, reviews et commentaires (requête), réponse et résolution (mutations)
     q = next(x for x in a if x.startswith("query="))
     if "reviewThreads" in q:
-        print(json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {"nodes": d.get("threads", [])}}}}}))
+        print(json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {"nodes": d.get("threads", [])},
+                                                                    "reviews": {"nodes": d.get("reviews", [])},
+                                                                    "comments": {"nodes": d.get("comments", [])}}}}}))
+    if "resolveReviewThread" in q and d.get("resolve_fails"):
+        sys.exit(1)
     sys.exit(0)
 sys.exit(0)
 '''
@@ -320,6 +326,93 @@ class PrUpdateTest(unittest.TestCase):
         self.data["pr"]["body"] = "Ma description."
         self.data["pr"]["comments"] = [{"body": "Version 2 : merci pour les retours"}, {"body": "La version 9 de PHP"}]
         self.assertIn("Version 4.", self.step("fix_prepare").stdout)
+
+    def test_fix_reads_review_bodies_and_pr_comments_outside_threads(self):
+        """Hors des fils : le corps d'une review « changements demandés » et les commentaires de la PR, sans les bots ni
+        ce qui précède la dernière réponse générale du Bureau ; une seule réponse, un commentaire de la PR qui les cite."""
+        self.data["threads"] = []
+        self.data["reviews"] = [{"id": "R1", "state": "CHANGES_REQUESTED", "body": "Il manque la gestion des erreurs réseau.",
+                                 "submittedAt": "2026-11-02T10:00:00Z", "author": {"login": "jim", "__typename": "User"}},
+                                {"id": "R2", "state": "APPROVED", "body": "OK pour moi", "submittedAt": "2026-11-02T11:00:00Z",
+                                 "author": {"login": "pam", "__typename": "User"}},
+                                {"id": "R3", "state": "COMMENTED", "body": "", "submittedAt": "2026-11-02T11:30:00Z", "author": {"login": "jim"}}]
+        self.data["comments"] = [
+            {"id": "C0", "body": "Ancienne remarque", "createdAt": "2026-11-01T09:00:00Z", "author": {"login": "jim", "__typename": "User"}},
+            {"id": "C1", "body": "**Version 1**\n\n> **@jim** …", "createdAt": "2026-11-01T10:00:00Z", "author": {"login": "moi", "__typename": "User"}},
+            {"id": "C2", "body": "Env de branche prête", "createdAt": "2026-11-02T12:00:00Z", "author": {"login": "github-actions", "__typename": "Bot"}},
+            {"id": "C3", "body": "Et le cas sans locale ?", "createdAt": "2026-11-02T13:00:00Z", "author": {"login": "pam", "__typename": "User"}}]
+        r = self.step("fix_prepare")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("0 fil(s) de review non résolu(s), 2 commentaire(s) hors fil", r.stdout)
+        self.assertIn("Passe de corrections : Version 2.", r.stdout)
+        work = os.path.join(self.tmp, ".cache", "pixel-bureau", "pr", "work", "run-1")
+        ctx = json.loads(Path(work, ".bureau-fix.json").read_text())
+        self.assertEqual([(x["id"], x["kind"], x["quoi"]) for x in ctx],
+                         [("review:R1", "general", "changements demandés"), ("comment:C3", "general", "commentaire de la PR")])
+        Path(work, "a.txt").write_text("a\nde la PR, avec erreurs réseau\n")
+        Path(work, ".bureau-fix-replies.json").write_text(json.dumps([
+            {"thread": "review:R1", "fixed": False, "reply": "✅ **Corrigé** : erreurs réseau gérées."},
+            {"thread": "comment:C3", "fixed": False, "reply": "💬 **Réponse** : la locale par défaut s'applique."}]))
+        d = self.step("fix_diff")
+        self.assertIn("Réponses prévues (2 sur 0 fils et 2 commentaire(s) hors fil", d.stdout)
+        self.assertIn("- hors fil : ✅ **Corrigé** : erreurs réseau gérées.", d.stdout)
+        p = self.step("fix_push")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("2 réponse(s) postée(s)", p.stdout)
+        calls = [json.loads(x) for x in Path(self.tmp, "gh.json.calls").read_text().splitlines()]
+        com = [c for c in calls if c[:2] == ["pr", "comment"]]
+        self.assertEqual(len(com), 1, "un seul commentaire pour les réponses hors fil")
+        body = com[0][com[0].index("--body") + 1]
+        self.assertTrue(body.startswith("**Version 2**\n\n> **@jim** (changements demandés) : Il manque la gestion"), body[:120])
+        self.assertIn("> **@pam** (commentaire de la PR) : Et le cas sans locale ?\n\n💬 **Réponse**", body)
+        self.assertFalse(any("addPullRequestReviewThreadReply" in x for c in calls for x in c))
+        edit = next(c for c in calls if c[:2] == ["pr", "edit"] and "--body" in c)
+        self.assertIn("💬 2 commentaire(s) hors fil", edit[edit.index("--body") + 1])
+
+    def test_fix_knows_the_threads_it_already_answered(self):
+        mine = lambda tid, *extra: {**self.thread(tid), "comments": {"nodes": [  # noqa: E731
+            {"author": {"login": "jim"}, "body": "Renomme ça"}, {"author": {"login": "moi"}, "body": "**Version 1**\n\n⏭️ **Laissé tel quel** : voulu."},
+            *extra]}}
+        self.data["threads"] = [mine("T1"), mine("T2", {"author": {"login": "jim"}, "body": "Pas d'accord"}), self.thread("T3")]
+        r = self.step("fix_prepare")
+        self.assertIn("3 fil(s) de review non résolu(s) (dont 1 déjà répondu(s) par le Bureau, sans relance)", r.stdout)
+        work = os.path.join(self.tmp, ".cache", "pixel-bureau", "pr", "work", "run-1")
+        ctx = {x["id"]: x for x in json.loads(Path(work, ".bureau-fix.json").read_text())}
+        self.assertEqual((ctx["T1"]["deja_repondu"], ctx["T1"]["relance"]), ("Version 1", False))
+        self.assertEqual((ctx["T2"]["deja_repondu"], ctx["T2"]["relance"]), ("Version 1", True))
+        self.assertEqual((ctx["T3"]["deja_repondu"], ctx["T3"]["relance"]), (None, False))
+
+    def test_fix_gives_the_agent_the_bureau_checks(self):
+        self.data["threads"] = [self.thread("T1")]
+        cfg = dict(FIXTURE, impl={"repos": {REPO: {"checks": {"regles": [{"cmd": "phpstan -c {worktree}/x.neon {php}", "subdir": "app"}],
+                                                               "tests": ["vitest {tests_ts}"]}}}})
+        r = self.step("fix_prepare", cfg)
+        work = os.path.join(self.tmp, ".cache", "pixel-bureau", "pr", "work", "run-1")
+        self.assertIn("Contrôles que le Bureau lancera après toi sur les fichiers de la PR (impl.repos)", r.stdout)
+        self.assertIn(f"- `phpstan -c {work}/x.neon {{php}}` (chemins relatifs au sous-dossier app/)", r.stdout)
+        self.assertIn("- `vitest {tests_ts}`", r.stdout)
+        self.assertIn("aucun réglé pour ce dépôt", self.step("fix_prepare").stdout)
+
+    def test_fix_commits_only_declared_new_files_and_warns(self):
+        """Fichiers suivis modifiés : commités ; nouveaux : seulement ceux de .bureau-fix-new.txt, les autres signalés à la
+        validation. PR d'un autre : signalée. Un fil corrigé dont la résolution échoue : compté."""
+        self.data["threads"] = [self.thread("T1")]
+        self.data["pr"]["author"] = {"login": "jim"}
+        self.data["me"] = "moi"
+        _, work = self.fix_run(FIXTURE)
+        Path(work, "a.test.ts").write_text("test\n")
+        Path(work, "coverage.json").write_text("{}\n")
+        Path(work, ".bureau-fix-new.txt").write_text("a.test.ts\n")
+        d = self.step("fix_diff")
+        self.assertTrue(d.stdout.startswith("⚠ **PR de jim** : le commit et le push iront sur sa branche"), d.stdout[:200])
+        self.assertIn("⚠ **Fichiers nouveaux non déclarés, laissés hors du commit** : `coverage.json`", d.stdout)
+        self.assertIn("2 fichier(s) changé(s)", d.stdout)
+        self.data["resolve_fails"] = True
+        p = self.step("fix_push")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("1 fil(s) corrigé(s) non marqué(s) résolu(s)", p.stdout)
+        pushed = self.g("--git-dir", self.remote, "show", "--name-only", "--format=", "feat/export").split()
+        self.assertEqual(sorted(pushed), ["a.test.ts", "a.txt"])
 
     def test_fix_with_nothing_changed_nor_answered_ends(self):
         self.data["threads"] = [self.thread("T1")]
