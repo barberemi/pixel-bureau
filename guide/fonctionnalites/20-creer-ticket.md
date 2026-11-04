@@ -16,7 +16,7 @@ Depuis la **fiche de l'agent** qui incarne le modèle (Karen sur les captures), 
 | Composant | la liste des composants du projet Jira (les dépôts) ; obligatoire quand l'équipe la donne |
 | Composant 2 | facultatif, pour un ticket qui touche deux dépôts |
 | Sprint | Backlog (par défaut) ou Sprint suivant : le premier sprint à venir du board, jamais le sprint en cours |
-| Épic ou parent | facultatif (ABC-123) |
+| Épic ou parent | facultatif (ABC-123) : Jira n'accepte qu'une épic. Vérifié dès le lancement : pour une Story ou une Tâche, ses tickets vont sous son épic (montrée au tampon) ; sans épic, le run s'arrête tout de suite, avant la rédaction |
 
 « Lancer… » reste grisé tant qu'il manque un champ obligatoire, et quand trois intentions sont déjà en cours (trois à la fois au plus). Une fois lancé, le formulaire se vide. Les Story Points sont ceux du ticket, ou le total quand l'intention est découpée : l'IA les répartit.
 

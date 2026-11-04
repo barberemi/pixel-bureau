@@ -20,6 +20,9 @@ refuse une gate dans un sous-workflow) : sa création. Le dossier du run
 (~/.cache/pixel-bureau/ticket/<run>/) garde la demande, les rapports, les versions et les tickets créés.
 
   python3 -c <ce script> dossier <run> <intention> <type> <points> <composant> <composant 2> <sprint> <parent>
+  python3 -c <ce script> parent_cle <run>     l'adresse Jira du parent (son ticket, ou /myself sans parent), lue par l'étape suivante
+  python3 -c <ce script> parent_check <run> <réponse JSON>   le parent est une épic ; une Story ou une Tâche donnée en parent
+                                             passe sous son épic (Jira refuse une Story pour parent), sinon le run s'arrête là
   python3 -c <ce script> poste <recherche|redaction|critique> <run>      consigne du poste (stdout = son prompt)
   python3 -c <ce script> rapport <recherche|redaction|critique> <run>     sortie de l'agent (stdin) rangée au dossier
   python3 -c <ce script> aiguillage <run>     critique « à retoucher » et moins de 3 tours : code 3 (retour à la
@@ -192,6 +195,45 @@ def dossier(run, intention, type_, points, c1, c2, sprint, parent):
     print(f"🎫 {d['intention'][:300]}\n{meta(d['type'], d['points'] or 0, d['composants'], d['sprint'], d['parent'])}")
 
 
+def parent_cle(run):
+    """L'adresse Jira à lire pour vérifier le parent : son ticket, ou /myself sans parent (rien à vérifier, appel sans effet)."""
+    p = str((dget(run, "demande.json") or {}).get("parent") or "").strip()
+    print(f"/rest/api/2/issue/{p}" if re.fullmatch(r"[A-Z][A-Z0-9_]*-\d+", p) else "/rest/api/2/myself", end="")
+
+
+def parent_check(run, raw):
+    """Jira n'accepte qu'une épic pour parent d'une Story, d'une Tâche ou d'un Bug (« Veuillez sélectionner un ticket parent
+    valide », à la création, après toute la rédaction : run ed873fc9). Vérifié dès le dossier : une épic passe ; un ticket
+    qui a une épic la donne à sa place (noté parent_de, montré au tampon) ; sinon le run s'arrête, avec la raison."""
+    d = dget(run, "demande.json") or {}
+    p = str(d.get("parent") or "").strip()
+    if not p:
+        print("Sans parent.")
+        return
+    try:
+        o = json.loads(raw or "{}")
+    except ValueError:
+        o = {}
+    if isinstance(o, dict) and "fields" not in o and isinstance(o.get("data"), dict):
+        o = o["data"]
+    f = (o.get("fields") if isinstance(o, dict) else None) or {}
+    it = f.get("issuetype") or {}
+    if not it:
+        sys.exit(f"Parent {p} introuvable dans Jira (clé fausse, ou ticket hors de portée) : relance avec la clé de l'épic.")
+    if it.get("hierarchyLevel") == 1:
+        print(f"Parent {p} : l'épic « {f.get('summary') or ''} ».")
+        return
+    up = f.get("parent") or {}
+    if up.get("key") and (((up.get("fields") or {}).get("issuetype") or {}).get("hierarchyLevel")) == 1:
+        d["parent"], d["parent_de"] = up["key"], p
+        dput(run, "demande.json", d)
+        print(f"Parent {p} : {it.get('name') or 'pas une épic'}. Jira n'accepte qu'une épic : les tickets iront sous son épic "
+              f"{up['key']} « {(up.get('fields') or {}).get('summary') or ''} ».")
+        return
+    sys.exit(f"Parent {p} : {it.get('name') or 'pas une épic'}, sans épic au-dessus. Jira n'accepte qu'une épic pour parent : "
+             "relance sans parent, ou avec la clé d'une épic.")
+
+
 def json_of(text):
     """Le dernier objet JSON d'une sortie d'agent (dans un bloc ```json, ou nu)."""
     text = text or ""
@@ -315,6 +357,8 @@ def apercus(run):
     pts = lambda x: str(x.get("points") or d.get("points") or "1")
     comp = lambda x: str(x.get("composant") or "") or ((d.get("composants") or [""])[0])
     print(f"{len(t)} ticket(s) à créer :")
+    if d.get("parent_de"):
+        print(f"Parent : {d.get('parent')}, l'épic de {d['parent_de']} (Jira n'accepte qu'une épic pour parent)")
     for i, x in enumerate(t):
         print(f"T{i + 1} · {(x.get('summary') or '(sans titre)').strip()} · {d.get('type') or '?'} · {number(pts(x)):g} pts · {comp(x) or 'sans composant'}")
     c = dget(run, "critique.json") or {}
@@ -372,6 +416,10 @@ if __name__ == "__main__":
         dossier(*a[:8])
     elif cmd == "poste":
         poste(a[0], a[1], a[2])
+    elif cmd == "parent_cle":
+        parent_cle(a[0])
+    elif cmd == "parent_check":
+        parent_check(a[0], a[1])
     elif cmd == "apercus":
         apercus(a[0])
     elif cmd == "rapport":

@@ -100,6 +100,32 @@ class TicketChainTest(unittest.TestCase):
         self.assertIn("au 2e étage du Bureau, clic sur sa carte", ap)
         self.assertLess(len(ap), 1000)
 
+    def test_parent_must_be_an_epic(self):
+        """Jira n'accepte qu'une épic pour parent : vérifié dès le dossier (run ed873fc9 : EW-6816, une Story, refusée à la
+        création des 3 tickets). Une épic passe ; une Story avec son épic passe sous l'épic ; sinon le run s'arrête."""
+        self.t("dossier", "p1", "x", "Story", "3", "dm/site", "", "backlog", "")
+        self.assertEqual(self.t("parent_cle", "p1").stdout, "/rest/api/2/myself")
+        self.assertIn("Sans parent", self.t("parent_check", "p1", '{"accountId": "x"}').stdout)
+        self.t("dossier", "p2", "x", "Story", "3", "dm/site", "", "backlog", "EW-6816")
+        self.assertEqual(self.t("parent_cle", "p2").stdout, "/rest/api/2/issue/EW-6816")
+        epic = {"fields": {"summary": "Stabilisation", "issuetype": {"name": "Epic", "hierarchyLevel": 1}}}
+        self.assertEqual(self.t("parent_check", "p2", json.dumps({"data": epic})).returncode, 0)
+        story = {"fields": {"summary": "Keywords", "issuetype": {"name": "Story", "hierarchyLevel": 0},
+                            "parent": {"key": "EW-6843", "fields": {"summary": "Stabilisation", "issuetype": {"name": "Epic", "hierarchyLevel": 1}}}}}
+        r = self.t("parent_check", "p2", json.dumps(story))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("sous son épic EW-6843", r.stdout)
+        self.t("rapport", "redaction", "p2", stdin='{"tickets": [{"summary": "A", "description": "h2. Contexte", "composant": "dm/site", "points": 1}]}')
+        self.assertIn("Parent : EW-6843, l'épic de EW-6816", self.t("apercus", "p2").stdout)
+        self.assertIn("parent EW-6843", self.t("apercus", "p2").stdout)  # le détail du ticket : son vrai parent
+        self.t("dossier", "p3", "x", "Story", "3", "dm/site", "", "backlog", "EW-1")
+        alone = {"fields": {"issuetype": {"name": "Story", "hierarchyLevel": 0}}}
+        r = self.t("parent_check", "p3", json.dumps(alone))
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("sans épic au-dessus", r.stderr)
+        r = self.t("parent_check", "p3", '{"errorMessages": ["Issue does not exist"]}')
+        self.assertIn("introuvable", r.stderr)
+
     def test_nothing_drafted_fails_and_nothing_created_gives_no_result(self):
         self.t("dossier", "r2", "x", "Bug", "1", "dm/site", "", "backlog", "")
         self.assertNotEqual(self.t("rapport", "redaction", "r2", stdin="pas de JSON").returncode, 0)
