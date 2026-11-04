@@ -74,12 +74,19 @@ function mtBlock(side,c){
   if(rows.length>MT_MAX){const e=document.createElement('div');e.className='note';e.textContent='Et '+(rows.length-MT_MAX)+' de plus : ⌘K ou le Kanban.';box.appendChild(e);}
 }
 // ---------- la barre « AGENTS », au-dessus des onglets d'étage, à tous les étages (hors mode TV) ----------
-function mtFace(c){ // le portrait en tenue : le personnage debout de face, coupé à la taille
+// le personnage de face en tenue, sur une image de 64 × 64 (celle d'une case du sprite) ; null tant que le sprite charge
+function mtFrame(c){
+  const m=metierOf(c), img=spriteOf(c);if(!m||!ready(img))return null;
+  const f=document.createElement('canvas');f.width=f.height=64;const g=f.getContext('2d');g.imageSmoothingEnabled=false;
+  g.drawImage(img,2*64,4*64,64,64,0,0,64,64);
+  const s=ctx;ctx=g;try{mtKit({...c,pos:{x:32,y:60},dir:'down',moving:false,pose:'stand'},m);}finally{ctx=s;} // pieds en (32, 60) : l'image en (0, 0)
+  return f;
+}
+// la barre : coupé à la taille ; la fiche (portrait, 50-panel.js) : le cadrage des autres portraits
+function mtFace(c){
+  const f=mtFrame(c);if(!f)return null;
   const p=document.createElement('canvas');p.width=40;p.height=46;const g=p.getContext('2d');g.imageSmoothingEnabled=false;
-  const img=spriteOf(c);if(!ready(img))return null;
-  const a={...c,pos:{x:20,y:62},dir:'down',moving:false,pose:'stand',_st:{st:'idle'}};
-  const s=ctx;ctx=g;try{ctx.drawImage(img,2*64,4*64,64,64,a.pos.x-32,a.pos.y-60,64,64);mtKit(a,METIERS[c.metier]);}finally{ctx=s;}
-  return p.toDataURL();
+  g.drawImage(f,12,2,40,46,0,0,40,46);return p.toDataURL();
 }
 const MT_FACE={};
 // l'état en une ligne et sa pastille : ce qui attend (validation, panne, fils du Support), sinon au travail ou libre
@@ -96,7 +103,7 @@ function mtBarHtml(){
     const f=MT_FACE[c.key]||(MT_FACE[c.key]=mtFace(c)||'');
     return `<button type="button" class="mt-a" data-mt="${esc(c.key)}" title="${esc(m.lbl+' · '+c.name+' : '+s.txt)}">`+
       (f?`<img src="${f}" alt="">`:'<span class="mt-f"></span>')+(s.b?`<span class="mt-b" style="background:${s.col}">${esc(s.b)}</span>`:'')+
-      `<span class="mt-x"><b>${m.ico} ${esc(m.lbl)}<span class="mt-fl">${MT_FLOOR[m.fl]}</span></b><small>${esc(s.txt)}</small></span><span class="mt-go" aria-hidden="true">▸</span></button>`;}).join('');
+      `<span class="mt-x"><b>${m.ico} ${esc(m.lbl)}<span class="mt-fl">${MT_FLOOR[m.fl]}</span></b><small>${esc(s.txt)}</small></span></button>`;}).join('');
 }
 function mtBar(){
   let b=document.getElementById('mtbar');
