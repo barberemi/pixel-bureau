@@ -22,6 +22,16 @@ def colleague(**over):
 
 
 class TemplatesTest(unittest.TestCase):
+    def test_no_rendered_script_holds_double_braces(self):
+        """Kronn refuse un script Exec qui contient deux accolades ouvrantes (il les prendrait pour une variable) : la
+        mise à jour du workflow échoue et l'ancien reste en place (PR #202, écarts Jira en monospace)."""
+        import glob
+        cfg = json.loads(open(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"), encoding="utf-8").read())
+        for f in sorted(glob.glob(os.path.join(ROOT, "workflows", "*.py"))):
+            if not os.path.basename(f).startswith("_"):
+                rel = os.path.relpath(f, ROOT)
+                self.assertNotIn("{" * 2, templates.script_code(rel, cfg), rel)
+
     def test_all_templates_present_and_without_installation_ids(self):
         """Les modèles exportés (templates.py export) ne gardent aucun id de l'installation qui les a exportés."""
         self.assertEqual(set(TPL), set(templates.TEMPLATES))
