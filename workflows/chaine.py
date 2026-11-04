@@ -47,6 +47,7 @@ modifiés par rapport à la base, par type).
 """
 import fnmatch, hashlib, json, os, re, subprocess, sys, time
 from _lib import CFG, get, read_json, send, write_json, write_text
+from _checks import check_fill, check_run
 
 SEP = "\n===SEP===\n"
 KEY = re.compile(r"^[A-Z][A-Z0-9]+-\d+$")
@@ -939,48 +940,15 @@ def cmd_plan(consignes="", retours=""):
     out(f"PLAN VALIDÉ : {len(lots)} lot(s), un commit par lot, dans l'ordre.\n\n" + json.dumps(lots, ensure_ascii=False, indent=1))
 
 
-def fill(check, files, wt=None):
-    """Une commande de vérification : chaîne, ou {cmd, subdir} (chemins relatifs à ce sous-dossier, fichiers hors de lui
-    écartés). Emplacements : {worktree}, {main}, {base}, {files}, {php}, {ts}, {tests}, {tests_php}, {tests_ts}."""
-    cmd, sub = (check, "") if isinstance(check, str) else (check.get("cmd") or "", (check.get("subdir") or "").strip("/"))
-    if sub:
-        files = [f[len(sub) + 1:] for f in files if f.startswith(sub + "/")]
-    files = [f for f in files if os.path.exists(os.path.join(wt or root(), sub, f))]  # absents (supprimés, ou nouveaux au départ)
-    main = ""
+def main_dir():
+    """Dossier du projet (celui de la copie de travail du run) : ses dépendances, pour {main}."""
     common = git("rev-parse", "--path-format=absolute", "--git-common-dir")
-    if common.endswith("/.git"):
-        main = common[:-5]
-    kinds = {"files": files, "php": [f for f in files if f.endswith(".php")],
-             "ts": [f for f in files if re.search(r"\.(ts|tsx|js|vue)$", f)],
-             "tests": [f for f in files if re.search(r"(test|spec)", f, re.I)],
-             "tests_php": [f for f in files if f.endswith("Test.php")],
-             "tests_ts": [f for f in files if re.search(r"\.(test|spec)\.(ts|tsx|js)$", f)]}
-    rep = {"worktree": wt or root(), "main": main, "base": etat().get("base") or "main"}
-    rep.update({k: " ".join(v) for k, v in kinds.items()})
-    for k, v in rep.items():
-        cmd = cmd.replace("{" + k + "}", v)
-    return cmd, kinds
+    return common[:-5] if common.endswith("/.git") else ""
 
 
-def norm(txt):
-    """Lignes d'une sortie de vérification sans chiffres ni chemins de copie de travail : une erreur déjà là au départ
-    se retrouve à l'identique, même décalée de quelques lignes."""
-    out_ = set()
-    for ln in (txt or "").splitlines():
-        ln = re.sub(r"\x1b\[[0-9;]*m", "", ln)
-        ln = re.sub(r"/\S*?/(?=application/|src/|tests/)", "", ln)
-        ln = re.sub(r"\d+", "#", ln).strip(" -|─━═│┃")
-        if len(ln) > 8 and not re.fullmatch(r"[#\s:.,/()%a-z]*", ln):
-            out_.add(ln)
-    return out_
-
-
-def lance(cmd, cwd):
-    try:
-        r = subprocess.run(["sh", "-c", cmd], cwd=cwd, capture_output=True, text=True, timeout=900)
-        return r.returncode, (r.stdout + r.stderr)
-    except subprocess.TimeoutExpired:
-        return 124, "délai dépassé (15 min)"
+def fill(check, files, wt=None):
+    """Une commande de vérification remplie (_checks.check_fill) pour la copie de travail du run, ou wt."""
+    return check_fill(check, files, wt or root(), main_dir(), etat().get("base") or "main")
 
 
 def base_worktree():
@@ -1001,29 +969,8 @@ def verifie(phase, files=None):
     checks = ((reglages().get("checks") or {}).get(phase)) or []
     if not checks:
         return {"ok": True, "phase": phase, "sorties": [], "note": f"aucune vérification « {phase} » réglée pour ce dépôt (impl.repos)"}
-    res, ok = [], True
-    for c in checks:
-        raw = c if isinstance(c, str) else c.get("cmd") or ""
-        need = re.findall(r"\{(php|ts|tests|tests_php|tests_ts|files)\}", raw)
-        cmd, kinds = fill(c, files)
-        if need and not any(kinds[k] for k in need):
-            res.append({"cmd": raw[:200], "saute": "aucun fichier concerné"})
-            continue
-        code, txt = lance(cmd, root())
-        item = {"cmd": raw[:200], "code": code, "sortie": txt[-6000:]}
-        if code:  # rouge : est-ce déjà rouge au point de départ, sur les mêmes fichiers ?
-            base = base_worktree()
-            if base:
-                bcmd, _ = fill(c, files, base)
-                bcode, btxt = lance(bcmd, base)
-                nouveaux = sorted(norm(txt) - norm(btxt))
-                if bcode and not nouveaux:
-                    item.update(code=0, deja_la=True, note="rouge, mais déjà rouge au point de départ : rien de nouveau")
-                elif bcode:
-                    item["nouveau"] = nouveaux[:60]
-        ok = ok and not item["code"]
-        res.append(item)
-    return {"ok": ok, "phase": phase, "sorties": res}
+    r = check_run(checks, files, root(), main_dir(), etat().get("base") or "main", depart=base_worktree)
+    return {"ok": r["ok"], "phase": phase, "sorties": r["sorties"]}
 
 
 def cmd_verif(phase):

@@ -250,6 +250,77 @@ class PrUpdateTest(unittest.TestCase):
         Path(work, ".bureau-fix-replies.json").write_text(json.dumps([{"thread": "T1", "fixed": False, "reply": "💬 **Réponse** : voulu."}]))
         self.assertIn("non lancés par le Bureau", self.step("fix_diff").stdout)
 
+    def fix_run(self, cfg, reply="✅ **Corrigé** : renommé."):
+        """fix_prepare, puis ce que fait l'agent (a.txt corrigé, une réponse au fil T1) ; le dossier de travail."""
+        r = self.step("fix_prepare", cfg)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        work = os.path.join(self.tmp, ".cache", "pixel-bureau", "pr", "work", "run-1")
+        Path(work, "a.txt").write_text("a\nde la PR, renommé\n")
+        Path(work, ".bureau-fix-replies.json").write_text(json.dumps([{"thread": "T1", "fixed": True, "reply": reply}]))
+        return r, work
+
+    def test_fix_reuses_the_chain_checks(self):
+        """Sans fix.checks ni github.checks : les contrôles de la chaîne (impl.repos.<dépôt>.checks), emplacements remplis,
+        sur les fichiers de la PR ; une commande déjà rouge avant les corrections n'est pas comptée, une nouvelle l'est."""
+        self.data["threads"] = [self.thread("T1")]
+        out = os.path.join(self.tmp, "vu.txt")
+        cfg = dict(FIXTURE, impl={"repos": {REPO.upper(): {"checks": {
+            "regles": [f"echo \"{{files}}|{{php}}|{{base}}\" > {out} && test -d {{worktree}}"],
+            "tests": ["grep -q introuvable a.txt", {"cmd": "echo {tests_php}", "subdir": "app"}]}}}})
+        _, work = self.fix_run(cfg)
+        c = self.step("fix_check", cfg)
+        self.assertEqual(c.returncode, 0, c.stdout + c.stderr)
+        self.assertEqual(Path(out).read_text().strip(), "a.txt b.txt||main", "fichiers de la PR depuis sa base, dossier de travail")
+        self.assertIn("verts ✅ (déjà rouge avant les corrections, rien de nouveau)", c.stdout)
+        self.assertIn("· impl.repos", c.stdout)
+        # une commande que les corrections font passer au rouge : en échec, avec sa sortie
+        cfg["impl"]["repos"][REPO.upper()]["checks"]["tests"] = ["grep renommé a.txt && echo 'ligne renommée trouvée' && false"]
+        c = self.step("fix_check", cfg)
+        self.assertIn("en échec ❌ (1 sur 2)", c.stdout)
+        self.assertIn("ligne renommée trouvée", c.stdout)
+        self.assertEqual(self.step("fix_push", cfg).returncode, 0)
+        self.assertFalse(os.path.exists(work + "-depart"), "copie du point de départ retirée avec le dossier de travail")
+
+    def test_fix_chain_checks_need_the_local_checkout_for_main(self):
+        self.data["threads"] = [self.thread("T1")]
+        cfg = dict(FIXTURE, impl={"repos": {REPO: {"checks": {"regles": ["ls {main}/vendor"]}}}})
+        self.fix_run(cfg)
+        c = self.step("fix_check", cfg)
+        self.assertIn("dossier local du dépôt est inconnu de Kronn", c.stdout)
+
+    def test_fix_own_command_wins_over_the_chain_checks(self):
+        self.data["threads"] = [self.thread("T1")]
+        cfg = dict(FIXTURE, fix={"checks": {REPO: "echo à part"}}, impl={"repos": {REPO: {"checks": {"regles": ["false"]}}}})
+        self.fix_run(cfg)
+        c = self.step("fix_check", cfg)
+        self.assertIn("Contrôles (echo à part) : verts ✅", c.stdout)
+
+    def test_fix_version_of_the_pass(self):
+        """Passe n : « **Version n** » en tête de chaque réponse, compteur dans le bloc de la description ; sans bloc, le
+        plus grand « Version N » déjà posté en tête d'une réponse (fil résolu compris) ou d'un commentaire, plus un."""
+        self.data["threads"] = [self.thread("T1")]
+        r, _ = self.fix_run(FIXTURE)
+        self.assertIn("Passe de corrections : Version 1.", r.stdout)
+        self.assertIn("🔢 **Version 1**", self.step("fix_diff").stdout)
+        self.assertEqual(self.step("fix_push").returncode, 0)
+        calls = [json.loads(x) for x in Path(self.tmp, "gh.json.calls").read_text().splitlines()]
+        reply = next(c for c in calls if any("addPullRequestReviewThreadReply" in x for x in c))
+        self.assertIn("b=**Version 1**\n\n✅ **Corrigé** : renommé.", reply)
+        edit = next(c for c in calls if c[:2] == ["pr", "edit"] and "--body" in c)
+        body = edit[edit.index("--body") + 1]
+        self.assertIn("<!-- bureau-fix:version=1 -->", body)
+        self.assertIn("### 🤖 Corrections de review · Version 1", body)
+        # passe suivante : le compteur de la description
+        self.data["pr"]["body"] = body
+        self.assertIn("Version 2.", self.step("fix_prepare").stdout)
+        # sans bloc : une passe faite à la main (« Version 3 » en tête d'une réponse, fil résolu) et un commentaire
+        resolved = self.thread("T0", resolved=True)
+        resolved["comments"]["nodes"].append({"author": {"login": "moi"}, "body": "**Version 3**\n\n✅ Corrigé à la main.", "createdAt": ""})
+        self.data["threads"] = [resolved, self.thread("T1")]
+        self.data["pr"]["body"] = "Ma description."
+        self.data["pr"]["comments"] = [{"body": "Version 2 : merci pour les retours"}, {"body": "La version 9 de PHP"}]
+        self.assertIn("Version 4.", self.step("fix_prepare").stdout)
+
     def test_fix_with_nothing_changed_nor_answered_ends(self):
         self.data["threads"] = [self.thread("T1")]
         self.step("fix_prepare")

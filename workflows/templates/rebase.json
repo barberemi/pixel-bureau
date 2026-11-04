@@ -199,7 +199,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Après un conflit : la commande de contrôle du dépôt (github.checks), son résultat va dans la validation.",
+    "description": "Après un conflit : les contrôles du dépôt (ceux de la chaîne, impl.repos.<dépôt>.checks, sauf fix.checks ou github.checks), leur résultat va dans la validation.",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -209,7 +209,7 @@
      "{{pr}}",
      "{{run.id}}"
     ],
-    "exec_timeout_secs": 960
+    "exec_timeout_secs": 2400
    },
    {
     "agent": "ClaudeCode",
