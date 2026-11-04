@@ -16,6 +16,7 @@ Le bouton « ✍ 2e » (la rédaction et la revue, au survol) apparaît entre le
 - **Le bureau du boss** (un pack d'équipe peut donner au boss un dessin pour cet étage, `redaction_sprite` dans le roster, par exemple en libraire qui lit à son bureau), celui du RDC (« WORLD'S BEST BOSS »), le tampon et son encreur posés dessus : le boss y est toujours assis, et tamponne la liste des tickets (« ✋ 3 tickets : je tamponne ? ») ; tes « Changements » renvoient à la rédaction. Les tickets partent ensuite un par un : les brins des tickets créés vont jusqu'à la boîte Jira.
 - **Le banc**, en bas à gauche, pour les reporters qui ne travaillent pas, comme au 1er.
 - Jusqu'à trois intentions en même temps : la table montre la plus ancienne, un clic sur le liège passe à la suivante.
+- **La fiche d'un ticket** : un clic sur sa carte à la table, ou sur sa ligne dans le panneau, ouvre ce qui sera créé pour lui seul. On y voit le titre, le type, les points, le composant, l'épic et la description en texte lisible, avec la carte du tampon dessous. « ← Les tickets » ramène à la liste. Le tampon ne montre que le récap de la liste dès qu'elle est longue.
 
 ![Le tampon : le premier ticket créé, le deuxième t'attend](../img/redaction-tampon.png)
 
