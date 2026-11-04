@@ -1,7 +1,7 @@
 {
  "kind": "workflow",
  "key": "review_contexte",
- "doc": "Cadre la revue : le sens de la PR, la stack, les fichiers à risque, les tests ; décide si la passe sécurité est utile.",
+ "doc": "Cadre la revue : le ticket et ce que promet la PR (critère par critère), le sens, la stack, les fichiers à risque, les tests ; décide si la passe sécurité est utile.",
  "definition": {
   "name": "Le Bureau · revue de PR · 🗺 contexte",
   "project_id": null,
@@ -40,6 +40,84 @@
   ],
   "steps": [
    {
+    "name": "cle",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "La PR lue par gh (titre, branche, description → pr.md) et l'adresse Jira de son ticket, clé tirée du titre, de la branche ou de la description (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/review.py@@",
+     "ticket_cle",
+     "{{pr}}",
+     "{{repo}}"
+    ],
+    "exec_timeout_secs": 60
+   },
+   {
+    "name": "jira",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Le ticket dans Jira : description, statut, commentaires, liens (lecture) ; Jira en erreur : on continue sans.",
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "{{steps.cle.data.stdout}}",
+    "api_method": "GET",
+    "api_query": {
+     "fields": "summary,status,description,comment,issuelinks"
+    },
+    "on_result": [
+     {
+      "contains": "ERROR",
+      "action": {
+       "type": "Goto",
+       "step_name": "ticket"
+      }
+     }
+    ],
+    "_requires": "jira"
+   },
+   {
+    "name": "ticket",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le ticket rangé pour les postes et l'avis (ticket.md : critères, décisions, commentaires), en texte (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/review.py@@",
+     "ticket",
+     "{{pr}}",
+     "{{steps.jira.data_json}}"
+    ],
+    "exec_timeout_secs": 60,
+    "_requires": "jira"
+   },
+   {
     "name": "entree",
     "agent": "ClaudeCode",
     "mode": {
@@ -75,7 +153,7 @@
     "step_type": {
      "type": "Agent"
     },
-    "description": "🗺 contexte : Cadre la revue : le sens de la PR, la stack, les fichiers à risque, les tests ; décide si la passe sécurité est utile. Outils : lecture du code (Read, Grep, Glob, Bash en lecture).",
+    "description": "🗺 contexte : Cadre la revue : le ticket et la description de la PR critère par critère, le sens, la stack, les fichiers à risque, les tests ; décide si la passe sécurité est utile. Outils : lecture du code (Read, Grep, Glob, Bash en lecture).",
     "prompt_template": "{{steps.entree.data.stdout}}",
     "agent_settings": {
      "tools": {

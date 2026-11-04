@@ -6,13 +6,13 @@ La revue d'une PR est le sous-workflow `review_child`, lancé pour chaque PR (fo
 
 | Étape de `review_child` | Modèle | Niveau (réglage `review.postes.<poste>`) | Rôle |
 |---|---|---|---|
-| `contexte` | `review_contexte` | economy | sens de la PR, stack, fichiers à risque, tests ; dernière ligne `Sécurité : oui` ou `non` |
+| `contexte` | `review_contexte` | default | `cle` (la PR par `gh` : titre, branche, description → `pr.md` ; clé du ticket), `jira` (ApiCall `@@jira.config_id@@`, sans Jira : retirée) et `ticket` (→ `ticket.md`), puis l'agent : `Ticket :` critère par critère (✅ livré, ❌ manquant, ❔ non vérifiable), sens, stack, fichiers à risque, tests ; dernière ligne `Sécurité : oui` ou `non` |
 | `docs` | `review_docs` | default | conventions suivies par le routeur `docs/AGENTS.md`, doc tenue à jour (bloquant si elle devient fausse), citations `[src: …]` |
-| `lecture` | `review_lecture` | reasoning, skill `testing` | correction, tests, passe « mutation », duplication, lisibilité, patterns |
+| `lecture` | `review_lecture` | reasoning, skill `testing` | correction (chaque valeur suivie jusqu'à son rendu ou son consommateur, scénario concret pour un bloquant), mise en prod, cache, SEO, contrat ; tests, passe « mutation », duplication, lisibilité, patterns |
 | `securite` | `review_securite` | default, skill `security` | passe sécurité ; sautée (code 5 de l'entrée) quand le contexte a écrit « Sécurité : non », sauf `review.securite` = `"toujours"` |
-| `avis` | étape Agent du parent | default | vérifie les constats dans le code, rédige la review à la grille (`tools/review_rubric.md`) |
+| `avis` | étape Agent du parent | reasoning | vérifie les constats dans le code et les critères du ticket, rédige la review à la grille (`tools/review_rubric.md`) ; jamais `approve` avec la CI en échec, un conflit ou le bloquant ouvert d'un autre relecteur |
 
-Niveaux et skills : `templates.REVIEW_AGENTS`, rendus par `poste_agent` ; `review.skill_ids` de l'équipe s'ajoute à lecture, sécurité et avis [src: file: tools/templates.py:REVIEW_AGENTS]. Chaque poste est `entree` (consigne, `workflows/review.py poste`), `agent`, `rapport` (rangé dans `.kronn/review-<n>/<poste>.md`) ; l'avis lit ces rapports et le diff annoté `.kronn/review-<n>/diff.md` (`R<n>` = ligne de la nouvelle version, side RIGHT ; `L<n>` = ligne supprimée, side LEFT), écrits dans la copie de travail du run, jamais le dossier du projet [src: file: workflows/review.py:contexte].
+Niveaux et skills : `templates.REVIEW_AGENTS`, rendus par `poste_agent` ; `review.skill_ids` de l'équipe s'ajoute à lecture, sécurité et avis [src: file: tools/templates.py:REVIEW_AGENTS]. Chaque poste est `entree` (consigne, `workflows/review.py poste`), `agent`, `rapport` (rangé dans `.kronn/review-<n>/<poste>.md`) ; `write_ctx` observe aussi la PR sans agent (`observe` : `gh pr checks` au head, `mergeable`, retard sur la base par l'API compare, fichiers de déploiement, de config ou de dépendances touchés) → `.kronn/review-<n>/observation.md` et la section `---OBSERVATION---` du contexte ; l'avis lit ces rapports, `pr.md`, `ticket.md`, `observation.md` et le diff annoté `.kronn/review-<n>/diff.md` (`R<n>` = ligne de la nouvelle version, side RIGHT ; `L<n>` = ligne supprimée, side LEFT), écrits dans la copie de travail du run, jamais le dossier du projet [src: file: workflows/review.py:contexte].
 
 ## Limites de Kronn qui ont fixé la forme
 

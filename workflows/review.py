@@ -12,6 +12,10 @@ Kronn plafonne un workflow à 20 étapes : l'avis lit les rapports lui-même, la
   python3 -c <ce script> contexte <pr> <login>  (stdin : {reviews, comments, files})   code 5 si le Bureau a déjà
                                                 relu la PR à son head ; sinon le contexte de la revue, le diff annoté, le
                                                 dossier vidé, et les états du run (---STATE:…---) sur stdout
+  python3 -c <ce script> ticket_cle <pr> <repo>   la PR lue par gh (titre, branche, description -> pr.md) et l'adresse
+                                                Jira de son ticket (clé du titre, de la branche ou de la description ;
+                                                aucune : /myself), lue par l'étape suivante du poste contexte
+  python3 -c <ce script> ticket <pr> <réponse JSON>   le ticket lu (description, commentaires, liens) -> ticket.md
   python3 -c <ce script> poste <poste> <pr> <repo>     consigne du poste (stdout = son prompt, 0 token) ; code 5 pour
                                                 la sécurité quand le contexte a écrit « Sécurité : non »
   python3 -c <ce script> rapport <poste> <pr>  (stdin : sortie de l'agent)   le rapport, rangé dans le dossier
@@ -19,13 +23,15 @@ Kronn plafonne un workflow à 20 étapes : l'avis lit les rapports lui-même, la
                                                 récap (DRY_RUN=1 : affiche sans publier)
 
 Fichiers, dans la copie de travail du run (jamais le dossier du projet) : .kronn/pr-<n>/ (le worktree de la PR et son
-.review-context.json, lu par l'avis) et .kronn/review-<n>/ (diff.md annoté, un rapport par poste).
+.review-context.json, lu par l'avis) et .kronn/review-<n>/ (diff.md annoté, observation.md : CI au head, retard et
+conflits, fichiers de déploiement touchés ; pr.md : titre et description ; ticket.md : le ticket Jira ; un rapport par
+poste).
 Coût : chaque poste ouvre son prompt par « Review la PR #<n> (`<repo>`) · poste <poste> » ; couts regroupe les sessions
 Claude Code d'une même revue en une ligne (coûts et jetons additionnés, durée du premier au dernier poste, détail dans
 postes), sous l'id de la première session : la page de récap rapproche une ligne par revue.
 """
 import datetime, glob, json, os, re, subprocess, sys, urllib.request
-from _lib import API, CFG
+from _lib import API, CFG, readable
 
 POSTES = ("contexte", "docs", "lecture", "securite")
 TITRES = {"contexte": "🗺 contexte", "docs": "📚 docs", "lecture": "🔍 lecture", "securite": "🔒 sécurité", "avis": "🧐 avis"}
@@ -38,8 +44,12 @@ FORMAT = ("Rends un rapport court en Markdown, une puce par constat, au format :
           "Lisibilité · ⚡ Perf · 💡 Suggestion · 📚 Doc. Bloquant = bug, faille, test manquant sur une logique critique, doc "
           "devenue fausse. Rien à signaler : écris « Rien à signaler. » N'invente rien : chaque constat se vérifie dans le code.")
 MISSIONS = {
-    "contexte": "Cadre la revue pour les postes suivants, sans juger le code. Rapport en Markdown, court : `Sens :` ce que "
-                "fait la PR (deux phrases) ; `Stack :` les langages et frameworks du diff ; `À risque :` les fichiers qui "
+    "contexte": "Cadre la revue pour les postes suivants, sans juger le style. Rapport en Markdown, court : `Sens :` ce que "
+                "fait la PR (deux phrases) ; `Ticket :` si pr.md ou ticket.md donnent un ticket, chacun de ses critères "
+                "d'acceptation (et ce que promet la description de la PR) en une puce `✅ livré` (le fichier qui le fait), "
+                "`❌ manquant` ou `❔ non vérifiable` (ce qu'il faudrait observer : env, prod, décision produit) ; une décision "
+                "produit, SEO ou juridique que le ticket exige d'être tracée et qui ne l'est pas : ❌ ; sans ticket, `Ticket : "
+                "aucun` ; `Stack :` les langages et frameworks du diff ; `À risque :` les fichiers qui "
                 "méritent une lecture attentive, une puce chacun avec la raison ; `Tests :` ceux que la PR ajoute ou modifie, "
                 "et la logique changée qui n'en a pas. Termine par une ligne exacte `Sécurité : oui` ou `Sécurité : non`. "
                 "« oui » dès que le diff touche une surface sensible (entrée utilisateur, authentification ou droits, "
@@ -61,7 +71,13 @@ MISSIONS = {
                "bloquant si la logique est critique), lisibilité et maintenabilité (nommage voisin, complexité, code dupliqué "
                "ou logique réimplémentée alors qu'un helper existe : cite le point de mutualisation). Motifs transversaux : "
                "silence d'analyse statique ou de lint au lieu de corriger la cause, code réservé aux tests exposé en prod, "
-               "refacto hors sujet. Passe « mutation », purement informative : pour chaque ligne de logique, une petite "
+               "refacto hors sujet. Suis chaque valeur modifiée jusqu'à son rendu ou son consommateur : le template et "
+               "son échappement (un filtre après une macro échappe-t-il deux fois ?), le CSS qui s'y applique, les "
+               "listeners et la méthode du framework appelée (lis sa source dans vendor/ ou node_modules : que fait-elle "
+               "sur une entrée invalide ?), l'appelant ou le client d'une API. Regarde aussi ce que la grille liste à part : "
+               "ordre de mise en prod et config, cache HTTP et CDN (ETag, Cache-Control, purge), SEO et indexation, contrat "
+               "avec les consommateurs. Un bloquant s'écrit avec son scénario concret (la requête, l'entrée ou l'état qui "
+               "casse, et ce qu'on obtient) ; « bloquant sauf preuve que … » quand tu ne peux pas trancher. Passe « mutation », purement informative : pour chaque ligne de logique, une petite "
                "mutation (bornes, ===/!==, &&/||, garde supprimée, off-by-one, ?. vers ., ?? vers ||, await supprimé) "
                "survivrait-elle aux tests ? Si oui, un conseil 🧬 Test faible. Design patterns : seulement si le symptôme "
                "est dans le diff et que le bénéfice dépasse l'indirection ; un conseil 💡, jamais bloquant. N'applique que "
@@ -125,6 +141,7 @@ def contexte(pr, me, raw):
     d = json.loads(raw or "{}")
     wt = os.path.join(".kronn", "pr-" + str(pr))
     head = subprocess.run(["git", "-C", wt, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    sha = head  # « head » sert plus bas aux titres du diff
     if head and any((r.get("user") or {}).get("login") == me and "Review automatique" in (r.get("body") or "") and r.get("commit_id") == head
                     for r in d.get("reviews") or []):  # déjà relue par le Bureau à ce head : marqueur pour skip_note
         with open(os.path.join(".kronn", "skip-" + str(pr)), "w", encoding="utf-8"):
@@ -157,6 +174,9 @@ def contexte(pr, me, raw):
         body = annotate(f.get("patch")) if f.get("patch") else "(diff absent de l'API, fichier trop gros ou binaire : lis-le avec git dans le worktree)"
         diff.append(head + nl + "```diff" + nl + body + nl + "```")
     dwrite(pr, "diff.md", (nl + nl).join(diff)[:400000])
+    obs = observe(pr, sha, files)
+    with open(os.path.join(wt, ".review-context.json"), "a", encoding="utf-8") as f:
+        f.write(nl + "---OBSERVATION---" + nl + obs)
     try:
         with open(os.path.join(".kronn", "current_task.json"), encoding="utf-8") as f:
             au = json.load(f).get("author") or ""
@@ -171,6 +191,122 @@ def contexte(pr, me, raw):
         print("---STATE:%s=%s---" % (k, v))
     print("write_ctx OK : %d fichiers diff, %d non-self, %d fils repondus ; conventions=%s"
           % (len(files), len(cs), len(answered), "oui" if conv != "NO_PROJECT_CONVENTIONS" else "non"))
+
+
+DEPLOY = re.compile(r"(^|/)(\.github/workflows/|infrastructure/|infra/|terraform/|helm/|k8s/|deploy/|docker/|migrations?/)|Dockerfile"
+                    r"|docker-compose|\.(tf|vcl)$|(^|/)\.env|(^|/)(composer\.(json|lock)|package(-lock)?\.json|yarn\.lock|pnpm-lock\.yaml)$"
+                    r"|config/packages/.*prod|(^|/)config/.*\.(ya?ml|php|json)$", re.I)
+
+
+def gh(*args):
+    """Une lecture gh (20 s au plus) : sa sortie, ou None."""
+    try:
+        r = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=20)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return r.stdout if r.stdout.strip() else None
+
+
+def task():
+    try:
+        with open(os.path.join(".kronn", "current_task.json"), encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def observe(pr, head, files):
+    """Ce qu'on observe de la PR sans agent (observation.md) : la CI au head, l'état de fusion (conflits), le retard sur sa
+    base, les fichiers de déploiement, de config ou de dépendances touchés. Une lecture qui échoue : « indisponible »."""
+    t = task()
+    repo, base, nl = str(t.get("repo") or ""), str(t.get("baseRef") or "main"), "\n"
+    out = ["# Observation (sans agent, au head %s)" % (head[:10] or "?")]
+    raw = gh("pr", "checks", str(pr), "-R", repo, "--json", "name,bucket") if repo else None
+    try:
+        cs = json.loads(raw) if raw else None
+    except ValueError:
+        cs = None
+    if cs is None:
+        out.append("- CI : indisponible (gh pr checks).")
+    elif not cs:
+        out.append("- CI : aucun check n'a tourné sur ce head.")
+    else:
+        by = {}
+        for c in cs:
+            by.setdefault(c.get("bucket") or "?", []).append(c.get("name") or "?")
+        out.append("- CI : " + ", ".join("%d %s" % (len(v), k) for k, v in sorted(by.items()))
+                   + ("" if not by.get("fail") else " ; en échec : " + ", ".join(by["fail"][:8])))
+    raw = gh("pr", "view", str(pr), "-R", repo, "--json", "mergeable,mergeStateStatus,isDraft") if repo else None
+    try:
+        m = json.loads(raw) if raw else None
+    except ValueError:
+        m = None
+    out.append("- Fusion : indisponible." if m is None else "- Fusion : %s (%s)%s" % (
+        {"CONFLICTING": "⛔ en conflit avec la base", "MERGEABLE": "sans conflit"}.get(m.get("mergeable"), m.get("mergeable") or "?"),
+        m.get("mergeStateStatus") or "?", ", brouillon" if m.get("isDraft") else ""))
+    behind = gh("api", "repos/%s/compare/%s...%s" % (repo, base, head), "-q", ".behind_by") if repo and head else None
+    out.append("- Retard sur %s : %s" % (base, (behind.strip() + " commit(s)") if behind else "indisponible"))
+    dep = [f for f in files if DEPLOY.search(f)]
+    out.append("- Déploiement, config ou dépendances touchés : " + (", ".join(dep[:20]) if dep else "aucun"))
+    text = nl.join(out)
+    dwrite(pr, "observation.md", text + nl)
+    return text
+
+
+PR_KEY = re.compile(r"\b([A-Z][A-Z0-9]+-\d+)\b")
+
+
+def ticket_cle(pr, repo):
+    """La PR lue par gh (pr.md : titre, branche, description) et l'adresse Jira de son ticket : la clé du titre, sinon de
+    la branche, sinon de la description, du projet Jira de l'installation s'il est connu ; aucune : /myself (rien à lire)."""
+    raw = gh("pr", "view", str(pr), "-R", repo, "--json", "title,body,headRefName")
+    try:
+        p = json.loads(raw) if raw else {}
+    except ValueError:
+        p = {}
+    title, branch, body = str(p.get("title") or ""), str(p.get("headRefName") or ""), str(p.get("body") or "")
+    dwrite(pr, "pr.md", "# %s\n\nBranche : %s\n\n%s\n" % (title or "(titre indisponible)", branch or "?", body.strip()[:8000] or "(sans description)"))
+    proj = str((CFG.get("jira") or {}).get("project") or "")
+    keys = [k for txt in (title, branch.upper(), body) for k in PR_KEY.findall(txt)]
+    keys = [k for k in keys if not proj or k.startswith(proj + "-")]
+    print("/rest/api/2/issue/" + keys[0] if keys else "/rest/api/2/myself", end="")
+
+
+def ticket(pr, raw):
+    """Le ticket lu dans Jira -> ticket.md (titre, statut, description en texte, 8 derniers commentaires, liens), pour
+    les postes et l'avis ; pas de ticket ou Jira en erreur : une ligne qui le dit."""
+    try:
+        o = json.loads(raw or "{}")
+    except ValueError:
+        o = {}
+    if isinstance(o, dict) and "fields" not in o and isinstance(o.get("data"), dict):
+        o = o["data"]
+    f = (o.get("fields") if isinstance(o, dict) else None) or {}
+    if not o.get("key") or not f:
+        msg = "Pas de ticket Jira : aucune clé dans le titre, la branche ou la description de la PR." if isinstance(o, dict) and (
+            o.get("accountId") or o.get("emailAddress") or o.get("displayName")) else "Ticket Jira indisponible (lecture en échec)."
+        dwrite(pr, "ticket.md", msg + "\n")
+        print(msg)
+        return
+    nl = "\n"
+    out = ["# %s · %s" % (o["key"], f.get("summary") or ""), "Statut : %s" % ((f.get("status") or {}).get("name") or "?"), "",
+           "## Description", readable(f.get("description") or "") or "(vide)"]
+    coms = ((f.get("comment") or {}).get("comments")) or []
+    if coms:
+        out += ["", "## Commentaires (les plus récents)"]
+        for c in coms[-8:]:
+            out.append("- %s, %s : %s" % ((c.get("author") or {}).get("displayName") or "?", str(c.get("created") or "")[:10],
+                                          re.sub(r"\s+", " ", readable(c.get("body") or ""))[:800]))
+    links = f.get("issuelinks") or []
+    if links:
+        out += ["", "## Liens"]
+        for ln in links[:12]:
+            other = ln.get("outwardIssue") or ln.get("inwardIssue") or {}
+            kind = (ln.get("type") or {}).get("outward" if ln.get("outwardIssue") else "inward") or "lié à"
+            out.append("- %s %s · %s" % (kind, other.get("key") or "?", ((other.get("fields") or {}).get("summary")) or ""))
+    text = nl.join(out)[:20000]
+    dwrite(pr, "ticket.md", text + nl)
+    print(text[:1500])
 
 
 def guidelines():
@@ -193,9 +329,11 @@ def poste(k, pr, repo):
              "français (le vocabulaire technique reste tel quel)." % TITRES[k],
              "## Où lire\n- Le code de la PR : le worktree `%s` (lecture, grep, git en lecture seule).\n- Le diff annoté : "
              "`%s/diff.md`.\n- Les fichiers modifiés (DIFF_FILES), les reviews et commentaires déjà postés : `%s/.review-context.json`.\n"
+             "- Ce que la PR promet et le ticket : `%s/pr.md` (titre, description) et `%s/ticket.md` (critères, décisions, "
+             "commentaires Jira).\n- L'état observé : `%s/observation.md` (CI au head, retard et conflits, déploiement touché).\n"
              "Ces chemins sont dans ta copie de travail (ton dossier courant), pas dans le dossier du projet : ils existent, "
              "lis-les tels quels ; ne conclus jamais qu'ils manquent sans les avoir ouverts."
-             % (wt, dd, wt),
+             % (wt, dd, wt, dd, dd, dd),
              "## Consignes de l'équipe (prioritaires)\n" + guidelines()]
     if k != "contexte" and dread(pr, "contexte.md"):  # le cadrage seul : chaque poste lit le code sans parti pris
         parts.append("## Rapport du poste %s\n%s" % (TITRES["contexte"], dread(pr, "contexte.md")))
@@ -351,6 +489,10 @@ if __name__ == "__main__":
     cmd, a = sys.argv[1], sys.argv[2:] + [""] * 4
     if cmd == "contexte":
         contexte(a[0], a[1], sys.stdin.read())
+    elif cmd == "ticket_cle":
+        ticket_cle(a[0], a[1])
+    elif cmd == "ticket":
+        ticket(a[0], a[1])
     elif cmd == "poste":
         poste(a[0], a[1], a[2])
     elif cmd == "rapport":

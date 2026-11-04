@@ -13,6 +13,18 @@ BASE = json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.js
 PATCH = "\n".join(["@@ -10,3 +10,4 @@ def f():", " a = 1", "-b = 2", "+b = 3", "+c = 4", " return a"])
 
 
+FAKE_GH = r'''#!PY
+import json, os, sys
+a = sys.argv[1:]
+d = json.load(open(os.environ["FAKE_GH"])) if os.path.exists(os.environ.get("FAKE_GH", "")) else {}
+key = " ".join(a[:2])
+out = d.get(key)
+if out is None:
+    sys.exit(1)
+print(out if isinstance(out, str) else json.dumps(out))
+'''
+
+
 def git(*a, cwd):
     subprocess.run(["git", *a], cwd=cwd, check=True, capture_output=True)
 
@@ -27,14 +39,21 @@ class ReviewTest(unittest.TestCase):
         git("-c", "user.email=a@b", "-c", "user.name=a", "commit", "-q", "--allow-empty", "-m", "x", cwd=self.wt)
         self.head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.wt, capture_output=True, text=True).stdout.strip()
         Path(self.tmp, ".kronn", "current_task.json").write_text(json.dumps({"number": 12, "repo": "dm/site", "author": "jim"}))
+        # gh de test : jamais GitHub ; réponses par « sous-commande » (pr checks, pr view, api …) dans gh.json, sinon échec
+        self.bin = os.path.join(self.tmp, "bin")
+        os.makedirs(self.bin)
+        Path(self.bin, "gh").write_text(FAKE_GH.replace("#!PY", "#!" + sys.executable))
+        os.chmod(os.path.join(self.bin, "gh"), 0o755)
+        self.gh = {}
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def run_(self, *args, stdin="", cfg=None, env=None):
         code = templates.script_code("workflows/review.py", cfg or {**copy.deepcopy(BASE), "review": {"guidelines": "Tutoie l'auteur."}})
-        return subprocess.run([sys.executable, "-c", code, *args], cwd=self.tmp, input=stdin, capture_output=True, text=True,
-                              env={**os.environ, **(env or {})})
+        Path(self.tmp, "gh.json").write_text(json.dumps(self.gh))
+        env = {**os.environ, "PATH": self.bin + os.pathsep + os.environ.get("PATH", ""), "FAKE_GH": os.path.join(self.tmp, "gh.json"), **(env or {})}
+        return subprocess.run([sys.executable, "-c", code, *args], cwd=self.tmp, input=stdin, capture_output=True, text=True, env=env)
 
     def ctx(self, reviews=()):
         files = [{"filename": "src/f.py", "status": "modified", "additions": 2, "deletions": 1, "patch": PATCH},
@@ -91,6 +110,60 @@ class ReviewTest(unittest.TestCase):
         self.assertIn("ne conclus jamais qu'ils manquent", lecture)
         self.assertNotEqual(self.run_("poste", "inconnu", "12", "dm/site").returncode, 0)
         self.assertNotEqual(self.run_("rapport", "lecture", "12", stdin="  ").returncode, 0)  # rien rendu : en échec
+
+    def test_observation_without_agent(self):
+        """write_ctx observe la PR sans agent : la CI au head, l'état de fusion, le retard sur la base, les fichiers de
+        déploiement ou de config touchés ; une lecture gh en échec : « indisponible », jamais d'échec de l'étape."""
+        r = self.ctx()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        obs = Path(self.tmp, ".kronn", "review-12", "observation.md").read_text()
+        self.assertIn("- CI : indisponible", obs)
+        self.assertIn("- Déploiement, config ou dépendances touchés : aucun", obs)
+        self.gh = {"pr checks": [{"name": "tests", "bucket": "pass"}, {"name": "phpstan", "bucket": "fail"}, {"name": "e2e", "bucket": "pending"}],
+                   "pr view": {"mergeable": "CONFLICTING", "mergeStateStatus": "DIRTY", "isDraft": False}, "api repos/dm/site/compare/main..." + self.head: "3"}
+        files = [{"filename": f, "status": "modified", "additions": 1, "deletions": 0, "patch": PATCH}
+                 for f in ("src/f.py", ".github/workflows/CD_Deploy-PRODUCTION.yaml", "composer.lock", "config/packages/prod/cache.yaml")]
+        r = self.run_("contexte", "12", "bot", stdin=json.dumps({"reviews": [], "comments": [], "files": files}))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        obs = Path(self.tmp, ".kronn", "review-12", "observation.md").read_text()
+        self.assertIn("- CI : 1 fail, 1 pass, 1 pending ; en échec : phpstan", obs)
+        self.assertIn("- Fusion : ⛔ en conflit avec la base (DIRTY)", obs)
+        self.assertIn("- Retard sur main : 3 commit(s)", obs)
+        self.assertIn(".github/workflows/CD_Deploy-PRODUCTION.yaml, composer.lock, config/packages/prod/cache.yaml", obs)
+        self.assertIn("---OBSERVATION---\n# Observation", Path(self.wt, ".review-context.json").read_text())
+
+    def test_ticket_of_the_pr_read_in_jira(self):
+        """La PR (titre, branche, description -> pr.md) donne la clé de son ticket, du projet Jira de l'installation ; le
+        ticket lu -> ticket.md (description en texte, commentaires, liens) ; sans clé, Jira en erreur : dit tel quel."""
+        self.ctx()
+        self.gh = {"pr view": {"title": "[SEO] Fix sitemaps (ABC-1)", "headRefName": "feat/dm-7853-sitemaps", "body": "Corrige DM-9 aussi"}}
+        r = self.run_("ticket_cle", "12", "dm/site")
+        self.assertEqual(r.stdout, "/rest/api/2/issue/DM-7853", "la clé de la branche, du projet de l'installation (DM), avant la description")
+        self.assertIn("# [SEO] Fix sitemaps (ABC-1)\n\nBranche : feat/dm-7853-sitemaps\n\nCorrige DM-9 aussi", Path(self.tmp, ".kronn", "review-12", "pr.md").read_text())
+        issue = {"key": "DM-7853", "fields": {"summary": "Fix sitemaps", "status": {"name": "En cours"},
+                 "description": "h2. Critères\n* le sitemap des tags répond en 200\n* noindex validé par le produit",
+                 "comment": {"comments": [{"author": {"displayName": "Laureen"}, "created": "2026-11-02T10:00:00", "body": "OK pour le noindex"}]},
+                 "issuelinks": [{"type": {"outward": "blocks"}, "outwardIssue": {"key": "DM-7854", "fields": {"summary": "Suite"}}}]}}
+        out = self.run_("ticket", "12", json.dumps(issue)).stdout
+        tk = Path(self.tmp, ".kronn", "review-12", "ticket.md").read_text()
+        self.assertTrue(tk.startswith("# DM-7853 · Fix sitemaps\nStatut : En cours"), tk[:80])
+        self.assertIn("le sitemap des tags répond en 200", tk)
+        self.assertIn("- Laureen, 2026-11-02 : OK pour le noindex", tk)
+        self.assertIn("- blocks DM-7854 · Suite", tk)
+        self.assertIn("DM-7853", out)
+        self.gh = {"pr view": {"title": "Sans ticket", "headRefName": "fix/x", "body": ""}}
+        self.assertEqual(self.run_("ticket_cle", "12", "dm/site").stdout, "/rest/api/2/myself")
+        self.run_("ticket", "12", json.dumps({"accountId": "x", "displayName": "Moi"}))
+        self.assertIn("Pas de ticket Jira", Path(self.tmp, ".kronn", "review-12", "ticket.md").read_text())
+        self.run_("ticket", "12", "HTTP 401 on GET")
+        self.assertIn("indisponible", Path(self.tmp, ".kronn", "review-12", "ticket.md").read_text())
+        # les postes savent où lire, le contexte juge le ticket critère par critère, la lecture suit les valeurs
+        lecture = self.run_("poste", "lecture", "12", "dm/site").stdout
+        self.assertRegex(lecture, r"`/[^`]*/\.kronn/review-12/pr\.md` \(titre, description\) et `/[^`]*/\.kronn/review-12/ticket\.md`")
+        self.assertIn("review-12/observation.md", lecture)
+        self.assertIn("Suis chaque valeur modifiée jusqu'à son rendu ou son consommateur", lecture)
+        self.assertIn("« bloquant sauf preuve que … »", lecture)
+        self.assertIn("`Ticket :`", self.run_("poste", "contexte", "12", "dm/site").stdout)
 
     def test_security_pass_skipped_only_when_the_context_says_no(self):
         self.ctx()
