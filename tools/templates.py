@@ -473,10 +473,10 @@ def impl_agent(step, role, cfg):
 # rédiger. Réglage support.postes.<poste> du pack ou de la config : agent, tier, model, skills (ajoutés).
 SUPPORT_AGENTS = {"tri": ("economy", []), "logs": ("default", []), "cause": ("default", []), "reponse": ("default", []),
                   "relecture": ("economy", [])}
-# revue de PR : léger pour cadrer, fort pour lire le code ; l'avis trie des constats déjà lus. Réglage review.postes.<poste>
+# revue de PR : le cadrage juge aussi le ticket critère par critère ; fort pour lire le code et pour l'avis, qui tranche. Réglage review.postes.<poste>
 # du pack ou de la config : agent, tier, model, skills (ajoutés) ; review.skill_ids de l'équipe pour ceux qui lisent le code
-REVIEW_AGENTS = {"contexte": ("economy", []), "docs": ("default", []), "lecture": ("reasoning", ["testing"]),
-                 "securite": ("default", ["security"]), "avis": ("default", [])}
+REVIEW_AGENTS = {"contexte": ("default", []), "docs": ("default", []), "lecture": ("reasoning", ["testing"]),
+                 "securite": ("default", ["security"]), "avis": ("reasoning", [])}
 REVIEW_TEAM_SKILLS = {"lecture", "securite", "avis"}
 POSTE_AGENTS = {"support": SUPPORT_AGENTS, "review": REVIEW_AGENTS}
 

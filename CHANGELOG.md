@@ -22,6 +22,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- Revue de PR : la revue lit la description de la PR et son ticket Jira (clé du titre, de la branche ou de la description) et juge chaque critère (✅ livré, ❌ manquant, ❔ non vérifiable, ligne `🎫` dans le recap) ; elle observe la PR sans agent (CI au head, conflits, retard sur la base, fichiers de déploiement ou de config touchés) ; la lecture suit chaque valeur jusqu'à son rendu ou son consommateur et regarde à part mise en prod, cache, SEO et contrat ; la grille passe à « bloquant sauf preuve que … » avec un scénario, et l'avis n'approuve plus avec la CI en échec, un conflit ou le bloquant ouvert d'un autre relecteur. L'avis repasse en `reasoning`, le contexte en `default`. Après la mise à jour : `publish.py workflows`.
 - Créer un ticket : la critique converge. Chaque remarque est bloquante ou un conseil ; seules les bloquantes renvoient à la rédaction, les conseils vont à la validation (💡). Elle relit ses notes d'avant et les réponses de la rédaction, reçoit tes retours comme tranchés, et vérifie dans le code (Grep, Glob) avant d'affirmer qu'une chose manque. Après tes « Changements », elle peut encore renvoyer une fois. (Sur 3 vrais runs, elle disait « à retoucher » à presque chaque tour.)
 
 ### Corrigé

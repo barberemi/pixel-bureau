@@ -54,17 +54,27 @@ class ModelsTest(unittest.TestCase):
         self.assertIn("Tutoie l'auteur.", avis["prompt_template"])
         self.assertIn("Grille de revue de PR", avis["prompt_template"])  # tools/review_rubric.md recopié
         self.assertTrue(avis["prompt_template"].startswith("Review la PR #{{state.pr}} (`{{state.repo}}`) · poste avis"))  # coût
-        self.assertEqual((avis["agent_settings"]["tier"], avis["skill_ids"]), ("default", ["php", "custom-maison"]))
+        self.assertEqual((avis["agent_settings"]["tier"], avis["skill_ids"]), ("reasoning", ["php", "custom-maison"]))  # l'avis tranche
+        self.assertIn("ticket.md", avis["prompt_template"])
+        self.assertIn("observation.md", avis["prompt_template"])
         # postes : un sous-workflow chacun, leur modèle et leurs skills (l'équipe en plus pour ceux qui lisent le code)
         self.assertEqual([s["name"] for s in templates.render(TPL["review_child"], c)["steps"]][5:11],
                          ["write_ctx", "contexte", "docs", "lecture", "securite", "avis"])
-        want = {"contexte": ("economy", []), "docs": ("default", []), "lecture": ("reasoning", ["testing", "php", "custom-maison"]),
+        want = {"contexte": ("default", []), "docs": ("default", []), "lecture": ("reasoning", ["testing", "php", "custom-maison"]),
                 "securite": ("default", ["security", "php", "custom-maison"])}
         for p, (tier, skills) in want.items():
             agent = steps(f"review_{p}", c)["agent"]
             self.assertEqual((agent["agent_settings"]["tier"], agent["skill_ids"]), (tier, skills), p)
             self.assertEqual(child[p]["sub_workflow_variables"], {"pr": "{{state.pr}}", "repo": "{{state.repo}}"})
         self.assertEqual(len(templates.render(TPL["review_child"], cfg(review={"page_id": PAGE}))["steps"]), 20)  # plafond de Kronn
+        # le contexte lit la PR (gh) puis son ticket dans Jira, avant l'agent ; sans Jira, le ticket n'est pas lu
+        ctx = steps("review_contexte", c)
+        self.assertEqual(list(ctx), ["cle", "jira", "ticket", "entree", "agent", "rapport"])
+        self.assertEqual((ctx["jira"]["api_endpoint_path"], ctx["jira"]["api_method"]), ("{{steps.cle.data.stdout}}", "GET"))
+        self.assertEqual(ctx["jira"]["on_result"], [{"contains": "ERROR", "action": {"type": "Goto", "step_name": "ticket"}}])
+        self.assertEqual(ctx["ticket"]["exec_args"][-1], "{{steps.jira.data_json}}")
+        self.assertEqual(list(steps("review_contexte", cfg(jira={}))), ["cle", "entree", "agent", "rapport"])
+        self.assertEqual(child["write_ctx"]["exec_timeout_secs"], 120)
         tuned = steps("review_lecture", cfg(review={"postes": {"lecture": {"tier": "default", "model": "sonnet"}}}))["agent"]
         self.assertEqual(tuned["agent_settings"], {"tools": {"cli": ["Read", "Grep", "Glob", "Bash"], "kronn_internal": []}, "tier": "default", "model": "sonnet"})
         self.assertIn("Le Bureau", child["post"]["api_body"]["body"])  # signature reconnue par skip_check
