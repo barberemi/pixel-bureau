@@ -783,6 +783,31 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(code, 4, outp)
         self.assertTrue(os.path.islink(os.path.join(wt, "node_modules")))
 
+    def test_tests_poste_gets_a_budget_and_the_linked_tests(self):
+        """Poste 🧪 Tests moins cher (EW-7848 : 31 min, 65 M de jetons relus en cache, 14,56 $ en un run) : contre-épreuves
+        bornées (impl.postes.tests.mutations, 6 par défaut), tests ciblés seulement, tests liés aux fichiers touchés donnés
+        d'avance (par le nom)."""
+        os.makedirs(os.path.join(self.wt, "tests"))
+        os.makedirs(os.path.join(self.wt, "front"))
+        self.commit("tests/PartageTest.php", "<?php\n", "test: Partage")
+        self.commit("front/share.spec.ts", "x\n", "test: share")
+        subprocess.run(["git", "push", "-q", "origin", "HEAD:main"], cwd=self.wt, check=True)
+        self.prepare()
+        self.commit("app/Partage.php", "<?php\n", "feat: Partage")
+        self.commit("front/share.ts", "y\n", "feat: share")
+        self.commit("app/Seul.php", "<?php\n", "feat: seul")
+        outp = self.sh("entree", "tests", "AB-12")[1]
+        self.assertIn("Au plus 6 contre-épreuves", outp)
+        self.assertIn("- app/Partage.php : tests/PartageTest.php", outp)
+        self.assertIn("- front/share.ts : front/share.spec.ts", outp)
+        self.assertNotIn("app/Seul.php :", outp)
+        c = cfg()
+        c["impl"]["postes"]["tests"] = {"mutations": 3}
+        self.code = templates.script_code("workflows/chaine.py", c)
+        self.assertIn("Au plus 3 contre-épreuves", self.sh("entree", "tests", "AB-12")[1])
+        self.assertNotIn("Budget du poste", self.sh("entree", "code", "AB-12")[1])
+        self.assertIn("dans la limite du budget", steps("impl_tests")["propose"]["prompt_template"])
+
     def test_deletion_survey_finds_dead_references(self):
         """Ticket de suppression (EW-7816 : 4 blocs supprimés, 15 templates, styles et tests encore liés) : le Code reçoit
         les références aux fichiers que le plan supprime ; après le code, ses vérifications et le poste Règles voient celles

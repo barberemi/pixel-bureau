@@ -465,6 +465,45 @@ def lie_deps(wt=None, repo=None):
     return ok
 
 
+TEST_FICHIER = re.compile(r"(^|/)(tests?|__tests__|spec)/|(Test|_test|\.test|\.spec)\.\w+$")
+
+
+def tests_lies(files):
+    """Poste 🧪 Tests : les fichiers de test du dépôt liés à chaque fichier touché, par le nom (Foo.php -> FooTest.php,
+    foo.ts -> foo.test.ts ou foo.spec.ts), 0 token ; les tests touchés par le diff en plus."""
+    suivis = [f for f in git("ls-files").splitlines() if TEST_FICHIER.search(f)]
+    out_ = {}
+    for f in files:
+        if TEST_FICHIER.search(f):
+            out_.setdefault(f, []).append(f)
+            continue
+        stem = os.path.basename(f).split(".")[0]
+        if len(stem) < 3:
+            continue
+        hits = [t for t in suivis if re.match(re.escape(stem) + r"(Test|_test|\.test|\.spec)?\.", os.path.basename(t)) and t != f]
+        if hits:
+            out_[f] = hits[:5]
+    return out_
+
+
+def tests_budget():
+    """Le cadre du poste 🧪 Tests : le coût d'une session vient de ses tours (chaque tour relit tout le contexte ; EW-7848,
+    banc du 5 novembre : 31 min, 65 M de jetons relus en cache, 14,56 $). Contre-épreuves bornées (impl.postes.tests.mutations,
+    6 par défaut), tests ciblés seulement, tests liés donnés d'avance."""
+    n = int(poste_conf("tests").get("mutations") or 6)
+    files = [f for f in changed() if not f.endswith(".md")]
+    lies = tests_lies(files)
+    return section("Budget du poste (à tenir)",
+                   f"Au plus {n} contre-épreuves (mutations), choisies sur les gardes, bornes et retours qui comptent le plus ; "
+                   "les autres, note-les « non éprouvées » dans le résumé. Lance seulement le fichier de test ciblé (ex. "
+                   "`phpunit tests/…/FooTest.php`, `vitest run foo.test.ts`), jamais toute la suite, l'analyse statique ni un "
+                   "build : l'étape suivante lance les tests du dépôt. Pas d'exploration du dépôt au-delà des fichiers "
+                   "touchés et de leurs tests.") + section(
+                   "Tests liés aux fichiers touchés (par le nom, 0 token)",
+                   "\n".join(f"- {f} : {', '.join(t)}" for f, t in sorted(lies.items())) or
+                   "aucun test trouvé par le nom : cherche les tests voisins du fichier touché avant d'en créer un")
+
+
 def deps_md():
     """Ce que le Code et les Tests savent des dépendances de leur copie de travail."""
     deps = etat().get("deps") or []
@@ -727,6 +766,8 @@ def cmd_entree(p, ticket, retours="", extra=""):
         parts.append(correction(p))
     if p in ("code", "tests"):
         parts.append(deps_md())
+    if p == "tests":
+        parts.append(tests_budget())
     if p == "code":
         morts = references_mortes(plan_seul=True)
         if morts:

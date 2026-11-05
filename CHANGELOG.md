@@ -26,6 +26,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- Chaîne d'implémentation, poste 🧪 Tests moins cher : au plus 6 contre-épreuves par passage (`impl.postes.tests.mutations`), le test ciblé seulement, et les tests liés aux fichiers touchés donnés d'avance. EW-7848 avait coûté 14,56 $ en une session de 31 min.
 - Chaîne d'implémentation, mode essai : une escalade (bloquants restants après les tours) arrête le run avec une note « escalade en essai : bloquants restants … » et son bilan, au lieu d'attendre une gate qu'on approuvait sans regarder. En plan et en complet, la gate reste.
 - Chaîne d'implémentation, mode essai : la revue de la PR relit le diff local sans rien poster et le poste 💬 Retours corrige ce qu'elle relève en commits locaux, sans pousser ; la seconde passe (2 au plus) s'applique aussi. Avant, les deux étaient sautés et la seconde passe ne se mesurait pas.
 - Chaîne d'implémentation, poste 💬 Retours : il fait le même travail que 🛠 Corriger les commentaires d'une PR (fils non résolus et commentaires hors fil, contrôles du dépôt, « Version N », fils résolus, bloc « Corrections de review »), sans validation ; la copie de travail de la chaîne reprend ensuite les corrections poussées. S'il a poussé, la revue relit la PR une seconde fois, puis les retours (deux passes au plus). Après la mise à jour : `publish.py workflows`.
