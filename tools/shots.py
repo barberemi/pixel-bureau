@@ -286,6 +286,9 @@ SHOTS = {
     # une panne : sa cause, le conseil, le lien vers l'étape en échec ; un bureau repris (postes ↻ repris)
     "atelier-panne": (1600, 1100, AT(11) + "setFloor(1);AT_PICK={kind:'panne',run:'demo-p1'};renderSide(true);", None),
     "atelier-reprise": (1600, 1100, AT(11) + "setFloor(1);ATSEL='demo-a2';renderSide(true);", None),
+    # l'orchestrateur écrit le plan : il vient au bureau 1, sa bulle dit ce qu'il fait (act du relevé)
+    "atelier-orchestrateur": (1600, 1100, AT(11) + "Object.assign(ATELIER.rooms[0],{poste:null,gate:null,note:null,states:{cadrage:'ok'},tok:24.8e3,"
+                              "etape:'orchestrateur_plan',act:{cat:'Execute',n:18,at:new Date(T-12e3).toISOString()}});setFloor(1);", None),
     "atelier-calme": (1600, 1100, AT(11) + "ATELIER={...ATELIER,rooms:ATELIER.rooms.slice(0,2),queue:[],pannes:[]};setFloor(1);", None),
     # -1, la caserne Support : deux interventions de la démo (une au poste Cause, une réponse à valider, le capitaine à
     # la vanne) et une baie libre ; puis la caserne au calme, le soir : la garde dort sur les lits de camp

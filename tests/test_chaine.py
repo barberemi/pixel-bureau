@@ -1303,6 +1303,28 @@ class AtelierSnapshotTest(unittest.TestCase):
         snap = self.snap(api, {"impl_chain": "c"})
         self.assertEqual(snap["jour"], {"tickets": 3, "cours": 1, "sortis": 1, "pannes": 1, "reprises": 1, "tok": 4000})
 
+    def test_room_says_which_step_runs_and_what_its_agent_does(self):
+        """Un bureau sans poste en cours (l'orchestrateur écrit le plan) dit l'étape qui tourne ; act = last_activity de
+        l'agent au travail, cherché dans le sous-run quand l'étape est un sous-workflow (le Code)."""
+        prep = {"step_name": "prepare", "status": "Success", "output": "AB-7 sur dm/site : branche kronn/AB-7"}
+        act = {"category": "Execute", "at": "2026-10-30T11:59:40Z", "calls": 18}
+        plan = {"id": "p1", "workflow_id": "c", "status": "Running", "started_at": "2026-10-30T11:50:00Z", "step_results": [
+            prep, {"step_name": "cadrage", "status": "Success"},
+            {"step_name": "orchestrateur_plan", "status": "Running", "step_kind": "Agent", "last_activity": act}]}
+        code = {"id": "p2", "workflow_id": "c", "status": "Running", "started_at": "2026-10-30T11:00:00Z", "step_results": [
+            prep, {"step_name": "cadrage", "status": "Success"}, {"step_name": "gate_plan", "status": "Success"},
+            {"step_name": "code", "status": "Running", "step_kind": "SubWorkflow"}]}
+        kid = {"id": "k2", "status": "Running", "parent_run_id": "p2", "step_results": [
+            {"step_name": "affecter", "status": "Success"},
+            {"step_name": "code", "status": "Running", "last_activity": {"category": "Read", "at": "2026-10-30T11:58:00Z", "calls": 142}}]}
+        api = {"/workflows/c/runs?limit=40": [{k: v for k, v in r.items() if k != "step_results"} for r in (plan, code)],
+               "/workflows/c/runs/p1": plan, "/workflows/c/runs/p2": code,
+               "/workflows/code/runs?limit=60": [{"id": "k2", "parent_run_id": "p2"}], "/workflows/code/runs/k2": kid}
+        rooms = {r["run"]: r for r in self.snap(api, {"impl_chain": "c", "impl_code": "code"})["rooms"]}
+        self.assertEqual((rooms["p1"]["poste"], rooms["p1"]["etape"], rooms["p1"]["act"]),
+                         (None, "orchestrateur_plan", {"cat": "Execute", "n": 18, "at": "2026-10-30T11:59:40Z"}))
+        self.assertEqual((rooms["p2"]["poste"], rooms["p2"]["etape"], rooms["p2"]["act"]["n"]), ("code", "code", 142))
+
     def test_resumed_run_shows_earlier_postes_and_why(self):
         """Run repris (prepare saute aux contrôles) : Plan, gate et Code « rep » (pas « attend son tour »), après quelle panne ;
         le saut de prepare n'est pas une panne dans le fil."""
