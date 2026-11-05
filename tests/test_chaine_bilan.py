@@ -105,6 +105,63 @@ class ChaineBilanTest(unittest.TestCase):
         self.assertIn("mermaid", out["fiches"]["r1"])
         self.assertEqual(out["fiches"]["r1"]["deroule"][0]["n"], "prepare")
 
+    def journal(self, d, name, at, model, prompt, usages, subs=()):
+        """Une session Claude Code : la consigne, puis une ligne par morceau de réponse (même id : une seule réponse)."""
+        Path(d).mkdir(parents=True, exist_ok=True)
+        lines = [{"type": "user", "timestamp": at, "message": {"content": prompt}}]
+        for i, u in enumerate(usages):
+            lines += [{"type": "assistant", "timestamp": at, "message": {"id": f"{name}-{i}", "model": model, "usage": u}}] * 2
+        lines.append({"type": "assistant", "timestamp": at, "message": {"id": "x", "model": "<synthetic>", "usage": {"output_tokens": 9}}})
+        Path(d, name + ".jsonl").write_text("\n".join(json.dumps(x) for x in lines))
+        for j, (sp, su) in enumerate(subs):
+            self.journal(os.path.join(d, name, "subagents"), f"agent-{j}", at, model, sp, su)
+
+    def test_real_cost_from_the_claude_code_logs(self):
+        """Le coût réel : les journaux Claude Code du run (réponses dédoublonnées, sous-agents compris, <synthetic> écarté),
+        chaque session rattachée à l'étape Agent lancée juste avant, chiffrée au prix de son modèle ; rangé par bloc (Plan,
+        Tour n, Livraison), une étape repassée numérotée ; impl.prix remplace un prix."""
+        self.m.PROJETS = os.path.join(self.tmp, "projets")
+        self.addCleanup(setattr, self.m, "PROJETS", self.m.PROJETS)
+        A = lambda n, at, ms=600000: {"step_name": n, "status": "Success", "tokens_used": 1, "step_kind": "Agent", "started_at": at, "duration_ms": ms}  # noqa: E731
+        P = lambda n, at: {"step_name": n, "status": "Success", "started_at": at, "duration_ms": 1000, "output": "AB-1 sur dm/site : x" if n == "prepare" else ""}  # noqa: E731
+        self.details["r1"]["step_results"] = [P("prepare", "2026-10-30T10:00:00Z"), A("orchestrateur_plan", "2026-10-30T10:01:00Z"),
+                                              P("code", "2026-10-30T10:20:00Z"), P("controles", "2026-10-30T10:40:00Z"),
+                                              P("code", "2026-10-30T11:00:00Z"), P("livraison", "2026-10-30T11:30:00Z")]
+        self.details["c1"]["step_results"] = [A("code", "2026-10-30T10:20:05Z")]
+        self.details["c2"]["step_results"] = [A("code", "2026-10-30T11:00:05Z")]
+        self.runs["wcode"] = [{"id": "c1", "parent_run_id": "r1"}, {"id": "c2", "parent_run_id": "r1"}]
+        self.details["k1"]["step_results"] = [A("parallele", "2026-10-30T10:40:05Z")]
+        d = os.path.join(self.m.PROJETS, "-Users-x--kronn-worktrees-Le-Bureau--cha-ne--r1")
+        M = 1_000_000
+        self.journal(d, "plan", "2026-10-30T10:01:02Z", "claude-sonnet-5", "Tu es l'orchestrateur", [{"output_tokens": M}])
+        self.journal(d, "code1", "2026-10-30T10:20:07Z", "claude-opus-5-5", "Tu es le poste ⌨ Code", [{"cache_read_input_tokens": 10 * M}, {"input_tokens": M}])
+        self.journal(d, "ctrl", "2026-10-30T10:40:07Z", "claude-opus-5-5", "Tu coordonnes", [{"output_tokens": M // 10}],
+                     subs=[("Tu es le poste 📏 Règles du projet", [{"output_tokens": M}])])
+        self.journal(d, "code2", "2026-10-30T11:00:07Z", "claude-haiku-4-5-20251001", "Tu es le poste ⌨ Code", [{"output_tokens": M}])
+        out = self.m.snapshot(NOW)
+        r1 = next(t for t in out["tickets"] if t["run"] == "r1")
+        # sonnet : 1 M sortie × 10 = 10 ; opus : 10 M cache × 0,2 + 1 M entrée × 4 = 6, puis 0,1 M × 20 = 2 et le sous-agent 20 ; haiku : 5
+        self.assertEqual(r1["cout"]["usd"], 43.0)
+        self.assertEqual(r1["cout"]["modeles"], {"sonnet": 10.0, "opus": 28.0, "haiku": 5.0})
+        self.assertEqual(r1["cout"]["postes"], {"Plan de l'orchestrateur": 10.0, "Code": 11.0, "Contrôles": 22.0})
+        self.assertEqual(r1["cout"]["postes_m"]["Code"], {"opus": 6.0, "haiku": 5.0})  # le partage exact, poste par poste
+        self.assertEqual(out["kpi"]["value"], "43 $")  # le vidéoprojecteur montre le coût réel quand il est relevé
+        blocs = out["fiches"]["r1"]["blocs"]
+        self.assertEqual([b["n"] for b in blocs], ["Plan : comprendre le ticket et écrire le plan", "Tour 1 : Code, contrôles, décision",
+                                                   "Tour 2 : correction des bloquants"])
+        ctrl = blocs[1]["rows"][1]
+        self.assertEqual((ctrl["n"], ctrl["m"], ctrl["r"], ctrl["usd"], ctrl["subs"][0]["n"], ctrl["subs"][0]["usd"]),
+                         ("🔎 Contrôles", "opus", 1, 2.0, "📏 Règles", 20.0))
+        self.assertEqual((blocs[1]["rows"][0]["r"], blocs[1]["rows"][0]["c"]), (2, 10 * M))  # 2 réponses, pas 4 lignes
+        self.m.CFG["impl"]["prix"] = {"haiku": [0, 0, 0, 1]}
+        shutil.rmtree(self.m.CACHE)
+        self.assertEqual(next(t for t in self.m.snapshot(NOW)["tickets"] if t["run"] == "r1")["cout"]["modeles"]["haiku"], 1.0)
+
+    def test_runs_left_out_of_the_report(self):
+        """impl.bilan_depuis (une date) et impl.bilan_exclus (débuts d'ids) écartent les essais pas marqués comme tels."""
+        self.m.CFG["impl"].update(bilan_depuis="2026-10-25", bilan_exclus=["r3"])
+        self.assertEqual([t["run"] for t in self.m.snapshot(NOW)["tickets"]], ["r4", "r1"])
+
     def test_review_postes_count_with_the_pr_review(self):
         """La revue de la PR (impl_revue_pr -> review_child -> ses postes review_<poste>) : les jetons des postes, quatre
         niveaux sous la chaîne, comptent avec la revue de la PR ; l'étape SubWorkflow, elle, ne compte pas."""

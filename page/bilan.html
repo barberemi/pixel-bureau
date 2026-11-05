@@ -12,18 +12,21 @@
   --bg:#f3efe6; --panel:#fffdf8; --ink:#25221d; --muted:#6f685c; --line:#e2dccf; --chip:#f0ebe0;
   --accent:#2f6fd6; --ok:#2e9e5b; --warn:#d89614; --err:#d1453b; --info:#4a7fe0; --idle:#7a7266; --on-accent:#ffffff;
   --h0:#f0ebe0; --h1:#cfe0f7; --h2:#86aee9; --h3:#2f6fd6; --hx:#d1453b; --sign:#22232b; --sign-ink:#ece8df; --sign-mut:#a29c90;
+  --opus:#8a5cd6; --sonnet:#2f6fd6; --haiku:#1f9e86;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   color-scheme:dark;
   --bg:#17181c; --panel:#202228; --ink:#ece8df; --muted:#a29c90; --line:#2f323a; --chip:#2a2d34;
   --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#9a9284; --on-accent:#0d1b33;
   --h0:#2a2d34; --h1:#2c3d5c; --h2:#3f63a3; --h3:#6b9cf0; --hx:#f06a5f;
+  --opus:#b48cff; --sonnet:#6b9cf0; --haiku:#3fc7b0;
 }}
 :root[data-theme="dark"]{
   color-scheme:dark;
   --bg:#17181c; --panel:#202228; --ink:#ece8df; --muted:#a29c90; --line:#2f323a; --chip:#2a2d34;
   --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#9a9284; --on-accent:#0d1b33;
   --h0:#2a2d34; --h1:#2c3d5c; --h2:#3f63a3; --h3:#6b9cf0; --hx:#f06a5f;
+  --opus:#b48cff; --sonnet:#6b9cf0; --haiku:#3fc7b0;
 }
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -86,7 +89,24 @@ tr.row{cursor:pointer}tr.row:hover td,tr.row:focus-visible td{background:var(--c
 .diff span{overflow-wrap:anywhere}.p{color:var(--ok)}.m{color:var(--err)}
 .mm{background:var(--chip);padding:6px;overflow-x:auto}
 .empty{padding:40px 16px;text-align:center;color:var(--muted)}
-button:focus-visible,select:focus-visible,tr.row:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+button:focus-visible,select:focus-visible,tr.row:focus-visible,tr.grp:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+.hb .bar i.m{position:static;display:inline-block;height:100%}.hb .bar.mods{display:flex}
+.chip{display:inline-block;font:700 10.5px ui-monospace,Menlo,monospace;padding:0 5px;margin-right:3px;color:#fff}
+.chip.opus{background:var(--opus)}.chip.sonnet{background:var(--sonnet)}.chip.haiku{background:var(--haiku)}.chip.autre{background:var(--idle)}
+tr.grp{cursor:pointer}tr.grp:hover td,tr.grp.on td{background:var(--chip)}tr.grp td.t{white-space:normal;max-width:360px}
+tr.row td{color:var(--muted);font-size:12px}tr.row.on td{color:var(--ink)}
+.stack.wide{width:160px}
+.tabs{display:flex;gap:2px;border-bottom:2px solid var(--line);margin:10px 0;flex-wrap:wrap}
+.tabs button{background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-2px;color:var(--muted);font:600 13px system-ui,sans-serif;padding:6px 10px;cursor:pointer}
+.tabs button.on{color:var(--ink);border-color:var(--accent)}
+.ex{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:8px}
+.ex div{background:var(--chip);padding:7px 10px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:start;font-size:12.5px}
+.blocs{display:grid;gap:6px;margin-top:10px}
+.blocs details{background:var(--chip);padding:6px 10px}.blocs summary{cursor:pointer;font-weight:600;font-size:13px}
+.blocs table td.n{white-space:normal}.blocs tr.sub td{color:var(--muted)}
+.hb .bar i.tour{background:var(--err)}
+details.analyse{border:3px solid var(--line);background:var(--panel);padding:8px 12px}details.analyse>summary{cursor:pointer;font:700 12px system-ui;text-transform:uppercase;letter-spacing:.06em}
+details.analyse[open]>summary{margin-bottom:10px}details.analyse .grid2+.grid2,details.analyse .box+.grid2,details.analyse .grid2+.box{margin-top:14px}
 </style>
 </head>
 <body>
@@ -111,6 +131,11 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const fmtTok=n=>!n?'0':n>=1e6?(n/1e6).toFixed(1).replace('.',',')+' M':Math.round(n/1e3)+' k';
 const fmtDur=s=>{if(s==null)return '–';const m=Math.round(s/60);return m<60?m+' min':Math.floor(m/60)+' h '+String(m%60).padStart(2,'0');};
 const pct=(a,b)=>b?Math.round(a/b*100):0;
+const plural=(n,a,b)=>n+' '+(n>1?b:a);
+const fmtUsd=v=>v==null?'–':(v>=100?String(Math.round(v)):v.toFixed(v<10?2:1).replace('.',','))+' $';
+const MODS=[['opus','Opus'],['sonnet','Sonnet'],['haiku','Haiku']];
+const COUL={"Plan":'#7d8bff',"Plan de l'orchestrateur":'#9aa6ff',"Code":'#e8743b',"Tests":'#e0a020',"Contrôles":'#2e9e5b',"Orchestrateur":'#9a9284',
+  "Revue PR":'#2a9fc9',"Retours":'#c95a9b',"PR":'#7a7266',"autre":'#5c6170'};
 const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
 const sum=o=>Object.values(o||{}).reduce((x,y)=>x+(+y||0),0);
 const median=a=>{if(!a.length)return 0;const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;};
@@ -158,7 +183,19 @@ function aggregate(data,f){
   a.schema=[0,0,0];for(const t of rows)if(t.schema){a.schema[0]+=t.schema.prevus_touches;a.schema[1]+=t.schema.touches_non_prevus;a.schema[2]+=t.schema.prevus_non_touches;}
   a.causes={};for(const t of rows)for(const[k,v]of Object.entries((t.retours||{}).par_cause||{}))a.causes[k]=(a.causes[k]||0)+v;
   a.weeks=weeks(fin,a.versions);
+  // coût réel (journaux Claude Code, équivalent prix API) : par ticket, perdu, par poste et modèle
+  const cr=rows.filter(t=>t.cout);a.cout=cr.length>0;
+  a.usd=cr.reduce((x,t)=>x+t.cout.usd,0);
+  a.usdPerdu=cr.filter(t=>/^(panne|annule|rejete)$/.test(t.issue)).reduce((x,t)=>x+t.cout.usd,0);
+  a.groups=groups(rows);a.usdTicket=a.groups.length?a.usd/a.groups.length:0;
+  a.postesUsd={};for(const t of cr){const mt=sum(t.cout.modeles)||1;for(const[p,v]of Object.entries(t.cout.postes||{})){const o=a.postesUsd[p]||(a.postesUsd[p]={t:0,m:{}});
+    o.t+=v;const pm=(t.cout.postes_m||{})[p];if(pm){for(const[m,u]of Object.entries(pm))o.m[m]=(o.m[m]||0)+u;}else for(const[m,u]of Object.entries(t.cout.modeles||{}))o.m[m]=(o.m[m]||0)+v*u/mt;}}
   return a;
+}
+// une ligne par ticket (et dépôt) : ses runs, le plus récent d'abord
+function groups(rows){
+  const by=new Map();for(const t of rows){const k=t.ticket+'|'+t.repo;if(!by.has(k))by.set(k,{k,ticket:t.ticket,repo:t.repo,titre:t.titre,runs:[]});by.get(k).runs.push(t);}
+  return [...by.values()];
 }
 function isoWeek(ms){const d=new Date(ms);d.setUTCHours(0,0,0,0);d.setUTCDate(d.getUTCDate()+3-((d.getUTCDay()+6)%7));
   const y=new Date(Date.UTC(d.getUTCFullYear(),0,4));return 1+Math.round(((d-y)/864e5-3+((y.getUTCDay()+6)%7))/7);}
@@ -175,15 +212,32 @@ const bars=(items,max,cls)=>items.map(([label,v,txt,c])=>`<span>${esc(label)}</s
 
 function kpis(a){
   const d=a.delta==null?'':` · <span class="${a.delta<=0?'up':'down'}">${a.delta>0?'+':'−'}${Math.abs(a.delta)} %</span> vs version d'avant`;
+  const cout=a.cout?`<div class="kpi"><b>${fmtUsd(a.usdTicket)}</b><span>par ticket, tous ses runs (équivalent prix API)</span></div>
+  <div class="kpi err"><b>${fmtUsd(a.usdPerdu)}</b><span>perdus dans des runs en panne, annulés ou rejetés · ${pct(a.usdPerdu,a.usd)} %</span></div>`
+    :`<div class="kpi"><b>${fmtTok(a.tok)}</b><span>jetons par ticket${d}</span></div>
+  <div class="kpi err"><b>${fmtTok(a.perdu)}</b><span>jetons perdus par ticket · ${a.perduPct} %</span></div>`;
   return `<div class="kpis">
-  <div class="kpi"><b>${a.livres}</b><span>tickets livrés en PR sur ${a.n}</span></div>
-  <div class="kpi"><b>${fmtTok(a.tok)}</b><span>jetons par ticket${d}</span></div>
-  <div class="kpi"><b>${a.tours.toFixed(1).replace('.',',')}</b><span>tours de contrôles par ticket</span></div>
-  <div class="kpi"><b>${a.exig==null?'–':a.exig+' %'}</b><span>exigences « fait » (🎯 Besoin)</span></div>
-  <div class="kpi"><b>${a.docN} / ${a.docTot}</b><span>PR qui touchent la doc · <span class="num">+${a.docPlus} −${a.docMoins}</span> lignes</span></div>
-  <div class="kpi err"><b>${fmtTok(a.perdu)}</b><span>jetons perdus par ticket · ${a.perduPct} %</span></div>
+  <div class="kpi"><b>${a.groups.filter(g=>g.runs.some(t=>t.issue==='pr_prete'||t.issue==='pr_brouillon')).length} / ${a.groups.length}</b><span>tickets livrés en PR</span></div>
+  ${cout}
   <div class="kpi"><b>${fmtDur(a.attente)}</b><span>attente humaine aux gates (médiane ${fmtDur(a.attenteMed)})</span></div>
 </div>`;
+}
+// coût réel par poste, empilé par modèle ; sans journaux, les jetons de Kronn (sortie seulement)
+function money(a){
+  if(!a.cout)return tokens(a);
+  const items=Object.entries(a.postesUsd).sort((x,y)=>y[1].t-x[1].t), max=items.length?items[0][1].t:0;
+  return `<div class="box"><div class="h">Où part l'argent <span class="mut">${fmtUsd(a.usd)} sur la période</span></div>
+  <p class="why">Coût réel lu dans les journaux Claude Code (entrée, contexte relu en cache, sortie), au prix de chaque modèle : un équivalent prix API, pour comparer.</p>
+  <div class="legend" style="margin-bottom:6px">${MODS.map(([k,l])=>`<span><i style="background:var(--${k})"></i>${l}</span>`).join('')}</div>
+  <div class="hb">${items.map(([p,o])=>`<span>${esc(p)}</span><span class="bar mods" style="background:none"><span style="display:flex;height:100%;width:${max?Math.max(1,o.t/max*100).toFixed(1):0}%">${MODS.filter(([k])=>o.m[k]).map(([k,l])=>`<i class="m" title="${l} ${fmtUsd(o.m[k])}" style="width:${(o.m[k]/o.t*100).toFixed(1)}%;background:var(--${k})"></i>`).join('')}</span></span><span class="v num">${pct(o.t,a.usd)} %</span>`).join('')}</div></div>`;
+}
+function top(a){
+  const PISTE={"Tests":'sessions longues, tests relancés',"Code":'tests relancés dans le Code',"Contrôles":'relancés à chaque tour',"Revue PR":'deux passes de revue',"Retours":'commentaires de la revue'};
+  const items=Object.entries(a.postesUsd).sort((x,y)=>y[1].t-x[1].t).slice(0,3);
+  const w=a.weeks.length>=3?curve(a):'';
+  return w||`<div class="box"><div class="h">Ce qui coûte le plus</div>
+  ${items.length?`<table><tr><th>Poste</th><th class="r">part</th><th>piste</th></tr>${items.map(([p,o])=>`<tr><td>${esc(p)}</td><td class="r num">${pct(o.t,a.usd)} %</td><td class="mut">${esc(PISTE[p]||'–')}</td></tr>`).join('')}</table>`:'<p class="mut">Pas encore de coût relevé.</p>'}
+  <p class="mut" style="margin:8px 0 0">La courbe semaine par semaine s'affiche à partir de 3 semaines de runs.</p></div>`;
 }
 function tokens(a){
   const items=POSTES.filter(([k])=>a.postes[k]).map(([k,l])=>[l,a.postes[k],fmtTok(a.postes[k])]).sort((x,y)=>y[1]-x[1]);
@@ -258,14 +312,23 @@ function schema(a){
   <p class="why">Tes retours aux gates, classés par mots-clés.</p>
   ${causes.length?`<div class="hb">${bars(causes.map(([k,v])=>[CAUSES[k]||k,v,String(v)]),cmax)}</div>`:'<p class="mut">Aucun retour sur la période.</p>'}</div>`;
 }
-function table(a,sel){
-  const rows=a.rows.map(t=>{const ex=t.exig||{};const n=sum(ex);
-    return `<tr class="row${t.run===sel?' on':''}" data-run="${esc(t.run)}" tabindex="0"><td><b>${esc(t.ticket)}</b> <span class="mut">${esc(String(t.repo||'').split('/').pop())}</span>${t.essai?' <span class="pill idle">essai</span>':''}${t.partiel?' <span class="pill idle">partiel</span>':''}</td>
-    <td style="white-space:normal">${esc(t.titre)}</td><td>${issuePill(t.issue)}</td><td class="mono">${esc(t.version||'–')}</td>
-    <td class="r num">${fmtTok(t.tok)}</td><td class="r num">${fmtDur(t.duree)}</td><td class="r num">${(t.tours||{}).controles||0}</td>
-    <td class="r num">${n?(ex.fait||0)+'/'+n:'–'}</td><td class="r num">${t.doc&&t.doc.fichiers?'+'+t.doc.plus+' −'+t.doc.moins:t.doc?'<span class="pill idle">aucune</span>':'–'}</td></tr>`;}).join('');
-  return `<div class="box"><div class="h">Tickets passés <span class="mut">${a.n} · le plus récent d'abord · clic : sa fiche</span></div>
-  <div class="scroll"><table><tr><th>Ticket</th><th>Sujet</th><th>Fin</th><th>version</th><th class="r">jetons</th><th class="r">durée</th><th class="r">tours</th><th class="r">exigences</th><th class="r">doc</th></tr>${rows}</table></div>`;
+function table(a,st,sel){
+  const rows=a.groups.map(g=>{const rs=g.runs, last=rs[0], open=st.open&&st.open.has(g.k), cr=rs.filter(t=>t.cout), usd=cr.reduce((x,t)=>x+t.cout.usd,0);
+    const ps={},md={};for(const t of cr){for(const[k,v]of Object.entries(t.cout.postes||{}))ps[k]=(ps[k]||0)+v;for(const[k,v]of Object.entries(t.cout.modeles||{}))md[k]=(md[k]||0)+v;}
+    const mt=sum(md)||1, pn=rs.filter(t=>t.issue==='panne').length, ex=last.exig||{}, n=sum(ex), on=rs.some(t=>t.run===sel);
+    const stack=cr.length?`<span class="stack wide">${Object.entries(ps).sort((x,y)=>y[1]-x[1]).map(([k,v])=>`<i title="${esc(k)} ${fmtUsd(v)}" style="width:${(v/usd*100).toFixed(1)}%;background:${COUL[k]||COUL.autre}"></i>`).join('')}</span>`:'';
+    const head=`<tr class="grp${on?' on':''}" data-g="${esc(g.k)}" tabindex="0"><td>${open?'▾':'▸'} <b>${esc(g.ticket)}</b> <span class="mut">${esc(String(g.repo||'').split('/').pop())}</span>${last.essai?' <span class="pill idle">essai</span>':''}</td>
+    <td class="t">${esc(g.titre)}</td><td>${issuePill(last.issue)}</td><td class="r num">${rs.length}${pn?` <span class="mut">· ${pn} 🧯</span>`:''}</td>
+    <td>${stack}</td><td class="r num"><b>${cr.length?fmtUsd(usd):fmtTok(rs.reduce((x,t)=>x+t.tok,0))}</b></td>
+    <td>${MODS.filter(([k])=>md[k]).map(([k,l])=>`<span class="chip ${k}" title="${l} ${fmtUsd(md[k])}">${l[0]} ${md[k]/mt<.01?'<1':pct(md[k],mt)}%</span>`).join('')}</td>
+    <td class="r num">${cr.length?fmtTok(cr.reduce((x,t)=>x+t.cout.cache,0)):'–'}</td><td class="r num">${fmtDur(rs.reduce((x,t)=>x+(t.duree||0),0))}</td>
+    <td class="r num">${Math.max(...rs.map(t=>(t.tours||{}).controles||0))}</td><td class="r num">${n?(ex.fait||0)+'/'+n:'–'}</td></tr>`;
+    const sub=open?rs.map(t=>`<tr class="row${t.run===sel?' on':''}" data-run="${esc(t.run)}" tabindex="0"><td>&nbsp;&nbsp;&nbsp;run <span class="mono">${esc(String(t.run).slice(0,8))}</span>${t.partiel?' <span class="pill idle">partiel</span>':''}</td>
+      <td>${esc((t.debut||'').slice(0,16).replace('T',' '))}${t.version?' · <span class="mono">'+esc(t.version)+'</span>':''}</td><td>${issuePill(t.issue)}</td><td></td><td></td>
+      <td class="r num">${t.cout?fmtUsd(t.cout.usd):fmtTok(t.tok)}</td><td></td><td class="r num">${t.cout?fmtTok(t.cout.cache):'–'}</td><td class="r num">${fmtDur(t.duree)}</td><td class="r num">${(t.tours||{}).controles||0}</td><td></td></tr>`).join(''):'';
+    return head+sub;}).join('');
+  return `<div class="box"><div class="h">Par ticket <span class="mut">${plural(a.groups.length,'ticket','tickets')} · ${plural(a.n,'run','runs')} · ▸ ses runs · clic : sa fiche</span></div>
+  <div class="scroll"><table><tr><th>Ticket</th><th>Sujet</th><th>Issue</th><th class="r">runs</th><th>coût par poste</th><th class="r">${a.cout?'coût':'jetons'}</th><th>modèles</th><th class="r">relu en cache</th><th class="r">durée</th><th class="r">tours</th><th class="r">exigences</th></tr>${rows}</table></div></div>`;
 }
 // le flowchart mermaid du schéma, dessiné ici (la CSP de Kronn n'autorise aucun script externe)
 function flowchart(src){
@@ -284,12 +347,19 @@ function flowchart(src){
   const rank={};for(const id of order)rank[id]=0;
   for(let it=0;it<order.length;it++)for(const e of edges)if(e.a!==e.b&&rank[e.b]<rank[e.a]+1&&rank[e.a]<order.length)rank[e.b]=rank[e.a]+1;
   const cols={};for(const id of order)(cols[rank[id]]||(cols[rank[id]]=[])).push(id);
-  const BW=124,BH=28,GX=30,GY=12,pos={};let h=0;
-  Object.keys(cols).sort((x,y)=>x-y).forEach((r,ci)=>{cols[r].forEach((id,ri)=>{pos[id]={x:8+ci*(BW+GX),y:8+ri*(BH+GY)};h=Math.max(h,pos[id].y+BH);});});
+  const BW=170,BH=30,GX=46,GY=14,pos={};let h=0;
+  Object.keys(cols).sort((x,y)=>x-y).forEach((r,ci)=>{cols[r].forEach((id,ri)=>{pos[id]={x:8+ci*(BW+GX),y:8+GY+ri*(BH+GY)};h=Math.max(h,pos[id].y+BH);});});
   const w=8+Object.keys(cols).length*(BW+GX)-GX+8;
-  const lines=edges.map(e=>{const p=pos[e.a],q=pos[e.b];if(!p||!q)return '';const x1=p.x+BW,y1=p.y+BH/2,x2=q.x,y2=q.y+BH/2,mx=(x1+x2)/2;
-    return `<path class="ed${e.dash?' dash':''}" d="M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2-4} ${y2}" marker-end="url(#fa)"/>`+(e.label?`<text x="${mx}" y="${(y1+y2)/2-4}" text-anchor="middle">${esc(e.label.slice(0,16))}</text>`:'');}).join('');
-  const boxes=order.map(id=>{const p=pos[id],l=nodes[id].label;return `<rect class="nd" x="${p.x}" y="${p.y}" width="${BW}" height="${BH}" rx="3"/><text class="nt" x="${p.x+BW/2}" y="${p.y+BH/2+4}" text-anchor="middle">${esc(l.length>21?l.slice(0,20)+'…':l)}</text>`;}).join('');
+  // vers la droite : du bord droit au bord gauche ; même colonne : d'un bord horizontal à l'autre ; en arrière : un arc au-dessus
+  const lines=edges.map(e=>{const p=pos[e.a],q=pos[e.b];if(!p||!q)return '';let d;
+    if(q.x>p.x+BW+GX){ // saute une colonne : passe dans l'espace entre deux rangées, pas à travers les boîtes du milieu
+      const x1=p.x+BW,y1=p.y+BH/2,x2=q.x,y2=q.y+BH/2,lane=8+GY/2+Math.round(((y1+y2)/2-8-GY/2)/(BH+GY))*(BH+GY),a=x1+GX/2,b=x2-GX/2;
+      d=`M${x1} ${y1} C${a} ${y1} ${x1} ${lane} ${a} ${lane} L${b} ${lane} C${x2} ${lane} ${b} ${y2} ${x2-4} ${y2}`;}
+    else if(q.x>p.x){const x1=p.x+BW,y1=p.y+BH/2,x2=q.x,y2=q.y+BH/2,mx=(x1+x2)/2;d=`M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2-4} ${y2}`;}
+    else if(q.x===p.x){const down=q.y>p.y,x=p.x+BW/2+(down?8:-8),y1=down?p.y+BH:p.y,y2=down?q.y-4:q.y+BH+4;d=`M${x} ${y1} L${x} ${y2}`;}
+    else{const x1=p.x+BW/2,x2=q.x+BW/2,top=Math.min(p.y,q.y)-GY;d=`M${x1} ${p.y} C${x1} ${top} ${x2} ${top} ${x2} ${q.y-4}`;}
+    return `<g><path class="ed${e.dash?' dash':''}" d="${d}" marker-end="url(#fa)"/>`+(e.label?`<title>${esc(e.label)}</title>`:'')+'</g>';}).join('');
+  const boxes=order.map(id=>{const p=pos[id],l=nodes[id].label;return `<g><rect class="nd" x="${p.x}" y="${p.y}" width="${BW}" height="${BH}" rx="3"/><text class="nt" x="${p.x+BW/2}" y="${p.y+BH/2+4}" text-anchor="middle">${esc(l.length>27?l.slice(0,26)+'…':l)}</text><title>${esc(l)}</title></g>`;}).join('');
   return `<svg viewBox="0 0 ${w} ${h+8}" width="${w}" style="max-width:100%;height:auto" role="img" aria-label="Schéma d'impact"><defs><marker id="fa" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 Z" style="fill:var(--muted)"/></marker></defs>${lines}${boxes}</svg>`;
 }
 function gantt(der){
@@ -302,27 +372,39 @@ function gantt(der){
     return `<i class="${c}" style="left:${((s.t-t0)/span*100).toFixed(1)}%;width:${(s.ms/span*100).toFixed(1)}%"></i>`;}).join('')}</span>`).join('')}</div>
   <div class="legend"><span><i style="background:var(--info)"></i>agent</span><span><i style="background:var(--warn)"></i>t'attend</span><span><i style="background:var(--err)"></i>en échec</span><span><i style="background:var(--ok)"></i>livré</span></div>`;
 }
-function fiche(data,t){
+function blocs(f){
+  const B=f.blocs||[];if(!B.length)return '<p class="mut">Coût détaillé indisponible : pas de journaux Claude Code pour ce run.</p>';
+  const rc=r=>r.usd+(r.subs||[]).reduce((x,y)=>x+y.usd,0), bc=b=>b.rows.reduce((x,r)=>x+rc(r),0), all=B.reduce((x,b)=>x+bc(b),0), mb=Math.max(...B.map(bc)), mr=Math.max(...B.flatMap(b=>b.rows.map(rc)));
+  const chip=m=>String(m||'').split('/').filter(Boolean).map(x=>`<span class="chip ${MODS.some(([k])=>k===x)?x:'autre'}">${esc(x)}</span>`).join('');
+  const line=(r,sub)=>`<tr${sub?' class="sub"':''}><td class="n">${sub?'&nbsp;&nbsp;&nbsp;└ ':''}${esc(r.n)}</td><td>${chip(r.m)}</td><td class="r num">${r.r}</td><td class="r num">${fmtTok(r.c)}</td><td class="r num">${fmtTok(r.o)}</td><td class="r num">${fmtUsd(sub?r.usd:rc(r))}</td><td>${sub?'':`<span class="stack" style="width:120px"><i style="width:${(rc(r)/mr*100).toFixed(1)}%;background:var(--accent)"></i></span>`}</td></tr>`;
+  return `<p class="why">Chaque étape de Kronn et ses sous-workflows, avec les sessions qu'ils ont lancées (sous-agents des contrôleurs compris). « Relu en cache » : le contexte renvoyé à chaque réponse, payé moins cher ; c'est l'essentiel d'une longue session.</p>
+  <div class="hb" style="grid-template-columns:110px minmax(0,1fr) 120px">${B.map(b=>{const n=b.n.split(' : ')[0];return `<span>${esc(n)}</span><span class="bar"><i class="${/^Tour [2-9]/.test(n)?'tour':''}" style="width:${(bc(b)/mb*100).toFixed(1)}%"></i></span><span class="v num">${fmtUsd(bc(b))} · ${pct(bc(b),all)} %</span>`;}).join('')}</div>
+  <div class="blocs">${B.map((b,i)=>`<details data-b="${i}"${i===1?' open':''}><summary>${esc(b.n)} <span class="mut">· ${fmtUsd(bc(b))} · ${pct(bc(b),all)} %</span></summary>
+    <div class="scroll"><table><tr><th>poste</th><th>modèle</th><th class="r">réponses</th><th class="r">relu en cache</th><th class="r">sortie</th><th class="r">coût</th><th>part</th></tr>
+    ${b.rows.map(r=>line(r)+(r.subs||[]).map(y=>line(y,true)).join('')).join('')}</table></div></details>`).join('')}</div>
+  <p class="mut" style="margin:6px 0 0">Total du run : <b>${fmtUsd(all)}</b>. En rouge : les tours de correction.</p>`;
+}
+function fiche(data,t,tab){
   if(!t)return '';
   const f=(data.fiches||{})[t.run];
   const ex=f?f.exigences:[];
-  const head=`<div><b style="font-size:15px">${esc(t.ticket)} · ${esc(t.titre)}</b><div class="mut">${esc(t.repo)} · version <span class="mono">${esc(t.version||'–')}</span> · ${esc((t.debut||'').slice(0,10))}${t.pr&&t.pr.n?' · PR #'+esc(t.pr.n):''} · ${fmtTok(t.tok)} jetons${sum(t.perdu)?' (dont '+fmtTok(sum(t.perdu))+' perdus)':''} · ${fmtDur(t.duree)}</div></div>`;
-  if(!f)return `<div class="box">${head}<p class="mut">Fiche détaillée gardée pour les tickets les plus récents seulement.</p></div>`;
-  const items=POSTES.filter(([k])=>(t.postes||{})[k]).map(([k,l])=>[l,t.postes[k],fmtTok(t.postes[k])]).sort((x,y)=>y[1]-x[1]);
+  const head=`<div><b style="font-size:15px">${esc(t.ticket)} · ${esc(t.titre)}</b><div class="mut">${esc(t.repo)} · run <span class="mono">${esc(String(t.run).slice(0,8))}</span> · ${issuePill(t.issue)} · version <span class="mono">${esc(t.version||'–')}</span> · ${esc((t.debut||'').slice(0,10))}${t.pr&&t.pr.n?' · PR #'+esc(t.pr.n):''} · ${t.cout?fmtUsd(t.cout.usd)+' · ':''}${fmtTok(t.tok)} jetons de sortie · ${fmtDur(t.duree)}</div></div>`;
+  if(!f)return `<div class="box">${head}<p class="mut">Fiche détaillée gardée pour les runs les plus récents seulement.</p></div>`;
   const r=f.resume||{};
   const ETAT={fait:'ok',partiel:'warn',non:'err',autrement:'info',hors_scope:'idle'};
-  return `<div class="box">${head}<div class="fiche">
-  <div class="sec"><h4>Déroulé</h4>${gantt(f.deroule)}</div>
-  <div class="sec"><h4>Ce qui en est sorti</h4><div class="note ok">${esc(r.orchestrateur||r.comprehension||'(pas de résumé)')}</div>
-    ${r.comprehension&&r.orchestrateur?`<p class="mut" style="margin:6px 0 0">Compris au cadrage : ${esc(r.comprehension)}</p>`:''}</div>
-  <div class="sec"><h4>Exigences du ticket · ${(t.exig||{}).fait||0} / ${sum(t.exig)}</h4>${ex.length?`<table>${ex.map(x=>`<tr><td><span class="pill ${ETAT[x.etat]||'idle'}">${esc(x.etat)}</span></td><td style="white-space:normal">${esc(x.exigence)}</td></tr>`).join('')}</table>`:'<p class="mut">Aucune (poste 🎯 Besoin pas passé).</p>'}</div>
-  <div class="sec"><h4>Documentation · 📚 Doc</h4>${f.doc.fichiers.length?`<div class="diff">${f.doc.fichiers.map(d=>`<span>${esc(d.fichier)}</span><span><b class="p">+${d.plus}</b> <b class="m">−${d.moins}</b></span>`).join('')}</div>`:'<p class="mut">Aucune doc modifiée.</p>'}
-    ${f.doc.a_mettre_a_jour.length?`<div class="note" style="margin-top:6px">Restée à mettre à jour : ${f.doc.a_mettre_a_jour.map(esc).join(', ')}</div>`:''}</div>
-  <div class="sec wide"><h4>Schéma d'impact</h4>${f.mermaid?`<div class="mm">${flowchart(f.mermaid)}</div>`:'<p class="mut">Pas de schéma.</p>'}
-    ${f.touches_non_prevus.length?`<p class="mut" style="margin:6px 0 0">Touchés sans être prévus : ${f.touches_non_prevus.slice(0,6).map(esc).join(', ')}</p>`:''}</div>
-  <div class="sec"><h4>Jetons par poste</h4>${items.length?`<div class="hb" style="grid-template-columns:150px minmax(0,1fr) 50px">${bars(items,items[0][1])}</div>`:'<p class="mut">–</p>'}</div>
-  ${f.retours.length?`<div class="sec"><h4>Tes retours</h4>${f.retours.map(x=>`<p class="mut" style="margin:0 0 4px">✋ ${esc(x.gate)} · ${esc(CAUSES[x.cause]||x.cause)} : ${esc(x.texte)}</p>`).join('')}</div>`:''}
-  </div></div>`;
+  const T=[['cout','💰 Coût détaillé'],['exig',`🎯 Exigences · ${(t.exig||{}).fait||0} / ${sum(t.exig)}`],['deroule','⏱ Déroulé'],['doc','📚 Doc et impact']];
+  const cur=T.some(([k])=>k===tab)?tab:'cout';
+  const body={cout:()=>blocs(f),
+    exig:()=>ex.length?`<div class="ex">${ex.map(x=>`<div><span class="pill ${ETAT[x.etat]||'idle'}">${esc(String(x.etat).replace('_',' '))}</span><span>${esc(x.exigence)}</span></div>`).join('')}</div>`:'<p class="mut">Aucune (poste 🎯 Besoin pas passé).</p>',
+    deroule:()=>`<div class="fiche"><div class="sec"><h4>Déroulé</h4>${gantt(f.deroule)}</div>
+      <div class="sec"><h4>Ce qui en est sorti</h4><div class="note ok">${esc(r.orchestrateur||r.comprehension||'(pas de résumé)')}</div>
+      ${r.comprehension&&r.orchestrateur?`<p class="mut" style="margin:6px 0 0">Compris au cadrage : ${esc(r.comprehension)}</p>`:''}</div>
+      ${f.retours.length?`<div class="sec"><h4>Tes retours</h4>${f.retours.map(x=>`<p class="mut" style="margin:0 0 4px">✋ ${esc(x.gate)} · ${esc(CAUSES[x.cause]||x.cause)} : ${esc(x.texte)}</p>`).join('')}</div>`:''}</div>`,
+    doc:()=>`<div class="sec"><h4>Documentation · 📚 Doc</h4>${f.doc.fichiers.length?`<div class="diff">${f.doc.fichiers.map(d=>`<span>${esc(d.fichier)}</span><span><b class="p">+${d.plus}</b> <b class="m">−${d.moins}</b></span>`).join('')}</div>`:'<p class="mut">Aucune doc modifiée.</p>'}
+      ${f.doc.a_mettre_a_jour.length?`<div class="note" style="margin-top:6px">Restée à mettre à jour : ${f.doc.a_mettre_a_jour.map(esc).join(', ')}</div>`:''}</div>
+      <div class="sec" style="margin-top:14px"><h4>Schéma d'impact <span class="mut" style="text-transform:none;letter-spacing:0">· le libellé d'une flèche au survol</span></h4>${f.mermaid?`<div class="mm">${flowchart(f.mermaid)}</div>`:'<p class="mut">Pas de schéma.</p>'}
+      ${f.touches_non_prevus.length?`<p class="mut" style="margin:6px 0 0">Touchés sans être prévus : ${f.touches_non_prevus.slice(0,6).map(esc).join(', ')}</p>`:''}</div>`};
+  return `<div class="box">${head}<div class="tabs" role="tablist">${T.map(([k,l])=>`<button type="button" role="tab" data-tab="${k}" aria-selected="${k===cur}" class="${k===cur?'on':''}">${esc(l)}</button>`).join('')}</div>${body[cur]()}</div>`;
 }
 function render(data,st){
   if(!data||!(data.tickets||[]).length)return `<header><h1>🗄 Chaîne · bilan</h1></header><div class="box empty">Aucun run de la chaîne d'implémentation pour l'instant. Le bilan se remplit à chaque ticket posé sur la chaîne.</div>`;
@@ -333,20 +415,27 @@ function render(data,st){
   <div class="filters"><label for="f-jours">Période</label><select id="f-jours"><option value="7"${st.jours==7?' selected':''}>7 jours</option><option value="30"${st.jours==30?' selected':''}>30 jours</option></select>
   <label for="f-repo">Dépôt</label><select id="f-repo"><option value="">Tous</option>${repos.map(r=>`<option${r===st.repo?' selected':''}>${esc(r)}</option>`).join('')}</select>
   <label><input type="checkbox" id="f-essais"${st.essais?' checked':''}> essais</label></div></header>
-  ${kpis(a)}<div class="grid2">${tokens(a)}${curve(a)}</div><div class="grid2">${versions(a)}${lost(a)}</div>${heat(a)}
-  <div class="grid2">${controls(a)}${schema(a)}</div>${table(a,sel&&sel.run)}${fiche(data,sel)}`;
+  ${kpis(a)}<div class="grid2">${money(a)}${top(a)}</div>${table(a,st,sel&&sel.run)}${fiche(data,sel,st.tab)}
+  <details class="analyse"${st.analyse?' open':''}><summary>Analyse de la chaîne : versions, allers-retours, contrôles, schéma, tes retours</summary>
+  <div class="grid2">${versions(a)}${lost(a)}</div>${heat(a)}<div class="grid2">${controls(a)}${schema(a)}</div>${a.cout?`<div class="grid2">${tokens(a)}${a.weeks.length>=3?'':curve(a)}</div>`:''}</details>`;
 }
-const B={readBilan,aggregate,render,flowchart,gantt,fmtTok,fmtDur,verdict,isoWeek};
+const B={readBilan,aggregate,render,flowchart,gantt,fmtTok,fmtDur,fmtUsd,verdict,isoWeek,groups};
 if(typeof window!=='undefined')window.BILAN=B;
 if(typeof document==='undefined'||!document.getElementById('app'))return;
 let DATA=readBilan(window.KronnPageData);
-const ST={jours:30,repo:'',essais:false,sel:null};
+const ST={jours:30,repo:'',essais:false,sel:null,open:new Set(),tab:'cout',analyse:false};
 const app=document.getElementById('app');
 function draw(){app.innerHTML=render(DATA,ST);}
 app.addEventListener('change',e=>{const t=e.target;if(t.id==='f-jours')ST.jours=+t.value;else if(t.id==='f-repo')ST.repo=t.value;else if(t.id==='f-essais')ST.essais=t.checked;else return;draw();});
-const choose=e=>{const r=e.target.closest('tr.row');if(!r)return;ST.sel=r.dataset.run;draw();const n=app.querySelector('tr.row.on');if(n)n.focus();};
+// une ligne de ticket : déplie ses runs et ouvre la fiche du plus récent ; une ligne de run : sa fiche ; un onglet de la fiche
+const choose=e=>{const tab=e.target.closest('[data-tab]');if(tab){ST.tab=tab.dataset.tab;draw();return;}
+  const g=e.target.closest('tr.grp');
+  if(g){const k=g.dataset.g, grp=groups(DATA.tickets||[]).find(x=>x.k===k);if(ST.open.has(k)&&grp&&grp.runs.some(t=>t.run===ST.sel))ST.open.delete(k);else{ST.open.add(k);if(grp)ST.sel=grp.runs[0].run;}
+    draw();const n=app.querySelector(`tr.grp[data-g="${CSS.escape(k)}"]`);if(n)n.focus();return;}
+  const r=e.target.closest('tr.row');if(!r)return;ST.sel=r.dataset.run;draw();const n=app.querySelector('tr.row.on');if(n)n.focus();};
 app.addEventListener('click',choose);
-app.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){if(e.target.closest('tr.row')){e.preventDefault();choose(e);}}});
+app.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){if(e.target.closest('tr.row,tr.grp')){e.preventDefault();choose(e);}}});
+app.addEventListener('toggle',e=>{if(e.target.matches&&e.target.matches('details.analyse'))ST.analyse=e.target.open;},true);
 window.addEventListener('kronn:page-data',e=>{const d=readBilan(e.detail||window.KronnPageData);if(d){DATA=d;draw();}});
 draw();
 })();
