@@ -118,7 +118,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_pr.py@@",
      "pousse"
     ],
     "exec_timeout_secs": 180,
@@ -140,7 +140,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_pr.py@@",
      "pr"
     ],
     "exec_timeout_secs": 120,
@@ -217,7 +217,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_pr.py@@",
      "repasse"
     ],
     "exec_timeout_secs": 30,
@@ -248,7 +248,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_pr.py@@",
      "fin"
     ],
     "exec_timeout_secs": 30

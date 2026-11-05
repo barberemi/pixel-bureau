@@ -74,7 +74,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_controles.py@@",
      "missions"
     ],
     "exec_timeout_secs": 1200,
@@ -369,7 +369,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_controles.py@@",
      "range"
     ],
     "exec_timeout_secs": 60,
@@ -391,7 +391,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_controles.py@@",
      "bilan_controles"
     ],
     "exec_timeout_secs": 60

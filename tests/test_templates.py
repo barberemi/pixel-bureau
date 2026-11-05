@@ -32,6 +32,25 @@ class TemplatesTest(unittest.TestCase):
                 rel = os.path.relpath(f, ROOT)
                 self.assertNotIn("{" * 2, templates.script_code(rel, cfg), rel)
 
+    def test_every_rendered_script_fits_in_one_linux_argument(self):
+        """Kronn passe chaque script en un seul argument « python3 -c » : sous Linux, 128 Kio au plus par argument
+        (MAX_ARG_STRLEN), au-delà « Argument list too long » (CI de la PR #210 : chaine.py rendu à 137 Ko). Chaque script
+        cité par un modèle (@@script:…@@), rendu avec une config d'équipe chargée (consignes longues), reste sous 110 Kio ;
+        les scripts de la chaîne ne reçoivent que leur part de la config."""
+        cfg = json.loads(Path(ROOT, "tests", "fixtures", "bureau.config.json").read_text(encoding="utf-8"))
+        cfg["impl"] = {**(cfg.get("impl") or {}), "guidelines": "- consigne d'équipe\n" * 600}  # ~12 Ko, comme un pack réel
+        cfg["review"] = {**(cfg.get("review") or {}), "guidelines": "- consigne de revue\n" * 600}
+        paths = sorted(set(re.findall(r"@@script:([\w/.]+)@@", json.dumps(TPL))))
+        self.assertIn("workflows/chaine_pr.py", paths)
+        for rel in paths:
+            code = templates.script_code(rel, cfg)
+            self.assertLess(len(code.encode()), templates.MAX_SCRIPT, rel)
+            compile(code, rel, "exec")
+        chaine = templates.script_code("workflows/chaine.py", cfg)
+        self.assertNotIn("consigne de revue", chaine)  # pas la config des autres
+        self.assertIn("consigne d'équipe", chaine)
+        self.assertEqual(chaine.count("def read_json("), 1)  # _lib recopié une fois, même importé par _chaine
+
     def test_all_templates_present_and_without_installation_ids(self):
         """Les modèles exportés (templates.py export) ne gardent aucun id de l'installation qui les a exportés."""
         self.assertEqual(set(TPL), set(templates.TEMPLATES))
@@ -167,7 +186,9 @@ class TemplatesTest(unittest.TestCase):
                 self.assertNotIn("from _lib import", code, path)
                 self.assertNotIn("__BUREAU_CONFIG__", code, path)
                 self.assertIn("def is_bureau(", code, path)
-                self.assertIn(cfg["page_id"], code, path)
+                self.assertIn(cfg["kronn"]["project_id"], code, path)  # la chaîne : sa part de la config seulement
+                if path not in templates.CHAINE_SCRIPTS:
+                    self.assertIn(cfg["page_id"], code, path)
                 compile(code, path, "exec")  # le script recopié reste du Python valide
 
     def script_cfg(self, cfg):

@@ -14,6 +14,8 @@ BASE = json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.js
 TPL = templates.load_templates()
 KEYS = [k for k in templates.TEMPLATES if k.startswith("impl")]
 SEP = "\n===SEP===\n"
+CTRL_CMDS = ('missions', 'range', 'quoi', 'bilan_controles', 'aiguillage', 'fin_essai', 'retours_local')  # sous-commandes de chaine_controles.py
+PR_CMDS = ('lance', 'pousse', 'pr', 'pret', 'reviewers', 'fin', 'revue_prep', 'retours_pr', 'repasse', 'revue_locale', 'retours_synchro')  # sous-commandes de chaine_pr.py ; les autres : chaine.py
 TICKET = {"key": "AB-12", "fields": {"summary": "Bouton partager sur la fiche", "description": "Ajouter un bouton partager.",
                                      "components": [{"name": "site"}], "issuetype": {"name": "Story"}}}
 
@@ -196,7 +198,12 @@ class ChaineScriptTest(unittest.TestCase):
         run("git", "remote", "set-url", "origin", "https://github.com/dm/site.git", cwd=self.wt)
         run("git", "config", f"url.{origin}.insteadOf", "https://github.com/dm/site.git", cwd=self.wt)
         self.origin = origin
-        self.code = templates.script_code("workflows/chaine.py", cfg())
+        self.render(cfg())
+
+    def render(self, c):
+        """Les trois scripts de la chaîne rendus avec cette config ; sh choisit celui qui porte la sous-commande."""
+        self.code = templates.script_code("workflows/chaine.py", c)
+        self.codes = {p: templates.script_code(f"workflows/{p}.py", c) for p in ("chaine_controles", "chaine_pr")}
 
     def tearDown(self):
         import shutil
@@ -204,7 +211,8 @@ class ChaineScriptTest(unittest.TestCase):
 
     def sh(self, *args, stdin=""):
         env = {**os.environ, "KRONN_WORKTREE": self.wt, "HOME": os.path.join(self.tmp, "home"), **getattr(self, "env_extra", {})}  # cache du dossier : jetable
-        r = subprocess.run(["python3", "-c", self.code, *args], input=stdin, capture_output=True, text=True, cwd=self.wt, env=env)
+        code = self.codes["chaine_controles"] if args[0] in CTRL_CMDS else self.codes["chaine_pr"] if args[0] in PR_CMDS else self.code
+        r = subprocess.run(["python3", "-c", code, *args], input=stdin, capture_output=True, text=True, cwd=self.wt, env=env)
         return r.returncode, r.stdout + r.stderr
 
     def dossier(self, name):
@@ -253,7 +261,7 @@ class ChaineScriptTest(unittest.TestCase):
             self.assertIn(part, q)
         c = cfg()  # réglage d'avant : la gate s'ouvre quand même, rien à trancher compris
         c["impl"]["gate_cadrage"] = False
-        self.code = templates.script_code("workflows/chaine.py", c)
+        self.render(c)
         prop["questions"] = []
         self.sh("rapport", "cadrage", stdin=json.dumps(prop) + SEP + "null")
         code, q = self.sh("compris")
@@ -290,7 +298,7 @@ class ChaineScriptTest(unittest.TestCase):
         self.prepare()
         home = os.path.join(self.tmp, "home")
         env = {**os.environ, "KRONN_WORKTREE": self.wt, "HOME": home}
-        r = subprocess.run(["python3", "-c", self.code, "fin"], capture_output=True, text=True, cwd=self.wt, env=env)
+        r = subprocess.run(["python3", "-c", self.codes["chaine_pr"], "fin"], capture_output=True, text=True, cwd=self.wt, env=env)
         dest = json.loads(r.stdout)["dossier"]
         self.assertTrue(dest.startswith(home), dest)
         self.assertTrue(os.path.exists(os.path.join(dest, "ticket.md")))
@@ -570,7 +578,7 @@ class ChaineScriptTest(unittest.TestCase):
         for i in (1, 2, 3):
             self.commit("app/A.php", "<?php\n$a = %d;\n" % i, "feat(site): AB-12 lot %d" % i)
         self.fake_gh({"pr list": "", "pr create": "https://github.com/dm/site/pull/7"})
-        self.code = templates.script_code("workflows/chaine.py", cfg(impl={**cfg()["impl"], "ci_label": "ci-test"}))
+        self.render(cfg(impl={**cfg()["impl"], "ci_label": "ci-test"}))
         code, outp = self.sh("pr", stdin=json.dumps({"title": "feat(Site):AB-12 Bouton partager", "body": "corps",
                                                      "commit": "feat(Site):AB-12 Bouton partager\n\nDétail."}))
         self.assertEqual(code, 0, outp)
@@ -757,7 +765,7 @@ class ChaineScriptTest(unittest.TestCase):
         subprocess.run(["git", "worktree", "add", "-q", "--detach", wt], cwd=main, check=True, capture_output=True)
         c = cfg()
         c["impl"]["repos"]["dm/site"]["deps"] = ["app/vendor", "node_modules", "absent"]
-        self.code = templates.script_code("workflows/chaine.py", c)
+        self.render(c)
         self.wt = wt
         subprocess.run(["git", "remote", "set-url", "origin", "https://github.com/dm/site.git"], cwd=main, check=True)
         subprocess.run(["git", "config", f"url.{self.origin}.insteadOf", "https://github.com/dm/site.git"], cwd=main, check=True)
@@ -803,7 +811,7 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertNotIn("app/Seul.php :", outp)
         c = cfg()
         c["impl"]["postes"]["tests"] = {"mutations": 3}
-        self.code = templates.script_code("workflows/chaine.py", c)
+        self.render(c)
         self.assertIn("Au plus 3 contre-épreuves", self.sh("entree", "tests", "AB-12")[1])
         self.assertNotIn("Budget du poste", self.sh("entree", "code", "AB-12")[1])
         self.assertIn("dans la limite du budget", steps("impl_tests")["propose"]["prompt_template"])
@@ -896,7 +904,7 @@ class ChaineScriptTest(unittest.TestCase):
         d'EW-6550 : PHPStan signalait des erreurs anciennes des fichiers touchés et le Code bouclait dessus)."""
         c = cfg()
         c["impl"]["repos"]["dm/site"]["checks"]["regles"] = [{"cmd": "cd {worktree}/app && grep -n TODO {php} && exit 1 || exit 0", "subdir": "app"}]
-        self.code = templates.script_code("workflows/chaine.py", c)
+        self.render(c)
         g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
         Path(self.wt, "app", "A.php").write_text("<?php // TODO ancien\n")
         subprocess.run(g + ["commit", "-qam", "dette"], cwd=self.wt, check=True)
@@ -985,7 +993,7 @@ class ChaineScriptTest(unittest.TestCase):
         c = cfg()
         c["impl"]["repos"]["dm/site"]["docs"] = ["guide"]
         c["impl"]["postes"]["doc"] = {"bloquant": False}
-        self.code = templates.script_code("workflows/chaine.py", c)
+        self.render(c)
         g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
         Path(self.wt, "guide").mkdir()
         Path(self.wt, "guide", "faq.md").write_text("Voir A.php.\n")
@@ -1001,7 +1009,7 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(self.dossier("doc.json")["statut"], "ok")  # poste non bloquant : un avis
         self.assertEqual([x["poste"] for x in json.loads(self.sh("bilan_controles")[1])["avis"]], ["doc"])
         c["impl"]["postes"]["doc"] = {"actif": False}
-        self.code = templates.script_code("workflows/chaine.py", c)
+        self.render(c)
         self.sh("bilan_code")
         self.assertNotIn("doc", self.sh("missions")[1].split("## Postes à lancer")[1].split("Écartés")[0])
         self.assertEqual(self.dossier("doc.json")["statut"], "non_concerne")
@@ -1102,7 +1110,7 @@ class LanceurTest(unittest.TestCase):
 
     def setUp(self):
         sys.path.insert(0, os.path.join(ROOT, "workflows"))
-        import chaine
+        import chaine_pr as chaine
         self.c = chaine
         self.old = (chaine.get, chaine.send, chaine.project_for, dict(chaine.CFG))
         chaine.CFG.clear()

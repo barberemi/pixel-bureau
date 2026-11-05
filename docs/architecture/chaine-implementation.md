@@ -1,6 +1,6 @@
 # Chaîne d'implémentation d'un ticket (#76, #125)
 
-> Modèles `workflows/templates/impl*.json`, script `workflows/chaine.py`, réglage `impl` (pack ou config). Relevé le 2026-10-30, plusieurs dépôts et reprise le 2026-10-30.
+> Modèles `workflows/templates/impl*.json`, scripts `workflows/chaine.py` (dossier, postes, Code, bilan), `workflows/chaine_controles.py` (contrôles, aiguillage, fin d'essai, retours locaux) et `workflows/chaine_pr.py` (lanceur, PR, revue, retours, publication), leur commun `workflows/_chaine.py` (recopié dans chacun au rendu, comme `_lib.py`), réglage `impl` (pack ou config). Trois scripts parce que Kronn passe chacun en un argument `python3 -c`, 128 Kio au plus sous Linux : rendus, ils restent sous 110 Kio (`templates.MAX_SCRIPT`, test) et ne reçoivent que leur part de la config (`templates.CHAINE_CFG`). Plus bas, « `chaine.py <commande>` » désigne la commande dans celui des trois qui la porte. Relevé le 2026-10-30, plusieurs dépôts et reprise le 2026-10-30.
 
 ## Forme
 

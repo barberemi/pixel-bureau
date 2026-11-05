@@ -47,7 +47,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_pr.py@@",
      "revue_prep"
     ],
     "exec_timeout_secs": 60,
@@ -111,7 +111,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_pr.py@@",
      "fin"
     ],
     "exec_timeout_secs": 30,
@@ -208,7 +208,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_pr.py@@",
      "revue_locale"
     ],
     "exec_timeout_secs": 60,

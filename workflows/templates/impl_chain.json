@@ -518,7 +518,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_controles.py@@",
      "aiguillage"
     ],
     "exec_timeout_secs": 30,
@@ -671,7 +671,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_controles.py@@",
      "fin_essai"
     ],
     "exec_timeout_secs": 30,
