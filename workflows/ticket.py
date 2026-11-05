@@ -13,6 +13,7 @@ sauf jira.create.board_copy à false.
 sprint : « next » = le premier sprint futur du board (liste lue par l'étape sprints), sinon le backlog.
 resultat : {key, url, title, meta} sur stdout, relu par les relevés office et live pour la fiche de l'agent (run.res).
 Réglage jira.create (config ou pack) : types, type, components, component_required, points_field, board_copy, template,
+templates (le modèle par type : {"Story": "EW-7951", "Bug": "EW-7981"}, la clé d'un ticket Jira, un texte ou un fichier),
 link_type, language, title_language, historique, labels (posés sur chaque ticket créé), mots_vides (mots de la maison
 ignorés par la recherche des doublons).
 
@@ -23,6 +24,8 @@ refuse une gate dans un sous-workflow) : sa création. Le dossier du run
 (~/.cache/pixel-bureau/ticket/<run>/) garde la demande, les rapports, les versions et les tickets créés.
 
   python3 -c <ce script> dossier <run> <intention> <type> <points> <composant> <composant 2> <sprint> <parent>
+  python3 -c <ce script> modele_cle <run>     l'adresse Jira du ticket modèle du type demandé (/myself sans ticket modèle)
+  python3 -c <ce script> modele_jira <run> <réponse JSON>   sa description gardée au dossier (modele.json) pour les postes
   python3 -c <ce script> parent_cle <run>     l'adresse Jira du parent (son ticket, ou /myself sans parent), lue par l'étape suivante
   python3 -c <ce script> parent_check <run> <réponse JSON>   le parent est une épic ; une Story ou une Tâche donnée en parent
                                              passe sous son épic (Jira refuse une Story pour parent), sinon le run s'arrête là
@@ -257,12 +260,36 @@ def options():
 TEMPLATE_MAX = 8000
 
 
-def modele():
-    """Le modèle de ticket de l'équipe (jira.create.template). « <chemin> du dépôt <dépôt> » ou « <dépôt>:<chemin> » : le
-    fichier, lu dans la copie locale du dépôt (le projet Kronn du même nom, sinon le dossier des clones impl.clones, ~/Sites
-    par défaut) et recopié dans la consigne : l'agent n'a plus à le chercher (run ed873fc9 : pas trouvé, structure par
-    défaut). Un texte libre, ou un fichier introuvable : le réglage tel quel (une ligne sur stderr pour le fichier)."""
-    t = str(((CFG.get("jira") or {}).get("create") or {}).get("template") or "").strip()
+JIRA_KEY = r"[A-Z][A-Z0-9_]*-\d+"
+
+
+def reglage_modele(type_):
+    """Le réglage du modèle pour ce type : jira.create.templates[type] (sans tenir compte de la casse), sinon
+    jira.create.template."""
+    c = (CFG.get("jira") or {}).get("create") or {}
+    par_type = {str(k).strip().lower(): v for k, v in (c.get("templates") or {}).items()}
+    return str(par_type.get(str(type_ or "").strip().lower()) or c.get("template") or "").strip()
+
+
+def modele(run=None):
+    """Le modèle de ticket de l'équipe, pour le type de la demande (reglage_modele). La clé d'un ticket Jira (EW-7951) : sa
+    description, lue par l'étape modele_jira et gardée au dossier (modele.json). « <chemin> du dépôt <dépôt> » ou
+    « <dépôt>:<chemin> » : le fichier, lu dans la copie locale du dépôt (le projet Kronn du même nom, sinon le dossier des
+    clones impl.clones, ~/Sites par défaut) et recopié dans la consigne : l'agent n'a plus à le chercher (run ed873fc9 : pas
+    trouvé, structure par défaut). Un texte libre, ou un fichier introuvable : le réglage tel quel (une ligne sur stderr
+    pour le fichier). Le ticket modèle pas lu : jira.create.template."""
+    d = dget(run, "demande.json") or {} if run else {}
+    t = reglage_modele(d.get("type"))
+    if re.fullmatch(JIRA_KEY, t):
+        m = dget(run, "modele.json") or {} if run else {}
+        if m.get("cle") == t and m.get("texte"):
+            return (f"(le ticket modèle {t} « {m.get('summary') or ''} », pour un ticket de type {d.get('type')} ; ses textes en "
+                    "italique disent quoi écrire : remplace-les par le contenu, ne les recopie pas ; une partie dite "
+                    "optionnelle qui ne sert pas, supprime-la)\n\n" + m["texte"][:TEMPLATE_MAX])
+        # ticket modèle pas lu dans Jira : le modèle commun de l'équipe, s'il n'est pas lui-même un ticket
+        t = str(((CFG.get("jira") or {}).get("create") or {}).get("template") or "").strip()
+        if re.fullmatch(JIRA_KEY, t):
+            return ""
     m = re.fullmatch(r"(\S+\.\w+)\s+du dépôt\s+(\S+)", t) or re.fullmatch(r"([\w.-]+):(\S+\.\w+)", t)
     if not m:
         return t
@@ -313,6 +340,37 @@ def parent_cle(run):
     """L'adresse Jira à lire pour vérifier le parent : son ticket, ou /myself sans parent (rien à vérifier, appel sans effet)."""
     p = str((dget(run, "demande.json") or {}).get("parent") or "").strip()
     print(f"/rest/api/2/issue/{p}" if re.fullmatch(r"[A-Z][A-Z0-9_]*-\d+", p) else "/rest/api/2/myself", end="")
+
+
+def modele_cle(run):
+    """L'adresse Jira du ticket modèle pour le type de la demande, ou /myself quand le modèle n'est pas un ticket Jira
+    (appel sans effet, comme parent_cle)."""
+    t = reglage_modele((dget(run, "demande.json") or {}).get("type"))
+    print(f"/rest/api/2/issue/{t}" if re.fullmatch(JIRA_KEY, t) else "/rest/api/2/myself", end="")
+
+
+def modele_jira(run, raw):
+    """La description du ticket modèle (wiki Jira, REST v2, le format des tickets créés) gardée au dossier pour la
+    rédaction et la critique. Illisible : la structure par défaut, sans arrêter le run (une ligne sur stderr)."""
+    d = dget(run, "demande.json") or {}
+    t = reglage_modele(d.get("type"))
+    if not re.fullmatch(JIRA_KEY, t):
+        print("Modèle : " + ("celui du réglage (pas un ticket Jira)." if t else "aucun, structure par défaut."))
+        return
+    try:
+        o = json.loads(raw or "{}")
+    except ValueError:
+        o = {}
+    if isinstance(o, dict) and "fields" not in o and isinstance(o.get("data"), dict):
+        o = o["data"]
+    f = (o.get("fields") if isinstance(o, dict) else None) or {}
+    texte = f.get("description") if isinstance(f.get("description"), str) else ""
+    if not texte.strip():
+        print(f"ticket : modèle {t} illisible dans Jira (clé fausse, ticket hors de portée ou sans description)", file=sys.stderr)
+        print(f"Modèle {t} pas lu dans Jira : le modèle commun de l'équipe (jira.create.template), sinon la structure par défaut.")
+        return
+    dput(run, "modele.json", {"cle": t, "summary": str(f.get("summary") or "")[:200], "texte": texte})
+    print(f"Modèle {t} « {f.get('summary') or ''} » pour le type {d.get('type')} ({len(texte)} caractères).")
 
 
 def parent_check(run, raw):
@@ -463,7 +521,7 @@ def poste(k, run, retours=""):
              "## La demande\n" + d["intention"] + f"\n\nType : {d['type']} · Estimation : {d['points']} story points · Composants donnés : "
              + (", ".join(d["composants"]) or "aucun") + (f" · Parent : {d['parent']}" if d["parent"] else ""),
              "## Composants possibles (les dépôts de l'équipe)\n" + (", ".join(options()) or ", ".join(d["composants"]) or "aucun"),
-             "## Modèle de ticket de l'équipe\n" + (modele() or "aucun (structure par défaut)")]
+             "## Modèle de ticket de l'équipe\n" + (modele(run) or "aucun (structure par défaut)")]
     if k != "recherche" and dget(run, "recherche.json"):
         parts.append("## Rapport de la recherche\n" + dget(run, "recherche.json")["texte"])
     if k != "recherche" and dget(run, "doublons.json"):
@@ -745,6 +803,10 @@ if __name__ == "__main__":
         dossier(*a[:8])
     elif cmd == "poste":
         poste(a[0], a[1], a[2])
+    elif cmd == "modele_cle":
+        modele_cle(a[0])
+    elif cmd == "modele_jira":
+        modele_jira(a[0], a[1])
     elif cmd == "parent_cle":
         parent_cle(a[0])
     elif cmd == "parent_check":

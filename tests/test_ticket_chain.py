@@ -124,6 +124,31 @@ class TicketChainTest(unittest.TestCase):
         h = json.loads(Path(self.tmp, ".local", "share", "pixel-bureau", "historique", "ticket", "r12.json").read_text())
         self.assertEqual(h["versions"][-1]["hors_liste"], ["Page 9", "Page 10", "Page 11"])
 
+    def test_template_per_type_read_from_its_jira_ticket(self):
+        """jira.create.templates : un modèle par type, la clé d'un ticket Jira (Story et Tâche : EW-7951, Bug : EW-7981) ;
+        sa description, lue par modele_jira, va dans la consigne de la rédaction et de la critique. Sans réglage pour le type :
+        jira.create.template, comme quand le ticket modèle est illisible (sans arrêter le run)."""
+        c = json.loads(Path(FIXTURE).read_text())
+        c["jira"] = {**c.get("jira", {}), "create": {"template": "h2. Défaut", "templates": {"Story": "EW-7951", "bug": "EW-7981"}}}
+        cfg = os.path.join(self.tmp, "cfg.json")
+        Path(cfg).write_text(json.dumps(c))
+        self.t("dossier", "m1", "x", "Bug", "1", "dm/site", "", "backlog", "", cfg=cfg)
+        self.assertEqual(self.t("modele_cle", "m1", cfg=cfg).stdout, "/rest/api/2/issue/EW-7981")
+        bug = {"fields": {"summary": "[TEMPLATE] Bug", "description": "h2. Étapes pour reproduire\n_Les étapes exactes._"}}
+        self.assertIn("Modèle EW-7981 « [TEMPLATE] Bug » pour le type Bug", self.t("modele_jira", "m1", json.dumps({"data": bug}), cfg=cfg).stdout)
+        for k in ("redaction", "critique"):
+            p = self.t("poste", k, "m1", cfg=cfg).stdout
+            self.assertIn("le ticket modèle EW-7981 « [TEMPLATE] Bug », pour un ticket de type Bug", p)
+            self.assertIn("h2. Étapes pour reproduire", p)
+        self.t("dossier", "m2", "x", "Tâche", "1", "dm/site", "", "backlog", "", cfg=cfg)
+        self.assertEqual(self.t("modele_cle", "m2", cfg=cfg).stdout, "/rest/api/2/myself")
+        self.assertIn("## Modèle de ticket de l'équipe\nh2. Défaut", self.t("poste", "redaction", "m2", cfg=cfg).stdout)
+        self.t("dossier", "m3", "x", "Story", "1", "dm/site", "", "backlog", "", cfg=cfg)
+        r = self.t("modele_jira", "m3", '{"errorMessages": ["introuvable"]}', cfg=cfg)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("EW-7951 illisible", r.stderr)
+        self.assertIn("## Modèle de ticket de l'équipe\nh2. Défaut", self.t("poste", "redaction", "m3", cfg=cfg).stdout)
+
     def test_parent_must_be_an_epic(self):
         """Jira n'accepte qu'une épic pour parent : vérifié dès le dossier (run ed873fc9 : EW-6816, une Story, refusée à la
         création des 3 tickets). Une épic passe ; une Story avec son épic passe sous l'épic ; sinon le run s'arrête."""
