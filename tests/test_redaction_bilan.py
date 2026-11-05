@@ -109,6 +109,9 @@ class RedactionBilanTest(unittest.TestCase):
         self.assertEqual(c["gate"], {"visites": 2, "changements": 1, "attente_ms": 360000, "decision": "approuvee", "at": "2026-11-04T10:14:00Z"})
         self.assertEqual((c["creations"], c["panne"]), ({"ok": 2, "echecs": 0}, None), "l'aiguillage en échec est un renvoi, pas une panne")
         self.assertEqual([s["n"] for s in c["deroule"]][:4], ["recherche", "redaction", "critique", "redaction"])
+        # passage par passage (la fiche : rédaction v1, v2…), avec le coût et le modèle de chacun
+        self.assertEqual([(x["n"], x["cout"]) for x in c["passages"] if x["n"] == "redaction"], [("redaction", 0.15), ("redaction", 0.15)])
+        self.assertEqual(c["passages"][0]["modele"], "claude-sonnet-5")
         self.assertEqual(json.loads(Path(self.tmp, "cache", "r2.json").read_text())["gate"]["decision"], "rejetee")
         self.assertEqual(json.loads(Path(self.tmp, "cache", "r3.json").read_text())["gate"]["decision"], "en_attente")
         r0 = json.loads(Path(self.tmp, "cache", "r0.json").read_text())
@@ -117,6 +120,10 @@ class RedactionBilanTest(unittest.TestCase):
         res = self.m.releve()
         self.assertEqual((res["lus"], res["en_cache"]), (1, 3), "seul le run encore actif est relu")
         self.assertNotIn("/workflows/wtk/runs/r1", self.calls)
+        c = json.loads(Path(self.tmp, "cache", "r1.json").read_text())
+        del c["passages"]
+        Path(self.tmp, "cache", "r1.json").write_text(json.dumps(c))
+        self.assertEqual(self.m.releve()["lus"], 2, "un cache d'avant le coût par passage est relu une fois")
 
     def test_bilan_joins_the_history_and_the_releve(self):
         self.m.releve()

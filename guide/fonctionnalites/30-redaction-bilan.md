@@ -2,7 +2,7 @@
 
 Une page Kronn à part, « Rédaction · bilan », garde l'historique des intentions passées par la salle de rédaction du 2e étage ([La rédaction et la revue](28-redaction.md), [Créer un ticket](20-creer-ticket.md)) et des tickets créés dans Jira : où les tickets s'arrêtent, ce que coûte chaque poste, ce que relève la critique, pourquoi tu demandes des changements au tampon, vers quels projets partent les tickets. Elle sert à suivre la rédaction et à régler ses consignes. Son chiffre clé tient dans l'écran du vidéoprojecteur.
 
-![La page « Rédaction · bilan » : chiffres de la période, entonnoir, postes, critique, retours au tampon, projets, semaines](../img/redaction-bilan.png)
+![La page « Rédaction · bilan » : quatre chiffres, le coût par poste et par modèle, l'entonnoir jusqu'à Jira, une ligne par intention](../img/redaction-bilan.png)
 
 ## L'installer et la projeter
 
@@ -14,20 +14,30 @@ La page se met à jour toutes les 15 minutes, et tout de suite quand une intenti
 
 En haut, les filtres : période (7, 30 ou 90 jours), projet touché, et « essais » (les intentions qui commencent par « [ESSAI », écartées par défaut).
 
-- **Les chiffres de la période** : intentions, tickets créés (et par intention), listes tamponnées du premier coup (et rejetées), tours de critique en moyenne (et intentions au plafond de 3 tours), temps de l'intention jusqu'à ton tampon, ton attente au tampon, coût d'un ticket créé.
-- **De l'intention à Jira** : l'entonnoir en tickets (ceux de la dernière version de chaque intention) : proposés, relus « OK » par la critique, tamponnés, créés ; et en rouge ce qui sort à chaque marche : intention en panne avant le tampon, tickets passés au tampon avec les réserves de la critique, rejetés, en panne à la création.
-- **Les postes** : pour 📚 Recherche, ✍ Rédaction et 🧐 Critique, le modèle, la durée et le coût moyens par intention ; en orange, le poste qui coûte le plus. Sur la même ligne : projets touchés, versions par intention, renvois de la critique. Puis la création dans Jira (pannes) et ton attente au tampon.
-- **Ce que relève la critique** : ses notes classées par mots-clés (langue, critères d'acceptation, découpage, fichier inventé, doublon, points, composant). En rouge, ce qui revient au tour suivant : la rédaction ne l'a pas corrigé, sa consigne est à resserrer.
-- **Pourquoi tu demandes des changements** : tes retours au tampon, classés (découpage, mauvais projet, trop long, titre, points), chacun rattaché au poste à régler.
-- **Où vont les tickets** : projet × type des tickets créés et leurs points moyens, puis combien d'intentions se découpent en 1, 2, 3 tickets ou plus.
-- **Par semaine** : les tickets créés et le coût d'un ticket.
-- **Historique**, l'intention la plus récente d'abord : ses tickets (liens Jira), les projets touchés, les tours de critique, l'issue, la durée, le coût. Un clic ouvre sa fiche.
+- **Quatre chiffres** : tickets créés dans Jira sur les tickets proposés (en rouge quand rien n'est arrivé dans Jira), coût par intention et par ticket créé, listes rejetées au tampon (et en panne, et tamponnées du premier coup), attente médiane à ton tampon.
+- **Où part l'argent** : le coût de 📚 Recherche, ✍ Rédaction et 🧐 Critique sur la période, colorié par modèle (Opus, Sonnet, Haiku). Le coût vient de Kronn (entrée, contexte relu en cache, sortie) ; il est complet, les postes ne lançant aucun sous-agent. La création dans Jira ne coûte rien ; ton tampon, c'est du temps.
+- **De l'intention à Jira** : l'entonnoir en tickets (ceux de la dernière version de chaque intention) : proposés, relus « OK » par la critique, tamponnés, créés ; et en rouge ce qui sort à chaque marche.
+- **Par intention**, la plus récente d'abord : projets, tickets créés sur proposés (liens Jira), tours de critique, issue, coût par poste, coût, part de chaque modèle, durée. Un clic ouvre sa fiche.
+- **Analyse de la rédaction**, repliée : ce qui sert à régler la salle plutôt qu'à lire une intention.
+  - **Les postes** : modèle, durée et coût moyens par intention, projets touchés, versions, renvois de la critique ; la création Jira et ton tampon.
+  - **Ce que relève la critique** : ses notes classées par mots-clés (langue, critères d'acceptation, découpage, fichier inventé, doublon, points, composant) ; en rouge, ce qui revient au tour suivant.
+  - **Pourquoi tu demandes des changements** : tes retours au tampon, classés (découpage, mauvais projet, trop long, titre, points), chacun rattaché au poste à régler.
+  - **Où vont les tickets** : projet × type des tickets créés et leurs points moyens, puis combien d'intentions se découpent en 1, 2, 3 tickets ou plus.
+  - **Par semaine** : les tickets créés et le coût d'un ticket.
 
 ## La fiche d'une intention
 
-Le déroulé poste par poste (chaque version de la rédaction, chaque relecture, ton tampon, la création), l'intention telle que tu l'as donnée, ce qu'a trouvé la recherche (projets et pistes), les notes de la critique à chaque version, les titres de chaque version côte à côte (« identique » quand rien n'a changé), les tickets créés avec leur lien, tes retours au tampon et le coût de chaque poste. Les fiches détaillées sont gardées pour les intentions les plus récentes.
+Cinq onglets :
 
-![Fiche d'une intention : déroulé, recherche, notes de la critique, versions, tickets créés, coût par poste](../img/redaction-bilan-fiche.png)
+- **💰 Coût** : passage par passage (recherche, rédaction v1, critique 1, rédaction v2…), le modèle, la durée, les jetons de sortie et le coût de chacun, un passage en échec marqué ; puis la création Jira et l'attente à ton tampon.
+- **🎫 Tickets** : une carte par ticket de la dernière version (projet, points, sa clé Jira une fois créé), les titres de chaque version côte à côte (« identique » quand rien n'a changé) et les tickets créés avec leur lien.
+- **🧐 Critique** : une carte par note, à chaque version, avec sa gravité (bloquant ou conseil) ; tes retours au tampon.
+- **📚 Recherche** : les projets touchés et les pistes, en pleine largeur, les chemins de fichiers en police de code.
+- **⏱ Déroulé** : poste par poste (chaque version, chaque relecture, ton tampon, la création), et l'intention telle que tu l'as donnée.
+
+Les fiches détaillées sont gardées pour les intentions les plus récentes.
+
+![Fiche d'une intention : l'onglet Critique, une carte par note](../img/redaction-bilan-fiche.png)
 
 ## Au 2e étage
 

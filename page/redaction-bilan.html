@@ -13,18 +13,21 @@
   --bg:#f3efe6; --panel:#fffdf8; --ink:#25221d; --muted:#6f685c; --line:#e2dccf; --chip:#f0ebe0;
   --accent:#2f6fd6; --ok:#2e9e5b; --warn:#d89614; --err:#d1453b; --info:#4a7fe0; --idle:#7a7266; --on-accent:#ffffff;
   --h0:#f0ebe0; --h1:#cfe0f7; --h2:#86aee9; --h3:#2f6fd6; --hx:#d1453b; --sign:#22232b; --sign-ink:#ece8df; --sign-mut:#a29c90;
+  --opus:#8a5cd6; --sonnet:#2f6fd6; --haiku:#1f9e86;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   color-scheme:dark;
   --bg:#17181c; --panel:#202228; --ink:#ece8df; --muted:#a29c90; --line:#2f323a; --chip:#2a2d34;
   --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#9a9284; --on-accent:#0d1b33;
   --h0:#2a2d34; --h1:#2c3d5c; --h2:#3f63a3; --h3:#6b9cf0; --hx:#f06a5f;
+  --opus:#b48cff; --sonnet:#6b9cf0; --haiku:#3fc7b0;
 }}
 :root[data-theme="dark"]{
   color-scheme:dark;
   --bg:#17181c; --panel:#202228; --ink:#ece8df; --muted:#a29c90; --line:#2f323a; --chip:#2a2d34;
   --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#9a9284; --on-accent:#0d1b33;
   --h0:#2a2d34; --h1:#2c3d5c; --h2:#3f63a3; --h3:#6b9cf0; --hx:#f06a5f;
+  --opus:#b48cff; --sonnet:#6b9cf0; --haiku:#3fc7b0;
 }
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -81,7 +84,18 @@ tr.row{cursor:pointer}tr.row:hover td,tr.row:focus-visible td{background:var(--c
 .note{border-left:4px solid var(--warn);background:var(--chip);padding:6px 10px;font-size:12.5px;overflow-wrap:anywhere;white-space:normal}
 .note.ok{border-color:var(--ok)}
 .empty{padding:40px 16px;text-align:center;color:var(--muted)}
-button:focus-visible,select:focus-visible,tr.row:focus-visible{outline:3px solid var(--accent);outline-offset:1px}.funnel{display:grid;gap:6px}
+button:focus-visible,select:focus-visible,tr.row:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+.chip{display:inline-block;font:700 10.5px ui-monospace,Menlo,monospace;padding:0 5px;margin-right:3px;color:#fff}
+.chip.opus{background:var(--opus)}.chip.sonnet{background:var(--sonnet)}.chip.haiku{background:var(--haiku)}.chip.autre{background:var(--idle)}
+.mstack{display:flex;height:12px;background:var(--chip)}.mstack i{display:block;height:100%}
+.tabs{display:flex;gap:2px;border-bottom:2px solid var(--line);margin:10px 0;flex-wrap:wrap}
+.tabs button{background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-2px;color:var(--muted);font:600 13px system-ui,sans-serif;padding:6px 10px;cursor:pointer}
+.tabs button.on{color:var(--ink);border-color:var(--accent)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:8px}
+.card{background:var(--chip);padding:8px 10px;display:grid;gap:4px;font-size:12.5px}.card p{margin:0;overflow-wrap:anywhere}
+.pistes{margin:6px 0 0;padding-left:18px;display:grid;gap:4px;font-size:12.5px;max-width:120ch}.pistes code{font:12px ui-monospace,Menlo,monospace;overflow-wrap:anywhere}
+details.analyse{border:3px solid var(--line);background:var(--panel);padding:8px 12px}details.analyse>summary{cursor:pointer;font:700 12px system-ui;text-transform:uppercase;letter-spacing:.06em}
+details.analyse[open]>summary{margin-bottom:10px}.funnel{display:grid;gap:6px}
 .funnel .st{display:grid;grid-template-columns:150px minmax(0,1fr) 52px;gap:8px;align-items:center;font-size:12.5px}
 .funnel .b{height:22px;background:var(--info);display:flex;align-items:center;padding-left:6px;color:#fff;font:700 11px system-ui;min-width:22px}
 .funnel .b.ok{background:var(--ok)}.funnel .b.warn{background:var(--warn);color:#1c1c1c}
@@ -120,6 +134,8 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const fmtDur=s=>{if(s==null)return '–';if(s<60)return Math.round(s)+' s';const m=Math.round(s/60);return m<60?m+' min':Math.floor(m/60)+' h '+String(m%60).padStart(2,'0');};
 const fmtMs=ms=>{if(ms==null)return '–';const s=Math.round(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
 const fmtUsd=v=>(v||0).toFixed(2).replace('.',',')+' $';
+const MODS=[['opus','Opus'],['sonnet','Sonnet'],['haiku','Haiku']], fam=m=>(MODS.find(([k])=>String(m||'').includes(k))||['autre'])[0];
+const PCOUL={recherche:'#7d8bff',redaction:'#e8743b',critique:'#2a9fc9'};
 const fmt1=v=>(v||0).toFixed(1).replace('.',',');
 const pct=(a,b)=>b?Math.round(a/b*100):0;
 const median=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;};
@@ -193,6 +209,8 @@ function aggregate(data,f){
   const w={};for(const r of rows){const s=week(r.at);if(!s)continue;const x=w[s.k]||(w[s.k]={l:s.l,crees:0,cout:0});x.crees+=(r.crees||[]).length;x.cout+=r.cout||0;}
   a.semaines=Object.keys(w).sort().map(k=>w[k]);
   a.all=all.length;
+  a.argent={};for(const r of rows)for(const[k,v]of Object.entries(r.postes||{})){const o=a.argent[k]||(a.argent[k]={t:0,m:{}});o.t+=v.cout||0;const f=fam(v.modele);o.m[f]=(o.m[f]||0)+(v.cout||0);}
+  a.coutIntention=a.n?a.cout/a.n:null;
   return a;
 }
 const pill=(c,l)=>`<span class="pill ${c}">${esc(l)}</span>`;
@@ -201,15 +219,20 @@ const issuePill=r=>{const[c,l]=ISSUES[r.issue]||['idle',r.issue||'?'];const n=(r
 const bars=(items,max,cls)=>items.map(([label,v,txt,c,back])=>`<span>${esc(label)}</span><span class="bar"><i class="${c||cls||''}" style="width:${max?Math.max(1,Math.round(v/max*100)):0}%"></i></span><span class="v num${back?' back':''}">${esc(txt)}</span>`).join('');
 
 function kpis(a){
+  const prop=a.funnel.proposes;
   return `<div class="kpis">
-  <div class="kpi"><b>${a.n}</b><span>${a.n>1?'intentions':'intention'}${a.essais?' · '+plural(a.essais,'essai écarté','essais écartés')+' du bilan':''}</span></div>
-  <div class="kpi"><b>${a.crees}</b><span>tickets créés dans Jira${a.avecTickets?' · '+fmt1(a.crees/a.avecTickets)+' par intention':''}</span></div>
-  <div class="kpi"><b>${a.premierCoup} / ${a.gated}</b><span>listes tamponnées du premier coup${a.rejetees?' · '+plural(a.rejetees,'rejetée','rejetées'):''}</span></div>
-  <div class="kpi"><b>${a.tours==null?'–':fmt1(a.tours)}</b><span>tour${a.tours>1?'s':''} de critique en moyenne${a.plafond?' · '+plural(a.plafond,'intention','intentions')+' au plafond (3)':''}</span></div>
-  <div class="kpi"><b>${a.avantTampon==null?'–':fmtDur(a.avantTampon/1000)}</b><span>médiane intention → tickets à ton tampon</span></div>
+  <div class="kpi${prop&&!a.crees?' err':''}"><b>${a.crees} / ${prop}</b><span>tickets créés dans Jira, sur les tickets proposés${a.essais?' · '+plural(a.essais,'essai écarté','essais écartés'):''}</span></div>
+  <div class="kpi"><b>${a.coutIntention==null?'–':fmtUsd(a.coutIntention)}</b><span>par intention (${fmtUsd(a.cout)} en tout) · par ticket créé : ${a.coutTicket==null?'–':fmtUsd(a.coutTicket)}</span></div>
+  <div class="kpi"><b>${a.rejetees} / ${a.gated}</b><span>listes rejetées au tampon${a.funnel.panneAvant||a.funnel.creationsKo?' · '+plural(a.rows.filter(r=>r.issue==='panne').length,'en panne','en panne'):''} · ${a.premierCoup} tamponnée${a.premierCoup>1?'s':''} du premier coup</span></div>
   <div class="kpi"><b>${a.attente==null?'–':fmtDur(a.attente/1000)}</b><span>attente médiane à ton tampon</span></div>
-  <div class="kpi"><b>${a.coutTicket==null?'–':fmtUsd(a.coutTicket)}</b><span>par ticket créé · ${fmtUsd(a.cout)} en tout</span></div>
 </div>`;
+}
+function argent(a){
+  const items=POSTES.filter(([k])=>a.argent[k]).map(([k,l])=>[k,l,a.argent[k]]).sort((x,y)=>y[2].t-x[2].t), max=items.length?items[0][2].t:0;
+  return `<div class="box"><div class="h">Où part l'argent <span class="mut">${fmtUsd(a.cout)} sur la période</span></div>
+  <p class="why">Coût de chaque poste (Kronn : entrée, contexte relu en cache et sortie ; les postes ne lancent aucun sous-agent), colorié par modèle. La création dans Jira ne coûte rien ; ton tampon, c'est du temps.</p>
+  <div class="legend" style="margin-bottom:6px">${MODS.map(([k,l])=>`<span><i style="background:var(--${k})"></i>${l}</span>`).join('')}</div>
+  ${items.length?`<div class="hb" style="grid-template-columns:130px minmax(0,1fr) 110px">${items.map(([k,l,o])=>`<span>${l}</span><span class="bar" style="background:none"><span class="mstack" style="width:${max?Math.max(1,o.t/max*100).toFixed(1):0}%">${MODS.filter(([m])=>o.m[m]).map(([m,ml])=>`<i title="${ml} ${fmtUsd(o.m[m])}" style="width:${(o.m[m]/o.t*100).toFixed(1)}%;background:var(--${m})"></i>`).join('')}</span></span><span class="v num">${fmtUsd(o.t)} · ${pct(o.t,a.cout)} %</span>`).join('')}</div>`:'<p class="mut">Pas encore de coût relevé.</p>'}</div>`;
 }
 function funnel(a){
   const f=a.funnel,max=Math.max(1,f.proposes);
@@ -289,13 +312,17 @@ function ticketTags(data,r){
   return (r.crees||[]).map(c=>data.jira_site&&c.key?`<a class="tag mono" href="${esc(data.jira_site+'/browse/'+c.key)}" target="_blank" rel="noopener">${esc(c.key)}</a>`:`<span class="tag mono">${esc(c.key||'?')}</span>`).join(' ');
 }
 function table(data,a,sel){
-  const rows=a.rows.map(r=>`<tr class="row${r.run===sel?' on':''}" data-run="${esc(r.run)}" tabindex="0"><td class="num">${esc(day(r.at))}</td>
-    <td style="white-space:normal">${r.essai?pill('idle','essai')+' ':''}${esc(r.intention.length>90?r.intention.slice(0,89)+'…':r.intention)}</td>
-    <td style="white-space:normal">${ticketTags(data,r)||'<span class="mut">·</span>'}</td><td class="mut">${esc((r.composants||[]).map(projet).join(', '))}</td>
-    <td class="r num">${r.tours||'·'}</td><td>${issuePill(r)}</td><td class="r num">${r.duree_ms==null?'<span class="mut">·</span>':esc(fmtDur(r.duree_ms/1000))}</td>
-    <td class="r num">${r.cout?fmtUsd(r.cout):'<span class="mut">·</span>'}</td></tr>`).join('');
-  return `<div class="box"><div class="h">Historique <span class="mut">${plural(a.n,'intention','intentions')} · la plus récente d'abord · clic : sa fiche</span></div>
-  ${rows?`<div class="scroll"><table><tr><th>Date</th><th>Intention</th><th>Tickets</th><th>Projets</th><th class="r">tours</th><th>Issue</th><th class="r">durée</th><th class="r">coût</th></tr>${rows}</table></div>`:'<p class="mut">Aucune intention sur la période.</p>'}</div>`;
+  const rows=a.rows.map(r=>{const ps=r.postes||{}, c=r.cout||0, md={};for(const v of Object.values(ps)){const f=fam(v.modele);md[f]=(md[f]||0)+(v.cout||0);}
+    return `<tr class="row${r.run===sel?' on':''}" data-run="${esc(r.run)}" tabindex="0"><td class="num">${esc(day(r.at))}</td>
+    <td style="white-space:normal;max-width:340px">${r.essai?pill('idle','essai')+' ':''}${esc(r.intention.length>90?r.intention.slice(0,89)+'…':r.intention)}</td>
+    <td class="mut" style="white-space:normal;max-width:150px">${esc((r.composants||[]).map(projet).join(', '))}</td>
+    <td class="r num">${(r.crees||[]).length} / ${r.proposes||0}</td><td>${ticketTags(data,r)}</td><td class="r num">${r.tours||'·'}</td><td>${issuePill(r)}</td>
+    <td>${c?`<span class="mstack" style="width:110px">${POSTES.filter(([k])=>ps[k]).map(([k,l])=>`<i title="${l} ${fmtUsd(ps[k].cout)}" style="width:${(ps[k].cout/c*100).toFixed(1)}%;background:${PCOUL[k]}"></i>`).join('')}</span>`:''}</td>
+    <td class="r num">${c?'<b>'+fmtUsd(c)+'</b>':'<span class="mut">·</span>'}</td>
+    <td>${MODS.filter(([k])=>md[k]).map(([k,l])=>`<span class="chip ${k}" title="${l} ${fmtUsd(md[k])}">${l[0]} ${c?pct(md[k],c):0}%</span>`).join('')}</td>
+    <td class="r num">${r.duree_ms==null?'<span class="mut">·</span>':esc(fmtDur(r.duree_ms/1000))}</td></tr>`;}).join('');
+  return `<div class="box"><div class="h">Par intention <span class="mut">${plural(a.n,'intention','intentions')} · la plus récente d'abord · clic : sa fiche</span></div>
+  ${rows?`<div class="scroll"><table><tr><th>Date</th><th>Intention</th><th>Projets</th><th class="r">tickets</th><th></th><th class="r">tours</th><th>Issue</th><th>coût par poste</th><th class="r">coût</th><th>modèles</th><th class="r">durée</th></tr>${rows}</table></div>`:'<p class="mut">Aucune intention sur la période.</p>'}</div>`;
 }
 function gantt(der){
   const pts=(der||[]).map(s=>({...s,t:Date.parse(s.at||'')})).filter(s=>s.t&&ROW[s.n]);
@@ -313,7 +340,7 @@ function versions(f){
     return `<td${t&&j&&t.summary===p?' class="mut"':''}>${t?(j&&t.summary===p?'identique':esc(t.summary)):'<span class="mut">·</span>'}</td>`;}).join('')}</tr>`).join('');
   return `<div class="scroll"><table class="vers"><tr><th></th>${vs.map(v=>`<th>v${esc(v.v)}</th>`).join('')}</tr>${rows}</table></div>`;
 }
-function fiche(data,r){
+function fiche(data,r,tab){
   if(!r)return '';
   const f=(data.fiches||{})[r.run];
   const head=`<div><b style="font-size:15px">${esc(r.intention.length>140?r.intention.slice(0,139)+'…':r.intention)}</b><div class="mut">${esc(day(r.at))}${r.type?' · '+esc(r.type):''}${r.points?' · '+esc(r.points)+' pts':''}${r.sprint?' · '+(r.sprint==='next'?'Sprint suivant':'Backlog'):''}${r.parent?' · parent '+esc(r.parent):''} · ${plural(r.proposes||0,'ticket proposé','tickets proposés')}${r.cout?' · '+fmtUsd(r.cout):''}${r.partiel?' · d\'avant l\'historique : dernière version seulement':''}</div></div>`;
@@ -321,19 +348,26 @@ function fiche(data,r){
   const rech=f.recherche||{};
   const crees=(r.crees||[]).length?`<table>${r.crees.map(c=>`<tr><td class="mono">${data.jira_site&&c.key?`<a href="${esc(data.jira_site+'/browse/'+c.key)}" target="_blank" rel="noopener">${esc(c.key)}</a>`:esc(c.key)}</td><td style="white-space:normal">${esc(c.title)}</td><td class="mut">${esc([r.type,c.points!=null?c.points+' pts':'',c.composant].filter(Boolean).join(' · '))}</td></tr>`).join('')}</table>`
     :`<p class="mut">${r.issue==='rejetee'?'Rien de créé : liste rejetée au tampon.':r.issue==='panne'?'Rien de créé : en panne'+(r.panne?' à l\'étape '+esc(r.panne):'')+'.':'Rien de créé pour l\'instant.'}</p>`;
-  const post=[['recherche','📚 Recherche'],['redaction','✍ Rédaction'],['critique','🧐 Critique']].filter(([k])=>(r.postes||{})[k]);
-  const mx=Math.max(0.0001,...post.map(([k])=>r.postes[k].cout||0));
-  return `<div class="box">${head}<div class="fiche">
-  <div class="sec wide"><h4>Déroulé</h4>${gantt(f.deroule)}</div>
-  <div class="sec wide"><h4>📌 L'intention</h4><div class="teams">${esc(f.intention||r.intention)}${f.parent_de?'\n\nParent : '+esc(r.parent)+', l\'épic de '+esc(f.parent_de):''}</div></div>
-  <div class="sec"><h4>📚 Ce qu'a trouvé la recherche</h4>${(rech.composants||[]).length?`<div>${rech.composants.map(c=>`<span class="tag">${esc(c)}</span>`).join(' ')}</div>`:''}
-    ${(rech.pistes||[]).length?`<ul class="check">${rech.pistes.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>`:'<p class="mut">Pas de piste gardée.</p>'}</div>
-  <div class="sec"><h4>🧐 Notes de la critique</h4>${(f.critiques||[]).map(k=>`<div class="mut">Version ${esc(k.v)} · ${k.verdict==='ok'?'OK':'à retoucher'}</div>${(k.notes||[]).length?`<ul class="check">${k.notes.map(n=>`<li>${n.ticket==0?'découpage':'T'+esc(n.ticket)} : ${esc(n.note)}</li>`).join('')}</ul>`:''}`).join('')||'<p class="mut">Pas de critique gardée.</p>'}</div>
-  <div class="sec"><h4>✍ Versions</h4>${versions(f)}</div>
-  <div class="sec"><h4>🎫 Tickets créés</h4>${crees}
-    ${(f.retours||[]).length?f.retours.map(x=>`<p class="quote">✋ ${esc((CAUSES[x.cause]||[x.cause])[0])} : « ${esc(x.texte)} »</p>`).join(''):`<p class="quote">${r.gate&&r.gate.visites?'Ton retour au tampon : aucun'+(r.gate.decision==='approuvee'?', validés du premier coup.':'.'):'Pas encore passé à ton tampon.'}</p>`}</div>
-  ${post.length?`<div class="sec"><h4>Coût par poste</h4><div class="hb">${bars(post.map(([k,l])=>[l+(r.postes[k].passages>1?' ×'+r.postes[k].passages:''),r.postes[k].cout||0,fmtUsd(r.postes[k].cout),'']),mx)}</div></div>`:''}
-  </div></div>`;
+  const T=[['cout','💰 Coût'],['tickets','🎫 Tickets · '+(r.proposes||0)],['critique','🧐 Critique'],['recherche','📚 Recherche'],['deroule','⏱ Déroulé']];
+  const cur=T.some(([k])=>k===tab)?tab:'cout';
+  const PN=Object.fromEntries(POSTES);
+  const body={
+    cout:()=>{const ps=f.passages&&f.passages.length?(()=>{const n={};return f.passages.map(x=>{n[x.n]=(n[x.n]||0)+1;return {...x,l:PN[x.n]+(x.n==='redaction'?' v'+n[x.n]:x.n==='critique'?' '+n[x.n]:'')};});})()
+        :POSTES.filter(([k])=>(r.postes||{})[k]).map(([k,l])=>({...r.postes[k],l:l+(r.postes[k].passages>1?' ×'+r.postes[k].passages:''),n:k}));
+      const mx=Math.max(0.0001,...ps.map(x=>x.cout||0));
+      return `<div class="scroll"><table><tr><th>poste</th><th>modèle</th><th class="r">durée</th><th class="r">sortie</th><th class="r">coût</th><th>part</th></tr>${ps.map(x=>`<tr><td>${esc(x.l)}${x.s==='Failed'?' '+pill('err','échec'):''}</td><td><span class="chip ${fam(x.modele)}">${esc(modele(x.modele))}</span></td><td class="r num">${fmtMs(x.ms)}</td><td class="r num">${Math.round((x.tok||0)/1e3)} k</td><td class="r num">${fmtUsd(x.cout)}</td><td><span class="mstack" style="width:140px"><i style="width:${((x.cout||0)/mx*100).toFixed(1)}%;background:${PCOUL[x.n]||'var(--info)'}"></i></span></td></tr>`).join('')}
+      <tr><td>🎫 Création Jira</td><td class="mut">sans IA</td><td></td><td></td><td class="r num">0 $</td><td></td></tr>
+      <tr><td>✋ Ton tampon</td><td class="mut">toi</td><td class="r num">${fmtMs((r.gate||{}).attente_ms||0)}</td><td></td><td></td><td></td></tr>
+      <tr><td><b>Total</b></td><td></td><td></td><td></td><td class="r num"><b>${fmtUsd(r.cout)}</b></td><td></td></tr></table></div>`;},
+    tickets:()=>{const v=(f.versions||[]).slice(-1)[0];
+      return (v?`<div class="cards">${(v.tickets||[]).map((t,k)=>{const c=(r.crees||[])[k];return `<div class="card"><div><b>T${k+1}</b> <span class="tag">${esc(projet(t.composant))}</span> <span class="mut">${esc(t.points==null?'?':t.points)} pts</span> ${c&&c.key?pill('ok',c.key):pill('idle','pas créé')}</div><p>${esc(t.summary)}</p></div>`;}).join('')}</div><p class="mut" style="margin:6px 0 0">Version ${esc(v.v)} sur ${(f.versions||[]).length}.</p>`:'<p class="mut">Aucune version gardée.</p>')
+        +((f.versions||[]).length>1?`<h4 style="margin-top:12px">Les versions</h4>${versions(f)}`:'')+`<h4 style="margin-top:12px">🎫 Tickets créés</h4>${crees}`;},
+    critique:()=>(f.critiques||[]).length?(f.critiques||[]).map(k=>`<div style="margin:8px 0 6px"><b>Version ${esc(k.v)}</b> · ${k.verdict==='ok'?pill('ok','OK'):pill('warn','à retoucher')}</div><div class="cards">${(k.notes||[]).map(n=>`<div class="card"><div><b>${n.ticket==0?'découpage':'T'+esc(n.ticket)}</b> ${n.gravite==='bloquant'?pill('warn','bloquant'):n.gravite==='conseil'?pill('idle','conseil'):''}</div><p>${esc(n.note)}${String(n.note||'').length>=299?'…':''}</p></div>`).join('')||'<p class="mut">Aucune note.</p>'}</div>`).join('')
+      +((f.retours||[]).length?`<h4 style="margin-top:12px">Tes retours</h4>`+f.retours.map(x=>`<p class="quote">✋ ${esc((CAUSES[x.cause]||[x.cause])[0])} : « ${esc(x.texte)} »</p>`).join(''):''):'<p class="mut">La critique n\'est pas passée.</p>',
+    recherche:()=>`${(rech.composants||[]).length?`<div>${rech.composants.map(c=>`<span class="tag">${esc(c)}</span>`).join(' ')}</div>`:''}
+      ${(rech.pistes||[]).length?`<ul class="pistes">${rech.pistes.map(p=>`<li>${esc(p).replace(/((?:application|src|docs|tests)\/\S+|\S+\.(?:php|ts|tsx|js|twig|yml|md))/g,'<code>$1</code>')}</li>`).join('')}</ul>`:'<p class="mut">Pas de piste gardée.</p>'}`,
+    deroule:()=>`${gantt(f.deroule)}<h4 style="margin-top:12px">📌 L'intention</h4><div class="teams">${esc(f.intention||r.intention)}${f.parent_de?'\n\nParent : '+esc(r.parent)+', l\'épic de '+esc(f.parent_de):''}</div>`};
+  return `<div class="box">${head}<div class="tabs" role="tablist">${T.map(([k,l])=>`<button type="button" role="tab" data-tab="${k}" aria-selected="${k===cur}" class="${k===cur?'on':''}">${esc(l)}</button>`).join('')}</div>${body[cur]()}</div>`;
 }
 function render(data,st){
   if(!data||!(data.intentions||[]).length)return `<header><h1>✍ Rédaction · bilan</h1></header><div class="box empty">Aucune intention dans l'historique pour l'instant. Il se remplit à chaque intention lancée depuis la fiche de l'agent des tickets.</div>`;
@@ -346,20 +380,23 @@ function render(data,st){
   <label for="f-projet">Projet</label><select id="f-projet"><option value="">Tous</option>${ps.map(p=>`<option${p===st.projet?' selected':''}>${esc(p)}</option>`).join('')}</select>
   <label for="f-essais"><input type="checkbox" id="f-essais"${st.essais?' checked':''}> essais</label></div></header>
   ${data.error?`<div class="note">Relevé incomplet : ${esc(data.error)}</div>`:''}
-  ${kpis(a)}<div class="grid2">${funnel(a)}${postes(a)}${critique(a)}${causes(a)}${projets(a)}${semaines(a)}</div>
-  ${sel?table(data,a,sel.run):table(data,a,null)}${fiche(data,sel)}`;
+  ${kpis(a)}<div class="grid2">${argent(a)}${funnel(a)}</div>
+  ${sel?table(data,a,sel.run):table(data,a,null)}${fiche(data,sel,st.tab)}
+  <details class="analyse"${st.analyse?' open':''}><summary>Analyse de la rédaction : les postes, ce que relève la critique, tes changements, où vont les tickets, par semaine</summary>
+  <div class="grid2">${postes(a)}${critique(a)}${causes(a)}${projets(a)}${semaines(a)}</div></details>`;
 }
 const B={readRedactionBilan,aggregate,render,gantt,pick,week};
 if(typeof window!=='undefined')window.REDACTION_BILAN=B;
 if(typeof document==='undefined'||!document.getElementById('app'))return;
 let DATA=readRedactionBilan(window.KronnPageData);
-const ST={jours:30,projet:'',essais:false,sel:null};
+const ST={jours:30,projet:'',essais:false,sel:null,tab:'cout',analyse:false};
 const app=document.getElementById('app');
 function draw(){app.innerHTML=render(DATA,ST);}
 app.addEventListener('change',e=>{const t=e.target;if(t.id==='f-jours')ST.jours=+t.value;else if(t.id==='f-projet')ST.projet=t.value;else if(t.id==='f-essais')ST.essais=t.checked;else return;draw();});
-const choose=e=>{const r=e.target.closest('tr.row');if(!r)return;ST.sel=r.dataset.run;draw();const n=app.querySelector('tr.row.on');if(n)n.focus();};
+const choose=e=>{const tb=e.target.closest('[data-tab]');if(tb){ST.tab=tb.dataset.tab;draw();return;}const r=e.target.closest('tr.row');if(!r)return;ST.sel=r.dataset.run;draw();const n=app.querySelector('tr.row.on');if(n)n.focus();};
 app.addEventListener('click',e=>{if(e.target.closest('a'))return;choose(e);});
 app.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){if(e.target.closest('tr.row')){e.preventDefault();choose(e);}}});
+app.addEventListener('toggle',e=>{if(e.target.matches&&e.target.matches('details.analyse'))ST.analyse=e.target.open;},true);
 window.addEventListener('kronn:page-data',e=>{const d=readRedactionBilan(e.detail||window.KronnPageData);if(d){DATA=d;draw();}});
 draw();
 })();
