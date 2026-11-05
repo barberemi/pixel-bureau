@@ -1,7 +1,7 @@
 {
  "kind": "workflow",
  "key": "impl_retours",
- "doc": "Les commentaires des relecteurs traités : correction, push, réponse dans chaque fil.",
+ "doc": "Les commentaires des relecteurs traités par le code de « corriger les commentaires d'une PR » (pr_update.py), sans sa gate : correction, contrôles, push, réponse dans chaque fil, puis la copie de travail de la chaîne resynchronisée.",
  "definition": {
   "name": "Le Bureau · chaîne · 💬 retours",
   "project_id": null,
@@ -43,17 +43,50 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Commentaires de la PR sans réponse ; aucun, ou mode essai : fin (code 3).",
+    "description": "La PR du ticket en « dépôt#n » ; mode essai ou pas de PR : fin (code 3).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
      "@@script:workflows/chaine.py@@",
-     "retours_lire"
+     "retours_pr"
     ],
-    "exec_timeout_secs": 120,
+    "exec_timeout_secs": 60,
     "on_result": [
      {
       "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "fin"
+      }
+     }
+    ]
+   },
+   {
+    "name": "prepare",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Fils de review non résolus et commentaires hors fil (aucun : fin), dossier de travail sur la branche distante de la PR, dépendances reliées (pr_update.py fix_prepare, 0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/pr_update.py@@",
+     "fix_prepare",
+     "{{steps.entree.data.stdout}}",
+     "-",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 600,
+    "on_result": [
+     {
+      "contains": "exit_9",
       "action": {
        "type": "Goto",
        "step_name": "fin"
@@ -68,45 +101,76 @@
      "type": "Normal"
     },
     "output_format": {
-     "type": "TypedSchema",
-     "schema": {
-      "type": "object",
-      "properties": {
-       "replies": {
-        "type": "array",
-        "items": {
-         "type": "object",
-         "properties": {
-          "commentId": {
-           "type": "integer"
-          },
-          "body": {
-           "type": "string"
-          }
-         }
-        }
-       },
-       "resume": {
-        "type": "string"
-       }
-      },
-      "required": [
-       "replies",
-       "resume"
-      ]
-     },
-     "on_invalid": "Continue"
+     "type": "FreeText"
     },
     "step_type": {
      "type": "Agent"
     },
-    "description": "Corrige ce qui est pertinent, commite, et rédige une réponse par fil.",
-    "prompt_template": "Tu es le poste 💬 Retours : des relecteurs (revue IA ou humains) ont commenté la PR du ticket {{ticket}}.\n\n## Fils sans réponse\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\nPour CHAQUE fil : juge s'il est pertinent (lis le code autour). Pertinent : corrige sur la branche du ticket (ne change pas de branche, ne pousse pas), un commit par sujet (`git commit --no-verify -s`, jamais `.kronn/`). Pas pertinent : explique pourquoi, poliment. Réponse en français, courte, une icône en tête : ✅ corrigé, 🧪 test ajouté, ⏭️ laissé tel quel, 💬 réponse.\n\nUne correction vient avec son test (une garde ajoutée a un test qui rougirait sans elle) et la doc qu'elle rend fausse. Puis relis la description de la PR (`.kronn/chaine/pr_body.md`) : un chiffre, un fichier ou une affirmation que tes corrections rendent faux, corrige-le dans ce fichier (garde les lignes `<!-- bureau-… -->`) ; le Bureau la republie.\n\n## Consignes de l'équipe\n@@impl.guidelines@@\n\nRéponds par le JSON demandé, complet, sans texte autour.",
+    "description": "Corrige les fils actionnables (contrôles verts ou correctif annulé), ajoute les tests, prépare une réponse par fil et le message de commit, sans rien committer ni pousser (prompt de « corriger les commentaires d'une PR »).",
+    "prompt_template": "@@text:tools/fix_prompt.md@@\n\n**DANS LA CHAÎNE D'IMPLÉMENTATION** : ce poste tourne sans validation, le Bureau commite, pousse et répond dès que tu as fini (la relecture humaine de la PR vient après). Sois d'autant plus strict : un correctif dont les contrôles ne sont pas verts est annulé.\n\n**CONSIGNES DE L'ÉQUIPE** (en plus des règles ci-dessus, prioritaires sur elles en cas de conflit) :\n@@impl.guidelines@@\n\nDossier de travail : ~/.cache/pixel-bureau/pr/work/{{run.id}}\nPR : {{steps.entree.data.stdout}} (ticket {{ticket}})\n\n{{steps.prepare.data.stdout}}\n\nConsignes de l'auteur : aucune (poste de la chaîne).",
     "_poste": "retours",
+    "stall_timeout_secs": 2400,
     "retry": {
      "max_retries": 1,
      "backoff": "exponential"
     }
+   },
+   {
+    "name": "controle",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Contrôles du dépôt sur les fichiers de la PR (impl.repos.<dépôt>.checks) ; une commande rouge est relancée sur la PR d'avant les corrections ; jamais bloquant (pr_update.py fix_check, 0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/pr_update.py@@",
+     "fix_check",
+     "{{steps.entree.data.stdout}}",
+     "-",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 1800
+   },
+   {
+    "name": "diff",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Fichiers changés et réponses prévues, gardés dans l'état du run ; rien à pousser ni à répondre : fin (pr_update.py fix_diff, 0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/pr_update.py@@",
+     "fix_diff",
+     "{{steps.entree.data.stdout}}",
+     "-",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 120,
+    "on_result": [
+     {
+      "contains": "exit_9",
+      "action": {
+       "type": "Goto",
+       "step_name": "fin"
+      }
+     }
+    ]
    },
    {
     "name": "pousse",
@@ -120,18 +184,21 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Pousse les corrections (--force-with-lease, sans hook) ; mode essai : rien.",
+    "description": "Commit signé, push protégé, une réponse « Version N » dans chaque fil (résolu s'il est corrigé), réponse groupée aux commentaires hors fil, bloc « Corrections de review » dans la description, CI relancée (pr_update.py fix_push).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
-     "pousse"
+     "@@script:workflows/pr_update.py@@",
+     "fix_push",
+     "{{steps.entree.data.stdout}}",
+     "-",
+     "{{run.id}}"
     ],
-    "exec_timeout_secs": 180,
+    "exec_timeout_secs": 300,
     "external_effect": true
    },
    {
-    "name": "reponds",
+    "name": "synchro",
     "agent": "ClaudeCode",
     "mode": {
      "type": "Normal"
@@ -142,16 +209,16 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Une réponse dans chaque fil ; mode essai : rien.",
+    "description": "La copie de travail de la chaîne reprend les commits poussés (avance rapide sur origin/<branche>), description à jour (blocs exigences et points), passe notée pour le bilan et la seconde passe.",
     "exec_command": "python3",
     "exec_args": [
      "-c",
      "@@script:workflows/chaine.py@@",
-     "reponds"
+     "retours_synchro",
+     "{{run.id}}"
     ],
-    "exec_timeout_secs": 180,
-    "external_effect": true,
-    "exec_stdin": "{{steps.corrige.data_json ?? \"null\"}}"
+    "exec_timeout_secs": 120,
+    "external_effect": true
    },
    {
     "name": "fin",

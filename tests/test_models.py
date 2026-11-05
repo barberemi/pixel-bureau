@@ -324,6 +324,20 @@ exit 0
                 gates = [s["name"] for s in t["definition"]["steps"] if (s.get("step_type") or {}).get("type") == "Gate"]
                 self.assertEqual(gates, [], key)
 
+    def test_chain_retours_runs_the_fix_steps_without_the_gate(self):
+        """Le poste 💬 retours de la chaîne (sous-workflow, donc sans gate) enchaîne les mêmes sous-commandes de
+        pr_update.py que « corriger les commentaires d'une PR », avec le même prompt ; la livraison repasse une fois."""
+        def subs(key):
+            return [s["exec_args"][2] for s in TPL[key]["definition"]["steps"]
+                    if len(s.get("exec_args") or []) > 2 and "pr_update.py" in s["exec_args"][1]]
+        self.assertEqual(subs("impl_retours"), [x for x in subs("fix") if x.startswith("fix_")])
+        prompt = {(k, s["name"]): s.get("prompt_template") or "" for k in ("fix", "impl_retours") for s in TPL[k]["definition"]["steps"]}
+        self.assertTrue(prompt[("impl_retours", "corrige")].startswith("@@text:tools/fix_prompt.md@@"))
+        self.assertTrue(prompt[("fix", "fix")].startswith("@@text:tools/fix_prompt.md@@"))
+        liv = {s["name"]: s for s in TPL["impl_livraison"]["definition"]["steps"]}
+        self.assertEqual(list(liv)[-3:], ["retours", "repasse", "fin"])
+        self.assertEqual(liv["repasse"]["on_result"][0]["action"], {"type": "Goto", "step_name": "revue", "max_iterations": 1})
+
     def test_ticket_model_follows_the_team_create_settings(self):
         """Modèle ticket (#77) : types et composants du réglage jira.create (pack), composant obligatoire avec une liste,
         points recopiés dans le champ du board seulement s'il n'est pas celui de l'écran de création ; rien sans Jira."""

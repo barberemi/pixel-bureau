@@ -1,6 +1,6 @@
 # L'atelier d'implémentation (1er étage)
 
-Le 1er étage montre les tickets en cours d'implémentation par la chaîne de postes : un bureau par ticket et par dépôt (quatre en parallèle ; un ticket à plusieurs composants Jira prend un bureau et ouvre une PR par dépôt, les PR sœurs se citent entre elles), et au mur un tableau qui croise les postes et les tickets. L'étage ne traite que l'implémentation, la PR et ses retours : la CI, l'env de branche et les mises en prod restent au rez-de-chaussée.
+Le 1er étage montre les tickets en cours d'implémentation par la chaîne de postes : un bureau par ticket et par dépôt (quatre en parallèle ; un ticket à plusieurs composants Jira prend un bureau et ouvre une PR par dépôt, les PR sœurs se citent entre elles), et au mur un tableau qui croise les postes et les tickets. L'étage ne traite que l'implémentation, la PR et ses retours : la CI, l'env de branche et les mises en prod restent au rez-de-chaussée. Au poste 💬 Retours, les commentaires de la revue sont corrigés par le même travail que le bouton 🛠 Corriger (fils et commentaires hors fil, contrôles du dépôt, « Version N », fils résolus), sans validation : ta relecture de la PR vient après. S'il a poussé des corrections, la revue relit la PR une seconde fois, puis les retours : deux passes au plus.
 
 ## Monter à l'étage
 

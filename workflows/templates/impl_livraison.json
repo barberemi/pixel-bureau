@@ -202,6 +202,37 @@
     ]
    },
    {
+    "name": "repasse",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Corrections poussées par les retours : une seconde passe, la revue relit le nouveau head puis les retours (2 passes au plus, code 4) ; sinon fin.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "repasse"
+    ],
+    "exec_timeout_secs": 30,
+    "on_result": [
+     {
+      "contains": "exit_4",
+      "action": {
+       "type": "Goto",
+       "step_name": "revue",
+       "max_iterations": 1
+      }
+     }
+    ]
+   },
+   {
     "name": "fin",
     "agent": "ClaudeCode",
     "mode": {
