@@ -211,7 +211,7 @@ function rtHall(slots,now,people){
   if(q.length)rtLate(people,()=>atPill('📥 '+plural(q.length,'PR attend','PR attendent')+' un bureau',1.4*T+150,y+8,'#1c2440','#bfe6ff','bold 11px system-ui,sans-serif'),1e6);
   atHitRt('queue',.6*T,y-20,4*T,40,{});
   atCoffee(20*T,y+18);atPlant(17.6*T,y+20);atPlant(26*T,y+20);
-  const bx=9*T, by=RT_HALL[1]*T-6;atSofa(bx,by);rtLate(people,()=>atSofaFront(bx,by),by+10); // le banc
+  const bx=12.2*T, by=RT_HALL[1]*T-6;atSofa(bx,by);rtLate(people,()=>atSofaFront(bx,by),by+10); // le banc
   rtLate(people,()=>atPill('⇅ escalier · RDC',46*T-74,RT_STAIR.y+RT_STAIR.h+22,'#5a4636','#fff','bold 11px ui-monospace,Menlo,monospace'),1e6);
 }
 // ---------- les équipes : dès qu'une PR a un bureau, ses cinq agents montent derrière Bernard, l'un après l'autre, et
@@ -388,7 +388,7 @@ function tvRetoursHtml(){
 function rtLoupeEvents(){
   const out=[], boss=chars.find(c=>c.boss), slots=rtSlots();
   const pt=(x,y)=>atPt(x,y,'','','x');
-  const add=(k,id,label,pts)=>{pts[0].name=k==='rt_gate'?(boss?boss.name:'Le boss'):'Bernard';pts.forEach(p=>{p._st={st:k,label};});out.push({id:k+':'+id,kind:k,cs:pts});};
+  const add=(k,id,label,pts)=>{pts[0].name=k==='rt_gate'?(boss?boss.name:'Le boss'):k==='rt_err'?'Les contrôles':'Bernard';pts.forEach(p=>{p._st={st:k,label};});out.push({id:k+':'+id,kind:k,cs:pts});};
   for(const s of RT_MEM.scenes){const g=RT_G[s.i], r=slots[s.i];add(s.kind==='arrive'?'rt_arrive':'rt_exit',s.i+':'+s.t0,(s.kind==='arrive'?'🛠 Une PR monte au 3e : ':'📤 Poussée : Bernard redescend la PR · ')+(r&&s.kind==='arrive'?rtName(r):'bureau '+(s.i+1)),[pt(g.door.x,RT_LANE),pt(g.pts[0].x,g.ry)]);}
   slots.forEach((r,i)=>{if(!r)return;const g=RT_G[i];
     if(r.gate)add('rt_gate',r.run,'✋ Les corrections de '+rtName(r)+' t\'attendent',[pt(g.gate.x,g.gate.y),pt(g.pts[3].x,g.pts[3].y)]);
@@ -422,7 +422,7 @@ function rtSearchRows(q){
 // ---------- scènes de l'étage pour la galerie (46-gallery.js) ----------
 // Chacune joue sur une copie du relevé (rendue à la fin de la démonstration) ; à toute heure, sans PR en cours : la démo
 function rtDemo(mut){return s=>{const src=(RETOURS&&(RETOURS.rooms||[]).length)?RETOURS:retoursDemo(), d=JSON.parse(JSON.stringify(src));
-  RETOURS=JSON.parse(JSON.stringify(d));rtReset();RT_MEM.sig=rtSig();rtDiff(performance.now()); // l'étage d'avant la scène, posé : la scène est ce qui change ensuite
+  RETOURS=JSON.parse(JSON.stringify(d));const b=RT_MEM.boss;rtReset();RT_MEM.boss=b;RT_MEM.sig=rtSig();rtDiff(performance.now());loupeNoteSeen(); // l'étage d'avant la scène, posé : la scène est ce qui change ensuite
   mut(d,new Date(s).toISOString(),s);RETOURS=d;};}
 function rtGalleryScenes(){
   const fam='3e étage', ok=true, out=[];
@@ -432,12 +432,13 @@ function rtGalleryScenes(){
     play:{len:12e3,speed:1,setup:rtDemo(d=>{const r=d.rooms.find(x=>x.poste==='fix');if(!r)return;const i=r.fils.findIndex(f=>f.cur);if(i<0)return;r.fils[i].cur=false;r.fils[i].col='corrige';const n=r.fils.find(f=>f.col==='a_traiter');if(n)n.cur=true;})}});
   out.push({fam,ico:'✋',n:'À toi de valider',d:'Le boss quitte son bureau du couloir et va à la barrière du bureau qui attend depuis le plus longtemps ; les autres attendent leur tour',w:'Les corrections attendent ta validation',ok,
     play:{len:20e3,speed:1,setup:rtDemo(d=>{for(const r of d.rooms)if(r.gate){r.gate=false;r.poste='diff';r.states={...r.states,gate:undefined,diff:'run'};}
-      const r=d.rooms.find(x=>x.poste==='push')||d.rooms[0];if(r){r.gate=true;r.poste='gate';r.states={prepare:'ok',fix:'ok',check:'ok',diff:'ok',gate:'gate'};}})}});
+      const r=d.rooms.find(x=>x.poste==='push')||d.rooms[0];if(r){r.gate=true;r.poste='gate';r.states={prepare:'ok',fix:'ok',check:'ok',diff:'ok',gate:'gate'};}RT_MEM.boss={target:null,walk:atWalker([rtHome()]),arrived:true};})}});
   out.push({fam,ico:'📤',n:'La PR est poussée',d:'Corrections poussées, réponses postées : Bernard vient chercher la PR et la redescend, le bureau s\'éteint',w:'Tu valides les corrections',ok,
     play:{len:25e3,speed:1,setup:rtDemo(d=>{const k=d.rooms.findIndex(x=>x.poste==='push');if(k>=0)d.rooms.splice(k,1);else d.rooms.shift();})}});
   out.push({fam,ico:'🧯',n:'Contrôles rouges',d:'Les contrôles du dépôt échouent : le correctif est annulé (fumée), la PR attend une relance',w:'La commande de contrôle du dépôt échoue',ok,
     play:{len:12e3,speed:1,setup:rtDemo(d=>{const r=d.rooms.find(x=>x.poste==='fix');if(r){r.poste='check';r.states={prepare:'ok',fix:'ok',check:'err'};r.fils.forEach(f=>{f.cur=false;});}})}});
   out.push({fam,ico:'🌙',n:'Le soir au 3e',d:'Le soir et le week-end, comme au RDC : chaque bureau occupé s\'allume comme une pièce, les bureaux libres restent dans l\'ombre, la lampe du boss reste allumée',w:'Hors des heures de bureau',ok,
-    play:{len:20e3,speed:60,setup:s=>{const n=parisMidnight(s)+22.5*36e5;T=n;SCENE_DEMO.e=n+20e3*60;}}});
+    play:{len:20e3,speed:60,setup:s=>{const d=JSON.parse(JSON.stringify((RETOURS&&(RETOURS.rooms||[]).length)?RETOURS:retoursDemo()));d.rooms=d.rooms.slice(0,3);RETOURS=d;rtReset(); // trois bureaux libres, pour voir ceux qui restent éclairés
+      const n=parisMidnight(s)+22.5*36e5;T=n;SCENE_DEMO.e=n+20e3*60;}}});
   return out;
 }

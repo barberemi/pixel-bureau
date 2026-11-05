@@ -719,9 +719,11 @@ function atLoupeEvents(now){
 // prep : la copie de départ (posée sans scène, comme au chargement), mut : ce que la scène change ensuite
 function atDemo(mut,prep){return ()=>{const src=ATELIER&&(ATELIER.rooms||[]).length?ATELIER:atelierDemo(), cp=x=>JSON.parse(JSON.stringify(x));
   const base=cp(src);base.rooms=base.rooms||[];base.queue=base.queue||[];base.pannes=base.pannes||[];if(prep)prep(base);
-  ATELIER=base;AT_MEM.fresh=true;atDiff(performance.now());
+  ATELIER=base;AT_MEM.fresh=true;atDiff(performance.now());loupeNoteSeen();
   const d=cp(base);mut(d);ATELIER=d;AT_MEM.lastT=null;};} // passer en démonstration (depuis la pause, ou à 11 h le soir) n'est pas un saut du curseur : la scène se joue au premier clic
 const atFirst=d=>d.rooms.find(r=>!r.gate)||d.rooms[0];
+const atNoGate=d=>{for(const r of d.rooms)if(r.gate){r.gate=null;r.note='';if(r.poste==='gate'){r.poste='code';r.states={...(r.states||{}),gate:'ok',code:'run'};}}};
+const atFromChair=f=>s=>{f(s);AT_MEM.boss={target:null,walk:atWalker([AT_CHAIR])};}; // il se lève de son fauteuil, pas de la porte d'à côté
 function atGalleryScenes(){
   const fam='1er étage', ok=true, cl=atCleaner(), out=[];
   out.push({fam,ico:'🎫',n:'Un ticket arrive',d:'Bernard l\'apporte de l\'entrepôt à la trappe d\'entrée, le bureau s\'allume',w:'Un ticket lancé (▶ Implémenter) trouve un bureau libre',ok,
@@ -731,15 +733,15 @@ function atGalleryScenes(){
   out.push({fam,ico:'✓',n:'Un poste rend son verdict',d:'Le ✓ apparaît, l\'agent s\'étire, le carton glisse au poste suivant',w:'Chaque poste qui finit',ok,
     play:{len:12e3,speed:1,setup:atDemo(d=>{const r=atFirst(d), ks=AT_DESKS.filter(p=>!p.gate).map(p=>p.k), j=Math.max(0,ks.indexOf(r.poste));r.states=r.states||{};r.states[ks[j]]='ok';r.poste=ks[Math.min(ks.length-1,j+1)];r.states[r.poste]='run';r.gate=null;r.back=false;})}});
   out.push({fam,ico:'✋',n:'Le boss va à la porte',d:'Une gate t\'attend : il quitte son fauteuil pour la porte du bureau, son bouton clignote',w:'Ton plan (avec ce que j\'ai compris), l\'escalade, la relecture de la PR',ok,
-    play:{len:25e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.gate='gate_plan';r.poste='gate';r.states=r.states||{};r.states.gate='wait';r.note='✋ ton plan';})}});
+    play:{len:25e3,speed:1,setup:atFromChair(atDemo(d=>{const r=d.rooms.filter(x=>!x.gate).pop()||d.rooms[0];r.gate='gate_plan';r.poste='gate';r.states=r.states||{};r.states.gate='wait';r.note='✋ ton plan';},atNoGate))}});
   out.push({fam,ico:'🚨',n:'Escalade',d:'Après 3 tours, la chaîne demande un humain : gyrophare au-dessus de la porte',w:'L\'orchestrateur n\'arrive pas à conclure',ok,
-    play:{len:20e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.gate='gate_escalade';r.note='🧑‍⚖️ la chaîne demande un humain';})}});
+    play:{len:20e3,speed:1,setup:atFromChair(atDemo(d=>{const r=atFirst(d);r.gate='gate_escalade';r.note='🧑‍⚖️ la chaîne demande un humain';},atNoGate))}});
   out.push({fam,ico:'↩',n:'Retour au code',d:'Un contrôle bloque : le carton recule jusqu\'au Code, « encore ? »',w:'Un poste de contrôle rend un bloquant',ok,
     play:{len:15e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.states=r.states||{};for(const k of ['cadrage','gate','code','regles'])r.states[k]='ok';r.states.securite='bloq';r.poste='code';r.back=true;r.gate=null;r.note='🔒 bloquant → retour au code';})}});
   out.push({fam,ico:'🧯',n:'Poste en panne',d:'Son sous-workflow a échoué : fumée sur l\'écran, un pompier arrive avec un extincteur',w:'Un poste plante (API d\'un agent indisponible…)',ok,
     play:{len:20e3,speed:1,setup:atDemo(d=>{const r=atFirst(d);r.states=r.states||{};r.states.tests='err';})}});
   out.push({fam,ico:'🌙',n:'Le soir au 1er',d:'Le soir et le week-end, comme au RDC : les bureaux où un ticket tourne restent éclairés, chaque poste sous sa lampe, le boss sous la sienne ; Bernard est rentré',w:'Hors des heures de bureau',ok,
-    play:{len:20e3,speed:60,setup:s=>{atDemo(()=>{})();T=parisMidnight(s)+22.5*36e5;SCENE_DEMO.e=T+20e3*60;}}});
+    play:{len:20e3,speed:60,setup:s=>{atDemo(()=>{},d=>{d.rooms=d.rooms.slice(0,2);})();T=parisMidnight(s)+22.5*36e5;SCENE_DEMO.e=T+20e3*60;}}}); // deux bureaux libres, pour voir ceux qui restent éclairés
   if(cl)out.push({fam,ico:'🧹',n:cl.name+' · ménage du 1er',d:'Après le RDC, chaque bureau et l\'entrepôt, avec son chariot',w:'Le soir des jours ouvrés, après le RDC',c:cl,ok,
     play:{len:AT_CLEAN_DUR,speed:60,setup:s=>{const u=atCleanVisit(cl,s);
       if(!u){SCENE_DEMO.visit={c:cl,v:{s:s-CLEAN_DUR,e:s,r:rng(keySeed(cl.key)*7919+daySeed(s))}};SCENE_DEMO.e=s+AT_CLEAN_DUR;return;} // pas de ménage ce jour-là : il monte maintenant

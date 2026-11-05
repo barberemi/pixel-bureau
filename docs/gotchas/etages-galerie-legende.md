@@ -9,7 +9,12 @@ Lancer une scène (« ▶ voir », `demoStart`) passe en démonstration, souvent
 Règle pour la fonction de démo d'un étage (`atDemo`, `rtDemo`, `csDemo`, `rdDemo`) :
 
 - poser l'état d'avant la scène comme référence (le diff de l'étage, avec `fresh`), **puis** appliquer la mutation ;
-- remettre la mémoire de saut à zéro (`lastT=null`) pour que la première image de la démonstration ne soit pas un saut.
+- remettre la mémoire de saut à zéro (`lastT=null`) pour que la première image de la démonstration ne soit pas un saut ;
+- appeler `loupeNoteSeen()` (44-loupe.js) une fois l'étage d'avant posé : en pause, la loupe n'a rien noté (`LOUPE.seen` vide), et l'événement de la scène, présent dès la première image, passait pour déjà vu ; la loupe ne s'ouvrait jamais après une pause ou un glissé du curseur. L'id d'un événement doit aussi changer avec la scène (le découpage porte le tour et le nombre de tickets), sinon l'état d'avant, qui a le même id, l'avale ;
+- au 2e, dessiner l'étage d'avant (`renderRedaction`) avant la mutation : `rdReset` remet `fresh`, et sans image entre les deux, l'étage pose l'état final sans trajet (tampon, boîte Jira) ;
+- une scène où le boss va à une barrière lève d'abord les autres gates et le pose à son fauteuil (`AT_MEM.boss`, `RT_MEM.boss`, `CS_MEM.boss`) : il va toujours à la plus ancienne, et la démo en a déjà une. `rtReset` efface sa mémoire : `rtDemo` la garde, sinon il réapparaît d'un coup à la barrière.
+
+La démo de la revue (`rvDemo`) suit l'heure du plan comme les vrais runs (`_s <= T`), sinon « Une revue à la demande » ne montre rien de nouveau. Un banc de rejeu en Chrome (clic, captures, état de la loupe et du boss à chaque instant) a trouvé ces défauts ; `tests/scenes-etages.test.js` les garde.
 
 Tester par le vrai chemin de rendu (`renderAtelier(n)` deux fois après `demoStart`, depuis `setMode('pause')` et à 22 h 30), pas en appelant le diff à la main : `tests/atelier.test.js` et `tests/retours.test.js` le font.
 

@@ -37,7 +37,7 @@ L'étage passe en veilleuse, comme le RDC la nuit : la salle de rédaction s'all
 
 ## Depuis le RDC
 
-Le fil de la journée (une intention qui arrive, un ticket qui attend ton tampon, un ticket créé), ⌘K (les intentions par leur texte, leurs tickets, leurs composants), le mode TV (touche E et `?floor=alt`), et les scènes de l'étage dans la galerie. La rédaction : une intention découpée, le tampon, les tickets qui partent dans Jira, le soir au 2e. La revue des PR : la fournée du cron, le relecteur qui prend un dossier, l'avis posté, l'auteur qui repart, une revue à la demande ; elles se rejouent sur la journée de démo, à l'heure où elle les joue.
+Le fil de la journée (une intention qui arrive, un ticket qui attend ton tampon, un ticket créé), ⌘K (les intentions par leur texte, leurs tickets, leurs composants), le mode TV (touche E et `?floor=alt`), et les scènes de l'étage dans la galerie. La rédaction : une intention découpée, le tampon, les tickets qui partent dans Jira, le soir au 2e. La revue des PR : la fournée du cron, le relecteur qui prend un dossier, l'avis posté, l'auteur qui repart, une revue à la demande ; elles se rejouent sur la journée de démo, à l'heure où elle les joue. Chaque scène a sa loupe, comme aux autres étages : les brins de l'intention découpée, le boss qui porte un ticket à la boîte Jira, Bernard et sa fournée, le dossier pris au casier, le tampon de l'avis, l'auteur qui redescend, le bureau d'une revue à la demande.
 
 ## Données
 

@@ -62,7 +62,7 @@ const rvPosteWf=w=>!!w&&(CFG.revue_postes_wf||[]).includes(String(w).slice(0,8))
 const rdPosteWf=w=>!!w&&((CFG.ticket&&CFG.ticket.postes_wf)||[]).includes(String(w).slice(0,8));
 function rvRuns(){
   const l=((DATA&&DATA.runs)||[]).filter(r=>rvWf(r.wf)&&r._s<=T);
-  if(!l.length&&DEMO||SCENE_DEMO&&SCENE_DEMO.revue)return rvDemo(); // une scène de la revue (galerie) se joue sur la journée de démo
+  if(!l.length&&DEMO||SCENE_DEMO&&SCENE_DEMO.revue)return rvDemo().filter(r=>r._s<=T); // une scène de la revue (galerie) se joue sur la journée de démo, à son heure
   return l.sort((a,b)=>a._s-b._s);
 }
 const RV_DEMO=['whoami','setup','fetch_files','write_ctx','contexte','docs','lecture','securite','avis','map_event','post'];
@@ -109,7 +109,7 @@ function rdLate(people,f,y){people.push([{pos:{x:0,y:y==null?1e6:y}},null,false,
 // devant lui), o.bubble, o.badge (✓ ou ! à côté de lui, comme au 1er ; o.pop : il apparaît en grossissant)
 function rdAgent(people,k,x,y,s,o,now){
   o=o||{};const a=atWorker(k,x,y,o.dir||'down',false,'',null);if(!a)return;a._st={st:s==='run'?'work':'idle'};a.pose=o.pose||'type';const hy=y+(a.pose==='type'?6:0);
-  const after=()=>{if(o.hat)rdHat(ctx,o.hat,x,hy,o.dir||'down');if(o.desk)atDesk(x,y-6,s==='run');if(o.front)o.front();if(o.badge)atBadge(x+18,y-42,o.badge,o.badgeCol||'#2f9e55',o.pop);if(o.bubble)atBubble(x,y-66,o.bubble);};
+  const after=()=>{if(o.hat)rdHat(ctx,o.hat,x,hy,o.dir||'down');if(o.desk)atDesk(x,y-6,s==='run');if(o.front)o.front();if(o.badge)atBadge(x+18,y-42,o.badge,o.badgeCol||'#2f9e55',o.pop);if(o.bubble)atBubble(x+(o.bx||0),y-66+(o.by||0),o.bubble);};
   if(s==='wait'){people.push([{pos:{x,y}},null,false,()=>{const g=atLayer();atDrawInto(g,a,now);if(o.hat)rdHat(g,o.hat,x,hy,o.dir||'down');ctx.save();ctx.globalAlpha=.38;ctx.filter='grayscale(1)';ctx.drawImage(AT_OFF,0,0);ctx.restore();if(o.desk)atDesk(x,y-6,false);}]);return;}
   if(s==='run'){const gl=ctx.createRadialGradient(x,y-24,4,x,y-24,46);gl.addColorStop(0,'rgba(255,246,190,.6)');gl.addColorStop(1,'rgba(255,246,190,0)');ctx.fillStyle=gl;ctx.fillRect(x-48,y-72,96,96);RD_LIT.push({x,y});}
   people.push([a,null,false,after]);
@@ -207,7 +207,7 @@ function rdRoom(now,people){
   const bub={recherche:p==='recherche'?'je fouille '+(t.composants||[]).length+' dépôt(s)…':null,redaction:p==='redaction'?(tks.length?'version '+(t.tour||1)+', je reprends…':'je rédige…'):null,critique:p==='critique'?'je relis T1…':null};
   const at={recherche:[rech,'up'],redaction:[red,'down'],critique:[cri,'up']};let zk=0;
   for(const k in at){const s=st(k), pop=lvPop(M,k,!!t&&s==='ok',now), [q,d]=at[k];
-    if(lvSeated(M,k)){rdAgent(people,RD_KS[k],q.x,q.y,!t?'idle':s==='wait'?'wait':s==='run'?'run':'idle',{dir:d,hat:'presse',bubble:bub[k],badge:t&&s==='ok'?'✓':null,pop},now);
+    if(lvSeated(M,k)){rdAgent(people,RD_KS[k],q.x,q.y,!t?'idle':s==='wait'?'wait':s==='run'?'run':'idle',{dir:d,hat:'presse',bubble:bub[k],...(k==='critique'?{bx:86,by:44}:{}),badge:t&&s==='ok'?'✓':null,pop},now);
       if(M.sleep){const j=zk++;rdLate(people,()=>lvZz(q.x,q.y,j,now),1e6);}}
     rdLate(people,()=>atPill(RD_LBL[k],plq[k].x,plq[k].y,s==='run'?'#2f6fd6':s==='ok'?'#2f7a45':'#f4efe4',s==='wait'||!t?'#3a3530':'#fff','bold 11px system-ui,sans-serif'),1e6);}
   // le bureau du boss, le tampon posé dessus : il y est, et tamponne les tickets un par un
@@ -368,7 +368,25 @@ function tvRedactionHtml(){
 // ---------- la loupe, le fil du RDC, ⌘K, la galerie ----------
 function rdLoupeEvents(){
   const out=[], t=rdTable(), boss=chars.find(c=>c.boss);
-  if(t&&(t.tickets||[]).some(x=>x.etat==='gate')){const p=atPt(RD_DESK.x,RD_DESK.y,boss?boss.name:'Le boss','','rd_gate');p._st={st:'rd_gate',label:'✋ Un ticket attend ton tampon'};out.push({id:'rd_gate:'+t.run,kind:'rd_gate',cs:[p,atPt(RD_JIRA.x,RD_JIRA.y,'','','rd_gate')]});}
+  const add=(kind,id,name,label,pts)=>{const cs=pts.map(([x,y],k)=>atPt(x,y,k?'':name,'',kind));cs.forEach(c=>{c._st={st:kind,label};});out.push({id:kind+':'+id,kind,cs});};
+  if(t&&(t.tickets||[]).some(x=>x.etat==='gate'))add('rd_gate',t.run,boss?boss.name:'Le boss','✋ Un ticket attend ton tampon',[[RD_DESK.x,RD_DESK.y],[RD_JIRA.x,RD_JIRA.y]]);
+  // la rédaction : l'intention découpée (ses brins et ses fiches apparaissent), le boss qui porte un ticket à la boîte Jira
+  const tks=(t&&t.tickets)||[];
+  if(tks.length){const G=rdGeo(t);add('rd_cut',t.run+':'+(t.tour||1)+':'+tks.length,'La rédaction','✂ L\'intention découpée en '+plural(tks.length,'ticket','tickets'),[[G.red.x,G.red.y],[G.tx,G.ty],[G.tx,19.6*RD_T]]);}
+  const J=RD_LV&&RD_LV.job;
+  if(J&&J.kind==='jira')add('rd_jira',String(J.key).split(':')[0],boss?boss.name:'Le boss','🎫 Tamponné : le ticket part dans Jira',[[RD_DESK.x,RD_DESK.y],[RD_JIRA.x,RD_JIRA.y]]);
+  // la revue (68-revue.js) : la fournée du cron, le dossier pris, l'avis posté, l'auteur qui repart, une revue à la demande
+  const M=typeof RVF_M!=='undefined'&&RVF_M;
+  if(M&&rvfOn()){
+    if(M.bern)add('rv_batch',M.batch,'Bernard','📥 La fournée du cron : '+plural(M.bern.fresh.length,'PR','PR')+' à relire',[[RVF.door.x,RVF.door.y],[RVF.stand.x,RVF.stand.y],[RVF.bk.x,RVF.bk.y]]);
+    if(M.reading&&M.rel&&M.rel.w&&!M.stamp)add('rv_pick',M.reading,'Le relecteur','🗂 Il prend '+M.reading+' en haut du casier',[[RVF.pick.x,RVF.pick.y],[RVF.desk.x,RVF.desk.y]]);
+    if(M.stamp)add('rv_stamp',String(M.stamp.t0),'Le relecteur',(RVF_V[M.stamp.v]||RVF_V.comment)[0]+' L\'avis est posté sur la PR',[[RVF.desk.x,RVF.desk.y],[RVF.bk.x,RVF.bk.y]]);
+    for(const a in M.who){const h=M.who[a];if(!h.leaving)continue;const c=typeof ghChar==='function'?ghChar(a):null;
+      add('rv_leave',a,c?c.name:a,'🚶 Sa dernière PR relue, il redescend',[[h.pos.x,h.pos.y],[RVF.hall.x,RVF.hall.y]]);}
+  }
+  const kids=M&&rvfOn()?rvfKids():new Set(), off=M&&rvfOn()?1:0;
+  rvActive().filter(r=>!kids.has(r.run)).slice(0,6-off).forEach((r,j)=>{const k=j+off, cx=(28.5+(k%3)*6.3)*RD_T, feet=(k<3?9.2:18.4)*RD_T, v=r.vars||{};
+    add('rv_ask',r.run,'Le relecteur','🔍 Une revue à la demande'+(v['current_task.repo']?' : '+v['current_task.repo']+'#'+v['current_task.number']:''),[[cx,feet],[cx,feet+2.3*RD_T]]);});
   return out;
 }
 function rdGoto(run){if(!redactionOn())return;if(FLOOR!==2)setFloor(2);RDSEL=run;SIDE_FOLDED=false;renderSide(true);}
@@ -382,11 +400,13 @@ function rdSearchRows(q){
   if(!redactionOn())return [];
   return rdTables().filter(t=>srHit(q,t.intention+' '+(t.tickets||[]).map(x=>x.summary+' '+x.composant).join(' '))).map(t=>({g:'2e étage',k:'✍',txt:clip(t.intention,80),go:()=>rdGoto(t.run)}));
 }
-function rdDemo(mut){return ()=>{const d=JSON.parse(JSON.stringify((REDACTION&&rdTables().length)?REDACTION:redactionDemo()));mut(d);REDACTION=d;rdReset();};}
+function rdDemo(mut,prep){return ()=>{const d=JSON.parse(JSON.stringify((REDACTION&&rdTables().length)?REDACTION:redactionDemo()));if(prep)prep(d);
+  REDACTION=JSON.parse(JSON.stringify(d));rdReset();if(FLOOR===2)renderRedaction(performance.now());loupeNoteSeen(); // l'étage d'avant, posé : la scène est ce qui change ensuite
+  mut(d);REDACTION=d;};}
 function rdGalleryScenes(){
   const fam='2e étage · rédaction', ok=true;
   return [{fam,ico:'✂',n:'Une intention découpée',d:'La rédaction découpe l\'intention en trois tickets : le fil rouge se divise en trois brins',w:'Une intention qui touche plusieurs projets',ok,
-      play:{len:15e3,speed:1,setup:rdDemo(d=>{const t=d.tables[0];if(t){t.poste='critique';t.tickets.forEach(x=>{x.etat='wait';});}})}},
+      play:{len:15e3,speed:1,setup:rdDemo(d=>{const t=d.tables[0];if(t){t.poste='critique';t.tickets=t._tk||t.tickets;delete t._tk;t.tickets.forEach(x=>{x.etat='wait';});}},d=>{const t=d.tables[0];if(t){t._tk=t.tickets;t.tickets=[];t.poste='redaction';t.tour=1;}})}},
     {fam,ico:'✋',n:'Le tampon',d:'Les tickets sont relus : le boss les tamponne, tes changements renvoient à la rédaction',w:'Avant leur création',ok,
       play:{len:15e3,speed:1,setup:rdDemo(d=>{const t=d.tables[0];if(t){t.poste='valider';t.tickets.forEach(x=>{x.etat='gate';});}})}},
     {fam,ico:'🎫',n:'Les tickets partent dans Jira',d:'Tamponnés, ils sont créés un par un : les brins du fil rouge vont jusqu\'à la boîte Jira',w:'Tu approuves chaque ticket',ok,
@@ -396,7 +416,7 @@ function rdGalleryScenes(){
 }
 // ---------- les scènes de la revue (68-revue.js) : rejouées sur la journée de démo, à l'heure où elle les joue ----------
 // h : l'heure du moment dans redactionDemo / rvDemo ; la scène commence 1,5 s avant, en ×1
-function rvScene(h,len){return {len,speed:1,setup:()=>{REDACTION=redactionDemo();rdReset();SCENE_DEMO.revue=true;T=DAY0+h*36e5-1500;SCENE_DEMO.s=T;SCENE_DEMO.e=T+len;}};}
+function rvScene(h,len){return {len,speed:1,setup:()=>{REDACTION=redactionDemo();rdReset();SCENE_DEMO.revue=true;T=DAY0+h*36e5-1500;SCENE_DEMO.s=T;SCENE_DEMO.e=T+len;loupeNoteSeen();}};}
 function rvGalleryScenes(){
   const fam='2e étage · revue des PR', file=rvfOn(), ask=!!(CFG.revue_wf||[]).length||DEMO, why='La revue des PR n\'est pas installée';
   return [{fam,ico:'📥',n:'La fournée du cron',d:'Bernard monte les PR sur son transpalette, vide la corbeille et range un dossier par PR dans le casier ; les auteurs s\'assoient en salle d\'attente',w:'Chaque passage du cron des revues',ok:file,why,play:rvScene(9.5,45e3)},

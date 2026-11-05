@@ -11,9 +11,9 @@ const LOUPE_KINDS={reopen:['⛔','#b3122e'],proud:['🎉','#0172f0'],party:['�
   // 1er étage (68-atelier.js, atLoupeEvents) : ticket qui sort, qui arrive, ta décision, retour au code, panne, ménage
   at_exit:['📦','#2e9e5b'],at_arrive:['🎫','#0172f0'],at_gate:['✋','#c47f00'],at_back:['↩','#b3122e'],at_err:['🧯','#b3122e'],at_clean:['🧹','#6b3e1e'],
   cs_arrive:['🚒','#d0392b'],cs_gate:['✋','#c47f00'],cs_err:['🔥','#b3122e'],cs_depart:['📣','#2e9e5b'],
-  rd_gate:['✋','#c47f00'], // 2e étage (68-redaction.js)
+  rd_gate:['✋','#c47f00'],rd_cut:['✂','#2559b8'],rd_jira:['🎫','#2e9e5b'],rv_batch:['📥','#c47f00'],rv_pick:['🗂','#2559b8'],rv_stamp:['🔖','#2e9e5b'],rv_leave:['🚶','#6b3e1e'],rv_ask:['🔍','#2559b8'], // 2e étage (68-redaction.js, 68-revue.js)
   rt_arrive:['🛠','#0172f0'],rt_gate:['✋','#c47f00'],rt_err:['🧯','#b3122e'],rt_exit:['📤','#2e9e5b']}; // 3e étage (68-retours.js)
-const LOUPE_ORDER=['rd_gate','rt_exit','rt_gate','rt_err','rt_arrive','cs_depart','cs_gate','cs_err','cs_arrive','at_exit','at_gate','at_back','at_err','at_arrive','at_clean','reopen','ufo','brew','proud','guest','thumbs','kickoff','planning','retro','daily','pizza','party','trophy','hatch','duck'];
+const LOUPE_ORDER=['rd_gate','rd_jira','rd_cut','rv_leave','rv_stamp','rv_pick','rv_batch','rv_ask','rt_exit','rt_gate','rt_err','rt_arrive','cs_depart','cs_gate','cs_err','cs_arrive','at_exit','at_gate','at_back','at_err','at_arrive','at_clean','reopen','ufo','brew','proud','guest','thumbs','kickoff','planning','retro','daily','pizza','party','trophy','hatch','duck'];
 // cérémonies : toute l'équipe est dans la scène, la légende la nomme au lieu d'énumérer tout le monde
 const LOUPE_CEREMONY={daily:"Daily de l'équipe",planning:'Sprint planning',retro:'Rétrospective',kickoff:'Lancement du sprint',pizza:'Pizza de fin de sprint'};
 let LOUPE_ON=!REDUCED_MOTION;try{const v=localStorage.getItem('bureau:loupe');if(v!==null)LOUPE_ON=v!=='0';}catch(e){} // un choix du bouton passe avant le réglage système
@@ -25,6 +25,13 @@ function loupeKind(c){
   return c.guest&&!c.on&&c.present!==false?'guest':null; // les hérauts (on : reopen, prod) n'ont que leur scène
 }
 // événements qui commencent depuis le dernier passage ; le premier passage ne fait que noter ce qui est déjà en cours
+// une scène de la galerie à un étage : ce que la loupe voit dans l'étage d'avant la scène est noté vu, pour que la scène,
+// présente dès la première image de la démonstration, soit nouvelle (en pause, LOUPE.seen est vide). Les fonctions de démo
+// des étages l'appellent une fois l'étage d'avant posé (atDemo, rtDemo, csDemo, rdDemo, rvScene).
+function loupeNoteSeen(){
+  if(!FLOOR)return;
+  LOUPE.seen=new Set((FLOOR===1?atLoupeEvents:FLOOR===3?rtLoupeEvents:FLOOR===2?rdLoupeEvents:csLoupeEvents)(performance.now()).map(e=>e.id));
+}
 function loupeScan(){
   const groups={}, now=new Set(), fresh=[];
   if(FLOOR===1||FLOOR===-1||FLOOR===3||FLOOR===2){ // un étage : seulement ses événements (68-atelier.js, 68-caserne.js, 68-retours.js)
