@@ -454,8 +454,9 @@ IMPL_AGENTS = {
     "controles": ("reasoning", ["security", "web-performance", "accessibility"]),
     "tests": ("default", ["testing", "test-driven-development"]),
     "livraison": ("economy", []), "retours": ("reasoning", ["receiving-code-review"]),
+    "revue_pr": ("reasoning", []),  # mode essai : revue locale du diff (la revue du Bureau a ses propres postes)
 }
-IMPL_TEAM_SKILLS = {"code", "code.relecture", "controles", "tests", "retours"}  # + impl.skills de l'équipe (langages, conventions)
+IMPL_TEAM_SKILLS = {"code", "code.relecture", "controles", "tests", "retours", "revue_pr"}  # + impl.skills de l'équipe (langages, conventions)
 
 
 def impl_agent(step, role, cfg):

@@ -32,6 +32,8 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
   bilan_controles                   # rapports des postes de contrôle : bloquants et avis
   aiguillage                        # stdin décision de l'orchestrateur : 3 livrer, 4 retour au code, 0 humain
   pousse | pr | revue_prep                          # PR et sa revue (gh)
+  revue_locale | retours_local                      # mode essai : revue de la PR sur le diff local (code 6 de revue_prep et
+                                    # retours_pr), constats corrigés en commits locaux, rien de poussé ni posté
   retours_pr | retours_synchro <run> | repasse      # retours des relecteurs par pr_update.py (fix_*, sans gate) : la PR
                                     # en « dépôt#n » (code 3 : essai ou pas de PR), puis la copie de travail resynchronisée
                                     # et la description à jour ; repasse code 4 : seconde revue et retours (2 passes au plus)
@@ -1310,12 +1312,23 @@ def cmd_pr():
 
 
 def cmd_revue_prep():
-    """Revue de la PR par le modèle de revue du Bureau (sous-workflow en foreach) : la PR en .kronn/prs.json. Mode essai
-    ou pas de PR : code 3, rien n'est relu."""
+    """Revue de la PR par le modèle de revue du Bureau (sous-workflow en foreach) : la PR en .kronn/prs.json. Pas de PR :
+    code 3, rien n'est relu. Mode essai : code 6, revue locale (étape locale du poste, diff de la branche, rien n'est
+    posté) ; son contexte est la sortie de l'étape."""
     e = etat()
-    n = e.get("pr") or ("" if essai() else pr_number())
-    if essai() or not n:
-        print("Mode essai : pas de PR à relire." if essai() else "Aucune PR ouverte : rien à relire.")
+    if essai():
+        passe = int(e.get("passes_retours") or 0) + 1
+        out(f"REVUE LOCALE (mode essai, passe {passe} sur {MAX_PASSES}) : rien n'est poussé ni posté, la PR n'existe pas.\n"
+            f"Diff à relire : `git diff {depart()}...HEAD` dans la copie de travail {root()} (branche {e.get('branch')}).\n"
+            f"Ticket : {dossier('ticket.md')} ; description de la PR prévue : {dossier('pr_body.md')} ; rapports des "
+            f"contrôles : {dossier('controles.json')}." + rejoue() + perimetre()
+            + (section("Ta revue de la passe précédente (relis surtout ce qui a changé depuis)",
+                       json.dumps((load("revue_pr.json") or {}).get("resultat") or {}, ensure_ascii=False, indent=1)[:6000])
+               if passe > 1 and load("revue_pr.json") else ""))
+        sys.exit(6)
+    n = e.get("pr") or pr_number()
+    if not n:
+        print("Aucune PR ouverte : rien à relire.")
         sys.exit(3)
     _, me, _ = gh("api", "user", "--jq", ".login")
     os.makedirs(os.path.join(root(), ".kronn"), exist_ok=True)
@@ -1327,13 +1340,46 @@ PR_RUNS = os.path.expanduser("~/.cache/pixel-bureau/pr/runs")  # états des runs
 MAX_PASSES = 2  # revue puis retours : une seconde passe au plus, si la première a poussé des corrections
 
 
+def revue_locale_constats():
+    r = (load("revue_pr.json") or {}).get("resultat") or {}
+    return [x for x in r.get("constats") or [] if isinstance(x, dict) and x.get("probleme")]
+
+
+def cmd_revue_locale():
+    """Mode essai : le rapport de la revue locale (stdin, sortie de l'agent) rangé dans revue_pr.json, rien de posté."""
+    d = parse(read_stdin())
+    if not isinstance(d, dict):
+        write_json(dossier("revue_pr.json"), {"poste": "revue_pr", "statut": "en_panne", "raison": "aucun rapport de la revue locale"})
+        print("Revue locale : aucun rapport (sortie invalide)")
+        return
+    d.setdefault("constats", [])
+    passe = int(etat().get("passes_retours") or 0) + 1
+    write_json(dossier("revue_pr.json"), {"poste": "revue_pr", "statut": "ok", "locale": True, "passe": passe, "resultat": d,
+                                          "head": git("rev-parse", "HEAD"), "at": time.strftime("%Y-%m-%dT%H:%M:%S")})
+    write_json(dossier(f"revue_pr_passe{passe}.json"), d)
+    bl = sum(1 for x in d["constats"] if isinstance(x, dict) and x.get("gravite") == "bloquant")
+    print(f"Revue locale, passe {passe} : {d.get('verdict') or '?'}, {len(d['constats'])} constat(s) dont {bl} bloquant(s) ; rien n'est posté.")
+
+
 def cmd_retours_pr():
     """Poste 💬 retours : le même code que « corriger les commentaires d'une PR » (pr_update.py fix_*), sans sa gate. Il
-    lui faut la PR, en « dépôt#n » (seule sortie de l'étape) ; mode essai ou pas de PR : code 3, rien n'est lu ni posté."""
+    lui faut la PR, en « dépôt#n » (seule sortie de l'étape) ; pas de PR : code 3, rien n'est lu ni posté. Mode essai :
+    les constats de la revue locale (code 6, correction locale sans push) ; aucun : code 3."""
     e = etat()
-    n = e.get("pr") or ("" if essai() else pr_number())
-    if essai() or not n:
-        print("Mode essai : pas de retours à traiter." if essai() else "Aucune PR ouverte : pas de retours.")
+    if essai():
+        cs = revue_locale_constats()
+        e.update(retours_pousse=False, retours_sha=git("rev-parse", "HEAD"))
+        write_json(dossier("etat.json"), e)
+        if not cs:
+            print("Mode essai : la revue locale n'a rien relevé, pas de retours.")
+            sys.exit(3)
+        out(f"RETOURS DE LA REVUE LOCALE (mode essai) : {len(cs)} constat(s) à traiter dans la copie de travail {root()} "
+            f"(branche {e.get('branch')}, diff depuis {depart()}). Rien n'est poussé ni posté.\n\n"
+            + json.dumps(cs, ensure_ascii=False, indent=1)[:12000])
+        sys.exit(6)
+    n = e.get("pr") or pr_number()
+    if not n:
+        print("Aucune PR ouverte : pas de retours.")
         sys.exit(3)
     e.update(pr=n, retours_pousse=False)
     write_json(dossier("etat.json"), e)
@@ -1384,12 +1430,32 @@ def cmd_retours_synchro(run=""):
     print((f"Corrections reprises dans la copie de travail ({remote[:8]})" if pousse else "Rien de poussé") + f", PR #{n}{maj}")
 
 
+def cmd_retours_local():
+    """Mode essai, après la correction locale des constats de la revue locale : commits faits (rien de poussé), contrôles
+    du Code relancés pour mémoire, passe notée dans retours.json ; des commits = une seconde passe possible (repasse)."""
+    e = etat()
+    sha, head = e.get("retours_sha") or "", git("rev-parse", "HEAD")
+    commits = git("log", "--oneline", f"{sha}..HEAD").splitlines() if sha and sha != head else []
+    v = verifie("code") if commits else {"ok": True}
+    r = load("retours.json", {}) or {}
+    if not isinstance(r, dict) or "passes" not in r:
+        r = {"pr": None, "passes": []}
+    r["passes"].append({"run": e.get("run"), "locale": True, "constats": len(revue_locale_constats()), "pousse": bool(commits),
+                        "commits": len(commits), "commit": head[:8] if commits else None, "controles_verts": bool(v.get("ok"))})
+    r["reponses"] = sum(int(p.get("constats") or 0) for p in r["passes"] if p.get("locale"))
+    write_json(dossier("retours.json"), r)
+    e["retours_pousse"] = bool(commits)
+    write_json(dossier("etat.json"), e)
+    print(f"Retours locaux : {len(commits)} commit(s) local(aux), rien de poussé"
+          + ("" if v.get("ok") else " ; contrôles du Code rouges après les corrections (noté)"))
+
+
 def cmd_repasse():
     """Après le poste 💬 retours : des corrections poussées et moins de MAX_PASSES passes, code 4 (la revue relit le
     nouveau head, puis les retours) ; sinon 0, fin. Le compteur repart de zéro à l'étape pr (cmd_pr)."""
     e = etat()
     e["passes_retours"] = int(e.get("passes_retours") or 0) + 1
-    again = bool(e.get("retours_pousse")) and e["passes_retours"] < MAX_PASSES and not essai()
+    again = bool(e.get("retours_pousse")) and e["passes_retours"] < MAX_PASSES  # en essai : corrections locales
     e["retours_pousse"] = False
     write_json(dossier("etat.json"), e)
     if again:
@@ -1642,6 +1708,8 @@ def bilan():
         "tours": {"propositions": e.get("propositions") or {}, "essais_code": int(e.get("essais_code") or 0),
                   "controles": int(e.get("tours") or 0), "escalades": int(e.get("escalades") or 0)},
         "retours": retours_bilan(),
+        "passes_pr": [{k: p.get(k) for k in ("locale", "constats", "fils", "pousse", "commits", "controles_verts") if k in p}
+                      for p in (load("retours.json") or {}).get("passes") or [] if isinstance(p, dict)][:4],
         "schema": {"mermaid": str(sch.get("mermaid") or "")[:4000], "prevus": prevus[:60], "touches": touched[:120],
                    "prevus_touches": len(set(prevus) & set(touched)), "touches_non_prevus": sorted(set(touched) - set(prevus))[:30],
                    "prevus_non_touches": sorted(set(prevus) - set(touched))[:30]},
@@ -1682,7 +1750,8 @@ def main(argv):
               "bilan_controles": cmd_bilan_controles,
               "aiguillage": cmd_aiguillage, "pousse": cmd_pousse, "pr": cmd_pr, "pret": cmd_pret,
               "reviewers": cmd_reviewers, "fin": cmd_fin, "revue_prep": cmd_revue_prep, "retours_pr": cmd_retours_pr,
-              "repasse": cmd_repasse, "bilan": cmd_bilan}
+              "repasse": cmd_repasse, "bilan": cmd_bilan, "revue_locale": cmd_revue_locale,
+              "retours_local": cmd_retours_local}
     if cmd in simple:
         return simple[cmd]()
     if cmd == "lance":

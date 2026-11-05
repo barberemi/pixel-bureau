@@ -132,7 +132,20 @@ class ChaineModelesTest(unittest.TestCase):
                          ("abababab-0000-4000-8000-000000000009", ".kronn/prs.json"))
         self.assertNotIn("revue", steps("impl_revue_pr"))  # sans modèle de revue installé : pas de revue
         rt = steps("impl_retours")  # le code de « corriger les commentaires d'une PR » (pr_update.py), sans sa gate
-        self.assertEqual(list(rt), ["entree", "prepare", "corrige", "controle", "diff", "pousse", "synchro", "fin"])
+        self.assertEqual(list(rt), ["entree", "prepare", "corrige", "controle", "diff", "pousse", "synchro", "fin", "corrige_local", "note_local"])
+        # mode essai : revue locale du diff puis correction locale, après fin (Stop) : jamais atteintes dans l'ordre
+        rv = steps("impl_revue_pr")
+        self.assertEqual(list(rv), ["entree", "fin", "locale", "range"])  # sans modèle de revue : fin suit entree
+        self.assertIn({"contains": "exit_6", "action": {"type": "Goto", "step_name": "locale"}}, rv["entree"]["on_result"])
+        for st in (rv, rt):
+            self.assertEqual(st["fin"]["on_result"], [{"contains": "OK", "action": {"type": "Stop"}}])
+        self.assertEqual(rv["range"]["on_result"], [{"contains": "OK", "action": {"type": "Goto", "step_name": "fin"}}])
+        self.assertEqual(rv["range"]["exec_stdin"], '{{steps.locale.data_json ?? "null"}}')
+        self.assertEqual(rv["locale"]["agent_settings"]["tier"], "reasoning")
+        self.assertIn("ne postes rien", rv["locale"]["prompt_template"])
+        self.assertIn({"contains": "exit_6", "action": {"type": "Goto", "step_name": "corrige_local"}}, rt["entree"]["on_result"])
+        self.assertIn("Ne pousse rien", rt["corrige_local"]["prompt_template"])
+        self.assertEqual(rt["note_local"]["on_result"], [{"contains": "OK", "action": {"type": "Goto", "step_name": "fin"}}])
         self.assertNotIn("Gate", json.dumps([s["step_type"] for s in rt.values()]))
         text = json.dumps([TPL[k] for k in KEYS], ensure_ascii=False)
         self.assertNotIn('"ci"', text)
@@ -293,8 +306,8 @@ class ChaineScriptTest(unittest.TestCase):
             code, outp = self.sh(cmd)
             self.assertEqual(code, 0, outp)
             self.assertIn("Mode essai", outp)
-        self.assertEqual(self.sh("revue_prep")[0], 3)  # ni revue de la PR ni retours : pas de PR en mode essai
-        self.assertEqual(self.sh("retours_pr")[0], 3)  # le poste 💬 retours finit aussitôt (Goto fin)
+        self.assertEqual(self.sh("revue_prep")[0], 6)  # pas de PR en mode essai : revue locale du diff
+        self.assertEqual(self.sh("retours_pr")[0], 3)  # rien relevé par la revue locale : le poste 💬 retours finit (Goto fin)
         self.assertIn("Mode essai", self.sh("retours_synchro", "r1")[1])
         self.assertEqual(self.sh("repasse")[0], 0)  # pas de seconde passe
         code, outp = self.sh("pr", stdin=json.dumps({"title": "fix: AB-12 x", "body": "corps"}))
@@ -587,7 +600,7 @@ class ChaineScriptTest(unittest.TestCase):
         en « dépôt#n » ; aucun fil (9) ou rien à pousser (9) : fin ; puis la copie de travail est resynchronisée."""
         rt = steps("impl_retours")
         self.assertEqual(rt["entree"]["exec_args"][2:], ["retours_pr"])
-        self.assertEqual(rt["entree"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "fin"}}])
+        self.assertEqual(rt["entree"]["on_result"][0], {"contains": "exit_3", "action": {"type": "Goto", "step_name": "fin"}})
         for name, sub in (("prepare", "fix_prepare"), ("controle", "fix_check"), ("diff", "fix_diff"), ("pousse", "fix_push")):
             self.assertEqual(rt[name]["exec_args"][2:], [sub, "{{steps.entree.data.stdout}}", "-", "{{run.id}}"], name)
             self.assertIn("pr_update.py fix_", rt[name]["exec_args"][1][:3000] + rt[name]["description"], name)
@@ -599,6 +612,42 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("Aucune consigne d'équipe en plus de la doc du dépôt.", rt["corrige"]["prompt_template"])  # impl.guidelines
         self.assertTrue(rt["pousse"]["external_effect"])
         self.assertEqual(rt["synchro"]["exec_args"][2:], ["retours_synchro", "{{run.id}}"])
+
+    def test_essai_reviews_the_local_diff_and_fixes_it_locally_twice_at_most(self):
+        """Mode essai : la revue de la PR relit le diff local sans rien poster, les retours corrigent en commits locaux
+        sans pousser, puis la seconde passe (2 au plus) comme pour une vraie PR. Banc d'essai du 5 novembre : en essai,
+        revue et retours étaient sautés, la seconde passe n'était jamais mesurée."""
+        self.fake_gh()
+        self.prepare()
+        e = self.dossier("etat.json")
+        e["mode"] = "essai"
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        self.commit("app/A.php", "<?php // code\n", "feat: code")
+        self.sh("pr", stdin=json.dumps({"title": "t", "body": "corps"}))
+        code, outp = self.sh("revue_prep")
+        self.assertEqual(code, 6)
+        self.assertIn("REVUE LOCALE (mode essai, passe 1 sur 2)", outp)
+        self.assertIn("git diff ", outp)
+        rev = {"resume": "r", "verdict": "changements", "constats": [{"gravite": "bloquant", "fichier": "app/A.php", "ligne": 1,
+                                                                      "probleme": "commentaire inutile", "correction": "le retirer"}]}
+        self.assertIn("1 constat(s) dont 1 bloquant", self.sh("revue_locale", stdin=json.dumps(rev))[1])
+        self.assertTrue(self.dossier("revue_pr.json")["locale"])
+        code, outp = self.sh("retours_pr")
+        self.assertEqual(code, 6)
+        self.assertIn("commentaire inutile", outp)
+        self.commit("app/A.php", "<?php\n", "fix: commentaire retiré")
+        self.assertIn("1 commit(s) local(aux)", self.sh("retours_local")[1])
+        self.assertEqual(self.sh("repasse")[0], 4)  # corrections locales : seconde passe
+        self.assertIn("passe 2 sur 2", self.sh("revue_prep")[1])
+        self.assertIn("Ta revue de la passe précédente", self.sh("revue_prep")[1])
+        self.sh("revue_locale", stdin=json.dumps({"resume": "ok", "verdict": "approuve", "constats": []}))
+        self.assertEqual(self.sh("retours_pr")[0], 3)  # plus rien à corriger
+        self.assertEqual(self.sh("repasse")[0], 0)
+        r = self.dossier("retours.json")
+        self.assertEqual([(p["locale"], p["pousse"]) for p in r["passes"]], [(True, True)])
+        self.assertEqual(self.gh_calls(), [])  # rien n'est posté
+        self.assertEqual(subprocess.run(["git", "ls-remote", "--heads", self.origin, "kronn/AB-12"], capture_output=True, text=True).stdout, "")
+        self.assertIn("revue_pr_passe2.json", os.listdir(os.path.join(self.wt, ".kronn", "chaine")))
 
     def test_retours_pr_prints_repo_and_number(self):
         self.prepare()
