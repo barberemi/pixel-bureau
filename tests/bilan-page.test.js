@@ -52,16 +52,38 @@ test('agrégats : essais écartés, écart avec la version d\'avant, contrôles,
   assert.deepEqual([...B.verdict([10, 1, 9])], ['err', 'à revoir']);
 });
 
-test('rendu complet : chiffres, sections, fiche du plus récent, textes échappés', () => {
-  const h = B.render(DATA, {jours: 30, repo: '', essais: false, sel: null});
-  for (const s of ['jetons par ticket', 'Où partent les jetons', 'Versions de la chaîne', 'Jetons perdus', 'Allers-retours par ticket',
-    'Ce que trouvent les contrôles', 'Le schéma d\'impact a-t-il vu juste', 'Pourquoi tu dis', 'Tickets passés', 'Déroulé'])
+test('rendu sans coût relevé : les jetons de Kronn, une ligne par ticket, l\'analyse repliée, textes échappés', () => {
+  const st = {jours: 30, repo: '', essais: false, sel: null, open: new Set(), tab: 'deroule'};
+  const h = B.render(DATA, st);
+  for (const s of ['jetons par ticket', 'Où partent les jetons', 'Par ticket', 'Analyse de la chaîne', 'Versions de la chaîne', 'Jetons perdus',
+    'Allers-retours par ticket', 'Ce que trouvent les contrôles', 'Le schéma d\'impact a-t-il vu juste', 'Pourquoi tu dis', 'Déroulé'])
     assert.ok(h.includes(s), s);
   assert.ok(h.includes('Livré &lt;b&gt;vite&lt;/b&gt;'));
   assert.ok(!h.includes('<b>vite</b>'));
-  assert.ok(/class="row on" data-run="1"/.test(h));
-  assert.ok(!/€/.test(h)); // pas de coût en v1
+  assert.ok(/class="grp on" data-g="AB-1\|dm\/site"/.test(h), 'la fiche du plus récent, sa ligne de ticket en surbrillance');
+  assert.ok(!h.includes(' $'), 'pas de coût sans journaux');
+  assert.ok(!/<details class="analyse" open/.test(h));
   assert.ok(B.render({tickets: []}, {}).includes('Aucun run de la chaîne'));
+});
+
+test('coût réel : par ticket (ses runs regroupés), par poste et modèle, fiche en onglets, blocs du run', () => {
+  const cout = (usd) => ({usd, cache: 9e6, sortie: 2e5, modeles: {opus: usd * 0.75, sonnet: usd * 0.25},
+    postes: {Code: usd * 0.75, Tests: usd * 0.25}, postes_m: {Code: {opus: usd * 0.75}, Tests: {sonnet: usd * 0.25}}});
+  const D = {...DATA, tickets: [t('1', {cout: cout(40)}), t('5', {ticket: 'AB-1', issue: 'panne', debut: '2026-10-29T10:00:00+00:00', cout: cout(8)})],
+    fiches: {...DATA.fiches, '1': {...DATA.fiches['1'], blocs: [{n: 'Plan : comprendre', rows: [{n: '📋 Plan', m: 'opus', r: 3, c: 1e6, o: 1e4, usd: 2, subs: []}]},
+      {n: 'Tour 2 : correction des bloquants', rows: [{n: '🔎 Contrôles', m: 'opus', r: 2, c: 1e5, o: 1e3, usd: 1, subs: [{n: '📏 Règles', m: 'opus', r: 4, c: 2e5, o: 3e3, usd: 3}]}]}]}}};
+  const a = B.aggregate(D, {jours: 30});
+  assert.equal(a.groups.length, 1, 'deux runs du même ticket : une ligne');
+  assert.equal(Math.round(a.usdTicket), 48);
+  assert.equal(a.usdPerdu, 8);
+  assert.deepEqual({...a.postesUsd.Code.m}, {opus: 36}, 'le partage exact du poste, pas celui du ticket');
+  const st = {jours: 30, open: new Set(['AB-1|dm/site']), tab: 'cout', sel: null};
+  const h = B.render(D, st);
+  for (const s of ['Où part l\'argent', '48,0 $', 'perdus dans des runs', 'O 75%', 'Coût détaillé', 'Tour 2', '└ 📏 Règles', 'Total du run : <b>6,00 $</b>'])
+    assert.ok(h.includes(s), s);
+  assert.ok(/class="row on" data-run="1"/.test(h), 'ses runs dépliés, le plus récent choisi');
+  assert.ok(/<i class="tour"/.test(h), 'un tour de correction en rouge');
+  assert.ok(B.render(D, {...st, tab: 'exig'}).includes('class="ex"'), 'les exigences en pleine largeur');
 });
 
 test('schéma mermaid dessiné en SVG : nœuds, flèches, arête pointillée', () => {
@@ -69,7 +91,7 @@ test('schéma mermaid dessiné en SVG : nœuds, flèches, arête pointillée', (
   assert.equal((s.match(/<rect /g) || []).length, 5);
   assert.equal((s.match(/class="ed/g) || []).length, 4);
   assert.ok(s.includes('ed dash'));
-  assert.ok(s.includes('oublié'));
+  assert.ok(s.includes('<title>oublié</title>'), 'le libellé d\'une flèche au survol');
   assert.equal(B.flowchart(''), '');
 });
 
@@ -78,4 +100,7 @@ test('formats', () => {
   assert.equal(B.fmtTok(1500000), '1,5 M');
   assert.equal(B.fmtDur(13200), '3 h 40');
   assert.equal(B.fmtDur(600), '10 min');
+  assert.equal(B.fmtUsd(43.3), '43,3 $');
+  assert.equal(B.fmtUsd(4.88), '4,88 $');
+  assert.equal(B.fmtUsd(225.4), '225 $');
 });
