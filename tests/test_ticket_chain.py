@@ -103,6 +103,27 @@ class TicketChainTest(unittest.TestCase):
         self.assertIn("au 2e étage du Bureau, clic sur sa carte", ap)
         self.assertLess(len(ap), 1000)
 
+    def test_tickets_beyond_the_cap_are_set_aside_and_shown_at_the_stamp(self):
+        """8 tickets au plus par intention : la consigne le dit ; le surplus et le hors_liste de la rédaction sont gardés,
+        relus par la critique et montrés au tampon (ils étaient coupés en silence) ; seuls les 8 partent au foreach."""
+        self.t("dossier", "r12", "Douze pages", "Story", "13", "dm/site", "", "backlog", "")
+        self.assertIn("8 tickets au plus", self.t("poste", "redaction", "r12").stdout)
+        many = {"tickets": [{"summary": f"Page {k}", "description": "h2. Contexte", "composant": "dm/site", "points": 1, "bloque_par": [10]}
+                            for k in range(1, 11)], "hors_liste": ["Page 11", "Page 10"]}
+        r = self.t("rapport", "redaction", "r12", stdin=json.dumps(many))
+        self.assertIn("✂ 3 mis de côté", r.stdout)
+        self.assertIn("## Mis de côté pour une autre intention (8 tickets au plus)\n- Page 9\n- Page 10\n- Page 11",
+                      self.t("poste", "critique", "r12").stdout)
+        ap = self.t("apercus", "r12").stdout
+        self.assertIn("8 ticket(s) à créer", ap)
+        self.assertIn("✂ 3 livrable(s) hors de cette liste (8 tickets au plus par intention), à lancer dans une autre intention :\n- Page 9", ap)
+        self.assertNotIn("bloqué par", ap, "un lien vers un ticket mis de côté est retiré")
+        self.t("rapport", "critique", "r12", stdin='{"verdict": "ok", "notes": []}')
+        self.t("aiguillage", "r12")
+        self.assertEqual(len(json.loads(Path(self.tmp, ".kronn", "tickets.json").read_text())), 8)
+        h = json.loads(Path(self.tmp, ".local", "share", "pixel-bureau", "historique", "ticket", "r12.json").read_text())
+        self.assertEqual(h["versions"][-1]["hors_liste"], ["Page 9", "Page 10", "Page 11"])
+
     def test_parent_must_be_an_epic(self):
         """Jira n'accepte qu'une épic pour parent : vérifié dès le dossier (run ed873fc9 : EW-6816, une Story, refusée à la
         création des 3 tickets). Une épic passe ; une Story avec son épic passe sous l'épic ; sinon le run s'arrête."""

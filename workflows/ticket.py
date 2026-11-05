@@ -138,6 +138,7 @@ def resultat(key, raw, type_, points, c1, c2, sprint):
 # ---------- la salle de rédaction : les postes et les tickets d'une intention ----------
 HOME = os.path.expanduser("~/.cache/pixel-bureau/ticket")
 TOURS = 3  # rédaction et critique : trois tours au plus
+MAX_TICKETS = 8  # par intention ; au-delà, les livrables mis de côté (hors_liste) sont montrés au tampon, jamais perdus
 POSTES = {
     "recherche": ("📚 Recherche", "Cherche dans les dépôts des composants ce qui sert à rédiger : les fichiers, fonctions et tests "
                   "concernés, les tickets ou PR proches, ce qui existe déjà. Ne t'arrête pas aux composants donnés : cherche "
@@ -150,7 +151,9 @@ POSTES = {
                   "donnée), puis les pistes, une puce chacune, avec le fichier. N'invente rien ; rien trouvé : dis-le."),
     "redaction": ("✍ Rédaction", "Rédige le ou les tickets. Une intention qui touche plusieurs projets ou plusieurs livrables "
                   "indépendants se DÉCOUPE en plusieurs tickets (un par projet ou par livrable) ; sinon, un seul ticket. "
-                  "Pour chacun : summary (le titre seul, court et impératif, sans clé ni type), description en WIKI MARKUP "
+                  f"{MAX_TICKETS} tickets au plus : une intention qui en demande davantage, rédige les {MAX_TICKETS} premiers "
+                  "livrables (dans son ordre) et donne le titre de chacun des autres dans hors_liste : ils iront dans une "
+                  "autre intention. Pour chacun : summary (le titre seul, court et impératif, sans clé ni type), description en WIKI MARKUP "
                   "Jira (REST v2 : h2., {panel:…}…{panel}, * puces, {code}…{code}, jamais de Markdown), au modèle de "
                   "ticket de l'équipe s'il est donné (il est recopié plus haut en entier : suis-le à la lettre, titre "
                   "compris), sinon trois sections h2. Contexte, h2. À faire, h2. Comment tester ; composant (un de la liste) ; "
@@ -164,9 +167,10 @@ POSTES = {
                   "Pas de tiret cadratin ; n'invente ni lien, ni chiffre, ni personne. Ne crée RIEN dans Jira. Rends "
                   "UNIQUEMENT un objet JSON : "
                   '{"tickets": [{"summary": "…", "description": "…", "composant": "…", "points": 3, "bloque_par": []}], '
-                  '"reponses": ["ticket 1 : …"]}.'),
+                  '"hors_liste": [], "reponses": ["ticket 1 : …"]}.'),
     "critique": ("🧐 Critique", "Relis les tickets proposés comme le ferait un relecteur exigeant : chacun se comprend seul, "
-                 "se teste, a le bon composant et des points crédibles ; le découpage est juste (ni trop, ni trop peu) ; "
+                 "se teste, a le bon composant et des points crédibles ; le découpage est juste (ni trop, ni trop peu ; "
+                 f"{MAX_TICKETS} tickets au plus, les livrables mis de côté pour une autre intention ne sont pas un défaut) ; "
                  "le modèle de ticket de l'équipe est suivi (sections, panneaux, titre) ; les dépendances (bloque_par) sont "
                  "dans le bon sens (un ticket est bloqué par celui dont il consomme le résultat) et sans boucle ; "
                  "rien d'inventé, rien de flou ; aucun ticket ne refait un ticket Jira ouvert listé plus haut. Chaque note "
@@ -468,6 +472,8 @@ def poste(k, run, retours=""):
     t = dget(run, "tickets.json")
     if k == "critique" or (k == "redaction" and t):
         parts.append("## Les tickets proposés" + (f" (version {t['version']})" if t else "") + "\n" + json.dumps((t or {}).get("tickets") or [], ensure_ascii=False, indent=1))
+        if (t or {}).get("hors_liste"):
+            parts.append(f"## Mis de côté pour une autre intention ({MAX_TICKETS} tickets au plus)\n" + "\n".join("- " + x for x in t["hors_liste"]))
     retours = (retours or "").strip()
     if k == "redaction" and retours:  # « Changements » à la validation : tes retours, gardés au dossier
         old = dget(run, "retours.json", [])
@@ -522,14 +528,18 @@ def rapport(k, run, text):
         ts = [t for t in (o.get("tickets") or []) if isinstance(t, dict) and str(t.get("summary") or "").strip()]
         if not ts:
             sys.exit("La rédaction n'a rendu aucun ticket (objet JSON {\"tickets\": [...]} attendu).")
-        ts = dependances(ts[:8])
+        # au-delà de MAX_TICKETS, le surplus rejoint hors_liste : coupé en silence, il n'arrivait ni au tampon ni dans Jira
+        hors = [str(t["summary"]).strip() for t in ts[MAX_TICKETS:]] + [str(x).strip() for x in o.get("hors_liste") or [] if str(x).strip()]
+        hors = [x[:200] for i, x in enumerate(hors) if x not in hors[:i]][:30]
+        ts = dependances(ts[:MAX_TICKETS])
         old = dget(run, "tickets.json") or {}
         v = int(old.get("version") or 0) + 1
         reps = [str(x).strip()[:400] for x in o.get("reponses") or [] if str(x).strip()][:12]
-        dput(run, "tickets.json", {"version": v, "tickets": ts, "reponses": reps})
+        dput(run, "tickets.json", {"version": v, "tickets": ts, "reponses": reps, "hors_liste": hors})
         archive(run, versions={"v": v, "tickets": [{"summary": str(t.get("summary") or "")[:200], "composant": t.get("composant"),
-                                                    "points": t.get("points"), "bloque_par": t["bloque_par"]} for t in ts]})
-        print("\n".join(f"{i}. {t['summary']} · {t.get('composant') or '?'} · {t.get('points') or '?'} pts{bloque(t)}" for i, t in enumerate(ts, 1)))
+                                                    "points": t.get("points"), "bloque_par": t["bloque_par"]} for t in ts], "hors_liste": hors})
+        print("\n".join(f"{i}. {t['summary']} · {t.get('composant') or '?'} · {t.get('points') or '?'} pts{bloque(t)}" for i, t in enumerate(ts, 1))
+              + (f"\n✂ {len(hors)} mis de côté pour une autre intention ({MAX_TICKETS} tickets au plus)" if hors else ""))
         return
     if k == "critique":
         # une note sans gravité compte comme bloquante ; « à retoucher » seulement s'il en reste une (les conseils vont au tampon)
@@ -632,6 +642,12 @@ def apercus(run):
         print(f"Parent : {d.get('parent')}, l'épic de {d['parent_de']} (Jira n'accepte qu'une épic pour parent)")
     for i, x in enumerate(t):
         print(f"T{i + 1} · {(x.get('summary') or '(sans titre)').strip()} · {d.get('type') or '?'} · {number(pts(x)):g} pts · {comp(x) or 'sans composant'}{bloque(x)}")
+    hors = (dget(run, "tickets.json") or {}).get("hors_liste") or []
+    if hors:
+        print(f"\n✂ {len(hors)} livrable(s) hors de cette liste ({MAX_TICKETS} tickets au plus par intention), à lancer dans une autre intention :")
+        for x in hors:
+            print(f"- {x}")
+        print()
     if any(x.get("bloque_par") for x in t):
         print(f"Liens Jira « {link_type()} » posés à la création, dans ce sens (« bloqué par » : à livrer avant).")
     if labels():
