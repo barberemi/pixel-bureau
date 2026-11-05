@@ -142,7 +142,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_pr.py@@",
      "lance",
      "{{jira_ticket_key}}",
      "{{mode}}",

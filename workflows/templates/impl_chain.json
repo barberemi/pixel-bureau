@@ -145,13 +145,14 @@
     "step_type": {
      "type": "ApiCall"
     },
-    "description": "Le ticket (API REST v2 : description en texte).",
+    "description": "Le ticket (API REST v2 : description en texte) et son historique (essai rejoué : description d'alors).",
     "api_plugin_slug": "mcp-atlassian",
     "api_config_id": "@@jira.config_id@@",
     "api_endpoint_path": "/rest/api/2/issue/{{ticket}}",
     "api_method": "GET",
     "api_query": {
-     "fields": "summary,description,issuetype,components,labels,priority,status,subtasks,issuelinks,comment"
+     "fields": "summary,description,issuetype,components,labels,priority,status,subtasks,issuelinks,comment",
+     "expand": "changelog"
     },
     "_requires": "jira"
    },
@@ -426,7 +427,17 @@
      "retours": "{{state.last_human_feedback ?? \"\"}}",
      "plan": "{{steps.orchestrateur_plan.data_json ?? \"\"}}",
      "consignes": "{{steps.orchestrateur.data.consignes ?? \"\"}}"
-    }
+    },
+    "on_result": [
+     {
+      "contains": "SUBWF_FAILED",
+      "action": {
+       "type": "Goto",
+       "step_name": "rattrape",
+       "max_iterations": 5
+      }
+     }
+    ]
    },
    {
     "name": "controles",
@@ -503,11 +514,11 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Livrer (code 3), retour au Code (code 4, 3 tours au plus), sinon ta gate.",
+    "description": "Livrer (code 3), retour au Code (code 4, 3 tours au plus), sinon ta gate ; en essai, l'escalade arrête le run (code 6).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_controles.py@@",
      "aiguillage"
     ],
     "exec_timeout_secs": 30,
@@ -526,6 +537,13 @@
        "type": "Goto",
        "step_name": "code",
        "max_iterations": 5
+      }
+     },
+     {
+      "contains": "exit_6",
+      "action": {
+       "type": "Goto",
+       "step_name": "fin_essai"
       }
      }
     ]
@@ -633,6 +651,67 @@
       "contains": "OK",
       "action": {
        "type": "Stop"
+      }
+     }
+    ]
+   },
+   {
+    "name": "fin_essai",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Mode essai, escalade : refus explicite (bloquants restants notés, bilan écrit), le run s'arrête sans gate ni livraison (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine_controles.py@@",
+     "fin_essai"
+    ],
+    "exec_timeout_secs": 30,
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Stop"
+      }
+     }
+    ]
+   },
+   {
+    "name": "rattrape",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Code en échec : rejet du garde-fou docs de Kronn avec le travail fini et commité, bilan du Code puis contrôles (code 4) ; sinon la chaîne échoue (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "rattrape_code"
+    ],
+    "exec_timeout_secs": 60,
+    "exec_stdin": "{{steps.code.data.last_output ?? \"\"}}",
+    "on_result": [
+     {
+      "contains": "exit_4",
+      "action": {
+       "type": "Goto",
+       "step_name": "controles",
+       "max_iterations": 5
       }
      }
     ]

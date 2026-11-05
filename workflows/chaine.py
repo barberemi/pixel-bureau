@@ -1,11 +1,10 @@
 """Implémenter un ticket en chaîne de postes (#76, #125) : une sous-commande par étape Exec des modèles impl_*.json, 0 token.
 
-Le dossier du ticket vit dans la copie de travail du run, `.kronn/chaine/` (ignoré par git) : chaque poste (un
-sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les précédents et y dépose son rapport.
+La chaîne est en trois scripts, chacun passé à Kronn en un argument `python3 -c` (Linux : 128 Kio au plus par argument) :
+chaine.py (dossier, postes, Code, bilan), chaine_controles.py (contrôles, aiguillage), chaine_pr.py (lanceur, PR, revue, retours, publication) ; le commun est dans _chaine.py, recopié dans chacun au rendu.
 
-  lance <ticket> <mode> <dépôt> [reprise]
-                                    # lanceur : stdin ticket Jira ; une chaîne par dépôt (composants Jira), chacune dans
-                                    # son projet Kronn ; reprise auto|oui|non (auto : reprend si le dernier run a échoué, pas s'il a été rejeté)
+chaine.py : dossier, postes et Code.
+
   prepare <ticket> <mode> <run> [variante] [dépôt] [sœurs] [reprise] [base]
                                     # base : branche ou commit d'où rejouer le ticket (essai) ; stdin ticket Jira : dossier, réglages du dépôt, branche kronn/<ticket> ; en reprise,
                                     # dossier et branche du run d'avant, code 3/4/5 : on reprend au Code/aux contrôles/à la PR
@@ -25,111 +24,15 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
   tri_lot                           # stdin vérif ===SEP=== relecture : code 4 = refaire le lot (3 essais), 0 = lot fini
   tri_tests                         # stdin lancement des tests : code 4 = le poste Tests reprend (3 essais)
   bilan_code                        # commits et fichiers de la branche
-  quoi                              # contrôles : fichiers touchés, postes à lancer (réglages et plan)
-  missions | range                  # contrôles en parallèle : contexte, vérifications des règles, relevé de la doc ; rapports rangés
-  bilan_controles                   # rapports des postes de contrôle : bloquants et avis
-  aiguillage                        # stdin décision de l'orchestrateur : 3 livrer, 4 retour au code, 0 humain
-  pousse | pr | revue_prep                          # PR et sa revue (gh)
-  retours_pr | retours_synchro <run> | repasse      # retours des relecteurs par pr_update.py (fix_*, sans gate) : la PR
-                                    # en « dépôt#n » (code 3 : essai ou pas de PR), puis la copie de travail resynchronisée
-                                    # et la description à jour ; repasse code 4 : seconde revue et retours (2 passes au plus)
-  pret | reviewers | fin                              # publication après ta relecture (gh)
+  rattrape_code                     # stdin dernière sortie du Code en échec : garde-fou docs de Kronn avec le travail fini
+                                    # et commité, bilan du Code puis code 4 (contrôles) ; sinon code 1
   bilan                             # bilan du run (historique de la page « Chaîne · bilan »), aussi écrit après chaque étape
-
-L'étage ne traite que l'implémentation, la PR et ses retours : ni CI, ni env de branche, ni déploiement (le RDC s'en charge).
-Le dossier est recopié après chaque étape dans ~/.cache/pixel-bureau/chaine/<ticket>/<owner__dépôt>/courant : Kronn
-supprime la copie de travail d'un run (réussi ou non), la reprise y relit tout (étape atteinte dans etat.json « etape »).
-Après chaque étape aussi, le bilan du run est réécrit dans l'historique (impl.historique, sinon
-~/.local/share/pixel-bureau/historique/<ticket>/<owner__dépôt>/<run>.json), jamais vidé : le dernier écrit vaut pour un
-run fini, rejeté à une gate ou en panne (Kronn ne lance aucune étape après une panne).
-Réglage impl (pack ou config) : repos.<owner/dépôt>.{base, checks.{regles,tests}, reviewers, front, docs}, components.<composant> = owner/dépôt, postes.<poste>.{actif, bloquant}, max_tours, max_lots.
-Une commande de vérification reçoit {worktree}, {main} (dossier du projet), {files}, {php}, {ts}, {tests} (fichiers
-modifiés par rapport à la base, par type).
 """
 import fnmatch, hashlib, json, os, re, subprocess, sys, time
 from _lib import CFG, get, read_json, send, write_json, write_text
-from _checks import check_fill, check_run
+from _chaine import *  # noqa: F401,F403  (recopié au rendu, comme _lib)
 
 SEP = "\n===SEP===\n"
-KEY = re.compile(r"^[A-Z][A-Z0-9]+-\d+$")
-# cadrage = le poste 📋 Plan (compris, fichiers impactés, façons de faire du dépôt : tout dans cadrage.json) ; schéma,
-# patterns et revue croisée n'existent plus, un dossier d'avant qui a leurs rapports reste lisible (ignorés)
-POSTES = ("cadrage", "code", "regles", "securite", "tests", "perf", "besoin", "doc", "pr", "revue_pr", "retours")
-CONTROLES = ("regles", "securite", "tests", "perf", "besoin", "doc")
-PARALLELES = ("regles", "securite", "perf", "besoin", "doc")  # en lecture seule : sous-agents d'une même étape, en même temps
-BLOQUANTS = {"regles", "securite", "tests", "besoin", "doc"}  # par défaut ; perf : avis
-# doc du dépôt relevée pour le poste 📚 doc ; impl.repos.<dépôt>.docs en ajoute (ex. guide/)
-DOCS = ["docs", "ai", ":(glob)**/README*", ":(glob)**/AGENTS.md", ":(glob)**/CLAUDE.md"]
-FRONT = ["*.scss", "*.css", "*.twig", "*.html", "*.vue", "*.tsx", "*.jsx", "*.ts", "*.js"]
-MAX_OUT = 60_000  # sortie Exec sous 100 Ko
-
-
-def impl():
-    return CFG.get("impl") or {}
-
-
-def root():
-    return os.environ.get("KRONN_WORKTREE") or os.getcwd()
-
-
-def dossier(*p):
-    d = os.path.join(root(), ".kronn", "chaine")
-    os.makedirs(d, exist_ok=True)
-    return os.path.join(d, *p)
-
-
-def load(name, default=None):
-    try:
-        return read_json(dossier(name))
-    except (OSError, ValueError):
-        return default
-
-
-def git(*args, check=False):
-    r = subprocess.run(["git", *args], cwd=root(), capture_output=True, text=True)
-    if check and r.returncode:
-        raise RuntimeError("git " + " ".join(args) + " : " + (r.stderr or r.stdout).strip()[:500])
-    return r.stdout.strip()
-
-
-def repo_of():
-    url = git("config", "--get", "remote.origin.url")  # l'adresse écrite, pas celle réécrite par url.*.insteadOf
-    m = re.search(r"github\.com[:/]([\w.-]+/[\w.-]+?)(?:\.git)?$", url)
-    return m.group(1) if m else ""
-
-
-def reglages(repo=None):
-    """Réglages du dépôt : impl.repos.<dépôt>, base main par défaut."""
-    r = dict((impl().get("repos") or {}).get(repo or etat().get("repo") or repo_of()) or {})
-    r.setdefault("base", "main")
-    return r
-
-
-def etat():
-    return load("etat.json", {}) or {}
-
-
-def poste_conf(p):
-    return (impl().get("postes") or {}).get(p) or {}
-
-
-def out(obj):
-    s = obj if isinstance(obj, str) else json.dumps(obj, ensure_ascii=False, indent=1)
-    sys.stdout.write(s[:MAX_OUT])
-
-
-def read_stdin():
-    return sys.stdin.read() if not sys.stdin.isatty() else ""
-
-
-def parse(s):
-    s = (s or "").strip()
-    if not s or s == "null" or s.startswith("{" + "{"):  # référence Kronn restée telle quelle : pas encore produite
-        return None
-    try:
-        return json.loads(s)
-    except ValueError:
-        return {"texte": s}
 
 
 # ---------- ticket ----------
@@ -144,7 +47,29 @@ def quand(s):
     return datetime.datetime.fromisoformat(m.group(1) + tz).astimezone(datetime.timezone.utc)
 
 
-def ticket_md(t, avant=None):
+REMONTES = {"description": "description", "summary": "summary"}  # champ du changelog Jira -> champ du ticket
+
+
+def a_la_date(t, avant):
+    """Le ticket tel qu'il était à la date `avant` (essai rejoué) : les changements de description et de titre postérieurs
+    sont défaits un par un, du plus récent au plus ancien, depuis l'historique Jira (expand=changelog : items field,
+    fromString). Banc d'essai du 5 novembre : la description réécrite après l'ouverture de la PR humaine (décisions
+    produit) donnait à la chaîne une « info du futur ». Rend (ticket, champs remontés)."""
+    f = dict(t.get("fields") or {})
+    hist = [h for h in (t.get("changelog") or {}).get("histories") or [] if isinstance(h, dict) and quand(h.get("created"))]
+    remontes = set()
+    for h in sorted(hist, key=lambda h: quand(h.get("created")), reverse=True):
+        if quand(h.get("created")) <= avant:
+            break
+        for it in h.get("items") or []:
+            k = REMONTES.get(str(it.get("field") or "").lower())
+            if k:
+                f[k] = it.get("fromString") or ""
+                remontes.add(k)
+    return {**t, "fields": f}, sorted(remontes)
+
+
+def ticket_md(t, avant=None, remontes=()):
     """Le ticket en Markdown ; essai rejoué (avant = date du commit rejoué) : ni statut ni commentaire postérieur,
     essai d'EW-7945 : le retour d'usage de l'IA, posté après la livraison, donnait ses suites à la PR."""
     f = t.get("fields") or {}
@@ -153,7 +78,11 @@ def ticket_md(t, avant=None):
              f"- Type : {(f.get('issuetype') or {}).get('name') or '?'} ; priorité : {(f.get('priority') or {}).get('name') or '?'}"
              f" ; statut : {statut}",
              f"- Composants : {', '.join(c.get('name', '') for c in f.get('components') or []) or 'aucun'}",
-             f"- Labels : {', '.join(f.get('labels') or []) or 'aucun'}", "", "## Description", "", f.get("description") or "(vide)"]
+             f"- Labels : {', '.join(f.get('labels') or []) or 'aucun'}", "", "## Description", ""]
+    if remontes:
+        lines += [f"(essai rejoué : {' et '.join({'summary': 'titre', 'description': 'description'}[k] for k in remontes)} tels qu'au "
+                  f"{avant:%Y-%m-%d %H:%M} UTC, reconstruits depuis l'historique Jira)", ""]
+    lines.append(f.get("description") or "(vide)")
     subs = f.get("subtasks") or []
     if subs:
         lines += ["", "## Sous-tâches"] + [f"- {s.get('key')} : {(s.get('fields') or {}).get('summary')}" for s in subs]
@@ -174,194 +103,9 @@ def ticket_md(t, avant=None):
     return "\n".join(lines)
 
 
-def project_for(repo):
-    """Projet Kronn dont l'origine est ce dépôt GitHub."""
-    want = repo.lower()
-    for p in get("/projects") or []:
-        m = re.search(r"github\.com[:/]([\w.-]+/[\w.-]+?)(?:\.git)?/?$", str(p.get("repo_url") or ""))
-        if m and m.group(1).lower() == want:
-            return p["id"]
-    return None
-
-
-def origine(path):
-    """owner/dépôt GitHub de la copie locale, ou ""."""
-    r = subprocess.run(["git", "-C", path, "config", "--get", "remote.origin.url"], capture_output=True, text=True)
-    m = re.search(r"github\.com[:/]([\w.-]+/[\w.-]+?)(?:\.git)?/?$", r.stdout.strip())
-    return m.group(1) if m else ""
-
-
-def projet_auto(repo):
-    """Aucun projet Kronn pour ce dépôt : sa copie locale dans le dossier des clones (impl.clones, ~/Sites par défaut),
-    sinon clonée là si impl.auto_projet, puis ajoutée à Kronn comme projet. Rend (id du projet, ce qui a été fait) ou
-    (None, pourquoi). Essai d'EW-7945 : front_api était cloné dans ~/Sites mais n'avait pas de projet Kronn."""
-    base = os.path.expanduser(impl().get("clones") or "~/Sites")
-    path = next((os.path.join(base, d) for d in sorted(os.listdir(base)) if os.path.isdir(os.path.join(base, d, ".git"))
-                 and origine(os.path.join(base, d)).lower() == repo.lower()), None) if os.path.isdir(base) else None
-    fait = "copie locale trouvée"
-    if not path:
-        if not impl().get("auto_projet"):
-            return None, f"aucune copie locale dans {base} (impl.auto_projet : la cloner d'office)"
-        path, fait = os.path.join(base, repo.split("/")[-1]), "cloné"
-        if os.path.exists(path):
-            return None, f"{path} existe déjà et n'est pas une copie de {repo}"
-        r = subprocess.run(["gh", "repo", "clone", repo, path], capture_output=True, text=True, timeout=1800)
-        if r.returncode:
-            return None, "clonage impossible : " + (r.stderr or r.stdout).strip()[:300]
-    res = send("POST", "/projects/add-folder", {"path": path}) or {}
-    pid = (res.get("data") or res).get("id") if isinstance(res, dict) else None
-    if not pid:
-        return None, f"{path} : ajout à Kronn refusé ({str(res.get('error') if isinstance(res, dict) else res)[:200]})"
-    return pid, f"{fait} ({path}) et ajouté à Kronn"
-
-
-def repos_for(t, depot):
-    """Dépôts du ticket, un par composant Jira (impl.components, sinon un dépôt réglé du même nom, sinon owner/composant) ;
-    le champ dépôt (owner/dépôt, ou un nom de composant) force un seul dépôt."""
-    depot = (depot or "").strip()
-    if "/" in depot:
-        return [depot]
-    comps = [depot] if depot else [c.get("name") for c in ((t.get("fields") or {}).get("components") or [])]
-    mapping = impl().get("components") or {}
-    known = list((impl().get("repos") or {}).keys())
-    owner = ((CFG.get("github") or {}).get("repo") or "/").split("/")[0]
-    out = []
-    for c in comps:
-        r = mapping.get(c) or next((k for k in known if k.split("/")[-1] == c), None) or (f"{owner}/{c}" if owner and c else "")
-        if r and r.lower() not in [x.lower() for x in out]:
-            out.append(r)
-    return out
-
-
-def chain_runs(chain, limit=50):
-    """Runs de la chaîne, les plus récents d'abord, avec leur sortie prepare (« <ticket> sur <dépôt> ») : les variables
-    d'un run sont chiffrées (instantané), le ticket et le dépôt ne se lisent que là. Détail lu pour les runs actifs et les
-    15 plus récents des autres (reprise)."""
-    runs = sorted(get(f"/workflows/{chain}/runs?limit={limit}") or [], key=lambda r: r.get("started_at") or "", reverse=True)
-    done = 0
-    for r in runs:
-        act = r.get("status") in ("Running", "WaitingApproval", "Pending", "WaitingQuota")
-        if not act and done >= 15:
-            r["prep"] = None
-            continue
-        done += not act
-        steps = (get(f"/workflows/{chain}/runs/{r['id']}") or {}).get("step_results") or []
-        r["active"], r["prep"] = act, next((x.get("output") or "" for x in steps if x.get("step_name") == "prepare"), "")
-        # un rejet à une gate finit lui aussi en Failed : sa dernière étape est la gate refusée, pas une panne
-        last = steps[-1] if steps else {}
-        r["rejete"] = str(last.get("step_name") or "").startswith("gate_") and last.get("status") == "Failed"
-    return runs
-
-
-def cmd_lance(ticket, mode, depot, reprise=""):
-    """Une chaîne par dépôt du ticket (méthode A) : chacune dans le projet Kronn du dépôt, sur son bureau, avec ses sœurs
-    (les autres dépôts) pour son périmètre et ses liens de PR. Un passage par ticket ET par dépôt."""
-    if not KEY.match(ticket or ""):
-        sys.exit(f"Clé de ticket invalide : {ticket!r}")
-    t = parse(read_stdin()) or {}
-    repos = repos_for(t, depot)
-    if not repos:
-        sys.exit("Aucun dépôt : pose un composant Jira sur le ticket, ou donne le dépôt (owner/dépôt) au lancement.")
-    chain = (CFG.get("models") or {}).get("impl_chain")
-    if not chain:
-        sys.exit("La chaîne n'est pas installée (models.impl_chain) : python3 tools/install.py la propose.")
-    pids, notes = {r: project_for(r) for r in repos}, {}
-    for r in repos:
-        if not pids[r]:
-            pids[r], notes[r] = projet_auto(r)
-    manque = [r for r in repos if not pids[r]]
-    runs = chain_runs(chain)
-    pending = next((r for r in runs if r.get("active") and not r.get("prep")), None)
-    if pending:  # un run pas encore préparé : on ne sait pas encore quel ticket il porte
-        sys.exit(f"Un run de la chaîne n'est pas encore préparé ({pending['id'][:8]}, {pending['status']}) : "
-                 f"{ticket} y est peut-être déjà, réessaie dans une minute.")
-    lines, launched = [], []
-    targets = [r for r in repos if pids[r]]
-    reprise = (reprise or "auto").strip().lower()
-    reprise = reprise if reprise in ("oui", "non") else "auto"
-    for i, repo in enumerate(targets, 1):
-        mine = [r for r in runs if r.get("prep") and f"{ticket} sur {repo}".lower() in r["prep"].lower()]
-        busy = next((r for r in mine if r.get("active")), None)
-        if busy:
-            lines.append(f"- {repo} : déjà sur la chaîne (run {busy['id'][:8]}, {busy['status']}), pas relancé")
-            continue
-        rep = reprise if reprise != "auto" else "oui" if mine and mine[0].get("status") == "Failed" and not mine[0].get("rejete") else "non"
-        soeurs = [r for r in repos if r != repo]
-        partie = f"h3. Partie {repo} ({i} sur {len(targets)})\n\n" if len(repos) > 1 else ""
-        # route JSON qui lance détaché : /workflows/{id}/trigger est un flux SSE qui ne répond qu'à la première pause du run
-        res = send("POST", "/mcp/workflow-trigger", {"workflow_id": chain, "project_id": pids[repo], "variables": {
-            "ticket": ticket, "mode": mode or "plan", "depot": repo, "soeurs": ",".join(soeurs), "partie": partie, "reprise": rep}},
-            timeout=120)
-        run = str((res or {}).get("run_id") or "?")
-        launched.append(repo)
-        lines.append(f"- {repo} : run {run[:8]}" + (" (reprise là où le run d'avant s'est arrêté)" if rep == "oui" else "")
-                     + (f", projet Kronn : {notes[repo]}" if notes.get(repo) else ""))
-    for r in manque:
-        lines.append(f"- {r} : aucun projet Kronn n'a ce dépôt pour origine, pas de bureau ({notes.get(r)} ; ajoute-le dans Kronn, "
-                     "Projets, puis relance)")
-    head = (f"{ticket} posé sur la chaîne ({mode or 'plan'}) : {len(launched)} bureau(x), une PR par dépôt"
-            if launched else f"{ticket} : aucun bureau lancé")
-    print(head + "\n" + "\n".join(lines))
-    if not launched:
-        sys.exit(1)
-
-
-def cache_dir(ticket=None, repo=None):
-    """Copie du dossier hors de la copie de travail, par ticket et par dépôt : la reprise y relit tout."""
-    e = etat() if not (ticket and repo) else {}
-    ticket, repo = ticket or e.get("ticket"), repo or e.get("repo")
-    if not (ticket and repo):
-        return ""
-    return os.path.join(os.path.expanduser("~/.cache/pixel-bureau/chaine"), ticket, repo.replace("/", "__"), "courant")
-
-
-def copie(src, dest):
-    if not (src and dest and os.path.isdir(src)):
-        return
-    os.makedirs(dest, exist_ok=True)
-    for f in os.listdir(src):
-        if os.path.isfile(os.path.join(src, f)):
-            with open(os.path.join(src, f), "rb") as a, open(os.path.join(dest, f), "wb") as b:
-                b.write(a.read())
-
-
-def sauve():
-    """Après chaque étape : le dossier recopié dans le cache (Kronn supprime la copie de travail d'un run en échec), et
-    le bilan du run réécrit dans l'historique (jamais au prix de l'étape : une erreur du bilan est ignorée)."""
-    if os.path.isdir(os.path.join(root(), ".kronn", "chaine")) and etat().get("ticket"):
-        copie(dossier(), cache_dir())
-        try:
-            ecrit_bilan()
-        except Exception as x:  # noqa: BLE001  le bilan ne doit jamais faire tomber la chaîne
-            sys.stderr.write(f"bilan non écrit : {x}\n")
-
-
 # étape atteinte (etat.json « etape ») -> où la reprise repart : 0 du début (postes déjà faits sautés), 3 au Code,
 # 4 aux contrôles (ceux déjà faits sautés), 5 à la PR (déjà ouverte : droit à ta relecture)
 REPRISE = {"code": 3, "controles": 4, "orchestrateur": 4, "escalade": 4, "livraison": 5, "relecture": 5, "publication": 5}
-
-
-def compte(key, sub=None):
-    """Compteur du run dans etat.json (bilan) : les fichiers d'essais du dossier repartent de zéro à chaque passage."""
-    e = etat()
-    if not e.get("ticket"):
-        return
-    if sub:
-        d = e.setdefault(key, {})
-        d[sub] = int(d.get(sub) or 0) + 1
-    else:
-        e[key] = int(e.get(key) or 0) + 1
-    write_json(dossier("etat.json"), e)
-
-
-def avance(etape, **more):
-    e = etat()
-    e.update(etape=etape, **more)
-    write_json(dossier("etat.json"), e)
-
-
-def git_ok(*args):
-    return subprocess.run(["git", *args], cwd=root(), capture_output=True).returncode == 0
 
 
 def reprend(ticket, repo, mode, run):
@@ -398,16 +142,61 @@ def reprend(ticket, repo, mode, run):
                                   "livraison": "à la PR", "relecture": "à ta relecture de la PR"}.get(step, "au début, postes déjà faits sautés")
 
 
+TEST_FICHIER = re.compile(r"(^|/)(tests?|__tests__|spec)/|(Test|_test|\.test|\.spec)\.\w+$")
+
+
+def tests_lies(files):
+    """Poste 🧪 Tests : les fichiers de test du dépôt liés à chaque fichier touché, par le nom (Foo.php -> FooTest.php,
+    foo.ts -> foo.test.ts ou foo.spec.ts), 0 token ; les tests touchés par le diff en plus."""
+    suivis = [f for f in git("ls-files").splitlines() if TEST_FICHIER.search(f)]
+    out_ = {}
+    for f in files:
+        if TEST_FICHIER.search(f):
+            out_.setdefault(f, []).append(f)
+            continue
+        stem = os.path.basename(f).split(".")[0]
+        if len(stem) < 3:
+            continue
+        hits = [t for t in suivis if re.match(re.escape(stem) + r"(Test|_test|\.test|\.spec)?\.", os.path.basename(t)) and t != f]
+        if hits:
+            out_[f] = hits[:5]
+    return out_
+
+
+def tests_budget():
+    """Le cadre du poste 🧪 Tests : le coût d'une session vient de ses tours (chaque tour relit tout le contexte ; EW-7848,
+    banc du 5 novembre : 31 min, 65 M de jetons relus en cache, 14,56 $). Contre-épreuves bornées (impl.postes.tests.mutations,
+    6 par défaut), tests ciblés seulement, tests liés donnés d'avance."""
+    n = int(poste_conf("tests").get("mutations") or 6)
+    files = [f for f in changed() if not f.endswith(".md")]
+    lies = tests_lies(files)
+    return section("Budget du poste (à tenir)",
+                   f"Au plus {n} contre-épreuves (mutations), choisies sur les gardes, bornes et retours qui comptent le plus ; "
+                   "les autres, note-les « non éprouvées » dans le résumé. Lance seulement le fichier de test ciblé (ex. "
+                   "`phpunit tests/…/FooTest.php`, `vitest run foo.test.ts`), jamais toute la suite, l'analyse statique ni un "
+                   "build : l'étape suivante lance les tests du dépôt. Pas d'exploration du dépôt au-delà des fichiers "
+                   "touchés et de leurs tests.") + section(
+                   "Tests liés aux fichiers touchés (par le nom, 0 token)",
+                   "\n".join(f"- {f} : {', '.join(t)}" for f, t in sorted(lies.items())) or
+                   "aucun test trouvé par le nom : cherche les tests voisins du fichier touché avant d'en créer un")
+
+
+def deps_md():
+    """Ce que le Code et les Tests savent des dépendances de leur copie de travail."""
+    deps = etat().get("deps") or []
+    if not deps:
+        return ""
+    return section("Dépendances déjà là (lance les tests directement)",
+                   f"{', '.join(deps)} : liés depuis le checkout principal ({main_dir()}), ni copiés ni commités. Lance les "
+                   "tests et l'analyse du dépôt directement dans la copie de travail, sans installer de dépendances ni monter "
+                   "de conteneur à la main ; une commande de vérification réglée en conteneur (impl.repos.<dépôt>.checks) "
+                   "garde son conteneur. Ne modifie rien dans ces dossiers.")
+
+
 def default_branch():
     """Branche par défaut du dépôt distant (front_tools est sur master)."""
     m = re.search(r"ref: refs/heads/(\S+)\s+HEAD", git("ls-remote", "--symref", "origin", "HEAD"))
     return m.group(1) if m else ""
-
-
-def depart():
-    """Le point de départ de la branche : un commit fixé (essai rejoué), sinon la base distante."""
-    e = etat()
-    return e.get("depart") or f"origin/{e.get('base') or 'main'}"
 
 
 def cmd_prepare(ticket, mode, run, variant="", depot="", soeurs="", reprise="", rejoue=""):
@@ -421,8 +210,10 @@ def cmd_prepare(ticket, mode, run, variant="", depot="", soeurs="", reprise="", 
         if code is not None:
             e = etat()
             e["soeurs"] = sisters or e.get("soeurs") or []
+            e["deps"] = lie_deps(repo=repo)
             write_json(dossier("etat.json"), e)
-            print(f"{ticket} sur {repo} : reprise {why}, branche {e.get('branch')}, mode {mode}")
+            print(f"{ticket} sur {repo} : reprise {why}, branche {e.get('branch')}, mode {mode}"
+                  + (f", dépendances liées : {', '.join(e['deps'])}" if e["deps"] else ""))
             sauve()
             if code:
                 sys.exit(code)
@@ -447,19 +238,24 @@ def cmd_prepare(ticket, mode, run, variant="", depot="", soeurs="", reprise="", 
     for f in os.listdir(dossier()):  # le dossier d'un autre passage, s'il en reste un
         if os.path.isfile(dossier(f)):
             os.remove(dossier(f))
-    write_text(dossier("ticket.md"), ticket_md(t, quand(git("show", "-s", "--format=%cI", fixed)) if fixed else None))
+    avant, remontes = (quand(git("show", "-s", "--format=%cI", fixed)) if fixed else None), []
+    if avant:  # essai rejoué : le ticket tel qu'au commit de départ (description et titre réécrits depuis : défaits)
+        t, remontes = a_la_date(t, avant)
+    write_text(dossier("ticket.md"), ticket_md(t, avant, remontes))
     docs = git("ls-files", "docs", "AGENTS.md", "CLAUDE.md", ".github/pull_request_template.md").splitlines()
     f = t.get("fields") or {}
     write_json(dossier("etat.json"), {"ticket": ticket, "mode": mode, "repo": repo, "base": base, "branch": branch,
                                       "run": run, "tours": 0, "docs": docs[:200], "soeurs": sisters, "etape": "cadrage", "depart": fixed,
                                       "lecture": chemins([r for r in sisters + list(impl().get("references") or []) if r.lower() != repo.lower()]),
-                                      "texte": f"{f.get('summary') or ''}\n{f.get('description') or ''}"[:8000]})
+                                      "texte": f"{f.get('summary') or ''}\n{f.get('description') or ''}"[:8000],
+                                      "deps": lie_deps(repo=repo)})
     src = cache_dir(ticket, repo)
     if src and os.path.isdir(src):  # nouveau départ : l'ancien dossier ne doit plus servir à une reprise
         for x in os.listdir(src):
             os.remove(os.path.join(src, x))
     print(f"{ticket} sur {repo} : branche {branch} depuis {fixed[:10] or 'origin/' + base}, {len(docs)} fichiers de doc, mode {mode}"
-          + (f", dépôts sœurs : {', '.join(sisters)}" if sisters else ""))
+          + (f", dépôts sœurs : {', '.join(sisters)}" if sisters else "")
+          + (f", dépendances liées : {', '.join(etat().get('deps') or [])}" if etat().get("deps") else ""))
 
 
 # ---------- postes ----------
@@ -473,61 +269,6 @@ def note_retours(retours, source):
     if h in old:
         return
     write_text(path, old + f"\n## Retour humain ({source}, {time.strftime('%Y-%m-%d %H:%M')}) <!-- {h} -->\n\n{retours}\n")
-
-
-def changed():
-    files = git("diff", "--name-only", f"{depart()}...HEAD").splitlines()
-    files += git("diff", "--name-only", "HEAD").splitlines() + git("ls-files", "--others", "--exclude-standard").splitlines()  # pas commités
-    return sorted(set(f for f in files if f and not f.startswith(".kronn/")))
-
-
-def actif(p, files):
-    """Un poste tourne s'il n'est pas coupé (réglages) et s'il est dans les postes du plan. Perf tourne sur tout diff : le cache
-    HTTP et le CDN se cassent aussi côté serveur (#2048, #2042) ; son volet a11y ne vise que le front (front_touche)."""
-    c = poste_conf(p)
-    if c.get("actif") is False:
-        return False, "coupé dans les réglages"
-    plan = load("plan.json") or {}
-    wanted = plan.get("postes")
-    bloquant = c.get("bloquant", p in BLOQUANTS)  # un poste bloquant ne s'écarte que par les réglages, jamais par le plan
-    if isinstance(wanted, list) and p in CONTROLES and wanted and p not in wanted and not bloquant:
-        return False, "écarté par l'orchestrateur (plan)"
-    return True, ""
-
-
-def front_touche(files):
-    pats = reglages().get("front") or FRONT
-    return any(fnmatch.fnmatch(f, x) for f in files for x in pats)
-
-
-def section(title, body):
-    return f"\n\n## {title}\n\n{body.strip() if body and body.strip() else '(rien)'}"
-
-
-def rejoue():
-    """Essai rejoué depuis un commit passé : la base distante contient peut-être déjà le ticket (livré depuis) ; essai
-    d'EW-7945 : la revue l'a vu et le Code a rebasé sur main."""
-    e = etat()
-    if not e.get("depart"):
-        return ""
-    return section("Essai rejoué (à respecter)",
-                   f"Ce ticket est rejoué depuis le commit {e['depart'][:10]} : c'est TA base, l'état du dépôt avant le ticket. "
-                   f"origin/{e.get('base') or 'main'} peut déjà contenir une livraison de ce ticket : ne le lis pas, ne compare pas "
-                   "avec, ne rebase pas dessus, ne le signale pas. Juge le travail par rapport à ta base seulement.")
-
-
-def lecture():
-    """Dépôts à lire, jamais à modifier : les sœurs et les références de l'équipe (impl.references) qui ont une copie
-    locale dans Kronn. Essais d'EW-6550 et EW-7945 : un bureau qui ne voit que son dépôt ne sait pas que le travail se fait
-    dans un dépôt sœur, ni reprendre le job déjà écrit dans le dépôt de référence."""
-    e = etat()
-    paths = e.get("lecture") or {}
-    if not paths:
-        return ""
-    return section("Dépôts à lire (jamais à modifier)", "Copies locales : la branche courante peut être une autre que la "
-                   "principale, lis la version de référence avec `git -C <chemin> show origin/<branche>:<fichier>` ou "
-                   "`git -C <chemin> grep <motif> origin/<branche>`. Reprends ce qui y est déjà fait plutôt que de réinventer.\n"
-                   + "\n".join(f"- {r} : {p}" for r, p in paths.items()))
 
 
 def chemins(repos):
@@ -545,44 +286,6 @@ def chemins(repos):
             if m and m.group(1).lower() == r.lower() and p.get("path"):
                 out[r] = p["path"]
     return out
-
-
-def perimetre():
-    """Ticket à plusieurs dépôts : un bureau par dépôt, chacun ne traite que sa part."""
-    e = etat()
-    if not e.get("soeurs"):
-        return ""
-    return section("Périmètre de ce bureau (un bureau et une PR par dépôt)",
-                   f"Ce ticket touche plusieurs dépôts. Ce bureau ne traite QUE la part du ticket qui concerne {e.get('repo')}. "
-                   f"{', '.join(e['soeurs'])} : chacun a son propre bureau et sa propre PR, n'y touche pas. Note dans ton rapport "
-                   "ce qui leur revient et ce qui en dépend (contrat d'API, ordre de mise en prod).")
-
-
-def correction(p):
-    """Tour suivant des contrôles : ce que le Code a changé depuis leur dernier passage, et le rapport précédent du poste.
-    Tous les postes repassent (une correction peut casser autre chose), mais en relisant surtout ce diff ; 🎯 Besoin
-    juge toujours l'ensemble."""
-    e = etat()
-    sha = e.get("controle_sha")
-    if not sha:
-        return ""
-    stat = git("diff", "--stat", f"{sha}..HEAD")
-    if not stat:  # rien de corrigé depuis le dernier passage
-        return ""
-    prev = load(f"precedent_{p}.json") or {}
-    body = (f"Les contrôles ont déjà relu la branche jusqu'à {sha[:10]}. Depuis, le Code a corrigé (`git diff {sha}..HEAD`) :\n"
-            + stat[-2500:] + "\n\n" + ("Juge le résultat d'ensemble, correction comprise." if p == "besoin" else
-            "Relis surtout cette correction : ce qu'elle règle de ton rapport précédent, et ce qu'elle a pu casser. Ne refais pas "
-            "le reste du diff, déjà relu ; garde les constats précédents encore vrais."))
-    if prev:
-        body += "\n\nTon rapport précédent :\n" + json.dumps(prev.get("resultat") or prev, ensure_ascii=False, indent=1)[:6000]
-    return section("Tour suivant : la correction", body)
-
-
-def deja_fait(p):
-    """Reprise : le rapport d'un poste fait au run d'avant (le Code efface ceux des contrôles à chaque passage)."""
-    r = load(p + ".json") or {}
-    return bool(etat().get("reprise")) and r.get("statut") in ("ok", "a_corriger", "non_concerne")
 
 
 def cmd_entree(p, ticket, retours="", extra=""):
@@ -630,6 +333,8 @@ def cmd_entree(p, ticket, retours="", extra=""):
         if r:
             cap = 24000 if d == "cadrage" else 12000  # le poste Plan porte aussi les fichiers impactés et les façons de faire
             parts.append(section(f"Rapport du poste {d}", json.dumps(r.get("resultat") or r, ensure_ascii=False, indent=1)[:cap]))
+    if p in ("doc", "livraison"):
+        parts.append(rejets_md())
     if p in CONTROLES or p == "livraison":
         parts.append(section("Fichiers modifiés", "\n".join(files)))
         parts.append(section("Plan validé", json.dumps((load("plan.json") or {}).get("lots") or [], ensure_ascii=False, indent=1)[:8000]))
@@ -637,6 +342,18 @@ def cmd_entree(p, ticket, retours="", extra=""):
         stat = git("diff", "--stat", f"{depart()}...HEAD")
         parts.append(section("Volume du diff", stat[-3000:]))
         parts.append(correction(p))
+    if p in ("code", "tests"):
+        parts.append(deps_md())
+    if p == "tests":
+        parts.append(tests_budget())
+    if p == "code":
+        morts = references_mortes(plan_seul=True)
+        if morts:
+            parts.append(section("Suppressions : les références à retirer aussi (git grep, 0 token)",
+                                 "Le plan supprime des fichiers ; ces endroits les citent encore (templates, styles, tests, config, routes, "
+                                 "traductions, doc). Retire-les ou adapte-les dans le même travail, sauf un homonyme sans rapport. Les "
+                                 "vérifications du Code et le poste Règles refont ce relevé : une référence morte qui reste est bloquante.\n"
+                                 + "\n".join(f"- {n} : " + " | ".join(h) for n, h in morts.items())[:8000]))
     if extra and not extra.startswith("{" + "{"):
         parts.append(section("Consignes de l'orchestrateur", extra))
     out("".join(parts))
@@ -675,21 +392,6 @@ def cmd_existe():
     out({"absents": missing, "note": "chemins cités comme existants mais introuvables : à corriger" if missing else "tous les chemins existent"})
 
 
-def ecrit_rapport(p, prop, crit=None):
-    rep = {"poste": p, "statut": "ok", "resultat": prop, "critique": crit, "at": time.strftime("%Y-%m-%dT%H:%M:%S")}
-    if p == "tests" and isinstance(crit, dict) and crit.get("ok") is False:  # lancement rouge : bloquant, sorties citées
-        rouges = [x for x in crit.get("sorties") or [] if x.get("code") and not x.get("deja_la")]
-        prop.setdefault("constats", []).append({"gravite": "bloquant", "probleme": "tests rouges après 3 essais",
-                                                "correction": "\n".join(f"{x.get('cmd')} : {x.get('sortie', '')[-1500:]}" for x in rouges)})
-    if p in CONTROLES:
-        bl = [x for x in (prop.get("constats") or []) if isinstance(x, dict) and x.get("gravite") == "bloquant"]
-        rep["bloquants"] = bl
-        rep["bloquant_poste"] = poste_conf(p).get("bloquant", p in BLOQUANTS)
-        rep["statut"] = "a_corriger" if bl and rep["bloquant_poste"] else "ok"
-    write_json(dossier(p + ".json"), rep)
-    return rep
-
-
 def cmd_rapport(p):
     raw = read_stdin().split(SEP)
     prop, crit = parse(raw[0]) if raw else None, parse(raw[1]) if len(raw) > 1 else None
@@ -699,120 +401,6 @@ def cmd_rapport(p):
         return
     rep = ecrit_rapport(p, prop, crit)
     out({"poste": p, "statut": rep["statut"], "resume": prop.get("resume") or ""})
-
-
-def cmd_missions():
-    """Contrôles en parallèle : le contexte commun et les postes à lancer (règles, sécurité, perf, besoin, doc) pour
-    l'étape Agent qui les confie à des sous-agents en même temps ; vérifications des règles et relevé de la doc ici (0 token). Kronn ne lance
-    pas de sous-workflows en parallèle (foreach séquentiel) : 45 min par tour en série à l'essai d'EW-7851. Aucun poste
-    à lancer : code 3, saut au bilan."""
-    files = changed()
-    postes, ecartes = [], []
-    for p in PARALLELES:
-        if deja_fait(p):
-            ecartes.append(f"{p} : déjà fait au run d'avant (reprise)")
-            continue
-        ok, why = actif(p, files)
-        if ok:
-            postes.append(p)
-        else:
-            write_json(dossier(p + ".json"), {"poste": p, "statut": "non_concerne", "raison": why})
-            ecartes.append(f"{p} : non concerné ({why})")
-    write_json(dossier("missions.json"), {"postes": postes})
-    if not postes:
-        print("Aucun contrôle parallèle à lancer.\n" + "\n".join(ecartes))
-        sys.exit(3)
-    e = etat()
-    parts = [f"Ticket {e.get('ticket')}, dépôt {e.get('repo')}, branche {e.get('branch')}, tour {e.get('tours', 0) + 1}. "
-             f"Point de départ du diff : {depart()} (`git diff {depart()}...HEAD`).",
-             section("Postes à lancer", ", ".join(postes) + ("\n\nÉcartés : " + " ; ".join(ecartes) if ecartes else "")
-                     + "\n\nFront touché (templates, CSS, JS de page) : " + ("oui" if front_touche(files) else "non, le poste perf saute l'a11y")),
-             perimetre(), lecture(), rejoue(),
-             section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else "")]
-    if os.path.exists(dossier("retours.md")):
-        parts.append(section("Retours de l'humain (à respecter en priorité)", open(dossier("retours.md"), encoding="utf-8").read()))
-    r = load("cadrage.json")
-    if r:
-        parts.append(section("Rapport du poste cadrage", json.dumps(r.get("resultat") or r, ensure_ascii=False, indent=1)[:10000]))
-    parts.append(section("Fichiers modifiés", "\n".join(files)))
-    parts.append(section("Plan validé", json.dumps((load("plan.json") or {}).get("lots") or [], ensure_ascii=False, indent=1)[:6000]))
-    parts.append(section("Volume du diff", git("diff", "--stat", f"{depart()}...HEAD")[-3000:]))
-    if "regles" in postes:
-        v = verifie("regles", files)
-        parts.append(section("Vérifications des règles lancées (0 token, pour le poste regles)", json.dumps(v, ensure_ascii=False, indent=1)[-8000:]))
-    if "doc" in postes:
-        parts.append(section("Relevé de la doc (0 token, pour le poste doc)", json.dumps(releve_doc(files), ensure_ascii=False, indent=1)[:8000]))
-    for p in postes:
-        c = correction(p)
-        if c:
-            parts.append(c.replace("## Tour suivant : la correction", f"## Tour suivant, poste {p} : la correction"))
-    out("".join(parts))
-
-
-SYMBOLE = re.compile(r"^[+-](?![+-]).*?\b(?:def|class|function|const|let|var|interface|type|enum|trait|func|fn)\s+([A-Za-z_]\w{3,})")
-GENERIQUES = {"index", "readme", "main", "config", "settings", "utils", "helpers", "test", "tests"}
-
-
-def termes_doc(f):
-    """Ce qu'une doc citerait d'un fichier modifié : son chemin, son nom, et les symboles ajoutés ou retirés par le diff."""
-    base = os.path.basename(f)
-    terms = [f, base]
-    stem = os.path.splitext(base)[0]
-    if len(stem) >= 6 and stem.lower() not in GENERIQUES:
-        terms.append(stem)
-    for line in git("diff", "-U0", f"{depart()}...HEAD", "--", f).splitlines():
-        m = SYMBOLE.match(line)
-        if m:
-            terms.append(m.group(1))
-    return list(dict.fromkeys(terms))[:8]
-
-
-def releve_doc(files):
-    """Poste 📚 doc (0 token) : docs du dépôt déjà modifiées par le diff (lignes + et -), docs qui citent un fichier
-    modifié ou un symbole touché (git grep), fichiers modifiés qu'aucune doc ne cite. Le relevé dit où regarder ; le
-    sous-agent juge si chaque doc citée dit encore vrai."""
-    spec = DOCS + list(reglages().get("docs") or [])
-    docs = set(git("ls-files", "--", *spec).splitlines())
-    modifiees = []
-    for line in git("diff", "--numstat", f"{depart()}...HEAD", "--", *spec).splitlines():
-        a, r, path = (line.split("\t") + ["", "", ""])[:3]
-        if path:
-            modifiees.append({"doc": path, "ajout": int(a) if a.isdigit() else 0, "retrait": int(r) if r.isdigit() else 0})
-    code = [f for f in files if f not in docs]
-    cite, sans = {}, []
-    for f in code[:40]:
-        hit = False
-        for t in termes_doc(f):
-            for d in git("grep", "-l", "-F", t, "--", *spec).splitlines()[:30]:
-                cite.setdefault(d, {}).setdefault(f, []).append(t)
-                hit = True
-        if not hit:
-            sans.append(f)
-    faites = {m["doc"] for m in modifiees}
-    rep = {"docs_du_depot": len(docs), "modifiees": modifiees,
-           "citent_le_diff": [{"doc": d, "modifiee": d in faites, "cite": {f: ts[:4] for f, ts in fs.items()}}
-                              for d, fs in sorted(cite.items(), key=lambda kv: (-len(kv[1]), kv[0]))[:40]],
-           "sans_doc": sans}
-    if len(code) > 40:
-        rep["non_releves"] = len(code) - 40
-    return rep
-
-
-def cmd_range():
-    """Les rapports des sous-agents (stdin : la sortie de l'étape parallèle) rangés poste par poste ; un poste lancé sans
-    rapport est noté en panne (le bilan le signale)."""
-    d = parse(read_stdin()) or {}
-    postes = (load("missions.json") or {}).get("postes") or []
-    res = {}
-    for p in postes:
-        prop = d.get(p) if isinstance(d, dict) else None
-        if isinstance(prop, dict) and ("constats" in prop or "exigences" in prop or "docs" in prop or "resume" in prop):
-            prop.setdefault("constats", [])
-            res[p] = ecrit_rapport(p, prop)["statut"]
-        else:
-            write_json(dossier(p + ".json"), {"poste": p, "statut": "en_panne", "raison": "aucun rapport du sous-agent"})
-            res[p] = "en_panne"
-    out({"postes": res})
 
 
 def cmd_dossier():
@@ -859,16 +447,6 @@ def cmd_compris():
     print("\n\n".join(parts))
 
 
-def garde():
-    """Copie du dossier dans ~/.cache/pixel-bureau/chaine/<ticket>/<run>/ : Kronn supprime la copie de travail d'un run."""
-    e = etat()
-    if not e.get("ticket"):
-        return ""
-    dest = os.path.join(os.path.expanduser("~/.cache/pixel-bureau/chaine"), e["ticket"], str(e.get("run") or "run")[:8])
-    copie(dossier(), dest)
-    return dest
-
-
 def cmd_mode(mode):
     """Plan seulement : code 4, saut au commentaire Jira (dernière étape) puis Stop. Complet ou essai : code 0, le poste
     Code suit dans l'ordre. Essai d'EW-6550 : Kronn reprend un « Changements » de gate à l'étape qui SUIT la dernière
@@ -878,19 +456,6 @@ def cmd_mode(mode):
         print(f"Plan seulement : le plan part en commentaire du ticket, puis la chaîne s'arrête. Dossier gardé : {garde()}")
         sys.exit(4)
     print("Mode " + ("essai : tout jusqu'à la PR, sans rien pousser ni écrire dans Jira." if essai() else "complet : au poste Code."))
-
-
-def essai():
-    """Mode essai : la chaîne entière, sans effet externe (ni push, ni PR, ni Jira) : le shadow de Kronn ne sait pas
-    rejouer un workflow à variables (instantané chiffré rangé sous l'id du run normal)."""
-    return (etat().get("mode") or "").strip().lower() == "essai"
-
-
-def sauter(what):
-    if essai():
-        print(f"Mode essai : {what} sauté, rien n'est envoyé.")
-        return True
-    return False
 
 
 def given(v):
@@ -927,73 +492,6 @@ def cmd_plan(consignes="", retours=""):
     out(f"PLAN VALIDÉ : {len(lots)} lot(s), un commit par lot, dans l'ordre.\n\n" + json.dumps(lots, ensure_ascii=False, indent=1))
 
 
-def main_dir():
-    """Dossier du projet (celui de la copie de travail du run) : ses dépendances, pour {main}."""
-    common = git("rev-parse", "--path-format=absolute", "--git-common-dir")
-    return common[:-5] if common.endswith("/.git") else ""
-
-
-def fill(check, files, wt=None):
-    """Une commande de vérification remplie (_checks.check_fill) pour la copie de travail du run, ou wt."""
-    return check_fill(check, files, wt or root(), main_dir(), etat().get("base") or "main")
-
-
-def base_worktree():
-    """Copie du point de départ (git worktree détaché, dans le dossier) pour relancer une vérification rouge : ce qui
-    était déjà rouge au départ n'est pas à corriger (essai d'EW-6550 : PHPStan signalait des erreurs anciennes des
-    fichiers touchés, le Code bouclait dessus)."""
-    path = dossier("depart")
-    if not os.path.isdir(os.path.join(path, ".git")) and not os.path.isfile(os.path.join(path, ".git")):
-        if os.path.exists(path):
-            subprocess.run(["rm", "-rf", path])
-        if not git_ok("worktree", "add", "--detach", "-f", path, depart()):
-            return None
-    return path
-
-
-COMMENT_KEY = re.compile(r"(//|/\*|^\s*\*|#|\{#|<!--).*\b[A-Z][A-Z0-9]+-\d+\b")
-SENSIBLE = re.compile(r"Access-Control-Allow-Origin['\"]?\s*[:=,]\s*['\"]?\*|X-[\w-]*Bypass|api[_-]?key['\"]?\s*[:=]\s*['\"][A-Za-z0-9_\-]{12,}", re.I)
-PROVISOIRE = re.compile(r"^(temp|tmp|wip|fixup!|squash!|do not merge)\b", re.I)
-
-
-def garde_fous():
-    """Ce que les relecteurs bloquent à coup sûr, cherché sans agent dans les lignes ajoutées par la branche : une clé de
-    ticket dans un commentaire de code (« Never a ticket number in code »), un en-tête ou une clé sensible (CORS *, en-tête
-    de contournement, clé d'API en dur), un commit provisoire (TEMP, WIP, fixup!). Revues des PR #1858 et #1678."""
-    hits, cur = [], ""
-    for ln in git("diff", "-U0", f"{depart()}...HEAD").splitlines():
-        if ln.startswith("+++ "):
-            cur = ln[6:] if ln.startswith("+++ b/") else ""
-        elif ln.startswith("+") and cur and not cur.endswith(".md"):
-            if COMMENT_KEY.search(ln[1:]):
-                hits.append(f"{cur} : clé de ticket dans un commentaire : {ln[1:].strip()[:140]}")
-            if SENSIBLE.search(ln[1:]):
-                hits.append(f"{cur} : en-tête ou clé sensible : {ln[1:].strip()[:140]}")
-    for sub in git("log", "--format=%s", f"{depart()}..HEAD").splitlines():
-        if PROVISOIRE.match(sub.strip()):
-            hits.append(f"commit provisoire à retirer : {sub.strip()[:140]}")
-    return hits
-
-
-def verifie(phase, files=None):
-    """Les vérifications réglées du dépôt (impl.repos.<dépôt>.checks) : « regles », « tests », ou « code » (les deux, au
-    poste Code : les tests tournent dès le lot, pas seulement aux contrôles) ; avec les règles, les garde-fous du diff."""
-    files = changed() if files is None else files
-    conf = reglages().get("checks") or {}
-    checks = (list(conf.get("regles") or []) + list(conf.get("tests") or [])) if phase == "code" else list(conf.get(phase) or [])
-    res = {"ok": True, "phase": phase, "sorties": []}
-    if checks:
-        r = check_run(checks, files, root(), main_dir(), etat().get("base") or "main", depart=base_worktree)
-        res.update(ok=r["ok"], sorties=r["sorties"])
-    else:
-        res["note"] = f"aucune vérification « {phase} » réglée pour ce dépôt (impl.repos)"
-    if phase in ("regles", "code"):
-        hits = garde_fous()
-        res["sorties"].append({"cmd": "garde-fous du diff (0 token)", "code": 1 if hits else 0, "sortie": "\n".join(hits) or "rien"})
-        res["ok"] = res["ok"] and not hits
-    return res
-
-
 def cmd_verif(phase):
     out(verifie(phase))
 
@@ -1028,11 +526,11 @@ def cmd_tri_tests():
     print("Tests verts" if v.get("ok", True) else "Tests encore rouges après 3 essais : bloquant pour l'orchestrateur")
 
 
-def cmd_bilan_code():
-    e = etat()
+def bilan_code(**more):
+    """Le rapport du Code (commits et fichiers depuis le départ) ; les contrôles du passage d'avant deviennent précédents."""
     log = git("log", "--oneline", f"{depart()}..HEAD")
     st = load("essais_code.json") or {}
-    rep = {"poste": "code", "statut": "ok" if log else "vide", "commits": log.splitlines(), "fichiers": changed(), "note": st.get("note")}
+    rep = {"poste": "code", "statut": "ok" if log else "vide", "commits": log.splitlines(), "fichiers": changed(), "note": st.get("note"), **more}
     write_json(dossier("code.json"), rep)
     for c in CONTROLES:  # nouveau code : les contrôles sont à refaire ; leur rapport sert au tour suivant (correction)
         if os.path.exists(dossier(c + ".json")):
@@ -1041,552 +539,39 @@ def cmd_bilan_code():
         if os.path.exists(dossier(f)):
             os.remove(dossier(f))
     avance("controles", consignes_reprise="")
-    out(rep)
-
-
-def cmd_quoi():
-    files = changed()
-    res = {p: dict(zip(("actif", "raison"), actif(p, files))) for p in CONTROLES}
-    write_json(dossier("quoi.json"), {"fichiers": files, "postes": res})
-    out({"fichiers": files, "postes": res})
-
-
-def cmd_bilan_controles():
-    rep = {"bloquants": [], "avis": [], "postes": {}}
-    for p in CONTROLES:
-        r = load(p + ".json") or {"statut": "en_panne"}
-        rep["postes"][p] = r.get("statut")
-        for x in (r.get("resultat") or {}).get("constats") or []:
-            if not isinstance(x, dict):
-                continue
-            item = {"poste": p, **x}
-            (rep["bloquants"] if x.get("gravite") == "bloquant" and r.get("bloquant_poste", p in BLOQUANTS) else rep["avis"]).append(item)
-    write_json(dossier("controles.json"), rep)
-    tour_controles()
-    avance("orchestrateur", controle_sha=git("rev-parse", "HEAD"))
-    code = load("code.json") or {}
-    out({**rep, "code": {"commits": code.get("commits"), "fichiers": code.get("fichiers"), "note": code.get("note")},
-         "tours": etat().get("tours", 0), **({"essai_rejoue": rejoue().strip()} if etat().get("depart") else {})})  # tout ce que l'orchestrateur lit, sans fichier à ouvrir
-
-
-def cmd_aiguillage():
-    d = parse(read_stdin()) or {}
-    e = etat()
-    e["tours"] = int(e.get("tours") or 0) + 1
-    write_json(dossier("etat.json"), e)
-    write_json(dossier("orchestrateur.json"), d)
-    dec = str(d.get("decision") or "").lower()
-    maxt = int(impl().get("max_tours") or 3)
-    if dec == "livrer":
-        avance("livraison")
-        print(f"Tour {e['tours']} : l'orchestrateur livre.")
-        sys.exit(3)
-    if dec == "retour_code" and e["tours"] < maxt:
-        avance("code")
-        print(f"Tour {e['tours']} sur {maxt} : retour au poste Code avec les consignes de l'orchestrateur.")
-        sys.exit(4)
-    avance("escalade")
-    compte("escalades")
-    print(f"Tour {e['tours']} : un humain tranche ({'plus de tours' if dec == 'retour_code' else dec or 'décision illisible'}).")
-
-
-# ---------- livraison (gh, 0 token) ----------
-def gh(*args):
-    r = subprocess.run(["gh", *args], cwd=root(), capture_output=True, text=True)
-    return r.returncode, (r.stdout or "").strip(), (r.stderr or "").strip()
-
-
-def pr_number():
-    e = etat()
-    code, o, _ = gh("pr", "list", "-R", e["repo"], "--head", e["branch"], "--state", "open", "--json", "number", "-q", ".[0].number")
-    return o if code == 0 and o.isdigit() else ""
-
-
-def cmd_pousse():
-    if sauter("push de la branche"):
-        return
-    e = etat()
-    git("push", "--no-verify", "--force-with-lease", "origin", f"HEAD:{e['branch']}", check=True)
-    print(f"{e['branch']} poussée")
-
-
-SOEURS = re.compile(r"\n*<!-- bureau-soeurs -->.*?<!-- /bureau-soeurs -->", re.S)
-
-
-def pr_of(repo, branch):
-    code, o, _ = gh("pr", "list", "-R", repo, "--head", branch, "--state", "all", "--json", "number", "-q", ".[0].number")
-    return o if code == 0 and o.isdigit() else ""
-
-
-def soeurs_md(ticket, repos, prs):
-    """Bloc « PR sœurs » d'une PR : les autres dépôts du ticket, leur PR si elle est ouverte."""
-    rows = [f"- {r} : " + (f"https://github.com/{r}/pull/{prs[r]}" if prs.get(r) else f"pas encore ouverte (branche `kronn/{ticket}`)")
-            for r in repos]
-    return ("\n\n<!-- bureau-soeurs -->\n### PR sœurs\n\nCe ticket touche plusieurs dépôts : une PR par dépôt, à relire et à "
-            "mettre en prod ensemble.\n\n" + "\n".join(rows) + "\n<!-- /bureau-soeurs -->")
-
-
-def lie_soeurs(e, n):
-    """Notre PR ajoutée au bloc « PR sœurs » des PR déjà ouvertes des autres dépôts (chacune liste toutes les autres)."""
-    tous = [e["repo"]] + e["soeurs"]
-    prs = {r: pr_of(r, f"kronn/{e['ticket']}") for r in e["soeurs"]}
-    prs[e["repo"]] = n
-    for r, m in prs.items():
-        if r == e["repo"] or not m:
-            continue
-        code, body, _ = gh("pr", "view", m, "-R", r, "--json", "body", "-q", ".body")
-        if code:
-            continue
-        path = dossier(f"pr_soeur_{r.replace('/', '__')}.md")
-        write_text(path, SOEURS.sub("", body) + soeurs_md(e["ticket"], [x for x in tous if x != r], prs))
-        gh("pr", "edit", m, "-R", r, "--body-file", path)
-    return prs
-
-
-ETATS = {"fait": "✅ livré", "partiel": "🟡 partiel", "non": "❌ pas fait", "autrement": "🔀 autrement", "hors_scope": "⏭️ hors scope"}
-NOMS = {"regles": "📏 règles", "securite": "🔒 sécurité", "tests": "🧪 tests", "perf": "⚡ perf", "besoin": "🎯 besoin", "doc": "📚 doc"}
-
-
-ANSI = re.compile(r"\x1b\[[0-9;]*m|\[[0-9;]{1,8}m")
-
-
-def cellule(x, n=None):
-    """Une ligne de tableau ou de liste Markdown : sans codes couleur de terminal, sans retour à la ligne, tronquée."""
-    s = " ".join(ANSI.sub("", str(x or "")).split()).replace("|", "\\|")
-    return s if not n or len(s) <= n else s[: n - 1] + "…"
-
-
-def bloc(nom, corps):
-    return f"<!-- bureau-{nom} -->\n{corps}\n<!-- /bureau-{nom} -->" if corps else ""
-
-
-def exigences_md():
-    """Le tableau exigence par exigence, tiré du rapport du poste 🎯 Besoin (pas réécrit par l'agent qui rédige)."""
-    ex = [x for x in ((load("besoin.json") or {}).get("resultat") or {}).get("exigences") or [] if isinstance(x, dict)]
-    if not ex:
-        return ""
-    return ("## Ce que le ticket demandait, et où ça atterrit\n\n| Exigence du ticket | État | Détail |\n|---|---|---|\n"
-            + "\n".join(f"| {cellule(x.get('exigence'))} | {ETATS.get(x.get('etat'), cellule(x.get('etat')))} | {cellule(x.get('detail'))} |"
-                        for x in ex))
-
-
-def points_md():
-    """Points ouverts : bloquants restés (gate d'escalade approuvée) et avis des contrôles, écrits par le script. Essai
-    d'EW-7945 : l'orchestrateur disait « à reporter dans la PR », le rédacteur les a omis et la PR annonçait « qat retiré »."""
-    c = load("controles.json") or {}
-    rows, seen = [], set()
-    for kind, items in (("bloquant", c.get("bloquants") or []), ("avis", c.get("avis") or [])):
-        for x in items:
-            where = f"`{x.get('fichier')}" + (f":{x.get('ligne')}" if x.get("ligne") else "") + "` : " if x.get("fichier") else ""
-            key = (where, str(x.get("probleme"))[:120])
-            if key in seen or not x.get("probleme"):
-                continue
-            seen.add(key)
-            rows.append(f"- {'**Bloquant** ' if kind == 'bloquant' else ''}({NOMS.get(x.get('poste'), x.get('poste'))}) {where}"
-                        f"{cellule(x.get('probleme'), 600)}" + (f" ; piste : {cellule(x.get('correction'), 600)}" if x.get("correction") else ""))
-    if not rows:
-        return ""
-    more = f"\n- … et {len(rows) - 15} autres (rapports des contrôles)" if len(rows) > 15 else ""
-    return "## Points ouverts\n\nRelevés par les contrôles de la chaîne, non corrigés dans cette PR.\n\n" + "\n".join(rows[:15]) + more
-
-
-def place(body, nom, corps):
-    """Le bloc généré à l'emplacement <!-- bureau-<nom> --> laissé par le rédacteur, sinon à la fin."""
-    body = re.sub(rf"<!-- bureau-{nom} -->.*?<!-- /bureau-{nom} -->", f"<!-- bureau-{nom} -->", body, flags=re.S)
-    if not corps:
-        return body.replace(f"<!-- bureau-{nom} -->", "")
-    if f"<!-- bureau-{nom} -->" in body:
-        return body.replace(f"<!-- bureau-{nom} -->", bloc(nom, corps), 1)
-    return body.rstrip() + "\n\n" + bloc(nom, corps)
-
-
-def cmd_pr():
-    d = parse(read_stdin()) or {}
-    e = etat()
-    e["passes_retours"] = 0  # passes revue puis retours de cette livraison (repasse)
-    write_json(dossier("etat.json"), e)
-    sisters = e.get("soeurs") or []
-    prs = {} if essai() else {r: pr_of(r, f"kronn/{e['ticket']}") for r in sisters}
-    body = place(place(SOEURS.sub("", d.get("body") or ""), "exigences", exigences_md()), "points", points_md())
-    body += (soeurs_md(e["ticket"], sisters, prs) if sisters else "") + "\n\n<!-- bureau-chaine -->"
-    path = dossier("pr_body.md")
-    write_text(path, body)
-    write_text(dossier("commit.txt"), (str(d.get("commit") or "").strip() or d.get("title") or e["ticket"]) + "\n")  # le commit unique (pret)
-    if sauter("création de la PR"):  # le titre et la description restent dans le dossier (pr_body.md)
-        print(f"Titre : {d.get('title')}\nDescription : .kronn/chaine/pr_body.md ({len(body)} caractères)")
-        return
-    n = pr_number()
-    if n:
-        gh("pr", "edit", n, "-R", e["repo"], "--title", d.get("title") or e["ticket"], "--body-file", path)
-    else:
-        code, o, err = gh("pr", "create", "-R", e["repo"], "--draft", "--base", e["base"], "--head", e["branch"],
-                          "--title", d.get("title") or e["ticket"], "--body-file", path, "--assignee", "@me")
-        if code:
-            sys.exit("PR non créée : " + err[:400])
-        n = o.rstrip("/").split("/")[-1]
-    e["pr"] = n
-    write_json(dossier("etat.json"), e)
-    linked = [r for r, m in (lie_soeurs(e, n) if sisters else {}).items() if m and r != e["repo"]]
-    print(f"PR #{n} (brouillon) : https://github.com/{e['repo']}/pull/{n}" + (f" ; liée à ses sœurs : {', '.join(linked)}" if linked else ""))
-
-
-def cmd_revue_prep():
-    """Revue de la PR par le modèle de revue du Bureau (sous-workflow en foreach) : la PR en .kronn/prs.json. Mode essai
-    ou pas de PR : code 3, rien n'est relu."""
-    e = etat()
-    n = e.get("pr") or ("" if essai() else pr_number())
-    if essai() or not n:
-        print("Mode essai : pas de PR à relire." if essai() else "Aucune PR ouverte : rien à relire.")
-        sys.exit(3)
-    _, me, _ = gh("api", "user", "--jq", ".login")
-    os.makedirs(os.path.join(root(), ".kronn"), exist_ok=True)
-    write_json(os.path.join(root(), ".kronn", "prs.json"), [{"number": int(n), "author": me, "repo": e["repo"]}])
-    print(f"PR #{n} confiée à la revue")
-
-
-PR_RUNS = os.path.expanduser("~/.cache/pixel-bureau/pr/runs")  # états des runs de pr_update.py (fix_prepare … fix_push)
-MAX_PASSES = 2  # revue puis retours : une seconde passe au plus, si la première a poussé des corrections
-
-
-def cmd_retours_pr():
-    """Poste 💬 retours : le même code que « corriger les commentaires d'une PR » (pr_update.py fix_*), sans sa gate. Il
-    lui faut la PR, en « dépôt#n » (seule sortie de l'étape) ; mode essai ou pas de PR : code 3, rien n'est lu ni posté."""
-    e = etat()
-    n = e.get("pr") or ("" if essai() else pr_number())
-    if essai() or not n:
-        print("Mode essai : pas de retours à traiter." if essai() else "Aucune PR ouverte : pas de retours.")
-        sys.exit(3)
-    e.update(pr=n, retours_pousse=False)
-    write_json(dossier("etat.json"), e)
-    sys.stdout.write(f"{e['repo']}#{n}")
-
-
-def cmd_retours_synchro(run=""):
-    """Après fix_push : la copie de travail de la chaîne reprend les commits poussés par pr_update.py (qui travaille dans
-    son propre dossier, sur la branche distante de la PR) : fetch puis avance rapide sur origin/<branche>, sans quoi le
-    squash de la publication les écraserait ; une copie divergente échoue sans rien toucher. La description de la PR,
-    relue sur GitHub (le bloc « Corrections de review » de fix_push y reste), garde ses blocs exigences et points à
-    jour. La passe est notée (retours.json) pour le bilan et pour la seconde passe (repasse)."""
-    if sauter("reprise des corrections poussées"):
-        return
-    e = etat()
-    b, n = e["branch"], e.get("pr") or pr_number()
-    git("fetch", "--no-tags", "origin", f"+refs/heads/{b}:refs/remotes/origin/{b}", check=True)
-    remote, head = git("rev-parse", f"origin/{b}"), git("rev-parse", "HEAD")
-    pousse = bool(remote) and remote != head
-    if pousse:
-        if not git_ok("merge-base", "--is-ancestor", head, remote):
-            sys.exit(f"Copie de travail divergente de origin/{b} : corrections non reprises, à régler avant la publication.")
-        git("merge", "--ff-only", remote, check=True)
-    try:
-        st = read_json(os.path.join(PR_RUNS, re.sub(r"[^\w-]", "", run) + ".json"))
-    except (OSError, ValueError):
-        st = {}
-    cols = {}
-    for c in (st.get("cols") or {}).values():
-        cols[c] = cols.get(c, 0) + 1
-    r = load("retours.json", {}) or {}
-    if not isinstance(r, dict) or "passes" not in r:
-        r = {"pr": n, "passes": []}
-    r["passes"].append({"run": run, "version": st.get("version"), "fils": len(st.get("threads") or []),
-                        "hors_fil": len(st.get("generaux") or []), "colonnes": cols, "pousse": pousse,
-                        "commit": remote[:8] if pousse else None})
-    r["reponses"] = sum(sum(v for k, v in (p.get("colonnes") or {}).items() if k != "laisse") + int(p.get("hors_fil") or 0)
-                        for p in r["passes"])
-    write_json(dossier("retours.json"), r)
-    e = etat()
-    e["retours_pousse"] = pousse
-    write_json(dossier("etat.json"), e)
-    path, maj = dossier("pr_body.md"), ""
-    code, body, _ = gh("pr", "view", str(n), "-R", e["repo"], "--json", "body", "-q", ".body") if n else (1, "", "")
-    if code == 0 and body:
-        write_text(path, place(place(body, "exigences", exigences_md()), "points", points_md()))
-        maj = " ; description remise à jour" if gh("pr", "edit", str(n), "-R", e["repo"], "--body-file", path)[0] == 0 else ""
-    print((f"Corrections reprises dans la copie de travail ({remote[:8]})" if pousse else "Rien de poussé") + f", PR #{n}{maj}")
-
-
-def cmd_repasse():
-    """Après le poste 💬 retours : des corrections poussées et moins de MAX_PASSES passes, code 4 (la revue relit le
-    nouveau head, puis les retours) ; sinon 0, fin. Le compteur repart de zéro à l'étape pr (cmd_pr)."""
-    e = etat()
-    e["passes_retours"] = int(e.get("passes_retours") or 0) + 1
-    again = bool(e.get("retours_pousse")) and e["passes_retours"] < MAX_PASSES and not essai()
-    e["retours_pousse"] = False
-    write_json(dossier("etat.json"), e)
-    if again:
-        print(f"Passe {e['passes_retours']} : corrections poussées, la revue relit la PR (passe {e['passes_retours'] + 1} sur {MAX_PASSES}).")
-        sys.exit(4)
-    print(f"Passe {e['passes_retours']} : " + ("dernière passe faite." if e.get("passes_retours", 0) >= MAX_PASSES else "rien de poussé, fin."))
-
-
-def ci_label():
-    """Le label qui lance la CI complète, posé au passage en prête : impl.repos.<dépôt>.ci_label, sinon impl.ci_label ; « »
-    ou absent : aucun."""
-    reg = reglages()
-    return str(reg["ci_label"] if "ci_label" in reg else impl().get("ci_label") or "").strip()
-
-
-def squash():
-    """Les commits de la branche (un par lot, puis ceux de la revue et des retours) en un seul, au format des commits du
-    dépôt (le message du rédacteur, commit.txt) : les PR de l'équipe sont mergées en un commit (règle de leur
-    doc/GIT-workflow.md). impl.squash (ou impl.repos.<dépôt>.squash) à false : rien. Rend le texte du compte rendu."""
-    reg = reglages()
-    if not reg.get("squash", impl().get("squash", True)):
-        return "commits gardés (squash coupé)"
-    n = git("rev-list", "--count", f"{depart()}..HEAD").strip()
-    if not n.isdigit() or int(n) < 2:
-        return "un seul commit"
-    msg = dossier("commit.txt")
-    if not os.path.exists(msg):
-        write_text(msg, (etat().get("ticket") or "chore") + "\n")
-    if not git_ok("reset", "--soft", depart()) or not git_ok("commit", "--no-verify", "-s", "-F", msg):
-        git("reset", "--soft", "ORIG_HEAD")
-        return "squash impossible, commits gardés"
-    e = etat()
-    git("push", "--no-verify", "--force-with-lease", "origin", f"HEAD:{e['branch']}", check=True)
-    return f"{n} commits réunis en un"
-
-
-def cmd_pret():
-    avance("publication")
-    if sauter("passage en prête"):
-        return
-    e = etat()
-    n = e.get("pr") or pr_number()
-    sq = squash()
-    code, _, err = gh("pr", "ready", n, "-R", e["repo"])
-    label = ci_label()
-    if label and code == 0:
-        gh("pr", "edit", n, "-R", e["repo"], "--remove-label", label)
-        lc, _, _ = gh("pr", "edit", n, "-R", e["repo"], "--add-label", label)
-        label = f", label {label} posé (CI complète)" if lc == 0 else f", label {label} non posé"
-    else:
-        label = ""
-    print((f"PR #{n} prête à relire" if code == 0 else f"PR #{n} : passage en prête impossible ({err[:200]})") + f" ; {sq}{label}")
-
-
-def cmd_reviewers():
-    if sauter("demande de relecture et commentaire Jira"):
-        sys.exit(5)  # code 5 : le modèle saute l'étape Jira qui suit
-    e, reg = etat(), reglages()
-    n = e.get("pr") or pr_number()
-    who = [r for r in reg.get("reviewers") or [] if r]
-    if who:
-        gh("pr", "edit", n, "-R", e["repo"], "--add-reviewer", ",".join(who))
-    url = f"https://github.com/{e['repo']}/pull/{n}"
-    out(f"PR prête à relire : [{url}|{url}] (chaîne d'implémentation du Bureau, {e.get('tours', 0)} tour(s) de contrôle, revue IA traitée)."
-        + ecarts_jira())
-
-
-def ecarts_jira():
-    """Les écarts au ticket, actés dans Jira (wiki) : les relecteurs lisent la PR contre le ticket, et un écart qui n'est
-    écrit que dans la PR bloque (#2038, #2031) ; ce que le diff fait sans exigence (périmètre) aussi."""
-    b = (load("besoin.json") or {}).get("resultat") or {}
-    ex = [x for x in b.get("exigences") or [] if isinstance(x, dict) and x.get("etat") not in (None, "fait")]
-    hors = [x for x in b.get("hors_ticket") or [] if isinstance(x, dict)]
-    if not ex and not hors:
-        return ""
-    t = ""
-    if ex:
-        t += "\n\nh4. Écarts au ticket (à valider)\n||Exigence||État||Détail||\n" + "\n".join(
-            f"|{cellule(x.get('exigence'), 300) or ' '}|{ETATS.get(x.get('etat'), cellule(x.get('etat')))}|{cellule(x.get('detail'), 400) or ' '}|" for x in ex)
-    if hors:
-        t += "\n\nh4. Changé sans exigence du ticket\n" + "\n".join(
-            "* " + "{" * 2 + cellule(x.get("fichier"), 160) + "}" * 2 + f" : {cellule(x.get('changement'), 300)}"  # accolades doubles : monospace Jira, jamais écrites telles quelles (Kronn y verrait une variable) + (f" ({cellule(x.get('justification'), 300)})" if x.get("justification") else "")
-            for x in hors)
-    return t
-
-
-def cmd_fin():
-    """Fin du poste PR (ta relecture attend) ou de la publication (le ticket est au bout de la chaîne)."""
-    avance("fini" if etat().get("etape") == "publication" else "relecture")
-    if os.path.exists(dossier("depart")):  # copie du point de départ des vérifications : plus utile
-        git("worktree", "remove", "--force", dossier("depart"))
-    e = etat()
-    e["dossier"] = garde()
-    out({"ticket": e.get("ticket"), "repo": e.get("repo"), "pr": e.get("pr"), "tours": e.get("tours"), "dossier": e["dossier"],
-         "retours": (load("retours.json") or {}).get("reponses")})
-
-
-# ---------- bilan du run (historique, page « Chaîne · bilan ») ----------
-# Ce que le dossier sait du run, réécrit après chaque étape (sauve) : le dernier vaut pour un run fini, rejeté ou en
-# panne. Jetons, durées, modèles et issue finale (panne, rejet) ne sont pas dans le dossier : le cron de la page les lit
-# dans l'API Kronn. Causes des retours humains : mots-clés, 0 token (la première cause trouvée, dans cet ordre).
-CAUSES = (("convention", ("convention", "nommage", "naming", "style", "règle", "regle", "lint", "format", "pattern", "comme d'habitude")),
-          ("decoupage", ("lot", "découp", "decoup", "sépare", "separe", "ordre", "d'abord", "commit", "étape", "etape")),
-          ("perimetre", ("périmètre", "perimetre", "scope", "hors", "pas besoin", "inutile", "ne touche pas", "ne pas toucher",
-                         "uniquement", "seulement", "en trop", "aussi", "oublie", "manque")),
-          ("lecture", ("compris", "pas ça", "pas ca", "en fait", "plutôt", "plutot", "faux", "erreur", "ce n'est pas", "c'est pas")))
-# poste qui reçoit le retour -> gate ; le poste Plan (cadrage) reçoit ceux de la gate du plan, schema et patterns : dossiers d'avant
-GATE_DE = {"cadrage": "plan", "schema": "plan", "patterns": "plan", "code": "code"}
-
-
-def historique():
-    return os.path.expanduser(impl().get("historique") or "~/.local/share/pixel-bureau/historique")
-
-
-def bilan_path(e):
-    seg = lambda v: re.sub(r"[^\w.-]", "_", str(v)).strip(".") or "_"  # noqa: E731  (jamais hors du dossier)
-    return os.path.join(historique(), seg(e["ticket"]), seg(e["repo"].replace("/", "__")), seg(e["run"]) + ".json")
-
-
-def sorte(f):
-    """code, tests ou doc : d'après le chemin."""
-    base = f.rsplit("/", 1)[-1]
-    if f.startswith(("docs/", "doc/", "ai/", "guide/")) or base.endswith((".md", ".rst", ".adoc")) or base.upper().startswith("README"):
-        return "doc"
-    if re.search(r"(^|/)(tests?|spec|__tests__)/|[._-](test|spec)\.\w+$|Test\.php$", f):
-        return "tests"
-    return "code"
-
-
-def numstat():
-    """Lignes ajoutées et retirées depuis le départ, par sorte de fichier, et le détail des docs."""
-    tot = {k: {"fichiers": 0, "plus": 0, "moins": 0} for k in ("code", "tests", "doc")}
-    docs = []
-    for ln in git("diff", "--numstat", f"{depart()}...HEAD").splitlines():
-        parts = ln.split("\t")
-        if len(parts) != 3 or parts[2].startswith(".kronn/"):
-            continue
-        a, d = (int(x) if x.isdigit() else 0 for x in parts[:2])
-        k = sorte(parts[2])
-        tot[k]["fichiers"] += 1
-        tot[k]["plus"] += a
-        tot[k]["moins"] += d
-        if k == "doc":
-            docs.append({"fichier": parts[2], "plus": a, "moins": d})
-    return tot, docs[:30]
-
-
-def cle(x):
-    """Un constat d'un tour de contrôles, reconnaissable au tour suivant (fichier et début du problème, sans chiffres)."""
-    txt = re.sub(r"\d+", "#", " ".join(str(x.get("probleme") or "").lower().split()))[:80]
-    return f"{x.get('fichier') or ''}|{txt}"
-
-
-def tour_controles():
-    """Chaque tour de contrôles gardé (controles_tours.json) : le bilan compte ce qui a été trouvé, corrigé ou est resté."""
-    snap = {}
-    for p in CONTROLES:
-        r = load(p + ".json") or {}
-        cs = [x for x in (r.get("resultat") or {}).get("constats") or [] if isinstance(x, dict) and x.get("probleme")]
-        bloq = r.get("bloquant_poste", p in BLOQUANTS)
-        snap[p] = {"statut": r.get("statut") or "en_panne",
-                   "bloquants": sorted({cle(x) for x in cs if x.get("gravite") == "bloquant" and bloq}),
-                   "avis": sorted({cle(x) for x in cs if not (x.get("gravite") == "bloquant" and bloq)})}
-    tours = load("controles_tours.json", []) or []
-    tours.append({"tour": int(etat().get("tours") or 0) + 1, "postes": snap})
-    write_json(dossier("controles_tours.json"), tours)
-
-
-def controles_bilan():
-    tours = load("controles_tours.json", []) or []
-    if not tours:
-        return {}
-    last = tours[-1]["postes"]
-    res = {}
-    for p in dict.fromkeys(k for t in tours for k in t["postes"]):
-        ran = [t["postes"][p] for t in tours if p in t["postes"] and t["postes"][p].get("statut") != "non_concerne"]
-        item = {"statut": (last.get(p) or {}).get("statut"), "tours": len(ran)}
-        for kind in ("bloquants", "avis"):
-            seen = set().union(*[set(x.get(kind) or []) for x in ran]) if ran else set()
-            rest = set((last.get(p) or {}).get(kind) or [])
-            item[kind] = {"trouves": len(seen), "corriges": len(seen - rest), "restes": len(rest & seen)}
-        res[p] = item
-    return res
-
-
-def retours_bilan():
-    """Retours humains (retours.md) : un par texte, la gate d'où il vient (poste qui l'a reçu) et sa cause."""
-    path = dossier("retours.md")
-    txt = open(path, encoding="utf-8").read() if os.path.exists(path) else ""
-    items = []
-    for m in re.finditer(r"^## Retour humain \(([^,]+), [^)]*\)[^\n]*\n(.*?)(?=^## Retour humain |\Z)", txt, re.S | re.M):
-        body = " ".join(m.group(2).split())
-        low = body.lower()
-        cause = next((c for c, kws in CAUSES if any(k in low for k in kws)), "autre")
-        items.append({"gate": GATE_DE.get(m.group(1).strip(), m.group(1).strip()), "cause": cause, "texte": body[:160]})
-    par_gate, par_cause = {}, {}
-    for x in items:
-        par_gate[x["gate"]] = par_gate.get(x["gate"], 0) + 1
-        par_cause[x["cause"]] = par_cause.get(x["cause"], 0) + 1
-    return {"n": len(items), "par_gate": par_gate, "par_cause": par_cause, "liste": items[-10:]}
-
-
-def issue_de(e):
-    """Où le run en est d'après le dossier ; le cron de la page corrige d'après Kronn (panne, rejet à une gate)."""
-    etape = e.get("etape")
-    if etape == "fini":
-        return "pr_prete"
-    if etape in ("relecture", "publication"):
-        return "pr_brouillon"
-    if etape == "code" and (e.get("mode") or "").strip().lower() in ("plan", "plan seulement", "plan_seulement"):
-        return "plan_seul"
-    if etape == "escalade":
-        return "escalade"
-    return "en_cours"
-
-
-def bilan():
-    e = etat()
-    old = {}
-    try:
-        old = read_json(bilan_path(e))
-    except (OSError, ValueError):
-        pass
-    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    touched = changed()
-    sch = (load("cadrage.json") or {}).get("resultat") or {}  # le poste Plan porte le schéma d'impact (fichiers, mermaid)
-    prevus = sorted({n.get("chemin") for n in sch.get("fichiers") or [] if isinstance(n, dict) and n.get("chemin")
-                     and n.get("action") in ("modifier", "creer", "supprimer")})
-    plan = load("plan.json") or {}
-    lots = [x for x in plan.get("lots") or [] if isinstance(x, dict)]
-    ex = [x for x in ((load("besoin.json") or {}).get("resultat") or {}).get("exigences") or [] if isinstance(x, dict)]
-    compte_ex = {}
-    for x in ex:
-        compte_ex[x.get("etat") or "?"] = compte_ex.get(x.get("etat") or "?", 0) + 1
-    doc = (load("doc.json") or {}).get("resultat") or {}
-    statuts_doc = {}
-    for x in doc.get("docs") or []:
-        if isinstance(x, dict):
-            statuts_doc[x.get("statut") or "?"] = statuts_doc.get(x.get("statut") or "?", 0) + 1
-    diff, docs = numstat()
-    cad = (load("cadrage.json") or {}).get("resultat") or {}
-    orch = load("orchestrateur.json") or {}
-    title = (e.get("texte") or "").split("\n", 1)[0]
-    return {
-        "v": 1, "ticket": e.get("ticket"), "titre": title[:200], "repo": e.get("repo"), "run": e.get("run"),
-        "mode": e.get("mode"), "essai": essai(), "reprise": bool(e.get("reprise")), "soeurs": e.get("soeurs") or [],
-        "debut": old.get("debut") or now, "maj": now, "etape": e.get("etape"), "issue": issue_de(e),
-        "pr": {"n": e.get("pr"), "url": f"https://github.com/{e.get('repo')}/pull/{e.get('pr')}"} if e.get("pr") else None,
-        "version": CFG.get("impl_version") or {},
-        "tours": {"propositions": e.get("propositions") or {}, "essais_code": int(e.get("essais_code") or 0),
-                  "controles": int(e.get("tours") or 0), "escalades": int(e.get("escalades") or 0)},
-        "retours": retours_bilan(),
-        "schema": {"mermaid": str(sch.get("mermaid") or "")[:4000], "prevus": prevus[:60], "touches": touched[:120],
-                   "prevus_touches": len(set(prevus) & set(touched)), "touches_non_prevus": sorted(set(touched) - set(prevus))[:30],
-                   "prevus_non_touches": sorted(set(prevus) - set(touched))[:30]},
-        "plan": {"lots": len(lots), "titres": [str(x.get("titre") or x.get("nom") or x.get("objet") or "")[:120] for x in lots][:10]},
-        "exigences": {"compte": compte_ex, "liste": [{"exigence": str(x.get("exigence") or "")[:200], "etat": x.get("etat")} for x in ex][:20]},
-        "doc": {"statuts": statuts_doc, "fichiers": docs,
-                "a_mettre_a_jour": [str(x.get("doc") or x.get("fichier") or "")[:160] for x in doc.get("docs") or []
-                                    if isinstance(x, dict) and x.get("statut") == "a_mettre_a_jour"][:10]},
-        "diff": diff,
-        "controles": controles_bilan(),
-        "resume": {"comprehension": str(cad.get("comprehension") or cad.get("resume") or "")[:600],
-                   "orchestrateur": str(orch.get("resume") or "")[:600], "decision": orch.get("decision")},
-    }
-
-
-def ecrit_bilan():
-    e = etat()
-    if not (e.get("ticket") and e.get("repo") and e.get("run")) or str(e["run"]).startswith("{" + "{"):
-        return None
-    b = bilan()
-    path = bilan_path(e)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    write_json(path, b)
-    return path
+    return rep
+
+
+def cmd_bilan_code():
+    out(bilan_code())
+
+
+AUDIT_DOCS = "Document audit failed"
+
+
+REJET_DOC = re.compile(r"^(\S+): write rejected: ([^\n]+)$", re.M)
+
+
+def cmd_rattrape_code():
+    """Le poste Code en échec (stdin : dernière sortie de son sous-run). Kronn rejette après coup une étape Agent dont une
+    doc modifiée ressemble à un secret (faux positif sur un contenu déjà là) : « Document audit failed », mais l'agent a
+    rendu status OK et ses commits sont faits (banc d'essai du 5 novembre). Travail fini et commits : le bilan du Code est
+    écrit (docs rejetées notées pour le poste Doc et la PR), code 4, Goto controles. Sinon : code 1, la chaîne échoue
+    comme avant (la cause de la panne reste celle du Code)."""
+    txt = read_stdin()
+    if AUDIT_DOCS not in txt:
+        sys.exit("Poste Code en échec (pas le garde-fou docs de Kronn) : la chaîne s'arrête.")
+    agent = txt.split("Agent result:", 1)[1] if "Agent result:" in txt else ""
+    if not re.search(r'"status":\s*"OK"', agent):
+        sys.exit("Garde-fou docs de Kronn, mais l'agent du Code n'avait pas fini (pas de status OK) : la chaîne s'arrête.")
+    if not git("log", "--oneline", f"{depart()}..HEAD"):
+        sys.exit("Garde-fou docs de Kronn, mais aucun commit depuis le départ : la chaîne s'arrête.")
+    rejets = list(dict.fromkeys(f for f, _ in REJET_DOC.findall(txt.split("Agent result:", 1)[0])))
+    note = "docs rejetées par le garde-fou de Kronn : " + (", ".join(rejets) or "(fichiers non nommés)")
+    compte("rattrapages")
+    rep = bilan_code(docs_rejetees=rejets, note=note + " ; vérifications du Code sautées, les contrôles les refont")
+    print(f"Code rattrapé : {len(rep['commits'])} commit(s), {note}. On passe aux contrôles.")
+    sys.exit(4)
 
 
 def cmd_bilan():
@@ -1597,22 +582,13 @@ def cmd_bilan():
 
 def main(argv):
     cmd, args = (argv[1] if len(argv) > 1 else ""), argv[2:]
-    simple = {"releve": cmd_releve, "dossier": cmd_dossier, "existe": cmd_existe, "compris": cmd_compris, "missions": cmd_missions,
-              "range": cmd_range, "tri_code": cmd_tri_code, "tri_tests": cmd_tri_tests, "bilan_code": cmd_bilan_code, "quoi": cmd_quoi,
-              "bilan_controles": cmd_bilan_controles,
-              "aiguillage": cmd_aiguillage, "pousse": cmd_pousse, "pr": cmd_pr, "pret": cmd_pret,
-              "reviewers": cmd_reviewers, "fin": cmd_fin, "revue_prep": cmd_revue_prep, "retours_pr": cmd_retours_pr,
-              "repasse": cmd_repasse, "bilan": cmd_bilan}
+    simple = {"releve": cmd_releve, "dossier": cmd_dossier, "existe": cmd_existe, "compris": cmd_compris, "tri_code": cmd_tri_code, "tri_tests": cmd_tri_tests, "bilan_code": cmd_bilan_code, "rattrape_code": cmd_rattrape_code, "bilan": cmd_bilan}
     if cmd in simple:
         return simple[cmd]()
-    if cmd == "lance":
-        return cmd_lance(*(args + ["", "", "", ""])[:4])
     if cmd == "prepare":
         return cmd_prepare(*(args + [""] * 8)[:8])
     if cmd == "entree":
         return cmd_entree(*(args + ["", "", "", ""])[:4])
-    if cmd == "retours_synchro":
-        return cmd_retours_synchro(args[0] if args else "")
     if cmd == "rapport":
         return cmd_rapport(args[0] if args else "?")
     if cmd == "plan":

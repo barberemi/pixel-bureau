@@ -94,9 +94,13 @@ def run_url(wf, rid):
 
 def failed_step(run):
     """La dernière étape en échec d'un run ; un code de sortie aiguillé par un Goto (prepare en reprise, entree, aiguillage)
-    est marqué Failed par Kronn mais n'est pas un échec."""
+    est marqué Failed par Kronn mais n'est pas un échec. Le Code en échec saute à `rattrape` : si elle refuse (pas le
+    garde-fou docs avec le travail fini), la cause est celle du Code, pas celle de rattrape."""
     for s in reversed(run.get("step_results") or []):
-        if s.get("status") in ("Failed", "StoppedByGuard") and not str(s.get("condition_result") or "").startswith("Goto"):
+        cr = str(s.get("condition_result") or "")
+        if s.get("step_name") == "rattrape":
+            continue
+        if s.get("status") in ("Failed", "StoppedByGuard") and (not cr.startswith("Goto") or cr == "Goto:rattrape"):
             return s
     return None
 
@@ -190,6 +194,8 @@ def room(run, models, cache):
     for name, poste in PARENT.items():
         if name in steps:
             states[poste] = st_of(steps[name])
+    if states.get("code") == "err" and str((steps.get("rattrape") or {}).get("condition_result") or "").startswith("Goto"):
+        states["code"] = "ok"  # rattrapé (garde-fou docs de Kronn, travail fini et commité) : la chaîne est aux contrôles
     if "gate_plan" in steps and states.get("gate") == "ok":
         states["gate"] = "ok"
     poste = None
@@ -287,7 +293,7 @@ def events(run, why_=None):
                 out.append({"t": when(s.get("started_at")), "k": "back"})
         # une gate refusée finit en Failed : pas une panne ; ni un code de sortie aiguillé (prepare en reprise, aiguillage)
         if st in ("Failed", "StoppedByGuard") and n not in GATES and not str(s.get("condition_result") or "").startswith("Goto"):
-            out.append({"t": step_end(s), "k": "panne", "poste": PARENT.get(n, n)})
+            out.append({"t": step_end(s), "k": "panne", "poste": "code" if n == "rattrape" else PARENT.get(n, n)})
         if n == "livraison" and st == "Success":
             out.append({"t": step_end(s), "k": "sort"})
     pn = [e for e in out if e["k"] == "panne"]

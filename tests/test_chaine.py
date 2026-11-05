@@ -14,6 +14,8 @@ BASE = json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.js
 TPL = templates.load_templates()
 KEYS = [k for k in templates.TEMPLATES if k.startswith("impl")]
 SEP = "\n===SEP===\n"
+CTRL_CMDS = ('missions', 'range', 'quoi', 'bilan_controles', 'aiguillage', 'fin_essai', 'retours_local')  # sous-commandes de chaine_controles.py
+PR_CMDS = ('lance', 'pousse', 'pr', 'pret', 'reviewers', 'fin', 'revue_prep', 'retours_pr', 'repasse', 'revue_locale', 'retours_synchro')  # sous-commandes de chaine_pr.py ; les autres : chaine.py
 TICKET = {"key": "AB-12", "fields": {"summary": "Bouton partager sur la fiche", "description": "Ajouter un bouton partager.",
                                      "components": [{"name": "site"}], "issuetype": {"name": "Story"}}}
 
@@ -37,7 +39,13 @@ class ChaineModelesTest(unittest.TestCase):
     def test_postes_are_subworkflows_and_gates_stay_in_the_parent(self):
         c = cfg()
         chain = templates.render(TPL["impl_chain"], c)
-        self.assertLessEqual(len(chain["steps"]), 17)  # 20 avant le poste Plan (cadrage, schéma, patterns, questions)
+        self.assertLessEqual(len(chain["steps"]), 20)  # le plafond de Kronn par workflow
+        named = {s["name"]: s for s in chain["steps"]}
+        # Code en échec (garde-fou docs de Kronn avec le travail fini) : rattrape, puis les contrôles ; sinon échec
+        self.assertEqual(named["code"]["on_result"], [{"contains": "SUBWF_FAILED", "action": {"type": "Goto", "step_name": "rattrape", "max_iterations": 5}}])
+        self.assertEqual(named["rattrape"]["exec_stdin"], '{{steps.code.data.last_output ?? ""}}')
+        self.assertEqual(named["rattrape"]["on_result"][0]["action"], {"type": "Goto", "step_name": "controles", "max_iterations": 5})
+        self.assertEqual(chain["steps"][-1]["name"], "rattrape")  # jamais atteinte dans l'ordre : seulement par le Goto
         self.assertEqual((chain["concurrency_limit"], chain["project_scope"]), (4, {"type": "All"}))  # 4 chaînes, tout projet
         self.assertEqual(chain["workspace_config"], {"hooks": {}, "require_isolation": True})  # une copie par ticket
         subs = {s["name"]: s["sub_workflow_id"] for s in chain["steps"] if s["step_type"]["type"] == "SubWorkflow"}
@@ -126,7 +134,20 @@ class ChaineModelesTest(unittest.TestCase):
                          ("abababab-0000-4000-8000-000000000009", ".kronn/prs.json"))
         self.assertNotIn("revue", steps("impl_revue_pr"))  # sans modèle de revue installé : pas de revue
         rt = steps("impl_retours")  # le code de « corriger les commentaires d'une PR » (pr_update.py), sans sa gate
-        self.assertEqual(list(rt), ["entree", "prepare", "corrige", "controle", "diff", "pousse", "synchro", "fin"])
+        self.assertEqual(list(rt), ["entree", "prepare", "corrige", "controle", "diff", "pousse", "synchro", "fin", "corrige_local", "note_local"])
+        # mode essai : revue locale du diff puis correction locale, après fin (Stop) : jamais atteintes dans l'ordre
+        rv = steps("impl_revue_pr")
+        self.assertEqual(list(rv), ["entree", "fin", "locale", "range"])  # sans modèle de revue : fin suit entree
+        self.assertIn({"contains": "exit_6", "action": {"type": "Goto", "step_name": "locale"}}, rv["entree"]["on_result"])
+        for st in (rv, rt):
+            self.assertEqual(st["fin"]["on_result"], [{"contains": "OK", "action": {"type": "Stop"}}])
+        self.assertEqual(rv["range"]["on_result"], [{"contains": "OK", "action": {"type": "Goto", "step_name": "fin"}}])
+        self.assertEqual(rv["range"]["exec_stdin"], '{{steps.locale.data_json ?? "null"}}')
+        self.assertEqual(rv["locale"]["agent_settings"]["tier"], "reasoning")
+        self.assertIn("ne postes rien", rv["locale"]["prompt_template"])
+        self.assertIn({"contains": "exit_6", "action": {"type": "Goto", "step_name": "corrige_local"}}, rt["entree"]["on_result"])
+        self.assertIn("Ne pousse rien", rt["corrige_local"]["prompt_template"])
+        self.assertEqual(rt["note_local"]["on_result"], [{"contains": "OK", "action": {"type": "Goto", "step_name": "fin"}}])
         self.assertNotIn("Gate", json.dumps([s["step_type"] for s in rt.values()]))
         text = json.dumps([TPL[k] for k in KEYS], ensure_ascii=False)
         self.assertNotIn('"ci"', text)
@@ -177,7 +198,12 @@ class ChaineScriptTest(unittest.TestCase):
         run("git", "remote", "set-url", "origin", "https://github.com/dm/site.git", cwd=self.wt)
         run("git", "config", f"url.{origin}.insteadOf", "https://github.com/dm/site.git", cwd=self.wt)
         self.origin = origin
-        self.code = templates.script_code("workflows/chaine.py", cfg())
+        self.render(cfg())
+
+    def render(self, c):
+        """Les trois scripts de la chaîne rendus avec cette config ; sh choisit celui qui porte la sous-commande."""
+        self.code = templates.script_code("workflows/chaine.py", c)
+        self.codes = {p: templates.script_code(f"workflows/{p}.py", c) for p in ("chaine_controles", "chaine_pr")}
 
     def tearDown(self):
         import shutil
@@ -185,7 +211,8 @@ class ChaineScriptTest(unittest.TestCase):
 
     def sh(self, *args, stdin=""):
         env = {**os.environ, "KRONN_WORKTREE": self.wt, "HOME": os.path.join(self.tmp, "home"), **getattr(self, "env_extra", {})}  # cache du dossier : jetable
-        r = subprocess.run(["python3", "-c", self.code, *args], input=stdin, capture_output=True, text=True, cwd=self.wt, env=env)
+        code = self.codes["chaine_controles"] if args[0] in CTRL_CMDS else self.codes["chaine_pr"] if args[0] in PR_CMDS else self.code
+        r = subprocess.run(["python3", "-c", code, *args], input=stdin, capture_output=True, text=True, cwd=self.wt, env=env)
         return r.returncode, r.stdout + r.stderr
 
     def dossier(self, name):
@@ -234,7 +261,7 @@ class ChaineScriptTest(unittest.TestCase):
             self.assertIn(part, q)
         c = cfg()  # réglage d'avant : la gate s'ouvre quand même, rien à trancher compris
         c["impl"]["gate_cadrage"] = False
-        self.code = templates.script_code("workflows/chaine.py", c)
+        self.render(c)
         prop["questions"] = []
         self.sh("rapport", "cadrage", stdin=json.dumps(prop) + SEP + "null")
         code, q = self.sh("compris")
@@ -260,7 +287,8 @@ class ChaineScriptTest(unittest.TestCase):
         names = [s["name"] for s in c["steps"]]
         st = {s["name"]: s for s in c["steps"]}
         self.assertEqual(names[names.index("mode") + 1], "code")
-        self.assertEqual(names[-1], "commente_plan")
+        self.assertEqual(names[names.index("publication") + 1], "commente_plan")  # après : des étapes atteintes par Goto seulement
+        self.assertLessEqual(set(names[names.index("commente_plan") + 1:]), {"rattrape", "fin_essai"})
         self.assertEqual(st["mode"]["on_result"], [{"contains": "exit_4", "action": {"type": "Goto", "step_name": "commente_plan"}}])
         self.assertEqual(st["commente_plan"]["on_result"], [{"contains": "OK", "action": {"type": "Stop"}}])
         self.assertEqual(st["publication"]["on_result"], [{"contains": "OK", "action": {"type": "Stop"}}])
@@ -270,7 +298,7 @@ class ChaineScriptTest(unittest.TestCase):
         self.prepare()
         home = os.path.join(self.tmp, "home")
         env = {**os.environ, "KRONN_WORKTREE": self.wt, "HOME": home}
-        r = subprocess.run(["python3", "-c", self.code, "fin"], capture_output=True, text=True, cwd=self.wt, env=env)
+        r = subprocess.run(["python3", "-c", self.codes["chaine_pr"], "fin"], capture_output=True, text=True, cwd=self.wt, env=env)
         dest = json.loads(r.stdout)["dossier"]
         self.assertTrue(dest.startswith(home), dest)
         self.assertTrue(os.path.exists(os.path.join(dest, "ticket.md")))
@@ -286,8 +314,8 @@ class ChaineScriptTest(unittest.TestCase):
             code, outp = self.sh(cmd)
             self.assertEqual(code, 0, outp)
             self.assertIn("Mode essai", outp)
-        self.assertEqual(self.sh("revue_prep")[0], 3)  # ni revue de la PR ni retours : pas de PR en mode essai
-        self.assertEqual(self.sh("retours_pr")[0], 3)  # le poste 💬 retours finit aussitôt (Goto fin)
+        self.assertEqual(self.sh("revue_prep")[0], 6)  # pas de PR en mode essai : revue locale du diff
+        self.assertEqual(self.sh("retours_pr")[0], 3)  # rien relevé par la revue locale : le poste 💬 retours finit (Goto fin)
         self.assertIn("Mode essai", self.sh("retours_synchro", "r1")[1])
         self.assertEqual(self.sh("repasse")[0], 0)  # pas de seconde passe
         code, outp = self.sh("pr", stdin=json.dumps({"title": "fix: AB-12 x", "body": "corps"}))
@@ -411,6 +439,37 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("question d'avant", md)
         self.assertNotIn("retour d'usage", md)
         self.assertNotIn("Deployed", md)
+        self.assertEqual(steps("impl_chain")["ticket"]["api_query"]["expand"], "changelog")  # l'historique, pour défaire
+
+    def test_replay_rebuilds_the_ticket_as_it_was(self):
+        """Essai rejoué : description et titre réécrits après le départ (décisions produit, PR humaine déjà ouverte) sont
+        défaits depuis l'historique Jira, du plus récent au plus ancien ; un changement d'avant le départ reste."""
+        ns = {"__name__": "chaine_mod"}
+        exec(compile(self.code, "chaine.py", "exec"), ns)
+        h = lambda when, *items: {"created": when, "items": [dict(zip(("field", "fromString", "toString"), i)) for i in items]}  # noqa: E731
+        t = {"key": "AB-12", "fields": {"summary": "Titre final", "description": "v3 avec décisions produit"},
+             "changelog": {"histories": [
+                 h("2026-10-01T10:00:00.000+0200", ("description", "v0", "v1")),
+                 h("2026-10-20T10:00:00.000+0200", ("description", "v1", "v2"), ("status", "To Do", "Done")),
+                 h("2026-10-25T10:00:00.000+0200", ("description", "v2", "v3 avec décisions produit"), ("summary", "Titre initial", "Titre final"))]}}
+        avant = ns["quand"]("2026-10-10T00:00:00+02:00")
+        old, remontes = ns["a_la_date"](t, avant)
+        self.assertEqual((old["fields"]["description"], old["fields"]["summary"], remontes), ("v1", "Titre initial", ["description", "summary"]))
+        self.assertEqual(t["fields"]["description"], "v3 avec décisions produit")  # le ticket reçu n'est pas modifié
+        md = ns["ticket_md"](old, avant, remontes)
+        self.assertIn("tels qu'au 2026-10-09 22:00 UTC", md)
+        self.assertNotIn("décisions produit", md)
+        self.assertEqual(ns["a_la_date"](t, ns["quand"]("2026-11-01T00:00:00Z"))[1], [])  # rien après : rien à défaire
+        self.assertEqual(ns["a_la_date"]({"fields": {"description": "d"}}, avant)[0]["fields"]["description"], "d")  # sans historique
+        first = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.wt, capture_output=True, text=True).stdout.strip()
+        t2 = {**t, "changelog": {"histories": [h("2999-01-01T10:00:00.000+0100", ("description", "d'origine", "réécrite"))]}}
+        t2["fields"] = {**TICKET["fields"], "description": "réécrite"}
+        code, outp = self.sh("prepare", "AB-12", "essai", "run1", "", "", "", "", first, stdin=json.dumps(t2))
+        self.assertEqual(code, 0, outp)
+        md = Path(self.wt, ".kronn", "chaine", "ticket.md").read_text()
+        self.assertIn("d'origine", md)
+        self.assertNotIn("réécrite", md)
+        self.assertIn("d'origine", self.dossier("etat.json")["texte"])
         Path(self.wt, "app", "C.php").write_text("<?php\n")
         self.assertEqual(json.loads(self.sh("quoi")[1])["fichiers"], ["app/C.php"])  # diff contre le commit rejoué
         self.assertIn("ne rebase pas dessus", self.sh("entree", "besoin", "AB-12")[1])  # la base distante a déjà le ticket
@@ -519,7 +578,7 @@ class ChaineScriptTest(unittest.TestCase):
         for i in (1, 2, 3):
             self.commit("app/A.php", "<?php\n$a = %d;\n" % i, "feat(site): AB-12 lot %d" % i)
         self.fake_gh({"pr list": "", "pr create": "https://github.com/dm/site/pull/7"})
-        self.code = templates.script_code("workflows/chaine.py", cfg(impl={**cfg()["impl"], "ci_label": "ci-test"}))
+        self.render(cfg(impl={**cfg()["impl"], "ci_label": "ci-test"}))
         code, outp = self.sh("pr", stdin=json.dumps({"title": "feat(Site):AB-12 Bouton partager", "body": "corps",
                                                      "commit": "feat(Site):AB-12 Bouton partager\n\nDétail."}))
         self.assertEqual(code, 0, outp)
@@ -549,7 +608,7 @@ class ChaineScriptTest(unittest.TestCase):
         en « dépôt#n » ; aucun fil (9) ou rien à pousser (9) : fin ; puis la copie de travail est resynchronisée."""
         rt = steps("impl_retours")
         self.assertEqual(rt["entree"]["exec_args"][2:], ["retours_pr"])
-        self.assertEqual(rt["entree"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "fin"}}])
+        self.assertEqual(rt["entree"]["on_result"][0], {"contains": "exit_3", "action": {"type": "Goto", "step_name": "fin"}})
         for name, sub in (("prepare", "fix_prepare"), ("controle", "fix_check"), ("diff", "fix_diff"), ("pousse", "fix_push")):
             self.assertEqual(rt[name]["exec_args"][2:], [sub, "{{steps.entree.data.stdout}}", "-", "{{run.id}}"], name)
             self.assertIn("pr_update.py fix_", rt[name]["exec_args"][1][:3000] + rt[name]["description"], name)
@@ -561,6 +620,42 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("Aucune consigne d'équipe en plus de la doc du dépôt.", rt["corrige"]["prompt_template"])  # impl.guidelines
         self.assertTrue(rt["pousse"]["external_effect"])
         self.assertEqual(rt["synchro"]["exec_args"][2:], ["retours_synchro", "{{run.id}}"])
+
+    def test_essai_reviews_the_local_diff_and_fixes_it_locally_twice_at_most(self):
+        """Mode essai : la revue de la PR relit le diff local sans rien poster, les retours corrigent en commits locaux
+        sans pousser, puis la seconde passe (2 au plus) comme pour une vraie PR. Banc d'essai du 5 novembre : en essai,
+        revue et retours étaient sautés, la seconde passe n'était jamais mesurée."""
+        self.fake_gh()
+        self.prepare()
+        e = self.dossier("etat.json")
+        e["mode"] = "essai"
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        self.commit("app/A.php", "<?php // code\n", "feat: code")
+        self.sh("pr", stdin=json.dumps({"title": "t", "body": "corps"}))
+        code, outp = self.sh("revue_prep")
+        self.assertEqual(code, 6)
+        self.assertIn("REVUE LOCALE (mode essai, passe 1 sur 2)", outp)
+        self.assertIn("git diff ", outp)
+        rev = {"resume": "r", "verdict": "changements", "constats": [{"gravite": "bloquant", "fichier": "app/A.php", "ligne": 1,
+                                                                      "probleme": "commentaire inutile", "correction": "le retirer"}]}
+        self.assertIn("1 constat(s) dont 1 bloquant", self.sh("revue_locale", stdin=json.dumps(rev))[1])
+        self.assertTrue(self.dossier("revue_pr.json")["locale"])
+        code, outp = self.sh("retours_pr")
+        self.assertEqual(code, 6)
+        self.assertIn("commentaire inutile", outp)
+        self.commit("app/A.php", "<?php\n", "fix: commentaire retiré")
+        self.assertIn("1 commit(s) local(aux)", self.sh("retours_local")[1])
+        self.assertEqual(self.sh("repasse")[0], 4)  # corrections locales : seconde passe
+        self.assertIn("passe 2 sur 2", self.sh("revue_prep")[1])
+        self.assertIn("Ta revue de la passe précédente", self.sh("revue_prep")[1])
+        self.sh("revue_locale", stdin=json.dumps({"resume": "ok", "verdict": "approuve", "constats": []}))
+        self.assertEqual(self.sh("retours_pr")[0], 3)  # plus rien à corriger
+        self.assertEqual(self.sh("repasse")[0], 0)
+        r = self.dossier("retours.json")
+        self.assertEqual([(p["locale"], p["pousse"]) for p in r["passes"]], [(True, True)])
+        self.assertEqual(self.gh_calls(), [])  # rien n'est posté
+        self.assertEqual(subprocess.run(["git", "ls-remote", "--heads", self.origin, "kronn/AB-12"], capture_output=True, text=True).stdout, "")
+        self.assertIn("revue_pr_passe2.json", os.listdir(os.path.join(self.wt, ".kronn", "chaine")))
 
     def test_retours_pr_prints_repo_and_number(self):
         self.prepare()
@@ -653,12 +748,163 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(self.sh("tri_code", stdin=json.dumps({"ok": True}) + SEP + json.dumps({"verdict": "revoir"}))[0], 4)
         self.assertEqual(self.sh("tri_code", stdin=json.dumps({"ok": True}) + SEP + json.dumps({"verdict": "ok"}))[0], 0)
 
+    def test_dependencies_of_the_main_checkout_are_linked_never_committed(self):
+        """impl.repos.<dépôt>.deps : vendor/ et node_modules du checkout principal liés dans la copie de travail (sans
+        copie), ignorés par git même quand le .gitignore ne vise que des dossiers (« vendor/ »), redonnés en reprise ;
+        le Code et les Tests le savent. Banc d'essai du 5 novembre : des conteneurs montés à la main, des commits sans test."""
+        main = os.path.join(self.tmp, "main")
+        g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        subprocess.run(["git", "clone", "-q", self.origin, main], check=True, capture_output=True)
+        os.makedirs(os.path.join(main, "app", "vendor", "pkg"))
+        Path(main, "app", "vendor", "pkg", "x.php").write_text("<?php\n")
+        Path(main, ".gitignore").write_text(".kronn/\napp/vendor/\n")  # motif de dossier : ne couvre pas un lien
+        os.makedirs(os.path.join(main, "node_modules", "m"))
+        subprocess.run(g + ["add", ".gitignore"], cwd=main, check=True)
+        subprocess.run(g + ["commit", "-qm", "ignore"], cwd=main, check=True)
+        wt = os.path.join(self.tmp, "wt2")
+        subprocess.run(["git", "worktree", "add", "-q", "--detach", wt], cwd=main, check=True, capture_output=True)
+        c = cfg()
+        c["impl"]["repos"]["dm/site"]["deps"] = ["app/vendor", "node_modules", "absent"]
+        self.render(c)
+        self.wt = wt
+        subprocess.run(["git", "remote", "set-url", "origin", "https://github.com/dm/site.git"], cwd=main, check=True)
+        subprocess.run(["git", "config", f"url.{self.origin}.insteadOf", "https://github.com/dm/site.git"], cwd=main, check=True)
+        code, outp = self.sh("prepare", "AB-12", "complet", "run1", stdin=json.dumps(TICKET))
+        self.assertEqual(code, 0, outp)
+        self.assertIn("dépendances liées : app/vendor, node_modules", outp)
+        self.assertTrue(os.path.islink(os.path.join(wt, "app", "vendor")))
+        self.assertEqual(os.path.realpath(os.path.join(wt, "app", "vendor")), os.path.realpath(os.path.join(main, "app", "vendor")))
+        self.assertTrue(Path(wt, "app", "vendor", "pkg", "x.php").exists())
+        self.assertEqual(subprocess.run(["git", "status", "--porcelain"], cwd=wt, capture_output=True, text=True).stdout, "")
+        subprocess.run(g + ["add", "-A"], cwd=wt, check=True)  # un agent qui commite tout ne commite pas les liens
+        self.assertEqual(subprocess.run(["git", "diff", "--cached", "--name-only"], cwd=wt, capture_output=True, text=True).stdout, "")
+        self.assertEqual(self.dossier("etat.json")["deps"], ["app/vendor", "node_modules"])
+        self.assertIn("Dépendances déjà là (lance les tests directement)", self.sh("entree", "code", "AB-12")[1])
+        self.assertIn("lance les tests directement", self.sh("entree", "tests", "AB-12")[1])
+        self.assertNotIn("Dépendances déjà là", self.sh("entree", "regles", "AB-12")[1])
+        os.remove(os.path.join(wt, "node_modules"))  # reprise : le lien revient
+        e = self.dossier("etat.json")
+        e["etape"] = "controles"
+        Path(wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        self.sh("bilan")
+        code, outp = self.sh("prepare", "AB-12", "complet", "run2", "", "", "", "oui", stdin=json.dumps(TICKET))
+        self.assertEqual(code, 4, outp)
+        self.assertTrue(os.path.islink(os.path.join(wt, "node_modules")))
+
+    def test_tests_poste_gets_a_budget_and_the_linked_tests(self):
+        """Poste 🧪 Tests moins cher (EW-7848 : 31 min, 65 M de jetons relus en cache, 14,56 $ en un run) : contre-épreuves
+        bornées (impl.postes.tests.mutations, 6 par défaut), tests ciblés seulement, tests liés aux fichiers touchés donnés
+        d'avance (par le nom)."""
+        os.makedirs(os.path.join(self.wt, "tests"))
+        os.makedirs(os.path.join(self.wt, "front"))
+        self.commit("tests/PartageTest.php", "<?php\n", "test: Partage")
+        self.commit("front/share.spec.ts", "x\n", "test: share")
+        subprocess.run(["git", "push", "-q", "origin", "HEAD:main"], cwd=self.wt, check=True)
+        self.prepare()
+        self.commit("app/Partage.php", "<?php\n", "feat: Partage")
+        self.commit("front/share.ts", "y\n", "feat: share")
+        self.commit("app/Seul.php", "<?php\n", "feat: seul")
+        outp = self.sh("entree", "tests", "AB-12")[1]
+        self.assertIn("Au plus 6 contre-épreuves", outp)
+        self.assertIn("- app/Partage.php : tests/PartageTest.php", outp)
+        self.assertIn("- front/share.ts : front/share.spec.ts", outp)
+        self.assertNotIn("app/Seul.php :", outp)
+        c = cfg()
+        c["impl"]["postes"]["tests"] = {"mutations": 3}
+        self.render(c)
+        self.assertIn("Au plus 3 contre-épreuves", self.sh("entree", "tests", "AB-12")[1])
+        self.assertNotIn("Budget du poste", self.sh("entree", "code", "AB-12")[1])
+        self.assertIn("dans la limite du budget", steps("impl_tests")["propose"]["prompt_template"])
+
+    def test_deletion_survey_finds_dead_references(self):
+        """Ticket de suppression (EW-7816 : 4 blocs supprimés, 15 templates, styles et tests encore liés) : le Code reçoit
+        les références aux fichiers que le plan supprime ; après le code, ses vérifications et le poste Règles voient celles
+        qui restent (fichiers supprimés et classes retirées), rouges tant qu'il y en a."""
+        os.makedirs(os.path.join(self.wt, "app", "Block"))
+        os.makedirs(os.path.join(self.wt, "templates"))
+        self.commit("app/Block/VideoBlock.php", "<?php\nclass VideoBlock {}\n", "init: bloc")
+        self.commit("templates/video.html.twig", "{% include 'VideoBlock' %}\n", "init: template")
+        self.commit("app/Util.php", "<?php\nclass LegacyHelper {}\nclass Garde {}\n", "init: util")
+        subprocess.run(["git", "push", "-q", "origin", "HEAD:main"], cwd=self.wt, check=True)
+        self.prepare()
+        Path(self.wt, ".kronn", "chaine", "cadrage.json").write_text(json.dumps({"resultat": {"fichiers": [
+            {"chemin": "app/Block/VideoBlock.php", "action": "supprimer"}, {"chemin": "index.php", "action": "supprimer"},
+            {"chemin": "app/A.php", "action": "modifier"}]}}))
+        outp = self.sh("entree", "code", "AB-12")[1]
+        self.assertIn("Suppressions : les références à retirer aussi", outp)
+        self.assertIn("templates/video.html.twig:1:", outp)
+        self.assertNotIn("index :", outp)  # nom vague : jamais relevé
+        os.remove(os.path.join(self.wt, "app", "Block", "VideoBlock.php"))
+        self.commit("app/Util.php", "<?php\nclass Garde {}\n", "feat: blocs supprimés")
+        self.commit("app/B.php", "<?php // LegacyHelper::x();\n", "feat: oubli")
+        v = json.loads(self.sh("verif", "regles")[1])
+        self.assertFalse(v["ok"])
+        ref = [x for x in v["sorties"] if x["cmd"].startswith("références restantes")][0]
+        self.assertIn("VideoBlock : templates/video.html.twig:1:", ref["sortie"])
+        self.assertIn("LegacyHelper : app/B.php:1:", ref["sortie"])  # classe retirée par le diff
+        self.assertNotIn("Garde", ref["sortie"])  # encore déclarée : pas supprimée
+        os.remove(os.path.join(self.wt, "templates", "video.html.twig"))
+        self.commit("app/B.php", "<?php\n", "fix: références retirées")
+        v = json.loads(self.sh("verif", "regles")[1])
+        self.assertEqual([x["code"] for x in v["sorties"] if x["cmd"].startswith("références restantes")], [0])
+        self.assertIn("références restantes à ce qui est supprimé", steps("impl_controles")["parallele"]["prompt_template"])
+
+    def test_escalation_in_essai_stops_the_run(self):
+        """Mode essai : personne pour trancher, l'escalade arrête le run (refus explicite, bloquants restants notés, bilan
+        écrit) au lieu d'une gate. Banc d'essai du 5 novembre : la gate d'EW-7238 approuvée sans regarder, 3 bloquants Doc
+        livrés. En plan ou complet, la gate reste."""
+        self.prepare()
+        Path(self.wt, ".kronn", "chaine", "controles.json").write_text(json.dumps({"bloquants": [
+            {"poste": "doc", "fichier": "docs/a.md", "probleme": "la doc dit faux"}], "avis": []}))
+        self.assertEqual(self.sh("aiguillage", stdin=json.dumps({"decision": "humain"}))[0], 0)  # complet : la gate
+        e = self.dossier("etat.json")
+        e["mode"] = "essai"
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        code, outp = self.sh("aiguillage", stdin=json.dumps({"decision": "humain"}))
+        self.assertEqual(code, 6, outp)
+        code, outp = self.sh("fin_essai")
+        self.assertEqual(code, 0, outp)
+        self.assertIn("Refusé : escalade en essai : bloquants restants 1 (doc)", outp)
+        self.assertIn("docs/a.md : la doc dit faux", outp)
+        b = json.loads(self.sh("bilan")[1])
+        self.assertEqual((b["issue"], b["note_fin"]), ("escalade", "escalade en essai : bloquants restants 1 (doc)"))
+        ch = steps("impl_chain")
+        self.assertIn({"contains": "exit_6", "action": {"type": "Goto", "step_name": "fin_essai"}}, ch["aiguillage"]["on_result"])
+        self.assertEqual(ch["fin_essai"]["on_result"], [{"contains": "OK", "action": {"type": "Stop"}}])  # exit 0 : run réussi
+
+    def test_docs_guard_rejection_with_finished_work_goes_on_to_the_controls(self):
+        """Banc d'essai du 5 novembre : Kronn rejette après coup l'étape Agent du Code (garde-fou docs, faux positif
+        « secret ») alors que l'agent a rendu status OK et commité. rattrape_code écrit le bilan du Code et saute aux
+        contrôles (code 4) ; agent pas fini, aucun commit ou autre panne : code 1, la chaîne échoue comme avant."""
+        self.prepare()
+        audit = ("Document audit failed. Files and index were preserved; inspect these changes before committing or publishing.\n"
+                 "docs/a.md: write rejected: content overlaps with substring from sensitive file \"application/.env\"\n\n"
+                 "Agent result:\nLot 2 fait.\n---STEP_OUTPUT---\n{\"data\": {}, \"status\": \"OK\"}\n---END_STEP_OUTPUT---")
+        self.assertEqual(self.sh("rattrape_code", stdin=audit)[0], 1)  # aucun commit depuis le départ
+        self.commit("docs/a.md", "# doc\n", "docs: a")
+        self.assertEqual(self.sh("rattrape_code", stdin=audit.replace('"OK"', '"BLOCKED"'))[0], 1)  # l'agent n'avait pas fini
+        self.assertEqual(self.sh("rattrape_code", stdin="API Error: 529 Overloaded")[0], 1)  # autre panne du Code
+        Path(self.wt, ".kronn", "chaine", "doc.json").write_text(json.dumps({"poste": "doc", "statut": "ok"}))
+        code, outp = self.sh("rattrape_code", stdin=audit)
+        self.assertEqual(code, 4, outp)
+        rep = self.dossier("code.json")
+        self.assertEqual((rep["statut"], rep["docs_rejetees"], len(rep["commits"])), ("ok", ["docs/a.md"], 1))
+        self.assertIn("docs rejetées par le garde-fou de Kronn : docs/a.md", rep["note"])
+        self.assertEqual(self.dossier("etat.json")["etape"], "controles")
+        self.assertEqual((self.dossier("etat.json")["rattrapages"]), 1)
+        self.assertTrue(Path(self.wt, ".kronn", "chaine", "precedent_doc.json").exists())  # nouveau code : contrôles à refaire
+        self.assertIn("docs/a.md", self.sh("missions")[1].split("Docs rejetées par le garde-fou de Kronn")[1])
+        self.assertIn("Docs rejetées par le garde-fou", self.sh("entree", "livraison", "AB-12")[1])
+        Path(self.wt, ".kronn", "chaine", "controles.json").write_text(json.dumps({"bloquants": [], "avis": []}))
+        code, outp = self.sh("pr", stdin=json.dumps({"title": "t", "body": "corps <!-- bureau-points -->"}))
+        self.assertIn("`docs/a.md` : doc refusée par le garde-fou de Kronn", Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text())
+
     def test_checks_only_count_new_errors(self):
         """Une vérification rouge est relancée sur le point de départ : ce qui y était déjà rouge ne compte pas (essai
         d'EW-6550 : PHPStan signalait des erreurs anciennes des fichiers touchés et le Code bouclait dessus)."""
         c = cfg()
         c["impl"]["repos"]["dm/site"]["checks"]["regles"] = [{"cmd": "cd {worktree}/app && grep -n TODO {php} && exit 1 || exit 0", "subdir": "app"}]
-        self.code = templates.script_code("workflows/chaine.py", c)
+        self.render(c)
         g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
         Path(self.wt, "app", "A.php").write_text("<?php // TODO ancien\n")
         subprocess.run(g + ["commit", "-qam", "dette"], cwd=self.wt, check=True)
@@ -747,7 +993,7 @@ class ChaineScriptTest(unittest.TestCase):
         c = cfg()
         c["impl"]["repos"]["dm/site"]["docs"] = ["guide"]
         c["impl"]["postes"]["doc"] = {"bloquant": False}
-        self.code = templates.script_code("workflows/chaine.py", c)
+        self.render(c)
         g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
         Path(self.wt, "guide").mkdir()
         Path(self.wt, "guide", "faq.md").write_text("Voir A.php.\n")
@@ -763,7 +1009,7 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(self.dossier("doc.json")["statut"], "ok")  # poste non bloquant : un avis
         self.assertEqual([x["poste"] for x in json.loads(self.sh("bilan_controles")[1])["avis"]], ["doc"])
         c["impl"]["postes"]["doc"] = {"actif": False}
-        self.code = templates.script_code("workflows/chaine.py", c)
+        self.render(c)
         self.sh("bilan_code")
         self.assertNotIn("doc", self.sh("missions")[1].split("## Postes à lancer")[1].split("Écartés")[0])
         self.assertEqual(self.dossier("doc.json")["statut"], "non_concerne")
@@ -864,7 +1110,7 @@ class LanceurTest(unittest.TestCase):
 
     def setUp(self):
         sys.path.insert(0, os.path.join(ROOT, "workflows"))
-        import chaine
+        import chaine_pr as chaine
         self.c = chaine
         self.old = (chaine.get, chaine.send, chaine.project_for, dict(chaine.CFG))
         chaine.CFG.clear()
@@ -1029,6 +1275,17 @@ class AtelierSnapshotTest(unittest.TestCase):
         reads.clear()
         self.snap(get, {"impl_chain": "c", "impl_code": "code"}, ui="http://k:5173/")
         self.assertNotIn("/workflows/code/runs/k1", reads)  # cause gardée : le sous-run n'est plus relu
+
+    def test_rattrape_keeps_the_code_failure_as_the_cause(self):
+        """Le Code en échec saute à rattrape : si elle refuse, la panne est celle du Code ; si elle rattrape (garde-fou
+        docs de Kronn, travail fini), le Code est fait."""
+        import atelier_snapshot as a
+        code = {"step_name": "code", "status": "Failed", "condition_result": "Goto:rattrape", "output": "x"}
+        refus = {"step_name": "rattrape", "status": "Failed", "output": "exit 1"}
+        self.assertIs(a.failed_step({"step_results": [code, refus]}), code)
+        ok = {"step_name": "rattrape", "status": "Failed", "condition_result": "Goto:controles"}
+        orch = {"step_name": "orchestrateur", "status": "Failed", "output": "API Error"}
+        self.assertIs(a.failed_step({"step_results": [code, ok, {"step_name": "controles", "status": "Success"}, orch]}), orch)
 
     def test_runs_of_the_day_counted_by_ticket(self):
         """Tableau « Runs du jour » : depuis minuit (fuseau du bureau), par ticket et dépôt, les reprises à part ; une gate

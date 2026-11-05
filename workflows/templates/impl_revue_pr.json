@@ -43,11 +43,11 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "La PR confiée au modèle de revue (.kronn/prs.json) ; mode essai ou pas de PR : fin (code 3).",
+    "description": "La PR à relire (.kronn/prs.json) ; pas de PR : code 3, fin ; mode essai : code 6, revue locale (0 token).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_pr.py@@",
      "revue_prep"
     ],
     "exec_timeout_secs": 60,
@@ -57,6 +57,13 @@
       "action": {
        "type": "Goto",
        "step_name": "fin"
+      }
+     },
+     {
+      "contains": "exit_6",
+      "action": {
+       "type": "Goto",
+       "step_name": "locale"
       }
      }
     ]
@@ -104,10 +111,117 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_pr.py@@",
      "fin"
     ],
-    "exec_timeout_secs": 30
+    "exec_timeout_secs": 30,
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Stop"
+      }
+     }
+    ]
+   },
+   {
+    "name": "locale",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "resume": {
+        "type": "string"
+       },
+       "verdict": {
+        "type": "string",
+        "enum": [
+         "approuve",
+         "changements"
+        ]
+       },
+       "constats": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "gravite": {
+           "type": "string",
+           "enum": [
+            "bloquant",
+            "avis"
+           ]
+          },
+          "fichier": {
+           "type": "string"
+          },
+          "ligne": {
+           "type": "integer"
+          },
+          "probleme": {
+           "type": "string"
+          },
+          "correction": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      },
+      "required": [
+       "resume",
+       "verdict",
+       "constats"
+      ]
+     },
+     "on_invalid": "Continue"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "Mode essai : relit le diff local comme un relecteur de la PR, sans rien poster (rapport dans le dossier).",
+    "_poste": "revue_pr",
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    },
+    "prompt_template": "Tu relis la PR du ticket {{ticket}} comme un relecteur humain de l'équipe, avant sa relecture : la PR n'existe pas (mode essai), tu relis le diff local. Tu ne modifies rien et tu ne postes rien.\n\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\nCe qu'on regarde, dans l'ordre : le ticket est-il tenu (chaque critère) ; ce qui casse ou régresse ; les conventions du dépôt (docs/, AGENTS.md, code voisin) ; les tests qui prouvent le changement ; la doc qui dit encore vrai ; le code mort laissé (références à ce qui est supprimé). Pas de goût personnel, pas de redite des rapports des contrôles déjà corrigés.\n\n**CONSIGNES DE L'ÉQUIPE** :\n@@impl.guidelines@@\n\nUn constat = un fichier, une ligne, le problème et la correction attendue ; `bloquant` seulement si un relecteur refuserait la PR. `verdict` : `approuve` sans bloquant, sinon `changements`.\n\nRéponds par le JSON demandé, complet, sans texte autour."
+   },
+   {
+    "name": "range",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Mode essai : la revue locale rangée dans le dossier (revue_pr.json), rien de posté (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine_pr.py@@",
+     "revue_locale"
+    ],
+    "exec_timeout_secs": 60,
+    "exec_stdin": "{{steps.locale.data_json ?? \"null\"}}",
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Goto",
+       "step_name": "fin"
+      }
+     }
+    ]
    }
   ]
  }

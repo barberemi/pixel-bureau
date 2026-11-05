@@ -47,7 +47,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_pr.py@@",
      "retours_pr"
     ],
     "exec_timeout_secs": 60,
@@ -57,6 +57,13 @@
       "action": {
        "type": "Goto",
        "step_name": "fin"
+      }
+     },
+     {
+      "contains": "exit_6",
+      "action": {
+       "type": "Goto",
+       "step_name": "corrige_local"
       }
      }
     ]
@@ -213,7 +220,7 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_pr.py@@",
      "retours_synchro",
      "{{run.id}}"
     ],
@@ -236,10 +243,69 @@
     "exec_command": "python3",
     "exec_args": [
      "-c",
-     "@@script:workflows/chaine.py@@",
+     "@@script:workflows/chaine_pr.py@@",
      "fin"
     ],
-    "exec_timeout_secs": 30
+    "exec_timeout_secs": 30,
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Stop"
+      }
+     }
+    ]
+   },
+   {
+    "name": "corrige_local",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "Mode essai : corrige dans la copie de travail ce que la revue locale relève, en commits locaux, sans pousser.",
+    "_poste": "retours",
+    "stall_timeout_secs": 2400,
+    "retry": {
+     "max_retries": 1,
+     "backoff": "exponential"
+    },
+    "prompt_template": "Tu es le poste 💬 retours de la chaîne d'implémentation du ticket {{ticket}}, en mode essai : la revue de la PR a été faite sur le diff local, tu traites ses constats comme des commentaires de relecteur.\n\n{{steps.entree.data.stdout ?? \"(absent)\"}}\n\nPour chaque constat : corrige s'il est juste (un commit par sujet, `git commit --no-verify -s`, jamais `.kronn/`), avec le test qui le prouve ; s'il est faux ou hors du ticket, laisse-le et dis pourquoi en une ligne. Lance les contrôles du dépôt sur ce que tu touches. Ne pousse rien, ne poste rien, ne change pas de branche.\n\n**CONSIGNES DE L'ÉQUIPE** :\n@@impl.guidelines@@\n\nTermine par une ligne par constat : corrigé (commit) ou laissé (raison)."
+   },
+   {
+    "name": "note_local",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Mode essai : la passe locale notée (commits, contrôles), une seconde passe possible (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine_controles.py@@",
+     "retours_local"
+    ],
+    "exec_timeout_secs": 1800,
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Goto",
+       "step_name": "fin"
+      }
+     }
+    ]
    }
   ]
  }

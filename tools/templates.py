@@ -25,6 +25,10 @@ import assemble  # noqa: E402  (roster du profil d'équipe)
 # (impl_cadrage est le poste 📋 Plan : la clé garde son nom pour les installations ; schéma, patterns et revue croisée y
 # ont été fondus ou retirés, leurs modèles ne sont plus rendus)
 IMPL_POSTES = ("cadrage", "code", "tests", "revue_pr", "retours", "livraison", "publication")
+_C, _CC, _CP = ({"chaine": "workflows/chaine.py"}, {"chaine_controles": "workflows/chaine_controles.py"},
+                {"chaine_pr": "workflows/chaine_pr.py"})
+IMPL_SCRIPTS = {"cadrage": _C, "code": _C, "tests": _C, "revue_pr": _CP, "retours": {**_CC, **_CP}, "livraison": {**_C, **_CP},
+                "publication": _CP, "controles": _CC, "chain": {**_C, **_CC}, "lanceur": _CP}
 # postes de l'investigation Support (#62) : un sous-workflow chacun, appelés par le parent support dans cet ordre
 SUPPORT_POSTES = ("tri", "logs", "cause", "reponse", "relecture")
 # salle de rédaction (2e étage) : les postes du modèle ticket (un sous-workflow chacun), puis un sous-workflow par ticket
@@ -110,10 +114,11 @@ TEMPLATES = {
     "support": ("workflow", ("models", "support"), {n: "workflows/support.py" for n in ("open", "mark", "draft", "mark_draft", "post", "mark_post")}),
     # implémenter un ticket en chaîne de postes (#76, #125) : un poste = un sous-workflow (un agent, ses skills, son modèle),
     # créés avant ceux qui les appellent (enfants d'abord : Kronn vérifie la cible d'un SubWorkflow à l'enregistrement)
-    **{f"impl_{p}": ("workflow", ("models", f"impl_{p}"), {"chaine": "workflows/chaine.py"}) for p in IMPL_POSTES},
-    "impl_controles": ("workflow", ("models", "impl_controles"), {"chaine": "workflows/chaine.py"}),
-    "impl_chain": ("workflow", ("models", "impl_chain"), {"chaine": "workflows/chaine.py"}),
-    "impl": ("workflow", ("models", "impl"), {"chaine": "workflows/chaine.py"}),  # lanceur : projet déduit du composant Jira
+    # (scripts : chaine.py, chaine_controles.py, chaine_pr.py, qui se partagent _chaine.py ; IMPL_SCRIPTS = ceux de chaque modèle)
+    **{f"impl_{p}": ("workflow", ("models", f"impl_{p}"), IMPL_SCRIPTS[p]) for p in IMPL_POSTES},
+    "impl_controles": ("workflow", ("models", "impl_controles"), IMPL_SCRIPTS["controles"]),
+    "impl_chain": ("workflow", ("models", "impl_chain"), IMPL_SCRIPTS["chain"]),
+    "impl": ("workflow", ("models", "impl"), IMPL_SCRIPTS["lanceur"]),  # lanceur : projet déduit du composant Jira
     # page « Chaîne · bilan » : l'historique des runs de la chaîne (bilans de chaine.py et API Kronn), page Kronn à part
     # (bilan_page_id) ; sans chaîne installée ou sans cette page : pas créé
     "chaine_bilan": ("workflow", ("workflows", "chaine_bilan"), {"bilan": "workflows/chaine_bilan.py"}),
@@ -165,18 +170,23 @@ def impl_version():
     dernier commit qui les a touchés (une modification de la chaîne se juge sur les tickets qui l'ont suivie)."""
     if not _VERSION:
         import glob, hashlib, subprocess
-        files = sorted(glob.glob(os.path.join(TPL_DIR, "impl*.json"))) + [os.path.join(ROOT, "workflows", "chaine.py")]
+        files = sorted(glob.glob(os.path.join(TPL_DIR, "impl*.json"))) + [os.path.join(ROOT, p) for p in CHAINE_SCRIPTS + ("workflows/_chaine.py",)]
         h = hashlib.sha1()
         for f in files:
             h.update(Path(f).read_bytes())
         r = subprocess.run(["git", "-C", ROOT, "log", "-1", "--format=%h%x09%s", "--", "workflows/templates/impl*.json",
-                            "workflows/chaine.py"], capture_output=True, text=True)
+                            *CHAINE_SCRIPTS, "workflows/_chaine.py"], capture_output=True, text=True)
         commit, _, sujet = r.stdout.strip().partition("\t")
         _VERSION.update(hash=h.hexdigest()[:7], commit=commit, sujet=re.sub(r"[{}@]", "", sujet)[:120])  # ni {{ ni @@ dans un script
     return dict(_VERSION)
 
 
-LIB_IMPORT = re.compile(r"^from (_lib|_plan|_checks) import [\w, ]+$", re.M)
+LIB_IMPORT = re.compile(r"^from (_lib|_plan|_checks|_chaine) import [\w, *]+(?:  #.*)?$", re.M)
+# la chaîne d'implémentation : trois scripts et leur commun (_chaine.py, recopié dans chacun). Kronn passe un script en un
+# seul argument « python3 -c » : sous Linux, 128 Kio au plus (MAX_ARG_STRLEN) ; ils ne reçoivent que leur part de la config
+CHAINE_SCRIPTS = ("workflows/chaine.py", "workflows/chaine_controles.py", "workflows/chaine_pr.py")
+CHAINE_CFG = ("impl", "models", "github", "kronn", "rhythm", "workflows", "actions")
+MAX_SCRIPT = 110 * 1024  # marge sous les 128 Kio d'un argument (tests/test_templates.py)
 
 
 def script_code(path, cfg):
@@ -185,18 +195,25 @@ def script_code(path, cfg):
     __BUREAU_CONFIG__."""
     cfg = assemble.merged(cfg)  # réglages d'équipe du pack (#32) : les scripts n'ont pas accès au pack
     code = Path(os.path.join(ROOT, path)).read_text()
+    seen = set()
 
-    def lib(m):
+    def lib(m):  # une seule copie par module, même importé par un autre (_chaine importe _lib et _checks)
+        if m.group(1) in seen:
+            return ""
+        seen.add(m.group(1))
         body = Path(os.path.join(ROOT, "workflows", m.group(1) + ".py")).read_text()
         assert "@@" not in body and "{{" not in body, m.group(1) + ".py : ni @@ ni {{ (Kronn rendrait ses propres variables)"
-        return body
+        return LIB_IMPORT.sub(lib, body)
     code = LIB_IMPORT.sub(lib, code)
     # clés de premier niveau triées : même script, que les réglages d'équipe soient dans la config ou dans le pack (#32)
     c = {k: v for k, v in sorted(cfg.items()) if not k.startswith("_")}
+    if path in CHAINE_SCRIPTS:  # la config entière ferait passer le script au-dessus de 128 Kio (un argument, sous Linux)
+        c = {k: v for k, v in c.items() if k in CHAINE_CFG}
+        c["github"] = {"repo": (cfg.get("github") or {}).get("repo") or ""}
     c.update(gitfut=assemble.gitfut(cfg), wiki_posters=assemble.wiki_posters(cfg),  # déduits du roster (scripts sans accès au dépôt)
              planning_names=assemble.planning_names(cfg),  # noms complets du roster, pour le planning des absences
              root=ROOT)  # dossier du dépôt : son venv (Pillow) pour réduire les images
-    if path == "workflows/chaine.py":  # version de la chaîne gardée dans le bilan de chaque run (page « Chaîne · bilan »)
+    if path in CHAINE_SCRIPTS:  # version de la chaîne gardée dans le bilan de chaque run (page « Chaîne · bilan »)
         c["impl_version"] = impl_version()
     blob = json.dumps(c, ensure_ascii=False)
     assert '"""' not in blob and "__BUREAU_CONFIG__" in code, path
@@ -454,8 +471,9 @@ IMPL_AGENTS = {
     "controles": ("reasoning", ["security", "web-performance", "accessibility"]),
     "tests": ("default", ["testing", "test-driven-development"]),
     "livraison": ("economy", []), "retours": ("reasoning", ["receiving-code-review"]),
+    "revue_pr": ("reasoning", []),  # mode essai : revue locale du diff (la revue du Bureau a ses propres postes)
 }
-IMPL_TEAM_SKILLS = {"code", "code.relecture", "controles", "tests", "retours"}  # + impl.skills de l'équipe (langages, conventions)
+IMPL_TEAM_SKILLS = {"code", "code.relecture", "controles", "tests", "retours", "revue_pr"}  # + impl.skills de l'équipe (langages, conventions)
 
 
 def impl_agent(step, role, cfg):

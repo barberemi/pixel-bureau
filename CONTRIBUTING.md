@@ -26,7 +26,7 @@ Il faut Python 3.9 ou plus, Node 20 ou plus (sans dépendance npm) et Chrome ou 
 - **Changement visible = doc dans la même PR** : la page `guide/fonctionnalites/NN-*.md`, la ligne du tableau du README et les captures (`.venv/bin/python tools/shots.py [nom]`). Ne commiter que les captures qui changent vraiment.
 - **On édite `page/src/*` et `page/office_template.html`**, jamais `dist/` (produit par `tools/assemble.py`).
 - **Page sans ressource externe** : ni `import`, ni lien vers un autre site ; images et polices en `data:`. La page publiée doit rester sous 1 000 000 octets (le smoke alerte à 90 %).
-- **Dans les scripts de `workflows/`** : ni `{{` ni `@@` (variables de Kronn), sortie d'étape sous 100 Ko, pas d'import d'un fichier voisin autre que `_lib.py` et `_plan.py`.
+- **Dans les scripts de `workflows/`** : ni `{{` ni `@@` (variables de Kronn), sortie d'étape sous 100 Ko, pas d'import d'un fichier voisin autre que `_lib.py`, `_plan.py`, `_checks.py` et `_chaine.py` (recopiés au rendu), un script rendu sous 110 Kio (Kronn le passe en un argument, 128 Kio au plus sous Linux).
 - **Rien de réel dans la démo** (`data/`, équipe fictive Dunder Mifflin), **rien d'individuel ni de vanne visant une personne** dans la page.
 - **Tout est rejouable** : on date par les données, jamais par l'heure du calcul.
 - **Pas de tiret cadratin** dans les textes.
