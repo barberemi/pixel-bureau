@@ -65,18 +65,10 @@
     "step_type": {
      "type": "Agent"
     },
-    "description": "🧐 critique : Relit les tickets proposés : chacun se comprend, se teste, a le bon composant ; le découpage est juste.",
+    "description": "🧐 critique : Relit les tickets proposés contre le code et le ticket source dans Jira (lecture seule) : chacun se comprend, se teste, a le bon composant ; le découpage est juste.",
     "prompt_template": "{{steps.entree.data.stdout}}",
     "agent_settings": {
-     "tier": "default",
-     "tools": {
-      "cli": [
-       "Read",
-       "Grep",
-       "Glob"
-      ],
-      "kronn_internal": []
-     }
+     "tier": "default"
     },
     "retry": {
      "max_retries": 1,

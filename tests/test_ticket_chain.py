@@ -133,6 +133,13 @@ class TicketChainTest(unittest.TestCase):
         # Jira en lecture seule : les tickets ne sont créés qu'après le tampon
         self.assertIn("EN LECTURE SEULE", rech)
         self.assertIn("ne crée, ne modifie, ne commente, ne déplace aucun ticket", rech)
+        # le ticket source cité : ses questions ouvertes, dépôts et chemins passent avant ce que le code laisse deviner
+        self.assertIn("sous « Ticket source »", rech)
+        self.assertIn("un ancien et un nouveau système", rech)
+        self.assertIn("jamais « aucune » quand il en reste", self.t("poste", "redaction", "f1").stdout)
+        crit = self.t("poste", "critique", "f1").stdout
+        self.assertIn("EN LECTURE SEULE : relis le ticket source", crit)
+        self.assertIn("composant faux, bloquant", crit)
         red =self.t("poste", "redaction", "f1").stdout
         self.assertIn("remplis-les aussi, à partir du rapport de la recherche", red)
         self.assertIn("« à compléter », jamais inventé", red)

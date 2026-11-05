@@ -389,7 +389,7 @@ exit 0
         self.assertNotIn("external_effect", st["doublons_jira"])
         self.assertEqual(st["doublons"]["exec_args"][-1], "{{steps.doublons_jira.data_json}}")
         crit = next(s for s in templates.render(TPL["ticket_critique"], c)["steps"] if s["step_type"]["type"] == "Agent")
-        self.assertEqual(crit["agent_settings"]["tools"]["cli"], ["Read", "Grep", "Glob"], "la critique vérifie dans le code avant d'affirmer")
+        self.assertNotIn("tools", crit["agent_settings"], "la critique relit le ticket source dans Jira, et le code")
         rech = next(s for s in templates.render(TPL["ticket_recherche"], c)["steps"] if s["step_type"]["type"] == "Agent")
         self.assertNotIn("tools", rech["agent_settings"], "la recherche a les MCP du projet, Jira compris")
         self.assertEqual(st["relire"]["gate_request_changes_target"], "redaction", "Changements : la rédaction reprend avec tes retours")
