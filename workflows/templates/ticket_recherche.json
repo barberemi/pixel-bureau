@@ -65,19 +65,10 @@
     "step_type": {
      "type": "Agent"
     },
-    "description": "📚 recherche : Cherche dans les dépôts des composants ce qui sert à rédiger le ou les tickets.",
+    "description": "📚 recherche : Cherche dans les dépôts des composants et dans Jira (lecture seule) ce qui sert à rédiger le ou les tickets.",
     "prompt_template": "{{steps.entree.data.stdout}}",
     "agent_settings": {
-     "tier": "economy",
-     "tools": {
-      "cli": [
-       "Read",
-       "Grep",
-       "Glob",
-       "Bash"
-      ],
-      "kronn_internal": []
-     }
+     "tier": "economy"
     },
     "retry": {
      "max_retries": 1,

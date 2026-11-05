@@ -128,8 +128,12 @@ class TicketChainTest(unittest.TestCase):
         """« Comment faire » et « Comment tester » : la recherche en donne la matière, la rédaction les remplit (le modèle
         les laisse au dev, au framing : c'est ce que le Bureau lui épargne), la critique vérifie qu'ils tiennent dans le code."""
         self.t("dossier", "f1", "x", "Story", "3", "dm/site", "", "backlog", "")
-        self.assertIn("de quoi écrire « Comment faire »", self.t("poste", "recherche", "f1").stdout)
-        red = self.t("poste", "redaction", "f1").stdout
+        rech = self.t("poste", "recherche", "f1").stdout
+        self.assertIn("de quoi écrire « Comment faire »", rech)
+        # Jira en lecture seule : les tickets ne sont créés qu'après le tampon
+        self.assertIn("EN LECTURE SEULE", rech)
+        self.assertIn("ne crée, ne modifie, ne commente, ne déplace aucun ticket", rech)
+        red =self.t("poste", "redaction", "f1").stdout
         self.assertIn("remplis-les aussi, à partir du rapport de la recherche", red)
         self.assertIn("« à compléter », jamais inventé", red)
         self.assertIn("« Comment faire » et « Comment tester » sont remplis et s'appuient sur le code", self.t("poste", "critique", "f1").stdout)
