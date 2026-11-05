@@ -64,7 +64,7 @@ function tvAtelierHtml(){
     return `<div class="tw ag" style="--st:${ST_CSS[st]||'var(--idle)'}"><span class="wt"><span class="wn">Bureau ${i+1} · ${esc(r.ticket||'')}<span class="ws">${esc(r.gate?'t\'attend':r.back?'retour au code':p?p.i+' '+p.n:'')}</span></span>`+
       `<span class="ww">${esc(r.title||'')}</span>${atBar(r)}</span></div>`;}).join('')+
     `<h2>Entrepôt · ${q.length} en attente</h2>`+(q.length?q.map(x=>`<div class="tw ag"><span class="wt"><span class="wn">${esc(x.ticket||'')}<span class="ws">depuis ${esc(hm(ms(x.since)))}</span></span></span></div>`).join(''):'')+
-    (pn.length?`<h2>En panne · ${pn.length}</h2>`+pn.map(x=>`<div class="tw ag" style="--st:${ST_CSS.error}"><span class="wt"><span class="wn">${esc(x.ticket||'')}<span class="ws">arrêté à ${esc(atStepName(x.poste))}</span></span></span></div>`).join(''):'');
+    (pn.length?`<h2>En panne · ${pn.length}</h2>`+pn.map(x=>`<div class="tw ag" style="--st:${ST_CSS.error}"><span class="wt"><span class="wn">${esc(x.ticket||'')}<span class="ws">arrêté à ${esc(atStepName(x.poste))}</span></span>${x.cause?`<span class="ww">${esc(atCauseTxt(x))}</span>`:''}</span></div>`).join(''):'');
 }
 // alternance de l'écran mural (?floor=alt) : 60 s sur l'open space, 40 s sur un étage occupé (tickets à l'atelier,
 // interventions à la caserne), dans l'ordre RDC, 1er, -1 ; un étage qui se vide rend la main au RDC

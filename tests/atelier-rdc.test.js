@@ -127,3 +127,10 @@ test('Ryan (lanceur de la chaîne) : casque et gilet, il porte le carton à l\'e
   assert.equal(J2(`atLauncherCarry(__o, ${at('30')})`), null);
   assert.match(J2(`rvBtn(${at('00')}, 1)`), /data-fl="1"/, '« revoir » d\'un moment du 1er y monte');
 });
+
+test('fil : une panne dit sa cause en une ligne, avec l\'icône de son type', () => {
+  setAtelier();
+  run(`ATELIER.events = [{t: ${H(8)}, k: 'panne', run: 'p', ticket: 'DM-p', poste: 'code', cause: 'délai dépassé, arrêté par Kronn', cause_type: 'delai'}];`);
+  const ev = J(`atFeedEvents(DAY0 + 12 * 36e5).map(e => e.txt.replace(/<[^>]+>/g, ''))`);
+  assert.deepEqual(ev, ['🧯 DM-p : ⌨ Code en panne ⏱ délai dépassé, arrêté par Kronn']);
+});

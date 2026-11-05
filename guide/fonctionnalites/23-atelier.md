@@ -20,6 +20,7 @@ Les workflows de l'étage (la chaîne et ses postes, modèles `impl*`) ne passen
   - **attend son tour** : silhouette grise derrière un écran éteint ;
   - **bloquant** : pastille ! rouge, écran rouge ; **en panne** (le sous-workflow du poste a échoué, par exemple l'API d'un agent indisponible) : fumée et étincelles sur l'écran, une étiquette « 🧯 … en panne : le pompier arrive », et le pompier de l'étage (casque blanc de la sécurité) vient de la porte avec un extincteur tant que la panne dure ; le grand tableau le dit aussi.
 - **Un bureau libre** s'éteint doucement. Seul le bureau 1 garde son équipe : elle somnole à son poste et, de temps en temps, l'un d'eux va au café, sur un canapé ou dans le couloir, puis revient (2 promeneurs au plus). Les bureaux 2 à 4 libres sont vides. Quand un ticket arrive, les lumières se rallument, les promeneurs rentrent et, dans un bureau vide, l'équipe monte par la porte de sortie, l'un après l'autre, pendant que Bernard apporte le carton ; quand Bernard emporte le carton du ticket sorti, elle redescend par la même porte.
+- **Le tableau noir « Runs du jour »**, au mur du haut à droite du grand tableau (à la place de deux fenêtres) : depuis minuit, les tickets en cours, les tickets sortis sur les tickets du jour, les runs en panne et les jetons ; les reprises sont à part, en haut à droite (« ↻ 8 reprises »), car on compte par ticket, pas par run. Il est purement indicatif, comme ceux des autres étages : rien au clic, l'historique est dans la page « Chaîne · bilan ». En rejeu, il garde les chiffres du dernier relevé.
 - **Le grand tableau de l'orchestrateur**, en haut : une colonne par bureau, avec le ticket, le poste en cours ou la décision, la barre des postes, le tour et les jetons (le titre du ticket est dans le panneau).
 - **Le boss**, dans son fauteuil rouge derrière son bureau à quatre boutons ; un pack d'équipe peut lui donner un dessin pour cet étage (`atelier_sprite` dans le roster, par exemple en constructeur, casque et gilet) (un par bureau, jaune quand ce bureau t'attend). Quand une gate t'attend, il se lève et va à la porte du bureau, avec au-dessus de lui l'étiquette « ✋ DM-7305 · ton plan · décider › », puis revient s'asseoir. Une escalade (« la chaîne demande un humain ») allume un gyrophare au-dessus de la porte. À la porte, un clic sur lui ou sur son étiquette ouvre la fiche du bureau, sa décision en haut ; à son fauteuil, un clic ouvre sa fiche, la même qu'au RDC (ses validations, ses todos, ses tickets), dans le panneau de droite ; elle reste ouverte quand tu changes d'étage.
 - **L'entrepôt**, en bas du couloir central : les tickets en attente sur les rayonnages, les tickets en panne sur des palettes (🧯, à relancer).
@@ -62,6 +63,24 @@ L'étage se suit aussi sans y monter, comme les agents du RDC. Chaque élément 
 
 Un run de la chaîne qui échoue (un poste qui plante, l'API d'un agent indisponible) reste dans « 🧯 En panne » pendant 24 h, avec le poste où il s'est arrêté. Relance le ticket (▶ Implémenter) : la chaîne reprend là, avec le dossier du ticket et la branche du run en panne. Le plan déjà validé n'est pas redemandé, les lots déjà écrits et les contrôles déjà rendus ne sont pas refaits. Au lancement, « Reprise » vaut « Auto » ; « Reprendre » force la reprise (par exemple un plan seulement relancé jusqu'à la PR), « Repartir de zéro » recommence tout.
 
+**Pourquoi c'est tombé en panne.** La panne dit sa cause en une ligne, lue dans l'étape en échec du sous-workflow le plus profond (par exemple le Code, sous la chaîne), et classée :
+
+| Type | Exemple | Le conseil de la fiche |
+|---|---|---|
+| 🛡 garde-fou docs de Kronn | « docs/architecture/x.md refusé (une suite de caractères qui ressemble à un secret) » | si l'agent avait fini : le travail est commité, relance en reprise, le Code retrouve ses lots et passe vite aux contrôles |
+| ⏱ délai dépassé | « arrêté par Kronn (4 h 36 pour 2 h 00 permises) » : coupure réseau, agent figé | relance, la chaîne reprend au poste arrêté |
+| 🔌 agent ou API indisponible | quota, réseau, service en panne, appel d'API en échec | attends qu'il revienne, puis relance |
+| 📜 script en erreur | « exit 2 : KeyError: 'base' » | lis l'étape dans Kronn avant de relancer |
+| ❔ autre | la première ligne de la sortie de l'étape | lis l'étape dans Kronn |
+
+La cause est sous le ticket dans « 🧯 En panne », au survol de sa palette à l'entrepôt, dans sa fiche (avec le conseil), dans le fil du RDC (« 🧯 DM-7702 : ⌨ Code en panne ⏱ délai dépassé… ») et sur l'écran mural. Le lien « ↗ L'étape en échec dans Kronn » ouvre le run qui a vraiment planté (le sous-workflow, pas la chaîne) ; sur la fiche d'un bureau, « ↗ Le run dans Kronn » ouvre son run, et non plus la liste des runs.
+
+![Fiche d'une panne : la cause, le conseil et le lien vers l'étape en échec](../img/atelier-panne.png)
+
+**Un run repris** ne refait pas les postes d'avant la reprise : ils ne sont plus gris (« attend son tour ») mais « ↻ repris », faits par le run d'avant (agent à son poste, pastille ↻, barre des postes hachurée verte). Sa fiche dit après quelle panne : « ↻ Repris aux contrôles après : ⌨ Code en panne (🛡 garde-fou docs de Kronn…) », avec le lien vers le run d'avant.
+
+![Fiche d'un bureau repris : Plan et Ton plan ↻ repris, après quelle panne](../img/atelier-reprise.png)
+
 ## Données
 
-Le cron `live` lit chaque minute les runs de la chaîne et de ses postes dans l'API Kronn (0 token) et publie le dataset `atelier`, avec les moments des dernières 24 h (arrivée, gate, retour au code, panne, PR ouverte, datés par les étapes des runs) pour le fil du RDC, et le nombre de PR ouvertes depuis minuit. Sans la chaîne installée, ni ses étapes ni les onglets n'existent.
+Le cron `live` lit chaque minute les runs de la chaîne et de ses postes dans l'API Kronn (0 token) et publie le dataset `atelier`, avec les moments des dernières 24 h (arrivée, gate, retour au code, panne, PR ouverte, datés par les étapes des runs) pour le fil du RDC, et le nombre de PR ouvertes depuis minuit. La cause d'un run fini ne change plus : elle est gardée dans `~/.cache/pixel-bureau/atelier_causes.json` (200 runs au plus), le cron ne relit pas ses sous-runs à chaque minute. Le tableau « Runs du jour » (`jour` du dataset) compte les runs de la chaîne depuis minuit (fuseau du bureau), par ticket et dépôt. Sans la chaîne installée, ni ses étapes ni les onglets n'existent.

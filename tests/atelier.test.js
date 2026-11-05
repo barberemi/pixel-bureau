@@ -51,6 +51,55 @@ test('panneau : un bouton par bureau, la file, et la fiche du ticket choisi avec
   assert.equal((fiche.match(/<tr/g) || []).length, J('AT_POSTES.length'));
 });
 
+test('panne : sa cause en une ligne, son type et le conseil qui va avec, le lien vers l\'étape en échec', () => {
+  const p = {run: 'p1', ticket: 'DM-p1', repo: 'dm/site', poste: 'code', since: '2026-10-01T09:00:00Z', url: 'http://k/workflows/c/runs/k1',
+    cause: 'garde-fou docs de Kronn : docs/a.md refusé', cause_type: 'garde_fou_docs', docs_ok: true};
+  run(`GATES = []; ATELIER = {rooms: [], queue: [], pannes: [${JSON.stringify(p)}]}; ATSEL = null; AT_PICK = null;`);
+  const html = J('atelierListHtml([], [], ATELIER.pannes)');
+  assert.match(html, /🛡 garde-fou docs de Kronn : docs\/a\.md refusé/);
+  assert.match(html, /href="http:\/\/k\/workflows\/c\/runs\/k1"/);
+  assert.match(J('atConseil(ATELIER.pannes[0])'), /travail est commité/);
+  assert.doesNotMatch(J(`atConseil({cause_type: 'garde_fou_docs', docs_ok: false})`), /commité/);
+  for (const t of ['delai', 'agent', 'script', 'autre', undefined]) assert.ok(J(`atConseil(${JSON.stringify({cause_type: t})})`).length > 20, t);
+  // la fiche de la palette : la cause, son type, le conseil, le lien
+  const side = J('atPanneHtml(ATELIER.pannes[0])');
+  assert.match(side, /Arrêté à <b>⌨ Code<\/b> : garde-fou docs/);
+  assert.match(side, /Cause : 🛡 garde-fou docs de Kronn/);
+  assert.match(side, /L'étape en échec dans Kronn/);
+});
+
+test('reprise : les postes faits avant elle sont « repris » (pas « attend son tour »), la fiche dit après quelle panne', () => {
+  const r = room('r', {poste: 'tests', states: {cadrage: 'rep', gate: 'rep', code: 'rep', tests: 'run'},
+    reprise: {poste: 'controles', de: 'o1', panne: 'code', cause: 'délai dépassé', cause_type: 'delai', url: 'http://k/workflows/code/runs/o1'}});
+  run(`GATES = []; ATELIER = {rooms: [${JSON.stringify(r)}], queue: []}; ATSEL = 'r';`);
+  assert.equal(J(`atState(atRooms()[0], {k: 'code'})`), 'rep');
+  assert.match(J(`atStateText(atRooms()[0], 'code')`), /run d'avant la reprise/);
+  const fiche = J('atelierFicheHtml(atRooms()[0], 0)');
+  assert.match(fiche, /↻ Repris aux contrôles après : <b>⌨ Code<\/b> en panne \(⏱ délai dépassé\)/);
+  assert.match(fiche, /fait avant la reprise/);
+  assert.match(fiche, /↗ le run d'avant/);
+  assert.match(J('atBar(atRooms()[0])'), /class="rep"/);
+  assert.doesNotThrow(() => run('atDiff(1000); atRoom(atRooms()[0], 0, 1000, .016);'));
+});
+
+test('tableau « Runs du jour » : au mur à droite du grand tableau, à la place de deux fenêtres, hors de tout chemin et au-dessus de l\'en-tête du bureau 2 ; rien au clic', () => {
+  const b = J('AT_JOUR'), T = J('AT_TS');
+  assert.ok(b.x > (12.2 + 21.6) * T + 6, 'à droite du grand tableau');
+  for (const x of J('AT_WINDOWS')) assert.ok(x * T + 4 + 1.5 * T < b.x - 4 || x * T + 4 > b.x + b.w + 4, 'pas sur une fenêtre ' + x);
+  const g = J('AT_G[1]');
+  assert.ok(b.y + b.h + 3 < g.head - 10, 'au-dessus de l\'en-tête du bureau 2');
+  assert.ok(b.y + b.h + 3 < J('AT_HY0') * T, 'loin du couloir');
+  // aucun chemin de marche ne passe sous le tableau
+  const paths = J(`(() => { const P = []; for (let i = 0; i < 4; i++) { for (const p of AT_DESKS) if (!p.gate) P.push(atRouteOut(i, p.k)); P.push(atBossPath(AT_CHAIR, i));
+    P.push(atToHatch(AT_G[i], 1, AT_DOCK), atToHatch(AT_G[i], 2, AT_DOCK)); } for (const s of atCleanStops()) if (s.sweep) P.push(s.sweep); return P; })()`);
+  for (const pts of paths) for (const p of pts) assert.ok(p.y > b.y + b.h + 3 + 30, 'chemin sous le tableau : ' + JSON.stringify(p));
+  run(`ATELIER = {rooms: [], queue: [], jour: {tickets: 15, cours: 4, sortis: 12, pannes: 11, reprises: 23, tok: 1806000}};`);
+  assert.doesNotThrow(() => run('atJourBoard();'));
+  run(`ATELIER = {rooms: [], queue: []};`);
+  assert.doesNotThrow(() => run('atJourBoard();'), 'sans chiffres : des zéros');
+  assert.ok(!J('AT_HITS.some(h => h.kind === "jour")'), 'rien au clic');
+});
+
 test("la fiche d'un bureau qui attend ta gate reçoit la carte de décision du Bureau", () => {
   run(`ACTIONS.gate = true; GATES = [{run: 'g', gate: 'gate_plan', wf: 'abcd', wf_name: 'Le Bureau · implémenter un ticket (chaîne)', message: 'Plan', since: '2026-10-01T09:00:00Z'}];
        ATELIER = {rooms: [${JSON.stringify(room('g', {poste: 'gate', gate: 'gate_plan', states: {gate: 'wait'}}))}], queue: []}; ATSEL = 'g';`);
