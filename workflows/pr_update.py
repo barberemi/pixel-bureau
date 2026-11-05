@@ -27,6 +27,8 @@ Corriger les commentaires d'une PR (#75, page action « bureau-fixpr ») :
                corrigé), « **Version N** » en tête de chaque réponse, bloc « Corrections de review » (et le compteur des
                versions) dans la description de la PR, CI relancée, review redemandée à chaque reviewer humain (voir
                reviewers) quand du code est poussé.
+Le poste 💬 retours de la chaîne d'implémentation (impl_retours.json) enchaîne fix_prepare, fix_check, fix_diff et fix_push
+sans la gate : la PR lui arrive en « dépôt#n » (sortie de chaine.py retours_pr), le n° de PR passé à « - ».
 Codes : 2 réglage ou PR refusés, 3 conflit (renvoi), 4 conflit non résolu, 5 push refusé, 9 rien à faire (renvoi), 1 autre échec.
 """
 import glob, json, os, re, shutil, subprocess, sys, time
@@ -687,6 +689,8 @@ STEPS = {"end": end, "prepare": prepare, "rebase": rebase, "verify": verify, "ch
 
 if __name__ == "__main__":
     step, repo, n, run_id = (sys.argv[1:] + [""] * 4)[:4]
+    if n.strip() in ("", "-") and "#" in repo:  # « dépôt#n » d'une seule sortie d'étape (poste 💬 retours de la chaîne)
+        repo, n = repo.split("#", 1)
     if step not in STEPS:
         fail(2, f"Étape inconnue : « {step} ».")
     try:

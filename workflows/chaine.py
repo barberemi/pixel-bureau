@@ -29,7 +29,10 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
   missions | range                  # contrôles en parallèle : contexte, vérifications des règles, relevé de la doc ; rapports rangés
   bilan_controles                   # rapports des postes de contrôle : bloquants et avis
   aiguillage                        # stdin décision de l'orchestrateur : 3 livrer, 4 retour au code, 0 humain
-  pousse | pr | revue_prep | retours_lire | reponds   # PR, revue de la PR, retours des relecteurs (gh)
+  pousse | pr | revue_prep                          # PR et sa revue (gh)
+  retours_pr | retours_synchro <run> | repasse      # retours des relecteurs par pr_update.py (fix_*, sans gate) : la PR
+                                    # en « dépôt#n » (code 3 : essai ou pas de PR), puis la copie de travail resynchronisée
+                                    # et la description à jour ; repasse code 4 : seconde revue et retours (2 passes au plus)
   pret | reviewers | fin                              # publication après ta relecture (gh)
   bilan                             # bilan du run (historique de la page « Chaîne · bilan »), aussi écrit après chaque étape
 
@@ -1200,6 +1203,8 @@ def place(body, nom, corps):
 def cmd_pr():
     d = parse(read_stdin()) or {}
     e = etat()
+    e["passes_retours"] = 0  # passes revue puis retours de cette livraison (repasse)
+    write_json(dossier("etat.json"), e)
     sisters = e.get("soeurs") or []
     prs = {} if essai() else {r: pr_of(r, f"kronn/{e['ticket']}") for r in sisters}
     body = place(place(SOEURS.sub("", d.get("body") or ""), "exigences", exigences_md()), "points", points_md())
@@ -1239,50 +1244,79 @@ def cmd_revue_prep():
     print(f"PR #{n} confiée à la revue")
 
 
-def cmd_retours_lire():
-    """Commentaires de revue de la PR qui n'ont pas encore de réponse (fils ouverts) ; aucun, ou mode essai : code 3."""
+PR_RUNS = os.path.expanduser("~/.cache/pixel-bureau/pr/runs")  # états des runs de pr_update.py (fix_prepare … fix_push)
+MAX_PASSES = 2  # revue puis retours : une seconde passe au plus, si la première a poussé des corrections
+
+
+def cmd_retours_pr():
+    """Poste 💬 retours : le même code que « corriger les commentaires d'une PR » (pr_update.py fix_*), sans sa gate. Il
+    lui faut la PR, en « dépôt#n » (seule sortie de l'étape) ; mode essai ou pas de PR : code 3, rien n'est lu ni posté."""
     e = etat()
     n = e.get("pr") or ("" if essai() else pr_number())
     if essai() or not n:
         print("Mode essai : pas de retours à traiter." if essai() else "Aucune PR ouverte : pas de retours.")
         sys.exit(3)
-    code, o, err = gh("api", f"repos/{e['repo']}/pulls/{n}/comments", "--paginate")
-    try:
-        cs = json.loads(o) if code == 0 and o else []
-    except ValueError:
-        cs = []
-    answered = {c.get("in_reply_to_id") for c in cs if c.get("in_reply_to_id")}
-    todo = [{"id": c["id"], "path": c.get("path"), "line": c.get("line") or c.get("original_line"), "body": (c.get("body") or "")[:3000]}
-            for c in cs if not c.get("in_reply_to_id") and c["id"] not in answered]
-    if not todo:
-        print(f"PR #{n} : aucun commentaire sans réponse")
-        sys.exit(3)
-    write_json(dossier("retours.json"), {"pr": n, "fils": todo})
-    out({"pr": n, "fils": todo})
+    e.update(pr=n, retours_pousse=False)
+    write_json(dossier("etat.json"), e)
+    sys.stdout.write(f"{e['repo']}#{n}")
 
 
-def cmd_reponds():
-    """Réponses de l'agent dans les fils de la PR (gh) ; mode essai : rien n'est posté."""
-    d = parse(read_stdin()) or {}
-    replies = [r for r in d.get("replies") or [] if isinstance(r, dict) and r.get("commentId") and r.get("body")]
-    if sauter("réponses dans les fils de la PR"):
+def cmd_retours_synchro(run=""):
+    """Après fix_push : la copie de travail de la chaîne reprend les commits poussés par pr_update.py (qui travaille dans
+    son propre dossier, sur la branche distante de la PR) : fetch puis avance rapide sur origin/<branche>, sans quoi le
+    squash de la publication les écraserait ; une copie divergente échoue sans rien toucher. La description de la PR,
+    relue sur GitHub (le bloc « Corrections de review » de fix_push y reste), garde ses blocs exigences et points à
+    jour. La passe est notée (retours.json) pour le bilan et pour la seconde passe (repasse)."""
+    if sauter("reprise des corrections poussées"):
         return
     e = etat()
-    n = e.get("pr") or pr_number()
-    ok = 0
-    for r in replies:
-        code, _, _ = gh("api", "-X", "POST", f"repos/{e['repo']}/pulls/{n}/comments/{r['commentId']}/replies", "-f", f"body={r['body']}")
-        ok += code == 0
-    st = load("retours.json", {}) or {}
-    st.update({"reponses": ok, "resume": d.get("resume")})
-    write_json(dossier("retours.json"), st)
-    # la description relue après les corrections (le poste retours la réécrit si elle a vieilli) : blocs du script à jour
+    b, n = e["branch"], e.get("pr") or pr_number()
+    git("fetch", "--no-tags", "origin", f"+refs/heads/{b}:refs/remotes/origin/{b}", check=True)
+    remote, head = git("rev-parse", f"origin/{b}"), git("rev-parse", "HEAD")
+    pousse = bool(remote) and remote != head
+    if pousse:
+        if not git_ok("merge-base", "--is-ancestor", head, remote):
+            sys.exit(f"Copie de travail divergente de origin/{b} : corrections non reprises, à régler avant la publication.")
+        git("merge", "--ff-only", remote, check=True)
+    try:
+        st = read_json(os.path.join(PR_RUNS, re.sub(r"[^\w-]", "", run) + ".json"))
+    except (OSError, ValueError):
+        st = {}
+    cols = {}
+    for c in (st.get("cols") or {}).values():
+        cols[c] = cols.get(c, 0) + 1
+    r = load("retours.json", {}) or {}
+    if not isinstance(r, dict) or "passes" not in r:
+        r = {"pr": n, "passes": []}
+    r["passes"].append({"run": run, "version": st.get("version"), "fils": len(st.get("threads") or []),
+                        "hors_fil": len(st.get("generaux") or []), "colonnes": cols, "pousse": pousse,
+                        "commit": remote[:8] if pousse else None})
+    r["reponses"] = sum(sum(v for k, v in (p.get("colonnes") or {}).items() if k != "laisse") + int(p.get("hors_fil") or 0)
+                        for p in r["passes"])
+    write_json(dossier("retours.json"), r)
+    e = etat()
+    e["retours_pousse"] = pousse
+    write_json(dossier("etat.json"), e)
     path, maj = dossier("pr_body.md"), ""
-    if os.path.exists(path) and n:
-        body = open(path, encoding="utf-8").read()
+    code, body, _ = gh("pr", "view", str(n), "-R", e["repo"], "--json", "body", "-q", ".body") if n else (1, "", "")
+    if code == 0 and body:
         write_text(path, place(place(body, "exigences", exigences_md()), "points", points_md()))
-        maj = " ; description remise à jour" if gh("pr", "edit", n, "-R", e["repo"], "--body-file", path)[0] == 0 else ""
-    print(f"PR #{n} : {ok} réponse(s) postée(s) sur {len(replies)}{maj}")
+        maj = " ; description remise à jour" if gh("pr", "edit", str(n), "-R", e["repo"], "--body-file", path)[0] == 0 else ""
+    print((f"Corrections reprises dans la copie de travail ({remote[:8]})" if pousse else "Rien de poussé") + f", PR #{n}{maj}")
+
+
+def cmd_repasse():
+    """Après le poste 💬 retours : des corrections poussées et moins de MAX_PASSES passes, code 4 (la revue relit le
+    nouveau head, puis les retours) ; sinon 0, fin. Le compteur repart de zéro à l'étape pr (cmd_pr)."""
+    e = etat()
+    e["passes_retours"] = int(e.get("passes_retours") or 0) + 1
+    again = bool(e.get("retours_pousse")) and e["passes_retours"] < MAX_PASSES and not essai()
+    e["retours_pousse"] = False
+    write_json(dossier("etat.json"), e)
+    if again:
+        print(f"Passe {e['passes_retours']} : corrections poussées, la revue relit la PR (passe {e['passes_retours'] + 1} sur {MAX_PASSES}).")
+        sys.exit(4)
+    print(f"Passe {e['passes_retours']} : " + ("dernière passe faite." if e.get("passes_retours", 0) >= MAX_PASSES else "rien de poussé, fin."))
 
 
 def ci_label():
@@ -1567,8 +1601,8 @@ def main(argv):
               "range": cmd_range, "tri_code": cmd_tri_code, "tri_tests": cmd_tri_tests, "bilan_code": cmd_bilan_code, "quoi": cmd_quoi,
               "bilan_controles": cmd_bilan_controles,
               "aiguillage": cmd_aiguillage, "pousse": cmd_pousse, "pr": cmd_pr, "pret": cmd_pret,
-              "reviewers": cmd_reviewers, "fin": cmd_fin, "revue_prep": cmd_revue_prep, "retours_lire": cmd_retours_lire,
-              "reponds": cmd_reponds, "bilan": cmd_bilan}
+              "reviewers": cmd_reviewers, "fin": cmd_fin, "revue_prep": cmd_revue_prep, "retours_pr": cmd_retours_pr,
+              "repasse": cmd_repasse, "bilan": cmd_bilan}
     if cmd in simple:
         return simple[cmd]()
     if cmd == "lance":
@@ -1577,6 +1611,8 @@ def main(argv):
         return cmd_prepare(*(args + [""] * 8)[:8])
     if cmd == "entree":
         return cmd_entree(*(args + ["", "", "", ""])[:4])
+    if cmd == "retours_synchro":
+        return cmd_retours_synchro(args[0] if args else "")
     if cmd == "rapport":
         return cmd_rapport(args[0] if args else "?")
     if cmd == "plan":

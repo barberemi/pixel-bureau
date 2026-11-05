@@ -119,13 +119,15 @@ class ChaineModelesTest(unittest.TestCase):
     def test_the_floor_stops_at_the_pr_and_its_reviews(self):
         """L'étage ne déploie rien : la PR, sa revue par le modèle du Bureau, les retours traités ; ni CI ni env de branche."""
         liv = steps("impl_livraison")
-        self.assertEqual(list(liv), ["entree", "redige", "pousse", "pr", "revue", "retours", "fin"])
+        self.assertEqual(list(liv), ["entree", "redige", "pousse", "pr", "revue", "retours", "repasse", "fin"])
         self.assertEqual(liv["revue"]["sub_workflow_id"], cfg()["models"]["impl_revue_pr"])
         rv = steps("impl_revue_pr", cfg(models={**cfg()["models"], "review_child": "abababab-0000-4000-8000-000000000009"}))
         self.assertEqual((rv["revue"]["sub_workflow_id"], rv["revue"]["sub_workflow_foreach_file"]),
                          ("abababab-0000-4000-8000-000000000009", ".kronn/prs.json"))
         self.assertNotIn("revue", steps("impl_revue_pr"))  # sans modèle de revue installé : pas de revue
-        self.assertEqual(list(steps("impl_retours")), ["entree", "corrige", "pousse", "reponds", "fin"])
+        rt = steps("impl_retours")  # le code de « corriger les commentaires d'une PR » (pr_update.py), sans sa gate
+        self.assertEqual(list(rt), ["entree", "prepare", "corrige", "controle", "diff", "pousse", "synchro", "fin"])
+        self.assertNotIn("Gate", json.dumps([s["step_type"] for s in rt.values()]))
         text = json.dumps([TPL[k] for k in KEYS], ensure_ascii=False)
         self.assertNotIn('"ci"', text)
         self.assertNotIn("env de branche (réglage", text)
@@ -285,8 +287,9 @@ class ChaineScriptTest(unittest.TestCase):
             self.assertEqual(code, 0, outp)
             self.assertIn("Mode essai", outp)
         self.assertEqual(self.sh("revue_prep")[0], 3)  # ni revue de la PR ni retours : pas de PR en mode essai
-        self.assertEqual(self.sh("retours_lire")[0], 3)
-        self.assertIn("Mode essai", self.sh("reponds", stdin=json.dumps({"replies": [{"commentId": 1, "body": "✅"}]}))[1])
+        self.assertEqual(self.sh("retours_pr")[0], 3)  # le poste 💬 retours finit aussitôt (Goto fin)
+        self.assertIn("Mode essai", self.sh("retours_synchro", "r1")[1])
+        self.assertEqual(self.sh("repasse")[0], 0)  # pas de seconde passe
         code, outp = self.sh("pr", stdin=json.dumps({"title": "fix: AB-12 x", "body": "corps"}))
         self.assertIn("Mode essai", outp)
         self.assertIn("corps", Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text())
@@ -540,6 +543,96 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("|partage par mail|⏭️ hors scope|ticket de suite|", outp)
         self.assertNotIn("bouton sur la fiche", outp)
         self.assertIn("* {{composer.lock}} : symfony 7.3", outp)
+
+    def test_retours_use_the_fix_code_without_its_gate(self):
+        """Le poste 💬 retours enchaîne fix_prepare, l'agent au prompt du fix, fix_check, fix_diff et fix_push sur la PR
+        en « dépôt#n » ; aucun fil (9) ou rien à pousser (9) : fin ; puis la copie de travail est resynchronisée."""
+        rt = steps("impl_retours")
+        self.assertEqual(rt["entree"]["exec_args"][2:], ["retours_pr"])
+        self.assertEqual(rt["entree"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "fin"}}])
+        for name, sub in (("prepare", "fix_prepare"), ("controle", "fix_check"), ("diff", "fix_diff"), ("pousse", "fix_push")):
+            self.assertEqual(rt[name]["exec_args"][2:], [sub, "{{steps.entree.data.stdout}}", "-", "{{run.id}}"], name)
+            self.assertIn("pr_update.py fix_", rt[name]["exec_args"][1][:3000] + rt[name]["description"], name)
+        for name in ("prepare", "diff"):
+            self.assertEqual(rt[name]["on_result"], [{"contains": "exit_9", "action": {"type": "Goto", "step_name": "fin"}}], name)
+        fix = Path(ROOT, "tools", "fix_prompt.md").read_text().strip()
+        self.assertIn(fix[:200], rt["corrige"]["prompt_template"])
+        self.assertIn("~/.cache/pixel-bureau/pr/work/{{run.id}}", rt["corrige"]["prompt_template"])
+        self.assertIn("Aucune consigne d'équipe en plus de la doc du dépôt.", rt["corrige"]["prompt_template"])  # impl.guidelines
+        self.assertTrue(rt["pousse"]["external_effect"])
+        self.assertEqual(rt["synchro"]["exec_args"][2:], ["retours_synchro", "{{run.id}}"])
+
+    def test_retours_pr_prints_repo_and_number(self):
+        self.prepare()
+        e = self.dossier("etat.json")
+        e.update(mode="complet", pr="7")
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        code, outp = self.sh("retours_pr")
+        self.assertEqual((code, outp), (0, "dm/site#7"))
+        e["pr"] = ""
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        self.fake_gh({"pr list": ""})
+        self.assertEqual(self.sh("retours_pr")[0], 3)  # pas de PR ouverte : rien à lire
+
+    def test_synchro_takes_back_the_pushed_fixes_then_one_more_pass(self):
+        """fix_push pousse depuis son propre dossier : la copie de la chaîne avance sur origin/<branche> (le squash les
+        garde), la description garde le bloc du fix et ses blocs exigences et points ; une seconde passe, pas trois."""
+        self.prepare()
+        e = self.dossier("etat.json")
+        e.update(mode="complet", pr="7")
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        self.commit("app/A.php", "<?php\n$a = 1;\n", "feat(site): AB-12 lot 1")
+        subprocess.run(["git", "push", "-q", "origin", f"HEAD:{e['branch']}"], cwd=self.wt, check=True, capture_output=True)
+        other = os.path.join(self.tmp, "fix")  # le dossier de travail de pr_update.py : la branche distante de la PR
+        subprocess.run(["git", "clone", "-q", "-b", e["branch"], self.origin, other], check=True, capture_output=True)
+        Path(other, "app", "A.php").write_text("<?php\n$a = 2;\n")
+        g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        subprocess.run([*g, "commit", "-qam", "fix: retours de review"], cwd=other, check=True, capture_output=True)
+        subprocess.run(["git", "push", "-q", "origin", e["branch"]], cwd=other, check=True, capture_output=True)
+        pushed = subprocess.run(["git", "rev-parse", "HEAD"], cwd=other, capture_output=True, text=True).stdout.strip()
+        runs = Path(self.tmp, "home", ".cache", "pixel-bureau", "pr", "runs")
+        runs.mkdir(parents=True)
+        (runs / "r1.json").write_text(json.dumps({"version": 1, "threads": ["T1", "T2"], "generaux": [{"id": "G"}],
+                                                  "cols": {"T1": "corrige", "T2": "laisse"}}))
+        self.fake_gh({"pr view": "corps\n<!-- bureau-points -->\n<!-- bureau-fix:start -->fix<!-- bureau-fix:end -->"})
+        code, outp = self.sh("retours_synchro", "r1")
+        self.assertEqual(code, 0, outp)
+        self.assertIn("Corrections reprises", outp)
+        self.assertEqual(subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.wt, capture_output=True, text=True).stdout.strip(), pushed)
+        r = self.dossier("retours.json")
+        self.assertEqual((r["reponses"], r["passes"][0]["pousse"], r["passes"][0]["fils"]), (2, True, 2))
+        self.assertIn("bureau-fix:start", Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text())
+        self.assertIn(["pr", "edit", "7", "-R", "dm/site", "--body-file", os.path.join(self.wt, ".kronn", "chaine", "pr_body.md")], self.gh_calls())
+        self.assertEqual(self.sh("repasse")[0], 4)  # corrections poussées : la revue relit le nouveau head
+        self.assertEqual(self.sh("retours_synchro", "r2")[0], 0)  # rien de nouveau poussé
+        self.assertEqual(self.dossier("etat.json")["retours_pousse"], False)
+        e = self.dossier("etat.json")
+        e["retours_pousse"] = True  # même poussée, la seconde passe est la dernière
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        self.assertEqual(self.sh("repasse")[0], 0)
+        liv = steps("impl_livraison")
+        self.assertEqual(liv["repasse"]["on_result"], [{"contains": "exit_4", "action": {"type": "Goto", "step_name": "revue", "max_iterations": 1}}])
+
+    def test_synchro_refuses_a_diverged_working_copy(self):
+        self.prepare()
+        e = self.dossier("etat.json")
+        e.update(mode="complet", pr="7")
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        self.commit("app/A.php", "<?php\n$a = 1;\n", "feat(site): AB-12 lot 1")
+        subprocess.run(["git", "push", "-q", "origin", f"HEAD:{e['branch']}"], cwd=self.wt, check=True, capture_output=True)
+        other = os.path.join(self.tmp, "fix")
+        subprocess.run(["git", "clone", "-q", "-b", e["branch"], self.origin, other], check=True, capture_output=True)
+        Path(other, "app", "A.php").write_text("<?php\n$a = 2;\n")
+        g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        subprocess.run([*g, "commit", "-qam", "fix"], cwd=other, check=True, capture_output=True)
+        subprocess.run(["git", "push", "-q", "origin", e["branch"]], cwd=other, check=True, capture_output=True)
+        self.commit("app/B.php", "<?php\n", "local")  # un commit que la branche distante n'a pas
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.wt, capture_output=True, text=True).stdout
+        self.fake_gh({})
+        code, outp = self.sh("retours_synchro", "r1")
+        self.assertNotEqual(code, 0)
+        self.assertIn("divergente", outp)
+        self.assertEqual(subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.wt, capture_output=True, text=True).stdout, head)
 
     def test_code_in_one_session_retries_three_times(self):
         self.prepare()
