@@ -4,7 +4,8 @@ lus dans l'API Kronn, 0 token ; stdout JSON du dataset atelier (cron live).
   {generated_at, rooms: [{run, ticket, title, repo, status, poste, gate, states: {poste: ok|run|bloq|avis|skip|wait|err|rep},
                           tour, tok, since, lot, note, url, reprise?: {poste, de, panne, cause, cause_type, url}}],
    queue: [{run, since}], pannes: [{run, ticket, repo, title, poste, since, url, cause, cause_type, docs_ok}], postes: [clé],
-   events: [{t, k: arrive|poste|gate|back|panne|sort, run, ticket, repo, title, gate?, poste?, cause?, cause_type?}], livres}
+   events: [{t, k: arrive|poste|gate|back|panne|sort, run, ticket, repo, title, gate?, poste?, cause?, cause_type?}], livres,
+   jour: {tickets, cours, sortis, pannes, reprises, tok}}
 
 Un bureau = un run actif de la chaîne (4 au plus, concurrency_limit) ; la file = les runs en attente d'un bureau libre ;
 les pannes = les runs en échec des dernières 24 h qu'aucun run plus récent du même ticket et du même dépôt n'a repris
@@ -20,6 +21,9 @@ child_workflow_id), en une ligne et classée (garde_fou_docs, delai, agent, scri
 fini ne change plus : sa cause est gardée dans ~/.cache/pixel-bureau/atelier_causes.json (le cron tourne chaque minute).
 Un run repris (prepare saute au Code, aux contrôles ou à la PR) : les postes d'avant la reprise sont « rep » (faits par le run
 d'avant), et reprise dit après quelle panne.
+Le tableau « Runs du jour » (jour) compte par ticket et dépôt les runs de la chaîne depuis minuit (fuseau du bureau, pages
+de 50) : tickets, en cours (un run actif), sortis (une livraison réussie), pannes (runs en échec hors gate refusée),
+reprises (runs de plus que les tickets), jetons. Le ticket d'un run est lu une fois et gardé avec les causes.
 """
 import datetime, json, os, re, sys
 from _lib import ACTIVE, CFG, TZ, get, read_json, write_json
@@ -354,13 +358,47 @@ def snapshot(now_iso=None):
     now = when(now_iso)
     midnight = now.astimezone(TZ).replace(hour=0, minute=0, second=0, microsecond=0) if now else None
     out["livres"] = sum(1 for e in ev if e["k"] == "sort" and (not midnight or when(e["t"]) >= midnight))
+    out["jour"] = jour(chain, now, full_of, causes)
     if len(causes) != known:  # 200 runs au plus, les plus récents (ordre d'insertion)
         try:
             os.makedirs(os.path.dirname(CAUSES), exist_ok=True)
-            write_json(CAUSES, dict(list(causes.items())[-200:]))
+            write_json(CAUSES, dict(list(causes.items())[-400:]))
         except OSError:
             pass
     return out
+
+
+def jour(chain, now, full_of, causes):
+    """Les chiffres du jour, par ticket (les reprises à part) ; None sans heure de calcul."""
+    if not now:
+        return None
+    midnight = now.astimezone(TZ).replace(hour=0, minute=0, second=0, microsecond=0)
+    runs, off = [], 0
+    while off < 500:
+        batch = get(f"/workflows/{chain}/runs?limit=50&offset={off}") or []
+        runs += [r for r in batch if when(r.get("started_at")) and when(r.get("started_at")) >= midnight]
+        if len(batch) < 50 or any(when(r.get("started_at")) and when(r.get("started_at")) < midnight for r in batch):
+            break
+        off += 50
+    tk = {}
+    for r in runs:
+        if r.get("status") == "Pending":
+            continue
+        key = "t:" + r["id"]
+        if key not in causes:
+            m = KEY.search((last_steps(full_of(r["id"])).get("prepare") or {}).get("output") or "")
+            if not m:
+                continue
+            causes[key] = "|".join(m.groups())
+        t = tk.setdefault(causes[key], {"runs": 0, "cours": False, "sorti": False})
+        steps = r.get("step_results") or []
+        t["runs"] += 1
+        t["cours"] |= r.get("status") in ACTIVE
+        t["sorti"] |= any(x.get("step_name") == "livraison" and x.get("status") == "Success" for x in steps)
+    pannes = sum(1 for r in runs if r.get("status") in ("Failed", "StoppedByGuard")
+                 and not str(((r.get("step_results") or [{}])[-1]).get("step_name") or "").startswith("gate_"))
+    return {"tickets": len(tk), "cours": sum(t["cours"] for t in tk.values()), "sortis": sum(t["sorti"] for t in tk.values()),
+            "pannes": pannes, "reprises": sum(t["runs"] - 1 for t in tk.values()), "tok": sum(int(r.get("tokens_used") or 0) for r in runs)}
 
 
 def day_before(iso):

@@ -69,7 +69,7 @@ function atelierDemo(){
     {run:'demo-a4',ticket:'DM-412',title:'Cache des listes de rubriques',repo:'dm/api',poste:'retours',
      states:{...ok(6),perf:'err',besoin:'avis',doc:'ok',pr:'ok',revue_pr:'ok',retours:'run'},tour:'1/3',tok:138e3,since:at(7.9),note:'💬 3 commentaires à traiter'}],
     queue:[{run:'demo-q1',ticket:'DM-7606',since:at(10.5)},{run:'demo-q2',ticket:'DM-7948',since:at(10.8)}],
-    livres:3,pannes:[{run:'demo-p1',ticket:'DM-7702',title:'Bandeau d\'alerte sur les pages direct',repo:'dm/api',poste:'securite',since:at(8.1),
+    livres:3,jour:{tickets:7,cours:4,sortis:3,pannes:1,reprises:2,tok:612e3},pannes:[{run:'demo-p1',ticket:'DM-7702',title:'Bandeau d\'alerte sur les pages direct',repo:'dm/api',poste:'securite',since:at(8.1),
       cause:'garde-fou docs de Kronn : docs/cache.md refusé (une suite de caractères qui ressemble à un secret)',cause_type:'garde_fou_docs',docs_ok:true}]};
 }
 const atelierOn=()=>!!(CFG.atelier||DEMO);
@@ -769,7 +769,21 @@ function atGalleryScenes(){
 // Comme au RDC : le ciel des fenêtres suit le soleil à Paris, le voile de nuit s'ouvre seulement là où ça travaille.
 // Comme au RDC aussi, le boss et les agents restent le soir et le week-end (la chaîne tourne à toute heure) : seul
 // Bernard, un humain, rentre chez lui hors des heures de bureau.
-const AT_WINDOWS=[1,3.5,6,8.5,35,37.5,40,42.5]; // en cases : au-dessus des bureaux 1 et 2, de part et d'autre du grand tableau
+const AT_WINDOWS=[1,3.5,6,8.5,40,42.5]; // en cases : au-dessus des bureaux 1 et 2 ; à droite du grand tableau, le tableau « Runs du jour »
+// le tableau noir « Runs du jour », au mur du haut à droite du grand tableau (hors de tout chemin, au-dessus de l'en-tête
+// du bureau 2), purement indicatif comme ceux des autres étages : rien au clic, l'historique est dans « Chaîne · bilan ».
+// Compté par ticket (dataset atelier, jour), les reprises à part ; en rejeu, les chiffres sont ceux du relevé (en direct).
+const AT_JOUR={x:34.3*AT_TS,y:4,w:5.5*AT_TS,h:1.62*AT_TS};
+function atJourBoard(){
+  const {x:bx,y:by,w:bw,h:bh}=AT_JOUR, j=(ATELIER&&ATELIER.jour)||{}, n=k=>+j[k]||0, f='10px ui-monospace,Menlo,monospace', tk=n('tok');
+  R(ctx,bx-4,by-3,bw+8,bh+6,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+6,by+bh-4,bw-12,3,'#a37650');
+  atTxt('RUNS DU JOUR',bx+8,by+13,'#f4efe4','bold 11px ui-monospace,Menlo,monospace','left');
+  let rp=n('reprises')?'↻ '+plural(n('reprises'),'reprise','reprises'):'';ctx.font=f;if(ctx.measureText(rp).width>bw-110)rp='↻ '+n('reprises')+' repr.'; // 2 chiffres : abrégé
+  atTxt(rp,bx+bw-8,by+13,'#c9c2ae',f,'right');
+  R(ctx,bx+8,by+17,bw-16,1,'rgba(244,239,228,.4)');
+  [['#5b8def',n('cours')+' en cours'],['#3fbf6a',n('sortis')+'/'+n('tickets')+' sortis'],['#e0614f',plural(n('pannes'),'panne','pannes')],['#e0a020','~'+(tk>=1e6?(tk/1e6).toFixed(1).replace('.',',')+' M':Math.round(tk/1e3)+' k')+' jet.']]
+    .forEach(([c,t],k)=>{const cx=bx+8+(k%2)*(bw/2-6), cy=by+30+Math.floor(k/2)*15;R(ctx,cx,cy-7,7,7,c);atTxt(t,cx+11,cy,'#e8e2d0',f,'left');});
+}
 const atOpen=()=>officeOpen(T);
 // en rejeu, à chaque étage : la pastille qui dit qu'on regarde le passé
 function atReplayPill(){if(atLive())return;const s='⏪ Rejeu · '+hm(T)+' · l\'étage à cette heure-là';ctx.font='bold 13px system-ui,sans-serif';
@@ -842,7 +856,7 @@ function renderAtelier(now){
   // en rejeu rapide, on marche plus vite, comme au RDC (walkBoost, 35-state.js) : les scènes suivent le curseur
   const dt=(AT_MEM.last?Math.min(.1,(now-AT_MEM.last)/1000):0)*walkBoost();AT_MEM.last=now;
   if(!AT_BG)AT_BG=atBackground();
-  ctx.drawImage(AT_BG,0,0);atWindows(now);AT_HITS=[];AT_LIT=[];
+  ctx.drawImage(AT_BG,0,0);atWindows(now);atJourBoard();AT_HITS=[];AT_LIT=[];
   // un saut du curseur (plus de 2 min de l'heure du plan) ou un passage du direct au rejeu : l'étage se pose sans rejouer
   const live=atLive(), jump=AT_MEM.lastT!=null&&(Math.abs(T-AT_MEM.lastT)>120e3||live!==AT_MEM.live), sig=atSig();
   if(jump){AT_MEM.fresh=true;AT_MEM.scenes=[];AT_MEM.leaving=[null,null,null,null];AT_MEM.rooms={};AT_MEM.cart={};}

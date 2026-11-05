@@ -82,6 +82,24 @@ test('reprise : les postes faits avant elle sont « repris » (pas « attend son
   assert.doesNotThrow(() => run('atDiff(1000); atRoom(atRooms()[0], 0, 1000, .016);'));
 });
 
+test('tableau « Runs du jour » : au mur à droite du grand tableau, à la place de deux fenêtres, hors de tout chemin et au-dessus de l\'en-tête du bureau 2 ; rien au clic', () => {
+  const b = J('AT_JOUR'), T = J('AT_TS');
+  assert.ok(b.x > (12.2 + 21.6) * T + 6, 'à droite du grand tableau');
+  for (const x of J('AT_WINDOWS')) assert.ok(x * T + 4 + 1.5 * T < b.x - 4 || x * T + 4 > b.x + b.w + 4, 'pas sur une fenêtre ' + x);
+  const g = J('AT_G[1]');
+  assert.ok(b.y + b.h + 3 < g.head - 10, 'au-dessus de l\'en-tête du bureau 2');
+  assert.ok(b.y + b.h + 3 < J('AT_HY0') * T, 'loin du couloir');
+  // aucun chemin de marche ne passe sous le tableau
+  const paths = J(`(() => { const P = []; for (let i = 0; i < 4; i++) { for (const p of AT_DESKS) if (!p.gate) P.push(atRouteOut(i, p.k)); P.push(atBossPath(AT_CHAIR, i));
+    P.push(atToHatch(AT_G[i], 1, AT_DOCK), atToHatch(AT_G[i], 2, AT_DOCK)); } for (const s of atCleanStops()) if (s.sweep) P.push(s.sweep); return P; })()`);
+  for (const pts of paths) for (const p of pts) assert.ok(p.y > b.y + b.h + 3 + 30, 'chemin sous le tableau : ' + JSON.stringify(p));
+  run(`ATELIER = {rooms: [], queue: [], jour: {tickets: 15, cours: 4, sortis: 12, pannes: 11, reprises: 23, tok: 1806000}};`);
+  assert.doesNotThrow(() => run('atJourBoard();'));
+  run(`ATELIER = {rooms: [], queue: []};`);
+  assert.doesNotThrow(() => run('atJourBoard();'), 'sans chiffres : des zéros');
+  assert.ok(!J('AT_HITS.some(h => h.kind === "jour")'), 'rien au clic');
+});
+
 test("la fiche d'un bureau qui attend ta gate reçoit la carte de décision du Bureau", () => {
   run(`ACTIONS.gate = true; GATES = [{run: 'g', gate: 'gate_plan', wf: 'abcd', wf_name: 'Le Bureau · implémenter un ticket (chaîne)', message: 'Plan', since: '2026-10-01T09:00:00Z'}];
        ATELIER = {rooms: [${JSON.stringify(room('g', {poste: 'gate', gate: 'gate_plan', states: {gate: 'wait'}}))}], queue: []}; ATSEL = 'g';`);

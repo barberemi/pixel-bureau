@@ -1030,6 +1030,22 @@ class AtelierSnapshotTest(unittest.TestCase):
         self.snap(get, {"impl_chain": "c", "impl_code": "code"}, ui="http://k:5173/")
         self.assertNotIn("/workflows/code/runs/k1", reads)  # cause gardée : le sous-run n'est plus relu
 
+    def test_runs_of_the_day_counted_by_ticket(self):
+        """Tableau « Runs du jour » : depuis minuit (fuseau du bureau), par ticket et dépôt, les reprises à part ; une gate
+        refusée n'est pas une panne ; le ticket d'un run est lu une fois (gardé avec les causes)."""
+        import atelier_snapshot as a
+        prep = lambda t: {"step_name": "prepare", "status": "Success", "output": f"{t} sur dm/site : x"}  # noqa: E731
+        R = lambda i, t, st, at, steps=(), tok=1000: {"id": i, "workflow_id": "c", "status": st, "started_at": at, "tokens_used": tok,  # noqa: E731
+                                                     "step_results": [prep(t), *steps]}
+        runs = [R("a1", "AB-1", "Failed", "2026-10-30T01:00:00Z", [{"step_name": "code", "status": "Failed"}]),
+                R("a2", "AB-1", "Running", "2026-10-30T06:00:00Z"),
+                R("b1", "AB-2", "Success", "2026-10-30T02:00:00Z", [{"step_name": "livraison", "status": "Success"}]),
+                R("c1", "AB-3", "Failed", "2026-10-30T03:00:00Z", [{"step_name": "gate_plan", "status": "Failed"}]),
+                R("v", "AB-9", "Success", "2026-10-29T20:00:00Z", [{"step_name": "livraison", "status": "Success"}])]  # avant minuit (Paris)
+        api = {"/workflows/c/runs?limit=40": runs, "/workflows/c/runs?limit=50&offset=0": runs, **{f"/workflows/c/runs/{r['id']}": r for r in runs}}
+        snap = self.snap(api, {"impl_chain": "c"})
+        self.assertEqual(snap["jour"], {"tickets": 3, "cours": 1, "sortis": 1, "pannes": 1, "reprises": 1, "tok": 4000})
+
     def test_resumed_run_shows_earlier_postes_and_why(self):
         """Run repris (prepare saute aux contrôles) : Plan, gate et Code « rep » (pas « attend son tour »), après quelle panne ;
         le saut de prepare n'est pas une panne dans le fil."""
