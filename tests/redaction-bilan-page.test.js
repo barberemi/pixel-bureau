@@ -78,22 +78,37 @@ test('semaines ISO', () => {
   assert.equal(B.week('rien'), null);
 });
 
-test('rendu complet : chiffres, sections, fiche de la plus récente, liens Jira, textes échappés', () => {
-  const h = B.render(DATA, {jours: 30, projet: '', essais: false, sel: null});
-  for (const s of ['tickets créés dans Jira', '1 essai écarté du bilan', 'De l\'intention à Jira', 'Les postes', 'Ce que relève la critique',
-    'Pourquoi tu demandes des changements', 'Où vont les tickets', 'Par semaine', 'Historique', 'Déroulé', 'Ce qu\'a trouvé la recherche',
-    'Notes de la critique', 'Versions', 'Tickets créés', 'Coût par poste', 'titre ou texte pas dans la langue', '2 · 1 ↺',
-    '1 en panne avant le tampon', '1 passé au tampon avec les réserves', '1 rejeté au tampon', '1 en panne à la création',
-    'renvoie 2 fois sur 6', 'https://dm.atlassian.net/browse/DM-7853', '✍ Rédaction v2', 'identique', 'découpage : à découper',
-    '✍ Rédaction → « découpage à revoir »', 'en panne (recherche)'])
+test('rendu complet : chiffres, sections, fiche en onglets de la plus récente, liens Jira, textes échappés', () => {
+  const st = {jours: 30, projet: '', essais: false, sel: null};
+  const h = B.render(DATA, st);
+  for (const s of ['tickets créés dans Jira', '1 essai écarté', 'Où part l\'argent', 'De l\'intention à Jira', 'Par intention', 'Analyse de la rédaction',
+    'Les postes', 'Ce que relève la critique', 'Pourquoi tu demandes des changements', 'Où vont les tickets', 'Par semaine',
+    'titre ou texte pas dans la langue', '2 · 1 ↺', '1 en panne avant le tampon', '1 passé au tampon avec les réserves', '1 rejeté au tampon',
+    '1 en panne à la création', 'renvoie 2 fois sur 6', 'https://dm.atlassian.net/browse/DM-7853', '✍ Rédaction → « découpage à revoir »',
+    'en panne (recherche)', '💰 Coût', '🎫 Création Jira', '✋ Ton tampon'])
     assert.ok(h.includes(s), s);
-  assert.ok(h.includes('Refondre le &lt;lecteur&gt;'));
-  assert.ok(h.includes('Fusionne &lt;T1&gt;'));
-  assert.ok(!/undefined|NaN/.test(h));
+  assert.ok(!/<details class="analyse" open/.test(h), 'l\'analyse repliée');
+  const tab = t => B.render(DATA, {...st, tab: t});
+  assert.ok(tab('deroule').includes('✍ Rédaction v2') && tab('deroule').includes('Refondre le &lt;lecteur&gt;'));
+  assert.ok(tab('tickets').includes('identique') && tab('tickets').includes('Tickets créés'));
+  assert.ok(tab('critique').includes('<b>découpage</b>') && tab('critique').includes('Fusionne &lt;T1&gt;'));
+  assert.ok(tab('recherche').includes('class="pistes"') || tab('recherche').includes('Pas de piste'));
+  for (const t of ['cout', 'tickets', 'critique', 'recherche', 'deroule']) assert.ok(!/undefined|NaN/.test(tab(t)), t);
   assert.ok(!h.includes('[ESSAI du Bureau]'), 'essais écartés par défaut');
-  assert.ok(B.render(DATA, {jours: 30, projet: '', essais: true, sel: null}).includes('[ESSAI du Bureau]'));
-  const h2 = B.render(DATA, {jours: 30, projet: '', essais: false, sel: '2'});
-  assert.ok(h2.includes('Fiche détaillée gardée pour les intentions les plus récentes'));
+  assert.ok(B.render(DATA, {...st, essais: true}).includes('[ESSAI du Bureau]'));
+  assert.ok(B.render(DATA, {...st, sel: '2'}).includes('Fiche détaillée gardée pour les intentions les plus récentes'));
+});
+
+test('coût : par poste et par modèle, et passage par passage dans la fiche', () => {
+  const r = DATA.intentions.find(x => (DATA.fiches || {})[x.run]);
+  const D = {...DATA, fiches: {...DATA.fiches, [r.run]: {...DATA.fiches[r.run], passages: [
+    {n: 'recherche', at: '2026-11-01T10:00:00Z', ms: 60000, tok: 1000, cout: 0.2, modele: 'claude-haiku-4-5', s: 'Success'},
+    {n: 'redaction', at: '2026-11-01T10:01:00Z', ms: 60000, tok: 2000, cout: 0.3, modele: 'claude-sonnet-5', s: 'Success'},
+    {n: 'redaction', at: '2026-11-01T10:05:00Z', ms: 60000, tok: 2000, cout: 0.4, modele: 'claude-sonnet-5', s: 'Failed'}]}}};
+  const h = B.render(D, {jours: 30, sel: r.run, tab: 'cout'});
+  for (const s of ['📚 Recherche', '✍ Rédaction v1', '✍ Rédaction v2', 'chip haiku', 'chip sonnet', 'échec']) assert.ok(h.includes(s), s);
+  const a = B.aggregate(DATA, {jours: 30});
+  assert.ok(Object.keys(a.argent).length > 0 && Object.values(a.argent).every(o => o.t >= 0));
 });
 
 test('sans historique : un message, pas de tableau vide', () => {

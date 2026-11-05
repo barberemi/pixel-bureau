@@ -7,8 +7,8 @@ tickets créés, 0 token (cron redaction_bilan, toutes les 15 min). Deux étapes
 Sources : l'historique (jira.create.historique, sinon ~/.local/share/pixel-bureau/historique/ticket/<run>.json, écrit par
 ticket.py : la demande, chaque version des tickets, chaque critique, tes retours, les tickets créés) ; sans historique (runs
 d'avant), le dossier du run (~/.cache/pixel-bureau/ticket/<run>/, dernière version seulement : ligne « partielle »). Par run,
-ce que seul Kronn sait : durée, jetons, coût et modèle de chaque agent (runs des sous-workflows de postes, par
-parent_run_id), passages au tampon (étape relire), attente et décision, créations en échec, déroulé. Un run fini n'est relu
+ce que seul Kronn sait : durée, jetons, coût et modèle de chaque agent, poste par poste et passage par passage (runs des
+sous-workflows de postes, par parent_run_id ; les postes ne lancent aucun sous-agent, le coût de Kronn est donc complet), passages au tampon (étape relire), attente et décision, créations en échec, déroulé. Un run fini n'est relu
 qu'une fois (~/.cache/pixel-bureau/redaction_bilan/<run>.json) ; Kronn finit par oublier les vieux runs, le cache les garde.
 
   {generated_at, periode_jours, jira_site, error, intentions: [ligne], fiches: {run: fiche}, kpi: {value, label, short}}
@@ -70,7 +70,7 @@ def conso(parent, run, enfants, crea):
     déroulé (étapes du parent)."""
     d = get(f"/workflows/{parent}/runs/{run['id']}") or {}
     steps = d.get("step_results") or []
-    postes = {}
+    postes, passages = {}, []
     for poste, wf, r in enfants:
         try:
             rd = get(f"/workflows/{wf}/runs/{r['id']}") or {}
@@ -84,6 +84,8 @@ def conso(parent, run, enfants, crea):
                 p["cout"] = round(p["cout"] + cout(s), 4)
                 p["modele"] = s.get("step_model") or p["modele"]
                 p["passages"] += 1
+                passages.append({"n": poste, "at": s.get("started_at"), "ms": int(s.get("duration_ms") or 0), "tok": int(s.get("tokens_used") or 0),
+                                 "cout": cout(s), "modele": s.get("step_model"), "s": s.get("status")})
     gates = [s for s in steps if s.get("step_name") == "relire"]
     status = d.get("status") or run.get("status")
     ok = sum(r.get("status") == "Success" for r in crea)
@@ -98,6 +100,7 @@ def conso(parent, run, enfants, crea):
     panne = next((s.get("step_name") for s in steps if s.get("status") == "Failed" and s.get("step_name") != "aiguillage"), None)
     return {"run": run["id"], "status": status, "debut": d.get("started_at") or run.get("started_at"),
             "fin": d.get("finished_at") or run.get("finished_at"), "postes": postes,
+            "passages": sorted(passages, key=lambda x: x["at"] or ""),
             "gate": {"visites": len(gates), "changements": max(0, len(gates) - 1), "attente_ms": sum(int(s.get("duration_ms") or 0) for s in gates),
                      "decision": decision, "at": gates[0].get("started_at") if gates else None},
             "creations": {"ok": ok, "echecs": len(crea) - ok}, "panne": panne,
@@ -125,8 +128,12 @@ def releve():
             continue
         path = cache_path(run["id"])
         if run.get("status") not in ACTIVE and os.path.exists(path):
-            en_cache += 1
-            continue
+            try:
+                if "passages" in read_json(path):  # un cache d'avant le coût par passage est relu une fois
+                    en_cache += 1
+                    continue
+            except (OSError, ValueError):
+                pass
         enfants = []
         for wf, poste in wf_poste.items():
             if wf not in sous:
@@ -236,10 +243,10 @@ def fiche(h, c):
             "recherche": {"composants": (h.get("recherche") or {}).get("composants") or [], "pistes": [p[:220] for p in pistes[:8]]},
             "versions": [{"v": v.get("v"), "tickets": [{"summary": str(x.get("summary") or "")[:160], "composant": x.get("composant"), "points": x.get("points")}
                                                        for x in (v.get("tickets") or [])[:8]]} for v in sorted(h.get("versions") or [], key=lambda v: v.get("v") or 0)[-4:]],
-            "critiques": [{"v": k.get("v"), "verdict": k.get("verdict"), "notes": [{"ticket": n.get("ticket"), "note": str(n.get("note") or "")[:300]}
+            "critiques": [{"v": k.get("v"), "verdict": k.get("verdict"), "notes": [{"ticket": n.get("ticket"), "gravite": n.get("gravite"), "note": str(n.get("note") or "")[:300]}
                                                                                   for n in (k.get("notes") or [])[:8]]} for k in sorted(h.get("critiques") or [], key=lambda k: k.get("v") or 0)[-4:]],
             "retours": [{"at": r.get("at"), "texte": str(r.get("texte") or "")[:300], "cause": classe(r.get("texte"), CAUSES)} for r in (h.get("retours") or [])[-6:]],
-            "deroule": c.get("deroule") or []}
+            "deroule": c.get("deroule") or [], "passages": c.get("passages") or []}
 
 
 def kpi(rows, now):
