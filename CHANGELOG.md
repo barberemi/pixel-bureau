@@ -32,6 +32,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- Chaîne d'implémentation : quand le garde-fou docs de Kronn rejette le poste Code après coup (faux positif « secret » dans une doc) alors que l'agent a fini et commité, la chaîne passe seule aux contrôles (étape `rattrape`) ; le poste 📚 Doc relit les docs refusées et la PR les cite. Sinon, elle échoue comme avant (banc d'essai du 5 novembre).
 - Galerie des scènes : au 1er, une scène ne se jouait qu'au deuxième clic (passer en démonstration était pris pour un saut du curseur) ; au 3e, « Une PR monte au 3e » et « La PR est poussée » ne se jouaient jamais.
 - Les étages se lisent mieux : la page n'est plus plafonnée à 1360 px, le plan prend toute la colonne sans dépasser la hauteur de l'écran ; aux étages, aucun texte sous 10 px, et un poste au repos ou fini ne montre que son icône (le nom au survol) ; au 1er, le tableau de l'orchestrateur garde le tour et les jetons, en plus gros, sans le titre du ticket ; au RDC, les étiquettes des personnages passent à 10 px.
 - 2e, 3e et -1 : en rejeu, la pastille « ⏪ Rejeu · l'étage à cette heure-là » du 1er ; aux 2e et 3e, les fenêtres du RDC, dont le ciel suit le soleil (étoiles la nuit, effets des thèmes).

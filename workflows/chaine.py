@@ -25,6 +25,8 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
   tri_lot                           # stdin vérif ===SEP=== relecture : code 4 = refaire le lot (3 essais), 0 = lot fini
   tri_tests                         # stdin lancement des tests : code 4 = le poste Tests reprend (3 essais)
   bilan_code                        # commits et fichiers de la branche
+  rattrape_code                     # stdin dernière sortie du Code en échec : garde-fou docs de Kronn avec le travail fini
+                                    # et commité, bilan du Code puis code 4 (contrôles) ; sinon code 1
   quoi                              # contrôles : fichiers touchés, postes à lancer (réglages et plan)
   missions | range                  # contrôles en parallèle : contexte, vérifications des règles, relevé de la doc ; rapports rangés
   bilan_controles                   # rapports des postes de contrôle : bloquants et avis
@@ -630,6 +632,8 @@ def cmd_entree(p, ticket, retours="", extra=""):
         if r:
             cap = 24000 if d == "cadrage" else 12000  # le poste Plan porte aussi les fichiers impactés et les façons de faire
             parts.append(section(f"Rapport du poste {d}", json.dumps(r.get("resultat") or r, ensure_ascii=False, indent=1)[:cap]))
+    if p in ("doc", "livraison"):
+        parts.append(rejets_md())
     if p in CONTROLES or p == "livraison":
         parts.append(section("Fichiers modifiés", "\n".join(files)))
         parts.append(section("Plan validé", json.dumps((load("plan.json") or {}).get("lots") or [], ensure_ascii=False, indent=1)[:8000]))
@@ -742,6 +746,7 @@ def cmd_missions():
         parts.append(section("Vérifications des règles lancées (0 token, pour le poste regles)", json.dumps(v, ensure_ascii=False, indent=1)[-8000:]))
     if "doc" in postes:
         parts.append(section("Relevé de la doc (0 token, pour le poste doc)", json.dumps(releve_doc(files), ensure_ascii=False, indent=1)[:8000]))
+        parts.append(rejets_md())
     for p in postes:
         c = correction(p)
         if c:
@@ -1028,11 +1033,11 @@ def cmd_tri_tests():
     print("Tests verts" if v.get("ok", True) else "Tests encore rouges après 3 essais : bloquant pour l'orchestrateur")
 
 
-def cmd_bilan_code():
-    e = etat()
+def bilan_code(**more):
+    """Le rapport du Code (commits et fichiers depuis le départ) ; les contrôles du passage d'avant deviennent précédents."""
     log = git("log", "--oneline", f"{depart()}..HEAD")
     st = load("essais_code.json") or {}
-    rep = {"poste": "code", "statut": "ok" if log else "vide", "commits": log.splitlines(), "fichiers": changed(), "note": st.get("note")}
+    rep = {"poste": "code", "statut": "ok" if log else "vide", "commits": log.splitlines(), "fichiers": changed(), "note": st.get("note"), **more}
     write_json(dossier("code.json"), rep)
     for c in CONTROLES:  # nouveau code : les contrôles sont à refaire ; leur rapport sert au tour suivant (correction)
         if os.path.exists(dossier(c + ".json")):
@@ -1041,7 +1046,51 @@ def cmd_bilan_code():
         if os.path.exists(dossier(f)):
             os.remove(dossier(f))
     avance("controles", consignes_reprise="")
-    out(rep)
+    return rep
+
+
+def cmd_bilan_code():
+    out(bilan_code())
+
+
+AUDIT_DOCS = "Document audit failed"
+REJET_DOC = re.compile(r"^(\S+): write rejected: ([^\n]+)$", re.M)
+
+
+def cmd_rattrape_code():
+    """Le poste Code en échec (stdin : dernière sortie de son sous-run). Kronn rejette après coup une étape Agent dont une
+    doc modifiée ressemble à un secret (faux positif sur un contenu déjà là) : « Document audit failed », mais l'agent a
+    rendu status OK et ses commits sont faits (banc d'essai du 5 novembre). Travail fini et commits : le bilan du Code est
+    écrit (docs rejetées notées pour le poste Doc et la PR), code 4, Goto controles. Sinon : code 1, la chaîne échoue
+    comme avant (la cause de la panne reste celle du Code)."""
+    txt = read_stdin()
+    if AUDIT_DOCS not in txt:
+        sys.exit("Poste Code en échec (pas le garde-fou docs de Kronn) : la chaîne s'arrête.")
+    agent = txt.split("Agent result:", 1)[1] if "Agent result:" in txt else ""
+    if not re.search(r'"status":\s*"OK"', agent):
+        sys.exit("Garde-fou docs de Kronn, mais l'agent du Code n'avait pas fini (pas de status OK) : la chaîne s'arrête.")
+    if not git("log", "--oneline", f"{depart()}..HEAD"):
+        sys.exit("Garde-fou docs de Kronn, mais aucun commit depuis le départ : la chaîne s'arrête.")
+    rejets = list(dict.fromkeys(f for f, _ in REJET_DOC.findall(txt.split("Agent result:", 1)[0])))
+    note = "docs rejetées par le garde-fou de Kronn : " + (", ".join(rejets) or "(fichiers non nommés)")
+    compte("rattrapages")
+    rep = bilan_code(docs_rejetees=rejets, note=note + " ; vérifications du Code sautées, les contrôles les refont")
+    print(f"Code rattrapé : {len(rep['commits'])} commit(s), {note}. On passe aux contrôles.")
+    sys.exit(4)
+
+
+def docs_rejetees():
+    """Les docs que le garde-fou de Kronn a refusées au Code (rattrape_code), pour le poste Doc et la PR."""
+    return [str(x) for x in (load("code.json") or {}).get("docs_rejetees") or []]
+
+
+def rejets_md():
+    """Docs refusées par le garde-fou de Kronn au Code : le poste Doc les relit, la PR le dit."""
+    rej = docs_rejetees()
+    return section("Docs rejetées par le garde-fou de Kronn au poste Code",
+                   "Kronn a refusé après coup ces docs modifiées par le Code (faux positif « secret » possible sur un contenu "
+                   "déjà là) ; le travail était fini et commité, la chaîne a continué. Vérifie qu'elles disent vrai et "
+                   "signale-le dans la PR :\n" + "\n".join(f"- {f}" for f in rej)) if rej else ""
 
 
 def cmd_quoi():
@@ -1184,6 +1233,7 @@ def points_md():
             seen.add(key)
             rows.append(f"- {'**Bloquant** ' if kind == 'bloquant' else ''}({NOMS.get(x.get('poste'), x.get('poste'))}) {where}"
                         f"{cellule(x.get('probleme'), 600)}" + (f" ; piste : {cellule(x.get('correction'), 600)}" if x.get("correction") else ""))
+    rows += [f"- (Code) `{f}` : doc refusée par le garde-fou de Kronn (faux positif possible), à relire" for f in docs_rejetees()]
     if not rows:
         return ""
     more = f"\n- … et {len(rows) - 15} autres (rapports des contrôles)" if len(rows) > 15 else ""
@@ -1599,6 +1649,7 @@ def main(argv):
     cmd, args = (argv[1] if len(argv) > 1 else ""), argv[2:]
     simple = {"releve": cmd_releve, "dossier": cmd_dossier, "existe": cmd_existe, "compris": cmd_compris, "missions": cmd_missions,
               "range": cmd_range, "tri_code": cmd_tri_code, "tri_tests": cmd_tri_tests, "bilan_code": cmd_bilan_code, "quoi": cmd_quoi,
+              "rattrape_code": cmd_rattrape_code,
               "bilan_controles": cmd_bilan_controles,
               "aiguillage": cmd_aiguillage, "pousse": cmd_pousse, "pr": cmd_pr, "pret": cmd_pret,
               "reviewers": cmd_reviewers, "fin": cmd_fin, "revue_prep": cmd_revue_prep, "retours_pr": cmd_retours_pr,

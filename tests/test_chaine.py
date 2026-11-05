@@ -37,7 +37,13 @@ class ChaineModelesTest(unittest.TestCase):
     def test_postes_are_subworkflows_and_gates_stay_in_the_parent(self):
         c = cfg()
         chain = templates.render(TPL["impl_chain"], c)
-        self.assertLessEqual(len(chain["steps"]), 17)  # 20 avant le poste Plan (cadrage, schéma, patterns, questions)
+        self.assertLessEqual(len(chain["steps"]), 20)  # le plafond de Kronn par workflow
+        named = {s["name"]: s for s in chain["steps"]}
+        # Code en échec (garde-fou docs de Kronn avec le travail fini) : rattrape, puis les contrôles ; sinon échec
+        self.assertEqual(named["code"]["on_result"], [{"contains": "SUBWF_FAILED", "action": {"type": "Goto", "step_name": "rattrape", "max_iterations": 5}}])
+        self.assertEqual(named["rattrape"]["exec_stdin"], '{{steps.code.data.last_output ?? ""}}')
+        self.assertEqual(named["rattrape"]["on_result"][0]["action"], {"type": "Goto", "step_name": "controles", "max_iterations": 5})
+        self.assertEqual(chain["steps"][-1]["name"], "rattrape")  # jamais atteinte dans l'ordre : seulement par le Goto
         self.assertEqual((chain["concurrency_limit"], chain["project_scope"]), (4, {"type": "All"}))  # 4 chaînes, tout projet
         self.assertEqual(chain["workspace_config"], {"hooks": {}, "require_isolation": True})  # une copie par ticket
         subs = {s["name"]: s["sub_workflow_id"] for s in chain["steps"] if s["step_type"]["type"] == "SubWorkflow"}
@@ -260,7 +266,8 @@ class ChaineScriptTest(unittest.TestCase):
         names = [s["name"] for s in c["steps"]]
         st = {s["name"]: s for s in c["steps"]}
         self.assertEqual(names[names.index("mode") + 1], "code")
-        self.assertEqual(names[-1], "commente_plan")
+        self.assertEqual(names[names.index("publication") + 1], "commente_plan")  # après : des étapes atteintes par Goto seulement
+        self.assertLessEqual(set(names[names.index("commente_plan") + 1:]), {"rattrape", "fin_essai"})
         self.assertEqual(st["mode"]["on_result"], [{"contains": "exit_4", "action": {"type": "Goto", "step_name": "commente_plan"}}])
         self.assertEqual(st["commente_plan"]["on_result"], [{"contains": "OK", "action": {"type": "Stop"}}])
         self.assertEqual(st["publication"]["on_result"], [{"contains": "OK", "action": {"type": "Stop"}}])
@@ -653,6 +660,33 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(self.sh("tri_code", stdin=json.dumps({"ok": True}) + SEP + json.dumps({"verdict": "revoir"}))[0], 4)
         self.assertEqual(self.sh("tri_code", stdin=json.dumps({"ok": True}) + SEP + json.dumps({"verdict": "ok"}))[0], 0)
 
+    def test_docs_guard_rejection_with_finished_work_goes_on_to_the_controls(self):
+        """Banc d'essai du 5 novembre : Kronn rejette après coup l'étape Agent du Code (garde-fou docs, faux positif
+        « secret ») alors que l'agent a rendu status OK et commité. rattrape_code écrit le bilan du Code et saute aux
+        contrôles (code 4) ; agent pas fini, aucun commit ou autre panne : code 1, la chaîne échoue comme avant."""
+        self.prepare()
+        audit = ("Document audit failed. Files and index were preserved; inspect these changes before committing or publishing.\n"
+                 "docs/a.md: write rejected: content overlaps with substring from sensitive file \"application/.env\"\n\n"
+                 "Agent result:\nLot 2 fait.\n---STEP_OUTPUT---\n{\"data\": {}, \"status\": \"OK\"}\n---END_STEP_OUTPUT---")
+        self.assertEqual(self.sh("rattrape_code", stdin=audit)[0], 1)  # aucun commit depuis le départ
+        self.commit("docs/a.md", "# doc\n", "docs: a")
+        self.assertEqual(self.sh("rattrape_code", stdin=audit.replace('"OK"', '"BLOCKED"'))[0], 1)  # l'agent n'avait pas fini
+        self.assertEqual(self.sh("rattrape_code", stdin="API Error: 529 Overloaded")[0], 1)  # autre panne du Code
+        Path(self.wt, ".kronn", "chaine", "doc.json").write_text(json.dumps({"poste": "doc", "statut": "ok"}))
+        code, outp = self.sh("rattrape_code", stdin=audit)
+        self.assertEqual(code, 4, outp)
+        rep = self.dossier("code.json")
+        self.assertEqual((rep["statut"], rep["docs_rejetees"], len(rep["commits"])), ("ok", ["docs/a.md"], 1))
+        self.assertIn("docs rejetées par le garde-fou de Kronn : docs/a.md", rep["note"])
+        self.assertEqual(self.dossier("etat.json")["etape"], "controles")
+        self.assertEqual((self.dossier("etat.json")["rattrapages"]), 1)
+        self.assertTrue(Path(self.wt, ".kronn", "chaine", "precedent_doc.json").exists())  # nouveau code : contrôles à refaire
+        self.assertIn("docs/a.md", self.sh("missions")[1].split("Docs rejetées par le garde-fou de Kronn")[1])
+        self.assertIn("Docs rejetées par le garde-fou", self.sh("entree", "livraison", "AB-12")[1])
+        Path(self.wt, ".kronn", "chaine", "controles.json").write_text(json.dumps({"bloquants": [], "avis": []}))
+        code, outp = self.sh("pr", stdin=json.dumps({"title": "t", "body": "corps <!-- bureau-points -->"}))
+        self.assertIn("`docs/a.md` : doc refusée par le garde-fou de Kronn", Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text())
+
     def test_checks_only_count_new_errors(self):
         """Une vérification rouge est relancée sur le point de départ : ce qui y était déjà rouge ne compte pas (essai
         d'EW-6550 : PHPStan signalait des erreurs anciennes des fichiers touchés et le Code bouclait dessus)."""
@@ -1029,6 +1063,17 @@ class AtelierSnapshotTest(unittest.TestCase):
         reads.clear()
         self.snap(get, {"impl_chain": "c", "impl_code": "code"}, ui="http://k:5173/")
         self.assertNotIn("/workflows/code/runs/k1", reads)  # cause gardée : le sous-run n'est plus relu
+
+    def test_rattrape_keeps_the_code_failure_as_the_cause(self):
+        """Le Code en échec saute à rattrape : si elle refuse, la panne est celle du Code ; si elle rattrape (garde-fou
+        docs de Kronn, travail fini), le Code est fait."""
+        import atelier_snapshot as a
+        code = {"step_name": "code", "status": "Failed", "condition_result": "Goto:rattrape", "output": "x"}
+        refus = {"step_name": "rattrape", "status": "Failed", "output": "exit 1"}
+        self.assertIs(a.failed_step({"step_results": [code, refus]}), code)
+        ok = {"step_name": "rattrape", "status": "Failed", "condition_result": "Goto:controles"}
+        orch = {"step_name": "orchestrateur", "status": "Failed", "output": "API Error"}
+        self.assertIs(a.failed_step({"step_results": [code, ok, {"step_name": "controles", "status": "Success"}, orch]}), orch)
 
     def test_runs_of_the_day_counted_by_ticket(self):
         """Tableau « Runs du jour » : depuis minuit (fuseau du bureau), par ticket et dépôt, les reprises à part ; une gate

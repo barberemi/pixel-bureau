@@ -426,7 +426,17 @@
      "retours": "{{state.last_human_feedback ?? \"\"}}",
      "plan": "{{steps.orchestrateur_plan.data_json ?? \"\"}}",
      "consignes": "{{steps.orchestrateur.data.consignes ?? \"\"}}"
-    }
+    },
+    "on_result": [
+     {
+      "contains": "SUBWF_FAILED",
+      "action": {
+       "type": "Goto",
+       "step_name": "rattrape",
+       "max_iterations": 5
+      }
+     }
+    ]
    },
    {
     "name": "controles",
@@ -633,6 +643,38 @@
       "contains": "OK",
       "action": {
        "type": "Stop"
+      }
+     }
+    ]
+   },
+   {
+    "name": "rattrape",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Code en échec : rejet du garde-fou docs de Kronn avec le travail fini et commité, bilan du Code puis contrôles (code 4) ; sinon la chaîne échoue (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "rattrape_code"
+    ],
+    "exec_timeout_secs": 60,
+    "exec_stdin": "{{steps.code.data.last_output ?? \"\"}}",
+    "on_result": [
+     {
+      "contains": "exit_4",
+      "action": {
+       "type": "Goto",
+       "step_name": "controles",
+       "max_iterations": 5
       }
      }
     ]

@@ -67,7 +67,7 @@ Un run de la chaîne qui échoue (un poste qui plante, l'API d'un agent indispon
 
 | Type | Exemple | Le conseil de la fiche |
 |---|---|---|
-| 🛡 garde-fou docs de Kronn | « docs/architecture/x.md refusé (une suite de caractères qui ressemble à un secret) » | si l'agent avait fini : le travail est commité, relance en reprise, le Code retrouve ses lots et passe vite aux contrôles |
+| 🛡 garde-fou docs de Kronn | « docs/architecture/x.md refusé (une suite de caractères qui ressemble à un secret) » | au Code, avec le travail fini et commité, ce n'est plus une panne : la chaîne passe seule aux contrôles, le poste 📚 Doc relit les docs refusées et la PR les cite dans ses points ouverts. Sinon (agent pas fini, aucun commit, autre poste) : relance en reprise |
 | ⏱ délai dépassé | « arrêté par Kronn (4 h 36 pour 2 h 00 permises) » : coupure réseau, agent figé | relance, la chaîne reprend au poste arrêté |
 | 🔌 agent ou API indisponible | quota, réseau, service en panne, appel d'API en échec | attends qu'il revienne, puis relance |
 | 📜 script en erreur | « exit 2 : KeyError: 'base' » | lis l'étape dans Kronn avant de relancer |
