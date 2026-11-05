@@ -9,11 +9,11 @@ Un ticket avance sur une chaîne de postes. Un poste = un sous-workflow Kronn à
 ```
 impl (lanceur, 0 token)          composants Jira -> dépôts -> projets Kronn ; une chaîne par dépôt ; un passage par ticket et par dépôt ;
                                  POST /mcp/workflow-trigger avec project_id et ticket, mode, depot, soeurs, partie, reprise
-└─ impl_chain (parent, 18 étapes, project_scope All, require_isolation, concurrency_limit 4)
+└─ impl_chain (parent, 19 étapes, project_scope All, require_isolation, concurrency_limit 4)
    ticket · prepare · [cadrage = 📋 Plan] · compris · dossier · orchestrateur_plan · ✋gate_plan
    · mode · [code] · [controles] · orchestrateur · aiguillage · ✋gate_escalade
    · [livraison = 📤 PR · [revue_pr] · [retours]] · ✋gate_pr · [publication] (Stop) · commente_plan (Plan seulement, puis Stop)
-   · rattrape (Goto seulement : Code en échec)
+   · fin_essai (Goto seulement : escalade en essai, Stop) · rattrape (Goto seulement : Code en échec)
    cadrage (📋 Plan) = entree · releve (git grep) · propose (un agent, tier reasoning) · existe (chemins) · rapport
    controles = [tests] · missions · parallele (📏 règles, 🔒 sécurité, ⚡ perf · a11y, 🎯 besoin, 📚 doc : un sous-agent chacun, en même temps) · range · bilan
    code = entree · [affecter] · plan · code (une session, un commit par lot) · verif · relecture · tri (3 essais) · bilan
@@ -144,6 +144,7 @@ Non mesuré : une sortie d'agent invalide (`on_invalid: Continue`) n'est pas rec
 - Contrôles : 🧪 tests d'abord (le poste écrit des tests), puis règles, sécurité, perf · a11y, besoin et doc dans une seule étape Agent qui lance un sous-agent par poste, tous en même temps (Kronn ne lance pas de sous-workflows en parallèle : son `foreach` est séquentiel), `range` range leurs rapports poste par poste, puis `bilan`. La 🔁 revue croisée par une autre famille de modèle est retirée : la revue de la PR (`impl_revue_pr`) relit déjà le diff. En série, un tour prenait 45 à 50 min à l'essai d'EW-7851.
 - Tour suivant : tous les contrôles repassent (une correction peut casser autre chose), avec le diff de la correction depuis leur dernier passage (`controle_sha`) et leur rapport précédent (`precedent_<poste>.json`) ; ils relisent surtout la correction. 🎯 Besoin juge toujours l'ensemble.
 - Entre les contrôles et le code : l'orchestrateur décide `livrer`, `retour_code` (consignes) ou `humain` ; `aiguillage` compte les tours (`impl.max_tours`, 3) puis passe la main à la gate d'escalade.
+- Mode essai : personne ne tranche, l'escalade arrête le run au lieu d'ouvrir la gate (banc d'essai du 5 novembre : la gate d'EW-7238 approuvée sans regarder, sortie avec 3 bloquants Doc). `aiguillage` sort en 6 → Goto `fin_essai` (`chaine.py fin_essai`) : refus explicite, « escalade en essai : bloquants restants N (postes) » et la liste, `note_fin` et `refus` dans `etat.json` puis le bilan (issue `escalade`), dossier gardé ; exit 0 et Stop : le run finit réussi, ni panne ni reprise automatique. En plan et en complet, rien ne change.
 - Un poste bloquant (règles, sécurité, tests, besoin, doc par défaut ; `impl.postes.<poste>.bloquant`) ne s'écarte que par les réglages ; l'orchestrateur peut écarter perf d'un ticket.
 
 ## Réglage `impl`

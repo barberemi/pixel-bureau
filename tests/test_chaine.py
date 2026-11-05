@@ -740,6 +740,29 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(self.sh("tri_code", stdin=json.dumps({"ok": True}) + SEP + json.dumps({"verdict": "revoir"}))[0], 4)
         self.assertEqual(self.sh("tri_code", stdin=json.dumps({"ok": True}) + SEP + json.dumps({"verdict": "ok"}))[0], 0)
 
+    def test_escalation_in_essai_stops_the_run(self):
+        """Mode essai : personne pour trancher, l'escalade arrête le run (refus explicite, bloquants restants notés, bilan
+        écrit) au lieu d'une gate. Banc d'essai du 5 novembre : la gate d'EW-7238 approuvée sans regarder, 3 bloquants Doc
+        livrés. En plan ou complet, la gate reste."""
+        self.prepare()
+        Path(self.wt, ".kronn", "chaine", "controles.json").write_text(json.dumps({"bloquants": [
+            {"poste": "doc", "fichier": "docs/a.md", "probleme": "la doc dit faux"}], "avis": []}))
+        self.assertEqual(self.sh("aiguillage", stdin=json.dumps({"decision": "humain"}))[0], 0)  # complet : la gate
+        e = self.dossier("etat.json")
+        e["mode"] = "essai"
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        code, outp = self.sh("aiguillage", stdin=json.dumps({"decision": "humain"}))
+        self.assertEqual(code, 6, outp)
+        code, outp = self.sh("fin_essai")
+        self.assertEqual(code, 0, outp)
+        self.assertIn("Refusé : escalade en essai : bloquants restants 1 (doc)", outp)
+        self.assertIn("docs/a.md : la doc dit faux", outp)
+        b = json.loads(self.sh("bilan")[1])
+        self.assertEqual((b["issue"], b["note_fin"]), ("escalade", "escalade en essai : bloquants restants 1 (doc)"))
+        ch = steps("impl_chain")
+        self.assertIn({"contains": "exit_6", "action": {"type": "Goto", "step_name": "fin_essai"}}, ch["aiguillage"]["on_result"])
+        self.assertEqual(ch["fin_essai"]["on_result"], [{"contains": "OK", "action": {"type": "Stop"}}])  # exit 0 : run réussi
+
     def test_docs_guard_rejection_with_finished_work_goes_on_to_the_controls(self):
         """Banc d'essai du 5 novembre : Kronn rejette après coup l'étape Agent du Code (garde-fou docs, faux positif
         « secret ») alors que l'agent a rendu status OK et commité. rattrape_code écrit le bilan du Code et saute aux

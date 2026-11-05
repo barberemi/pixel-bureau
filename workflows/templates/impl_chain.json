@@ -514,7 +514,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Livrer (code 3), retour au Code (code 4, 3 tours au plus), sinon ta gate.",
+    "description": "Livrer (code 3), retour au Code (code 4, 3 tours au plus), sinon ta gate ; en essai, l'escalade arrête le run (code 6).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -537,6 +537,13 @@
        "type": "Goto",
        "step_name": "code",
        "max_iterations": 5
+      }
+     },
+     {
+      "contains": "exit_6",
+      "action": {
+       "type": "Goto",
+       "step_name": "fin_essai"
       }
      }
     ]
@@ -639,6 +646,35 @@
     },
     "external_effect": true,
     "_requires": "jira",
+    "on_result": [
+     {
+      "contains": "OK",
+      "action": {
+       "type": "Stop"
+      }
+     }
+    ]
+   },
+   {
+    "name": "fin_essai",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Mode essai, escalade : refus explicite (bloquants restants notés, bilan écrit), le run s'arrête sans gate ni livraison (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine.py@@",
+     "fin_essai"
+    ],
+    "exec_timeout_secs": 30,
     "on_result": [
      {
       "contains": "OK",

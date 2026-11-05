@@ -30,7 +30,8 @@ sous-workflow, qui partage la copie de son parent) y lit ce qu'ont écrit les pr
   quoi                              # contrôles : fichiers touchés, postes à lancer (réglages et plan)
   missions | range                  # contrôles en parallèle : contexte, vérifications des règles, relevé de la doc ; rapports rangés
   bilan_controles                   # rapports des postes de contrôle : bloquants et avis
-  aiguillage                        # stdin décision de l'orchestrateur : 3 livrer, 4 retour au code, 0 humain
+  aiguillage                        # stdin décision de l'orchestrateur : 3 livrer, 4 retour au code, 0 humain (6 en essai)
+  fin_essai                         # mode essai, escalade : refus explicite, bloquants restants notés, le run s'arrête
   pousse | pr | revue_prep                          # PR et sa revue (gh)
   revue_locale | retours_local                      # mode essai : revue de la PR sur le diff local (code 6 de revue_prep et
                                     # retours_pr), constats corrigés en commits locaux, rien de poussé ni posté
@@ -1167,7 +1168,27 @@ def cmd_aiguillage():
         sys.exit(4)
     avance("escalade")
     compte("escalades")
-    print(f"Tour {e['tours']} : un humain tranche ({'plus de tours' if dec == 'retour_code' else dec or 'décision illisible'}).")
+    why = 'plus de tours' if dec == 'retour_code' else dec or 'décision illisible'
+    if essai():  # personne pour trancher : le run s'arrête (fin_essai), au lieu d'une gate approuvée sans regarder
+        print(f"Tour {e['tours']} : escalade en essai ({why}), le run s'arrête sans gate.")
+        sys.exit(6)
+    print(f"Tour {e['tours']} : un humain tranche ({why}).")
+
+
+def cmd_fin_essai():
+    """Mode essai, escalade : refus explicite, le run s'arrête (Stop, sans livrer). Banc d'essai du 5 novembre : la gate
+    d'escalade d'EW-7238 a été approuvée sans regarder, le ticket est sorti avec 3 bloquants Doc."""
+    c = load("controles.json") or {}
+    bl = [x for x in c.get("bloquants") or [] if isinstance(x, dict)]
+    lignes = [f"- ({NOMS.get(x.get('poste'), x.get('poste'))}) " + (f"{x.get('fichier')} : " if x.get("fichier") else "")
+              + cellule(x.get("probleme"), 300) for x in bl[:15]]
+    note = f"escalade en essai : bloquants restants {len(bl)}" + (" (" + ", ".join(sorted({str(x.get('poste')) for x in bl})) + ")" if bl else "")
+    e = etat()
+    e.update(note_fin=note, refus="escalade_essai")
+    write_json(dossier("etat.json"), e)
+    e["dossier"] = garde()
+    print(f"Refusé : {note}. Rien n'est livré (mode essai), le bilan garde l'escalade.\n" + "\n".join(lignes)
+          + f"\nDossier gardé : {e['dossier']}")
 
 
 # ---------- livraison (gh, 0 token) ----------
@@ -1702,7 +1723,7 @@ def bilan():
     return {
         "v": 1, "ticket": e.get("ticket"), "titre": title[:200], "repo": e.get("repo"), "run": e.get("run"),
         "mode": e.get("mode"), "essai": essai(), "reprise": bool(e.get("reprise")), "soeurs": e.get("soeurs") or [],
-        "debut": old.get("debut") or now, "maj": now, "etape": e.get("etape"), "issue": issue_de(e),
+        "debut": old.get("debut") or now, "maj": now, "etape": e.get("etape"), "issue": issue_de(e), "note_fin": e.get("note_fin"),
         "pr": {"n": e.get("pr"), "url": f"https://github.com/{e.get('repo')}/pull/{e.get('pr')}"} if e.get("pr") else None,
         "version": CFG.get("impl_version") or {},
         "tours": {"propositions": e.get("propositions") or {}, "essais_code": int(e.get("essais_code") or 0),
@@ -1751,7 +1772,7 @@ def main(argv):
               "aiguillage": cmd_aiguillage, "pousse": cmd_pousse, "pr": cmd_pr, "pret": cmd_pret,
               "reviewers": cmd_reviewers, "fin": cmd_fin, "revue_prep": cmd_revue_prep, "retours_pr": cmd_retours_pr,
               "repasse": cmd_repasse, "bilan": cmd_bilan, "revue_locale": cmd_revue_locale,
-              "retours_local": cmd_retours_local}
+              "retours_local": cmd_retours_local, "fin_essai": cmd_fin_essai}
     if cmd in simple:
         return simple[cmd]()
     if cmd == "lance":
