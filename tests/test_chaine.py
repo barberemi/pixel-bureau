@@ -740,6 +740,39 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(self.sh("tri_code", stdin=json.dumps({"ok": True}) + SEP + json.dumps({"verdict": "revoir"}))[0], 4)
         self.assertEqual(self.sh("tri_code", stdin=json.dumps({"ok": True}) + SEP + json.dumps({"verdict": "ok"}))[0], 0)
 
+    def test_deletion_survey_finds_dead_references(self):
+        """Ticket de suppression (EW-7816 : 4 blocs supprimés, 15 templates, styles et tests encore liés) : le Code reçoit
+        les références aux fichiers que le plan supprime ; après le code, ses vérifications et le poste Règles voient celles
+        qui restent (fichiers supprimés et classes retirées), rouges tant qu'il y en a."""
+        os.makedirs(os.path.join(self.wt, "app", "Block"))
+        os.makedirs(os.path.join(self.wt, "templates"))
+        self.commit("app/Block/VideoBlock.php", "<?php\nclass VideoBlock {}\n", "init: bloc")
+        self.commit("templates/video.html.twig", "{% include 'VideoBlock' %}\n", "init: template")
+        self.commit("app/Util.php", "<?php\nclass LegacyHelper {}\nclass Garde {}\n", "init: util")
+        subprocess.run(["git", "push", "-q", "origin", "HEAD:main"], cwd=self.wt, check=True)
+        self.prepare()
+        Path(self.wt, ".kronn", "chaine", "cadrage.json").write_text(json.dumps({"resultat": {"fichiers": [
+            {"chemin": "app/Block/VideoBlock.php", "action": "supprimer"}, {"chemin": "index.php", "action": "supprimer"},
+            {"chemin": "app/A.php", "action": "modifier"}]}}))
+        outp = self.sh("entree", "code", "AB-12")[1]
+        self.assertIn("Suppressions : les références à retirer aussi", outp)
+        self.assertIn("templates/video.html.twig:1:", outp)
+        self.assertNotIn("index :", outp)  # nom vague : jamais relevé
+        os.remove(os.path.join(self.wt, "app", "Block", "VideoBlock.php"))
+        self.commit("app/Util.php", "<?php\nclass Garde {}\n", "feat: blocs supprimés")
+        self.commit("app/B.php", "<?php // LegacyHelper::x();\n", "feat: oubli")
+        v = json.loads(self.sh("verif", "regles")[1])
+        self.assertFalse(v["ok"])
+        ref = [x for x in v["sorties"] if x["cmd"].startswith("références restantes")][0]
+        self.assertIn("VideoBlock : templates/video.html.twig:1:", ref["sortie"])
+        self.assertIn("LegacyHelper : app/B.php:1:", ref["sortie"])  # classe retirée par le diff
+        self.assertNotIn("Garde", ref["sortie"])  # encore déclarée : pas supprimée
+        os.remove(os.path.join(self.wt, "templates", "video.html.twig"))
+        self.commit("app/B.php", "<?php\n", "fix: références retirées")
+        v = json.loads(self.sh("verif", "regles")[1])
+        self.assertEqual([x["code"] for x in v["sorties"] if x["cmd"].startswith("références restantes")], [0])
+        self.assertIn("références restantes à ce qui est supprimé", steps("impl_controles")["parallele"]["prompt_template"])
+
     def test_escalation_in_essai_stops_the_run(self):
         """Mode essai : personne pour trancher, l'escalade arrête le run (refus explicite, bloquants restants notés, bilan
         écrit) au lieu d'une gate. Banc d'essai du 5 novembre : la gate d'EW-7238 approuvée sans regarder, 3 bloquants Doc

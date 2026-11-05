@@ -673,6 +673,14 @@ def cmd_entree(p, ticket, retours="", extra=""):
         stat = git("diff", "--stat", f"{depart()}...HEAD")
         parts.append(section("Volume du diff", stat[-3000:]))
         parts.append(correction(p))
+    if p == "code":
+        morts = references_mortes(plan_seul=True)
+        if morts:
+            parts.append(section("Suppressions : les références à retirer aussi (git grep, 0 token)",
+                                 "Le plan supprime des fichiers ; ces endroits les citent encore (templates, styles, tests, config, routes, "
+                                 "traductions, doc). Retire-les ou adapte-les dans le même travail, sauf un homonyme sans rapport. Les "
+                                 "vérifications du Code et le poste Règles refont ce relevé : une référence morte qui reste est bloquante.\n"
+                                 + "\n".join(f"- {n} : " + " | ".join(h) for n, h in morts.items())[:8000]))
     if extra and not extra.startswith("{" + "{"):
         parts.append(section("Consignes de l'orchestrateur", extra))
     out("".join(parts))
@@ -1012,6 +1020,52 @@ def garde_fous():
     return hits
 
 
+NOMS_VAGUES = GENERIQUES | {"style", "styles", "types", "constants", "common", "default", "layout", "block", "blocks", "template",
+                            "templates", "component", "components", "service", "controller", "module", "script", "scripts", "assets"}
+
+
+def chemins_supprimes(plan_seul=False):
+    """Fichiers que le plan supprime (cadrage.json, fichiers en action « supprimer ») et, après le code, ceux que le diff
+    supprime."""
+    fic = ((load("cadrage.json") or {}).get("resultat") or {}).get("fichiers")
+    paths = []
+    if isinstance(fic, list):
+        paths += [x.get("chemin") for x in fic if isinstance(x, dict) and x.get("action") == "supprimer"]
+    elif isinstance(fic, dict):
+        paths += [x if isinstance(x, str) else (x or {}).get("chemin") for x in fic.get("supprimer") or []]
+    if not plan_seul:
+        paths += git("diff", "--name-only", "--diff-filter=D", f"{depart()}...HEAD").splitlines()
+    return sorted({str(x) for x in paths if x})
+
+
+def noms_supprimes(plan_seul=False):
+    """Ce qu'un ticket de suppression retire (EW-7816 : 4 blocs supprimés, 15 templates, styles et tests encore liés) :
+    le nom de chaque fichier supprimé (`Block/VideoBlock.php` -> VideoBlock, `video_block.html.twig` -> video_block) et,
+    après le code, chaque classe, enum, interface, trait ou fonction retirée par le diff et pas remise ailleurs. Noms de 5
+    caractères au moins, sans les noms vagues (index, style, block…) : ils ne désignent rien de précis."""
+    noms = {os.path.basename(x).split(".")[0] for x in chemins_supprimes(plan_seul)}
+    if not plan_seul:
+        retires, ajoutes = set(), set()
+        for line in git("diff", "-U0", f"{depart()}...HEAD").splitlines():
+            m = SYMBOLE.match(line)
+            if m:
+                (retires if line.startswith("-") else ajoutes).add(m.group(1))
+        noms |= retires - ajoutes
+    return sorted(n for n in noms if len(n) >= 5 and n.lower() not in NOMS_VAGUES and re.fullmatch(r"[A-Za-z_][\w-]*", n))
+
+
+def references_mortes(plan_seul=False):
+    """Relevé 0 token (git grep -w, fichiers suivis et nouveaux) des références restantes aux noms supprimés, hors des
+    fichiers supprimés eux-mêmes, du CHANGELOG et des dépendances : {nom: [« fichier:ligne: texte »]}."""
+    out_, partis = {}, set(chemins_supprimes(plan_seul))
+    for n in noms_supprimes(plan_seul)[:20]:
+        hits = [h for h in git("grep", "--untracked", "-n", "-w", "-F", n, "--", ".", ":!*.lock", ":!vendor", ":!node_modules",
+                               ":!.kronn", ":!CHANGELOG*").splitlines() if h.split(":", 1)[0] not in partis]
+        if hits:
+            out_[n] = [h[:200] for h in hits[:15]] + ([f"… et {len(hits) - 15} autres"] if len(hits) > 15 else [])
+    return out_
+
+
 def verifie(phase, files=None):
     """Les vérifications réglées du dépôt (impl.repos.<dépôt>.checks) : « regles », « tests », ou « code » (les deux, au
     poste Code : les tests tournent dès le lot, pas seulement aux contrôles) ; avec les règles, les garde-fous du diff."""
@@ -1028,6 +1082,11 @@ def verifie(phase, files=None):
         hits = garde_fous()
         res["sorties"].append({"cmd": "garde-fous du diff (0 token)", "code": 1 if hits else 0, "sortie": "\n".join(hits) or "rien"})
         res["ok"] = res["ok"] and not hits
+        morts = references_mortes()
+        if morts or noms_supprimes():
+            res["sorties"].append({"cmd": "références restantes à ce qui est supprimé (git grep, 0 token)", "code": 1 if morts else 0,
+                                   "sortie": "\n".join(f"{n} : " + " | ".join(h) for n, h in morts.items())[:6000] or "aucune"})
+            res["ok"] = res["ok"] and not morts
     return res
 
 
