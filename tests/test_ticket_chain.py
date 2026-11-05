@@ -124,6 +124,16 @@ class TicketChainTest(unittest.TestCase):
         h = json.loads(Path(self.tmp, ".local", "share", "pixel-bureau", "historique", "ticket", "r12.json").read_text())
         self.assertEqual(h["versions"][-1]["hors_liste"], ["Page 9", "Page 10", "Page 11"])
 
+    def test_how_to_do_and_how_to_test_are_filled_from_the_research(self):
+        """« Comment faire » et « Comment tester » : la recherche en donne la matière, la rédaction les remplit (le modèle
+        les laisse au dev, au framing : c'est ce que le Bureau lui épargne), la critique vérifie qu'ils tiennent dans le code."""
+        self.t("dossier", "f1", "x", "Story", "3", "dm/site", "", "backlog", "")
+        self.assertIn("de quoi écrire « Comment faire »", self.t("poste", "recherche", "f1").stdout)
+        red = self.t("poste", "redaction", "f1").stdout
+        self.assertIn("remplis-les aussi, à partir du rapport de la recherche", red)
+        self.assertIn("« à compléter », jamais inventé", red)
+        self.assertIn("« Comment faire » et « Comment tester » sont remplis et s'appuient sur le code", self.t("poste", "critique", "f1").stdout)
+
     def test_template_per_type_read_from_its_jira_ticket(self):
         """jira.create.templates : un modèle par type, la clé d'un ticket Jira (Story et Tâche : EW-7951, Bug : EW-7981) ;
         sa description, lue par modele_jira, va dans la consigne de la rédaction et de la critique. Sans réglage pour le type :

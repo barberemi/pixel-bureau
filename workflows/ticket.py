@@ -151,7 +151,9 @@ POSTES = {
                   "(grep ou lecture directe) dans le clone local de chaque dépôt, cherché dans les dossiers de travail habituels (~/Sites, "
                   "~/Projects, ~/code ; vérifie le remote avec `git -C <chemin> remote -v`). Rends UNIQUEMENT le rapport, sans raconter tes recherches : un rapport court en "
                   "Markdown : une ligne `Composants : <liste>` (ceux que l'intention touche vraiment, parmi la liste "
-                  "donnée), puis les pistes, une puce chacune, avec le fichier. N'invente rien ; rien trouvé : dis-le."),
+                  "donnée), puis les pistes, une puce chacune, avec le fichier ; pour chaque livrable, de quoi écrire « Comment faire » "
+                  "(l'approche qui suit le code existant, les fichiers et services à toucher, les pièges vus) et « Comment "
+                  "tester » (les tests voisins à compléter, la page ou la commande pour vérifier). N'invente rien ; rien trouvé : dis-le."),
     "redaction": ("✍ Rédaction", "Rédige le ou les tickets. Une intention qui touche plusieurs projets ou plusieurs livrables "
                   "indépendants se DÉCOUPE en plusieurs tickets (un par projet ou par livrable) ; sinon, un seul ticket. "
                   f"{MAX_TICKETS} tickets au plus : une intention qui en demande davantage, rédige les {MAX_TICKETS} premiers "
@@ -159,7 +161,11 @@ POSTES = {
                   "autre intention. Pour chacun : summary (le titre seul, court et impératif, sans clé ni type), description en WIKI MARKUP "
                   "Jira (REST v2 : h2., {panel:…}…{panel}, * puces, {code}…{code}, jamais de Markdown), au modèle de "
                   "ticket de l'équipe s'il est donné (il est recopié plus haut en entier : suis-le à la lettre, titre "
-                  "compris), sinon trois sections h2. Contexte, h2. À faire, h2. Comment tester ; composant (un de la liste) ; "
+                  "compris), sinon trois sections h2. Contexte, h2. À faire, h2. Comment tester. Les parties que le modèle "
+                  "laisse d'habitude au dev (« Comment faire », « Comment tester », « rempli au framing ») : remplis-les "
+                  "aussi, à partir du rapport de la recherche (approche, fichiers et services touchés, points d'attention ; "
+                  "tests à ajouter, vérification en recette), comme une proposition que le framing valide ; ce que le code ne "
+                  "dit pas (environnement de recette, comptes de test) : « à compléter », jamais inventé ; composant (un de la liste) ; "
                   "points (l'estimation en story points, suite de Fibonacci ; un seul ticket : les points de la demande ; "
                   "plusieurs : répartis-les) ; bloque_par (plusieurs tickets seulement : les numéros, à partir de 1, des "
                   "tickets à livrer AVANT celui-ci, parce qu'il en consomme le résultat ; [] s'il peut partir seul ; jamais "
@@ -174,7 +180,8 @@ POSTES = {
     "critique": ("🧐 Critique", "Relis les tickets proposés comme le ferait un relecteur exigeant : chacun se comprend seul, "
                  "se teste, a le bon composant et des points crédibles ; le découpage est juste (ni trop, ni trop peu ; "
                  f"{MAX_TICKETS} tickets au plus, les livrables mis de côté pour une autre intention ne sont pas un défaut) ; "
-                 "le modèle de ticket de l'équipe est suivi (sections, panneaux, titre) ; les dépendances (bloque_par) sont "
+                 "le modèle de ticket de l'équipe est suivi (sections, panneaux, titre) ; « Comment faire » et « Comment "
+                 "tester » sont remplis et s'appuient sur le code (les fichiers cités existent, l'approche suit l'existant) ; les dépendances (bloque_par) sont "
                  "dans le bon sens (un ticket est bloqué par celui dont il consomme le résultat) et sans boucle ; "
                  "rien d'inventé, rien de flou ; aucun ticket ne refait un ticket Jira ouvert listé plus haut. Chaque note "
                  "a une gravité : « bloquant » pour un défaut qui empêche de créer le ticket tel quel (cadrage faux, ticket "
@@ -285,7 +292,7 @@ def modele(run=None):
         if m.get("cle") == t and m.get("texte"):
             return (f"(le ticket modèle {t} « {m.get('summary') or ''} », pour un ticket de type {d.get('type')} ; ses textes en "
                     "italique disent quoi écrire : remplace-les par le contenu, ne les recopie pas ; une partie dite "
-                    "optionnelle qui ne sert pas, supprime-la)\n\n" + m["texte"][:TEMPLATE_MAX])
+                    "optionnelle qui ne sert pas, supprime-la ; les parties « rempli par le dev » aussi, voir ta mission)\n\n" + m["texte"][:TEMPLATE_MAX])
         # ticket modèle pas lu dans Jira : le modèle commun de l'équipe, s'il n'est pas lui-même un ticket
         t = str(((CFG.get("jira") or {}).get("create") or {}).get("template") or "").strip()
         if re.fullmatch(JIRA_KEY, t):
