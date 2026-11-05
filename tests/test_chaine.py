@@ -418,6 +418,37 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("question d'avant", md)
         self.assertNotIn("retour d'usage", md)
         self.assertNotIn("Deployed", md)
+        self.assertEqual(steps("impl_chain")["ticket"]["api_query"]["expand"], "changelog")  # l'historique, pour défaire
+
+    def test_replay_rebuilds_the_ticket_as_it_was(self):
+        """Essai rejoué : description et titre réécrits après le départ (décisions produit, PR humaine déjà ouverte) sont
+        défaits depuis l'historique Jira, du plus récent au plus ancien ; un changement d'avant le départ reste."""
+        ns = {"__name__": "chaine_mod"}
+        exec(compile(self.code, "chaine.py", "exec"), ns)
+        h = lambda when, *items: {"created": when, "items": [dict(zip(("field", "fromString", "toString"), i)) for i in items]}  # noqa: E731
+        t = {"key": "AB-12", "fields": {"summary": "Titre final", "description": "v3 avec décisions produit"},
+             "changelog": {"histories": [
+                 h("2026-10-01T10:00:00.000+0200", ("description", "v0", "v1")),
+                 h("2026-10-20T10:00:00.000+0200", ("description", "v1", "v2"), ("status", "To Do", "Done")),
+                 h("2026-10-25T10:00:00.000+0200", ("description", "v2", "v3 avec décisions produit"), ("summary", "Titre initial", "Titre final"))]}}
+        avant = ns["quand"]("2026-10-10T00:00:00+02:00")
+        old, remontes = ns["a_la_date"](t, avant)
+        self.assertEqual((old["fields"]["description"], old["fields"]["summary"], remontes), ("v1", "Titre initial", ["description", "summary"]))
+        self.assertEqual(t["fields"]["description"], "v3 avec décisions produit")  # le ticket reçu n'est pas modifié
+        md = ns["ticket_md"](old, avant, remontes)
+        self.assertIn("tels qu'au 2026-10-09 22:00 UTC", md)
+        self.assertNotIn("décisions produit", md)
+        self.assertEqual(ns["a_la_date"](t, ns["quand"]("2026-11-01T00:00:00Z"))[1], [])  # rien après : rien à défaire
+        self.assertEqual(ns["a_la_date"]({"fields": {"description": "d"}}, avant)[0]["fields"]["description"], "d")  # sans historique
+        first = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.wt, capture_output=True, text=True).stdout.strip()
+        t2 = {**t, "changelog": {"histories": [h("2999-01-01T10:00:00.000+0100", ("description", "d'origine", "réécrite"))]}}
+        t2["fields"] = {**TICKET["fields"], "description": "réécrite"}
+        code, outp = self.sh("prepare", "AB-12", "essai", "run1", "", "", "", "", first, stdin=json.dumps(t2))
+        self.assertEqual(code, 0, outp)
+        md = Path(self.wt, ".kronn", "chaine", "ticket.md").read_text()
+        self.assertIn("d'origine", md)
+        self.assertNotIn("réécrite", md)
+        self.assertIn("d'origine", self.dossier("etat.json")["texte"])
         Path(self.wt, "app", "C.php").write_text("<?php\n")
         self.assertEqual(json.loads(self.sh("quoi")[1])["fichiers"], ["app/C.php"])  # diff contre le commit rejoué
         self.assertIn("ne rebase pas dessus", self.sh("entree", "besoin", "AB-12")[1])  # la base distante a déjà le ticket

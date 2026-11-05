@@ -146,7 +146,29 @@ def quand(s):
     return datetime.datetime.fromisoformat(m.group(1) + tz).astimezone(datetime.timezone.utc)
 
 
-def ticket_md(t, avant=None):
+REMONTES = {"description": "description", "summary": "summary"}  # champ du changelog Jira -> champ du ticket
+
+
+def a_la_date(t, avant):
+    """Le ticket tel qu'il était à la date `avant` (essai rejoué) : les changements de description et de titre postérieurs
+    sont défaits un par un, du plus récent au plus ancien, depuis l'historique Jira (expand=changelog : items field,
+    fromString). Banc d'essai du 5 novembre : la description réécrite après l'ouverture de la PR humaine (décisions
+    produit) donnait à la chaîne une « info du futur ». Rend (ticket, champs remontés)."""
+    f = dict(t.get("fields") or {})
+    hist = [h for h in (t.get("changelog") or {}).get("histories") or [] if isinstance(h, dict) and quand(h.get("created"))]
+    remontes = set()
+    for h in sorted(hist, key=lambda h: quand(h.get("created")), reverse=True):
+        if quand(h.get("created")) <= avant:
+            break
+        for it in h.get("items") or []:
+            k = REMONTES.get(str(it.get("field") or "").lower())
+            if k:
+                f[k] = it.get("fromString") or ""
+                remontes.add(k)
+    return {**t, "fields": f}, sorted(remontes)
+
+
+def ticket_md(t, avant=None, remontes=()):
     """Le ticket en Markdown ; essai rejoué (avant = date du commit rejoué) : ni statut ni commentaire postérieur,
     essai d'EW-7945 : le retour d'usage de l'IA, posté après la livraison, donnait ses suites à la PR."""
     f = t.get("fields") or {}
@@ -155,7 +177,11 @@ def ticket_md(t, avant=None):
              f"- Type : {(f.get('issuetype') or {}).get('name') or '?'} ; priorité : {(f.get('priority') or {}).get('name') or '?'}"
              f" ; statut : {statut}",
              f"- Composants : {', '.join(c.get('name', '') for c in f.get('components') or []) or 'aucun'}",
-             f"- Labels : {', '.join(f.get('labels') or []) or 'aucun'}", "", "## Description", "", f.get("description") or "(vide)"]
+             f"- Labels : {', '.join(f.get('labels') or []) or 'aucun'}", "", "## Description", ""]
+    if remontes:
+        lines += [f"(essai rejoué : {' et '.join({'summary': 'titre', 'description': 'description'}[k] for k in remontes)} tels qu'au "
+                  f"{avant:%Y-%m-%d %H:%M} UTC, reconstruits depuis l'historique Jira)", ""]
+    lines.append(f.get("description") or "(vide)")
     subs = f.get("subtasks") or []
     if subs:
         lines += ["", "## Sous-tâches"] + [f"- {s.get('key')} : {(s.get('fields') or {}).get('summary')}" for s in subs]
@@ -449,7 +475,10 @@ def cmd_prepare(ticket, mode, run, variant="", depot="", soeurs="", reprise="", 
     for f in os.listdir(dossier()):  # le dossier d'un autre passage, s'il en reste un
         if os.path.isfile(dossier(f)):
             os.remove(dossier(f))
-    write_text(dossier("ticket.md"), ticket_md(t, quand(git("show", "-s", "--format=%cI", fixed)) if fixed else None))
+    avant, remontes = (quand(git("show", "-s", "--format=%cI", fixed)) if fixed else None), []
+    if avant:  # essai rejoué : le ticket tel qu'au commit de départ (description et titre réécrits depuis : défaits)
+        t, remontes = a_la_date(t, avant)
+    write_text(dossier("ticket.md"), ticket_md(t, avant, remontes))
     docs = git("ls-files", "docs", "AGENTS.md", "CLAUDE.md", ".github/pull_request_template.md").splitlines()
     f = t.get("fields") or {}
     write_json(dossier("etat.json"), {"ticket": ticket, "mode": mode, "repo": repo, "base": base, "branch": branch,

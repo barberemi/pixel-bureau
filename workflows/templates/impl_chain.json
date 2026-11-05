@@ -145,13 +145,14 @@
     "step_type": {
      "type": "ApiCall"
     },
-    "description": "Le ticket (API REST v2 : description en texte).",
+    "description": "Le ticket (API REST v2 : description en texte) et son historique (essai rejoué : description d'alors).",
     "api_plugin_slug": "mcp-atlassian",
     "api_config_id": "@@jira.config_id@@",
     "api_endpoint_path": "/rest/api/2/issue/{{ticket}}",
     "api_method": "GET",
     "api_query": {
-     "fields": "summary,description,issuetype,components,labels,priority,status,subtasks,issuelinks,comment"
+     "fields": "summary,description,issuetype,components,labels,priority,status,subtasks,issuelinks,comment",
+     "expand": "changelog"
     },
     "_requires": "jira"
    },
