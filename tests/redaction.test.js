@@ -245,3 +245,15 @@ test("au clic sur un ticket (sa carte à la table, ou sa ligne du panneau) : sa 
   assert.equal(J('rdTicketOpen()'), null); // l'intention n'est plus en cours : retour à la liste
   assert.equal(J('RDTK'), null);
 });
+
+test("plus de quatre tickets : la table et le liège montrent les quatre premiers et « +n », le panneau les liste tous", () => {
+  const {p, J} = page();
+  p.run(`var __ap = atPill, __pl = []; atPill = (s, ...a) => { __pl.push(s); return __ap(s, ...a); };
+    const t = REDACTION.tables[0], x0 = t.tickets[0];
+    t.tickets = Array.from({length: 7}, (_, i) => ({...x0, i, summary: 'Page ' + (i + 1)}));
+    setFloor(2); renderRedaction(1000);`);
+  assert.equal(J('RD_HITS.filter(h => h.kind === "ticket").length'), 4);
+  assert.ok(J('__pl.includes("+3")'), 'le « +3 » posé sur la table');
+  assert.ok(J('__pl.includes("+ 3 tickets : dans le panneau")'));
+  p.run('atPill = __ap;');
+});

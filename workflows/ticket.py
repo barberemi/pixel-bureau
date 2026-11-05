@@ -13,6 +13,7 @@ sauf jira.create.board_copy à false.
 sprint : « next » = le premier sprint futur du board (liste lue par l'étape sprints), sinon le backlog.
 resultat : {key, url, title, meta} sur stdout, relu par les relevés office et live pour la fiche de l'agent (run.res).
 Réglage jira.create (config ou pack) : types, type, components, component_required, points_field, board_copy, template,
+templates (le modèle par type : {"Story": "EW-7951", "Bug": "EW-7981"}, la clé d'un ticket Jira, un texte ou un fichier),
 link_type, language, title_language, historique, labels (posés sur chaque ticket créé), mots_vides (mots de la maison
 ignorés par la recherche des doublons).
 
@@ -23,6 +24,8 @@ refuse une gate dans un sous-workflow) : sa création. Le dossier du run
 (~/.cache/pixel-bureau/ticket/<run>/) garde la demande, les rapports, les versions et les tickets créés.
 
   python3 -c <ce script> dossier <run> <intention> <type> <points> <composant> <composant 2> <sprint> <parent>
+  python3 -c <ce script> modele_cle <run>     l'adresse Jira du ticket modèle du type demandé (/myself sans ticket modèle)
+  python3 -c <ce script> modele_jira <run> <réponse JSON>   sa description gardée au dossier (modele.json) pour les postes
   python3 -c <ce script> parent_cle <run>     l'adresse Jira du parent (son ticket, ou /myself sans parent), lue par l'étape suivante
   python3 -c <ce script> parent_check <run> <réponse JSON>   le parent est une épic ; une Story ou une Tâche donnée en parent
                                              passe sous son épic (Jira refuse une Story pour parent), sinon le run s'arrête là
@@ -138,6 +141,7 @@ def resultat(key, raw, type_, points, c1, c2, sprint):
 # ---------- la salle de rédaction : les postes et les tickets d'une intention ----------
 HOME = os.path.expanduser("~/.cache/pixel-bureau/ticket")
 TOURS = 3  # rédaction et critique : trois tours au plus
+MAX_TICKETS = 8  # par intention ; au-delà, les livrables mis de côté (hors_liste) sont montrés au tampon, jamais perdus
 POSTES = {
     "recherche": ("📚 Recherche", "Cherche dans les dépôts des composants ce qui sert à rédiger : les fichiers, fonctions et tests "
                   "concernés, les tickets ou PR proches, ce qui existe déjà. Ne t'arrête pas aux composants donnés : cherche "
@@ -147,13 +151,21 @@ POSTES = {
                   "(grep ou lecture directe) dans le clone local de chaque dépôt, cherché dans les dossiers de travail habituels (~/Sites, "
                   "~/Projects, ~/code ; vérifie le remote avec `git -C <chemin> remote -v`). Rends UNIQUEMENT le rapport, sans raconter tes recherches : un rapport court en "
                   "Markdown : une ligne `Composants : <liste>` (ceux que l'intention touche vraiment, parmi la liste "
-                  "donnée), puis les pistes, une puce chacune, avec le fichier. N'invente rien ; rien trouvé : dis-le."),
+                  "donnée), puis les pistes, une puce chacune, avec le fichier ; pour chaque livrable, de quoi écrire « Comment faire » "
+                  "(l'approche qui suit le code existant, les fichiers et services à toucher, les pièges vus) et « Comment "
+                  "tester » (les tests voisins à compléter, la page ou la commande pour vérifier). N'invente rien ; rien trouvé : dis-le."),
     "redaction": ("✍ Rédaction", "Rédige le ou les tickets. Une intention qui touche plusieurs projets ou plusieurs livrables "
                   "indépendants se DÉCOUPE en plusieurs tickets (un par projet ou par livrable) ; sinon, un seul ticket. "
-                  "Pour chacun : summary (le titre seul, court et impératif, sans clé ni type), description en WIKI MARKUP "
+                  f"{MAX_TICKETS} tickets au plus : une intention qui en demande davantage, rédige les {MAX_TICKETS} premiers "
+                  "livrables (dans son ordre) et donne le titre de chacun des autres dans hors_liste : ils iront dans une "
+                  "autre intention. Pour chacun : summary (le titre seul, court et impératif, sans clé ni type), description en WIKI MARKUP "
                   "Jira (REST v2 : h2., {panel:…}…{panel}, * puces, {code}…{code}, jamais de Markdown), au modèle de "
                   "ticket de l'équipe s'il est donné (il est recopié plus haut en entier : suis-le à la lettre, titre "
-                  "compris), sinon trois sections h2. Contexte, h2. À faire, h2. Comment tester ; composant (un de la liste) ; "
+                  "compris), sinon trois sections h2. Contexte, h2. À faire, h2. Comment tester. Les parties que le modèle "
+                  "laisse d'habitude au dev (« Comment faire », « Comment tester », « rempli au framing ») : remplis-les "
+                  "aussi, à partir du rapport de la recherche (approche, fichiers et services touchés, points d'attention ; "
+                  "tests à ajouter, vérification en recette), comme une proposition que le framing valide ; ce que le code ne "
+                  "dit pas (environnement de recette, comptes de test) : « à compléter », jamais inventé ; composant (un de la liste) ; "
                   "points (l'estimation en story points, suite de Fibonacci ; un seul ticket : les points de la demande ; "
                   "plusieurs : répartis-les) ; bloque_par (plusieurs tickets seulement : les numéros, à partir de 1, des "
                   "tickets à livrer AVANT celui-ci, parce qu'il en consomme le résultat ; [] s'il peut partir seul ; jamais "
@@ -164,10 +176,12 @@ POSTES = {
                   "Pas de tiret cadratin ; n'invente ni lien, ni chiffre, ni personne. Ne crée RIEN dans Jira. Rends "
                   "UNIQUEMENT un objet JSON : "
                   '{"tickets": [{"summary": "…", "description": "…", "composant": "…", "points": 3, "bloque_par": []}], '
-                  '"reponses": ["ticket 1 : …"]}.'),
+                  '"hors_liste": [], "reponses": ["ticket 1 : …"]}.'),
     "critique": ("🧐 Critique", "Relis les tickets proposés comme le ferait un relecteur exigeant : chacun se comprend seul, "
-                 "se teste, a le bon composant et des points crédibles ; le découpage est juste (ni trop, ni trop peu) ; "
-                 "le modèle de ticket de l'équipe est suivi (sections, panneaux, titre) ; les dépendances (bloque_par) sont "
+                 "se teste, a le bon composant et des points crédibles ; le découpage est juste (ni trop, ni trop peu ; "
+                 f"{MAX_TICKETS} tickets au plus, les livrables mis de côté pour une autre intention ne sont pas un défaut) ; "
+                 "le modèle de ticket de l'équipe est suivi (sections, panneaux, titre) ; « Comment faire » et « Comment "
+                 "tester » sont remplis et s'appuient sur le code (les fichiers cités existent, l'approche suit l'existant) ; les dépendances (bloque_par) sont "
                  "dans le bon sens (un ticket est bloqué par celui dont il consomme le résultat) et sans boucle ; "
                  "rien d'inventé, rien de flou ; aucun ticket ne refait un ticket Jira ouvert listé plus haut. Chaque note "
                  "a une gravité : « bloquant » pour un défaut qui empêche de créer le ticket tel quel (cadrage faux, ticket "
@@ -253,12 +267,36 @@ def options():
 TEMPLATE_MAX = 8000
 
 
-def modele():
-    """Le modèle de ticket de l'équipe (jira.create.template). « <chemin> du dépôt <dépôt> » ou « <dépôt>:<chemin> » : le
-    fichier, lu dans la copie locale du dépôt (le projet Kronn du même nom, sinon le dossier des clones impl.clones, ~/Sites
-    par défaut) et recopié dans la consigne : l'agent n'a plus à le chercher (run ed873fc9 : pas trouvé, structure par
-    défaut). Un texte libre, ou un fichier introuvable : le réglage tel quel (une ligne sur stderr pour le fichier)."""
-    t = str(((CFG.get("jira") or {}).get("create") or {}).get("template") or "").strip()
+JIRA_KEY = r"[A-Z][A-Z0-9_]*-\d+"
+
+
+def reglage_modele(type_):
+    """Le réglage du modèle pour ce type : jira.create.templates[type] (sans tenir compte de la casse), sinon
+    jira.create.template."""
+    c = (CFG.get("jira") or {}).get("create") or {}
+    par_type = {str(k).strip().lower(): v for k, v in (c.get("templates") or {}).items()}
+    return str(par_type.get(str(type_ or "").strip().lower()) or c.get("template") or "").strip()
+
+
+def modele(run=None):
+    """Le modèle de ticket de l'équipe, pour le type de la demande (reglage_modele). La clé d'un ticket Jira (EW-7951) : sa
+    description, lue par l'étape modele_jira et gardée au dossier (modele.json). « <chemin> du dépôt <dépôt> » ou
+    « <dépôt>:<chemin> » : le fichier, lu dans la copie locale du dépôt (le projet Kronn du même nom, sinon le dossier des
+    clones impl.clones, ~/Sites par défaut) et recopié dans la consigne : l'agent n'a plus à le chercher (run ed873fc9 : pas
+    trouvé, structure par défaut). Un texte libre, ou un fichier introuvable : le réglage tel quel (une ligne sur stderr
+    pour le fichier). Le ticket modèle pas lu : jira.create.template."""
+    d = dget(run, "demande.json") or {} if run else {}
+    t = reglage_modele(d.get("type"))
+    if re.fullmatch(JIRA_KEY, t):
+        m = dget(run, "modele.json") or {} if run else {}
+        if m.get("cle") == t and m.get("texte"):
+            return (f"(le ticket modèle {t} « {m.get('summary') or ''} », pour un ticket de type {d.get('type')} ; ses textes en "
+                    "italique disent quoi écrire : remplace-les par le contenu, ne les recopie pas ; une partie dite "
+                    "optionnelle qui ne sert pas, supprime-la ; les parties « rempli par le dev » aussi, voir ta mission)\n\n" + m["texte"][:TEMPLATE_MAX])
+        # ticket modèle pas lu dans Jira : le modèle commun de l'équipe, s'il n'est pas lui-même un ticket
+        t = str(((CFG.get("jira") or {}).get("create") or {}).get("template") or "").strip()
+        if re.fullmatch(JIRA_KEY, t):
+            return ""
     m = re.fullmatch(r"(\S+\.\w+)\s+du dépôt\s+(\S+)", t) or re.fullmatch(r"([\w.-]+):(\S+\.\w+)", t)
     if not m:
         return t
@@ -309,6 +347,37 @@ def parent_cle(run):
     """L'adresse Jira à lire pour vérifier le parent : son ticket, ou /myself sans parent (rien à vérifier, appel sans effet)."""
     p = str((dget(run, "demande.json") or {}).get("parent") or "").strip()
     print(f"/rest/api/2/issue/{p}" if re.fullmatch(r"[A-Z][A-Z0-9_]*-\d+", p) else "/rest/api/2/myself", end="")
+
+
+def modele_cle(run):
+    """L'adresse Jira du ticket modèle pour le type de la demande, ou /myself quand le modèle n'est pas un ticket Jira
+    (appel sans effet, comme parent_cle)."""
+    t = reglage_modele((dget(run, "demande.json") or {}).get("type"))
+    print(f"/rest/api/2/issue/{t}" if re.fullmatch(JIRA_KEY, t) else "/rest/api/2/myself", end="")
+
+
+def modele_jira(run, raw):
+    """La description du ticket modèle (wiki Jira, REST v2, le format des tickets créés) gardée au dossier pour la
+    rédaction et la critique. Illisible : la structure par défaut, sans arrêter le run (une ligne sur stderr)."""
+    d = dget(run, "demande.json") or {}
+    t = reglage_modele(d.get("type"))
+    if not re.fullmatch(JIRA_KEY, t):
+        print("Modèle : " + ("celui du réglage (pas un ticket Jira)." if t else "aucun, structure par défaut."))
+        return
+    try:
+        o = json.loads(raw or "{}")
+    except ValueError:
+        o = {}
+    if isinstance(o, dict) and "fields" not in o and isinstance(o.get("data"), dict):
+        o = o["data"]
+    f = (o.get("fields") if isinstance(o, dict) else None) or {}
+    texte = f.get("description") if isinstance(f.get("description"), str) else ""
+    if not texte.strip():
+        print(f"ticket : modèle {t} illisible dans Jira (clé fausse, ticket hors de portée ou sans description)", file=sys.stderr)
+        print(f"Modèle {t} pas lu dans Jira : le modèle commun de l'équipe (jira.create.template), sinon la structure par défaut.")
+        return
+    dput(run, "modele.json", {"cle": t, "summary": str(f.get("summary") or "")[:200], "texte": texte})
+    print(f"Modèle {t} « {f.get('summary') or ''} » pour le type {d.get('type')} ({len(texte)} caractères).")
 
 
 def parent_check(run, raw):
@@ -459,7 +528,7 @@ def poste(k, run, retours=""):
              "## La demande\n" + d["intention"] + f"\n\nType : {d['type']} · Estimation : {d['points']} story points · Composants donnés : "
              + (", ".join(d["composants"]) or "aucun") + (f" · Parent : {d['parent']}" if d["parent"] else ""),
              "## Composants possibles (les dépôts de l'équipe)\n" + (", ".join(options()) or ", ".join(d["composants"]) or "aucun"),
-             "## Modèle de ticket de l'équipe\n" + (modele() or "aucun (structure par défaut)")]
+             "## Modèle de ticket de l'équipe\n" + (modele(run) or "aucun (structure par défaut)")]
     if k != "recherche" and dget(run, "recherche.json"):
         parts.append("## Rapport de la recherche\n" + dget(run, "recherche.json")["texte"])
     if k != "recherche" and dget(run, "doublons.json"):
@@ -468,6 +537,8 @@ def poste(k, run, retours=""):
     t = dget(run, "tickets.json")
     if k == "critique" or (k == "redaction" and t):
         parts.append("## Les tickets proposés" + (f" (version {t['version']})" if t else "") + "\n" + json.dumps((t or {}).get("tickets") or [], ensure_ascii=False, indent=1))
+        if (t or {}).get("hors_liste"):
+            parts.append(f"## Mis de côté pour une autre intention ({MAX_TICKETS} tickets au plus)\n" + "\n".join("- " + x for x in t["hors_liste"]))
     retours = (retours or "").strip()
     if k == "redaction" and retours:  # « Changements » à la validation : tes retours, gardés au dossier
         old = dget(run, "retours.json", [])
@@ -522,14 +593,18 @@ def rapport(k, run, text):
         ts = [t for t in (o.get("tickets") or []) if isinstance(t, dict) and str(t.get("summary") or "").strip()]
         if not ts:
             sys.exit("La rédaction n'a rendu aucun ticket (objet JSON {\"tickets\": [...]} attendu).")
-        ts = dependances(ts[:8])
+        # au-delà de MAX_TICKETS, le surplus rejoint hors_liste : coupé en silence, il n'arrivait ni au tampon ni dans Jira
+        hors = [str(t["summary"]).strip() for t in ts[MAX_TICKETS:]] + [str(x).strip() for x in o.get("hors_liste") or [] if str(x).strip()]
+        hors = [x[:200] for i, x in enumerate(hors) if x not in hors[:i]][:30]
+        ts = dependances(ts[:MAX_TICKETS])
         old = dget(run, "tickets.json") or {}
         v = int(old.get("version") or 0) + 1
         reps = [str(x).strip()[:400] for x in o.get("reponses") or [] if str(x).strip()][:12]
-        dput(run, "tickets.json", {"version": v, "tickets": ts, "reponses": reps})
+        dput(run, "tickets.json", {"version": v, "tickets": ts, "reponses": reps, "hors_liste": hors})
         archive(run, versions={"v": v, "tickets": [{"summary": str(t.get("summary") or "")[:200], "composant": t.get("composant"),
-                                                    "points": t.get("points"), "bloque_par": t["bloque_par"]} for t in ts]})
-        print("\n".join(f"{i}. {t['summary']} · {t.get('composant') or '?'} · {t.get('points') or '?'} pts{bloque(t)}" for i, t in enumerate(ts, 1)))
+                                                    "points": t.get("points"), "bloque_par": t["bloque_par"]} for t in ts], "hors_liste": hors})
+        print("\n".join(f"{i}. {t['summary']} · {t.get('composant') or '?'} · {t.get('points') or '?'} pts{bloque(t)}" for i, t in enumerate(ts, 1))
+              + (f"\n✂ {len(hors)} mis de côté pour une autre intention ({MAX_TICKETS} tickets au plus)" if hors else ""))
         return
     if k == "critique":
         # une note sans gravité compte comme bloquante ; « à retoucher » seulement s'il en reste une (les conseils vont au tampon)
@@ -632,6 +707,12 @@ def apercus(run):
         print(f"Parent : {d.get('parent')}, l'épic de {d['parent_de']} (Jira n'accepte qu'une épic pour parent)")
     for i, x in enumerate(t):
         print(f"T{i + 1} · {(x.get('summary') or '(sans titre)').strip()} · {d.get('type') or '?'} · {number(pts(x)):g} pts · {comp(x) or 'sans composant'}{bloque(x)}")
+    hors = (dget(run, "tickets.json") or {}).get("hors_liste") or []
+    if hors:
+        print(f"\n✂ {len(hors)} livrable(s) hors de cette liste ({MAX_TICKETS} tickets au plus par intention), à lancer dans une autre intention :")
+        for x in hors:
+            print(f"- {x}")
+        print()
     if any(x.get("bloque_par") for x in t):
         print(f"Liens Jira « {link_type()} » posés à la création, dans ce sens (« bloqué par » : à livrer avant).")
     if labels():
@@ -729,6 +810,10 @@ if __name__ == "__main__":
         dossier(*a[:8])
     elif cmd == "poste":
         poste(a[0], a[1], a[2])
+    elif cmd == "modele_cle":
+        modele_cle(a[0])
+    elif cmd == "modele_jira":
+        modele_jira(a[0], a[1])
     elif cmd == "parent_cle":
         parent_cle(a[0])
     elif cmd == "parent_check":

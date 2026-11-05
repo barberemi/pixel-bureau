@@ -205,6 +205,84 @@
     "output_format": {
      "type": "FreeText"
     },
+    "name": "modele_cle",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "L'adresse Jira du ticket modèle du type demandé (jira.create.templates ; sans ticket modèle : un appel sans effet), 0 token.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/ticket.py@@",
+     "modele_cle",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "modele_jira",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Le ticket modèle dans Jira : sa description (wiki, REST v2) ; Jira en erreur : on continue avec la structure par défaut.",
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "{{steps.modele_cle.data.stdout}}",
+    "api_method": "GET",
+    "api_query": {
+     "fields": "summary,description"
+    },
+    "on_result": [
+     {
+      "contains": "ERROR",
+      "action": {
+       "type": "Goto",
+       "step_name": "modele"
+      }
+     }
+    ]
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "modele",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le modèle du type demandé gardé au dossier, pour la rédaction et la critique (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/ticket.py@@",
+     "modele_jira",
+     "{{run.id}}",
+     "{{steps.modele_jira.data_json}}"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
     "name": "doublons_cle",
     "step_type": {
      "type": "Exec"

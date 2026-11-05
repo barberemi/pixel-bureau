@@ -372,8 +372,14 @@ exit 0
         st = {s["name"]: s for s in out["steps"]}
         # 2e étage : les postes (un sous-workflow chacun), l'aiguillage (3 tours au plus), puis un sous-workflow par ticket
         # le parent vérifié dans Jira dès le dossier, avant la rédaction (Jira n'accepte qu'une épic)
-        self.assertEqual(list(st), ["dossier", "parent_cle", "parent_jira", "parent", "doublons_cle", "doublons_jira", "doublons", "recherche",
-                                    "redaction", "critique", "aiguillage", "apercu", "relire", "chaque", "resultat"])
+        self.assertEqual(list(st), ["dossier", "parent_cle", "parent_jira", "parent", "modele_cle", "modele_jira", "modele", "doublons_cle",
+                                    "doublons_jira", "doublons", "recherche", "redaction", "critique", "aiguillage", "apercu", "relire",
+                                    "chaque", "resultat"])
+        # le ticket modèle du type demandé, lu dans Jira ; Jira en erreur : la structure par défaut
+        self.assertEqual((st["modele_jira"]["api_endpoint_path"], st["modele_jira"]["api_query"]["fields"]),
+                         ("{{steps.modele_cle.data.stdout}}", "summary,description"))
+        self.assertEqual(st["modele_jira"]["on_result"][0]["action"]["step_name"], "modele")
+        self.assertNotIn("external_effect", st["modele_jira"])
         self.assertEqual(st["parent_jira"]["api_endpoint_path"], "{{steps.parent_cle.data.stdout}}")
         self.assertNotIn("external_effect", st["parent_jira"])  # une lecture
         # les tickets ouverts proches, avant la rédaction ; Jira en erreur : on continue sans

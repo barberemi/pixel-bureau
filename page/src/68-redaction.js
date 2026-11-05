@@ -187,6 +187,7 @@ function rdRoom(now,people){
   const tks=((t&&t.tickets)||[]).map(x=>M.pend[t.run+':'+x.i]?{...x,etat:'gate'}:x); // le ticket que le boss porte n'est pas encore dans Jira
   rdLate(people,()=>{R(ctx,tx-4.4*T,ty-.9*T,8.8*T,1.8*T,'#7a5a3c');R(ctx,tx-4.4*T,ty-.9*T,8.8*T,6,'#94704c');R(ctx,tx-4.2*T,ty+.9*T,6,10,'#4a3424');R(ctx,tx+4.2*T-6,ty+.9*T,6,10,'#4a3424');
     tks.slice(0,4).forEach((x,k)=>{const sx=tx+(-2.6+k*1.3)*T;R(ctx,sx-12,ty-15,24,30,'#fbfbf6');R(ctx,sx-12,ty-15,24,4,RD_TK[x.etat]?RD_TK[x.etat][0]:'#2f6fd6');for(let l=0;l<4;l++)R(ctx,sx-8,ty-6+l*5,16,2,'#b8b2a4');atPill('T'+(k+1),sx+12,ty-14,'#0b2a4a','#fff','bold 10px ui-monospace,Menlo,monospace');});
+    if(tks.length>4)atPill('+'+(tks.length-4),tx+2.6*T,ty,'#0b2a4a','#fff','bold 11px ui-monospace,Menlo,monospace');
     if(t&&t.tour>1)atPill('↺ critique → rédaction · tour '+t.tour+'/3',tx+5.4*T,ty+2.6*T,'#0b2a4a','#fff','bold 11px system-ui,sans-serif');},ty-.6*T);
   atHitRd('table',tx-4.4*T,ty-2.2*T,8.8*T,5*T,{});
   // les plaques des postes (leur nom, toujours au même endroit, même quand l'agent se promène) : le fil rouge y est épinglé
@@ -201,7 +202,9 @@ function rdRoom(now,people){
     rdLate(people,()=>{rdPin(p0,'#d0392b');rdPin(p1,'#d0392b');if(p!=='recherche')rdPin(p2,'#d0392b');
       cards.forEach((c,k)=>{const x=tks[k], col=(RD_TK[x.etat]||RD_TK.wait);R(ctx,c.x-56,c.y-24,112,38,x.etat==='wait'&&p==='critique'&&k===0?'#9fd4ff':col[0]);rdPin({x:c.x,y:c.y-24},'#d0392b');
         atTxt('T'+(k+1)+' · '+(x.composant||'?'),c.x,c.y-8,'#1c1f26','bold 11px ui-monospace,Menlo,monospace');atTxt(clip(x.summary||'',20),c.x,c.y+5,'#3a3530','11px system-ui');
-        atHitRd('ticket',c.x-56,c.y-24,112,38,{k});});},1e6-1);}
+        atHitRd('ticket',c.x-56,c.y-24,112,38,{k});});
+      // quatre cartes au plus au liège (8 tickets par intention) : les autres sont dans la liste du panneau
+      if(tks.length>4)atPill('+ '+plural(tks.length-4,'ticket','tickets')+' : dans le panneau',cards[3].x,cards[3].y+30,'#5d6370','#fff','bold 11px system-ui,sans-serif');},1e6-1);}
   // les reporters assis à leur poste ; les autres marchent, prennent un café, lisent ou sont au canapé (lvDraw)
   Object.assign(M.want,rdWant(t,G,now));
   const bub={recherche:p==='recherche'?'je fouille '+(t.composants||[]).length+' dépôt(s)…':null,redaction:p==='redaction'?(tks.length?'version '+(t.tour||1)+', je reprends…':'je rédige…'):null,critique:p==='critique'?'je relis T1…':null};
