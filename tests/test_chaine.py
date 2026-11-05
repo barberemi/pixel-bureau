@@ -740,6 +740,49 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(self.sh("tri_code", stdin=json.dumps({"ok": True}) + SEP + json.dumps({"verdict": "revoir"}))[0], 4)
         self.assertEqual(self.sh("tri_code", stdin=json.dumps({"ok": True}) + SEP + json.dumps({"verdict": "ok"}))[0], 0)
 
+    def test_dependencies_of_the_main_checkout_are_linked_never_committed(self):
+        """impl.repos.<dépôt>.deps : vendor/ et node_modules du checkout principal liés dans la copie de travail (sans
+        copie), ignorés par git même quand le .gitignore ne vise que des dossiers (« vendor/ »), redonnés en reprise ;
+        le Code et les Tests le savent. Banc d'essai du 5 novembre : des conteneurs montés à la main, des commits sans test."""
+        main = os.path.join(self.tmp, "main")
+        g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        subprocess.run(["git", "clone", "-q", self.origin, main], check=True, capture_output=True)
+        os.makedirs(os.path.join(main, "app", "vendor", "pkg"))
+        Path(main, "app", "vendor", "pkg", "x.php").write_text("<?php\n")
+        Path(main, ".gitignore").write_text(".kronn/\napp/vendor/\n")  # motif de dossier : ne couvre pas un lien
+        os.makedirs(os.path.join(main, "node_modules", "m"))
+        subprocess.run(g + ["add", ".gitignore"], cwd=main, check=True)
+        subprocess.run(g + ["commit", "-qm", "ignore"], cwd=main, check=True)
+        wt = os.path.join(self.tmp, "wt2")
+        subprocess.run(["git", "worktree", "add", "-q", "--detach", wt], cwd=main, check=True, capture_output=True)
+        c = cfg()
+        c["impl"]["repos"]["dm/site"]["deps"] = ["app/vendor", "node_modules", "absent"]
+        self.code = templates.script_code("workflows/chaine.py", c)
+        self.wt = wt
+        subprocess.run(["git", "remote", "set-url", "origin", "https://github.com/dm/site.git"], cwd=main, check=True)
+        subprocess.run(["git", "config", f"url.{self.origin}.insteadOf", "https://github.com/dm/site.git"], cwd=main, check=True)
+        code, outp = self.sh("prepare", "AB-12", "complet", "run1", stdin=json.dumps(TICKET))
+        self.assertEqual(code, 0, outp)
+        self.assertIn("dépendances liées : app/vendor, node_modules", outp)
+        self.assertTrue(os.path.islink(os.path.join(wt, "app", "vendor")))
+        self.assertEqual(os.path.realpath(os.path.join(wt, "app", "vendor")), os.path.realpath(os.path.join(main, "app", "vendor")))
+        self.assertTrue(Path(wt, "app", "vendor", "pkg", "x.php").exists())
+        self.assertEqual(subprocess.run(["git", "status", "--porcelain"], cwd=wt, capture_output=True, text=True).stdout, "")
+        subprocess.run(g + ["add", "-A"], cwd=wt, check=True)  # un agent qui commite tout ne commite pas les liens
+        self.assertEqual(subprocess.run(["git", "diff", "--cached", "--name-only"], cwd=wt, capture_output=True, text=True).stdout, "")
+        self.assertEqual(self.dossier("etat.json")["deps"], ["app/vendor", "node_modules"])
+        self.assertIn("Dépendances déjà là (lance les tests directement)", self.sh("entree", "code", "AB-12")[1])
+        self.assertIn("lance les tests directement", self.sh("entree", "tests", "AB-12")[1])
+        self.assertNotIn("Dépendances déjà là", self.sh("entree", "regles", "AB-12")[1])
+        os.remove(os.path.join(wt, "node_modules"))  # reprise : le lien revient
+        e = self.dossier("etat.json")
+        e["etape"] = "controles"
+        Path(wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        self.sh("bilan")
+        code, outp = self.sh("prepare", "AB-12", "complet", "run2", "", "", "", "oui", stdin=json.dumps(TICKET))
+        self.assertEqual(code, 4, outp)
+        self.assertTrue(os.path.islink(os.path.join(wt, "node_modules")))
+
     def test_deletion_survey_finds_dead_references(self):
         """Ticket de suppression (EW-7816 : 4 blocs supprimés, 15 templates, styles et tests encore liés) : le Code reçoit
         les références aux fichiers que le plan supprime ; après le code, ses vérifications et le poste Règles voient celles

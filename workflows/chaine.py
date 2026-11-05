@@ -47,7 +47,7 @@ supprime la copie de travail d'un run (réussi ou non), la reprise y relit tout 
 Après chaque étape aussi, le bilan du run est réécrit dans l'historique (impl.historique, sinon
 ~/.local/share/pixel-bureau/historique/<ticket>/<owner__dépôt>/<run>.json), jamais vidé : le dernier écrit vaut pour un
 run fini, rejeté à une gate ou en panne (Kronn ne lance aucune étape après une panne).
-Réglage impl (pack ou config) : repos.<owner/dépôt>.{base, checks.{regles,tests}, reviewers, front, docs}, components.<composant> = owner/dépôt, postes.<poste>.{actif, bloquant}, max_tours, max_lots.
+Réglage impl (pack ou config) : repos.<owner/dépôt>.{base, checks.{regles,tests}, reviewers, front, docs, deps}, components.<composant> = owner/dépôt, postes.<poste>.{actif, bloquant}, max_tours, max_lots.
 Une commande de vérification reçoit {worktree}, {main} (dossier du projet), {files}, {php}, {ts}, {tests} (fichiers
 modifiés par rapport à la base, par type).
 """
@@ -429,6 +429,54 @@ def reprend(ticket, repo, mode, run):
                                   "livraison": "à la PR", "relecture": "à ta relecture de la PR"}.get(step, "au début, postes déjà faits sautés")
 
 
+def lie_deps(wt=None, repo=None):
+    """Dépendances du checkout principal (impl.repos.<dépôt>.deps : ex. ["application/vendor", "node_modules"]) rendues
+    visibles dans la copie de travail sans les copier : un lien symbolique quand le chemin manque. Jamais commité : si
+    le .gitignore du dépôt ne couvre pas le lien (un motif « vendor/ » ne vise qu'un dossier, pas un lien), le chemin est
+    ajouté à l'exclude local de git (info/exclude, commun aux copies de travail du dépôt) ; toujours pas ignoré : le lien
+    est retiré. Banc d'essai du 5 novembre : sans vendor/ ni node_modules, les agents montaient des conteneurs à la main
+    ou commitaient sans tester. Rend les chemins liés (ou déjà là)."""
+    wt = wt or root()
+    main = main_dir()
+    deps = [str(x).strip("/") for x in reglages(repo).get("deps") or [] if str(x).strip("/")]
+    ok = []
+    if not main or os.path.realpath(main) == os.path.realpath(wt):
+        return ok
+    run = lambda *a: subprocess.run(["git", *a], cwd=wt, capture_output=True, text=True)  # noqa: E731
+    for rel in deps:
+        src, dst = os.path.join(main, rel), os.path.join(wt, rel)
+        if os.path.lexists(dst):
+            ok.append(rel)
+            continue
+        if not os.path.isdir(src):
+            continue
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        os.symlink(src, dst)
+        if run("check-ignore", "-q", rel).returncode != 0:
+            exc = run("rev-parse", "--git-path", "info/exclude").stdout.strip()
+            exc = exc if os.path.isabs(exc) else os.path.join(wt, exc)
+            os.makedirs(os.path.dirname(exc), exist_ok=True)
+            with open(exc, "a", encoding="utf-8") as f:
+                f.write(f"\n/{rel}\n")
+        if run("check-ignore", "-q", rel).returncode != 0:  # toujours visible par git : jamais de lien qui se commite
+            os.remove(dst)
+            continue
+        ok.append(rel)
+    return ok
+
+
+def deps_md():
+    """Ce que le Code et les Tests savent des dépendances de leur copie de travail."""
+    deps = etat().get("deps") or []
+    if not deps:
+        return ""
+    return section("Dépendances déjà là (lance les tests directement)",
+                   f"{', '.join(deps)} : liés depuis le checkout principal ({main_dir()}), ni copiés ni commités. Lance les "
+                   "tests et l'analyse du dépôt directement dans la copie de travail, sans installer de dépendances ni monter "
+                   "de conteneur à la main ; une commande de vérification réglée en conteneur (impl.repos.<dépôt>.checks) "
+                   "garde son conteneur. Ne modifie rien dans ces dossiers.")
+
+
 def default_branch():
     """Branche par défaut du dépôt distant (front_tools est sur master)."""
     m = re.search(r"ref: refs/heads/(\S+)\s+HEAD", git("ls-remote", "--symref", "origin", "HEAD"))
@@ -452,8 +500,10 @@ def cmd_prepare(ticket, mode, run, variant="", depot="", soeurs="", reprise="", 
         if code is not None:
             e = etat()
             e["soeurs"] = sisters or e.get("soeurs") or []
+            e["deps"] = lie_deps(repo=repo)
             write_json(dossier("etat.json"), e)
-            print(f"{ticket} sur {repo} : reprise {why}, branche {e.get('branch')}, mode {mode}")
+            print(f"{ticket} sur {repo} : reprise {why}, branche {e.get('branch')}, mode {mode}"
+                  + (f", dépendances liées : {', '.join(e['deps'])}" if e["deps"] else ""))
             sauve()
             if code:
                 sys.exit(code)
@@ -487,13 +537,15 @@ def cmd_prepare(ticket, mode, run, variant="", depot="", soeurs="", reprise="", 
     write_json(dossier("etat.json"), {"ticket": ticket, "mode": mode, "repo": repo, "base": base, "branch": branch,
                                       "run": run, "tours": 0, "docs": docs[:200], "soeurs": sisters, "etape": "cadrage", "depart": fixed,
                                       "lecture": chemins([r for r in sisters + list(impl().get("references") or []) if r.lower() != repo.lower()]),
-                                      "texte": f"{f.get('summary') or ''}\n{f.get('description') or ''}"[:8000]})
+                                      "texte": f"{f.get('summary') or ''}\n{f.get('description') or ''}"[:8000],
+                                      "deps": lie_deps(repo=repo)})
     src = cache_dir(ticket, repo)
     if src and os.path.isdir(src):  # nouveau départ : l'ancien dossier ne doit plus servir à une reprise
         for x in os.listdir(src):
             os.remove(os.path.join(src, x))
     print(f"{ticket} sur {repo} : branche {branch} depuis {fixed[:10] or 'origin/' + base}, {len(docs)} fichiers de doc, mode {mode}"
-          + (f", dépôts sœurs : {', '.join(sisters)}" if sisters else ""))
+          + (f", dépôts sœurs : {', '.join(sisters)}" if sisters else "")
+          + (f", dépendances liées : {', '.join(etat().get('deps') or [])}" if etat().get("deps") else ""))
 
 
 # ---------- postes ----------
@@ -673,6 +725,8 @@ def cmd_entree(p, ticket, retours="", extra=""):
         stat = git("diff", "--stat", f"{depart()}...HEAD")
         parts.append(section("Volume du diff", stat[-3000:]))
         parts.append(correction(p))
+    if p in ("code", "tests"):
+        parts.append(deps_md())
     if p == "code":
         morts = references_mortes(plan_seul=True)
         if morts:
@@ -993,6 +1047,7 @@ def base_worktree():
             subprocess.run(["rm", "-rf", path])
         if not git_ok("worktree", "add", "--detach", "-f", path, depart()):
             return None
+        lie_deps(path)
     return path
 
 
