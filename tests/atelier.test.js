@@ -565,3 +565,19 @@ test('« Le soir au 1er » : comme aux autres étages, la scène passe à 22 h 3
   p.run('demoEnd();');
   assert.equal(J2('T === __T'), true);
 });
+
+test("ce que fait l'agent : sa bulle dit sa dernière action et le compteur, jaune sans action depuis 5 min ; l'orchestrateur vient au bureau", () => {
+  const p = load(), Jp = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  p.run(`T = DAY0 + 11 * 36e5; ATELIER = {generated_at: new Date(T).toISOString(), queue: [], pannes: [], rooms: [
+      {run: 'a', ticket: 'AB-1', repo: 'dm/site', poste: null, states: {cadrage: 'ok'}, tok: 1, etape: 'orchestrateur_plan', act: {cat: 'Execute', n: 18, at: new Date(T - 12e3).toISOString()}},
+      {run: 'b', ticket: 'AB-2', repo: 'dm/site', poste: 'code', states: {code: 'run'}, tok: 1, etape: 'code', act: {cat: 'Read', n: 96, at: new Date(T - 7 * 60e3).toISOString()}}]};
+    var __bb = [], __ab = atBubble; atBubble = (x, y, s, col, dot) => { __bb.push([s, dot || null]); return __ab(x, y, s, col, dot); };
+    AT_MEM.fresh = true; setFloor(1); renderAtelier(1000);`);
+  const bb = Jp('__bb');
+  assert.ok(bb.some(([s, d]) => s === '⌨ 18 actions' && d === 'live'), 'l\'orchestrateur : sa dernière action a 12 s');
+  assert.ok(bb.some(([s, d]) => s === '⏳ rien depuis 7 min' && d === 'stale'));
+  assert.match(p.run('atelierFicheHtml(ATELIER.rooms[0], 0)'), /En ce moment : <b>🧠 Plan de l&#39;orchestrateur<\/b> · ⌨ lance une commande · 18 actions, la dernière il y a 12 s/);
+  // en rejeu (le relevé est d'une autre heure), la bulle redevient « au travail »
+  p.run('T += 3600e3; __bb = []; renderAtelier(1100); atBubble = __ab;');
+  assert.ok(!Jp('__bb').some(([s]) => /actions|rien depuis/.test(s)));
+});

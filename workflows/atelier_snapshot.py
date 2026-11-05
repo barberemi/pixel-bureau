@@ -2,7 +2,7 @@
 lus dans l'API Kronn, 0 token ; stdout JSON du dataset atelier (cron live).
 
   {generated_at, rooms: [{run, ticket, title, repo, status, poste, gate, states: {poste: ok|run|bloq|avis|skip|wait|err|rep},
-                          tour, tok, since, lot, note, url, reprise?: {poste, de, panne, cause, cause_type, url}}],
+                          tour, tok, since, lot, note, url, etape?, act?: {cat, n, at}, reprise?: {poste, de, panne, cause, cause_type, url}}],
    queue: [{run, since}], pannes: [{run, ticket, repo, title, poste, since, url, cause, cause_type, docs_ok}], postes: [clé],
    events: [{t, k: arrive|poste|gate|back|panne|sort, run, ticket, repo, title, gate?, poste?, cause?, cause_type?}], livres,
    jour: {tickets, cours, sortis, pannes, reprises, tok}}
@@ -19,6 +19,8 @@ plus à l'étape code), une étape en panne, la PR ouverte (livraison réussie),
 La cause d'une panne : l'étape en échec du sous-run le plus profond (la sortie d'une étape SubWorkflow donne child_run_id et
 child_workflow_id), en une ligne et classée (garde_fou_docs, delai, agent, script, autre) ; le lien mène à ce run-là. Un run
 fini ne change plus : sa cause est gardée dans ~/.cache/pixel-bureau/atelier_causes.json (le cron tourne chaque minute).
+L'étape du parent qui tourne (etape : orchestrateur_plan… quand aucun poste n'est en cours) et ce que fait l'agent (act :
+last_activity de Kronn, cherché dans le sous-run le plus profond), pour montrer qu'un bureau travaille.
 Un run repris (prepare saute au Code, aux contrôles ou à la PR) : les postes d'avant la reprise sont « rep » (faits par le run
 d'avant), et reprise dit après quelle panne.
 Le tableau « Runs du jour » (jour) compte par ticket et dépôt les runs de la chaîne depuis minuit (fuseau du bureau, pages
@@ -84,6 +86,28 @@ def children(wf, run_id, cache):
     if not kids:
         return None
     return get(f"/workflows/{wf}/runs/{kids[0]['id']}")
+
+
+# étape SubWorkflow d'un run de la chaîne -> modèle de son sous-workflow (pour descendre jusqu'à l'agent qui travaille)
+SUB = {"cadrage": "impl_cadrage", "code": "impl_code", "controles": "impl_controles", "livraison": "impl_livraison",
+       "publication": "impl_publication", "tests": "impl_tests", "revue": "impl_revue_pr", "retours": "impl_retours"}
+
+
+def activite(run, models, cache, depth=0):
+    """Ce que fait l'agent en ce moment : last_activity de l'étape qui tourne (Kronn : catégorie de la dernière action,
+    nombre d'actions, heure), cherchée dans le sous-run quand l'étape est un sous-workflow. Sans agent au travail : None."""
+    s = next((x for x in reversed(run.get("step_results") or []) if x.get("status") == "Running"), None)
+    if not s:
+        return None
+    a = s.get("last_activity")
+    if isinstance(a, dict) and a.get("at"):
+        return {"cat": a.get("category"), "n": a.get("calls"), "at": a.get("at")}
+    k = SUB.get(s.get("step_name"))
+    if k and depth < 3:
+        c = children(models.get(k), run["id"], cache)
+        if c:
+            return activite(c, models, cache, depth + 1)
+    return None
 
 
 def run_url(wf, rid):
@@ -240,11 +264,14 @@ def room(run, models, cache):
     reprise = str((steps.get("prepare") or {}).get("condition_result") or "").partition("Goto:")[2]
     for k in REPRIS.get(reprise, ()):  # repris : faits par le run d'avant (pas « attend son tour »)
         states.setdefault(k, "rep")
+    etape = next((x.get("step_name") for x in reversed(run.get("step_results") or []) if x.get("status") == "Running"), None)
+    act = activite(run, models, cache) if run.get("status") == "Running" else None
     return {"run": run["id"], "ticket": m.group(1) if m else None, "repo": m.group(2) if m else None,
             "title": title, "status": run.get("status"), "poste": poste,
             "gate": gate, "states": {k: v for k, v in states.items() if v}, "tour": tour, "tok": run.get("tokens_used") or 0,
             "since": run.get("started_at"), "lot": lot, "note": note, "back": back,
             "url": run_url(run.get("workflow_id") or (CFG.get("models") or {}).get("impl_chain"), run["id"]),
+            **({"etape": etape} if etape else {}), **({"act": act} if act else {}),
             **({"repris_a": reprise} if reprise in REPRIS else {})}
 
 

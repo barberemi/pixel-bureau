@@ -62,12 +62,12 @@ function atelierDemo(){
     {run:'demo-a1',ticket:'DM-7305',title:'Lien « Gérer mon consentement » dans le pied de page',repo:'dm/site',poste:'gate',gate:'gate_plan',
      states:{...ok(1),gate:'wait'},tour:null,tok:97e3,since:at(9.2),note:'✋ ton plan'},
     {run:'demo-a2',ticket:'DM-7911',title:'Passer les tests du site sur la nouvelle version du framework',repo:'dm/site',poste:'code',
-     states:{cadrage:'rep',gate:'rep',code:'run'},tour:'1/3',tok:64e3,since:at(9.6),lot:'essai 2/3',
+     states:{cadrage:'rep',gate:'rep',code:'run'},tour:'1/3',tok:64e3,since:at(9.6),lot:'essai 2/3',etape:'code',act:{cat:'Read',n:142,at:at(10.998)},
      reprise:{poste:'code',de:'demo-a2-0',panne:'code',cause:'délai dépassé, arrêté par Kronn (2 h 10 pour 2 h 00 permises)',cause_type:'delai'}},
     {run:'demo-a3',ticket:'DM-7854',title:'Retirer un attribut codé en dur du bloc média',repo:'dm/site',poste:'code',back:true,
-     states:{...ok(4),securite:'bloq',code:'run'},tour:'2/3',tok:121e3,since:at(8.4),note:'🔒 bloquant → retour au code'},
+     states:{...ok(4),securite:'bloq',code:'run'},tour:'2/3',tok:121e3,since:at(8.4),note:'🔒 bloquant → retour au code',etape:'code',act:{cat:'Execute',n:96,at:at(10.88)}},
     {run:'demo-a4',ticket:'DM-412',title:'Cache des listes de rubriques',repo:'dm/api',poste:'retours',
-     states:{...ok(6),perf:'err',besoin:'avis',doc:'ok',pr:'ok',revue_pr:'ok',retours:'run'},tour:'1/3',tok:138e3,since:at(7.9),note:'💬 3 commentaires à traiter'}],
+     states:{...ok(6),perf:'err',besoin:'avis',doc:'ok',pr:'ok',revue_pr:'ok',retours:'run'},tour:'1/3',tok:138e3,since:at(7.9),note:'💬 3 commentaires à traiter',etape:'livraison',act:{cat:'Edit',n:37,at:at(10.994)}}],
     queue:[{run:'demo-q1',ticket:'DM-7606',since:at(10.5)},{run:'demo-q2',ticket:'DM-7948',since:at(10.8)}],
     livres:3,jour:{tickets:7,cours:4,sortis:3,pannes:1,reprises:2,tok:612e3},pannes:[{run:'demo-p1',ticket:'DM-7702',title:'Bandeau d\'alerte sur les pages direct',repo:'dm/api',poste:'securite',since:at(8.1),
       cause:'garde-fou docs de Kronn : docs/cache.md refusé (une suite de caractères qui ressemble à un secret)',cause_type:'garde_fou_docs',docs_ok:true}]};
@@ -85,6 +85,16 @@ function atelierRunIds(runs){
 const AT_STEP={prepare:'Préparation',orchestrateur_plan:'Plan de l\'orchestrateur',orchestrateur:'Orchestrateur',livraison:'PR',publication:'Publication',
   controles:'Contrôles',ticket:'Lecture du ticket',dossier:'Dossier',aiguillage:'Aiguillage',compris:'Ce que j\'ai compris',questions:'Questions',mode:'Mode'};
 const atStepName=k=>{const p=AT_POSTES.find(x=>x.k===k);return p?p.i+' '+p.n:AT_STEP[k]||k||'?';};
+// ce que fait l'agent au travail (act du relevé : last_activity de Kronn) ; en direct seulement : le relevé dit ce qu'il
+// fait maintenant, pas à l'heure du rejeu. Sans action depuis AT_STALE, la bulle passe au jaune.
+const AT_ACT={Read:['📖','lit un fichier'],Execute:['⌨','lance une commande'],Edit:['✏','écrit un fichier'],Write:['✏','écrit un fichier'],Search:['🔎','cherche']};
+const AT_STALE=5*60e3;
+function atAct(r){const a=r&&r.act, g=ATELIER&&ATELIER.generated_at;if(!a||!a.at||!g||Math.abs(T-Date.parse(g))>180e3)return null;
+  const age=Math.max(0,T-Date.parse(a.at)), [ico,txt]=AT_ACT[a.cat]||['⚙','travaille'];return {ico,txt,n:a.n||0,age,stale:age>AT_STALE};}
+const atActBubble=a=>a.stale?'⏳ rien depuis '+Math.floor(a.age/60e3)+' min':a.ico+' '+a.n+' action'+(a.n>1?'s':'');
+const atAgo=ms=>ms<60e3?'il y a '+Math.round(ms/1e3)+' s':'il y a '+Math.floor(ms/60e3)+' min';
+// l'orchestrateur, hors des postes : il vient dans le bureau pendant ses étapes (un bureau sans poste en cours paraissait vide)
+const AT_ORCH={orchestrateur_plan:'🧠 l\'orchestrateur écrit le plan',orchestrateur:'🧠 l\'orchestrateur décide : livrer ou renvoyer au code'};
 // les bureaux : en direct, ceux du relevé ; en rejeu, l'étage reconstruit à l'heure du curseur (atRoomsAt)
 const atLive=()=>typeof mode==='undefined'||mode==='live'||(typeof SCENE_DEMO!=='undefined'&&!!SCENE_DEMO); // une scène de la galerie joue sur sa copie
 const atRooms=()=>(atLive()?((ATELIER&&ATELIER.rooms)||[]):atRoomsAt(T)).slice(0,4);
@@ -358,9 +368,15 @@ function atCarton(x,y,label,col,dy){
 }
 function atBadge(x,y,ch,bgc,k){const s=k==null?1:k;if(s<=0)return;ctx.fillStyle=bgc;ctx.beginPath();ctx.arc(x,y,8*s,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
   if(s>.6)atTxt(ch,x,y+4,'#fff','bold 11px system-ui,sans-serif');}
-function atBubble(x,y,s,col){ctx.font='bold 12px system-ui,sans-serif';const w=ctx.measureText(s).width+12;
-  R(ctx,x-w/2-1,y-19,w+2,21,col||'#1c1f26');R(ctx,x-w/2,y-18,w,19,'#ffffff');R(ctx,x-3,y+1,6,3,col||'#1c1f26');R(ctx,x-2,y+1,4,2,'#ffffff');
-  atTxt(s,x,y-4,col||'#1c1f26','bold 12px system-ui,sans-serif');}
+const AT_BOARD={x:12.2*AT_TS,y:1.15*AT_TS,w:21.6*AT_TS,h:3.15*AT_TS};
+// dot : pastille d'activité (live : action de moins de 30 s, clignote ; calm ; stale : jaune). Bureaux du haut : une bulle
+// sous le grand tableau descend juste sous son cadre, plus serrée, entre le tableau et les étiquettes des postes
+function atBubble(x,y,s,col,dot){const B=AT_BOARD, by1=B.y+B.h+6, tight=y-19<by1&&x>B.x-90&&x<B.x+B.w+90, h=tight?17:19, f=tight?'bold 11px system-ui,sans-serif':'bold 12px system-ui,sans-serif';
+  if(tight)y=by1+h;
+  ctx.font=f;const d=dot?14:0, w=ctx.measureText(s).width+12+d, st=dot==='stale', ink=st?'#7a5200':col||'#1c1f26', bg=st?'#fff1c9':'#ffffff';
+  R(ctx,x-w/2-1,y-h-1,w+2,h+2,ink);R(ctx,x-w/2,y-h,w,h,bg);R(ctx,x-3,y+1,6,3,ink);R(ctx,x-2,y+1,4,2,bg);
+  if(dot){const on=dot!=='live'||REDUCED_MOTION||Math.floor(performance.now()/500)%2===0;ctx.fillStyle=st?'#c98a00':on?'#2fbf5a':'#a8e6bb';ctx.beginPath();ctx.arc(x-w/2+9,y-h/2,4,0,7);ctx.fill();}
+  atTxt(s,x+d/2,y-h/2+5,ink,f);}
 function atDesk(x,y,on,col){R(ctx,x-24,y,48,12,'#a0703f');R(ctx,x-24,y,48,3,'#b98552');R(ctx,x-24,y+12,48,8,'#7d5530');
   R(ctx,x-9,y-10,18,12,'#2b2e36');R(ctx,x-7,y-8,14,8,on?(col||'#7dffb0'):'#3d4250');if(on){R(ctx,x-5,y-6,7,1,'#0b3a1a');R(ctx,x-5,y-3,10,1,'#0b3a1a');}}
 function atCoffee(x,y){R(ctx,x-11,y-32,22,32,'#2f2f36');R(ctx,x-11,y-32,22,4,'#4a4a55');R(ctx,x-7,y-24,14,6,'#7dd3ff');R(ctx,x-4,y-13,8,8,'#1a1a1f');R(ctx,x-3,y-8,6,5,'#f2efe6');R(ctx,x-14,y,28,4,'#5a4636');}
@@ -431,7 +447,7 @@ const atHit=(kind,x,y,w,h,ref)=>AT_HITS.push({kind,x,y,w,h,...ref});
 function atRoom(r,i,now,dt){
   const g=AT_G[i], T=AT_TS, H=g.H, leave=AT_MEM.leaving[i], live=r&&!r.gate, al=g.L?'left':'right', hx=g.L?(g.x0+.5)*T:(g.x1-.5)*T;
   if(r){atTxt('BUREAU '+(i+1)+' · '+r.ticket+' · '+String(r.repo||'').split('/').pop()+(r.tour?' · tour '+r.tour:'')+' · '+Math.round((r.tok||0)/1e3)+' k jetons',hx,g.head,'#1c1f26','bold 13px ui-monospace,Menlo,monospace',al);
-    const nt=r.note||(r.lot?'⌨ Code · '+r.lot:'');
+    const nt=r.note||(r.lot?'⌨ Code · '+r.lot:'')||(!r.poste&&AT_ORCH[r.etape])||'';
     if(nt){ctx.font='bold 12px ui-monospace,Menlo,monospace';const w=ctx.measureText(nt).width+10;atPill(nt,g.L?hx+w/2:hx-w/2,g.noteY,r.gate?'#8a5a00':r.back?'#a8323a':'#2a4a7a');}}
   else atTxt('BUREAU '+(i+1)+' · '+(leave?leave.ticket+' · sorti':'libre'),hx,g.head,'#8a8478','bold 13px ui-monospace,Menlo,monospace',al);
   const x_=g.L?g.turnX:g.ex, w_=Math.abs(g.ex-g.turnX)+.7*T;
@@ -456,7 +472,8 @@ function atRoom(r,i,now,dt){
       const gl=ctx.createRadialGradient(sp.x,feet-24,4,sp.x,feet-24,46);gl.addColorStop(0,'rgba(255,246,190,.65)');gl.addColorStop(1,'rgba(255,246,190,0)');ctx.fillStyle=gl;ctx.fillRect(sp.x-48,feet-72,96,96);
       a._st={st:'work'};a.pose='type';people.push([a,()=>atDesk(sp.x,deskY,true),top]);
       const back=AT_MEM.backAt[r.run], sigh=p.k==='code'&&back&&now-back<8e3;
-      late.push(()=>atBubble(sp.x,feet-62,sigh?'encore ?':r.lot||(p.k==='retours'?'retours de la revue':'au travail')));
+      const act=r.poste===p.k&&atAct(r);
+      late.push(()=>atBubble(sp.x,feet-62,sigh?'encore ?':act?atActBubble(act):r.lot||(p.k==='retours'?'retours de la revue':'au travail'),null,!sigh&&act?act.stale?'stale':act.age<30e3?'live':'calm':null));
     }else if(s==='bloq'||s==='err'){
       a._st={st:'error'};a.pose=s==='bloq'&&AT_MEM.backAt[r.run]&&now-AT_MEM.backAt[r.run]<8e3?'hands':'stand';people.push([a,()=>atDesk(sp.x,deskY,true,'#ff9a8a'),top]);
       late.push(()=>atBadge(sp.x+18,feet-42,'!','#d0392b'));
@@ -469,6 +486,15 @@ function atRoom(r,i,now,dt){
     else if(s==='idle'){a._st={st:'idle'};a.pose='stand';sleepers.push([a,sp.x,feet,deskY,top]);}
     else {a._st={st:'idle'};a.pose='stand';ghosts.push([a,sp.x,deskY]);}
   });
+  if(r&&!r.gate&&!r.poste&&AT_ORCH[r.etape]){ // à côté de la barrière, du côté du Plan, son bloc-notes à la main
+    const sp=atSpot(g,'gate'), pl=atSpot(g,'cadrage'), top=sp.row===1, feet=top?g.feet1:g.feet2, x=sp.x+Math.sign(pl.x-sp.x||1)*30;
+    const o=atWorker(i*20+19,x,feet,'down',false,'Orchestrateur','securite');
+    if(o){o._st={st:'work'};o.pose='hands';
+      const gl=ctx.createRadialGradient(x,feet-24,4,x,feet-24,46);gl.addColorStop(0,'rgba(255,246,190,.65)');gl.addColorStop(1,'rgba(255,246,190,0)');ctx.fillStyle=gl;ctx.fillRect(x-48,feet-72,96,96);
+      people.push([o,()=>{},top]);
+      late.push(()=>{R(ctx,x+12,feet-34,14,18,'#8a6a3a');R(ctx,x+13,feet-32,12,15,'#fbfbf6');
+        const n=REDUCED_MOTION?3:1+Math.floor(now/700)%4;for(let k=0;k<n;k++)R(ctx,x+15,feet-29+k*3,8,1,'#5a5a5a');
+        const act=atAct(r);atBubble(x,feet-62,act?atActBubble(act):r.etape==='orchestrateur'?'je décide…':'ton plan…',null,act?act.stale?'stale':act.age<30e3?'live':'calm':null);});}}
   if(ghosts.length){const gg=atLayer();ghosts.forEach(([a])=>atDrawInto(gg,a,now));ctx.save();ctx.globalAlpha=.38;ctx.filter='grayscale(1)';ctx.drawImage(AT_OFF,0,0);ctx.restore();ghosts.forEach(([,x,y])=>atDesk(x,y,false));}
   people.forEach(([c,d,top])=>{if(top){drawChar(c,now);d();}else{d();drawChar(c,now);}});
   sleepers.forEach(([a,x,f,y,top])=>{if(top){drawChar(a,now);atDesk(x,y,false);}else{atDesk(x,y,false);drawChar(a,now);}});
@@ -504,7 +530,7 @@ function atExtinguisher(r,i,k,x,feet,now,dt,people){
 }
 // ---------- couloir central : grand tableau, boss, entrepôt ----------
 function atBoard(slots){
-  const T=AT_TS, bx=12.2*T, by=1.15*T, bw=21.6*T, bh=3.15*T, cw=bw/4;
+  const bx=AT_BOARD.x, by=AT_BOARD.y, bw=AT_BOARD.w, bh=AT_BOARD.h, cw=bw/4;
   R(ctx,bx-6,by-6,bw+12,bh+12,'#3a3530');R(ctx,bx,by,bw,bh,'#10141c');R(ctx,bx,by,bw,16,'#1c2230');
   atTxt('ORCHESTRATEUR',bx+bw/2,by+12,'#9fc4ff','bold 12px ui-monospace,Menlo,monospace');
   if(themeIs('noel'))for(let k=0;k<26;k++){ctx.fillStyle=['#ff4a4a','#ffd84a','#4aff8a','#4ac8ff'][(k+Math.floor(performance.now()/500))%4];ctx.beginPath();ctx.arc(bx+8+k*(bw-16)/25,by-4,3,0,7);ctx.fill();}
@@ -516,7 +542,7 @@ function atBoard(slots){
     // le titre du ticket est dans le panneau de droite : ici le bureau, l'état, l'avancée, le tour et les jetons, en grand
     const p=AT_POSTES.find(q=>q.k===r.poste);
     const pe=AT_POSTES.find(q=>(r.states||{})[q.k]==='err');
-    atTxt(r.gate==='gate_escalade'?'🚨 demande un humain':r.gate?'✋ attend ta décision':r.back?'↩ renvoyé au code':pe?'🧯 '+pe.n+' en panne':(p?p.i+' '+p.n+(r.lot?' · '+r.lot:''):''),x+10,by+54,col,'bold 12px system-ui,sans-serif','left');
+    atTxt(r.gate==='gate_escalade'?'🚨 demande un humain':r.gate?'✋ attend ta décision':r.back?'↩ renvoyé au code':pe?'🧯 '+pe.n+' en panne':p?p.i+' '+p.n+(r.lot?' · '+r.lot:''):AT_ORCH[r.etape]?'🧠 '+AT_STEP[r.etape]:'',x+10,by+54,col,'bold 12px system-ui,sans-serif','left');
     const sw=(cw-20)/AT_POSTES.length;AT_POSTES.forEach((q,j)=>{const s=(r.states||{})[q.k];R(ctx,x+10+j*sw,by+64,sw-2,6,(AT_ST[s]||['#2b3240'])[0]);});
     atTxt((r.tour?'tour '+r.tour+' · ':'')+Math.round((r.tok||0)/1e3)+' k jetons',x+10,by+90,'#b8c0d0','bold 12px system-ui,sans-serif','left');
     atHit('room',x,by,cw,bh,{i:k});
@@ -959,6 +985,7 @@ function atelierFicheHtml(r,i){
   return `<button class="at-back">‹ L'atelier</button><h2 class="at-h">🎫 ${esc(r.ticket||'…')} <span class="cnt">bureau ${i+1}</span></h2>
     <div class="at-title big">${esc(r.title||'')}</div>
     <div class="mut">${esc(r.repo||'')}${r.tour?' · tour <b>'+esc(r.tour)+'</b>':''} · ${Math.round((r.tok||0)/1e3)} k jetons${r.since?' · depuis '+esc(hm(ms(r.since))):''}</div>${atBar(r)}
+    ${(()=>{const a=atAct(r), st=r.poste?atStepName(r.poste):AT_ORCH[r.etape]?'🧠 '+AT_STEP[r.etape]:'';return !r.gate&&(a||st)?`<div class="at-box run">En ce moment : <b>${esc(st||'…')}</b>${a?(a.stale?' · rien depuis '+Math.floor(a.age/60e3)+' min':' · '+esc(a.ico+' '+a.txt)+' · '+a.n+' actions, la dernière '+atAgo(a.age)):''}</div>`:'';})()}
     ${r.gate?`<div class="at-gate"></div>${r.url?`<a class="at-link" href="${esc(r.url)}" target="_blank" rel="noopener">↗ Lire en entier dans Kronn</a>`:''}`:''}
     ${r.reprise?`<div class="at-box rep">↻ Repris ${esc(r.reprise.poste==='controles'?'aux contrôles':r.reprise.poste==='livraison'?'à la PR':'au '+atStepName(r.reprise.poste))} après : <b>${esc(atStepName(r.reprise.panne))}</b> en panne${r.reprise.cause?' ('+esc(atCauseTxt(r.reprise))+')':''}.${r.reprise.url?` <a href="${esc(r.reprise.url)}" target="_blank" rel="noopener">↗ le run d'avant</a>`:''}</div>`:''}
     <table class="at-t">${AT_POSTES.map(p=>{const s=(r.states||{})[p.k];return `<tr${r.poste===p.k?' class="cur"':''}><td>${p.i} ${esc(p.n)}</td><td>${s?`<span class="dot" style="background:${AT_ST[s][0]}"></span>${AT_ST[s][1]}`:'<span class="mut">à venir</span>'}</td></tr>`;}).join('')}</table>`+
