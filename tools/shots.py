@@ -283,6 +283,9 @@ SHOTS = {
     # le ménage du soir au 1er étage : l'agent d'entretien balaie le bureau 4, son chariot à côté (bureaux libres)
     "atelier-menage": (1600, 1100, AT(11) + "ATELIER={...ATELIER,rooms:[],queue:[],pannes:[]};{const c=atCleaner(),u=atCleanVisit(c,DAY0+12*36e5);"
                       "T=u.s+AT_CLEAN_DUR/(atCleanStops().length-1)*1.6;}setFloor(1);", None),
+    # une panne : sa cause, le conseil, le lien vers l'étape en échec ; un bureau repris (postes ↻ repris)
+    "atelier-panne": (1600, 1100, AT(11) + "setFloor(1);AT_PICK={kind:'panne',run:'demo-p1'};renderSide(true);", None),
+    "atelier-reprise": (1600, 1100, AT(11) + "setFloor(1);ATSEL='demo-a2';renderSide(true);", None),
     "atelier-calme": (1600, 1100, AT(11) + "ATELIER={...ATELIER,rooms:ATELIER.rooms.slice(0,2),queue:[],pannes:[]};setFloor(1);", None),
     # -1, la caserne Support : deux interventions de la démo (une au poste Cause, une réponse à valider, le capitaine à
     # la vanne) et une baie libre ; puis la caserne au calme, le soir : la garde dort sur les lits de camp

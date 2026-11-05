@@ -75,7 +75,11 @@ Un run de la chaîne qui échoue (un poste qui plante, l'API d'un agent indispon
 
 La cause est sous le ticket dans « 🧯 En panne », au survol de sa palette à l'entrepôt, dans sa fiche (avec le conseil), dans le fil du RDC (« 🧯 DM-7702 : ⌨ Code en panne ⏱ délai dépassé… ») et sur l'écran mural. Le lien « ↗ L'étape en échec dans Kronn » ouvre le run qui a vraiment planté (le sous-workflow, pas la chaîne) ; sur la fiche d'un bureau, « ↗ Le run dans Kronn » ouvre son run, et non plus la liste des runs.
 
+![Fiche d'une panne : la cause, le conseil et le lien vers l'étape en échec](../img/atelier-panne.png)
+
 **Un run repris** ne refait pas les postes d'avant la reprise : ils ne sont plus gris (« attend son tour ») mais « ↻ repris », faits par le run d'avant (agent à son poste, pastille ↻, barre des postes hachurée verte). Sa fiche dit après quelle panne : « ↻ Repris aux contrôles après : ⌨ Code en panne (🛡 garde-fou docs de Kronn…) », avec le lien vers le run d'avant.
+
+![Fiche d'un bureau repris : Plan et Ton plan ↻ repris, après quelle panne](../img/atelier-reprise.png)
 
 ## Données
 
