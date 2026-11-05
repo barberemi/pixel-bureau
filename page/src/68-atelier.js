@@ -102,12 +102,15 @@ const atSig=()=>atRooms().map(r=>r.run+':'+(r.gate||r.poste)+(r.back?'!':'')).jo
 // RDC (l'open space, par défaut), 1er (l'atelier, s'il existe), -1 (la caserne Support, si la console Support existe)
 function atelierTabs(){ // le gyrophare du -1 suit csAlarm à chaque relevé
   let t=document.getElementById('floors');
-  if(!atelierOn()&&!caserneOn()&&!retoursOn()&&!redactionOn()){if(t)t.remove();return;}
+  if(!atelierOn()&&!caserneOn()&&!retoursOn()&&!redactionOn()){const r=document.querySelector('.floorbar');if(r)r.remove();return;}
   if(!t){t=document.createElement('div');t.id='floors';t.className='floors';t.setAttribute('role','tablist');
-    const w=document.querySelector('.stage .cv-wrap');w.parentElement.insertBefore(t,w);
+    // la rangée : les onglets, puis au bout la pastille de ce qui t'attend (69-attente.js)
+    const row=document.createElement('div');row.className='floorbar';row.appendChild(t);
+    const w=document.querySelector('.stage .cv-wrap');w.parentElement.insertBefore(row,w);
     t.addEventListener('click',e=>{const b=e.target.closest('button[data-floor]');if(b)setFloor(+b.dataset.floor);});}
   const h=floorTabsHtml();
   if(t.dataset.sig!==h)t.innerHTML=t.dataset.sig=h;
+  if(typeof waitChip==='function')waitChip(); // 69-attente.js : une décision arrive ou part avec le relevé
 }
 // en court : l'icône et le numéro de l'étage, ce qui y tourne, ✋ ce qui t'attend ; son nom en entier au survol (et lu)
 function floorTabsHtml(){

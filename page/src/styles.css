@@ -855,7 +855,20 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .pz{display:inline-flex;vertical-align:-2px;margin-right:4px}.pz svg{display:block;shape-rendering:crispEdges}
 .pz-head{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin:0 0 6px}.pz-head b{color:var(--ink)}
 /* 1er étage : l'atelier d'implémentation (68-atelier.js) */
-.floors{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 6px}
+.floorbar{display:flex;gap:6px;flex-wrap:wrap;align-items:stretch;margin:0 0 6px;position:relative}
+.floors{display:flex;gap:4px;flex-wrap:wrap}
+/* ce qui t'attend, tous étages (69-attente.js) : au bout de la rangée, la liste déroulée dessous, à droite */
+.waitchip{margin-left:auto;font:700 13px system-ui,sans-serif;padding:4px 12px;border:2px solid var(--warn);background:var(--warn);color:#1c1c1c;cursor:pointer;line-height:1.2}
+.waitchip small{font-weight:600;font-size:12px}
+.waitchip:hover,.waitchip:focus-visible,.waitchip[aria-expanded="true"]{border-color:var(--ink)}
+.waitlist{position:absolute;right:0;top:calc(100% + 4px);z-index:40;width:min(460px,100%);background:var(--panel);color:var(--ink);border:2px solid var(--warn);box-shadow:0 6px 24px rgba(0,0,0,.35);padding:8px;font:13px system-ui,sans-serif}
+.waitlist h4{margin:2px 4px 8px;font-size:13px}
+.wl-r{display:grid;grid-template-columns:58px 1fr auto auto;gap:8px;align-items:center;padding:6px}
+.wl-r+.wl-r{border-top:1px solid var(--line)}.wl-r.old{background:color-mix(in srgb,var(--warn) 16%,transparent)}
+.wl-fl{font-weight:700;font-size:12px;border:1px solid var(--line);padding:2px 4px;text-align:center;white-space:nowrap}
+.wl-x{min-width:0}.wl-x b{display:block}.wl-x small{color:var(--muted)}
+.wl-age{font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.wl-r button{font:700 12px system-ui,sans-serif;padding:4px 8px;border:2px solid var(--warn);background:var(--warn);color:#1c1c1c;cursor:pointer}
 .floors button{font:600 13px system-ui,sans-serif;padding:4px 8px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:5px;line-height:1.2}
 .floors button.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .floors .fi{font-size:15px}
@@ -903,7 +916,7 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .atelier .at-box{border-left:4px solid var(--warn);background:var(--chip);padding:8px 10px;margin:8px 0;font:12.5px/1.45 system-ui,sans-serif;overflow-wrap:anywhere}
 .atelier .at-box.bloq{border-color:var(--err)}.atelier .at-box.run{border-color:var(--info)}
 .atelier .at-link{display:inline-block;margin:4px 0 8px;font:600 13px system-ui,sans-serif}
-body.tv .floors{display:none} /* mode TV : l'étage se change par le bouton de la barre (ou E, ou ?floor=alt) */
+body.tv .floorbar{display:none} /* mode TV : l'étage se change par le bouton de la barre (ou E, ou ?floor=alt) */
 body.tv #tvwho .at-bar{display:flex;gap:2px;margin:6px 0 2px}body.tv #tvwho .at-bar i{flex:1;height:7px;background:var(--tv-chip)}
 body.tv #tvwho .at-bar i.ok{background:var(--ok)}body.tv #tvwho .at-bar i.run{background:var(--info)}body.tv #tvwho .at-bar i.bloq,body.tv #tvwho .at-bar i.err{background:var(--err)}
 body.tv #tvwho .at-bar i.avis,body.tv #tvwho .at-bar i.wait{background:var(--warn)}

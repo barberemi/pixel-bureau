@@ -109,7 +109,7 @@ function mtBar(){
   let b=document.getElementById('mtbar');
   if(TV||!mtAgents().length){if(b)b.remove();return;}
   if(!b){b=document.createElement('div');b.id='mtbar';b.className='mtbar';b.setAttribute('role','toolbar');b.setAttribute('aria-label','Les agents des étages');
-    const st=document.querySelector('.stage');if(!st)return;st.insertBefore(b,document.getElementById('floors')||st.querySelector('.cv-wrap'));
+    const st=document.querySelector('.stage');if(!st)return;st.insertBefore(b,st.querySelector('.floorbar')||st.querySelector('.cv-wrap'));
     b.addEventListener('click',e=>{const a=e.target.closest('[data-mt]');if(a)mtOpen(byKey[a.dataset.mt]);});}
   const h=mtBarHtml();if(b.dataset.sig!==h)b.innerHTML=b.dataset.sig=h;
 }

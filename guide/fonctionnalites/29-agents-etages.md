@@ -18,6 +18,12 @@ Au-dessus des onglets d'étage, visible à tous les étages (pas en mode TV) : l
 - **Support** : la console Support (le fil à investiguer, le projet, puis la carte Kronn).
 - **Les autres** : sa fiche au RDC, avec en tête « À lancer » : les PR ouvertes à relire (Revue), les PR qui ont des fils de review à traiter (Retours), les tickets à faire ou en cours sans PR (Implé), six au plus, chacun avec son bouton. Le Ticket a son « ▶ Lancer… » (l'intention, le type, les points).
 
+## Ce qui t'attend, tous étages
+
+Au bout de la rangée des onglets d'étage, une pastille « ✋ 4 décisions · la plus ancienne 1 h 48 » compte tout ce qui attend ta validation : les gates du RDC (celles de tes agents, et les workflows sans personnage), ton plan au 1er, le tampon du 2e, les corrections du 3e avant le push, la réponse Support du -1. Un clic déroule la liste, la plus ancienne d'abord ; « Ouvrir » t'emmène à l'étage, la décision ouverte dans le panneau. Sans décision, pas de pastille. Elle est à tous les étages, sauf en mode TV.
+
+![La pastille au bout des onglets, la liste des décisions déroulée](../img/attente.png)
+
 ## Réglage
 
 Dans `settings.json` du pack, la clé `metier` d'un agent : `support`, `ticket`, `revue`, `retours` ou `impl`. Un agent par métier (le premier de la liste). Pour un agent qui fait la revue du cron et la revue à la demande, son `wf` dans la config réunit les deux.
