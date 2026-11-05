@@ -92,6 +92,39 @@ class ReviewTest(unittest.TestCase):
         manual = self.ctx([{"user": {"login": "bot"}, "body": "Une réponse à la main", "commit_id": self.head}])
         self.assertEqual(manual.returncode, 0, manual.stderr)  # une review à la main au head ne compte pas
 
+    def test_an_empty_review_is_never_posted(self):
+        """#2060 (run 73869a01) : l'avis a cherché dans un dossier vide et rendu « Impossible de produire la review : les
+        fichiers d'entrée attendus … sont absents du worktree, qui est lui-même vide », posté en COMMENT. La garde de
+        map_event (0 token) ne le poste pas : l'avis est relancé une fois (code 7), puis fin sans review (code 8, marqueur
+        pour skip_note) ; un avis normal donne l'action GitHub de son verdict."""
+        self.assertEqual(self.ctx().returncode, 0)
+        vide = {"pr": 12, "verdict": "comment", "event": "COMMENT", "comments": [], "existingCommentActions": [],
+                "existingCommentReplies": [], "skipped": False,
+                "generalComment": "Impossible de produire la review : les fichiers d'entrée attendus (.kronn/pr-2060/.review-context.json, "
+                                  ".kronn/review-2060/contexte.md…) sont absents du worktree, qui est lui-même vide."}
+        r = self.run_("garde", "12", "comment", "false", stdin=json.dumps(vide))
+        self.assertEqual(r.returncode, 7, r.stdout + r.stderr)
+        self.assertIn("Review non postée : avis sans matière", r.stdout)
+        r = self.run_("garde", "12", "comment", "false", stdin=json.dumps(vide))
+        self.assertEqual(r.returncode, 8)  # toujours vide après la relance : rien n'est posté
+        self.assertIn("avis sans matière", Path(self.tmp, ".kronn", "vide-12").read_text())
+        self.assertEqual(self.run_("garde", "12", "comment", "false", stdin=json.dumps({**vide, "statut": "echec", "generalComment": "x"})).returncode, 8)
+        self.assertEqual(self.run_("garde", "12", "comment", "false", stdin="null").returncode, 8)
+        self.assertEqual(self.ctx().returncode, 0)  # nouvelle revue : marqueurs et essais d'avant oubliés
+        self.assertFalse(Path(self.tmp, ".kronn", "vide-12").exists())
+        bon = {**vide, "verdict": "request_changes", "statut": "ok",
+               "generalComment": "Le fichier src/f.py n'a pas de test pour la borne ajoutée.",
+               "comments": [{"path": "src/f.py", "line": 11, "side": "RIGHT", "body": "Test manquant"}]}
+        r = self.run_("garde", "12", "request_changes", "false", stdin=json.dumps(bon))
+        self.assertEqual((r.returncode, r.stdout), (0, "REQUEST_CHANGES"))
+        self.assertEqual(self.run_("garde", "12", "request_changes", "true", stdin=json.dumps(bon)).stdout, "COMMENT")  # sa propre PR
+        sans_inline = {**bon, "comments": [], "verdict": "approve", "generalComment": "Rien de bloquant, la borne est testée."}
+        self.assertEqual(self.run_("garde", "12", "approve", "false", stdin=json.dumps(sans_inline)).stdout, "APPROVE")
+        shutil.rmtree(self.wt)  # worktree absent (setup raté) : relancer l'avis n'y changerait rien
+        r = self.run_("garde", "12", "approve", "false", stdin=json.dumps(sans_inline))
+        self.assertEqual(r.returncode, 8)
+        self.assertIn("entrées de la revue absentes", r.stdout)
+
     def test_each_poste_opens_with_the_cost_header_and_reads_the_context(self):
         self.ctx()
         r = self.run_("poste", "contexte", "12", "dm/site")

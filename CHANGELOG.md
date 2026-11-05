@@ -37,6 +37,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- Revue de PR : une review sans matière n'est plus jamais postée. L'avis reçoit le chemin absolu de sa copie de travail et dit son échec s'il ne trouve pas ses fichiers ; une garde sans IA, avant de poster, relance l'avis une fois puis finit sans rien poster (« review non postée : avis sans matière »). Cas de la PR #2060 d'un dépôt de l'équipe, où une review « Impossible de produire la review … » avait été publiée.
 - Chaîne d'implémentation, essai rejoué : la description et le titre du ticket sont ceux de la date du commit de départ, reconstruits depuis l'historique Jira, et non plus ceux d'aujourd'hui, réécrits après la livraison.
 - Chaîne d'implémentation : quand le garde-fou docs de Kronn rejette le poste Code après coup (faux positif « secret » dans une doc) alors que l'agent a fini et commité, la chaîne passe seule aux contrôles (étape `rattrape`) ; le poste 📚 Doc relit les docs refusées et la PR les cite. Sinon, elle échoue comme avant (banc d'essai du 5 novembre).
 - Galerie des scènes : au 1er, une scène ne se jouait qu'au deuxième clic (passer en démonstration était pris pour un saut du curseur) ; au 3e, « Une PR monte au 3e » et « La PR est poussée » ne se jouaient jamais.

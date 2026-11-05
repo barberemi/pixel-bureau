@@ -67,6 +67,17 @@ class ModelsTest(unittest.TestCase):
             self.assertEqual((agent["agent_settings"]["tier"], agent["skill_ids"]), (tier, skills), p)
             self.assertEqual(child[p]["sub_workflow_variables"], {"pr": "{{state.pr}}", "repo": "{{state.repo}}"})
         self.assertEqual(len(templates.render(TPL["review_child"], cfg(review={"page_id": PAGE}))["steps"]), 20)  # plafond de Kronn
+        # jamais une review vide (#2060) : l'avis sait où est sa copie de travail et dit son échec ; la garde de map_event
+        # relance l'avis une fois, puis finit sans poster
+        self.assertIn('echo "---STATE:root=$root---"', child["setup"]["exec_args"][1])
+        self.assertIn('{{state.root ?? "."}}/.kronn/pr-{{state.pr}}/.review-context.json', avis["prompt_template"])
+        self.assertIn('statut: \"echec\"', avis["prompt_template"])
+        self.assertEqual(avis["output_format"]["schema"]["properties"]["statut"]["enum"], ["ok", "echec"])
+        me = child["map_event"]
+        self.assertEqual(me["exec_args"][2:], ["garde", "{{state.pr}}", '{{steps.avis.data.verdict ?? ""}}', "{{state.is_own}}"])
+        self.assertEqual(me["on_result"], [{"contains": "exit_7", "action": {"type": "Goto", "step_name": "avis", "max_iterations": 1}},
+                                           {"contains": "exit_8", "action": {"type": "Goto", "step_name": "skip_note"}}])
+        self.assertIn(".kronn/vide-$n", child["skip_note"]["exec_args"][1])
         # le contexte lit la PR (gh) puis son ticket dans Jira, avant l'agent ; sans Jira, le ticket n'est pas lu
         ctx = steps("review_contexte", c)
         self.assertEqual(list(ctx), ["cle", "jira", "ticket", "entree", "agent", "rapport"])

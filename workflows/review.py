@@ -19,6 +19,9 @@ Kronn plafonne un workflow à 20 étapes : l'avis lit les rapports lui-même, la
   python3 -c <ce script> poste <poste> <pr> <repo>     consigne du poste (stdout = son prompt, 0 token) ; code 5 pour
                                                 la sécurité quand le contexte a écrit « Sécurité : non »
   python3 -c <ce script> rapport <poste> <pr>  (stdin : sortie de l'agent)   le rapport, rangé dans le dossier
+  python3 -c <ce script> garde <pr> <verdict> <is_own>  (stdin : sortie de l'avis)   avant de poster : l'action GitHub
+                                                du verdict (code 0) ; avis sans matière ou entrées absentes : rien n'est posté,
+                                                code 7 (l'avis est relancé une fois) puis 8 (marqueur .kronn/vide-<n>, fin)
   python3 -c <ce script> couts <worktree>|--all   coût et durée de chaque revue -> dataset review_sessions de la page de
                                                 récap (DRY_RUN=1 : affiche sans publier)
 
@@ -142,6 +145,10 @@ def contexte(pr, me, raw):
     wt = os.path.join(".kronn", "pr-" + str(pr))
     head = subprocess.run(["git", "-C", wt, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     sha = head  # « head » sert plus bas aux titres du diff
+    try:  # avis sans matière d'une revue d'avant dans la même copie de travail (garde)
+        os.remove(os.path.join(".kronn", "vide-" + str(pr)))
+    except OSError:
+        pass
     if head and any((r.get("user") or {}).get("login") == me and "Review automatique" in (r.get("body") or "") and r.get("commit_id") == head
                     for r in d.get("reviews") or []):  # déjà relue par le Bureau à ce head : marqueur pour skip_note
         with open(os.path.join(".kronn", "skip-" + str(pr)), "w", encoding="utf-8"):
@@ -485,6 +492,65 @@ def couts(arg):
     print("review_sessions OK : %d review(s), %.2f $" % (len(rows), total))
 
 
+SANS_MATIERE = re.compile(r"impossible|introuvable|absent|manquant|\bvide\b|missing|not found|cannot|unable|n'existe pas|aucun fichier", re.I)
+SUJET_ENTREES = re.compile(r"fichier|worktree|contexte|dossier|context|file|diff|\.kronn|copie de travail", re.I)
+EVENTS = {"approve": "APPROVE", "request_changes": "REQUEST_CHANGES"}
+
+
+def sans_matiere(pr, d):
+    """Pourquoi l'avis ne doit pas être posté, ou "" : entrées de la revue absentes, sortie illisible, échec déclaré par
+    l'avis, ou avis sans constat qui dit n'avoir pas trouvé ses fichiers (#2060 : « Impossible de produire la review : les
+    fichiers d'entrée attendus … sont absents du worktree, qui est lui-même vide », posté en COMMENT)."""
+    n = re.sub(r"\D", "", str(pr))
+    wt = os.path.join(".kronn", "pr-" + n)
+    manque = [x for x in (os.path.join(wt, ".review-context.json"), os.path.join(".kronn", "review-" + n, "diff.md"))
+              if not os.path.isfile(x)]
+    if not os.path.isdir(wt) or not [x for x in os.listdir(wt) if x != ".git"]:
+        manque.insert(0, wt + " (vide)")
+    if manque:
+        return "entrées de la revue absentes : " + ", ".join(manque)
+    if not isinstance(d, dict) or not str(d.get("generalComment") or "").strip():
+        return "sortie de l'avis illisible ou sans synthèse"
+    if str(d.get("statut") or "").lower() == "echec":
+        return "l'avis déclare un échec : " + str(d.get("generalComment"))[:200]
+    txt = str(d.get("generalComment") or "")
+    if not d.get("comments") and SANS_MATIERE.search(txt[:600]) and SUJET_ENTREES.search(txt[:600]):
+        return "avis sans matière (il dit n'avoir pas trouvé ses fichiers) : " + txt[:200]
+    return ""
+
+
+def garde(pr, verdict, own, raw):
+    """Avant de poster (étape map_event, 0 token) : l'action GitHub du verdict sur stdout, code 0 ; un avis sans matière
+    n'est jamais posté : code 7 la 1re fois (l'avis est relancé, Goto avis), code 8 ensuite ou si les entrées manquent
+    (relancer n'y changerait rien) : marqueur .kronn/vide-<n> et Goto skip_note, rien n'est posté."""
+    try:
+        d = json.loads(raw) if (raw or "").strip() not in ("", "null") else None
+    except ValueError:
+        d = None
+    why = sans_matiere(pr, d)
+    if not why:
+        e = "COMMENT" if own == "true" else EVENTS.get(str(verdict or "").strip().lower(), "COMMENT")
+        sys.stdout.write(e)
+        return
+    n = re.sub(r"\D", "", str(pr))
+    path = os.path.join(ddir(n), "garde.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            essais = int(json.load(f).get("essais") or 0)
+    except (OSError, ValueError):
+        essais = 0
+    essais += 1
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"essais": essais, "raison": why}, f, ensure_ascii=False)
+    if essais == 1 and not why.startswith("entrées"):
+        print(f"Review non postée : {why}. L'avis est relancé une fois.")
+        sys.exit(7)
+    with open(os.path.join(".kronn", "vide-" + n), "w", encoding="utf-8") as f:
+        f.write(why + "\n")
+    print(f"Review non postée : {why}.")
+    sys.exit(8)
+
+
 if __name__ == "__main__":
     cmd, a = sys.argv[1], sys.argv[2:] + [""] * 4
     if cmd == "contexte":
@@ -497,6 +563,8 @@ if __name__ == "__main__":
         poste(a[0], a[1], a[2])
     elif cmd == "rapport":
         rapport(a[0], a[1], sys.stdin.read())
+    elif cmd == "garde":
+        garde(a[0], a[1], a[2], sys.stdin.read())
     elif cmd == "couts":
         couts(a[0] or os.getcwd())
     else:
