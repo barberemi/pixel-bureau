@@ -15,7 +15,19 @@ const AT_POSTES=[
   {k:'pr',i:'📤',n:'PR',d:'pousse la branche et ouvre la PR brouillon'},{k:'revue_pr',i:'👀',n:'Revue PR',d:'fait la revue de la PR'},
   {k:'retours',i:'💬',n:'Retours',d:'traite les commentaires de la revue'}];
 const AT_ST={ok:['#3fbf6a','validé'],run:['#5b8def','en cours'],bloq:['#e0614f','bloquant'],avis:['#e0a020','avis'],wait:['#e0a020','t\'attend'],
-  skip:['#5b6070','sauté'],err:['#e0614f','en panne']};
+  skip:['#5b6070','sauté'],err:['#e0614f','en panne'],rep:['#6fae8c','fait avant la reprise']};
+// cause d'une panne (atelier_snapshot.py : cause_type) : son icône, son nom et ce qu'il faut faire
+const AT_CAUSE={garde_fou_docs:['🛡','garde-fou docs de Kronn'],delai:['⏱','délai dépassé'],agent:['🔌','agent ou API indisponible'],script:['📜','script en erreur'],autre:['❔','autre']};
+function atConseil(p){
+  const t=p&&p.cause_type;
+  if(t==='garde_fou_docs')return p.docs_ok?'Le travail est commité : Kronn a refusé un fichier de doc après coup. Relance le ticket en reprise : le Code retrouve ses lots déjà faits et passe vite aux contrôles.'
+    :'Kronn a refusé un fichier de doc avant la fin du Code. Relance le ticket en reprise : le Code reprend ses lots là où il en était.';
+  if(t==='delai')return 'Le run a dépassé sa durée permise (coupure réseau, agent figé…). Relance le ticket : la chaîne reprend au poste arrêté.';
+  if(t==='agent')return 'L\'agent ou l\'API n\'a pas répondu (quota, réseau, service en panne). Attends qu\'il revienne, puis relance le ticket.';
+  if(t==='script')return 'Un script de la chaîne a échoué : lis l\'étape dans Kronn avant de relancer.';
+  return 'Lis l\'étape en échec dans Kronn avant de relancer le ticket.';
+}
+const atCauseTxt=p=>p&&p.cause?(AT_CAUSE[p.cause_type]||AT_CAUSE.autre)[0]+' '+p.cause:'';
 // « Comment lire le plan » au 1er (46-legende.js) : la légende sous le plan, puis les onglets ; les postes viennent d'AT_POSTES
 const AT_HELP={bar:()=>legSwatches(AT_ST)+'<span>🧯 fumée : poste en panne</span>',postes:()=>[['',AT_POSTES]],
   qui:'<p><b>Agents</b> : un par poste, en hologramme bleu, casque jaune et gilet orange.</p><p><b>Bernard</b> apporte les cartons de l\'entrepôt et emporte ceux qui sortent.</p>'+
@@ -50,13 +62,15 @@ function atelierDemo(){
     {run:'demo-a1',ticket:'DM-7305',title:'Lien « Gérer mon consentement » dans le pied de page',repo:'dm/site',poste:'gate',gate:'gate_plan',
      states:{...ok(1),gate:'wait'},tour:null,tok:97e3,since:at(9.2),note:'✋ ton plan'},
     {run:'demo-a2',ticket:'DM-7911',title:'Passer les tests du site sur la nouvelle version du framework',repo:'dm/site',poste:'code',
-     states:{...ok(2),code:'run'},tour:'1/3',tok:64e3,since:at(9.6),lot:'essai 2/3'},
+     states:{cadrage:'rep',gate:'rep',code:'run'},tour:'1/3',tok:64e3,since:at(9.6),lot:'essai 2/3',
+     reprise:{poste:'code',de:'demo-a2-0',panne:'code',cause:'délai dépassé, arrêté par Kronn (2 h 10 pour 2 h 00 permises)',cause_type:'delai'}},
     {run:'demo-a3',ticket:'DM-7854',title:'Retirer un attribut codé en dur du bloc média',repo:'dm/site',poste:'code',back:true,
      states:{...ok(4),securite:'bloq',code:'run'},tour:'2/3',tok:121e3,since:at(8.4),note:'🔒 bloquant → retour au code'},
     {run:'demo-a4',ticket:'DM-412',title:'Cache des listes de rubriques',repo:'dm/api',poste:'retours',
      states:{...ok(6),perf:'err',besoin:'avis',doc:'ok',pr:'ok',revue_pr:'ok',retours:'run'},tour:'1/3',tok:138e3,since:at(7.9),note:'💬 3 commentaires à traiter'}],
     queue:[{run:'demo-q1',ticket:'DM-7606',since:at(10.5)},{run:'demo-q2',ticket:'DM-7948',since:at(10.8)}],
-    livres:3,pannes:[{run:'demo-p1',ticket:'DM-7702',title:'Bandeau d\'alerte sur les pages direct',repo:'dm/api',poste:'securite',since:at(8.1)}]};
+    livres:3,pannes:[{run:'demo-p1',ticket:'DM-7702',title:'Bandeau d\'alerte sur les pages direct',repo:'dm/api',poste:'securite',since:at(8.1),
+      cause:'garde-fou docs de Kronn : docs/cache.md refusé (une suite de caractères qui ressemble à un secret)',cause_type:'garde_fou_docs',docs_ok:true}]};
 }
 const atelierOn=()=>!!(CFG.atelier||DEMO);
 // workflows de l'étage (modèles impl*, CFG.atelier_wf) : leurs runs, et les sous-runs qu'ils lancent (revue de la PR),
@@ -429,8 +443,8 @@ function atRoom(r,i,now,dt){
     if(p.gate){R(ctx,sp.x-14,g.b1-20,3,20,'#8a8478');R(ctx,sp.x+12,g.b1-20,3,20,'#8a8478');for(let k=0;k<4;k++)R(ctx,sp.x-14+k*7,g.b1-20,7,5,k%2?'#1c1c1c':'#f2c230');
       late.push(()=>atPill(r&&r.gate?'✋ Ton plan':'✋',sp.x,g.lab1,r&&r.gate?'#8a5a00':'#e9dcb8',r&&r.gate?'#fff':'#6a5a30','bold 11px system-ui,sans-serif'));return;}
     const deskY=top?g.desk1:g.desk2, feet=top?g.feet1:g.feet2, labelY=top?g.lab1:g.lab2;
-    const col={run:'#2f6fd6',bloq:'#a8323a',err:'#a8323a',ok:'#2f7a45',avis:'#9a6a10',skip:'#d8d2c4'}[s]||'#f4efe4';
-    late.push(()=>atPill(atPosteLbl(p,['run','bloq','err','avis'].includes(s)),sp.x,labelY,col,['run','bloq','err','ok','avis'].includes(s)?'#fff':s==='skip'?'#8a8478':'#3a3530','bold 11px system-ui,sans-serif'));
+    const col={run:'#2f6fd6',bloq:'#a8323a',err:'#a8323a',ok:'#2f7a45',avis:'#9a6a10',skip:'#d8d2c4',rep:'#4f7a64'}[s]||'#f4efe4';
+    late.push(()=>atPill(atPosteLbl(p,['run','bloq','err','avis'].includes(s)),sp.x,labelY,col,['run','bloq','err','ok','avis','rep'].includes(s)?'#fff':s==='skip'?'#8a8478':'#3a3530','bold 11px system-ui,sans-serif'));
     if(!atAtDesk(i,p.k)){atDesk(sp.x,deskY,false);return;} // personne (bureau vide, ou il monte encore) : le bureau seul
     const a=atWorker(i*20+idx,sp.x,feet,'down',false,p.n);if(!a)return;
     a._at={i,k:p.k,s};
@@ -447,10 +461,10 @@ function atRoom(r,i,now,dt){
       a._st={st:'error'};a.pose=s==='bloq'&&AT_MEM.backAt[r.run]&&now-AT_MEM.backAt[r.run]<8e3?'hands':'stand';people.push([a,()=>atDesk(sp.x,deskY,true,'#ff9a8a'),top]);
       late.push(()=>atBadge(sp.x+18,feet-42,'!','#d0392b'));
       if(s==='err'){late.push(()=>{atSmoke(sp.x,deskY-12,now);atPill('🧯 '+p.n+' en panne : le pompier arrive',sp.x,top?g.lab1-18:g.lab2+18,'#a8323a');});atExtinguisher(r,i,p.k,sp.x,feet,now,dt,people);}
-    }else if(s==='ok'||s==='avis'){
-      const t=AT_MEM.okAt[r.run+'|'+p.k], age=t?now-t:1e9, pop=age<600?Math.min(1,age/300)*(1+.4*Math.sin(age/600*Math.PI)):1;
+    }else if(s==='ok'||s==='avis'||s==='rep'){ // rep : fait par le run d'avant la reprise, ↻ (pas de saut : rien de neuf)
+      const t=s==='rep'?0:AT_MEM.okAt[r.run+'|'+p.k], age=t?now-t:1e9, pop=age<600?Math.min(1,age/300)*(1+.4*Math.sin(age/600*Math.PI)):1;
       a._st={st:'idle'};a.pose=age<1800?'hands':'stand';people.push([a,()=>atDesk(sp.x,deskY,false),top]);
-      late.push(()=>{atBadge(sp.x+18,feet-42,s==='ok'?'✓':'!',s==='ok'?'#2f9e55':'#d08a10',pop);if(themeIs('saint-valentin')&&age<2500)E('❤',sp.x,feet-70-age/40,12,1-age/2500);});
+      late.push(()=>{atBadge(sp.x+18,feet-42,s==='ok'?'✓':s==='rep'?'↻':'!',s==='ok'?'#2f9e55':s==='rep'?'#4f7a64':'#d08a10',pop);if(themeIs('saint-valentin')&&age<2500)E('❤',sp.x,feet-70-age/40,12,1-age/2500);});
     }
     else if(s==='idle'){a._st={st:'idle'};a.pose='stand';sleepers.push([a,sp.x,feet,deskY,top]);}
     else {a._st={st:'idle'};a.pose='stand';ghosts.push([a,sp.x,deskY]);}
@@ -903,14 +917,14 @@ function atelierHover(e){
   else if(h&&h.kind==='gate'){const r=atSlots()[h.i];s=r?'✋ '+r.ticket+' · '+(AT_GATE_TXT[r.gate]||'à décider')+' : clique pour décider':'';}
   else if(h&&h.kind==='bernard')s='Bernard · apporte les tickets de l\'entrepôt et emporte ceux qui sortent';
   else if(h&&h.kind==='queue'){const q=((ATELIER&&ATELIER.queue)||[]).find(x=>x.run===h.run);s=q?q.ticket+' · attend un bureau libre':'';}
-  else if(h&&h.kind==='panne'){const p=((ATELIER&&ATELIER.pannes)||[]).find(x=>x.run===h.run);s=p?p.ticket+' · en panne à '+atStepName(p.poste):'';}
+  else if(h&&h.kind==='panne'){const p=((ATELIER&&ATELIER.pannes)||[]).find(x=>x.run===h.run);s=p?p.ticket+' · en panne à '+atStepName(p.poste)+(p.cause?' · '+atCauseTxt(p):''):'';}
   else if(h&&slots[h.i]){const r=slots[h.i];s=(r.ticket||'')+' · '+atLabel(r.poste)+(r.note?' · '+r.note:'');}
   if(s){tip.style.display='block';tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px';tip.textContent=s;}else tip.style.display='none';
 }
 function atStateText(r,k){
   const s=atState(r,AT_POSTES.find(p=>p.k===k)||{k});
   return {idle:'somnole à sa place',run:'au travail'+(r&&r.lot?' : '+r.lot:''),bloq:'bloquant : renvoie au code',err:'en panne (son sous-workflow a échoué) : un pompier arrive avec un extincteur',ok:'a rendu son verdict : validé',
-    avis:'a rendu un avis',skip:'sauté pour ce ticket',wait:'attend son tour'}[s]||'';
+    avis:'a rendu un avis',skip:'sauté pour ce ticket',wait:'attend son tour',rep:'fait par le run d\'avant la reprise'}[s]||'';
 }
 // ---------- panneau : les bureaux, la fiche d'un ticket ----------
 const atBar=r=>'<div class="at-bar">'+AT_POSTES.map(p=>{const s=(r.states||{})[p.k];return `<i class="${s||''}" title="${esc(p.n+(s?' : '+AT_ST[s][1]:''))}"></i>`;}).join('')+'</div>';
@@ -923,7 +937,7 @@ function atelierListHtml(rooms,q,pn){pn=pn||[];
     :'<div class="note">Aucun ticket sur la chaîne. Lance-le depuis la fiche d\'un ticket (▶ Implémenter) : plan seulement, complet ou essai.</div>')+
     `<h2 class="at-h">⏳ File d'attente <span class="cnt">${q.length}</span></h2>`+
     (q.length?q.map(x=>`<div class="at-q"><b class="mono">${esc(x.ticket||'…')}</b> <span class="mut">attend un bureau libre depuis ${esc(hm(ms(x.since)))}</span></div>`).join(''):'<div class="mut">Personne n\'attend.</div>')+
-    (pn.length?`<h2 class="at-h">🧯 En panne <span class="cnt">${pn.length}</span></h2>`+pn.map(x=>`<div class="at-q at-panne"><b class="mono">${esc(x.ticket||'…')}</b> <span class="mut">${esc(String(x.repo||'').split('/').pop())}</span> · arrêté à <b>${esc(atStepName(x.poste))}</b>${x.url?` <a href="${esc(x.url)}" target="_blank" rel="noopener">↗</a>`:''}<br><span class="mut">${esc(x.title||'')}</span></div>`).join('')+
+    (pn.length?`<h2 class="at-h">🧯 En panne <span class="cnt">${pn.length}</span></h2>`+pn.map(x=>`<div class="at-q at-panne"><b class="mono">${esc(x.ticket||'…')}</b> <span class="mut">${esc(String(x.repo||'').split('/').pop())}</span> · arrêté à <b>${esc(atStepName(x.poste))}</b>${x.url?` <a href="${esc(x.url)}" target="_blank" rel="noopener" title="L'étape en échec dans Kronn">↗</a>`:''}${x.cause?`<br><span class="at-cause">${esc(atCauseTxt(x))}</span>`:''}<br><span class="mut">${esc(x.title||'')}</span></div>`).join('')+
       '<div class="note">Relance le ticket (▶ Implémenter) : la chaîne reprend où elle s\'est arrêtée, avec le dossier et la branche du run en panne.</div>':'')+
     '<div class="note at-scope">Cet étage implémente, ouvre la PR et traite sa revue et ses retours. La CI, l\'env de branche et les mises en prod restent au RDC.</div>';
 }
@@ -932,6 +946,7 @@ function atelierFicheHtml(r,i){
     <div class="at-title big">${esc(r.title||'')}</div>
     <div class="mut">${esc(r.repo||'')}${r.tour?' · tour <b>'+esc(r.tour)+'</b>':''} · ${Math.round((r.tok||0)/1e3)} k jetons${r.since?' · depuis '+esc(hm(ms(r.since))):''}</div>${atBar(r)}
     ${r.gate?`<div class="at-gate"></div>${r.url?`<a class="at-link" href="${esc(r.url)}" target="_blank" rel="noopener">↗ Lire en entier dans Kronn</a>`:''}`:''}
+    ${r.reprise?`<div class="at-box rep">↻ Repris ${esc(r.reprise.poste==='controles'?'aux contrôles':r.reprise.poste==='livraison'?'à la PR':'au '+atStepName(r.reprise.poste))} après : <b>${esc(atStepName(r.reprise.panne))}</b> en panne${r.reprise.cause?' ('+esc(atCauseTxt(r.reprise))+')':''}.${r.reprise.url?` <a href="${esc(r.reprise.url)}" target="_blank" rel="noopener">↗ le run d'avant</a>`:''}</div>`:''}
     <table class="at-t">${AT_POSTES.map(p=>{const s=(r.states||{})[p.k];return `<tr${r.poste===p.k?' class="cur"':''}><td>${p.i} ${esc(p.n)}</td><td>${s?`<span class="dot" style="background:${AT_ST[s][0]}"></span>${AT_ST[s][1]}`:'<span class="mut">à venir</span>'}</td></tr>`;}).join('')}</table>`+
     (r.note?`<div class="at-box${r.back?' bloq':''}">${esc(r.note)}${r.lot?' · '+esc(r.lot):''}</div>`:r.lot?`<div class="at-box run">${esc(r.lot)}</div>`:'')+
     (r.url?`<a class="at-link" href="${esc(r.url)}" target="_blank" rel="noopener">↗ Le run dans Kronn</a>`:'');
@@ -951,6 +966,10 @@ function atAgentHtml(pick,slots){
     <div class="mut">${r?'Sur <b class="mono">'+esc(r.ticket||'')+'</b> · '+esc(r.title||''):'Bureau libre'}</div>
     <div class="mut">Sa place : bureau ${pick.i+1}, ${atSpot(g,pick.k).row===1?'rangée du haut':'rangée du bas'}${w?' (le chemin est tracé sur le plan)':''}.</div>`;
 }
+// fiche d'une palette en panne : où et pourquoi, le conseil selon la cause, le lien vers l'étape en échec dans Kronn
+const atPanneHtml=pn=>`<h2 class="at-h">🧯 ${esc(pn.ticket||'…')} <span class="cnt">en panne</span></h2><div class="at-box bloq">Arrêté à <b>${esc(atStepName(pn.poste))}</b>${pn.cause?' : '+esc(pn.cause):''}.</div>`+
+  (pn.cause_type?`<div class="mut">Cause : ${esc((AT_CAUSE[pn.cause_type]||AT_CAUSE.autre).join(' '))}</div>`:'')+
+  `<div class="at-box">${esc(pn.cause_type?atConseil(pn):'Relance le ticket (▶ Implémenter) : la chaîne reprend là, avec le dossier et la branche du run en panne.')}</div><div class="mut">${esc(pn.title||'')}</div>${pn.url?`<a class="at-link" href="${esc(pn.url)}" target="_blank" rel="noopener">↗ L'étape en échec dans Kronn</a>`:''}`;
 function drawAtelierSide(side){
   const boss=chars.find(c=>c.boss);
   // la fiche du boss, la même qu'au RDC ; un de ses liens qui mène ailleurs (un collègue, un agent, une fiche du RDC) redescend
@@ -963,7 +982,7 @@ function drawAtelierSide(side){
   if(AT_PICK&&(AT_PICK.kind==='queue'||AT_PICK.kind==='panne')){
     const q=AT_PICK.kind==='queue'?((ATELIER&&ATELIER.queue)||[]).find(x=>x.run===AT_PICK.run):null, pn=AT_PICK.kind==='panne'?((ATELIER&&ATELIER.pannes)||[]).find(x=>x.run===AT_PICK.run):null;
     box.innerHTML=`<button class="at-back">‹ L'atelier</button>`+(q?`<h2 class="at-h">📦 ${esc(q.ticket||'…')} <span class="cnt">entrepôt</span></h2><div class="at-box">Attend un bureau libre depuis ${esc(hm(ms(q.since)))}. Il entre dans le premier bureau qui se libère.</div>`
-      :pn?`<h2 class="at-h">🧯 ${esc(pn.ticket||'…')} <span class="cnt">en panne</span></h2><div class="at-box bloq">Arrêté à <b>${esc(atStepName(pn.poste))}</b>. Relance le ticket (▶ Implémenter) : la chaîne reprend là, avec le dossier et la branche du run en panne.</div><div class="mut">${esc(pn.title||'')}</div>${pn.url?`<a class="at-link" href="${esc(pn.url)}" target="_blank" rel="noopener">↗ Le run dans Kronn</a>`:''}`
+      :pn?atPanneHtml(pn)
       :'<div class="note">Ce ticket n\'est plus là.</div>');
     back();return;
   }

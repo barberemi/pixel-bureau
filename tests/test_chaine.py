@@ -960,6 +960,99 @@ class AtelierSnapshotTest(unittest.TestCase):
     """workflows/atelier_snapshot.py : un bureau par run actif de la chaîne, états des postes lus dans les étapes du parent,
     des contrôles (statut du rapport) et du poste PR ; la file = les runs en attente."""
 
+    def setUp(self):  # la cause des runs finis est gardée dans un fichier : jamais celui de ~/.cache pendant les tests
+        sys.path.insert(0, os.path.join(ROOT, "workflows"))
+        import atelier_snapshot as a
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(setattr, a, "CAUSES", a.CAUSES)
+        a.CAUSES = os.path.join(self.tmp, "causes.json")
+
+    def snap(self, api, models, now="2026-10-30T12:00:00+00:00", ui=None):
+        import atelier_snapshot as a
+        old = (a.get, dict(a.CFG))
+        a.get = api if callable(api) else (lambda p: api.get(p))
+        a.CFG.update(models=models, **({"kronn": {"ui": ui}} if ui else {}))
+        try:
+            return a.snapshot(now)
+        finally:
+            a.get = old[0]
+            a.CFG.clear()
+            a.CFG.update(old[1])
+
+    def test_cause_in_one_line_and_its_type(self):
+        """La cause d'une panne : une ligne, classée ; le garde-fou docs dit si l'agent avait fini (status OK)."""
+        import atelier_snapshot as a
+        env = lambda d, st="ERROR": "---STEP_OUTPUT---\n" + json.dumps({"data": d, "status": st}) + "\n---END_STEP_OUTPUT---"  # noqa: E731
+        docs = ("Document audit failed. Files and index were preserved; inspect these changes before committing or publishing.\n"
+                "docs/a.md: write rejected: content overlaps with substring from sensitive file \"application/.env\"\n"
+                "docs/b.md: write rejected: content has a 32+ char high-entropy run (possible credential; content withheld)\n\n"
+                "Agent result:\nLot 6 fait.\n---STEP_OUTPUT---\n{\"data\": {}, \"status\": \"OK\"}\n---END_STEP_OUTPUT---")
+        c = a.cause({"step_name": "code", "status": "Failed", "step_kind": "Agent", "output": docs})
+        self.assertEqual(c, {"cause": "garde-fou docs de Kronn : docs/a.md refusé (ressemble à un extrait d'un fichier sensible), et 1 autre(s)",
+                             "cause_type": "garde_fou_docs", "docs_ok": True})
+        self.assertFalse(a.cause({"step_name": "code", "status": "Failed", "output": docs.replace('"OK"', '"BLOCKED"')})["docs_ok"])
+        self.assertEqual(a.cause({"step_name": "__guard_timeout__", "status": "StoppedByGuard"},
+                                 hint="Stopped by Timeout guard: 16615s elapsed (limit 7200s)"),
+                         {"cause": "délai dépassé, arrêté par Kronn (4 h 36 pour 2 h 00 permises)", "cause_type": "delai"})
+        self.assertEqual(a.cause({"step_name": "verif", "status": "Failed", "step_kind": "Exec",
+                                  "output": "exit 2\n\n" + env({"exit_code": 2, "stderr": "Traceback\n  x\nKeyError: 'base'\n", "stdout": ""})}),
+                         {"cause": "script en erreur (exit 2) : KeyError: 'base'", "cause_type": "script"})
+        self.assertEqual(a.cause({"step_name": "code", "status": "Failed", "step_kind": "Agent", "output": "API Error: 529 Overloaded"})["cause_type"], "agent")
+        self.assertEqual(a.cause({"step_name": "ticket", "status": "Failed", "step_kind": "ApiCall", "output": "HTTP 404 issue absente"}),
+                         {"cause": "appel d'API en échec : HTTP 404 issue absente", "cause_type": "agent"})
+        self.assertEqual(a.cause({"step_name": "plan", "status": "Failed", "step_kind": "Agent", "output": "Le plan n'a pas de lot."}),
+                         {"cause": "Le plan n'a pas de lot.", "cause_type": "autre"})
+        self.assertEqual(a.cause(None, {"status": "Cancelled"})["cause"], "run annulé")
+
+    def test_panne_goes_down_to_the_deepest_failed_run_and_links_to_it(self):
+        """La panne d'un run de la chaîne : la cause vient de l'étape en échec du sous-run (child_workflow_id de la sortie
+        SubWorkflow), le lien ouvre ce run-là dans Kronn ; la cause d'un run fini est gardée (plus relue)."""
+        import atelier_snapshot as a
+        prep = {"step_name": "prepare", "status": "Success", "output": "AB-1 sur dm/site : branche kronn/AB-1"}
+        sub = ("---STEP_OUTPUT---\n" + json.dumps({"data": {"child_run_id": "k1", "child_workflow_id": "code", "child_status": "StoppedByGuard",
+               "last_output": "Stopped by Timeout guard: 9000s elapsed (limit 7200s)", "last_step": "__guard_timeout__"}}) + "\n---END_STEP_OUTPUT---")
+        f1 = {"id": "f1", "workflow_id": "c", "status": "Failed", "started_at": "2026-10-30T09:00:00Z", "step_results": [
+            prep, {"step_name": "code", "status": "Failed", "output": sub, "started_at": "2026-10-30T09:10:00Z"}]}
+        k1 = {"id": "k1", "status": "StoppedByGuard", "step_results": [
+            {"step_name": "entree", "status": "Failed", "condition_result": "Goto:plan"}, {"step_name": "code", "status": "Success"},
+            {"step_name": "__guard_timeout__", "status": "StoppedByGuard"}]}
+        reads = []
+        api = {"/workflows/c/runs?limit=40": [{k: v for k, v in f1.items() if k != "step_results"}], "/workflows/c/runs/f1": f1,
+               "/workflows/code/runs/k1": k1, "/workflows/code/runs?limit=60": []}
+        get = lambda p: (reads.append(p), api.get(p))[1]  # noqa: E731
+        snap = self.snap(get, {"impl_chain": "c", "impl_code": "code"}, ui="http://k:5173/")
+        p = snap["pannes"][0]
+        self.assertEqual((p["poste"], p["cause_type"], p["cause"], p["url"]),
+                         ("code", "delai", "délai dépassé, arrêté par Kronn (2 h 30 pour 2 h 00 permises)", "http://k:5173/workflows/code/runs/k1"))
+        self.assertEqual([(e["k"], e.get("cause_type")) for e in snap["events"] if e["k"] == "panne"], [("panne", "delai")])
+        self.assertIn("/workflows/code/runs/k1", reads)
+        reads.clear()
+        self.snap(get, {"impl_chain": "c", "impl_code": "code"}, ui="http://k:5173/")
+        self.assertNotIn("/workflows/code/runs/k1", reads)  # cause gardée : le sous-run n'est plus relu
+
+    def test_resumed_run_shows_earlier_postes_and_why(self):
+        """Run repris (prepare saute aux contrôles) : Plan, gate et Code « rep » (pas « attend son tour »), après quelle panne ;
+        le saut de prepare n'est pas une panne dans le fil."""
+        import atelier_snapshot as a
+        doc = ("Document audit failed. Files and index were preserved.\ndocs/x.md: write rejected: content has a 32+ char high-entropy run\n"
+               "Agent result:\n{\"status\": \"OK\"}")
+        prep = lambda t: {"step_name": "prepare", "status": "Success", "output": f"AB-9 sur dm/site : {t}"}  # noqa: E731
+        old = {"id": "o1", "workflow_id": "c", "status": "Failed", "started_at": "2026-10-30T08:00:00Z", "step_results": [
+            prep("branche kronn/AB-9"), {"step_name": "code", "status": "Failed", "step_kind": "Agent", "output": doc,
+                                           "started_at": "2026-10-30T08:10:00Z"}]}
+        new = {"id": "n1", "workflow_id": "c", "status": "Running", "started_at": "2026-10-30T09:00:00Z", "step_results": [
+            {**prep("reprise aux contrôles"), "status": "Failed", "condition_result": "Goto:controles", "started_at": "2026-10-30T09:00:00Z"},
+            {"step_name": "controles", "status": "Running"}]}
+        api = {"/workflows/c/runs?limit=40": [{k: v for k, v in r.items() if k != "step_results"} for r in (old, new)],
+               "/workflows/c/runs/o1": old, "/workflows/c/runs/n1": new, "/workflows/k/runs?limit=60": []}
+        snap = self.snap(api, {"impl_chain": "c", "impl_controles": "k"})
+        r = snap["rooms"][0]
+        self.assertEqual({k: r["states"].get(k) for k in ("cadrage", "gate", "code")}, {"cadrage": "rep", "gate": "rep", "code": "rep"})
+        self.assertEqual((r["reprise"]["poste"], r["reprise"]["de"], r["reprise"]["panne"], r["reprise"]["cause_type"]),
+                         ("controles", "o1", "code", "garde_fou_docs"))
+        self.assertEqual(snap["pannes"], [])  # repris : plus en panne
+        self.assertEqual([e["run"] for e in snap["events"] if e["k"] == "panne"], ["o1"])
+
     def test_rooms_and_queue_from_the_chain_runs(self):
         sys.path.insert(0, os.path.join(ROOT, "workflows"))
         import atelier_snapshot as a

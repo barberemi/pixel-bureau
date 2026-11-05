@@ -28,7 +28,7 @@ function atDemoEvents(d){
     out.push({...b,t:r.since,k:'arrive'});
     if(r.gate)out.push({...b,t:h(r.since,.6),k:'gate',gate:r.gate});
     if(r.back)out.push({...b,t:h(r.since,.5),k:'gate',gate:'gate_plan'},{...b,t:h(r.since,1.4),k:'back'});}
-  for(const p of d.pannes||[])out.push({run:p.run,ticket:p.ticket,repo:p.repo,title:p.title,t:h(p.since,-.8),k:'arrive'},{run:p.run,ticket:p.ticket,repo:p.repo,title:p.title,t:p.since,k:'panne',poste:p.poste});
+  for(const p of d.pannes||[])out.push({run:p.run,ticket:p.ticket,repo:p.repo,title:p.title,t:h(p.since,-.8),k:'arrive'},{run:p.run,ticket:p.ticket,repo:p.repo,title:p.title,t:p.since,k:'panne',poste:p.poste,cause:p.cause,cause_type:p.cause_type});
   [['DM-7790','Fil d\'Ariane sur les pages vidéo',8.6],['DM-7801','Corriger le compteur de partages',9.9],['DM-7655','Lien canonique des pages AMP',10.6]]
     .slice(0,d.livres||0).forEach(([ticket,title,x],i)=>out.push({run:'demo-l'+i,ticket,repo:'dm/site',title,t:at(x),k:'sort'}));
   return out.sort((a,b)=>ms(a.t)-ms(b.t));
@@ -68,7 +68,7 @@ function atFeedEvents(t){
     const txt={arrive:`🎫 ${tk} arrive au 1er étage`,sort:`📦 ${tk} sort en PR <small>Bernard l'emporte</small>`,
       gate:`✋ ${tk} t'attend au 1er <small>« ${esc(AT_GATE_TXT[e.gate]||e.gate||'')} »</small>`,
       back:q?`🔒 ${esc(q.n)} bloque ${tk} : retour au code`:`🔒 Un contrôle bloque ${tk} : retour au code`,
-      panne:`🧯 ${tk} : ${esc(atStepName(e.poste))} en panne`}[e.k];
+      panne:`🧯 ${tk} : ${esc(atStepName(e.poste))} en panne${e.cause?` <small>${esc(atCauseTxt(e))}</small>`:''}`}[e.k];
     if(!txt)continue;
     out.push({t:a,at:e.run,fl:1,ty:{arrive:'tickets',sort:'pr',gate:'toi'}[e.k]||'agents',team:e.k==='arrive'||e.k==='sort',
       txt:txt+(sub?` <small>${sub}</small>`:'')});

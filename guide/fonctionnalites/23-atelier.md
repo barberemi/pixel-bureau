@@ -62,6 +62,20 @@ L'étage se suit aussi sans y monter, comme les agents du RDC. Chaque élément 
 
 Un run de la chaîne qui échoue (un poste qui plante, l'API d'un agent indisponible) reste dans « 🧯 En panne » pendant 24 h, avec le poste où il s'est arrêté. Relance le ticket (▶ Implémenter) : la chaîne reprend là, avec le dossier du ticket et la branche du run en panne. Le plan déjà validé n'est pas redemandé, les lots déjà écrits et les contrôles déjà rendus ne sont pas refaits. Au lancement, « Reprise » vaut « Auto » ; « Reprendre » force la reprise (par exemple un plan seulement relancé jusqu'à la PR), « Repartir de zéro » recommence tout.
 
+**Pourquoi c'est tombé en panne.** La panne dit sa cause en une ligne, lue dans l'étape en échec du sous-workflow le plus profond (par exemple le Code, sous la chaîne), et classée :
+
+| Type | Exemple | Le conseil de la fiche |
+|---|---|---|
+| 🛡 garde-fou docs de Kronn | « docs/architecture/x.md refusé (une suite de caractères qui ressemble à un secret) » | si l'agent avait fini : le travail est commité, relance en reprise, le Code retrouve ses lots et passe vite aux contrôles |
+| ⏱ délai dépassé | « arrêté par Kronn (4 h 36 pour 2 h 00 permises) » : coupure réseau, agent figé | relance, la chaîne reprend au poste arrêté |
+| 🔌 agent ou API indisponible | quota, réseau, service en panne, appel d'API en échec | attends qu'il revienne, puis relance |
+| 📜 script en erreur | « exit 2 : KeyError: 'base' » | lis l'étape dans Kronn avant de relancer |
+| ❔ autre | la première ligne de la sortie de l'étape | lis l'étape dans Kronn |
+
+La cause est sous le ticket dans « 🧯 En panne », au survol de sa palette à l'entrepôt, dans sa fiche (avec le conseil), dans le fil du RDC (« 🧯 DM-7702 : ⌨ Code en panne ⏱ délai dépassé… ») et sur l'écran mural. Le lien « ↗ L'étape en échec dans Kronn » ouvre le run qui a vraiment planté (le sous-workflow, pas la chaîne) ; sur la fiche d'un bureau, « ↗ Le run dans Kronn » ouvre son run, et non plus la liste des runs.
+
+**Un run repris** ne refait pas les postes d'avant la reprise : ils ne sont plus gris (« attend son tour ») mais « ↻ repris », faits par le run d'avant (agent à son poste, pastille ↻, barre des postes hachurée verte). Sa fiche dit après quelle panne : « ↻ Repris aux contrôles après : ⌨ Code en panne (🛡 garde-fou docs de Kronn…) », avec le lien vers le run d'avant.
+
 ## Données
 
-Le cron `live` lit chaque minute les runs de la chaîne et de ses postes dans l'API Kronn (0 token) et publie le dataset `atelier`, avec les moments des dernières 24 h (arrivée, gate, retour au code, panne, PR ouverte, datés par les étapes des runs) pour le fil du RDC, et le nombre de PR ouvertes depuis minuit. Sans la chaîne installée, ni ses étapes ni les onglets n'existent.
+Le cron `live` lit chaque minute les runs de la chaîne et de ses postes dans l'API Kronn (0 token) et publie le dataset `atelier`, avec les moments des dernières 24 h (arrivée, gate, retour au code, panne, PR ouverte, datés par les étapes des runs) pour le fil du RDC, et le nombre de PR ouvertes depuis minuit. La cause d'un run fini ne change plus : elle est gardée dans `~/.cache/pixel-bureau/atelier_causes.json` (200 runs au plus), le cron ne relit pas ses sous-runs à chaque minute. Sans la chaîne installée, ni ses étapes ni les onglets n'existent.
