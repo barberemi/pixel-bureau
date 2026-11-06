@@ -180,6 +180,25 @@ class ReviewTest(unittest.TestCase):
         r = self.garde_review({**couvert, "suivi": [{"point": "P1", "etat": "corrige", "preuve": "x"}, {"point": "P2", "etat": "refute", "preuve": "y"}]})
         self.assertEqual(r["verdict"], "approve")
 
+    def test_a_blocker_on_a_diff_line_gets_its_inline_comment(self):
+        """#2074 : deux bloquants dans la synthèse, aucun commentaire inline. Un bloquant dont le renvoi tombe sur une ligne
+        de la nouvelle version du diff reçoit son inline ; hors du diff, ou déjà commenté, il reste dans la synthèse."""
+        self.assertEqual(self.ctx().returncode, 0)
+        avis = {"pr": 12, "statut": "ok", "verdict": "request_changes", "summary": "Deux bloquants.", "existingCommentActions": [],
+                "existingCommentReplies": [], "skipped": [], "comments": [], "blockers": [
+                    "**Borne non testée** — la borne passe de 2 à 3 sans test · `src/f.py:11`",
+                    "**Token envoyé à Adobe** — il reste dans l'URL · `f.py:12`",  # la fin du chemin suffit
+                    "**Hors du diff** — un appelant non modifié casse · `src/f.py:40`",
+                    "**Décision absente du ticket** — rien dans EW-1"]}
+        r = self.garde_review(avis)
+        self.assertEqual([(c["path"], c["line"], c["side"]) for c in r["comments"]], [("src/f.py", 11, "RIGHT"), ("src/f.py", 12, "RIGHT")])
+        self.assertEqual(r["comments"][0]["body"], "🔴 **Borne non testée** — la borne passe de 2 à 3 sans test")
+        self.assertEqual(len(r["blockers"]), 4)  # la synthèse garde ses quatre lignes
+        self.assertEqual(sum("commentaire ancré ajouté" in f for f in r["corrections"]), 2)
+        deja = {**avis, "comments": [{"path": "src/f.py", "line": 13, "side": "RIGHT", "body": "🧪 **Borne non testée**\n\ndétail", "gravite": "bloquant"}]}
+        r = self.garde_review(deja)
+        self.assertEqual([c["line"] for c in r["comments"]], [13, 12])  # son inline posé ailleurs : pas de doublon
+
     def test_reliefs_of_the_diff_without_agent(self):
         """Relevés communs avec la chaîne (_releves.py) : un nom retiré encore cité, une clé de ticket dans un commentaire,
         les tests liés par le nom, les docs qui citent un fichier touché."""
@@ -227,7 +246,7 @@ class ReviewTest(unittest.TestCase):
         self.assertEqual([(h["postee"], h["verdict"], h["head"]) for h in saved], [(True, "request_changes", self.head)])
         row = json.loads(self.run_("ligne", "12", "dm/site", "jim", "main", "2026-11-06T09:59:00.000Z", "1", "2", "1", "1", cfg=conf).stdout)
         self.assertEqual({k: row[k] for k in ("pr", "repo", "verdict", "author", "inline", "diff_add", "review_pass")},
-                         {"pr": 12, "repo": "dm/site", "verdict": "request_changes", "author": "jim", "inline": 0, "diff_add": 2, "review_pass": 1})
+                         {"pr": 12, "repo": "dm/site", "verdict": "request_changes", "author": "jim", "inline": 1, "diff_add": 2, "review_pass": 1})  # le bloquant ancré
         self.assertTrue(row["summary"].startswith("## 🔧 Changements demandés"))
         self.run_("contexte", "12", "bot", stdin=json.dumps({"reviews": [], "comments": [], "files": []}), cfg=conf)
         self.assertIn("P1. **Borne** — non testée", Path(self.tmp, ".kronn", "review-12", "precedent.md").read_text())

@@ -653,6 +653,24 @@ def liste(v):
     return [x for x in v if x] if isinstance(v, list) else []
 
 
+REF = re.compile(r"`([^`\s]+):(\d+)`")
+
+
+def ancre_bloquant(b, anchors):
+    """Un bloquant de la synthèse (« **titre** — pourquoi · `chemin:ligne` ») -> (chemin du diff, ligne, texte sans le
+    renvoi) quand son dernier renvoi tombe sur une ligne de la nouvelle version du diff ; sinon (None, None, b). Le
+    chemin peut être complet ou seulement sa fin (`f.php:12`), s'il ne désigne qu'un fichier du diff."""
+    refs = REF.findall(b)
+    if not refs:
+        return None, None, b
+    ref, n = refs[-1][0], int(refs[-1][1])
+    paths = [p for p in anchors if p == ref] or [p for p in anchors if p.endswith("/" + ref)]
+    if len(paths) != 1 or n not in ((anchors.get(paths[0]) or {}).get("RIGHT") or []):
+        return None, None, b
+    texte = re.sub(r"\s*·\s*`[^`]+`\s*$", "", b).strip()
+    return paths[0], n, texte
+
+
 def verifie(d, files, anchors, obs, prec, own):
     """La review de l'avis vérifiée par des règles fixes, avant tout envoi (comme la passe « validate » de PR Review v3.4) :
     une review que GitHub refuserait en entier, ou dont le verdict contredit ses bloquants, est réparée, jamais rejetée ;
@@ -695,6 +713,13 @@ def verifie(d, files, anchors, obs, prec, own):
         if grav == "bloquant" and not any(path.rsplit("/", 1)[-1] in b or titre(body)[:40] in b for b in blockers):
             blockers.append("%s · `%s:%s`" % (titre(body), path.rsplit("/", 1)[-1], line))
             fixes.append("commentaire bloquant absent des bloquants de la synthèse : ajouté")
+    for b in liste(d.get("blockers")):  # un bloquant de la synthèse sur une ligne du diff a son inline (#2074 : aucun posé)
+        path, line, texte = ancre_bloquant(str(b), anchors)
+        deja = any(c["path"] == path and titre(c["body"])[:40] in str(b) for c in kept)  # son inline posé ailleurs dans le fichier
+        if path and (path, line, "RIGHT") not in seen and not deja:
+            seen[(path, line, "RIGHT")] = out = {"path": path, "line": line, "side": "RIGHT", "body": "🔴 " + texte}
+            kept.append(out)
+            fixes.append("bloquant sans commentaire inline (%s:%s) : commentaire ancré ajouté" % (path.rsplit("/", 1)[-1], line))
     if blockers and verdict != "request_changes":
         fixes.append("%d bloquant(s) avec le verdict « %s » : request_changes" % (len(blockers), verdict))
         verdict = "request_changes"

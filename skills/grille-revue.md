@@ -73,6 +73,7 @@ Correctif exact connu : bloc `suggestion` dans le body inline, qui remplace EXAC
 - `path` = un chemin PRÉSENT TEL QUEL dans DIFF_FILES (préfixe compris). Jamais un fichier absent du diff.
 - `line` = une ligne réelle du patch (dans un hunk).
 - `side` = RIGHT (LEFT si ligne supprimée).
+- Chaque BLOQUANT qui porte sur une ligne du diff a SON commentaire inline (`gravite: bloquant`) : le pourquoi, le scénario qui casse et le correctif y vivent ; `blockers` le résume en une ligne terminée par son renvoi `` `chemin complet:ligne` ``. Seul un bloquant hors du diff (fichier non modifié, décision absente du ticket) vit uniquement dans `blockers`. Un bloquant de `blockers` dont le renvoi tombe sur une ligne du diff sans inline : le Bureau crée l'inline à partir de cette ligne, plus pauvre que le tien.
 - Doute sur l'ancrage : une puce de `blockers` s'il bloque, et le point dans `skipped[]` avec sa raison. Un commentaire posé hors des lignes du diff est remonté dans la synthèse par le Bureau.
 
 ## Réactions et réponses aux commentaires existants (anti-flood)
