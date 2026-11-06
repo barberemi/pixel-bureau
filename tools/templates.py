@@ -133,7 +133,11 @@ TEMPLATES = {
     "sketch": ("quick_prompt", ("actions", "sketch"), {}),
 }
 WF_KEYS = ("name", "project_id", "trigger", "variables", "steps", "actions", "safety", "workspace_config", "concurrency_limit", "exec_allowlist",
-           "guards", "concurrency_key")  # garde-fous du run (délai, appels IA) et limite par projet : comparés seulement quand ils sont posés
+           "guards", "concurrency_key", "project_scope")  # garde-fous du run (délai, appels IA), limite par projet et projets
+# permis (impl_chain : tous) : comparés seulement quand ils sont posés
+# champs d'étape vides que Kronn ajoute (0.15.1 : prompt_template "" sur toute étape) ou omet (skill_ids, variables d'un
+# sous-workflow) : sans effet à l'exécution, écartés des deux côtés de la comparaison
+VIDES = {"prompt_template": "", "skill_ids": [], "sub_workflow_variables": {}}
 QP_KEYS = ("name", "icon", "prompt_template", "variables", "agent", "project_id", "skill_ids", "profile_ids", "directive_ids", "tier", "description")
 TOKEN = re.compile(r"@@([a-z_.]+|(?:script|text):[\w/.]+)@@")
 TEXTS = ("tools/plan_prompt.md", "tools/mail_rules_prompt.md", "tools/rebase_prompt.md", "tools/fix_prompt.md", "tools/review_rubric.md")
@@ -548,12 +552,22 @@ def clean(kind, live, legacy=False):
     sans fuseau écrit), le fuseau est posé comme au rendu."""
     keys = WF_KEYS if kind == "workflow" else QP_KEYS
     # Kronn omet une liste de variables vide ; des garde-fous absents (null) ne sont pas un champ du modèle
-    d = {k: copy.deepcopy(live.get(k)) for k in keys if k not in ("variables", "guards", "concurrency_key") or live.get(k) or kind != "workflow"}
+    d = {k: copy.deepcopy(live.get(k)) for k in keys
+         if k not in ("variables", "guards", "concurrency_key", "project_scope") or live.get(k) or kind != "workflow"}
     if kind == "workflow":
         for s in d["steps"]:
             s.pop("id", None)
         if legacy:
             pin_tz(d)
+    return sans_vides(d)
+
+
+def sans_vides(d):
+    """Définition sans les champs d'étape vides (VIDES) : les deux côtés de templates.py check."""
+    for s in d.get("steps") or []:
+        for k, v in VIDES.items():
+            if k in s and s[k] == v:
+                del s[k]
     return d
 
 
@@ -661,7 +675,7 @@ def main():
             if not ident or ident in (cfg.get("own") or []):
                 print(f"--   {key} : " + ("pas installé" if not ident else f"workflow {ident[:8]} gardé tel quel, non comparé"))
                 continue
-            same = render(tpl, cfg) == clean(kind, fetch(kind, ident, cfg), legacy)
+            same = sans_vides(render(tpl, cfg)) == clean(kind, fetch(kind, ident, cfg), legacy)
             bad += not same
             print(("ok   " if same else "DIFF ") + f"{key} : rendu {'identique au' if same else 'différent du'} workflow {ident[:8]}")
         sys.exit(1 if bad else 0)

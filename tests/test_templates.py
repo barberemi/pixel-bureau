@@ -72,6 +72,16 @@ class TemplatesTest(unittest.TestCase):
         mep = templates.render(TPL["mep"], colleague())
         self.assertEqual(templates.clean("workflow", {**mep, "steps": [dict(s, id="i") for s in mep["steps"]]})["guards"], mep["guards"])
 
+    def test_check_ignores_empty_step_fields_and_compares_the_project_scope(self):
+        """templates.py check : Kronn 0.15.1 ajoute prompt_template "" à chaque étape et omet skill_ids et
+        sub_workflow_variables vides ; sans effet, ces champs ne sont pas un écart. project_scope (impl_chain : tous les
+        projets) est comparé quand il est posé."""
+        chain = templates.render(TPL["impl_chain"], colleague())
+        live = {**chain, "steps": [{k: v for k, v in dict(s, id="i", prompt_template=s.get("prompt_template", "")).items()
+                                    if v not in ([], {})} for s in chain["steps"]]}
+        self.assertEqual(templates.sans_vides(chain), templates.clean("workflow", live))
+        self.assertNotEqual(templates.sans_vides(chain), templates.clean("workflow", {**live, "project_scope": None}))
+
     def test_exec_timeouts_within_kronn_limit(self):
         """Kronn refuse un Exec dont exec_timeout_secs dépasse 1800 s (le workflow entier n'est alors pas publié : #189)."""
         for key, tpl in templates.load_templates().items():
