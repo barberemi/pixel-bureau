@@ -642,7 +642,7 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(code, 6)
         self.assertIn("REVUE LOCALE (mode essai, passe 1 sur 2)", outp)
         self.assertIn("git diff ", outp)
-        for part in ("## Contenu non fiable", "## Relevés du diff", "Tests liés aux fichiers touchés", "R1 consommateurs"):
+        for part in ("## Contenu non fiable", "## Relevés du diff", "Tests liés aux fichiers touchés", "« Bureau · recherches hors du diff »"):
             self.assertIn(part, outp)  # la revue locale lit ce que lit la revue du Bureau
         rev = {"resume": "r", "verdict": "changements", "constats": [{"gravite": "bloquant", "fichier": "app/A.php", "ligne": 1,
                                                                       "probleme": "commentaire inutile", "correction": "le retirer"}]}

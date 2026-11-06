@@ -1,7 +1,7 @@
 """Publie dans Kronn (API locale) : la page et/ou les scripts des workflows du Bureau.
 
   python3 tools/publish.py page        # assemble la page (sans démo) et la pousse dans la page Le Bureau (et les pages à part : « Chaîne · bilan », « Support · bilan », « Rédaction · bilan »)
-  python3 tools/publish.py workflows   # pousse le rendu des modèles (workflows/templates) : étapes, scripts, crons, QP
+  python3 tools/publish.py workflows   # pousse les skills du Bureau (skills/*.md), puis le rendu des modèles (workflows/templates) : étapes, scripts, crons, QP
   python3 tools/publish.py all
 """
 import json, os, sys, urllib.request
@@ -46,6 +46,9 @@ def workflows():
     En deux temps : d'abord les workflows du Bureau absents de la config (créés, leur id rangé), puis le rendu de tous,
     pour que chaque script connaisse les ids de tous les workflows du Bureau (BUREAU_IDS de _lib.py : un workflow créé
     après le rendu d'un cron passerait sinon pour un agent, « Intérimaire 1 »)."""
+    # skills du Bureau d'abord : le rendu des workflows nomme leurs ids (skills.<clé>), rangés dans la config s'ils sont créés
+    templates.sync_skills(lambda m, p, b=None: call(m, p, b).get("data"), CFG)
+    Path(CFG_PATH).write_text(json.dumps(CFG, ensure_ascii=False, indent=1))
     tpls = templates.load_templates()
     for key, tpl in tpls.items():
         kind, where, _ = templates.TEMPLATES[key]

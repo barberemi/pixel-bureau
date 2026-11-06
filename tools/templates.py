@@ -9,7 +9,8 @@ Emplacements, remplacés au rendu :
   @@jira.points_fields@@ (liste jointe par des virgules), @@owner_name@@ (prénom du boss),
   @@microsoft.config_id@@, @@microsoft.site@@, @@microsoft.item@@ (planning des absences, connexion Microsoft 365 de Kronn),
   @@script:workflows/x.py@@ (le script, config d'installation injectée comme le fait publish.py),
-  @@text:tools/x.md@@ (le texte du fichier, tel quel), @@root@@ (dossier du dépôt de l'installation, pour les commandes d'un prompt).
+  @@text:tools/x.md@@ (le texte du fichier, tel quel), @@skill:<clé>@@ (renvoi au skill du Bureau chargé avec l'étape ;
+  pas encore publié dans Kronn : son texte recopié), @@root@@ (dossier du dépôt de l'installation, pour les commandes d'un prompt).
 Une étape marquée "_requires": "jira" disparaît au rendu si l'installation n'a pas de connexion Jira ; ses
 références {{steps.<étape>.…}} dans l'entrée des étapes suivantes deviennent null.
 Les noms des emplacements ne ressemblent pas aux variables Kronn ({{steps.x}}, {{run_id}}), qui restent intactes.
@@ -139,8 +140,59 @@ WF_KEYS = ("name", "project_id", "trigger", "variables", "steps", "actions", "sa
 # sous-workflow) : sans effet à l'exécution, écartés des deux côtés de la comparaison
 VIDES = {"prompt_template": "", "skill_ids": [], "sub_workflow_variables": {}}
 QP_KEYS = ("name", "icon", "prompt_template", "variables", "agent", "project_id", "skill_ids", "profile_ids", "directive_ids", "tier", "description")
-TOKEN = re.compile(r"@@([a-z_.]+|(?:script|text):[\w/.]+)@@")
-TEXTS = ("tools/plan_prompt.md", "tools/mail_rules_prompt.md", "tools/rebase_prompt.md", "tools/fix_prompt.md", "tools/review_rubric.md")
+TOKEN = re.compile(r"@@([a-z_.]+|(?:script|text|skill):[\w/.]+)@@")
+TEXTS = ("tools/plan_prompt.md", "tools/mail_rules_prompt.md", "tools/rebase_prompt.md", "tools/fix_prompt.md")
+# skills du Bureau, partagés par la revue de PR et la chaîne d'implémentation : la source est skills/<fichier>.md, publiée
+# dans Kronn par publish.py et install.py (sync_skills), son id rangé dans skills.<clé> de la config ; un poste les nomme
+# « bureau:<clé> » dans REVIEW_AGENTS ou IMPL_AGENTS. Pas d'épinglage (custom-x@N) : Kronn ne désactive un workflow qu'à
+# la modification d'un skill par un agent, et le Bureau publie ses skills avec ses workflows, toujours ensemble.
+BUREAU_SKILLS = {
+    "grille": ("grille-revue.md", "Bureau · grille de revue de PR", "Trancher et écrire une revue de PR : priorités, verdict, inline, réactions, synthèse.", "🧐"),
+    "recherches": ("recherches-hors-diff.md", "Bureau · recherches hors du diff", "R1 à R11 : les lecteurs hors du diff qu'une revue rate, chaque recherche tracée.", "🔎"),
+    "exigences": ("conformite-ticket.md", "Bureau · conformité au ticket", "Les exigences du ticket et leur état dans le diff, ce que le ticket ne demande pas.", "🎯"),
+    "tests": ("tests-contre-epreuve.md", "Bureau · tests et contre-épreuve", "Mutations, tests faibles, tests liés et cycle de vie.", "🧪"),
+    "doc": ("doc-a-jour.md", "Bureau · doc à jour", "La doc du dépôt dit-elle encore vrai après le diff ; conventions et citations.", "📚"),
+}
+
+
+def skill_body(key):
+    """La requête Kronn (POST /skills, PUT /skills/<id>) d'un skill du Bureau."""
+    fichier, name, description, icon = BUREAU_SKILLS[key]
+    content = Path(os.path.join(ROOT, "skills", fichier)).read_text(encoding="utf-8")
+    assert "@@" not in content and "{{" not in content, fichier + " : ni @@ ni {{"
+    return {"name": name, "description": description, "icon": icon, "category": "Domain", "content": content}
+
+
+def sync_skills(call, cfg, say=print):
+    """Crée ou met à jour dans Kronn les skills du Bureau (skills/*.md) ; range l'id d'un skill créé dans skills.<clé>.
+    call(méthode, chemin, corps) rend le « data » de la réponse. Avant les workflows : leur rendu nomme ces ids."""
+    ids = cfg.setdefault("skills", {})
+    have = {s.get("id") for s in call("GET", "/skills", None) or [] if isinstance(s, dict)}
+    for key in BUREAU_SKILLS:
+        body = skill_body(key)
+        ident = ids.get(key)
+        if ident and ident in have:
+            call("PUT", f"/skills/{ident}", body)
+            say(f"skill {key} ({ident}) à jour")
+        else:
+            ids[key] = call("POST", "/skills", body)["id"]
+            say(f"skill {key} ({ids[key]}) créé")
+    return ids
+
+
+def skill_ref(key, cfg):
+    """Un skill du Bureau dans un prompt : un renvoi quand il est publié (chargé avec l'étape), sinon son texte recopié,
+    pour qu'une installation dont les skills ne sont pas encore publiés ne perde pas ce savoir-faire."""
+    if (cfg.get("skills") or {}).get(key):
+        return f"(le skill « {BUREAU_SKILLS[key][1]} », chargé avec cette étape)"
+    return skill_body(key)["content"]
+
+
+def skills_of(names, cfg):
+    """Les ids Kronn des skills d'un poste : « bureau:<clé> » devient l'id rangé dans skills.<clé> (absent : pas encore
+    publié, le skill est omis) ; les autres noms restent tels quels."""
+    ids = cfg.get("skills") or {}
+    return [ids.get(n[7:]) if n.startswith("bureau:") else n for n in names if not n.startswith("bureau:") or ids.get(n[7:])]
 REVIEW_SCHEDULE = "30 7,10,13,16,19 * * 1-5"  # cron des revues de PR, heures UTC (review.schedule de l'équipe pour un autre)
 # modèles lancés en foreach (un sous-workflow par PR) : Kronn y écrit .kronn/current_task.json, il leur faut leur propre
 # copie du projet (require_isolation), jamais le dossier principal ; le sous-workflow tourne dans celle de son parent
@@ -174,7 +226,8 @@ def impl_version():
     dernier commit qui les a touchés (une modification de la chaîne se juge sur les tickets qui l'ont suivie)."""
     if not _VERSION:
         import glob, hashlib, subprocess
-        files = sorted(glob.glob(os.path.join(TPL_DIR, "impl*.json"))) + [os.path.join(ROOT, p) for p in CHAINE_SCRIPTS + ("workflows/_chaine.py",)]
+        files = (sorted(glob.glob(os.path.join(TPL_DIR, "impl*.json"))) + [os.path.join(ROOT, p) for p in CHAINE_SCRIPTS + ("workflows/_chaine.py",)]
+                 + [os.path.join(ROOT, "skills", f) for f, *_ in BUREAU_SKILLS.values()])
         h = hashlib.sha1()
         for f in files:
             h.update(Path(f).read_bytes())
@@ -191,14 +244,17 @@ def review_version():
     sur les PR qui l'ont suivie."""
     if not _RV_VERSION:
         import glob, hashlib, subprocess
-        rel = ["workflows/review.py", "workflows/_releves.py", "tools/review_rubric.md"]
+        rel = ["workflows/review.py", "workflows/_releves.py", *(f"skills/{f}" for f, *_ in BUREAU_SKILLS.values())]
         files = sorted(glob.glob(os.path.join(TPL_DIR, "review*.json"))) + [os.path.join(ROOT, p) for p in rel]
         h = hashlib.sha1()
         for f in files:
             h.update(Path(f).read_bytes())
-        r = subprocess.run(["git", "-C", ROOT, "log", "-1", "--format=%h", "--", "workflows/templates/review*.json", *rel],
-                           capture_output=True, text=True)
-        _RV_VERSION.update(hash=h.hexdigest()[:7], commit=r.stdout.strip())
+        try:  # sans git (ou subprocess bouchonné par un test) : l'empreinte suffit
+            commit = subprocess.run(["git", "-C", ROOT, "log", "-1", "--format=%h", "--", "workflows/templates/review*.json", *rel],
+                                    capture_output=True, text=True).stdout.strip()
+        except OSError:
+            commit = ""
+        _RV_VERSION.update(hash=h.hexdigest()[:7], commit=commit)
     return dict(_RV_VERSION)
 
 
@@ -437,6 +493,8 @@ def _sub(v, vals, cfg):
                 return script_code(k[7:], cfg)
             if k.startswith("text:"):
                 return text_of(k[5:])
+            if k.startswith("skill:"):
+                return skill_ref(k[6:], cfg)
             if k not in vals:
                 raise KeyError(f"emplacement inconnu : {k}")
             return vals[k]
@@ -503,15 +561,15 @@ def render(tpl, cfg):
 # chaîne d'implémentation (#76) : (tier, skills Kronn) par rôle d'agent ; léger pour lire et cadrer, fort pour coder et juger.
 # Réglage impl.postes.<rôle> du pack ou de la config : agent (ClaudeCode, CopilotCli, Codex…), tier, model, skills (ajoutés).
 IMPL_AGENTS = {
-    "cadrage": ("reasoning", []),  # 📋 Plan : compris, fichiers impactés, façons de faire ; ta gate du plan tient lieu de critique
+    "cadrage": ("reasoning", ["bureau:exigences"]),  # 📋 Plan : compris, fichiers impactés, façons de faire ; ta gate du plan tient lieu de critique
     "orchestrateur": ("default", []),  # en reasoning, Opus 5.5 a coupé deux fois (filtre reasoning_extraction)
     "code": ("reasoning", ["verification-before-completion"]), "code.relecture": ("default", []),
     # règles, sécurité, perf · a11y, besoin et doc : une étape, un sous-agent par poste, en même temps (Kronn ne lance pas
     # de sous-workflows en parallèle) ; ses skills couvrent les cinq
-    "controles": ("reasoning", ["security", "web-performance", "accessibility"]),
-    "tests": ("default", ["testing", "test-driven-development"]),
+    "controles": ("reasoning", ["security", "web-performance", "accessibility", "bureau:recherches", "bureau:exigences", "bureau:doc"]),
+    "tests": ("default", ["testing", "test-driven-development", "bureau:tests"]),
     "livraison": ("economy", []), "retours": ("reasoning", ["receiving-code-review"]),
-    "revue_pr": ("reasoning", []),  # mode essai : revue locale du diff (la revue du Bureau a ses propres postes)
+    "revue_pr": ("reasoning", ["bureau:recherches", "bureau:exigences", "bureau:tests"]),  # mode essai : revue locale du diff (la revue du Bureau a ses propres postes)
 }
 IMPL_TEAM_SKILLS = {"code", "code.relecture", "controles", "tests", "retours", "revue_pr"}  # + impl.skills de l'équipe (langages, conventions)
 
@@ -523,7 +581,7 @@ def impl_agent(step, role, cfg):
     step["agent"] = conf.get("agent") or step.get("agent") or "ClaudeCode"
     step["agent_settings"] = {"tier": conf.get("tier") or tier, **({"model": conf["model"]} if conf.get("model") else {})}
     extra = list(conf.get("skills") or []) + (list(imp.get("skills") or []) if role in IMPL_TEAM_SKILLS else [])
-    step["skill_ids"] = list(dict.fromkeys(skills + extra))
+    step["skill_ids"] = list(dict.fromkeys(skills_of(skills, cfg) + extra))
 
 
 # investigation Support (#62) : (tier, skills Kronn) par poste ; léger pour trier et relire, plus fort pour chercher et
@@ -532,8 +590,9 @@ SUPPORT_AGENTS = {"tri": ("economy", []), "logs": ("default", []), "cause": ("de
                   "relecture": ("economy", [])}
 # revue de PR : le cadrage juge aussi le ticket critère par critère ; fort pour lire le code et pour l'avis, qui tranche. Réglage review.postes.<poste>
 # du pack ou de la config : agent, tier, model, skills (ajoutés) ; review.skill_ids de l'équipe pour ceux qui lisent le code
-REVIEW_AGENTS = {"contexte": ("default", []), "docs": ("default", []), "lecture": ("reasoning", ["testing"]),
-                 "securite": ("default", ["security"]), "avis": ("reasoning", [])}
+REVIEW_AGENTS = {"contexte": ("default", ["bureau:exigences"]), "docs": ("default", ["bureau:doc"]),
+                 "lecture": ("reasoning", ["testing", "bureau:recherches", "bureau:tests"]), "securite": ("default", ["security"]),
+                 "avis": ("reasoning", ["bureau:grille", "bureau:recherches", "bureau:exigences"])}
 REVIEW_TEAM_SKILLS = {"lecture", "securite", "avis"}
 POSTE_AGENTS = {"support": SUPPORT_AGENTS, "review": REVIEW_AGENTS}
 
@@ -547,7 +606,7 @@ def poste_agent(step, role, cfg):
     team = list(sec.get("skill_ids") or []) if part == "review" and k in REVIEW_TEAM_SKILLS else []
     step["agent"] = conf.get("agent") or step.get("agent") or "ClaudeCode"
     step["agent_settings"] = {**(step.get("agent_settings") or {}), "tier": conf.get("tier") or tier, **({"model": conf["model"]} if conf.get("model") else {})}
-    step["skill_ids"] = list(dict.fromkeys(skills + team + list(conf.get("skills") or [])))
+    step["skill_ids"] = list(dict.fromkeys(skills_of(skills, cfg) + team + list(conf.get("skills") or [])))
 
 
 # fuseau des crons : leurs heures sont calculées en UTC (assemble.cron_hours) ; depuis Kronn 0.15.1, un cron sans fuseau
@@ -615,6 +674,8 @@ def templatize(key, kind, d, cfg):
 
     def walk(v):
         if isinstance(v, str):
+            for k in BUREAU_SKILLS:  # un skill du Bureau dans un prompt (renvoi, ou son texte recopié) : son emplacement
+                v = v.replace(skill_ref(k, cfg), f"@@skill:{k}@@")
             for k, val in (("page_id", vals["page_id"]), ("jira.config_id", vals["jira.config_id"]),
                            ("kronn.project_id", vals["kronn.project_id"]), ("microsoft.config_id", vals["microsoft.config_id"]),
                            ("microsoft.site", vals["microsoft.site"]), ("microsoft.item", vals["microsoft.item"]),

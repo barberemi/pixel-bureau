@@ -334,6 +334,54 @@ exit 0
         self.assertEqual(assemble.deploy_envs({**c, "models": {}}), {})  # modèle pas installé : pas de bouton
         shutil.rmtree(tmp)
 
+    def test_bureau_skills_are_shared_by_the_review_and_the_chain(self):
+        """Un savoir-faire, un skill (skills/*.md) : la revue de PR et la chaîne chargent les mêmes, par leur id rangé
+        dans skills.<clé> ; pas encore publiés, ils sont omis et la grille de l'avis est recopiée dans son prompt."""
+        ids = {k: f"custom-bureau-{k}" for k in templates.BUREAU_SKILLS}
+        c = cfg(skills=ids, review={"page_id": PAGE})
+        skill_ids = lambda key, step: steps(key, c)[step]["skill_ids"]  # noqa: E731
+        self.assertEqual(skill_ids("review_lecture", "agent"), ["testing", ids["recherches"], ids["tests"]])
+        self.assertEqual(skill_ids("review_contexte", "agent"), [ids["exigences"]])
+        self.assertEqual(skill_ids("review_docs", "agent"), [ids["doc"]])
+        self.assertEqual(steps("review_child", c)["avis"]["skill_ids"][:3], [ids["grille"], ids["recherches"], ids["exigences"]])
+        self.assertEqual(skill_ids("impl_tests", "propose")[-1:], [ids["tests"]])
+        self.assertTrue({ids["recherches"], ids["exigences"], ids["doc"]} <= set(skill_ids("impl_controles", "parallele")))
+        avis = steps("review_child", c)["avis"]["prompt_template"]
+        self.assertIn("(le skill « Bureau · grille de revue de PR », chargé avec cette étape)", avis)
+        self.assertNotIn("## Verdict", avis)  # la grille n'est plus recopiée
+        sans = steps("review_child", cfg(review={"page_id": PAGE}))["avis"]
+        self.assertIn("## Verdict", sans["prompt_template"])  # pas encore publiée : recopiée
+        self.assertFalse([x for x in sans["skill_ids"] if x.startswith("bureau:")])
+        # l'export remet l'emplacement, renvoi ou texte recopié
+        live = templates.render(TPL["review_child"], c)
+        back = templates.templatize("review_child", "workflow", live, c)["definition"]
+        self.assertIn("@@skill:grille@@", next(x for x in back["steps"] if x["name"] == "avis")["prompt_template"])
+
+    def test_bureau_skills_synced_before_the_workflows(self):
+        calls, store = [], {}
+
+        def call(method, path, body=None):
+            calls.append((method, path))
+            if method == "GET":
+                return [{"id": i} for i in store]
+            ident = path.split("/")[-1] if method == "PUT" else "custom-" + str(len(store))
+            store[ident] = body
+            return {"id": ident}
+        c = {}
+        ids = templates.sync_skills(call, c, say=lambda m: None)
+        self.assertEqual(set(ids), set(templates.BUREAU_SKILLS))
+        self.assertEqual(c["skills"], ids)
+        self.assertEqual([m for m, _ in calls], ["GET"] + ["POST"] * len(ids))
+        self.assertTrue(store[ids["grille"]]["content"].startswith("# Grille de revue de PR"))
+        self.assertEqual(store[ids["grille"]]["category"], "Domain")
+        calls.clear()
+        templates.sync_skills(call, c, say=lambda m: None)
+        self.assertEqual([m for m, _ in calls], ["GET"] + ["PUT"] * len(ids))  # déjà là : mis à jour, même id
+        for k in templates.BUREAU_SKILLS:
+            body = templates.skill_body(k)
+            self.assertNotIn("@@", body["content"])
+            self.assertNotIn("{{", body["content"])
+
     def test_no_gate_inside_a_sub_workflow(self):
         """Kronn refuse une gate dans un workflow lancé en sous-workflow (« un gate imbriqué n'est pas encore reprenable »)."""
         subs = {s.get("sub_workflow_id") for t in TPL.values() if t["kind"] == "workflow" for s in t["definition"].get("steps") or []

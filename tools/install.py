@@ -984,6 +984,8 @@ def main(argv=None):
             bid = upsert_side_page(k, cfg, key, a.dry_run)
             if bid:
                 cfg[key] = bid
+    if not a.dry_run:  # skills du Bureau (revue et chaîne), avant les workflows qui les chargent : ids dans skills.<clé>
+        templates.sync_skills(k.call, cfg, say=lambda m: say("  " + m))
     upsert_all(k, cfg, {key: t for key, t in tpls.items() if templates.TEMPLATES[key][1][0] != "models" or key in chosen},
                not a.disabled, a.dry_run)
     # réponses gardées pour la relance, jamais un mot de passe (comptes IMAP : il est au trousseau)
