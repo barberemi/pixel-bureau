@@ -7,7 +7,6 @@
   "trigger": {
    "type": "Manual"
   },
-  "variables": [],
   "steps": [
    {
     "agent": "ClaudeCode",
@@ -215,6 +214,7 @@
    "require_approval": false
   },
   "workspace_config": null,
+  "concurrency_limit": null,
   "exec_allowlist": [
    "python3"
   ]
