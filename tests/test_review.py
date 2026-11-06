@@ -112,18 +112,136 @@ class ReviewTest(unittest.TestCase):
         self.assertEqual(self.run_("garde", "12", "comment", "false", stdin="null").returncode, 8)
         self.assertEqual(self.ctx().returncode, 0)  # nouvelle revue : marqueurs et essais d'avant oubliés
         self.assertFalse(Path(self.tmp, ".kronn", "vide-12").exists())
-        bon = {**vide, "verdict": "request_changes", "statut": "ok",
-               "generalComment": "Le fichier src/f.py n'a pas de test pour la borne ajoutée.",
-               "comments": [{"path": "src/f.py", "line": 11, "side": "RIGHT", "body": "Test manquant"}]}
+        bon = {**vide, "verdict": "request_changes", "statut": "ok", "summary": "Le fichier src/f.py n'a pas de test pour la borne ajoutée.",
+               "blockers": ["**Test manquant** — la borne n'est pas testée · `f.py:11`"],
+               "comments": [{"path": "src/f.py", "line": 11, "side": "RIGHT", "body": "🧪 **Test manquant**", "gravite": "bloquant"}]}
         r = self.run_("garde", "12", "request_changes", "false", stdin=json.dumps(bon))
         self.assertEqual((r.returncode, r.stdout), (0, "REQUEST_CHANGES"))
         self.assertEqual(self.run_("garde", "12", "request_changes", "true", stdin=json.dumps(bon)).stdout, "COMMENT")  # sa propre PR
-        sans_inline = {**bon, "comments": [], "verdict": "approve", "generalComment": "Rien de bloquant, la borne est testée."}
+        sans_inline = {**bon, "comments": [], "blockers": [], "verdict": "approve", "summary": "Rien de bloquant, la borne est testée.",
+                       "traces": [{"r": "R9", "recherche": "git grep -n f tests", "resultat": "tests/test_f.py"}],
+                       "revus": ["src/f.py"], "skipped": [{"path": "big.min.js", "reason": "minifié"}]}
         self.assertEqual(self.run_("garde", "12", "approve", "false", stdin=json.dumps(sans_inline)).stdout, "APPROVE")
         shutil.rmtree(self.wt)  # worktree absent (setup raté) : relancer l'avis n'y changerait rien
         r = self.run_("garde", "12", "approve", "false", stdin=json.dumps(sans_inline))
         self.assertEqual(r.returncode, 8)
         self.assertIn("entrées de la revue absentes", r.stdout)
+
+    def garde_review(self, avis, own="false"):
+        r = self.run_("garde", "12", str(avis.get("verdict") or ""), own, stdin=json.dumps(avis))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        return json.loads(Path(self.tmp, ".kronn", "review-12", "review.json").read_text())
+
+    def test_the_review_is_checked_by_fixed_rules_before_it_is_posted(self):
+        """Comme la passe « validate » de PR Review v3.4 : une review que GitHub refuserait en entier, ou dont le verdict
+        contredit ses bloquants, est réparée sans agent, et chaque réparation est listée."""
+        self.assertEqual(self.ctx().returncode, 0)
+        base = {"pr": 12, "statut": "ok", "summary": "La borne change.", "existingCommentActions": [], "existingCommentReplies": [],
+                "skipped": [], "blockers": []}
+        r = self.garde_review({**base, "verdict": "comment", "comments": [
+            {"path": "src/f.py", "line": 40, "side": "RIGHT", "body": "🐛 **Hors du diff**\n\ndétail", "gravite": "bloquant"},
+            {"path": "src/f.py", "line": 11, "side": "RIGHT", "body": "📖 **Nom**", "gravite": "remarque"},
+            {"path": "src/f.py", "line": 11, "side": "RIGHT", "body": "💡 **Autre**", "gravite": "conseil"},
+            {"path": "src/f.py", "line": 12, "side": "RIGHT", "body": "💡 **Plus court**\n```suggestion\nb = 3\nc = 4\n```"},
+            {"path": "src/f.py", "line": 11, "side": "LEFT", "body": "📖 **Ligne retirée**"},
+            {"path": "absent.py", "line": 1, "side": "RIGHT", "body": "📖 **Fichier absent**"}]})
+        self.assertEqual([(c["path"], c["line"], c["side"]) for c in r["comments"]],
+                         [("src/f.py", 11, "RIGHT"), ("src/f.py", 12, "RIGHT"), ("src/f.py", 11, "LEFT")])
+        self.assertIn("💡 **Autre**", r["comments"][0]["body"])  # deux commentaires sur une ligne : fusionnés
+        self.assertNotIn("```suggestion", r["comments"][1]["body"])  # suggestion de 2 lignes sur une seule : un exemple
+        self.assertEqual(r["blockers"], ["Hors du diff · `f.py:40`"])  # remonté dans la synthèse, bloquant
+        self.assertEqual((r["verdict"], r["event"]), ("request_changes", "REQUEST_CHANGES"))  # un bloquant : request_changes
+        self.assertIn("**Aussi** (hors des lignes du diff)\n- Fichier absent · `absent.py:1`", r["body"])
+        self.assertTrue(r["body"].startswith("## 🔧 Changements demandés\n\nLa borne change."))
+        self.assertEqual(len(r["corrections"]), 5, r["corrections"])
+        r = self.garde_review({**base, "verdict": "request_changes", "comments": []})
+        self.assertEqual(r["verdict"], "comment")  # request_changes sans bloquant
+        approve = {**base, "verdict": "approve", "comments": [], "positive": "La borne est testée aux deux bouts.",
+                   "ticket": {"cle": "EW-1", "ok": 3, "total": 4, "non_verifiables": 1}}
+        r = self.garde_review(approve)
+        self.assertEqual(r["verdict"], "comment")  # ni trace ni couverture : pas d'approve
+        self.assertIn("aucune trace de recherche", r["corrections"][0])
+        self.assertIn("2 fichier(s) du diff ni revus ni écartés", r["corrections"][0])
+        self.assertIn("🎫 EW-1 · ✅ 3/4 critères · 1 non vérifiables", r["body"])
+        self.assertTrue(r["body"].endswith("👍 Positif : La borne est testée aux deux bouts."))
+        couvert = {**approve, "traces": [{"r": "R9", "recherche": "git grep f", "resultat": "aucun"}], "revus": ["src/f.py", "big.min.js"]}
+        self.assertEqual(self.garde_review(couvert)["verdict"], "approve")
+        self.assertTrue(self.garde_review({**couvert, "lang": "en"})["body"].startswith("## ✅ Approved"))
+        obs = Path(self.tmp, ".kronn", "review-12", "observation.md")
+        obs.write_text(obs.read_text() + "- CI : 1 fail ; en échec : tests\n")
+        self.assertIn("CI en échec", self.garde_review(couvert)["corrections"][0])
+        obs.write_text("- Fusion : ⛔ en conflit avec la base\n")
+        self.assertIn("conflit avec la base", self.garde_review(couvert)["corrections"][0])
+        obs.write_text("")
+        Path(self.tmp, ".kronn", "review-12", "precedent.md").write_text("# Passe précédente\nP1. **Borne** — non testée\nP2. **Nom**\n")
+        r = self.garde_review({**couvert, "suivi": [{"point": "P1", "etat": "corrige", "preuve": "tests/test_f.py:12"},
+                                                     {"point": "P2", "etat": "ouvert"}]})
+        self.assertIn("point(s) de la passe précédente sans preuve : P2", r["corrections"][0])
+        r = self.garde_review({**couvert, "suivi": [{"point": "P1", "etat": "corrige", "preuve": "x"}, {"point": "P2", "etat": "refute", "preuve": "y"}]})
+        self.assertEqual(r["verdict"], "approve")
+
+    def test_reliefs_of_the_diff_without_agent(self):
+        """Relevés communs avec la chaîne (_releves.py) : un nom retiré encore cité, une clé de ticket dans un commentaire,
+        les tests liés par le nom, les docs qui citent un fichier touché."""
+        Path(self.wt, "src").mkdir()
+        Path(self.wt, "src", "views.py").write_text("from legacy import VideoBlock\n")
+        Path(self.wt, "tests").mkdir()
+        Path(self.wt, "tests", "test_billing.py").write_text("x\n")
+        Path(self.wt, "docs", "billing.md").write_text("Voir src/billing.py.\n")
+        git("add", "-A", cwd=self.wt)
+        files = [{"filename": "src/VideoBlock.py", "status": "removed", "patch": "@@ -1,1 +0,0 @@\n-class VideoBlock:"},
+                 {"filename": "src/billing.py", "status": "modified", "additions": 1, "deletions": 0,
+                  "patch": "@@ -1,1 +1,2 @@\n x = 1\n+# EW-42 : retirer après la migration"}]
+        r = self.run_("contexte", "12", "bot", stdin=json.dumps({"reviews": [], "comments": [], "files": files}))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        rel = Path(self.tmp, ".kronn", "review-12", "releves.md").read_text()
+        self.assertIn("- `VideoBlock` : src/views.py:1:from legacy import VideoBlock", rel)
+        self.assertIn("src/billing.py : clé de ticket dans un commentaire : # EW-42", rel)
+        self.assertIn("- `src/billing.py` : `tests/test_billing.py`", rel)
+        self.assertIn('"doc": "docs/billing.md"', rel)
+        self.assertEqual(json.loads(Path(self.tmp, ".kronn", "review-12", "ancres.json").read_text())["src/billing.py"],
+                         {"RIGHT": [1, 2], "LEFT": [1]})
+        self.assertIn("releves.md", self.run_("poste", "lecture", "12", "dm/site").stdout)
+
+    def test_posted_by_gh_kept_in_history_and_read_by_the_next_pass(self):
+        hist = os.path.join(self.tmp, "historique")
+        conf = {**copy.deepcopy(BASE), "review": {"historique": hist}}
+        self.assertEqual(self.run_("contexte", "12", "bot", stdin=json.dumps({"reviews": [], "comments": [], "files": [
+            {"filename": "src/f.py", "status": "modified", "patch": PATCH}]}), cfg=conf).returncode, 0)
+        self.assertIn("Première passe", Path(self.tmp, ".kronn", "review-12", "precedent.md").read_text())
+        avis = {"pr": 12, "statut": "ok", "verdict": "request_changes", "summary": "Borne non testée.", "comments": [],
+                "blockers": ["**Borne** — non testée · `f.py:11`"], "existingCommentActions": [], "existingCommentReplies": [], "skipped": []}
+        self.assertEqual(self.run_("garde", "12", "request_changes", "false", stdin=json.dumps(avis), cfg=conf).returncode, 0)
+        self.gh = {"api user": "autre"}
+        r = self.run_("poster", "12", "dm/site", "bot", self.head, "ClaudeCode", "opus", cfg=conf)
+        self.assertNotEqual(r.returncode, 0)  # gh et Kronn sur deux comptes : write_ctx ne reconnaîtrait pas la review
+        self.assertIn("rien n'est posté", r.stderr)
+        self.gh = {"api user": "bot", "api -X": {"html_url": "https://github.com/dm/site/pull/12#r1", "body": "x — 🤖 *Review automatique*",
+                                                   "submitted_at": "2026-11-06T10:00:00Z", "pull_request_url": "u"}}
+        r = self.run_("poster", "12", "dm/site", "bot", self.head, "ClaudeCode", "opus", cfg=conf)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(json.loads(r.stdout), {"pr_url": "u", "review_url": "https://github.com/dm/site/pull/12#r1",
+                                                "signature": "x — 🤖 *Review automatique*", "submitted_at": "2026-11-06T10:00:00Z",
+                                                "verdict": "request_changes"})
+        saved = [json.loads(p.read_text()) for p in Path(hist).rglob("*.json")]
+        self.assertEqual([(h["postee"], h["verdict"], h["head"]) for h in saved], [(True, "request_changes", self.head)])
+        row = json.loads(self.run_("ligne", "12", "dm/site", "jim", "main", "2026-11-06T09:59:00.000Z", "1", "2", "1", "1", cfg=conf).stdout)
+        self.assertEqual({k: row[k] for k in ("pr", "repo", "verdict", "author", "inline", "diff_add", "review_pass")},
+                         {"pr": 12, "repo": "dm/site", "verdict": "request_changes", "author": "jim", "inline": 0, "diff_add": 2, "review_pass": 1})
+        self.assertTrue(row["summary"].startswith("## 🔧 Changements demandés"))
+        self.run_("contexte", "12", "bot", stdin=json.dumps({"reviews": [], "comments": [], "files": []}), cfg=conf)
+        self.assertIn("P1. **Borne** — non testée", Path(self.tmp, ".kronn", "review-12", "precedent.md").read_text())
+        essai = {**conf, "review": {"historique": hist, "essai": ["DM/site"]}}
+        self.run_("garde", "12", "comment", "false", stdin=json.dumps(avis), cfg=essai)
+        r = self.run_("poster", "12", "dm/site", "bot", self.head, "ClaudeCode", "opus", cfg=essai)
+        self.assertEqual(r.returncode, 3)  # mode essai : rien n'est posté, gardé dans l'historique
+        self.assertTrue(Path(self.tmp, ".kronn", "essai-12").exists())
+        self.assertEqual(len(list(Path(hist).rglob("*.json"))), 2)
+
+    def test_rerequested_at_the_same_head_is_reviewed_again(self):
+        Path(self.tmp, ".kronn", "current_task.json").write_text(json.dumps({"number": 12, "repo": "dm/site", "rerequest": True}))
+        r = self.ctx([{"user": {"login": "bot"}, "body": "— 🤖 *Review automatique · Le Bureau*", "commit_id": self.head}])
+        self.assertEqual(r.returncode, 0, r.stderr)
 
     def test_each_poste_opens_with_the_cost_header_and_reads_the_context(self):
         self.ctx()
@@ -254,5 +372,19 @@ class CronCap(unittest.TestCase):
                                capture_output=True, text=True)
             self.assertIn("9 a reviewer, garde 6, reporte 3", r.stdout)
             self.assertEqual(len(json.load(open(os.path.join(tmp, ".kronn", "prs.json")))), 6)
+            # re-demande : déjà relue au head, le compte de nouveau demandé ; sélection : seulement les PR demandées
+            cand = [{"number": 1, "baseRef": "main", "author": "pam", "repo": "dm/site", "head": "h1", "reviewers": ["bot"]},
+                    {"number": 2, "baseRef": "main", "author": "pam", "repo": "dm/site", "head": "h2", "reviewers": []},
+                    {"number": 3, "baseRef": "main", "author": "pam", "repo": "dm/site", "head": "h3", "teams": ["front"]},
+                    {"number": 4, "baseRef": "main", "author": "pam", "repo": "dm/site", "head": "h4"}]
+            Path(tmp, ".kronn", "prs_candidates.json").write_text(json.dumps(cand))
+            mine = lambda n, h: {"input": {"repo": "dm/site", "number": n}, "response": [
+                {"user": {"login": "bot"}, "body": "— 🤖 *Review automatique*", "commit_id": h}]}
+            batch = json.dumps({"items": [mine(1, "h1"), mine(2, "h2"), mine(4, "vieux")]})
+            sel = json.dumps({"demandees": True, "equipes": ["dunder/front"]})
+            subprocess.run([fin["exec_command"], *fin["exec_args"][:3], "bot", sel], cwd=tmp, input=batch, capture_output=True, text=True)
+            with open(os.path.join(tmp, ".kronn", "prs.json")) as f:
+                kept = json.load(f)
+            self.assertEqual([(p["number"], p.get("rerequest", False)) for p in kept], [(1, True), (3, False), (4, False)])
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
