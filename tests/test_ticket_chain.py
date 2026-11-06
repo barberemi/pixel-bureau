@@ -404,6 +404,56 @@ class RedactionSnapshotTest(unittest.TestCase):
         self.assertNotIn("detail", t["tickets"][1])
         self.assertEqual(snap["tok_jour"], 21000, "les jetons depuis minuit à Paris (le run de 23 h 30 la veille ne compte pas)")
 
+    def test_table_carries_what_each_poste_did_and_the_created_keys(self):
+        """La fiche d'un poste au clic (2e) : ce que la recherche a lu, la version de la rédaction, les remarques de la
+        critique ; la clé Jira de chaque ticket créé, et les tickets créés du jour pour la boîte Jira."""
+        os.environ.setdefault("BUREAU_CONFIG", FIXTURE)
+        sys.path.insert(0, os.path.join(ROOT, "workflows"))
+        import redaction_snapshot as r
+        tmp = tempfile.mkdtemp()
+        os.makedirs(os.path.join(tmp, "r1"))
+        Path(tmp, "r1", "demande.json").write_text(json.dumps({"intention": "Refondre le lecteur"}))
+        Path(tmp, "r1", "tickets.json").write_text(json.dumps({"version": 2, "tickets": [{"summary": "A"}, {"summary": "B"}],
+                                                              "reponses": ["T1 : format précisé"], "hors_liste": ["C"]}))
+        Path(tmp, "r1", "recherche.json").write_text(json.dumps({"texte": "Le lecteur vit dans dm/site.", "composants": ["dm/site"]}))
+        Path(tmp, "r1", "doublons.json").write_text(json.dumps([{"key": "DM-9", "summary": "Sous-titres du direct", "status": "Done"}, {"summary": "sans clé"}]))
+        Path(tmp, "r1", "critiques.json").write_text(json.dumps([{"version": 1, "verdict": "a_retoucher", "notes": [{"ticket": 1, "gravite": "bloquant", "note": "Quel format ?"}]},
+                                                                 {"version": 2, "verdict": "ok", "notes": [{"ticket": 2, "gravite": "conseil", "note": "x" * 300}]}]))
+        Path(tmp, "r1", "crees.json").write_text(json.dumps([{"i": 1, "key": "DM-41", "title": "B"}, {"i": "?", "key": "DM-0"}]))
+        api = {"/workflows/tk/runs?limit=20": [{"id": "r1", "status": "Running", "started_at": "2026-10-30T09:00:00Z"}],
+               "/workflows/tk/runs/r1": {"id": "r1", "workflow_id": "tk", "status": "Running", "started_at": "2026-10-30T09:00:00Z",
+                                          "step_results": [{"step_name": "critique"}]},
+               "/workflows/un/runs?limit=40": []}
+        old = (r.get, r.HOME, dict(r.CFG))
+        r.get, r.HOME = (lambda p: api.get(p)), tmp
+        r.CFG.update(models={"ticket": "tk", "ticket_un": "un"})
+        try:
+            snap = r.snapshot("2026-10-30T10:00:00+00:00")
+        finally:
+            r.get, r.HOME = old[0], old[1]
+            r.CFG.clear()
+            r.CFG.update(old[2])
+        t = snap["tables"][0]
+        self.assertEqual([x.get("key") for x in t["tickets"]], [None, "DM-41"], "la clé du ticket créé, au bon rang ; un rang illisible est ignoré")
+        self.assertEqual(t["recherche"]["doublons"], [{"key": "DM-9", "summary": "Sous-titres du direct", "status": "Done"}])
+        self.assertEqual(t["recherche"]["resume"], "Le lecteur vit dans dm/site.")
+        self.assertEqual(t["redaction"], {"version": 2, "reponses": ["T1 : format précisé"], "hors_liste": 1})
+        self.assertEqual((t["critique"]["version"], t["critique"]["verdict"]), (2, "ok"), "le dernier tour de la critique")
+        self.assertEqual(len(t["critique"]["notes"][0]["note"]), 240)
+        self.assertEqual(snap["crees_l"], [{"key": "DM-41", "title": "B", "run": "r1"}, {"key": "DM-0", "title": "", "run": "r1"}])
+
+    def test_table_without_dossier_has_empty_postes(self):
+        os.environ.setdefault("BUREAU_CONFIG", FIXTURE)
+        sys.path.insert(0, os.path.join(ROOT, "workflows"))
+        import redaction_snapshot as r
+        old = r.HOME
+        r.HOME = tempfile.mkdtemp()
+        try:
+            t = r.table({"id": "rx", "step_results": []}, [], [r.DETAIL_BUDGET])
+        finally:
+            r.HOME = old
+        self.assertEqual((t["tickets"], t["recherche"]["doublons"], t["critique"]["notes"], t["redaction"]["version"]), ([], [], [], 0))
+
 
 class RevueFileTest(unittest.TestCase):
     """La file de la salle de revue (2e étage) : les PR retenues par le cron, dans l'ordre, et les verdicts des revues."""

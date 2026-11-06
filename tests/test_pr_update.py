@@ -173,7 +173,8 @@ class PrUpdateTest(unittest.TestCase):
     # ---------- corriger les commentaires (#75) ----------
     def thread(self, tid, resolved=False):
         return {"id": tid, "isResolved": resolved, "isOutdated": False, "path": "a.txt", "line": 2,
-                "comments": {"nodes": [{"author": {"login": "jim"}, "body": "Renomme ça", "createdAt": "2026-10-01T08:00:00Z"}]}}
+                "comments": {"nodes": [{"author": {"login": "jim"}, "body": "Renomme ça", "createdAt": "2026-10-01T08:00:00Z",
+                                         "url": f"https://github.com/dm/site/pull/7#discussion_r{tid}"}]}}
 
     def test_fix_without_unresolved_thread_ends_at_once(self):
         self.data["threads"] = [self.thread("T1", resolved=True)]
@@ -199,6 +200,7 @@ class PrUpdateTest(unittest.TestCase):
         # le Kanban du 3e étage : les fils en bref et leur colonne restent dans l'état du run, après le dossier de travail
         st = json.loads(Path(self.tmp, ".cache", "pixel-bureau", "pr", "runs", "run-1.json").read_text())
         self.assertEqual([f["id"] for f in st["fils"]], ["T1", "T2"])
+        self.assertEqual(st["fils"][0]["url"], "https://github.com/dm/site/pull/7#discussion_rT1", "le lien du fil, pour son post-it au 3e")
         self.assertEqual(st["cols"], {"T1": "reponse", "T2": "reponse"})
         self.assertIn("1 fichier(s) changé(s)", d.stdout)
         self.assertIn("Un renommage.", d.stdout)

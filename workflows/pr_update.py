@@ -322,7 +322,7 @@ def abort(repo, n, run_id):
 
 # ---------- corriger les commentaires d'une PR (#75, page action « bureau-fixpr ») ----------
 THREADS_Q = ("query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100){nodes{"
-             "id isResolved isOutdated path line comments(first:30){nodes{author{login __typename} body createdAt}}}} "
+             "id isResolved isOutdated path line comments(first:30){nodes{author{login __typename} body createdAt url}}}} "
              "reviews(last:50){nodes{id state body submittedAt author{login __typename}}} "
              "comments(last:100){nodes{id body createdAt author{login __typename}}}}}}")
 
@@ -352,7 +352,7 @@ def threads(repo, n, resolved=False, pr=None):
     for t in nodes:
         if not resolved and t.get("isResolved"):
             continue
-        cs = [{"author": (c.get("author") or {}).get("login"), "body": c.get("body")} for c in (t.get("comments") or {}).get("nodes") or []]
+        cs = [{"author": (c.get("author") or {}).get("login"), "body": c.get("body"), "url": c.get("url")} for c in (t.get("comments") or {}).get("nodes") or []]
         v, relance = deja(cs)
         out.append({"id": t["id"], "kind": "fil", "path": t.get("path"), "line": t.get("line"), "outdated": t.get("isOutdated"),
                     "resolved": bool(t.get("isResolved")), "deja_repondu": v, "relance": relance, "comments": cs})
@@ -461,7 +461,8 @@ def fix_prepare(repo, n, run_id):
     st["reviewers"] = reviewers(pr, (st.get("author"), st["me"]))
     # le Kanban du 3e étage (retours_snapshot.py) : chaque fil en bref, gardé après le dossier de travail
     st["fils"] = [{"id": t["id"], "path": t.get("path"), "line": t.get("line"), "who": (t["comments"][0] if t["comments"] else {}).get("author"),
-                   "text": str((t["comments"][0] if t["comments"] else {}).get("body") or "").strip()[:160]} for t in ts]
+                   "text": str((t["comments"][0] if t["comments"] else {}).get("body") or "").strip()[:160],
+                   "url": (t["comments"][0] if t["comments"] else {}).get("url")} for t in ts]
     save(run_id, st)
     write_json(os.path.join(st["work"], ".bureau-fix.json"), ts + gs)
     deps = f"dépendances reliées depuis {src}" if src else "sans dépendances (dossier local du dépôt inconnu de Kronn)"

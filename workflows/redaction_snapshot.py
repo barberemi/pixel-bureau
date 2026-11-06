@@ -3,7 +3,8 @@ ticket (models.ticket_un), lus dans l'API Kronn, et le dossier de chaque run (~/
 écrit par ticket.py) ; 0 token ; stdout JSON du dataset redaction (cron live).
 
   {generated_at, tables: [{run, status, since, intention, type, parent, poste, tour, composants, tickets: [{i, summary,
-                           composant, points, etat: wait|run|gate|ok|ecarte|err, detail}], url}], events: [{t, k: arrive|gate|cree|fin, run}], crees, tok_jour}
+                           composant, points, etat: wait|run|gate|ok|ecarte|err, detail, key}], url, recherche, redaction, critique}],
+   events: [{t, k: arrive|gate|cree|fin, run}], crees, crees_l: [{key, title, run}], tok_jour}
 
 detail : la description du ticket en texte lisible (readable de _lib : ▸ titres, │ panneaux, • puces), pour la fiche du
 ticket au clic au 2e ; DETAIL_MAX caractères chacun, DETAIL_BUDGET en tout (la sortie d'une étape Exec reste sous 100 Ko).
@@ -65,11 +66,44 @@ def table(run, kids, budget):
             txt = txt[:DETAIL_MAX - 1].rstrip() + "…"
         if txt and budget[0] >= len(txt):
             x["detail"], budget[0] = txt, budget[0] - len(txt)
+    made = made_keys(run["id"])
+    for x in ts:
+        if made.get(x["i"]):
+            x["key"] = made[x["i"]]
     ui = (CFG.get("kronn") or {}).get("ui") or ""
+    rech = dget(run["id"], "recherche.json", {}) or {}
     return {"run": run["id"], "status": run.get("status"), "since": run.get("started_at"), "intention": str(d.get("intention") or "")[:200],
             "type": d.get("type") or "", "parent": d.get("parent") or "",
-            "poste": poste, "tour": d.get("tour") or 1, "composants": (dget(run["id"], "recherche.json", {}) or {}).get("composants") or d.get("composants") or [],
-            "tickets": ts, "url": f"{ui.rstrip('/')}/#workflows/{run.get('workflow_id')}" if ui else None}
+            "poste": poste, "tour": d.get("tour") or 1, "composants": rech.get("composants") or d.get("composants") or [],
+            "tickets": ts, "url": f"{ui.rstrip('/')}/#workflows/{run.get('workflow_id')}" if ui else None, **postes(run["id"], t, rech)}
+
+
+def made_keys(run_id):
+    """Les tickets déjà créés dans Jira (crees.json, écrit par ticket.py) : {rang du ticket: clé}."""
+    out = {}
+    for m in dget(run_id, "crees.json", []) or []:
+        try:
+            if isinstance(m, dict) and m.get("key"):
+                out[int(m["i"])] = str(m["key"])
+        except (KeyError, TypeError, ValueError):
+            pass
+    return out
+
+
+def postes(run_id, t, rech):
+    """Ce que chaque poste a produit, pour sa fiche au clic : les tickets Jira voisins lus par la recherche (doublons.json),
+    la dernière version de la rédaction et ses réponses à la critique, les remarques du dernier tour de la critique."""
+    clip = lambda v, n: str(v or "").strip()[:n]  # noqa: E731
+    dbl = [x for x in dget(run_id, "doublons.json", []) or [] if isinstance(x, dict) and x.get("key")]
+    hist = [x for x in dget(run_id, "critiques.json", []) or [] if isinstance(x, dict)]
+    c = hist[-1] if hist else {}
+    return {"recherche": {"doublons": [{"key": str(x["key"]), "summary": clip(x.get("summary"), 120), "status": clip(x.get("status"), 40)} for x in dbl[:8]],
+                          "resume": clip(rech.get("texte"), 600)},
+            "redaction": {"version": t.get("version") or 0, "reponses": [clip(x, 240) for x in (t.get("reponses") or [])[:6]],
+                          "hors_liste": len(t.get("hors_liste") or [])},
+            "critique": {"version": c.get("version"), "verdict": c.get("verdict") or "",
+                         "notes": [{"ticket": n.get("ticket"), "gravite": clip(n.get("gravite"), 20), "note": clip(n.get("note"), 240)}
+                                   for n in (c.get("notes") or [])[:8] if isinstance(n, dict)]}}
 
 
 def step_data(run, names):
@@ -160,6 +194,10 @@ def snapshot(now_iso=None):
     out["events"] = sorted([e for e in ev if e["t"]], key=lambda e: e["t"])
     midnight = now.astimezone(TZ).replace(hour=0, minute=0, second=0, microsecond=0) if now else None
     out["crees"] = sum(1 for e in out["events"] if e["k"] == "cree" and (not midnight or when(e["t"]) >= midnight))
+    # la boîte Jira : les tickets créés par les intentions du jour, avec leur clé (clic au 2e)
+    today = [r for r in sorted(runs, key=lambda r: r.get("started_at") or "") if not midnight or (when(r.get("started_at")) or midnight) >= midnight]
+    out["crees_l"] = [{"key": str(m["key"]), "title": str(m.get("title") or "")[:120], "run": r["id"]}
+                      for r in today for m in dget(r["id"], "crees.json", []) or [] if isinstance(m, dict) and m.get("key")][-20:]
     # le tableau des tickets du jour : les jetons des intentions lancées depuis minuit (le run parent compte ceux de ses postes)
     out["tok_jour"] = sum(int(r.get("tokens_used") or 0) for r in runs if not midnight or (when(r.get("started_at")) or midnight) >= midnight)
     return out
