@@ -17,7 +17,7 @@ PARALLELES = ("regles", "securite", "perf", "besoin", "doc")  # en lecture seule
 
 
 # doc du dépôt relevée pour le poste 📚 doc ; impl.repos.<dépôt>.docs en ajoute (ex. guide/)
-DOCS = ["docs", "ai", ":(glob)**/README*", ":(glob)**/AGENTS.md", ":(glob)**/CLAUDE.md"]
+DOCS = list(DOCS)  # docs relevées par défaut, communes avec la revue (_releves.DOCS)
 
 
 FRONT = ["*.scss", "*.css", "*.twig", "*.html", "*.vue", "*.tsx", "*.jsx", "*.ts", "*.js"]
@@ -54,7 +54,7 @@ def cmd_missions():
              f"Point de départ du diff : {depart()} (`git diff {depart()}...HEAD`).",
              section("Postes à lancer", ", ".join(postes) + ("\n\nÉcartés : " + " ; ".join(ecartes) if ecartes else "")
                      + "\n\nFront touché (templates, CSS, JS de page) : " + ("oui" if front_touche(files) else "non, le poste perf saute l'a11y")),
-             perimetre(), lecture(), rejoue(),
+             perimetre(), lecture(), rejoue(), non_fiable(),
              section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else "")]
     if os.path.exists(dossier("retours.md")):
         parts.append(section("Retours de l'humain (à respecter en priorité)", open(dossier("retours.md"), encoding="utf-8").read()))
@@ -67,8 +67,10 @@ def cmd_missions():
     if "regles" in postes:
         v = verifie("regles", files)
         parts.append(section("Vérifications des règles lancées (0 token, pour le poste regles)", json.dumps(v, ensure_ascii=False, indent=1)[-8000:]))
+        parts.append(releves().replace("## Relevés du diff", "## Relevés du diff, pour le poste regles :", 1))
+        parts.append(recherches().replace("## Recherches hors du diff", "## Pour le poste regles : recherches hors du diff", 1))
     if "doc" in postes:
-        parts.append(section("Relevé de la doc (0 token, pour le poste doc)", json.dumps(releve_doc(files), ensure_ascii=False, indent=1)[:8000]))
+        parts.append(section("Relevé de la doc (0 token, pour le poste doc)", json.dumps(releve_doc_chaine(files), ensure_ascii=False, indent=1)[:8000]))
         parts.append(rejets_md())
     for p in postes:
         c = correction(p)
@@ -77,49 +79,14 @@ def cmd_missions():
     out("".join(parts))
 
 
-def termes_doc(f):
-    """Ce qu'une doc citerait d'un fichier modifié : son chemin, son nom, et les symboles ajoutés ou retirés par le diff."""
-    base = os.path.basename(f)
-    terms = [f, base]
-    stem = os.path.splitext(base)[0]
-    if len(stem) >= 6 and stem.lower() not in GENERIQUES:
-        terms.append(stem)
-    for line in git("diff", "-U0", f"{depart()}...HEAD", "--", f).splitlines():
-        m = SYMBOLE.match(line)
-        if m:
-            terms.append(m.group(1))
-    return list(dict.fromkeys(terms))[:8]
-
-
-def releve_doc(files):
-    """Poste 📚 doc (0 token) : docs du dépôt déjà modifiées par le diff (lignes + et -), docs qui citent un fichier
-    modifié ou un symbole touché (git grep), fichiers modifiés qu'aucune doc ne cite. Le relevé dit où regarder ; le
-    sous-agent juge si chaque doc citée dit encore vrai."""
+def releve_doc_chaine(files):
+    """Poste 📚 doc (0 token, relevé commun avec la revue : _releves.releve_doc) : docs du dépôt déjà modifiées par le diff
+    (lignes + et -), docs qui citent un fichier modifié ou un symbole touché (git grep), fichiers modifiés qu'aucune doc ne
+    cite. Le relevé dit où regarder ; le sous-agent juge si chaque doc citée dit encore vrai."""
     spec = DOCS + list(reglages().get("docs") or [])
-    docs = set(git("ls-files", "--", *spec).splitlines())
-    modifiees = []
-    for line in git("diff", "--numstat", f"{depart()}...HEAD", "--", *spec).splitlines():
-        a, r, path = (line.split("\t") + ["", "", ""])[:3]
-        if path:
-            modifiees.append({"doc": path, "ajout": int(a) if a.isdigit() else 0, "retrait": int(r) if r.isdigit() else 0})
-    code = [f for f in files if f not in docs]
-    cite, sans = {}, []
-    for f in code[:40]:
-        hit = False
-        for t in termes_doc(f):
-            for d in git("grep", "-l", "-F", t, "--", *spec).splitlines()[:30]:
-                cite.setdefault(d, {}).setdefault(f, []).append(t)
-                hit = True
-        if not hit:
-            sans.append(f)
-    faites = {m["doc"] for m in modifiees}
-    rep = {"docs_du_depot": len(docs), "modifiees": modifiees,
-           "citent_le_diff": [{"doc": d, "modifiee": d in faites, "cite": {f: ts[:4] for f, ts in fs.items()}}
-                              for d, fs in sorted(cite.items(), key=lambda kv: (-len(kv[1]), kv[0]))[:40]],
-           "sans_doc": sans}
-    if len(code) > 40:
-        rep["non_releves"] = len(code) - 40
-    return rep
+    fd = {f["filename"]: f for f in fichiers_diff()}
+    fd.update({f: {"filename": f, "status": "modified", "patch": ""} for f in files if f not in fd})  # pas encore commités
+    return releve_doc(lambda *a: git("grep", *a), list(fd.values()), spec, docs=set(git("ls-files", "--", *spec).splitlines()))
 
 
 def cmd_range():

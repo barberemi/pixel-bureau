@@ -302,7 +302,7 @@ def cmd_revue_prep():
         out(f"REVUE LOCALE (mode essai, passe {passe} sur {MAX_PASSES}) : rien n'est poussé ni posté, la PR n'existe pas.\n"
             f"Diff à relire : `git diff {depart()}...HEAD` dans la copie de travail {root()} (branche {e.get('branch')}).\n"
             f"Ticket : {dossier('ticket.md')} ; description de la PR prévue : {dossier('pr_body.md')} ; rapports des "
-            f"contrôles : {dossier('controles.json')}." + rejoue() + perimetre()
+            f"contrôles : {dossier('controles.json')}." + rejoue() + perimetre() + non_fiable() + releves() + recherches()
             + (section("Ta revue de la passe précédente (relis surtout ce qui a changé depuis)",
                        json.dumps((load("revue_pr.json") or {}).get("resultat") or {}, ensure_ascii=False, indent=1)[:6000])
                if passe > 1 and load("revue_pr.json") else ""))

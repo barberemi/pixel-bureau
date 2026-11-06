@@ -38,7 +38,7 @@ class TemplatesTest(unittest.TestCase):
         cité par un modèle (@@script:…@@), rendu avec une config d'équipe chargée (consignes longues), reste sous 110 Kio ;
         les scripts de la chaîne ne reçoivent que leur part de la config."""
         cfg = json.loads(Path(ROOT, "tests", "fixtures", "bureau.config.json").read_text(encoding="utf-8"))
-        cfg["impl"] = {**(cfg.get("impl") or {}), "guidelines": "- consigne d'équipe\n" * 600}  # ~12 Ko, comme un pack réel
+        cfg["impl"] = {**(cfg.get("impl") or {}), "guidelines": "- consigne d'équipe\n" * 600, "max_tours": 7}  # ~12 Ko, comme un pack réel
         cfg["review"] = {**(cfg.get("review") or {}), "guidelines": "- consigne de revue\n" * 600}
         paths = sorted(set(re.findall(r"@@script:([\w/.]+)@@", json.dumps(TPL))))
         self.assertIn("workflows/chaine_pr.py", paths)
@@ -48,7 +48,8 @@ class TemplatesTest(unittest.TestCase):
             compile(code, rel, "exec")
         chaine = templates.script_code("workflows/chaine.py", cfg)
         self.assertNotIn("consigne de revue", chaine)  # pas la config des autres
-        self.assertIn("consigne d'équipe", chaine)
+        self.assertNotIn("consigne d'équipe", chaine)  # les consignes vont dans les prompts (@@impl.guidelines@@), aucun script ne les lit
+        self.assertIn('"max_tours": 7', chaine)  # le reste du réglage impl, si
         self.assertEqual(chaine.count("def read_json("), 1)  # _lib recopié une fois, même importé par _chaine
 
     def test_all_templates_present_and_without_installation_ids(self):

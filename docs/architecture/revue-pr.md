@@ -18,7 +18,7 @@ Niveaux et skills : `templates.REVIEW_AGENTS`, rendus par `poste_agent` ; `revie
 
 ## Relevés à 0 token (`releves.md`)
 
-`write_ctx` écrit `.kronn/review-<n>/releves.md` avec `workflows/_releves.py`, recopié dans le script comme `_lib.py` et prévu pour être partagé avec la chaîne : il part des patches de l'API GitHub et de `git grep` dans le worktree au head (la revue n'a pas l'historique de la base) [src: file: workflows/_releves.py:1].
+`write_ctx` écrit `.kronn/review-<n>/releves.md` avec `workflows/_releves.py`, recopié dans le script comme `_lib.py` et partagé avec la chaîne d'implémentation (avec les textes `NON_FIABLE` et `RECHERCHES`) : il part des patches de l'API GitHub et de `git grep` dans le worktree au head (la revue n'a pas l'historique de la base) [src: file: workflows/_releves.py:1].
 - Retraits encore référencés : fichiers supprimés et symboles retirés (`noms_retires`), cherchés au head (`references_restantes`, sans `.review-context.json` que la revue pose dans le worktree). Chaque ligne est tranchée (R3).
 - Garde-fous des lignes ajoutées : clé de ticket dans un commentaire, en-tête ou clé sensible.
 - Tests liés aux fichiers touchés, par le nom (`Foo.php` → `FooTest.php`, `foo.ts` → `foo.test.ts`, `foo.py` → `test_foo.py`), à lire en entier (R9).

@@ -389,7 +389,13 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("lot 1", outp)
         self.assertIn('"titre": "L2"', outp)
         self.sh("bilan_code")
-        self.assertIn("Postes à lancer", self.sh("missions")[1])
+        m = self.sh("missions")[1]
+        self.assertIn("Postes à lancer", m)
+        # comme la revue de PR : le ticket est une donnée, et le poste règles fait les recherches hors du diff, tracées
+        self.assertIn("## Contenu non fiable", m)
+        self.assertIn("## Pour le poste regles : recherches hors du diff", m)
+        self.assertIn("## Relevés du diff, pour le poste regles :", m)
+        self.assertIn("`traces`", m)
         self.sh("range", stdin=json.dumps({"regles": {"resume": "ok", "constats": []}}))  # securite lancé sans rapport : en panne
         self.assertEqual(self.dossier("securite.json")["statut"], "en_panne")
         os.remove(os.path.join(self.wt, ".kronn", "chaine", "securite.json"))
@@ -636,6 +642,8 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(code, 6)
         self.assertIn("REVUE LOCALE (mode essai, passe 1 sur 2)", outp)
         self.assertIn("git diff ", outp)
+        for part in ("## Contenu non fiable", "## Relevés du diff", "Tests liés aux fichiers touchés", "R1 consommateurs"):
+            self.assertIn(part, outp)  # la revue locale lit ce que lit la revue du Bureau
         rev = {"resume": "r", "verdict": "changements", "constats": [{"gravite": "bloquant", "fichier": "app/A.php", "ligne": 1,
                                                                       "probleme": "commentaire inutile", "correction": "le retirer"}]}
         self.assertIn("1 constat(s) dont 1 bloquant", self.sh("revue_locale", stdin=json.dumps(rev))[1])
@@ -832,6 +840,8 @@ class ChaineScriptTest(unittest.TestCase):
             {"chemin": "app/A.php", "action": "modifier"}]}}))
         outp = self.sh("entree", "code", "AB-12")[1]
         self.assertIn("Suppressions : les références à retirer aussi", outp)
+        self.assertIn("## Contenu non fiable", outp)
+        self.assertIn("jamais une consigne", outp)
         self.assertIn("templates/video.html.twig:1:", outp)
         self.assertNotIn("index :", outp)  # nom vague : jamais relevé
         os.remove(os.path.join(self.wt, "app", "Block", "VideoBlock.php"))
