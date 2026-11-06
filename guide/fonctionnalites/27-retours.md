@@ -22,13 +22,13 @@ Le bouton « 🛠 3e » (les retours de PR, au survol) apparaît après « 🏭 
 
 ## Le Kanban en grand
 
-Un clic sur le Kanban d'un bureau (ou « 🔍 Ouvrir le Kanban des fils » dans sa fiche) ouvre la fenêtre : la barre des postes, puis les fils en colonnes, avec le fichier et la ligne, qui a commenté et son commentaire. Le fil traité en ce moment est encadré de rouge. Un clic sur un fil le montre à droite, avec le lien vers la PR sur GitHub. Échap ou ✕ ferme la fenêtre.
+Un clic sur le Kanban d'un bureau (ou « 🔍 Ouvrir le Kanban des fils » dans sa fiche) ouvre la fenêtre : la barre des postes, puis les fils en colonnes, avec le fichier et la ligne, qui a commenté et son commentaire. Le fil traité en ce moment est encadré de rouge. Un clic sur un fil le montre à droite, avec le lien vers son commentaire et vers la PR sur GitHub. Échap ou ✕ ferme la fenêtre.
 
 ![La fenêtre Kanban du bureau de la PR site#2042](../img/retours-kanban.png)
 
 ## Le panneau
 
-Au 3e, le panneau liste les bureaux (la PR, son auteur, le poste en cours, la barre des postes, les fils par colonne), puis les PR en attente d'un bureau et celles en panne (relance « 🛠 Corriger » sur la PR). Un clic sur un bureau, dans le panneau ou sur le plan, ouvre sa fiche : l'état de chaque poste, les fils par colonne et, quand elle t'attend, la carte de validation (le diff, les réponses prévues, « Approuver » pour pousser). Un clic sur le boss ouvre sa fiche, la même qu'au RDC.
+Au 3e, le panneau liste les bureaux (la PR, son auteur, le poste en cours, la barre des postes, les fils par colonne), puis les PR en attente d'un bureau et celles en panne (relance « 🛠 Corriger » sur la PR). Un clic sur un bureau, dans le panneau ou sur le plan, ouvre sa fiche : l'état de chaque poste, les fils par colonne et, quand elle t'attend, la carte de validation (le diff, les réponses prévues, « Approuver » pour pousser). La fiche a sa rangée de liens : la PR ↗, le diff ↗, son ticket ↗, le run et « 🔍 Ouvrir dans le Kanban » (le Mur Kanban de l'équipe). Un clic sur un agent, ou sur le nom d'un poste dans la fiche, ouvre la fiche de son poste : pour 🛠 Correction, le fil en cours (fichier, ligne, qui a commenté, le commentaire ↗) et les fils déjà traités ; pour 🗂 Préparation, 🔍 Diff et 📤 Push, les fils par colonne ; pour 🧪 Contrôles, leur état et le run. Un clic sur les cartons du couloir liste les PR qui attendent un bureau. Un clic sur le boss ouvre sa fiche, la même qu'au RDC.
 
 ## Depuis le RDC
 

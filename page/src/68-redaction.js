@@ -26,6 +26,9 @@ const RD_WINDOWS=[7.5,10.5,13.5,16.5,25,28.5,32,35.5,39,42.5]; // en cases : à 
 const RD_DESK={x:15.6*AT_TS,y:23.4*AT_TS}, RD_JIRA={x:17.8*AT_TS,y:25.6*AT_TS}, RD_CORK={x:1.6*AT_TS,y:9.4*AT_TS};
 let REDACTION=null, RDSEL=null, RD_HITS=[], RD_LIT=[], RD_MEM={last:0};
 let RDTK=null; // le ticket ouvert dans le panneau : {run, k} (clic sur sa carte à la table ou sur sa ligne du panneau)
+// la fiche ouverte au clic sur le plan : intention, poste, boîte Jira ; à la revue : PR lue, auteur, casier, corbeille ;
+// back : la fiche d'où l'on vient (« ‹ »)
+let RDF=null;
 function readRedaction(src){
   try{
     if(!src||!src.datasets)return null;
@@ -42,11 +45,16 @@ function redactionDemo(){
   // la file de la revue : le cron de 9 h 30 a retenu 5 PR ; les deux de Holly sont postées, celle de Pam est lue (demo-r1)
   const revue={batches:{'demo-c1':[['dm/site',2042,'hollyflax'],['dm/site',2060,'hollyflax'],['dm/api',2051,'pambeesly'],['dm/mobile',311,'darrylphilbin'],['dm/api',2063,'pambeesly']]},
     verdicts:{'demo-k1':'comment','demo-k2':'approve'},starts:{'demo-c1':at(9.5)}};
-  return {generated_at:at(11),crees:2,tok_jour:38400,revue,tables:[
+  return {generated_at:at(11),crees:2,tok_jour:38400,revue,crees_l:[{key:'DM-2101',title:'Export : le bouton dans la liste des abonnés',run:'demo-t0'},{key:'DM-2102',title:'Export : le fichier CSV',run:'demo-t0'}],tables:[
     {run:'demo-t1',status:'Running',since:at(10.2),intention:'Refondre le lecteur vidéo : sous-titres, pistes audio et reprise de lecture',poste:'critique',tour:2,
      composants:['dm/site','dm/mobile','dm/api'],type:'Story',tickets:[{i:0,summary:'Lecteur : les sous-titres',composant:'dm/api',points:3,etat:'wait',
        detail:'▸ De quoi on parle ?\n\n│ Les vidéos n\'ont pas de sous-titres : le lecteur ne lit pas les pistes WebVTT.\n\n▸ Qu\'est-ce que l\'on va faire ?\n\n• Servir les pistes WebVTT de chaque vidéo\n• Les déclarer dans le manifeste du lecteur\n\n▸ Comment on teste ?\n\n• Une vidéo avec deux pistes : les deux s\'affichent dans le menu'},
-       {i:1,summary:'Pistes audio dans le menu du lecteur',composant:'dm/site',points:2,etat:'wait'},{i:2,summary:'Reprise de lecture',composant:'dm/mobile',points:3,etat:'wait'}]},
+       {i:1,summary:'Pistes audio dans le menu du lecteur',composant:'dm/site',points:2,etat:'wait'},{i:2,summary:'Reprise de lecture',composant:'dm/mobile',points:3,etat:'wait'}],
+     recherche:{doublons:[{key:'DM-1984',summary:'Sous-titres du direct',status:'Terminé'},{key:'DM-2017',summary:'Lecteur : reprise après coupure réseau',status:'À faire'}],
+       resume:'Le lecteur vit dans dm/site (web) et dm/mobile ; dm/api sert le manifeste des vidéos. DM-2017 couvre déjà une partie de la reprise de lecture.'},
+     redaction:{version:2,reponses:['T1 : format précisé, WebVTT seulement','T3 : la reprise marche aussi hors connexion'],hors_liste:0},
+     critique:{version:1,verdict:'a_retoucher',notes:[{ticket:1,gravite:'bloquant',note:'Quel format de pistes : WebVTT seul, ou SRT aussi ?'},
+       {ticket:3,gravite:'bloquant',note:'La reprise doit-elle marcher hors connexion ? DM-2017 en parle.'},{ticket:2,gravite:'conseil',note:'Citer la maquette du menu.'}]}},
     {run:'demo-t2',status:'Running',since:at(10.8),intention:'Export CSV des abonnés',poste:'recherche',tour:1,composants:['dm/outils'],tickets:[]}],
     events:[{t:at(10.2),k:'arrive',run:'demo-t1'},{t:at(10.8),k:'arrive',run:'demo-t2'},{t:at(8.5),k:'arrive',run:'demo-t0'},{t:at(9.1),k:'gate',run:'demo-t0'},{t:at(9.2),k:'cree',run:'demo-t0'},{t:at(9.3),k:'cree',run:'demo-t0'},{t:at(9.4),k:'fin',run:'demo-t0'}]};
 }
@@ -212,10 +220,13 @@ function rdRoom(now,people){
   for(const k in at){const s=st(k), pop=lvPop(M,k,!!t&&s==='ok',now), [q,d]=at[k];
     if(lvSeated(M,k)){rdAgent(people,RD_KS[k],q.x,q.y,!t?'idle':s==='wait'?'wait':s==='run'?'run':'idle',{dir:d,hat:'presse',bubble:bub[k],...(k==='critique'?{bx:86,by:44}:{}),badge:t&&s==='ok'?'✓':null,pop},now);
       if(M.sleep){const j=zk++;rdLate(people,()=>lvZz(q.x,q.y,j,now),1e6);}}
-    rdLate(people,()=>atPill(RD_LBL[k],plq[k].x,plq[k].y,s==='run'?'#2f6fd6':s==='ok'?'#2f7a45':'#f4efe4',s==='wait'||!t?'#3a3530':'#fff','bold 11px system-ui,sans-serif'),1e6);}
+    rdLate(people,()=>atPill(RD_LBL[k],plq[k].x,plq[k].y,s==='run'?'#2f6fd6':s==='ok'?'#2f7a45':'#f4efe4',s==='wait'||!t?'#3a3530':'#fff','bold 11px system-ui,sans-serif'),1e6);
+    // la plaque et le poste : l'agent peut se promener, sa fiche reste au même endroit
+    atHitRd('poste',q.x-22,q.y-58,44,64,{p:k});atHitRd('poste',plq[k].x-54,plq[k].y-11,108,22,{p:k});}
   // le bureau du boss, le tampon posé dessus : il y est, et tamponne les tickets un par un
   rdBoss(people,tks,now);
   rdLate(people,()=>{R(ctx,jira.x-18,jira.y-30,36,30,'#2f6fd6');R(ctx,jira.x-18,jira.y-34,36,6,'#2559b8');R(ctx,jira.x-10,jira.y-20,20,3,'#0b2a4a');atPill('🎫 Jira',jira.x-44,jira.y-14,'#f4efe4','#3a3530','bold 11px system-ui,sans-serif');},jira.y);
+  atHitRd('jira',jira.x-70,jira.y-36,90,40,{});
   atCoffee(RD_COFFEE.x,RD_COFFEE.y); // la machine à café de la rédaction
   const sofa=RDP(3.4,24.6);atSofa(sofa.x,sofa.y);if(!Object.values(M.who).some(h=>!h.w&&h.spot.sofa))rdLate(people,()=>atSofaFront(sofa.x,sofa.y),sofa.y+10);
   rdBoard(people);
@@ -298,7 +309,7 @@ function rdNight(people,now){
     floorBossLamp(RD_DESK.x,RD_DESK.y),{x:(RD_X1+RD_VX)/2*T_,y:26.2*T_,r:1.6*T_,a:.45},exitHalo(RD_EXIT.x,RD_EXIT.y)]},now); // la porte de l'escalier
   if(RD_NIGHT.lv)exitSign(RD_EXIT.x,RD_EXIT.y);
 }
-function rdReset(){RD_MEM={last:0};RDSEL=null;RDTK=null;RD_LV=rdLv0();if(typeof rvfReset==='function')rvfReset();}
+function rdReset(){RD_MEM={last:0};RDSEL=null;RDTK=null;RDF=null;RD_LV=rdLv0();if(typeof rvfReset==='function')rvfReset();}
 function renderRedaction(now){
   if(!RD_LV)RD_LV=rdLv0();
   const M=RD_LV, dt=lvTick(M,now);if(M.fresh){M.jobs=[];M.job=null;M.gate.clear();M.pend={};}
@@ -318,19 +329,26 @@ function rdHitAt(e){const r=cv.getBoundingClientRect(), mx=(e.clientX-r.left)*AT
 function redactionClick(e){
   const h=rdHitAt(e);sel=null;SEL_BACK=[];
   if(h&&h.kind==='boss'){const b=chars.find(c=>c.boss);if(b){select(b.key);return;}}
+  RDF=null;
   if(h&&h.kind==='cork'){const l=rdTables();if(l.length>1){const i=l.indexOf(rdTable());RDSEL=l[(i+1)%l.length].run;}RDTK=null;}
   if(h&&h.kind==='ticket'){const t=rdTable();if(t)RDTK={run:t.run,k:h.k};}
+  const f=h&&{table:rdTable()&&{k:'intention'},poste:rdTable()&&{k:'poste',p:h.p,back:{k:'intention'}},jira:{k:'jira'},review:{k:'review',run:h.run},
+    author:{k:'author',a:h.author},casier:{k:'casier'},postees:{k:'postees'}}[h.kind];
+  if(f){RDF=f;RDTK=null;}
   renderSide(true);
 }
 function redactionHover(e){
   const h=rdHitAt(e), t=rdTable();let s='';
   if(h&&h.kind==='ticket'&&t){const x=t.tickets[h.k];s='T'+(h.k+1)+' · '+(x.composant||'?')+' · '+(x.points||'?')+' pts · '+(RD_TK[x.etat]||RD_TK.wait)[1]+' · '+x.summary+' · clic : son détail';}
-  else if(h&&h.kind==='table')s=t?'La table de rédaction : '+t.intention:'La table de rédaction : aucune intention en cours';
+  else if(h&&h.kind==='table')s=t?'La table de rédaction : '+t.intention+' · clic : sa fiche':'La table de rédaction : aucune intention en cours';
+  else if(h&&h.kind==='poste'){const p=RD_POSTES.find(x=>x.k===h.p)||{};s=p.i+' '+p.n+' : '+p.d+(t?' · clic : ce qu\'elle a fait':'');}
+  else if(h&&h.kind==='jira'){const n=((REDACTION&&REDACTION.crees_l)||[]).length;s='La boîte Jira : '+plural(n,'ticket créé','tickets créés')+' aujourd\'hui · clic : la liste';}
+  else if(h&&h.kind==='postees')s=rvfHover(h);
   else if(h&&h.kind==='cork')s=rdTables().length>1?'Les intentions en cours : clic pour passer à la suivante':'L\'intention en cours';
   else if(h&&h.kind==='boss')s=(chars.find(c=>c.boss)||{}).name+' : tamponne chaque ticket avant sa création ; clic : sa fiche';
   else if(h&&(h.kind==='casier'||h.kind==='author'))s=rvfHover(h);
-  else if(h&&h.kind==='review'){const r=rvRuns().find(x=>x.run===h.run), v=(r&&r.vars)||{};s='Revue de '+(v['current_task.repo']||'?')+'#'+(v['current_task.number']||'?')+' : les étapes de son run, sous le bureau';}
-  cv.style.cursor=h?'pointer':'default';
+  else if(h&&h.kind==='review'){const r=rvRuns().find(x=>x.run===h.run), v=(r&&r.vars)||{};s='Revue de '+(v['current_task.repo']||'?')+'#'+(v['current_task.number']||'?')+' : les étapes de son run, sous le bureau · clic : la PR, son ticket, le Kanban';}
+  cv.style.cursor=h&&(h.kind!=='poste'||t)?'pointer':'default';
   if(s){tip.style.display='block';tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px';tip.textContent=s;}else tip.style.display='none';
 }
 // ---------- panneau ----------
@@ -349,6 +367,7 @@ function rdTicketHtml(t,k){
   const x=t.tickets[k], st=RD_TK[x.etat]||RD_TK.wait, meta=[t.type,(x.points||'?')+' pts',x.composant||'sans composant',t.parent?'parent '+t.parent:''].filter(Boolean).join(' · ');
   return `<button class="rd-back">← Les tickets</button><h2 class="at-h">T${k+1} <span class="at-tag" style="background:${st[0]};color:#1c1c1c">${esc(st[1])}</span></h2>`+
     `<div class="rd-tt">${esc(x.summary)}</div><div class="mut">${esc(meta)}</div>`+
+    (x.key?fkLinks([jiraA(x.key,'🎫 '+x.key+' ↗'),`<button type="button" class="lk" data-kbtk="${esc(x.key)}">🔍 Dans le Kanban</button>`]):'')+
     (x.detail?`<div class="rd-det">${esc(x.detail)}</div>`:'<div class="note">Le détail arrive au prochain relevé de la rédaction (une minute au plus).</div>')+
     '<div class="at-gate"></div>';
 }
@@ -357,12 +376,87 @@ function drawRedactionSide(side){
   if(sel!=null&&!(boss&&sel===boss.key)){setFloor(0);return;}
   if(sel!=null){drawSide(side);return;}
   const box=document.createElement('div');box.className='atelier';side.appendChild(box);
-  const tk=rdTicketOpen();
-  if(tk){box.innerHTML=rdTicketHtml(tk.t,tk.k);box.querySelector('.rd-back').addEventListener('click',()=>{RDTK=null;renderSide(true);});}
+  const tk=rdTicketOpen(), f=!tk&&rdFicheHtml(RDF);
+  if(RDF&&!tk&&!f)RDF=null; // la PR, l'intention ou l'auteur sont partis depuis : retour à la liste
+  if(f){box.innerHTML=f;const b=box.querySelector('.at-back');if(RDF.back)b.textContent='‹ '+(FK_BACK[RDF.back.k]||'Retour');
+    b.addEventListener('click',()=>{RDF=RDF.back||null;renderSide(true);});fkWire(box);}
+  else if(tk){box.innerHTML=rdTicketHtml(tk.t,tk.k);box.querySelector('.rd-back').addEventListener('click',()=>{RDTK=null;renderSide(true);});fkWire(box);}
   else{box.innerHTML=redactionListHtml();
     box.querySelectorAll('.at-room').forEach(b=>b.addEventListener('click',()=>{RDSEL=b.dataset.run;renderSide(true);}));
     box.querySelectorAll('.rd-tk').forEach(b=>b.addEventListener('click',()=>{RDSEL=b.dataset.run;RDTK={run:b.dataset.run,k:+b.dataset.k};renderSide(true);}));}
   for(const g of GATES)if(/un ticket/.test(String(g.wf_name||'')))gateCard(box.querySelector('.at-gate')||box,{run:g.run,wf_name:g.wf_name,_s:ms(g.since)},null); // le tampon : chaque ticket qui t'attend
+}
+// ---------- les fiches au clic (2e et 3e) : liens vers la PR, le ticket, le run et le Kanban ----------
+const ghPrUrl=(repo,n)=>/^[\w.-]+\/[\w.-]+$/.test(String(repo||''))&&/^\d+$/.test(String(n||''))?`https://github.com/${repo}/pull/${n}`:null;
+const fkA=(u,t)=>safeUrl(u)?`<a class="lk" ${hrefOf(u)} target="_blank" rel="noopener">${esc(t)}</a>`:'';
+const jiraA=(k,t)=>CFG.jira_site?fkA(JIRA_BROWSE+encodeURIComponent(k),t||k+' ↗'):`<span class="lk mono">${esc(t||k)}</span>`;
+const fkRun=u=>typeof u==='string'&&/^https?:\/\//i.test(u)?`<a class="lk" href="${esc(u)}" target="_blank" rel="noopener">⚙ Le run ↗</a>`:'';
+const fkRunOf=r=>r&&r.wf&&KRONN_BASE?fkRun(kronnTab()+'#workflows/'+encodeURIComponent(r.wf)):'';
+const fkLinks=l=>(l=l.filter(Boolean)).length?`<div class="fk-links">${l.join('')}</div>`:'';
+const fkShort=(repo,n)=>(String(repo||'').split('/').pop()||'?')+'#'+n;
+// la rangée d'une PR : sur GitHub, son diff, son ticket, le run, puis le Mur Kanban ouvert sur elle (filtré sur son auteur)
+function prLinksHtml(repo,n,author,run){
+  const x=prInfo(repo+'#'+n), url=safeUrl(x.pr&&x.pr.url)||ghPrUrl(repo,n), keys=(x.pr&&x.pr.keys)||[];
+  return fkLinks([url&&fkA(url,'🐙 La PR ↗'),url&&fkA(url+'/files','± Le diff ↗'),...keys.slice(0,2).map(k=>jiraA(k,'🎫 '+k+' ↗')),run,
+    `<button type="button" class="lk main" data-kbpr="${esc(repo+'#'+n)}" data-au="${esc(author||'')}">🔍 Ouvrir dans le Kanban</button>`]);
+}
+const fkTitle=(repo,n)=>{const x=prInfo(repo+'#'+n);return x.pr&&x.pr.title?`<div class="at-title big">${esc(x.pr.title)}</div>`:'';};
+// un clic dans une fiche : le Kanban (PR, ticket ou personne), une autre fiche (poste, ticket, auteur, revue, poste du 3e)
+function fkAct(d){
+  if(d.kbpr){const c=d.au&&typeof ghChar==='function'?ghChar(d.au):null;openKanban({who:c&&c.person?c.key:'',pr:d.kbpr});return;}
+  if(d.kbtk){openKanban({ticket:d.kbtk});return;}
+  if(d.kbwho){openKanban({who:d.kbwho});return;}
+  if(d.rtp)RTPOSTE=d.rtp;
+  else if(d.rdp)RDF={k:'poste',p:d.rdp,back:RDF};
+  else if(d.rdtk!=null){const t=rdTable();if(t)RDTK={run:t.run,k:+d.rdtk};RDF=null;}
+  else if(d.rva)RDF={k:'author',a:d.rva,back:RDF};
+  else if(d.rvr)RDF={k:'review',run:d.rvr,back:RDF};
+  else return;
+  renderSide(true);
+}
+function fkWire(box){
+  box.addEventListener('click',e=>{const b=e.target.closest('[data-kbpr],[data-kbtk],[data-kbwho],[data-rdp],[data-rdtk],[data-rva],[data-rvr],[data-rtp]');if(b)fkAct(b.dataset);});
+}
+function rdFicheHtml(f){
+  if(!f)return null;
+  if(f.k==='review')return rvFicheHtml(f.run);
+  if(f.k==='author')return rvAuthorHtml(f.a);
+  if(f.k==='casier'||f.k==='postees')return rvFileHtml(f.k);
+  if(f.k==='jira')return rdJiraHtml();
+  const t=rdTable();if(!t)return null;
+  return f.k==='poste'?rdPosteHtml(t,f.p):rdIntentionHtml(t);
+}
+const rdPosteSt=(t,k)=>{const i=k=>RD_POSTES.findIndex(x=>x.k===k);return k===t.poste?'run':i(k)<i(t.poste)?'ok':'';};
+function rdIntentionHtml(t){
+  const tks=t.tickets||[], tour=t.tour>1?`<span class="cnt">tour ${t.tour}/3</span>`:'';
+  return `<button class="at-back">‹ La rédaction</button><h2 class="at-h">✍ L'intention ${tour}</h2><div class="at-title big">${esc(t.intention)}</div>`+
+    `<div class="mut">${[t.type,t.parent?'parent '+t.parent:'',t.since?'depuis '+hm(ms(t.since)):''].filter(Boolean).map(esc).join(' · ')}</div>`+
+    `<div class="fk-steps">${RD_POSTES.map(p=>{const s=rdPosteSt(t,p.k), lbl=s==='run'?p.i+' '+p.n:p.i;
+      return p.k==='valider'?`<i class="${s}" title="${esc(p.n)}">${esc(lbl)}</i>`:`<button type="button" class="${s}" data-rdp="${p.k}" title="${esc(p.n+' : sa fiche')}">${esc(lbl)}</button>`;}).join('')}</div>`+
+    ((t.composants||[]).length?`<div class="fk-chips">${t.composants.map(c=>`<i>${esc(c)}</i>`).join('')}</div>`:'')+
+    `<div class="fk-fold"><h4>Ses tickets</h4>${tks.length?tks.map((x,k)=>`<button type="button" class="fk-r" data-rdtk="${k}"><span class="k mono">T${k+1}</span><span>${esc(x.summary)} <span class="mut">· ${esc(x.composant||'?')}</span></span><span class="k">${esc(x.key||(x.points||'?')+' pts')}</span></button>`).join(''):'<div class="mut">Les tickets arrivent avec la rédaction.</div>'}</div>`+
+    fkLinks([t.parent&&jiraA(t.parent,'🎫 Le parent ↗'),fkRun(t.url)]);
+}
+const FK_BACK={intention:'L\'intention',poste:'Le poste',review:'La PR',author:'L\'auteur',casier:'Le casier',postees:'Les avis postés',jira:'La boîte Jira'};
+const RD_GRAV={bloquant:'🔧',conseil:'💡'};
+function rdPosteHtml(t,k){
+  const p=RD_POSTES.find(x=>x.k===k);if(!p)return null;
+  const s=rdPosteSt(t,k), etat=s==='run'?'au travail':s==='ok'?'a fini':'à venir', head=`<button class="at-back">‹ L'intention</button><h2 class="at-h">${p.i} ${esc(p.n)} <span class="cnt">${esc(etat)}</span></h2><div class="mut">${esc(p.d)}</div>`;
+  if(k==='recherche'){const r=t.recherche||{}, d=r.doublons||[];
+    return head+((t.composants||[]).length?`<div class="fk-fold"><h4>Les projets touchés</h4><div class="fk-chips">${t.composants.map(c=>`<i>${esc(c)}</i>`).join('')}</div></div>`:'')+
+      `<div class="fk-fold"><h4>Les tickets Jira voisins</h4>${d.length?d.map(x=>`<div class="fk-row"><span>${jiraA(x.key)}</span><span>${esc(x.summary)}</span><span class="k">${esc(x.status||'')}</span></div>`).join(''):'<div class="mut">Aucun ticket voisin trouvé.</div>'}</div>`+
+      (r.resume?`<div class="fk-fold"><h4>Son rapport (début)</h4><div class="at-box">${esc(r.resume)}</div></div>`:'');}
+  if(k==='redaction'){const r=t.redaction||{};
+    return head+`<div class="fk-fold"><h4>${r.version?'Version '+r.version:'Pas encore de version'}</h4><div class="mut">${plural((t.tickets||[]).length,'ticket écrit','tickets écrits')}${r.hors_liste?' · '+plural(r.hors_liste,'idée mise','idées mises')+' de côté pour une autre intention':''}</div></div>`+
+      ((r.reponses||[]).length?`<div class="fk-fold"><h4>Ses réponses à la critique</h4>${r.reponses.map(x=>`<div class="fk-row"><span>↺</span><span>${esc(x)}</span><span></span></div>`).join('')}</div>`:'');}
+  const c=t.critique||{}, n=c.notes||[];
+  return head+`<div class="fk-fold"><h4>Tour ${t.tour||1}/3${c.verdict?' · '+(c.verdict==='ok'?'✅ rien de bloquant':'🔧 à retoucher'):''}</h4>`+
+    (n.length?n.map(x=>`<div class="fk-row"><span>${RD_GRAV[x.gravite]||'🔧'}</span><span>${x.ticket?'<b>T'+esc(String(x.ticket))+'</b> ':''}${esc(x.note)}</span><span class="k">${esc(x.gravite||'')}</span></div>`).join(''):'<div class="mut">Pas encore de remarque.</div>')+'</div>';
+}
+function rdJiraHtml(){
+  const l=((REDACTION&&REDACTION.crees_l)||[]).slice().reverse();
+  return `<button class="at-back">‹ La rédaction</button><h2 class="at-h">🎫 La boîte Jira <span class="cnt">${l.length}</span></h2><div class="mut">Les tickets créés aujourd'hui depuis le 2e.</div>`+
+    `<div class="fk-fold">${l.length?l.map(x=>`<div class="fk-row"><span>${jiraA(x.key)}</span><span>${esc(x.title)}</span><button type="button" class="k fk-kb" data-kbtk="${esc(x.key)}" title="Ouvrir dans le Kanban">🔍</button></div>`).join(''):'<div class="mut">Aucun ticket créé aujourd\'hui.</div>'}</div>`;
 }
 function tvRedactionHtml(){
   return '<h2>Rédaction</h2>'+(rdTables().map(t=>`<div class="tw ag"><span class="wt"><span class="wn">${esc(clip(t.intention,40))}<span class="ws">${esc((RD_POSTES.find(p=>p.k===t.poste)||{}).n||'')}</span></span><span class="ww">${esc((t.tickets||[]).length?plural(t.tickets.length,'ticket','tickets'):'')}</span></span></div>`).join('')||'<div class="mut">Aucune intention en cours.</div>')+
