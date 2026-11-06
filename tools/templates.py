@@ -181,11 +181,32 @@ def impl_version():
     return dict(_VERSION)
 
 
-LIB_IMPORT = re.compile(r"^from (_lib|_plan|_checks|_chaine) import [\w, *]+(?:  #.*)?$", re.M)
+def review_version():
+    """Version de la revue rendue : empreinte des modèles review*.json, de workflows/review.py, de son relevé commun et de la
+    grille, et le dernier commit qui les a touchés ; gardée avec chaque revue (historique, page) pour juger une modification
+    sur les PR qui l'ont suivie."""
+    if not _RV_VERSION:
+        import glob, hashlib, subprocess
+        rel = ["workflows/review.py", "workflows/_releves.py", "tools/review_rubric.md"]
+        files = sorted(glob.glob(os.path.join(TPL_DIR, "review*.json"))) + [os.path.join(ROOT, p) for p in rel]
+        h = hashlib.sha1()
+        for f in files:
+            h.update(Path(f).read_bytes())
+        r = subprocess.run(["git", "-C", ROOT, "log", "-1", "--format=%h", "--", "workflows/templates/review*.json", *rel],
+                           capture_output=True, text=True)
+        _RV_VERSION.update(hash=h.hexdigest()[:7], commit=r.stdout.strip())
+    return dict(_RV_VERSION)
+
+
+_RV_VERSION = {}
+
+
+LIB_IMPORT = re.compile(r"^from (_lib|_plan|_checks|_chaine|_releves) import [\w, *]+(?:  #.*)?$", re.M)
 # la chaîne d'implémentation : trois scripts et leur commun (_chaine.py, recopié dans chacun). Kronn passe un script en un
 # seul argument « python3 -c » : sous Linux, 128 Kio au plus (MAX_ARG_STRLEN) ; ils ne reçoivent que leur part de la config
 CHAINE_SCRIPTS = ("workflows/chaine.py", "workflows/chaine_controles.py", "workflows/chaine_pr.py")
 CHAINE_CFG = ("impl", "models", "github", "kronn", "rhythm", "workflows", "actions")
+REVIEW_CFG = ("review", "jira", "kronn", "models", "rhythm", "workflows", "actions", "github")
 MAX_SCRIPT = 110 * 1024  # marge sous les 128 Kio d'un argument (tests/test_templates.py)
 
 
@@ -210,9 +231,13 @@ def script_code(path, cfg):
     if path in CHAINE_SCRIPTS:  # la config entière ferait passer le script au-dessus de 128 Kio (un argument, sous Linux)
         c = {k: v for k, v in c.items() if k in CHAINE_CFG}
         c["github"] = {"repo": (cfg.get("github") or {}).get("repo") or ""}
+    if path == "workflows/review.py":  # idem pour la revue : sa part de la config (les consignes de la chaîne pèsent)
+        c = {k: v for k, v in c.items() if k in REVIEW_CFG}
     c.update(gitfut=assemble.gitfut(cfg), wiki_posters=assemble.wiki_posters(cfg),  # déduits du roster (scripts sans accès au dépôt)
              planning_names=assemble.planning_names(cfg),  # noms complets du roster, pour le planning des absences
              root=ROOT)  # dossier du dépôt : son venv (Pillow) pour réduire les images
+    if path == "workflows/review.py":  # version de la revue gardée avec chaque revue (historique, page de récap)
+        c["review_version"] = review_version()
     if path in CHAINE_SCRIPTS:  # version de la chaîne gardée dans le bilan de chaque run (page « Chaîne · bilan »)
         c["impl_version"] = impl_version()
     blob = json.dumps(c, ensure_ascii=False)
@@ -288,7 +313,16 @@ def values(cfg):
         "review.project_id": rv.get("project_id") or (cfg.get("kronn") or {}).get("project_id") or "",
         "review.page_id": rv.get("page_id") or "",  # page de récap des revues, facultative
         "review.schedule": rv.get("schedule") or REVIEW_SCHEDULE,
+        # sélection du cron : seulement les PR où le compte ou une de ses équipes est demandé (review.demandees), et ses équipes
+        "review.selection": json.dumps({"demandees": bool(rv.get("demandees")), "equipes": list(rv.get("equipes") or [])},
+                                       ensure_ascii=False, separators=(",", ":")),
         "review.repos_json": json.dumps([{"repo": r} for r in review_repos(cfg)], ensure_ascii=False, separators=(",", ":")),
+        # langue de la review : français (défaut), ou celle de la PR (review.langue = "pr")
+        "review.langue": ("Écris toute la review (`summary`, `blockers`, chaque `comments[].body`, chaque réponse) dans la langue "
+                          "de la PR : celle de sa description, à défaut de son titre et des échanges ; français si rien ne la "
+                          "dit. Une seule langue par review ; déclare-la dans `lang`." if str(rv.get("langue") or "").lower() == "pr" else
+                          "toute la review est rédigée en FRANÇAIS (`summary`, `blockers`, chaque `comments[].body` et chaque "
+                          "réponse), `lang` = `fr`."),
         "review.guidelines": str(rv.get("guidelines") or "Aucune consigne d'équipe en plus de la grille."),
         # corriger les commentaires d'une PR (#75) : consignes de l'équipe (section fix du pack), jamais celles de la revue
         "fix.guidelines": str((cfg.get("fix") or {}).get("guidelines") or "Aucune consigne d'équipe en plus des règles ci-dessus."),

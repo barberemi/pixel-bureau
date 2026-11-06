@@ -66,7 +66,7 @@ class ModelsTest(unittest.TestCase):
             agent = steps(f"review_{p}", c)["agent"]
             self.assertEqual((agent["agent_settings"]["tier"], agent["skill_ids"]), (tier, skills), p)
             self.assertEqual(child[p]["sub_workflow_variables"], {"pr": "{{state.pr}}", "repo": "{{state.repo}}"})
-        self.assertEqual(len(templates.render(TPL["review_child"], cfg(review={"page_id": PAGE}))["steps"]), 20)  # plafond de Kronn
+        self.assertEqual(len(templates.render(TPL["review_child"], cfg(review={"page_id": PAGE}))["steps"]), 18)  # plafond de Kronn : 20
         # jamais une review vide (#2060) : l'avis sait où est sa copie de travail et dit son échec ; la garde de map_event
         # relance l'avis une fois, puis finit sans poster
         self.assertIn('echo "---STATE:root=$root---"', child["setup"]["exec_args"][1])
@@ -88,8 +88,15 @@ class ModelsTest(unittest.TestCase):
         self.assertEqual(child["write_ctx"]["exec_timeout_secs"], 120)
         tuned = steps("review_lecture", cfg(review={"postes": {"lecture": {"tier": "default", "model": "sonnet"}}}))["agent"]
         self.assertEqual(tuned["agent_settings"], {"tools": {"cli": ["Read", "Grep", "Glob", "Bash"], "kronn_internal": []}, "tier": "default", "model": "sonnet"})
-        self.assertIn("Le Bureau", child["post"]["api_body"]["body"])  # signature reconnue par skip_check
-        self.assertIn("Review automatique", child["post"]["api_body"]["body"])
+        # la review vérifiée par la garde est postée par gh (signature reconnue par write_ctx), action externe pour le shadow
+        self.assertEqual(child["post"]["exec_args"][2:], ["poster", "{{state.pr}}", "{{state.repo}}", "{{steps.whoami.data.login}}",
+                                                          "{{state.head_sha}}", "{{steps.avis.agent}}", "{{steps.avis.model}}"])
+        self.assertTrue(child["post"]["external_effect"])
+        self.assertEqual([r["action"]["step_name"] for r in child["post"]["on_result"]], ["skip_note", "skip_note"])
+        self.assertNotIn("post_fallback", child)
+        self.assertIn("review.json", avis["prompt_template"] + child["map_event"]["description"])
+        self.assertIn("toute la review est rédigée en FRANÇAIS", avis["prompt_template"])
+        self.assertIn("dans la langue de la PR", steps("review_child", cfg(review={"langue": "pr"}))["avis"]["prompt_template"])
         cron = steps("review_cron", c)
         self.assertEqual(json.loads(cron["repos"]["json_data_payload"]), [{"repo": "vance/api"}, {"repo": "vance/frigo"}])
         self.assertEqual(cron["review_each"]["sub_workflow_id"], CHILD)
@@ -98,13 +105,14 @@ class ModelsTest(unittest.TestCase):
 
     def test_without_recap_page_its_steps_go_and_jumps_follow(self):
         child = steps("review_child", cfg())
-        for gone in ("build_row", "meta_row", "publish"):
+        for gone in ("build_row", "publish"):
             self.assertNotIn(gone, child)
         self.assertEqual(child["reply"]["on_result"][0]["action"]["step_name"], "skip_note")  # au lieu de build_row
         self.assertNotIn("cost", steps("review_one", cfg()))
         with_page = steps("review_child", cfg(review={"page_id": PAGE}))
         self.assertEqual(with_page["publish"]["page_publish"]["page_id"], PAGE)
-        self.assertEqual([w["dataset"] for w in with_page["publish"]["page_publish"]["writes"]], ["reviews", "review_meta"])  # la page
+        self.assertEqual([(w["dataset"], w["value_from"]) for w in with_page["publish"]["page_publish"]["writes"]],
+                         [("reviews", "steps.build_row.data.stdout"), ("review_meta", "steps.post.data.stdout")])  # la page
         self.assertIn(f'"page_id": "{PAGE}"', steps("review_one", cfg(review={"page_id": PAGE}))["cost"]["exec_args"][1])
 
     def test_skipped_without_their_connection(self):

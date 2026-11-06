@@ -144,6 +144,15 @@ def prs_of(d):
     return []
 
 
+def verdict_of(d):
+    """Le verdict d'une revue : celui que le Bureau a posté après vérification (sortie de post), sinon celui de l'avis."""
+    try:
+        v = json.loads(str(step_data(d, ["post"]).get("stdout") or "{}").strip() or "{}").get("verdict")
+    except (ValueError, AttributeError):
+        v = None
+    return str(v or step_data(d, ["avis", "reason"]).get("verdict") or "")
+
+
 def revue(m, limit):
     """La file de la salle de revue : les PR retenues par chaque passage du cron, les verdicts des revues finies."""
     out = {"batches": {}, "verdicts": {}}
@@ -157,7 +166,7 @@ def revue(m, limit):
     if out["batches"]:
         for k in get(f"/workflows/{m['review_child']}/runs?limit=60") or []:
             if k.get("parent_run_id") in out["batches"] and k.get("status") not in ACTIVE:
-                v = rv_cached(m["review_child"], k, lambda d: str(step_data(d, ["avis", "reason"]).get("verdict") or ""))
+                v = rv_cached(m["review_child"], k, verdict_of)
                 if v:
                     out["verdicts"][k["id"]] = v
     return out

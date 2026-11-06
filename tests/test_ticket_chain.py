@@ -484,7 +484,9 @@ class RevueFileTest(unittest.TestCase):
                "/workflows/cr/runs/c1": {"step_results": [{"step_name": "finalize", "output": out({"stdout": '3 candidates\nPRS=[["dm/site",12,"hollyflax"],["dm/api",7,"pambeesly"]]\n'})}]},
                "/workflows/ch/runs?limit=60": [{"id": "k1", "parent_run_id": "c1", "status": "Success"}, {"id": "k2", "parent_run_id": "c1", "status": "Running"},
                                                 {"id": "k9", "parent_run_id": "autre", "status": "Success"}],
-               "/workflows/ch/runs/k1": {"step_results": [{"step_name": "avis", "output": out({"verdict": "comment", "pr": 12})}]}}
+               "/workflows/ch/runs/k1": {"step_results": [{"step_name": "avis", "output": out({"verdict": "approve", "pr": 12})},
+                                                          # le verdict posté, vérifié par le Bureau (ici approve refusé), prime
+                                                          {"step_name": "post", "output": out({"stdout": '{"verdict": "comment"}\n'})}]}}
         calls = []
         old = (r.get, r.RV_HOME, dict(r.CFG))
         r.get, r.RV_HOME = (lambda p: calls.append(p) or api.get(p)), tempfile.mkdtemp()
