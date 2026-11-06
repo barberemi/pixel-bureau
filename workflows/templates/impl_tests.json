@@ -121,6 +121,19 @@
     "retry": {
      "max_retries": 1,
      "backoff": "exponential"
+    },
+    "agent_settings": {
+     "tools": {
+      "cli": [
+       "Bash",
+       "Read",
+       "Edit",
+       "Write",
+       "Grep",
+       "Glob"
+      ],
+      "kronn_internal": []
+     }
     }
    },
    {

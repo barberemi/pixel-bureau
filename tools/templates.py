@@ -565,9 +565,10 @@ IMPL_AGENTS = {
     "orchestrateur": ("default", []),  # en reasoning, Opus 5.5 a coupé deux fois (filtre reasoning_extraction)
     "code": ("reasoning", ["verification-before-completion"]), "code.relecture": ("default", []),
     # règles, sécurité, perf · a11y, besoin et doc : une étape, un sous-agent par poste, en même temps (Kronn ne lance pas
-    # de sous-workflows en parallèle) ; ses skills couvrent les cinq
-    "controles": ("reasoning", ["security", "web-performance", "accessibility", "bureau:recherches", "bureau:exigences", "bureau:doc"]),
-    "tests": ("default", ["testing", "test-driven-development", "bureau:tests"]),
+    # de sous-workflows en parallèle) ; ses skills couvrent les cinq. Le coordinateur ne fait que lancer et transmettre :
+    # economy ; chaque sous-agent a son modèle (chaine_controles.SOUS_MODELES, impl.postes.controles.modeles)
+    "controles": ("economy", ["security", "web-performance", "accessibility", "bureau:recherches", "bureau:exigences", "bureau:doc"]),
+    "tests": ("default", ["testing", "bureau:tests"]),  # pas test-driven-development : ce poste éprouve, il n'écrit pas avant le code
     "livraison": ("economy", []), "retours": ("reasoning", ["receiving-code-review"]),
     "revue_pr": ("reasoning", ["bureau:recherches", "bureau:exigences", "bureau:tests"]),  # mode essai : revue locale du diff (la revue du Bureau a ses propres postes)
 }
@@ -579,7 +580,9 @@ def impl_agent(step, role, cfg):
     imp = cfg.get("impl") or {}
     conf = (imp.get("postes") or {}).get(role) or {}
     step["agent"] = conf.get("agent") or step.get("agent") or "ClaudeCode"
-    step["agent_settings"] = {"tier": conf.get("tier") or tier, **({"model": conf["model"]} if conf.get("model") else {})}
+    # les outils déclarés par le modèle (impl_tests : sans MCP ni outils Kronn, contexte de départ plus léger) restent
+    step["agent_settings"] = {**(step.get("agent_settings") or {}), "tier": conf.get("tier") or tier,
+                              **({"model": conf["model"]} if conf.get("model") else {})}
     extra = list(conf.get("skills") or []) + (list(imp.get("skills") or []) if role in IMPL_TEAM_SKILLS else [])
     step["skill_ids"] = list(dict.fromkeys(skills_of(skills, cfg) + extra))
 

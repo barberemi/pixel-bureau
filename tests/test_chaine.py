@@ -71,6 +71,15 @@ class ChaineModelesTest(unittest.TestCase):
         self.assertNotIn("{{steps.propose", ctrl["parallele"]["prompt_template"])
         self.assertEqual(ctrl["parallele"]["skill_ids"][:3], ["security", "web-performance", "accessibility"])
         self.assertEqual(ctrl["range"]["exec_stdin"], '{{steps.parallele.data_json ?? "null"}}')
+        # coût (runs du 5 novembre) : le coordinateur ne fait que lancer (economy), chaque sous-agent a son modèle, lit le
+        # contexte dans un fichier et y écrit son rapport ; le poste Tests part sans MCP ni outils Kronn, sans le skill TDD
+        self.assertEqual(ctrl["parallele"]["agent_settings"], {"tier": "economy"})
+        self.assertIn("avec le modèle indiqué", ctrl["parallele"]["prompt_template"])
+        self.assertIn("rends `{}`", ctrl["parallele"]["prompt_template"])
+        tp = steps("impl_tests", c)["propose"]
+        self.assertEqual(tp["agent_settings"], {"tools": {"cli": ["Bash", "Read", "Edit", "Write", "Grep", "Glob"], "kronn_internal": []},
+                                                "tier": "default"})
+        self.assertNotIn("test-driven-development", tp["skill_ids"])
         names = [s["name"] for s in chain["steps"]]
         self.assertEqual(names[:7], ["ticket", "prepare", "cadrage", "compris", "dossier", "orchestrateur_plan", "gate_plan"])
         for gone in ("questions", "gate_questions", "schema", "patterns"):
@@ -823,6 +832,80 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("Au plus 3 contre-épreuves", self.sh("entree", "tests", "AB-12")[1])
         self.assertNotIn("Budget du poste", self.sh("entree", "code", "AB-12")[1])
         self.assertIn("dans la limite du budget", steps("impl_tests")["propose"]["prompt_template"])
+
+    def test_tests_poste_gets_a_capped_launcher(self):
+        """🧪 Tests : un lanceur prêt (la commande checks.tests du dépôt sur les fichiers donnés), sortie coupée aux échecs,
+        lancements comptés et plafonnés (runs du 5 novembre : chaque session cherchait comment lancer les tests)."""
+        self.prepare()
+        self.assertIn("tail -40", self.sh("entree", "tests", "AB-12")[1])  # sans checks.tests : pas de lanceur
+        self.assertFalse(Path(self.wt, ".kronn", "chaine", "teste.py").exists())
+        c = cfg()
+        c["impl"]["repos"]["dm/site"]["checks"]["tests"] = [{"cmd": "cd {worktree}/app && for f in {tests_php}; do grep -q FAIL $f && "
+                                                             "echo progress && echo \"FAILED asserting $f\" && exit 1; done; echo 'OK (1 test)'", "subdir": "app"}]
+        c["impl"]["postes"]["tests"] = {"mutations": 1}
+        self.render(c)
+        self.commit("app/FooTest.php", "<?php // ok\n", "test: Foo")
+        outp = self.sh("entree", "tests", "AB-12")[1]
+        self.assertIn("python3 .kronn/chaine/teste.py <fichier de test>", outp)
+        self.assertIn("6 lancements au plus", outp)  # 2 x 1 mutation + 4
+        self.assertIn("Vise 40 réponses", outp)
+        lance = lambda *f: subprocess.run(["python3", ".kronn/chaine/teste.py", *f], cwd=self.wt, capture_output=True, text=True)  # noqa: E731
+        r = lance("app/FooTest.php")
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "VERT (1/6 lancements) : OK (1 test)"))
+        Path(self.wt, "app", "FooTest.php").write_text("<?php // FAIL\n")
+        r = lance("app/FooTest.php")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("FAILED asserting FooTest.php", r.stdout)
+        self.assertNotIn("progress", r.stdout.split("\n…")[0])  # les échecs seulement
+        self.assertIn("FAILED", Path(self.wt, ".kronn", "chaine", "teste_sortie.txt").read_text())
+        r = lance("app/A.php")  # aucune commande ne prend ce fichier : rien lancé, rien compté
+        self.assertIn("Aucune commande", r.stdout)
+        self.assertEqual(self.dossier("teste.json")["lances"], 2)
+        self.sh("tri_tests", stdin=json.dumps({"ok": False}))  # nouvel essai : quatre lancements de plus
+        self.assertEqual(self.dossier("teste.json")["max"], 10)
+        t = self.dossier("teste.json")
+        Path(self.wt, ".kronn", "chaine", "teste.json").write_text(json.dumps({**t, "lances": 10}))
+        r = lance("app/FooTest.php")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("Plafond de 10 lancements atteint", r.stdout)
+        self.sh("entree", "tests", "AB-12")  # nouveau passage du poste : compteur à zéro
+        self.assertEqual(self.dossier("teste.json")["lances"], 0)
+
+    def test_next_rounds_keep_reports_without_blockers(self):
+        """Contrôles : chaque sous-agent a son modèle (sécurité sur Opus, les autres sur Sonnet), lit le contexte dans un
+        fichier et y écrit son rapport ; aux tours suivants, un poste sans bloquant garde son rapport, la sécurité repasse
+        toujours (runs du 5 novembre : les tours 2 et 3 des contrôles faisaient 15 % du coût de la chaîne)."""
+        self.prepare()
+        g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        Path(self.wt, "app", "A.php").write_text("<?php // v1\n")
+        subprocess.run(g + ["commit", "-qam", "v1"], cwd=self.wt, check=True)
+        self.sh("bilan_code")
+        m = self.sh("missions")[1]
+        self.assertIn("regles (modèle sonnet), securite (modèle opus)", m)
+        self.assertIn("`.kronn/chaine/controles_contexte.md`", m)
+        self.assertIn("Postes à lancer", Path(self.wt, ".kronn", "chaine", "controles_contexte.md").read_text())
+        Path(self.wt, ".kronn", "chaine", "rapports", "regles.json").write_text(
+            json.dumps({"resume": "r", "constats": [{"gravite": "bloquant", "probleme": "nom"}]}))
+        self.sh("range", stdin=json.dumps({"securite": {"resume": "s", "constats": []}, "besoin": {"resume": "b", "constats": [], "exigences": []},
+                                           "perf": {"resume": "p", "constats": []}, "doc": {"resume": "d", "constats": [], "docs": []}}))
+        self.assertEqual(self.dossier("regles.json")["statut"], "a_corriger")  # lu dans son fichier
+        self.sh("bilan_controles")
+        self.sh("aiguillage", stdin=json.dumps({"decision": "retour_code", "consignes": "c", "resume": "r"}))
+        Path(self.wt, "app", "A.php").write_text("<?php // v2\n")
+        subprocess.run(g + ["commit", "-qam", "correction"], cwd=self.wt, check=True)
+        self.sh("bilan_code")
+        m = self.sh("missions")[1]
+        self.assertEqual(self.dossier("missions.json")["postes"], ["regles", "securite"])
+        self.assertIn("besoin : rapport du tour précédent gardé", m)
+        self.assertFalse(Path(self.wt, ".kronn", "chaine", "rapports", "regles.json").exists())  # celui du tour 1 ne compte plus
+        self.assertEqual(self.dossier("besoin.json")["statut"], "ok")
+        c = cfg()
+        c["impl"]["postes"]["controles"] = {"relance": "tous", "modeles": {"securite": "sonnet"}}
+        self.render(c)
+        self.sh("bilan_code")
+        self.sh("missions")
+        self.assertEqual(self.dossier("missions.json")["postes"], ["regles", "securite", "perf", "besoin", "doc"])
+        self.assertEqual(self.dossier("missions.json")["modeles"]["securite"], "sonnet")
 
     def test_deletion_survey_finds_dead_references(self):
         """Ticket de suppression (EW-7816 : 4 blocs supprimés, 15 templates, styles et tests encore liés) : le Code reçoit
