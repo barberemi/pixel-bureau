@@ -870,6 +870,11 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("Plafond de 10 lancements atteint", r.stdout)
         self.sh("entree", "tests", "AB-12")  # nouveau passage du poste : compteur à zéro
         self.assertEqual(self.dossier("teste.json")["lances"], 0)
+        c["impl"]["repos"]["dm/site"]["checks"]["tests"] = [{"cmd": "echo suite entière", "subdir": "app"}]  # sans emplacement (mocha)
+        self.render(c)
+        self.sh("entree", "tests", "AB-12")
+        self.assertEqual(lance("app/FooTest.php").stdout.strip(), "VERT (1/6 lancements) : suite entière")
+        self.assertIn("Aucune commande", lance("docs/AGENTS.md").stdout)  # hors de son sous-dossier
 
     def test_next_rounds_keep_reports_without_blockers(self):
         """Contrôles : chaque sous-agent a son modèle (sécurité sur Opus, les autres sur Sonnet), lit le contexte dans un

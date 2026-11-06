@@ -167,7 +167,7 @@ for ch in c["checks"]:
     mine = [f for f in mine if os.path.exists(os.path.join(wt, sub, f))]
     need = re.findall(r"\{(" + "|".join(K) + r")\}", cmd)
     got = dict((k, [f for f in mine if re.search(v, f)]) for k, v in K.items())
-    if not need or not any(got[k] for k in need):
+    if not mine or need and not any(got[k] for k in need):  # sans emplacement : toute la commande, si un fichier est à elle
         continue
     for k in K:
         cmd = cmd.replace("{" + k + "}", " ".join(got[k]))
