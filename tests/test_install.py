@@ -18,6 +18,7 @@ class FakeKronn:
         self.calls, self.n = [], 0
         self.store = {self.LIVE: {"name": "Le Bureau · live (1 min)", "steps": [{"name": "snapshot"}]}}
         self.qps = {}
+        self.skills = {}
 
     def _id(self):
         self.n += 1
@@ -31,6 +32,15 @@ class FakeKronn:
             return [{"id": PROJECT, "name": "Front"}]
         if path == "/mcps":
             return {"configs": [{"id": JIRA, "server_id": "mcp-atlassian", "label": "Jira", "is_global": True}]}
+        if path == "/skills":  # skills du Bureau (revue et chaîne), publiés avant les workflows
+            if method == "GET":
+                return [{"id": i, **b} for i, b in self.skills.items()]
+            i = "custom-" + body["name"].split("· ")[-1].replace(" ", "-")
+            self.skills[i] = body
+            return {"id": i, **body}
+        if method == "PUT" and path.startswith("/skills/"):
+            self.skills[path.split("/")[2]] = body
+            return {"id": path.split("/")[2], **body}
         if path == "/agents":
             return [{"agent_type": "ClaudeCode", "name": "Claude Code", "installed": True, "enabled": True}]
         if path == "/workflows" and method == "GET":
@@ -130,6 +140,7 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(cfg["jira"]["config_id"], JIRA)
         self.assertEqual(cfg["jira"]["site"], "https://acme.atlassian.net")  # déduit de la réponse Jira
         self.assertEqual(set(cfg["workflows"]), {"office", "live", "team", "payroll", "canard", "redaction_bilan"})
+        self.assertEqual(set(cfg["skills"]), set(install.templates.BUREAU_SKILLS))  # skills du Bureau, avant les workflows
         self.assertTrue(all(cfg["actions"].values()))
         self.assertEqual([a["name"] for a in cfg["agents"]], ["Dwight"])  # ses workflows, pas ceux du Bureau
         self.assertNotIn("seat", cfg["agents"][0])  # sa place : celle que le plan lui donne
