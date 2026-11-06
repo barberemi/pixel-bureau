@@ -235,6 +235,8 @@ def script_code(path, cfg):
     if path in CHAINE_SCRIPTS:  # la config entière ferait passer le script au-dessus de 128 Kio (un argument, sous Linux)
         c = {k: v for k, v in c.items() if k in CHAINE_CFG}
         c["github"] = {"repo": (cfg.get("github") or {}).get("repo") or ""}
+        if isinstance(c.get("impl"), dict):  # les consignes de l'équipe vont dans les prompts (@@impl.guidelines@@), jamais lues par un script
+            c["impl"] = {k: v for k, v in c["impl"].items() if k != "guidelines"}
     if path == "workflows/review.py":  # idem pour la revue : sa part de la config (les consignes de la chaîne pèsent)
         c = {k: v for k, v in c.items() if k in REVIEW_CFG}
     c.update(gitfut=assemble.gitfut(cfg), wiki_posters=assemble.wiki_posters(cfg),  # déduits du roster (scripts sans accès au dépôt)

@@ -142,34 +142,13 @@ def reprend(ticket, repo, mode, run):
                                   "livraison": "à la PR", "relecture": "à ta relecture de la PR"}.get(step, "au début, postes déjà faits sautés")
 
 
-TEST_FICHIER = re.compile(r"(^|/)(tests?|__tests__|spec)/|(Test|_test|\.test|\.spec)\.\w+$")
-
-
-def tests_lies(files):
-    """Poste 🧪 Tests : les fichiers de test du dépôt liés à chaque fichier touché, par le nom (Foo.php -> FooTest.php,
-    foo.ts -> foo.test.ts ou foo.spec.ts), 0 token ; les tests touchés par le diff en plus."""
-    suivis = [f for f in git("ls-files").splitlines() if TEST_FICHIER.search(f)]
-    out_ = {}
-    for f in files:
-        if TEST_FICHIER.search(f):
-            out_.setdefault(f, []).append(f)
-            continue
-        stem = os.path.basename(f).split(".")[0]
-        if len(stem) < 3:
-            continue
-        hits = [t for t in suivis if re.match(re.escape(stem) + r"(Test|_test|\.test|\.spec)?\.", os.path.basename(t)) and t != f]
-        if hits:
-            out_[f] = hits[:5]
-    return out_
-
-
 def tests_budget():
     """Le cadre du poste 🧪 Tests : le coût d'une session vient de ses tours (chaque tour relit tout le contexte ; EW-7848,
     banc du 5 novembre : 31 min, 65 M de jetons relus en cache, 14,56 $). Contre-épreuves bornées (impl.postes.tests.mutations,
     6 par défaut), tests ciblés seulement, tests liés donnés d'avance."""
     n = int(poste_conf("tests").get("mutations") or 6)
     files = [f for f in changed() if not f.endswith(".md")]
-    lies = tests_lies(files)
+    lies = tests_lies(lambda: git("ls-files"), files)  # relevé commun avec la revue (_releves.py)
     return section("Budget du poste (à tenir)",
                    f"Au plus {n} contre-épreuves (mutations), choisies sur les gardes, bornes et retours qui comptent le plus ; "
                    "les autres, note-les « non éprouvées » dans le résumé. Lance seulement le fichier de test ciblé (ex. "
@@ -316,6 +295,7 @@ def cmd_entree(p, ticket, retours="", extra=""):
     parts.append(perimetre())
     parts.append(lecture())
     parts.append(rejoue())
+    parts.append(non_fiable())
     parts.append(section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else ""))
     if os.path.exists(dossier("retours.md")):
         parts.append(section("Retours de l'humain (à respecter en priorité)", open(dossier("retours.md"), encoding="utf-8").read()))
@@ -406,7 +386,7 @@ def cmd_rapport(p):
 def cmd_dossier():
     """Le dossier pour l'orchestrateur, dans son prompt : il n'a aucun fichier à lire (essai du 2026-10-30 : une lecture
     du dossier par l'agent a été coupée par les garde-fous de l'API)."""
-    parts = [perimetre(), lecture(), rejoue(), section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else "")]
+    parts = [perimetre(), lecture(), rejoue(), non_fiable(), section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else "")]
     if os.path.exists(dossier("retours.md")):
         parts.append(section("Retours de l'humain", open(dossier("retours.md"), encoding="utf-8").read()))
     r = load("cadrage.json")
