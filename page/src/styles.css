@@ -932,6 +932,25 @@ body.tv #tvwho .at-bar i.avis,body.tv #tvwho .at-bar i.wait{background:var(--war
 .mtbar .mt-b{position:absolute;left:32px;top:0;min-width:16px;height:16px;padding:0 3px;border-radius:8px;color:#fff;font:700 10px system-ui,sans-serif;display:flex;align-items:center;justify-content:center;border:2px solid var(--panel)}
 body.tv .mtbar{display:none}
 /* 2e étage (68-redaction.js) : les tickets d'une intention, et la fiche d'un ticket */
+/* les fiches au clic du 2e et du 3e (68-redaction.js, fkLinks) : la rangée de liens, les étapes, les lignes */
+.atelier .fk-links{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+.atelier .fk-links .lk{display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 8px;border:2px solid var(--line);background:var(--chip);color:var(--accent);font:600 12px system-ui,sans-serif;text-decoration:none;cursor:pointer;text-align:center;overflow-wrap:anywhere}
+.atelier .fk-links .lk:hover,.atelier .fk-links .lk:focus-visible{border-color:var(--accent)}
+.atelier .fk-links .lk.main{grid-column:1/-1;background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.atelier .fk-steps{display:flex;gap:3px;flex-wrap:wrap;margin:6px 0}
+.atelier .fk-steps>*{font:700 11px system-ui,sans-serif;font-style:normal;padding:2px 7px;background:var(--chip);color:var(--muted);border:0}
+.atelier .fk-steps>button{cursor:pointer;text-decoration:underline dotted}
+.atelier .fk-steps .ok{background:var(--ok);color:var(--on-accent)}.atelier .fk-steps .run{background:var(--info);color:var(--on-accent)}.atelier .fk-steps .err{background:var(--err);color:#fff}
+.atelier .fk-chips{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0}.atelier .fk-chips i{font:700 11px ui-monospace,Menlo,monospace;font-style:normal;padding:1px 6px;background:var(--chip);border:1px solid var(--line)}
+.atelier .fk-fold{border-top:1px solid var(--line);padding-top:8px;margin-top:8px;font:12.5px/1.45 system-ui,sans-serif}
+.atelier .fk-fold h4{margin:0 0 4px;font:700 11px system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.atelier .fk-row,.atelier .fk-r{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:baseline;padding:3px 0;overflow-wrap:anywhere}
+.atelier .fk-r{width:100%;text-align:left;font:12.5px system-ui,sans-serif;padding:4px 6px;margin:0 0 3px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.atelier .fk-r:hover,.atelier .fk-r:focus-visible{border-color:var(--accent)}
+.atelier .fk-row .lk{padding:0;border:0;background:none;color:var(--accent);font:600 12px ui-monospace,Menlo,monospace;text-decoration:none}
+.atelier .fk-row .k,.atelier .fk-r .k{color:var(--muted);font-size:12px;white-space:nowrap}
+.atelier .fk-kb{border:0;background:none;cursor:pointer;padding:0}
+.atelier .fk-a{border:0;background:none;padding:0;color:var(--accent);font:inherit;cursor:pointer;text-decoration:underline dotted}
 .atelier .rd-tk{display:block;width:100%;text-align:left;font:12px system-ui,sans-serif;padding:4px 8px;margin:0 0 4px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
 .atelier .rd-tk:hover,.atelier .rd-tk:focus-visible{border-color:var(--accent)}
 .atelier .rd-back{font:600 12px system-ui,sans-serif;padding:4px 8px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;margin:0 0 8px}

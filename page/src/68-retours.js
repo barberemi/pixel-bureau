@@ -31,6 +31,7 @@ const RT_WINDOWS=[7,10,13,17,20,23,27,30,33,37,40,43]; // en cases : à droite d
 const RT_DESK={x:31*AT_TS,y:15.2*AT_TS}, RT_STAIRS={x:46*AT_TS+50,y:14.5*AT_TS};
 const RT_STAIR={x:46*AT_TS-12,y:13.5*AT_TS,w:12,h:2*AT_TS,vert:true,wall:[46*AT_TS-12,13.2*AT_TS,12,2.6*AT_TS]}, RT_EXIT={x:46*AT_TS-30,y:13.5*AT_TS-12};
 let RETOURS=null, RTSEL=null, RT_KB=null, RT_HITS=[], RT_LIT=[];
+let RTPOSTE=null, RTQ=false; // la fiche d'un poste du bureau ouvert (clic sur son agent) ; la file du couloir
 function readRetours(src){
   try{
     if(!src||!src.datasets)return null;
@@ -93,7 +94,7 @@ function rtRoomsAt(t){
 // quand on regarde l'étage, et en y montant (fresh) tout est posé sans rejouer
 const rtMem0=()=>({fresh:true,slot:{},seen:{},scenes:[],leaving:Array(RT_N).fill(null),boss:null,last:0,lastT:null,live:null,sig:''});
 let RT_MEM=rtMem0();
-function rtReset(){const slot=RT_MEM.slot;RT_MEM=rtMem0();RT_MEM.slot=slot;RTSEL=null;rtKbClose();RT_LV=lvMem();} // une PR garde son numéro de bureau, vue du RDC comme à l'étage
+function rtReset(){const slot=RT_MEM.slot;RT_MEM=rtMem0();RT_MEM.slot=slot;RTSEL=null;RTPOSTE=null;RTQ=false;rtKbClose();RT_LV=lvMem();} // une PR garde son numéro de bureau, vue du RDC comme à l'étage
 function rtSlots(){
   const rooms=rtRooms(), out=Array(RT_N).fill(null), live=new Set(rooms.map(r=>r.run));
   for(const run of Object.keys(RT_MEM.slot))if(!live.has(run))delete RT_MEM.slot[run];
@@ -312,18 +313,18 @@ function retoursClick(e){
   const h=rtHitAt(e);sel=null;SEL_BACK=[];
   if(h&&h.kind==='boss'){const b=chars.find(c=>c.boss);if(b){RTSEL=null;select(b.key);return;}}
   const slots=rtSlots(), r=h&&h.i!=null?slots[h.i]:null;
-  RTSEL=r?r.run:null;
+  RTSEL=r?r.run:null;RTPOSTE=r&&h.kind==='agent'?h.k:null;RTQ=!!h&&h.kind==='queue';
   if(h&&h.kind==='board'&&r)rtKbOpen(r.run);
   renderSide(true);
 }
 function retoursHover(e){
   const h=rtHitAt(e), slots=rtSlots(), r=h&&h.i!=null?slots[h.i]:null;let s='';
-  if(h&&h.kind==='agent'){const p=RT_POSTES.find(x=>x.k===h.k), st=r?rtState(r,p)||'wait':'wait';s=p.i+' '+p.n+' · bureau '+(h.i+1)+' · '+(p.gate?(st==='gate'?'les corrections t\'attendent : le boss vient valider':st==='ok'?'validé':'ta validation, avant le push'):r?RT_ST[st][1]:'bureau libre');}
+  if(h&&h.kind==='agent'){const p=RT_POSTES.find(x=>x.k===h.k), st=r?rtState(r,p)||'wait':'wait';s=p.i+' '+p.n+' · bureau '+(h.i+1)+(r?' · clic : son poste':'')+' · '+(p.gate?(st==='gate'?'les corrections t\'attendent : le boss vient valider':st==='ok'?'validé':'ta validation, avant le push'):r?RT_ST[st][1]:'bureau libre');}
   else if(h&&h.kind==='board')s=r?'Le Kanban des fils de '+rtName(r)+' : clic pour l\'ouvrir en grand':'Bureau '+(h.i+1)+' · libre';
-  else if(h&&h.kind==='room')s=r?'Bureau '+(h.i+1)+' · '+rtName(r)+(r.title?' · '+r.title:'')+(rtWho(r)?' · de '+rtWho(r):''):'Bureau '+(h.i+1)+' · libre';
+  else if(h&&h.kind==='room')s=r?'Bureau '+(h.i+1)+' · '+rtName(r)+(r.title?' · '+r.title:'')+(rtWho(r)?' · de '+rtWho(r):'')+' · clic : la PR, son ticket, le Kanban':'Bureau '+(h.i+1)+' · libre';
   else if(h&&h.kind==='boss')s=(chars.find(c=>c.boss)||{}).name+' : valide les corrections (✋), une PR à la fois ; clic : sa fiche, comme au RDC';
-  else if(h&&h.kind==='queue'){const n=((RETOURS&&RETOURS.queue)||[]).length;s=n?plural(n,'PR attend','PR attendent')+' un bureau libre':'Aucune PR en attente';}
-  cv.style.cursor=h&&h.kind!=='queue'?'pointer':'default';
+  else if(h&&h.kind==='queue'){const n=((RETOURS&&RETOURS.queue)||[]).length;s=n?plural(n,'PR attend','PR attendent')+' un bureau libre · clic : la file':'Aucune PR en attente';}
+  cv.style.cursor=h&&(h.kind!=='queue'||((RETOURS&&RETOURS.queue)||[]).length)?'pointer':'default';
   if(s){tip.style.display='block';tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px';tip.textContent=s;}else tip.style.display='none';
 }
 // ---------- la fenêtre Kanban d'un bureau : les fils en colonnes, le fil choisi à droite ----------
@@ -338,7 +339,7 @@ function rtKbOpen(run,fid){
   d.innerHTML=`<div class="rt-kbw"><div class="rt-kbh"><b>🛠 ${esc(rtName(r))}</b>${r.title?' · '+esc(r.title):''}${rtWho(r)?' · de '+esc(rtWho(r)):''} · ${plural((r.fils||[]).length,'fil','fils')}<button class="rt-x" aria-label="Fermer">✕</button></div>
     <div class="at-bar">${RT_POSTES.map(p=>{const s=rtState(r,p);return `<i class="${s?RT_ST[s][0]:''}" title="${esc(p.n+' : '+RT_ST[s||'wait'][1])}"></i>`;}).join('')}</div>
     <div class="rt-kbb"><div class="rt-cols">${RT_COLS.map(c=>{const l=(r.fils||[]).filter(x=>x.col===c.k);return `<div class="rt-col"><h4>${esc(c.n)} · ${l.length}</h4>${l.map(x=>`<button class="rt-card${x.cur?' cur':''}${f&&x.id===f.id?' on':''}" data-fil="${esc(x.id)}" style="--c:${c.c}"><span class="mono">${esc(x.path||'')}${x.line?':'+x.line:''}</span><small>@${esc(x.who||'?')}</small>${esc(x.text||'')}</button>`).join('')}</div>`;}).join('')}</div>
-    <div class="rt-det">${f?`<div class="mono">${esc(f.path||'')}${f.line?':'+f.line:''} · @${esc(f.who||'?')}</div><p>« ${esc(f.text||'')} »</p><p class="mut">${f.cur?'🛠 La correction traite ce fil en ce moment (le fil rouge sur le plan).':'Colonne : '+esc((RT_COLS.find(c=>c.k===f.col)||{}).n||'')}</p>`:'<p class="mut">Aucun fil.</p>'}
+    <div class="rt-det">${f?`<div class="mono">${esc(f.path||'')}${f.line?':'+f.line:''} · @${esc(f.who||'?')}</div><p>« ${esc(f.text||'')} »</p><p class="mut">${f.cur?'🛠 La correction traite ce fil en ce moment (le fil rouge sur le plan).':'Colonne : '+esc((RT_COLS.find(c=>c.k===f.col)||{}).n||'')}</p>${safeUrl(f.url)?`<a ${hrefOf(f.url)} target="_blank" rel="noopener">💬 Le commentaire sur GitHub ↗</a>`:''}`:'<p class="mut">Aucun fil.</p>'}
       ${url?`<a href="${url}" target="_blank" rel="noopener">↗ Ouvrir la PR sur GitHub</a>`:''}</div></div></div>`;
   const x=d.querySelector('.rt-x');if(x)x.focus({preventScroll:true});
 }
@@ -358,9 +359,30 @@ function retoursListHtml(slots){
 }
 function retoursFicheHtml(r,i){
   return `<button class="at-back">‹ Les retours</button><h2 class="at-h">🛠 Bureau ${i+1} <span class="cnt mono">${esc(rtName(r))}</span></h2>
-    <div class="at-title big">${esc(r.title||'')}</div>${rtWho(r)?`<div class="mut">PR de ${esc(rtWho(r))}</div>`:''}${rtBar(r)}<div class="at-gate"></div>
-    <table class="at-t">${RT_POSTES.map(p=>{const s=rtState(r,p);return `<tr${rtCur(r)===p?' class="cur"':''}><td>${p.i} ${esc(p.n)}</td><td>${s?`<span class="dot" style="background:${{ok:'var(--ok)',run:'var(--info)',err:'var(--err)',gate:'var(--warn)'}[s]}"></span>${RT_ST[s][1]}`:'<span class="mut">à venir</span>'}</td></tr>`;}).join('')}</table>
+    <div class="at-title big">${esc(r.title||'')}</div>${rtWho(r)?`<div class="mut">PR de ${esc(rtWho(r))}</div>`:''}${rtBar(r)}${prLinksHtml(r.repo,r.pr,r.author,fkRun(r.url))}<div class="at-gate"></div>
+    <table class="at-t">${RT_POSTES.map(p=>{const s=rtState(r,p);return `<tr${rtCur(r)===p?' class="cur"':''}><td><button type="button" class="fk-a" data-rtp="${p.k}" title="Sa fiche">${p.i} ${esc(p.n)}</button></td><td>${s?`<span class="dot" style="background:${{ok:'var(--ok)',run:'var(--info)',err:'var(--err)',gate:'var(--warn)'}[s]}"></span>${RT_ST[s][1]}`:'<span class="mut">à venir</span>'}</td></tr>`;}).join('')}</table>
     <div class="mut">${esc(rtCounts(r)||'Les fils arrivent avec la préparation.')}</div><button class="at-kb">🔍 Ouvrir le Kanban des fils</button>`;
+}
+// la fiche d'un poste (clic sur son agent) : ce qu'il fait de la PR ; la correction montre le fil en cours et son lien
+const RT_ICO={a_traiter:'·',corrige:'✅',test:'🧪',laisse:'⏭',reponse:'💬'};
+const rtFilRow=f=>`<div class="fk-row"><span>${RT_ICO[f.col]||'·'}</span><span class="mono">${esc((f.path||'?')+(f.line?':'+f.line:''))}</span>${safeUrl(f.url)?`<a class="k" ${hrefOf(f.url)} target="_blank" rel="noopener">↗</a>`:'<span></span>'}</div>`;
+function rtPosteHtml(r,i,p){
+  const s=rtState(r,p)||'wait', fils=r.fils||[], cur=fils.find(f=>f.cur)||(p.k==='fix'&&s==='run'?fils.find(f=>f.col==='a_traiter'):null), k=cur?fils.indexOf(cur)+1:0;
+  let body='';
+  if(p.k==='fix'){
+    body=(cur?`<div class="fk-fold"><h4>Le fil en cours · ${k}/${fils.length}</h4><div class="mono">${esc((cur.path||'?')+(cur.line?':'+cur.line:''))} · @${esc(cur.who||'?')}</div><div class="at-box run">« ${esc(cur.text||'')} »</div>`+
+      fkLinks([fkA(cur.url,'💬 Le commentaire ↗'),`<button type="button" class="lk" data-rtkb data-fil="${esc(cur.id)}">🗂 Dans le Kanban des fils</button>`])+'</div>':'')+
+      (fils.some(f=>f.col!=='a_traiter')?`<div class="fk-fold"><h4>Déjà traités</h4>${fils.filter(f=>f.col!=='a_traiter').map(rtFilRow).join('')}</div>`:'');}
+  else if(p.k==='prepare'||p.k==='diff'||p.k==='push')
+    body=`<div class="fk-fold"><h4>${esc(rtCounts(r)||'Les fils arrivent avec la préparation.')}</h4>${fils.slice(0,8).map(rtFilRow).join('')}${fils.length>8?`<div class="mut">et ${fils.length-8} de plus : le Kanban des fils</div>`:''}</div>`;
+  else if(p.k==='check')body=`<div class="fk-fold"><div class="mut">${s==='err'?'🧯 Contrôles rouges : le correctif est annulé, la PR attend une relance.':s==='ok'?'Contrôles verts.':'Le détail de chaque contrôle est dans le run.'}</div>${fkLinks([fkRun(r.url)])}</div>`;
+  return `<button class="at-back">‹ Bureau ${i+1}</button><h2 class="at-h">${p.i} ${esc(p.n)} <span class="cnt">${esc(RT_ST[s][1])}</span></h2><div class="mut">${esc(p.d)} · ${esc(rtName(r))}</div>${body}`+
+    (p.gate?'<div class="at-gate"></div>':'');
+}
+function rtQueueHtml(){
+  const q=(RETOURS&&RETOURS.queue)||[];
+  return `<button class="at-back">‹ Les retours</button><h2 class="at-h">📥 Le couloir <span class="cnt">${q.length}</span></h2><div class="mut">Les PR qui attendent un bureau libre.</div>`+
+    `<div class="fk-fold">${q.length?q.map(x=>`<button type="button" class="fk-r" data-kbpr="${esc(x.repo+'#'+x.pr)}"><span class="k mono">${esc(fkShort(x.repo,x.pr))}</span><span class="mut">depuis ${hm(ms(x.since))}</span><span class="k">Kanban ›</span></button>`).join(''):'<div class="mut">Aucune PR en attente.</div>'}</div>`;
 }
 const rtGateRun=r=>{if(!r.gate)return null;const g=GATES.find(x=>x.run===r.run);return {run:r.run,wf_name:g?g.wf_name:'Corriger les commentaires d\'une PR',_s:ms(r.since)};};
 function drawRetoursSide(side){
@@ -369,9 +391,14 @@ function drawRetoursSide(side){
   if(sel!=null){drawSide(side);return;}
   const box=document.createElement('div');box.className='atelier';side.appendChild(box);
   const slots=rtSlots(), i=slots.findIndex(x=>x&&x.run===RTSEL), r=i>=0?slots[i]:null;
-  if(r){box.innerHTML=retoursFicheHtml(r,i);box.querySelector('.at-back').addEventListener('click',()=>{RTSEL=null;renderSide(true);});
-    box.querySelector('.at-kb').addEventListener('click',()=>rtKbOpen(r.run));
+  const p=r&&RT_POSTES.find(x=>x.k===RTPOSTE);
+  if(p){box.innerHTML=rtPosteHtml(r,i,p);box.querySelector('.at-back').addEventListener('click',()=>{RTPOSTE=null;renderSide(true);});
+    const kb=box.querySelector('[data-rtkb]');if(kb)kb.addEventListener('click',()=>rtKbOpen(r.run,kb.dataset.fil));fkWire(box);
+    const g=p.gate&&rtGateRun(r);if(g)gateCard(box.querySelector('.at-gate')||box,g,null);return;}
+  if(r){box.innerHTML=retoursFicheHtml(r,i);box.querySelector('.at-back').addEventListener('click',()=>{RTSEL=null;RTPOSTE=null;renderSide(true);});
+    box.querySelector('.at-kb').addEventListener('click',()=>rtKbOpen(r.run));fkWire(box);
     const g=rtGateRun(r);if(g)gateCard(box.querySelector('.at-gate')||box,g,null);return;}
+  if(RTQ){box.innerHTML=rtQueueHtml();box.querySelector('.at-back').addEventListener('click',()=>{RTQ=false;renderSide(true);});fkWire(box);return;}
   box.innerHTML=retoursListHtml(slots);
   box.querySelectorAll('.at-room').forEach(b=>b.addEventListener('click',()=>{RTSEL=b.dataset.run;renderSide(true);}));
 }

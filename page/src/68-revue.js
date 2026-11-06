@@ -180,6 +180,7 @@ function rvfDraw(now,people){
   // la corbeille « Postées » : vidée par Bernard au passage suivant du cron
   rdLate(people,()=>{const b=RVF.basket;R(ctx,b.x-20,b.y-6,40,14,'#8a8478');R(ctx,b.x-20,b.y-6,40,3,'#a9a397');rvfStack(b.x,b.y-6,M.basket.slice(-6));
     atPill('📤 POSTÉES'+(M.basket.length?' · '+M.basket.length:''),b.x,b.y+22,'#5a4636','#fff','bold 10px ui-monospace,Menlo,monospace');},RVF.basket.y);
+  atHitRd('postees',RVF.basket.x-44,RVF.basket.y-34,88,66,{});
   // la salle d'attente : une chaise par auteur qui attend (cinq au moins)
   const nch=Math.max(5,Object.values(M.who).filter(h=>h.spot.k==='chair').length);
   rdLate(people,()=>{for(let k=0;k<Math.min(nch,7);k++){const q=rvfChair(k);R(ctx,q.x-12,q.y-26,24,12,'#7a8296');R(ctx,q.x-12,q.y-14,24,6,'#5d6370');R(ctx,q.x-10,q.y-8,3,8,'#3a3d45');R(ctx,q.x+7,q.y-8,3,8,'#3a3d45');}
@@ -215,7 +216,47 @@ function rvfDesk(people,now,F){
 const rvfKids=()=>{const bs=rvfData().batches||{};return new Set(rvRuns().filter(r=>bs[r.parent]).map(r=>r.run));};
 function rvfHover(h){
   const st=rvfState();
-  if(h.kind==='casier')return st&&st.queue.length?'À relire (cron de '+hm(st.b.s)+', dans l\'ordre) : '+st.queue.map(p=>p.repo.split('/').pop()+'#'+p.n).join(', '):'Le casier « À relire » : vide';
-  if(h.kind==='author'){const n=st?st.queue.filter(p=>p.author===h.author).length:0, c=rvfName(h.author);return (c?c.name:'@'+h.author)+' : '+(st&&st.reading&&st.reading.author===h.author?'sa PR est lue':'attend')+(n?', encore '+plural(n,'PR','PR')+' au casier':'');}
+  if(h.kind==='casier')return st&&st.queue.length?'À relire (cron de '+hm(st.b.s)+', dans l\'ordre) : '+st.queue.map(p=>p.repo.split('/').pop()+'#'+p.n).join(', ')+' · clic : la file':'Le casier « À relire » : vide';
+  if(h.kind==='author'){const n=st?st.queue.filter(p=>p.author===h.author).length:0, c=rvfName(h.author);return (c?c.name:'@'+h.author)+' : '+(st&&st.reading&&st.reading.author===h.author?'sa PR est lue':'attend')+(n?', encore '+plural(n,'PR','PR')+' au casier':'')+' · clic : ses PR';}
+  if(h.kind==='postees'){const n=st?st.done.length:0;return 'Les avis postés de la fournée : '+plural(n,'PR relue','PR relues')+' · clic : la liste';}
   return '';
+}
+// ---------- les fiches au clic (68-redaction.js, rdFicheHtml) : la PR lue, un auteur, le casier, la corbeille ----------
+const rvVerd=v=>(RVF_V[v]||RVF_V.comment)[0];
+const rvPrRow=(p,rank,run)=>{const c=rvfName(p.author), lbl=`<span class="k mono">${rank==null?rvVerd(p.v):rank}</span><span>${esc(fkShort(p.repo,p.n))} <span class="mut">· ${esc(c?c.name.split(' ')[0]:'@'+p.author)}</span></span>`;
+  return run?`<button type="button" class="fk-r" data-rvr="${esc(run)}">${lbl}<span class="k">sa fiche ›</span></button>`
+    :`<button type="button" class="fk-r" data-kbpr="${esc(p.repo+'#'+p.n)}" data-au="${esc(p.author)}">${lbl}<span class="k">Kanban ›</span></button>`;};
+function rvFicheHtml(run){
+  const r=rvRuns().find(x=>x.run===run);if(!r)return null;
+  const v=r.vars||{}, repo=String(v['current_task.repo']||''), n=String(v['current_task.number']||''), au=String(v['current_task.author']||''), c=au?rvfName(au):null;
+  const st=rvfOn()?rvfState():null, file=!!(st&&st.reading&&st.reading.r.run===run), batch=!!(st&&st.b&&r.parent===st.b.run), done=!RUN_ACTIVE.includes(r.status);
+  const verd=done?(r.status==='Success'?((rvfData().verdicts||{})[run]||'comment'):'err'):null;
+  return `<button class="at-back">‹ La revue</button><h2 class="at-h">${done?rvVerd(verd)+' Relue':'👀 En lecture'} <span class="cnt mono">${esc(fkShort(repo,n))}</span></h2>`+fkTitle(repo,n)+
+    `<div class="mut">PR de ${au?`<button type="button" class="fk-a" data-rva="${esc(au)}">${esc(c?c.name:'@'+au)}</button>`:'?'}${batch?' · fournée du cron de '+hm(st.b.s):' · revue à la demande'} · ${done?'relue':'depuis'} ${hm(r._s)}</div>`+
+    `<div class="fk-steps">${rvSteps(r).map(s=>`<i class="${s.s==='Success'?'ok':s.s==='Running'?'run':s.s==='Failed'?'err':''}" title="${esc(rvStepName(s.n))}">${esc(rvStepLbl(s))}</i>`).join('')}</div>`+
+    prLinksHtml(repo,n,au,fkRunOf(r))+
+    (file&&st.queue.length?`<div class="fk-fold"><h4>Après elle, au casier</h4>${st.queue.slice(0,5).map((p,i)=>rvPrRow(p,i+2)).join('')}</div>`:'');
+}
+function rvAuthorHtml(a){
+  const c=rvfName(a), st=rvfOn()?rvfState():null, off=st&&st.reading?2:1;
+  const q=st?st.queue.map((p,i)=>({p,rank:i+off})).filter(x=>x.p.author===a):[], reading=st&&st.reading&&st.reading.author===a?st.reading:null, done=st?st.done.filter(d=>d.author===a):[];
+  const kids=rvfOn()?rvfKids():new Set(), asks=rvActive().filter(r=>!kids.has(r.run)&&String((r.vars||{})['current_task.author']||'')===a);
+  if(!reading&&!q.length&&!done.length&&!asks.length)return null;
+  const row=r=>{const v=r.vars||{};return rvPrRow({repo:String(v['current_task.repo']||''),n:String(v['current_task.number']||''),author:a},'👀',r.run);};
+  return `<button class="at-back">‹ La revue</button><h2 class="at-h">🙋 ${esc(c?c.name:'@'+a)} <span class="cnt">${plural(q.length+(reading?1:0)+asks.length,'PR','PR')}</span></h2>`+
+    `<div class="mut">${reading?'Sa PR est lue au premier bureau':q.length?'Attend en salle d\'attente':'Plus rien au casier'}${st?' · fournée du cron de '+hm(st.b.s):''}</div>`+
+    (reading||asks.length?`<div class="fk-fold"><h4>En lecture</h4>${reading?rvPrRow(reading,'👀',reading.r.run):''}${asks.map(row).join('')}</div>`:'')+
+    (q.length?`<div class="fk-fold"><h4>Au casier</h4>${q.map(x=>rvPrRow(x.p,x.rank)).join('')}</div>`:'')+
+    (done.length?`<div class="fk-fold"><h4>Déjà relues</h4>${done.map(d=>rvPrRow(d,null,d.r.run)).join('')}</div>`:'')+
+    (c&&c.person?fkLinks([`<button type="button" class="lk" data-kbwho="${esc(c.key)}">🔍 Son Kanban</button>`]):'');
+}
+function rvFileHtml(k){
+  const st=rvfOn()?rvfState():null;
+  if(k==='casier'){const q=st?st.queue:[], off=st&&st.reading?2:1;
+    return `<button class="at-back">‹ La revue</button><h2 class="at-h">📥 À relire <span class="cnt">${q.length}</span></h2><div class="mut">${st?'Fournée du cron de '+hm(st.b.s)+', dans l\'ordre de lecture':'Aucune fournée en cours'}</div>`+
+      (st&&st.reading?`<div class="fk-fold"><h4>En lecture</h4>${rvPrRow(st.reading,1,st.reading.r.run)}</div>`:'')+
+      `<div class="fk-fold"><h4>Au casier</h4>${q.length?q.map((p,i)=>rvPrRow(p,i+off)).join(''):'<div class="mut">Le casier est vide.</div>'}</div>`;}
+  const d=st?st.done:[];
+  return `<button class="at-back">‹ La revue</button><h2 class="at-h">📤 Postées <span class="cnt">${d.length}</span></h2><div class="mut">Les avis de la fournée${st?' du cron de '+hm(st.b.s):''} ; Bernard vide la corbeille au passage suivant.</div>`+
+    `<div class="fk-fold">${d.length?d.map(x=>rvPrRow(x,null,x.r.run)).join(''):'<div class="mut">Aucun avis posté pour l\'instant.</div>'}</div>`;
 }
