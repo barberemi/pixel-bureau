@@ -142,21 +142,115 @@ def reprend(ticket, repo, mode, run):
                                   "livraison": "à la PR", "relecture": "à ta relecture de la PR"}.get(step, "au début, postes déjà faits sautés")
 
 
+# Lanceur du poste 🧪 Tests (écrit dans le dossier par l'entrée du poste, 0 token) : la commande checks.tests du dépôt, celle
+# de l'étape lance (conteneur compris), sur les fichiers donnés ; sortie coupée aux échecs ; lancements comptés et plafonnés.
+# Journaux des runs du 5 novembre : chaque session cherchait comment lancer les tests (Makefile, conteneurs montés à la main,
+# attentes) ; c'était l'essentiel de ses tours.
+TESTE = r"""import json, os, re, subprocess, sys
+D = os.path.dirname(os.path.abspath(__file__))
+P = os.path.join(D, "teste.json")
+c = json.load(open(P))
+if c["lances"] >= c["max"]:
+    print("Plafond de %d lancements atteint : ne lance plus rien. Rends tes constats ; les contre-épreuves restantes sont "
+          "« non éprouvées »." % c["max"])
+    sys.exit(2)
+wt = os.path.realpath(c["wt"])
+fs = [os.path.relpath(os.path.realpath(a), wt) for a in sys.argv[1:]]
+if not fs:
+    sys.exit("usage : python3 " + os.path.relpath(__file__, wt) + " <fichier de test> [autres]")
+K = {"files": r".", "php": r"\.php$", "ts": r"\.(ts|tsx|js|vue)$", "tests": r"(?i)(test|spec)", "tests_php": r"Test\.php$",
+     "tests_ts": r"\.(test|spec)\.(ts|tsx|js)$"}
+outs, code = [], 0
+for ch in c["checks"]:
+    cmd, sub = ch["cmd"], ch["subdir"]
+    mine = [f[len(sub) + 1:] if sub else f for f in fs if not sub or f.startswith(sub + "/")]
+    mine = [f for f in mine if os.path.exists(os.path.join(wt, sub, f))]
+    need = re.findall(r"\{(" + "|".join(K) + r")\}", cmd)
+    got = dict((k, [f for f in mine if re.search(v, f)]) for k, v in K.items())
+    if not mine or need and not any(got[k] for k in need):  # sans emplacement : toute la commande, si un fichier est à elle
+        continue
+    for k in K:
+        cmd = cmd.replace("{" + k + "}", " ".join(got[k]))
+    try:
+        r = subprocess.run(["sh", "-c", cmd], cwd=wt, capture_output=True, text=True, timeout=900)
+        rc, txt = r.returncode, r.stdout + r.stderr
+    except subprocess.TimeoutExpired:
+        rc, txt = 124, "délai dépassé (15 min)"
+    outs.append(txt)
+    code = code or rc
+if not outs:
+    print("Aucune commande de test réglée ne prend ces fichiers (chemin depuis la racine du dépôt ?) : rien lancé, rien compté.")
+    sys.exit(1)
+c["lances"] += 1
+json.dump(c, open(P, "w"))
+full = re.sub(r"\x1b\[[0-9;]*m", "", "\n".join(outs))
+open(os.path.join(D, "teste_sortie.txt"), "w").write(full)
+L = [x for x in full.splitlines() if x.strip()]
+reste = "(%d/%d lancements)" % (c["lances"], c["max"])
+if not code:
+    print("VERT " + reste + " : " + " | ".join(L[-2:])[-300:])
+    sys.exit(0)
+keep, seen = [], set()
+for i, x in enumerate(L):
+    if re.search(r"(?i)fail|error|exception|assert|expected|✗|×", x):
+        for y in L[i:i + 3]:
+            if y not in seen:
+                seen.add(y)
+                keep.append(y)
+txt = "\n".join(keep[:50] + ["…"] + L[-4:])
+print("ROUGE " + reste + " :\n" + txt[:3500] + "\n(sortie complète : " + os.path.relpath(os.path.join(D, "teste_sortie.txt"), wt) + ")")
+sys.exit(1)
+"""
+
+
+def teste_ecrit():
+    """Écrit le lanceur du poste Tests et ses commandes (worktree, main, base déjà remplis) ; None sans checks.tests."""
+    checks = (reglages().get("checks") or {}).get("tests") or []
+    if not checks:
+        return None
+    rep = {"worktree": root(), "main": main_dir(), "base": etat().get("base") or "main"}
+    cmds = []
+    for ch in checks:
+        cmd, sub = (ch, "") if isinstance(ch, str) else (ch.get("cmd") or "", (ch.get("subdir") or "").strip("/"))
+        for k, v in rep.items():
+            cmd = cmd.replace("{" + k + "}", v)
+        cmds.append({"cmd": cmd, "subdir": sub})
+    n = int(poste_conf("tests").get("mutations") or 6)
+    write_json(dossier("teste.json"), {"checks": cmds, "wt": root(), "lances": 0,
+                                       "max": int(poste_conf("tests").get("lancements") or 2 * n + 4)})
+    write_text(dossier("teste.py"), TESTE)
+    return os.path.relpath(dossier("teste.py"), root())
+
+
 def tests_budget():
     """Le cadre du poste 🧪 Tests : le coût d'une session vient de ses tours (chaque tour relit tout le contexte ; EW-7848,
     banc du 5 novembre : 31 min, 65 M de jetons relus en cache, 14,56 $). Contre-épreuves bornées (impl.postes.tests.mutations,
-    6 par défaut), tests ciblés seulement, tests liés donnés d'avance."""
-    n = int(poste_conf("tests").get("mutations") or 6)
+    6 par défaut), un lanceur prêt (teste.py, lancements plafonnés : impl.postes.tests.lancements), lecture par morceaux,
+    tests liés donnés d'avance."""
+    pc = poste_conf("tests")
+    n = int(pc.get("mutations") or 6)
     files = [f for f in changed() if not f.endswith(".md")]
     lies = tests_lies(lambda: git("ls-files"), files)  # relevé commun avec la revue (_releves.py)
+    lanceur = teste_ecrit()
+    lance = (f"Lance un test avec `python3 {lanceur} <fichier de test> [autres]` (chemins depuis la racine du dépôt), et "
+             "rien d'autre : il lance la commande de test réglée pour ce dépôt, conteneur compris (ni docker, ni make, ni "
+             "installation, ni `sleep` ou attente). Il rend une ligne si c'est vert, les échecs seulement si c'est rouge ; la "
+             "sortie complète est dans `.kronn/chaine/teste_sortie.txt` (cherches-y avec grep, ne la lis pas en entier). "
+             f"{json.load(open(dossier('teste.json')))['max']} lancements au plus pour tout le poste, contre-épreuves comprises : "
+             "au-delà il refuse, rends alors tes constats.") if lanceur else (
+             "Lance seulement le fichier de test ciblé (ex. `phpunit tests/…/FooTest.php`, `vitest run foo.test.ts`), sortie "
+             "coupée (`2>&1 | tail -40`).")
     return section("Budget du poste (à tenir)",
                    f"Au plus {n} contre-épreuves (mutations), choisies sur les gardes, bornes et retours qui comptent le plus ; "
-                   "les autres, note-les « non éprouvées » dans le résumé. Lance seulement le fichier de test ciblé (ex. "
-                   "`phpunit tests/…/FooTest.php`, `vitest run foo.test.ts`), jamais toute la suite, l'analyse statique ni un "
-                   "build : l'étape suivante lance les tests du dépôt. Pas d'exploration du dépôt au-delà des fichiers "
-                   "touchés et de leurs tests.") + section(
+                   "les autres, note-les « non éprouvées » dans le résumé. " + lance + " Jamais toute la suite, l'analyse "
+                   "statique ni un build : l'étape suivante lance les tests du dépôt. Pas d'exploration du dépôt au-delà des "
+                   "fichiers touchés et de leurs tests. Un fichier de plus de 300 lignes : repère d'abord ce qui te sert "
+                   "(`grep -n` sur les noms de test ou la fonction), puis lis seulement ce passage (Read avec offset et limit) ; "
+                   "ne relis pas un fichier déjà lu. "
+                   f"Vise {int(pc.get('reponses') or 40)} réponses ; à {int(pc.get('reponses') or 40) * 3 // 2}, arrête et rends "
+                   "ce que tu as.") + section(
                    "Tests liés aux fichiers touchés (par le nom, 0 token)",
-                   "\n".join(f"- {f} : {', '.join(t)}" for f, t in sorted(lies.items())) or
+                   "\n".join(f"- {f} : {', '.join(t[:3])}" for f, t in sorted(lies.items())) or
                    "aucun test trouvé par le nom : cherche les tests voisins du fichier touché avant d'en créer un")
 
 
@@ -281,7 +375,7 @@ def cmd_entree(p, ticket, retours="", extra=""):
     if p == "code" and not given(extra) and e.get("consignes_reprise"):
         extra = e["consignes_reprise"]
     note_retours(retours, p)
-    for f in (f"essais_{p}.json",) + (("tests_essais.json",) if p == "tests" else ()):  # nouveau passage du poste : essais à zéro
+    for f in (f"essais_{p}.json",) + (("tests_essais.json", "teste.json") if p == "tests" else ()):  # nouveau passage du poste : essais à zéro
         if os.path.exists(dossier(f)):
             os.remove(dossier(f))
     files = changed() if p in CONTROLES + ("livraison",) else []
@@ -312,12 +406,13 @@ def cmd_entree(p, ticket, retours="", extra=""):
         r = load(d + ".json")
         if r:
             cap = 24000 if d == "cadrage" else 12000  # le poste Plan porte aussi les fichiers impactés et les façons de faire
+            cap = 6000 if p == "tests" else cap  # les Tests relisent ce rapport à chaque tour : critères et fichiers suffisent
             parts.append(section(f"Rapport du poste {d}", json.dumps(r.get("resultat") or r, ensure_ascii=False, indent=1)[:cap]))
     if p in ("doc", "livraison"):
         parts.append(rejets_md())
     if p in CONTROLES or p == "livraison":
         parts.append(section("Fichiers modifiés", "\n".join(files)))
-        parts.append(section("Plan validé", json.dumps((load("plan.json") or {}).get("lots") or [], ensure_ascii=False, indent=1)[:8000]))
+        parts.append(section("Plan validé", json.dumps((load("plan.json") or {}).get("lots") or [], ensure_ascii=False, indent=1)[:4000 if p == "tests" else 8000]))
     if p in CONTROLES:
         stat = git("diff", "--stat", f"{depart()}...HEAD")
         parts.append(section("Volume du diff", stat[-3000:]))
@@ -501,6 +596,10 @@ def cmd_tri_tests():
     st["n"] += 1
     write_json(dossier("tests_essais.json"), st)
     if not v.get("ok", True) and st["n"] < 3:
+        lz = load("teste.json")
+        if lz:  # l'essai suivant corrige des tests rouges : quelques lancements de plus
+            lz["max"] = max(int(lz.get("max") or 0), int(lz.get("lances") or 0)) + 4
+            write_json(dossier("teste.json"), lz)
         print(f"Tests rouges : nouvel essai ({st['n']} sur 3)")
         sys.exit(4)
     print("Tests verts" if v.get("ok", True) else "Tests encore rouges après 3 essais : bloquant pour l'orchestrateur")

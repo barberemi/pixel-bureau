@@ -14,6 +14,27 @@ from _lib import CFG, get, read_json, send, write_json, write_text
 from _chaine import *  # noqa: F401,F403  (recopié au rendu, comme _lib)
 
 PARALLELES = ("regles", "securite", "perf", "besoin", "doc")  # en lecture seule : sous-agents d'une même étape, en même temps
+# modèle de chaque sous-agent (le coordinateur, lui, ne fait que lancer : tier economy) ; impl.postes.controles.modeles le
+# remplace poste par poste. Runs du 5 novembre : coordinateur et sous-agents sur Opus, 31 % du coût de la chaîne.
+SOUS_MODELES = {"securite": "opus"}  # les autres : sonnet
+
+
+def modele_sous(p):
+    return (poste_conf("controles").get("modeles") or {}).get(p) or SOUS_MODELES.get(p) or "sonnet"
+
+
+def garde_rapport(p):
+    """Tours 2 et suivants : un poste dont le rapport précédent n'avait aucun bloquant le garde, sans relancer de
+    sous-agent ; ceux qui ont bloqué repassent, et ceux de impl.postes.controles.toujours (sécurité par défaut : une
+    correction peut ouvrir une faille). impl.postes.controles.relance = "tous" : tous repassent, comme avant."""
+    pc = poste_conf("controles")
+    if not int(etat().get("tours") or 0) or pc.get("relance") == "tous" or p in pc.get("toujours", ["securite"]):
+        return False
+    prev = load(f"precedent_{p}.json") or {}
+    if prev.get("statut") != "ok":
+        return False
+    write_json(dossier(p + ".json"), {**prev, "garde": "rapport du tour précédent gardé : aucun bloquant"})
+    return True
 
 
 # doc du dépôt relevée pour le poste 📚 doc ; impl.repos.<dépôt>.docs en ajoute (ex. guide/)
@@ -40,19 +61,25 @@ def cmd_missions():
             ecartes.append(f"{p} : déjà fait au run d'avant (reprise)")
             continue
         ok, why = actif(p, files)
-        if ok:
+        if ok and garde_rapport(p):
+            ecartes.append(f"{p} : rapport du tour précédent gardé (aucun bloquant)")
+        elif ok:
             postes.append(p)
         else:
             write_json(dossier(p + ".json"), {"poste": p, "statut": "non_concerne", "raison": why})
             ecartes.append(f"{p} : non concerné ({why})")
-    write_json(dossier("missions.json"), {"postes": postes})
+    modeles = {p: modele_sous(p) for p in postes}
+    write_json(dossier("missions.json"), {"postes": postes, "modeles": modeles})
+    for p in postes:  # rapports écrits par les sous-agents : ceux d'un tour d'avant ne comptent plus
+        if os.path.exists(dossier("rapports", p + ".json")):
+            os.remove(dossier("rapports", p + ".json"))
     if not postes:
         print("Aucun contrôle parallèle à lancer.\n" + "\n".join(ecartes))
         sys.exit(3)
     e = etat()
     parts = [f"Ticket {e.get('ticket')}, dépôt {e.get('repo')}, branche {e.get('branch')}, tour {e.get('tours', 0) + 1}. "
              f"Point de départ du diff : {depart()} (`git diff {depart()}...HEAD`).",
-             section("Postes à lancer", ", ".join(postes) + ("\n\nÉcartés : " + " ; ".join(ecartes) if ecartes else "")
+             section("Postes à lancer", ", ".join(f"{p} (modèle {modeles[p]})" for p in postes) + ("\n\nÉcartés : " + " ; ".join(ecartes) if ecartes else "")
                      + "\n\nFront touché (templates, CSS, JS de page) : " + ("oui" if front_touche(files) else "non, le poste perf saute l'a11y")),
              perimetre(), lecture(), rejoue(), non_fiable(),
              section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else "")]
@@ -76,7 +103,10 @@ def cmd_missions():
         c = correction(p)
         if c:
             parts.append(c.replace("## Tour suivant : la correction", f"## Tour suivant, poste {p} : la correction"))
-    out("".join(parts))
+    write_text(dossier("controles_contexte.md"), "".join(parts))
+    os.makedirs(dossier("rapports"), exist_ok=True)
+    out(section("Contexte commun : fichier", f"`{os.path.relpath(dossier('controles_contexte.md'), root())}` (le texte ci-dessous). "
+                f"Rapports : `{os.path.relpath(dossier('rapports'), root())}/<poste>.json`.") + "".join(parts))
 
 
 def releve_doc_chaine(files):
@@ -90,13 +120,17 @@ def releve_doc_chaine(files):
 
 
 def cmd_range():
-    """Les rapports des sous-agents (stdin : la sortie de l'étape parallèle) rangés poste par poste ; un poste lancé sans
-    rapport est noté en panne (le bilan le signale)."""
+    """Les rapports des sous-agents rangés poste par poste : chacun écrit le sien (rapports/<poste>.json), ou le coordinateur
+    le rend sous sa clé (stdin : la sortie de l'étape parallèle) ; un poste lancé sans rapport est noté en panne (le bilan le
+    signale)."""
     d = parse(read_stdin()) or {}
     postes = (load("missions.json") or {}).get("postes") or []
     res = {}
     for p in postes:
         prop = d.get(p) if isinstance(d, dict) else None
+        f = dossier("rapports", p + ".json")
+        if not isinstance(prop, dict) and os.path.exists(f):  # écrit par le sous-agent (le coordinateur ne recopie rien)
+            prop = parse(open(f, encoding="utf-8").read())
         if isinstance(prop, dict) and ("constats" in prop or "exigences" in prop or "docs" in prop or "resume" in prop):
             prop.setdefault("constats", [])
             res[p] = ecrit_rapport(p, prop)["statut"]
