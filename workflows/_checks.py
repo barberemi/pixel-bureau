@@ -4,8 +4,10 @@ aux PR remises à jour ou corrigées depuis le Bureau (pr_update.py) : recopié 
 
 Une commande : chaîne, ou {cmd, subdir} (chemins relatifs à ce sous-dossier, fichiers hors de lui écartés). Emplacements :
 {worktree}, {main} (dossier du projet, ses dépendances), {base}, {files}, {php}, {ts}, {tests}, {tests_php}, {tests_ts}.
-Une commande rouge est relancée sur le point de départ : déjà rouge pareil, ce n'est pas à corriger."""
-import os, re, subprocess, time
+Une commande rouge est relancée sur le point de départ : déjà rouge pareil, ce n'est pas à corriger.
+Chaque valeur est citée pour le shell (shlex.quote : un nom ordinaire reste tel quel) : les noms de fichiers et la
+branche de base viennent de la PR, un `$(…)` dans un nom ne doit jamais s'exécuter."""
+import os, re, shlex, subprocess, time
 
 CHECK_NEEDS = re.compile(r"\{(php|ts|tests|tests_php|tests_ts|files)\}")
 
@@ -21,8 +23,9 @@ def check_fill(check, files, wt, main="", base="main"):
              "tests": [f for f in files if re.search(r"(test|spec)", f, re.I)],
              "tests_php": [f for f in files if f.endswith("Test.php")],
              "tests_ts": [f for f in files if re.search(r"\.(test|spec)\.(ts|tsx|js)$", f)]}
-    rep = {"worktree": wt, "main": main or "", "base": base or "main"}
-    rep.update({k: " ".join(v) for k, v in kinds.items()})
+    q = lambda v: shlex.quote(v) if v else ""
+    rep = {"worktree": q(wt), "main": q(main or ""), "base": q(base or "main")}
+    rep.update({k: " ".join(shlex.quote(f) for f in v) for k, v in kinds.items()})
     for k, v in rep.items():
         cmd = cmd.replace("{" + k + "}", v)
     return cmd, kinds

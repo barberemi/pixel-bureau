@@ -5,7 +5,7 @@
 set -e
 cd "$(dirname "$0")/.."
 node --test tests/*.test.js
-python3 -W error::ResourceWarning -m unittest -q tests/test_templates.py tests/test_install.py tests/test_scripts.py tests/test_plan.py tests/test_theme.py tests/test_compact.py tests/test_visual.py tests/test_pack.py tests/test_mail.py tests/test_preview.py tests/test_public.py tests/test_release.py tests/test_publish.py tests/test_mep.py tests/test_pr_update.py tests/test_settings.py tests/test_models.py tests/test_support.py tests/test_todos.py tests/test_ai_time.py tests/test_refresh.py tests/test_chaine.py tests/test_chaine_bilan.py tests/test_support_bilan.py tests/test_redaction_bilan.py tests/test_retours.py tests/test_ticket_chain.py tests/test_lpc_sheet.py tests/test_review.py
+python3 -W error::ResourceWarning -m unittest -q tests/test_templates.py tests/test_install.py tests/test_scripts.py tests/test_plan.py tests/test_theme.py tests/test_compact.py tests/test_visual.py tests/test_checks.py tests/test_pack.py tests/test_mail.py tests/test_preview.py tests/test_public.py tests/test_release.py tests/test_publish.py tests/test_mep.py tests/test_pr_update.py tests/test_settings.py tests/test_models.py tests/test_support.py tests/test_todos.py tests/test_ai_time.py tests/test_refresh.py tests/test_chaine.py tests/test_chaine_bilan.py tests/test_support_bilan.py tests/test_redaction_bilan.py tests/test_retours.py tests/test_ticket_chain.py tests/test_lpc_sheet.py tests/test_review.py
 PY=python3
 [ -x .venv/bin/python ] && PY=.venv/bin/python
 "$PY" tools/smoke.py "$@"

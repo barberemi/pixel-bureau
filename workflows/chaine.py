@@ -28,7 +28,7 @@ chaine.py : dossier, postes et Code.
                                     # et commité, bilan du Code puis code 4 (contrôles) ; sinon code 1
   bilan                             # bilan du run (historique de la page « Chaîne · bilan »), aussi écrit après chaque étape
 """
-import fnmatch, hashlib, json, os, re, subprocess, sys, time
+import fnmatch, hashlib, json, os, re, shlex, subprocess, sys, time
 from _lib import CFG, get, read_json, send, write_json, write_text
 from _chaine import *  # noqa: F401,F403  (recopié au rendu, comme _lib)
 
@@ -143,7 +143,7 @@ def reprend(ticket, repo, mode, run):
 
 
 # Lanceur du poste 🧪 Tests (0 token) : checks.tests du dépôt sur les fichiers donnés, sortie coupée aux échecs, plafonné.
-TESTE = r"""import json, os, re, subprocess, sys
+TESTE = r"""import json, os, re, shlex, subprocess, sys
 D = os.path.dirname(os.path.abspath(__file__))
 P = os.path.join(D, "teste.json")
 c = json.load(open(P))
@@ -167,7 +167,7 @@ for ch in c["checks"]:
     if not mine or need and not any(got[k] for k in need):  # sans emplacement : toute la commande, si un fichier est à elle
         continue
     for k in K:
-        cmd = cmd.replace("{" + k + "}", " ".join(got[k]))
+        cmd = cmd.replace("{" + k + "}", " ".join(shlex.quote(f) for f in got[k]))  # noms venus du dépôt : cités pour sh
     try:
         r = subprocess.run(["sh", "-c", cmd], cwd=wt, capture_output=True, text=True, timeout=900)
         rc, txt = r.returncode, r.stdout + r.stderr
@@ -205,7 +205,8 @@ def teste_ecrit():
     checks = (reglages().get("checks") or {}).get("tests") or []
     if not checks:
         return None
-    rep = {"worktree": root(), "main": main_dir(), "base": etat().get("base") or "main"}
+    q = lambda v: shlex.quote(v) if v else ""  # cités pour sh : la branche de base vient de la PR
+    rep = {"worktree": q(root()), "main": q(main_dir()), "base": q(etat().get("base") or "main")}
     cmds = []
     for ch in checks:
         cmd, sub = (ch, "") if isinstance(ch, str) else (ch.get("cmd") or "", (ch.get("subdir") or "").strip("/"))
