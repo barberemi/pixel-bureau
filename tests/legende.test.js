@@ -54,3 +54,10 @@ test('les couleurs de la légende : une pastille par libellé, en ordre', () => 
     '<span class="lk"><i class="sq" style="background:#111"></i>un</span><span class="lk"><i class="sq" style="background:#222"></i>deux</span>');
   assert.match(J('floorHelp(1).bar()'), /validé.*en cours.*bloquant.*avis.*t&#39;attend.*sauté.*en panne/s, 'au 1er, AT_ST');
 });
+
+test('les anneaux de la légende ne prennent pas le style des cartes KPI (.dash)', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'page', 'office_template.html'), 'utf8')
+    + fs.readFileSync(path.join(__dirname, '..', 'page', 'src', '68-caserne.js'), 'utf8');
+  assert.doesNotMatch(html, /class="ring (dash|dot)"/);
+  assert.match(html, /class="ring ring-dash"/);
+});

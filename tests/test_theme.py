@@ -55,6 +55,15 @@ class ThemeTest(unittest.TestCase):
             self.assertEqual(theme.main(["check", menthe, pale]), 1)
         self.assertIn("✓ thème valide", out.getvalue())
 
+    def test_state_badges_ink(self):
+        """Badges et étiquettes sur fond d'état (ok, warn, err, info, idle) : texte en --on-accent, contraste vérifié."""
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp)
+        clair = os.path.join(tmp, "theme-clair.css")
+        Path(clair).write_text('/* @nom: Clair */\n:root[data-skin="clair"]{--bg:#000000;--panel:#000000;--chip:#000000;'
+                               '--ink:#ffffff;--ok:#4cc27c;--on-accent:#ffffff}\n')
+        self.assertIn("--on-accent sur --ok : 2.25:1 (minimum 4.5:1)", theme.check(clair)[0])
+
     def test_fonts_are_embedded(self):
         html = assemble.page_html()
         self.assertNotIn("@@font:", html)

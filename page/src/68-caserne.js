@@ -16,7 +16,7 @@ const CS_POSTES=[{k:'tri',i:'🏷',n:'Tri',d:'trie l\'appel : de quoi on parle, 
   {k:'gate',i:'✋',n:'Toi',gate:true,d:'tu valides la réponse'},{k:'post',i:'📣',n:'Teams',d:'poste la réponse dans le fil Teams'}];
 const CS_ST={ok:['ok','a travaillé'],run:['run','au travail'],err:['err','en panne'],gate:['wait','t\'attend'],wait:['','attend son tour']};
 // « Comment lire le plan » au -1 (46-legende.js) ; les postes viennent de CS_POSTES
-const CS_HELP={bar:()=>'<span class="lk"><i data-st="work"></i>au travail</span><span class="lk"><i class="ring dot" data-st="gate"></i>t\'attend</span><span class="lk"><i class="ring dash" data-st="error"></i>en panne</span><span>🚨 gyrophare : un appel attend ou une intervention tourne</span>',
+const CS_HELP={bar:()=>'<span class="lk"><i data-st="work"></i>au travail</span><span class="lk"><i class="ring ring-dot" data-st="gate"></i>t\'attend</span><span class="lk"><i class="ring ring-dash" data-st="error"></i>en panne</span><span>🚨 gyrophare : un appel attend ou une intervention tourne</span>',
   postes:()=>[['',CS_POSTES]],
   qui:'<p><b>Pompiers</b> : les agents, en tenue de sapeur-pompier, un par poste.</p><p><b>Le capitaine</b> (le boss), à son bureau, va ouvrir la vanne quand une réponse attend ta validation.</p><p>La garde reste le soir et le week-end, sous la veilleuse.</p>',
   ou:'<p><b>Trois baies</b> : trois interventions à la fois, chacune avec son camion.</p><p><b>Le tableau</b> : son voyant clignote à chaque appel. <b>La pile</b> sur le bureau du capitaine : les appels à prendre.</p><p><b>La barre</b> : les pompiers y descendent et y remontent.</p>',

@@ -102,7 +102,7 @@
   background:var(--chip) var(--select-arrow) no-repeat right 12px center;
 }
 /* anneaux de la légende (« En panne », « Attend ta validation »…) : ronds et en pointillés comme dans le thème classique,
-   malgré les coins carrés du thème (leur classe dash = pointillés, à ne pas confondre avec les cartes KPI section.dash) */
+   malgré les coins carrés du thème (ring-dash, ring-dot : pas « dash » seul, que prennent les cartes KPI) */
 :root[data-skin] body:not(.tv) i.ring{border-radius:50%!important}
 /* cadres pixel du mode TV (même principe que --frame de la page, couleur --tv-line2) */
 :root[data-skin] body.tv{

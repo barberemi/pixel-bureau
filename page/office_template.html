@@ -13,7 +13,7 @@
   <header>
     <div>
       <h1>Le Bureau</h1>
-      <div class="sub">Tout ce qui s'est passé aujourd'hui sur Kronn. Cliquez sur un collègue pour voir sa journée.</div>
+      <div class="sub">Tout ce qui s'est passé aujourd'hui sur Kronn. Clique sur un collègue pour voir sa journée.</div>
     </div>
     <div class="hright">
       <div class="clockrow"><button class="recapbtn" id="searchbtn" title="Chercher un ticket, une PR, une personne, un agent (⌘K ou /)">🔍 Chercher</button><button class="recapbtn" id="recapbtn" aria-expanded="false" aria-controls="recap" title="Ce qui s'est passé depuis minuit">☀ Récap</button><button class="recapbtn" id="skinbtn" title="Thème de la page">🎨</button><div class="clock" id="clock">--:--</div></div>
@@ -42,8 +42,8 @@
         <div class="legend">
           <span><i data-st="work"></i>Au travail</span>
           <span><i data-st="srv"></i>Serveurs / réunion</span>
-          <span><i class="ring dot" data-st="gate"></i>Attend ta validation</span>
-          <span><i class="ring dash" data-st="error"></i>En panne</span>
+          <span><i class="ring ring-dot" data-st="gate"></i>Attend ta validation</span>
+          <span><i class="ring ring-dash" data-st="error"></i>En panne</span>
           <span><i data-st="idle"></i>Pause / dispo</span>
           <span class="lg-holo">Hologrammes :<span><i data-fam="jour"></i>Au quotidien</span><span><i data-fam="page"></i>Pages</span><span><i data-fam="autre"></i>Autres</span></span>
         </div>
@@ -58,8 +58,8 @@
               <p><b>Bureau</b> : travaille · <b>Serveurs</b> : appelle une API · <b>Réunion</b> : sous-workflows · <b>Bureau du boss</b> : ce qui t'attend · <b>Toilettes</b> : en panne (🚨 3 échecs d'affilée) · <b>Plateau TV</b> : mises en prod du jour (fermé le vendredi et le week-end) · <b>Mur du fond</b> : crons et Kanban du sprint.</p>
               <p>Sur les bureaux, une barre par ticket ouvert : <span class="lk"><i class="sq" data-cat="doing"></i>en cours</span><span class="lk"><i class="sq" data-cat="review"></i>review</span><span class="lk"><i class="sq" data-cat="test"></i>test</span><span class="lk"><i class="sq" data-cat="deploy"></i>à déployer</span><span class="lk"><i class="sq" data-cat="todo"></i>à faire</span>. Sur le caisson : les feuilles blanches de la facilitatrice (créés depuis le daily), les dossiers jaunes du testeur (à tester) ; survole une pile pour le détail.</p></div>
             <div data-tab="etats"><h4>États (couleur et forme de l'anneau)</h4>
-              <p><span class="lk"><i data-st="work"></i>au travail</span><span class="lk"><i data-st="srv"></i>serveurs, réunion</span><span class="lk"><i class="ring dot" data-st="gate"></i>validation</span><span class="lk"><i class="ring dash" data-st="error"></i>en panne</span>
-              <span class="lk"><i data-st="mep"></i>mise en prod</span><span class="lk"><i data-st="daily"></i>daily</span><span class="lk"><i class="ring dot" data-st="ask"></i>attend ta réponse</span><span class="lk"><i data-st="frozen"></i>⏸ données figées</span><span class="lk"><i data-st="idle"></i>pause, dispo</span></p></div>
+              <p><span class="lk"><i data-st="work"></i>au travail</span><span class="lk"><i data-st="srv"></i>serveurs, réunion</span><span class="lk"><i class="ring ring-dot" data-st="gate"></i>validation</span><span class="lk"><i class="ring ring-dash" data-st="error"></i>en panne</span>
+              <span class="lk"><i data-st="mep"></i>mise en prod</span><span class="lk"><i data-st="daily"></i>daily</span><span class="lk"><i class="ring ring-dot" data-st="ask"></i>attend ta réponse</span><span class="lk"><i data-st="frozen"></i>⏸ données figées</span><span class="lk"><i data-st="idle"></i>pause, dispo</span></p></div>
             <div data-tab="env"><h4>Enveloppes (un run passe la main)</h4>
               <p><span class="lk"><i class="sq" style="background:#3fb8c9"></i>sous-run</span><span class="lk"><i class="sq" style="background:#e8e2d0"></i>déclenche un workflow</span><span class="lk"><i class="sq" style="background:#3fb37f"></i>rendu</span><span class="lk"><i class="sq" style="background:#d1453b"></i>rendu en échec</span><span class="lk"><i class="sq" style="background:#e0a020"></i>validation</span><span class="lk"><i class="sq" style="background:#d46fb0"></i>discussion</span></p></div>
           </div>
