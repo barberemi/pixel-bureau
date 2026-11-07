@@ -403,13 +403,13 @@ function feedView(ev,mode){
   }
   return out;
 }
-// « ⏵ revoir » d'une ligne du fil (replayAt, 80-input.js) : seulement dans la journée rejouable, pas en mode TV
+// « ⏪ revoir » d'une ligne du fil (visible au survol ou au focus de la ligne) (replayAt, 80-input.js) : seulement dans la journée rejouable, pas en mode TV
 // fl : l'étage où se joue le moment (1 : le 1er, 69-atelier-rdc.js) ; revoir y monte d'abord
-const rvBtn=(t,fl)=>!TV&&t>=RSTART&&t<=REND?`<button class="rv" data-rv="${t}"${fl?` data-fl="${fl}"`:''} title="Revoir ce moment sur le plan : 20 s avant, en ×1" aria-label="Revoir ${hm(t)} sur le plan">⏵ revoir</button>`:'';
+const rvBtn=(t,fl)=>!TV&&t>=RSTART&&t<=REND?`<button class="rv" data-rv="${t}"${fl?` data-fl="${fl}"`:''} title="Revoir ce moment sur le plan : 20 s avant, en ×1" aria-label="Revoir ${hm(t)} sur le plan">⏪</button>`:'';
 function renderFeedList(view,all=FEED_ALL){
   FEED_VIEW=view;FEED_ALL=all;
   const box=document.getElementById('feed');
-  let html=FEED_PIN.length?`<div class="feedpin"><div class="pinh">En ce moment</div>${FEED_PIN.map((e,i)=>
+  let html=FEED_PIN.length?`<div class="feedpin${FEED_PIN.some(e=>e.t)?' attn':''}"><div class="pinh">En ce moment</div>${FEED_PIN.map((e,i)=>
     `<div class="ev" data-pin="${i}"${e.duck||e.c||e.at?' tabindex="0" role="button"':''}><span class="tm">${e.t?hm(e.t):'auj.'}</span><span class="x">${e.txt}</span></div>`).join('')}</div>`:'';
   if(!view.length)html+=`<div class="empty">${all.length?'Rien pour ces types : rallume une pastille.':FEED_MODE==='important'&&FEED_EV.length?'Rien d\'important pour l\'instant.':'Rien pour l\'instant. Le bureau est encore vide.'}</div>`;
   let lastH=null;

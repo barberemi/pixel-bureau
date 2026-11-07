@@ -47,7 +47,15 @@ test('« ⏵ revoir » : 20 s avant le moment, en ×1, en lecture ; un bouton su
   const t = J('RSTART') + 120 * M;
   const r = J(`(() => { replayAt(${t}); return {d: ${t} - T, SPEED, mode}; })()`);
   assert.deepEqual(r, {d: 20e3, SPEED: 1, mode: 'play'});
-  assert.match(J(`rvBtn(${t})`), new RegExp(`^<button class="rv" data-rv="${t}"[^>]*>⏵ revoir</button>$`));
+  assert.match(J(`rvBtn(${t})`), new RegExp(`^<button class="rv" data-rv="${t}"[^>]*aria-label="Revoir [^"]+ sur le plan">⏪</button>$`));
   assert.equal(J(`rvBtn(RSTART - 60e3)`), ''); // avant la journée rejouable
   assert.equal(J(`(() => { TV = true; const b = rvBtn(${t}); TV = false; return b; })()`), ''); // écran partagé : pas de bouton
+});
+
+test('« En ce moment » encadré quand une décision t\'attend, pas pour le seul repère du jour', () => {
+  run("FEED_SIG = ''; FEED_PIN = [{t: null, txt: 'repère'}]; renderFeedList([], []);");
+  assert.match(J('FEED_SIG'), /class="feedpin"/);
+  run("FEED_SIG = ''; FEED_PIN = [{t: T, txt: '✋ décision'}, {t: null, txt: 'repère'}]; renderFeedList([], []);");
+  assert.match(J('FEED_SIG'), /class="feedpin attn"/);
+  run("FEED_SIG = ''; FEED_PIN = [];");
 });

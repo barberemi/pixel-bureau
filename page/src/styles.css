@@ -84,7 +84,9 @@ body.tv .gal{display:none}
 .thours{position:relative;height:13px;font:10px ui-monospace,Menlo,monospace;color:var(--muted)}
 .thours span{position:absolute;top:1px;transform:translateX(-50%)}
 .spd{font-variant-numeric:tabular-nums;min-width:74px}
-.ev .rv{font:600 10px ui-monospace,Menlo,monospace;padding:0 5px;margin:0 6px 0 0;border-radius:4px;color:var(--accent);background:transparent;border-color:currentColor;flex:none;align-self:center}
+.ev .rv{font:14px/1 system-ui,sans-serif;padding:0 4px;margin:0 6px 0 0;color:var(--accent);background:transparent;border:0;flex:none;align-self:center;opacity:0}
+.ev:hover .rv,.ev:focus-within .rv,.ev .rv:focus-visible{opacity:1} /* ⏪ au survol ou au focus de la ligne : le fil reste lisible */
+@media (hover:none){.ev .rv{opacity:1}}
 .tlabel{font:600 13px ui-monospace,Menlo,monospace;color:var(--muted);min-width:44px}
 .legend{display:flex;gap:12px;flex-wrap:wrap;padding:6px 4px 0;color:var(--muted);font-size:12px}
 .legend i.sq{border-radius:1px;outline:1px solid #1a1320}
@@ -615,6 +617,8 @@ body.km-on #freshpop:has(.kmodal){display:block;z-index:50}
 /* « En ce moment » en haut du fil : ce qui t'attend (depuis quand) et les repères du jour */
 #feed .feedpin{background:var(--chip);border-left:3px solid var(--accent);padding:6px 6px 4px;margin:0 0 10px}
 #feed .feedpin .pinh{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:0 6px 4px}
+#feed .feedpin.attn{background:color-mix(in srgb,var(--warn) 9%,var(--panel));border-left-color:var(--warn);box-shadow:0 0 0 2px color-mix(in srgb,var(--warn) 45%,transparent)} /* une décision t'attend : l'encadré ressort */
+#feed .feedpin.attn .pinh{color:var(--warn)}
 #feed .feedpin .ev:hover{background:var(--panel)}
 #feed .feedpin .ev:hover .lk-id{background:var(--chip)}
 #feed .since{color:var(--warn);font-size:12px;white-space:nowrap}
