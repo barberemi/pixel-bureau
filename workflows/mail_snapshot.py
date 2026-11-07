@@ -20,7 +20,7 @@ useful: [{id, name, addr, subject, at, direct, flagged, open}], ignored: [[nom, 
 Un compte en échec garde sa place (ok faux, error) et l'erreur part sur stderr : jamais un dataset partiel sans trace.
 warnings (#8) : règles validées de la page illisibles, tri fait avec celles de la config (panneau Fraîcheur).
 """
-import email.header, email.utils, imaplib, json, os, subprocess, sys, urllib.parse, urllib.request
+import email.header, email.utils, imaplib, json, os, ssl, subprocess, sys, urllib.parse, urllib.request
 from datetime import datetime, timedelta
 from email.parser import BytesHeaderParser
 from _lib import CFG, TZ, dumps, get
@@ -134,10 +134,21 @@ def secret(ref, user):
 FIELDS = "FROM TO CC SUBJECT DATE MESSAGE-ID LIST-UNSUBSCRIBE LIST-ID AUTO-SUBMITTED PRECEDENCE"
 
 
+LOCAL_HOSTS = ("127.0.0.1", "localhost", "::1")
+
+
 def imap(acc, every=False):
     host, user = acc.get("host") or "", acc.get("user") or ""
     port = int(acc.get("port") or (993 if acc.get("ssl", True) else 143))
-    c = imaplib.IMAP4_SSL(host, port, timeout=60) if acc.get("ssl", True) else imaplib.IMAP4(host, port, timeout=60)
+    # certificat vérifié (imaplib ne le fait pas par défaut avant Python 3.13) ; sans "ssl" : STARTTLS, sauf vers la machine
+    # elle-même (passerelle locale), le seul cas où le mot de passe peut passer en clair
+    tls = ssl.create_default_context()
+    if acc.get("ssl", True):
+        c = imaplib.IMAP4_SSL(host, port, timeout=60, ssl_context=tls)
+    else:
+        c = imaplib.IMAP4(host, port, timeout=60)
+        if host not in LOCAL_HOSTS:
+            c.starttls(ssl_context=tls)
     try:
         c.login(user, secret(acc.get("secret"), user))
         c.select("INBOX", readonly=True)
