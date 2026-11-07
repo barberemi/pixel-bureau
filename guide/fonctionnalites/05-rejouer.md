@@ -9,7 +9,7 @@ La barre sous le plan déplace l'heure affichée : tout le bureau (personnages, 
 - Le curseur va du premier run du jour (un quart d'heure avant) à la dernière donnée reçue.
 - **La vitesse** : le bouton « ⏩ ×480 » passe à la suivante à chaque clic (×1, ×2, ×10, ×60, ×480). En lecture rapide, les personnages marchent plus vite (jusqu'à 8 fois à ×480), pour arriver à temps à leurs scènes et repartir sans traîner.
 - **Les étages** rejouent aussi : le 1er (bureaux, cartons, Bernard) et le -1 (interventions, pompiers, camion) se reconstruisent à l'heure du curseur ; voir [L'atelier](23-atelier.md) et [La caserne](25-caserne.md).
-- **« ⏵ revoir »**, sur chaque ligne du fil de la journée (celles du 1er montent à l'étage) : le bureau se place 20 s avant ce moment et le rejoue en ×1, pour voir la scène (soucoupe-mère qui va chercher la facilitatrice, Gandalf, Yoda, une mise en prod…) et la montrer. La loupe s'ouvre sur la scène comme en direct.
+- **« ⏪ »** (revoir), au survol ou au focus de chaque ligne du fil de la journée (celles du 1er montent à l'étage) : le bureau se place 20 s avant ce moment et le rejoue en ×1, pour voir la scène (soucoupe-mère qui va chercher la facilitatrice, Gandalf, Yoda, une mise en prod…) et la montrer. La loupe s'ouvre sur la scène comme en direct.
 - L'en-tête dit d'où viennent les données (direct, instantané, démo) ; voir [Fraîcheur](10-fraicheur.md). En rejeu ou en pause, son badge passe en ambre : « Rejeu 09:30 · données de 23:50 ».
 
 ## Les scènes du bureau

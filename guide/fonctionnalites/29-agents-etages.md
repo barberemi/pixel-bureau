@@ -1,6 +1,6 @@
 # Les agents des étages
 
-Chaque étage a son agent au RDC : 🚒 Support (-1), 📰 Ticket (2e), 🔍 Revue (2e), 🩹 Retours (3e), 🏗 Implé (1er). Il reste toujours à sa place, même sans run du jour, pour qu'on le trouve et qu'on lance son workflow d'un clic.
+Chaque étage a son agent au RDC : 🚒 Support (-1), ✍ Ticket (2e), 🔍 Revue (2e), 🛠 Retours (3e), 🏭 Implémentation (1er) : l'icône est celle de l'onglet de son étage (la Revue, seconde salle du 2e, garde la sienne), et sur le plan l'Implémentation s'écrit « Implé ». Il reste toujours à sa place, même sans run du jour, pour qu'on le trouve et qu'on lance son workflow d'un clic.
 
 ![La barre « AGENTS » au-dessus des onglets d'étage, et les agents à leur place](../img/agents-etages.png)
 
