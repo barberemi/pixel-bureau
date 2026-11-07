@@ -94,6 +94,7 @@ function tvLiveChip(){
   if(!v)return `<span class="chip ok"><b>●</b>direct</span>`;
   return `<span class="chip ${v.late?'warn':'ok'} tvfresh">${freshRing(v.frac,18)}${esc(v.txt)}</span>`;
 }
+const tvRejeu=()=>mode!=='live'?hm(T):''; // l'heure affichée hors du direct, '' en direct
 function updateTv(force){
   if(!TV||!DATA)return;
   const bar=document.getElementById('tvbar');
@@ -104,6 +105,10 @@ function updateTv(force){
       `<button id="${id}" class="${sceneMode(T)===k?'on':''}">${sceneMode(T)===k?'Retour au plan':l}</button>`).join('')+
     (floorsOn().length>1?`<button id="tvfloor">${FLOOR_NAME(nextFloor(false))}</button>`:'')+`<button id="tvexit">Quitter</button>`;
   bar.querySelector('#tvexit').onclick=()=>setTv(false);
+  // hors du direct (rejeu, pause), le bandeau ne dit plus « EN DIRECT » mais « ⏪ REJEU hh:mm » (pixel.css), plan cerclé d'ambre
+  const tk=document.getElementById('tvticker'), rj=tvRejeu();
+  if((tk.getAttribute('data-rejeu')||'')!==rj){if(rj)tk.setAttribute('data-rejeu',rj);else tk.removeAttribute('data-rejeu');}
+  document.body.classList.toggle('tvreplay',!!rj);
   const fb=bar.querySelector('#tvfloor');if(fb)fb.onclick=()=>{TV_FLOOR_ALT=false;setFloor(nextFloor(false));updateTv(true);}; // 68-atelier.js, 68-caserne.js
   bar.querySelector('#tvstand').onclick=()=>toggleScenes('daily');
   bar.querySelector('#tvplan').onclick=()=>toggleScenes('planning');

@@ -149,6 +149,8 @@
 :root[data-skin] body.tv #tvticker{background:#ffffff;color:#0a1420;border-top:0}
 :root[data-skin] body.tv #tvticker::before{content:'EN DIRECT';position:absolute;z-index:2;left:0;top:0;bottom:0;display:flex;align-items:center;padding:0 18px;
   background:#b3122e;color:#ffffff;font:400 16px 'BureauPixel',ui-monospace,monospace;box-shadow:6px 0 0 0 #ffffff}
+:root[data-skin] body.tv #tvticker[data-rejeu]::before{content:'⏪ REJEU ' attr(data-rejeu);background:var(--tv-warn);color:#1b1404}
+:root[data-skin] body.tv.tvreplay #cv{outline:4px solid var(--tv-warn);outline-offset:-4px}
 :root[data-skin] body.tv #tvticker .run .tm{color:#b3122e;font:400 16px 'BureauPixel',ui-monospace,monospace}
 :root[data-skin] body.tv #tvticker .calm{color:#566880;padding-left:200px}
 /* loupe : fenêtre flottante cadrée, ombre décalée, liseré de l'événement gardé */

@@ -169,7 +169,7 @@ function setFloor(f){
   if(FLOOR===1){AT_MEM.fresh=true;AT_MEM.src=null;AT_MEM.boss=null;AT_MEM.scenes=[];AT_MEM.leaving=[null,null,null,null];}
   else if(FLOOR===-1)csReset();else if(FLOOR===3)rtReset();else if(FLOOR===2)rdReset();else needTeleport=true;
   if(typeof LOUPE!=='undefined'){LOUPE.seen=null;LOUPE.settle=performance.now()+600;LOUPE.queue=[];if(LOUPE.cur)loupeHide();}
-  atelierTabs();renderSide(true);if(TV)updateTv(true); // 75-tv.js : la colonne et le bouton d'étage
+  sideForFloor(FLOOR);atelierTabs();renderSide(true);if(TV)updateTv(true); // 75-tv.js : la colonne et le bouton d'étage
   if(typeof renderLegend==='function')renderLegend(); // 46-legende.js : la légende et « Comment lire le plan » de cet étage, ses scènes
 }
 // ---------- le plan de l'étage ----------
