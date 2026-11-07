@@ -91,15 +91,13 @@ test('Qui fait quoi : un poste par bureau occupé, la gate en premier pour toi ;
   assert.equal(J('atTvWhoHtml(DAY0)'), '');
 });
 
-test('chiffres du haut : bureaux, gates qui t\'attendent, sortis aujourd\'hui à l\'heure affichée, file, pannes ; la tuile monte à l\'étage', () => {
+test('chiffres du haut : bureaux, gates qui t\'attendent, sortis aujourd\'hui à l\'heure affichée, file, pannes ; sa ligne de L\'immeuble', () => {
   setAtelier();
   assert.deepEqual(J('atKpi(DAY0 + 12 * 36e5)'), {rooms: 2, wait: 1, out: 1, queue: 1, pannes: 1});
   assert.equal(J('atKpi(DAY0 + 14 * 36e5).out'), 2);
-  const h = J('atKpiHtml(atKpi(DAY0 + 12 * 36e5))');
-  assert.match(h, /data-open="atelier"/);
-  assert.match(h.replace(/<[^>]+>/g, ''), /2\/4.*✋ 1 t'attend · 🧯 1 panne · 📦 1 sorti aujourd'hui · ⏳ 1 en file/s);
-  assert.equal((h.match(/class="cap/g) || []).length, 1, 'une ligne : le bandeau garde sa hauteur');
-  assert.match(h, /title="Monter au 1er étage\n✋ 1 t&#39;attend · 🧯 1 panne/, 'le texte entier au survol');
+  const r = J('imRows(DAY0 + 12 * 36e5).find(r => r.f === 1)');
+  assert.deepEqual([r.cnt, r.cap, r.wait, r.pannes], [2, 4, 1, 1]);
+  assert.deepEqual(r.tip, ["📦 1 sorti aujourd'hui", '⏳ 1 en file'], 'le reste au survol');
   setAtelier(false);
   assert.equal(J('atKpi(DAY0 + 12 * 36e5).out'), 3, 'la démo invente ses sorties (3 au plus)');
 });

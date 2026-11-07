@@ -36,7 +36,7 @@ test('une copie dessinée à un étage (atWorker) ne porte pas la tenue du RDC',
 
 test('étiquette : le métier et son icône, pas le prénom, en mode TV aussi', () => {
   assert.equal(J('labelText(byKey.nellie)'), '🚒 Support');
-  assert.equal(J('labelText(byKey.ryan)'), '🏗 Implé');
+  assert.equal(J('labelText(byKey.ryan)'), '🏭 Implé', 'au plan, le nom court ; l\'icône de son étage');
   run('TV=true;');
   try { assert.equal(J('labelText(byKey.dwight)'), '🔍 Revue'); } finally { run('TV=false;'); }
   assert.match(J('labelText(byKey.jim)'), /Jim/); // les autres agents gardent leur prénom
@@ -69,7 +69,7 @@ test('la barre : métier, étage et état ; pas de prénom affiché', () => {
   const h = run('mtBarHtml()');
   assert.match(h, /🚒 Support<span class="mt-fl">-1<\/span>/);
   assert.match(h, /🔍 Revue<span class="mt-fl">2e<\/span>/);
-  assert.match(h, /🏗 Implé<span class="mt-fl">1er<\/span>/);
+  assert.match(h, /🏭 Implémentation<span class="mt-fl">1er<\/span>/, 'dans la barre, le nom en entier et l\'icône de l\'onglet');
   assert.match(h, /data-mt="dwight"/);
   assert.doesNotMatch(h.replace(/title="[^"]*"/g, ''), /Dwight|Ryan|Nellie/); // le prénom seulement dans l'infobulle
   assert.doesNotMatch(h, /mt-go|▸/); // toute la carte se clique : pas de bouton ▸ à part

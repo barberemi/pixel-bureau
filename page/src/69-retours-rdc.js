@@ -32,11 +32,3 @@ function rtKpi(t){
   const out=ev.length?ev.filter(e=>e.k==='push'&&ms(e.t)>=DAY0&&ms(e.t)<=t).length:(+d.pousses||0);
   return {rooms:rooms.length,wait:rooms.filter(r=>r.gate).length,out,queue:(d.queue||[]).length,pannes:(d.pannes||[]).length};
 }
-// une seule ligne sous le chiffre, comme la tuile du 1er : le bandeau ne grandit pas ; le texte entier au survol
-function rtKpiHtml(a){
-  const parts=[a.wait?`<span style="color:var(--warn)">✋ ${a.wait} ${a.wait>1?"t'attendent":"t'attend"}</span>`:'',a.pannes?`<span style="color:var(--err)">🧯 ${plural(a.pannes,'panne','pannes')}</span>`:'',
-    `📤 ${a.out} ${a.out>1?'poussées':'poussée'} aujourd'hui`,a.queue?`⏳ ${a.queue} en file`:''].filter(Boolean);
-  return `<section class="dash retours click${a.pannes?' err':a.wait?' warn':''}" data-open="retours" tabindex="0" role="button" title="${esc('Monter au 3e étage : les retours de PR\n'+parts.map(p=>p.replace(/<[^>]+>/g,'')).join(' · '))}">`+
-    `<h3>Le 3e étage</h3><div class="row"><div class="big">${a.rooms}<small>/${RT_N}</small></div><div class="grow">PR en correction</div></div>`+
-    `<div class="cap">${parts.join(' · ')}</div></section>`;
-}

@@ -25,8 +25,8 @@ h1{font-size:22px;margin:0;letter-spacing:-.01em}
 .badge i{width:8px;height:8px;border-radius:50%;background:var(--idle);display:inline-block}
 .badge.live i{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 25%,transparent)}
 .kpis{display:grid;grid-template-columns:minmax(320px,1.6fr) minmax(240px,1fr) minmax(200px,.8fr);gap:10px;margin-bottom:14px;align-items:stretch}
-.kpis.n4{grid-template-columns:minmax(300px,1.5fr) minmax(220px,1fr) minmax(190px,.8fr) minmax(200px,.85fr)} /* la tuile du 1er étage (69-atelier-rdc.js) */
-.kpis.n5{grid-template-columns:minmax(270px,1.35fr) minmax(200px,1fr) minmax(170px,.75fr) minmax(180px,.8fr) minmax(180px,.8fr)} /* et celle du 3e (69-retours-rdc.js) */
+.kpis.n4{grid-template-columns:minmax(300px,1.5fr) minmax(220px,1fr) minmax(190px,.8fr) minmax(250px,1fr)} /* la tuile L'immeuble (69-immeuble.js) */
+.kpis.n5{grid-template-columns:minmax(270px,1.35fr) minmax(200px,1fr) minmax(170px,.75fr) minmax(180px,.8fr) minmax(180px,.8fr)} /* une tuile de plus (pack, futur) */
 .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;box-shadow:var(--shadow)}
 .kpi b{display:block;font:600 22px/1.15 ui-monospace,Menlo,monospace}
 .kpi span{color:var(--muted);font-size:12px}
@@ -537,6 +537,16 @@ button.wc.on{background:color-mix(in srgb,var(--accent) 14%,var(--panel));color:
 .dash .cap b{color:var(--ink)}
 .dash .cap.warn{color:var(--warn)}.dash .cap.err{color:var(--err);font-weight:600}.dash .cap.live{color:var(--mep);font-weight:600}
 .dash.click{cursor:pointer}.dash.click:hover{border-color:var(--accent)}
+/* L'immeuble (69-immeuble.js) : une ligne par étage, de haut en bas, fenêtres allumées = bureaux occupés */
+.im-rows{display:grid;gap:2px}
+.im-fl{display:grid;grid-template-columns:52px 64px 38px 1fr;gap:6px;align-items:center;width:100%;text-align:left;font:500 12px/18px system-ui,sans-serif;
+  padding:1px 6px;background:var(--chip);color:var(--ink);border:0;cursor:pointer;white-space:nowrap;min-width:0}
+.im-fl:hover{background:color-mix(in srgb,var(--accent) 18%,var(--chip))}
+.im-fl b{font-weight:700}.im-n{color:var(--muted);font-variant-numeric:tabular-nums}
+.im-win{display:flex;gap:2px}.im-win i{width:7px;height:9px;background:var(--line)}.im-win i.on{background:#ffd76a}
+.im-t{display:flex;gap:4px;justify-content:flex-end;overflow:hidden}
+.im-tag{font:700 10px/1 system-ui,sans-serif;padding:2px 4px}.im-tag.warn{background:var(--warn);color:var(--on-accent)}
+.im-tag.err{background:var(--err);color:var(--on-accent)}.im-tag.soft{background:var(--panel);color:var(--warn);box-shadow:inset 3px 0 0 var(--warn)}
 .dash.err{border-top:3px solid var(--err)}.dash.warn{border-top:3px solid var(--warn)} /* tuile à la couleur de son alerte */
 .dash.flash{animation:tileflash 1.2s ease-out} /* tuile dont le chiffre vient de changer */
 @keyframes tileflash{from{background:color-mix(in srgb,var(--accent) 22%,var(--panel))}to{background:var(--panel)}}
@@ -872,8 +882,8 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .floors button{font:600 13px system-ui,sans-serif;padding:4px 8px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:5px;line-height:1.2}
 .floors button.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .floors .fi{font-size:15px}
-.floors b{background:var(--warn);color:#1c1c1c;padding:0 4px;font-size:11px;border-radius:2px}
-.floors b.h{background:#ffcf4a}
+.floors b{background:var(--chip);color:var(--ink);padding:0 4px;font-size:11px;border-radius:2px} /* compteur neutre : seul ✋ est ambre */
+.floors b.h{background:var(--warn);color:var(--on-accent)}
 /* 3e étage (68-retours.js) : la fenêtre Kanban d'un bureau, les fils en colonnes, le fil choisi à droite */
 .rt-kb{position:fixed;inset:0;z-index:60;background:rgba(10,12,20,.6);display:flex;align-items:center;justify-content:center;padding:16px}
 .rt-kbw{background:var(--panel);color:var(--ink);border:3px solid var(--line);width:min(1180px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;gap:10px;padding:12px 14px;overflow:hidden}

@@ -1,6 +1,7 @@
 // ---------- tuiles KPI du haut et fil de la journée ----------
 document.getElementById('kpis').addEventListener('click',e=>{
-  const k=e.target.closest('[data-open]');if(k){if(k.dataset.open==='atelier')atGoto();else if(k.dataset.open==='retours')rtGoto();else select(k.dataset.open);} // 69-atelier-rdc.js, 69-retours-rdc.js : monter au 1er, au 3e
+  const f=e.target.closest('[data-floor]');if(f){setFloor(+f.dataset.floor);return;} // 69-immeuble.js : monter à l'étage
+  const k=e.target.closest('[data-open]');if(k)select(k.dataset.open);
 });
 document.getElementById('kpis').addEventListener('keydown',keyClick);
 // redessin d'une zone par innerHTML : le focus clavier revient à l'élément de même attr (sinon il tombe sur <body>)
@@ -78,8 +79,7 @@ function renderKpis(){
     fig.push([a.runs,a.ok,a.ko,down].join());
     out.push(`<section class="dash agents click${down?' err':a.ko?' warn':''}" data-open="paie" tabindex="0" role="button" title="Voir la fiche de paie"><h3>Les agents</h3><div class="cap">${a.runs} runs · <span style="color:var(--ok)">${a.ok} ✓</span> · <span style="color:${a.ko?'var(--err)':'inherit'}">${a.ko} ✗</span></div><div class="cap">${fmtTok(a.tok)} tokens · fiche de paie ›</div></section>`);
   }
-  if(atelierOn()){const a=atKpi(T);fig.push([a.rooms,a.wait,a.out,a.queue,a.pannes].join());out.push(atKpiHtml(a));} // 4. le 1er étage (69-atelier-rdc.js)
-  if(retoursOn()){const a=rtKpi(T);fig.push(['rt',a.rooms,a.wait,a.out,a.queue,a.pannes].join());out.push(rtKpiHtml(a));} // 5. le 3e étage (69-retours-rdc.js)
+  if(floorsOn().length>1){const r=imRows(T);fig.push(JSON.stringify(r));out.push(imKpiHtml(r));} // 4. les étages (69-immeuble.js)
   const html=out.join('');
   if(html===KPI_SIG)return;
   const box=document.getElementById('kpis'), first=!KPI_SIG;

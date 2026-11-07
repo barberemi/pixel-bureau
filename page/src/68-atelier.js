@@ -136,18 +136,26 @@ function atelierTabs(){ // le gyrophare du -1 suit csAlarm à chaque relevé
   if(t.dataset.sig!==h)t.innerHTML=t.dataset.sig=h;
   if(typeof waitChip==='function')waitChip(); // 69-attente.js : une décision arrive ou part avec le relevé
 }
+// identité de chaque étage, la même partout (onglets, tuile L'immeuble, barre AGENTS, ce qui t'attend, mode TV)
+const ETAGES={'-1':{ico:'🚒',n:'-1',nom:'caserne Support',tv:'-1 caserne'},0:{ico:'🏢',n:'RDC',nom:'open space',tv:'RDC'},
+  1:{ico:'🏭',n:'1er',nom:'atelier',tv:'1er étage'},2:{ico:'✍',n:'2e',nom:'rédaction et revue',tv:'2e rédaction'},
+  3:{ico:'🛠',n:'3e',nom:'retours de PR',tv:'3e retours'}};
+// ce qui tourne à chaque étage (cnt, sur cap bureaux quand l'étage en a un nombre fixe) et ce qui t'attend (wait)
+function floorLoad(f){
+  if(f===1){const r=atRooms();return {cnt:r.length,cap:4,wait:r.filter(x=>x.gate).length};}
+  if(f===3){const r=rtRooms();return {cnt:r.length,cap:RT_N,wait:r.filter(x=>x.gate).length};}
+  if(f===2){const t=rdTables();return {cnt:t.length+rvActive().length,wait:t.reduce((a,x)=>a+(x.tickets||[]).filter(y=>y.etat==='gate').length,0)};}
+  if(f===-1){const c=csActive();return {cnt:c.length,wait:c.filter(x=>x.s.k==='gate').length};}
+  return {cnt:0,wait:0};
+}
 // en court : l'icône et le numéro de l'étage, ce qui y tourne, ✋ ce qui t'attend ; son nom en entier au survol (et lu)
 function floorTabsHtml(){
-  const tab=(f,ico,n,full,cnt,wait,pre)=>{const tip=n+' · '+full+(cnt?' · '+cnt+' en cours':'')+(wait?' · ✋ '+wait+' t\'attend':'');
-    return `<button role="tab" data-floor="${f}" aria-selected="${FLOOR===f}" title="${esc(tip)}" aria-label="${esc(tip)}"${FLOOR===f?' class="on"':''}>${pre||''}<span class="fi" aria-hidden="true">${ico}</span>${n}${cnt?`<b>${cnt}</b>`:''}${wait?`<b class="h">✋${wait}</b>`:''}</button>`;};
-  const n=atRooms().length, w=atRooms().filter(r=>r.gate).length, cs=caserneOn()?csActive():[], cg=cs.filter(x=>x.s.k==='gate').length;
-  const rr=retoursOn()?rtRooms():[], rn=rr.length, rw=rr.filter(r=>r.gate).length;
-  const rdt=redactionOn()?rdTables():[], rdn=rdt.length+(redactionOn()?rvActive().length:0), rdw=rdt.reduce((a,t)=>a+(t.tickets||[]).filter(x=>x.etat==='gate').length,0);
-  // dans l'ordre des étages, comme les boutons d'un ascenseur ; le gyrophare du -1 tourne tant qu'un appel attend ou qu'une intervention est en cours (csAlarm)
-  return (caserneOn()?tab(-1,'🚒','-1','caserne Support',cs.length,cg,csAlarm()?'<span class="gyro" role="img" aria-label="à traiter"></span>':''):'')+
-    tab(0,'🏢','RDC','open space')+(atelierOn()?tab(1,'🏭','1er','atelier',n,w):'')+
-    (redactionOn()?tab(2,'✍','2e','rédaction et revue',rdn,rdw):'')+ // 68-redaction.js
-    (retoursOn()?tab(3,'🛠','3e','retours de PR',rn,rw):''); // 68-retours.js
+  const tab=(f,pre)=>{const e=ETAGES[f], {cnt,wait}=floorLoad(f), tip=e.n+' · '+e.nom+(cnt?' · '+cnt+' en cours':'')+(wait?' · ✋ '+wait+' t\'attend':'');
+    return `<button role="tab" data-floor="${f}" aria-selected="${FLOOR===f}" title="${esc(tip)}" aria-label="${esc(tip)}"${FLOOR===f?' class="on"':''}>${pre||`<span class="fi" aria-hidden="true">${e.ico}</span>`}${e.n}${cnt?`<b>${cnt}</b>`:''}${wait?`<b class="h">✋${wait}</b>`:''}</button>`;};
+  // dans l'ordre des étages, comme les boutons d'un ascenseur ; au -1, le gyrophare remplace l'icône tant qu'un appel attend
+  // ou qu'une intervention est en cours (csAlarm)
+  return (caserneOn()?tab(-1,csAlarm()?'<span class="gyro" role="img" aria-label="à traiter"></span>':''):'')+
+    tab(0)+(atelierOn()?tab(1):'')+(redactionOn()?tab(2):'')+(retoursOn()?tab(3):''); // 68-redaction.js, 68-retours.js
 }
 // étages qui existent, de haut en bas
 const floorsOn=()=>[...(retoursOn()?[3]:[]),...(redactionOn()?[2]:[]),...(atelierOn()?[1]:[]),0,...(caserneOn()?[-1]:[])];

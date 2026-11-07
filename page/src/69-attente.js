@@ -3,7 +3,6 @@
 // des étages (le plan du 1er, le tampon du 2e, les corrections du 3e, la réponse Support du -1). La pastille les compte et
 // donne l'âge de la plus ancienne ; un clic déroule la liste, la plus ancienne d'abord, et « Ouvrir » mène à l'étage, la
 // décision ouverte dans le panneau. Sans décision, pas de pastille. En mode TV, rien (pas de clic sur l'écran mural).
-const WAIT_FL={'-1':['🚒','-1'],0:['🏢','RDC'],1:['🏭','1er'],2:['✍','2e'],3:['🛠','3e']};
 function waitList(){
   const out=[], taken=new Set(), add=(fl,run,a,b,t,go)=>{if(run)taken.add(run);out.push({fl,run,a,b,t:t||null,go});};
   if(atelierOn())for(const {r} of atGateRooms()){const g=atGate(r);add(1,r.run,r.ticket||'Un ticket',AT_GATE_TXT[r.gate]||'ta décision',(g&&g._s)||ms(r.since),()=>{atGoto(r.run);atGateFocus();});}
@@ -25,7 +24,7 @@ function waitChipHtml(L){
   return `✋ ${plural(L.length,'décision','décisions')}${age?`<small> · la plus ancienne ${age}</small>`:''}`;
 }
 function waitRowsHtml(L){
-  return `<h4>✋ Ce qui t'attend, tous étages · la plus ancienne d'abord</h4>`+L.map((x,i)=>{const [ico,n]=WAIT_FL[x.fl];
+  return `<h4>✋ Ce qui t'attend, tous étages · la plus ancienne d'abord</h4>`+L.map((x,i)=>{const {ico,n}=ETAGES[x.fl];
     return `<div class="wl-r${i===0?' old':''}"><span class="wl-fl">${ico} ${n}</span><span class="wl-x"><b>${esc(x.a)}</b><small>${esc(x.b)}</small></span>`+
       `<span class="wl-age">${waitAge(x.t)}</span><button type="button" data-wl="${i}">Ouvrir ›</button></div>`;}).join('');
 }

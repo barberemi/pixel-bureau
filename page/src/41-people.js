@@ -18,7 +18,7 @@ const agentShort=c=>c.short||wordClip(clean(c.role||'').split(' · ')[0].replace
 const agentTag=c=>famOf(c)==='wf'?agentIcon(c)+' ':''; // devant un prénom d'agent, dans les listes
 // étiquette sur le plan : agents « 🔎 Dwight · Reviewer de PR » (ui.agent_label : both, office ou metier ; mode TV : metier)
 function labelText(c){
-  {const m=metierOf(c);if(m)return m.ico+' '+m.lbl;} // 69-metiers.js : son métier, pas son prénom
+  {const m=metierOf(c);if(m)return m.ico+' '+(m.court||m.lbl);} // 69-metiers.js : son métier, pas son prénom
   if(famOf(c)!=='wf')return FAM[famOf(c)].ico+(c.apprentice?'🎓 ':'')+String(c.name||'').slice(0,24);
   const mode=(CFG.ui||{}).agent_label||(TV?'metier':'both'), job=c.temp&&famKind(c)==='page'?'':agentShort(c); // le nom de sa page suffit
   const n=cronTag(c); // agent cron au repos : l'heure de son prochain passage

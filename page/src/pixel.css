@@ -58,6 +58,8 @@
 :root[data-skin] body:not(.tv) button.on{background:var(--brand);color:var(--on-brand);box-shadow:var(--frame),inset -3px -3px 0 0 var(--brand-lo),inset 3px 3px 0 0 var(--brand-hi)}
 :root[data-skin] body:not(.tv) button:not(.who):active{transform:translate(1px,2px);box-shadow:var(--frame)}
 :root[data-skin] body:not(.tv) button.waitchip,:root[data-skin] body:not(.tv) .waitlist button{background:var(--warn);color:#1c1c1c} /* ce qui t'attend (69-attente.js) : la couleur des ✋ des onglets */
+:root[data-skin] body:not(.tv) button.im-fl{background:var(--chip);color:var(--ink);box-shadow:none;padding:0 6px;margin:0;height:20px;min-height:0;font:500 12px/20px system-ui,sans-serif} /* lignes de L'immeuble (69-immeuble.js) : pas de relief */
+:root[data-skin] body:not(.tv) button.im-fl:hover{background:var(--btn-hover)}:root[data-skin] body:not(.tv) button.im-fl:active{transform:none;box-shadow:none}
 :root[data-skin] body:not(.tv) button.waitchip{margin:var(--px) var(--px) var(--px) auto}
 :root[data-skin] body:not(.tv) button.waitchip:hover,:root[data-skin] body:not(.tv) .waitlist button:hover{background:#ffcf4a;color:#1c1c1c}
 
