@@ -24,7 +24,8 @@ test('L\'immeuble en haut de page : une ligne par étage, de haut en bas, ✋ en
   const {p, J} = page();
   p.run('KPI_SIG = ""; renderKpis();');
   const h = J('KPI_SIG');
-  assert.equal((h.match(/<section class="dash /g) || []).length, 4, 'sprint, prod, agents, immeuble : plus une tuile par étage');
+  assert.equal((h.match(/<section class="dash /g) || []).length, 5, 'à toi, sprint, prod, agents, immeuble : plus une tuile par étage');
+  assert.ok(h.indexOf('<h3>À toi</h3>') < h.indexOf('<h3>L\'immeuble</h3>'), 'À toi en tête');
   const floors = [...h.matchAll(/class="im-fl" data-floor="(-?\d)"/g)].map(m => +m[1]);
   assert.deepEqual(floors, J('floorsOn().filter(f => f)'), 'les étages installés, de haut en bas');
   assert.match(h, /data-floor="3"[^>]*><b>🛠 3e<\/b>.*?5\/6.*?<span class="im-tag warn">✋ 2<\/span><span class="im-tag err">1 panne<\/span>/s);

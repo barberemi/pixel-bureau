@@ -93,8 +93,8 @@ SHOTS = {
     "plan": (1400, 1000, AT(11), "#cv", 1.5),
     # les agents des étages (69-metiers.js) : la barre « AGENTS » au-dessus des onglets, et le plan
     "agents-etages": (1600, 1100, AT(11), ".stage"),
-    # ce qui t'attend, tous étages (69-attente.js) : la pastille au bout des onglets, la liste déroulée
-    "attente": (1600, 1100, AT(11) + "setTimeout(()=>document.getElementById('waitchip').click(),300);", ".stage"),
+    # ce qui t'attend, tous étages (69-attente.js) : la tuile « À toi » en tête des chiffres du haut, la liste déroulée
+    "attente": (1600, 640, AT(11) + "setTimeout(()=>document.querySelector('#kpis .toi').click(),300);", None),
     # agents mis en avant (« Sur le plan » : agents) : icône, prénom et métier de chacun
     "etiquettes-agents": (1400, 1000, AT(11) + "FILTER='wf';NAMES='all';renderSide();", "#cv", 1.5),
     # familles d'agents (32-familles.js) : deux pages de l'écran remplies par un cron de la démo (pages), un workflow sans

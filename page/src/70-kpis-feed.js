@@ -1,7 +1,9 @@
 // ---------- tuiles KPI du haut et fil de la journée ----------
 document.getElementById('kpis').addEventListener('click',e=>{
   const f=e.target.closest('[data-floor]');if(f){setFloor(+f.dataset.floor);return;} // 69-immeuble.js : monter à l'étage
-  const k=e.target.closest('[data-open]');if(k)select(k.dataset.open);
+  const k=e.target.closest('[data-open]');if(!k)return;
+  if(k.dataset.open==='attente'){e.stopPropagation();waitToggle();return;} // 69-attente.js : la liste, sous les tuiles
+  select(k.dataset.open);
 });
 document.getElementById('kpis').addEventListener('keydown',keyClick);
 // redessin d'une zone par innerHTML : le focus clavier revient à l'élément de même attr (sinon il tombe sur <body>)
@@ -51,6 +53,8 @@ let KPI_SIG='', KPI_FIG=[]; // html complet ; chiffres de chaque tuile (une tuil
 function renderKpis(){
   if(!DATA)return;
   const d=dashData(T), out=[], fig=[]; // fig : les chiffres de chaque tuile, sans le repère du temps qui avance
+  const wl=TV?[]:waitList(), wp=TV?0:waitPannes(), toi=toiKpiHtml(wl,wp); // 0. À toi (69-attente.js), en tête
+  if(toi){fig.push([wl.length,wp].join());out.push(toi);}
   if(d.sprint){ // 1. Sprint
     const s=d.sprint, c=s.cats, tot=Math.max(1,c.todo+c.doing+c.review+c.test+c.done), pct=s.ptsAll?Math.round(s.ptsDone/s.ptsAll*100):0;
     const seg=(k,col)=>c[k]?`<i style="width:${c[k]/tot*100}%;background:${col}" title="${c[k]} ${CAT_TXT[k]||'terminés'}"></i>`:'';
@@ -83,8 +87,9 @@ function renderKpis(){
   const html=out.join('');
   if(html===KPI_SIG)return;
   const box=document.getElementById('kpis'), first=!KPI_SIG;
-  box.classList?.toggle('n4',out.length===4);box.classList?.toggle('n5',out.length>4);
+  box.classList?.toggle('n4',out.length===4);box.classList?.toggle('n5',out.length>4);box.classList?.toggle('toi',!!toi);
   KPI_SIG=html;keepFocus(box,'data-open',()=>{box.innerHTML=html;});
+  const wlp=document.getElementById('waitlist'), wt=waitTile();if(wlp&&wt&&!wlp.hidden)wt.setAttribute('aria-expanded','true'); // liste restée ouverte
   // une tuile dont un chiffre change clignote une fois (pas au premier affichage, ni en rejeu)
   fig.forEach((f,i)=>{if(!first&&mode==='live'&&KPI_FIG[i]!==undefined&&KPI_FIG[i]!==f&&box.children[i])box.children[i].classList.add('flash');});
   KPI_FIG=fig;
