@@ -970,3 +970,12 @@ body.tv .mtbar{display:none}
 .atelier .rd-back{font:600 12px system-ui,sans-serif;padding:4px 8px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;margin:0 0 8px}
 .atelier .rd-tt{font:600 14px system-ui,sans-serif;margin:0 0 4px}
 .atelier .rd-det{white-space:pre-wrap;font:12px/1.5 system-ui,sans-serif;margin:10px 0;padding:8px;border:2px solid var(--line);background:var(--bg,transparent);max-height:60vh;overflow:auto}
+/* État de l'installation (47-installation.js) : une ligne par capacité, son état en étiquette pleine, la commande pour agir */
+.in-ver{background:var(--chip);box-shadow:inset 4px 0 0 var(--info);padding:8px 12px;margin:0 0 12px;font-size:13px}
+.in-t{width:100%;border-collapse:collapse;font-size:13px}.in-t th{text-align:left;color:var(--muted);font-weight:600;padding:6px 8px;border-bottom:2px solid var(--line)}
+.in-t td{padding:7px 8px;border-bottom:1px solid var(--chip);vertical-align:top}.in-t code,.in-ver code{background:var(--chip);padding:1px 5px;font-size:12px}
+.in-note{font-size:12px;margin:10px 0 0}
+.etat{display:inline-block;font:700 11px/1 system-ui,sans-serif;padding:3px 6px;white-space:nowrap}
+.etat.ok{background:var(--ok);color:var(--on-accent)}.etat.warn{background:var(--warn);color:var(--on-accent)}.etat.err{background:var(--err);color:var(--on-accent)}
+.etat.info{background:var(--info);color:var(--on-accent)}.etat.soft{background:var(--chip);color:var(--ink);box-shadow:inset 3px 0 0 var(--muted)}
+#freshpop .fr-inst{display:block;margin-top:8px}
