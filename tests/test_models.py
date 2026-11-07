@@ -237,7 +237,7 @@ class ModelsTest(unittest.TestCase):
         self.assertEqual((ids["review"], ids["estimate"]), (c["models"]["review_one"], c["models"]["estimate"]))
         c["launch"] = {"review": "ffff0000-0000-4000-8000-000000000000"}
         self.assertEqual(assemble.action_ids(c)["review"], "ffff0000-0000-4000-8000-000000000000")  # ton workflow l'emporte
-        self.assertIn('"review": true', assemble.build(demo=False, cfg={**c, "launch": {}}))
+        self.assertIn('"review":true', assemble.build(demo=False, cfg={**c, "launch": {}}))
 
     def test_pack_persona_embodies_a_model(self):
         tmp = tempfile.mkdtemp()

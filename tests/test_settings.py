@@ -91,7 +91,7 @@ class SettingsTest(unittest.TestCase):
         c = {k: v for k, v in self.cfg(agents=[{"key": "dwight", "wf": ["aaaaaaaa"]}]).items() if k != "rhythm"}  # rien à surcharger
         page = assemble.page_config(assemble.merged(c))
         self.assertEqual(page["rhythm"]["daily"], "09:05")
-        self.assertIn('"daily": "09:05"', assemble.build(demo=False, cfg=c))  # la page assemblée lit le pack
+        self.assertIn('"daily":"09:05"', assemble.build(demo=False, cfg=c))  # la page assemblée lit le pack
         self.assertEqual(page["agents"][0]["name"], "Dwight")
         code = templates.script_code("workflows/gitfut_snapshot.py", c)
         self.assertIn('"gitfut": {"p_bob": "bobvance"}', code)  # le script du cron a le GitFut du pack
