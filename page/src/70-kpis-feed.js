@@ -1,6 +1,9 @@
 // ---------- tuiles KPI du haut et fil de la journée ----------
 document.getElementById('kpis').addEventListener('click',e=>{
-  const k=e.target.closest('[data-open]');if(k){if(k.dataset.open==='atelier')atGoto();else if(k.dataset.open==='retours')rtGoto();else select(k.dataset.open);} // 69-atelier-rdc.js, 69-retours-rdc.js : monter au 1er, au 3e
+  const f=e.target.closest('[data-floor]');if(f){setFloor(+f.dataset.floor);return;} // 69-immeuble.js : monter à l'étage
+  const k=e.target.closest('[data-open]');if(!k)return;
+  if(k.dataset.open==='attente'){e.stopPropagation();waitToggle();return;} // 69-attente.js : la liste, sous les tuiles
+  select(k.dataset.open);
 });
 document.getElementById('kpis').addEventListener('keydown',keyClick);
 // redessin d'une zone par innerHTML : le focus clavier revient à l'élément de même attr (sinon il tombe sur <body>)
@@ -50,6 +53,8 @@ let KPI_SIG='', KPI_FIG=[]; // html complet ; chiffres de chaque tuile (une tuil
 function renderKpis(){
   if(!DATA)return;
   const d=dashData(T), out=[], fig=[]; // fig : les chiffres de chaque tuile, sans le repère du temps qui avance
+  const wl=TV?[]:waitList(), wp=TV?0:waitPannes(), toi=toiKpiHtml(wl,wp); // 0. À toi (69-attente.js), en tête
+  if(toi){fig.push([wl.length,wp].join());out.push(toi);}
   if(d.sprint){ // 1. Sprint
     const s=d.sprint, c=s.cats, tot=Math.max(1,c.todo+c.doing+c.review+c.test+c.done), pct=s.ptsAll?Math.round(s.ptsDone/s.ptsAll*100):0;
     const seg=(k,col)=>c[k]?`<i style="width:${c[k]/tot*100}%;background:${col}" title="${c[k]} ${CAT_TXT[k]||'terminés'}"></i>`:'';
@@ -78,13 +83,13 @@ function renderKpis(){
     fig.push([a.runs,a.ok,a.ko,down].join());
     out.push(`<section class="dash agents click${down?' err':a.ko?' warn':''}" data-open="paie" tabindex="0" role="button" title="Voir la fiche de paie"><h3>Les agents</h3><div class="cap">${a.runs} runs · <span style="color:var(--ok)">${a.ok} ✓</span> · <span style="color:${a.ko?'var(--err)':'inherit'}">${a.ko} ✗</span></div><div class="cap">${fmtTok(a.tok)} tokens · fiche de paie ›</div></section>`);
   }
-  if(atelierOn()){const a=atKpi(T);fig.push([a.rooms,a.wait,a.out,a.queue,a.pannes].join());out.push(atKpiHtml(a));} // 4. le 1er étage (69-atelier-rdc.js)
-  if(retoursOn()){const a=rtKpi(T);fig.push(['rt',a.rooms,a.wait,a.out,a.queue,a.pannes].join());out.push(rtKpiHtml(a));} // 5. le 3e étage (69-retours-rdc.js)
+  if(floorsOn().length>1){const r=imRows(T);fig.push(JSON.stringify(r));out.push(imKpiHtml(r));} // 4. les étages (69-immeuble.js)
   const html=out.join('');
   if(html===KPI_SIG)return;
   const box=document.getElementById('kpis'), first=!KPI_SIG;
-  box.classList?.toggle('n4',out.length===4);box.classList?.toggle('n5',out.length>4);
+  box.classList?.toggle('n4',out.length===4);box.classList?.toggle('n5',out.length>4);box.classList?.toggle('toi',!!toi);
   KPI_SIG=html;keepFocus(box,'data-open',()=>{box.innerHTML=html;});
+  const wlp=document.getElementById('waitlist'), wt=waitTile();if(wlp&&wt&&!wlp.hidden)wt.setAttribute('aria-expanded','true'); // liste restée ouverte
   // une tuile dont un chiffre change clignote une fois (pas au premier affichage, ni en rejeu)
   fig.forEach((f,i)=>{if(!first&&mode==='live'&&KPI_FIG[i]!==undefined&&KPI_FIG[i]!==f&&box.children[i])box.children[i].classList.add('flash');});
   KPI_FIG=fig;
@@ -403,13 +408,13 @@ function feedView(ev,mode){
   }
   return out;
 }
-// « ⏵ revoir » d'une ligne du fil (replayAt, 80-input.js) : seulement dans la journée rejouable, pas en mode TV
+// « ⏪ revoir » d'une ligne du fil (visible au survol ou au focus de la ligne) (replayAt, 80-input.js) : seulement dans la journée rejouable, pas en mode TV
 // fl : l'étage où se joue le moment (1 : le 1er, 69-atelier-rdc.js) ; revoir y monte d'abord
-const rvBtn=(t,fl)=>!TV&&t>=RSTART&&t<=REND?`<button class="rv" data-rv="${t}"${fl?` data-fl="${fl}"`:''} title="Revoir ce moment sur le plan : 20 s avant, en ×1" aria-label="Revoir ${hm(t)} sur le plan">⏵ revoir</button>`:'';
+const rvBtn=(t,fl)=>!TV&&t>=RSTART&&t<=REND?`<button class="rv" data-rv="${t}"${fl?` data-fl="${fl}"`:''} title="Revoir ce moment sur le plan : 20 s avant, en ×1" aria-label="Revoir ${hm(t)} sur le plan">⏪</button>`:'';
 function renderFeedList(view,all=FEED_ALL){
   FEED_VIEW=view;FEED_ALL=all;
   const box=document.getElementById('feed');
-  let html=FEED_PIN.length?`<div class="feedpin"><div class="pinh">En ce moment</div>${FEED_PIN.map((e,i)=>
+  let html=FEED_PIN.length?`<div class="feedpin${FEED_PIN.some(e=>e.t)?' attn':''}"><div class="pinh">En ce moment</div>${FEED_PIN.map((e,i)=>
     `<div class="ev" data-pin="${i}"${e.duck||e.c||e.at?' tabindex="0" role="button"':''}><span class="tm">${e.t?hm(e.t):'auj.'}</span><span class="x">${e.txt}</span></div>`).join('')}</div>`:'';
   if(!view.length)html+=`<div class="empty">${all.length?'Rien pour ces types : rallume une pastille.':FEED_MODE==='important'&&FEED_EV.length?'Rien d\'important pour l\'instant.':'Rien pour l\'instant. Le bureau est encore vide.'}</div>`;
   let lastH=null;

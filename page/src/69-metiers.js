@@ -3,13 +3,13 @@
 // (pas d'absence, comme l'agent Support en alerte), en couleurs pleines (pas d'hologramme) et dans la tenue de son étage ;
 // son étiquette est son métier, pas son prénom. La barre « AGENTS », au-dessus des onglets d'étage, le montre à tous les
 // étages : un clic ouvre ce qu'il lance (la console Support, sinon sa fiche au RDC avec ses boutons de lancement).
+// l'icône est celle de l'étage (ETAGES, 68-atelier.js), sauf la Revue, seconde salle du 2e, qui garde la sienne
 const METIERS={
   support:{lbl:'Support',ico:'🚒',fl:-1,kit:'pompier'},
-  ticket:{lbl:'Ticket',ico:'📰',fl:2,kit:'presse'},
+  ticket:{lbl:'Ticket',ico:'✍',fl:2,kit:'presse'},
   revue:{lbl:'Revue',ico:'🔍',fl:2,kit:'visiere'},
-  retours:{lbl:'Retours',ico:'🩹',fl:3,kit:'chirurgien'},
-  impl:{lbl:'Implé',ico:'🏗',fl:1,kit:'chantier'}};
-const MT_FLOOR={'-1':'-1',1:'1er',2:'2e',3:'3e'};
+  retours:{lbl:'Retours',ico:'🛠',fl:3,kit:'chirurgien'},
+  impl:{lbl:'Implémentation',court:'Implé',ico:'🏭',fl:1,kit:'chantier'}}; // court : l'étiquette du plan, qui doit rester petite
 // les copies d'un agent dessinées aux étages (atWorker, rdAgent…) gardent son champ metier : seul le personnage du RDC compte
 const metierOf=c=>c&&!c.person&&!c.visitor&&METIERS[c.metier]&&byKey[c.key]===c?METIERS[c.metier]:null;
 // un agent par métier, dans l'ordre de la barre (le premier de la config si deux le revendiquent)
@@ -103,7 +103,7 @@ function mtBarHtml(){
     const f=MT_FACE[c.key]||(MT_FACE[c.key]=mtFace(c)||'');
     return `<button type="button" class="mt-a" data-mt="${esc(c.key)}" title="${esc(m.lbl+' · '+c.name+' : '+s.txt)}">`+
       (f?`<img src="${f}" alt="">`:'<span class="mt-f"></span>')+(s.b?`<span class="mt-b" style="background:${s.col}">${esc(s.b)}</span>`:'')+
-      `<span class="mt-x"><b>${m.ico} ${esc(m.lbl)}<span class="mt-fl">${MT_FLOOR[m.fl]}</span></b><small>${esc(s.txt)}</small></span></button>`;}).join('');
+      `<span class="mt-x"><b>${m.ico} ${esc(m.lbl)}<span class="mt-fl">${ETAGES[m.fl].n}</span></b><small>${esc(s.txt)}</small></span></button>`;}).join('');
 }
 function mtBar(){
   let b=document.getElementById('mtbar');

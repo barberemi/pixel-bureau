@@ -19,9 +19,10 @@ from smoke import CHROME, CHROME_ARGS, TAB_WAIT, free_port, team_config, wait_ta
 
 OUT = os.path.join(ROOT, "guide", "img")
 PORT = 9335
-# avant chaque capture : hors mode TV (mémorisé par le navigateur), lecture en pause à 11h, personnages posés à leur place
+# avant chaque capture : hors mode TV et au RDC (tous deux mémorisés par le navigateur, d'une capture à l'autre), lecture en
+# pause à 11h, personnages posés à leur place
 # récap du matin fermé : il s'ouvre seul avant midi (heure réelle), la capture ne dépend pas de l'heure où on la prend
-AT = lambda h: f"applySkin('classique');if(TV)setTv(false);setMode('pause');T=DAY0+{h}*3600e3;needTeleport=true;RECAP_OPEN=false;renderRecap();"  # noqa: E731
+AT = lambda h: f"applySkin('classique');if(TV)setTv(false);setFloor(0);setMode('pause');T=DAY0+{h}*3600e3;needTeleport=true;RECAP_OPEN=false;renderRecap();"  # noqa: E731
 WAIT = "new Promise(r=>setTimeout(r,2500))"
 # nom -> (largeur, hauteur, JS de mise en scène, sélecteur à rogner ; None = la fenêtre[, échelle de la capture[, autre plan]])
 # pages Kronn du boss simulées (#61) : 5 pages aux miniatures dessinées, le workflow pages branché, deux pages à ajouter
@@ -92,8 +93,8 @@ SHOTS = {
     "plan": (1400, 1000, AT(11), "#cv", 1.5),
     # les agents des étages (69-metiers.js) : la barre « AGENTS » au-dessus des onglets, et le plan
     "agents-etages": (1600, 1100, AT(11), ".stage"),
-    # ce qui t'attend, tous étages (69-attente.js) : la pastille au bout des onglets, la liste déroulée
-    "attente": (1600, 1100, AT(11) + "setTimeout(()=>document.getElementById('waitchip').click(),300);", ".stage"),
+    # ce qui t'attend, tous étages (69-attente.js) : la tuile « À toi » en tête des chiffres du haut, la liste déroulée
+    "attente": (1600, 640, AT(11) + "setTimeout(()=>document.querySelector('#kpis .toi').click(),300);", None),
     # agents mis en avant (« Sur le plan » : agents) : icône, prénom et métier de chacun
     "etiquettes-agents": (1400, 1000, AT(11) + "FILTER='wf';NAMES='all';renderSide();", "#cv", 1.5),
     # familles d'agents (32-familles.js) : deux pages de l'écran remplies par un cron de la démo (pages), un workflow sans

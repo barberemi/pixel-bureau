@@ -14,21 +14,23 @@ function page() {
 test('la tuile : PR en correction sur six bureaux, celles qui t\'attendent, les pannes, les poussées du jour, la file', () => {
   const {J} = page();
   assert.deepEqual(J('rtKpi(T)'), {rooms: 5, wait: 2, out: 2, queue: 2, pannes: 1});
-  const h = J('rtKpiHtml(rtKpi(T))');
-  assert.match(h, /data-open="retours"/);
-  assert.match(h, /<h3>Le 3e étage<\/h3>/);
-  assert.match(h, /5<small>\/6<\/small>/);
-  assert.match(h, /✋ 2 t'attendent.*🧯 1 panne.*📤 2 poussées aujourd'hui.*⏳ 2 en file/);
-  assert.match(h, /class="dash retours click err"/, 'une panne : la bordure rouge');
+  const r = J('imRows(T).find(r => r.f === 3)');
+  assert.deepEqual([r.cnt, r.cap, r.wait, r.pannes], [5, 6, 2, 1]);
+  assert.match(r.tip.join(' '), /📤 2 poussées aujourd'hui.*⏳ 2 en file/);
   assert.equal(J('rtKpi(DAY0 + 9 * 36e5).out'), 1, 'en rejeu : les poussées jusqu\'au curseur');
 });
 
-test('la tuile en haut de page, après celle du 1er', () => {
+test('L\'immeuble en haut de page : une ligne par étage, de haut en bas, ✋ en ambre, un clic monte à l\'étage', () => {
   const {p, J} = page();
   p.run('KPI_SIG = ""; renderKpis();');
   const h = J('KPI_SIG');
-  assert.ok(h.indexOf('Le 1er étage') > 0 && h.indexOf('Le 1er étage') < h.indexOf('Le 3e étage'));
-  assert.equal((h.match(/<section class="dash /g) || []).length, 5);
+  assert.equal((h.match(/<section class="dash /g) || []).length, 5, 'à toi, sprint, prod, agents, immeuble : plus une tuile par étage');
+  assert.ok(h.indexOf('<h3>À toi</h3>') < h.indexOf('<h3>L\'immeuble</h3>'), 'À toi en tête');
+  const floors = [...h.matchAll(/class="im-fl" data-floor="(-?\d)"/g)].map(m => +m[1]);
+  assert.deepEqual(floors, J('floorsOn().filter(f => f)'), 'les étages installés, de haut en bas');
+  assert.match(h, /data-floor="3"[^>]*><b>🛠 3e<\/b>.*?5\/6.*?<span class="im-tag warn">✋ 2<\/span><span class="im-tag err">1 panne<\/span>/s);
+  assert.doesNotMatch(h, /Le 1er étage|Le 3e étage/);
+  p.run('document.getElementById("kpis").innerHTML = KPI_SIG; FLOOR = 0;');
 });
 
 test('Qui fait quoi : une carte par bureau du 3e, ta validation en premier plan ; un clic monte à l\'étage', () => {

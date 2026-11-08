@@ -1,6 +1,6 @@
 # Les agents des étages
 
-Chaque étage a son agent au RDC : 🚒 Support (-1), 📰 Ticket (2e), 🔍 Revue (2e), 🩹 Retours (3e), 🏗 Implé (1er). Il reste toujours à sa place, même sans run du jour, pour qu'on le trouve et qu'on lance son workflow d'un clic.
+Chaque étage a son agent au RDC : 🚒 Support (-1), ✍ Ticket (2e), 🔍 Revue (2e), 🛠 Retours (3e), 🏭 Implémentation (1er) : l'icône est celle de l'onglet de son étage (la Revue, seconde salle du 2e, garde la sienne), et sur le plan l'Implémentation s'écrit « Implé ». Il reste toujours à sa place, même sans run du jour, pour qu'on le trouve et qu'on lance son workflow d'un clic.
 
 ![La barre « AGENTS » au-dessus des onglets d'étage, et les agents à leur place](../img/agents-etages.png)
 
@@ -20,9 +20,9 @@ Au-dessus des onglets d'étage, visible à tous les étages (pas en mode TV) : l
 
 ## Ce qui t'attend, tous étages
 
-Au bout de la rangée des onglets d'étage, une pastille « ✋ 4 décisions · la plus ancienne 1 h 48 » compte tout ce qui attend ta validation : les gates du RDC (celles de tes agents, et les workflows sans personnage), ton plan au 1er, le tampon du 2e, les corrections du 3e avant le push, la réponse Support du -1. Un clic déroule la liste, la plus ancienne d'abord ; « Ouvrir » t'emmène à l'étage, la décision ouverte dans le panneau. Sans décision, pas de pastille. Elle est à tous les étages, sauf en mode TV.
+En tête des chiffres du haut, la tuile « À toi » compte tout ce qui attend ta validation (« 4 décisions, la plus ancienne 1 h 48 ») : les gates du RDC (celles de tes agents, et les workflows sans personnage), ton plan au 1er, le tampon du 2e, les corrections du 3e avant le push, la réponse Support du -1. Elle montre les deux plus anciennes, puis le reste et les agents en panne (RDC et étages), sur trois lignes au plus. Un clic déroule la liste entière sous les tuiles, la plus ancienne d'abord ; « Ouvrir » t'emmène à l'étage, la décision ouverte dans le panneau. Sans décision ni panne, pas de tuile (avec seulement des pannes, son liseré est rouge). Elle est à tous les étages, sauf en mode TV.
 
-![La pastille au bout des onglets, la liste des décisions déroulée](../img/attente.png)
+![La tuile « À toi » en tête des chiffres du haut, la liste des décisions déroulée](../img/attente.png)
 
 ## Réglage
 

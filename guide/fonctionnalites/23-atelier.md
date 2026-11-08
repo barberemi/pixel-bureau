@@ -4,7 +4,7 @@ Le 1er étage montre les tickets en cours d'implémentation par la chaîne de po
 
 ## Monter à l'étage
 
-Les boutons d'étage au-dessus du plan (« 🏢 RDC », « 🏭 1er », le nom de l'étage en entier au survol) apparaissent quand la chaîne est installée (`models.impl_chain`). Le chiffre sur l'onglet du 1er compte les bureaux occupés, « ✋ n » les validations qui t'y attendent ; l'étage choisi est retenu par le navigateur.
+Les boutons d'étage au-dessus du plan (« 🏢 RDC », « 🏭 1er », le nom de l'étage en entier au survol) apparaissent quand la chaîne est installée (`models.impl_chain`). Le chiffre sur l'onglet du 1er compte les bureaux occupés (pastille neutre), « ✋ n » en ambre les validations qui t'y attendent ; l'étage choisi est retenu par le navigateur.
 
 Les workflows de l'étage (la chaîne et ses postes, modèles `impl*`) ne passent plus au rez-de-chaussée : pas d'intérimaire pour eux dans l'open space, et « Nouvel agent » (la baie de la salle Serveurs) ne les propose pas. Le **lanceur** (`models.impl`, « ▶ Implémenter ») reste au RDC : l'agent qui l'incarne est un homme de chantier, casque jaune et gilet orange. Quand un ticket arrive au 1er, il va prendre son carton à son bureau et le porte jusqu'à l'entrée principale (« 📦 DM-7305 → 1er étage »), pendant une minute ; le colis apparaît alors dans l'entrepôt du 1er.
 
@@ -61,7 +61,8 @@ L'étage se suit aussi sans y monter, comme les agents du RDC. Chaque élément 
 - **Le fil de la journée** raconte la chaîne, à l'heure où c'est arrivé (le rejeu suit) : « 🎫 DM-7854 arrive au 1er étage », « ✋ … t'attend au 1er « ton plan » », « 🔒 Sécurité bloque … : retour au code », « 🧯 … : 🧪 Tests en panne », « 📦 … sort en PR ». Une gate du 1er qui t'attend est en haut, dans « En ce moment », avec depuis quand. Elle est aussi dans la **fiche du boss**, au RDC comme à l'étage (« 🏭 1er étage · bureau 1 · DM-7305 · ton plan », ses boutons, et « Voir le bureau au 1er »), et compte dans le ✋ du boss. Arrivées et sorties passent aussi dans le bandeau défilant du mode TV.
 - **⌘K** trouve un ticket de la chaîne par sa clé, son titre ou son dépôt (« DM-7854 · bureau 3 · 🔒 retour au code »), et un poste trouve les bureaux où il travaille ou qu'il bloque (« sécurité », « code »).
 - **Qui fait quoi** ajoute un bloc « 1er étage » : un poste au travail par bureau (ou la gate qui t'attend, comptée dans « pour toi »), son ticket, son bureau et depuis quand. En mode TV, le même bloc vient sous les agents dans la colonne du RDC.
-- **Les chiffres du haut** ont une 4e tuile, « Le 1er étage » : les bureaux occupés, puis sur une ligne ce qui t'attend, les pannes, les tickets sortis aujourd'hui et la file (le tout au survol). Un clic monte à l'étage.
+- **Les chiffres du haut** ont une tuile « L'immeuble » : une ligne par étage installé, de haut en bas (3e, 2e, 1er, -1), avec une fenêtre allumée par bureau occupé (au 1er et au 3e), « ✋ n » en ambre pour ce qui t'attend et les pannes en rouge ; les tickets sortis aujourd'hui et la file au survol. Un clic sur une ligne monte à l'étage.
+- **Aux étages, sous 1600 px de large**, le panneau de droite se replie de lui-même pour que le plan soit lisible ; il revient au RDC comme tu l'avais laissé.
 
 ## En panne : reprendre là où ça s'est arrêté
 

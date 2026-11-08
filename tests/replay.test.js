@@ -2,6 +2,8 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const {load} = require('./helpers/page.js');
 
 const page = load();
@@ -47,7 +49,36 @@ test('« ⏵ revoir » : 20 s avant le moment, en ×1, en lecture ; un bouton su
   const t = J('RSTART') + 120 * M;
   const r = J(`(() => { replayAt(${t}); return {d: ${t} - T, SPEED, mode}; })()`);
   assert.deepEqual(r, {d: 20e3, SPEED: 1, mode: 'play'});
-  assert.match(J(`rvBtn(${t})`), new RegExp(`^<button class="rv" data-rv="${t}"[^>]*>⏵ revoir</button>$`));
+  assert.match(J(`rvBtn(${t})`), new RegExp(`^<button class="rv" data-rv="${t}"[^>]*aria-label="Revoir [^"]+ sur le plan">⏪</button>$`));
   assert.equal(J(`rvBtn(RSTART - 60e3)`), ''); // avant la journée rejouable
   assert.equal(J(`(() => { TV = true; const b = rvBtn(${t}); TV = false; return b; })()`), ''); // écran partagé : pas de bouton
+});
+
+test('« En ce moment » encadré quand une décision t\'attend, pas pour le seul repère du jour', () => {
+  run("FEED_SIG = ''; FEED_PIN = [{t: null, txt: 'repère'}]; renderFeedList([], []);");
+  assert.match(J('FEED_SIG'), /class="feedpin"/);
+  run("FEED_SIG = ''; FEED_PIN = [{t: T, txt: '✋ décision'}, {t: null, txt: 'repère'}]; renderFeedList([], []);");
+  assert.match(J('FEED_SIG'), /class="feedpin attn"/);
+  run("FEED_SIG = ''; FEED_PIN = [];");
+});
+
+test('aux étages sous 1600 px, le panneau se replie ; au RDC il revient comme avant', () => {
+  run('innerWidth = 1440; SIDE_FOLDED = false; SIDE_BEFORE = null; setFloor(1);');
+  assert.equal(J('SIDE_FOLDED'), true, 'au 1er : replié');
+  run('setFloor(0);');
+  assert.equal(J('SIDE_FOLDED'), false, 'au RDC : rouvert');
+  run('innerWidth = 1920; setFloor(1);');
+  assert.equal(J('SIDE_FOLDED'), false, 'écran large : le panneau reste');
+  run('setFloor(0); innerWidth = 1440; SIDE_FOLDED = true; setFloor(1); setFloor(0);');
+  assert.equal(J('SIDE_FOLDED'), true, 'replié par toi au RDC : il le reste');
+  run('SIDE_FOLDED = false;');
+});
+
+test('mode TV hors du direct : le bandeau dit « REJEU hh:mm », plus « EN DIRECT »', () => {
+  run("setMode('pause'); T = DAY0 + 11 * 36e5;");
+  assert.equal(J('tvRejeu()'), '11:00');
+  run("setMode('live');");
+  assert.equal(J('tvRejeu()'), '');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'page', 'src', 'pixel.css'), 'utf8');
+  assert.match(css, /#tvticker\[data-rejeu\]::before\{content:'⏪ REJEU ' attr\(data-rejeu\)/);
 });

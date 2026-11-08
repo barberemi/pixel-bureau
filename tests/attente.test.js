@@ -1,4 +1,4 @@
-// Ce qui t'attend, tous étages (69-attente.js) : la pastille au bout des onglets d'étage, la liste des décisions de tous les
+// Ce qui t'attend, tous étages (69-attente.js) : la tuile « À toi » des chiffres du haut, la liste des décisions de tous les
 // étages, la plus ancienne d'abord, et « Ouvrir » qui mène à l'étage, la décision ouverte.
 'use strict';
 const test = require('node:test');
@@ -16,7 +16,12 @@ test('la démo : quatre décisions sur trois étages, la plus ancienne d\'abord,
   const L = J('waitList().map(x => [x.fl, x.a, waitAge(x.t)])');
   assert.deepEqual(L.map(x => x[0]), [1, -1, 3, 3]);
   assert.deepEqual(L[0], [1, 'DM-7305', '1 h 48']);
-  assert.match(J('waitChipHtml(waitList())'), /^✋ 4 décisions<small> · la plus ancienne 1 h 48<\/small>$/);
+  const h = J('toiKpiHtml(waitList(), 2)');
+  assert.match(h, /<h3>À toi<\/h3><div class="row"><div class="big">4<\/div><div class="grow">décisions<br>la plus ancienne 1 h 48/);
+  assert.equal((h.match(/<li>/g) || []).length, 3, 'trois lignes au plus : le bandeau ne grandit pas');
+  assert.equal((h.match(/<li>✋/g) || []).length, 2, 'les deux plus anciennes');
+  assert.match(h, /<li>et 2 de plus · 🧯 <b>2 agents<\/b> en panne<\/li>/);
+  assert.match(h, /data-open="attente"[^>]*aria-controls="waitlist"/, 'un clic déroule la liste');
   const rows = J('waitRowsHtml(waitList())');
   assert.equal((rows.match(/data-wl=/g) || []).length, 4);
   assert.match(rows, /class="wl-r old"><span class="wl-fl">🏭 1er<\/span>/, 'la plus ancienne en tête, marquée');
@@ -43,8 +48,10 @@ test('« Ouvrir » mène à l\'étage, la décision ouverte dans le panneau', ()
   assert.deepEqual(J('[FLOOR, CS_SEL]'), [-1, 'd3']);
 });
 
-test('sans décision, pas de pastille ; la liste est vide hors des étages installés', () => {
+test('sans décision ni panne, pas de tuile ; la liste est vide hors des étages installés', () => {
   const {p, J} = page();
   p.run(`ATELIER = {rooms: [], queue: [], pannes: []}; RETOURS = {rooms: [], queue: [], pannes: [], events: []}; SUPPORT = {threads: []}; REDACTION = {tables: [], events: []};`);
   assert.deepEqual(J('waitList()'), []);
+  assert.equal(J('toiKpiHtml([], 0)'), '');
+  assert.match(J('toiKpiHtml([], 1)'), /class="dash toi click err"/, 'seulement une panne : la tuile, en rouge');
 });

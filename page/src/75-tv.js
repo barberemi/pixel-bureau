@@ -70,7 +70,7 @@ function tvAtelierHtml(){
 // interventions à la caserne), dans l'ordre RDC, 1er, -1 ; un étage qui se vide rend la main au RDC
 let TV_FLOOR_ALT=false, TV_FLOOR_AT=0;
 const floorBusy=f=>f===0||(f===1?atRooms().length>0:f===-1?csActive().length>0:f===3?rtRooms().length>0:f===2?rdTables().length+rvActive().length>0:false);
-const FLOOR_CYCLE=[0,1,2,3,-1], FLOOR_NAME={0:'🏢 RDC',1:'🏭 1er étage',2:'✍ 2e rédaction',3:'🛠 3e retours','-1':'🚒 -1 caserne'};
+const FLOOR_CYCLE=[0,1,2,3,-1], FLOOR_NAME=f=>ETAGES[f].ico+' '+ETAGES[f].tv;
 function nextFloor(busy){const l=FLOOR_CYCLE.filter(f=>floorsOn().includes(f)&&(!busy||floorBusy(f)));return l[(l.indexOf(FLOOR)+1)%l.length]??0;}
 function tvFloorTick(now){
   if(!TV||!TV_FLOOR_ALT||floorsOn().length<2)return;
@@ -94,6 +94,7 @@ function tvLiveChip(){
   if(!v)return `<span class="chip ok"><b>●</b>direct</span>`;
   return `<span class="chip ${v.late?'warn':'ok'} tvfresh">${freshRing(v.frac,18)}${esc(v.txt)}</span>`;
 }
+const tvRejeu=()=>mode!=='live'?hm(T):''; // l'heure affichée hors du direct, '' en direct
 function updateTv(force){
   if(!TV||!DATA)return;
   const bar=document.getElementById('tvbar');
@@ -102,8 +103,12 @@ function updateTv(force){
     `</span><span class="tvhint">S stand-up · P planning · R rétro${floorsOn().length>1?' · E étage':''} · Échap ou T pour quitter</span>`+
     [['daily','tvstand','Stand-up'],['planning','tvplan','Planning'],['retro','tvretro','Rétro']].map(([k,id,l])=>
       `<button id="${id}" class="${sceneMode(T)===k?'on':''}">${sceneMode(T)===k?'Retour au plan':l}</button>`).join('')+
-    (floorsOn().length>1?`<button id="tvfloor">${FLOOR_NAME[nextFloor(false)]}</button>`:'')+`<button id="tvexit">Quitter</button>`;
+    (floorsOn().length>1?`<button id="tvfloor">${FLOOR_NAME(nextFloor(false))}</button>`:'')+`<button id="tvexit">Quitter</button>`;
   bar.querySelector('#tvexit').onclick=()=>setTv(false);
+  // hors du direct (rejeu, pause), le bandeau ne dit plus « EN DIRECT » mais « ⏪ REJEU hh:mm » (pixel.css), plan cerclé d'ambre
+  const tk=document.getElementById('tvticker'), rj=tvRejeu();
+  if((tk.getAttribute('data-rejeu')||'')!==rj){if(rj)tk.setAttribute('data-rejeu',rj);else tk.removeAttribute('data-rejeu');}
+  document.body.classList.toggle('tvreplay',!!rj);
   const fb=bar.querySelector('#tvfloor');if(fb)fb.onclick=()=>{TV_FLOOR_ALT=false;setFloor(nextFloor(false));updateTv(true);}; // 68-atelier.js, 68-caserne.js
   bar.querySelector('#tvstand').onclick=()=>toggleScenes('daily');
   bar.querySelector('#tvplan').onclick=()=>toggleScenes('planning');

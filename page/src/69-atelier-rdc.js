@@ -124,12 +124,3 @@ function atKpi(t){
   const out=Array.isArray(d.events)||DEMO?ev.filter(e=>e.k==='sort'&&ms(e.t)>=DAY0&&ms(e.t)<=t).length:atDelivered();
   return {rooms:rooms.length,wait:rooms.filter(r=>r.gate).length,out,queue:(d.queue||[]).length,pannes:(d.pannes||[]).length};
 }
-// une seule ligne sous le chiffre, comme « La prod aujourd'hui » : la tuile ne grandit pas le bandeau (le plan ne bouge pas) ;
-// le texte entier au survol, la panne en bordure rouge
-function atKpiHtml(a){
-  const parts=[a.wait?`<span style="color:var(--warn)">✋ ${a.wait} ${a.wait>1?"t'attendent":"t'attend"}</span>`:'',a.pannes?`<span style="color:var(--err)">🧯 ${plural(a.pannes,'panne','pannes')}</span>`:'',
-    `📦 ${a.out} ${a.out>1?'sortis':'sorti'} aujourd'hui`,a.queue?`⏳ ${a.queue} en file`:''].filter(Boolean);
-  return `<section class="dash atelier click${a.pannes?' err':a.wait?' warn':''}" data-open="atelier" tabindex="0" role="button" title="${esc('Monter au 1er étage\n'+parts.map(p=>p.replace(/<[^>]+>/g,'')).join(' · '))}">`+
-    `<h3>Le 1er étage</h3><div class="row"><div class="big">${a.rooms}<small>/4</small></div><div class="grow">${a.rooms>1?'bureaux occupés':'bureau occupé'}</div></div>`+
-    `<div class="cap">${parts.join(' · ')}</div></section>`;
-}
