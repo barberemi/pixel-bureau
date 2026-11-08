@@ -47,6 +47,9 @@ def write_bytes(path, data):
     _atomic(path, "wb", lambda f: f.write(data))
 
 
+# AI-10 : aucun hook git (écrit par un agent dans un .git partagé) ne tourne pour un script du Bureau ni ses commandes
+if "GIT_CONFIG_COUNT" not in _os.environ:
+    _os.environ.update(GIT_CONFIG_COUNT="1", GIT_CONFIG_KEY_0="core.hooksPath", GIT_CONFIG_VALUE_0="/dev/null")
 _CFG = r"""__BUREAU_CONFIG__"""
 CFG = json.loads(_CFG) if not _CFG.startswith("__") else read_json(
     _os.environ.get("BUREAU_CONFIG") or _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), _os.pardir, "bureau.config.json"))

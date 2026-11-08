@@ -90,6 +90,22 @@ class PrUpdateTest(unittest.TestCase):
     def remote_log(self):
         return self.g("--git-dir", self.remote, "log", "--format=%s", "feat/export").splitlines()
 
+    def test_git_hooks_of_the_cached_clone_never_run(self):
+        """AI-10 : un hook post-checkout écrit dans le .git partagé (par un agent, dans un dossier de travail) ne tourne pas
+        quand le script recrée un dossier de travail (git worktree add) ; le même hook tourne bien pour un git ordinaire."""
+        self.assertEqual(self.step("prepare").returncode, 0)
+        clone = os.path.join(self.tmp, ".cache", "pixel-bureau", "pr", "repos", REPO.replace("/", "__"))
+        mark = os.path.join(self.tmp, "hook-a-tourne")
+        hook = os.path.join(clone, ".git", "hooks", "post-checkout")
+        os.makedirs(os.path.dirname(hook), exist_ok=True)
+        Path(hook).write_text(f"#!/bin/sh\ntouch {mark}\n")
+        os.chmod(hook, 0o755)
+        r = self.step("prepare")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertFalse(os.path.exists(mark), "hook exécuté par le script")
+        self.g("worktree", "add", "--detach", os.path.join(self.tmp, "temoin"), "origin/main", cwd=clone)
+        self.assertTrue(os.path.exists(mark), "le hook du test est bien exécutable par git")
+
     def test_behind_without_conflict_rebases_keeps_commits_and_pushes(self):
         self.main_moves()
         for s in ("prepare", "rebase", "push", "done"):

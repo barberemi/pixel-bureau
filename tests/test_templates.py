@@ -62,6 +62,15 @@ class TemplatesTest(unittest.TestCase):
         self.assertIn("hollyflax", logins)
         self.assertNotIn('"team_github"', templates.script_code("workflows/review.py", cfg))
 
+    def test_git_hooks_are_neutralised_for_the_scripts(self):
+        """AI-10 : les git des scripts (copies dont le .git est partagé) et le setup bash de la revue n'exécutent aucun hook."""
+        cfg = json.loads(Path(ROOT, "tests", "fixtures", "bureau.config.json").read_text(encoding="utf-8"))
+        for rel in ("workflows/pr_update.py", "workflows/chaine.py", "workflows/chaine_pr.py", "workflows/review.py"):
+            self.assertIn('GIT_CONFIG_KEY_0="core.hooksPath", GIT_CONFIG_VALUE_0="/dev/null"', templates.script_code(rel, cfg), rel)
+        setup = next(s for s in TPL["review_child"]["definition"]["steps"] if s["name"] == "setup")
+        self.assertIn("export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null\n", setup["exec_args"][1])
+        self.assertLess(setup["exec_args"][1].index("GIT_CONFIG_COUNT"), setup["exec_args"][1].index("worktree add"))
+
     def test_all_templates_present_and_without_installation_ids(self):
         """Les modèles exportés (templates.py export) ne gardent aucun id de l'installation qui les a exportés."""
         self.assertEqual(set(TPL), set(templates.TEMPLATES))
