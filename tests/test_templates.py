@@ -71,6 +71,22 @@ class TemplatesTest(unittest.TestCase):
         self.assertIn("export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null\n", setup["exec_args"][1])
         self.assertLess(setup["exec_args"][1].index("GIT_CONFIG_COUNT"), setup["exec_args"][1].index("worktree add"))
 
+    def test_support_postes_have_neither_bash_nor_api_call(self):
+        """AI-08 : les postes Support lisent un message Teams non fiable : lecture du code (Read, Grep, Glob) et leur
+        discussion seulement, ni Bash ni api_call (ni rendu, ni modèle)."""
+        keys = [k for k in TPL if k.startswith("support_") and any(s["step_type"]["type"] == "Agent" for s in TPL[k]["definition"]["steps"])]
+        self.assertEqual(sorted(keys), ["support_cause", "support_logs", "support_relecture", "support_reponse", "support_tri"])
+        for k in keys:
+            for s in TPL[k]["definition"]["steps"]:
+                if s["step_type"]["type"] == "Agent":
+                    tools = s["agent_settings"]["tools"]
+                    self.assertEqual(tools["cli"], ["Read", "Grep", "Glob"], k)
+                    self.assertNotIn("api_call", tools["kronn_internal"], k)
+                    self.assertNotIn("Bash", json.dumps(s, ensure_ascii=False).replace("ni Bash ni api_call", ""), k)
+            rendered = json.dumps(templates.render(TPL[k], BASE), ensure_ascii=False)
+            self.assertNotIn('"Bash"', rendered, k)
+            self.assertNotIn('"api_call"', rendered, k)
+
     def test_all_templates_present_and_without_installation_ids(self):
         """Les modèles exportés (templates.py export) ne gardent aucun id de l'installation qui les a exportés."""
         self.assertEqual(set(TPL), set(templates.TEMPLATES))

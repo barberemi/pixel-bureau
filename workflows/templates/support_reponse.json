@@ -85,7 +85,7 @@
     "step_type": {
      "type": "Agent"
     },
-    "description": "✉ réponse : Rédige la réponse au format du fil, d'après les rapports du dossier et tes retours ; corrige les remarques de la relecture. Outils : lecture du code (Read, Grep, Glob, Bash), la discussion de l'investigation (en notes) et les tickets Jira cités (api_call, en lecture).",
+    "description": "✉ réponse : Rédige la réponse au format du fil, d'après les rapports du dossier et tes retours ; corrige les remarques de la relecture. Outils : lecture du code (Read, Grep, Glob ; ni Bash ni api_call, le message Teams n'est pas fiable) et la discussion de l'investigation (en notes) ; les derniers commits du projet sont fournis par le script.",
     "prompt_template": "{{steps.entree.data.stdout}}",
     "room_id": "{{disc}}",
     "agent_settings": {
@@ -93,14 +93,12 @@
       "cli": [
        "Read",
        "Grep",
-       "Glob",
-       "Bash"
+       "Glob"
       ],
       "kronn_internal": [
        "disc_append",
        "disc_get_message",
-       "disc_meta",
-       "api_call"
+       "disc_meta"
       ]
      }
     },
