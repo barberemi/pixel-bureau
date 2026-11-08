@@ -15,14 +15,27 @@ def read_json(path):
         return json.load(f)
 
 
+def _atomic(path, mode, fill):
+    """SRV-02 : fichier temporaire du même dossier puis os.replace, qui remplace un lien au lieu de le suivre."""
+    tmp = _os.path.join(_os.path.dirname(path), ".%s.%s.tmp" % (_os.path.basename(path), _uuid.uuid4().hex[:9]))
+    try:
+        with open(_os.open(tmp, _os.O_WRONLY | _os.O_CREAT | _os.O_EXCL | _os.O_NOFOLLOW, 0o666), mode,
+                  encoding=None if "b" in mode else "utf-8") as f:
+            if _os.path.isfile(path) and not _os.path.islink(path):
+                _os.chmod(tmp, _os.stat(path).st_mode & 0o7777)  # droits du fichier remplacé
+            fill(f)
+        _os.replace(tmp, path)
+    finally:
+        if _os.path.lexists(tmp):
+            _os.unlink(tmp)
+
+
 def write_json(path, obj):
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(obj, f)
+    _atomic(path, "w", lambda f: json.dump(obj, f))
 
 
 def write_text(path, text):
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(text)
+    _atomic(path, "w", lambda f: f.write(text))
 
 
 def read_bytes(path):
@@ -31,8 +44,7 @@ def read_bytes(path):
 
 
 def write_bytes(path, data):
-    with open(path, "wb") as f:
-        f.write(data)
+    _atomic(path, "wb", lambda f: f.write(data))
 
 
 _CFG = r"""__BUREAU_CONFIG__"""

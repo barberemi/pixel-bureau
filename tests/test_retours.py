@@ -83,6 +83,26 @@ class RetoursSnapshotTest(unittest.TestCase):
         self.assertEqual(snap["pousses"], 1)
         self.assertIn(("rej", "fin"), ks, "fini sans push (gate refusée) : le rejeu libère son bureau")
 
+    def test_exchange_files_never_follow_a_link(self):
+        """SRV-02 : l'avancement en lien symbolique (posé par une PR ou un agent) est ignoré ; _lib.write_json remplace un
+        lien au lieu d'écrire dans sa cible, et garde les droits du fichier remplacé."""
+        import _lib
+        work, secret, cible = (os.path.join(self.tmp, x) for x in ("work", "secret", "cible"))
+        os.makedirs(work)
+        Path(secret).write_text('{"current": "MOT-DE-PASSE"}')
+        Path(cible).write_text("intact")
+        os.symlink(secret, os.path.join(work, ".bureau-fix-progress.json"))
+        self.assertEqual(self.r.progress({"work": work}), {})
+        os.symlink(cible, os.path.join(work, ".bureau-fix.json"))
+        _lib.write_json(os.path.join(work, ".bureau-fix.json"), [1])
+        self.assertEqual(Path(cible).read_text(), "intact")
+        self.assertFalse(os.path.islink(os.path.join(work, ".bureau-fix.json")))
+        self.assertEqual(_lib.read_json(os.path.join(work, ".bureau-fix.json")), [1])
+        os.chmod(os.path.join(work, ".bureau-fix.json"), 0o600)
+        _lib.write_text(os.path.join(work, ".bureau-fix.json"), "[2]")
+        self.assertEqual(os.stat(os.path.join(work, ".bureau-fix.json")).st_mode & 0o777, 0o600)
+        self.assertEqual(sorted(os.listdir(work)), [".bureau-fix-progress.json", ".bureau-fix.json"], "aucun fichier temporaire laissé")
+
     def test_without_the_model_nothing(self):
         self.r.CFG.pop("actions", None)
         self.assertEqual(self.r.snapshot("now")["rooms"], [])

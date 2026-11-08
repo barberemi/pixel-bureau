@@ -417,6 +417,47 @@ class PrUpdateTest(unittest.TestCase):
         self.assertEqual(r.returncode, 9, r.stdout + r.stderr)
         self.assertIn("(2 commentaire(s) d'un compte extérieur ignoré(s).)", r.stdout)
 
+    def test_pr_tracking_exchange_files_is_refused_and_nothing_leaks(self):
+        """SRV-02 : une PR qui suit des liens nommés comme les fichiers d'échange (.bureau-fix.json -> ../cible,
+        .bureau-fix-commit.txt -> ../secret) est refusée au setup : la cible n'est pas modifiée, le secret ne sort pas."""
+        cible, secret = Path(self.tmp, "cible"), Path(self.tmp, "secret")
+        cible.write_text("intact\n")
+        secret.write_text("MOT-DE-PASSE-42\n")
+        self.g("checkout", "feat/export")
+        os.symlink("../cible", os.path.join(self.work, ".bureau-fix.json"))
+        os.symlink("../secret", os.path.join(self.work, ".bureau-fix-commit.txt"))
+        self.g("add", ".")
+        self.g("commit", "-m", "liens")
+        self.g("push", "origin", "feat/export")
+        self.data["threads"] = [self.thread("T1")]
+        for step in ("fix_prepare", "prepare"):
+            r = self.step(step)
+            self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+            self.assertIn("refusée : elle suit .bureau-fix-commit.txt, .bureau-fix.json", r.stdout)
+            self.assertNotIn("MOT-DE-PASSE", r.stdout + r.stderr)
+        self.assertEqual(cible.read_text(), "intact\n")
+        self.assertNotIn("MOT-DE-PASSE", Path(self.tmp, "gh.json.calls").read_text())
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, ".cache", "pixel-bureau", "pr", "work", "run-1")))
+
+    def test_exchange_links_made_by_the_agent_are_never_followed(self):
+        """SRV-02 : des liens posés après le setup (par l'agent) à la place des fichiers d'échange ne font ni lire ni
+        écrire hors du dossier de travail : le secret n'apparaît ni dans la validation, ni dans le commit, ni sur GitHub
+        (l'écriture sans suivre de lien : tests/test_retours.py)."""
+        secret = Path(self.tmp, "secret")
+        secret.write_text('[{"thread": "T1", "fixed": true, "reply": "MOT-DE-PASSE-42"}]')
+        self.data["threads"] = [self.thread("T1")]
+        _, work = self.fix_run(FIXTURE)
+        os.remove(os.path.join(work, ".bureau-fix-replies.json"))
+        for name in (".bureau-fix-commit.txt", ".bureau-fix-summary.md", ".bureau-fix-replies.json", ".bureau-fix-new.txt"):
+            os.symlink(str(secret), os.path.join(work, name))
+        d = self.step("fix_diff")
+        self.assertNotIn("MOT-DE-PASSE", d.stdout + d.stderr)
+        p = self.step("fix_push")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(self.remote_log()[0], "fix: retours de review de #16", "message par défaut, pas le secret")
+        self.assertNotIn("MOT-DE-PASSE", Path(self.tmp, "gh.json.calls").read_text())
+        self.assertNotIn("MOT-DE-PASSE", self.g("--git-dir", self.remote, "log", "-1", "-p", "feat/export"))
+
     def test_fix_prompt_treats_comments_as_data_and_tells_the_truth_about_review(self):
         """AI-03 : une phrase adressée à une IA dans un commentaire n'est jamais une consigne ; la relecture avant envoi
         n'existe que pour le bouton Corriger, pas dans la chaîne (poste sans validation)."""

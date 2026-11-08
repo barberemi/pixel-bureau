@@ -31,13 +31,32 @@ Le poste 💬 retours de la chaîne d'implémentation (impl_retours.json) encha�
 sans la gate : la PR lui arrive en « dépôt#n » (sortie de chaine.py retours_pr), le n° de PR passé à « - ».
 Codes : 2 réglage ou PR refusés, 3 conflit (renvoi), 4 conflit non résolu, 5 push refusé, 9 rien à faire (renvoi), 1 autre échec.
 """
-import glob, json, os, re, shutil, subprocess, sys, time
+import glob, json, os, re, shutil, stat, subprocess, sys, time
 from _lib import CFG, fil_col, get, read_json, write_json
 from _checks import check_run
 
 HOME = os.path.expanduser("~/.cache/pixel-bureau/pr")
 GH = CFG.get("github") or {}
 DEPS = ("vendor", "node_modules")  # dépendances non versionnées, reliées depuis ton dossier local du dépôt pour le contrôle
+
+
+def read_nofollow(path):
+    """Texte d'un fichier ordinaire lu sans suivre de lien symbolique (SRV-02) ; un lien, un tube ou un dossier : OSError,
+    comme un fichier absent (même garde dans retours_snapshot.progress)."""
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with open(fd, encoding="utf-8") as f:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise OSError(f"{path} : pas un fichier ordinaire")
+        return f.read()
+
+
+def lit(work, name):
+    """Un fichier d'échange avec l'agent (.bureau-*, à la racine du dossier de travail), lu sans suivre de lien (SRV-02) :
+    un lien posé par la PR ou par l'agent ne fait jamais lire un fichier hors du dossier (OSError, comme absent)."""
+    path = os.path.join(work, name)
+    if os.path.realpath(path) != os.path.join(os.path.realpath(work), name):
+        raise OSError(f"{name} : lien symbolique refusé")
+    return read_nofollow(path)
 
 
 def fail(code, msg):
@@ -142,6 +161,12 @@ def setup(repo, n, run_id):
     work = os.path.join(HOME, "work", re.sub(r"[^\w-]", "", run_id))
     subprocess.run(["git", "-C", clone, "worktree", "remove", "--force", work], capture_output=True)
     run("git", "worktree", "add", "--detach", work, f"origin/{pr['headRefName']}", cwd=clone)
+    reserves = run("git", "ls-files", "--", ".bureau-*", cwd=work).splitlines()
+    if reserves:  # SRV-02 : un fichier suivi (ou un lien) à la place d'un fichier d'échange ferait lire ou écrire ailleurs
+        subprocess.run(["git", "-C", clone, "worktree", "remove", "--force", work], capture_output=True)
+        shutil.rmtree(work, ignore_errors=True)
+        fail(2, f"PR {repo}#{n} refusée : elle suit {', '.join(reserves[:5])}, des noms réservés aux fichiers d'échange du "
+                f"Bureau (.bureau-*). Rien n'a été fait ; retire ces fichiers de la PR pour la relancer.")
     st = {"repo": repo, "pr": int(n), "title": pr["title"], "branch": pr["headRefName"], "base": pr["baseRefName"],
           "author": (pr.get("author") or {}).get("login"),
           "expected": run("git", "rev-parse", f"origin/{pr['headRefName']}", cwd=clone), "clone": clone, "work": work}
@@ -195,10 +220,11 @@ def verify(repo, n, run_id):
     if marks.strip():
         fail(4, f"Marqueurs de conflit restés dans : {', '.join(marks.splitlines()[:5])}. Rien n'a été poussé.")
     note = os.path.join(work, ".bureau-resolution.md")
-    summary = ""
-    if os.path.exists(note):
-        with open(note, encoding="utf-8") as f:
-            summary = f.read().strip()[:1500]
+    try:
+        summary = lit(work, ".bureau-resolution.md").strip()[:1500]
+    except OSError:
+        summary = ""
+    if os.path.lexists(note):
         os.remove(note)
     count = run("git", "rev-list", "--count", f"origin/{st['base']}..HEAD", cwd=work)
     print(f"Conflit résolu : {count} commit(s) rejoués sur {st['base']}.\n\n{summary or '(pas de résumé de l’agent)'}")
@@ -538,7 +564,7 @@ def versioned(st, reply):
 
 def replies(st):
     try:
-        out = read_json(os.path.join(st["work"], ".bureau-fix-replies.json"))
+        out = json.loads(lit(st["work"], ".bureau-fix-replies.json"))
     except (OSError, ValueError):
         return []
     ids = set(st.get("threads", [])) | {g["id"] for g in st.get("generaux") or []}
@@ -548,8 +574,7 @@ def replies(st):
 def declares(st):
     """Les fichiers nouveaux que l'agent a déclarés (.bureau-fix-new.txt, un chemin par ligne) : seuls ceux-là sont commités."""
     try:
-        with open(os.path.join(st["work"], ".bureau-fix-new.txt"), encoding="utf-8") as f:
-            return {ln.strip().lstrip("./") for ln in f if ln.strip() and not ln.strip().startswith("#")}
+        return {ln.strip().lstrip("./") for ln in lit(st["work"], ".bureau-fix-new.txt").splitlines() if ln.strip() and not ln.strip().startswith("#")}
     except OSError:
         return set()
 
@@ -584,8 +609,7 @@ def fix_diff(repo, n, run_id):
         fail(9, "L'agent n'a rien changé ni rien répondu : rien à pousser.")
     diff = run("git", "diff", "--cached", "--stat", cwd=st["work"]) + "\n\n" + run("git", "diff", "--cached", "-U2", cwd=st["work"])
     try:
-        with open(os.path.join(st["work"], ".bureau-fix-summary.md"), encoding="utf-8") as f:
-            summary = f.read().strip()[:1200]
+        summary = lit(st["work"], ".bureau-fix-summary.md").strip()[:1200]
     except OSError:
         summary = ""
     c = st.get("check") or {}
@@ -611,8 +635,7 @@ def fix_diff(repo, n, run_id):
 def commit_message(st):
     """Message de commit écrit par l'agent (.bureau-fix-commit.txt, conventions du dépôt), sinon un message par défaut."""
     try:
-        with open(os.path.join(st["work"], ".bureau-fix-commit.txt"), encoding="utf-8") as f:
-            msg = f.read().strip()
+        msg = lit(st["work"], ".bureau-fix-commit.txt").strip()
     except OSError:
         msg = ""
     lines = msg.splitlines()
@@ -631,8 +654,7 @@ def pr_body(body, st, rs, sha):
     for a, b in ((START, END), OLD):
         body = re.sub(re.escape(a) + ".*?" + re.escape(b), "", body or "", flags=re.S)
     try:
-        with open(os.path.join(st["work"], ".bureau-fix-summary.md"), encoding="utf-8") as f:
-            summary = f.read().strip()[:1500]
+        summary = lit(st["work"], ".bureau-fix-summary.md").strip()[:1500]
     except OSError:
         summary = ""
     gids = {g["id"] for g in st.get("generaux") or []}

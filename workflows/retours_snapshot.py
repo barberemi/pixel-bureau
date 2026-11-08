@@ -12,7 +12,7 @@ Un bureau = un run actif (6 au plus sur la page) ; la file = les runs en attente
 dernières 24 h qu'aucun run plus récent de la même PR n'a repris. Colonne d'un fil : celle de la réponse prévue
 (fil_col de _lib.py) une fois l'agent fini, sinon celle que l'agent a notée dans son avancement, sinon « à traiter ».
 """
-import datetime, json, os, re, sys
+import datetime, json, os, re, stat, sys
 from _lib import ACTIVE, CFG, FIL_COLS, TZ, get, read_json
 
 HOME = os.path.expanduser("~/.cache/pixel-bureau/pr")
@@ -42,7 +42,10 @@ def state(run_id):
 
 def progress(st):
     try:
-        p = read_json(os.path.join(st["work"], ".bureau-fix-progress.json"))
+        # SRV-02 : lu sans suivre de lien (un lien posé par la PR ou l'agent ferait lire hors du dossier de travail)
+        fd = os.open(os.path.join(st["work"], ".bureau-fix-progress.json"), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with open(fd, encoding="utf-8") as f:
+            p = json.load(f) if stat.S_ISREG(os.fstat(fd).st_mode) else {}
     except (KeyError, OSError, ValueError, TypeError):
         return {}
     return p if isinstance(p, dict) else {}
