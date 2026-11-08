@@ -142,10 +142,7 @@ def reprend(ticket, repo, mode, run):
                                   "livraison": "à la PR", "relecture": "à ta relecture de la PR"}.get(step, "au début, postes déjà faits sautés")
 
 
-# Lanceur du poste 🧪 Tests (écrit dans le dossier par l'entrée du poste, 0 token) : la commande checks.tests du dépôt, celle
-# de l'étape lance (conteneur compris), sur les fichiers donnés ; sortie coupée aux échecs ; lancements comptés et plafonnés.
-# Journaux des runs du 5 novembre : chaque session cherchait comment lancer les tests (Makefile, conteneurs montés à la main,
-# attentes) ; c'était l'essentiel de ses tours.
+# Lanceur du poste 🧪 Tests (0 token) : checks.tests du dépôt sur les fichiers donnés, sortie coupée aux échecs, plafonné.
 TESTE = r"""import json, os, re, subprocess, sys
 D = os.path.dirname(os.path.abspath(__file__))
 P = os.path.join(D, "teste.json")
@@ -204,7 +201,7 @@ sys.exit(1)
 
 
 def teste_ecrit():
-    """Écrit le lanceur du poste Tests et ses commandes (worktree, main, base déjà remplis) ; None sans checks.tests."""
+    """Lanceur du poste Tests et ses commandes ; None sans checks.tests."""
     checks = (reglages().get("checks") or {}).get("tests") or []
     if not checks:
         return None
@@ -223,19 +220,15 @@ def teste_ecrit():
 
 
 def tests_budget():
-    """Le cadre du poste 🧪 Tests : le coût d'une session vient de ses tours (chaque tour relit tout le contexte ; EW-7848,
-    banc du 5 novembre : 31 min, 65 M de jetons relus en cache, 14,56 $). Contre-épreuves bornées (impl.postes.tests.mutations,
-    6 par défaut), un lanceur prêt (teste.py, lancements plafonnés : impl.postes.tests.lancements), lecture par morceaux,
-    tests liés donnés d'avance."""
+    """Cadre du poste 🧪 Tests (le coût vient des tours) : contre-épreuves et lancements plafonnés, lanceur, tests liés."""
     pc = poste_conf("tests")
     n = int(pc.get("mutations") or 6)
     files = [f for f in changed() if not f.endswith(".md")]
     lies = tests_lies(lambda: git("ls-files"), files)  # relevé commun avec la revue (_releves.py)
     lanceur = teste_ecrit()
-    lance = (f"Lance un test avec `python3 {lanceur} <fichier de test> [autres]` (chemins depuis la racine du dépôt), et "
-             "rien d'autre : il lance la commande de test réglée pour ce dépôt, conteneur compris (ni docker, ni make, ni "
-             "installation, ni `sleep` ou attente). Il rend une ligne si c'est vert, les échecs seulement si c'est rouge ; la "
-             "sortie complète est dans `.kronn/chaine/teste_sortie.txt` (cherches-y avec grep, ne la lis pas en entier). "
+    lance = (f"Lance un test avec `python3 {lanceur} <fichier de test> [autres]` (chemins depuis la racine), rien d'autre : "
+             "commande réglée du dépôt, conteneur compris (ni docker, ni make, ni `sleep`). Vert : une ligne ; rouge : les "
+             "échecs (sortie complète : `.kronn/chaine/teste_sortie.txt`, grep dedans). "
              f"{json.load(open(dossier('teste.json')))['max']} lancements au plus pour tout le poste, contre-épreuves comprises : "
              "au-delà il refuse, rends alors tes constats.") if lanceur else (
              "Lance seulement le fichier de test ciblé (ex. `phpunit tests/…/FooTest.php`, `vitest run foo.test.ts`), sortie "
@@ -243,15 +236,54 @@ def tests_budget():
     return section("Budget du poste (à tenir)",
                    f"Au plus {n} contre-épreuves (mutations), choisies sur les gardes, bornes et retours qui comptent le plus ; "
                    "les autres, note-les « non éprouvées » dans le résumé. " + lance + " Jamais toute la suite, l'analyse "
-                   "statique ni un build : l'étape suivante lance les tests du dépôt. Pas d'exploration du dépôt au-delà des "
-                   "fichiers touchés et de leurs tests. Un fichier de plus de 300 lignes : repère d'abord ce qui te sert "
-                   "(`grep -n` sur les noms de test ou la fonction), puis lis seulement ce passage (Read avec offset et limit) ; "
+                   "statique ni un build : l'étape suivante lance les tests du dépôt. Pas d'exploration au-delà des fichiers "
+                   "touchés et de leurs tests. Fichier de plus de 300 lignes : `grep -n`, puis Read avec offset et limit ; "
                    "ne relis pas un fichier déjà lu. "
                    f"Vise {int(pc.get('reponses') or 40)} réponses ; à {int(pc.get('reponses') or 40) * 3 // 2}, arrête et rends "
                    "ce que tu as.") + section(
                    "Tests liés aux fichiers touchés (par le nom, 0 token)",
                    "\n".join(f"- {f} : {', '.join(t[:3])}" for f, t in sorted(lies.items())) or
                    "aucun test trouvé par le nom : cherche les tests voisins du fichier touché avant d'en créer un")
+
+
+def travail_humain(ticket, repos):
+    """Essai : branches et PR humaines du ticket (dépôt et sœurs), hors de portée des postes (non_fiable)."""
+    out_ = []
+    key = ticket.lower()
+    for b in git("ls-remote", "--heads", "origin").splitlines():
+        ref = b.split("refs/heads/", 1)[-1]
+        if key in ref.lower() and not ref.startswith("kronn/"):
+            out_.append(f"branche {ref} ({repo_of()})")
+    for r in repos:
+        try:
+            res = subprocess.run(["gh", "pr", "list", "--repo", r, "--state", "all", "--search", ticket, "--json",
+                                  "number,headRefName"], capture_output=True, text=True, timeout=30)
+            prs = json.loads(res.stdout or "[]") if res.returncode == 0 else []
+        except (OSError, ValueError, subprocess.TimeoutExpired):
+            prs = []
+        out_ += [f"PR {r}#{x['number']} (branche {x['headRefName']})" for x in prs
+                 if not str(x.get("headRefName") or "").startswith("kronn/")]
+    return sorted(set(out_))
+
+
+def contrat_soeurs():
+    """Plusieurs dépôts : le plan validé des sœurs (cache) et où lire ce qu'elles ont écrit (EW-7901 : clés divergentes)."""
+    e = etat()
+    if not e.get("soeurs"):
+        return ""
+    lignes = []
+    for r in e["soeurs"]:
+        d = cache_dir(e.get("ticket"), r)
+        plan = read_json(os.path.join(d, "plan.json")) if d and os.path.exists(os.path.join(d, "plan.json")) else {}
+        lots = [f"  - {x.get('titre')} : {cellule(x.get('objectif'), 300)}" for x in (plan or {}).get("lots") or [] if isinstance(x, dict)]
+        copie_ = (e.get("lecture") or {}).get(r)
+        lignes.append(f"- {r}" + (f", copie locale {copie_}, branche kronn/{e.get('ticket')}" if copie_ else "") + " :\n"
+                      + ("\n".join(lots)[:3000] if lots else "  plan pas encore validé"))
+    return section("Contrat avec les bureaux sœurs (même nom des deux côtés)",
+                   "Les noms échangés entre dépôts (clés, champs, routes, formats) sont identiques des deux côtés : reprends "
+                   "ceux déjà écrits sur la branche de la sœur (`git -C <copie> grep <motif> kronn/<ticket>`), sinon fixe-les "
+                   "et liste-les dans ton rapport (« Contrat partagé »).\n"
+                   + "\n".join(lignes))
 
 
 def deps_md():
@@ -321,7 +353,8 @@ def cmd_prepare(ticket, mode, run, variant="", depot="", soeurs="", reprise="", 
                                       "run": run, "tours": 0, "docs": docs[:200], "soeurs": sisters, "etape": "cadrage", "depart": fixed,
                                       "lecture": chemins([r for r in sisters + list(impl().get("references") or []) if r.lower() != repo.lower()]),
                                       "texte": f"{f.get('summary') or ''}\n{f.get('description') or ''}"[:8000],
-                                      "deps": lie_deps(repo=repo)})
+                                      "deps": lie_deps(repo=repo),
+                                      "humain": travail_humain(ticket, [repo] + sisters) if mode.strip().lower() == "essai" else []})
     src = cache_dir(ticket, repo)
     if src and os.path.isdir(src):  # nouveau départ : l'ancien dossier ne doit plus servir à une reprise
         for x in os.listdir(src):
@@ -398,9 +431,12 @@ def cmd_entree(p, ticket, retours="", extra=""):
         parts.append(section("Documentation du dépôt (à lire avant tout)", "\n".join(docs[:80]) + (f"\n… et {len(docs) - 80} autres" if len(docs) > 80 else "")
                              if docs else "aucune"))
         prev = load("cadrage.json")  # après un « Changements » à la gate du plan : il corrige son rapport au lieu de tout refaire
-        if prev and prev.get("resultat"):
-            parts.append(section("Ton rapport précédent (à corriger d'après les retours de l'humain)",
-                                 json.dumps(prev["resultat"], ensure_ascii=False, indent=1)[:12000]))
+        txt = json.dumps(prev["resultat"], ensure_ascii=False, indent=1) if prev and prev.get("resultat") else ""
+        if txt and cite_humain(txt):  # essai d'EW-7901 : le rapport d'avant décrivait la PR humaine, le nouveau plan la reprenait
+            parts.append(section("Ton rapport précédent", "Écarté : il citait le travail humain du ticket (essai de comparaison). "
+                                 "Repars du ticket et du dépôt."))
+        elif txt:
+            parts.append(section("Ton rapport précédent (à corriger d'après les retours de l'humain)", txt[:12000]))
     deps = {"code": ["cadrage"], "livraison": ["cadrage"] + list(CONTROLES)}.get(p, ["cadrage"] if p in CONTROLES else [])
     for d in deps:
         r = load(d + ".json")
@@ -417,6 +453,8 @@ def cmd_entree(p, ticket, retours="", extra=""):
         stat = git("diff", "--stat", f"{depart()}...HEAD")
         parts.append(section("Volume du diff", stat[-3000:]))
         parts.append(correction(p))
+    if p in ("cadrage", "code", "livraison"):
+        parts.append(contrat_soeurs())
     if p in ("code", "tests"):
         parts.append(deps_md())
     if p == "tests":

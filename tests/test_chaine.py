@@ -48,6 +48,8 @@ class ChaineModelesTest(unittest.TestCase):
         self.assertEqual(chain["steps"][-1]["name"], "rattrape")  # jamais atteinte dans l'ordre : seulement par le Goto
         self.assertEqual((chain["concurrency_limit"], chain["project_scope"]), (4, {"type": "All"}))  # 4 chaînes, tout projet
         self.assertEqual(chain["workspace_config"], {"hooks": {}, "require_isolation": True})  # une copie par ticket
+        # l'attente aux gates compte dans le délai du run (essai d'EW-7901 : 3 h 30 à la gate du plan, coupé à 6 h en livraison)
+        self.assertEqual(chain["guards"]["timeout_seconds"], 72 * 3600)
         subs = {s["name"]: s["sub_workflow_id"] for s in chain["steps"] if s["step_type"]["type"] == "SubWorkflow"}
         self.assertEqual(set(subs), {"cadrage", "code", "controles", "livraison", "publication"})
         self.assertEqual(subs["code"], c["models"]["impl_code"])
@@ -344,6 +346,40 @@ class ChaineScriptTest(unittest.TestCase):
         code, ctx = self.sh("entree", "code", "AB-12")
         self.assertEqual(code, 5)
         self.assertIn("Bouton partager", ctx)  # le contexte reste la sortie de l'étape, lue par le Code
+
+    def test_essai_keeps_human_work_out_of_reach_and_sisters_share_a_contract(self):
+        """Essai d'EW-7901 : le Plan reprenait les branches et la PR de l'humain (l'essai se compare à elles), son rapport
+        d'avant les décrivait encore après « Changements » ; les deux bureaux n'avaient pas les mêmes noms de clés."""
+        g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        subprocess.run(g + ["push", "-q", "origin", "HEAD:refs/heads/feat/AB-12-lecture"], cwd=self.wt, check=True)
+        bin_ = os.path.join(self.tmp, "bin")
+        os.makedirs(bin_)
+        Path(bin_, "gh").write_text("#!/bin/sh\necho '[{\"number\": 7, \"headRefName\": \"feat/AB-12-lecture\"}, {\"number\": 8, \"headRefName\": \"kronn/AB-12\"}]'\n")
+        os.chmod(os.path.join(bin_, "gh"), 0o755)
+        self.env_extra = {"PATH": bin_ + os.pathsep + os.environ["PATH"]}
+        home = os.path.join(self.tmp, "home", ".cache", "pixel-bureau", "chaine", "AB-12", "dm__api", "courant")
+        os.makedirs(home)
+        Path(home, "plan.json").write_text(json.dumps({"lots": [{"titre": "Clés de la keyvalue", "objectif": "écrire report_email"}]}))
+        code, outp = self.sh("prepare", "AB-12", "essai", "run1", "", "", "dm/api", "non", stdin=json.dumps(TICKET))
+        self.assertEqual(code, 0, outp)
+        self.assertEqual(self.dossier("etat.json")["humain"],
+                         ["PR dm/api#7 (branche feat/AB-12-lecture)", "PR dm/site#7 (branche feat/AB-12-lecture)", "branche feat/AB-12-lecture (dm/site)"])
+        ctx = self.sh("entree", "cadrage", "AB-12")[1]
+        self.assertIn("Essai de comparaison : le travail humain du ticket est hors de portée", ctx)
+        self.assertIn("- PR dm/site#7 (branche feat/AB-12-lecture)", ctx)
+        self.assertIn("Essai de comparaison", self.sh("missions")[1])  # les contrôles aussi
+        Path(self.wt, ".kronn", "chaine", "cadrage.json").write_text(json.dumps({"resultat": {"resume": "reprendre la PR #7"}}))
+        ctx = self.sh("entree", "cadrage", "AB-12", "Repars du ticket")[1]
+        self.assertIn("Écarté : il citait le travail humain du ticket", ctx)
+        self.assertNotIn("reprendre la PR #7", ctx)
+        Path(self.wt, ".kronn", "chaine", "cadrage.json").write_text(json.dumps({"resultat": {"resume": "lire la keyvalue"}}))
+        self.assertIn("lire la keyvalue", self.sh("entree", "cadrage", "AB-12", "Précise")[1])  # sans citation : gardé
+        ctx = self.sh("entree", "code", "AB-12")[1]
+        self.assertIn("Contrat avec les bureaux sœurs (même nom des deux côtés)", ctx)
+        self.assertIn("Clés de la keyvalue : écrire report_email", ctx)
+        self.sh("prepare", "AB-12", "complet", "run2", "", "", "dm/api", "non", stdin=json.dumps(TICKET))
+        self.assertEqual(self.dossier("etat.json")["humain"], [])  # hors essai : rien d'écarté
+        self.assertNotIn("Essai de comparaison", self.sh("entree", "cadrage", "AB-12")[1])
 
     def test_one_bureau_per_repo_knows_its_scope_and_sisters(self):
         """Méthode A : le bureau ne traite que son dépôt, sait quels dépôts ont leur bureau ; la PR liste ses sœurs."""
@@ -774,6 +810,11 @@ class ChaineScriptTest(unittest.TestCase):
         subprocess.run(["git", "clone", "-q", self.origin, main], check=True, capture_output=True)
         os.makedirs(os.path.join(main, "app", "vendor", "pkg"))
         Path(main, "app", "vendor", "pkg", "x.php").write_text("<?php\n")
+        os.makedirs(os.path.join(main, "app", "vendor", "composer"))  # vendor de Composer : autoload et proxys recopiés
+        Path(main, "app", "vendor", "composer", "autoload_real.php").write_text("<?php // racine = dirname(vendor)\n")
+        os.makedirs(os.path.join(main, "app", "vendor", "bin"))
+        Path(main, "app", "vendor", "bin", "phpunit").write_text("<?php include __DIR__.'/../autoload.php';\n")
+        Path(main, "app", "vendor", "autoload.php").write_text("<?php\n")
         Path(main, ".gitignore").write_text(".kronn/\napp/vendor/\n")  # motif de dossier : ne couvre pas un lien
         os.makedirs(os.path.join(main, "node_modules", "m"))
         subprocess.run(g + ["add", ".gitignore"], cwd=main, check=True)
@@ -789,8 +830,13 @@ class ChaineScriptTest(unittest.TestCase):
         code, outp = self.sh("prepare", "AB-12", "complet", "run1", stdin=json.dumps(TICKET))
         self.assertEqual(code, 0, outp)
         self.assertIn("dépendances liées : app/vendor, node_modules", outp)
-        self.assertTrue(os.path.islink(os.path.join(wt, "app", "vendor")))
-        self.assertEqual(os.path.realpath(os.path.join(wt, "app", "vendor")), os.path.realpath(os.path.join(main, "app", "vendor")))
+        # essai d'EW-7901 : un lien sur tout vendor mettait la racine de l'autoload dans le checkout principal
+        v = os.path.join(wt, "app", "vendor")
+        self.assertFalse(os.path.islink(v))
+        for n in ("composer", "bin", "autoload.php"):
+            self.assertFalse(os.path.islink(os.path.join(v, n)), n)
+        self.assertEqual(os.path.realpath(os.path.join(v, "composer", "autoload_real.php")), os.path.join(os.path.realpath(v), "composer", "autoload_real.php"))
+        self.assertEqual(os.path.realpath(os.path.join(v, "pkg")), os.path.realpath(os.path.join(main, "app", "vendor", "pkg")))
         self.assertTrue(Path(wt, "app", "vendor", "pkg", "x.php").exists())
         self.assertEqual(subprocess.run(["git", "status", "--porcelain"], cwd=wt, capture_output=True, text=True).stdout, "")
         subprocess.run(g + ["add", "-A"], cwd=wt, check=True)  # un agent qui commite tout ne commite pas les liens
