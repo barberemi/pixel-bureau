@@ -322,9 +322,27 @@ def abort(repo, n, run_id):
 
 # ---------- corriger les commentaires d'une PR (#75, page action « bureau-fixpr ») ----------
 THREADS_Q = ("query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100){nodes{"
-             "id isResolved isOutdated path line comments(first:30){nodes{author{login __typename} body createdAt url}}}} "
-             "reviews(last:50){nodes{id state body submittedAt author{login __typename}}} "
-             "comments(last:100){nodes{id body createdAt author{login __typename}}}}}}")
+             "id isResolved isOutdated path line comments(first:30){nodes{author{login __typename} authorAssociation body createdAt url}}}} "
+             "reviews(last:50){nodes{id state body submittedAt author{login __typename} authorAssociation}} "
+             "comments(last:100){nodes{id body createdAt author{login __typename} authorAssociation}}}}}")
+# AI-03 : seuls ces comptes parlent à l'agent (voir fiable) ; les autres commentaires sont écartés par le script, comptés
+FIABLES = ("OWNER", "MEMBER", "COLLABORATOR")
+
+
+def equipe(moi=""):
+    """Les logins GitHub dont les commentaires vont à l'agent même sans droit sur le dépôt : les personnes du roster
+    (team_github, injecté au rendu ; en local, les people de la config) et toi (moi : ta revue), en minuscules."""
+    logins = CFG.get("team_github") or [p.get("github") for p in CFG.get("people") or [] if isinstance(p, dict)]
+    return {str(x).lower() for x in list(logins) + [moi] if x}
+
+
+def fiable(c, garde):
+    """AI-03 : un commentaire dont le texte peut aller à l'agent : son auteur a des droits sur le dépôt
+    (authorAssociation OWNER, MEMBER, COLLABORATOR), est de l'équipe ou toi (garde, voir equipe), ou est une app GitHub
+    (__typename Bot : installée par un administrateur du dépôt, la revue de Copilot par exemple)."""
+    who = c.get("author") or {}
+    return (c.get("authorAssociation") in FIABLES or str(who.get("login") or "").lower() in garde
+            or who.get("__typename") == "Bot")
 
 
 def pr_feedback(repo, n):
@@ -343,16 +361,24 @@ def deja(comments):
     return f"Version {m.group(1)}", any(c.get("author") != comments[last].get("author") for c in comments[last + 1:])
 
 
-def threads(repo, n, resolved=False, pr=None):
+def threads(repo, n, resolved=False, pr=None, garde=None, ecartes=None):
     """Fils de review non résolus de la PR (resolved : tous) : [{id, kind « fil », path, line, outdated, resolved,
     deja_repondu (« Version N » de la dernière réponse du Bureau, ou None), relance (écrit depuis par un autre),
-    comments: [{author, body}]}]."""
+    comments: [{author, body}]}]. garde (AI-03, voir fiable) : les commentaires d'un compte extérieur sont retirés et
+    comptés dans ecartes (fils non résolus seulement) ; un fil qui n'en garde aucun est retiré."""
     nodes = ((pr if pr is not None else pr_feedback(repo, n)).get("reviewThreads") or {}).get("nodes") or []
     out = []
     for t in nodes:
         if not resolved and t.get("isResolved"):
             continue
-        cs = [{"author": (c.get("author") or {}).get("login"), "body": c.get("body"), "url": c.get("url")} for c in (t.get("comments") or {}).get("nodes") or []]
+        nodes_c = (t.get("comments") or {}).get("nodes") or []
+        if garde is not None:
+            if ecartes is not None and not t.get("isResolved"):
+                ecartes += [c for c in nodes_c if not fiable(c, garde)]
+            nodes_c = [c for c in nodes_c if fiable(c, garde)]
+            if not nodes_c:
+                continue
+        cs = [{"author": (c.get("author") or {}).get("login"), "body": c.get("body"), "url": c.get("url")} for c in nodes_c]
         v, relance = deja(cs)
         out.append({"id": t["id"], "kind": "fil", "path": t.get("path"), "line": t.get("line"), "outdated": t.get("isOutdated"),
                     "resolved": bool(t.get("isResolved")), "deja_repondu": v, "relance": relance, "comments": cs})
@@ -362,11 +388,14 @@ def threads(repo, n, resolved=False, pr=None):
 REVIEW_STATES = {"CHANGES_REQUESTED": "changements demandés", "COMMENTED": "commentaire de review"}
 
 
-def generaux(pr):
+def generaux(pr, garde=None, ecartes=None):
     """Ce qui est dit hors des fils : le corps des reviews (changements demandés, commentaire) et les commentaires de la
     PR, sans les bots, postés après la dernière réponse générale du Bureau (« Version N » en tête : ce qui vient avant est
-    déjà traité) ; [{id, kind « general », quoi, comments: [{author, body}]}], du plus ancien au plus récent."""
+    déjà traité) ; [{id, kind « general », quoi, comments: [{author, body}]}], du plus ancien au plus récent. garde
+    (AI-03, voir fiable) : ceux d'un compte extérieur sont écartés, comptés dans ecartes."""
     coms = ((pr.get("comments") or {}).get("nodes")) or []
+    if garde is not None:  # un « Version N » d'un compte extérieur ne fait pas oublier ce qui précède
+        coms = [c for c in coms if fiable(c, garde) or not VERSION_HEAD.match(str(c.get("body") or "").strip())]
     depuis = max((c.get("createdAt") or "" for c in coms if VERSION_HEAD.match(str(c.get("body") or "").strip())), default="")
     items = []
     for r in ((pr.get("reviews") or {}).get("nodes")) or []:
@@ -379,6 +408,10 @@ def generaux(pr):
         if not quoi or not body or at <= depuis or who.get("__typename") == "Bot" or str(who.get("login") or "").endswith("[bot]"):
             continue
         if VERSION_HEAD.match(body):
+            continue
+        if garde is not None and not fiable(x, garde):
+            if ecartes is not None:
+                ecartes.append(x)
             continue
         out.append({"id": id_, "kind": "general", "quoi": quoi, "path": None, "line": None, "comments": [{"author": who.get("login"), "body": body}]})
     return out
@@ -418,6 +451,11 @@ def version_of(st, ts):
     return max(seen, default=0) + 1
 
 
+def ignores(k):
+    """AI-03 : rien ne disparaît en silence, la ligne qui dit combien de commentaires extérieurs ont été écartés."""
+    return f"{k} commentaire(s) d'un compte extérieur ignoré(s)" if k else ""
+
+
 def me():
     """Ton login GitHub (celui du jeton de gh), pour signaler à la validation une PR qui n'est pas la tienne ; inconnu : « »."""
     r = subprocess.run(["gh", "api", "user", "-q", ".login"], capture_output=True, text=True)
@@ -443,12 +481,16 @@ def checks_hint(repo, st):
 def fix_prepare(repo, n, run_id):
     """Les fils non résolus (aucun : code 9, renvoi vers la fin), le dossier de travail et ses dépendances, le contexte de l'agent."""
     pr = pr_feedback(repo, n)
-    tous = threads(repo, n, resolved=True, pr=pr)
+    moi, ecartes = me(), []
+    garde = equipe(moi)  # AI-03 : seuls les commentaires de l'équipe et des comptes ayant des droits vont à l'agent
+    tous = threads(repo, n, resolved=True, pr=pr, garde=garde, ecartes=ecartes)
     ts = [t for t in tous if not t["resolved"]]
-    gs = generaux(pr)
+    gs = generaux(pr, garde, ecartes)
+    ign = ignores(len(ecartes))
     if not ts and not gs:
-        fail(9, f"{repo}#{n} : aucun fil de review non résolu ni commentaire de review, rien à corriger.")
+        fail(9, f"{repo}#{n} : aucun fil de review non résolu ni commentaire de review, rien à corriger." + (f" ({ign}.)" if ign else ""))
     st = setup(repo, n, run_id)
+    st["ignores"] = len(ecartes)
     src = st["src"] = local_checkout(repo)
     st["linked"] = link_deps(src, st["work"]) if src else []
     st["comments"] = list(st.get("comments") or []) + [str(c.get("body") or "") for c in (pr.get("comments") or {}).get("nodes") or []]
@@ -457,7 +499,7 @@ def fix_prepare(repo, n, run_id):
         st.pop(k, None)
     st["threads"] = [t["id"] for t in ts]
     st["generaux"] = [{"id": g["id"], "quoi": g["quoi"], "who": g["comments"][0]["author"], "text": g["comments"][0]["body"][:160]} for g in gs]
-    st["me"] = me()
+    st["me"] = moi
     st["reviewers"] = reviewers(pr, (st.get("author"), st["me"]))
     # le Kanban du 3e étage (retours_snapshot.py) : chaque fil en bref, gardé après le dossier de travail
     st["fils"] = [{"id": t["id"], "path": t.get("path"), "line": t.get("line"), "who": (t["comments"][0] if t["comments"] else {}).get("author"),
@@ -468,7 +510,7 @@ def fix_prepare(repo, n, run_id):
     deps = f"dépendances reliées depuis {src}" if src else "sans dépendances (dossier local du dépôt inconnu de Kronn)"
     dj = sum(1 for t in ts if t["deja_repondu"] and not t["relance"])
     print(f"{repo}#{n} : {st['title']}\n{len(ts)} fil(s) de review non résolu(s)" + (f" (dont {dj} déjà répondu(s) par le Bureau, sans relance)" if dj else "")
-          + (f", {len(gs)} commentaire(s) hors fil" if gs else "") + f", branche {st['branch']} ; {deps}.\n"
+          + (f", {len(gs)} commentaire(s) hors fil" if gs else "") + (f", {ign}" if ign else "") + f", branche {st['branch']} ; {deps}.\n"
           f"Passe de corrections : Version {st['version']}.\n\n" + checks_hint(repo, st))
 
 
@@ -555,6 +597,8 @@ def fix_diff(repo, n, run_id):
     autre = st.get("author") and st.get("me") and st["author"].lower() != st["me"].lower()
     warn = (f"⚠ **PR de {st['author']}** : le commit et le push iront sur sa branche, signés de ton nom.\n\n" if autre else "") + (
         "⚠ **Fichiers nouveaux non déclarés, laissés hors du commit** : " + ", ".join(f"`{x}`" for x in st["ecartes"]) + "\n\n" if st.get("ecartes") else "")
+    if st.get("ignores"):
+        warn += f"🚫 **{ignores(st['ignores'])}** (ni membre ni collaborateur du dépôt, hors de l'équipe) : jamais donnés à l'agent.\n\n"
     print(warn + (head + "\n\n" if head else "") + ver + (summary + "\n\n" if summary else "")
           + (f"**Commit** : `{msg.splitlines()[0]}`\n\n" if files else "")
           + (f"🔁 **Review redemandée** après le push à {', '.join('@' + x for x in st['reviewers'])}\n\n" if files and st.get("reviewers") else "")
@@ -596,6 +640,8 @@ def pr_body(body, st, rs, sha):
     fixed = sum(1 for r in fils if r.get("fixed"))
     lines = [f"- ✅ {fixed} fil(s) corrigé(s) et résolu(s) · ⏭️ {len(fils) - fixed} laissé(s) ouvert(s) avec une réponse"
              + (f" · 💬 {len(rs) - len(fils)} commentaire(s) hors fil, réponse en commentaire de la PR" if len(rs) > len(fils) else "")]
+    if st.get("ignores"):
+        lines.append(f"- 🚫 {ignores(st['ignores'])}")
     if sha:
         lines.append(f"- 📦 Commit {sha}")
     if check_line(st):

@@ -52,6 +52,16 @@ class TemplatesTest(unittest.TestCase):
         self.assertIn('"max_tours": 7', chaine)  # le reste du réglage impl, si
         self.assertEqual(chaine.count("def read_json("), 1)  # _lib recopié une fois, même importé par _chaine
 
+    def test_pr_update_receives_the_roster_github_logins(self):
+        """AI-03 : les commentaires de l'équipe vont à l'agent des retours même sans droit sur le dépôt ; le script n'a pas
+        accès au pack, ses logins GitHub (roster et people de la config) lui sont injectés au rendu."""
+        cfg = json.loads(Path(ROOT, "tests", "fixtures", "bureau.config.json").read_text(encoding="utf-8"))
+        code = templates.script_code("workflows/pr_update.py", cfg)
+        logins = json.loads(re.search(r'"team_github": (\[[^\]]*\])', code).group(1))
+        self.assertIn("pambeesly", logins)
+        self.assertIn("hollyflax", logins)
+        self.assertNotIn('"team_github"', templates.script_code("workflows/review.py", cfg))
+
     def test_all_templates_present_and_without_installation_ids(self):
         """Les modèles exportés (templates.py export) ne gardent aucun id de l'installation qui les a exportés."""
         self.assertEqual(set(TPL), set(templates.TEMPLATES))
