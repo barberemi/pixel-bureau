@@ -110,8 +110,22 @@ MISSIONS = {
 }
 
 
+def lien(wt, rel):
+    """SRV-03 : rel passe par un lien symbolique dans la copie de la PR (la PR le choisit) : jamais lu en le suivant."""
+    return os.path.realpath(os.path.join(wt, rel)) != os.path.join(os.path.realpath(wt), rel)
+
+
+def ecrit(path, text, append=False):
+    """SRV-03 : écrit dans la copie de la PR sans suivre de lien : un lien posé par la PR est remplacé par le fichier."""
+    if os.path.islink(path):
+        os.remove(path)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW | (os.O_APPEND if append else os.O_TRUNC)
+    with open(os.open(path, flags, 0o666), "a" if append else "w", encoding="utf-8") as f:
+        f.write(text)
+
+
 def ddir(pr):
-    d = os.path.join(".kronn", "review-" + re.sub(r"\D", "", str(pr)))
+    d =os.path.join(".kronn", "review-" + re.sub(r"\D", "", str(pr)))
     os.makedirs(d, exist_ok=True)
     return d
 
@@ -262,15 +276,14 @@ def contexte(pr, me, raw):
     conv = "NO_PROJECT_CONVENTIONS"
     for rel in CONV_FILES:
         p = os.path.join(wt, rel)
-        if os.path.isfile(p):
+        if os.path.isfile(p) and not lien(wt, rel):  # SRV-03 : une convention en lien (choisi par la PR) est ignorée
             with open(p, encoding="utf-8", errors="replace") as f:
                 conv = "### " + rel + "\n" + f.read()[:16000]
             break
     nl = "\n"
     out = ("DIFF_FILES:" + nl + nl.join(files) + nl + "---REVIEWS---" + nl + json.dumps(rv) + nl + "---COMMENTS---" + nl
            + json.dumps(cs) + nl + "---ANSWERED_ROOTS---" + nl + json.dumps(answered) + nl + "---PROJECT_CONVENTIONS---" + nl + conv)
-    with open(os.path.join(wt, ".review-context.json"), "w", encoding="utf-8") as f:
-        f.write(out)
+    ecrit(os.path.join(wt, ".review-context.json"), out)
     for old in glob.glob(os.path.join(ddir(pr), "*")):
         os.remove(old)
     diff = []
@@ -283,8 +296,7 @@ def contexte(pr, me, raw):
     dwrite(pr, "releves.md", releves(wt, fl))
     dwrite(pr, "precedent.md", precedent(pr, str(task().get("repo") or "")))
     obs = observe(pr, sha, files)
-    with open(os.path.join(wt, ".review-context.json"), "a", encoding="utf-8") as f:
-        f.write(nl + "---OBSERVATION---" + nl + obs)
+    ecrit(os.path.join(wt, ".review-context.json"), nl + "---OBSERVATION---" + nl + obs, append=True)
     try:
         with open(os.path.join(".kronn", "current_task.json"), encoding="utf-8") as f:
             au = json.load(f).get("author") or ""

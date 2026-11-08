@@ -84,6 +84,30 @@ class ReviewTest(unittest.TestCase):
         self.assertIn("### src/f.py (modified, +2 -1)\n```diff\n@@ -10,3 +10,4 @@ def f():\nR10 a = 1\nL11-b = 2", diff)
         self.assertIn("### big.min.js (added, +9000 -0)\n```diff\n(diff absent de l'API", diff)
 
+    def test_context_never_follows_links_of_the_pr(self):
+        """SRV-03 : un fichier de conventions en lien (docs/review.md -> secret, docs/ en lien) est ignoré, la convention
+        suivante est lue ; .review-context.json en lien vers une cible est remplacé, la cible n'est pas modifiée."""
+        secret, cible = Path(self.tmp, "secret"), Path(self.tmp, "cible")
+        secret.write_text("MOT-DE-PASSE-42")
+        cible.write_text("intact")
+        os.symlink(str(secret), os.path.join(self.wt, "docs", "review.md"))
+        os.symlink(str(secret), os.path.join(self.wt, "AGENTS.md"))
+        os.makedirs(os.path.join(self.tmp, "ailleurs"))
+        Path(self.tmp, "ailleurs", "CONVENTIONS.md").write_text("MOT-DE-PASSE-43")
+        os.symlink(os.path.join(self.tmp, "ailleurs"), os.path.join(self.wt, "lien-docs"))
+        os.symlink(str(cible), os.path.join(self.wt, ".review-context.json"))
+        r = self.ctx()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(cible.read_text(), "intact")
+        self.assertFalse(os.path.islink(os.path.join(self.wt, ".review-context.json")))
+        ctx = Path(self.wt, ".review-context.json").read_text()
+        self.assertIn("---PROJECT_CONVENTIONS---\n### docs/AGENTS.md\n# Règles", ctx)
+        self.assertIn("---OBSERVATION---", ctx)
+        self.assertNotIn("MOT-DE-PASSE", ctx + r.stdout)
+        import review
+        self.assertTrue(review.lien(self.wt, "lien-docs/CONVENTIONS.md"))
+        self.assertFalse(review.lien(self.wt, "docs/AGENTS.md"))
+
     def test_already_reviewed_at_head_exits_5_with_its_marker(self):
         r = self.ctx([{"user": {"login": "bot"}, "body": "— 🤖 *Review automatique · Le Bureau*", "commit_id": self.head}])
         self.assertEqual(r.returncode, 5)
