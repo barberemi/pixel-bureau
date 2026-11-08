@@ -128,7 +128,7 @@
    "type": "All"
   },
   "guards": {
-   "timeout_seconds": 21600,
+   "timeout_seconds": 259200,
    "max_llm_calls": 200,
    "loop_detection_max_revisits": 12
   },
