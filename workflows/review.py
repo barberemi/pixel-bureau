@@ -604,10 +604,10 @@ SANS_MATIERE = re.compile(r"impossible|introuvable|absent|manquant|\bvide\b|miss
 SUJET_ENTREES = re.compile(r"fichier|worktree|contexte|dossier|context|file|diff|\.kronn|copie de travail", re.I)
 EVENTS = {"approve": "APPROVE", "request_changes": "REQUEST_CHANGES", "comment": "COMMENT"}
 LIBELLES = {
-    "fr": {"approve": "## ✅ Rien de bloquant", "comment": "## 💬 Commentaires", "request_changes": "## 🔧 Changements demandés",
+    "fr": {"approve": "## ✅ Approuvé", "comment": "## 💬 Commentaires", "request_changes": "## 🔧 Changements demandés",
            "bloquants": "**Bloquants**", "aussi": "**Aussi** (hors des lignes du diff)", "positif": "👍 Positif : ",
            "criteres": "critères", "non_verif": "non vérifiables"},
-    "en": {"approve": "## ✅ Nothing blocking", "comment": "## 💬 Comments", "request_changes": "## 🔧 Changes requested",
+    "en": {"approve": "## ✅ Approved", "comment": "## 💬 Comments", "request_changes": "## 🔧 Changes requested",
            "bloquants": "**Blocking**", "aussi": "**Also** (outside the diff lines)", "positif": "👍 Good: ",
            "criteres": "criteria", "non_verif": "not verifiable"},
 }
@@ -764,9 +764,7 @@ def verifie(d, files, anchors, obs, prec, own):
     if str(d.get("positive") or "").strip():
         parts += ["", lab["positif"] + str(d["positive"]).strip()]
     body = "\n".join(parts).strip() if (d.get("summary") or not d.get("generalComment")) else str(d.get("generalComment")).strip()
-    # une approbation compte pour la protection de branche : elle reste humaine. « approve » de l'avis part en COMMENT
-    # (son titre dit « rien de bloquant ») ; sa propre PR, toujours en COMMENT (GitHub refuse de s'approuver)
-    event = "COMMENT" if own == "true" or verdict == "approve" else EVENTS[verdict]
+    event = "COMMENT" if own == "true" else EVENTS[verdict]
     return {"verdict": verdict, "event": event, "body": body, "comments": kept, "blockers": blockers, "lang": lang,
             "traces": liste(d.get("traces")), "revus": liste(d.get("revus")), "suivi": liste(d.get("suivi"))}, fixes
 

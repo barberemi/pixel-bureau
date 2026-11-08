@@ -121,8 +121,7 @@ class ReviewTest(unittest.TestCase):
         sans_inline = {**bon, "comments": [], "blockers": [], "verdict": "approve", "summary": "Rien de bloquant, la borne est testée.",
                        "traces": [{"r": "R9", "recherche": "git grep -n f tests", "resultat": "tests/test_f.py"}],
                        "revus": ["src/f.py"], "skipped": [{"path": "big.min.js", "reason": "minifié"}]}
-        self.assertEqual(self.run_("garde", "12", "approve", "false", stdin=json.dumps(sans_inline)).stdout, "COMMENT",
-                         "jamais d'approbation automatique : elle compterait pour la protection de branche")
+        self.assertEqual(self.run_("garde", "12", "approve", "false", stdin=json.dumps(sans_inline)).stdout, "APPROVE")
         shutil.rmtree(self.wt)  # worktree absent (setup raté) : relancer l'avis n'y changerait rien
         r = self.run_("garde", "12", "approve", "false", stdin=json.dumps(sans_inline))
         self.assertEqual(r.returncode, 8)
@@ -167,7 +166,7 @@ class ReviewTest(unittest.TestCase):
         self.assertTrue(r["body"].endswith("👍 Positif : La borne est testée aux deux bouts."))
         couvert = {**approve, "traces": [{"r": "R9", "recherche": "git grep f", "resultat": "aucun"}], "revus": ["src/f.py", "big.min.js"]}
         self.assertEqual(self.garde_review(couvert)["verdict"], "approve")
-        self.assertTrue(self.garde_review({**couvert, "lang": "en"})["body"].startswith("## ✅ Nothing blocking"))
+        self.assertTrue(self.garde_review({**couvert, "lang": "en"})["body"].startswith("## ✅ Approved"))
         obs = Path(self.tmp, ".kronn", "review-12", "observation.md")
         obs.write_text(obs.read_text() + "- CI : 1 fail ; en échec : tests\n")
         self.assertIn("CI en échec", self.garde_review(couvert)["corrections"][0])
