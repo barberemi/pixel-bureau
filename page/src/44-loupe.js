@@ -126,7 +126,7 @@ function drawLoupe(now){
   let f=document.getElementById('loupefly');
   if(!f){
     f=document.createElement('div');f.id='loupefly';
-    f.innerHTML='<canvas></canvas><div class="lh" title="Ouvrir sa fiche"><button class="lx" aria-label="Fermer">✕</button><b role="button" tabindex="0"></b><small></small><i></i></div>';
+    f.innerHTML='<canvas></canvas><div class="lh" title="Ouvrir sa fiche"><button class="lx" aria-label="Fermer">×</button><b role="button" tabindex="0"></b><small></small><i></i></div>';
     document.body.appendChild(f);
     f.querySelector('.lx').onclick=e=>{e.stopPropagation();loupeHide();};
     f.querySelector('.lh').onclick=()=>{const c=LOUPE.cur&&LOUPE.cur.cap.lead;loupeHide();if(c&&c.key)select(c.key);};

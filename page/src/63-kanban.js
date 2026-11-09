@@ -90,7 +90,7 @@ function kanbanFill(box){
           (ro?'<span class="kb-rot" title="Réouvert en test : retour en cours">↺ Réouvert</span>':'')+(st?`<span class="kb-age">🕸 ${st.d} j</span>`:'')+`${prioIco(x.prio)}<b>${esc(x.key)}</b>${x.points?`<em>${esc(x.points)} pts</em>`:''}`+
           `<span class="kbw-t">${t.comp?`<span class="kbw-cp">${esc(t.comp)}</span>`:''}${esc(t.title)}</span><small>${esc(x.owner?String(x.owner).split(' ')[0]:'non assigné')}</small></a>${k==='done'?'':kbPrChips(x.key)}${st?kbWeb(st.lvl):''}</div>`;}).join('')+
       (list.length>n?`<button type="button" class="kbw-more" data-col="${k}">+ ${list.length-n} autre${list.length-n>1?'s':''}</button>`:'')+
-      (list.length?'':'<span class="kbw-none">—</span>')+'</section>';
+      (list.length?'':'<span class="kbw-none">rien</span>')+'</section>';
   }).join('')+'</div></div><p class="hint">'+(KB_VOL?'Un autre ticket change le volet ; un lien de PR l\'y ouvre, « ← » revient ; Échap ferme le volet, puis la fenêtre.':
     'Un portrait filtre les colonnes sur ses tickets, « Tous » revient au sprint entier. Un ticket ouvre sa fiche dans un volet, à droite.')+'</p>';
   if(KB_VOL)kbVolet(box.querySelector('.kbm'));

@@ -23,6 +23,7 @@ function kronnModal(host,btn,title,what){
     const cancel=()=>{if(had)btn.click();else close();};
     bd.title='Fermer';bd.addEventListener('click',cancel);
     host.classList.add('kmodal');
+    host.setAttribute('role','dialog');host.setAttribute('aria-modal','true'); // comme les fenêtres du Bureau (47-bosspages.js)
     const w=(typeof what==='function'?what():what)||{}, pick=q=>{const e=host.querySelector(q);return e?e.textContent.trim():'';};
     const tag=w.tag||btn.textContent.replace(/…$/,'').trim(), name=w.name||pick('.rl-n')||title||tag, small=w.small!=null?w.small:pick('.rl-s');
     const top=document.createElement('div');top.className='km-top';
@@ -33,11 +34,17 @@ function kronnModal(host,btn,title,what){
     if(!host.querySelector('.hint:not(:empty)'))top.insertAdjacentHTML('beforeend','<div class="hint km-hint">Dans la carte Kronn ci-dessous : un commentaire si elle t\'en propose un, puis <b>Lancer</b>. Kronn suit ensuite le run.</div>');
     host.prepend(top);
     for(const x of top.querySelectorAll('.bp-x,.bp-back'))x.onclick=cancel;
+    host.setAttribute('aria-label',title||tag);
+    const onKey=e=>{if(e.key==='Escape'){e.preventDefault();cancel();}};
+    document.addEventListener('keydown',onKey);
+    top.querySelector('.bp-x').focus({preventScroll:true});
     const close=()=>{
       obs.disconnect();
       clearTimeout(t0);
       clearTimeout(gone);
       host.classList.remove('kmodal');
+      for(const k of ['role','aria-modal','aria-label'])host.removeAttribute(k);
+      document.removeEventListener('keydown',onKey);
       bd.remove();
       document.body.classList.remove('km-on');
       ph.remove();
@@ -142,7 +149,7 @@ function gateCard(parent,run,who){
     const n=document.createElement('div');
     n.className='note';
     n.style.margin='6px 0 0';
-    n.textContent="La gate arrive sur la page d'ici une minute (cron live), le bouton apparaîtra alors.";
+    n.textContent="Le bouton arrive d'ici une minute.";n.title="La gate arrive sur la page au prochain passage du cron live (chaque minute).";
     box.appendChild(n);
   }
   parent.appendChild(box);
@@ -216,7 +223,7 @@ const fmtUsd=v=>v==null?'':v<0.01&&v>0?'< 0,01 $':'≈ '+v.toFixed(v<10?2:0).rep
 const DOW=['D','L','M','M','J','V','S'];
 function sparkDays(days){
   const mx=Math.max(1,...days), labels=(PAYROLL.days||[]).map(d=>DOW[new Date(d+'T12:00:00').getDay()]);
-  return `<span class="spark" title="Tokens par jour, du plus ancien à aujourd'hui">${days.map((v,i)=>`<i style="height:${v?Math.max(2,Math.round(v/mx*22)):1}px" title="${labels[i]||''} : ${fmtTok(v)} tokens"></i>`).join('')}</span>`;
+  return `<span class="spark" title="Jetons par jour, du plus ancien à aujourd'hui">${days.map((v,i)=>`<i style="height:${v?Math.max(2,Math.round(v/mx*22)):1}px" title="${labels[i]||''} : ${fmtTok(v)} jetons"></i>`).join('')}</span>`;
 }
 // relancer un workflow depuis la fiche de son agent (page action « bureau-relaunch »)
 // interroger un agent sur ses runs (page action « bureau-ask » : Quick Prompt en lecture seule, ~quelques k tokens)
@@ -366,7 +373,7 @@ function payBlock(side,c){
   const p=payFor(c);if(!p)return;
   const box=foldSection(side,'paie','Fiche de paie · 7 jours',null,true);
   const fr=p.week.runs?Math.round(p.week.fail/p.week.runs*100):0;
-  box.innerHTML=`<div class="paygrid"><div><b>${fmtTok(p.today.tok)}</b><span>tokens aujourd'hui</span></div><div><b>${fmtTok(p.week.tok)}</b><span>tokens 7 jours</span></div><div><b>${fmtUsd(usd(p.week.tok))||'0 $'}</b><span>coût estimé 7 j</span></div><div><b style="color:${fr>=30?'var(--err)':'inherit'}">${p.week.fail}/${p.week.runs}</b><span>échecs / runs (${fr} %)</span></div></div>
+  box.innerHTML=`<div class="paygrid"><div><b>${fmtTok(p.today.tok)}</b><span>jetons aujourd'hui</span></div><div><b>${fmtTok(p.week.tok)}</b><span>jetons 7 jours</span></div><div><b>${fmtUsd(usd(p.week.tok))||'0 $'}</b><span>coût estimé 7 j</span></div><div><b style="color:${fr>=30?'var(--err)':'inherit'}">${p.week.fail}/${p.week.runs}</b><span>échecs / runs (${fr} %)</span></div></div>
     <div class="payspark">${sparkDays(p.days)}<span class="note" style="margin:0">${p.week.tok?'':'Workflow sans IA : 0 token, '}${p.week.runs} runs sur 7 jours</span></div>`;
 }
 function renderPaie(side){
@@ -382,10 +389,10 @@ function renderPaie(side){
   const T7=rows.reduce((s,x)=>s+x.p.week.tok,0), R7=rows.reduce((s,x)=>s+x.p.week.runs,0), F7=rows.reduce((s,x)=>s+x.p.week.fail,0), TD=rows.reduce((s,x)=>s+x.p.today.tok,0);
   const sum=document.createElement('div');
   sum.className='paygrid';
-  sum.innerHTML=`<div><b>${fmtTok(TD)}</b><span>tokens aujourd'hui</span></div><div><b>${fmtTok(T7)}</b><span>tokens 7 jours</span></div><div><b>${fmtUsd(usd(T7))||'?'}</b><span>coût estimé 7 j</span></div><div><b>${F7}/${R7}</b><span>échecs / runs</span></div>`;
+  sum.innerHTML=`<div><b>${fmtTok(TD)}</b><span>jetons aujourd'hui</span></div><div><b>${fmtTok(T7)}</b><span>jetons 7 jours</span></div><div><b>${fmtUsd(usd(T7))||'?'}</b><span>coût estimé 7 j</span></div><div><b>${F7}/${R7}</b><span>échecs / runs</span></div>`;
   side.appendChild(sum);
   const n=document.createElement('div');n.className='note';n.style.margin='6px 0 10px';
-  n.textContent=PAYROLL.rate_usd_per_mtok?`Coût estimé à ${String(PAYROLL.rate_usd_per_mtok).replace('.',',')} $ par million de tokens : tarif moyen mesuré par Kronn sur tes discussions (${PAYROLL.rate_source}). Kronn ne mesure pas le coût des workflows eux-mêmes. Mis à jour à ${hm(ms(PAYROLL.generated_at))}.`:'Coût non estimable (aucun coût mesuré par Kronn).';
+  n.textContent=PAYROLL.rate_usd_per_mtok?`Coût estimé à ${String(PAYROLL.rate_usd_per_mtok).replace('.',',')} $ par million de jetons : tarif moyen mesuré par Kronn sur tes discussions (${PAYROLL.rate_source}). Kronn ne mesure pas le coût des workflows eux-mêmes. Mis à jour à ${hm(ms(PAYROLL.generated_at))}.`:'Coût non estimable (aucun coût mesuré par Kronn).';
   side.appendChild(n);
   const ul=document.createElement('div');ul.className='roster';
   // par famille (32-familles.js) : un en-tête et son sous-total, puis ses agents, les plus chers d'abord

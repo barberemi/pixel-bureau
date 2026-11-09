@@ -206,7 +206,7 @@ function renderTicket(side,key){
   const cat=TCAT[x.cat]||{t:x.status,c:'var(--idle)'}, age=tkAge(x,T);
   const head=document.createElement('div');head.style.cssText='margin:0 0 12px';
   head.innerHTML=prioLine(x)+`<div style="font-size:14px;margin-bottom:6px">${esc(x.summary)}</div>`+
-    `<div style="font-size:12px;color:var(--muted)"><span class="dot" style="background:${cat.c};display:inline-block;margin-right:6px"></span>${esc(x.status||cat.t)}`+
+    `<div style="font-size:12px;color:var(--muted)"><span class="dot" style="background:${cat.c};display:inline-block;margin-right:6px"></span>${TCAT[x.cat]&&x.status?`<span title="Statut Jira : ${esc(x.status)}">${esc(cat.t)}</span>`:esc(x.status||cat.t)}`+ // en français, le statut Jira brut en infobulle
     `${age?' depuis '+age:''} · ${x.owner?esc(x.owner):'non assigné'}${x.points?' · '+esc(x.points)+' pts':''} · ${jira}</div>`;
   side.appendChild(head);
   moveBlock(side,x);
@@ -221,7 +221,7 @@ function renderTicket(side,key){
       const t=String(p.title||'').replace(/^\s*\w+(\([^)]*\))?!?:\s*/,'').replace(new RegExp('^'+key.replace(/\W/g,'\\$&')+'\\b[\\s:-]*'),'')||p.title||'', m=prMarks(p);
       const li=document.createElement('li');li.className='tkr';
       li.innerHTML=`<div class="tk-top"><span class="dot" style="background:${r[1]}"></span><a class="tk-key" href="#" data-pr="${esc(prId(p))}" title="Fiche de la PR">${esc(prNum(p))}</a>`+
-        `<a class="tk-gh" ${hrefOf(p.url)} target="_blank" rel="noopener" title="Ouvrir sur GitHub">↗</a><span class="tk-rev">${r[0]}</span></div>`+
+        `<a class="tk-gh" ${hrefOf(p.url)} target="_blank" rel="noopener" title="Ouvrir sur GitHub">↗</a><span class="tk-rev" title="${r[0]}">${r[0]}</span></div>`+
         `<div class="tk-t">${esc(t)}</div>${m.length?`<div class="tk-meta">${m.join('')}</div>`:''}`+prEnvLine(p);
       ul.appendChild(li);
     }

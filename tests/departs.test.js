@@ -30,7 +30,7 @@ test('panneau : l\'heure du départ le jour même, sinon le jour (JJ/MM), à l\'
   assert.equal(withDeparts(`depWhen(null, T)`), '');
 });
 
-test('fenêtre : une ligne par dépôt, version -> release, branche d\'un ticket -> Jira, autre branche -> GitHub, — sans déploiement', () => {
+test('fenêtre : une ligne par dépôt, version -> release, branche d\'un ticket -> Jira, autre branche -> GitHub, · sans déploiement', () => {
   const html = withDeparts(`(() => { const b = document.createElement('div'); departsFill(b); return b.innerHTML; })()`);
   assert.equal((html.match(/<tr><td class="dep-n">/g) || []).length, 3);
   assert.match(html, /href="https:\/\/github\.com\/dunder-mifflin\/site-web\/releases\/tag\/17\.2\.0"/);

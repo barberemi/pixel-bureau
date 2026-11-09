@@ -77,7 +77,7 @@ test('calendrier : cases bureau, télétravail, absence, demi-journée coupée, 
   assert.match(J(`calCell(byKey.p_pam, '${D}')`), /class="calc t today" title="télétravail">🏠</);
   assert.match(J(`calCell(byKey.p_pam, '${D2}')`), /class="calc ferie"/);
   run(`ABSENCES.ferie = [];`);
-  assert.match(J(`calCell(byKey.p_pam, '${D2}')`), /class="calc split" title="matin : au bureau · après-midi : absence"><i class="b">●<\/i><i class="a">—<\/i>/);
+  assert.match(J(`calCell(byKey.p_pam, '${D2}')`), /class="calc split" title="matin : au bureau · après-midi : absence"><i class="b">●<\/i><i class="a">✕<\/i>/);
   assert.match(J(`calCell(byKey.p_kelly, '${D}')`), /class="calc none/); // pas dans le planning
 });
 

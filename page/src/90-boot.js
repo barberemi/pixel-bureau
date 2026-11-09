@@ -13,7 +13,7 @@ function loop(now){
     if(!FLOOR)for(const c of chars)step(c,dt); // seul l'étage affiché vit : au 1er, le RDC ne marche pas (setFloor(0) replace chacun)
     tvAutoScroll(now,dt);tvFloorTick(now); // 75-tv.js : alternance des étages de l'écran mural
     if(now-lastUi>1000){lastUi=now;
-      document.getElementById('clock').textContent=hms(T);
+      document.getElementById('clock').textContent=hm(T); // à la minute : le temps du plan avance par minute (audit UX 2.6)
       timeUi();
       if(document.activeElement!==slider)slider.value=Math.round((T-RSTART)/Math.max(1,REND-RSTART)*1000);
       renderRecap();renderKpis();renderWho();mtBar();waitChip();renderFeed();updateFresh();updateTv();if(mode!=='live')updateBadge();

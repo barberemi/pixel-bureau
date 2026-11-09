@@ -131,7 +131,7 @@ Une PR se reconnaît à son dépôt et à son numéro : `#2039` pour le dépôt 
 
 ![Le canard attend ta réponse : sa question en tête de sa fiche](../img/canard-question.png)
 
-La **fiche de paie** (enveloppe sur le bureau du boss) donne tokens, runs et échecs par agent sur 7 jours, avec un coût estimé, rangés par famille (au quotidien, pages, autres) avec le sous-total de chacune. Un intérimaire n'existe que les jours où son workflow tourne : une page mise à jour une fois par semaine n'y figure que ce jour-là.
+La **fiche de paie** (enveloppe sur le bureau du boss) donne jetons, runs et échecs par agent sur 7 jours, avec un coût estimé, rangés par famille (au quotidien, pages, autres) avec le sous-total de chacune. Un intérimaire n'existe que les jours où son workflow tourne : une page mise à jour une fois par semaine n'y figure que ce jour-là.
 
 ## Cartes de passion
 

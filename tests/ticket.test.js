@@ -246,7 +246,7 @@ test('fiche du ticket, « Ses PR ouvertes » : sur deux lignes (n° et état, pu
   })()`);
   assert.equal(rows.length, 1);
   assert.equal(rows[0].cls, 'tkr');
-  assert.match(rows[0].html, /<div class="tk-top">.*#21<\/a>.*<span class="tk-rev">changements demandés<\/span><\/div>/);
+  assert.match(rows[0].html, /<div class="tk-top">.*#21<\/a>.*<span class="tk-rev" title="changements demandés">changements demandés<\/span><\/div>/);
   assert.match(rows[0].html, /<div class="tk-t">Europe and European Union themes in the apps<\/div>/);
   assert.match(rows[0].html, /<div class="tk-meta">.*⛔ conflit.*3 de retard.*💬 5 fils.*<\/div>$/);
 });

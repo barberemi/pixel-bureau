@@ -34,7 +34,7 @@ test('écran : coût, déclencheur, dernier run et bouton de chaque workflow', (
   const rows = J('QP.feeds.map(rfRow)');
   assert.match(strip(rows[0]), /0 token automatique \(cron\)Pas encore de run↻ Relancer$/);
   assert.match(rows[0], /class="on rf-go" data-wf="wf-cron"/);
-  assert.match(strip(rows[1]), /🤖 IA · ~48 k tokens par runmoyenne des 7 derniers jours · ≈ 0,14 \$ · automatique \(cron\) · lance « Relire une PR »/);
+  assert.match(strip(rows[1]), /🤖 IA · ~48 k jetons par runmoyenne des 7 derniers jours · ≈ 0,14 \$ · automatique \(cron\) · lance « Relire une PR »/);
   assert.match(strip(rows[1]), /Dernier run : ✗ le 25\/09 \(échec\)/);
   assert.match(strip(rows[2]), /coût par run pas encore connu/);
   assert.match(strip(rows[2]), /demande une saisie : à lancer depuis Kronn$/);

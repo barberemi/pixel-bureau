@@ -4,7 +4,7 @@
    couleurs sombres de styles.css (--tv-*). Contrastes vérifiés par tests/test_theme.py. */
 
 /* même spécificité que les variables de styles.css, déclarées après : le thème l'emporte */
-:root[data-skin="classique"],:root[data-skin="classique"]:not([data-theme="light"]){
+:root[data-skin="classique"]{
   color-scheme:dark;
   --bg:#17181c; --panel:#202228; --ink:#ece8df; --muted:#a29c90; --line:#646a78; --chip:#2a2d34;
   --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#9a9284; --on-accent:#0d1b33;

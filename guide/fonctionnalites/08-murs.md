@@ -62,7 +62,7 @@ Sous chaque carte de la fenêtre Mes pages Kronn, **↻ Rafraîchir** relance le
 
 Le bouton ouvre un écran, comme × et 📽 : une ligne par workflow de la page, avec
 
-- son **coût** : **0 token**, ou pour un agent IA **🤖 IA · ~48 k tokens par run**, la moyenne des 7 derniers jours de la fiche de paie et son équivalent en dollars (« coût par run pas encore connu » sans run sur la semaine) ;
+- son **coût** : **0 token**, ou pour un agent IA **🤖 IA · ~48 k jetons par run**, la moyenne des 7 derniers jours de la fiche de paie et son équivalent en dollars (« coût par run pas encore connu » sans run sur la semaine) ;
 - son déclencheur (automatique ou manuel) et, s'il lance un sous-workflow, lequel ;
 - son **dernier run** (heure, ✓ ou ✗) ;
 - **↻ Relancer**, qui ouvre la carte Kronn du workflow de relance du Bureau (le même que « ↻ Relancer » de la Fraîcheur), puis Lancer. Pas de bouton pour un workflow qui tourne déjà (⏳ En cours) ni pour un workflow qui demande une saisie (à lancer depuis Kronn).
