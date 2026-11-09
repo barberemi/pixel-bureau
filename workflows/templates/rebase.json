@@ -300,6 +300,9 @@
   "concurrency_limit": null,
   "exec_allowlist": [
    "python3"
-  ]
+  ],
+  "guards": {
+   "timeout_seconds": 86400
+  }
  }
 }

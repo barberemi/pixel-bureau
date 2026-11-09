@@ -80,12 +80,12 @@ class PrUpdateTest(unittest.TestCase):
         self.commit(name, text, "sur main")
         self.g("push", "origin", "main")
 
-    def step(self, name, cfg=None):
+    def step(self, name, cfg=None, extra=(), stdin=None):
         Path(self.tmp, "gh.json").write_text(json.dumps(self.data))
         Path(self.tmp, "cfg.json").write_text(json.dumps(cfg or FIXTURE))
         env = dict(self.env(), BUREAU_CONFIG=os.path.join(self.tmp, "cfg.json"), FAKE_GH=os.path.join(self.tmp, "gh.json"))
-        return subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "pr_update.py"), name, REPO, "16", "run-1"],
-                              capture_output=True, text=True, env=env, timeout=60)
+        return subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "pr_update.py"), name, REPO, "16", "run-1", *extra],
+                              capture_output=True, text=True, env=env, timeout=60, input=stdin)
 
     def remote_log(self):
         return self.g("--git-dir", self.remote, "log", "--format=%s", "feat/export").splitlines()
@@ -325,16 +325,18 @@ class PrUpdateTest(unittest.TestCase):
         self.assertIn("Contrôles (echo à part) : verts ✅", c.stdout)
 
     def test_fix_version_of_the_pass(self):
-        """Passe n : « **Version n** » en tête de chaque réponse, compteur dans le bloc de la description ; sans bloc, le
-        plus grand « Version N » déjà posté en tête d'une réponse (fil résolu compris) ou d'un commentaire, plus un."""
+        """Passe n : « Version n » dans la signature de chaque réponse (agent et modèle de l'étape fix), compteur dans le
+        bloc de la description ; sans bloc, le plus grand « Version N » déjà posté (signature en pied, ou en tête d'avant
+        la signature) d'une réponse (fil résolu compris) ou d'un commentaire, plus un."""
         self.data["threads"] = [self.thread("T1")]
         r, _ = self.fix_run(FIXTURE)
         self.assertIn("Passe de corrections : Version 1.", r.stdout)
         self.assertIn("🔢 **Version 1**", self.step("fix_diff").stdout)
-        self.assertEqual(self.step("fix_push").returncode, 0)
+        self.assertEqual(self.step("fix_push", extra=("ClaudeCode", "claude-opus-5-5 · reasoning")).returncode, 0)
         calls = [json.loads(x) for x in Path(self.tmp, "gh.json.calls").read_text().splitlines()]
         reply = next(c for c in calls if any("addPullRequestReviewThreadReply" in x for x in c))
-        self.assertIn("b=**Version 1**\n\n✅ **Corrigé** : renommé.", reply)
+        self.assertIn("b=✅ **Corrigé** : renommé.\n\n— 🤖 *Corrections automatiques · Le Bureau (ClaudeCode - claude-opus-5-5 · reasoning)"
+                      " · Version 1*", reply)
         edit = next(c for c in calls if c[:2] == ["pr", "edit"] and "--body" in c)
         body = edit[edit.index("--body") + 1]
         self.assertIn("<!-- bureau-fix:version=1 -->", body)
@@ -349,6 +351,34 @@ class PrUpdateTest(unittest.TestCase):
         self.data["pr"]["body"] = "Ma description."
         self.data["pr"]["comments"] = [{"body": "Version 2 : merci pour les retours"}, {"body": "La version 9 de PHP"}]
         self.assertIn("Version 4.", self.step("fix_prepare").stdout)
+        # la signature en pied compte aussi ; « Version 7 » cité au milieu d'un texte, non
+        self.data["pr"]["comments"] = [{"body": "Corrigé.\n\n— 🤖 *Corrections automatiques · Le Bureau (Codex - gpt) · Version 5*"},
+                                       {"body": "On passe en Version 7 de l'API, plus tard."}]
+        self.assertIn("Version 6.", self.step("fix_prepare").stdout)
+
+    def test_fix_jira_ticket_version_and_note(self):
+        """Après le push : le chemin du ticket (clé du titre, sinon de la branche), le n° à poser (jamais plus bas que
+        celui du ticket) et le commentaire de traçabilité ; rien de posté ou pas de clé : code 3."""
+        self.data["pr"]["title"] = "feat(export): DM-6816 l'export"
+        self.data["threads"] = [self.thread("T1")]
+        self.fix_run(FIXTURE)
+        self.assertEqual(self.step("fix_jira_cle").returncode, 3, "avant le push : rien de posté")
+        self.assertEqual(self.step("fix_push").returncode, 0)
+        r = self.step("fix_jira_cle")
+        self.assertEqual((r.returncode, r.stdout), (0, "/rest/api/2/issue/DM-6816"))
+        cfg = dict(FIXTURE, jira=dict(FIXTURE["jira"], review_version_field="customfield_11409"))
+        self.assertEqual(self.step("fix_jira_num", cfg, stdin=json.dumps({"fields": {"customfield_11409": None}})).stdout, "1")
+        self.assertEqual(self.step("fix_jira_num", cfg, stdin=json.dumps({"fields": {"customfield_11409": 3.0}})).stdout, "3",
+                         "une autre PR du ticket est plus loin : le champ ne redescend pas")
+        t = self.step("fix_jira_txt").stdout
+        self.assertRegex(t, r"^🛠 Corrections de review · Version 1 : " + REPO + r"#16, 1 réponse\(s\) postée\(s\), 1 fichier\(s\) poussé\(s\) \(\w+\)\.$")
+        # sans clé dans le titre, celle de la branche ; ni l'un ni l'autre : code 3
+        st_path = Path(self.tmp, ".cache", "pixel-bureau", "pr", "runs", "run-1.json")
+        st = json.loads(st_path.read_text())
+        st_path.write_text(json.dumps(dict(st, title="feat: export", branch="feat/dm-12-export")))
+        self.assertEqual(self.step("fix_jira_cle").stdout, "/rest/api/2/issue/DM-12")
+        st_path.write_text(json.dumps(dict(st, title="feat: export", branch="feat/export")))
+        self.assertEqual(self.step("fix_jira_cle").returncode, 3)
 
     def test_fix_reads_review_bodies_and_pr_comments_outside_threads(self):
         """Hors des fils : le corps d'une review « changements demandés » et les commentaires de la PR, sans les bots ni
@@ -386,7 +416,8 @@ class PrUpdateTest(unittest.TestCase):
         com = [c for c in calls if c[:2] == ["pr", "comment"]]
         self.assertEqual(len(com), 1, "un seul commentaire pour les réponses hors fil")
         body = com[0][com[0].index("--body") + 1]
-        self.assertTrue(body.startswith("**Version 2**\n\n> **@jim** (changements demandés) : Il manque la gestion"), body[:120])
+        self.assertTrue(body.startswith("> **@jim** (changements demandés) : Il manque la gestion"), body[:120])
+        self.assertTrue(body.endswith("\n\n— 🤖 *Corrections automatiques · Le Bureau · Version 2*"), body[-120:])
         self.assertIn("> **@pam** (commentaire de la PR) : Et le cas sans locale ?\n\n💬 **Réponse**", body)
         self.assertFalse(any("addPullRequestReviewThreadReply" in x for c in calls for x in c))
         edit = next(c for c in calls if c[:2] == ["pr", "edit"] and "--body" in c)
@@ -601,7 +632,7 @@ class RebaseTemplateTest(unittest.TestCase):
     def test_fix_rendered_paths(self):
         d = templates.render(templates.load_templates()["fix"], FIXTURE)
         names = [s["name"] for s in d["steps"]]
-        self.assertEqual(names, ["prepare", "fix", "check", "diff", "gate", "push", "abort", "end"])
+        self.assertEqual(names, ["prepare", "fix", "check", "diff", "gate", "push", "end", "abort"], "sans champ de version Jira")
         by = {s["name"]: s for s in d["steps"]}
         for n in ("prepare", "diff"):  # rien à faire : renvoi vers la fin (code 9, signal exact)
             self.assertEqual(by[n]["on_result"], [{"contains": "exit_9", "action": {"type": "Goto", "step_name": "end"}}])
@@ -617,6 +648,24 @@ class RebaseTemplateTest(unittest.TestCase):
         self.assertEqual(by["fix"]["skill_ids"][:2], ["testing", "security"])
         self.assertNotIn("_skills_from", by["fix"])
         self.assertIn("Aucune consigne d'équipe", by["fix"]["prompt_template"])
+
+    def test_fix_rendered_jira_version_steps(self):
+        """Avec jira.review_version_field : après le push, le n° de version dans le champ du ticket et un commentaire ;
+        la signature reçoit l'agent et le modèle de l'étape fix ; jira_cle sans ticket saute à la fin."""
+        cfg = dict(FIXTURE, jira=dict(FIXTURE["jira"], review_version_field="customfield_11409"))
+        d = templates.render(templates.load_templates()["fix"], cfg)
+        self.assertEqual([s["name"] for s in d["steps"]], ["prepare", "fix", "check", "diff", "gate", "push", "jira_cle", "jira_avant",
+                                                           "jira_num", "jira_v", "jira_version", "jira_txt", "jira_note", "end", "abort"])
+        by = {s["name"]: s for s in d["steps"]}
+        self.assertEqual(by["push"]["exec_args"][-2:], ["{{steps.fix.agent}}", "{{steps.fix.model}}"])
+        self.assertNotIn("on_result", by["push"], "après le push : les étapes Jira, puis la fin")
+        self.assertEqual(by["jira_cle"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "end"}}])
+        self.assertEqual(by["end"]["on_result"], [{"contains": "OK", "action": {"type": "Stop"}}], "abort jamais après la fin")
+        self.assertEqual(by["jira_version"]["api_body"], {"fields": {"customfield_11409": "{{steps.jira_v.data.v}}"}})
+        self.assertEqual(by["jira_version"]["api_query"], {"fields": "customfield_11409", "returnIssue": "true"})
+        self.assertEqual(by["jira_note"]["api_endpoint_path"], "{{steps.jira_cle.data.stdout}}/comment")
+        self.assertNotIn("@@", json.dumps(d))
+        self.assertEqual(d["guards"], {"timeout_seconds": 86400}, "la validation peut attendre : 24 h, pas les 2 h de Kronn")
 
     def test_fix_team_section(self):
         cfg = dict(FIXTURE, review={"skill_ids": ["php"], "guidelines": "consigne de revue"})

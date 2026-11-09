@@ -46,13 +46,24 @@ function mtOpen(c){
 const MT_MAX=6; // lignes par liste ; au-delà, ⌘K ou le Kanban
 const mtPrs=()=>TEAM?[...TEAM.people.flatMap(p=>(p.prs||[]).map(x=>({...x,author:p.name}))),...(TEAM.other_prs||[])].filter(p=>!p.merged&&actPr(p)):[];
 const mtTickets=()=>TEAM?[...TEAM.people.flatMap(p=>p.tickets.map(t=>({...t,owner:p.name}))),...(TEAM.unassigned||[])]:[];
+// les PR du boss (OWNER, celui qui a installé la page) : auteur dont le nom contient tous les mots du sien, sans accents
+// ni ordre (« Remi Barbe » / « Barbé Rémi »), ou l'un de ses logins GitHub ; sans boss connu, toutes
+const mtToks=s=>nameKey(s).split(/[\s._-]+/).filter(Boolean);
+function mtMine(){
+  const o=byKey[OWNER], me=o?mtToks(o.person||o.name):[];if(!me.length)return ()=>true;
+  const has=n=>{const a=new Set(mtToks(n));return me.every(t=>a.has(t));};
+  const gh=new Set((TEAM?TEAM.people:[]).filter(p=>has(p.name)).flatMap(p=>(p.gh||[]).map(nameKey)));
+  return p=>has(p.author)||gh.has(nameKey(p.author));
+}
 // les lignes à lancer d'un métier : [{bind, name, sub}] (PR à relire, PR avec des fils, tickets à implémenter)
 function mtRows(k){
   const pr=p=>({bind:{id:prId(p)},name:prNum(p)+(p.title?' '+clip(p.title,60):''),sub:p.author?'de '+p.author:''});
   if(k==='revue')return ACTIONS.review?mtPrs().filter(p=>!p.draft&&p.review!=='approved').map(pr):[];
   if(k==='retours'){
-    if(ACTIONS.fix_pr)return mtPrs().filter(p=>p.threads>0||p.threads==null&&p.review==='changes').map(p=>({...pr(p),sub:(p.threads>0?plural(p.threads,'fil','fils')+' à traiter':'changements demandés')+(p.author?' · de '+p.author:'')}));
-    return ACTIONS.fix?mtPrs().filter(p=>p.review==='changes'&&(!otherRepo(p.repo)||CFG.fix_any_repo)).map(pr):[];
+    const mine=mtMine();
+    // les PR du boss seulement : celle d'un autre se corrige depuis sa fiche ou le Kanban
+    if(ACTIONS.fix_pr)return mtPrs().filter(p=>(p.threads>0||p.threads==null&&p.review==='changes')&&mine(p)).map(p=>({...pr(p),sub:p.threads>0?plural(p.threads,'fil','fils')+' à traiter':'changements demandés'}));
+    return ACTIONS.fix?mtPrs().filter(p=>p.review==='changes'&&(!otherRepo(p.repo)||CFG.fix_any_repo)&&mine(p)).map(pr):[];
   }
   if(k==='impl'){
     if(!ACTIONS.impl||!ACTS)return [];
@@ -69,7 +80,7 @@ function mtBlock(side,c){
   const [a0,label,title]=MT_ACT[c.metier], action=a0||(ACTIONS.fix_pr?'bureau-fixpr':'bureau-fix'), rows=mtRows(c.metier);
   const box=foldSection(side,'mt-'+c.metier,m.ico+' À lancer',ACTS?rows.length:null,true);
   if(!ACTS){const e=document.createElement('div');e.className='note';e.textContent='Les boutons arrivent au prochain passage du cron équipe (10 min au plus).';box.appendChild(e);return;}
-  if(!rows.length){const e=document.createElement('div');e.className='empty';e.textContent=c.metier==='impl'?'Aucun ticket à implémenter.':c.metier==='revue'?'Aucune PR à relire.':'Aucune PR avec des fils à traiter.';box.appendChild(e);return;}
+  if(!rows.length){const e=document.createElement('div');e.className='empty';e.textContent=c.metier==='impl'?'Aucun ticket à implémenter.':c.metier==='revue'?'Aucune PR à relire.':'Aucune de tes PR n\'a de fils à traiter. Celle d\'un autre : sa fiche ou le Kanban.';box.appendChild(e);return;}
   for(const r of rows.slice(0,MT_MAX))launchBlock(box,{action,bind:r.bind,name:r.name,sub:r.sub,label,title:title+(r.bind.key||r.bind.id)});
   if(rows.length>MT_MAX){const e=document.createElement('div');e.className='note';e.textContent='Et '+(rows.length-MT_MAX)+' de plus : ⌘K ou le Kanban.';box.appendChild(e);}
 }

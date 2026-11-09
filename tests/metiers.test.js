@@ -56,9 +56,23 @@ test('à lancer, Revue : les PR ouvertes connues des boutons, ni brouillon ni ap
 });
 
 test('à lancer, Retours : les PR qui ont des fils à traiter (ou des changements demandés, fils inconnus)', () => {
+  run(`TEAM.people[0].name = 'Michael Scott';`); // le boss de la démo : la liste ne montre que ses PR
   const r = J('mtRows("retours")');
   assert.deepEqual(r.map(x => x.name), ['#12 DM-2 b']);
   assert.match(r[0].sub, /^3 fils à traiter/);
+});
+
+test('à lancer, Retours : seulement les PR du boss (nom sans accents ni ordre, ou son login GitHub)', () => {
+  const t0 = run('JSON.stringify(TEAM)');
+  try {
+    run(`TEAM.people[0].name = 'Scott Michaël'; TEAM.people[0].gh = ['mscott'];
+      TEAM.people.push({name: 'Pam', tickets: [], prs: [{n: 30, title: 'de Pam', review: 'changes', threads: 2, keys: []}]});
+      TEAM.other_prs = [{n: 31, title: 'hors Jira', review: 'changes', threads: 1, author: 'mscott', keys: []},
+        {n: 32, title: 'autre', review: 'changes', threads: 1, author: 'quelqu1', keys: []}];
+      ACTS.prs.push(...[30, 31, 32].map(n => ({id: prId({n})})));`);
+    assert.deepEqual(J('mtRows("retours").map(r => r.name)'), ['#12 DM-2 b', '#31 hors Jira']);
+    assert.equal(J('mtRows("retours")[0].sub'), '3 fils à traiter');
+  } finally { run(`TEAM = ${t0};`); }
 });
 
 test('à lancer, Implé : les tickets à faire ou en cours, sans PR, connus des boutons', () => {
