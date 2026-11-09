@@ -938,6 +938,17 @@ print(json.dumps(val))
         p = os.path.join(self.tmp, "gh.json.calls")
         return Path(p).read_text().count("\n") if os.path.exists(p) else 0
 
+    def test_snapshots_keep_the_runs_of_a_disabled_workflow(self):
+        # cron désactivé en plein passage : son run continue, la file de la revue (2e) le lit encore
+        fake = FakeKronn()
+        run = dict(run_of(950), status="Running", finished_at=None)
+        fake.workflows.append({"id": "c7c7c7c7-0000-4000-8000-000000000000", "name": "Relire les PR (cron)", "enabled": False,
+                               "trigger_type": "cron", "last_run": {"started_at": run["started_at"], "status": "Running"}})
+        fake.runs["c7c7c7c7-0000-4000-8000-000000000000"] = [run]
+        for script in ("live_snapshot.py", "office_snapshot.py"):
+            out = self.run_script(script, api=self.kronn(fake))
+            self.assertIn(run["id"], [r["run"] for r in out["runs"]], script)
+
     def test_live_snapshot_reads_deploys_with_an_etag(self):
         paris = NOW.astimezone(ZoneInfo("Europe/Paris"))
         if paris.hour == 0 and paris.minute < 4:

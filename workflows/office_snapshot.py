@@ -24,7 +24,7 @@ def warn(msg):
 WFS = get("/workflows")
 runs = []
 for wf in WFS:
-    if not wf.get("enabled") or is_bureau(wf):
+    if is_bureau(wf):  # désactivé, il garde ses runs du jour (live_snapshot.py)
         continue
     lr = wf.get("last_run") or {}
     if (lr.get("started_at") or "") < since and lr.get("status") not in ACTIVE:
