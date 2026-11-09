@@ -111,7 +111,8 @@ Sous le plan, la légende suit l'étage affiché : au RDC les états et les holo
 - Clic sur un personnage : sa fiche (voir [Fiches](07-fiches.md)). Survol : son nom et ce qu'il fait.
 - La lumière suit le soleil au bureau : fenêtres, crépuscule, voile de nuit qui s'ouvre autour de chaque personnage, lampes des bureaux occupés.
 - Quand un run en lance un autre, une enveloppe passe d'un agent à l'autre (sous-run, déclenchement, validation, discussion).
-- « Sur le plan » dans le panneau met une famille en avant (équipe, agents ou visiteurs), avec ses noms.
+- « Sur le plan » dans le panneau met une famille en avant (équipe, agents ou visiteurs), avec ses noms. Un agent au repos n'y montre que son icône et son prénom ; son métier et l'heure de son prochain passage s'affichent au survol, ou dès qu'il travaille.
+- Chaque étage, RDC compris, a son titre en haut à gauche du plan (« RDC · OPEN SPACE », « 1ER · ATELIER »…). En rejeu, un liseré ambre entoure le plan et « ⏪ Rejeu 11:00 » s'affiche au bout des onglets d'étage.
 - En bas du panneau, « Et aussi » liste les invités du moment (Yoda, Gandalf, un invité de passage…), tant qu'ils sont dans le bureau, et le canard, avec ce qu'il fait (« se promène · cafétéria », « attend ta réponse »). Survol : il ressort sur le plan. Clic : sa fiche. Ce groupe n'apparaît que dans la vue « Tous ».
 
 ![« Et aussi » : un invité de passage et le canard](../img/panneau-et-aussi.png)

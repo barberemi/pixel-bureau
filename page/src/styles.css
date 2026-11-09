@@ -871,6 +871,9 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .pz-head{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin:0 0 6px}.pz-head b{color:var(--ink)}
 /* 1er étage : l'atelier d'implémentation (68-atelier.js) */
 .floorbar{display:flex;gap:6px;flex-wrap:wrap;align-items:stretch;margin:0 0 6px;position:relative}
+/* en rejeu (replayMark, 68-atelier.js) : un liseré ambre autour du plan et la pastille au bout des onglets, à chaque étage */
+body:not(.tv) .cv-wrap.rejeu{outline:4px solid var(--warn);outline-offset:-4px}
+.rejeu-pill{align-self:center;background:var(--warn);color:var(--on-warn);font:700 13px/1 ui-monospace,Menlo,monospace;padding:6px 10px}
 .floors{display:flex;gap:4px;flex-wrap:wrap}
 /* ce qui t'attend, tous étages (69-attente.js) : au bout de la rangée, la liste déroulée dessous, à droite */
 .waitwrap{position:relative;height:0} /* la liste de « À toi » (69-attente.js), posée sous les tuiles du haut */

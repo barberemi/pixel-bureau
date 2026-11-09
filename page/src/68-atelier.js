@@ -14,7 +14,7 @@ const AT_POSTES=[
   {k:'besoin',i:'🎯',n:'Besoin',d:'confronte le diff aux exigences du ticket'},{k:'doc',i:'📚',n:'Doc',bureau:false,d:'vérifie que la doc a suivi'},
   {k:'pr',i:'📤',n:'PR',d:'pousse la branche et ouvre la PR brouillon'},{k:'revue_pr',i:'👀',n:'Revue PR',d:'fait la revue de la PR'},
   {k:'retours',i:'💬',n:'Retours',d:'traite les commentaires de la revue'}];
-const AT_ST={ok:['#3fbf6a','validé'],run:['#5b8def','en cours'],bloq:['#e0614f','bloquant'],avis:['#e0a020','avis'],wait:['#e0a020','t\'attend'],
+const AT_ST={ok:['#3fbf6a','validé'],run:['#5b8def','en cours'],bloq:['#e0614f','bloquant'],avis:['#e0a020','avis'],wait:[WAIT_BG,'t\'attend'],
   skip:['#5b6070','sauté'],err:['#e0614f','en panne'],rep:['#6fae8c','fait avant la reprise']};
 // cause d'une panne (atelier_snapshot.py : cause_type) : son icône, son nom et ce qu'il faut faire
 const AT_CAUSE={garde_fou_docs:['🛡','garde-fou docs de Kronn'],delai:['⏱','délai dépassé'],agent:['🔌','agent ou API indisponible'],script:['📜','script en erreur'],autre:['❔','autre']};
@@ -30,7 +30,7 @@ function atConseil(p){
 const atCauseTxt=p=>p&&p.cause?(AT_CAUSE[p.cause_type]||AT_CAUSE.autre)[0]+' '+p.cause:'';
 // « Comment lire le plan » au 1er (46-legende.js) : la légende sous le plan, puis les onglets ; les postes viennent d'AT_POSTES
 const AT_HELP={bar:()=>legSwatches(AT_ST)+'<span>🧯 fumée : poste en panne</span>',postes:()=>[['',AT_POSTES]],
-  qui:'<p><b>Agents</b> : un par poste, en hologramme bleu, casque jaune et gilet orange.</p><p><b>Bernard</b> apporte les cartons de l\'entrepôt et emporte ceux qui sortent.</p>'+
+  qui:'<p><b>Agents</b> : un par poste, en hologramme bleu, casque jaune et gilet orange.</p><p><b>Bernard</b> apporte les cartons de l\'entrepôt et emporte ceux qui sortent.</p><p>Un agent en gris pâle : son poste attend, personne n\'y travaille en ce moment (au RDC, la couleur d\'un hologramme dit sa famille, pas son activité).</p>'+
     '<p><b>Le boss</b>, sous le grand tableau, va à la porte du bureau qui attend ta décision.</p><p><b>Le pompier</b> vient quand un poste est en panne ; le soir, <b>l\'agent d\'entretien</b> passe.</p>',
   ou:'<p><b>Quatre bureaux</b> : un ticket par bureau, quatre à la fois.</p><p><b>Le tapis</b> : le carton du ticket avance de poste en poste.</p>'+
     '<p><b>Le grand tableau</b> de l\'orchestrateur : le poste, le tour et les jetons de chaque bureau.</p><p><b>L\'entrepôt</b> : les tickets en attente, et ceux en panne sur des palettes, à relancer.</p>',
@@ -136,10 +136,11 @@ function atelierTabs(){ // le gyrophare du -1 suit csAlarm à chaque relevé
   if(t.dataset.sig!==h)t.innerHTML=t.dataset.sig=h;
   if(typeof waitChip==='function')waitChip(); // 69-attente.js : une décision arrive ou part avec le relevé
 }
-// identité de chaque étage, la même partout (onglets, tuile L'immeuble, barre AGENTS, ce qui t'attend, mode TV)
-const ETAGES={'-1':{ico:'🚒',n:'-1',nom:'caserne Support',tv:'-1 caserne'},0:{ico:'🏢',n:'RDC',nom:'open space',tv:'RDC'},
-  1:{ico:'🏭',n:'1er',nom:'atelier',tv:'1er étage'},2:{ico:'✍',n:'2e',nom:'rédaction et revue',tv:'2e rédaction'},
-  3:{ico:'🛠',n:'3e',nom:'retours de PR',tv:'3e retours'}};
+// identité de chaque étage, la même partout (onglets, tuile L'immeuble, barre AGENTS, ce qui t'attend, mode TV, titre du plan) ;
+// c : le liseré de la plaque du titre (floorTitle)
+const ETAGES={'-1':{ico:'🚒',n:'-1',nom:'caserne Support',tv:'-1 caserne',c:'#d1453b'},0:{ico:'🏢',n:'RDC',nom:'open space',tv:'RDC',c:'#0172f0'},
+  1:{ico:'🏭',n:'1er',nom:'atelier',tv:'1er étage',c:'#f2c230'},2:{ico:'✍',n:'2e',nom:'rédaction et revue',tv:'2e rédaction',c:'#b08a50'},
+  3:{ico:'🛠',n:'3e',nom:'retours de PR',tv:'3e retours',c:'#4fb3a3'}};
 // ce qui tourne à chaque étage (cnt, sur cap bureaux quand l'étage en a un nombre fixe) et ce qui t'attend (wait)
 function floorLoad(f){
   if(f===1){const r=atRooms();return {cnt:r.length,cap:4,wait:r.filter(x=>x.gate).length};}
@@ -456,7 +457,7 @@ function atRoom(r,i,now,dt){
   const g=AT_G[i], T=AT_TS, H=g.H, leave=AT_MEM.leaving[i], live=r&&!r.gate, al=g.L?'left':'right', hx=g.L?(g.x0+.5)*T:(g.x1-.5)*T;
   if(r){atTxt('BUREAU '+(i+1)+' · '+r.ticket+' · '+String(r.repo||'').split('/').pop()+(r.tour?' · tour '+r.tour:'')+' · '+Math.round((r.tok||0)/1e3)+' k jetons',hx,g.head,'#1c1f26','bold 13px ui-monospace,Menlo,monospace',al);
     const nt=r.note||(r.lot?'⌨ Code · '+r.lot:'')||(!r.poste&&AT_ORCH[r.etape])||'';
-    if(nt){ctx.font='bold 12px ui-monospace,Menlo,monospace';const w=ctx.measureText(nt).width+10;atPill(nt,g.L?hx+w/2:hx-w/2,g.noteY,r.gate?'#8a5a00':r.back?'#a8323a':'#2a4a7a');}}
+    if(nt){ctx.font='bold 12px ui-monospace,Menlo,monospace';const w=ctx.measureText(nt).width+10;atPill(nt,g.L?hx+w/2:hx-w/2,g.noteY,r.gate?WAIT_BG:r.back?'#a8323a':'#2a4a7a',r.gate?WAIT_INK:'#fff');}}
   else atTxt('BUREAU '+(i+1)+' · '+(leave?leave.ticket+' · sorti':'libre'),hx,g.head,'#8a8478','bold 13px ui-monospace,Menlo,monospace',al);
   const x_=g.L?g.turnX:g.ex, w_=Math.abs(g.ex-g.turnX)+.7*T;
   atBelt(x_,g.b1,w_,H,live,now,g.L?-1:1);atBelt(g.turnX,g.b1+H,.7*T,g.b2-g.b1-H,live,now,2);atBelt(x_,g.b2,w_,H,live,now,g.L?1:-1);
@@ -465,7 +466,7 @@ function atRoom(r,i,now,dt){
   AT_DESKS.forEach((p,idx)=>{
     const sp=atSpot(g,p.k), top=sp.row===1, s=atState(r,p);
     if(p.gate){R(ctx,sp.x-14,g.b1-20,3,20,'#8a8478');R(ctx,sp.x+12,g.b1-20,3,20,'#8a8478');for(let k=0;k<4;k++)R(ctx,sp.x-14+k*7,g.b1-20,7,5,k%2?'#1c1c1c':'#f2c230');
-      late.push(()=>atPill(r&&r.gate?'✋ Ton plan':'✋',sp.x,g.lab1,r&&r.gate?'#8a5a00':'#e9dcb8',r&&r.gate?'#fff':'#6a5a30','bold 11px system-ui,sans-serif'));return;}
+      late.push(()=>atPill(r&&r.gate?'✋ Ton plan':'✋',sp.x,g.lab1,r&&r.gate?WAIT_BG:'#e9dcb8',r&&r.gate?WAIT_INK:'#6a5a30','bold 11px system-ui,sans-serif'));return;}
     const deskY=top?g.desk1:g.desk2, feet=top?g.feet1:g.feet2, labelY=top?g.lab1:g.lab2;
     const col={run:'#2f6fd6',bloq:'#a8323a',err:'#a8323a',ok:'#2f7a45',avis:'#9a6a10',skip:'#d8d2c4',rep:'#4f7a64'}[s]||'#f4efe4';
     late.push(()=>atPill(atPosteLbl(p,['run','bloq','err','avis'].includes(s)),sp.x,labelY,col,['run','bloq','err','ok','avis','rep'].includes(s)?'#fff':s==='skip'?'#8a8478':'#3a3530','bold 11px system-ui,sans-serif'));
@@ -543,7 +544,7 @@ function atBoard(slots){
   atTxt('ORCHESTRATEUR',bx+bw/2,by+12,'#9fc4ff','bold 12px ui-monospace,Menlo,monospace');
   if(themeIs('noel'))for(let k=0;k<26;k++){ctx.fillStyle=['#ff4a4a','#ffd84a','#4aff8a','#4ac8ff'][(k+Math.floor(performance.now()/500))%4];ctx.beginPath();ctx.arc(bx+8+k*(bw-16)/25,by-4,3,0,7);ctx.fill();}
   if(themeIs('halloween')){ctx.strokeStyle='rgba(230,230,230,.7)';ctx.lineWidth=1;for(let k=0;k<5;k++){ctx.beginPath();ctx.moveTo(bx+bw,by);ctx.lineTo(bx+bw-30+k*6,by+30-k*6);ctx.stroke();}}
-  slots.forEach((r,k)=>{const x=bx+k*cw, col=!r?'#4a5060':r.gate?'#ffcf4a':r.back?'#ff8a80':'#8fe3a8';
+  slots.forEach((r,k)=>{const x=bx+k*cw, col=!r?'#4a5060':r.gate?WAIT_BG:r.back?'#ff8a80':'#8fe3a8';
     if(k)R(ctx,x,by+18,1,bh-22,'#2b3240');
     atTxt('B'+(k+1)+(r?' · '+r.ticket:' · libre'),x+10,by+34,col,'bold 13px ui-monospace,Menlo,monospace','left');
     if(!r){atTxt('rien en cours',x+10,by+52,'#6b7280','12px system-ui,sans-serif','left');return;}
@@ -609,7 +610,7 @@ function atBoss(slots,now,dt,people){
   const ox=AT_CHAIR.x, F=AT_CHAIR.y;
   atBossChair(ox,F);
   const desk=()=>atBossDesk(ox,F,now,boss,(x0,top)=>slots.forEach((r,k)=>{const x=x0+42+k*8, on=r&&r.gate;R(ctx,x-3,top+4,7,7,'#1c1c1c');
-    R(ctx,x-2,top+5,5,5,!r?'#555':on?(Math.floor(now/450)%2?'#ffcf4a':'#a37a10'):r.back?'#e0614f':'#3fbf6a');atHit('room',x-4,top+2,9,11,{i:k});}));
+    R(ctx,x-2,top+5,5,5,!r?'#555':on?(Math.floor(now/450)%2?WAIT_BG:WAIT_DIM):r.back?'#e0614f':'#3fbf6a');atHit('room',x-4,top+2,9,11,{i:k});}));
   if(!boss){desk();return;}
   const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:b.walk.pos.x,y:b.walk.pos.y},tile:seated?BOSS_SEAT.slice():null,moving:!arrived,pose:'stand',present:true,
     dir:arrived?(target==null?'down':AT_G[target].top?'up':'down'):b.walk.dir,_st:{st:gates.length?'gate':'idle'}});
@@ -619,7 +620,7 @@ function atBoss(slots,now,dt,people){
   AT_LIT.push(c.pos);atHit(at?'gate':'boss',c.pos.x-14,c.pos.y-56,28,58,at?{i:target}:{});
   if(seated){drawChar(c,now);desk();}
   else{desk();people.push([c,null,false,()=>{if(at){ctx.font='bold 12px system-ui,sans-serif';const w=ctx.measureText(gl).width+12, bx=c.pos.x+18+w/2;
-    atBubble(bx,c.pos.y-30,gl,'#8a5a00');atHit('gate',bx-w/2,c.pos.y-47,w,21,{i:target});}}]);}
+    atBubble(bx,c.pos.y-30,gl,WAIT_TXT);atHit('gate',bx-w/2,c.pos.y-47,w,21,{i:target});}}]);}
   if(seated&&gates.length)atBubble(ox,F-58,'✋ '+gates.length);
 }
 function atWarehouse(q,pn,now){ // en bas du couloir central : sol béton, bande de sécurité, deux rayonnages, les pannes sur palettes
@@ -819,9 +820,22 @@ function atJourBoard(){
     .forEach(([c,t],k)=>{const cx=bx+8+(k%2)*(bw/2-6), cy=by+30+Math.floor(k/2)*15;R(ctx,cx,cy-7,7,7,c);atTxt(t,cx+11,cy,'#e8e2d0',f,'left');});
 }
 const atOpen=()=>officeOpen(T);
-// en rejeu, à chaque étage : la pastille qui dit qu'on regarde le passé
-function atReplayPill(){if(atLive())return;const s='⏪ Rejeu · '+hm(T)+' · l\'étage à cette heure-là';ctx.font='bold 13px system-ui,sans-serif';
-  atPill(s,14+ctx.measureText(s).width/2,14,'#c9a227','#1c1c1c','bold 13px system-ui,sans-serif');}
+// le titre de l'étage affiché, RDC compris : une plaque au début du bandeau sombre du haut, même place et même dessin
+// partout, le nom tiré de ETAGES (audit UX 4.2) ; seulement quand l'immeuble a plusieurs étages
+function floorTitle(){
+  if(floorsOn().length<2)return;
+  const e=ETAGES[FLOOR];if(e)plaque(ctx,10,6,(e.n+' · '+e.nom).toUpperCase(),e.c);
+}
+// en rejeu : un liseré ambre autour du plan et « ⏪ Rejeu 11:00 » au bout des onglets d'étage, hors du dessin, au même endroit
+// à chaque étage (audit UX 4.3) ; chaque seconde (90-boot.js)
+function replayMark(){
+  const on=!atLive(), w=document.querySelector('.stage .cv-wrap');if(w&&w.classList)w.classList.toggle('rejeu',on);
+  const bar=document.querySelector('.floorbar');if(!bar)return;
+  let p=document.getElementById('rejeu');
+  if(!p){p=document.createElement('span');p.id='rejeu';p.className='rejeu-pill';bar.appendChild(p);}
+  const t=on?'⏪ Rejeu '+hm(T)+' · '+((ETAGES[FLOOR]||{}).n||''):'';
+  p.hidden=!on;if(p.textContent!==t)p.textContent=t;
+}
 // xs : les fenêtres d'un étage, en cases (celles du 1er par défaut)
 function atWindows(now,xs){
   const sky=skyColor(T), T_=AT_TS;
@@ -923,7 +937,7 @@ function renderAtelier(now){
   atBoard(slots);
   const hp=atPickedAt();if(hp)selHalo(hp.x,hp.y-26,AT_W,AT_H); // comme au RDC : le plan s'assombrit autour de celui qu'on a choisi
   atPicked(slots,now);
-  atReplayPill();
+  floorTitle();
 }
 // où est celui qu'on a choisi : un agent (à sa place ou en promenade), ou le boss (sa fiche ouverte à l'étage)
 function atPickedAt(){

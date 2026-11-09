@@ -146,7 +146,10 @@ function nameShown(c){
 }
 function drawName(c){
   const on=sel===c.key; if(!c.pos||!nameShown(c))return;
-  const fm=FAM[famOf(c)], x=Math.round(c.pos.x), y=Math.round(c.pos.y)+6, t=labelText(c);
+  // agent au repos, ni choisi ni survolé : son icône et son nom seulement ; le métier et l'heure de son prochain passage
+  // au survol, sur sa fiche, ou dès qu'il travaille (audit UX 4.8 : les étiquettes longues se recouvraient)
+  const full=on||hoverKey===c.key||famOf(c)!=='wf'||AGENT_BUSY.includes((c._st||{}).st);
+  const fm=FAM[famOf(c)], x=Math.round(c.pos.x), y=Math.round(c.pos.y)+6, t=full?labelText(c):labelText(c).split(' · ')[0];
   const S=TV?TV_TXT:1; // mode TV : lisible à 3 m
   ctx.font='bold '+Math.round((on?11:10)*S)+'px ui-sans-serif,system-ui,sans-serif';
   const w=Math.ceil(ctx.measureText(t).width)+(on?10:8), h=Math.round((on?15:13)*S);
@@ -157,7 +160,7 @@ function drawName(c){
   for(let i=0;i<3&&NAME_BOXES.some(b=>bx<b.x+b.w+2&&bx+w+2>b.x&&by<b.y+b.h+1&&by+h+1>b.y);i++)by+=h+2;
   NAME_BOXES.push({x:bx,y:by,w,h});
   const cx=bx+w/2;
-  ctx.fillStyle=on?'#fffdf8':fm.bg;ctx.beginPath();ctx.roundRect?ctx.roundRect(bx,by,w,h,4):ctx.rect(bx,by,w,h);ctx.fill();
+  ctx.fillStyle=on?'#fffdf8':fm.bg;pixRect(ctx,bx,by,w,h);ctx.fill();
   if(on){ctx.strokeStyle=famOf(c)==='team'?(ST_COLOR[(c._st||{}).st]||'#2f6fd6'):fm.c;ctx.lineWidth=famOf(c)==='team'?1.5:2.5;ctx.stroke();}
   ctx.fillStyle=on?'#25221d':'#ffffff';
   ctx.textAlign='center';

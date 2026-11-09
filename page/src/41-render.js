@@ -56,5 +56,6 @@ function render(now){
       R(ctx,28*TS+so.dx+hash(i,7)*4*TS+Math.sin(now/300+i)*4,2*TS-8+so.dy+k*3*TS,3,3,cols[i%5]);
     }
   }
+  floorTitle(); // 68-atelier.js : « RDC · OPEN SPACE », comme le titre des étages
 }
 
