@@ -30,7 +30,8 @@ recent = (datetime.now(timezone.utc) - timedelta(minutes=20)).isoformat().replac
 
 runs = []
 for wf in get("/workflows"):
-    if not wf.get("enabled") or is_bureau(wf):
+    # un workflow désactivé garde ses runs : couper un cron n'arrête pas son passage en cours (la file de la revue, 2e)
+    if is_bureau(wf):
         continue
     lr = wf.get("last_run") or {}
     if lr.get("status") not in ACTIVE and (lr.get("started_at") or "") < recent and (lr.get("finished_at") or "") < recent:

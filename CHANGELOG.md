@@ -55,7 +55,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 ### Corrigé
 
 - Corriger les commentaires d'une PR et remettre une PR à jour : le run peut attendre la validation 24 h, au lieu d'être coupé à 2 h par le délai par défaut de Kronn (l'attente à la gate y compte).
-
+- 2e étage : couper le cron des revues en plein passage ne vide plus la salle de revue. Les instantanés live et du jour gardent les runs d'un workflow désactivé ; sans le run du cron, la revue en cours n'était plus assise au premier bureau (aucun relecteur, « 1 PR en lecture » au tableau).
 - Chaîne d'implémentation : le script de la chaîne est découpé en trois (`chaine.py`, `chaine_controles.py`, `chaine_pr.py`, commun `_chaine.py`) et ne reçoit que sa part de la config : rendu, il dépassait les 128 Kio qu'accepte un argument sous Linux (« Argument list too long »). Un test garde chaque script rendu sous 110 Kio.
 - Revue de PR : une review sans matière n'est plus jamais postée. L'avis reçoit le chemin absolu de sa copie de travail et dit son échec s'il ne trouve pas ses fichiers ; une garde sans IA, avant de poster, relance l'avis une fois puis finit sans rien poster (« review non postée : avis sans matière »). Cas de la PR #2060 d'un dépôt de l'équipe, où une review « Impossible de produire la review … » avait été publiée.
 - Chaîne d'implémentation, essai rejoué : la description et le titre du ticket sont ceux de la date du commit de départ, reconstruits depuis l'historique Jira, et non plus ceux d'aujourd'hui, réécrits après la livraison.
