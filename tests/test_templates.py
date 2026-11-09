@@ -52,6 +52,11 @@ class TemplatesTest(unittest.TestCase):
         self.assertIn('"max_tours": 7', chaine)  # le reste du réglage impl, si
         self.assertEqual(chaine.count("def read_json("), 1)  # _lib recopié une fois, même importé par _chaine
 
+    def test_comment_lines_dropped_strings_kept(self):
+        """Les lignes de commentaire seul ne partent pas dans Kronn ; un « # » dans une chaîne (prompt, regex) reste."""
+        code = 'x = 1  # garde\n    # retire\n# retire\ns = """\n# dans la chaîne\n"""\nt = "#x"\n'
+        self.assertEqual(templates.without_comment_lines(code), 'x = 1  # garde\ns = """\n# dans la chaîne\n"""\nt = "#x"\n')
+
     def test_pr_update_receives_the_roster_github_logins(self):
         """AI-03 : les commentaires de l'équipe vont à l'agent des retours même sans droit sur le dépôt ; le script n'a pas
         accès au pack, ses logins GitHub (roster et people de la config) lui sont injectés au rendu."""
