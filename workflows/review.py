@@ -111,8 +111,10 @@ MISSIONS = {
 
 
 def lien(wt, rel):
-    """SRV-03 : rel passe par un lien symbolique dans la copie de la PR (la PR le choisit) : jamais lu en le suivant."""
-    return os.path.realpath(os.path.join(wt, rel)) != os.path.join(os.path.realpath(wt), rel)
+    """SRV-03 : rel mène, par un lien symbolique choisi par la PR, hors de sa copie de travail : jamais lu. Un lien qui
+    reste dans la copie (CLAUDE.md -> AGENTS.md, AGENTS.md -> docs/AGENTS.md) est suivi normalement."""
+    base = os.path.realpath(wt)
+    return os.path.commonpath([base, os.path.realpath(os.path.join(wt, rel))]) != base
 
 
 def ecrit(path, text, append=False):
@@ -125,7 +127,7 @@ def ecrit(path, text, append=False):
 
 
 def ddir(pr):
-    d =os.path.join(".kronn", "review-" + re.sub(r"\D", "", str(pr)))
+    d = os.path.join(".kronn", "review-" + re.sub(r"\D", "", str(pr)))
     os.makedirs(d, exist_ok=True)
     return d
 
@@ -276,7 +278,7 @@ def contexte(pr, me, raw):
     conv = "NO_PROJECT_CONVENTIONS"
     for rel in CONV_FILES:
         p = os.path.join(wt, rel)
-        if os.path.isfile(p) and not lien(wt, rel):  # SRV-03 : une convention en lien (choisi par la PR) est ignorée
+        if os.path.isfile(p) and not lien(wt, rel):  # SRV-03 : une convention en lien vers l'extérieur de la copie est ignorée
             with open(p, encoding="utf-8", errors="replace") as f:
                 conv = "### " + rel + "\n" + f.read()[:16000]
             break

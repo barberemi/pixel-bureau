@@ -107,6 +107,23 @@ class ReviewTest(unittest.TestCase):
         import review
         self.assertTrue(review.lien(self.wt, "lien-docs/CONVENTIONS.md"))
         self.assertFalse(review.lien(self.wt, "docs/AGENTS.md"))
+        voisin = self.wt + "-voisin"  # même préfixe que la copie, mais dehors
+        os.makedirs(voisin)
+        Path(voisin, "AGENTS.md").write_text("dehors")
+        os.symlink(os.path.join(voisin, "AGENTS.md"), os.path.join(self.wt, "voisin.md"))
+        self.assertTrue(review.lien(self.wt, "voisin.md"))
+
+    def test_context_follows_links_that_stay_in_the_pr_copy(self):
+        """SRV-03 : un lien interne au dépôt (docs/review.md -> AGENTS.md, CLAUDE.md -> docs/AGENTS.md) est lu normalement :
+        la revue garde ses conventions ; seul un lien qui sort de la copie de travail est ignoré."""
+        os.symlink("AGENTS.md", os.path.join(self.wt, "docs", "review.md"))
+        os.symlink("docs/AGENTS.md", os.path.join(self.wt, "CLAUDE.md"))
+        r = self.ctx()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("---PROJECT_CONVENTIONS---\n### docs/review.md\n# Règles\nTests obligatoires.", Path(self.wt, ".review-context.json").read_text())
+        import review
+        self.assertFalse(review.lien(self.wt, "CLAUDE.md"))
+        self.assertFalse(review.lien(self.wt, "docs/review.md"))
 
     def test_already_reviewed_at_head_exits_5_with_its_marker(self):
         r = self.ctx([{"user": {"login": "bot"}, "body": "— 🤖 *Review automatique · Le Bureau*", "commit_id": self.head}])
