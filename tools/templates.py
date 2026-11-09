@@ -15,7 +15,7 @@ Une étape marquée "_requires": "jira" disparaît au rendu si l'installation n'
 références {{steps.<étape>.…}} dans l'entrée des étapes suivantes deviennent null.
 Les noms des emplacements ne ressemblent pas aux variables Kronn ({{steps.x}}, {{run_id}}), qui restent intactes.
 """
-import copy, json, os, re, sys, urllib.request
+import copy, io, json, os, re, sys, tokenize, urllib.request
 from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -270,10 +270,19 @@ REVIEW_CFG = ("review", "jira", "kronn", "models", "rhythm", "workflows", "actio
 MAX_SCRIPT = 110 * 1024  # marge sous les 128 Kio d'un argument (tests/test_templates.py)
 
 
+def without_comment_lines(code):
+    """Le script sans ses lignes de commentaire seul (tokenize : jamais une ligne d'une chaîne, les prompts restent
+    entiers) : elles ne servent qu'à la lecture du dépôt et pèsent sur les 128 Kio d'un argument."""
+    lines = code.splitlines(keepends=True)
+    drop = {tok.start[0] for tok in tokenize.generate_tokens(io.StringIO(code).readline)
+            if tok.type == tokenize.COMMENT and not lines[tok.start[0] - 1][:tok.start[1]].strip()}
+    return "".join(line for i, line in enumerate(lines, 1) if i not in drop)
+
+
 def script_code(path, cfg):
     """Le script tel qu'il tourne dans Kronn (« python3 -c », sans fichier voisin) : workflows/_lib.py, _plan.py et _checks.py
-    recopiés à la place de leur ligne « from _lib import … », puis la config d'installation injectée à la place de
-    __BUREAU_CONFIG__."""
+    recopiés à la place de leur ligne « from _lib import … », les lignes de commentaire seul retirées, puis la config
+    d'installation injectée à la place de __BUREAU_CONFIG__."""
     cfg = assemble.merged(cfg)  # réglages d'équipe du pack (#32) : les scripts n'ont pas accès au pack
     code = Path(os.path.join(ROOT, path)).read_text()
     seen = set()
@@ -286,6 +295,7 @@ def script_code(path, cfg):
         assert "@@" not in body and "{{" not in body, m.group(1) + ".py : ni @@ ni {{ (Kronn rendrait ses propres variables)"
         return LIB_IMPORT.sub(lib, body)
     code = LIB_IMPORT.sub(lib, code)
+    code = without_comment_lines(code)
     # clés de premier niveau triées : même script, que les réglages d'équipe soient dans la config ou dans le pack (#32)
     c = {k: v for k, v in sorted(cfg.items()) if not k.startswith("_")}
     if path in CHAINE_SCRIPTS:  # la config entière ferait passer le script au-dessus de 128 Kio (un argument, sous Linux)
