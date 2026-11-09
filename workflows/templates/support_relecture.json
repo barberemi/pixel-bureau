@@ -85,7 +85,7 @@
     "step_type": {
      "type": "Agent"
     },
-    "description": "🧐 relecture : Relit la réponse : exacte, utile, claire, au format ; « VERDICT : ok » ou « revoir » avec ses remarques. Outils : lecture du code (Read, Grep, Glob ; ni Bash ni api_call, le message Teams n'est pas fiable) et la discussion de l'investigation (en notes) ; les derniers commits du projet sont fournis par le script.",
+    "description": "🧐 relecture : Relit la réponse : exacte, utile, claire, au format ; « VERDICT : ok » ou « revoir » avec ses remarques. Outils : lecture du code (Read, Grep, Glob ; pas de Bash, le message Teams n'est pas fiable), la discussion de l'investigation (en notes) et les tickets Jira cités (api_call, GET seulement) ; les derniers commits du projet sont fournis par le script.",
     "prompt_template": "{{steps.entree.data.stdout}}",
     "room_id": "{{disc}}",
     "agent_settings": {
@@ -98,7 +98,8 @@
       "kronn_internal": [
        "disc_append",
        "disc_get_message",
-       "disc_meta"
+       "disc_meta",
+       "api_call"
       ]
      }
     },
