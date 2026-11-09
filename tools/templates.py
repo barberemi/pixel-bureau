@@ -298,6 +298,8 @@ def script_code(path, cfg):
     c.update(gitfut=assemble.gitfut(cfg), wiki_posters=assemble.wiki_posters(cfg),  # déduits du roster (scripts sans accès au dépôt)
              planning_names=assemble.planning_names(cfg),  # noms complets du roster, pour le planning des absences
              root=ROOT)  # dossier du dépôt : son venv (Pillow) pour réduire les images
+    if path == "workflows/pr_update.py":  # AI-03 : logins GitHub du roster, dont les commentaires vont à l'agent des retours
+        c["team_github"] = sorted({str(p["github"]) for p in assemble.roster(cfg) if p.get("github")})
     if path == "workflows/review.py":  # version de la revue gardée avec chaque revue (historique, page de récap)
         c["review_version"] = review_version()
     if path in CHAINE_SCRIPTS:  # version de la chaîne gardée dans le bilan de chaque run (page « Chaîne · bilan »)

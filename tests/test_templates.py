@@ -52,6 +52,39 @@ class TemplatesTest(unittest.TestCase):
         self.assertIn('"max_tours": 7', chaine)  # le reste du réglage impl, si
         self.assertEqual(chaine.count("def read_json("), 1)  # _lib recopié une fois, même importé par _chaine
 
+    def test_pr_update_receives_the_roster_github_logins(self):
+        """AI-03 : les commentaires de l'équipe vont à l'agent des retours même sans droit sur le dépôt ; le script n'a pas
+        accès au pack, ses logins GitHub (roster et people de la config) lui sont injectés au rendu."""
+        cfg = json.loads(Path(ROOT, "tests", "fixtures", "bureau.config.json").read_text(encoding="utf-8"))
+        code = templates.script_code("workflows/pr_update.py", cfg)
+        logins = json.loads(re.search(r'"team_github": (\[[^\]]*\])', code).group(1))
+        self.assertIn("pambeesly", logins)
+        self.assertIn("hollyflax", logins)
+        self.assertNotIn('"team_github"', templates.script_code("workflows/review.py", cfg))
+
+    def test_git_hooks_are_neutralised_for_the_scripts(self):
+        """AI-10 : les git des scripts (copies dont le .git est partagé) et le setup bash de la revue n'exécutent aucun hook."""
+        cfg = json.loads(Path(ROOT, "tests", "fixtures", "bureau.config.json").read_text(encoding="utf-8"))
+        for rel in ("workflows/pr_update.py", "workflows/chaine.py", "workflows/chaine_pr.py", "workflows/review.py"):
+            self.assertIn('GIT_CONFIG_KEY_0="core.hooksPath", GIT_CONFIG_VALUE_0="/dev/null"', templates.script_code(rel, cfg), rel)
+        setup = next(s for s in TPL["review_child"]["definition"]["steps"] if s["name"] == "setup")
+        self.assertIn("export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null\n", setup["exec_args"][1])
+        self.assertLess(setup["exec_args"][1].index("GIT_CONFIG_COUNT"), setup["exec_args"][1].index("worktree add"))
+
+    def test_support_postes_have_no_bash(self):
+        """AI-08 : les postes Support lisent un message Teams non fiable : lecture du code (Read, Grep, Glob), leur
+        discussion et api_call (tickets Jira cités, GET seulement d'après la consigne), jamais Bash (ni rendu, ni modèle)."""
+        keys = [k for k in TPL if k.startswith("support_") and any(s["step_type"]["type"] == "Agent" for s in TPL[k]["definition"]["steps"])]
+        self.assertEqual(sorted(keys), ["support_cause", "support_logs", "support_relecture", "support_reponse", "support_tri"])
+        for k in keys:
+            for s in TPL[k]["definition"]["steps"]:
+                if s["step_type"]["type"] == "Agent":
+                    tools = s["agent_settings"]["tools"]
+                    self.assertEqual(tools["cli"], ["Read", "Grep", "Glob"], k)
+                    self.assertEqual(tools["kronn_internal"], ["disc_append", "disc_get_message", "disc_meta", "api_call"], k)
+                    self.assertIn("api_call, GET seulement", s["description"], k)
+            self.assertNotIn('"Bash"', json.dumps(templates.render(TPL[k], BASE), ensure_ascii=False), k)
+
     def test_all_templates_present_and_without_installation_ids(self):
         """Les modèles exportés (templates.py export) ne gardent aucun id de l'installation qui les a exportés."""
         self.assertEqual(set(TPL), set(templates.TEMPLATES))

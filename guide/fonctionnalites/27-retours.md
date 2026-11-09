@@ -2,6 +2,8 @@
 
 Au 3e étage, on voit les PR dont un agent corrige les commentaires de review : un bureau par PR, six au plus. C'est le même workflow que le bouton « 🛠 Corriger » des fiches (modèle du Bureau « corriger les commentaires d'une PR », [fiches](07-fiches.md)) : l'étage le montre en grand, poste par poste et fil par fil.
 
+Seuls les commentaires des membres et collaborateurs du dépôt, des personnes de l'équipe et les tiens vont à l'agent : ceux d'un compte extérieur sont écartés, et la validation comme le bloc « Corrections de review » de la PR disent « n commentaire(s) d'un compte extérieur ignoré(s) ».
+
 ## Monter au 3e
 
 Le bouton « 🛠 3e » (les retours de PR, au survol) apparaît après « 🏭 1er » dès que le modèle est installé (`actions.fix_pr`). Les onglets suivent l'ordre des étages : -1, RDC, 1er, 3e. Le chiffre compte les PR en correction, « ✋ n » celles qui attendent ta validation. La page s'ouvre au RDC ; l'étage choisi ensuite est retenu par le navigateur.
