@@ -94,3 +94,49 @@ test('2.6 : l\'horloge de la page et du mode TV à la minute', () => {
   assert.match(read('page', 'src', '90-boot.js'), /getElementById\('clock'\)\.textContent=hm\(T\)/);
   assert.match(read('page', 'src', '75-tv.js'), /<span class="tvc">\$\{hm\(T\)\}<\/span>/);
 });
+
+// ---------- retouches du dessin (maquettes v15, choix du 9 novembre) ----------
+test('3.10 : bulles, étiquettes et nuages aux coins crénelés (pixRect), plus de roundRect sur le plan', () => {
+  for (const f of srcFiles.filter(f => f.endsWith('.js'))) assert.doesNotMatch(noComments(fs.readFileSync(path.join(SRC, f), 'utf8')), /\.roundRect\(/, f);
+  const pts = J(`(() => { const l = []; const c = {beginPath() {}, moveTo: (x, y) => l.push([x, y]), lineTo: (x, y) => l.push([x, y]), closePath() {}};
+    pixRect(c, 0, 0, 20, 10); return l; })()`);
+  assert.equal(pts.length, 20);
+  assert.ok(pts.every(([x, y]) => x >= 0 && x <= 20 && y >= 0 && y <= 10));
+  assert.ok(!pts.some(([x, y]) => (x === 0 || x === 20) && (y === 0 || y === 10)), 'aucun angle droit : les coins sont en marches');
+});
+
+test('2.2 : noms des pièces du plan en 11 px, encre à 50 % par défaut', () => {
+  const js = read('page', 'src', '40-floor.js');
+  assert.match(js, /g\.font='bold 11px ui-monospace,Menlo,monospace';g\.textAlign='center';/);
+  assert.match(js, /g\.fillStyle=l\.color\|\|'rgba\(0,0,0,\.5\)'/);
+});
+
+test('4.8 : un agent au repos montre son icône et son nom ; le métier et l\'heure au survol ou quand il travaille', () => {
+  const said = J(`(() => {
+    const c = chars.find(x => famOf(x) === 'wf' && !metierOf(x) && !x.temp);
+    const out = [], ft = ctx.fillText, lt = labelText; ctx.fillText = t => out.push(String(t));
+    labelText = () => '📰 Jim · Veille techno · ⏰ demain 9h30';
+    const n0 = NAMES, st0 = c._st, h0 = hoverKey, p0 = c.pos; NAMES = 'all'; c.pos = c.pos || {x: 100, y: 100};
+    try {
+      c._st = {st: 'idle'}; NAME_BOXES = []; drawName(c);
+      hoverKey = c.key; NAME_BOXES = []; drawName(c); hoverKey = h0;
+      c._st = {st: 'work'}; NAME_BOXES = []; drawName(c);
+    } finally { ctx.fillText = ft; labelText = lt; NAMES = n0; c._st = st0; c.pos = p0; }
+    return out;
+  })()`);
+  assert.deepEqual(said, ['📰 Jim', '📰 Jim · Veille techno · ⏰ demain 9h30', '📰 Jim · Veille techno · ⏰ demain 9h30']);
+});
+
+test('1.4 : « t\'attend » sur le plan, un seul ambre (le --warn du thème) et son encre sombre', () => {
+  assert.equal(J('WAIT_BG'), J('ST_TOKEN.warn'));
+  assert.equal(J('ST_TOKEN.warn'), read('page', 'src', 'theme-classique.css').match(/--warn:(#[0-9a-f]{6})/)[1]);
+  for (const f of ['68-atelier.js', '68-caserne.js', '68-redaction.js', '68-retours.js']) {
+    const js = noComments(read('page', 'src', f));
+    assert.doesNotMatch(js, /#(ffcf4a|a37a10)/i, f + ' : lampes et pastilles passent par WAIT_BG / WAIT_DIM');
+    assert.doesNotMatch(js, /'#8a5a00'/, f + ' : ambre foncé seulement par WAIT_TXT (texte sur bulle claire)');
+  }
+});
+
+test('7.3 : « jetons » aussi sur les tableaux du 2e', () => {
+  assert.doesNotMatch(noComments(read('page', 'src', '68-redaction.js')), /k tokens/);
+});

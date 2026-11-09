@@ -441,7 +441,10 @@ const askCount=t=>chars.reduce((a,x)=>a+(x._st&&x._st.st==='ask'?((x._st.qs||[])
 // couleurs des états des personnages, une seule table : soit un jeton du thème (ok, info, warn, err, idle), soit une couleur
 // fixe. Le canvas veut une vraie couleur : un jeton y prend sa valeur de ST_TOKEN, figée ; le HTML (panneau, « Qui fait quoi »,
 // TV, légende) garde var(--jeton) pour suivre le thème. Les deux vues ne diffèrent donc que par ce suivi du thème.
-const ST_TOKEN={ok:'#2e9e5b',info:'#4a7fe0',warn:'#e0a020',err:'#d1453b',idle:'#9a9284'};
+const ST_TOKEN={ok:'#2e9e5b',info:'#4a7fe0',warn:'#f0b03a',err:'#d1453b',idle:'#9a9284'};
+// « t'attend » sur le plan, à tous les étages : un seul ambre (le --warn du thème) et son encre sombre pour les fonds,
+// un ambre foncé pour le texte posé sur une bulle claire, et la phase éteinte des lampes qui clignotent (audit UX 1.4)
+const WAIT_BG=ST_TOKEN.warn, WAIT_INK='#1b1404', WAIT_TXT='#8a5a00', WAIT_DIM='#8a5a00';
 const ST_PALETTE={
   sax:'#c9a227',
   daily:'#2e9e9b',

@@ -56,9 +56,9 @@ function toolPhase(c,a,now){
   return {full:age<TOOL_FULL,pop:Math.min(1,age/TOOL_POP)};
 }
 function drawCloud(bx,by,w,h,tx,ty){
-  ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.roundRect?ctx.roundRect(bx+1,by+2,w,h,6):ctx.rect(bx+1,by+2,w,h);ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.22)';pixRect(ctx,bx+1,by+2,w,h);ctx.fill();
   ctx.fillStyle='#fffdf5';ctx.strokeStyle='#1a1320';ctx.lineWidth=1;
-  ctx.beginPath();ctx.roundRect?ctx.roundRect(bx+.5,by+.5,w,h,6):ctx.rect(bx+.5,by+.5,w,h);ctx.fill();ctx.stroke();
+  pixRect(ctx,bx+.5,by+.5,w,h);ctx.fill();ctx.stroke();
   // deux bouffées qui descendent vers la tête
   for(const [k,r] of [[.35,2.5],[.7,1.6]]){
     const px=bx+w/2+(tx-(bx+w/2))*k, py=by+h+(ty-(by+h))*k;

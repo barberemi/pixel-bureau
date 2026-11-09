@@ -18,7 +18,7 @@ const CS_ST={ok:['ok','a travaillé'],run:['run','au travail'],err:['err','en pa
 // « Comment lire le plan » au -1 (46-legende.js) ; les postes viennent de CS_POSTES
 const CS_HELP={bar:()=>'<span class="lk"><i data-st="work"></i>au travail</span><span class="lk"><i class="ring ring-dot" data-st="gate"></i>t\'attend</span><span class="lk"><i class="ring ring-dash" data-st="error"></i>en panne</span><span>🚨 gyrophare : un appel attend ou une intervention tourne</span>',
   postes:()=>[['',CS_POSTES]],
-  qui:'<p><b>Pompiers</b> : les agents, en tenue de sapeur-pompier, un par poste.</p><p><b>Le capitaine</b> (le boss), à son bureau, va ouvrir la vanne quand une réponse attend ta validation.</p><p>La garde reste le soir et le week-end, sous la veilleuse.</p>',
+  qui:'<p><b>Pompiers</b> : les agents, en tenue de sapeur-pompier, un par poste.</p><p><b>Le capitaine</b> (le boss), à son bureau, va ouvrir la vanne quand une réponse attend ta validation.</p><p>La garde reste le soir et le week-end, sous la veilleuse.</p><p>Un agent en gris pâle : son poste attend, personne n\'y travaille en ce moment (au RDC, la couleur d\'un hologramme dit sa famille, pas son activité).</p>',
   ou:'<p><b>Trois baies</b> : trois interventions à la fois, chacune avec son camion.</p><p><b>Le tableau</b> : son voyant clignote à chaque appel. <b>La pile</b> sur le bureau du capitaine : les appels à prendre.</p><p><b>La barre</b> : les pompiers y descendent et y remontent.</p>',
   moments:'<p><b>🚒 Une intervention démarre</b> : le rideau se lève, le camion sort, le tuyau se déroule jusqu\'au Tri.</p><p><b>💧 Le tuyau</b> se remplit jusqu\'au poste qui travaille.</p><p><b>📣 Le camion part</b> : la réponse est postée dans Teams, le camion rentre.</p>'};
 const CS_BAYS=3, CS_BX=[1,12.25,23.5], CS_BW=10.25, CS_DY0=3.1, CS_DY1=10.1, CS_Z0=10.8, CS_Z1=20.7, CS_R1=14.3, CS_R2=18.7;
@@ -159,7 +159,6 @@ function csBackground(){ // sous-sol : murs de béton, tuyaux au plafond, sol de
   R(g,35*T-4,2*T,4,CS_LANE-1.4*T-2*T,'#7d776c');R(g,35*T-4,CS_LANE+.6*T,4,27*T-CS_LANE-.6*T,'#7d776c'); // la salle de garde, séparée par un muret ouvert sur l'allée
   for(let b=0;b<CS_BAYS;b++){const z=CS_G[b];g.save();g.strokeStyle='#f2c230';g.lineWidth=3;g.setLineDash([12,7]);g.strokeRect(z.x0+4,CS_Z0*T,z.w-8,(CS_Z1-CS_Z0)*T);g.restore();
     for(let k=0;k<6;k++)R(g,z.cx-2.5*T+k*T,(CS_Z1+.25)*T,T*.55,6,k%2?'#1c1c1c':'#f2c230');} // bande devant la baie
-  g.font='bold 13px ui-monospace,Menlo,monospace';g.fillStyle='#4a3f36';g.fillText('-1 · CASERNE SUPPORT',12,T+20);
   return c;
 }
 let CS_BG=null;
@@ -211,7 +210,7 @@ function csHose(z,st,L,fd){ // du camion au premier pompier, puis de main en mai
 }
 function csValve(x,y,open,now){R(ctx,x+14,y-24,4,24,'#5d6370');ctx.strokeStyle=open?'#e0a020':'#c8323a';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x+16,y-28,7,0,7);ctx.stroke();
   R(ctx,x+15,y-35,2,14,ctx.strokeStyle);R(ctx,x+9,y-29,14,2,ctx.strokeStyle);}
-const csPostePill=(p,s,x,y)=>atPill(atPosteLbl(p,['run','err','gate'].includes(s)),x,y,{run:'#2f6fd6',ok:'#2f7a45',err:'#a8323a',gate:'#8a5a00'}[s]||'#f4efe4',s?'#fff':'#3a3530','bold 11px system-ui,sans-serif');
+const csPostePill=(p,s,x,y)=>atPill(atPosteLbl(p,['run','err','gate'].includes(s)),x,y,{run:'#2f6fd6',ok:'#2f7a45',err:'#a8323a',gate:WAIT_BG}[s]||'#f4efe4',s==='gate'?WAIT_INK:s?'#fff':'#3a3530','bold 11px system-ui,sans-serif');
 // ---------- une baie ----------
 const csEase=u=>u<=0?0:u>=1?1:u*u*(3-2*u), csClamp=u=>u<0?0:u>1?1:u;
 function csBay(slot,b,now,dt,people){
@@ -250,7 +249,7 @@ function csBay(slot,b,now,dt,people){
       const boss=k==='gate'&&!!chars.find(c=>c.boss);
       if(!boss){R(ctx,x-2,y-30,4,30,'#8a8478');for(let q=0;q<4;q++)R(ctx,x-14+q*7,y-32,7,6,q%2?'#1c1c1c':'#f2c230');}
       ctx.restore();
-      csLate(people,()=>{ctx.save();ctx.globalAlpha=fv;if(!boss)csPostePill(p,s,x,y+16);if(s==='gate'&&!boss&&(REDUCED_MOTION||Math.floor(now/500)%2))atBadge(x,y-44,'✋','#d08a10');ctx.restore();},y+2);
+      csLate(people,()=>{ctx.save();ctx.globalAlpha=fv;if(!boss)csPostePill(p,s,x,y+16);if(s==='gate'&&!boss&&(REDUCED_MOTION||Math.floor(now/500)%2))atBadge(x,y-44,'✋',WAIT_BG);ctx.restore();},y+2);
       atHitCs('agent',x-16,y-56,32,74,{b,k:p.k});return;}
     const aw=a&&a.w.find(q=>q[0]===j), w=aw&&aw[1];
     if(w&&!w.done){csDrawWalker(w,people,now);return;} // en route vers sa place
@@ -275,7 +274,7 @@ function csLate(people,f,y){people.push([{pos:{x:0,y:y==null?1e6:y}},null,false,
 function csBoard(slots,now){ // le tableau des interventions, au mur de la salle de garde
   const T=AT_TS, x=35.6*T, y=2.1*T, w=9.8*T, h=4.4*T;R(ctx,x-6,y-6,w+12,h+12,'#3a3530');R(ctx,x,y,w,h,'#10141c');R(ctx,x,y,w,18,'#8a1f17');
   atTxt('📋 INTERVENTIONS',x+8,y+13,'#fff','bold 12px ui-monospace,Menlo,monospace','left');
-  slots.forEach((s,b)=>{const c=!s?'#5d6370':s.dep?'#3fbf6a':s.s.k==='gate'?'#e0a020':s.s.k==='failed'?'#e0614f':'#5b8def', cur=s&&!s.dep&&csCur(s.st||{});
+  slots.forEach((s,b)=>{const c=!s?'#5d6370':s.dep?'#3fbf6a':s.s.k==='gate'?WAIT_BG:s.s.k==='failed'?'#e0614f':'#5b8def', cur=s&&!s.dep&&csCur(s.st||{});
     R(ctx,x+10,y+28+b*19,8,8,c);atTxt('B'+(b+1)+' · '+(!s?'libre':s.dep?(s.dep.posted?'feu éteint':'fin'):(csTitle(s.t).slice(0,22)+(cur?' · '+cur.i:''))),x+24,y+36+b*19,s?'#e8e2d0':'#8a93a6','12px ui-monospace,Menlo,monospace','left');});
   const n=csCalls().length, q=csWaiting();
   atTxt('📟 '+(n?plural(n,'appel','appels')+' à prendre':'aucun appel')+(q?' · '+q+' en attente de baie':''),x+10,y+h-12,n?'#ff9a8a':'#8a93a6','bold 12px ui-monospace,Menlo,monospace','left');
@@ -332,7 +331,7 @@ function csBeacon(now){
 const CS_K=1.75, CS_KB=1.35, CS_BACK=16; // échelle du bureau, du tableau de garde ; le capitaine se tient CS_BACK px derrière le bureau
 const csCaptainSprite=b=>bossFloorSprite(b,'captain_sprite');
 function csBayCol(slots,b,now){const s=slots[b];if(!s)return '#3d4250';if(s.dep)return '#3fbf6a';const k=s.s.k;
-  return k==='gate'?(REDUCED_MOTION||Math.floor(now/450)%2?'#ffcf4a':'#a37a10'):k==='failed'?'#e0614f':'#5b8def';}
+  return k==='gate'?(REDUCED_MOTION||Math.floor(now/450)%2?WAIT_BG:WAIT_DIM):k==='failed'?'#e0614f':'#5b8def';}
 function csDesk(slots,now,calls,open){ // le bureau, devant le capitaine : dessiné après lui
   const {x,y:F}=CS_DESK, K=CS_K, q=(dx,dy,w,h,c)=>R(ctx,Math.round(x+dx*K),Math.round(F+dy*K),Math.round(w*K),Math.round(h*K),c);
   q(-56,-12,112,24,'#6e4a2c');q(-56,-14,112,4,'#8a6040');q(-56,8,112,6,'#56391f');q(-56,14,112,3,'rgba(0,0,0,.2)');
@@ -376,7 +375,7 @@ function csCaptain(slots,now,dt,people){
   const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:p.x,y:p.y},tile:null,dir,moving:!arrived,pose:'stand',present:true,_st:{st:target==null?'idle':'gate'},sprite:look||boss.sprite});
   people.push([c,null,false,()=>{if(!look)csHelmet(ctx,p.x,p.y,dir,true);
     if(!home_)atPill(boss.name+' · capitaine',p.x,p.y+16,'#8a1f17','#fff','bold 12px system-ui,sans-serif');
-    if(arrived&&target!=null)atBubble(p.x,p.y-66,'✋ j\'ouvre la vanne ?','#8a5a00');}]);
+    if(arrived&&target!=null)atBubble(p.x,p.y-66,'✋ j\'ouvre la vanne ?',WAIT_TXT);}]);
   if(home_)csLate(people,()=>atPill(boss.name+' · capitaine',p.x,Math.round(F+17*K+12),'#8a1f17','#fff','bold 12px system-ui,sans-serif'),F+3); // sous le bureau
   CS_LIT.push(p);atHitCs('captain',p.x-16,p.y-56,32,60,{});
 }
@@ -452,7 +451,7 @@ function renderCaserne(now){
   csNight(slots,people,now);
   const hp=csPickedAt();if(hp)selHalo(hp.x,hp.y-26,AT_W,AT_H); // comme au RDC et au 1er : le plan s'assombrit autour de celui qu'on a choisi
   if(CS_SEL!=null){const b=CS_MEM.slots.indexOf(CS_SEL);if(b>=0){const z=CS_G[b];ctx.save();ctx.strokeStyle='#ffffff';ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.lineDashOffset=-now/60;ctx.strokeRect(z.x0+1,CS_DY0*AT_TS-20,z.w-2,(CS_Z1-CS_DY0)*AT_TS+24);ctx.restore();}}
-  atReplayPill();
+  floorTitle();
 }
 // où est celui qu'on a choisi : un pompier d'une baie occupée, ou le capitaine (sa fiche ouverte à la caserne)
 function csPickedAt(){

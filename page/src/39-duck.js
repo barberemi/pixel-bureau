@@ -156,7 +156,7 @@ function drawDuck(now){
   fxDrawDuck(x,y,now); // 43-fx.js : succès qui tombe, éclosion, « pouf »
   if(p.call&&!p.moving){ // il attend ta réponse : une bulle « ? » qui respire au-dessus de lui
     const by=y-Math.round(34*DUCK_K)+Math.round(Math.sin(now/400));
-    ctx.fillStyle='#ffffff';ctx.strokeStyle='#c47f00';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(x-7,by,14,13,4);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#ffffff';ctx.strokeStyle='#c47f00';ctx.lineWidth=1;pixRect(ctx,x-7,by,14,13);ctx.fill();ctx.stroke();
     ctx.beginPath();ctx.moveTo(x-2,by+13);ctx.lineTo(x,by+17);ctx.lineTo(x+2,by+13);ctx.fill();
     ctx.fillStyle='#c47f00';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText('?',x,by+10);ctx.textAlign='left';
   }else if(!fxDuckBusy()){ // sinon une flèche jaune qui flotte au-dessus de lui, pour le repérer sur le plan (pas pendant une scène : sa bulle la remplace)

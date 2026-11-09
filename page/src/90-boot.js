@@ -14,7 +14,7 @@ function loop(now){
     tvAutoScroll(now,dt);tvFloorTick(now); // 75-tv.js : alternance des étages de l'écran mural
     if(now-lastUi>1000){lastUi=now;
       document.getElementById('clock').textContent=hm(T); // à la minute : le temps du plan avance par minute (audit UX 2.6)
-      timeUi();
+      timeUi();replayMark(); // 68-atelier.js : le liseré et la pastille du rejeu
       if(document.activeElement!==slider)slider.value=Math.round((T-RSTART)/Math.max(1,REND-RSTART)*1000);
       renderRecap();renderKpis();renderWho();mtBar();waitChip();renderFeed();updateFresh();updateTv();if(mode!=='live')updateBadge();
       if(!document.querySelector('.side details[open]'))renderSide();else refreshStatus();

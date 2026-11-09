@@ -67,7 +67,7 @@ function fxDuckLook(look,now){
 }
 function fxBubble(x,y,txt,col){
   ctx.font='bold 11px sans-serif';const w=ctx.measureText(txt).width+12;
-  ctx.fillStyle='#ffffff';ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.beginPath();ctx.roundRect(x-w/2,y-16,w,16,5);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#ffffff';ctx.strokeStyle=col;ctx.lineWidth=1.5;pixRect(ctx,x-w/2,y-16,w,16);ctx.fill();ctx.stroke();
   ctx.beginPath();ctx.moveTo(x-3,y);ctx.lineTo(x,y+4);ctx.lineTo(x+3,y);ctx.fill();
   ctx.fillStyle=col;ctx.textAlign='center';ctx.fillText(txt,x,y-4);ctx.textAlign='left';
 }

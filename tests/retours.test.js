@@ -153,15 +153,36 @@ test("les portes des bureaux : la porte en bois de l'entrée du RDC, sur le coul
   for (const [, , w, h, n, vert] of d.slice(6)) assert.deepEqual([w, h, n, vert], [12, 2.5 * T, 2, true]);
 });
 
-test("comme au 1er : les fenêtres au ciel de l'heure aux 2e et 3e, et la pastille du rejeu aux 2e, 3e et -1", () => {
+test("comme au 1er : les fenêtres au ciel de l'heure aux 2e et 3e ; le titre de chaque étage, RDC compris, au même endroit", () => {
   const {p, J} = page();
   const T = J('AT_TS'), name = 7 * T; // le nom de l'étage, en haut à gauche
   for (const w of ['RD_WINDOWS', 'RT_WINDOWS']) { assert.ok(J(w + '.length') >= 8); assert.ok(J(w).every(x => x * T > name - 20 && x * T + 1.5 * T < 46 * T), w); }
-  p.run(`RETOURS = retoursDemo(); SUPPORT = supportDemo(); var __ap = atPill, __pl = []; atPill = (s, ...a) => { __pl.push(s); return __ap(s, ...a); };
-    setMode('pause'); setFloor(2); renderRedaction(1000); setFloor(3); renderRetours(1000); setFloor(-1); renderCaserne(1000);`);
-  assert.equal(J("__pl.filter(s => /^⏪ Rejeu/.test(s)).length"), 3, 'une par étage');
-  p.run(`__pl = []; setMode('live'); setFloor(3); renderRetours(1100); atPill = __ap;`);
-  assert.equal(J("__pl.some(s => /^⏪ Rejeu/.test(s))"), false, 'en direct, pas de pastille');
+  // audit UX 4.2 : une plaque au début du bandeau du haut, son nom tiré de ETAGES, à tous les étages
+  p.run(`RETOURS = retoursDemo(); SUPPORT = supportDemo(); var __pq = plaque, __pl = []; plaque = (c, x, y, t, a) => { __pl.push([x, y, t, a]); return 100; };
+    setMode('pause'); setFloor(2); renderRedaction(1000); setFloor(3); renderRetours(1000); setFloor(-1); renderCaserne(1000); setFloor(1); renderAtelier(1000);
+    setFloor(0); render(1000); plaque = __pq;`);
+  assert.deepEqual(J('__pl.map(x => x[2])'), ['2E · RÉDACTION ET REVUE', '3E · RETOURS DE PR', '-1 · CASERNE SUPPORT', '1ER · ATELIER', 'RDC · OPEN SPACE']);
+  assert.ok(J('__pl.every(x => x[0] === 10 && x[1] === 6 && /^#[0-9a-f]{6}$/.test(x[3]))'), 'même place, un liseré par étage');
+});
+
+test("rejeu : hors du dessin, un liseré autour du plan et « ⏪ Rejeu hh:mm » au bout des onglets, à chaque étage", () => {
+  const {p, J} = page();
+  const r = J(`(() => {
+    const cls = new Set(), wrap = {classList: {toggle: (k, on) => on ? cls.add(k) : cls.delete(k)}}, kids = [];
+    const bar = {appendChild: e => kids.push(e)}, qs = document.querySelector, ge = document.getElementById, ce = document.createElement;
+    document.querySelector = s => s === '.stage .cv-wrap' ? wrap : s === '.floorbar' ? bar : qs.call(document, s);
+    document.getElementById = id => id === 'rejeu' ? kids[0] || null : ge.call(document, id);
+    document.createElement = t => ({tagName: t, hidden: false, textContent: ''});
+    const out = [];
+    try {
+      setMode('pause'); T = DAY0 + 11 * 3600e3; FLOOR = 2; replayMark(); out.push([cls.has('rejeu'), kids[0].hidden, kids[0].textContent]);
+      FLOOR = 0; replayMark(); out.push([cls.has('rejeu'), kids[0].hidden, kids[0].textContent]);
+      setMode('live'); replayMark(); out.push([cls.has('rejeu'), kids[0].hidden, kids.length]);
+    } finally { document.querySelector = qs; document.getElementById = ge; document.createElement = ce; }
+    return out;
+  })()`);
+  assert.deepEqual(r, [[true, false, '⏪ Rejeu 11:00 · 2e'], [true, false, '⏪ Rejeu 11:00 · RDC'], [false, true, 1]]);
+  assert.match(require('fs').readFileSync(require('path').join(__dirname, '..', 'page', 'src', 'styles.css'), 'utf8'), /\.cv-wrap\.rejeu\{outline:4px solid var\(--warn\)/);
 });
 
 test("galerie : Bernard monte la PR et la redescend dès le premier clic (l'étage d'avant la scène est posé, pas rejoué)", () => {

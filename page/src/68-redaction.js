@@ -11,7 +11,7 @@
 // Données : dataset redaction (workflows/redaction_snapshot.py, cron live) et les runs de la revue (DATA.runs) ; démo : redactionDemo().
 const RD_POSTES=[{k:'recherche',i:'📚',n:'Recherche',d:'cherche ce que l\'intention touche, projet par projet'},{k:'redaction',i:'✍',n:'Rédaction',d:'écrit les tickets, un par projet touché'},
   {k:'critique',i:'🧐',n:'Critique',d:'relit les tickets et renvoie à la rédaction (trois tours au plus)'},{k:'valider',i:'✋',n:'Toi',d:'tu tamponnes chaque ticket, ou tu demandes des changements'}];
-const RD_TK={wait:['#f7e07a','attend la critique'],run:['#9fd4ff','en cours'],gate:['#ffcf4a','t\'attend'],ok:['#b6e3a8','créé'],ecarte:['#d8d2c4','écarté'],err:['#f4a3a3','en panne']};
+const RD_TK={wait:['#f7e07a','attend la critique'],run:['#9fd4ff','en cours'],gate:[WAIT_BG,'t\'attend'],ok:['#b6e3a8','créé'],ecarte:['#d8d2c4','écarté'],err:['#f4a3a3','en panne']};
 // « Comment lire le plan » au 2e (46-legende.js) : les postes de la rédaction, puis les étapes d'une revue (RV_STEP)
 const RD_HELP={bar:()=>'<span>Tickets :</span>'+legSwatches(RD_TK)+'<span>Verdicts : '+Object.entries({approve:'approuvée',comment:'commentée',request_changes:'changements',err:'en échec'}).map(([k,t])=>RVF_V[k][0]+' '+t).join(' · ')+'</span>',
   postes:()=>[['Rédaction',RD_POSTES],['Revue d\'une PR',Object.values(RV_STEP).map(([l,,d])=>({i:l.split(' ')[0],n:l.slice(l.indexOf(' ')+1),d}))]],
@@ -101,7 +101,6 @@ function rdBackground(){
   R(g,0,0,AT_W,T,'#4b4a52');R(g,0,T,AT_W,8,'#efe9dc');R(g,0,T+8,AT_W,24,'#d9d2c3');R(g,0,T+28,AT_W,4,'#a99f8c');
   for(const x of [RD_X1,RD_VX]){R(g,x*T-3,2*T,6,10.5*T,'#7d776c');R(g,x*T-3,15*T,6,12*T,'#7d776c');}
   for(const x of [RD_X1,RD_VX])woodDoor(g,x*T-6,12.5*T,12,2.5*T,2,true); // les portes de la rédaction et de la revue, sur le couloir
-  g.font='bold 13px ui-monospace,Menlo,monospace';g.fillStyle='#5a4636';g.fillText('2E · RÉDACTION ET REVUE',12,T+20);
   return c;
 }
 let RD_BG=null;
@@ -244,8 +243,8 @@ function rdBoard(people){
   rdLate(people,()=>{R(ctx,bx+14,by+bh,5,18,'#5a3e28');R(ctx,bx+bw-19,by+bh,5,18,'#5a3e28');R(ctx,bx+bw/2-2,by+bh,4,12,'#4a3424');
     R(ctx,bx-6,by-6,bw+12,bh+12,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+4,by+bh-6,bw-8,4,'#a37650');
     atTxt('TICKETS DU JOUR',bx+bw/2,by+18,'#f4efe4','bold 13px ui-monospace,Menlo,monospace');R(ctx,bx+16,by+24,bw-32,1,'rgba(244,239,228,.4)');
-    [['#3fbf6a',plural(j.crees,'ticket créé','tickets créés')+' aujourd\'hui'],['#ffcf4a',plural(j.tampon,'ticket','tickets')+' au tampon'],
-     ['#5b8def',plural(j.cours,'intention en cours','intentions en cours')],['#e0a020','~'+Math.round(j.tok/1e3)+' k tokens']]
+    [['#3fbf6a',plural(j.crees,'ticket créé','tickets créés')+' aujourd\'hui'],[WAIT_BG,plural(j.tampon,'ticket','tickets')+' au tampon'],
+     ['#5b8def',plural(j.cours,'intention en cours','intentions en cours')],['#e0a020','~'+Math.round(j.tok/1e3)+' k jetons']]
       .forEach(([c,t],k)=>{R(ctx,bx+16,by+34+k*15,8,8,c);atTxt(t,bx+30,by+42+k*15,'#e8e2d0','12px ui-monospace,Menlo,monospace','left');});},RD_DESK.y-1);
 }
 function rdBoss(people,tks,now){
@@ -254,14 +253,14 @@ function rdBoss(people,tks,now){
   // le bureau du RDC ; au milieu, l'encreur et le tampon (la tasse poussée au bout) ; le tampon part avec lui à Jira
   const desk=away=>{atBossDesk(x,y,now,boss,(x0,top)=>{R(ctx,x0+40,top+5,22,8,'#2a2a30');R(ctx,x0+42,top+6,18,5,'#7a1f24');
       if(!(J&&J.kind==='jira')){R(ctx,x0+66,top-2,12,9,'#c8323a');R(ctx,x0+66,top-2,12,2,'#e0525a');R(ctx,x0+70,top-9,4,7,'#1c1c1c');R(ctx,x0+68,top-12,8,4,'#2c2c2c');}},84);
-    if(g&&!away)atBubble(x,y-62,'✋ '+plural(g,'ticket','tickets')+' : je tamponne ?','#8a5a00');};
+    if(g&&!away)atBubble(x,y-62,'✋ '+plural(g,'ticket','tickets')+' : je tamponne ?',WAIT_TXT);};
   if(boss&&J){const p=J.w.pos, c=withFloorSprite(Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:p.x,y:p.y},tile:null,dir:J.w.dir,moving:J.ph!=='act',pose:'stand',present:true,_st:{st:'idle'}}),boss,'redaction_sprite');
     rdLate(people,()=>desk(true),y);
     people.push([c,null,false,()=>{if(J.ph==='go')rdSheet(p.x+(J.w.dir==='left'?-14:14),p.y-30,J.kind);if(J.ph==='act')atBubble(p.x,p.y-62,J.kind==='intro'?'📌 je l\'épingle…':'🎫 dans la boîte Jira…');}]);
     RD_LIT.push(p);atHitRd('boss',p.x-16,p.y-56,32,60,{});}
   else if(boss){people.push([withFloorSprite(atSeatedBoss(boss,x,y,g?'gate':'idle'),boss,'redaction_sprite'),null,false,()=>desk(false)]);RD_LIT.push({x,y});atHitRd('boss',x-16,y-60,32,60,{});}
   else rdLate(people,()=>desk(false),y);
-  rdLate(people,()=>atPill('✋ le tampon : tu valides les tickets, puis ils partent un par un',x-40,y+30,g?'#8a5a00':'#f4efe4',g?'#fff':'#3a3530','bold 11px system-ui,sans-serif'),y);
+  rdLate(people,()=>atPill('✋ le tampon : tu valides les tickets, puis ils partent un par un',x-40,y+30,g?WAIT_BG:'#f4efe4',g?WAIT_INK:'#3a3530','bold 11px system-ui,sans-serif'),y);
 }
 // un banc comme au 1er : ceux qui ne travaillent pas s'y assoient (descendus dans l'assise, qui leur cache les jambes)
 function rdBench(people,x,y,ks,hat){atSofa(x,y);ks.forEach((k,j)=>{const a=atWorker(k,x+(j?22:-22),y+9,'down',false,'',null);if(!a)return;a._st={st:'idle'};a.pose='stand';
@@ -274,7 +273,7 @@ function rdRevue(now,people){
   atTxt('👀 REVUE DES PR',(RD_VX+.6)*T,2.7*T,'#5a4636','bold 12px ui-monospace,Menlo,monospace','left');
   const bx=30*T, by=2.1*T, bw=11*T, bh=3.4*T;R(ctx,bx-6,by-6,bw+12,bh+12,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+4,by+bh-6,bw-8,4,'#a37650');
   atTxt('REVUES DU JOUR',bx+bw/2,by+18,'#f4efe4','bold 13px ui-monospace,Menlo,monospace');R(ctx,bx+16,by+24,bw-32,1,'rgba(244,239,228,.4)');
-  [['#5b8def',plural(rvActive().length,'PR en lecture','PR en lecture')],...(file?[['#e0a020',plural(wait,'PR en attente','PR en attente')+(F.st?' (cron '+hm(F.st.b.s)+')':'')]]:[]),['#3fbf6a',plural(done,'revue postée','revues postées')+' aujourd\'hui'],['#e0a020','~'+Math.round(rvRuns().filter(r=>r._s>=DAY0).reduce((a,r)=>a+(r.tok||0),0)/1e3)+' k tokens']]
+  [['#5b8def',plural(rvActive().length,'PR en lecture','PR en lecture')],...(file?[[WAIT_BG,plural(wait,'PR en attente','PR en attente')+(F.st?' (cron '+hm(F.st.b.s)+')':'')]]:[]),['#3fbf6a',plural(done,'revue postée','revues postées')+' aujourd\'hui'],['#e0a020','~'+Math.round(rvRuns().filter(r=>r._s>=DAY0).reduce((a,r)=>a+(r.tok||0),0)/1e3)+' k jetons']]
     .forEach(([c,t],k)=>{R(ctx,bx+16,by+36+k*18,8,8,c);atTxt(t,bx+30,by+44+k*18,'#e8e2d0','12px ui-monospace,Menlo,monospace','left');});
   const boss=chars.find(c=>c.boss);
   if(file)rvfDesk(people,now,F);
@@ -321,7 +320,7 @@ function renderRedaction(now){
   stairDoor(RD_STAIR,people.map(q=>q[0].pos));
   rdNight(people,now);
   const b=chars.find(c=>c.boss);if(b&&sel===b.key)selHalo(RD_DESK.x,RD_DESK.y-26,AT_W,AT_H);
-  atReplayPill();
+  floorTitle();
 }
 function atHitRd(kind,x,y,w,h,ref){RD_HITS.push({kind,x,y,w,h,...ref});}
 function rdHitAt(e){const r=cv.getBoundingClientRect(), mx=(e.clientX-r.left)*AT_W/r.width, my=(e.clientY-r.top)*AT_H/r.height;

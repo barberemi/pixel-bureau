@@ -10,6 +10,19 @@ function sizeCanvas(){
 }
 sizeCanvas();
 const R=(c,x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
+// tracé d'une bulle ou d'une étiquette aux coins crénelés (3 px, deux marches), comme les cadres pixel de la page :
+// remplace roundRect sur le plan (audit UX 3.10) ; à suivre de fill() ou stroke()
+function pixRect(c,x,y,w,h){
+  const s=3, p=[[x+s,y],[x+w-s,y],[x+w-s,y+1],[x+w-1,y+1],[x+w-1,y+s],[x+w,y+s],[x+w,y+h-s],[x+w-1,y+h-s],[x+w-1,y+h-1],[x+w-s,y+h-1],
+    [x+w-s,y+h],[x+s,y+h],[x+s,y+h-1],[x+1,y+h-1],[x+1,y+h-s],[x,y+h-s],[x,y+s],[x+1,y+s],[x+1,y+1],[x+s,y+1]];
+  c.beginPath();c.moveTo(p[0][0],p[0][1]);for(let i=1;i<p.length;i++)c.lineTo(p[i][0],p[i][1]);c.closePath();
+}
+// plaque pixel : fond sombre, liseré du haut à la couleur donnée, encre claire ; renvoie sa largeur (titre d'étage, 68-atelier.js)
+function plaque(c,x,y,text,accent){
+  c.save();c.font='bold 12px ui-monospace,Menlo,monospace';const w=Math.ceil(c.measureText(text).width)+16, h=20;
+  R(c,x+2,y+2,w,h,'rgba(0,0,0,.35)');pixRect(c,x,y,w,h);c.fillStyle='#1c1f26';c.fill();R(c,x+2,y,w-4,2,accent||'#646a78');
+  c.fillStyle='#efe9dc';c.textBaseline='middle';c.textAlign='left';c.fillText(text,x+8,y+h/2+1);c.restore();return w;
+}
 function hash(x,y){let h=x*374761393+y*668265263;h=(h^(h>>13))*1274126177;return ((h^(h>>16))>>>0)/4294967295;}
 function drawFloor(c,x,y,f){
   const px=x*TS,py=y*TS;
@@ -81,8 +94,8 @@ function buildBg(){
   // décor mural et noms des pièces : posés par le plan (LAYOUT.wall, LAYOUT.labels)
   for(const d of LAYOUT.wall||[]){const t=WALL_DECOR[d.type]; if(!t)continue;
     g.save();g.translate((d.at[0]-t.anchor[0])*TS,(d.at[1]-t.anchor[1])*TS);t.draw(g,d);g.restore();}
-  g.font='bold 9px ui-monospace,Menlo,monospace';g.textAlign='center';
-  for(const l of LAYOUT.labels||[]){g.fillStyle=l.color||'rgba(0,0,0,.22)';g.fillText(l.text,l.at[0]*TS,l.at[1]*TS);}
+  g.font='bold 11px ui-monospace,Menlo,monospace';g.textAlign='center'; // 11 px, encre à 50 % : lisibles à l'écran (audit UX 2.2)
+  for(const l of LAYOUT.labels||[]){g.fillStyle=l.color||'rgba(0,0,0,.5)';g.fillText(l.text,l.at[0]*TS,l.at[1]*TS);}
   g.textAlign='left';
 }
 function drawWindows(t,now){
