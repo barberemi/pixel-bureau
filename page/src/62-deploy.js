@@ -126,8 +126,8 @@ function ebHtml(s){
     run:`<em>⏳ construction en cours</em> · lancée il y a ${esc(dpAgo(s.o&&s.o.start))}${run}`,
     ko:`<em>❌ build en échec</em> · il y a ${esc(dpAgo(s.o&&(s.o.end||s.o.start)))}${run}`,
     ok:`<em>✅ en ligne</em>${s.o?' · construit il y a '+esc(dpAgo(s.o.end||s.o.start)):''}${run}`}[s.step];
-  const build=s.step==='asked'?['cur','attend GitHub']:s.step==='run'?['cur','en cours']:s.step==='ko'?['ko','en échec']:s.step==='ok'?['done','fait']:['','—'];
-  const live=s.url?`<a ${hrefOf(s.url)} target="_blank" rel="noopener">${s.step==='ok'?'ouvrir ↗':'version d\'avant ↗'}</a>`:s.step==='ok'?'adresse au prochain relevé':'—';
+  const build=s.step==='asked'?['cur','attend GitHub']:s.step==='run'?['cur','en cours']:s.step==='ko'?['ko','en échec']:s.step==='ok'?['done','fait']:['','·'];
+  const live=s.url?`<a ${hrefOf(s.url)} target="_blank" rel="noopener">${s.step==='ok'?'ouvrir ↗':'version d\'avant ↗'}</a>`:s.step==='ok'?'adresse au prochain relevé':'·';
   return `<div class="dp-envs"><div class="dp-env eb-l${s.step==='run'||s.step==='asked'?' run':s.step==='ko'?' ko':''}"><div class="dp-o"><span>${line}</span></div></div></div>`+
     `<div class="eb-st"><div class="${s.step==='none'?'':'done'}"><b>1 · label</b>${s.step==='none'?'à poser':'posé'}</div>`+
     `<div class="${build[0]}"><b>2 · build</b>${build[1]}</div><div class="${s.step==='ok'&&s.url?'done':''}"><b>3 · en ligne</b>${live}</div></div>`;

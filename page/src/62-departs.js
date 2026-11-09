@@ -38,7 +38,7 @@ const DEPARTS_BOARD={y:-1,draw:now=>{
 const depA=(cls,url,t,tip='')=>`<a class="${cls}" ${hrefOf(url)} target="_blank" rel="noopener" title="${esc(tip)}">${esc(t)}</a>`;
 const depWho=o=>{const c=o.by?byChar(o.by):null;return {c,n:c?c.name:o.by||''};};
 function depCell(r,env){
-  const o=r[env];if(!o||!o.ref)return '<td><span class="dep-none">—</span></td>';
+  const o=r[env];if(!o||!o.ref)return '<td><span class="dep-none">·</span></td>';
   const gh='https://github.com/'+r.repo, k=!o.tag&&depKey(o.ref), t=k&&ticketOf(k), w=depWho(o),
     pr=!o.tag&&TEAM&&[...TEAM.people.flatMap(p=>p.prs||[]),...(TEAM.other_prs||[])].find(x=>x.head===o.ref&&prRepo(x)===r.repo);
   const v=o.tag?depA(env==='prd'?'dep-prd':'',gh+'/releases/tag/'+encodeURIComponent(o.ref),o.ref)
@@ -57,7 +57,7 @@ const openDeparts=()=>openWide('departs','Tableau des départs',departsFill);
 // ---------- mode TV : « Les envs », au bout de la colonne qui défile ----------
 function tvDeparts(){
   const L=depRows(), line=(r,env)=>{const o=r[env]||{}, w=o.ref?depWho(o):{}, img=w.c?portraitUrl(w.c):'';
-    return `<div class="tve-l"><i>${env.toUpperCase()}</i><em class="${!o.ref?'dep-none':env==='prd'?'dep-prd':o.tag?'':'dep-br'}">${esc(!o.ref?'—':o.tag?o.ref:depKey(o.ref)||o.ref)}</em>`+
+    return `<div class="tve-l"><i>${env.toUpperCase()}</i><em class="${!o.ref?'dep-none':env==='prd'?'dep-prd':o.tag?'':'dep-br'}">${esc(!o.ref?'·':o.tag?o.ref:depKey(o.ref)||o.ref)}</em>`+
       `<span>${img?`<img src="${img}" alt="">`:''}${esc(w.n||'')}</span></div>`;};
   return L.length?'<h2>Les envs</h2>'+L.map(r=>`<div class="tve"><b>${esc(depName(r))}</b>${line(r,'dev')}${line(r,'stg')}${line(r,'prd')}</div>`).join(''):'';
 }

@@ -81,7 +81,7 @@ function renderKpis(){
   if(d.agents){ // 3. Agents (suivi, pas alerte)
     const a=d.agents, down=chars.some(c=>!c.person&&!c.visitor&&c._st&&c._st.st==='error');
     fig.push([a.runs,a.ok,a.ko,down].join());
-    out.push(`<section class="dash agents click${down?' err':a.ko?' warn':''}" data-open="paie" tabindex="0" role="button" title="Voir la fiche de paie"><h3>Les agents</h3><div class="cap">${a.runs} runs · <span style="color:var(--ok)">${a.ok} ✓</span> · <span style="color:${a.ko?'var(--err)':'inherit'}">${a.ko} ✗</span></div><div class="cap">${fmtTok(a.tok)} tokens · fiche de paie ›</div></section>`);
+    out.push(`<section class="dash agents click${down?' err':a.ko?' warn':''}" data-open="paie" tabindex="0" role="button" title="Voir la fiche de paie"><h3>Les agents</h3><div class="cap">${a.runs} runs · <span style="color:var(--ok)">${a.ok} ✓</span> · <span style="color:${a.ko?'var(--err)':'inherit'}">${a.ko} ✗</span></div><div class="cap">${fmtTok(a.tok)} jetons · fiche de paie ›</div></section>`);
   }
   if(floorsOn().length>1){const r=imRows(T);fig.push(JSON.stringify(r));out.push(imKpiHtml(r));} // 4. les étages (69-immeuble.js)
   const html=out.join('');

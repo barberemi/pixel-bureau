@@ -169,3 +169,8 @@
 :root[data-skin] .kmodal .km-title{background:var(--line);margin:0 -20px 14px;padding:10px 14px;font:400 16px/1.2 'BureauPixel',ui-monospace,monospace;
   letter-spacing:0;text-transform:none;color:var(--on-line)}
 :root[data-skin] .kmodal .km-title .bp-x{margin:0}
+/* audit UX 1.6 et 1.10 : --brand pour les aplats (--accent reste aux liens et contours), ombres pixel au lieu des ombres floues */
+:root[data-skin] .demo-ban,:root[data-skin] .tbub,:root[data-skin] .atelier .at-h .cnt{background:var(--brand);color:var(--on-brand)}
+:root[data-skin] .atelier .fk-links .lk.main{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+:root[data-skin] body:not(.tv) .demo-ban{box-shadow:var(--frame),var(--drop)}
+:root[data-skin] body:not(.tv) .waitlist,:root[data-skin] body:not(.tv) #freshpop{box-shadow:var(--drop)}

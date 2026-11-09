@@ -46,16 +46,25 @@ let WAIT_L=[];
 const waitTile=()=>document.querySelector('#kpis .toi');
 function waitClose(){const p=document.getElementById('waitlist'), c=waitTile();if(p)p.hidden=true;if(c)c.setAttribute('aria-expanded','false');}
 function waitToggle(){const p=document.getElementById('waitlist');if(!p)return;const open=p.hidden;p.hidden=!open;const c=waitTile();if(c)c.setAttribute('aria-expanded',String(open));}
+// lecteur d'écran : une phrase discrète quand une décision de plus t'attend (rien quand le nombre baisse)
+let WAIT_N=null;
+function waitAnnounce(n){
+  const lv=document.getElementById('waitlive');
+  if(lv&&WAIT_N!=null&&n>WAIT_N)lv.textContent=n===1?'Une décision t\'attend.':n+' décisions t\'attendent.';
+  WAIT_N=n;
+}
 // chaque seconde (90-boot.js) : la liste sous les chiffres du haut, déroulée par la tuile « À toi » ; l'âge de la plus
 // ancienne avance avec l'heure du plan
 function waitChip(){
   const k=document.getElementById('kpis');if(!k||!k.parentElement)return;
   let p=document.getElementById('waitlist');
-  if(!p){const w=document.createElement('div');w.className='waitwrap';p=document.createElement('div');p.id='waitlist';p.className='waitlist';p.hidden=true;
+  if(!p){const w=document.createElement('div');w.className='waitwrap';p=document.createElement('div');p.id='waitlist';p.className='waitlist';p.hidden=true;p.setAttribute('role','region');p.setAttribute('aria-label','Ce qui t\'attend');
+    const lv=document.createElement('div');lv.id='waitlive';lv.className='sr-only';lv.setAttribute('aria-live','polite');w.appendChild(lv);
     w.appendChild(p);k.parentElement.insertBefore(w,k.nextSibling);
     p.addEventListener('click',e=>{e.stopPropagation();const b=e.target.closest('[data-wl]');if(!b)return;const x=WAIT_L[+b.dataset.wl];waitClose();if(x)x.go();});
     document.addEventListener('click',waitClose);
     document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!p.hidden){waitClose();const c=waitTile();if(c)c.focus();}});}
   const L=waitList();WAIT_L=L;if(!L.length)waitClose();
+  waitAnnounce(L.length);
   const r=waitRowsHtml(L);if(p.dataset.sig!==r)p.innerHTML=p.dataset.sig=r;
 }

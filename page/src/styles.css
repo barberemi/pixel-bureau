@@ -1,19 +1,11 @@
-:root{
-  --bg:#f3efe6; --panel:#fffdf8; --ink:#25221d; --muted:#6f685c; --line:#e2dccf; --chip:#f0ebe0;
-  --accent:#2f6fd6; --ok:#2e9e5b; --warn:#d89614; --err:#d1453b; --info:#4a7fe0; --idle:#7a7266; --on-accent:#ffffff;
-  --shadow:0 1px 2px rgba(40,30,10,.06),0 6px 24px rgba(40,30,10,.06);
-}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#17181c; --panel:#202228; --ink:#ece8df; --muted:#a29c90; --line:#2f323a; --chip:#2a2d34;
-  --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#9a9284; --on-accent:#0d1b33;
-  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 24px rgba(0,0,0,.25);
-}}
-:root[data-theme="dark"]{
+:root{ /* toujours sombre : chaque thème (theme-*.css) pose aussi ses couleurs, celles-ci sont le socle */
+  color-scheme:dark;
   --bg:#17181c; --panel:#202228; --ink:#ece8df; --muted:#a29c90; --line:#2f323a; --chip:#2a2d34;
   --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#9a9284; --on-accent:#0d1b33;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 24px rgba(0,0,0,.25);
 }
 *{box-sizing:border-box}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0} /* lu par les lecteurs d'écran seulement */
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:20px 16px 32px}
 .wrap{max-width:2200px;margin:0 auto} /* large : le plan prend la place de l'écran (lisibilité des étages) */
@@ -166,7 +158,7 @@ summary .du{color:var(--muted);font-size:12px;white-space:nowrap}
 .tkr .tk-meta a{color:var(--accent);font-weight:600}
 .tkr .tk-meta .warn{color:var(--warn);font-weight:600}
 .tkr .tk-meta .dot{width:7px;height:7px;margin-right:4px}
-.tkr .tk-rev{margin-left:auto;padding-left:6px;font-size:11px;color:var(--muted);white-space:nowrap} /* état de review d'une PR, à droite (fiche d'un ticket) */
+.tkr .tk-rev{margin-left:auto;padding-left:6px;font-size:11px;color:var(--muted);white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis} /* état de review d'une PR, à droite (fiche d'un ticket) */
 .tk-tag{color:var(--err);border:1px solid currentColor;border-radius:4px;padding:0 4px;font-size:10px;font-weight:700;line-height:14px;text-transform:uppercase;letter-spacing:.04em}
 .tk-bar{display:flex;gap:2px;height:8px;border-radius:4px;overflow:hidden;background:var(--chip)}
 .tk-bar i{display:block;min-width:3px}
@@ -192,9 +184,7 @@ summary .du{color:var(--muted);font-size:12px;white-space:nowrap}
 .ev .lk-off{color:var(--muted);cursor:help}
 .empty{color:var(--muted);padding:6px}
 footer{color:var(--muted);font-size:11px;margin-top:16px;text-align:center}
-.appr{display:inline-block;font-size:11px;font-weight:600;color:#7a5a10;background:#f6e7b8;border-radius:999px;padding:0 7px;vertical-align:2px}
-:root[data-theme="dark"] .appr{color:#f6e7b8;background:#4a3a14}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .appr{color:#f6e7b8;background:#4a3a14}}
+.appr{display:inline-block;font-size:11px;font-weight:600;color:#f6e7b8;background:#4a3a14;border-radius:999px;padding:0 7px;vertical-align:2px}
 .famdot{width:8px;height:8px;border-radius:2px;display:inline-block;background:var(--idle)}
 .famdot.fam-team{background:#cfc6b2}.famdot.fam-wf{background:#3b82f6}.famdot.fam-vis{background:#d97757}.famdot.fam-misc{background:#f5c518}
 .seg button.famb.fam-wf.on{background:#3b82f6;border-color:#3b82f6}
@@ -461,6 +451,9 @@ body.tv #tvticker{display:block;position:fixed;left:0;right:0;bottom:0;height:48
 .cpick input[type=color]{width:28px;height:24px;padding:0;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer}
 .sw{width:16px;height:16px;padding:0;border-radius:5px;border:1px solid rgba(0,0,0,.25)}
 .sw[aria-pressed=true]{outline:2px solid var(--accent);outline-offset:1px}
+/* audit UX 5.4 : cibles d'au moins 24 px (WCAG 2.2 AA) par une zone de clic invisible, sans changer le dessin */
+.sw,.rf-btn,.pj-tv{position:relative}
+.sw::after,.td-del::after,.bp-del::after,.rf-btn::after,.pj-tv::after{content:'';position:absolute;inset:-4px}
 .prev{display:flex;justify-content:center;background:#2a2c35;border-radius:10px;padding:6px;margin:4px 0 8px}
 .prev canvas{width:256px;max-width:100%;height:auto;min-width:0;image-rendering:pixelated}
 .ed .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
@@ -535,7 +528,7 @@ button.wc.on{background:color-mix(in srgb,var(--accent) 14%,var(--panel));color:
 .dash .big small{font-size:14px;color:var(--muted);margin-left:1px}
 .dash .row{display:flex;align-items:center;gap:12px}
 .dash .grow{flex:1;min-width:0;color:var(--muted);font-size:12.5px}
-.dash .cap{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dash .cap{font-size:12px;color:var(--muted);overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2} /* deux lignes au plus, plutôt qu'un détail coupé (audit UX 4.4) */
 .dash .cap b{color:var(--ink)}
 .dash .cap.warn{color:var(--warn)}.dash .cap.err{color:var(--err);font-weight:600}.dash .cap.live{color:var(--mep);font-weight:600}
 .dash.click{cursor:pointer}.dash.click:hover{border-color:var(--accent)}
@@ -739,12 +732,14 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
   .main>div>.whoboard{order:-1;margin:0 0 14px}
   .stage>.legend{display:none}
   .bar .tl{flex-basis:100%;order:5}
+  .hright{align-items:flex-start;margin-left:0} /* en-tête : boutons, horloge et badge sous le titre, à gauche comme lui */
+  .clockrow{justify-content:flex-start}
 }
 /* sélecteur de thème (dans « Comment lire le plan ») */
 .themesel{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted)}
 .themesel select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:2px 6px}
 
-.duck-project{width:100%;margin:0 0 8px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit}
+.duck-project{width:100%;margin:0 0 8px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit}
 /* canard d'équipe (39-duckgame.js) : son sprint, ses canetons, ses trophées */
 .dg-pix{flex:none;image-rendering:pixelated}
 .dg-top{display:flex;gap:14px;align-items:center;margin:0 0 14px}
@@ -820,7 +815,7 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .sp-card{border:2px solid var(--line);border-radius:10px;padding:10px 12px;margin:0 0 12px}
 .sp-new,.sp-failed{border-color:var(--err)}.sp-gate{border-color:var(--warn)}.sp-answered,.sp-ignored{opacity:.75}
 .sp-top{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.sp-t{color:var(--muted);font-size:12px}
-.sp-tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:4px;color:var(--on-accent)}
+.sp-tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 6px;border-radius:4px;color:var(--on-accent)}
 .sp-subj{margin:6px 0 0;font-weight:700}.sp-txt{margin:6px 0 0;line-height:1.4}.sp-rs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .sp-r{font-size:12px;padding:1px 7px;border-radius:999px;background:var(--chip)}.sp-resolved{border-color:var(--ok)}.sp-txt a{color:var(--accent);overflow-wrap:anywhere}
 .sp-s{margin-top:8px;color:var(--muted);font-size:12px}.sp-s a,.sp-l{color:var(--accent);font-size:12px}

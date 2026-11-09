@@ -1,7 +1,7 @@
 // ---------- « ↻ Rafraîchir » une page de l'écran mural (fenêtre Mes pages Kronn) ----------
 // bosspages.pages[].feeds (pages_snapshot.py) : les workflows qui publient dans la page, un parent à la place d'un
 // sous-workflow. Le bouton de la carte ouvre un écran (comme × et 📽) : une ligne par workflow, son coût (0 token, ou
-// tokens par run de la fiche de paie pour un agent IA), son dernier run, et « ↻ Relancer » (bureau-relaunch, relaunch.py)
+// jetons par run de la fiche de paie pour un agent IA), son dernier run, et « ↻ Relancer » (bureau-relaunch, relaunch.py)
 // s'il est dans la liste des relançables (dataset gates). L'état du jour vient des runs (office et live).
 const RF_ACTIVE=RUN_ACTIVE;
 const rfFeeds=p=>(p&&Array.isArray(p.feeds)?p.feeds:[]).filter(f=>f&&typeof f.wf==='string');
@@ -23,13 +23,13 @@ function rfFoot(p){
   return `<button type="button" class="rf-btn" data-id="${esc(p.id)}"${busy?' disabled':''}>↻ Rafraîchir</button>`+(st?`<div class="rf-st ${st.k}">${esc(st.txt)}</div>`:'');
 }
 const rfTok=n=>n>=1e6?(n/1e6).toFixed(1).replace('.',',')+' M':n>=1e3?Math.round(n/1e3)+' k':String(Math.round(n));
-// coût d'un workflow : 0 token sans agent IA ; sinon les tokens par run des 7 derniers jours (fiche de paie), s'ils sont connus
+// coût d'un workflow : 0 token sans agent IA ; sinon les jetons par run des 7 derniers jours (fiche de paie), s'ils sont connus
 function rfCost(f){
   if(!f.ai)return '<span class="rf-cost">0 token</span>';
   const rows=PAYROLL?(PAYROLL.agents||[]).filter(a=>String(a.wf)===f.wf):[], w=rows.reduce((o,a)=>({tok:o.tok+a.week.tok,runs:o.runs+a.week.runs}),{tok:0,runs:0});
   if(!w.runs)return '<span class="rf-cost ai">🤖 IA · coût par run pas encore connu</span>';
   const t=w.tok/w.runs, d=usd(t);
-  return `<span class="rf-cost ai">🤖 IA · ~${rfTok(t)} tokens par run</span>moyenne des 7 derniers jours${d!=null?' · '+fmtUsd(d):''}`;
+  return `<span class="rf-cost ai">🤖 IA · ~${rfTok(t)} jetons par run</span>moyenne des 7 derniers jours${d!=null?' · '+fmtUsd(d):''}`;
 }
 function rfLast(f){
   const rs=rfRuns(f.wf), run=rs.find(r=>RF_ACTIVE.includes(r.status));
@@ -54,7 +54,7 @@ function rfOpen(box,id){
   conf.innerHTML=`<div class="bp-what">${bpImg(p,'Pas encore d\'aperçu')}<div><span class="bp-tag refresh">↻ Rafraîchir la page</span><b>${esc(p.title||'')}</b>`+
     `<small>${n>1?n+' workflows remplissent cette page. Chaque bouton ouvre la carte Kronn et relance un workflow.':'1 workflow remplit cette page. Le bouton ouvre la carte Kronn et le relance.'}</small></div>`+
     `<button type="button" class="bp-back">↩ Annuler</button></div><div class="rf-list">${fs.map(rfRow).join('')}</div>`+
-    `<div class="hint">${ai?'Un agent IA consomme des tokens à chaque relance. ':''}Un workflow qui tourne déjà ne se relance pas. La miniature suit au prochain passage de la fiche de paie (chaque heure).</div>`;
+    `<div class="hint">${ai?'Un agent IA consomme des jetons à chaque relance. ':''}Un workflow qui tourne déjà ne se relance pas. La miniature suit au prochain passage de la fiche de paie (chaque heure).</div>`;
   const h=conf.querySelector('.hint');
   for(const b of conf.querySelectorAll('.rf-go')){
     b.setAttribute('data-kronn-action','bureau-relaunch');b.setAttribute('data-kronn-bindings',JSON.stringify({wf_id:b.dataset.wf,params:b.dataset.wf}));

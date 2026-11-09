@@ -47,7 +47,7 @@ function absencesDemo(){
   return {generated_at:new Date(DAY0+9.5*36e5).toISOString(),days,ferie:[days[7]],people,demo:true};
 }
 // ---------- fiche « Calendrier de l'équipe » : cette semaine et la suivante ----------
-const CAL_ICON={b:'●',t:'🏠',a:'—'}, CAL_TXT={b:'au bureau',t:'télétravail',a:'absence'};
+const CAL_ICON={b:'●',t:'🏠',a:'✕'}, CAL_TXT={b:'au bureau',t:'télétravail',a:'absence'};
 function calCell(c,day){
   const today=day===parisDay(T)?' today':'';
   if((ABSENCES.ferie||[]).includes(day))return `<td class="calc ferie${today}" title="Férié">férié</td>`;
@@ -68,7 +68,7 @@ function renderCalendar(side){
   const d=ABSENCES.days||[], box=document.createElement('div');box.className='calbox';
   box.innerHTML=`<p class="sub">Qui est là, d'après le planning de l'équipe · ${ABSENCES.demo?'démo':'mis à jour à '+hm(ms(ABSENCES.generated_at))}</p>`+
     `<div class="calweeks"><div><h3>Cette semaine</h3>${table(d.slice(0,5))}</div><div><h3>Semaine prochaine</h3>${table(d.slice(5,10))}</div></div>`+
-    `<p class="sub"><span class="calk">●</span> au bureau · 🏠 télétravail · — absence · une case coupée = demi-journée (matin | après-midi)</p>`+
+    `<p class="sub"><span class="calk">●</span> au bureau · 🏠 télétravail · ✕ absence · une case coupée = demi-journée (matin | après-midi)</p>`+
     `<p class="sub">Jamais la raison d'une absence. Un nom ouvre sa fiche.</p>`;
   box.addEventListener('click',e=>{const a=e.target.closest('[data-who]');if(a){e.preventDefault();winGo(a.dataset.who);}});
   side.appendChild(box);

@@ -474,8 +474,8 @@ const ST_CSS=Object.fromEntries(Object.entries(ST_PALETTE).map(([k,v])=>[k,ST_TO
 // pastilles de la légende du gabarit (office_template.html) : data-st = un état de ST_CSS, data-cat = un statut de TCAT ;
 // data-fam = une famille d'agents d'AFAM (32-familles.js) ; une pastille en anneau (.ring) prend la couleur en bordure
 function paintLegend(root){
-  for(const i of root.querySelectorAll('[data-st],[data-cat],[data-fam]')){
-    const col=i.dataset.st?ST_CSS[i.dataset.st]:i.dataset.fam?AFAM[i.dataset.fam].c:TCAT[i.dataset.cat].c;
+  for(const i of root.querySelectorAll('[data-st],[data-cat],[data-fam],[data-env]')){
+    const col=i.dataset.st?ST_CSS[i.dataset.st]:i.dataset.fam?AFAM[i.dataset.fam].c:i.dataset.env?ENV_KIND[i.dataset.env].c:TCAT[i.dataset.cat].c; // enveloppes : ENV_KIND (45-envelopes.js)
     if(i.classList.contains('ring'))i.style.borderColor=col;else i.style.background=col;
   }
 }
