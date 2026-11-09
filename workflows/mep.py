@@ -12,8 +12,8 @@ passe avant. Simulation (« oui ») : rien n'est poussé, mergé, créé ni dép
 Git : une copie du dépôt dans ~/.cache/pixel-bureau/mep/repos (jamais le dossier du projet) ; état du run dans
 ~/.cache/pixel-bureau/mep/runs/<run>.json.
 Annonce Teams (#59, clé mep.teams : {team, channel, test_team?, test_channel}) : une carte adaptative postée après la gate
-du début (⏳), éditée au merge (chargeur animé, sprites/teams/loader.png), en prod (✅) ou en échec (❌ et la raison en
-réponse dans le fil). Logo du projet : mep.logo (PNG, chemin relatif au pack d'équipe). Simulation : le canal de test.
+du début (⏳), éditée au merge (chargeur animé, sprites/teams/loader.png en data URI : 7e argument de l'étape), en prod (✅) ou en échec
+(❌ et la raison en réponse dans le fil). Logo du projet : mep.logo (PNG, chemin relatif au pack d'équipe). Simulation : le canal de test.
 Jeton : « az account get-access-token » (Microsoft Graph), gardé en mémoire le temps de l'étape. Sans mep.teams : rien.
 Codes de sortie (signaux exit_N de Kronn) : 2 projet inconnu, 3 PR introuvable ou fermée, 6 ticket introuvable,
 7 conflit avec la base, 8 push refusé, 9 merge refusé, 10 tag illisible, 11 release refusée, 12 déploiement non lancé,
@@ -134,6 +134,7 @@ def now():
 # ---------- annonce Teams (#59) ----------
 GRAPH = os.environ.get("MEP_GRAPH") or "https://graph.microsoft.com/v1.0"  # MEP_GRAPH : tests
 TOKEN = [None]
+LOADER = [""]  # chargeur animé en data URI : 7e argument de l'étape merge (modèle mep.json, emplacement mep.loader)
 STATUS = {"wait": "⏳", "ok": "✅", "ko": "❌"}
 
 
@@ -172,7 +173,7 @@ def card(p, st, state):
     """Le message Teams : une carte adaptative sur trois lignes (projet, MEP tag, titre de la PR) à côté du logo ; devant,
     l'état (⏳ ✅ ❌) ou le chargeur animé pendant la mise en prod. Le logo ne change jamais de taille ni de place."""
     mid = lambda items: {"type": "Column", "width": "auto", "verticalContentAlignment": "Center", "items": items}  # noqa: E731
-    loader = data_uri(os.path.join(str(CFG.get("root") or os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))), "sprites", "teams", "loader.png"))
+    loader = LOADER[0] or data_uri(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0]))), "sprites", "teams", "loader.png"))
     cols = [mid([{"type": "Image", "url": loader, "width": "22px", "height": "22px"}] if state == "run" and loader
                 else [{"type": "TextBlock", "text": STATUS.get(state, "⏳"), "size": "Medium"}])]
     logo = logo_of(p)
@@ -427,7 +428,7 @@ STEPS = {"resolve": resolve, "tag": tag, "rebase": rebase, "citest": citest, "me
          "teams_post": teams_post, "teams_failed": teams_failed}
 
 if __name__ == "__main__":
-    step, name, n, forced, run_id, dry = (sys.argv[1:] + [""] * 6)[:6]
+    step, name, n, forced, run_id, dry, LOADER[0] = (sys.argv[1:] + [""] * 7)[:7]
     dry = "oui" if dry.strip().lower() in ("oui", "yes", "true", "1") else "non"
     proj = project_of(name)
     if not proj:

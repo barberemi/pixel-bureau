@@ -15,7 +15,7 @@ Une étape marquée "_requires": "jira" disparaît au rendu si l'installation n'
 références {{steps.<étape>.…}} dans l'entrée des étapes suivantes deviennent null.
 Les noms des emplacements ne ressemblent pas aux variables Kronn ({{steps.x}}, {{run_id}}), qui restent intactes.
 """
-import copy, io, json, os, re, sys, tokenize, urllib.request
+import base64, copy, io, json, os, re, sys, tokenize, urllib.request
 from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -365,6 +365,8 @@ def values(cfg):
         # transition Jira de fin (facultatifs : étapes retirées sans eux)
         "mep.ai_time": mep_ai_time(cfg),
         "mep.done_transition": str((cfg.get("mep") or {}).get("done_transition") or ""),
+        # chargeur animé de l'annonce Teams (#59), passé à l'étape merge : le script ne lit rien sur le disque du dépôt
+        "mep.loader": mep_loader(),
         # projet Kronn du workflow : celui de la revue (dépôts de l'équipe), sinon celui de Kronn
         "mep.project_id": (cfg.get("mep") or {}).get("project_id") or rv.get("project_id")
         or (cfg.get("kronn") or {}).get("project_id") or "",
@@ -412,6 +414,13 @@ def values(cfg):
                                                                           *(f"review_{p}" for p in REVIEW_POSTES))},  # postes de la revue
         "impl.guidelines": str((cfg.get("impl") or {}).get("guidelines") or "Aucune consigne d'équipe en plus de la doc du dépôt."),
     }
+
+
+def mep_loader():
+    try:
+        return "data:image/png;base64," + base64.b64encode(Path(ROOT, "sprites", "teams", "loader.png").read_bytes()).decode()
+    except OSError:
+        return ""
 
 
 def mep_ai_time(cfg):

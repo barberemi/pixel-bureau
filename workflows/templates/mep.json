@@ -305,7 +305,8 @@
      "{{pr_number}}",
      "{{jira_ticket_key}}",
      "{{run.id}}",
-     "{{dry_run}}"
+     "{{dry_run}}",
+     "@@mep.loader@@"
     ],
     "exec_timeout_secs": 120,
     "on_result": [
