@@ -364,11 +364,10 @@ def equipe(moi=""):
 
 def fiable(c, garde):
     """AI-03 : un commentaire dont le texte peut aller à l'agent : son auteur a des droits sur le dépôt
-    (authorAssociation OWNER, MEMBER, COLLABORATOR), est de l'équipe ou toi (garde, voir equipe), ou est une app GitHub
-    (__typename Bot : installée par un administrateur du dépôt, la revue de Copilot par exemple)."""
+    (authorAssociation OWNER, MEMBER, COLLABORATOR), est de l'équipe ou toi (garde, voir equipe) ; jamais une app GitHub
+    (__typename Bot : Copilot, github-actions…, dont le texte peut reprendre celui d'un compte extérieur)."""
     who = c.get("author") or {}
-    return (c.get("authorAssociation") in FIABLES or str(who.get("login") or "").lower() in garde
-            or who.get("__typename") == "Bot")
+    return who.get("__typename") != "Bot" and (c.get("authorAssociation") in FIABLES or str(who.get("login") or "").lower() in garde)
 
 
 def pr_feedback(repo, n):
