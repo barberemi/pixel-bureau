@@ -24,12 +24,17 @@ Corriger les commentaires d'une PR (#75, page action « bureau-fixpr ») :
   fix_diff     après l'agent : verdict des contrôles, fichiers changés, diff et réponse prévue à chaque fil, pour la
                validation (rien : code 9).
   fix_push     validé : commit signé (-s, message de l'agent), push protégé, une réponse dans chaque fil (résolu s'il est
-               corrigé), « **Version N** » en tête de chaque réponse, bloc « Corrections de review » (et le compteur des
-               versions) dans la description de la PR, CI relancée, review redemandée à chaque reviewer humain (voir
-               reviewers) quand du code est poussé.
+               corrigé), signée en pied (voir signe : agent, modèle et « Version N », 4e et 5e arguments), bloc
+               « Corrections de review » (et le compteur des versions) dans la description de la PR, CI relancée, review
+               redemandée à chaque reviewer humain (voir reviewers) quand du code est poussé.
+  fix_jira_cle après fix_push : le chemin REST du ticket Jira de la PR (clé dans son titre, sinon sa branche) ; rien de
+               posté ou pas de clé : code 3 (renvoi vers la fin).
+  fix_jira_num le numéro à écrire dans le champ de version du ticket (jira.review_version_field) : le plus grand de
+               celui de cette passe et de celui déjà posé (stdin : le ticket lu par l'API), il ne redescend jamais.
+  fix_jira_txt le commentaire de traçabilité du ticket : version, PR, fils traités, commit.
 Le poste 💬 retours de la chaîne d'implémentation (impl_retours.json) enchaîne fix_prepare, fix_check, fix_diff et fix_push
 sans la gate : la PR lui arrive en « dépôt#n » (sortie de chaine.py retours_pr), le n° de PR passé à « - ».
-Codes : 2 réglage ou PR refusés, 3 conflit (renvoi), 4 conflit non résolu, 5 push refusé, 9 rien à faire (renvoi), 1 autre échec.
+Codes : 2 réglage ou PR refusés, 3 conflit ou pas de ticket (renvoi), 4 conflit non résolu, 5 push refusé, 9 rien à faire (renvoi), 1 autre échec.
 """
 import glob, json, os, re, shutil, stat, subprocess, sys, time
 from _lib import CFG, fil_col, get, read_json, write_json
@@ -378,12 +383,11 @@ def pr_feedback(repo, n):
 
 
 def deja(comments):
-    """Le fil a déjà une réponse du Bureau (« Version N » en tête) : « Version N », et relance = quelqu'un a écrit depuis."""
-    last = max((i for i, c in enumerate(comments) if VERSION_HEAD.match(str(c.get("body") or "").strip())), default=None)
+    """Le fil a déjà une réponse du Bureau (signée « Version N », voir bureau_version) : « Version N », et relance = quelqu'un a écrit depuis."""
+    last = max((i for i, c in enumerate(comments) if bureau_version(c.get("body")) is not None), default=None)
     if last is None:
         return None, False
-    m = VERSION_HEAD.match(str(comments[last].get("body") or "").strip())
-    return f"Version {m.group(1)}", any(c.get("author") != comments[last].get("author") for c in comments[last + 1:])
+    return f"Version {bureau_version(comments[last].get('body'))}", any(c.get("author") != comments[last].get("author") for c in comments[last + 1:])
 
 
 def threads(repo, n, resolved=False, pr=None, garde=None, ecartes=None):
@@ -420,8 +424,8 @@ def generaux(pr, garde=None, ecartes=None):
     (AI-03, voir fiable) : ceux d'un compte extérieur sont écartés, comptés dans ecartes."""
     coms = ((pr.get("comments") or {}).get("nodes")) or []
     if garde is not None:  # un « Version N » d'un compte extérieur ne fait pas oublier ce qui précède
-        coms = [c for c in coms if fiable(c, garde) or not VERSION_HEAD.match(str(c.get("body") or "").strip())]
-    depuis = max((c.get("createdAt") or "" for c in coms if VERSION_HEAD.match(str(c.get("body") or "").strip())), default="")
+        coms = [c for c in coms if fiable(c, garde) or bureau_version(c.get("body")) is None]
+    depuis = max((c.get("createdAt") or "" for c in coms if bureau_version(c.get("body")) is not None), default="")
     items = []
     for r in ((pr.get("reviews") or {}).get("nodes")) or []:
         items.append((r.get("submittedAt") or "", "review:" + str(r.get("id")), REVIEW_STATES.get(r.get("state")), r))
@@ -432,7 +436,7 @@ def generaux(pr, garde=None, ecartes=None):
         body, who = str(x.get("body") or "").strip(), x.get("author") or {}
         if not quoi or not body or at <= depuis or who.get("__typename") == "Bot" or str(who.get("login") or "").endswith("[bot]"):
             continue
-        if VERSION_HEAD.match(body):
+        if bureau_version(body) is not None:
             continue
         if garde is not None and not fiable(x, garde):
             if ecartes is not None:
@@ -463,16 +467,25 @@ def reviewers(pr, exclus=()):
 
 
 VERSION_MARK = re.compile(r"<!-- bureau-fix:version=(\d+) -->")
-VERSION_HEAD = re.compile(r"^\W*Version\s+(\d+)\b", re.I)
+VERSION_HEAD = re.compile(r"^\W*Version\s+(\d+)\b", re.I)  # avant la signature : « **Version N** » en tête
+SIGNE = "Corrections automatiques · Le Bureau"
+VERSION_FOOT = re.compile(re.escape(SIGNE) + r"[^\n]*?·\s*Version\s+(\d+)\W*\Z")
+
+
+def bureau_version(body):
+    """Le n° de version d'une réponse du Bureau (signature en pied, ou « Version N » en tête des anciennes), sinon None."""
+    body = str(body or "").strip()
+    m = VERSION_FOOT.search(body) or VERSION_HEAD.match(body)
+    return int(m.group(1)) if m else None
 
 
 def version_of(st, ts):
     """Numéro de cette passe de corrections (passe n : Version n) : la dernière version comptée dans la description de
-    la PR (bloc bureau-fix), ou le plus grand « Version N » en tête d'une réponse ou d'un commentaire déjà posté (passes
-    faites à la main, au même format), plus un."""
+    la PR (bloc bureau-fix), ou le plus grand « Version N » d'une réponse ou d'un commentaire déjà posté (signature en
+    pied, ou en tête : passes faites à la main ou d'avant la signature), plus un."""
     seen = [int(v) for v in VERSION_MARK.findall(st.get("body") or "")]
     texts = list(st.get("comments") or []) + [c.get("body") or "" for t in ts for c in t["comments"]]
-    seen += [int(m.group(1)) for m in (VERSION_HEAD.match(str(x).strip()) for x in texts) if m]
+    seen += [v for v in map(bureau_version, texts) if v is not None]
     return max(seen, default=0) + 1
 
 
@@ -556,9 +569,12 @@ def check_line(st):
 
 
 def versioned(st, reply):
-    """La réponse postée, avec « **Version N** » en tête (la passe de corrections, voir version_of)."""
+    """La réponse postée, signée en pied comme la revue : agent et modèle de l'étape fix, « Version N » (la passe de
+    corrections, voir version_of)."""
     reply = str(reply).strip()
-    return f"**Version {st['version']}**\n\n{reply}" if st.get("version") else reply
+    qui = " - ".join(x for x in (st.get("agent"), st.get("model")) if x)
+    ver = f" · Version {st['version']}" if st.get("version") else ""
+    return f"{reply}\n\n— 🤖 *{SIGNE}{f' ({qui})' if qui else ''}{ver}*"
 
 
 def replies(st):
@@ -616,7 +632,7 @@ def fix_diff(repo, n, run_id):
     msg = commit_message(st)
     gids = {g["id"] for g in st.get("generaux") or []}
     lines = [f"- {'hors fil' if r['thread'] in gids else 'résolu' if r.get('fixed') else 'laissé ouvert'} : {str(r['reply']).strip()[:300]}" for r in rs]
-    ver = f"🔢 **Version {st['version']}** : en tête de chaque réponse, passe n° {st['version']} de corrections sur cette PR\n\n" if st.get("version") else ""
+    ver = f"🔢 **Version {st['version']}** : dans la signature de chaque réponse, passe n° {st['version']} de corrections sur cette PR\n\n" if st.get("version") else ""
     autre = st.get("author") and st.get("me") and st["author"].lower() != st["me"].lower()
     warn = (f"⚠ **PR de {st['author']}** : le commit et le push iront sur sa branche, signés de ton nom.\n\n" if autre else "") + (
         "⚠ **Fichiers nouveaux non déclarés, laissés hors du commit** : " + ", ".join(f"`{x}`" for x in st["ecartes"]) + "\n\n" if st.get("ecartes") else "")
@@ -689,11 +705,13 @@ def gh_ok(args, tries=2):
     return False
 
 
-def fix_push(repo, n, run_id):
-    """Validé : commit des corrections, push protégé, une réponse dans chaque fil (résolu s'il est corrigé), CI relancée."""
+def fix_push(repo, n, run_id, agent="", model=""):
+    """Validé : commit des corrections, push protégé, une réponse dans chaque fil (résolu s'il est corrigé), CI relancée.
+    agent, model : ceux de l'étape fix (steps.fix.agent, steps.fix.model de Kronn), pour la signature des réponses."""
     st = load(run_id)
+    st["agent"], st["model"] = agent.strip(), model.strip()
     work, files = st["work"], staged(st)
-    pushed = ""
+    pushed, sha = "", ""
     if files:
         msg = os.path.join(HOME, "runs", re.sub(r"[^\w-]", "", run_id) + ".msg")
         with open(msg, "w", encoding="utf-8") as f:
@@ -704,7 +722,8 @@ def fix_push(repo, n, run_id):
                             "origin", f"HEAD:refs/heads/{st['branch']}"], cwd=work, capture_output=True, text=True)
         if r.returncode:
             fail(5, f"Push refusé : la branche {st['branch']} a bougé depuis le début du run (rien écrasé). {r.stderr.strip()[-200:]}")
-        pushed = f"{len(files)} fichier(s) poussé(s) ({run('git', 'rev-parse', '--short', 'HEAD', cwd=work)}). "
+        sha = run("git", "rev-parse", "--short", "HEAD", cwd=work)
+        pushed = f"{len(files)} fichier(s) poussé(s) ({sha}). "
     done, failed, unresolved, rs = 0, 0, 0, replies(st)
     gens = {g["id"]: g for g in st.get("generaux") or []}
     for r in [r for r in rs if r["thread"] not in gens]:
@@ -733,14 +752,54 @@ def fix_push(repo, n, run_id):
     if files or done:  # bloc « Corrections de review » de la description, best-effort
         try:
             body = json.loads(run("gh", "pr", "view", n, "-R", repo, "--json", "body")).get("body") or ""
-            sha = run("git", "rev-parse", "--short", "HEAD", cwd=work) if files else ""
             run("gh", "pr", "edit", n, "-R", repo, "--body", pr_body(body, st, rs, sha))
             desc = " Description de la PR mise à jour."
         except (RuntimeError, ValueError):
             desc = " Description de la PR non mise à jour."
     cleanup(st)
+    if files or done:  # pour le ticket Jira (fix_jira_*) : ce qui a vraiment été posté
+        st["posted"] = {"files": len(files), "replies": done, "sha": sha}
+    save(run_id, st)
     print(f"{repo}#{n} : {pushed}{done} réponse(s) postée(s){f', {failed} en échec' if failed else ''}"
           f"{f', {unresolved} fil(s) corrigé(s) non marqué(s) résolu(s) (à faire sur GitHub)' if unresolved else ''}.{desc}{ci}{revs}")
+
+
+def fix_jira_cle(repo, n, run_id):
+    """Le chemin REST du ticket de la PR (« /rest/api/2/issue/EW-12 »), sans retour à la ligne : l'entrée des appels Jira
+    qui suivent. Rien de posté par fix_push, ou aucune clé du projet Jira dans le titre ni la branche : code 3."""
+    st = load(run_id)
+    if not st.get("posted"):
+        fail(3, f"{repo}#{n} : rien de posté, le ticket Jira n'est pas touché.")
+    proj = (CFG.get("jira") or {}).get("project") or r"[A-Z][A-Z0-9]+"
+    key = next((m.group(0).upper() for x in (st.get("title"), st.get("branch"))
+                for m in [re.search(r"\b(?:" + proj + r")-\d+\b", str(x or ""), re.I)] if m), None)
+    if not key:
+        fail(3, f"{repo}#{n} : pas de clé de ticket dans le titre ni la branche, le ticket Jira n'est pas touché.")
+    st["ticket"] = key
+    save(run_id, st)
+    sys.stdout.write(f"/rest/api/2/issue/{key}")
+
+
+def fix_jira_num(repo, n, run_id):
+    """Le numéro à poser dans le champ de version du ticket (jira.review_version_field) : celui de cette passe, ou celui
+    déjà posé s'il est plus grand (deux PR du même ticket ont chacune leur compteur) ; stdin : le ticket lu par l'API."""
+    st = load(run_id)
+    field = (CFG.get("jira") or {}).get("review_version_field") or ""
+    try:
+        cur = ((json.loads(sys.stdin.read() or "{}").get("fields") or {}).get(field))
+    except ValueError:
+        cur = None
+    cur = int(cur) if isinstance(cur, (int, float)) else 0
+    sys.stdout.write(str(max(cur, int(st.get("version") or 0))))
+
+
+def fix_jira_txt(repo, n, run_id):
+    """Le commentaire de traçabilité du ticket : version de la passe, PR, fils traités, commit."""
+    st = load(run_id)
+    p = st.get("posted") or {}
+    quoi = [f"{p['replies']} réponse(s) postée(s)" if p.get("replies") else "",
+            f"{p['files']} fichier(s) poussé(s) ({p['sha']})" if p.get("files") else ""]
+    sys.stdout.write(f"🛠 Corrections de review · Version {st.get('version') or '?'} : {repo}#{n}, " + ", ".join(x for x in quoi if x) + ".")
 
 
 def done(repo, n, run_id):
@@ -753,15 +812,17 @@ def end(repo, n, run_id):
 
 
 STEPS = {"end": end, "prepare": prepare, "rebase": rebase, "verify": verify, "check": check, "push": push, "done": done, "abort": abort,
-         "fix_prepare": fix_prepare, "fix_check": fix_check, "fix_diff": fix_diff, "fix_push": fix_push}
+         "fix_prepare": fix_prepare, "fix_check": fix_check, "fix_diff": fix_diff, "fix_push": fix_push,
+         "fix_jira_cle": fix_jira_cle, "fix_jira_num": fix_jira_num, "fix_jira_txt": fix_jira_txt}
 
 if __name__ == "__main__":
-    step, repo, n, run_id = (sys.argv[1:] + [""] * 4)[:4]
+    step, repo, n, run_id, *extra = (sys.argv[1:] + [""] * 4)
+    extra = extra[:2] if step == "fix_push" else []  # agent et modèle de l'étape fix, pour la signature
     if n.strip() in ("", "-") and "#" in repo:  # « dépôt#n » d'une seule sortie d'étape (poste 💬 retours de la chaîne)
         repo, n = repo.split("#", 1)
     if step not in STEPS:
         fail(2, f"Étape inconnue : « {step} ».")
     try:
-        STEPS[step](repo.strip(), n.strip().lstrip("#"), run_id.strip())
+        STEPS[step](repo.strip(), n.strip().lstrip("#"), run_id.strip(), *extra)
     except (RuntimeError, subprocess.TimeoutExpired) as e:
         fail(1, str(e))

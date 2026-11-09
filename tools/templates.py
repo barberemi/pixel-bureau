@@ -6,7 +6,7 @@
 
 Emplacements, remplacés au rendu :
   @@page_id@@, @@bilan.page_id@@ (page « Chaîne · bilan »), @@support_bilan.page_id@@ (page « Support · bilan »), @@redaction_bilan.page_id@@ (page « Rédaction · bilan »), @@kronn.project_id@@, @@jira.config_id@@, @@jira.project@@, @@jira.board@@, @@jira.sprint_field@@,
-  @@jira.points_fields@@ (liste jointe par des virgules), @@owner_name@@ (prénom du boss),
+  @@jira.review_version_field@@ (champ du n° de version des corrections de PR), @@jira.points_fields@@ (liste jointe par des virgules), @@owner_name@@ (prénom du boss),
   @@microsoft.config_id@@, @@microsoft.site@@, @@microsoft.item@@ (planning des absences, connexion Microsoft 365 de Kronn),
   @@script:workflows/x.py@@ (le script, config d'installation injectée comme le fait publish.py),
   @@text:tools/x.md@@ (le texte du fichier, tel quel), @@skill:<clé>@@ (renvoi au skill du Bureau chargé avec l'étape ;
@@ -347,6 +347,7 @@ def values(cfg):
         "jira.project": j.get("project") or "",
         "jira.board": str(j.get("board") or ""),
         "jira.sprint_field": j.get("sprint_field") or "",
+        "jira.review_version_field": j.get("review_version_field") or "",  # n° de version des corrections de PR (fix) ; vide : étapes retirées
         "jira.points_fields": ",".join(j.get("points_fields") or []),
         # temps gagné par l'IA (#79) : le champ des points « avec l'IA », lu avec le ticket (« ,customfield_… » ou rien)
         "jira.ai_points_q": "".join("," + f for f in [((j.get("ai_feedback") or {}).get("points") or {}).get("field")] if f)
@@ -703,7 +704,8 @@ def templatize(key, kind, d, cfg):
             for k, val in (("page_id", vals["page_id"]), ("jira.config_id", vals["jira.config_id"]),
                            ("kronn.project_id", vals["kronn.project_id"]), ("microsoft.config_id", vals["microsoft.config_id"]),
                            ("microsoft.site", vals["microsoft.site"]), ("microsoft.item", vals["microsoft.item"]),
-                           ("jira.statuses_json", vals["jira.statuses_json"])):
+                           ("jira.statuses_json", vals["jira.statuses_json"]),
+                           ("jira.review_version_field", vals["jira.review_version_field"])):
                 if val and v == val:
                     return f"@@{k}@@"
             if vals["jira.points_fields"]:
@@ -731,8 +733,9 @@ def templatize(key, kind, d, cfg):
             return v
         if isinstance(v, list):
             return [walk(x) for x in v]
-        if isinstance(v, dict):
-            return {k: walk(x) for k, x in v.items()}
+        if isinstance(v, dict):  # une clé peut être un champ Jira (corps d'une écriture)
+            f = vals["jira.review_version_field"]
+            return {("@@jira.review_version_field@@" if f and k == f else k): walk(x) for k, x in v.items()}
         return v
 
     d = walk(d)

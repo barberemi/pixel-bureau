@@ -188,7 +188,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Validé : commit signé, push protégé, réponses dans les fils, description de la PR, label de CI reposé, dossier de travail retiré.",
+    "description": "Validé : commit signé, push protégé, réponses dans les fils (signées : agent et modèle de l'étape fix, version), description de la PR, label de CI reposé, dossier de travail retiré.",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -196,17 +196,11 @@
      "fix_push",
      "{{repo}}",
      "{{pr}}",
-     "{{run.id}}"
+     "{{run.id}}",
+     "{{steps.fix.agent}}",
+     "{{steps.fix.model}}"
     ],
-    "exec_timeout_secs": 300,
-    "on_result": [
-     {
-      "contains": "OK",
-      "action": {
-       "type": "Stop"
-      }
-     }
-    ]
+    "exec_timeout_secs": 300
    },
    {
     "agent": "ClaudeCode",
@@ -217,21 +211,187 @@
     "output_format": {
      "type": "FreeText"
     },
-    "name": "abort",
+    "name": "jira_cle",
     "step_type": {
      "type": "Exec"
     },
-    "description": "Changements demandés : dossier de travail retiré, rien poussé ni posté.",
+    "description": "Après le push : le ticket Jira de la PR (clé dans son titre, sinon sa branche). Rien de posté ou pas de clé : code 3, saut à la fin, le run finit réussi. 0 token.",
     "exec_command": "python3",
     "exec_args": [
      "-c",
      "@@script:workflows/pr_update.py@@",
-     "abort",
+     "fix_jira_cle",
      "{{repo}}",
      "{{pr}}",
      "{{run.id}}"
     ],
-    "exec_timeout_secs": 120
+    "exec_timeout_secs": 60,
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "end"
+      }
+     }
+    ],
+    "_requires": "jira.review_version_field"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "jira_avant",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "La version déjà posée sur le ticket : elle ne redescend jamais (deux PR d'un ticket ont chacune leur compteur).",
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "{{steps.jira_cle.data.stdout}}",
+    "api_method": "GET",
+    "api_query": {
+     "fields": "@@jira.review_version_field@@"
+    },
+    "_requires": "jira.review_version_field"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "jira_num",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le numéro à poser : le plus grand de cette passe et de celui du ticket.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/pr_update.py@@",
+     "fix_jira_num",
+     "{{repo}}",
+     "{{pr}}",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 60,
+    "exec_stdin": "{{steps.jira_avant.data}}",
+    "_requires": "jira.review_version_field"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "jira_v",
+    "step_type": {
+     "type": "TransformData"
+    },
+    "description": "Texte -> nombre typé (value_type number), injecté tel quel dans le PUT.",
+    "transform_data": {
+     "input_from": "steps.jira_num.data",
+     "fields": [
+      {
+       "target": "v",
+       "source": "$.stdout",
+       "operation": "copy",
+       "value_type": "number"
+      }
+     ]
+    },
+    "_requires": "jira.review_version_field"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "jira_version",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Le n° de version de la passe dans le champ du ticket (jira.review_version_field). returnIssue=true : sans lui Jira répond 204 sans corps, que l'étape ApiCall ne sait pas traiter (KT-689).",
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "{{steps.jira_cle.data.stdout}}",
+    "api_method": "PUT",
+    "api_query": {
+     "fields": "@@jira.review_version_field@@",
+     "returnIssue": "true"
+    },
+    "api_body": {
+     "fields": {
+      "@@jira.review_version_field@@": "{{steps.jira_v.data.v}}"
+     }
+    },
+    "_requires": "jira.review_version_field"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "jira_txt",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le commentaire de traçabilité : version, PR, réponses postées, commit.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/pr_update.py@@",
+     "fix_jira_txt",
+     "{{repo}}",
+     "{{pr}}",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 60,
+    "_requires": "jira.review_version_field"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "jira_note",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Le commentaire sur le ticket (REST v2, texte wiki), avec le compte de la connexion Atlassian de Kronn. 0 token.",
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "{{steps.jira_cle.data.stdout}}/comment",
+    "api_method": "POST",
+    "api_query": {},
+    "api_body": {
+     "body": "{{steps.jira_txt.data.stdout}}\n\n_(depuis Le Bureau)_"
+    },
+    "_requires": "jira.review_version_field"
    },
    {
     "agent": "ClaudeCode",
@@ -265,6 +425,31 @@
       }
      }
     ]
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "abort",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Changements demandés : dossier de travail retiré, rien poussé ni posté.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/pr_update.py@@",
+     "abort",
+     "{{repo}}",
+     "{{pr}}",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 120
    }
   ],
   "actions": [],
@@ -281,6 +466,9 @@
   "exec_allowlist": [
    "python3"
   ],
-  "concurrency_key": "{{repo}}|{{pr}}"
+  "concurrency_key": "{{repo}}|{{pr}}",
+  "guards": {
+   "timeout_seconds": 86400
+  }
  }
 }
