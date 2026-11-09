@@ -1,6 +1,6 @@
 """Mise en prod d'une PR (#58, python3 -m unittest tests/test_mep.py) : workflows/mep.py étape par étape, avec un vrai git
 (dépôt jetable et son remote nu) et un faux gh ; le modèle mep.json rendu pour une config à deux projets."""
-import json, os, subprocess, sys, tempfile, unittest
+import base64, json, os, subprocess, sys, tempfile, unittest
 from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -69,11 +69,12 @@ class MepTest(unittest.TestCase):
         return {"PATH": self.bin + os.pathsep + "/usr/bin:/bin", "HOME": self.tmp, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
                 "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t", "MEP_POLL": "0"}
 
-    def mep(self, step, project="site-web", pr="16", forced="", dry="non", stdin="", cfg=None):
+    def mep(self, step, project="site-web", pr="16", forced="", dry="non", stdin="", cfg=None, loader=""):
         Path(self.tmp, "gh.json").write_text(json.dumps(self.data))
         Path(self.tmp, "cfg.json").write_text(json.dumps(cfg or config()))
         env = dict(self.env(), BUREAU_CONFIG=os.path.join(self.tmp, "cfg.json"), FAKE_GH=os.path.join(self.tmp, "gh.json"))
-        return subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "mep.py"), step, project, pr, forced, "run-1", dry],
+        return subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "mep.py"), step, project, pr, forced, "run-1", dry,
+                               *([loader] if loader else [])],
                               input=stdin, capture_output=True, text=True, env=env, timeout=60)
 
     def calls(self):
@@ -220,6 +221,10 @@ class MepTemplateTest(unittest.TestCase):
         self.assertEqual(names[i - 1:i + 4], ["gate_ticket_done", "dry_guard", "ai_time", "transition_deployed", "done"])
         self.assertEqual(d["steps"][i]["on_result"], [{"contains": "exit_9", "action": {"type": "Goto", "step_name": "done"}}])
         self.assertIn("{{dry_run}}", d["steps"][i]["exec_args"])
+        merge = d["steps"][names.index("merge")]["exec_args"]  # chargeur de l'annonce : passé à la seule étape merge
+        loader = Path(ROOT, "sprites", "teams", "loader.png").read_bytes()
+        self.assertEqual(base64.b64decode(merge[-1].split(",", 1)[1]), loader)
+        self.assertEqual(sum(a.startswith("data:image/png") for s in d["steps"] for a in s.get("exec_args") or []), 1)
         self.assertEqual(names[0], "resolve")
         for s in d["steps"]:
             for target in [s.get("gate_request_changes_target")] + [(r["action"].get("step_name")) for r in s.get("on_result") or []]:
@@ -335,12 +340,16 @@ class MepTeamsTest(MepTest):
         self.assertTrue(run_cols[0]["items"][0]["url"].startswith("data:image/png;base64,"), "chargeur animé à la place de l'état")
         self.assertEqual(run_cols[1], cols[1], "le logo ne change ni de taille ni de place")
         self.assertLess(len(json.dumps(body).encode()), 28_000, "édition limitée à 28 Ko par Teams")
+        # dans Kronn (« python3 -c »), le chargeur vient du modèle (7e argument), jamais du dossier qui a publié
+        self.mep("merge", cfg=dict(self.cfg(), root="/dossier/supprime"), loader="data:image/png;base64,QUJD")
+        self.assertEqual(json.loads(self.got[2][2]["attachments"][0]["content"])["body"][0]["columns"][0]["items"][0]["url"],
+                         "data:image/png;base64,QUJD")
         self.data["fail"] = {"release create": 1}
         self.assertEqual(self.mep("release", cfg=self.cfg()).returncode, 11)
         r = self.mep("teams_failed", cfg=self.cfg())
         self.assertEqual(r.returncode, 1, "le run finit en échec")
-        ko = json.loads(self.got[2][2]["attachments"][0]["content"])["body"][0]["columns"][0]["items"][0]["text"]
-        method, path, body, _ = self.got[3]
+        ko = json.loads(self.got[3][2]["attachments"][0]["content"])["body"][0]["columns"][0]["items"][0]["text"]
+        method, path, body, _ = self.got[4]
         self.assertEqual((ko, method, path), ("❌", "POST", "/teams/T1/channels/19%3Aannonces%40thread/messages/m1/replies"))
         self.assertIn("Release 2.4.1 refusée", body["body"]["content"])
         self.assertIn("<code>release</code>", body["body"]["content"])
