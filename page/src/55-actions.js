@@ -357,6 +357,8 @@ function runBlock(side,c){
   }
 }
 // carte « Sa musique » : la sandbox interdit tout son externe et les iframes, d'où un lien vers la page du morceau
+// pochette : une image en data URI seulement (music.json vient du pack partagé ; même motif que COVER_OK de tools/assemble.py)
+const COVER_OK=/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 function musicCard(side,c){
   const m=MUSIC[c.key];if(!m)return;
   // design compact : notre pochette à gauche ; à droite, le lecteur Suno compact posé par Kronn (data-kronn-embed,
@@ -365,7 +367,7 @@ function musicCard(side,c){
   const d=document.createElement('div');d.className='music';
   // contrat Kronn : l'URL complète du lecteur ; Kronn ne l'affiche que si suno.com est dans ses sites autorisés
   const embed=m.suno_id?` data-kronn-embed="https://suno.com/embed/${encodeURIComponent(m.suno_id)}"`:'';
-  d.innerHTML=`${m.cover?`<img src="${m.cover}" alt="">`:''}<div class="mt${embed?' mt-embed':''}"${embed}><div class="mn">${esc(m.title)}</div><div class="mb">${esc(m.style||'')}${m.duration?' · '+esc(m.duration):''}</div>
+  d.innerHTML=`${typeof m.cover==='string'&&COVER_OK.test(m.cover)?`<img src="${m.cover}" alt="">`:''}<div class="mt${embed?' mt-embed':''}"${embed}><div class="mn">${esc(m.title)}</div><div class="mb">${esc(m.style||'')}${m.duration?' · '+esc(m.duration):''}</div>
     <a class="mplay" ${hrefOf(m.url)} target="_blank" rel="noopener">▶ Écouter sur Suno</a></div>`;
   sec.appendChild(d);
 }

@@ -99,24 +99,41 @@ def page_parts(cfg=None):
 
     def font(css, base):
         return re.sub(r"@@font:([\w./-]+)@@", lambda m: embed(os.path.join(base, m.group(1))), css)
+
+    def pack_font(m):
+        # le pack est une frontière de confiance : une police du pack est fonts/<nom>.woff2 ou .ttf, dans le pack
+        rel = m.group(1)
+        if not PACK_FONT.fullmatch(rel):
+            raise ValueError(f"@@font:{rel}@@ : une police d'un thème du pack est fonts/<nom>.woff2 ou fonts/<nom>.ttf")
+        return embed(confined(pack, rel, pack, "police du thème"))
+
+    def theme_css(f):
+        css = _nl(Path(f).read_text())
+        if not (pack and f.startswith(pack + os.sep)):
+            return font(css, ROOT)
+        if re.search(r"</style", css, re.I):  # fermerait la feuille de style : du HTML (un <script>) suivrait
+            raise ValueError(f"{f} : « </style » interdit dans un thème du pack")
+        return re.sub(r"@@font:([^@]*)@@", pack_font, css)
     pack = team_dir(cfg)
     files = [os.path.join(SRC, f) for f in ["styles.css", "pixel.css"]] + list(theme_paths(cfg).values())
-    css = "".join(font(_nl(Path(f).read_text()), pack if pack and f.startswith(pack + os.sep) else ROOT) for f in files)
+    css = "".join(theme_css(f) for f in files)
     css = strip_css(css)  # KT-28 : sans commentaires ni indentation (tools/compact.py), les sources gardent les leurs
     js = alias_js(strip_js("".join(_nl(Path(os.path.join(SRC, f)).read_text()) for f in JS_FILES)))
     return css, js, fonts[0]
 
 
-def page_html(cfg=None):
-    """Squelette + CSS + JS concaténés, avant le remplacement des marqueurs de données (__SPRITES__...).
-    cfg : pour les thèmes du pack d'équipe (défaut : ceux de page/src seulement)."""
+def page_html(cfg=None, fill=None):
+    """Squelette + CSS + JS concaténés. fill(texte) : remplit les marqueurs de données (__SPRITES__...) du corps de la
+    page (tout ce qui suit la feuille de style : HTML, blocs d'action, script), jamais du CSS ; sans fill, les marqueurs
+    restent. cfg : pour les thèmes du pack d'équipe (défaut : ceux de page/src seulement)."""
     html = Path(p("page", "office_template.html")).read_text()
     css, js, _ = page_parts(cfg)
-    for mark, body in (("/*__STYLES__*/", css), ("/*__SCRIPTS__*/", js)):
+    for mark in ("/*__STYLES__*/", "/*__SCRIPTS__*/"):
         assert html.count(mark + "\n") == 1, mark
-        # le marqueur occupe sa propre ligne ; chaque fichier source se termine par un saut de ligne
-        html = html.replace(mark + "\n", _nl(body))
-    return html
+    # le marqueur occupe sa propre ligne ; chaque fichier source se termine par un saut de ligne
+    head, body = html.split("/*__STYLES__*/\n")
+    body = body.replace("/*__SCRIPTS__*/\n", _nl(js))
+    return head + _nl(css) + (fill(body) if fill else body)
 
 
 def config():
@@ -471,13 +488,35 @@ def wiki_posters(cfg):
     return list(dict.fromkeys(w for w in pages if isinstance(w, str) and w))
 
 
+# pochette d'un morceau : une image en data URI, rien d'autre (même motif que COVER_OK de page/src/55-actions.js)
+COVER_OK = re.compile(r"data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+")
+PACK_FONT = re.compile(r"fonts/[\w-][\w.-]*\.(woff2|ttf)")  # police d'un thème du pack (@@font:…@@)
+
+
+def confined(base, rel, root, what):
+    """Chemin de rel (relatif à base) s'il reste dans root, liens résolus ; sinon ValueError. Un pack d'équipe est
+    partagé par les collègues : il ne fait jamais lire un fichier hors de son dossier (« ../ », lien symbolique)."""
+    target = Path(base, rel).resolve()
+    try:
+        target.relative_to(Path(root).resolve())
+    except ValueError:
+        raise ValueError(f"{what} : « {rel} » sort du dossier {root}") from None
+    return target
+
+
 def music(cfg):
     """Morceaux des collègues (carte « Sa musique ») : ceux du profil, puis ceux de l'installation (clé music)."""
     path = _team_file(cfg, "music", "music.json")
     m = json.loads(Path(path).read_text()) if path else {}
-    for v in m.values():
-        if v.get("cover"):  # pochette embarquée en data URI, rangée à côté de music.json
-            v["cover"] = Path(os.path.join(os.path.dirname(path), v["cover"])).read_text().strip()
+    for k, v in m.items():
+        if v.get("cover"):  # pochette embarquée en data URI, rangée à côté de music.json (un nom de fichier, sans dossier)
+            rel, mdir = v["cover"], os.path.dirname(path)
+            if not isinstance(rel, str) or not re.fullmatch(r"[\w-][\w.-]*", rel):
+                raise ValueError(f"music.json, {k} : pochette « {rel} » attendue en simple nom de fichier, à côté de music.json")
+            data = confined(mdir, rel, mdir, f"music.json, {k}, pochette").read_text().strip()
+            if not COVER_OK.fullmatch(data):
+                raise ValueError(f"music.json, {k} : la pochette {rel} n'est pas une image en data URI (jpeg, png ou webp, base64)")
+            v["cover"] = data
     return {**m, **((cfg or {}).get("music") or {})}
 
 
@@ -519,7 +558,10 @@ def layout_path(cfg):
         return cfg["layout"]
     lay, d = team_meta(cfg).get("layout"), team_dir(cfg)
     if lay and d and os.path.exists(os.path.join(d, lay)):
+        confined(d, lay, d, "team.json, layout")  # le plan du pack reste dans le pack
         return os.path.join(d, lay)
+    if lay:  # sinon un plan du dépôt (layouts/), jamais un autre fichier
+        confined(ROOT, lay, p("layouts"), "team.json, layout")
     return lay or DEFAULT_LAYOUT
 
 
@@ -610,9 +652,18 @@ def demo_team(cfg):
     return rx.sub(lambda m: names[m.group(1)], text)
 
 
+def js_json(obj):
+    """JSON à poser dans le <script> de la page, sans espaces (KT-28 : poids de la page). « < », « > » et « & » écrits
+    \\u003c, \\u003e, \\u0026 : une donnée (un nom du roster, du pack partagé) ne ferme jamais le script
+    (« </script> ») ni n'ouvre un commentaire HTML ; U+2028 et U+2029 échappés pour les vieux moteurs JS."""
+    s = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
+    return (s.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+             .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
+
+
 def tight(data):
-    """JSON embarqué sans espaces (KT-28 : poids de la page) ; data = objet ou texte JSON (fichier)."""
-    return json.dumps(json.loads(data) if isinstance(data, str) else data, ensure_ascii=False, separators=(",", ":"))
+    """js_json d'un objet ou d'un texte JSON (fichier)."""
+    return js_json(json.loads(data) if isinstance(data, str) else data)
 
 
 def to_second(text):
@@ -630,30 +681,27 @@ def build(demo=True, cfg=None):
     cfg = merged(config() if cfg is None else cfg)  # réglages d'équipe du pack sous la config (#32)
     ids = action_ids(cfg)
     acts = {k: ids.get(k) or "" for k, _ in ACTIONS.values()}
-    html = page_html(cfg)
-    # bouton sans workflow configuré : sa carte kronn-action disparaît (la page masque le bouton)
-    html = ACTION_RE.sub(lambda m: action_block(m.group(0), cfg) if acts[ACTIONS[m.group(1)][0]] else "", html)
-    cast, custom = recipes(cfg), sprites(cfg)
-    html = (html.replace("__SPRITES__", tight(custom))
-                .replace("__LAYERS__", Path(p("sprites", "layers.json")).read_text())
-                .replace("__MUSIC__", tight(music(cfg)))
-                .replace("__CAST__", tight(cast))
-                .replace("__ROSTER__", tight({"people": roster(cfg), "guests": guests(cfg)}))
-                .replace("__LAYOUT__", tight(Path(p(layout_path(cfg))).read_text()))
-                .replace("__OWNER__", json.dumps(cfg.get("owner")))
-                .replace("__CONFIG__", json.dumps(page_config(cfg), ensure_ascii=False))
-                .replace("__ACTIONS__", json.dumps({k: bool(v) for k, v in acts.items()}))
-                .replace("__ACTION_BINDS__", json.dumps(action_binds(html)))
-                .replace("__DEMO__", "true" if demo else "false")
-                .replace("__VERSION__", version())
-                .replace("__SNAP__", demo_snap() if demo else "null")
-                .replace("__TEAM__", to_second(tight(demo_team(cfg))) if demo else "null"))
-    for _, mark in ACTIONS.values():
-        html = html.replace(mark, acts[ACTIONS_BY_MARK[mark]])
-    return html
+    vals = {"__SPRITES__": tight(sprites(cfg)), "__LAYERS__": tight(Path(p("sprites", "layers.json")).read_text()),
+            "__MUSIC__": tight(music(cfg)), "__CAST__": tight(recipes(cfg)),
+            "__ROSTER__": tight({"people": roster(cfg), "guests": guests(cfg)}),
+            "__LAYOUT__": tight(Path(p(layout_path(cfg))).read_text()),
+            "__OWNER__": js_json(cfg.get("owner")), "__CONFIG__": js_json(page_config(cfg)),
+            "__ACTIONS__": js_json({k: bool(v) for k, v in acts.items()}),
+            "__DEMO__": "true" if demo else "false", "__VERSION__": version(),
+            "__SNAP__": demo_snap() if demo else "null",
+            "__TEAM__": to_second(tight(demo_team(cfg))) if demo else "null"}
+
+    def fill(body):
+        # bouton sans workflow configuré : sa carte kronn-action disparaît (la page masque le bouton) ; les marqueurs
+        # __XXX_WF__ ne sont remplis que dans leur bloc (action_block)
+        body = ACTION_RE.sub(lambda m: action_block(m.group(0), cfg) if acts[ACTIONS[m.group(1)][0]] else "", body)
+        vals["__ACTION_BINDS__"] = js_json(action_binds(body))
+        # une seule passe sur le squelette : un marqueur écrit dans une donnée déjà posée (un nom « __CONFIG__ ») reste tel quel
+        return DATA_MARKS.sub(lambda m: vals[m.group(0)], body)
+    return page_html(cfg, fill)
 
 
-ACTIONS_BY_MARK = {mark: key for key, mark in ACTIONS.values()}
+DATA_MARKS = re.compile(r"__(SPRITES|LAYERS|MUSIC|CAST|ROSTER|LAYOUT|OWNER|CONFIG|ACTIONS|ACTION_BINDS|DEMO|VERSION|SNAP|TEAM)__")
 
 
 KRONN_LIMIT = 24 * 1024 * 1024  # garde-fou de Kronn (backend/src/api/live_pages.rs, PAGE_HTML_SAFETY_BYTES, #252) : plus
@@ -688,7 +736,7 @@ def weights(cfg=None, demo=True):
     b = lambda s: len(s.encode())  # noqa: E731
     css, js, fonts = page_parts(cfg)
     w = {"JS": b(js), "CSS": b(css) - fonts, "polices": fonts,
-         "sprites et calques": b(tight(sprites(cfg))) + b(Path(p("sprites", "layers.json")).read_text()),
+         "sprites et calques": b(tight(sprites(cfg))) + b(tight(Path(p("sprites", "layers.json")).read_text())),
          "équipe et plan": b(tight(recipes(cfg))) + b(tight({"people": roster(cfg), "guests": guests(cfg)}))
          + b(tight(Path(p(layout_path(cfg))).read_text())) + b(tight(music(cfg))),
          "démo": b(demo_snap()) + b(to_second(tight(demo_team(cfg)))) if demo else 0}

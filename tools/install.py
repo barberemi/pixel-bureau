@@ -10,7 +10,7 @@ Relançable : les réponses et les ids déjà dans la config sont repris, ce qui
 L'installateur ne crée jamais de connexion Jira ni ne se connecte à GitHub à ta place : il dit comment faire.
 Python 3 seul, sans dépendance (Pillow seulement pour un sprite fourni).
 """
-import argparse, getpass, imaplib, json, os, re, shutil, subprocess, sys, unicodedata, urllib.error, urllib.request
+import argparse, getpass, imaplib, json, os, re, shutil, ssl, subprocess, sys, unicodedata, urllib.error, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -526,7 +526,7 @@ def keychain_set(service, user, password):
 def imap_check(host, user, password):
     """Connexion IMAP d'essai (lecture seule) : None si elle passe, sinon l'erreur (l'installation continue)."""
     try:
-        c = imaplib.IMAP4_SSL(host, 993, timeout=20)
+        c = imaplib.IMAP4_SSL(host, 993, timeout=20, ssl_context=ssl.create_default_context())  # certificat vérifié
         c.login(user, password)
         c.select("INBOX", readonly=True)
         c.logout()

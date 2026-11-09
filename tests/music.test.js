@@ -33,3 +33,21 @@ test('sans morceau Suno, pas de lecteur : le lien vers la page du morceau reste 
   assert.doesNotMatch(html, /data-kronn-embed/);
   assert.match(html, /mplay/);
 });
+
+test('pochette : seule une image en data URI est affichée, jamais un attribut glissé par le pack', () => {
+  const card = cover => run(`(() => {
+    const children = [];
+    const fold = foldSection;
+    foldSection = () => ({appendChild: el => children.push(el)});
+    MUSIC.x = {title: 'Piège', url: 'https://example.com/x', cover: ${JSON.stringify(cover)}};
+    try { musicCard({}, {key: 'x'}); } finally { foldSection = fold; delete MUSIC.x; }
+    return children[0].innerHTML;
+  })()`);
+  for (const bad of ['x" onerror="globalThis.P=1', 'javascript:globalThis.P=1', 'data:image/svg+xml;base64,PHN2Zz4=', 'data:image/png;base64,AAAA" onerror="globalThis.P=1']) {
+    const html = card(bad);
+    assert.doesNotMatch(html, /<img/i, bad);
+    assert.doesNotMatch(html, /onerror/, bad);
+  }
+  assert.equal(run('typeof globalThis.P'), 'undefined');
+  assert.match(card('data:image/jpeg;base64,/9j/4AAQ+Zw=='), /<img src="data:image\/jpeg;base64,\/9j\/4AAQ\+Zw==" alt="">/);
+});

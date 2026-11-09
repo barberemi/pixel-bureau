@@ -195,6 +195,41 @@ class MailSnapshotTest(unittest.TestCase):
         self.assertIn("trousseau", perso["error"])
         self.assertIn("courrier : perso", err)
 
+    def test_imap_checks_the_certificate_and_never_sends_a_password_in_clear_off_the_machine(self):
+        """La fonction imap() seule (le script, importé, se lancerait) : certificat vérifié, STARTTLS hors de la machine."""
+        import ast, ssl
+        src = Path(os.path.join(ROOT, "workflows", "mail_snapshot.py")).read_text()
+        keep = [n for n in ast.parse(src).body if isinstance(n, ast.FunctionDef) and n.name == "imap"
+                or isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "LOCAL_HOSTS"]
+        seen = []
+
+        class Stop(Exception):
+            pass
+
+        class Plain:
+            def __init__(self, host, port, timeout=None):
+                seen.append(("plain", host))
+
+            def starttls(self, ssl_context=None):
+                seen.append(("starttls", ssl_context.verify_mode == ssl.CERT_REQUIRED))
+                raise Stop()
+
+            def login(self, *a):
+                raise Stop()
+
+        def tls(host, port, timeout=None, ssl_context=None):
+            seen.append(("ssl", ssl_context.verify_mode == ssl.CERT_REQUIRED, ssl_context.check_hostname))
+            raise Stop()
+
+        ns = {"ssl": ssl, "imaplib": type("M", (), {"IMAP4": Plain, "IMAP4_SSL": staticmethod(tls)}), "secret": lambda *a: "x"}
+        exec(compile(ast.Module(body=keep, type_ignores=[]), "mail_snapshot.py", "exec"), ns)
+        for acc in ({"host": "imap.example", "ssl": True}, {"host": "imap.example", "ssl": False}, {"host": "127.0.0.1", "ssl": False}):
+            with self.assertRaises(Stop):
+                ns["imap"](acc)
+        self.assertEqual(seen[0], ("ssl", True, True), "certificat et nom d'hôte vérifiés")
+        self.assertEqual(seen[1:3], [("plain", "imap.example"), ("starttls", True)], "hors de la machine : STARTTLS, jamais en clair")
+        self.assertEqual(seen[3:], [("plain", "127.0.0.1")], "passerelle locale : en clair permis")
+
     def test_applescript_names_distinct_ignoring_case(self):
         """AppleScript ignore la casse : une liste « rs » écrasait le séparateur « RS » (tous les mails en un seul)."""
         import re

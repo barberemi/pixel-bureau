@@ -26,6 +26,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0  # règle du guide : diff avec la branche de base
+          persist-credentials: false  # rien ne pousse : le jeton ne reste pas dans .git/config
 
       - uses: actions/setup-node@v7
         with:
@@ -54,10 +55,12 @@ jobs:
         if: github.event_name != 'push'
         env:
           GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.head_ref || github.ref_name }}  # noms de branche : variables, jamais collés dans le script
+          BASE_REF: ${{ github.base_ref || 'main' }}
         run: |
-          labels=$(gh pr view "${{ github.head_ref || github.ref_name }}" --json labels --jq '[.labels[].name] | join(",")' 2>/dev/null || true)
+          labels=$(gh pr view "$HEAD_REF" --json labels --jq '[.labels[].name] | join(",")' 2>/dev/null || true)
           case ",$labels," in *",références seules,"*) echo "règle du guide levée (label « références seules »)"; exit 0;; esac
-          python3 tools/visual.py --guide-rule "origin/${{ github.base_ref || 'main' }}"
+          python3 tools/visual.py --guide-rule "origin/$BASE_REF"
 
       - name: Captures qui s'écartent de leur référence
         if: failure()
