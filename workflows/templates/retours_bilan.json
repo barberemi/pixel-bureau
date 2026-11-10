@@ -1,0 +1,98 @@
+{
+ "kind": "workflow",
+ "key": "retours_bilan",
+ "doc": "Bilan des retours de PR : l'historique des corrections de commentaires (3e étage), fils, coût, ta validation et résultat (page « Retours · bilan »).",
+ "definition": {
+  "name": "Le Bureau · bilan des retours (15 min)",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Cron",
+   "schedule": "8-59/15 @@cron_hours@@ * * 1-5"
+  },
+  "steps": [
+   {
+    "name": "releve",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "L'API Kronn : agent de correction de chaque run (durée, jetons, coût, modèle), attente à ta validation, résultat, et l'état de sa PR (fils, colonnes, réponses, contrôles) ; un run fini est gardé en cache (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/retours_bilan.py@@",
+     "releve"
+    ],
+    "exec_timeout_secs": 300
+   },
+   {
+    "name": "bilan",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Cache assemblé en dataset : une ligne par correction, fiches des plus récentes (0 token).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/retours_bilan.py@@",
+     "bilan"
+    ],
+    "exec_timeout_secs": 120
+   },
+   {
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset retours_bilan de la page « Retours · bilan ».",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@retours_bilan.page_id@@",
+     "writes": [
+      {
+       "dataset": "retours_bilan",
+       "operation": "replace",
+       "value_from": "steps.bilan.data.stdout"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}

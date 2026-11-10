@@ -21,7 +21,7 @@ const RT_HELP={bar:()=>'<span>Kanban des fils :</span>'+legSwatches(Object.fromE
   qui:'<p><b>Agents</b> : un par poste, en chirurgiens. Toute l\'équipe monte avec la PR et reste jusqu\'au push ; au bureau 1 libre, elle somnole.</p><p><b>Bernard</b> sort de la porte de l\'escalier avec la PR et la redescend une fois poussée.</p><p>Un agent en gris pâle : son poste attend, personne n\'y travaille en ce moment (au RDC, la couleur d\'un hologramme dit sa famille, pas son activité).</p>'+
     '<p><b>Le boss</b>, à son bureau du couloir, va à la barrière du bureau qui attend depuis le plus longtemps ; les autres attendent leur tour.</p>',
   ou:'<p><b>Six bureaux</b> : une PR par bureau, avec son dépôt, son numéro et son auteur.</p><p><b>Le Kanban</b> au mur : un post-it par fil de commentaire, qui change de colonne quand il est traité ; un clic l\'agrandit.</p>'+
-    '<p><b>Le couloir</b> : les PR qui attendent un bureau, le café, le banc.</p>',
+    '<p><b>Le couloir</b> : au fond, le tableau RETOURS DU JOUR (PR poussées et fils, en cours et pannes, jetons ; le détail est dans la page « Retours · bilan »), puis les PR qui attendent un bureau, le café, le banc.</p>',
   moments:'<p><b>✋ À toi</b> : les corrections attendent ta validation.</p><p><b>🧯 Contrôles rouges</b> : le correctif est annulé, la PR attend une relance.</p><p><b>📤 Poussée</b> : les réponses sont postées, Bernard redescend la PR.</p>'};
 const RT_ST={ok:['ok','a travaillé'],run:['run','au travail'],err:['err','en panne'],gate:['wait','t\'attend'],wait:['','attend son tour']};
 const RT_N=6, RT_W=46/3, RT_H=11.2, RT_Y=[2,15.8], RT_HALL=[13.2,15.8], RT_LANE=14.5*AT_TS;
@@ -63,7 +63,7 @@ function retoursDemo(){
      fils:[F('x1','corrige','app/Export.php',10,'darrylphilbin','Encodage UTF-8 BOM'),F('x2','corrige','app/Export.php',33,'gabelewis','Nom du fichier daté'),F('x3','test','tests/ExportTest.php',1,'hollyflax','Couvrir la liste vide'),
        F('x4','reponse','app/Export.php',50,'darrylphilbin','Limiter à 10 000 lignes ?'),F('x5','reponse','app/Export.php',61,'hollyflax','Et les désabonnés ?')]}];
   return {generated_at:at(11),postes:RT_POSTES.map(p=>p.k),rooms,queue:[{run:'demo-fq1',repo:'dm/site',pr:'2048',since:at(10.7)},{run:'demo-fq2',repo:'dm/api',pr:'24',since:at(10.9)}],
-    pannes:[{run:'demo-fp1',repo:'dm/site',pr:'2031',title:'Pied de page : liens sociaux',poste:'fix',since:at(8.2)}],pousses:2,
+    pannes:[{run:'demo-fp1',repo:'dm/site',pr:'2031',title:'Pied de page : liens sociaux',poste:'fix',since:at(8.2)}],pousses:2,jour:{pousses:2,fils:9,tok:68000,cours:rooms.length,pannes:1,semaine:7},
     events:[...rooms.map(r=>({t:r.since,k:'arrive',run:r.run,repo:r.repo,pr:r.pr})),...rooms.filter(r=>r.gate).map(r=>({t:new Date(ms(r.since)+30*60e3).toISOString(),k:'gate',run:r.run,repo:r.repo,pr:r.pr})),
       {t:at(8.2),k:'arrive',run:'demo-fp1',repo:'dm/site',pr:'2031'},{t:at(8.5),k:'panne',run:'demo-fp1',repo:'dm/site',pr:'2031',poste:'fix'},
       {t:at(7.6),k:'arrive',run:'demo-fd1',repo:'dm/site',pr:'2030'},{t:at(8.4),k:'push',run:'demo-fd1',repo:'dm/site',pr:'2030'},
@@ -204,14 +204,27 @@ function rtBubble(r,p){
   if(p.k==='fix')return f?'fil '+k+'/'+n+' : '+clip(f.text||f.path||'',26):'je corrige les fils…';
   return {prepare:'je récupère les fils…',check:'je lance les contrôles…',diff:'je prépare le diff…',push:'je pousse et je réponds'}[p.k]||'au travail…';
 }
-// ---------- le couloir : le bureau du boss, la file des PR, le café, le banc, la porte de l'escalier ----------
+// ---------- le couloir : le tableau du jour, la file des PR, le bureau du boss, le café, le banc, la porte de l'escalier ----------
+// le tableau noir RETOURS DU JOUR, au fond à gauche (le jumeau de REVUES DU JOUR au 2e) : PR poussées depuis minuit et leurs
+// fils, bureaux au travail et pannes, jetons du jour et PR poussées sur 7 jours (dataset retours, jour). Rien au clic : le
+// détail est dans la page « Retours · bilan ».
+function rtDayBoard(){
+  const T=AT_TS, j=(RETOURS&&RETOURS.jour)||{}, n=k=>+j[k]||0, y0=RT_HALL[0]*T, bx=.45*T, by=y0+5, bw=5.9*T, bh=(RT_HALL[1]-RT_HALL[0])*T-17;
+  R(ctx,bx+12,by+bh,4,7,'#5a3e28');R(ctx,bx+bw-16,by+bh,4,7,'#5a3e28');
+  R(ctx,bx-5,by-5,bw+10,bh+10,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+4,by+bh-5,bw-8,3,'#a37650');
+  atTxt('RETOURS DU JOUR',bx+bw/2,by+14,'#f4efe4','bold 11px ui-monospace,Menlo,monospace');R(ctx,bx+12,by+19,bw-24,1,'rgba(244,239,228,.4)');
+  [['#3fbf6a',plural(n('pousses'),'PR poussée','PR poussées')+' · '+n('fils')+' fils'],['#5b8def',n('cours')+' en cours · '+n('pannes')+' en panne'],
+   ['#e0a020','~'+Math.round(n('tok')/1e3)+' k jetons · 7 j : '+n('semaine')+' PR']]
+    .forEach(([c,t],k)=>{R(ctx,bx+12,by+24+k*13,7,7,c);atTxt(t,bx+24,by+31+k*13,'#e8e2d0','11px ui-monospace,Menlo,monospace','left');});
+}
 function rtHall(slots,now,people){
-  const T=AT_TS, y=(RT_HALL[0]+RT_HALL[1])/2*T, q=(RETOURS&&RETOURS.queue)||[];
-  for(let k=0;k<Math.min(3,q.length);k++)atCarton(1.4*T+k*34,y+10,null);
-  if(q.length)rtLate(people,()=>atPill('📥 '+plural(q.length,'PR attend','PR attendent')+' un bureau',1.4*T+150,y+8,'#1c2440','#bfe6ff','bold 11px system-ui,sans-serif'),1e6);
-  atHitRt('queue',.6*T,y-20,4*T,40,{});
+  const T=AT_TS, y=(RT_HALL[0]+RT_HALL[1])/2*T, q=(RETOURS&&RETOURS.queue)||[], qx=9.6*T; // la file : après la porte du bureau 1
+  rtLate(people,rtDayBoard,1e6-1);
+  for(let k=0;k<Math.min(3,q.length);k++)atCarton(qx+k*34,y+10,null);
+  if(q.length)rtLate(people,()=>atPill('📥 '+plural(q.length,'PR attend','PR attendent')+' un bureau',qx+40,y-18,'#1c2440','#bfe6ff','bold 11px system-ui,sans-serif'),1e6);
+  atHitRt('queue',qx-.8*T,y-30,4*T,50,{});
   atCoffee(20*T,y+18);atPlant(17.6*T,y+20);atPlant(26*T,y+20);
-  const bx=12.2*T, by=RT_HALL[1]*T-6;atSofa(bx,by);rtLate(people,()=>atSofaFront(bx,by),by+10); // le banc
+  const bx=14.2*T, by=RT_HALL[1]*T-6;atSofa(bx,by);rtLate(people,()=>atSofaFront(bx,by),by+10); // le banc
   rtLate(people,()=>atPill('⇅ escalier · RDC',46*T-74,RT_STAIR.y+RT_STAIR.h+22,'#5a4636','#fff','bold 11px ui-monospace,Menlo,monospace'),1e6);
 }
 // ---------- les équipes : dès qu'une PR a un bureau, ses cinq agents montent derrière Bernard, l'un après l'autre, et

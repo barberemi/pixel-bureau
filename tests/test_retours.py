@@ -83,6 +83,30 @@ class RetoursSnapshotTest(unittest.TestCase):
         self.assertEqual(snap["pousses"], 1)
         self.assertIn(("rej", "fin"), ks, "fini sans push (gate refusée) : le rejeu libère son bureau")
 
+    def test_day_board_counts_today_and_the_week_reading_each_finished_run_once(self):
+        # p1 poussée aujourd'hui (3 fils), p2 poussée il y a 3 jours, x1 finie sans push, a1 en cours, v1 trop vieille
+        self.state("p1", cols={"T1": "corrige", "T2": "test", "T3": "laisse"})
+        push = lambda at: {"step_name": "push", "status": "Success", "started_at": at, "duration_ms": 6000}  # noqa: E731
+        runs = {"p1": {"id": "p1", "status": "Success", "started_at": "2026-10-30T08:00:00Z", "tokens_used": 40000, "step_results": [push("2026-10-30T08:30:00Z")]},
+                "p2": {"id": "p2", "status": "Success", "started_at": "2026-10-27T08:00:00Z", "tokens_used": 9000, "step_results": [push("2026-10-27T08:20:00Z")]},
+                "x1": {"id": "x1", "status": "Failed", "started_at": "2026-10-30T07:00:00Z", "tokens_used": 5000, "trigger_context": {"repo": "dm/cms", "pr": "7"}, "step_results": [{"step_name": "fix", "status": "Failed"}]},
+                "a1": {"id": "a1", "status": "Running", "started_at": "2026-10-30T09:00:00Z", "tokens_used": 1000, "step_results": [{"step_name": "fix", "status": "Running"}]},
+                "v1": {"id": "v1", "status": "Success", "started_at": "2026-10-20T08:00:00Z", "tokens_used": 1, "step_results": [push("2026-10-20T08:20:00Z")]}}
+        calls = []
+
+        def get(p):
+            calls.append(p)
+            if p == "/workflows/fx/runs?limit=40":
+                return [{k: v for k, v in r.items() if k != "step_results"} for r in runs.values()]
+            return runs.get(p.rsplit("/", 1)[-1])
+        self.r.get = get
+        j = self.r.snapshot("2026-10-30T10:00:00+00:00")["jour"]
+        self.assertEqual(j, {"pousses": 1, "fils": 3, "tok": 46000, "cours": 1, "pannes": 1, "semaine": 2})
+        self.assertNotIn("/workflows/fx/runs/v1", calls, "hors des 7 jours : jamais relu")
+        calls.clear()
+        self.r.snapshot("2026-10-30T10:01:00+00:00")
+        self.assertNotIn("/workflows/fx/runs/p2", calls, "un run fini n'est relu qu'une fois (jour.json)")
+
     def test_exchange_files_never_follow_a_link(self):
         """SRV-02 : l'avancement en lien symbolique (posé par une PR ou un agent) est ignoré ; _lib.write_json remplace un
         lien au lieu d'écrire dans sa cible, et garde les droits du fichier remplacé."""
