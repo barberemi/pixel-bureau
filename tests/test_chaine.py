@@ -143,6 +143,10 @@ class ChaineModelesTest(unittest.TestCase):
         rv = steps("impl_revue_pr", cfg(models={**cfg()["models"], "review_child": "abababab-0000-4000-8000-000000000009"}))
         self.assertEqual((rv["revue"]["sub_workflow_id"], rv["revue"]["sub_workflow_foreach_file"]),
                          ("abababab-0000-4000-8000-000000000009", ".kronn/prs.json"))
+        # la revue tourne dans la copie de la chaîne, donc dans le projet du dépôt du ticket : Kronn refuse un
+        # sous-workflow épinglé à un autre projet (EW-7900 sur front_apollo, revue de la PR jamais lancée)
+        child = templates.render(TPL["review_child"], cfg())
+        self.assertEqual(child["project_scope"], {"type": "All"})
         self.assertNotIn("revue", steps("impl_revue_pr"))  # sans modèle de revue installé : pas de revue
         rt = steps("impl_retours")  # le code de « corriger les commentaires d'une PR » (pr_update.py), sans sa gate
         self.assertEqual(list(rt), ["entree", "prepare", "corrige", "controle", "diff", "pousse", "synchro", "fin", "corrige_local", "note_local"])

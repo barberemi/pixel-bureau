@@ -4,6 +4,9 @@
  "definition": {
   "name": "Le Bureau · relire une PR (étape commune)",
   "project_id": "@@review.project_id@@",
+  "project_scope": {
+   "type": "All"
+  },
   "trigger": {
    "type": "Manual"
   },

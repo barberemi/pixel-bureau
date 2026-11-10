@@ -57,6 +57,7 @@ PR #2060 d'un dépôt de l'équipe (run `73869a01` de `review_child`, 2026-11-04
 
 - 20 étapes au plus par workflow (`Too many steps`) : `review_child` en a 18 ; d'où `pr` et `repo` posés en état par `setup` (plus d'étapes `prnum`, `repovar`), le saut au head déjà relu dans `write_ctx`, la passe sécurité qui décide seule de se sauter, les deux datasets de la page écrits par une seule étape `publish` [src: file: workflows/templates/review_child.json:1].
 - 5 niveaux de sous-workflows au plus (`MAX_SUBWORKFLOW_DEPTH`) : chaîne → livraison → `impl_revue_pr` → `review_child` → poste = 4.
+- Un sous-workflow en foreach partage la copie de travail de son parent : Kronn refuse un enfant épinglé à un autre projet (« is pinned to another project »). `review_child` garde `review.project_id` mais a `project_scope: All` : il tourne dans le projet de son parent, celui de la revue pour `review_one` et `review_cron`, celui du dépôt du ticket pour la chaîne. Sans lui, la chaîne n'était relue que sur le dépôt du projet de la revue (EW-7900 sur front_apollo, 2026-11-10 : revue refusée en 0,7 s, PR livrée sans revue) [src: file: workflows/templates/review_child.json:7].
 - `on_result` ne voit que les signaux de Kronn (`OK`, `ERROR`, `exit_N`…), jamais le texte d'une sortie [src: file: tests/test_models.py:test_on_result_rules_only_match_kronn_signals].
 - La sortie typée d'une étape Agent ne remonte pas d'un sous-workflow : l'avis reste dans le parent, car `map_event`, `react` et `reply` lisent `steps.avis.data`.
 
