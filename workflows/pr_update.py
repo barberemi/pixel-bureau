@@ -618,6 +618,7 @@ def fix_diff(repo, n, run_id):
     files, rs = staged(st), replies(st)
     by = {r["thread"]: r["reply"] for r in rs}
     st["cols"] = {t: fil_col(by.get(t)) for t in st.get("threads", [])}  # la colonne de chaque fil, pour le Kanban du 3e étage
+    st["reponses"] = {t: str(by[t])[:600] for t in st.get("threads", []) if by.get(t)}  # la réponse prévue, pour « Retours · bilan »
     save(run_id, st)
     if not files and not rs:
         cleanup(st)

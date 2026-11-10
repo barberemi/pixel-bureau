@@ -6,14 +6,17 @@
   {generated_at, rooms: [{run, repo, pr, title, author, status, poste, gate, states: {poste: ok|run|gate|err},
                           since, url, fils: [{id, path, line, who, text, col, cur}]}],
    queue: [{run, repo, pr, since}], pannes: [{run, repo, pr, title, poste, since, url}],
-   events: [{t, k: arrive|gate|push|panne|fin, run, repo, pr, poste?}], pousses}
+   events: [{t, k: arrive|gate|push|panne|fin, run, repo, pr, poste?}], pousses,
+   jour: {pousses, fils, tok, cours, pannes, semaine}}
 
 Un bureau = un run actif (6 au plus sur la page) ; la file = les runs en attente ; les pannes = les runs en échec des
-dernières 24 h qu'aucun run plus récent de la même PR n'a repris. Colonne d'un fil : celle de la réponse prévue
+dernières 24 h qu'aucun run plus récent de la même PR n'a repris. Le jour (tableau RETOURS DU JOUR du couloir) : PR poussées
+depuis minuit et leurs fils, jetons des runs du jour, et PR poussées sur 7 jours ; un run fini n'est relu qu'une fois
+(~/.cache/pixel-bureau/pr/jour.json). Colonne d'un fil : celle de la réponse prévue
 (fil_col de _lib.py) une fois l'agent fini, sinon celle que l'agent a notée dans son avancement, sinon « à traiter ».
 """
 import datetime, json, os, re, stat, sys
-from _lib import ACTIVE, CFG, FIL_COLS, TZ, get, read_json
+from _lib import ACTIVE, CFG, FIL_COLS, TZ, get, read_json, write_json
 
 HOME = os.path.expanduser("~/.cache/pixel-bureau/pr")
 POSTES = ["prepare", "fix", "check", "diff", "gate", "push"]
@@ -119,6 +122,49 @@ def day_before(iso):
     return (t - datetime.timedelta(hours=24)).isoformat(timespec="seconds") if t else ""
 
 
+def push_end(run):
+    """La fin du push réussi d'un run (sa PR poussée), sinon None."""
+    s = next((s for s in run.get("step_results") or [] if s.get("step_name") == "push" and s.get("status") == "Success"), None)
+    t = step_end(s) if s else None
+    return t.isoformat(timespec="seconds") if t else None
+
+
+def jour(runs, full_of, now, out):
+    """Le tableau du couloir : PR poussées depuis minuit et leurs fils, jetons des runs du jour, PR poussées sur 7 jours."""
+    path = os.path.join(HOME, "jour.json")
+    try:
+        cache = read_json(path)
+    except (OSError, ValueError):
+        cache = {}
+    midnight = now.astimezone(TZ).replace(hour=0, minute=0, second=0, microsecond=0)
+    week = (now - datetime.timedelta(days=7)).isoformat(timespec="seconds")
+    j = {"pousses": 0, "fils": 0, "tok": 0, "cours": len(out["rooms"]), "pannes": len(out["pannes"]), "semaine": 0}
+    seen = {}
+    for r in runs:
+        t0 = when(r.get("started_at") or "")
+        if not t0 or r.get("status") == "Pending" or t0.isoformat() < week:
+            continue
+        if t0 >= midnight:
+            j["tok"] += int(r.get("tokens_used") or 0)
+        if r.get("status") in ACTIVE:
+            continue
+        c = cache.get(r["id"])
+        if not isinstance(c, dict):
+            c = {"push": push_end(full_of(r["id"])), "fils": len((state(r["id"]).get("cols") or {}))}
+        seen[r["id"]] = c
+        if c.get("push"):
+            j["semaine"] += 1
+            if when(c["push"]) >= midnight:
+                j["pousses"] += 1
+                j["fils"] += int(c.get("fils") or 0)
+    if seen != cache:
+        try:
+            write_json(path, seen)  # les runs de la semaine seulement : le cache ne grossit pas
+        except OSError:
+            pass
+    return j
+
+
 def snapshot(now_iso=None):
     wf = (CFG.get("actions") or {}).get("fix_pr")
     out = {"generated_at": now_iso, "postes": POSTES, "rooms": [], "queue": [], "pannes": [], "events": [], "pousses": 0}
@@ -154,6 +200,8 @@ def snapshot(now_iso=None):
     now = when(now_iso)
     midnight = now.astimezone(TZ).replace(hour=0, minute=0, second=0, microsecond=0) if now else None
     out["pousses"] = sum(1 for e in ev if e["k"] == "push" and (not midnight or when(e["t"]) >= midnight))
+    if now:
+        out["jour"] = jour(runs, full_of, now, out)
     return out
 
 

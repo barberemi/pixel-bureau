@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Retours · bilan</title>
+<!-- Page Kronn « Retours · bilan » : l'historique des corrections de commentaires de PR (3e étage, modèle « corriger les
+     commentaires d'une PR ») (dataset retours_bilan, workflows/retours_bilan.py, cron retours_bilan). Vanilla, sans ressource
+     externe (CSP de Kronn : script et style en ligne seulement). Styles : ceux de page/redaction-bilan.html. Le chiffre clé du
+     vidéoprojecteur vient du champ kpi du dataset. -->
+<style>
+:root{
+  --bg:#f3efe6; --panel:#fffdf8; --ink:#25221d; --muted:#6f685c; --line:#e2dccf; --chip:#f0ebe0;
+  --accent:#2f6fd6; --ok:#2e9e5b; --warn:#d89614; --err:#d1453b; --info:#4a7fe0; --idle:#7a7266; --on-accent:#ffffff;
+  --h0:#f0ebe0; --h1:#cfe0f7; --h2:#86aee9; --h3:#2f6fd6; --hx:#d1453b; --sign:#22232b; --sign-ink:#ece8df; --sign-mut:#a29c90;
+  --opus:#8a5cd6; --sonnet:#2f6fd6; --haiku:#1f9e86;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#17181c; --panel:#202228; --ink:#ece8df; --muted:#a29c90; --line:#2f323a; --chip:#2a2d34;
+  --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#9a9284; --on-accent:#0d1b33;
+  --h0:#2a2d34; --h1:#2c3d5c; --h2:#3f63a3; --h3:#6b9cf0; --hx:#f06a5f;
+  --opus:#b48cff; --sonnet:#6b9cf0; --haiku:#3fc7b0;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#17181c; --panel:#202228; --ink:#ece8df; --muted:#a29c90; --line:#2f323a; --chip:#2a2d34;
+  --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#9a9284; --on-accent:#0d1b33;
+  --h0:#2a2d34; --h1:#2c3d5c; --h2:#3f63a3; --h3:#6b9cf0; --hx:#f06a5f;
+  --opus:#b48cff; --sonnet:#6b9cf0; --haiku:#3fc7b0;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:16px 16px 32px}
+.wrap{max-width:1360px;margin:0 auto;display:grid;gap:14px}
+.num,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.mut{color:var(--muted);font-size:12px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--sign);color:var(--sign-ink);padding:10px 14px;border-radius:8px}
+h1{font:700 18px/1.3 ui-monospace,Menlo,monospace;margin:0;letter-spacing:.02em}
+header .mut{color:var(--sign-mut)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.filters select,.filters label{font:12px system-ui,sans-serif;color:var(--sign-ink)}
+.filters select{background:#2f313a;border:2px solid #444754;padding:3px 6px;color:#ece8df}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.kpi{border:3px solid var(--line);padding:8px 12px;background:var(--panel)}
+.kpi b{display:block;font:600 22px/1.15 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.kpi span{color:var(--muted);font-size:12px}
+.kpi.err b{color:var(--err)}
+.up{color:var(--ok);font-weight:700}.down{color:var(--err);font-weight:700}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:14px}
+.box{border:3px solid var(--line);padding:10px 12px;background:var(--panel);min-width:0}
+.h{font:700 12px system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px;display:flex;justify-content:space-between;gap:8px}
+.h .mut{text-transform:none;letter-spacing:0;font-weight:400}
+.why{color:var(--muted);font-size:12px;margin:0 0 10px}
+.hb{display:grid;grid-template-columns:150px minmax(0,1fr) 56px;gap:4px 8px;align-items:center;font-size:12.5px}
+.hb .bar{height:12px;background:var(--chip);position:relative}
+.hb .bar i{position:absolute;inset:0 auto 0 0;background:var(--info)}
+.hb .bar i.hot{background:var(--warn)}.hb .bar i.ok{background:var(--ok)}.hb .bar i.idle{background:var(--idle)}.hb .bar i.err{background:var(--err)}
+.hb .v{text-align:right}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;font-size:12.5px;width:100%}
+th{color:var(--muted);font-weight:600;text-align:left}
+td,th{padding:4px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.r,th.r{text-align:right}
+.heat td.c{width:46px;height:26px;text-align:center;font-family:ui-monospace,Menlo,monospace;font-weight:700;border:2px solid var(--panel)}
+.heat th{text-align:center}.heat th:first-child{text-align:left}
+.l0{background:var(--h0);color:var(--muted)}.l1{background:var(--h1)}.l2{background:var(--h2);color:#fff}.l3{background:var(--h3);color:var(--on-accent)}.lx{background:var(--hx);color:#fff}
+.pill{display:inline-block;font:700 10.5px system-ui;padding:1px 6px;white-space:nowrap}
+.pill.ok{background:var(--ok);color:#fff}.pill.warn{background:var(--warn);color:#1c1c1c}.pill.err{background:var(--err);color:#fff}
+.pill.idle{background:var(--chip);color:var(--muted)}.pill.info{background:var(--info);color:#fff}
+svg text{fill:var(--muted);font:11px system-ui,sans-serif}
+svg .ax{stroke:var(--line)}svg .ln{stroke:var(--accent);fill:none;stroke-width:2.5}svg .ar{fill:var(--accent);opacity:.12}
+svg .pt{fill:var(--accent)}svg .mk{stroke:var(--warn);stroke-dasharray:3 3}svg .mkt{fill:var(--ink);font-weight:600}
+tr.row{cursor:pointer}tr.row:hover td,tr.row:focus-visible td{background:var(--chip)}tr.row.on td{background:var(--chip);font-weight:600}
+.fiche{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;margin-top:10px}
+.sec.wide{grid-column:1/-1}
+.sec h4{font:700 11.5px system-ui;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px;color:var(--muted)}
+.gantt{display:grid;grid-template-columns:96px minmax(0,1fr);gap:3px 6px;font-size:11.5px;align-items:center}
+.gantt .tr{position:relative;height:11px;background:var(--chip)}
+.gantt .tr i{position:absolute;top:0;bottom:0;background:var(--info);min-width:2px}
+.gantt .tr i.g{background:var(--warn)}.gantt .tr i.x{background:var(--err)}.gantt .tr i.o{background:var(--ok)}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:4px}
+.legend i{display:inline-block;width:9px;height:9px;margin-right:4px;vertical-align:-1px}
+.note{border-left:4px solid var(--warn);background:var(--chip);padding:6px 10px;font-size:12.5px;overflow-wrap:anywhere;white-space:normal}
+.note.ok{border-color:var(--ok)}
+.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+button:focus-visible,select:focus-visible,tr.row:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+.chip{display:inline-block;font:700 10.5px ui-monospace,Menlo,monospace;padding:0 5px;margin-right:3px;color:#fff}
+.chip.opus{background:var(--opus)}.chip.sonnet{background:var(--sonnet)}.chip.haiku{background:var(--haiku)}.chip.autre{background:var(--idle)}
+.mstack{display:flex;height:12px;background:var(--chip)}.mstack i{display:block;height:100%}
+.tabs{display:flex;gap:2px;border-bottom:2px solid var(--line);margin:10px 0;flex-wrap:wrap}
+.tabs button{background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-2px;color:var(--muted);font:600 13px system-ui,sans-serif;padding:6px 10px;cursor:pointer}
+.tabs button.on{color:var(--ink);border-color:var(--accent)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:8px}
+.card{background:var(--chip);padding:8px 10px;display:grid;gap:4px;font-size:12.5px}.card p{margin:0;overflow-wrap:anywhere}
+.pistes{margin:6px 0 0;padding-left:18px;display:grid;gap:4px;font-size:12.5px;max-width:120ch}.pistes code{font:12px ui-monospace,Menlo,monospace;overflow-wrap:anywhere}
+details.analyse{border:3px solid var(--line);background:var(--panel);padding:8px 12px}details.analyse>summary{cursor:pointer;font:700 12px system-ui;text-transform:uppercase;letter-spacing:.06em}
+details.analyse[open]>summary{margin-bottom:10px}.funnel{display:grid;gap:6px}
+.funnel .st{display:grid;grid-template-columns:150px minmax(0,1fr) 52px;gap:8px;align-items:center;font-size:12.5px}
+.funnel .b{height:22px;background:var(--info);display:flex;align-items:center;padding-left:6px;color:#fff;font:700 11px system-ui;min-width:22px}
+.funnel .b.ok{background:var(--ok)}.funnel .b.warn{background:var(--warn);color:#1c1c1c}
+.leak{color:var(--err);font-size:11.5px;margin:-2px 0 2px 158px}
+.tag{display:inline-block;font:600 10.5px system-ui;padding:1px 6px;background:var(--chip);color:var(--ink)}
+.quote{border-left:3px solid var(--line);padding:4px 8px;font-size:12px;color:var(--muted);margin:6px 0 0}
+.teams{white-space:pre-line;font-size:12px;background:var(--chip);padding:8px 10px;overflow-wrap:anywhere}
+.check{margin:0;padding-left:18px}.check li{font-size:12px;margin:2px 0}
+.empty-s{padding:14px;background:var(--chip);font-size:12.5px;text-align:center}
+.empty-s b{display:block;font:600 18px ui-monospace,Menlo,monospace;margin-bottom:2px}
+tr.off td{color:var(--muted)}
+p.note{margin:8px 0 0;font-style:italic;color:var(--muted);font-size:11.5px}
+@media (max-width:520px){.funnel .st{grid-template-columns:110px minmax(0,1fr) 44px}.leak{margin-left:118px}}
+.filters input{accent-color:var(--accent)}
+svg .bar{fill:var(--info)}svg .cost{stroke:var(--warn);fill:none;stroke-width:2.5}svg .cpt{fill:var(--warn)}svg .val{fill:var(--ink);font-family:ui-monospace,Menlo,monospace}
+.hb .v.back{color:var(--err);font-weight:700}
+.vers td{white-space:normal;vertical-align:top}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="empty">Chargement du bilan…</div></div>
+<script>
+'use strict';
+(function(){
+// le résultat d'un run (retours_bilan.py) : [classe de la pastille, libellé]
+const RES={poussee:['ok','poussée'],panne:['err','en panne'],coupee:['err','coupée'],refusee:['idle','refusée par toi'],rien:['idle','rien à pousser'],
+  en_cours:['info','en cours']};
+const POSTE={prepare:'préparation',fix:'correction',check:'contrôles',diff:'diff',gate:'ta validation',push:'push'};
+const ou=p=>p==='gate'?'pendant ta validation':'à l\'étape '+(POSTE[p]||p); // où un run s'est arrêté
+// les colonnes du Kanban du 3e (fil_col de _lib.py)
+const COLS=[['corrige','✅','corrigé','ok'],['test','🧪','avec un test','info'],['laisse','⏭','laissé','idle'],['reponse','💬','réponse seule','warn']];
+const ROW={prepare:'🗂 Préparation',fix:'🛠 Correction',check:'🧪 Contrôles',diff:'🔍 Diff',gate:'✋ Ta validation',push:'📤 Push'};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDur=s=>{if(s==null)return '–';if(s<60)return Math.round(s)+' s';const m=Math.round(s/60);return m<60?m+' min':Math.floor(m/60)+' h '+String(m%60).padStart(2,'0');};
+const fmtUsd=v=>(v||0).toFixed(2).replace('.',',')+' $';
+const fmtK=t=>((t||0)/1e3).toFixed(1).replace('.',',')+' k';
+const median=a=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;};
+const sum=a=>a.reduce((x,y)=>x+(+y||0),0);
+const pct=(a,b)=>b?Math.round(a/b*100):0;
+const plural=(n,un,plus)=>n+' '+(n>1?plus:un);
+const pill=(c,l)=>`<span class="pill ${c}">${esc(l)}</span>`;
+const day=iso=>{const d=new Date(iso||'');return isNaN(d)?'':d.toLocaleString('fr-FR',{timeZone:'Europe/Paris',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(',','');};
+const depot=r=>String(r||'').split('/').pop();
+const modele=m=>String(m||'').replace(/^claude-/,'').replace(/\s*·.*$/,'').replace(/-\d{8}$/,'');
+
+function readRetoursBilan(k){
+  try{
+    if(!k||!k.datasets)return null;
+    let d=k.datasets.retours_bilan;
+    if(d&&d.current!==undefined)d=d.current;
+    if(typeof d==='string')d=JSON.parse(d);
+    return d&&Array.isArray(d.corrections)?d:null;
+  }catch(e){return null;}
+}
+// les runs retenus par les filtres (période en jours, dépôt)
+function pick(data,f){
+  const now=Date.parse(data.generated_at||'')||Date.now(), lim=now-(f.jours||30)*864e5;
+  return (data.corrections||[]).filter(r=>(Date.parse(r.debut||'')||now)>=lim&&(!f.depot||r.repo===f.depot));
+}
+function aggregate(data,f){
+  const rows=pick(data,f), fini=rows.filter(r=>r.resultat!=='en_cours'), ok=rows.filter(r=>r.resultat==='poussee');
+  const a={rows,n:rows.length,fini:fini.length,poussees:ok.length};
+  a.panne=rows.filter(r=>r.resultat==='panne').length;a.coupee=rows.filter(r=>r.resultat==='coupee').length;a.refusee=rows.filter(r=>r.resultat==='refusee').length;
+  a.cout=sum(rows.map(r=>r.cout));a.tok=sum(rows.map(r=>r.tok));
+  a.coutPoussee=ok.length?sum(ok.map(r=>r.cout))/ok.length:null;
+  a.cols={};for(const[k]of COLS)a.cols[k]=sum(rows.map(r=>(r.cols||{})[k]));
+  a.fils=sum(rows.map(r=>r.fils));a.filsPousses=sum(ok.map(r=>r.fils));
+  a.coutFil=a.filsPousses?sum(ok.map(r=>r.cout))/a.filsPousses:null;
+  const att=rows.map(r=>r.attente_ms).filter(x=>x!=null);a.attente=median(att);a.valides=att.length;
+  // où part l'argent : par résultat (seul l'agent de correction coûte)
+  a.argent={};for(const r of rows){const k=r.resultat||'rien';a.argent[k]=(a.argent[k]||0)+(r.cout||0);}
+  // les fils, de la PR à la réponse postée
+  a.funnel={recus:a.fils,traites:sum(rows.filter(r=>Object.values(r.cols||{}).some(Boolean)).map(r=>r.fils)),
+    valides:sum(rows.filter(r=>r.attente_ms!=null&&r.resultat!=='refusee'&&r.resultat!=='coupee').map(r=>r.fils)),pousses:a.filsPousses,
+    pertes:rows.filter(r=>['coupee','refusee','panne'].includes(r.resultat)).map(r=>({r,n:r.fils}))};
+  // l'analyse : qui commente, quels fichiers reviennent (fiches disponibles)
+  a.qui={};a.fichiers={};
+  for(const r of rows)for(const x of ((data.fiches||{})[r.run]||{}).fils||[]){if(x.who)a.qui[x.who]=(a.qui[x.who]||0)+1;const p=String(x.path||'').split('/').pop();if(p)a.fichiers[p]=(a.fichiers[p]||0)+1;}
+  a.modeles=[...new Set(rows.map(r=>modele(r.modele)).filter(Boolean))];
+  return a;
+}
+function kpis(a){
+  return `<div class="kpis">
+  <div class="kpi"><b>${a.poussees} / ${a.fini}</b><span>PR poussées, sur les corrections lancées${a.panne?' · '+plural(a.panne,'en panne','en panne'):''}${a.coupee?' · '+plural(a.coupee,'coupée','coupées')+' par un garde-fou':''}${a.refusee?' · '+plural(a.refusee,'refusée','refusées')+' par toi':''}</span></div>
+  <div class="kpi"><b>${a.coutPoussee==null?'–':fmtUsd(a.coutPoussee)}</b><span>par PR poussée (${fmtUsd(a.cout)} en tout)${a.coutFil==null?'':' · '+fmtUsd(a.coutFil)+' par fil'}</span></div>
+  <div class="kpi"><b>${a.cols.corrige+a.cols.test} / ${a.fils}</b><span>fils corrigés, dont ${a.cols.test} avec un test · ${a.cols.laisse} laissés · ${a.cols.reponse} réponses seules</span></div>
+  <div class="kpi"><b>${a.attente==null?'–':fmtDur(a.attente/1000)}</b><span>attente médiane à ta validation (${plural(a.valides,'passage','passages')})</span></div></div>`;
+}
+function argent(a){
+  const items=Object.entries(a.argent).filter(([,v])=>v>0).sort((x,y)=>y[1]-x[1]), max=Math.max(0.01,...items.map(([,v])=>v));
+  return `<div class="box"><div class="h">Où part l'argent <span class="mut">${fmtUsd(a.cout)} · ${fmtK(a.tok)} jetons sur la période</span></div>
+  <p class="why">Seul l'agent de correction coûte (${esc(a.modeles.join(', ')||'modèle inconnu')}) ; préparation, contrôles, diff et push sont des scripts, ta validation c'est du temps. Par résultat du run : en rouge, ce qui n'a rien poussé.</p>
+  ${items.length?`<div class="hb">${items.map(([k,v])=>`<span>${esc((RES[k]||[0,k])[1])}</span><div class="bar"><i class="${k==='poussee'?'ok':k==='en_cours'?'':'err'}" style="width:${(v/max*100).toFixed(1)}%"></i></div><span class="v num">${fmtUsd(v)}</span>`).join('')}</div>`:'<p class="mut">Aucun coût sur la période.</p>'}</div>`;
+}
+function funnel(a){
+  const f=a.funnel, st=(l,v,c,noPct)=>`<div class="st"><span>${l}</span><div class="b ${c||''}" style="width:${f.recus?Math.max(4,v/f.recus*100):4}%">${v}</div><span class="num">${noPct?'·':pct(v,f.recus)+' %'}</span></div>`;
+  const leak=f.pertes.filter(p=>p.n).map(p=>`<div class="leak">${plural(p.n,'fil','fils')} dans ${esc(depot(p.r.repo))}#${esc(p.r.pr)} (${esc(RES[p.r.resultat][1])}${p.r.poste?' '+esc(ou(p.r.poste)):''})</div>`).join('');
+  return `<div class="box"><div class="h">Des fils aux réponses</div><p class="why">Les fils de commentaire, de la PR jusqu'à la réponse postée. En rouge, ce qui s'arrête en route.</p>
+  <div class="funnel">${st('💬 Fils reçus',f.recus,'',true)}${st('🛠 Traités par l\'agent',f.traites)}${st('✋ Validés par toi',f.valides,'warn')}${st('📤 Poussés et répondus',f.pousses,'ok')}${leak}</div>
+  <p class="note">Colonnes de la réponse : ${COLS.map(([k,i,l])=>`${i} ${l} ${a.cols[k]}`).join(' · ')}.</p></div>`;
+}
+function colsCell(r){return COLS.map(([k,i])=>`<span title="${esc(k)}">${i}${(r.cols||{})[k]||0}</span>`).join(' ');}
+function table(a,sel){
+  const rows=a.rows.map(r=>`<tr class="row${r.run===sel?' on':''}" data-run="${esc(r.run)}" tabindex="0"><td class="num">${esc(day(r.debut))}</td>
+    <td style="white-space:normal;max-width:360px"><b>${esc(depot(r.repo))}#${esc(r.pr)}</b> <span class="mut">${esc(String(r.titre||'').slice(0,70))}</span></td>
+    <td>${esc(r.auteur||'')}</td><td class="num">${colsCell(r)}</td><td class="mut" style="white-space:normal;max-width:160px">${esc(String(r.controles||'·').replace(/\s*\(.*$/,''))}</td>
+    <td class="r num">${r.attente_ms==null?'<span class="mut">·</span>':esc(fmtDur(r.attente_ms/1000))}</td>
+    <td>${pill(...(RES[r.resultat]||['idle',r.resultat]))}${r.poste?` <span class="mut">${esc(POSTE[r.poste]||r.poste)}</span>`:''}</td>
+    <td class="r num">${r.ms==null?'·':esc(fmtDur(r.ms/1000))}</td><td class="r num">${fmtK(r.tok)}</td><td class="r num"><b>${fmtUsd(r.cout)}</b></td></tr>`).join('');
+  return `<div class="box"><div class="h">Les corrections <span class="mut">${plural(a.n,'run','runs')} · le plus récent d'abord · clic : sa fiche</span></div>
+  ${rows?`<div class="scroll"><table><tr><th>Date</th><th>PR</th><th>Auteur</th><th>Fils</th><th>Contrôles</th><th class="r">Ta validation</th><th>Résultat</th><th class="r">Durée</th><th class="r">Jetons</th><th class="r">Coût</th></tr>${rows}</table></div>`:'<p class="mut">Aucune correction sur la période.</p>'}</div>`;
+}
+function gantt(der){
+  const pts=(der||[]).map(s=>({...s,t:Date.parse(s.at||'')})).filter(s=>s.t&&ROW[s.n]);
+  if(!pts.length)return '<p class="mut">Déroulé indisponible.</p>';
+  const t0=Math.min(...pts.map(s=>s.t)),t1=Math.max(...pts.map(s=>s.t+s.ms)),span=Math.max(1,t1-t0);
+  return `<div class="gantt">${pts.map(s=>{const c=s.n==='gate'?'g':s.s==='Failed'?'x':s.n==='push'&&s.s==='Success'?'o':'';
+    return `<span>${esc(ROW[s.n])}</span><span class="tr"><i class="${c}" style="left:${((s.t-t0)/span*100).toFixed(1)}%;width:${(s.ms/span*100).toFixed(1)}%"></i></span>`;}).join('')}</div>
+  <div class="legend"><span><i style="background:var(--info)"></i>étape</span><span><i style="background:var(--warn)"></i>à ta validation</span><span><i style="background:var(--err)"></i>en échec</span><span><i style="background:var(--ok)"></i>poussée</span></div>`;
+}
+function fiche(data,r,tab){
+  if(!r)return '';
+  const f=(data.fiches||{})[r.run];
+  const head=`<div class="h">${esc(depot(r.repo))}#${esc(r.pr)} <span class="mut">${esc(r.titre||'')} · <a href="${esc(r.url)}" target="_blank" rel="noopener">la PR ↗</a></span></div>`;
+  if(!f)return `<div class="box">${head}<p class="mut">Fiche non gardée (run ancien) : la ligne garde ses chiffres.</p></div>`;
+  const T=[['fils','💬 Fils'],['cout','💰 Coût'],['deroule','🕒 Déroulé'],['controles','🧪 Contrôles']], cur=T.some(([k])=>k===tab)?tab:'fils';
+  const colOf=k=>COLS.find(c=>c[0]===k);
+  const body={
+    fils:()=>(f.fils||[]).length?`<div class="cards">${f.fils.map(x=>{const c=colOf(x.col);return `<div class="card"><p><span class="tag">${esc(String(x.path||'').split('/').slice(-2).join('/'))}${x.line?':'+esc(x.line):''}</span> ${c?pill(c[3],c[1]+' '+c[2]):pill('idle','sans réponse')}</p>
+      <p class="mut">${esc(x.who||'?')} : « ${esc(String(x.text||'').replace(/\s+/g,' ').slice(0,220))} »${x.url?` <a href="${esc(x.url)}" target="_blank" rel="noopener">↗</a>`:''}</p>${x.reponse?`<p>${esc(String(x.reponse).replace(/\*\*/g,'').replace(/\s+/g,' ').slice(0,260))}</p>`:''}</div>`;}).join('')}</div>`:'<p class="mut">Aucun fil gardé pour ce run.</p>',
+    cout:()=>`<table><tr><th>Poste</th><th>Modèle</th><th class="r">durée</th><th class="r">jetons</th><th class="r">coût</th></tr>
+      <tr><td><b>🛠 Correction</b></td><td class="mut">${esc(modele(r.modele)||'·')}</td><td class="r num">${esc(fmtDur((r.agent_ms||0)/1000))}</td><td class="r num">${fmtK(r.tok)}</td><td class="r num"><b>${fmtUsd(r.cout)}</b></td></tr>
+      ${['prepare','check','diff','push'].map(k=>`<tr class="off"><td>${esc(ROW[k])}</td><td>0 token</td><td class="r">·</td><td class="r">·</td><td class="r">·</td></tr>`).join('')}
+      <tr class="off"><td>${esc(ROW.gate)}</td><td>ton temps</td><td class="r num">${r.attente_ms==null?'·':esc(fmtDur(r.attente_ms/1000))}</td><td class="r">·</td><td class="r">·</td></tr></table>
+      <p class="note">${r.fils?fmtUsd(r.cout/r.fils)+' par fil · ':''}coût de Kronn : l'agent de correction ne lance aucun sous-agent.</p>`,
+    deroule:()=>gantt(f.deroule)+(r.resultat==='coupee'?`<p class="note">Coupée par un garde-fou de Kronn${r.poste?' '+esc(ou(r.poste)):''} : rien n'a été poussé. Relancer « corriger » sur la PR.</p>`:''),
+    controles:()=>f.controles?`<p>${esc(f.controles.verdict||'·')}</p><p class="mut" style="margin-top:6px">${esc(f.controles.cmd||'')}</p>${f.ecartes?`<p class="note">${plural(f.ecartes,'fichier non suivi écarté','fichiers non suivis écartés')} du commit.</p>`:''}`:'<p class="mut">Contrôles non lancés.</p>'};
+  return `<div class="box">${head}<div class="tabs" role="tablist">${T.map(([k,l])=>`<button type="button" role="tab" data-tab="${k}" aria-selected="${k===cur}" class="${k===cur?'on':''}">${esc(l)}</button>`).join('')}</div>${body[cur]()}</div>`;
+}
+function bars(obj){
+  const it=Object.entries(obj).sort((x,y)=>y[1]-x[1]).slice(0,6), max=Math.max(1,...it.map(([,v])=>v));
+  return it.length?`<div class="hb">${it.map(([k,v])=>`<span class="mono" style="overflow:hidden;text-overflow:ellipsis">${esc(k)}</span><div class="bar"><i style="width:${(v/max*100).toFixed(1)}%"></i></div><span class="v num">${v}</span>`).join('')}</div>`:'<p class="mut">Rien sur la période.</p>';
+}
+function render(data,st){
+  if(!data||!(data.corrections||[]).length)return `<header><h1>🛠 Retours · bilan</h1></header><div class="box empty">Aucune correction dans l'historique pour l'instant. Il se remplit à chaque « corriger les commentaires d'une PR » lancé depuis une fiche.</div>`;
+  const a=aggregate(data,st);
+  const ds=[...new Set((data.corrections||[]).map(r=>r.repo).filter(Boolean))].sort();
+  const sel=a.rows.find(r=>r.run===st.sel)||a.rows.find(r=>(data.fiches||{})[r.run])||a.rows[0];
+  const opt=(v,l)=>`<option value="${v}"${st.jours==v?' selected':''}>${l}</option>`;
+  return `<header><div><h1>🛠 Retours · bilan</h1><div class="mut">Corrections des commentaires de review (3e) · mis à jour ${esc(day(data.generated_at).slice(-5))}</div></div>
+  <div class="filters"><label for="f-jours">Période</label><select id="f-jours">${opt(7,'7 jours')}${opt(30,'30 jours')}${opt(90,'90 jours')}</select>
+  <label for="f-depot">Dépôt</label><select id="f-depot"><option value="">Tous</option>${ds.map(d=>`<option value="${esc(d)}"${d===st.depot?' selected':''}>${esc(depot(d))}</option>`).join('')}</select></div></header>
+  ${data.error?`<div class="note">Relevé incomplet : ${esc(data.error)}</div>`:''}
+  ${kpis(a)}<div class="grid2">${argent(a)}${funnel(a)}</div>
+  ${table(a,sel?sel.run:null)}${fiche(data,sel,st.tab)}
+  <details class="analyse"${st.analyse?' open':''}><summary>Analyse des retours : qui commente, quels fichiers reviennent</summary>
+  <div class="grid2"><div class="box"><div class="h">Qui commente le plus</div>${bars(a.qui)}</div><div class="box"><div class="h">Fichiers les plus repris</div>${bars(a.fichiers)}</div></div></details>`;
+}
+const B={readRetoursBilan,aggregate,render,gantt,pick};
+if(typeof window!=='undefined')window.RETOURS_BILAN=B;
+if(typeof document==='undefined'||!document.getElementById('app'))return;
+let DATA=readRetoursBilan(window.KronnPageData);
+const ST={jours:30,depot:'',sel:null,tab:'fils',analyse:false};
+const app=document.getElementById('app');
+function draw(){app.innerHTML=render(DATA,ST);}
+app.addEventListener('change',e=>{const t=e.target;if(t.id==='f-jours')ST.jours=+t.value;else if(t.id==='f-depot')ST.depot=t.value;else return;draw();});
+const choose=e=>{const tb=e.target.closest('[data-tab]');if(tb){ST.tab=tb.dataset.tab;draw();return;}const r=e.target.closest('tr.row');if(!r)return;ST.sel=r.dataset.run;draw();const n=app.querySelector('tr.row.on');if(n)n.focus();};
+app.addEventListener('click',e=>{if(e.target.closest('a'))return;choose(e);});
+app.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){if(e.target.closest('tr.row')){e.preventDefault();choose(e);}}});
+app.addEventListener('toggle',e=>{if(e.target.matches&&e.target.matches('details.analyse'))ST.analyse=e.target.open;},true);
+window.addEventListener('kronn:page-data',e=>{const d=readRetoursBilan(e.detail||window.KronnPageData);if(d){DATA=d;draw();}});
+draw();
+})();
+</script>
+</body>
+</html>

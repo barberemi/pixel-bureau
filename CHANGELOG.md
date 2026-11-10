@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
+- Page Kronn « Retours · bilan », à projeter au RDC : l'historique des corrections de commentaires de PR du 3e (PR poussées sur les corrections lancées, coût par PR poussée et par fil, argent par résultat, fils jusqu'à la réponse postée, attente à ta validation), une ligne par correction et sa fiche en onglets (fils et réponse prévue, coût, déroulé, contrôles) ; cron sans jetons toutes les 15 min, créé avec « corriger » par `install.py`. Au 3e, au fond du couloir, le tableau noir RETOURS DU JOUR (PR poussées et fils, en cours et pannes, jetons du jour, PR poussées sur 7 jours) ; la file des PR passe après la porte du bureau 1. La réponse prévue à chaque fil est désormais gardée dans l'état de la correction.
 - Corriger les commentaires d'une PR : chaque réponse est signée en pied, comme la revue (« — 🤖 *Corrections automatiques · Le Bureau (ClaudeCode - claude-opus-5-5 · reasoning) · Version N* »), au lieu de « **Version N** » en tête ; les réponses d'avant restent reconnues. Avec `jira.review_version_field` dans la config (par exemple `customfield_11409`), le n° de version va dans ce champ du ticket de la PR, sans jamais redescendre, avec un commentaire de traçabilité ; sans IA.
 - Fiche de l'agent des retours (3e étage) : « À lancer » ne liste que tes PR ; celle d'un autre se corrige depuis sa fiche ou le Kanban.
 

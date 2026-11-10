@@ -25,7 +25,7 @@ OFFICE = [("dwight", "Dwight"), ("jim", "Jim"), ("stanley", "Stanley"), ("phylli
 ROLES = {"dev": ("Développeur", None), "lead": ("Tech Lead", "lead"), "qa": ("Testeur", "qa"), "po": ("Product owner", "po"),
          "sm": ("Facilitateur", "sm")}
 DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "agents", "bosspages", "pagelist", "gitfut", "layout", "actions", "duck", "absences", "mails", "mail_rules", "support", "todos", "atelier", "retours", "redaction"]
-CRONS = ("office", "live", "team", "payroll", "canard", "absences", "courrier", "support_poll", "chaine_bilan", "support_bilan", "redaction_bilan")
+CRONS = ("office", "live", "team", "payroll", "canard", "absences", "courrier", "support_poll", "chaine_bilan", "support_bilan", "redaction_bilan", "retours_bilan")
 DATASET = lambda name: {"name": name, "kind": "snapshot", "max_points": 50000}  # noqa: E731
 
 
@@ -788,7 +788,7 @@ def bilan_html():
 
 
 def upsert_side_page(k, cfg, key, dry):
-    """Une page à part (« Chaîne · bilan », « Support · bilan », « Rédaction · bilan ») : créée une fois (son id dans cfg[key]), ses datasets
+    """Une page à part (« Chaîne · bilan », « Support · bilan », « Rédaction · bilan », « Retours · bilan ») : créée une fois (son id dans cfg[key]), ses datasets
     ajoutés s'ils manquent. Son HTML est publié avec la page du Bureau (install.py, publish.py page)."""
     title, datasets, _ = templates.SIDE_PAGES[key]
     pid = cfg.get(key)
@@ -984,6 +984,10 @@ def main(argv=None):
             bid = upsert_side_page(k, cfg, key, a.dry_run)
             if bid:
                 cfg[key] = bid
+    if "fix" in tpls and not templates.skipped("fix", cfg):  # « corriger » (actions.fix_pr) : la page « Retours · bilan »
+        bid = upsert_side_page(k, cfg, "retours_bilan_page_id", a.dry_run)
+        if bid:
+            cfg["retours_bilan_page_id"] = bid
     if not a.dry_run:  # skills du Bureau (revue et chaîne), avant les workflows qui les chargent : ids dans skills.<clé>
         templates.sync_skills(k.call, cfg, say=lambda m: say("  " + m))
     upsert_all(k, cfg, {key: t for key, t in tpls.items() if templates.TEMPLATES[key][1][0] != "models" or key in chosen},
