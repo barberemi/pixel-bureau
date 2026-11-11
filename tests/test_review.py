@@ -198,12 +198,12 @@ class ReviewTest(unittest.TestCase):
         r = self.garde_review({**base, "verdict": "request_changes", "comments": []})
         self.assertEqual(r["verdict"], "comment")  # request_changes sans bloquant
         approve = {**base, "verdict": "approve", "comments": [], "positive": "La borne est testée aux deux bouts.",
-                   "ticket": {"cle": "EW-1", "ok": 3, "total": 4, "non_verifiables": 1}}
+                   "ticket": {"cle": "DM-1", "ok": 3, "total": 4, "non_verifiables": 1}}
         r = self.garde_review(approve)
         self.assertEqual(r["verdict"], "comment")  # ni trace ni couverture : pas d'approve
         self.assertIn("aucune trace de recherche", r["corrections"][0])
         self.assertIn("2 fichier(s) du diff ni revus ni écartés", r["corrections"][0])
-        self.assertIn("🎫 EW-1 · ✅ 3/4 critères · 1 non vérifiables", r["body"])
+        self.assertIn("🎫 DM-1 · ✅ 3/4 critères · 1 non vérifiables", r["body"])
         self.assertTrue(r["body"].endswith("👍 Positif : La borne est testée aux deux bouts."))
         couvert = {**approve, "traces": [{"r": "R9", "recherche": "git grep f", "resultat": "aucun"}], "revus": ["src/f.py", "big.min.js"]}
         self.assertEqual(self.garde_review(couvert)["verdict"], "approve")
@@ -230,7 +230,7 @@ class ReviewTest(unittest.TestCase):
                     "**Borne non testée** — la borne passe de 2 à 3 sans test · `src/f.py:11`",
                     "**Token envoyé à Adobe** — il reste dans l'URL · `f.py:12`",  # la fin du chemin suffit
                     "**Hors du diff** — un appelant non modifié casse · `src/f.py:40`",
-                    "**Décision absente du ticket** — rien dans EW-1"]}
+                    "**Décision absente du ticket** — rien dans DM-1"]}
         r = self.garde_review(avis)
         self.assertEqual([(c["path"], c["line"], c["side"]) for c in r["comments"]], [("src/f.py", 11, "RIGHT"), ("src/f.py", 12, "RIGHT")])
         self.assertEqual(r["comments"][0]["body"], "🔴 **Borne non testée** — la borne passe de 2 à 3 sans test")
@@ -251,12 +251,12 @@ class ReviewTest(unittest.TestCase):
         git("add", "-A", cwd=self.wt)
         files = [{"filename": "src/VideoBlock.py", "status": "removed", "patch": "@@ -1,1 +0,0 @@\n-class VideoBlock:"},
                  {"filename": "src/billing.py", "status": "modified", "additions": 1, "deletions": 0,
-                  "patch": "@@ -1,1 +1,2 @@\n x = 1\n+# EW-42 : retirer après la migration"}]
+                  "patch": "@@ -1,1 +1,2 @@\n x = 1\n+# DM-42 : retirer après la migration"}]
         r = self.run_("contexte", "12", "bot", stdin=json.dumps({"reviews": [], "comments": [], "files": files}))
         self.assertEqual(r.returncode, 0, r.stderr)
         rel = Path(self.tmp, ".kronn", "review-12", "releves.md").read_text()
         self.assertIn("- `VideoBlock` : src/views.py:1:from legacy import VideoBlock", rel)
-        self.assertIn("src/billing.py : clé de ticket dans un commentaire : # EW-42", rel)
+        self.assertIn("src/billing.py : clé de ticket dans un commentaire : # DM-42", rel)
         self.assertIn("- `src/billing.py` : `tests/test_billing.py`", rel)
         self.assertIn('"doc": "docs/billing.md"', rel)
         self.assertEqual(json.loads(Path(self.tmp, ".kronn", "review-12", "ancres.json").read_text())["src/billing.py"],

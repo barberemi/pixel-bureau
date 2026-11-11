@@ -71,7 +71,7 @@ def a_la_date(t, avant):
 
 def ticket_md(t, avant=None, remontes=()):
     """Le ticket en Markdown ; essai rejoué (avant = date du commit rejoué) : ni statut ni commentaire postérieur,
-    essai d'EW-7945 : le retour d'usage de l'IA, posté après la livraison, donnait ses suites à la PR."""
+    essai d'DM-7945 : le retour d'usage de l'IA, posté après la livraison, donnait ses suites à la PR."""
     f = t.get("fields") or {}
     statut = "(essai rejoué : statut masqué)" if avant else (f.get('status') or {}).get('name') or '?'
     lines = [f"# {t.get('key')} : {f.get('summary') or ''}", "",
@@ -121,7 +121,7 @@ def reprend(ticket, repo, mode, run):
     step = old.get("etape")
     if git_ok("rev-parse", "--verify", "-q", f"refs/heads/{branch}"):
         # Kronn garde la copie de travail d'un run en échec qui a des fichiers non commités : elle tient encore la branche
-        # (essai d'EW-7945, gigya) ; ce run est fini, on reprend la branche quand même
+        # (essai d'DM-7945, gigya) ; ce run est fini, on reprend la branche quand même
         git("checkout", "--ignore-other-worktrees", "-f", "-B", branch, branch, check=True)
     elif git_ok("fetch", "origin", branch):
         git("checkout", "-f", "-B", branch, f"origin/{branch}", check=True)
@@ -268,7 +268,7 @@ def travail_humain(ticket, repos):
 
 
 def contrat_soeurs():
-    """Plusieurs dépôts : le plan validé des sœurs (cache) et où lire ce qu'elles ont écrit (EW-7901 : clés divergentes)."""
+    """Plusieurs dépôts : le plan validé des sœurs (cache) et où lire ce qu'elles ont écrit (DM-7901 : clés divergentes)."""
     e = etat()
     if not e.get("soeurs"):
         return ""
@@ -433,7 +433,7 @@ def cmd_entree(p, ticket, retours="", extra=""):
                              if docs else "aucune"))
         prev = load("cadrage.json")  # après un « Changements » à la gate du plan : il corrige son rapport au lieu de tout refaire
         txt = json.dumps(prev["resultat"], ensure_ascii=False, indent=1) if prev and prev.get("resultat") else ""
-        if txt and cite_humain(txt):  # essai d'EW-7901 : le rapport d'avant décrivait la PR humaine, le nouveau plan la reprenait
+        if txt and cite_humain(txt):  # essai d'DM-7901 : le rapport d'avant décrivait la PR humaine, le nouveau plan la reprenait
             parts.append(section("Ton rapport précédent", "Écarté : il citait le travail humain du ticket (essai de comparaison). "
                                  "Repars du ticket et du dépôt."))
         elif txt:
@@ -537,7 +537,7 @@ def liste(items):
 def cmd_compris():
     """« ✋ Ce que j'ai compris », en tête de ta gate du plan (une seule gate avant le code, à chaque ticket) : la
     compréhension du poste Plan, ce qui est à trancher, les chemins qu'il cite et qui n'existent pas. Changements = ta
-    correction repart au poste Plan puis à l'orchestrateur, autant de tours que tu veux. Essai d'EW-6550 : le cadrage avait
+    correction repart au poste Plan puis à l'orchestrateur, autant de tours que tu veux. Essai d'DM-6550 : le cadrage avait
     compris de travers, la chaîne a filé jusqu'au code ; la gate s'ouvre donc toujours (impl.gate_cadrage n'a plus d'effet)."""
     r = load("cadrage.json") or {}
     c = r.get("resultat") or {}
@@ -563,7 +563,7 @@ def cmd_compris():
 
 def cmd_mode(mode):
     """Plan seulement : code 4, saut au commentaire Jira (dernière étape) puis Stop. Complet ou essai : code 0, le poste
-    Code suit dans l'ordre. Essai d'EW-6550 : Kronn reprend un « Changements » de gate à l'étape qui SUIT la dernière
+    Code suit dans l'ordre. Essai d'DM-6550 : Kronn reprend un « Changements » de gate à l'étape qui SUIT la dernière
     gardée ; avec commente_plan juste après mode, un retour au Code a posté le plan dans Jira en mode essai."""
     avance("code")  # plan validé : une reprise (même en plan seulement, relancé en complet) repart au Code
     if (mode or "plan").strip().lower() in ("plan", "plan seulement", "plan_seulement"):

@@ -35,19 +35,7 @@ Un nouveau fichier `tests/*.test.js` est pris automatiquement (glob) ; un nouvea
 
 ## Test suites
 
-Compté le 2026-10-11 en lançant `sh tools/test.sh`.
-
-**JavaScript : 30 fichiers `tests/*.test.js`, 247 tests, tous verts.** Nombre de `test(...)` par fichier : absences 6, agent-label 3, boot 10, bosspages 3, ceremonies 7, created 4, design 3, duck 10, duckgame 10, feed-events 10, feed-links 4, guests 7, layout 9, logic 18, lot2 8, lot4 9, loupe 5, music 2, outsider 4, passions 5, piles 3, prodherald 7, reopen 8, skin 2, state 34, ticket 8, tickets-fiche 7, tvnames 4, viewparams 4, visuals 8. Les plus gros : `state.test.js` (état de la journée, 34), `logic.test.js` (18).
-
-**Python : 5 fichiers, 96 tests.**
-
-| Fichier | Tests | Portée |
-|---|---|---|
-| `tests/test_scripts.py` | 40 | Scripts de `workflows/` (snapshots, `team_shape`, `layout_save`, `relaunch`, canard...) |
-| `tests/test_install.py` | 24 | `tools/install.py`, `tools/uninstall.py` (avec un faux Kronn) |
-| `tests/test_plan.py` | 23 | `tools/plan.py`, `workflows/_plan.py` (format `bureau-layout/1`) |
-| `tests/test_templates.py` | 7 | `tools/templates.py` : modèles sans ids d'installation, rendu, crons au fuseau du bureau [src: file: tests/test_templates.py:24] |
-| `tests/test_theme.py` | 4 | Thèmes `page/src/theme-*.css` [src: file: guide/developpement.md:64] |
+Pas de compteur ici : il change à chaque PR. `sh tools/test.sh` donne le nombre de tests JS (`node --test`, tous les `tests/*.test.js`) et Python (la liste de la ligne `unittest` de `tools/test.sh`).
 
 Horloge des tests de scripts (KT-56, 2026-10-12) : les scripts lancés par `tests/test_scripts.py` voient une heure figée, midi à Paris le jour du test, via `tests/fakeclock/sitecustomize.py` (`PYTHONPATH`, variable `BUREAU_TEST_NOW`) [src: file: tests/test_scripts.py:17] ; les données de test sont datées par rapport à la même heure (`NOW`, `iso()`). Avant, trois tests échouaient entre 00h00 et 00h05 à Paris. `BUREAU_TEST_NOW=2026-10-12T00:02:00+02:00` rejoue une autre heure ; la nuit, des tests qui datent leurs runs de « il y a 5 minutes » échouent par construction.
 

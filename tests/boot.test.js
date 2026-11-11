@@ -176,10 +176,10 @@ test('launchLine : obligatoires, « … » vide, « ; » refusé, motif, retours
   const ll = (vars, vals) => JSON.parse(run(`JSON.stringify(launchLine(${JSON.stringify(vars)}, ${JSON.stringify(vals)}))`));
   const V = [{name: 'ticket', label: 'Ticket', required: true, pattern: '[A-Z]+-\\d+'}, {name: 'note', required: false}];
   assert.deepEqual(ll(V, {ticket: '…'}), {line: '', errs: {}, missing: ['Ticket']});
-  assert.deepEqual(ll(V, {ticket: 'EW-12', note: ' a\nb '}), {line: 'ticket=EW-12 ; note=a b', errs: {}, missing: []});
+  assert.deepEqual(ll(V, {ticket: 'DM-12', note: ' a\nb '}), {line: 'ticket=DM-12 ; note=a b', errs: {}, missing: []});
   assert.equal(Object.keys(ll(V, {ticket: '12'}).errs)[0], 'ticket');
   assert.deepEqual(ll([{name: 'x', pattern: '('}], {x: 'ok'}).errs, {}, 'motif invalide : ignoré, comme Kronn');
-  assert.deepEqual(ll(V, {ticket: 'EW-1', note: 'a=b'}).line, 'ticket=EW-1 ; note=a=b', 'le « = » reste permis (relaunch.py coupe au premier)');
+  assert.deepEqual(ll(V, {ticket: 'DM-1', note: 'a=b'}).line, 'ticket=DM-1 ; note=a=b', 'le « = » reste permis (relaunch.py coupe au premier)');
 });
 
 test('panneau redessiné : les saisies des champs data-fid passent au rendu suivant, leur oninput rejoué (#67)', () => {

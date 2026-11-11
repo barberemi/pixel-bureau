@@ -5,6 +5,7 @@ from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEAM = "euro" + "news"  # écrit en deux morceaux : ce fichier ne doit pas se trouver lui-même
+TICKET = "E" + "W-[0-9]"  # clés Jira de l'équipe d'origine ; la démo et les exemples prennent DM-
 
 
 class PublicTreeTest(unittest.TestCase):
@@ -15,6 +16,12 @@ class PublicTreeTest(unittest.TestCase):
     def test_no_trace_of_the_original_team(self):
         self.assertEqual(self.grep("-F", TEAM), "")  # ni dans le code, ni dans la doc, ni dans les données de démo
         self.assertEqual(self.grep("-F", "@" + TEAM + "."), "")  # aucune adresse pro
+
+    def test_no_ticket_key_of_the_original_team(self):
+        """Audit produit E5 : aucune clé de ticket réelle dans le dépôt public (doc, code, tests, CHANGELOG) ;
+        les essais se racontent avec des clés DM- de la démo."""
+        self.assertEqual(subprocess.run(["git", "grep", "-n", "-E", "(^|[^A-Za-z])" + TICKET], cwd=ROOT, capture_output=True,
+                                        text=True).stdout.strip(), "")
 
     def test_public_repository_files(self):
         for f in ("README.md", "SECURITY.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md"):
