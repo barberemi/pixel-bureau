@@ -7,7 +7,7 @@ function waitList(){
   const out=[], taken=new Set(), add=(fl,run,a,b,t,go)=>{if(run)taken.add(run);out.push({fl,run,a,b,t:t||null,go});};
   if(atelierOn())for(const {r} of atGateRooms()){const g=atGate(r);add(1,r.run,r.ticket||'Un ticket',AT_GATE_TXT[r.gate]||'ta décision',(g&&g._s)||ms(r.since),()=>{atGoto(r.run);atGateFocus();});}
   if(redactionOn())for(const t of rdTables()){const n=(t.tickets||[]).filter(x=>x.etat==='gate').length;
-    if(n)add(2,t.run,plural(n,'ticket','tickets')+' au tampon',clip(t.intention||'',44),ms(t.since),()=>rdGoto(t.run));}
+    if(n)add(2,t.run,plural(n,'ticket','tickets')+' à valider avant Jira',clip(t.intention||'',44),ms(t.since),()=>rdGoto(t.run));}
   if(retoursOn())for(const r of rtRooms())if(r.gate)add(3,r.run,rtName(r),'corrections à valider avant le push',ms(r.since),()=>rtGoto(r.run));
   if(caserneOn())for(const {t,s} of csActive())if(s.k==='gate')add(-1,t.run&&t.run.run,'Support · '+clip(t.subject||t.text||'',36),'réponse à valider avant Teams',ms((t.run&&t.run.at)||t.at),
     ()=>{setFloor(-1);CS_SEL=t.id;CS_PICK=null;SIDE_FOLDED=false;renderSide(true);});
