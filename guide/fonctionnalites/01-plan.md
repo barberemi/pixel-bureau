@@ -10,9 +10,9 @@ Un open space en pixel art où chaque personnage montre ce qui se passe dans Kro
 | --- | --- | --- |
 | Collègue (en couleur) | Une personne de l'équipe (roster du pack d'équipe, ou ajoutée à l'installation) | À sa place, ses tickets Jira en bulle |
 | Agent (hologramme) | Un workflow Kronn, avec un personnage de *The Office* ; sa couleur dit sa famille (voir plus bas) | Son étape dans un nuage, l'outil en cours dans une petite bulle sombre |
-| Visiteur | Une discussion Kronn du jour, ou plus ancienne (14 jours) tant qu'une de ses questions t'attend | En salle de réunion, puis au café ; devant le bureau du boss avec un « ? » tant qu'une question t'attend |
+| Discussion (visiteur) | Une discussion Kronn du jour, ou plus ancienne (14 jours) tant qu'une de ses questions t'attend | En salle de réunion, puis au café ; devant le bureau du boss avec un « ? » tant qu'une question t'attend |
 | Le boss | La personne qui a installé la page (`owner`) | Au bureau du boss, bras levés quand une validation l'attend |
-| Invité de passage | Quelqu'un qui passe voir l'équipe (clé `guests` du roster) | Au plus une fois par jour ouvré, 20 à 40 min, à une heure tirée au sort ; il se promène |
+| Invité de passage | Quelqu'un qui passe voir l'équipe (clé `guests` du roster) ; la légende range avec lui tous ceux qui passent puis repartent : Gandalf et Yoda, la tournée de café, le ménage du soir, le facteur et ses porteurs | Au plus une fois par jour ouvré, 20 à 40 min, à une heure tirée au sort ; il se promène |
 
 Un invité de passage entre par la porte, va saluer des collègues à leur bureau, prend un café, s'assoit sur le canapé, puis repart. L'heure et la durée de sa visite sont tirées au sort pour chaque date : tout le monde le voit au même moment, et il ne passe pas forcément tous les jours (`chance`). Il n'apparaît que sur le plan ; un clic ouvre sa fiche, avec son heure d'arrivée et de départ. Un invité peut aussi venir à heure fixe (même la nuit, même le week-end), faire le tour de toutes les salles et lancer sa phrase dans sa bulle.
 
