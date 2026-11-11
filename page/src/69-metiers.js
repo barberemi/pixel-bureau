@@ -12,6 +12,14 @@ const METIERS={
   impl:{lbl:'Implémentation',court:'Implé',ico:'🏭',fl:1,kit:'chantier'}}; // court : l'étiquette du plan, qui doit rester petite
 // les copies d'un agent dessinées aux étages (atWorker, rdAgent…) gardent son champ metier : seul le personnage du RDC compte
 const metierOf=c=>c&&!c.person&&!c.visitor&&METIERS[c.metier]&&byKey[c.key]===c?METIERS[c.metier]:null;
+// en couleurs pleines, un agent des étages ressemblerait à un collègue : au RDC, le petit robot hologramme du soir
+// (drawRobot, 38-passions.js) flotte à son épaule, du côté où il regarde, et dit « agent ». Le lanceur de la chaîne (Ryan,
+// casque de chantier, 69-atelier-rdc.js) aussi. Pas aux étages : leurs agents y sont des copies, dessinées par l'étage.
+const floorAgentRobot=c=>FLOOR===0&&!!c&&(!!metierOf(c)||(typeof atIsLauncher==='function'&&atIsLauncher(c)));
+function drawAgentRobot(c,now){
+  const x=Math.round(c.pos.x),y=Math.round(c.pos.y),bob=REDUCED_MOTION?0:Math.round(Math.sin(now/500)*2);
+  drawRobot(x+(c.dir==='left'?-22:18),y-34+bob,now);
+}
 // un agent par métier, dans l'ordre de la barre (le premier de la config si deux le revendiquent)
 const mtAgents=()=>Object.keys(METIERS).map(k=>chars.find(c=>c.metier===k&&!c.person&&!c.visitor)).filter(Boolean);
 // toujours là : sans run du jour (ou reparti), il est à sa place, au repos ; un workflow désactivé dans Kronn le reste aussi

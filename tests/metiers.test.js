@@ -94,3 +94,23 @@ test('état d\'un agent dans la barre : sa validation passe avant le travail', (
   assert.equal(J(`mtStatus({...byKey.dwight, _st: {st: 'work'}}).txt`), 'au travail');
   assert.equal(J(`mtStatus({...byKey.dwight, _st: {st: 'idle'}}).txt`), 'libre');
 });
+
+test('le petit robot du soir suit les agents des étages au RDC, pas les collègues ni les autres agents (audit produit V6)', () => {
+  run('setFloor(0);');
+  const robot = k => J(`floorAgentRobot(byKey.${k})`);
+  assert.equal(robot('nellie'), true, 'Support');
+  assert.equal(robot('dwight'), true, 'Revue');
+  assert.equal(robot('ryan'), true, 'Implé : le lanceur de la chaîne');
+  assert.equal(robot('jim'), false, 'un agent en hologramme n\'en a pas besoin');
+  assert.equal(robot('p_pam'), false, 'un collègue');
+  assert.equal(J('floorAgentRobot(Object.assign(Object.create(byKey.dwight), byKey.dwight, {key: "at_3"}))'), false, 'une copie dessinée à un étage');
+  run('setFloor(1);');
+  assert.equal(robot('dwight'), false, 'aux étages, pas de robot');
+  run('setFloor(0);');
+  // il se dessine : drawRobot appelé à l'épaule, du côté où l'agent regarde
+  const at = J(`(() => {const c = byKey.dwight, keep = drawRobot, pos = c.pos, dir = c.dir; let got = null;
+    drawRobot = (x, y) => { got = [x, y]; }; c.pos = {x: 100, y: 200};
+    try { c.dir = 'left'; drawAgentRobot(c, 0); const l = got; c.dir = 'right'; drawAgentRobot(c, 0); return [l, got]; }
+    finally { drawRobot = keep; c.pos = pos; c.dir = dir; }})()`);
+  assert.deepEqual(at, [[78, 166], [118, 166]]);
+});
