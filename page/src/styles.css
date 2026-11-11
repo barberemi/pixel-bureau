@@ -309,6 +309,7 @@ button.back kbd{font:10px ui-monospace,Menlo,monospace;border:1px solid var(--li
 .td-add input,.td-add select{padding:6px 8px;font:inherit;font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px}
 .td-save{margin-top:12px;padding:8px 10px;border:1px dashed var(--warn);border-radius:10px;font-size:12px}
 .td-save-row{display:flex;justify-content:space-between;align-items:center;gap:8px}.td-save .hint:empty{display:none}
+.td-save .td-lost{margin:4px 0 0;color:var(--warn);font-weight:600}
 .td-modal [data-kronn-action]::after{content:none}.td-open{display:block;margin:8px 0}
 /* « Nouvel agent » : le « + » d'une baie de la salle Serveurs (66-newagent.js, #64) */
 .na-modal{width:min(640px,calc(100vw - 32px));left:max(16px,calc(50% - 320px))}

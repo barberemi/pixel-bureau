@@ -6,7 +6,7 @@ Seuls les commentaires des membres et collaborateurs du dépôt, des personnes d
 
 ## Monter au 3e
 
-Le bouton « 🛠 3e » (les retours de PR, au survol) apparaît après « 🏭 1er » dès que le modèle est installé (`actions.fix_pr`). Les onglets suivent l'ordre des étages : -1, RDC, 1er, 3e. Le chiffre compte les PR en correction, « ✋ n » celles qui attendent ta validation. La page s'ouvre au RDC ; l'étage choisi ensuite est retenu par le navigateur.
+Le bouton « 🛠 3e » (les retours de PR, au survol) apparaît après « 🏭 1er » dès que le modèle est installé (`actions.fix_pr`). Les onglets suivent l'ordre des étages : -1, RDC, 1er, 3e. Le chiffre compte les PR en correction, « ✋ n » celles qui attendent ta validation. La page s'ouvre au RDC ; l'étage choisi ensuite reste jusqu'au rechargement dans Kronn ([ce que la page garde](32-memoire.md)).
 
 ## Ce qu'on y voit
 

@@ -4,7 +4,7 @@ Sous le rez-de-chaussée, la caserne montre les demandes du canal Support en cou
 
 ## Descendre à la caserne
 
-Le bouton « 🚒 -1 » (la caserne Support, au survol) apparaît avant « 🏢 RDC » dès que la console Support existe (`support.team` et `support.channel` réglés) : les onglets suivent l'ordre des étages, comme les boutons d'un ascenseur (-1, RDC, 1er). Le chiffre compte les interventions en cours, « ✋ n » les réponses qui attendent ta validation. Un petit gyrophare rouge tourne sur l'onglet tant qu'un appel attend d'être pris ou qu'une intervention est en cours (il reste fixe si le système demande moins d'animations). La page s'ouvre au RDC ; l'étage choisi ensuite est retenu par le navigateur.
+Le bouton « 🚒 -1 » (la caserne Support, au survol) apparaît avant « 🏢 RDC » dès que la console Support existe (`support.team` et `support.channel` réglés) : les onglets suivent l'ordre des étages, comme les boutons d'un ascenseur (-1, RDC, 1er). Le chiffre compte les interventions en cours, « ✋ n » les réponses qui attendent ta validation. Un petit gyrophare rouge tourne sur l'onglet tant qu'un appel attend d'être pris ou qu'une intervention est en cours (il reste fixe si le système demande moins d'animations). La page s'ouvre au RDC ; l'étage choisi ensuite reste jusqu'au rechargement dans Kronn ([ce que la page garde](32-memoire.md)).
 
 ## Ce qu'on y voit
 

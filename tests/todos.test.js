@@ -77,3 +77,14 @@ test('nouvelles données : un changement déjà fait dans Kronn sort de la liste
   assert.deepEqual(J('TD_PEND.map(o=>o.op+":"+(o.id||o.title))'), ['duck:t2'], 't1 fait et l\'ajout créé : seuls restent ceux pas encore vus');
 });
 
+
+test('dans Kronn (stockage refusé) : la fenêtre dit qu\'un changement en attente est perdu au rechargement', () => {
+  const refuse = () => { throw new Error('SecurityError'); };
+  const kronn = load({layout: 'open-space', globals: {localStorage: {getItem: refuse, setItem: refuse, removeItem: refuse}}});
+  assert.equal(JSON.parse(kronn.run('JSON.stringify(TD_STORE)')), false);
+  assert.equal(J('TD_STORE'), true, 'hors de Kronn (aperçu) : le navigateur garde, rien à dire');
+  kronn.run(`ACTIONS.todo=true;TODOS=readTodos({datasets:{todos:{current:${JSON.stringify(JSON.stringify(DS))}}}});TD_PEND=[];tdAdd('Appeler Jan','high');`);
+  const card = JSON.parse(kronn.run(`JSON.stringify(tdCard(tdIn('todo').find(t=>t.pend)))`));
+  assert.match(card, /à enregistrer · perdu au rechargement/);
+  assert.doesNotMatch(J(`tdCard({id:'x',title:'x',col:'todo',pend:true})`), /perdu/);
+});

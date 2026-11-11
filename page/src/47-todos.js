@@ -4,7 +4,7 @@
 // une discussion Kronn liée) et done (faites aujourd'hui ou hier). Le tableau (objects.todo du plan) montre un post-it par
 // todo et une pastille : à faire, plus les todos où le canard t'attend (dataset gates, ducks.awaiting) ; un clic ouvre la
 // fenêtre en colonnes. Un changement (ajout, glisser, ✓ Fait, 🦆 Au canard, ×) s'affiche tout de suite, en pointillé,
-// gardé dans ce navigateur (bureau:todo-pend) jusqu'à « Enregistrer » : un seul code copié pour toute la liste, une seule
+// gardé dans ce navigateur hors de Kronn (bureau:todo-pend ; dans Kronn, perdu au rechargement) jusqu'à « Enregistrer » : un seul code copié pour toute la liste, une seule
 // carte Kronn, un seul run. Rien en mode TV : ce sont les todos du boss.
 let TODOS=null, TD_PEND=[], TD_SENT=null, TD_SEQ=0;
 const TD_MAX_TITLE=200, TD_COLS=['todo','duck','done'];
@@ -47,6 +47,10 @@ function tdAdd(title,priority){
   TD_PEND.push({op:'add',key:'tmp-'+Date.now().toString(36)+'-'+(TD_SEQ++),title,priority:priority||'normal',to:'todo',at:Date.now()});tdKeep();tdRefresh();
 }
 const tdN=n=>n?'✏️ '+plural(n,'changement pas encore enregistré','changements pas encore enregistrés'):'';
+// dans Kronn, le cadre de la page n'a pas de stockage (localStorage refusé) : un changement en attente est perdu au
+// rechargement, et la fenêtre le dit ; hors de Kronn (aperçu), il reste dans ce navigateur
+const TD_STORE=(()=>{try{localStorage.setItem('bureau:probe','1');localStorage.removeItem('bureau:probe');return true;}catch(e){return false;}})();
+const TD_LOST='⚠ Kronn ne garde rien dans ce navigateur : si tu recharges ou fermes la page, ces changements sont perdus.';
 const TD_OK='<b style="color:var(--ok)">✓ Enregistré.</b> Le tableau suit dans quelques secondes.';
 const todoCode=ops=>'TODO1:'+btoa(unescape(encodeURIComponent(JSON.stringify({at:Date.now(),ops}))));
 
@@ -93,7 +97,7 @@ function tdCard(t){
     if(t.disc)m.push(discLink(t.disc,'Ouvrir la discussion ↗'));
   }
   if(t.col==='done'&&t.updated&&!t.pend)m.push(`<span>✓ il y a ${esc(bpAge(Math.max(0,T-ms(t.updated))))}</span>`);
-  if(t.pend)m.push('<span class="td-chip">à enregistrer</span>');
+  if(t.pend)m.push(`<span class="td-chip">à enregistrer${TD_STORE?'':' · perdu au rechargement'}</span>`);
   const acts=ro?'':t.col==='todo'?'<button type="button" data-do="done">✓ Fait</button><button type="button" data-do="duck" title="Le canard ouvre une discussion Kronn sur cette todo">🦆 Au canard</button>':
     t.col==='duck'?'<button type="button" data-do="done">✓ Fait</button>':'<button type="button" data-do="todo">↩ À faire</button>';
   return `<div class="td-card${t.pend?' pend':''}" data-id="${esc(t.id)}" draggable="${ro?'false':'true'}" style="--c:${t.col==='done'?'var(--ok)':t.col==='duck'?'#f5c518':p[1]}">`+
@@ -114,7 +118,8 @@ function tdRender(box){
     col('done','Faites','Aujourd\'hui et hier ; les plus anciennes restent dans Kronn')+`</div>`+
     (ro?'<p class="hint">Lecture seule : le workflow « Le Bureau · todos » n\'est pas installé (python3 tools/install.py l\'ajoute).</p>':
      `<div class="td-save" data-kronn-action-slot-host${n||TD_SENT?'':' hidden'}><div class="td-save-row"><span class="td-n">${tdN(n)}</span>`+
-     `<button type="button" class="on" data-kronn-action="bureau-todo"${n?'':' disabled'}>💾 Enregistrer</button></div><div class="hint"></div></div>`);
+     `<button type="button" class="on" data-kronn-action="bureau-todo"${n?'':' disabled'}>💾 Enregistrer</button></div>`+
+     `<p class="td-lost"${n&&!TD_STORE?'':' hidden'}>${TD_LOST}</p><div class="hint"></div></div>`);
   if(ro)return;
   const addRow=body.querySelector('.td-add');
   {const inp=addRow.querySelector('input');inp.value=typed;addRow.querySelector('select').value=priv;if(focused)inp.focus();} // relevé de chaque minute : la saisie reste
@@ -149,7 +154,7 @@ function tdSaveWire(box){
     if(!TD_SENT)return;
     const st=b.getAttribute('data-kronn-action-state');
     if(st==='succeeded'&&!TD_SENT.done){TD_SENT.done=true;TD_PEND=TD_PEND.filter(o=>!TD_SENT.ops.includes(o));tdKeep();
-      host.querySelector('.td-n').textContent=tdN(TD_PEND.length);hint.innerHTML=TD_OK;}
+      host.querySelector('.td-n').textContent=tdN(TD_PEND.length);host.querySelector('.td-lost').hidden=!TD_PEND.length||TD_STORE;hint.innerHTML=TD_OK;}
     else if(st==='failed')hint.innerHTML='<b style="color:var(--err)">Refusé :</b> le détail est dans la carte Kronn. Tes changements restent là, en pointillé.';
   }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
 }
