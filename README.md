@@ -2,6 +2,13 @@
 
 Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office* : la journée de l'équipe et de ses agents IA dans un open space en pixel art. Collègues, workflows Kronn, mises en prod et validations en attente, d'un coup d'œil.
 
+Le Bureau fait deux choses, et tu choisis la seconde à l'installation :
+
+- **Voir l'équipe** : le plan, le Kanban, les mises en prod, le fil de la journée, le mode TV. Des crons sans IA : 0 jeton, ils ne font que lire Jira et GitHub.
+- **Faire travailler des agents** : implémenter un ticket jusqu'à la PR (1er étage), rédiger des tickets et relire des PR (2e), corriger les commentaires de review (3e), répondre au Support (-1). Chaque run coûte des jetons ; les pages bilan donnent le coût réel par ticket, par réponse ou par PR. La PR d'un ticket, les tickets Jira, les corrections poussées et les réponses Teams attendent ta décision ; seule la revue de PR poste son avis directement.
+
+La page est celle de la personne qui l'installe : elle en est « le boss » et reçoit les décisions. L'équipe la voit sur l'[écran mural](guide/fonctionnalites/06-mode-tv.md), ou chacun installe la sienne.
+
 ![Le plan à 11h](guide/img/plan.png)
 
 ## Fonctionnalités
