@@ -6,8 +6,24 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-11
+
+En bref : Le Bureau devient un immeuble d'agents.
+
+- **-1, la caserne Support** : les demandes du canal Teams, une réponse rédigée par un agent, validée par toi, postée sous ton nom.
+- **1er, l'atelier d'implémentation** : un ticket implémenté par une chaîne de postes jusqu'à la PR, contrôles et revue compris.
+- **2e, la rédaction et la revue** : des tickets Jira rédigés depuis une intention, les PR relues avec commentaires inline.
+- **3e, les retours de PR** : les commentaires de review corrigés, réponses signées, review redemandée.
+- **Quatre pages bilan** à projeter au RDC : Chaîne, Support, Rédaction, Retours (coût réel par ticket, par réponse, par PR).
+- **Au RDC** : la tuile L'immeuble, un agent par étage dans sa tenue, la tuile « À toi » pour ce qui t'attend, l'État de l'installation.
+- **Lisibilité et accessibilité** (audit du 7 novembre) : légende, contrastes, focus clavier, fenêtres en dialogue, étages lisibles à 1440 px.
+- **Sécurité** (audit du 7 novembre) : commandes de contrôle, IMAP chiffré, CI, pack d'équipe confiné, agents bornés.
+- **Prérequis** : Kronn 0.15.2 ou plus (la page dépasse 1 Mo).
+
 ### Ajouté
 
+- État de l'installation : une ligne « Écran mural (mode TV) » et l'adresse de l'écran à copier (`/standalone/pages/<id>?tv=1`, faite avec `kronn.ui` et l'id de la page), avec le choix de l'étage, du stand-up et de la loupe ; `?floor=2` et `?floor=3` sont acceptés.
+- Guide : page « Ce que la page garde » : dans Kronn, la page ne garde rien d'une visite à l'autre.
 - Page Kronn « Retours · bilan », à projeter au RDC : l'historique des corrections de commentaires de PR du 3e (PR poussées sur les corrections lancées, coût par PR poussée et par fil, argent par résultat, fils jusqu'à la réponse postée, attente à ta validation), une ligne par correction et sa fiche en onglets (fils et réponse prévue, coût, déroulé, contrôles) ; cron sans jetons toutes les 15 min, créé avec « corriger » par `install.py`. Au 3e, au fond du couloir, le tableau noir RETOURS DU JOUR (PR poussées et fils, en cours et pannes, jetons du jour, PR poussées sur 7 jours) ; la file des PR passe après la porte du bureau 1. La réponse prévue à chaque fil est désormais gardée dans l'état de la correction.
 - Corriger les commentaires d'une PR : chaque réponse est signée en pied, comme la revue (« — 🤖 *Corrections automatiques · Le Bureau (ClaudeCode - claude-opus-5-5 · reasoning) · Version N* »), au lieu de « **Version N** » en tête ; les réponses d'avant restent reconnues. Avec `jira.review_version_field` dans la config (par exemple `customfield_11409`), le n° de version va dans ce champ du ticket de la PR, sans jamais redescendre, avec un commentaire de traçabilité ; sans IA.
 - Fiche de l'agent des retours (3e étage) : « À lancer » ne liste que tes PR ; celle d'un autre se corrige depuis sa fiche ou le Kanban.
@@ -43,6 +59,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- Kronn 0.15.2 au minimum : l'installateur s'arrête avec la raison sur un Kronn plus ancien, qui refuse une page de plus de 1 000 000 octets.
+- Dépôt public : plus aucune clé de ticket de l'équipe d'origine (exemples, essais et tests en clés DM- de la démo), vérifié par un test ; la doc ne donne plus de compteurs de workflows, datasets ou tests écrits à la main.
 - Créer un ticket : 8 tickets au plus par intention, une limite que la rédaction connaît maintenant. Les livrables en trop étaient coupés sans prévenir ; ils sont mis de côté, relus par la critique et listés au tampon pour une autre intention. Au 2e, la table et le liège montrent « +n » au-delà de quatre tickets.
 - Chaîne d'implémentation, poste 🧪 Tests moins cher : au plus 6 contre-épreuves par passage (`impl.postes.tests.mutations`), le test ciblé seulement, et les tests liés aux fichiers touchés donnés d'avance. DM-7848 avait coûté 14,56 $ en une session de 31 min.
 - Chaîne d'implémentation, mode essai : une escalade (bloquants restants après les tours) arrête le run avec une note « escalade en essai : bloquants restants … » et son bilan, au lieu d'attendre une gate qu'on approuvait sans regarder. En plan et en complet, la gate reste.
@@ -55,6 +73,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- Mode TV : le guide ne demande plus une branche de Kronn (fusionnée depuis 0.14.3) ni le port 5173 en dur.
+- Mes todos dans Kronn : la fenêtre prévient qu'un changement non enregistré est perdu au rechargement ; le guide ne promet plus « retenu par le navigateur » pour l'étage, les filtres, la loupe ou le thème.
 - Corriger les commentaires d'une PR et remettre une PR à jour : le run peut attendre la validation 24 h, au lieu d'être coupé à 2 h par le délai par défaut de Kronn (l'attente à la gate y compte).
 - 2e étage : couper le cron des revues en plein passage ne vide plus la salle de revue. Les instantanés live et du jour gardent les runs d'un workflow désactivé ; sans le run du cron, la revue en cours n'était plus assise au premier bureau (aucun relecteur, « 1 PR en lecture » au tableau).
 - Chaîne d'implémentation : le script de la chaîne est découpé en trois (`chaine.py`, `chaine_controles.py`, `chaine_pr.py`, commun `_chaine.py`) et ne reçoit que sa part de la config : rendu, il dépassait les 128 Kio qu'accepte un argument sous Linux (« Argument list too long »). Un test garde chaque script rendu sous 110 Kio.
