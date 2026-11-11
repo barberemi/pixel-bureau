@@ -9,7 +9,7 @@ function setTv(on,remember=true){
   else{if(NAMES_BEFORE_TV)NAMES=NAMES_BEFORE_TV;try{if(document.fullscreenElement)document.exitFullscreen();}catch(e){}}
   updateTv(true);mtBar(); // 69-metiers.js : la barre des agents, hors mode TV
 }
-// paramètres d'affichage de l'adresse Kronn (#page/<id>?tv=1&scene=standup, reçus dans KronnPageData.page.params) :
+// paramètres d'affichage de l'adresse Kronn (/standalone/pages/<id>?tv=1&scene=standup, reçus dans KronnPageData.page.params) :
 // appliqués une seule fois, au premier envoi qui en contient, sans toucher au réglage mémorisé ; tv=0 force le plan
 let VIEW_PARAMS_DONE=false;
 function viewParams(src){const p=src&&src.page&&src.page.params;return p&&typeof p==='object'?p:null;}
@@ -18,9 +18,9 @@ function applyViewParams(src){
   if(p.tv==='1'&&!TV)setTv(true,false); else if(p.tv==='0'&&TV)setTv(false,false);
   if(p.scene==='standup'&&TV){TVSCENE.manual=true;TVSCENE.idx=0;TVSCENE.since=0;updateTv(true);}
   if(p.loupe==='0')setLoupe(false,false); // écran mural sans loupe
-  // l'écran mural sur un étage (1 : l'atelier, 68-atelier.js ; -1 : la caserne, 68-caserne.js), ou les étages occupés en alternance
+  // l'écran mural sur un étage (-1 : la caserne, 1 : l'atelier, 2 : la rédaction, 3 : les retours), ou les étages occupés en alternance
   if(p.floor==='alt'&&floorsOn().length>1)TV_FLOOR_ALT=true;
-  else if(['0','1','-1'].includes(p.floor)&&floorsOn().includes(+p.floor)&&FLOOR!==+p.floor)setFloor(+p.floor);
+  else if(['0','1','2','3','-1'].includes(p.floor)&&floorsOn().includes(+p.floor)&&FLOOR!==+p.floor)setFloor(+p.floor);
   if(p.skin&&UI_SKINS[p.skin])applySkin(p.skin); // écran mural : thème choisi par l'adresse (pas de bouton 🎨 en mode TV), non mémorisé
 }
 let TVWHO_SIG='';

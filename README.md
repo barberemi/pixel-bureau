@@ -47,7 +47,7 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 
 | Prérequis | Pour quoi | Sans lui |
 | --- | --- | --- |
-| Kronn 0.14.1 ou plus, lancé sur ta machine | La page, ses datasets, les workflows | Rien ne s'installe |
+| Kronn 0.15.2 ou plus, lancé sur ta machine | La page, ses datasets, les workflows | Rien ne s'installe |
 | Python 3.9 ou plus (`python3`, celui que Kronn trouve dans son `PATH`) | L'installateur et les scripts des crons | Rien ne s'installe |
 | Une connexion Atlassian dans Kronn (Kronn > MCP > Atlassian), créée avant l'installation | Sprint, tickets, Kanban, stand-up | Pas de Jira : blocs masqués |
 | `gh` connecté (`gh auth login`, droits `repo` et `read:org`) et accès aux dépôts suivis | PR, mises en prod ; un profil d'équipe réservé à une organisation GitHub | Pas de PR ni de MEP ; profils réservés refusés |

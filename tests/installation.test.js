@@ -40,3 +40,24 @@ test('la fenêtre : version, commande de mise à jour, coût par capacité', () 
   assert.match(h, /<b>Équipe \(Jira, GitHub\)<\/b>.*?0 jeton/s);
   assert.doesNotMatch(h, /est sorti|nouvelle version/, 'la page ne connaît pas la dernière version : elle ne l\'annonce pas');
 });
+
+test('l\'écran mural : l\'adresse autonome de Kronn, faite avec kronn.ui et l\'id de la page', () => {
+  const fx = require('./fixtures/bureau.config.json');
+  const p = load({config: {...fx, kronn: {...fx.kronn, ui: 'http://localhost:3140'}}});
+  const J = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  assert.equal(J(`wallUrl('4f38f114-e010')`), 'http://localhost:3140/standalone/pages/4f38f114-e010?tv=1&floor=alt',
+    'plusieurs étages : ils alternent ; une barre oblique entre l\'interface et le chemin');
+  p.run(`WALL.floor = '3'; WALL.scene = 'standup'; WALL.loupe = '0';`);
+  assert.equal(J(`wallUrl('x')`), 'http://localhost:3140/standalone/pages/x?tv=1&floor=3&scene=standup&loupe=0');
+  p.run(`WALL.floor = '0';`);
+  assert.doesNotMatch(J(`wallUrl('x')`), /floor/, 'le RDC est l\'étage par défaut');
+  assert.match(J('wallUrl(null)'), /\/standalone\/pages\/<id de la page>\?tv=1/, 'sans id (démo) : la place de l\'id');
+  assert.equal(J(`pageIdOf({page: {id: 'abc'}})`), 'abc');
+  assert.equal(J(`pageIdOf({page: {}})`), null);
+  p.run(`WALL.floor = '3';`);
+  const h = J('installHtml(Date.now())');
+  assert.match(h, /<b>Écran mural \(mode TV\)<\/b>.*?0 jeton/s);
+  assert.match(h, /il faut Kronn 0\.15\.2 ou plus/);
+  for (const f of ['Alterner', 'RDC', '-1', '1er', '2e', '3e']) assert.match(h, new RegExp(`data-wall="floor"[^>]*>${f}<`), f);
+  assert.match(h, /data-wall="floor" data-v="3" aria-pressed="true"/, 'le choix reste au nouveau rendu');
+});

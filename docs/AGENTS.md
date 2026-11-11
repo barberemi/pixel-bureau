@@ -102,7 +102,7 @@ If T0–T2 are insufficient, state which additional file you need and why. Never
 
 | Outil | Version / commande |
 |-------|--------------------|
-| Kronn (lancé en local) | 0.14.1 ou plus, vérifié par l'installateur [src: file: tools/install.py:20] |
+| Kronn (lancé en local) | 0.15.2 ou plus, vérifié par l'installateur [src: file: tools/install.py:20] |
 | Python | 3.9 ou plus (`python3` du `PATH` de Kronn) [src: file: README.md:34] |
 | venv du dépôt | `python3 -m venv .venv && .venv/bin/pip install pillow websocket-client` [src: file: guide/developpement.md:42] |
 | Node | 20 ou plus, sans dépendance npm (`node --test`) [src: file: README.md:57] |
@@ -153,7 +153,7 @@ See the Test policy parameter above (§ Project parameters). Checklist: [testing
 
 | Technologie | Version | Rôle |
 |-------------|---------|------|
-| Kronn | 0.14.1 minimum [src: file: tools/install.py:20] | Live Pages, datasets, workflows et crons, API locale |
+| Kronn | 0.15.2 minimum [src: file: tools/install.py:20] | Live Pages, datasets, workflows et crons, API locale |
 | JavaScript vanilla + Canvas | sans version, sans module [src: file: guide/developpement.md:9] | La page (un seul `<script>`, rendu à 30 i/s) |
 | CSS (`styles.css`, `pixel.css`, `theme-*.css`) | sans version [src: file: guide/developpement.md:54] | Feuille de style et thèmes de page |
 | Python 3 | 3.9 minimum [src: file: README.md:34] | Scripts des crons (`workflows/`), installateur et outils (`tools/`) |

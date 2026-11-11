@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 import assemble, plan, templates  # noqa: E402
 
 LPC_GENERATOR = "https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator"
-MIN_VERSION = (0, 14, 1)
+MIN_VERSION = (0, 15, 2)  # la page assemblée dépasse 1 000 000 octets, la limite des Kronn plus anciens (#252 de Kronn)
 # personnages de The Office proposés pour les workflows de la personne (recettes dans sprites/cast.json)
 OFFICE = [("dwight", "Dwight"), ("jim", "Jim"), ("stanley", "Stanley"), ("phyllis", "Phyllis"), ("oscar", "Oscar"),
           ("angela", "Angela"), ("kevin", "Kevin"), ("creed", "Creed"), ("meredith", "Meredith"), ("toby", "Toby"),
@@ -127,7 +127,8 @@ def check_kronn(ask, defaults):
         raise InstallError(f"{e}\n  Lance Kronn, ou donne son adresse (question kronn_api).")
     v = tuple(int(x) for x in re.findall(r"\d+", str(h.get("version", "0")))[:3])
     if v < MIN_VERSION:
-        raise InstallError(f"Kronn {h.get('version')} trop ancien : il faut {'.'.join(map(str, MIN_VERSION))} ou plus.")
+        raise InstallError(f"Kronn {h.get('version')} trop ancien : il faut {'.'.join(map(str, MIN_VERSION))} ou plus "
+                           "(la page fait plus de 1 Mo, les versions précédentes la refusent).")
     say(f"✓ Kronn {h.get('version')} sur {api}")
     ui = ask.text("kronn_ui", "Adresse de l'interface Kronn (liens de la page)", defaults["kronn"]["ui"])
     return k, {"api": api, "ui": ui}
