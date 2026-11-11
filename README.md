@@ -55,7 +55,7 @@ Une page Live pour [Kronn](https://github.com/DocRoms/Kronn) façon *The Office*
 | Le venv du dépôt avec Pillow : `python3 -m venv .venv && .venv/bin/pip install pillow` | Miniatures de l'écran mural « Mes pages Kronn », cartes GitFut, affiches des Top 3, sprite LPC de l'installateur | Cartes sans image (sauf sur macOS : repli sur `sips`) |
 | Chrome ou Chromium | Miniatures de l'écran mural « Mes pages Kronn » | Cartes sans miniature |
 | Un agent IA installé dans Kronn (Claude Code, par exemple) | « Lui poser une question », plan depuis un croquis | Boutons masqués |
-| suno.com autorisé dans Kronn (Configuration > Artifacts) | Le lecteur Suno de la carte « Son écoute » | Lien vers Suno seulement |
+| suno.com autorisé dans Kronn (Configuration > Artifacts) | Le lecteur Suno de la carte « [Son écoute](guide/fonctionnalites/07-fiches.md#son-écoute) » | Lien vers Suno seulement |
 | Azure CLI connecté (`az login --allow-no-subscriptions`), la connexion Kronn « Microsoft 365 » (globale) et le planning Excel de l'équipe sur SharePoint | Absences et télétravail, calendrier de l'équipe | Tout le monde au bureau, pas de calendrier |
 | La CLI `claude` connectée à claude.ai, avec le connecteur Microsoft 365, et Azure CLI connecté | Console Support : lire le canal Teams des demandes et répondre en fil | Écran du boss normal, pas de console |
 

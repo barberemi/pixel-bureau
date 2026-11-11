@@ -144,3 +144,11 @@ Selon la clé `passion` du roster, la fiche d'un collègue affiche aussi :
 
 Sans les infos, la carte s'affiche avec « à venir ».
 
+## Son écoute
+
+La fiche d'un collègue peut montrer son morceau du moment, dans le bloc « ♪ Son écoute » (plié par défaut) : la pochette, le titre, le style et la durée, et « ▶ Écouter sur Suno ».
+
+- Le morceau vient de `music/music.json` du pack d'équipe, une entrée par clé du roster : `{"p_lynn": {"title": "…", "style": "…", "duration": "3:12", "url": "https://suno.com/song/…", "suno_id": "…", "cover": "lynn.jpg"}}`. Seuls `title` et `url` sont obligatoires. L'installation peut en ajouter ou en remplacer avec la clé `music` de `bureau.config.json`.
+- `cover` : le nom d'un fichier posé à côté de `music.json`, qui contient l'image en data URI (jpeg, png ou webp) ; elle est embarquée dans la page à l'assemblage.
+- Avec `suno_id`, et si suno.com est dans les sites autorisés de Kronn (Configuration > Artifacts), le lecteur Suno s'affiche dans la carte ; la musique continue quand on replie le bloc. Sinon, la carte garde le lien vers Suno : la page ne peut jouer aucun son elle-même.
+
