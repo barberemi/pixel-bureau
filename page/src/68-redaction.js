@@ -38,7 +38,11 @@ function readRedaction(src){
     return d&&Array.isArray(d.tables)?d:null;
   }catch(e){return null;}
 }
-const redactionOn=()=>!!((CFG.ticket&&CFG.ticket.wf)||DEMO);
+// le 2e : la salle de rédaction (modèle « créer un ticket ») et la salle de revue (modèles de revue de PR) ; l'étage
+// s'ouvre avec l'une ou l'autre, la salle absente reste vide et le dit
+const ticketOn=()=>DEMO||!!(CFG.ticket&&CFG.ticket.wf);
+const redactionOn=()=>ticketOn()||(CFG.revue_wf||[]).length>0;
+const RD_ABSENT='La rédaction (créer un ticket) n\'est pas installée';
 // démo : une intention découpée en trois tickets (le premier relu, le deuxième en critique), une autre en recherche
 function redactionDemo(){
   const at=h=>new Date(DAY0+h*36e5).toISOString();
@@ -188,7 +192,7 @@ function rdRoom(now,people){
   R(ctx,S.x-24,S.y-52,48,46,'#7a5a3c');R(ctx,S.x-20,S.y-48,40,38,'#c9a26a');if(t||pinning){R(ctx,S.x-14,S.y-42,26,22,'#f7e07a');for(let l=0;l<3;l++)R(ctx,S.x-10,S.y-36+l*5,18,2,'rgba(0,0,0,.3)');}
   atHitRd('cork',S.x-24,S.y-52,48,46,{});
   const others=rdTables().filter(x=>x!==t0);
-  rdLate(people,()=>{atPill(t?'📌 '+clip(t.intention,34):t0?'📌 le boss apporte une intention…':'📌 aucune intention en cours',S.x+(t?96:t0?100:70),S.y+10,'#1c1f26','#fff','bold 11px system-ui,sans-serif');
+  rdLate(people,()=>{atPill(t?'📌 '+clip(t.intention,34):t0?'📌 le boss apporte une intention…':ticketOn()?'📌 aucune intention en cours':'📌 rédaction non installée',S.x+(t?96:t0?100:70),S.y+10,'#1c1f26','#fff','bold 11px system-ui,sans-serif');
     if(others.length)atPill('+ '+plural(others.length,'autre intention','autres intentions')+' : clic sur le liège',S.x+70,S.y+28,'#5d6370','#fff','bold 11px system-ui,sans-serif');},1e6);
   const p=t?t.poste:null, st=k=>!t?'idle':k===p?'run':RD_POSTES.findIndex(x=>x.k===k)<RD_POSTES.findIndex(x=>x.k===p)?'ok':'wait';
   const tks=((t&&t.tickets)||[]).map(x=>M.pend[t.run+':'+x.i]?{...x,etat:'gate'}:x); // le ticket que le boss porte n'est pas encore dans Jira
@@ -354,7 +358,7 @@ function redactionHover(e){
 function redactionListHtml(){
   const l=rdTables(), rv=rvActive();
   return `<h2 class="at-h">✍ Rédaction <span class="cnt">${l.length}</span></h2>`+(l.length?l.map(t=>`<button class="at-room" data-run="${esc(t.run)}"><span class="at-top"><span class="at-title">${esc(clip(t.intention,80))}</span>${(t.tickets||[]).some(x=>x.etat==='gate')?'<span class="at-tag wait">✋ t\'attend</span>':`<span class="at-tag run">${esc((RD_POSTES.find(p=>p.k===t.poste)||{}).i||'')} ${esc((RD_POSTES.find(p=>p.k===t.poste)||{}).n||'')}</span>`}</span>
-    ${(t.tickets||[]).length?'':'<span class="mut">les tickets arrivent avec la rédaction</span>'}</button>${(t.tickets||[]).map((x,k)=>`<button class="rd-tk" data-run="${esc(t.run)}" data-k="${k}" title="Son détail"><b>T${k+1}</b> ${esc(x.summary)} <span class="mut">· ${esc(x.composant||'?')} · ${esc(String(x.points||'?'))} pts · ${esc((RD_TK[x.etat]||RD_TK.wait)[1])}</span></button>`).join('')}`).join(''):'<div class="note">Aucune intention en cours. « ▶ Lancer » sur la fiche de l\'agent des tickets en démarre une.</div>')+
+    ${(t.tickets||[]).length?'':'<span class="mut">les tickets arrivent avec la rédaction</span>'}</button>${(t.tickets||[]).map((x,k)=>`<button class="rd-tk" data-run="${esc(t.run)}" data-k="${k}" title="Son détail"><b>T${k+1}</b> ${esc(x.summary)} <span class="mut">· ${esc(x.composant||'?')} · ${esc(String(x.points||'?'))} pts · ${esc((RD_TK[x.etat]||RD_TK.wait)[1])}</span></button>`).join('')}`).join(''):(ticketOn()?'':`<div class="note">${RD_ABSENT} : <code>python3 tools/install.py</code> la propose.</div>`)+'<div class="note">Aucune intention en cours. « ▶ Lancer » sur la fiche de l\'agent des tickets en démarre une.</div>')+
     `<div class="at-gate"></div><h2 class="at-h">👀 Revue des PR <span class="cnt">${rv.length}</span></h2>`+(rv.length?rv.map(r=>{const v=r.vars||{};return `<div class="at-q"><b class="mono">${esc((String(v['current_task.repo']||'').split('/').pop()||'?')+'#'+(v['current_task.number']||'?'))}</b> <span class="mut">${esc(rvSteps(r).map(s=>rvStepName(s.n)+(s.s==='Success'?' ✓':s.s==='Running'?' …':'')).join(' · '))}</span></div>`;}).join(''):'<div class="mut">Aucune revue en cours.</div>');
 }
 // la fiche d'un ticket : ce qui sera créé pour lui seul (le tampon ne montre que le récap de la liste)
@@ -500,14 +504,14 @@ function rdDemo(mut,prep){return ()=>{const d=JSON.parse(JSON.stringify((REDACTI
   REDACTION=JSON.parse(JSON.stringify(d));rdReset();if(FLOOR===2)renderRedaction(performance.now());loupeNoteSeen(); // l'étage d'avant, posé : la scène est ce qui change ensuite
   mut(d);REDACTION=d;};}
 function rdGalleryScenes(){
-  const fam='2e étage · rédaction', ok=true;
-  return [{fam,ico:'✂',n:'Une intention découpée',d:'La rédaction découpe l\'intention en trois tickets : le fil rouge se divise en trois brins',w:'Une intention qui touche plusieurs projets',ok,
+  const fam='2e étage · rédaction', ok=ticketOn(), why=RD_ABSENT;
+  return [{fam,ico:'✂',n:'Une intention découpée',d:'La rédaction découpe l\'intention en trois tickets : le fil rouge se divise en trois brins',w:'Une intention qui touche plusieurs projets',ok,why,
       play:{len:15e3,speed:1,setup:rdDemo(d=>{const t=d.tables[0];if(t){t.poste='critique';t.tickets=t._tk||t.tickets;delete t._tk;t.tickets.forEach(x=>{x.etat='wait';});}},d=>{const t=d.tables[0];if(t){t._tk=t.tickets;t.tickets=[];t.poste='redaction';t.tour=1;}})}},
-    {fam,ico:'✋',n:'Le tampon',d:'Les tickets sont relus : le boss les tamponne, tes changements renvoient à la rédaction',w:'Avant leur création',ok,
+    {fam,ico:'✋',n:'Le tampon',d:'Les tickets sont relus : le boss les tamponne, tes changements renvoient à la rédaction',w:'Avant leur création',ok,why,
       play:{len:15e3,speed:1,setup:rdDemo(d=>{const t=d.tables[0];if(t){t.poste='valider';t.tickets.forEach(x=>{x.etat='gate';});}})}},
-    {fam,ico:'🎫',n:'Les tickets partent dans Jira',d:'Tamponnés, ils sont créés un par un : les brins du fil rouge vont jusqu\'à la boîte Jira',w:'Tu approuves chaque ticket',ok,
+    {fam,ico:'🎫',n:'Les tickets partent dans Jira',d:'Tamponnés, ils sont créés un par un : les brins du fil rouge vont jusqu\'à la boîte Jira',w:'Tu approuves chaque ticket',ok,why,
       play:{len:15e3,speed:1,setup:rdDemo(d=>{const t=d.tables[0];if(t){t.poste='valider';t.tickets.forEach(x=>{x.etat='ok';});}})}},
-    {fam,ico:'🌙',n:'Le soir au 2e',d:'Le soir et le week-end, comme au RDC : la salle de rédaction et les bureaux de revue occupés s\'allument comme des pièces, les bureaux libres restent dans l\'ombre, le boss lit sous sa lampe',w:'Hors des heures de bureau',ok,
+    {fam,ico:'🌙',n:'Le soir au 2e',d:'Le soir et le week-end, comme au RDC : la salle de rédaction et les bureaux de revue occupés s\'allument comme des pièces, les bureaux libres restent dans l\'ombre, le boss lit sous sa lampe',w:'Hors des heures de bureau',ok:true,
       play:{len:20e3,speed:60,setup:s=>{rdDemo(()=>{})();const n=parisMidnight(s)+22.5*36e5;T=n;SCENE_DEMO.e=n+20e3*60;}}},...rvGalleryScenes()];
 }
 // ---------- les scènes de la revue (68-revue.js) : rejouées sur la journée de démo, à l'heure où elle les joue ----------

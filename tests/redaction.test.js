@@ -257,3 +257,20 @@ test("plus de quatre tickets : la table et le liège montrent les quatre premier
   assert.ok(J('__pl.includes("+ 3 tickets : dans le panneau")'));
   p.run('atPill = __ap;');
 });
+
+test("le 2e s'ouvre avec la revue seule : la salle de rédaction absente le dit (audit produit F1)", () => {
+  const q = load({demo: false}), Q = c => JSON.parse(q.run('JSON.stringify(' + c + ')'));
+  q.run('CFG.ticket = null; CFG.revue_wf = [];');
+  assert.equal(Q('redactionOn()'), false, 'ni rédaction ni revue : pas de 2e');
+  q.run("CFG.revue_wf = ['abcd1234'];");
+  assert.equal(Q('redactionOn()'), true, 'la revue seule ouvre le 2e');
+  assert.equal(Q('ticketOn()'), false);
+  assert.ok(Q('floorsOn()').includes(2));
+  assert.match(Q('redactionListHtml()'), /La rédaction \(créer un ticket\) n'est pas installée/);
+  q.run('setFloor(2); renderRedaction(1000); renderRedaction(1100);'); // la salle vide se dessine
+  assert.equal(Q('FLOOR'), 2);
+  assert.equal(Q("rdGalleryScenes().filter(x => x.fam === '2e étage · rédaction' && x.n !== 'Le soir au 2e').every(x => !x.ok && !!x.why)"), true);
+  q.run("CFG.ticket = {wf: 'ffff0000'}; CFG.revue_wf = [];");
+  assert.equal(Q('redactionOn()'), true, 'la rédaction seule aussi');
+  assert.doesNotMatch(Q('redactionListHtml()'), /pas installée/);
+});

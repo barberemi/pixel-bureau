@@ -6,6 +6,11 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ## [Unreleased]
 
+### Corrigé
+
+- 2e étage : il s'ouvre aussi quand seule la revue de PR est installée ; sans le modèle « créer un ticket », la salle de rédaction reste vide et le dit.
+- Guide : la carte « Son écoute » (morceau d'un collègue, lecteur Suno) a sa section dans les fiches.
+
 ## [0.3.0] - 2026-11-11
 
 En bref : Le Bureau devient un immeuble d'agents.
