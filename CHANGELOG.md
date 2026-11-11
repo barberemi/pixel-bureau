@@ -6,6 +6,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ## [Unreleased]
 
+### Ajouté
+
+- Au RDC, les agents des étages (Support, Revue, Implé…), en couleurs pleines dans leur tenue, ont le petit robot hologramme du soir à l'épaule : on ne les prend plus pour des collègues. La légende « Qui » le dit.
+
 ### Modifié
 
 - README : ce que fait Le Bureau, en deux promesses (voir l'équipe, 0 jeton ; faire travailler des agents, au coût des jetons et sous ta décision) et à qui appartient la page.

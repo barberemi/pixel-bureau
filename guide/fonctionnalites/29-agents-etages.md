@@ -7,7 +7,7 @@ Chaque étage a son agent au RDC : 🚒 Support (-1), ✍ Ticket (2e), 🔍 Revu
 ## Au RDC
 
 - **Toujours là** : sans run du jour, ou reparti, l'agent est à son bureau, au repos. Il garde ses états habituels quand il travaille (au travail, t'attend, en panne).
-- **En couleurs pleines**, pas en hologramme, et **dans la tenue de son étage** : le casque de pompier, le chapeau mou et la carte de presse des reporters, la visière verte de la revue, le calot, la blouse et le masque du chirurgien (les retours, « les retouches »), le casque et le gilet de chantier.
+- **En couleurs pleines**, pas en hologramme, mais **avec un petit robot hologramme à l'épaule** (celui du soir en hologramme), du côté où il regarde : on ne le prend pas pour un collègue. Et **dans la tenue de son étage** : le casque de pompier, le chapeau mou et la carte de presse des reporters, la visière verte de la revue, le calot, la blouse et le masque du chirurgien (les retours, « les retouches »), le casque et le gilet de chantier.
 - **Son métier pour étiquette** (« 🔍 Revue »), pas son prénom. Sa fiche garde son nom.
 - **Sa place** est celle du plan (`seating` du plan d'équipe) : le pack peut leur réserver un îlot.
 
