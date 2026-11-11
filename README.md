@@ -57,7 +57,7 @@ La page est celle de la personne qui l'installe : elle en est « le boss » et r
 | --- | --- | --- |
 | Kronn 0.15.2 ou plus, lancé sur ta machine | La page, ses datasets, les workflows | Rien ne s'installe |
 | Python 3.9 ou plus (`python3`, celui que Kronn trouve dans son `PATH`) | L'installateur et les scripts des crons | Rien ne s'installe |
-| Une connexion Atlassian dans Kronn (Kronn > MCP > Atlassian), créée avant l'installation | Sprint, tickets, Kanban, stand-up | Pas de Jira : blocs masqués |
+| Une connexion Atlassian dans Kronn (Kronn > MCP > Atlassian), créée avant l'installation | Sprint, tickets, Kanban, daily | Pas de Jira : blocs masqués |
 | `gh` connecté (`gh auth login`, droits `repo` et `read:org`) et accès aux dépôts suivis | PR, mises en prod ; un profil d'équipe réservé à une organisation GitHub | Pas de PR ni de MEP ; profils réservés refusés |
 | Le venv du dépôt avec Pillow : `python3 -m venv .venv && .venv/bin/pip install pillow` | Miniatures de l'écran mural « Mes pages Kronn », cartes GitFut, affiches des Top 3, sprite LPC de l'installateur | Cartes sans image (sauf sur macOS : repli sur `sips`) |
 | Chrome ou Chromium | Miniatures de l'écran mural « Mes pages Kronn » | Cartes sans miniature |

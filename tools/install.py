@@ -22,8 +22,8 @@ MIN_VERSION = (0, 15, 2)  # la page assemblée dépasse 1 000 000 octets, la lim
 OFFICE = [("dwight", "Dwight"), ("jim", "Jim"), ("stanley", "Stanley"), ("phyllis", "Phyllis"), ("oscar", "Oscar"),
           ("angela", "Angela"), ("kevin", "Kevin"), ("creed", "Creed"), ("meredith", "Meredith"), ("toby", "Toby"),
           ("erin", "Erin"), ("ryan", "Ryan")]
-ROLES = {"dev": ("Développeur", None), "lead": ("Tech Lead", "lead"), "qa": ("Testeur", "qa"), "po": ("Product owner", "po"),
-         "sm": ("Facilitateur", "sm")}
+ROLES = {"dev": ("Développement", None), "lead": ("Tech Lead", "lead"), "qa": ("Test", "qa"), "po": ("Product owner", "po"),
+         "sm": ("Facilitation", "sm")}  # libellés neutres : le rôle, pas la personne
 DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "agents", "bosspages", "pagelist", "gitfut", "layout", "actions", "duck", "absences", "mails", "mail_rules", "support", "todos", "atelier", "retours", "redaction"]
 CRONS = ("office", "live", "team", "payroll", "canard", "absences", "courrier", "support_poll", "chaine_bilan", "support_bilan", "redaction_bilan", "retours_bilan")
 DATASET = lambda name: {"name": name, "kind": "snapshot", "max_points": 50000}  # noqa: E731
