@@ -6,6 +6,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ## [Unreleased]
 
+### Modifié
+
+- README : ce que fait Le Bureau, en deux promesses (voir l'équipe, 0 jeton ; faire travailler des agents, au coût des jetons et sous ta décision) et à qui appartient la page.
+
 ### Corrigé
 
 - 2e étage : il s'ouvre aussi quand seule la revue de PR est installée ; sans le modèle « créer un ticket », la salle de rédaction reste vide et le dit.
