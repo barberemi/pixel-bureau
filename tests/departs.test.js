@@ -56,5 +56,5 @@ test('mode TV : « Les envs », trois lignes par dépôt, la clé du ticket plut
 });
 
 test('clé de ticket : en majuscules seulement (« ci/tpl-bluegreen-17.5.0 » n\'en a pas)', () => {
-  assert.deepEqual(J(`['feat/EW-7399-audio', 'ci/tpl-bluegreen-17.5.0', 'dev_EW-7712-2'].map(depKey)`), ['EW-7399', null, 'EW-7712']);
+  assert.deepEqual(J(`['feat/DM-7399-audio', 'ci/tpl-bluegreen-17.5.0', 'dev_DM-7712-2'].map(depKey)`), ['DM-7399', null, 'DM-7712']);
 });

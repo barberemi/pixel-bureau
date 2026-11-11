@@ -31,7 +31,7 @@
    {
     "name": "jira_ticket_key",
     "label": "Ticket (si mal trouvé)",
-    "placeholder": "Ex. EW-7675",
+    "placeholder": "Ex. DM-7675",
     "description": "Vide : déduit de la branche, du titre ou de la description de la PR.",
     "required": false,
     "source": null,

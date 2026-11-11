@@ -38,7 +38,7 @@ repo_of = lambda pr: pr.get("repo") or MAIN_REPO  # noqa: E731
 
 
 def pr_keys(pr):
-    """Clés Jira citées par une PR : dans son titre, puis dans sa branche (« feat/EW-7317-… » quand le titre dit « ew 7317 »)."""
+    """Clés Jira citées par une PR : dans son titre, puis dans sa branche (« feat/DM-7317-… » quand le titre dit « dm 7317 »)."""
     return sorted({k.upper() for k in KEY.findall(pr.get("title") or "") + KEY.findall(pr.get("headRefName") or "")})
 
 

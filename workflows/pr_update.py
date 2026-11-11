@@ -766,7 +766,7 @@ def fix_push(repo, n, run_id, agent="", model=""):
 
 
 def fix_jira_cle(repo, n, run_id):
-    """Le chemin REST du ticket de la PR (« /rest/api/2/issue/EW-12 »), sans retour à la ligne : l'entrée des appels Jira
+    """Le chemin REST du ticket de la PR (« /rest/api/2/issue/DM-12 »), sans retour à la ligne : l'entrée des appels Jira
     qui suivent. Rien de posté par fix_push, ou aucune clé du projet Jira dans le titre ni la branche : code 3."""
     st = load(run_id)
     if not st.get("posted"):

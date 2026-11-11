@@ -28,7 +28,7 @@ Le **ticket** est déduit de la PR : la première clé du projet Jira (`jira.pro
 | **gate** | tests verts : merger ? |
 | merge | l'annonce passe au chargeur animé (mise en prod en cours), puis merge en rebase |
 | **gate** | créer la release ? |
-| release | release du tag (« 2.4.1 - EW-7801 »), notes générées par GitHub |
+| release | release du tag (« 2.4.1 - DM-7801 »), notes générées par GitHub |
 | staging | déploiement staging avec les entrées du projet, attente |
 | **gate** | staging en ligne : la prod ? |
 | prod | déploiement prod, attente, l'annonce passe en ✅, puis les PR du ticket dans tous les projets |

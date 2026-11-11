@@ -193,7 +193,7 @@ def lie_deps(wt=None, repo=None):
 
 def vendor_composer(src, dst):
     """vendor de Composer : composer/, bin/ et fichiers du haut recopiés, paquets en liens. L'autoload prend dirname(vendor)
-    pour racine : un lien sur tout vendor la mettait dans le checkout principal (EW-7901 : « Class not found »)."""
+    pour racine : un lien sur tout vendor la mettait dans le checkout principal (DM-7901 : « Class not found »)."""
     os.makedirs(dst)
     for n in os.listdir(src):
         s_, d_ = os.path.join(src, n), os.path.join(dst, n)
@@ -235,7 +235,7 @@ def section(title, body):
 
 def rejoue():
     """Essai rejoué depuis un commit passé : la base distante contient peut-être déjà le ticket (livré depuis) ; essai
-    d'EW-7945 : la revue l'a vu et le Code a rebasé sur main."""
+    d'DM-7945 : la revue l'a vu et le Code a rebasé sur main."""
     e = etat()
     if not e.get("depart"):
         return ""
@@ -247,7 +247,7 @@ def rejoue():
 
 def lecture():
     """Dépôts à lire, jamais à modifier : les sœurs et les références de l'équipe (impl.references) qui ont une copie
-    locale dans Kronn. Essais d'EW-6550 et EW-7945 : un bureau qui ne voit que son dépôt ne sait pas que le travail se fait
+    locale dans Kronn. Essais d'DM-6550 et DM-7945 : un bureau qui ne voit que son dépôt ne sait pas que le travail se fait
     dans un dépôt sœur, ni reprendre le job déjà écrit dans le dépôt de référence."""
     e = etat()
     paths = e.get("lecture") or {}
@@ -341,7 +341,7 @@ def fill(check, files, wt=None):
 
 def base_worktree():
     """Copie du point de départ (git worktree détaché, dans le dossier) pour relancer une vérification rouge : ce qui
-    était déjà rouge au départ n'est pas à corriger (essai d'EW-6550 : PHPStan signalait des erreurs anciennes des
+    était déjà rouge au départ n'est pas à corriger (essai d'DM-6550 : PHPStan signalait des erreurs anciennes des
     fichiers touchés, le Code bouclait dessus)."""
     path = dossier("depart")
     if not os.path.isdir(os.path.join(path, ".git")) and not os.path.isfile(os.path.join(path, ".git")):
@@ -408,7 +408,7 @@ def chemins_supprimes(plan_seul=False):
 
 
 def noms_supprimes(plan_seul=False):
-    """Ce qu'un ticket de suppression retire (EW-7816 : 4 blocs supprimés, 15 templates, styles et tests encore liés) :
+    """Ce qu'un ticket de suppression retire (DM-7816 : 4 blocs supprimés, 15 templates, styles et tests encore liés) :
     le nom de chaque fichier que le plan supprime et, après le code, ce que le diff retire (relevé commun avec la revue,
     _releves.noms_retires : fichiers supprimés, classes, fonctions… retirées et pas remises ailleurs)."""
     noms = {os.path.basename(x).split(".")[0] for x in chemins_supprimes(plan_seul)}

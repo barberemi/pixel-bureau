@@ -13,7 +13,7 @@ sauf jira.create.board_copy à false.
 sprint : « next » = le premier sprint futur du board (liste lue par l'étape sprints), sinon le backlog.
 resultat : {key, url, title, meta} sur stdout, relu par les relevés office et live pour la fiche de l'agent (run.res).
 Réglage jira.create (config ou pack) : types, type, components, component_required, points_field, board_copy, template,
-templates (le modèle par type : {"Story": "EW-7951", "Bug": "EW-7981"}, la clé d'un ticket Jira, un texte ou un fichier),
+templates (le modèle par type : {"Story": "DM-7951", "Bug": "DM-7981"}, la clé d'un ticket Jira, un texte ou un fichier),
 link_type, language, title_language, historique, labels (posés sur chaque ticket créé), mots_vides (mots de la maison
 ignorés par la recherche des doublons).
 
@@ -284,7 +284,7 @@ def reglage_modele(type_):
 
 
 def modele(run=None):
-    """Le modèle de ticket de l'équipe, pour le type de la demande (reglage_modele). La clé d'un ticket Jira (EW-7951) : sa
+    """Le modèle de ticket de l'équipe, pour le type de la demande (reglage_modele). La clé d'un ticket Jira (DM-7951) : sa
     description, lue par l'étape modele_jira et gardée au dossier (modele.json). « <chemin> du dépôt <dépôt> » ou
     « <dépôt>:<chemin> » : le fichier, lu dans la copie locale du dépôt (le projet Kronn du même nom, sinon le dossier des
     clones impl.clones, ~/Sites par défaut) et recopié dans la consigne : l'agent n'a plus à le chercher (run ed873fc9 : pas

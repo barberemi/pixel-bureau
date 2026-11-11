@@ -146,20 +146,20 @@ class TicketChainTest(unittest.TestCase):
         self.assertIn("« Comment faire » et « Comment tester » sont remplis et s'appuient sur le code", self.t("poste", "critique", "f1").stdout)
 
     def test_template_per_type_read_from_its_jira_ticket(self):
-        """jira.create.templates : un modèle par type, la clé d'un ticket Jira (Story et Tâche : EW-7951, Bug : EW-7981) ;
+        """jira.create.templates : un modèle par type, la clé d'un ticket Jira (Story et Tâche : DM-7951, Bug : DM-7981) ;
         sa description, lue par modele_jira, va dans la consigne de la rédaction et de la critique. Sans réglage pour le type :
         jira.create.template, comme quand le ticket modèle est illisible (sans arrêter le run)."""
         c = json.loads(Path(FIXTURE).read_text())
-        c["jira"] = {**c.get("jira", {}), "create": {"template": "h2. Défaut", "templates": {"Story": "EW-7951", "bug": "EW-7981"}}}
+        c["jira"] = {**c.get("jira", {}), "create": {"template": "h2. Défaut", "templates": {"Story": "DM-7951", "bug": "DM-7981"}}}
         cfg = os.path.join(self.tmp, "cfg.json")
         Path(cfg).write_text(json.dumps(c))
         self.t("dossier", "m1", "x", "Bug", "1", "dm/site", "", "backlog", "", cfg=cfg)
-        self.assertEqual(self.t("modele_cle", "m1", cfg=cfg).stdout, "/rest/api/2/issue/EW-7981")
+        self.assertEqual(self.t("modele_cle", "m1", cfg=cfg).stdout, "/rest/api/2/issue/DM-7981")
         bug = {"fields": {"summary": "[TEMPLATE] Bug", "description": "h2. Étapes pour reproduire\n_Les étapes exactes._"}}
-        self.assertIn("Modèle EW-7981 « [TEMPLATE] Bug » pour le type Bug", self.t("modele_jira", "m1", json.dumps({"data": bug}), cfg=cfg).stdout)
+        self.assertIn("Modèle DM-7981 « [TEMPLATE] Bug » pour le type Bug", self.t("modele_jira", "m1", json.dumps({"data": bug}), cfg=cfg).stdout)
         for k in ("redaction", "critique"):
             p = self.t("poste", k, "m1", cfg=cfg).stdout
-            self.assertIn("le ticket modèle EW-7981 « [TEMPLATE] Bug », pour un ticket de type Bug", p)
+            self.assertIn("le ticket modèle DM-7981 « [TEMPLATE] Bug », pour un ticket de type Bug", p)
             self.assertIn("h2. Étapes pour reproduire", p)
         self.t("dossier", "m2", "x", "Tâche", "1", "dm/site", "", "backlog", "", cfg=cfg)
         self.assertEqual(self.t("modele_cle", "m2", cfg=cfg).stdout, "/rest/api/2/myself")
@@ -167,28 +167,28 @@ class TicketChainTest(unittest.TestCase):
         self.t("dossier", "m3", "x", "Story", "1", "dm/site", "", "backlog", "", cfg=cfg)
         r = self.t("modele_jira", "m3", '{"errorMessages": ["introuvable"]}', cfg=cfg)
         self.assertEqual(r.returncode, 0)
-        self.assertIn("EW-7951 illisible", r.stderr)
+        self.assertIn("DM-7951 illisible", r.stderr)
         self.assertIn("## Modèle de ticket de l'équipe\nh2. Défaut", self.t("poste", "redaction", "m3", cfg=cfg).stdout)
 
     def test_parent_must_be_an_epic(self):
-        """Jira n'accepte qu'une épic pour parent : vérifié dès le dossier (run ed873fc9 : EW-6816, une Story, refusée à la
+        """Jira n'accepte qu'une épic pour parent : vérifié dès le dossier (run ed873fc9 : DM-6816, une Story, refusée à la
         création des 3 tickets). Une épic passe ; une Story avec son épic passe sous l'épic ; sinon le run s'arrête."""
         self.t("dossier", "p1", "x", "Story", "3", "dm/site", "", "backlog", "")
         self.assertEqual(self.t("parent_cle", "p1").stdout, "/rest/api/2/myself")
         self.assertIn("Sans parent", self.t("parent_check", "p1", '{"accountId": "x"}').stdout)
-        self.t("dossier", "p2", "x", "Story", "3", "dm/site", "", "backlog", "EW-6816")
-        self.assertEqual(self.t("parent_cle", "p2").stdout, "/rest/api/2/issue/EW-6816")
+        self.t("dossier", "p2", "x", "Story", "3", "dm/site", "", "backlog", "DM-6816")
+        self.assertEqual(self.t("parent_cle", "p2").stdout, "/rest/api/2/issue/DM-6816")
         epic = {"fields": {"summary": "Stabilisation", "issuetype": {"name": "Epic", "hierarchyLevel": 1}}}
         self.assertEqual(self.t("parent_check", "p2", json.dumps({"data": epic})).returncode, 0)
         story = {"fields": {"summary": "Keywords", "issuetype": {"name": "Story", "hierarchyLevel": 0},
-                            "parent": {"key": "EW-6843", "fields": {"summary": "Stabilisation", "issuetype": {"name": "Epic", "hierarchyLevel": 1}}}}}
+                            "parent": {"key": "DM-6843", "fields": {"summary": "Stabilisation", "issuetype": {"name": "Epic", "hierarchyLevel": 1}}}}}
         r = self.t("parent_check", "p2", json.dumps(story))
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("sous son épic EW-6843", r.stdout)
+        self.assertIn("sous son épic DM-6843", r.stdout)
         self.t("rapport", "redaction", "p2", stdin='{"tickets": [{"summary": "A", "description": "h2. Contexte", "composant": "dm/site", "points": 1}]}')
-        self.assertIn("Parent : EW-6843, l'épic de EW-6816", self.t("apercus", "p2").stdout)
-        self.assertIn("parent EW-6843", self.t("apercus", "p2").stdout)  # le détail du ticket : son vrai parent
-        self.t("dossier", "p3", "x", "Story", "3", "dm/site", "", "backlog", "EW-1")
+        self.assertIn("Parent : DM-6843, l'épic de DM-6816", self.t("apercus", "p2").stdout)
+        self.assertIn("parent DM-6843", self.t("apercus", "p2").stdout)  # le détail du ticket : son vrai parent
+        self.t("dossier", "p3", "x", "Story", "3", "dm/site", "", "backlog", "DM-1")
         alone = {"fields": {"issuetype": {"name": "Story", "hierarchyLevel": 0}}}
         r = self.t("parent_check", "p3", json.dumps(alone))
         self.assertNotEqual(r.returncode, 0)

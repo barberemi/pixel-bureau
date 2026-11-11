@@ -375,7 +375,7 @@ print(json.dumps(val))
         self.assertEqual((t["DM-100"].get("ai_fb"), t["DM-102"].get("ai_fb")), (None, True))
 
     def test_team_shape_points_follow_the_field_order_and_keep_zero(self):
-        """Champ du board d'abord (Story Points) ; un 0 posé compte, l'estimation ne le remplace pas (cas EW-7852)."""
+        """Champ du board d'abord (Story Points) ; un 0 posé compte, l'estimation ne le remplace pas (cas DM-7852)."""
         inp = self.team_input(n_issues=2)
         inp["issues"][0]["fields"].update({"customfield_10016": 3, "customfield_10102": 0})
         inp["issues"][1]["fields"].update({"customfield_10016": 1, "customfield_10102": None})
@@ -1386,7 +1386,7 @@ print(json.dumps(val))
         days = lambda n: iso(n * 24 * 60)  # noqa: E731
         fake.discussions += [
             {"id": "k1", "title": "🦆 Le menu casse", "project_id": "p1", "updated_at": days(1), "created_at": days(1), "pending_question_count": 2},
-            {"id": "k2", "title": "🦆 EW-1234", "project_id": None, "updated_at": iso(5), "created_at": iso(5)},
+            {"id": "k2", "title": "🦆 DM-1234", "project_id": None, "updated_at": iso(5), "created_at": iso(5)},
             {"id": "k3", "title": "🦆 Trop vieux", "project_id": "p1", "updated_at": days(20), "created_at": days(20)},
             {"id": "k4", "title": "🦆 Archivé", "project_id": "p1", "updated_at": iso(5), "created_at": iso(5), "archived": True},
         ] + [{"id": f"m{i}", "title": f"🦆 n° {i}", "project_id": "p1", "updated_at": days(2), "created_at": days(2)} for i in range(20)]
@@ -1513,22 +1513,22 @@ print(json.dumps(val))
     def test_duck_start_opens_a_discussion_and_runs_the_agent(self):
         fake = FakeKronn()
         api = self.kronn(fake)
-        out = self.run_script("duck_start.py", api=api, args=("none", "Le menu casse sur mobile " + "x" * 80 + "\nDétails : EW-1234"))
+        out = self.run_script("duck_start.py", api=api, args=("none", "Le menu casse sur mobile " + "x" * 80 + "\nDétails : DM-1234"))
         (p1, body), (p2, run) = fake.posts
         self.assertEqual((p1, p2), ("/discussions", "/discussions/dd000001/run"))
         self.assertIsNone(body["project_id"])  # « none » : sans projet
         self.assertTrue(body["title"].startswith("🦆 Le menu casse sur mobile"))
         self.assertLessEqual(len(body["title"]), 72)
-        self.assertNotIn("EW-1234", body["title"])  # première ligne seulement
+        self.assertNotIn("DM-1234", body["title"])  # première ligne seulement
         self.assertEqual((body["agent"], body["language"]), ("ClaudeCode", "fr"))
         self.assertTrue(body["initial_prompt"].startswith("Le menu casse sur mobile"))
-        self.assertIn("Détails : EW-1234", body["initial_prompt"])
+        self.assertIn("Détails : DM-1234", body["initial_prompt"])
         self.assertIn("(Discussion ouverte depuis Le Bureau, par le canard.", body["initial_prompt"])
         self.assertIn("idempotency_key", run)
         self.assertEqual(out, {"discussion_id": "dd000001", "url": FIXTURE["kronn"]["ui"] + "#discussion-dd000001"})
-        self.run_script("duck_start.py", api=api, args=("p1", "EW-42"))  # un projet : son id tel quel
+        self.run_script("duck_start.py", api=api, args=("p1", "DM-42"))  # un projet : son id tel quel
         self.assertEqual(fake.posts[2][1]["project_id"], "p1")
-        self.assertEqual(fake.posts[2][1]["title"], "🦆 EW-42")
+        self.assertEqual(fake.posts[2][1]["title"], "🦆 DM-42")
         self.run_script("duck_start.py", api=api, args=("p1", "Long détail\nsur plusieurs lignes", "Panier qui ne se vide pas"))
         self.assertEqual(fake.posts[4][1]["title"], "🦆 Panier qui ne se vide pas")  # titre donné : le sujet reste le prompt
         self.assertTrue(fake.posts[4][1]["initial_prompt"].startswith("Long détail"))

@@ -185,7 +185,7 @@ def occupants():
 
 # ---------- tableau des départs : ce qui tourne sur DEV, STG et PRD de chaque dépôt suivi ----------
 DEPART_ENVS = (("dev", ("dev",)), ("stg", ("stg", "staging")))
-# image de test, construite depuis un ticket sur la branche principale (« dev_EW-7712-2 », « Vdev-EW-7638 »)
+# image de test, construite depuis un ticket sur la branche principale (« dev_DM-7712-2 », « Vdev-DM-7638 »)
 TEST_TAG = re.compile(r"(?<![\w-])V?(\w*[_-]?[A-Za-z]+-\d+[\w-]*)")
 
 

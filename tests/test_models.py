@@ -504,7 +504,7 @@ case "$*" in
   *"pr view 7 "*) echo '{{"state":"CLOSED","headRefName":"x","isCrossRepository":false}}' ;;
   *"pr view 8 "*) echo '{{"state":"OPEN","headRefName":"x","isCrossRepository":true}}' ;;
   *"pr view 9 "*) exit 1 ;;
-  *"pr view"*) echo '{{"state":"OPEN","headRefName":"feat/EW-1-carrousel","isCrossRepository":false}}' ;;
+  *"pr view"*) echo '{{"state":"OPEN","headRefName":"feat/DM-1-carrousel","isCrossRepository":false}}' ;;
   *"workflow run"*vance/refus*) echo "HTTP 422" >&2; exit 1 ;;
 esac
 exit 0
@@ -524,8 +524,8 @@ exit 0
             return subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "deploy.py"), *a], capture_output=True, text=True, env=env)
         r = run("vance/frigo", "12", "dev")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertIn("feat/EW-1-carrousel part sur DEV", r.stdout)
-        self.assertIn("workflow run CD-NONPROD.yml -R vance/frigo --ref feat/EW-1-carrousel -f envchoice=dev -f versiontags= -f validation=oui",
+        self.assertIn("feat/DM-1-carrousel part sur DEV", r.stdout)
+        self.assertIn("workflow run CD-NONPROD.yml -R vance/frigo --ref feat/DM-1-carrousel -f envchoice=dev -f versiontags= -f validation=oui",
                       Path(log).read_text())
         for a, code in [(("vance/frigo", "12", "prod"), 2), (("vance/inconnu", "12", "dev"), 2), (("vance/frigo", "7", "dev"), 3),
                         (("vance/frigo", "8", "dev"), 3), (("vance/frigo", "9", "dev"), 3), (("vance/prod1", "12", "dev"), 4),

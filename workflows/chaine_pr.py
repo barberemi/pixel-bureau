@@ -42,7 +42,7 @@ def origine(path):
 def projet_auto(repo):
     """Aucun projet Kronn pour ce dépôt : sa copie locale dans le dossier des clones (impl.clones, ~/Sites par défaut),
     sinon clonée là si impl.auto_projet, puis ajoutée à Kronn comme projet. Rend (id du projet, ce qui a été fait) ou
-    (None, pourquoi). Essai d'EW-7945 : front_api était cloné dans ~/Sites mais n'avait pas de projet Kronn."""
+    (None, pourquoi). Essai d'DM-7945 : front_api était cloné dans ~/Sites mais n'avait pas de projet Kronn."""
     base = os.path.expanduser(impl().get("clones") or "~/Sites")
     path = next((os.path.join(base, d) for d in sorted(os.listdir(base)) if os.path.isdir(os.path.join(base, d, ".git"))
                  and origine(os.path.join(base, d)).lower() == repo.lower()), None) if os.path.isdir(base) else None
@@ -233,7 +233,7 @@ def exigences_md():
 
 def points_md():
     """Points ouverts : bloquants restés (gate d'escalade approuvée) et avis des contrôles, écrits par le script. Essai
-    d'EW-7945 : l'orchestrateur disait « à reporter dans la PR », le rédacteur les a omis et la PR annonçait « qat retiré »."""
+    d'DM-7945 : l'orchestrateur disait « à reporter dans la PR », le rédacteur les a omis et la PR annonçait « qat retiré »."""
     c = load("controles.json") or {}
     rows, seen = [], set()
     for kind, items in (("bloquant", c.get("bloquants") or []), ("avis", c.get("avis") or [])):

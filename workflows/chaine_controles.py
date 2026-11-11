@@ -52,7 +52,7 @@ def front_touche(files):
 def cmd_missions():
     """Contrôles en parallèle : le contexte commun et les postes à lancer (règles, sécurité, perf, besoin, doc) pour
     l'étape Agent qui les confie à des sous-agents en même temps ; vérifications des règles et relevé de la doc ici (0 token). Kronn ne lance
-    pas de sous-workflows en parallèle (foreach séquentiel) : 45 min par tour en série à l'essai d'EW-7851. Aucun poste
+    pas de sous-workflows en parallèle (foreach séquentiel) : 45 min par tour en série à l'essai d'DM-7851. Aucun poste
     à lancer : code 3, saut au bilan."""
     files = changed()
     postes, ecartes = [], []
@@ -192,7 +192,7 @@ def cmd_aiguillage():
 
 def cmd_fin_essai():
     """Mode essai, escalade : refus explicite, le run s'arrête (Stop, sans livrer). Banc d'essai du 5 novembre : la gate
-    d'escalade d'EW-7238 a été approuvée sans regarder, le ticket est sorti avec 3 bloquants Doc."""
+    d'escalade d'DM-7238 a été approuvée sans regarder, le ticket est sorti avec 3 bloquants Doc."""
     c = load("controles.json") or {}
     bl = [x for x in c.get("bloquants") or [] if isinstance(x, dict)]
     lignes = [f"- ({NOMS.get(x.get('poste'), x.get('poste'))}) " + (f"{x.get('fichier')} : " if x.get("fichier") else "")

@@ -43,7 +43,7 @@ def lignes(files, signe):
 
 
 def noms_retires(files):
-    """Ce que le diff retire (EW-7816 : 4 blocs supprimés, 15 templates, styles et tests encore liés) : le nom de chaque
+    """Ce que le diff retire (DM-7816 : 4 blocs supprimés, 15 templates, styles et tests encore liés) : le nom de chaque
     fichier supprimé (`Block/VideoBlock.php` -> VideoBlock) et chaque classe, enum, interface, trait ou fonction retirée et
     pas remise ailleurs. 5 caractères au moins, sans les noms vagues (index, style, block…)."""
     noms = {os.path.basename(f.get("filename") or "").split(".")[0] for f in files or [] if f.get("status") == "removed"}

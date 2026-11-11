@@ -11,7 +11,7 @@
    {
     "name": "jira_ticket_key",
     "label": "Clé du ticket Jira",
-    "placeholder": "EW-1234",
+    "placeholder": "DM-1234",
     "description": null,
     "required": true,
     "source": null,

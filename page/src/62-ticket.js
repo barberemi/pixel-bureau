@@ -37,7 +37,7 @@ function openPr(id){
   if(WIN_OPEN==='kanban')return kbShow({t:'pr',id});
   openKanban({who:kbCharOf(TEAM&&TEAM.people.find(q=>(q.prs||[]).some(x=>prId(x)===id))),pr:id});
 }
-// lien vers la fiche : <a data-tk="EW-1234"> ou <a data-pr="owner/dépôt#12"> n'importe où dans la page
+// lien vers la fiche : <a data-tk="DM-1234"> ou <a data-pr="owner/dépôt#12"> n'importe où dans la page
 document.addEventListener('click',e=>{
   const a=e.target.closest&&e.target.closest('[data-tk],[data-pr]');
   if(!a)return;
@@ -46,7 +46,7 @@ document.addEventListener('click',e=>{
 });
 const TK_REV={approved:['approuvée','var(--ok)'],changes:['changements demandés','var(--err)'],pending:['review en attente','var(--warn)']};
 // clés de data-kronn-bindings d'une action : chaque variable liée (son nom chez toi) -> la valeur du champ de la ligne
-// qu'elle relit (ex. {jira_ticket_key: 'EW-1', pr_number: 'EW-1'} pour une ligne {key:'EW-1'}) ; null si rien à lier
+// qu'elle relit (ex. {jira_ticket_key: 'DM-1', pr_number: 'DM-1'} pour une ligne {key:'DM-1'}) ; null si rien à lier
 function bindsFor(action,row){
   const e=Object.entries(ACTION_BINDS[action]||{}).filter(([,f])=>row[f]!=null);
   return e.length?Object.fromEntries(e.map(([n,f])=>[n,String(row[f])])):null;

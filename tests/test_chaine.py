@@ -48,7 +48,7 @@ class ChaineModelesTest(unittest.TestCase):
         self.assertEqual(chain["steps"][-1]["name"], "rattrape")  # jamais atteinte dans l'ordre : seulement par le Goto
         self.assertEqual((chain["concurrency_limit"], chain["project_scope"]), (4, {"type": "All"}))  # 4 chaînes, tout projet
         self.assertEqual(chain["workspace_config"], {"hooks": {}, "require_isolation": True})  # une copie par ticket
-        # l'attente aux gates compte dans le délai du run (essai d'EW-7901 : 3 h 30 à la gate du plan, coupé à 6 h en livraison)
+        # l'attente aux gates compte dans le délai du run (essai d'DM-7901 : 3 h 30 à la gate du plan, coupé à 6 h en livraison)
         self.assertEqual(chain["guards"]["timeout_seconds"], 72 * 3600)
         subs = {s["name"]: s["sub_workflow_id"] for s in chain["steps"] if s["step_type"]["type"] == "SubWorkflow"}
         self.assertEqual(set(subs), {"cadrage", "code", "controles", "livraison", "publication"})
@@ -144,7 +144,7 @@ class ChaineModelesTest(unittest.TestCase):
         self.assertEqual((rv["revue"]["sub_workflow_id"], rv["revue"]["sub_workflow_foreach_file"]),
                          ("abababab-0000-4000-8000-000000000009", ".kronn/prs.json"))
         # la revue tourne dans la copie de la chaîne, donc dans le projet du dépôt du ticket : Kronn refuse un
-        # sous-workflow épinglé à un autre projet (EW-7900 sur front_apollo, revue de la PR jamais lancée)
+        # sous-workflow épinglé à un autre projet (DM-7900 sur front_apollo, revue de la PR jamais lancée)
         child = templates.render(TPL["review_child"], cfg())
         self.assertEqual(child["project_scope"], {"type": "All"})
         self.assertNotIn("revue", steps("impl_revue_pr"))  # sans modèle de revue installé : pas de revue
@@ -296,7 +296,7 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(self.sh("mode", "plan")[0], 4)
         self.assertEqual(self.sh("mode", "complet")[0], 0)
         # plan seulement : saut au commentaire Jira, dernière étape, puis Stop ; complet et essai : le Code suit dans
-        # l'ordre. Kronn reprend un « Changements » de gate à l'étape qui suit la dernière gardée (essai d'EW-6550 :
+        # l'ordre. Kronn reprend un « Changements » de gate à l'étape qui suit la dernière gardée (essai d'DM-6550 :
         # commente_plan juste après mode a posté le plan dans Jira en mode essai) : le Code doit suivre mode.
         c = templates.render(TPL["impl_chain"], cfg())
         names = [s["name"] for s in c["steps"]]
@@ -352,7 +352,7 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("Bouton partager", ctx)  # le contexte reste la sortie de l'étape, lue par le Code
 
     def test_essai_keeps_human_work_out_of_reach_and_sisters_share_a_contract(self):
-        """Essai d'EW-7901 : le Plan reprenait les branches et la PR de l'humain (l'essai se compare à elles), son rapport
+        """Essai d'DM-7901 : le Plan reprenait les branches et la PR de l'humain (l'essai se compare à elles), son rapport
         d'avant les décrivait encore après « Changements » ; les deux bureaux n'avaient pas les mêmes noms de clés."""
         g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
         subprocess.run(g + ["push", "-q", "origin", "HEAD:refs/heads/feat/AB-12-lecture"], cwd=self.wt, check=True)
@@ -556,7 +556,7 @@ class ChaineScriptTest(unittest.TestCase):
     def test_pr_gets_the_requirements_table_and_open_points(self):
         """Le tableau exigence par exigence (poste 🎯 Besoin) et les points ouverts (avis des contrôles) sont écrits dans la
         PR par le script, à l'emplacement laissé par le rédacteur ou à la fin ; l'agent ne peut ni les omettre ni les
-        réécrire (essai d'EW-7945 : « qat retiré » alors que deux workflows le proposaient encore)."""
+        réécrire (essai d'DM-7945 : « qat retiré » alors que deux workflows le proposaient encore)."""
         self.prepare()
         e = self.dossier("etat.json")
         e["mode"] = "essai"
@@ -834,7 +834,7 @@ class ChaineScriptTest(unittest.TestCase):
         code, outp = self.sh("prepare", "AB-12", "complet", "run1", stdin=json.dumps(TICKET))
         self.assertEqual(code, 0, outp)
         self.assertIn("dépendances liées : app/vendor, node_modules", outp)
-        # essai d'EW-7901 : un lien sur tout vendor mettait la racine de l'autoload dans le checkout principal
+        # essai d'DM-7901 : un lien sur tout vendor mettait la racine de l'autoload dans le checkout principal
         v = os.path.join(wt, "app", "vendor")
         self.assertFalse(os.path.islink(v))
         for n in ("composer", "bin", "autoload.php"):
@@ -859,7 +859,7 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertTrue(os.path.islink(os.path.join(wt, "node_modules")))
 
     def test_tests_poste_gets_a_budget_and_the_linked_tests(self):
-        """Poste 🧪 Tests moins cher (EW-7848 : 31 min, 65 M de jetons relus en cache, 14,56 $ en un run) : contre-épreuves
+        """Poste 🧪 Tests moins cher (DM-7848 : 31 min, 65 M de jetons relus en cache, 14,56 $ en un run) : contre-épreuves
         bornées (impl.postes.tests.mutations, 6 par défaut), tests ciblés seulement, tests liés aux fichiers touchés donnés
         d'avance (par le nom)."""
         os.makedirs(os.path.join(self.wt, "tests"))
@@ -963,7 +963,7 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(self.dossier("missions.json")["modeles"]["securite"], "sonnet")
 
     def test_deletion_survey_finds_dead_references(self):
-        """Ticket de suppression (EW-7816 : 4 blocs supprimés, 15 templates, styles et tests encore liés) : le Code reçoit
+        """Ticket de suppression (DM-7816 : 4 blocs supprimés, 15 templates, styles et tests encore liés) : le Code reçoit
         les références aux fichiers que le plan supprime ; après le code, ses vérifications et le poste Règles voient celles
         qui restent (fichiers supprimés et classes retirées), rouges tant qu'il y en a."""
         os.makedirs(os.path.join(self.wt, "app", "Block"))
@@ -999,7 +999,7 @@ class ChaineScriptTest(unittest.TestCase):
 
     def test_escalation_in_essai_stops_the_run(self):
         """Mode essai : personne pour trancher, l'escalade arrête le run (refus explicite, bloquants restants notés, bilan
-        écrit) au lieu d'une gate. Banc d'essai du 5 novembre : la gate d'EW-7238 approuvée sans regarder, 3 bloquants Doc
+        écrit) au lieu d'une gate. Banc d'essai du 5 novembre : la gate d'DM-7238 approuvée sans regarder, 3 bloquants Doc
         livrés. En plan ou complet, la gate reste."""
         self.prepare()
         Path(self.wt, ".kronn", "chaine", "controles.json").write_text(json.dumps({"bloquants": [
@@ -1049,7 +1049,7 @@ class ChaineScriptTest(unittest.TestCase):
 
     def test_checks_only_count_new_errors(self):
         """Une vérification rouge est relancée sur le point de départ : ce qui y était déjà rouge ne compte pas (essai
-        d'EW-6550 : PHPStan signalait des erreurs anciennes des fichiers touchés et le Code bouclait dessus)."""
+        d'DM-6550 : PHPStan signalait des erreurs anciennes des fichiers touchés et le Code bouclait dessus)."""
         c = cfg()
         c["impl"]["repos"]["dm/site"]["checks"]["regles"] = [{"cmd": "cd {worktree}/app && grep -n TODO {php} && exit 1 || exit 0", "subdir": "app"}]
         self.render(c)
