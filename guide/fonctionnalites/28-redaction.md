@@ -4,7 +4,7 @@ Au 2e étage, deux salles de part et d'autre d'un couloir : à gauche, la rédac
 
 ## Monter au 2e
 
-Le bouton « ✍ 2e » (la rédaction et la revue, au survol) apparaît entre le 1er et le 3e dès que le modèle « créer un ticket » est installé. Le chiffre compte les intentions en rédaction et les PR en revue, « ✋ n » les tickets qui attendent ton tampon.
+Le bouton « ✍ 2e » (la rédaction et la revue, au survol) apparaît entre le 1er et le 3e dès que le modèle « créer un ticket » ou la revue de PR est installé. Une salle dont le modèle manque reste vide et le dit (« rédaction non installée ») ; ses scènes de la galerie sont grisées. Le chiffre compte les intentions en rédaction et les PR en revue, « ✋ n » les tickets qui attendent ton tampon.
 
 ## La salle de rédaction
 
