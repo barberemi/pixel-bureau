@@ -157,13 +157,21 @@ function parisHM(t){
   return {h:+g('hour')%24,m:+g('minute'),wd:g('weekday')};
 }
 function inSax(t){const p=parisHM(t);return p.h>=RHYTHM.office_hours[0]&&p.h<RHYTHM.office_hours[1]&&p.m>=45&&p.m<50;}
-// pas de mise en prod le vendredi ni le week-end : le plateau TV est fermé (ruban, lumière éteinte, porte bloquée)
 // jours calendaires (Paris) restants avant une date : J-0 le jour même
 function daysLeft(end,t){
   const d=x=>Date.parse(dtf('en-CA',{}).format(new Date(x))+'T00:00:00Z');
   return Math.max(0,Math.round((d(end)-d(t))/864e5));
 }
+// gel des mises en prod (rhythm.mep_freeze, par défaut le vendredi et le week-end) : le plateau TV est fermé (ruban,
+// lumière éteinte, porte bloquée)
 function stageClosed(t){return RHYTHM.mep_freeze.includes(parisHM(t).wd);}
+// « le vendredi ni le week-end », « le jeudi ni le vendredi » : les jours du gel, le week-end en un mot s'il y est entier
+const FREEZE_DAY={Mon:'lundi',Tue:'mardi',Wed:'mercredi',Thu:'jeudi',Fri:'vendredi',Sat:'samedi',Sun:'dimanche'};
+function freezeTxt(){
+  const f=RHYTHM.mep_freeze||[], we=RHYTHM.weekend||[], wkd=we.length>0&&we.every(d=>f.includes(d));
+  const days=f.filter(d=>FREEZE_DAY[d]&&!(wkd&&we.includes(d))).map(d=>'le '+FREEZE_DAY[d]).concat(wkd?['le week-end']:[]);
+  return days.length>1?days.slice(0,-1).join(', ')+' ni '+days[days.length-1]:days[0]||'';
+}
 const DAILY_MIN=(([h,m])=>+h*60+(+m||0))(String(RHYTHM.daily).split(':')); // heure du daily en minutes
 function inDaily(t){if(SCENE_DEMO&&SCENE_DEMO.flag==='daily')return t>=SCENE_DEMO.s&&t<SCENE_DEMO.e; // 46-gallery.js
   const p=parisHM(t);if(p.wd==='Sat'||p.wd==='Sun')return false;const mn=p.h*60+p.m;return mn>=DAILY_MIN&&mn<DAILY_MIN+RHYTHM.daily_minutes;}
