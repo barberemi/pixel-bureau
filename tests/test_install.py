@@ -27,7 +27,7 @@ class FakeKronn:
     def call(self, method, path, body=None, timeout=60):
         self.calls.append((method, path, body))
         if path == "/health":
-            return {"ok": True, "version": "0.14.1"}
+            return {"ok": True, "version": "0.15.2"}
         if path == "/projects":
             return [{"id": PROJECT, "name": "Front"}]
         if path == "/mcps":
@@ -154,6 +154,21 @@ class InstallTest(unittest.TestCase):
         self.assertIn(cfg["actions"]["gate"], html)
         self.assertNotIn(json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text())["page_id"], html)  # pas l'id de la démo
         self.assertEqual(sum(1 for m, p, _ in k.calls if p == "/mcp/workflow-trigger"), 7)  # les crons lancés, dont les bilans de la rédaction et des retours
+
+    def test_refuses_kronn_too_old_for_the_page(self):
+        """Un Kronn d'avant 0.15.2 refuse une page de plus de 1 Mo : l'installateur s'arrête avant de rien créer."""
+        orig = FakeKronn.call
+
+        def call(self_, method, path, body=None, timeout=60):
+            return {"ok": True, "version": "0.15.1"} if path == "/health" else orig(self_, method, path, body, timeout)
+        with mock.patch.object(FakeKronn, "call", call), self.assertRaisesRegex(install.InstallError, "0.15.2 ou plus"):
+            self.run_install(ANSWERS)
+        self.assertFalse([1 for m, _p, _b in self.fakes[-1].calls if m == "POST"])
+
+    def test_page_states_the_same_kronn_minimum(self):
+        """L'État de l'installation dit le même minimum que l'installateur."""
+        js = Path(ROOT, "page", "src", "47-installation.js").read_text()
+        self.assertIn(f"KRONN_MIN='{'.'.join(map(str, install.MIN_VERSION))}'", js)
 
     def test_comment_workflow_only_with_jira(self):
         """« Commenter un ticket » : un ApiCall Jira (POST commentaire), créé seulement si Jira est connecté."""

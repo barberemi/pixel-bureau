@@ -1,4 +1,4 @@
-// Adresse Kronn #page/<id>?tv=1&scene=standup : Kronn transmet les paramètres dans KronnPageData.page.params ;
+// Adresse Kronn /standalone/pages/<id>?tv=1&scene=standup : Kronn transmet les paramètres dans KronnPageData.page.params ;
 // la page les applique une fois (mode TV, stand-up), sans toucher au réglage mémorisé.
 'use strict';
 const test = require('node:test');
@@ -44,4 +44,14 @@ test('skin=classique : l\'écran mural prend le thème de l\'adresse, sans le m�
   reset();
   run(`applySkin('menthe');applyViewParams({page:{params:{skin:'parchemin'}}});`);
   assert.equal(J('UI_SKIN'), 'menthe');
+});
+
+test('floor : l\'écran mural se cale sur chaque étage, 2e et 3e compris', () => {
+  const demo = load(), D = c => JSON.parse(demo.run('JSON.stringify(' + c + ')'));
+  for (const f of ['-1', '1', '2', '3', '0']) {
+    demo.run(`VIEW_PARAMS_DONE=false;setFloor(${f === '0' ? 1 : 0});applyViewParams({page:{params:{tv:'1',floor:'${f}'}}});`);
+    assert.equal(D('FLOOR'), +f, 'floor=' + f);
+  }
+  demo.run(`VIEW_PARAMS_DONE=false;setFloor(0);applyViewParams({page:{params:{floor:'7'}}});`);
+  assert.equal(D('FLOOR'), 0, 'un étage inconnu ne change rien');
 });

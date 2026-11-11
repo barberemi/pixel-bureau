@@ -19,6 +19,39 @@ const INSTALL_CAPS=[
   {k:'revue',n:'Revue de PR (2e)',a:'les PR relues',ia:true,on:()=>DEMO||(CFG.revue_wf||[]).length>0},
   {k:'retours',n:'Retours de PR (3e)',a:'les commentaires de PR corrigés',ia:true,on:()=>retoursOn()}];
 const INSTALL_CMD='python3 tools/install.py', UPDATE_CMD='git pull && python3 tools/publish.py all';
+const KRONN_MIN='0.15.2'; // MIN_VERSION de tools/install.py : la page dépasse 1 000 000 octets, la limite des Kronn plus anciens
+// ---------- l'écran mural : l'adresse du mode TV, faite avec kronn.ui et l'id de cette page ----------
+// Kronn passe les paramètres de l'adresse autonome (/standalone/pages/<id>?tv=1…) à la page (75-tv.js, applyViewParams).
+// Les choix restent jusqu'au rechargement (la fenêtre suit les données, wideRefresh) ; l'étage par défaut alterne
+// les étages occupés quand il y en a plusieurs.
+const WALL={floor:null,scene:'',loupe:''};
+const WALL_FLOORS={'-1':'-1',0:'RDC',1:'1er',2:'2e',3:'3e'};
+const pageIdOf=d=>d&&d.page&&typeof d.page.id==='string'&&d.page.id?d.page.id:null;
+function wallUrl(id){
+  const fl=WALL.floor!==null?WALL.floor:floorsOn().length>1?'alt':'0';
+  const q=['tv=1',fl!=='0'?'floor='+fl:'',WALL.scene?'scene='+WALL.scene:'',WALL.loupe?'loupe='+WALL.loupe:''].filter(Boolean).join('&');
+  return KRONN_BASE.replace(/\/*$/,'/')+'standalone/pages/'+(id?encodeURIComponent(id):'<id de la page>')+'?'+q;
+}
+function wallHtml(){
+  const fl=WALL.floor!==null?WALL.floor:floorsOn().length>1?'alt':'0';
+  const chip=(k,v,t,on)=>`<button type="button" class="in-chip" data-wall="${k}" data-v="${esc(v)}" aria-pressed="${on}">${esc(t)}</button>`;
+  const floors=(floorsOn().length>1?[chip('floor','alt','Alterner',fl==='alt')]:[]).concat(
+    [...floorsOn()].sort((a,b)=>a-b).map(f=>chip('floor',String(f),WALL_FLOORS[f],fl===String(f))));
+  return '<div class="in-wall"><h3>📺 Adresse de l\'écran mural</h3><div class="in-opts">'+
+    `<span>Étage</span>${floors.join('')}<span>Démarrer</span>${chip('scene','','Plan',!WALL.scene)}${chip('scene','standup','Stand-up',WALL.scene==='standup')}`+
+    `<span>Loupe</span>${chip('loupe','','oui',!WALL.loupe)}${chip('loupe','0','non',WALL.loupe==='0')}</div>`+
+    `<div class="in-url"><input type="text" readonly aria-label="Adresse de l'écran mural" value="${esc(wallUrl(pageIdOf(window.KronnPageData)))}">`+
+    '<button type="button" class="on" data-wall-copy>📋 Copier</button></div><p class="muted in-note" aria-live="polite">'+
+    'À ouvrir dans le navigateur du poste branché à l\'écran : il doit joindre le Kronn de cette installation (même machine ou réseau). '+
+    'Faite avec <code>kronn.ui</code> de ta config et l\'id de cette page.</p></div>';
+}
+function wallClick(e,box){
+  const b=e.target.closest('[data-wall],[data-wall-copy]');if(!b)return;
+  if(b.dataset.wall){WALL[b.dataset.wall]=b.dataset.v;box.innerHTML=installHtml(Date.now());box.querySelector(`[data-wall="${b.dataset.wall}"][aria-pressed="true"]`).focus();return;}
+  const inp=box.querySelector('.in-url input'),note=box.querySelector('.in-wall .in-note'),said=t=>{note.textContent=t;};
+  const pick=()=>{inp.focus();inp.select();said('Adresse sélectionnée : ⌘C (ou Ctrl+C) pour la copier.');}; // presse-papiers refusé par le cadre de Kronn
+  try{navigator.clipboard.writeText(inp.value).then(()=>said('Adresse copiée.'),pick);}catch(err){pick();}
+}
 // état d'une capacité : [ton, libellé, ce qu'il faut faire]
 function installState(c,now){
   const on=c.on?c.on():DEMO||!!(CFG.workflows||{})[c.k]; // l'id du cron, posé par l'installateur (son calendrier, lui, existe toujours)
@@ -37,8 +70,10 @@ function installHtml(now){
   const rows=INSTALL_CAPS.map(c=>{const [t,l,act]=installState(c,now);
     return `<tr><td><span class="etat ${t}">${l}</span></td><td><b>${esc(c.n)}</b></td><td>${esc(c.a)}</td>`+
       `<td>${c.ia?'IA, voir la fiche de paie':'0 jeton'}</td><td>${act||'<span class="muted">·</span>'}</td></tr>`;}).join('');
-  return `<div class="in-ver">Le Bureau <b>${esc(BUREAU_VERSION)}</b> · mettre à jour : <code>${esc(UPDATE_CMD)}</code></div>`+
-    `<table class="in-t"><thead><tr><th>État</th><th>Capacité</th><th>Apporte</th><th>Coût</th><th>Pour agir</th></tr></thead><tbody>${rows}</tbody></table>`+
+  const wall='<tr><td><span class="etat ok">prêt</span></td><td><b>Écran mural (mode TV)</b></td><td>la page en plein écran pour l\'open space</td>'+
+    '<td>0 jeton</td><td>l\'adresse ci-dessous</td></tr>';
+  return `<div class="in-ver">Le Bureau <b>${esc(BUREAU_VERSION)}</b> · il faut Kronn ${KRONN_MIN} ou plus · mettre à jour : <code>${esc(UPDATE_CMD)}</code></div>`+
+    `<table class="in-t"><thead><tr><th>État</th><th>Capacité</th><th>Apporte</th><th>Coût</th><th>Pour agir</th></tr></thead><tbody>${rows}${wall}</tbody></table>`+wallHtml()+
     '<p class="muted in-note">Un cron publie ses données à chaque passage : son état vient de la fraîcheur et de ses avertissements. Les agents IA coûtent à chaque run (fiche de paie).</p>';
 }
-const openInstall=()=>openWide('install','État de l\'installation',box=>{box.innerHTML=installHtml(Date.now());});
+const openInstall=()=>openWide('install','État de l\'installation',box=>{box.innerHTML=installHtml(Date.now());box.onclick=e=>wallClick(e,box);});
