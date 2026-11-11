@@ -4,7 +4,7 @@ Le 1er étage montre les tickets en cours d'implémentation par la chaîne de po
 
 ## Monter à l'étage
 
-Les boutons d'étage au-dessus du plan (« 🏢 RDC », « 🏭 1er », le nom de l'étage en entier au survol) apparaissent quand la chaîne est installée (`models.impl_chain`). Le chiffre sur l'onglet du 1er compte les bureaux occupés (pastille neutre), « ✋ n » en ambre les validations qui t'y attendent ; l'étage choisi est retenu par le navigateur.
+Les boutons d'étage au-dessus du plan (« 🏢 RDC », « 🏭 1er », le nom de l'étage en entier au survol) apparaissent quand la chaîne est installée (`models.impl_chain`). Le chiffre sur l'onglet du 1er compte les bureaux occupés (pastille neutre), « ✋ n » en ambre les validations qui t'y attendent ; l'étage choisi reste jusqu'au rechargement dans Kronn ([ce que la page garde](32-memoire.md)).
 
 Les workflows de l'étage (la chaîne et ses postes, modèles `impl*`) ne passent plus au rez-de-chaussée : pas d'intérimaire pour eux dans l'open space, et « Nouvel agent » (la baie de la salle Serveurs) ne les propose pas. Le **lanceur** (`models.impl`, « ▶ Implémenter ») reste au RDC : l'agent qui l'incarne est un homme de chantier, casque jaune et gilet orange. Quand un ticket arrive au 1er, il va prendre son carton à son bureau et le porte jusqu'à l'entrée principale (« 📦 DM-7305 → 1er étage »), pendant une minute ; le colis apparaît alors dans l'entrepôt du 1er.
 

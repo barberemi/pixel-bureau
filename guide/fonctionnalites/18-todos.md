@@ -24,7 +24,7 @@ Accroché au mur du bureau du boss, entre le calendrier de l'équipe (décalé �
 
 ## Enregistrer
 
-Chaque changement s'affiche tout de suite, en pointillé avec « à enregistrer », et reste dans ce navigateur, même si tu recharges la page. Le bandeau du bas compte les changements en attente.
+Chaque changement s'affiche tout de suite, en pointillé avec « à enregistrer ». Le bandeau du bas compte les changements en attente et prévient : dans Kronn, la page ne peut rien garder, donc recharger ou fermer la page les perd. Enregistre avant de partir.
 
 **💾 Enregistrer** les envoie tous d'un coup : le bouton copie le code todos, tu le colles dans la carte Kronn qui s'ouvre (⌘V), puis Lancer. Un seul run, 0 token, pour toute la liste. Le tableau suit quelques secondes après, et les cartes perdent leur pointillé. Un code relancé deux fois ne crée pas de doublon (ni tâche ni discussion).
 
