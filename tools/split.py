@@ -5,7 +5,7 @@
 
 Vont dans settings.json du pack : rhythm, gitfut, wiki_posters, microsoft.planning et les personnages des agents
 (clé, nom, métier, place, sprite…, sans ids de workflows). Restent dans la config : microsoft.config_id, le rattachement
-de chaque agent à ses workflows (agents[] = {key, wf}), les pages de l'écran du boss, les ids Kronn.
+de chaque agent à ses workflows (agents[] = {key, wf}), les pages de l'écran mural, les ids Kronn.
 Le pack écrit, la page assemblée et le rendu de chaque modèle doivent être identiques octet pour octet à ceux d'avant ;
 sinon rien n'est gardé (le settings.json d'avant est remis).
 """

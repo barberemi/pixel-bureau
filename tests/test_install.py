@@ -336,7 +336,7 @@ class InstallTest(unittest.TestCase):
         self.assertEqual({k: after.get(k) for k in hand}, hand)
 
     def test_boss_screen_pages_asked_by_id(self):
-        """Écran du boss : ids complets ou débuts d'id uniques, dans l'ordre donné ; la page du Bureau n'est pas proposée."""
+        """Écran mural : ids complets ou débuts d'id uniques, dans l'ordre donné ; la page du Bureau n'est pas proposée."""
         pages = {"cccc1111-0000-4000-8000-000000000000": {"title": "Revue de PR", "datasets": []},
                  "cccc2222-0000-4000-8000-000000000000": {"title": "CWV", "datasets": []},
                  "dddd3333-0000-4000-8000-000000000000": {"title": "SCSS", "datasets": []}}

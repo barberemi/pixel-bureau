@@ -21,7 +21,7 @@ test('lecture du dataset : objet, texte JSON, absent ou cassé', () => {
   assert.equal(J(ds('{cassé')), null);
 });
 
-test('rien sans pages ni en mode TV ; sinon l\'écran du boss est une zone cliquable', () => {
+test('rien sans pages ni en mode TV ; sinon l\'écran mural est une zone cliquable', () => {
   run('BOSS_PAGES=[];TV=false;');
   assert.equal(J('bossPagesOn()'), false);
   run(`BOSS_PAGES=${JSON.stringify(PAGES)};`);

@@ -6,7 +6,7 @@
 // proposée à valider (gate : valider, changements, refuser), la réponse postée. En mode TV : l'écran et l'agent, pas la console.
 let SUPPORT=null;
 function readSupport(src){try{const d=dsOf(src,'support');return d&&Array.isArray(d.threads)?d:null;}catch(e){return null;}}
-// la console existe (alerte de l'écran du boss, agent Support), en mode TV compris ; elle ne s'ouvre pas en TV
+// la console existe (alerte de l'ordinateur du boss, agent Support), en mode TV compris ; elle ne s'ouvre pas en TV
 const supportOn=()=>!!(CFG.support||SUPPORT);
 const supportOpenable=()=>!TV&&supportOn();
 const SP_TODO=new Set(['new','gate','failed','relaunched']);
@@ -51,10 +51,10 @@ function supportAgentState(c,s,t){
   const posted=spThreads().map(x=>x.mine&&ms(x.mine.at)).filter(a=>a&&a<=t&&t-a<3*60e3);
   const away=s.st==='off'||s.st==='absent', at=away?{st:'idle',zone:'desk'}:{}; // en alerte, il vient à son poste même sans run du jour
   if(posted.length)return {...s,...at,bubble:'🧯 Feu éteint',label:(away?'':s.label+' · ')+'Réponse postée en fil à '+hm(Math.max(...posted))};
-  const n=spTodo().length; // comme l'écran du boss : nouveaux, à relancer, réponses à valider
+  const n=spTodo().length; // comme l'ordinateur du boss : nouveaux, à relancer, réponses à valider
   return n?{...s,...at,bubble:'🚨 '+n+' à traiter',label:(away?'':s.label+' · ')+plural(n,'fil','fils')+' du Support à traiter'}:s;
 }
-// l'écran du boss (bureau du boss, 40-furniture.js) : rouge qui clignote, « ! » et la pastille ; false = l'écran normal
+// l'ordinateur du boss (bureau du boss, 40-furniture.js) : rouge qui clignote, « ! » et la pastille ; false = l'écran normal
 function supportScreen(x,y,now){
   if(!supportOn())return false;
   const n=spTodo().length;if(!n)return false;

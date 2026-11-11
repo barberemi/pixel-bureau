@@ -479,7 +479,7 @@ def boss_pages(ask, k, previous, page_id):
         for i, t in pages.items():
             say(f"  {i}  {t}")
     while True:
-        raw = ask.text("boss_pages", "Pages à montrer sur l'écran du boss (ids, Entrée pour garder, « - » pour aucune)",
+        raw = ask.text("boss_pages", "Pages à montrer sur l'écran mural (ids, Entrée pour garder, « - » pour aucune)",
                        ",".join(previous or []) or "-")
         toks = raw if isinstance(raw, list) else re.split(r"[\s,;]+", str(raw or "").strip())
         toks = [t for t in toks if t and t != "-"]
@@ -867,7 +867,7 @@ def upsert_all(k, cfg, tpls, enabled, dry):
 
 
 def rebind(ask, old, a):
-    """--rattacher : agents (personnages du pack et autres) et pages de l'écran du boss seulement, puis la config écrite
+    """--rattacher : agents (personnages du pack et autres) et pages de l'écran mural seulement, puis la config écrite
     et la page republiée. Le reste de l'installation ne bouge pas."""
     if not old.get("page_id") or not (old.get("kronn") or {}).get("api"):
         raise InstallError("pas encore installé : lance d'abord python3 tools/install.py")
@@ -877,7 +877,7 @@ def rebind(ask, old, a):
     agents, mep = my_agents(ask, k, old.get("agents"), bureau, assemble.pack_settings(old).get("agents"))
     screens = boss_pages(ask, k, old.get("boss_pages"), old.get("page_id"))
     cfg = {**old, "agents": agents, "boss_pages": screens, **({"mep_workflow": mep} if mep else {})}
-    say(f"\n  Agents : {len(agents)} · écran du boss : {len(screens)} page(s)")
+    say(f"\n  Agents : {len(agents)} · écran mural : {len(screens)} page(s)")
     if not ask.yes("confirm", "Écrire la config et republier la page ?"):
         say("Rien n'a été fait.")
         return 1
@@ -900,7 +900,7 @@ def main(argv=None):
     ap.add_argument("--title", help="titre de la page (défaut : team/defaults.json, ou celui du profil d'équipe)")
     ap.add_argument("--no-run", action="store_true", help="ne pas lancer le premier rafraîchissement")
     ap.add_argument("--rattacher", action="store_true",
-                    help="refaire seulement le rattachement des agents à tes workflows et les pages de l'écran du boss (#32)")
+                    help="refaire seulement le rattachement des agents à tes workflows et les pages de l'écran mural (#32)")
     a = ap.parse_args(argv)
 
     old = jload(a.config) if os.path.exists(a.config) else {}
@@ -966,7 +966,7 @@ def main(argv=None):
     say(f"  Plan {layout_file} · projet Kronn {project_id[:8]} · agent IA : {ai or 'aucun'}")
     say(f"  Jira : {j['project'] + ' (board ' + str(j['board']) + ')' if j else 'non connecté : sprint, tickets, kanban masqués'}")
     say(f"  GitHub : {g['repo'] or 'aucun dépôt suivi'}" + ("" if login else " (gh non connecté : PR et MEP vides)"))
-    say(f"  Écran du boss : {len(screens)} page(s) Kronn")
+    say(f"  Écran mural : {len(screens)} page(s) Kronn")
     if notify is not None:
         say("  Notification du Mac quand une décision t'attend : " + ("oui" if notify else "non"))
     say("  Courrier : " + (", ".join(f"{a['label']} ({'appli Mail' if a['provider'] == 'mac-mail' else 'IMAP'})" for a in courrier["accounts"]) if courrier else "non"))

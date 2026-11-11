@@ -1,5 +1,5 @@
 // Console Support (48-support.js, #62) : dataset support, état de chaque fil (gate en attente et runs du jour d'abord),
-// nombre à traiter sur l'écran du boss, infobulle au survol, réponse au format du fil, démo.
+// nombre à traiter sur l'ordinateur du boss, infobulle au survol, réponse au format du fil, démo.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,7 +25,7 @@ test('à traiter : nouveaux, à relancer et réponses à valider ; pas ceux en c
   assert.deepEqual(J('spTodo().map(t => t.id)'), ['1', '3', '7', '9'], 'relancé : de nouveau à traiter ; ✅ traité : hors du compte');
   assert.equal(J('supportOn()'), true);
   run('TV = true;');
-  assert.equal(J('supportOn()'), true, 'en mode TV : l\'écran du boss et l\'agent restent en alerte');
+  assert.equal(J('supportOn()'), true, 'en mode TV : l\'ordinateur du boss et l\'agent restent en alerte');
   assert.equal(J('supportOpenable()'), false, 'mais la fenêtre ne s\'ouvre pas');
   run('TV = false;');
 });
@@ -64,7 +64,7 @@ test('texte d\'un message : échappé, retours à la ligne, adresses https en li
   assert.equal(J(`spText('javascript:alert(1) http://x.example')`), 'javascript:alert(1) http://x.example', 'seulement https');
 });
 
-test('écran du boss : en alerte seulement s\'il y a quelque chose à traiter', () => {
+test('ordinateur du boss : en alerte seulement s\'il y a quelque chose à traiter', () => {
   set([th('1', 'done')]);
   assert.equal(J('supportScreen(0, 0, 0)'), false);
   set([th('1', 'new')]);

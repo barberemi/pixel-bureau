@@ -64,7 +64,7 @@ La page est celle de la personne qui l'installe : elle en est « le boss » et r
 | Un agent IA installé dans Kronn (Claude Code, par exemple) | « Lui poser une question », plan depuis un croquis | Boutons masqués |
 | suno.com autorisé dans Kronn (Configuration > Artifacts) | Le lecteur Suno de la carte « [Son écoute](guide/fonctionnalites/07-fiches.md#son-écoute) » | Lien vers Suno seulement |
 | Azure CLI connecté (`az login --allow-no-subscriptions`), la connexion Kronn « Microsoft 365 » (globale) et le planning Excel de l'équipe sur SharePoint | Absences et télétravail, calendrier de l'équipe | Tout le monde au bureau, pas de calendrier |
-| La CLI `claude` connectée à claude.ai, avec le connecteur Microsoft 365, et Azure CLI connecté | Console Support : lire le canal Teams des demandes et répondre en fil | Écran du boss normal, pas de console |
+| La CLI `claude` connectée à claude.ai, avec le connecteur Microsoft 365, et Azure CLI connecté | Console Support : lire le canal Teams des demandes et répondre en fil | Ordinateur du boss normal, pas de console |
 
 macOS ou Linux (Windows n'est pas testé). Pour développer : Node 20 ou plus (tests) et la CLI `claude` (plan depuis un croquis en local).
 
@@ -72,10 +72,10 @@ macOS ou Linux (Windows n'est pas testé). Pour développer : Node 20 ou plus (t
 git clone https://github.com/barberemi/pixel-bureau.git && cd pixel-bureau
 python3 tools/install.py --dry-run   # voir ce qui serait créé
 python3 tools/install.py             # installation interactive, relançable sans doublon
-python3 tools/install.py --rattacher # refaire seulement les agents (personnages du pack) et l'écran du boss
+python3 tools/install.py --rattacher # refaire seulement les agents (personnages du pack) et les pages de l'écran mural
 ```
 
-L'installateur demande ton équipe (une équipe neuve avec le plan type par défaut, ou un profil de `teams/`, ou le dossier de ton équipe hors du dépôt, un « pack d'équipe », réservés aux membres de leur organisation GitHub quand ils en nomment une), qui tu es (tu prends le bureau du boss, les autres gardent leur place), le plan du bureau, ton board Jira (il en lit les colonnes et te propose comment classer chaque statut), tes dépôts et workflows de déploiement, les pages Kronn à montrer sur l'écran du boss et, si tu veux, ton courrier (comptes de l'appli Mail du Mac, Gmail ou autre par IMAP), et sur Mac une notification quand une décision t'attend, puis crée la page, ses datasets, ses workflows (sans ceux de Jira, de Microsoft 365 ou du courrier si tu ne les branches pas) et, si tu les acceptes, des modèles d'agents (revue de PR à la demande ou en cron, réestimer, issue GitHub, créer un ticket Jira, m'affecter un ticket, env de branche d'une PR), plus deux Quick Prompts dans **ton** Kronn, écrit `bureau.config.json` (jamais commité) et lance un premier rafraîchissement. Ouvre ensuite Kronn > Pages > « Le Bureau ». Aucun secret n'est stocké : les connexions sont référencées par leur id Kronn.
+L'installateur demande ton équipe (une équipe neuve avec le plan type par défaut, ou un profil de `teams/`, ou le dossier de ton équipe hors du dépôt, un « pack d'équipe », réservés aux membres de leur organisation GitHub quand ils en nomment une), qui tu es (tu prends le bureau du boss, les autres gardent leur place), le plan du bureau, ton board Jira (il en lit les colonnes et te propose comment classer chaque statut), tes dépôts et workflows de déploiement, les pages Kronn à montrer sur l'écran mural et, si tu veux, ton courrier (comptes de l'appli Mail du Mac, Gmail ou autre par IMAP), et sur Mac une notification quand une décision t'attend, puis crée la page, ses datasets, ses workflows (sans ceux de Jira, de Microsoft 365 ou du courrier si tu ne les branches pas) et, si tu les acceptes, des modèles d'agents (revue de PR à la demande ou en cron, réestimer, issue GitHub, créer un ticket Jira, m'affecter un ticket, env de branche d'une PR), plus deux Quick Prompts dans **ton** Kronn, écrit `bureau.config.json` (jamais commité) et lance un premier rafraîchissement. Ouvre ensuite Kronn > Pages > « Le Bureau ». Aucun secret n'est stocké : les connexions sont référencées par leur id Kronn.
 
 | Action | Commande |
 | --- | --- |
