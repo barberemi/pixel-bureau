@@ -206,7 +206,9 @@ function prMarks(x){
   if(x.behind>0)m.push(`<span class="prm" title="Commits de ${esc(x.base||'main')} absents de la PR">⟳ ${x.behind} de retard</span>`);
   if(x.threads>0)m.push(`<span class="prm" title="Fils de review non résolus">💬 ${x.threads} fil${x.threads>1?'s':''}</span>`);
   const ci=PR_CI[x.ci];if(ci)m.push(`<span class="prm${x.ci==='ko'?' err':''}" title="${ci[2]}">${ci[0]}</span>`);
-  for(const e of prEnvs(x))m.push(`<span class="prm" title="${e.run?'Déploiement en cours':'Sa branche y est'}">${e.ico} ${esc(e.env.toUpperCase())}${e.run?' ⏳':' · depuis '+esc(dpAgo(e.since))}</span>`);
+  for(const e of prEnvs(x)){const t=`${e.ico} ${esc(e.env.toUpperCase())}${e.run?' ⏳':(e.url?' ↗':'')+' · depuis '+esc(dpAgo(e.since))}`;
+    m.push(e.url?`<a class="prm" href="${esc(e.url)}" target="_blank" rel="noopener" title="Sa branche y est : ouvrir ${esc(e.url)}">${t}</a>`
+      :`<span class="prm" title="${e.run?'Déploiement en cours':'Sa branche y est'}">${t}</span>`);}
   return m;
 }
 function prRowHtml(x){

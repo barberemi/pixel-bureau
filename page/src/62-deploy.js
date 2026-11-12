@@ -90,12 +90,13 @@ function deployBlock(box,p){
 // ---------- état d'une PR partagé par le Kanban, la fiche et les listes : CI et envs où tourne sa branche ----------
 const PR_CI={ok:['✓ CI','var(--ok)','CI verte'],ko:['✗ CI','var(--err)','CI en échec'],run:['⏳ CI','var(--warn)','CI en cours']};
 const DP_ICO={dev:'🧪',stg:'🎭',staging:'🎭'};
-// [{env, ico, run, since}] : les envs (dataset live) dont le dernier déploiement est la branche de la PR, réussi ou en cours
+// [{env, ico, run, since, url}] : les envs (dataset live) dont le dernier déploiement est la branche de la PR, réussi ou en
+// cours ; url : l'adresse de l'env (62-departs.js), une fois le déploiement fini
 function prEnvs(p){
   if(!p||!p.head||!LIVE||!LIVE.envs)return [];
   const r=String(prRepo(p)).toLowerCase()+'|';
   return Object.entries(LIVE.envs).filter(([k,o])=>k.toLowerCase().startsWith(r)&&o&&!o.tag&&o.ref===p.head&&(o.status!=='completed'||o.conclusion==='success'))
-    .map(([k,o])=>{const env=k.slice(r.length);return {env,ico:DP_ICO[env]||'🚀',run:o.status!=='completed',since:o.end||o.start};});
+    .map(([k,o])=>{const env=k.slice(r.length);const run=o.status!=='completed';return {env,ico:DP_ICO[env]||'🚀',run,since:o.end||o.start,url:run?null:envUrl(prRepo(p),env)};});
 }
 // l'adresse de l'env de branche d'une PR (relevée dans le commentaire du bot par le cron équipe), en entier, cliquable
 function prEnvLine(p){

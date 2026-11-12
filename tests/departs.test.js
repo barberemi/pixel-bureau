@@ -58,3 +58,22 @@ test('mode TV : « Les envs », trois lignes par dépôt, la clé du ticket plut
 test('clé de ticket : en majuscules seulement (« ci/tpl-bluegreen-17.5.0 » n\'en a pas)', () => {
   assert.deepEqual(J(`['feat/DM-7399-audio', 'ci/tpl-bluegreen-17.5.0', 'dev_DM-7712-2'].map(depKey)`), ['DM-7399', null, 'DM-7712']);
 });
+
+test('fenêtre : « ouvrir ↗ » dans chaque case dont l\'env a une adresse, même sans déploiement relu ; http(s) seulement', () => {
+  const html = J(`(() => { const l0 = LIVE; LIVE = {runs: [], departs: ${JSON.stringify([
+    {...DEPARTS[0], urls: {dev: 'https://dev.example', prd: 'https://www.example'}},
+    {...DEPARTS[1], urls: {dev: 'http://intra.dev.example.internal/', stg: 'javascript:alert(1)'}}])}};
+    const b = document.createElement('div'); try { departsFill(b); return b.innerHTML; } finally { LIVE = l0; } })()`);
+  const go = [...html.matchAll(/class="dep-go" href="([^"]+)"/g)].map(m => m[1]);
+  assert.deepEqual(go, ['https://dev.example', 'https://www.example', 'http://intra.dev.example.internal/']);
+});
+
+test('fenêtre et mode TV : un env que le projet n\'a pas (réglage envs) : « pas de DEV », sans lien ni ligne', () => {
+  const d = JSON.stringify([{...DEPARTS[0], envs: ['stg', 'prd'], urls: {dev: 'https://dev.example'}}]);
+  const html = J(`(() => { const l0 = LIVE; LIVE = {runs: [], departs: ${d}}; const b = document.createElement('div');
+    try { departsFill(b); return b.innerHTML; } finally { LIVE = l0; } })()`);
+  assert.match(html, /<td class="dep-off"><span class="dep-none">pas de DEV<\/span><\/td>/);
+  assert.doesNotMatch(html, /dev\.example|DM-7/);
+  const tv = J(`(() => { const l0 = LIVE; LIVE = {runs: [], departs: ${d}}; try { return tvDeparts(); } finally { LIVE = l0; } })()`);
+  assert.equal((tv.match(/class="tve-l"/g) || []).length, 2);
+});

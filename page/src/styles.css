@@ -239,6 +239,9 @@ button.back kbd{font:10px ui-monospace,Menlo,monospace;border:1px solid var(--li
 .kbw-x i{font-style:normal;font-size:10px;line-height:15px;padding:0 5px;background:color-mix(in srgb,var(--k) 20%,transparent);box-shadow:inset 2px 0 0 var(--k);color:var(--ink);white-space:nowrap}
 .kbw-env{font-size:10px;line-height:15px;padding:0 5px;background:color-mix(in srgb,var(--ok) 22%,transparent);box-shadow:inset 2px 0 0 var(--ok);color:var(--ink);text-decoration:none;white-space:nowrap}
 .kbw-env:hover{text-decoration:underline}
+.kbw-env.kbw-go{background:color-mix(in srgb,var(--info) 20%,transparent);box-shadow:inset 2px 0 0 var(--info)}
+.kbw-envs{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:3px} /* une rangée par projet : ce qui est déployé */
+.kbw-pj{font-size:10px;color:var(--muted);margin-right:2px}
 .kb-vol .kbw-x{display:none}
 .tk-env{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px;margin-top:4px;font-size:11px}.tk-env a{color:var(--accent);word-break:break-all}.tk-env small{color:var(--muted)}
 .kbw-c b{color:var(--accent);font-size:11px}.kbw-c em{font-style:normal;float:right;background:var(--chip);border-radius:999px;padding:0 6px;font-size:10px;color:var(--muted)}
@@ -869,6 +872,10 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .dep a{color:inherit;text-decoration:none}.dep a:hover{text-decoration:underline 2px;text-underline-offset:4px}
 .dep .dep-prd,.tve-l .dep-prd{color:var(--dep-prd)}.dep .dep-br{color:var(--dep-branch)}.dep-pr,.dep-who,.dep-key,.dep-none{color:var(--dep-when)}
 .dep-pr{font-size:10px;margin-left:6px}
+.dep td.dep-off{background:transparent;vertical-align:middle}
+.dep-top{display:flex;align-items:baseline;gap:6px}.dep-top .dep-l{flex:1;min-width:0}
+.dep a.dep-go{flex:none;font:11px system-ui,sans-serif;color:var(--dep-name);border:1px solid var(--dep-frame);border-radius:4px;padding:0 5px;white-space:nowrap}
+.dep a.dep-go:hover{border-color:var(--dep-branch);text-decoration:none}
 .dep-who{display:flex;align-items:center;gap:7px;margin-top:5px;font:12px system-ui,sans-serif;white-space:nowrap}
 .dep-who canvas{width:24px;height:24px;image-rendering:pixelated}.dep-key{margin:6px 0 0;font-size:11px}
 #tvwho .tve{background:var(--tv-card);border-radius:10px;padding:8px 12px;color:var(--tv-ink)}

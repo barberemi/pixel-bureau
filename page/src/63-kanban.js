@@ -102,19 +102,37 @@ function kanbanFill(box){
   const st=box.querySelector('.kbw-strip');if(st)st.onclick=kbClose;
 }
 // pastilles de la PR d'un ticket, sous sa carte : la PR prête plutôt qu'un brouillon, la plus récente ; n° et CI, brouillon
-// ou conflit, review, les envs où tourne sa branche (🧪 DEV, 🎭 STG, dataset live) et l'env de branche (« 🌿 env ↗ », ⏳ ou ❌ pendant son build)
+// ou conflit, review, l'env de branche en construction ou en échec (⏳ ou ❌) ; puis ce qui est déployé, toutes PR du
+// ticket confondues : une rangée par projet (son nom si l'équipe suit plusieurs dépôts), les envs où tourne une de ses
+// branches (🧪 DEV, 🎭 STG, dataset live ; un lien vers l'env si son adresse est connue, ⏳ pendant le déploiement) et
+// les envs de branche (« 🌿 env ↗ », « 🌿 #n ↗ » quand il y en a plusieurs) ; rien de déployé, pas de rangée
 const KB_REV={changes:['💬 à corriger','var(--warn)'],approved:['👍 approuvée','var(--ok)'],pending:['👀 à relire','var(--info)']};
 function kbPrChips(key){
-  const p=prsOf(key).sort((a,b)=>(!!a.draft-!!b.draft)||(b.n-a.n))[0];if(!p)return '';
+  const all=prsOf(key).sort((a,b)=>(!!a.draft-!!b.draft)||(b.n-a.n)), p=all[0];if(!p)return '';
   const c=(t,col,tt)=>`<i style="--k:${col}"${tt?` title="${esc(tt)}"`:''}>${t}</i>`, ci=PR_CI[p.ci];
   let h=c(esc('#'+p.n)+(ci?' '+ci[0]:''),ci?ci[1]:'var(--idle)',ci?ci[2]:'');
   if(p.draft)h+=c('✎ brouillon','var(--idle)');else if(KB_REV[p.review])h+=c(...KB_REV[p.review]);
   if(p.conflict)h+=c('⛔ conflit','var(--err)');
-  for(const e of prEnvs(p))h+=c(e.ico+' '+esc(e.env.toUpperCase())+(e.run?' ⏳':''),e.run?'var(--warn)':'var(--info)',(e.run?'Déploiement en cours sur ':'Sa branche est sur ')+e.env.toUpperCase());
-  const eb=p.head?ebState(p):{step:'none'}; // l'env de branche : en construction ou en échec, sinon son lien
+  const eb=p.head?ebState(p):{step:'none'}; // l'env de branche de la PR principale : en construction ou en échec
   if(eb.step==='asked'||eb.step==='run')h+=c('🌿 ⏳ env','var(--warn)','Env de branche en construction');
   else if(eb.step==='ko')h+=c('🌿 ❌ env','var(--err)','Build de l\'env de branche en échec');
-  else if(safeUrl(p.env_url))h+=`<a class="kbw-env" ${hrefOf(p.env_url)} target="_blank" rel="noopener" title="Env de branche : ${esc(p.env_url)}">🌿 env ↗</a>`;
+  const rows=new Map(), row=x=>{const r=String(prRepo(x));if(!rows.has(r))rows.set(r,{envs:[],br:[]});return rows.get(r);};
+  for(const x of all){
+    for(const e of prEnvs(x))row(x).envs.push({...e,n:x.n});
+    if(safeUrl(x.env_url)&&!(x===p&&eb.step!=='ok'&&eb.step!=='none'))row(x).br.push(x);
+  }
+  const multi=depRows().length>1;
+  for(const [repo,r] of rows){
+    if(!r.envs.length&&!r.br.length)continue;
+    r.envs.sort((a,b)=>a.env.localeCompare(b.env));
+    let g=multi?`<span class="kbw-pj">${esc(depName(depRows().find(x=>String(x.repo).toLowerCase()===repo.toLowerCase())||{repo}))}</span>`:'';
+    for(const e of r.envs){const t=e.ico+' '+esc(e.env.toUpperCase());
+      g+=e.run?c(t+' ⏳','var(--warn)','Déploiement en cours sur '+e.env.toUpperCase())
+        :e.url?`<a class="kbw-env kbw-go" href="${esc(e.url)}" target="_blank" rel="noopener" title="La PR #${esc(e.n)} y est : ${esc(e.url)}">${t} ↗</a>`
+        :c(t,'var(--info)','Sa branche est sur '+e.env.toUpperCase());}
+    for(const x of r.br)g+=`<a class="kbw-env" ${hrefOf(x.env_url)} target="_blank" rel="noopener" title="Env de branche de la PR #${esc(x.n)} : ${esc(x.env_url)}">🌿 ${r.br.length>1?'#'+esc(x.n):'env'} ↗</a>`;
+    h+=`<span class="kbw-envs">${g}</span>`;
+  }
   return `<span class="kbw-x">${h}</span>`;
 }
 // le volet : « ← » (fiche d'avant) ou rien, × ; puis la fiche du ticket ou de la PR (62-ticket.js), comme dans le panneau

@@ -52,3 +52,42 @@ test('fiche du ticket : l\'adresse complète de l\'env de branche, sous sa PR ; 
   assert.match(m, /✗ CI/);
   assert.match(m, /🧪 DEV · depuis/);
 });
+
+// avec le tableau des départs (LIVE.departs) : adresses des envs et noms des projets
+function chipsHtml(prs, envs, departs) {
+  return J(`(() => { const t0 = TEAM, l0 = LIVE; TEAM = {people: [{name: 'Pam', prs: ${JSON.stringify(prs)}, tickets: []}], other_prs: []};
+    LIVE = {envs: ${JSON.stringify(envs)}, departs: ${JSON.stringify(departs)}};
+    try { return kbPrChips('DM-1'); } finally { TEAM = t0; LIVE = l0; } })()`);
+}
+const API = 'acme/api';
+const DEPS = [{repo: REPO, label: 'site', urls: {dev: 'https://dev.site.example', stg: 'https://stg.site.example'}},
+  {repo: API, label: 'api', urls: {stg: 'http://api.stg.example.internal/api/'}}];
+
+test('carte : une rangée par projet, seulement ce qui est déployé, un lien vers l\'env quand son adresse est connue', () => {
+  const h = chipsHtml([pr({n: 12}), pr({n: 7, repo: API, head: 'feat/DM-1-api'})],
+    {[REPO + '|dev']: run(), [API + '|stg']: run({ref: 'feat/DM-1-api'})}, DEPS);
+  const rows = [...h.matchAll(/<span class="kbw-envs">(.*?)<\/span>(?=<span class="kbw-envs">|<\/span>$)/g)].map(m => m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+  assert.deepEqual(rows, ['site 🧪 DEV ↗', 'api 🎭 STG ↗']);
+  assert.match(h, /href="https:\/\/dev\.site\.example"/);
+  assert.match(h, /href="http:\/\/api\.stg\.example\.internal\/api\/"/, 'un env interne en http');
+  assert.doesNotMatch(h, /stg\.site\.example/, 'STG du site : la branche n\'y est pas');
+});
+
+test('carte : rien de déployé, pas de rangée ; pendant le déploiement, ⏳ sans lien ; adresse inconnue, la pastille seule', () => {
+  assert.doesNotMatch(chipsHtml([pr()], {}, DEPS), /kbw-envs/);
+  const h = chipsHtml([pr()], {[REPO + '|dev']: run({status: 'in_progress', conclusion: null, end: null})}, DEPS);
+  assert.match(h, /🧪 DEV ⏳/);
+  assert.doesNotMatch(h, /href=/);
+  assert.doesNotMatch(chipsHtml([pr()], {[REPO + '|dev']: run()}, [{repo: REPO, urls: {dev: 'javascript:alert(1)'}}]), /href=/);
+});
+
+test('carte : deux envs de branche dans un projet, chacun avec le n° de sa PR', () => {
+  const h = chipsHtml([pr({n: 12, env_url: 'https://a.example'}), pr({n: 14, head: 'feat/DM-1-b', env_url: 'https://b.example'})], {}, DEPS);
+  assert.match(h, /🌿 #14 ↗.*🌿 #12 ↗/);
+});
+
+test('fiche : la marque de l\'env devient un lien vers lui', () => {
+  const m = J(`(() => { const l0 = LIVE; LIVE = {envs: {'${REPO}|dev': ${JSON.stringify(run())}}, departs: ${JSON.stringify(DEPS)}};
+    try { return prMarks(${JSON.stringify(pr())}).join(' '); } finally { LIVE = l0; } })()`);
+  assert.match(m, /<a class="prm" href="https:\/\/dev\.site\.example"[^>]*>🧪 DEV ↗ · depuis/);
+});
