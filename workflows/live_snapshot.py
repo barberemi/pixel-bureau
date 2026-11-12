@@ -13,7 +13,8 @@ branch_envs : avec le réglage env.workflow (le workflow GitHub qui construit l'
 est posé), « dépôt|branche » -> {status, conclusion, start, end, url, by} du dernier build de cette branche ; les runs
 « skipped » ne comptent pas (le workflow démarre à chaque événement de la PR et ne construit qu'avec le label).
 departs : le tableau des départs, [{repo, label, dev?, stg?, prd?}] dans l'ordre des dépôts suivis, chaque env =
-{ref, tag, by, end, url} de son dernier déploiement réussi (DEV/STG : titre du workflow hors prod, PRD : workflow de prod).
+{ref, tag, by, end, url} de son dernier déploiement réussi (DEV/STG : titre du workflow hors prod, PRD : workflow de prod) ;
+urls : les adresses des envs du dépôt ({dev?, stg?, prd?}, réglage `urls` du dépôt dans github ou github.deploys), si connues.
 warnings (#8) : déploiements non relus (gh absent, accès refusé…), republiés depuis la lecture précédente ; écrit aussi
 sur stderr (run Kronn). Un 304 (rien n'a changé) n'en est pas un.
 """
@@ -210,15 +211,23 @@ def deployed(run):
     return {"ref": ref, "tag": tag, "by": run.get("by"), "end": run.get("updatedAt"), "url": run.get("url")}
 
 
+def env_urls(conf):
+    """Les adresses DEV, STG et PRD d'un dépôt (réglage `urls`), en http(s) seulement."""
+    u = conf.get("urls") if isinstance(conf.get("urls"), dict) else {}
+    return {e: u[e] for e in ("dev", "stg", "prd") if isinstance(u.get(e), str) and re.match(r"https?://", u[e])}
+
+
 def departs():
     """[{repo, label, dev?, stg?, prd?}] dans l'ordre des dépôts suivis : le dernier déploiement réussi de chaque env
     (un essai annulé ou en échec ne change pas ce qui tourne). PRD : le workflow de prod, une version dans le titre."""
     g, out = CFG.get("github") or {}, []
-    rows = ([(g["repo"], "", g.get("staging_workflow"), g.get("prod_workflow"))] if g.get("repo") else []) + [
-        (d["repo"], d.get("label") or "", d.get("staging_workflow"), d.get("prod_workflow"))
+    rows = ([(g["repo"], "", g.get("staging_workflow"), g.get("prod_workflow"), env_urls(g))] if g.get("repo") else []) + [
+        (d["repo"], d.get("label") or "", d.get("staging_workflow"), d.get("prod_workflow"), env_urls(d))
         for d in g.get("deploys") or [] if d.get("repo") and d["repo"] != g.get("repo")]
-    for repo, label, st, pr in rows:
+    for repo, label, st, pr, urls in rows:
         row = {"repo": repo, "label": label or repo.split("/")[-1].replace("front_", "")}
+        if urls:
+            row["urls"] = urls
         ok = lambda wf: sorted((r for r in D.get(repo + "|" + (wf or ""), {}).get("runs") or []
                                 if r.get("status") == "completed" and r.get("conclusion") == "success"),
                                key=lambda x: x.get("createdAt") or "", reverse=True)

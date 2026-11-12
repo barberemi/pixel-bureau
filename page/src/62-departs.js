@@ -7,6 +7,14 @@ let DEPR=null, DEP_PIN=null, DEP_PAL=null, DEP_SKIN=null; // DEP_PIN : page du p
 const DEP_ROWS=3, DEP_PAGE_MS=5000, DEP_FLIP_MS=380;
 const depRows=()=>(LIVE&&Array.isArray(LIVE.departs)?LIVE.departs:[]).filter(r=>r&&r.repo);
 const depName=r=>String(r.label||String(r.repo).split('/').pop());
+// l'adresse d'un env (dev, stg, prd) d'un dépôt : réglage `urls` du dépôt, recopié par le cron live ; http(s) seulement
+// (des envs internes sont en http) ; null si inconnue
+const envHref=u=>typeof u==='string'&&/^https?:\/\//i.test(u)?u:null;
+const ENV_OF={staging:'stg'};
+function envUrl(repo,env){
+  const r=depRows().find(x=>String(x.repo).toLowerCase()===String(repo||'').toLowerCase());
+  return r&&r.urls?envHref(r.urls[ENV_OF[env]||env]):null;
+}
 const depKey=ref=>(String(ref||'').match(/[A-Z][A-Z0-9]+-\d+/)||[null])[0]; // en majuscules : pas « bluegreen-17 »
 // en prod à t (rejouable : une mise en prod d'après t n'est pas encore partie), la plus récente d'abord
 const depFlights=t=>depRows().filter(r=>r.prd&&r.prd.ref&&!(ms(r.prd.end)>t)).sort((a,b)=>(ms(b.prd.end)||0)-(ms(a.prd.end)||0));
@@ -34,16 +42,17 @@ const DEPARTS_BOARD={y:-1,draw:now=>{
   if(!L.length)txt('AUCUN DÉPART',P.when,x+4,y+22);
   for(let p=0;n>1&&p<n;p++)R(ctx,x+w/2-n*3+p*6,y+h-3,3,2,p===pg?P.band:P.row);
 }};
-// ---------- la fenêtre : un dépôt par ligne, DEV, STG et PRD ----------
+// ---------- la fenêtre : un dépôt par ligne, DEV, STG et PRD ; « ouvrir ↗ » mène à l'env quand son adresse est connue ----------
 const depA=(cls,url,t,tip='')=>`<a class="${cls}" ${hrefOf(url)} target="_blank" rel="noopener" title="${esc(tip)}">${esc(t)}</a>`;
 const depWho=o=>{const c=o.by?byChar(o.by):null;return {c,n:c?c.name:o.by||''};};
 function depCell(r,env){
-  const o=r[env];if(!o||!o.ref)return '<td><span class="dep-none">·</span></td>';
+  const u=r.urls&&envHref(r.urls[env]), go=u?`<a class="dep-go" href="${esc(u)}" target="_blank" rel="noopener" title="${esc(u)}">ouvrir ↗</a>`:'';
+  const o=r[env];if(!o||!o.ref)return `<td><div class="dep-top"><span class="dep-none">·</span>${go}</div></td>`;
   const gh='https://github.com/'+r.repo, k=!o.tag&&depKey(o.ref), t=k&&ticketOf(k), w=depWho(o),
     pr=!o.tag&&TEAM&&[...TEAM.people.flatMap(p=>p.prs||[]),...(TEAM.other_prs||[])].find(x=>x.head===o.ref&&prRepo(x)===r.repo);
   const v=o.tag?depA(env==='prd'?'dep-prd':'',gh+'/releases/tag/'+encodeURIComponent(o.ref),o.ref)
     :k&&JIRA_BROWSE!=='/browse/'?depA('dep-br',JIRA_BROWSE+k,k,t?t.summary:o.ref):depA('dep-br',gh+'/tree/'+o.ref,o.ref);
-  return `<td><div class="dep-l">${v}${pr?depA('dep-pr',pr.url,'PR #'+pr.n,pr.title):''}</div><div class="dep-who">${w.c?`<span data-pt="${esc(w.c.key)}"></span>`:''}${esc(w.n)}</div></td>`;
+  return `<td><div class="dep-top"><div class="dep-l">${v}${pr?depA('dep-pr',pr.url,'PR #'+pr.n,pr.title):''}</div>${go}</div><div class="dep-who">${w.c?`<span data-pt="${esc(w.c.key)}"></span>`:''}${esc(w.n)}</div></td>`;
 }
 function departsFill(box){
   const L=depRows();

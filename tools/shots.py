@@ -73,16 +73,18 @@ DP_DEMO = ("ACTIONS.deploy=true;ACTION_BINDS['bureau-deploy']={pr_number:'id',re
 KB_PR_ENV = ("const _pe=TEAM.people.flatMap(p=>p.prs||[]),_p1=_pe.find(x=>x.n===2012),_p2=_pe.find(x=>x.n===1858),_r=prRepo(_p1),"
              "_tt=h=>new Date(T-h*36e5).toISOString();LIVE=LIVE||{runs:[],discussions:[],deploys:{}};"
              "LIVE.envs={[_r+'|dev']:{ref:_p1.head,tag:false,by:null,status:'completed',conclusion:'success',start:_tt(2.2),end:_tt(2),url:'#'},"
-             "[_r+'|stg']:{ref:_p2.head,tag:false,by:null,status:'in_progress',conclusion:null,start:_tt(.1),end:null,url:'#'}};")
+             "[_r+'|stg']:{ref:_p2.head,tag:false,by:null,status:'in_progress',conclusion:null,start:_tt(.1),end:null,url:'#'}};"
+             "LIVE.departs=[{repo:_r,label:'site-web',urls:{dev:'https://www.dev.dunder-mifflin.com/',stg:'https://www.stg.dunder-mifflin.com/'}}];")
 # tableau des départs (62-departs.js) : le panneau à la place de l'horloge de la cafétéria (le plan type n'en a pas :
-# objects.departs facultatif), l'horloge et l'employé du sprint décalés, et les envs de cinq dépôts fictifs (dataset live)
+# objects.departs facultatif), l'horloge et l'employé du sprint décalés, et les envs de cinq dépôts fictifs (dataset live),
+# avec les adresses de trois d'entre eux
 DEP_DEMO = ("applyLayout({...LAYOUT,clock:[9,11],plants:LAYOUT.plants.map(p=>p[0]===1&&p[1]===10?[1,9]:p),"
             "objects:{...LAYOUT.objects,emp:{...LAYOUT.objects.emp,x:314},departs:{x:38,y:334,w:150,h:50}}});"
             "const _dt=h=>new Date(T-h*36e5).toISOString(),_dv=(ref,tag,by,h)=>({ref,tag,by,end:_dt(h),url:'#'});"
             "LIVE={...(LIVE||{runs:[],discussions:[],deploys:{}}),departs:["
-            "{repo:'dunder-mifflin/site-web',label:'site-web',dev:_dv('feat/DM-6550-carrousel',false,'pambeesly',2),stg:_dv('17.122.2',true,'andybernard',20),prd:_dv('17.122.2',true,'andybernard',1.5)},"
-            "{repo:'dunder-mifflin/intranet',label:'intranet',dev:_dv('feat/DM-6717-annuaire',false,'gabelewis',5),stg:_dv('3.121.0',true,'darrylphilbin',30),prd:_dv('3.121.3',true,'darrylphilbin',26)},"
-            "{repo:'dunder-mifflin/api-ventes',label:'api-ventes',dev:_dv('refactor/DM-7628-cache',false,'hollyflax',1),stg:_dv('2.5.0',true,'michaelscott',150),prd:_dv('2.5.0',true,'michaelscott',148)},"
+            "{repo:'dunder-mifflin/site-web',label:'site-web',urls:{dev:'https://www.dev.dunder-mifflin.com/',stg:'https://www.stg.dunder-mifflin.com/',prd:'https://www.dunder-mifflin.com/'},dev:_dv('feat/DM-6550-carrousel',false,'pambeesly',2),stg:_dv('17.122.2',true,'andybernard',20),prd:_dv('17.122.2',true,'andybernard',1.5)},"
+            "{repo:'dunder-mifflin/intranet',label:'intranet',urls:{dev:'http://intranet.dev.dunder-mifflin.internal/',stg:'http://intranet.stg.dunder-mifflin.internal/',prd:'http://intranet.dunder-mifflin.internal/'},dev:_dv('feat/DM-6717-annuaire',false,'gabelewis',5),stg:_dv('3.121.0',true,'darrylphilbin',30),prd:_dv('3.121.3',true,'darrylphilbin',26)},"
+            "{repo:'dunder-mifflin/api-ventes',label:'api-ventes',urls:{stg:'https://api-ventes.stg.dunder-mifflin.com/',prd:'https://api-ventes.dunder-mifflin.com/'},dev:_dv('refactor/DM-7628-cache',false,'hollyflax',1),stg:_dv('2.5.0',true,'michaelscott',150),prd:_dv('2.5.0',true,'michaelscott',148)},"
             "{repo:'dunder-mifflin/catalogue',label:'catalogue',dev:_dv('6.8.0',true,'darrylphilbin',60),stg:_dv('fix/DM-7837-papier-recycle',false,'pambeesly',4),prd:_dv('6.8.0',true,'darrylphilbin',60)},"
             "{repo:'dunder-mifflin/appli-mobile',label:'appli-mobile',prd:_dv('2.6.0',true,'michaelscott',650)}]};")
 # le coin de la cafétéria où pend le panneau, agrandi

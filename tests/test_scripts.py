@@ -1023,6 +1023,18 @@ print(json.dumps(val))
         self.assertEqual((site["dev"]["ref"], site["dev"]["tag"]), ("feat/DM-7", False))
         self.assertNotIn("prd", site)
 
+    def test_live_snapshot_departs_carry_the_env_urls_of_each_repo(self):
+        """departs : les adresses des envs (réglage urls du dépôt principal ou d'un dépôt suivi), http(s) seulement ;
+        rien sans réglage."""
+        self.fake_gh({"staging": [], "prod": []})
+        g = dict(FIXTURE["github"], urls={"dev": "https://dev.site", "stg": "javascript:x", "qat": "https://qat.site"},
+                 deploys=[dict(d, urls={"stg": "http://intra.stg.internal/api/"}) for d in FIXTURE["github"]["deploys"]])
+        site, intranet = self.run_script("live_snapshot.py", api=self.kronn(FakeKronn()), github=g)["departs"]
+        self.assertEqual(site["urls"], {"dev": "https://dev.site"})
+        self.assertEqual(intranet["urls"], {"stg": "http://intra.stg.internal/api/"})
+        site = self.run_script("live_snapshot.py", api=self.kronn(FakeKronn()))["departs"][0]
+        self.assertNotIn("urls", site)
+
     def test_live_snapshot_branch_envs_follow_the_env_build_of_each_branch(self):
         """branch_envs (env.workflow) : par « dépôt|branche », le dernier build de l'env de branche, hors runs « skipped »
         (un par événement de PR) ; rien sans le réglage ni le bouton ; 30 runs lus."""
