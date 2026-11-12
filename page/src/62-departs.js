@@ -45,7 +45,10 @@ const DEPARTS_BOARD={y:-1,draw:now=>{
 // ---------- la fenêtre : un dépôt par ligne, DEV, STG et PRD ; « ouvrir ↗ » mène à l'env quand son adresse est connue ----------
 const depA=(cls,url,t,tip='')=>`<a class="${cls}" ${hrefOf(url)} target="_blank" rel="noopener" title="${esc(tip)}">${esc(t)}</a>`;
 const depWho=o=>{const c=o.by?byChar(o.by):null;return {c,n:c?c.name:o.by||''};};
+// un env que le dépôt n'a pas (réglage envs) : « pas de DEV » dans la case, sans lien
+const depHas=(r,env)=>!Array.isArray(r.envs)||r.envs.includes(env);
 function depCell(r,env){
+  if(!depHas(r,env))return '<td class="dep-off"><span class="dep-none">pas de '+env.toUpperCase()+'</span></td>';
   const u=r.urls&&envHref(r.urls[env]), go=u?`<a class="dep-go" href="${esc(u)}" target="_blank" rel="noopener" title="${esc(u)}">ouvrir ↗</a>`:'';
   const o=r[env];if(!o||!o.ref)return `<td><div class="dep-top"><span class="dep-none">·</span>${go}</div></td>`;
   const gh='https://github.com/'+r.repo, k=!o.tag&&depKey(o.ref), t=k&&ticketOf(k), w=depWho(o),
@@ -68,5 +71,5 @@ function tvDeparts(){
   const L=depRows(), line=(r,env)=>{const o=r[env]||{}, w=o.ref?depWho(o):{}, img=w.c?portraitUrl(w.c):'';
     return `<div class="tve-l"><i>${env.toUpperCase()}</i><em class="${!o.ref?'dep-none':env==='prd'?'dep-prd':o.tag?'':'dep-br'}">${esc(!o.ref?'·':o.tag?o.ref:depKey(o.ref)||o.ref)}</em>`+
       `<span>${img?`<img src="${img}" alt="">`:''}${esc(w.n||'')}</span></div>`;};
-  return L.length?'<h2>Les envs</h2>'+L.map(r=>`<div class="tve"><b>${esc(depName(r))}</b>${line(r,'dev')}${line(r,'stg')}${line(r,'prd')}</div>`).join(''):'';
+  return L.length?'<h2>Les envs</h2>'+L.map(r=>`<div class="tve"><b>${esc(depName(r))}</b>${['dev','stg','prd'].filter(e=>depHas(r,e)).map(e=>line(r,e)).join('')}</div>`).join(''):'';
 }

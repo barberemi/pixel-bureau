@@ -872,6 +872,7 @@ body.tv.tvscene #tvscene{display:flex;flex-direction:column}
 .dep a{color:inherit;text-decoration:none}.dep a:hover{text-decoration:underline 2px;text-underline-offset:4px}
 .dep .dep-prd,.tve-l .dep-prd{color:var(--dep-prd)}.dep .dep-br{color:var(--dep-branch)}.dep-pr,.dep-who,.dep-key,.dep-none{color:var(--dep-when)}
 .dep-pr{font-size:10px;margin-left:6px}
+.dep td.dep-off{background:transparent;vertical-align:middle}
 .dep-top{display:flex;align-items:baseline;gap:6px}.dep-top .dep-l{flex:1;min-width:0}
 .dep a.dep-go{flex:none;font:11px system-ui,sans-serif;color:var(--dep-name);border:1px solid var(--dep-frame);border-radius:4px;padding:0 5px;white-space:nowrap}
 .dep a.dep-go:hover{border-color:var(--dep-branch);text-decoration:none}

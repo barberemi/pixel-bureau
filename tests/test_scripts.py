@@ -1035,6 +1035,17 @@ print(json.dumps(val))
         site = self.run_script("live_snapshot.py", api=self.kronn(FakeKronn()))["departs"][0]
         self.assertNotIn("urls", site)
 
+    def test_live_snapshot_departs_skip_the_envs_a_repo_does_not_have(self):
+        """departs : réglage envs d'un dépôt (sans DEV) : un vieux déploiement qui nomme DEV n'y apparaît pas ; envs publié
+        seulement s'il restreint."""
+        run = lambda title, mins: {"status": "completed", "conclusion": "success", "createdAt": iso(mins), "updatedAt": iso(mins - 1),
+                                   "displayTitle": title, "url": "https://x/" + str(mins), "by": "jimh", "branch": "main"}
+        self.fake_gh({"staging": [run("CD - FRONTIER deploy dev Version: 3.120.0", 5), run("CD - Deploy stg Version: 3.121.0", 9)], "prod": []})
+        site = self.run_script("live_snapshot.py", api=self.kronn(FakeKronn()), github=dict(FIXTURE["github"], envs=["stg", "prd"]))["departs"][0]
+        self.assertEqual((site["envs"], "dev" in site, site["stg"]["ref"]), (["stg", "prd"], False, "3.121.0"))
+        site = self.run_script("live_snapshot.py", api=self.kronn(FakeKronn()))["departs"][0]
+        self.assertEqual(("envs" in site, site["dev"]["ref"]), (False, "3.120.0"))
+
     def test_live_snapshot_branch_envs_follow_the_env_build_of_each_branch(self):
         """branch_envs (env.workflow) : par « dépôt|branche », le dernier build de l'env de branche, hors runs « skipped »
         (un par événement de PR) ; rien sans le réglage ni le bouton ; 30 runs lus."""

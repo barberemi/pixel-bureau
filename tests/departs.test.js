@@ -67,3 +67,13 @@ test('fenêtre : « ouvrir ↗ » dans chaque case dont l\'env a une adresse, m�
   const go = [...html.matchAll(/class="dep-go" href="([^"]+)"/g)].map(m => m[1]);
   assert.deepEqual(go, ['https://dev.example', 'https://www.example', 'http://intra.dev.example.internal/']);
 });
+
+test('fenêtre et mode TV : un env que le projet n\'a pas (réglage envs) : « pas de DEV », sans lien ni ligne', () => {
+  const d = JSON.stringify([{...DEPARTS[0], envs: ['stg', 'prd'], urls: {dev: 'https://dev.example'}}]);
+  const html = J(`(() => { const l0 = LIVE; LIVE = {runs: [], departs: ${d}}; const b = document.createElement('div');
+    try { departsFill(b); return b.innerHTML; } finally { LIVE = l0; } })()`);
+  assert.match(html, /<td class="dep-off"><span class="dep-none">pas de DEV<\/span><\/td>/);
+  assert.doesNotMatch(html, /dev\.example|DM-7/);
+  const tv = J(`(() => { const l0 = LIVE; LIVE = {runs: [], departs: ${d}}; try { return tvDeparts(); } finally { LIVE = l0; } })()`);
+  assert.equal((tv.match(/class="tve-l"/g) || []).length, 2);
+});

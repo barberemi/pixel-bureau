@@ -14,7 +14,8 @@ est posé), « dépôt|branche » -> {status, conclusion, start, end, url, by} d
 « skipped » ne comptent pas (le workflow démarre à chaque événement de la PR et ne construit qu'avec le label).
 departs : le tableau des départs, [{repo, label, dev?, stg?, prd?}] dans l'ordre des dépôts suivis, chaque env =
 {ref, tag, by, end, url} de son dernier déploiement réussi (DEV/STG : titre du workflow hors prod, PRD : workflow de prod) ;
-urls : les adresses des envs du dépôt ({dev?, stg?, prd?}, réglage `urls` du dépôt dans github ou github.deploys), si connues.
+urls : les adresses des envs du dépôt ({dev?, stg?, prd?}, réglage `urls` du dépôt dans github ou github.deploys), si connues ;
+envs : les envs du dépôt (réglage `envs`, par exemple ["stg", "prd"] sans DEV), si le réglage les restreint : les autres ne sont pas relus.
 warnings (#8) : déploiements non relus (gh absent, accès refusé…), republiés depuis la lecture précédente ; écrit aussi
 sur stderr (run Kronn). Un 304 (rien n'a changé) n'en est pas un.
 """
@@ -217,25 +218,38 @@ def env_urls(conf):
     return {e: u[e] for e in ("dev", "stg", "prd") if isinstance(u.get(e), str) and re.match(r"https?://", u[e])}
 
 
+ALL_ENVS = ("dev", "stg", "prd")
+
+
+def env_list(conf):
+    """Les envs d'un dépôt (réglage `envs`), dans l'ordre DEV, STG, PRD ; les trois sans réglage."""
+    e = conf.get("envs")
+    return tuple(x for x in ALL_ENVS if x in e) if isinstance(e, list) else ALL_ENVS
+
+
 def departs():
     """[{repo, label, dev?, stg?, prd?}] dans l'ordre des dépôts suivis : le dernier déploiement réussi de chaque env
     (un essai annulé ou en échec ne change pas ce qui tourne). PRD : le workflow de prod, une version dans le titre."""
     g, out = CFG.get("github") or {}, []
-    rows = ([(g["repo"], "", g.get("staging_workflow"), g.get("prod_workflow"), env_urls(g))] if g.get("repo") else []) + [
-        (d["repo"], d.get("label") or "", d.get("staging_workflow"), d.get("prod_workflow"), env_urls(d))
+    rows = ([(g["repo"], "", g.get("staging_workflow"), g.get("prod_workflow"), env_urls(g), env_list(g))] if g.get("repo") else []) + [
+        (d["repo"], d.get("label") or "", d.get("staging_workflow"), d.get("prod_workflow"), env_urls(d), env_list(d))
         for d in g.get("deploys") or [] if d.get("repo") and d["repo"] != g.get("repo")]
-    for repo, label, st, pr, urls in rows:
+    for repo, label, st, pr, urls, has in rows:
         row = {"repo": repo, "label": label or repo.split("/")[-1].replace("front_", "")}
         if urls:
             row["urls"] = urls
+        if has != ALL_ENVS:
+            row["envs"] = list(has)
         ok = lambda wf: sorted((r for r in D.get(repo + "|" + (wf or ""), {}).get("runs") or []
                                 if r.get("status") == "completed" and r.get("conclusion") == "success"),
                                key=lambda x: x.get("createdAt") or "", reverse=True)
         for env, words in DEPART_ENVS:
+            if env not in has:
+                continue
             r = next((x for x in ok(DEPLOY.get(repo) or st) if names_env(x, words)), None)
             if r:
                 row[env] = deployed(r)
-        r = next((x for x in ok(pr) if VER.search(x.get("displayTitle") or "")), None)
+        r = "prd" in has and next((x for x in ok(pr) if VER.search(x.get("displayTitle") or "")), None)
         if r:
             row["prd"] = dict(deployed(r), ref=VER.search(r["displayTitle"]).group(1), tag=True)
         out.append(row)
