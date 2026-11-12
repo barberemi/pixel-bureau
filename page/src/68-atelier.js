@@ -23,7 +23,9 @@ function atConseil(p){
   if(t==='garde_fou_docs')return p.docs_ok?'Le travail est commité : Kronn a refusé un fichier de doc après coup. Relance le ticket en reprise : le Code retrouve ses lots déjà faits et passe vite aux contrôles.'
     :'Kronn a refusé un fichier de doc avant la fin du Code. Relance le ticket en reprise : le Code reprend ses lots là où il en était.';
   if(t==='delai')return 'Le run a dépassé sa durée permise (coupure réseau, agent figé…). Relance le ticket : la chaîne reprend au poste arrêté.';
-  if(t==='agent')return 'L\'agent ou l\'API n\'a pas répondu (quota, réseau, service en panne). Attends qu\'il revienne, puis relance le ticket.';
+  if(t==='agent'){const c=svClaudeNow(T); // 48-statuts.js : la page de statut de Claude à l'heure affichée
+    return c?'Claude signale un incident depuis '+hm(ms(c.from))+' (« '+c.name+' ») : ce n\'est pas le ticket. Attends la fin de l\'incident, puis relance le ticket.'
+      :'L\'agent ou l\'API n\'a pas répondu (quota, réseau, service en panne). Attends qu\'il revienne, puis relance le ticket.';}
   if(t==='script')return 'Un script de la chaîne a échoué : lis l\'étape dans Kronn avant de relancer.';
   return 'Lis l\'étape en échec dans Kronn avant de relancer le ticket.';
 }

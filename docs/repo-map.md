@@ -24,7 +24,7 @@ pixel-bureau/
 │       └── theme-*.css        # thème (couleurs seulement) : classique ; les autres viennent du pack d'équipe
 ├── workflows/                 # scripts Python des étapes Exec des crons Kronn
 │   ├── _lib.py, _plan.py      # socle commun et règles des plans, recopiés dans chaque script au rendu
-│   ├── *_snapshot.py          # producteurs des datasets (office, live, gates, payroll, duck, absences, pages, github, gitfut, actions)
+│   ├── *_snapshot.py          # producteurs des datasets (office, live, gates, payroll, duck, absences, pages, github, gitfut, actions, statuts)
 │   ├── *.py                   # autres étapes (team_shape, planning_jql, duck_start, todos, gate_decide, question_answer, relaunch, layout_save, agent_save…)
 │   └── templates/*.json       # modèles des workflows et Quick Prompts (team, live, office, canard, absences, duck, gate…)
 ├── skills/*.md                # skills du Bureau, partagés par la revue de PR et la chaîne (publiés par publish.py et install.py)

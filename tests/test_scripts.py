@@ -1662,6 +1662,7 @@ print(json.dumps(val))
             "duck": self.run_script("duck_snapshot.py", {"sprint": None, "velocity": None, "reopens": None}, api=self.fresh_kronn(FakeKronn())),
             "gitfut": self.run_script("gitfut_snapshot.py", gitfut={"p_pam": "Pam"}, gitfut_base="http://127.0.0.1:9",
                                       wiki_posters=[], wiki_base="http://127.0.0.1:9"),
+            "statuts": self.run_script("statuts_snapshot.py", statuts=[]),  # sans réseau : la forme, pas les pages de statut
         }
         fake, _, _ = self.boss_pages()
         out["bosspages"] = self.run_script("pages_snapshot.py", api=self.fresh_kronn(fake), boss_pages=["pa"], chrome=False)
@@ -1693,7 +1694,7 @@ print(json.dumps(val))
         objet, et la page démarre sur ces seules données (sans démo). Un champ renommé d'un côté seulement casse ici."""
         outputs = self.cron_outputs()
         self.assertEqual(sorted(outputs), sorted(["office", "live", "gates", "payroll", "team", "duck", "gitfut", "bosspages",
-                                                  "actions", "absences", "avatars", "agents", "layout"]))  # tous les datasets de la page
+                                                  "actions", "absences", "avatars", "agents", "layout", "statuts"]))  # tous les datasets de la page
         path = os.path.join(self.tmp, "outputs.json")
         with open(path, "w") as fh:
             json.dump(outputs, fh)
