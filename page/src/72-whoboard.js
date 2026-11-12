@@ -77,7 +77,7 @@ function whoCards(t,teamOnly){
 let WHO_SIG='';
 function renderWho(){
   const box=document.getElementById('who'); if(!box||!DATA)return;
-  const cards=whoCards(T), up=[...atWhoRows(T),...rtWhoRows(T)]; // 69-atelier-rdc.js, 69-retours-rdc.js : les postes du 1er et du 3e
+  const cards=whoCards(T), up=[...csWhoRows(T),...atWhoRows(T),...rdWhoRows(T),...rtWhoRows(T)]; // 69-atelier-rdc.js, 69-retours-rdc.js : les postes du 1er et du 3e
   const attn=cards.filter(x=>x.attn).length+up.filter(x=>x.attn).length;
   const head=`<h2 class="grp" data-who-toggle role="button" tabindex="0" aria-expanded="${!COLLAPSED.who}"><span class="chev">${COLLAPSED.who?'▸':'▾'}</span>Qui fait quoi <span class="cnt">${cards.length+up.length}</span>${attn?`<span class="cnt attn">${attn} pour toi</span>`:''}</h2>`;
   const body=COLLAPSED.who?'':'<div class="who-grid">'+cards.map(x=>{
@@ -89,7 +89,7 @@ function renderWho(){
       `<span class="wp">${img?`<img src="${img}" alt="">`:''}${famBadge(x.c)}</span>`+
       `<span class="wt"><span class="wn">${esc(agentTag(x.c)+x.c.name)}<span class="ws">${esc(shortSt(x.st))}${x.since?' · '+esc(x.since):''}</span></span>`+
       `<span class="ww${x.tone?'':' nt'}">${esc(x.what)}</span>${sub?`<span class="wsub">${esc(sub)}</span>`:''}${nTk>1?`<span class="wmore">Ses ${nTk} tickets ›</span>`:''}</span></button>`;
-  }).join('')+'</div>'+atWhoHtml(T)+rtWhoHtml(T);
+  }).join('')+'</div>'+csWhoHtml(T)+atWhoHtml(T)+rdWhoHtml(T)+rtWhoHtml(T); // les étages dans l'ordre de l'ascenseur (audit UX 4.1)
   const html=head+body;
   if(html===WHO_SIG)return;
   WHO_SIG=html;box.innerHTML=html;
@@ -101,6 +101,8 @@ function renderWho(){
       if(e.target.closest('[data-who-toggle]')){COLLAPSED.who=!COLLAPSED.who;try{localStorage.setItem('bureau:collapsed',JSON.stringify(COLLAPSED));}catch(err){}renderWho();return;}
       const u=e.target.closest('[data-at-run]');if(u){atGoto(u.dataset.atRun);return;}
       const v=e.target.closest('[data-rt-run]');if(v){rtGoto(v.dataset.rtRun);return;}
+      const w=e.target.closest('[data-rd-run]');if(w){if(w.dataset.rdKind==='rd')rdGoto(w.dataset.rdRun);else setFloor(2);return;}
+      const x=e.target.closest('[data-cs-thread]');if(x){csGotoThread(x.dataset.csThread);return;}
       const b=e.target.closest('[data-who]');if(b)select(b.dataset.who);
     });
     box.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.closest('[data-who-toggle]')){e.preventDefault();e.target.click();}});

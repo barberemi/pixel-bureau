@@ -153,7 +153,7 @@ function launchBlock(box,{action,bind,name,sub,label,title,off,done,verb,next}){
 // visé viennent du dataset actions (moves, cron équipe) : le bouton n'envoie que l'id de la ligne, Kronn y relit le reste.
 // Avancer en bleu, reculer en gris ; chaque bouton dit la colonne visée et la raison du passage.
 const MV_ORDER=['todo','doing','review','test','deploy','done'];
-const MV_WHY={'doing>todo':'pas encore commencé','review>doing':'refusé en review','test>review':'à revoir','deploy>test':'à retester',
+const MV_WHY={'doing>todo':'pas encore commencé','review>doing':'refusé en revue','test>review':'à revoir','deploy>test':'à retester',
   'todo>doing':'on s\'y met','doing>review':'PR prête','review>test':'review validée','test>deploy':'test validé','deploy>done':'mis en prod à la main'};
 // les boutons d'un ticket : [{m (ligne de actions.moves), to (colonne visée), why, bind}], reculer d'abord ; [] sans le workflow
 function mvRows(x){

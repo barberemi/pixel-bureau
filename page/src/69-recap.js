@@ -41,7 +41,7 @@ function renderRecap(){
   if(d.created.length)li.push(`<li>＋ <b>${plural(d.created.length,'nouveau ticket','nouveaux tickets')}</b> <small>${esc(d.created.slice(0,5).map(e=>e.key).join(', '))}</small></li>`);
   if(d.approved.length)li.push(`<li>👍 <b>${plural(d.approved.length,'review approuvée','reviews approuvées')}</b></li>`);
   if(!li.length)li.push(`<li class="r-ok">Rien de notable.</li>`);
-  const title=parisMidnight(Date.now())>d.since?'☀ Ta journée d\'hier':'☀ Ta journée depuis minuit'; // données encore d'hier (avant le premier cron du matin)
+  const title=parisMidnight(Date.now())>d.since?'☀ Récap de ta journée d\'hier':'☀ Récap de ta journée'; // données encore d'hier (avant le premier cron du matin)
   const html=`<div class="rh"><h2>${title}</h2><button class="rclose" data-recap-close aria-label="Fermer le récap">Fermer</button></div><ul>${li.join('')}</ul>`+
     (d.gates||d.asks?`<div class="rfoot">✋ ${[d.gates?plural(d.gates,'validation','validations'):'',d.asks?plural(d.asks,'question','questions'):''].filter(Boolean).join(' et ')} ${d.gates+d.asks>1?'t\'attendent':'t\'attend'} : clique sur ton personnage, ${d.gates+d.asks>1?'elles sont':'elle est'} dans ta fiche.</div>`:'');
   box.hidden=false;

@@ -122,7 +122,7 @@ test('Nouvel an : compte à rebours jusqu\'à minuit le 31 décembre après midi
   assert.equal(run('bannerText(themeNow())'), 'JOYEUX NOËL · J-12');
 });
 
-test("Âge réel : un ticket en review depuis 12 j reste bloqué même si la bascule de sprint l'a touché hier", () => {
+test("Âge réel : un ticket en revue depuis 12 j reste bloqué même si la bascule de sprint l'a touché hier", () => {
   const t = Date.parse('2026-10-04T10:00:00Z');
   run(`TEAM={people:[{name:'Darryl',tickets:[
       {key:'DM-6550',cat:'review',since:'2026-09-22T10:00:00.000+0200',updated:'2026-10-02T16:13:27.490+0200'},

@@ -249,7 +249,7 @@ function csBay(slot,b,now,dt,people){
       const boss=k==='gate'&&!!chars.find(c=>c.boss);
       if(!boss){R(ctx,x-2,y-30,4,30,'#8a8478');for(let q=0;q<4;q++)R(ctx,x-14+q*7,y-32,7,6,q%2?'#1c1c1c':'#f2c230');}
       ctx.restore();
-      csLate(people,()=>{ctx.save();ctx.globalAlpha=fv;if(!boss)csPostePill(p,s,x,y+16);if(s==='gate'&&!boss&&(REDUCED_MOTION||Math.floor(now/500)%2))atBadge(x,y-44,'✋',WAIT_BG);ctx.restore();},y+2);
+      csLate(people,()=>{ctx.save();ctx.globalAlpha=fv;if(!boss)csPostePill(p,s,x,y+16);if(s==='gate'&&!boss&&waitOn(now))atBadge(x,y-44,'✋',WAIT_BG);ctx.restore();},y+2);
       atHitCs('agent',x-16,y-56,32,74,{b,k:p.k});return;}
     const aw=a&&a.w.find(q=>q[0]===j), w=aw&&aw[1];
     if(w&&!w.done){csDrawWalker(w,people,now);return;} // en route vers sa place
@@ -331,7 +331,7 @@ function csBeacon(now){
 const CS_K=1.75, CS_KB=1.35, CS_BACK=16; // échelle du bureau, du tableau de garde ; le capitaine se tient CS_BACK px derrière le bureau
 const csCaptainSprite=b=>bossFloorSprite(b,'captain_sprite');
 function csBayCol(slots,b,now){const s=slots[b];if(!s)return '#3d4250';if(s.dep)return '#3fbf6a';const k=s.s.k;
-  return k==='gate'?(REDUCED_MOTION||Math.floor(now/450)%2?WAIT_BG:WAIT_DIM):k==='failed'?'#e0614f':'#5b8def';}
+  return k==='gate'?(waitOn(now)?WAIT_BG:WAIT_DIM):k==='failed'?'#e0614f':'#5b8def';}
 function csDesk(slots,now,calls,open){ // le bureau, devant le capitaine : dessiné après lui
   const {x,y:F}=CS_DESK, K=CS_K, q=(dx,dy,w,h,c)=>R(ctx,Math.round(x+dx*K),Math.round(F+dy*K),Math.round(w*K),Math.round(h*K),c);
   q(-56,-12,112,24,'#6e4a2c');q(-56,-14,112,4,'#8a6040');q(-56,8,112,6,'#56391f');q(-56,14,112,3,'rgba(0,0,0,.2)');
@@ -562,3 +562,21 @@ function csGalleryScenes(){
     play:{len:20e3,speed:60,setup:s=>{const n=parisMidnight(s)+22.5*36e5;T=n;SCENE_DEMO.e=n+20e3*60;}}});
   return out;
 }
+// ---------- « Qui fait quoi » du RDC (audit UX 4.1) : une carte par baie occupée, comme les bureaux du 1er et du 3e ----------
+function csWhoRows(t){
+  if(!caserneOn())return [];
+  return csSlots(performance.now()).map((x,b)=>{if(!x||x.dep)return null;
+    const cur=csCur(x.st||{}), gate=x.s.k==='gate', err=x.s.k==='failed', a=ms((x.t.run&&x.t.run.at)||x.t.at);
+    return {id:x.t.id,b,attn:gate,st:gate?'gate':err?'error':'work',ico:gate?'✋':err?'🧯':cur?cur.i:'🚒',
+      name:gate?'T\'attend':err?(cur?cur.n+' en panne':'En panne'):cur?cur.n:'Intervention',what:csTitle(x.t),
+      sub:[gate?'réponse à valider avant Teams':'',spWho(x.t.from)].filter(Boolean).join(' · '),since:a&&a<=t?sinceTxt(t-a):''};
+  }).filter(Boolean);
+}
+function csWhoHtml(t){
+  const rows=csWhoRows(t);if(!rows.length)return '';
+  return `<h3 class="who-sub">🚒 -1 caserne <span class="cnt">${rows.length}</span></h3><div class="who-grid">`+rows.map(x=>
+    `<button class="wc${x.attn?' attn':''}" data-cs-thread="${esc(x.id)}" title="${esc([x.what,x.sub].filter(Boolean).join('\n'))}" style="--st:${ST_CSS[x.st]||'var(--idle)'};--tk:transparent">`+
+    `<span class="wp ic" aria-hidden="true">${x.ico}</span><span class="wt"><span class="wn">${esc(x.name)}<span class="ws">baie ${x.b+1}${x.since?' · '+esc(x.since):''}</span></span>`+
+    `<span class="ww nt">${esc(x.what)}</span>${x.sub?`<span class="wsub">${esc(x.sub)}</span>`:''}</span></button>`).join('')+'</div>';
+}
+function csGotoThread(id){setFloor(-1);CS_SEL=id;CS_PICK=null;SIDE_FOLDED=false;renderSide(true);}

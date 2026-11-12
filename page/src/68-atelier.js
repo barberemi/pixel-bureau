@@ -612,7 +612,7 @@ function atBoss(slots,now,dt,people){
   const ox=AT_CHAIR.x, F=AT_CHAIR.y;
   atBossChair(ox,F);
   const desk=()=>atBossDesk(ox,F,now,boss,(x0,top)=>slots.forEach((r,k)=>{const x=x0+42+k*8, on=r&&r.gate;R(ctx,x-3,top+4,7,7,'#1c1c1c');
-    R(ctx,x-2,top+5,5,5,!r?'#555':on?(Math.floor(now/450)%2?WAIT_BG:WAIT_DIM):r.back?'#e0614f':'#3fbf6a');atHit('room',x-4,top+2,9,11,{i:k});}));
+    R(ctx,x-2,top+5,5,5,!r?'#555':on?(waitOn(now)?WAIT_BG:WAIT_DIM):r.back?'#e0614f':'#3fbf6a');atHit('room',x-4,top+2,9,11,{i:k});}));
   if(!boss){desk();return;}
   const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:b.walk.pos.x,y:b.walk.pos.y},tile:seated?BOSS_SEAT.slice():null,moving:!arrived,pose:'stand',present:true,
     dir:arrived?(target==null?'down':AT_G[target].top?'up':'down'):b.walk.dir,_st:{st:gates.length?'gate':'idle'}});

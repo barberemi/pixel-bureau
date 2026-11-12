@@ -87,7 +87,7 @@ test('5.7 : la fiche d\'un ticket dit le statut en français, le statut Jira en 
     try { renderTicket(side, 'DM-2'); } finally { launchBlock = lb; foldSection = fs; }
     return out.join('');
   })()`);
-  assert.match(html, /<span title="Statut Jira : To Review">En review<\/span>/);
+  assert.match(html, /<span title="Statut Jira : To Review">En revue<\/span>/);
 });
 
 test('2.6 : l\'horloge de la page et du mode TV à la minute', () => {

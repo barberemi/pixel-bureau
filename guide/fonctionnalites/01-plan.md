@@ -121,9 +121,9 @@ Sous le plan, la légende suit l'étage affiché : au RDC les états et les holo
 - Au clavier : Tab jusqu'à la liste de l'équipe, flèches pour passer d'une personne à l'autre (elle ressort sur le plan), Entrée pour ouvrir sa fiche.
 
 ![Panneau replié : le plan prend la place](../img/panneau-replie.png)
-- Les bulles des tickets affichent depuis combien de jours le ticket est dans sa colonne (« 📗 7685 · en review · 6 j »).
-- Sur les bureaux, des piles montrent le travail de chacun :
-  - devant chaque collègue, sous son écran, une barre par ticket ouvert (5 au plus), de la couleur de son statut : vert en cours, bleu en review, violet en test, bleu-vert à déployer, gris à faire ;
+- Les bulles des tickets affichent depuis combien de jours le ticket est dans sa colonne (« 📗 7685 · en revue · 6 j »).
+- Sur les bureaux, des piles montrent le travail de chacun (survol : le détail ; clic : la fiche de la personne, qui liste ses tickets) :
+  - devant chaque collègue, sous son écran, une barre par ticket ouvert (5 au plus), de la couleur de son statut : vert en cours, bleu en revue, violet en test, bleu-vert à déployer, gris à faire ;
   - sur un caisson dans l'allée, à côté de la facilitatrice, une feuille blanche par ticket créé par l'équipe depuis le dernier daily (la pile repart de zéro à chaque daily) ;
   - sur un caisson à côté du testeur, un dossier jaune par ticket du sprint en test.
 

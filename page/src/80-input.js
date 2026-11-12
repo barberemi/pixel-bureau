@@ -39,7 +39,8 @@ function pileAt(ev){
   const r=cv.getBoundingClientRect(),mx=(ev.clientX-r.left)*W/r.width,my=(ev.clientY-r.top)*H/r.height;
   return PILE_HITS.find(h=>mx>=h.x&&mx<=h.x+h.w&&my>=h.y&&my<=h.y+h.h)||null;
 }
-function pileTip(h){
+function pileTip(h){return pileTip0(h)+' · clic : sa fiche';}
+function pileTip0(h){
   const keys=l=>l.slice(0,6).map(x=>x.key).join(', ')+(l.length>6?'…':'');
   if(h.kind==='doc')return h.o.name+' : '+plural(h.list.length,'ticket créé','tickets créés')+" par l'équipe depuis le daily · "+keys(h.list);
   if(h.kind==='folder')return h.o.name+' : '+plural(h.list.length,'ticket','tickets')+' à tester · '+keys(h.list);
@@ -56,7 +57,8 @@ function hitZone(ev){
   return mb?'mail:'+mb:duckHit(mx,my)?'duck':supportOpenable()&&inR(supportRect())?'support':bs&&inR(bs)?'bosspages':na&&inR(na)?'newagent':inR(PAYR)?'paie':inR(TVR)?'tv':(()=>{const r=svRect(T);return r&&inR(r);})()?'services':inR(KANR)?'kanban':(()=>{const r=cronNoteRect();return r&&inR(r);})()?'planning':todosOn()&&inR(todoRect())?'todo':CALR&&ABSENCES&&inR(CALR)?'calendar':DEPR&&inR(DEPR)?'departs':inR(EMPR)&&bestEmployee().length?'emp':null;}
 // zones du plan qui ouvrent une fenêtre (le reste ouvre le panneau) : l'infobulle le dit
 const WIN_ZONES=new Set(['bosspages','todo','newagent','kanban','calendar','departs']);
-cv.addEventListener('click',e=>{if(TV)return;if(FLOOR){(FLOOR===1?atelierClick:FLOOR===3?retoursClick:FLOOR===2?redactionClick:caserneClick)(e);return;}const c=hitTest(e);if(c){select(c.key);return;}const z=hitZone(e);if(z==='bosspages')openBossPages();else if(z==='departs')openDeparts();else if(z==='todo')openTodos();else if(z==='support')openSupport();else if(z==='newagent')openNewAgent();else select(z);});
+cv.addEventListener('click',e=>{if(TV)return;if(FLOOR){(FLOOR===1?atelierClick:FLOOR===3?retoursClick:FLOOR===2?redactionClick:caserneClick)(e);return;}const c=hitTest(e);if(c){select(c.key);return;}const pl=pileAt(e);if(pl&&pl.o&&pl.o.key){select(pl.o.key);return;} // une pile : la fiche de la personne, qui liste ses tickets (audit UX 4.7)
+  const z=hitZone(e);if(z==='bosspages')openBossPages();else if(z==='departs')openDeparts();else if(z==='todo')openTodos();else if(z==='support')openSupport();else if(z==='newagent')openNewAgent();else select(z);});
 const slider=document.getElementById('slider'), playBtn=document.getElementById('play'), liveBtn=document.getElementById('live'), speedBtn=document.getElementById('speed');
 const tgo=document.getElementById('tgo'), tbub=document.getElementById('tbub');
 // vitesse du replay : un bouton qui passe à la suivante à chaque clic

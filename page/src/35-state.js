@@ -344,7 +344,7 @@ function stateAt0(c,t){
     const doing=open.filter(x=>x.cat==='doing');
     const rv=open.filter(x=>x.cat==='review'||x.cat==='test');
     if(doing.length)return {st:'work',zone:'desk',human:true,label:'En cours : '+doing.map(x=>x.key).join(', '),pill:doing.length>1?'En cours sur '+nTk(doing.length):'En cours : '+doing[0].key,bubble:doing[0].key,tk:[...doing,...rv]};
-    return rv.length?{st:'idle',zone:'wander',human:true,label:nTk(rv.length)+' en review ou en test',bubble:rv[0].key,tk:rv}:{st:'idle',zone:'wander',human:true,label:'Disponible'};
+    return rv.length?{st:'idle',zone:'wander',human:true,label:nTk(rv.length)+' en revue ou en test',bubble:rv[0].key,tk:rv}:{st:'idle',zone:'wander',human:true,label:'Disponible'};
   }
   if(c.boss)return bossState(c,t);
   if(c.visitor){
@@ -445,6 +445,8 @@ const ST_TOKEN={ok:'#2e9e5b',info:'#4a7fe0',warn:'#f0b03a',err:'#d1453b',idle:'#
 // « t'attend » sur le plan, à tous les étages : un seul ambre (le --warn du thème) et son encre sombre pour les fonds,
 // un ambre foncé pour le texte posé sur une bulle claire, et la phase éteinte des lampes qui clignotent (audit UX 1.4)
 const WAIT_BG=ST_TOKEN.warn, WAIT_INK='#1b1404', WAIT_TXT='#8a5a00', WAIT_DIM='#8a5a00';
+// « t'attend » clignote partout au même rythme (audit UX 8.1) ; fixe si le système demande moins d'animations
+const waitOn=now=>REDUCED_MOTION||Math.floor(now/500)%2===1;
 const ST_PALETTE={
   sax:'#c9a227',
   daily:'#2e9e9b',

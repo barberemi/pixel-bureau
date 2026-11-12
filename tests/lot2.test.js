@@ -32,7 +32,7 @@ function world() {
   }`);
 }
 
-test('bloqués : ticket immobile en review depuis plus de 2 j, PR sans review depuis plus de 24 h (brouillons exclus)', () => {
+test('bloqués : ticket immobile en revue depuis plus de 2 j, PR sans review depuis plus de 24 h (brouillons exclus)', () => {
   world();
   assert.deepEqual(J(`blockedTickets(${T11}).map(x=>x.key)`), ['DM-1']);
   assert.deepEqual(J(`stalePrs(${T11}).map(x=>x.n)`), [10, 11]);
@@ -111,7 +111,7 @@ test('stand-up : le sprint, puis le Tech Lead en premier et la facilitatrice en 
   run(`TEAM={sprint:{},people:[{name:'A B',tickets:[{key:'DM-1',cat:'review',status:'To Review',summary:'x',created:'${new Date(Date.parse('2026-10-01T09:00:00Z')).toISOString()}'}]}],unassigned:[],work:{}};`);
   const sm = run(`personScene(chars[1],${Date.parse('2026-10-01T12:00:00Z')})`);
   assert.match(sm, /FAITES DES REVIEWS/);
-  assert.match(sm, /1 ticket en review/);
+  assert.match(sm, /1 ticket en revue/);
   assert.match(sm, /Nouveaux tickets depuis le dernier daily \(1\)/);
   assert.match(sm, /To Review<\/span><b>DM-1<\/b>/);
 });

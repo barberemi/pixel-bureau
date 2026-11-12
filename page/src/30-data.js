@@ -12,7 +12,7 @@ document.documentElement.style.setProperty('--mep',MEP_COLOR);
 // la palette des statuts de ticket, la seule de la page (bureaux, Kanban, fiches, bulles, KPI, fil, TV)
 const TCAT={
   doing:{t:'En cours',c:'#2e9e5b'},
-  review:{t:'En review',c:'#4a7fe0'},
+  review:{t:'En revue',c:'#4a7fe0'},
   test:{t:'En test',c:MEP_COLOR},
   deploy:{t:'À déployer',c:'#2e9e9b'},
   todo:{t:'À faire',c:'#8a8478'},
@@ -342,14 +342,14 @@ let DAY0=0,RSTART=0,REND=0,DISC_BY_RUN={},FIRST_LOAD_DONE=false;
 // repli sur updated, que les bascules de sprint et les pushs réécrivent), création d'une PR
 const tkSince=x=>ms(x&&(x.since||x.updated));
 const prSince=x=>ms(x&&x.created);
-// ce qui bloque l'équipe (mode TV, fiche d'un collègue) : ticket immobile en review ou en test, PR sans review
+// ce qui bloque l'équipe (mode TV, fiche d'un collègue) : ticket immobile en revue ou en test, PR sans review
 const BLOCKED_DAYS=2, PR_STALE_H=24;
 // PR ouvertes de l'équipe (sans les brouillons), avec leur auteur
 function teamPrs(){
   if(!TEAM)return [];
   return [...TEAM.people.flatMap(p=>(p.prs||[]).map(x=>({...x,who:p.name}))),...(TEAM.other_prs||[]).map(x=>({...x,who:x.author}))].filter(x=>!x.draft);
 }
-// tickets en review ou en test sans mouvement depuis BLOCKED_DAYS jours, les plus anciens d'abord
+// tickets en revue ou en test sans mouvement depuis BLOCKED_DAYS jours, les plus anciens d'abord
 function blockedTickets(t){
   if(!TEAM)return [];
   return [...TEAM.people.flatMap(p=>(p.tickets||[]).map(x=>({...x,who:p.name}))),...(TEAM.unassigned||[])]

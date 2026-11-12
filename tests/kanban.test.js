@@ -58,7 +58,7 @@ test('déplacer : ◀ puis ▶, liés à leur ligne de actions.moves (Kronn y re
   run(`ACTIONS.move=true;ACTION_BINDS['bureau-move']={jira_ticket_key:'id',target_status:'id'};
        ACTS={tickets:[],prs:[],moves:[{id:'${t.key}|next',key:'${t.key}',dir:'next',to:'To Test'},{id:'${t.key}|prev',key:'${t.key}',dir:'prev',to:'En cours'}]};`);
   const r = J(`mvRows(${JSON.stringify(t)}).map(x=>[x.m.dir,x.to,x.why,x.bind])`);
-  assert.deepEqual(r, [['prev', 'doing', 'refusé en review', {jira_ticket_key: t.key + '|prev', target_status: t.key + '|prev'}],
+  assert.deepEqual(r, [['prev', 'doing', 'refusé en revue', {jira_ticket_key: t.key + '|prev', target_status: t.key + '|prev'}],
                        ['next', 'test', 'review validée', {jira_ticket_key: t.key + '|next', target_status: t.key + '|next'}]]);
   run('ACTIONS.move=false;');
   assert.deepEqual(J(`mvRows(${JSON.stringify(t)})`), []);

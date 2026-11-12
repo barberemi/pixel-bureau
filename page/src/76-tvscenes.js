@@ -15,7 +15,7 @@ function tvKpis(t){
       live?'🚀 '+esc(live.m.tag)+' : '+esc(MEP_TXT[live.phase]):p.failed.length?'✗ '+esc(p.failed[0].m.tag)+' en échec':
       [p.last?'dernière '+esc(p.last.m.tag)+' à '+hm(ms(p.last.m.prod.end)):'',p.closed?'plateau fermé':''].filter(Boolean).join(' · ')));}
   const bt=blockedTickets(t).length, sp=stalePrs(t).length;
-  out.push(k(bt?'warn':'ok',bt,bt>1?'tickets bloqués':'ticket bloqué','en review ou test depuis plus de '+BLOCKED_DAYS+' j'));
+  out.push(k(bt?'warn':'ok',bt,bt>1?'tickets bloqués':'ticket bloqué','en revue ou test depuis plus de '+BLOCKED_DAYS+' j'));
   out.push(k(sp?'warn':'ok',sp,'PR sans review','depuis plus de '+PR_STALE_H+' h'));
   const down=agentsDown();
   out.push(k(down.length?'err':'ok',down.length,down.length>1?'agents en panne':'agent en panne',down.length?esc(down.slice(0,3).map(c=>c.name).join(', ')):'tout tourne'));
@@ -30,7 +30,7 @@ function sceneSprint(t){
     .sort((a,b)=>(b.doing+b.review+b.test)-(a.doing+a.review+a.test));
   return `<div class="sc-hero"><b>${pct}<i>%</i></b><div><div class="sc-meter"><i style="width:${pct}%"></i>${s.time!=null?`<u style="left:${s.time*100}%"></u>`:''}</div>`+
     `<p>${fmtPts(s.ptsDone)} / ${fmtPts(s.ptsAll)} points terminés${s.time!=null?' · '+Math.round(s.time*100)+' % du temps écoulé':''}${s.j!=null?' · J-'+s.j:''}</p>`+
-    `<p class="sc-cats"><span>${c.todo} à faire</span><span style="color:${CAT_COLOR.doing}">${c.doing} en cours</span><span style="color:${CAT_COLOR.review}">${c.review} en review</span><span style="color:${CAT_COLOR.test}">${c.test} en test</span><span>${c.done} terminés</span></p></div></div>`+
+    `<p class="sc-cats"><span>${c.todo} à faire</span><span style="color:${CAT_COLOR.doing}">${c.doing} en cours</span><span style="color:${CAT_COLOR.review}">${c.review} en revue</span><span style="color:${CAT_COLOR.test}">${c.test} en test</span><span>${c.done} terminés</span></p></div></div>`+
     `<table class="sc-tab"><tr><th></th><th>en cours</th><th>review</th><th>test</th><th>terminés</th></tr>`+
     rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.doing||''}</td><td>${r.review||''}</td><td>${r.test||''}</td><td>${r.done||''}</td></tr>`).join('')+'</table>'+sceneAway(t);
 }
@@ -73,7 +73,7 @@ function personScene(c,t){
     const rv=sprintTickets().filter(x=>x.cat==='review');
     const byTeam=!!(TEAM&&TEAM.new_tickets), nw=byTeam?teamCreated(prevDaily(t),t).map(x=>({...x,who:x.c.name})):newTickets(t);
     return `<h3>${byTeam?"Tickets créés par l'équipe":'Nouveaux tickets'} depuis le dernier daily (${nw.length})</h3>${nw.length?tkList(nw,50):'<p class="sc-empty">Aucun.</p>'}`+
-      `<p class="sc-big">${plural(rv.length,'ticket en review','tickets en review')}</p><p class="sc-shout">FAITES DES REVIEWS</p>`;
+      `<p class="sc-big">${plural(rv.length,'ticket en revue','tickets en revue')}</p><p class="sc-shout">FAITES DES REVIEWS</p>`;
   }
   if(c.roleKind==='po'){
     const nw=W&&W.written.length?W.written:newTickets(t);
@@ -122,7 +122,7 @@ function sceneRetroDone(t){
 function sceneRetroStuck(t){
   const bt=blockedTickets(t), sp=stalePrs(t), qa=chars.find(c=>c.person&&c.roleKind==='qa'), W=qa&&workOf(qa), back=W?W.reopened:[];
   const prLi=x=>`<li><b>${esc(x.n?prNum(x):'#'+(x.number||''))}</b> ${esc(clip(x.title||'',80))}${x.who?` <small>· ${esc(String(x.who).split(' ')[0])}</small>`:''}</li>`;
-  return `<div class="sc-cols"><div><h3>Bloqués en review ou test (${bt.length})</h3>${bt.length?tkList(bt,20):'<p class="sc-empty">Aucun.</p>'}`+
+  return `<div class="sc-cols"><div><h3>Bloqués en revue ou test (${bt.length})</h3>${bt.length?tkList(bt,20):'<p class="sc-empty">Aucun.</p>'}`+
     `<h3 style="margin-top:18px">Réouverts (${cnt50(back.length)})</h3>${back.length?tkList(back,20):'<p class="sc-empty">Aucun.</p>'}</div>`+
     `<div><h3>PR sans review depuis plus de ${PR_STALE_H} h (${sp.length})</h3>${sp.length?`<ul class="sc-tk">${sp.slice(0,20).map(prLi).join('')}</ul>`:'<p class="sc-empty">Aucune.</p>'}</div></div>`;
 }
