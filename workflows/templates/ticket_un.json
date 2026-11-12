@@ -187,7 +187,7 @@
     "step_type": {
      "type": "ApiCall"
     },
-    "description": "Pose les liens dans Jira (update.issuelinks : inwardIssue « is blocked by », outwardIssue « blocks », vus du ticket créé) ; rien à lier : un PUT vide, sans effet. Après resultat : le ticket est noté créé même si un lien échoue. returnIssue=true : sans lui Jira répond 204 sans corps (KT-689).",
+    "description": "Pose les liens dans Jira (update.issuelinks : inwardIssue « is blocked by », outwardIssue « blocks », vus du ticket créé) ; rien à lier : un PUT {\"fields\": {}}, sans effet (un corps vide vaut un 400). Après resultat : le ticket est noté créé même si un lien échoue. returnIssue=true : sans lui Jira répond 204 sans corps (KT-689).",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
