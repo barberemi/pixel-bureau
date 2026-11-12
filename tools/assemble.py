@@ -228,6 +228,8 @@ def page_config(cfg):
         # 2e étage, la salle de rédaction : une bibliothèque par composant de l'équipe (jira.create.components)
         "redaction_shelves": [str(c.get("name") if isinstance(c, dict) else c) for c in (((cfg.get("jira") or {}).get("create") or {}).get("components") or [])][:4],
         "revue_wf": sorted({str((cfg.get("models") or {}).get(k) or "")[:8] for k in ("review_child", "review_one") if (cfg.get("models") or {}).get(k)}),
+        # la revue à la demande seule (models.review_one) : elle lance un review_child par PR ; son run ne prend pas de bureau
+        "revue_one_wf": [str((cfg.get("models") or {}).get("review_one"))[:8]] if (cfg.get("models") or {}).get("review_one") else [],
         # la file de la salle de revue : les passages du cron des revues (models.review_cron), parents des revues de la file
         "revue_cron_wf": [str((cfg.get("models") or {}).get("review_cron"))[:8]] if (cfg.get("models") or {}).get("review_cron") else [],
         # ses postes (sous-workflows review_<poste>) : lus comme des étapes du run de la revue, jamais au RDC
