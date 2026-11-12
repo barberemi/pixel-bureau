@@ -355,7 +355,7 @@ class TicketChainTest(unittest.TestCase):
         self.assertIn("Liens Jira « Blocks » posés à la création", ap)
         lot = lambda i, key: (Path(self.tmp, ".kronn").mkdir(exist_ok=True), Path(self.tmp, ".kronn", "current_task.json").write_text(json.dumps({"run": "l1", "i": i})),  # noqa: E731
                               self.t("lot", "resultat", key), json.loads(self.t("lot", "liens", key).stdout))[-1]
-        self.assertEqual(lot(0, "DM-1"), {"body": {}, "n": 0, "texte": "aucun lien"}, "le premier créé n'a rien à lier")
+        self.assertEqual(lot(0, "DM-1"), {"body": {"fields": {}}, "n": 0, "texte": "aucun lien"}, "le premier créé n'a rien à lier")
         b = lot(1, "DM-2")
         self.assertEqual(b["body"]["update"]["issuelinks"], [{"add": {"type": {"name": "Blocks"}, "inwardIssue": {"key": "DM-1"}}}])
         self.assertEqual(b["texte"], "bloqué par DM-1", "T3 pas encore créé : son lien viendra avec lui")

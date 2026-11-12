@@ -761,14 +761,15 @@ def liens(run, i, key):
     """Le corps du PUT /rest/api/2/issue/<key> qui lie le ticket créé à ceux déjà créés du même run : il est bloqué par
     ceux de son bloque_par, et bloque ceux qui l'attendent. Vu du ticket mis à jour (comme Jira les montre sur sa fiche) :
     inwardIssue = « is blocked by » ce ticket-là, outwardIssue = « blocks » ce ticket-là. Les tickets sont créés l'un
-    après l'autre : chaque lien est posé quand le second des deux existe. Rien à lier : {} (Jira ne change rien)."""
+    après l'autre : chaque lien est posé quand le second des deux existe. Rien à lier : {"fields": {}}, sans effet
+    (un corps {} vaut un 400 « one of 'fields' or 'update' required »)."""
     t = (dget(run, "tickets.json") or {}).get("tickets") or []
     made = {int(m["i"]): m["key"] for m in dget(run, "crees.json", []) if m.get("key") and m.get("i") is not None and int(m["i"]) != i}
     me = t[i] if 0 <= i < len(t) else {}
     ty = {"name": link_type()}
     adds = [{"add": {"type": ty, "inwardIssue": {"key": made[k - 1]}}} for k in me.get("bloque_par") or [] if k - 1 in made]
     adds += [{"add": {"type": ty, "outwardIssue": {"key": made[j]}}} for j, x in enumerate(t) if j in made and i + 1 in (x.get("bloque_par") or [])]
-    return {"body": {"update": {"issuelinks": adds}} if adds else {}, "n": len(adds),
+    return {"body": {"update": {"issuelinks": adds}} if adds else {"fields": {}}, "n": len(adds),
             "texte": ", ".join([f"bloqué par {made[k - 1]}" for k in me.get("bloque_par") or [] if k - 1 in made] +
                                [f"bloque {made[j]}" for j, x in enumerate(t) if j in made and i + 1 in (x.get("bloque_par") or [])]) or "aucun lien"}
 
