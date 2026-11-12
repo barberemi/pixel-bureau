@@ -13,6 +13,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 ### Modifié
 
 - README : ce que fait Le Bureau, en deux promesses (voir l'équipe, 0 jeton ; faire travailler des agents, au coût des jetons et sous ta décision) et à qui appartient la page.
+- La fiche du panneau s'allège : ✎ à côté du nom, l'état et les todos sur une ligne, un seul bouton primaire (l'action de la validation, dans sa carte), les chiffres en deux colonnes lisibles, « Ses tickets dans le Kanban » en lien. « Qui fait quoi » : « Ses 4 tickets › » visible au lieu d'une liste en infobulle. Mode TV : au 2e, une carte par revue en cours avec la barre des postes ; pendant la scène du sprint, sa tuile ne se répète plus en bas.
 
 ### Corrigé
 

@@ -13,7 +13,7 @@ Pour l'écran de l'open space : plein écran, textes lisibles à 3 m, chiffres d
 
 ![Daily](../img/standup.png)
 
-- Pendant le daily (ou touche **S**, bouton « Daily »), les scènes tournent toutes les 20 s : le sprint, puis un tour de table (lead, devs, testeur, PO, apprentis, facilitateur en dernier) avec le vrai travail de chacun. Flèches pour passer d'une scène à l'autre. Le testeur : ses tickets réouverts d'abord (étiquette rouge), puis ceux testés depuis le dernier daily, l'un sous l'autre sur toute la largeur ; une liste trop longue défile toute seule.
+- Pendant le daily (ou touche **S**, bouton « Daily »), les scènes tournent toutes les 20 s : le sprint (sa tuile s'efface de la bande du bas, son pourcentage est déjà au centre), puis un tour de table (lead, devs, testeur, PO, apprentis, facilitateur en dernier) avec le vrai travail de chacun. Flèches pour passer d'une scène à l'autre. Le testeur : ses tickets réouverts d'abord (étiquette rouge), puis ceux testés depuis le dernier daily, l'un sous l'autre sur toute la largeur ; une liste trop longue défile toute seule.
 - La scène « Le sprint » cite les absences et le télétravail du jour (« Absences aujourd'hui : Darryl (ce matin), Clark · 🏠 En télétravail : Holly ») ; le tour de table saute les absents. Voir [Absences et télétravail](14-absences.md).
 
 ![Daily : les réouverts puis les testés](../img/standup-testeur.png)

@@ -82,11 +82,13 @@ function renderWho(){
   const head=`<h2 class="grp" data-who-toggle role="button" tabindex="0" aria-expanded="${!COLLAPSED.who}"><span class="chev">${COLLAPSED.who?'▸':'▾'}</span>Qui fait quoi <span class="cnt">${cards.length+up.length}</span>${attn?`<span class="cnt attn">${attn} pour toi</span>`:''}</h2>`;
   const body=COLLAPSED.who?'':'<div class="who-grid">'+cards.map(x=>{
     const img=portraitUrl(x.c);
-    const tip=[x.what,x.sub,x.tip].filter(Boolean).join('\n');
+    // plusieurs tickets : leur liste n'est plus dans l'infobulle mais dans la fiche, ouverte par un lien visible (audit UX 4.6/4.7)
+    const nTk=x.tip?x.tip.split('\n').length:0, sub=nTk>1?String(x.sub||'').replace(/ · \+\d+ autres?$/,'').replace(/^\+\d+ autres?$/,''):x.sub;
+    const tip=[x.what,sub].filter(Boolean).join('\n');
     return `<button class="wc${x.attn?' attn':''}${x.st.abs?' abs':''}${sel===x.c.key?' on':''}" data-who="${esc(x.c.key)}" title="${esc(tip)}" style="--st:${ST_CSS[x.st.st]||'var(--idle)'};--tk:${x.tone||'transparent'}">`+
       `<span class="wp">${img?`<img src="${img}" alt="">`:''}${famBadge(x.c)}</span>`+
       `<span class="wt"><span class="wn">${esc(agentTag(x.c)+x.c.name)}<span class="ws">${esc(shortSt(x.st))}${x.since?' · '+esc(x.since):''}</span></span>`+
-      `<span class="ww${x.tone?'':' nt'}">${esc(x.what)}</span>${x.sub?`<span class="wsub">${esc(x.sub)}</span>`:''}</span></button>`;
+      `<span class="ww${x.tone?'':' nt'}">${esc(x.what)}</span>${sub?`<span class="wsub">${esc(sub)}</span>`:''}${nTk>1?`<span class="wmore">Ses ${nTk} tickets ›</span>`:''}</span></button>`;
   }).join('')+'</div>'+atWhoHtml(T)+rtWhoHtml(T);
   const html=head+body;
   if(html===WHO_SIG)return;

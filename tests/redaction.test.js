@@ -49,6 +49,11 @@ test("la revue : l'auteur de la PR en face du relecteur, un remplaçant pour la 
   assert.match(html, /<b>T2<\/b> Pistes audio dans le menu du lecteur <span class="mut">· dm\/site · 2 pts/);
   assert.match(html, /Revue des PR <span class="cnt">3/);
   assert.match(J('tvRedactionHtml()'), /Rédaction[\s\S]*Revue des PR · 3/);
+  // audit UX 4.9 : une carte par revue en cours, la PR, son auteur et la barre des postes
+  const tv = J('tvRedactionHtml()');
+  assert.equal((tv.match(/class="tv-steps"/g) || []).length, 3);
+  assert.match(tv, /dm\/api|api#\d+/);
+  assert.match(tv, /<span class="ok">[^<]+ ✓<\/span>/, 'un poste fait est coché');
 });
 
 test("depuis le RDC : le fil et ⌘K ; la loupe du tampon ; la galerie rend le relevé tel quel", () => {

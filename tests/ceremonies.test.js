@@ -94,3 +94,9 @@ test('sprint planning : les tickets sans story points des 2 prochains sprints (t
     assert.match(J(`planningScenes(${t})[0].f(${t})`), /Pas de sprint à venir/);
   } finally { run(`TEAM.planning=${JSON.stringify(keep)};`); }
 });
+
+test('mode TV : la tuile du sprint est marquée, la scène du sprint la masque (pas de chiffre en double, audit UX 4.9)', () => {
+  run('T=DAY0+9.7*36e5;');
+  assert.match(J('tvKpis(T)'), /<div class="tk k-sprint">/);
+  assert.equal(J('standupScenes()[0].f===sceneSprint'), true, 'la première scène du daily est celle du sprint');
+});

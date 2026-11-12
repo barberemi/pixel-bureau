@@ -9,7 +9,7 @@ function agentsDown(){return chars.filter(c=>!c.person&&!c.visitor&&c._st&&c._st
 function tvKpis(t){
   const d=dashData(t), out=[], k=(cls,num,lbl,sub)=>`<div class="tk ${cls}"><b>${num}</b><span>${lbl}</span>${sub?`<small>${sub}</small>`:''}</div>`;
   if(d.sprint){const s=d.sprint, pct=s.ptsAll?Math.round(s.ptsDone/s.ptsAll*100):0;
-    out.push(k('',pct+'<i>%</i>','du sprint '+esc(s.name),(s.j!=null?'J-'+s.j:'')+(s.time!=null?' · '+Math.round(s.time*100)+' % du temps':'')));}
+    out.push(k('k-sprint',pct+'<i>%</i>','du sprint '+esc(s.name),(s.j!=null?'J-'+s.j:'')+(s.time!=null?' · '+Math.round(s.time*100)+' % du temps':'')));}
   if(d.prod){const p=d.prod, live=p.live[p.live.length-1];
     out.push(k(p.failed.length?'err':'mep',p.done,plural(p.done,'mise en prod','mises en prod').replace(/^\d+ /,''),
       live?'🚀 '+esc(live.m.tag)+' : '+esc(MEP_TXT[live.phase]):p.failed.length?'✗ '+esc(p.failed[0].m.tag)+' en échec':
@@ -167,11 +167,12 @@ function renderTvScenes(now){
   const k=tvKpis(T); if(kpi.dataset.sig!==k){kpi.dataset.sig=k;kpi.innerHTML=k;}
   const on=TV&&sceneOn(T);
   document.body.classList.toggle('tvscene',on);
-  if(!on){TVSCENE.since=0;return;}
+  if(!on){TVSCENE.since=0;kpi.classList.remove('no-sprint');return;}
   const mode=sceneMode(T), SC=scenesFor(mode,T); TVSCENE.idx%=SC.length;
   if(!TVSCENE.since)TVSCENE.since=now;
   if(now-TVSCENE.since>=SC[TVSCENE.idx].ms){TVSCENE.idx=(TVSCENE.idx+1)%SC.length;TVSCENE.since=now;}
   const sc=SC[TVSCENE.idx], left=Math.max(0,sc.ms-(now-TVSCENE.since));
+  kpi.classList.toggle('no-sprint',sc.f===sceneSprint); // la scène du sprint montre déjà son pourcentage en grand : pas de tuile en double (audit UX 4.9)
   const img=sc.c&&typeof portraitUrl==='function'?portraitUrl(sc.c):null;
   const html=`<div class="sc-head">${img?`<img class="sc-face" src="${img}" alt="">`:''}<h2>${esc(sc.t)}</h2><span class="sc-dots">${SC.map((_,i)=>`<i class="${i===TVSCENE.idx?'on':''}"></i>`).join('')}</span>`+
     `<span class="sc-tag sc-${mode}">${SCENE_TAG[mode]||'Daily'}</span></div><div class="sc-body">${sc.f(T)}</div>`;

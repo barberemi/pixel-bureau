@@ -34,13 +34,13 @@ Une carte de question se décide sur la page :
 
 **Collègue** : tickets ouverts, en cours, PR ouvertes et mergées du jour, ce qu'il a écrit, trié ou testé (PO, facilitateur, testeur).
 
-Sous « Personnaliser », sa ligne d'état tient sur une ligne (« Teste 7 tickets », « En cours sur 2 tickets » ; la phrase complète au survol), suit l'heure affichée (direct ou rejeu) et se complète au besoin :
+Sous son nom (✎ à côté : personnaliser), sa ligne d'état tient sur une ligne (« Teste 7 tickets », « En cours sur 2 tickets » ; la phrase complète au survol), suit l'heure affichée (direct ou rejeu) et se complète au besoin :
 - ses compteurs Jira de la semaine (« **2** écrits cette semaine », « **7** testés depuis le daily ») ;
 - les tickets qu'il traite sans qu'ils soient à lui (ceux que teste la testeuse), en étiquettes : clic = la fiche du ticket, survol = son titre.
 
 ![Fiche d'une testeuse : ligne d'état, compteurs et tickets à tester](../img/fiche-testeuse.png)
 
-**Ses tickets** (dans la fiche d'un collègue) : une barre de ses points du sprint, un segment par colonne aux couleurs du Kanban (en tickets si aucun n'est estimé ; survol : le détail), les points déployés sur le total, le nombre de tickets par colonne, et **« ▦ Ses tickets dans le Kanban »** : le Mur Kanban filtré sur lui, où sont ses tickets, leurs fiches et leurs actions (voir [Murs du bureau](08-murs.md)).
+**Ses tickets** (dans la fiche d'un collègue) : une barre de ses points du sprint, un segment par colonne aux couleurs du Kanban (en tickets si aucun n'est estimé ; survol : le détail), les points déployés sur le total, le nombre de tickets par colonne, et le lien **« Ses tickets dans le Kanban › »** : le Mur Kanban filtré sur lui, où sont ses tickets, leurs fiches et leurs actions (voir [Murs du bureau](08-murs.md)).
 
 **Ses autres PR ouvertes** : les PR qui ne citent aucun de ses tickets du sprint (sans ticket, ou d'un ticket hors du sprint) ; celles qui en citent un sont sur la fiche du ticket, dans le Kanban. Un clic sur l'une d'elles ouvre sa fiche dans le volet du Kanban, filtré sur lui, avec « PR sans ticket dans le sprint ». Le compteur « PR ouvertes » en haut de la fiche les compte toutes. Un groupe par état de review, bordé de sa couleur (changements demandés, en attente de review, approuvées, puis brouillons, repliés par défaut), la plus récemment active d'abord. Chaque PR : son numéro (lien GitHub), le ticket qu'elle cite (lien Jira, en gris) et le composant, son titre sans le préfixe « feat(DM-1): », puis sa dernière activité (« il y a 6 mois » : une PR oubliée se voit), en orange avec ⏳ quand elle attend une review depuis plus de 24 h.
 

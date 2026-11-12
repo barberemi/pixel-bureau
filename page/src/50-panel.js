@@ -240,14 +240,12 @@ function drawSide(side){
   ft.innerHTML=`<div class="n">${esc(agentTag(c)+c.name)}${c.apprentice?' <span class="appr">🎓 apprenti</span>':''}</div><div class="r">${esc(c.role)}${c.name!==c.baseName?' · '+esc(c.baseName):''}</div>`;
   f.appendChild(ft);
   side.appendChild(f);
+  // personnaliser : une icône à côté du nom, pas un bouton de plus dans la pile (audit UX 4.6)
+  if(!c.visitor){const eb=document.createElement('button');eb.type='button';eb.className='edit-btn';eb.textContent='✎';
+    eb.title=canLook(c)?'Personnaliser':'Renommer';eb.setAttribute('aria-label',eb.title);eb.onclick=()=>openEditor(c);f.appendChild(eb);}
   famBlock(side,c); // 32-familles.js : à quoi il sert
   mtBlock(side,c); // 69-metiers.js : ce qu'il lance maintenant
   if(!c.visitor){
-    const eb=document.createElement('button');
-    eb.className='edit-btn';
-    eb.textContent=canLook(c)?'✎ Personnaliser':'✎ Renommer';
-    eb.onclick=()=>openEditor(c);
-    side.appendChild(eb);
     if(localOnly(c.key)){
       const n=document.createElement('div');
       n.className='note';
@@ -258,7 +256,9 @@ function drawSide(side){
   const s=document.createElement('div');
   s.className='stbox';s.dataset.key=c.key;
   s.innerHTML=s.dataset.sig=statusHtml(st);
-  side.appendChild(s);
+  const row=document.createElement('div');row.className='st-row';row.appendChild(s);side.appendChild(row); // l'état, et les todos du boss en lien
+  if(c.boss&&todosOn()){const b=document.createElement('button');b.type='button';b.className='td-open lk-btn'; // 47-todos.js : le tableau en liège, au clavier aussi
+    const n=tdIn('todo').length;b.textContent='📌 '+(n?plural(n,'todo à faire','todos à faire'):'Mes todos');b.onclick=openTodos;row.appendChild(b);}
   if(st.step&&st.step.err){
     const e=document.createElement('div');
     e.className='steps';
@@ -268,8 +268,6 @@ function drawSide(side){
   if(c.boss){const pr=presenceAt(c,T); // le boss reste à son bureau sur le plan : son absence ne se lit qu'ici et au calendrier
     if(pr.abs||pr.tt){const n=document.createElement('p');n.className='note';n.textContent='📅 Selon le planning : '+(pr.abs?ABS_LABEL[pr.abs].toLowerCase():'en télétravail')+'.';side.appendChild(n);}
   }
-  if(c.boss&&todosOn()){const b=document.createElement('button');b.type='button';b.className='td-open'; // 47-todos.js : le tableau en liège, au clavier aussi
-    const n=tdIn('todo').length;b.textContent='📌 Mes todos'+(n?' · '+n+' à faire':'');b.onclick=openTodos;side.appendChild(b);}
   if(c.boss){const p=document.createElement('p');p.style.color='var(--muted)';const gates=chars.filter(x=>gateRunsOf(x).length), lone=loneGates();
     const qs=QUESTIONS.filter(q=>(ms(q.since)||0)<=T);
     const up=typeof atGateRooms==="function"?atGateRooms():[]; // 68-atelier.js : les bureaux du 1er dont une gate t'attend
@@ -277,7 +275,9 @@ function drawSide(side){
     for(const x of gates)for(const r of gateRunsOf(x)){if(r)gateCard(side,r,x.name);else handCards(side,carriedFor(x,T));} // porteurs : les mails qu'ils remettent (48-mail.js)
     for(const g of lone)gateCard(side,{run:g.run,wf_name:g.wf_name,_s:ms(g.since)},null); // workflows sans personnage (« Le Bureau · plan »)
     for(const {r,i} of up){const g=atGate(r);if(!g)continue;gateCard(side,{...g,wf_name:'🏭 1er étage · bureau '+(i+1)+' · '+(r.ticket||'')+' · '+(AT_GATE_TXT[r.gate]||g.wf_name)},null);
-      const a=document.createElement('button');a.type='button';a.className='at-link';a.textContent='🏭 Voir le bureau '+(i+1)+' au 1er ›';a.onclick=()=>atGoto(r.run);side.appendChild(a);}
+      // le seul bouton primaire de la fiche : l'action de cette validation, dans sa carte
+      const a=document.createElement('button');a.type='button';a.className='at-link on';a.textContent='Ouvrir le bureau '+(i+1)+' au 1er ›';a.onclick=()=>atGoto(r.run);
+      const card=side.lastElementChild;(card&&card.classList.contains('gatecard')?card:side).appendChild(a);}
     for(const q of qs)questionCard(side,q,askerOf(q)); // questions des discussions (visiteurs, canard, « interroger »)
     const imp=chars.filter(x=>x.visitor&&x.disc&&x.disc.imp>0);
     if(imp.length){

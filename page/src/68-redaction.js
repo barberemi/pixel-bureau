@@ -463,7 +463,17 @@ function rdJiraHtml(){
 }
 function tvRedactionHtml(){
   return '<h2>Rédaction</h2>'+(rdTables().map(t=>`<div class="tw ag"><span class="wt"><span class="wn">${esc(clip(t.intention,40))}<span class="ws">${esc((RD_POSTES.find(p=>p.k===t.poste)||{}).n||'')}</span></span><span class="ww">${esc((t.tickets||[]).length?plural(t.tickets.length,'ticket','tickets'):'')}</span></span></div>`).join('')||'<div class="mut">Aucune intention en cours.</div>')+
-    `<h2>Revue des PR · ${rvActive().length}</h2>`;
+    `<h2>Revue des PR · ${rvActive().length}</h2>`+(rvActive().map(tvRevueCard).join('')||'<div class="mut">Aucune revue en cours.</div>');
+}
+// mode TV au 2e (audit UX 4.9) : une carte par revue en cours, comme les bureaux du 1er : la PR et son auteur, le poste en
+// cours, puis la barre des postes déjà dessinée sous chaque bureau (fait ✓, en cours en couleur)
+function tvRevueCard(r){
+  const v=r.vars||{}, steps=rvSteps(r), cur=steps.find(s=>s.s==='Running')||steps[steps.length-1]||{};
+  const pr0=(String(v['current_task.repo']||'').split('/').pop()||'?')+'#'+(v['current_task.number']||'?');
+  const who=v['current_task.author'], au=who&&typeof ghChar==='function'?ghChar(who):null;
+  const pr=pr0+(who?' · '+(au?au.name.split(' ')[0]:'@'+who):''); // le prénom de l'auteur (l'écran mural est partagé : pas de « ta PR »)
+  return `<div class="tw ag" style="--st:${ST_CSS.work}"><span class="wt"><span class="wn">${esc(pr)}<span class="ws">${esc(cur.n?rvStepName(cur.n):'')}</span></span>`+
+    `<span class="tv-steps">${steps.map(s=>`<span class="${s.s==='Success'?'ok':s.s==='Running'?'run':''}">${esc(rvStepName(s.n))}${s.s==='Success'?' ✓':''}</span>`).join('')}</span></span></div>`;
 }
 // ---------- la loupe, le fil du RDC, ⌘K, la galerie ----------
 function rdLoupeEvents(){
