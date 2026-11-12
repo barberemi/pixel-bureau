@@ -121,6 +121,19 @@ test("la scène « Le soir au 2e » : la nuit tombe, la salle de rédaction et l
   assert.equal(p.run('REDACTION === __R && T === __T'), true, 'la page revient à ses données et à son heure');
 });
 
+test("une revue à la demande prend un seul bureau : le run du lanceur (review_one) cède la place à celui de la PR", () => {
+  const q = load({demo: false}), Q = c => JSON.parse(q.run('JSON.stringify(' + c + ')'));
+  q.run(`CFG.revue_wf = ['aaaa1111', 'bbbb2222']; CFG.revue_one_wf = ['bbbb2222']; CFG.revue_cron_wf = []; T = DAY0 + 10 * 36e5;
+    DATA.runs = [{run: 'one', wf: 'bbbb2222-x', status: 'Running', _s: T - 6e4, vars: {}},
+      {run: 'kid', wf: 'aaaa1111-x', parent: 'one', status: 'Running', _s: T - 5e4,
+        vars: {'current_task.number': '2074', 'current_task.repo': 'dm/site', 'current_task.author': 'pambeesly'}, steps: []}];`);
+  assert.deepEqual(Q('rvActive().map(r => r.run)'), ['kid']);
+  q.run(`DATA.runs.forEach(r => { r.status = 'Success'; r._e = T; });`);
+  assert.equal(Q("rvRuns().filter(r => r.status === 'Success').length"), 1, 'une revue postée, pas deux');
+  q.run('setFloor(2); renderRedaction(1000);');
+  assert.equal(Q('FLOOR'), 2);
+});
+
 // la file de la salle de revue (68-revue.js) : les PR retenues par le cron attendent au casier, leurs auteurs en salle d'attente
 function frames(p, n, from) { // n images de 100 ms : les marcheurs avancent
   p.run(`for (let i = 0; i < ${n}; i++) renderRedaction(${from} + i * 100);`);

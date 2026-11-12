@@ -66,6 +66,9 @@ const rdTables=()=>((REDACTION&&REDACTION.tables)||[]).slice(0,3);
 const rdTable=()=>{const l=rdTables();return l.find(t=>t.run===RDSEL)||l[0]||null;};
 // ---------- la revue : les runs de relecture d'une PR (review_child), lus du run ----------
 const rvWf=w=>!!w&&(CFG.revue_wf||[]).includes(String(w).slice(0,8));
+// la revue à la demande (review_one, CFG.revue_one_wf) ne relit pas elle-même : elle lance un review_child par PR, qui prend
+// le bureau ; son run à elle n'en prend pas (sans quoi une PR lancée à la main occupait deux bureaux, l'un en « ?#? »)
+const rvOneWf=w=>!!w&&(CFG.revue_one_wf||[]).includes(String(w).slice(0,8));
 // les postes de la revue (sous-workflows review_<poste>, CFG.revue_postes_wf) : leurs runs ne passent pas au RDC, ils se
 // lisent comme des étapes du run de la revue
 const rvPosteWf=w=>!!w&&(CFG.revue_postes_wf||[]).includes(String(w).slice(0,8));
@@ -73,7 +76,7 @@ const rvPosteWf=w=>!!w&&(CFG.revue_postes_wf||[]).includes(String(w).slice(0,8))
 // jamais au RDC
 const rdPosteWf=w=>!!w&&((CFG.ticket&&CFG.ticket.postes_wf)||[]).includes(String(w).slice(0,8));
 function rvRuns(){
-  const l=((DATA&&DATA.runs)||[]).filter(r=>rvWf(r.wf)&&r._s<=T);
+  const l=((DATA&&DATA.runs)||[]).filter(r=>rvWf(r.wf)&&!rvOneWf(r.wf)&&r._s<=T);
   if(!l.length&&DEMO||SCENE_DEMO&&SCENE_DEMO.revue)return rvDemo().filter(r=>r._s<=T); // une scène de la revue (galerie) se joue sur la journée de démo, à son heure
   return l.sort((a,b)=>a._s-b._s);
 }

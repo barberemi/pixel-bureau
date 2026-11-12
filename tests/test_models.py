@@ -492,6 +492,14 @@ exit 0
         self.assertEqual(assemble.page_config(c)["atelier_chain"], "bbbb2222")  # tickets sortis aujourd'hui
         self.assertEqual(assemble.page_config(cfg())["atelier_chain"], "")
 
+    def test_revue_one_wf(self):
+        """2e étage : la revue à la demande (review_one) lance un review_child par PR ; la page reconnaît son run pour
+        ne pas lui donner un bureau en plus de celui de la PR."""
+        c = cfg(models={"review_one": "aaaa1111-x", "review_child": "bbbb2222-x"})
+        self.assertEqual(assemble.page_config(c)["revue_one_wf"], ["aaaa1111"])
+        self.assertEqual(assemble.page_config(c)["revue_wf"], ["aaaa1111", "bbbb2222"])
+        self.assertEqual(assemble.page_config(cfg())["revue_one_wf"], [])
+
     def test_deploy_script_dispatches_the_pr_branch_and_never_prod(self):
         """Le script : branche de la PR en --ref et inputs de l'env ; refus d'un env ou dépôt hors réglage (2), d'une PR
         fermée ou d'une fork (3), d'un workflow de prod (4) ; refus de GitHub (5). Faux gh."""
