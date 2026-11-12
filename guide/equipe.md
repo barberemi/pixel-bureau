@@ -56,6 +56,21 @@ Pour qu'elle soit dans le pack dès l'installation, une recette par personne dan
 {"p_pam": {"sex": "female", "skin": "light", "hair": "bangs_bun", "hair_color": "#a0522d", "shirt": "#d9c7a0", "legs": "pants", "legs_color": "#3b3f52"}}
 ```
 
+Un costume sans planche à dessiner : la recette déclare des **zones** à recolorer sur les calques LPC (le haut d'un calque, les mains, une ligne pour une ceinture…), et au besoin une autre coiffure vue de dos (`hair_back`). Chaque zone : `layer` (`body`, `feet`, `legs`, `torso`, `head`, `hair`, `beard`, `hat`), `color`, et au choix `rows` et `cols` (`[min, max]`, en pixels de l'image de 64 px : le cou vers 33-35, le buste 34-47, les mains 43-50, les jambes 46-55), `dirs` (`up`, `down`, `left`, `right`), `every` (une ligne sur n, pour un lacet), `flat` (couleur pleine, sans le modelé), `skip_arm` (de profil, le bras reste hors de la zone : un gilet sur une chemise à manches). La dernière zone qui convient l'emporte. Par exemple, des gants et un corselet lacé :
+
+```json
+{"p_pam": {"sex": "female", "skin": "light", "hair": "curtains_long", "hair_back": "long_straight", "hair_color": "#141210",
+  "shirt": "#f4f1ea", "legs": "pants", "legs_color": "#f08a1c",
+  "zones": [
+    {"layer": "body", "rows": [43, 50], "color": "#8e1f22"},
+    {"layer": "torso", "rows": [39, 47], "cols": [25, 38], "dirs": ["up", "down"], "color": "#f08a1c"},
+    {"layer": "torso", "rows": [39, 47], "dirs": ["left", "right"], "skip_arm": true, "color": "#f08a1c"},
+    {"layer": "torso", "rows": [40, 46], "every": 2, "cols": [31, 32], "dirs": ["down"], "color": "#b8560e", "flat": true}
+  ]}}
+```
+
+L'éditeur d'avatar ne montre pas les zones : une apparence enregistrée depuis la page garde celles de la recette.
+
 Un personnage fait sur le [générateur LPC](https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator) (un costume, un accessoire que l'éditeur n'a pas) : sa planche exportée (832 px de large) dans un sous-dossier `sprites/<nom>/` du pack, puis `python3 sprites/build_sprites.py ~/Sites/bureau-dunder-mifflin` fabrique le `sprites.json` du pack ; la personne y renvoie par `"sprite": "<nom>"` ([Sprite fourni](fonctionnalites/09-avatars.md#sprite-fourni)). Une planche dessinée à la main qui répète la même enjambée sur ses images de marche de côté fait glisser le personnage : `build_sprites.py` l'avertit (« ⚠ <nom> : marche de côté figée »), il faut alors redessiner le pas avec une image où les jambes se rejoignent.
 
 ## 4. Le plan de tes bureaux

@@ -6,7 +6,7 @@ Chacun peut changer son nom et son apparence, pour lui seul ou pour toute l'équ
 
 - Fiche d'un personnage, le bouton ✎ à côté de son nom (« Personnaliser ») : silhouette, peau, visage, coiffure, barbe, vêtements, couleurs, couvre-chef, lunettes. Aperçu animé.
 - « Garder pour moi » : dans ce navigateur, hors de Kronn (dans Kronn la page n'a pas de stockage). « Enregistrer pour l'équipe » : copie un code `BUREAU1:…`, ouvre la carte Kronn du workflow avatars ; on y colle le code et on lance (0 token).
-- Les avatars sont assemblés dans le navigateur à partir des calques LPC (`sprites/layers.json`) et des recettes (`sprites/cast.json`).
+- Les avatars sont assemblés dans le navigateur à partir des calques LPC (`sprites/layers.json`) et des recettes (`sprites/cast.json`). Une recette peut déclarer un costume : des zones de calques recolorées et une coiffure vue de dos ([Leur apparence](../equipe.md#3-leur-apparence)).
 
 ## Sprite fourni
 
