@@ -89,6 +89,10 @@ DEP_DEMO = ("applyLayout({...LAYOUT,clock:[9,11],plants:LAYOUT.plants.map(p=>p[0
 DEP_ZOOM = ("const _q=document.getElementById('cv').getBoundingClientRect(),_k=_q.width/W,_z=document.createElement('div');_z.id='depzoom';"
             "Object.assign(_z.style,{position:'absolute',left:(_q.left+scrollX)+'px',top:(_q.top+scrollY+9.2*TS*_k)+'px',width:(13*TS*_k)+'px',"
             "height:(3.2*TS*_k)+'px',pointerEvents:'none'});document.body.appendChild(_z);")
+# services extérieurs (48-statuts.js) : le plateau TV et son bandeau, agrandis, pendant l'incident Claude de la démo
+SV_ZOOM = ("const _q=document.getElementById('cv').getBoundingClientRect(),_k=_q.width/W,_z=document.createElement('div');_z.id='svzoom';"
+           "Object.assign(_z.style,{position:'absolute',left:(_q.left+scrollX+25.5*TS*_k)+'px',top:(_q.top+scrollY+1.6*TS*_k)+'px',width:(9*TS*_k)+'px',"
+           "height:(2.6*TS*_k)+'px',pointerEvents:'none'});document.body.appendChild(_z);")
 SHOTS = {
     "plan": (1400, 1000, AT(11), "#cv", 1.5),
     # les agents des étages (69-metiers.js) : la barre « AGENTS » au-dessus des onglets, et le plan
@@ -156,6 +160,8 @@ SHOTS = {
     # tableau des départs : le panneau du plan (mises en prod), la fenêtre (DEV, STG, PRD), « Les envs » en mode TV
     "departs-panneau": (1400, 1000, AT(11) + DEP_DEMO + "DEP_PIN=0;" + DEP_ZOOM, "#depzoom", 3),
     "departs": (1600, 1000, AT(11) + DEP_DEMO + "openDeparts();", ".bp-wide"),
+    "services-bandeau": (1400, 1000, AT(10.4) + SV_ZOOM, "#svzoom", 3),
+    "services": (1900, 1100, AT(10.4) + "select('services');", "#side"),
     "tv-envs": (1600, 900, AT(11) + DEP_DEMO + "setTv(true);setTimeout(()=>{TVSCROLL.hold=performance.now()+1e6;const b=document.querySelector('#tvwho'),"
                 "h=[...b.querySelectorAll('h2')].pop();b.scrollTop=h.offsetTop-b.offsetTop-8;},600);", None),
     "tv-agents": (1600, 900, AT(11) + "setTv(true);setTimeout(()=>{TVSCROLL.hold=performance.now()+1e6;const b=document.querySelector('#tvwho'),"

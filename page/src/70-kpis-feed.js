@@ -366,7 +366,7 @@ function renderFeed(){
       txt:`<span style="color:#2e9e9b">●</span> Daily de l'équipe en cafétéria`
     });
   }
-  ev.push(...feedLifeEvents(T).map(e=>({ty:'equipe',...e})),...feedMyActions(T).map(e=>({ty:'toi',...e})),...atFeedEvents(T),...rtFeedEvents(T),...rdFeedEvents(T)); // 69-atelier-rdc.js : le 1er étage ; 68-retours.js : le 3e
+  ev.push(...feedLifeEvents(T).map(e=>({ty:'equipe',...e})),...feedMyActions(T).map(e=>({ty:'toi',...e})),...atFeedEvents(T),...rtFeedEvents(T),...rdFeedEvents(T),...svFeedEvents(T)); // 69-atelier-rdc.js : le 1er étage ; 68-retours.js : le 3e ; 48-statuts.js : services extérieurs
   ev.sort((a,b)=>b.t-a.t);
   FEED_EV=ev;
   showFeed();
@@ -454,7 +454,7 @@ document.getElementById('feed').addEventListener('click',ev=>{
   if(pin){const e=FEED_PIN[+pin.dataset.pin];if(e&&e.at)atGoto(e.at);else if(e&&e.duck)select('duck');else if(e&&e.c)select(e.c.key);return;}
   const d=ev.target.closest('[data-i]');if(!d)return;
   const e=FEED_VIEW[+d.dataset.i];if(!e)return;
-  if(e.at)atGoto(e.at);else if(e.rt)rtGoto(e.rt);else if(e.rd)rdGoto(e.rd);else if(e.tv)select('tv');else if(e.duck)select('duck');else if(e.c)select(e.c.key);
+  if(e.at)atGoto(e.at);else if(e.rt)rtGoto(e.rt);else if(e.rd)rdGoto(e.rd);else if(e.tv)select('tv');else if(e.sv)select('services');else if(e.duck)select('duck');else if(e.c)select(e.c.key);
 });
 // survol d'un nom du fil : la personne s'allume sur le plan (comme une carte de « Qui fait quoi »)
 document.getElementById('feed').addEventListener('mouseover',e=>{const a=e.target.closest('.lk-who');hoverKey=a?a.dataset.who:null;});

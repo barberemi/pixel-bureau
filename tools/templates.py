@@ -44,7 +44,7 @@ SIDE_PAGES = {"bilan_page_id": ("Chaîne · bilan", ["bilan"], "bilan.html"),
               "retours_bilan_page_id": ("Retours · bilan", ["retours_bilan"], "retours-bilan.html")}
 # modèle -> (type, où trouver l'id dans la config, scripts par étape)
 TEMPLATES = {
-    "office": ("workflow", ("workflows", "office"), {"snapshot": "workflows/office_snapshot.py"}),
+    "office": ("workflow", ("workflows", "office"), {"snapshot": "workflows/office_snapshot.py", "statuts": "workflows/statuts_snapshot.py"}),
     "live": ("workflow", ("workflows", "live"), {"snapshot": "workflows/live_snapshot.py", "gates": "workflows/gates_snapshot.py",
                                                     "todos": "workflows/todos.py", "atelier": "workflows/atelier_snapshot.py",
                                                     "retours": "workflows/retours_snapshot.py", "redaction": "workflows/redaction_snapshot.py"}),
