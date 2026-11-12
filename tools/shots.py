@@ -182,7 +182,7 @@ SHOTS = {
     "retro-tour": (1600, 900, AT(15 + 10 / 60) + "setTv(true);TVSCENE.manual=null;TVSCENE.idx=4;updateTv(true);", None),
     # piles des bureaux à 11h : barres de tickets, feuilles de Kelly (tickets créés depuis le daily de 9h40), dossiers de Karen
     "piles-bureaux": (1400, 1000, AT(11), "#cv", 1.5),
-    # écran du boss : ses autres pages Kronn (dataset bosspages) ; miniatures dessinées pour la démo, fenêtre ouverte
+    # écran mural : les autres pages Kronn du boss (dataset bosspages) ; miniatures dessinées pour la démo, fenêtre ouverte
     # passions (roster passion) : Gabe en séance de tirs au panier, à son créneau du jour
     "passions": (1400, 1000, AT(11) + "byKey.p_gabe.passion={moment:'basket'};T=passionSlot(byKey.p_gabe,T).s+40e3;needTeleport=true;", "#cv", 1.5),
     # « Mes pages Kronn » (#61) : la fenêtre de l'écran mural, avec × par page, « + Ajouter » et la liste des autres pages
@@ -442,7 +442,7 @@ SHOTS = {
                       "top:(r.top+scrollY+(t.y-30)*k)+'px',width:(t.w+150)*k+'px',height:(t.h+90)*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 3),
     "todos-fenetre": (1400, 1000, AT(11) + "ACTIONS.todo=true;tdChange({op:'move',id:'t2',to:'done'});tdAdd('Appeler Jan pour la rétro','high');"
                       "DUCKS=[{id:'dd-demo-1',awaiting:true,created:new Date(DAY0+9.5*36e5).toISOString()}];setTimeout(openTodos,300);", ".td-modal"),
-    # console Support (#62, démo : un fil par état) : l'écran du boss en alerte, survolé (zoom sur son bureau) ; la fenêtre
+    # console Support (#62, démo : un fil par état) : l'ordinateur du boss en alerte, survolé (zoom sur son bureau) ; la fenêtre
     "support-ecran": (1400, 1000, AT(11) + "setTimeout(()=>{const s=supportRect(),c=document.querySelector('#cv'),r=c.getBoundingClientRect(),k=r.width/c.width,"
                       "d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(s.x+14-9.5*TS)*k)+'px',"
                       "top:(r.top+scrollY+(s.y-2*TS)*k)+'px',width:19*TS*k+'px',height:5*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);"

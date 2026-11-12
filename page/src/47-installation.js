@@ -38,7 +38,7 @@ function wallHtml(){
   const floors=(floorsOn().length>1?[chip('floor','alt','Alterner',fl==='alt')]:[]).concat(
     [...floorsOn()].sort((a,b)=>a-b).map(f=>chip('floor',String(f),WALL_FLOORS[f],fl===String(f))));
   return '<div class="in-wall"><h3>📺 Adresse de l\'écran mural</h3><div class="in-opts">'+
-    `<span>Étage</span>${floors.join('')}<span>Démarrer</span>${chip('scene','','Plan',!WALL.scene)}${chip('scene','standup','Stand-up',WALL.scene==='standup')}`+
+    `<span>Étage</span>${floors.join('')}<span>Démarrer</span>${chip('scene','','Plan',!WALL.scene)}${chip('scene','standup','Daily',WALL.scene==='standup')}`+
     `<span>Loupe</span>${chip('loupe','','oui',!WALL.loupe)}${chip('loupe','0','non',WALL.loupe==='0')}</div>`+
     `<div class="in-url"><input type="text" readonly aria-label="Adresse de l'écran mural" value="${esc(wallUrl(pageIdOf(window.KronnPageData)))}">`+
     '<button type="button" class="on" data-wall-copy>📋 Copier</button></div><p class="muted in-note" aria-live="polite">'+

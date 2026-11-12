@@ -100,8 +100,8 @@ function updateTv(force){
   const bar=document.getElementById('tvbar');
   // titre, horloge, fraîcheur des données, boutons : sprint, MEP, PR et pannes sont dans les cartes du bas (tvKpis)
   bar.innerHTML=`<span class="tvt">LE BUREAU</span><span class="tvc">${hm(T)}</span><span class="tvchips">${tvLiveChip()}`+
-    `</span><span class="tvhint">S stand-up · P planning · R rétro${floorsOn().length>1?' · E étage':''} · Échap ou T pour quitter</span>`+
-    [['daily','tvstand','Stand-up'],['planning','tvplan','Planning'],['retro','tvretro','Rétro']].map(([k,id,l])=>
+    `</span><span class="tvhint">S daily · P planning · R rétro${floorsOn().length>1?' · E étage':''} · Échap ou T pour quitter</span>`+
+    [['daily','tvstand','Daily'],['planning','tvplan','Planning'],['retro','tvretro','Rétro']].map(([k,id,l])=>
       `<button id="${id}" class="${sceneMode(T)===k?'on':''}">${sceneMode(T)===k?'Retour au plan':l}</button>`).join('')+
     (floorsOn().length>1?`<button id="tvfloor">${FLOOR_NAME(nextFloor(false))}</button>`:'')+`<button id="tvexit">Quitter</button>`;
   bar.querySelector('#tvexit').onclick=()=>setTv(false);

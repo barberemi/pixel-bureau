@@ -98,7 +98,7 @@ python3 tools/theme.py check ~/Sites/bureau-dunder-mifflin/themes/theme-*.css
 .venv/bin/python tools/smoke.py --team ~/Sites/bureau-dunder-mifflin --chrome   # page dans dist/office_team.html
 ```
 
-Pour documenter ton pack, les captures du guide se refont avec ton équipe : la démo lui est réattribuée (le boss de la démo devient la première personne de ton roster, chaque métier va au même métier), sur ton plan, avec tes avatars et ton thème. Seules les captures qui ne visent aucun personnage de la démo sont prises (plan, qui fait quoi, fil, récap, Kanban, MEP, calendrier, fiche d'un agent, rétro, mode TV, stand-up) :
+Pour documenter ton pack, les captures du guide se refont avec ton équipe : la démo lui est réattribuée (le boss de la démo devient la première personne de ton roster, chaque métier va au même métier), sur ton plan, avec tes avatars et ton thème. Seules les captures qui ne visent aucun personnage de la démo sont prises (plan, qui fait quoi, fil, récap, Kanban, MEP, calendrier, fiche d'un agent, rétro, mode TV, daily) :
 
 ```sh
 .venv/bin/python tools/shots.py --team ~/Sites/bureau-dunder-mifflin          # dans <pack>/guide/img/

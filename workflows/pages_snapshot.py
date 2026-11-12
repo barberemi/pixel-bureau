@@ -32,7 +32,7 @@ warnings = []
 
 
 def warn(msg):
-    print("écran du boss : " + msg, file=sys.stderr)
+    print("écran mural : " + msg, file=sys.stderr)
     warnings.append(msg)
 
 

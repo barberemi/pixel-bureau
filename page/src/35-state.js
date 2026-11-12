@@ -122,7 +122,7 @@ function stateAt(c,t){
   const s1=s0;
   if(s1&&(s1.zone==='stage'||s0.zone==='stagesax')&&stageClosed(t)&&(s1.st==='mep'||s1.st==='party'))return {
     ...s1,
-    label:'MEP un '+(parisHM(t).wd==='Fri'?'vendredi':'week-end')+' ! Plateau fermé : '+s1.label,
+    label:'MEP '+((RHYTHM.weekend||[]).includes(parisHM(t).wd)?'un week-end':'un '+FREEZE_DAY[parisHM(t).wd])+' ! Plateau fermé : '+s1.label,
     bubble:'😱'
   };
   // en télétravail (36-absences.js) : à sa place, en transparence, avec le reste de sa journée (daily, cérémonies en visio)

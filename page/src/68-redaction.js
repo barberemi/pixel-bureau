@@ -19,7 +19,7 @@ const RD_HELP={bar:()=>'<span>Tickets :</span>'+legSwatches(RD_TK)+'<span>Verdic
     '<p><b>Bernard</b> monte la fournée du cron des revues. <b>Le boss</b> épingle chaque intention au liège, tamponne les tickets et les porte à la boîte Jira.</p>',
   ou:'<p><b>Bibliothèques</b> : une par composant Jira. <b>La table</b> : une intention et ses tickets ; <b>le fil rouge</b> relie les postes qui y ont travaillé. <b>Le liège</b> : les autres intentions. <b>Le tableau noir</b> : les tickets du jour (l\'historique : page « Rédaction · bilan »).</p>'+
     '<p><b>Casier « À relire »</b> : la file du cron, dans l\'ordre. <b>Corbeille « Postées »</b> : les avis du passage. <b>Six bureaux</b> de revue, le premier pour la file. <b>Salle d\'attente</b> : une chaise par auteur.</p>',
-  moments:'<p><b>✋ Le tampon</b> : les tickets relus attendent ta validation, un par un.</p><p><b>✂ Le découpage</b> : une intention qui touche plusieurs projets devient plusieurs tickets, un brin de fil chacun.</p>'+
+  moments:'<p><b>✋ Le tampon</b> : ici, ta décision, c\'est le tampon. Les tickets relus l\'attendent un par un.</p><p><b>✂ Le découpage</b> : une intention qui touche plusieurs projets devient plusieurs tickets, un brin de fil chacun.</p>'+
     '<p><b>📥 La fournée</b> : à chaque passage du cron des revues, Bernard range un dossier par PR dans le casier.</p>'};
 const RD_X1=19.5, RD_VX=23, RD_SH0=['dm/site','dm/mobile','dm/api','dm/outils'];
 const RD_WINDOWS=[7.5,10.5,13.5,16.5,25,28.5,32,35.5,39,42.5]; // en cases : à droite du nom de l'étage, comme au RDC
@@ -469,7 +469,7 @@ function tvRedactionHtml(){
 function rdLoupeEvents(){
   const out=[], t=rdTable(), boss=chars.find(c=>c.boss);
   const add=(kind,id,name,label,pts)=>{const cs=pts.map(([x,y],k)=>atPt(x,y,k?'':name,'',kind));cs.forEach(c=>{c._st={st:kind,label};});out.push({id:kind+':'+id,kind,cs});};
-  if(t&&(t.tickets||[]).some(x=>x.etat==='gate'))add('rd_gate',t.run,boss?boss.name:'Le boss','✋ Un ticket attend ton tampon',[[RD_DESK.x,RD_DESK.y],[RD_JIRA.x,RD_JIRA.y]]);
+  if(t&&(t.tickets||[]).some(x=>x.etat==='gate'))add('rd_gate',t.run,boss?boss.name:'Le boss','✋ Un ticket attend ta décision (le tampon)',[[RD_DESK.x,RD_DESK.y],[RD_JIRA.x,RD_JIRA.y]]);
   // la rédaction : l'intention découpée (ses brins et ses fiches apparaissent), le boss qui porte un ticket à la boîte Jira
   const tks=(t&&t.tickets)||[];
   if(tks.length){const G=rdGeo(t);add('rd_cut',t.run+':'+(t.tour||1)+':'+tks.length,'La rédaction','✂ L\'intention découpée en '+plural(tks.length,'ticket','tickets'),[[G.red.x,G.red.y],[G.tx,G.ty],[G.tx,19.6*RD_T]]);}
@@ -493,7 +493,7 @@ function rdGoto(run){if(!redactionOn())return;if(FLOOR!==2)setFloor(2);RDSEL=run
 function rdFeedEvents(t){
   if(!redactionOn())return [];
   return ((REDACTION&&REDACTION.events)||[]).map(e=>{const a=ms(e.t);if(!a||a<DAY0||a>t)return null;
-    const txt={arrive:'✍ Une intention arrive à la rédaction (2e)',gate:'✋ Un ticket attend ton tampon au 2e',cree:'🎫 Un ticket créé dans Jira depuis le 2e'}[e.k];
+    const txt={arrive:'✍ Une intention arrive à la rédaction (2e)',gate:'✋ Un ticket attend ta décision au 2e (le tampon)',cree:'🎫 Un ticket créé dans Jira depuis le 2e'}[e.k];
     return txt?{t:a,rd:e.run,fl:2,ty:e.k==='gate'?'toi':'tickets',team:false,txt}:null;}).filter(Boolean);
 }
 function rdSearchRows(q){

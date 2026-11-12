@@ -27,7 +27,7 @@ function galleryScenes(){
   team({ico:'🎉',n:(y?y.name+' et la ':'La ')+'fête de mise en prod',c:y,d:'L\'auteur sur la scène du plateau TV, le boss au sax',w:'Fin d\'une mise en prod réussie',
     play:{len:90e3+HERALD_MS,speed:10,setup:s=>galTeam(null,[{tag:'démo',name:'Démonstration',ticket:galTk(dev),summary:'Démonstration',who:dev&&dev.team.id,who_name:dev&&dev.person,
       released:galIso(s-60e3),staging:null,prod:{start:galIso(s),end:galIso(s+90e3),status:'completed',conclusion:'success'}}])}},!!dev);
-  team({ico:'📁',n:'Ticket livré au testeur',d:'Le dev porte le dossier jusqu\'au testeur',w:'Passage en test',
+  team({ico:'📁',n:'Ticket livré en test',d:'Le dev porte le dossier jusqu\'au bureau du test',w:'Passage en test',
     play:{len:SCENE_TELL+30e3,speed:10,setup:s=>galTeam([{t:galIso(s),kind:'move',key:galTk(dev),summary:'Démonstration',from:'En cours',to:FLOW.test,cat:'test',who:dev&&dev.team.id,who_name:dev&&dev.person}])}},!!(dev&&qa&&dev!==qa));
   team({ico:'☀️',n:'Daily',d:'Toute l\'équipe en cafétéria',w:RHYTHM.daily,play:{len:3*60e3,speed:10,setup:s=>{SCENE_DEMO.flag='daily';}}});
   team({ico:'🏁',n:'Lancement du sprint',d:'L\'équipe devant le mur Kanban',w:'Premier jour du sprint',play:{len:2*60e3,speed:10,setup:s=>{SCENE_DEMO.flag='kickoff';}}},!!(TEAM&&TEAM.sprint));

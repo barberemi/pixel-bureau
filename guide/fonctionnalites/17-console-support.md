@@ -2,16 +2,16 @@
 
 L'ordinateur du boss suit le canal Teams où arrivent les demandes de support de ton équipe. Tu vois les messages arriver sans garder Teams ouvert, tu fais investiguer l'agent Support, tu valides sa réponse (ou tu lui demandes de la reprendre), et elle part dans le fil du message, sous ton nom.
 
-## L'écran du boss
+## L'ordinateur du boss
 
 Quand un message attend, l'écran de l'ordinateur du boss passe au rouge, clignote, affiche « ! » et une pastille avec le nombre **à traiter** : les messages pas encore investigués, ceux dont l'investigation s'est arrêtée en route, et les réponses qui attendent ta validation. Un fil auquel un collègue a déjà répondu dans Teams sort du compte.
 
-![L'écran du boss en alerte, survolé](../img/support-ecran.png)
+![L'ordinateur du boss en alerte, survolé](../img/support-ecran.png)
 
 - **Au survol seulement**, l'infobulle : le canal, le nombre à traiter, l'auteur et l'heure du dernier message. Pas de bulle permanente sur le plan.
 - **Au clic** : la console du canal, dans le panneau de droite (comme la boîte aux lettres), avec « ← » pour revenir.
 - Rien à traiter : l'écran redevient normal.
-- **En mode TV**, l'écran du boss et l'agent Support restent en alerte (la console, elle, ne s'ouvre pas), et le bandeau « EN DIRECT » annonce chaque nouveau message du jour (« 🚒 Support : nouveau message de Pam, « sujet » »), puis rappelle toutes les heures un message que personne n'a pris (« attend depuis 2 h »). Jamais le texte du message : le prénom et le sujet, ou le début du message.
+- **En mode TV**, l'ordinateur du boss et l'agent Support restent en alerte (la console, elle, ne s'ouvre pas), et le bandeau « EN DIRECT » annonce chaque nouveau message du jour (« 🚒 Support : nouveau message de Pam, « sujet » »), puis rappelle toutes les heures un message que personne n'a pris (« attend depuis 2 h »). Jamais le texte du message : le prénom et le sujet, ou le début du message.
 - Réglage « réduire les animations » du système : l'écran reste rouge, sans clignoter.
 
 ## La console
@@ -28,7 +28,7 @@ Les fils des 7 derniers jours, du plus récent au plus ancien, chacun avec son �
    - **✖ Refuser** : rien n'est posté, le fil passe « Réponse refusée » (hors du compte) ; « 🔎 Investiguer » y reste pour relancer une investigation (nouvelle consigne, autre projet ou commentaire).
 4. **Répondu en fil** : la réponse postée, l'heure, « voir dans Teams ↗ ». Un fil auquel tu as répondu toi-même dans Teams compte aussi comme répondu.
 
-**🔕 Ignorer** : sur un fil à traiter (nouveau, à relancer ou relancé par son auteur), pour un message qui n'appelle rien (une annonce, une question réglée de vive voix). Le fil sort du compte : l'écran du boss, la bulle de l'agent Support et la pastille de la console ne le comptent plus. Il passe dans la section **🔕 Ignorés**, repliée sous l'en-tête de la console avec leur nombre ; dépliée, une ligne par fil (auteur, sujet, heure du message et de l'ignorance, lien Teams) et **↺ Réactiver**, qui le remet dans la file. Rien n'est écrit dans Teams. C'est un workflow du Bureau (« Le Bureau · ignorer un fil du Support », 0 token, `actions.support_skip`), créé par l'installateur ou par `publish.py all` quand la console est réglée ; le choix est gardé avec le relevé, donc le même sur tous les écrans, mode TV compris.
+**🔕 Ignorer** : sur un fil à traiter (nouveau, à relancer ou relancé par son auteur), pour un message qui n'appelle rien (une annonce, une question réglée de vive voix). Le fil sort du compte : l'ordinateur du boss, la bulle de l'agent Support et la pastille de la console ne le comptent plus. Il passe dans la section **🔕 Ignorés**, repliée sous l'en-tête de la console avec leur nombre ; dépliée, une ligne par fil (auteur, sujet, heure du message et de l'ignorance, lien Teams) et **↺ Réactiver**, qui le remet dans la file. Rien n'est écrit dans Teams. C'est un workflow du Bureau (« Le Bureau · ignorer un fil du Support », 0 token, `actions.support_skip`), créé par l'installateur ou par `publish.py all` quand la console est réglée ; le choix est gardé avec le relevé, donc le même sur tous les écrans, mode TV compris.
 
 Chaque fil montre aussi son sujet (s'il en a un), le contenu d'un message transféré et les réactions posées sur le message principal. Ce qui se passe dans Teams compte aussi :
 

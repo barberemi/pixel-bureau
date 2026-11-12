@@ -22,7 +22,7 @@ Chaque mot tapé doit se trouver dans la ligne, sans tenir compte des accents ni
 | PR | le numéro (#2012) et le titre, PR de l'équipe et des autres dépôts suivis | numéro, titre, état de la review, auteur |
 | Personnes | le prénom et le rôle | prénom, rôle |
 | Agents · au quotidien, · pages, · autres | le nom, le métier et le titre de sa page | icône, nom ; son bouton, ou « 📺 remplit sa page, sur l'écran » ; un groupe par famille |
-| Pages Kronn | le titre des pages de l'écran du boss | titre |
+| Pages Kronn | le titre des pages de l'écran mural | titre |
 
 Cinq lignes par groupe au plus ; au-delà, la fenêtre dit combien d'autres et invite à préciser.
 

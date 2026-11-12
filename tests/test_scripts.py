@@ -50,7 +50,7 @@ class FakeKronn:
         self.runs = {AGENT_WF: [run_of(i, "Failed" if i == 0 else "Success", steps) for i in range(runs_per_wf)],
                      OFFICE_WF: [run_of(900)], TEAM_WF: [run_of(901, "Failed")]}
         self.datasets = []  # datasets de la page (GET /pages/{id})
-        self.pages = {}  # autres pages Kronn par id (écran du boss, pages_snapshot.py)
+        self.pages = {}  # autres pages Kronn par id (écran mural, pages_snapshot.py)
         self.page_wfs = {}  # id de page -> workflows qui y publient (GET /pages/{id}/workflows, « ↻ Rafraîchir »)
         self.defs = {}  # id de workflow -> étapes de sa définition (GET /workflows/{id}), sinon celles par défaut
         self.details = {}  # id de run -> step_results du détail du run (sorties complètes)
@@ -1116,7 +1116,7 @@ print(json.dumps(val))
         out = self.run_script("live_snapshot.py", api=self.kronn(fake))  # modèle pas installé : rien de lu
         self.assertFalse([r for r in out["runs"] if r.get("res")])
 
-    # ---------- écran du boss : ses autres pages Kronn ----------
+    # ---------- écran mural : les autres pages Kronn du boss ----------
     def boss_pages(self, img_kb=1):
         fake = FakeKronn()
         page = lambda pid, title: {"id": pid, "slug": pid, "title": title, "current_revision_id": "r1", "data_revision": 3,
@@ -1135,7 +1135,7 @@ print(json.dumps(val))
         self.assertEqual([p["id"] for p in out["pages"]], ["pa", "pb"])  # ordre de la config, page supprimée sautée…
         self.assertEqual(len(out["warnings"]), 1)  # … et signalée (#8)
         self.assertIn("page gone sautée", out["warnings"][0])
-        self.assertIn("écran du boss : page gone", self.stderr)
+        self.assertIn("écran mural : page gone", self.stderr)
         pa, pb = out["pages"]
         self.assertEqual((pa["title"], pa["img"]), ("Veille techno", img))  # page inchangée : miniature du cache
         self.assertIsNone(pb["img"])  # page changée et pas de Chrome : pas d'image (jamais l'ancienne)

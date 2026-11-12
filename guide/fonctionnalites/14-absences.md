@@ -9,9 +9,9 @@ Le Bureau sait qui est là : il lit le planning de l'équipe (le classeur Excel 
 - **Le boss** reste toujours à son bureau sur le plan ; son absence ou son télétravail se lisent dans sa fiche (« 📅 Selon le planning : … »).
 - **Qui fait quoi** : pendant les heures de bureau (`rhythm.office_hours`), les absents ont une carte grisée en fin de grille (« Absence ce matin · arrive vers 13h30 ») ; le télétravail s'écrit devant l'état (« 🏠 télétravail · en cours »). La fiche dit la même chose.
 - **Daily et cérémonies** : un absent n'y va pas, n'est pas tiré au sort pour animer la rétro ; si la facilitatrice est absente, le boss anime le planning.
-- **Mode TV** : le tour de table du stand-up saute les absents, et la scène « Le sprint » les cite : « Absences aujourd'hui : Darryl (ce matin), Clark · 🏠 En télétravail : Holly ».
+- **Mode TV** : le tour de table du daily saute les absents, et la scène « Le sprint » les cite : « Absences aujourd'hui : Darryl (ce matin), Clark · 🏠 En télétravail : Holly ».
 
-![Stand-up : la scène du sprint](../img/standup.png)
+![Daily : la scène du sprint](../img/standup.png)
 
 ## Le calendrier de l'équipe
 

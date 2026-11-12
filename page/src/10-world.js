@@ -36,7 +36,7 @@ function buildWorld(){
   for(const [x,y] of LAYOUT.blocked||[])B(x,y);
   for(const [x,y] of LAYOUT.plants||[])B(x,y);
   SPOTS=LAYOUT.spots;
-  // porte qui se ferme (plateau TV fermé le vendredi et le week-end)
+  // porte qui se ferme (plateau TV fermé pendant le gel des mises en prod, rhythm.mep_freeze)
   CLOSABLE=new Set((LAYOUT.closable||[]).map(c=>c.at.join(',')));
 }
 // places : le plan est maître (LAYOUT.seating {siège: clé}) ; sinon la place du roster ou de l'agent si c'est un siège

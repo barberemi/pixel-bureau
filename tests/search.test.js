@@ -42,7 +42,7 @@ test('une personne et un agent par leur nom ou leur rôle', () => {
   assert.ok(find(a.role.split(' ')[0]).some(s => s.startsWith('Agents · ') && s.endsWith(a.name)));
 });
 
-test('une page Kronn de l\'écran du boss, ouverte dans Kronn', () => {
+test('une page Kronn de l\'écran mural, ouverte dans Kronn', () => {
   run("BOSS_PAGES=[{id:'p1',title:'Ventes du trimestre'}];PAGELIST=null;");
   const r = J("srFind('trimestre').find(r=>r.g==='Pages Kronn')");
   assert.equal(r.txt, 'Ventes du trimestre');

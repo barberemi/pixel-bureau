@@ -1,5 +1,5 @@
 // ---------- Chercher dans le bureau : une fenêtre, ⌘K (Ctrl+K) ou « / » ----------
-// Tickets et PR de l'équipe, tickets de la chaîne (1er étage), personnes et agents du plan, pages Kronn de l'écran du boss :
+// Tickets et PR de l'équipe, tickets de la chaîne (1er étage), personnes et agents du plan, pages Kronn de l'écran mural :
 // un champ, des résultats groupés (5 par groupe). ↑ ↓ choisir, ↵ ouvrir (ticket, PR : volet du Mur Kanban ; ticket du 1er :
 // sa fiche à l'étage ; personne, agent : sa fiche ; page : dans Kronn), ⇧↵ la montrer sur le plan (la personne du ticket,
 // l'auteur de la PR : sa fiche, le plan assombri autour).

@@ -174,7 +174,7 @@ function renderTvScenes(now){
   const sc=SC[TVSCENE.idx], left=Math.max(0,sc.ms-(now-TVSCENE.since));
   const img=sc.c&&typeof portraitUrl==='function'?portraitUrl(sc.c):null;
   const html=`<div class="sc-head">${img?`<img class="sc-face" src="${img}" alt="">`:''}<h2>${esc(sc.t)}</h2><span class="sc-dots">${SC.map((_,i)=>`<i class="${i===TVSCENE.idx?'on':''}"></i>`).join('')}</span>`+
-    `<span class="sc-tag sc-${mode}">${SCENE_TAG[mode]||(TVSCENE.manual?'Stand-up':'Daily')}</span></div><div class="sc-body">${sc.f(T)}</div>`;
+    `<span class="sc-tag sc-${mode}">${SCENE_TAG[mode]||'Daily'}</span></div><div class="sc-body">${sc.f(T)}</div>`;
   if(html!==TVSCENE.sig){TVSCENE.sig=html;box.innerHTML=html;}
   box.style.setProperty('--sc-left',(left/sc.ms).toFixed(3));
 }

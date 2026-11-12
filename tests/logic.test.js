@@ -277,3 +277,15 @@ test('run en attente du quota (Kronn 0.15.1, WaitingQuota) : pas fini, comme Run
   assert.equal(J('STATUS_TXT.WaitingQuota'), 'Attend le quota');
   assert.equal(J('STATUS_COL.WaitingQuota'), 'var(--warn)');
 });
+
+test('gel des mises en prod : le texte suit rhythm.mep_freeze (audit produit V11)', () => {
+  const t = (freeze, weekend) => {
+    const p = load({config: {...require('./fixtures/bureau.config.json'), rhythm: {...require('./fixtures/bureau.config.json').rhythm, mep_freeze: freeze, weekend}}});
+    return JSON.parse(p.run('JSON.stringify(freezeTxt())'));
+  };
+  assert.equal(t(['Fri', 'Sat', 'Sun'], ['Sat', 'Sun']), 'le vendredi ni le week-end');
+  assert.equal(t(['Thu', 'Fri'], ['Sat', 'Sun']), 'le jeudi ni le vendredi');
+  assert.equal(t(['Sat', 'Sun'], ['Sat', 'Sun']), 'le week-end');
+  assert.equal(t(['Mon', 'Thu', 'Sun'], ['Sat', 'Sun']), 'le lundi, le jeudi ni le dimanche', 'week-end incomplet : jour par jour');
+  assert.equal(t([], ['Sat', 'Sun']), '');
+});
