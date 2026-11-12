@@ -10,7 +10,17 @@ const FRESH_SRC=[
   {key:'absences',label:'Absences (planning)',period:3600e3,grace:600e3,gen:()=>ABSENCES&&!ABSENCES.demo&&ABSENCES.generated_at},
   {key:'courrier',label:'Courrier',period:600e3,grace:300e3,gen:()=>MAILS&&!MAILS.demo&&MAILS.generated_at},
   {key:'support_poll',label:'Support (Teams)',period:900e3,grace:600e3,gen:()=>SUPPORT&&!SUPPORT.demo&&SUPPORT.generated_at}, // #62
+  // parties publiées par un cron déjà listé (cron : sa clé) : une ligne en retrait sous lui, sans bouton (le sien les relance
+  // toutes) ; elle dit laquelle est figée quand une étape du cron casse. Un étage seulement s'il est installé.
+  {key:'atelier',cron:'live',label:'1er étage (atelier)',period:60e3,grace:120e3,gen:()=>atelierOn()&&ATELIER&&ATELIER.generated_at},
+  {key:'redaction',cron:'live',label:'2e étage (rédaction)',period:60e3,grace:120e3,gen:()=>redactionOn()&&REDACTION&&REDACTION.generated_at},
+  {key:'retours',cron:'live',label:'3e étage (retours)',period:60e3,grace:120e3,gen:()=>retoursOn()&&RETOURS&&RETOURS.generated_at},
+  {key:'statuts',cron:'office',label:'Services extérieurs',period:600e3,grace:300e3,gen:()=>STATUTS&&STATUTS.services.length&&STATUTS.generated_at}, // 48-statuts.js
 ];
+// crons du Bureau sans ligne (leurs données vont sur leur propre page) : leur nom quand leur dernier passage échoue
+const CRON_NAMES={chaine_bilan:'Chaîne · bilan',support_bilan:'Support · bilan',redaction_bilan:'Rédaction · bilan',retours_bilan:'Retours · bilan'};
+// les sources dans l'ordre du panneau : chaque cron, puis ses parties
+const freshOrder=()=>FRESH_SRC.filter(s=>!s.cron).flatMap(s=>[s,...FRESH_SRC.filter(x=>x.cron===s.key)]);
 function cronOf(key){
   if((CFG.schedules||{})[key])return CFG.schedules[key]; // modèles de workflows (assemblage)
   const id=(CFG.workflows||{})[key]; if(!id||!DATA)return null;
@@ -19,7 +29,7 @@ function cronOf(key){
 // état d'une source à l'instant now : âge, arrivée prévue, retard
 function freshness(src,now){
   const gen=ms(src.gen()); if(!gen)return null;
-  const sch=cronOf(src.key), run=Math.min(60e3,Math.max(2e3,gen-Math.floor(gen/60e3)*60e3)); // durée du dernier run
+  const sch=cronOf(src.cron||src.key), run=Math.min(60e3,Math.max(2e3,gen-Math.floor(gen/60e3)*60e3)); // durée du dernier run
   const next=sch?cronNext(sch,gen):gen+src.period, eta=next!=null?next+run+3e3:null;
   return {src,gen,age:now-gen,eta,late:eta!=null&&now>eta+src.grace?now-eta:0};
 }
@@ -66,9 +76,10 @@ function readWarnings(src){
 function diagTxt(){
   const out=[], failed=(OFFICE&&OFFICE.bureau_failed)||{};
   for(const [key,f] of Object.entries(failed)){
-    const src=FRESH_SRC.find(s=>s.key===key), label=src?src.label:key;
+    const src=FRESH_SRC.find(s=>s.key===key), label=src?src.label:CRON_NAMES[key]||key, now=Date.now();
+    const stuck=FRESH_SRC.filter(s=>s.cron===key).map(s=>freshness(s,now)).filter(x=>x&&x.late).map(x=>x.src.label.split(' (')[0]);
     out.push(`<div class="diag late">${esc(label)} : dernier passage en échec${f.at?' à '+hm(ms(f.at)):''}`+
-      (f.step?` (étape ${esc(f.step)}${f.err?' : '+esc(f.err):''})`:'')+'</div>');
+      (f.step?` (étape ${esc(f.step)}${f.err?' : '+esc(f.err):''})`:'')+(stuck.length?' ; plus publiés : '+esc(stuck.join(', ')):'')+'</div>');
   }
   if(SUPPORT&&!SUPPORT.demo&&SUPPORT.error)out.push(`<div class="diag late">Support (Teams) : dernier relevé en échec (${esc(SUPPORT.error)})</div>`);
   const src=TEAM_BASE&&TEAM_BASE.sources;
@@ -93,7 +104,7 @@ function updateFresh(){
   const b=document.getElementById('badge'); if(!b||!DATA)return;
   let el=document.getElementById('fresh');
   if(!el){el=document.createElement('span');el.id='fresh';b.appendChild(el);}
-  const now=Date.now(), all=FRESH_SRC.map(s=>freshness(s,now)).filter(Boolean), live=all.find(f=>f.src.key==='live');
+  const now=Date.now(), all=freshOrder().map(s=>freshness(s,now)).filter(Boolean), live=all.find(f=>f.src.key==='live');
   let pop=document.getElementById('freshpop');
   if(!pop){pop=document.createElement('div');pop.id='freshpop';pop.setAttribute('role','tooltip');b.appendChild(pop);b.tabIndex=0;
     pop.addEventListener('click',e=>{if(e.target.closest('.fr-inst'))openInstall();});} // 47-installation.js
@@ -112,7 +123,7 @@ function updateFresh(){
   // panneau au survol (pas d'attribut title : son texte change chaque seconde, le navigateur ne l'afficherait jamais) ;
   // pas refait pendant un clic ni tant que la carte Kronn d'une relance y est ouverte (elle serait détruite)
   if(performance.now()<PRESS_HOLD||KM_OPEN&&pop.contains(KM_OPEN))return; // 50-panel.js, 55-actions.js
-  pop.innerHTML='<b>Fraîcheur des données</b><table>'+all.map(f=>`<tr class="${f.late||failed[f.src.key]?'late':''}" data-k="${esc(f.src.key)}"><td>${esc(f.src.label)}</td><td>il y a ${agoTxt(f.age)}</td>`+
+  pop.innerHTML='<b>Fraîcheur des données</b><table>'+all.map(f=>`<tr class="${f.late||failed[f.src.key]?'late':''}${f.src.cron?' sub':''}"${f.src.cron?'':` data-k="${esc(f.src.key)}"`}><td>${f.src.cron?'↳ ':''}${esc(f.src.label)}</td><td>il y a ${agoTxt(f.age)}</td>`+
     `<td>${failed[f.src.key]?'en échec':f.late?'en retard de '+agoTxt(f.late):f.eta&&f.eta>now?(waitTxt(f,now).paused?waitTxt(f,now).txt:'prochain ~'+hm(f.eta)):'imminent'}</td><td class="rl"></td></tr>`).join('')+'</table>'+diagTxt()+'<small>Prochain passage estimé : calendrier du cron + durée de son dernier run.</small>'+(TV?'':'<button type="button" class="fr-inst">⚙ État de l\'installation</button>');
   for(const tr of pop.querySelectorAll('tr[data-k]'))freshRelaunch(tr.querySelector('td.rl'),tr.dataset.k,all.find(f=>f.src.key===tr.dataset.k).src.label,tr.classList.contains('late'));
 }

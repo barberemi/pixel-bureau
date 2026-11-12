@@ -131,6 +131,7 @@ SHOTS = {
                   "LIVE={...(LIVE||{}),generated_at:iso(20e3)};OFFICE={...OFFICE,empty:false,generated_at:iso(42*60e3),"
                   "bureau_failed:{team:{at:iso(7*60e3),step:'jira_board',err:'HTTP 401 Unauthorized'}}};TEAM_BASE={...TEAM_BASE,generated_at:iso(17*60e3)};"
                   "PAYROLL={...(PAYROLL||{}),generated_at:iso(25*60e3)};DUCKGAME=null;"
+                  "for(const d of [ATELIER,REDACTION,RETOURS])if(d)d.generated_at=iso(20e3);if(STATUTS)STATUTS.generated_at=iso(42*60e3);"
                   "RELAUNCH=['office','team','payroll'].map(k=>({wf:'wf-'+k,name:'Le Bureau · '+k,bureau:k}));"
                   "WARNINGS={payroll:['tarif non mesuré, coûts non estimés (HTTP Error 500: Internal Server Error)']};updateFresh();"
                   "document.getElementById('freshpop').style.display='block';document.getElementById('badge').style.marginBottom='260px';", "#freshpop", 1.5),
