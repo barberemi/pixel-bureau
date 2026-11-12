@@ -9,7 +9,7 @@ Accroché au mur du bureau du boss, entre le calendrier de l'équipe (décalé �
 ![Le tableau en liège au mur du boss](../img/todos-tableau.png)
 
 - **La pastille orange** : ce qui t'attend, c'est-à-dire les todos à faire et celles où le canard t'a posé une question.
-- **Au survol** : « Mes todos : 4 à faire · 1 avec le canard (1 t'attend) ». **Au clic** : la fenêtre. Au clavier : **📌 Mes todos** dans ta fiche de boss.
+- **Au survol** : « Mes todos : 4 à faire · 1 avec le canard (1 t'attend) ». **Au clic** : la fenêtre. Au clavier : le lien **📌 4 todos à faire** dans ta fiche de boss, à côté de ton état.
 - **En mode TV**, le tableau n'apparaît pas : ce sont tes todos, pas celles de l'équipe.
 - Sans le workflow « Le Bureau · todos » et sans aucune todo, pas de tableau.
 

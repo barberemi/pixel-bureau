@@ -437,6 +437,13 @@ test('whoCards : titre sans « [Composant] », un rôle à titre court garde son
   assert.equal(b.sub, 'en cours · +2 autres');
   assert.equal(b.tip, 'DM-1 Lecteur\nDM-2 Autre\nDM-3 Trois');
   assert.deepEqual(q, {what: 'Teste 2 tickets', sub: 'le plus ancien depuis 3 j', tip: 'DM-4 Quatre\nDM-5 Cinq', tone: '#7a5cc8'});
+  // la carte : plus de « +2 autres » ni de liste en infobulle, un lien visible vers la fiche (audit UX 4.7)
+  run(`WHO_SIG='';COLLAPSED.who=false;renderWho();`);
+  const html = J('WHO_SIG');
+  assert.match(html, /Ses 3 tickets ›/);
+  assert.match(html, /Ses 2 tickets ›/);
+  assert.doesNotMatch(html, /\+2 autres/);
+  assert.doesNotMatch(html, /title="[^"]*DM-2 Autre/, 'la liste n\'est plus dans l\'infobulle');
 });
 
 test('fiche : ligne d\'état d\'une ligne (titre court, libellé complet au survol), compteurs, tickets cliquables', () => {

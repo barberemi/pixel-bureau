@@ -91,9 +91,9 @@
 :root[data-skin] .face{margin-bottom:17px}
 /* rythme vertical du panneau : 14 px visibles entre deux blocs, 8 px entre un titre de section et son contenu
    (marges calculées avec les cadres pixel, qui dépassent de 3 px ; mesuré par le relevé des écarts) */
-:root[data-skin] #side .stbox{margin-bottom:14px}
+:root[data-skin] #side .stbox{margin-bottom:14px}:root[data-skin] #side .st-row .stbox{margin-bottom:0}
 /* la ligne d'état passe toujours sous « Personnaliser » : 14 px sous le cadre du bouton */
-:root[data-skin] #side .edit-btn + .stbox{margin-top:14px}
+:root[data-skin] #side .st-row{margin:14px 0}
 :root[data-skin] #side .stbox + p{margin-top:0}
 :root[data-skin] #side .stats{margin-bottom:14px}
 :root[data-skin] #side h2.grp{margin-top:14px}
@@ -176,3 +176,5 @@
 :root[data-skin] .atelier .fk-links .lk.main{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
 :root[data-skin] body:not(.tv) .demo-ban{box-shadow:var(--frame),var(--drop)}
 :root[data-skin] body:not(.tv) .waitlist,:root[data-skin] body:not(.tv) #freshpop{box-shadow:var(--drop)}
+/* liens d'action (audit UX 4.6) : sans relief ni cadre pixel */
+:root[data-skin] body:not(.tv) button.lk-btn,:root[data-skin] body:not(.tv) button.lk-btn:hover{background:none;box-shadow:none;color:var(--accent);padding:2px 0;transform:none}

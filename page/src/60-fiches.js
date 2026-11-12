@@ -267,7 +267,7 @@ function renderPerson(side,c){
   else{
     const n=k=>p.tickets.filter(x=>x.cat===k).length, d=document.createElement('div');
     d.innerHTML=tkBarHtml(p.tickets)+`<div class="tk-sum">${TORDER.filter(n).map(k=>`<b>${n(k)}</b> ${esc(TCAT[k].t.toLowerCase())}`).join(' · ')}</div>`;
-    const b=document.createElement('button');b.type='button';b.className='on tk-go';b.textContent='▦ Ses tickets dans le Kanban';b.onclick=()=>openKanban({who:c.key});
+    const b=document.createElement('button');b.type='button';b.className='tk-go lk-btn';b.textContent='Ses tickets dans le Kanban ›';b.onclick=()=>openKanban({who:c.key});
     d.appendChild(b);tb.appendChild(d);
   }
   const loose=loosePrs(p);
