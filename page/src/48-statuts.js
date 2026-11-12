@@ -62,7 +62,21 @@ function renderServices(side){
   const day=STATUTS.incidents.filter(i=>ms(i.from)<=T&&(!i.to||ms(i.to)>=DAY0)&&!svOpen(i.k,T).includes(i))
     .map(i=>`<li><span class="dot" style="background:var(--idle)"></span><span><b>${esc(svName(i.k))}</b> · ${esc(i.name)} ${link(i.link,'↗')}</span><span class="k">${hm(ms(i.from))} → ${i.to&&ms(i.to)<=T?hm(ms(i.to)):'…'}</span></li>`).join('');
   box.innerHTML=`<div class="note" style="margin:0 0 8px">${g?'Relevé à '+hm(g)+', d\'après les pages de statut publiques.':''}</div><ul class="steps">${rows}</ul>`+
-    (open?`<h3>En cours</h3><ul class="steps">${open}</ul>`:'')+(day?`<h3>Plus tôt aujourd'hui</h3><ul class="steps">${day}</ul>`:'');
+    (open?`<h3>En cours</h3><ul class="steps">${open}</ul>`:'')+(day?`<h3>Plus tôt aujourd'hui</h3><ul class="steps">${day}</ul>`:'')+svBandHtml(T);
+}
+// les 24 dernières heures : une case par heure et par service, de la couleur du pire incident ouvert dans l'heure (vert sans
+// incident) ; la dernière case est l'heure en cours, jusqu'à t. Seuls les incidents déclarés y laissent une trace.
+function svHours(k,t){
+  const h0=Math.floor(t/36e5)*36e5;
+  return Array.from({length:24},(_,j)=>{const a=h0-(23-j)*36e5, b=Math.min(a+36e5,t+1);
+    return ((STATUTS&&STATUTS.incidents)||[]).filter(i=>i.k===k&&ms(i.from)<b&&(!i.to||ms(i.to)>a)).reduce((w,i)=>svWorse(i.impact,w),'op');});
+}
+function svBandHtml(t){
+  if(!STATUTS||!STATUTS.services.length)return '';
+  const h0=Math.floor(t/36e5)*36e5;
+  const rows=STATUTS.services.map(s=>`<div class="mut" style="font-size:11px;margin-top:4px">${esc(s.n)}</div><div style="display:flex;gap:1px">`+
+    svHours(s.k,t).map((st,j)=>`<i style="flex:1;height:10px;background:${SV_ST[st][0]}" title="${hm(h0-(23-j)*36e5)} · ${esc(s.n)} : ${SV_ST[st][1]}"></i>`).join('')+'</div>').join('');
+  return `<h3>Les dernières 24 h</h3>${rows}<div class="mut" style="display:flex;justify-content:space-between;font-size:11px;margin-top:2px"><span>${hm(h0-23*36e5)}</span><span>maintenant</span></div>`;
 }
 // le fil : début et fin de chaque incident du jour (une maintenance n'est pas « Important »)
 function svFeedEvents(t){

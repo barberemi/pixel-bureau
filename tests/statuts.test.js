@@ -91,3 +91,21 @@ test('statuts : le conseil d\'une panne « agent indisponible » dit si Claude a
   run(`T=${H(12)}`);
   assert.match(run('atConseil({cause_type:"agent"})'), /^L'agent ou l'API n'a pas répondu/);
 });
+
+test('statuts : les 24 dernières heures dans la fiche, une case par heure, du pire incident de l\'heure', () => {
+  const {run} = load();
+  const h = (k, t) => JSON.parse(run(`JSON.stringify(svHours('${k}',${H(t)}))`));
+  const c = h('claude', 11), g = h('github', 11);
+  assert.equal(c.length, 24);
+  assert.deepEqual([c[22], c[23]], ['partial', 'op'], '10 h : panne partielle ; 11 h, l\'heure en cours : rétabli');
+  assert.equal(g[21], 'degraded', '9 h : GitHub ralenti');
+  assert.ok(c.slice(0, 22).every(x => x === 'op'));
+  assert.equal(h('claude', 10.3)[23], 'partial', 'l\'heure en cours s\'arrête à t');
+  assert.equal(h('claude', 10.2)[23], 'op', 'pas encore commencé à 10 h 12');
+  const html = run(`svBandHtml(${H(11)})`);
+  assert.match(html, /Les dernières 24 h/);
+  assert.equal((html.match(/<i /g) || []).length, 24 * 4, 'quatre services');
+  assert.match(html, /title="10:00 · Claude : panne partielle"/);
+  run('STATUTS=null');
+  assert.equal(run(`svBandHtml(${H(11)})`), '');
+});

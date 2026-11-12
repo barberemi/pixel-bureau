@@ -18,6 +18,7 @@ Quand un agent plante ou qu'une PR traîne, la cause est parfois dehors : GitHub
 - L'état de chaque service à l'heure affichée, son nom lié à sa page de statut, et l'heure du relevé.
 - **En cours** : chaque incident ouvert, depuis quand, avec son lien.
 - **Plus tôt aujourd'hui** : les incidents de la journée déjà résolus, de leur début à leur fin.
+- **Les dernières 24 h** : une case par heure et par service, de la couleur du pire incident ouvert dans l'heure (vert sans incident), la dernière pour l'heure en cours ; au survol, l'heure et l'état. Seuls les incidents déclarés par la page de statut y laissent une trace.
 
 ## Dans le fil et en mode TV
 
@@ -33,7 +34,7 @@ Les incidents sont datés par la page de statut elle-même : en relecture, le ba
 
 ## D'où viennent les données
 
-Le cron `office` (toutes les 10 minutes, 0 jeton) lit, pour chaque service, `summary.json` (l'état de ses composants) et `incidents.json` (ses 50 derniers incidents) de sa page Statuspage, sans clé ni compte, et publie le dataset `statuts` : l'état actuel et les incidents des 36 dernières heures. Un service injoignable garde sa place, sans état, et laisse un avertissement dans [Fraîcheur](10-fraicheur.md).
+Le cron `office` (toutes les 10 minutes, 0 jeton) lit, pour chaque service, `summary.json` (l'état de ses composants) et `incidents.json` (ses 50 derniers incidents) de sa page Statuspage, sans clé ni compte, et publie le dataset `statuts` : l'état actuel et les incidents des 36 dernières heures. Un service injoignable garde sa place, sans état, et laisse un avertissement dans [Fraîcheur](10-fraicheur.md), où le relevé a sa ligne, sous Bureau.
 
 ## Régler la liste
 
