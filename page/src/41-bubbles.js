@@ -1,6 +1,6 @@
 // ---------- bulles : ticket(s) d'un collègue, ticket ou PR d'un agent ----------
 const TYPE_ICO={Bug:'🐛',Story:'📗',Tâche:'🔧',Task:'🔧','Sous-tâche':'🔹','Sub-task':'🔹',Epic:'⚡'};
-const CAT_TXT={doing:'en cours',review:'en review',test:'en test',todo:'à faire'};
+const CAT_TXT={doing:'en cours',review:'en revue',test:'en test',todo:'à faire'};
 const CAT_COLOR=Object.fromEntries(Object.entries(TCAT).map(([k,v])=>[k,v.c])); // couleurs de TCAT (30-data.js)
 const BUBBLE_ROT=4000; // une bulle à plusieurs tickets passe au suivant toutes les 4 s
 const clip=(s,n)=>{s=clean(s).trim();return s.length>n?s.slice(0,n-1).trimEnd()+'…':s;};

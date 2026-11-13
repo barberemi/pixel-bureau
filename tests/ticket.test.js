@@ -34,7 +34,7 @@ test('à faire, sans PR : Implémenter, lié à la clé du ticket ; Mettre en pr
 });
 
 const ID = n => ({id: 'dunder-mifflin/site-web#' + n}); // identité d'une PR du dépôt principal (#56)
-test('en review avec une PR en attente : Faire relire, lié au dépôt et au n° de PR', () => {
+test('en revue avec une PR en attente : Faire relire, lié au dépôt et au n° de PR', () => {
   assert.deepEqual(buttons('DM-2'), [['bureau-review', ID(12), false], ['bureau-mep', {key: 'DM-2'}, true]]);
 });
 

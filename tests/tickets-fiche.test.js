@@ -18,7 +18,7 @@ test('barre : un segment par colonne en points, en tickets si aucun n\'est estim
   const h = run(`tkBarHtml([{cat: 'done', points: 8}, {cat: 'doing', points: 3}, {cat: 'doing', points: 0}, {cat: 'review', points: null}])`);
   assert.match(h, /flex:3;background:#2e9e5b" title="En cours : 3 pts"/); // en cours : vert, comme partout
   assert.match(h, /flex:8;[^>]*title="Déployé : 8 pts"/);
-  assert.doesNotMatch(h, /En review/); // ticket non estimé : 0 pt, pas de segment
+  assert.doesNotMatch(h, /En revue/); // ticket non estimé : 0 pt, pas de segment
   assert.match(h, /<b>8 pts<\/b> déployés sur 11 pts/);
   assert.match(run(`tkBarHtml([{cat: 'todo'}, {cat: 'test'}, {cat: 'test'}])`), /<b>0 ticket<\/b> déployé sur 3 tickets/);
   assert.equal(run('tkBarHtml([])'), '');

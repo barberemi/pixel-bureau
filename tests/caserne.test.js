@@ -365,3 +365,12 @@ test('alignés sur le 1er : la loupe du -1 (gate, arrivée, départ), le ménage
   p.run('atCleanVisit = __av; mode = "play"; setSpeed(480);');
   assert.equal(J2('walkBoost()'), 8, 'rejeu ×480 : on marche 8 fois plus vite, aux étages aussi');
 });
+
+test('« Qui fait quoi » du RDC : un bloc du -1, une carte par baie occupée (audit UX 4.1)', () => {
+  const p = load(), J = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  p.run('T = DAY0 + 11 * 36e5; setMode("live");');
+  const rows = J('csWhoRows(T)');
+  assert.ok(rows.length > 0, 'des baies occupées dans la démo');
+  assert.ok(rows.every(x => typeof x.b === 'number' && x.what), 'baie et sujet');
+  assert.match(J('csWhoHtml(T)'), /🚒 -1 caserne <span class="cnt">\d+<\/span>[\s\S]*data-cs-thread=/);
+});

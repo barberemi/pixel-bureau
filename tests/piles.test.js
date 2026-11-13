@@ -32,5 +32,5 @@ test('infobulles : le détail de chaque pile', () => {
 
 test('plus de 6 tickets : la liste de l\'infobulle est coupée', () => {
   const list = Array.from({length: 9}, (_, i) => ({key: 'DM-' + i}));
-  assert.equal(J(`pileTip({kind:'folder',o:byKey.p_karen,list:${JSON.stringify(list)}})`), 'Karen : 9 tickets à tester · DM-0, DM-1, DM-2, DM-3, DM-4, DM-5…');
+  assert.equal(J(`pileTip({kind:'folder',o:byKey.p_karen,list:${JSON.stringify(list)}})`), 'Karen : 9 tickets à tester · DM-0, DM-1, DM-2, DM-3, DM-4, DM-5… · clic : sa fiche');
 });

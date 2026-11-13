@@ -145,7 +145,7 @@ const dev = tickets => `({key:'p_b',name:'Bob',person:'Bob',seat:[5,14],team:{ti
 const TK = `[{key:'DM-1',cat:'doing',type:'Bug',summary:'Corriger le lecteur vidéo',updated:'2026-09-28T10:00:00.000+0200'},
   {key:'DM-2',cat:'review',type:'Story',summary:'Nouveau bloc'},{key:'DM-3',cat:'done'}]`;
 
-test('dev avec un ticket en cours et un en review : tk liste les deux, en cours d\'abord', () => {
+test('dev avec un ticket en cours et un en revue : tk liste les deux, en cours d\'abord', () => {
   reset();
   const st = J(`stateAt(${dev(TK)}, ${T11})`);
   assert.equal(st.bubble, 'DM-1');
@@ -185,7 +185,7 @@ test('bubbleFor : rotation toutes les 4 s, couleur de l\'état, détail de tous 
   assert.equal(second.head, '📗 2 2/2');
   assert.equal(second.tone, '#4a7fe0');
   assert.deepEqual(first.detail.map(l => l.txt), [
-    '🐛 DM-1 · en cours · 3 j', 'Corriger le lecteur vidéo', '📗 DM-2 · en review', 'Nouveau bloc'
+    '🐛 DM-1 · en cours · 3 j', 'Corriger le lecteur vidéo', '📗 DM-2 · en revue', 'Nouveau bloc'
   ]);
 });
 

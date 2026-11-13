@@ -292,3 +292,14 @@ test("le 2e s'ouvre avec la revue seule : la salle de rédaction absente le dit 
   assert.equal(Q('redactionOn()'), true, 'la rédaction seule aussi');
   assert.doesNotMatch(Q('redactionListHtml()'), /pas installée/);
 });
+
+test('« Qui fait quoi » du RDC : un bloc du 2e, les intentions puis les revues en cours (audit UX 4.1)', () => {
+  const p = load(), J = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  p.run('T = DAY0 + 11 * 36e5; setMode("live");');
+  const rows = J('rdWhoRows(T)');
+  assert.ok(rows.some(x => x.kind === 'rd') && rows.some(x => x.kind === 'rv'), 'intentions et revues');
+  const html = J('rdWhoHtml(T)');
+  assert.match(html, /✍ 2e étage <span class="cnt">\d+/);
+  assert.match(html, /data-rd-run="[^"]+" data-rd-kind="rv"/);
+  assert.match(html, /<span class="ws">revue/);
+});

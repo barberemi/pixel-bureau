@@ -538,3 +538,23 @@ function rvGalleryScenes(){
     {fam,ico:'🚶',n:'L\'auteur repart',d:'Sa dernière PR relue, il redescend avec ses verdicts au-dessus de la tête ; s\'il en a une autre juste après, il reste au bureau',w:'Fin des PR d\'un auteur',ok:file,why,play:rvScene(9.98,20e3)},
     {fam,ico:'🔍',n:'Une revue à la demande',d:'Hors de la file : un autre bureau de revue s\'allume, le relecteur à son bureau, l\'auteur en face ; pour ta propre PR, un agent remplaçant',w:'« 🔍 Review » sur une PR',ok:ask,why,play:rvScene(10+10/60,10e3)}];
 }
+// ---------- « Qui fait quoi » du RDC (audit UX 4.1) : les intentions en rédaction et les revues en cours du 2e ----------
+function rdWhoRows(t){
+  if(!redactionOn())return [];
+  const rd=rdTables().map(x=>{const n=(x.tickets||[]).length, gate=(x.tickets||[]).some(k=>k.etat==='gate'), p=RD_POSTES.find(q=>q.k===x.poste), a=ms(x.since);
+    return {run:x.run,kind:'rd',attn:gate,st:gate?'gate':'work',ico:gate?'✋':p?p.i:'✍',name:gate?'T\'attend':p?p.n:'Rédaction',where:'rédaction',
+      what:x.intention||'',sub:[gate?'tickets à valider avant Jira':'',n?plural(n,'ticket','tickets'):''].filter(Boolean).join(' · '),since:a&&a<=t?sinceTxt(t-a):''};});
+  const rv=rvActive().map(r=>{const v=r.vars||{}, steps=rvSteps(r), cur=steps.find(s=>s.s==='Running')||steps[steps.length-1]||{};
+    const who=v['current_task.author'], au=who&&typeof ghChar==='function'?ghChar(who):null;
+    const sn=cur.n?rvStepName(cur.n):'', m=sn.match(/^(\S+)\s+(.+)$/); // « 🔍 lecture » : l'icône à gauche, le poste en titre
+    return {run:r.run,kind:'rv',attn:false,st:'work',ico:m?m[1]:'🔍',name:m?m[2][0].toUpperCase()+m[2].slice(1):'Revue',where:'revue',
+      what:(String(v['current_task.repo']||'').split('/').pop()||'?')+'#'+(v['current_task.number']||'?'),sub:who?(au?au.name.split(' ')[0]:'@'+who):'',since:''};});
+  return [...rd,...rv];
+}
+function rdWhoHtml(t){
+  const rows=rdWhoRows(t);if(!rows.length)return '';
+  return `<h3 class="who-sub">✍ 2e étage <span class="cnt">${rows.length}</span></h3><div class="who-grid">`+rows.map(x=>
+    `<button class="wc${x.attn?' attn':''}" data-rd-run="${esc(x.run)}" data-rd-kind="${x.kind}" title="${esc([x.what,x.sub].filter(Boolean).join('\n'))}" style="--st:${ST_CSS[x.st]||'var(--idle)'};--tk:transparent">`+
+    `<span class="wp ic" aria-hidden="true">${x.ico}</span><span class="wt"><span class="wn">${esc(x.name)}<span class="ws">${x.where}${x.since?' · '+esc(x.since):''}</span></span>`+
+    `<span class="ww nt">${esc(x.what)}</span>${x.sub?`<span class="wsub">${esc(x.sub)}</span>`:''}</span></button>`).join('')+'</div>';
+}
