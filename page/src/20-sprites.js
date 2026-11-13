@@ -26,28 +26,84 @@ function specLayers(s){
   const L=[['body/'+sex,'mul',skin],['feet/'+sex,'lum',s.shoes||'#3a2a22'],['legs/'+legs+'/'+sex,'lum',s.legs_color||'#3b4a63'],['torso/'+torso+'/'+sex,'lum',s.shirt||'#8a8f99'],
     ['head/'+(sex==='female'?'female':has('head/'+s.head)?s.head:'male'),'mul',skin],['eyes','raw']];
   if(isSet(s.beard))L.push(['beard/'+s.beard,'lum',s.hair_color]);
-  if(isSet(s.hair))L.push([has('hair/'+s.hair+'/'+sex)?'hair/'+s.hair+'/'+sex:'hair/'+s.hair+'/male','lum',s.hair_color]);
+  const hairId=h=>has('hair/'+h+'/'+sex)?'hair/'+h+'/'+sex:'hair/'+h+'/male';
+  // hair_back : une autre coiffure vue de dos (des cheveux longs dans le dos sous une coupe à raie au milieu, par exemple)
+  if(isSet(s.hair)&&isSet(s.hair_back)&&has(hairId(s.hair_back))){
+    L.push([hairId(s.hair),'lum',s.hair_color,d=>d!=='up'],[hairId(s.hair_back),'lum',s.hair_color,d=>d==='up']);}
+  else if(isSet(s.hair))L.push([hairId(s.hair),'lum',s.hair_color]);
   if(isSet(s.hat))L.push(['hat/'+s.hat,'lum',s.hat_color||'#6b4a2e']);
   if(isSet(s.glasses))L.push(['glasses/'+s.glasses,'raw']);
   return L;
 }
-// même calcul que build_sprites.recolor : 'lum' = rampe de la couleur choisie, 'mul' = teinte de peau
-function composeSheet(s){
-  const out=new ImageData(576,384), o=out.data;
-  for(const [id,mode,col] of specLayers(s)){
-    const p=layerPx(id); if(!p)continue; const t=rgbOf(col)||[255,255,255];
+// la direction d'une image de la planche (9 × 6 images de 64 px) : rangées 0 à 3 la marche (dos, gauche, face, droite),
+// 4 le repos (dos, dos, face, face, gauche, droite), 5 les mains (de face)
+const sheetDir=(col,row)=>row<4?['up','left','down','right'][row]:row===4?(col<2?'up':col<4?'down':col===4?'left':'right'):'down';
+// zones d'une recette (un costume) : des zones de calques recolorées, valides seulement (calque, couleur #rrggbb)
+// {layer: body|feet|legs|torso|head|eyes|beard|hair|hat, color, rows: [min, max], cols: [min, max] (pixels de l'image de
+// 64 px), dirs: [up|down|left|right], every: n (une ligne sur n depuis rows[0]), flat: true (couleur pleine, sans le modelé),
+// skip_arm: true (de profil, le bras reste hors de la zone)} ; la dernière zone qui convient l'emporte
+const zonesOf=s=>(Array.isArray(s.zones)?s.zones:[]).filter(z=>z&&typeof z.layer==='string'&&rgbOf(z.color)).map(z=>({...z,rgb:rgbOf(z.color)}));
+// de profil, le trait noir intérieur entre le bras et le buste (calque du haut) : sa colonne et le côté du bras (celui de la
+// main, la peau du corps juste sous une manche, hors du pantalon), image par image. Quand le bras passe devant le ventre
+// (la marche), le trait trouvé est le bord du buste : on garde celui du repos, pour que le buste ne clignote pas.
+function armSeams(L){
+  const find=k=>(L.find(l=>l[0].split('/')[0]===k)||[])[0], T=layerPx(find('torso')), B=layerPx(find('body')), G=layerPx(find('legs')), out={};
+  if(!T||!B)return out;
+  const A=(P,x,y)=>P?P[(y*576+x)*4+3]:0, V=(P,x,y)=>P[(y*576+x)*4];
+  for(let row=0;row<5;row++)for(let col=0;col<9;col++){
+    const dir=sheetDir(col,row);if(dir!=='left'&&dir!=='right')continue;
+    const ox=col*64, oy=row*64, hx=[], xs=[];
+    for(let y=42;y<50;y++)for(let x=0;x<64;x++)if(A(B,ox+x,oy+y)&&!A(T,ox+x,oy+y)&&!A(G,ox+x,oy+y)&&(A(T,ox+x,oy+y-1)||A(T,ox+x,oy+y-2)))hx.push(x);
+    for(let y=37;y<48;y++)for(let x=0;x<64;x++)if(A(T,ox+x,oy+y))xs.push(x);
+    if(!xs.length||!hx.length)continue;
+    const cx=(Math.min(...xs)+Math.max(...xs))/2, h=hx.reduce((p,q)=>p+q,0)/hx.length, side=h>cx?1:-1, light=(x,y)=>A(T,ox+x,oy+y)&&V(T,ox+x,oy+y)>=60;
+    let best=null;
+    for(let y=40;y<48;y++)for(let x=1;x<63;x++)
+      if(A(T,ox+x,oy+y)&&V(T,ox+x,oy+y)<60&&(light(x-1,y)||light(x+1,y))&&A(T,ox+x-1,oy+y)&&A(T,ox+x+1,oy+y)&&(h-x)*side>0&&(best===null||Math.abs(x-h)<Math.abs(best-h)))best=x;
+    if(best!==null)out[col+','+row]={x:best,side};
+  }
+  for(const [k,sm] of Object.entries(out)){const [col,row]=k.split(',').map(Number), rest=out[(sheetDir(col,row)==='left'?4:5)+',4'];
+    if(row<4&&rest&&(Math.abs(sm.x-rest.x)>4||sm.side!==rest.side))out[k]=rest;}
+  return out;
+}
+function zoneAt(Z,kind,fx,fy,dir,seam){
+  let hit=null;
+  for(const z of Z){
+    if(z.layer!==kind||(z.dirs&&!z.dirs.includes(dir)))continue;
+    if(z.rows&&(fy<z.rows[0]||fy>z.rows[1]||(z.every>1&&(fy-z.rows[0])%z.every)))continue;
+    if(z.cols&&(fx<z.cols[0]||fx>z.cols[1]))continue;
+    if(z.skip_arm&&(dir==='left'||dir==='right')&&seam&&(fx-seam.x)*seam.side>=0)continue;
+    hit=z;
+  }
+  return hit;
+}
+// même calcul que build_sprites.recolor : 'lum' = rampe de la couleur choisie, 'mul' = teinte de peau ; une recette avec
+// des zones (ou une coiffure de dos) passe pixel par pixel par la direction de son image
+function composePixels(s){
+  const o=new Uint8ClampedArray(576*384*4), L=specLayers(s), Z=zonesOf(s), slow=Z.length>0||L.some(l=>l[3]);
+  const seams=Z.some(z=>z.skip_arm)?armSeams(L):{};
+  for(const [id,mode,col,only] of L){
+    const p=layerPx(id); if(!p)continue; const t0=rgbOf(col)||[255,255,255], kind=id.split('/')[0];
     for(let i=0;i<p.length;i+=4){
       const a=p[i+3]; if(!a)continue;
-      let r,g,b;
-      if(mode==='lum'){const k=.15+p[i]/255;r=t[0]*k;g=t[1]*k;b=t[2]*k;}
-      else if(mode==='mul'){r=p[i]*t[0]/255;g=p[i+1]*t[1]/255;b=p[i+2]*t[2]/255;}
+      let r,g,b, t=t0, md=mode;
+      if(slow){const px=(i>>2)%576, py=(i>>2)/576|0, cl=px>>6, rw=py>>6, dir=sheetDir(cl,rw);
+        if(only&&!only(dir))continue;
+        const z=Z.length&&zoneAt(Z,kind,px&63,py&63,dir,seams[cl+','+rw]);
+        if(z){t=z.rgb;md=z.flat?'flat':'lum';}}
+      if(md==='lum'){const k=.15+p[i]/255;r=t[0]*k;g=t[1]*k;b=t[2]*k;}
+      else if(md==='flat'){r=t[0];g=t[1];b=t[2];}
+      else if(md==='mul'){r=p[i]*t[0]/255;g=p[i+1]*t[1]/255;b=p[i+2]*t[2]/255;}
       else{r=p[i];g=p[i+1];b=p[i+2];}
       if(a===255||!o[i+3]){o[i]=r;o[i+1]=g;o[i+2]=b;o[i+3]=a;continue;}
       const sa=a/255, da=o[i+3]/255*(1-sa), na=sa+da;
       o[i]=(r*sa+o[i]*da)/na;o[i+1]=(g*sa+o[i+1]*da)/na;o[i+2]=(b*sa+o[i+2]*da)/na;o[i+3]=na*255;
     }
   }
-  const c=document.createElement('canvas');c.width=576;c.height=384;c.getContext('2d').putImageData(out,0,0);return c;
+  return o;
+}
+function composeSheet(s){
+  const c=document.createElement('canvas');c.width=576;c.height=384;c.getContext('2d').putImageData(new ImageData(composePixels(s),576,384),0,0);return c;
 }
 // planches assemblées, par recette ; une file étale le travail sur plusieurs images (≈ 8 ms par image)
 const SHEETS=new Map(), QUEUE=[];
