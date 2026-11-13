@@ -22,7 +22,7 @@ PORT = 9335
 # avant chaque capture : hors mode TV et au RDC (tous deux mémorisés par le navigateur, d'une capture à l'autre), lecture en
 # pause à 11h, personnages posés à leur place
 # récap du matin fermé : il s'ouvre seul avant midi (heure réelle), la capture ne dépend pas de l'heure où on la prend
-AT = lambda h: f"applySkin('classique');if(TV)setTv(false);setFloor(0);setMode('pause');T=DAY0+{h}*3600e3;needTeleport=true;RECAP_OPEN=false;renderRecap();"  # noqa: E731
+AT = lambda h: f"applySkin('classique');if(TV)setTv(false);try{{localStorage.removeItem('bureau:combles');}}catch(e){{}}setFloor(0);setMode('pause');T=DAY0+{h}*3600e3;needTeleport=true;RECAP_OPEN=false;renderRecap();"  # noqa: E731
 WAIT = "new Promise(r=>setTimeout(r,2500))"
 # nom -> (largeur, hauteur, JS de mise en scène, sélecteur à rogner ; None = la fenêtre[, échelle de la capture[, autre plan]])
 # pages Kronn du boss simulées (#61) : 5 pages aux miniatures dessinées, le workflow pages branché, deux pages à ajouter
@@ -312,6 +312,9 @@ SHOTS = {
     "retours-kanban": (1600, 1100, AT(11) + "setFloor(3);rtKbOpen('demo-f1');", None),
     "retours-calme": (1600, 1100, AT(22.5) + "RETOURS={...RETOURS,rooms:RETOURS.rooms.filter(r=>r.poste==='fix'),events:RETOURS.events.filter(e=>e.run==='demo-f1')};setFloor(3);", None),
     "caserne-calme": (1600, 1100, AT(22.5) + "SUPPORT={...SUPPORT,threads:SUPPORT.threads.filter(t=>!['run','gate'].includes(t.state))};setFloor(-1);", None),
+    # les Combles, l'étage secret (68-combles.js) : le soir, l'équipe y joue ; le digicode de l'entrée, ouvert, quatre touches tapées
+    "combles": (1600, 1100, AT(22.5) + "comblesUnlock();setFloor(4);", None),
+    "digicode": (1600, 1100, AT(11) + "digiOpen();for(const k of 'UUDD')digiPress(k);", "#cv"),
     "temps-gagne-ia": (1400, 1000, AT(11) + "ACTIONS.ai_time=true;ACTION_BINDS['bureau-aitime']={ticket:'key'};"
                        "const all=[...TEAM.people.flatMap(p=>p.tickets),...(TEAM.unassigned||[])];ACTS={tickets:all.map(t=>({key:t.key})),prs:[]};"
                        "openTicket(all.find(t=>t.cat==='done').key);", ".kbv"),

@@ -25,12 +25,14 @@ function loop(now){
     if(FLOOR===1){renderAtelier(now);loupeFrame(now);} // 68-atelier.js : le 1er étage, à la place de l'open space, avec sa loupe
     else if(FLOOR===-1){renderCaserne(now);loupeFrame(now);} // 68-caserne.js : le sous-sol, avec sa loupe (et la pause du rejeu)
     else if(FLOOR===3){renderRetours(now);loupeFrame(now);}
+    else if(FLOOR===4)renderCombles(now); // 68-combles.js : l'étage secret, sans loupe
     else if(FLOOR===2){renderRedaction(now);loupeFrame(now);} // 68-redaction.js : le 2e, rédaction et revue // 68-retours.js : le 3e, les retours de PR
     else{
       render(now);
       loupeFrame(now); // 44-loupe.js : médaillon sur l'événement fort en cours
       drawPreview(now);
       drawNewAgentPreview(now); // 66-newagent.js
+      drawDigicode(now); // 68-combles.js : le boîtier de l'entrée, et son pavé par-dessus tout quand il est ouvert
     }
   }
   requestAnimationFrame(loop);
@@ -168,7 +170,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   RETOURS=readRetours(k)||(DEMO?retoursDemo():null); // 68-retours.js : 3e étage
   REDACTION=readRedaction(k)||(DEMO?redactionDemo():null); // 68-redaction.js : 2e étage
   atelierTabs();
-  if(FLOOR&&floorsOn().includes(FLOOR))setFloor(FLOOR);else FLOOR=0;
+  if(FLOOR&&(floorsOn().includes(FLOOR)||FLOOR===4&&comblesOn()))setFloor(FLOOR);else FLOOR=0;
 }
 window.addEventListener('kronn:page-data',e=>{
   if(SCENE_DEMO)demoEnd(); // nouvelles données : la démonstration s'arrête, la journée reprend

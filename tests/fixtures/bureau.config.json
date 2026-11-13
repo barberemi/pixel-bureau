@@ -329,5 +329,8 @@
   "name": "Support Scranton",
   "team": "00000000-0000-4000-8000-00000000dm62",
   "channel": "19:support-scranton@thread.tacv2"
+ },
+ "combles": {
+  "url": "https://claude.ai/artifact/sprint-quest-exemple"
  }
 }

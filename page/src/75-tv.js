@@ -81,7 +81,7 @@ function tvFloorTick(now){
 }
 function renderTvWho(){
   const box=document.getElementById('tvwho');if(!box)return;
-  if(FLOOR){const h=FLOOR===1?tvAtelierHtml():FLOOR===3?tvRetoursHtml():FLOOR===2?tvRedactionHtml():tvCaserneHtml();if(h!==TVWHO_SIG){TVWHO_SIG=h;box.innerHTML=h;}return;} // 68-caserne.js : au -1, les baies
+  if(FLOOR){const h=FLOOR===4?'':FLOOR===1?tvAtelierHtml():FLOOR===3?tvRetoursHtml():FLOOR===2?tvRedactionHtml():tvCaserneHtml();if(h!==TVWHO_SIG){TVWHO_SIG=h;box.innerHTML=h;}return;} // 68-caserne.js : au -1, les baies
   const team=whoCards(T,true), agents=whoCards(T).filter(x=>!x.c.person&&!x.c.visitor&&!x.c.guest);
   const html='<h2>Qui fait quoi</h2>'+team.map(x=>tvWhoCard(x,x.c.name)).join('')+
     (agents.length?`<h2>Les agents</h2>`+agents.map(x=>tvWhoCard(x,labelText(x.c))).join(''):'')+atTvWhoHtml(T)+rtTvWhoHtml(T)+tvDeparts(); // 69-atelier-rdc.js, 69-retours-rdc.js, 62-departs.js

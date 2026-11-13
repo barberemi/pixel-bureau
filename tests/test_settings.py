@@ -183,5 +183,15 @@ class InstallBindTest(unittest.TestCase):
         self.assertEqual(json.loads(Path(self.cfg_path).read_text())["agents"], [{"key": "dwight", "wf": ["aaaaaaaa"]}])
 
 
+class ComblesUrlTest(unittest.TestCase):
+    """La borne des Combles (68-combles.js) : l'adresse de Sprint Quest, réglée dans combles.url, en https seulement."""
+
+    def test_https_only(self):
+        self.assertEqual(assemble.page_config({"combles": {"url": "https://claude.ai/artifact/abc"}})["combles_url"], "https://claude.ai/artifact/abc")
+        for bad in ({}, {"combles": {}}, {"combles": {"url": "javascript:alert(1)"}}, {"combles": {"url": "http://x"}}, {"combles": {"url": 3}}):
+            self.assertIsNone(assemble.page_config(bad)["combles_url"], bad)
+
+
 if __name__ == "__main__":
     unittest.main()
+
