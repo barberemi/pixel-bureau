@@ -54,7 +54,7 @@ function banner(){ // sur le mur des toilettes (onF('toilets'))
   const x0=33*TS+14, x1=38*TS+18, y=5*TS+7;
   R(ctx,x0,y,x1-x0,15,pal[0]);R(ctx,x0,y,x1-x0,2,'rgba(255,255,255,.25)');R(ctx,x0,y+15,x1-x0,2,'rgba(0,0,0,.25)');
   R(ctx,x0-3,y-3,3,20,'#5a4636');R(ctx,x1,y-3,3,20,'#5a4636');
-  ctx.fillStyle=pal[1];ctx.font='bold 9px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText(bannerText(th),(x0+x1)/2,y+11);ctx.textAlign='left';
+  ctx.fillStyle=pal[1];ctx.font='bold 12px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText(bannerText(th),(x0+x1)/2,y+11);ctx.textAlign='left';
   E(th.ico,x0-10,y+8,14);E(th.ico,x1+12,y+8,14);
 }
 function garland(now){

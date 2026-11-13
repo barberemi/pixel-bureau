@@ -29,14 +29,14 @@ function svState(s,t){
 const svAll=t=>((STATUTS&&STATUTS.services)||[]).map(s=>({s,st:svState(s,t)}));
 const svBad=t=>svAll(t).filter(x=>x.st&&x.st!=='op').sort((a,b)=>SV_RANK.indexOf(b.st)-SV_RANK.indexOf(a.st));
 const svLine=x=>'⚠ '+x.s.n.toUpperCase()+' · '+SV_ST[x.st][1];
-const SV_FONT='bold 10px system-ui,sans-serif';
-// sous l'écran du plateau TV : 8 px de points, ou une ligne de 13 px par service touché ; assez large pour la plus longue
+const SV_FONT='bold 12px system-ui,sans-serif';
+// sous l'écran du plateau TV : 8 px de points, ou une ligne de 15 px par service touché ; assez large pour la plus longue
 function svRect(t){
   if(!STATUTS||!STATUTS.services.length||!TVR)return null;
   const bad=svBad(t);
   let w=TVR.w+40;
   if(bad.length){ctx.font=SV_FONT;for(const x of bad)w=Math.max(w,ctx.measureText(svLine(x)).width+16);}
-  return {x:Math.round(TVR.x+TVR.w/2-w/2),y:TVR.y+TVR.h+4,w:Math.round(w),h:bad.length?6+13*bad.length:8,bad};
+  return {x:Math.round(TVR.x+TVR.w/2-w/2),y:TVR.y+TVR.h+4,w:Math.round(w),h:bad.length?6+15*bad.length:8,bad};
 }
 const SV_BAND={y:-1,draw:()=>{ // dessiné avec le mobilier du fond : les personnages du plateau passent devant
   const r=svRect(T);if(!r)return;
@@ -44,7 +44,7 @@ const SV_BAND={y:-1,draw:()=>{ // dessiné avec le mobilier du fond : les person
     all.forEach((x,k)=>{ctx.fillStyle=x.st?SV_ST[x.st][0]:'#8a8f99';ctx.beginPath();ctx.arc(cx+(k-(all.length-1)/2)*14,r.y+4,3,0,7);ctx.fill();});return;}
   R(ctx,r.x,r.y,r.w,r.h,'#b8322a');R(ctx,r.x,r.y,4,r.h,'#ffffff');
   ctx.font=SV_FONT;ctx.fillStyle='#ffffff';ctx.textAlign='left';
-  r.bad.forEach((x,k)=>ctx.fillText(svLine(x),r.x+10,r.y+13+k*13));
+  r.bad.forEach((x,k)=>ctx.fillText(svLine(x),r.x+10,r.y+15+k*15));
 }};
 function svTip(){
   const bad=svBad(T);

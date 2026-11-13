@@ -136,6 +136,26 @@ def wait_tab(port, wait=TAB_WAIT):
     return None
 
 
+# lisibilité (audit UX 2.3) : les minimums de tests/lisibilite.test.js (12 px au RDC, 11 aux étages) supposent ces échelles du plan
+# à 1440 × 900 ; un plan qui rétrécit les rendrait faux
+SCALE_JS = ("(async()=>{const o={},w=ms=>new Promise(r=>setTimeout(r,ms));for(const f of [0,-1,1,2,3]){setFloor(f);if(FLOOR!==f)continue;"
+            "await w(300);const c=document.getElementById('cv');o[f]=c.getBoundingClientRect().width/c.width;}setFloor(0);return JSON.stringify(o);})()")
+
+
+def lisi_checks(call, width, height):
+    L = json.loads(Path(ROOT, "tests", "fixtures", "lisibilite.json").read_text())
+    (fw, fh), ech = L["fenetre"], L["echelles"]
+    call("Emulation.setDeviceMetricsOverride", width=fw, height=fh, deviceScaleFactor=1, mobile=False)
+    time.sleep(0.5)
+    r = call("Runtime.evaluate", returnByValue=True, awaitPromise=True, expression=SCALE_JS)
+    got = json.loads((r.get("result") or {}).get("value") or "{}")
+    for f, k in got.items():
+        ref = ech["rdc" if f == "0" else "etages"]
+        check(k >= ref - 0.001, f"plan {'du RDC' if f == '0' else 'de l’étage ' + f} à {fw} × {fh} : ×{k:.3f} (au moins ×{ref})")
+    check("0" in got, "échelles du plan mesurées")
+    call("Emulation.setDeviceMetricsOverride", width=width, height=height, deviceScaleFactor=1, mobile=False)
+
+
 def chrome_checks(path, port, user_dir, js, shot, wait, width, height):
     try:
         import websocket
@@ -188,6 +208,7 @@ def chrome_checks(path, port, user_dir, js, shot, wait, width, height):
             os.makedirs(os.path.dirname(os.path.abspath(shot)), exist_ok=True)
             Path(shot).write_bytes(base64.b64decode(data))
             print("     capture :", shot)
+        lisi_checks(call, width, height)
         call("Runtime.evaluate", expression="0")  # vide la file d'événements
         exc = [e["params"]["exceptionDetails"] for e in events if e.get("method") == "Runtime.exceptionThrown"]
         errs = [e["params"] for e in events if e.get("method") == "Runtime.consoleAPICalled" and e["params"]["type"] == "error"]

@@ -67,7 +67,7 @@ const TODO_BOARD={y:-1,draw:()=>{
     if(col==='duck'){const dx=cx+cw/2-4,dy=y+h-11;R(ctx,dx+1,dy+2,6,4,'#f5c518');R(ctx,dx+4,dy,3,3,'#f5c518');R(ctx,dx+7,dy+1,2,1,'#f08a1c');R(ctx,dx+5,dy+1,1,1,'#1a1a1a');}
   });
   const n=tdIn('todo').length+tdWaiting();if(!n)return;
-  ctx.font='bold 11px sans-serif';const s=String(n),bw=Math.max(13,ctx.measureText(s).width+8),bx=x+w-bw+4,by=y-8;
+  ctx.font='bold 12px sans-serif';const s=String(n),bw=Math.max(13,ctx.measureText(s).width+8),bx=x+w-bw+4,by=y-8;
   R(ctx,bx,by,bw,13,'#e0902a');ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(s,bx+bw/2,by+7);ctx.textAlign='start';ctx.textBaseline='alphabetic';
 }};
 function todoTip(){

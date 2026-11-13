@@ -240,24 +240,24 @@ const TV_SCREEN={y:-1,draw:(now)=>{ // écran du plateau TV, au mur du fond
   const {x,y,w,h}=TVR, sg=stageAt(T);
   R(ctx,x-2,y-2,w+4,h+4,'#111216');R(ctx,x,y,w,h,'#0e1b30');
   if(stageClosed(T)){
-    ctx.font='bold 8px ui-monospace,Menlo,monospace';
+    ctx.font='bold 12px ui-monospace,Menlo,monospace';
     ctx.fillStyle='#5a6478';
     ctx.textAlign='center';
-    ctx.fillText('PLATEAU FERMÉ',x+w/2,y+11);
+    ctx.fillText('PLATEAU FERMÉ',x+w/2,y+14);
     ctx.fillStyle='#f2c314';
-    ctx.fillText('REPRISE LUNDI',x+w/2,y+22);
+    ctx.fillText('REPRISE LUNDI',x+w/2,y+30);
     ctx.textAlign='left';
     return;
   }
-  ctx.font='bold 8px ui-monospace,Menlo,monospace';
+  ctx.font='bold 12px ui-monospace,Menlo,monospace'; // 12 px : 9,4 px affichés à 1440 px (audit UX 2.3), d'où l'écran d'au moins 140 × 36
   const liveNow=sg&&sg.phase!=='done';
-  if(liveNow&&Math.floor(now/600)%2){ctx.fillStyle='#ff4b4b';ctx.beginPath();ctx.arc(x+7,y+8,3,0,7);ctx.fill();}
-  ctx.fillStyle=liveNow?'#ff8a8a':'#9fb7d9';ctx.fillText(liveNow?'EN DIRECT':'MISES EN PROD',x+13,y+11);
+  if(liveNow&&Math.floor(now/600)%2){ctx.fillStyle='#ff4b4b';ctx.beginPath();ctx.arc(x+8,y+9,3,0,7);ctx.fill();}
+  ctx.fillStyle=liveNow?'#ff8a8a':'#9fb7d9';ctx.fillText(liveNow?'EN DIRECT':'MISES EN PROD',x+15,y+14);
   const items=mepsAt(T).slice().reverse().map(z=>z.m.tag+' '+(z.m.ticket||'')+' '+(z.phase==='done'?'en prod ✓':z.phase==='failed'?'échec ✗':MEP_TXT[z.phase]));
   const txt=items.length?items.join('   ·   ')+'   ·   ':"Aucune mise en prod aujourd'hui   ·   ";
-  ctx.save();ctx.beginPath();ctx.rect(x+3,y+14,w-6,13);ctx.clip();
+  ctx.save();ctx.beginPath();ctx.rect(x+3,y+19,w-6,15);ctx.clip();
   ctx.fillStyle='#ffffff';const tw=ctx.measureText(txt).width, off=(now/25)%tw;
-  for(let k=-1;k<3;k++)ctx.fillText(txt,x+3-off+k*tw,y+24);
+  for(let k=-1;k<3;k++)ctx.fillText(txt,x+3-off+k*tw,y+31);
   ctx.restore();
 }};
 // enveloppe de paie posée sur le bureau du boss -> fiche de paie
@@ -278,17 +278,17 @@ const PAY_ENVELOPE={
   ctx.fillText('$',x+w-6,y+h-1);
   }
   };
-// employé du sprint : cadre sur le mur bas de la cafétéria
+// employé du sprint : cadre sur le mur bas de la cafétéria ; en 12 px (audit UX 2.3), « DU SPRINT » ne tient plus : le portrait,
+// « EMPLOYÉ » et ses points, dans un cadre d'au moins 88 × 30
 const EMP_FRAME={y:-1,draw:()=>{
   const b=bestEmployee()[0]; if(!b||!b.pts)return;
   const c=empChar(b); if(!c)return; const {x,y,w,h}=EMPR;
   R(ctx,x,y,w,h,'#c9a227');R(ctx,x+2,y+2,w-4,h-4,'#f3e6c2');
-  const img=spriteOf(c); if(ready(img))ctx.drawImage(img,2*64+16+(c.sprite==='boss_sax'?5:0),4*64+(c.sprite==='boss_sax'?2:10),32,32,x+3,y+3,22,22);
+  const img=spriteOf(c); if(ready(img))ctx.drawImage(img,2*64+16+(c.sprite==='boss_sax'?5:0),4*64+(c.sprite==='boss_sax'?2:10),32,32,x+3,y+4,22,22);
   ctx.fillStyle='#7a5a10';
-  ctx.font='bold 6px ui-monospace,Menlo,monospace';
-  ctx.fillText('EMPLOYÉ',x+27,y+11);
-  ctx.fillText('DU SPRINT',x+27,y+18);
-  ctx.fillText(Math.round(b.pts)+' PTS',x+27,y+25);
+  ctx.font='bold 12px ui-monospace,Menlo,monospace';
+  ctx.fillText('EMPLOYÉ',x+28,y+13);
+  ctx.fillText(Math.round(b.pts)+' PTS',x+28,y+26);
 }};
 // mur Kanban à droite du bureau du boss
 function kanbanCols(){
@@ -393,11 +393,20 @@ function islandFurniture(){ // îlots : tables, écrans, chaises
 }
 // objets cliquables du plan (rectangles en pixels) : écran TV, employé du sprint, paie, Kanban
 let TVR, EMPR, PAYR, KANR;
+// l'écran TV et l'affiche de l'employé du sprint grandissent autour de leur centre jusqu'à la taille de leurs textes en 12 px
+// (audit UX 2.3) : un plan plus ancien ou celui d'un pack garde sa place, sans texte coupé
+const TV_MIN=[140,36], EMP_MIN=[88,30];
+function atLeast(r,[w,h]){
+  if(!r||r.w>=w&&r.h>=h)return r;
+  const w2=Math.max(r.w,w), h2=Math.max(r.h,h);
+  return {...r,x:Math.round(r.x+r.w/2-w2/2),y:Math.round(r.y+r.h/2-h2/2),w:w2,h:h2};
+}
 // tout le mobilier du plan, dans l'ordre de dessin (tri en profondeur stable) ; rappelé quand le plan change,
 // après buildWorld() qui vide les cases bloquées (les meubles y ajoutent leur emprise)
 function buildFurniture(){
   FURN.length=0; for(const k of Object.keys(FURN_AT))delete FURN_AT[k];
   ({tv:TVR,emp:EMPR,paie:PAYR,kanban:KANR,calendar:CALR=null,departs:DEPR=null}=LAYOUT.objects); // objects.planning (avant #60) : ignoré
+  TVR=atLeast(TVR,TV_MIN);EMPR=atLeast(EMPR,EMP_MIN);
   islandFurniture();
   // meubles du plan, dans l'ordre du plan
   for(const f of LAYOUT.furniture||[]){

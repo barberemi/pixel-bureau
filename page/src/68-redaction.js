@@ -200,7 +200,7 @@ function rdRoom(now,people){
   const p=t?t.poste:null, st=k=>!t?'idle':k===p?'run':RD_POSTES.findIndex(x=>x.k===k)<RD_POSTES.findIndex(x=>x.k===p)?'ok':'wait';
   const tks=((t&&t.tickets)||[]).map(x=>M.pend[t.run+':'+x.i]?{...x,etat:'gate'}:x); // le ticket que le boss porte n'est pas encore dans Jira
   rdLate(people,()=>{R(ctx,tx-4.4*T,ty-.9*T,8.8*T,1.8*T,'#7a5a3c');R(ctx,tx-4.4*T,ty-.9*T,8.8*T,6,'#94704c');R(ctx,tx-4.2*T,ty+.9*T,6,10,'#4a3424');R(ctx,tx+4.2*T-6,ty+.9*T,6,10,'#4a3424');
-    tks.slice(0,4).forEach((x,k)=>{const sx=tx+(-2.6+k*1.3)*T;R(ctx,sx-12,ty-15,24,30,'#fbfbf6');R(ctx,sx-12,ty-15,24,4,RD_TK[x.etat]?RD_TK[x.etat][0]:'#2f6fd6');for(let l=0;l<4;l++)R(ctx,sx-8,ty-6+l*5,16,2,'#b8b2a4');atPill('T'+(k+1),sx+12,ty-14,'#0b2a4a','#fff','bold 10px ui-monospace,Menlo,monospace');});
+    tks.slice(0,4).forEach((x,k)=>{const sx=tx+(-2.6+k*1.3)*T;R(ctx,sx-12,ty-15,24,30,'#fbfbf6');R(ctx,sx-12,ty-15,24,4,RD_TK[x.etat]?RD_TK[x.etat][0]:'#2f6fd6');for(let l=0;l<4;l++)R(ctx,sx-8,ty-6+l*5,16,2,'#b8b2a4');atPill('T'+(k+1),sx+12,ty-14,'#0b2a4a','#fff','bold 11px ui-monospace,Menlo,monospace');});
     if(tks.length>4)atPill('+'+(tks.length-4),tx+2.6*T,ty,'#0b2a4a','#fff','bold 11px ui-monospace,Menlo,monospace');
     if(t&&t.tour>1)atPill('↺ critique → rédaction · tour '+t.tour+'/3',tx+5.4*T,ty+2.6*T,'#0b2a4a','#fff','bold 11px system-ui,sans-serif');},ty-.6*T);
   atHitRd('table',tx-4.4*T,ty-2.2*T,8.8*T,5*T,{});
@@ -296,8 +296,8 @@ function rdRevue(now,people){
     else{atDesk(cx,feet-6,false);ctx.fillStyle='rgba(30,26,22,.22)';ctx.fillRect(cx-90,feet-90,180,150);}
     const pr=(String(v['current_task.repo']||'').split('/').pop()||'?')+'#'+(v['current_task.number']||'?'), name=au&&!mine?au.name:mine?'🤖 remplaçant (ta PR)':who?'@'+who:'';
     rdLate(people,()=>{atPill(pr+(name?' · '+name:''),cx,rf+24,'#0b2a4a','#fff','bold 11px ui-monospace,Menlo,monospace');
-      const steps=rvSteps(r);ctx.font='bold 10px system-ui,sans-serif';const ws=steps.map(s=>ctx.measureText(rvStepLbl(s)).width+10), tot=ws.reduce((a,b)=>a+b,0)+Math.max(0,steps.length-1)*3;let x=cx-tot/2;
-      steps.forEach((s,j)=>{const c=s.s==='Success'?'#2f7a45':s.s==='Running'?'#2f6fd6':s.s==='Failed'?'#a8323a':'#e8e2d0';atPill(rvStepLbl(s),x+ws[j]/2,rf+42,c,c==='#e8e2d0'?'#6a6050':'#fff','bold 10px system-ui,sans-serif');x+=ws[j]+3;});},rf+1);
+      const steps=rvSteps(r);ctx.font='bold 11px system-ui,sans-serif';const ws=steps.map(s=>ctx.measureText(rvStepLbl(s)).width+10), tot=ws.reduce((a,b)=>a+b,0)+Math.max(0,steps.length-1)*3;let x=cx-tot/2;
+      steps.forEach((s,j)=>{const c=s.s==='Success'?'#2f7a45':s.s==='Running'?'#2f6fd6':s.s==='Failed'?'#a8323a':'#e8e2d0';atPill(rvStepLbl(s),x+ws[j]/2,rf+42,c,c==='#e8e2d0'?'#6a6050':'#fff','bold 11px system-ui,sans-serif');x+=ws[j]+3;});},rf+1);
     atHitRd('review',cx-60,feet-60,120,rf-feet+80,{run:r.run});}
   if(l.length<6)rdBench(people,41.6*T,25.2*T,file&&F.M.rel?[96]:[96,97],'visiere'); // le relecteur de la file quitte le banc
   const sx=(RD_X1+RD_VX)/2*T;atCoffee(sx,6.4*T);atPlant(sx-36,20*T);atPlant(sx+36,20*T);

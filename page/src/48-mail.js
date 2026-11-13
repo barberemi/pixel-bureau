@@ -38,7 +38,7 @@ function drawMailbox(bx,by,a){
   R(ctx,bx+4,by+7,14,2,'#0c1a3d');                                  // fente
   R(ctx,bx+22,by+2,2,9,'#6b6b6b');                                  // mât
   if(up)R(ctx,bx+24,by+2,6,4,'#d8342c');else R(ctx,bx+16,by+11,6,3,'#d8342c'); // drapeau levé : du courrier
-  ctx.font='bold 11px sans-serif';const w=ctx.measureText(badge).width+8, bg=!a.ok?'#7a7f8a':badge==='?'?'#6b6f7a':up?'#d8342c':'#4a8a5a';
+  ctx.font='bold 12px sans-serif';const w=ctx.measureText(badge).width+8, bg=!a.ok?'#7a7f8a':badge==='?'?'#6b6f7a':up?'#d8342c':'#4a8a5a';
   R(ctx,bx+11-w/2,by-16,w,13,bg);R(ctx,bx+10,by-3,2,2,bg);
   ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(badge,bx+11,by-9);ctx.textAlign='start';ctx.textBaseline='alphabetic';
 }

@@ -1,0 +1,5 @@
+{
+ "fenetre": [1440, 900],
+ "affiche_min": 9,
+ "echelles": {"rdc": 0.78, "etages": 0.868}
+}

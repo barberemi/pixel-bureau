@@ -115,7 +115,7 @@ function drawDuckKids(now,look){
     ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.ellipse(x,y+1,4*DUCK_SCALE,1.2*DUCK_SCALE,0,0,7);ctx.fill();
     ctx.save();ctx.translate(x,y+(q.moving&&w>0?-1:0));ctx.rotate(w*.12);if(q.dir==='left')ctx.scale(-1,1);ctx.scale(DUCK_SCALE,DUCK_SCALE);
     ctx.drawImage(duckGameImg(q.dir==='down'?'front':q.dir==='up'?'back':'side','caneton'),-12,-22);ctx.restore();
-    if(i===n&&look.kids>DUCK_KIDS_MAX){ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillStyle='#3a2a00';ctx.fillText('×'+look.kids,x,y-Math.round(11*DUCK_SCALE));ctx.textAlign='left';}
+    if(i===n&&look.kids>DUCK_KIDS_MAX){ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillStyle='#3a2a00';ctx.fillText('×'+look.kids,x,y-Math.round(11*DUCK_SCALE));ctx.textAlign='left';}
   }
 }
 function drawDuckSparkles(x,y,now){

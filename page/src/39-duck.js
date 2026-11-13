@@ -158,7 +158,7 @@ function drawDuck(now){
     const by=y-Math.round(34*DUCK_K)+Math.round(Math.sin(now/400));
     ctx.fillStyle='#ffffff';ctx.strokeStyle='#c47f00';ctx.lineWidth=1;pixRect(ctx,x-7,by,14,13);ctx.fill();ctx.stroke();
     ctx.beginPath();ctx.moveTo(x-2,by+13);ctx.lineTo(x,by+17);ctx.lineTo(x+2,by+13);ctx.fill();
-    ctx.fillStyle='#c47f00';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText('?',x,by+10);ctx.textAlign='left';
+    ctx.fillStyle='#c47f00';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText('?',x,by+10);ctx.textAlign='left';
   }else if(!fxDuckBusy()){ // sinon une flèche jaune qui flotte au-dessus de lui, pour le repérer sur le plan (pas pendant une scène : sa bulle la remplace)
     const ay=y-Math.round((look.acc.some(a=>DUCK_HEADS.includes(a))||look.stage==='detective'?20:14)*DUCK_SCALE)-12+Math.round(2*Math.sin(now/300));
     ctx.fillStyle='#f5c518';ctx.strokeStyle='#3a2a00';ctx.lineWidth=1;
