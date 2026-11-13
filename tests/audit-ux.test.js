@@ -105,9 +105,9 @@ test('3.10 : bulles, étiquettes et nuages aux coins crénelés (pixRect), plus 
   assert.ok(!pts.some(([x, y]) => (x === 0 || x === 20) && (y === 0 || y === 10)), 'aucun angle droit : les coins sont en marches');
 });
 
-test('2.2 : noms des pièces du plan en 11 px, encre à 50 % par défaut', () => {
+test('2.2 : noms des pièces du plan en 12 px (2.3 : 9,4 px affichés), encre à 50 % par défaut', () => {
   const js = read('page', 'src', '40-floor.js');
-  assert.match(js, /g\.font='bold 11px ui-monospace,Menlo,monospace';g\.textAlign='center';/);
+  assert.match(js, /g\.font='bold 12px ui-monospace,Menlo,monospace';g\.textAlign='center';/);
   assert.match(js, /g\.fillStyle=l\.color\|\|'rgba\(0,0,0,\.5\)'/);
 });
 

@@ -128,7 +128,7 @@ function drawSeatTrail(c,now){
   ctx.save();ctx.setLineDash([4,6]);ctx.lineDashOffset=-now/50;ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=2;
   ctx.beginPath();ctx.moveTo(c.pos.x,c.pos.y);for(const [tx,ty] of TRAIL.v){const p=tileCenter(tx,ty);ctx.lineTo(p.x,p.y-4);}ctx.stroke();
   ctx.setLineDash([]);ctx.strokeStyle='#ffffff';ctx.strokeRect(d.x-13,d.y-22,26,24);
-  ctx.font='bold 10px ui-sans-serif,system-ui,sans-serif';
+  ctx.font='bold 12px ui-sans-serif,system-ui,sans-serif';
   ctx.textAlign='center';
   ctx.fillStyle='#ffffff';
   ctx.fillText('sa place',d.x,d.y-26);
@@ -152,8 +152,8 @@ function drawName(c){
   const full=on||hoverKey===c.key||famOf(c)!=='wf'||AGENT_BUSY.includes((c._st||{}).st);
   const fm=FAM[famOf(c)], x=Math.round(c.pos.x), y=Math.round(c.pos.y)+6, t=full?labelText(c):labelText(c).split(' · ')[0];
   const S=TV?TV_TXT:1; // mode TV : lisible à 3 m
-  ctx.font='bold '+Math.round((on?11:10)*S)+'px ui-sans-serif,system-ui,sans-serif';
-  const w=Math.ceil(ctx.measureText(t).width)+(on?10:8), h=Math.round((on?15:13)*S);
+  ctx.font='bold '+Math.round((on?13:12)*S)+'px ui-sans-serif,system-ui,sans-serif';
+  const w=Math.ceil(ctx.measureText(t).width)+(on?10:8), h=Math.round((on?17:15)*S);
   // assis aux îlots : sur le côté allée (sous la bulle), sinon il couvrirait le voisin du dessous
   let bx=x-w/2, by=y;
   if(!c.moving&&c.tile&&SEATS.some(s=>s.x===c.tile[0]&&s.y===c.tile[1])){bx=c.dir==='right'?x-14-w:x+14;by=y-32;}
@@ -198,8 +198,8 @@ function drawOverlay(c,now){
   const bb=bubbleFor(c,st,T,now); if(!bb||c.moving&&st.st!=='gate')return;
   const txt=bb.head, isIcon=txt.length<=2;
   const S=bb.big?1.6*(TV?1.2:1):TV?TV_TXT:1; // big : la réplique d'une scène (le cri du héraut), un peu moins agrandie en TV
-  ctx.font=isIcon?Math.round(13*S)+'px system-ui,sans-serif':'bold '+Math.round(10*S)+'px ui-monospace,Menlo,monospace';
-  const w=Math.ceil(ctx.measureText(txt).width)+(isIcon?8:10)+(bb.tone?3:0), h=Math.round((isIcon?18:15)*S);
+  ctx.font=isIcon?Math.round(13*S)+'px system-ui,sans-serif':'bold '+Math.round(12*S)+'px ui-monospace,Menlo,monospace';
+  const w=Math.ceil(ctx.measureText(txt).width)+(isIcon?8:10)+(bb.tone?3:0), h=Math.round((isIcon?18:17)*S);
   const seated=!c.moving&&c.tile&&SEATS.some(s=>s.x===c.tile[0]&&s.y===c.tile[1]);
   let bx=x-w/2, by=y-62-h-(sel===c.key?8:0);
   if(seated){const out=c.dir==='right'?-1:1;bx=out<0?x-14-w:x+14;by=y-48;

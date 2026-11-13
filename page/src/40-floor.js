@@ -65,7 +65,7 @@ const WALL_DECOR={
   sign:{anchor:[21,5],draw:(g,d)=>{ // panneau (texte et couleurs du plan) sur un mur vu du couloir
     const x0=21*TS-8, y0=5*TS+10, w=(d.w||3)*TS+16;
     R(g,x0,y0,w,16,d.bg||'#0b2a4a');R(g,x0,y0,w,2,d.accent||'#0172f0');
-    g.fillStyle='#ffffff';g.font='bold 10px ui-monospace,Menlo,monospace';g.textAlign='center';g.fillText(d.text||'',x0+w/2,y0+13);g.textAlign='left';
+    g.fillStyle='#ffffff';g.font='bold 12px ui-monospace,Menlo,monospace';g.textAlign='center';g.fillText(d.text||'',x0+w/2,y0+13);g.textAlign='left';
   }},
 };
 function buildBg(){
@@ -94,7 +94,7 @@ function buildBg(){
   // décor mural et noms des pièces : posés par le plan (LAYOUT.wall, LAYOUT.labels)
   for(const d of LAYOUT.wall||[]){const t=WALL_DECOR[d.type]; if(!t)continue;
     g.save();g.translate((d.at[0]-t.anchor[0])*TS,(d.at[1]-t.anchor[1])*TS);t.draw(g,d);g.restore();}
-  g.font='bold 11px ui-monospace,Menlo,monospace';g.textAlign='center'; // 11 px, encre à 50 % : lisibles à l'écran (audit UX 2.2)
+  g.font='bold 12px ui-monospace,Menlo,monospace';g.textAlign='center'; // 12 px, encre à 50 % : 9,4 px affichés à 1440 px (audit UX 2.2, 2.3)
   for(const l of LAYOUT.labels||[]){g.fillStyle=l.color||'rgba(0,0,0,.5)';g.fillText(l.text,l.at[0]*TS,l.at[1]*TS);}
   g.textAlign='left';
 }

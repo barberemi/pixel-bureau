@@ -14,8 +14,11 @@ const now = JSON.parse(page.run(`JSON.stringify({TS,COLS,ROWS,W,H,EXIT,grid,floo
   seatTiles:[...seatTiles].sort(),blocked:[...blocked].sort(),SPOTS,FREE_SEATS:LAYOUT.free_seats,ROOMS,TVR,KANR,PAYR,EMPR,
   walk:Array.from({length:ROWS},(_,y)=>Array.from({length:COLS},(_,x)=>walkable(x,y)?1:0).join('')).join('|')})`));
 
+// sauf l'écran TV et l'employé du sprint, agrandis autour de leur centre pour leurs textes en 12 px (audit UX 2.3)
+const GROWN = {TVR: 'TV_MIN', EMPR: 'EMP_MIN'};
 for (const k of Object.keys(ref)) {
-  test(`plan extrait : ${k} identique à l'ancien plan codé en dur`, () => assert.deepEqual(now[k], ref[k]));
+  const want = GROWN[k] ? JSON.parse(page.run(`JSON.stringify(atLeast(${JSON.stringify(ref[k])},${GROWN[k]}))`)) : ref[k];
+  test(`plan extrait : ${k} identique à l'ancien plan codé en dur`, () => assert.deepEqual(now[k], want));
 }
 
 test('plan : chaque rangée a la largeur annoncée et chaque caractère est dans la légende', () => {

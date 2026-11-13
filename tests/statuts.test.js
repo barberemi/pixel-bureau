@@ -40,7 +40,7 @@ test('statuts : le bandeau sous l\'écran du plateau, une ligne par service touc
   assert.equal(run(`svRect(${H(10)}).h`), 8, 'tout au vert : la rangée de points');
   run(`STATUTS.incidents.push({k:'jira',name:'Lenteurs',impact:'degraded',from:new Date(${H(10.6)}).toISOString(),to:null,link:'https://x'})`);
   const r = JSON.parse(run(`JSON.stringify(svRect(${H(10.75)}))`));
-  assert.equal(r.h, 6 + 13 * 2);
+  assert.equal(r.h, 6 + 15 * 2); // une ligne de 15 px par service, en 12 px
   assert.deepEqual(r.bad.map(x => x.s.k), ['claude', 'jira']);
   assert.ok(r.y >= run('TVR.y+TVR.h'), 'sous l\'écran');
   assert.ok(Math.abs(r.x + r.w / 2 - run('TVR.x+TVR.w/2')) <= 1, 'centré sur l\'écran');

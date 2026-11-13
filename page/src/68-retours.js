@@ -146,7 +146,7 @@ function rtBoard(z,r){
   const {x,y,w,h}=z.kb;R(ctx,x-4,y-4,w+8,h+8,'#7a5a3c');R(ctx,x,y,w,h,'#f4efe4');
   const cw=w/RT_COLS.length;let hl=null;
   RT_COLS.forEach((c,j)=>{const cx=x+j*cw, l=r?(r.fils||[]).filter(f=>f.col===c.k):[];if(j)R(ctx,cx,y+4,1,h-8,'#d9d2c3');
-    atTxt(c.n+(r?' '+l.length:''),cx+cw/2,y+11,'#5a4636','bold 10px system-ui,sans-serif');
+    atTxt(c.n+(r?' '+l.length:''),cx+cw/2,y+11,'#5a4636','bold 11px system-ui,sans-serif');
     l.slice(0,6).forEach((f,q)=>{const px=cx+cw/2-10+(q%2?6:-6), py=y+16+q*12;rtPostit(px,py,c.c,f.cur);if(f.cur)hl={x:px+10,y:py+7};});});
   atHitRt('board',x,y,w,h,{i:z.i});
   return hl;

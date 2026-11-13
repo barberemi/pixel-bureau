@@ -187,9 +187,9 @@ const atTxt=(s,x,y,col,font,al)=>{ctx.font=font||'bold 12px ui-monospace,Menlo,m
 // un poste au repos, fini ou sauté ne montre que son icône (le ✓ au-dessus de l'agent dit qu'il a fini) ; le nom reste sur le poste
 // actif, en panne ou qui attend ta décision : les rangées de postes restent lisibles en grand (1er, 3e, -1)
 const atPosteLbl=(p,on)=>on?p.i+' '+p.n:p.i;
-// la hauteur de l'étiquette suit sa police (base y : la ligne du texte)
+// la hauteur de l'étiquette suit sa police (base y : la ligne du texte) ; au bord de l'étage, elle rentre dans le plan au lieu d'être coupée
 function atPill(s,x,y,bgc,fg,font){ctx.font=font||'bold 12px ui-monospace,Menlo,monospace';const w=ctx.measureText(s).width+10, px=+(/(\d+)px/.exec(ctx.font)||[0,12])[1];
-  R(ctx,x-w/2,y-px-1,w,px+6,bgc);atTxt(s,x,y,fg||'#fff',font);}
+  x=Math.max(w/2+2,Math.min(AT_W-w/2-2,x));R(ctx,x-w/2,y-px-1,w,px+6,bgc);atTxt(s,x,y,fg||'#fff',font);}
 const AT_CX0=20, AT_CX1=26, AT_HY0=13.5, AT_HY1=15.5, AT_DESKS=AT_POSTES.filter(p=>p.bureau!==false), AT_N=6, AT_R1=AT_DESKS.slice(0,AT_N), AT_R2=AT_DESKS.slice(AT_N);
 // AT_N emplacements par rangée (6 + 5 bureaux : maquette « D ») ; le tapis garde sa longueur, les bureaux s'y répartissent
 const AT_ROOMS=[[0,3,AT_CX0,AT_HY0,1,1],[AT_CX1,3,46,AT_HY0,0,1],[0,AT_HY1,AT_CX0,27,1,0],[AT_CX1,AT_HY1,46,27,0,0]]; // x0,y0,x1,y1, miroir, en haut
@@ -455,9 +455,16 @@ let AT_HITS=[], AT_PICK=null, AT_LIT=[]; // zones cliquables de l'image ; agent,
 // AT_LIT : où sont les personnages qui marchent ou se promènent, et le boss, pour la lumière du soir (atNight)
 const atHit=(kind,x,y,w,h,ref)=>AT_HITS.push({kind,x,y,w,h,...ref});
 // ---------- un bureau ----------
+// titre d'un bureau du haut : il ne passe pas sous le tableau de l'orchestrateur ; trop long, il perd ses jetons (le tableau
+// les donne), puis le dépôt
+function atHead(g,hx,parts){
+  const b=AT_BOARD, under=g.head>b.y-6&&g.head-13<b.y+b.h+6, room=!under?Infinity:g.L?b.x-10-hx:hx-(b.x+b.w+10);
+  ctx.font='bold 13px ui-monospace,Menlo,monospace';
+  for(const drop of [[],[4],[4,2]]){const t=parts.filter((p,k)=>p&&!drop.includes(k)).join(' · ');if(ctx.measureText(t).width<=room||drop.length===2)return t;}
+}
 function atRoom(r,i,now,dt){
   const g=AT_G[i], T=AT_TS, H=g.H, leave=AT_MEM.leaving[i], live=r&&!r.gate, al=g.L?'left':'right', hx=g.L?(g.x0+.5)*T:(g.x1-.5)*T;
-  if(r){atTxt('BUREAU '+(i+1)+' · '+r.ticket+' · '+String(r.repo||'').split('/').pop()+(r.tour?' · tour '+r.tour:'')+' · '+Math.round((r.tok||0)/1e3)+' k jetons',hx,g.head,'#1c1f26','bold 13px ui-monospace,Menlo,monospace',al);
+  if(r){atTxt(atHead(g,hx,['BUREAU '+(i+1),r.ticket,String(r.repo||'').split('/').pop(),r.tour?'tour '+r.tour:'',Math.round((r.tok||0)/1e3)+' k jetons']),hx,g.head,'#1c1f26','bold 13px ui-monospace,Menlo,monospace',al);
     const nt=r.note||(r.lot?'⌨ Code · '+r.lot:'')||(!r.poste&&AT_ORCH[r.etape])||'';
     if(nt){ctx.font='bold 12px ui-monospace,Menlo,monospace';const w=ctx.measureText(nt).width+10;atPill(nt,g.L?hx+w/2:hx-w/2,g.noteY,r.gate?WAIT_BG:r.back?'#a8323a':'#2a4a7a',r.gate?WAIT_INK:'#fff');}}
   else atTxt('BUREAU '+(i+1)+' · '+(leave?leave.ticket+' · sorti':'libre'),hx,g.head,'#8a8478','bold 13px ui-monospace,Menlo,monospace',al);
@@ -648,10 +655,11 @@ function atDelivered(){
 }
 function atCorridor(now){
   const T=AT_TS, yb=AT_HY1*T-6;
-  atCoffee(1.1*T,yb);atTxt('CAFÉ',1.1*T,AT_HY0*T+14,'#5a4636','bold 10px ui-monospace,Menlo,monospace');
+  atCoffee(1.1*T,yb);atTxt('CAFÉ',1.1*T,AT_HY0*T+14,'#5a4636','bold 11px ui-monospace,Menlo,monospace');
   atSofa(15*T,AT_HY0*T+30);atSofa(31*T,AT_HY0*T+30);
   atDoor(46*T,AT_HY0*T);const n=atDelivered();
-  atPill('SORTIE'+(n?' · 📦 '+n+' aujourd\'hui':''),46*T-14-(n?62:22),AT_HY0*T+16,n?'#2f7a45':'#5a4636','#fff','bold 11px ui-monospace,Menlo,monospace');
+  {const s='SORTIE'+(n?' · 📦 '+n+' aujourd\'hui':''), f='bold 11px ui-monospace,Menlo,monospace';ctx.font=f; // calée à droite, contre la porte
+   atPill(s,46*T-14-(ctx.measureText(s).width+10)/2,AT_HY0*T+16,n?'#2f7a45':'#5a4636','#fff',f);}
   atPlant(18.9*T,yb);atPlant(27.1*T,yb);
   atChantier(T);
   if(themeIs('noel')){xmasTreeAt(8.5*T,AT_HY1*T-4,now);}
@@ -812,7 +820,7 @@ const AT_WINDOWS=[1,3.5,6,8.5,40,42.5]; // en cases : au-dessus des bureaux 1 et
 // Compté par ticket (dataset atelier, jour), les reprises à part ; en rejeu, les chiffres sont ceux du relevé (en direct).
 const AT_JOUR={x:34.3*AT_TS,y:4,w:5.5*AT_TS,h:1.62*AT_TS};
 function atJourBoard(){
-  const {x:bx,y:by,w:bw,h:bh}=AT_JOUR, j=(ATELIER&&ATELIER.jour)||{}, n=k=>+j[k]||0, f='10px ui-monospace,Menlo,monospace', tk=n('tok');
+  const {x:bx,y:by,w:bw,h:bh}=AT_JOUR, j=(ATELIER&&ATELIER.jour)||{}, n=k=>+j[k]||0, f='11px ui-monospace,Menlo,monospace', tk=n('tok');
   R(ctx,bx-4,by-3,bw+8,bh+6,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+6,by+bh-4,bw-12,3,'#a37650');
   atTxt('RUNS DU JOUR',bx+8,by+13,'#f4efe4','bold 11px ui-monospace,Menlo,monospace','left');
   let rp=n('reprises')?'↻ '+plural(n('reprises'),'reprise','reprises'):'';ctx.font=f;if(ctx.measureText(rp).width>bw-110)rp='↻ '+n('reprises')+' repr.'; // 2 chiffres : abrégé
