@@ -23,6 +23,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- Les Combles : le bon code du digicode ne menait nulle part dans Kronn (son cadre refuse le stockage local, le déblocage se perdait) ; il vit désormais en mémoire jusqu'au rechargement, et le contrôle de fumée le vérifie dans le cadre de Kronn. Le digicode, plus petit, glisse à gauche, à l'écart du panneau Sortie de la nuit ; le post-it du boss quitte l'écran pour le plateau du bureau.
 - Gel des mises en prod : l'infobulle du plateau TV et la tuile des mises en prod disent les jours de `rhythm.mep_freeze`, plus « vendredi » en dur.
 - Un mot par chose : « écran mural » pour les pages Kronn, « ordinateur du boss » pour la console Support ; « Daily » partout en mode TV ; « ta décision » dans ce qui t'attend, et chaque légende d'étage dit sa forme (tampon, vanne, barrière) ; rôles neutres proposés à l'installation ; la légende range les personnages de passage en trois familles.
 - 2e étage : il s'ouvre aussi quand seule la revue de PR est installée ; sans le modèle « créer un ticket », la salle de rédaction reste vide et le dit.

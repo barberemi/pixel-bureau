@@ -16,9 +16,9 @@ Trois indices, tant que l'étage n'a pas été trouvé :
 
 - la diode du boîtier clignote ;
 - une fois par jour, une minute, le canard en plastique dit quelque chose ;
-- un post-it est collé sur l'écran du boss : son survol le lit.
+- un post-it est posé sur le bureau du boss, entre l'écran et le clavier : son survol le lit.
 
-Une fois trouvé, l'onglet **🕹 Combles** reste au bout des onglets d'étage, dans ce navigateur. La trappe, au sol des Combles, redescend au RDC ; « Refermer la trappe », dans le panneau, cache de nouveau l'étage.
+Une fois trouvé, l'onglet **🕹 Combles** reste au bout des onglets d'étage jusqu'au rechargement de la page : le cadre de Kronn n'a pas de stockage local, il faut donc refaire le code après chaque rechargement (hors de Kronn, dans l'aperçu local, l'onglet reste dans le navigateur). La trappe, au sol des Combles, redescend au RDC ; « Refermer la trappe », dans le panneau, cache de nouveau l'étage.
 
 ## Le soir, l'équipe monte
 
