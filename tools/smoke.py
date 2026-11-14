@@ -38,7 +38,7 @@ KRONN_CSP = ("default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'
              "font-src data:; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'")
 # sonde posée avant la page : erreurs, rejets de promesse, console.error, violations de la CSP (réseau, formulaire,
 # image externe…) ; puis, la page démarrée, un parcours qui écrit (ajout d'une todo par « ＋ » et par Entrée : le bug du
-# <form> bloqué, #110) ; le tout renvoyé au parent par postMessage (le cadre sandboxé est d'une autre origine)
+# <form> bloqué, #110), puis le digicode des Combles (localStorage refusé dans le cadre) ; le tout renvoyé au parent par postMessage (le cadre sandboxé est d'une autre origine)
 SANDBOX_PROBE = """<script>(()=>{const out={errors:[],csp:[]};const P=m=>out.errors.push(String(m).slice(0,300));
 addEventListener('error',e=>P(e.message||e.type));addEventListener('unhandledrejection',e=>P('rejet : '+(e.reason&&e.reason.message||e.reason)));
 document.addEventListener('securitypolicyviolation',e=>out.csp.push(e.violatedDirective+' '+(e.blockedURI||'')));
@@ -51,6 +51,8 @@ addEventListener('load',()=>setTimeout(()=>{try{
    const j=document.querySelector('.td-add input');j.value='Essai sandbox Entrée';j.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
    out.todos=TD_PEND.filter(o=>o.op==='add').map(o=>o.title);}
   closeBossPages();}
+ if(typeof digiPress==='function'&&digiRect()){digiOpen();for(const k of 'UUDDLRLRBA')digiPress(k);DIGI.ok=0;digiClose();
+  setFloor(CB_FLOOR);out.combles=FLOOR;comblesForget();}
 }catch(e){P('parcours : '+e.message);}
 parent.postMessage(JSON.stringify(out),'*');},%d));})()</script>"""
 
@@ -237,6 +239,8 @@ def chrome_checks(path, port, user_dir, js, shot, wait, width, height):
             check(not res["csp"], "sandbox Kronn : rien de bloqué par la CSP" + (f" : {res['csp'][:5]}" if res["csp"] else ""))
             if "todos" in res:
                 check(len(res["todos"]) == 2, f"sandbox Kronn : Mes todos, ajout par ＋ et par Entrée ({res['todos']})")
+            if "combles" in res:  # sans localStorage dans le cadre : le bon code ouvre quand même l'étage secret (68-combles.js)
+                check(res["combles"] == 4, f"sandbox Kronn : le digicode ouvre les Combles (étage {res['combles']})")
         ws.close()
     finally:
         proc.terminate()

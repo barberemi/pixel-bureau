@@ -5,9 +5,12 @@
 // pas de mode TV. Dessiné au repère de la maquette (981 × 576), agrandi ×1,5 à la taille des étages (AT_W × AT_H).
 const CB_FLOOR=4, CB_S=1.5, CB_VW=AT_W/CB_S, CB_VH=AT_H/CB_S, CB_WALL=128;
 let CB_HITS=[], CB_GLOW=[], CB_PICK=null;
-const comblesOn=()=>{try{return localStorage.getItem('bureau:combles')==='1';}catch(e){return false;}};
-function comblesUnlock(){try{localStorage.setItem('bureau:combles','1');}catch(e){}atelierTabs();}
-function comblesForget(){try{localStorage.removeItem('bureau:combles');}catch(e){}setFloor(0);}
+// dans Kronn (iframe sans allow-same-origin), localStorage lève une erreur : le déblocage vit alors en mémoire, jusqu'au
+// rechargement de la page ; hors de Kronn (aperçu, captures), il reste dans le navigateur
+let CB_OPEN=false;
+const comblesOn=()=>{if(CB_OPEN)return true;try{return localStorage.getItem('bureau:combles')==='1';}catch(e){return false;}};
+function comblesUnlock(){CB_OPEN=true;try{localStorage.setItem('bureau:combles','1');}catch(e){}atelierTabs();}
+function comblesForget(){CB_OPEN=false;try{localStorage.removeItem('bureau:combles');}catch(e){}setFloor(0);}
 function cbReset(){CB_HITS=[];CB_PICK=null;}
 const cbUrl=()=>typeof CFG.combles_url==='string'&&/^https:\/\//.test(CFG.combles_url)?CFG.combles_url:null;
 // la nuit des Combles : hors des heures de bureau, la lucarne montre la lune et la pièce passe en lumière de veillée
@@ -217,7 +220,7 @@ function drawComblesSide(side){
       :'<p>La borne n\'est pas encore branchée.</p><p class="mut">Pour l\'allumer : l\'adresse de Sprint Quest dans <code>combles.url</code> de bureau.config.json, puis republier la page.</p>');
     box.querySelector('.at-back').addEventListener('click',()=>{CB_PICK=null;renderSide(true);});return;}
   box.innerHTML='<h3>🕹 Les Combles</h3><p>Tu as trouvé l\'étage secret. Le soir, l\'équipe monte jouer ; la borne ouvre Sprint Quest.</p>'+
-    '<p class="mut">L\'onglet reste dans ce navigateur. Pour le cacher de nouveau, referme la trappe.</p>'+
+    '<p class="mut">L\'onglet reste jusqu\'au rechargement de la page. Pour le cacher de nouveau, referme la trappe.</p>'+
     '<button type="button" class="cb-forget">Refermer la trappe</button>';
   box.querySelector('.cb-forget').addEventListener('click',comblesForget);
 }
@@ -228,6 +231,8 @@ function drawComblesSide(side){
 const DIGI_LEN=10, DIGI_SHA='c4e03bcf58b43b181b48758aaacab4697b08cf6839ef372cac24a610d4b0cda4';
 const DIGI_KEYS={ArrowUp:'U',ArrowDown:'D',ArrowLeft:'L',ArrowRight:'R',b:'B',B:'B',a:'A',A:'A'}, DIGI_GLYPH={U:'↑',D:'↓',L:'←',R:'→',B:'B',A:'A'};
 const DIGI_W=520, DIGI_H=420, DIGI_OK_MS=1600, DIGI_NO_MS=900;
+// le boîtier : 17 × 22 px, décalé de 18 px vers la gauche : dans le mur, à 15 px du panneau Sortie de la nuit
+const DIGI_BOX={w:17,h:22,dx:-18};
 let DIGI={open:false,typed:'',ok:0,no:0,hits:[]};
 // SHA-256 en JS (crypto.subtle est asynchrone et absent hors contexte sûr) ; texte ASCII seulement, comme le code
 function sha256(s){
@@ -253,15 +258,17 @@ function digiRect(){
   const door=(x,y)=>DOORS.some(d=>d[0]===x&&d[1]===y);
   let a=vert?ey:ex, b=a;while(door(vert?ex:a-1,vert?a-1:ey))a--;while(door(vert?ex:b+1,vert?b+1:ey))b++;
   const wall=(x,y)=>x>=0&&y>=0&&x<COLS&&y<ROWS&&grid[y][x]===1&&!GLASS.has(x+','+y);
-  for(const k of [a-1,b+1]){const x=vert?ex+dx:k, y=vert?k:ey+dy;if(wall(x,y))return {x:x*TS+(TS-22)/2,y:y*TS+2,w:22,h:30};}
+  const {w,h}=DIGI_BOX;
+  for(const k of [a-1,b+1]){const x=vert?ex+dx:k, y=vert?k:ey+dy;if(wall(x,y))return {x:Math.round(x*TS+(TS-w)/2+DIGI_BOX.dx),y:y*TS+2+Math.round((30-h)/2),w,h};}
   return null;
 }
 const digiBlink=now=>REDUCED_MOTION||Math.floor(now/700)%2===0;
 function drawDigicode(now){
   const r=digiRect();if(!r)return;
   const P=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(x,y,w,h);};
-  P(r.x,r.y,22,30,'#2a2a3a');P(r.x+3,r.y+3,16,8,digiBlink(now)?'#62d48e':'#1f4a30');
-  for(let k=0;k<6;k++)P(r.x+3+(k%3)*6,r.y+14+Math.floor(k/3)*6,4,4,'#c9c3d9');
+  const s=r.w/22; // dessiné à 22 px de large, ramené à la taille du boîtier
+  P(r.x,r.y,r.w,r.h,'#2a2a3a');P(r.x+3*s,r.y+3*s,16*s,8*s,digiBlink(now)?'#62d48e':'#1f4a30');
+  for(let k=0;k<6;k++)P(r.x+(3+(k%3)*6)*s,r.y+(14+Math.floor(k/3)*6)*s,4*s,4*s,'#c9c3d9');
   if(DIGI.open)drawDigiPad(now);
 }
 function digiPad(){return {x:Math.round((W-DIGI_W)/2),y:Math.max(0,Math.round((H-DIGI_H)/2)),w:DIGI_W,h:DIGI_H};}
@@ -322,13 +329,13 @@ function drawDuckHint(x,y,now){
   ctx.beginPath();ctx.moveTo(x-3,by+h);ctx.lineTo(x,by+h+5);ctx.lineTo(x+3,by+h);ctx.fill();
   ctx.fillStyle='#3a2a00';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(HINT_DUCK,bx+7,by+h/2+1);ctx.restore();
 }
-// le post-it : au coin de l'écran du boss (bureau du boss, 40-furniture.js), dans le repère du meuble
-const HINT_POSTIT='Un post-it sur l\'écran du boss : « ↑↑↓↓... et après ? »';
+// le post-it : posé sur le plateau du bureau du boss, entre l'écran et le clavier (40-furniture.js), dans le repère du meuble
+const HINT_POSTIT='Un post-it sur le bureau du boss : « ↑↑↓↓... et après ? »';
 function drawBossPostit(x,y){
   if(comblesOn())return;
   R(ctx,x,y,9,9,'#f7e26b');R(ctx,x,y,9,2,'#e8c83a');R(ctx,x+2,y+4,5,1,'#5a4a10');R(ctx,x+2,y+6,4,1,'#5a4a10');
 }
-function bossPostitRect(){const o=furnAt('boss_desk');return o&&!comblesOn()?{x:21*TS-2+2+o.dx,y:9*TS-20-8+o.dy,w:9,h:9}:null;}
+function bossPostitRect(){const o=furnAt('boss_desk');return o&&!comblesOn()?{x:21*TS-2+26+o.dx,y:9*TS-20+4+o.dy,w:9,h:9}:null;}
 // au RDC, avant le reste : l'infobulle du digicode et du post-it
 function comblesRdcTip(e){
   const m=digiXY(e);

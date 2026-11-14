@@ -74,11 +74,18 @@ test('le code n\'est jamais écrit en clair dans la page, seulement son empreint
   assert.match(src, /DIGI_SHA='[0-9a-f]{64}'/);
 });
 
-test('le boîtier : sur le mur au-dessus de l\'entrée principale, côté intérieur', () => {
+test('le boîtier : dans le mur au-dessus de l\'entrée principale, côté intérieur, à l\'écart du panneau Sortie', () => {
   const {J} = page();
   const r = J('digiRect()'), [ex, ey] = J('EXIT'), ts = J('TS');
-  assert.deepEqual([Math.floor(r.x / ts), Math.floor(r.y / ts)], [ex - 1, ey - 1]);
-  assert.equal(J(`grid[${ey - 1}][${ex - 1}]`), 1);
+  assert.deepEqual([r.w, r.h], [17, 22]);
+  for (const [x, y] of [[r.x, r.y], [r.x + r.w - 1, r.y + r.h - 1]]) {
+    assert.equal(Math.floor(y / ts), ey - 1, 'sur la rangée du mur, sans déborder sur le sol');
+    assert.equal(J(`grid[${Math.floor(y / ts)}][${Math.floor(x / ts)}]`), 1, 'sur le mur');
+  }
+  // le panneau Sortie de la nuit (42-light.js) : EXIT[0]*TS-10, EXIT[1]*TS-14, 26 × 9
+  const sx = ex * ts - 10, sy = ey * ts - 14, gap = sx - (r.x + r.w);
+  const apart = gap >= 12 || r.y + r.h <= sy || r.y >= sy + 9;
+  assert.ok(apart, `au moins 12 px du panneau Sortie (écart ${gap} px)`);
 });
 
 test('le pavé : dix touches, le bon code débloque les Combles ; un mauvais s\'affiche refusé puis repart de zéro', () => {
@@ -150,4 +157,18 @@ test('la borne : son lien vers Sprint Quest dans le panneau quand combles.url es
   assert.equal(J('cbUrl()'), null, 'une adresse https seulement');
   p.run('CFG.combles_url = null;');
   assert.equal(J('cbUrl()'), null);
+});
+
+test('dans Kronn, où localStorage lève une erreur (iframe sans allow-same-origin), le bon code ouvre quand même les Combles', () => {
+  const {p, J} = page();
+  p.run("localStorage.getItem = () => { throw new Error('SecurityError'); }; localStorage.setItem = localStorage.getItem; localStorage.removeItem = localStorage.getItem;");
+  p.run('digiOpen();');
+  for (const k of 'UUDDLRLRBA') p.run(`digiPress('${k}')`);
+  assert.equal(J('comblesOn()'), true);
+  p.run('setFloor(4)');
+  assert.equal(J('FLOOR'), 4);
+  assert.match(J('floorTabsHtml()'), /data-floor="4"/);
+  p.run('comblesForget()');
+  assert.equal(J('comblesOn()'), false);
+  assert.equal(J('FLOOR'), 0);
 });
