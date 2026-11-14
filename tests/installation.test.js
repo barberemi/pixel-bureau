@@ -20,11 +20,12 @@ test('sans réglage : chaque capacité non installée renvoie à l\'installateur
 test('un cron en échec, en retard ou avec un avertissement le dit, avec quoi faire', () => {
   const p = load({demo: false});
   const J = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
-  p.run(`CFG.workflows = {team: 'aaaa', payroll: 'bbbb', office: 'cccc'};
-    OFFICE = {bureau_failed: {team: {step: 'jira', err: 'refusé'}}, generated_at: new Date().toISOString()};
-    PAYROLL = {generated_at: new Date(Date.now() - 6 * 36e5).toISOString()};
+  // à 15 h un mercredi (heure du bureau) : la nuit ou le week-end, un cron qui ne tourne pas n'est pas en retard
+  p.run(`var NOW15 = Date.parse('2026-11-11T15:00:00+01:00'); CFG.workflows = {team: 'aaaa', payroll: 'bbbb', office: 'cccc'};
+    OFFICE = {bureau_failed: {team: {step: 'jira', err: 'refusé'}}, generated_at: new Date(NOW15).toISOString()};
+    PAYROLL = {generated_at: new Date(NOW15 - 6 * 36e5).toISOString()};
     WARNINGS = {office: ['miniature absente']};`);
-  const at = k => J(`installState(INSTALL_CAPS.find(c => c.k === '${k}'), Date.now())`);
+  const at = k => J(`installState(INSTALL_CAPS.find(c => c.k === '${k}'), NOW15)`);
   assert.deepEqual(at('team').slice(0, 2), ['err', 'en échec']);
   assert.match(at('team')[2], /étape jira : refusé/);
   assert.deepEqual(at('payroll').slice(0, 2), ['warn', 'en retard']);
