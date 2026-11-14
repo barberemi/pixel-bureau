@@ -164,6 +164,7 @@ function drawDuck(now){
     ctx.fillStyle='#f5c518';ctx.strokeStyle='#3a2a00';ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(x-5,ay);ctx.lineTo(x+5,ay);ctx.lineTo(x,ay+6);ctx.closePath();ctx.fill();ctx.stroke();
   }
+  if(!p.call&&!fxDuckBusy())drawDuckHint(x,y,now); // 68-combles.js : une fois par jour, l'indice des Combles
   if(sel==='duck'||hoverKey==='duck'){ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.beginPath();ctx.ellipse(x,y+1,12*DUCK_K,4*DUCK_K,0,0,7);ctx.stroke();}
 }
 // ---------- sa ligne dans le panneau (groupe « Et aussi ») ----------

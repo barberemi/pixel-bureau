@@ -239,7 +239,14 @@ def page_config(cfg):
         # le lanceur (models.impl) reste au RDC : l'agent qui l'incarne (Ryan) y travaille et porte le carton à l'entrée
         "atelier_launcher": str((cfg.get("models") or {}).get("impl") or "")[:8],
         "atelier_chain": str((cfg.get("models") or {}).get("impl_chain") or "")[:8],  # tickets sortis aujourd'hui (runs de la chaîne)
+        "combles_url": combles_url(cfg),  # l'étage secret (68-combles.js) : la borne ouvre Sprint Quest
     }
+
+
+def combles_url(cfg):
+    """Adresse de Sprint Quest pour la borne des Combles (combles.url) : une adresse https, sinon None (borne débranchée)."""
+    u = (cfg.get("combles") or {}).get("url")
+    return u if isinstance(u, str) and u.startswith("https://") else None
 
 
 def env_repos(cfg):

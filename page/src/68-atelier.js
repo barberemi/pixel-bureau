@@ -40,7 +40,7 @@ const AT_HELP={bar:()=>legSwatches(AT_ST)+'<span>🧯 fumée : poste en panne</s
     '<p><b>↩ Retour au code</b> : un contrôle a bloqué, le carton recule.</p><p><b>🧯 Une panne</b> : un poste a échoué, le pompier arrive.</p>'};
 const AT_TS=32, AT_W=46*AT_TS, AT_H=27*AT_TS;
 let FLOOR=0, ATELIER=null, ATSEL=null;
-try{const f=+localStorage.getItem('bureau:floor');FLOOR=f===1||f===-1||f===2||f===3?f:0;}catch(e){FLOOR=0;} // -1 : la caserne Support (68-caserne.js) ; 3 : les retours de PR (68-retours.js)
+try{const f=+localStorage.getItem('bureau:floor');FLOOR=f===1||f===-1||f===2||f===3||f===4?f:0;}catch(e){FLOOR=0;} // -1 : la caserne Support (68-caserne.js) ; 3 : les retours de PR (68-retours.js)
 function readAtelier(src){
   try{
     if(!src||!src.datasets)return null;
@@ -128,7 +128,7 @@ const atSig=()=>atRooms().map(r=>r.run+':'+(r.gate||r.poste)+(r.back?'!':'')).jo
 // RDC (l'open space, par défaut), 1er (l'atelier, s'il existe), -1 (la caserne Support, si la console Support existe)
 function atelierTabs(){ // le gyrophare du -1 suit csAlarm à chaque relevé
   let t=document.getElementById('floors');
-  if(!atelierOn()&&!caserneOn()&&!retoursOn()&&!redactionOn()){const r=document.querySelector('.floorbar');if(r)r.remove();return;}
+  if(!atelierOn()&&!caserneOn()&&!retoursOn()&&!redactionOn()&&!comblesOn()){const r=document.querySelector('.floorbar');if(r)r.remove();return;}
   if(!t){t=document.createElement('div');t.id='floors';t.className='floors';t.setAttribute('role','tablist');
     // la rangée : les onglets, puis au bout la pastille de ce qui t'attend (69-attente.js)
     const row=document.createElement('div');row.className='floorbar';row.appendChild(t);
@@ -142,7 +142,7 @@ function atelierTabs(){ // le gyrophare du -1 suit csAlarm à chaque relevé
 // c : le liseré de la plaque du titre (floorTitle)
 const ETAGES={'-1':{ico:'🚒',n:'-1',nom:'caserne Support',tv:'-1 caserne',c:'#d1453b'},0:{ico:'🏢',n:'RDC',nom:'open space',tv:'RDC',c:'#0172f0'},
   1:{ico:'🏭',n:'1er',nom:'atelier',tv:'1er étage',c:'#f2c230'},2:{ico:'✍',n:'2e',nom:'rédaction et revue',tv:'2e rédaction',c:'#b08a50'},
-  3:{ico:'🛠',n:'3e',nom:'retours de PR',tv:'3e retours',c:'#4fb3a3'}};
+  3:{ico:'🛠',n:'3e',nom:'retours de PR',tv:'3e retours',c:'#4fb3a3'},4:{ico:'🕹',n:'Combles',nom:'étage secret',tv:'Combles',c:'#9a62d6'}};
 // ce qui tourne à chaque étage (cnt, sur cap bureaux quand l'étage en a un nombre fixe) et ce qui t'attend (wait)
 function floorLoad(f){
   if(f===1){const r=atRooms();return {cnt:r.length,cap:4,wait:r.filter(x=>x.gate).length};}
@@ -158,19 +158,19 @@ function floorTabsHtml(){
   // dans l'ordre des étages, comme les boutons d'un ascenseur ; au -1, le gyrophare remplace l'icône tant qu'un appel attend
   // ou qu'une intervention est en cours (csAlarm)
   return (caserneOn()?tab(-1,csAlarm()?'<span class="gyro" role="img" aria-label="à traiter"></span>':''):'')+
-    tab(0)+(atelierOn()?tab(1):'')+(redactionOn()?tab(2):'')+(retoursOn()?tab(3):''); // 68-redaction.js, 68-retours.js
+    tab(0)+(atelierOn()?tab(1):'')+(redactionOn()?tab(2):'')+(retoursOn()?tab(3):'')+(comblesOn()?tab(4):''); // 68-redaction.js, 68-retours.js ; les Combles (68-combles.js), sous le toit, une fois le digicode trouvé
 }
 // étages qui existent, de haut en bas
 const floorsOn=()=>[...(retoursOn()?[3]:[]),...(redactionOn()?[2]:[]),...(atelierOn()?[1]:[]),0,...(caserneOn()?[-1]:[])];
 function setFloor(f){
-  FLOOR=f===1&&atelierOn()?1:f===-1&&caserneOn()?-1:f===3&&retoursOn()?3:f===2&&redactionOn()?2:0;ATSEL=null;AT_PICK=null;if(FLOOR){SEL_BACK=[];if(!(byKey[sel]&&byKey[sel].boss))sel=null;} // hors du RDC, seul le boss garde sa fiche du RDC (drawAtelierSide, drawCaserneSide)
+  FLOOR=f===4&&comblesOn()?4:f===1&&atelierOn()?1:f===-1&&caserneOn()?-1:f===3&&retoursOn()?3:f===2&&redactionOn()?2:0;ATSEL=null;AT_PICK=null;if(FLOOR){SEL_BACK=[];if(!(byKey[sel]&&byKey[sel].boss))sel=null;} // hors du RDC, seul le boss garde sa fiche du RDC (drawAtelierSide, drawCaserneSide)
   try{localStorage.setItem('bureau:floor',String(FLOOR));}catch(e){}
   if(FLOOR){cv.width=AT_W;cv.height=AT_H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(AT_W/AT_H));}
   else{cv.width=W;cv.height=H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(W/H));}
   // pas sizeCanvas() : il redimensionne aussi bg, le décor du RDC cuit une fois, et redimensionner une toile l'efface
   // seul l'étage affiché vit : en arrivant à un étage, il se pose sans rejouer ce qui s'est passé ; au RDC, chacun reprend sa place
   if(FLOOR===1){AT_MEM.fresh=true;AT_MEM.src=null;AT_MEM.boss=null;AT_MEM.scenes=[];AT_MEM.leaving=[null,null,null,null];}
-  else if(FLOOR===-1)csReset();else if(FLOOR===3)rtReset();else if(FLOOR===2)rdReset();else needTeleport=true;
+  else if(FLOOR===-1)csReset();else if(FLOOR===3)rtReset();else if(FLOOR===2)rdReset();else if(FLOOR===4)cbReset();else needTeleport=true;
   if(typeof LOUPE!=='undefined'){LOUPE.seen=null;LOUPE.settle=performance.now()+600;LOUPE.queue=[];if(LOUPE.cur)loupeHide();}
   sideForFloor(FLOOR);atelierTabs();renderSide(true);if(TV)updateTv(true); // 75-tv.js : la colonne et le bouton d'étage
   if(typeof renderLegend==='function')renderLegend(); // 46-legende.js : la légende et « Comment lire le plan » de cet étage, ses scènes

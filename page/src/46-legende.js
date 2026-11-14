@@ -5,19 +5,19 @@
 // postes de l'étage, celle que le dessin utilise : un poste ajouté ou renommé y paraît avec sa phrase (d).
 const LEG_RDC_TABS=[['qui','Qui'],['ou','Où'],['etats','États'],['env','Enveloppes'],['scenes','🎬 Scènes']];
 const LEG_FLOOR_TABS=[['qui','Qui'],['ou','Où'],['postes','Postes'],['moments','Moments'],['scenes','🎬 Scènes']];
-const LEG_NAME={1:'1er · atelier',2:'2e · rédaction et revue',3:'3e · retours de PR','-1':'-1 · caserne Support'};
+const LEG_NAME={1:'1er · atelier',2:'2e · rédaction et revue',3:'3e · retours de PR','-1':'-1 · caserne Support',4:'Combles'};
 let LEG_TAB='qui';
 // des pastilles de couleur, une par libellé : m = {clé: [couleur, libellé]} (AT_ST, RD_TK…)
 const legSwatches=m=>{const seen=new Set();return Object.values(m).filter(([,t])=>!seen.has(t)&&seen.add(t)).map(([c,t])=>`<span class="lk"><i class="sq" style="background:${c}"></i>${esc(t)}</span>`).join('');};
 // groups : [[titre, postes]] ; un poste = {i, n, d}
 const legPostes=groups=>groups.map(([h,l])=>(h?`<h5>${esc(h)}</h5>`:'')+l.map(p=>`<p><b>${p.i} ${esc(p.n)}</b> : ${esc(p.d||'')}</p>`).join('')).join('');
-const floorHelp=f=>f===1?AT_HELP:f===2?RD_HELP:f===3?RT_HELP:f===-1?CS_HELP:null;
+const floorHelp=f=>f===1?AT_HELP:f===2?RD_HELP:f===3?RT_HELP:f===-1?CS_HELP:f===4?CB_HELP:null;
 // le contenu d'un onglet d'étage (null au RDC : ses blocs sont dans le gabarit)
 function legPane(f,tab){const h=floorHelp(f);if(!h)return null;return tab==='postes'?legPostes(h.postes()):h[tab]||'';}
 function renderLegend(){
   const det=document.querySelector('.legend-help'), bar=document.querySelector('.stage .legend');if(!det||!bar)return;
   const grid=det.querySelector('.lh-grid:not(.lh-floor)'), sum=det.querySelector('summary');if(!grid||!sum)return;
-  const h=floorHelp(FLOOR), tabs=h?LEG_FLOOR_TABS:LEG_RDC_TABS;
+  const h=floorHelp(FLOOR), tabs=h?h.tabs||LEG_FLOOR_TABS:LEG_RDC_TABS; // les Combles : sans postes ni scènes
   if(!tabs.some(t=>t[0]===LEG_TAB))LEG_TAB='qui';
   let fb=document.getElementById('legfloor');
   if(!fb){fb=document.createElement('div');fb.id='legfloor';fb.className='legend';bar.parentElement.insertBefore(fb,bar.nextSibling);}

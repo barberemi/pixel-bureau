@@ -13,6 +13,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 - Fraîcheur (#249) : les étages et les services extérieurs en retrait sous le cron qui les publie, le diagnostic d'un cron en échec nomme ses parties plus publiées, les crons des pages bilan par leur nom ; dans la fiche des services, les 24 dernières heures.
 - Les adresses DEV, STG et PRD de chaque projet (réglage `urls` du dépôt) : « ouvrir ↗ » dans chaque case du tableau des départs ; sur la carte du Mur Kanban, une rangée par projet avec les envs où tourne une branche du ticket, en lien vers l'env ; dans la fiche, la marque de l'env d'une PR en lien. Réglage `envs` pour un projet qui n'a pas tous les envs (« pas de DEV »).
 - Au RDC, les agents des étages (Support, Revue, Implé…), en couleurs pleines dans leur tenue, ont le petit robot hologramme du soir à l'épaule : on ne les prend plus pour des collègues. La légende « Qui » le dit.
+- Les Combles, l'étage secret sous le toit : un digicode à côté de l'entrée du RDC (trois indices : la diode du boîtier, le canard, un post-it du boss) ouvre un onglet caché ; le soir, l'équipe y joue et change de place ; la borne d'arcade ouvre Sprint Quest (réglage `combles.url`).
 
 ### Modifié
 

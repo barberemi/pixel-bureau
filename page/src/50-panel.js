@@ -82,7 +82,7 @@ function renderSide(force){
   const folded=SIDE_FOLDED&&innerWidth>980; // sous 980 px le panneau passe sous le plan : jamais replié
   if(innerWidth>980)sideFoldButton(side);
   document.body.classList.toggle('sidefold',folded);
-  if(!folded)(FLOOR===1?drawAtelierSide:FLOOR===-1?drawCaserneSide:FLOOR===3?drawRetoursSide:FLOOR===2?drawRedactionSide:drawSide)(side); // sur le 1er étage, les bureaux de l'atelier (68-atelier.js) ; au -1, les baies (68-caserne.js)
+  if(!folded)(FLOOR===4?drawComblesSide:FLOOR===1?drawAtelierSide:FLOOR===-1?drawCaserneSide:FLOOR===3?drawRetoursSide:FLOOR===2?drawRedactionSide:drawSide)(side); // sur le 1er étage, les bureaux de l'atelier (68-atelier.js) ; au -1, les baies (68-caserne.js)
   restoreFields(side,kept);
   refocus(side,fid);
 }
@@ -106,7 +106,7 @@ function refreshStatus(){
 let SEL_BACK=[];
 const WIN_VIEWS={kanban:keep=>openKanban(keep||undefined),calendar:()=>openCalendar()}; // keep : retour, la fenêtre telle qu'on l'a quittée
 function backLabel(k){
-  if(k==null)return FLOOR===1?"L'atelier":FLOOR===-1?"La caserne":FLOOR===3?"Les retours":FLOOR===2?"La rédaction":"Toute l'équipe"; // 68-atelier.js, 68-caserne.js : la fiche du boss ouverte à un étage revient à cet étage
+  if(k==null)return FLOOR===4?"Les Combles":FLOOR===1?"L'atelier":FLOOR===-1?"La caserne":FLOOR===3?"Les retours":FLOOR===2?"La rédaction":"Toute l'équipe"; // 68-atelier.js, 68-caserne.js : la fiche du boss ouverte à un étage revient à cet étage
   if(byKey[k])return byKey[k].name;
   const s=String(k);
   if(s.startsWith('mail:'))return 'Courrier';

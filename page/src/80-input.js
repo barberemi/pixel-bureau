@@ -8,7 +8,8 @@ function hitTest(ev){
 }
 const tip=document.getElementById('tip');
 cv.addEventListener('mousemove',e=>{
-  if(FLOOR){(FLOOR===1?atelierHover:FLOOR===3?retoursHover:FLOOR===2?redactionHover:caserneHover)(e);return;} // 68-atelier.js, 68-caserne.js
+  if(FLOOR){(FLOOR===4?comblesHover:FLOOR===1?atelierHover:FLOOR===3?retoursHover:FLOOR===2?redactionHover:caserneHover)(e);return;} // 68-atelier.js, 68-caserne.js
+  {const s=comblesRdcTip(e);if(s!=null){cv.style.cursor=DIGI.open||digiIn(digiRect(),digiXY(e))?'pointer':'default';tip.style.display=s?'block':'none';tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px';tip.textContent=s;return;}} // 68-combles.js : le digicode, le post-it du boss
   const c=hitTest(e),z=c?null:hitZone(e), wc=z==='bosspages'&&wallCellAt(e), wa=wc&&wallAgent(wc.id);
   hoverKey=c?c.key:wa?wa.key:null;WALL_HOVER=!!wa; // une miniature de l'écran : son agent ressort sur le plan (32-familles.js)
   RACK_HOVER=z==='newagent'; // 66-newagent.js : le « + » de la baie s'allume
@@ -57,7 +58,7 @@ function hitZone(ev){
   return mb?'mail:'+mb:duckHit(mx,my)?'duck':supportOpenable()&&inR(supportRect())?'support':bs&&inR(bs)?'bosspages':na&&inR(na)?'newagent':inR(PAYR)?'paie':inR(TVR)?'tv':(()=>{const r=svRect(T);return r&&inR(r);})()?'services':inR(KANR)?'kanban':(()=>{const r=cronNoteRect();return r&&inR(r);})()?'planning':todosOn()&&inR(todoRect())?'todo':CALR&&ABSENCES&&inR(CALR)?'calendar':DEPR&&inR(DEPR)?'departs':inR(EMPR)&&bestEmployee().length?'emp':null;}
 // zones du plan qui ouvrent une fenêtre (le reste ouvre le panneau) : l'infobulle le dit
 const WIN_ZONES=new Set(['bosspages','todo','newagent','kanban','calendar','departs']);
-cv.addEventListener('click',e=>{if(TV)return;if(FLOOR){(FLOOR===1?atelierClick:FLOOR===3?retoursClick:FLOOR===2?redactionClick:caserneClick)(e);return;}const c=hitTest(e);if(c){select(c.key);return;}const pl=pileAt(e);if(pl&&pl.o&&pl.o.key){select(pl.o.key);return;} // une pile : la fiche de la personne, qui liste ses tickets (audit UX 4.7)
+cv.addEventListener('click',e=>{if(TV)return;if(!FLOOR&&digiClick(e))return;if(FLOOR){(FLOOR===4?comblesClick:FLOOR===1?atelierClick:FLOOR===3?retoursClick:FLOOR===2?redactionClick:caserneClick)(e);return;}const c=hitTest(e);if(c){select(c.key);return;}const pl=pileAt(e);if(pl&&pl.o&&pl.o.key){select(pl.o.key);return;} // une pile : la fiche de la personne, qui liste ses tickets (audit UX 4.7)
   const z=hitZone(e);if(z==='bosspages')openBossPages();else if(z==='departs')openDeparts();else if(z==='todo')openTodos();else if(z==='support')openSupport();else if(z==='newagent')openNewAgent();else select(z);});
 const slider=document.getElementById('slider'), playBtn=document.getElementById('play'), liveBtn=document.getElementById('live'), speedBtn=document.getElementById('speed');
 const tgo=document.getElementById('tgo'), tbub=document.getElementById('tbub');
