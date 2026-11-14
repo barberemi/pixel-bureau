@@ -172,3 +172,20 @@ test('dans Kronn, où localStorage lève une erreur (iframe sans allow-same-orig
   assert.equal(J('comblesOn()'), false);
   assert.equal(J('FLOOR'), 0);
 });
+
+test('la borne : les données de Sprint Quest lues du dataset, et l\'état de la préparation', () => {
+  const {p, J} = page();
+  const read = d => J(`readSprintQuest({datasets: {sprintquest: ${JSON.stringify(JSON.stringify(d))}}})`);
+  assert.equal(read(null), null);
+  const now = Date.parse('2026-11-13T18:00:00Z');
+  const st = d => J(`sqState(readSprintQuest({datasets: {sprintquest: ${JSON.stringify(JSON.stringify(d))}}}), ${now})`);
+  assert.equal(J(`sqState(null, ${now})`), 'none');
+  assert.equal(st({running: true, since: '2026-11-13T17:58:00Z'}), 'running');
+  assert.equal(st({running: true, since: '2026-11-13T17:30:00Z'}), 'stale', 'un run en échec ne republie rien : plus de 10 min, la préparation n\'a pas abouti');
+  assert.equal(st({generated_at: '2026-11-13T17:59:00Z', data: null, warnings: ['sprintquest : sprint fermé ou tickets introuvables']}), 'failed');
+  const data = {name: 'SPRINT 26-45', dates: '30 OCT-13 NOV', vs: [{l: 'MISES EN PROD', v: '2'}], quiz: [{q1: 'Q', a: ['A', 'B', 'C', 'D'], ok: 1}], boss: [{t: 'snail', n: 'DM-1'}]};
+  assert.equal(st({generated_at: '2026-11-13T17:59:00Z', data, warnings: []}), 'ready');
+  assert.deepEqual(read({generated_at: 'x', data, warnings: []}).data, data);
+  assert.equal(read({generated_at: 'x', data: {name: 'X', vs: [], quiz: [], boss: []}}).data, null, 'sans question ni boss : rien à copier');
+  p.run('void 0');
+});

@@ -151,6 +151,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   BOSS_PAGES=readBossPages(k)||[];PAGELIST=readPageList(k);PAGE_TV=readPageTv(k); // 47-bosspages.js (#61), 47-projo.js
   TODOS=readTodos(k); // 47-todos.js
   STATUTS=readStatuts(k); // 48-statuts.js (démo : après refreshAll, qui fixe le jour affiché)
+  SPRINTQUEST=readSprintQuest(k); // 68-combles.js : les données de la partie Sprint Quest, préparées depuis la borne
   GITFUT=readGitfut(k)||{};
   ACTS=readActs(k);
   POSTERS=readPosters(k)||{};

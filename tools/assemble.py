@@ -35,7 +35,8 @@ ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate",
            "bureau-aitime": ("ai_time", "__AITIME_WF__"),  # temps gagné par l'IA sur un ticket terminé (modèle ai_time, #79)
            # console Support (#62) : investiguer un message (modèle support) ; relever le canal : « ↻ » du panneau Fraîcheur
            "bureau-support": ("support", "__SUPPORT_WF__"),
-           "bureau-spskip": ("support_skip", "__SPSKIP_WF__")}  # 🔕 ignorer un fil du Support, ou le réactiver (threads[].skip)
+           "bureau-spskip": ("support_skip", "__SPSKIP_WF__"),  # 🔕 ignorer un fil du Support, ou le réactiver (threads[].skip)
+           "bureau-sprintquest": ("sprintquest", "__SPRINTQUEST_WF__")}  # « Préparer la partie » de la borne des Combles
 # variables des workflows de la clé launch : rôle -> nom par défaut ; launch.<action> = id seul, ou {wf, vars: {rôle: nom
 # chez toi, ou null si ton workflow n'a pas cette variable}}
 LAUNCH_VARS = {"impl": {"ticket": "jira_ticket_key"}, "mep": {"ticket": "jira_ticket_key", "pr": "pr_number"},

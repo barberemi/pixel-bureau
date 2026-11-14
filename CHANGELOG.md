@@ -14,6 +14,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 - Les adresses DEV, STG et PRD de chaque projet (réglage `urls` du dépôt) : « ouvrir ↗ » dans chaque case du tableau des départs ; sur la carte du Mur Kanban, une rangée par projet avec les envs où tourne une branche du ticket, en lien vers l'env ; dans la fiche, la marque de l'env d'une PR en lien. Réglage `envs` pour un projet qui n'a pas tous les envs (« pas de DEV »).
 - Au RDC, les agents des étages (Support, Revue, Implé…), en couleurs pleines dans leur tenue, ont le petit robot hologramme du soir à l'épaule : on ne les prend plus pour des collègues. La légende « Qui » le dit.
 - Les Combles, l'étage secret sous le toit : un digicode à côté de l'entrée du RDC (trois indices : la diode du boîtier, le canard, un post-it du boss) ouvre un onglet caché ; le soir, l'équipe y joue et change de place ; la borne d'arcade ouvre Sprint Quest (réglage `combles.url`).
+- Sprint Quest depuis la borne des Combles : « ⚙ Préparer la partie » lance le workflow « Le Bureau · Sprint Quest » (0 jeton), qui lit le dernier sprint fermé (Jira), les PR et mises en prod de sa fenêtre et les pannes des services extérieurs, et écrit stats, quiz et boss en textes fixes ; la fiche les copie, Sprint Quest les colle (dataset `sprintquest`, réglage facultatif `combles.company`). Après la mise à jour : `publish.py workflows`, puis `publish.py page`.
 
 ### Modifié
 
