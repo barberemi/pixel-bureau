@@ -216,9 +216,12 @@ function drawComblesSide(side){
   const box=document.createElement('div');box.className='atelier combles';side.appendChild(box);
   if(CB_PICK==='borne'){const u=cbUrl();
     box.innerHTML='<button type="button" class="at-back">‹ Les Combles</button><h3>🕹 Sprint Quest</h3>'+(u
-      ?'<p>La rétro du sprint en jeu d\'arcade, à plusieurs, sur claude.ai.</p><p><a class="cb-play" href="'+esc(u)+'" target="_blank" rel="noopener">▶ Jouer à Sprint Quest</a></p>'
+      ?'<p>La rétro du sprint en jeu d\'arcade, à plusieurs, sur claude.ai.</p>'
       :'<p>La borne n\'est pas encore branchée.</p><p class="mut">Pour l\'allumer : l\'adresse de Sprint Quest dans <code>combles.url</code> de bureau.config.json, puis republier la page.</p>');
-    box.querySelector('.at-back').addEventListener('click',()=>{CB_PICK=null;renderSide(true);});return;}
+    box.querySelector('.at-back').addEventListener('click',()=>{CB_PICK=null;renderSide(true);});
+    if(ACTIONS.sprintquest)sqCard(box);
+    if(u)box.insertAdjacentHTML('beforeend','<p><a class="cb-play" href="'+esc(u)+'" target="_blank" rel="noopener">▶ Jouer à Sprint Quest</a></p>');
+    return;}
   box.innerHTML='<h3>🕹 Les Combles</h3><p>Tu as trouvé l\'étage secret. Le soir, l\'équipe monte jouer ; la borne ouvre Sprint Quest.</p>'+
     '<p class="mut">L\'onglet reste jusqu\'au rechargement de la page. Pour le cacher de nouveau, referme la trappe.</p>'+
     '<button type="button" class="cb-forget">Refermer la trappe</button>';
@@ -343,4 +346,54 @@ function comblesRdcTip(e){
   if(digiIn(digiRect(),m))return 'Un digicode, près de l\'entrée. Mais pour aller où ?';
   if(digiIn(bossPostitRect(),m))return HINT_POSTIT;
   return null;
+}
+// ---------- les données de la partie (borne) ----------
+// « Préparer la partie » lance le workflow Le Bureau · Sprint Quest (sprintquest.py, 0 jeton) : il publie d'abord
+// {running, since}, puis {generated_at, sprint, data, warnings}, data au format sprint/data de l'artefact. La fiche les
+// copie ; dans Sprint Quest, l'hôte les colle sur l'écran titre. Une préparation restée « en cours » plus de SQ_STALE
+// n'a pas abouti (un run en échec ne republie rien).
+const SQ_STALE=10*60e3;
+let SPRINTQUEST=null, SQ_COPY=null; // SQ_COPY : {at, how} : copie faite (ok) ou texte à copier (pick), pour ce relevé
+function readSprintQuest(src){
+  try{const d=dsOf(src,'sprintquest');if(!d||typeof d!=='object')return null;
+    if(d.running)return {running:true,since:String(d.since||'')};
+    const x=d.data;
+    const ok=x&&typeof x.name==='string'&&Array.isArray(x.vs)&&Array.isArray(x.quiz)&&x.quiz.length&&Array.isArray(x.boss)&&x.boss.length;
+    return {generated_at:String(d.generated_at||''),data:ok?x:null,warnings:Array.isArray(d.warnings)?d.warnings.map(String):[]};
+  }catch(e){return null;}
+}
+// l'état de la préparation : none, running, stale (en cours depuis trop longtemps), failed (rien d'exploitable), ready
+function sqState(q,now){
+  if(!q)return 'none';
+  if(q.running)return now-ms(q.since)<SQ_STALE?'running':'stale';
+  return q.data?'ready':'failed';
+}
+const SQ_BOSS={snail:'🐌',hydra:'🐉',ghost:'👻'};
+function sqCard(box){
+  const q=SPRINTQUEST, st=sqState(q,Date.now()), d=q&&q.data;
+  const host=document.createElement('div');host.className='relaunch cb-sq';host.style.display='block';host.setAttribute('data-kronn-action-slot-host',''); // le bouton sous le résumé, pas à côté
+  const head={none:['La partie du dernier sprint',"Le Bureau lit le dernier sprint fermé (Jira), les PR et les mises en prod de sa fenêtre, les pannes des services extérieurs, et écrit les stats, le quiz et les boss. 0 jeton, une à deux minutes."],
+    running:['⏳ Préparation en cours…','Depuis '+(q&&q.since?hm(ms(q.since)):'')+' · le Bureau lit le dernier sprint fermé'],
+    stale:['La dernière préparation n\'a pas abouti','Lancée à '+(q&&q.since?hm(ms(q.since)):'')+' : le détail est dans le run Kronn « Le Bureau · Sprint Quest ».'],
+    failed:['La dernière préparation n\'a rien donné',(q&&q.warnings[0])||'Aucun sprint fermé lisible.'],
+    ready:['✅ Partie prête · '+(d?d.name:''),(d?d.dates+' · ':'')+'préparée à '+(q?hm(ms(q.generated_at)):'')]}[st];
+  host.innerHTML='<div class="rl-n">'+esc(head[0])+'</div><div class="rl-s">'+esc(head[1])+'</div>'+(st==='ready'?
+    '<div class="rl-n" style="margin-top:8px">Face-à-face</div><div class="rl-s">'+esc(d.vs.map(x=>x.l+' '+x.v).join(' · '))+'</div>'+
+    '<div class="rl-n" style="margin-top:8px">'+d.quiz.length+' question'+(d.quiz.length>1?'s':'')+' · '+d.boss.length+' boss</div><div class="rl-s">'+
+    esc(d.boss.map(b=>(SQ_BOSS[b.t]||'👾')+' '+b.n+(b.pv?' ('+b.pv+')':'')).join(' · '))+'</div>':'');
+  const b=document.createElement('button');b.type='button';b.textContent=st==='ready'?'↻ Refaire la préparation':'⚙ Préparer la partie';
+  b.setAttribute('data-kronn-action','bureau-sprintquest');b.disabled=st==='running';b.style.marginTop='8px';
+  host.appendChild(b);box.appendChild(host);kronnModal(host,b,'Préparer la partie Sprint Quest',{ico:'🕹'});
+  if(st!=='ready')return;
+  const row=document.createElement('p'), c=document.createElement('button');c.type='button';c.className='cb-copy';c.textContent='📋 Copier les données';
+  row.appendChild(c);box.appendChild(row);
+  const note=document.createElement('p');note.className='mut';note.textContent='Puis, dans Sprint Quest, écran titre : « 📥 Coller les données du sprint ».';box.appendChild(note);
+  const txt=JSON.stringify(d), how=SQ_COPY&&SQ_COPY.at===q.generated_at?SQ_COPY.how:null;
+  // la copie peut être refusée par le cadre de Kronn : le texte s'affiche alors sélectionné, pour Cmd+C (et reste affiché)
+  const pick=sel=>{const t=document.createElement('textarea');t.className='cb-sq-txt';t.rows=4;t.readOnly=true;t.value=txt;t.dataset.fid='sq-txt';
+    note.textContent='Copie bloquée ici : sélectionne le texte, fais Cmd+C, puis colle-le dans Sprint Quest.';box.appendChild(t);if(sel){t.focus();t.select();}};
+  if(how==='ok')c.textContent='✓ Données copiées';
+  if(how==='pick')pick(false);
+  const fallback=()=>{SQ_COPY={at:q.generated_at,how:'pick'};if(!box.querySelector('.cb-sq-txt'))pick(true);};
+  c.addEventListener('click',()=>{try{navigator.clipboard.writeText(txt).then(()=>{SQ_COPY={at:q.generated_at,how:'ok'};c.textContent='✓ Données copiées';},fallback);}catch(e){fallback();}});
 }

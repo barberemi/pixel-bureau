@@ -1,0 +1,270 @@
+{
+ "kind": "workflow",
+ "key": "sprintquest",
+ "definition": {
+  "name": "Le Bureau · Sprint Quest",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "steps": [
+   {
+    "name": "mark",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "La fiche de la borne dit « en préparation » dès le lancement.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/sprintquest.py@@",
+     "mark"
+    ],
+    "exec_timeout_secs": 30
+   },
+   {
+    "name": "publish_mark",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset sprintquest par l'état « en préparation ».",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "sprintquest",
+       "operation": "replace",
+       "value_from": "steps.mark.data.stdout"
+      }
+     ]
+    }
+   },
+   {
+    "name": "velocity",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Graphique de vélocité Jira : les derniers sprints fermés, du plus récent au plus ancien.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/greenhopper/1.0/rapid/charts/velocity",
+    "api_method": "GET",
+    "api_query": {
+     "rapidViewId": "@@jira.board@@",
+     "sprintsToDisplay": "3"
+    },
+    "api_extract": {
+     "path": "$",
+     "fallback": {},
+     "fail_on_empty": false
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "pick",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "L'id du dernier sprint fermé.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/sprintquest.py@@",
+     "pick"
+    ],
+    "exec_timeout_secs": 20,
+    "exec_stdin": "{{steps.velocity.data_json}}",
+    "_requires": "jira"
+   },
+   {
+    "name": "keys",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Clés des tickets du sprint fermé, pour status_log.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/search/jql",
+    "api_method": "GET",
+    "api_query": {
+     "jql": "sprint = {{steps.pick.data.stdout}} ORDER BY key",
+     "fields": "status",
+     "maxResults": "100"
+    },
+    "api_extract": {
+     "path": "$.issues[*].key",
+     "fallback": [],
+     "fail_on_empty": true
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "issues",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Tickets du sprint fermé (champ Sprint compris : ses dates).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/search/jql",
+    "api_method": "GET",
+    "api_query": {
+     "jql": "sprint = {{steps.pick.data.stdout}} ORDER BY key",
+     "fields": "summary,status,assignee,issuetype,created,@@jira.points_fields@@,@@jira.sprint_field@@",
+     "maxResults": "100"
+    },
+    "api_extract": {
+     "path": "$.issues",
+     "fallback": [],
+     "fail_on_empty": false
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "status_log",
+    "step_type": {
+     "type": "ApiCall"
+    },
+    "description": "Changements de statut des tickets du sprint fermé (changelog/bulkfetch, une page de 1000).",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "api_plugin_slug": "mcp-atlassian",
+    "api_config_id": "@@jira.config_id@@",
+    "api_endpoint_path": "/rest/api/3/changelog/bulkfetch",
+    "api_method": "POST",
+    "api_body": {
+     "issueIdsOrKeys": "{{steps.keys.data}}",
+     "fieldIds": [
+      "status"
+     ],
+     "maxResults": 1000
+    },
+    "api_extract": {
+     "path": "$.issueChangeLogs",
+     "fallback": [],
+     "fail_on_empty": false
+    },
+    "_requires": "jira"
+   },
+   {
+    "name": "build",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Déterministe (0 token) : stats, quiz et boss du sprint, au format sprint/data de Sprint Quest ; PR, mises en prod (gh) et incidents (pages de statut) de la fenêtre du sprint.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/sprintquest.py@@",
+     "build",
+     "@@jira.flow.validated@@",
+     "@@jira.flow.reopened@@"
+    ],
+    "exec_timeout_secs": 300,
+    "exec_stdin": "{\"sprint\":{{steps.pick.data.stdout}},\"issues\":{{steps.issues.data_json}},\"log\":{{steps.status_log.data_json}}}"
+   },
+   {
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset sprintquest de la page Le Bureau : la borne des Combles propose de copier les données.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@page_id@@",
+     "writes": [
+      {
+       "dataset": "sprintquest",
+       "operation": "replace",
+       "value_from": "steps.build.data.stdout"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": 1,
+  "exec_allowlist": [
+   "python3",
+   "gh"
+  ]
+ }
+}
