@@ -66,7 +66,7 @@ function pageConfig(cfg) {
     support: supportPage(cfg), // comme support_page() : console Support (#62)
     ticket: (cfg.models || {}).ticket ? {wf: String(cfg.models.ticket).slice(0, 8)} : null, // créer un ticket (#77)
     rhythm: cfg.rhythm || {}, mep_workflow: cfg.mep_workflow, workflows: cfg.workflows || {}, agents: cfg.agents || [], ui: cfg.ui || {}, skins: themes(cfg),
-    schedules: Object.fromEntries(['office', 'live', 'team', 'payroll', 'canard'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule.replace('@@cron_hours@@', '4-20')]))}; // heures de Paris, comme cron_hours()
+    schedules: Object.fromEntries(['office', 'live', 'team', 'payroll', 'canard'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule.replace('@@cron_hours@@', '4-20').replace('@@cron_veille@@', '4-22')]))}; // heures de Paris, comme cron_hours() (veille : minuit)
 }
 
 // mêmes roster (et invités), morceaux, recettes et sprites que roster(), guests(), music(), recipes() et sprites() de tools/assemble.py :
