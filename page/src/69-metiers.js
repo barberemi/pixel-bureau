@@ -70,7 +70,7 @@ function mtRows(k){
   if(k==='retours'){
     const mine=mtMine();
     // les PR du boss seulement : celle d'un autre se corrige depuis sa fiche ou le Kanban
-    if(ACTIONS.fix_pr)return mtPrs().filter(p=>(p.threads>0||p.threads==null&&p.review==='changes')&&mine(p)).map(p=>({...pr(p),sub:p.threads>0?plural(p.threads,'fil','fils')+' à traiter':'changements demandés'}));
+    if(ACTIONS.fix_pr)return mtPrs().filter(p=>prToFix(p)&&mine(p)).map(p=>({...pr(p),sub:prFixTxt(p)?prFixTxt(p)+' à traiter':'changements demandés'}));
     return ACTIONS.fix?mtPrs().filter(p=>p.review==='changes'&&(!otherRepo(p.repo)||CFG.fix_any_repo)&&mine(p)).map(pr):[];
   }
   if(k==='impl'){

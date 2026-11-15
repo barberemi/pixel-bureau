@@ -1,4 +1,8 @@
 // ---------- fiches du panneau latéral : visiteur, mode TV, planning, kanban, employé du sprint, collègue ----------
+// ce que « 🛠 Corriger » traiterait sur une PR : ses fils non résolus et ses remarques hors fil (texte d'une review,
+// commentaire de la PR, après la dernière réponse du Bureau ; cron équipe) ; inconnus : les changements demandés
+const prToFix=p=>p.threads>0||p.remarques>0||p.threads==null&&p.review==='changes';
+const prFixTxt=p=>[p.threads>0&&plural(p.threads,'fil','fils'),p.remarques>0&&plural(p.remarques,'remarque','remarques')].filter(Boolean).join(' · ');
 // lien vers une discussion Kronn, dans un nouvel onglet : Kronn ouvre dans l'onglet courant un lien vers sa propre adresse
 // (même chemin + #discussion-…) ; par /index.html (servi pareil), il le traite en lien externe (même astuce que bpLink)
 const kronnTab=()=>/\/$/.test(KRONN_BASE)?KRONN_BASE+'index.html':KRONN_BASE;
@@ -205,6 +209,7 @@ function prMarks(x){
   if(x.conflict)m.push('<span class="prm err" title="Conflit avec sa base">⛔ conflit</span>');
   if(x.behind>0)m.push(`<span class="prm" title="Commits de ${esc(x.base||'main')} absents de la PR">⟳ ${x.behind} de retard</span>`);
   if(x.threads>0)m.push(`<span class="prm" title="Fils de review non résolus">💬 ${x.threads} fil${x.threads>1?'s':''}</span>`);
+  if(x.remarques>0)m.push(`<span class="prm" title="Remarques hors fil à traiter (texte d'une review, commentaire de la PR)">📝 ${plural(x.remarques,'remarque','remarques')}</span>`);
   const ci=PR_CI[x.ci];if(ci)m.push(`<span class="prm${x.ci==='ko'?' err':''}" title="${ci[2]}">${ci[0]}</span>`);
   for(const e of prEnvs(x)){const t=`${e.ico} ${esc(e.env.toUpperCase())}${e.run?' ⏳':(e.url?' ↗':'')+' · depuis '+esc(dpAgo(e.since))}`;
     m.push(e.url?`<a class="prm" href="${esc(e.url)}" target="_blank" rel="noopener" title="Sa branche y est : ouvrir ${esc(e.url)}">${t}</a>`

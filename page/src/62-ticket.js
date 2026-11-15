@@ -81,7 +81,7 @@ function tkNext(x,prs){
   if(x&&x.cat==='deploy')return ACTIONS.mep_pr&&prs.length?A('meppr',prs[0]):A('mep');
   for(const p of prs){
     if(p.conflict&&ACTIONS.rebase)return A('rebase',p);
-    if((p.threads>0||p.review==='changes')&&ACTIONS[actKey('bureau-'+F)])return A(F,p);
+    if((prToFix(p)||p.review==='changes')&&ACTIONS[actKey('bureau-'+F)])return A(F,p);
     if(p.behind>0&&ACTIONS.rebase)return A('rebase',p);
     if(p.review!=='approved'&&ACTIONS.review)return A('review',p);
   }
@@ -93,7 +93,7 @@ function tkChain(x,prs){
   const st=[['impl','implémente'],[ACTIONS.fix_pr?'fixpr':'fix','corrige'],['review','relit'],[ACTIONS.mep_pr?'meppr':'mep','met en prod']]
     .map(([a,verb],i)=>({action:'bureau-'+a,verb,i})).filter(s=>ACTIONS[actKey(s.action)]);
   if(st.length<2||!x)return [];
-  const asked=prs.some(p=>p.threads>0||p.review==='changes'), c=x.cat;
+  const asked=prs.some(p=>prToFix(p)||p.review==='changes'), c=x.cat;
   const cur=c==='done'?4:c==='deploy'?3:c==='test'?2.5:c==='review'?(asked?1:2):prs.length&&asked?1:0;
   return st.map(({action,verb,i})=>({action,verb,who:actAgent(action),state:i<cur?'done':i===cur?'cur':'later'}));
 }
@@ -303,12 +303,11 @@ function prLaunch(box,p,{tickets,isNext=()=>false,group}={}){
       sub:p.conflict?'Conflit avec '+base+' : l\'IA propose une résolution, tu la valides avant tout push.':'Rebase sur '+base+', commits gardés, push protégé, CI relancée. Sans conflit : 0 token.',
       label:'⟳ Remettre à jour',title:'Remettre à jour '+nm});
   }
-  // « 🛠 Corriger » (#75) : modèle du Bureau, tout dépôt, dès qu'il reste des fils de review non résolus (inconnus : changements
-  // demandés) ; sinon ton workflow de launch.fix, comme avant
+  // « 🛠 Corriger » (#75) : modèle du Bureau, tout dépôt, dès qu'il reste des fils de review non résolus ou des remarques hors
+  // fil (inconnus : changements demandés) ; sinon ton workflow de launch.fix, comme avant
   if(ACTIONS.fix_pr){
-    const t=p.threads;
-    if(t>0||t==null&&p.review==='changes')launchBlock(box,{action:'bureau-fixpr',bind:{id},next:nx('bureau-fixpr'),
-      verb:t>0?'corrige les '+(t>1?t+' fils':'fil')+' de review'+dr:'corrige les retours'+dr,
+    if(prToFix(p))launchBlock(box,{action:'bureau-fixpr',bind:{id},next:nx('bureau-fixpr'),
+      verb:(prFixTxt(p)?'corrige '+[p.threads>0&&(p.threads>1?'les '+p.threads+' fils':'le fil'),p.remarques>0&&(p.remarques>1?'les '+p.remarques+' remarques':'la remarque')].filter(Boolean).join(' et ')+' de review':'corrige les retours')+dr,
       sub:'Tu valides le diff et ses réponses, puis il pousse',
       label:'🛠 Corriger',title:'Corriger les retours de '+nm});
   }

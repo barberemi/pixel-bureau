@@ -114,6 +114,7 @@ for pr in D.get("open") or []:
            # #74 : en conflit avec sa base (DIRTY), commits de retard (None : inconnu), branche de base
            "conflict": pr.get("merge") == "DIRTY", "behind": pr.get("behind"), "base": pr.get("base"),
            "threads": pr.get("threads"),  # #75 : fils de review non résolus (None : inconnu)
+           "remarques": pr.get("remarques"),  # remarques hors fil que « Corriger » traiterait (None : aucune ou inconnu)
            # CI du dernier commit, adresse de l'env de branche et son heure : seulement quand ils sont connus
            **{k: pr[k] for k in ("ci", "env_url", "env_at") if pr.get(k)}}
     p = owner(a, pr["title"])

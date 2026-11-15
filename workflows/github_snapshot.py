@@ -19,7 +19,7 @@ PR ouvertes reprises : quand GitHub ne répond pas à temps, celles du dernier r
 ~/.cache/pixel-bureau/open_prs.json), avec un avertissement, plutôt qu'une liste vide.
 Sortie (stdout) : {"open": [...], "merged": [...], "releases": [...], "staging": [...], "prod": [...], "errors": [...], "warnings": [...]}
 """
-import json, os, subprocess, sys
+import json, os, re, subprocess, sys
 from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor
 from _lib import CFG, TZ, dumps, read_json, write_json
@@ -170,21 +170,42 @@ def behind_counts(prs):
 
 THREADS_Q = ("query($o:String!,$r:String!){repository(owner:$o,name:$r){pullRequests(states:OPEN,first:100,"
              "orderBy:{field:UPDATED_AT,direction:DESC}){nodes{number mergeable reviewThreads(first:100){nodes{isResolved}} "
-             "labels(first:20){nodes{name}} commits(last:1){nodes{commit{statusCheckRollup{state}}}}}}}}")
+             "labels(first:20){nodes{name}} commits(last:1){nodes{commit{statusCheckRollup{state}}}} "
+             "reviews(last:20){nodes{state body submittedAt authorAssociation author{login __typename}}} "
+             "comments(last:30){nodes{body createdAt authorAssociation author{login __typename}}}}}}}")
 CI = {"SUCCESS": "ok", "FAILURE": "ko", "ERROR": "ko", "PENDING": "run", "EXPECTED": "run"}
+# remarques hors fil : la règle de « Corriger » (pr_update.generaux), sans importer ce script : texte d'une review
+# « changements demandés » ou « commentaire », ou commentaire de la PR, d'un membre du dépôt ou de l'équipe, pas d'un bot,
+# posté après la dernière réponse générale du Bureau (signée « Version N »)
+FIABLES = ("OWNER", "MEMBER", "COLLABORATOR")
+EQUIPE = {str(x).lower() for x in CFG.get("team_github") or []}
+SIGNE = "Corrections automatiques · Le Bureau"
+VERSION_RE = re.compile(re.escape(SIGNE) + r"[^\n]*?·\s*Version\s+\d+\W*\Z|^\W*Version\s+\d+\b", re.I)
+
+
+def remarques(pr):
+    """Nombre de remarques hors fil que « Corriger » traiterait sur cette PR (nœud GraphQL)."""
+    bot = lambda x: (x.get("author") or {}).get("__typename") == "Bot" or str((x.get("author") or {}).get("login") or "").endswith("[bot]")
+    sure = lambda x: not bot(x) and (x.get("authorAssociation") in FIABLES or str((x.get("author") or {}).get("login") or "").lower() in EQUIPE)
+    bureau = lambda x: bool(VERSION_RE.search(str(x.get("body") or "").strip()))
+    coms = [c for c in (pr.get("comments") or {}).get("nodes") or [] if sure(c) or not bureau(c)]
+    depuis = max((c.get("createdAt") or "" for c in coms if bureau(c)), default="")
+    items = [(r.get("submittedAt") or "", r) for r in (pr.get("reviews") or {}).get("nodes") or [] if r.get("state") in ("CHANGES_REQUESTED", "COMMENTED")]
+    items += [(c.get("createdAt") or "", c) for c in coms]
+    return sum(1 for at, x in items if str(x.get("body") or "").strip() and at > depuis and sure(x) and not bureau(x))
 
 
 def thread_counts(repo):
-    """Fils de review non résolus, état de fusion, CI et labels de chaque PR ouverte du dépôt ({n: (fils, mergeable, ci,
-    labels)}), une requête GraphQL ; {} en cas d'échec (pas de pastilles, les PR restent)."""
+    """Fils de review non résolus, état de fusion, CI, labels et remarques hors fil de chaque PR ouverte du dépôt ({n:
+    (fils, mergeable, ci, labels, remarques)}), une requête GraphQL ; {} en cas d'échec (pas de pastilles, les PR restent)."""
     owner, name = repo.split("/", 1)
-    raw = api_text(None, ["api", "graphql", "-f", "query=" + THREADS_Q, "-F", "o=" + owner, "-F", "r=" + name, "--jq",
-                          "[.data.repository.pullRequests.nodes[]|[.number,([.reviewThreads.nodes[]|select(.isResolved|not)]|length),.mergeable,"
-                          "(.commits.nodes[0].commit.statusCheckRollup.state // null),[.labels.nodes[].name]]]"])
+    raw = api_text(None, ["api", "graphql", "-f", "query=" + THREADS_Q, "-F", "o=" + owner, "-F", "r=" + name])
     try:
-        return {int(row[0]): (row[1], row[2] if len(row) > 2 else None, CI.get(row[3]) if len(row) > 3 else None,
-                              row[4] if len(row) > 4 else []) for row in json.loads(raw or "[]")}
-    except (ValueError, TypeError, IndexError):
+        nodes = json.loads(raw or "{}")["data"]["repository"]["pullRequests"]["nodes"]
+        roll = lambda p: (((p["commits"]["nodes"] or [{}])[0].get("commit") or {}).get("statusCheckRollup") or {}).get("state")
+        return {int(p["number"]): (sum(1 for t in p["reviewThreads"]["nodes"] if not t.get("isResolved")), p.get("mergeable"),
+                                   CI.get(roll(p)), [x["name"] for x in p["labels"]["nodes"]], remarques(p)) for p in nodes}
+    except (ValueError, TypeError, KeyError, IndexError):
         return {}
 
 
@@ -213,7 +234,7 @@ with ThreadPoolExecutor(max_workers=8) as pool:
     _repos = sorted({pr["repo"] for pr in out["open"]})
     THREADS = dict(zip(_repos, pool.map(thread_counts, _repos)))
 for pr in out["open"]:
-    t = THREADS.get(pr["repo"], {}).get(pr["number"]) or (None, None, None, [])
+    t = THREADS.get(pr["repo"], {}).get(pr["number"]) or (None, None, None, [], None)
     pr["merge"] = "DIRTY" if t[1] == "CONFLICTING" else None
     pr["labels"] = t[3]
     if t[2]:  # seulement s'il est connu : la sortie reste sous 100 Ko
@@ -222,6 +243,8 @@ for pr in out["open"]:
     pr.pop("headRefOid", None)
     pr["behind"] = BEHIND.get(f"{pr['repo']}#{pr['number']}")
     pr["threads"] = t[0]
+    if t[4]:  # remarques hors fil que « Corriger » traiterait ; seulement s'il y en a : la sortie reste sous 100 Ko
+        pr["remarques"] = t[4]
 with ThreadPoolExecutor(max_workers=8) as pool:  # un appel par PR qui porte le label d'env, seulement
     for pr, (url, at) in zip(out["open"], pool.map(env_url, out["open"])):
         if url:
