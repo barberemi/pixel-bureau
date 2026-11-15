@@ -128,8 +128,8 @@ def send(method, path, body=None, timeout=30):
 def refresh(which, out=None):
     """Relance tout de suite le cron du Bureau `which` (« team » ou « live », id dans workflows de la config), pour
     que la page voie l'effet d'une action sans attendre son passage suivant ; rien s'il tourne déjà (un run de ACTIVE :
-    sa publication arrive). team et live n'ont pas de concurrency_limit : Kronn lancerait un second run en parallèle,
-    d'où la vérification ici. Best-effort : jamais d'exception ni de code de sortie, une ligne sur stderr (stdout reste
+    sa publication arrive). team et live ont concurrency_limit 1 : Kronn refuserait un second run, vérifié ici pour
+    le dire sans erreur. Best-effort : jamais d'exception ni de code de sortie, une ligne sur stderr (stdout reste
     la sortie de l'étape), ou sur out (refresh.py, dont c'est toute la sortie)."""
     wf = (CFG.get("workflows") or {}).get(which)
     try:

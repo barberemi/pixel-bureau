@@ -366,7 +366,7 @@
    "require_isolation": false,
    "main_tree_read_only": true
   },
-  "concurrency_limit": null,
+  "concurrency_limit": 1,
   "exec_allowlist": [
    "python3",
    "gh"
