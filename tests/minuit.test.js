@@ -9,7 +9,7 @@ const {load} = require('./helpers/page.js');
 
 const BASE = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'bureau.config.json'), 'utf8'));
 const wall = (tz, ms) => new Intl.DateTimeFormat('en-CA', {timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
-  hour: '2-digit', minute: '2-digit', hour12: false}).format(new Date(ms));
+  hour: '2-digit', minute: '2-digit', hourCycle: 'h23'}).format(new Date(ms)); // h23 : certains ICU écrivent minuit « 24:00 » avec hour12 false
 
 test('minuit du jour dans tout fuseau, jours de changement d\'heure compris', () => {
   const cases = {

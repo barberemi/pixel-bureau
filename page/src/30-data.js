@@ -149,7 +149,7 @@ const bureauDisc=d=>{const t=String((d&&d.title)||'');return t.startsWith('Le Bu
 // minuit (heure du bureau, rhythm.timezone) du jour de t, quel que soit le fuseau (à l'ouest de l'UTC aussi : New York) ;
 // juste aussi les jours de changement d'heure (minuit est avant le changement, à 2h ou 3h)
 function tzWall(t){ // l'heure murale du bureau à l'instant t, écrite comme un instant UTC
-  const p=dtf('en-CA',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).formatToParts(new Date(t));
+  const p=dtf('en-CA',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date(t)); // h23 : jamais « 24 » à minuit
   const g=k=>+(p.find(x=>x.type===k)||{}).value;
   return Date.UTC(g('year'),g('month')-1,g('day'),g('hour')%24,g('minute'),g('second'));
 }
