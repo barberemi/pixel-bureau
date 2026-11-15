@@ -269,6 +269,90 @@ class PrUpdateTest(unittest.TestCase):
         self.assertEqual(body.count("<!-- bureau-fix:start -->"), 1, "rejouable sans empiler")
         self.assertIn("verts ✅", body)
 
+    BODY = ("Intro.\n\n<!-- bureau-exigences -->\n| tests | 76/76 |\n<!-- /bureau-exigences -->\n\nPlan : 76/76 tests.\n\n"
+            "<!-- bureau-fix:start -->\nbloc d'avant\n<!-- bureau-fix:end -->")
+
+    def fix_settled(self, desc=None):
+        """fix_prepare sur une PR à deux fils (T1 à corriger, T2 tranché), puis ce que fait l'agent : T1 corrigé, T2 et
+        des ids inutiles à résoudre, la description corrigée (desc) ; le dossier de travail."""
+        self.data["threads"] = [self.thread("T1"), self.thread("T2")]
+        self.data["pr"]["body"] = self.BODY
+        r = self.step("fix_prepare")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        work = os.path.join(self.tmp, ".cache", "pixel-bureau", "pr", "work", "run-1")
+        self.assertEqual(Path(work, ".bureau-pr-body.md").read_text(), self.BODY, "la description donnée à l'agent")
+        Path(work, "a.txt").write_text("a\nde la PR, renommé\n")
+        Path(work, ".bureau-fix-replies.json").write_text(json.dumps([{"thread": "T1", "fixed": True, "reply": "✅ **Corrigé** : renommé."}]))
+        Path(work, ".bureau-fix-resolve.json").write_text(json.dumps([
+            {"thread": "T2", "why": "@jim lâche le point"}, {"thread": "T1", "why": "déjà corrigé"}, {"thread": "INCONNU", "why": "x"}]))
+        Path(work, ".bureau-fix-description.md").write_text(desc if desc is not None else self.BODY.replace("76/76", "1840/1840"))
+        return work
+
+    def test_fix_corrects_the_description_and_resolves_settled_threads(self):
+        """Un relecteur demande de corriger la description, et un fil est tranché sans changement : la validation montre le
+        diff de la description et le fil résolu ; l'approbation applique la description (bloc « Corrections de review »
+        refait) et résout le fil tranché, sans réponse ; un id inconnu ou déjà corrigé ne compte pas."""
+        self.fix_settled()
+        d = self.step("fix_diff")
+        self.assertEqual(d.returncode, 0, d.stdout + d.stderr)
+        self.assertIn("1 fil(s) résolu(s) sans changement", d.stdout)
+        self.assertIn("résolu sans changement : `a.txt:2` · @jim lâche le point", d.stdout)
+        self.assertIn("📝 Description de la PR, appliquée à l'approbation", d.stdout)
+        self.assertIn("-Plan : 76/76 tests.", d.stdout)
+        self.assertIn("+Plan : 1840/1840 tests.", d.stdout)
+        self.assertNotIn("bloc d'avant", d.stdout.split("📝")[1], "le bloc « Corrections de review » n'est pas dans le diff")
+        p = self.step("fix_push")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("1 fil(s) tranché(s) résolu(s) sans changement", p.stdout)
+        self.assertIn("Description de la PR corrigée et mise à jour.", p.stdout)
+        calls = [json.loads(x) for x in Path(self.tmp, "gh.json.calls").read_text().splitlines()]
+        t2 = [c for c in calls if "t=T2" in c]
+        self.assertEqual(len(t2), 1, "T2 : résolu, sans réponse")
+        self.assertTrue(any("resolveReviewThread" in x for x in t2[0]))
+        self.assertEqual(sum(1 for c in calls if "t=INCONNU" in c), 0)
+        edit = next(c for c in calls if c[:2] == ["pr", "edit"] and "--body" in c)
+        body = edit[edit.index("--body") + 1]
+        self.assertTrue(body.startswith("Intro.\n\n<!-- bureau-exigences -->\n| tests | 1840/1840 |"), body[:120])
+        self.assertIn("Plan : 1840/1840 tests.", body)
+        self.assertEqual(body.count("<!-- bureau-fix:start -->"), 1)
+        self.assertNotIn("bloc d'avant", body)
+
+    def test_fix_description_that_loses_a_bureau_block_is_set_aside(self):
+        """Une description où un marqueur <!-- bureau-… --> a disparu : la validation le dit, la description reste."""
+        self.fix_settled(desc="Intro réécrite, sans le bloc des exigences.\n\nPlan : 1840 tests.")
+        d = self.step("fix_diff")
+        self.assertIn("Description proposée par l'agent écartée", d.stdout)
+        self.assertNotIn("📝 Description de la PR", d.stdout)
+        self.assertEqual(self.step("fix_push").returncode, 0)
+        calls = [json.loads(x) for x in Path(self.tmp, "gh.json.calls").read_text().splitlines()]
+        edit = next(c for c in calls if c[:2] == ["pr", "edit"] and "--body" in c)
+        self.assertIn("Plan : 76/76 tests.", edit[edit.index("--body") + 1])
+
+    def test_fix_description_changed_on_github_meanwhile_wins(self):
+        """La description a changé sur GitHub pendant le run : celle de GitHub est gardée, l'agent ne l'écrase pas."""
+        self.fix_settled()
+        self.assertEqual(self.step("fix_diff").returncode, 0)
+        self.data["pr"]["body"] = self.BODY.replace("Intro.", "Intro retouchée à la main.")
+        p = self.step("fix_push")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("la proposition de l'agent n'est pas appliquée", p.stdout)
+        calls = [json.loads(x) for x in Path(self.tmp, "gh.json.calls").read_text().splitlines()]
+        edit = next(c for c in calls if c[:2] == ["pr", "edit"] and "--body" in c)
+        body = edit[edit.index("--body") + 1]
+        self.assertTrue(body.startswith("Intro retouchée à la main."))
+        self.assertIn("Plan : 76/76 tests.", body)
+
+    def test_fix_with_only_settled_threads_is_not_empty(self):
+        """Rien à changer ni à répondre, seulement des fils tranchés à résoudre : la passe n'est pas vide (pas de code 9)."""
+        self.data["threads"] = [self.thread("T1")]
+        self.assertEqual(self.step("fix_prepare").returncode, 0)
+        work = os.path.join(self.tmp, ".cache", "pixel-bureau", "pr", "work", "run-1")
+        Path(work, ".bureau-fix-resolve.json").write_text(json.dumps([{"thread": "T1", "why": "tranché par @jim"}]))
+        d = self.step("fix_diff")
+        self.assertEqual(d.returncode, 0, d.stdout + d.stderr)
+        p = self.step("fix_push")
+        self.assertIn("1 fil(s) tranché(s) résolu(s) sans changement", p.stdout)
+
     def test_fix_check_without_command_says_so(self):
         self.data["threads"] = [self.thread("T1")]
         self.step("fix_prepare")

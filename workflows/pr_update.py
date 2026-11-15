@@ -36,8 +36,8 @@ Le poste 💬 retours de la chaîne d'implémentation (impl_retours.json) encha�
 sans la gate : la PR lui arrive en « dépôt#n » (sortie de chaine.py retours_pr), le n° de PR passé à « - ».
 Codes : 2 réglage ou PR refusés, 3 conflit ou pas de ticket (renvoi), 4 conflit non résolu, 5 push refusé, 9 rien à faire (renvoi), 1 autre échec.
 """
-import glob, json, os, re, shutil, stat, subprocess, sys, time
-from _lib import CFG, fil_col, get, read_json, write_json
+import difflib, glob, hashlib, json, os, re, shutil, stat, subprocess, sys, time
+from _lib import CFG, fil_col, get, read_json, write_json, write_text
 from _checks import check_run
 
 HOME = os.path.expanduser("~/.cache/pixel-bureau/pr")
@@ -533,6 +533,8 @@ def fix_prepare(repo, n, run_id):
     st["linked"] = link_deps(src, st["work"]) if src else []
     st["comments"] = list(st.get("comments") or []) + [str(c.get("body") or "") for c in (pr.get("comments") or {}).get("nodes") or []]
     st["version"] = version_of(st, tous)
+    write_text(os.path.join(st["work"], ".bureau-pr-body.md"), st.get("body") or "")  # pour l'agent : la description à corriger au besoin
+    st["body_sha"] = hashlib.sha1((st.get("body") or "").encode()).hexdigest()  # changée sur GitHub pendant le run : pas réécrite
     for k in ("body", "comments"):
         st.pop(k, None)
     st["threads"] = [t["id"] for t in ts]
@@ -586,6 +588,52 @@ def replies(st):
     return [r for r in out if isinstance(r, dict) and r.get("thread") in ids and str(r.get("reply") or "").strip()]
 
 
+DESC_MARK = re.compile(r"<!--\s*/?bureau-[\w:=-]*\s*-->")  # blocs de la description tenus par le Bureau (exigences, points…)
+
+
+def sans_bloc(body):
+    """La description sans le bloc « Corrections de review » (pr_body le repose à chaque passe)."""
+    for a, b in ((START, END), OLD):
+        body = re.sub(re.escape(a) + ".*?" + re.escape(b), "", body or "", flags=re.S)
+    return body.strip()
+
+
+def description(st):
+    """La description de la PR corrigée par l'agent (.bureau-fix-description.md : un relecteur la demande, ou la passe en
+    rend un passage faux), sans le bloc « Corrections de review » ; None sans fichier, vide ou inchangée, ou si un
+    marqueur <!-- bureau-… --> a disparu ou bougé (st["desc_refus"] : la validation le dit, la description reste)."""
+    try:
+        new, old = sans_bloc(lit(st["work"], ".bureau-fix-description.md")), sans_bloc(lit(st["work"], ".bureau-pr-body.md"))
+    except OSError:
+        return None
+    if not new or new == old:
+        return None
+    if DESC_MARK.findall(new) != DESC_MARK.findall(old):
+        st["desc_refus"] = True
+        return None
+    return new
+
+
+def a_resoudre(st):
+    """Les fils que l'agent marque résolus sans rien changer (.bureau-fix-resolve.json, [{thread, why}]) : l'auteur de
+    la remarque l'abandonne, ou la discussion l'a tranché ; seulement des fils non résolus au départ, pas déjà corrigés."""
+    try:
+        out = json.loads(lit(st["work"], ".bureau-fix-resolve.json"))
+    except (OSError, ValueError):
+        return []
+    ids, res = set(st.get("threads", [])) - {r["thread"] for r in replies(st) if r.get("fixed")}, []
+    for x in out if isinstance(out, list) else []:
+        if isinstance(x, dict) and x.get("thread") in ids and x["thread"] not in {y["thread"] for y in res}:
+            res.append({"thread": x["thread"], "why": re.sub(r"\s+", " ", str(x.get("why") or "")).strip()[:200]})
+    return res
+
+
+def ou(st, tid):
+    """« fichier:ligne » d'un fil, pour la validation."""
+    f = next((x for x in st.get("fils") or [] if x.get("id") == tid), {})
+    return f"`{f.get('path') or '?'}:{f.get('line') or '·'}`"
+
+
 def declares(st):
     """Les fichiers nouveaux que l'agent a déclarés (.bureau-fix-new.txt, un chemin par ligne) : seuls ceux-là sont commités."""
     try:
@@ -615,12 +663,12 @@ def staged(st):
 def fix_diff(repo, n, run_id):
     """Ce que la validation montre : fichiers changés, diff tronqué, réponse prévue à chaque fil ; rien du tout : code 9."""
     st = load(run_id)
-    files, rs = staged(st), replies(st)
+    files, rs, desc, sol = staged(st), replies(st), description(st), a_resoudre(st)
     by = {r["thread"]: r["reply"] for r in rs}
     st["cols"] = {t: fil_col(by.get(t)) for t in st.get("threads", [])}  # la colonne de chaque fil, pour le Kanban du 3e étage
     st["reponses"] = {t: str(by[t])[:600] for t in st.get("threads", []) if by.get(t)}  # la réponse prévue, pour « Retours · bilan »
     save(run_id, st)
-    if not files and not rs:
+    if not files and not rs and not desc and not sol:
         cleanup(st)
         fail(9, "L'agent n'a rien changé ni rien répondu : rien à pousser.")
     diff = run("git", "diff", "--cached", "--stat", cwd=st["work"]) + "\n\n" + run("git", "diff", "--cached", "-U2", cwd=st["work"])
@@ -639,13 +687,19 @@ def fix_diff(repo, n, run_id):
         "⚠ **Fichiers nouveaux non déclarés, laissés hors du commit** : " + ", ".join(f"`{x}`" for x in st["ecartes"]) + "\n\n" if st.get("ecartes") else "")
     if st.get("ignores"):
         warn += f"🚫 **{ignores(st['ignores'])}** (ni membre ni collaborateur du dépôt, hors de l'équipe) : jamais donnés à l'agent.\n\n"
+    if st.get("desc_refus"):
+        warn += "⚠ **Description proposée par l'agent écartée** : un bloc tenu par le Bureau y a disparu ou bougé ; la description reste telle quelle.\n\n"
+    lines += [f"- résolu sans changement : {ou(st, x['thread'])} · {x['why'] or 'tranché'}" for x in sol]
+    old = sans_bloc(lit(st["work"], ".bureau-pr-body.md")) if desc else ""
+    dd = "\n".join(difflib.unified_diff(old.splitlines(), desc.splitlines(), "avant", "après", lineterm="", n=1)) if desc else ""
     print(warn + (head + "\n\n" if head else "") + ver + (summary + "\n\n" if summary else "")
           + (f"**Commit** : `{msg.splitlines()[0]}`\n\n" if files else "")
           + (f"🔁 **Review redemandée** après le push à {', '.join('@' + x for x in st['reviewers'])}\n\n" if files and st.get("reviewers") else "")
           + f"**{len(files)} fichier(s) changé(s)**\n```\n{diff[:5000]}\n```\n\n"
           + f"**Réponses prévues ({len(rs)} sur {len(st.get('threads', []))} fils"
           + (f" et {len(st.get('generaux') or [])} commentaire(s) hors fil, regroupés en un commentaire de la PR" if st.get("generaux") else "")
-          + ")**\n" + "\n".join(lines))
+          + (f", {len(sol)} fil(s) résolu(s) sans changement" if sol else "") + ")**\n" + "\n".join(lines)
+          + (f"\n\n**📝 Description de la PR, appliquée à l'approbation**\n```diff\n{dd[:4000]}\n```" if desc else ""))
 
 
 def commit_message(st):
@@ -732,6 +786,8 @@ def fix_push(repo, n, run_id, agent="", model=""):
         if ok and r.get("fixed") and not gh_ok(["api", "graphql", "-f", "query=" + RESOLVE_Q, "-F", "t=" + r["thread"]]):
             unresolved += 1
         done, failed = done + ok, failed + (not ok)
+    sol = a_resoudre(st)
+    tranches = sum(gh_ok(["api", "graphql", "-f", "query=" + RESOLVE_Q, "-F", "t=" + x["thread"]]) for x in sol)
     hors = [r for r in rs if r["thread"] in gens]
     if hors:  # les commentaires hors fil : une seule réponse, un commentaire de la PR qui cite chacun
         body = "\n\n".join(f"> **@{gens[r['thread']]['who']}** ({gens[r['thread']]['quoi']}) : "
@@ -749,20 +805,24 @@ def fix_push(repo, n, run_id, agent="", model=""):
         ok = [x for x in st["reviewers"] if x not in ko]
         revs = ((f" Review redemandée à {', '.join('@' + x for x in ok)}." if ok else "")
                 + (f" Review non redemandée à {', '.join('@' + x for x in ko)} (à faire sur GitHub)." if ko else ""))
-    desc = ""
-    if files or done:  # bloc « Corrections de review » de la description, best-effort
+    desc, neuve = "", description(st)
+    if files or done or neuve or tranches:  # description (celle de l'agent, validée) et bloc « Corrections de review », best-effort
         try:
             body = json.loads(run("gh", "pr", "view", n, "-R", repo, "--json", "body")).get("body") or ""
-            run("gh", "pr", "edit", n, "-R", repo, "--body", pr_body(body, st, rs, sha))
-            desc = " Description de la PR mise à jour."
+            garde = neuve and hashlib.sha1(body.encode()).hexdigest() != st.get("body_sha")  # changée pendant le run : la tienne gagne
+            run("gh", "pr", "edit", n, "-R", repo, "--body", pr_body(neuve if neuve and not garde else body, st, rs, sha))
+            desc = (" Description de la PR corrigée et mise à jour." if neuve and not garde else
+                    " Description de la PR mise à jour (changée sur GitHub pendant le run : la proposition de l'agent n'est pas appliquée)."
+                    if garde else " Description de la PR mise à jour.")
         except (RuntimeError, ValueError):
             desc = " Description de la PR non mise à jour."
     cleanup(st)
-    if files or done:  # pour le ticket Jira (fix_jira_*) : ce qui a vraiment été posté
+    if files or done or tranches:  # pour le ticket Jira (fix_jira_*) : ce qui a vraiment été posté
         st["posted"] = {"files": len(files), "replies": done, "sha": sha}
     save(run_id, st)
     print(f"{repo}#{n} : {pushed}{done} réponse(s) postée(s){f', {failed} en échec' if failed else ''}"
-          f"{f', {unresolved} fil(s) corrigé(s) non marqué(s) résolu(s) (à faire sur GitHub)' if unresolved else ''}.{desc}{ci}{revs}")
+          f"{f', {unresolved} fil(s) corrigé(s) non marqué(s) résolu(s) (à faire sur GitHub)' if unresolved else ''}"
+          f"{f', {tranches} fil(s) tranché(s) résolu(s) sans changement' if tranches else ''}.{desc}{ci}{revs}")
 
 
 def fix_jira_cle(repo, n, run_id):

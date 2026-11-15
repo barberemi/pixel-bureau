@@ -60,6 +60,13 @@ test('à lancer, Retours : les PR qui ont des fils à traiter (ou des changement
   const r = J('mtRows("retours")');
   assert.deepEqual(r.map(x => x.name), ['#12 DM-2 b']);
   assert.match(r[0].sub, /^3 fils à traiter/);
+  const t0 = run('JSON.stringify(TEAM)');
+  try { // une PR sans fil mais avec une remarque hors fil (texte d'une review) : à traiter aussi
+    run(`TEAM.people[0].prs.forEach(p => { p.threads = 0; p.remarques = 2; p.review = 'commented'; });`);
+    assert.equal(J('mtRows("retours")[0].sub'), '2 remarques à traiter');
+    run(`TEAM.people[0].prs.forEach(p => { p.threads = 1; p.remarques = 1; });`);
+    assert.equal(J('mtRows("retours")[0].sub'), '1 fil · 1 remarque à traiter');
+  } finally { run(`TEAM = ${t0};`); }
 });
 
 test('à lancer, Retours : seulement les PR du boss (nom sans accents ni ordre, ou son login GitHub)', () => {

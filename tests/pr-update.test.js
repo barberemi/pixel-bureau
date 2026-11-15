@@ -51,6 +51,12 @@ test('« 🛠 Corriger » (#75) : modèle du Bureau dès qu\'il reste des fils n
   assert.equal(btns({n: 7, repo: 'acme/api', threads: 1})[0].b['data-kronn-action'], 'bureau-fixpr', 'autre dépôt aussi');
   assert.equal(btns({threads: 0, review: 'changes'}).length, 0, 'aucun fil non résolu : rien à corriger');
   assert.equal(btns({review: 'changes'}).length, 1, 'fils inconnus mais changements demandés');
+  // remarques hors fil (texte d'une review, commentaire de la PR) : le bouton aussi, sans aucun fil
+  const rem = btns({threads: 0, remarques: 1, review: 'changes'});
+  assert.equal(rem.length, 1, 'une remarque hors fil suffit');
+  assert.match(rem[0].sub, /corrige la remarque de review/);
+  assert.match(btns({threads: 2, remarques: 3})[0].sub, /corrige les 2 fils et les 3 remarques de review/);
+  assert.match(btns({threads: 1})[0].sub, /corrige le fil de review/);
   run('ACTIONS.fix_pr = false; ACTS.prs.push({id: CFG.github_repo + "#16", n: "16", repo: CFG.github_repo})');
   const main = J('CFG.github_repo');
   assert.equal(btns({repo: main, review: 'changes'})[0].b['data-kronn-action'], 'bureau-fix', 'sans le modèle : launch.fix comme avant');

@@ -229,6 +229,10 @@ call(" ".join(a))
 d = json.loads(Path({data!r}).read_text())
 key = ("open" if "open" in a else "merged") if a[0] == "pr" else "releases" if a[0] == "release" else \\
       "branch" if "Deploy_Branch" in " ".join(a) else "staging" if "NONPROD" in " ".join(a) or "staging" in " ".join(a) else "prod"
+if a[:2] == ["api", "graphql"]:  # requête des PR ouvertes d'un dépôt (fils, CI, labels, remarques) : d["api"]["graphql"]
+    v = (d.get("api") or {{}}).get("graphql")
+    print(v if v is not None else "")
+    sys.exit(0 if v is not None else 1)
 if a[0] == "api" and "--jq" in a:  # gh api <chemin> --jq … (#74 : tête d'une base, retard d'une PR) : d["api"][chemin]
     v = (d.get("api") or {{}}).get(a[1])
     print(v if v is not None else "")
@@ -563,12 +567,52 @@ print(json.dumps(val))
         self.assertEqual(out["open"], [])
         self.assertTrue(out["errors"])
 
+    @staticmethod
+    def gql(*prs):
+        """Réponse GraphQL des PR ouvertes d'un dépôt : (n°, fils non résolus, mergeable[, CI[, labels[, reviews[, commentaires]]]])."""
+        def node(n, fils, merge, ci=None, labels=(), reviews=(), comments=()):
+            return {"number": n, "mergeable": merge, "reviewThreads": {"nodes": [{"isResolved": False}] * fils + [{"isResolved": True}]},
+                    "labels": {"nodes": [{"name": x} for x in labels]},
+                    "commits": {"nodes": [{"commit": {"statusCheckRollup": {"state": ci} if ci else None}}]},
+                    "reviews": {"nodes": list(reviews)}, "comments": {"nodes": list(comments)}}
+        return json.dumps({"data": {"repository": {"pullRequests": {"nodes": [node(*p) for p in prs]}}}})
+
+    def test_github_snapshot_counts_the_remarks_fix_would_handle(self):
+        """Remarques hors fil (pour « Corriger ») : la règle du workflow (pr_update.generaux) : texte d'une review
+        « changements demandés » ou « commentaire », ou commentaire de la PR, d'un membre ou de l'équipe, pas d'un bot,
+        après la dernière réponse générale du Bureau ; une approbation, un texte vide ou un compte extérieur ne comptent pas."""
+        sig = "\n\n— 🤖 *Corrections automatiques · Le Bureau (ClaudeCode) · Version 2*"
+        who = lambda login, assoc="MEMBER", typ="User": {"author": {"login": login, "__typename": typ}, "authorAssociation": assoc}
+        reviews = [dict(who("adrien"), state="CHANGES_REQUESTED", body="Avant la réponse", submittedAt="2026-11-13T09:00:00Z"),
+                   dict(who("adrien"), state="CHANGES_REQUESTED", body="⛔ Recaler la doc", submittedAt="2026-11-13T12:00:00Z"),
+                   dict(who("docroms"), state="COMMENTED", body="", submittedAt="2026-11-13T12:01:00Z"),
+                   dict(who("cedrick"), state="APPROVED", body="GG", submittedAt="2026-11-13T12:02:00Z"),
+                   dict(who("inconnu", "NONE"), state="CHANGES_REQUESTED", body="Fais ceci", submittedAt="2026-11-13T12:03:00Z")]
+        comments = [dict(who("moi"), body="> @adrien ...\n\n✅ Corrigé" + sig, createdAt="2026-11-13T10:00:00Z"),
+                    dict(who("docroms"), body="Et le brouillon ?", createdAt="2026-11-13T12:05:00Z"),
+                    dict(who("copilot", "NONE", "Bot"), body="Résumé", createdAt="2026-11-13T12:06:00Z"),
+                    dict(who("pam", "NONE"), body="Vu avec l'équipe", createdAt="2026-11-13T12:07:00Z")]
+        pr = dict(self.gh_pr(16, "DM-1 menu"), baseRefName="main", headRefOid="h1")
+        self.fake_gh({"releases": [], "staging": [], "prod": [], "api": {"graphql": self.gql((16, 1, "MERGEABLE", None, [], reviews, comments))},
+                      "by_repo": {"acme/web": {"open": [pr], "merged": []}}})
+        out = self.run_script("github_snapshot.py", github={"repo": "acme/web"}, team_github=["pam"])
+        self.assertEqual((out["open"][0]["threads"], out["open"][0]["remarques"]), (1, 3))  # adrien 12:00, docroms 12:05, pam (équipe)
+        # la même PR lue par le workflow « Corriger » : autant de remarques hors fil
+        sys.path.insert(0, os.path.join(ROOT, "workflows"))
+        os.environ["BUREAU_CONFIG"] = os.path.join(self.tmp, "bureau.config.json")
+        try:
+            import importlib
+            pu = importlib.import_module("pr_update")
+        finally:
+            sys.path.pop(0)
+        self.assertEqual(len(pu.generaux({"reviews": {"nodes": reviews}, "comments": {"nodes": comments}}, {"pam", "moi"})), 3)
+
     def test_github_snapshot_merge_state_and_behind_cached(self):
         """#74 : conflit (DIRTY) et commits de retard sur la base ; la comparaison n'est refaite que si la PR ou sa base bougent."""
         pr = dict(self.gh_pr(16, "DM-1 menu"), baseRefName="main", headRefOid="h1")
         pr2 = dict(self.gh_pr(17, "DM-2 pied"), baseRefName="main", headRefOid="h2")
         api = {"repos/acme/web/commits/main": "m1", "repos/acme/web/compare/m1...h1": "0", "repos/acme/web/compare/m1...h2": "4",
-               "graphql": '[[16, 9, "CONFLICTING"], [17, 0, "MERGEABLE"]]'}  # fils non résolus et conflit, une requête par dépôt
+               "graphql": self.gql((16, 9, "CONFLICTING"), (17, 0, "MERGEABLE"))}  # fils non résolus et conflit, une requête par dépôt
         self.fake_gh({"releases": [], "staging": [], "prod": [], "api": api, "by_repo": {"acme/web": {"open": [pr, pr2], "merged": []}}})
         out = self.run_script("github_snapshot.py", github={"repo": "acme/web"})
         got = {p["number"]: (p["merge"], p["behind"], p["base"]) for p in out["open"]}
@@ -585,7 +629,7 @@ print(json.dumps(val))
         """CI du dernier commit (requête des fils) ; adresse de l'env de branche lue seulement sur une PR qui porte le label
         d'env, avec un motif réglé (env.url) ; rien sans motif ; champs absents quand ils sont inconnus."""
         prs = [dict(self.gh_pr(n, f"DM-{n} x"), baseRefName="main", headRefOid=f"h{n}") for n in (16, 17, 18)]
-        api = {"graphql": '[[16, 0, "MERGEABLE", "SUCCESS", ["env-branch"]], [17, 0, "MERGEABLE", "FAILURE", []], [18, 0, "MERGEABLE", null, ["env-branch"]]]',
+        api = {"graphql": self.gql((16, 0, "MERGEABLE", "SUCCESS", ["env-branch"]), (17, 0, "MERGEABLE", "FAILURE", []), (18, 0, "MERGEABLE", None, ["env-branch"])),
                "repos/acme/web/issues/16/comments?per_page=100": '["2026-10-27T09:42:00Z", "https://www.ew16.testing.example.com"]',
                "repos/acme/web/issues/18/comments?per_page=100": "null"}
         self.fake_gh({"releases": [], "staging": [], "prod": [], "api": api, "by_repo": {"acme/web": {"open": prs, "merged": []}}})
@@ -601,7 +645,7 @@ print(json.dumps(val))
         self.assertIn("issues/16/comments?per_page=100 --jq [.[]|select(.body|test(", calls)  # filtre jq : seule l'adresse sort de gh
         Path(os.path.join(self.tmp, "gh.json.calls")).write_text("")
         out = self.run_script("github_snapshot.py", github={"repo": "acme/web"})
-        self.assertNotIn("comments", Path(os.path.join(self.tmp, "gh.json.calls")).read_text())  # sans motif : rien lu
+        self.assertNotIn("/comments", Path(os.path.join(self.tmp, "gh.json.calls")).read_text())  # sans motif : aucun commentaire lu (issues/<n>/comments)
         self.assertNotIn("env_url", out["open"][0])
 
     def test_github_snapshot_default_repos_are_main_and_deploys(self):

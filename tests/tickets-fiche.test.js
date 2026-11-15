@@ -40,6 +40,7 @@ test('« Ses autres PR » : groupe par état de review, titre sans préfixe, tic
   assert.match(h, /data-pr="[^"]*#1432"[^>]*>#1432<\/a><a class="tk-gh" href="https:\/\/x\/1432"[^>]*>↗<\/a><a class="tk-key tk-cite"[^>]*DM-6305[^>]*>DM-6305<\/a><span class="tk-comp">Devis<\/span>/);
   const st = pr({n: 5, title: 'x', review: 'approved', conflict: true, behind: 3, threads: 4});
   assert.match(st, /⛔ conflit.*⟳ 3 de retard.*💬 4 fils/);
+  assert.match(pr({n: 7, title: 'x', review: 'changes', threads: 1, remarques: 2}), /💬 1 fil.*📝 2 remarques/); // remarques hors fil, pour « Corriger »
   assert.doesNotMatch(pr({n: 6, title: 'x', review: 'approved', behind: 0, threads: 0}), /prm/);
   assert.match(h, /<div class="tk-t">Corriger le tri<\/div>/);
   assert.match(h, /activité il y a 2 mois/);
