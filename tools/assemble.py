@@ -150,16 +150,19 @@ def demo_config():
     return json.loads(Path(p("tests", "fixtures", "bureau.config.json")).read_text())
 
 
-def cron_hours(cfg):
+def cron_hours(cfg, veille=False):
     """Heures UTC où tournent les crons du Bureau (champ « heures » de leurs expressions cron, que Kronn lit en UTC) :
     les heures de bureau (rhythm.office_hours, heure locale de rhythm.timezone), 2 h avant et 1 h après, été comme hiver.
-    Paris, 8h-20h : « 4-20 ». Une plage qui passe minuit UTC devient deux plages (« 13-23,0-4 »)."""
+    Paris, 8h-20h : « 4-20 ». Une plage qui passe minuit UTC devient deux plages (« 13-23,0-4 »).
+    veille : les crons qui montrent ce qui tourne (@@cron_veille@@ : live, office, team, bilans des étages) vont jusqu'à
+    rhythm.veille (heure locale, défaut 24 : minuit), jamais avant la fin des autres. Paris : « 4-22 »."""
     r = (cfg or {}).get("rhythm") or {}
     tz = ZoneInfo(r.get("timezone") or "Europe/Paris")
     h0, h1 = (r.get("office_hours") or [8, 20])[:2]
+    last = max(h1 + 1, (r.get("veille") or 24) - 1) if veille else h1 + 1  # dernière heure locale où un cron tourne
     year = datetime.now().year
     offs = [tz.utcoffset(datetime(year, m, 1)).total_seconds() / 3600 for m in (1, 7)]  # hiver et été
-    a, b = math.floor(h0 - 2 - max(offs)), math.ceil(h1 + 1 - min(offs))
+    a, b = math.floor(h0 - 2 - max(offs)), math.ceil(last - min(offs))
     if b - a >= 23:
         return "*"
     a, b = a % 24, b % 24
@@ -174,7 +177,7 @@ def cron_schedules(cfg=None):
         path = p("workflows", "templates", key + ".json")
         if os.path.exists(path):
             s = (json.loads(Path(path).read_text())["definition"].get("trigger") or {}).get("schedule")
-            out[key] = s.replace("@@cron_hours@@", cron_hours(cfg)) if s else s
+            out[key] = s.replace("@@cron_hours@@", cron_hours(cfg)).replace("@@cron_veille@@", cron_hours(cfg, True)) if s else s
     return out
 
 

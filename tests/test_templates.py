@@ -266,11 +266,35 @@ class TemplatesTest(unittest.TestCase):
         self.assertEqual(hours("Asia/Kolkata", [9, 18]), "1-14")  # décalage d'une demi-heure
         self.assertEqual(hours("UTC", [0, 24]), "*")
         c = colleague(rhythm={**BASE["rhythm"], "timezone": "America/New_York", "office_hours": [9, 18]})
+        courrier = templates.render(TPL["courrier"], c)
+        self.assertEqual(courrier["trigger"]["schedule"], "*/10 11-23,0 * * *")
+        self.assertEqual(templates.assemble.cron_schedules(c)["payroll"], "7 11-23,0 * * *")  # le calendrier de la page aussi
+        back = templates.templatize("courrier", "workflow", courrier, c)["definition"]  # export : l'emplacement revient
+        self.assertEqual(back["trigger"]["schedule"], "*/10 @@cron_hours@@ * * *")
+
+    def test_veille_keeps_what_runs_visible_until_midnight(self):
+        """Ce qui montre ce qui tourne (runs, étages, équipe, bilans des étages) tourne jusqu'à rhythm.veille (défaut :
+        minuit, heure du bureau) ; le reste garde les heures de bureau. Jamais avant la fin des autres crons."""
+        veille = lambda r: templates.assemble.cron_hours({"rhythm": {"timezone": "Europe/Paris", "office_hours": [8, 20], **r}}, True)
+        self.assertEqual(veille({}), "4-22")  # Paris : jusqu'à 23 h 59 l'hiver (UTC+1), 0 h 59 l'été
+        self.assertEqual(veille({"veille": 23}), "4-21")
+        self.assertEqual(veille({"veille": 21}), "4-20")  # avant la fin des autres : comme eux
+        self.assertEqual(templates.assemble.cron_hours({"rhythm": {"timezone": "America/New_York", "office_hours": [9, 18]}}, True), "11-23,0-4")
+        VEILLE = {"live", "office", "team", "chaine_bilan", "redaction_bilan", "retours_bilan"}
+        for k, t in TPL.items():
+            s = ((t.get("definition") or {}).get("trigger") or {}).get("schedule") or ""
+            if "@@cron_" in s:
+                self.assertEqual("@@cron_veille@@" in s, k in VEILLE, k)
+        c = colleague()
+        sch = templates.assemble.cron_schedules(c)
+        self.assertEqual((sch["live"], sch["team"], sch["courrier"]), ("* 4-22 * * *", "*/10 4-22 * * 1-5", "*/10 4-20 * * *"))
         live = templates.render(TPL["live"], c)
-        self.assertEqual(live["trigger"]["schedule"], "* 11-23,0 * * *")
-        self.assertEqual(templates.assemble.cron_schedules(c)["team"], "*/10 11-23,0 * * 1-5")  # le calendrier de la page aussi
-        back = templates.templatize("live", "workflow", live, c)["definition"]  # export : l'emplacement revient
-        self.assertEqual(back["trigger"]["schedule"], "* @@cron_hours@@ * * *")
+        self.assertEqual(live["trigger"]["schedule"], "* 4-22 * * *")
+        back = templates.templatize("live", "workflow", live, c)["definition"]  # export : l'emplacement de la veille revient
+        self.assertEqual(back["trigger"]["schedule"], "* @@cron_veille@@ * * *")
+        c21 = colleague(rhythm={**BASE["rhythm"], "veille": 21})  # veille et heures de bureau égales : le modèle tranche
+        back = templates.templatize("live", "workflow", templates.render(TPL["live"], c21), c21)["definition"]
+        self.assertEqual(back["trigger"]["schedule"], "* @@cron_veille@@ * * *")
 
 
 if __name__ == "__main__":

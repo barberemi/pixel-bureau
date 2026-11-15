@@ -7,7 +7,7 @@
   "project_id": "@@kronn.project_id@@",
   "trigger": {
    "type": "Cron",
-   "schedule": "4,19,34,49 @@cron_hours@@ * * *"
+   "schedule": "4,19,34,49 @@cron_veille@@ * * *"
   },
   "steps": [
    {

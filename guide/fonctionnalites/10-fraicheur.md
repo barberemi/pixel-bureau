@@ -2,7 +2,7 @@
 
 Le badge de l'en-tête dit quand les prochaines données arrivent ; au survol, l'état de chaque source.
 
-- Compte à rebours jusqu'au prochain passage du cron live (toutes les minutes), « ✓ à jour » à l'arrivée, « en pause » hors des heures des crons.
+- Compte à rebours jusqu'au prochain passage du cron live (toutes les minutes), « ✓ à jour » à l'arrivée, « en pause » hors des heures des crons. Ce qui montre ce qui tourne (direct et ses étages, journée, équipe, pages bilan de la chaîne, de la rédaction et des retours) passe jusqu'à minuit, heure du bureau (`rhythm.veille`, défaut 24) : un ticket, une revue ou une correction lancés à 22 h se voient aux étages. Le reste (fiche de paie, canard, absences, courrier, relevé et bilan du Support) suit les heures de bureau, 2 h avant l'ouverture et 1 h après la fermeture.
 - Survol : chaque source (direct, journée, équipe, fiche de paie, canard d'équipe, absences, courrier, relevé Support quand ils sont branchés) avec son âge et son prochain passage estimé (calendrier du cron + durée de son dernier run), en rouge si elle est en retard.
 - Sous un cron, en retrait (↳), les parties qu'il publie en plus : les 1er, 2e et 3e étages sous Direct (quand ils sont installés), les [services extérieurs](33-services.md) sous Bureau. Quand une étape du cron casse, leur ligne dit laquelle ne bouge plus ; elles n'ont pas de bouton, celui du cron les relance toutes.
 - **↻ Relancer** sur une ligne en échec ou en retard, **↻** discret sur les autres (rafraîchir sans attendre) : relance tout de suite le cron de cette source, après confirmation dans la carte Kronn ; refusé s'il tourne déjà. Pas pour Direct (passe chaque minute), ni en mode TV.
