@@ -29,7 +29,7 @@ def page():
     if err:  # un plan cassé ferait disparaître des personnages ou bloquerait des chemins : on ne publie pas
         sys.exit(f"plan invalide ({len(err)} erreur(s)) : python3 tools/plan.py check")
     try:  # sans les instantanés de démo : une page vide attend ses propres données ; trop lourde, Kronn la refuserait
-        html = assemble.publishable()
+        html = assemble.publishable(CFG)  # la config passée (BUREAU_CONFIG), celle du plan vérifié juste avant
     except assemble.PageTooBig as e:
         sys.exit(f"page non publiée : {e}")
     print("page", call("PUT", f"/pages/{PAGE_ID}/html", {"html": html}).get("success"), f"({len(html.encode())} octets)")

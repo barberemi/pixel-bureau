@@ -118,5 +118,27 @@ class PublishPageSizeTest(unittest.TestCase):
         self.assertEqual(calls, [], "rien d'envoyé à Kronn")
 
 
+    def test_publish_assembles_the_page_with_the_given_config(self):
+        """BUREAU_CONFIG : la page est assemblée avec la config passée, celle dont le plan vient d'être vérifié (et pas le
+        bureau.config.json du dossier : une page sans thème ni personnages était partie en prod depuis un worktree)."""
+        tmp = tempfile.mkdtemp()
+        path = os.path.join(tmp, "bureau.config.json")
+        Path(path).write_text(json.dumps(dict(FIXTURE, page_id="page-de-test")))
+        os.environ["BUREAU_CONFIG"] = path
+        try:
+            publish = importlib.reload(importlib.import_module("publish"))
+            seen = []
+            publish.call = lambda *a, **k: {"success": True}
+            real = self.assemble.publishable
+            self.assemble.publishable = lambda cfg=None: seen.append(cfg) or "<html></html>"
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    publish.page()
+            finally:
+                self.assemble.publishable = real
+        finally:
+            os.environ.pop("BUREAU_CONFIG", None)
+        self.assertEqual([c and c.get("page_id") for c in seen], ["page-de-test"])
+
 if __name__ == "__main__":
     unittest.main()

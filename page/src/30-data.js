@@ -146,10 +146,16 @@ const empChar=r=>r&&(chars.find(x=>x.team&&x.team.id===r.p.id)||(typeof personCh
 // discussions ouvertes par le Bureau (questions aux agents « Le Bureau · … », le canard « 🦆 … ») : jamais des visiteurs,
 // comme is_bureau_disc de workflows/_lib.py
 const bureauDisc=d=>{const t=String((d&&d.title)||'');return t.startsWith('Le Bureau')||t.startsWith('🦆');};
-// minuit (heure de Paris) du jour de t ; juste aussi les jours de changement d'heure (minuit est avant le changement, à 2h ou 3h)
+// minuit (heure du bureau, rhythm.timezone) du jour de t, quel que soit le fuseau (à l'ouest de l'UTC aussi : New York) ;
+// juste aussi les jours de changement d'heure (minuit est avant le changement, à 2h ou 3h)
+function tzWall(t){ // l'heure murale du bureau à l'instant t, écrite comme un instant UTC
+  const p=dtf('en-CA',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).formatToParts(new Date(t));
+  const g=k=>+(p.find(x=>x.type===k)||{}).value;
+  return Date.UTC(g('year'),g('month')-1,g('day'),g('hour')%24,g('minute'),g('second'));
+}
 function parisMidnight(t){
-  const u=Date.parse(dtf('en-CA',{}).format(new Date(t))+'T00:00:00Z'), p=parisHM(u);
-  return u-(p.h*60+p.m)*60e3;
+  const u=Date.parse(dtf('en-CA',{}).format(new Date(t))+'T00:00:00Z'), m=u-(tzWall(u)-u); // décalage pris à minuit UTC du jour
+  return u-(tzWall(m)-m); // puis à minuit local (le décalage peut changer entre les deux : jour de changement d'heure)
 }
 function parisHM(t){
   const p=dtf('en-GB',{hour:'numeric',minute:'numeric',weekday:'short',hour12:false}).formatToParts(new Date(t));

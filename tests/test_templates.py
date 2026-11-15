@@ -272,6 +272,12 @@ class TemplatesTest(unittest.TestCase):
         back = templates.templatize("courrier", "workflow", courrier, c)["definition"]  # export : l'emplacement revient
         self.assertEqual(back["trigger"]["schedule"], "*/10 @@cron_hours@@ * * *")
 
+    def test_frequent_crons_run_one_at_a_time(self):
+        """live (chaque minute), office et team (10 min) : un seul run à la fois (concurrency_limit 1 : Kronn refuse le
+        lancement suivant au lieu de faire tourner deux runs qui écrivent les mêmes caches et datasets)."""
+        for k in ("live", "office", "team", "review_cron"):
+            self.assertEqual(TPL[k]["definition"].get("concurrency_limit"), 1, k)
+
     def test_veille_keeps_what_runs_visible_until_midnight(self):
         """Ce qui montre ce qui tourne (runs, étages, équipe, bilans des étages) tourne jusqu'à rhythm.veille (défaut :
         minuit, heure du bureau) ; le reste garde les heures de bureau. Jamais avant la fin des autres crons."""
