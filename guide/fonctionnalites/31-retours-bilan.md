@@ -41,4 +41,4 @@ Au fond du couloir, à gauche, le tableau noir **RETOURS DU JOUR**, jumeau de ce
 
 L'état de chaque correction (`~/.cache/pixel-bureau/pr/runs/<run>.json`, écrit par `pr_update.py`) garde la PR, ses fils, leur colonne, la réponse prévue et le verdict des contrôles. Le cron (sans jetons) a deux étapes, chacune relançable seule : `releve` lit dans Kronn ce que lui seul sait (coût et modèle de l'agent, attente à ta validation, résultat, déroulé) et le joint à l'état de la PR ; un run fini n'est relu qu'une fois et reste en cache (`~/.cache/pixel-bureau/retours_bilan/`) quand Kronn l'oublie. `bilan` publie le dataset `retours_bilan`.
 
-Après la mise à jour : `python3 tools/install.py` (crée la page et le cron), puis `python3 tools/publish.py all`.
+Après la mise à jour : `git pull && python3 tools/upgrade.py` (crée la page et le cron s'ils manquent, puis publie).

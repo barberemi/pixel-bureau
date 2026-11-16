@@ -64,6 +64,25 @@ class PublishWorkflowsTest(unittest.TestCase):
         self.assertNotIn(("PUT", "/workflows/5e990001-0000-0000-0000-000000000000"), calls)
         self.assertIn("postes pas encore installés (tri, logs, cause, reponse, relecture)", out.getvalue())
 
+    def test_all_publishes_the_workflows_then_the_page(self):
+        """publish.py all : les workflows d'abord (un bouton ajouté y reçoit son id), la page ensuite, assemblée avec lui."""
+        tmp = tempfile.mkdtemp()
+        path = os.path.join(tmp, "bureau.config.json")
+        Path(path).write_text(json.dumps(FIXTURE))
+        os.environ["BUREAU_CONFIG"] = path
+        try:
+            sys.path.insert(0, os.path.join(ROOT, "tools"))
+            publish = importlib.reload(importlib.import_module("publish"))
+            order = []
+            publish.workflows, publish.page = lambda: order.append("workflows"), lambda: order.append("page")
+            publish.main(["all"])
+            self.assertEqual(order, ["workflows", "page"])
+            order.clear()
+            publish.main([])  # all par défaut
+            self.assertEqual(order, ["workflows", "page"])
+        finally:
+            os.environ.pop("BUREAU_CONFIG", None)
+
 
 
 class PublishPageSizeTest(unittest.TestCase):

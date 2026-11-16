@@ -41,7 +41,7 @@ En fin de sprint, sans session Claude :
 3. Quand c'est prêt, la fiche résume la partie : **📋 Copier les données**. Si le cadre de Kronn refuse la copie, le texte s'affiche pour un Cmd+C.
 4. Dans Sprint Quest, sur l'écran titre, l'hôte colle le texte, vérifie l'aperçu, puis **✓ Charger dans la partie**. Si le pack d'équipe a un `sprintquest.json`, l'équipe du jeu (persos, apparences, stats rigolotes) arrive avec le sprint (« équipe de 10 » dans la fiche et l'aperçu).
 
-Une source en échec (gh absent, page de statut injoignable) laisse un avertissement dans [Fraîcheur](10-fraicheur.md), sous « Sprint Quest (borne) », et sa part du jeu se replie (pas de question sur les PR, pas d'hydre). Le bouton n'existe qu'avec Jira connecté ; après la mise à jour : `publish.py workflows` (crée le workflow), puis `publish.py page`.
+Une source en échec (gh absent, page de statut injoignable) laisse un avertissement dans [Fraîcheur](10-fraicheur.md), sous « Sprint Quest (borne) », et sa part du jeu se replie (pas de question sur les PR, pas d'hydre). Le bouton n'existe qu'avec Jira connecté ; après la mise à jour : `git pull && python3 tools/upgrade.py` (crée le workflow, puis publie les workflows et la page).
 
 ## Régler l'adresse de la borne
 

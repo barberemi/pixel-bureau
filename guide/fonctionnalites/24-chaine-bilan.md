@@ -50,4 +50,4 @@ Réglages (`impl` de la config ou du pack) :
 | `bilan_depuis` | aucune | date (`2026-11-05`) : les runs d'avant sortent du rapport |
 | `bilan_exclus` | aucun | débuts d'ids de runs à écarter (des essais de la chaîne qui ne sont pas marqués comme tels) | Un run d'avant l'historique est repris de Kronn seulement (marqué « partiel » : ni schéma ni exigences).
 
-Après la mise à jour : `python3 tools/install.py` (crée la page et le cron), puis `python3 tools/publish.py all`.
+Après la mise à jour : `git pull && python3 tools/upgrade.py` (crée la page et le cron s'ils manquent, puis publie).

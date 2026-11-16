@@ -2,7 +2,9 @@
 
   python3 tools/publish.py page        # assemble la page (sans démo) et la pousse dans la page Le Bureau (et les pages à part : « Chaîne · bilan », « Support · bilan », « Rédaction · bilan »)
   python3 tools/publish.py workflows   # pousse les skills du Bureau (skills/*.md), puis le rendu des modèles (workflows/templates) : étapes, scripts, crons, QP
-  python3 tools/publish.py all
+  python3 tools/publish.py all         # les workflows d'abord, puis la page (un nouveau bouton a alors son id)
+
+Pour une mise à jour du dépôt, tools/upgrade.py crée d'abord ce qui manque (datasets, pages à part, workflows), puis publie.
 """
 import json, os, sys, urllib.request
 from pathlib import Path
@@ -68,8 +70,10 @@ def workflows():
         if not ident and where[0] == "models":
             absent.append(key)
             continue
+        if not ident and templates.skipped(key, CFG):  # connexion ou réglage absent : ni créé ni attendu
+            continue
         if not ident:
-            print(key, ": pas installé (aucun id dans la config) : relance python3 tools/install.py, qui l'ajoute sans doublon")
+            print(key, ": pas installé (aucun id dans la config) : lance python3 tools/upgrade.py, qui l'ajoute sans doublon")
             continue
         if where[0] == "models" and templates.skipped(key, CFG):
             print(f"{key} ({ident[:8]}) : connexion manquante (github.config_id ou Jira), non publié")
@@ -80,7 +84,7 @@ def workflows():
         body = templates.render(tpl, CFG)
         orphans = [st["name"] for st in body.get("steps") or [] if (st.get("step_type") or {}).get("type") == "SubWorkflow" and not st.get("sub_workflow_id")]
         if orphans:  # un poste pas encore créé (ex. les postes Support après le découpage) : le parent garderait une étape vide
-            print(f"{key} ({ident[:8]}) : postes pas encore installés ({', '.join(orphans)}), non publié ; relance python3 tools/install.py")
+            print(f"{key} ({ident[:8]}) : postes pas encore installés ({', '.join(orphans)}), non publié ; lance python3 tools/upgrade.py")
             continue
         if kind == "workflow":
             live = call("GET", f"/workflows/{ident}")["data"]
@@ -96,9 +100,15 @@ def workflows():
         print("modèles d'agents non installés (facultatifs) : " + ", ".join(absent) + " ; python3 tools/install.py les propose")
 
 
-if __name__ == "__main__":
-    what = sys.argv[1] if len(sys.argv) > 1 else "all"
-    if what in ("page", "all"):
-        page()
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    what = argv[0] if argv else "all"
+    # les workflows avant la page : un bouton dont le workflow vient d'être créé a son id dans la page assemblée ensuite
     if what in ("workflows", "all"):
         workflows()
+    if what in ("page", "all"):
+        page()
+
+
+if __name__ == "__main__":
+    main()

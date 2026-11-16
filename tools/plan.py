@@ -117,7 +117,7 @@ def cmd_share(path):
     cfg = assemble.config()
     wf = (cfg.get("actions") or {}).get("layout")
     if not wf:
-        print("✗ workflow « Le Bureau · plan » absent : relance python3 tools/install.py")
+        print("✗ workflow « Le Bureau · plan » absent : lance python3 tools/upgrade.py")
         return 1
     if path == "defaut":
         text = "defaut"

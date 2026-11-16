@@ -45,4 +45,4 @@ Le fil de la journée (une intention qui arrive, un ticket qui attend ta décisi
 
 ## Données
 
-Le dataset `redaction`, publié chaque minute par le cron live (`workflows/redaction_snapshot.py`, 0 token) : les runs du modèle et de chaque ticket, et le dossier de chaque run (`~/.cache/pixel-bureau/ticket/<run>/` : la demande, les rapports des postes, les versions, les tickets créés). La revue se lit dans les runs de relecture (le sous-workflow de la revue). Après la mise à jour : `python3 tools/install.py` (crée les sous-workflows et le dataset), puis `publish.py all`.
+Le dataset `redaction`, publié chaque minute par le cron live (`workflows/redaction_snapshot.py`, 0 token) : les runs du modèle et de chaque ticket, et le dossier de chaque run (`~/.cache/pixel-bureau/ticket/<run>/` : la demande, les rapports des postes, les versions, les tickets créés). La revue se lit dans les runs de relecture (le sous-workflow de la revue). Après la mise à jour : `git pull && python3 tools/upgrade.py` (crée les sous-workflows et le dataset, puis publie).

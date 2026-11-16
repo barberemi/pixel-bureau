@@ -82,7 +82,8 @@ L'installateur demande ton équipe (une équipe neuve avec le plan type par déf
 
 | Action | Commande |
 | --- | --- |
-| Mettre à jour | `git pull && python3 tools/publish.py all` |
+| Mettre à jour | `git pull && python3 tools/upgrade.py` (sans question : sauvegarde la config, crée ce qui manque, publie les workflows puis la page ; `--dry-run` pour voir avant) |
+| Ajouter un modèle facultatif | `python3 tools/install.py` (il propose ceux pas encore installés) |
 | Désinstaller | `python3 tools/uninstall.py --dry-run`, puis sans `--dry-run` |
 | Tester | `sh tools/test.sh` (Node 20+, aucune dépendance npm) |
 

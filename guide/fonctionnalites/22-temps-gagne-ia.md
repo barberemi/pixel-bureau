@@ -42,7 +42,7 @@ Pas devinés par l'IA :
 
 ## Réglages
 
-Installation : `python3 tools/install.py` propose le modèle (« Estimer le temps gagné par l'IA », `models.ai_time`, Jira connecté), puis `python3 tools/publish.py all`.
+Installation : `python3 tools/install.py` propose le modèle (« Estimer le temps gagné par l'IA », `models.ai_time`, Jira connecté) ; ensuite, chaque mise à jour se fait avec `git pull && python3 tools/upgrade.py`.
 
 Gabarit : `jira.ai_feedback`, dans `bureau.config.json` ou dans `settings.json` du pack d'équipe (la config surcharge clé à clé).
 
