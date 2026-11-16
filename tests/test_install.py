@@ -238,6 +238,44 @@ class InstallTest(unittest.TestCase):
         self.assertTrue(all(steps[p]["sub_workflow_id"] for p in templates.REVIEW_POSTES))
         self.assertNotIn("Le Bureau · réestimer un ticket", made)
 
+    def test_microsoft_connection_asked_when_the_pack_has_a_planning(self):
+        """Absences : le pack porte le planning, l'installateur propose la connexion Microsoft 365 de Kronn (sans elle, le
+        cron n'était jamais créé, sans un mot) ; la fin liste ce qu'il ne peut pas vérifier (droits Jira, SharePoint…)."""
+        ms = "31313131-0000-4000-8000-000000000000"
+        sp = os.path.join(self.teams, "vance", "settings.json")
+        Path(sp).write_text(json.dumps({**json.loads(Path(sp).read_text()),
+                                        "microsoft": {"planning": {"site": "vance.sharepoint.com,1,2", "item": "01ABC"}}}))
+        orig = FakeKronn.call
+
+        def call(self_, method, path, body=None, timeout=60):
+            if path == "/mcps":
+                return {"configs": [{"id": JIRA, "server_id": "mcp-atlassian", "label": "Jira", "is_global": True},
+                                    {"id": ms, "server_id": "api-microsoft-365", "label": "Microsoft 365", "is_global": True}]}
+            return orig(self_, method, path, body, timeout)
+        out = io.StringIO()
+        with mock.patch.object(FakeKronn, "call", call), mock.patch("sys.stdout", new=out):
+            self.assertEqual(install.main(["--config", self.cfg_path, "--answers", self.write_answers(ANSWERS)]), 0)
+        cfg = json.loads(Path(self.cfg_path).read_text())
+        self.assertEqual(cfg["microsoft"], {"config_id": ms})  # le planning reste dans le pack
+        self.assertIn("absences", cfg["workflows"])
+        self.assertIn("Calendrier de l'équipe : oui", out.getvalue())
+        self.assertIn("À vérifier toi-même", out.getvalue())
+        self.assertIn("SharePoint", out.getvalue())
+        self.assertIn("Jira : changer le statut", out.getvalue())
+
+    def test_no_microsoft_connection_says_how_to_get_the_calendar(self):
+        sp = os.path.join(self.teams, "vance", "settings.json")
+        Path(sp).write_text(json.dumps({**json.loads(Path(sp).read_text()),
+                                        "microsoft": {"planning": {"site": "vance.sharepoint.com,1,2", "item": "01ABC"}}}))
+        out = io.StringIO()
+        with mock.patch("sys.stdout", new=out):
+            self.assertEqual(install.main(["--config", self.cfg_path, "--answers", self.write_answers(ANSWERS)]), 0)
+        cfg = json.loads(Path(self.cfg_path).read_text())
+        self.assertNotIn("microsoft", cfg)
+        self.assertNotIn("absences", cfg["workflows"])
+        self.assertIn("pas de connexion Microsoft 365 dans Kronn", out.getvalue())
+        self.assertIn("Calendrier de l'équipe : non", out.getvalue())
+
     def test_reuses_same_named_workflow_instead_of_creating(self):
         answers = {k: v for k, v in ANSWERS.items() if k != "reuse"}  # défaut : homonymes réutilisés
         self.assertEqual(self.run_install(answers), 0)

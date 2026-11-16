@@ -50,6 +50,15 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(m["jira"], c["jira"])
         self.assertEqual(assemble.merged(m), m)  # idempotent
 
+    def test_mep_transition_and_teams_channel_from_the_pack(self):
+        """Mise en prod : statut de fin et canal Teams de l'équipe dans le pack ; le canal de test reste celui de la config."""
+        self.write({"mep": {"done_transition": "3", "teams": {"team": "T1", "channel": "19:mep@thread.tacv2"}}})
+        m = assemble.merged(self.cfg(mep={"teams": {"test_channel": "19:test@thread.tacv2"}}))
+        self.assertEqual(m["mep"], {"done_transition": "3", "teams": {"team": "T1", "channel": "19:mep@thread.tacv2",
+                                                                      "test_channel": "19:test@thread.tacv2"}})
+        self.assertEqual(assemble.merged(self.cfg())["mep"]["teams"]["channel"], "19:mep@thread.tacv2")
+        self.assertEqual(assemble.merged(m), m)
+
     def test_support_channel_from_the_pack_and_its_agent_bound_to_the_model(self):
         """#62 : canal Support du pack (la config surcharge clé à clé), personnage rattaché au modèle support installé."""
         self.write({"support": {"name": "Support", "team": "T1", "channel": "19:x@thread.tacv2"},

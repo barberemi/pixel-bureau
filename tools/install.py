@@ -387,6 +387,38 @@ def github(ask, defaults, login):
     return g
 
 
+def unchecked(cfg):
+    """Ce que l'installateur ne peut pas vérifier pour toi : les droits des fonctions qui écrivent ailleurs que dans Kronn."""
+    out = []
+    if templates.mep_projects(cfg):
+        out.append("  - Mise en prod : sur chaque dépôt, pousser une branche, merger malgré la protection, créer une release et"
+                   " lancer les workflows de déploiement (droits « maintain ») ; gh avec les droits repo et workflow.")
+    if (cfg.get("mep") or {}).get("teams"):
+        out.append("  - Annonce Teams de la mise en prod : `az login --allow-no-subscriptions`, et poster dans le canal de l'équipe.")
+    if (cfg.get("microsoft") or {}).get("config_id"):
+        out.append("  - Absences : lire le classeur SharePoint du planning avec ton compte (`az login` expire : relance-le si le cron échoue).")
+    if (cfg.get("jira") or {}).get("config_id"):
+        out.append("  - Jira : changer le statut, les points et commenter les tickets (seule la lecture du sprint est testée).")
+    if (cfg.get("models") or {}).get("review_cron"):
+        out.append("  - Revue de PR automatique : un seul cron actif dans l'équipe (deux posteraient chacun leur revue).")
+    if (cfg.get("models") or {}).get("impl"):
+        out.append("  - Chaîne d'implémentation : Docker, les images des contrôles et les dépôts clonés dans impl.clones.")
+    return ["\nÀ vérifier toi-même (l'installateur ne le peut pas) :"] + out if out else []
+
+
+def microsoft_config(ask, k, previous):
+    """Connexion Microsoft 365 de Kronn (api-microsoft-365, globale) : le planning des absences du pack ; « » = aucune.
+    Sans elle, le cron des absences n'est pas créé."""
+    configs = [c for c in (k.get("/mcps").get("configs") or []) if c.get("server_id") == "api-microsoft-365"]
+    if not configs:
+        say("(i) Absences : pas de connexion Microsoft 365 dans Kronn (Kronn > MCP, sans clé, globale ; `az login"
+            " --allow-no-subscriptions`). Sans elle, pas de calendrier de l'équipe ; relance l'installation après.")
+        return ""
+    opts = [(c["id"], c.get("label") or c["id"][:8]) for c in configs] + [("", "Aucune (pas de calendrier de l'équipe)")]
+    return ask.choice("microsoft_config", "Connexion Microsoft 365 (dans Kronn) pour le planning des absences", opts,
+                      previous if previous in [c["id"] for c in configs] else configs[0]["id"])
+
+
 def github_config(ask, k, project_id, previous):
     """Connexion GitHub de Kronn (serveur mcp-github) : l'API GitHub des modèles de revue de PR (#78) ; « » = aucune."""
     configs = [c for c in (k.get("/mcps").get("configs") or []) if c.get("server_id") == "mcp-github"
@@ -936,6 +968,11 @@ def main(argv=None):
         g["config_id"] = gcfg
     if login:
         g["login"] = login  # login du boss : « PR qui attendent ta review » dans la page
+    ms = dict(old.get("microsoft") or {})
+    if ((assemble.pack_settings({"team": team_id}).get("microsoft") or {}).get("planning") or ms.get("planning")):
+        ms["config_id"] = microsoft_config(ask, k, ms.get("config_id"))
+        if not ms["config_id"]:
+            ms.pop("config_id")
     ai = ai_agent(ask, k)
     tpl_ids = {key: (old.get(sec) or {}).get(field) for key, (_, (sec, field), _) in templates.TEMPLATES.items()}
     tpl_ids, own = reuse(ask, k, tpl_ids, tpls, bool(ai), old.get("page_id"))
@@ -954,7 +991,7 @@ def main(argv=None):
            "owner": owner, "team": team_id, "people": people, "layout": layout_file, "kronn": kronn, "page_id": old.get("page_id"), "workflows": {}, "actions": {},
            "own": sorted(own), "jira": j, "github": g, **rhythm_of(old, defaults, team_settings),
            "mep_workflow": mep, "agents": agents, "boss_pages": screens, **({"mail": courrier} if courrier else {}), **({"notify_mac": notify} if notify is not None else {}), "ui": {**(defaults.get("ui") or {}), **(old.get("ui") or {})}, "music": old.get("music") or {},
-           "_ai_agent": ai, **({"protect": True} if old.get("protect") else {})}
+           **({"microsoft": ms} if ms else {}), "_ai_agent": ai, **({"protect": True} if old.get("protect") else {})}
     # réglages posés à la main dans la config (gitfut, wiki_posters, chrome…) : gardés tels quels à la relance
     # (sauf rhythm quand le pack le porte : seule la surcharge calculée par rhythm_of reste, #32)
     cfg = {**{k_: v for k_, v in old.items() if not k_.startswith("_") and k_ not in cfg and k_ != "mail"
@@ -969,6 +1006,8 @@ def main(argv=None):
     say(f"  Jira : {j['project'] + ' (board ' + str(j['board']) + ')' if j else 'non connecté : sprint, tickets, kanban masqués'}")
     say(f"  GitHub : {g['repo'] or 'aucun dépôt suivi'}" + ("" if login else " (gh non connecté : PR et MEP vides)"))
     say(f"  Écran mural : {len(screens)} page(s) Kronn")
+    if ms or "microsoft" in assemble.pack_settings({"team": team_id}):
+        say("  Calendrier de l'équipe : " + ("oui" if ms.get("config_id") else "non (pas de connexion Microsoft 365)"))
     if notify is not None:
         say("  Notification du Mac quand une décision t'attend : " + ("oui" if notify else "non"))
     say("  Courrier : " + (", ".join(f"{a['label']} ({'appli Mail' if a['provider'] == 'mac-mail' else 'IMAP'})" for a in courrier["accounts"]) if courrier else "non"))
@@ -1009,8 +1048,10 @@ def main(argv=None):
         say("\n(dry-run) Config qui serait écrite :")
         say(json.dumps({k_: v for k_, v in cfg.items() if not k_.startswith("_")}, ensure_ascii=False, indent=1)[:2500])
         return 0
+    pack_changed = []
     if roster_path and me not in people and me.get("sprite") != sprite_before:
         jdump(roster_doc, roster_path)  # sprite LPC d'une personne de l'équipe : pour toute l'équipe
+        pack_changed.append("roster.json")
     if music:
         sid = re.search(r"song/([0-9a-f-]{36})", music)
         song = {"title": "Sa musique", "url": music, **({"suno_id": sid.group(1)} if sid else {})}
@@ -1020,6 +1061,7 @@ def main(argv=None):
             m = jload(mp) if os.path.exists(mp) else {}
             m[owner] = song
             jdump(m, mp)
+            pack_changed.append("music/music.json")
         else:
             cfg["music"][owner] = song
     jdump(cfg, a.config)
@@ -1040,7 +1082,11 @@ def main(argv=None):
                 except InstallError as e:
                     say(f"(!) premier run de {key} : {e}")
         say("✓ premier rafraîchissement lancé (les données arrivent en 1 à 2 minutes)")
+    if pack_changed:  # le pack est partagé : ces changements vont à l'équipe par une PR, pas restés dans la copie
+        say(f"(i) Pack d'équipe modifié ({', '.join(pack_changed)}) : propose-le en PR dans le pack (branche, commit signé).")
     say(f"\nLe Bureau est prêt : {kronn['ui'].rstrip('/')}/#page/{cfg['page_id']}")
+    for line in unchecked(cfg):
+        say(line)
     return 0
 
 
