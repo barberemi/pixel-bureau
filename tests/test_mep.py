@@ -101,6 +101,24 @@ class MepTest(unittest.TestCase):
         self.assertIn(["workflow", "run", "deploy-production.yml", "-R", "dunder-mifflin/site-web", "--ref", "main", "-f", "versionTag=2.4.1"], c)
         self.assertIn("PR du ticket DM-7801", r.stdout)  # la liste lue par la gate de fin
 
+    def test_end_gate_lists_only_prs_with_the_key_in_title_or_branch(self):
+        """La gate de fin : les PR qui ne font que citer le ticket (une autre PR qui le mentionne) ou qui portent une clé
+        voisine (DM-78011) ne sont pas celles du ticket ; écartées et comptées."""
+        self.data["list"] = {"dunder-mifflin/site-web": [
+            {"number": 16, "state": "MERGED", "title": "fix(Articles): pagination des tags vide", "headRefName": "kronn/DM-7801"},
+            {"number": 12, "state": "MERGED", "title": "feat: DM-7801 première partie", "headRefName": "feat/x"},
+            {"number": 20, "state": "OPEN", "title": "fix: suite de DM-7802", "headRefName": "kronn/DM-7802"},
+            {"number": 21, "state": "MERGED", "title": "chore: menu", "headRefName": "kronn/DM-78011"}],
+            "dunder-mifflin/intranet": [{"number": 4, "state": "OPEN", "title": "fix: lien", "headRefName": "dm-7801-lien"}]}
+        self.assertEqual(self.mep("resolve").returncode, 0)
+        self.mep("tag", stdin="Bug")
+        out = self.mep("prod", dry="oui").stdout
+        self.assertIn("- site-web#12 : mergée · feat: DM-7801 première partie", out)
+        self.assertIn("- intranet#4 : **encore ouverte** · fix: lien", out)
+        self.assertNotIn("#20", out)
+        self.assertNotIn("#21", out)
+        self.assertIn("(2 PR écartées : DM-7801 seulement cité dans le texte.)", out)
+
     def test_squash_keeps_co_authors_and_sign_offs_without_duplicates(self):
         """Le commit unique garde qui a écrit le code (trailers des commits squashés, une fois chacun) : le modèle « temps
         gagné par l'IA » y lit l'outil et le modèle."""
