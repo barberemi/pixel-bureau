@@ -124,6 +124,17 @@ class SprintQuestTest(unittest.TestCase):
         self.assertNotIn("COMBIEN DE PR ONT ÉTÉ", [q["q1"] for q in d["quiz"]])
         self.assertEqual(d["stops"][3]["l1"], "TROISIÈME ARRÊT :")
 
+    def test_the_team_of_the_pack_travels_with_the_sprint(self):
+        """Un artefact refait se remplit en un collage : l'équipe du jeu (sprintquest.json du pack, injectée au rendu sous
+        sprintquest_team) part dans data.team, que l'écran « Coller » de Sprint Quest écrit dans team/roster."""
+        people = [{"k": "p_jim", "name": "Jim", "look": {"sh": "#3a5a8c"}}, {"name": "sans clé"}, "pas un objet"]
+        self.fake_gh(GH)
+        d = self.run_script("sprintquest.py", {"sprint": 42, "issues": ISSUES, "log": LOG}, args=("build", "To Deploy", "Reopen"),
+                            sprintquest_team=people)["data"]
+        check_format(self, d)
+        self.assertEqual(d["team"], {"people": [people[0]]})
+        self.assertNotIn("team", self.build()["data"], "sans équipe dans le pack, rien : l'artefact garde la sienne")
+
     def test_no_sprint_no_data(self):
         out = self.build(issues=[])
         self.assertIsNone(out["data"])

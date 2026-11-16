@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
+- Sprint Quest dans le dépôt (`arcade/sprint-quest/`) : la source du jeu de la borne et ses capacités, pour refaire l'artefact s'il se perd (skill « republie Sprint Quest »). L'équipe du jeu vient du pack (`sprintquest.json`) et part avec les données copiées depuis la borne : un artefact neuf se remplit en un seul collage.
 - Costumes d'avatar dans une recette (`cast.json` d'un pack) : des zones de calques LPC recolorées (calque, lignes, colonnes, directions, couleur ; de profil, le bras peut rester hors d'une zone) et une coiffure vue de dos (`hair_back`), sans planche à dessiner.
 - Services extérieurs (#247) : les pages de statut de GitHub, Claude, Jira et Confluence (réglage `statuts`) relevées par le cron office ; points verts ou bandeau rouge « flash info » sous l'écran Mises en prod, fiche des incidents au clic, début et fin de chaque incident dans le fil et le mode TV, conseil d'une panne « agent indisponible » au 1er.
 - Fraîcheur (#249) : les étages et les services extérieurs en retrait sous le cron qui les publie, le diagnostic d'un cron en échec nomme ses parties plus publiées, les crons des pages bilan par leur nom ; dans la fiche des services, les 24 dernières heures.

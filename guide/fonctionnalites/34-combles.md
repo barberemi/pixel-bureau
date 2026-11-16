@@ -39,7 +39,7 @@ En fin de sprint, sans session Claude :
 1. **⚙ Préparer la partie**, dans la fiche de la borne, lance le workflow « Le Bureau · Sprint Quest » (0 jeton, une à deux minutes). La fiche dit « Préparation en cours » ; si rien n'arrive au bout de 10 minutes, elle dit que la préparation n'a pas abouti (le détail est dans le run Kronn).
 2. Le workflow lit le **dernier sprint fermé** dans Jira (ses tickets et leurs changements de statut), les **PR mergées** et les **mises en prod** de sa fenêtre (`gh`), et les **pannes des services extérieurs** (pages de statut, réglage `statuts`). Il écrit les données de la partie avec des textes fixes : le face-à-face (tickets et points livrés, mises en prod, testés et réouverts, cafés), quatre ou cinq questions de quiz (le jour le plus productif, qui a livré le plus, les PR mergées, le ticket le plus long en cours, le type de ticket le plus fréquent), trois boss (l'escargot : le ticket resté le plus longtemps en cours ; l'hydre : la PR la plus commentée ; le fantôme : la pire panne, sinon une mise en prod ratée ou le ticket le plus réouvert) et les vies de la carte. Une même préparation donne toujours la même partie.
 3. Quand c'est prêt, la fiche résume la partie : **📋 Copier les données**. Si le cadre de Kronn refuse la copie, le texte s'affiche pour un Cmd+C.
-4. Dans Sprint Quest, sur l'écran titre, l'hôte colle le texte, vérifie l'aperçu, puis **✓ Charger dans la partie**.
+4. Dans Sprint Quest, sur l'écran titre, l'hôte colle le texte, vérifie l'aperçu, puis **✓ Charger dans la partie**. Si le pack d'équipe a un `sprintquest.json`, l'équipe du jeu (persos, apparences, stats rigolotes) arrive avec le sprint (« équipe de 10 » dans la fiche et l'aperçu).
 
 Une source en échec (gh absent, page de statut injoignable) laisse un avertissement dans [Fraîcheur](10-fraicheur.md), sous « Sprint Quest (borne) », et sa part du jeu se replie (pas de question sur les PR, pas d'hydre). Le bouton n'existe qu'avec Jira connecté ; après la mise à jour : `publish.py workflows` (crée le workflow), puis `publish.py page`.
 
@@ -50,3 +50,7 @@ Dans `bureau.config.json` (une adresse `https://` seulement), puis republier la 
 ```json
 "combles": {"url": "https://claude.ai/artifact/…", "company": "Dunder Mifflin"}
 ```
+
+## Si le jeu se perd
+
+La source de Sprint Quest est dans le dépôt, `arcade/sprint-quest/` : la page et ses capacités. Dans Claude Code, à la racine du dépôt, « republie Sprint Quest » la republie à son adresse, ou refait un artefact neuf s'il a disparu. Pour un artefact neuf : partage-le à l'équipe, mets son lien de partage dans `combles.url`, `publish.py page`, puis « Préparer la partie » et « Coller » remplissent le sprint et l'équipe. Seule une partie en cours est perdue ; son récap se garde par « Copier le mail ».

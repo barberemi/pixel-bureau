@@ -317,6 +317,8 @@ def script_code(path, cfg):
              root=ROOT)  # dossier du dépôt : son venv (Pillow) pour réduire les images
     if path in ("workflows/pr_update.py", "workflows/github_snapshot.py"):  # AI-03 : logins GitHub du roster, dont les commentaires vont à l'agent des retours (et comptent pour « Corriger »)
         c["team_github"] = sorted({str(p["github"]) for p in assemble.roster(cfg) if p.get("github")})
+    if path == "workflows/sprintquest.py":  # l'équipe de Sprint Quest (sprintquest.json du pack), seulement pour ce script
+        c["sprintquest_team"] = assemble.sprintquest_team(cfg)
     if path == "workflows/review.py":  # version de la revue gardée avec chaque revue (historique, page de récap)
         c["review_version"] = review_version()
     if path in CHAINE_SCRIPTS:  # version de la chaîne gardée dans le bilan de chaque run (page « Chaîne · bilan »)
