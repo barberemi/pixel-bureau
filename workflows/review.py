@@ -527,7 +527,7 @@ def session(path):
     g = first and FIRST.search(first)
     if not g or not (seen or cost):
         return None
-    p = re.search(r"· poste (\w+)", first[:300])
+    p = re.search(r"· poste (\w+)", first[g.start():g.start() + 300])  # après « Review la PR » : Kronn peut préfixer le prompt
     per = {}
     for model, u in seen.values():
         cc = u.get("cache_creation") or {}

@@ -1,0 +1,1056 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revue · bilan</title>
+<style>
+  :root {
+    --bg: #eef1f5;
+    --panel: #ffffff;
+    --panel-2: #f6f8fb;
+    --line: #dce1e9;
+    --line-strong: #c3cbd8;
+    --ink: #0d1420;
+    --ink-2: #47526420;
+    --muted: #5a6675;
+    --muted-2: #8a94a3;
+    --accent: #0172f0;
+    --accent-ink: #0159bd;
+    --ok: #159b52;
+    --ok-bg: #159b5218;
+    --warn: #c67605;
+    --warn-bg: #c6760518;
+    --crit: #d63b3b;
+    --crit-bg: #d63b3b18;
+    --skip: #6b7684;
+    --skip-bg: #6b768418;
+    --shadow: 0 1px 2px rgba(13,20,32,.05), 0 8px 24px -12px rgba(13,20,32,.12);
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0a0e15;
+      --panel: #131a24;
+      --panel-2: #0f151d;
+      --line: #232d3a;
+      --line-strong: #303c4c;
+      --ink: #e7edf5;
+      --muted: #98a4b3;
+      --muted-2: #6b7788;
+      --accent: #3f97ff;
+      --accent-ink: #7ab6ff;
+      --ok: #35c073;
+      --ok-bg: #35c07322;
+      --warn: #e5a032;
+      --warn-bg: #e5a03222;
+      --crit: #f26d6d;
+      --crit-bg: #f26d6d22;
+      --skip: #7e8b9b;
+      --skip-bg: #7e8b9b22;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -14px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #eef1f5; --panel: #ffffff; --panel-2: #f6f8fb; --line: #dce1e9; --line-strong: #c3cbd8;
+    --ink: #0d1420; --muted: #5a6675; --muted-2: #8a94a3; --accent: #0172f0; --accent-ink: #0159bd;
+    --ok: #159b52; --ok-bg: #159b5218; --warn: #c67605; --warn-bg: #c6760518;
+    --crit: #d63b3b; --crit-bg: #d63b3b18; --skip: #6b7684; --skip-bg: #6b768418;
+    --shadow: 0 1px 2px rgba(13,20,32,.05), 0 8px 24px -12px rgba(13,20,32,.12);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0a0e15; --panel: #131a24; --panel-2: #0f151d; --line: #232d3a; --line-strong: #303c4c;
+    --ink: #e7edf5; --muted: #98a4b3; --muted-2: #6b7788; --accent: #3f97ff; --accent-ink: #7ab6ff;
+    --ok: #35c073; --ok-bg: #35c07322; --warn: #e5a032; --warn-bg: #e5a03222;
+    --crit: #f26d6d; --crit-bg: #f26d6d22; --skip: #7e8b9b; --skip-bg: #7e8b9b22;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -14px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans); line-height: 1.45;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 28px 22px 72px; }
+
+  /* ---- header ---- */
+  header.top { display: flex; align-items: flex-start; gap: 18px; flex-wrap: wrap; margin-bottom: 26px; }
+  .brand { display: flex; flex-direction: column; gap: 6px; flex: 1 1 320px; }
+  .kicker {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--accent-ink); display: flex; align-items: center; gap: 8px;
+  }
+  .kicker .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok);
+    box-shadow: 0 0 0 3px var(--ok-bg); }
+  h1 { font-size: 27px; margin: 0; letter-spacing: -.02em; font-weight: 680; text-wrap: balance; }
+  .sub { color: var(--muted); font-size: 13.5px; }
+  .sub code { font-family: var(--mono); font-size: 12px; background: var(--panel-2);
+    border: 1px solid var(--line); padding: 1px 6px; border-radius: 5px; color: var(--ink); }
+  .top-right { display: flex; align-items: center; gap: 10px; }
+  .laststamp { text-align: right; font-size: 12px; color: var(--muted); }
+  .laststamp b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .toggle {
+    appearance: none; border: 1px solid var(--line-strong); background: var(--panel);
+    color: var(--muted); border-radius: 8px; width: 38px; height: 34px; cursor: pointer;
+    font-size: 15px; display: grid; place-items: center; transition: .15s;
+  }
+  .toggle:hover { color: var(--ink); border-color: var(--accent); }
+  .toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---- KPI row ---- */
+  .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 14px; }
+  .kpi {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 13px 14px 12px; box-shadow: var(--shadow); position: relative; overflow: hidden;
+  }
+  .kpi .lab { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted-2); }
+  .kpi .val { font-size: 26px; font-weight: 700; letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums; margin-top: 4px; display: flex; align-items: baseline; gap: 6px; }
+  .kpi .val small { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .kpi .delta { font-family: var(--mono); font-size: 11px; margin-top: 3px; color: var(--muted); }
+  .kpi .delta.up { color: var(--ok); } .kpi .delta.down { color: var(--crit); }
+  .kpi .rail { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+  .kpi.crit .rail { background: var(--crit); } .kpi.warn .rail { background: var(--warn); }
+  .kpi.ok .rail { background: var(--ok); } .kpi.skip .rail { background: var(--skip); }
+
+  /* ---- panels grid ---- */
+  .grid2 { display: grid; grid-template-columns: 1.55fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); padding: 16px 16px 14px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .panel:hover { border-color: var(--line-strong); box-shadow: 0 1px 2px rgba(13,20,32,.06), 0 14px 32px -14px rgba(13,20,32,.25); }
+  #charttip { position: fixed; z-index: 50; display: none; pointer-events: none; max-width: 260px;
+    background: var(--ink); color: var(--panel); font: 12px/1.45 var(--sans); padding: 7px 10px; border-radius: 8px;
+    box-shadow: 0 8px 24px -8px rgba(0,0,0,.35); }
+  #charttip .tiphint { display: block; margin-top: 3px; font-size: 10.5px; opacity: .65; }
+  .panel h2 {
+    font-size: 12px; font-family: var(--mono); letter-spacing: .07em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 2px; font-weight: 600; display: flex; justify-content: space-between; align-items: center;
+  }
+  .panel .h2sub { font-size: 12px; color: var(--muted-2); margin-bottom: 12px; font-family: var(--sans); text-transform: none; letter-spacing: 0; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted);
+    font-family: var(--mono); }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+  canvas { width: 100%; display: block; }
+
+  /* authors */
+  .authors { display: flex; flex-direction: column; gap: 9px; margin-top: 2px; }
+  .arow { display: grid; grid-template-columns: 132px 1fr 34px; align-items: center; gap: 10px; font-size: 13px; }
+  .arow .name { display: flex; align-items: center; gap: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .arow .name b { font-weight: 600; }
+  .arow .name .ped { font-size: 10px; color: var(--warn); font-family: var(--mono); }
+  .bar { height: 8px; border-radius: 4px; background: var(--panel-2); overflow: hidden; display: flex; }
+  .bar > i { height: 100%; display: block; }
+  .bar > i.ok { background: var(--ok); } .bar > i.warn { background: var(--warn); }
+  .bar > i.crit { background: var(--crit); } .bar > i.skip { background: var(--skip); }
+  .arow .cnt { text-align: right; font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* ---- run filter ---- */
+  .runbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
+  .runbar .lbl { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted-2); margin-right: 2px; }
+  .chip {
+    appearance: none; cursor: pointer; border: 1px solid var(--line-strong); background: var(--panel);
+    color: var(--muted); border-radius: 999px; padding: 5px 12px; font-size: 12px; font-family: var(--mono);
+    display: inline-flex; align-items: center; gap: 6px; transition: .13s; white-space: nowrap;
+  }
+  .chip:hover { color: var(--ink); border-color: var(--accent); }
+  .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  :root[data-theme="dark"] .chip[aria-pressed="true"],
+  @media (prefers-color-scheme: dark) { }
+  .chip .n { opacity: .7; font-size: 11px; }
+  .chip.more { border-style: dashed; color: var(--muted-2); background: transparent; }
+  .chip.more:hover { color: var(--ink); border-color: var(--accent); border-style: solid; }
+  .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .projsel { cursor: pointer; border: 1px solid var(--line-strong); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 5px 10px; font-size: 12px; font-family: var(--mono); transition: .13s; }
+  .projsel:hover { border-color: var(--accent); }
+  .projsel:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .runbar .spacer { flex: 1; }
+  .chip.tgl[aria-pressed="true"] { background: var(--skip-bg); border-color: var(--skip); color: var(--skip); }
+  .chip.tgl .box { width: 8px; height: 8px; border-radius: 2px; border: 1.5px solid currentColor; }
+  .chip.tgl[aria-pressed="true"] .box { background: currentColor; }
+
+  /* ---- table ---- */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; min-width: 640px; }
+  .stack { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; line-height: 1.2; }
+  thead .stack { gap: 3px; }
+  /* Colonnes compactes (largeur = contenu, sur 1 ligne) ; la colonne Auteur absorbe l'espace restant. */
+  thead th, tbody tr.parent td { white-space: nowrap; }
+  thead th:not([data-key="author"]) { width: 1%; }
+  thead th {
+    text-align: left; font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted-2); font-weight: 600; padding: 11px 12px; border-bottom: 1px solid var(--line);
+    background: var(--panel-2); position: sticky; top: 0;
+  }
+  thead th.num, tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  thead .sortable { cursor: pointer; user-select: none; transition: color .12s; }
+  thead .sortable:hover { color: var(--ink); }
+  thead .sortable.active { color: var(--accent-ink); }
+  thead th .arrow { font-size: 9px; margin-left: 3px; opacity: .8; }
+  tbody td { padding: 11px 12px; border-bottom: 1px solid var(--line); font-size: 13px; vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--panel-2); }
+  .pr { font-family: var(--mono); font-weight: 600; }
+  .pr a { color: var(--accent-ink); text-decoration: none; }
+  .pr a:hover { text-decoration: underline; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--panel); }
+  .seg button { border: 0; background: transparent; color: var(--muted); font: 600 12px var(--sans); padding: 5px 12px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .pr .prf { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dashed transparent; }
+  .pr .prf:hover, .pr .prf.on { border-bottom-color: var(--accent-ink); }
+  .pr .prf.on { background: color-mix(in srgb, var(--accent) 14%, transparent); border-radius: 4px; padding: 0 3px; }
+  .pr .prgh { color: var(--muted-2); text-decoration: none; font-size: 11px; margin-left: 4px; }
+  .pr .prgh:hover { color: var(--accent-ink); }
+  .dots { display: inline-flex; align-items: center; gap: 4px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: var(--skip); }
+  .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.crit { background: var(--crit); }
+  .dots-more { font-family: var(--mono); font-size: 10px; color: var(--muted-2); margin-right: 2px; }
+  .partial { color: var(--muted-2); font-size: 10.5px; }
+  .passes { display: grid; gap: 4px; margin-top: 6px; max-width: 760px; }
+  .passrow { display: grid; grid-template-columns: 36px 110px 110px 70px 60px 1fr; align-items: center; gap: 8px;
+    padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); cursor: pointer; font-size: 12.5px; }
+  .passrow:hover { border-color: var(--line-strong); }
+  .passrow.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .passrow .pnum { font-family: var(--mono); font-weight: 700; color: var(--muted); }
+  .passb { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--muted); background: var(--panel-2);
+    border: 1px solid var(--line); padding: 1px 5px; border-radius: 5px; margin-left: 4px; }
+  .who { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+  .who:hover { color: var(--accent-ink); }
+  .ava { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 10px;
+    font-weight: 700; color: #fff; font-family: var(--mono); flex: none; }
+  .base { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+  .runcell { font-family: var(--mono); font-size: 11.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 11px;
+    font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; letter-spacing: .01em;
+  }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .pill.ok { color: var(--ok); background: var(--ok-bg); }
+  .pill.warn { color: var(--warn); background: var(--warn-bg); }
+  .pill.crit { color: var(--crit); background: var(--crit-bg); }
+  .pill.skip { color: var(--skip); background: var(--skip-bg); }
+
+  .metric { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .metric.zero { color: var(--muted-2); opacity: .5; }
+  .flag { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--warn); background: var(--warn-bg);
+    padding: 2px 6px; border-radius: 5px; letter-spacing: .03em; }
+  .summ { color: var(--muted); font-size: 12px; max-width: 360px; }
+  tbody tr.skiprow td { opacity: .62; }
+  tbody tr.parent { cursor: pointer; }
+  tbody tr.parent td:first-child { position: relative; }
+  .caret { display: inline-block; width: 12px; color: var(--muted-2); transition: transform .15s; font-size: 10px; }
+  tr.parent.open .caret { transform: rotate(90deg); }
+  .summ .full { display: none; }
+  .reviewlink { color: var(--accent-ink); text-decoration: none; font-family: var(--mono); font-size: 11px; margin-left: 6px; white-space: nowrap; }
+  .reviewlink:hover { text-decoration: underline; }
+  tr.detail td { padding: 0; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+  tr.detail .detailbox { padding: 14px 16px 16px 40px; font-size: 13px; color: var(--ink); line-height: 1.55;
+    display: grid; gap: 8px; }
+  tr.detail .detailbox .lab { font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-2); }
+  tr.detail .detailbox .body { white-space: pre-wrap; }
+  .post { display: flex; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 14px 16px; box-shadow: var(--shadow); max-width: 760px; }
+  .post-ava { width: 38px; height: 38px; border-radius: 50%; flex: none; display: grid; place-items: center;
+    font-size: 19px; background: color-mix(in srgb, var(--accent) 14%, var(--panel)); border: 1px solid var(--line); }
+  .post-main { min-width: 0; flex: 1; }
+  .post-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13.5px; }
+  .post-head time, .post-dot { color: var(--muted-2); font-size: 12px; }
+  .post-model { font-family: var(--mono); font-size: 10.5px; color: var(--muted); background: var(--panel-2);
+    border: 1px solid var(--line); padding: 1px 6px; border-radius: 999px; }
+  .post-to { color: var(--muted-2); font-size: 12px; margin-top: 1px; }
+  .post-body { margin-top: 8px; font-size: 13.5px; line-height: 1.55; color: var(--ink); overflow-wrap: anywhere; }
+  .post-body p { margin: 0 0 6px; }
+  .post-body .post-title { font-weight: 700; font-size: 14.5px; }
+  .post-body ul { margin: 0 0 6px; padding-left: 18px; }
+  .post-body li { margin: 2px 0; }
+  .post-body code { font-family: var(--mono); font-size: 12px; background: var(--panel-2); border: 1px solid var(--line);
+    padding: 0 4px; border-radius: 4px; }
+  .post-empty { color: var(--muted-2); font-style: italic; }
+  .post-actions { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; margin-top: 10px; padding-top: 9px;
+    border-top: 1px solid var(--line); font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .post-actions a { margin-left: auto; color: var(--accent-ink); text-decoration: none; }
+  .post-actions a:hover { text-decoration: underline; }
+  tr.detail .meta-line { display: flex; gap: 16px; flex-wrap: wrap; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+
+  footer { margin-top: 22px; font-size: 12px; color: var(--muted-2); text-align: center; font-family: var(--mono); }
+  footer code { color: var(--muted); }
+
+  @media (max-width: 860px) {
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    .grid2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="kicker"><span class="dot"></span> Cron revue · actif</div>
+      <h1>Revue · bilan</h1>
+      <div class="sub">Revues automatiques des PR · tous projets<span id="horaire"></span><span id="postes"></span></div>
+    </div>
+    <div class="top-right">
+      <div class="laststamp">Dernier run<br><b id="lastrun">—</b></div>
+      <button class="toggle" id="themeBtn" aria-label="Basculer le thème" title="Thème clair / sombre">◐</button>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis"></section>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>Prix par poste <span class="legend"><span><i style="background:var(--accent)"></i>équivalent API</span></span></h2>
+      <div class="h2sub" id="postesub">30 derniers jours · revues en postes</div>
+      <div class="authors" id="postecosts"></div>
+    </div>
+    <div class="panel">
+      <h2>Suite des bloquants</h2>
+      <div class="h2sub">Ce que l'auteur en a fait, d'après la passe suivante du Bureau (historique de la revue)</div>
+      <div class="authors" id="suite"></div>
+      <div class="h2sub" id="merges" style="margin:12px 0 0"></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>Reviews par jour <span class="legend">
+        <span><i style="background:var(--ok)"></i>approve</span>
+        <span><i style="background:var(--warn)"></i>comment</span>
+        <span><i style="background:var(--crit)"></i>request&nbsp;changes</span>
+      </span></h2>
+      <div class="h2sub">Volume reviewé sur les 8 derniers jours, empilé par verdict</div>
+      <canvas id="trend" height="150" aria-label="Graphe des reviews par jour"></canvas>
+    </div>
+    <div class="panel">
+      <h2>Top auteurs reviewés</h2>
+      <div class="h2sub">Sur la période affichée<span id="pedleg" hidden> · <span style="color:var(--warn)">●</span> ton pédagogue renforcé</span></div>
+      <div class="authors" id="authors"></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>Taux d'approuve <span class="legend"><span><i style="background:var(--ok)"></i>% approuvées / reviewées</span></span></h2>
+      <div class="h2sub">Part des PR approuvées parmi les reviews réelles · 8 dernières semaines</div>
+      <canvas id="approve" height="130" aria-label="Taux d'approuve par semaine"></canvas>
+    </div>
+    <div class="panel">
+      <h2>Prix des reviews par jour <span class="legend"><span><i style="background:var(--accent)"></i>réel</span><span><i style="background:var(--accent);opacity:.4"></i>estimé</span></span></h2>
+      <div class="h2sub" id="costsub">Coût équivalent API (cache inclus) · 10 derniers jours avec reviews</div>
+      <canvas id="costs" height="130" aria-label="Prix des reviews par jour"></canvas>
+    </div>
+  </div>
+
+  <div class="runbar" id="projbar">
+    <span class="lbl">Projet</span>
+    <select id="projectFilter" class="projsel" aria-label="Filtrer par projet"></select>
+    <span class="seg" role="group" aria-label="Vue du tableau" style="margin-left:auto">
+      <button type="button" data-view="pr" onclick="window.setView('pr')">Par PR</button>
+      <button type="button" data-view="review" onclick="window.setView('review')">Par review</button>
+    </span>
+  </div>
+
+  <div class="runbar" id="runbar">
+    <span class="lbl">Run</span>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <footer>
+    Alimenté par la revue (<code>review_child</code>, une ligne par revue postée : <code>reviews</code>, <code>review_meta</code> ; <code>review_sessions</code> : coût équivalent API cache inclus, par poste) et par le cron <code>revue_bilan</code> (suite des bloquants, état des PR relues)
+  </footer>
+</div>
+
+<script>
+// ---- Données d'exemple (structure = 1 point du dataset "reviews" de la Live Page) ----
+// En prod ces points arrivent via window.KronnPageData / kronn:page-data.
+const SAMPLE = [];
+
+let PEDAGO = new Set();  // auteurs à qui la revue parle en pédagogue (review.pedago, dataset revue_bilan)
+const VCLASS = { approve:"ok", comment:"warn", request_changes:"crit" };
+const VLABEL = { approve:"approve", comment:"comment", request_changes:"req. changes" };
+const REPO_DEFAULT = "";  // les toutes premières lignes n'avaient pas de dépôt
+const repoOf = r => (r && r.repo) || REPO_DEFAULT;
+const shortRepo = full => String(full).split("/").pop();
+
+// Échappement HTML (texte modèle → innerHTML).
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+// Accès robuste à window.KronnPageData (pattern éprouvé : BFS + unwrap + JSON.parse).
+function pick(root,name){
+  if(!root||typeof root!=="object") return null;
+  if(root[name]!==undefined) return root[name];
+  if(root.datasets&&root.datasets[name]!==undefined) return root.datasets[name];
+  let level=[root],depth=0;
+  while(level.length&&depth++<5){ const next=[]; for(const o of level){
+    if(o&&typeof o==="object"){ if(o[name]!==undefined) return o[name];
+      for(const k in o) if(o[k]&&typeof o[k]==="object") next.push(o[k]); } } level=next; }
+  return null;
+}
+// Le dataset "reviews" (time_series) arrive via window.KronnPageData ; SAMPLE = aperçu hors Kronn.
+function datasetPoints(name){
+  const K = window.KronnPageData;
+  if(!K) return [];
+  let dsv = pick(K, name);
+  if(Array.isArray(dsv)) return dsv;
+  // time_series -> points ; collection -> current. On prend la première liste NON vide (une collection
+  // peut arriver avec points:[] ET current:[...]).
+  for(const k of ["points","series","current","value","data"]){
+    let v = dsv && dsv[k];
+    if(typeof v==="string"){ try{ v = JSON.parse(v); }catch(e){ v = null; } }
+    if(Array.isArray(v) && v.length) return v;
+  }
+  return [];
+}
+const obsOf = el => el && (el.observed_at || el.observedAt || el.t || el.timestamp) || null;
+const payloadOf = el => (el && el.payload) || (el && el.value) || (el && el.data) || el || {};
+function resolveReviews(){
+  if(!window.KronnPageData) return SAMPLE.slice();
+  return datasetPoints("reviews").map(el => {
+    const payload = payloadOf(el);
+    const observed_at = obsOf(el) || payload.observed_at || null;
+    const run_at = payload.run_at || observed_at;
+    return { ...payload, run_at, observed_at, _run: el && (el.workflow_run_id || el.workflowRunId) || null };
+  }).filter(r => r && r.pr!==undefined && r.run_at);
+}
+// Dataset "review_meta" (1 ligne par review postée, depuis la réponse GitHub du POST) :
+// lien de la review + signature (agent · modèle · niveau). Jointure : même run, sinon même repo+PR
+// et review envoyée dans l'heure qui suit le début du run.
+function resolveMeta(){
+  return datasetPoints("review_meta").map(el => {
+    const p = payloadOf(el);
+    const m = /\/repos\/([^/]+\/[^/]+)\/pulls\/(\d+)/.exec(p.pr_url||"");
+    const sig = /(?:Le Bureau|cron Kronn) \(([^)]*)\)/.exec(p.signature||"");  // « Review automatique · Le Bureau (agent - modèle) »
+    return { repo: m?m[1]:null, pr: m?Number(m[2]):null, at: p.submitted_at || obsOf(el),
+      review_url: p.review_url||"", model: sig ? sig[1].replace(/^[^-]*-\s*/,"").trim() : "",
+      _run: el && (el.workflow_run_id || el.workflowRunId) || null };
+  }).filter(m => m.pr!=null);
+}
+// Dataset "review_costs" (wrapper Review 1 PR) : coût réel de la session Claude Code, cache inclus.
+function resolveCosts(){
+  return datasetPoints("review_sessions").map(el=>{ const p=payloadOf(el);
+    return { ...p, pr:Number(p.pr), at:p.started_at||obsOf(el) }; }).filter(c=>c.pr && c.repo && isFinite(Number(c.cost_usd)));
+}
+// Dataset "revue_bilan" (cron revue_bilan, snapshot) : la suite des bloquants, l'état des PR relues, l'horaire du cron.
+function resolveBilan(){
+  const K = window.KronnPageData; if(!K) return null;
+  let d = pick(K, "revue_bilan");
+  if(d && d.current!==undefined) d = d.current;
+  if(typeof d==="string"){ try{ d = JSON.parse(d); }catch(e){ d = null; } }
+  return d && typeof d==="object" && !Array.isArray(d) ? d : null;
+}
+let BILAN = null;
+function enrich(rows){
+  const meta = resolveMeta();
+  const costs = resolveCosts();
+  rows.forEach(r=>{
+    const t0 = new Date(r.run_at).getTime();
+    let best = r._run ? meta.find(m=>m._run && m._run===r._run) : null;
+    if(!best){
+      let bestDt = Infinity;
+      meta.forEach(m=>{ if(m.pr!==r.pr || m.repo!==repoOf(r)) return;
+        const dt = new Date(m.at).getTime()-t0; if(dt>=0 && dt<3600000 && dt<bestDt){ bestDt=dt; best=m; } });
+    }
+    if(best){ if(!r.review_url && best.review_url) r.review_url = best.review_url; r.model = best.model || ""; }
+    let bc=null, bcDt=Infinity;
+    costs.forEach(c=>{ if(c.pr!==r.pr || c.repo!==repoOf(r)) return;
+      const dt=new Date(c.at).getTime()-t0; if(dt>-300000 && dt<3600000 && Math.abs(dt)<bcDt){ bcDt=Math.abs(dt); bc=c; } });
+    r.cost = bc ? Number(bc.cost_usd) : null; r.costInfo = bc;
+    const t1 = r.observed_at ? new Date(r.observed_at).getTime() : NaN;
+    const dur = (t1 - t0)/1000;
+    // Durée = session de review de l'agent (review_sessions.session_ms) ; repli : début du run → publication.
+    r.durSession = !!(bc && bc.session_ms);
+    r.dur = r.durSession ? Math.round(bc.session_ms/1000) : ((isFinite(dur) && dur>0 && dur<3600) ? Math.round(dur) : null);
+    ["diff_files","diff_add","diff_del","review_pass"].forEach(k=>{
+      const v = r[k]; r[k] = (v===null||v===undefined||v==="") ? null : (isFinite(Number(v)) ? Number(v) : null); });
+  });
+  // Passe : valeur calculée par le workflow (historique GitHub complet), sinon rang dans les lignes de la page.
+  const seen = new Map();
+  [...rows].sort((a,b)=>a.run_at.localeCompare(b.run_at)).forEach(r=>{
+    const k = repoOf(r)+"#"+r.pr; const n=(seen.get(k)||0)+1; seen.set(k,n);
+    r.pass = r.review_pass || n; r.passExact = !!r.review_pass; });
+  return rows;
+}
+let data, runs;
+function loadData(){
+  BILAN = resolveBilan();
+  PEDAGO = new Set(((BILAN && BILAN.pedago) || []).map(String));
+  data = enrich(resolveReviews());
+  runs = [...new Map(data.map(r=>[r.run_at,r])).keys()].sort((a,b)=>b.localeCompare(a));
+}
+loadData();
+
+// ---------- helpers ----------
+const fmtRun = iso => { const d=new Date(iso); return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})+" "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}); };
+const fmtDay = day => { const d=new Date(day+"T00:00:00"); return d.toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit"}); };
+const runKey = iso => iso;
+const fmtDur = s => s==null ? null : (s<60 ? `${s} s` : `${Math.floor(s/60)} min ${String(s%60).padStart(2,"0")}`);
+const NA = `<span class="metric zero">·</span>`;
+const fmtUsd = v => v==null ? null : (v<10 ? v.toFixed(2) : v.toFixed(0)).replace(".",",")+" $";
+const fmtK = n => n>=1000 ? Math.round(n/1000)+"k" : String(n||0);
+const costTip = c => c ? `entrée ${fmtK(c.input)} · sortie ${fmtK(c.output)} · cache lu ${fmtK(c.cache_read)} · cache écrit ${fmtK(c.cache_write)} · ${c.model||""}` : "";
+// Markdown léger du generalComment (titre ##, puces, `code`, **gras**), après échappement.
+function md(src){
+  const inline = s => s.replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>");
+  let out = "", list = false;
+  String(src||"").split("\n").forEach(raw=>{
+    const line = esc(raw).trim();
+    const li = /^[-*]\s+(.*)$/.exec(line);
+    if(li){ if(!list){ out+="<ul>"; list=true; } out+=`<li>${inline(li[1])}</li>`; return; }
+    if(list){ out+="</ul>"; list=false; }
+    if(!line) return;
+    const h = /^#{1,6}\s+(.*)$/.exec(line);
+    out += h ? `<p class="post-title">${inline(h[1])}</p>` : `<p>${inline(line)}</p>`;
+  });
+  if(list) out+="</ul>";
+  return out || `<p class="post-empty">Pas de synthèse enregistrée.</p>`;
+}
+const avaColor = name => { let h=0; for(const c of name) h=(h*31+c.charCodeAt(0))%360; return `hsl(${h} 45% 45%)`; };
+const initials = name => name.replace(/[^a-zA-Z]/g," ").trim().split(/\s+/).slice(0,2).map(s=>s[0]).join("").toUpperCase();
+
+// ---------- day chips ----------
+let activeRun = "all";       // "all" | "YYYY-MM-DD" (jour sélectionné)
+let activeProject = "all";   // "all" | "owner/repo" (projet sélectionné)
+let daysExpanded = false;    // false = 6 jours max + "+N", true = tout déplié
+const DAYS_CAP = 6;
+let sortKey = "run_at", sortDir = "desc";
+const SEV = { request_changes:0, comment:1, approve:2 };
+function cmpRows(a,b){
+  const dir = sortDir==="asc"?1:-1;
+  let d = 0;
+  switch(sortKey){
+    case "pr": d = (a.pr-b.pr); break;
+    case "inline": d = ((a.inline||0)-(b.inline||0)); break;
+    case "diff": d = ((a.diff_files??-1)-(b.diff_files??-1)); break;
+    case "dur": d = ((a.dur??-1)-(b.dur??-1)); break;
+    case "pass": d = ((a.pass||0)-(b.pass||0)); break;
+    case "cost": d = ((a.cost??-1)-(b.cost??-1)); break;
+    case "author": d = (a.author||"").localeCompare(b.author||""); break;
+    case "repo": d = repoOf(a).localeCompare(repoOf(b)); break;
+    case "verdict": d = ((SEV[a.verdict]??9)-(SEV[b.verdict]??9)); break;
+    default: d = a.run_at.localeCompare(b.run_at);
+  }
+  d *= dir;
+  return d || b.run_at.localeCompare(a.run_at) || (b.pr-a.pr);  // tie-break: récent puis PR décroissant
+}
+function updateSortHeaders(){
+  document.querySelectorAll("thead .sortable").forEach(th=>{
+    const active = th.dataset.key===sortKey;
+    th.classList.toggle("active", active);
+    const base = th.textContent.replace(/[▲▼]\s*$/,"").trim();
+    th.innerHTML = base + (active ? ` <span class="arrow">${sortDir==="asc"?"▲":"▼"}</span>` : "");
+  });
+}
+function wireSort(){
+  document.querySelectorAll("thead .sortable").forEach(th=>{
+    th.onclick = ()=>{
+      const k = th.dataset.key;
+      if(sortKey===k){ sortDir = sortDir==="asc"?"desc":"asc"; }
+      else { sortKey = k; sortDir = (k==="author"||k==="verdict"||k==="repo") ? "asc" : "desc"; }
+      table(); updateSortHeaders();
+    };
+  });
+}
+const runbar = document.getElementById("runbar");
+function chip(id,label,n){ const b=document.createElement("button"); b.className="chip"; b.setAttribute("aria-pressed", id===activeRun); b.dataset.run=id;
+  b.innerHTML=`${label}${n!=null?` <span class="n">${n}</span>`:""}`; b.onclick=()=>{activeRun=id; render();}; return b; }
+// jours uniques (regroupe tous les runs d'une même journée), triés du + récent au + ancien
+function dayList(){
+  const m = new Map();
+  data.forEach(r=>{ const d=r.run_at.slice(0,10); m.set(d,(m.get(d)||0)+1); });
+  return [...m.entries()].sort((a,b)=>b[0].localeCompare(a[0]));   // [[day,count],…]
+}
+function syncChipPressed(){
+  runbar.querySelectorAll(".chip[data-run]").forEach(c=>c.setAttribute("aria-pressed", c.dataset.run===activeRun));
+}
+function moreChip(label, onclick){
+  const b=document.createElement("button"); b.className="chip more"; b.innerHTML=label;
+  b.onclick=onclick; return b;
+}
+function buildChips(){
+  runbar.querySelectorAll(".chip, .spacer").forEach(c=>c.remove());
+  runbar.appendChild(chip("all","Tous", data.length));
+  const days = dayList();
+  const shown = daysExpanded ? days : days.slice(0, DAYS_CAP);
+  shown.forEach(([d,n])=>runbar.appendChild(chip(d, fmtDay(d), n)));
+  const hiddenDays = days.slice(shown.length);
+  if(hiddenDays.length){
+    const hiddenReviews = hiddenDays.reduce((s,[,n])=>s+n,0);
+    runbar.appendChild(moreChip(
+      `+${hiddenDays.length} jour${hiddenDays.length>1?"s":""} <span class="n">${hiddenReviews}</span>`,
+      ()=>{ daysExpanded=true; buildChips(); syncChipPressed(); }));
+  } else if(daysExpanded && days.length>DAYS_CAP){
+    runbar.appendChild(moreChip(`↺ réduire`,
+      ()=>{ daysExpanded=false; buildChips(); syncChipPressed(); }));
+  }
+  if(activeAuthor || activePr){ const sp=document.createElement("span"); sp.className="spacer"; runbar.appendChild(sp); }
+  if(activePr){ const pp=document.createElement("button"); pp.className="chip"; pp.setAttribute("aria-pressed","true");
+    pp.innerHTML=`🔀 ${esc(shortRepo(activePr.split("#")[0]))}#${esc(activePr.split("#")[1])} ✕`; pp.title="Retirer le filtre sur cette PR";
+    pp.onclick=()=>{ activePr=null; render(); }; runbar.appendChild(pp); }
+  if(activeAuthor){
+    const ap=document.createElement("button"); ap.className="chip"; ap.setAttribute("aria-pressed","true");
+    ap.innerHTML=`👤 ${activeAuthor} ✕`; ap.onclick=()=>{ activeAuthor=null; render(); }; runbar.appendChild(ap); }
+}
+
+function ago(iso){ const ms=Date.now()-new Date(iso).getTime(); const min=Math.round(ms/60000);
+  if(min<60) return `il y a ${min} min`; const h=Math.round(min/60);
+  if(h<24) return `il y a ${h} h`; const d=Math.round(h/24); return `il y a ${d} j`; }
+function updateHeader(){ const el=document.getElementById("lastrun");
+  el.innerHTML = runs.length ? `${fmtRun(runs[0])} <span style="color:var(--muted);font-weight:400">· ${ago(runs[0])}</span>` : "—";
+  const h = BILAN && BILAN.horaire, ps = posteNames();
+  document.getElementById("horaire").innerHTML = h ? ` · cron <code>${esc(h)}</code>` : "";
+  document.getElementById("postes").innerHTML = ps.length ? ` · postes <code>${ps.map(p=>esc((POSTES[p]||{}).l||p)).join(" · ")}</code>` : "";
+  document.getElementById("pedleg").hidden = !PEDAGO.size; }
+
+// ---------- les postes de la revue (review_sessions.postes) et la suite des bloquants (revue_bilan) ----------
+const POSTES = { contexte:{l:"contexte", i:"🗺"}, lecture:{l:"lecture", i:"🔍"}, securite:{l:"sécurité", i:"🔒"}, docs:{l:"docs", i:"📚"}, avis:{l:"avis", i:"🧐"} };
+const ORDRE = ["contexte","lecture","securite","docs","avis"];
+const byOrder = (a,b) => ((ORDRE.indexOf(a)+1)||99) - ((ORDRE.indexOf(b)+1)||99) || a.localeCompare(b);
+function posteCosts(days){
+  const since = Date.now() - days*DAY, tot = {};
+  resolveCosts().forEach(c=>{ if(!c.postes || typeof c.postes!=="object" || !(new Date(c.at).getTime() >= since)) return;
+    for(const [p,v] of Object.entries(c.postes)) if(isFinite(Number(v))) tot[p] = (tot[p]||0) + Number(v); });
+  return tot;
+}
+const posteNames = () => Object.keys(posteCosts(30)).sort(byOrder);
+function bilanPanels(){
+  const tot = posteCosts(30), names = Object.keys(tot).sort(byOrder), max = Math.max(...names.map(p=>tot[p]), 0), sum = names.reduce((s,p)=>s+tot[p],0);
+  document.getElementById("postesub").textContent = names.length ? `30 derniers jours · ${fmtUsd(sum)} sur les revues en postes` : "30 derniers jours · aucune revue en postes";
+  document.getElementById("postecosts").innerHTML = names.map(p=>`<div class="arow" style="grid-template-columns:132px 1fr 64px">
+      <div class="name"><b>${esc((POSTES[p]||{}).i||"·")} ${esc((POSTES[p]||{}).l||p)}</b></div>
+      <div class="bar"><i style="width:${max?tot[p]/max*100:0}%;background:var(--accent)"></i></div><div class="cnt">${fmtUsd(tot[p])}</div></div>`).join("")
+    || `<div style="color:var(--muted-2);font-size:13px">Le coût par poste arrive avec les prochaines revues.</div>`;
+  const b = BILAN && BILAN.bloquants, el = document.getElementById("suite"), m = BILAN && BILAN.merges;
+  if(!b){ el.innerHTML = `<div style="color:var(--muted-2);font-size:13px">${esc((BILAN && BILAN.error) || "Le cron revue_bilan n'est pas encore passé.")}</div>`; document.getElementById("merges").textContent = ""; return; }
+  const pc = (n,d) => d ? Math.round(n/d*100)+" %" : "";
+  const rows = [["Bloquants posés", b.poses, "var(--crit)", ""], ["Repris à la passe suivante", b.repris, "var(--accent)", pc(b.repris,b.poses)],
+    ["Corrigés par l'auteur", b.corriges, "var(--ok)", pc(b.corriges,b.repris)], ["Réfutés (à tort)", b.refutes, "var(--warn)", pc(b.refutes,b.repris)],
+    ["Encore ouverts", b.ouverts, "var(--muted-2)", pc(b.ouverts,b.repris)]];
+  const fmax = Math.max(1, ...rows.map(r=>r[1]||0));
+  el.innerHTML = rows.map(([l,n,c,p])=>`<div class="arow" style="grid-template-columns:190px 1fr 74px"><div class="name"><b>${l}</b></div>
+      <div class="bar"><i style="width:${(n||0)/fmax*100}%;background:${c}"></i></div><div class="cnt">${n||0} <span style="color:var(--muted-2)">${p}</span></div></div>`).join("");
+  document.getElementById("merges").innerHTML = m ? `PR relues depuis 60 jours : <b>${m.mergees} mergée${m.mergees>1?"s":""}</b> / ${m.relues} · ${m.ouvertes} encore ouverte${m.ouvertes>1?"s":""}${m.fermees?` · ${m.fermees} fermée${m.fermees>1?"s":""}`:""}` : "";
+}
+// le badge « Suite » d'une PR : bloquants corrigés sur repris, et « mergée »
+function suiteBadge(r){
+  const s = BILAN && BILAN.prs && BILAN.prs[repoOf(r)+"#"+r.pr]; if(!s) return "";
+  const parts = []; if(s.repris) parts.push(`${s.corriges}/${s.repris} ✓`); if(s.etat==="merged") parts.push("mergée");
+  if(!parts.length) return "";
+  const tip = `Bloquants : ${s.poses} posés, ${s.corriges} corrigés, ${s.refutes} réfutés, ${s.ouverts} ouverts` + (s.etat ? ` · PR ${({merged:"mergée",open:"ouverte",closed:"fermée"})[s.etat]||s.etat}` : "");
+  return ` <span class="metric" title="${esc(tip)}" style="border:1px solid var(--line-strong);border-radius:4px;padding:1px 5px;${s.etat==="merged"?"color:var(--ok)":""}">${parts.join(" · ")}</span>`;
+}
+
+let activeAuthor = null;
+const DAY = 86400000;
+
+// ---------- KPIs (aujourd'hui, tous créneaux agrégés — 1 ligne / PR, dernière du jour) ----------
+function todayRecords(){
+  if(!runs.length) return [];
+  const day = runs[0].slice(0,10);
+  const byPr = new Map();
+  data.filter(r=>r.run_at.slice(0,10)===day)
+    .sort((a,b)=>a.run_at.localeCompare(b.run_at))
+    .forEach(r=>byPr.set(r.pr, r));           // garde la dernière review du jour pour cette PR
+  return [...byPr.values()];
+}
+function kpiCards(){
+  const today = todayRecords();
+  const rc = today.filter(r=>r.verdict==="request_changes").length;
+  const ap = today.filter(r=>r.verdict==="approve").length;
+  const inline = today.reduce((s,r)=>s+(r.inline||0),0);
+  const runsToday = runs.length ? runs.filter(rk=>rk.slice(0,10)===runs[0].slice(0,10)).length : 0;
+  const since = Date.now()-7*DAY;
+  const week = data.filter(r=>new Date(r.run_at).getTime()>=since).length;
+  const dayLab = runs.length ? "le " + new Date(runs[0]).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"}) : "";
+  const bl = (BILAN && BILAN.bloquants) || null;
+  const cards = [
+    {cls:"", lab:"PR reviewées", val:today.length, sub:dayLab, delta:`dernier jour avec des revues · ${runsToday} run${runsToday>1?"s":""}`},
+    {cls:"ok", lab:"Approuvées", val:ap, sub:today.length?`${Math.round(ap/today.length*100)}%`:"", delta:"verdict approve"},
+    {cls:"crit", lab:"Changes requis", val:rc, sub:"", delta:"à corriger"},
+    {cls:"warn", lab:"Remarques inline", val:inline, sub:"", delta:"posées " + dayLab},
+    {cls:"", lab:"Reviews", val:week, sub:"7 derniers jours", delta:"volume récent"},
+    {cls:"ok", lab:"Bloquants corrigés", val:bl ? bl.corriges : "·", sub:bl ? `/ ${bl.repris} suivis` : "",
+     delta:bl ? `${bl.ouverts} encore ouvert${bl.ouverts>1?"s":""} · ${bl.refutes} réfuté${bl.refutes>1?"s":""}` : "cron revue_bilan pas encore passé"},
+  ];
+  document.getElementById("kpis").innerHTML = cards.map(c=>`
+    <div class="kpi ${c.cls}"><span class="rail"></span>
+      <div class="lab">${c.lab}</div>
+      <div class="val">${c.val}${c.sub?` <small>${c.sub}</small>`:""}</div>
+      <div class="delta">${c.delta}</div>
+    </div>`).join("");
+}
+
+// ---------- authors ----------
+function authorsPanel(){
+  let scope = activeRun==="all"?data:data.filter(r=>r.run_at.slice(0,10)===activeRun);
+  if(activeProject!=="all") scope = scope.filter(r=>repoOf(r)===activeProject);
+  const by = {};
+  scope.forEach(r=>{ (by[r.author] ||= {ok:0,warn:0,crit:0,total:0});
+    by[r.author][VCLASS[r.verdict]]++; by[r.author].total++; });
+  const list = Object.entries(by).sort((a,b)=>b[1].total-a[1].total).slice(0,6);
+  const max = Math.max(...list.map(([,v])=>v.total),1);
+  const el = document.getElementById("authors");
+  if(!list.length){ el.innerHTML = `<div style="color:var(--muted-2);font-size:13px">Aucune review encore enregistrée.</div>`; return; }
+  el.innerHTML = list.map(([name,v])=>{
+    const w = t=>`${(v[t]/max*100)}%`;
+    return `<div class="arow">
+      <div class="name" style="cursor:pointer" title="Filtrer sur ${name}" onclick="window.filterAuthor('${name}')"><b>${name}</b>${PEDAGO.has(name)?'<span class="ped">●</span>':""}</div>
+      <div class="bar">
+        <i class="ok" style="width:${w("ok")}"></i><i class="warn" style="width:${w("warn")}"></i>
+        <i class="crit" style="width:${w("crit")}"></i>
+      </div>
+      <div class="cnt">${v.total}</div>
+    </div>`;
+  }).join("");
+}
+
+// ---------- table ----------
+// Deux vues : "pr" (1 ligne par PR, passes regroupées, défaut) et "review" (1 ligne par review).
+let viewMode = (()=>{ try{ return localStorage.getItem("recapView")==="review" ? "review" : "pr"; }catch(e){ return "pr"; } })();
+let activePr = null;                       // "owner/repo#123" : filtre sur une PR (clic sur son n°)
+const prKey = r => repoOf(r)+"#"+r.pr;
+const HEADS = {
+  review: [["run_at","Run"],["repo","Projet"],["pr","PR"],["author","Auteur"],["verdict","Verdict"],
+           ["diff","Diff","num"],["durcost",["Durée","Coût"],"num"]],
+  pr:     [["run_at","Dernier run"],["repo","Projet"],["pr","PR"],["author","Auteur"],["verdict","Verdict actuel"],
+           ["traj","Trajectoire","",false],["diff","Diff","num"],["durcost",["Durée tot.","Coût tot."],"num"]],
+};
+function renderHead(){
+  document.querySelector("thead tr").innerHTML = HEADS[viewMode].map(([k,label,cls,sortable])=>
+    k==="durcost"   // 1 colonne, 2 tris : durée au-dessus, coût en dessous
+      ? `<th class="${cls||""}"><div class="stack"><span class="sortable" data-key="dur">${label[0]}</span><span class="sortable" data-key="cost">${label[1]}</span></div></th>`
+      : `<th class="${sortable===false?"":"sortable "}${cls||""}" data-key="${k}">${label}</th>`).join("");
+  document.querySelectorAll(".seg button[data-view]").forEach(b=>b.setAttribute("aria-pressed", b.dataset.view===viewMode));
+  wireSort(); updateSortHeaders();
+}
+window.setView = v => { viewMode = v; try{ localStorage.setItem("recapView", v); }catch(e){} renderHead(); table(); };
+window.filterPr = key => { activePr = activePr===key ? null : key; render(); };
+
+const trajOf = r => data.filter(x=>prKey(x)===prKey(r)).sort((a,b)=>a.run_at.localeCompare(b.run_at));
+function trajDots(passes){
+  const shown = passes.slice(-8), more = passes.length-shown.length;
+  return `<span class="dots">${more>0?`<span class="dots-more">+${more}</span>`:""}${shown.map(t=>
+    `<i class="dot ${VCLASS[t.verdict]||"skip"}" title="${esc(fmtRun(t.run_at))} · ${esc(VLABEL[t.verdict]||t.verdict)}"></i>`).join("")}</span>`;
+}
+function prCell(r){
+  const repo=repoOf(r), key=prKey(r);
+  return `<td class="pr"><a href="javascript:void 0" class="prf${activePr===key?" on":""}" title="${activePr===key?"Retirer le filtre":"Voir toutes les passes de cette PR"}" onclick="event.stopPropagation();window.filterPr('${esc(key)}')">#${r.pr}</a><a class="prgh" href="https://github.com/${esc(repo)}/pull/${r.pr}" target="_blank" rel="noopener" title="Ouvrir la PR sur GitHub" onclick="event.stopPropagation()">↗</a></td>`;
+}
+function whoCell(r){ const auth=r.author||"?";
+  return `<td><div class="who" title="Filtrer sur ${esc(auth)}" onclick="event.stopPropagation();window.filterAuthor('${esc(auth)}')"><span class="ava" style="background:${avaColor(auth)}">${initials(auth)}</span>${esc(auth)}</div></td>`; }
+const diffCell = r => `<td class="num">${r.diff_files!=null?`<span class="metric" title="+${r.diff_add??"?"} / −${r.diff_del??"?"} lignes">${r.diff_files} f</span>`:NA}</td>`;
+function postCard(r){
+  const cls=VCLASS[r.verdict], vlab=VLABEL[r.verdict], auth=r.author||"?", repo=repoOf(r);
+  const reviewUrl = r.review_url || `https://github.com/${repo}/pull/${r.pr}`;
+  return `<article class="post">
+    <div class="post-ava" aria-hidden="true">🤖</div>
+    <div class="post-main">
+      <header class="post-head"><b>Kronn Review</b>
+        ${r.model?`<span class="post-model">${esc(r.model)}</span>`:""}
+        <span class="post-dot">·</span><time title="${esc(fmtRun(r.run_at))}">${esc(ago(r.run_at))}</time>
+        <span class="pill ${cls}" style="margin-left:auto">${vlab}</span></header>
+      <div class="post-to">en réponse à <b>@${esc(auth)}</b> sur <b>${esc(shortRepo(repo))}#${r.pr}</b> · passage ${r.pass}</div>
+      <div class="post-body">${md(r.summary||"")}</div>
+      <footer class="post-actions">
+        <span title="Commentaires inline postés">💬 ${r.inline||0}</span>
+        <span title="Réactions sur les commentaires existants">👍 ${r.reactions||0}</span>
+        <span title="Réponses dans des fils existants">↩ ${r.replies||0}</span>
+        <a href="${reviewUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗ Voir sur GitHub</a>
+      </footer></div></article>`;
+}
+function metaLine(r){
+  return `<div class="meta-line"><span>base · <b>${esc(r.base||"main")}</b></span>
+    ${r.diff_files!=null?`<span>diff · <b>${r.diff_files} fichiers</b> +${r.diff_add??"?"} / −${r.diff_del??"?"}</span>`:""}
+    ${r.dur!=null?`<span>durée · <b>${fmtDur(r.dur)}</b></span>`:""}
+    ${r.cost!=null?`<span>coût · <b>${fmtUsd(r.cost)}</b> (${esc(costTip(r.costInfo))})</span>`:""}</div>`;
+}
+function scopeRows(){
+  let scope = activeRun==="all"?data:data.filter(r=>r.run_at.slice(0,10)===activeRun);
+  if(activeAuthor) scope = scope.filter(r=>r.author===activeAuthor);
+  if(activeProject!=="all") scope = scope.filter(r=>repoOf(r)===activeProject);
+  if(activePr) scope = scope.filter(r=>prKey(r)===activePr);
+  return scope;
+}
+function table(){
+  const scope = scopeRows();
+  const tb = document.getElementById("rows"), ncol = HEADS[viewMode].length;
+  if(!scope.length){ tb.innerHTML = `<tr><td colspan="${ncol}" style="padding:28px;text-align:center;color:var(--muted-2)">Aucune review pour cette sélection.</td></tr>`; return; }
+  tb.innerHTML = viewMode==="pr" ? prRowsHtml(scope, ncol) : reviewRowsHtml(scope, ncol);
+  tb.querySelectorAll("tr.parent").forEach(tr=>{
+    tr.onclick=()=>{ const d=tb.querySelector(`tr.detail[data-for="${tr.dataset.i}"]`);
+      const open=!d.hasAttribute("hidden"); if(open){d.setAttribute("hidden","");tr.classList.remove("open");}
+      else{d.removeAttribute("hidden");tr.classList.add("open");} };
+  });
+  tb.querySelectorAll(".passrow").forEach(pr=>{
+    pr.onclick=e=>{ e.stopPropagation(); const box=pr.closest(".detailbox");
+      box.querySelectorAll(".passrow").forEach(x=>x.classList.toggle("sel", x===pr));
+      box.querySelectorAll(".pcard").forEach(c=>c.hidden = c.dataset.p!==pr.dataset.p); };
+  });
+  // Une seule PR affichée (filtre PR) : on la déplie directement.
+  if(activePr && viewMode==="pr"){ const tr=tb.querySelector("tr.parent"); if(tr) tr.click(); }
+}
+function reviewRowsHtml(scope, ncol){
+  return [...scope].sort(cmpRows).map((r,i)=>{
+    const traj = trajOf(r);
+    const trajHtml = traj.length>1
+      ? traj.map(t=>`<span style="display:inline-flex;flex-direction:column;align-items:center;gap:2px">
+          <span class="pill ${VCLASS[t.verdict]}" style="font-size:10px;padding:2px 7px">${VLABEL[t.verdict]}</span>
+          <span style="font-family:var(--mono);font-size:9px;color:var(--muted-2)">${esc(fmtRun(t.run_at))}</span></span>`)
+          .join('<span style="color:var(--muted-2);align-self:flex-start;margin-top:3px">→</span>')
+      : '<span style="color:var(--muted-2)">1ʳᵉ review du bot sur cette PR</span>';
+    return `<tr class="parent" data-i="${i}">
+      <td class="runcell"><span class="caret">▸</span> ${fmtRun(r.run_at)}</td>
+      <td class="base" title="${esc(repoOf(r))}">${esc(shortRepo(repoOf(r)))}</td>
+      ${prCell(r)}${whoCell(r)}
+      <td><span class="pill ${VCLASS[r.verdict]}">${VLABEL[r.verdict]}</span>${suiteBadge(r)}</td>
+      ${diffCell(r)}
+      <td class="num"><div class="stack">${r.dur!=null?`<span class="metric" title="${r.durSession?"Durée de la session de review (agent)":"Début du run → publication (session introuvable)"}">${fmtDur(r.dur)}</span>`:NA}${r.cost!=null?`<span class="metric" title="${esc(costTip(r.costInfo))}">${fmtUsd(r.cost)}</span>`:NA}</div></td>
+    </tr><tr class="detail" data-for="${i}" hidden><td colspan="${ncol}"><div class="detailbox">
+      ${postCard(r)}
+      <div><span class="lab">Trajectoire des verdicts · ${traj.length} passage${traj.length>1?"s":""}</span>
+        <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin-top:5px">${trajHtml}</div></div>
+      ${metaLine(r)}</div></td></tr>`;
+  }).join("");
+}
+function prRowsHtml(scope, ncol){
+  const groups = new Map();
+  scope.forEach(r=>{ const k=prKey(r); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(r); });
+  const gs = [...groups.values()].map(ps=>{
+    ps.sort((a,b)=>a.run_at.localeCompare(b.run_at));
+    const last = ps[ps.length-1];
+    const sum = f => { const v=ps.map(p=>p[f]).filter(x=>x!=null); return v.length ? v.reduce((s,x)=>s+x,0) : null; };
+    return { ...last, dur:sum("dur"), cost:sum("cost"), _ps:ps, _all:trajOf(last) };
+  });
+  return gs.sort(cmpRows).map((g,i)=>{
+    const ps = g._ps, partial = ps.length < g._all.length;
+    const scopeNote = partial ? ` (${ps.length} passage${ps.length>1?"s":""} dans la sélection sur ${g._all.length})` : "";
+    const passesHtml = [...ps].reverse().map((p,j)=>`<div class="passrow${j===0?" sel":""}" data-p="${j}" title="Afficher la synthèse de ce passage">
+        <span class="pnum">#${p.pass}</span><span class="runcell">${fmtRun(p.run_at)}</span>
+        <span class="pill ${VCLASS[p.verdict]}">${VLABEL[p.verdict]}</span>
+        <span class="metric">${p.dur!=null?fmtDur(p.dur):"·"}</span><span class="metric">${p.cost!=null?fmtUsd(p.cost):"·"}</span>
+        <span class="metric">💬 ${p.inline||0}</span></div>`).join("");
+    const cards = [...ps].reverse().map((p,j)=>`<div class="pcard" data-p="${j}"${j===0?"":" hidden"}>${postCard(p)}${metaLine(p)}</div>`).join("");
+    return `<tr class="parent" data-i="${i}">
+      <td class="runcell"><span class="caret">▸</span> ${fmtRun(g.run_at)}</td>
+      <td class="base" title="${esc(repoOf(g))}">${esc(shortRepo(repoOf(g)))}</td>
+      ${prCell(g)}${whoCell(g)}
+      <td><span class="pill ${VCLASS[g.verdict]}">${VLABEL[g.verdict]}</span>${suiteBadge(g)}</td>
+      <td title="${g._all.length} passage${g._all.length>1?"s":""} du bot sur cette PR${scopeNote}">${trajDots(g._all)}</td>
+      ${diffCell(g)}
+      <td class="num"><div class="stack">${g.dur!=null?`<span class="metric" title="Somme sur ${ps.length} passage${ps.length>1?"s":""}${scopeNote}">${fmtDur(g.dur)}</span>`:NA}${g.cost!=null?`<span class="metric" title="Somme sur ${ps.length} passage${ps.length>1?"s":""}${scopeNote}">${fmtUsd(g.cost)}</span>`:NA}</div></td>
+    </tr><tr class="detail" data-for="${i}" hidden><td colspan="${ncol}"><div class="detailbox">
+      <div><span class="lab">Passages${partial?" dans la sélection":""} · ${ps.length}</span><div class="passes">${passesHtml}</div></div>
+      ${cards}</div></td></tr>`;
+  }).join("");
+}
+
+// ---------- trend chart ----------
+function trend(){
+  const cv = document.getElementById("trend");
+  const cssW = cv.clientWidth || 640, H = 150, dpr = window.devicePixelRatio||1;
+  cv.width = cssW*dpr; cv.height = H*dpr;
+  const ctx = cv.getContext("2d"); ctx.scale(dpr,dpr); ctx.clearRect(0,0,cssW,H);
+  const S = getComputedStyle(document.documentElement);
+  const col = { ok:S.getPropertyValue("--ok"), warn:S.getPropertyValue("--warn"),
+    crit:S.getPropertyValue("--crit"),
+    line:S.getPropertyValue("--line"), muted:S.getPropertyValue("--muted-2") };
+  // group by day (8 derniers jours)
+  const days = {};
+  data.forEach(r=>{ const d=r.run_at.slice(0,10); (days[d] ||= {ok:0,warn:0,crit:0});
+    days[d][VCLASS[r.verdict]]++; });
+  const keys = Object.keys(days).sort().slice(-8);
+  const totals = keys.map(k=>{const v=days[k]; return v.ok+v.warn+v.crit;});
+  const maxV = Math.max(...totals,1);
+  const padL=26, padB=22, padT=8, padR=4;
+  const cw = cssW-padL-padR, ch = H-padB-padT;
+  const n = keys.length, gap=10;
+  if(!n) return;
+  const bw = Math.min(38, (cw - gap*(n-1))/n);
+  const step = (cw - bw)/(Math.max(n-1,1));
+  // gridlines
+  ctx.strokeStyle = col.line; ctx.lineWidth=1; ctx.font="10px ui-monospace, monospace"; ctx.fillStyle=col.muted;
+  const ticks=Math.min(maxV,4);
+  for(let i=0;i<=ticks;i++){ const v=Math.round(maxV*i/ticks); const y=padT+ch-(v/maxV*ch);
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(cssW-padR,y); ctx.globalAlpha=.5; ctx.stroke(); ctx.globalAlpha=1;
+    ctx.fillText(v, 2, y+3); }
+  // bars stacked
+  chartHits.trend = keys.map((k,i)=>{ const v=days[k], t=v.ok+v.warn+v.crit;
+    return {day:k, x0:padL+i*step-gap/2, x1:padL+i*step+bw+gap/2,
+      tip:`<b>${fmtDay(k)}</b> · ${t} review${t>1?"s":""}<br>${v.ok} approve · ${v.warn} comment · ${v.crit} req. changes`}; });
+  keys.forEach((k,i)=>{
+    const x = padL + i*step; let y = padT+ch; const v=days[k];
+    ctx.globalAlpha = dimFor(k,"trend");
+    [["crit",col.crit],["warn",col.warn],["ok",col.ok]].forEach(([kk,c])=>{
+      const h = v[kk]/maxV*ch; if(h<=0) return;
+      ctx.fillStyle=c.trim(); const yy=y-h;
+      const rad=Math.min(3,bw/2); ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(x,yy,bw,h,[0,0,0,0]) : ctx.rect(x,yy,bw,h);
+      ctx.fill(); y-=h;
+    });
+    ctx.globalAlpha = 1;
+  });
+  xLabels(ctx, keys.map((k,i)=>({x:padL+i*step+bw/2, text:dayLabel(k)})), H-5);
+}
+
+// ---------- weekly aggregations ----------
+function mondayOf(iso){ const d=new Date(iso.slice(0,10)); const day=(d.getUTCDay()+6)%7;
+  d.setUTCDate(d.getUTCDate()-day); return d.toISOString().slice(0,10); }
+function weeklyStats(){
+  const w={};
+  data.forEach(r=>{ const k=mondayOf(r.run_at); (w[k] ||= {reviewed:0,approve:0,comments:0});
+    w[k].reviewed++; if(r.verdict==="approve") w[k].approve++;
+    w[k].comments += (r.inline||0) + (r.replies||0); });
+  return Object.keys(w).sort().map(k=>({k, ...w[k]})).slice(-8);   // 8 dernières semaines
+}
+function setupCanvas(cv,H){ const cssW=cv.clientWidth||420, dpr=window.devicePixelRatio||1;
+  cv.width=cssW*dpr; cv.height=H*dpr; const ctx=cv.getContext("2d"); ctx.scale(dpr,dpr); ctx.clearRect(0,0,cssW,H);
+  return {ctx,cssW,H}; }
+function palette(){ const S=getComputedStyle(document.documentElement); const g=n=>S.getPropertyValue(n).trim();
+  return {ok:g("--ok"),accent:g("--accent"),line:g("--line"),muted:g("--muted-2")}; }
+// Libellés d'axe X lisibles : couleur contrastée, 11px, et saut auto des libellés qui se chevaucheraient.
+function xLabels(ctx, items, y){
+  const S=getComputedStyle(document.documentElement);
+  ctx.save(); ctx.font="500 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillStyle=S.getPropertyValue("--muted").trim(); ctx.textAlign="center";
+  const w=Math.max(...items.map(it=>ctx.measureText(it.text).width),1);
+  const minStep=w+8;
+  const step=items.length>1 ? Math.abs(items[1].x-items[0].x) : minStep;
+  const every=Math.max(1, Math.ceil(minStep/Math.max(step,1)));
+  const W=ctx.canvas.clientWidth||ctx.canvas.width;
+  items.forEach((it,i)=>{ const fromEnd=items.length-1-i; if(fromEnd%every!==0) return;
+    ctx.fillText(it.text, Math.min(Math.max(it.x, w/2+1), W-w/2-1), y); });
+  ctx.restore();
+}
+const dayLabel = k => { const d=new Date(k+"T12:00:00"); return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"}); };
+function weekLabel(k){ const d=new Date(k); return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"}); }
+
+function approveChart(){
+  const cv=document.getElementById("approve"); const {ctx,cssW,H}=setupCanvas(cv,130); const c=palette();
+  const wk=weeklyStats(); if(!wk.length) return; const padL=30,padR=6,padT=10,padB=22; const cw=cssW-padL-padR, ch=H-padT-padB;
+  ctx.strokeStyle=c.line; ctx.font="10px ui-monospace,monospace"; ctx.fillStyle=c.muted;
+  [0,25,50,75,100].forEach(p=>{ const y=padT+ch-(p/100*ch); ctx.globalAlpha=.5; ctx.beginPath();
+    ctx.moveTo(padL,y); ctx.lineTo(cssW-padR,y); ctx.stroke(); ctx.globalAlpha=1; ctx.fillText(p+"%",2,y+3); });
+  const n=wk.length, step=n>1?cw/(n-1):0;
+  const pts=wk.map((w,i)=>({x:padL+i*step, y:padT+ch-((w.reviewed?w.approve/w.reviewed:0)*ch), w}));
+  // area
+  const grad=ctx.createLinearGradient(0,padT,0,padT+ch); grad.addColorStop(0,c.ok+"55"); grad.addColorStop(1,c.ok+"00");
+  ctx.beginPath(); ctx.moveTo(pts[0].x,padT+ch); pts.forEach(p=>ctx.lineTo(p.x,p.y));
+  ctx.lineTo(pts[n-1].x,padT+ch); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
+  // line
+  ctx.beginPath(); pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+  ctx.strokeStyle=c.ok; ctx.lineWidth=2; ctx.stroke();
+  chartHits.approve = pts.map(p=>({day:p.w.k, x0:p.x-Math.max(step,24)/2, x1:p.x+Math.max(step,24)/2,
+    tip:`<b>Semaine du ${weekLabel(p.w.k)}</b><br>${p.w.reviewed?Math.round(p.w.approve/p.w.reviewed*100):0} % approuvées (${p.w.approve}/${p.w.reviewed})`}));
+  pts.forEach((p,i)=>{ const hov=chartHover.approve===p.w.k;
+    if(hov){ ctx.save(); ctx.strokeStyle=c.ok; ctx.globalAlpha=.35; ctx.setLineDash([3,3]); ctx.beginPath();
+      ctx.moveTo(p.x,padT); ctx.lineTo(p.x,padT+ch); ctx.stroke(); ctx.restore(); }
+    ctx.beginPath(); ctx.arc(p.x,p.y,hov?6:(i===n-1?4:3),0,7); ctx.fillStyle=c.ok; ctx.fill();
+    if(hov){ ctx.beginPath(); ctx.arc(p.x,p.y,9,0,7); ctx.strokeStyle=c.ok; ctx.globalAlpha=.3; ctx.lineWidth=3; ctx.stroke(); ctx.globalAlpha=1; ctx.lineWidth=1; }
+  });
+  xLabels(ctx, pts.map(p=>({x:p.x, text:weekLabel(p.w.k)})), H-5);
+}
+// ---------- clic sur une barre = sélection du jour (comme les puces au-dessus du tableau) ----------
+const chartHits = {};
+const chartHover = { trend:null, costs:null, approve:null };
+// Survol prioritaire (barre survolée pleine, les autres estompées), sinon jour sélectionné.
+const dimFor = (day, id) => chartHover[id] ? (chartHover[id]===day ? 1 : .35)
+  : ((activeRun==="all" || activeRun===day) ? 1 : .3);
+const DRAW = { trend:()=>trend(), costs:()=>costChart(), approve:()=>approveChart() };
+function chartTip(){ let t=document.getElementById("charttip");
+  if(!t){ t=document.createElement("div"); t.id="charttip"; t.setAttribute("role","tooltip"); document.body.appendChild(t); } return t; }
+function hitAt(id, e){ const cv=document.getElementById(id); const r=cv.getBoundingClientRect(); const x=e.clientX-r.left;
+  return (chartHits[id]||[]).find(b=>x>=b.x0 && x<=b.x1) || null; }
+function wireChartClicks(){
+  ["trend","costs"].forEach(id=>{ const cv=document.getElementById(id); if(!cv) return;
+    cv.addEventListener("click", e=>{ const b=hitAt(id,e); if(!b) return;
+      activeRun = activeRun===b.day ? "all" : b.day;
+      if(activeRun!=="all" && !dayList().slice(0,DAYS_CAP).some(([d])=>d===activeRun)) daysExpanded = true;
+      render(); });
+  });
+  ["trend","costs","approve"].forEach(id=>{ const cv=document.getElementById(id); if(!cv) return;
+    const clickable = id!=="approve";
+    cv.addEventListener("mousemove", e=>{ const b=hitAt(id,e), day=b?b.day:null;
+      cv.style.cursor = b && clickable ? "pointer" : "default";
+      if(chartHover[id]!==day){ chartHover[id]=day; DRAW[id](); }
+      const t=chartTip();
+      if(!b){ t.style.display="none"; return; }
+      t.innerHTML = b.tip + (clickable ? `<span class="tiphint">${activeRun===b.day?"clic : tout réafficher":"clic : filtrer le tableau"}</span>` : "");
+      t.style.display="block";
+      const w=t.offsetWidth, x=Math.min(e.clientX+14, window.innerWidth-w-8);
+      t.style.left=x+"px"; t.style.top=(e.clientY+16)+"px"; });
+    cv.addEventListener("mouseleave", ()=>{ chartTip().style.display="none"; if(chartHover[id]){ chartHover[id]=null; DRAW[id](); } });
+  });
+}
+function costChart(){
+  const cv=document.getElementById("costs"); const {ctx,cssW,H}=setupCanvas(cv,130); const c=palette();
+  const days={};
+  resolveCosts().forEach(x=>{ const k=String(x.at).slice(0,10); (days[k] ||= {real:0,est:0,n:0});
+    days[k][x.estimated?"est":"real"]+=Number(x.cost_usd)||0; days[k].n++; });
+  const keys=Object.keys(days).sort().slice(-10);
+  const sub=document.getElementById("costsub");
+  if(!keys.length){ if(sub) sub.textContent="Aucun coût enregistré pour l'instant"; return; }
+  const tot=keys.reduce((s,k)=>s+days[k].real+days[k].est,0), n=keys.reduce((s,k)=>s+days[k].n,0);
+  if(sub) sub.textContent=`Coût équivalent API (cache inclus) · ${fmtUsd(tot)} sur ${n} reviews · ${fmtUsd(tot/n)} / review en moyenne`;
+  const padL=30,padR=6,padT=16,padB=22; const cw=cssW-padL-padR, ch=H-padT-padB;
+  const maxV=Math.max(...keys.map(k=>days[k].real+days[k].est),0.01);
+  ctx.strokeStyle=c.line; ctx.font="10px ui-monospace,monospace"; ctx.fillStyle=c.muted;
+  for(let i=0;i<=4;i++){ const v=maxV*i/4; const y=padT+ch-(v/maxV*ch); ctx.globalAlpha=.5;
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(cssW-padR,y); ctx.stroke(); ctx.globalAlpha=1; ctx.fillText(Math.round(v)+"$",2,y+3); }
+  const n2=keys.length, gap=8, bw=Math.min(30,(cw-gap*(n2-1))/n2), step=(cw-bw)/Math.max(n2-1,1);
+  chartHits.costs = keys.map((k,i)=>{ const v=days[k], t=v.real+v.est;
+    return {day:k, x0:padL+i*step-gap/2, x1:padL+i*step+bw+gap/2,
+      tip:`<b>${fmtDay(k)}</b> · ${fmtUsd(t)}<br>${v.n} review${v.n>1?"s":""} · ${fmtUsd(t/v.n)} / review${v.est>0?`<br>dont ${fmtUsd(v.est)} estimé`:""}`}; });
+  keys.forEach((k,i)=>{ const x=padL+i*step, v=days[k]; let y=padT+ch; const dim=dimFor(k,"costs");
+    [["real",1],["est",.4]].forEach(([kk,a])=>{ const hh=v[kk]/maxV*ch; if(hh<=0) return; y-=hh;
+      ctx.globalAlpha=a*dim; ctx.fillStyle=c.accent; ctx.beginPath(); ctx.rect(x,y,bw,hh); ctx.fill(); ctx.globalAlpha=1; });
+    if(step>=24 || n2===1){ ctx.fillStyle=c.muted; ctx.textAlign="center";
+      ctx.fillText(Math.round(v.real+v.est)+"$",x+bw/2,Math.max(y-4,10)); ctx.textAlign="left"; } });
+  xLabels(ctx, keys.map((k,i)=>({x:padL+i*step+bw/2, text:dayLabel(k)})), H-5);
+}
+
+// ---------- theme ----------
+const btn = document.getElementById("themeBtn");
+btn.onclick = ()=>{ const cur = document.documentElement.getAttribute("data-theme")
+    || (matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme", cur==="dark"?"light":"dark"); charts(); };
+
+function charts(){ trend(); approveChart(); costChart(); }
+window.filterAuthor = name => { activeAuthor = activeAuthor===name?null:name; render(); };
+function render(){ updateHeader(); buildChips(); buildProjectFilter(); kpiCards(); bilanPanels(); authorsPanel(); table(); updateSortHeaders(); charts();
+  runbar.querySelectorAll(".chip[data-run]").forEach(c=>c.setAttribute("aria-pressed", c.dataset.run===activeRun)); }
+function buildProjectFilter(){
+  const sel = document.getElementById("projectFilter");
+  if(!sel) return;
+  const set = new Set();
+  data.forEach(r=>set.add(repoOf(r)));
+  const projects = [...set].sort();
+  if(activeProject!=="all" && !set.has(activeProject)) activeProject="all";
+  sel.innerHTML = `<option value="all">Tous les projets</option>` +
+    projects.map(p=>`<option value="${esc(p)}">${esc(shortRepo(p))}</option>`).join("");
+  sel.value = activeProject;
+}
+renderHead();
+wireChartClicks();
+document.getElementById("projectFilter").addEventListener("change", e=>{ activeProject = e.target.value; render(); });
+render();
+window.addEventListener("resize", charts);
+window.addEventListener("kronn:page-data", (e)=>{ if(e&&e.detail) window.KronnPageData=e.detail; loadData(); activeRun="all"; activeProject="all"; render(); });
+</script>
+
+</body>
+</html>

@@ -398,7 +398,8 @@ class ReviewTest(unittest.TestCase):
                      {"type": "cost-state", "totalCostUSD": usd, "totalAPIDuration": 1000}]
             (d / (name + ".jsonl")).write_text("\n".join(json.dumps(x) for x in lines))
         sess("s1", "Review la PR #12 (`dm/site`) · poste contexte\n…", "2026-11-03T10:00:00Z", "2026-11-03T10:01:00Z", 0.04, "claude-haiku-4-5")
-        sess("s2", "Review la PR #12 (`dm/site`) · poste lecture\n…", "2026-11-03T10:02:00Z", "2026-11-03T10:06:00Z", 0.5, "claude-opus-5-5")
+        # Kronn peut préfixer le prompt (protocole anti-hallucination, plus de 300 caractères) : le poste se lit après « Review la PR »
+        sess("s2", "=== ANTI-HALLUCINATION ===\n" + "Ne rien affirmer sans preuve. " * 15 + "\nReview la PR #12 (`dm/site`) · poste lecture\n…", "2026-11-03T10:02:00Z", "2026-11-03T10:06:00Z", 0.5, "claude-opus-5-5")
         sess("s3", "Review la PR #12 (`dm/site`) · poste avis. Tu es…", "2026-11-03T10:07:00Z", "2026-11-03T10:09:00Z", 0.1)
         sess("s4", "Review la PR #12 (`dm/site`) en appliquant…", "2026-11-03T15:00:00Z", "2026-11-03T15:02:00Z", 0.7, "claude-opus-5-5")
         sess("x", "Autre chose", "2026-11-03T10:00:00Z", "2026-11-03T10:01:00Z", 9)

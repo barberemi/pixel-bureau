@@ -25,8 +25,10 @@ OFFICE = [("dwight", "Dwight"), ("jim", "Jim"), ("stanley", "Stanley"), ("phylli
 ROLES = {"dev": ("Développement", None), "lead": ("Tech Lead", "lead"), "qa": ("Test", "qa"), "po": ("Product owner", "po"),
          "sm": ("Facilitation", "sm")}  # libellés neutres : le rôle, pas la personne
 DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "agents", "bosspages", "pagelist", "gitfut", "layout", "actions", "duck", "absences", "mails", "mail_rules", "support", "todos", "atelier", "retours", "redaction", "statuts", "sprintquest"]
-CRONS = ("office", "live", "team", "payroll", "canard", "absences", "courrier", "support_poll", "chaine_bilan", "support_bilan", "redaction_bilan", "retours_bilan")
-DATASET = lambda name: {"name": name, "kind": "snapshot", "max_points": 50000}  # noqa: E731
+CRONS = ("office", "live", "team", "payroll", "canard", "absences", "courrier", "support_poll", "chaine_bilan", "support_bilan", "redaction_bilan", "retours_bilan", "revue_bilan")
+# les lignes de la revue de PR : ajoutées une par revue (reviews, review_meta), ou mises à jour par session (review_sessions)
+DATASET_KINDS = {"reviews": "time_series", "review_meta": "time_series", "review_sessions": "collection"}
+DATASET = lambda name: {"name": name, "kind": DATASET_KINDS.get(name, "snapshot"), "max_points": 50000}  # noqa: E731
 
 
 class InstallError(Exception):
@@ -789,7 +791,7 @@ def bilan_html():
 
 
 def upsert_side_page(k, cfg, key, dry):
-    """Une page à part (« Chaîne · bilan », « Support · bilan », « Rédaction · bilan », « Retours · bilan ») : créée une fois (son id dans cfg[key]), ses datasets
+    """Une page à part (« Chaîne · bilan », « Support · bilan », « Rédaction · bilan », « Retours · bilan », « Revue · bilan ») : créée une fois (son id dans cfg[key]), ses datasets
     ajoutés s'ils manquent. Son HTML est publié avec la page du Bureau (install.py, publish.py page)."""
     title, datasets, _ = templates.SIDE_PAGES[key]
     pid = cfg.get(key)
@@ -985,6 +987,12 @@ def main(argv=None):
             bid = upsert_side_page(k, cfg, key, a.dry_run)
             if bid:
                 cfg[key] = bid
+    if "review_child" in chosen and not templates.skipped("review_child", cfg):  # la revue : la page « Revue · bilan »
+        cfg.setdefault("revue_bilan_page_id", (cfg.get("review") or {}).get("page_id"))  # la page de récap déjà réglée, reprise
+        bid = upsert_side_page(k, cfg, "revue_bilan_page_id", a.dry_run)
+        if bid:
+            cfg["revue_bilan_page_id"] = bid
+            cfg.setdefault("review", {}).setdefault("page_id", bid)  # où la revue écrit ses lignes
     if "fix" in tpls and not templates.skipped("fix", cfg):  # « corriger » (actions.fix_pr) : la page « Retours · bilan »
         bid = upsert_side_page(k, cfg, "retours_bilan_page_id", a.dry_run)
         if bid:

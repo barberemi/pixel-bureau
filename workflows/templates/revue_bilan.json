@@ -1,0 +1,76 @@
+{
+ "kind": "workflow",
+ "key": "revue_bilan",
+ "doc": "Bilan des revues de PR : la suite des bloquants (historique des revues) et l'état des PR relues (gh), à côté des lignes écrites à chaque revue (page « Revue · bilan »).",
+ "definition": {
+  "name": "Le Bureau · bilan des revues (1 h)",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Cron",
+   "schedule": "41 @@cron_hours@@ * * 1-5"
+  },
+  "steps": [
+   {
+    "name": "bilan",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "L'historique des revues (bloquants posés et leur suite) et l'état de chaque PR relue sur GitHub (gh), 0 token.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/revue_bilan.py@@",
+     "bilan"
+    ],
+    "exec_timeout_secs": 300
+   },
+   {
+    "name": "publish",
+    "step_type": {
+     "type": "PublishPageData"
+    },
+    "description": "Remplace le dataset revue_bilan de la page « Revue · bilan ».",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "page_publish": {
+     "page_id": "@@revue_bilan.page_id@@",
+     "writes": [
+      {
+       "dataset": "revue_bilan",
+       "operation": "replace",
+       "value_from": "steps.bilan.data.stdout"
+      }
+     ]
+    }
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ]
+ }
+}
