@@ -925,11 +925,29 @@ print(json.dumps(val))
         self.assertIn("planning : sprints futurs illisibles", r.stderr)
 
     def test_absence_month_names_the_sheet(self):
-        """Feuille du mois sans accents, sans retour à la ligne ; en décembre, le mois suivant reste decembre."""
+        """Feuille du mois sans accents, sans retour à la ligne."""
         out = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "absence_month.py"), "0"], capture_output=True, text=True,
                              env=dict(os.environ, BUREAU_CONFIG=os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"), **CLOCK)).stdout
         months = ("janvier", "fevrier", "mars", "avril", "mai", "juin", "juillet", "aout", "septembre", "octobre", "novembre", "decembre")
         self.assertEqual(out, months[NOW.astimezone(ZoneInfo("Europe/Paris")).month - 1])
+
+    def test_absence_month_reads_january_in_next_years_workbook(self):
+        """Un classeur par année (microsoft.planning.years) : fin décembre, le mois suivant est janvier, lu dans le classeur
+        de l'année suivante ; sans lui, decembre comme avant ; en janvier, le classeur de l'année sans rien changer."""
+        def month(at, offset, years=None, what=()):
+            cfg = dict(FIXTURE, microsoft={"config_id": "c", "planning": {"site": "s", "item": "I2026", **({"years": years} if years else {})}})
+            path = os.path.join(self.tmp, "cfg-month.json")
+            Path(path).write_text(json.dumps(cfg))
+            return subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "absence_month.py"), str(offset), *what],
+                                  capture_output=True, text=True, check=True,
+                                  env=dict(os.environ, BUREAU_CONFIG=path, **dict(CLOCK, BUREAU_TEST_NOW=at))).stdout
+        dec, jan, jun = "2026-12-28T12:00:00+01:00", "2027-01-04T12:00:00+01:00", "2026-06-15T12:00:00+02:00"
+        y27 = {"2027": {"item": "I2027"}}
+        self.assertEqual((month(dec, 0, y27), month(dec, 0, y27, ["item"])), ("decembre", "I2026"))
+        self.assertEqual((month(dec, 1, y27), month(dec, 1, y27, ["item"])), ("janvier", "I2027"))
+        self.assertEqual((month(dec, 1), month(dec, 1, what=["item"])), ("decembre", "I2026"))  # pas de classeur 2027
+        self.assertEqual((month(jan, 0, y27), month(jan, 0, y27, ["item"])), ("janvier", "I2027"))
+        self.assertEqual((month(jun, 1, y27), month(jun, 1, y27, ["item"])), ("juillet", "I2026"))
 
     def test_absences_snapshot_reads_the_planning(self):
         """Planning Excel (values de Graph) -> présence par demi-journée des gens du roster, jamais la raison."""
