@@ -34,6 +34,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 - Un mot par chose : « écran mural » pour les pages Kronn, « ordinateur du boss » pour la console Support ; « Daily » partout en mode TV ; « ta décision » dans ce qui t'attend, et chaque légende d'étage dit sa forme (tampon, vanne, barrière) ; rôles neutres proposés à l'installation ; la légende range les personnages de passage en trois familles.
 - 2e étage : il s'ouvre aussi quand seule la revue de PR est installée ; sans le modèle « créer un ticket », la salle de rédaction reste vide et le dit.
 - Guide : la carte « Son écoute » (morceau d'un collègue, lecteur Suno) a sa section dans les fiches.
+- 1er étage : au poste 👀 Revue PR, la bulle de l'agent restait vide ; elle dit de nouveau ce que fait le poste de revue au travail (l'atelier descend jusqu'à la revue du Bureau). Un test fixe qu'une revue lancée par la chaîne ne se voit qu'au 1er, jamais en double au 2e ni au 3e. Après la mise à jour : `publish.py workflows`.
 
 ## [0.3.0] - 2026-11-11
 

@@ -1473,6 +1473,28 @@ class AtelierSnapshotTest(unittest.TestCase):
                          (None, "orchestrateur_plan", {"cat": "Execute", "n": 18, "at": "2026-10-30T11:59:40Z"}))
         self.assertEqual((rooms["p2"]["poste"], rooms["p2"]["etape"], rooms["p2"]["act"]["n"]), ("code", "code", 142))
 
+    def test_review_bubble_goes_down_to_the_review_post_at_work(self):
+        """Poste 👀 Revue PR (F2) : l'étape « revue » d'impl_revue_pr lance la revue du Bureau (review_child), pas
+        impl_revue_pr : act descend chaîne, PR, impl_revue_pr, review_child jusqu'au poste de revue qui travaille."""
+        prep = {"step_name": "prepare", "status": "Success", "output": "AB-8 sur dm/site : branche kronn/AB-8"}
+        sub = lambda n: {"step_name": n, "status": "Running", "step_kind": "SubWorkflow"}  # noqa: E731
+        chain = {"id": "p3", "workflow_id": "c", "status": "Running", "started_at": "2026-10-30T11:00:00Z",
+                 "step_results": [prep, {"step_name": "code", "status": "Success"}, sub("livraison")]}
+        runs = {"liv": ("l3", "p3", [{"step_name": "pr", "status": "Success"}, sub("revue")]),
+                "rpr": ("v3", "l3", [{"step_name": "entree", "status": "Success"}, sub("revue")]),
+                "rch": ("c3", "v3", [{"step_name": "write_ctx", "status": "Success"}, sub("lecture")]),
+                "rle": ("e3", "c3", [{"step_name": "lit", "status": "Running", "step_kind": "Agent",
+                                       "last_activity": {"category": "Read", "at": "2026-10-30T11:59:00Z", "calls": 23}}]),
+                "ctx": ("x3", "c3", [{"step_name": "lit", "status": "Success"}])}
+        api = {"/workflows/c/runs?limit=40": [{k: v for k, v in chain.items() if k != "step_results"}], "/workflows/c/runs/p3": chain}
+        for wf, (rid, parent, steps) in runs.items():
+            api[f"/workflows/{wf}/runs?limit=60"] = [{"id": rid, "parent_run_id": parent}]
+            api[f"/workflows/{wf}/runs/{rid}"] = {"id": rid, "status": "Running", "parent_run_id": parent, "step_results": steps}
+        models = {"impl_chain": "c", "impl_livraison": "liv", "impl_revue_pr": "rpr", "review_child": "rch",
+                  "review_lecture": "rle", "review_contexte": "ctx"}
+        r = self.snap(api, models)["rooms"][0]
+        self.assertEqual((r["poste"], r["act"]), ("revue_pr", {"cat": "Read", "n": 23, "at": "2026-10-30T11:59:00Z"}))
+
     def test_resumed_run_shows_earlier_postes_and_why(self):
         """Run repris (prepare saute aux contrôles) : Plan, gate et Code « rep » (pas « attend son tour »), après quelle panne ;
         le saut de prepare n'est pas une panne dans le fil."""

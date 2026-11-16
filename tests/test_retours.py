@@ -127,6 +127,15 @@ class RetoursSnapshotTest(unittest.TestCase):
         self.assertEqual(os.stat(os.path.join(work, ".bureau-fix.json")).st_mode & 0o777, 0o600)
         self.assertEqual(sorted(os.listdir(work)), [".bureau-fix-progress.json", ".bureau-fix.json"], "aucun fichier temporaire laissé")
 
+    def test_chain_feedback_run_makes_no_room_nor_count(self):
+        """F2 : le poste 💬 retours de la chaîne (impl_retours, 1er étage) écrit aussi pr/runs/<run>.json (fix_prepare),
+        mais le 3e ne lit que les runs de actions.fix_pr : ni bureau, ni panne, ni comptage du jour pour lui."""
+        self.state("ir1", repo="dm/site", pr=31, title="feat: chaîne", author="bot", cols={"T1": "corrige"}, push="2026-10-30T09:00:00Z", fils=2)
+        self.r.get = lambda p: [] if p == "/workflows/fx/runs?limit=40" else None
+        snap = self.r.snapshot("2026-10-30T10:00:00+00:00")
+        self.assertEqual((snap["rooms"], snap["queue"], snap["pannes"], snap["events"], snap["pousses"]), ([], [], [], [], 0))
+        self.assertEqual((snap["jour"]["pousses"], snap["jour"]["fils"], snap["jour"]["cours"]), (0, 0, 0))
+
     def test_without_the_model_nothing(self):
         self.r.CFG.pop("actions", None)
         self.assertEqual(self.r.snapshot("now")["rooms"], [])
