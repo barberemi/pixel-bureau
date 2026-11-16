@@ -45,12 +45,12 @@ const DEPARTS_BOARD={y:-1,draw:now=>{
 // ---------- la fenêtre : un dépôt par ligne, DEV, STG et PRD ; « ouvrir ↗ » mène à l'env quand son adresse est connue ----------
 const depA=(cls,url,t,tip='')=>`<a class="${cls}" ${hrefOf(url)} target="_blank" rel="noopener" title="${esc(tip)}">${esc(t)}</a>`;
 const depWho=o=>{const c=o.by?byChar(o.by):null;return {c,n:c?c.name:o.by||''};};
-// un env que le dépôt n'a pas (réglage envs) : « pas de DEV » dans la case, sans lien
+// un env que le dépôt n'a pas (réglage envs) : case vide, sans lien (« pas de DEV » au survol), comme un env sans déploiement
 const depHas=(r,env)=>!Array.isArray(r.envs)||r.envs.includes(env);
 function depCell(r,env){
-  if(!depHas(r,env))return '<td class="dep-off"><span class="dep-none">pas de '+env.toUpperCase()+'</span></td>';
+  if(!depHas(r,env))return '<td class="dep-off" title="pas de '+env.toUpperCase()+'"></td>';
   const u=r.urls&&envHref(r.urls[env]), go=u?`<a class="dep-go" href="${esc(u)}" target="_blank" rel="noopener" title="${esc(u)}">ouvrir ↗</a>`:'';
-  const o=r[env];if(!o||!o.ref)return `<td><div class="dep-top"><span class="dep-none">·</span>${go}</div></td>`;
+  const o=r[env];if(!o||!o.ref)return go?`<td><div class="dep-top"><span class="dep-l"></span>${go}</div></td>`:'<td></td>';
   const gh='https://github.com/'+r.repo, k=!o.tag&&depKey(o.ref), t=k&&ticketOf(k), w=depWho(o),
     pr=!o.tag&&TEAM&&[...TEAM.people.flatMap(p=>p.prs||[]),...(TEAM.other_prs||[])].find(x=>x.head===o.ref&&prRepo(x)===r.repo);
   const v=o.tag?depA(env==='prd'?'dep-prd':'',gh+'/releases/tag/'+encodeURIComponent(o.ref),o.ref)
