@@ -53,7 +53,7 @@ class RetoursBilanTest(unittest.TestCase):
                      "step_results": [step("prepare"), fix(0.2), step("check"), step("diff", s="Failed")]},
             "run": {"status": "WaitingApproval", "started_at": "2026-11-09T15:00:00Z",
                     "step_results": [step("prepare"), fix(0.9), step("check"), step("diff"), step("gate", s="WaitingApproval", ms=0)]}}
-        self.calls = []
+        self.calls, self.runs = [], runs
 
         def get(path):
             self.calls.append(path)
@@ -96,6 +96,18 @@ class RetoursBilanTest(unittest.TestCase):
         self.calls.clear()
         self.assertEqual(self.m.releve(), {"lus": 1, "en_cache": 5, "error": None})
         self.assertEqual([c for c in self.calls if c.startswith("/workflows/fx/runs/")], ["/workflows/fx/runs/run"], "seul le run en cours est relu")
+
+    def test_a_run_read_while_running_is_read_again_once_finished(self):
+        """Un run lu en cours (à ta validation) puis fini : relu une fois, jamais gardé « en cours » (5 runs l'étaient
+        dans la page, le 2026-11-16)."""
+        self.m.releve()
+        self.runs["run"].update(status="Success", finished_at="2026-11-09T16:00:00Z",
+                                step_results=[step("prepare"), fix(0.9), step("check"), step("diff"), step("gate"), step("push")])
+        self.calls.clear()
+        self.assertEqual(self.m.releve(), {"lus": 1, "en_cache": 5, "error": None})
+        self.assertEqual({r["run"]: r["resultat"] for r in self.m.bilan(NOW)["corrections"]}["run"], "poussee")
+        self.calls.clear()
+        self.assertEqual(self.m.releve()["lus"], 0, "fini et relu fini : plus relu")
 
     def test_old_runs_out_and_bounded(self):
         self.m.releve()

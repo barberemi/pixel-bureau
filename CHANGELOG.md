@@ -9,6 +9,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 ### Ajouté
 
 - Page « Revue · bilan » (audit produit F3) : la page de récap des revues entre dans le dépôt (`page/revue-bilan.html`, reprise si `review.page_id` est réglé), avec un cron sans jetons `revue_bilan` (suite des bloquants d'une passe à l'autre, PR mergées). Une 6e carte « Bloquants corrigés », le prix par poste, la suite des bloquants, un badge « Suite » par PR ; l'horaire du cron et les postes lus de la config ; `review.pedago` pour les auteurs à qui la revue parle en pédagogue.
+- « Retours · bilan » : les vues du bilan des revues (corrections par jour, qui a écrit les fils, fils corrigés et prix par jour) et le tableau des corrections par PR (trajectoire de ses runs, runs dépliés au clic) ou par run.
 - Sprint Quest dans le dépôt (`arcade/sprint-quest/`) : la source du jeu de la borne et ses capacités, pour refaire l'artefact s'il se perd (skill « republie Sprint Quest »). L'équipe du jeu vient du pack (`sprintquest.json`) et part avec les données copiées depuis la borne : un artefact neuf se remplit en un seul collage.
 - Costumes d'avatar dans une recette (`cast.json` d'un pack) : des zones de calques LPC recolorées (calque, lignes, colonnes, directions, couleur ; de profil, le bras peut rester hors d'une zone) et une coiffure vue de dos (`hair_back`), sans planche à dessiner.
 - Services extérieurs (#247) : les pages de statut de GitHub, Claude, Jira et Confluence (réglage `statuts`) relevées par le cron office ; points verts ou bandeau rouge « flash info » sous l'écran Mises en prod, fiche des incidents au clic, début et fin de chaque incident dans le fil et le mode TV, conseil d'une panne « agent indisponible » au 1er.
@@ -27,6 +28,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 ### Corrigé
 
 - Revue : le coût de chaque poste n'était plus séparé (tout comptait en « avis ») depuis que Kronn préfixe les prompts ; le poste se lit après « Review la PR ». Dans la page de la revue, le modèle de chaque revue (signature « Le Bureau ») s'affiche de nouveau.
+- « Retours · bilan » : un run lu pendant qu'il tournait restait « en cours » pour toujours ; il est relu une fois fini.
 - Les Combles : le bon code du digicode ne menait nulle part dans Kronn (son cadre refuse le stockage local, le déblocage se perdait) ; il vit désormais en mémoire jusqu'au rechargement, et le contrôle de fumée le vérifie dans le cadre de Kronn. Le digicode, plus petit, glisse à gauche, à l'écart du panneau Sortie de la nuit ; le post-it du boss quitte l'écran pour le plateau du bureau.
 - Gel des mises en prod : l'infobulle du plateau TV et la tuile des mises en prod disent les jours de `rhythm.mep_freeze`, plus « vendredi » en dur.
 - Un mot par chose : « écran mural » pour les pages Kronn, « ordinateur du boss » pour la console Support ; « Daily » partout en mode TV ; « ta décision » dans ce qui t'attend, et chaque légende d'étage dit sa forme (tampon, vanne, barrière) ; rôles neutres proposés à l'installation ; la légende range les personnages de passage en trois familles.
