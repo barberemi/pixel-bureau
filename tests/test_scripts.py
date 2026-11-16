@@ -1286,6 +1286,27 @@ print(json.dumps(val))
         self.assertEqual(out["warnings"], ["1 miniature retirée : sortie limitée à 90 Ko"])
         self.assertEqual(self.run_script("pages_snapshot.py", api=api, chrome=False)["pages"], [])  # sans boss_pages
 
+    def test_pages_snapshot_shrinks_every_thumbnail_rather_than_dropping_the_last(self):
+        """Dix pages à l'écran passaient les 90 Ko même en qualité 28 : la dernière restait sans aperçu. Toutes les
+        miniatures sont réduites, aucune n'est retirée."""
+        pil = pil_python()
+        if not pil:
+            self.skipTest("Pillow absent (python3 -m venv .venv && .venv/bin/pip install pillow)")
+        fake, cache, _ = self.boss_pages()
+        ids = [f"p{i}" for i in range(7)]
+        for i, pid in enumerate(ids):
+            fake.pages[pid] = dict(fake.pages["pa"], id=pid, slug=pid, title=f"Page {i}")
+            img = subprocess.run([pil, "-c", "import base64, io, random, sys; from PIL import Image; random.seed(int(sys.argv[1]))\n"
+                                  "im = Image.new('RGB', (64, 40)); im.putdata([tuple(random.randrange(256) for _ in range(3)) for _ in range(2560)])\n"
+                                  "b = io.BytesIO(); im.resize((320, 200), Image.BILINEAR).save(b, 'JPEG', quality=55)\n"
+                                  "print('data:image/jpeg;base64,' + base64.b64encode(b.getvalue()).decode())", str(i)],
+                                 capture_output=True, text=True, check=True).stdout.strip()
+            Path(os.path.join(cache, pid + ".json")).write_text(json.dumps({"key": "r1:3", "img": img}))
+        self.assertGreater(len(img) * len(ids), 100_000)  # trop lourd tel quel
+        out = self.run_script("pages_snapshot.py", api=self.kronn(fake), boss_pages=ids, chrome=False, root=ROOT)
+        self.assertEqual([bool(p["img"]) for p in out["pages"]], [True] * len(ids))
+        self.assertEqual(out["warnings"], [])
+
     def test_pages_snapshot_reads_the_page_list_and_offers_choices(self):
         """Écran mural (#61) : la liste rangée par la page (dataset pagelist) passe avant boss_pages ; choices = les pages
         qu'on peut ajouter, sans le Bureau."""
