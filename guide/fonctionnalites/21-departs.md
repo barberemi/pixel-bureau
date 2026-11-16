@@ -21,10 +21,10 @@ Une ligne par dépôt suivi (`github.repo` puis `github.deploys`, dans cet ordre
 - **en vert**, la branche d'un ticket : sa clé, liée au ticket dans Jira, et sa PR à côté quand le Bureau la connaît ; une branche sans ticket est liée à la branche sur GitHub ;
 - **en gris**, une version (ou une image de test), liée à sa release sur GitHub ;
 - **en jaune**, la version en prod ;
-- sous chaque valeur, qui l'a déployée (son avatar s'il est dans l'équipe) ; un tiret quand l'env n'existe pas pour ce dépôt.
+- sous chaque valeur, qui l'a déployée (son avatar s'il est dans l'équipe) ; une case vide quand rien n'y est déployé ou que l'env n'existe pas pour ce dépôt.
 - **« ouvrir ↗ »** dans la case, quand l'adresse de l'env est connue : un clic ouvre l'env lui-même, même si on ne sait pas ce qui y tourne.
 
-Les adresses se donnent une fois, dans la config locale (`bureau.config.json`) : une clé `urls` à côté du dépôt principal (`github.urls`) ou d'un dépôt suivi (`github.deploys[].urls`), avec `dev`, `stg` et `prd`, en `https://` ou `http://` (envs internes). Un env sans adresse garde sa case sans lien. Un projet qui n'a pas tous les envs le dit avec la clé `envs` (par exemple `["stg", "prd"]` sans DEV) : la case de l'env absent dit « pas de DEV », même si un vieux déploiement le nomme encore, et le mode TV n'en a pas la ligne. Ces adresses servent aussi au Mur Kanban : sur la carte d'un ticket, la pastille 🧪 DEV ou 🎭 STG d'une branche déployée mène à l'env, et dans la fiche, la marque de l'env de sa PR aussi.
+Les adresses se donnent une fois, dans la config locale (`bureau.config.json`) : une clé `urls` à côté du dépôt principal (`github.urls`) ou d'un dépôt suivi (`github.deploys[].urls`), avec `dev`, `stg` et `prd`, en `https://` ou `http://` (envs internes). Un env sans adresse garde sa case sans lien. Un projet qui n'a pas tous les envs le dit avec la clé `envs` (par exemple `["stg", "prd"]` sans DEV) : la case de l'env absent reste vide (« pas de DEV » au survol), même si un vieux déploiement le nomme encore, et le mode TV n'en a pas la ligne. Ces adresses servent aussi au Mur Kanban : sur la carte d'un ticket, la pastille 🧪 DEV ou 🎭 STG d'une branche déployée mène à l'env, et dans la fiche, la marque de l'env de sa PR aussi.
 
 ```json
 "github": {"repo": "acme/site", "urls": {"dev": "https://www.dev.acme.com/", "stg": "https://www.stg.acme.com/"},

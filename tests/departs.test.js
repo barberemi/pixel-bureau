@@ -30,14 +30,15 @@ test('panneau : l\'heure du départ le jour même, sinon le jour (JJ/MM), à l\'
   assert.equal(withDeparts(`depWhen(null, T)`), '');
 });
 
-test('fenêtre : une ligne par dépôt, version -> release, branche d\'un ticket -> Jira, autre branche -> GitHub, · sans déploiement', () => {
+test('fenêtre : une ligne par dépôt, version -> release, branche d\'un ticket -> Jira, autre branche -> GitHub, case vide sans déploiement', () => {
   const html = withDeparts(`(() => { const b = document.createElement('div'); departsFill(b); return b.innerHTML; })()`);
   assert.equal((html.match(/<tr><td class="dep-n">/g) || []).length, 3);
   assert.match(html, /href="https:\/\/github\.com\/dunder-mifflin\/site-web\/releases\/tag\/17\.2\.0"/);
   assert.match(html, /class="dep-prd"[^>]*>17\.2\.0</); // PRD mise en avant
   assert.match(html, /\/browse\/DM-7"[^>]*>DM-7</);
   assert.match(html, /href="https:\/\/github\.com\/dunder-mifflin\/api\/tree\/ci\/outillage"/);
-  assert.equal((html.match(/dep-none/g) || []).length, 4); // intranet sans DEV ni STG, api sans DEV ni PRD
+  assert.equal((html.match(/<td><\/td>/g) || []).length, 4); // intranet sans DEV ni STG, api sans DEV ni PRD
+  assert.doesNotMatch(html, /dep-none|>·</);
 });
 
 test('fenêtre : sans données publiées, le dit', () => {
@@ -68,11 +69,11 @@ test('fenêtre : « ouvrir ↗ » dans chaque case dont l\'env a une adresse, m�
   assert.deepEqual(go, ['https://dev.example', 'https://www.example', 'http://intra.dev.example.internal/']);
 });
 
-test('fenêtre et mode TV : un env que le projet n\'a pas (réglage envs) : « pas de DEV », sans lien ni ligne', () => {
+test('fenêtre et mode TV : un env que le projet n\'a pas (réglage envs) : case vide comme sans déploiement, sans lien ni ligne', () => {
   const d = JSON.stringify([{...DEPARTS[0], envs: ['stg', 'prd'], urls: {dev: 'https://dev.example'}}]);
   const html = J(`(() => { const l0 = LIVE; LIVE = {runs: [], departs: ${d}}; const b = document.createElement('div');
     try { departsFill(b); return b.innerHTML; } finally { LIVE = l0; } })()`);
-  assert.match(html, /<td class="dep-off"><span class="dep-none">pas de DEV<\/span><\/td>/);
+  assert.match(html, /<td class="dep-off" title="pas de DEV"><\/td>/);
   assert.doesNotMatch(html, /dev\.example|DM-7/);
   const tv = J(`(() => { const l0 = LIVE; LIVE = {runs: [], departs: ${d}}; try { return tvDeparts(); } finally { LIVE = l0; } })()`);
   assert.equal((tv.match(/class="tve-l"/g) || []).length, 2);
