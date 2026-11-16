@@ -16,8 +16,8 @@ image) ; choices[].feeds, hors écran seulement : [{wf (préfixe de 8), trigger}
   fenêtre : [{wf, name, trigger, ai, via, last}] ; un sous-workflow (lancé par un autre, jamais seul) est remplacé par
   ceux qui le lancent (via = son nom) ; ai : une étape Agent (dans le sous-workflow compris) ; last : {status, at} du
   dernier run. La page ne propose le bouton que pour ceux de sa liste des relançables (dataset gates, relaunch.py).
-- Une page supprimée ou illisible est sautée. Sortie bornée sous 90 Ko : les images recompressées
-  (qualité 40 puis 28), et en dernier recours les dernières retirées.
+- Une page supprimée ou illisible est sautée. Sortie bornée sous 90 Ko : toutes les images recompressées (qualité 40
+  puis 28), puis réduites (256x160, 224x140, 192x120), et en dernier recours les dernières retirées.
 - warnings (#8) : page sautée, capture ratée (carte sans image) ; écrits aussi sur stderr (run Kronn).
 """
 import base64, glob, html, json, os, re, shutil, signal, subprocess, sys, tempfile, time
@@ -28,6 +28,9 @@ CACHE = os.path.expanduser("~/.cache/pixel-bureau/thumbs")
 CHROMES = ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
            "/Applications/Chromium.app/Contents/MacOS/Chromium", "google-chrome", "chromium", "chromium-browser")
 W, H, MAX_OUT = 1280, 800, 90_000
+# dix pages à l'écran passent les 90 Ko même en qualité 28 (environ 8 Ko la miniature) : on réduit l'image de toutes
+# plutôt que de retirer celle de la dernière
+SHRINK = ((40, (320, 200)), (28, (320, 200)), (40, (256, 160)), (35, (224, 140)), (30, (192, 120)))
 warnings = []
 
 
@@ -111,14 +114,14 @@ def thumb(d, exe):
     return img
 
 
-def recompress(img, q):
-    """La miniature réencodée en qualité q, si elle y gagne ; sinon (réduction impossible) telle quelle."""
+def recompress(img, q, size=(320, 200)):
+    """La miniature réencodée en qualité q (et réduite à size), si elle y gagne ; sinon (réduction impossible) telle quelle."""
     tmp = tempfile.mkdtemp(prefix="bureau-thumb-")
     try:
         src, jpg = os.path.join(tmp, "a.jpg"), os.path.join(tmp, "b.jpg")
         with open(src, "wb") as fh:
             fh.write(base64.b64decode(img.split(",", 1)[1]))
-        if not jpeg(src, jpg, size=(320, 200), quality=q):
+        if not jpeg(src, jpg, size=size, quality=q):
             return img
         new = "data:image/jpeg;base64," + base64.b64encode(read_bytes(jpg)).decode()
         return new if len(new) < len(img) else img
@@ -272,11 +275,12 @@ for f in glob.glob(os.path.join(CACHE, "*.json")):
     if os.path.basename(f)[:-5] not in ids:
         os.remove(f)
 out = {"generated_at": datetime.now(TZ).isoformat(), "pages": pages, "choices": choices, "warnings": warnings}
-for q in (40, 28):  # trop lourd : les miniatures recompressées d'abord, retirées seulement en dernier recours
+full = [p["img"] for p in pages]
+for q, size in SHRINK:  # trop lourd : toutes les miniatures recompressées puis réduites (depuis l'originale), retirées en dernier recours
     if len(dumps(out)) <= MAX_OUT:
         break
-    for p in pages:
-        p["img"] = p["img"] and recompress(p["img"], q)
+    for p, img in zip(pages, full):
+        p["img"] = img and recompress(img, q, size)
 dropped = 0
 for p in reversed(pages):  # sortie Exec tronquée à 100 Ko : les dernières images sautent d'abord
     if len(dumps(out)) <= MAX_OUT:

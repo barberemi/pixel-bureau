@@ -44,12 +44,58 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Nom de la feuille du mois suivant (decembre en décembre).",
+    "description": "Nom de la feuille du mois suivant (janvier de l'année suivante fin décembre, si son classeur est déclaré).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
      "@@script:workflows/absence_month.py@@",
      "1"
+    ],
+    "exec_timeout_secs": 20
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "item_now",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Id du classeur du mois en cours (microsoft.planning.years, sinon planning.item).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/absence_month.py@@",
+     "0",
+     "item"
+    ],
+    "exec_timeout_secs": 20
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "item_next",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Id du classeur du mois suivant : celui de l'année suivante fin décembre, s'il est déclaré.",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/absence_month.py@@",
+     "1",
+     "item"
     ],
     "exec_timeout_secs": 20
    },
@@ -76,7 +122,7 @@
     },
     "api_path_params": {
      "site": "@@microsoft.site@@",
-     "item": "@@microsoft.item@@",
+     "item": "{{steps.item_now.data.stdout}}",
      "sheet": "{{steps.month_now.data.stdout}}"
     },
     "api_extract": {
@@ -108,7 +154,7 @@
     },
     "api_path_params": {
      "site": "@@microsoft.site@@",
-     "item": "@@microsoft.item@@",
+     "item": "{{steps.item_next.data.stdout}}",
      "sheet": "{{steps.month_next.data.stdout}}"
     },
     "api_extract": {

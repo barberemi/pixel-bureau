@@ -31,7 +31,7 @@ Le **ticket** est déduit de la PR : la première clé du projet Jira (`jira.pro
 | release | release du tag (« 2.4.1 - DM-7801 »), notes générées par GitHub |
 | staging | déploiement staging avec les entrées du projet, attente |
 | **gate** | staging en ligne : la prod ? |
-| prod | déploiement prod, attente, l'annonce passe en ✅, puis les PR du ticket dans tous les projets |
+| prod | déploiement prod, attente, l'annonce passe en ✅, puis les PR du ticket dans tous les projets (clé entière dans le titre ou la branche ; celles qui ne font que citer le ticket dans leur texte sont écartées et comptées) |
 | **gate de fin** | le ticket est-il terminé ? |
 | dry_guard | en simulation, saute directement à done : ni retour IA ni statut de fin, rien n'est écrit dans Jira |
 | ai_time, transition_deployed | si terminé : lance le modèle « estimer le temps gagné par l'IA » sur le ticket (sans sa validation : la gate de fin en tient lieu ; il tourne à côté, la mise en prod ne l'attend pas), puis statut de fin ; sans le modèle, seulement le statut de fin |

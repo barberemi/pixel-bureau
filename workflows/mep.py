@@ -390,20 +390,29 @@ def deploy(env):
 
 
 def others(st):
-    """Les PR du ticket dans les projets, pour la gate de fin (ticket terminé ou pas)."""
-    lines = [f"- {st['short']}#{st['pr']} : en prod à l'instant ({st['tag']})"]
+    """Les PR du ticket dans les projets, pour la gate de fin (ticket terminé ou pas). La recherche GitHub ramène aussi les
+    PR qui ne font que citer le ticket (celle d'un autre ticket qui le mentionne) et les clés voisines (DM-785 pour DM-7851) :
+    on ne garde que celles qui ont la clé entière dans leur titre ou leur branche, comme le retour IA (ai_time.py)."""
+    key = st["ticket"].upper()
+    lines, cited = [f"- {st['short']}#{st['pr']} : en prod à l'instant ({st['tag']})"], 0
     for q in projects():
         try:
-            found = json.loads(run("gh", "pr", "list", "-R", q["repo"], "--state", "all", "--search", f"{st['ticket']} in:title,body",
-                                   "-L", "10", "--json", "number,state,title", check=False) or "[]")
+            found = json.loads(run("gh", "pr", "list", "-R", q["repo"], "--state", "all", "--search", f"{key} in:title,body",
+                                   "-L", "20", "--json", "number,state,title,headRefName", check=False) or "[]")
         except ValueError:
             continue
         for x in found:
             if q["repo"] == st["repo"] and x["number"] == st["pr"]:
                 continue
+            if not re.search(r"(?<![A-Z0-9])" + re.escape(key) + r"(?!\d)",
+                             (x.get("title") or "").upper() + " " + (x.get("headRefName") or "").upper()):
+                cited += 1
+                continue
             what = {"OPEN": "**encore ouverte**", "MERGED": "mergée", "CLOSED": "fermée sans merge"}.get(x["state"], x["state"])
-            lines.append(f"- {q['short']}#{x['number']} : {what}")
-    return f"PR du ticket {st['ticket']} :\n" + "\n".join(lines)
+            lines.append(f"- {q['short']}#{x['number']} : {what} · {x.get('title') or ''}".rstrip(" ·"))
+    if cited:
+        lines.append(f"({cited} PR écartée{'s' if cited > 1 else ''} : {key} seulement cité dans le texte.)")
+    return f"PR du ticket {key} :\n" + "\n".join(lines)
 
 
 def dry_guard(p, n, forced, run_id, dry):
