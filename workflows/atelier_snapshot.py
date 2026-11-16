@@ -88,25 +88,29 @@ def children(wf, run_id, cache):
     return get(f"/workflows/{wf}/runs/{kids[0]['id']}")
 
 
-# étape SubWorkflow d'un run de la chaîne -> modèle de son sous-workflow (pour descendre jusqu'à l'agent qui travaille)
-SUB = {"cadrage": "impl_cadrage", "code": "impl_code", "controles": "impl_controles", "livraison": "impl_livraison",
-       "publication": "impl_publication", "tests": "impl_tests", "revue": "impl_revue_pr", "retours": "impl_retours"}
+# modèle d'un run -> ses étapes SubWorkflow -> modèle du sous-workflow (pour descendre jusqu'à l'agent qui travaille) ;
+# par modèle : l'étape « revue » de la PR lance impl_revue_pr, celle d'impl_revue_pr la revue du Bureau (review_child)
+SUB = {"impl_chain": {"cadrage": "impl_cadrage", "code": "impl_code", "controles": "impl_controles",
+                      "livraison": "impl_livraison", "publication": "impl_publication"},
+       "impl_controles": {"tests": "impl_tests"}, "impl_livraison": {"revue": "impl_revue_pr", "retours": "impl_retours"},
+       "impl_revue_pr": {"revue": "review_child"}, "review_child": {p: "review_" + p for p in ("contexte", "docs", "lecture", "securite")}}
 
 
-def activite(run, models, cache, depth=0):
+def activite(run, models, cache, depth=0, cle="impl_chain"):
     """Ce que fait l'agent en ce moment : last_activity de l'étape qui tourne (Kronn : catégorie de la dernière action,
-    nombre d'actions, heure), cherchée dans le sous-run quand l'étape est un sous-workflow. Sans agent au travail : None."""
+    nombre d'actions, heure), cherchée dans le sous-run quand l'étape est un sous-workflow (cle = modèle du run ; la
+    revue de la PR : chaîne, PR, impl_revue_pr, review_child, poste de revue). Sans agent au travail : None."""
     s = next((x for x in reversed(run.get("step_results") or []) if x.get("status") == "Running"), None)
     if not s:
         return None
     a = s.get("last_activity")
     if isinstance(a, dict) and a.get("at"):
         return {"cat": a.get("category"), "n": a.get("calls"), "at": a.get("at")}
-    k = SUB.get(s.get("step_name"))
-    if k and depth < 3:
+    k = SUB.get(cle, {}).get(s.get("step_name"))
+    if k and depth < 4:
         c = children(models.get(k), run["id"], cache)
         if c:
-            return activite(c, models, cache, depth + 1)
+            return activite(c, models, cache, depth + 1, k)
     return None
 
 

@@ -483,7 +483,8 @@ class RevueFileTest(unittest.TestCase):
                                               {"id": "c0", "status": "Success", "started_at": "2026-10-28T09:30:00Z"}],
                "/workflows/cr/runs/c1": {"step_results": [{"step_name": "finalize", "output": out({"stdout": '3 candidates\nPRS=[["dm/site",12,"hollyflax"],["dm/api",7,"pambeesly"]]\n'})}]},
                "/workflows/ch/runs?limit=60": [{"id": "k1", "parent_run_id": "c1", "status": "Success"}, {"id": "k2", "parent_run_id": "c1", "status": "Running"},
-                                                {"id": "k9", "parent_run_id": "autre", "status": "Success"}],
+                                                # F2 : revue lancée par la chaîne (enfant d'un run impl_revue_pr) : vue au 1er, jamais au 2e
+                                                {"id": "k9", "parent_run_id": "run-impl-revue-pr", "status": "Success"}],
                "/workflows/ch/runs/k1": {"step_results": [{"step_name": "avis", "output": out({"verdict": "approve", "pr": 12})},
                                                           # le verdict posté, vérifié par le Bureau (ici approve refusé), prime
                                                           {"step_name": "post", "output": out({"stdout": '{"verdict": "comment"}\n'})}]}}
@@ -497,6 +498,7 @@ class RevueFileTest(unittest.TestCase):
             n = len(calls)
             self.assertEqual(r.snapshot("2026-10-30T10:01:00+00:00")["revue"], snap["revue"])
             self.assertEqual([c for c in calls[n:] if "/runs/" in c], [], "un run fini n'est lu qu'une fois")
+            self.assertNotIn("/workflows/ch/runs/k9", calls, "une revue de la chaîne n'est jamais lue au 2e")
         finally:
             r.get, r.RV_HOME = old[0], old[1]
             r.CFG.clear()

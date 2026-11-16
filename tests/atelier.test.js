@@ -132,6 +132,35 @@ test("workflows de l'étage (CFG.atelier_wf) : ni au RDC (eux et leurs sous-runs
   assert.deepEqual(J2('workflowsWithoutAgent().map(w=>w.name)'), ['Autre']);
 });
 
+test("une revue lancée par la chaîne ne se voit qu'au 1er : ni bureau ni comptage au 2e (F2, pas de doublon)", () => {
+  // impl_revue_pr (atelier) lance la revue du Bureau (review_child, CFG.revue_wf) et ses postes review_<poste> : leurs
+  // runs suivent la chaîne dans AT_RUNS ; la même revue lancée par le cron (parent hors de l'étage) reste au 2e
+  const p = load(), J2 = code => JSON.parse(p.run('JSON.stringify(' + code + ')'));
+  p.run(`(() => {
+    CFG.atelier_wf = ['1a1a1a1a', '2b2b2b2b']; CFG.revue_wf = ['3c3c3c3c']; CFG.revue_postes_wf = ['5e5e5e5e'];
+    const d = JSON.parse(JSON.stringify(DATA)), at = new Date(T - 60e3).toISOString();
+    const r = (wf, run, extra) => ({wf, wf_name: 'wf ' + run, run, status: 'Running', start: at, end: null, steps: [], ...extra});
+    REDACTION = null; // les tables de la rédaction (démo) ne comptent pas ici
+    // une revue du cron finie : la salle de revue a de vrais runs, elle ne joue pas sa démo
+    d.runs.push(r('3c3c3c3c-0000', 'revue_finie', {parent: 'cron', status: 'Success', end: at}), r('1a1a1a1a-0000', 'chaine'), r('2b2b2b2b-0000', 'livraison', {parent: 'chaine'}),
+      r('2b2b2b2b-0001', 'revue_pr', {parent: 'livraison'}), r('3c3c3c3c-0000', 'revue', {parent: 'revue_pr'}),
+      r('5e5e5e5e-0000', 'lecture', {parent: 'revue'}));
+    setData(d, true);
+  })()`);
+  assert.deepEqual(J2("AT_RUNS.map(r=>r.run).sort()"), ['chaine', 'lecture', 'livraison', 'revue', 'revue_pr']);
+  assert.equal(J2("DATA.runs.filter(r=>['revue','lecture'].includes(r.run)).length"), 0);
+  assert.deepEqual(J2('rvActive().map(r=>r.run)'), [], 'pas de bureau de revue au 2e');
+  assert.equal(J2('floorLoad(2).cnt'), 0, 'pas de comptage dans l\'onglet du 2e');
+  // témoin : la revue du cron (parent hors de l'étage) a bien son bureau au 2e
+  p.run(`(() => {
+    const d = JSON.parse(JSON.stringify(DATA)), at = new Date(T - 60e3).toISOString();
+    d.runs.push({wf: '3c3c3c3c-0000', wf_name: 'Revue', run: 'revue_cron', parent: 'cron', status: 'Running', start: at, end: null, steps: []});
+    setData(d, true);
+  })()`);
+  assert.deepEqual(J2('rvActive().map(r=>r.run)'), ['revue_cron']);
+  assert.equal(J2('floorLoad(2).cnt'), 1);
+});
+
 test("agents de l'étage : le nom de leur poste, l'hologramme bleu des agents du quotidien, jamais un intérimaire", () => {
   const w = J("(a=>({n:a.name,t:a.temp,f:famKind(a),h:holoStyleOf(a)}))(atWorker(0,10,10,'down',false,'Cadrage'))");
   assert.deepEqual(w, {n: 'Cadrage', t: false, f: 'jour', h: null}); // null : le cyan des agents du quotidien
