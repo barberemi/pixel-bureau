@@ -41,7 +41,10 @@ REVIEW_POSTES = ("contexte", "docs", "lecture", "securite")
 SIDE_PAGES = {"bilan_page_id": ("Chaîne · bilan", ["bilan"], "bilan.html"),
               "support_bilan_page_id": ("Support · bilan", ["support_bilan"], "support-bilan.html"),
               "redaction_bilan_page_id": ("Rédaction · bilan", ["redaction_bilan"], "redaction-bilan.html"),
-              "retours_bilan_page_id": ("Retours · bilan", ["retours_bilan"], "retours-bilan.html")}
+              "retours_bilan_page_id": ("Retours · bilan", ["retours_bilan"], "retours-bilan.html"),
+              # la page de la revue de PR : la revue y écrit une ligne par revue (reviews, review_meta, review_sessions), le
+              # cron revue_bilan la suite ; une page de récap déjà réglée (review.page_id) est reprise, pas recréée
+              "revue_bilan_page_id": ("Revue · bilan", ["revue_bilan", "reviews", "review_meta", "review_sessions"], "revue-bilan.html")}
 # modèle -> (type, où trouver l'id dans la config, scripts par étape)
 TEMPLATES = {
     "office": ("workflow", ("workflows", "office"), {"snapshot": "workflows/office_snapshot.py", "statuts": "workflows/statuts_snapshot.py"}),
@@ -137,6 +140,9 @@ TEMPLATES = {
     # page « Retours · bilan » : l'historique des corrections de commentaires de PR du 3e (états de pr_update.py et API
     # Kronn), page Kronn à part (retours_bilan_page_id) ; sans « corriger » installé ou sans cette page : pas créé
     "retours_bilan": ("workflow", ("workflows", "retours_bilan"), {"releve": "workflows/retours_bilan.py", "bilan": "workflows/retours_bilan.py"}),
+    # page « Revue · bilan » : la suite des bloquants (historique des revues) et l'état des PR relues (gh), page Kronn à part
+    # (revue_bilan_page_id, sinon review.page_id) ; sans revue installée ou sans cette page : pas créé
+    "revue_bilan": ("workflow", ("workflows", "revue_bilan"), {"bilan": "workflows/revue_bilan.py"}),
     "ask": ("quick_prompt", ("actions", "ask"), {}),
     "sketch": ("quick_prompt", ("actions", "sketch"), {}),
 }
@@ -312,6 +318,7 @@ def script_code(path, cfg):
             c["impl"] = {k: v for k, v in c["impl"].items() if k != "guidelines"}
     if path == "workflows/review.py":  # idem pour la revue : sa part de la config (les consignes de la chaîne pèsent)
         c = {k: v for k, v in c.items() if k in REVIEW_CFG}
+        c["review"] = {**(c.get("review") or {}), "page_id": revue_page(cfg)}  # où couts écrit review_sessions
     c.update(gitfut=assemble.gitfut(cfg), wiki_posters=assemble.wiki_posters(cfg),  # déduits du roster (scripts sans accès au dépôt)
              planning_names=assemble.planning_names(cfg),  # noms complets du roster, pour le planning des absences
              root=ROOT)  # dossier du dépôt : son venv (Pillow) pour réduire les images
@@ -341,6 +348,17 @@ def role_ids(role, cfg):
     return next((p["jira_id"] for p in assemble.roster(cfg) if p.get("roleKind") == role and p.get("jira_id")), "")
 
 
+def revue_page(cfg):
+    """La page « Revue · bilan » : celle de l'installateur (revue_bilan_page_id), sinon la page de récap réglée à la main
+    (review.page_id, d'avant le bilan)."""
+    return cfg.get("revue_bilan_page_id") or (cfg.get("review") or {}).get("page_id") or ""
+
+
+def side_page_id(cfg, key):
+    """L'id d'une page à part (SIDE_PAGES) dans la config ; « Revue · bilan » reprend la page de récap déjà réglée."""
+    return revue_page(cfg) if key == "revue_bilan_page_id" else cfg.get(key) or ""
+
+
 def values(cfg):
     """Valeur de chaque emplacement pour une installation."""
     cfg = assemble.merged(cfg)
@@ -351,6 +369,7 @@ def values(cfg):
         "bilan.page_id": cfg.get("bilan_page_id") or "",  # page « Chaîne · bilan » (installée avec la chaîne)
         "redaction_bilan.page_id": cfg.get("redaction_bilan_page_id") or "",  # page « Rédaction · bilan » (installée avec le modèle ticket)
         "retours_bilan.page_id": cfg.get("retours_bilan_page_id") or "",  # page « Retours · bilan » (installée avec « corriger »)
+        "revue_bilan.page_id": revue_page(cfg),  # page « Revue · bilan » (installée avec la revue, ou la page de récap déjà réglée)
         "support_bilan.page_id": cfg.get("support_bilan_page_id") or "",  # page « Support · bilan » (installée avec l'investigation)
         "kronn.project_id": (cfg.get("kronn") or {}).get("project_id") or "",
         "jira.config_id": j.get("config_id") or "",
@@ -399,7 +418,7 @@ def values(cfg):
         "models.ticket": (cfg.get("models") or {}).get("ticket") or "",  # salle de rédaction (2e étage) : son relevé dans le cron live
         "models.review_child": (cfg.get("models") or {}).get("review_child") or "",
         "review.project_id": rv.get("project_id") or (cfg.get("kronn") or {}).get("project_id") or "",
-        "review.page_id": rv.get("page_id") or "",  # page de récap des revues, facultative
+        "review.page_id": revue_page(cfg),  # page « Revue · bilan », où la revue écrit ses lignes
         "review.schedule": rv.get("schedule") or REVIEW_SCHEDULE,
         # sélection du cron : seulement les PR où le compte ou une de ses équipes est demandé (review.demandees), et ses équipes
         "review.selection": json.dumps({"demandees": bool(rv.get("demandees")), "equipes": list(rv.get("equipes") or [])},
@@ -503,6 +522,8 @@ def skipped(key, cfg):
         return not ((cfg.get("models") or {}).get("support") and cfg.get("support_bilan_page_id") and s.get("team") and s.get("channel"))
     if key == "redaction_bilan":  # la page du bilan de la rédaction : modèle ticket installé et page créée (install.py)
         return not ((cfg.get("models") or {}).get("ticket") and cfg.get("redaction_bilan_page_id"))
+    if key == "revue_bilan":  # la page du bilan des revues : revue installée et page créée ou reprise (install.py)
+        return not ((cfg.get("models") or {}).get("review_child") and revue_page(cfg))
     if key == "retours_bilan":  # la page du bilan des retours : « corriger » installé (actions.fix_pr) et page créée (install.py)
         return not ((cfg.get("actions") or {}).get("fix_pr") and cfg.get("retours_bilan_page_id"))
     if key.startswith("impl"):  # la chaîne lit le ticket dans Jira et livre sur GitHub (gh)

@@ -61,13 +61,14 @@ PR #2060 d'un dépôt de l'équipe (run `73869a01` de `review_child`, 2026-11-04
 - `on_result` ne voit que les signaux de Kronn (`OK`, `ERROR`, `exit_N`…), jamais le texte d'une sortie [src: file: tests/test_models.py:test_on_result_rules_only_match_kronn_signals].
 - La sortie typée d'une étape Agent ne remonte pas d'un sous-workflow : l'avis reste dans le parent, car `map_event`, `react` et `reply` lisent `steps.avis.data`.
 
-## Contrat avec la page de récap (`review.page_id`)
+## Contrat avec la page « Revue · bilan » (`review.page_id`)
 
 Ne pas le casser en touchant à la revue [src: file: workflows/templates/review_child.json:publish] :
 
 - Dataset `reviews` : une ligne par revue postée (`build_row` depuis `review.json`), mêmes champs qu'avant le découpage (`pr`, `repo`, `verdict` vérifié, `summary` = la review mise en page, `author`, `base`, `run_at`, `inline` postés, `reactions`, `replies`, `diff_*`, `review_pass`), plus `corrections` et `version`.
 - Dataset `review_meta` : la réponse GitHub du POST (stdout de `post`, plus `verdict`) ; la signature « Review automatique · Le Bureau (agent - modèle) » sert aussi à `write_ctx` pour sauter une PR déjà relue à son head.
-- Dataset `review_sessions` : une ligne par revue (`workflows/review.py couts`, étape `cost` / `costs`). La page rapproche une ligne de coût par revue (même PR, entre 5 min avant et 60 min après `run_at`) : `couts` regroupe les sessions Claude Code des postes d'une même revue (même dossier, même PR, moins de 20 min d'écart), sous l'id de la première, détail par poste dans `postes`. Chaque prompt de poste commence donc par « Review la PR #<n> (`<repo>`) · poste <poste> ».
+- Dataset `review_sessions` : une ligne par revue (`workflows/review.py couts`, étape `cost` / `costs`). La page rapproche une ligne de coût par revue (même PR, entre 5 min avant et 60 min après `run_at`) : `couts` regroupe les sessions Claude Code des postes d'une même revue (même dossier, même PR, moins de 20 min d'écart), sous l'id de la première, détail par poste dans `postes`. Chaque prompt de poste porte « Review la PR #<n> (`<repo>`) · poste <poste> » ; Kronn peut le préfixer (protocole anti-hallucination), `session` lit donc le poste dans les 300 caractères qui suivent « Review la PR » [src: file: workflows/review.py:530].
+- Dataset `revue_bilan` : le cron `revue_bilan` (une fois par heure, `workflows/revue_bilan.py`) : suite des bloquants d'une passe à l'autre depuis l'historique, état des PR relues (gh), horaire du cron (`review.schedule` à l'heure du bureau) et `review.pedago`. La page (`page/revue-bilan.html`, `SIDE_PAGES["revue_bilan_page_id"]`) est celle de `review.page_id` quand elle est réglée (`templates.revue_page`), sinon celle de l'installateur [src: file: tools/templates.py:351].
 - `run_at` est posé par `write_ctx` au départ (UTC, millisecondes, `Z`), pas à l'heure de l'avis : les postes passent avant lui.
 
 ## La file de la salle de revue (2e étage)
