@@ -205,3 +205,13 @@ test('fenêtre fermée avec une carte Kronn ouverte dedans : son bouton est recl
   run(`closeKronnCardIn(null)`);
   assert.equal(J('KC_CLICKS'), 1);
 });
+
+test("la fenêtre d'une décision de gate : « ↩ Annuler » à sa taille, le titre de la décision lisible", () => {
+  // la fenêtre s'ouvre dans l'emplacement du bouton (.qslot de .gatecard .gq) : une règle sur « .gq button » étirait
+  // aussi « ↩ Annuler » de l'en-tête, et écrasait le titre sur une colonne (2026-11-16)
+  const fs = require('node:fs'), path = require('node:path');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'page', 'src', 'styles.css'), 'utf8');
+  assert.doesNotMatch(css, /\.gatecard \.gq button\s*\{/, 'seulement les boutons de décision : .gq>.qslot>button');
+  assert.match(css, /\.gatecard \.gq>\.qslot>button\{width:100%/);
+  assert.match(css, /\.kmodal \.km-top button\{width:auto;flex:none/, "l'en-tête des fenêtres garde ses boutons à leur taille");
+});
