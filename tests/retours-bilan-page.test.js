@@ -73,3 +73,29 @@ test('rendu complet : chiffres, sections, fiche en onglets, liens, textes échap
   assert.ok(B.render(DATA, {...st, sel: 'ko'}).includes('Fiche non gardée'));
   assert.ok(B.render({corrections: []}, st).includes('Aucune correction'));
 });
+
+test('les vues du récap des revues : corrections par jour, qui écrit les fils, fils corrigés, prix par jour', () => {
+  const a = B.aggregate(DATA, {jours: 30, depot: ''});
+  assert.deepEqual(JSON.parse(JSON.stringify(a.jours.map(j => [j.k, j.res, Math.round(j.cout * 10), j.fils, j.corr]))),
+    [['08/11', {ok: 1, err: 2}, 49, 5, 4], ['09/11', {info: 1}, 9, 3, 2]], 'du plus ancien au plus récent, heure de Paris');
+  assert.deepEqual(JSON.parse(JSON.stringify(a.auteurs)), {pam: {n: 1, corrige: 1}, jim: {n: 1, test: 1}});
+  const h = B.render(DATA, {jours: 30, depot: '', sel: 'ok', vue: 'run', open: new Set()});
+  for (const s of ['Corrections par jour', 'Qui a écrit les fils', 'Fils corrigés', 'Prix par jour', '08/11', '67 %', '4,90 $'])
+    assert.ok(h.includes(s), s);
+  assert.ok(!h.includes('Qui commente le plus'), 'remonté dans « Qui a écrit les fils »');
+});
+
+test('le tableau par PR : une ligne par PR, sa trajectoire, ses runs dépliés au clic', () => {
+  const st = {jours: 30, depot: '', sel: 'ok', vue: 'pr', open: new Set()};
+  const h = B.render(DATA, st);
+  assert.ok(h.includes('3 PR · 4 runs'), 'site#16 a deux runs');
+  assert.equal((h.match(/<tr class="grp"/g) || []).length, 3);
+  assert.equal((h.match(/<tr class="row sub/g) || []).length, 0, 'replié');
+  assert.match(h, /data-pr="dm\/site#16"[^>]*aria-expanded="false"/);
+  assert.ok(h.includes('2 runs'), 'la trajectoire compte les runs');
+  assert.ok(h.includes('<b>2,10 $</b>'), 'coût total de la PR : 1,20 + 0,90');
+  const o = B.render(DATA, {...st, open: new Set(['dm/site#16'])});
+  assert.equal((o.match(/<tr class="row sub/g) || []).length, 2, 'ses deux runs');
+  assert.match(o, /aria-expanded="true"/);
+  assert.ok(B.render(DATA, {...st, vue: 'run'}).includes('le plus récent d\'abord'), 'par run : le tableau d\'avant');
+});

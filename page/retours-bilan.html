@@ -113,6 +113,15 @@ p.note{margin:8px 0 0;font-style:italic;color:var(--muted);font-size:11.5px}
 svg .bar{fill:var(--info)}svg .cost{stroke:var(--warn);fill:none;stroke-width:2.5}svg .cpt{fill:var(--warn)}svg .val{fill:var(--ink);font-family:ui-monospace,Menlo,monospace}
 .hb .v.back{color:var(--err);font-weight:700}
 .vers td{white-space:normal;vertical-align:top}
+.vbars{display:grid;grid-auto-columns:minmax(0,1fr);grid-auto-flow:column;gap:8px;align-items:end;min-height:150px}
+.vbars .c{display:grid;gap:3px;justify-items:center;font-size:11px;min-width:0}
+.vbars .s{display:flex;flex-direction:column-reverse;width:100%;height:110px;background:var(--chip)}
+.vbars .s i{display:block;width:100%}
+.hb .bar.stk{display:flex}.hb .bar.stk i{position:static;display:block;height:100%}
+.seg{display:inline-flex;border:2px solid var(--line)}.seg button{font:600 11.5px system-ui;padding:2px 9px;background:transparent;color:var(--ink);border:0;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+tr.grp{cursor:pointer}tr.grp:hover td,tr.grp:focus-visible td{background:var(--chip)}tr.sub td{background:var(--chip);font-size:12px}tr.sub.on td{font-weight:600}
+.traj i{display:inline-block;width:10px;height:10px;margin-right:3px;vertical-align:-1px}
 </style>
 </head>
 <body>
@@ -139,6 +148,9 @@ const plural=(n,un,plus)=>n+' '+(n>1?plus:un);
 const pill=(c,l)=>`<span class="pill ${c}">${esc(l)}</span>`;
 const day=iso=>{const d=new Date(iso||'');return isNaN(d)?'':d.toLocaleString('fr-FR',{timeZone:'Europe/Paris',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(',','');};
 const depot=r=>String(r||'').split('/').pop();
+const jour=iso=>{const d=new Date(iso||'');return isNaN(d)?'':d.toLocaleDateString('fr-FR',{timeZone:'Europe/Paris',day:'2-digit',month:'2-digit'});};
+// la couleur d'un résultat dans les graphes : poussée, arrêtée (panne, coupée, refusée, rien), en cours
+const resClass=r=>r==='poussee'?'ok':r==='en_cours'?'info':'err';
 const modele=m=>String(m||'').replace(/^claude-/,'').replace(/\s*·.*$/,'').replace(/-\d{8}$/,'');
 
 function readRetoursBilan(k){
@@ -175,6 +187,14 @@ function aggregate(data,f){
   a.qui={};a.fichiers={};
   for(const r of rows)for(const x of ((data.fiches||{})[r.run]||{}).fils||[]){if(x.who)a.qui[x.who]=(a.qui[x.who]||0)+1;const p=String(x.path||'').split('/').pop();if(p)a.fichiers[p]=(a.fichiers[p]||0)+1;}
   a.modeles=[...new Set(rows.map(r=>modele(r.modele)).filter(Boolean))];
+  // par jour (heure de Paris), du plus ancien au plus récent : runs par résultat, coût, fils corrigés
+  const jours={};
+  for(const r of rows){const k=jour(r.debut);if(!k)continue;const j=jours[k]||(jours[k]={k,t:Date.parse(r.debut),res:{},cout:0,fils:0,corr:0});
+    const c=resClass(r.resultat);j.res[c]=(j.res[c]||0)+1;j.cout+=r.cout||0;j.fils+=r.fils||0;j.corr+=((r.cols||{}).corrige||0)+((r.cols||{}).test||0);j.t=Math.min(j.t,Date.parse(r.debut));}
+  a.jours=Object.values(jours).sort((x,y)=>x.t-y.t).slice(-14);
+  // qui a écrit les fils repris, par colonne de la réponse (fiches disponibles)
+  a.auteurs={};
+  for(const r of rows)for(const x of ((data.fiches||{})[r.run]||{}).fils||[]){if(!x.who)continue;const w=a.auteurs[x.who]||(a.auteurs[x.who]={n:0});w.n++;if(x.col)w[x.col]=(w[x.col]||0)+1;}
   return a;
 }
 function kpis(a){
@@ -197,16 +217,61 @@ function funnel(a){
   <div class="funnel">${st('💬 Fils reçus',f.recus,'',true)}${st('🛠 Traités par l\'agent',f.traites)}${st('✋ Validés par toi',f.valides,'warn')}${st('📤 Poussés et répondus',f.pousses,'ok')}${leak}</div>
   <p class="note">Colonnes de la réponse : ${COLS.map(([k,i,l])=>`${i} ${l} ${a.cols[k]}`).join(' · ')}.</p></div>`;
 }
+// les vues du récap des revues, sur les corrections : par jour, qui écrit les fils, fils corrigés, prix par jour
+function vbars(cols,max){
+  return `<div class="vbars">${cols.map(c=>`<div class="c"><span class="mut num">${esc(c.top)}</span><div class="s">${c.parts.map(([k,v])=>v?`<i style="height:${(v/max*100).toFixed(1)}%;background:var(--${k})"></i>`:'').join('')}</div><span class="mut">${esc(c.k)}</span></div>`).join('')}</div>`;
+}
+const legend=items=>`<span class="legend" style="margin:0">${items.map(([c,l])=>`<span><i style="background:var(--${c})"></i>${esc(l)}</span>`).join('')}</span>`;
+function vues(a){
+  if(!a.jours.length)return '';
+  const j=a.jours, mRuns=Math.max(1,...j.map(x=>sum(Object.values(x.res)))), mCout=Math.max(0.01,...j.map(x=>x.cout));
+  const parJour=vbars(j.map(x=>({k:x.k,top:String(sum(Object.values(x.res))),parts:[['ok',x.res.ok||0],['err',x.res.err||0],['info',x.res.info||0]]})),mRuns);
+  const prix=vbars(j.map(x=>({k:x.k,top:fmtUsd(x.cout),parts:[['info',x.cout]]})),mCout);
+  const taux=vbars(j.map(x=>({k:x.k,top:x.fils?pct(x.corr,x.fils)+' %':'·',parts:[['ok',x.fils?pct(x.corr,x.fils):0]]})),100);
+  const C={corrige:'ok',test:'accent',laisse:'idle',reponse:'warn'};
+  const au=Object.entries(a.auteurs).sort((x,y)=>y[1].n-x[1].n).slice(0,6), mAu=Math.max(1,...au.map(([,v])=>v.n));
+  const qui=au.length?`<div class="hb">${au.map(([w,v])=>`<span class="mono" style="overflow:hidden;text-overflow:ellipsis">${esc(w)}</span><div class="bar stk">${Object.keys(C).map(k=>v[k]?`<i style="width:${(v[k]/mAu*100).toFixed(1)}%;background:var(--${C[k]})"></i>`:'').join('')}</div><span class="v num">${v.n}</span>`).join('')}</div>`:'<p class="mut">Fils indisponibles (fiches des corrections récentes seulement).</p>';
+  return `<div class="grid2"><div class="box"><div class="h">Corrections par jour ${legend([['ok','poussée'],['err','arrêtée'],['info','en cours']])}</div><p class="why">Les runs de « corriger » par jour, selon leur résultat.</p>${parJour}</div>
+  <div class="box"><div class="h">Qui a écrit les fils ${legend([['ok','corrigé'],['accent','avec un test'],['idle','laissé'],['warn','réponse seule']])}</div><p class="why">Les auteurs des commentaires repris, et ce que la correction en a fait.</p>${qui}</div></div>
+  <div class="grid2"><div class="box"><div class="h">Fils corrigés</div><p class="why">Part des fils corrigés (avec ou sans test) parmi les fils reçus, par jour.</p>${taux}</div>
+  <div class="box"><div class="h">Prix par jour</div><p class="why">Coût de l'agent de correction (équivalent API), par jour.</p>${prix}</div></div>`;
+}
 function colsCell(r){return COLS.map(([k,i])=>`<span title="${esc(k)}">${i}${(r.cols||{})[k]||0}</span>`).join(' ');}
-function table(a,sel){
-  const rows=a.rows.map(r=>`<tr class="row${r.run===sel?' on':''}" data-run="${esc(r.run)}" tabindex="0"><td class="num">${esc(day(r.debut))}</td>
+function runRow(r,sel,sub){
+  return `<tr class="row${sub?' sub':''}${r.run===sel?' on':''}" data-run="${esc(r.run)}" tabindex="0"><td class="num">${sub?'<span class="mut">↳</span> ':''}${esc(day(r.debut))}</td>
     <td style="white-space:normal;max-width:360px"><b>${esc(depot(r.repo))}#${esc(r.pr)}</b> <span class="mut">${esc(String(r.titre||'').slice(0,70))}</span></td>
     <td>${esc(r.auteur||'')}</td><td class="num">${colsCell(r)}</td><td class="mut" style="white-space:normal;max-width:160px">${esc(String(r.controles||'·').replace(/\s*\(.*$/,''))}</td>
     <td class="r num">${r.attente_ms==null?'<span class="mut">·</span>':esc(fmtDur(r.attente_ms/1000))}</td>
     <td>${pill(...(RES[r.resultat]||['idle',r.resultat]))}${r.poste?` <span class="mut">${esc(POSTE[r.poste]||r.poste)}</span>`:''}</td>
-    <td class="r num">${r.ms==null?'·':esc(fmtDur(r.ms/1000))}</td><td class="r num">${fmtK(r.tok)}</td><td class="r num"><b>${fmtUsd(r.cout)}</b></td></tr>`).join('');
-  return `<div class="box"><div class="h">Les corrections <span class="mut">${plural(a.n,'run','runs')} · le plus récent d'abord · clic : sa fiche</span></div>
-  ${rows?`<div class="scroll"><table><tr><th>Date</th><th>PR</th><th>Auteur</th><th>Fils</th><th>Contrôles</th><th class="r">Ta validation</th><th>Résultat</th><th class="r">Durée</th><th class="r">Jetons</th><th class="r">Coût</th></tr>${rows}</table></div>`:'<p class="mut">Aucune correction sur la période.</p>'}</div>`;
+    <td class="r num">${r.ms==null?'·':esc(fmtDur(r.ms/1000))}</td><td class="r num">${fmtK(r.tok)}</td><td class="r num"><b>${fmtUsd(r.cout)}</b></td></tr>`;
+}
+// les runs regroupés par PR, le plus récent d'abord ; une PR dépliée montre ses runs
+function groupes(rows){
+  const m=new Map();
+  for(const r of rows){const k=(r.repo||'')+'#'+(r.pr||'');if(!m.has(k))m.set(k,[]);m.get(k).push(r);}
+  return [...m.entries()].map(([k,rs])=>({k,rs,last:rs[0]}));
+}
+function table(a,sel,st){
+  st=st||{vue:'run',open:new Set()};
+  const head=`<tr><th>${st.vue==='pr'?'Dernier run':'Date'}</th><th>PR</th><th>Auteur</th><th>Fils</th><th>${st.vue==='pr'?'Trajectoire':'Contrôles'}</th><th class="r">Ta validation</th><th>Résultat${st.vue==='pr'?' actuel':''}</th><th class="r">Durée</th><th class="r">Jetons</th><th class="r">Coût</th></tr>`;
+  let rows='', n=a.n;
+  if(st.vue==='pr'){
+    const gs=groupes(a.rows);n=gs.length;
+    rows=gs.map(g=>{const l=g.last, open=st.open.has(g.k), many=g.rs.length>1, tot={cols:{}};
+      for(const[k]of COLS)tot.cols[k]=sum(g.rs.map(r=>(r.cols||{})[k]));
+      const att=g.rs.map(r=>r.attente_ms).filter(x=>x!=null), ms=g.rs.map(r=>r.ms).filter(x=>x!=null);
+      const traj=`<span class="traj">${[...g.rs].reverse().map(r=>`<i title="${esc(day(r.debut))} · ${esc((RES[r.resultat]||[0,r.resultat])[1])}" style="background:var(--${resClass(r.resultat)})"></i>`).join('')}</span> <span class="mut">${plural(g.rs.length,'run','runs')}</span>`;
+      return `<tr class="grp" data-pr="${esc(g.k)}" tabindex="0" aria-expanded="${open}"><td class="num"><span class="mut">${many?(open?'▾':'▸'):'·'}</span> ${esc(day(l.debut))}</td>
+        <td style="white-space:normal;max-width:360px"><b>${esc(depot(l.repo))}#${esc(l.pr)}</b> <span class="mut">${esc(String(l.titre||'').slice(0,70))}</span></td>
+        <td>${esc(l.auteur||'')}</td><td class="num">${colsCell(tot)}</td><td>${traj}</td>
+        <td class="r num">${att.length?esc(fmtDur(sum(att)/1000)):'<span class="mut">·</span>'}</td>
+        <td>${pill(...(RES[l.resultat]||['idle',l.resultat]))}</td>
+        <td class="r num">${ms.length?esc(fmtDur(sum(ms)/1000)):'·'}</td><td class="r num">${fmtK(sum(g.rs.map(r=>r.tok)))}</td><td class="r num"><b>${fmtUsd(sum(g.rs.map(r=>r.cout)))}</b></td></tr>`
+        +(open?g.rs.map(r=>runRow(r,sel,true)).join(''):'');}).join('');
+  }else rows=a.rows.map(r=>runRow(r,sel,false)).join('');
+  const seg=`<span class="seg" role="group" aria-label="Vue du tableau"><button type="button" data-vue="pr" aria-pressed="${st.vue==='pr'}">Par PR</button><button type="button" data-vue="run" aria-pressed="${st.vue==='run'}">Par run</button></span>`;
+  return `<div class="box"><div class="h">Les corrections <span class="mut" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${seg}${st.vue==='pr'?plural(n,'PR','PR')+' · '+plural(a.n,'run','runs')+' · clic : ses runs, puis la fiche':plural(a.n,'run','runs')+' · le plus récent d\'abord · clic : sa fiche'}</span></div>
+  ${rows?`<div class="scroll"><table>${head}${rows}</table></div>`:'<p class="mut">Aucune correction sur la période.</p>'}</div>`;
 }
 function gantt(der){
   const pts=(der||[]).map(s=>({...s,t:Date.parse(s.at||'')})).filter(s=>s.t&&ROW[s.n]);
@@ -249,22 +314,26 @@ function render(data,st){
   <div class="filters"><label for="f-jours">Période</label><select id="f-jours">${opt(7,'7 jours')}${opt(30,'30 jours')}${opt(90,'90 jours')}</select>
   <label for="f-depot">Dépôt</label><select id="f-depot"><option value="">Tous</option>${ds.map(d=>`<option value="${esc(d)}"${d===st.depot?' selected':''}>${esc(depot(d))}</option>`).join('')}</select></div></header>
   ${data.error?`<div class="note">Relevé incomplet : ${esc(data.error)}</div>`:''}
-  ${kpis(a)}<div class="grid2">${argent(a)}${funnel(a)}</div>
-  ${table(a,sel?sel.run:null)}${fiche(data,sel,st.tab)}
-  <details class="analyse"${st.analyse?' open':''}><summary>Analyse des retours : qui commente, quels fichiers reviennent</summary>
-  <div class="grid2"><div class="box"><div class="h">Qui commente le plus</div>${bars(a.qui)}</div><div class="box"><div class="h">Fichiers les plus repris</div>${bars(a.fichiers)}</div></div></details>`;
+  ${kpis(a)}<div class="grid2">${argent(a)}${funnel(a)}</div>${vues(a)}
+  ${table(a,sel?sel.run:null,st)}${fiche(data,sel,st.tab)}
+  <details class="analyse"${st.analyse?' open':''}><summary>Analyse des retours : quels fichiers reviennent</summary>
+  <div class="box"><div class="h">Fichiers les plus repris</div>${bars(a.fichiers)}</div></details>`;
 }
 const B={readRetoursBilan,aggregate,render,gantt,pick};
 if(typeof window!=='undefined')window.RETOURS_BILAN=B;
 if(typeof document==='undefined'||!document.getElementById('app'))return;
 let DATA=readRetoursBilan(window.KronnPageData);
-const ST={jours:30,depot:'',sel:null,tab:'fils',analyse:false};
+const ST={jours:30,depot:'',sel:null,tab:'fils',analyse:false,vue:'pr',open:new Set()};
 const app=document.getElementById('app');
 function draw(){app.innerHTML=render(DATA,ST);}
 app.addEventListener('change',e=>{const t=e.target;if(t.id==='f-jours')ST.jours=+t.value;else if(t.id==='f-depot')ST.depot=t.value;else return;draw();});
-const choose=e=>{const tb=e.target.closest('[data-tab]');if(tb){ST.tab=tb.dataset.tab;draw();return;}const r=e.target.closest('tr.row');if(!r)return;ST.sel=r.dataset.run;draw();const n=app.querySelector('tr.row.on');if(n)n.focus();};
+const choose=e=>{const tb=e.target.closest('[data-tab]');if(tb){ST.tab=tb.dataset.tab;draw();return;}
+  const vu=e.target.closest('[data-vue]');if(vu){ST.vue=vu.dataset.vue;draw();return;}
+  const g=e.target.closest('tr.grp');if(g){const k=g.dataset.pr, rs=pick(DATA,ST).filter(r=>(r.repo||'')+'#'+(r.pr||'')===k);
+    if(rs.length>1){if(ST.open.has(k))ST.open.delete(k);else ST.open.add(k);}else if(rs[0])ST.sel=rs[0].run;
+    draw();const n=app.querySelector(`tr.grp[data-pr="${CSS.escape(k)}"]`);if(n)n.focus();return;}const r=e.target.closest('tr.row');if(!r)return;ST.sel=r.dataset.run;draw();const n=app.querySelector('tr.row.on');if(n)n.focus();};
 app.addEventListener('click',e=>{if(e.target.closest('a'))return;choose(e);});
-app.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){if(e.target.closest('tr.row')){e.preventDefault();choose(e);}}});
+app.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){if(e.target.closest('tr.row,tr.grp')){e.preventDefault();choose(e);}}});
 app.addEventListener('toggle',e=>{if(e.target.matches&&e.target.matches('details.analyse'))ST.analyse=e.target.open;},true);
 window.addEventListener('kronn:page-data',e=>{const d=readRetoursBilan(e.detail||window.KronnPageData);if(d){DATA=d;draw();}});
 draw();

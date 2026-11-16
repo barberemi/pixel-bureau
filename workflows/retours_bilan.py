@@ -116,8 +116,8 @@ def releve():
         if run.get("status") == "Pending":
             continue
         path = cache_path(run["id"])
-        if run.get("status") not in ACTIVE and os.path.exists(path):
-            en_cache += 1
+        if run.get("status") not in ACTIVE and os.path.exists(path) and (read_json(path) or {}).get("resultat") != "en_cours":
+            en_cache += 1  # fini et relu fini ; un run lu pendant qu'il tournait est relu une fois fini
             continue
         c = conso(wf, run)
         os.makedirs(CACHE, exist_ok=True)

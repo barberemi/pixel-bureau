@@ -2,7 +2,7 @@
 
 Une page Kronn à part, « Retours · bilan », garde l'historique des corrections de commentaires de review passées par le 3e étage ([Les retours de PR](27-retours.md)) : combien de PR ont été poussées, ce que coûte une correction, ce que deviennent les fils de commentaire, combien de temps les corrections t'attendent. Son chiffre clé tient dans l'écran du vidéoprojecteur.
 
-![La page « Retours · bilan » : quatre chiffres, l'argent par résultat, les fils jusqu'à la réponse postée, une ligne par correction et la fiche de la plus récente](../img/retours-bilan.png)
+![La page « Retours · bilan » : quatre chiffres, l'argent par résultat, les fils jusqu'à la réponse postée, les corrections et le prix par jour, qui écrit les fils, le tableau par PR avec une PR dépliée et la fiche de son dernier run](../img/retours-bilan.png)
 
 ## L'installer et la projeter
 
@@ -17,8 +17,10 @@ En haut, les filtres : période (7, 30 ou 90 jours) et dépôt.
 - **Quatre chiffres** : PR poussées sur les corrections lancées (et en panne, coupées par un garde-fou de Kronn, refusées par toi), coût par PR poussée et par fil, fils corrigés (dont avec un test, laissés, réponses seules), attente médiane à ta validation.
 - **Où part l'argent** : le coût de la période par résultat du run, en rouge ce qui n'a rien poussé. Seul l'agent de correction coûte ; préparation, contrôles, diff et push sont des scripts, ta validation c'est du temps. Le coût vient de Kronn (entrée, contexte relu en cache, sortie) ; il est complet, l'agent ne lançant aucun sous-agent.
 - **Des fils aux réponses** : les fils de commentaire reçus, traités par l'agent, validés par toi, poussés et répondus ; en rouge, la PR où des fils se sont arrêtés et pourquoi. Puis la répartition par colonne de la réponse (✅ corrigé, 🧪 avec un test, ⏭ laissé, 💬 réponse seule).
-- **Les corrections**, la plus récente d'abord : PR et titre, auteur, fils par colonne, verdict des contrôles, attente à ta validation, résultat (et l'étape où un run s'est arrêté), durée, jetons, coût. Un clic ouvre sa fiche.
-- **Analyse des retours**, repliée : qui commente le plus, quels fichiers reviennent.
+- **Corrections par jour**, selon leur résultat (poussée, arrêtée, en cours), et **qui a écrit les fils** : les auteurs des commentaires repris, et ce que la correction en a fait (corrigé, avec un test, laissé, réponse seule). Les mêmes vues que dans [le bilan des revues](35-revue-bilan.md).
+- **Fils corrigés** par jour (part des fils corrigés, avec ou sans test) et **prix par jour**.
+- **Les corrections**, **par PR** (par défaut) ou **par run**. Par PR, une ligne par PR : son dernier run, ses fils de tous les runs, sa trajectoire (une marque par run : vert poussée, rouge arrêtée, bleu en cours), son résultat actuel, ses durée, jetons et coût totaux ; un clic déplie ses runs, un clic sur un run ouvre sa fiche. Par run, le plus récent d'abord : PR et titre, auteur, fils par colonne, verdict des contrôles, attente à ta validation, résultat (et l'étape où un run s'est arrêté), durée, jetons, coût.
+- **Analyse des retours**, repliée : quels fichiers reviennent.
 
 ## La fiche d'une correction
 
