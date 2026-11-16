@@ -67,6 +67,17 @@ class TemplatesTest(unittest.TestCase):
         self.assertIn("hollyflax", logins)
         self.assertNotIn('"team_github"', templates.script_code("workflows/review.py", cfg))
 
+    def test_sprintquest_alone_receives_the_game_team_of_the_pack(self):
+        """L'équipe de Sprint Quest (sprintquest.json du pack) n'est injectée que dans sprintquest.py : quelques Ko de plus
+        dans tous les scripts pèseraient sur ceux qui frôlent la limite d'un argument."""
+        cfg = dict(json.loads(Path(ROOT, "tests", "fixtures", "bureau.config.json").read_text(encoding="utf-8")),
+                   team=os.path.join(ROOT, "tests", "fixtures", "pack-exemple"))
+        code = templates.script_code("workflows/sprintquest.py", cfg)
+        team = json.loads(re.search(r'_CFG = r"""(.*?)"""', code, re.S).group(1))["sprintquest_team"]
+        self.assertEqual([p["k"] for p in team], ["p_bob", "p_lynn"])
+        self.assertNotIn('"sprintquest_team"', templates.script_code("workflows/pr_update.py", cfg))
+        self.assertEqual(templates.assemble.sprintquest_team(dict(cfg, team=None)), [])
+
     def test_git_hooks_are_neutralised_for_the_scripts(self):
         """AI-10 : les git des scripts (copies dont le .git est partagé) et le setup bash de la revue n'exécutent aucun hook."""
         cfg = json.loads(Path(ROOT, "tests", "fixtures", "bureau.config.json").read_text(encoding="utf-8"))

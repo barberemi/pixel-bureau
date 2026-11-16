@@ -356,6 +356,13 @@ def _team_file(cfg, *parts):
     return path if path and os.path.exists(path) else None
 
 
+def sprintquest_team(cfg):
+    """L'équipe du jeu Sprint Quest (sprintquest.json du pack : people, au format team/roster de l'artefact) ; [] sans fichier."""
+    path = _team_file(cfg, "sprintquest.json")
+    people = json.loads(Path(path).read_text()).get("people") if path else None
+    return [p for p in people if isinstance(p, dict) and p.get("k")] if isinstance(people, list) else []
+
+
 def roster(cfg):
     """L'équipe de l'installation : roster du profil, puis les personnes ajoutées à l'installation (clé people)."""
     path = _team_file(cfg, "roster.json")

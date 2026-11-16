@@ -1,0 +1,10 @@
+{
+ "_doc": "Équipe du jeu Sprint Quest (borne des Combles), au format team/roster de l'artefact : k, name, role, person, title, look (couleurs #rrggbb de chemise sh, peau sk, cheveux hc, jambes lg ; coiffure st 0-3, chapeau hat, barbe beard, couronne crown), fun (stats rigolotes {l, v}, 6 au plus).",
+ "people": [
+  {"k": "p_bob", "name": "Bob", "role": "Directeur", "person": "Bob Vance", "title": "LE ROI DU FRIGO",
+   "look": {"sh": "#3a5a8c", "sk": "#efc39a", "hc": "#3a2a1e", "lg": "#262b38", "st": 0, "crown": 1},
+   "fun": [{"l": "FRIGOS VENDUS", "v": "1 200"}]},
+  {"k": "p_lynn", "name": "Lynn", "role": "Développeuse", "person": "Lynn Carter", "title": "",
+   "look": {"sh": "#2e9e9b", "sk": "#7d4e33", "hc": "#14100e", "lg": "#2c2c3a", "st": 1}, "fun": []}
+ ]
+}

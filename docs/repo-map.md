@@ -27,6 +27,7 @@ pixel-bureau/
 │   ├── *_snapshot.py          # producteurs des datasets (office, live, gates, payroll, duck, absences, pages, github, gitfut, actions, statuts)
 │   ├── *.py                   # autres étapes (team_shape, planning_jql, duck_start, todos, gate_decide, question_answer, relaunch, layout_save, agent_save…)
 │   └── templates/*.json       # modèles des workflows et Quick Prompts (team, live, office, canard, absences, duck, gate…)
+├── arcade/sprint-quest/       # source de l'artefact claude.ai Sprint Quest (borne des Combles) et ses capacités ; republié par la skill .claude/skills/sprint-quest
 ├── skills/*.md                # skills du Bureau, partagés par la revue de PR et la chaîne (publiés par publish.py et install.py)
 ├── tools/                     # outillage local (lancé à la main, jamais par Kronn)
 │   ├── assemble.py            # page -> dist/office.html

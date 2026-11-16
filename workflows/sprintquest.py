@@ -7,8 +7,9 @@ Trois usages, choisis par le premier argument :
                        stdin : {"sprint": id, "issues": tickets du sprint (champ Sprint compris), "log": changelog/bulkfetch} ;
                        lit aussi, par gh, les PR mergées et les mises en prod de la fenêtre du sprint, et les incidents des
                        pages de statut (réglage statuts). stdout : {generated_at, sprint, data, warnings}, data au format
-                       sprint/data de l'artefact Sprint Quest. Textes fixes (0 jeton), tirés des données ; une source en échec
-                       laisse un avertissement et sa part du jeu se replie.
+                       sprint/data de l'artefact Sprint Quest, plus l'équipe du jeu (team, depuis sprintquest.json du pack
+                       d'équipe : un artefact refait se remplit en un collage). Textes fixes (0 jeton), tirés des données ;
+                       une source en échec laisse un avertissement et sa part du jeu se replie.
 """
 import json, re, subprocess, sys, urllib.request
 from collections import Counter
@@ -322,6 +323,9 @@ def build(D, validated, reopened):
     company = ((CFG.get("combles") or {}).get("company") or "").strip()
     if company:
         data["company"] = company[:16]
+    team = [p for p in (CFG.get("sprintquest_team") or []) if isinstance(p, dict) and p.get("k")]
+    if team:  # l'équipe du jeu (sprintquest.json du pack) : collée avec le sprint, elle remplit team/roster de l'artefact
+        data["team"] = {"people": team[:11]}
     return {"generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "sprint": {"id": sid, "name": sp.get("name") or "", "start": start.isoformat(), "end": end.isoformat()}, "data": data, "warnings": warnings}
 

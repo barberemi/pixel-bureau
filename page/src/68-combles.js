@@ -379,7 +379,8 @@ function sqCard(box){
     ready:['✅ Partie prête · '+(d?d.name:''),(d?d.dates+' · ':'')+'préparée à '+(q?hm(ms(q.generated_at)):'')]}[st];
   host.innerHTML='<div class="rl-n">'+esc(head[0])+'</div><div class="rl-s">'+esc(head[1])+'</div>'+(st==='ready'?
     '<div class="rl-n" style="margin-top:8px">Face-à-face</div><div class="rl-s">'+esc(d.vs.map(x=>x.l+' '+x.v).join(' · '))+'</div>'+
-    '<div class="rl-n" style="margin-top:8px">'+d.quiz.length+' question'+(d.quiz.length>1?'s':'')+' · '+d.boss.length+' boss</div><div class="rl-s">'+
+    '<div class="rl-n" style="margin-top:8px">'+d.quiz.length+' question'+(d.quiz.length>1?'s':'')+' · '+d.boss.length+' boss'+
+    (d.team&&Array.isArray(d.team.people)&&d.team.people.length?' · équipe de '+d.team.people.length:'')+'</div><div class="rl-s">'+
     esc(d.boss.map(b=>(SQ_BOSS[b.t]||'👾')+' '+b.n+(b.pv?' ('+b.pv+')':'')).join(' · '))+'</div>':'');
   const b=document.createElement('button');b.type='button';b.textContent=st==='ready'?'↻ Refaire la préparation':'⚙ Préparer la partie';
   b.setAttribute('data-kronn-action','bureau-sprintquest');b.disabled=st==='running';b.style.marginTop='8px';
