@@ -140,6 +140,12 @@ class TemplatesTest(unittest.TestCase):
                 if t is not None:
                     self.assertTrue(1 <= t <= 1800, "%s · %s : exec_timeout_secs %s" % (key, st.get("name"), t))
 
+    def test_every_variable_has_a_placeholder(self):
+        """Kronn refuse un workflow dont une variable n'a pas de champ placeholder (HTTP 422 à la création)."""
+        for key, tpl in TPL.items():
+            for v in (tpl.get("definition") or tpl).get("variables") or []:
+                self.assertIn("placeholder", v, "%s · %s" % (key, v.get("name")))
+
     def test_crons_pinned_to_utc(self):
         """Heures des crons calculées en UTC (assemble.cron_hours) : le rendu pose timezone UTC sur chaque Cron, sinon
         Kronn 0.15.1 les lirait dans son fuseau (Europe/Paris) au premier PUT. Le modèle reste sans fuseau (export), un
