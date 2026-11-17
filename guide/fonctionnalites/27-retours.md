@@ -40,7 +40,7 @@ Au 3e, le panneau liste les bureaux (la PR, son auteur, le poste en cours, la ba
 - **⌘K** trouve les PR du 3e par leur nom, leur dépôt, leur titre, leur auteur ou le poste en cours.
 - **Le mode TV** : le bouton d'étage (ou la touche E) passe par le 3e ; `?tv=1&floor=alt` y passe quand il a une PR.
 - **Les scènes** (« Comment lire le plan ») au 3e : une PR monte au 3e, le Kanban avance, à toi de valider, la PR est poussée, contrôles rouges, le soir au 3e. Elles se jouent à toute heure, dès le premier clic, depuis les PR de la démo quand aucune n'est en cours.
-- **Le rejeu** : le curseur du temps reconstruit l'étage à l'heure choisie, d'après les moments du relevé.
+- **Le rejeu** : le curseur du temps reconstruit l'étage à l'heure choisie, d'après les moments du relevé. Le tableau RETOURS DU JOUR suit : les PR poussées et celles des 7 jours (le relevé moins les push d'après le curseur), les bureaux au travail et les pannes de cette heure-là ; les fils et les jetons, non datés, gardent le relevé, grisés et précédés de ⏱ (« ⏱ = relevé de hh:mm » au bout de la pastille du rejeu). La file des PR en attente garde le relevé.
 
 ## Données
 

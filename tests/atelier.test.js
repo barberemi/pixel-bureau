@@ -610,3 +610,130 @@ test("ce que fait l'agent : sa bulle dit sa dernière action et le compteur, jau
   p.run('T += 3600e3; __bb = []; renderAtelier(1100); atBubble = __ab;');
   assert.ok(!Jp('__bb').some(([s]) => /actions|rien depuis/.test(s)));
 });
+
+// ---------- tableaux noirs rejouables (audit produit F8) ----------
+// les textes écrits par une fonction de dessin : [texte, couleur]
+const inks = (p, code) => JSON.parse(p.run(`(() => { const out = [], ft = ctx.fillText; ctx.fillText = function (t, ...r) { out.push([String(t), ctx.fillStyle]); return ft.call(this, t, ...r); };
+  try { ${code} } finally { ctx.fillText = ft; } return JSON.stringify(out); })()`));
+const REL = '#8e9a90';
+// un relevé de midi : b est arrivé à 8 h et sorti à 9 h 20 ; a, arrivé à 9 h, est au code (lot 2/3, tour 1/3) ; ses jetons
+// par ses étapes : 10 k pour la première (9 h - 9 h 30), 20 k pour celle qui tourne depuis 9 h 30
+function f8(p, more = '') {
+  const H = h => `new Date(DAY0 + ${h} * 36e5).toISOString()`;
+  p.run(`CFG.atelier = true; CFG.atelier_chain = 'cccc1111'; FLOOR = 1;
+    ATELIER = {generated_at: ${H(12)}, rooms: [${JSON.stringify(room('a', {poste: 'code', states: {cadrage: 'ok', code: 'run'}, tour: '1/3', lot: 'lot 2/3', tok: 30000}))}],
+      queue: [], pannes: [], livres: 1, jour: {tickets: 2, cours: 1, sortis: 1, pannes: 0, reprises: 0, tok: 80000}, events: [
+      {run: 'b', ticket: 'DM-b', repo: 'dm/api', t: ${H(8)}, k: 'arrive'}, {run: 'b', ticket: 'DM-b', repo: 'dm/api', t: ${H(9 + 20 / 60)}, k: 'sort'},
+      {run: 'a', ticket: 'DM-a', repo: 'dm/site', t: ${H(9)}, k: 'arrive'}, {run: 'a', ticket: 'DM-a', repo: 'dm/site', t: ${H(9.1)}, k: 'poste', poste: 'code'}]};
+    AT_RUNS = [{wf: 'cccc1111-x', run: 'b', status: 'Success', start: ${H(8)}, end: ${H(9 + 20 / 60)}, tok: 50000, steps: [{n: 's', s: 'Success', at: ${H(8)}, ms: 80 * 60e3, tok: 48000}]},
+      {wf: 'cccc1111-x', run: 'a', status: 'Running', start: ${H(9)}, end: null, tok: 30000, steps: [{n: 's1', s: 'Success', at: ${H(9)}, ms: 30 * 60e3, tok: 10000},
+        {n: 's2', s: 'Running', at: ${H(9.5)}, ms: 0, tok: 20000}]}]; ${more}`);
+}
+
+test('F8, 1er : en rejeu, « Runs du jour », le grand tableau et la pastille SORTIE à l\'heure du curseur (deux heures)', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);f8(p);
+  p.run(`mode = 'pause'; T = DAY0 + 9.25 * 36e5;`);
+  // 9 h 15 : a et b au travail, rien de sorti ; b à 80 % de son étape (48 k × 75/80), a à la moitié de sa première
+  assert.deepEqual(J2('atJourAt(T)'), {cours: 2, tickets: 2, reprises: 0, sortis: 0, pannes: 0, tok: 45000 + 5000, part: true});
+  let txt = inks(p, 'atJourBoard();').map(x => x[0]);
+  assert.ok(txt.includes('2 en cours') && txt.includes('0/2 sortis') && txt.includes('~50 k jet.'), txt.join(' | '));
+  assert.ok(!txt.some(t => /⏱/.test(t)), 'tout est daté : rien du relevé');
+  // 10 h : b est sorti (son total, 50 k), a a fini sa première étape et fait 1/5 de la seconde (30 min sur 2 h 30 jusqu'au relevé)
+  p.run('T = DAY0 + 10 * 36e5;');
+  assert.deepEqual(J2('atJourAt(T)'), {cours: 1, tickets: 2, reprises: 0, sortis: 1, pannes: 0, tok: 50000 + 10000 + 4000, part: true});
+  txt = inks(p, 'atJourBoard();').map(x => x[0]);
+  assert.ok(txt.includes('1 en cours') && txt.includes('1/2 sortis') && txt.includes('~64 k jet.'), txt.join(' | '));
+  assert.deepEqual(J2('atDeliveredAt()'), {n: 1});
+  // le grand tableau : les jetons de a à 10 h, approchés ; son lot et son tour, ceux du relevé, en ⏱ grisés
+  const b = inks(p, 'atBoard(atSlots());');
+  assert.deepEqual(b.find(x => /jetons/.test(x[0])), ['~14 k jetons', '#b8c0d0']);
+  assert.deepEqual(b.find(x => /tour/.test(x[0])), ['⏱tour 1/3', REL]);
+  assert.deepEqual(b.find(x => /lot/.test(x[0])), [' · ⏱lot 2/3', REL]);
+  // la bulle de l'agent retombe sur « au travail » : le lot du relevé n'est pas celui de 10 h
+  assert.equal(J2('atRooms()[0].lot'), null);
+  // la pastille SORTIE suit le curseur
+  const s = h => (p.run(`T = DAY0 + ${h} * 36e5;`), inks(p, 'atCorridor(1000);').map(x => x[0]).find(t => /^SORTIE/.test(t)));
+  assert.equal(s(9), 'SORTIE');
+  assert.equal(s(10), 'SORTIE · 📦 1 aujourd\'hui');
+  p.run('mode = "live";');
+});
+
+test('F8, 1er : l\'entrepôt à l\'heure du curseur (la file par les runs, les pannes datées que rien n\'a reprises)', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
+  const H = h => `new Date(DAY0 + ${h} * 36e5).toISOString()`;
+  f8(p, `AT_RUNS.push({wf: 'cccc1111-x', run: 'q', status: 'Running', start: ${H(9.5)}, end: null, tok: 0, steps: [{n: 's', s: 'Running', at: ${H(10.5)}, ms: 0, tok: 0}]});
+    ATELIER.events.push({run: 'q', ticket: 'DM-q', t: ${H(10.5)}, k: 'arrive'}, {run: 'p', ticket: 'DM-p', t: ${H(8)}, k: 'arrive'}, {run: 'p', ticket: 'DM-p', t: ${H(8.5)}, k: 'panne', poste: 'tests'},
+      {run: 'p2', ticket: 'DM-p', t: ${H(10.2)}, k: 'arrive'});`);
+  p.run('mode = "pause";');
+  assert.deepEqual(J2(`(T = DAY0 + 10 * 36e5, [atQueueAt(T).map(x => x.ticket), atPannesAt(T).map(x => [x.ticket, x.poste])])`), [['DM-q'], [['DM-p', 'tests']]], '10 h : q attend, p est en panne');
+  assert.deepEqual(J2(`(T = DAY0 + 10.6 * 36e5, [atQueueAt(T).map(x => x.ticket), atPannesAt(T)])`), [[], []], '10 h 36 : q est entré, p a été relancé');
+  p.run('mode = "live";');
+});
+
+test('F8, 1er : en direct, rien ne change (les chiffres du relevé, sans ⏱)', () => {
+  const p = load();fresh(p);f8(p);
+  p.run(`mode = 'live'; T = DAY0 + 12 * 36e5;`);
+  const all = [...inks(p, 'atJourBoard();'), ...inks(p, 'atBoard(atSlots());'), ...inks(p, 'atCorridor(1000);')];
+  const txt = all.map(x => x[0]);
+  for (const t of ['1 en cours', '1/2 sortis', '0 panne', '~80 k jet.', '⌨ Code · lot 2/3', 'tour 1/3 · 30 k jetons', 'SORTIE · 📦 1 aujourd\'hui']) assert.ok(txt.includes(t), t + ' : ' + txt.join(' | '));
+  assert.ok(!all.some(([t, c]) => /⏱/.test(t) || c === REL), 'aucune valeur du relevé marquée en direct');
+  assert.equal(p.run('atRooms()[0].lot'), 'lot 2/3', 'le lot reste dans la bulle');
+});
+
+test('F8, 1er : limite des 12 runs, les moments ne couvrent pas tous les runs du jour : le relevé, en ⏱', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
+  // le relevé compte 14 runs depuis minuit (12 tickets, 2 reprises) ; les moments n'en ont que 2
+  f8(p, 'ATELIER.jour = {tickets: 12, cours: 1, sortis: 9, pannes: 2, reprises: 2, tok: 900000};');
+  p.run(`mode = 'pause'; T = DAY0 + 10 * 36e5;`);
+  assert.equal(J2('atDayCovered()'), false);
+  const j = J2('atJourAt(T)');
+  assert.deepEqual([j.tickets, j.sortis, j.pannes, j.reprises, j.rel], [12, 9, 2, 2, true], 'les chiffres du relevé, pas un faux compte');
+  assert.equal(j.cours, 1, 'en cours : les bureaux à l\'heure du curseur');
+  assert.equal(j.tok, 64000, 'les jetons, eux, viennent des runs : rejoués');
+  const b = inks(p, 'atJourBoard();');
+  assert.deepEqual(b.find(x => /sortis/.test(x[0])), ['⏱9/12 sortis', REL]);
+  assert.deepEqual(b.find(x => /panne/.test(x[0])), ['⏱2 pannes', REL]);
+  assert.deepEqual(b.find(x => /repr/.test(x[0])), ['⏱↻ 2 reprises', REL]);
+  assert.deepEqual(J2('atDeliveredAt()'), {n: 1, rel: true});
+  assert.ok(inks(p, 'atCorridor(1000);').some(x => x[0] === 'SORTIE · 📦 ⏱1 aujourd\'hui'));
+  // sans chiffres du jour : 12 runs dans les moments, c'est la limite ; 11, les moments couvrent la journée
+  const ev = n => `ATELIER.jour = null; ATELIER.events = Array.from({length: ${n}}, (_, k) => ({run: 'r' + k, ticket: 'DM-' + k, t: new Date(DAY0 + (8 + k / 10) * 36e5).toISOString(), k: 'arrive'}));`;
+  p.run(ev(12));
+  assert.equal(J2('atDayCovered()'), false);
+  p.run(ev(11));
+  assert.equal(J2('atDayCovered()'), true);
+  // sans runs datés : les jetons aussi sont ceux du relevé
+  f8(p, 'AT_RUNS = [];');
+  const j2 = J2('atJourAt(T)');
+  assert.deepEqual([j2.tok, j2.tokRel], [80000, true]);
+  assert.deepEqual(inks(p, 'atJourBoard();').find(x => /jet\./.test(x[0])), ['⏱80 k jet.', REL]);
+  assert.deepEqual(inks(p, 'atBoard(atSlots());').find(x => /jetons/.test(x[0])), ['⏱30 k jetons', REL]);
+  p.run('mode = "live";');
+});
+
+test('F8, démo : ses runs datés font les jetons du jour ; rejouée à l\'heure du relevé, elle retombe sur ses chiffres', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
+  p.run(`CFG.atelier_chain = ''; AT_RUNS = []; ATELIER = atelierDemo(); mode = 'pause'; T = Date.parse(ATELIER.generated_at);`);
+  const d = J2('ATELIER'), j = J2('atJourAt(T)');
+  assert.equal(J2('atChainRuns().length'), d.runs.length);
+  assert.ok(d.runs.every(r => r.steps.every(s => s.at && 'tok' in s)), 'des étapes datées, avec leurs jetons');
+  assert.equal(J2('atDayCovered()'), true, 'les moments de la démo couvrent sa journée');
+  for (const k of ['tickets', 'cours', 'sortis', 'pannes', 'reprises']) assert.equal(j[k], d.jour[k], k);
+  assert.equal(Math.round(j.tok), d.jour.tok);
+  assert.ok(J2('atRoomsAt(T).every(r => r.tok === ATELIER.rooms.find(x => x.run === r.run).tok)'), 'les jetons de chaque bureau');
+  p.run('mode = "live";');
+});
+
+test('F8 : à l\'heure du relevé (3 min près), une pause juste après le direct ne grise rien : les tableaux du direct, sans légende', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);f8(p);
+  const at = h => (p.run(`mode = 'pause'; T = DAY0 + ${h} * 36e5;`), [...inks(p, 'atJourBoard();'), ...inks(p, 'atBoard(atSlots());')]);
+  for (const h of [12, 12 + 2 / 60, 12 - 2 / 60]) {
+    const b = at(h);
+    assert.ok(!b.some(([t, c]) => /⏱/.test(t) || c === REL), 'à ' + h);
+    assert.ok(b.some(x => x[0] === 'tour 1/3 · 30 k jetons') && b.some(x => x[0] === '⌨ Code · lot 2/3'), 'le lot et le tour, comme en direct');
+    assert.equal(J2('floorReleve()'), '');
+  }
+  assert.ok(at(12 - 4 / 60).some(x => x[0] === '⏱tour 1/3'), '4 min avant : le rejeu');
+  assert.equal(J2('floorReleve()'), '12:00');
+  p.run('mode = "live";');
+});

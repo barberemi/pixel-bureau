@@ -300,6 +300,9 @@ SHOTS = {
     "atelier-orchestrateur": (1600, 1100, AT(11) + "Object.assign(ATELIER.rooms[0],{poste:null,gate:null,note:null,states:{cadrage:'ok'},tok:24.8e3,"
                               "etape:'orchestrateur_plan',act:{cat:'Execute',n:18,at:new Date(T-12e3).toISOString()}});setFloor(1);", None),
     "atelier-calme": (1600, 1100, AT(11) + "ATELIER={...ATELIER,rooms:ATELIER.rooms.slice(0,2),queue:[],pannes:[]};setFloor(1);", None),
+    # le 1er en rejeu à 9 h 15 (audit produit F8) : les tableaux noirs à l'heure du curseur, le tour et les jetons de la
+    # rédaction du relevé en ⏱ grisés, la légende « ⏱ = relevé de 11:00 » au bout de la pastille du rejeu
+    "atelier-rejeu": (1600, 1100, AT(9.25) + "setFloor(1);", None),
     # -1, la caserne Support : deux interventions de la démo (une au poste Cause, une réponse à valider, le capitaine à
     # la vanne) et une baie libre ; puis la caserne au calme, le soir : la garde dort sur les lits de camp
     "caserne": (1600, 1100, AT(11) + "setFloor(-1);", None),

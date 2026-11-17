@@ -303,3 +303,42 @@ test('« Qui fait quoi » du RDC : un bloc du 2e, les intentions puis les revues
   assert.match(html, /data-rd-run="[^"]+" data-rd-kind="rv"/);
   assert.match(html, /<span class="ws">revue/);
 });
+
+// ---------- tableaux noirs rejouables (audit produit F8) ----------
+const inks = (p, code) => JSON.parse(p.run(`(() => { const out = [], ft = ctx.fillText; ctx.fillText = function (t, ...r) { out.push([String(t), ctx.fillStyle]); return ft.call(this, t, ...r); };
+  try { ${code} } finally { ctx.fillText = ft; } return JSON.stringify(out); })()`));
+// le tableau de la rédaction se dessine sous le bandeau du tampon (rdLate) : on le prend tout de suite
+const rdTxt = p => inks(p, 'var __rl = rdLate; rdLate = (pp, f) => f(); try { rdBoard([]); } finally { rdLate = __rl; }');
+
+test('F8, 2e : TICKETS DU JOUR à l\'heure du curseur ; les jetons, non datés, ceux du relevé en ⏱', () => {
+  const {p, J} = page();
+  // la démo : t0 arrive à 8 h 30, sa gate à 9 h 06, crée deux tickets (9 h 12, 9 h 18), finit à 9 h 24 ; t1 arrive à 10 h 12
+  p.run(`setMode('pause'); T = DAY0 + (9 + 9 / 60) * 36e5;`);
+  assert.deepEqual(J('rdJourAt(T)'), {crees: 0, tampon: 2, cours: 1, tok: 38400, tokRel: true, at: J('DAY0 + 11 * 36e5')}, '9 h 09 : t0 au tampon, ses deux tickets à venir');
+  let b = rdTxt(p);
+  assert.ok(b.some(x => x[0] === '0 ticket créé aujourd\'hui') && b.some(x => x[0] === '2 tickets au tampon'), b.map(x => x[0]).join(' | '));
+  assert.deepEqual(b.find(x => /jetons/.test(x[0])), ['⏱38 k jetons à 11:00', '#8e9a90']);
+  p.run('T = DAY0 + 10.5 * 36e5;');
+  assert.deepEqual(J('[rdJourAt(T).crees, rdJourAt(T).tampon, rdJourAt(T).cours]'), [2, 0, 1], '10 h 30 : les deux tickets créés, t1 en recherche');
+  // en direct : le relevé, comme avant
+  p.run(`setMode('live'); T = DAY0 + 11 * 36e5;`);
+  b = rdTxt(p);
+  assert.ok(b.some(x => x[0] === '~38 k jetons' && x[1] === '#e8e2d0'));
+  assert.ok(!b.some(x => /⏱/.test(x[0])));
+});
+
+test('F8, 2e : REVUES DU JOUR selon le statut des relectures à l\'heure du curseur ; leurs jetons, ceux du relevé', () => {
+  const {p, J} = page();
+  const rv = () => J(`(() => { const l = rvRuns(); return [rvActive().length, l.filter(r => r.status === 'Success' && r._s >= DAY0).length]; })()`);
+  // la démo : demo-k1 relit de 9 h 31 à 9 h 42, demo-k2 de 9 h 42 à 9 h 59 ; trois relectures commencent à 10 h
+  p.run(`setMode('pause'); T = DAY0 + (9 + 40 / 60) * 36e5;`);
+  assert.deepEqual(rv(), [1, 5], '9 h 40 : demo-k1 encore en lecture');
+  p.run('T = DAY0 + 10.5 * 36e5;');
+  assert.deepEqual(rv(), [3, 7], '10 h 30 : les deux postées, trois en lecture');
+  const b = inks(p, 'setFloor(2); renderRedaction(1000);');
+  assert.ok(b.some(x => /^⏱\d+ k jetons$/.test(x[0]) && x[1] === '#8e9a90'), 'les jetons de la revue : le relevé, en ⏱');
+  p.run(`setMode('live'); T = DAY0 + 11 * 36e5;`);
+  assert.ok(inks(p, 'renderRedaction(1100);').some(x => /^~\d+ k jetons$/.test(x[0])), 'en direct : comme avant');
+  assert.deepEqual(J(`[rvActive().length]`), [3]);
+  p.run('setFloor(0);');
+});

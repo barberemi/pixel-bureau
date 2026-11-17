@@ -207,15 +207,25 @@ function rtBubble(r,p){
 // ---------- le couloir : le tableau du jour, la file des PR, le bureau du boss, le café, le banc, la porte de l'escalier ----------
 // le tableau noir RETOURS DU JOUR, au fond à gauche (le jumeau de REVUES DU JOUR au 2e) : PR poussées depuis minuit et leurs
 // fils, bureaux au travail et pannes, jetons du jour et PR poussées sur 7 jours (dataset retours, jour). Rien au clic : le
-// détail est dans la page « Retours · bilan ».
+// détail est dans la page « Retours · bilan ». En rejeu, ce qui est daté à l'heure du curseur (rtJourAt) ; les fils et les
+// jetons, non datés, restent ceux du relevé (⏱).
+// à l'heure t : les PR poussées et les 7 jours, le relevé moins les push d'après t (les plus récents, toujours dans les
+// moments) ; en cours, les bureaux à t ; en panne, les pannes du jour que rien n'a reprises depuis
+function rtJourAt(t){
+  const j=(RETOURS&&RETOURS.jour)||{}, n=k=>+j[k]||0, ev=rtEvents().filter(e=>ms(e.t)>=DAY0), after=ev.filter(e=>e.k==='push'&&ms(e.t)>t).length;
+  const pannes=ev.filter(e=>e.k==='panne'&&ms(e.t)<=t&&!ev.some(x=>x.k==='arrive'&&x.pr===e.pr&&x.repo===e.repo&&ms(x.t)>ms(e.t)&&ms(x.t)<=t)).length;
+  return {pousses:Math.max(0,n('pousses')-after),cours:rtRoomsAt(t).length,pannes,semaine:Math.max(0,n('semaine')-after),fils:n('fils'),tok:n('tok')};
+}
 function rtDayBoard(){
-  const T=AT_TS, j=(RETOURS&&RETOURS.jour)||{}, n=k=>+j[k]||0, y0=RT_HALL[0]*T, bx=.45*T, by=y0+5, bw=5.9*T, bh=(RT_HALL[1]-RT_HALL[0])*T-17;
+  const S=AT_TS, j=(RETOURS&&RETOURS.jour)||{}, n=k=>+j[k]||0, y0=RT_HALL[0]*S, bx=.45*S, by=y0+5, bw=5.9*S, bh=(RT_HALL[1]-RT_HALL[0])*S-17, ink='#e8e2d0';
   R(ctx,bx+12,by+bh,4,7,'#5a3e28');R(ctx,bx+bw-16,by+bh,4,7,'#5a3e28');
   R(ctx,bx-5,by-5,bw+10,bh+10,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+4,by+bh-5,bw-8,3,'#a37650');
   atTxt('RETOURS DU JOUR',bx+bw/2,by+14,'#f4efe4','bold 11px ui-monospace,Menlo,monospace');R(ctx,bx+12,by+19,bw-24,1,'rgba(244,239,228,.4)');
-  [['#3fbf6a',plural(n('pousses'),'PR poussée','PR poussées')+' · '+n('fils')+' fils'],['#5b8def',n('cours')+' en cours · '+n('pannes')+' en panne'],
-   ['#e0a020','~'+Math.round(n('tok')/1e3)+' k jetons · 7 j : '+n('semaine')+' PR']]
-    .forEach(([c,t],k)=>{R(ctx,bx+12,by+24+k*13,7,7,c);atTxt(t,bx+24,by+31+k*13,'#e8e2d0','11px ui-monospace,Menlo,monospace','left');});
+  const r=rtLive()||releveNear(RETOURS)?null:rtJourAt(T), rows=r?[['#3fbf6a',[plural(r.pousses,'PR poussée','PR poussées')+' · ',ink],[relTxt(r.fils+' fils'),REL_INK]],
+    ['#5b8def',[r.cours+' en cours · '+r.pannes+' en panne',ink]],['#e0a020',[relTxt(Math.round(r.tok/1e3)+' k jet.'),REL_INK],[' · 7 j : '+r.semaine+' PR',ink]]]
+    :[['#3fbf6a',[plural(n('pousses'),'PR poussée','PR poussées')+' · '+n('fils')+' fils',ink]],['#5b8def',[n('cours')+' en cours · '+n('pannes')+' en panne',ink]],
+      ['#e0a020',['~'+Math.round(n('tok')/1e3)+' k jetons · 7 j : '+n('semaine')+' PR',ink]]];
+  rows.forEach(([c,...segs],k)=>{R(ctx,bx+12,by+24+k*13,7,7,c);atSegs(segs,bx+24,by+31+k*13,'11px ui-monospace,Menlo,monospace');});
 }
 function rtHall(slots,now,people){
   const T=AT_TS, y=(RT_HALL[0]+RT_HALL[1])/2*T, q=(RETOURS&&RETOURS.queue)||[], qx=9.6*T; // la file : après la porte du bureau 1
