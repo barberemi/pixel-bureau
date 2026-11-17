@@ -321,7 +321,7 @@ SHOTS = {
     "combles-borne": (1600, 1100, AT(17.7) + "ACTIONS.sprintquest=true;CFG.combles_url='https://claude.ai/artifact/exemple';"
                       "SPRINTQUEST={generated_at:new Date(T-60e3).toISOString(),warnings:[],data:{name:'SPRINT 26-45',dates:'30 OCT-13 NOV',life:[5,4,5,4,4],stops:[],vs:[{l:'TICKETS LIVRÉS',v:'22 / 31'},{l:'MISES EN PROD',v:'3'},{l:'POINTS LIVRÉS',v:'61 / 80'},{l:'TICKETS TESTÉS / RÉOPEN',v:'19 / 2'},{l:'CAFÉS (1/PR + 2/MEP)',v:'24'}],quiz:[{},{},{},{},{}],boss:[{t:'snail',n:'DM-7311',pv:'9 J'},{t:'hydra',n:'PR #2041',pv:'14 COMM.'},{t:'ghost',n:'GITHUB EN PANNE',pv:'2 H'}]}};"
                       "comblesUnlock();setFloor(4);CB_PICK='borne';SIDE_FOLDED=false;renderSide(true);", "#side", 1.5),
-    "digicode": (1600, 1100, AT(11) + "digiOpen();for(const k of 'UUDD')digiPress(k);", "#cv"),
+    "digicode": (1600, 1100, AT(11) + "digiOpen();for(const k of 'UUDD')digiPress(k);", ".bp-modal"),
     "temps-gagne-ia": (1400, 1000, AT(11) + "ACTIONS.ai_time=true;ACTION_BINDS['bureau-aitime']={ticket:'key'};"
                        "const all=[...TEAM.people.flatMap(p=>p.tickets),...(TEAM.unassigned||[])];ACTS={tickets:all.map(t=>({key:t.key})),prs:[]};"
                        "openTicket(all.find(t=>t.cat==='done').key);", ".kbv"),
@@ -559,10 +559,14 @@ def capture(call, page, w, h, js, sel, scale=1):
     if sel:
         clip = call("Runtime.evaluate", returnByValue=True, expression=(
             f"(()=>{{const e=document.querySelector({sel!r});if(!e)return null;const r=e.getBoundingClientRect();"
-            f"return {{x:r.left+scrollX,y:r.top+scrollY,width:r.width,height:r.height,scale:{scale}}};}})()"))["result"].get("value")
+            f"return {{x:r.left+scrollX,y:r.top+scrollY,width:r.width,height:r.height,scale:{scale},"
+            f"fixed:(()=>{{for(let x=e;x;x=x.parentElement)if(getComputedStyle(x).position==='fixed')return true;return false;}})()}};}})()"))["result"].get("value")
         if not clip or not clip["width"]:
             return f"élément {sel} absent ou vide"
-    shot = call("Page.captureScreenshot", format="png", captureBeyondViewport=bool(clip), **({"clip": clip} if clip else {}))
+    # au-delà de la fenêtre, Chrome agrandit la vue à toute la page, sans barre de défilement : un élément fixe (une
+    # fenêtre du Bureau, ou ce qu'elle contient) s'y recentre de 7 px et sortirait du cadre ; il tient dans la vue, on la garde
+    beyond = bool(clip) and not clip.pop("fixed", False)
+    shot = call("Page.captureScreenshot", format="png", captureBeyondViewport=beyond, **({"clip": clip} if clip else {}))
     return base64.b64decode(shot["data"])
 
 

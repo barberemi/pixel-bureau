@@ -225,3 +225,37 @@ test('F8, 3e : RETOURS DU JOUR à l\'heure du curseur ; fils et jetons, non dat�
   assert.deepEqual(b.map(x => x[0]).slice(1), ['2 PR poussées · 9 fils', '5 en cours · 1 en panne', '~68 k jetons · 7 j : 7 PR']);
   assert.ok(b.every(x => x[1] !== '#8e9a90'));
 });
+
+test("le Kanban d'un bureau : la fenêtre large commune, nommée ; un fil cliqué la redessine sur place ; Échap rend le focus", () => {
+  const {withDom} = require('./helpers/fakedom.js');
+  const {p, J} = page();
+  p.run('RETOURS = retoursDemo(); setFloor(3); renderRetours(1000);');
+  withDom(p, dom => {
+    dom.btn.focus();
+    p.run("rtKbOpen('demo-f1');");
+    const box = dom.doc.querySelector('.bp-modal');
+    assert.equal(box.getAttribute('role'), 'dialog');
+    assert.equal(box.getAttribute('aria-modal'), 'true');
+    assert.match(box.getAttribute('aria-label'), /^Kanban de \S/);
+    assert.match(box.className, /\bbp-wide\b.*\brt-win\b/);
+    assert.match(box.querySelector('.bp-head h2').textContent, /^🛠 Kanban de /);
+    assert.match(box.querySelector('.bp-sub').textContent, /de \S+ · \d+ fils?$/, 'PR · auteur · fils, sous la barre');
+    assert.equal(dom.wrap.inert, true);
+    const cards = box.querySelectorAll('.rt-card');
+    assert.ok(cards.length > 2);
+    assert.equal(dom.doc.activeElement, cards[0], 'focus sur le premier fil');
+    assert.equal(box.querySelector('.rt-card.on').dataset.fil, 't3', 'le fil en cours, sélectionné');
+    box.querySelector('[data-fil="t5"]').click();
+    assert.equal(dom.doc.querySelectorAll('.bp-modal').length, 1, 'redessinée sur place');
+    assert.equal(J('RT_KB.fid'), 't5');
+    const on = box.querySelector('.rt-card.on');
+    assert.equal(on.dataset.fil, 't5');
+    assert.equal(on.getAttribute('aria-pressed'), 'true');
+    assert.equal(dom.doc.activeElement, on, 'le focus suit le fil choisi');
+    p.run('dialogKey({key: "Escape", preventDefault() {}})');
+    assert.equal(dom.doc.querySelector('.bp-modal'), null);
+    assert.equal(J('RT_KB'), null);
+    assert.equal(dom.wrap.inert, false);
+    assert.equal(dom.doc.activeElement, dom.btn, 'focus rendu');
+  });
+});

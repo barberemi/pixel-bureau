@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const {load} = require('./helpers/page.js');
+const {withDom} = require('./helpers/fakedom.js');
 
 const ROOT = path.join(__dirname, '..');
 const SRC = path.join(ROOT, 'page', 'src');
@@ -40,16 +41,95 @@ test('1.9 : les carrés de la légende des enveloppes prennent la couleur de ENV
   assert.equal(col, J('ENV_KIND.gate.c'));
 });
 
-test('3.3 et 5.5 : la fenêtre des cartes Kronn est un dialogue nommé qui se ferme à Échap', () => {
-  const js = read('page', 'src', '55-actions.js');
-  assert.match(js, /host\.setAttribute\('role','dialog'\);host\.setAttribute\('aria-modal','true'\)/);
-  assert.match(js, /host\.setAttribute\('aria-label',title\|\|tag\)/);
-  assert.match(js, /e\.key==='Escape'\)\{e\.preventDefault\(\);cancel\(\);/);
-  assert.match(js, /document\.removeEventListener\('keydown',onKey\)/); // une fois refermée, Échap ne la vise plus
-  assert.match(read('page', 'src', '68-retours.js'), /d\.setAttribute\('aria-label','Kanban de '\+rtName\(r\)\)/);
-  assert.match(read('page', 'src', '69-attente.js'), /p\.setAttribute\('role','region'\);p\.setAttribute\('aria-label','Ce qui t\\'attend'\)/);
+// la carte Kronn dans un faux DOM : un bloc du panneau (slot-host) et son bouton ; renderSide reconstruit le panneau (un
+// bouton neuf, mêmes action, liaisons et texte) ; le pont de Kronn ne referme sa carte que sur un clic avec activation
+function kmScene(dom, active) {
+  const run = page.run;
+  const build = () => {
+    dom.side.textContent = '';
+    const other = dom.doc.createElement('button'); other.textContent = 'Autre'; dom.side.append(other);
+    const host = dom.doc.createElement('div'); host.className = 'relaunch'; host.setAttribute('data-kronn-action-slot-host', '');
+    host.innerHTML = '<div class="rl-n">Le Bureau · live</div><div class="rl-s">Cron</div>';
+    const btn = dom.doc.createElement('button'); btn.textContent = '↻ Relancer';
+    btn.setAttribute('data-kronn-action', 'bureau-relaunch'); btn.setAttribute('data-kronn-bindings', '{"wf_id":"w1"}');
+    host.append(btn); dom.side.append(host);
+    page.ctx.__km = {host, btn, other};
+    run('kronnModal(__km.host,__km.btn,"Relancer un workflow",{tag:"↻ Relancer"})');
+    return page.ctx.__km;
+  };
+  page.ctx.__build = build;
+  page.ctx.navigator = {userActivation: {isActive: active}};
+  run('var KM_OBS=[]; MutationObserver=function(cb){KM_OBS.push(cb);return {observe(){},disconnect(){}};}; renderSide=()=>__build();');
+  return build();
+}
+
+test('3.3 et 5.5 : la fenêtre des cartes Kronn est un dialogue nommé, la page inerte, Tab boucle, Échap ferme et rend le focus', () => {
+  const realNav = page.ctx.navigator, realRS = page.run('renderSide'), realMO = page.run('MutationObserver');
+  try {
+    withDom(page, dom => {
+      const {host, btn} = kmScene(dom, false);
+      btn.focus(); btn.click();
+      btn.style.display = 'none'; // .kmodal [data-kronn-action]{display:none} (styles.css) : hors de l'ordre de tabulation
+      assert.equal(host.getAttribute('role'), 'dialog');
+      assert.equal(host.getAttribute('aria-modal'), 'true');
+      assert.equal(host.getAttribute('aria-label'), 'Relancer un workflow');
+      const head = host.querySelector('.bp-head.km-title');
+      assert.ok(head, 'la barre de titre commune des fenêtres');
+      assert.match(head.textContent, /Échap pour fermer/);
+      const x = head.querySelector('.bp-x');
+      assert.equal(dom.doc.activeElement, x, 'focus sur × à l\'ouverture');
+      assert.equal(dom.wrap.inert, true, 'le plan et le reste de la page sont inertes');
+      assert.equal(page.ctx.__km.other.inert, true, 'les autres blocs du panneau aussi');
+      assert.equal(host.inert, false);
+      const back = host.querySelector('.bp-back');
+      dom.doc.activeElement = back; const ev = dom.doc.key('Tab');
+      assert.equal(ev.defaultPrevented, true);
+      assert.equal(dom.doc.activeElement, x, 'Tab sur « ↩ Annuler » (dernier élément) : retour à ×');
+      dom.doc.key('Tab', {shiftKey: true});
+      assert.equal(dom.doc.activeElement, back, 'Maj+Tab sur × : « ↩ Annuler »');
+      dom.doc.key('Escape'); // pas encore de carte Kronn : Échap referme tout de suite
+      assert.equal(page.run('KM_OPEN'), null);
+      assert.equal(dom.wrap.inert, false, 'la page redevient active');
+      assert.equal(page.ctx.__km.other.inert, false);
+      assert.ok(page.ctx.__km.btn !== btn && page.ctx.__km.btn.isConnected, 'le panneau a été reconstruit');
+      assert.equal(dom.doc.activeElement, page.ctx.__km.btn, 'focus rendu au bouton, retrouvé après renderSide');
+      assert.equal(dom.doc.listeners.keydown.length, 0, 'une fois refermée, Échap ne la vise plus');
+    });
+  } finally { page.ctx.navigator = realNav; page.ctx.__rs = realRS; page.ctx.__mo = realMO; page.run('renderSide=__rs;MutationObserver=__mo;'); }
 });
 
+test('Échap sur une carte Kronn ouverte : sans activation, × prend le focus et le dit ; avec, le bouton est recliqué', () => {
+  const realNav = page.ctx.navigator, realRS = page.run('renderSide'), realMO = page.run('MutationObserver');
+  try {
+    for (const active of [false, true]) withDom(page, dom => {
+      const {host, btn} = kmScene(dom, active);
+      let clicks = 0; btn.addEventListener('click', () => { clicks++; });
+      btn.click(); clicks = 0;
+      const slot = dom.doc.createElement('div'); slot.setAttribute('data-kronn-action-slot', ''); host.append(slot);
+      page.run('KM_OBS.forEach(f=>f())'); // Kronn a posé sa carte
+      const x = host.querySelector('.bp-x'), msg = host.querySelector('.km-esc');
+      dom.doc.activeElement = host.querySelector('.bp-back');
+      const ev = dom.doc.key('Escape');
+      assert.equal(ev._stop, true, 'la fenêtre dessous (volet du Kanban) ne se ferme pas sur la même touche');
+      if (active) {
+        assert.equal(clicks, 1, 'activation encore valable : le bouton est recliqué, Kronn referme sa carte');
+      } else {
+        assert.equal(clicks, 0, 'un clic sans activation serait ignoré par le pont de Kronn');
+        assert.equal(dom.doc.activeElement, x, '× prend le focus : Entrée (un vrai geste) referme la carte');
+        assert.equal(msg.hidden, false);
+        assert.match(msg.textContent, /vrai clic/);
+        assert.equal(page.run('KM_OPEN') === host, true, 'la fenêtre reste : la carte Kronn ne resterait pas orpheline');
+      }
+      slot.remove(); host.querySelector('.bp-x').onclick(); // un vrai clic sur × : cancel, puis Kronn retire son emplacement
+      page.run('KM_OPEN=null;');
+    });
+  } finally { page.ctx.navigator = realNav; page.ctx.__rs = realRS; page.ctx.__mo = realMO; page.run('renderSide=__rs;MutationObserver=__mo;'); }
+});
+
+test('3.3 : le Kanban d\'un bureau du 3e est une fenêtre nommée', () => {
+  assert.match(read('page', 'src', '68-retours.js'), /title:'🛠 Kanban de '\+rtName\(r\)/);
+  assert.match(read('page', 'src', '69-attente.js'), /p\.setAttribute\('role','region'\);p\.setAttribute\('aria-label','Ce qui t\\'attend'\)/);
+});
 test('3.4 : fermer s\'écrit « × » partout', () => {
   for (const f of ['44-loupe.js', '68-retours.js']) assert.doesNotMatch(read('page', 'src', f), /aria-label="Fermer">✕/, f);
 });

@@ -24,7 +24,7 @@ Le bouton « 🛠 3e » (les retours de PR, au survol) apparaît après « 🏭 
 
 ## Le Kanban en grand
 
-Un clic sur le Kanban d'un bureau (ou « 🔍 Ouvrir le Kanban des fils » dans sa fiche) ouvre la fenêtre : la barre des postes, puis les fils en colonnes, avec le fichier et la ligne, qui a commenté et son commentaire. Le fil traité en ce moment est encadré de rouge. Un clic sur un fil le montre à droite, avec le lien vers son commentaire et vers la PR sur GitHub. Échap ou ✕ ferme la fenêtre.
+Un clic sur le Kanban d'un bureau (ou « 🔍 Ouvrir le Kanban des fils » dans sa fiche) ouvre la fenêtre large, la même que le Mur Kanban du RDC : « 🛠 Kanban de site#2042 » en titre, la PR, son auteur et le nombre de fils juste dessous, puis la barre des postes et les fils en colonnes, avec le fichier et la ligne, qui a commenté et son commentaire. Le fil traité en ce moment est encadré de rouge. Un clic sur un fil (ou Tab, puis Entrée) le sélectionne, d'un liseré intérieur, et le montre à droite, avec le lien vers son commentaire et vers la PR sur GitHub. Échap, × ou un clic à côté ferme la fenêtre, et le focus revient où il était.
 
 ![La fenêtre Kanban du bureau de la PR site#2042](../img/retours-kanban.png)
 

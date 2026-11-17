@@ -122,7 +122,7 @@ function goBack(){
 function winGo(k){
   const w=WIN_OPEN;
   if(!w)return select(k);
-  closeBossPages(false);SEL_BACK.push(sel,w);select(k,true);
+  closeDialog(false);SEL_BACK.push(sel,w);select(k,true);
 }
 function backButton(side){
   const b=document.createElement('button');b.className='back';

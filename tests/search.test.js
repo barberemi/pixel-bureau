@@ -51,7 +51,7 @@ test('une page Kronn de l\'écran mural, ouverte dans Kronn', () => {
 });
 
 test('↵ ouvre le ticket dans le Kanban, ⇧↵ montre sa personne sur le plan', () => {
-  run("closeBossPages=()=>{};globalThis.SR_LOG=[];openTicket=k=>SR_LOG.push('ticket:'+k);select=k=>SR_LOG.push('fiche:'+k);");
+  run("closeDialog=()=>{};globalThis.SR_LOG=[];openTicket=k=>SR_LOG.push('ticket:'+k);select=k=>SR_LOG.push('fiche:'+k);");
   const t = J('(()=>{const p=TEAM.people.find(q=>q.tickets.length);return {key:p.tickets[0].key,who:kbCharOf(p)};})()');
   run(`SR_ROWS=srFind(${JSON.stringify(t.key)});srOpen(SR_ROWS[0],false);srOpen(SR_ROWS[0],true);`);
   assert.deepEqual(J('SR_LOG'), ['ticket:' + t.key, 'fiche:' + t.who]);

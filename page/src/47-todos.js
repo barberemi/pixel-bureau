@@ -79,13 +79,7 @@ function todoTip(){
 let TD_DRAG=null;
 function openTodos(){
   if(!todosOn())return;
-  const back=BP_BACK||document.activeElement;closeBossPages(false);BP_BACK=back;
-  const bd=document.createElement('div');bd.className='bp-backdrop';bd.onclick=()=>closeBossPages();
-  const box=document.createElement('div');box.className='bp-modal td-modal';box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label','Mes todos');
-  box.innerHTML=`<div class="bp-head"><h2>📌 Mes todos</h2>${BP_ESC}<button type="button" class="bp-x" aria-label="Fermer">×</button></div><div class="td-body"></div>`;
-  BP_INERT=[...document.body.children].filter(e=>!e.inert&&e.tagName!=='SCRIPT');BP_INERT.forEach(e=>{e.inert=true;});
-  document.body.append(bd,box);box.querySelector('.bp-x').onclick=()=>closeBossPages();
-  tdRender(box);const f=box.querySelector('.td-add input');if(f)f.focus();
+  openDialog({k:'todos',title:'📌 Mes todos',cls:'td-modal',focus:'.td-add input',body:el=>{el.innerHTML='<div class="td-body"></div>';tdRender(el);}});
 }
 // la fenêtre suit les données (dataset todos, canard), sauf pendant un enregistrement (la carte Kronn reste en place)
 function tdRefresh(){const box=document.querySelector('.td-modal');if(box&&!(TD_SENT&&box.querySelector('[data-kronn-action-slot]')))tdRender(box);}

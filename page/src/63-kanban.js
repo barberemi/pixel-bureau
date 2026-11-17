@@ -1,5 +1,5 @@
 // ---------- Mur Kanban : la fenêtre des tickets du sprint ----------
-// Une fenêtre large (openWide, 47-bosspages.js). En haut, une barre de personnes (portrait, prénom, nombre de tickets)
+// Une fenêtre large (openWide, 47-fenetre.js). En haut, une barre de personnes (portrait, prénom, nombre de tickets)
 // filtre les colonnes sur les tickets d'un personnage (ceux de sa fiche, rôle compris : la testeuse voit ce qui est en
 // test) ; six colonnes, une carte par ticket (clé, composant, titre, points, personne), 7 par colonne, « + N autres ».
 // KB_WHO : clé du personnage filtré ('' : tout le sprint, '-' : les non assignés).
@@ -75,7 +75,7 @@ function kanbanFill(box){
   if(!TEAM){box.innerHTML='<div class="empty">Données de l\'équipe pas encore publiées.</div>';return;}
   // une carte Kronn ouverte depuis le volet, ou une saisie : on ne redessine pas (les données reviennent chaque minute)
   if(KM_OPEN&&box.contains(KM_OPEN)||box.querySelector('[data-kronn-action-slot]'))return;
-  const old=box.querySelector('.kbv'), vs=old?old.scrollTop:0, win=box.closest('.bp-modal'), ws=win?win.scrollTop:0;
+  const old=box.querySelector('.kbv'), vs=old?old.scrollTop:0, win=box.closest('.bp-modal'), sc=box.closest('.bp-body'), ws=sc?sc.scrollTop:0;
   if(win)win.classList.toggle('kb-vol',!!KB_VOL);
   if(KB_WHO&&KB_WHO!=='-'&&!byKey[KB_WHO])KB_WHO='';
   const h=box.closest('.bp-modal')&&box.closest('.bp-modal').querySelector('.bp-head h2');if(h)h.textContent=kbTitle();
@@ -94,7 +94,7 @@ function kanbanFill(box){
   }).join('')+'</div></div><p class="hint">'+(KB_VOL?'Un autre ticket change le volet ; un lien de PR l\'y ouvre, « ← » revient ; Échap ferme le volet, puis la fenêtre.':
     'Un portrait filtre les colonnes sur ses tickets, « Tous » revient au sprint entier. Un ticket ouvre sa fiche dans un volet, à droite.')+'</p>';
   if(KB_VOL)kbVolet(box.querySelector('.kbm'));
-  const v=box.querySelector('.kbv');if(v)v.scrollTop=vs;if(win)win.scrollTop=ws;
+  const v=box.querySelector('.kbv');if(v)v.scrollTop=vs;if(sc)sc.scrollTop=ws;
   for(const e of box.querySelectorAll('[data-pt]'))e.appendChild(portrait(byKey[e.dataset.pt],24));
   for(const b of box.querySelectorAll('.kbp-b'))b.onclick=()=>{KB_WHO=b.dataset.who;kanbanFill(box);};
   for(const b of box.querySelectorAll('.kbw-more'))b.onclick=()=>{KB_ALL[b.dataset.col]=true;kanbanFill(box);};

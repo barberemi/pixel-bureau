@@ -88,3 +88,24 @@ test('dans Kronn (stockage refusé) : la fenêtre dit qu\'un changement en atten
   assert.match(card, /à enregistrer · perdu au rechargement/);
   assert.doesNotMatch(J(`tdCard({id:'x',title:'x',col:'todo',pend:true})`), /perdu/);
 });
+
+test('la fenêtre : le gabarit commun (openDialog), focus sur le champ « Nouvelle todo », Échap la ferme', () => {
+  const {withDom} = require('./helpers/fakedom.js');
+  reset();
+  run('ACTIONS.todo=true;');
+  try {
+    withDom(page, dom => {
+      dom.btn.focus();
+      run('openTodos()');
+      const box = dom.doc.querySelector('.bp-modal');
+      assert.equal(box.className, 'bp-modal td-modal');
+      assert.equal(box.getAttribute('aria-label'), 'Mes todos');
+      assert.match(box.querySelector('.bp-head h2').textContent, /📌 Mes todos/);
+      assert.equal(box.querySelectorAll('.bp-body>.td-body .td-card').length, 4);
+      assert.equal(dom.doc.activeElement, box.querySelector('.td-add input'), 'le champ, pas la première carte');
+      run('dialogKey({key: "Escape", preventDefault() {}})');
+      assert.equal(dom.doc.querySelector('.bp-modal'), null);
+      assert.equal(dom.doc.activeElement, dom.btn);
+    });
+  } finally { run('ACTIONS.todo=false;'); }
+});

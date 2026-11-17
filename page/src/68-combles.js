@@ -274,25 +274,32 @@ function drawDigicode(now){
   for(let k=0;k<6;k++)P(r.x+(3+(k%3)*6)*s,r.y+(14+Math.floor(k/3)*6)*s,4*s,4*s,'#c9c3d9');
   if(DIGI.open)drawDigiPad(now);
 }
-function digiPad(){return {x:Math.round((W-DIGI_W)/2),y:Math.max(0,Math.round((H-DIGI_H)/2)),w:DIGI_W,h:DIGI_H};}
+// le pavé : dessiné sur sa propre toile (#digipad, DIGI_W × DIGI_H), dans la fenêtre « Digicode » (openDialog, 47-fenetre.js)
 function drawDigiPad(now){
-  const P=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(x,y,w,h);}, {x,y,w,h}=digiPad(), hits=[], ok=DIGI.ok&&now-DIGI.ok<DIGI_OK_MS, no=DIGI.no&&now-DIGI.no<DIGI_NO_MS;
-  ctx.save();ctx.textAlign='center';ctx.textBaseline='alphabetic';
-  P(0,0,W,H,'rgba(10,8,20,.6)');
+  const c=document.getElementById('digipad');if(!c)return;
+  const g=c.getContext('2d'), P=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);}, x=0, y=0, w=DIGI_W, h=DIGI_H, hits=[], ok=DIGI.ok&&now-DIGI.ok<DIGI_OK_MS, no=DIGI.no&&now-DIGI.no<DIGI_NO_MS;
+  g.save();g.textAlign='center';g.textBaseline='alphabetic';
   P(x,y,w,h,'#2a2a3a');P(x+6,y+6,w-12,h-12,'#3a3a4e');P(x+6,y+6,w-12,4,'#ffcf4a');
-  ctx.font='bold 22px ui-monospace,monospace';ctx.fillStyle='#ffcf4a';ctx.fillText(ok?'ACCÈS AUTORISÉ':no?'ACCÈS REFUSÉ':'ACCÈS RÉSERVÉ',x+w/2,y+38);
-  P(x+w-44,y+16,28,28,'#1e1a2c');ctx.font='bold 18px ui-monospace,monospace';ctx.fillStyle='#c9c3d9';ctx.fillText('✕',x+w-30,y+37);hits.push({k:'close',x:x+w-44,y:y+16,w:28,h:28});
+  g.font='bold 22px ui-monospace,monospace';g.fillStyle='#ffcf4a';g.fillText(ok?'ACCÈS AUTORISÉ':no?'ACCÈS REFUSÉ':'ACCÈS RÉSERVÉ',x+w/2,y+38);
   P(x+30,y+60,w-60,70,no?'#3a1010':'#0a1a10');
-  ctx.font='bold 30px ui-monospace,monospace';
-  for(let i=0;i<DIGI_LEN;i++){const k=DIGI.typed[i];ctx.fillStyle=k?(no?'#ff6b6b':'#62d48e'):'#2a4a32';ctx.fillText(k?DIGI_GLYPH[k]:'_',x+58+i*45,y+106);}
-  [['U',1,0],['L',0,1],['R',2,1],['D',1,2]].forEach(([k,c,r])=>{const bx=x+60+c*70, by=y+160+r*70;
-    P(bx,by,60,60,'#c9c3d9');P(bx,by+54,60,6,'#7a748e');ctx.font='bold 28px ui-monospace,monospace';ctx.fillStyle='#1b1626';ctx.fillText(DIGI_GLYPH[k],bx+30,by+38);hits.push({k,x:bx,y:by,w:60,h:60});});
-  [['B',330],['A',410]].forEach(([k,bx])=>{ctx.fillStyle='#c8433d';ctx.beginPath();ctx.arc(x+bx,y+260,30,0,7);ctx.fill();ctx.font='bold 26px ui-monospace,monospace';ctx.fillStyle='#fff';ctx.fillText(k,x+bx,y+270);hits.push({k,x:x+bx-30,y:y+230,w:60,h:60});});
-  ctx.font='16px ui-sans-serif,system-ui';ctx.fillStyle='#c9c3d9';ctx.fillText(ok?'Une trappe s\'ouvre au plafond...':'Flèches et touches B / A, au clavier ou au clic',x+w/2,y+390);
-  ctx.restore();DIGI.hits=hits;
+  g.font='bold 30px ui-monospace,monospace';
+  for(let i=0;i<DIGI_LEN;i++){const k=DIGI.typed[i];g.fillStyle=k?(no?'#ff6b6b':'#62d48e'):'#2a4a32';g.fillText(k?DIGI_GLYPH[k]:'_',x+58+i*45,y+106);}
+  [['U',1,0],['L',0,1],['R',2,1],['D',1,2]].forEach(([k,cc,r])=>{const bx=x+60+cc*70, by=y+160+r*70;
+    P(bx,by,60,60,'#c9c3d9');P(bx,by+54,60,6,'#7a748e');g.font='bold 28px ui-monospace,monospace';g.fillStyle='#1b1626';g.fillText(DIGI_GLYPH[k],bx+30,by+38);hits.push({k,x:bx,y:by,w:60,h:60});});
+  [['B',330],['A',410]].forEach(([k,bx])=>{g.fillStyle='#c8433d';g.beginPath();g.arc(x+bx,y+260,30,0,7);g.fill();g.font='bold 26px ui-monospace,monospace';g.fillStyle='#fff';g.fillText(k,x+bx,y+270);hits.push({k,x:x+bx-30,y:y+230,w:60,h:60});});
+  g.font='16px ui-sans-serif,system-ui';g.fillStyle='#c9c3d9';g.fillText(ok?'Une trappe s\'ouvre au plafond...':'Flèches et touches B / A, au clavier ou au clic',x+w/2,y+390);
+  g.restore();DIGI.hits=hits;
 }
-function digiOpen(){DIGI={open:true,typed:'',ok:0,no:0,hits:[]};}
-function digiClose(){DIGI.open=false;}
+// la fenêtre : nom « Digicode », Échap ou × la ferment ; les touches au clavier restent (écouteur ci-dessous)
+function digiOpen(){
+  // l'état se pose dans body : openDialog referme d'abord la fenêtre d'avant (son onClose)
+  openDialog({k:'digi',title:'Digicode',cls:'dg-win',onClose:()=>{DIGI.open=false;},body:el=>{DIGI={open:true,typed:'',ok:0,no:0,hits:[]};
+    const c=document.createElement('canvas');c.id='digipad';c.width=DIGI_W;c.height=DIGI_H;
+    c.setAttribute('role','img');c.setAttribute('aria-label','Pavé du digicode : flèches et touches B et A, au clavier ou au clic');
+    c.addEventListener('click',digiPadClick);el.appendChild(c);}});
+  drawDigiPad(Math.max(1,performance.now()));
+}
+function digiClose(){DIGI.open=false;if(DLG&&DLG.k==='digi')closeDialog();}
 // une touche : à la dixième, l'empreinte décide ; le bon code monte aux Combles une fois l'écran « autorisé » lu
 function digiPress(k){
   const now=Math.max(1,performance.now());if(!DIGI.open||DIGI.ok)return; // 0 se lirait « pas encore »
@@ -301,18 +308,20 @@ function digiPress(k){
   if(sha256(DIGI.typed)===DIGI_SHA){DIGI.ok=now;comblesUnlock();setTimeout(()=>{if(DIGI.ok!==now)return;digiClose();setFloor(CB_FLOOR);},REDUCED_MOTION?0:DIGI_OK_MS);}
   else DIGI.no=now;
 }
-const digiXY=e=>{const r=cv.getBoundingClientRect();return [(e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height];};
+// position d'un clic dans une toile, en px de son dessin : le plan (cv, W × H) ou le pavé
+const digiXY=(e,c=cv,w=W,h=H)=>{const r=c.getBoundingClientRect();return [(e.clientX-r.left)*w/r.width,(e.clientY-r.top)*h/r.height];};
 const digiIn=(h,[mx,my])=>!!h&&mx>=h.x&&mx<h.x+h.w&&my>=h.y&&my<h.y+h.h;
-// au RDC, avant le reste : pavé ouvert, il prend tous les clics (dehors, il se ferme) ; sinon le boîtier l'ouvre
+function digiPadClick(e){
+  const h=DIGI.hits.find(h=>digiIn(h,digiXY(e,e.currentTarget,DIGI_W,DIGI_H)));if(h)digiPress(h.k);
+}
+// au RDC, avant le reste : le boîtier ouvre la fenêtre (ouverte, le plan est inerte : elle prend tous les clics)
 function digiClick(e){
-  const m=digiXY(e);
-  if(DIGI.open){const h=DIGI.hits.find(h=>digiIn(h,m));if(!h&&!digiIn(digiPad(),m)||h&&h.k==='close')digiClose();else if(h)digiPress(h.k);return true;}
-  if(digiIn(digiRect(),m)){digiOpen();return true;}
+  if(!DIGI.open&&digiIn(digiRect(),digiXY(e))){digiOpen();return true;}
   return false;
 }
 addEventListener('keydown',e=>{
-  if(!DIGI.open||FLOOR||e.metaKey||e.ctrlKey||e.altKey)return;
-  if(e.key==='Escape')digiClose();else if(DIGI_KEYS[e.key])digiPress(DIGI_KEYS[e.key]);else return;
+  if(!DIGI.open||FLOOR||e.metaKey||e.ctrlKey||e.altKey||!DIGI_KEYS[e.key])return;
+  digiPress(DIGI_KEYS[e.key]);
   e.preventDefault();e.stopImmediatePropagation(); // ni défilement par les flèches, ni mode TV (T) pendant la saisie
 });
 // ---------- les indices, au RDC, tant que les Combles n'ont pas été trouvées ----------

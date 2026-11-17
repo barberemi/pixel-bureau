@@ -50,7 +50,7 @@ addEventListener('load',()=>setTimeout(()=>{try{
   if(r){const i=r.querySelector('input');i.value='Essai sandbox ＋';r.querySelector('button').click();
    const j=document.querySelector('.td-add input');j.value='Essai sandbox Entrée';j.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
    out.todos=TD_PEND.filter(o=>o.op==='add').map(o=>o.title);}
-  closeBossPages();}
+  closeDialog();}
  if(typeof digiPress==='function'&&digiRect()){digiOpen();for(const k of 'UUDDLRLRBA')digiPress(k);DIGI.ok=0;digiClose();
   setFloor(CB_FLOOR);out.combles=FLOOR;comblesForget();}
 }catch(e){P('parcours : '+e.message);}

@@ -50,7 +50,7 @@ function srFill(box){
 function srOpen(r,plan){
   if(!r)return;
   if(r.href){if(!plan){const a=document.getElementById('sr-'+SR_ROWS.indexOf(r));if(a)a.click();}return;} // le clic sur le lien ferme la fenêtre
-  closeBossPages(false);
+  closeDialog(false);
   if(plan||!r.go){if(r.who){select(r.who);cv.scrollIntoView({block:'nearest',behavior:SCROLL_BEHAVIOR});}}else r.go();
 }
 function openSearch(){
@@ -67,11 +67,10 @@ function openSearch(){
       else if(e.key==='Enter'){e.preventDefault();srOpen(SR_ROWS[SR_I],e.shiftKey);}
     };
     // un lien de page : le pont de Kronn l'ouvre depuis le clic (lien encore dans la page), puis la fenêtre se ferme
-    list.onclick=e=>{const r=e.target.closest('.sr-r');if(!r)return;if(r.tagName==='A'){setTimeout(()=>closeBossPages(false));return;}e.preventDefault();SR_I=+r.dataset.i;srOpen(SR_ROWS[SR_I],e.shiftKey);};
+    list.onclick=e=>{const r=e.target.closest('.sr-r');if(!r)return;if(r.tagName==='A'){setTimeout(()=>closeDialog(false));return;}e.preventDefault();SR_I=+r.dataset.i;srOpen(SR_ROWS[SR_I],e.shiftKey);};
     srFill(list);
-  });
-  const box=document.querySelector('.bp-wide');box.classList.add('sr-win');
-  const inp=box.querySelector('.sr-in input');inp.focus();inp.select(); // openWide met le focus sur ×
+  },{cls:'sr-win'});
+  const inp=document.querySelector('.sr-in input');if(inp)inp.select(); // le champ a le focus (premier élément de la fenêtre)
 }
 addEventListener('keydown',e=>{
   if(e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||EDIT)return;

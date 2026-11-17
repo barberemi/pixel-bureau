@@ -2,13 +2,31 @@
 // Kronn ouvre sa carte dans l'ancêtre [data-kronn-action-slot-host] du bouton cliqué : au clic, on fait de cet
 // ancêtre une fenêtre centrée (fond assombri). Quand Kronn retire son emplacement (× / Annuler), on referme.
 // Tout bouton data-kronn-action placé dans un slot-host passé à kronnModal() en profite.
-// Même gabarit que les fenêtres du Bureau (Mes pages Kronn) : la barre de titre et ×, puis ce qu'on lance (portrait de
-// l'agent ou icône, l'action, la phrase, « ↩ Annuler »), les étapes, et la carte Kronn dessous. what : {c (personnage),
-// ico, tag, name, small}, ou une fonction qui le rend au clic ; sinon tiré du bloc (.rl-n, .rl-s) et du bouton.
+// Même gabarit que les fenêtres du Bureau (openDialog, 47-fenetre.js) : la barre de titre (« Échap pour fermer », ×), puis
+// ce qu'on lance (portrait de l'agent ou icône, l'action, la phrase, « ↩ Annuler »), les étapes, et la carte Kronn
+// dessous ; le reste de la page est inerte, Tab boucle dedans, et le focus revient au bouton à la fermeture. what : {c
+// (personnage), ico, tag, name, small}, ou une fonction qui le rend au clic ; sinon tiré du bloc (.rl-n, .rl-s) et du bouton.
 let KM_OPEN=null;
+// le bouton qui a ouvert la carte, retrouvé après renderSide (le panneau est reconstruit) : même action, mêmes liaisons, même texte
+const kmKey=b=>[b.getAttribute('data-kronn-action'),b.getAttribute('data-kronn-bindings')||'',b.textContent.trim()].join('|');
+function kmFocusBack(btn,key){
+  const twin=btn.isConnected?btn:[...document.querySelectorAll('[data-kronn-action]')].find(b=>kmKey(b)===key&&bpFocusables(b.parentElement||b).includes(b));
+  focusBack(twin); // 47-fenetre.js : sinon la fenêtre encore ouverte dessous, sinon le plan
+}
+// tout ce qui n'est pas el (ni ses ancêtres) devient inerte, sauf keep ; renvoie la liste à rendre
+function inertAround(el,keep){
+  const out=[];
+  for(let n=el;n&&n!==document.body&&n.parentElement;n=n.parentElement)
+    for(const s of n.parentElement.children)if(s!==n&&s!==keep&&!s.inert&&s.tagName!=='SCRIPT'){s.inert=true;out.push(s);}
+  return out;
+}
+// Kronn ne referme sa carte que sur un vrai geste de l'utilisateur (navigator.userActivation, vérifié par son pont) : un
+// clic ou une touche, mais pas Échap (le navigateur ne la compte pas comme une activation)
+const kmCanClick=()=>{const u=navigator.userActivation;return !u||u.isActive===true;};
 function kronnModal(host,btn,title,what){
   btn.addEventListener('click',()=>{ // après le pont Kronn (capture) : on ne bloque pas son clic
     if(KM_OPEN)return; KM_OPEN=host;
+    const key=kmKey(btn);
     const ph=document.createElement('div');
     ph.className='km-ph';
     ph.style.height=host.offsetHeight+'px';
@@ -23,21 +41,31 @@ function kronnModal(host,btn,title,what){
     const cancel=()=>{if(had)btn.click();else close();};
     bd.title='Fermer';bd.addEventListener('click',cancel);
     host.classList.add('kmodal');
-    host.setAttribute('role','dialog');host.setAttribute('aria-modal','true'); // comme les fenêtres du Bureau (47-bosspages.js)
+    host.setAttribute('role','dialog');host.setAttribute('aria-modal','true'); // comme les fenêtres du Bureau (47-fenetre.js)
     const w=(typeof what==='function'?what():what)||{}, pick=q=>{const e=host.querySelector(q);return e?e.textContent.trim():'';};
     const tag=w.tag||btn.textContent.replace(/…$/,'').trim(), name=w.name||pick('.rl-n')||title||tag, small=w.small!=null?w.small:pick('.rl-s');
     const top=document.createElement('div');top.className='km-top';
-    top.innerHTML=`<div class="km-title"><h2>${esc(title||tag)}</h2><button type="button" class="bp-x" aria-label="Fermer">×</button></div>`+
+    top.innerHTML=`<div class="bp-head km-title"><h2>${esc(title||tag)}</h2>${BP_ESC}<button type="button" class="bp-x" aria-label="Fermer">×</button></div>`+
       `<div class="bp-what"><div class="km-pt" aria-hidden="true">${w.c?'':esc(w.ico||'🤖')}</div><div><span class="bp-tag run">${esc(tag)}</span><b>${esc(name)}</b>${small?`<small>${esc(small)}</small>`:''}</div>`+
-      `<button type="button" class="bp-back">↩ Annuler</button></div>`;
+      `<button type="button" class="bp-back">↩ Annuler</button></div><p class="km-esc" role="status" hidden></p>`;
     if(w.c&&typeof portrait==='function')top.querySelector('.km-pt').appendChild(portrait(w.c,56));
     if(!host.querySelector('.hint:not(:empty)'))top.insertAdjacentHTML('beforeend','<div class="hint km-hint">Dans la carte Kronn ci-dessous : un commentaire si elle t\'en propose un, puis <b>Lancer</b>. Kronn suit ensuite le run.</div>');
     host.prepend(top);
     for(const x of top.querySelectorAll('.bp-x,.bp-back'))x.onclick=cancel;
     host.setAttribute('aria-label',title||tag);
-    const onKey=e=>{if(e.key==='Escape'){e.preventDefault();cancel();}};
+    const x=top.querySelector('.bp-x'), msg=top.querySelector('.km-esc');
+    const inert=inertAround(host,bd);
+    // Échap : sans carte Kronn, on referme ; avec, on reclique son bouton si l'activation vaut encore, sinon × prend le
+    // focus et Entrée (une vraie touche) la referme
+    const onKey=e=>{
+      if(e.key==='Tab'){trapTab(host,e);return;} // 47-fenetre.js
+      if(e.key!=='Escape')return;
+      e.preventDefault();e.stopPropagation(); // une fenêtre dessous (volet du Kanban) ne se ferme pas sur la même touche
+      if(!had||kmCanClick()){cancel();return;}
+      x.focus();msg.textContent='Kronn ne ferme sa carte que sur un vrai clic : Entrée sur × la referme, ou « ↩ Annuler ».';msg.hidden=false;
+    };
     document.addEventListener('keydown',onKey);
-    top.querySelector('.bp-x').focus({preventScroll:true});
+    x.focus({preventScroll:true});
     const close=()=>{
       obs.disconnect();
       clearTimeout(t0);
@@ -45,12 +73,14 @@ function kronnModal(host,btn,title,what){
       host.classList.remove('kmodal');
       for(const k of ['role','aria-modal','aria-label'])host.removeAttribute(k);
       document.removeEventListener('keydown',onKey);
+      inert.forEach(e=>{e.inert=false;});
       bd.remove();
       document.body.classList.remove('km-on');
       ph.remove();
       top.remove();
       KM_OPEN=null;
       renderSide(!!EDIT);
+      kmFocusBack(btn,key);
     };
     // Kronn retire et recrée parfois son emplacement (redimensionnement) : on ne referme que s'il reste absent
     let gone=null;

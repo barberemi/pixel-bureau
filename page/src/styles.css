@@ -202,12 +202,15 @@ body.km-on .side:has(.kmodal){z-index:50} /* le panneau est sticky (plan d'empil
 .pc-posters{display:flex;gap:6px}.pc-poster{position:relative;flex:1;height:96px}.pc-poster i{position:absolute;left:-2px;bottom:-10px;font:900 64px/1 system-ui;font-style:normal;color:#141418;-webkit-text-stroke:2px #8a8a92}
 .pc-poster div{position:absolute;right:0;top:0;width:62%;height:100%;border-radius:5px;box-shadow:0 3px 10px rgba(0,0,0,.5)}.pc-poster img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:5px}.pc-poster b{position:absolute;left:4px;right:4px;bottom:4px;font-size:10px;color:#fff;text-shadow:0 1px 3px #000}
 .pcard.drama small{display:block;margin-top:12px;color:#a29c90}
-/* écran mural : les autres pages Kronn du boss (47-bosspages.js) */
+/* fenêtres (47-fenetre.js, openDialog) : barre de titre, sous-titre facultatif, puis le corps, seul à défiler (la barre de
+   défilement ne pousse plus ×) */
 .bp-backdrop{position:fixed;inset:0;background:rgba(10,12,22,.6);z-index:40;backdrop-filter:blur(2px);cursor:pointer}
-.bp-modal{position:fixed;z-index:41;top:8vh;left:max(16px,calc(50% - 440px));width:min(880px,calc(100vw - 32px));max-height:84vh;overflow:auto;
+.bp-modal{position:fixed;z-index:41;top:8vh;left:max(16px,calc(50% - 440px));width:min(880px,calc(100vw - 32px));max-height:84vh;overflow:hidden;display:flex;flex-direction:column;
   padding:18px 20px 20px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.45)}
-.bp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.bp-head{flex:none;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .bp-head h2{margin:0;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.bp-sub{flex:none;margin:-4px 0 12px;font-size:13px;color:var(--muted)}
+.bp-body{flex:1 1 auto;min-height:0;overflow:auto}
 .bp-esc{margin:0 10px 0 auto;font-size:11px;color:var(--muted);white-space:nowrap}@media (max-width:640px){.bp-esc{display:none}}
 button.back kbd{font:10px ui-monospace,Menlo,monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;margin-left:8px;color:var(--muted);background:var(--bg);vertical-align:1px}
 .bp-x{border:0;background:var(--chip);color:var(--ink);border-radius:8px;width:30px;height:30px;font-size:18px;line-height:1;cursor:pointer}
@@ -273,7 +276,7 @@ button.back kbd{font:10px ui-monospace,Menlo,monospace;border:1px solid var(--li
 .kb-spider{position:absolute;top:0;right:34%;width:22px;height:40px;pointer-events:none;fill:var(--ink);stroke:var(--ink);stroke-width:1.3}
 .kb-spider .kb-silk{stroke:var(--muted);stroke-width:.8;fill:none}
 .kbw-c.kb-on{outline:3px solid var(--accent);outline-offset:1px}
-.kbv.side{position:sticky;top:64px;max-height:calc(84vh - 150px);overflow:auto;padding:12px;margin:0;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:none}
+.kbv.side{position:sticky;top:0;max-height:calc(84vh - 150px);overflow:auto;padding:12px;margin:0;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:none}
 .mv-host{display:block;margin:0 0 12px}
 .mv{display:flex;gap:8px;align-items:stretch}
 .mv button{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:6px 10px;text-align:left}.mv button.mv-next{align-items:flex-end;text-align:right}
@@ -342,8 +345,9 @@ button.back kbd{font:10px ui-monospace,Menlo,monospace;border:1px solid var(--li
 .km-backdrop{cursor:pointer;position:fixed;inset:0;background:rgba(10,12,22,.6);z-index:40;backdrop-filter:blur(2px)}
 .kmodal{position:fixed!important;z-index:41;top:8vh;left:max(16px,calc(50% - 440px))!important;width:min(880px,calc(100vw - 32px))!important;max-height:84vh;overflow:visible;
   margin:0!important;padding:18px 20px 20px!important;background:var(--panel)!important;border:1px solid var(--line)!important;border-radius:16px!important;box-shadow:0 24px 70px rgba(0,0,0,.45)!important}
-.kmodal .km-title{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-bottom:14px}
-.kmodal .km-title h2{margin:0;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit}
+.kmodal .km-title{text-align:left} /* la barre des fenêtres (.bp-head), quel que soit le bloc qui accueille la carte */
+.kmodal .km-title h2{margin:0;padding:0}
+.km-esc{margin:0 0 10px;font-size:12px;color:var(--ink)}
 /* le bloc du panneau cède la place à l'en-tête commun (km-top) ; la carte Kronn a ses propres boutons Annuler / × */
 .kmodal [data-kronn-action],.kmodal>.rl-n,.kmodal>.rl-s,.kmodal>.la-av,.kmodal>.la-t,.kmodal .sp-act,.kmodal .na-acts{display:none!important}
 .kmodal .km-top button{width:auto;flex:none;white-space:nowrap} /* ↩ Annuler et × à leur taille, quel que soit le bloc qui accueille la fenêtre */
@@ -906,22 +910,23 @@ body:not(.tv) .cv-wrap.rejeu{outline:4px solid var(--warn);outline-offset:-4px}
 .floors .fi{font-size:15px}
 .floors b{background:var(--chip);color:var(--ink);padding:0 4px;font-size:11px;border-radius:2px} /* compteur neutre : seul ✋ est ambre */
 .floors b.h{background:var(--warn);color:var(--on-accent)}
-/* 3e étage (68-retours.js) : la fenêtre Kanban d'un bureau, les fils en colonnes, le fil choisi à droite */
-.rt-kb{position:fixed;inset:0;z-index:60;background:rgba(10,12,20,.6);display:flex;align-items:center;justify-content:center;padding:16px}
-.rt-kbw{background:var(--panel);color:var(--ink);border:3px solid var(--line);width:min(1180px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;gap:10px;padding:12px 14px;overflow:hidden}
-.rt-kbh{display:flex;align-items:center;gap:6px;font:600 14px system-ui,sans-serif}
-.rt-kbh .rt-x{margin-left:auto;font:700 14px system-ui;background:none;border:2px solid var(--line);color:var(--ink);cursor:pointer;padding:2px 8px}
-.rt-kbb{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1fr);gap:12px;min-height:0;overflow:auto}
+/* 3e étage (68-retours.js) : le Kanban d'un bureau, dans la fenêtre large (openDialog, cls rt-win) ; les fils en
+   colonnes, le fil choisi à droite ; la sélection en liseré intérieur, pour que l'anneau de focus reste visible */
+.rt-win .at-bar{margin:0 0 10px}
+.rt-kbb{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1fr);gap:12px}
 .rt-cols{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;align-items:start}
 .rt-col h4{margin:0 0 6px;font:700 12px system-ui,sans-serif;text-align:center}
-.rt-kb .rt-card{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;margin:0 0 6px;padding:6px;border:2px solid transparent;background:var(--c)!important;color:#1c1f26!important;font:12px/1.3 system-ui,sans-serif;cursor:pointer;box-shadow:none!important}
-.rt-kb .rt-card .mono{font:700 10px ui-monospace,Menlo,monospace;color:#0b2a4a;overflow-wrap:anywhere}
-.rt-kb .rt-card small{color:#5a4636;font-weight:700}
-.rt-kb .rt-card.cur{border-color:#c0392b}.rt-kb .rt-card.on{outline:3px solid var(--accent);outline-offset:1px}
+.rt-win .rt-card{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;margin:0 0 6px;padding:6px;border:2px solid transparent;background:var(--c)!important;color:#1c1f26!important;font:12px/1.3 system-ui,sans-serif;cursor:pointer;box-shadow:none!important}
+.rt-win .rt-card .mono{font:700 10px ui-monospace,Menlo,monospace;color:#0b2a4a;overflow-wrap:anywhere}
+.rt-win .rt-card small{color:#5a4636;font-weight:700}
+.rt-win .rt-card.cur{border-color:#c0392b}.rt-win .rt-card.on{box-shadow:inset 0 0 0 3px var(--accent)!important}
 .rt-det{background:#10141c;color:#e8e2d0;padding:12px;display:flex;flex-direction:column;gap:8px;font:13px/1.45 system-ui,sans-serif}
 .rt-det .mono{font:700 12px ui-monospace,Menlo,monospace;color:#9fd4ff;overflow-wrap:anywhere}.rt-det p{margin:0}.rt-det .mut{color:#a3a8b5}
 .rt-det a{color:#9fd4ff;font-weight:700}
 @media (max-width:760px){.rt-kbb{grid-template-columns:1fr}.rt-cols{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* le digicode des Combles (68-combles.js) : son pavé, une toile à lui dans la fenêtre */
+.bp-modal.dg-win{left:max(16px,calc(50% - 290px));width:min(580px,calc(100vw - 32px))}
+.dg-win canvas{display:block;margin:0 auto;width:520px;max-width:100%;image-rendering:pixelated;cursor:pointer}
 .atelier .at-kb{margin-top:8px;font:600 13px system-ui,sans-serif;padding:6px 10px;border:3px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
 /* le gyrophare de l'onglet du -1 (68-caserne.js, csAlarm) : un appel à prendre ou une réponse qui t'attend */
 .floors .gyro{display:inline-block;width:14px;height:13px;margin-right:6px;vertical-align:-1px;background:linear-gradient(90deg,#8a1a12 0 30%,#ffd2c8 45% 55%,#8a1a12 70%) 50% 0/300% 100% no-repeat,#8a1a12;
