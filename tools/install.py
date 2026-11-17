@@ -175,6 +175,60 @@ def gh_login():
     return r.stdout.strip() or None if r.returncode == 0 else None
 
 
+CHROMES = ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",  # comme workflows/pages_snapshot.py
+           "/Applications/Chromium.app/Contents/MacOS/Chromium", "google-chrome", "chromium", "chromium-browser")
+
+
+def gh_scopes():
+    """Droits du jeton de gh (en-tête X-OAuth-Scopes), ou None (gh absent, non connecté, ou jeton sans cet en-tête)."""
+    try:
+        r = subprocess.run(["gh", "api", "-i", "user"], capture_output=True, text=True, timeout=20)
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+    m = re.search(r"^x-oauth-scopes:(.*)$", r.stdout if r.returncode == 0 else "", re.I | re.M)
+    return {x.strip() for x in m.group(1).split(",") if x.strip()} if m else None
+
+
+def has_pillow():
+    """Pillow importable par le python3 de Kronn ou par le venv du dépôt (jpeg() du socle essaie les deux)."""
+    for py in (sys.executable, os.path.join(ROOT, ".venv", "bin", "python")):
+        try:
+            if os.path.exists(py) and subprocess.run([py, "-c", "import PIL"], capture_output=True, timeout=20).returncode == 0:
+                return True
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+    return False
+
+
+def check_tools(chrome=None):
+    """Les outils de la machine : rien de bloquant, mais ce qui manque prive d'une fonction, dite ici plutôt qu'au
+    premier cron en échec. Lignes à afficher."""
+    found, missing = [], []
+    scopes = gh_scopes()
+    if scopes is not None:
+        lack = [s for s in ("repo", "read:org", "workflow") if s not in scopes]
+        if lack:
+            missing.append(f"gh sans le droit {', '.join(lack)} : PR des dépôts privés, mise en prod (`gh auth refresh -s {','.join(lack)}`)")
+        else:
+            found.append("gh (repo, read:org, workflow)")
+    for tool, what, how in (("az", "calendrier de l'équipe et annonce Teams de la mise en prod", "brew install azure-cli"),
+                            ("claude", "relevé de la console Support, plan dessiné depuis une image", "https://claude.com/claude-code"),
+                            ("docker", "contrôles de la chaîne d'implémentation", "Docker Desktop")):
+        if shutil.which(tool):
+            found.append(tool)
+        else:
+            missing.append(f"{tool} absent : pas de {what} ({how})")
+    if any(c and (os.path.isfile(c) or shutil.which(c)) for c in (chrome,) + CHROMES):
+        found.append("Chrome")
+    else:
+        missing.append("Chrome absent : pas d'aperçu des pages dans « Mes pages Kronn » (ou la clé chrome de la config)")
+    if has_pillow():
+        found.append("Pillow")
+    else:
+        missing.append("Pillow absent : miniatures et avatars non réduits (`python3 -m venv .venv && .venv/bin/pip install pillow websocket-client`)")
+    return ([f"✓ outils : {', '.join(found)}"] if found else []) + [f"(i) {m}" for m in missing]
+
+
 def org_member(org):
     """(membre actif, explication) : le compte connecté à gh appartient-il à l'organisation ? Marche aussi quand
     l'appartenance est masquée sur le profil public (il lit la sienne), avec le droit read:org."""
@@ -973,6 +1027,8 @@ def main(argv=None):
 
     say("— Le Bureau : installation —")
     k, kronn = check_kronn(ask, assemble.defaults({}))
+    for line in check_tools(old.get("chrome")):
+        say(line)
     team_id = team(ask)
     defaults = assemble.defaults({"team": team_id})
     tdir = assemble.team_dir({"team": team_id})  # teams/<id> ou le pack
