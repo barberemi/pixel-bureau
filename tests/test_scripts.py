@@ -996,6 +996,37 @@ print(json.dumps(val))
         self.assertIn("gh introuvable", out["warnings"][0])
         self.assertIn("live : déploiements de", self.stderr)
 
+    def test_live_snapshot_support_poste_says_its_actions_only(self):
+        """« 👁 Ce qu'il fait » au -1 : le poste du Support au travail porte ses actions (outil, fichier), jamais une phrase
+        de l'agent ni un motif cherché (la demande vient d'un canal ouvert) ; son journal est trouvé dans le dossier du projet
+        par l'heure du message de son fil (support.json)."""
+        fake, sp = FakeKronn(), "5e5e5e5e-0000-4000-8000-000000000000"
+        ws = os.path.join(self.tmp, "Sites", "Kronn")
+        run = dict(run_of(960, "Running"), finished_at=None, project_id="p1", workspace_path=ws, parent_run_id="sp-parent")
+        run["step_results"] = [{"step_name": "entree", "status": "Success"},
+                               {"step_name": "agent", "step_kind": "Agent", "status": "Running", "step_agent": "ClaudeCode", "started_at": "2001-01-01T00:00:00Z",
+                                "last_activity": {"category": "Read", "calls": 3, "at": run["started_at"]}}]
+        fake.workflows.append({"id": sp, "name": "Le Bureau · support · tri", "enabled": True, "trigger_type": "manual",
+                               "last_run": {"started_at": run["started_at"], "status": "Running"}})
+        fake.runs[sp] = [run]
+        cache = os.path.join(self.tmp, ".cache", "pixel-bureau")
+        os.makedirs(cache)
+        Path(cache, "support.json").write_text(json.dumps({"runs": {"sp-parent": {"msg": "m1"}}, "threads": {"m1": {"at": "2026-11-17T15:05:32.16Z"}}}))
+        d = os.path.join(self.tmp, ".claude", "projects", re.sub(r"[^A-Za-z0-9]", "-", ws))
+        os.makedirs(d)
+        msg = lambda t, c: json.dumps({"type": t, "timestamp": "2026-11-17T15:06:00Z", "message": {"role": t, "content": c}}) + "\n"  # noqa: E731
+        Path(d, "s1.jsonl").write_text(
+            msg("user", "=== ANTI-HALLUCINATION (pointer) ===\nDemande arrivée sur le canal, de Angela Martin le 2026-11-17T15:05:32.16Z :\nle reçu de Mme Dupont est vide")
+            + msg("assistant", [{"type": "text", "text": "Le reçu de Mme Dupont (commande 4412) est vide depuis hier."}])
+            + msg("assistant", [{"type": "tool_use", "name": "Grep", "input": {"pattern": "Dupont 4412"}}])
+            + msg("assistant", [{"type": "tool_use", "name": "Read", "input": {"file_path": ws + "/src/Receipt.php"}}]))
+        out = self.run_script("live_snapshot.py", api=self.kronn(fake), models={**(FIXTURE.get("models") or {}), "support_tri": sp})
+        f = next(r for r in out["runs"] if r["wf"] == sp)["fait"]
+        self.assertEqual((f["ag"], f["k"]["n"]), ("ClaudeCode", 3))
+        self.assertEqual([a[1:] for a in f["d"]["actions"]], [["lecture", "src/Receipt.php"], ["recherche", ""]])
+        self.assertNotIn("phrases", f["d"])
+        self.assertNotIn("Dupont", json.dumps(f))
+
     def gh_calls(self):
         p = os.path.join(self.tmp, "gh.json.calls")
         return Path(p).read_text().count("\n") if os.path.exists(p) else 0

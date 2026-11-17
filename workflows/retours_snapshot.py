@@ -14,9 +14,13 @@ dernières 24 h qu'aucun run plus récent de la même PR n'a repris. Le jour (ta
 depuis minuit et leurs fils, jetons des runs du jour, et PR poussées sur 7 jours ; un run fini n'est relu qu'une fois
 (~/.cache/pixel-bureau/pr/jour.json). Colonne d'un fil : celle de la réponse prévue
 (fil_col de _lib.py) une fois l'agent fini, sinon celle que l'agent a notée dans son avancement, sinon « à traiter ».
+« 👁 Ce qu'il fait » (fait d'un bureau, _lecteurs.py) : la correction au travail, ou finie tant que le run tourne
+(fichiers touchés pas encore commités dans le dossier de travail de la PR, compteur de Kronn, détail lu par le lecteur
+de son agent) ; jamais une commande entière ni un chemin absolu.
 """
 import datetime, json, os, re, stat, sys
 from _lib import ACTIVE, CFG, FIL_COLS, TZ, get, read_json, write_json
+from _lecteurs import detail, fichiers, menage, plafonne
 
 HOME = os.path.expanduser("~/.cache/pixel-bureau/pr")
 POSTES = ["prepare", "fix", "check", "diff", "gate", "push"]
@@ -65,6 +69,36 @@ def fils(st):
     return out
 
 
+PROJETS = {}
+
+
+def projet(pid):
+    """Le dossier d'un projet Kronn (lu une fois) : l'agent de la correction y tourne, son journal est rangé d'après lui."""
+    if not PROJETS:
+        PROJETS.update({p.get("id"): p.get("path") for p in get("/projects") or [] if isinstance(p, dict)} or {"": None})
+    return PROJETS.get(pid)
+
+
+def fait(run, s, st):
+    """« 👁 Ce qu'il fait » de la correction (étape fix), au travail ou finie tant que le run tourne : fichiers touchés
+    dans le dossier de travail de la PR, compteur de Kronn, détail du lecteur de son agent. None sans rien à dire."""
+    if not s or run.get("status") not in ACTIVE or run.get("status") == "Pending":
+        return None
+    try:
+        work = st.get("work") if isinstance(st.get("work"), str) else None
+        ws = run.get("workspace_path") or projet(run.get("project_id"))
+        out = detail(s, ws, run=run, indice=run["id"], racines=(work,) if work else ()) or {}
+        if s.get("status") not in ("Running", "WaitingQuota") and out:
+            out["fini"] = True
+        d = fichiers(work) if work and os.path.isdir(work) else None
+        if d and d["n"]:
+            out["diff"] = d
+        return plafonne(out) if out else None
+    except Exception as e:  # le relevé des bureaux passe avant « Ce qu'il fait »
+        print(f"retours : ce qu'il fait illisible ({type(e).__name__} {str(e)[:120]})", file=sys.stderr)
+        return None
+
+
 def vars_of(run):
     tc = run.get("trigger_context") if isinstance(run.get("trigger_context"), dict) else {}
     return str(tc.get("repo") or ""), str(tc.get("pr") or "")
@@ -78,7 +112,8 @@ def room(run):
     poste = next((k for k in reversed(POSTES) if states.get(k) in ("run", "gate")), None)
     repo, pr = vars_of(run)
     ui = (CFG.get("kronn") or {}).get("ui") or ""
-    return {"run": run["id"], "repo": st.get("repo") or repo, "pr": str(st.get("pr") or pr), "title": st.get("title"),
+    f = fait(run, steps.get("fix"), st)
+    return {**({"fait": f} if f else {}), "run": run["id"], "repo": st.get("repo") or repo, "pr": str(st.get("pr") or pr), "title": st.get("title"),
             "author": st.get("author"), "status": run.get("status"), "poste": poste, "gate": states.get("gate") == "gate",
             "states": states, "since": run.get("started_at"), "fils": fils(st),
             "url": f"{ui.rstrip('/')}/#workflows/{run.get('workflow_id')}" if ui else None}
@@ -202,6 +237,7 @@ def snapshot(now_iso=None):
     out["pousses"] = sum(1 for e in ev if e["k"] == "push" and (not midnight or when(e["t"]) >= midnight))
     if now:
         out["jour"] = jour(runs, full_of, now, out)
+    menage()
     return out
 
 

@@ -23,8 +23,38 @@ import json, os as _os, re, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from _lib import CFG, TZ, ACTIVE, dumps, get, is_bureau, is_bureau_disc, run_row, disc_row, read_json
+from _lecteurs import detail, menage
 
 now = datetime.now(TZ)
+# « 👁 Ce qu'il fait » au -1 (_lecteurs.py) : run.fait d'un poste du Support au travail (sous-workflow support_<poste>),
+# ACTIONS SEULEMENT (ni phrase de l'agent, ni motif cherché : la demande vient d'un canal ouvert, données client possibles)
+SP_POSTES = {v for k, v in (CFG.get("models") or {}).items() if k.startswith("support_") and v}
+SP_PROJETS = {}
+
+
+def support_fait(wf, r):
+    """Ce que fait l'agent d'un poste du Support : compteur de Kronn et actions lues par le lecteur de son agent. Son
+    journal est rangé sous le dossier du projet (partagé) : il doit citer l'heure du message de son fil (support.json)."""
+    try:
+        full = get(f"/workflows/{wf}/runs/{r['id']}") or r
+        s = next((x for x in reversed(full.get("step_results") or []) if x.get("status") in ("Running", "WaitingQuota")
+                  and (x.get("step_kind") == "Agent" or x.get("step_agent"))), None)
+        if not s:
+            return None
+        try:
+            sp = read_json(_os.path.join(_os.path.expanduser("~"), ".cache", "pixel-bureau", "support.json"))
+        except (OSError, ValueError):
+            sp = {}
+        msg = ((sp.get("runs") or {}).get(full.get("parent_run_id") or "") or {}).get("msg")
+        at = ((sp.get("threads") or {}).get(str(msg)) or {}).get("at") if msg else None
+        if not SP_PROJETS:
+            SP_PROJETS.update({p.get("id"): p.get("path") for p in get("/projects") or [] if isinstance(p, dict)} or {"": None})
+        ws = full.get("workspace_path") or SP_PROJETS.get(full.get("project_id"))
+        f = detail(s, ws, run=full, indice=at or "Demande arrivée sur le canal", texte=False)
+        return f
+    except Exception as e:  # le live passe avant « Ce qu'il fait »
+        print(f"support : ce qu'il fait illisible ({type(e).__name__} {str(e)[:120]})", file=sys.stderr)
+        return None
 day_start = now.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 since = day_start.isoformat().replace("+00:00", "Z")
 recent = (datetime.now(timezone.utc) - timedelta(minutes=20)).isoformat().replace("+00:00", "Z")
@@ -44,6 +74,12 @@ for wf in get("/workflows"):
         if r.get("status") not in ACTIVE and (r.get("finished_at") or "") < recent:
             continue
         runs.append(run_row(wf, r))
+        if wf["id"] in SP_POSTES and r.get("status") in ACTIVE:
+            f = support_fait(wf["id"], r)
+            if f:
+                runs[-1]["fait"] = f
+if SP_POSTES:
+    menage()
 
 discs = [disc_row(d) for d in get("/discussions?page=1&per_page=20")
          if d["updated_at"] >= since and not d.get("archived") and not is_bureau_disc(d)]
