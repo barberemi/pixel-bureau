@@ -1,0 +1,97 @@
+{
+ "kind": "workflow",
+ "key": "fastly_purge",
+ "definition": {
+  "name": "Le Bureau · purger le cache Fastly (soft purge)",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "service",
+    "label": "Service (domaine)",
+    "description": "Un service du réglage fastly.",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "_options": "fastly.services"
+   },
+   {
+    "name": "kind",
+    "label": "Purger par",
+    "description": "Une surrogate key, ou une URL (chemin ou adresse complète du même domaine).",
+    "required": true,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "control": {
+     "type": "select",
+     "options": [
+      {
+       "value": "key",
+       "label": "Surrogate key",
+       "enabled": true
+      },
+      {
+       "value": "url",
+       "label": "URL ou chemin",
+       "enabled": true
+      }
+     ],
+     "default_value": "key"
+    }
+   },
+   {
+    "name": "value",
+    "label": "Clé ou URL",
+    "placeholder": "g-all, ou /my-europe/2026/11/17/mon-article",
+    "description": "La surrogate key, ou le chemin de la page.",
+    "required": true,
+    "pattern": "^\\S+$",
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "steps": [
+   {
+    "name": "purge",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Vérifie le service (réglage fastly), le type et la valeur, puis lance fastly purge en soft (--soft toujours, jamais --all) avec le profil par défaut du CLI. 0 token.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/fastly_purge.py@@",
+     "{{service}}",
+     "{{kind}}",
+     "{{value}}"
+    ],
+    "exec_timeout_secs": 90
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": 1,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "concurrency_key": "{{service}}"
+ }
+}

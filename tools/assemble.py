@@ -398,7 +398,7 @@ def defaults(cfg):
 # Le pack porte l'équipe, la config porte l'installation. settings.json du pack, lu à chaque assemblage et rendu des
 # modèles : rythme, GitFut, affiches du Top 3, planning des absences (sans config_id) et personnages des agents (sans
 # ids de workflows). La config peut surcharger chacun ; elle seule rattache un personnage à ses workflows (agents[].wf).
-SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "fix", "support", "env", "deploy", "jira", "impl", "mep", "combles")
+SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "fix", "support", "env", "deploy", "jira", "impl", "mep", "combles", "fastly")
 AGENT_FIELDS = ("key", "name", "role", "wf", "seat", "sprite")  # ordre des champs d'un agent, comme l'installateur l'écrit
 
 
@@ -459,6 +459,8 @@ def merged(cfg):
         out["mep"] = {**pm, **m, **({"teams": {**(pm.get("teams") or {}), **(m.get("teams") or {})}} if pm.get("teams") or m.get("teams") else {})}
     if "deploy" in s:  # déployer la branche d'une PR hors prod : dépôts et envs de l'équipe ; la config peut les surcharger
         out["deploy"] = {**(s["deploy"] or {}), **(cfg.get("deploy") or {})}
+    if "fastly" in s:  # purger le cache Fastly : services de l'équipe ; la config peut les surcharger
+        out["fastly"] = {**(s["fastly"] or {}), **(cfg.get("fastly") or {})}
     # créer un ticket (#77), temps gagné par l'IA (#79) : jira.create et jira.ai_feedback de l'équipe ; la config les surcharge
     for k in ("create", "ai_feedback"):
         if (s.get("jira") or {}).get(k):

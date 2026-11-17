@@ -116,6 +116,8 @@ TEMPLATES = {
     "env": ("workflow", ("models", "env"), {}),
     # déployer la branche d'une PR hors prod (DEV, STG…) : bouton « 🚀 » des fiches, dépôts et envs du réglage deploy
     "deploy": ("workflow", ("models", "deploy"), {"dispatch": "workflows/deploy.py"}),
+    # purger le cache Fastly en soft purge, par surrogate key ou par URL, jamais tout un service : services du réglage fastly
+    "fastly_purge": ("workflow", ("models", "fastly_purge"), {"purge": "workflows/fastly_purge.py"}),
     # investiguer un message du canal Support (#62) : une chaîne de postes (sous-workflows, un agent chacun, créés avant le
     # parent), puis ta validation (gate) et la réponse en fil
     **{f"support_{p}": ("workflow", ("models", f"support_{p}"), {n: "workflows/support.py" for n in ("entree", "rapport")}) for p in SUPPORT_POSTES},
@@ -499,6 +501,11 @@ def mep_projects(cfg):
     return assemble.mep_projects(cfg)
 
 
+def fastly_services(cfg):
+    """Services Fastly que la purge peut viser (réglage fastly.services, noms = domaines)."""
+    return [x.strip() for x in ((cfg.get("fastly") or {}).get("services") or []) if isinstance(x, str) and x.strip()]
+
+
 def skipped(key, cfg):
     """Workflows du Bureau qu'une installation ne crée pas faute de connexion : commenter un ticket sans Jira, les
     absences sans planning Microsoft 365 (microsoft.config_id et microsoft.planning dans la config), le courrier sans
@@ -534,6 +541,8 @@ def skipped(key, cfg):
         return not assemble.env_repos({**cfg, "models": {**(cfg.get("models") or {}), "env": "?"}})
     if key == "deploy":  # aucun dépôt ni env hors prod réglé (deploy.repos)
         return not assemble.deploy_envs({**cfg, "models": {**(cfg.get("models") or {}), "deploy": "?"}})
+    if key == "fastly_purge":  # aucun service Fastly réglé (fastly.services)
+        return not fastly_services(cfg)
     if key in ("support", "support_poll", "support_skip") or key.startswith("support_"):  # console Support (#62) : canal Teams réglé (support.team, support.channel)
         s = cfg.get("support") or {}
         return not (s.get("team") and s.get("channel"))
@@ -592,6 +601,10 @@ def render(tpl, cfg):
             opt = v.pop("_options", None)
             if opt in ("jira.create.types", "jira.create.components"):
                 create_options(opt, v, cfg)
+            if opt == "fastly.services":  # purge Fastly : un service du réglage, le premier par défaut
+                opts = fastly_services(cfg)
+                v["control"] = {"type": "select", "options": [{"value": x, "label": x, "enabled": True} for x in opts],
+                                **({"default_value": opts[0]} if opts else {})}
             if opt == "mep.projects":
                 opts = mep_projects(cfg)
                 v["control"] = {"type": "select", "options": [{"value": r, "label": n, "enabled": True} for r, n in opts],

@@ -10,7 +10,7 @@ import assemble, templates  # noqa: E402
 
 BASE = json.loads(Path(os.path.join(ROOT, "tests", "fixtures", "bureau.config.json")).read_text())
 TPL = templates.load_templates()
-MODELS = ("review_child", "review_one", "review_cron", "estimate", "issue", "ticket", "assign", "unassign", "env", "deploy", "ai_time")
+MODELS = ("review_child", "review_one", "review_cron", "estimate", "issue", "ticket", "assign", "unassign", "env", "deploy", "ai_time", "fastly_purge")
 GH = "12121212-3434-5656-7878-909090909090"
 CHILD = "abababab-0000-4000-8000-000000000001"
 PAGE = "cdcdcdcd-0000-4000-8000-000000000002"
@@ -540,6 +540,64 @@ exit 0
                         (("vance/prod2", "12", "dev"), 4), (("vance/refus", "12", "dev"), 5)]:
             self.assertEqual(run(*a).returncode, code, a)
         self.assertEqual(Path(log).read_text().count("workflow run"), 2)  # frigo, puis refus (refusé par GitHub)
+        shutil.rmtree(tmp)
+
+    def test_fastly_purge_model_offers_only_the_team_services(self):
+        """Modèle fastly_purge : liste des services du réglage fastly (pack) dans le formulaire, type key ou url, valeur en
+        argument du script ; rien sans service réglé."""
+        import shutil
+        tmp = tempfile.mkdtemp()
+        pack = os.path.join(tmp, "pack")
+        shutil.copytree(os.path.join(ROOT, "tests", "fixtures", "pack-exemple"), pack)
+        Path(os.path.join(pack, "settings.json")).write_text(json.dumps({"fastly": {"services": ["fr.frigo.com", "hu.frigo.com"]}}))
+        c = {**cfg(models={"fastly_purge": "ffff1111-0000-4000-8000-000000000000"}), "team": pack}
+        d = templates.render(TPL["fastly_purge"], c)
+        v = {x["name"]: x for x in d["variables"]}
+        self.assertEqual(list(v), ["service", "kind", "value"])
+        self.assertEqual([o["value"] for o in v["service"]["control"]["options"]], ["fr.frigo.com", "hu.frigo.com"])
+        self.assertEqual(v["service"]["control"]["default_value"], "fr.frigo.com")
+        self.assertEqual([o["value"] for o in v["kind"]["control"]["options"]], ["key", "url"])
+        self.assertEqual(steps("fastly_purge", c)["purge"]["exec_args"][-3:], ["{{service}}", "{{kind}}", "{{value}}"])
+        self.assertFalse(templates.skipped("fastly_purge", c))
+        self.assertTrue(templates.skipped("fastly_purge", cfg()))  # aucun service réglé
+        shutil.rmtree(tmp)
+
+    def test_fastly_purge_script_is_always_soft_and_never_all(self):
+        """Le script : --soft toujours, jamais --all ; clé ou URL du même domaine ; refus d'un service hors réglage (2),
+        d'un type ou d'une valeur (3), de Fastly (4). Faux fastly."""
+        import shutil
+        tmp = tempfile.mkdtemp()
+        log = os.path.join(tmp, "fastly.log")
+        Path(os.path.join(tmp, "fastly")).write_text(f"""#!/bin/sh
+echo "$*" >> {log}
+case "$*" in *refus*) echo "ERROR: 403" >&2; exit 1 ;; esac
+echo "SUCCESS: Purged (id: 123-abc)"
+""")
+        os.chmod(os.path.join(tmp, "fastly"), 0o755)
+        c = cfg(fastly={"services": ["hu.frigo.com"]})
+        path = os.path.join(tmp, "bureau.config.json")
+        Path(path).write_text(json.dumps(c))
+        env = {"PATH": tmp + ":/usr/bin:/bin", "BUREAU_CONFIG": path}
+
+        def run(*a):
+            return subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "fastly_purge.py"), *a], capture_output=True, text=True, env=env)
+        r = run("hu.frigo.com", "key", "g-all")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("Soft purge de la clé g-all sur hu.frigo.com", r.stdout)
+        self.assertIn("id: 123-abc", r.stdout)
+        for value in ("/my-europe/2026/11/17/article?x=1", "https://hu.frigo.com/my-europe/2026/11/17/article?x=1"):
+            self.assertEqual(run("hu.frigo.com", "url", value).returncode, 0, value)
+        calls = Path(log).read_text().splitlines()
+        self.assertEqual(calls[0], "purge --service-name hu.frigo.com --key g-all --soft --non-interactive")
+        self.assertEqual(calls[1:], ["purge --service-name hu.frigo.com --url https://hu.frigo.com/my-europe/2026/11/17/article?x=1 "
+                                     "--soft --non-interactive"] * 2)
+        for a, code in [(("fr.frigo.com", "key", "g-all"), 2), (("", "key", "g-all"), 2), (("hu.frigo.com", "all", "x"), 3),
+                        (("hu.frigo.com", "key", "--all"), 3), (("hu.frigo.com", "key", "a b"), 3),
+                        (("hu.frigo.com", "url", "https://evil.com/x"), 3), (("hu.frigo.com", "url", "https://hu.frigo.com@evil.com/x"), 3),
+                        (("hu.frigo.com", "url", ""), 3), (("hu.frigo.com", "key", "refus"), 4)]:
+            self.assertEqual(run(*a).returncode, code, a)
+        self.assertNotIn("--all", Path(log).read_text())
+        self.assertEqual(len(Path(log).read_text().splitlines()), 4)  # les trois purges, puis le refus de Fastly
         shutil.rmtree(tmp)
 
     def test_publish_never_creates_a_model(self):
