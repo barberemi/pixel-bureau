@@ -23,6 +23,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- `upgrade.py` ne refuse plus un Kronn qui dit 0.15.1 mais garde déjà la page du Bureau au-delà de 1 000 000 octets (construit depuis main après le tag) : la mise à jour continue et conseille de passer en 0.15.2. Sans cette preuve, un Kronn d'avant 0.15.2 reste refusé.
 - `publish.py all` publie les workflows, puis la page (avant : la page d'abord, un nouveau bouton restait désactivé jusqu'à la publication suivante).
 - README : ce que fait Le Bureau, en deux promesses (voir l'équipe, 0 jeton ; faire travailler des agents, au coût des jetons et sous ta décision) et à qui appartient la page.
 - La fiche du panneau s'allège : ✎ à côté du nom, l'état et les todos sur une ligne, un seul bouton primaire (l'action de la validation, dans sa carte), les chiffres en deux colonnes lisibles, « Ses tickets dans le Kanban » en lien. « Qui fait quoi » : « Ses 4 tickets › » visible au lieu d'une liste en infobulle. Mode TV : au 2e, une carte par revue en cours avec la barre des postes ; pendant la scène du sprint, sa tuile ne se répète plus en bas.

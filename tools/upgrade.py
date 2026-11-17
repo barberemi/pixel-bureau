@@ -92,11 +92,25 @@ def changed_keys(old, new):
             + [f"{x} (retirée)" for x in a if x not in b])
 
 
-def check_kronn(k):
+BIG_PAGE = 1_000_000  # la limite des Kronn d'avant 0.15.2 (install.MIN_VERSION)
+
+
+def check_kronn(k, page_id=None):
+    """La version de Kronn, refusée sous install.MIN_VERSION, sauf si Kronn garde déjà la page du Bureau au-delà de
+    BIG_PAGE octets : c'est un Kronn construit depuis main après le tag (il dit 0.15.1 mais accepte la page)."""
     h = k.call("GET", "/health", timeout=10)
     v = tuple(int(x) for x in re.findall(r"\d+", str(h.get("version", "0")))[:3])
-    if v < install.MIN_VERSION:
-        raise InstallError(f"Kronn {h.get('version')} trop ancien : il faut {'.'.join(map(str, install.MIN_VERSION))} ou plus.")
+    if v >= install.MIN_VERSION:
+        return h.get("version")
+    need = ".".join(map(str, install.MIN_VERSION))
+    try:
+        size = int((k.call("GET", f"/pages/{page_id}", timeout=10) or {}).get("html_size_bytes") or 0) if page_id else 0
+    except (InstallError, ValueError, TypeError):
+        size = 0
+    if size <= BIG_PAGE:
+        raise InstallError(f"Kronn {h.get('version')} trop ancien : il faut {need} ou plus.")
+    say(f"! Kronn dit {h.get('version')}, mais il garde déjà la page ({size} octets) : mise à jour faite quand même ; "
+        f"passe Kronn en {need} ou plus.")
     return h.get("version")
 
 
@@ -144,7 +158,7 @@ def upgrade(path, dry=False, publish=True):
     cfg = copy.deepcopy(old)
     k = install.Kronn(cfg["kronn"]["api"])
     say(f"— Le Bureau : mise à jour{' (dry-run, rien ne sera écrit)' if dry else ''} —")
-    say(f"✓ Kronn {check_kronn(k)} sur {cfg['kronn']['api']}")
+    say(f"✓ Kronn {check_kronn(k, cfg['page_id'])} sur {cfg['kronn']['api']}")
     if not dry:
         say(f"✓ config sauvegardée : {backup(path)}")
     created, ignored = [], []
