@@ -181,7 +181,7 @@ test("rejeu : hors du dessin, un liseré autour du plan et « ⏪ Rejeu hh:mm »
     } finally { document.querySelector = qs; document.getElementById = ge; document.createElement = ce; }
     return out;
   })()`);
-  assert.deepEqual(r, [[true, false, '⏪ Rejeu 11:00 · 2e'], [true, false, '⏪ Rejeu 11:00 · RDC'], [false, true, 1]]);
+  assert.deepEqual(r, [[true, false, '⏪ Rejeu 11:00 · 2e'], [true, false, '⏪ Rejeu 11:00 · RDC'], [false, true, 1]], 'à l\'heure du relevé (11:00) : pas de légende des ⏱');
   assert.match(require('fs').readFileSync(require('path').join(__dirname, '..', 'page', 'src', 'styles.css'), 'utf8'), /\.cv-wrap\.rejeu\{outline:4px solid var\(--warn\)/);
 });
 
@@ -204,4 +204,24 @@ test("la porte de l'escalier : au bout du couloir, dans le mur de droite ; Berna
   assert.equal(J('stairOpen(RT_STAIR, [{x: AT_W - 300, y: RT_LANE}])'), false);
   p.run(`RETOURS = retoursDemo(); setFloor(3); RT_MEM.scenes = [{kind: 'arrive', i: 0, run: 'x', t0: 0}]; renderRetours(1000);`);
   assert.equal(J('stairOpen(RT_STAIR, RT_MEM.scenes.map(s => s.w.pos))'), true, 'Bernard sur le seuil : la porte est ouverte');
+});
+
+// ---------- tableau noir rejouable (audit produit F8) ----------
+test('F8, 3e : RETOURS DU JOUR à l\'heure du curseur ; fils et jetons, non datés, ceux du relevé en ⏱', () => {
+  const {p, J} = page();
+  const txt = () => JSON.parse(p.run(`(() => { const out = [], ft = ctx.fillText; ctx.fillText = function (t, ...r) { out.push([String(t), ctx.fillStyle]); return ft.call(this, t, ...r); };
+    try { rtDayBoard(); } finally { ctx.fillText = ft; } return JSON.stringify(out); })()`));
+  // la démo : poussées à 8 h 24 et 9 h 42 (2 aujourd'hui, 7 sur 7 jours) ; une panne à 8 h 30, jamais reprise
+  p.run(`RETOURS = retoursDemo(); setMode('pause'); T = DAY0 + 9.25 * 36e5;`);
+  assert.deepEqual(J('rtJourAt(T)'), {pousses: 1, cours: 2, pannes: 1, semaine: 6, fils: 9, tok: 68000}, '9 h 15');
+  let b = txt();
+  assert.deepEqual(b.map(x => x[0]).slice(1), ['1 PR poussée · ', '⏱9 fils', '2 en cours · 1 en panne', '⏱68 k jet.', ' · 7 j : 6 PR']);
+  assert.deepEqual(b.filter(x => /⏱/.test(x[0])).map(x => x[1]), ['#8e9a90', '#8e9a90'], 'grisés');
+  p.run('T = DAY0 + 10 * 36e5;');
+  assert.deepEqual(J('rtJourAt(T)'), {pousses: 2, cours: 3, pannes: 1, semaine: 7, fils: 9, tok: 68000}, '10 h');
+  // en direct : le relevé, comme avant
+  p.run(`setMode('live'); T = DAY0 + 11 * 36e5;`);
+  b = txt();
+  assert.deepEqual(b.map(x => x[0]).slice(1), ['2 PR poussées · 9 fils', '5 en cours · 1 en panne', '~68 k jetons · 7 j : 7 PR']);
+  assert.ok(b.every(x => x[1] !== '#8e9a90'));
 });

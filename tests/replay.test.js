@@ -82,3 +82,29 @@ test('mode TV hors du direct : le bandeau dit « REJEU hh:mm », plus « EN DIRE
   const css = fs.readFileSync(path.join(__dirname, '..', 'page', 'src', 'pixel.css'), 'utf8');
   assert.match(css, /#tvticker\[data-rejeu\]::before\{content:'⏪ REJEU ' attr\(data-rejeu\)/);
 });
+
+test('F8 : la légende « ⏱ = relevé de hh:mm » au bout de la pastille du rejeu, à chaque étage qui a des tableaux ; en TV, dans le bandeau', () => {
+  const r = J(`(() => {
+    const kids = [], bar = {appendChild: e => kids.push(e)}, qs = document.querySelector, ge = document.getElementById, ce = document.createElement;
+    document.querySelector = s => s === '.floorbar' ? bar : s === '.stage .cv-wrap' ? null : qs.call(document, s);
+    document.getElementById = id => id === 'rejeu' ? kids[0] || null : ge.call(document, id);
+    document.createElement = t => ({tagName: t, hidden: false, textContent: ''});
+    const out = {}, f0 = FLOOR;
+    try {
+      ATELIER = atelierDemo(); REDACTION = redactionDemo(); RETOURS = retoursDemo(); RETOURS.generated_at = new Date(DAY0 + 10.5 * 36e5).toISOString();
+      setMode('pause'); T = DAY0 + 9.25 * 36e5;
+      for (const f of [1, 2, 3, 0, -1]) { FLOOR = f; replayMark(); out[f] = [kids[0].textContent, tvRejeu()]; }
+      FLOOR = 1; setMode('live'); replayMark(); out.live = [kids[0].hidden, tvRejeu()];
+    } finally { document.querySelector = qs; document.getElementById = ge; document.createElement = ce; FLOOR = f0; }
+    return out;
+  })()`);
+  assert.deepEqual(r[1], ['⏪ Rejeu 09:15 · 1er · ⏱ = relevé de 11:00', '09:15 · ⏱ = relevé de 11:00']);
+  assert.deepEqual(r[2], ['⏪ Rejeu 09:15 · 2e · ⏱ = relevé de 11:00', '09:15 · ⏱ = relevé de 11:00']);
+  assert.deepEqual(r[3], ['⏪ Rejeu 09:15 · 3e · ⏱ = relevé de 10:30', '09:15 · ⏱ = relevé de 10:30'], 'l\'heure du relevé de l\'étage');
+  assert.deepEqual(r[0], ['⏪ Rejeu 09:15 · RDC', '09:15'], 'au RDC, pas de tableau rejoué : pas de légende');
+  assert.deepEqual(r[-1], ['⏪ Rejeu 09:15 · -1', '09:15']);
+  assert.deepEqual(r.live, [true, ''], 'en direct : ni pastille ni bandeau de rejeu');
+  // en TV, la barre des onglets (et sa pastille) est cachée : l'heure du relevé passe par le bandeau « ⏪ REJEU … »
+  const css = fs.readFileSync(path.join(__dirname, '..', 'page', 'src', 'styles.css'), 'utf8');
+  assert.match(css, /body\.tv \.floorbar\{display:none\}/);
+});

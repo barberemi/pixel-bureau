@@ -71,8 +71,17 @@ function atelierDemo(){
     {run:'demo-a4',ticket:'DM-412',title:'Cache des listes de rubriques',repo:'dm/api',poste:'retours',
      states:{...ok(6),perf:'err',besoin:'avis',doc:'ok',pr:'ok',revue_pr:'ok',retours:'run'},tour:'1/3',tok:138e3,since:at(7.9),note:'💬 3 commentaires à traiter',etape:'livraison',act:{cat:'Edit',n:37,at:at(10.994)}}],
     queue:[{run:'demo-q1',ticket:'DM-7606',since:at(10.5)},{run:'demo-q2',ticket:'DM-7948',since:at(10.8)}],
-    livres:3,jour:{tickets:7,cours:4,sortis:3,pannes:1,reprises:2,tok:612e3},pannes:[{run:'demo-p1',ticket:'DM-7702',title:'Bandeau d\'alerte sur les pages direct',repo:'dm/api',poste:'securite',since:at(8.1),
+    livres:3,jour:{tickets:8,cours:4,sortis:3,pannes:1,reprises:0,tok:612e3},runs:atDemoRuns(at),pannes:[{run:'demo-p1',ticket:'DM-7702',title:'Bandeau d\'alerte sur les pages direct',repo:'dm/api',poste:'securite',since:at(8.1),
       cause:'garde-fou docs de Kronn : docs/cache.md refusé (une suite de caractères qui ressemble à un secret)',cause_type:'garde_fou_docs',docs_ok:true}]};
+}
+// les runs de la chaîne de la démo, datés par des étapes d'une demi-heure (le rejeu des jetons) : un par bureau (en cours
+// jusqu'au relevé de 11 h), la file, la panne et les trois sorties de atDemoEvents ; leurs jetons font ceux du jour
+function atDemoRuns(at){
+  const mk=(run,s,e,tok,status)=>{const n=Math.max(1,Math.round((e-s)/.5)), w=(e-s)/n, live=status==='Running', per=Math.round(tok/n);
+    return {run,wf:'demo',status,start:at(s),end:live?null:at(e),tok,steps:Array.from({length:n},(_,k)=>({n:'etape'+(k+1),s:live&&k===n-1?'Running':'Success',at:at(s+k*w),ms:live&&k===n-1?0:Math.round(w*36e5),tok:k===n-1?tok-per*(n-1):per}))};};
+  return [mk('demo-a1',9.2,11,97e3,'Running'),mk('demo-a2',9.6,11,64e3,'Running'),mk('demo-a3',8.4,11,121e3,'Running'),mk('demo-a4',7.9,11,138e3,'Running'),
+    {run:'demo-q1',wf:'demo',status:'Pending',start:at(10.5),end:null,tok:0,steps:[]},{run:'demo-q2',wf:'demo',status:'Pending',start:at(10.8),end:null,tok:0,steps:[]},
+    mk('demo-p1',7.3,8.1,40e3,'Failed'),mk('demo-l0',7.1,8.6,50e3,'Success'),mk('demo-l1',8.4,9.9,48e3,'Success'),mk('demo-l2',9.1,10.6,54e3,'Success')];
 }
 const atelierOn=()=>!!(CFG.atelier||DEMO);
 // workflows de l'étage (modèles impl*, CFG.atelier_wf) : leurs runs, et les sous-runs qu'ils lancent (revue de la PR),
@@ -120,7 +129,86 @@ function atRoomsAt(t){
     AT_POSTES.forEach((p,k)=>{if(k<done)states[p.k]='ok';else if(k===i&&!gate)states[p.k]='run';});
     out.push({...base,run,poste:gate?'gate':poste,gate,back:last.k==='back',states,since:e.find(x=>x.k==='arrive').t,note:null});
   }
-  return out.sort((a,b)=>ms(a.since)-ms(b.since));
+  const runs=atChainRuns(), g=ms((ATELIER||{}).generated_at)||t, near=releveNear(ATELIER,t);
+  return out.sort((a,b)=>ms(a.since)-ms(b.since)).map(r=>near?r:atRoomAt(r,t,runs,g));
+}
+// ---------- les tableaux noirs en rejeu (audit produit F8) ----------
+// En rejeu, ce qui est daté se recalcule à l'heure du curseur ; ce qui ne l'est pas garde la valeur du relevé, grisée et
+// précédée de ⏱ (la légende « ⏱ = relevé de hh:mm » est au bout de la pastille du rejeu, replayMark). En direct, rien ne change.
+const REL_INK='#8e9a90', relTxt=v=>'⏱'+v;
+// à 3 min près de l'heure de son relevé (comme atAct), le relevé est l'état de l'heure du curseur : les tableaux de l'étage
+// restent ceux du direct (une pause juste après le direct ne grise rien)
+const RELEVE_NEAR=180e3, releveNear=(d,t)=>!!d&&Math.abs((t??T)-ms(d.generated_at))<=RELEVE_NEAR, boardLive=d=>atLive()||releveNear(d);
+const tokK=n=>n>=1e6?(n/1e6).toFixed(1).replace('.',',')+' M':Math.round(n/1e3)+' k';
+// un texte en morceaux [texte, couleur] à la suite, aligné à gauche
+function atSegs(segs,x,y,font){for(const [s,c] of segs){atTxt(s,x,y,c,font,'left');ctx.font=font;x+=ctx.measureText(s).width;}}
+// les runs de la chaîne (AT_RUNS, mis de côté par setData), datés par leurs étapes ; la démo a les siens (atelierDemo)
+function atChainRuns(){
+  const p=String(CFG.atelier_chain||''), l=p?AT_RUNS.filter(r=>String(r.wf||'').startsWith(p)):[];
+  return l.length||!DEMO?l:(ATELIER&&ATELIER.runs)||[];
+}
+// jetons d'un run à l'heure t : son total une fois fini ; avant, ses étapes finies et, au prorata du temps, celle en cours
+// (jusqu'à sa fin, ou jusqu'au relevé g si elle tournait encore) ; part : une étape en cours, le chiffre est approché (« ~ »)
+function atRunTokAt(r,t,g){
+  const s0=ms(r.start);if(!s0||s0>t)return {tok:0,part:false};
+  if(!RUN_ACTIVE.includes(r.status)&&ms(r.end)&&ms(r.end)<=t)return {tok:+r.tok||0,part:false};
+  let tok=0, part=false;
+  for(const s of r.steps||[]){const a=ms(s.at), n=+s.tok||0;if(!a||a>t)continue;
+    const e=RUN_ACTIVE.includes(s.s)?g:a+(+s.ms||0);
+    if(e<=t)tok+=n;else{part=true;tok+=n*(t-a)/Math.max(1,e-a);}}
+  return {tok,part};
+}
+// un bureau à l'heure t : ses jetons rejoués par les étapes de son run, sinon ceux du relevé (tokRel) ; le lot est celui du
+// relevé, pas de l'heure t : la bulle retombe sur le poste, le grand tableau le montre en ⏱ (lotRel)
+function atRoomAt(r,t,runs,g){
+  const x=runs.find(y=>y.run===r.run), k=x&&atRunTokAt(x,t,g);
+  return {...r,lot:null,lotRel:r.lot||null,...(k?{tok:Math.round(k.tok),tokPart:k.part}:{tokRel:true})};
+}
+// les moments datés ne couvrent que les 12 derniers runs de 24 h (atelier_snapshot.py), les chiffres du jour tous les runs
+// depuis minuit : s'il y a moins de runs du jour dans les moments que de runs comptés (tickets + reprises), le compte
+// rejoué serait faux, et le tableau garde le relevé. Sans chiffres du jour : 12 runs dans les moments, la limite est atteinte.
+const AT_EV_RUNS=12;
+function atDayCovered(){
+  const d=ATELIER||{}, first={};
+  if(!Array.isArray(d.events)&&!DEMO)return false;
+  for(const e of atEvents()){const a=ms(e.t);if(a&&!(first[e.run]<=a))first[e.run]=a;}
+  const n=Object.values(first).filter(a=>a>=DAY0).length;
+  return d.jour?n>=(+d.jour.tickets||0)+(+d.jour.reprises||0):Object.keys(first).length<AT_EV_RUNS;
+}
+// « Runs du jour » à l'heure t, par ticket comme le relevé ; rel : tickets, sorties, pannes et reprises restent ceux du
+// relevé (moments incomplets) ; tokRel : les jetons aussi (pas de runs datés)
+function atJourAt(t){
+  const j=(ATELIER&&ATELIER.jour)||{}, n=k=>+j[k]||0, runs=atChainRuns(), out={cours:atRoomsAt(t).length};
+  if(atDayCovered()){
+    const ev=atEvents().filter(e=>{const a=ms(e.t);return a>=DAY0&&a<=t;}), key=e=>(e.ticket||e.run)+'|'+(e.repo||'');
+    const arr=ev.filter(e=>e.k==='arrive'), tk=new Set(arr.map(key));
+    Object.assign(out,{tickets:new Set(ev.map(key)).size,reprises:arr.length-tk.size,sortis:new Set(ev.filter(e=>e.k==='sort').map(key)).size,
+      pannes:new Set(ev.filter(e=>e.k==='panne').map(e=>e.run)).size});
+  }else Object.assign(out,{tickets:n('tickets'),reprises:n('reprises'),sortis:n('sortis'),pannes:n('pannes'),rel:true});
+  if(!runs.length)return Object.assign(out,{tok:n('tok'),tokRel:true});
+  const g=ms((ATELIER||{}).generated_at)||t;let tok=0, part=false;
+  for(const r of runs){if(ms(r.start)<DAY0)continue;const k=atRunTokAt(r,t,g);tok+=k.tok;part=part||k.part;}
+  return Object.assign(out,{tok,part});
+}
+// l'entrepôt à l'heure t : en file, les runs commencés dont la première étape n'a pas commencé (sans runs datés : ceux du
+// relevé déjà là) ; en panne, les pannes datées que rien n'a reprises depuis, la plus récente d'abord
+function atQueueAt(t){
+  const d=ATELIER||{}, ev=atEvents(), runs=atChainRuns();
+  if(!runs.length)return (d.queue||[]).filter(x=>ms(x.since)<=t);
+  return runs.filter(r=>{const s=ms(r.start), e=RUN_ACTIVE.includes(r.status)?Infinity:ms(r.end)||Infinity, a=(r.steps||[]).map(x=>ms(x.at)).filter(Boolean);
+    return s&&s<=t&&e>t&&!(a.length&&Math.min(...a)<=t);}).sort((a,b)=>ms(a.start)-ms(b.start))
+    .map(r=>(d.queue||[]).find(x=>x.run===r.run)||{run:r.run,ticket:(ev.find(e=>e.run===r.run)||{}).ticket||'...',since:r.start});
+}
+function atPannesAt(t){
+  const d=ATELIER||{}, ev=atEvents().filter(e=>ms(e.t)<=t), key=e=>(e.ticket||e.run)+'|'+(e.repo||'');
+  return ev.filter(e=>e.k==='panne'&&!ev.some(x=>x.k==='arrive'&&key(x)===key(e)&&ms(x.t)>ms(e.t))).reverse()
+    .map(e=>(d.pannes||[]).find(p=>p.run===e.run)||{run:e.run,ticket:e.ticket,repo:e.repo,title:e.title,poste:e.poste,since:e.t,cause:e.cause,cause_type:e.cause_type});
+}
+// la pastille SORTIE : en rejeu, les sorties datées jusqu'au curseur ; rel : le relevé (moments incomplets)
+function atDeliveredAt(){
+  if(boardLive(ATELIER))return {n:atDelivered()};
+  if(!atDayCovered())return {n:atDelivered(),rel:true};
+  return {n:atEvents().filter(e=>e.k==='sort'&&ms(e.t)>=DAY0&&ms(e.t)<=T).length};
 }
 // ce qui change sur l'étage : à chaque changement (relevé ou curseur), atDiff joue les scènes
 const atSig=()=>atRooms().map(r=>r.run+':'+(r.gate||r.poste)+(r.back?'!':'')).join('|');
@@ -560,9 +648,14 @@ function atBoard(slots){
     // le titre du ticket est dans le panneau de droite : ici le bureau, l'état, l'avancée, le tour et les jetons, en grand
     const p=AT_POSTES.find(q=>q.k===r.poste);
     const pe=AT_POSTES.find(q=>(r.states||{})[q.k]==='err');
-    atTxt(r.gate==='gate_escalade'?'🚨 demande un humain':r.gate?'✋ attend ta décision':r.back?'↩ renvoyé au code':pe?'🧯 '+pe.n+' en panne':p?p.i+' '+p.n+(r.lot?' · '+r.lot:''):AT_ORCH[r.etape]?'🧠 '+AT_STEP[r.etape]:'',x+10,by+54,col,'bold 12px system-ui,sans-serif','left');
+    // en rejeu, le lot et le tour sont ceux du relevé (⏱) ; les jetons, ceux de l'heure du curseur
+    const f='bold 12px system-ui,sans-serif', lot=r.lotRel&&p&&!r.gate&&!r.back&&!pe;
+    atSegs([[r.gate==='gate_escalade'?'🚨 demande un humain':r.gate?'✋ attend ta décision':r.back?'↩ renvoyé au code':pe?'🧯 '+pe.n+' en panne':p?p.i+' '+p.n+(r.lot?' · '+r.lot:''):AT_ORCH[r.etape]?'🧠 '+AT_STEP[r.etape]:'',col],
+      ...(lot?[[' · '+relTxt(r.lotRel),REL_INK]]:[])],x+10,by+54,f);
     const sw=(cw-20)/AT_POSTES.length;AT_POSTES.forEach((q,j)=>{const s=(r.states||{})[q.k];R(ctx,x+10+j*sw,by+64,sw-2,6,(AT_ST[s]||['#2b3240'])[0]);});
-    atTxt((r.tour?'tour '+r.tour+' · ':'')+Math.round((r.tok||0)/1e3)+' k jetons',x+10,by+90,'#b8c0d0','bold 12px system-ui,sans-serif','left');
+    if(boardLive(ATELIER))atTxt((r.tour?'tour '+r.tour+' · ':'')+Math.round((r.tok||0)/1e3)+' k jetons',x+10,by+90,'#b8c0d0',f,'left');
+    else atSegs([r.tokRel?[relTxt(Math.round((r.tok||0)/1e3)+' k jetons'),REL_INK]:[(r.tokPart?'~':'')+tokK(r.tok||0)+' jetons','#b8c0d0'],
+      ...(r.tour?[[' · ','#b8c0d0'],[relTxt('tour '+r.tour),REL_INK]]:[])],x+10,by+90,f);
     atHit('room',x,by,cw,bh,{i:k});
   });
 }
@@ -657,8 +750,8 @@ function atCorridor(now){
   const T=AT_TS, yb=AT_HY1*T-6;
   atCoffee(1.1*T,yb);atTxt('CAFÉ',1.1*T,AT_HY0*T+14,'#5a4636','bold 11px ui-monospace,Menlo,monospace');
   atSofa(15*T,AT_HY0*T+30);atSofa(31*T,AT_HY0*T+30);
-  atDoor(46*T,AT_HY0*T);const n=atDelivered();
-  {const s='SORTIE'+(n?' · 📦 '+n+' aujourd\'hui':''), f='bold 11px ui-monospace,Menlo,monospace';ctx.font=f; // calée à droite, contre la porte
+  atDoor(46*T,AT_HY0*T);const {n,rel}=atDeliveredAt();
+  {const s='SORTIE'+(n?' · 📦 '+(rel?relTxt(n):n)+' aujourd\'hui':''), f='bold 11px ui-monospace,Menlo,monospace';ctx.font=f; // calée à droite, contre la porte
    atPill(s,46*T-14-(ctx.measureText(s).width+10)/2,AT_HY0*T+16,n?'#2f7a45':'#5a4636','#fff',f);}
   atPlant(18.9*T,yb);atPlant(27.1*T,yb);
   atChantier(T);
@@ -817,17 +910,19 @@ function atGalleryScenes(){
 const AT_WINDOWS=[1,3.5,6,8.5,40,42.5]; // en cases : au-dessus des bureaux 1 et 2 ; à droite du grand tableau, le tableau « Runs du jour »
 // le tableau noir « Runs du jour », au mur du haut à droite du grand tableau (hors de tout chemin, au-dessus de l'en-tête
 // du bureau 2), purement indicatif comme ceux des autres étages : rien au clic, l'historique est dans « Chaîne · bilan ».
-// Compté par ticket (dataset atelier, jour), les reprises à part ; en rejeu, les chiffres sont ceux du relevé (en direct).
+// Compté par ticket (dataset atelier, jour), les reprises à part ; en rejeu, à l'heure du curseur (atJourAt).
 const AT_JOUR={x:34.3*AT_TS,y:4,w:5.5*AT_TS,h:1.62*AT_TS};
 function atJourBoard(){
-  const {x:bx,y:by,w:bw,h:bh}=AT_JOUR, j=(ATELIER&&ATELIER.jour)||{}, n=k=>+j[k]||0, f='11px ui-monospace,Menlo,monospace', tk=n('tok');
+  const {x:bx,y:by,w:bw,h:bh}=AT_JOUR, d=(ATELIER&&ATELIER.jour)||{}, f='11px ui-monospace,Menlo,monospace', ink='#e8e2d0';
+  const j=boardLive(ATELIER)?{...Object.fromEntries(['tickets','cours','sortis','pannes','reprises','tok'].map(k=>[k,+d[k]||0])),part:true}:atJourAt(T), v=(s,rel)=>rel?[relTxt(s),REL_INK]:[s,ink];
   R(ctx,bx-4,by-3,bw+8,bh+6,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+6,by+bh-4,bw-12,3,'#a37650');
   atTxt('RUNS DU JOUR',bx+8,by+13,'#f4efe4','bold 11px ui-monospace,Menlo,monospace','left');
-  let rp=n('reprises')?'↻ '+plural(n('reprises'),'reprise','reprises'):'';ctx.font=f;if(ctx.measureText(rp).width>bw-110)rp='↻ '+n('reprises')+' repr.'; // 2 chiffres : abrégé
-  atTxt(rp,bx+bw-8,by+13,'#c9c2ae',f,'right');
+  let rp=j.reprises?'↻ '+plural(j.reprises,'reprise','reprises'):'';ctx.font=f;if(ctx.measureText(rp).width>bw-110)rp='↻ '+j.reprises+' repr.'; // 2 chiffres : abrégé
+  atTxt(rp&&j.rel?relTxt(rp):rp,bx+bw-8,by+13,j.rel?REL_INK:'#c9c2ae',f,'right');
   R(ctx,bx+8,by+17,bw-16,1,'rgba(244,239,228,.4)');
-  [['#5b8def',n('cours')+' en cours'],['#3fbf6a',n('sortis')+'/'+n('tickets')+' sortis'],['#e0614f',plural(n('pannes'),'panne','pannes')],['#e0a020','~'+(tk>=1e6?(tk/1e6).toFixed(1).replace('.',',')+' M':Math.round(tk/1e3)+' k')+' jet.']]
-    .forEach(([c,t],k)=>{const cx=bx+8+(k%2)*(bw/2-6), cy=by+30+Math.floor(k/2)*15;R(ctx,cx,cy-7,7,7,c);atTxt(t,cx+11,cy,'#e8e2d0',f,'left');});
+  [['#5b8def',j.cours+' en cours',ink],['#3fbf6a',...v(j.sortis+'/'+j.tickets+' sortis',j.rel)],['#e0614f',...v(plural(j.pannes,'panne','pannes'),j.rel)],
+   ['#e0a020',...v((j.part&&!j.tokRel?'~':'')+tokK(j.tok)+' jet.',j.tokRel)]]
+    .forEach(([c,t,i],k)=>{const cx=bx+8+(k%2)*(bw/2-6), cy=by+30+Math.floor(k/2)*15;R(ctx,cx,cy-7,7,7,c);atTxt(t,cx+11,cy,i,f,'left');});
 }
 const atOpen=()=>officeOpen(T);
 // le titre de l'étage affiché, RDC compris : une plaque au début du bandeau sombre du haut, même place et même dessin
@@ -836,14 +931,18 @@ function floorTitle(){
   if(floorsOn().length<2)return;
   const e=ETAGES[FLOOR];if(e)plaque(ctx,10,6,(e.n+' · '+e.nom).toUpperCase(),e.c);
 }
+// l'heure du relevé de l'étage affiché (1er, 2e, 3e) : celle des valeurs ⏱ de ses tableaux noirs en rejeu ; '' ailleurs, et
+// à l'heure du relevé (rien n'y est marqué)
+function floorReleve(){const d=FLOOR===1?ATELIER:FLOOR===2?REDACTION:FLOOR===3?RETOURS:null, g=d&&ms(d.generated_at);return g&&!releveNear(d)?hm(g):'';}
+const releveTxt=()=>{const h=floorReleve();return h?' · ⏱ = relevé de '+h:'';};
 // en rejeu : un liseré ambre autour du plan et « ⏪ Rejeu 11:00 » au bout des onglets d'étage, hors du dessin, au même endroit
-// à chaque étage (audit UX 4.3) ; chaque seconde (90-boot.js)
+// à chaque étage (audit UX 4.3), suivi de la légende des ⏱ aux étages qui en ont ; chaque seconde (90-boot.js)
 function replayMark(){
   const on=!atLive(), w=document.querySelector('.stage .cv-wrap');if(w&&w.classList)w.classList.toggle('rejeu',on);
   const bar=document.querySelector('.floorbar');if(!bar)return;
   let p=document.getElementById('rejeu');
   if(!p){p=document.createElement('span');p.id='rejeu';p.className='rejeu-pill';bar.appendChild(p);}
-  const t=on?'⏪ Rejeu '+hm(T)+' · '+((ETAGES[FLOOR]||{}).n||''):'';
+  const t=on?'⏪ Rejeu '+hm(T)+' · '+((ETAGES[FLOOR]||{}).n||'')+releveTxt():'';
   p.hidden=!on;if(p.textContent!==t)p.textContent=t;
 }
 // xs : les fenêtres d'un étage, en cases (celles du 1er par défaut)
@@ -927,7 +1026,7 @@ function renderAtelier(now){
   atCorridor(now);
   for(const k of Object.keys(AT_MEM.ext))if(now-AT_MEM.ext[k].seen>3e3)delete AT_MEM.ext[k];
   slots.forEach((r,i)=>atRoom(r,i,now,dt));
-  atWarehouse(d.queue||[],d.pannes||[],now);
+  if(boardLive(ATELIER))atWarehouse(d.queue||[],d.pannes||[],now);else atWarehouse(atQueueAt(T),atPannesAt(T),now);
   atWanderTick(slots,now,dt);
   const people=[];
   for(const w of AT_MEM.wander){const a=atWorker(w.i*20+AT_POSTES.findIndex(p=>p.k===w.k),w.walk.pos.x,w.walk.pos.y,w.walk.dir,false,(AT_POSTES.find(p=>p.k===w.k)||{}).n);

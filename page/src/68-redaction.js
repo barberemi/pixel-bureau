@@ -77,9 +77,12 @@ const rvPosteWf=w=>!!w&&(CFG.revue_postes_wf||[]).includes(String(w).slice(0,8))
 const rdPosteWf=w=>!!w&&((CFG.ticket&&CFG.ticket.postes_wf)||[]).includes(String(w).slice(0,8));
 function rvRuns(){
   const l=((DATA&&DATA.runs)||[]).filter(r=>rvWf(r.wf)&&!rvOneWf(r.wf)&&r._s<=T);
-  if(!l.length&&DEMO||SCENE_DEMO&&SCENE_DEMO.revue)return rvDemo().filter(r=>r._s<=T); // une scène de la revue (galerie) se joue sur la journée de démo, à son heure
-  return l.sort((a,b)=>a._s-b._s);
+  if(!l.length&&DEMO||SCENE_DEMO&&SCENE_DEMO.revue)return rvDemo().filter(r=>r._s<=T).map(rvAt); // une scène de la revue (galerie) se joue sur la journée de démo, à son heure
+  return l.sort((a,b)=>a._s-b._s).map(rvAt);
 }
+// en rejeu, une relecture finie après l'heure du curseur était encore en lecture, ses étapes datées à leur état d'alors
+const rvAt=r=>atLive()||!r._e||r._e<=T||RUN_ACTIVE.includes(r.status)?r:{...r,status:'Running',
+  steps:(r.steps||[]).map(s=>{const a=ms(s.at);return a?{...s,s:a>T?'Pending':a+(+s.ms||0)>T?'Running':s.s}:s;})};
 const RV_DEMO=['whoami','setup','fetch_files','write_ctx','contexte','docs','lecture','securite','avis','map_event','post'];
 function rvDemo(){
   const s=DAY0+10*36e5, st=(n,x)=>n.map((k,j)=>({n:k,s:j<x?'Success':j===x?'Running':'Pending'}));
@@ -238,21 +241,37 @@ function rdRoom(now,people){
   rdBoard(people);
 }
 // le tableau noir des tickets du jour, jumeau de REVUES DU JOUR, sur un chevalet entre les tickets épinglés et le tampon
-// (rien au clic : le détail est dans la page « Rédaction · bilan ») ; créés et jetons depuis minuit : dataset redaction
+// (rien au clic : le détail est dans la page « Rédaction · bilan ») ; créés et jetons depuis minuit : dataset redaction ;
+// en rejeu, les tickets créés, les intentions et le tampon à l'heure du curseur, les jetons du relevé (⏱, non datés)
 const RD_BOARD={x:5.9*RD_T,y:20.8*RD_T,w:7.3*RD_T,h:3*RD_T};
 function rdTicketsDuJour(){
   const d=REDACTION||{};
   return {crees:d.crees||0,tampon:rdTables().reduce((a,t)=>a+(t.tickets||[]).filter(x=>x.etat==='gate').length,0),cours:rdTables().length,tok:d.tok_jour||0};
 }
+// à l'heure t, d'après les moments (arrive, gate, cree, fin) : une intention arrivée et pas finie est en cours ; à sa gate,
+// ses tickets attendent le tampon : ceux qu'elle créera ensuite (cree), sinon ceux du relevé qui t'attendent
+function rdJourAt(t){
+  const d=REDACTION||{}, all=d.events||[], by={};
+  for(const e of all)if(ms(e.t)<=t)(by[e.run]||(by[e.run]=[])).push(e);
+  let cours=0, tampon=0;
+  for(const [run,l] of Object.entries(by)){l.sort((a,b)=>ms(a.t)-ms(b.t));
+    if(!l.some(e=>e.k==='arrive')||l.some(e=>e.k==='fin'))continue;
+    cours++;
+    if(l[l.length-1].k!=='gate')continue;
+    const n=all.filter(e=>e.run===run&&e.k==='cree').length, tb=(d.tables||[]).find(x=>x.run===run);
+    tampon+=n||(tb?(tb.tickets||[]).filter(x=>x.etat==='gate').length:0);}
+  return {crees:all.filter(e=>e.k==='cree'&&ms(e.t)>=DAY0&&ms(e.t)<=t).length,tampon,cours,tok:d.tok_jour||0,tokRel:true,at:ms(d.generated_at)||0};
+}
 function rdBoard(people){
-  const {x:bx,y:by,w:bw,h:bh}=RD_BOARD, j=rdTicketsDuJour();
+  const {x:bx,y:by,w:bw,h:bh}=RD_BOARD, j=boardLive(REDACTION)?rdTicketsDuJour():rdJourAt(T), ink='#e8e2d0';
   // sous le bandeau du tampon (dessiné à la hauteur du bureau du boss) : ses pieds passent derrière
   rdLate(people,()=>{R(ctx,bx+14,by+bh,5,18,'#5a3e28');R(ctx,bx+bw-19,by+bh,5,18,'#5a3e28');R(ctx,bx+bw/2-2,by+bh,4,12,'#4a3424');
     R(ctx,bx-6,by-6,bw+12,bh+12,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+4,by+bh-6,bw-8,4,'#a37650');
     atTxt('TICKETS DU JOUR',bx+bw/2,by+18,'#f4efe4','bold 13px ui-monospace,Menlo,monospace');R(ctx,bx+16,by+24,bw-32,1,'rgba(244,239,228,.4)');
     [['#3fbf6a',plural(j.crees,'ticket créé','tickets créés')+' aujourd\'hui'],[WAIT_BG,plural(j.tampon,'ticket','tickets')+' au tampon'],
-     ['#5b8def',plural(j.cours,'intention en cours','intentions en cours')],['#e0a020','~'+Math.round(j.tok/1e3)+' k jetons']]
-      .forEach(([c,t],k)=>{R(ctx,bx+16,by+34+k*15,8,8,c);atTxt(t,bx+30,by+42+k*15,'#e8e2d0','12px ui-monospace,Menlo,monospace','left');});},RD_DESK.y-1);
+     ['#5b8def',plural(j.cours,'intention en cours','intentions en cours')],
+     ['#e0a020',...(j.tokRel?[relTxt(Math.round(j.tok/1e3)+' k jetons'+(j.at?' à '+hm(j.at):'')),REL_INK]:['~'+Math.round(j.tok/1e3)+' k jetons',ink])]]
+      .forEach(([c,t,i],k)=>{R(ctx,bx+16,by+34+k*15,8,8,c);atTxt(t,bx+30,by+42+k*15,i||ink,'12px ui-monospace,Menlo,monospace','left');});},RD_DESK.y-1);
 }
 function rdBoss(people,tks,now){
   const {x,y}=RD_DESK, boss=chars.find(c=>c.boss), g=tks.filter(t=>t.etat==='gate').length, J=RD_LV.job;
@@ -280,8 +299,11 @@ function rdRevue(now,people){
   atTxt('👀 REVUE DES PR',(RD_VX+.6)*T,2.7*T,'#5a4636','bold 12px ui-monospace,Menlo,monospace','left');
   const bx=30*T, by=2.1*T, bw=11*T, bh=3.4*T;R(ctx,bx-6,by-6,bw+12,bh+12,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+4,by+bh-6,bw-8,4,'#a37650');
   atTxt('REVUES DU JOUR',bx+bw/2,by+18,'#f4efe4','bold 13px ui-monospace,Menlo,monospace');R(ctx,bx+16,by+24,bw-32,1,'rgba(244,239,228,.4)');
-  [['#5b8def',plural(rvActive().length,'PR en lecture','PR en lecture')],...(file?[[WAIT_BG,plural(wait,'PR en attente','PR en attente')+(F.st?' (cron '+hm(F.st.b.s)+')':'')]]:[]),['#3fbf6a',plural(done,'revue postée','revues postées')+' aujourd\'hui'],['#e0a020','~'+Math.round(rvRuns().filter(r=>r._s>=DAY0).reduce((a,r)=>a+(r.tok||0),0)/1e3)+' k jetons']]
-    .forEach(([c,t],k)=>{R(ctx,bx+16,by+36+k*18,8,8,c);atTxt(t,bx+30,by+44+k*18,'#e8e2d0','12px ui-monospace,Menlo,monospace','left');});
+  // les jetons : le total de chaque run au relevé ; en rejeu, non datés, en ⏱
+  const tk=Math.round(rvRuns().filter(r=>r._s>=DAY0).reduce((a,r)=>a+(r.tok||0),0)/1e3)+' k jetons', rel=!boardLive(REDACTION);
+  [['#5b8def',plural(rvActive().length,'PR en lecture','PR en lecture')],...(file?[[WAIT_BG,plural(wait,'PR en attente','PR en attente')+(F.st?' (cron '+hm(F.st.b.s)+')':'')]]:[]),['#3fbf6a',plural(done,'revue postée','revues postées')+' aujourd\'hui'],
+   ['#e0a020',rel?relTxt(tk):'~'+tk,rel?REL_INK:null]]
+    .forEach(([c,t,i],k)=>{R(ctx,bx+16,by+36+k*18,8,8,c);atTxt(t,bx+30,by+44+k*18,i||'#e8e2d0','12px ui-monospace,Menlo,monospace','left');});
   const boss=chars.find(c=>c.boss);
   if(file)rvfDesk(people,now,F);
   for(let k=file?1:0;k<6;k++){const r=l[k-(file?1:0)], cx=(28.5+(k%3)*6.3)*T, feet=(k<3?9.2:18.4)*T, rf=feet+2.3*T;

@@ -94,7 +94,9 @@ function tvLiveChip(){
   if(!v)return `<span class="chip ok"><b>●</b>direct</span>`;
   return `<span class="chip ${v.late?'warn':'ok'} tvfresh">${freshRing(v.frac,18)}${esc(v.txt)}</span>`;
 }
-const tvRejeu=()=>mode!=='live'?hm(T):''; // l'heure affichée hors du direct, '' en direct
+// l'heure affichée hors du direct, '' en direct ; aux étages, l'heure du relevé des valeurs ⏱ en clair (la pastille du rejeu
+// n'est pas affichée en TV)
+const tvRejeu=()=>mode!=='live'?hm(T)+releveTxt():'';
 function updateTv(force){
   if(!TV||!DATA)return;
   const bar=document.getElementById('tvbar');
