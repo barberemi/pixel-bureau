@@ -83,6 +83,21 @@ class RetoursSnapshotTest(unittest.TestCase):
         self.assertEqual(snap["pousses"], 1)
         self.assertIn(("rej", "fin"), ks, "fini sans push (gate refusée) : le rejeu libère son bureau")
 
+    def test_failures_without_launch_variables_keep_their_pr_from_the_run_state(self):
+        """Kronn ne rend plus les variables d'un run (trigger_context sans repo ni pr, _vars.py) : la PR d'une panne vient
+        de l'état que garde pr_update.py ; deux pannes de PR différentes restent deux (avant : même clé vide, une seule)."""
+        self.state("f1", repo="dm/cms", pr=7, title="fix: menu")
+        self.state("f2", repo="dm/api", pr=4, title="fix: cache")
+        snap = {"type": "manual", "execution_snapshot_id": "s1"}
+        runs = {k: {"id": k, "workflow_id": "fx", "status": "Failed", "started_at": at, "trigger_context": snap, "step_results": [
+                    {"step_name": "fix", "status": "Failed", "started_at": at, "duration_ms": 1000}]}
+                for k, at in (("f1", "2026-10-30T06:00:00Z"), ("f2", "2026-10-30T07:00:00Z"))}
+        runs["q1"] = {"id": "q1", "workflow_id": "fx", "status": "Pending", "started_at": "2026-10-30T09:30:00Z", "trigger_context": snap}
+        self.r.get = lambda p: list(runs.values()) if p == "/workflows/fx/runs?limit=40" else runs.get(p.rsplit("/", 1)[-1])
+        out = self.r.snapshot("2026-10-30T10:00:00+00:00")
+        self.assertEqual([(p["run"], p["repo"], p["pr"]) for p in out["pannes"]], [("f2", "dm/api", "4"), ("f1", "dm/cms", "7")])
+        self.assertEqual(out["queue"], [{"run": "q1", "repo": "", "pr": "", "since": "2026-10-30T09:30:00Z"}])  # pas encore préparé : rien d'inventé
+
     def test_day_board_counts_today_and_the_week_reading_each_finished_run_once(self):
         # p1 poussée aujourd'hui (3 fils), p2 poussée il y a 3 jours, x1 finie sans push, a1 en cours, v1 trop vieille
         self.state("p1", cols={"T1": "corrige", "T2": "test", "T3": "laisse"})

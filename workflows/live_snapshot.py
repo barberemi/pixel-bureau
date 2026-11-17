@@ -24,6 +24,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from _lib import CFG, TZ, ACTIVE, dumps, get, is_bureau, is_bureau_disc, run_row, disc_row, read_json
 from _lecteurs import detail, menage
+from _vars import run_vars
 
 now = datetime.now(TZ)
 # « 👁 Ce qu'il fait » au -1 (_lecteurs.py) : run.fait d'un poste du Support au travail (sous-workflow support_<poste>),
@@ -74,6 +75,7 @@ for wf in get("/workflows"):
         if r.get("status") not in ACTIVE and (r.get("finished_at") or "") < recent:
             continue
         runs.append(run_row(wf, r))
+        runs[-1]["vars"] = run_vars(wf, r, runs[-1]["vars"])  # Kronn ne les rend plus (_vars.py)
         if wf["id"] in SP_POSTES and r.get("status") in ACTIVE:
             f = support_fait(wf["id"], r)
             if f:

@@ -101,7 +101,10 @@ def fait(run, s, st):
 
 def vars_of(run):
     tc = run.get("trigger_context") if isinstance(run.get("trigger_context"), dict) else {}
-    return str(tc.get("repo") or ""), str(tc.get("pr") or "")
+    # Kronn ne rend plus les variables (_vars.py) : sinon l'état que garde pr_update.py, sans quoi toutes les pannes
+    # tombaient sous la même clé (« », « ») et une seule était montrée
+    st = {} if tc.get("repo") and tc.get("pr") else state(run["id"])
+    return str(tc.get("repo") or st.get("repo") or ""), str(tc.get("pr") or st.get("pr") or "")
 
 
 def room(run):

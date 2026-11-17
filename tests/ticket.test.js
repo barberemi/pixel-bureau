@@ -220,6 +220,20 @@ test('#86 agent déjà dessus : son run en cours sur ce ticket ou cette PR grise
   assert.equal(busy({key: 'DM-2'}), false); // fini : plus dessus
 });
 
+test('run de mise en prod aux variables reconstituées par les relevés (_vars.py : ticket, PR, dépôt) : sur la fiche du ticket et de sa PR', () => {
+  // la forme exacte que publient office_snapshot.py et live_snapshot.py depuis le cache de mep.py (Kronn ne rend plus les variables)
+  const v = `{jira_ticket_key: 'DM-3', pr: '31', repo: CFG.github_repo, project: CFG.github_repo}`;
+  const got = WITH(`CFG.action_wf.mep = CFG.mep_workflow; ACTIONS.mep = true; const d = chars.find(c => c.key === 'darryl'); d.wf.push(CFG.mep_workflow);
+      d.runs.push({wf: CFG.mep_workflow + '-x', status: 'Running', _s: T - 600e3, vars: ${v}})`,
+    `[actAgent('bureau-mep').name, agentBusy(actAgent('bureau-mep'), {key: 'DM-3'})._s === T - 600e3,
+      !!agentBusy(actAgent('bureau-meppr'), {id: CFG.github_repo + '#31'}), !!agentBusy(actAgent('bureau-mep'), {key: 'DM-4'}),
+      runRef({vars: ${v}})]`);
+  assert.deepEqual(got.slice(0, 4), ['Darryl', true, true, false]); // « Darryl est dessus depuis … » sur DM-3 et sa PR #31, pas ailleurs
+  assert.deepEqual([got[4].key, got[4].pr, got[4].repo], ['DM-3', '31', null]); // dépôt de l'équipe : pas « autre dépôt »
+  // sans variable (Kronn 0.15+, aucune source fiable) : le run n'est rattaché à rien, comme avant le correctif
+  assert.equal(WITH('', `runRef({vars: {}})`), null);
+});
+
 test('#86 « Mise en prod » d\'une PR : seulement si un de ses tickets est To Deploy ; sinon grisé avec la raison ; sans ticket, grisé aussi', () => {
   const mep = (cat, keys) => WITH(`CFG.mep_repos = [CFG.github_repo]; ACTS = {tickets: [{key: 'DM-9'}], prs: [{id: CFG.github_repo + '#7', n: '7'}]};
       TEAM = {people: [{name: 'Pam', tickets: [{key: 'DM-9', cat: ${JSON.stringify(cat)}, status: ${JSON.stringify(cat === 'deploy' ? 'To Deploy' : 'To Review')}, summary: 'x'}], prs: []}], unassigned: [], other_prs: []}`,

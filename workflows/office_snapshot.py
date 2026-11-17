@@ -6,6 +6,7 @@ warnings (#8) : lectures ou écritures en échec dont le dataset est publié qua
 import os as _os, re, sys, urllib.request
 from datetime import datetime, timedelta, timezone
 from _lib import API, CFG, TZ, ACTIVE, dumps, get, get_all, is_bureau, is_bureau_disc, run_row, disc_row, err_of, read_json, write_json
+from _vars import run_vars
 
 
 now = datetime.now(TZ)
@@ -40,6 +41,7 @@ for wf in WFS:
         if (r.get("started_at") or "") < since and r.get("status") not in ACTIVE:
             continue
         runs.append(run_row(wf, r))
+        runs[-1]["vars"] = run_vars(wf, r, runs[-1]["vars"])  # Kronn ne les rend plus (_vars.py)
 
 projects = {p["id"]: p.get("name") for p in get("/projects")}
 ALL_DISCS = get_all("/discussions", since=since)  # du jour (et un peu plus : la page qui franchit since)
