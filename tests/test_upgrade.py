@@ -174,6 +174,33 @@ class UpgradeTest(unittest.TestCase):
         with self.assertRaisesRegex(install.InstallError, "install.py"):
             upgrade.upgrade(self.cfg_path)
 
+    def old_kronn(self, size):
+        """Kronn dit 0.15.1 et garde la page du Bureau à size octets."""
+        orig, pid = self.k.call, self.cfg()["page_id"]
+
+        def call(method, path, body=None, timeout=60):
+            if path == "/health":
+                return {"ok": True, "version": "0.15.1"}
+            if method == "GET" and path == f"/pages/{pid}":
+                return {**(orig(method, path, body, timeout) or {}), "html_size_bytes": size}
+            return orig(method, path, body, timeout)
+        return mock.patch.object(self.k, "call", call)
+
+    def test_old_kronn_that_keeps_the_big_page_goes_on(self):
+        """Un Kronn construit depuis main après le tag 0.15.1 garde déjà une page de plus de 1 Mo : la mise à jour
+        continue et le dit."""
+        with self.old_kronn(1_642_528):
+            self.run_upgrade("--no-publish")
+        self.assertIn("Kronn dit 0.15.1", self.out)
+        self.assertIn("0.15.2 ou plus", self.out)
+
+    def test_old_kronn_with_a_small_page_is_refused(self):
+        """Sans preuve qu'il garde une page de plus de 1 Mo, un Kronn d'avant 0.15.2 est refusé, avant toute écriture."""
+        with self.old_kronn(900_000), self.assertRaisesRegex(install.InstallError, "0.15.2 ou plus"):
+            upgrade.upgrade(self.cfg_path)
+        self.assertFalse([1 for m, _p, _b in self.k.calls if m in ("POST", "PUT")])
+        self.assertFalse(os.path.isdir(self.backups) and os.listdir(self.backups))
+
 
 if __name__ == "__main__":
     unittest.main()
