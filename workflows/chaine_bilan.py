@@ -15,7 +15,7 @@ d'ids de runs), pour les essais de la chaîne qui ne sont pas marqués comme tel
 
   {generated_at, periode_jours, versions: [{hash, commit, sujet, debut}], tickets: [ligne], fiches: {run: fiche},
    (ligne.cout : {usd, cache, sortie, modeles: {famille: usd}, postes: {poste: usd}} ; fiche.blocs : [{n, rows: [{n, m, r,
-   c, o, usd, subs}]}], Plan, Tour 1…, Livraison)
+   c, o, usd, subs}]}], Plan, Tour 1…, Livraison ; ligne.carnet : {poste: lignes de carnet écrites}, impl.carnet)
    kpi: {value, label, short}}
 
 Une ligne par run, la plus récente d'abord (30 jours, 50 au plus) ; une fiche (déroulé, schéma, exigences, doc, résumé)
@@ -29,6 +29,7 @@ MAX_OUT = 90_000
 JOURS, MAX_TICKETS = 30, 50
 CACHE = os.path.expanduser("~/.cache/pixel-bureau/chaine_bilan")
 CACHE_V = 2  # 2 : les étapes Agent et le coût des journaux ; un cache d'avant est relu une fois
+REPRISE = os.path.expanduser("~/.cache/pixel-bureau/chaine")  # cache de reprise de la chaîne (carnet de chaque run)
 PROJETS = os.path.expanduser("~/.claude/projects")
 # $ par million de jetons : entrée, écriture du cache, relecture du cache, sortie (prix API, 2026-06) ; impl.prix les remplace
 PRIX = {"opus": [4, 5, 0.2, 20], "sonnet": [2, 2.5, 0.2, 10], "haiku": [1, 1.25, 0.1, 5]}
@@ -166,6 +167,7 @@ def conso_cachee(chain, run, arbre):
     prep = next((s.get("output") or "" for s in steps if s.get("step_name") == "prepare"), "")
     m = KEY.search(prep)
     c["ticket"], c["repo"] = (m.group(1), m.group(2)) if m else (None, None)
+    c["carnet"] = carnet_compte(c["ticket"], c["repo"], run["id"])
     t = re.findall(r"Tour (\d+)", " ".join(s.get("output") or "" for s in steps if s.get("step_name") == "aiguillage"))
     c["tours_controles"] = max(map(int, t)) if t else 0
     tk = next((s.get("output") or "" for s in steps if s.get("step_name") == "ticket"), "")
@@ -297,6 +299,26 @@ def cout(run_id, agents, parent):
     return tot, [{"n": TITRES.get(n, f"{n} : correction des bloquants" if n.startswith("Tour") else n), "rows": rows} for n, rows in blocs.items()]
 
 
+def carnet_compte(ticket, repo, run_id):
+    """Lignes de carnet écrites par poste ({poste: n}, « HH:MM · poste · … » de .kronn/chaine/journal.md, recopié dans le
+    cache de reprise après chaque étape) ; None sans carnet, ou si ce cache est celui d'un autre run (etat.json). En reprise,
+    le carnet du run d'avant y est encore : le compte est celui du ticket sur ce dépôt."""
+    d = os.path.join(REPRISE, str(ticket), str(repo).replace("/", "__"), "courant")
+    try:
+        if not (ticket and repo) or str((read_json(os.path.join(d, "etat.json")) or {}).get("run")) != str(run_id):
+            return None
+        with open(os.path.join(d, "journal.md"), encoding="utf-8", errors="replace") as f:
+            lignes = f.read().splitlines()
+    except (OSError, ValueError, AttributeError):
+        return None
+    out = {}
+    for x in lignes:
+        m = re.match(r"[\s*-]*\d{1,2}[:h]\d{2}\s*·\s*([\w-]+)\s*·", x)
+        if m:
+            out[m.group(1)] = out.get(m.group(1), 0) + 1
+    return out
+
+
 def issue(b, c):
     st = c.get("status")
     if st == "Failed":
@@ -327,6 +349,7 @@ def ligne(b, c):
         "debut": (c.get("debut") or b.get("debut")), "duree": int((fin - debut).total_seconds()) if fin and debut else None,
         "issue": issue(b, c), "pr": b.get("pr"), "version": (b.get("version") or {}).get("hash"),
         "tok": c.get("tok") or 0, "postes": c.get("postes") or {}, "perdu": c.get("perdu") or {}, "cout": c.get("cout"),
+        "carnet": c.get("carnet"),
         "gates": {k.replace("gate_", ""): v for k, v in (c.get("gates") or {}).items()},
         "tours": {"cadrage": (t.get("propositions") or {}).get("cadrage", 0), "essais_code": t.get("essais_code", 0),
                   "controles": t.get("controles", c.get("tours_controles", 0)), "escalades": t.get("escalades", 0),

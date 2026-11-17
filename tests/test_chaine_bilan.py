@@ -35,7 +35,8 @@ class ChaineBilanTest(unittest.TestCase):
         import chaine_bilan
         self.m = chaine_bilan
         self.tmp = tempfile.mkdtemp()
-        self.old = (chaine_bilan.get, chaine_bilan.CACHE, dict(chaine_bilan.CFG))
+        self.old = (chaine_bilan.get, chaine_bilan.CACHE, dict(chaine_bilan.CFG), chaine_bilan.REPRISE)
+        chaine_bilan.REPRISE = os.path.join(self.tmp, "reprise")
         chaine_bilan.CFG.clear()
         chaine_bilan.CFG.update({**copy.deepcopy(BASE), "models": MODELS, "impl": {"historique": os.path.join(self.tmp, "hist")}})
         chaine_bilan.CACHE = os.path.join(self.tmp, "cache")
@@ -79,7 +80,7 @@ class ChaineBilanTest(unittest.TestCase):
             Path(d, b["run"] + ".json").write_text(json.dumps(b))
 
     def tearDown(self):
-        self.m.get, self.m.CACHE = self.old[:2]
+        self.m.get, self.m.CACHE, self.m.REPRISE = self.old[0], self.old[1], self.old[3]
         self.m.CFG.clear()
         self.m.CFG.update(self.old[2])
         shutil.rmtree(self.tmp, ignore_errors=True)
@@ -184,6 +185,24 @@ class ChaineBilanTest(unittest.TestCase):
         # contrat du vidéoprojecteur (kpi_of de pages_snapshot.py, un script qui tourne dès l'import : pas importé ici)
         self.assertEqual(set(out["kpi"]), {"value", "label", "short"})
         self.assertTrue(len(out["kpi"]["value"]) <= 16 and len(out["kpi"]["label"]) <= 40 and len(out["kpi"]["short"]) <= 18)
+
+    def test_carnet_lines_counted_by_poste(self):
+        """Le carnet (impl.carnet) : lignes écrites par poste, lues dans le cache de reprise du run (journal.md recopié après
+        chaque étape) ; rien si ce cache est celui d'un autre run, ou sans carnet ; gardé avec la consommation du run fini."""
+        d = Path(self.tmp, "reprise", "AB-1", "dm__site", "courant")
+        d.mkdir(parents=True)
+        Path(d, "etat.json").write_text(json.dumps({"ticket": "AB-1", "repo": "dm/site", "run": "r1"}))
+        Path(d, "journal.md").write_text("09:58 · plan · Je cherche.\n10:02 · code · Lot 1.\n- 10:03 · code · Lot 2.\n"
+                                         "10:04 · regles · Je relis.\nhors format\n")
+        rows = {t["run"]: t for t in self.m.snapshot(NOW)["tickets"]}
+        self.assertEqual(rows["r1"]["carnet"], {"plan": 1, "code": 2, "regles": 1})
+        self.assertIsNone(rows["r3"]["carnet"])  # AB-3 : pas de cache de reprise
+        Path(d, "journal.md").unlink()  # run fini : le compte est gardé avec sa consommation
+        self.assertEqual({t["run"]: t for t in self.m.snapshot(NOW)["tickets"]}["r1"]["carnet"], {"plan": 1, "code": 2, "regles": 1})
+        self.assertIsNone(self.m.carnet_compte("AB-1", "dm/site", "r1"))
+        Path(d, "journal.md").write_text("10:02 · code · Lot 1.\n")
+        self.assertIsNone(self.m.carnet_compte("AB-1", "dm/site", "autre-run"))
+        self.assertEqual(self.m.carnet_compte("AB-1", "dm/site", "r1"), {"code": 1})
 
     def test_a_finished_run_is_read_once(self):
         self.m.snapshot(NOW)

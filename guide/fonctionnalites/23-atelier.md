@@ -65,7 +65,7 @@ La fiche du boss à l'étage : « ← L'atelier » (ou Échap) revient aux burea
 La fiche d'un agent au travail dit ce qu'il fait, en trois niveaux, sans dépendre de l'agent choisi pour le poste (Kronn en a plusieurs) :
 
 1. **La base**, quel que soit l'agent : les fichiers touchés par la branche dans le dossier du run (les plus récents d'abord, leurs lignes + et −, depuis combien de temps, les commits et ce qui n'est pas encore commité), et le compteur de Kronn (le nombre d'actions de l'étape et la dernière). Un poste fini montre son rapport : son verdict, son résumé et ses constats (bloquants d'abord).
-2. **Le carnet** de l'agent, s'il en tient un (`.kronn/chaine/journal.md`) : ses dernières lignes, telles qu'il les a écrites. Aucune consigne ne le lui demande encore.
+2. **Le carnet** de l'agent, s'il en tient un (`.kronn/chaine/journal.md`) : ses dernières lignes, telles qu'il les a écrites. Au 1er, les postes Plan, Code, Tests, contrôles (et chacun de leurs sous-agents) et retours en mode essai y écrivent eux-mêmes une ligne à chaque étape notable (« 10:02 · code · Lot 1 : les options du lecteur »), quel que soit l'agent ; réglage `impl.carnet` (pack ou config, `false` pour ne plus le demander).
 3. **Le détail**, lu dans le journal de l'agent quand le Bureau sait le lire (Claude Code aujourd'hui) : ce qu'il vient de dire, la part de lectures, recherches, modifications et commandes, ses 10 dernières actions. Pour un autre agent, la fiche le dit : « Détail des actions pas encore lu pour Codex ».
 
 ![« Ce qu'il fait » : le Code du bureau 3, ses fichiers, le compteur de Kronn et ses dernières actions](../img/fait-code.png)
