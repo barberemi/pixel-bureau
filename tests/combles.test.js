@@ -189,3 +189,33 @@ test('la borne : les données de Sprint Quest lues du dataset, et l\'état de la
   assert.equal(read({generated_at: 'x', data: {name: 'X', vs: [], quiz: [], boss: []}}).data, null, 'sans question ni boss : rien à copier');
   p.run('void 0');
 });
+
+test('le digicode : une fenêtre « Digicode » avec sa propre toile, Échap la ferme ; un clic sur le pavé tape, le bon code ouvre toujours l\'étage', () => {
+  const {withDom} = require('./helpers/fakedom.js');
+  const {p, J} = page();
+  withDom(p, dom => {
+    dom.btn.focus();
+    p.run('digiOpen();');
+    const box = dom.doc.querySelector('.bp-modal');
+    assert.equal(box.getAttribute('role'), 'dialog');
+    assert.equal(box.getAttribute('aria-label'), 'Digicode');
+    assert.match(box.className, /\bdg-win\b/);
+    const pad = box.querySelector('.bp-body>canvas#digipad');
+    assert.ok(pad, 'le pavé dans le corps de la fenêtre');
+    assert.deepEqual([pad.width, pad.height], J('[DIGI_W, DIGI_H]'));
+    assert.match(pad.getAttribute('aria-label'), /flèches et touches B et A/);
+    assert.equal(dom.doc.activeElement, box.querySelector('.bp-x'), 'rien de focalisable dans le pavé : ×');
+    assert.deepEqual(J('DIGI.hits.map(h => h.k)'), ['U', 'L', 'R', 'D', 'B', 'A'], 'six touches, plus de ✕ dessiné');
+    p.run('dialogKey({key: "Escape", preventDefault() {}})');
+    assert.equal(dom.doc.querySelector('.bp-modal'), null);
+    assert.equal(J('DIGI.open'), false);
+    assert.equal(dom.doc.activeElement, dom.btn);
+    p.run('digiOpen();');
+    const pad2 = dom.doc.getElementById('digipad'), hit = k => J(`DIGI.hits.find(h => h.k === '${k}')`);
+    for (const k of 'UU') { const h = hit(k); pad2.dispatchEvent(dom.event('click', {clientX: h.x + 5, clientY: h.y + 5})); }
+    assert.equal(J('DIGI.typed'), 'UU', 'un clic sur le pavé tape la touche (digiXY sur sa toile)');
+  });
+  for (const k of 'DDLRLRBA') p.run(`digiPress('${k}')`); // la suite hors du faux DOM : comblesUnlock redessine les onglets
+  assert.equal(J('comblesOn()'), true);
+  assert.match(J('floorTabsHtml()'), /data-floor="4"/);
+});

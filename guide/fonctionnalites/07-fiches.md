@@ -6,7 +6,7 @@ Clic sur un personnage (plan, panneau ou « Qui fait quoi ») : sa fiche s'ouvre
 
 ![« ← Fiche de paie » : la fiche d'un agent ouverte depuis la Fiche de paie](../img/retour-panneau.png)
 
-**Cartes Kronn** : chaque bouton d'action du panneau (lancer, relancer, poser une question, décider une validation, investiguer…) ouvre une fenêtre, la même que Mes pages Kronn : l'action en titre, puis ce que tu lances (le portrait de l'agent, ou une icône, l'action, sa phrase et « ↩ Annuler »), les étapes (le code copié à coller, quand il y en a un), et la carte Kronn dessous. ×, « ↩ Annuler » ou un clic à côté la referment.
+**Cartes Kronn** : chaque bouton d'action du panneau (lancer, relancer, poser une question, décider une validation, investiguer…) ouvre une fenêtre, la même que Mes pages Kronn : l'action en titre, puis ce que tu lances (le portrait de l'agent, ou une icône, l'action, sa phrase et « ↩ Annuler »), les étapes (le code copié à coller, quand il y en a un), et la carte Kronn dessous. ×, « ↩ Annuler » ou un clic à côté la referment, et le focus revient au bouton qui l'a ouverte. Échap aussi ; mais une fois sa carte ouverte, Kronn ne la referme que sur un vrai geste, ce qu'Échap n'est pas toujours pour le navigateur : la fenêtre le dit alors et met le focus sur ×, Entrée la referme.
 
 ![La fenêtre d'une carte Kronn : « ▶ Lancer », Darryl et les étapes (la carte Kronn s'ouvre dessous, dans Kronn)](../img/carte-kronn.png)
 

@@ -6,7 +6,7 @@ Sous le toit du Bureau, il y a une chambre de geek : l'alphabet de Stranger Thin
 
 ## Trouver l'étage
 
-Un digicode est accroché au mur, juste à côté de l'entrée principale du RDC. Au clic, son pavé s'ouvre : quatre flèches et deux boutons, B et A. On tape au clavier (flèches, touches B et A) ou au clic, et chaque touche tapée s'affiche. À la dixième touche, le code est vérifié. Un mauvais code affiche « Accès refusé », et la touche suivante recommence la saisie. Le bon code ouvre une trappe au plafond et monte aux Combles. Échap ou un clic hors du pavé le referme.
+Un digicode est accroché au mur, juste à côté de l'entrée principale du RDC. Au clic, son pavé s'ouvre dans une fenêtre « Digicode », comme les autres fenêtres du Bureau : quatre flèches et deux boutons, B et A. On tape au clavier (flèches, touches B et A) ou au clic, et chaque touche tapée s'affiche. À la dixième touche, le code est vérifié. Un mauvais code affiche « Accès refusé », et la touche suivante recommence la saisie. Le bon code ouvre une trappe au plafond et monte aux Combles. Échap, × ou un clic à côté referme la fenêtre.
 
 ![Le digicode de l'entrée, ouvert, quatre touches tapées](../img/digicode.png)
 

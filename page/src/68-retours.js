@@ -350,23 +350,26 @@ function retoursHover(e){
   if(s){tip.style.display='block';tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px';tip.textContent=s;}else tip.style.display='none';
 }
 // ---------- la fenêtre Kanban d'un bureau : les fils en colonnes, le fil choisi à droite ----------
-function rtKbClose(){const d=document.getElementById('rtkb');if(d)d.remove();RT_KB=null;}
+// la fenêtre large commune (openDialog, 47-fenetre.js) ; un clic sur un fil la redessine sur place, le focus sur ce fil
+function rtKbClose(){if(DLG&&DLG.k==='rtkb')closeDialog();RT_KB=null;}
+function rtKbFill(el,r){
+  const f=(r.fils||[]).find(x=>x.id===RT_KB.fid), url=/^[\w.-]+\/[\w.-]+$/.test(String(r.repo||''))&&/^\d+$/.test(String(r.pr||''))?`https://github.com/${r.repo}/pull/${r.pr}/files`:null;
+  el.innerHTML=`<div class="at-bar">${RT_POSTES.map(p=>{const s=rtState(r,p);return `<i class="${s?RT_ST[s][0]:''}" title="${esc(p.n+' : '+RT_ST[s||'wait'][1])}"></i>`;}).join('')}</div>
+    <div class="rt-kbb"><div class="rt-cols">${RT_COLS.map(c=>{const l=(r.fils||[]).filter(x=>x.col===c.k);return `<div class="rt-col"><h4>${esc(c.n)} · ${l.length}</h4>${l.map(x=>`<button type="button" class="rt-card${x.cur?' cur':''}${f&&x.id===f.id?' on':''}" data-fil="${esc(x.id)}" aria-pressed="${!!(f&&x.id===f.id)}" style="--c:${c.c}"><span class="mono">${esc(x.path||'')}${x.line?':'+x.line:''}</span><small>@${esc(x.who||'?')}</small>${esc(x.text||'')}</button>`).join('')}</div>`;}).join('')}</div>
+    <div class="rt-det">${f?`<div class="mono">${esc(f.path||'')}${f.line?':'+f.line:''} · @${esc(f.who||'?')}</div><p>« ${esc(f.text||'')} »</p><p class="mut">${f.cur?'🛠 La correction traite ce fil en ce moment (le fil rouge sur le plan).':'Colonne : '+esc((RT_COLS.find(c=>c.k===f.col)||{}).n||'')}</p>${safeUrl(f.url)?`<a ${hrefOf(f.url)} target="_blank" rel="noopener">💬 Le commentaire sur GitHub ↗</a>`:''}`:'<p class="mut">Aucun fil.</p>'}
+      ${url?`<a href="${url}" target="_blank" rel="noopener">↗ Ouvrir la PR sur GitHub</a>`:''}</div></div>`;
+}
 function rtKbOpen(run,fid){
   const r=rtSlots().find(x=>x&&x.run===run)||((RETOURS&&RETOURS.rooms)||[]).find(x=>x.run===run);if(!r)return;
-  const cur=(r.fils||[]).find(f=>f.cur)||(r.fils||[])[0];RT_KB={run,fid:fid||(cur&&cur.id)};
-  let d=document.getElementById('rtkb');
-  if(!d){d=document.createElement('div');d.id='rtkb';d.className='rt-kb';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');document.body.appendChild(d);
-    d.addEventListener('click',e=>{if(e.target===d||e.target.closest('.rt-x'))rtKbClose();const c=e.target.closest('[data-fil]');if(c&&RT_KB)rtKbOpen(RT_KB.run,c.dataset.fil);});}
-  d.setAttribute('aria-label','Kanban de '+rtName(r));
-  const f=(r.fils||[]).find(x=>x.id===RT_KB.fid), url=/^[\w.-]+\/[\w.-]+$/.test(String(r.repo||''))&&/^\d+$/.test(String(r.pr||''))?`https://github.com/${r.repo}/pull/${r.pr}/files`:null;
-  d.innerHTML=`<div class="rt-kbw"><div class="rt-kbh"><b>🛠 ${esc(rtName(r))}</b>${r.title?' · '+esc(r.title):''}${rtWho(r)?' · de '+esc(rtWho(r)):''} · ${plural((r.fils||[]).length,'fil','fils')}<button class="rt-x" aria-label="Fermer">×</button></div>
-    <div class="at-bar">${RT_POSTES.map(p=>{const s=rtState(r,p);return `<i class="${s?RT_ST[s][0]:''}" title="${esc(p.n+' : '+RT_ST[s||'wait'][1])}"></i>`;}).join('')}</div>
-    <div class="rt-kbb"><div class="rt-cols">${RT_COLS.map(c=>{const l=(r.fils||[]).filter(x=>x.col===c.k);return `<div class="rt-col"><h4>${esc(c.n)} · ${l.length}</h4>${l.map(x=>`<button class="rt-card${x.cur?' cur':''}${f&&x.id===f.id?' on':''}" data-fil="${esc(x.id)}" style="--c:${c.c}"><span class="mono">${esc(x.path||'')}${x.line?':'+x.line:''}</span><small>@${esc(x.who||'?')}</small>${esc(x.text||'')}</button>`).join('')}</div>`;}).join('')}</div>
-    <div class="rt-det">${f?`<div class="mono">${esc(f.path||'')}${f.line?':'+f.line:''} · @${esc(f.who||'?')}</div><p>« ${esc(f.text||'')} »</p><p class="mut">${f.cur?'🛠 La correction traite ce fil en ce moment (le fil rouge sur le plan).':'Colonne : '+esc((RT_COLS.find(c=>c.k===f.col)||{}).n||'')}</p>${safeUrl(f.url)?`<a ${hrefOf(f.url)} target="_blank" rel="noopener">💬 Le commentaire sur GitHub ↗</a>`:''}`:'<p class="mut">Aucun fil.</p>'}
-      ${url?`<a href="${url}" target="_blank" rel="noopener">↗ Ouvrir la PR sur GitHub</a>`:''}</div></div></div>`;
-  const x=d.querySelector('.rt-x');if(x)x.focus({preventScroll:true});
+  const cur=(r.fils||[]).find(f=>f.cur)||(r.fils||[])[0], kb={run,fid:fid||(cur&&cur.id)};
+  const box=document.querySelector('.bp-modal[data-win="rtkb"]');
+  if(box&&box.dataset.run===run){RT_KB=kb;const b=box.querySelector('.bp-body');rtKbFill(b,r);const on=b.querySelector('.rt-card.on');if(on)on.focus();return;}
+  const sub=[r.title,rtWho(r)?'de '+rtWho(r):'',plural((r.fils||[]).length,'fil','fils')].filter(Boolean).join(' · ');
+  // RT_KB se pose dans body : openDialog referme d'abord la fenêtre d'avant (son onClose)
+  openDialog({k:'rtkb',wide:true,cls:'rt-win',title:'🛠 Kanban de '+rtName(r),sub,onClose:()=>{RT_KB=null;},body:el=>{
+    RT_KB=kb;el.closest('.bp-modal').dataset.run=run;rtKbFill(el,r);
+    el.addEventListener('click',e=>{const c=e.target.closest('[data-fil]');if(c&&RT_KB)rtKbOpen(RT_KB.run,c.dataset.fil);});}});
 }
-addEventListener('keydown',e=>{if(e.key==='Escape'&&RT_KB)rtKbClose();});
 // ---------- panneau : les bureaux, la file, les pannes, la fiche d'un bureau ----------
 const rtBar=r=>'<div class="at-bar">'+RT_POSTES.map(p=>{const s=rtState(r,p);return `<i class="${s?RT_ST[s][0]:''}" title="${esc(p.n+' : '+RT_ST[s||'wait'][1])}"></i>`;}).join('')+'</div>';
 function rtTag(r){const c=rtCur(r);return r.gate?'<span class="at-tag wait">✋ t\'attend</span>':c&&rtState(r,c)==='err'?`<span class="at-tag bloq">🧯 ${esc(c.n)}</span>`:c?`<span class="at-tag run">${c.i} ${esc(c.n)}</span>`:'';}

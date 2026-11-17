@@ -62,3 +62,27 @@ test('agent ajouté : sa fiche propose de le renommer (entrée du dataset repris
   assert.deepEqual(actions('a_clark_e5ce'), [['✎ Renommer', 'bureau-agent'], ['✕ Retirer du bureau', 'bureau-agent']]);
   assert.equal(actions(run('AGENTS[0].key')), null, 'agent de la config : pas de bloc');
 });
+
+test('la fenêtre : le gabarit commun (openDialog), focus sur le prénom, Échap la ferme et oublie le brouillon', () => {
+  const {withDom} = require('./helpers/fakedom.js');
+  const p = load();
+  p.run("ASKABLE = [{wf: '0000aaaa-cccc', name: 'Autre'}];");
+  withDom(p, dom => {
+    dom.btn.focus();
+    p.run('openNewAgent()');
+    const box = dom.doc.querySelector('.bp-modal');
+    assert.equal(box.className, 'bp-modal na-modal');
+    assert.equal(box.getAttribute('role'), 'dialog');
+    assert.equal(box.getAttribute('aria-label'), 'Nouvel agent');
+    assert.equal(dom.doc.activeElement, box.querySelector('.bp-body .na-name'));
+    assert.equal(p.run('NA.wf'), '0000aaaa-cccc');
+    assert.equal(dom.wrap.inert, true);
+    p.run('dialogKey({key: "Escape", preventDefault() {}})');
+    assert.equal(dom.doc.querySelector('.bp-modal'), null);
+    assert.equal(p.run('NA'), null, 'plus d\'aperçu animé une fois fermée');
+    assert.equal(dom.doc.activeElement, dom.btn);
+    p.run('ASKABLE = [];openNewAgent()');
+    assert.equal(dom.doc.activeElement, dom.doc.querySelector('.bp-x'), 'rien à proposer : focus sur ×');
+    p.run('closeDialog()');
+  });
+});

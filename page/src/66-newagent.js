@@ -44,18 +44,14 @@ function agentCode(){
   const w=NA.wf;
   return agentCodeOf({op:'add',k:agentKey(NA.name,w),n:NA.name,r:NA.role,wf:[String(w).slice(0,8)],seat:NA.seat||null,sp:null,l:NA.look,at:Date.now()});
 }
-let NA_BACK=null, NA_INERT=[];
+// la fenêtre : le gabarit commun (openDialog, 47-fenetre.js), focus sur le prénom
 function openNewAgent(){
   if(!newAgentOn())return;
-  closeNewAgent(false);
-  NA_BACK=document.activeElement;
   const list=workflowsWithoutAgent();
-  NA={wf:list[0]?list[0].wf:'',name:'',role:list[0]?clean(list[0].name):'',seat:'',look:randomLook()};
-  const bd=document.createElement('div');bd.className='bp-backdrop na-backdrop';bd.onclick=()=>closeNewAgent();
-  const box=document.createElement('div');box.className='bp-modal na-modal';box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label','Nouvel agent');
-  const opts=list.map(w=>`<option value="${esc(w.wf)}">${esc(clean(w.name))}</option>`).join('');
-  box.innerHTML=`<div class="bp-head"><h2>Nouvel agent</h2>${BP_ESC}<button type="button" class="bp-x" aria-label="Fermer">×</button></div>`+
-    (list.length?`<div class="na-grid"><div class="na-form">
+  openDialog({k:'agent',title:'Nouvel agent',cls:'na-modal',focus:'.na-name',onClose:()=>{NA=null;},body:el=>{
+    NA={wf:list[0]?list[0].wf:'',name:'',role:list[0]?clean(list[0].name):'',seat:'',look:randomLook()};
+    const opts=list.map(w=>`<option value="${esc(w.wf)}">${esc(clean(w.name))}</option>`).join('');
+    el.innerHTML=list.length?`<div class="na-grid"><div class="na-form">
       <label>Workflow à incarner <small>(sans agent pour l'instant)</small><select class="na-wf">${opts}</select></label>
       <label>Prénom<input class="na-name" type="text" maxlength="24" placeholder="Ex. Mose" autocomplete="off"></label>
       <label>Métier <small>(affiché sur sa fiche)</small><input class="na-role" type="text" maxlength="60"></label>
@@ -64,13 +60,9 @@ function openNewAgent(){
       <button type="button" class="na-dice">🎲 Au hasard</button><small>Retouche-le ensuite depuis sa fiche (✎ Personnaliser).</small></div></div>
     <div class="teamsave" data-kronn-action-slot-host><button type="button" class="on na-create" data-kronn-action="bureau-agent">Créer l'agent</button>
       <div class="hint na-hint">Kronn va te demander un <b>code agent</b> : ce bouton le copie pour toi.</div></div>`
-    :`<p class="note">Tous tes workflows ont déjà un agent.</p>`);
-  NA_INERT=[...document.body.children].filter(e=>!e.inert&&e.tagName!=='SCRIPT');
-  NA_INERT.forEach(e=>{e.inert=true;});
-  document.body.append(bd,box);
-  box.querySelector('.bp-x').onclick=()=>closeNewAgent();
-  if(list.length){
-    const $=s=>box.querySelector(s), name=$('.na-name'), role=$('.na-role'), wf=$('.na-wf'), create=$('.na-create'), hint=$('.na-hint');
+    :`<p class="note">Tous tes workflows ont déjà un agent.</p>`;
+    if(!list.length)return;
+    const $=s=>el.querySelector(s), name=$('.na-name'), role=$('.na-role'), wf=$('.na-wf'), create=$('.na-create'), hint=$('.na-hint');
     role.value=NA.role;
     const sync=()=>{NA.name=name.value.trim();NA.role=role.value.trim();create.disabled=!NA.name;};
     name.oninput=sync;role.oninput=sync;
@@ -82,16 +74,8 @@ function openNewAgent(){
       if(st==='succeeded')hint.innerHTML=`<b style="color:var(--ok)">✓ ${esc(NA.name)} est embauché.</b> Il sort de la salle Serveurs au prochain rafraîchissement de la page.`;
       else if(st==='failed')hint.innerHTML='<b style="color:var(--err)">Code refusé.</b> Vérifie que tu as collé le code en entier (il commence par AGENT1:), puis relance.';
     }).observe(create,{attributes:true,attributeFilter:['data-kronn-action-state']});
-    sync();name.focus();
-  }else box.querySelector('.bp-x').focus();
-}
-function closeNewAgent(restore=true){
-  const was=!!document.querySelector('.na-modal');
-  document.querySelectorAll('.na-modal').forEach(closeKronnCardIn); // 47-bosspages.js
-  document.querySelectorAll('.na-backdrop,.na-modal').forEach(e=>e.remove());
-  NA_INERT.forEach(e=>{e.inert=false;});NA_INERT=[];NA=null;
-  if(!restore||!was)return;
-  const back=NA_BACK;NA_BACK=null;focusBack(back); // Échap et Tab : bossPagesKey (classe bp-modal)
+    sync();
+  }});
 }
 // aperçu animé de l'avatar tiré, comme celui de l'éditeur (appelé à chaque image par la boucle)
 function drawNewAgentPreview(now){

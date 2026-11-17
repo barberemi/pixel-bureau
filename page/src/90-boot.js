@@ -32,7 +32,7 @@ function loop(now){
       loupeFrame(now); // 44-loupe.js : médaillon sur l'événement fort en cours
       drawPreview(now);
       drawNewAgentPreview(now); // 66-newagent.js
-      drawDigicode(now); // 68-combles.js : le boîtier de l'entrée, et son pavé par-dessus tout quand il est ouvert
+      drawDigicode(now); // 68-combles.js : le boîtier de l'entrée, et son pavé dans sa fenêtre quand il est ouvert
     }
   }
   requestAnimationFrame(loop);
@@ -242,7 +242,7 @@ window.addEventListener('kronn:page-data',e=>{
   if(ag)applyAgents(ag);
   const lay=readLayout(k);
   if(lay!==undefined&&applyLayout(lay||EMBEDDED_LAYOUT)){if(FLOOR)setFloor(FLOOR);wideRefresh();return;} // applyLayout a déjà tout rafraîchi (la toile reprend la taille de l'étage)
-  refreshAll();wideRefresh(); // 47-bosspages.js : la fenêtre large ouverte suit
+  refreshAll();wideRefresh(); // 47-fenetre.js : la fenêtre large ouverte suit
   });
 if(TV){document.body.classList.add('tv');NAMES_BEFORE_TV=NAMES;NAMES='all';}
 applyViewParams(window.KronnPageData); // /standalone/pages/<id>?tv=1 : l'écran mural démarre en mode TV

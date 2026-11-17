@@ -65,7 +65,7 @@ function rfOpen(box,id){
       else if(v==='failed')h.innerHTML='<b style="color:var(--err)">Relance refusée</b> (déjà en cours ?). Détail dans la carte.';
     }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
   }
-  conf.querySelector('.bp-back').onclick=()=>rfBack(box);box.scrollTop=0;
+  conf.querySelector('.bp-back').onclick=()=>rfBack(box);dlgTop(box);
 }
 // retour à la grille : la carte Kronn encore ouverte est refermée (second clic sur son bouton), comme bpBack
 function rfBack(box){
