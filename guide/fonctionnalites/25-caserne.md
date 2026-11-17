@@ -35,6 +35,10 @@ Le bouton « 🚒 -1 » (la caserne Support, au survol) apparaît avant « 🏢 
 
 Au -1, le panneau liste les baies (qui a écrit, le sujet, le poste en cours, la barre des postes) puis les appels à prendre, avec les mêmes cartes que la console (« 🔎 Investiguer », « 🔕 Ignorer »). Un clic sur une baie ou un pompier, dans le panneau ou sur le plan, ouvre sa fiche : l'état de chaque poste, puis la carte du fil, avec la réponse proposée et ses trois décisions quand elle attend ta validation. Comme au RDC, le pompier choisi reste dans la lumière et le plan s'assombrit autour de lui ; Échap ou un clic ailleurs l'enlève.
 
+**👁 Ce qu'il fait** : sous l'état des postes, la fiche d'une baie montre ce que fait le pompier au travail : le compteur de Kronn et, quand le Bureau sait lire son agent (Claude Code aujourd'hui), ses dernières actions (l'outil et le fichier du projet lu). Actions seulement : la demande vient d'un canal ouvert, ce que dit l'agent et ce qu'il cherche ne sont jamais affichés. Lu par le cron live, chaque minute.
+
+![La baie 2 au poste Cause : ses actions, sans ses phrases](../img/fait-caserne.png)
+
 Un clic sur le capitaine ouvre la fiche du boss, la même qu'au RDC et au 1er, avec « ← La caserne » (ou Échap) pour revenir aux baies ; il est lui aussi dans la lumière, qui le suit quand il va à la vanne. Ses tickets, ses PR (le Kanban en fenêtre), ses todos et ses validations restent à la caserne ; un lien vers un collègue, un agent ou une autre fiche du RDC remonte au RDC et l'y ouvre. Sa fiche reste ouverte d'un étage à l'autre.
 
 ## Données

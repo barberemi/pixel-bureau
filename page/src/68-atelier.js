@@ -65,14 +65,48 @@ function atelierDemo(){
      states:{...ok(1),gate:'wait'},tour:null,tok:97e3,since:at(9.2),note:'✋ ton plan'},
     {run:'demo-a2',ticket:'DM-7911',title:'Passer les tests du site sur la nouvelle version du framework',repo:'dm/site',poste:'code',
      states:{cadrage:'rep',gate:'rep',code:'run'},tour:'1/3',tok:64e3,since:at(9.6),lot:'essai 2/3',etape:'code',act:{cat:'Read',n:142,at:at(10.998)},
-     reprise:{poste:'code',de:'demo-a2-0',panne:'code',cause:'délai dépassé, arrêté par Kronn (2 h 10 pour 2 h 00 permises)',cause_type:'delai'}},
+     reprise:{poste:'code',de:'demo-a2-0',panne:'code',cause:'délai dépassé, arrêté par Kronn (2 h 10 pour 2 h 00 permises)',cause_type:'delai'},
+     fait:atDemoFait(at,'a2')},
     {run:'demo-a3',ticket:'DM-7854',title:'Retirer un attribut codé en dur du bloc média',repo:'dm/site',poste:'code',back:true,
-     states:{...ok(4),securite:'bloq',code:'run'},tour:'2/3',tok:121e3,since:at(8.4),note:'🔒 bloquant → retour au code',etape:'code',act:{cat:'Execute',n:96,at:at(10.88)}},
+     states:{...ok(4),securite:'bloq',code:'run'},tour:'2/3',tok:121e3,since:at(8.4),note:'🔒 bloquant → retour au code',etape:'code',act:{cat:'Execute',n:56,at:at(11-12/3600)},
+     fait:atDemoFait(at,'a3')},
     {run:'demo-a4',ticket:'DM-412',title:'Cache des listes de rubriques',repo:'dm/api',poste:'retours',
-     states:{...ok(6),perf:'err',besoin:'avis',doc:'ok',pr:'ok',revue_pr:'ok',retours:'run'},tour:'1/3',tok:138e3,since:at(7.9),note:'💬 3 commentaires à traiter',etape:'livraison',act:{cat:'Edit',n:37,at:at(10.994)}}],
+     states:{...ok(6),perf:'err',besoin:'avis',doc:'ok',pr:'ok',revue_pr:'ok',retours:'run'},tour:'1/3',tok:138e3,since:at(7.9),note:'💬 3 commentaires à traiter',etape:'livraison',act:{cat:'Edit',n:37,at:at(10.994)},
+     fait:atDemoFait(at,'a4')}],
     queue:[{run:'demo-q1',ticket:'DM-7606',since:at(10.5)},{run:'demo-q2',ticket:'DM-7948',since:at(10.8)}],
     livres:3,jour:{tickets:8,cours:4,sortis:3,pannes:1,reprises:0,tok:612e3},runs:atDemoRuns(at),pannes:[{run:'demo-p1',ticket:'DM-7702',title:'Bandeau d\'alerte sur les pages direct',repo:'dm/api',poste:'securite',since:at(8.1),
       cause:'garde-fou docs de Kronn : docs/cache.md refusé (une suite de caractères qui ressemble à un secret)',cause_type:'garde_fou_docs',docs_ok:true}]};
+}
+// « 👁 Ce qu'il fait » de la démo (contenus fictifs) : a3 au Code, lu par le lecteur Claude Code, après le bloquant de la
+// Sécurité ; a2 au Code avec un agent sans lecteur (niveau 1 seul) ; a4 aux retours de la revue ; ctrl : a2 aux contrôles
+function atDemoFait(at,k){
+  const s=x=>at(11-x/3600), A=l=>l.map(([x,c,t])=>[s(x),c,t]);
+  if(k==='a2')return {ag:'Codex',lu:false,poste:'code',k:{cat:'Read',n:142,at:s(7)},diff:{n:3,plus:61,moins:40,encours:3,commits:[],
+    l:[['tests/bootstrap.php',12,9,40],['phpunit.xml.dist',6,6,410],['composer.json',3,3,1210]]}};
+  if(k==='a4')return {ag:'ClaudeCode',lu:true,poste:'retours',k:{cat:'Edit',n:37,at:s(6)},
+    diff:{n:3,plus:37,moins:9,encours:3,commits:[],l:[['src/Cache/SectionListCache.php',14,7,6],['tests/Cache/SectionListCacheTest.php',21,0,150],['config/cache.yaml',2,2,262]]},
+    d:{depuis:s(1500),compte:{lecture:15,recherche:8,modification:9,commande:5},actions:A([[6,'modification','src/Cache/SectionListCache.php'],[40,'lecture','src/Cache/SectionListCache.php'],
+      [77,'recherche','invalidate('],[115,'commande','phpunit'],[150,'modification','tests/Cache/SectionListCacheTest.php'],[198,'lecture','tests/Cache/SectionListCacheTest.php'],
+      [240,'commande','git diff'],[262,'lecture','config/cache.yaml'],[300,'recherche','ttl'],[330,'lecture','src/Cache/SectionListCache.php']]),
+      phrases:['Fil 2 : le relecteur a raison, la durée de vie était codée en dur.','Je la lis dans config/cache.yaml et j\'ajoute un test.','Je réponds au fil 3 : l\'invalidation est déjà couverte.']}};
+  if(k==='ctrl')return {ag:'ClaudeCode',lu:true,poste:'regles',k:{cat:'Agent',n:8,at:s(9)},sous:[
+    {poste:'regles',modele:'sonnet',n:41,at:s(9),a:[s(9),'recherche','->getContainer('],p:'Deux appels à l\'ancien conteneur restent dans les tests fonctionnels.'},
+    {poste:'securite',modele:'opus',n:14,at:s(290),a:[s(290),'rapport','.kronn/chaine/rapports/securite.json'],p:'Aucune faille : ni entrée utilisateur ni dépendance touchée.'},
+    {poste:'besoin',modele:'sonnet',n:27,at:s(22),a:[s(22),'lecture','docs/montee-de-version.md'],p:'5 exigences sur 6 couvertes, je cherche la dernière dans le diff.'},
+    {poste:'doc',modele:'sonnet',n:12,at:s(140),a:[s(140),'rapport','.kronn/chaine/rapports/doc.json'],p:'docs/montee-de-version.md cite encore l\'ancienne version : un avis.'}]};
+  return {ag:'ClaudeCode',lu:true,poste:'code',k:{cat:'Execute',n:56,at:s(12)},
+    diff:{n:7,plus:142,moins:18,encours:3,commits:[[s(1700),'feat(bloc-media)']],l:[['tests/Block/MediaBlockTest.php',58,0,31],['templates/blocks/media.html.twig',4,4,140],
+      ['src/Block/MediaBlock.php',44,12,243],['src/Player/PlayerOptions.php',19,2,1905],['docs/blocs.md',9,0,1960],['translations/messages.fr.yaml',5,0,2010],['config/blocks.yaml',3,0,2050]]},
+    d:{depuis:s(2810),compte:{lecture:23,recherche:14,modification:9,commande:10},actions:A([[12,'commande','phpunit'],[31,'modification','tests/Block/MediaBlockTest.php'],
+      [66,'lecture','tests/Block/MediaBlockTest.php'],[101,'commande','phpstan'],[140,'modification','templates/blocks/media.html.twig'],[179,'recherche','data-autoplay'],
+      [204,'lecture','templates/blocks/media.html.twig'],[243,'modification','src/Block/MediaBlock.php'],[291,'lecture','src/Block/MediaBlock.php'],[328,'commande','git log']]),
+      phrases:['Le lot 2 retire data-autoplay du gabarit : le bloc lit maintenant l\'option du lecteur.','phpstan passe sans erreur sur les 3 fichiers du lot.',
+        'Je relance les tests du bloc média avant de commiter le lot 2.']},
+    fini:{poste:'securite',ag:'ClaudeCode',lu:true,rapport:{statut:'a_corriger',at:s(1720),n:{bloquant:1,avis:1},
+      resume:'L\'attribut retiré était écrit en dur ; l\'option qui le remplace arrive du back-office et s\'affiche brute dans le gabarit.',
+      constats:[['bloquant','media.html.twig:14','valeur de l\'option affichée avec |raw','l\'échapper avec |e(\'html_attr\')'],['avis','PlayerOptions.php:31','liste des valeurs permises ouverte','la fermer (autoplay, muted, loop)']]},
+      d:{compte:{lecture:9,recherche:6,commande:3},actions:A([[1720,'rapport','.kronn/chaine/rapports/securite.json'],[1745,'lecture','templates/blocks/media.html.twig'],
+        [1790,'recherche','|raw'],[1830,'lecture','src/Player/PlayerOptions.php']])}}};
 }
 // les runs de la chaîne de la démo, datés par des étapes d'une demi-heure (le rejeu des jetons) : un par bureau (en cours
 // jusqu'au relevé de 11 h), la file, la panne et les trois sorties de atDemoEvents ; leurs jetons font ceux du jour
@@ -102,7 +136,32 @@ const AT_ACT={Read:['📖','lit un fichier'],Execute:['⌨','lance une commande'
 const AT_STALE=5*60e3;
 function atAct(r){const a=r&&r.act, g=ATELIER&&ATELIER.generated_at;if(!a||!a.at||!g||Math.abs(T-Date.parse(g))>180e3)return null;
   const age=Math.max(0,T-Date.parse(a.at)), [ico,txt]=AT_ACT[a.cat]||['⚙','travaille'];return {ico,txt,n:a.n||0,age,stale:age>AT_STALE};}
-const atActBubble=a=>a.stale?'⏳ rien depuis '+Math.floor(a.age/60e3)+' min':a.ico+' '+a.n+' action'+(a.n>1?'s':'');
+const atActBubble=a=>a.stale?'⏳ rien depuis '+Math.floor(a.age/60e3)+' min':a.txt2||a.ico+' '+a.n+' action'+(a.n>1?'s':'');
+// « 👁 Ce qu'il fait » (66-fait.js) : le fait du bureau, en direct seulement (comme atAct)
+const AT_CTRL=['regles','securite','tests','perf','besoin','doc'];
+const atFait=r=>r&&r.fait&&faNear(ATELIER)?r.fait:null;
+const atCtrlPostes=()=>AT_POSTES.filter(p=>AT_CTRL.includes(p.k));
+// la bulle d'un agent du bureau : le compteur de Kronn (atAct) et son texte selon « Ce qu'il fait » (carnet, phrase lue,
+// fichiers modifiés) ; aux contrôles, une bulle par sous-agent lu, sinon « n/m rapports rendus » au poste du run
+function atActFor(r,k){
+  const f=atFait(r), a=atAct(r);
+  if(f&&r.etape==='controles'&&AT_CTRL.includes(k)){
+    const x=(f.sous||[]).find(y=>y.poste===k), st=r.states||{};
+    if(x&&st[k]==='run'){const age=x.at?Math.max(0,T-Date.parse(x.at)):a?a.age:0;
+      return {ico:'👥',txt:'',n:x.n||0,age,stale:age>AT_STALE,txt2:x.p?'« '+faShort(x.p)+' »':null};}
+    if(!(f.sous||[]).length&&r.poste===k&&a){const ks=AT_CTRL.filter(c=>st[c]);return {...a,txt2:'👥 '+ks.filter(c=>st[c]!=='run').length+'/'+ks.length+' rapports rendus'};}
+    return null;
+  }
+  if(r.poste!==k||!a)return null;
+  const t=f&&(!f.poste||f.poste===k)?faBulle(f):null;return t?{...a,txt2:t}:a;
+}
+// la section « Ce qu'il fait » de la fiche d'un agent : au travail, aux contrôles (un sous-agent par poste), ou poste fini
+function atFaitAgent(r,k){
+  const f=atFait(r);if(!f)return '';
+  if(r.etape==='controles'&&AT_CTRL.includes(k)&&(r.states||{})[k])return faitSousHtml(f,atCtrlPostes(),r.states,k);
+  if(f.fini&&f.fini.poste===k)return faitRapportHtml(f.fini);
+  return r.poste===k&&(f.ag||f.diff||f.carnet)?faitHtml(f):'';
+}
 const atAgo=ms=>ms<60e3?'il y a '+Math.round(ms/1e3)+' s':'il y a '+Math.floor(ms/60e3)+' min';
 // l'orchestrateur, hors des postes : il vient dans le bureau pendant ses étapes (un bureau sans poste en cours paraissait vide)
 const AT_ORCH={orchestrateur_plan:'🧠 l\'orchestrateur écrit le plan',orchestrateur:'🧠 l\'orchestrateur décide : livrer ou renvoyer au code'};
@@ -578,7 +637,7 @@ function atRoom(r,i,now,dt){
       const gl=ctx.createRadialGradient(sp.x,feet-24,4,sp.x,feet-24,46);gl.addColorStop(0,'rgba(255,246,190,.65)');gl.addColorStop(1,'rgba(255,246,190,0)');ctx.fillStyle=gl;ctx.fillRect(sp.x-48,feet-72,96,96);
       a._st={st:'work'};a.pose='type';people.push([a,()=>atDesk(sp.x,deskY,true),top]);
       const back=AT_MEM.backAt[r.run], sigh=p.k==='code'&&back&&now-back<8e3;
-      const act=r.poste===p.k&&atAct(r);
+      const act=atActFor(r,p.k);
       late.push(()=>atBubble(sp.x,feet-62,sigh?'encore ?':act?atActBubble(act):r.lot||(p.k==='retours'?'retours de la revue':'au travail'),null,!sigh&&act?act.stale?'stale':act.age<30e3?'live':'calm':null));
     }else if(s==='bloq'||s==='err'){
       a._st={st:'error'};a.pose=s==='bloq'&&AT_MEM.backAt[r.run]&&now-AT_MEM.backAt[r.run]<8e3?'hands':'stand';people.push([a,()=>atDesk(sp.x,deskY,true,'#ff9a8a'),top]);
@@ -1116,12 +1175,16 @@ function atelierFicheHtml(r,i){
   return `<button class="at-back">‹ L'atelier</button><h2 class="at-h">🎫 ${esc(r.ticket||'…')} <span class="cnt">bureau ${i+1}</span></h2>
     <div class="at-title big">${esc(r.title||'')}</div>
     <div class="mut">${esc(r.repo||'')}${r.tour?' · tour <b>'+esc(r.tour)+'</b>':''} · ${Math.round((r.tok||0)/1e3)} k jetons${r.since?' · depuis '+esc(hm(ms(r.since))):''}</div>${atBar(r)}
-    ${(()=>{const a=atAct(r), st=r.poste?atStepName(r.poste):AT_ORCH[r.etape]?'🧠 '+AT_STEP[r.etape]:'';return !r.gate&&(a||st)?`<div class="at-box run">En ce moment : <b>${esc(st||'…')}</b>${a?(a.stale?' · rien depuis '+Math.floor(a.age/60e3)+' min':' · '+esc(a.ico+' '+a.txt)+' · '+a.n+' actions, la dernière '+atAgo(a.age)):''}</div>`:'';})()}
+    ${(()=>{const a=atAct(r), st=r.poste?atStepName(r.poste):AT_ORCH[r.etape]?'🧠 '+AT_STEP[r.etape]:'';
+      if(!r.gate&&r.etape==='controles'&&atFait(r)){const s=r.states||{}, ks=AT_CTRL.filter(c=>s[c]);
+        return `<div class="at-box run">En ce moment : <b>👥 Contrôles</b> · ${plural(ks.length,'poste lancé','postes lancés')} en parallèle, ${plural(ks.filter(c=>s[c]!=='run').length,'rapport rendu','rapports rendus')}</div>`;}
+      return !r.gate&&(a||st)?`<div class="at-box run">En ce moment : <b>${esc(st||'…')}</b>${a?(a.stale?' · rien depuis '+Math.floor(a.age/60e3)+' min':' · '+esc(a.ico+' '+a.txt)+' · '+a.n+' actions, la dernière '+atAgo(a.age)):''}</div>`:'';})()}
     ${r.gate?`<div class="at-gate"></div>${r.url?`<a class="at-link" href="${esc(r.url)}" target="_blank" rel="noopener">↗ Lire en entier dans Kronn</a>`:''}`:''}
     ${r.reprise?`<div class="at-box rep">↻ Repris ${esc(r.reprise.poste==='controles'?'aux contrôles':r.reprise.poste==='livraison'?'à la PR':'au '+atStepName(r.reprise.poste))} après : <b>${esc(atStepName(r.reprise.panne))}</b> en panne${r.reprise.cause?' ('+esc(atCauseTxt(r.reprise))+')':''}.${r.reprise.url?` <a href="${esc(r.reprise.url)}" target="_blank" rel="noopener">↗ le run d'avant</a>`:''}</div>`:''}
     <table class="at-t">${AT_POSTES.map(p=>{const s=(r.states||{})[p.k];return `<tr${r.poste===p.k?' class="cur"':''}><td>${p.i} ${esc(p.n)}</td><td>${s?`<span class="dot" style="background:${AT_ST[s][0]}"></span>${AT_ST[s][1]}`:'<span class="mut">à venir</span>'}</td></tr>`;}).join('')}</table>`+
     (r.note?`<div class="at-box${r.back?' bloq':''}">${esc(r.note)}${r.lot?' · '+esc(r.lot):''}</div>`:r.lot?`<div class="at-box run">${esc(r.lot)}</div>`:'')+
-    (r.url?`<a class="at-link" href="${esc(r.url)}" target="_blank" rel="noopener">↗ Le run dans Kronn</a>`:'');
+    (r.url?`<a class="at-link" href="${esc(r.url)}" target="_blank" rel="noopener">↗ Le run dans Kronn</a>`:'')+
+    (r.etape==='controles'&&atFait(r)?faitSousHtml(atFait(r),atCtrlPostes(),r.states,null):'');
 }
 // les bureaux dont une gate t'attend : comptés et décidés aussi depuis la fiche du boss (50-panel.js, gateTotal)
 const atGateRooms=()=>typeof atelierOn==='function'&&atelierOn()?atSlots().map((r,i)=>r&&r.gate?{r,i}:null).filter(Boolean):[];
@@ -1136,7 +1199,7 @@ function atAgentHtml(pick,slots){
   return `<button class="at-back">‹ L'atelier</button><h2 class="at-h">${p.i} ${esc(p.n)} <span class="cnt">bureau ${pick.i+1}</span></h2>
     <div class="at-box${atState(r,p)==='bloq'||atState(r,p)==='err'?' bloq':''}">${esc(w?'Se promène '+where+' : le bureau est libre, il reviendra à sa place.':atStateText(r,pick.k))}</div>
     <div class="mut">${r?'Sur <b class="mono">'+esc(r.ticket||'')+'</b> · '+esc(r.title||''):'Bureau libre'}</div>
-    <div class="mut">Sa place : bureau ${pick.i+1}, ${atSpot(g,pick.k).row===1?'rangée du haut':'rangée du bas'}${w?' (le chemin est tracé sur le plan)':''}.</div>`;
+    <div class="mut">Sa place : bureau ${pick.i+1}, ${atSpot(g,pick.k).row===1?'rangée du haut':'rangée du bas'}${w?' (le chemin est tracé sur le plan)':''}.</div>`+(r&&!w?atFaitAgent(r,pick.k):'');
 }
 // fiche d'une palette en panne : où et pourquoi, le conseil selon la cause, le lien vers l'étape en échec dans Kronn
 const atPanneHtml=pn=>`<h2 class="at-h">🧯 ${esc(pn.ticket||'…')} <span class="cnt">en panne</span></h2><div class="at-box bloq">Arrêté à <b>${esc(atStepName(pn.poste))}</b>${pn.cause?' : '+esc(pn.cause):''}.</div>`+

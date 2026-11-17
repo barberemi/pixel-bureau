@@ -40,7 +40,10 @@ test("la revue : l'auteur de la PR en face du relecteur, un remplaçant pour la 
   assert.equal(J('rvActive().length'), 3);
   // les postes de la revue (sous-workflows) et l'avis, lus du run ; les étapes d'API et du worktree ne se montrent pas
   assert.equal(J("rvSteps(rvActive().find(r => r.run === 'demo-r3')).map(s => rvStepName(s.n)).join(' ')"), '🗺 contexte 📚 docs 🔍 lecture 🔒 sécu 🧐 avis ✍ postée');
-  assert.deepEqual(J("rvActive().map(rvBubble)"), ['je lis le diff…', 'je cadre la PR…', 'je cherche la faille…']);
+  // demo-r1 a un « Ce qu'il fait » lu (sa dernière phrase) ; demo-r3 a un agent sans lecteur : la bulle de son étape reste
+  assert.deepEqual(J("rvActive().map(rvBubble)"), ['« je cherche qui appelle… »', 'je cadre la PR…', 'je cherche la faille…']);
+  p.run('REDACTION.revue.fait = {};');
+  assert.deepEqual(J("rvActive().map(rvBubble)"), ['je lis le diff…', 'je cadre la PR…', 'je cherche la faille…'], 'sans fait : comme avant');
   p.run("CFG.revue_postes_wf = ['abcd1234'];");
   assert.deepEqual(J("[rvPosteWf('abcd1234-0000'), rvPosteWf('ffff0000-0000'), rvWf('abcd1234-0000')]"), [true, false, false], 'un poste ne passe pas au RDC');
   p.run('setFloor(2); renderRedaction(1000);');

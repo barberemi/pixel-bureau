@@ -44,11 +44,24 @@ const ticketOn=()=>DEMO||!!(CFG.ticket&&CFG.ticket.wf);
 const redactionOn=()=>ticketOn()||(CFG.revue_wf||[]).length>0;
 const RD_ABSENT='La rédaction (créer un ticket) n\'est pas installée';
 // démo : une intention découpée en trois tickets (le premier relu, le deuxième en critique), une autre en recherche
+// « 👁 Ce qu'il fait » de la démo (contenus fictifs) : r1 lit le diff de dm/api#2051, r3 (agent sans lecteur) cherche la
+// faille de #2037 ; la critique de demo-t1 relit ses tickets
+function rdDemoFait(at,k){
+  const s=x=>at(11-x/3600), A=l=>l.map(([x,c,t])=>[s(x),c,t]);
+  if(k==='t1')return {ag:'ClaudeCode',lu:true,poste:'critique',k:{cat:'Read',n:14,at:s(15)},lus:['tickets.json','critiques.json','docs/lecteur.md'],
+    d:{depuis:s(400),compte:{lecture:9,recherche:3,autre:2},actions:A([[15,'lecture','tickets.json'],[60,'autre','jira_get_issue'],[120,'recherche','WebVTT'],[180,'lecture','docs/lecteur.md']]),
+      phrases:['T1 dit WebVTT seulement : la réponse de la rédaction tient.','Je relis T3 : la reprise hors connexion vient de DM-2017.']}};
+  return {'demo-r1':{ag:'ClaudeCode',lu:true,poste:'lecture',k:{cat:'Read',n:31,at:s(10)},lus:['app/Cache/SectionList.php','.kronn/review-2051/diff.md','tests/Cache/SectionListTest.php'],
+      d:{depuis:s(840),compte:{lecture:17,recherche:11,commande:3},actions:A([[10,'lecture','app/Cache/SectionList.php'],[44,'recherche','invalidate('],[80,'lecture','.kronn/review-2051/diff.md'],
+        [130,'commande','git log'],[175,'lecture','tests/Cache/SectionListTest.php'],[220,'recherche','SectionList::']]),
+        phrases:['La clé de cache ne dépend pas de la langue : deux éditions partagent la même liste.','Je cherche qui appelle invalidate() hors du diff.']}},
+    'demo-r3':{ag:'Codex',lu:false,poste:'securite',k:{cat:'Search',n:9,at:s(25)}}};
+}
 function redactionDemo(){
   const at=h=>new Date(DAY0+h*36e5).toISOString();
   // la file de la revue : le cron de 9 h 30 a retenu 5 PR ; les deux de Holly sont postées, celle de Pam est lue (demo-r1)
   const revue={batches:{'demo-c1':[['dm/site',2042,'hollyflax'],['dm/site',2060,'hollyflax'],['dm/api',2051,'pambeesly'],['dm/mobile',311,'darrylphilbin'],['dm/api',2063,'pambeesly']]},
-    verdicts:{'demo-k1':'comment','demo-k2':'approve'},starts:{'demo-c1':at(9.5)}};
+    verdicts:{'demo-k1':'comment','demo-k2':'approve'},starts:{'demo-c1':at(9.5)},fait:rdDemoFait(at,'r1')};
   return {generated_at:at(11),crees:2,tok_jour:38400,revue,crees_l:[{key:'DM-2101',title:'Export : le bouton dans la liste des abonnés',run:'demo-t0'},{key:'DM-2102',title:'Export : le fichier CSV',run:'demo-t0'}],tables:[
     {run:'demo-t1',status:'Running',since:at(10.2),intention:'Refondre le lecteur vidéo : sous-titres, pistes audio et reprise de lecture',poste:'critique',tour:2,
      composants:['dm/site','dm/mobile','dm/api'],type:'Story',tickets:[{i:0,summary:'Lecteur : les sous-titres',composant:'dm/api',points:3,etat:'wait',
@@ -58,7 +71,8 @@ function redactionDemo(){
        resume:'Le lecteur vit dans dm/site (web) et dm/mobile ; dm/api sert le manifeste des vidéos. DM-2017 couvre déjà une partie de la reprise de lecture.'},
      redaction:{version:2,reponses:['T1 : format précisé, WebVTT seulement','T3 : la reprise marche aussi hors connexion'],hors_liste:0},
      critique:{version:1,verdict:'a_retoucher',notes:[{ticket:1,gravite:'bloquant',note:'Quel format de pistes : WebVTT seul, ou SRT aussi ?'},
-       {ticket:3,gravite:'bloquant',note:'La reprise doit-elle marcher hors connexion ? DM-2017 en parle.'},{ticket:2,gravite:'conseil',note:'Citer la maquette du menu.'}]}},
+       {ticket:3,gravite:'bloquant',note:'La reprise doit-elle marcher hors connexion ? DM-2017 en parle.'},{ticket:2,gravite:'conseil',note:'Citer la maquette du menu.'}]},
+     fait:rdDemoFait(at,'t1')},
     {run:'demo-t2',status:'Running',since:at(10.8),intention:'Export CSV des abonnés',poste:'recherche',tour:1,composants:['dm/outils'],tickets:[]}],
     events:[{t:at(10.2),k:'arrive',run:'demo-t1'},{t:at(10.8),k:'arrive',run:'demo-t2'},{t:at(8.5),k:'arrive',run:'demo-t0'},{t:at(9.1),k:'gate',run:'demo-t0'},{t:at(9.2),k:'cree',run:'demo-t0'},{t:at(9.3),k:'cree',run:'demo-t0'},{t:at(9.4),k:'fin',run:'demo-t0'}]};
 }
@@ -102,7 +116,11 @@ const rvStepName=n=>(RV_STEP[n]||[n])[0];
 // une étape finie ou à venir ne montre que son icône ; l'étape en cours ou en échec, son nom aussi (comme les postes des étages)
 const rvStepLbl=s=>{const t=rvStepName(s.n), k=t.indexOf(' ');return k<0||s.s==='Running'||s.s==='Failed'?t:t.slice(0,k);};
 const rvSteps=r=>(r.steps||[]).filter(s=>RV_STEP[s.n]); // les postes et l'avis posté ; le reste (API, worktree) ne se montre pas
-const rvBubble=r=>{const s=rvSteps(r).find(x=>x.s==='Running');return s?RV_STEP[s.n][1]:null;};
+const rvBubble=r=>{const s=rvSteps(r).find(x=>x.s==='Running');return s?faBulle(rvFait(r.run))||RV_STEP[s.n][1]:null;};
+// « 👁 Ce qu'il fait » au 2e (66-fait.js), en direct seulement : le poste au travail d'une revue (revue.fait du relevé) et
+// celui d'une intention (fait de sa table)
+const rvFait=run=>{const f=REDACTION&&REDACTION.revue&&(REDACTION.revue.fait||{})[run];return f&&faNear(REDACTION)?f:null;};
+const rdFait=t=>t&&t.fait&&faNear(REDACTION)?t.fait:null;
 // ---------- décor ----------
 const RD_T=AT_TS;
 function rdBackground(){
@@ -225,6 +243,7 @@ function rdRoom(now,people){
   // les reporters assis à leur poste ; les autres marchent, prennent un café, lisent ou sont au canapé (lvDraw)
   Object.assign(M.want,rdWant(t,G,now));
   const bub={recherche:p==='recherche'?'je fouille '+(t.composants||[]).length+' dépôt(s)…':null,redaction:p==='redaction'?(tks.length?'version '+(t.tour||1)+', je reprends…':'je rédige…'):null,critique:p==='critique'?'je relis T1…':null};
+  const fb=faBulle(rdFait(t));if(fb&&bub[p])bub[p]=fb; // « Ce qu'il fait » : sa dernière phrase lue
   const at={recherche:[rech,'up'],redaction:[red,'down'],critique:[cri,'up']};let zk=0;
   for(const k in at){const s=st(k), pop=lvPop(M,k,!!t&&s==='ok',now), [q,d]=at[k];
     if(lvSeated(M,k)){rdAgent(people,RD_KS[k],q.x,q.y,!t?'idle':s==='wait'?'wait':s==='run'?'run':'idle',{dir:d,hat:'presse',bubble:bub[k],...(k==='critique'?{bx:86,by:44}:{}),badge:t&&s==='ok'?'✓':null,pop},now);
@@ -469,7 +488,9 @@ const FK_BACK={intention:'L\'intention',poste:'Le poste',review:'La PR',author:'
 const RD_GRAV={bloquant:'🔧',conseil:'💡'};
 function rdPosteHtml(t,k){
   const p=RD_POSTES.find(x=>x.k===k);if(!p)return null;
-  const s=rdPosteSt(t,k), etat=s==='run'?'au travail':s==='ok'?'a fini':'à venir', head=`<button class="at-back">‹ L'intention</button><h2 class="at-h">${p.i} ${esc(p.n)} <span class="cnt">${esc(etat)}</span></h2><div class="mut">${esc(p.d)}</div>`;
+  const s=rdPosteSt(t,k), etat=s==='run'?'au travail':s==='ok'?'a fini':'à venir', f=rdFait(t);
+  const head=`<button class="at-back">‹ L'intention</button><h2 class="at-h">${p.i} ${esc(p.n)} <span class="cnt">${esc(etat)}</span></h2><div class="mut">${esc(p.d)}</div>`+
+    (f&&s==='run'&&f.poste===k?faitHtml(f,{lus:'ses sources',base:'Kronn'}):'');
   if(k==='recherche'){const r=t.recherche||{}, d=r.doublons||[];
     return head+((t.composants||[]).length?`<div class="fk-fold"><h4>Les projets touchés</h4><div class="fk-chips">${t.composants.map(c=>`<i>${esc(c)}</i>`).join('')}</div></div>`:'')+
       `<div class="fk-fold"><h4>Les tickets Jira voisins</h4>${d.length?d.map(x=>`<div class="fk-row"><span>${jiraA(x.key)}</span><span>${esc(x.summary)}</span><span class="k">${esc(x.status||'')}</span></div>`).join(''):'<div class="mut">Aucun ticket voisin trouvé.</div>'}</div>`+

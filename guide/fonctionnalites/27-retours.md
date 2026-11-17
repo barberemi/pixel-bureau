@@ -32,6 +32,10 @@ Un clic sur le Kanban d'un bureau (ou « 🔍 Ouvrir le Kanban des fils » dans 
 
 Au 3e, le panneau liste les bureaux (la PR, son auteur, le poste en cours, la barre des postes, les fils par colonne), puis les PR en attente d'un bureau et celles en panne (relance « 🛠 Corriger » sur la PR). Un clic sur un bureau, dans le panneau ou sur le plan, ouvre sa fiche : l'état de chaque poste, les fils par colonne et, quand elle t'attend, la carte de validation (le diff, les réponses prévues, « Approuver » pour pousser). La fiche a sa rangée de liens : la PR ↗, le diff ↗, son ticket ↗, le run et « 🔍 Ouvrir dans le Kanban » (le Mur Kanban de l'équipe). Un clic sur un agent, ou sur le nom d'un poste dans la fiche, ouvre la fiche de son poste : pour 🛠 Correction, le fil en cours (fichier, ligne, qui a commenté, le commentaire ↗) et les fils déjà traités ; pour 🗂 Préparation, 🔍 Diff et 📤 Push, les fils par colonne ; pour 🧪 Contrôles, leur état et le run. Un clic sur les cartons du couloir liste les PR qui attendent un bureau. Un clic sur le boss ouvre sa fiche, la même qu'au RDC.
 
+**👁 Ce qu'il fait** : la fiche de 🛠 Correction montre aussi ce que fait l'agent, comme au 1er ([L'atelier, « Ce qu'il fait »](23-atelier.md#-ce-quil-fait)) : les fichiers qu'il a touchés dans le dossier de travail de la PR (pas encore commités : le push les commite), le compteur de Kronn et, quand le Bureau sait lire son agent (Claude Code aujourd'hui), ce qu'il vient de dire et ses 10 dernières actions. Sa correction finie, pendant les contrôles et le push, ses dernières actions restent dans la fiche, repliées. Sa bulle sur le plan dit sa dernière phrase, sinon le fil en cours. Jamais une commande en entier, un chemin de la machine ni une phrase qui parle d'un secret.
+
+![La correction de site#2042 : le fil en cours, puis ce que fait l'agent](../img/fait-retours.png)
+
 ## Depuis le RDC
 
 - **Sa ligne dans la tuile « L'immeuble »** en haut de page : les PR en correction sur les six bureaux (une fenêtre allumée par bureau), celles dont les corrections t'attendent, les pannes ; les PR poussées aujourd'hui et la file au survol. Un clic monte au 3e.
