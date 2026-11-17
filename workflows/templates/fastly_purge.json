@@ -11,6 +11,7 @@
    {
     "name": "service",
     "label": "Service (domaine)",
+    "placeholder": "hu.frigo.com",
     "description": "Un service du réglage fastly.",
     "required": true,
     "source": "user_input",
@@ -20,6 +21,7 @@
    {
     "name": "kind",
     "label": "Purger par",
+    "placeholder": "key",
     "description": "Une surrogate key, ou une URL (chemin ou adresse complète du même domaine).",
     "required": true,
     "source": "user_input",
