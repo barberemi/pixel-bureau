@@ -78,7 +78,7 @@ Aucune mesure de couverture : pas d'outil configuré (ni `c8`, ni `--experimenta
 Vérifié par recherche du nom de module dans `tests/` (2026-10-11) :
 
 - `workflows/gate_decide.py` : aucun test ne le référence (`avatar_save.py` et `payroll_snapshot.py` sont couverts par le test de contrat, 2026-10-12).
-- `tools/publish.py` (publication vers Kronn, lancée par l'humain seul), `tools/shots.py` (captures), `tools/cdp.py` (pilotage Chrome) : pas de test.
+- `tools/publish.py` (publication vers Kronn, lancée par l'humain seul) : seuls l'ordre de `all`, la création avant le rendu et le poids de la page sont testés (`tests/test_publish.py`) ; `tools/upgrade.py` l'est contre le faux Kronn de `tests/test_install.py` (`tests/test_upgrade.py`). `tools/shots.py` (captures), `tools/cdp.py` (pilotage Chrome) : pas de test.
 - `tools/smoke.py` n'a pas de test propre (c'est lui-même un contrôle).
 - Rendu visuel : 11 captures clés comparées (`tools/visual.py`), le RDC et le 1er étage ; les autres vues (scènes animées, thèmes saisonniers, éditeur…) restent relues à l'oeil.
 - Appels réels à Kronn, GitHub, Jira, Microsoft Graph : remplacés par des faux dans les tests ; la conformité des workflows installés se vérifie avec `python3 tools/templates.py check` (demande un Kronn joignable).

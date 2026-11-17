@@ -47,7 +47,7 @@ Full grammar and cascade: [`docs/conventions/agents-md-format-v1.md`](convention
 | Corriger ou ajouter un test (`tests/`) [src: file: tools/test.sh:7] | [testing-quality](testing-quality.md) |
 | Nouvelle fonctionnalité visible (page + `guide/fonctionnalites/NN-*.md` + ligne du README + captures) [src: file: README.md:9] | [architecture/overview](architecture/overview.md), [repo-map](repo-map.md) |
 | Plan du bureau (`layouts/*.json`, `tools/plan.py`) [src: file: guide/developpement.md:85] | [repo-map](repo-map.md) |
-| Installation, publication, débogage (`tools/install.py`, `tools/publish.py`) [src: file: tools/publish.py:66] | [operations/debug-operations](operations/debug-operations.md) |
+| Installation, mise à jour, publication, débogage (`tools/install.py`, `tools/upgrade.py`, `tools/publish.py`) [src: file: tools/upgrade.py:1] | [operations/debug-operations](operations/debug-operations.md) |
 
 **T2: Search:** if T1 does not cover the task, search `docs/` first and load at most 3 relevant files.
 
@@ -75,7 +75,7 @@ If T0–T2 are insufficient, state which additional file you need and why. Never
 
 ## 2. DO NOT (critical)
 
-- **Lancer `tools/publish.py` ou `git push`** : réservé à l'humain [src: file: docs/briefing.md:23].
+- **Lancer `tools/publish.py`, `tools/upgrade.py` ou `git push`** : réservé à l'humain [src: file: docs/briefing.md:23].
 - **Commiter sur `main`** : chaque changement se fait sur une branche `type/sujet` et devient une PR assignée au mainteneur (`gh pr create --fill --base main --assignee @me`), mergée en squash après CI « Tests » verte ; le hook `.githooks/pre-push` refuse un push vers `main`. Publier depuis `main` à jour, après le merge [src: file: docs/workflow/pull-requests.md:8].
 - **Toucher à `.gitignore`**, ni commiter `bureau.config.json` (propre à chaque installation) [src: file: .gitignore:2] [src: file: docs/briefing.md:23].
 - **Éditer `dist/`** : on édite `page/src/*` et `page/office_template.html` ; `dist/office.html` est produit par `tools/assemble.py` [src: file: guide/developpement.md:48] [src: file: tools/assemble.py:316].

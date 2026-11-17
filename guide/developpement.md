@@ -13,7 +13,7 @@
 | `teams/<équipe>/` | Profil d'équipe : `team.json` (nom, organisation GitHub requise, plan), `roster.json` (l'équipe), `defaults.json` (Jira, GitHub, titre), `music/` (morceaux des collègues), `cast.json` (recettes de leurs avatars), `sprites/` et `sprites.json` (sprites fournis et leurs planches, `sprites/build_sprites.py`). aucun profil n'est livré (une équipe réelle garde ses noms hors du dépôt public) ; le même dossier hors du dépôt = un **pack d'équipe** (clé `team` = son chemin), qui peut aussi apporter ses plans (`layouts/`) et ses thèmes (`themes/`) : format dans `docs/conventions/pack-equipe.md` |
 | `sprites/` | Recettes d'avatars communes `cast.json` (agents, intérimaires, visiteurs, équipe de démo), calques LPC `layers.json` (`build_layers.py`, qui note les fichiers LPC utilisés dans `lpc_used.json` ; après un changement de calques, `python3 sprites/credits.py` régénère `CREDITS.md`) ; `custom/` et `sprites.json` = sprites fournis d'une installation, jamais commités |
 | `data/` | Instantanés de démo, équipe fictive Dunder Mifflin (aperçu local, captures et tests seulement, jamais dans la page publiée) |
-| `tools/` | `install.py`, `uninstall.py`, `publish.py`, `templates.py`, `assemble.py`, `smoke.py`, `theme.py`, `release_notes.py`, `test.sh`, `shots.py` |
+| `tools/` | `install.py`, `upgrade.py`, `uninstall.py`, `publish.py`, `templates.py`, `assemble.py`, `smoke.py`, `theme.py`, `release_notes.py`, `test.sh`, `shots.py` |
 | `tests/` | `node --test` (sans npm) et `unittest` : logique de la page, états, installateur, modèles, scripts contre un faux Kronn et un faux `gh`, à une heure figée (midi à Paris, `tests/fakeclock/`, `BUREAU_TEST_NOW` pour une autre heure) |
 
 ## Configuration
@@ -50,9 +50,11 @@
 ```sh
 python3 -m venv .venv && .venv/bin/pip install pillow websocket-client   # une fois
 sh tools/test.sh --chrome              # tests + page assemblée chargée dans Chrome headless
-python3 tools/publish.py page          # ou workflows, ou all
+python3 tools/publish.py page          # ou workflows, ou all (les workflows, puis la page)
 python3 tools/templates.py check       # les workflows du Kronn = le rendu des modèles
 ```
+
+Après un merge qui ajoute un dataset, une page à part ou un workflow : `python3 tools/upgrade.py` (crée ce qui manque, puis publie), au lieu de `publish.py all`.
 
 Un changement = une branche et une PR, mergée en squash après CI verte ; `main` ne reçoit pas de push direct (hook `.githooks/pre-push`, à activer une fois par clone : `git config core.hooksPath .githooks`). Publier depuis `main` à jour, après le merge.
 

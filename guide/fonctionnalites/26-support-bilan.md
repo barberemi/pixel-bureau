@@ -35,4 +35,4 @@ Le relevé du canal oublie un fil au bout de 14 jours, et une nouvelle investiga
 
 Le cron (sans jetons) a trois étapes, chacune relançable seule : `archive` range les fils du relevé dans l'historique, `releve` lit dans Kronn ce que lui seul sait (durée, coût et modèle de chaque agent, passages à la gate et décision ; un run fini n'est relu qu'une fois), `bilan` assemble les deux et publie le dataset `support_bilan`.
 
-Après la mise à jour : `python3 tools/install.py` (crée la page et le cron), puis `python3 tools/publish.py all`.
+Après la mise à jour : `git pull && python3 tools/upgrade.py` (crée la page et le cron s'ils manquent, puis publie).

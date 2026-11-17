@@ -28,10 +28,10 @@ pixel-bureau/
 │   ├── *.py                   # autres étapes (team_shape, planning_jql, duck_start, todos, gate_decide, question_answer, relaunch, layout_save, agent_save…)
 │   └── templates/*.json       # modèles des workflows et Quick Prompts (team, live, office, canard, absences, duck, gate…)
 ├── arcade/sprint-quest/       # source de l'artefact claude.ai Sprint Quest (borne des Combles) et ses capacités ; republié par la skill .claude/skills/sprint-quest
-├── skills/*.md                # skills du Bureau, partagés par la revue de PR et la chaîne (publiés par publish.py et install.py)
+├── skills/*.md                # skills du Bureau, partagés par la revue de PR et la chaîne (publiés par publish.py, install.py et upgrade.py)
 ├── tools/                     # outillage local (lancé à la main, jamais par Kronn)
 │   ├── assemble.py            # page -> dist/office.html
-│   ├── install.py, uninstall.py, publish.py, templates.py
+│   ├── install.py, upgrade.py, uninstall.py, publish.py, templates.py
 │   ├── plan.py, plan_prompt.md  # vérif/aperçu/partage des plans, brouillon depuis une image (CLI claude)
 │   ├── test.sh, smoke.py, cdp.py  # tests + contrôle de fumée (Chrome headless) ; theme.py : contrastes d'un thème
 │   ├── shots.py               # captures de la doc -> guide/img/
@@ -58,7 +58,8 @@ Sources : [src: file: guide/developpement.md:5] [src: file: .gitignore:2].
 | `page/src/00-config.js` / `page/src/90-boot.js` | Premier script (plan embarqué `__LAYOUT__`, `readLayout`) et dernier (boucle `loop` et démarrage) [src: file: page/src/00-config.js:1] [src: file: page/src/90-boot.js:1] |
 | `bureau.config.json` | Config propre à chaque installation (non versionnée, créée par `tools/install.py`) ; copie de test dans `tests/fixtures/bureau.config.json` [src: file: .gitignore:1] |
 | `workflows/templates/*.json` + `tools/templates.py` | Source des workflows Kronn et leur rendu (`@@…@@` remplacés), `check` et `export` [src: file: tools/templates.py:3] |
-| `tools/publish.py` | Publication `page`, `workflows` ou `all` (réservé à l'humain) [src: file: tools/publish.py:66] |
+| `tools/publish.py` | Publication `page`, `workflows` ou `all` (les workflows, puis la page ; réservé à l'humain) [src: file: tools/publish.py:103] |
+| `tools/upgrade.py` | Mise à jour d'une installation sans question : sauvegarde de la config, migrations, ce qui manque créé, puis publication (réservé à l'humain) [src: file: tools/upgrade.py:140] |
 | `tools/test.sh` | Point d'entrée des tests : `node --test`, `unittest`, `smoke.py` (normal et `--empty`) [src: file: tools/test.sh:7] |
 
 ## Auto-generated files (do NOT edit manually)

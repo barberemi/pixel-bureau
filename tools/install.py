@@ -459,6 +459,13 @@ def models(ask, cfg, old):
             dflt = bool(assemble.merged(cfg).get(key))
         if ask.yes(f"model_{key}", q + " ?", dflt):
             keep.add(key)
+    return with_posts(keep)
+
+
+def with_posts(keep):
+    """Les modèles choisis (clés de TEMPLATES) et ce qu'ils lancent : le sous-workflow de revue, les postes de chaque
+    chaîne. Partagé avec tools/upgrade.py, qui complète ce qui est déjà installé."""
+    keep = set(keep)
     if keep & {"review_one", "review_cron"}:
         keep.add("review_child")
     if "ticket" in keep:  # la salle de rédaction (2e étage) : un sous-workflow par poste, puis un par ticket
@@ -848,6 +855,26 @@ def upsert_side_page(k, cfg, key, dry):
     return p["id"]
 
 
+def side_pages(k, cfg, chosen, dry):
+    """Les pages à part des modèles installés (chosen : clés de TEMPLATES), créées ou complétées, leur id rangé dans la
+    config. Avant les workflows : le cron de chaque bilan publie dans sa page. Partagé avec tools/upgrade.py."""
+    for model, key in (("impl_chain", "bilan_page_id"), ("support", "support_bilan_page_id"), ("ticket", "redaction_bilan_page_id")):
+        if model in chosen and not templates.skipped(model, cfg):
+            bid = upsert_side_page(k, cfg, key, dry)
+            if bid:
+                cfg[key] = bid
+    if "review_child" in chosen and not templates.skipped("review_child", cfg):  # la revue : la page « Revue · bilan »
+        cfg.setdefault("revue_bilan_page_id", (cfg.get("review") or {}).get("page_id"))  # la page de récap déjà réglée, reprise
+        bid = upsert_side_page(k, cfg, "revue_bilan_page_id", dry)
+        if bid:
+            cfg["revue_bilan_page_id"] = bid
+            cfg.setdefault("review", {}).setdefault("page_id", bid)  # où la revue écrit ses lignes
+    if not templates.skipped("fix", cfg):  # « corriger » (actions.fix_pr) : la page « Retours · bilan »
+        bid = upsert_side_page(k, cfg, "retours_bilan_page_id", dry)
+        if bid:
+            cfg["retours_bilan_page_id"] = bid
+
+
 def upsert_bilan_page(k, cfg, dry):
     """La page « Chaîne · bilan », quand la chaîne d'implémentation est installée."""
     return upsert_side_page(k, cfg, "bilan_page_id", dry)
@@ -1020,22 +1047,7 @@ def main(argv=None):
     title = a.title or defaults["page_title"]
     cfg["page_id"] = upsert_page(k, cfg, title, a.dry_run)
     chosen = models(ask, cfg, old)  # modèles d'agents (#78) : seulement ceux acceptés
-    # pages à part, avant les workflows : le cron de chaque bilan publie dans sa page
-    for model, key in (("impl_chain", "bilan_page_id"), ("support", "support_bilan_page_id"), ("ticket", "redaction_bilan_page_id")):
-        if model in chosen and not templates.skipped(model, cfg):
-            bid = upsert_side_page(k, cfg, key, a.dry_run)
-            if bid:
-                cfg[key] = bid
-    if "review_child" in chosen and not templates.skipped("review_child", cfg):  # la revue : la page « Revue · bilan »
-        cfg.setdefault("revue_bilan_page_id", (cfg.get("review") or {}).get("page_id"))  # la page de récap déjà réglée, reprise
-        bid = upsert_side_page(k, cfg, "revue_bilan_page_id", a.dry_run)
-        if bid:
-            cfg["revue_bilan_page_id"] = bid
-            cfg.setdefault("review", {}).setdefault("page_id", bid)  # où la revue écrit ses lignes
-    if "fix" in tpls and not templates.skipped("fix", cfg):  # « corriger » (actions.fix_pr) : la page « Retours · bilan »
-        bid = upsert_side_page(k, cfg, "retours_bilan_page_id", a.dry_run)
-        if bid:
-            cfg["retours_bilan_page_id"] = bid
+    side_pages(k, cfg, chosen, a.dry_run)  # pages à part, avant les workflows : le cron de chaque bilan publie dans sa page
     if not a.dry_run:  # skills du Bureau (revue et chaîne), avant les workflows qui les chargent : ids dans skills.<clé>
         templates.sync_skills(k.call, cfg, say=lambda m: say("  " + m))
     upsert_all(k, cfg, {key: t for key, t in tpls.items() if templates.TEMPLATES[key][1][0] != "models" or key in chosen},

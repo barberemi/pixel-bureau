@@ -49,4 +49,4 @@ Le dossier d'une intention (`~/.cache/pixel-bureau/ticket/<run>/`) ne garde que 
 
 Le cron (sans jetons) a deux étapes, chacune relançable seule : `releve` lit dans Kronn ce que lui seul sait (durée, coût et modèle de chaque agent des postes, passages au tampon et décision, créations en échec, déroulé ; un run fini n'est relu qu'une fois), `bilan` assemble l'historique et ce relevé et publie le dataset `redaction_bilan`.
 
-Après la mise à jour : `python3 tools/install.py` (crée la page et le cron), puis `python3 tools/publish.py all`.
+Après la mise à jour : `git pull && python3 tools/upgrade.py` (crée la page et le cron s'ils manquent, puis publie).

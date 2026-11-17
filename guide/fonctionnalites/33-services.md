@@ -53,4 +53,4 @@ Sans réglage, Le Bureau suit GitHub, Claude, Jira et Confluence. Pour Claude, s
 - `components` (facultatif) : les composants qui comptent, tels que la page les nomme ; sans lui, tous.
 - `"statuts": []` : aucun relevé, rien sous l'écran.
 
-Une installation existante doit relancer `python3 tools/install.py` une fois pour créer le dataset `statuts`, avant de republier les workflows.
+Une installation existante reçoit le dataset `statuts` avec `git pull && python3 tools/upgrade.py` (il le crée, puis publie).
