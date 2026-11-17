@@ -342,3 +342,15 @@ test('F8, 2e : REVUES DU JOUR selon le statut des relectures à l\'heure du curs
   assert.deepEqual(J(`[rvActive().length]`), [3]);
   p.run('setFloor(0);');
 });
+
+test("le panneau du 2e ne montre que les gates du modèle ticket : pas celle d'« Implémenter un ticket » (1er) ni de « Réestimer un ticket »", () => {
+  const {p} = page();
+  p.run(`CFG.ticket = {wf: 'aaaaaaaa'}; GATES = [
+    {run: 'r-tk', wf: 'aaaaaaaa-1111', wf_name: 'Créer un ticket', gate: 'tampon', since: new Date(T).toISOString()},
+    {run: 'r-impl', wf: 'cccccccc-2222', wf_name: 'Implémenter un ticket', gate: 'ton plan', since: new Date(T).toISOString()},
+    {run: 'r-est', wf: 'dddddddd-3333', wf_name: 'Réestimer un ticket', gate: 'valider', since: new Date(T).toISOString()}];
+    sel = null; RDF = null; RDTK = null;`);
+  const runs = JSON.parse(p.run(`(() => { const out = [], gc = gateCard; gateCard = (parent, run) => out.push(run.run);
+    try { drawRedactionSide(document.createElement('div')); } finally { gateCard = gc; } return JSON.stringify(out); })()`));
+  assert.deepEqual(runs, ['r-tk']);
+});

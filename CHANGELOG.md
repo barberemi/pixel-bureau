@@ -32,6 +32,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- 2e étage : la gate d'« Implémenter un ticket » (cadrage, ton plan, relecture de la PR) et celle de « Réestimer un ticket » s'affichaient aussi dans le panneau de la rédaction ; seul le tampon du modèle ticket y reste.
 - Revue : le coût de chaque poste n'était plus séparé (tout comptait en « avis ») depuis que Kronn préfixe les prompts ; le poste se lit après « Review la PR ». Dans la page de la revue, le modèle de chaque revue (signature « Le Bureau ») s'affiche de nouveau.
 - « Retours · bilan » : un run lu pendant qu'il tournait restait « en cours » pour toujours ; il est relu une fois fini.
 - Les Combles : le bon code du digicode ne menait nulle part dans Kronn (son cadre refuse le stockage local, le déblocage se perdait) ; il vit désormais en mémoire jusqu'au rechargement, et le contrôle de fumée le vérifie dans le cadre de Kronn. Le digicode, plus petit, glisse à gauche, à l'écart du panneau Sortie de la nuit ; le post-it du boss quitte l'écran pour le plateau du bureau.

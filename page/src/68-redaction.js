@@ -412,7 +412,7 @@ function drawRedactionSide(side){
   else{box.innerHTML=redactionListHtml();
     box.querySelectorAll('.at-room').forEach(b=>b.addEventListener('click',()=>{RDSEL=b.dataset.run;renderSide(true);}));
     box.querySelectorAll('.rd-tk').forEach(b=>b.addEventListener('click',()=>{RDSEL=b.dataset.run;RDTK={run:b.dataset.run,k:+b.dataset.k};renderSide(true);}));}
-  for(const g of GATES)if(/un ticket/.test(String(g.wf_name||'')))gateCard(box.querySelector('.at-gate')||box,{run:g.run,wf_name:g.wf_name,_s:ms(g.since)},null); // le tampon : chaque ticket qui t'attend
+  for(const g of GATES)if(isTicketWf(g.wf))gateCard(box.querySelector('.at-gate')||box,{run:g.run,wf_name:g.wf_name,_s:ms(g.since)},null); // le tampon : chaque ticket qui t'attend (le modèle ticket, pas « Implémenter un ticket » du 1er)
 }
 // ---------- les fiches au clic (2e et 3e) : liens vers la PR, le ticket, le run et le Kanban ----------
 const ghPrUrl=(repo,n)=>/^[\w.-]+\/[\w.-]+$/.test(String(repo||''))&&/^\d+$/.test(String(n||''))?`https://github.com/${repo}/pull/${n}`:null;
