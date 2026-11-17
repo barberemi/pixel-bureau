@@ -27,6 +27,10 @@ with open(os.environ["FAKE_GH"] + ".calls", "a") as fh:
     fh.write(json.dumps(a) + "\n")
 if a[:2] == ["repo", "clone"]:  # le « dépôt GitHub » est le remote nu local
     sys.exit(subprocess.run(["git", "clone", d["remote"], a[3]], capture_output=True).returncode)
+if a[:2] == ["pr", "view"] and a[-1] == "headRefOid":  # la tête vue par GitHub : le remote, en retard de d["lag"] lectures
+    seen = Path(os.environ["FAKE_GH"] + ".calls").read_text().count('"headRefOid"]')
+    sha = subprocess.run(["git", "--git-dir", d["remote"], "rev-parse", d["pr"]["headRefName"]], capture_output=True, text=True).stdout
+    print(json.dumps({"headRefOid": "0" * 40 if seen <= d.get("lag", 0) else sha.strip()})); sys.exit(0)
 if a[:2] == ["pr", "view"]:
     print(json.dumps(d["pr"])); sys.exit(0)
 if a[:2] == ["pr", "list"]:
@@ -100,6 +104,24 @@ class MepTest(unittest.TestCase):
         self.assertIn(["workflow", "run", "deploy-staging.yml", "-R", "dunder-mifflin/site-web", "--ref", "main", "-f", "envchoice=stg", "-f", "versionTag=2.4.1"], c)
         self.assertIn(["workflow", "run", "deploy-production.yml", "-R", "dunder-mifflin/site-web", "--ref", "main", "-f", "versionTag=2.4.1"], c)
         self.assertIn("PR du ticket DM-7801", r.stdout)  # la liste lue par la gate de fin
+
+    def test_label_waits_for_the_pushed_commit_to_be_the_pr_head(self):
+        """#2055 : label posé 2 s après le push, GitHub voyait encore l'ancienne tête ; la CI a tourné sur l'ancien commit
+        et l'attente sur le nouveau ne finissait pas. Le label attend que la PR pointe sur le commit poussé."""
+        self.mep("resolve")
+        self.mep("tag", stdin="Bug")
+        self.mep("rebase")
+        self.data["lag"] = 3
+        r = self.mep("citest")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        c = [x for x in self.calls() if x[:2] in (["pr", "view"], ["pr", "edit"]) and x[-1] in ("headRefOid", "ci-test")]
+        self.assertEqual([x[-1] for x in c], ["headRefOid"] * 4 + ["ci-test"] * 2, "label reposé après la 4e lecture, la bonne")
+        self.assertNotIn("ne pointe toujours pas", r.stdout)
+        self.data["lag"] = 100  # GitHub ne suit jamais : on n'attend pas plus de 2 min, le label part quand même
+        r = self.mep("citest")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("ne pointe toujours pas", r.stdout)
+        self.assertEqual(self.calls().count(["pr", "edit", "16", "-R", "dunder-mifflin/site-web", "--add-label", "ci-test"]), 2)
 
     def test_end_gate_lists_only_prs_with_the_key_in_title_or_branch(self):
         """La gate de fin : les PR qui ne font que citer le ticket (une autre PR qui le mentionne) ou qui portent une clé

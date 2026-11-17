@@ -24,7 +24,7 @@ Le **ticket** est déduit de la PR : la première clé du projet Jira (`jira.pro
 | **gate du début** | la PR, le ticket, le tag, les déploiements et l'aperçu de l'annonce : approuver lance la mise en prod |
 | rebase | base de la PR fusionnée dans la branche puis squash en un seul commit posé sur la base, qui garde les lignes `Co-Authored-By` et `Signed-off-by` des commits (qui a écrit le code, un modèle d'IA compris) (pas de commit de merge, pas de rejeu commit par commit : une branche qui a déjà fusionné sa base ne re-conflicte pas), push protégé (`--force-with-lease`), dans une copie du dépôt sous `~/.cache/pixel-bureau/mep` |
 | teams_post | l'annonce Teams ⏳ dans le canal des mises en prod, une fois la PR remise sur sa base : un conflit avec la base, l'échec le plus courant, n'annonce rien |
-| citest | label de la CI reposé, attente du résultat (25 min au plus) |
+| citest | label de la CI reposé une fois le commit poussé devenu la tête de la PR (2 min au plus), attente du résultat (25 min au plus) |
 | **gate** | tests verts : merger ? |
 | merge | l'annonce passe au chargeur animé (mise en prod en cours), puis merge en rebase |
 | **gate** | créer la release ? |

@@ -115,6 +115,14 @@ def latest_run(repo, workflow, since, head_sha=None):
     return "success" if runs[-1].get("conclusion") == "success" else "failed"
 
 
+def head_of(repo, pr):
+    """Le commit de tête de la PR vu par GitHub ('' si illisible)."""
+    try:
+        return json.loads(run("gh", "pr", "view", str(pr), "-R", repo, "--json", "headRefOid")).get("headRefOid") or ""
+    except (RuntimeError, ValueError):
+        return ""
+
+
 def wait(what, check):
     for i in range(1, TRIES + 1):
         res = check()
@@ -333,6 +341,14 @@ def citest(p, n, forced, run_id, dry):
     if dry == "oui":
         print(f"Simulation : label {label} non reposé ; CI {wf} lue sur le commit actuel.")
     elif label:
+        # le push du squash met quelques secondes à devenir la tête de la PR : un label posé avant lance la CI sur l'ancien
+        # commit, et l'attente sur le nouveau ne finit jamais (#2055 du 2026-11-17)
+        for _ in range(24):  # 2 min au plus
+            if head_of(p["repo"], st["pr"]) == st["sha"]:
+                break
+            time.sleep(POLL / 4)
+        else:
+            print(f"La PR ne pointe toujours pas sur {st['sha'][:8]} après 2 min : label reposé quand même.")
         run("gh", "pr", "edit", str(st["pr"]), "-R", p["repo"], "--remove-label", label, check=False)
         run("gh", "pr", "edit", str(st["pr"]), "-R", p["repo"], "--add-label", label)
     wait(f"CI {wf}", lambda: latest_run(p["repo"], wf, "", head_sha=st["sha"]))
