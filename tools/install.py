@@ -497,7 +497,8 @@ MODELS = [("review_one", "Relire une PR à la demande (bouton « Faire relire »
           ("unassign", "Me désaffecter un ticket (retour à À faire)", True),
           ("support", "Investiguer les messages du canal Support et y répondre en fil (console Support)", True),
           ("env", "Générer l'env de branche d'une PR (label retiré puis reposé, bouton « 🌿 » des fiches)", None),
-          ("deploy", "Déployer la branche d'une PR sur DEV ou STG, jamais la prod (bouton « 🚀 » des fiches)", None)]
+          ("deploy", "Déployer la branche d'une PR sur DEV ou STG, jamais la prod (bouton « 🚀 » des fiches)", None),
+          ("fastly_purge", "Purger le cache Fastly en soft purge, par surrogate key ou par URL (services du réglage fastly)", None)]
 MODEL_LAUNCH = {"review_one": "review", "estimate": "estimate", "env": "env"}
 
 
@@ -509,8 +510,8 @@ def models(ask, cfg, old):
     for key, q, dflt in MODELS:
         if key in have or templates.skipped(key, cfg) or (cfg.get("launch") or {}).get(MODEL_LAUNCH.get(key, "")):
             continue
-        if dflt is None:  # oui par défaut quand l'équipe le règle (env, deploy dans settings.json du pack)
-            dflt = bool(assemble.merged(cfg).get(key))
+        if dflt is None:  # oui par défaut quand l'équipe le règle (env, deploy, fastly dans settings.json du pack)
+            dflt = bool(assemble.merged(cfg).get({"fastly_purge": "fastly"}.get(key, key)))
         if ask.yes(f"model_{key}", q + " ?", dflt):
             keep.add(key)
     return with_posts(keep)
