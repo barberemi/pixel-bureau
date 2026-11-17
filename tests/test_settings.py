@@ -59,6 +59,13 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(assemble.merged(self.cfg())["mep"]["teams"]["channel"], "19:mep@thread.tacv2")
         self.assertEqual(assemble.merged(m), m)
 
+    def test_combles_address_from_the_pack(self):
+        """La borne des Combles : l'adresse de Sprint Quest de l'équipe (pack), sinon débranchée ; la config la surcharge."""
+        self.write({"combles": {"url": "https://claude.ai/artifact/equipe"}})
+        self.assertEqual(assemble.combles_url(assemble.merged(self.cfg(combles={}))), "https://claude.ai/artifact/equipe")
+        self.assertEqual(assemble.combles_url(assemble.merged(self.cfg(combles={"url": "https://claude.ai/artifact/moi"}))),
+                         "https://claude.ai/artifact/moi")
+
     def test_support_channel_from_the_pack_and_its_agent_bound_to_the_model(self):
         """#62 : canal Support du pack (la config surcharge clé à clé), personnage rattaché au modèle support installé."""
         self.write({"support": {"name": "Support", "team": "T1", "channel": "19:x@thread.tacv2"},

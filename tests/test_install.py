@@ -276,6 +276,29 @@ class InstallTest(unittest.TestCase):
         self.assertIn("pas de connexion Microsoft 365 dans Kronn", out.getvalue())
         self.assertIn("Calendrier de l'équipe : non", out.getvalue())
 
+    def test_tools_check_says_what_each_missing_tool_takes_away(self):
+        """Outils de la machine (az, claude, docker, Chrome, Pillow, droits de gh) : rien de bloquant, mais dit à
+        l'installation plutôt qu'au premier cron en échec."""
+        def run(cmd, **kw):
+            if cmd[:3] == ["gh", "api", "-i"]:
+                return mock.Mock(returncode=0, stdout="HTTP/2.0 200 OK\nX-Oauth-Scopes: gist, read:org\n\n{}")
+            raise FileNotFoundError()
+        with mock.patch.object(install.subprocess, "run", side_effect=run), \
+                mock.patch.object(install.shutil, "which", side_effect=lambda t: "/usr/bin/az" if t == "az" else None), \
+                mock.patch.object(install.os.path, "isfile", return_value=False):
+            lines = install.check_tools()
+        text = "\n".join(lines)
+        self.assertEqual(lines[0], "✓ outils : az")
+        self.assertIn("gh sans le droit repo, workflow", text)
+        self.assertIn("gh auth refresh -s repo,workflow", text)
+        self.assertIn("claude absent", text)
+        self.assertIn("docker absent : pas de contrôles de la chaîne", text)
+        self.assertIn("Chrome absent", text)
+        self.assertIn("Pillow absent", text)
+        with mock.patch.object(install.subprocess, "run", side_effect=FileNotFoundError()), \
+                mock.patch.object(install.shutil, "which", return_value="/x"), mock.patch.object(install, "has_pillow", return_value=True):
+            self.assertEqual(install.check_tools(), ["✓ outils : az, claude, docker, Chrome, Pillow"])  # sans gh : dit ailleurs
+
     def test_reuses_same_named_workflow_instead_of_creating(self):
         answers = {k: v for k, v in ANSWERS.items() if k != "reuse"}  # défaut : homonymes réutilisés
         self.assertEqual(self.run_install(answers), 0)
@@ -464,13 +487,14 @@ class InstallTest(unittest.TestCase):
 
     def test_mac_notification_asked_only_with_osascript(self):
         """notify_mac : demandé sur Mac (osascript), oui par défaut, le non est retenu ; ailleurs, aucune question ni clé."""
-        with mock.patch.object(install.shutil, "which", side_effect=lambda c: "/usr/bin/osascript" if c == "osascript" else shutil.which(c)):
+        which = shutil.which  # le vrai, pris avant le mock (qui remplace shutil.which lui-même)
+        with mock.patch.object(install.shutil, "which", side_effect=lambda c: "/usr/bin/osascript" if c == "osascript" else which(c)):
             self.assertEqual(self.run_install(ANSWERS), 0)
             self.assertIs(json.loads(Path(self.cfg_path).read_text())["notify_mac"], True)
             with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):  # relance sur la même installation
                 self.assertEqual(self.run_install({**ANSWERS, "notify_mac": "n"}), 0)
             self.assertIs(json.loads(Path(self.cfg_path).read_text())["notify_mac"], False)
-        with mock.patch.object(install.shutil, "which", side_effect=lambda c: None if c == "osascript" else shutil.which(c)):
+        with mock.patch.object(install.shutil, "which", side_effect=lambda c: None if c == "osascript" else which(c)):
             os.remove(self.cfg_path)
             self.assertEqual(self.run_install(ANSWERS), 0)
             self.assertNotIn("notify_mac", json.loads(Path(self.cfg_path).read_text()))
