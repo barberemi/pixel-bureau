@@ -32,6 +32,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- Chaîne d'implémentation : une correction poussée par 🛠 Corriger avant ta validation faisait échouer la publication (push du squash refusé, « stale info ») : la PR restait brouillon, sans relecteurs ni commentaire Jira. La publication reprend d'abord la correction ; si la copie a divergé, elle garde les commits et passe quand même la PR en prête.
 - 2e étage : la gate d'« Implémenter un ticket » (cadrage, ton plan, relecture de la PR) et celle de « Réestimer un ticket » s'affichaient aussi dans le panneau de la rédaction ; seul le tampon du modèle ticket y reste.
 - Revue : le coût de chaque poste n'était plus séparé (tout comptait en « avis ») depuis que Kronn préfixe les prompts ; le poste se lit après « Review la PR ». Dans la page de la revue, le modèle de chaque revue (signature « Le Bureau ») s'affiche de nouveau.
 - « Retours · bilan » : un run lu pendant qu'il tournait restait « en cours » pour toujours ; il est relu une fois fini.

@@ -432,10 +432,20 @@ def ci_label():
 def squash():
     """Les commits de la branche (un par lot, puis ceux de la revue et des retours) en un seul, au format des commits du
     dépôt (le message du rédacteur, commit.txt) : les PR de l'équipe sont mergées en un commit (règle de leur
-    doc/GIT-workflow.md). impl.squash (ou impl.repos.<dépôt>.squash) à false : rien. Rend le texte du compte rendu."""
+    doc/GIT-workflow.md). impl.squash (ou impl.repos.<dépôt>.squash) à false : rien. Rend le texte du compte rendu.
+    Une correction poussée à côté de la chaîne (bouton 🛠 Corriger, avant ta validation) est d'abord reprise par avance
+    rapide sur origin/<branche> ; copie divergente ou push refusé : commits gardés, la publication continue (le refus
+    « stale info » arrêtait tout : PR restée brouillon et sans relecteurs)."""
     reg = reglages()
     if not reg.get("squash", impl().get("squash", True)):
         return "commits gardés (squash coupé)"
+    b = etat()["branch"]
+    git("fetch", "--no-tags", "origin", f"+refs/heads/{b}:refs/remotes/origin/{b}")
+    remote, head = git("rev-parse", "--verify", "-q", f"origin/{b}"), git("rev-parse", "HEAD")
+    if remote and remote != head and not git_ok("merge-base", "--is-ancestor", remote, head):  # en avance : rien à reprendre
+        if not git_ok("merge-base", "--is-ancestor", head, remote) or not git_ok("merge", "--ff-only", remote):
+            return f"copie divergente de origin/{b}, squash sauté, commits gardés"
+        head = remote
     n = git("rev-list", "--count", f"{depart()}..HEAD").strip()
     if not n.isdigit() or int(n) < 2:
         return "un seul commit"
@@ -445,8 +455,9 @@ def squash():
     if not git_ok("reset", "--soft", depart()) or not git_ok("commit", "--no-verify", "-s", "-F", msg):
         git("reset", "--soft", "ORIG_HEAD")
         return "squash impossible, commits gardés"
-    e = etat()
-    git("push", "--no-verify", "--force-with-lease", "origin", f"HEAD:{e['branch']}", check=True)
+    if not git_ok("push", "--no-verify", "--force-with-lease", "origin", f"HEAD:{b}"):
+        git("reset", "--soft", head)
+        return "push du squash refusé, commits gardés"
     return f"{n} commits réunis en un"
 
 

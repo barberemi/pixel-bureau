@@ -786,6 +786,56 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("divergente", outp)
         self.assertEqual(subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.wt, capture_output=True, text=True).stdout, head)
 
+    def test_ready_takes_back_a_fix_pushed_beside_the_chain_then_squashes(self):
+        """Une correction poussée par le bouton 🛠 Corriger (son propre dossier) avant ta validation ; la
+        publication la reprend avant le squash au lieu d'échouer sur « stale info », et la PR passe prête."""
+        self.prepare()
+        e = self.dossier("etat.json")
+        e.update(mode="complet", pr="7")
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        for i in (1, 2):
+            self.commit("app/A.php", "<?php\n$a = %d;\n" % i, "feat(site): AB-12 lot %d" % i)
+        subprocess.run(["git", "push", "-q", "origin", f"HEAD:{e['branch']}"], cwd=self.wt, check=True, capture_output=True)
+        other = os.path.join(self.tmp, "fix")
+        subprocess.run(["git", "clone", "-q", "-b", e["branch"], self.origin, other], check=True, capture_output=True)
+        Path(other, "app", "C.php").write_text("<?php\n// corrigé\n")
+        g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        subprocess.run([*g, "add", "-A"], cwd=other, check=True, capture_output=True)
+        subprocess.run([*g, "commit", "-qm", "fix: retours de review"], cwd=other, check=True, capture_output=True)
+        subprocess.run(["git", "push", "-q", "origin", e["branch"]], cwd=other, check=True, capture_output=True)
+        self.fake_gh({})
+        code, outp = self.sh("pret")
+        self.assertEqual(code, 0, outp)
+        self.assertIn("3 commits réunis en un", outp)
+        o = ["git", "--git-dir", self.origin]
+        self.assertEqual(subprocess.run([*o, "rev-list", "--count", f"main..{e['branch']}"], capture_output=True, text=True).stdout.strip(), "1")
+        self.assertIn("app/C.php", subprocess.run([*o, "ls-tree", "-r", "--name-only", e["branch"]], capture_output=True, text=True).stdout)
+        self.assertIn(["pr", "ready", "7", "-R", "dm/site"], self.gh_calls())
+
+    def test_ready_with_a_diverged_copy_keeps_the_commits_and_still_publishes(self):
+        """Copie divergente de la branche distante : ni squash ni push forcé (la correction resterait écrasée), mais la
+        PR passe quand même prête (les relecteurs suivent)."""
+        self.prepare()
+        e = self.dossier("etat.json")
+        e.update(mode="complet", pr="7")
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        self.commit("app/A.php", "<?php\n$a = 1;\n", "feat(site): AB-12 lot 1")
+        subprocess.run(["git", "push", "-q", "origin", f"HEAD:{e['branch']}"], cwd=self.wt, check=True, capture_output=True)
+        other = os.path.join(self.tmp, "fix")
+        subprocess.run(["git", "clone", "-q", "-b", e["branch"], self.origin, other], check=True, capture_output=True)
+        Path(other, "app", "A.php").write_text("<?php\n$a = 2;\n")
+        g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        subprocess.run([*g, "commit", "-qam", "fix"], cwd=other, check=True, capture_output=True)
+        subprocess.run(["git", "push", "-q", "origin", e["branch"]], cwd=other, check=True, capture_output=True)
+        remote = subprocess.run(["git", "rev-parse", "HEAD"], cwd=other, capture_output=True, text=True).stdout.strip()
+        self.commit("app/B.php", "<?php\n", "local")
+        self.fake_gh({})
+        code, outp = self.sh("pret")
+        self.assertEqual(code, 0, outp)
+        self.assertIn("divergente", outp)
+        self.assertEqual(subprocess.run(["git", "--git-dir", self.origin, "rev-parse", e["branch"]], capture_output=True, text=True).stdout.strip(), remote)
+        self.assertIn(["pr", "ready", "7", "-R", "dm/site"], self.gh_calls())
+
     def test_code_in_one_session_retries_three_times(self):
         self.prepare()
         plan = {"lots": [{"titre": "L1", "objectif": "o", "fichiers": ["app/A.php"]}, {"titre": "L2", "objectif": "o", "fichiers": []}],
