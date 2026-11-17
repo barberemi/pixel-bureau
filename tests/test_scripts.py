@@ -814,6 +814,39 @@ print(json.dumps(val))
         self.assertNotIn(cw, {r["wf"] for r in out["runs"]})  # une action du Bureau n'est pas un agent
         self.assertEqual(out["warnings"], [])  # tout est lu : aucun avertissement (#8)
 
+    def test_snapshots_rebuild_the_launch_variables_kronn_no_longer_returns(self):
+        """Kronn ne rend plus les variables d'un run lancé à la main (trigger_context sans elles, _vars.py) : le run de
+        mise en prod les retrouve dans le cache de mep.py (ticket, PR, dépôt), sinon dans la sortie de son étape resolve ;
+        sans source, vars reste vide ; un trigger_context qui les porte encore passe avant tout."""
+        mep = FIXTURE["mep_workflow"] + "-0000-4000-8000-00000000mep0"
+        snap = {"type": "manual", "triggered_at": iso(9), "variables_resolved_at": iso(9), "execution_snapshot_id": "s1"}
+        fake = FakeKronn()
+        fake.workflows.append({"id": mep, "name": "Le Bureau · mettre en prod une PR", "enabled": True, "trigger_type": "manual",
+                               "last_run": {"started_at": iso(3), "status": "Running"}})
+        resolve = lambda st: {"step_name": "resolve", "status": st, "step_kind": "Exec", "started_at": iso(8), "duration_ms": 900}  # noqa: E731
+        fake.runs[mep] = [dict(run_of(960 + i, "Running"), trigger_context=snap, step_results=[resolve("Success")]) for i in range(3)]
+        fake.runs[mep].append(dict(run_of(964, "Running"), trigger_context=dict(snap, jira_ticket_key="DM-2"), step_results=[resolve("Success")]))
+        fake.runs[mep].append(dict(run_of(965, "Pending"), trigger_context=snap, step_results=[resolve("Running")]))
+        cached, by_step, missing, kept, pending = (r["id"] for r in fake.runs[mep])
+        os.makedirs(os.path.join(self.tmp, ".cache", "pixel-bureau", "mep", "runs"))
+        for rid in (cached, kept):  # écrit par l'étape resolve de mep.py
+            Path(self.tmp, ".cache", "pixel-bureau", "mep", "runs", rid + ".json").write_text(json.dumps(
+                {"repo": "dunder-mifflin/site-web", "short": "site-web", "pr": 31, "ticket": "DM-7", "title": "feat: DM-7 papier", "tag": "1.4.0"}))
+        out = lambda s: "exit 0\n\n---STEP_OUTPUT---\n" + json.dumps({"data": {"stdout": s, "exit_code": 0}}) + "\n---END_STEP_OUTPUT---"  # noqa: E731
+        fake.details[by_step] = [dict(resolve("Success"), output=out("DM-9"))]
+        fake.details[missing] = [dict(resolve("Success"), output=out("pas de clé ici"))]
+        for script in ("office_snapshot.py", "live_snapshot.py"):
+            with self.subTest(script):
+                got = {r["run"]: r["vars"] for r in self.run_script(script, api=self.kronn(fake))["runs"] if r["wf"] == mep}
+                self.assertEqual(got[cached], {"jira_ticket_key": "DM-7", "pr": "31", "repo": "dunder-mifflin/site-web",
+                                               "project": "dunder-mifflin/site-web"})
+                self.assertEqual(got[by_step], {"jira_ticket_key": "DM-9"})  # la sortie de resolve : la clé seule
+                self.assertEqual(got[missing], {})  # une sortie qui n'est pas une clé n'est pas une source fiable
+                self.assertEqual(got[kept], {"jira_ticket_key": "DM-2"})  # trigger_context d'abord (compatibilité)
+                self.assertEqual(got[pending], {})  # resolve pas encore passé : rien à lire
+        # la sortie lue une fois est gardée : le passage suivant ne relit pas le détail du run
+        self.assertEqual(json.loads(Path(self.tmp, ".cache", "pixel-bureau", "vars", by_step + ".json").read_text()), {"jira_ticket_key": "DM-9"})
+
     # ---------- échecs partiels (#8) : publiés quand même, sur stderr et dans warnings ----------
     def test_payroll_without_measured_rate_warns(self):
         fake = FakeKronn()

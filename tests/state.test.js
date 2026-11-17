@@ -121,6 +121,20 @@ test('MEP un vendredi : plateau fermé (bulle 😱)', () => {
   assert.match(st.label, /^MEP un vendredi ! Plateau fermé : Pilote la MEP DM-7/);
 });
 
+test('MEP aux variables reconstituées par les relevés (_vars.py, Kronn ne les rend plus) : « Pilote la MEP DM-… », projet nommé', () => {
+  reset();
+  const v = `{jira_ticket_key:'DM-3',pr:'31',repo:'dunder-mifflin/site-web',project:'dunder-mifflin/site-web'}`;
+  const mep = (id, vars, at) => `{run:'${id}',wf:'${MEP}-x',wf_name:'Mise en prod',status:'Running',_s:${T11 - at * MIN},_e:null,_ve:Infinity,
+    steps:[{n:'citest',k:'Exec',at:'2026-10-01T08:5${at % 10}:00Z'}],vars:${vars}}`;
+  const st = J(`stateAt(${agentWith(mep('r1', v, 5))}, ${T11})`);
+  assert.equal(st.st, 'mep');
+  assert.equal(st.label, 'Pilote la MEP DM-3 : citest');
+  const two = J(`stateAt(${agentWith(`${mep('r1', v, 30)},${mep('r2', `{jira_ticket_key:'DM-8',pr:'4',repo:'dunder-mifflin/api',project:'dunder-mifflin/api'}`, 5)}`)}, ${T11})`);
+  assert.match(two.label, /^Pilote 2 MEP : site-web DM-3, api DM-8/);
+  // aucune source fiable : vars vide, le libellé reste celui d'avant (sans clé)
+  assert.doesNotMatch(J(`stateAt(${agentWith(mep('r1', '{}', 5))}, ${T11})`).label, /DM-/);
+});
+
 test('deux MEP de projets différents en même temps : la validation qui attend passe avant, les deux comptées et nommées', () => {
   reset();
   const mep = (id, project, key, status, at) => `{run:'${id}',wf:'${MEP}-x',wf_name:'Mise en prod',status:'${status}',_s:${T11 - at * MIN},_e:null,_ve:Infinity,
