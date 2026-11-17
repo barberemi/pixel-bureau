@@ -303,6 +303,18 @@ SHOTS = {
     # le 1er en rejeu à 9 h 15 (audit produit F8) : les tableaux noirs à l'heure du curseur, le tour et les jetons de la
     # rédaction du relevé en ⏱ grisés, la légende « ⏱ = relevé de 11:00 » au bout de la pastille du rejeu
     "atelier-rejeu": (1600, 1100, AT(9.25) + "setFloor(1);", None),
+    # « 👁 Ce qu'il fait » (66-fait.js) : la fiche de l'agent du Code (bureau 3, lu par le lecteur Claude Code), celle de la
+    # Sécurité qui a fini (son rapport), le bureau 2 aux contrôles (un sous-agent par poste) ; au 3e la correction, au 2e
+    # une revue en lecture, au -1 le poste Cause (actions seulement)
+    "fait-code": (1600, 2000, AT(11) + "setFloor(1);ATSEL='demo-a3';AT_PICK={kind:'agent',i:2,k:'code'};renderSide(true);", "#side"),
+    "fait-fini": (1600, 1600, AT(11) + "setFloor(1);ATSEL='demo-a3';AT_PICK={kind:'agent',i:2,k:'securite'};renderSide(true);", "#side"),
+    "fait-controles": (1600, 2200, AT(11) + "{const a=ATELIER.rooms.find(r=>r.run==='demo-a2');Object.assign(a,{poste:'regles',etape:'controles',lot:null,reprise:null,"
+                       "act:{cat:'Agent',n:8,at:new Date(T-9e3).toISOString()},fait:atDemoFait(h=>new Date(DAY0+h*36e5).toISOString(),'ctrl'),"
+                       "states:{cadrage:'ok',gate:'ok',code:'ok',regles:'run',securite:'ok',tests:'run',perf:'skip',besoin:'run',doc:'ok'}});}"
+                       "setFloor(1);ATSEL='demo-a2';renderSide(true);", "#side"),
+    "fait-retours": (1600, 1800, AT(11) + "setFloor(3);RTSEL='demo-f1';RTPOSTE='fix';renderSide(true);", "#side"),
+    "fait-revue": (1600, 1800, AT(11) + "setFloor(2);RDF={k:'review',run:'demo-r1'};renderSide(true);", "#side"),
+    "fait-caserne": (1600, 1400, AT(11) + "setFloor(-1);CS_SEL='d2';renderSide(true);", "#side"),
     # -1, la caserne Support : deux interventions de la démo (une au poste Cause, une réponse à valider, le capitaine à
     # la vanne) et une baie libre ; puis la caserne au calme, le soir : la garde dort sur les lits de camp
     "caserne": (1600, 1100, AT(11) + "setFloor(-1);", None),

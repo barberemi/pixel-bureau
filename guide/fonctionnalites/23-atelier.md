@@ -60,6 +60,28 @@ La fiche du boss à l'étage : « ← L'atelier » (ou Échap) revient aux burea
 
 ![Fiche d'un bureau : le verdict de chaque poste](../img/atelier-fiche.png)
 
+## 👁 Ce qu'il fait
+
+La fiche d'un agent au travail dit ce qu'il fait, en trois niveaux, sans dépendre de l'agent choisi pour le poste (Kronn en a plusieurs) :
+
+1. **La base**, quel que soit l'agent : les fichiers touchés par la branche dans le dossier du run (les plus récents d'abord, leurs lignes + et −, depuis combien de temps, les commits et ce qui n'est pas encore commité), et le compteur de Kronn (le nombre d'actions de l'étape et la dernière). Un poste fini montre son rapport : son verdict, son résumé et ses constats (bloquants d'abord).
+2. **Le carnet** de l'agent, s'il en tient un (`.kronn/chaine/journal.md`) : ses dernières lignes, telles qu'il les a écrites. Aucune consigne ne le lui demande encore.
+3. **Le détail**, lu dans le journal de l'agent quand le Bureau sait le lire (Claude Code aujourd'hui) : ce qu'il vient de dire, la part de lectures, recherches, modifications et commandes, ses 10 dernières actions. Pour un autre agent, la fiche le dit : « Détail des actions pas encore lu pour Codex ».
+
+![« Ce qu'il fait » : le Code du bureau 3, ses fichiers, le compteur de Kronn et ses dernières actions](../img/fait-code.png)
+
+Le poste qui vient de finir (la Sécurité qui a renvoyé au Code, par exemple) montre son rapport, puis ses dernières actions, repliées :
+
+![Le rapport de la Sécurité : un bloquant et un avis](../img/fait-fini.png)
+
+Aux contrôles, les postes travaillent en même temps : la fiche du bureau (et celle de chacun) les montre côte à côte, un sous-agent par poste avec sa dernière action et ce qu'il dit, et sur le plan chacun a sa bulle. Pour un agent que le Bureau ne sait pas lire, une ligne par rapport rendu et, sur le plan, « 👥 3/6 rapports rendus ».
+
+![Les contrôles du bureau 2 : un sous-agent par poste](../img/fait-controles.png)
+
+Sur le plan, la bulle de l'agent au travail dit, dans l'ordre : sa dernière ligne de carnet, sinon sa dernière phrase, sinon « ✏ n fichiers modifiés », sinon le compteur de Kronn.
+
+Ce qui n'est jamais montré : une commande en entier (seulement l'outil et son premier mot, git avec sa sous-commande), un chemin de la machine (seulement le chemin dans le dépôt, sinon le nom du fichier), le contenu d'un fichier, et une phrase de l'agent qui parle d'un secret, d'un token, d'un mot de passe, d'une clé ou d'un credential. En direct seulement : en rejeu, la fiche reste celle d'avant.
+
 ## Depuis le rez-de-chaussée
 
 L'étage se suit aussi sans y monter, comme les agents du RDC. Chaque élément ci-dessous mène à l'étage, sur la fiche du ticket (ou son carton à l'entrepôt, sa palette en panne).
@@ -95,3 +117,5 @@ La cause est sous le ticket dans « 🧯 En panne », au survol de sa palette à
 ## Données
 
 Le cron `live` lit chaque minute les runs de la chaîne et de ses postes dans l'API Kronn (0 token) et publie le dataset `atelier`, avec les moments des dernières 24 h (arrivée, gate, retour au code, panne, PR ouverte, datés par les étapes des runs) pour le fil du RDC, et le nombre de PR ouvertes depuis minuit. La cause d'un run fini ne change plus : elle est gardée dans `~/.cache/pixel-bureau/atelier_causes.json` (200 runs au plus), le cron ne relit pas ses sous-runs à chaque minute. Le tableau « Runs du jour » (`jour` du dataset) compte les runs de la chaîne depuis minuit (fuseau du bureau), par ticket et dépôt. Sans la chaîne installée, ni ses étapes ni les onglets n'existent.
+
+« Ce qu'il fait » est lu par le même relevé, chaque minute, sans jeton : le dossier du run (git en lecture seule), les rapports des postes, et la fin du journal de l'agent seulement (la position atteinte est gardée dans `~/.cache/pixel-bureau/lecteurs/`, jamais dans le dépôt). Un journal illisible ne fait jamais tomber le relevé : la fiche garde la base.

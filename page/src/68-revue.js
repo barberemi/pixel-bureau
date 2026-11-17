@@ -235,6 +235,7 @@ function rvFicheHtml(run){
     `<div class="mut">PR de ${au?`<button type="button" class="fk-a" data-rva="${esc(au)}">${esc(c?c.name:'@'+au)}</button>`:'?'}${batch?' · fournée du cron de '+hm(st.b.s):' · revue à la demande'} · ${done?'relue':'depuis'} ${hm(r._s)}</div>`+
     `<div class="fk-steps">${rvSteps(r).map(s=>`<i class="${s.s==='Success'?'ok':s.s==='Running'?'run':s.s==='Failed'?'err':''}" title="${esc(rvStepName(s.n))}">${esc(rvStepLbl(s))}</i>`).join('')}</div>`+
     prLinksHtml(repo,n,au,fkRunOf(r))+
+    (!done&&rvFait(run)?faitHtml(rvFait(run),{title:'Ce qu\'il fait · '+rvStepName(rvFait(run).poste),lus:'fichiers de la PR',base:'Kronn'}):'')+
     (file&&st.queue.length?`<div class="fk-fold"><h4>Après elle, au casier</h4>${st.queue.slice(0,5).map((p,i)=>rvPrRow(p,i+2)).join('')}</div>`:'');
 }
 function rvAuthorHtml(a){

@@ -34,6 +34,9 @@ Le bouton « ✍ 2e » (la rédaction et la revue, au survol) apparaît entre le
 - **Les fiches au clic** : le relecteur (ou son bureau) ouvre la PR qu'il lit, son titre, son auteur, ses postes, puis la PR ↗, le diff ↗, son ticket ↗, le run et « 🔍 Ouvrir dans le Kanban » (filtré sur l'auteur) ; à la file, les PR qui passent après elle. Un auteur ouvre ses PR : celle qui est lue, celles du casier avec leur rang, celles déjà relues et leur verdict. Le casier ouvre la file dans l'ordre, la corbeille les avis postés de la fournée ; chaque ligne mène à la fiche de la revue ou au Kanban.
 - **Le tableau noir des revues du jour** : les PR en lecture, celles qui attendent (et l'heure du cron), les revues postées, les jetons. En rejeu, une relecture finie après l'heure du curseur est encore en lecture (au tableau et à son bureau) ; les jetons, ceux du relevé, en ⏱.
 - **Un banc** pour les relecteurs libres.
+- **👁 Ce qu'il fait** : la fiche d'une revue en cours montre ce que fait son poste au travail, comme au 1er ([L'atelier, « Ce qu'il fait »](23-atelier.md#-ce-quil-fait)) : les fichiers de la PR qu'il lit (la revue n'écrit rien : pas de fichiers touchés), le compteur de Kronn et, quand le Bureau sait lire son agent (Claude Code aujourd'hui), ce qu'il vient de dire et ses 10 dernières actions ; sinon « Détail des actions pas encore lu pour … ». La bulle du relecteur dit sa dernière phrase. Dans la salle de rédaction, la fiche du poste au travail (recherche, rédaction, critique) montre de même les sources qu'il lit.
+
+![La revue de api#2051 au poste lecture : ce qu'il lit et ce qu'il fait](../img/fait-revue.png)
 
 ## Le soir et le week-end
 

@@ -502,11 +502,22 @@ function caserneListHtml(slots){
     (q?`<div class="note">${plural(q,'intervention attend','interventions attendent')} une baie libre.</div>`:'')+
     `<h2 class="at-h">📥 Appels à prendre <span class="cnt">${csCalls().length}</span></h2>`;
 }
+// « 👁 Ce qu'il fait » du poste au travail (66-fait.js) : le run de son sous-workflow porte fait (cron live, chaque minute) ;
+// en direct seulement (le relevé live de l'heure affichée), et ACTIONS SEULEMENT (la demande vient d'un canal ouvert : ni
+// phrase de l'agent, ni motif cherché) ; la démo porte le sien sur le fil
+function csFait(x){
+  const r=(x.t.run&&x.t.run.run)||(x.s&&x.s.r&&x.s.r.run);
+  const kid=r&&faNear(LIVE)&&((DATA&&DATA.runs)||[]).filter(k=>k.parent===r&&k.fait&&RUN_ACTIVE.includes(k.status)).sort((a,b)=>ms(b.start)-ms(a.start))[0];
+  if(kid)return kid.fait;
+  const d=DEMO&&x.t.run&&x.t.run.fait;return d&&d.k&&Math.abs(T-ms(d.k.at))<=180e3?d:null;
+}
 function csFicheHtml(x,b){
-  const st=x.st||{};
+  const st=x.st||{}, f=x.s.k==='run'&&csFait(x), cur=csCur(st);
   return `<button class="at-back">‹ La caserne</button><h2 class="at-h">🚒 Baie ${b+1} <span class="cnt">${esc(spWho(x.t.from))}</span></h2>
     <div class="at-title big">${esc(csTitle(x.t))}</div>${csBar(st)}
-    <table class="at-t">${CS_POSTES.map(p=>{const s=st[p.k];return `<tr${csCur(st)===p?' class="cur"':''}><td>${p.i} ${esc(p.n)}</td><td>${s?`<span class="dot" style="background:${{ok:'var(--ok)',run:'var(--info)',err:'var(--err)',gate:'var(--warn)'}[s]}"></span>${CS_ST[s][1]}`:'<span class="mut">à venir</span>'}</td></tr>`;}).join('')}</table>`;
+    <table class="at-t">${CS_POSTES.map(p=>{const s=st[p.k];return `<tr${csCur(st)===p?' class="cur"':''}><td>${p.i} ${esc(p.n)}</td><td>${s?`<span class="dot" style="background:${{ok:'var(--ok)',run:'var(--info)',err:'var(--err)',gate:'var(--warn)'}[s]}"></span>${CS_ST[s][1]}`:'<span class="mut">à venir</span>'}</td></tr>`;}).join('')}</table>`+
+    (f?faitHtml({...f,d:f.d&&{...f.d,phrases:[]}},{phrases:false,title:'Ce qu\'il fait'+(cur?' · '+cur.i+' '+cur.n:''),base:'Kronn'})+
+      '<div class="note">Actions seulement : la demande vient d\'un canal ouvert, ce que dit l\'agent n\'est pas affiché.</div>':'');
 }
 function drawCaserneSide(side){
   const boss=chars.find(c=>c.boss);

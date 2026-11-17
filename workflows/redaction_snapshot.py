@@ -16,9 +16,14 @@ La file de la salle de revue : revue = {batches: {run du cron: [[repo, n°, aute
 approve|comment|request_changes}}. Les PR que chaque passage du cron des revues (models.review_cron, 24 h) a retenues,
 dans l'ordre, lues dans la sortie de son étape finalize (ligne PRS=) ; le verdict de chaque revue finie de ces passages,
 lu dans la sortie de son avis. Un run fini n'est lu qu'une fois (~/.cache/pixel-bureau/revue/<run>.json).
+
+« 👁 Ce qu'il fait » (_lecteurs.py) : fait d'une table = le poste au travail (recherche, rédaction, critique) ; revue.fait =
+{run d'une revue en cours: le poste au travail (contexte, docs, lecture, sécurité, avis)} ; les sources ou les fichiers de
+la PR qu'il lit (pas de diff : ni l'un ni l'autre n'écrit dans le dépôt), compteur de Kronn, détail du lecteur de son agent.
 """
 import datetime, json, os, re, sys
 from _lib import ACTIVE, CFG, TZ, get, read_json, readable
+from _lecteurs import detail, menage, plafonne
 
 HOME = os.path.expanduser("~/.cache/pixel-bureau/ticket")
 RV_HOME = os.path.expanduser("~/.cache/pixel-bureau/revue")
@@ -172,11 +177,79 @@ def revue(m, limit):
     return out
 
 
+EN_COURS = ("Running", "WaitingQuota")
+
+
+def sous_run(wf, parent_id, cache):
+    """Le dernier run du modèle wf lancé par parent_id (un poste), détaillé ; None sans lui."""
+    if not wf:
+        return None
+    if wf not in cache:
+        cache[wf] = get(f"/workflows/{wf}/runs?limit=30") or []
+    k = [r for r in cache[wf] if r.get("parent_run_id") == parent_id]
+    return get(f"/workflows/{wf}/runs/{k[0]['id']}") if k else None
+
+
+def fait_poste(run, postes, prefixe, cache, indice=None):
+    """« 👁 Ce qu'il fait » du poste au travail d'un run (étape SubWorkflow d'un des postes, ou étape Agent du run) :
+    compteur de Kronn, détail du lecteur de son agent et les fichiers qu'il lit ; None sans agent au travail."""
+    try:
+        s = next((x for x in reversed(run.get("step_results") or []) if x.get("status") in EN_COURS), None)
+        if not s:
+            return None
+        a, c = s, None
+        if not (s.get("step_kind") == "Agent" or s.get("step_agent")):
+            if s.get("step_name") not in postes:
+                return None
+            c = sous_run((CFG.get("models") or {}).get(prefixe + s["step_name"]), run["id"], cache)
+            a = next((x for x in reversed((c or {}).get("step_results") or []) if x.get("status") in EN_COURS), None)
+        if not a:
+            return None
+        f = detail(a, run.get("workspace_path") or (c or {}).get("workspace_path"), run=run, indice=indice)
+        if not f:
+            return None
+        f["poste"] = s.get("step_name")
+        lus = []
+        for x in (f.get("d") or {}).get("actions") or []:
+            p = re.sub(r" \(\w+\)$", "", str(x[2] or ""))
+            if x[1] == "lecture" and p and p not in lus:
+                lus.append(p)
+        if lus:
+            f["lus"] = lus[:7]
+        return plafonne(f, 5000)
+    except Exception as e:  # la salle passe avant « Ce qu'il fait »
+        print(f"rédaction : ce qu'il fait illisible ({type(e).__name__} {str(e)[:120]})", file=sys.stderr)
+        return None
+
+
+def revue_fait(m, cache):
+    """{run d'une revue en cours: ce que fait son poste au travail} (six bureaux au plus)."""
+    out = {}
+    if not m.get("review_child"):
+        return out
+    for r in [x for x in get(f"/workflows/{m['review_child']}/runs?limit=12") or [] if x.get("status") in EN_COURS][:6]:
+        full = get(f"/workflows/{m['review_child']}/runs/{r['id']}") or {}
+        pr = str((full.get("state") or {}).get("pr") or "")
+        f = fait_poste(full, ("contexte", "docs", "lecture", "securite"), "review_", cache, indice=f"#{pr}" if pr.isdigit() else None)
+        if f:
+            out[r["id"]] = f
+    return out
+
+
 def snapshot(now_iso=None):
     m = CFG.get("models") or {}
     out = {"generated_at": now_iso, "tables": [], "events": [], "crees": 0}
     now0 = when(now_iso)
     out["revue"] = revue(m, (now0 - datetime.timedelta(hours=24)).isoformat() if now0 else "")
+    cache = {}
+    try:
+        fr = revue_fait(m, cache)
+    except Exception as e:  # Kronn qui refuse une liste : la salle reste
+        print(f"rédaction : revues en cours illisibles ({str(e)[:120]})", file=sys.stderr)
+        fr = {}
+    if fr:
+        out["revue"]["fait"] = fr
+    menage()
     if not m.get("ticket"):
         return out
     runs = get(f"/workflows/{m['ticket']}/runs?limit=20") or []
@@ -189,6 +262,9 @@ def snapshot(now_iso=None):
         full = get(f"/workflows/{m['ticket']}/runs/{r['id']}") or r
         if r.get("status") in ACTIVE and r.get("status") != "Pending":
             out["tables"].append(table(full, kids, budget))
+            f = fait_poste(full, ("recherche", "redaction", "critique"), "ticket_", cache)
+            if f:
+                out["tables"][-1]["fait"] = f
         ev.append({"t": r.get("started_at"), "k": "arrive", "run": r["id"]})
         for k in kids:
             if k.get("parent_run_id") != r["id"]:

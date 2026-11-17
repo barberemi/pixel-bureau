@@ -43,6 +43,17 @@ function readRetours(src){
 }
 const retoursOn=()=>!!(CFG.retours||DEMO);
 // démo : cinq PR de l'équipe fictive (dépôts dm/*) à des postes différents, deux qui attendent ta validation, une file
+// « 👁 Ce qu'il fait » de la démo (contenus fictifs) : f1 corrige le fil 3, f4 a fini sa correction et pousse
+function rtDemoFait(at,k){
+  const s=x=>at(11-x/3600), A=l=>l.map(([x,c,t])=>[s(x),c,t]);
+  if(k==='f4')return {ag:'ClaudeCode',lu:true,fini:true,diff:{n:3,plus:31,moins:12,encours:3,commits:[],l:[['src/Menu.tsx',22,9,420],['src/Menu.css',3,3,610],['src/Menu.test.tsx',6,0,700]]},
+    d:{compte:{lecture:12,recherche:5,modification:7,commande:4},actions:A([[400,'commande','npm test'],[420,'modification','src/Menu.tsx'],[455,'lecture','src/Menu.tsx'],[610,'modification','src/Menu.css'],[700,'modification','src/Menu.test.tsx']])}};
+  return {ag:'ClaudeCode',lu:true,k:{cat:'Edit',n:23,at:s(8)},
+    diff:{n:3,plus:18,moins:6,encours:3,commits:[],l:[['src/Player.tsx',9,4,8],['src/api/video.test.ts',7,0,190],['src/hooks/useFeed.ts',2,2,520]]},
+    d:{depuis:s(900),compte:{lecture:9,recherche:6,modification:5,commande:3},actions:A([[8,'modification','src/Player.tsx'],[31,'recherche','autoplay'],[52,'lecture','src/Player.tsx'],
+      [104,'commande','npm test'],[190,'modification','src/api/video.test.ts'],[240,'lecture','src/api/video.ts'],[300,'commande','git diff'],[520,'modification','src/hooks/useFeed.ts']]),
+      phrases:['Fil 2 : un seul appel au montage, le second venait du mode strict.','Fil 5 : le test de la 404 passe.','Fil 3 : je renomme la prop autoplay en autoPlay partout.']}};
+}
 function retoursDemo(){
   const at=h=>new Date(DAY0+h*36e5).toISOString(), ok=n=>Object.fromEntries(RT_POSTES.slice(0,n).map(p=>[p.k,'ok']));
   const F=(id,col,path,line,who,text,cur)=>({id,col,path,line,who,text,cur:!!cur});
@@ -50,7 +61,8 @@ function retoursDemo(){
     {run:'demo-f1',repo:'dm/site',pr:'2042',title:'Le lecteur vidéo lit les sous-titres',author:'hollyflax',poste:'fix',states:{...ok(1),fix:'run'},since:at(10.1),
      fils:[F('t1','corrige','src/Player.tsx',7,'gabelewis','Import inutilisé'),F('t2','corrige','src/hooks/useFeed.ts',19,'pambeesly','Éviter le double appel au montage'),
        F('t3','a_traiter','src/Player.tsx',42,'darrylphilbin','Renommer la prop autoplay en autoPlay',1),F('t4','a_traiter','src/api/video.ts',88,'pambeesly','Pourquoi ce cast as any ?'),
-       F('t5','test','src/api/video.test.ts',1,'darrylphilbin','Ajouter un test pour la 404'),F('t6','reponse','src/Player.tsx',120,'gabelewis','C\'est voulu, le délai ?'),F('t7','a_traiter','README.md',12,'hollyflax','Mettre à jour l\'exemple')]},
+       F('t5','test','src/api/video.test.ts',1,'darrylphilbin','Ajouter un test pour la 404'),F('t6','reponse','src/Player.tsx',120,'gabelewis','C\'est voulu, le délai ?'),F('t7','a_traiter','README.md',12,'hollyflax','Mettre à jour l\'exemple')],
+     fait:rtDemoFait(at,'f1')},
     {run:'demo-f2',repo:'dm/site',pr:'2039',title:'Bandeau cookies : le bouton Refuser',author:'pambeesly',poste:'gate',gate:true,states:{...ok(4),gate:'gate'},since:at(9.4),
      fils:[F('u1','corrige','src/Banner.tsx',14,'hollyflax','Le bouton n\'a pas de label'),F('u2','corrige','src/Banner.tsx',30,'gabelewis','Couleur hors charte'),F('u3','corrige','src/i18n/fr.json',3,'hollyflax','Faute de frappe'),
        F('u4','test','src/Banner.test.tsx',1,'darrylphilbin','Un test pour Refuser ?'),F('u5','laisse','src/Banner.tsx',2,'gabelewis','Passer en CSS modules'),F('u6','reponse','src/Banner.tsx',44,'darrylphilbin','Pourquoi un timeout ?')]},
@@ -58,7 +70,8 @@ function retoursDemo(){
      fils:[F('v1','a_traiter','app/Cache.php',51,'pambeesly','Clé de cache trop large'),F('v2','corrige','app/Cache.php',12,'hollyflax','Constante à extraire'),F('v3','corrige','app/Cache.php',80,'gabelewis','TTL en dur',1),F('v4','reponse','app/Cache.php',90,'pambeesly','Et l\'invalidation ?')]},
     {run:'demo-f4',repo:'dm/site',pr:'2045',title:'Menu : la recherche au clavier',author:'gabelewis',poste:'push',states:{...ok(5),push:'run'},since:at(8.8),
      fils:[F('w1','corrige','src/Menu.tsx',8,'pambeesly','Tab saute la recherche'),F('w2','corrige','src/Menu.tsx',22,'hollyflax','aria-expanded manquant'),F('w3','corrige','src/Menu.tsx',40,'darrylphilbin','Échap ne ferme pas'),
-       F('w4','corrige','src/Menu.css',5,'pambeesly','Focus invisible'),F('w5','test','src/Menu.test.tsx',1,'hollyflax','Test clavier'),F('w6','reponse','src/Menu.tsx',60,'gabelewis','Pourquoi un portal ?'),F('w7','reponse','src/Menu.tsx',72,'pambeesly','Ça marche sur mobile ?')]},
+       F('w4','corrige','src/Menu.css',5,'pambeesly','Focus invisible'),F('w5','test','src/Menu.test.tsx',1,'hollyflax','Test clavier'),F('w6','reponse','src/Menu.tsx',60,'gabelewis','Pourquoi un portal ?'),F('w7','reponse','src/Menu.tsx',72,'pambeesly','Ça marche sur mobile ?')],
+     fait:rtDemoFait(at,'f4')},
     {run:'demo-f5',repo:'dm/api',pr:'21',title:'Export CSV des abonnés',author:'pambeesly',poste:'gate',gate:true,states:{...ok(4),gate:'gate'},since:at(10.4),
      fils:[F('x1','corrige','app/Export.php',10,'darrylphilbin','Encodage UTF-8 BOM'),F('x2','corrige','app/Export.php',33,'gabelewis','Nom du fichier daté'),F('x3','test','tests/ExportTest.php',1,'hollyflax','Couvrir la liste vide'),
        F('x4','reponse','app/Export.php',50,'darrylphilbin','Limiter à 10 000 lignes ?'),F('x5','reponse','app/Export.php',61,'hollyflax','Et les désabonnés ?')]}];
@@ -199,8 +212,11 @@ function rtRoom(r,i,now,people){
     ctx.quadraticCurveTo((hl.x+a.x)/2+30,(hl.y+a.y)/2,a.x,a.y);ctx.stroke();ctx.restore();for(const q of [hl,a]){ctx.fillStyle='#d0392b';ctx.beginPath();ctx.arc(q.x,q.y,4,0,7);ctx.fill();}},1e6-1);}
   atHitRt('room',z.x0,z.y0,z.w,z.h,{i});
 }
+// « 👁 Ce qu'il fait » de la correction (66-fait.js), en direct seulement
+const rtFait=r=>r&&r.fait&&faNear(RETOURS)?r.fait:null;
 function rtBubble(r,p){
-  const f=(r.fils||[]).find(x=>x.cur), n=(r.fils||[]).length, k=(r.fils||[]).findIndex(x=>x.cur)+1;
+  const f=(r.fils||[]).find(x=>x.cur), n=(r.fils||[]).length, k=(r.fils||[]).findIndex(x=>x.cur)+1, fa=p.k==='fix'&&rtFait(r);
+  if(fa&&!fa.fini&&faBulle(fa))return faBulle(fa);
   if(p.k==='fix')return f?'fil '+k+'/'+n+' : '+clip(f.text||f.path||'',26):'je corrige les fils…';
   return {prepare:'je récupère les fils…',check:'je lance les contrôles…',diff:'je prépare le diff…',push:'je pousse et je réponds'}[p.k]||'au travail…';
 }
@@ -398,13 +414,20 @@ function rtPosteHtml(r,i,p){
   if(p.k==='fix'){
     body=(cur?`<div class="fk-fold"><h4>Le fil en cours · ${k}/${fils.length}</h4><div class="mono">${esc((cur.path||'?')+(cur.line?':'+cur.line:''))} · @${esc(cur.who||'?')}</div><div class="at-box run">« ${esc(cur.text||'')} »</div>`+
       fkLinks([fkA(cur.url,'💬 Le commentaire ↗'),`<button type="button" class="lk" data-rtkb data-fil="${esc(cur.id)}">🗂 Dans le Kanban des fils</button>`])+'</div>':'')+
-      (fils.some(f=>f.col!=='a_traiter')?`<div class="fk-fold"><h4>Déjà traités</h4>${fils.filter(f=>f.col!=='a_traiter').map(rtFilRow).join('')}</div>`:'');}
+      (fils.some(f=>f.col!=='a_traiter')?`<div class="fk-fold"><h4>Déjà traités</h4>${fils.filter(f=>f.col!=='a_traiter').map(rtFilRow).join('')}</div>`:'')+
+      rtFaitHtml(r);}
   else if(p.k==='prepare'||p.k==='diff'||p.k==='push')
     body=`<div class="fk-fold"><h4>${esc(rtCounts(r)||'Les fils arrivent avec la préparation.')}</h4>${fils.slice(0,8).map(rtFilRow).join('')}${fils.length>8?`<div class="mut">et ${fils.length-8} de plus : le Kanban des fils</div>`:''}</div>`;
   else if(p.k==='check')body=`<div class="fk-fold"><div class="mut">${s==='err'?'🧯 Contrôles rouges : le correctif est annulé, la PR attend une relance.':s==='ok'?'Contrôles verts.':'Le détail de chaque contrôle est dans le run.'}</div>${fkLinks([fkRun(r.url)])}</div>`;
   return `<button class="at-back">‹ Bureau ${i+1}</button><h2 class="at-h">${p.i} ${esc(p.n)} <span class="cnt">${esc(RT_ST[s][1])}</span></h2><div class="mut">${esc(p.d)} · ${esc(rtName(r))}</div>${body}`+
     (p.gate?'<div class="at-gate"></div>':'');
 }
+// la correction au travail : « Ce qu'il fait » ; finie (le run tourne encore) : ses dernières actions, repliées
+function rtFaitHtml(r){const f=rtFait(r);if(!f)return '';
+  if(!f.fini)return faitHtml(f,{base:'Dossier de travail de la PR et Kronn'});
+  return `<section class="fa-do"><h3 class="fa-h">🛠 Sa correction <span class="fa-n">finie</span>${f.ag?`<span class="fa-ag">agent : ${esc(faAg(f.ag))}</span>`:''}</h3>`+
+    (f.diff&&f.diff.n?`<div class="fa-lvl">${faFiles(f.diff,5)}</div>`:'')+
+    (f.d&&(f.d.actions||[]).length?`<details class="fa-det"><summary>▸ Ses dernières actions ${faSrc('lu dans le journal de '+faAg(f.ag))}</summary><ol class="fa-acts">${f.d.actions.map(faAct).join('')}</ol></details>`:f.lu===false?faNone(f):'')+'</section>';}
 function rtQueueHtml(){
   const q=(RETOURS&&RETOURS.queue)||[];
   return `<button class="at-back">‹ Les retours</button><h2 class="at-h">📥 Le couloir <span class="cnt">${q.length}</span></h2><div class="mut">Les PR qui attendent un bureau libre.</div>`+

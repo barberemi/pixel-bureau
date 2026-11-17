@@ -988,6 +988,40 @@ body.tv .mtbar{display:none}
 .atelier .fk-row .k,.atelier .fk-r .k{color:var(--muted);font-size:12px;white-space:nowrap}
 .atelier .fk-kb{border:0;background:none;cursor:pointer;padding:0}
 .atelier .fk-a{border:0;background:none;padding:0;color:var(--accent);font:inherit;cursor:pointer;text-decoration:underline dotted}
+/* « 👁 Ce qu'il fait » (66-fait.js) : section de la fiche d'un agent, dans les trois niveaux de source */
+.atelier .fa-do{margin:10px 0 4px;border-top:3px solid var(--line);padding-top:8px;font:12.5px/1.4 system-ui,sans-serif;max-width:100%;overflow:hidden;overflow-wrap:anywhere}
+.atelier .fa-h{font:700 12px system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;margin:2px 0 8px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.atelier .fa-live{font:600 11px system-ui,sans-serif;text-transform:none;letter-spacing:0;color:var(--ok)}
+.atelier .fa-n{font:500 11.5px system-ui,sans-serif;text-transform:none;letter-spacing:0;color:var(--muted)}
+.atelier .fa-ag{margin-left:auto;font:500 11px system-ui,sans-serif;text-transform:none;letter-spacing:0;color:var(--muted);border:1px solid var(--line);padding:0 5px}
+.atelier .fa-src{font:500 10.5px system-ui,sans-serif;color:var(--muted);margin-left:6px}
+.atelier .fa-lvl{margin:6px 0 2px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.atelier .fa-sub{font-weight:600;margin:8px 0 4px}.atelier .fa-sub small,.atelier .fa-do small{color:var(--muted);font-size:10.5px;font-weight:400}
+.atelier .fa-from{color:var(--muted);font-size:10.5px;margin-top:4px}
+.atelier .fa-k{padding:3px 0}.atelier .fa-more{color:var(--muted);font-size:11px;margin-top:2px}.atelier .fa-com{font-size:11.5px;margin-top:3px}
+.atelier .fa-say{margin:0 0 8px;padding:6px 10px;border-left:4px solid var(--info);background:var(--chip);font-style:italic}
+.atelier .fa-said{margin:2px 0 4px;color:var(--muted);font-style:italic}
+.atelier .fa-bar{display:flex;gap:2px;height:9px;margin:2px 0 4px}.atelier .fa-bar i{display:block}
+.atelier .fa-leg{display:flex;flex-wrap:wrap;gap:4px 10px;color:var(--muted);font-size:11.5px}.atelier .fa-leg b{display:inline-block;width:9px;height:9px;margin-right:4px;vertical-align:-1px}
+.atelier .fa-acts,.atelier .fa-car,.atelier .fa-lus{list-style:none;margin:0;padding:0}
+.atelier .fa-acts li,.atelier .fa-car li,.atelier .fa-lus li{display:flex;gap:6px;align-items:baseline;padding:2px 0;border-bottom:1px dashed var(--line)}
+.atelier .fa-car li{font-style:italic}
+.atelier .fa-acts time{color:var(--muted);font:11px ui-monospace,Menlo,monospace;flex:none}.atelier .fa-acts .i{flex:none;width:18px;text-align:center}
+.atelier .fa-do code{font:11.5px ui-monospace,Menlo,monospace;background:var(--chip);padding:0 3px}
+.atelier .fa-files{width:100%;border-collapse:collapse}.atelier .fa-files td{padding:2px;border-bottom:1px dashed var(--line)}
+.atelier .fa-files td.p,.atelier .fa-files td.m{text-align:right;font:11px ui-monospace,Menlo,monospace;width:34px}
+.atelier .fa-files td.fa-age{text-align:right;color:var(--muted);font-size:10.5px;width:44px;white-space:nowrap}
+.atelier .fa-do .p{color:var(--ok)}.atelier .fa-do .m{color:var(--err)}
+.atelier .fa-none{margin:8px 0 2px;padding:5px 8px;border:1px dashed var(--line);color:var(--muted);font-size:11.5px}
+.atelier .fa-verdict{font-weight:700;padding:4px 8px;margin:0 0 6px;background:var(--ok);color:var(--on-accent)}.atelier .fa-verdict.bloq{background:var(--err);color:var(--on-err)}.atelier .fa-verdict.skip{background:var(--chip);color:var(--ink)}
+.atelier .fa-res{margin:0 0 6px}.atelier .fa-fix{color:var(--muted)}
+.atelier .fa-c{border-left:4px solid var(--warn);background:var(--chip);padding:4px 8px;margin:0 0 6px}.atelier .fa-c.bloq{border-color:var(--err)}
+.atelier .fa-det summary{display:block;list-style:none;cursor:pointer;font-weight:600;margin:6px 0 2px}.atelier .fa-det summary::-webkit-details-marker{display:none}.atelier .fa-det[open] summary{margin-bottom:4px}
+.atelier .fa-card{margin:0 0 6px;border:2px solid var(--line);padding:5px 8px;background:var(--panel);display:block}
+.atelier .fa-card.cur{border-color:var(--accent)}.atelier .fa-card.skip{opacity:.6}
+.atelier .fa-agh{display:flex;justify-content:space-between;gap:6px}.atelier .fa-st{font-size:11.5px;font-weight:600;white-space:nowrap}
+.atelier .fa-card.run .fa-st{color:var(--info)}.atelier .fa-card.ok .fa-st{color:var(--ok)}.atelier .fa-card.bloq .fa-st,.atelier .fa-card.err .fa-st{color:var(--err)}
+.atelier .fa-agl{margin:2px 0}.atelier .fa-agp{color:var(--muted);font-style:italic}
 .atelier .rd-tk{display:block;width:100%;text-align:left;font:12px system-ui,sans-serif;padding:4px 8px;margin:0 0 4px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
 .atelier .rd-tk:hover,.atelier .rd-tk:focus-visible{border-color:var(--accent)}
 .atelier .rd-back{font:600 12px system-ui,sans-serif;padding:4px 8px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;margin:0 0 8px}

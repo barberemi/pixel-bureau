@@ -274,7 +274,7 @@ def review_version():
 _RV_VERSION = {}
 
 
-LIB_IMPORT = re.compile(r"^from (_lib|_plan|_checks|_chaine|_releves) import [\w, *]+(?:  #.*)?$", re.M)
+LIB_IMPORT = re.compile(r"^from (_lib|_plan|_checks|_chaine|_releves|_lecteurs) import [\w, *]+(?:  #.*)?$", re.M)
 # la chaîne d'implémentation : trois scripts et leur commun (_chaine.py, recopié dans chacun). Kronn passe un script en un
 # seul argument « python3 -c » : sous Linux, 128 Kio au plus (MAX_ARG_STRLEN) ; ils ne reçoivent que leur part de la config
 CHAINE_SCRIPTS = ("workflows/chaine.py", "workflows/chaine_controles.py", "workflows/chaine_pr.py")

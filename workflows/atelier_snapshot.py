@@ -26,9 +26,13 @@ d'avant), et reprise dit après quelle panne.
 Le tableau « Runs du jour » (jour) compte par ticket et dépôt les runs de la chaîne depuis minuit (fuseau du bureau, pages
 de 50) : tickets, en cours (un run actif), sortis (une livraison réussie), pannes (runs en échec hors gate refusée),
 reprises (runs de plus que les tickets), jetons. Le ticket d'un run est lu une fois et gardé avec les causes.
+« 👁 Ce qu'il fait » (fait d'un bureau, _lecteurs.py) : l'agent au travail (fichiers touchés par la branche dans le dossier
+du run, compteur de Kronn, carnet, détail lu par le lecteur de son agent ; aux contrôles, un sous-agent par poste) et le
+dernier poste fini (son rapport, ses dernières actions) ; jamais une commande entière ni un chemin absolu.
 """
 import datetime, json, os, re, sys
 from _lib import ACTIVE, CFG, TZ, get, read_json, write_json
+from _lecteurs import carnet, detail, fichiers, menage, plafonne, rapport
 
 # cadrage = le poste 📋 Plan ; les étapes schema, patterns, gate_questions et le contrôle revue des runs d'avant sont
 # ignorées, ou ramenées au poste Plan pour le carton
@@ -112,6 +116,83 @@ def activite(run, models, cache, depth=0, cle="impl_chain"):
         if c:
             return activite(c, models, cache, depth + 1, k)
     return None
+
+
+def agent_en_cours(run, models, cache, depth=0, cle="impl_chain"):
+    """(étape Agent qui tourne au plus profond, modèle de son run) : descend dans le sous-run d'une étape SubWorkflow,
+    comme activite ; (None, cle) sans agent au travail."""
+    s = next((x for x in reversed(run.get("step_results") or []) if x.get("status") in ("Running", "WaitingQuota")), None)
+    if not s:
+        return None, cle
+    if s.get("step_kind") == "Agent" or s.get("step_agent"):
+        return s, cle
+    k = SUB.get(cle, {}).get(s.get("step_name"))
+    if k and depth < 4:
+        c = children(models.get(k), run["id"], cache)
+        if c:
+            return agent_en_cours(c, models, cache, depth + 1, k)
+    return None, cle
+
+
+# poste fini -> où lire sa session : (modèle de son sous-run, étape Agent, mission d'un sous-agent des contrôles)
+FINI = {"cadrage": ("impl_cadrage", "propose", None), "code": ("impl_code", "code", None),
+        **{p: ("impl_controles", "parallele", p) for p in ("regles", "securite", "perf", "besoin", "doc")}}
+
+
+def fait(run, poste, etape, states, models, cache):
+    """« 👁 Ce qu'il fait » d'un bureau : niveau 1 (fichiers touchés, rapport du dernier poste fini, compteur de Kronn),
+    niveau 2 (carnet), niveau 3 (détail du lecteur de l'agent). Jamais d'exception : None si tout est illisible."""
+    if run.get("status") not in ACTIVE or run.get("status") == "Pending":
+        return None
+    ws = run.get("workspace_path")
+    try:
+        ch = os.path.join(ws, ".kronn", "chaine") if ws else None
+        s, cle = agent_en_cours(run, models, cache)
+        out = (detail(s, ws, run=run, sous=cle == "impl_controles") or {}) if s else {}
+        if out:
+            out["poste"] = poste or etape
+        if ch:
+            try:
+                e = read_json(os.path.join(ch, "etat.json"))
+            except (OSError, ValueError):
+                e = {}
+            if s and isinstance(e, dict):
+                d = fichiers(ws, e.get("depart") or f"origin/{e.get('base') or 'main'}")
+                if d and d["n"]:
+                    out["diff"] = d
+            c = carnet(ch)
+            if c:
+                out["carnet"] = c
+            fini = dernier_fini(run, ch, poste, states, models, cache, ws)
+            if fini:
+                out["fini"] = fini
+        return plafonne(out) if out else None
+    except Exception as e:  # le relevé des bureaux passe avant « Ce qu'il fait »
+        print(f"atelier : ce qu'il fait illisible ({type(e).__name__} {str(e)[:120]})", file=sys.stderr)
+        return None
+
+
+def dernier_fini(run, ch, poste, states, models, cache, ws):
+    """Le dernier poste fini du bureau (le rapport le plus récent de ce run, hors poste en cours) : son rapport réduit et,
+    si le lecteur de son agent existe, ses dernières actions (le sous-agent du poste, aux contrôles)."""
+    t0, best = (run.get("started_at") or "")[:19], None
+    for k in POSTES:
+        if k == poste or states.get(k) not in ("ok", "bloq", "avis", "skip"):
+            continue
+        r = rapport(ch, k)
+        if r and r["at"][:19] >= t0 and (not best or r["at"] > best["at"]):
+            best = r
+    if not best:
+        return None
+    out = {"poste": best.pop("poste"), "rapport": best}
+    wf, step, mission = FINI.get(out["poste"], (None, None, None))
+    c = children(models.get(wf), run["id"], cache) if wf else None
+    s = next((x for x in reversed((c or {}).get("step_results") or []) if x.get("step_name") == step), None)
+    if s:
+        d = detail(s, ws, run=run, mission=mission) or {}
+        (d.get("d") or {}).pop("phrases", None)  # poste fini : son rapport parle pour lui, ses actions restent repliées
+        out.update({k: v for k, v in d.items() if k in ("ag", "lu", "d")})
+    return out
 
 
 def run_url(wf, rid):
@@ -270,7 +351,8 @@ def room(run, models, cache):
         states.setdefault(k, "rep")
     etape = next((x.get("step_name") for x in reversed(run.get("step_results") or []) if x.get("status") == "Running"), None)
     act = activite(run, models, cache) if run.get("status") == "Running" else None
-    return {"run": run["id"], "ticket": m.group(1) if m else None, "repo": m.group(2) if m else None,
+    f = fait(run, poste, etape, states, models, cache)
+    return {**({"fait": f} if f else {}), "run": run["id"], "ticket": m.group(1) if m else None, "repo": m.group(2) if m else None,
             "title": title, "status": run.get("status"), "poste": poste,
             "gate": gate, "states": {k: v for k, v in states.items() if v}, "tour": tour, "tok": run.get("tokens_used") or 0,
             "since": run.get("started_at"), "lot": lot, "note": note, "back": back,
@@ -396,6 +478,7 @@ def snapshot(now_iso=None):
     midnight = now.astimezone(TZ).replace(hour=0, minute=0, second=0, microsecond=0) if now else None
     out["livres"] = sum(1 for e in ev if e["k"] == "sort" and (not midnight or when(e["t"]) >= midnight))
     out["jour"] = jour(chain, now, full_of, causes)
+    menage()
     if len(causes) != known:  # 200 runs au plus, les plus récents (ordre d'insertion)
         try:
             os.makedirs(os.path.dirname(CAUSES), exist_ok=True)
