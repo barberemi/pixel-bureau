@@ -91,7 +91,7 @@ L'étage se suit aussi sans y monter, comme les agents du RDC. Chaque élément 
 - **⌘K** trouve un ticket de la chaîne par sa clé, son titre ou son dépôt (« DM-7854 · bureau 3 · 🔒 retour au code »), et un poste trouve les bureaux où il travaille ou qu'il bloque (« sécurité », « code »).
 - **Qui fait quoi** ajoute un bloc « 1er étage » : un poste au travail par bureau (ou la gate qui t'attend, comptée dans « pour toi »), son ticket, son bureau et depuis quand. En mode TV, le même bloc vient sous les agents dans la colonne du RDC.
 - **Les chiffres du haut** ont une tuile « L'immeuble » : une ligne par étage installé, de haut en bas (3e, 2e, 1er, -1), avec une fenêtre allumée par bureau occupé (au 1er et au 3e), « ✋ n » en ambre pour ce qui t'attend et les pannes en rouge ; les tickets sortis aujourd'hui et la file au survol. Un clic sur une ligne monte à l'étage.
-- **Aux étages, sous 1600 px de large**, le panneau de droite se replie de lui-même pour que le plan soit lisible ; il revient au RDC comme tu l'avais laissé.
+- **Aux étages**, quelle que soit la largeur de l'écran, le panneau de droite se replie de lui-même pour que le plan soit au moins aussi grand qu'au RDC ; il revient au RDC comme tu l'avais laissé.
 
 ## En panne : reprendre là où ça s'est arrêté
 

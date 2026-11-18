@@ -58,7 +58,12 @@ function hitZone(ev){
   return mb?'mail:'+mb:duckHit(mx,my)?'duck':supportOpenable()&&inR(supportRect())?'support':bs&&inR(bs)?'bosspages':na&&inR(na)?'newagent':inR(PAYR)?'paie':inR(TVR)?'tv':(()=>{const r=svRect(T);return r&&inR(r);})()?'services':inR(KANR)?'kanban':(()=>{const r=cronNoteRect();return r&&inR(r);})()?'planning':todosOn()&&inR(todoRect())?'todo':CALR&&ABSENCES&&inR(CALR)?'calendar':DEPR&&inR(DEPR)?'departs':inR(EMPR)&&bestEmployee().length?'emp':null;}
 // zones du plan qui ouvrent une fenêtre (le reste ouvre le panneau) : l'infobulle le dit
 const WIN_ZONES=new Set(['bosspages','todo','newagent','kanban','calendar','departs']);
-cv.addEventListener('click',e=>{if(TV)return;if(!FLOOR&&digiClick(e))return;if(FLOOR){(FLOOR===4?comblesClick:FLOOR===1?atelierClick:FLOOR===3?retoursClick:FLOOR===2?redactionClick:caserneClick)(e);return;}const c=hitTest(e);if(c){select(c.key);return;}const pl=pileAt(e);if(pl&&pl.o&&pl.o.key){select(pl.o.key);return;} // une pile : la fiche de la personne, qui liste ses tickets (audit UX 4.7)
+// un clic sur ce qui se clique dans un étage (le curseur en main, posé par le survol de l'étage) rouvre le panneau replié : aux
+// étages, il se replie de lui-même (sideForFloor) et la fiche s'y ouvre, comme choisir quelqu'un au RDC
+function floorClick(e){const hot=cv.style.cursor==='pointer';
+  (FLOOR===4?comblesClick:FLOOR===1?atelierClick:FLOOR===3?retoursClick:FLOOR===2?redactionClick:caserneClick)(e);
+  if(hot&&SIDE_FOLDED){SIDE_FOLDED=false;renderSide(true);}}
+cv.addEventListener('click',e=>{if(TV)return;if(!FLOOR&&digiClick(e))return;if(FLOOR){floorClick(e);return;}const c=hitTest(e);if(c){select(c.key);return;}const pl=pileAt(e);if(pl&&pl.o&&pl.o.key){select(pl.o.key);return;} // une pile : la fiche de la personne, qui liste ses tickets (audit UX 4.7)
   const z=hitZone(e);if(z==='bosspages')openBossPages();else if(z==='departs')openDeparts();else if(z==='todo')openTodos();else if(z==='support')openSupport();else if(z==='newagent')openNewAgent();else select(z);});
 const slider=document.getElementById('slider'), playBtn=document.getElementById('play'), liveBtn=document.getElementById('live'), speedBtn=document.getElementById('speed');
 const tgo=document.getElementById('tgo'), tbub=document.getElementById('tbub');

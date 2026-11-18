@@ -29,8 +29,6 @@ h1{font-size:22px;margin:0;letter-spacing:-.01em}
 .cv-wrap{overflow-x:auto;border-radius:8px;background:#22232b;position:relative}
 /* hors TV : le plan prend toute la colonne, sans dépasser la hauteur de l'écran (un étage et la barre du rejeu tiennent) */
 body:not(.tv) .cv-wrap>#cv{width:min(100%,calc((100vh - 150px) * var(--plan-ratio,2)));margin:0 auto}
-/* aux étages (-1 à 3e), le plan tient dans la fenêtre : la hauteur sous l'en-tête, mesurée (planFit, 68-atelier.js) */
-body.plan-etage:not(.tv) .cv-wrap>#cv{width:min(100%,calc((100vh - var(--plan-top,150px)) * var(--plan-ratio,2)))}
 /* loupe (44-loupe.js) : cadre posé sur le plan, fenêtre flottante en bas à gauche de l'écran (.right : à droite), liseré de
    la couleur de l'événement (--lc) */
 #loupecv{position:absolute;pointer-events:none;z-index:2}

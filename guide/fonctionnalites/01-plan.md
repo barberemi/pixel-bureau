@@ -116,7 +116,7 @@ Sous le plan, la légende suit l'étage affiché : au RDC les états et les holo
 - En bas du panneau, « Et aussi » liste les invités du moment (Yoda, Gandalf, un invité de passage…), tant qu'ils sont dans le bureau, et le canard, avec ce qu'il fait (« se promène · cafétéria », « attend ta réponse »). Survol : il ressort sur le plan. Clic : sa fiche. Ce groupe n'apparaît que dans la vue « Tous ».
 
 ![« Et aussi » : un invité de passage et le canard](../img/panneau-et-aussi.png)
-- Le plan prend toute la largeur de l'écran, sans dépasser sa hauteur : un étage et la barre du rejeu tiennent à l'écran (×0,9 au RDC et ×0,79 aux étages sur un écran de 1600 px, ×1 aux étages en 1920 px).
+- Le plan prend toute la largeur de l'écran, sans dépasser sa hauteur. Les étages suivent la même règle que le RDC et replient le panneau de droite : un agent y est au moins aussi grand qu'au RDC, à toutes les tailles d'écran (à 1440 × 900 : ×0,79 au RDC, ×0,88 aux étages).
 - « Replier ⟩ » en haut du panneau le réduit à une bande : le plan prend presque toute la largeur (×1 sur un écran de 1440 px au lieu de ×0,8). Un clic sur un personnage le rouvre.
 - Au clavier : Tab jusqu'à la liste de l'équipe, flèches pour passer d'une personne à l'autre (elle ressort sur le plan), Entrée pour ouvrir sa fiche.
 
