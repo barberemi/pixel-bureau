@@ -23,7 +23,7 @@ test("l'étage existe en démo ; ses onglets dans l'ordre des étages, le 3e en 
   p.run('setFloor(3);');
   assert.equal(J('FLOOR'), 3);
   assert.deepEqual(J('[cv.width, cv.height]'), J('[AT_W, AT_H]'));
-  assert.deepEqual(J('[cv.width, cv.height]'), [46 * 32, 17 * 32], 'une rangée de bureaux et le couloir : 46 × 17 cases');
+  assert.deepEqual(J('[cv.width, cv.height]'), [40 * 32, 17 * 32], 'une rangée de bureaux et le couloir : 40 × 17 cases, comme le RDC en largeur');
 });
 
 test('une PR garde son bureau ; la suivante prend le premier bureau libre ; trois bureaux au plus, les autres sur les palettes', () => {
@@ -271,7 +271,7 @@ test("une rangée : trois bureaux côte à côte en haut, le couloir dessous ; l
   assert.equal(J('RT_N'), 3);
   assert.equal(J('AT_ROWS[3]'), 17);
   assert.ok(G.every(g => g.y0 === G[0].y0), 'une seule rangée');
-  assert.deepEqual(G.map(g => Math.round(g.x0 / T)), [0, 15, 31]);
+  assert.deepEqual(G.map(g => Math.round(g.x0 / T)), [0, 13, 27], 'trois bureaux de 13,3 cases');
   const hall0 = J('RT_HALL[0]') * T;
   assert.ok(G.every(g => Math.abs(g.y0 + g.h - hall0) < 1 && g.door.y === g.y0 + g.h), 'les portes sur le couloir');
   assert.ok(J('RT_LANE') > hall0 && J('RT_LANE') < 17 * T, 'on marche dans le couloir');
@@ -279,7 +279,7 @@ test("une rangée : trois bureaux côte à côte en haut, le couloir dessous ; l
   assert.ok(G[0].door.x - T >= D.x1 && G[0].door.x - T - D.x1 < 2 * T, 'la porte du bureau 1 : juste après les palettes');
   assert.deepEqual(G.slice(1).map(g => g.door.x), G.slice(1).map(g => g.x0 + g.w / 2), 'les autres au milieu de leur mur');
   // le couloir, de gauche à droite : entrepôt, porte 1, tableau, banc, café, bureau du boss, escalier
-  assert.ok(D.x1 < G[0].door.x && G[0].door.x < 16 * T && 22.2 * T < 24.8 * T && 28.6 * T < J('RT_DESK.x') && J('RT_DESK.x') < J('RT_STAIR.x'));
+  assert.ok(D.x1 < G[0].door.x && G[0].door.x < 13.2 * T && 20.4 * T < 23.4 * T && 26.6 * T < J('RT_DESK.x') && J('RT_DESK.x') < J('RT_STAIR.x'));
 });
 
 test("l'entrepôt : une palette par PR qui attend un bureau, avec son étiquette, la panne en rouge ; le panneau centré au-dessus", () => {
@@ -303,4 +303,10 @@ test("l'entrepôt : une palette par PR qui attend un bureau, avec son étiquette
   p.run(`RETOURS.queue.push({run: 'q3', repo: 'dm/api', pr: '25', since: RETOURS.queue[0].since});`);
   assert.deepEqual(draw().map(x => x[0]).filter(s => !/ENTREPÔT/.test(s)), ['site#2050', 'site#2048', 'api#24', '+2']);
   assert.equal(J('rtSlots().filter(Boolean).length'), 3);
+});
+
+test('sur le plan, les en-têtes du Kanban n\'ont pas de pictogramme, tous pareils ; la légende les garde', () => {
+  const {J} = page();
+  assert.deepEqual(J('RT_COLS.map(rtColTxt)'), ['À traiter', 'Corrigé', 'Test', 'Laissé', 'Réponse']);
+  assert.ok(J('RT_COLS.filter(c => c.n !== rtColTxt(c)).length') >= 4, 'la légende garde les pictogrammes');
 });
