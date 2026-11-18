@@ -14,13 +14,14 @@
 const RVF_TS=AT_TS, RVP=(x,y)=>({x:x*RVF_TS,y:y*RVF_TS});
 // stairLow : derrière la porte de l'escalier, hors du plan (RD_STAIR, 68-redaction.js) ; stair : juste devant ; hall : le
 // palier, devant la porte de la revue (door, puis in) ; stand : Bernard garé sous l'entrepôt, à droite du distributeur ;
-// pick : le relecteur sous la première palette ; relx, col : les colonnes du relecteur et des auteurs, entre la corbeille et
-// le premier bureau ; rely, lane : leurs allées au-dessus de la salle d'attente
+// pick : le relecteur sous la première palette ; relx, col : les colonnes du relecteur et des auteurs, le long du mur, à
+// gauche du premier bureau ; basket, bk : la corbeille « Postées », sous le bureau de droite (on la rejoint par l'allée
+// sous les bureaux) ; rely, lane : leurs allées au-dessus de la salle d'attente
 const RV_MID=(RD_X1+RD_VX)/2;
 const RVF={stairLow:RVP(RV_MID,RD_ROWS+1.9),stair:RVP(RV_MID,RD_ROWS-.6),hall:RVP(RV_MID,RD_HY),door:RVP(RD_VX+.2,RD_HY),in:RVP(RD_VX+1.4,RD_HY),
   desk:{x:rvDeskX(0),y:RV_FEET},face:{x:rvDeskX(0),y:RV_FEET+2.3*RVF_TS},bench:RVP(37.6,18.7),
-  stand:RVP(RV_MID+1.65,7.6),pick:RVP(RV_MID-1.25,7.3),basket:RVP(23.1,10.4),bk:RVP(24.2,10.4),relx:24.5*RVF_TS,rely:15.8*RVF_TS,
-  col:25*RVF_TS,lane:16.4*RVF_TS};
+  stand:RVP(RV_MID+1.65,7.6),pick:RVP(RV_MID-1.25,7.3),basket:RVP(36.5,15),bk:RVP(35.4,15),relx:22.3*RVF_TS,rely:15.8*RVF_TS,
+  col:22.8*RVF_TS,lane:16.4*RVF_TS};
 RVF.park={x:RVF.stand.x,y:RVF.stand.y+36};
 // l'entrepôt : une zone au sol en haut du couloir, sans murs, bordée d'une bande de sécurité ; quatre places de palette (deux
 // rangées de deux, dans l'ordre de lecture), la dernière dit « +n » s'il y en a plus
@@ -77,7 +78,7 @@ function rvfStep(w,dt){
   }
   return true;
 }
-// les chemins des auteurs : par leur colonne, à droite de celle du relecteur, entre la corbeille et le premier bureau
+// les chemins des auteurs : par leur colonne, à droite de celle du relecteur, le long du mur à gauche du premier bureau
 const rvfColAt=y=>({x:RVF.col,y});
 function rvfExit(s){
   if(s.k==='chair'){const c=rvfChair(s.j);return [c,{x:c.x,y:RVF.lane},rvfColAt(RVF.lane)];}
@@ -111,7 +112,7 @@ function rvfUpdate(now){
     const B={load:[],old:[],parked:false};
     // par la revue s'il y a une corbeille à vider, puis en haut du couloir : il se gare sous l'entrepôt et pose les palettes
     const pts=[RVF.stairLow,RVF.stair,RVF.hall];
-    if(old.length)pts.push(RVF.door,RVF.in,{...RVF.bk,dir:'left',hold:.5,do:()=>{B.old=M.basket.slice();M.basket=[];}},RVF.in,RVF.door,RVF.hall);
+    if(old.length)pts.push(RVF.door,RVF.in,{x:RVF.in.x,y:RVF.bk.y},{...RVF.bk,dir:'right',hold:.5,do:()=>{B.old=M.basket.slice();M.basket=[];}},RVF.in,RVF.door,RVF.hall);
     pts.push({...RVF.stand,dir:'up',do:()=>{B.parked=true;fresh.forEach((f,k)=>{f.fly=M.last+k*RVF_FILE/boost;});}},
       {...RVF.stand,dir:'up',hold:fresh.length*RVF_FILE/1000+.4,do:()=>{B.parked=false;}},RVF.hall,RVF.stair,{...RVF.stairLow,do:()=>{M.bern=null;}});
     B.w=rvfWalker(pts);B.fresh=fresh;M.bern=B;
@@ -127,7 +128,7 @@ function rvfUpdate(now){
     const R=M.rel&&M.rel.w?M.rel:{w:null};const from=R.w?{...R.w.pos}:M.rel&&M.rel.seat?{...RVF.desk}:{...RVF.bench};
     let pts=[from];
     if(prev&&M.rel&&M.rel.seat){M.stamp={v:pd?pd.v:'comment',t0:now};
-      pts.push({...RVF.desk,dir:'down',hold:.9,do:()=>{M.stamp=null;R.carry=pd?pd.v:'comment';}},{x:RVF.relx,y:RVF.desk.y},{...RVF.bk,dir:'left',do:()=>{M.basket.push(R.carry);R.carry=null;}});}
+      pts.push({...RVF.desk,dir:'down',hold:.9,do:()=>{M.stamp=null;R.carry=pd?pd.v:'comment';}},{x:RVF.relx,y:RVF.desk.y},{x:RVF.relx,y:RVF.bk.y},{...RVF.bk,dir:'right',do:()=>{M.basket.push(R.carry);R.carry=null;}});}
     const at=pts[pts.length-1];
     // le dossier suivant est à l'entrepôt : par sa colonne, la porte et le palier, puis le couloir ; retour par le même chemin
     if(rk){const f=M.cas.find(x=>x.p.key===rk);

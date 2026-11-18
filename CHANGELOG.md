@@ -27,6 +27,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- Revue des PR (2e) : la corbeille « Postées » passe sous le bureau de droite ; les trois bureaux, espacés (6 cases au lieu de 5,6), et le tableau « Revues du jour » sont centrés dans la salle. Le relecteur de la file et Bernard rejoignent la corbeille par l'allée sous les bureaux.
 - Étages à 40 cases de large, comme le RDC : au -1, au 1er, au 2e, au 3e et aux Combles, personnages et textes à la même taille qu'au RDC (×0,85 dans une fenêtre de 1512 px, panneau ouvert, au lieu de ×0,74). Bureaux du 1er et du 3e de 13,3 cases, baies du -1 de 9,4, revue du 2e sur 19 cases ; une seule règle de lisibilité, 12 px partout. Le panneau ne se replie plus de lui-même en montant : il reste comme tu l'as mis. Au 3e, les en-têtes du Kanban perdent leur pictogramme sur le plan.
 - Étages sur une rangée : le -1, le 1er, le 2e et le 3e tiennent à l'écran sans défiler (46 × 17 à 20 cases au lieu de 27, plan calé sur la place sous l'en-tête). Une rangée de 3 pièces et un couloir : au 1er, trois bureaux à tapis en U, postes au fond et sur les côtés, bulles du fond sous les agents ; un entrepôt en palettes au sol au 1er, au 2e et au 3e (une palette par ticket ou PR en attente) ; Bernard n'entre que pour livrer ou ramasser ; au -1, le chef de centre dans la salle de garde ; au 2e, plus de bureaux libres. La chaîne d'implémentation passe à 3 tickets en parallèle (le 4e attend sur les palettes) ; textes du -1 et du 2e à 12 px minimum.
 
