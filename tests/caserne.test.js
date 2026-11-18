@@ -383,10 +383,10 @@ test('une seule rangée : le -1 fait 20 rangées ; le bureau du chef de centre e
   const {p, J} = page();
   p.run('SUPPORT = supportDemo(); setFloor(-1); renderCaserne(1000);');
   assert.equal(J('AT_ROWS[-1]'), 20);
-  assert.deepEqual(J('[cv.width, cv.height]'), [46 * 32, 20 * 32], 'la toile suit la hauteur de l\'étage');
+  assert.deepEqual(J('[cv.width, cv.height]'), [40 * 32, 20 * 32], 'la toile suit la hauteur de l\'étage, 40 cases de large comme le RDC');
   assert.equal(J('CS_BG.height'), 20 * 32, 'le fond aussi');
-  // le parquet : x ≥ 35 cases (csBackground) jusqu'au bord droit ; le bureau (112 px × CS_K) y tient en entier, centré
-  const d = J('({x: CS_DESK.x, y: CS_DESK.y, half: 56 * CS_K, x0: 35 * AT_TS, x1: AT_W})');
+  // le parquet : x ≥ CS_GX cases (csBackground) jusqu'au bord droit ; le bureau (112 px × CS_K) y tient en entier, centré
+  const d = J('({x: CS_DESK.x, y: CS_DESK.y, half: 56 * CS_K, x0: CS_GX * AT_TS, x1: AT_W})');
   assert.equal(d.x, (d.x0 + d.x1) / 2, 'centré sur le parquet');
   assert.ok(d.x - d.half >= d.x0 && d.x + d.half <= d.x1, 'posé sur le parquet, pas de carrelage sous lui');
   assert.ok(d.y > J('CS_TABLE.y') && d.y < J('CS_COT_Y'), 'sous la partie de cartes, au-dessus des lits de camp');
