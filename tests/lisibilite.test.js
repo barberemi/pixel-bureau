@@ -64,6 +64,14 @@ test('aux étages, aucun texte sous 11 px, sauf le décor', () => {
   assert.deepEqual(tooSmall(files, MIN('etages')), []);
 });
 
+// le -1 et le 2e (20 rangées) s'affichent plus petits que le 1er et le 3e (17) : 12 px, comme au RDC
+test('au -1 et au 2e, aucun texte sous 12 px, sauf le décor', () => {
+  assert.equal(MIN('-1'), 12);
+  assert.equal(MIN('2'), 12);
+  assert.deepEqual(tooSmall(['68-caserne.js'], MIN('-1')), []);
+  assert.deepEqual(tooSmall(['68-redaction.js', '68-revue.js'], MIN('2')), []);
+});
+
 test('le décor exempté existe encore (une entrée périmée de DECOR ne cache rien)', () => {
   const all = SRCS.map(f => read(f)).join('\n');
   for (const k of Object.keys(DECOR)) assert.match(all, new RegExp(`(?:function ${k}\\b|(?:const|let) ${k}\\s*=|furnType\\('${k}'|\\{const ${k}=)`), k);

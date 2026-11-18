@@ -38,7 +38,12 @@ const AT_HELP={bar:()=>legSwatches(AT_ST)+'<span>🧯 fumée : poste en panne</s
     '<p><b>Le grand tableau</b> de l\'orchestrateur : le poste, le tour et les jetons de chaque bureau.</p><p><b>L\'entrepôt</b> : les tickets en attente, et ceux en panne sur des palettes, à relancer.</p>',
   moments:'<p><b>✋ Une gate</b> : ton plan (avec ce que j\'ai compris), la relecture de la PR ; le boss va à la porte.</p><p><b>🚨 L\'escalade</b> : après trois tours, la chaîne demande un humain (gyrophare).</p>'+
     '<p><b>↩ Retour au code</b> : un contrôle a bloqué, le carton recule.</p><p><b>🧯 Une panne</b> : un poste a échoué, le pompier arrive.</p>'};
-const AT_TS=32, AT_W=46*AT_TS, AT_H=27*AT_TS;
+const AT_TS=32, AT_W=46*AT_TS;
+// hauteur de chaque étage en cases (une rangée de pièces et un couloir) : chaque 68-*.js y pose la sienne ; AT_H suit l'étage
+// affiché (setFloor), 27 cases par défaut (les Combles)
+const AT_ROWS={};
+let AT_H=27*AT_TS;
+const atRows=f=>AT_ROWS[f]||27;
 let FLOOR=0, ATELIER=null, ATSEL=null;
 try{const f=+localStorage.getItem('bureau:floor');FLOOR=f===1||f===-1||f===2||f===3||f===4?f:0;}catch(e){FLOOR=0;} // -1 : la caserne Support (68-caserne.js) ; 3 : les retours de PR (68-retours.js)
 function readAtelier(src){
@@ -312,6 +317,8 @@ const floorsOn=()=>[...(retoursOn()?[3]:[]),...(redactionOn()?[2]:[]),...(atelie
 function setFloor(f){
   FLOOR=f===4&&comblesOn()?4:f===1&&atelierOn()?1:f===-1&&caserneOn()?-1:f===3&&retoursOn()?3:f===2&&redactionOn()?2:0;ATSEL=null;AT_PICK=null;if(FLOOR){SEL_BACK=[];if(!(byKey[sel]&&byKey[sel].boss))sel=null;} // hors du RDC, seul le boss garde sa fiche du RDC (drawAtelierSide, drawCaserneSide)
   try{localStorage.setItem('bureau:floor',String(FLOOR));}catch(e){}
+  if(FLOOR)AT_H=atRows(FLOOR)*AT_TS;
+  document.body.classList.toggle('plan-etage',FLOOR!==0&&FLOOR!==4);planFit();
   if(FLOOR){cv.width=AT_W;cv.height=AT_H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(AT_W/AT_H));}
   else{cv.width=W;cv.height=H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(W/H));}
   // pas sizeCanvas() : il redimensionne aussi bg, le décor du RDC cuit une fois, et redimensionner une toile l'efface
@@ -322,6 +329,11 @@ function setFloor(f){
   sideForFloor(FLOOR);atelierTabs();renderSide(true);if(TV)updateTv(true); // 75-tv.js : la colonne et le bouton d'étage
   if(typeof renderLegend==='function')renderLegend(); // 46-legende.js : la légende et « Comment lire le plan » de cet étage, ses scènes
 }
+// le plan d'un étage tient dans la fenêtre : sa largeur suit la place réelle sous l'en-tête (--plan-top, styles.css), pas une
+// marge fixe ; recalculé en changeant d'étage et quand la fenêtre change de taille
+function planFit(){requestAnimationFrame(()=>{const r=cv.getBoundingClientRect();
+  document.documentElement.style.setProperty('--plan-top',Math.max(0,Math.round(r.top+scrollY))+12+'px');});}
+addEventListener('resize',()=>{if(document.body.classList.contains('plan-etage'))planFit();});
 // ---------- le plan de l'étage ----------
 // Quatre bureaux pleine largeur autour d'un couloir central (vertical) et d'un couloir horizontal ; une porte au milieu de
 // chaque bureau, côté couloir horizontal. Dans un bureau, un tapis en U : le carton du ticket entre par la trappe du
@@ -596,7 +608,7 @@ function atWorker(k,x,y,dir,err,name,gear){
     pos:{x,y},tile:null,dir,moving:false,pose:'type',present:true,_st:{st:err?'error':'work'},phase:(x*7+y)%5,gear:gear!==undefined?gear:name==='Pompier'?'securite':'chantier'});
 }
 let AT_OFF=null;
-function atLayer(){if(!AT_OFF){AT_OFF=document.createElement('canvas');AT_OFF.width=AT_W;AT_OFF.height=AT_H;}const g=AT_OFF.getContext('2d');g.imageSmoothingEnabled=false;g.clearRect(0,0,AT_W,AT_H);return g;}
+function atLayer(){if(!AT_OFF||AT_OFF.height!==AT_H){AT_OFF=document.createElement('canvas');AT_OFF.width=AT_W;AT_OFF.height=AT_H;}const g=AT_OFF.getContext('2d');g.imageSmoothingEnabled=false;g.clearRect(0,0,AT_W,AT_H);return g;}
 function atDrawInto(g,c,now){const s=ctx;ctx=g;try{drawChar(c,now);}finally{ctx=s;}}
 let AT_HITS=[], AT_PICK=null, AT_LIT=[]; // zones cliquables de l'image ; agent, ticket en attente ou panne choisi (sinon ATSEL : un bureau) ;
 // AT_LIT : où sont les personnages qui marchent ou se promènent, et le boss, pour la lumière du soir (atNight)
@@ -1019,7 +1031,7 @@ function atWindows(now,xs){
 function floorNight(S,o,now){
   const d=daylight(T), dark=Math.max((1-d.k)*NIGHT_MAX,o.closed?NIGHT_MAX:0);if(dark<.02){S.lv=null;return;}
   const W_=AT_W/LQ, H_=AT_H/LQ, rooms=o.rooms||[], spots=o.spots||[], halo=rooms.length>0||spots.some(q=>q.c);
-  if(!S.cv)S.cv=[lightCanvas(W_,H_),lightCanvas(W_,H_),lightCanvas(AT_W,AT_H)];
+  if(!S.cv||S.cv[2].height!==AT_H)S.cv=[lightCanvas(W_,H_),lightCanvas(W_,H_),lightCanvas(AT_W,AT_H)];
   if(!S.lv||S.lv.length!==rooms.length)S.lv=rooms.map(z=>z[4]?1:0);
   const sig=(o.track||[]).map(q=>Math.round(q.x/4)+','+Math.round(q.y/4)).join(' ');
   if(now-S.at>200||!S.at||sig!==S.sig&&now-S.at>40){const dt=S.at?Math.min(1000,now-S.at):LIGHT_FADE;S.at=now;S.sig=sig;
