@@ -286,7 +286,7 @@ SHOTS = {
                      "const pr=prs.find(x=>x.review==='changes'&&!x.draft&&(x.keys||[]).length);"
                      "openTicket(pr?pr.keys[0]:(all.find(t=>t.cat==='deploy')||all[0]).key);", ".kbv"),
     # temps gagné par l'IA (#79) : « ⏱ Temps gagné IA » sur la fiche d'un ticket terminé (modèle ai_time simulé)
-    # 1er étage, l'atelier d'implémentation (#125) : les quatre bureaux de la démo, puis la fiche du bureau qui a un bloquant
+    # 1er étage, l'atelier d'implémentation (#125) : les trois bureaux de la démo, puis la fiche du bureau qui a un bloquant
     "atelier": (1600, 1100, AT(11) + "setFloor(1);", None),
     "atelier-fiche": (1600, 1100, AT(11) + "setFloor(1);ATSEL='demo-a3';renderSide(true);", None),
     # le 1er étage au calme : deux bureaux libres, éteints, Bernard à l'entrepôt, personne en file

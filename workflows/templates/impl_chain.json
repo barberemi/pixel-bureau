@@ -1,7 +1,7 @@
 {
  "kind": "workflow",
  "key": "impl_chain",
- "doc": "Un ticket, une copie du projet, des postes : plan, ta validation, code, contrôles, PR. 4 en parallèle.",
+ "doc": "Un ticket, une copie du projet, des postes : plan, ta validation, code, contrôles, PR. 3 en parallèle.",
  "definition": {
   "name": "Le Bureau · implémenter un ticket (chaîne)",
   "project_id": null,
@@ -120,7 +120,7 @@
    "hooks": {},
    "require_isolation": true
   },
-  "concurrency_limit": 4,
+  "concurrency_limit": 3,
   "exec_allowlist": [
    "python3"
   ],

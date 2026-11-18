@@ -211,7 +211,7 @@ def skills_of(names, cfg):
 REVIEW_SCHEDULE = "30 7,10,13,16,19 * * 1-5"  # cron des revues de PR, heures UTC (review.schedule de l'équipe pour un autre)
 # modèles lancés en foreach (un sous-workflow par PR) : Kronn y écrit .kronn/current_task.json, il leur faut leur propre
 # copie du projet (require_isolation), jamais le dossier principal ; le sous-workflow tourne dans celle de son parent
-ISOLATED = {"review_one", "review_cron", "impl_chain", "ticket"}  # la chaîne : une copie du projet par ticket, 4 en parallèle
+ISOLATED = {"review_one", "review_cron", "impl_chain", "ticket"}  # la chaîne : une copie du projet par ticket, 3 en parallèle
 # sous-workflows qui tournent dans la copie de leur parent : relire une PR, les postes de la chaîne d'implémentation
 SHARED_WORKSPACE = {"review_child", *(f"review_{p}" for p in REVIEW_POSTES), "impl_controles", *(f"impl_{p}" for p in IMPL_POSTES), *(f"support_{p}" for p in SUPPORT_POSTES),
                     *(f"ticket_{p}" for p in TICKET_POSTES), "ticket_un"}  # la salle de rédaction (2e étage)

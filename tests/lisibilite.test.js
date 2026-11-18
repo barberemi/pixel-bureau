@@ -84,15 +84,16 @@ test('l\'écran TV et l\'affiche de l\'employé du sprint grandissent jusqu\'à 
   assert.deepEqual(J('atLeast({x:10,y:10,w:200,h:50},TV_MIN)'), {x: 10, y: 10, w: 200, h: 50});
 });
 
-test('1er : une étiquette rentre dans l\'étage au bord du plan ; le titre d\'un bureau du haut ne passe pas sous l\'orchestrateur', () => {
+test('1er : une étiquette rentre dans l\'étage au bord du plan ; le nom d\'un bureau tient dans son U', () => {
   const p = load(), J = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
   p.run("ctx.measureText = t => ({width: t.length * 8}); var __R = []; ctx.fillRect = (x, y, w) => { __R.push([x, w]); };");
   p.run("atPill('🧯 Perf·a11y en panne : le pompier arrive', AT_W - 20, 400, '#a8323a'); atPill('x', 3, 400, '#000');");
   const [[x1, w1], [x2]] = J('__R');
   assert.ok(x1 + w1 <= J('AT_W') - 2 && x2 >= 2, JSON.stringify(J('__R')));
-  const head = i => J(`atHead(AT_G[${i}], AT_G[${i}].L ? (AT_G[${i}].x0 + .5) * AT_TS : (AT_G[${i}].x1 - .5) * AT_TS, ['BUREAU ${i + 1}', 'DM-7911', 'site', 'tour 1/3', '64 k jetons'])`);
-  assert.equal(head(1), 'BUREAU 2 · DM-7911 · site · tour 1/3'); // en haut à droite : les jetons sont sur le tableau
-  assert.equal(head(3), 'BUREAU 4 · DM-7911 · site · tour 1/3 · 64 k jetons'); // en bas : la place ne manque pas
+  const head = (i, parts) => J(`atHead(AT_G[${i}], ${JSON.stringify(parts)})`);
+  assert.equal(head(1, ['BUREAU 2', 'DM-7911', 'site', 'tour 1/3', '64 k jetons']), 'BUREAU 2 · DM-7911 · site · tour 1/3'); // les jetons sont sur le tableau
+  assert.equal(head(2, ['BUREAU 3', 'DM-79112', 'monsite', 'tour 1/3', '64 k jetons']), 'BUREAU 3 · DM-79112 · tour 1/3', 'puis le dépôt');
+  assert.equal(head(0, ['BUREAU 1', 'DM-1', 'api', '', '9 k jetons']), 'BUREAU 1 · DM-1 · api · 9 k jetons', 'la place ne manque pas');
 });
 
 test('un poste au repos, fini ou sauté ne montre que son icône ; actif, en panne ou à ta décision, son nom aussi', () => {

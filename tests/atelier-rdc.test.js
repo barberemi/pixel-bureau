@@ -96,7 +96,7 @@ test('chiffres du haut : bureaux, gates qui t\'attendent, sortis aujourd\'hui à
   assert.deepEqual(J('atKpi(DAY0 + 12 * 36e5)'), {rooms: 2, wait: 1, out: 1, queue: 1, pannes: 1});
   assert.equal(J('atKpi(DAY0 + 14 * 36e5).out'), 2);
   const r = J('imRows(DAY0 + 12 * 36e5).find(r => r.f === 1)');
-  assert.deepEqual([r.cnt, r.cap, r.wait, r.pannes], [2, 4, 1, 1]);
+  assert.deepEqual([r.cnt, r.cap, r.wait, r.pannes], [2, 3, 1, 1]);
   assert.deepEqual(r.tip, ["📦 1 sorti aujourd'hui", '⏳ 1 en file'], 'le reste au survol');
   setAtelier(false);
   assert.equal(J('atKpi(DAY0 + 12 * 36e5).out'), 3, 'la démo invente ses sorties (3 au plus)');
