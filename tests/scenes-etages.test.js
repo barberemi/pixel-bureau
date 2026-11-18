@@ -98,10 +98,10 @@ test('le soir au 1er et au 3e : des bureaux libres, pour voir ceux qui restent �
   assert.equal(J('atRooms().length'), 4, 'la journée revient telle quelle');
   ({p, J, play} = page(3));
   play('Le soir au 3e');
-  assert.equal(J('rtRooms().length'), 3);
+  assert.equal(J('rtRooms().length'), 2);
   assert.equal(J('officeOpen(T)'), false);
   p.run('demoEnd();');
-  assert.equal(J('rtRooms().length'), 5);
+  assert.equal(J('rtRooms().length'), 3);
 });
 
 test("2e, « L'auteur repart » et « Une revue à la demande » : leur loupe ; la démo de la revue suit l'heure du plan", () => {

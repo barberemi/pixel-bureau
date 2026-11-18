@@ -1,6 +1,7 @@
 // ---------- 3e étage : les retours de PR ----------
 // Un bureau par PR dont on corrige les commentaires de review (modèle du Bureau « corriger les commentaires d'une PR »,
-// actions.fix_pr, fix.json), six au plus. Dans chaque bureau, un rail de postes comme au 1er (un agent par étape du
+// actions.fix_pr, fix.json), trois au plus, sur une rangée au-dessus du couloir (en pratique, jamais plus d'une correction à la
+// fois). Au-delà, la PR attend sur une palette de l'entrepôt, au début du couloir. Dans chaque bureau, un rail de postes comme au 1er (un agent par étape du
 // workflow, derrière son bureau à écran, la PR en carton devant le poste en cours) et, au mur, le Kanban des fils de la
 // PR (une colonne par section de la réponse de l'agent) ; un fil rouge relie le fil traité à l'agent qui s'en occupe. Un
 // clic sur le Kanban l'ouvre en grand. Le boss est toujours là, à son bureau du couloir : il se lève pour aller à la
@@ -20,15 +21,20 @@ const RT_COLS=[{k:'a_traiter',n:'À traiter',c:'#e8e2d0'},{k:'corrige',n:'✅ Co
 const RT_HELP={bar:()=>'<span>Kanban des fils :</span>'+legSwatches(Object.fromEntries(RT_COLS.map(c=>[c.k,[c.c,c.n]])))+'<span>cadre rouge : le fil en cours</span>',postes:()=>[['',RT_POSTES]],
   qui:'<p><b>Agents</b> : un par poste, en chirurgiens. Toute l\'équipe monte avec la PR et reste jusqu\'au push ; au bureau 1 libre, elle somnole.</p><p><b>Bernard</b> sort de la porte de l\'escalier avec la PR et la redescend une fois poussée.</p><p>Un agent en gris pâle : son poste attend, personne n\'y travaille en ce moment (au RDC, la couleur d\'un hologramme dit sa famille, pas son activité).</p>'+
     '<p><b>Le boss</b>, à son bureau du couloir, va à la barrière du bureau qui attend depuis le plus longtemps ; les autres attendent leur tour. Ici, ta décision, c\'est la barrière.</p>',
-  ou:'<p><b>Six bureaux</b> : une PR par bureau, avec son dépôt, son numéro et son auteur.</p><p><b>Le Kanban</b> au mur : un post-it par fil de commentaire, qui change de colonne quand il est traité ; un clic l\'agrandit.</p>'+
-    '<p><b>Le couloir</b> : au fond, le tableau RETOURS DU JOUR (PR poussées et fils, en cours et pannes, jetons ; le détail est dans la page « Retours · bilan »), puis les PR qui attendent un bureau, le café, le banc.</p>',
+  ou:'<p><b>Trois bureaux</b> sur une rangée : une PR par bureau, avec son dépôt, son numéro et son auteur.</p><p><b>Le Kanban</b> au mur : un post-it par fil de commentaire, qui change de colonne quand il est traité ; un clic l\'agrandit.</p>'+
+    '<p><b>Le couloir</b>, de gauche à droite : l\'entrepôt (une palette par PR qui attend un bureau, les pannes en rouge), la porte du bureau 1, le tableau RETOURS DU JOUR (PR poussées et fils, en cours et pannes, jetons ; le détail est dans la page « Retours · bilan »), le banc, le café, le bureau du boss et l\'escalier.</p>',
   moments:'<p><b>✋ À toi</b> : les corrections attendent ta validation.</p><p><b>🧯 Contrôles rouges</b> : le correctif est annulé, la PR attend une relance.</p><p><b>📤 Poussée</b> : les réponses sont postées, Bernard redescend la PR.</p>'};
 const RT_ST={ok:['ok','a travaillé'],run:['run','au travail'],err:['err','en panne'],gate:['wait','t\'attend'],wait:['','attend son tour']};
-const RT_N=6, RT_W=46/3, RT_H=11.2, RT_Y=[2,15.8], RT_HALL=[13.2,15.8], RT_LANE=14.5*AT_TS;
+// une rangée de trois bureaux au-dessus du couloir : 46 × 17 cases (AT_ROWS, 68-atelier.js)
+AT_ROWS[3]=17;
+const RT_N=3, RT_W=46/3, RT_H=11.2, RT_Y=2, RT_HALL=[13.2,17], RT_LANE=14.2*AT_TS;
+// le couloir, de gauche à droite : l'entrepôt (une zone de palettes au sol, comme au 1er et au 2e), la porte du bureau 1
+// juste après, le tableau RETOURS DU JOUR, le banc, le café, le bureau du boss, la porte de l'escalier
+const RT_DEPOT={x0:.25*AT_TS,x1:12.2*AT_TS,y0:14.5*AT_TS,y1:16.85*AT_TS}, RT_DOOR1=13.5*AT_TS;
 const RT_WINDOWS=[7,10,13,17,20,23,27,30,33,37,40,43]; // en cases : à droite du nom de l'étage, comme au RDC
 // RT_STAIRS : derrière la porte de l'escalier, au bout du couloir dans le mur de droite comme l'entrée du RDC (stairDoor,
 // 68-atelier.js) ; Bernard en sort et y rentre
-const RT_DESK={x:31*AT_TS,y:15.2*AT_TS}, RT_STAIRS={x:46*AT_TS+50,y:14.5*AT_TS};
+const RT_DESK={x:36*AT_TS,y:15.6*AT_TS}, RT_STAIRS={x:46*AT_TS+50,y:RT_LANE};
 const RT_STAIR={x:46*AT_TS-12,y:13.5*AT_TS,w:12,h:2*AT_TS,vert:true,wall:[46*AT_TS-12,13.2*AT_TS,12,2.6*AT_TS]}, RT_EXIT={x:46*AT_TS-30,y:13.5*AT_TS-12};
 let RETOURS=null, RTSEL=null, RT_KB=null, RT_HITS=[], RT_LIT=[];
 let RTPOSTE=null, RTQ=false; // la fiche d'un poste du bureau ouvert (clic sur son agent) ; la file du couloir
@@ -42,12 +48,13 @@ function readRetours(src){
   }catch(e){return null;}
 }
 const retoursOn=()=>!!(CFG.retours||DEMO);
-// démo : cinq PR de l'équipe fictive (dépôts dm/*) à des postes différents, deux qui attendent ta validation, une file
-// « 👁 Ce qu'il fait » de la démo (contenus fictifs) : f1 corrige le fil 3, f4 a fini sa correction et pousse
+// démo : trois PR de l'équipe fictive (dépôts dm/*) à des postes différents, une qui attend ta validation, deux PR en
+// attente et une panne sur les palettes de l'entrepôt
+// « 👁 Ce qu'il fait » de la démo (contenus fictifs) : f1 corrige le fil 3, f2 a fini sa correction (elle attend ta validation)
 function rtDemoFait(at,k){
   const s=x=>at(11-x/3600), A=l=>l.map(([x,c,t])=>[s(x),c,t]);
-  if(k==='f4')return {ag:'ClaudeCode',lu:true,fini:true,diff:{n:3,plus:31,moins:12,encours:3,commits:[],l:[['src/Menu.tsx',22,9,420],['src/Menu.css',3,3,610],['src/Menu.test.tsx',6,0,700]]},
-    d:{compte:{lecture:12,recherche:5,modification:7,commande:4},actions:A([[400,'commande','npm test'],[420,'modification','src/Menu.tsx'],[455,'lecture','src/Menu.tsx'],[610,'modification','src/Menu.css'],[700,'modification','src/Menu.test.tsx']])}};
+  if(k==='fini')return {ag:'ClaudeCode',lu:true,fini:true,diff:{n:3,plus:31,moins:12,encours:3,commits:[],l:[['src/Banner.tsx',22,9,420],['src/i18n/fr.json',3,3,610],['src/Banner.test.tsx',6,0,700]]},
+    d:{compte:{lecture:12,recherche:5,modification:7,commande:4},actions:A([[400,'commande','npm test'],[420,'modification','src/Banner.tsx'],[455,'lecture','src/Banner.tsx'],[610,'modification','src/i18n/fr.json'],[700,'modification','src/Banner.test.tsx']])}};
   return {ag:'ClaudeCode',lu:true,k:{cat:'Edit',n:23,at:s(8)},
     diff:{n:3,plus:18,moins:6,encours:3,commits:[],l:[['src/Player.tsx',9,4,8],['src/api/video.test.ts',7,0,190],['src/hooks/useFeed.ts',2,2,520]]},
     d:{depuis:s(900),compte:{lecture:9,recherche:6,modification:5,commande:3},actions:A([[8,'modification','src/Player.tsx'],[31,'recherche','autoplay'],[52,'lecture','src/Player.tsx'],
@@ -65,16 +72,10 @@ function retoursDemo(){
      fait:rtDemoFait(at,'f1')},
     {run:'demo-f2',repo:'dm/site',pr:'2039',title:'Bandeau cookies : le bouton Refuser',author:'pambeesly',poste:'gate',gate:true,states:{...ok(4),gate:'gate'},since:at(9.4),
      fils:[F('u1','corrige','src/Banner.tsx',14,'hollyflax','Le bouton n\'a pas de label'),F('u2','corrige','src/Banner.tsx',30,'gabelewis','Couleur hors charte'),F('u3','corrige','src/i18n/fr.json',3,'hollyflax','Faute de frappe'),
-       F('u4','test','src/Banner.test.tsx',1,'darrylphilbin','Un test pour Refuser ?'),F('u5','laisse','src/Banner.tsx',2,'gabelewis','Passer en CSS modules'),F('u6','reponse','src/Banner.tsx',44,'darrylphilbin','Pourquoi un timeout ?')]},
+       F('u4','test','src/Banner.test.tsx',1,'darrylphilbin','Un test pour Refuser ?'),F('u5','laisse','src/Banner.tsx',2,'gabelewis','Passer en CSS modules'),F('u6','reponse','src/Banner.tsx',44,'darrylphilbin','Pourquoi un timeout ?')],
+     fait:rtDemoFait(at,'fini')},
     {run:'demo-f3',repo:'dm/api',pr:'16',title:'Cache des listes de rubriques',author:'darrylphilbin',poste:'check',states:{...ok(2),check:'err'},since:at(9.9),
-     fils:[F('v1','a_traiter','app/Cache.php',51,'pambeesly','Clé de cache trop large'),F('v2','corrige','app/Cache.php',12,'hollyflax','Constante à extraire'),F('v3','corrige','app/Cache.php',80,'gabelewis','TTL en dur',1),F('v4','reponse','app/Cache.php',90,'pambeesly','Et l\'invalidation ?')]},
-    {run:'demo-f4',repo:'dm/site',pr:'2045',title:'Menu : la recherche au clavier',author:'gabelewis',poste:'push',states:{...ok(5),push:'run'},since:at(8.8),
-     fils:[F('w1','corrige','src/Menu.tsx',8,'pambeesly','Tab saute la recherche'),F('w2','corrige','src/Menu.tsx',22,'hollyflax','aria-expanded manquant'),F('w3','corrige','src/Menu.tsx',40,'darrylphilbin','Échap ne ferme pas'),
-       F('w4','corrige','src/Menu.css',5,'pambeesly','Focus invisible'),F('w5','test','src/Menu.test.tsx',1,'hollyflax','Test clavier'),F('w6','reponse','src/Menu.tsx',60,'gabelewis','Pourquoi un portal ?'),F('w7','reponse','src/Menu.tsx',72,'pambeesly','Ça marche sur mobile ?')],
-     fait:rtDemoFait(at,'f4')},
-    {run:'demo-f5',repo:'dm/api',pr:'21',title:'Export CSV des abonnés',author:'pambeesly',poste:'gate',gate:true,states:{...ok(4),gate:'gate'},since:at(10.4),
-     fils:[F('x1','corrige','app/Export.php',10,'darrylphilbin','Encodage UTF-8 BOM'),F('x2','corrige','app/Export.php',33,'gabelewis','Nom du fichier daté'),F('x3','test','tests/ExportTest.php',1,'hollyflax','Couvrir la liste vide'),
-       F('x4','reponse','app/Export.php',50,'darrylphilbin','Limiter à 10 000 lignes ?'),F('x5','reponse','app/Export.php',61,'hollyflax','Et les désabonnés ?')]}];
+     fils:[F('v1','a_traiter','app/Cache.php',51,'pambeesly','Clé de cache trop large'),F('v2','corrige','app/Cache.php',12,'hollyflax','Constante à extraire'),F('v3','corrige','app/Cache.php',80,'gabelewis','TTL en dur',1),F('v4','reponse','app/Cache.php',90,'pambeesly','Et l\'invalidation ?')]}];
   return {generated_at:at(11),postes:RT_POSTES.map(p=>p.k),rooms,queue:[{run:'demo-fq1',repo:'dm/site',pr:'2048',since:at(10.7)},{run:'demo-fq2',repo:'dm/api',pr:'24',since:at(10.9)}],
     pannes:[{run:'demo-fp1',repo:'dm/site',pr:'2031',title:'Pied de page : liens sociaux',poste:'fix',since:at(8.2)}],pousses:2,jour:{pousses:2,fils:9,tok:68000,cours:rooms.length,pannes:1,semaine:7},
     events:[...rooms.map(r=>({t:r.since,k:'arrive',run:r.run,repo:r.repo,pr:r.pr})),...rooms.filter(r=>r.gate).map(r=>({t:new Date(ms(r.since)+30*60e3).toISOString(),k:'gate',run:r.run,repo:r.repo,pr:r.pr})),
@@ -85,7 +86,11 @@ function retoursDemo(){
 // ---------- les bureaux : en direct, ceux du relevé ; en rejeu, l'étage à l'heure du curseur ----------
 const rtLive=()=>typeof mode==='undefined'||mode==='live'||(typeof SCENE_DEMO!=='undefined'&&!!SCENE_DEMO);
 const rtEvents=()=>((RETOURS&&RETOURS.events)||[]);
-const rtRooms=()=>(rtLive()?((RETOURS&&RETOURS.rooms)||[]):rtRoomsAt(T)).slice(0,RT_N);
+const rtAll=()=>rtLive()?((RETOURS&&RETOURS.rooms)||[]):rtRoomsAt(T);
+const rtRooms=()=>rtAll().slice(0,RT_N);
+// les PR qui attendent un bureau, une palette chacune : celles au-delà des trois bureaux (les plus récentes), puis la file
+// du relevé (runs pas encore lancés)
+const rtWaiting=()=>[...rtAll().slice(RT_N).map(r=>({run:r.run,repo:r.repo,pr:r.pr,since:r.since})),...((RETOURS&&RETOURS.queue)||[])];
 // une PR occupe un bureau de son arrivée à son push (ou sa panne) ; à sa gate depuis l'ouverture de la gate ; une PR encore
 // là et sans rien de plus tard garde ce que le relevé en sait (postes, Kanban)
 function rtRoomsAt(t){
@@ -123,16 +128,15 @@ const rtCount=(r,k)=>(r.fils||[]).filter(f=>f.col===k).length;
 // la barrière où le boss va : la gate ouverte depuis le plus longtemps ; les autres attendent leur tour
 function rtGateTarget(slots){let best=-1;slots.forEach((r,i)=>{if(r&&r.gate&&(best<0||ms(r.since)<ms(slots[best].since)))best=i;});return best<0?null:best;}
 // ---------- géométrie ----------
+// la porte de chaque bureau, dans son mur du bas, sur le couloir : au milieu, sauf celle du bureau 1, juste après l'entrepôt
 function rtGeo(i){
-  const T=AT_TS, col=i%3, top=i<3, x0=col*RT_W*T, y0=RT_Y[top?0:1]*T, w=RT_W*T, h=RT_H*T, ry=y0+h-2.4*T, sw=(w-1.4*T)/RT_POSTES.length;
+  const T=AT_TS, x0=i*RT_W*T, y0=RT_Y*T, w=RT_W*T, h=RT_H*T, ry=y0+h-2.4*T, sw=(w-1.4*T)/RT_POSTES.length;
   const pts=RT_POSTES.map((p,j)=>({x:x0+.7*T+(j+.5)*sw,y:ry-.95*T}));
-  return {i,top,x0,y0,w,h,ry,sw,pts,kb:{x:x0+.5*T,y:y0+1.1*T,w:w-T,h:3*T},door:{x:x0+w/2,y:top?y0+h:y0},
-    gate:top?{x:pts[4].x,y:y0+h-.9*T}:{x:pts[4].x,y:pts[4].y}};
+  return {i,x0,y0,w,h,ry,sw,pts,kb:{x:x0+.5*T,y:y0+1.1*T,w:w-T,h:3*T},door:{x:i?x0+w/2:RT_DOOR1,y:y0+h},gate:{x:pts[4].x,y:y0+h-.9*T}};
 }
 const RT_G=[...Array(RT_N).keys()].map(rtGeo);
-// le chemin du boss : de son bureau par le couloir jusqu'à la porte, puis à la barrière (en haut : sous le rail, devant la
-// barrière ; en bas : par la porte du haut, sous le Kanban, jusqu'à la place de la barrière)
-const rtInside=i=>{const g=RT_G[i], T=AT_TS;return g.top?[{x:g.door.x,y:RT_LANE},{x:g.door.x,y:g.gate.y},g.gate]:[{x:g.door.x,y:RT_LANE},{x:g.door.x,y:g.y0+4.9*T},{x:g.gate.x,y:g.y0+4.9*T},g.gate];};
+// le chemin du boss : de son bureau par le couloir jusqu'à la porte, puis sous le rail jusqu'à la barrière
+const rtInside=i=>{const g=RT_G[i];return [{x:g.door.x,y:RT_LANE},{x:g.door.x,y:g.gate.y},g.gate];};
 // prev : le bureau d'où il repart (il en ressort par le même chemin), sinon son bureau du couloir
 function rtBossPath(from,i,prev){
   const pts=[{...from}];
@@ -144,10 +148,10 @@ const rtHome=()=>({x:RT_DESK.x,y:RT_DESK.y}); // assis à son bureau du couloir
 // ---------- décor ----------
 function rtBackground(){
   const c=document.createElement('canvas');c.width=AT_W;c.height=AT_H;const g=c.getContext('2d'), T=AT_TS;
-  for(let y=0;y<27;y++)for(let x=0;x<46;x++)drawFloor(g,x,y,y>=RT_HALL[0]&&y<RT_HALL[1]?'tiles':'carpet');
+  for(let y=0;y<AT_ROWS[3];y++)for(let x=0;x<46;x++)drawFloor(g,x,y,y>=RT_HALL[0]&&y<RT_HALL[1]?'tiles':'carpet');
   R(g,0,0,AT_W,T,'#4b4a52');R(g,0,T,AT_W,8,'#efe9dc');R(g,0,T+8,AT_W,24,'#d9d2c3');R(g,0,T+28,AT_W,4,'#a99f8c');
   for(const z of RT_G){R(g,z.x0,z.y0,z.w,4,'#7d776c');R(g,z.x0,z.y0+z.h-4,z.w,4,'#7d776c');R(g,z.x0,z.y0,4,z.h,'#7d776c');R(g,z.x0+z.w-4,z.y0,4,z.h,'#7d776c');
-    woodDoor(g,z.door.x-T,z.top?z.y0+z.h-8:z.y0-4,2*T,12,2,false);} // la porte en bois, sur le couloir
+    woodDoor(g,z.door.x-T,z.y0+z.h-8,2*T,12,2,false);} // la porte en bois, sur le couloir
   return c;
 }
 let RT_BG=null;
@@ -220,8 +224,8 @@ function rtBubble(r,p){
   if(p.k==='fix')return f?'fil '+k+'/'+n+' : '+clip(f.text||f.path||'',26):'je corrige les fils…';
   return {prepare:'je récupère les fils…',check:'je lance les contrôles…',diff:'je prépare le diff…',push:'je pousse et je réponds'}[p.k]||'au travail…';
 }
-// ---------- le couloir : le tableau du jour, la file des PR, le bureau du boss, le café, le banc, la porte de l'escalier ----------
-// le tableau noir RETOURS DU JOUR, au fond à gauche (le jumeau de REVUES DU JOUR au 2e) : PR poussées depuis minuit et leurs
+// ---------- le couloir : l'entrepôt, le tableau du jour, le banc, le café, le bureau du boss, la porte de l'escalier ----------
+// le tableau noir RETOURS DU JOUR, après la porte du bureau 1 (le jumeau de REVUES DU JOUR au 2e) : PR poussées depuis minuit et leurs
 // fils, bureaux au travail et pannes, jetons du jour et PR poussées sur 7 jours (dataset retours, jour). Rien au clic : le
 // détail est dans la page « Retours · bilan ». En rejeu, ce qui est daté à l'heure du curseur (rtJourAt) ; les fils et les
 // jetons, non datés, restent ceux du relevé (⏱).
@@ -233,7 +237,7 @@ function rtJourAt(t){
   return {pousses:Math.max(0,n('pousses')-after),cours:rtRoomsAt(t).length,pannes,semaine:Math.max(0,n('semaine')-after),fils:n('fils'),tok:n('tok')};
 }
 function rtDayBoard(){
-  const S=AT_TS, j=(RETOURS&&RETOURS.jour)||{}, n=k=>+j[k]||0, y0=RT_HALL[0]*S, bx=.45*S, by=y0+5, bw=5.9*S, bh=(RT_HALL[1]-RT_HALL[0])*S-17, ink='#e8e2d0';
+  const S=AT_TS, j=(RETOURS&&RETOURS.jour)||{}, n=k=>+j[k]||0, bx=16*S, by=14.6*S, bw=6.2*S, bh=64, ink='#e8e2d0';
   R(ctx,bx+12,by+bh,4,7,'#5a3e28');R(ctx,bx+bw-16,by+bh,4,7,'#5a3e28');
   R(ctx,bx-5,by-5,bw+10,bh+10,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+4,by+bh-5,bw-8,3,'#a37650');
   atTxt('RETOURS DU JOUR',bx+bw/2,by+14,'#f4efe4','bold 11px ui-monospace,Menlo,monospace');R(ctx,bx+12,by+19,bw-24,1,'rgba(244,239,228,.4)');
@@ -243,21 +247,37 @@ function rtDayBoard(){
       ['#e0a020',['~'+Math.round(n('tok')/1e3)+' k jetons · 7 j : '+n('semaine')+' PR',ink]]];
   rows.forEach(([c,...segs],k)=>{R(ctx,bx+12,by+24+k*13,7,7,c);atSegs(segs,bx+24,by+31+k*13,'11px ui-monospace,Menlo,monospace');});
 }
+// l'entrepôt : une zone de palettes au sol, sans murs, balisée d'une bande jaune et noire ; une palette par PR qui attend un
+// bureau (son étiquette : la PR), puis les pannes, étiquette rouge et fumée ; le panneau centré au-dessus. Au-delà de
+// RT_PAL palettes, la dernière place dit combien d'autres ; une place vide garde une pile de palettes.
+const RT_PAL=4;
+function rtDepotItems(){return [...rtWaiting().map(x=>({...x,panne:false})),...((RETOURS&&RETOURS.pannes)||[]).map(x=>({...x,panne:true}))];}
+function rtDepot(now){
+  const T=AT_TS, {x0,x1,y0,y1}=RT_DEPOT, l=rtDepotItems(), w=rtWaiting().length, sw=(x1-x0)/RT_PAL, y=y1-22;
+  const band=(x,yy,bw,bh)=>{const v=bh>bw, L=v?bh:bw;for(let k=0;k<L;k+=12)R(ctx,v?x:x+k,v?yy+k:yy,v?bw:Math.min(12,L-k),v?Math.min(12,L-k):bh,(k/12)%2?'#1c1c1c':'#f2c230');};
+  R(ctx,x0,y0,x1-x0,y1-y0,'rgba(90,86,76,.16)');band(x0,y0,x1-x0,6);band(x0,y1-6,x1-x0,6);band(x0,y0,6,y1-y0);band(x1-6,y0,6,y1-y0);
+  atHitRt('queue',x0,y0-24,x1-x0,y1-y0+24,{});
+  const more=l.length>RT_PAL?l.length-RT_PAL+1:0, shown=more?l.slice(0,RT_PAL-1):l;
+  for(let k=0;k<RT_PAL;k++){const x=x0+(k+.5)*sw, it=shown[k];
+    if(it){atPallet(x,y);atCarton(x,y-9,(it.panne?'🧯 ':'')+rtName(it),it.panne?'#a8323a':'#0b2a4a',-22);if(it.panne)atSmoke(x+20,y-10,now+k*300);
+      atHitRt('queue',x-sw/2+4,y-42,sw-8,54,{run:it.run,item:it});}
+    else if(more&&k===RT_PAL-1){atPallet(x,y);atPill('+'+more,x,y-6,'#5b6070','#fff','bold 11px ui-monospace,Menlo,monospace');}
+    else if(k===RT_PAL-1){atPallet(x,y);atPallet(x,y-7);atPallet(x,y-14);}}
+  atPill('📦 ENTREPÔT · '+w+' en attente',(x0+x1)/2,y0-8,'#5a4636','#fff','bold 12px ui-monospace,Menlo,monospace');
+}
 function rtHall(slots,now,people){
-  const T=AT_TS, y=(RT_HALL[0]+RT_HALL[1])/2*T, q=(RETOURS&&RETOURS.queue)||[], qx=9.6*T; // la file : après la porte du bureau 1
+  const T=AT_TS;
+  rtDepot(now);
   rtLate(people,rtDayBoard,1e6-1);
-  for(let k=0;k<Math.min(3,q.length);k++)atCarton(qx+k*34,y+10,null);
-  if(q.length)rtLate(people,()=>atPill('📥 '+plural(q.length,'PR attend','PR attendent')+' un bureau',qx+40,y-18,'#1c2440','#bfe6ff','bold 11px system-ui,sans-serif'),1e6);
-  atHitRt('queue',qx-.8*T,y-30,4*T,50,{});
-  atCoffee(20*T,y+18);atPlant(17.6*T,y+20);atPlant(26*T,y+20);
-  const bx=14.2*T, by=RT_HALL[1]*T-6;atSofa(bx,by);rtLate(people,()=>atSofaFront(bx,by),by+10); // le banc
+  const bx=24.8*T, by=16.2*T;atSofa(bx,by);rtLate(people,()=>atSofaFront(bx,by),by+10); // le banc
+  atCoffee(28.6*T,15.9*T);atPlant(31*T,16.2*T);
   rtLate(people,()=>atPill('⇅ escalier · RDC',46*T-74,RT_STAIR.y+RT_STAIR.h+22,'#5a4636','#fff','bold 11px ui-monospace,Menlo,monospace'),1e6);
 }
 // ---------- les équipes : dès qu'une PR a un bureau, ses cinq agents montent derrière Bernard, l'un après l'autre, et
 // restent jusqu'au push ; le bureau 1 garde toujours la sienne (67-vie.js) ----------
 let RT_LV=lvMem();
 const RT_LV_H={x:44.6*AT_TS,y:RT_LANE}, rtCrewId=(i,k)=>'b'+i+':'+k;
-function rtCrewSpot(i,j){const g=RT_G[i], T=AT_TS, p=g.pts[j], lane={x:g.door.x,y:RT_LANE}, yy=g.top?g.y0+g.h-.9*T:g.y0+4.9*T; // en haut, sous le tapis (la porte est en dessous)
+function rtCrewSpot(i,j){const g=RT_G[i], T=AT_TS, p=g.pts[j], lane={x:g.door.x,y:RT_LANE}, yy=g.y0+g.h-.9*T; // sous le tapis (la porte est en dessous)
   return {id:'d'+i+':'+j,path:[RT_LV_H,lane,{x:g.door.x,y:yy},{x:p.x,y:yy},p],dir:'down',seat:true};}
 function rtCrewWant(slots){
   const want={};
@@ -278,7 +298,7 @@ function rtBoss(slots,now,dt,people){
   // rien ne l'attend : assis à son bureau, comme au RDC ; sinon debout, en route ou à la barrière
   if(m.arrived&&target==null)people.push([atSeatedBoss(boss,ox,F,'idle'),null,false,()=>atBossDesk(ox,F,now,boss)]);
   else{rtLate(people,()=>atBossDesk(ox,F,now,boss),F);
-    const dir=m.arrived?(RT_G[target].top?'up':'down'):m.walk.dir;
+    const dir=m.arrived?'up':m.walk.dir;
     const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:p.x,y:p.y},tile:null,dir,moving:!m.arrived,pose:'stand',present:true,_st:{st:'gate'}});
     people.push([c,null,false,()=>{if(m.arrived&&target!=null)atBubble(p.x,p.y-66,'✋ '+rtName(slots[target])+' : je valide ?',WAIT_TXT);}]);}
   RT_LIT.push(p);atHitRt('boss',p.x-16,p.y-56,32,60,{});
@@ -287,8 +307,7 @@ function rtBoss(slots,now,dt,people){
 const RT_BERNARD_V=110;
 function rtScenes(now,dt,people){
   for(const s of RT_MEM.scenes){
-    if(!s.w){const g=RT_G[s.i];s.w=atWalker(s.kind==='arrive'?[RT_STAIRS,{x:RT_STAIRS.x,y:RT_LANE},{x:g.door.x,y:RT_LANE},{x:g.door.x,y:g.top?g.y0+g.h-12:g.y0+12}]
-      :[RT_STAIRS,{x:RT_STAIRS.x,y:RT_LANE},{x:g.door.x,y:RT_LANE},{x:g.door.x,y:g.top?g.y0+g.h-12:g.y0+12}],RT_BERNARD_V);s.phase='go';}
+    if(!s.w){const g=RT_G[s.i];s.w=atWalker([RT_STAIRS,{x:RT_STAIRS.x,y:RT_LANE},{x:g.door.x,y:RT_LANE},{x:g.door.x,y:g.y0+g.h-12}],RT_BERNARD_V);s.phase='go';}
     const done=atStep(s.w,dt);
     if(done&&s.phase==='go'){s.phase='hand';s.t1=now;}
     if(s.phase==='hand'){const u=Math.min(1,(now-s.t1)/900), seen=s.kind==='arrive'?RT_MEM.seen[s.run]:null;
@@ -361,8 +380,10 @@ function retoursHover(e){
   else if(h&&h.kind==='board')s=r?'Le Kanban des fils de '+rtName(r)+' : clic pour l\'ouvrir en grand':'Bureau '+(h.i+1)+' · libre';
   else if(h&&h.kind==='room')s=r?'Bureau '+(h.i+1)+' · '+rtName(r)+(r.title?' · '+r.title:'')+(rtWho(r)?' · de '+rtWho(r):'')+' · clic : la PR, son ticket, le Kanban':'Bureau '+(h.i+1)+' · libre';
   else if(h&&h.kind==='boss')s=(chars.find(c=>c.boss)||{}).name+' : valide les corrections (✋), une PR à la fois ; clic : sa fiche, comme au RDC';
-  else if(h&&h.kind==='queue'){const n=((RETOURS&&RETOURS.queue)||[]).length;s=n?plural(n,'PR attend','PR attendent')+' un bureau libre · clic : la file':'Aucune PR en attente';}
-  cv.style.cursor=h&&(h.kind!=='queue'||((RETOURS&&RETOURS.queue)||[]).length)?'pointer':'default';
+  else if(h&&h.kind==='queue'){const it=h.item, n=rtDepotItems().length;
+    s=it?(it.panne?'🧯 '+rtName(it)+' en panne à '+(RT_POSTES.find(p=>p.k===it.poste)||{n:it.poste||'?'}).n+' : relance « 🛠 Corriger »':'📦 '+rtName(it)+' attend un bureau libre'+(it.since?' depuis '+hm(ms(it.since)):''))+' · clic : l\'entrepôt'
+      :n?'L\'entrepôt : '+plural(rtWaiting().length,'PR attend','PR attendent')+' un bureau libre · clic : la liste':'L\'entrepôt : aucune PR en attente';}
+  cv.style.cursor=h&&(h.kind!=='queue'||rtDepotItems().length)?'pointer':'default';
   if(s){tip.style.display='block';tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px';tip.textContent=s;}else tip.style.display='none';
 }
 // ---------- la fenêtre Kanban d'un bureau : les fils en colonnes, le fil choisi à droite ----------
@@ -391,7 +412,7 @@ const rtBar=r=>'<div class="at-bar">'+RT_POSTES.map(p=>{const s=rtState(r,p);ret
 function rtTag(r){const c=rtCur(r);return r.gate?'<span class="at-tag wait">✋ t\'attend</span>':c&&rtState(r,c)==='err'?`<span class="at-tag bloq">🧯 ${esc(c.n)}</span>`:c?`<span class="at-tag run">${c.i} ${esc(c.n)}</span>`:'';}
 const rtCounts=r=>RT_COLS.map(c=>rtCount(r,c.k)?`${esc(c.n)} ${rtCount(r,c.k)}`:'').filter(Boolean).join(' · ');
 function retoursListHtml(slots){
-  const rooms=slots.map((r,i)=>r&&{...r,_b:i+1}).filter(Boolean), q=(RETOURS&&RETOURS.queue)||[], pn=(RETOURS&&RETOURS.pannes)||[];
+  const rooms=slots.map((r,i)=>r&&{...r,_b:i+1}).filter(Boolean), q=rtWaiting(), pn=(RETOURS&&RETOURS.pannes)||[];
   return `<h2 class="at-h">🛠 Retours de PR <span class="cnt">${rooms.length}/${RT_N}</span></h2>`+
     (rooms.length?rooms.map(r=>`<button class="at-room" data-run="${esc(r.run)}"><span class="at-top"><span><span class="mut">Bureau ${r._b}</span> · <b class="mono">${esc(rtName(r))}</b>${rtWho(r)?' · '+esc(rtWho(r)):''}</span>${rtTag(r)}</span>
       <span class="at-title">${esc(r.title||'')}</span>${rtBar(r)}<span class="mut">${esc(rtCounts(r)||'fils à venir')} · depuis ${esc(hm(ms(r.since)))}</span></button>`).join('')
@@ -429,9 +450,11 @@ function rtFaitHtml(r){const f=rtFait(r);if(!f)return '';
     (f.diff&&f.diff.n?`<div class="fa-lvl">${faFiles(f.diff,5)}</div>`:'')+
     (f.d&&(f.d.actions||[]).length?`<details class="fa-det"><summary>▸ Ses dernières actions ${faSrc('lu dans le journal de '+faAg(f.ag))}</summary><ol class="fa-acts">${f.d.actions.map(faAct).join('')}</ol></details>`:f.lu===false?faNone(f):'')+'</section>';}
 function rtQueueHtml(){
-  const q=(RETOURS&&RETOURS.queue)||[];
-  return `<button class="at-back">‹ Les retours</button><h2 class="at-h">📥 Le couloir <span class="cnt">${q.length}</span></h2><div class="mut">Les PR qui attendent un bureau libre.</div>`+
-    `<div class="fk-fold">${q.length?q.map(x=>`<button type="button" class="fk-r" data-kbpr="${esc(x.repo+'#'+x.pr)}"><span class="k mono">${esc(fkShort(x.repo,x.pr))}</span><span class="mut">depuis ${hm(ms(x.since))}</span><span class="k">Kanban ›</span></button>`).join(''):'<div class="mut">Aucune PR en attente.</div>'}</div>`;
+  const q=rtWaiting(), pn=(RETOURS&&RETOURS.pannes)||[];
+  const row=(x,sub)=>`<button type="button" class="fk-r" data-kbpr="${esc(x.repo+'#'+x.pr)}"><span class="k mono">${esc(fkShort(x.repo,x.pr))}</span><span class="mut">${sub}</span><span class="k">Kanban ›</span></button>`;
+  return `<button class="at-back">‹ Les retours</button><h2 class="at-h">📦 L'entrepôt <span class="cnt">${q.length}</span></h2><div class="mut">Une palette par PR qui attend un bureau libre ; les pannes, en rouge, attendent une relance.</div>`+
+    `<div class="fk-fold">${q.length?q.map(x=>row(x,'depuis '+hm(ms(x.since)))).join(''):'<div class="mut">Aucune PR en attente.</div>'}</div>`+
+    (pn.length?`<div class="fk-fold"><h4>🧯 En panne</h4>${pn.map(x=>row(x,'arrêtée à '+esc((RT_POSTES.find(p=>p.k===x.poste)||{n:x.poste||'?'}).n))).join('')}</div>`:'');
 }
 const rtGateRun=r=>{if(!r.gate)return null;const g=GATES.find(x=>x.run===r.run);return {run:r.run,wf_name:g?g.wf_name:'Corriger les commentaires d\'une PR',_s:ms(r.since)};};
 function drawRetoursSide(side){
@@ -496,14 +519,15 @@ function rtSearchRows(q){
   return out;
 }
 // ---------- scènes de l'étage pour la galerie (46-gallery.js) ----------
-// Chacune joue sur une copie du relevé (rendue à la fin de la démonstration) ; à toute heure, sans PR en cours : la démo
-function rtDemo(mut){return s=>{const src=(RETOURS&&(RETOURS.rooms||[]).length)?RETOURS:retoursDemo(), d=JSON.parse(JSON.stringify(src));
-  RETOURS=JSON.parse(JSON.stringify(d));const b=RT_MEM.boss;rtReset();RT_MEM.boss=b;RT_MEM.sig=rtSig();rtDiff(performance.now());loupeNoteSeen(); // l'étage d'avant la scène, posé : la scène est ce qui change ensuite
+// Chacune joue sur une copie du relevé (rendue à la fin de la démonstration) ; à toute heure, sans PR en cours : la démo.
+// pre : l'étage d'avant la scène (posé, sans rien rejouer)
+function rtDemo(mut,pre){return s=>{const src=(RETOURS&&(RETOURS.rooms||[]).length)?RETOURS:retoursDemo(), d=JSON.parse(JSON.stringify(src));
+  if(pre)pre(d);RETOURS=JSON.parse(JSON.stringify(d));const b=RT_MEM.boss;rtReset();RT_MEM.boss=b;RT_MEM.sig=rtSig();rtDiff(performance.now());loupeNoteSeen(); // l'étage d'avant la scène, posé : la scène est ce qui change ensuite
   mut(d,new Date(s).toISOString(),s);RETOURS=d;};}
 function rtGalleryScenes(){
   const fam='3e étage', ok=true, out=[];
   out.push({fam,ico:'🛠',n:'Une PR monte au 3e',d:'Bernard sort de la porte de l\'escalier avec la PR et la monte au premier bureau libre ; la préparation récupère les fils',w:'« 🛠 Corriger » sur une PR qui a des retours',ok,
-    play:{len:25e3,speed:1,setup:rtDemo((d,at)=>{if(d.rooms.length>=RT_N)d.rooms.pop();d.rooms.push({run:'demo-fn',repo:'dm/site',pr:'2050',title:'Démonstration',author:'hollyflax',poste:'prepare',states:{prepare:'run'},since:at,fils:[]});})}});
+    play:{len:25e3,speed:1,setup:rtDemo((d,at)=>{d.rooms.push({run:'demo-fn',repo:'dm/site',pr:'2050',title:'Démonstration',author:'hollyflax',poste:'prepare',states:{prepare:'run'},since:at,fils:[]});},d=>{d.rooms=d.rooms.slice(0,RT_N-1);})}}); // un bureau libre avant la scène : rien ne part
   out.push({fam,ico:'📌',n:'Le Kanban avance',d:'La correction finit un fil : son post-it passe dans sa colonne, le fil rouge suit le suivant',w:'Chaque fil traité par l\'agent',ok,
     play:{len:12e3,speed:1,setup:rtDemo(d=>{const r=d.rooms.find(x=>x.poste==='fix');if(!r)return;const i=r.fils.findIndex(f=>f.cur);if(i<0)return;r.fils[i].cur=false;r.fils[i].col='corrige';const n=r.fils.find(f=>f.col==='a_traiter');if(n)n.cur=true;})}});
   out.push({fam,ico:'✋',n:'À toi de valider',d:'Le boss quitte son bureau du couloir et va à la barrière du bureau qui attend depuis le plus longtemps ; les autres attendent leur tour',w:'Les corrections attendent ta validation',ok,
@@ -514,7 +538,7 @@ function rtGalleryScenes(){
   out.push({fam,ico:'🧯',n:'Contrôles rouges',d:'Les contrôles du dépôt échouent : le correctif est annulé (fumée), la PR attend une relance',w:'La commande de contrôle du dépôt échoue',ok,
     play:{len:12e3,speed:1,setup:rtDemo(d=>{const r=d.rooms.find(x=>x.poste==='fix');if(r){r.poste='check';r.states={prepare:'ok',fix:'ok',check:'err'};r.fils.forEach(f=>{f.cur=false;});}})}});
   out.push({fam,ico:'🌙',n:'Le soir au 3e',d:'Le soir et le week-end, comme au RDC : chaque bureau occupé s\'allume comme une pièce, les bureaux libres restent dans l\'ombre, la lampe du boss reste allumée',w:'Hors des heures de bureau',ok,
-    play:{len:20e3,speed:60,setup:s=>{const d=JSON.parse(JSON.stringify((RETOURS&&(RETOURS.rooms||[]).length)?RETOURS:retoursDemo()));d.rooms=d.rooms.slice(0,3);RETOURS=d;rtReset(); // trois bureaux libres, pour voir ceux qui restent éclairés
+    play:{len:20e3,speed:60,setup:s=>{const d=JSON.parse(JSON.stringify((RETOURS&&(RETOURS.rooms||[]).length)?RETOURS:retoursDemo()));d.rooms=d.rooms.slice(0,2);RETOURS=d;rtReset(); // un bureau libre, pour voir ceux qui restent éclairés
       const n=parisMidnight(s)+22.5*36e5;T=n;SCENE_DEMO.e=n+20e3*60;}}});
   return out;
 }
