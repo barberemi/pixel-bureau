@@ -184,6 +184,55 @@ class ChaineModelesTest(unittest.TestCase):
         names = {v["name"] for v in templates.render(TPL["impl_chain"], cfg())["variables"]}
         self.assertTrue({"depot", "soeurs", "partie", "reprise"} <= names)
 
+    def test_carnet_consigne_on_each_poste_and_nowhere_else(self):
+        """« Ce qu'il fait », niveau 2 : impl.carnet (vrai par défaut) ajoute la consigne du carnet aux postes de
+        templates.CARNET_POSTES, avant le dernier paragraphe (format de la réponse) ; le coordinateur des contrôles la
+        transmet à ses sous-agents ; aucune autre étape, aucun autre modèle ne la reçoit."""
+        on, off = cfg(), cfg()
+        off["impl"]["carnet"] = False
+        for (key, name), poste in templates.CARNET_POSTES.items():
+            p, avant = steps(key, on)[name]["prompt_template"], steps(key, off)[name]["prompt_template"]
+            self.assertIn(f"`HH:MM · {poste} · ce que tu fais`", p, key)
+            self.assertIn("`.kronn/chaine/journal.md`, en ajout seulement (`>>`), jamais en réécrivant le fichier", p)
+            self.assertIn("120 signes au plus, sans commande, sans chemin absolu, sans secret", p)
+            self.assertEqual(p.rsplit("\n\n", 1)[1], avant.rsplit("\n\n", 1)[1], key)  # la consigne de format reste la dernière
+            self.assertEqual(p.replace("\n\n" + templates.carnet_consigne(poste), ""), avant, key)  # rien d'autre ne change
+            self.assertNotIn("journal.md", avant, key)
+        ctrl = steps("impl_controles", on)["parallele"]["prompt_template"]
+        self.assertIn("« Carnet : ", ctrl)
+        self.assertIn("`HH:MM · <ton poste> · ce que tu fais`", ctrl)
+        self.assertIn("(regles, securite, perf, besoin, doc)", ctrl)
+        for key in KEYS:
+            for name, s in steps(key, on).items():
+                if (key, name) not in templates.CARNET_POSTES:
+                    self.assertNotIn("journal.md", json.dumps(s, ensure_ascii=False), (key, name))
+        c = templates.assemble.demo_config()  # les autres étages (revue, rédaction, Support, corrections) : jamais
+        c["jira"] = {**c["jira"], "config_id": "abcdefab-cdef-abcd-efab-cdefabcdefab"}
+        for key, tpl in TPL.items():
+            if not key.startswith("impl") and tpl["kind"] == "workflow":  # les prompts (les relevés, eux, lisent le carnet)
+                for s in templates.render(tpl, c)["steps"]:
+                    self.assertNotIn("journal.md", s.get("prompt_template") or "", (key, s["name"]))
+
+    def test_carnet_off_keeps_the_prompts_of_before(self):
+        """impl.carnet à false : chaque prompt de la chaîne est celui du modèle, tel qu'avant le carnet ; la version de la
+        chaîne (bilan, page « Chaîne · bilan ») change avec le carnet, pour comparer avec et sans."""
+        off = cfg()
+        off["impl"]["carnet"] = False
+        vals = templates.values(templates.assemble.merged(off))
+        for key in KEYS:
+            mine = {s["name"]: s for s in TPL[key]["definition"]["steps"]}
+            for name, s in steps(key, off).items():
+                if "prompt_template" in mine.get(name, {}):
+                    self.assertEqual(s["prompt_template"], templates._sub(mine[name]["prompt_template"], vals, off), (key, name))
+        v_off, v_on = templates.impl_version(False), templates.impl_version(True)
+        self.assertNotEqual(v_off["hash"], v_on["hash"])
+        self.assertEqual((v_on["commit"], v_on["sujet"]), (v_off["commit"], v_off["sujet"] + " (carnet)"))
+        self.assertIn(json.dumps(v_on["hash"]), templates.script_code("workflows/chaine.py", cfg()))
+        self.assertIn(json.dumps(v_off["hash"]), templates.script_code("workflows/chaine.py", off))
+        # l'export d'un workflow installé ne remet pas la consigne dans le modèle
+        d = templates.templatize("impl_code", "workflow", templates.render(TPL["impl_code"], cfg()), cfg())
+        self.assertNotIn("journal.md", json.dumps(d, ensure_ascii=False))
+
     def test_assign_step_needs_the_model(self):
         self.assertIn("affecter", steps("impl_code"))
         c = cfg()

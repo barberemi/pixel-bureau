@@ -29,10 +29,10 @@ function faBar(c){const ks=Object.keys(FA_PL).filter(k=>c&&c[k]);if(!ks.length)r
     `<div class="fa-leg">${ks.map(k=>`<span><b style="background:${FA_COL[k]}"></b>${c[k]} ${c[k]>1?FA_PL[k]:FA_PL[k].slice(0,-1)}</span>`).join('')}</div>`;}
 // la bulle du plan : une phrase coupée à un mot près de n signes
 function faShort(p,n){n=n||30;p=String(p||'').replace(/^(Je |J')/,m=>m.toLowerCase()).replace(/[.!?…]$/,'');if(p.length<=n)return p;const c=p.slice(0,n), k=c.lastIndexOf(' ');return (k>8?c.slice(0,k):c)+'…';}
-// le texte de la bulle d'un agent au travail : carnet, sinon sa dernière phrase lue, sinon ses fichiers modifiés ; null
+// le texte de la bulle d'un agent au travail : carnet (sans « HH:MM · poste · »), sinon sa dernière phrase lue, sinon ses fichiers modifiés ; null
 // sinon (la bulle garde le compteur de Kronn)
 function faBulle(f){if(!f)return null;
-  if((f.carnet||[]).length)return '« '+faShort(f.carnet[0])+' »';
+  if((f.carnet||[]).length)return '« '+faShort(String(f.carnet[0]).replace(/^\d\d:\d\d · [\w-]+ · /,''))+' »';
   const p=f.d&&f.d.phrases;if(p&&p.length)return '« '+faShort(p[p.length-1])+' »';
   if(f.diff&&f.diff.n)return '✏ '+plural(f.diff.n,'fichier modifié','fichiers modifiés');
   return null;}

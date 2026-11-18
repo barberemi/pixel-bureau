@@ -134,6 +134,10 @@ def agent_en_cours(run, models, cache, depth=0, cle="impl_chain"):
     return None, cle
 
 
+# modèle du run de l'agent au travail -> les postes dont il montre le carnet (noms écrits par la consigne du carnet,
+# templates.CARNET_POSTES) ; un autre agent (orchestrateur, PR, revue) n'en montre aucun
+CARNET_DE = {"impl_cadrage": ("plan",), "impl_code": ("code",), "impl_tests": ("tests",), "impl_retours": ("retours",),
+             "impl_controles": ("controles", "regles", "securite", "perf", "besoin", "doc")}
 # poste fini -> où lire sa session : (modèle de son sous-run, étape Agent, mission d'un sous-agent des contrôles)
 FINI = {"cadrage": ("impl_cadrage", "propose", None), "code": ("impl_code", "code", None),
         **{p: ("impl_controles", "parallele", p) for p in ("regles", "securite", "perf", "besoin", "doc")}}
@@ -160,7 +164,7 @@ def fait(run, poste, etape, states, models, cache):
                 d = fichiers(ws, e.get("depart") or f"origin/{e.get('base') or 'main'}")
                 if d and d["n"]:
                     out["diff"] = d
-            c = carnet(ch)
+            c = carnet(ch, CARNET_DE.get(cle, ())) if s else None
             if c:
                 out["carnet"] = c
             fini = dernier_fini(run, ch, poste, states, models, cache, ws)

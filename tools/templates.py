@@ -236,9 +236,15 @@ def owner_name(cfg):
 _VERSION = {}
 
 
-def impl_version():
+def impl_version(carnet=False):
     """Version de la chaîne d'implémentation rendue : empreinte des modèles impl*.json et de workflows/chaine.py, et le
-    dernier commit qui les a touchés (une modification de la chaîne se juge sur les tickets qui l'ont suivie)."""
+    dernier commit qui les a touchés (une modification de la chaîne se juge sur les tickets qui l'ont suivie). Avec le
+    carnet (impl.carnet) : l'empreinte compte aussi ses consignes et le sujet le dit, pour comparer avec et sans."""
+    if carnet:
+        import hashlib
+        v = impl_version()
+        h = hashlib.sha1((v["hash"] + "".join(carnet_consigne(p) for p in sorted(set(CARNET_POSTES.values())))).encode())
+        return {**v, "hash": h.hexdigest()[:7], "sujet": (v["sujet"] + " (carnet)")[:120]}
     if not _VERSION:
         import glob, hashlib, subprocess
         files = (sorted(glob.glob(os.path.join(TPL_DIR, "impl*.json"))) + [os.path.join(ROOT, p) for p in CHAINE_SCRIPTS + ("workflows/_chaine.py",)]
@@ -331,7 +337,7 @@ def script_code(path, cfg):
     if path == "workflows/review.py":  # version de la revue gardée avec chaque revue (historique, page de récap)
         c["review_version"] = review_version()
     if path in CHAINE_SCRIPTS:  # version de la chaîne gardée dans le bilan de chaque run (page « Chaîne · bilan »)
-        c["impl_version"] = impl_version()
+        c["impl_version"] = impl_version(carnet_on(cfg))
     blob = json.dumps(c, ensure_ascii=False)
     assert '"""' not in blob and "__BUREAU_CONFIG__" in code, path
     return code.replace("__BUREAU_CONFIG__", blob, 1)
@@ -614,6 +620,8 @@ def render(tpl, cfg):
             if "_poste" in s:  # chaîne d'implémentation ou investigation Support : agent, modèle et skills du poste
                 role = s.pop("_poste")
                 (poste_agent if role.split(".")[0] in POSTE_AGENTS else impl_agent)(s, role, cfg)
+            if (tpl.get("key"), s["name"]) in CARNET_POSTES and carnet_on(cfg):  # niveau 2 de « Ce qu'il fait »
+                s["prompt_template"] = avec_carnet(s["prompt_template"], CARNET_POSTES[(tpl["key"], s["name"])])
             src = s.pop("_skills_from", None)
             if src in ("review.skill_ids", "fix.skill_ids"):  # skills de l'équipe en plus de ceux du modèle (#78, #75)
                 team = (cfg.get(src.split(".")[0]) or {}).get("skill_ids")
@@ -642,6 +650,43 @@ IMPL_AGENTS = {
     "revue_pr": ("reasoning", ["bureau:recherches", "bureau:exigences", "bureau:tests"]),  # mode essai : revue locale du diff (la revue du Bureau a ses propres postes)
 }
 IMPL_TEAM_SKILLS = {"code", "code.relecture", "controles", "tests", "retours", "revue_pr"}  # + impl.skills de l'équipe (langages, conventions)
+
+# « 👁 Ce qu'il fait », niveau 2 (carnet) : l'agent écrit lui-même quelques lignes dans .kronn/chaine/journal.md, que lit
+# le relevé de l'atelier (_lecteurs.carnet), quel que soit l'agent. (modèle, étape Agent) -> nom du poste dans le carnet ;
+# les sous-agents des contrôles écrivent sous le leur (CARNET_SOUS). Ni l'orchestrateur, ni la relecture du Code, ni la PR,
+# ni la revue locale (courts, sans étapes à raconter) ; ni « corrige » des retours, qui travaille dans un autre dossier
+# (pr/work/<run>). Réglage impl.carnet (pack ou config), vrai par défaut ; faux : aucune consigne, prompts d'avant.
+CARNET_POSTES = {("impl_cadrage", "propose"): "plan", ("impl_code", "code"): "code", ("impl_tests", "propose"): "tests",
+                 ("impl_controles", "parallele"): "controles", ("impl_retours", "corrige_local"): "retours"}
+CARNET_SOUS = ("regles", "securite", "perf", "besoin", "doc")
+
+
+def carnet_on(cfg):
+    return (cfg.get("impl") or {}).get("carnet", True) is not False
+
+
+def carnet_ligne(poste):
+    return (f"à chaque étape notable de ton travail (une dizaine au plus), ajoute UNE ligne à la fin de "
+            f"`.kronn/chaine/journal.md`, en ajout seulement (`>>`), jamais en réécrivant le fichier : `HH:MM · {poste} · ce "
+            f"que tu fais`, en français, 120 signes au plus, sans commande, sans chemin absolu, sans secret. Par exemple, dans "
+            f"le même appel qu'une commande que tu lances déjà : `echo \"$(date +%H:%M) · {poste} · Je relis le contrôleur des "
+            f"articles.\" >> .kronn/chaine/journal.md`.")
+
+
+def carnet_consigne(poste):
+    """La consigne du carnet d'un poste de la chaîne ; au coordinateur des contrôles, aussi celle de ses sous-agents."""
+    t = ("## Carnet\nPour l'humain qui suit la chaîne, " + carnet_ligne(poste) +
+         " Ce fichier n'est pas du dépôt : il ne se commite jamais et ne compte pas comme une modification.")
+    if poste == "controles":
+        t += (" Ajoute à la consigne de chaque sous-agent : « Carnet : " + carnet_ligne("<ton poste>") + " » en y mettant "
+              "son poste (" + ", ".join(CARNET_SOUS) + ").")
+    return t
+
+
+def avec_carnet(prompt, poste):
+    """Le prompt avec la consigne du carnet, avant son dernier paragraphe (le format de la réponse reste à la fin)."""
+    head, sep, last = prompt.rpartition("\n\n")
+    return head + "\n\n" + carnet_consigne(poste) + "\n\n" + last if sep else prompt + "\n\n" + carnet_consigne(poste)
 
 
 def impl_agent(step, role, cfg):
@@ -798,6 +843,8 @@ def templatize(key, kind, d, cfg):
         for s in d["steps"]:
             if s.get("api_plugin_slug") == "mcp-atlassian" or s["name"] in WORK_REQUIRES:
                 s["_requires"] = WORK_REQUIRES.get(s["name"], "jira")
+            if (key, s["name"]) in CARNET_POSTES:  # consigne du carnet : posée au rendu (impl.carnet), jamais dans le modèle
+                s["prompt_template"] = str(s.get("prompt_template") or "").replace("\n\n" + carnet_consigne(CARNET_POSTES[(key, s["name"])]), "")
             path = scripts.get(s["name"])
             if not path:
                 continue

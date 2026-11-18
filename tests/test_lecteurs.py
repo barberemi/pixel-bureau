@@ -265,6 +265,44 @@ class DossierTest(Base):
         Path(ch, "journal.md").write_text("- Lot 1 commité.\n\n- Le token est dans .env\n- Je relance les tests du bloc média.\n")
         self.assertEqual(L.carnet(ch), ["Je relance les tests du bloc média.", "Lot 1 commité."])
 
+    def test_carnet_written_by_the_chain_is_filtered_and_bounded(self):
+        """Le carnet de la chaîne (consigne de templates.CARNET_POSTES) : « HH:MM · poste · texte », les postes demandés
+        seulement, la plus récente d'abord, 5 au plus, 120 signes ; une ligne avec un secret, une valeur de jeton ou une
+        commande entière est écartée, un chemin absolu devient le nom du fichier."""
+        ch = os.path.join(self.tmp, "ch")
+        os.makedirs(ch)
+        Path(ch, "journal.md").write_text("\n".join([
+            "09:58 · plan · Je cherche où le bloc média est rendu.",
+            "10:02 · code · Je lis " + WS + "/src/Block/MediaBlock.php avant de toucher aux options.",
+            "10:03 · code · Je lance docker compose exec php vendor/bin/phpunit tests/Block",
+            "10:04 · code · Lancé: git commit --no-verify -s -m lot 1",
+            "10:05 · code · cd " + WS + " && rtk proxy make test",
+            "10:06 · code · Le mot de passe de la base est dans le .env",
+            "10:07 · code · J'utilise ghp_abcdefghijklmnopqrstuvwxyz0123 pour lire la PR.",
+            "10:08 · code · Lot 1 commité avec son test, le php du contrôleur est relu.",
+            "9h09 · code · " + "Je relance les tests ciblés du bloc média " * 5,
+            "10:10 · regles · Je compare le diff aux conventions du dépôt.",
+            "texte hors format",
+            "10:11 · code · Lot 2 : la traduction de l'option.",
+            "10:12 · code · Lot 3 : le cache suit l'option.",
+            "10:13 · code · Lot 4 : la doc du bloc.",
+        ]) + "\n")
+        c = L.carnet(ch, ("code",))
+        self.assertEqual(len(c), 5)
+        self.assertEqual(c[0], "10:13 · code · Lot 4 : la doc du bloc.")
+        self.assertEqual(c[3][:15], "09:09 · code · ")
+        self.assertLessEqual(len(c[3]) - 15, 120)
+        self.assertEqual(c[4], "10:08 · code · Lot 1 commité avec son test, le php du contrôleur est relu.")
+        tout = L.carnet(ch, ("code",), n=50)
+        self.assertEqual(tout[-1], "10:02 · code · Je lis MediaBlock.php avant de toucher aux options.")
+        blob = json.dumps(tout)
+        for x in ("phpunit", "--no-verify", "rtk", "mot de passe", "ghp_", "plan ·", "regles", "hors format"):
+            self.assertNotIn(x, blob)
+        self.assertNotRegex(blob, ABS)
+        self.assertEqual(L.carnet(ch, ("regles", "doc")), ["10:10 · regles · Je compare le diff aux conventions du dépôt."])
+        self.assertIsNone(L.carnet(ch, ()))
+        self.assertIn("texte hors format", L.carnet(ch, n=50))  # sans filtre : une ligne hors format reste montrée
+
 
 class ReleveTest(Base):
     """Les relevés des étages : le fait d'un bureau, et rien ne casse quand le lecteur manque ou lève."""
@@ -311,6 +349,20 @@ class ReleveTest(Base):
         self.assertEqual((f["fini"]["poste"], f["fini"]["rapport"]["n"]), ("securite", {"bloquant": 1, "avis": 0}))
         self.assertNotRegex(json.dumps(f), ABS)
         self.assertLess(len(json.dumps(f).encode()), 6000)
+
+    def test_atelier_shows_the_carnet_of_the_agent_at_work_only(self):
+        """Le carnet tient toute la chaîne : le bureau du Code ne montre que les lignes du poste code (pas celles du Plan),
+        et la bulle les reprend sans « HH:MM · poste · » (tests/fait.test.js)."""
+        api = self.chaine()
+        Path(self.tmp, "ws", ".kronn", "chaine", "journal.md").write_text(
+            "09:58 · plan · Je cherche où le bloc média est rendu.\n10:02 · code · Lot 1 : les options du lecteur.\n")
+        f = self.snap(api)["rooms"][0]["fait"]
+        self.assertEqual(f["carnet"], ["10:02 · code · Lot 1 : les options du lecteur."])
+        import atelier_snapshot as a
+        import templates
+        self.assertEqual(set(a.CARNET_DE.values()) - {(p,) for p in ("plan", "code", "tests", "retours")},
+                         {("controles", *templates.CARNET_SOUS)})  # les noms que la consigne fait écrire
+        self.assertEqual(set(templates.CARNET_POSTES.values()), {x for v in a.CARNET_DE.values() for x in v} - set(templates.CARNET_SOUS))
 
     def test_atelier_without_reader_or_with_a_failing_one_keeps_the_room(self):
         f = self.snap(self.chaine("Codex"))["rooms"][0]["fait"]

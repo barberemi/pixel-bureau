@@ -59,6 +59,9 @@ test('fiche sans aucune donnée : rendu actuel inchangé (bureau, agent), et rie
 test('bulle du plan selon les niveaux : carnet, sinon phrase lue, sinon fichiers modifiés, sinon le compteur', () => {
   const p = page();
   assert.equal(p.J(`faBulle({carnet: ['Je relance les tests du bloc média.'], d: {phrases: ['Autre chose.']}})`), '« je relance les tests du bloc… »');
+  assert.equal(p.J(`faBulle({carnet: ['10:02 · code · Je relance les tests du bloc média.']})`), '« je relance les tests du bloc… »',
+    'carnet de la chaîne : la bulle sans « HH:MM · poste · »');
+  assert.match(p.J(`faitHtml({carnet: ['10:02 · code · Lot 1 commité.']})`), /<li>10:02 · code · Lot 1 commité\.<\/li>/, 'la fiche garde l’heure et le poste');
   assert.equal(p.J(`faBulle({d: {phrases: ['phpstan passe.']}, diff: {n: 3}})`), '« phpstan passe »');
   assert.equal(p.J(`faBulle({d: {phrases: []}, diff: {n: 3}})`), '✏ 3 fichiers modifiés');
   assert.equal(p.J(`faBulle({k: {cat: 'Read', n: 4, at: 'x'}})`), null);

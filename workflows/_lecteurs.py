@@ -4,7 +4,7 @@ live) : jamais dans _lib.py, qui part dans tous les scripts.
 
   1. base, quel que soit l'agent : fichiers touchés (git diff --numstat du dossier du run, non suivis, mtime, commits de
      la branche), rapport du poste fini (.kronn/chaine/<poste>.json), compteur de Kronn (last_activity) ;
-  2. carnet de l'agent (.kronn/chaine/journal.md) : lu et affiché s'il existe ; aucune consigne ne le demande encore ;
+  2. carnet de l'agent (.kronn/chaine/journal.md) : les postes de la chaîne y écrivent quelques lignes (impl.carnet) ;
   3. détail action par action : un lecteur propre à l'agent, choisi d'après l'agent que Kronn a enregistré pour l'étape
      (LECTEURS ; Claude Code aujourd'hui). Sans lecteur, la fiche le dit ; un lecteur en échec ne casse jamais le relevé.
 
@@ -455,8 +455,19 @@ def rapport(dossier_chaine, poste):
     return out
 
 
-def carnet(dossier_chaine):
-    """Niveau 2 : les dernières lignes du carnet de l'agent (.kronn/chaine/journal.md), s'il en tient un."""
+CARNET = _re.compile(r"^(\d{1,2})[:h](\d{2})\s*·\s*([\w-]+)\s*·\s*(.+)$")
+# une commande dans une ligne du carnet (enchaînement, sous-shell, redirection, option, outil suivi d'un chemin ou d'une
+# option) ou une valeur de secret (jeton GitHub, Slack, AWS, OpenAI ; longue suite de lettres et de chiffres) : ligne écartée
+SHELL = _re.compile(r"&&|\|\||\$\(|\s\|\s|(?:^|\s)\d?>>?\s*[\w./~$&]|(?:^|\s)--?[A-Za-z][\w-]*(?=[\s=]|$)|\b(?:sudo|cd|git|docker|"
+                    r"php|composer|npm|npx|yarn|pnpm|python3?|node|make|bash|sh|curl|rtk)\s+(?:\S+\s+){0,3}?(?:-{1,2}\w|\S*/)")
+SECRET_VAL = _re.compile(r"\b(?:gh[pousr]_|github_pat_|sk-|xox[abprs]-|AKIA)[\w-]{8,}|(?=[A-Za-z_-]*\d)(?=[\d_-]*[A-Za-z])[\w-]{32,}")
+
+
+def carnet(dossier_chaine, postes=None, n=5):
+    """Niveau 2 : les dernières lignes du carnet (.kronn/chaine/journal.md), la plus récente d'abord. Les postes de la chaîne
+    y écrivent « HH:MM · poste · ce qu'il fait » (consigne de templates.CARNET_POSTES) ; postes : ces postes seulement (une
+    ligne hors format n'est montrée que sans filtre). Même règle que les phrases (phrase, 120 signes) ; une ligne qui contient
+    une commande ou une valeur de secret est écartée."""
     try:
         with open(_os2.path.join(dossier_chaine, "journal.md"), encoding="utf-8", errors="replace") as f:
             f.seek(0, 2)
@@ -464,7 +475,16 @@ def carnet(dossier_chaine):
             lignes = [x.strip(" -*\t") for x in f.read().splitlines() if x.strip(" -*\t#")]
     except OSError:
         return None
-    return [p for p in (phrase(x) for x in lignes[-5:]) if p][::-1] or None
+    out = []
+    for x in lignes:
+        m = CARNET.match(x)
+        if postes is not None and not (m and m.group(3) in postes):
+            continue
+        t = m.group(4) if m else x
+        p = None if SHELL.search(t) or SECRET_VAL.search(t) else phrase(t, 120 if m else 140)
+        if p:
+            out.append(f"{int(m.group(1)):02d}:{m.group(2)} · {m.group(3)} · {p}" if m else p)
+    return out[-n:][::-1] or None
 
 
 def plafonne(fait, n=6000):
