@@ -182,7 +182,7 @@ test("la file : Pam retourne s'asseoir quand quelqu'un passe avant sa PR suivant
   assert.deepEqual(J("rvfSpots({reading: {author: 'darryl'}, queue: [{author: 'pam'}]})"), {darryl: {k: 'face'}, pam: {k: 'chair', j: 0}});
   assert.deepEqual(J("rvfSpots({reading: {author: 'pam'}, queue: []})"), {pam: {k: 'face'}});
   const r = J("rvfRoute({k: 'face'}, {k: 'chair', j: 0}).map(q => [Math.round(q.x / AT_TS * 10) / 10, Math.round(q.y / AT_TS * 10) / 10])");
-  assert.deepEqual(r, [[29, 11.5], [27.6, 11.5], [27.6, 16.4], [26.6, 16.4], [26.6, 18.1]], 'par la colonne entre la corbeille et le bureau, jamais à travers les chaises');
+  assert.deepEqual(r, [[26.2, 11.5], [25, 11.5], [25, 16.4], [23.4, 16.4], [23.4, 18.1]], 'par la colonne entre la corbeille et le bureau, jamais à travers les chaises');
 });
 
 test("la file : au passage suivant du cron, Bernard vide la corbeille et pose la fournée à l'entrepôt ; au-delà de quatre palettes, « +n »", () => {
@@ -365,15 +365,15 @@ test("le panneau du 2e ne montre que les gates du modèle ticket : pas celle d'�
   assert.deepEqual(runs, ['r-tk']);
 });
 
-// ---------- le 2e sur une rangée (46 × 20 cases) : la revue sans second niveau, l'entrepôt en haut du couloir ----------
+// ---------- le 2e sur une rangée (40 × 20 cases) : la revue sans second niveau, l'entrepôt en haut du couloir ----------
 const pills = (p, code) => JSON.parse(p.run(`(() => { const out = [], ap = atPill; atPill = (s, x, y, ...r) => { out.push([String(s), x, y]); return ap(s, x, y, ...r); };
   try { ${code} } finally { atPill = ap; } return JSON.stringify(out); })()`));
 
-test('le 2e fait 46 × 20 cases : la toile, le décor et tout ce qui est cliquable tiennent dans 640 px', () => {
+test('le 2e fait 40 × 20 cases : la toile, le décor et tout ce qui est cliquable tiennent dans 640 px', () => {
   const {p, J} = page();
   assert.equal(J('AT_ROWS[2]'), 20);
   p.run('setFloor(2); renderRedaction(1000);');
-  assert.deepEqual(J('[AT_H, cv.width, cv.height, RD_BG.height]'), [640, 1472, 640, 640]);
+  assert.deepEqual(J('[AT_H, cv.width, cv.height, RD_BG.height]'), [640, 1280, 640, 640]);
   const out = J('RD_HITS.filter(h => h.kind !== "author" && (h.y < 0 || h.y + h.h > AT_H + 1)).map(h => h.kind)');
   assert.deepEqual(out, [], 'aucune zone cliquable hors du plan');
   assert.ok(J('RD_JIRA.y <= AT_H && RD_SOFA.y + 12 <= AT_H && RVF.bench.y + 12 <= AT_H'), 'la boîte Jira et les canapés tiennent en bas');

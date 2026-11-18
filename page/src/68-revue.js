@@ -18,9 +18,9 @@ const RVF_TS=AT_TS, RVP=(x,y)=>({x:x*RVF_TS,y:y*RVF_TS});
 // le premier bureau ; rely, lane : leurs allées au-dessus de la salle d'attente
 const RV_MID=(RD_X1+RD_VX)/2;
 const RVF={stairLow:RVP(RV_MID,RD_ROWS+1.9),stair:RVP(RV_MID,RD_ROWS-.6),hall:RVP(RV_MID,RD_HY),door:RVP(RD_VX+.2,RD_HY),in:RVP(RD_VX+1.4,RD_HY),
-  desk:{x:rvDeskX(0),y:RV_FEET},face:{x:rvDeskX(0),y:RV_FEET+2.3*RVF_TS},bench:RVP(41.6,18.7),
-  stand:RVP(RV_MID+1.65,7.6),pick:RVP(RV_MID-1.25,7.3),basket:RVP(25.6,10.4),bk:RVP(26.8,10.4),relx:27.1*RVF_TS,rely:15.8*RVF_TS,
-  col:27.6*RVF_TS,lane:16.4*RVF_TS};
+  desk:{x:rvDeskX(0),y:RV_FEET},face:{x:rvDeskX(0),y:RV_FEET+2.3*RVF_TS},bench:RVP(37.6,18.7),
+  stand:RVP(RV_MID+1.65,7.6),pick:RVP(RV_MID-1.25,7.3),basket:RVP(23.1,10.4),bk:RVP(24.2,10.4),relx:24.5*RVF_TS,rely:15.8*RVF_TS,
+  col:25*RVF_TS,lane:16.4*RVF_TS};
 RVF.park={x:RVF.stand.x,y:RVF.stand.y+36};
 // l'entrepôt : une zone au sol en haut du couloir, sans murs, bordée d'une bande de sécurité ; quatre places de palette (deux
 // rangées de deux, dans l'ordre de lecture), la dernière dit « +n » s'il y en a plus
@@ -28,7 +28,7 @@ const RVF_E={x0:RD_X1*RVF_TS+10,x1:RD_VX*RVF_TS-10,y0:2.9*RVF_TS,y1:2.9*RVF_TS+1
 const rvfSlot=k=>({x:RV_MID*RVF_TS+(k%2?1.25:-1.25)*RVF_TS,y:RVF_E.y0+48+(k>>1)*48});
 const RVF_V={approve:['✅','#2f9e55'],comment:['💬','#d08a12'],request_changes:['🔧','#c0392b'],err:['⚠','#a8323a']};
 const RVF_WALK=105, RVF_FILE=600, RVF_FLY=500, RVF_SLOTS=4;
-const rvfChair=j=>RVP(26.6+j*2,18.1);
+const rvfChair=j=>RVP(23.4+j*2,18.1);
 const rvCronWf=w=>!!w&&(CFG.revue_cron_wf||[]).includes(String(w).slice(0,8));
 const rvfOn=()=>!!((CFG.revue_cron_wf||[]).length||DEMO);
 const rvfData=()=>(REDACTION&&REDACTION.revue)||{batches:{},verdicts:{}};
