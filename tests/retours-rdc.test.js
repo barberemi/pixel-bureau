@@ -11,11 +11,11 @@ function page() {
   return {p, J};
 }
 
-test('la tuile : PR en correction sur six bureaux, celles qui t\'attendent, les pannes, les poussées du jour, la file', () => {
+test('la tuile : PR en correction sur trois bureaux, celles qui t\'attendent, les pannes, les poussées du jour, la file', () => {
   const {J} = page();
-  assert.deepEqual(J('rtKpi(T)'), {rooms: 5, wait: 2, out: 2, queue: 2, pannes: 1});
+  assert.deepEqual(J('rtKpi(T)'), {rooms: 3, wait: 1, out: 2, queue: 2, pannes: 1});
   const r = J('imRows(T).find(r => r.f === 3)');
-  assert.deepEqual([r.cnt, r.cap, r.wait, r.pannes], [5, 6, 2, 1]);
+  assert.deepEqual([r.cnt, r.cap, r.wait, r.pannes], [3, 3, 1, 1]);
   assert.match(r.tip.join(' '), /📤 2 poussées aujourd'hui.*⏳ 2 en file/);
   assert.equal(J('rtKpi(DAY0 + 9 * 36e5).out'), 1, 'en rejeu : les poussées jusqu\'au curseur');
 });
@@ -28,7 +28,7 @@ test('L\'immeuble en haut de page : une ligne par étage, de haut en bas, ✋ en
   assert.ok(h.indexOf('<h3>À toi</h3>') < h.indexOf('<h3>L\'immeuble</h3>'), 'À toi en tête');
   const floors = [...h.matchAll(/class="im-fl" data-floor="(-?\d)"/g)].map(m => +m[1]);
   assert.deepEqual(floors, J('floorsOn().filter(f => f)'), 'les étages installés, de haut en bas');
-  assert.match(h, /data-floor="3"[^>]*><b>🛠 3e<\/b>.*?5\/6.*?<span class="im-tag warn">✋ 2<\/span><span class="im-tag err">1 panne<\/span>/s);
+  assert.match(h, /data-floor="3"[^>]*><b>🛠 3e<\/b>.*?3\/3.*?<span class="im-tag warn">✋ 1<\/span><span class="im-tag err">1 panne<\/span>/s);
   assert.doesNotMatch(h, /Le 1er étage|Le 3e étage/);
   p.run('document.getElementById("kpis").innerHTML = KPI_SIG; FLOOR = 0;');
 });
@@ -36,7 +36,7 @@ test('L\'immeuble en haut de page : une ligne par étage, de haut en bas, ✋ en
 test('Qui fait quoi : une carte par bureau du 3e, ta validation en premier plan ; un clic monte à l\'étage', () => {
   const {p, J} = page();
   const rows = J('rtWhoRows(T)');
-  assert.equal(rows.length, 5);
+  assert.equal(rows.length, 3);
   const g = rows.find(x => x.run === 'demo-f2');
   assert.deepEqual([g.attn, g.st, g.ico, g.name, g.sub], [true, 'gate', '✋', "T'attend", 'ses corrections à valider']);
   const e = rows.find(x => x.run === 'demo-f3');
@@ -44,7 +44,7 @@ test('Qui fait quoi : une carte par bureau du 3e, ta validation en premier plan 
   const f = rows.find(x => x.run === 'demo-f1');
   assert.match(f.sub, /^3 fils à traiter · 2 corrigés/);
   assert.match(f.what, /^site#2042 Le lecteur vidéo/);
-  assert.match(J('rtWhoHtml(T)'), /🛠 3e étage <span class="cnt">5<\/span>.*data-rt-run="demo-f2"/s);
+  assert.match(J('rtWhoHtml(T)'), /🛠 3e étage <span class="cnt">3<\/span>.*data-rt-run="demo-f2"/s);
   assert.match(J('rtTvWhoHtml(T)'), /<h2>3e étage<\/h2>/);
   const desk = g.i;
   p.run("rtGoto('demo-f2');");

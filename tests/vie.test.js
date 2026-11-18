@@ -66,7 +66,7 @@ test('2e : le boss épingle la nouvelle intention avant qu\'elle démarre, et po
   assert.equal(J('RD_LV.job.kind'), 'intro');
   p.run('for (let k = 0; k < 400 && RD_LV.job && RD_LV.job.ph === "go"; k++) rdJobs(rdTable(), k * 100, .1);');
   assert.equal(J('RD_LV.job.ph'), 'act', 'au liège');
-  assert.deepEqual(J('RD_LV.job.w.pos'), J('RDP(1.4, 10.6)'));
+  assert.deepEqual(J('RD_LV.job.w.pos'), J('RDP(1.15, 9.2)'));
   p.run('rdJobs(rdTable(), 1e6, .1);');
   assert.equal(J('RD_LV.gate.has("n1")'), false, 'épinglée : la recherche démarre');
   p.run('for (let k = 0; k < 400 && RD_LV.job; k++) rdJobs(rdTable(), 2e6 + k * 100, .1); REDACTION.tables[0].tickets[0].etat = "ok"; rdJobs(rdTable(), 3e6, .1);');

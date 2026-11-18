@@ -252,7 +252,7 @@ test('captain_sprite du roster : seul le boss le porte', () => {
   assert.equal(J('CAST.filter(c => "captain_sprite" in c).length'), 0, 'le pack de démo ne le règle pas');
 });
 
-test('le bureau du chef de centre : le capitaine de face derrière son bureau, le tableau de garde à côté ; il part, le bureau reste', () => {
+test('le bureau du chef de centre : le capitaine de face derrière son bureau ; il part, le bureau reste', () => {
   const {p, J} = page();
   p.run(`SUPPORT = supportDemo(); setFloor(-1); var __b = chars.find(c => c.boss), __o = csSlots, __d = drawChar, __dk = csDesk, __txt = [], __order = [];
     csSlots = n => __o(n).map(s => s && s.s && s.s.k === 'gate' ? {...s, s: {...s.s, k: 'run'}} : s); CS_MEM.boss = null;
@@ -262,10 +262,13 @@ test('le bureau du chef de centre : le capitaine de face derrière son bureau, l
     for (let n = 0; n < 20; n++) renderCaserne(1000 + n * 100); __order = []; __txt = []; renderCaserne(3100);`);
   assert.deepEqual(J('CS_MEM.boss.walk.pos'), J('({x: CS_DESK.x, y: CS_DESK.y - CS_BACK})'), 'chez lui : derrière son bureau');
   assert.deepEqual(J('__order'), [['capitaine', 'down'], ['bureau']], 'de face, et le bureau dessiné devant lui');
-  assert.ok(J('__txt.includes("CHEF DE CENTRE") && __txt.includes("GARDE")'), 'la plaque et le tableau de garde');
-  assert.ok(J('CS_HITS.some(h => h.kind === "calls") && CS_HITS.some(h => h.kind === "garde") && CS_HITS.some(h => h.kind === "captain")'), 'corbeille d\'appels, tableau et capitaine cliquables');
+  assert.ok(J('__txt.includes("CHEF DE CENTRE") && !__txt.includes("GARDE")'), 'la plaque ; plus de tableau de garde à côté');
+  assert.ok(J('CS_HITS.some(h => h.kind === "calls") && CS_HITS.some(h => h.kind === "captain") && !CS_HITS.some(h => h.kind === "garde")'), 'corbeille d\'appels et capitaine cliquables');
   p.run(`csSlots = __o; CS_MEM.boss = null; for (let n = 0; n < 60; n++) renderCaserne(4000 + n * 100); __order = []; renderCaserne(10100);`);
-  assert.ok(J('CS_MEM.boss.walk.pos.y < CS_DESK.y - CS_BACK'), 'une réponse attend : il est parti vers la vanne, par le haut');
+  assert.ok(J('CS_MEM.boss.walk.pos.x < CS_DESK.x'), 'une réponse attend : il est parti vers la vanne');
+  // par le passage derrière son bureau et le long du muret : rien entre son bureau et l'allée ne le fait traverser un meuble
+  assert.ok(J(`(() => { const w = csGuardPath({x: CS_DESK.x, y: CS_DESK.y - CS_BACK}, CS_G[0].pts[5], CS_LEFT);
+    return w[1].y === w[0].y && w[1].x === CS_LEFT && w[2].x === CS_LEFT && w[2].y === CS_LANE; })()`), 'derrière le bureau, puis le long du muret');
   assert.ok(J('__order.some(o => o[0] === "bureau")'), 'le bureau reste, vide');
   p.run('csSlots = __o; drawChar = __d; csDesk = __dk; ctx.fillText = __ft;');
 });
@@ -290,8 +293,9 @@ test("nouvelle intervention : le rideau se lève, le camion sort, les pompiers d
   const holds = J('CS_MEM.arr[1].w.map(([j, w]) => w.pts[0].hold)');
   assert.ok(holds.every((h, i) => !i || h > holds[i - 1]), 'un par un');
   assert.ok(J('CS_MEM.arr[1].w.every(([j, w]) => w.pts.some(q => q.y === CS_LANE))'));
-  // personne ne passe dans une autre baie : au-dessus de l'allée, chacun reste dans la colonne de sa place
-  assert.ok(J(`CS_MEM.arr[1].w.every(([j, w]) => w.pts.filter(q => q.y < CS_LANE && q.x !== CS_PX).every(q => q.x === CS_G[1].pts[j].x))`));
+  // personne ne passe dans une autre baie : au-dessus de l'allée, chacun reste dans la colonne de sa place (ou, dans la salle
+  // de garde, le long du mur de droite, sans traverser le bureau du chef ni les lits de camp)
+  assert.ok(J(`CS_MEM.arr[1].w.every(([j, w]) => w.pts.filter(q => q.y < CS_LANE && q.x !== CS_PX && q.x !== CS_SIDE).every(q => q.x === CS_G[1].pts[j].x))`));
   play(p, 1200, 2800);
   assert.ok(J('CS_MEM.door[1]') > 0.99, 'rideau levé en 1,6 s');
   play(p, 2700, 40000);
@@ -373,4 +377,26 @@ test('« Qui fait quoi » du RDC : un bloc du -1, une carte par baie occupée (a
   assert.ok(rows.length > 0, 'des baies occupées dans la démo');
   assert.ok(rows.every(x => typeof x.b === 'number' && x.what), 'baie et sujet');
   assert.match(J('csWhoHtml(T)'), /🚒 -1 caserne <span class="cnt">\d+<\/span>[\s\S]*data-cs-thread=/);
+});
+
+test('une seule rangée : le -1 fait 20 rangées ; le bureau du chef de centre est dans la salle de garde, centré sur le parquet', () => {
+  const {p, J} = page();
+  p.run('SUPPORT = supportDemo(); setFloor(-1); renderCaserne(1000);');
+  assert.equal(J('AT_ROWS[-1]'), 20);
+  assert.deepEqual(J('[cv.width, cv.height]'), [46 * 32, 20 * 32], 'la toile suit la hauteur de l\'étage');
+  assert.equal(J('CS_BG.height'), 20 * 32, 'le fond aussi');
+  // le parquet : x ≥ 35 cases (csBackground) jusqu'au bord droit ; le bureau (112 px × CS_K) y tient en entier, centré
+  const d = J('({x: CS_DESK.x, y: CS_DESK.y, half: 56 * CS_K, x0: 35 * AT_TS, x1: AT_W})');
+  assert.equal(d.x, (d.x0 + d.x1) / 2, 'centré sur le parquet');
+  assert.ok(d.x - d.half >= d.x0 && d.x + d.half <= d.x1, 'posé sur le parquet, pas de carrelage sous lui');
+  assert.ok(d.y > J('CS_TABLE.y') && d.y < J('CS_COT_Y'), 'sous la partie de cartes, au-dessus des lits de camp');
+  assert.ok(J('CS_LBL_Y > CS_COT_Y && CS_LBL_Y < AT_H'), 'ses étiquettes sous lui, dans la toile');
+  // tout tient dans la toile : l'allée, les zones peintes, les lits
+  assert.ok(J('CS_LANE < AT_H && CS_Z1 * AT_TS < CS_LANE && CS_R2 < CS_Z1'));
+});
+
+test('lisibilité au -1 : 20 rangées, le plan affiché à ×0,778 à 1440 × 900 ; aucun texte du plan sous 12 px (9 px affichés)', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'page', 'src', '68-caserne.js'), 'utf8');
+  const small = [...src.matchAll(/\b(\d+)px (?:ui-monospace|system-ui|sans-serif|monospace)/g)].filter(m => +m[1] < 12).map(m => m[0]);
+  assert.deepEqual(small, []);
 });

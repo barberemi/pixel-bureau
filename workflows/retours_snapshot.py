@@ -9,7 +9,7 @@
    events: [{t, k: arrive|gate|push|panne|fin, run, repo, pr, poste?}], pousses,
    jour: {pousses, fils, tok, cours, pannes, semaine}}
 
-Un bureau = un run actif (6 au plus sur la page) ; la file = les runs en attente ; les pannes = les runs en échec des
+Un bureau = un run actif (3 bureaux sur la page, une rangée ; au-delà, la PR attend sur une palette de l'entrepôt) ; la file = les runs en attente ; les pannes = les runs en échec des
 dernières 24 h qu'aucun run plus récent de la même PR n'a repris. Le jour (tableau RETOURS DU JOUR du couloir) : PR poussées
 depuis minuit et leurs fils, jetons des runs du jour, et PR poussées sur 7 jours ; un run fini n'est relu qu'une fois
 (~/.cache/pixel-bureau/pr/jour.json). Colonne d'un fil : celle de la réponse prévue

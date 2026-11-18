@@ -99,7 +99,7 @@ function demoEnd(){
   if(REDACTION!==v.REDACTION){REDACTION=v.REDACTION;if(FLOOR===2)rdReset();} // le 2e revient tel quel
   if(RETOURS!==v.RETOURS){RETOURS=v.RETOURS;if(FLOOR===3)rtReset();} // 68-retours.js : le 3e revient tel quel, sans rejouer
   if(typeof csReset==='function'&&FLOOR===-1)csReset(); // 68-caserne.js : la caserne revient telle quelle, sans faire partir de camion
-  if(ATELIER!==v.ATELIER){ATELIER=v.ATELIER;AT_MEM.fresh=true;AT_MEM.src=null;AT_MEM.scenes=[];AT_MEM.leaving=[null,null,null,null];} // l'atelier revient tel quel, sans rejouer
+  if(ATELIER!==v.ATELIER){ATELIER=v.ATELIER;AT_MEM.fresh=true;AT_MEM.src=null;AT_MEM.scenes=[];AT_MEM.leaving=atNone();} // l'atelier revient tel quel, sans rejouer
   MOVES_MEMO={team:null,list:[]};UFO_M={};FX.cur.clear();
   LOUPE.queue=[];LOUPE.resume=false;if(LOUPE.cur)loupeHide();
   T=v.T;setSpeed(v.SPEED);setMode(v.mode);needTeleport=true;

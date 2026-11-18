@@ -1,4 +1,4 @@
-// 1er étage, l'atelier d'implémentation (68-atelier.js, #76 #125) : dataset atelier, démo, quatre bureaux au plus, panneau
+// 1er étage, l'atelier d'implémentation (68-atelier.js, #76 #125) : dataset atelier, démo, trois bureaux au plus, panneau
 // des bureaux et fiche d'un ticket (verdict de chaque poste, gate), étage limité à l'implémentation, la PR et ses retours.
 'use strict';
 const test = require('node:test');
@@ -26,11 +26,12 @@ test("l'étage ne déploie rien : la chaîne s'arrête à la PR, sa revue et ses
   assert.equal(J('AT_POSTES.filter(p => p.gate).map(p => p.k)').join(), 'gate');
 });
 
-test('quatre bureaux au plus, la démo les occupe tous et met deux tickets en file', () => {
+test('trois bureaux au plus (la chaîne en fait tourner trois), la démo les occupe tous et met deux tickets en file', () => {
   run(`ATELIER = {rooms: ${JSON.stringify([1, 2, 3, 4, 5].map(i => room(String(i))))}, queue: []};`);
-  assert.equal(J('atRooms().length'), 4);
+  assert.equal(J('atRooms().length'), 3);
+  assert.equal(J('floorLoad(1).cap'), 3);
   const d = J('atelierDemo()');
-  assert.equal(d.rooms.length, 4);
+  assert.equal(d.rooms.length, 3);
   assert.equal(d.queue.length, 2);
   assert.ok(d.rooms.some(r => r.gate === 'gate_plan') && d.rooms.some(r => r.back), 'un plan à valider, un retour au code');
   assert.ok(d.rooms.every(r => /^DM-/.test(r.ticket)), 'équipe fictive de la démo');
@@ -82,17 +83,16 @@ test('reprise : les postes faits avant elle sont « repris » (pas « attend son
   assert.doesNotThrow(() => run('atDiff(1000); atRoom(atRooms()[0], 0, 1000, .016);'));
 });
 
-test('tableau « Runs du jour » : au mur à droite du grand tableau, à la place de deux fenêtres, hors de tout chemin et au-dessus de l\'en-tête du bureau 2 ; rien au clic', () => {
-  const b = J('AT_JOUR'), T = J('AT_TS');
-  assert.ok(b.x > (12.2 + 21.6) * T + 6, 'à droite du grand tableau');
-  for (const x of J('AT_WINDOWS')) assert.ok(x * T + 4 + 1.5 * T < b.x - 4 || x * T + 4 > b.x + b.w + 4, 'pas sur une fenêtre ' + x);
-  const g = J('AT_G[1]');
-  assert.ok(b.y + b.h + 3 < g.head - 10, 'au-dessus de l\'en-tête du bureau 2');
-  assert.ok(b.y + b.h + 3 < J('AT_HY0') * T, 'loin du couloir');
-  // aucun chemin de marche ne passe sous le tableau
-  const paths = J(`(() => { const P = []; for (let i = 0; i < 4; i++) { for (const p of AT_DESKS) if (!p.gate) P.push(atRouteOut(i, p.k)); P.push(atBossPath(AT_CHAIR, i));
-    P.push(atToHatch(AT_G[i], 1, AT_DOCK), atToHatch(AT_G[i], 2, AT_DOCK)); } for (const s of atCleanStops()) if (s.sweep) P.push(s.sweep); return P; })()`);
-  for (const pts of paths) for (const p of pts) assert.ok(p.y > b.y + b.h + 3 + 30, 'chemin sous le tableau : ' + JSON.stringify(p));
+test('tableau « Runs du jour » : dans le couloir, entre l\'entrepôt et le boss, sous la ligne de marche et hors de tout chemin ; rien au clic', () => {
+  const b = J('AT_JOUR'), Z = J('AT_ZONE');
+  assert.ok(b.x > Z.x1 && b.x + b.w < J('AT_CHAIR.x') - 50, 'entre l\'entrepôt et le bureau du boss');
+  assert.ok(b.y > J('AT_MY') + 10 && b.y + b.h < J('AT_H'), 'sous la ligne de marche, dans le plan');
+  // aucun chemin de marche ne passe sur le tableau
+  const paths = J(`(() => { const P = []; for (let i = 0; i < AT_NB; i++) { for (const p of AT_WORK) P.push(atRouteOut(i, p.k), atWanderPath(i, p.k, AT_SPOTS[2]));
+    P.push(atBossPath(AT_CHAIR, i), [AT_OUT, AT_EXIT, AT_G[i].hatch(2)], [AT_POP, {x: AT_POP.x, y: AT_MY}, AT_G[i].hatch(1)]); }
+    for (const s of atCleanStops()) if (s.sweep) P.push(s.sweep); return P; })()`);
+  const box = [b.x - 4, b.y - 3, b.w + 8, b.h + 6];
+  for (const pts of paths) for (let n = 1; n < pts.length; n++) assert.ok(!crosses(pts[n - 1], pts[n], box), 'chemin sur le tableau : ' + JSON.stringify([pts[n - 1], pts[n]]));
   run(`ATELIER = {rooms: [], queue: [], jour: {tickets: 15, cours: 4, sortis: 12, pannes: 11, reprises: 23, tok: 1806000}};`);
   assert.doesNotThrow(() => run('atJourBoard();'));
   run(`ATELIER = {rooms: [], queue: []};`);
@@ -176,41 +176,138 @@ test("retour au RDC : le décor cuit une fois (bg) n'est pas effacé, la toile r
   assert.deepEqual(J('[cv.width, cv.height]'), J('[W, H]'));
 });
 
-// ---------- le plan à tapis roulant (4 bureaux, couloirs, scènes) ----------
-const fresh = p => p.run(`AT_MEM.slot = {}; AT_MEM.rooms = {}; AT_MEM.cart = {}; AT_MEM.scenes = []; AT_MEM.leaving = [null, null, null, null];
-  AT_MEM.wander = []; AT_MEM.okAt = {}; AT_MEM.backAt = {}; AT_MEM.fresh = true; AT_MEM.lit = [0, 0, 0, 0];`);
+// ---------- le plan : une rangée de trois bureaux à tapis en U, le couloir dessous ----------
+const fresh = p => p.run(`AT_MEM.slot = {}; AT_MEM.rooms = {}; AT_MEM.cart = {}; AT_MEM.scenes = []; AT_MEM.leaving = atNone();
+  AT_MEM.wander = []; AT_MEM.okAt = {}; AT_MEM.backAt = {}; AT_MEM.fresh = true; AT_MEM.lit = [0, 0, 0];`);
+// les rectangles du tapis d'un bureau (côtés et fond) : rien ne doit les traverser
+const beltRects = (Jx, i) => Jx(`(g => [[g.lx, g.b1, g.H, AT_Y1 - g.b1], [g.rx, g.b1, g.H, AT_Y1 - g.b1], [g.lx, g.b1, g.rx + g.H - g.lx, g.H]])(AT_G[${i}])`);
+const crosses = (a, b, [x, y, w, h]) => !(Math.max(a.x, b.x) < x || Math.min(a.x, b.x) > x + w || Math.max(a.y, b.y) < y || Math.min(a.y, b.y) > y + h);
 
-test('bureaux : titres 1 en haut à gauche, 2 en haut à droite, 3 en bas à gauche, 4 en bas à droite ; 1 et 3 en miroir, sortie côté couloir central', () => {
-  const g = J('AT_G.map(g => ({L: g.L, top: g.top, head: g.head, b1: g.b1, b2: g.b2, ex: g.ex, bx0: g.bx0, bx1: g.bx1, wall: g.wallX}))');
-  assert.deepEqual(g.map(x => [x.L, x.top]), [[true, true], [false, true], [true, false], [false, false]]);
-  assert.ok(g[0].head < g[0].b1 && g[1].head < g[1].b1, 'titres des bureaux du haut en haut');
-  assert.ok(g[2].head > g[2].b2 && g[3].head > g[3].b2, 'titres des bureaux du bas en bas');
-  for (const x of g) assert.ok(x.L ? x.ex > x.bx1 : x.ex < x.bx0, 'le tapis entre et sort côté couloir central');
+test('le 1er fait 46 × 17 cases : trois bureaux côte à côte sur une rangée, le couloir dessous ; la toile suit', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  assert.deepEqual(J2('[AT_ROWS[1], atRows(1) * AT_TS, AT_W]'), [17, 544, 1472]);
+  p.run('CFG.atelier = true; setFloor(1);');
+  assert.deepEqual(J2('[cv.width, cv.height, AT_H]'), [1472, 544, 544]);
+  const g = J2('AT_G.map(g => [g.X0, g.X1])');
+  assert.equal(g.length, 3);
+  assert.equal(g[0][0], 0);
+  assert.equal(g[2][1], 1472);
+  for (let i = 1; i < 3; i++) assert.equal(g[i][0], g[i - 1][1], 'cloison commune');
+  for (const [a, b] of g) assert.ok(Math.abs(b - a - 1472 / 3) < 1, 'environ 15,3 cases chacun');
+  const [y0, y1, my, h] = J2('[AT_Y0, AT_Y1, AT_MY, AT_H]');
+  assert.ok(y0 >= 64 && y1 <= 13 * 32 && my > y1 && my < h, 'les bureaux sous le mur, le couloir dessous');
 });
 
-test('tapis : chaque poste plus loin que le précédent, du cadrage aux retours, de la trappe d\'entrée à la trappe de sortie', () => {
-  for (let i = 0; i < 4; i++) {
+test('tapis en U ouvert vers le bas : entrée en bas à gauche, le fond en haut, sortie en bas à droite ; chaque poste plus loin que le précédent', () => {
+  for (let i = 0; i < 3; i++) {
     const s = J(`AT_DESKS.map(p => atBeltS(AT_G[${i}], p.k))`);
     for (let k = 1; k < s.length; k++) assert.ok(s[k] > s[k - 1], `bureau ${i + 1}, poste ${k}`);
-    const [a, z, len] = J(`[atBeltAt(AT_G[${i}], 0), atBeltAt(AT_G[${i}], atBeltLen(AT_G[${i}])), atBeltLen(AT_G[${i}])]`);
-    assert.ok(Math.abs(a.x - z.x) < 1 && z.y > a.y && s[s.length - 1] < len, 'entrée et sortie l\'une au-dessus de l\'autre');
+    const [a, top, z, len, g] = J(`(g => [atBeltAt(g, 0), atBeltAt(g, atBeltLeg(g) + 10), atBeltAt(g, atBeltLen(g)), atBeltLen(g), g])(AT_G[${i}])`);
+    assert.ok(a.x < z.x && Math.abs(a.y - z.y) < 1, 'entrée et sortie au même niveau, l\'entrée à gauche');
+    assert.ok(a.y > J('AT_Y1') - 20, 'au seuil du couloir');
+    assert.ok(top.y < a.y - 100, 'le fond du U en haut');
+    assert.ok(s[0] > 0 && s[s.length - 1] < len);
+    assert.ok(a.x > g.X0 && z.x < g.X1);
   }
 });
 
-test('📚 Doc : pas de bureau sur le tapis (6 + 5 bureaux), sa place est celle du poste d\'avant', () => {
-  assert.deepEqual(J(`[AT_R1.length, AT_R2.length, AT_DESKS.some(p => p.k === 'doc'), AT_POSTES.some(p => p.k === 'doc')]`), [6, 5, false, true]);
-  assert.deepEqual(J(`atSpot(AT_G[0], 'doc')`), J(`atSpot(AT_G[0], 'besoin')`));
+test('les dix postes autour du U dans l\'ordre du flux : deux à gauche (de bas en haut), six au fond (de gauche à droite), deux à droite (de haut en bas)', () => {
+  assert.equal(J('AT_WORK.length'), 10);
+  for (let i = 0; i < 3; i++) {
+    const sp = J(`AT_WORK.map(p => atSpot(AT_G[${i}], p.k))`), g = J(`AT_G[${i}]`);
+    assert.deepEqual(sp.map(x => x.side).join(''), 'LLBBBBBBRR');
+    assert.ok(sp[0].feet > sp[1].feet, 'à gauche, de bas en haut');
+    for (let k = 3; k < 8; k++) assert.ok(sp[k].x > sp[k - 1].x, 'au fond, de gauche à droite');
+    assert.ok(sp[2].x - g.X0 > 40 && g.X1 - sp[7].x > 40);
+    assert.ok(Math.min(...sp.slice(3, 8).map((x, k) => x.x - sp[k + 2].x)) > 60, 'six au fond, espacés');
+    assert.ok(sp[8].feet < sp[9].feet, 'à droite, de haut en bas');
+    assert.ok(sp[0].x < g.lx && sp[9].x > g.rx + g.H, 'les côtés à l\'extérieur du U');
+    assert.ok(sp.slice(2, 8).every(x => x.feet < g.b1), 'le fond derrière le tapis');
+    // ✋ la barrière : sur le tapis de gauche, entre le Plan et le Code
+    const gate = J(`atSpot(AT_G[${i}], 'gate')`);
+    assert.equal(gate.side, 'gate');
+    assert.ok(gate.feet < sp[0].feet && gate.feet > sp[1].feet);
+  }
+  assert.deepEqual(J(`atSpot(AT_G[0], 'doc')`), J(`atSpot(AT_G[0], 'besoin')`), '📚 Doc : pas de bureau, au poste d\'avant');
+  assert.equal(J('AT_DESKS.some(p => p.k === "doc")'), false);
 });
 
-test('6 emplacements par rangée sur le tapis de toujours : la rangée du haut les remplit, celle du bas part du virage', () => {
-  for (let i = 0; i < 4; i++) {
-    const [sw, w, xs1, xs2, turn] = J(`(g => [g.sw, g.bx1 - g.bx0, AT_R1.map(p => atSpot(g, p.k).x), AT_R2.map(p => atSpot(g, p.k).x), g.tm])(AT_G[${i}])`);
-    assert.ok(Math.abs(sw * 6 - w) < 1e-6, 'six emplacements sur toute la longueur');
-    const near = a => Math.abs(a - turn);
-    assert.ok(near(xs2[0]) < near(xs2[xs2.length - 1]), 'le premier bureau du bas est au virage');
-    assert.ok(Math.abs(Math.abs(xs1[5] - xs1[0]) - 5 * sw) < 1e-6 && Math.abs(Math.abs(xs2[4] - xs2[0]) - 4 * sw) < 1e-6);
-    assert.ok(Math.abs(xs1[5] - xs2[0]) < 1e-6, 'le dernier du haut au-dessus du premier du bas');
+test('agents des côtés de profil, tournés vers le tapis ; ceux du fond regardent vers le bas', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
+  p.run(`ATELIER = {rooms: [${JSON.stringify(room('a', {poste: 'code', states: {cadrage: 'ok', code: 'run'}}))}], queue: [], pannes: []};
+    var __d = [], __dc = drawChar; drawChar = (c, now) => { if (c._at) __d.push([c._at.k, c.dir]); };
+    atRoom(atSlots()[0], 0, 1000, .016); drawChar = __dc;`);
+  const dirs = Object.fromEntries(J2('__d'));
+  for (const k of ['cadrage', 'code']) assert.equal(dirs[k], 'right', k);
+  for (const k of ['revue_pr', 'retours']) assert.equal(dirs[k], 'left', k);
+  for (const k of ['regles', 'securite', 'tests', 'perf', 'besoin', 'pr']) assert.equal(dirs[k], 'down', k);
+});
+
+test('bulles : au fond, sous l\'agent dans le U (jamais sous le grand tableau) ; aux côtés, à côté de lui ; aucune ne sort du plan', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
+  // bureau 1 aux contrôles (cinq postes du fond parlent ensemble), bureau 2 au Code, bureau 3 aux retours (côté droit)
+  const ctrl = room('c', {poste: 'regles', states: {cadrage: 'ok', gate: 'ok', code: 'ok', regles: 'run', securite: 'run', tests: 'run', perf: 'run', besoin: 'run'}});
+  p.run(`T = DAY0 + 11 * 36e5; ATELIER = {rooms: [${JSON.stringify(ctrl)}, ${JSON.stringify(room('d', {poste: 'code', lot: 'un lot assez long pour une grande bulle'}))},
+      ${JSON.stringify(room('e', {poste: 'retours'}))}], queue: [], pannes: []};
+    atCrewTick(atSlots(), 0, true);
+    var __b = [], __ab = atBubble; atBubble = (x, y, s, col, dot, o) => { const q = __ab(x, y, s, col, dot, o); __b.push({x, y, o: o || null, q}); return q; };
+    for (let i = 0; i < 3; i++) atRoom(atSlots()[i], i, 1000, .016); atBubble = __ab;`);
+  const b = J2('__b'), B = J2('AT_BOARD'), G = J2('AT_G'), W = J2('AT_W'), H = J2('AT_H');
+  assert.ok(b.length >= 7, b.length);
+  for (const x of b) {
+    assert.ok(x.q.x >= 0 && x.q.x + x.q.w <= W && x.q.y >= 0 && x.q.y + x.q.h <= H, 'dans le plan : ' + JSON.stringify(x));
+    assert.ok(x.q.y > B.y + B.h + 6, 'pas sous le grand tableau');
   }
+  const back = b.filter(x => x.o && x.o.dir === 'down');
+  assert.equal(back.length, 5, 'les cinq postes du fond');
+  for (const x of back) {
+    const g = G.find(g => x.x > g.X0 && x.x < g.X1);
+    assert.ok(x.q.y > g.b1 + g.H && x.q.x >= g.inX0 - 1 && x.q.x + x.q.w <= g.inX1 + 1, 'dans le U, sous le tapis du fond');
+  }
+  for (let i = 0; i < back.length; i++) for (let j = 0; j < i; j++) {
+    const u = back[i].q, v = back[j].q;
+    assert.ok(u.x >= v.x + v.w || v.x >= u.x + u.w || u.y >= v.y + v.h || v.y >= u.y + u.h, 'les bulles du fond ne se recouvrent pas');
+  }
+  assert.deepEqual(b.filter(x => x.o && x.o.dir !== 'down').map(x => x.o.dir).sort(), ['left', 'right'], 'le Code (gauche), les Retours (droite)');
+});
+
+test('l\'entrepôt : une zone de palettes au sol, une palette par ticket en attente, la panne en rouge ; le panneau centré au-dessus', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  const q = n => Array.from({length: n}, (_, k) => ({run: 'q' + k, ticket: 'DM-' + k, since: '2026-10-01T09:00:00Z'}));
+  p.run(`var __P = [], __ap = atPill; atPill = (s, x, y, bg) => { __P.push([s, x, bg]); return __ap(s, x, y, bg); };`);
+  const draw = (queue, pannes) => { p.run(`__P = []; AT_HITS = []; atWarehouse(${JSON.stringify(queue)}, ${JSON.stringify(pannes)}, 1000);`); return J2('[__P, AT_HITS]'); };
+  let [pills, hits] = draw(q(2), [{run: 'p', ticket: 'DM-p'}]);
+  assert.deepEqual(hits.map(h => h.kind), ['queue', 'queue', 'panne'], 'une palette par ticket, puis la panne');
+  const Z = J2('AT_ZONE');
+  assert.deepEqual(pills[0].slice(0, 2), ['📦 ENTREPÔT · 2 en attente', (Z.x0 + Z.x1) / 2], 'au milieu, au-dessus de la zone');
+  assert.deepEqual(pills.slice(1).map(x => x[0]), ['DM-0', 'DM-1', '🧯 DM-p'], 'l\'étiquette de chaque palette');
+  assert.equal(pills[3][2], '#a8323a', 'la panne en rouge');
+  for (const h of hits) assert.ok(h.x >= Z.x0 && h.x + h.w <= Z.x1 && h.y >= Z.y0 && h.y + h.h <= Z.y1, 'dans la zone');
+  [pills, hits] = draw(q(6), []);
+  assert.equal(hits.length, 3, 'trop de tickets : trois palettes…');
+  assert.ok(pills.some(x => x[0] === '+3'), '… et « +3 »');
+  p.run('atPill = __ap;');
+});
+
+test('Bernard à la demande : sans livraison, il n\'est pas sur le plan ; il entre et ressort par la porte de sortie', () => {
+  const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
+  p.run(`T = DAY0 + 11 * 36e5; ATELIER = {rooms: [${JSON.stringify(room('a'))}], queue: [], pannes: []}; AT_HITS = []; var __pp = []; atScenes(1000, .016, __pp);`);
+  assert.equal(J2('atOpen()'), true, 'en pleine journée');
+  assert.deepEqual([J2('__pp.length'), J2('AT_HITS.filter(h => h.kind === "bernard").length')], [0, 0], 'ni dessiné ni cliquable');
+  // une livraison : de derrière la porte aux palettes, à la trappe d'entrée, puis il ressort
+  p.run(`atDiff(1000); AT_MEM.scenes = [{kind: 'arrive', i: 0, run: 'a', ticket: 'DM-a', t0: 0}]; AT_MEM.cart.a = {s: 0, target: 10, hidden: true}; __pp = []; atScenes(1000, .016, __pp);`);
+  const w = J2('AT_MEM.scenes[0].walk'), out = J2('AT_OUT');
+  assert.ok(out.x > J2('AT_W'), 'il part de derrière la porte');
+  assert.ok(J2('AT_HITS.some(h => h.kind === "bernard")'));
+  for (let n = 0; n < 4000 && J2('AT_MEM.scenes.length'); n++) p.run('atScenes(1000 + ' + n + ' * 50, .05, []);');
+  assert.equal(J2('AT_MEM.cart.a.hidden'), false, 'le carton posé à la trappe d\'entrée');
+  assert.equal(J2('AT_MEM.scenes.length'), 0, 'il est reparti');
+  // un ramassage : à la trappe de sortie, puis dehors avec le carton ; le bureau se libère
+  p.run(`AT_MEM.leaving[1] = {ticket: 'DM-b', t0: 0}; AT_MEM.scenes = [{kind: 'exit', i: 1, ticket: 'DM-b', t0: 0}]; atScenes(9e5, .016, []);`);
+  assert.deepEqual(J2('AT_MEM.scenes[0].walk.path.pop()'), J2('AT_G[1].hatch(2)'), 'il va à la trappe de sortie');
+  for (let n = 0; n < 4000 && J2('AT_MEM.scenes.length'); n++) p.run('atScenes(9e5 + ' + n + ' * 50, .05, []);');
+  assert.equal(J2('AT_MEM.leaving[1]'), null);
+  void w;
 });
 
 test('un run d\'avant le poste Plan (schéma, patterns, revue croisée) : ramené au poste voisin, ses états ignorés', () => {
@@ -224,12 +321,12 @@ test('un run d\'avant le poste Plan (schéma, patterns, revue croisée) : ramen�
 
 test("un ticket garde son bureau ; le suivant prend le premier bureau libre", () => {
   const p = load();fresh(p);
-  p.run(`ATELIER = {rooms: ${JSON.stringify(['a', 'b', 'c'].map(x => room(x)))}, queue: []};`);
-  assert.deepEqual(JSON.parse(p.run('JSON.stringify(atSlots().map(r => r && r.run))')), ['a', 'b', 'c', null]);
-  p.run(`ATELIER = {rooms: ${JSON.stringify(['b', 'c'].map(x => room(x)))}, queue: []};`);
-  assert.deepEqual(JSON.parse(p.run('JSON.stringify(atSlots().map(r => r && r.run))')), [null, 'b', 'c', null]);
+  p.run(`ATELIER = {rooms: ${JSON.stringify(['a', 'b'].map(x => room(x)))}, queue: []};`);
+  assert.deepEqual(JSON.parse(p.run('JSON.stringify(atSlots().map(r => r && r.run))')), ['a', 'b', null]);
+  p.run(`ATELIER = {rooms: ${JSON.stringify(['b'].map(x => room(x)))}, queue: []};`);
+  assert.deepEqual(JSON.parse(p.run('JSON.stringify(atSlots().map(r => r && r.run))')), [null, 'b', null]);
   p.run(`ATELIER = {rooms: ${JSON.stringify(['b', 'c', 'd'].map(x => room(x)))}, queue: []};`);
-  assert.deepEqual(JSON.parse(p.run('JSON.stringify(atSlots().map(r => r && r.run))')), ['d', 'b', 'c', null]);
+  assert.deepEqual(JSON.parse(p.run('JSON.stringify(atSlots().map(r => r && r.run))')), ['c', 'b', 'd']);
 });
 
 test('scènes : rien à rejouer en montant ; puis arrivée, sortie (pas pour une panne), ✓ qui apparaît, retour au code', () => {
@@ -249,10 +346,10 @@ test('scènes : rien à rejouer en montant ; puis arrivée, sortie (pas pour une
 
 test('promeneurs : seulement l\'équipe du bureau 1, quand il est libre (2 au plus) ; ils rentrent quand un ticket arrive', () => {
   const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
-  p.run(`T = DAY0 + 11 * 36e5; ATELIER = {rooms: [${JSON.stringify(room('a'))}], queue: []}; AT_MEM.slot.a = 1; AT_MEM.lit = [0, 1, 0, 0];
+  p.run(`T = DAY0 + 11 * 36e5; ATELIER = {rooms: [${JSON.stringify(room('a'))}], queue: []}; AT_MEM.slot.a = 1; AT_MEM.lit = [0, 1, 0];
     for (let n = 0; n < 50; n++) atWanderTick(atSlots(), n * 100, .1, () => 0);`);
   const w = J2('AT_MEM.wander.map(w => w.i)');
-  assert.deepEqual(w, [0, 0], 'les bureaux 2 à 4 n\'ont pas d\'équipe sans ticket : seul le bureau 1 se promène');
+  assert.deepEqual(w, [0, 0], 'les bureaux 2 et 3 n\'ont pas d\'équipe sans ticket : seul le bureau 1 se promène');
   p.run(`ATELIER.rooms.push(${JSON.stringify(room('z'))}); AT_MEM.slot.z = 0; atWanderTick(atSlots(), 6000, .1, () => 1);`);
   assert.ok(J2('AT_MEM.wander.every(w => w.phase === "back")'));
 });
@@ -260,7 +357,7 @@ test('promeneurs : seulement l\'équipe du bureau 1, quand il est libre (2 au pl
 test('équipes du 1er : le bureau 1 garde la sienne ; ailleurs, elle monte avec le ticket et redescend avec le carton', () => {
   const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
   p.run(`ATELIER = {rooms: [], queue: []}; atCrewTick(atSlots(), 0, true);`);
-  assert.deepEqual(J2('AT_MEM.crew.occ'), [true, false, false, false]);
+  assert.deepEqual(J2('AT_MEM.crew.occ'), [true, false, false]);
   assert.equal(J2('atAtDesk(1, "tests")'), false, 'bureau 2 libre : personne à son poste');
   p.run(`ATELIER.rooms.push(${JSON.stringify(room('m'))}); AT_MEM.slot.m = 2; atCrewTick(atSlots(), .1, false);`);
   const n = J2('AT_DESKS.filter(p => !p.gate).length');
@@ -282,8 +379,9 @@ test("fiche d'un agent : son poste, son bureau et sa place, même quand il se pr
   const html = p.run(`atAgentHtml({kind: 'agent', i: 1, k: 'perf'}, atSlots())`);
   assert.match(html, /Perf·a11y/);
   assert.match(html, /Se promène sur le canapé/);
-  assert.match(html, /Sa place : bureau 2, rangée du bas/);
-  assert.match(p.run(`atAgentHtml({kind: 'agent', i: 1, k: 'tests'}, atSlots())`), /rangée du haut/, '🧪 Tests : 6e bureau, en haut');
+  assert.match(html, /Sa place : bureau 2, au fond, derrière le tapis/);
+  assert.match(p.run(`atAgentHtml({kind: 'agent', i: 1, k: 'code'}, atSlots())`), /côté gauche du tapis/);
+  assert.match(p.run(`atAgentHtml({kind: 'agent', i: 1, k: 'retours'}, atSlots())`), /côté droit du tapis/);
 });
 
 test("seul l'étage affiché vit : en montant l'atelier se pose sans rejouer, en descendant le RDC replace chacun", () => {
@@ -314,33 +412,33 @@ test("ménage du soir : après le RDC, l'agent d'entretien fait le 1er étage, r
   assert.equal(a.moving, true, 'il entre par la porte');
   const n = J2('atCleanStops().length - 1'), slot = J2('AT_CLEAN_DUR') / n;
   const m = J2(`atCleanerAt(__cl, __u.s + ${slot * 0.6})`);
-  assert.deepEqual([m.moving, m.stop.i], [false, 1], 'il balaie le bureau 2');
+  assert.deepEqual([m.moving, m.stop.i], [false, 2], 'il commence par le bureau 3, le plus près de la porte');
   assert.deepEqual(J2(`atCleanerAt(__cl, __u.s + ${slot * 0.6})`), m, 'même heure, même place');
-  assert.match(J2('atCleanLabel(' + JSON.stringify(m) + ')'), /bureau 2/);
+  assert.match(J2('atCleanLabel(' + JSON.stringify(m) + ')'), /bureau 3/);
 });
 
 // ---------- correctifs : allées, canapés, loupe, TV, scènes par étage ----------
-test('trajets : de sa place à la porte par les allées, jamais à travers le tapis ; la rangée loin de la porte fait le tour par le mur extérieur', () => {
+test('trajets : de sa place au couloir par les allées, jamais à travers le tapis ; ceux du fond passent devant leurs bureaux puis par l\'allée d\'un côté', () => {
   const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
-  for (let i = 0; i < 4; i++) {
-    const g = J2(`(g=>({x0:Math.min(g.turnX,g.ex),x1:Math.max(g.turnX,g.ex)+.7*AT_TS,y0:g.b1,y1:g.b2+g.H,ax:g.ax,L:g.L}))(AT_G[${i}])`);
-    for (const k of J2('AT_DESKS.filter(p=>!p.gate).map(p=>p.k)')) {
+  for (let i = 0; i < 3; i++) {
+    const belts = beltRects(J2, i), g = J2(`AT_G[${i}]`);
+    for (const k of J2('AT_WORK.map(p=>p.k)')) {
       const r = J2(`atRouteOut(${i}, '${k}')`);
-      for (let n = 1; n < r.length; n++) {
-        const a = r[n - 1], b = r[n], sx = [Math.min(a.x, b.x), Math.max(a.x, b.x)], sy = [Math.min(a.y, b.y), Math.max(a.y, b.y)];
-        assert.ok(sx[1] < g.x0 || sx[0] > g.x1 || sy[1] < g.y0 || sy[0] > g.y1, `bureau ${i + 1}, ${k}, segment ${n}`);
-      }
+      for (let n = 1; n < r.length; n++) for (const b of belts) assert.ok(!crosses(r[n - 1], r[n], b), `bureau ${i + 1}, ${k}, segment ${n}`);
+      assert.equal(r[r.length - 1].y, J2('AT_MY'), 'jusqu\'au couloir');
+      assert.ok(r.every(q => q.x > g.X0 && q.x < g.X1), 'sans passer chez le voisin');
     }
-    assert.ok(g.L ? g.ax < g.x0 : g.ax > g.x1, 'allée entre le tapis et le mur extérieur');
+    assert.ok(g.axL < g.lx && g.axR > g.rx + g.H, 'allées entre la cloison et le tapis');
   }
 });
 
-test('canapés : ni devant une porte ni dans le couloir central', () => {
-  const doors = J('AT_G.map(g=>g.door.x)'), T = J('AT_TS'), seats = J('AT_SPOTS.filter(s=>s.sit).map(s=>s.x)');
-  for (const x of seats) {
-    for (const d of doors) assert.ok(Math.abs(x - d) > 2.4 * T, 'loin de la porte');
-    assert.ok(x < 20 * T || x > 26 * T);
-  }
+test('le couloir, de gauche à droite : l\'entrepôt, « Runs du jour », le boss, le café, les canapés, la sortie ; personne ne s\'assoit devant une trappe', () => {
+  const [Z, J_, C, cafe, sofa, exit] = J('[AT_ZONE, AT_JOUR, AT_CHAIR, AT_CAFE, AT_SOFA, AT_EXIT]');
+  assert.ok(Z.x1 < J_.x && J_.x + J_.w < C.x - 50 && C.x + 54 < cafe.x - 30 && cafe.x < sofa.x - 48 && sofa.x + 48 < exit.x, 'dans l\'ordre');
+  const my = J('AT_MY');
+  for (const y of [Z.y0, J_.y, C.y - 44, sofa.y - 26]) assert.ok(y > my + 10, 'sous la ligne de marche');
+  const hatches = J('AT_G.flatMap(g => [g.cxL, g.cxR])'), T = J('AT_TS');
+  for (const s of J('AT_SPOTS')) for (const h of hatches) assert.ok(Math.abs(s.x - h) > T || s.y > my + 20, 'pas devant une trappe');
 });
 
 test("loupe au 1er : un ticket qui sort, ta décision, un poste en panne ; rien du RDC", () => {
@@ -399,7 +497,7 @@ test('un samedi à 22 h, comme au RDC : le boss à son fauteuil, écran allumé,
     drawChar = (c, now) => __drawn.push(c.boss ? 'boss' : c.key === 'at_bernard' ? 'bernard' : 'agent');
     drawScreen = (x, y, w, h, st) => __scr.push(st);
     var __b = chars.find(c => c.boss); __b.present = true; __b._st = stateAt(__b, T);
-    AT_MEM.boss = null; atBoss([null, null, null, null], 0, 1, []);
+    AT_MEM.boss = null; atBoss(atNone(), 0, 1, []);
     atRoom(null, 0, 0, .1);
     var __people = []; atScenes(0, .1, __people);
     drawChar = __dc; drawScreen = __ds;`);
@@ -409,7 +507,7 @@ test('un samedi à 22 h, comme au RDC : le boss à son fauteuil, écran allumé,
   assert.equal(J2('__people.length'), 0, 'Bernard est rentré');
 });
 
-test("toutes les scènes du 1er se jouent à toute heure : sans ticket, avec les quatre bureaux pris, un jour sans ménage", () => {
+test("toutes les scènes du 1er se jouent à toute heure : sans ticket, avec tous les bureaux pris, un jour sans ménage", () => {
   const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
   p.run('FLOOR = 1; CFG.atelier = true;');
   for (const setup of ['ATELIER = null;', 'ATELIER = {rooms: [], queue: [], pannes: []};', 'ATELIER = atelierDemo();']) {
@@ -427,10 +525,10 @@ test("toutes les scènes du 1er se jouent à toute heure : sans ticket, avec les
   assert.deepEqual(J2('AT_MEM.scenes.map(s => s.kind)'), ['exit']);
   p.run('demoEnd();');
   assert.equal(p.run('ATELIER === __A'), true);
-  // quatre bureaux pris : un se libère sans scène, le ticket arrive
+  // tous les bureaux pris : un se libère sans scène, le ticket arrive
   fresh(p);p.run('ATELIER = atelierDemo(); atDiff(500); var __B = ATELIER;');
   p.run('demoStart(atGalleryScenes().find(x => x.n === "Un ticket arrive")); atDiff(1000);');
-  assert.equal(J2('ATELIER.rooms.length'), 4);
+  assert.equal(J2('ATELIER.rooms.length'), 3);
   assert.deepEqual(J2('AT_MEM.scenes.map(s => s.kind)'), ['arrive']);
   p.run('demoEnd();');
   // un jour sans ménage (le samedi) : sa tournée du 1er commence tout de suite
@@ -547,7 +645,7 @@ test('le ménage du 1er : il balaie en parcourant chaque bureau et l\'entrepôt,
   const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
   p.run(`CFG.atelier = true; var __c = atCleaner(), __v = {s: 0, e: AT_CLEAN_DUR}; var __cv = atCleanVisit; atCleanVisit = () => __v;`);
   const pts = J2(`Array.from({length: 81}, (_, k) => atCleanerAt(__c, __v.s + (__v.e - __v.s) * k / 81)).map(m => m && [m.stop.room, Math.round(m.x), Math.round(m.y), !!m.sweeping])`);
-  for (const room of ['le bureau 2', 'le bureau 4', 'le bureau 3', 'le bureau 1', 'l\'entrepôt']) {
+  for (const room of ['le bureau 3', 'le bureau 2', 'le bureau 1', 'l\'entrepôt']) {
     const sw = pts.filter(x => x && x[0] === room && x[3]);
     assert.ok(sw.length >= 3, room);
     assert.ok(new Set(sw.map(x => x[1] + ',' + x[2])).size >= 3, room + ' : il avance en balayant');

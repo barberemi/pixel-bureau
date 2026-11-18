@@ -102,7 +102,7 @@ test('3e : la correction au travail, puis finie (actions repliées) ; sa bulle d
   assert.match(fix, /Dossier de travail de la PR et Kronn/);
   assert.match(fix, /je renomme la prop autoplay/);
   assert.equal(p.J(`rtBubble(RETOURS.rooms[0], RT_POSTES.find(x => x.k === 'fix'))`), '« Fil 3 : je renomme la prop… »');
-  const fini = p.run(`rtPosteHtml(RETOURS.rooms[3], 3, RT_POSTES.find(x => x.k === 'fix'))`);
+  const fini = p.run(`rtPosteHtml(RETOURS.rooms[1], 1, RT_POSTES.find(x => x.k === 'fix'))`);
   assert.match(fini, /🛠 Sa correction <span class="fa-n">finie/);
   assert.match(fini, /<details class="fa-det">/);
   p.run('delete RETOURS.rooms[0].fait;');

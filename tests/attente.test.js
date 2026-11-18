@@ -11,19 +11,19 @@ function page() {
   return {p, J};
 }
 
-test('la démo : quatre décisions sur trois étages, la plus ancienne d\'abord, avec leur âge', () => {
+test('la démo : trois décisions sur trois étages, la plus ancienne d\'abord, avec leur âge', () => {
   const {J} = page();
   const L = J('waitList().map(x => [x.fl, x.a, waitAge(x.t)])');
-  assert.deepEqual(L.map(x => x[0]), [1, -1, 3, 3]);
+  assert.deepEqual(L.map(x => x[0]), [1, -1, 3]);
   assert.deepEqual(L[0], [1, 'DM-7305', '1 h 48']);
   const h = J('toiKpiHtml(waitList(), 2)');
-  assert.match(h, /<h3>À toi<\/h3><div class="row"><div class="big">4<\/div><div class="grow">décisions<br>la plus ancienne 1 h 48/);
+  assert.match(h, /<h3>À toi<\/h3><div class="row"><div class="big">3<\/div><div class="grow">décisions<br>la plus ancienne 1 h 48/);
   assert.equal((h.match(/<li>/g) || []).length, 3, 'trois lignes au plus : le bandeau ne grandit pas');
   assert.equal((h.match(/<li>✋/g) || []).length, 2, 'les deux plus anciennes');
-  assert.match(h, /<li>et 2 de plus · 🧯 <b>2 agents<\/b> en panne<\/li>/);
+  assert.match(h, /<li>et 1 de plus · 🧯 <b>2 agents<\/b> en panne<\/li>/);
   assert.match(h, /data-open="attente"[^>]*aria-controls="waitlist"/, 'un clic déroule la liste');
   const rows = J('waitRowsHtml(waitList())');
-  assert.equal((rows.match(/data-wl=/g) || []).length, 4);
+  assert.equal((rows.match(/data-wl=/g) || []).length, 3);
   assert.match(rows, /class="wl-r old"><span class="wl-fl">🏭 1er<\/span>/, 'la plus ancienne en tête, marquée');
 });
 

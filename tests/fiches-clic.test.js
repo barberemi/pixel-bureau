@@ -1,4 +1,4 @@
-// Les fiches au clic du 2e et du 3e étage (68-redaction.js, 68-revue.js, 68-retours.js) : la PR lue, un auteur, le casier,
+// Les fiches au clic du 2e et du 3e étage (68-redaction.js, 68-revue.js, 68-retours.js) : la PR lue, un auteur, l'entrepôt,
 // la corbeille à la revue ; l'intention, un poste, la boîte Jira et la clé d'un ticket créé à la rédaction ; les liens du
 // bureau, la fiche d'un poste et le couloir au 3e. Chaque fiche mène à la PR, au ticket, au run et au Mur Kanban.
 'use strict';
@@ -26,7 +26,7 @@ test('revue : un clic sur le relecteur de la file ouvre la PR lue, ses liens, so
   assert.match(html, /href="https:\/\/github\.com\/dm\/api\/pull\/2051"[^>]*>🐙 La PR ↗/);
   assert.match(html, /pull\/2051\/files"[^>]*>± Le diff ↗/);
   assert.match(html, /data-kbpr="dm\/api#2051" data-au="pambeesly">🔍 Ouvrir dans le Kanban/);
-  assert.match(html, /Après elle, au casier.*mobile#311.*api#2063/s, 'la file, dans l\'ordre');
+  assert.match(html, /Après elle, à l'entrepôt.*mobile#311.*api#2063/s, 'la file, dans l\'ordre');
   assert.match(html, /data-rva="pambeesly"/, 'l\'auteur mène à sa fiche');
   p.run(`fkAct({kbpr: 'dm/api#2051', au: 'pambeesly'});`);
   const c = J('KB_CALLS[0]');
@@ -34,7 +34,7 @@ test('revue : un clic sur le relecteur de la file ouvre la PR lue, ses liens, so
   assert.equal(c.who, J("(ghChar('pambeesly') || {}).key || ''"), 'le Kanban filtré sur l\'auteur quand c\'est quelqu\'un de l\'équipe');
 });
 
-test("revue : un auteur montre ses PR (lue, au casier avec leur rang, déjà relues) ; un auteur reparti n'a plus de fiche", () => {
+test("revue : un auteur montre ses PR (lue, à l'entrepôt avec leur rang, déjà relues) ; un auteur reparti n'a plus de fiche", () => {
   const {p, J} = page();
   p.run('setFloor(2); renderRedaction(1000);');
   click(p, 'author', ` && h.author === 'pambeesly'`);
@@ -42,9 +42,9 @@ test("revue : un auteur montre ses PR (lue, au casier avec leur rang, déjà rel
   const pam = J('rdFicheHtml(RDF)');
   assert.match(pam, /Sa PR est lue au premier bureau/);
   assert.match(pam, /En lecture.*api#2051/s);
-  assert.match(pam, /Au casier.*<span class="k mono">3<\/span><span>api#2063/s, 'deuxième au casier, troisième à passer');
+  assert.match(pam, /À l'entrepôt.*<span class="k mono">3<\/span><span>api#2063/s, 'deuxième à l\'entrepôt, troisième à passer');
   const holly = J(`rvAuthorHtml('hollyflax')`);
-  assert.match(holly, /Plus rien au casier/);
+  assert.match(holly, /Plus rien à relire/);
   assert.match(holly, /Déjà relues.*site#2042.*site#2060/s);
   assert.match(holly, /💬<\/span>.*✅<\/span>/s, 'le verdict de chaque avis');
   assert.equal(J(`rvAuthorHtml('personne')`), null);
@@ -52,7 +52,7 @@ test("revue : un auteur montre ses PR (lue, au casier avec leur rang, déjà rel
   assert.equal(J('RDF'), null, 'retour à la liste');
 });
 
-test('revue : le casier (la file dans l\'ordre) et la corbeille (les avis postés) ; une ligne relue ouvre sa fiche', () => {
+test('revue : l\'entrepôt (la file dans l\'ordre) et la corbeille (les avis postés) ; une ligne relue ouvre sa fiche', () => {
   const {p, J} = page();
   p.run('setFloor(2); renderRedaction(1000);');
   assert.ok(J('RD_HITS.some(h => h.kind === "postees")'), 'la corbeille est cliquable');
@@ -66,7 +66,7 @@ test('revue : le casier (la file dans l\'ordre) et la corbeille (les avis posté
   assert.deepEqual(J('RDF'), {k: 'review', run, back: {k: 'postees'}});
   assert.match(J('rdFicheHtml(RDF)'), /💬 Relue/);
   const cas = J(`rvFileHtml('casier')`);
-  assert.match(cas, /📥 À relire <span class="cnt">2<\/span>/);
+  assert.match(cas, /📦 L'entrepôt <span class="cnt">2 à relire<\/span>/);
   assert.match(cas, /<span class="k mono">2<\/span><span>mobile#311.*<span class="k mono">3<\/span><span>api#2063/s);
   assert.match(J("rvfHover({kind: 'postees'})"), /2 PR relues · clic : la liste/);
 });

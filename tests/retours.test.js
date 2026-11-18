@@ -1,4 +1,4 @@
-// 3e étage, les retours de PR (68-retours.js) : un bureau par PR en correction (six au plus), stable ; le rejeu à l'heure
+// 3e étage, les retours de PR (68-retours.js) : un bureau par PR en correction (trois au plus, sur une rangée), stable ; le rejeu à l'heure
 // du curseur ; un seul boss, à la gate ouverte depuis le plus longtemps ; Bernard monte et redescend les PR ; le Kanban des
 // fils ; l'onglet, le panneau, la TV, la loupe, le fil et ⌘K du RDC ; la galerie.
 'use strict';
@@ -19,20 +19,24 @@ test("l'étage existe en démo ; ses onglets dans l'ordre des étages, le 3e en 
   assert.equal(J('retoursOn()'), true);
   assert.deepEqual(J('floorsOn()'), [3, 2, 1, 0, -1], 'de haut en bas');
   assert.deepEqual(J("[...floorTabsHtml().matchAll(/data-floor=\"(-?\\d)\"/g)].map(m => +m[1])"), [-1, 0, 1, 2, 3]);
-  assert.match(J('floorTabsHtml()'), /title="3e · retours de PR · 5 en cours · ✋ 2 t&#39;attend"[^>]*><span class="fi" aria-hidden="true">🛠<\/span>3e<b>5<\/b><b class="h">✋2<\/b>/, 'la démo : cinq PR, deux validations ; en court, le nom entier au survol');
+  assert.match(J('floorTabsHtml()'), /title="3e · retours de PR · 3 en cours · ✋ 1 t&#39;attend"[^>]*><span class="fi" aria-hidden="true">🛠<\/span>3e<b>3<\/b><b class="h">✋1<\/b>/, 'la démo : trois PR, une validation ; en court, le nom entier au survol');
   p.run('setFloor(3);');
   assert.equal(J('FLOOR'), 3);
   assert.deepEqual(J('[cv.width, cv.height]'), J('[AT_W, AT_H]'));
+  assert.deepEqual(J('[cv.width, cv.height]'), [46 * 32, 17 * 32], 'une rangée de bureaux et le couloir : 46 × 17 cases');
 });
 
-test('une PR garde son bureau ; la suivante prend le premier bureau libre ; six bureaux au plus', () => {
+test('une PR garde son bureau ; la suivante prend le premier bureau libre ; trois bureaux au plus, les autres sur les palettes', () => {
   const {p, J, set} = page();
   set([room('r1', 9), room('r2', 9.5)]);
-  assert.deepEqual(J('rtSlots().map(r => r && r.run)'), ['r1', 'r2', null, null, null, null]);
+  assert.deepEqual(J('rtSlots().map(r => r && r.run)'), ['r1', 'r2', null]);
   p.run(`RETOURS.rooms.shift(); RETOURS.rooms.push(${room('r3', 10)});`);
-  assert.deepEqual(J('rtSlots().map(r => r && r.run)'), ['r3', 'r2', null, null, null, null], 'r2 reste au bureau 2');
-  set([...Array(8)].map((_, k) => room('r' + k, 8 + k / 10)));
-  assert.equal(J('rtSlots().filter(Boolean).length'), 6);
+  assert.deepEqual(J('rtSlots().map(r => r && r.run)'), ['r3', 'r2', null], 'r2 reste au bureau 2');
+  set([...Array(5)].map((_, k) => room('r' + k, 8 + k / 10)));
+  assert.deepEqual(J('rtSlots().map(r => r && r.run).sort()'), ['r0', 'r1', 'r2'], 'les trois plus anciennes');
+  p.run(`RETOURS.queue = [{run: 'q1', repo: 'dm/api', pr: '7', since: ${at(10.5)}}];`);
+  assert.deepEqual(J('rtWaiting().map(x => x.run)'), ['r3', 'r4', 'q1'], 'au-delà de trois bureaux, la PR attend sur une palette, avant la file');
+  assert.equal(J('rtKpi(T).queue'), 3);
 });
 
 test("rejeu : une PR occupe un bureau de son arrivée à son push, sa panne ou sa fin ; à sa gate depuis l'ouverture de la gate", () => {
@@ -48,16 +52,16 @@ test("rejeu : une PR occupe un bureau de son arrivée à son push, sa panne ou s
 
 test("un seul boss : il va à la gate ouverte depuis le plus longtemps, les autres attendent leur tour ; il ressort par où il est entré", () => {
   const {p, J, set} = page();
-  set([room('r1', 9), room('r2', 8, ", gate: true, poste: 'gate', states: {gate: 'gate'}"), room('r3', 8.5), room('r4', 7, ", gate: true, poste: 'gate', states: {gate: 'gate'}")]);
-  assert.equal(J('rtGateTarget(rtSlots())'), 3, 'le bureau 4 attend depuis 7 h');
+  set([room('r1', 9), room('r2', 8, ", gate: true, poste: 'gate', states: {gate: 'gate'}"), room('r3', 7, ", gate: true, poste: 'gate', states: {gate: 'gate'}")]);
+  assert.equal(J('rtGateTarget(rtSlots())'), 2, 'le bureau 3 attend depuis 7 h');
   p.run('setFloor(3); renderRetours(1000); renderRetours(1100);');
-  assert.equal(J('RT_MEM.boss.target'), 3);
+  assert.equal(J('RT_MEM.boss.target'), 2);
   assert.equal(J('chars.filter(c => c.boss).length'), 1);
-  // bureau du bas : par la porte du haut, sous le Kanban, jusqu'à la place de la barrière (jamais à travers le rail)
-  const path = J('rtBossPath(rtHome(), 3, null)'), g = J('RT_G[3]');
-  assert.ok(path.some(q => Math.abs(q.y - (g.y0 + 4.9 * 32)) < 1));
-  assert.deepEqual(path[path.length - 1], g.gate);
-  assert.deepEqual(J('rtBossPath(RT_G[3].gate, null, 3)').slice(1, 3), [{x: g.gate.x, y: g.y0 + 4.9 * 32}, {x: g.door.x, y: g.y0 + 4.9 * 32}], 'il ressort par le même chemin');
+  // par le couloir jusqu'à la porte, puis sous le rail jusqu'à la barrière (jamais à travers le rail)
+  const path = J('rtBossPath(rtHome(), 2, null)'), g = J('RT_G[2]');
+  assert.deepEqual(path.slice(-3), [{x: g.door.x, y: J('RT_LANE')}, {x: g.door.x, y: g.gate.y}, g.gate]);
+  assert.ok(g.gate.y > g.ry + 32, 'sous le rail');
+  assert.deepEqual(J('rtBossPath(RT_G[2].gate, null, 2)').slice(1, 3), [{x: g.door.x, y: g.gate.y}, {x: g.door.x, y: J('RT_LANE')}], 'il ressort par le même chemin');
 });
 
 test("Bernard monte une PR qui arrive et redescend une PR poussée ; en arrivant à l'étage, rien ne se rejoue", () => {
@@ -89,11 +93,11 @@ test("le dessin, de jour comme de nuit ; le panneau, la fiche d'un bureau et son
   const {p, J} = page();
   p.run('RETOURS = retoursDemo(); setFloor(3); renderRetours(1000); renderRetours(1100);');
   assert.ok(J('RT_HITS.some(h => h.kind === "boss")'));
-  assert.equal(J('RT_HITS.filter(h => h.kind === "board").length'), 6, 'un Kanban par bureau');
+  assert.equal(J('RT_HITS.filter(h => h.kind === "board").length'), 3, 'un Kanban par bureau');
   p.run('T = DAY0 + 22.5 * 36e5; renderRetours(1200);');
   assert.ok(J('RT_LIT.length') > 0, 'le soir, les agents au travail et le boss gardent leur lumière');
   const list = J('retoursListHtml(rtSlots())');
-  assert.match(list, /Retours de PR <span class="cnt">5\/6/);
+  assert.match(list, /Retours de PR <span class="cnt">3\/3/);
   assert.match(list, /En attente <span class="cnt">2/);
   assert.match(list, /En panne <span class="cnt">1/);
   const i = J("rtSlots().findIndex(r => r && r.run === 'demo-f1')");
@@ -148,9 +152,9 @@ test("les portes des bureaux : la porte en bois de l'entrée du RDC, sur le coul
   const {p, J} = page();
   p.run(`var __d = []; var __ad = woodDoor; woodDoor = (...a) => { __d.push(a.slice(1)); return __ad(...a); }; rtBackground(); rdBackground(); woodDoor = __ad;`);
   const d = J('__d'), T = J('AT_TS');
-  assert.equal(d.length, 8, 'une par bureau du 3e, deux au 2e');
-  for (const [x, y, w, h, n, vert] of d.slice(0, 6)) { assert.deepEqual([w, n, vert], [2 * T, 2, false]); assert.ok(h >= 8); }
-  for (const [, , w, h, n, vert] of d.slice(6)) assert.deepEqual([w, h, n, vert], [12, 2.5 * T, 2, true]);
+  assert.equal(d.length, 5, 'une par bureau du 3e, deux au 2e');
+  for (const [x, y, w, h, n, vert] of d.slice(0, 3)) { assert.deepEqual([w, n, vert], [2 * T, 2, false]); assert.ok(h >= 8); }
+  for (const [, , w, h, n, vert] of d.slice(3)) assert.deepEqual([w, h, n, vert], [12, 2.5 * T, 2, true]);
 });
 
 test("comme au 1er : les fenêtres au ciel de l'heure aux 2e et 3e ; le titre de chaque étage, RDC compris, au même endroit", () => {
@@ -213,16 +217,16 @@ test('F8, 3e : RETOURS DU JOUR à l\'heure du curseur ; fils et jetons, non dat�
     try { rtDayBoard(); } finally { ctx.fillText = ft; } return JSON.stringify(out); })()`));
   // la démo : poussées à 8 h 24 et 9 h 42 (2 aujourd'hui, 7 sur 7 jours) ; une panne à 8 h 30, jamais reprise
   p.run(`RETOURS = retoursDemo(); setMode('pause'); T = DAY0 + 9.25 * 36e5;`);
-  assert.deepEqual(J('rtJourAt(T)'), {pousses: 1, cours: 2, pannes: 1, semaine: 6, fils: 9, tok: 68000}, '9 h 15');
+  assert.deepEqual(J('rtJourAt(T)'), {pousses: 1, cours: 1, pannes: 1, semaine: 6, fils: 9, tok: 68000}, '9 h 15');
   let b = txt();
-  assert.deepEqual(b.map(x => x[0]).slice(1), ['1 PR poussée · ', '⏱9 fils', '2 en cours · 1 en panne', '⏱68 k jet.', ' · 7 j : 6 PR']);
+  assert.deepEqual(b.map(x => x[0]).slice(1), ['1 PR poussée · ', '⏱9 fils', '1 en cours · 1 en panne', '⏱68 k jet.', ' · 7 j : 6 PR']);
   assert.deepEqual(b.filter(x => /⏱/.test(x[0])).map(x => x[1]), ['#8e9a90', '#8e9a90'], 'grisés');
   p.run('T = DAY0 + 10 * 36e5;');
-  assert.deepEqual(J('rtJourAt(T)'), {pousses: 2, cours: 3, pannes: 1, semaine: 7, fils: 9, tok: 68000}, '10 h');
+  assert.deepEqual(J('rtJourAt(T)'), {pousses: 2, cours: 2, pannes: 1, semaine: 7, fils: 9, tok: 68000}, '10 h');
   // en direct : le relevé, comme avant
   p.run(`setMode('live'); T = DAY0 + 11 * 36e5;`);
   b = txt();
-  assert.deepEqual(b.map(x => x[0]).slice(1), ['2 PR poussées · 9 fils', '5 en cours · 1 en panne', '~68 k jetons · 7 j : 7 PR']);
+  assert.deepEqual(b.map(x => x[0]).slice(1), ['2 PR poussées · 9 fils', '3 en cours · 1 en panne', '~68 k jetons · 7 j : 7 PR']);
   assert.ok(b.every(x => x[1] !== '#8e9a90'));
 });
 
@@ -258,4 +262,45 @@ test("le Kanban d'un bureau : la fenêtre large commune, nommée ; un fil cliqu�
     assert.equal(dom.wrap.inert, false);
     assert.equal(dom.doc.activeElement, dom.btn, 'focus rendu');
   });
+});
+
+// ---------- une rangée de trois bureaux, l'entrepôt au début du couloir ----------
+test("une rangée : trois bureaux côte à côte en haut, le couloir dessous ; la porte du bureau 1 juste après l'entrepôt", () => {
+  const {J} = page();
+  const T = J('AT_TS'), G = J('RT_G'), D = J('RT_DEPOT');
+  assert.equal(J('RT_N'), 3);
+  assert.equal(J('AT_ROWS[3]'), 17);
+  assert.ok(G.every(g => g.y0 === G[0].y0), 'une seule rangée');
+  assert.deepEqual(G.map(g => Math.round(g.x0 / T)), [0, 15, 31]);
+  const hall0 = J('RT_HALL[0]') * T;
+  assert.ok(G.every(g => Math.abs(g.y0 + g.h - hall0) < 1 && g.door.y === g.y0 + g.h), 'les portes sur le couloir');
+  assert.ok(J('RT_LANE') > hall0 && J('RT_LANE') < 17 * T, 'on marche dans le couloir');
+  assert.ok(D.x0 >= 0 && D.y0 > hall0 && D.y1 <= 17 * T, "l'entrepôt est dans le couloir");
+  assert.ok(G[0].door.x - T >= D.x1 && G[0].door.x - T - D.x1 < 2 * T, 'la porte du bureau 1 : juste après les palettes');
+  assert.deepEqual(G.slice(1).map(g => g.door.x), G.slice(1).map(g => g.x0 + g.w / 2), 'les autres au milieu de leur mur');
+  // le couloir, de gauche à droite : entrepôt, porte 1, tableau, banc, café, bureau du boss, escalier
+  assert.ok(D.x1 < G[0].door.x && G[0].door.x < 16 * T && 22.2 * T < 24.8 * T && 28.6 * T < J('RT_DESK.x') && J('RT_DESK.x') < J('RT_STAIR.x'));
+});
+
+test("l'entrepôt : une palette par PR qui attend un bureau, avec son étiquette, la panne en rouge ; le panneau centré au-dessus", () => {
+  const {p, J} = page();
+  const draw = () => JSON.parse(p.run(`(() => { const out = [], ap = atPill; atPill = (s, x, y, bg, ...r) => { out.push([String(s), x, y, bg]); return ap(s, x, y, bg, ...r); };
+    try { RT_HITS = []; rtDepot(1000); } finally { atPill = ap; } return JSON.stringify(out); })()`));
+  p.run('RETOURS = retoursDemo(); rtReset();');
+  let l = draw();
+  const D = J('RT_DEPOT'), pan = l.find(x => /ENTREPÔT/.test(x[0]));
+  assert.equal(pan[0], '📦 ENTREPÔT · 2 en attente');
+  assert.equal(pan[1], (D.x0 + D.x1) / 2, 'centré sur la zone');
+  assert.ok(pan[2] < D.y0, 'au-dessus');
+  assert.deepEqual(l.filter(x => x !== pan).map(x => [x[0], x[3]]), [['site#2048', '#0b2a4a'], ['api#24', '#0b2a4a'], ['🧯 site#2031', '#a8323a']]);
+  assert.equal(J('RT_HITS.filter(h => h.kind === "queue" && h.run).length'), 3, 'chaque palette se survole');
+  assert.match(J('rtQueueHtml()'), /L'entrepôt <span class="cnt">2<\/span>.*site#2048.*api#24.*En panne.*site#2031/s);
+  // une PR au-delà des trois bureaux : sa palette, avant la file ; trop de palettes : la dernière place dit combien d'autres
+  p.run(`RETOURS.rooms.push({run: 'x4', repo: 'dm/site', pr: '2050', poste: 'fix', states: {}, since: RETOURS.rooms[0].since, fils: []}); rtReset();`);
+  l = draw();
+  assert.equal(l.find(x => /ENTREPÔT/.test(x[0]))[0], '📦 ENTREPÔT · 3 en attente');
+  assert.deepEqual(l.map(x => x[0]).filter(s => !/ENTREPÔT/.test(s)), ['site#2050', 'site#2048', 'api#24', '🧯 site#2031']);
+  p.run(`RETOURS.queue.push({run: 'q3', repo: 'dm/api', pr: '25', since: RETOURS.queue[0].since});`);
+  assert.deepEqual(draw().map(x => x[0]).filter(s => !/ENTREPÔT/.test(s)), ['site#2050', 'site#2048', 'api#24', '+2']);
+  assert.equal(J('rtSlots().filter(Boolean).length'), 3);
 });

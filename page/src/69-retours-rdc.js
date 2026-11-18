@@ -30,5 +30,5 @@ function rtTvWhoHtml(t){
 function rtKpi(t){
   const d=RETOURS||{}, rooms=rtRooms(), ev=rtEvents();
   const out=ev.length?ev.filter(e=>e.k==='push'&&ms(e.t)>=DAY0&&ms(e.t)<=t).length:(+d.pousses||0);
-  return {rooms:rooms.length,wait:rooms.filter(r=>r.gate).length,out,queue:(d.queue||[]).length,pannes:(d.pannes||[]).length};
+  return {rooms:rooms.length,wait:rooms.filter(r=>r.gate).length,out,queue:rtWaiting().length,pannes:(d.pannes||[]).length};
 }

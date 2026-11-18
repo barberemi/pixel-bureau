@@ -46,7 +46,7 @@ class ChaineModelesTest(unittest.TestCase):
         self.assertEqual(named["rattrape"]["exec_stdin"], '{{steps.code.data.last_output ?? ""}}')
         self.assertEqual(named["rattrape"]["on_result"][0]["action"], {"type": "Goto", "step_name": "controles", "max_iterations": 5})
         self.assertEqual(chain["steps"][-1]["name"], "rattrape")  # jamais atteinte dans l'ordre : seulement par le Goto
-        self.assertEqual((chain["concurrency_limit"], chain["project_scope"]), (4, {"type": "All"}))  # 4 chaînes, tout projet
+        self.assertEqual((chain["concurrency_limit"], chain["project_scope"]), (3, {"type": "All"}))  # 3 chaînes (un bureau chacune au 1er), tout projet
         self.assertEqual(chain["workspace_config"], {"hooks": {}, "require_isolation": True})  # une copie par ticket
         # l'attente aux gates compte dans le délai du run (essai d'DM-7901 : 3 h 30 à la gate du plan, coupé à 6 h en livraison)
         self.assertEqual(chain["guards"]["timeout_seconds"], 72 * 3600)

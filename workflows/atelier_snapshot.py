@@ -7,7 +7,7 @@ lus dans l'API Kronn, 0 token ; stdout JSON du dataset atelier (cron live).
    events: [{t, k: arrive|poste|gate|back|panne|sort, run, ticket, repo, title, gate?, poste?, cause?, cause_type?}], livres,
    jour: {tickets, cours, sortis, pannes, reprises, tok}}
 
-Un bureau = un run actif de la chaîne (4 au plus, concurrency_limit) ; la file = les runs en attente d'un bureau libre ;
+Un bureau = un run actif de la chaîne (3 au plus, concurrency_limit) ; la file = les runs en attente d'un bureau libre ;
 les pannes = les runs en échec des dernières 24 h qu'aucun run plus récent du même ticket et du même dépôt n'a repris
 (relancer le ticket les reprend là où ils se sont arrêtés).
 L'état d'un poste vient de l'étape du parent (cadrage = le poste 📋 Plan, gate_plan, code…), de celle du sous-workflow

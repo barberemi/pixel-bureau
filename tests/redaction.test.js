@@ -89,9 +89,12 @@ test("la nuit comme au RDC : la salle de rédaction et les bureaux de revue occu
   const {p, J} = page();
   p.run('setFloor(2); T = DAY0 + 22.5 * 36e5; renderRedaction(1000);');
   const lv = J('RD_NIGHT.lv'), l = J('rvActive().length');
-  assert.equal(lv.length, 7, 'la salle de rédaction et les six bureaux de la revue');
+  assert.equal(lv.length, 4, 'la salle de rédaction et les trois bureaux de la revue (une seule rangée)');
   assert.equal(lv[0], 1, 'une intention est sur la table');
-  assert.deepEqual(lv.slice(1), [...Array(6).keys()].map(k => (k < l ? 1 : 0)));
+  assert.deepEqual(lv.slice(1), [...Array(3).keys()].map(k => (k < l ? 1 : 0)));
+  p.run(`DATA.runs = DATA.runs.filter(r => r.run !== 'demo-r3'); var __rv = rvDemo; rvDemo = () => __rv().filter(r => r.run !== 'demo-r3'); for (let k = 1; k < 30; k++) renderRedaction(1000 + k * 1000);`);
+  assert.deepEqual(J('RD_NIGHT.lv').slice(1).map(Math.round), [1, 1, 0], 'un bureau libre reste dans l\'ombre');
+  p.run('rvDemo = __rv;');
 });
 
 test("floorNight : le voile suit le soleil ; hors des heures de bureau (le week-end à midi), la veilleuse quand même", () => {
@@ -124,7 +127,7 @@ test("la scène « Le soir au 2e » : la nuit tombe, la salle de rédaction et l
   p.run(`demoStart(galleryScenes().find(x => x.n === 'Le soir au 2e')); renderRedaction(1000);`);
   assert.equal(J('atOpen()'), false, 'hors des heures de bureau');
   assert.equal(J('RD_NIGHT.lv[0]'), 1, 'la salle de rédaction est allumée');
-  assert.ok(J('RD_NIGHT.lv.slice(1).includes(0)'), 'un bureau de revue libre reste dans l\'ombre');
+  assert.deepEqual(J('RD_NIGHT.lv.slice(1)'), J('[0, 1, 2].map(k => rvActive()[k] ? 1 : 0)'), 'chaque bureau de revue occupé s\'allume, un libre resterait dans l\'ombre');
   p.run('demoEnd();');
   assert.equal(p.run('REDACTION === __R && T === __T'), true, 'la page revient à ses données et à son heure');
 });
@@ -154,8 +157,8 @@ test("la file : posée en arrivant (casier dans l'ordre du cron, corbeille, une 
   assert.deepEqual(J('Object.fromEntries(Object.entries(RVF_M.who).map(([a, h]) => [a, h.spot]))'), {pambeesly: {k: 'face'}, darrylphilbin: {k: 'chair', j: 0}});
   assert.equal(J('RVF_M.rel.seat'), true);
   assert.equal(J('rvActive().length'), 3, 'la PR de la file compte parmi les PR en lecture');
-  assert.match(J("rvfHover({kind: 'casier'})"), /cron de 09:30, dans l'ordre\) : mobile#311, api#2063/);
-  assert.match(J("rvfHover({kind: 'author', author: 'pambeesly'})"), /sa PR est lue, encore 1 PR au casier/);
+  assert.match(J("rvfHover({kind: 'casier'})"), /L'entrepôt, à relire \(cron de 09:30, dans l'ordre\) : mobile#311, api#2063/);
+  assert.match(J("rvfHover({kind: 'author', author: 'pambeesly'})"), /sa PR est lue, encore 1 PR à l'entrepôt/);
 });
 
 test("la file : Holly reste au bureau entre ses deux PR ; le relecteur tamponne, pose à la corbeille et prend le dossier suivant", () => {
@@ -179,10 +182,10 @@ test("la file : Pam retourne s'asseoir quand quelqu'un passe avant sa PR suivant
   assert.deepEqual(J("rvfSpots({reading: {author: 'darryl'}, queue: [{author: 'pam'}]})"), {darryl: {k: 'face'}, pam: {k: 'chair', j: 0}});
   assert.deepEqual(J("rvfSpots({reading: {author: 'pam'}, queue: []})"), {pam: {k: 'face'}});
   const r = J("rvfRoute({k: 'face'}, {k: 'chair', j: 0}).map(q => [Math.round(q.x / AT_TS * 10) / 10, Math.round(q.y / AT_TS * 10) / 10])");
-  assert.deepEqual(r, [[28.5, 11.5], [27.6, 11.5], [27.6, 22.9], [26.6, 22.9], [26.6, 24.6]], 'par la colonne à droite du casier, jamais à travers');
+  assert.deepEqual(r, [[29, 11.5], [27.6, 11.5], [27.6, 16.4], [26.6, 16.4], [26.6, 18.1]], 'par la colonne entre la corbeille et le bureau, jamais à travers les chaises');
 });
 
-test("la file : au passage suivant du cron, Bernard vide la corbeille et range la fournée ; au-delà de six dossiers, « +n »", () => {
+test("la file : au passage suivant du cron, Bernard vide la corbeille et pose la fournée à l'entrepôt ; au-delà de quatre palettes, « +n »", () => {
   const {p, J} = page();
   p.run(`setFloor(2); renderRedaction(1000);
     REDACTION.revue.batches['demo-c2'] = Array.from({length: 9}, (_, i) => ['dm/site', 3000 + i, 'gabelewis']);
@@ -194,7 +197,9 @@ test("la file : au passage suivant du cron, Bernard vide la corbeille et range l
   assert.deepEqual(J('RVF_M.basket'), [], 'corbeille vidée');
   assert.equal(J('RVF_M.cas.filter(f => f.filed).length'), 9);
   assert.equal(J('RVF_M.bern'), null, 'il est redescendu');
-  assert.ok(J('RVF_M.cas.length') > 6);
+  assert.ok(J('RVF_M.cas.length') > 4);
+  p.run(`var __ap = atPill, __pl = []; atPill = (s, ...a) => { __pl.push(s); return __ap(s, ...a); }; renderRedaction(41300); atPill = __ap;`);
+  assert.ok(J('__pl.includes("+" + (RVF_M.cas.length - 3))'), 'trois palettes, puis « +n » à la quatrième place');
 });
 
 test("les postes du ticket (CFG.ticket.postes_wf) et ceux de la revue travaillent au 2e : ni au RDC, ni dans « Nouvel agent »", () => {
@@ -216,7 +221,9 @@ test("les postes du ticket (CFG.ticket.postes_wf) et ceux de la revue travaillen
 
 test("la porte de l'escalier du 2e : en bas du couloir, collée au bord ; les auteurs et Bernard partent de derrière elle", () => {
   const p = load(), J = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
-  assert.equal(J('RD_STAIR.y + RD_STAIR.h'), J('AT_H'), 'collée au bord du bas');
+  assert.equal(J('RD_STAIR.y + RD_STAIR.h'), J('RD_HH'), 'collée au bord du bas, avant même d\'être affiché');
+  p.run('setFloor(2);');
+  assert.equal(J('RD_STAIR.y + RD_STAIR.h'), J('AT_H'));
   assert.ok(J('RD_STAIR.x > RD_X1 * RD_T && RD_STAIR.x + RD_STAIR.w < RD_VX * RD_T'), 'entre la rédaction et la revue');
   assert.ok(J('RVF.stairLow.y > AT_H && rvfOut(RVF.stairLow)'), 'ils attendent hors du plan, sans pancarte');
   assert.equal(J('rvfOut(RVF.stair)'), false, 'puis sortent par la porte');
@@ -356,4 +363,71 @@ test("le panneau du 2e ne montre que les gates du modèle ticket : pas celle d'�
   const runs = JSON.parse(p.run(`(() => { const out = [], gc = gateCard; gateCard = (parent, run) => out.push(run.run);
     try { drawRedactionSide(document.createElement('div')); } finally { gateCard = gc; } return JSON.stringify(out); })()`));
   assert.deepEqual(runs, ['r-tk']);
+});
+
+// ---------- le 2e sur une rangée (46 × 20 cases) : la revue sans second niveau, l'entrepôt en haut du couloir ----------
+const pills = (p, code) => JSON.parse(p.run(`(() => { const out = [], ap = atPill; atPill = (s, x, y, ...r) => { out.push([String(s), x, y]); return ap(s, x, y, ...r); };
+  try { ${code} } finally { atPill = ap; } return JSON.stringify(out); })()`));
+
+test('le 2e fait 46 × 20 cases : la toile, le décor et tout ce qui est cliquable tiennent dans 640 px', () => {
+  const {p, J} = page();
+  assert.equal(J('AT_ROWS[2]'), 20);
+  p.run('setFloor(2); renderRedaction(1000);');
+  assert.deepEqual(J('[AT_H, cv.width, cv.height, RD_BG.height]'), [640, 1472, 640, 640]);
+  const out = J('RD_HITS.filter(h => h.kind !== "author" && (h.y < 0 || h.y + h.h > AT_H + 1)).map(h => h.kind)');
+  assert.deepEqual(out, [], 'aucune zone cliquable hors du plan');
+  assert.ok(J('RD_JIRA.y <= AT_H && RD_SOFA.y + 12 <= AT_H && RVF.bench.y + 12 <= AT_H'), 'la boîte Jira et les canapés tiennent en bas');
+});
+
+test('la revue : trois bureaux sur une seule rangée, plus de second niveau (ni bureaux libres du bas, ni étagère « À relire »)', () => {
+  const {p, J} = page();
+  p.run(`setFloor(2); var __rv = rvDemo; rvDemo = () => __rv().filter(r => !['demo-r2', 'demo-r3'].includes(r.run));`);
+  const l = pills(p, 'renderRedaction(1000);');
+  const libres = l.filter(x => x[0] === 'bureau libre');
+  assert.equal(libres.length, 2, 'les deux bureaux des revues à la demande, libres');
+  assert.ok(libres.every(x => x[2] < 13 * 32), 'tous en haut');
+  assert.ok(!l.some(x => /À RELIRE/.test(x[0])), 'plus d\'étagère « À relire »');
+  p.run('rvDemo = __rv; renderRedaction(1100);');
+  assert.deepEqual(J('RD_HITS.filter(h => h.kind === "review").map(h => Math.round(h.x + h.w / 2))'), J('[0, 1, 2].map(k => Math.round(rvDeskX(k)))'), 'trois revues, trois bureaux');
+  assert.equal(J('RV_DESKS'), 3);
+});
+
+test("l'entrepôt en haut du couloir : une palette par PR qui attend, avec son étiquette ; la panne en rouge ; le panneau centré", () => {
+  const {p, J} = page();
+  p.run('setFloor(2);');
+  const E = J('RVF_E');
+  assert.ok(E.x0 >= J('RD_X1 * RD_T') && E.x1 <= J('RD_VX * RD_T'), 'dans le couloir, entre les deux salles');
+  assert.ok(E.y1 < J('7.7 * RD_T - 32'), 'au-dessus du distributeur');
+  const cartons = () => JSON.parse(p.run(`(() => { const out = [], ac = atCarton; atCarton = (x, y, l, c, ...r) => { out.push([l, c, x, y]); return ac(x, y, l, c, ...r); };
+    const rl = rdLate; rdLate = (pp, f) => f(); try { rdReset(); renderRedaction(1000); } finally { atCarton = ac; rdLate = rl; } return JSON.stringify(out); })()`));
+  let c = cartons();
+  assert.equal(c.length, 2, 'mobile#311 et api#2063 attendent');
+  assert.match(c[0][0], /^(mobile )?#311$/, 'dans l\'ordre du cron ; le dépôt quand il tient dans la place');
+  assert.equal(c[1][0], 'api #2063');
+  assert.ok(c.every(x => x[2] > E.x0 && x[2] < E.x1 && x[3] > E.y0 && x[3] < E.y1), 'posées dans la zone');
+  const sign = pills(p, 'var __rl = rdLate; rdLate = (pp, f) => f(); try { renderRedaction(1100); } finally { rdLate = __rl; }').find(x => /ENTREPÔT/.test(x[0]));
+  assert.equal(sign[0], '📦 ENTREPÔT · 2 à relire');
+  assert.equal(sign[1], (E.x0 + E.x1) / 2, 'centré au-dessus de la zone');
+  assert.ok(sign[2] < E.y0);
+  // une revue de la fournée en panne : sa palette en rouge, à la dernière place
+  p.run(`var __rv = rvDemo; rvDemo = () => __rv().map(r => r.run === 'demo-k1' ? {...r, status: 'Failed'} : r);`);
+  c = cartons();
+  assert.deepEqual(c.map(x => x[0]).slice(1), ['api #2063', '🧯 #2042']);
+  assert.equal(c[2][1], '#a8323a');
+  p.run('rvDemo = __rv;');
+  assert.ok(J("RD_HITS.some(h => h.kind === 'casier' && h.x === RVF_E.x0)"), 'un clic sur l\'entrepôt ouvre la file');
+});
+
+test("la salle d'attente et le canapé de la revue, tout en bas, sans vide dessous ; le relecteur va chercher son dossier à l'entrepôt", () => {
+  const {p, J} = page();
+  p.run('setFloor(2); renderRedaction(1000);');
+  const lbl = pills(p, 'var __rl = rdLate; rdLate = (pp, f) => f(); try { renderRedaction(1100); } finally { rdLate = __rl; }').find(x => /SALLE D'ATTENTE/.test(x[0]));
+  assert.ok(lbl[2] > J('AT_H') - 2 * 32 && lbl[2] + 9 <= J('AT_H'), 'l\'étiquette dans les deux dernières rangées');
+  assert.ok(J('rvfChair(0).y > AT_H - 2 * 32 && RVF.bench.y > AT_H - 2 * 32'), 'les chaises et le canapé aussi');
+  assert.ok(J('RVF.lane < rvfChair(0).y - 26 && RVF.rely < rvfChair(0).y - 26'), 'les allées passent au-dessus des chaises');
+  // à 9 h 42, la PR suivante de Holly : le relecteur pose l'avis, monte à l'entrepôt par le couloir et revient
+  p.run(`T = DAY0 + 9.69 * 36e5; rdReset(); renderRedaction(1000); T = DAY0 + 9.71 * 36e5; var __minx = 1e9, __miny = 1e9;
+    for (let i = 0; i < 260; i++) { renderRedaction(1100 + i * 100); const w = RVF_M.rel && RVF_M.rel.w; if (w) { __minx = Math.min(__minx, w.pos.x); __miny = Math.min(__miny, w.pos.y); } }`);
+  assert.ok(J('__minx < RD_VX * RD_T && __miny < RVF.pick.y + 12'), 'il est passé sous la première palette');
+  assert.equal(J('RVF_M.rel.seat'), true, 'puis il est revenu à son bureau');
 });

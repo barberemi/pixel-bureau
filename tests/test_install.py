@@ -699,5 +699,16 @@ class LaunchTest(unittest.TestCase):
         self.assertIn("rôles : ticket", str(e.exception))
 
 
+class ChaineParalleleTest(unittest.TestCase):
+    def test_trois_tickets_en_parallele(self):
+        """Le 1er étage a 3 bureaux : la chaîne en fait tourner 3 à la fois (concurrency_limit), l'installateur le dit."""
+        impl = next(q for k, q, _ in install.MODELS if k == "impl")
+        self.assertIn("3 en parallèle", impl)
+        with open(os.path.join(ROOT, "workflows", "templates", "impl_chain.json"), encoding="utf-8") as f:
+            d = json.load(f)
+        self.assertEqual(d["definition"]["concurrency_limit"], 3)
+        self.assertIn("3 en parallèle", d["doc"])
+
+
 if __name__ == "__main__":
     unittest.main()
