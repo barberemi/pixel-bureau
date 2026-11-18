@@ -170,7 +170,7 @@ test("la file : Holly reste au bureau entre ses deux PR ; le relecteur tamponne,
   frames(p, 1, 1100);
   assert.equal(J('RVF_M.who.hollyflax.w'), null, 'sa PR suivante est la prochaine : elle ne bouge pas');
   assert.ok(J('RVF_M.rel.w') && J('RVF_M.stamp.v') === 'comment', 'le verdict tamponné au bureau');
-  frames(p, 200, 1200);
+  frames(p, 300, 1200); // la corbeille est sous le bureau de droite : l'aller-retour prend une vingtaine de secondes
   assert.deepEqual(J('RVF_M.basket'), ['comment']);
   assert.deepEqual(J('RVF_M.cas.map(f => f.p.n)'), [2051, 311, 2063], 'le dossier pris, les autres remontent');
   assert.equal(J('RVF_M.rel.seat'), true);
@@ -182,7 +182,7 @@ test("la file : Pam retourne s'asseoir quand quelqu'un passe avant sa PR suivant
   assert.deepEqual(J("rvfSpots({reading: {author: 'darryl'}, queue: [{author: 'pam'}]})"), {darryl: {k: 'face'}, pam: {k: 'chair', j: 0}});
   assert.deepEqual(J("rvfSpots({reading: {author: 'pam'}, queue: []})"), {pam: {k: 'face'}});
   const r = J("rvfRoute({k: 'face'}, {k: 'chair', j: 0}).map(q => [Math.round(q.x / AT_TS * 10) / 10, Math.round(q.y / AT_TS * 10) / 10])");
-  assert.deepEqual(r, [[26.2, 11.5], [25, 11.5], [25, 16.4], [23.4, 16.4], [23.4, 18.1]], 'par la colonne entre la corbeille et le bureau, jamais à travers les chaises');
+  assert.deepEqual(r, [[24.5, 11.5], [22.8, 11.5], [22.8, 16.4], [23.4, 16.4], [23.4, 18.1]], 'par la colonne le long du mur, jamais à travers les chaises');
 });
 
 test("la file : au passage suivant du cron, Bernard vide la corbeille et pose la fournée à l'entrepôt ; au-delà de quatre palettes, « +n »", () => {
@@ -416,6 +416,17 @@ test("l'entrepôt en haut du couloir : une palette par PR qui attend, avec son �
   assert.equal(c[2][1], '#a8323a');
   p.run('rvDemo = __rv;');
   assert.ok(J("RD_HITS.some(h => h.kind === 'casier' && h.x === RVF_E.x0)"), 'un clic sur l\'entrepôt ouvre la file');
+});
+
+test("la salle de revue centrée : bureaux espacés, la corbeille sous le bureau de droite", () => {
+  const {p, J} = page();
+  p.run('setFloor(2); renderRedaction(1000);');
+  const mid = J('(RD_VX * RD_T + AT_W) / 2'), xs = J('[0, 1, 2].map(k => rvDeskX(k))');
+  assert.ok(Math.abs(xs[1] - mid) < 1 && xs[1] - xs[0] === xs[2] - xs[1] && xs[1] - xs[0] >= 6 * 32, 'trois bureaux espacés de 6 cases, centrés');
+  const board = pills(p, 'var __rl = rdLate; rdLate = (pp, f) => f(); try { renderRedaction(1100); } finally { rdLate = __rl; }');
+  assert.ok(J('RVF.basket.x') > xs[2] - 32 && J('RVF.basket.y') > J('RV_FEET + 4 * 32') && J('RVF.basket.y + 30 < rvfChair(0).y - 26'), 'la corbeille sous le bureau de droite, au-dessus des chaises');
+  assert.ok(J('RVF.relx < rvDeskX(0) - 48 && RVF.col < rvDeskX(0) - 48 && RVF.relx > RD_VX * RD_T'), 'les colonnes du relecteur et des auteurs, le long du mur');
+  assert.ok(board.some(x => /POSTÉES/.test(x[0])), 'la corbeille a son étiquette');
 });
 
 test("la salle d'attente et le canapé de la revue, tout en bas, sans vide dessous ; le relecteur va chercher son dossier à l'entrepôt", () => {

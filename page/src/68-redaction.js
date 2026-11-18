@@ -27,8 +27,9 @@ const RD_ROWS=20;AT_ROWS[2]=RD_ROWS;
 const RD_X1=15.5, RD_VX=21, RD_HY=14.25, RD_SH0=['dm/site','dm/mobile','dm/api','dm/outils'];
 const RD_WINDOWS=[7,10,13,17.25,22.5,26,29.5,33,36.5]; // en cases : à droite du nom de l'étage, comme au RDC
 const RD_DESK={x:13.6*AT_TS,y:17.7*AT_TS}, RD_JIRA={x:14.6*AT_TS,y:19.9*AT_TS}, RD_CORK={x:1.15*AT_TS,y:8*AT_TS};
-// les cartes des tickets (le bas du fil rouge) ; les bureaux de la revue, sur une seule rangée (le premier : la file du cron)
-const RD_CARD_Y=14.5*AT_TS, RV_DESKS=3, rvDeskX=k=>(26.2+k*5.6)*AT_TS, RV_FEET=9.2*AT_TS;
+// les cartes des tickets (le bas du fil rouge) ; les bureaux de la revue, sur une seule rangée centrée dans la salle (le
+// premier : la file du cron)
+const RD_CARD_Y=14.5*AT_TS, RV_DESKS=3, rvDeskX=k=>(24.5+k*6)*AT_TS, RV_FEET=9.2*AT_TS;
 let REDACTION=null, RDSEL=null, RD_HITS=[], RD_LIT=[], RD_MEM={last:0};
 let RDTK=null; // le ticket ouvert dans le panneau : {run, k} (clic sur sa carte à la table ou sur sa ligne du panneau)
 // la fiche ouverte au clic sur le plan : intention, poste, boîte Jira ; à la revue : PR lue, auteur, entrepôt, corbeille ;
@@ -339,7 +340,8 @@ function rdRevue(now,people){
   const file=rvfOn(), kids=file?rvfKids():new Set(), F=file?rvfDraw(now,people):null, wait=F&&F.st?F.st.queue.length:0;
   const T=RD_T, l=rvActive().filter(r=>!kids.has(r.run)), done=rvRuns().filter(r=>r.status==='Success'&&r._s>=DAY0).length;
   atTxt('👀 REVUE DES PR',(RD_VX+.6)*T,2.7*T,'#5a4636','bold 12px ui-monospace,Menlo,monospace','left');
-  const bx=27.5*T, by=2.1*T, bw=10*T, bh=3.4*T;R(ctx,bx-6,by-6,bw+12,bh+12,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+4,by+bh-6,bw-8,4,'#a37650');
+  // le tableau noir, centré sur le mur de la salle (de RD_VX au bord droit)
+  const bx=25.5*T, by=2.1*T, bw=10*T, bh=3.4*T;R(ctx,bx-6,by-6,bw+12,bh+12,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+4,by+bh-6,bw-8,4,'#a37650');
   atTxt('REVUES DU JOUR',bx+bw/2,by+18,'#f4efe4','bold 13px ui-monospace,Menlo,monospace');R(ctx,bx+16,by+24,bw-32,1,'rgba(244,239,228,.4)');
   // les jetons : le total de chaque run au relevé ; en rejeu, non datés, en ⏱
   const tk=Math.round(rvRuns().filter(r=>r._s>=DAY0).reduce((a,r)=>a+(r.tok||0),0)/1e3)+' k jetons', rel=!boardLive(REDACTION);
