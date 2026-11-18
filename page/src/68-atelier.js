@@ -312,7 +312,6 @@ function setFloor(f){
   FLOOR=f===4&&comblesOn()?4:f===1&&atelierOn()?1:f===-1&&caserneOn()?-1:f===3&&retoursOn()?3:f===2&&redactionOn()?2:0;ATSEL=null;AT_PICK=null;if(FLOOR){SEL_BACK=[];if(!(byKey[sel]&&byKey[sel].boss))sel=null;} // hors du RDC, seul le boss garde sa fiche du RDC (drawAtelierSide, drawCaserneSide)
   try{localStorage.setItem('bureau:floor',String(FLOOR));}catch(e){}
   if(FLOOR)AT_H=atRows(FLOOR)*AT_TS;
-  document.body.classList.toggle('plan-etage',FLOOR!==0&&FLOOR!==4);planFit();
   if(FLOOR){cv.width=AT_W;cv.height=AT_H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(AT_W/AT_H));}
   else{cv.width=W;cv.height=H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(W/H));}
   // pas sizeCanvas() : il redimensionne aussi bg, le décor du RDC cuit une fois, et redimensionner une toile l'efface
@@ -323,11 +322,6 @@ function setFloor(f){
   sideForFloor(FLOOR);atelierTabs();renderSide(true);if(TV)updateTv(true); // 75-tv.js : la colonne et le bouton d'étage
   if(typeof renderLegend==='function')renderLegend(); // 46-legende.js : la légende et « Comment lire le plan » de cet étage, ses scènes
 }
-// le plan d'un étage tient dans la fenêtre : sa largeur suit la place réelle sous l'en-tête (--plan-top, styles.css), pas une
-// marge fixe ; recalculé en changeant d'étage et quand la fenêtre change de taille
-function planFit(){requestAnimationFrame(()=>{const r=cv.getBoundingClientRect();
-  document.documentElement.style.setProperty('--plan-top',Math.max(0,Math.round(r.top+scrollY))+12+'px');});}
-addEventListener('resize',()=>{if(document.body.classList.contains('plan-etage'))planFit();});
 // ---------- le plan de l'étage ----------
 // Une rangée de trois bureaux (cases 2 à 13), séparés par des cloisons vitrées et ouverts sur le couloir du bas. Dans un
 // bureau, un tapis en U ouvert vers le bas : le carton du ticket entre par la trappe verte en bas à gauche, monte le long du

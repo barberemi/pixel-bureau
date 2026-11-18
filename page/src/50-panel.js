@@ -42,12 +42,12 @@ function portrait(c,size){
 }
 // panneau replié en une bande étroite : le plan prend la place (bouton en haut du panneau ; un clic sur le plan le rouvre)
 let SIDE_FOLDED=false;
-// aux étages, sous 1600 px de large, le panneau se replie de lui-même : le plan passe d'environ ×0,66 à ×0,9 ; de retour
-// au RDC, il revient comme tu l'avais laissé (une fiche ouverte depuis un étage le rouvre, comme partout)
-const SIDE_AUTO_W=1600;
+// aux étages, quelle que soit la largeur, le panneau se replie de lui-même : un étage (46 cases de large contre 40 au RDC)
+// prend la place pour s'afficher au moins aussi grand que le RDC ; de retour au RDC, il revient comme tu l'avais laissé
+// (une fiche ouverte depuis un étage le rouvre, comme partout)
 let SIDE_BEFORE=null;
 function sideForFloor(f){
-  if(f&&innerWidth<SIDE_AUTO_W){if(SIDE_BEFORE===null)SIDE_BEFORE=SIDE_FOLDED;SIDE_FOLDED=true;}
+  if(f){if(SIDE_BEFORE===null)SIDE_BEFORE=SIDE_FOLDED;SIDE_FOLDED=true;}
   else if(!f&&SIDE_BEFORE!==null){SIDE_FOLDED=SIDE_BEFORE;SIDE_BEFORE=null;}
 }
 function sideFoldButton(side){
