@@ -24,8 +24,8 @@ const CS_HELP={bar:()=>'<span class="lk"><i data-st="work"></i>au travail</span>
 // une rangée de baies et l'allée dessous : 20 rangées (AT_ROWS, 68-atelier.js) ; le bureau du chef de centre est dans la salle de
 // garde (le parquet, x ≥ 35 cases), centré, entre la partie de cartes et les lits de camp
 const CS_ROWS=20;AT_ROWS[-1]=CS_ROWS;
-const CS_BAYS=3, CS_BX=[1,12.25,23.5], CS_BW=10.25, CS_DY0=3.1, CS_DY1=10.1, CS_Z0=10.55, CS_Z1=19.45, CS_R1=13.65, CS_R2=17.45;
-const CS_DESK={x:40.5*AT_TS,y:16.35*AT_TS}, CS_POLE={x:43.6*AT_TS,y0:9*AT_TS,y1:13.4*AT_TS}, CS_TABLE={x:39*AT_TS,y:11.8*AT_TS};
+const CS_BAYS=3, CS_BX=[.6,10.2,19.8], CS_BW=9.4, CS_GX=30, CS_DY0=3.1, CS_DY1=10.1, CS_Z0=10.55, CS_Z1=19.45, CS_R1=13.65, CS_R2=17.45;
+const CS_DESK={x:(CS_GX*AT_TS+AT_W)/2,y:16.35*AT_TS}, CS_POLE={x:38.6*AT_TS,y0:9*AT_TS,y1:13.4*AT_TS}, CS_TABLE={x:34*AT_TS,y:11.8*AT_TS};
 const CS_COT_Y=18.7*AT_TS, CS_LBL_Y=19.55*AT_TS; // les lits de camp sous le bureau, et sous eux les étiquettes du chef
 const CS_DEP_MS=6.5e3; // la fin d'une intervention : le tuyau s'enroule, le camion rentre dans sa baie, le rideau se ferme sur lui
 // arrivée d'une équipe : le rideau se lève, le camion sort de la baie, les pompiers descendent la barre un par un puis
@@ -33,8 +33,8 @@ const CS_DEP_MS=6.5e3; // la fin d'une intervention : le tuyau s'enroule, le cam
 // la barre ; dans la salle de garde, ils longent le mur de droite (CS_SIDE) sans traverser le bureau du chef ni les lits.
 // Ordres choisis pour que personne ne traverse un autre : premier rang de gauche à droite, puis le second ; au
 // départ, le second rang d'abord, puis le premier de droite à gauche.
-const CS_LANE=(CS_Z1+.35)*AT_TS, CS_SIDE=45.2*AT_TS, CS_LEFT=35.8*AT_TS, CS_RUN=150, CS_WALK=105, CS_SLIDE=200, CS_GAP=1.1, CS_LEAVE_GAP=1.3;
-const CS_IN=[0,1,2,3,6,4], CS_OUT=[4,6,3,2,1,0], CS_PX=CS_POLE.x-12, CS_CUP={x:41.4*AT_TS,y:10.6*AT_TS};
+const CS_LANE=(CS_Z1+.35)*AT_TS, CS_SIDE=39.3*AT_TS, CS_LEFT=30.6*AT_TS, CS_RUN=150, CS_WALK=105, CS_SLIDE=200, CS_GAP=1.1, CS_LEAVE_GAP=1.3;
+const CS_IN=[0,1,2,3,6,4], CS_OUT=[4,6,3,2,1,0], CS_PX=CS_POLE.x-12, CS_CUP={x:36.2*AT_TS,y:10.6*AT_TS};
 const caserneOn=()=>supportOn();
 // les postes de l'investigation (sous-workflows support_*, CFG.support.postes_wf) : leurs runs ne passent pas au RDC
 const csWf=w=>!!w&&((CFG.support&&CFG.support.postes_wf)||[]).includes(String(w).slice(0,8));
@@ -149,7 +149,7 @@ function csDrawWalker(w,people,now){
 // chemin entre deux points par l'allée ; un point de la salle de garde la rejoint par un passage le long d'un mur (X : CS_LEFT,
 // le muret, pour le capitaine ; CS_SIDE, le mur de droite, pour l'agent d'entretien) : personne ne traverse le bureau ni les lits
 function csGuardPath(a,b,X){
-  const inGuard=p=>p.x>=35*AT_TS&&p.y<CS_LANE-.5*AT_TS, out=[{...a}];
+  const inGuard=p=>p.x>=CS_GX*AT_TS&&p.y<CS_LANE-.5*AT_TS, out=[{...a}];
   if(inGuard(a))out.push({x:X,y:a.y},{x:X,y:CS_LANE});else out.push({x:a.x,y:CS_LANE});
   if(inGuard(b))out.push({x:X,y:CS_LANE},{x:X,y:b.y});else out.push({x:b.x,y:CS_LANE});
   out.push({...b});return out;
@@ -159,17 +159,17 @@ const csTitle=t=>t.subject||String(t.text||'').split('\n')[0].slice(0,60);
 // ---------- géométrie d'une baie ----------
 function csGeo(b){
   const T=AT_TS, x0=CS_BX[b]*T, w=CS_BW*T, cx=x0+w/2;
-  const pts=CS_POSTES.map((p,j)=>j<4?{x:cx+(j-1.5)*2.4*T,y:CS_R1*T}:{x:cx+(1-(j-4))*2.8*T,y:CS_R2*T});
+  const pts=CS_POSTES.map((p,j)=>j<4?{x:cx+(j-1.5)*2.25*T,y:CS_R1*T}:{x:cx+(1-(j-4))*2.8*T,y:CS_R2*T});
   return {b,x0,w,cx,pts,door:{x:x0+.35*T,y:CS_DY0*T,w:w-.7*T,h:(CS_DY1-CS_DY0)*T},truck:{x:cx,y:(CS_DY1-.2)*T},hose:{x:cx-3.1*T,y:(CS_DY1-.6)*T}};
 }
 const CS_G=[0,1,2].map(csGeo);
 // ---------- décor ----------
 function csBackground(){ // sous-sol : murs de béton, tuyaux au plafond, sol de garage devant les baies, parquet de la salle de garde
   const c=document.createElement('canvas'), H_=CS_ROWS*AT_TS;c.width=AT_W;c.height=H_;const g=c.getContext('2d'), T=AT_TS;
-  for(let y=0;y<CS_ROWS;y++)for(let x=0;x<46;x++)drawFloor(g,x,y,x>=35?'wood':'tiles');
+  for(let y=0;y<CS_ROWS;y++)for(let x=0;x<AT_W/T;x++)drawFloor(g,x,y,x>=CS_GX?'wood':'tiles');
   R(g,0,0,AT_W,T,'#3a3940');R(g,0,T,AT_W,8,'#c9c4b8');R(g,0,T+8,AT_W,24,'#a9a397');R(g,0,T+28,AT_W,4,'#7d776c');
-  R(g,0,T+2,AT_W,4,'#6a6f78');R(g,0,T+2,AT_W,1,'#8a909a');for(let x=2;x<46;x+=6)R(g,x*T,T,6,8,'#4a4f58'); // tuyaux et colliers
-  R(g,35*T-4,2*T,4,CS_LANE-1.4*T-2*T,'#7d776c');if(CS_LANE+.6*T<H_)R(g,35*T-4,CS_LANE+.6*T,4,H_-CS_LANE-.6*T,'#7d776c'); // la salle de garde, séparée par un muret ouvert sur l'allée
+  R(g,0,T+2,AT_W,4,'#6a6f78');R(g,0,T+2,AT_W,1,'#8a909a');for(let x=2;x<AT_W/T;x+=6)R(g,x*T,T,6,8,'#4a4f58'); // tuyaux et colliers
+  R(g,CS_GX*T-4,2*T,4,CS_LANE-1.4*T-2*T,'#7d776c');if(CS_LANE+.6*T<H_)R(g,CS_GX*T-4,CS_LANE+.6*T,4,H_-CS_LANE-.6*T,'#7d776c'); // la salle de garde, séparée par un muret ouvert sur l'allée
   for(let b=0;b<CS_BAYS;b++){const z=CS_G[b];g.save();g.strokeStyle='#f2c230';g.lineWidth=3;g.setLineDash([12,7]);g.strokeRect(z.x0+4,CS_Z0*T,z.w-8,(CS_Z1-CS_Z0)*T);g.restore();
     for(let k=0;k<6;k++)R(g,z.cx-2.5*T+k*T,(CS_Z1+.25)*T,T*.55,6,k%2?'#1c1c1c':'#f2c230');} // bande devant la baie
   return c;
@@ -217,7 +217,7 @@ function csHose(z,st,L,fd){ // du camion au premier pompier, puis de main en mai
   const cur=CS_POSTES.findIndex(p=>st[p.k]&&st[p.k]!=='ok'), last=cur<0?CS_POSTES.length-1:cur, P=z.pts;
   const seg=(a,b,on)=>{if(!on&&fd<=0||on&&L<=0)return;ctx.save();ctx.strokeStyle=on?'#e0a020':'#9a958a';ctx.lineWidth=on?5:3;ctx.setLineDash(on?(L<1e4?[L,1e5]:[]):[6,5]);if(!on)ctx.globalAlpha=fd;ctx.beginPath();
     const p0=a<0?z.hose:{x:P[a].x,y:P[a].y-22};ctx.moveTo(p0.x,p0.y);
-    for(let j=a+1;j<=b;j++){const q={x:P[j].x,y:P[j].y-22};if(j===4)ctx.bezierCurveTo(z.cx+4.9*AT_TS,P[3].y-22,z.cx+4.9*AT_TS,P[4].y-22,q.x,q.y);else ctx.lineTo(q.x,q.y);}
+    for(let j=a+1;j<=b;j++){const q={x:P[j].x,y:P[j].y-22};if(j===4)ctx.bezierCurveTo(z.cx+4.3*AT_TS,P[3].y-22,z.cx+4.3*AT_TS,P[4].y-22,q.x,q.y);else ctx.lineTo(q.x,q.y);}
     ctx.stroke();ctx.restore();};
   seg(-1,last,true);if(last<CS_POSTES.length-1)seg(last,CS_POSTES.length-1,false);
 }
@@ -285,7 +285,7 @@ function csBay(slot,b,now,dt,people){
 function csLate(people,f,y){people.push([{pos:{x:0,y:y==null?1e6:y}},null,false,f]);}
 // ---------- la salle de garde et la barre de pompier ----------
 function csBoard(slots,now){ // le tableau des interventions, au mur de la salle de garde
-  const T=AT_TS, x=35.6*T, y=2.1*T, w=9.8*T, h=4.4*T;R(ctx,x-6,y-6,w+12,h+12,'#3a3530');R(ctx,x,y,w,h,'#10141c');R(ctx,x,y,w,18,'#8a1f17');
+  const T=AT_TS, x=30.6*T, y=2.1*T, w=9*T, h=4.4*T;R(ctx,x-6,y-6,w+12,h+12,'#3a3530');R(ctx,x,y,w,h,'#10141c');R(ctx,x,y,w,18,'#8a1f17');
   atTxt('📋 INTERVENTIONS',x+8,y+13,'#fff','bold 12px ui-monospace,Menlo,monospace','left');
   slots.forEach((s,b)=>{const c=!s?'#5d6370':s.dep?'#3fbf6a':s.s.k==='gate'?WAIT_BG:s.s.k==='failed'?'#e0614f':'#5b8def', cur=s&&!s.dep&&csCur(s.st||{});
     R(ctx,x+10,y+28+b*19,8,8,c);atTxt('B'+(b+1)+' · '+(!s?'libre':s.dep?(s.dep.posted?'feu éteint':'fin'):(csTitle(s.t).slice(0,22)+(cur?' · '+cur.i:''))),x+24,y+36+b*19,s?'#e8e2d0':'#8a93a6','12px ui-monospace,Menlo,monospace','left');});
@@ -308,8 +308,8 @@ function csCot(x,y,sleeper,k,now){ // lit de camp, et un pompier qui dort (casqu
 }
 function csGuard(now,people){ // la garde : aux cartes le jour, sur les lits de camp le soir et le week-end
   const T=AT_TS, {x,y}=CS_TABLE, open=atOpen();
-  csLockers(36*T,7.4*T,5);atCoffee(41.4*T,9.4*T);E('🧯',35.9*T,14.3*T,14);
-  for(let k=0;k<3;k++)csCot((37.4+k*3.1)*T,CS_COT_Y,!open,k,now);
+  csLockers(31*T,7.4*T,5);atCoffee(36.2*T,9.4*T);E('🧯',30.9*T,14.3*T,14);
+  for(let k=0;k<3;k++)csCot((32.2+k*2.7)*T,CS_COT_Y,!open,k,now);
   if(open){R(ctx,x-1.2*T,y-.5*T,2.4*T,1.1*T,'#6b4a2e');R(ctx,x-1.2*T,y-.5*T,2.4*T,4,'#8a6040');
     [[-20,-6],[-4,-8],[12,-5],[0,4]].forEach(([dx,dy],j)=>R(ctx,x+dx,y+dy,9,12,j===3?'#d0392b':'#fbfbf6'));
     [[-1.9,.3,'right'],[1.9,.3,'left'],[0,-.8,'down']].forEach(([dx,dy,dir],j)=>{const c=csPompier(30+j,x+dx*T,y+dy*T,'idle',dir);
@@ -323,7 +323,7 @@ function csWalkers(now,dt,people){for(const w of CS_MEM.walk){if(csStepW(w,dt))w
 // appel attend d'être pris ou qu'une intervention est en cours ; son faisceau balaie le sous-sol (REDUCED_MOTION : allumé, fixe)
 const csAlarm=()=>csCalls().length>0||csActive().length>0;
 function csBeacon(now){
-  const T=AT_TS, x=34.4*T, y=1.55*T, on=csAlarm();
+  const T=AT_TS, x=(CS_GX-.6)*T, y=1.55*T, on=csAlarm();
   R(ctx,x-12,y+6,24,6,'#3a3530');R(ctx,x-9,y+2,18,5,'#5a5a5a');
   ctx.fillStyle=on?'#e8302a':'#7a3a36';ctx.beginPath();ctx.arc(x,y+2,9,Math.PI,0);ctx.fill();
   if(!on)return;
@@ -390,9 +390,9 @@ function csCaptain(slots,now,dt,people){
 const CS_NIGHT={};
 function csNight(slots,people,now){
   const T_=AT_TS, open=atOpen(), walk=(CS_MEM.walk||[]).filter(w=>w.pos).map(w=>w.pos), lit=[...CS_LIT,...walk];
-  const rooms=CS_G.map((z,b)=>[CS_BX[b],CS_DY1,CS_BX[b]+CS_BW-1,Math.floor(CS_Z1),!!slots[b]]).concat([[35,2,45,CS_ROWS-1,open]]);
+  const rooms=CS_G.map((z,b)=>[CS_BX[b],CS_DY1,CS_BX[b]+CS_BW-1,Math.floor(CS_Z1),!!slots[b]]).concat([[CS_GX,2,AT_W/T_-1,CS_ROWS-1,open]]);
   floorNight(CS_NIGHT,{rooms,closed:!open,track:lit,spots:[...floorPeopleSpots(people),...lit.map(q=>({x:q.x,y:q.y-26,r:42,a:.95})),
-    floorBossLamp(CS_DESK.x,CS_DESK.y),{x:40.5*T_,y:CS_COT_Y,r:2.2*T_,a:.5,c:'rgba(255,190,120,.12)'}, // la veilleuse de la garde
+    floorBossLamp(CS_DESK.x,CS_DESK.y),{x:CS_DESK.x,y:CS_COT_Y,r:2.2*T_,a:.5,c:'rgba(255,190,120,.12)'}, // la veilleuse de la garde
     {x:CS_POLE.x,y:CS_POLE.y1-1.2*T_,r:2.2*T_,a:.6}]},now); // la barre
 }
 // ---------- le ménage du soir au -1 : après le 1er (atCleanVisit, 68-atelier.js), l'agent d'entretien descend la barre ----------
@@ -402,7 +402,7 @@ const CS_CLEAN_DUR=25*60e3;
 function csCleanVisit(c,t){const v=atCleanVisit(c,t-AT_CLEAN_DUR)||atCleanVisit(c,t);return v?{s:v.e,e:v.e+CS_CLEAN_DUR}:null;}
 function csCleanStops(){
   const T_=AT_TS, pole={x:CS_PX,y:CS_POLE.y1}, st=[{p:pole,room:'la barre'}];
-  CS_G.forEach((z,b)=>{const p={x:z.cx,y:CS_LANE};st.push({p,room:'la baie '+(b+1),sweep:[p,{x:z.cx-4.5*T_,y:CS_LANE},{x:z.cx+4.5*T_,y:CS_LANE},p]});});
+  CS_G.forEach((z,b)=>{const p={x:z.cx,y:CS_LANE};st.push({p,room:'la baie '+(b+1),sweep:[p,{x:z.cx-4*T_,y:CS_LANE},{x:z.cx+4*T_,y:CS_LANE},p]});});
   const g={x:CS_TABLE.x,y:CS_TABLE.y+1.6*T_};st.push({p:g,room:'la salle de garde',sweep:[g,{x:g.x-2*T_,y:g.y},{x:g.x+3*T_,y:g.y},g]});
   return st.concat([{p:pole,room:'la barre'}]);
 }
@@ -417,7 +417,7 @@ function csCleanerAt(c,t){
 function csTheme(now){
   const T_=AT_TS, y=CS_DY0*T_-4;
   if(themeIs('noel')){xmasTreeAt(CS_TABLE.x+2.6*T_,CS_TABLE.y+1.4*T_,now);
-    for(let k=0;k<40;k++){ctx.fillStyle=['#ff4a4a','#ffd84a','#4aff8a','#4ac8ff'][(k+Math.floor(now/500))%4];ctx.beginPath();ctx.arc(1.2*T_+k*(33.6*T_/39),y+Math.sin(k*.9)*3,3,0,7);ctx.fill();}}
+    for(let k=0;k<40;k++){ctx.fillStyle=['#ff4a4a','#ffd84a','#4aff8a','#4ac8ff'][(k+Math.floor(now/500))%4];ctx.beginPath();ctx.arc(1.2*T_+k*((CS_GX-2.4)*T_/39),y+Math.sin(k*.9)*3,3,0,7);ctx.fill();}}
   if(themeIs('halloween'))CS_G.forEach(z=>{E('🎃',z.cx-4.2*T_,(CS_DY1+.4)*T_,14);E('🎃',z.cx+4.2*T_,(CS_DY1+.4)*T_,14);});
   if(themeIs('nouvel-an')||themeIs('saint-valentin'))[[CS_TABLE.x-1.5*T_,CS_TABLE.y-2*T_],[CS_TABLE.x+3*T_,CS_TABLE.y-2*T_]].forEach(([x,yy],k)=>balloon(themeIs('nouvel-an')?'🎈':'💗',x,yy,now,k));
 }

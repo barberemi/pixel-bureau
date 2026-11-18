@@ -62,26 +62,21 @@ test('« En ce moment » encadré quand une décision t\'attend, pas pour le seu
   run("FEED_SIG = ''; FEED_PIN = [];");
 });
 
-test('aux étages, quelle que soit la largeur, le panneau se replie ; au RDC il revient comme avant', () => {
-  run('innerWidth = 1440; SIDE_FOLDED = false; SIDE_BEFORE = null; setFloor(1);');
-  assert.equal(J('SIDE_FOLDED'), true, 'au 1er : replié');
-  run('setFloor(0);');
-  assert.equal(J('SIDE_FOLDED'), false, 'au RDC : rouvert');
-  run('innerWidth = 1920; setFloor(1);');
-  assert.equal(J('SIDE_FOLDED'), true, 'écran large aussi : un étage prend la place pour être au moins aussi grand que le RDC');
-  run('setFloor(0);');
-  assert.equal(J('SIDE_FOLDED'), false, 'au RDC : rouvert');
-  run('setFloor(0); innerWidth = 1440; SIDE_FOLDED = true; setFloor(1); setFloor(0);');
-  assert.equal(J('SIDE_FOLDED'), true, 'replié par toi au RDC : il le reste');
+test('d\'un étage à l\'autre, le panneau reste comme tu l\'as mis ; les étages font 40 cases comme le RDC', () => {
+  run('innerWidth = 1440; SIDE_FOLDED = false; setFloor(1);');
+  assert.equal(J('SIDE_FOLDED'), false, 'au 1er : ouvert, comme au RDC');
+  assert.equal(J('cv.width'), 40 * 32, 'même largeur que le RDC');
+  run('SIDE_FOLDED = true; setFloor(2); setFloor(0);');
+  assert.equal(J('SIDE_FOLDED'), true, 'replié à un étage : il le reste au RDC');
   run('SIDE_FOLDED = false;');
 });
 
 test('aux étages, un clic sur ce qui se clique rouvre le panneau replié ; ailleurs il reste replié', () => {
-  run("innerWidth = 1920; setFloor(1); cv.style.cursor = 'default'; floorClick({clientX: 0, clientY: 0});");
+  run("innerWidth = 1920; setFloor(1); SIDE_FOLDED = true; cv.style.cursor = 'default'; floorClick({clientX: 0, clientY: 0});");
   assert.equal(J('SIDE_FOLDED'), true, 'clic dans le vide : replié');
   run("cv.style.cursor = 'pointer'; floorClick({clientX: 0, clientY: 0});");
   assert.equal(J('SIDE_FOLDED'), false, 'clic sur un bureau, un agent, une palette : rouvert');
-  run("setFloor(0); SIDE_FOLDED = false; SIDE_BEFORE = null; cv.style.cursor = 'default';");
+  run("setFloor(0); SIDE_FOLDED = false; cv.style.cursor = 'default';");
 });
 
 test('mode TV hors du direct : le bandeau dit « REJEU hh:mm », plus « EN DIRECT »', () => {

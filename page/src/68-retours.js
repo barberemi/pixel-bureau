@@ -18,6 +18,7 @@ const RT_POSTES=[{k:'prepare',i:'🗂',n:'Préparation',d:'récupère les fils d
 const RT_COLS=[{k:'a_traiter',n:'À traiter',c:'#e8e2d0'},{k:'corrige',n:'✅ Corrigé',c:'#b6e3a8'},{k:'test',n:'🧪 Test',c:'#c9b6f2'},
   {k:'laisse',n:'⏭ Laissé',c:'#d8d2c4'},{k:'reponse',n:'💬 Réponse',c:'#9fd4ff'}];
 // « Comment lire le plan » au 3e (46-legende.js) : la légende du Kanban, puis les onglets ; les postes viennent de RT_POSTES
+const rtColTxt=c=>c.n.replace(/^[^\p{L}\d]+\s/u,''); // l'en-tête sur le plan, sans son pictogramme
 const RT_HELP={bar:()=>'<span>Kanban des fils :</span>'+legSwatches(Object.fromEntries(RT_COLS.map(c=>[c.k,[c.c,c.n]])))+'<span>cadre rouge : le fil en cours</span>',postes:()=>[['',RT_POSTES]],
   qui:'<p><b>Agents</b> : un par poste, en chirurgiens. Toute l\'équipe monte avec la PR et reste jusqu\'au push ; au bureau 1 libre, elle somnole.</p><p><b>Bernard</b> sort de la porte de l\'escalier avec la PR et la redescend une fois poussée.</p><p>Un agent en gris pâle : son poste attend, personne n\'y travaille en ce moment (au RDC, la couleur d\'un hologramme dit sa famille, pas son activité).</p>'+
     '<p><b>Le boss</b>, à son bureau du couloir, va à la barrière du bureau qui attend depuis le plus longtemps ; les autres attendent leur tour. Ici, ta décision, c\'est la barrière.</p>',
@@ -25,17 +26,17 @@ const RT_HELP={bar:()=>'<span>Kanban des fils :</span>'+legSwatches(Object.fromE
     '<p><b>Le couloir</b>, de gauche à droite : l\'entrepôt (une palette par PR qui attend un bureau, les pannes en rouge), la porte du bureau 1, le tableau RETOURS DU JOUR (PR poussées et fils, en cours et pannes, jetons ; le détail est dans la page « Retours · bilan »), le banc, le café, le bureau du boss et l\'escalier.</p>',
   moments:'<p><b>✋ À toi</b> : les corrections attendent ta validation.</p><p><b>🧯 Contrôles rouges</b> : le correctif est annulé, la PR attend une relance.</p><p><b>📤 Poussée</b> : les réponses sont postées, Bernard redescend la PR.</p>'};
 const RT_ST={ok:['ok','a travaillé'],run:['run','au travail'],err:['err','en panne'],gate:['wait','t\'attend'],wait:['','attend son tour']};
-// une rangée de trois bureaux au-dessus du couloir : 46 × 17 cases (AT_ROWS, 68-atelier.js)
+// une rangée de trois bureaux au-dessus du couloir : 40 × 17 cases, comme le RDC en largeur (AT_ROWS, 68-atelier.js)
 AT_ROWS[3]=17;
-const RT_N=3, RT_W=46/3, RT_H=11.2, RT_Y=2, RT_HALL=[13.2,17], RT_LANE=14.2*AT_TS;
+const RT_N=3, RT_COLS_N=AT_W/AT_TS, RT_W=RT_COLS_N/3, RT_H=11.2, RT_Y=2, RT_HALL=[13.2,17], RT_LANE=14.2*AT_TS;
 // le couloir, de gauche à droite : l'entrepôt (une zone de palettes au sol, comme au 1er et au 2e), la porte du bureau 1
 // juste après, le tableau RETOURS DU JOUR, le banc, le café, le bureau du boss, la porte de l'escalier
-const RT_DEPOT={x0:.25*AT_TS,x1:12.2*AT_TS,y0:14.5*AT_TS,y1:16.85*AT_TS}, RT_DOOR1=13.5*AT_TS;
-const RT_WINDOWS=[7,10,13,17,20,23,27,30,33,37,40,43]; // en cases : à droite du nom de l'étage, comme au RDC
+const RT_DEPOT={x0:.25*AT_TS,x1:10.6*AT_TS,y0:14.5*AT_TS,y1:16.85*AT_TS}, RT_DOOR1=11.9*AT_TS;
+const RT_WINDOWS=[7,10,13,16,19,22,25,28,31,34,37]; // en cases : à droite du nom de l'étage, comme au RDC
 // RT_STAIRS : derrière la porte de l'escalier, au bout du couloir dans le mur de droite comme l'entrée du RDC (stairDoor,
 // 68-atelier.js) ; Bernard en sort et y rentre
-const RT_DESK={x:36*AT_TS,y:15.6*AT_TS}, RT_STAIRS={x:46*AT_TS+50,y:RT_LANE};
-const RT_STAIR={x:46*AT_TS-12,y:13.5*AT_TS,w:12,h:2*AT_TS,vert:true,wall:[46*AT_TS-12,13.2*AT_TS,12,2.6*AT_TS]}, RT_EXIT={x:46*AT_TS-30,y:13.5*AT_TS-12};
+const RT_DESK={x:31.4*AT_TS,y:15.6*AT_TS}, RT_STAIRS={x:AT_W+50,y:RT_LANE};
+const RT_STAIR={x:AT_W-12,y:13.5*AT_TS,w:12,h:2*AT_TS,vert:true,wall:[AT_W-12,13.2*AT_TS,12,2.6*AT_TS]}, RT_EXIT={x:AT_W-30,y:13.5*AT_TS-12};
 let RETOURS=null, RTSEL=null, RT_KB=null, RT_HITS=[], RT_LIT=[];
 let RTPOSTE=null, RTQ=false; // la fiche d'un poste du bureau ouvert (clic sur son agent) ; la file du couloir
 function readRetours(src){
@@ -148,7 +149,7 @@ const rtHome=()=>({x:RT_DESK.x,y:RT_DESK.y}); // assis à son bureau du couloir
 // ---------- décor ----------
 function rtBackground(){
   const c=document.createElement('canvas');c.width=AT_W;c.height=AT_H;const g=c.getContext('2d'), T=AT_TS;
-  for(let y=0;y<AT_ROWS[3];y++)for(let x=0;x<46;x++)drawFloor(g,x,y,y>=RT_HALL[0]&&y<RT_HALL[1]?'tiles':'carpet');
+  for(let y=0;y<AT_ROWS[3];y++)for(let x=0;x<RT_COLS_N;x++)drawFloor(g,x,y,y>=RT_HALL[0]&&y<RT_HALL[1]?'tiles':'carpet');
   R(g,0,0,AT_W,T,'#4b4a52');R(g,0,T,AT_W,8,'#efe9dc');R(g,0,T+8,AT_W,24,'#d9d2c3');R(g,0,T+28,AT_W,4,'#a99f8c');
   for(const z of RT_G){R(g,z.x0,z.y0,z.w,4,'#7d776c');R(g,z.x0,z.y0+z.h-4,z.w,4,'#7d776c');R(g,z.x0,z.y0,4,z.h,'#7d776c');R(g,z.x0+z.w-4,z.y0,4,z.h,'#7d776c');
     woodDoor(g,z.door.x-T,z.y0+z.h-8,2*T,12,2,false);} // la porte en bois, sur le couloir
@@ -163,17 +164,20 @@ function rtBoard(z,r){
   const {x,y,w,h}=z.kb;R(ctx,x-4,y-4,w+8,h+8,'#7a5a3c');R(ctx,x,y,w,h,'#f4efe4');
   const cw=w/RT_COLS.length;let hl=null;
   RT_COLS.forEach((c,j)=>{const cx=x+j*cw, l=r?(r.fils||[]).filter(f=>f.col===c.k):[];if(j)R(ctx,cx,y+4,1,h-8,'#d9d2c3');
-    atTxt(c.n+(r?' '+l.length:''),cx+cw/2,y+11,'#5a4636','bold 11px system-ui,sans-serif');
+    // à 40 cases, une colonne fait ~2,5 cases : sur le plan, l'en-tête n'a pas de pictogramme (la couleur des post-its le dit ;
+    // la légende et la fiche le gardent)
+    const f='bold 12px system-ui,sans-serif', t=rtColTxt(c)+(r?' '+l.length:'');
+    atTxt(t,cx+cw/2,y+12,'#5a4636',f);
     l.slice(0,6).forEach((f,q)=>{const px=cx+cw/2-10+(q%2?6:-6), py=y+16+q*12;rtPostit(px,py,c.c,f.cur);if(f.cur)hl={x:px+10,y:py+7};});});
   atHitRt('board',x,y,w,h,{i:z.i});
   return hl;
 }
 function rtLate(people,f,y){people.push([{pos:{x:0,y:y==null?1e6:y}},null,false,f]);}
-const rtPill=(p,s,x,y)=>atPill(atPosteLbl(p,['run','err','gate'].includes(s)),x,y,{run:'#2f6fd6',ok:'#2f7a45',err:'#a8323a',gate:WAIT_BG}[s]||'#f4efe4',s==='gate'?WAIT_INK:s?'#fff':'#3a3530','bold 11px system-ui,sans-serif');
+const rtPill=(p,s,x,y)=>atPill(atPosteLbl(p,['run','err','gate'].includes(s)),x,y,{run:'#2f6fd6',ok:'#2f7a45',err:'#a8323a',gate:WAIT_BG}[s]||'#f4efe4',s==='gate'?WAIT_INK:s?'#fff':'#3a3530','bold 12px system-ui,sans-serif');
 // ---------- un bureau ----------
 function rtRoom(r,i,now,people){
   const z=RT_G[i], T=AT_TS, lv=RT_MEM.leaving[i];
-  rtLate(people,()=>atPill('BUREAU '+(i+1),z.x0+38,z.y0+16,'#5a4636','#fff','bold 11px ui-monospace,Menlo,monospace'),1);
+  rtLate(people,()=>atPill('BUREAU '+(i+1),z.x0+40,z.y0+16,'#5a4636','#fff','bold 12px ui-monospace,Menlo,monospace'),1);
   const hl=rtBoard(z,r);
   atBelt(z.x0+.5*T,z.ry,z.w-T,.6*T,!!r,now,1);
   if(!r){ // libre : les bureaux éteints ; au bureau 1, l'équipe somnole à son poste, ailleurs personne
@@ -187,11 +191,11 @@ function rtRoom(r,i,now,people){
     atHitRt('room',z.x0,z.y0,z.w,z.h,{i});return;
   }
   const cur=rtCur(r), boss=RT_MEM.boss, here=boss&&boss.target===i&&boss.arrived;
-  rtLate(people,()=>{atPill('🛠 '+rtName(r),z.x0+z.w/2,z.y0+16,'#0b2a4a','#fff','bold 12px ui-monospace,Menlo,monospace');const w=rtWho(r);if(w)atTxt('de '+w,z.x0+z.w-12,z.y0+19,'#5a4636','bold 11px system-ui','right');},1);
+  rtLate(people,()=>{atPill('🛠 '+rtName(r),z.x0+z.w/2,z.y0+16,'#0b2a4a','#fff','bold 12px ui-monospace,Menlo,monospace');const w=rtWho(r);if(w)atTxt('de '+w,z.x0+z.w-12,z.y0+20,'#5a4636','bold 12px system-ui','right');},1);
   RT_POSTES.forEach((p,j)=>{const {x,y}=z.pts[j], s=rtState(r,p);
     if(p.gate){R(ctx,x-14,z.ry-20,3,20,'#8a8478');R(ctx,x+12,z.ry-20,3,20,'#8a8478');for(let q=0;q<4;q++)R(ctx,x-14+q*7,z.ry-20,7,5,q%2?'#1c1c1c':'#f2c230');
       if(s==='gate'&&!here)rtLate(people,()=>{if(waitOn(now))atBadge(x,z.ry-34,'✋',WAIT_BG);
-        if(boss&&boss.target!=null&&boss.target!==i)atPill('✋ en file : le boss est au bureau '+(boss.target+1),x,z.ry-56,WAIT_BG,WAIT_INK,'bold 11px system-ui,sans-serif');},1e6);
+        if(boss&&boss.target!=null&&boss.target!==i)atPill('✋ en file : le boss est au bureau '+(boss.target+1),x,z.ry-56,WAIT_BG,WAIT_INK,'bold 12px system-ui,sans-serif');},1e6);
       rtLate(people,()=>rtPill(p,s,x,z.ry+.6*T+12),1e6-2);atHitRt('agent',x-16,z.ry-40,32,48,{i,k:p.k});return;}
     rtLate(people,()=>rtPill(p,s,x,z.ry+.6*T+12),1e6-2);
     const id=rtCrewId(i,p.k), pop=lvPop(RT_LV,id,s==='ok',now);
@@ -237,15 +241,15 @@ function rtJourAt(t){
   return {pousses:Math.max(0,n('pousses')-after),cours:rtRoomsAt(t).length,pannes,semaine:Math.max(0,n('semaine')-after),fils:n('fils'),tok:n('tok')};
 }
 function rtDayBoard(){
-  const S=AT_TS, j=(RETOURS&&RETOURS.jour)||{}, n=k=>+j[k]||0, bx=16*S, by=14.6*S, bw=6.2*S, bh=64, ink='#e8e2d0';
+  const S=AT_TS, j=(RETOURS&&RETOURS.jour)||{}, n=k=>+j[k]||0, bx=13.2*S, by=14.5*S, bw=7.2*S, bh=68, ink='#e8e2d0';
   R(ctx,bx+12,by+bh,4,7,'#5a3e28');R(ctx,bx+bw-16,by+bh,4,7,'#5a3e28');
   R(ctx,bx-5,by-5,bw+10,bh+10,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+4,by+bh-5,bw-8,3,'#a37650');
-  atTxt('RETOURS DU JOUR',bx+bw/2,by+14,'#f4efe4','bold 11px ui-monospace,Menlo,monospace');R(ctx,bx+12,by+19,bw-24,1,'rgba(244,239,228,.4)');
+  atTxt('RETOURS DU JOUR',bx+bw/2,by+14,'#f4efe4','bold 12px ui-monospace,Menlo,monospace');R(ctx,bx+12,by+19,bw-24,1,'rgba(244,239,228,.4)');
   const r=rtLive()||releveNear(RETOURS)?null:rtJourAt(T), rows=r?[['#3fbf6a',[plural(r.pousses,'PR poussée','PR poussées')+' · ',ink],[relTxt(r.fils+' fils'),REL_INK]],
     ['#5b8def',[r.cours+' en cours · '+r.pannes+' en panne',ink]],['#e0a020',[relTxt(Math.round(r.tok/1e3)+' k jet.'),REL_INK],[' · 7 j : '+r.semaine+' PR',ink]]]
     :[['#3fbf6a',[plural(n('pousses'),'PR poussée','PR poussées')+' · '+n('fils')+' fils',ink]],['#5b8def',[n('cours')+' en cours · '+n('pannes')+' en panne',ink]],
       ['#e0a020',['~'+Math.round(n('tok')/1e3)+' k jetons · 7 j : '+n('semaine')+' PR',ink]]];
-  rows.forEach(([c,...segs],k)=>{R(ctx,bx+12,by+24+k*13,7,7,c);atSegs(segs,bx+24,by+31+k*13,'11px ui-monospace,Menlo,monospace');});
+  rows.forEach(([c,...segs],k)=>{R(ctx,bx+12,by+25+k*14,7,7,c);atSegs(segs,bx+24,by+32+k*14,'12px ui-monospace,Menlo,monospace');});
 }
 // l'entrepôt : une zone de palettes au sol, sans murs, balisée d'une bande jaune et noire ; une palette par PR qui attend un
 // bureau (son étiquette : la PR), puis les pannes, étiquette rouge et fumée ; le panneau centré au-dessus. Au-delà de
@@ -261,7 +265,7 @@ function rtDepot(now){
   for(let k=0;k<RT_PAL;k++){const x=x0+(k+.5)*sw, it=shown[k];
     if(it){atPallet(x,y);atCarton(x,y-9,(it.panne?'🧯 ':'')+rtName(it),it.panne?'#a8323a':'#0b2a4a',-22);if(it.panne)atSmoke(x+20,y-10,now+k*300);
       atHitRt('queue',x-sw/2+4,y-42,sw-8,54,{run:it.run,item:it});}
-    else if(more&&k===RT_PAL-1){atPallet(x,y);atPill('+'+more,x,y-6,'#5b6070','#fff','bold 11px ui-monospace,Menlo,monospace');}
+    else if(more&&k===RT_PAL-1){atPallet(x,y);atPill('+'+more,x,y-6,'#5b6070','#fff','bold 12px ui-monospace,Menlo,monospace');}
     else if(k===RT_PAL-1){atPallet(x,y);atPallet(x,y-7);atPallet(x,y-14);}}
   atPill('📦 ENTREPÔT · '+w+' en attente',(x0+x1)/2,y0-8,'#5a4636','#fff','bold 12px ui-monospace,Menlo,monospace');
 }
@@ -269,14 +273,14 @@ function rtHall(slots,now,people){
   const T=AT_TS;
   rtDepot(now);
   rtLate(people,rtDayBoard,1e6-1);
-  const bx=24.8*T, by=16.2*T;atSofa(bx,by);rtLate(people,()=>atSofaFront(bx,by),by+10); // le banc
-  atCoffee(28.6*T,15.9*T);atPlant(31*T,16.2*T);
-  rtLate(people,()=>atPill('⇅ escalier · RDC',46*T-74,RT_STAIR.y+RT_STAIR.h+22,'#5a4636','#fff','bold 11px ui-monospace,Menlo,monospace'),1e6);
+  const bx=23.4*T, by=16.2*T;atSofa(bx,by);rtLate(people,()=>atSofaFront(bx,by),by+10); // le banc
+  atCoffee(26.6*T,15.9*T);atPlant(28.3*T,16.2*T);
+  rtLate(people,()=>atPill('⇅ escalier · RDC',AT_W-74,RT_STAIR.y+RT_STAIR.h+22,'#5a4636','#fff','bold 12px ui-monospace,Menlo,monospace'),1e6);
 }
 // ---------- les équipes : dès qu'une PR a un bureau, ses cinq agents montent derrière Bernard, l'un après l'autre, et
 // restent jusqu'au push ; le bureau 1 garde toujours la sienne (67-vie.js) ----------
 let RT_LV=lvMem();
-const RT_LV_H={x:44.6*AT_TS,y:RT_LANE}, rtCrewId=(i,k)=>'b'+i+':'+k;
+const RT_LV_H={x:AT_W-1.4*AT_TS,y:RT_LANE}, rtCrewId=(i,k)=>'b'+i+':'+k;
 function rtCrewSpot(i,j){const g=RT_G[i], T=AT_TS, p=g.pts[j], lane={x:g.door.x,y:RT_LANE}, yy=g.y0+g.h-.9*T; // sous le tapis (la porte est en dessous)
   return {id:'d'+i+':'+j,path:[RT_LV_H,lane,{x:g.door.x,y:yy},{x:p.x,y:yy},p],dir:'down',seat:true};}
 function rtCrewWant(slots){
@@ -333,7 +337,7 @@ const RT_NIGHT={};
 function rtNight(slots,people,now){
   const T_=AT_TS, rooms=RT_G.map((z,i)=>[Math.round(z.x0/T_),Math.round(z.y0/T_),Math.round((z.x0+z.w)/T_)-1,Math.round((z.y0+z.h)/T_)-1,!!slots[i]]);
   floorNight(RT_NIGHT,{rooms,closed:!atOpen(),track:RT_LIT,spots:[...floorPeopleSpots(people),...RT_LIT.map(q=>({x:q.x,y:q.y-26,r:42,a:.95})),
-    floorBossLamp(RT_DESK.x,RT_DESK.y),{x:46*T_-20,y:RT_LANE,r:1.6*T_,a:.45},exitHalo(RT_EXIT.x,RT_EXIT.y)]},now); // la porte de l'escalier
+    floorBossLamp(RT_DESK.x,RT_DESK.y),{x:AT_W-20,y:RT_LANE,r:1.6*T_,a:.45},exitHalo(RT_EXIT.x,RT_EXIT.y)]},now); // la porte de l'escalier
   if(RT_NIGHT.lv)exitSign(RT_EXIT.x,RT_EXIT.y);
 }
 // ---------- l'image ----------

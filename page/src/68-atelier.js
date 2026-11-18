@@ -38,7 +38,7 @@ const AT_HELP={bar:()=>legSwatches(AT_ST)+'<span>🧯 fumée : poste en panne</s
     '<p><b>Le grand tableau</b> de l\'orchestrateur, en haut : le poste, le tour et les jetons de chaque bureau.</p><p><b>Le couloir</b>, de gauche à droite : l\'entrepôt (une palette par ticket en attente, en rouge ceux en panne, à relancer), « Runs du jour », le boss, le café, les canapés, la sortie.</p>',
   moments:'<p><b>✋ Une gate</b> : ton plan (avec ce que j\'ai compris), la relecture de la PR ; le boss va devant le bureau.</p><p><b>🚨 L\'escalade</b> : après trois tours, la chaîne demande un humain (gyrophare au bas du U).</p>'+
     '<p><b>↩ Retour au code</b> : un contrôle a bloqué, le carton recule.</p><p><b>🧯 Une panne</b> : un poste a échoué, le pompier arrive.</p>'};
-const AT_TS=32, AT_W=46*AT_TS;
+const AT_TS=32, AT_W=40*AT_TS;
 // hauteur de chaque étage en cases (une rangée de pièces et un couloir) : chaque 68-*.js y pose la sienne ; AT_H suit l'étage
 // affiché (setFloor), 27 cases par défaut (les Combles)
 const AT_ROWS={};
@@ -319,7 +319,7 @@ function setFloor(f){
   if(FLOOR===1){AT_MEM.fresh=true;AT_MEM.src=null;AT_MEM.boss=null;AT_MEM.scenes=[];AT_MEM.leaving=atNone();}
   else if(FLOOR===-1)csReset();else if(FLOOR===3)rtReset();else if(FLOOR===2)rdReset();else if(FLOOR===4)cbReset();else needTeleport=true;
   if(typeof LOUPE!=='undefined'){LOUPE.seen=null;LOUPE.settle=performance.now()+600;LOUPE.queue=[];if(LOUPE.cur)loupeHide();}
-  sideForFloor(FLOOR);atelierTabs();renderSide(true);if(TV)updateTv(true); // 75-tv.js : la colonne et le bouton d'étage
+  atelierTabs();renderSide(true);if(TV)updateTv(true); // 75-tv.js : la colonne et le bouton d'étage
   if(typeof renderLegend==='function')renderLegend(); // 46-legende.js : la légende et « Comment lire le plan » de cet étage, ses scènes
 }
 // ---------- le plan de l'étage ----------
@@ -345,7 +345,7 @@ const AT_Y0=2*AT_TS, AT_Y1=13*AT_TS, AT_MY=13.75*AT_TS;
 // au fond : étiquette, bureau, pieds (sous le grand tableau), l'allée devant les bureaux, le haut du tapis ; sur les côtés, les
 // pieds des agents (en haut, en bas) ; au milieu du U, le bandeau et le nom du bureau
 const AT_LAB1=156, AT_DESK1=200, AT_FEET1=206, AT_AISLE=228, AT_B1=238, AT_SIDE_FEET=[318,398], AT_NOTE_Y=322, AT_HEAD_Y=346;
-const AT_CHAIR={x:22.3*AT_TS,y:16*AT_TS}, AT_EXIT={x:45.3*AT_TS,y:AT_MY}, AT_OUT={x:AT_W+40,y:AT_MY}; // AT_OUT : derrière la porte, hors du plan
+const AT_CHAIR={x:22.2*AT_TS,y:16*AT_TS}, AT_EXIT={x:AT_W-.7*AT_TS,y:AT_MY}, AT_OUT={x:AT_W+40,y:AT_MY}; // AT_OUT : derrière la porte, hors du plan
 const AT_WANDER_MAX=4, AT_WANDER_ROOM=2; // promeneurs des bureaux libres : sur tout l'étage, et par bureau
 // géométrie d'un bureau : ses bords, le tapis (gauche lx, droite rx, haut b1, épaisseur H), ses trappes, les allées des côtés (ax)
 function atGeo(i){
@@ -474,9 +474,9 @@ function atBossPath(from,i){
   return pts;
 }
 // promeneurs : dans un bureau libre, de temps en temps un agent sort (café, canapé, couloir), puis revient à sa place
-const AT_SOFA={x:30*AT_TS,y:15.5*AT_TS}, AT_CAFE={x:26.3*AT_TS,y:16.1*AT_TS};
+const AT_SOFA={x:28.8*AT_TS,y:15.5*AT_TS}, AT_CAFE={x:25.4*AT_TS,y:16.1*AT_TS};
 const AT_SPOTS=[{x:AT_SOFA.x-.7*AT_TS,y:AT_SOFA.y+17,dir:'down',sit:1},{x:AT_SOFA.x+.7*AT_TS,y:AT_SOFA.y+17,dir:'down',sit:1}, // assis : descendus dans l'assise
-  {x:AT_CAFE.x-.9*AT_TS,y:AT_CAFE.y+6,dir:'right',cafe:1},{x:20*AT_TS,y:AT_MY,dir:'down'},{x:35.5*AT_TS,y:AT_MY,dir:'down'}];
+  {x:AT_CAFE.x-.9*AT_TS,y:AT_CAFE.y+6,dir:'right',cafe:1},{x:19.5*AT_TS,y:AT_MY,dir:'down'},{x:33*AT_TS,y:AT_MY,dir:'down'}];
 function atHome(i,k){const s=atSpot(AT_G[i],k);return {x:s.x,y:s.feet};}
 // de sa place au couloir, par les allées (jamais à travers le tapis) : ceux du fond passent devant leurs bureaux, au-dessus
 // du tapis, jusqu'à l'allée du côté le plus proche (entre la cloison et le tapis), puis descendent ; ceux des côtés y vont directement
@@ -508,7 +508,7 @@ const atWandering=(i,k)=>AT_MEM.wander.find(w=>w.i===i&&w.k===k)||null;
 // ---------- décor ----------
 function atBackground(){ // sols, mur du haut, cloisons vitrées entre les bureaux : cuits une fois
   const c=document.createElement('canvas'), T=AT_TS, rows=atRows(1);c.width=AT_W;c.height=rows*T;const g=c.getContext('2d');
-  for(let y=0;y<rows;y++)for(let x=0;x<46;x++)drawFloor(g,x,y,y*T>=AT_Y1?'wood':'carpet');
+  for(let y=0;y<rows;y++)for(let x=0;x<AT_W/T;x++)drawFloor(g,x,y,y*T>=AT_Y1?'wood':'carpet');
   R(g,0,0,AT_W,T,'#4b4a52');R(g,0,T,AT_W,8,'#efe9dc');R(g,0,T+8,AT_W,24,'#d9d2c3');R(g,0,T+28,AT_W,4,'#a99f8c');
   R(g,0,AT_Y1-3,AT_W,3,'rgba(0,0,0,.12)'); // le seuil des bureaux, ouverts sur le couloir
   for(let i=1;i<AT_NB;i++){const x=AT_G[i].X0;R(g,x-5,AT_Y0,10,AT_Y1-AT_Y0,'#bfe0ee');R(g,x-5,AT_Y0,1,AT_Y1-AT_Y0,'#cfc6b4');R(g,x-6,AT_Y1-6,12,6,'#9fb8c4');}
@@ -531,16 +531,16 @@ function atCarton(x,y,label,col,dy){
   if(themeIs('noel')){R(ctx,x-14,y-12,28,19,'#c8323a');R(ctx,x-2,y-12,4,19,'#f2c230');R(ctx,x-14,y-4,28,3,'#f2c230');}
   else if(themeIs('halloween')){R(ctx,x-14,y-12,28,19,'#e07a1a');R(ctx,x-9,y-7,4,3,'#1c1c1c');R(ctx,x+5,y-7,4,3,'#1c1c1c');R(ctx,x-6,y,12,2,'#1c1c1c');}
   else if(themeIs('saint-valentin'))E('❤',x,y-2,10);
-  if(label)atPill(label,x,y+(dy||24),col||'#0b2a4a','#fff','bold 11px ui-monospace,Menlo,monospace');
+  if(label)atPill(label,x,y+(dy||24),col||'#0b2a4a','#fff','bold 12px ui-monospace,Menlo,monospace');
 }
 function atBadge(x,y,ch,bgc,k){const s=k==null?1:k;if(s<=0)return;ctx.fillStyle=bgc;ctx.beginPath();ctx.arc(x,y,8*s,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
-  if(s>.6)atTxt(ch,x,y+4,'#fff','bold 11px system-ui,sans-serif');}
-const AT_BOARD={x:12.2*AT_TS,y:1.15*AT_TS,w:21.6*AT_TS,h:3.15*AT_TS};
+  if(s>.6)atTxt(ch,x,y+4,'#fff','bold 12px system-ui,sans-serif');}
+const AT_BOARD={x:9.2*AT_TS,y:1.15*AT_TS,w:21.6*AT_TS,h:3.15*AT_TS};
 // dot : pastille d'activité (live : action de moins de 30 s, clignote ; calm ; stale : jaune). Par défaut au-dessus du point
 // (x, y : la pointe), et une bulle sous le grand tableau descend juste sous son cadre, plus serrée. o (1er) : dir 'down' sous le
 // point, 'right' / 'left' à côté de lui ; x0..x1 : la place où elle doit tenir. Rend sa boîte {x, y, w, h}.
 function atBubble(x,y,s,col,dot,o){
-  const B=AT_BOARD, by1=B.y+B.h+6, dir=o&&o.dir||'up', tight=dir==='up'&&y-19<by1&&x>B.x-90&&x<B.x+B.w+90, h=tight?17:19, f=tight?'bold 11px system-ui,sans-serif':'bold 12px system-ui,sans-serif';
+  const B=AT_BOARD, by1=B.y+B.h+6, dir=o&&o.dir||'up', tight=dir==='up'&&y-19<by1&&x>B.x-90&&x<B.x+B.w+90, h=tight?18:19, f='bold 12px system-ui,sans-serif';
   if(tight)y=by1+h;
   ctx.font=f;const d=dot?14:0, w=ctx.measureText(s).width+12+d, st=dot==='stale', ink=st?'#7a5200':col||'#1c1f26', bg=st?'#fff1c9':'#ffffff';
   const x0=Math.max(2,o&&o.x0!=null?o.x0:2), x1=Math.min(AT_W-2,o&&o.x1!=null?o.x1:AT_W-2), fit=c=>Math.max(x0+w/2,Math.min(x1-w/2,c));
@@ -584,13 +584,13 @@ function atBeacon(x,y,now){const a=now/250;R(ctx,x-6,y-4,12,8,'#5a3a10');ctx.fil
   ctx.fillStyle='rgba(255,154,26,.25)';ctx.beginPath();ctx.moveTo(x,y-6);ctx.arc(x,y-6,60,a,a+.6);ctx.fill();ctx.beginPath();ctx.moveTo(x,y-6);ctx.arc(x,y-6,60,a+Math.PI,a+Math.PI+.6);ctx.fill();}
 // l'étage est un chantier : bande jaune et noire au seuil de la sortie, panneau « casque obligatoire », deux plots
 function atChantier(T){
-  const x0=45.55*T, y0=AT_Y1+2, y1=17*T-2;
+  const x0=AT_W-.45*T, y0=AT_Y1+2, y1=17*T-2;
   for(let y=y0,k=0;y<y1;y+=8,k++)R(ctx,x0,y,8,8,k%2?'#1c1c1c':'#f2c200');
-  const sx=43.4*T, sy=15.75*T;R(ctx,sx-1,sy+18,2,10,'#6b6f7a');
+  const sx=AT_W-2.6*T, sy=15.75*T;R(ctx,sx-1,sy+18,2,10,'#6b6f7a');
   R(ctx,sx-17,sy-2,34,22,'#1c4fa0');R(ctx,sx-16,sy-1,32,20,'#2f6fd6');
   ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(sx,sy+9,6,Math.PI,0);ctx.fill();R(ctx,sx-8,sy+9,16,2,'#ffffff');
   atTxt('CASQUE',sx,sy+17,'#ffffff','bold 5px ui-monospace,Menlo,monospace');
-  const py=16.75*T;for(const cx of [40.7*T,41.5*T]){ctx.fillStyle='#ff7a1a';ctx.beginPath();ctx.moveTo(cx-5,py);ctx.lineTo(cx,py-14);ctx.lineTo(cx+5,py);ctx.fill();
+  const py=16.75*T;for(const cx of [AT_W-5.3*T,AT_W-4.5*T]){ctx.fillStyle='#ff7a1a';ctx.beginPath();ctx.moveTo(cx-5,py);ctx.lineTo(cx,py-14);ctx.lineTo(cx+5,py);ctx.fill();
     R(ctx,cx-3,py-8,6,2,'#ffffff');R(ctx,cx-7,py,14,2,'#c85a10');}
 }
 // tenue de chantier, dessinée par-dessus le personnage (drawChar, 41-people.js) : casque (jaune, blanc pour la sécurité)
@@ -656,11 +656,11 @@ function atRoom(r,i,now,dt){
   AT_DESKS.forEach((p,idx)=>{
     const sp=atSpot(g,p.k), s=atState(r,p), back=sp.side==='B', f=sp.side==='L'?1:-1, feet=sp.feet;
     if(p.gate){const y=g.gateY;R(ctx,g.lx-4,y-4,4,10,'#8a8478');R(ctx,g.lx+H,y-4,4,10,'#8a8478');for(let k=0;k<4;k++)R(ctx,g.lx-4+k*(H+8)/4,y-2,(H+8)/4,5,k%2?'#1c1c1c':'#f2c230');
-      late.push(()=>{const t=r&&r.gate?'✋ Ton plan':'✋', f='bold 11px system-ui,sans-serif';ctx.font=f; // dans le U, contre la barrière, sous le nom du bureau
+      late.push(()=>{const t=r&&r.gate?'✋ Ton plan':'✋', f='bold 12px system-ui,sans-serif';ctx.font=f; // dans le U, contre la barrière, sous le nom du bureau
         atPill(t,g.inX0+(ctx.measureText(t).width+10)/2,y+3,r&&r.gate?WAIT_BG:'#e9dcb8',r&&r.gate?WAIT_INK:'#6a5a30',f);});return;}
     const dx=back?sp.x:sp.x+f*26, desk=(on,col)=>back?atDesk(sp.x,AT_DESK1,on,col):atDeskSide(dx,feet,on,col,f), labelY=feet-50;
     const col={run:'#2f6fd6',bloq:'#a8323a',err:'#a8323a',ok:'#2f7a45',avis:'#9a6a10',skip:'#d8d2c4',rep:'#4f7a64'}[s]||'#f4efe4';
-    late.push(()=>atPill(atPosteLbl(p,['run','bloq','err','avis'].includes(s)),sp.x,labelY,col,['run','bloq','err','ok','avis','rep'].includes(s)?'#fff':s==='skip'?'#8a8478':'#3a3530','bold 11px system-ui,sans-serif'));
+    late.push(()=>atPill(atPosteLbl(p,['run','bloq','err','avis'].includes(s)),sp.x,labelY,col,['run','bloq','err','ok','avis','rep'].includes(s)?'#fff':s==='skip'?'#8a8478':'#3a3530','bold 12px system-ui,sans-serif'));
     if(!atAtDesk(i,p.k)){desk(false);return;} // personne (bureau vide, ou il monte encore) : le bureau seul
     const a=atWorker(i*20+idx,sp.x,feet,back?'down':sp.side==='L'?'right':'left',false,p.n);if(!a)return;
     a._at={i,k:p.k,s};
@@ -825,7 +825,7 @@ function atBoss(slots,now,dt,people){
 }
 // l'entrepôt : une zone de palettes au sol, au bout gauche du couloir, balisée par une bande jaune et noire, sans murs ; une
 // palette par ticket en attente (son étiquette au-dessus), puis celles en panne en rouge ; le panneau au-dessus, au milieu
-const AT_ZONE={x0:.45*AT_TS,x1:12.6*AT_TS,y0:14.25*AT_TS,y1:16.85*AT_TS}, AT_PAL_N=4;
+const AT_ZONE={x0:.45*AT_TS,x1:12.2*AT_TS,y0:14.25*AT_TS,y1:16.85*AT_TS}, AT_PAL_N=4;
 // le colis d'un ticket lancé : Ryan l'a sorti par l'entrée du RDC, il apparaît au bout de la zone, à côté des palettes
 const AT_POP={x:AT_ZONE.x1-30,y:AT_ZONE.y1-34};
 const atPalX=k=>AT_ZONE.x0+12+(k+.5)*(AT_ZONE.x1-AT_ZONE.x0-72)/AT_PAL_N;
@@ -853,15 +853,15 @@ function atCorridor(now){
   const T=AT_TS;
   // le café : une niche vitrée, la machine dedans
   R(ctx,AT_CAFE.x-1.1*T,14.3*T,2.2*T,4,'#bfe0ee');R(ctx,AT_CAFE.x-1.1*T,14.3*T,4,2.55*T,'#bfe0ee');R(ctx,AT_CAFE.x+1.1*T-4,14.3*T,4,2.55*T,'#bfe0ee');
-  atCoffee(AT_CAFE.x,AT_CAFE.y);atTxt('CAFÉ',AT_CAFE.x,14.3*T+18,'#5a4636','bold 11px ui-monospace,Menlo,monospace');
+  atCoffee(AT_CAFE.x,AT_CAFE.y);atTxt('CAFÉ',AT_CAFE.x,14.3*T+18,'#5a4636','bold 12px ui-monospace,Menlo,monospace');
   atSofa(AT_SOFA.x,AT_SOFA.y);R(ctx,AT_SOFA.x-1.9*T,16.55*T,3.8*T,5,'#bfe0ee');
-  atDoor(46*T,AT_Y1+8);const {n,rel}=atDeliveredAt();
-  {const s='SORTIE'+(n?' · 📦 '+(rel?relTxt(n):n)+' aujourd\'hui':''), f='bold 11px ui-monospace,Menlo,monospace';ctx.font=f; // calée à droite, contre la porte
-   atPill(s,45.4*T-(ctx.measureText(s).width+10)/2,15*T,n?'#2f7a45':'#5a4636','#fff',f);}
-  atPlant(19.8*T,16.6*T);atPlant(33.3*T,16.6*T);
+  atDoor(AT_W,AT_Y1+8);const {n,rel}=atDeliveredAt();
+  {const s='SORTIE'+(n?' · 📦 '+(rel?relTxt(n):n)+' aujourd\'hui':''), f='bold 12px ui-monospace,Menlo,monospace';ctx.font=f; // calée à droite, contre la porte
+   atPill(s,AT_W-.6*T-(ctx.measureText(s).width+10)/2,15*T,n?'#2f7a45':'#5a4636','#fff',f);}
+  atPlant(19.9*T,16.6*T);atPlant(31.6*T,16.6*T);
   atChantier(T);
-  if(themeIs('noel')){xmasTreeAt(37*T,16.7*T,now);}
-  if(themeIs('nouvel-an')||themeIs('saint-valentin'))[[19.8*T,14.9*T],[36*T,14.9*T]].forEach(([x,y],k)=>balloon(themeIs('nouvel-an')?'🎈':'💗',x,y,now,k));
+  if(themeIs('noel')){xmasTreeAt(33*T,16.7*T,now);}
+  if(themeIs('nouvel-an')||themeIs('saint-valentin'))[[19.9*T,14.9*T],[33*T,14.9*T]].forEach(([x,y],k)=>balloon(themeIs('nouvel-an')?'🎈':'💗',x,y,now,k));
 }
 function xmasTreeAt(x,y,now){ctx.fillStyle='#2f7a3a';for(let k=0;k<3;k++){ctx.beginPath();ctx.moveTo(x,y-46+k*12);ctx.lineTo(x-14-k*4,y-22+k*10);ctx.lineTo(x+14+k*4,y-22+k*10);ctx.fill();}
   R(ctx,x-3,y-4,6,6,'#6b4a2e');E('⭐',x,y-48,10);for(let k=0;k<6;k++){ctx.fillStyle=['#ff4a4a','#ffd84a','#4ac8ff'][(k+Math.floor(now/500))%3];ctx.beginPath();ctx.arc(x-10+((k*7)%20),y-34+k*5,2,0,7);ctx.fill();}}
@@ -1009,16 +1009,16 @@ function atGalleryScenes(){
 // Comme au RDC : le ciel des fenêtres suit le soleil à Paris, le voile de nuit s'ouvre seulement là où ça travaille.
 // Comme au RDC aussi, le boss et les agents restent le soir et le week-end (la chaîne tourne à toute heure) : seul
 // Bernard, un humain, rentre chez lui hors des heures de bureau.
-const AT_WINDOWS=[1,3.5,6,8.5,35.5,38,40.5,43]; // en cases : de part et d'autre du grand tableau
+const AT_WINDOWS=[1,3.5,6,32.5,35,37.5]; // en cases : de part et d'autre du grand tableau
 // le tableau noir « Runs du jour », dans le couloir entre l'entrepôt et le bureau du boss, sous la ligne de marche (hors de
 // tout chemin), purement indicatif comme ceux des autres étages : rien au clic, l'historique est dans « Chaîne · bilan ».
 // Compté par ticket (dataset atelier, jour), les reprises à part ; en rejeu, à l'heure du curseur (atJourAt).
-const AT_JOUR={x:13.6*AT_TS,y:14.4*AT_TS,w:5.5*AT_TS,h:1.62*AT_TS};
+const AT_JOUR={x:12.9*AT_TS,y:14.4*AT_TS,w:6.5*AT_TS,h:1.62*AT_TS};
 function atJourBoard(){
-  const {x:bx,y:by,w:bw,h:bh}=AT_JOUR, d=(ATELIER&&ATELIER.jour)||{}, f='11px ui-monospace,Menlo,monospace', ink='#e8e2d0';
+  const {x:bx,y:by,w:bw,h:bh}=AT_JOUR, d=(ATELIER&&ATELIER.jour)||{}, f='12px ui-monospace,Menlo,monospace', ink='#e8e2d0';
   const j=boardLive(ATELIER)?{...Object.fromEntries(['tickets','cours','sortis','pannes','reprises','tok'].map(k=>[k,+d[k]||0])),part:true}:atJourAt(T), v=(s,rel)=>rel?[relTxt(s),REL_INK]:[s,ink];
   R(ctx,bx-4,by-3,bw+8,bh+6,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+6,by+bh-4,bw-12,3,'#a37650');
-  atTxt('RUNS DU JOUR',bx+8,by+13,'#f4efe4','bold 11px ui-monospace,Menlo,monospace','left');
+  atTxt('RUNS DU JOUR',bx+8,by+13,'#f4efe4','bold 12px ui-monospace,Menlo,monospace','left');
   let rp=j.reprises?'↻ '+plural(j.reprises,'reprise','reprises'):'';ctx.font=f;if(ctx.measureText(rp).width>bw-110)rp='↻ '+j.reprises+' repr.'; // 2 chiffres : abrégé
   atTxt(rp&&j.rel?relTxt(rp):rp,bx+bw-8,by+13,j.rel?REL_INK:'#c9c2ae',f,'right');
   R(ctx,bx+8,by+17,bw-16,1,'rgba(244,239,228,.4)');
@@ -1106,8 +1106,8 @@ function atNight(slots,now){
   for(const h of AT_HITS)if(h.kind==='agent'||h.kind==='bernard'||h.kind==='cleaner'||h.kind==='pompier')spots.push({x:h.x+14,y:h.y+30,r:42,a:.95});
   for(const q of AT_LIT)spots.push({x:q.x,y:q.y-26,r:42,a:.95}); // comme au RDC (42-light.js) : le boss, et ceux qui marchent, dans leur lumière
   spots.push({x:AT_CHAIR.x,y:AT_CHAIR.y-14,r:3.2*AT_TS,a:.9}, // la lampe du bureau du boss, toujours allumée
-    {x:23*AT_TS,y:2.6*AT_TS,r:6*AT_TS,a:.7}, // le grand tableau
-    {x:46*AT_TS-10,y:AT_Y1+40,r:40,a:.5},{x:AT_CAFE.x,y:AT_CAFE.y-20,r:30,a:.5}); // la sortie, la machine à café
+    {x:AT_W/2,y:2.6*AT_TS,r:6*AT_TS,a:.7}, // le grand tableau
+    {x:AT_W-10,y:AT_Y1+40,r:40,a:.5},{x:AT_CAFE.x,y:AT_CAFE.y-20,r:30,a:.5}); // la sortie, la machine à café
   floorNight(AT_NIGHT,{rects,spots,track:AT_LIT},now);
 }
 // ---------- l'image ----------

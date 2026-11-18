@@ -2,8 +2,10 @@
 // Une chambre de geek sous le toit, au-dessus du dernier étage : alphabet de Stranger Things, présentoir Poudlard et Hyrule,
 // carte de la Terre du Milieu, lit Pac-Man, table de jeu de rôle, borne d'arcade, l'Anneau en lampe de chevet. Caché tant que
 // le digicode du RDC n'a pas été trouvé (bureau:combles, dans ce navigateur) : pas d'onglet, pas de tuile dans L'immeuble,
-// pas de mode TV. Dessiné au repère de la maquette (981 × 576), agrandi ×1,5 à la taille des étages (AT_W × AT_H).
-const CB_FLOOR=4, CB_S=1.5, CB_VW=AT_W/CB_S, CB_VH=AT_H/CB_S, CB_WALL=128;
+// pas de mode TV. Dessiné au repère de la maquette (981 × 576), agrandi à la largeur des étages (AT_W, ×1,3 à 40 cases) ;
+// la toile fait la hauteur qu'il faut pour la maquette entière (24 rangées).
+const CB_FLOOR=4, CB_S=AT_W/981, CB_WALL=128;AT_ROWS[CB_FLOOR]=Math.ceil(576*CB_S/AT_TS);
+const CB_VW=AT_W/CB_S, CB_VH=AT_ROWS[CB_FLOOR]*AT_TS/CB_S;
 let CB_HITS=[], CB_GLOW=[], CB_PICK=null;
 // dans Kronn (iframe sans allow-same-origin), localStorage lève une erreur : le déblocage vit alors en mémoire, jusqu'au
 // rechargement de la page ; hors de Kronn (aperçu, captures), il reste dans le navigateur
@@ -137,7 +139,7 @@ function cbVif(now,night){
 // Des heures de bureau à 23 h, toute l'équipe présente ce jour-là est aux Combles (les absents de la journée ou de
 // l'après-midi restent chez eux), chacun à une place tirée pour la date ; toutes les CB_MOVE, quelqu'un change de place, en
 // contournant la table par les allées. Tout se déduit de T : le rejeu et les captures montrent la même soirée.
-const CB_EVE_END=23, CB_MOVE=150e3, CB_SPEED=70; // vitesse en px de la maquette par seconde (les personnages y sont ×1,5)
+const CB_EVE_END=23, CB_MOVE=150e3, CB_SPEED=70; // vitesse en px de la maquette par seconde (les personnages y sont ×1,3)
 const CB_SPOTS=[[420,430,'up'],[490,438,'up'],[560,430,'up'],[628,342,'left'],[864,392,'up'],[352,342,'right'],[300,172,'up'],[780,176,'up'],
   [470,222,'down'],[214,470,'up'],[690,470,'up'],[560,222,'down'],[380,222,'down'],[960,470,'left']];
 const CB_LANE={top:250,bottom:420,left:360,right:620};

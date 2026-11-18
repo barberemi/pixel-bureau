@@ -21,14 +21,14 @@ const RD_HELP={bar:()=>'<span>Tickets :</span>'+legSwatches(RD_TK)+'<span>Verdic
     '<p><b>L\'entrepôt</b>, en haut du couloir : une palette par PR qui attend sa relecture, dans l\'ordre du cron ; en rouge, une revue en panne. <b>Corbeille « Postées »</b> : les avis du passage. <b>Trois bureaux</b> de revue, le premier pour la file. <b>Salle d\'attente</b>, en bas : une chaise par auteur.</p>',
   moments:'<p><b>✋ Le tampon</b> : ici, ta décision, c\'est le tampon. Les tickets relus l\'attendent un par un.</p><p><b>✂ Le découpage</b> : une intention qui touche plusieurs projets devient plusieurs tickets, un brin de fil chacun.</p>'+
     '<p><b>📥 La fournée</b> : à chaque passage du cron des revues, Bernard pose une palette par PR dans l\'entrepôt.</p>'};
-// 46 × 20 cases : une rangée de pièces de part et d'autre du couloir, sans second niveau (AT_ROWS, 68-atelier.js) ; le
+// 40 × 20 cases, comme le RDC : une rangée de pièces de part et d'autre du couloir, sans second niveau (AT_ROWS, 68-atelier.js) ; le
 // couloir, plus large, garde l'entrepôt de la revue en haut (68-revue.js) ; RD_HY : le palier, devant les deux portes
 const RD_ROWS=20;AT_ROWS[2]=RD_ROWS;
-const RD_X1=18.5, RD_VX=24, RD_HY=14.25, RD_SH0=['dm/site','dm/mobile','dm/api','dm/outils'];
-const RD_WINDOWS=[7.5,10.5,13.5,16.5,25,28.5,32,35.5,39,42.5]; // en cases : à droite du nom de l'étage, comme au RDC
-const RD_DESK={x:15.6*AT_TS,y:17.7*AT_TS}, RD_JIRA={x:17.6*AT_TS,y:19.9*AT_TS}, RD_CORK={x:1.15*AT_TS,y:8*AT_TS};
+const RD_X1=15.5, RD_VX=21, RD_HY=14.25, RD_SH0=['dm/site','dm/mobile','dm/api','dm/outils'];
+const RD_WINDOWS=[7,10,13,17.25,22.5,26,29.5,33,36.5]; // en cases : à droite du nom de l'étage, comme au RDC
+const RD_DESK={x:13.6*AT_TS,y:17.7*AT_TS}, RD_JIRA={x:14.6*AT_TS,y:19.9*AT_TS}, RD_CORK={x:1.15*AT_TS,y:8*AT_TS};
 // les cartes des tickets (le bas du fil rouge) ; les bureaux de la revue, sur une seule rangée (le premier : la file du cron)
-const RD_CARD_Y=14.5*AT_TS, RV_DESKS=3, rvDeskX=k=>(29+k*6.5)*AT_TS, RV_FEET=9.2*AT_TS;
+const RD_CARD_Y=14.5*AT_TS, RV_DESKS=3, rvDeskX=k=>(26.2+k*5.6)*AT_TS, RV_FEET=9.2*AT_TS;
 let REDACTION=null, RDSEL=null, RD_HITS=[], RD_LIT=[], RD_MEM={last:0};
 let RDTK=null; // le ticket ouvert dans le panneau : {run, k} (clic sur sa carte à la table ou sur sa ligne du panneau)
 // la fiche ouverte au clic sur le plan : intention, poste, boîte Jira ; à la revue : PR lue, auteur, entrepôt, corbeille ;
@@ -125,7 +125,7 @@ const rvSteps=r=>(r.steps||[]).filter(s=>RV_STEP[s.n]); // les postes et l'avis 
 // pour que trois bureaux côte à côte ne se chevauchent pas
 function rvStepsRow(r,cx,y){
   const steps=rvSteps(r), f='bold 12px system-ui,sans-serif';ctx.font=f;
-  const ls=steps.map(rvStepLbl), ws=ls.map(l=>ctx.measureText(l).width+(l.includes(' ')?10:6)), tot=ws.reduce((a,b)=>a+b,0)+Math.max(0,steps.length-1)*2;let x=cx-tot/2;
+  const ls=steps.map(rvStepLbl), ws=ls.map(l=>ctx.measureText(l).width+(l.includes(' ')?10:6)), tot=ws.reduce((a,b)=>a+b,0)+Math.max(0,steps.length-1)*2;let x=Math.max(4,Math.min(AT_W-4-tot,cx-tot/2)); // dans le plan, comme atPill
   steps.forEach((s,j)=>{const c=s.s==='Success'?'#2f7a45':s.s==='Running'?'#2f6fd6':s.s==='Failed'?'#a8323a':'#e8e2d0';
     R(ctx,x,y-13,ws[j],18,c);atTxt(ls[j],x+ws[j]/2,y,c==='#e8e2d0'?'#6a6050':'#fff',f);x+=ws[j]+2;});
 }
@@ -138,7 +138,7 @@ const rdFait=t=>t&&t.fait&&faNear(REDACTION)?t.fait:null;
 const RD_T=AT_TS;
 function rdBackground(){
   const T=RD_T, H=RD_ROWS, d0=RD_HY-1.25, d1=RD_HY+1.25, c=document.createElement('canvas');c.width=AT_W;c.height=H*T;const g=c.getContext('2d');
-  for(let y=0;y<H;y++)for(let x=0;x<46;x++)drawFloor(g,x,y,x<RD_X1?'wood':x<RD_VX?'tiles':'carpet');
+  for(let y=0;y<H;y++)for(let x=0;x<AT_W/T;x++)drawFloor(g,x,y,x<RD_X1?'wood':x<RD_VX?'tiles':'carpet');
   R(g,0,0,AT_W,T,'#4b4a52');R(g,0,T,AT_W,8,'#efe9dc');R(g,0,T+8,AT_W,24,'#d9d2c3');R(g,0,T+28,AT_W,4,'#a99f8c');
   for(const x of [RD_X1,RD_VX]){R(g,x*T-3,2*T,6,(d0-2)*T,'#7d776c');R(g,x*T-3,d1*T,6,(H-d1)*T,'#7d776c');}
   for(const x of [RD_X1,RD_VX])woodDoor(g,x*T-6,d0*T,12,2.5*T,2,true); // les portes de la rédaction et de la revue, sur le palier
@@ -180,15 +180,15 @@ function rdStrand(a,b,on){ctx.save();ctx.beginPath();ctx.moveTo(a.x,a.y);if(on){
 // avant qu'elle démarre, et porte chaque ticket tamponné à la boîte Jira.
 let RD_LV=null;
 const rdLv0=()=>Object.assign(lvMem(),{wan:{},sleep:false,seen:new Set(),tk:{},pend:{},gate:new Set(),jobs:[],job:null,want:{},run:null});
-const RDP=(x,y)=>({x:x*RD_T,y:y*RD_T}), RD_KS={recherche:60,redaction:61,critique:62}, RD_COFFEE=RDP(17.6,4.4);
+const RDP=(x,y)=>({x:x*RD_T,y:y*RD_T}), RD_KS={recherche:60,redaction:61,critique:62}, RD_COFFEE=RDP(14.9,4.4);
 // le palier, la porte de la rédaction, puis l'allée le long du mur du couloir ; RD_AU, RD_AL : l'allée du haut (au-dessus de
 // la table) et celle du bas (sous la critique, au-dessus des tickets épinglés)
-const RD_H=RDP((RD_X1+RD_VX)/2,RD_HY), RD_IN=[RD_H,RDP(RD_X1,RD_HY),RDP(17.6,RD_HY)], RD_AU=7.6, RD_AL=13.2;
+const RD_H=RDP((RD_X1+RD_VX)/2,RD_HY), RD_IN=[RD_H,RDP(RD_X1,RD_HY),RDP(14.6,RD_HY)], RD_AU=7.6, RD_AL=13.2;
 const rdEntry=()=>[RVF.stairLow,RVF.stair,RD_H]; // 68-revue.js : de derrière la porte de l'escalier au palier
-function rdGeo(t){const T=RD_T, shelves=rdShelves(t), sw=3.1*T, sh0=(RD_X1*T-(4*sw+84))/2, lit=new Set((t&&t.composants)||[]), shi=t?Math.max(0,shelves.findIndex(n=>lit.has(n))):1, tx=8.8*T, ty=10.6*T;
+function rdGeo(t){const T=RD_T, shelves=rdShelves(t), sw=2.8*T, sh0=(RD_X1*T-28-(4*sw+84))/2, lit=new Set((t&&t.composants)||[]), shi=t?Math.max(0,shelves.findIndex(n=>lit.has(n))):1, tx=7.6*T, ty=10.6*T;
   return {T,shelves,sw,sh0,lit,shi,tx,ty,rech:{x:sh0+shi*sw+42,y:6.7*T},red:{x:tx,y:ty-1.2*T},cri:{x:tx,y:ty+1.75*T}};}
 // les places : par l'allée du haut (au-dessus de la table) ou celle du bas (au-dessus des tickets épinglés)
-function rdSpots(G){const T=RD_T, U=[...RD_IN,RDP(17.6,RD_AU)], L=[...RD_IN,RDP(17.6,RD_AL)], sofa=RD_SOFA;
+function rdSpots(G){const T=RD_T, U=[...RD_IN,RDP(14.6,RD_AU)], L=[...RD_IN,RDP(14.6,RD_AL)], sofa=RD_SOFA;
   const seat=j=>{const x=sofa.x+(j?22:-22);return {id:'sofa'+j,path:[...L,RDP(1.2,RD_AL),RDP(1.2,17.2),{x,y:17.2*T},{x,y:sofa.y}],dir:'down',sofa:true,front:()=>atSofaFront(sofa.x,sofa.y)};};
   return {recherche:{id:'p:rech',path:[...U,{x:G.rech.x,y:RD_AU*T},G.rech],dir:'up',seat:true},redaction:{id:'p:red',path:[...U,{x:G.red.x,y:RD_AU*T},G.red],dir:'down',seat:true},
     critique:{id:'p:cri',path:[...L,{x:G.cri.x,y:RD_AL*T},G.cri],dir:'up',seat:true},
@@ -209,7 +209,7 @@ function rdWant(t,G,now,rnd){
 }
 // le boss : une intention arrive, il va l'épingler au liège ; un ticket tamponné, il le porte à Jira. Un trajet à la fois.
 // à Jira : il s'arrête au-dessus de la boîte, tournée vers elle (en bas du plan)
-const RD_SOFA=RDP(3.4,19), RD_UP=RDP(15.6,16.5), RD_TRIP={intro:[RD_DESK,RD_UP,RDP(17.2,16.5),RDP(17.2,RD_AL),RDP(1.15,RD_AL),RDP(1.15,9.2)],jira:[RD_DESK,RD_UP,RDP(17.6,16.5),RDP(17.6,18.6)]};
+const RD_SOFA=RDP(2.5,19), RD_UP=RDP(13.6,16.5), RD_TRIP={intro:[RD_DESK,RD_UP,RDP(14.4,16.5),RDP(14.4,RD_AL),RDP(1.15,RD_AL),RDP(1.15,9.2)],jira:[RD_DESK,RD_UP,RDP(14.6,16.5),RDP(14.6,18.6)]};
 function rdJobs(t,now,dt){
   const M=RD_LV, boost=walkBoost();
   if(t&&!M.seen.has(t.run)){M.seen.add(t.run);if(!M.fresh&&!REDUCED_MOTION){M.gate.add(t.run);M.jobs.push({kind:'intro',run:t.run});}}
@@ -242,19 +242,20 @@ function rdRoom(now,people){
   rdLate(people,()=>{R(ctx,tx-4.4*T,ty-.9*T,8.8*T,1.8*T,'#7a5a3c');R(ctx,tx-4.4*T,ty-.9*T,8.8*T,6,'#94704c');R(ctx,tx-4.2*T,ty+.9*T,6,10,'#4a3424');R(ctx,tx+4.2*T-6,ty+.9*T,6,10,'#4a3424');
     tks.slice(0,4).forEach((x,k)=>{const sx=tx+(-2.6+k*1.3)*T;R(ctx,sx-12,ty-15,24,30,'#fbfbf6');R(ctx,sx-12,ty-15,24,4,RD_TK[x.etat]?RD_TK[x.etat][0]:'#2f6fd6');for(let l=0;l<4;l++)R(ctx,sx-8,ty-6+l*5,16,2,'#b8b2a4');atPill('T'+(k+1),sx+12,ty-14,'#0b2a4a','#fff','bold 12px ui-monospace,Menlo,monospace');});
     if(tks.length>4)atPill('+'+(tks.length-4),tx+2.6*T,ty,'#0b2a4a','#fff','bold 12px ui-monospace,Menlo,monospace');
-    if(t&&t.tour>1)atPill('↺ critique → rédaction · tour '+t.tour+'/3',tx+5.4*T,ty+1.4*T,'#0b2a4a','#fff','bold 12px system-ui,sans-serif');},ty-.6*T);
+    if(t&&t.tour>1){const s='↺ critique → rédaction · tour '+t.tour+'/3';ctx.font='bold 12px system-ui,sans-serif';
+      atPill(s,Math.min(tx+5.4*T,RD_X1*T-10-(ctx.measureText(s).width+10)/2),ty+1.4*T,'#0b2a4a','#fff','bold 12px system-ui,sans-serif');}},ty-.6*T);
   atHitRd('table',tx-4.4*T,ty-2.2*T,8.8*T,5*T,{});
   // les plaques des postes (leur nom, toujours au même endroit, même quand l'agent se promène) : le fil rouge y est épinglé
   const plq={recherche:{x:rech.x,y:rech.y+16},redaction:{x:red.x+80,y:red.y-22},critique:{x:cri.x,y:cri.y+16}}, pin={};
   ctx.font='bold 12px system-ui,sans-serif';for(const k in plq)pin[k]={x:plq[k].x-(ctx.measureText(RD_LBL[k]).width+10)/2-4,y:plq[k].y-2};
   // le fil rouge : le liège, la recherche, la rédaction, puis un brin par ticket ; tous finissent au tampon, puis à Jira
   const desk=RD_DESK, jira=RD_JIRA, p0={x:S.x+20,y:S.y-14}, p1=pin.recherche, p2=pin.redaction;
-  const cards=tks.slice(0,4).map((x,k,l)=>({x:(2.2+k*(14.6/Math.max(1,l.length)))*T+(14.6/Math.max(1,l.length))*T/2-.6*T,y:RD_CARD_Y}));
+  const cards=tks.slice(0,4).map((x,k,l)=>({x:(2.2+k*(12.4/Math.max(1,l.length)))*T+(12.4/Math.max(1,l.length))*T/2-.6*T,y:RD_CARD_Y}));
   if(t){rdStrand(p0,p1,true);rdStrand(p1,p2,p!=='recherche');
     cards.forEach((c,k)=>{rdStrand(p2,{x:c.x,y:c.y-24},tks[k].etat!=='wait'||p==='valider');rdStrand({x:c.x,y:c.y+14},{x:desk.x,y:desk.y-30},tks[k].etat==='ok');});
     rdStrand({x:desk.x,y:desk.y-30},{x:jira.x,y:jira.y-34},tks.some(x=>x.etat==='ok'));
     rdLate(people,()=>{rdPin(p0,'#d0392b');rdPin(p1,'#d0392b');if(p!=='recherche')rdPin(p2,'#d0392b');
-      const cw=Math.min(124,14.6/Math.max(1,cards.length)*T-6); // la carte : aussi large que sa place le permet
+      const cw=Math.min(124,12.4/Math.max(1,cards.length)*T-6); // la carte : aussi large que sa place le permet
       cards.forEach((c,k)=>{const x=tks[k], col=(RD_TK[x.etat]||RD_TK.wait);R(ctx,c.x-cw/2,c.y-24,cw,38,x.etat==='wait'&&p==='critique'&&k===0?'#9fd4ff':col[0]);rdPin({x:c.x,y:c.y-24},'#d0392b');
         atTxt(rdFit('T'+(k+1)+' · '+(x.composant||'?'),cw-6,'bold 12px ui-monospace,Menlo,monospace'),c.x,c.y-8,'#1c1f26','bold 12px ui-monospace,Menlo,monospace');atTxt(rdFit(x.summary||'',cw-6,'12px system-ui'),c.x,c.y+5,'#3a3530','12px system-ui');
         atHitRd('ticket',c.x-cw/2,c.y-24,cw,38,{k});});
@@ -282,7 +283,7 @@ function rdRoom(now,people){
 // le tableau noir des tickets du jour, jumeau de REVUES DU JOUR, sur un chevalet entre les tickets épinglés et le tampon
 // (rien au clic : le détail est dans la page « Rédaction · bilan ») ; créés et jetons depuis minuit : dataset redaction ;
 // en rejeu, les tickets créés, les intentions et le tampon à l'heure du curseur, les jetons du relevé (⏱, non datés)
-const RD_BOARD={x:5.9*RD_T,y:15.3*RD_T,w:7.3*RD_T,h:2.75*RD_T};
+const RD_BOARD={x:4.4*RD_T,y:15.3*RD_T,w:7.15*RD_T,h:2.75*RD_T};
 function rdTicketsDuJour(){
   const d=REDACTION||{};
   return {crees:d.crees||0,tampon:rdTables().reduce((a,t)=>a+(t.tickets||[]).filter(x=>x.etat==='gate').length,0),cours:rdTables().length,tok:d.tok_jour||0};
@@ -338,7 +339,7 @@ function rdRevue(now,people){
   const file=rvfOn(), kids=file?rvfKids():new Set(), F=file?rvfDraw(now,people):null, wait=F&&F.st?F.st.queue.length:0;
   const T=RD_T, l=rvActive().filter(r=>!kids.has(r.run)), done=rvRuns().filter(r=>r.status==='Success'&&r._s>=DAY0).length;
   atTxt('👀 REVUE DES PR',(RD_VX+.6)*T,2.7*T,'#5a4636','bold 12px ui-monospace,Menlo,monospace','left');
-  const bx=30*T, by=2.1*T, bw=11*T, bh=3.4*T;R(ctx,bx-6,by-6,bw+12,bh+12,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+4,by+bh-6,bw-8,4,'#a37650');
+  const bx=27.5*T, by=2.1*T, bw=10*T, bh=3.4*T;R(ctx,bx-6,by-6,bw+12,bh+12,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+4,by+bh-6,bw-8,4,'#a37650');
   atTxt('REVUES DU JOUR',bx+bw/2,by+18,'#f4efe4','bold 13px ui-monospace,Menlo,monospace');R(ctx,bx+16,by+24,bw-32,1,'rgba(244,239,228,.4)');
   // les jetons : le total de chaque run au relevé ; en rejeu, non datés, en ⏱
   const tk=Math.round(rvRuns().filter(r=>r._s>=DAY0).reduce((a,r)=>a+(r.tok||0),0)/1e3)+' k jetons', rel=!boardLive(REDACTION);
@@ -347,8 +348,9 @@ function rdRevue(now,people){
     .forEach(([c,t,i],k)=>{R(ctx,bx+16,by+36+k*18,8,8,c);atTxt(t,bx+30,by+44+k*18,i||'#e8e2d0','12px ui-monospace,Menlo,monospace','left');});
   const boss=chars.find(c=>c.boss);
   if(file)rvfDesk(people,now,F);
-  // une seule rangée de trois bureaux : le premier pour la file du cron, les autres pour les revues à la demande
-  for(let k=file?1:0;k<RV_DESKS;k++){const r=l[k-(file?1:0)], cx=rvDeskX(k), feet=RV_FEET, rf=feet+2.3*T;
+  // une seule rangée de trois bureaux : le premier pour la file du cron, les autres pour les revues à la demande ; sur 40 cases,
+  // l'étiquette et les postes du bureau du milieu descendent d'un cran (dy) pour ne pas chevaucher ceux des voisins
+  for(let k=file?1:0;k<RV_DESKS;k++){const r=l[k-(file?1:0)], cx=rvDeskX(k), feet=RV_FEET, rf=feet+2.3*T, dy=k===1?40:0;
     if(!r){atDesk(cx,feet-6,false);ctx.fillStyle='rgba(30,26,22,.22)';ctx.fillRect(cx-90,feet-90,180,150);rdLate(people,()=>atPill('bureau libre',cx,feet+40,'#f4efe4','#6a6050','bold 12px system-ui,sans-serif'),feet);continue;}
     const v=r.vars||{}, who=v['current_task.author'], au=who&&typeof ghChar==='function'?ghChar(who):null, mine=au&&boss&&au.key===boss.key;
     // le relecteur et l'auteur arrivent par la porte de l'escalier, et repartent la revue finie (67-vie.js)
@@ -359,9 +361,9 @@ function rdRevue(now,people){
     if(lvSeated(M,ri))rdAgent(people,100+k,cx,feet,'run',{hat:'visiere',desk:true,bubble:rvBubble(r)},now);
     else{atDesk(cx,feet-6,false);ctx.fillStyle='rgba(30,26,22,.22)';ctx.fillRect(cx-90,feet-90,180,150);}
     const pr=(String(v['current_task.repo']||'').split('/').pop()||'?')+'#'+(v['current_task.number']||'?'), name=au&&!mine?au.name:mine?'🤖 remplaçant (ta PR)':who?'@'+who:'';
-    rdLate(people,()=>{atPill(pr+(name?' · '+name:''),cx,rf+24,'#0b2a4a','#fff','bold 12px ui-monospace,Menlo,monospace');
-      rvStepsRow(r,cx,rf+42);},rf+1);
-    atHitRd('review',cx-60,feet-60,120,rf-feet+80,{run:r.run});}
+    rdLate(people,()=>{atPill(pr+(name?' · '+name:''),cx,rf+24+dy,'#0b2a4a','#fff','bold 12px ui-monospace,Menlo,monospace');
+      rvStepsRow(r,cx,rf+42+dy);},rf+1);
+    atHitRd('review',cx-60,feet-60,120,rf-feet+80+dy,{run:r.run});}
   // le canapé, en bas à droite : les relecteurs libres (celui de la file le quitte pour son bureau)
   rdBench(people,RVF.bench.x,RVF.bench.y,file&&F.M.rel?[96]:[96,97],'visiere');
   // le couloir : le distributeur sous l'entrepôt (68-revue.js), deux plantes, l'escalier en bas

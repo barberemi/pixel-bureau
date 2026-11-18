@@ -183,17 +183,17 @@ const fresh = p => p.run(`AT_MEM.slot = {}; AT_MEM.rooms = {}; AT_MEM.cart = {};
 const beltRects = (Jx, i) => Jx(`(g => [[g.lx, g.b1, g.H, AT_Y1 - g.b1], [g.rx, g.b1, g.H, AT_Y1 - g.b1], [g.lx, g.b1, g.rx + g.H - g.lx, g.H]])(AT_G[${i}])`);
 const crosses = (a, b, [x, y, w, h]) => !(Math.max(a.x, b.x) < x || Math.min(a.x, b.x) > x + w || Math.max(a.y, b.y) < y || Math.min(a.y, b.y) > y + h);
 
-test('le 1er fait 46 × 17 cases : trois bureaux côte à côte sur une rangée, le couloir dessous ; la toile suit', () => {
+test('le 1er fait 40 × 17 cases, comme le RDC en largeur : trois bureaux côte à côte sur une rangée, le couloir dessous ; la toile suit', () => {
   const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
-  assert.deepEqual(J2('[AT_ROWS[1], atRows(1) * AT_TS, AT_W]'), [17, 544, 1472]);
+  assert.deepEqual(J2('[AT_ROWS[1], atRows(1) * AT_TS, AT_W]'), [17, 544, 1280]);
   p.run('CFG.atelier = true; setFloor(1);');
-  assert.deepEqual(J2('[cv.width, cv.height, AT_H]'), [1472, 544, 544]);
+  assert.deepEqual(J2('[cv.width, cv.height, AT_H]'), [1280, 544, 544]);
   const g = J2('AT_G.map(g => [g.X0, g.X1])');
   assert.equal(g.length, 3);
   assert.equal(g[0][0], 0);
-  assert.equal(g[2][1], 1472);
+  assert.equal(g[2][1], 1280);
   for (let i = 1; i < 3; i++) assert.equal(g[i][0], g[i - 1][1], 'cloison commune');
-  for (const [a, b] of g) assert.ok(Math.abs(b - a - 1472 / 3) < 1, 'environ 15,3 cases chacun');
+  for (const [a, b] of g) assert.ok(Math.abs(b - a - 1280 / 3) < 1, 'environ 13,3 cases chacun');
   const [y0, y1, my, h] = J2('[AT_Y0, AT_Y1, AT_MY, AT_H]');
   assert.ok(y0 >= 64 && y1 <= 13 * 32 && my > y1 && my < h, 'les bureaux sous le mur, le couloir dessous');
 });
@@ -219,7 +219,7 @@ test('les dix postes autour du U dans l\'ordre du flux : deux à gauche (de bas 
     assert.ok(sp[0].feet > sp[1].feet, 'à gauche, de bas en haut');
     for (let k = 3; k < 8; k++) assert.ok(sp[k].x > sp[k - 1].x, 'au fond, de gauche à droite');
     assert.ok(sp[2].x - g.X0 > 40 && g.X1 - sp[7].x > 40);
-    assert.ok(Math.min(...sp.slice(3, 8).map((x, k) => x.x - sp[k + 2].x)) > 60, 'six au fond, espacés');
+    assert.ok(Math.min(...sp.slice(3, 8).map((x, k) => x.x - sp[k + 2].x)) > 48, 'six au fond, espacés : leurs bureaux (48 px) ne se touchent pas');
     assert.ok(sp[8].feet < sp[9].feet, 'à droite, de haut en bas');
     assert.ok(sp[0].x < g.lx && sp[9].x > g.rx + g.H, 'les côtés à l\'extérieur du U');
     assert.ok(sp.slice(2, 8).every(x => x.feet < g.b1), 'le fond derrière le tapis');
@@ -478,7 +478,7 @@ test("galerie : seulement les scènes de l'étage affiché ; une scène du 1er r
 test("le soir, comme au RDC : fenêtres au ciel de l'heure ; les promeneurs restent, la chaîne tourne à toute heure", () => {
   const p = load(), J2 = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));fresh(p);
   assert.ok(J2('AT_WINDOWS.length') >= 6);
-  const T = J2('AT_TS'), board = [12.2 * T, 33.8 * T];
+  const T = J2('AT_TS'), board = J2('[AT_BOARD.x, AT_BOARD.x + AT_BOARD.w]');
   for (const x of J2('AT_WINDOWS')) assert.ok(x * T + 1.5 * T < board[0] || x * T > board[1], 'pas derrière le grand tableau');
   p.run(`ATELIER = {rooms: [], queue: []}; T = DAY0 + 22 * 36e5; for (let n = 0; n < 30; n++) atWanderTick(atSlots(), n * 100, .1, () => 0);`);
   assert.equal(J2('atOpen()'), false);
