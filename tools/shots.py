@@ -511,8 +511,8 @@ def team_js(js):
     """Mise en scène d'une capture pour un pack : le thème de l'équipe (ui.skin de ses réglages) au lieu du Classique."""
     return js.replace("applySkin('classique');", "applySkin((CFG.ui||{}).skin);")
 
-# aux étages, le panneau se replie de lui-même (sideForFloor) et un clic sur un bureau ou un agent le rouvre : ces captures
-# choisissent la fiche par script, sans clic, et rouvrent donc le panneau elles-mêmes
+# aux étages, un clic sur un bureau ou un agent rouvre le panneau replié : ces captures choisissent la fiche par script, sans
+# clic, et ouvrent donc le panneau elles-mêmes
 for _n in ("atelier-fiche", "atelier-panne", "atelier-reprise", "fait-code", "fait-fini", "fait-controles", "fait-retours", "fait-revue", "fait-caserne"):
     SHOTS[_n] = (*SHOTS[_n][:2], SHOTS[_n][2] + "SIDE_FOLDED=false;renderSide(true);", *SHOTS[_n][3:])
 

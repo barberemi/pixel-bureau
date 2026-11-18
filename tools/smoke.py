@@ -138,22 +138,20 @@ def wait_tab(port, wait=TAB_WAIT):
     return None
 
 
-# lisibilité (audit UX 2.3) : les minimums de tests/lisibilite.test.js (12 px au RDC, au -1 et au 2e, 11 aux autres étages)
-# supposent ces échelles du plan à 1440 × 900 ; un plan qui rétrécit les rendrait faux. Une échelle propre à un étage (le -1 et le
-# 2e, 20 rangées, plus hauts que le 1er et le 3e) l'emporte sur celle des étages
+# lisibilité (audit UX 2.3) : le minimum de tests/lisibilite.test.js (12 px, au RDC comme aux étages) suppose cette échelle du
+# plan à 1440 × 900, panneau ouvert ; un plan qui rétrécit le rendrait faux. Les étages font 40 cases de large comme le RDC
 SCALE_JS = ("(async()=>{const o={},w=ms=>new Promise(r=>setTimeout(r,ms));for(const f of [0,-1,1,2,3]){setFloor(f);if(FLOOR!==f)continue;"
             "await w(300);const c=document.getElementById('cv');o[f]=c.getBoundingClientRect().width/c.width;}setFloor(0);return JSON.stringify(o);})()")
 
 
 def lisi_checks(call, width, height):
     L = json.loads(Path(ROOT, "tests", "fixtures", "lisibilite.json").read_text())
-    (fw, fh), ech = L["fenetre"], L["echelles"]
+    (fw, fh), ref = L["fenetre"], L["echelle"]
     call("Emulation.setDeviceMetricsOverride", width=fw, height=fh, deviceScaleFactor=1, mobile=False)
     time.sleep(0.5)
     r = call("Runtime.evaluate", returnByValue=True, awaitPromise=True, expression=SCALE_JS)
     got = json.loads((r.get("result") or {}).get("value") or "{}")
     for f, k in got.items():
-        ref = ech["rdc"] if f == "0" else ech.get(f, ech["etages"])
         check(k >= ref - 0.001, f"plan {'du RDC' if f == '0' else 'de l’étage ' + f} à {fw} × {fh} : ×{k:.3f} (au moins ×{ref})")
     check("0" in got, "échelles du plan mesurées")
     call("Emulation.setDeviceMetricsOverride", width=width, height=height, deviceScaleFactor=1, mobile=False)

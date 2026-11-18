@@ -16,10 +16,10 @@ test('la page est large et le plan tient dans la hauteur de l\'écran (hors mode
   assert.match(css, /body:not\(\.tv\) \.cv-wrap>#cv\{width:min\(100%,calc\(\(100vh - 150px\) \* var\(--plan-ratio,2\)\)\);margin:0 auto\}/);
 });
 
-// règle en px affichés (audit UX 2.3) : taille × échelle du plan à 1440 × 900 ≥ 9 px. Échelles relevées dans Chrome (RDC, panneau
-// ouvert : ×0,78 ; étages, panneau replié : ×0,868) et gardées par smoke.py --chrome ; d'où 12 px au RDC et 11 px aux étages
+// règle en px affichés (audit UX 2.3) : taille × échelle du plan à 1440 × 900 ≥ 9 px. Les étages font 40 cases de large comme le
+// RDC : une seule échelle (panneau ouvert : ×0,78), relevée dans Chrome et gardée par smoke.py --chrome ; d'où 12 px partout
 const LISI = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'lisibilite.json'), 'utf8'));
-const MIN = k => Math.ceil(LISI.affiche_min / LISI.echelles[k] - 1e-9);
+const MIN = Math.ceil(LISI.affiche_min / LISI.echelle - 1e-9);
 const RE = /\b(\d+)px (?:ui-monospace|system-ui|ui-sans-serif|sans-serif|monospace)/g;
 // décor : textes dessinés dans un petit objet, dont l'info est ailleurs (tuiles, fiche, fenêtre) ; repérés par la fonction ou le
 // meuble qui les dessine
@@ -47,29 +47,20 @@ function tooSmall(files, min) {
 }
 const SRCS = fs.readdirSync(SRC).filter(f => f.endsWith('.js'));
 
-test('les minimums suivent la règle en px affichés : 12 px au RDC, 11 px aux étages', () => {
-  assert.equal(MIN('rdc'), 12);
-  assert.equal(MIN('etages'), 11);
+test('le minimum suit la règle en px affichés : 12 px, au RDC comme aux étages', () => {
+  assert.equal(MIN, 12);
 });
 
 test('au RDC, aucun texte du plan sous 12 px, sauf le décor', () => {
   const files = SRCS.filter(f => /^(3[89]|4\d|62)-/.test(f));
   assert.ok(files.includes('40-floor.js') && files.includes('48-mail.js'));
-  assert.deepEqual(tooSmall(files, MIN('rdc')), []);
+  assert.deepEqual(tooSmall(files, MIN), []);
 });
 
-test('aux étages, aucun texte sous 11 px, sauf le décor', () => {
+test('aux étages, aucun texte sous 12 px, sauf le décor', () => {
   const files = SRCS.filter(f => /^68-/.test(f));
   assert.ok(files.length >= 5);
-  assert.deepEqual(tooSmall(files, MIN('etages')), []);
-});
-
-// le -1 et le 2e (20 rangées) s'affichent plus petits que le 1er et le 3e (17) : 12 px, comme au RDC
-test('au -1 et au 2e, aucun texte sous 12 px, sauf le décor', () => {
-  assert.equal(MIN('-1'), 12);
-  assert.equal(MIN('2'), 12);
-  assert.deepEqual(tooSmall(['68-caserne.js'], MIN('-1')), []);
-  assert.deepEqual(tooSmall(['68-redaction.js', '68-revue.js'], MIN('2')), []);
+  assert.deepEqual(tooSmall(files, MIN), []);
 });
 
 test('le décor exempté existe encore (une entrée périmée de DECOR ne cache rien)', () => {
@@ -91,9 +82,11 @@ test('1er : une étiquette rentre dans l\'étage au bord du plan ; le nom d\'un 
   const [[x1, w1], [x2]] = J('__R');
   assert.ok(x1 + w1 <= J('AT_W') - 2 && x2 >= 2, JSON.stringify(J('__R')));
   const head = (i, parts) => J(`atHead(AT_G[${i}], ${JSON.stringify(parts)})`);
-  assert.equal(head(1, ['BUREAU 2', 'DM-7911', 'site', 'tour 1/3', '64 k jetons']), 'BUREAU 2 · DM-7911 · site · tour 1/3'); // les jetons sont sur le tableau
+  // un bureau de 13,3 cases (40 de large) : d'abord les jetons (ils sont sur le tableau), puis le dépôt (dans la fiche)
+  assert.equal(head(0, ['BUREAU 1', 'DM-7305', 'site', '', '97 k jetons']), 'BUREAU 1 · DM-7305 · site', 'les jetons');
+  assert.equal(head(1, ['BUREAU 2', 'DM-7911', 'site', 'tour 1/3', '64 k jetons']), 'BUREAU 2 · DM-7911 · tour 1/3', 'puis le dépôt, le tour reste');
   assert.equal(head(2, ['BUREAU 3', 'DM-79112', 'monsite', 'tour 1/3', '64 k jetons']), 'BUREAU 3 · DM-79112 · tour 1/3', 'puis le dépôt');
-  assert.equal(head(0, ['BUREAU 1', 'DM-1', 'api', '', '9 k jetons']), 'BUREAU 1 · DM-1 · api · 9 k jetons', 'la place ne manque pas');
+  assert.equal(head(0, ['BUREAU 1', 'DM-1', 'api', '', '9 k']), 'BUREAU 1 · DM-1 · api · 9 k', 'la place ne manque pas');
 });
 
 test('un poste au repos, fini ou sauté ne montre que son icône ; actif, en panne ou à ta décision, son nom aussi', () => {

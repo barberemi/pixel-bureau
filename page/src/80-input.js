@@ -58,8 +58,8 @@ function hitZone(ev){
   return mb?'mail:'+mb:duckHit(mx,my)?'duck':supportOpenable()&&inR(supportRect())?'support':bs&&inR(bs)?'bosspages':na&&inR(na)?'newagent':inR(PAYR)?'paie':inR(TVR)?'tv':(()=>{const r=svRect(T);return r&&inR(r);})()?'services':inR(KANR)?'kanban':(()=>{const r=cronNoteRect();return r&&inR(r);})()?'planning':todosOn()&&inR(todoRect())?'todo':CALR&&ABSENCES&&inR(CALR)?'calendar':DEPR&&inR(DEPR)?'departs':inR(EMPR)&&bestEmployee().length?'emp':null;}
 // zones du plan qui ouvrent une fenêtre (le reste ouvre le panneau) : l'infobulle le dit
 const WIN_ZONES=new Set(['bosspages','todo','newagent','kanban','calendar','departs']);
-// un clic sur ce qui se clique dans un étage (le curseur en main, posé par le survol de l'étage) rouvre le panneau replié : aux
-// étages, il se replie de lui-même (sideForFloor) et la fiche s'y ouvre, comme choisir quelqu'un au RDC
+// un clic sur ce qui se clique dans un étage (le curseur en main, posé par le survol de l'étage) rouvre le panneau replié : la
+// fiche s'y ouvre, comme choisir quelqu'un au RDC
 function floorClick(e){const hot=cv.style.cursor==='pointer';
   (FLOOR===4?comblesClick:FLOOR===1?atelierClick:FLOOR===3?retoursClick:FLOOR===2?redactionClick:caserneClick)(e);
   if(hot&&SIDE_FOLDED){SIDE_FOLDED=false;renderSide(true);}}
