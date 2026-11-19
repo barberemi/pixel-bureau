@@ -45,6 +45,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- Créer un ticket : la rédaction et la critique reçoivent aussi les messages du boss de la discussion Kronn citée (15 Ko au plus, sans ceux des agents), comme des décisions tranchées. Un écart avec un ticket, une épic ou un document Jira va en question ouverte, jamais en renversement du découpage : la critique avait refait les tickets d'après une épic (run 60507405).
 - Créer un ticket : le rapport de la recherche n'est plus coupé à 6 000 caractères (12 000 désormais) ; une recherche sur deux dépôts y perdait « Comment faire », « Comment tester » et la partie Discussion. Seul le dernier rapport est gardé quand l'agent laisse un premier jet en plan, la partie Discussion vient juste après la ligne `Composants`, et la liste des composants est lue aussi en gras (`**Composants** :`).
 - Les étages à la taille du RDC : ils suivent la même règle de hauteur que le RDC au lieu de tenir à tout prix dans la fenêtre (sur un écran peu haut, ils rétrécissaient beaucoup), et le panneau de droite s'y replie à toutes les largeurs ; un agent y est au moins aussi grand qu'au RDC.
 
