@@ -337,13 +337,16 @@ def langue_titre():
 
 
 def sans_narration(text):
-    """Le rapport de la recherche à partir de sa ligne « Composants : » : l'agent raconte parfois ses recherches avant."""
-    m = re.search(r"^[ \t*_#-]*Composants\s*\**\s*:", text, re.M | re.I)
-    return text[m.start():].strip() if m else text
+    """Le rapport de la recherche à partir de sa dernière ligne « Composants : » : l'agent raconte parfois ses recherches
+    avant, ou laisse un premier jet en plan avant le vrai rapport (run ccce9f54)."""
+    m = list(re.finditer(r"^[ \t*_#-]*Composants\s*\**\s*:", text, re.M | re.I))
+    return text[m[-1].start():].strip() if m else text
 
 
 DISC_ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.I)
 DISC_MAX = 60000  # octets de la discussion dans la consigne de la recherche : sortie d'une étape Exec sous 100 Ko
+RAPPORT_MAX = 12000  # caractères du rapport de la recherche gardés pour la rédaction et la critique (6 000 coupaient
+# « Comment faire », « Comment tester » et la partie Discussion d'une recherche sur deux dépôts, run ccce9f54)
 
 
 def discussion(ref):
@@ -586,7 +589,7 @@ def poste(k, run, retours=""):
         x = dget(run, "discussion.json")
         parts.append(f"## La discussion Kronn citée : « {x.get('titre') or x.get('id')} » (figée au lancement)\n"
                      "L'investigation déjà faite avec le boss : elle passe avant ce que tu devines du code. Reporte dans le rapport, "
-                     "sous « Discussion », telles qu'elle les donne : les décisions prises (celles du boss d'abord), les pistes "
+                     "dans une partie « Discussion » juste après la ligne `Composants`, telles qu'elle les donne : les décisions prises (celles du boss d'abord), les pistes "
                      "écartées et pourquoi, les questions encore ouvertes, et les fichiers et tickets qu'elle nomme ; vérifie "
                      "dans le code ce qu'elle affirme avant de t'y appuyer, et dis-le quand le code la contredit.\n\n"
                      + "\n\n---- début de la discussion ----\n\n" + discussion_texte(x) + "\n\n---- fin de la discussion ----")
@@ -643,9 +646,9 @@ def rapport(k, run, text):
         sys.exit(f"Le poste {POSTES.get(k, (k,))[0]} n'a rien rendu.")
     if k == "recherche":
         text = sans_narration(text)
-        m = re.search(r"Composants\s*:\s*(.+)", text)
+        m = re.search(r"Composants\s*\**\s*:\s*\**\s*(.+)", text)  # « Composants : », « **Composants** : », « **Composants :** »
         touched = [x.strip(" *`") for x in re.split(r"[,;]", m.group(1))] if m else []
-        dput(run, "recherche.json", {"texte": text[:6000], "composants": [x for x in touched if x]})
+        dput(run, "recherche.json", {"texte": text[:RAPPORT_MAX], "composants": [x for x in touched if x]})
         archive(run)
         print(text[:2000])
         return
