@@ -357,7 +357,15 @@ class TicketChainTest(unittest.TestCase):
         self.assertIn("### 👤 Boss (Rémi) · 2026-11-19 13:48\n#### Ticket 1\nXLIFF depuis le Sheet", p)
         self.assertIn("### 🤖 Agent (ClaudeCode) · 2026-11-19 13:50\nClé API simple", p)
         self.assertNotIn("agent-native", p, "les traces d'outils restent dehors")
-        self.assertNotIn("discussion Kronn", self.t("poste", "redaction", "k1", cfg=cfg).stdout, "la rédaction lit le rapport, pas la discussion")
+        # la rédaction et la critique : les messages du boss seuls, tranchés (run 60507405 : une épic Jira avait renversé le découpage)
+        red = self.t("poste", "redaction", "k1", cfg=cfg).stdout
+        self.assertIn("## Ce que le boss a écrit et décidé dans la discussion Kronn « Traduction » (tranché)", red)
+        self.assertIn("XLIFF depuis le Sheet", red)
+        self.assertNotIn("Clé API simple", red, "les messages des agents : par le rapport de la recherche")
+        self.assertIn("jamais en changeant le découpage", red)
+        cri = self.t("poste", "critique", "k1", cfg=cfg).stdout
+        self.assertIn("n'est jamais bloquant", cri)
+        self.assertIn("XLIFF depuis le Sheet", cri)
         c["kronn"]["api"] = "http://127.0.0.1:9/api"  # figée : relue au dossier, plus dans Kronn
         Path(cfg).write_text(json.dumps(c))
         self.assertIn("Clé API simple", self.t("poste", "recherche", "k1", cfg=cfg).stdout)

@@ -345,6 +345,7 @@ def sans_narration(text):
 
 DISC_ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.I)
 DISC_MAX = 60000  # octets de la discussion dans la consigne de la recherche : sortie d'une étape Exec sous 100 Ko
+DECISIONS_MAX = 15000  # octets des messages du boss de la discussion, pour la rédaction et la critique
 RAPPORT_MAX = 12000  # caractères du rapport de la recherche gardés pour la rédaction et la critique (6 000 coupaient
 # « Comment faire », « Comment tester » et la partie Discussion d'une recherche sur deux dépôts, run ccce9f54)
 
@@ -368,22 +369,22 @@ def discussion(ref):
     return {"id": x.get("id") or m.group(0).lower(), "titre": str(x.get("title") or ""), "messages": msgs}
 
 
-def discussion_texte(disc):
-    """La discussion pour la consigne : en entier quand elle tient dans DISC_MAX, sinon le premier message (le sujet) et
-    les plus récents (les décisions), avec le nombre de messages du milieu laissés de côté."""
+def discussion_texte(disc, maxi=DISC_MAX, boss=False):
+    """La discussion pour la consigne : en entier quand elle tient dans maxi, sinon le premier message (le sujet) et
+    les plus récents (les décisions), avec le nombre de messages du milieu laissés de côté. boss : ses messages seuls."""
     # les titres des messages descendent sous ceux de la consigne : un « ## Ticket 1 » n'y ouvre pas une section
     blocs = [f"### {'🤖 Agent' if x['qui'] == 'agent' else '👤 Boss'}{' (' + x['nom'] + ')' if x['nom'] else ''} · {x['at']}\n"
-             + re.sub(r"^#{1,3} ", "#### ", x["texte"], flags=re.M) for x in disc["messages"]]
+             + re.sub(r"^#{1,3} ", "#### ", x["texte"], flags=re.M) for x in disc["messages"] if not boss or x["qui"] == "boss"]
     taille = lambda l: sum(len(b.encode()) + 2 for b in l)
-    if taille(blocs) <= DISC_MAX:
+    if taille(blocs) <= maxi:
         return "\n\n".join(blocs)
     garde = []
     for b in reversed(blocs[1:]):
-        if taille([blocs[0], *garde, b]) > DISC_MAX:
+        if taille([blocs[0], *garde, b]) > maxi:
             break
         garde.insert(0, b)
     saut = len(blocs) - 1 - len(garde)
-    return "\n\n".join([blocs[0][:DISC_MAX // 2], f"[… {saut} message(s) du milieu laissés de côté : la discussion dépasse {DISC_MAX // 1000} Ko …]", *garde])
+    return "\n\n".join([blocs[0][:maxi // 2], f"[… {saut} message(s) du milieu laissés de côté : la discussion dépasse {maxi // 1000} Ko …]", *garde])
 
 
 def dossier(run, intention, type_, points, c1, c2, sprint, parent, disc=""):
@@ -612,6 +613,18 @@ def poste(k, run, retours=""):
             d["tour"] = TOURS - 1
             dput(run, "demande.json", d)
             archive(run, retours={"texte": retours[:1500], "v": (dget(run, "tickets.json") or {}).get("version")})
+    x = dget(run, "discussion.json") if k in ("redaction", "critique") else None
+    if x and any(m["qui"] == "boss" for m in x.get("messages") or []):
+        # run 60507405 : la critique, qui ne voyait pas la discussion, a renversé son découpage d'après une épic Jira
+        parts.append(f"## Ce que le boss a écrit et décidé dans la discussion Kronn « {x.get('titre') or x.get('id')} » (tranché)\n"
+                     + ("Suis ces décisions : elles passent avant un ticket, une épic ou un document Jira qui dirait autre chose ; "
+                        "un tel écart va dans les questions ouvertes du ticket concerné (« DM-123 prévoit … : à mettre à jour »), "
+                        "jamais en changeant le découpage ou l'approche décidés."
+                        if k == "redaction" else
+                        "Ne conteste pas ces décisions : un écart avec un ticket, une épic ou un document Jira n'est jamais "
+                        "bloquant ; signale-le en conseil, pour qu'il figure dans les questions ouvertes du ticket. Le reste "
+                        "de ta relecture (fichiers, langues, tests, modèle) vaut comme d'habitude.")
+                     + "\n\n---- début ----\n\n" + discussion_texte(x, DECISIONS_MAX, boss=True) + "\n\n---- fin ----")
     if k in ("redaction", "critique") and dget(run, "retours.json"):
         parts.append("## Retours du boss à la validation (" + ("à appliquer en priorité" if k == "redaction" else "tranchés : ne les conteste pas")
                      + ")\n" + "\n".join("- " + x for x in dget(run, "retours.json")))
