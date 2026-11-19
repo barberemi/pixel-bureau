@@ -152,11 +152,11 @@ function gateCard(parent,run,who){
     const st=document.createElement('div');
     st.className='note';
     st.style.margin='6px 0 0';
-    const tk=isTicketWf(g.wf); // créer un ticket (#77) : un refus ne crée rien, pas de réécriture
-    st.textContent=tk?'Le bouton ouvre la carte Kronn, puis Lancer. Rejeter : rien n\'est créé dans Jira.':'Le bouton ouvre la carte Kronn : un commentaire si tu veux (obligatoire pour des changements), puis Lancer.';
+    const tk=isTicketWf(g.wf); // créer un ticket (#77) : un refus ne crée rien ; Changements : la rédaction reprend avec tes retours
+    st.textContent='Le bouton ouvre la carte Kronn : un commentaire si tu veux (obligatoire pour des changements), puis Lancer.'+(tk?' Rejeter : rien n\'est créé dans Jira.':'');
     const row=document.createElement('div');row.className='gq';
     // un emplacement par bouton (comme les réponses aux questions) : la fenêtre centrée montre la décision choisie (what)
-    for(const [d,label,cls] of [['approve','✅ Approuver','on'],['reject','⛔ Rejeter',''],['request_changes','✏️ Changements…','']].filter(x=>!tk||x[0]!=='request_changes')){
+    for(const [d,label,cls] of [['approve','✅ Approuver','on'],['reject','⛔ Rejeter',''],['request_changes','✏️ Changements…','']]){
       const w=document.createElement('div');w.className='qslot';w.setAttribute('data-kronn-action-slot-host','');
       const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;
       w.append(b);

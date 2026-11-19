@@ -383,6 +383,35 @@ class TicketChainTest(unittest.TestCase):
         self.assertIn("vérifie son identifiant", r.stderr)
         self.assertNotIn("discussion", self.t("dossier", "k4", "x", "Story", "5", "dm/site", "", "backlog", "", cfg=cfg).stdout.lower())
 
+    def test_discussion_recap_is_the_draft_and_jira_gaps_go_to_the_stamp(self):
+        """Run dceac87b : le récap de la discussion (dernier message de l'agent) était la cible, la rédaction ne le voyait pas.
+        Il lui sert de brouillon ; la critique vérifie que chacun de ses points est repris ; un écart avec Jira (une épic, au
+        premier essai) est rangé à part, montré au tampon et repris par la rédaction en question ouverte."""
+        self.t("dossier", "b1", "Découper", "Story", "8", "dm/site", "", "backlog", "")
+        recap = "# Récap des 2 tickets\n## Ticket 1\nPR hebdo sur la branche fixe chore/translations-sync\n" + "détail " * 150
+        disc = {"id": "x", "titre": "Traductions", "messages": [{"qui": "boss", "nom": "", "at": "", "texte": "Récapitule les 2 tickets"},
+                                                                 {"qui": "agent", "nom": "", "at": "", "texte": recap}]}
+        Path(self.tmp, ".cache", "pixel-bureau", "ticket", "b1", "discussion.json").write_text(json.dumps(disc))
+        red = self.t("poste", "redaction", "b1").stdout
+        self.assertIn("## Brouillon : le dernier message de l'agent dans la discussion\nPars de ce brouillon", red)
+        self.assertIn("#### Ticket 1\nPR hebdo sur la branche fixe chore/translations-sync", red)
+        self.assertIn("Vérifie la couverture", self.t("poste", "critique", "b1").stdout)
+        self.assertNotIn("## Brouillon", self.t("poste", "recherche", "b1").stdout, "la recherche a la discussion entière")
+        # un dernier message court (« noté ») n'est pas un brouillon
+        disc["messages"][1]["texte"] = "Noté, je garde le PAT bot."
+        Path(self.tmp, ".cache", "pixel-bureau", "ticket", "b1", "discussion.json").write_text(json.dumps(disc))
+        self.assertNotIn("## Brouillon", self.t("poste", "redaction", "b1").stdout)
+        # les écarts avec Jira : à part, jamais bloquants, au tampon puis en question ouverte à la rédaction
+        self.t("rapport", "redaction", "b1", stdin='{"tickets": [{"summary": "A", "description": "h2. Contexte", "composant": "dm/site", "points": 8}]}')
+        r = self.t("rapport", "critique", "b1", stdin=json.dumps({"verdict": "ok", "notes": [], "ecarts": [
+            {"ticket": 1, "source": "DM-7954", "ecart": "le point 5 prévoit une PR après l'export Tools"}]}))
+        self.assertIn("⚠ ticket 1 · DM-7954 : le point 5", r.stdout)
+        ap = self.t("apercus", "b1").stdout
+        self.assertIn("⚠ Écarts avec Jira (non bloquants, à toi de trancher) :\n- T1 · DM-7954 : le point 5 prévoit une PR", ap)
+        self.assertIn("## Écarts avec Jira relevés par la critique (à mettre dans les questions ouvertes du ticket concerné)\n- ticket 1 · DM-7954",
+                      self.t("poste", "redaction", "b1").stdout)
+        self.assertIn('"ecarts"', self.t("poste", "critique", "b1").stdout, "le format de sortie les décrit")
+
     def test_labels_on_every_created_ticket(self):
         cfg = self.cfg_with(labels=["ia_framed", "Rédigé par le Bureau", "ia_framed"])
         self.t("dossier", "l1", "x", "Tâche", "1", "dm/site", "", "backlog", "", cfg=cfg)
