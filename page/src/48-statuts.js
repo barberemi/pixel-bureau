@@ -7,7 +7,7 @@
 // L'état se rejoue à toute heure : les incidents ouverts à t, plus l'état des composants près de l'heure du relevé.
 let STATUTS=null;
 // état -> couleur, mot, pictogramme ; SV_RANK : du moins grave au pire (même ordre que RANK du script)
-const SV_ST={op:['#3fbf6a','opérationnel','☀️'],maint:['#5b8def','maintenance','🔧'],degraded:['#e0c020','ralenti','⛅'],partial:['#e0802a','panne partielle','🌧️'],major:['#e0614f','en panne','⛈️']};
+const SV_ST={op:[ST_VIF.ok,'opérationnel','☀️'],maint:[ST_VIF.info,'maintenance','🔧'],degraded:['#e0c020','ralenti','⛅'],partial:['#e0802a','panne partielle','🌧️'],major:[ST_VIF.err,'en panne','⛈️']};
 const SV_RANK=['op','maint','degraded','partial','major'];
 const svWorse=(a,b)=>SV_RANK.indexOf(a)>=SV_RANK.indexOf(b)?a:b;
 function readStatuts(src){

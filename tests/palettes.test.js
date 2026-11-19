@@ -77,7 +77,7 @@ test('légende du gabarit : pastilles sans couleur en dur, peintes depuis les ta
   const before = [
     ['background', 'var(--ok)'], ['background', 'var(--info)'], ['borderColor', 'var(--warn)'], ['borderColor', 'var(--err)'], ['background', 'var(--idle)'],
     ['background', '#5fd4ff'], ['background', '#b58cff'], ['background', '#ffb547'], // hologrammes des familles d'agents
-    ['background', '#2e9e5b'], ['background', '#4a7fe0'], ['background', '#7a5cc8'], ['background', '#2e9e9b'], ['background', '#8a8478'],
+    ['background', '#4cc27c'], ['background', '#7aa2f2'], ['background', '#7a5cc8'], ['background', '#2e9e9b'], ['background', '#8a8478'],
     ['background', 'var(--ok)'], ['background', 'var(--info)'], ['borderColor', 'var(--warn)'], ['borderColor', 'var(--err)'],
     ['background', '#7a5cc8'], ['background', '#2e9e9b'], ['borderColor', '#d97757'], ['background', '#7d8fa3'], ['background', 'var(--idle)'],
   ];

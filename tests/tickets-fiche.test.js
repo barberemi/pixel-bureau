@@ -16,7 +16,7 @@ test.beforeEach(() => run(`TEAM = {people: [{name: 'Pam', tickets: [], prs: [
 
 test('barre : un segment par colonne en points, en tickets si aucun n\'est estimé', () => {
   const h = run(`tkBarHtml([{cat: 'done', points: 8}, {cat: 'doing', points: 3}, {cat: 'doing', points: 0}, {cat: 'review', points: null}])`);
-  assert.match(h, /flex:3;background:#2e9e5b" title="En cours : 3 pts"/); // en cours : vert, comme partout
+  assert.match(h, /flex:3;background:#4cc27c" title="En cours : 3 pts"/); // en cours : vert, comme partout
   assert.match(h, /flex:8;[^>]*title="Déployé : 8 pts"/);
   assert.doesNotMatch(h, /En revue/); // ticket non estimé : 0 pt, pas de segment
   assert.match(h, /<b>8 pts<\/b> déployés sur 11 pts/);
@@ -55,6 +55,6 @@ test('« Ses autres PR » : groupe par état de review, titre sans préfixe, tic
 test('palette : une seule table des statuts de ticket, « en cours » vert et distinct de « déployé »', () => {
   const t = JSON.parse(run(`JSON.stringify({tcat: Object.fromEntries(Object.entries(TCAT).map(([k, v]) => [k, v.c])), cat: CAT_COLOR})`));
   assert.deepEqual(t.cat, t.tcat); // bulles, KPI, fil, « Qui fait quoi », TV : les couleurs de TCAT
-  assert.equal(t.tcat.doing, '#2e9e5b');
+  assert.equal(t.tcat.doing, '#4cc27c');
   assert.equal(new Set(Object.values(t.tcat)).size, Object.keys(t.tcat).length); // six statuts, six couleurs
 });

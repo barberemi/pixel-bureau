@@ -32,7 +32,7 @@ function pjText(t,x,y,size,col,max){
 function pjBar(k,x,y,w,h){
   R(ctx,x,y,w,h,'#2c313c');
   if(k.parts){const t=k.parts.reduce((a,b)=>a+b[0],0);let cx=x;k.parts.forEach(([n,c],i)=>{const pw=i===k.parts.length-1?x+w-cx:Math.round(w*n/t);R(ctx,cx,y,pw,h,PJ_HEX.test(c)?c:'#888');cx+=pw;});}
-  else if(k.pct!=null)R(ctx,x,y,Math.round(w*Math.max(0,Math.min(100,k.pct))/100),h,PJ_HEX.test(k.color||'')?k.color:'#5b8def');
+  else if(k.pct!=null)R(ctx,x,y,Math.round(w*Math.max(0,Math.min(100,k.pct))/100),h,PJ_HEX.test(k.color||'')?k.color:ST_VIF.info);
 }
 // la toile, dessinée à la place de l'écran mural (WALL_SCREEN, 47-bosspages.js) en mode TV
 function drawProjoScreen(now){
@@ -44,7 +44,7 @@ function drawProjoScreen(now){
   const title=(k&&k.short)||p.title||'';
   if(k&&k.value!=null&&k.label){ // le chiffre clé, lisible de loin
     pjText(title,s.x+7,s.y+6,6,'#cfd6e3',s.w-14);
-    pjText(String(k.value),s.x+7,s.y+15,16,k.parts?'#ffffff':PJ_HEX.test(k.color||'')?k.color:'#5b8def',s.w-14);
+    pjText(String(k.value),s.x+7,s.y+15,16,k.parts?'#ffffff':PJ_HEX.test(k.color||'')?k.color:ST_VIF.info,s.w-14);
     pjText(k.label,s.x+7,s.y+s.h-15,6,'#9aa3b5',s.w-14);pjBar(k,s.x+7,s.y+s.h-8,s.w-14,4);
   }else{ // sans chiffre : le haut de la miniature, et le titre dessous
     const im=bossPageImg(p), iw=s.w-6, ih=s.h-15;
@@ -80,6 +80,6 @@ function projoInfoHtml(){
   "label": "blocks migrés",
   "pct": 54.9,
   "short": "Migration blocks"
-}</pre><ul><li><b>value</b>, <b>label</b> : le chiffre et ce qu'il compte (obligatoires)</li><li><b>pct</b> : la barre, de 0 à 100 (couleur : <b>color</b>) ; ou <b>parts</b> : [[45, "#3fbf6a"], [24, "#e0a020"]] pour une barre en plusieurs couleurs</li><li><b>short</b> : le titre sur la toile, 18 caractères au plus</li><li>Sans kpi : la page est projetée en miniature</li></ul>
+}</pre><ul><li><b>value</b>, <b>label</b> : le chiffre et ce qu'il compte (obligatoires)</li><li><b>pct</b> : la barre, de 0 à 100 (couleur : <b>color</b>) ; ou <b>parts</b> : [[45, "#4cc27c"], [24, "#f0b030"]] pour une barre en plusieurs couleurs</li><li><b>short</b> : le titre sur la toile, 18 caractères au plus</li><li>Sans kpi : la page est projetée en miniature</li></ul>
 <p>Tout le détail : le guide « Murs du bureau », section « Projeter une page en TV » (guide/fonctionnalites/08-murs.md).</p></div>`;
 }

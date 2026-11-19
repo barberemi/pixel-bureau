@@ -215,8 +215,8 @@ function drawOverlay(c,now){
     stem=by-ok[1];bx=ok[0];by=ok[1];
   }
   // panne / validation : un emoji (🚨, ✋) sur fond rouge ou ambre ne se lit pas ; bulle claire cerclée à la place (seul « ! » reste blanc sur rouge)
-  const alert=st.st==='error'||st.st==='gate', ring=alert&&txt!=='!', ringCol=st.st==='error'?'#c62828':'#b7791f';
-  const bc=ring?'#fffdf8':st.st==='error'?'#d1453b':st.st==='gate'?'#e0a020':'#fffdf8';
+  const alert=st.st==='error'||st.st==='gate', ring=alert&&txt!=='!', ringCol=st.st==='error'?ST_FONCE.err:ST_FONCE.warn;
+  const bc=ring?'#fffdf8':st.st==='error'?ST_FONCE.err:st.st==='gate'?ST_VIF.warn:'#fffdf8';
   if(bb.cloud){
     if(!seated)by-=4; // place pour les bouffées sous le nuage
     drawCloud(bx,by,w,h,x,y-56);

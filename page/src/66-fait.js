@@ -8,7 +8,7 @@ const FA_AGENT={ClaudeCode:'Claude Code',Codex:'Codex',GeminiCli:'Gemini',OpenCo
 const FA_ICO={lecture:'📖',recherche:'🔎',modification:'✏️',commande:'▶',rapport:'📝','sous-agent':'👥',autre:'⚙'};
 const FA_VERB={lecture:'lit',recherche:'cherche',modification:'modifie',commande:'lance',rapport:'écrit son rapport','sous-agent':'confie',autre:'utilise'};
 const FA_PL={lecture:'lectures',recherche:'recherches',modification:'modifications',rapport:'rapports',commande:'commandes','sous-agent':'sous-agents',autre:'autres'};
-const FA_COL={lecture:'#5b8def',recherche:'#9a7be0',modification:'#3fbf6a',rapport:'#3fbf6a',commande:'#e0a020','sous-agent':'#4fb0c6',autre:'#8a8478'};
+const FA_COL={lecture:ST_VIF.info,recherche:'#9a7be0',modification:ST_VIF.ok,rapport:ST_VIF.ok,commande:ST_VIF.warn,'sous-agent':'#4fb0c6',autre:'#8a8478'};
 const FA_KCAT={Read:'lecture',Execute:'commande',Edit:'modification',Write:'modification',Search:'recherche',Agent:'sous-agent'};
 const faAg=a=>FA_AGENT[a]||String(a||'?');
 // le relevé est-il celui de l'heure affichée (3 min près, comme atAct) : sinon, rien (le rejeu ne date pas le fait)

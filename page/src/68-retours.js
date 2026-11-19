@@ -158,7 +158,7 @@ function rtBackground(){
 let RT_BG=null;
 // la tenue de chirurgien (69-metiers.js), sur l'agent assis à son poste
 const rtKit=(g,x,y,dir)=>mtChirurgien(g,x,y,dir,true);
-function rtPostit(x,y,c,hl){R(ctx,x,y,20,14,c);R(ctx,x+3,y+4,13,2,'rgba(0,0,0,.25)');R(ctx,x+3,y+8,9,2,'rgba(0,0,0,.25)');if(hl){ctx.strokeStyle='#c0392b';ctx.lineWidth=2;ctx.strokeRect(x-2,y-2,24,18);}}
+function rtPostit(x,y,c,hl){R(ctx,x,y,20,14,c);R(ctx,x+3,y+4,13,2,'rgba(0,0,0,.25)');R(ctx,x+3,y+8,9,2,'rgba(0,0,0,.25)');if(hl){ctx.strokeStyle=ST_FONCE.err;ctx.lineWidth=2;ctx.strokeRect(x-2,y-2,24,18);}}
 // le Kanban au mur : une colonne par section de la réponse, un post-it par fil ; renvoie où est le fil en cours
 function rtBoard(z,r){
   const {x,y,w,h}=z.kb;R(ctx,x-4,y-4,w+8,h+8,'#7a5a3c');R(ctx,x,y,w,h,'#f4efe4');
@@ -206,7 +206,7 @@ function rtRoom(r,i,now,people){
     if(!s){people.push([{pos:{x,y}},null,false,()=>{const g=atLayer();atDrawInto(g,a,now);rtKit(g,x,y,'down');ctx.save();ctx.globalAlpha=.38;ctx.filter='grayscale(1)';ctx.drawImage(AT_OFF,0,0);ctx.restore();desk();}]);} // là, pas encore lancé : gris
     else{if(s==='run'){const gl=ctx.createRadialGradient(x,y-24,4,x,y-24,46);gl.addColorStop(0,'rgba(255,246,190,.6)');gl.addColorStop(1,'rgba(255,246,190,0)');ctx.fillStyle=gl;ctx.fillRect(x-48,y-72,96,96);RT_LIT.push({x,y});}
       people.push([a,null,false,()=>{rtKit(ctx,x,y,'down');desk();
-        if(s==='ok')atBadge(x+18,y-42,'✓','#2f9e55',pop); // à côté de l'agent, comme au 1er
+        if(s==='ok')atBadge(x+18,y-42,'✓',ST_FONCE.ok,pop); // à côté de l'agent, comme au 1er
         if(s==='err'){atBadge(x+18,y-42,'!','#d0392b');atSmoke(x,y-30,now);}
         if(cur===p&&s!=='gate')atBubble(x,y-66,rtBubble(r,p));}]);}
     atHitRt('agent',x-16,y-56,32,60,{i,k:p.k});
@@ -216,7 +216,7 @@ function rtRoom(r,i,now,people){
   if(fade>0)rtLate(people,()=>{ctx.save();ctx.globalAlpha=fade;const cx=z.pts[ci].x;atCarton(cx,z.ry+.2*T,null);RT_COLS.slice(1,4).forEach((c,q)=>R(ctx,cx-11+q*8,z.ry+.2*T-16,6,5,c.c));ctx.restore();},z.ry+1);
   // le fil rouge : du post-it en cours à l'agent de la correction qui le traite
   const fx=RT_POSTES.findIndex(p=>p.k==='fix');
-  if(hl&&rtState(r,RT_POSTES[fx])==='run'&&lvSeated(RT_LV,rtCrewId(i,'fix'))){const a={x:z.pts[fx].x,y:z.pts[fx].y-40};rtLate(people,()=>{ctx.save();ctx.strokeStyle='#c0392b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(hl.x,hl.y);
+  if(hl&&rtState(r,RT_POSTES[fx])==='run'&&lvSeated(RT_LV,rtCrewId(i,'fix'))){const a={x:z.pts[fx].x,y:z.pts[fx].y-40};rtLate(people,()=>{ctx.save();ctx.strokeStyle=ST_FONCE.err;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(hl.x,hl.y);
     ctx.quadraticCurveTo((hl.x+a.x)/2+30,(hl.y+a.y)/2,a.x,a.y);ctx.stroke();ctx.restore();for(const q of [hl,a]){ctx.fillStyle='#d0392b';ctx.beginPath();ctx.arc(q.x,q.y,4,0,7);ctx.fill();}},1e6-1);}
   atHitRt('room',z.x0,z.y0,z.w,z.h,{i});
 }
@@ -245,10 +245,10 @@ function rtDayBoard(){
   R(ctx,bx+12,by+bh,4,7,'#5a3e28');R(ctx,bx+bw-16,by+bh,4,7,'#5a3e28');
   R(ctx,bx-5,by-5,bw+10,bh+10,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+4,by+bh-5,bw-8,3,'#a37650');
   atTxt('RETOURS DU JOUR',bx+bw/2,by+14,'#f4efe4','bold 12px ui-monospace,Menlo,monospace');R(ctx,bx+12,by+19,bw-24,1,'rgba(244,239,228,.4)');
-  const r=rtLive()||releveNear(RETOURS)?null:rtJourAt(T), rows=r?[['#3fbf6a',[plural(r.pousses,'PR poussée','PR poussées')+' · ',ink],[relTxt(r.fils+' fils'),REL_INK]],
-    ['#5b8def',[r.cours+' en cours · '+r.pannes+' en panne',ink]],['#e0a020',[relTxt(Math.round(r.tok/1e3)+' k jet.'),REL_INK],[' · 7 j : '+r.semaine+' PR',ink]]]
-    :[['#3fbf6a',[plural(n('pousses'),'PR poussée','PR poussées')+' · '+n('fils')+' fils',ink]],['#5b8def',[n('cours')+' en cours · '+n('pannes')+' en panne',ink]],
-      ['#e0a020',['~'+Math.round(n('tok')/1e3)+' k jetons · 7 j : '+n('semaine')+' PR',ink]]];
+  const r=rtLive()||releveNear(RETOURS)?null:rtJourAt(T), rows=r?[[ST_VIF.ok,[plural(r.pousses,'PR poussée','PR poussées')+' · ',ink],[relTxt(r.fils+' fils'),REL_INK]],
+    [ST_VIF.info,[r.cours+' en cours · '+r.pannes+' en panne',ink]],[ST_VIF.warn,[relTxt(Math.round(r.tok/1e3)+' k jet.'),REL_INK],[' · 7 j : '+r.semaine+' PR',ink]]]
+    :[[ST_VIF.ok,[plural(n('pousses'),'PR poussée','PR poussées')+' · '+n('fils')+' fils',ink]],[ST_VIF.info,[n('cours')+' en cours · '+n('pannes')+' en panne',ink]],
+      [ST_VIF.warn,['~'+Math.round(n('tok')/1e3)+' k jetons · 7 j : '+n('semaine')+' PR',ink]]];
   rows.forEach(([c,...segs],k)=>{R(ctx,bx+12,by+25+k*14,7,7,c);atSegs(segs,bx+24,by+32+k*14,'12px ui-monospace,Menlo,monospace');});
 }
 // l'entrepôt : une zone de palettes au sol, sans murs, balisée d'une bande jaune et noire ; une palette par PR qui attend un

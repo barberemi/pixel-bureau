@@ -15,6 +15,7 @@ TEXT = ("ink", "muted", "accent", "ok", "warn", "err")  # couleurs de texte
 GROUNDS = ("panel", "chip", "bg")                      # fonds sur lesquels elles s'affichent
 FILLS = ("line", "err", "warn", "brand")               # aplats qui portent du texte (--on-<aplat>, blanc par défaut ; brand : facultatif)
 STATES = ("ok", "warn", "err", "info", "idle")         # fonds d'état des badges et étiquettes, texte en --on-accent
+DEEP = tuple(s + "-deep" for s in STATES)            # tons foncés des états (02-etats.js, ST_FONCE), texte blanc
 # mode TV (bloc :root[data-skin="<id>"] body.tv, facultatif) : textes sur les fonds de l'écran mural, et texte des aplats
 TV_TEXT = ("tv-ink", "tv-muted", "tv-h2", "tv-hint", "tv-ok", "tv-warn", "tv-err", "tv-mep")
 TV_GROUNDS = ("tv-bg", "tv-bar", "tv-deep", "tv-card", "tv-chip")
@@ -81,7 +82,7 @@ def check(path):
     if not v:
         errors.append(f':root[data-skin="{theme_id(path)}"] : aucune couleur #rrggbb')
     else:
-        errors += _pairs(v, TEXT, GROUNDS, [("on-" + f, f) for f in FILLS] + [("on-accent", f) for f in STATES])
+        errors += _pairs(v, TEXT, GROUNDS, [("on-" + f, f) for f in FILLS] + [("on-accent", f) for f in STATES] + [("on-deep", f) for f in DEEP])
         missing = [k for k in TEXT + GROUNDS if k not in v]
         if missing:
             warnings.append("non redéfinies (restent celles du Classique, sombre) : " + ", ".join("--" + k for k in missing))

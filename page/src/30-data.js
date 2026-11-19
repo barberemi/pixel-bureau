@@ -11,8 +11,8 @@ const MEP_COLOR='#7a5cc8';
 document.documentElement.style.setProperty('--mep',MEP_COLOR);
 // la palette des statuts de ticket, la seule de la page (bureaux, Kanban, fiches, bulles, KPI, fil, TV)
 const TCAT={
-  doing:{t:'En cours',c:'#2e9e5b'},
-  review:{t:'En revue',c:'#4a7fe0'},
+  doing:{t:'En cours',c:ST_VIF.ok},
+  review:{t:'En revue',c:ST_VIF.info},
   test:{t:'En test',c:MEP_COLOR},
   deploy:{t:'À déployer',c:'#2e9e9b'},
   todo:{t:'À faire',c:'#8a8478'},

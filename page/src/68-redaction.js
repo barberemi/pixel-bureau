@@ -159,7 +159,7 @@ function rdLate(people,f,y){people.push([{pos:{x:0,y:y==null?1e6:y}},null,false,
 // devant lui), o.bubble, o.badge (✓ ou ! à côté de lui, comme au 1er ; o.pop : il apparaît en grossissant)
 function rdAgent(people,k,x,y,s,o,now){
   o=o||{};const a=atWorker(k,x,y,o.dir||'down',false,'',null);if(!a)return;a._st={st:s==='run'?'work':'idle'};a.pose=o.pose||'type';const hy=y+(a.pose==='type'?6:0);
-  const after=()=>{if(o.hat)rdHat(ctx,o.hat,x,hy,o.dir||'down');if(o.desk)atDesk(x,y-6,s==='run');if(o.front)o.front();if(o.badge)atBadge(x+18,y-42,o.badge,o.badgeCol||'#2f9e55',o.pop);if(o.bubble)atBubble(x+(o.bx||0),y-66+(o.by||0),o.bubble);};
+  const after=()=>{if(o.hat)rdHat(ctx,o.hat,x,hy,o.dir||'down');if(o.desk)atDesk(x,y-6,s==='run');if(o.front)o.front();if(o.badge)atBadge(x+18,y-42,o.badge,o.badgeCol||ST_FONCE.ok,o.pop);if(o.bubble)atBubble(x+(o.bx||0),y-66+(o.by||0),o.bubble);};
   if(s==='wait'){people.push([{pos:{x,y}},null,false,()=>{const g=atLayer();atDrawInto(g,a,now);if(o.hat)rdHat(g,o.hat,x,hy,o.dir||'down');ctx.save();ctx.globalAlpha=.38;ctx.filter='grayscale(1)';ctx.drawImage(AT_OFF,0,0);ctx.restore();if(o.desk)atDesk(x,y-6,false);}]);return;}
   if(s==='run'){const gl=ctx.createRadialGradient(x,y-24,4,x,y-24,46);gl.addColorStop(0,'rgba(255,246,190,.6)');gl.addColorStop(1,'rgba(255,246,190,0)');ctx.fillStyle=gl;ctx.fillRect(x-48,y-72,96,96);RD_LIT.push({x,y});}
   people.push([a,null,false,after]);
@@ -309,9 +309,9 @@ function rdBoard(people){
   rdLate(people,()=>{R(ctx,bx+14,by+bh,5,18,'#5a3e28');R(ctx,bx+bw-19,by+bh,5,18,'#5a3e28');R(ctx,bx+bw/2-2,by+bh,4,12,'#4a3424');
     R(ctx,bx-6,by-6,bw+12,bh+12,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+4,by+bh-6,bw-8,4,'#a37650');
     atTxt('TICKETS DU JOUR',bx+bw/2,by+16,'#f4efe4','bold 13px ui-monospace,Menlo,monospace');R(ctx,bx+16,by+21,bw-32,1,'rgba(244,239,228,.4)');
-    [['#3fbf6a',plural(j.crees,'ticket créé','tickets créés')+' aujourd\'hui'],[WAIT_BG,plural(j.tampon,'ticket','tickets')+' au tampon'],
-     ['#5b8def',plural(j.cours,'intention en cours','intentions en cours')],
-     ['#e0a020',...(j.tokRel?[relTxt(Math.round(j.tok/1e3)+' k jetons'+(j.at?' à '+hm(j.at):'')),REL_INK]:['~'+Math.round(j.tok/1e3)+' k jetons',ink])]]
+    [[ST_VIF.ok,plural(j.crees,'ticket créé','tickets créés')+' aujourd\'hui'],[WAIT_BG,plural(j.tampon,'ticket','tickets')+' au tampon'],
+     [ST_VIF.info,plural(j.cours,'intention en cours','intentions en cours')],
+     [ST_VIF.warn,...(j.tokRel?[relTxt(Math.round(j.tok/1e3)+' k jetons'+(j.at?' à '+hm(j.at):'')),REL_INK]:['~'+Math.round(j.tok/1e3)+' k jetons',ink])]]
       .forEach(([c,t,i],k)=>{R(ctx,bx+16,by+28+k*14,8,8,c);atTxt(t,bx+30,by+36+k*14,i||ink,'12px ui-monospace,Menlo,monospace','left');});},RD_DESK.y-1);
 }
 function rdBoss(people,tks,now){
@@ -345,8 +345,8 @@ function rdRevue(now,people){
   atTxt('REVUES DU JOUR',bx+bw/2,by+18,'#f4efe4','bold 13px ui-monospace,Menlo,monospace');R(ctx,bx+16,by+24,bw-32,1,'rgba(244,239,228,.4)');
   // les jetons : le total de chaque run au relevé ; en rejeu, non datés, en ⏱
   const tk=Math.round(rvRuns().filter(r=>r._s>=DAY0).reduce((a,r)=>a+(r.tok||0),0)/1e3)+' k jetons', rel=!boardLive(REDACTION);
-  [['#5b8def',plural(rvActive().length,'PR en lecture','PR en lecture')],...(file?[[WAIT_BG,plural(wait,'PR en attente','PR en attente')+(F.st?' (cron '+hm(F.st.b.s)+')':'')]]:[]),['#3fbf6a',plural(done,'revue postée','revues postées')+' aujourd\'hui'],
-   ['#e0a020',rel?relTxt(tk):'~'+tk,rel?REL_INK:null]]
+  [[ST_VIF.info,plural(rvActive().length,'PR en lecture','PR en lecture')],...(file?[[WAIT_BG,plural(wait,'PR en attente','PR en attente')+(F.st?' (cron '+hm(F.st.b.s)+')':'')]]:[]),[ST_VIF.ok,plural(done,'revue postée','revues postées')+' aujourd\'hui'],
+   [ST_VIF.warn,rel?relTxt(tk):'~'+tk,rel?REL_INK:null]]
     .forEach(([c,t,i],k)=>{R(ctx,bx+16,by+36+k*18,8,8,c);atTxt(t,bx+30,by+44+k*18,i||'#e8e2d0','12px ui-monospace,Menlo,monospace','left');});
   const boss=chars.find(c=>c.boss);
   if(file)rvfDesk(people,now,F);

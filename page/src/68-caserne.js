@@ -215,13 +215,13 @@ function csGrey(c,now,f){ // attend son tour : la silhouette grise, comme au 1er
 }
 function csHose(z,st,L,fd){ // du camion au premier pompier, puis de main en main ; plein jusqu'au poste au travail ; L : longueur déroulée
   const cur=CS_POSTES.findIndex(p=>st[p.k]&&st[p.k]!=='ok'), last=cur<0?CS_POSTES.length-1:cur, P=z.pts;
-  const seg=(a,b,on)=>{if(!on&&fd<=0||on&&L<=0)return;ctx.save();ctx.strokeStyle=on?'#e0a020':'#9a958a';ctx.lineWidth=on?5:3;ctx.setLineDash(on?(L<1e4?[L,1e5]:[]):[6,5]);if(!on)ctx.globalAlpha=fd;ctx.beginPath();
+  const seg=(a,b,on)=>{if(!on&&fd<=0||on&&L<=0)return;ctx.save();ctx.strokeStyle=on?ST_VIF.warn:'#9a958a';ctx.lineWidth=on?5:3;ctx.setLineDash(on?(L<1e4?[L,1e5]:[]):[6,5]);if(!on)ctx.globalAlpha=fd;ctx.beginPath();
     const p0=a<0?z.hose:{x:P[a].x,y:P[a].y-22};ctx.moveTo(p0.x,p0.y);
     for(let j=a+1;j<=b;j++){const q={x:P[j].x,y:P[j].y-22};if(j===4)ctx.bezierCurveTo(z.cx+4.3*AT_TS,P[3].y-22,z.cx+4.3*AT_TS,P[4].y-22,q.x,q.y);else ctx.lineTo(q.x,q.y);}
     ctx.stroke();ctx.restore();};
   seg(-1,last,true);if(last<CS_POSTES.length-1)seg(last,CS_POSTES.length-1,false);
 }
-function csValve(x,y,open,now){R(ctx,x+14,y-24,4,24,'#5d6370');ctx.strokeStyle=open?'#e0a020':'#c8323a';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x+16,y-28,7,0,7);ctx.stroke();
+function csValve(x,y,open,now){R(ctx,x+14,y-24,4,24,'#5d6370');ctx.strokeStyle=open?ST_VIF.warn:'#c8323a';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x+16,y-28,7,0,7);ctx.stroke();
   R(ctx,x+15,y-35,2,14,ctx.strokeStyle);R(ctx,x+9,y-29,14,2,ctx.strokeStyle);}
 const csPostePill=(p,s,x,y)=>atPill(atPosteLbl(p,['run','err','gate'].includes(s)),x,y,{run:'#2f6fd6',ok:'#2f7a45',err:'#a8323a',gate:WAIT_BG}[s]||'#f4efe4',s==='gate'?WAIT_INK:s?'#fff':'#3a3530','bold 12px system-ui,sans-serif');
 // ---------- une baie ----------
@@ -273,7 +273,7 @@ function csBay(slot,b,now,dt,people){
     if(s==='run'){const gr=ctx.createRadialGradient(x,y-24,4,x,y-24,46);gr.addColorStop(0,`rgba(255,246,190,${.6*f})`);gr.addColorStop(1,'rgba(255,246,190,0)');ctx.fillStyle=gr;ctx.fillRect(x-48,y-72,96,96);}
     people.push([c,null,false,()=>{csHelmet(ctx,x,y,c.dir,false);ctx.save();ctx.globalAlpha=f;
       if(s==='run'&&!REDUCED_MOTION)for(let n=0;n<4;n++){const q=((now/400)+n/4)%1;ctx.fillStyle=`rgba(120,200,255,${.9*(1-q)})`;ctx.beginPath();ctx.arc(x+16+q*26,y-34-q*6+q*q*14,2+n*.5,0,7);ctx.fill();}
-      if(s==='ok')atBadge(x+16,y-50,'✓','#2f9e55');
+      if(s==='ok')atBadge(x+16,y-50,'✓',ST_FONCE.ok);
       if(s==='err'){atBadge(x+16,y-50,'!','#d0392b');atSmoke(x,y-30,now);}
       if(cur&&cur.k===p.k&&s==='run')atBubble(x,y-66,{tri:'je trie le message…',logs:'je cherche des traces…',cause:'je remonte à la cause…',reponse:'je rédige la réponse…',relecture:'je relis…',post:'je poste en fil…'}[p.k]||'au travail…');
       csPostePill(p,s,x,y+16);ctx.restore();}]);
@@ -287,7 +287,7 @@ function csLate(people,f,y){people.push([{pos:{x:0,y:y==null?1e6:y}},null,false,
 function csBoard(slots,now){ // le tableau des interventions, au mur de la salle de garde
   const T=AT_TS, x=30.6*T, y=2.1*T, w=9*T, h=4.4*T;R(ctx,x-6,y-6,w+12,h+12,'#3a3530');R(ctx,x,y,w,h,'#10141c');R(ctx,x,y,w,18,'#8a1f17');
   atTxt('📋 INTERVENTIONS',x+8,y+13,'#fff','bold 12px ui-monospace,Menlo,monospace','left');
-  slots.forEach((s,b)=>{const c=!s?'#5d6370':s.dep?'#3fbf6a':s.s.k==='gate'?WAIT_BG:s.s.k==='failed'?'#e0614f':'#5b8def', cur=s&&!s.dep&&csCur(s.st||{});
+  slots.forEach((s,b)=>{const c=!s?'#5d6370':s.dep?ST_VIF.ok:s.s.k==='gate'?WAIT_BG:s.s.k==='failed'?ST_VIF.err:ST_VIF.info, cur=s&&!s.dep&&csCur(s.st||{});
     R(ctx,x+10,y+28+b*19,8,8,c);atTxt('B'+(b+1)+' · '+(!s?'libre':s.dep?(s.dep.posted?'feu éteint':'fin'):(csTitle(s.t).slice(0,22)+(cur?' · '+cur.i:''))),x+24,y+36+b*19,s?'#e8e2d0':'#8a93a6','12px ui-monospace,Menlo,monospace','left');});
   const n=csCalls().length, q=csWaiting();
   atTxt('📟 '+(n?plural(n,'appel','appels')+' à prendre':'aucun appel')+(q?' · '+q+' en attente de baie':''),x+10,y+h-12,n?'#ff9a8a':'#8a93a6','bold 12px ui-monospace,Menlo,monospace','left');

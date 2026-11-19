@@ -52,7 +52,7 @@ const WALL_SCREEN={y:TS+1,draw:now=>{
     // les pages sont souvent sombres : à 20 px de large, une miniature éclaircie et saturée reste lisible
     if(im){ctx.save();ctx.imageSmoothingEnabled=true;ctx.filter='brightness(1.9) saturate(1.5)';ctx.drawImage(im,x,y,20,15);ctx.restore();}
     WALL_CELLS.push({x,y,w:20,h:15,id:p.id});
-    if(p.id===pin){const on=REDUCED_MOTION||Math.floor(now/500)%2;ctx.strokeStyle=on?'#d9c2ff':'#b58cff';ctx.lineWidth=1;ctx.strokeRect(x-1.5,y-1.5,23,18);R(ctx,x+16,y+11,3,3,on?'#7cf09a':'#3fbf6a');}
+    if(p.id===pin){const on=REDUCED_MOTION||Math.floor(now/500)%2;ctx.strokeStyle=on?'#d9c2ff':'#b58cff';ctx.lineWidth=1;ctx.strokeRect(x-1.5,y-1.5,23,18);R(ctx,x+16,y+11,3,3,on?'#7cf09a':ST_VIF.ok);}
   }
 }};
 const bpAge=a=>a>=864e5?Math.floor(a/864e5)+' j':agoTxt(a); // au-delà d'un jour, en jours

@@ -6,13 +6,13 @@
 // en rejeu accéléré la lecture se met en pause le temps de la loupe ; rien quand on fait glisser l'heure ou qu'on survole le
 // plan. Bouton « 🔍 Loupe » de la barre (retenu dans le navigateur), ?loupe=0 dans l'adresse de l'écran mural.
 const LOUPE_MS=20e3, LOUPE_WAIT_MAX=40e3, LOUPE_HOVER_MS=5e3;
-const LOUPE_KINDS={reopen:['⛔','#b3122e'],proud:['🎉','#0172f0'],party:['🎉','#0172f0'],thumbs:['👍','#2e9e5b'],guest:['👋','#2e9e5b'],
+const LOUPE_KINDS={reopen:['⛔','#b3122e'],proud:['🎉','#0172f0'],party:['🎉','#0172f0'],thumbs:['👍',ST_FONCE.ok],guest:['👋',ST_FONCE.ok],
   daily:['☀️','#2e9e9b'],planning:['🗓','#2e9e9b'],retro:['🔄','#c25a9e'],kickoff:['🏁','#2e9e9b'],pizza:['🍕','#2e9e9b'],duck:['🦆','#c47f00'],hatch:['🐣','#c47f00'],trophy:['🏆','#c47f00'],ufo:['🛸','#b5481c'],brew:['☕','#6b3e1e'],
   // 1er étage (68-atelier.js, atLoupeEvents) : ticket qui sort, qui arrive, ta décision, retour au code, panne, ménage
-  at_exit:['📦','#2e9e5b'],at_arrive:['🎫','#0172f0'],at_gate:['✋','#c47f00'],at_back:['↩','#b3122e'],at_err:['🧯','#b3122e'],at_clean:['🧹','#6b3e1e'],
-  cs_arrive:['🚒','#d0392b'],cs_gate:['✋','#c47f00'],cs_err:['🔥','#b3122e'],cs_depart:['📣','#2e9e5b'],
-  rd_gate:['✋','#c47f00'],rd_cut:['✂','#2559b8'],rd_jira:['🎫','#2e9e5b'],rv_batch:['📥','#c47f00'],rv_pick:['🗂','#2559b8'],rv_stamp:['🔖','#2e9e5b'],rv_leave:['🚶','#6b3e1e'],rv_ask:['🔍','#2559b8'], // 2e étage (68-redaction.js, 68-revue.js)
-  rt_arrive:['🛠','#0172f0'],rt_gate:['✋','#c47f00'],rt_err:['🧯','#b3122e'],rt_exit:['📤','#2e9e5b']}; // 3e étage (68-retours.js)
+  at_exit:['📦',ST_FONCE.ok],at_arrive:['🎫','#0172f0'],at_gate:['✋','#c47f00'],at_back:['↩','#b3122e'],at_err:['🧯','#b3122e'],at_clean:['🧹','#6b3e1e'],
+  cs_arrive:['🚒','#d0392b'],cs_gate:['✋','#c47f00'],cs_err:['🔥','#b3122e'],cs_depart:['📣',ST_FONCE.ok],
+  rd_gate:['✋','#c47f00'],rd_cut:['✂','#2559b8'],rd_jira:['🎫',ST_FONCE.ok],rv_batch:['📥','#c47f00'],rv_pick:['🗂','#2559b8'],rv_stamp:['🔖',ST_FONCE.ok],rv_leave:['🚶','#6b3e1e'],rv_ask:['🔍','#2559b8'], // 2e étage (68-redaction.js, 68-revue.js)
+  rt_arrive:['🛠','#0172f0'],rt_gate:['✋','#c47f00'],rt_err:['🧯','#b3122e'],rt_exit:['📤',ST_FONCE.ok]}; // 3e étage (68-retours.js)
 const LOUPE_ORDER=['rd_gate','rd_jira','rd_cut','rv_leave','rv_stamp','rv_pick','rv_batch','rv_ask','rt_exit','rt_gate','rt_err','rt_arrive','cs_depart','cs_gate','cs_err','cs_arrive','at_exit','at_gate','at_back','at_err','at_arrive','at_clean','reopen','ufo','brew','proud','guest','thumbs','kickoff','planning','retro','daily','pizza','party','trophy','hatch','duck'];
 // cérémonies : toute l'équipe est dans la scène, la légende la nomme au lieu d'énumérer tout le monde
 const LOUPE_CEREMONY={daily:"Daily de l'équipe",planning:'Sprint planning',retro:'Rétrospective',kickoff:'Lancement du sprint',pizza:'Pizza de fin de sprint'};
