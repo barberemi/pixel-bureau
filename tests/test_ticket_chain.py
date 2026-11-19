@@ -74,6 +74,14 @@ class TicketChainTest(unittest.TestCase):
         out = self.t("rapport", "recherche", "r4", stdin="Je vais chercher.\n\nParfait ! J'ai trouvé.\n\n**Composants :** dm/site\n- src/Modal.twig:12").stdout
         self.assertTrue(out.startswith("**Composants :** dm/site"), out[:60])
         self.assertNotIn("Je vais chercher", self.t("poste", "redaction", "r4").stdout)
+        # un premier jet laissé en plan puis le vrai rapport : le dernier seulement, gardé en entier jusqu'à 12 000 caractères
+        long = "Composants : dm/site\n## Ticket 1\n- début coup\n\n## Rapport\n**Composants** : dm/site\n" + "- piste\n" * 1200 + "**Discussion** : clé API"
+        self.t("rapport", "recherche", "r4", stdin=long)
+        red = self.t("poste", "redaction", "r4").stdout
+        self.assertNotIn("début coup", red)
+        self.assertIn("**Discussion** : clé API", red)
+        self.assertEqual(json.loads(Path(self.tmp, ".cache", "pixel-bureau", "ticket", "r4", "recherche.json").read_text())["composants"],
+                         ["dm/site"], "liste lue malgré le gras")
 
     def test_title_language_apart(self):
         """jira.create.title_language : le titre dans sa langue (modèle d'équipe « titres en anglais »), la description
@@ -345,6 +353,7 @@ class TicketChainTest(unittest.TestCase):
         self.assertIn("💬 Discussion « Traduction » : 2 messages", r.stdout)
         p = self.t("poste", "recherche", "k1", cfg=cfg).stdout
         self.assertIn("## La discussion Kronn citée : « Traduction »", p)
+        self.assertIn("juste après la ligne `Composants`", p)
         self.assertIn("### 👤 Boss (Rémi) · 2026-11-19 13:48\n#### Ticket 1\nXLIFF depuis le Sheet", p)
         self.assertIn("### 🤖 Agent (ClaudeCode) · 2026-11-19 13:50\nClé API simple", p)
         self.assertNotIn("agent-native", p, "les traces d'outils restent dehors")
