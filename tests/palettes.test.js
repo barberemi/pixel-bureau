@@ -90,3 +90,12 @@ test('coins : pixel.css les met à 0 partout, styles.css ne déclare que des ron
   const r = [...read('page', 'src', 'styles.css').matchAll(/border-radius:([^;}]*)/g)].map(m => m[1].trim());
   assert.ok(r.length > 0 && r.every(v => v === '50%'), r.join(', '));
 });
+
+// audit UX 1.7 : styles.css passe par des jetons nommés ; seules les cartes des passions (couleurs de marque : Smash,
+// Netflix), le gyrophare des onglets et les blocs de jetons gardent des couleurs écrites
+test('styles.css : pas de couleur en dur hors des jetons, des passions et du gyrophare', () => {
+  const bad = read('page', 'src', 'styles.css').split('\n').map((l, i) => [i + 1, l])
+    .filter(([, l]) => /(^|[^-\w])#[0-9a-fA-F]{6}\b/.test(l.replace(/#feed\b/g, '')))
+    .filter(([, l]) => !/^\s*(--|:root\{--|body\.tv\{--)/.test(l) && !/\.(pcard|pc-|floors \.gyro)/.test(l) && !/^\s*clip-path/.test(l));
+  assert.deepEqual(bad.map(([n, l]) => n + ' ' + l.slice(0, 60)), []);
+});
