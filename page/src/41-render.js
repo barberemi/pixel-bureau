@@ -40,7 +40,7 @@ function render(now){
   {
     const b=chars.find(c=>c.boss);
     if(b&&b.pos&&b._st&&b._st.st==='sax'&&!b.moving){
-      ctx.font='bold 12px system-ui,sans-serif';
+      ctx.font=`bold 12px ${FONT_UI}`;
       for(let i=0;i<3;i++){
         const k=((now/1400)+i/3)%1;
         ctx.fillStyle=`rgba(201,162,39,${1-k})`;

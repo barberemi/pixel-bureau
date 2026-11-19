@@ -60,9 +60,9 @@ function supportScreen(x,y,now){
   const n=spTodo().length;if(!n)return false;
   const on=REDUCED_MOTION||Math.floor(now/600)%2;
   R(ctx,x,y,16,10,on?'#d1453b':'#a32f27');
-  ctx.fillStyle='#fff';ctx.font='bold 9px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText('!',x+8,y+9);
+  ctx.fillStyle='#fff';ctx.font=`bold 9px ${FONT_MONO}`;ctx.textAlign='center';ctx.fillText('!',x+8,y+9);
   ctx.fillStyle='#d1453b';ctx.beginPath();ctx.arc(x+18,y-3,6.5,0,7);ctx.fill();ctx.lineWidth=1.5;ctx.strokeStyle='#fff';ctx.stroke();
-  ctx.fillStyle='#fff';ctx.font='bold 9px sans-serif';ctx.fillText(n>9?'9+':String(n),x+18,y);ctx.textAlign='left';
+  ctx.fillStyle='#fff';ctx.font=`bold 9px ${FONT_UI}`;ctx.fillText(n>9?'9+':String(n),x+18,y);ctx.textAlign='left';
   return true;
 }
 function supportRect(){const o=furnAt('boss_desk')||{dx:0,dy:0};return {x:21*TS-2+5+o.dx,y:9*TS-20-14+o.dy,w:28,h:16};}

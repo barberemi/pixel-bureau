@@ -29,7 +29,7 @@ function svState(s,t){
 const svAll=t=>((STATUTS&&STATUTS.services)||[]).map(s=>({s,st:svState(s,t)}));
 const svBad=t=>svAll(t).filter(x=>x.st&&x.st!=='op').sort((a,b)=>SV_RANK.indexOf(b.st)-SV_RANK.indexOf(a.st));
 const svLine=x=>'⚠ '+x.s.n.toUpperCase()+' · '+SV_ST[x.st][1];
-const SV_FONT='bold 12px system-ui,sans-serif';
+const SV_FONT=`bold 12px ${FONT_UI}`;
 // sous l'écran du plateau TV : 8 px de points, ou une ligne de 15 px par service touché ; assez large pour la plus longue
 function svRect(t){
   if(!STATUTS||!STATUTS.services.length||!TVR)return null;

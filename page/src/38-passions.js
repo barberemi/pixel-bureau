@@ -51,7 +51,7 @@ function drawPassion(c,x,y,now){
     const k=(now%1500)/1500, bx=x+((hx-(away||1)*9)-x)*k, by=y-36-Math.sin(k*Math.PI)*2.2*TS+(k*6);
     pDisc(bx,by,3,'#e8701a');R(ctx,bx-3,by,6,1,'#5a2a0a');
     const shots=Math.floor(el/6000)+1, made=Math.round(shots*.7);
-    ctx.font='bold 9px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillStyle='#ffd27a';
+    ctx.font=`bold 9px ${FONT_MONO}`;ctx.textAlign='center';ctx.fillStyle='#ffd27a';
     if(k>.85)ctx.fillText('SWISH!',hx,hy-12);
     ctx.fillStyle='#fffdf8';ctx.fillText(made+'/'+shots,x,y+14);ctx.textAlign='left';
   }else if(s.passion==='boxe'){
@@ -59,7 +59,7 @@ function drawPassion(c,x,y,now){
     R(ctx,bx,y-50,1,12,'#7a7f8c');R(ctx,bx-5,y-38+(hit?1:0),11,24,'#8a2a22');R(ctx,bx-5,y-38,11,3,'#a8382e');R(ctx,bx-4,y-17,9,3,'#5a1a14');
     const fx=x+(away||-1)*(hit?10:5);
     R(ctx,fx-3,y-26,6,5,'#d1453b');R(ctx,x-(away||-1)*4-3,y-24,6,5,'#d1453b');
-    if(hit){ctx.font='bold 9px system-ui';ctx.fillStyle='#ffd27a';ctx.textAlign='center';ctx.fillText('POW!',bx,y-44);ctx.textAlign='left';}
+    if(hit){ctx.font=`bold 9px ${FONT_UI}`;ctx.fillStyle='#ffd27a';ctx.textAlign='center';ctx.fillText('POW!',bx,y-44);ctx.textAlign='left';}
   }
 }
 // semi-hologramme : le personnage reste reconnaissable, reflet bleu et lignes de balayage qui défilent

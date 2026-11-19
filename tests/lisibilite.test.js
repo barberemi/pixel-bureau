@@ -20,7 +20,7 @@ test('la page est large et le plan tient dans la hauteur de l\'écran (hors mode
 // RDC : une seule échelle (panneau ouvert : ×0,78), relevée dans Chrome et gardée par smoke.py --chrome ; d'où 12 px partout
 const LISI = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'lisibilite.json'), 'utf8'));
 const MIN = Math.ceil(LISI.affiche_min / LISI.echelle - 1e-9);
-const RE = /\b(\d+)px (?:ui-monospace|system-ui|ui-sans-serif|sans-serif|monospace)/g;
+const RE = /\b(\d+)px (?:ui-monospace|system-ui|ui-sans-serif|sans-serif|monospace|\$\{FONT_(?:UI|MONO)\})/g;
 // décor : textes dessinés dans un petit objet, dont l'info est ailleurs (tuiles, fiche, fenêtre) ; repérés par la fonction ou le
 // meuble qui les dessine
 const DECOR = {

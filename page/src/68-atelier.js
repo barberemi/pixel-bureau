@@ -330,12 +330,12 @@ function setFloor(f){
 // côtés de profil, tournés vers le tapis. Un agent par poste : au travail (lumière, écran, bulle), a travaillé (✓ ou !),
 // attend son tour (silhouette grise). En haut, le grand tableau de l'orchestrateur, une colonne par bureau. Le couloir, de
 // gauche à droite : l'entrepôt (palettes au sol), « Runs du jour », le boss à son bureau, le café, les canapés, la sortie.
-const atTxt=(s,x,y,col,font,al)=>{ctx.font=font||'bold 12px ui-monospace,Menlo,monospace';ctx.fillStyle=col;ctx.textAlign=al||'center';ctx.fillText(s,x,y);ctx.textAlign='left';};
+const atTxt=(s,x,y,col,font,al)=>{ctx.font=font||`bold 12px ${FONT_MONO}`;ctx.fillStyle=col;ctx.textAlign=al||'center';ctx.fillText(s,x,y);ctx.textAlign='left';};
 // un poste au repos, fini ou sauté ne montre que son icône (le ✓ au-dessus de l'agent dit qu'il a fini) ; le nom reste sur le poste
 // actif, en panne ou qui attend ta décision : les rangées de postes restent lisibles en grand (1er, 3e, -1)
 const atPosteLbl=(p,on)=>on?p.i+' '+p.n:p.i;
 // la hauteur de l'étiquette suit sa police (base y : la ligne du texte) ; au bord de l'étage, elle rentre dans le plan au lieu d'être coupée
-function atPill(s,x,y,bgc,fg,font){ctx.font=font||'bold 12px ui-monospace,Menlo,monospace';const w=ctx.measureText(s).width+10, px=+(/(\d+)px/.exec(ctx.font)||[0,12])[1];
+function atPill(s,x,y,bgc,fg,font){ctx.font=font||`bold 12px ${FONT_MONO}`;const w=ctx.measureText(s).width+10, px=+(/(\d+)px/.exec(ctx.font)||[0,12])[1];
   x=Math.max(w/2+2,Math.min(AT_W-w/2-2,x));R(ctx,x-w/2,y-px-1,w,px+6,bgc);atTxt(s,x,y,fg||'#fff',font);}
 const AT_DESKS=AT_POSTES.filter(p=>p.bureau!==false), AT_WORK=AT_DESKS.filter(p=>!p.gate);
 // les postes autour du U, dans l'ordre du flux : AT_SIDE à gauche (de bas en haut), le reste au fond, AT_SIDE à droite (de haut en bas)
@@ -531,16 +531,16 @@ function atCarton(x,y,label,col,dy){
   if(themeIs('noel')){R(ctx,x-14,y-12,28,19,'#c8323a');R(ctx,x-2,y-12,4,19,'#f2c230');R(ctx,x-14,y-4,28,3,'#f2c230');}
   else if(themeIs('halloween')){R(ctx,x-14,y-12,28,19,'#e07a1a');R(ctx,x-9,y-7,4,3,'#1c1c1c');R(ctx,x+5,y-7,4,3,'#1c1c1c');R(ctx,x-6,y,12,2,'#1c1c1c');}
   else if(themeIs('saint-valentin'))E('❤',x,y-2,10);
-  if(label)atPill(label,x,y+(dy||24),col||'#0b2a4a','#fff','bold 12px ui-monospace,Menlo,monospace');
+  if(label)atPill(label,x,y+(dy||24),col||'#0b2a4a','#fff',`bold 12px ${FONT_MONO}`);
 }
 function atBadge(x,y,ch,bgc,k){const s=k==null?1:k;if(s<=0)return;ctx.fillStyle=bgc;ctx.beginPath();ctx.arc(x,y,8*s,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
-  if(s>.6)atTxt(ch,x,y+4,'#fff','bold 12px system-ui,sans-serif');}
+  if(s>.6)atTxt(ch,x,y+4,'#fff',`bold 12px ${FONT_UI}`);}
 const AT_BOARD={x:9.2*AT_TS,y:1.15*AT_TS,w:21.6*AT_TS,h:3.15*AT_TS};
 // dot : pastille d'activité (live : action de moins de 30 s, clignote ; calm ; stale : jaune). Par défaut au-dessus du point
 // (x, y : la pointe), et une bulle sous le grand tableau descend juste sous son cadre, plus serrée. o (1er) : dir 'down' sous le
 // point, 'right' / 'left' à côté de lui ; x0..x1 : la place où elle doit tenir. Rend sa boîte {x, y, w, h}.
 function atBubble(x,y,s,col,dot,o){
-  const B=AT_BOARD, by1=B.y+B.h+6, dir=o&&o.dir||'up', tight=dir==='up'&&y-19<by1&&x>B.x-90&&x<B.x+B.w+90, h=tight?18:19, f='bold 12px system-ui,sans-serif';
+  const B=AT_BOARD, by1=B.y+B.h+6, dir=o&&o.dir||'up', tight=dir==='up'&&y-19<by1&&x>B.x-90&&x<B.x+B.w+90, h=tight?18:19, f=`bold 12px ${FONT_UI}`;
   if(tight)y=by1+h;
   ctx.font=f;const d=dot?14:0, w=ctx.measureText(s).width+12+d, st=dot==='stale', ink=st?'#7a5200':col||'#1c1f26', bg=st?'#fff1c9':'#ffffff';
   const x0=Math.max(2,o&&o.x0!=null?o.x0:2), x1=Math.min(AT_W-2,o&&o.x1!=null?o.x1:AT_W-2), fit=c=>Math.max(x0+w/2,Math.min(x1-w/2,c));
@@ -589,7 +589,7 @@ function atChantier(T){
   const sx=AT_W-2.6*T, sy=15.75*T;R(ctx,sx-1,sy+18,2,10,'#6b6f7a');
   R(ctx,sx-17,sy-2,34,22,'#1c4fa0');R(ctx,sx-16,sy-1,32,20,'#2f6fd6');
   ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(sx,sy+9,6,Math.PI,0);ctx.fill();R(ctx,sx-8,sy+9,16,2,'#ffffff');
-  atTxt('CASQUE',sx,sy+17,'#ffffff','bold 5px ui-monospace,Menlo,monospace');
+  atTxt('CASQUE',sx,sy+17,'#ffffff',`bold 5px ${FONT_MONO}`);
   const py=16.75*T;for(const cx of [AT_W-5.3*T,AT_W-4.5*T]){ctx.fillStyle='#ff7a1a';ctx.beginPath();ctx.moveTo(cx-5,py);ctx.lineTo(cx,py-14);ctx.lineTo(cx+5,py);ctx.fill();
     R(ctx,cx-3,py-8,6,2,'#ffffff');R(ctx,cx-7,py,14,2,'#c85a10');}
 }
@@ -627,7 +627,7 @@ const atHit=(kind,x,y,w,h,ref)=>AT_HITS.push({kind,x,y,w,h,...ref});
 // ---------- un bureau ----------
 // le nom du bureau, au milieu du U : trop long pour l'intérieur du tapis, il perd ses jetons (le grand tableau les donne), puis le dépôt
 function atHead(g,parts){
-  const room=g.inX1-g.inX0-8;ctx.font='bold 12px ui-monospace,Menlo,monospace';
+  const room=g.inX1-g.inX0-8;ctx.font=`bold 12px ${FONT_MONO}`;
   for(const drop of [[],[4],[4,2]]){const t=parts.filter((p,k)=>p&&!drop.includes(k)).join(' · ');if(ctx.measureText(t).width<=room||drop.length===2)return t;}
 }
 // la bulle d'un agent : au fond, sous lui dans le U ; sur les côtés, à côté de lui, dans le U. Aux contrôles, plusieurs
@@ -637,13 +637,13 @@ function atSpeak(g,sp,s,col,dot){
   const o={x0:g.inX0,x1:g.inX1}, keep=b=>{(g.boxes||(g.boxes=[])).push(b);return b;};
   if(sp.side!=='B'){const y=sp.feet-(sp.feet>AT_SIDE_FEET[0]?24:28);
     return keep(sp.side==='L'?atBubble(g.lx+g.H+3,y,s,col,dot,{...o,dir:'right'}):atBubble(g.rx-3,y,s,col,dot,{...o,dir:'left'}));}
-  ctx.font='bold 12px system-ui,sans-serif';const w=ctx.measureText(s).width+12+(dot?14:0), x=Math.max(o.x0+w/2,Math.min(o.x1-w/2,sp.x))-w/2;
+  ctx.font=`bold 12px ${FONT_UI}`;const w=ctx.measureText(s).width+12+(dot?14:0), x=Math.max(o.x0+w/2,Math.min(o.x1-w/2,sp.x))-w/2;
   let y=g.b1+g.H+3;
   for(let n=0;n<3&&(g.boxes||[]).some(b=>x<b.x+b.w+3&&x+w+3>b.x&&y+4<b.y+b.h+3&&y+4+19+3>b.y);n++)y+=23;
   return keep(atBubble(sp.x,y,s,col,dot,{...o,dir:'down'}));
 }
 function atRoom(r,i,now,dt){
-  const g=AT_G[i], T=AT_TS, H=g.H, leave=AT_MEM.leaving[i], live=r&&!r.gate, hf='bold 12px ui-monospace,Menlo,monospace';g.boxes=[];
+  const g=AT_G[i], T=AT_TS, H=g.H, leave=AT_MEM.leaving[i], live=r&&!r.gate, hf=`bold 12px ${FONT_MONO}`;g.boxes=[];
   if(r){atTxt(atHead(g,['BUREAU '+(i+1),r.ticket,String(r.repo||'').split('/').pop(),r.tour?'tour '+r.tour:'',Math.round((r.tok||0)/1e3)+' k jetons']),g.cx,AT_HEAD_Y,'#1c1f26',hf);
     const nt=r.note||(r.lot?'⌨ Code · '+r.lot:'')||(!r.poste&&AT_ORCH[r.etape])||'';
     if(nt)atPill(nt,g.cx,AT_NOTE_Y,r.gate?WAIT_BG:r.back?'#a8323a':'#2a4a7a',r.gate?WAIT_INK:'#fff');}
@@ -656,11 +656,11 @@ function atRoom(r,i,now,dt){
   AT_DESKS.forEach((p,idx)=>{
     const sp=atSpot(g,p.k), s=atState(r,p), back=sp.side==='B', f=sp.side==='L'?1:-1, feet=sp.feet;
     if(p.gate){const y=g.gateY;R(ctx,g.lx-4,y-4,4,10,'#8a8478');R(ctx,g.lx+H,y-4,4,10,'#8a8478');for(let k=0;k<4;k++)R(ctx,g.lx-4+k*(H+8)/4,y-2,(H+8)/4,5,k%2?'#1c1c1c':'#f2c230');
-      late.push(()=>{const t=r&&r.gate?'✋ Ton plan':'✋', f='bold 12px system-ui,sans-serif';ctx.font=f; // dans le U, contre la barrière, sous le nom du bureau
+      late.push(()=>{const t=r&&r.gate?'✋ Ton plan':'✋', f=`bold 12px ${FONT_UI}`;ctx.font=f; // dans le U, contre la barrière, sous le nom du bureau
         atPill(t,g.inX0+(ctx.measureText(t).width+10)/2,y+3,r&&r.gate?WAIT_BG:'#e9dcb8',r&&r.gate?WAIT_INK:'#6a5a30',f);});return;}
     const dx=back?sp.x:sp.x+f*26, desk=(on,col)=>back?atDesk(sp.x,AT_DESK1,on,col):atDeskSide(dx,feet,on,col,f), labelY=feet-50;
     const col={run:ST_FONCE.info,bloq:ST_FONCE.err,err:ST_FONCE.err,ok:ST_FONCE.ok,avis:ST_FONCE.warn,skip:'#d8d2c4',rep:'#4f7a64'}[s]||'#f4efe4';
-    late.push(()=>atPill(atPosteLbl(p,['run','bloq','err','avis'].includes(s)),sp.x,labelY,col,['run','bloq','err','ok','avis','rep'].includes(s)?'#fff':s==='skip'?'#8a8478':'#3a3530','bold 12px system-ui,sans-serif'));
+    late.push(()=>atPill(atPosteLbl(p,['run','bloq','err','avis'].includes(s)),sp.x,labelY,col,['run','bloq','err','ok','avis','rep'].includes(s)?'#fff':s==='skip'?'#8a8478':'#3a3530',`bold 12px ${FONT_UI}`));
     if(!atAtDesk(i,p.k)){desk(false);return;} // personne (bureau vide, ou il monte encore) : le bureau seul
     const a=atWorker(i*20+idx,sp.x,feet,back?'down':sp.side==='L'?'right':'left',false,p.n);if(!a)return;
     a._at={i,k:p.k,s};
@@ -713,7 +713,7 @@ function atRoom(r,i,now,dt){
   const want=r||leave?1:0;AT_MEM.lit[i]+=Math.sign(want-AT_MEM.lit[i])*Math.min(Math.abs(want-AT_MEM.lit[i]),dt/(REDUCED_MOTION?.01:2.5));
   const sweep=AT_MEM.clean&&!AT_MEM.clean.moving&&AT_MEM.clean.stop.i===i, dark=(1-AT_MEM.lit[i])*(sweep?.35:1);
   if(dark>.01){ctx.fillStyle=`rgba(10,14,34,${(.55*dark).toFixed(3)})`;ctx.fillRect(g.X0+5,AT_Y0+2,g.X1-g.X0-10,AT_Y1-AT_Y0-2);
-    if((dark>.9||sweep&&!r)&&sleepers.length){sleepers.forEach(([,x,f],k)=>atTxt('z Z',x+12,f-58-(Math.floor(now/800+k)%2)*4,'#bfe6ff','bold 13px ui-monospace,Menlo,monospace'));
+    if((dark>.9||sweep&&!r)&&sleepers.length){sleepers.forEach(([,x,f],k)=>atTxt('z Z',x+12,f-58-(Math.floor(now/800+k)%2)*4,'#bfe6ff',`bold 13px ${FONT_MONO}`));
       atPill('💤 Libre : ils somnolent à leur poste',g.cx,AT_NOTE_Y-22,'#1c2440','#bfe6ff');}}
   atHit('room',g.X0,AT_Y0,g.X1-g.X0,AT_Y1-AT_Y0,{i});
 }
@@ -735,18 +735,18 @@ function atExtinguisher(r,i,k,x,feet,now,dt,people){
 function atBoard(slots){
   const bx=AT_BOARD.x, by=AT_BOARD.y, bw=AT_BOARD.w, bh=AT_BOARD.h, cw=bw/AT_NB;
   R(ctx,bx-6,by-6,bw+12,bh+12,'#3a3530');R(ctx,bx,by,bw,bh,'#10141c');R(ctx,bx,by,bw,16,'#1c2230');
-  atTxt('ORCHESTRATEUR',bx+bw/2,by+12,'#9fc4ff','bold 12px ui-monospace,Menlo,monospace');
+  atTxt('ORCHESTRATEUR',bx+bw/2,by+12,'#9fc4ff',`bold 12px ${FONT_MONO}`);
   if(themeIs('noel'))for(let k=0;k<26;k++){ctx.fillStyle=['#ff4a4a','#ffd84a','#4aff8a','#4ac8ff'][(k+Math.floor(performance.now()/500))%4];ctx.beginPath();ctx.arc(bx+8+k*(bw-16)/25,by-4,3,0,7);ctx.fill();}
   if(themeIs('halloween')){ctx.strokeStyle='rgba(230,230,230,.7)';ctx.lineWidth=1;for(let k=0;k<5;k++){ctx.beginPath();ctx.moveTo(bx+bw,by);ctx.lineTo(bx+bw-30+k*6,by+30-k*6);ctx.stroke();}}
   slots.forEach((r,k)=>{const x=bx+k*cw, col=!r?'#4a5060':r.gate?WAIT_BG:r.back?'#ff8a80':'#8fe3a8';
     if(k)R(ctx,x,by+18,1,bh-22,'#2b3240');
-    atTxt('B'+(k+1)+(r?' · '+r.ticket:' · libre'),x+10,by+34,col,'bold 13px ui-monospace,Menlo,monospace','left');
-    if(!r){atTxt('rien en cours',x+10,by+52,'#6b7280','12px system-ui,sans-serif','left');return;}
+    atTxt('B'+(k+1)+(r?' · '+r.ticket:' · libre'),x+10,by+34,col,`bold 13px ${FONT_MONO}`,'left');
+    if(!r){atTxt('rien en cours',x+10,by+52,'#6b7280',`12px ${FONT_UI}`,'left');return;}
     // le titre du ticket est dans le panneau de droite : ici le bureau, l'état, l'avancée, le tour et les jetons, en grand
     const p=AT_POSTES.find(q=>q.k===r.poste);
     const pe=AT_POSTES.find(q=>(r.states||{})[q.k]==='err');
     // en rejeu, le lot et le tour sont ceux du relevé (⏱) ; les jetons, ceux de l'heure du curseur
-    const f='bold 12px system-ui,sans-serif', lot=r.lotRel&&p&&!r.gate&&!r.back&&!pe;
+    const f=`bold 12px ${FONT_UI}`, lot=r.lotRel&&p&&!r.gate&&!r.back&&!pe;
     atSegs([[r.gate==='gate_escalade'?'🚨 demande un humain':r.gate?'✋ attend ta décision':r.back?'↩ renvoyé au code':pe?'🧯 '+pe.n+' en panne':p?p.i+' '+p.n+(r.lot?' · '+r.lot:''):AT_ORCH[r.etape]?'🧠 '+AT_STEP[r.etape]:'',col],
       ...(lot?[[' · '+relTxt(r.lotRel),REL_INK]]:[])],x+10,by+54,f);
     const sw=(cw-20)/AT_POSTES.length;AT_POSTES.forEach((q,j)=>{const s=(r.states||{})[q.k];R(ctx,x+10+j*sw,by+64,sw-2,6,(AT_ST[s]||['#2b3240'])[0]);});
@@ -774,7 +774,7 @@ function stairDoor(d,pts){
 }
 // le panneau « Sortie » au-dessus de la porte, net par-dessus le voile du soir, comme celui de l'entrée du RDC (42-light.js)
 function exitSign(x,y){ctx.fillStyle='#1d7a3c';ctx.fillRect(x,y,26,9);
-  ctx.fillStyle='#d8ffe2';ctx.font='bold 6px ui-monospace,Menlo,monospace';ctx.textAlign='left';ctx.fillText('SORTIE',x+2,y+7);}
+  ctx.fillStyle='#d8ffe2';ctx.font=`bold 6px ${FONT_MONO}`;ctx.textAlign='left';ctx.fillText('SORTIE',x+2,y+7);}
 const exitHalo=(x,y)=>({x:x+13,y:y+4,r:26,a:.4,c:'rgba(80,230,120,.22)'});
 // ---------- le bureau du boss, le même à chaque étage (le 1er, le 2e, le 3e) : celui du RDC (40-furniture.js) ----------
 // Le fauteuil 44 px au-dessus des pieds du boss (F), le bureau de 100 px 16 px au-dessus ; mid(x0,top) pose ce qui est
@@ -788,7 +788,7 @@ function atBossDesk(ox,F,now,boss,mid,mug){
   if(mid)mid(x0,top);else R(ctx,x0+44,top+4,15,5,'#e6e6e6');
   R(ctx,x0+m,top+2,6,7,'#fbfbf6');R(ctx,x0+m+1,top+4,4,2,'#d1453b');
   if(themeIs('saint-valentin'))E('🌹',x0+92,top-2,12);
-  ctx.fillStyle='#f3e6d2';ctx.font='bold 8px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText("WORLD'S BEST BOSS",ox,top+27);ctx.textAlign='left';
+  ctx.fillStyle='#f3e6d2';ctx.font=`bold 8px ${FONT_MONO}`;ctx.textAlign='center';ctx.fillText("WORLD'S BEST BOSS",ox,top+27);ctx.textAlign='left';
 }
 // le dessin du boss à un étage : la clé du roster (captain_sprite au -1, atelier_sprite au 1er, redaction_sprite au 2e) si
 // elle est réglée et son sprite embarqué, sinon null (il garde le sien). Sa fiche garde son portrait de partout.
@@ -853,10 +853,10 @@ function atCorridor(now){
   const T=AT_TS;
   // le café : une niche vitrée, la machine dedans
   R(ctx,AT_CAFE.x-1.1*T,14.3*T,2.2*T,4,'#bfe0ee');R(ctx,AT_CAFE.x-1.1*T,14.3*T,4,2.55*T,'#bfe0ee');R(ctx,AT_CAFE.x+1.1*T-4,14.3*T,4,2.55*T,'#bfe0ee');
-  atCoffee(AT_CAFE.x,AT_CAFE.y);atTxt('CAFÉ',AT_CAFE.x,14.3*T+18,'#5a4636','bold 12px ui-monospace,Menlo,monospace');
+  atCoffee(AT_CAFE.x,AT_CAFE.y);atTxt('CAFÉ',AT_CAFE.x,14.3*T+18,'#5a4636',`bold 12px ${FONT_MONO}`);
   atSofa(AT_SOFA.x,AT_SOFA.y);R(ctx,AT_SOFA.x-1.9*T,16.55*T,3.8*T,5,'#bfe0ee');
   atDoor(AT_W,AT_Y1+8);const {n,rel}=atDeliveredAt();
-  {const s='SORTIE'+(n?' · 📦 '+(rel?relTxt(n):n)+' aujourd\'hui':''), f='bold 12px ui-monospace,Menlo,monospace';ctx.font=f; // calée à droite, contre la porte
+  {const s='SORTIE'+(n?' · 📦 '+(rel?relTxt(n):n)+' aujourd\'hui':''), f=`bold 12px ${FONT_MONO}`;ctx.font=f; // calée à droite, contre la porte
    atPill(s,AT_W-.6*T-(ctx.measureText(s).width+10)/2,15*T,n?'#2f7a45':'#5a4636','#fff',f);}
   atPlant(19.9*T,16.6*T);atPlant(31.6*T,16.6*T);
   atChantier(T);
@@ -876,7 +876,7 @@ function atPop(now,ticket){
   const k=(now/600)%1;ctx.fillStyle=`rgba(255,240,160,${(.7*(1-k)).toFixed(3)})`;ctx.beginPath();ctx.arc(AT_POP.x,AT_POP.y+6,10+k*16,0,7);ctx.fill();
   for(let n=0;n<6;n++){const a=n/6*6.28+now/500;R(ctx,AT_POP.x+Math.cos(a)*(14+k*10),AT_POP.y+6+Math.sin(a)*(10+k*8),2,2,'#ffe27a');}
   R(ctx,AT_POP.x-9,AT_POP.y,18,13,'#b7864b');R(ctx,AT_POP.x-9,AT_POP.y,18,2,'#8a6232');R(ctx,AT_POP.x-1,AT_POP.y,2,13,'#d9c39a');
-  const t='✨ '+(ticket||'')+' arrive du RDC';ctx.font='bold 12px ui-monospace,Menlo,monospace'; // dans la zone des palettes
+  const t='✨ '+(ticket||'')+' arrive du RDC';ctx.font=`bold 12px ${FONT_MONO}`; // dans la zone des palettes
   atPill(t,Math.min(AT_POP.x,AT_ZONE.x1-6-(ctx.measureText(t).width+10)/2),AT_POP.y-12,'#2f6fd6');
 }
 function atBernard(pos,dir,moving){return {key:'at_bernard',sprite:themeIs('noel')?'at_bernard_noel':'at_bernard',ghost:themeIs('halloween'),name:'Bernard',role:'Manutentionnaire',person:true,pos:{x:pos.x,y:pos.y},tile:null,
@@ -1015,10 +1015,10 @@ const AT_WINDOWS=[1,3.5,6,32.5,35,37.5]; // en cases : de part et d'autre du gra
 // Compté par ticket (dataset atelier, jour), les reprises à part ; en rejeu, à l'heure du curseur (atJourAt).
 const AT_JOUR={x:12.9*AT_TS,y:14.4*AT_TS,w:6.5*AT_TS,h:1.62*AT_TS};
 function atJourBoard(){
-  const {x:bx,y:by,w:bw,h:bh}=AT_JOUR, d=(ATELIER&&ATELIER.jour)||{}, f='12px ui-monospace,Menlo,monospace', ink='#e8e2d0';
+  const {x:bx,y:by,w:bw,h:bh}=AT_JOUR, d=(ATELIER&&ATELIER.jour)||{}, f=`12px ${FONT_MONO}`, ink='#e8e2d0';
   const j=boardLive(ATELIER)?{...Object.fromEntries(['tickets','cours','sortis','pannes','reprises','tok'].map(k=>[k,+d[k]||0])),part:true}:atJourAt(T), v=(s,rel)=>rel?[relTxt(s),REL_INK]:[s,ink];
   R(ctx,bx-4,by-3,bw+8,bh+6,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+6,by+bh-4,bw-12,3,'#a37650');
-  atTxt('RUNS DU JOUR',bx+8,by+13,'#f4efe4','bold 12px ui-monospace,Menlo,monospace','left');
+  atTxt('RUNS DU JOUR',bx+8,by+13,'#f4efe4',`bold 12px ${FONT_MONO}`,'left');
   let rp=j.reprises?'↻ '+plural(j.reprises,'reprise','reprises'):'';ctx.font=f;if(ctx.measureText(rp).width>bw-110)rp='↻ '+j.reprises+' repr.'; // 2 chiffres : abrégé
   atTxt(rp&&j.rel?relTxt(rp):rp,bx+bw-8,by+13,j.rel?REL_INK:'#c9c2ae',f,'right');
   R(ctx,bx+8,by+17,bw-16,1,'rgba(244,239,228,.4)');

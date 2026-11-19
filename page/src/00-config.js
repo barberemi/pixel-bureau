@@ -17,6 +17,8 @@ const SPR = __SPRITES__;   // sprites fournis tels quels (boss_sax)
 const LAYERS = __LAYERS__; // calques LPC (sprites/build_layers.py)
 const RECIPES = __CAST__;  // recette de chaque avatar (sprites/cast.json)
 const MUSIC = __MUSIC__;   // morceau de chaque collègue (teams/<équipe>/music, puis la config)
+// familles de polices du plan (audit UX 2.5), les mêmes que --font-ui et --font-mono de styles.css
+const FONT_UI='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif', FONT_MONO='ui-monospace,SFMono-Regular,Menlo,monospace';
 const DEMO = __DEMO__;        // aperçu local / tests : instantanés de démo embarqués ; false dans la page publiée
 const SNAP = __SNAP__;        // instantané de démo (null hors démo)
 const TEAM_SNAP = __TEAM__;   // équipe de démo (null hors démo)

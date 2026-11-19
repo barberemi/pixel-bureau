@@ -166,18 +166,18 @@ function rtBoard(z,r){
   RT_COLS.forEach((c,j)=>{const cx=x+j*cw, l=r?(r.fils||[]).filter(f=>f.col===c.k):[];if(j)R(ctx,cx,y+4,1,h-8,'#d9d2c3');
     // à 40 cases, une colonne fait ~2,5 cases : sur le plan, l'en-tête n'a pas de pictogramme (la couleur des post-its le dit ;
     // la légende et la fiche le gardent)
-    const f='bold 12px system-ui,sans-serif', t=rtColTxt(c)+(r?' '+l.length:'');
+    const f=`bold 12px ${FONT_UI}`, t=rtColTxt(c)+(r?' '+l.length:'');
     atTxt(t,cx+cw/2,y+12,'#5a4636',f);
     l.slice(0,6).forEach((f,q)=>{const px=cx+cw/2-10+(q%2?6:-6), py=y+16+q*12;rtPostit(px,py,c.c,f.cur);if(f.cur)hl={x:px+10,y:py+7};});});
   atHitRt('board',x,y,w,h,{i:z.i});
   return hl;
 }
 function rtLate(people,f,y){people.push([{pos:{x:0,y:y==null?1e6:y}},null,false,f]);}
-const rtPill=(p,s,x,y)=>atPill(atPosteLbl(p,['run','err','gate'].includes(s)),x,y,{run:'#2f6fd6',ok:'#2f7a45',err:'#a8323a',gate:WAIT_BG}[s]||'#f4efe4',s==='gate'?WAIT_INK:s?'#fff':'#3a3530','bold 12px system-ui,sans-serif');
+const rtPill=(p,s,x,y)=>atPill(atPosteLbl(p,['run','err','gate'].includes(s)),x,y,{run:'#2f6fd6',ok:'#2f7a45',err:'#a8323a',gate:WAIT_BG}[s]||'#f4efe4',s==='gate'?WAIT_INK:s?'#fff':'#3a3530',`bold 12px ${FONT_UI}`);
 // ---------- un bureau ----------
 function rtRoom(r,i,now,people){
   const z=RT_G[i], T=AT_TS, lv=RT_MEM.leaving[i];
-  rtLate(people,()=>atPill('BUREAU '+(i+1),z.x0+40,z.y0+16,'#5a4636','#fff','bold 12px ui-monospace,Menlo,monospace'),1);
+  rtLate(people,()=>atPill('BUREAU '+(i+1),z.x0+40,z.y0+16,'#5a4636','#fff',`bold 12px ${FONT_MONO}`),1);
   const hl=rtBoard(z,r);
   atBelt(z.x0+.5*T,z.ry,z.w-T,.6*T,!!r,now,1);
   if(!r){ // libre : les bureaux éteints ; au bureau 1, l'équipe somnole à son poste, ailleurs personne
@@ -186,16 +186,16 @@ function rtRoom(r,i,now,people){
       if(!lvSeated(RT_LV,rtCrewId(i,p.k))){rtLate(people,()=>atDesk(x,y-6,false),y);return;}
       const a=atWorker(i*7+j,x,y,'down',false,p.n,null);if(!a)return;a._st={st:'idle'};a.pose='type';const k=zk++;
       people.push([a,null,false,()=>{rtKit(ctx,x,y,'down');atDesk(x,y-6,false);lvZz(x,y,k,now);}]);atHitRt('agent',x-16,y-56,32,60,{i,k:p.k});});
-    if(!lv)rtLate(people,()=>atPill(zk?'💤 Libre : ils somnolent à leur poste':'libre',z.x0+z.w/2,zk?z.y0+4.7*T:z.y0+z.h/2+18,'#1c2440','#bfe6ff','bold 12px ui-monospace,Menlo,monospace'),1);
+    if(!lv)rtLate(people,()=>atPill(zk?'💤 Libre : ils somnolent à leur poste':'libre',z.x0+z.w/2,zk?z.y0+4.7*T:z.y0+z.h/2+18,'#1c2440','#bfe6ff',`bold 12px ${FONT_MONO}`),1);
     if(lv&&lv.carton)rtLate(people,()=>{ctx.save();ctx.globalAlpha=lv.carton;atCarton(z.pts[RT_POSTES.length-1].x,z.ry+.2*T,null);ctx.restore();},z.ry+1);
     atHitRt('room',z.x0,z.y0,z.w,z.h,{i});return;
   }
   const cur=rtCur(r), boss=RT_MEM.boss, here=boss&&boss.target===i&&boss.arrived;
-  rtLate(people,()=>{atPill('🛠 '+rtName(r),z.x0+z.w/2,z.y0+16,'#0b2a4a','#fff','bold 12px ui-monospace,Menlo,monospace');const w=rtWho(r);if(w)atTxt('de '+w,z.x0+z.w-12,z.y0+20,'#5a4636','bold 12px system-ui','right');},1);
+  rtLate(people,()=>{atPill('🛠 '+rtName(r),z.x0+z.w/2,z.y0+16,'#0b2a4a','#fff',`bold 12px ${FONT_MONO}`);const w=rtWho(r);if(w)atTxt('de '+w,z.x0+z.w-12,z.y0+20,'#5a4636',`bold 12px ${FONT_UI}`,'right');},1);
   RT_POSTES.forEach((p,j)=>{const {x,y}=z.pts[j], s=rtState(r,p);
     if(p.gate){R(ctx,x-14,z.ry-20,3,20,'#8a8478');R(ctx,x+12,z.ry-20,3,20,'#8a8478');for(let q=0;q<4;q++)R(ctx,x-14+q*7,z.ry-20,7,5,q%2?'#1c1c1c':'#f2c230');
       if(s==='gate'&&!here)rtLate(people,()=>{if(waitOn(now))atBadge(x,z.ry-34,'✋',WAIT_BG);
-        if(boss&&boss.target!=null&&boss.target!==i)atPill('✋ en file : le boss est au bureau '+(boss.target+1),x,z.ry-56,WAIT_BG,WAIT_INK,'bold 12px system-ui,sans-serif');},1e6);
+        if(boss&&boss.target!=null&&boss.target!==i)atPill('✋ en file : le boss est au bureau '+(boss.target+1),x,z.ry-56,WAIT_BG,WAIT_INK,`bold 12px ${FONT_UI}`);},1e6);
       rtLate(people,()=>rtPill(p,s,x,z.ry+.6*T+12),1e6-2);atHitRt('agent',x-16,z.ry-40,32,48,{i,k:p.k});return;}
     rtLate(people,()=>rtPill(p,s,x,z.ry+.6*T+12),1e6-2);
     const id=rtCrewId(i,p.k), pop=lvPop(RT_LV,id,s==='ok',now);
@@ -244,12 +244,12 @@ function rtDayBoard(){
   const S=AT_TS, j=(RETOURS&&RETOURS.jour)||{}, n=k=>+j[k]||0, bx=13.2*S, by=14.5*S, bw=7.2*S, bh=68, ink='#e8e2d0';
   R(ctx,bx+12,by+bh,4,7,'#5a3e28');R(ctx,bx+bw-16,by+bh,4,7,'#5a3e28');
   R(ctx,bx-5,by-5,bw+10,bh+10,'#8a6040');R(ctx,bx,by,bw,bh,'#24352c');R(ctx,bx+4,by+bh-5,bw-8,3,'#a37650');
-  atTxt('RETOURS DU JOUR',bx+bw/2,by+14,'#f4efe4','bold 12px ui-monospace,Menlo,monospace');R(ctx,bx+12,by+19,bw-24,1,'rgba(244,239,228,.4)');
+  atTxt('RETOURS DU JOUR',bx+bw/2,by+14,'#f4efe4',`bold 12px ${FONT_MONO}`);R(ctx,bx+12,by+19,bw-24,1,'rgba(244,239,228,.4)');
   const r=rtLive()||releveNear(RETOURS)?null:rtJourAt(T), rows=r?[[ST_VIF.ok,[plural(r.pousses,'PR poussée','PR poussées')+' · ',ink],[relTxt(r.fils+' fils'),REL_INK]],
     [ST_VIF.info,[r.cours+' en cours · '+r.pannes+' en panne',ink]],[ST_VIF.warn,[relTxt(Math.round(r.tok/1e3)+' k jet.'),REL_INK],[' · 7 j : '+r.semaine+' PR',ink]]]
     :[[ST_VIF.ok,[plural(n('pousses'),'PR poussée','PR poussées')+' · '+n('fils')+' fils',ink]],[ST_VIF.info,[n('cours')+' en cours · '+n('pannes')+' en panne',ink]],
       [ST_VIF.warn,['~'+Math.round(n('tok')/1e3)+' k jetons · 7 j : '+n('semaine')+' PR',ink]]];
-  rows.forEach(([c,...segs],k)=>{R(ctx,bx+12,by+25+k*14,7,7,c);atSegs(segs,bx+24,by+32+k*14,'12px ui-monospace,Menlo,monospace');});
+  rows.forEach(([c,...segs],k)=>{R(ctx,bx+12,by+25+k*14,7,7,c);atSegs(segs,bx+24,by+32+k*14,`12px ${FONT_MONO}`);});
 }
 // l'entrepôt : une zone de palettes au sol, sans murs, balisée d'une bande jaune et noire ; une palette par PR qui attend un
 // bureau (son étiquette : la PR), puis les pannes, étiquette rouge et fumée ; le panneau centré au-dessus. Au-delà de
@@ -265,9 +265,9 @@ function rtDepot(now){
   for(let k=0;k<RT_PAL;k++){const x=x0+(k+.5)*sw, it=shown[k];
     if(it){atPallet(x,y);atCarton(x,y-9,(it.panne?'🧯 ':'')+rtName(it),it.panne?'#a8323a':'#0b2a4a',-22);if(it.panne)atSmoke(x+20,y-10,now+k*300);
       atHitRt('queue',x-sw/2+4,y-42,sw-8,54,{run:it.run,item:it});}
-    else if(more&&k===RT_PAL-1){atPallet(x,y);atPill('+'+more,x,y-6,'#5b6070','#fff','bold 12px ui-monospace,Menlo,monospace');}
+    else if(more&&k===RT_PAL-1){atPallet(x,y);atPill('+'+more,x,y-6,'#5b6070','#fff',`bold 12px ${FONT_MONO}`);}
     else if(k===RT_PAL-1){atPallet(x,y);atPallet(x,y-7);atPallet(x,y-14);}}
-  atPill('📦 ENTREPÔT · '+w+' en attente',(x0+x1)/2,y0-8,'#5a4636','#fff','bold 12px ui-monospace,Menlo,monospace');
+  atPill('📦 ENTREPÔT · '+w+' en attente',(x0+x1)/2,y0-8,'#5a4636','#fff',`bold 12px ${FONT_MONO}`);
 }
 function rtHall(slots,now,people){
   const T=AT_TS;
@@ -275,7 +275,7 @@ function rtHall(slots,now,people){
   rtLate(people,rtDayBoard,1e6-1);
   const bx=23.4*T, by=16.2*T;atSofa(bx,by);rtLate(people,()=>atSofaFront(bx,by),by+10); // le banc
   atCoffee(26.6*T,15.9*T);atPlant(28.3*T,16.2*T);
-  rtLate(people,()=>atPill('⇅ escalier · RDC',AT_W-74,RT_STAIR.y+RT_STAIR.h+22,'#5a4636','#fff','bold 12px ui-monospace,Menlo,monospace'),1e6);
+  rtLate(people,()=>atPill('⇅ escalier · RDC',AT_W-74,RT_STAIR.y+RT_STAIR.h+22,'#5a4636','#fff',`bold 12px ${FONT_MONO}`),1e6);
 }
 // ---------- les équipes : dès qu'une PR a un bureau, ses cinq agents montent derrière Bernard, l'un après l'autre, et
 // restent jusqu'au push ; le bureau 1 garde toujours la sienne (67-vie.js) ----------

@@ -66,7 +66,7 @@ function fxDuckLook(look,now){
   return l;
 }
 function fxBubble(x,y,txt,col){
-  ctx.font='bold 12px sans-serif';const w=ctx.measureText(txt).width+12;
+  ctx.font=`bold 12px ${FONT_UI}`;const w=ctx.measureText(txt).width+12;
   ctx.fillStyle='#ffffff';ctx.strokeStyle=col;ctx.lineWidth=1.5;pixRect(ctx,x-w/2,y-16,w,16);ctx.fill();ctx.stroke();
   ctx.beginPath();ctx.moveTo(x-3,y);ctx.lineTo(x,y+4);ctx.lineTo(x+3,y);ctx.fill();
   ctx.fillStyle=col;ctx.textAlign='center';ctx.fillText(txt,x,y-4);ctx.textAlign='left';
@@ -84,7 +84,7 @@ function fxDrawDuck(x,y,now){
   const st=fxOf('stage');
   if(st){const p=fxP(st,now);
     if(p>.25&&p<.75){ctx.fillStyle='rgba(255,255,255,.95)';for(const [dx,dy,r] of [[0,-14,12],[-10,-8,9],[10,-8,9],[-6,-22,8],[7,-22,8],[0,-4,9]]){ctx.beginPath();ctx.arc(x+dx*s/1.3,y+dy*s/1.3,r*s/1.3,0,7);ctx.fill();}
-      ctx.fillStyle='#8a8a8a';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText('POUF',x,y-Math.round(9*s));ctx.textAlign='left';}
+      ctx.fillStyle='#8a8a8a';ctx.font=`bold 10px ${FONT_UI}`;ctx.textAlign='center';ctx.fillText('POUF',x,y-Math.round(9*s));ctx.textAlign='left';}
     if(p>=.75){fxSparkles(x,y-12*s,16*s,10,1);fxBubble(x,top,st.mue?'Nouveau sprint : il mue':(DUCK_STAGES.find(d=>d.id===st.to)||{}).name+' !','#9a6a00');}
   }
   const h=fxOf('hatch');
@@ -186,7 +186,7 @@ function ufoDraw(now,bubble){
   if(p>=q(.3)&&p<q(.45)){const f=k(q(.3),q(.45)),o=d.x+(sm?14:0);ufoCard(o+(sx-o)*f,d.y-30+(sl-d.y+30)*f-24*Math.sin(f*Math.PI));} // vers « à faire »
   if(p>=q(.45)){R(ctx,sx-4,sl-4,9,8,Math.floor(now/250)%2?'#ff8a1c':'#fff'); // il clignote sur le mur, « +13 pts » au-dessus
     if(p<q(.72)){const fy=KANR.y-8-12*k(q(.45),q(.53)),txt=u.pts?'+'+u.pts+' pts':'+'+u.keys.length+' ticket'+(u.keys[1]?'s':'');
-      ctx.font='bold 16px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.globalAlpha=1-k(q(.68),q(.72));ctx.lineWidth=3;ctx.strokeStyle='#fff';
+      ctx.font=`bold 16px ${FONT_MONO}`;ctx.textAlign='center';ctx.globalAlpha=1-k(q(.68),q(.72));ctx.lineWidth=3;ctx.strokeStyle='#fff';
       ctx.strokeText(txt,KANR.x+KANR.w/2,fy);ctx.fillStyle='#d2560f';ctx.fillText(txt,KANR.x+KANR.w/2,fy);ctx.globalAlpha=1;ctx.textAlign='left';}}
   if(y>-60)ufoSaucer(x,y,now,p>q(.02)&&p<q(.8)||pick&&p>.16&&p<.3);
 }
