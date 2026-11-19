@@ -255,10 +255,10 @@ class MepTemplateTest(unittest.TestCase):
         for s in d["steps"]:
             if s["name"] in ("rebase", "citest", "merge", "release", "staging", "prod"):
                 self.assertEqual(s["on_result"], [{"contains": "ERROR", "action": {"type": "Goto", "step_name": "teams_failed"}}])
-        self.assertEqual(names.index("teams_post"), names.index("rebase") + 1, "annonce Teams une fois la PR rebasée")
+        self.assertNotIn("teams_post", names, "l'annonce part à la fin de l'étape rebase (20 étapes au plus)")
         # simulation : rien dans Jira après la gate de fin (retour IA et statut sautés par dry_guard)
         i = names.index("dry_guard")
-        self.assertEqual(names[i - 1:i + 4], ["gate_ticket_done", "dry_guard", "ai_time", "transition_deployed", "done"])
+        self.assertEqual(names[i - 1:i + 5], ["gate_ticket_done", "dry_guard", "ai_time", "ai_wait", "transition_deployed", "done"])
         self.assertEqual(d["steps"][i]["on_result"], [{"contains": "exit_9", "action": {"type": "Goto", "step_name": "done"}}])
         self.assertIn("{{dry_run}}", d["steps"][i]["exec_args"])
         merge = d["steps"][names.index("merge")]["exec_args"]  # chargeur de l'annonce : passé à la seule étape merge
@@ -276,7 +276,7 @@ class MepTemplateTest(unittest.TestCase):
         self.assertEqual(next(s for s in d["steps"] if s["name"] == "transition_deployed")["api_body"], {"transition": {"id": "3"}})
         self.assertNotIn("@@", json.dumps(d))
         bare = templates.render(templates.load_templates()["mep"], dict(config(), jira={}))
-        self.assertEqual({"fetch_ticket_type", "gate_ticket_done", "ai_time", "transition_deployed"} & {s["name"] for s in bare["steps"]}, set(),
+        self.assertEqual({"fetch_ticket_type", "gate_ticket_done", "ai_time", "ai_wait", "transition_deployed"} & {s["name"] for s in bare["steps"]}, set(),
                          "sans Jira (ni retour IA ni transition) : ces étapes sont retirées")
         self.assertTrue(templates.skipped("mep", FIXTURE), "aucun projet avec une clé mep : pas créé")
         self.assertFalse(templates.skipped("mep", cfg))
@@ -290,11 +290,15 @@ class MepTemplateTest(unittest.TestCase):
             names = [s["name"] for s in templates.render(tpl, config(launch={"mep_pr": "w"}, mep=mep, models=models))["steps"]]
             self.assertLessEqual(len(names), 20, "limite Kronn")
             self.assertEqual("ai_time" in names, has)
+            self.assertEqual("ai_wait" in names, has, "attente seulement avec le modèle")
             self.assertNotIn("ai_feedback", names, "plus de Quick Prompt de retour IA")
         step = next(s for s in templates.render(tpl, config(mep=mep, models={"ai_time": "wf-ai"}))["steps"] if s["name"] == "ai_time")
         self.assertEqual(step["step_type"], {"type": "TriggerWorkflow"})
         self.assertEqual((step["sub_workflow_id"], step["sub_workflow_variables"]), ("wf-ai", {"ticket": "{{steps.resolve.data.stdout}}", "gate": "non"}))
-        self.assertEqual(step["on_result"][0]["action"], {"type": "Goto", "step_name": "transition_deployed"})
+        self.assertEqual(step["on_result"][0]["action"], {"type": "Goto", "step_name": "transition_deployed"}, "refusé : pas d'attente")
+        wait = next(s for s in templates.render(tpl, config(mep=mep, models={"ai_time": "wf-ai"}))["steps"] if s["name"] == "ai_wait")
+        self.assertEqual((wait["exec_stdin"], wait.get("on_result")), ("{{steps.ai_time.data_json}}", None), "jamais un échec")
+        self.assertLessEqual(wait["exec_timeout_secs"], 1800)
         self.assertEqual(set(step["sub_workflow_variables"]) - {v["name"] for v in templates.load_templates()["ai_time"]["definition"]["variables"]},
                          set(), "Kronn refuse une variable que le modèle ne déclare pas")
         bare = [s["name"] for s in templates.render(tpl, dict(config(models={"ai_time": "wf-ai"}), jira={}))["steps"]]
@@ -361,7 +365,7 @@ class MepTeamsTest(MepTest):
         return c
 
     def test_card_posted_then_edited_then_failed_with_reason_in_thread(self):
-        for step, stdin in (("resolve", ""), ("tag", "Bug"), ("teams_post", "")):
+        for step, stdin in (("resolve", ""), ("tag", "Bug"), ("rebase", "")):  # la carte part à la fin du rebase
             r = self.mep(step, stdin=stdin, cfg=self.cfg())
             self.assertEqual(r.returncode, 0, step + " : " + r.stdout + r.stderr)
         method, path, body, auth = self.got[0]
@@ -371,7 +375,6 @@ class MepTeamsTest(MepTest):
         self.assertEqual(cols[0]["items"][0]["text"], "⏳")
         self.assertEqual((cols[1]["items"][0]["width"], cols[1]["items"][0]["height"]), ("36px", "36px"), "logo du projet en 36 px")
         self.assertEqual([x["text"] for x in cols[2]["items"]], ["site-web", "MEP `2.4.1`", "fix(Articles): pagination des tags vide"])
-        self.mep("rebase", cfg=self.cfg())
         self.mep("citest", cfg=self.cfg())
         self.mep("merge", cfg=self.cfg())
         method, path, body, _ = self.got[1]
@@ -395,7 +398,7 @@ class MepTeamsTest(MepTest):
         self.assertIn("<code>release</code>", body["body"]["content"])
 
     def test_dry_run_uses_the_test_channel_and_done_step_ends(self):
-        for step, stdin in (("resolve", ""), ("tag", "Story"), ("teams_post", "")):
+        for step, stdin in (("resolve", ""), ("tag", "Story"), ("rebase", "")):
             self.mep(step, stdin=stdin, dry="oui", cfg=self.cfg())
         self.assertIn("19%3Atest%40thread", self.got[0][1])
         r = self.mep("done", cfg=self.cfg())
@@ -404,10 +407,81 @@ class MepTeamsTest(MepTest):
     def test_no_teams_settings_no_announce(self):
         self.mep("resolve")
         self.mep("tag", stdin="Bug")
-        r = self.mep("teams_post")
-        self.assertEqual(r.returncode, 0)
+        r = self.mep("rebase")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("Pas d'annonce Teams", r.stdout)
         self.assertEqual(self.got, [])
+
+    def test_rebase_run_again_edits_the_card(self):
+        """Étape rebase relancée par Kronn après sa réussite : la carte déjà postée est éditée, jamais doublée."""
+        for step, stdin in (("resolve", ""), ("tag", "Bug"), ("rebase", ""), ("rebase", "")):
+            self.assertEqual(self.mep(step, stdin=stdin, cfg=self.cfg()).returncode, 0, step)
+        self.assertEqual([m for m, *_ in self.got], ["POST", "PATCH"])
+
+    def test_conflict_announces_nothing(self):
+        self.mep("resolve", cfg=self.cfg())
+        self.mep("tag", stdin="Bug", cfg=self.cfg())
+        work, env = os.path.join(self.tmp, "work"), self.env()
+        run = lambda *c: subprocess.run(["git", *c], cwd=work, capture_output=True, check=True, env=env)  # noqa: E731
+        Path(work, "a.txt").write_text("branche\n"); run("commit", "-am", "branche"); run("push", "origin", "kronn/DM-7801")
+        run("checkout", "main"); Path(work, "a.txt").write_text("main\n"); run("commit", "-am", "main"); run("push", "origin", "main")
+        self.assertEqual(self.mep("rebase", cfg=self.cfg()).returncode, 7)
+        self.assertEqual(self.got, [], "un conflit n'annonce rien")
+
+
+class MepAiWaitTest(MepTest):
+    """ai_wait : attend la fin du run du temps gagné par l'IA (faux Kronn local) ; jamais un échec."""
+    def setUp(self):
+        super().setUp()
+        import http.server, threading
+        self.statuses, self.seen = statuses, seen = [], []
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                seen.append(self.path)
+                status = statuses.pop(0) if len(statuses) > 1 else statuses[0]
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "data": {"id": "r-ai", "status": status}}).encode())
+
+            def log_message(self, *a):
+                pass
+        self.srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+
+    def tearDown(self):
+        self.srv.shutdown()
+        self.srv.server_close()
+
+    def wait(self, statuses, stdin=json.dumps({"child_run_id": "r-ai", "child_workflow_id": "wf-ai"})):
+        self.statuses[:] = statuses
+        cfg = dict(config(), kronn=dict(FIXTURE.get("kronn") or {}, api=f"http://127.0.0.1:{self.srv.server_port}/api"))
+        return self.mep("ai_wait", stdin=stdin, cfg=cfg)
+
+    def test_waits_until_the_run_ends(self):
+        r = self.wait(["Running", "Pending", "Running", "Success"])
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.seen, ["/api/workflows/wf-ai/runs/r-ai"] * 4)
+        self.assertIn("fini (Success)", r.stdout)
+
+    def test_never_fails(self):
+        for statuses in (["Failed"], ["WaitingApproval"], ["Running"]):  # échec, validation attendue, trop long
+            self.seen.clear()
+            r = self.wait(statuses)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertLessEqual(len(self.seen), 30, "10 min au plus")
+        self.assertIn("toujours Running", r.stdout)
+        self.seen.clear()
+        for stdin in ("", "null", "pas du json", "{}"):  # sortie de ai_time absente (étape sautée) : pas d'attente
+            r = self.wait(["Running"], stdin=stdin)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.seen, [])
+        self.srv.shutdown()
+        self.srv.server_close()
+        r = self.wait(["Running"])  # Kronn injoignable
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("illisible", r.stdout)
+        self.srv = type("S", (), {"shutdown": lambda s: None, "server_close": lambda s: None})()
 
 
 try:

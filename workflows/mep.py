@@ -11,20 +11,23 @@ Le ticket est déduit de la PR (branche, puis titre, puis description : premièr
 passe avant. Simulation (« oui ») : rien n'est poussé, mergé, créé ni déployé ; tout le reste est lu pour de vrai.
 Git : une copie du dépôt dans ~/.cache/pixel-bureau/mep/repos (jamais le dossier du projet) ; état du run dans
 ~/.cache/pixel-bureau/mep/runs/<run>.json.
-Annonce Teams (#59, clé mep.teams : {team, channel, test_team?, test_channel}) : une carte adaptative postée après la gate
-du début (⏳), éditée au merge (chargeur animé, sprites/teams/loader.png en data URI : 7e argument de l'étape), en prod (✅) ou en échec
+Annonce Teams (#59, clé mep.teams : {team, channel, test_team?, test_channel}) : une carte adaptative postée à la fin de
+l'étape rebase (⏳ : un conflit n'annonce rien), éditée au merge (chargeur animé, sprites/teams/loader.png en data URI : 7e argument de l'étape), en prod (✅) ou en échec
 (❌ et la raison en réponse dans le fil). Logo du projet : mep.logo (PNG, chemin relatif au pack d'équipe). Simulation : le canal de test.
 Jeton : « az account get-access-token » (Microsoft Graph), gardé en mémoire le temps de l'étape. Sans mep.teams : rien.
+Temps gagné par l'IA (#79) : lancé après la gate de fin (étape ai_time), attendu par ai_wait (10 min au plus, jamais un
+échec) avant le statut de fin, pour que Jira ait commentaire, label et points quand le ticket passe au statut de fin.
 Codes de sortie (signaux exit_N de Kronn) : 2 projet inconnu, 3 PR introuvable ou fermée, 6 ticket introuvable,
 7 conflit avec la base, 8 push refusé, 9 merge refusé, 10 tag illisible, 11 release refusée, 12 déploiement non lancé,
 4 CI ou déploiement en échec, 5 délai dépassé.
 """
 import base64, json, os, re, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
 from datetime import datetime, timezone
-from _lib import CFG, read_json, refresh, write_json
+from _lib import ACTIVE, CFG, get, read_json, refresh, write_json
 
 HOME = os.path.expanduser("~/.cache/pixel-bureau/mep")
 POLL, TRIES = int(os.environ.get("MEP_POLL", "20")), 75  # 25 min au plus par attente (exec_timeout_secs plafonné à 1800 s) ; MEP_POLL : tests
+AI_TRIES = 30  # temps gagné par l'IA : 10 min au plus d'attente avant le statut de fin
 
 
 LAST = [""]  # dernier message d'échec : la raison de la réponse ❌ dans le fil Teams (#59)
@@ -330,6 +333,7 @@ def rebase(p, n, forced, run_id, dry):
         st["sha"] = sha
         print(f"Rebase et squash : {count} commit(s) de {b} → 1 commit sur origin/{base} ({sha[:8]}), poussé.")
     save(run_id, st)
+    teams_post(p, n, forced, run_id, dry)  # pas d'étape à part (20 étapes, le plafond de Kronn) : un conflit n'annonce rien
 
 
 def citest(p, n, forced, run_id, dry):
@@ -440,6 +444,34 @@ def dry_guard(p, n, forced, run_id, dry):
     print(f"{st.get('ticket', 'Le ticket')} : retour IA puis statut de fin.")
 
 
+def ai_wait(p, n, forced, run_id, dry):
+    """Après le lancement du temps gagné par l'IA (stdin : la sortie de l'étape ai_time, child_run_id et child_workflow_id) :
+    attend la fin de son run, pour que commentaire, label et points soient dans Jira avant le statut de fin. Jamais un
+    échec : run en échec, en attente d'une validation, illisible ou plus long que 10 min, le statut de fin passe quand même."""
+    try:
+        child = json.loads(sys.stdin.read() or "{}")
+    except ValueError:
+        child = {}
+    rid, wid = (child or {}).get("child_run_id"), (child or {}).get("child_workflow_id")
+    if not (rid and wid):
+        print("Temps gagné par l'IA : run lancé introuvable, statut de fin sans attendre.")
+        return
+    status = "?"
+    for i in range(AI_TRIES):
+        try:
+            status = (get(f"/workflows/{wid}/runs/{rid}", timeout=30) or {}).get("status") or "?"
+        except (OSError, ValueError) as e:
+            print(f"Temps gagné par l'IA : run {rid[:8]} illisible ({str(e)[:120]}), statut de fin sans attendre.")
+            return
+        if status not in ACTIVE or status == "WaitingApproval":
+            break
+        time.sleep(POLL)
+    else:
+        print(f"Temps gagné par l'IA : run {rid[:8]} toujours {status} après {AI_TRIES * POLL // 60} min, statut de fin sans attendre.")
+        return
+    print(f"Temps gagné par l'IA : run {rid[:8]} fini ({status}), statut de fin.")
+
+
 def end(p, n, forced, run_id, dry):
     st = load(run_id)
     what = "simulation de la MEP" if dry == "oui" else "MEP"
@@ -450,7 +482,7 @@ def end(p, n, forced, run_id, dry):
 
 STEPS = {"resolve": resolve, "tag": tag, "rebase": rebase, "citest": citest, "merge": merge, "release": release,
          "staging": deploy("staging"), "prod": deploy("prod"), "done": end, "dry_guard": dry_guard,
-         "teams_post": teams_post, "teams_failed": teams_failed}
+         "ai_wait": ai_wait, "teams_failed": teams_failed}
 
 if __name__ == "__main__":
     step, name, n, forced, run_id, dry, LOADER[0] = (sys.argv[1:] + [""] * 7)[:7]
