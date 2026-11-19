@@ -309,6 +309,63 @@ class TicketChainTest(unittest.TestCase):
         self.t("dossier", "d2", "Fix it", "Bug", "1", "", "", "backlog", "", cfg=cfg)
         self.assertTrue(self.t("doublons_jql", "d2", cfg=cfg).stdout.endswith("AND created > now()"))
 
+    def test_kronn_discussion_frozen_for_the_research_only(self):
+        """Une discussion Kronn citée au lancement (le canard : l'investigation déjà faite) : lue au dossier, sans les traces
+        d'outils, figée, donnée à la seule recherche ; ses titres ne s'y confondent pas avec ceux de la consigne. Trop longue :
+        le premier message et les plus récents. Introuvable : le run s'arrête au dossier."""
+        import http.server, threading
+        did = "5060c2da-c311-46e1-9afa-f4679b3743ac"
+        disc = {"id": did, "title": "Traduction", "messages": [
+            {"role": "User", "content": "## Ticket 1\nXLIFF depuis le Sheet", "author_pseudo": "Rémi", "timestamp": "2026-11-19T13:48:00Z"},
+            {"role": "System", "content": "[agent-native: Bash(status=completed)]"},
+            {"role": "Agent", "content": "Clé API simple, PAT bot gardé.", "agent_type": "ClaudeCode", "timestamp": "2026-11-19T13:50:00Z"}]}
+        big = {"id": "b", "title": "Longue", "messages": [{"role": "User", "content": "sujet"}]
+               + [{"role": "Agent", "content": f"m{i} " + "x" * 5000} for i in range(30)]}
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                body = {f"/api/discussions/{did}": disc, "/api/discussions/" + "b" * 8 + "-0000-0000-0000-000000000000": big}.get(self.path)
+                self.send_response(200 if body else 404)
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "data": body}).encode() if body else b"{}")
+
+            def log_message(self, *a):
+                pass
+
+        srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.server_close)
+        self.addCleanup(srv.shutdown)
+        cfg = self.cfg_with()
+        c = json.loads(Path(cfg).read_text())
+        c["kronn"]["api"] = f"http://127.0.0.1:{srv.server_port}/api"
+        Path(cfg).write_text(json.dumps(c))
+        r = self.t("dossier", "k1", "Découper selon la discussion", "Story", "5", "dm/site", "", "backlog", "", f"http://localhost:5173/discussions/{did}", cfg=cfg)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("💬 Discussion « Traduction » : 2 messages", r.stdout)
+        p = self.t("poste", "recherche", "k1", cfg=cfg).stdout
+        self.assertIn("## La discussion Kronn citée : « Traduction »", p)
+        self.assertIn("### 👤 Boss (Rémi) · 2026-11-19 13:48\n#### Ticket 1\nXLIFF depuis le Sheet", p)
+        self.assertIn("### 🤖 Agent (ClaudeCode) · 2026-11-19 13:50\nClé API simple", p)
+        self.assertNotIn("agent-native", p, "les traces d'outils restent dehors")
+        self.assertNotIn("discussion Kronn", self.t("poste", "redaction", "k1", cfg=cfg).stdout, "la rédaction lit le rapport, pas la discussion")
+        c["kronn"]["api"] = "http://127.0.0.1:9/api"  # figée : relue au dossier, plus dans Kronn
+        Path(cfg).write_text(json.dumps(c))
+        self.assertIn("Clé API simple", self.t("poste", "recherche", "k1", cfg=cfg).stdout)
+        c["kronn"]["api"] = f"http://127.0.0.1:{srv.server_port}/api"
+        Path(cfg).write_text(json.dumps(c))
+        self.t("dossier", "k2", "x", "Story", "5", "dm/site", "", "backlog", "", "b" * 8 + "-0000-0000-0000-000000000000", cfg=cfg)
+        p = self.t("poste", "recherche", "k2", cfg=cfg).stdout
+        self.assertLess(len(p.encode()), 90000, "sortie d'étape Exec sous 100 Ko")
+        self.assertIn("sujet", p)
+        self.assertIn("m29 ", p)
+        self.assertIn("message(s) du milieu laissés de côté", p)
+        self.assertNotIn("m0 ", p)
+        r = self.t("dossier", "k3", "x", "Story", "5", "dm/site", "", "backlog", "", "00000000-0000-0000-0000-000000000000", cfg=cfg)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("vérifie son identifiant", r.stderr)
+        self.assertNotIn("discussion", self.t("dossier", "k4", "x", "Story", "5", "dm/site", "", "backlog", "", cfg=cfg).stdout.lower())
+
     def test_labels_on_every_created_ticket(self):
         cfg = self.cfg_with(labels=["ia_framed", "Rédigé par le Bureau", "ia_framed"])
         self.t("dossier", "l1", "x", "Tâche", "1", "dm/site", "", "backlog", "", cfg=cfg)
