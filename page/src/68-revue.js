@@ -176,7 +176,7 @@ function rvfJack(people,B,now){
 }
 const rvfName=a=>{const c=a&&typeof ghChar==='function'?ghChar(a):null, boss=chars.find(x=>x.boss);return c&&!(boss&&c.key===boss.key)?c:null;};
 // l'étiquette d'une palette : le dépôt et le numéro, ou le numéro seul s'il ne tient pas dans sa place
-function rvfTag(p){const full=String(p.repo||'').split('/').pop()+' #'+p.n;ctx.font='bold 12px ui-monospace,Menlo,monospace';return ctx.measureText(full).width+10<=2.45*RVF_TS?full:'#'+p.n;}
+function rvfTag(p){const full=String(p.repo||'').split('/').pop()+' #'+p.n;ctx.font=`bold 12px ${FONT_MONO}`;return ctx.measureText(full).width+10<=2.45*RVF_TS?full:'#'+p.n;}
 // la bande de sécurité, jaune et noire, au sol autour de l'entrepôt
 function rvfStripe(x0,y0,x1,y1){const s=8;
   for(let x=x0,k=0;x<x1;x+=12,k++){const c=k%2?'#1c1c1c':'#f2c230', w=Math.min(12,x1-x);R(ctx,x,y0,w,s,c);R(ctx,x,y1-s,w,s,c);}
@@ -191,7 +191,7 @@ function rvfPallets(M,st){
 function rvfDraw(now,people){
   const {M,st}=rvfUpdate(now), T_=RVF_TS, E=RVF_E, n=st?st.queue.length:0;
   // la zone au sol et son panneau, centré au-dessus
-  rdLate(people,()=>{rvfStripe(E.x0,E.y0,E.x1,E.y1);atPill('📦 ENTREPÔT · '+n+' à relire',(E.x0+E.x1)/2,E.y0-9,'#5a4636','#fff','bold 12px ui-monospace,Menlo,monospace');},E.y0-40);
+  rdLate(people,()=>{rvfStripe(E.x0,E.y0,E.x1,E.y1);atPill('📦 ENTREPÔT · '+n+' à relire',(E.x0+E.x1)/2,E.y0-9,'#5a4636','#fff',`bold 12px ${FONT_MONO}`);},E.y0-40);
   atHitRd('casier',E.x0,E.y0-18,E.x1-E.x0,E.y1-E.y0+18,{});
   // une palette par PR qui attend : elle vole du transpalette à sa place, puis avance quand la première est prise ; au-delà
   // de quatre, la dernière place dit « +n »
@@ -202,16 +202,16 @@ function rvfDraw(now,people){
         x=RVF.park.x+(q.x-RVF.park.x)*e;y=RVF.park.y-16+(q.y-RVF.park.y+16)*e-Math.sin(k*Math.PI)*14;f.x=x;f.y=y;if(k>=1)f.filed=true;}
       atPallet(x,y);atCarton(x,y-9,f.filed?rvfTag(f.p):null,'#5b6070',-22);});
     for(let k=shown.length;k<room;k++){const q=rvfSlot(k);atPallet(q.x,q.y);} // une place libre : la palette vide
-    if(more){const q=rvfSlot(room-1);atPill('+'+more,q.x,q.y-14,'#0b2a4a','#fff','bold 12px ui-monospace,Menlo,monospace');}
+    if(more){const q=rvfSlot(room-1);atPill('+'+more,q.x,q.y-14,'#0b2a4a','#fff',`bold 12px ${FONT_MONO}`);}
     pn.forEach((f,j)=>{const q=rvfSlot(RVF_SLOTS-1-j);atPallet(q.x,q.y);atSmoke(q.x+8,q.y-24,now+j*300);atCarton(q.x,q.y-9,'🧯 #'+f.p.n,'#a8323a',-22);});},E.y1-1);
   // la corbeille « Postées » : vidée par Bernard au passage suivant du cron
   rdLate(people,()=>{const b=RVF.basket;R(ctx,b.x-20,b.y-6,40,14,'#8a8478');R(ctx,b.x-20,b.y-6,40,3,'#a9a397');rvfStack(b.x,b.y-6,M.basket.slice(-6));
-    atPill('📤 POSTÉES'+(M.basket.length?' · '+M.basket.length:''),b.x,b.y+22,'#5a4636','#fff','bold 12px ui-monospace,Menlo,monospace');},RVF.basket.y);
+    atPill('📤 POSTÉES'+(M.basket.length?' · '+M.basket.length:''),b.x,b.y+22,'#5a4636','#fff',`bold 12px ${FONT_MONO}`);},RVF.basket.y);
   atHitRd('postees',RVF.basket.x-44,RVF.basket.y-34,88,66,{});
   // la salle d'attente, en bas de la revue : une chaise par auteur qui attend (cinq au moins)
   const nch=Math.max(5,Object.values(M.who).filter(h=>h.spot.k==='chair').length);
   rdLate(people,()=>{for(let k=0;k<Math.min(nch,7);k++){const q=rvfChair(k);R(ctx,q.x-12,q.y-26,24,12,'#7a8296');R(ctx,q.x-12,q.y-14,24,6,'#5d6370');R(ctx,q.x-10,q.y-8,3,8,'#3a3d45');R(ctx,q.x+7,q.y-8,3,8,'#3a3d45');}
-    atPill('🪑 SALLE D\'ATTENTE',rvfChair(2).x,rvfChair(0).y+22,'#5a4636','#fff','bold 12px ui-monospace,Menlo,monospace');},rvfChair(0).y-30);
+    atPill('🪑 SALLE D\'ATTENTE',rvfChair(2).x,rvfChair(0).y+22,'#5a4636','#fff',`bold 12px ${FONT_MONO}`);},rvfChair(0).y-30);
   // Bernard et son transpalette
   if(M.bern){const B=M.bern;rvfJack(people,B,now);rvfPerson(people,atBernard(B.w.pos,B.w.dir,B.w.moving),B.w.pos,B.w.dir,B.w.moving,now);}
   // le relecteur en marche (assis, il est dessiné avec le bureau)
@@ -221,7 +221,7 @@ function rvfDraw(now,people){
   const left=a=>st?st.queue.filter(p=>p.author===a).length+(st.reading&&st.reading.author===a?1:0):0;
   Object.keys(M.who).forEach((a,i)=>{const h=M.who[a], src=rvfName(a)||atWorker(110+i,0,0,'down',false,''), nm=rvfName(a)?rvfName(a).name.split(' ')[0]:'🤖 remplaçant';
     const vs=st?st.done.filter(d=>d.author===a).map(d=>d.v):[];
-    rvfPerson(people,src,h.pos,h.dir,h.moving,now,q=>{const n=left(a);if(n)atPill(nm+' · '+plural(n,'PR','PR'),q.x,q.y-62,'#0b2a4a','#fff','bold 12px ui-monospace,Menlo,monospace');
+    rvfPerson(people,src,h.pos,h.dir,h.moving,now,q=>{const n=left(a);if(n)atPill(nm+' · '+plural(n,'PR','PR'),q.x,q.y-62,'#0b2a4a','#fff',`bold 12px ${FONT_MONO}`);
       vs.slice(-4).forEach((v,j)=>atBadge(q.x+14+j*14,q.y-50,(RVF_V[v]||RVF_V.comment)[0],(RVF_V[v]||RVF_V.comment)[1]));});
     atHitRd('author',h.pos.x-14,h.pos.y-56,28,58,{author:a});});
   return {M,st};
@@ -231,11 +231,11 @@ function rvfDesk(people,now,F){
   const {M,st}=F, d=RVF.desk, r=st&&st.reading&&M.rel&&M.rel.seat?st.reading.r:null;
   if(!r){atDesk(d.x,d.y-6,false);ctx.fillStyle='rgba(30,26,22,.22)';ctx.fillRect(d.x-90,d.y-90,180,150);
     if(M.stamp){const k=Math.min(1,(now-M.stamp.t0)/300);rdAgent(people,100,d.x,d.y,'idle',{hat:'visiere',desk:true,front:()=>rvfFolder(d.x+32,d.y+2,M.stamp.v,k*1.4-.4*Math.max(0,k-.7)/.3)},now);}
-    else if(!(M.rel&&M.rel.w))rdLate(people,()=>atPill('bureau libre',d.x,d.y+40,'#f4efe4','#6a6050','bold 12px system-ui,sans-serif'),d.y);
+    else if(!(M.rel&&M.rel.w))rdLate(people,()=>atPill('bureau libre',d.x,d.y+40,'#f4efe4','#6a6050',`bold 12px ${FONT_UI}`),d.y);
     return;}
   rdAgent(people,100,d.x,d.y,'run',{hat:'visiere',desk:true,bubble:rvBubble(r),front:()=>rvfFolder(d.x+32,d.y+2)},now);
   const v=r.vars||{}, nm=rvfName(st.reading.author), pr=(st.reading.repo.split('/').pop()||'?')+'#'+st.reading.n;
-  rdLate(people,()=>{atPill(pr+' · '+(nm?nm.name:'🤖 remplaçant'),d.x,RVF.face.y+24,'#0b2a4a','#fff','bold 12px ui-monospace,Menlo,monospace');
+  rdLate(people,()=>{atPill(pr+' · '+(nm?nm.name:'🤖 remplaçant'),d.x,RVF.face.y+24,'#0b2a4a','#fff',`bold 12px ${FONT_MONO}`);
     rvStepsRow(r,d.x,RVF.face.y+42);},RVF.face.y+1);
   atHitRd('review',d.x-60,d.y-60,120,RVF.face.y-d.y+80,{run:r.run});
 }

@@ -187,7 +187,7 @@ test('3.10 : bulles, étiquettes et nuages aux coins crénelés (pixRect), plus 
 
 test('2.2 : noms des pièces du plan en 12 px (2.3 : 9,4 px affichés), encre à 50 % par défaut', () => {
   const js = read('page', 'src', '40-floor.js');
-  assert.match(js, /g\.font='bold 12px ui-monospace,Menlo,monospace';g\.textAlign='center';/);
+  assert.match(js, /g\.font=`bold 12px \$\{FONT_MONO\}`;g\.textAlign='center';/);
   assert.match(js, /g\.fillStyle=l\.color\|\|'rgba\(0,0,0,\.5\)'/);
 });
 

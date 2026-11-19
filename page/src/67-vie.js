@@ -40,7 +40,7 @@ function lvDraw(M,people,now,out){
 function lvPop(M,id,on,now){if(!on){delete M.okAt[id];return 0;}if(M.okAt[id]==null)M.okAt[id]=M.fresh||M.f0?-1e12:now;
   const age=now-M.okAt[id];return age<600?Math.min(1,age/300)*(1+.4*Math.sin(age/600*Math.PI)):1;}
 // « z Z » au-dessus de celui qui somnole à son poste, comme au 1er
-const lvZz=(x,f,k,now)=>atTxt('z Z',x+12,f-58-(Math.floor(now/800+k)%2)*4,'#bfe6ff','bold 13px ui-monospace,Menlo,monospace');
+const lvZz=(x,f,k,now)=>atTxt('z Z',x+12,f-58-(Math.floor(now/800+k)%2)*4,'#bfe6ff',`bold 13px ${FONT_MONO}`);
 // le pas de temps d'un étage (rejeu rapide : on marche plus vite) et un saut du curseur (plus de 2 min) : tout se pose
 function lvTick(M,now){const dt=(M.last?Math.min(.1,(now-M.last)/1000):0)*walkBoost();M.last=now;
   if(M.lastT!=null&&Math.abs(T-M.lastT)>120e3)M.fresh=true;M.lastT=T;return dt;}

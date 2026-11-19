@@ -1,6 +1,6 @@
 # Thème de la page
 
-La page est en pixel art : cadres en escalier, boutons en relief qui s'enfoncent au clic, barres de titre en aplat, police pixel sur le titre, l'horloge et les gros chiffres (le reste du texte garde la police habituelle, pour rester lisible). Le Bureau la livre dans un seul thème, **Classique** ; une équipe ajoute les siens (ses couleurs, celles de son entreprise) dans son pack d'équipe. Le plan ne change pas, seule l'interface autour.
+La page est en pixel art : cadres en escalier, boutons en relief qui s'enfoncent au clic, barres de titre en aplat, police pixel sur le titre, l'horloge, les gros chiffres et les noms de projet du tableau des départs, toujours à des tailles où elle est nette (16 ou 24 px) ; le reste du texte garde la police habituelle, sur une échelle de sept tailles (11 à 24 px), pour rester lisible. Le Bureau la livre dans un seul thème, **Classique** ; une équipe ajoute les siens (ses couleurs, celles de son entreprise) dans son pack d'équipe. Le plan ne change pas, seule l'interface autour.
 
 ![Le thème Classique](../img/theme-classique.png)
 

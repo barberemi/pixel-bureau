@@ -9,7 +9,7 @@ const css = fs.readFileSync(path.join(SRC, 'styles.css'), 'utf8');
 const TAGS = ['tk-tag', 'kb-rot', 'kb-age', 'kbv-tag', 'bp-tag', 'prchip', 'sp-tag', 'at-tag'];
 
 test('un seul gabarit d\'étiquette : taille, graisse et marge intérieure ne sont écrites qu\'une fois', () => {
-  const shared = /\.tag,\.tk-tag,\.kb-rot,\.kb-age,\.kbv-tag,\.bp-tag,\.prchip,\.sp-tag,\.atelier \.at-tag\{[^}]*font:700 11px\/16px[^}]*padding:0 6px/;
+  const shared = /\.tag,\.tk-tag,\.kb-rot,\.kb-age,\.kbv-tag,\.bp-tag,\.prchip,\.sp-tag,\.atelier \.at-tag\{[^}]*font:700 var\(--fs-meta\)\/16px[^}]*padding:0 6px/;
   assert.match(css, shared);
   for (const t of TAGS) {
     for (const m of css.matchAll(new RegExp(`([^{}]*\\.${t}\\b[^{}]*)\\{([^}]*)\\}`, 'g'))) {

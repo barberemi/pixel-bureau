@@ -30,7 +30,7 @@ const DEPARTS_BOARD={y:-1,draw:now=>{
   if(!DEPR)return;
   const {x,y,w,h}=DEPR, P=depPal(), L=depFlights(T), c2=x+Math.round(w*.46), c3=x+w-30, txt=(s,c,a,b)=>{ctx.fillStyle=c;ctx.fillText(s,a,b);};
   R(ctx,x-2,y-2,w+4,h+4,P.frame);R(ctx,x,y,w,h,P.bg);R(ctx,x,y,w,11,P.band);
-  ctx.font='bold 8px ui-monospace,Menlo,monospace';
+  ctx.font=`bold 8px ${FONT_MONO}`;
   txt('✈ DÉPARTS',P['band-ink'],x+4,y+9);txt('PRD',P['band-ink'],c2,y+9);txt('LE',P['band-ink'],c3,y+9);
   const n=Math.max(1,Math.ceil(L.length/DEP_ROWS)), pg=DEP_PIN!=null?DEP_PIN%n:Math.floor(now/DEP_PAGE_MS)%n, into=now%DEP_PAGE_MS, flip=DEP_PIN==null&&n>1&&into<DEP_FLIP_MS;
   for(let i=0;i<DEP_ROWS;i++){

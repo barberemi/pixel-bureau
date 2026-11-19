@@ -282,14 +282,14 @@ function drawDigiPad(now){
   const g=c.getContext('2d'), P=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);}, x=0, y=0, w=DIGI_W, h=DIGI_H, hits=[], ok=DIGI.ok&&now-DIGI.ok<DIGI_OK_MS, no=DIGI.no&&now-DIGI.no<DIGI_NO_MS;
   g.save();g.textAlign='center';g.textBaseline='alphabetic';
   P(x,y,w,h,'#2a2a3a');P(x+6,y+6,w-12,h-12,'#3a3a4e');P(x+6,y+6,w-12,4,'#ffcf4a');
-  g.font='bold 22px ui-monospace,monospace';g.fillStyle='#ffcf4a';g.fillText(ok?'ACCÈS AUTORISÉ':no?'ACCÈS REFUSÉ':'ACCÈS RÉSERVÉ',x+w/2,y+38);
+  g.font=`bold 22px ${FONT_MONO}`;g.fillStyle='#ffcf4a';g.fillText(ok?'ACCÈS AUTORISÉ':no?'ACCÈS REFUSÉ':'ACCÈS RÉSERVÉ',x+w/2,y+38);
   P(x+30,y+60,w-60,70,no?'#3a1010':'#0a1a10');
-  g.font='bold 30px ui-monospace,monospace';
+  g.font=`bold 30px ${FONT_MONO}`;
   for(let i=0;i<DIGI_LEN;i++){const k=DIGI.typed[i];g.fillStyle=k?(no?'#ff6b6b':'#62d48e'):'#2a4a32';g.fillText(k?DIGI_GLYPH[k]:'_',x+58+i*45,y+106);}
   [['U',1,0],['L',0,1],['R',2,1],['D',1,2]].forEach(([k,cc,r])=>{const bx=x+60+cc*70, by=y+160+r*70;
-    P(bx,by,60,60,'#c9c3d9');P(bx,by+54,60,6,'#7a748e');g.font='bold 28px ui-monospace,monospace';g.fillStyle='#1b1626';g.fillText(DIGI_GLYPH[k],bx+30,by+38);hits.push({k,x:bx,y:by,w:60,h:60});});
-  [['B',330],['A',410]].forEach(([k,bx])=>{g.fillStyle='#c8433d';g.beginPath();g.arc(x+bx,y+260,30,0,7);g.fill();g.font='bold 26px ui-monospace,monospace';g.fillStyle='#fff';g.fillText(k,x+bx,y+270);hits.push({k,x:x+bx-30,y:y+230,w:60,h:60});});
-  g.font='16px ui-sans-serif,system-ui';g.fillStyle='#c9c3d9';g.fillText(ok?'Une trappe s\'ouvre au plafond...':'Flèches et touches B / A, au clavier ou au clic',x+w/2,y+390);
+    P(bx,by,60,60,'#c9c3d9');P(bx,by+54,60,6,'#7a748e');g.font=`bold 28px ${FONT_MONO}`;g.fillStyle='#1b1626';g.fillText(DIGI_GLYPH[k],bx+30,by+38);hits.push({k,x:bx,y:by,w:60,h:60});});
+  [['B',330],['A',410]].forEach(([k,bx])=>{g.fillStyle='#c8433d';g.beginPath();g.arc(x+bx,y+260,30,0,7);g.fill();g.font=`bold 26px ${FONT_MONO}`;g.fillStyle='#fff';g.fillText(k,x+bx,y+270);hits.push({k,x:x+bx-30,y:y+230,w:60,h:60});});
+  g.font=`16px ${FONT_UI}`;g.fillStyle='#c9c3d9';g.fillText(ok?'Une trappe s\'ouvre au plafond...':'Flèches et touches B / A, au clavier ou au clic',x+w/2,y+390);
   g.restore();DIGI.hits=hits;
 }
 // la fenêtre : nom « Digicode », Échap ou × la ferment ; les touches au clavier restent (écouteur ci-dessous)
@@ -337,7 +337,7 @@ function duckHintWindow(t){
 function duckHintOn(t){if(comblesOn())return false;const w=duckHintWindow(t);return t>=w.s&&t<w.e;}
 function drawDuckHint(x,y,now){
   if(!duckHintOn(T))return;
-  ctx.save();ctx.font='bold 12px ui-monospace,monospace';
+  ctx.save();ctx.font=`bold 12px ${FONT_MONO}`;
   const w=Math.ceil(ctx.measureText(HINT_DUCK).width)+14, h=20, bx=Math.max(2,Math.min(x-w/2,W-w-2)), by=y-Math.round(34*DUCK_K)-h-6;
   ctx.fillStyle='#ffffff';ctx.strokeStyle='#c47f00';ctx.lineWidth=1;pixRect(ctx,bx,by,w,h);ctx.fill();ctx.stroke();
   ctx.beginPath();ctx.moveTo(x-3,by+h);ctx.lineTo(x,by+h+5);ctx.lineTo(x+3,by+h);ctx.fill();

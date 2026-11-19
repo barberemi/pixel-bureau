@@ -115,7 +115,7 @@ function drawLight(now){
   ctx.save();ctx.globalCompositeOperation='lighter';ctx.drawImage(LIGHT_HALO,0,0);ctx.restore();
   // panneau « Sortie » au-dessus de l'entrée, net
   ctx.fillStyle='#1d7a3c';ctx.fillRect(EXIT[0]*TS-10,EXIT[1]*TS-14,26,9);
-  ctx.fillStyle='#d8ffe2';ctx.font='bold 6px ui-monospace,Menlo,monospace';ctx.fillText('SORTIE',EXIT[0]*TS-8,EXIT[1]*TS-7);
+  ctx.fillStyle='#d8ffe2';ctx.font=`bold 6px ${FONT_MONO}`;ctx.fillText('SORTIE',EXIT[0]*TS-8,EXIT[1]*TS-7);
 }
 // étoiles dans les fenêtres la nuit
 function drawStars(x,y,w,h,now){

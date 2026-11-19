@@ -54,7 +54,7 @@ function banner(){ // sur le mur des toilettes (onF('toilets'))
   const x0=33*TS+14, x1=38*TS+18, y=5*TS+7;
   R(ctx,x0,y,x1-x0,15,pal[0]);R(ctx,x0,y,x1-x0,2,'rgba(255,255,255,.25)');R(ctx,x0,y+15,x1-x0,2,'rgba(0,0,0,.25)');
   R(ctx,x0-3,y-3,3,20,'#5a4636');R(ctx,x1,y-3,3,20,'#5a4636');
-  ctx.fillStyle=pal[1];ctx.font='bold 12px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText(bannerText(th),(x0+x1)/2,y+11);ctx.textAlign='left';
+  ctx.fillStyle=pal[1];ctx.font=`bold 12px ${FONT_MONO}`;ctx.textAlign='center';ctx.fillText(bannerText(th),(x0+x1)/2,y+11);ctx.textAlign='left';
   E(th.ico,x0-10,y+8,14);E(th.ico,x1+12,y+8,14);
 }
 function garland(now){
@@ -104,7 +104,7 @@ const BALLOONS=[[1.6,2.3],[10.4,2.3],[18.6,7.6],[26.4,7.6],[34.4,6.2],[12.6,11.4
 function tombs(){ // agents en panne en ce moment : une tombe chacun (des agents, jamais un collègue)
   const down=chars.filter(c=>c.present!==false&&!c.person&&!c.visitor&&c._st&&c._st.st==='error').slice(0,4);
   down.forEach((c,i)=>{const x=(inCols(isl(0)-4)+.4+i*1.5)*TS, y=(ROWN()+2)*TS+12;E('🪦',x,y,22);
-    ctx.fillStyle='#e9e4f2';ctx.font='bold 6px ui-monospace,Menlo,monospace';ctx.textAlign='center';ctx.fillText('RIP '+String(c.name).slice(0,7).toUpperCase(),x,y+17);ctx.textAlign='left';});
+    ctx.fillStyle='#e9e4f2';ctx.font=`bold 6px ${FONT_MONO}`;ctx.textAlign='center';ctx.fillText('RIP '+String(c.name).slice(0,7).toUpperCase(),x,y+17);ctx.textAlign='left';});
 }
 // décor des fêtes posé avec les meubles (buildFurniture, 40-furniture.js)
 function themeFurniture(){

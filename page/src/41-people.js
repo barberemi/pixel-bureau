@@ -128,7 +128,7 @@ function drawSeatTrail(c,now){
   ctx.save();ctx.setLineDash([4,6]);ctx.lineDashOffset=-now/50;ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=2;
   ctx.beginPath();ctx.moveTo(c.pos.x,c.pos.y);for(const [tx,ty] of TRAIL.v){const p=tileCenter(tx,ty);ctx.lineTo(p.x,p.y-4);}ctx.stroke();
   ctx.setLineDash([]);ctx.strokeStyle='#ffffff';ctx.strokeRect(d.x-13,d.y-22,26,24);
-  ctx.font='bold 12px ui-sans-serif,system-ui,sans-serif';
+  ctx.font=`bold 12px ${FONT_UI}`;
   ctx.textAlign='center';
   ctx.fillStyle='#ffffff';
   ctx.fillText('sa place',d.x,d.y-26);
