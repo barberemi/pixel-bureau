@@ -23,4 +23,4 @@ Le bureau se déguise selon la date : décor, chapeaux, emojis, effets. Le thèm
 - **Config** (`bureau.config.json`) : `"ui": {"themes": false}` coupe les thèmes, `"ui": {"theme": "noel"}` en impose un.
 - **Animations réduites** : avec le réglage système « réduire les animations », ce qui passe au-dessus du plan (flocons, traîneau, confettis, feux d'artifice, Cupidon, chauves-souris, fantôme, brume, éclairs) n'est pas dessiné ; le décor reste.
 - **Les vannes visent les agents**, jamais un collègue (tombes « RIP » réservées aux agents en panne).
-- **Ajouter un thème** : une entrée dans `THEMES` (`page/src/46-themes.js`, dates `MM-JJ`), puis son décor (emojis via `E(emoji, x, y, taille)`, mis en cache). Captures : `.venv/bin/python tools/shots.py theme-<nom>`.
+- **Ajouter un thème** : une entrée dans `THEMES` (`page/src/46-themes.js`, dates `MM-JJ`), puis son décor (emojis via `E(emoji, x, y, taille)`, mis en cache ; un emoji de `PIX_ICONS`, dans `page/src/46-icones.js`, y est dessiné en icône pixel, comme partout dans le plan). Captures : `.venv/bin/python tools/shots.py theme-<nom>`.
