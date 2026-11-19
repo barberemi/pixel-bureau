@@ -23,7 +23,9 @@ sous-workflow par ticket (ticket_un, foreach) une fois la liste validée au tamp
 refuse une gate dans un sous-workflow) : sa création. Le dossier du run
 (~/.cache/pixel-bureau/ticket/<run>/) garde la demande, les rapports, les versions et les tickets créés.
 
-  python3 -c <ce script> dossier <run> <intention> <type> <points> <composant> <composant 2> <sprint> <parent>
+  python3 -c <ce script> dossier <run> <intention> <type> <points> <composant> <composant 2> <sprint> <parent> [<discussion>]
+                                             discussion : une discussion Kronn (id ou lien), figée au dossier (discussion.json)
+                                             pour la recherche ; illisible ou vide : le run s'arrête là
   python3 -c <ce script> modele_cle <run>     l'adresse Jira du ticket modèle du type demandé (/myself sans ticket modèle)
   python3 -c <ce script> modele_jira <run> <réponse JSON>   sa description gardée au dossier (modele.json) pour les postes
   python3 -c <ce script> parent_cle <run>     l'adresse Jira du parent (son ticket, ou /myself sans parent), lue par l'étape suivante
@@ -243,7 +245,7 @@ def archive(run, **ajout):
         d = dget(run, "demande.json") or {}
         rec.setdefault("at", iso_now())
         rec.update({"v": 1, "run": run, "vu": iso_now(), **{k: d[k] for k in ("intention", "type", "points", "composants", "sprint", "parent",
-                                                                              "parent_de", "tour") if k in d}})
+                                                                              "parent_de", "tour", "discussion") if k in d}})
         rec["essai"] = bool(re.match(r"\s*\[\s*essai", str(d.get("intention") or ""), re.I))
         dj = dget(run, "doublons.json")
         if dj:
@@ -340,12 +342,58 @@ def sans_narration(text):
     return text[m.start():].strip() if m else text
 
 
-def dossier(run, intention, type_, points, c1, c2, sprint, parent):
+DISC_ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.I)
+DISC_MAX = 60000  # octets de la discussion dans la consigne de la recherche : sortie d'une étape Exec sous 100 Ko
+
+
+def discussion(ref):
+    """La discussion Kronn citée au lancement (son id ou son lien), lue par l'API et figée : les messages de l'humain et
+    des agents, sans les traces d'outils (role System). Introuvable : le run s'arrête là, avant la rédaction."""
+    m = DISC_ID.search(ref or "")
+    if not m:
+        return None
+    try:
+        x = get(f"/discussions/{m.group(0).lower()}")
+    except Exception as e:
+        sys.exit(f"Discussion Kronn {m.group(0)} illisible ({str(e)[:120] or type(e).__name__}) : vérifie son identifiant.")
+    x = x if isinstance(x, dict) else {}
+    msgs = [{"qui": "agent" if r.get("role") == "Agent" else "boss", "nom": str(r.get("author_pseudo") or r.get("agent_type") or ""),
+             "at": str(r.get("timestamp") or "")[:16].replace("T", " "), "texte": str(r.get("content") or "").strip()}
+            for r in x.get("messages") or [] if r.get("role") in ("User", "Agent") and str(r.get("content") or "").strip()]
+    if not msgs:
+        sys.exit(f"Discussion Kronn {m.group(0)} vide ou introuvable : vérifie son identifiant.")
+    return {"id": x.get("id") or m.group(0).lower(), "titre": str(x.get("title") or ""), "messages": msgs}
+
+
+def discussion_texte(disc):
+    """La discussion pour la consigne : en entier quand elle tient dans DISC_MAX, sinon le premier message (le sujet) et
+    les plus récents (les décisions), avec le nombre de messages du milieu laissés de côté."""
+    # les titres des messages descendent sous ceux de la consigne : un « ## Ticket 1 » n'y ouvre pas une section
+    blocs = [f"### {'🤖 Agent' if x['qui'] == 'agent' else '👤 Boss'}{' (' + x['nom'] + ')' if x['nom'] else ''} · {x['at']}\n"
+             + re.sub(r"^#{1,3} ", "#### ", x["texte"], flags=re.M) for x in disc["messages"]]
+    taille = lambda l: sum(len(b.encode()) + 2 for b in l)
+    if taille(blocs) <= DISC_MAX:
+        return "\n\n".join(blocs)
+    garde = []
+    for b in reversed(blocs[1:]):
+        if taille([blocs[0], *garde, b]) > DISC_MAX:
+            break
+        garde.insert(0, b)
+    saut = len(blocs) - 1 - len(garde)
+    return "\n\n".join([blocs[0][:DISC_MAX // 2], f"[… {saut} message(s) du milieu laissés de côté : la discussion dépasse {DISC_MAX // 1000} Ko …]", *garde])
+
+
+def dossier(run, intention, type_, points, c1, c2, sprint, parent, disc=""):
     d = {"intention": intention.strip(), "type": type_.strip(), "points": points.strip(), "composants": components(c1, c2),
          "sprint": sprint.strip() or "backlog", "parent": parent.strip(), "tour": 1}
+    x = discussion(disc)
+    if x:
+        dput(run, "discussion.json", x)
+        d["discussion"] = {"id": x["id"], "titre": x["titre"], "messages": len(x["messages"])}
     dput(run, "demande.json", d)
     archive(run)
-    print(f"🎫 {d['intention'][:300]}\n{meta(d['type'], d['points'] or 0, d['composants'], d['sprint'], d['parent'])}")
+    print(f"🎫 {d['intention'][:300]}\n{meta(d['type'], d['points'] or 0, d['composants'], d['sprint'], d['parent'])}"
+          + (f"\n💬 Discussion « {x['titre'][:80]} » : {len(x['messages'])} messages, figés pour la recherche" if x else ""))
 
 
 def parent_cle(run):
@@ -534,6 +582,14 @@ def poste(k, run, retours=""):
              + (", ".join(d["composants"]) or "aucun") + (f" · Parent : {d['parent']}" if d["parent"] else ""),
              "## Composants possibles (les dépôts de l'équipe)\n" + (", ".join(options()) or ", ".join(d["composants"]) or "aucun"),
              "## Modèle de ticket de l'équipe\n" + (modele(run) or "aucun (structure par défaut)")]
+    if k == "recherche" and dget(run, "discussion.json"):
+        x = dget(run, "discussion.json")
+        parts.append(f"## La discussion Kronn citée : « {x.get('titre') or x.get('id')} » (figée au lancement)\n"
+                     "L'investigation déjà faite avec le boss : elle passe avant ce que tu devines du code. Reporte dans le rapport, "
+                     "sous « Discussion », telles qu'elle les donne : les décisions prises (celles du boss d'abord), les pistes "
+                     "écartées et pourquoi, les questions encore ouvertes, et les fichiers et tickets qu'elle nomme ; vérifie "
+                     "dans le code ce qu'elle affirme avant de t'y appuyer, et dis-le quand le code la contredit.\n\n"
+                     + "\n\n---- début de la discussion ----\n\n" + discussion_texte(x) + "\n\n---- fin de la discussion ----")
     if k != "recherche" and dget(run, "recherche.json"):
         parts.append("## Rapport de la recherche\n" + dget(run, "recherche.json")["texte"])
     if k != "recherche" and dget(run, "doublons.json"):
@@ -813,7 +869,7 @@ if __name__ == "__main__":
     elif cmd == "resultat":
         resultat(*a[:7])
     elif cmd == "dossier":
-        dossier(*a[:8])
+        dossier(*a[:9])
     elif cmd == "poste":
         poste(a[0], a[1], a[2])
     elif cmd == "modele_cle":

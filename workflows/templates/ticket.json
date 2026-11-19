@@ -21,6 +21,16 @@
     }
    },
    {
+    "name": "discussion",
+    "label": "Discussion Kronn",
+    "placeholder": "son identifiant ou son lien",
+    "description": "Facultatif : une discussion Kronn où l'investigation a été faite (le canard, par exemple). Figée au lancement et lue en entier par la recherche.",
+    "required": false,
+    "pattern": "\\S*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\S*",
+    "source": "user_input",
+    "allow_manual_override": false
+   },
+   {
     "name": "type",
     "label": "Type",
     "placeholder": "",
@@ -110,7 +120,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Le dossier du run : la demande telle que tu l'as donnée (0 token).",
+    "description": "Le dossier du run : la demande telle que tu l'as donnée, et la discussion Kronn citée, figée (0 token).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -123,7 +133,8 @@
      "{{composant}}",
      "{{composant_2}}",
      "{{sprint}}",
-     "{{parent}}"
+     "{{parent}}",
+     "{{discussion}}"
     ],
     "exec_timeout_secs": 30
    },

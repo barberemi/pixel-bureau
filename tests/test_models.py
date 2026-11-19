@@ -419,7 +419,12 @@ exit 0
         c = {**cfg(models={"ticket": "tttt1111-0000-4000-8000-000000000000"}), "team": pack}
         out = templates.render(TPL["ticket"], c)
         var = {v["name"]: v for v in out["variables"]}
-        self.assertEqual(list(var), ["intention", "type", "points", "composant", "composant_2", "sprint", "parent"])
+        self.assertEqual(list(var), ["intention", "discussion", "type", "points", "composant", "composant_2", "sprint", "parent"])
+        # la discussion Kronn de l'investigation : facultative, son id ou son lien, passée au dossier qui la fige
+        self.assertFalse(var["discussion"]["required"])
+        for ok in ("5060c2da-c311-46e1-9afa-f4679b3743ac", "http://localhost:5173/discussions/5060c2da-c311-46e1-9afa-f4679b3743ac"):
+            self.assertRegex(ok, "^(?:" + var["discussion"]["pattern"] + ")$")
+        self.assertNotRegex("DM-1234", "^(?:" + var["discussion"]["pattern"] + ")$")
         self.assertEqual([o["value"] for o in var["type"]["control"]["options"]], ["Story", "Bug", "Tâche"])
         self.assertEqual(var["type"]["control"]["default_value"], "Bug")
         self.assertEqual([o["value"] for o in var["composant"]["control"]["options"]], ["site-web", "intranet"])
@@ -438,6 +443,7 @@ exit 0
         self.assertEqual(st["modele_jira"]["on_result"][0]["action"]["step_name"], "modele")
         self.assertNotIn("external_effect", st["modele_jira"])
         self.assertEqual(st["parent_jira"]["api_endpoint_path"], "{{steps.parent_cle.data.stdout}}")
+        self.assertEqual(st["dossier"]["exec_args"][-1], "{{discussion}}")
         self.assertNotIn("external_effect", st["parent_jira"])  # une lecture
         # les tickets ouverts proches, avant la rédaction ; Jira en erreur : on continue sans
         self.assertEqual((st["doublons_jira"]["api_endpoint_path"], st["doublons_jira"]["api_query"]["jql"]),
