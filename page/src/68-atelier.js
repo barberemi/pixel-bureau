@@ -14,8 +14,8 @@ const AT_POSTES=[
   {k:'besoin',i:'🎯',n:'Besoin',d:'confronte le diff aux exigences du ticket'},{k:'doc',i:'📚',n:'Doc',bureau:false,d:'vérifie que la doc a suivi'},
   {k:'pr',i:'📤',n:'PR',d:'pousse la branche et ouvre la PR brouillon'},{k:'revue_pr',i:'👀',n:'Revue PR',d:'fait la revue de la PR'},
   {k:'retours',i:'💬',n:'Retours',d:'traite les commentaires de la revue'}];
-const AT_ST={ok:['#3fbf6a','validé'],run:['#5b8def','en cours'],bloq:['#e0614f','bloquant'],avis:['#e0a020','avis'],wait:[WAIT_BG,'t\'attend'],
-  skip:['#5b6070','sauté'],err:['#e0614f','en panne'],rep:['#6fae8c','fait avant la reprise']};
+const AT_ST={ok:[ST_VIF.ok,'validé'],run:[ST_VIF.info,'en cours'],bloq:[ST_VIF.err,'bloquant'],avis:[ST_VIF.warn,'avis'],wait:[WAIT_BG,'t\'attend'],
+  skip:[ST_FONCE.idle,'sauté'],err:[ST_VIF.err,'en panne'],rep:['#6fae8c','fait avant la reprise']};
 // cause d'une panne (atelier_snapshot.py : cause_type) : son icône, son nom et ce qu'il faut faire
 const AT_CAUSE={garde_fou_docs:['🛡','garde-fou docs de Kronn'],delai:['⏱','délai dépassé'],agent:['🔌','agent ou API indisponible'],script:['📜','script en erreur'],autre:['❔','autre']};
 function atConseil(p){
@@ -550,7 +550,7 @@ function atBubble(x,y,s,col,dot,o){
     if(dir==='right'){R(ctx,x+1,y-3,4,6,ink);R(ctx,x+2,y-2,4,4,bg);}else{R(ctx,x-5,y-3,4,6,ink);R(ctx,x-6,y-2,4,4,bg);}}
   else if(dir==='down'){bx=fit(x)-w/2;by=y+4;R(ctx,bx-1,by-1,w+2,h+2,ink);R(ctx,bx,by,w,h,bg);R(ctx,x-3,y,6,3,ink);R(ctx,x-2,y+2,4,2,bg);}
   else{bx=(o?fit(x):x)-w/2;by=y-h;R(ctx,bx-1,by-1,w+2,h+2,ink);R(ctx,bx,by,w,h,bg);R(ctx,x-3,y+1,6,3,ink);R(ctx,x-2,y+1,4,2,bg);}
-  if(dot){const on=dot!=='live'||REDUCED_MOTION||Math.floor(performance.now()/500)%2===0;ctx.fillStyle=st?'#c98a00':on?'#2fbf5a':'#a8e6bb';ctx.beginPath();ctx.arc(bx+9,by+h/2,4,0,7);ctx.fill();}
+  if(dot){const on=dot!=='live'||REDUCED_MOTION||Math.floor(performance.now()/500)%2===0;ctx.fillStyle=st?ST_FONCE.warn:on?ST_VIF.ok:'#a8e6bb';ctx.beginPath();ctx.arc(bx+9,by+h/2,4,0,7);ctx.fill();}
   atTxt(s,bx+w/2+d/2,by+h/2+5,ink,f);
   return {x:bx,y:by,w,h};}
 function atDesk(x,y,on,col){R(ctx,x-24,y,48,12,'#a0703f');R(ctx,x-24,y,48,3,'#b98552');R(ctx,x-24,y+12,48,8,'#7d5530');
@@ -659,7 +659,7 @@ function atRoom(r,i,now,dt){
       late.push(()=>{const t=r&&r.gate?'✋ Ton plan':'✋', f='bold 12px system-ui,sans-serif';ctx.font=f; // dans le U, contre la barrière, sous le nom du bureau
         atPill(t,g.inX0+(ctx.measureText(t).width+10)/2,y+3,r&&r.gate?WAIT_BG:'#e9dcb8',r&&r.gate?WAIT_INK:'#6a5a30',f);});return;}
     const dx=back?sp.x:sp.x+f*26, desk=(on,col)=>back?atDesk(sp.x,AT_DESK1,on,col):atDeskSide(dx,feet,on,col,f), labelY=feet-50;
-    const col={run:'#2f6fd6',bloq:'#a8323a',err:'#a8323a',ok:'#2f7a45',avis:'#9a6a10',skip:'#d8d2c4',rep:'#4f7a64'}[s]||'#f4efe4';
+    const col={run:ST_FONCE.info,bloq:ST_FONCE.err,err:ST_FONCE.err,ok:ST_FONCE.ok,avis:ST_FONCE.warn,skip:'#d8d2c4',rep:'#4f7a64'}[s]||'#f4efe4';
     late.push(()=>atPill(atPosteLbl(p,['run','bloq','err','avis'].includes(s)),sp.x,labelY,col,['run','bloq','err','ok','avis','rep'].includes(s)?'#fff':s==='skip'?'#8a8478':'#3a3530','bold 12px system-ui,sans-serif'));
     if(!atAtDesk(i,p.k)){desk(false);return;} // personne (bureau vide, ou il monte encore) : le bureau seul
     const a=atWorker(i*20+idx,sp.x,feet,back?'down':sp.side==='L'?'right':'left',false,p.n);if(!a)return;
@@ -681,7 +681,7 @@ function atRoom(r,i,now,dt){
     }else if(s==='ok'||s==='avis'||s==='rep'){ // rep : fait par le run d'avant la reprise, ↻ (pas de saut : rien de neuf)
       const t=s==='rep'?0:AT_MEM.okAt[r.run+'|'+p.k], age=t?now-t:1e9, pop=age<600?Math.min(1,age/300)*(1+.4*Math.sin(age/600*Math.PI)):1;
       a._st={st:'idle'};a.pose=age<1800?'hands':'stand';people.push([a,()=>desk(false),back]);
-      late.push(()=>{atBadge(sp.x+18,feet-42,s==='ok'?'✓':s==='rep'?'↻':'!',s==='ok'?'#2f9e55':s==='rep'?'#4f7a64':'#d08a10',pop);if(themeIs('saint-valentin')&&age<2500)E('❤',sp.x,feet-70-age/40,12,1-age/2500);});
+      late.push(()=>{atBadge(sp.x+18,feet-42,s==='ok'?'✓':s==='rep'?'↻':'!',s==='ok'?ST_FONCE.ok:s==='rep'?'#4f7a64':ST_FONCE.warn,pop);if(themeIs('saint-valentin')&&age<2500)E('❤',sp.x,feet-70-age/40,12,1-age/2500);});
     }
     else if(s==='idle'){a._st={st:'idle'};a.pose='stand';sleepers.push([a,sp.x,feet,()=>desk(false),back]);}
     else {a._st={st:'idle'};a.pose='stand';ghosts.push([a,()=>desk(false)]);}
@@ -702,8 +702,8 @@ function atRoom(r,i,now,dt){
   if(r){const c=AT_MEM.cart[r.run];
     if(c&&!c.hidden){const d=c.target-c.s, v=(d<0?170:110)*dt;c.s=Math.abs(d)<=v||REDUCED_MOTION?c.target:c.s+Math.sign(d)*v;}
     if(r.back){const bq=AT_POSTES.find(p=>(r.states||{})[p.k]==='bloq');if(bq){const pts=atBeltPath(g,atBeltS(g,'code'),atBeltS(g,bq.k),H/2+7);
-      ctx.strokeStyle='#e0614f';ctx.lineWidth=2;ctx.setLineDash([4,3]);ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(const q of pts.slice(1))ctx.lineTo(q.x,q.y);ctx.stroke();ctx.setLineDash([]);
-      const [a,b]=pts, ux=Math.sign(a.x-b.x), uy=Math.sign(a.y-b.y);ctx.fillStyle='#e0614f';ctx.beginPath();ctx.moveTo(a.x+ux*4,a.y+uy*4);
+      ctx.strokeStyle=ST_VIF.err;ctx.lineWidth=2;ctx.setLineDash([4,3]);ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(const q of pts.slice(1))ctx.lineTo(q.x,q.y);ctx.stroke();ctx.setLineDash([]);
+      const [a,b]=pts, ux=Math.sign(a.x-b.x), uy=Math.sign(a.y-b.y);ctx.fillStyle=ST_VIF.err;ctx.beginPath();ctx.moveTo(a.x+ux*4,a.y+uy*4);
       ctx.lineTo(a.x-ux*3+uy*4,a.y-uy*3+ux*4);ctx.lineTo(a.x-ux*3-uy*4,a.y-uy*3-ux*4);ctx.fill();}}
     if(c&&!c.hidden){const pt=atBeltAt(g,c.s);late.push(()=>atCarton(pt.x,pt.y+2,null));atHit('room',pt.x-14,pt.y-12,28,20,{i});}}
   if(leave&&!leave.picked){const pt=atBeltAt(g,atBeltLen(g));late.push(()=>atCarton(pt.x,pt.y+2,null));}
@@ -810,7 +810,7 @@ function atBoss(slots,now,dt,people){
   const ox=AT_CHAIR.x, F=AT_CHAIR.y;
   atBossChair(ox,F);
   const desk=()=>atBossDesk(ox,F,now,boss,(x0,top)=>slots.forEach((r,k)=>{const x=x0+42+k*8, on=r&&r.gate;R(ctx,x-3,top+4,7,7,'#1c1c1c');
-    R(ctx,x-2,top+5,5,5,!r?'#555':on?(waitOn(now)?WAIT_BG:WAIT_DIM):r.back?'#e0614f':'#3fbf6a');atHit('room',x-4,top+2,9,11,{i:k});}));
+    R(ctx,x-2,top+5,5,5,!r?'#555':on?(waitOn(now)?WAIT_BG:WAIT_DIM):r.back?ST_VIF.err:ST_VIF.ok);atHit('room',x-4,top+2,9,11,{i:k});}));
   if(!boss){desk();return;}
   const c=Object.assign(Object.create(Object.getPrototypeOf(boss)),boss,{pos:{x:b.walk.pos.x,y:b.walk.pos.y},tile:seated?BOSS_SEAT.slice():null,moving:!arrived,pose:'stand',present:true,
     dir:arrived?(target==null?'down':'up'):b.walk.dir,_st:{st:gates.length?'gate':'idle'}});
@@ -1022,8 +1022,8 @@ function atJourBoard(){
   let rp=j.reprises?'↻ '+plural(j.reprises,'reprise','reprises'):'';ctx.font=f;if(ctx.measureText(rp).width>bw-110)rp='↻ '+j.reprises+' repr.'; // 2 chiffres : abrégé
   atTxt(rp&&j.rel?relTxt(rp):rp,bx+bw-8,by+13,j.rel?REL_INK:'#c9c2ae',f,'right');
   R(ctx,bx+8,by+17,bw-16,1,'rgba(244,239,228,.4)');
-  [['#5b8def',j.cours+' en cours',ink],['#3fbf6a',...v(j.sortis+'/'+j.tickets+' sortis',j.rel)],['#e0614f',...v(plural(j.pannes,'panne','pannes'),j.rel)],
-   ['#e0a020',...v((j.part&&!j.tokRel?'~':'')+tokK(j.tok)+' jet.',j.tokRel)]]
+  [[ST_VIF.info,j.cours+' en cours',ink],[ST_VIF.ok,...v(j.sortis+'/'+j.tickets+' sortis',j.rel)],[ST_VIF.err,...v(plural(j.pannes,'panne','pannes'),j.rel)],
+   [ST_VIF.warn,...v((j.part&&!j.tokRel?'~':'')+tokK(j.tok)+' jet.',j.tokRel)]]
     .forEach(([c,t,i],k)=>{const cx=bx+8+(k%2)*(bw/2-6), cy=by+30+Math.floor(k/2)*15;R(ctx,cx,cy-7,7,7,c);atTxt(t,cx+11,cy,i,f,'left');});
 }
 const atOpen=()=>officeOpen(T);

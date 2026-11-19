@@ -194,10 +194,10 @@ test('bubbleFor : rotation toutes les 4 s, couleur de l\'état, détail de tous 
   const at = k => J(`bubbleFor(_bc,_bs,${T11},${k * 4000})`);
   const first = at((2 - seed % 2) % 2); // tour où l'index tombe sur 0
   assert.equal(first.head, '🐛 1 1/2');
-  assert.equal(first.tone, '#2e9e5b');
+  assert.equal(first.tone, '#4cc27c');
   const second = at((3 - seed % 2) % 2);
   assert.equal(second.head, '📗 2 2/2');
-  assert.equal(second.tone, '#4a7fe0');
+  assert.equal(second.tone, '#7aa2f2');
   assert.deepEqual(first.detail.map(l => l.txt), [
     '🐛 DM-1 · en cours · 3 j', 'Corriger le lecteur vidéo', '📗 DM-2 · en revue', 'Nouveau bloc'
   ]);
@@ -223,7 +223,7 @@ test('agent sur la PR d\'un collègue : bulle = 🤖 + ticket, détail avec la P
     steps:[{n:'review',k:'Agent',at:'2026-10-01T08:55:00Z'}],vars:{'current_task.number':'2012'}}`)}; _as=stateAt(_ac, ${T11});`);
   const bb = J(`bubbleFor(_ac,_as,${T11},0)`);
   assert.equal(bb.head, '🤖 7');
-  assert.equal(bb.tone, '#4a7fe0');
+  assert.equal(bb.tone, '#7aa2f2');
   assert.deepEqual(bb.detail.map(l => l.txt), ['🤖 DM-7 · PR #2012', 'Swiper v14', 'Étape review']);
 });
 

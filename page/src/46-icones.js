@@ -4,7 +4,7 @@
 // fillText et measureText de CanvasRenderingContext2D sont enveloppés une fois : une chaîne sans ces emojis passe telle quelle ;
 // avec, l'icône prend la place de l'emoji, centrée dans sa largeur d'origine (la mise en page ne bouge pas). emo() (46-themes.js)
 // en profite aussi. Le panneau (HTML) garde ses emojis. ✓ ✗ et les flèches restent du texte : la police les rend nettement.
-const PIX_PAL={"k":"#1c1f26","w":"#f4efe4","W":"#ffffff","g":"#a7adb8","G":"#5f6672","r":"#e0614f","R":"#a8323a","y":"#f2c94c","o":"#e0a020","O":"#a8701a","b":"#5b8def","B":"#2f4f9a","n":"#3fbf6a","N":"#24784a","t":"#d6a868","T":"#8a5a30","s":"#f2c9a0","S":"#c98f62","c":"#8fdcf0"};
+const PIX_PAL={"k":"#1c1f26","w":"#f4efe4","W":"#ffffff","g":"#a7adb8","G":"#5f6672","r":ST_VIF.err,"R":ST_FONCE.err,"y":"#f2c94c","o":ST_VIF.warn,"O":"#a8701a","b":ST_VIF.info,"B":"#2f4f9a","n":ST_VIF.ok,"N":ST_FONCE.ok,"t":"#d6a868","T":"#8a5a30","s":"#f2c9a0","S":"#c98f62","c":"#8fdcf0"};
 const PIX_ICONS={
   '✋':[ // t'attend, ta décision
     '...kkksskkk.','..kssksskssk','..kssksskssk','.kkssksskssk','kskssksskssk','kskssksskssk','kssssksskssk','ksssssssssSk','.kssssssssSk','..ksssssssSk','..ksssssssSk','...kkkkkkkk.'],

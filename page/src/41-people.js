@@ -2,7 +2,7 @@
 const famOf=c=>c.visitor?'vis':c.person?'team':'wf';
 const FAM={
   team:{t:'Équipe',ico:'',bg:'rgba(20,22,30,.8)',c:'#cfc6b2'},
-  wf:{t:'Agents',ico:'⚙ ',bg:'#1d4ed8',c:'#3b82f6'},
+  wf:{t:'Agents',ico:'⚙ ',bg:'#1d4ed8',c:HOLO_C},
   vis:{t:'Visiteurs',ico:'💬 ',bg:'#c2410c',c:'#d97757'}
 };
 // agents : métier court et icône, pour savoir d'un coup d'œil quel workflow est qui (agents[].short et agents[].icon
@@ -37,7 +37,7 @@ function holoSilhouette(img,sx,sy,col){
 }
 // style d'hologramme d'un agent (agents[].holo du pack, #62) : « leger » laisse voir ses couleurs ; « rouge » ajoute un
 // socle de projection ; « alerte » = léger au repos, rouge pendant une intervention (supportHot, 48-support.js)
-const HOLO_STYLE={leger:{tint:'rgba(70,190,255,.28)',lines:.22,glow:'#5fd4ff',dark:'#0b3a4a'},
+const HOLO_STYLE={leger:{tint:'rgba(70,190,255,.28)',lines:.22,glow:HOLO_C,dark:'#0b3a4a'},
   rouge:{tint:'rgba(255,74,61,.22)',lines:.2,glow:'#ff6b5f',dark:'#4a0b0b',beam:'#ff6b5f'},
   // familles (32-familles.js) : même force que le cyan, violet pour les pages, ambre pour les autres
   page:{tint:'rgba(175,125,255,.58)',lines:.4,glow:'#c9a8ff',dark:'#24104a'},
@@ -109,7 +109,7 @@ function drawChar0(c,now){
     const gx=dx+(glitch?1:0), hs=holoStyleOf(c);
     if(hs&&hs.beam)holoBeam(gx,dy,hs.beam);
     ctx.save();
-    ctx.globalAlpha=glitch?.2:.35; holoSilhouette(img,fx*64,fy*64,hs?hs.glow:'#5fd4ff');
+    ctx.globalAlpha=glitch?.2:.35; holoSilhouette(img,fx*64,fy*64,hs?hs.glow:HOLO_C);
     for(const [ox,oy] of [[-2,0],[2,0],[0,-2],[0,2]])ctx.drawImage(HOLO_EDGE,gx+ox,dy+oy);
     ctx.globalAlpha=glitch?.45:.95; holoSilhouette(img,fx*64,fy*64,hs?hs.dark:'#0b3a4a');
     for(const [ox,oy] of [[-1,0],[1,0],[0,-1],[0,1]])ctx.drawImage(HOLO_EDGE,gx+ox,dy+oy);
@@ -215,8 +215,8 @@ function drawOverlay(c,now){
     stem=by-ok[1];bx=ok[0];by=ok[1];
   }
   // panne / validation : un emoji (🚨, ✋) sur fond rouge ou ambre ne se lit pas ; bulle claire cerclée à la place (seul « ! » reste blanc sur rouge)
-  const alert=st.st==='error'||st.st==='gate', ring=alert&&txt!=='!', ringCol=st.st==='error'?'#c62828':'#b7791f';
-  const bc=ring?'#fffdf8':st.st==='error'?'#d1453b':st.st==='gate'?'#e0a020':'#fffdf8';
+  const alert=st.st==='error'||st.st==='gate', ring=alert&&txt!=='!', ringCol=st.st==='error'?ST_FONCE.err:ST_FONCE.warn;
+  const bc=ring?'#fffdf8':st.st==='error'?ST_FONCE.err:st.st==='gate'?ST_VIF.warn:'#fffdf8';
   if(bb.cloud){
     if(!seated)by-=4; // place pour les bouffées sous le nuage
     drawCloud(bx,by,w,h,x,y-56);

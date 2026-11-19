@@ -4,6 +4,7 @@ function selHalo(x,y,w,h){
   const g=ctx.createRadialGradient(x,y,30,x,y,120);
   g.addColorStop(0,'rgba(10,12,22,0)');g.addColorStop(1,'rgba(10,12,22,.52)');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
 }
+const CONFETTI=['#e0a020','#d1453b','#2f6fd6','#2e9e5b',MEP_COLOR]; // confettis du plateau TV (décor)
 function render(now){
   ctx.drawImage(bg,0,0); drawWindows(T,now); PILE_HITS=[];
   const list=FURN.map(f=>({y:f.y,d:f.draw}));
@@ -50,7 +51,7 @@ function render(now){
   const sg=stageAt(T);
   const so=furnAt('stage_closure')||{dx:0,dy:0}; // confettis sur le plateau TV
   if(sg&&sg.phase==='done'){
-    const cols=['#e0a020','#d1453b','#2f6fd6','#2e9e5b',MEP_COLOR];
+    const cols=CONFETTI;
     for(let i=0;i<40;i++){
       const k=((now/1800)+hash(i,3))%1;
       R(ctx,28*TS+so.dx+hash(i,7)*4*TS+Math.sin(now/300+i)*4,2*TS-8+so.dy+k*3*TS,3,3,cols[i%5]);

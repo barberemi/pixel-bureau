@@ -27,7 +27,7 @@ RVF.park={x:RVF.stand.x,y:RVF.stand.y+36};
 // rangées de deux, dans l'ordre de lecture), la dernière dit « +n » s'il y en a plus
 const RVF_E={x0:RD_X1*RVF_TS+10,x1:RD_VX*RVF_TS-10,y0:2.9*RVF_TS,y1:2.9*RVF_TS+116};
 const rvfSlot=k=>({x:RV_MID*RVF_TS+(k%2?1.25:-1.25)*RVF_TS,y:RVF_E.y0+48+(k>>1)*48});
-const RVF_V={approve:['✅','#2f9e55'],comment:['💬','#d08a12'],request_changes:['🔧','#c0392b'],err:['⚠','#a8323a']};
+const RVF_V={approve:['✅',ST_FONCE.ok],comment:['💬',ST_FONCE.warn],request_changes:['🔧',ST_FONCE.err],err:['⚠',ST_FONCE.err]};
 const RVF_WALK=105, RVF_FILE=600, RVF_FLY=500, RVF_SLOTS=4;
 const rvfChair=j=>RVP(23.4+j*2,18.1);
 const rvCronWf=w=>!!w&&(CFG.revue_cron_wf||[]).includes(String(w).slice(0,8));

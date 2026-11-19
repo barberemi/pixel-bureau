@@ -8,7 +8,7 @@
 // carte Kronn, un seul run. Rien en mode TV : ce sont les todos du boss.
 let TODOS=null, TD_PEND=[], TD_SENT=null, TD_SEQ=0;
 const TD_MAX_TITLE=200, TD_COLS=['todo','duck','done'];
-const TD_PRI={high:['Urgent','var(--err)','#e0614f'],normal:['Normal','var(--accent)','#f2d44e'],low:['Plus tard','var(--muted)','#cfd6e4']};
+const TD_PRI={high:['Urgent','var(--err)',ST_VIF.err],normal:['Normal','var(--accent)','#f2d44e'],low:['Plus tard','var(--muted)','#cfd6e4']};
 try{const p=JSON.parse(localStorage.getItem('bureau:todo-pend')||'[]');if(Array.isArray(p))TD_PEND=p.filter(o=>o&&typeof o.op==='string');}catch(e){TD_PEND=[];}
 const tdKeep=()=>{try{localStorage.setItem('bureau:todo-pend',JSON.stringify(TD_PEND));}catch(e){}};
 function readTodos(src){

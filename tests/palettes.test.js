@@ -77,9 +77,25 @@ test('légende du gabarit : pastilles sans couleur en dur, peintes depuis les ta
   const before = [
     ['background', 'var(--ok)'], ['background', 'var(--info)'], ['borderColor', 'var(--warn)'], ['borderColor', 'var(--err)'], ['background', 'var(--idle)'],
     ['background', '#5fd4ff'], ['background', '#b58cff'], ['background', '#ffb547'], // hologrammes des familles d'agents
-    ['background', '#2e9e5b'], ['background', '#4a7fe0'], ['background', '#7a5cc8'], ['background', '#2e9e9b'], ['background', '#8a8478'],
+    ['background', '#4cc27c'], ['background', '#7aa2f2'], ['background', '#7a5cc8'], ['background', '#2e9e9b'], ['background', '#8a8478'],
     ['background', 'var(--ok)'], ['background', 'var(--info)'], ['borderColor', 'var(--warn)'], ['borderColor', 'var(--err)'],
     ['background', '#7a5cc8'], ['background', '#2e9e9b'], ['borderColor', '#d97757'], ['background', '#7d8fa3'], ['background', 'var(--idle)'],
   ];
   assert.deepEqual(swatches.map(s => Object.entries(s.style)[0]), before);
+});
+
+// audit UX 1.3 : pixel.css met border-radius:0 partout (coins crénelés) ; styles.css ne garde que les vrais ronds
+test('coins : pixel.css les met à 0 partout, styles.css ne déclare que des ronds à 50 %', () => {
+  assert.match(read('page', 'src', 'pixel.css'), /:root\[data-skin\] body:not\(\.tv\) \*\{border-radius:0!important\}/);
+  const r = [...read('page', 'src', 'styles.css').matchAll(/border-radius:([^;}]*)/g)].map(m => m[1].trim());
+  assert.ok(r.length > 0 && r.every(v => v === '50%'), r.join(', '));
+});
+
+// audit UX 1.7 : styles.css passe par des jetons nommés ; seules les cartes des passions (couleurs de marque : Smash,
+// Netflix), le gyrophare des onglets et les blocs de jetons gardent des couleurs écrites
+test('styles.css : pas de couleur en dur hors des jetons, des passions et du gyrophare', () => {
+  const bad = read('page', 'src', 'styles.css').split('\n').map((l, i) => [i + 1, l])
+    .filter(([, l]) => /(^|[^-\w])#[0-9a-fA-F]{6}\b/.test(l.replace(/#feed\b/g, '')))
+    .filter(([, l]) => !/^\s*(--|:root\{--|body\.tv\{--)/.test(l) && !/\.(pcard|pc-|floors \.gyro)/.test(l) && !/^\s*clip-path/.test(l));
+  assert.deepEqual(bad.map(([n, l]) => n + ' ' + l.slice(0, 60)), []);
 });

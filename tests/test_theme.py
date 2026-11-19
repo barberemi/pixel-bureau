@@ -64,6 +64,19 @@ class ThemeTest(unittest.TestCase):
                                '--ink:#ffffff;--ok:#4cc27c;--on-accent:#ffffff}\n')
         self.assertIn("--on-accent sur --ok : 2.25:1 (minimum 4.5:1)", theme.check(clair)[0])
 
+    def test_state_deep_tones_carry_white_text(self):
+        """Tons foncés des états (--ok-deep …, ST_FONCE) : texte blanc >= 4,5:1 ; un ton trop clair est signalé."""
+        v = theme.palette(os.path.join(ROOT, "page", "src", "theme-classique.css"))
+        for d in theme.DEEP:
+            self.assertIn(d, v, d)
+            self.assertGreaterEqual(theme.ratio("#ffffff", v[d]), 4.5, d)
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp)
+        clair = os.path.join(tmp, "theme-clair.css")
+        Path(clair).write_text('/* @nom: Clair */\n:root[data-skin="clair"]{--bg:#000000;--panel:#000000;--chip:#000000;'
+                               '--ink:#ffffff;--ok-deep:#4cc27c}\n')
+        self.assertIn("--on-deep sur --ok-deep : 2.25:1 (minimum 4.5:1)", theme.check(clair)[0])
+
     def test_fonts_are_embedded(self):
         html = assemble.page_html()
         self.assertNotIn("@@font:", html)

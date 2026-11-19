@@ -6,8 +6,8 @@ const ENV_KIND={
   sub:{c:'#3fb8c9',t:'lance un sous-run'},
   trig:{c:'#e8e2d0',t:'déclenche un workflow'}, // papier blanc : le violet est aux MEP, le bleu aux serveurs
   ok:{c:'#3fb37f',t:'rend le dossier'},
-  ko:{c:'#d1453b',t:'rend le dossier en échec'},
-  gate:{c:'#e0a020',t:'demande ta validation'},
+  ko:{c:ST_VIF.err,t:'rend le dossier en échec'},
+  gate:{c:ST_VIF.warn,t:'demande ta validation'},
   disc:{c:'#d46fb0',t:'ouvre une discussion'}
 };
 const ENV_FLY=1800, ENV_BURST=350, ENV_WINDOW=3*60e3, ENV_MAX=14;
