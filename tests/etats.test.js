@@ -54,3 +54,12 @@ test('le décor exempté existe encore', () => {
   const all = fs.readdirSync(SRC).filter(f => f.endsWith('.js')).map(read).join('\n');
   for (const k of Object.keys(DECOR)) assert.match(all, new RegExp(`(?:function ${k}\\b|(?:const|let) ${k}\\s*=|furnType\\('${k}'|\\{const ${k}=)`), k);
 });
+
+test('le groupe « Les agents » du panneau prend le cyan des hologrammes (audit UX 1.8)', () => {
+  const css = read('styles.css');
+  assert.equal((css.match(/--holo:(#[0-9a-f]{6})/) || [])[1], J('HOLO_C'));
+  assert.match(css, /\.famdot\.fam-wf\{background:var\(--holo\)\}/);
+  assert.doesNotMatch(css, /famb\.fam-\w+\.on/, 'règles mortes : pixel.css met les boutons au bleu de marque');
+  assert.equal(J('AFAM.jour.c'), J('HOLO_C'));
+  assert.equal(J('HOLO_STYLE.leger.glow'), J('HOLO_C'));
+});

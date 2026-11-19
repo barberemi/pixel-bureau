@@ -4,6 +4,7 @@
   --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#9a9284; --on-accent:#0d1b33;
   /* tons foncés des états (texte blanc), même table que ST_FONCE (02-etats.js) */
   --ok-deep:#2f7a45; --warn-deep:#8a5a00; --err-deep:#a8323a; --info-deep:#2f6fd6; --idle-deep:#5b6070;
+  --holo:#5fd4ff; /* les hologrammes des agents (HOLO_C, 02-etats.js) */
   --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 24px rgba(0,0,0,.25);
 }
 *{box-sizing:border-box}
@@ -188,10 +189,7 @@ summary .du{color:var(--muted);font-size:12px;white-space:nowrap}
 footer{color:var(--muted);font-size:11px;margin-top:16px;text-align:center}
 .appr{display:inline-block;font-size:11px;font-weight:600;color:#f6e7b8;background:#4a3a14;border-radius:999px;padding:0 7px;vertical-align:2px}
 .famdot{width:8px;height:8px;border-radius:2px;display:inline-block;background:var(--idle)}
-.famdot.fam-team{background:#cfc6b2}.famdot.fam-wf{background:#3b82f6}.famdot.fam-vis{background:#d97757}.famdot.fam-misc{background:#f5c518}
-.seg button.famb.fam-wf.on{background:#3b82f6;border-color:#3b82f6}
-.seg button.famb.fam-vis.on{background:#d97757;border-color:#d97757}
-.seg button.famb.fam-team.on{background:#8a7f68;border-color:#8a7f68}
+.famdot.fam-team{background:#cfc6b2}.famdot.fam-wf{background:var(--holo)}.famdot.fam-vis{background:#d97757}.famdot.fam-misc{background:#f5c518}
 body.km-on .side:has(.kmodal){z-index:50} /* le panneau est sticky (plan d'empilement propre) : on le passe devant le reste quand la fenêtre vient de lui */
 /* passions de l'équipe (38-passions.js) : carte GitFut, Smash, top 3 dramas */
 .gitfut{display:block;text-align:center;margin:0 0 12px}.gitfut img{width:190px;filter:drop-shadow(0 8px 18px rgba(0,0,0,.45))}

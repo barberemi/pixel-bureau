@@ -5,7 +5,7 @@
 // page, et l'agent nommé qui tourne seul en cron, sans page ni bouton. Le lien
 // workflow -> page vient de bosspages (pages[].feeds pour l'écran mural, choices[].feeds pour les autres pages) ;
 // agents[].family du pack le force (jour, page, autre).
-const AFAM={jour:{t:'Au quotidien',ico:'🧰',c:'#5fd4ff',sub:'Les boutons des fiches'},
+const AFAM={jour:{t:'Au quotidien',ico:'🧰',c:HOLO_C,sub:'Les boutons des fiches'},
   page:{t:'Pages',ico:'📺',c:'#b58cff',sub:'Remplissent tes pages Kronn'},
   autre:{t:'Autres',ico:'🛰',c:'#ffb547',sub:'De passage, ou seuls en cron'}};
 const AFAM_ORDER=['jour','page','autre'];
