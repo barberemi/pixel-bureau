@@ -54,7 +54,7 @@ test('trois intentions en cours ou en attente de validation grisent « Lancer…
   assert.deepEqual(J('QF.map(f => f.value)'), ['', 'Story', ''], 'lancé : formulaire vidé, liste revenue à sa valeur par défaut');
 });
 
-test('validation du ticket : Approuver et Rejeter seulement ; les autres validations gardent « Changements »', () => {
+test('validation du ticket : Approuver, Rejeter et Changements (la rédaction reprend avec tes retours), comme les autres validations', () => {
   const {run, J} = setup();
   const p8 = J('CFG.ticket.wf');
   run(`ACTIONS.gate = true; GATES = [{run: 'g1', wf: '${p8}-x', wf_name: 'Le Bureau · créer un ticket', gate: 'relire', message: '🎫 Titre', since: new Date(T).toISOString()},
@@ -62,7 +62,7 @@ test('validation du ticket : Approuver et Rejeter seulement ; les autres validat
     kronnModal = () => {}; var QP = {kids: [], appendChild(x) { this.kids.push(x); }};
     gateCard(QP, {run: 'g1', wf_name: 'Le Bureau · créer un ticket', _s: T}, null); gateCard(QP, {run: 'g2', wf_name: 'Autre', _s: T}, null);
     var qlabels = c => c.kids.find(k => k.className === 'gq').kids.map(w => w.kids[0].textContent);`);
-  assert.deepEqual(J('qlabels(QP.kids[0])'), ['✅ Approuver', '⛔ Rejeter']);
+  assert.deepEqual(J('qlabels(QP.kids[0])'), ['✅ Approuver', '⛔ Rejeter', '✏️ Changements…']);
   assert.match(J('QP.kids[0].kids.find(k => k.className === "note").textContent'), /rien n'est créé dans Jira/);
   assert.deepEqual(J('qlabels(QP.kids[1])'), ['✅ Approuver', '⛔ Rejeter', '✏️ Changements…']);
 });

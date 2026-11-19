@@ -200,8 +200,10 @@ POSTES = {
                  "raison valable ; ne contredis ni une de tes notes d'avant, ni un retour du boss (ils sont tranchés). Rends "
                  "UNIQUEMENT un objet JSON : "
                  '{"verdict": "ok" | "a_retoucher", "notes": [{"ticket": <numéro à partir de 1, ou 0 pour le découpage>, '
-                 '"gravite": "bloquant" | "conseil", "note": "…"}]}. « a_retoucher » seulement s\'il reste au moins une '
-                 "note bloquante, qui dit quoi changer."),
+                 '"gravite": "bloquant" | "conseil", "note": "…"}], "ecarts": [{"ticket": <numéro>, "source": "<clé Jira ou '
+                 'document>", "ecart": "…"}]}. « a_retoucher » seulement s\'il reste au moins une '
+                 "note bloquante, qui dit quoi changer. « ecarts » (facultatif) : ce qu'un ticket, une épic ou un document "
+                 "Jira prévoit autrement que les tickets ; jamais bloquant, montré à part au boss pour qu'il tranche."),
 }
 
 
@@ -346,6 +348,7 @@ def sans_narration(text):
 DISC_ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.I)
 DISC_MAX = 60000  # octets de la discussion dans la consigne de la recherche : sortie d'une étape Exec sous 100 Ko
 DECISIONS_MAX = 15000  # octets des messages du boss de la discussion, pour la rédaction et la critique
+BROUILLON_MIN = 800  # caractères : le dernier message de l'agent sert de brouillon s'il décrit quelque chose (pas un « noté »)
 RAPPORT_MAX = 12000  # caractères du rapport de la recherche gardés pour la rédaction et la critique (6 000 coupaient
 # « Comment faire », « Comment tester » et la partie Discussion d'une recherche sur deux dépôts, run ccce9f54)
 
@@ -385,6 +388,13 @@ def discussion_texte(disc, maxi=DISC_MAX, boss=False):
         garde.insert(0, b)
     saut = len(blocs) - 1 - len(garde)
     return "\n\n".join([blocs[0][:maxi // 2], f"[… {saut} message(s) du milieu laissés de côté : la discussion dépasse {maxi // 1000} Ko …]", *garde])
+
+
+def brouillon(disc):
+    """Le dernier message de l'agent de la discussion, s'il est assez long pour décrire les tickets : d'habitude le récap
+    que le boss lui a demandé (run dceac87b : la cible à 4 Ko près, que la rédaction ne voyait pas)."""
+    m = [x for x in (disc or {}).get("messages") or [] if x["qui"] == "agent"]
+    return m[-1]["texte"] if m and len(m[-1]["texte"]) >= BROUILLON_MIN else ""
 
 
 def dossier(run, intention, type_, points, c1, c2, sprint, parent, disc=""):
@@ -625,16 +635,30 @@ def poste(k, run, retours=""):
                         "bloquant ; signale-le en conseil, pour qu'il figure dans les questions ouvertes du ticket. Le reste "
                         "de ta relecture (fichiers, langues, tests, modèle) vaut comme d'habitude.")
                      + "\n\n---- début ----\n\n" + discussion_texte(x, DECISIONS_MAX, boss=True) + "\n\n---- fin ----")
+    b = brouillon(x) if x else ""
+    if b:
+        parts.append("## Brouillon : le dernier message de l'agent dans la discussion\n"
+                     + ("Pars de ce brouillon s'il décrit les tickets : reprends son découpage et chacun de ses points (décisions, "
+                        "noms de commandes, de branches et de fichiers, chiffres, critères d'acceptation, points d'attention), "
+                        "mets-les dans le modèle de l'équipe et complète-les avec la recherche ; corrige ce que le code contredit "
+                        "et dis-le dans tes réponses. S'il ne décrit pas les tickets, ignore-le."
+                        if k == "redaction" else
+                        "Vérifie la couverture : chaque point de ce brouillon (s'il décrit les tickets) et chaque décision du "
+                        "boss ci-dessus qui manque dans les tickets donne un conseil « manque : … » sur le ticket concerné.")
+                     + "\n\n---- début ----\n\n" + re.sub(r"^#{1,3} ", "#### ", b[:DECISIONS_MAX], flags=re.M) + "\n\n---- fin ----")
     if k in ("redaction", "critique") and dget(run, "retours.json"):
         parts.append("## Retours du boss à la validation (" + ("à appliquer en priorité" if k == "redaction" else "tranchés : ne les conteste pas")
                      + ")\n" + "\n".join("- " + x for x in dget(run, "retours.json")))
     c = dget(run, "critique.json")
-    if k == "redaction" and c and c.get("notes") and c.get("version") == (t or {}).get("version"):
+    if k == "redaction" and c and (c.get("notes") or c.get("ecarts")) and c.get("version") == (t or {}).get("version"):
         notes = c.get("notes") or []
         bl = [n for n in notes if n.get("gravite") != "conseil"]
         co = [n for n in notes if n.get("gravite") == "conseil"]
         if bl and c.get("verdict") == "a_retoucher":
             parts.append("## Notes bloquantes de la critique (à corriger)\n" + "\n".join(f"- ticket {n.get('ticket')} : {n.get('note')}" for n in bl))
+        if c.get("ecarts"):
+            parts.append("## Écarts avec Jira relevés par la critique (à mettre dans les questions ouvertes du ticket concerné)\n"
+                         + "\n".join(f"- ticket {e.get('ticket')} · {e.get('source')} : {e.get('ecart')}" for e in c["ecarts"]))
         if co:
             parts.append("## Conseils de la critique (à suivre s'ils sont justes)\n" + "\n".join(f"- ticket {n.get('ticket')} : {n.get('note')}" for n in co))
     if k == "critique":
@@ -690,13 +714,17 @@ def rapport(k, run, text):
         bloquant = any(n["gravite"] == "bloquant" for n in notes)
         v = "a_retoucher" if str(o.get("verdict") or "").strip() == "a_retoucher" and bloquant else "ok"
         ver = (dget(run, "tickets.json") or {}).get("version")
-        dput(run, "critique.json", {"verdict": v, "notes": notes, "version": ver})
+        ecarts = [{"ticket": e.get("ticket"), "source": str(e.get("source") or "")[:80], "ecart": str(e.get("ecart") or "")[:400]}
+                  for e in o.get("ecarts") or [] if isinstance(e, dict) and str(e.get("ecart") or "").strip()][:8]
+        dput(run, "critique.json", {"verdict": v, "notes": notes, "version": ver, **({"ecarts": ecarts} if ecarts else {})})
         hist = [x for x in dget(run, "critiques.json", []) if x.get("version") != ver]
         dput(run, "critiques.json", (hist + [{"version": ver, "verdict": v, "notes": notes}])[-6:])
         archive(run, critiques={"v": ver, "verdict": v,
-                                "notes": [{"ticket": n.get("ticket"), "gravite": n["gravite"], "note": str(n.get("note") or "")[:400]} for n in notes]})
+                                "notes": [{"ticket": n.get("ticket"), "gravite": n["gravite"], "note": str(n.get("note") or "")[:400]} for n in notes],
+                                **({"ecarts": ecarts} if ecarts else {})})
         print(("✓ relu, rien à retoucher" if v == "ok" else "↺ à retoucher")
-              + "".join(f"\n- ticket {n.get('ticket')} ({n['gravite']}) : {n.get('note')}" for n in notes))
+              + "".join(f"\n- ticket {n.get('ticket')} ({n['gravite']}) : {n.get('note')}" for n in notes)
+              + "".join(f"\n⚠ ticket {e['ticket']} · {e['source']} : {e['ecart']}" for e in ecarts))
         return
     sys.exit(f"Poste inconnu : {k}")
 
@@ -803,6 +831,10 @@ def apercus(run):
             for n in c.get("notes") or []:
                 if n.get("gravite") != "conseil":
                     print(f"- {qui(n)} : {n.get('note')}")
+        if c.get("ecarts"):
+            print("\n⚠ Écarts avec Jira (non bloquants, à toi de trancher) :")
+            for e in c["ecarts"]:
+                print(f"- {qui(e)} · {e.get('source')} : {e.get('ecart')}")
         conseils = [n for n in c.get("notes") or [] if n.get("gravite") == "conseil"]
         if conseils:
             print("\n💡 Conseils de la critique (non bloquants) :")
