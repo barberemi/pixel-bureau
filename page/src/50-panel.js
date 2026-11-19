@@ -186,11 +186,11 @@ function drawSide(side){
     h.innerHTML=`<span class="chev">${closed?'▸':'▾'}</span><span class="famdot fam-${fk}"></span>${esc(title)} <span class="cnt">${n}</span>`;
     const toggle=()=>{COLLAPSED[title]=!closed;try{localStorage.setItem('bureau:collapsed',JSON.stringify(COLLAPSED));}catch(e){}renderSide();};
     h.onclick=toggle;h.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}};
-    h.style.marginTop=title==="L'équipe"?'0':'14px';if(closed){side.appendChild(h);continue;}
+    h.classList.toggle('first',title==="L'équipe");if(closed){side.appendChild(h);continue;}
     side.appendChild(h);
     if(title==='Les visiteurs du jour'){
       const n=document.createElement('div');
-      n.style.cssText='color:var(--muted);font-size:12px;margin:-4px 0 6px';
+      n.className='note';
       n.textContent='Tes discussions Kronn du jour';
       side.appendChild(n);
     }
@@ -307,7 +307,7 @@ function drawSide(side){
   const wfs=[...new Set(c.runs.map(r=>clean(r.wf_name)))];
   if(wfs.length){
     const p=document.createElement('div');
-    p.style.cssText='color:var(--muted);font-size:12px;margin-bottom:8px';
+    p.className='note wfs';
     p.textContent=(c.visitor?'Discussion : ':'Workflows : ')+wfs.join(' / ')+(dur?' · '+fmtDur(dur)+' de travail':'');
     side.appendChild(p);
   }

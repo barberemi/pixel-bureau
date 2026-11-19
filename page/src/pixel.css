@@ -96,10 +96,8 @@
 :root[data-skin] #side .st-row{margin:14px 0}
 :root[data-skin] #side .stbox + p{margin-top:0}
 :root[data-skin] #side .stats{margin-bottom:14px}
-:root[data-skin] #side h2.grp{margin-top:14px}
+:root[data-skin] #side h2.grp{margin-top:14px}:root[data-skin] #side h2.grp.first{margin-top:0}
 :root[data-skin] #side h2.grp + .note{margin-top:0;margin-bottom:8px}
-/* sous-titre en style inline (« Tes discussions Kronn du jour ») : même place qu'une note */
-:root[data-skin] #side h2.grp + div:not([class]){margin:0 0 8px!important}
 :root[data-skin] #side .namesbar{margin-bottom:14px}
 /* carte « Qui fait quoi » sélectionnée : pas l'aplat bleu des boutons actifs (son texte gris y devenait illisible),
    fond teinté (--sel-bg, tous les textes >= 4,5:1) et liseré de la marque */

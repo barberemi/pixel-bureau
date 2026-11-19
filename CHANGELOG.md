@@ -27,6 +27,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- Étiquettes d'état (audit UX 3.7 et 3.9) : un seul gabarit (11 px gras, 0 × 6, ligne de 16 px), fond plein ou teinté à 20 %, pour les étiquettes du Kanban, du panneau des étages, des pages du boss, des PR, du Support et des tickets ; le panneau ne pose plus de style en ligne (classes `.note`, `.grp.first`), et le thème pixel perd son contournement en `!important`.
 - Une seule palette (audit UX 1.3 à 1.8) : chaque état (validé, t'attend, bloquant, en cours, au repos) a un ton vif et un ton foncé, les mêmes au RDC, aux étages, dans la légende, la loupe, le mode TV et les icônes pixel (`02-etats.js`, jetons `--ok-deep` … du thème) ; 18 variantes retirées. Le groupe « Les agents » du panneau prend le cyan des hologrammes. `styles.css` passe par des jetons nommés et perd ses `border-radius` morts.
 - Icônes pixel dans le plan (audit UX 8.2) : les 37 emojis dessinés dans le plan (postes, entrepôts, tableaux, bulles, Kanban du mur) deviennent des icônes de 12 × 12 dessinées à la main, dans la palette du Bureau, les mêmes sur tous les systèmes (`46-icones.js`). Le panneau garde ses emojis ; ✓, ✗ et les flèches restent du texte.
 - Revue des PR (2e) : la corbeille « Postées » passe sous le bureau de droite ; les trois bureaux, espacés (6 cases au lieu de 5,6), et le tableau « Revues du jour » sont centrés dans la salle. Le relecteur de la file et Bernard rejoignent la corbeille par l'allée sous les bureaux.
