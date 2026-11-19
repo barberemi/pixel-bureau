@@ -164,7 +164,7 @@
     "output_format": {
      "type": "FreeText"
     },
-    "gate_message": "## 🚀 Mise en prod de {{project}}#{{pr_number}}\n\n{{steps.tag.data.stdout}}\n\nApprouver : l'annonce part sur Teams, puis rebase et squash, CI, puis la suite avec tes validations. « Changements » relance la lecture de la PR.\n\n_Un refus arrête la mise en prod là où elle en est ; l'annonce Teams reste alors en l'état (édite-la ou supprime-la dans Teams)._",
+    "gate_message": "## 🚀 Mise en prod de {{project}}#{{pr_number}}\n\n{{steps.tag.data.stdout}}\n\nApprouver : rebase et squash, l'annonce part sur Teams, puis CI, puis la suite avec tes validations. « Changements » relance la lecture de la PR.\n\n_Un refus arrête la mise en prod là où elle en est ; l'annonce Teams reste alors en l'état (édite-la ou supprime-la dans Teams)._",
     "gate_request_changes_target": "resolve"
    },
    {
@@ -172,7 +172,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Base de la PR fusionnée puis squash en un commit posé dessus, push protégé (copie du dépôt dans ~/.cache).",
+    "description": "Base de la PR fusionnée puis squash en un commit posé dessus, push protégé (copie du dépôt dans ~/.cache), puis l'annonce Teams : la carte ⏳ dans le canal des mises en prod (canal de test en simulation, rien sans mep.teams ; un conflit n'annonce rien).",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -202,33 +202,6 @@
       }
      }
     ]
-   },
-   {
-    "name": "teams_post",
-    "step_type": {
-     "type": "Exec"
-    },
-    "description": "Annonce Teams : la carte ⏳ dans le canal des mises en prod, une fois la PR rebasée (canal de test en simulation, rien sans mep.teams).",
-    "agent": "ClaudeCode",
-    "prompt_template": "",
-    "mode": {
-     "type": "Normal"
-    },
-    "output_format": {
-     "type": "FreeText"
-    },
-    "exec_command": "python3",
-    "exec_args": [
-     "-c",
-     "@@script:workflows/mep.py@@",
-     "teams_post",
-     "{{project}}",
-     "{{pr_number}}",
-     "{{jira_ticket_key}}",
-     "{{run.id}}",
-     "{{dry_run}}"
-    ],
-    "exec_timeout_secs": 60
    },
    {
     "name": "citest",
@@ -518,7 +491,7 @@
     "step_type": {
      "type": "TriggerWorkflow"
     },
-    "description": "Temps gagné par l'IA sur le ticket : lance le modèle du Bureau (models.ai_time) sans sa validation (gate = non : la gate « ticket terminé ? » en tient lieu), puis continue sans l'attendre. Lancement refusé (déjà en cours sur ce ticket) : la suite passe quand même.",
+    "description": "Temps gagné par l'IA sur le ticket : lance le modèle du Bureau (models.ai_time) sans sa validation (gate = non : la gate « ticket terminé ? » en tient lieu), puis ai_wait attend sa fin. Lancement refusé (déjà en cours sur ce ticket) : la suite passe quand même.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -541,6 +514,35 @@
       }
      }
     ],
+    "_requires": "mep.ai_time"
+   },
+   {
+    "name": "ai_wait",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Attend la fin du temps gagné par l'IA (10 min au plus) pour que commentaire, label et points soient dans Jira avant le statut de fin. Jamais un échec : run en échec, en attente ou trop long, le statut de fin passe quand même.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/mep.py@@",
+     "ai_wait",
+     "{{project}}",
+     "{{pr_number}}",
+     "{{jira_ticket_key}}",
+     "{{run.id}}",
+     "{{dry_run}}"
+    ],
+    "exec_timeout_secs": 720,
+    "exec_stdin": "{{steps.ai_time.data_json}}",
     "_requires": "mep.ai_time"
    },
    {

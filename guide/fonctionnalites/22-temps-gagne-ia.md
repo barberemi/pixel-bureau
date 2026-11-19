@@ -7,7 +7,7 @@ Sur un ticket terminé, un commentaire qui dit combien de temps l'IA a fait gagn
 ## Le lancer
 
 - **Depuis la fiche d'un ticket terminé** (volet du Kanban) : « ⏱ Temps gagné IA », dans « Sur le ticket ». Le bouton est grisé quand le label de suivi est déjà sur le ticket (relu par le cron équipe).
-- **En fin de mise en prod** : quand tu réponds « le ticket est terminé » à la dernière validation de la [mise en prod d'une PR](16-mise-en-prod.md), elle lance le modèle sans sa validation (la tienne en tient lieu), puis passe le ticket au statut de fin sans l'attendre. En simulation, rien n'est lancé.
+- **En fin de mise en prod** : quand tu réponds « le ticket est terminé » à la dernière validation de la [mise en prod d'une PR](16-mise-en-prod.md), elle lance le modèle sans sa validation (la tienne en tient lieu), attend sa fin (10 min au plus), puis passe le ticket au statut de fin : commentaire, label et points sont déjà dans Jira. Un calcul en échec ou trop long n'empêche pas le statut de fin. En simulation, rien n'est lancé.
 
 La carte Kronn propose deux champs facultatifs :
 

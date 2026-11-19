@@ -83,7 +83,8 @@ TEMPLATES = {
     # mise en prod d'une PR, tout projet (#58) : id rangé dans launch (jamais dans BUREAU_IDS : l'agent qui l'incarne
     # garde sa fiche et « ▶ Lancer… ») ; launch.mep_pr, à côté de ton ancien workflow de MEP par ticket (launch.mep)
     "mep": ("workflow", ("launch", "mep_pr"), {n: "workflows/mep.py" for n in ("resolve", "tag", "rebase", "citest", "merge", "release",
-                                                                                 "staging", "prod", "done", "teams_post", "teams_failed")}),
+                                                                                 "staging", "prod", "done", "dry_guard", "ai_wait",
+                                                                                 "teams_failed")}),
     # remettre une PR à jour de sa base (#74) : bouton de la fiche d'une PR, rebase sans squash, conflit résolu par l'IA puis validé
     "rebase": ("workflow", ("actions", "rebase"), {n: "workflows/pr_update.py" for n in ("prepare", "rebase", "push", "done", "verify", "check",
                                                                                           "push_resolved", "abort")}),
