@@ -83,3 +83,10 @@ test('légende du gabarit : pastilles sans couleur en dur, peintes depuis les ta
   ];
   assert.deepEqual(swatches.map(s => Object.entries(s.style)[0]), before);
 });
+
+// audit UX 1.3 : pixel.css met border-radius:0 partout (coins crénelés) ; styles.css ne garde que les vrais ronds
+test('coins : pixel.css les met à 0 partout, styles.css ne déclare que des ronds à 50 %', () => {
+  assert.match(read('page', 'src', 'pixel.css'), /:root\[data-skin\] body:not\(\.tv\) \*\{border-radius:0!important\}/);
+  const r = [...read('page', 'src', 'styles.css').matchAll(/border-radius:([^;}]*)/g)].map(m => m[1].trim());
+  assert.ok(r.length > 0 && r.every(v => v === '50%'), r.join(', '));
+});
