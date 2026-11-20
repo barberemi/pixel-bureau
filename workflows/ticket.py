@@ -46,7 +46,7 @@ jira.create.historique), réécrit par dossier, parent_check, rapport, poste (te
 du run ne garde que la dernière version des tickets et la dernière critique ; l'historique garde chaque version, chaque
 critique, tes retours datés et les tickets créés. Jamais au prix de l'étape : une erreur va sur stderr.
 """
-import datetime, json, os, re, sys, unicodedata
+import datetime, glob, json, os, re, sys, unicodedata
 from _lib import CFG, get, read_json, readable, refresh, write_json
 
 SPRINTS = {"backlog": "Backlog", "next": "Sprint suivant"}
@@ -247,7 +247,7 @@ def archive(run, **ajout):
         d = dget(run, "demande.json") or {}
         rec.setdefault("at", iso_now())
         rec.update({"v": 1, "run": run, "vu": iso_now(), **{k: d[k] for k in ("intention", "type", "points", "composants", "sprint", "parent",
-                                                                              "parent_de", "tour", "discussion") if k in d}})
+                                                                              "parent_de", "tour", "discussion", "relance_registre") if k in d}})
         rec["essai"] = bool(re.match(r"\s*\[\s*essai", str(d.get("intention") or ""), re.I))
         dj = dget(run, "doublons.json")
         if dj:
@@ -255,6 +255,10 @@ def archive(run, **ajout):
         r = dget(run, "recherche.json")
         if r:
             rec["recherche"] = {"composants": r.get("composants") or [], "texte": str(r.get("texte") or "")[:4000]}
+            reg = [x for x in r.get("registre") or [] if x["id"][0] in "DQ"]
+            t = dget(run, "tickets.json") or {}
+            if reg and "non_places" in t:
+                rec["registre"] = {"total": len(reg), "places": len(reg) - len(t["non_places"])}
         for liste, item in ajout.items():
             l = rec.setdefault(liste, [])
             if liste in ("versions", "critiques"):
@@ -414,6 +418,45 @@ def absents(disc, tickets):
     # un chemin : ASCII, avec un point, un tiret, un souligné ou deux « / » (pas « ticket/mois » ni « ajoutées/supprimées »)
     chemin = lambda n: "/" not in n or (n.isascii() and (re.search(r"[._-]", n) or n.count("/") >= 2))  # noqa: E731
     return [n for n in noms if len(n) >= 4 and chemin(n) and ident_norm(n) not in dans][:15]
+
+
+REG_LIGNE = re.compile(r"^[\s>*•-]*\**\s*([DXQ])\s*(\d{1,2})\s*\**\s*[:·.)-]\s*\**\s*(.+)$", re.M)
+
+
+def registre(texte):
+    """Le registre de l'investigation dans le rapport de la recherche : D (décision), X (piste écartée), Q (question ouverte),
+    une ligne chacun ; la rédaction doit placer chaque D et Q (aiguillage : un tour de plus sinon)."""
+    vus, out = set(), []
+    for m in REG_LIGNE.finditer(texte or ""):
+        i = m.group(1) + m.group(2)
+        if i not in vus:
+            vus.add(i)
+            out.append({"id": i, "texte": m.group(3).strip()[:300]})
+    return out[:40]
+
+
+LECONS_MAX = 4000  # caractères des corrections passées du boss dans les consignes
+
+
+def lecons(run):
+    """Les « Changements » du boss aux tampons des autres intentions, les plus récents d'abord : ce qu'il a déjà dû corriger,
+    pour que la rédaction ne refasse pas l'erreur et que la critique la guette (0 token, lus dans l'historique)."""
+    out = []
+    for f in glob.glob(os.path.join(historique(), "*.json")):
+        try:
+            h = read_json(f)
+        except (OSError, ValueError):
+            continue
+        if not isinstance(h, dict) or h.get("run") == run:
+            continue
+        out += [(str(r.get("at") or ""), " ".join(str(r.get("texte") or "").split())) for r in h.get("retours") or [] if str(r.get("texte") or "").strip()]
+    garde, n = [], 0
+    for _, t in sorted(out, reverse=True):
+        if t in garde or n + len(t) > LECONS_MAX:
+            continue
+        garde.append(t)
+        n += len(t)
+    return garde
 
 
 def dossier(run, intention, type_, points, c1, c2, sprint, parent, disc=""):
@@ -619,9 +662,12 @@ def poste(k, run, retours=""):
         x = dget(run, "discussion.json")
         parts.append(f"## La discussion Kronn citée : « {x.get('titre') or x.get('id')} » (figée au lancement)\n"
                      "L'investigation déjà faite avec le boss : elle passe avant ce que tu devines du code. Reporte dans le rapport, "
-                     "dans une partie « Discussion » juste après la ligne `Composants`, telles qu'elle les donne : les décisions prises (celles du boss d'abord), les pistes "
-                     "écartées et pourquoi, les questions encore ouvertes, et les fichiers et tickets qu'elle nomme ; vérifie "
-                     "dans le code ce qu'elle affirme avant de t'y appuyer, et dis-le quand le code la contredit.\n\n"
+                     "dans une partie « Registre » juste après la ligne `Composants`, une ligne par élément, numérotée et telle "
+                     "qu'elle la donne : `D1 : …` pour chaque décision prise (celles du boss d'abord, avec les noms précis : "
+                     "commandes, branches, fichiers, valeurs), `X1 : … (pourquoi)` pour chaque piste écartée, `Q1 : … → qui "
+                     "tranche` pour chaque question encore ouverte. Un élément par ligne, rien de fusionné : la rédaction devra "
+                     "placer chaque D et chaque Q dans un ticket. Puis les fichiers et tickets qu'elle nomme ; vérifie dans le code "
+                     "ce qu'elle affirme avant de t'y appuyer, et dis-le quand le code la contredit.\n\n"
                      + "\n\n---- début de la discussion ----\n\n" + discussion_texte(x) + "\n\n---- fin de la discussion ----")
     if k != "recherche" and dget(run, "recherche.json"):
         parts.append("## Rapport de la recherche\n" + dget(run, "recherche.json")["texte"])
@@ -660,12 +706,13 @@ def poste(k, run, retours=""):
         h = lambda t: re.sub(r"^#{1,3} ", "#### ", t[:DECISIONS_MAX], flags=re.M)  # noqa: E731
         parts.append("## Brouillon : " + ("le texte du boss dans la discussion" if bb else "") + (", puis " if bb and ba else "")
                      + ("le récap de l'agent" if ba else "") + "\n"
-                     + ("Pars de ce brouillon s'il décrit les tickets : le texte du boss est la base, reprends son découpage et "
+                     + ("S'ils décrivent déjà les tickets, pars-en : le texte du boss est la base, reprends son découpage et "
                         "chacun de ses points (décisions, noms de commandes, de branches, de fichiers et de classes, chiffres, "
                         "critères d'acceptation, points d'attention) ; le récap de l'agent, plus récent, l'emporte là où ils "
                         "divergent, mais ce qu'il omet du texte du boss reste. Mets-les dans le modèle de l'équipe et "
-                        "complète-les avec la recherche ; corrige ce que le code contredit et dis-le dans tes réponses. S'il ne "
-                        "décrit pas les tickets, ignore-le."
+                        "complète-les avec la recherche ; corrige ce que le code contredit et dis-le dans tes réponses. S'ils "
+                        "ne décrivent pas de tickets (une investigation, un exposé du problème), c'est du contexte : le registre "
+                        "fait foi."
                         if k == "redaction" else
                         "Vérifie la couverture : chaque point de ce brouillon (s'il décrit les tickets) qui manque dans les "
                         "tickets donne une note « manque : … » sur le ticket concerné.")
@@ -678,6 +725,31 @@ def poste(k, run, retours=""):
                      "une note « manque : … » sur le ticket concerné, bloquante si c'est une décision du boss abandonnée sans "
                      "raison, un conseil sinon ; s'il est hors sujet ou déjà repris autrement, ignore-le.\n"
                      + "\n".join("- " + n for n in ab))
+    reg = (dget(run, "recherche.json") or {}).get("registre") if k in ("redaction", "critique") else None
+    if reg:
+        place = (t or {}).get("registre") or {}
+        parts.append("## Registre de l'investigation (rapport de la recherche)\n"
+                     + ("Chaque décision (D) et chaque question ouverte (Q) doit avoir sa place dans un ticket, avec ses noms "
+                        "précis ; une piste écartée (X) ne se réintroduit pas. Ajoute à ton objet JSON la clé \"registre\" : "
+                        "{\"D1\": \"T1 · Comment faire\", \"Q1\": \"T2 · Questions ouvertes\", \"D4\": \"hors périmètre : la raison\"}, "
+                        "une entrée par D et par Q. Le Bureau vérifie qu'aucun ne manque : sinon, un tour de rédaction de plus."
+                        if k == "redaction" else
+                        "La rédaction dit où elle a placé chaque D et chaque Q (à droite) : vérifie que c'est vrai. Un élément "
+                        "annoncé dans un ticket et qui n'y est pas, ou une piste écartée (X) réintroduite : bloquant. Un « hors "
+                        "périmètre » mal justifié pour une décision du boss : bloquant.")
+                     + "\n" + "\n".join(f"- {x['id']} : {x['texte']}" + (f"  →  {place[x['id']]}" if k == "critique" and x["id"] in place else "")
+                                         for x in reg))
+    if k == "redaction" and (t or {}).get("non_places"):
+        parts.append("## Éléments du registre sans place (contrôle automatique, à corriger en priorité)\n"
+                     "Place chacun dans un ticket, ou dis dans le registre pourquoi il est hors périmètre :\n"
+                     + "\n".join("- " + i for i in t["non_places"]))
+    if k in ("redaction", "critique") and lecons(run):
+        parts.append("## Corrections que le boss a déjà dû faire sur d'autres tickets (les plus récentes d'abord)\n"
+                     + ("Ne refais pas ces erreurs : applique ce qui vaut en général (une règle, une habitude de l'équipe), pas "
+                        "ce qui ne concernait que ce ticket-là."
+                        if k == "redaction" else
+                        "Guette ces erreurs : une qui revient vaut une note (bloquante si le boss l'a déjà corrigée plusieurs fois).")
+                     + "\n" + "\n".join("- " + x for x in lecons(run)))
     if k in ("redaction", "critique") and dget(run, "retours.json"):
         parts.append("## Retours du boss à la validation (" + ("à appliquer en priorité" if k == "redaction" else "tranchés : ne les conteste pas")
                      + ")\n" + "\n".join("- " + x for x in dget(run, "retours.json")))
@@ -717,7 +789,7 @@ def rapport(k, run, text):
         text = sans_narration(text)
         m = re.search(r"Composants\s*\**\s*:\s*\**\s*(.+)", text)  # « Composants : », « **Composants** : », « **Composants :** »
         touched = [x.strip(" *`") for x in re.split(r"[,;]", m.group(1))] if m else []
-        dput(run, "recherche.json", {"texte": text[:RAPPORT_MAX], "composants": [x for x in touched if x]})
+        dput(run, "recherche.json", {"texte": text[:RAPPORT_MAX], "composants": [x for x in touched if x], **({"registre": registre(text)} if registre(text) else {})})
         archive(run)
         print(text[:2000])
         return
@@ -734,7 +806,11 @@ def rapport(k, run, text):
         v = int(old.get("version") or 0) + 1
         reps = [str(x).strip()[:400] for x in o.get("reponses") or [] if str(x).strip()][:12]
         ab = absents(dget(run, "discussion.json"), ts) if dget(run, "discussion.json") else []
-        dput(run, "tickets.json", {"version": v, "tickets": ts, "reponses": reps, "hors_liste": hors, **({"absents": ab} if ab else {})})
+        reg = (dget(run, "recherche.json") or {}).get("registre") or []
+        place = {str(k).strip().upper(): str(w).strip()[:200] for k, w in (o.get("registre") or {}).items() if str(w).strip()} if isinstance(o.get("registre"), dict) else {}
+        reste = [x["id"] for x in reg if x["id"][0] in "DQ" and x["id"] not in place]
+        dput(run, "tickets.json", {"version": v, "tickets": ts, "reponses": reps, "hors_liste": hors, **({"absents": ab} if ab else {}),
+                                   **({"registre": place, "non_places": reste} if reg else {})})
         archive(run, versions={"v": v, "tickets": [{"summary": str(t.get("summary") or "")[:200], "composant": t.get("composant"),
                                                     "points": t.get("points"), "bloque_par": t["bloque_par"]} for t in ts], "hors_liste": hors})
         print("\n".join(f"{i}. {t['summary']} · {t.get('composant') or '?'} · {t.get('points') or '?'} pts{bloque(t)}" for i, t in enumerate(ts, 1))
@@ -809,6 +885,14 @@ def aiguillage(run):
         archive(run)
         print(f"↺ critique → rédaction · tour {d['tour']}/{TOURS}")
         sys.exit(3)
+    reste = t.get("non_places") or []
+    if reste and int(d.get("tour") or 1) < TOURS and not d.get("relance_registre"):
+        # le registre de l'investigation : un D ou un Q sans place renvoie une fois à la rédaction, sans attendre la critique
+        d.update(tour=int(d.get("tour") or 1) + 1, relance_registre=True)
+        dput(run, "demande.json", d)
+        archive(run)
+        print(f"↺ registre : {', '.join(reste)} sans place → rédaction · tour {d['tour']}/{TOURS}")
+        sys.exit(3)
     ts = t.get("tickets") or []
     os.makedirs(".kronn", exist_ok=True)
     write_json(os.path.join(".kronn", "tickets.json"), [{"id": f"{run}-{i}", "run": run, "i": i, "summary": x["summary"][:120]} for i, x in enumerate(ts)])
@@ -873,7 +957,13 @@ def apercus(run):
             print("\n💡 Conseils de la critique (non bloquants) :")
             for n in conseils:
                 print(f"- {qui(n)} : {n.get('note')}")
-    ab = (dget(run, "tickets.json") or {}).get("absents") or []
+    tj = dget(run, "tickets.json") or {}
+    reg = [x for x in (dget(run, "recherche.json") or {}).get("registre") or [] if x["id"][0] in "DQ"]
+    if reg and "non_places" in tj:
+        np_ = tj["non_places"]
+        print(f"\n🧾 Registre de l'investigation : {len(reg) - len(np_)}/{len(reg)} décisions et questions placées dans les tickets"
+              + "".join(f"\n- sans place · {x['id']} : {x['texte']}" for x in reg if x["id"] in np_))
+    ab = tj.get("absents") or []
     if ab:
         print("\n🔎 Noms de la discussion absents des tickets (contrôle sans IA) : " + ", ".join(ab))
     proches = dget(run, "doublons.json", [])[:3]

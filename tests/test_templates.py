@@ -48,6 +48,9 @@ class TemplatesTest(unittest.TestCase):
             compile(code, rel, "exec")
         chaine = templates.script_code("workflows/chaine.py", cfg)
         self.assertNotIn("consigne de revue", chaine)  # pas la config des autres
+        ticket = templates.script_code("workflows/ticket.py", cfg)
+        self.assertNotIn("consigne de revue", ticket)  # la salle de rédaction : ni les consignes de la revue, ni celles de la chaîne
+        self.assertNotIn("consigne d'équipe", ticket)
         self.assertNotIn("consigne d'équipe", chaine)  # les consignes vont dans les prompts (@@impl.guidelines@@), aucun script ne les lit
         self.assertIn('"max_tours": 7', chaine)  # le reste du réglage impl, si
         self.assertEqual(chaine.count("def read_json("), 1)  # _lib recopié une fois, même importé par _chaine

@@ -325,6 +325,10 @@ def script_code(path, cfg):
         c["github"] = {"repo": (cfg.get("github") or {}).get("repo") or ""}
         if isinstance(c.get("impl"), dict):  # les consignes de l'équipe vont dans les prompts (@@impl.guidelines@@), jamais lues par un script
             c["impl"] = {k: v for k, v in c["impl"].items() if k != "guidelines"}
+    if path == "workflows/ticket.py":  # la salle de rédaction ne lit les consignes ni de la chaîne ni de la revue (prompts seuls)
+        for k in ("impl", "review"):
+            if isinstance(c.get(k), dict):
+                c[k] = {x: v for x, v in c[k].items() if x != "guidelines"}
     if path == "workflows/review.py":  # idem pour la revue : sa part de la config (les consignes de la chaîne pèsent)
         c = {k: v for k, v in c.items() if k in REVIEW_CFG}
         c["review"] = {**(c.get("review") or {}), "page_id": revue_page(cfg)}  # où couts écrit review_sessions
