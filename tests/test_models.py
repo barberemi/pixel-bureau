@@ -100,6 +100,9 @@ class ModelsTest(unittest.TestCase):
         cron = steps("review_cron", c)
         self.assertEqual(json.loads(cron["repos"]["json_data_payload"]), [{"repo": "vance/api"}, {"repo": "vance/frigo"}])
         self.assertEqual(cron["review_each"]["sub_workflow_id"], CHILD)
+        self.assertEqual(json.loads(cron["prefilter"]["exec_args"][3]), ["skip-auto-review"])  # labels ignorés : défaut
+        pack = steps("review_cron", cfg(review={"labels_ignores": ["skip-auto-review", "To-Test", " to-deploy ", ""]}))
+        self.assertEqual(json.loads(pack["prefilter"]["exec_args"][3]), ["skip-auto-review", "to-test", "to-deploy"])
         self.assertEqual(steps("review_one", c)["review"]["sub_workflow_id"], CHILD)
         self.assertEqual(templates.render(TPL["review_cron"], c)["trigger"]["schedule"], templates.REVIEW_SCHEDULE)
 

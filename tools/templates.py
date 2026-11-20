@@ -436,6 +436,9 @@ def values(cfg):
         # sélection du cron : seulement les PR où le compte ou une de ses équipes est demandé (review.demandees), et ses équipes
         "review.selection": json.dumps({"demandees": bool(rv.get("demandees")), "equipes": list(rv.get("equipes") or [])},
                                        ensure_ascii=False, separators=(",", ":")),
+        # labels qui écartent une PR du cron (to-test, to-deploy… dans le pack) ; une revue à la demande ou de la chaîne les ignore
+        "review.labels_ignores": json.dumps([str(x).strip().lower() for x in (rv.get("labels_ignores") or ["skip-auto-review"])
+                                             if str(x).strip()], ensure_ascii=False, separators=(",", ":")),
         "review.repos_json": json.dumps([{"repo": r} for r in review_repos(cfg)], ensure_ascii=False, separators=(",", ":")),
         # langue de la review : français (défaut), ou celle de la PR (review.langue = "pr")
         "review.langue": ("Écris toute la review (`summary`, `blockers`, chaque `comments[].body`, chaque réponse) dans la langue "
