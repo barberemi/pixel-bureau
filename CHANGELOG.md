@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
+- L'Œil : « 🔎 Faire relire » sur chaque PR qu'on te demande de relire lance la revue du Bureau à la demande, sans attendre le cron (grisé quand une revue de la PR tourne déjà). Le lien de ces cartes devient « ↗ GitHub », comme les autres.
 - Revue des PR : le cron ne relit pas les PR qui portent un label du réglage `review.labels_ignores` (défaut `skip-auto-review` ; le pack ajoute par exemple `to-test`, `to-deploy`). Une revue à la demande ou de la chaîne relit la PR quand même.
 - Revue des PR : une review qui approuve n'ouvre plus de fil sur GitHub (un dépôt qui exige tous les fils résolus bloquait le merge pour des pistes facultatives) : ses remarques et conseils passent dans une section « 💡 Facultatif » de la synthèse, une ligne par piste.
 - Le Nazgûl, messager de l'Œil : il part de la tour et pose un parchemin sur ton bureau, le rapport du matin 10 min avant le daily (ce qui est arrivé depuis la veille à 18 h), puis chaque nouveauté pour toi dans la journée (retour sur une de tes PR, relecture demandée) ; scène dans la galerie et ligne du fil.
