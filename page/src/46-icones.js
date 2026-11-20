@@ -6,8 +6,8 @@
 // en profite aussi. Le panneau (HTML) garde ses emojis. ✓ ✗ et les flèches restent du texte : la police les rend nettement.
 const PIX_PAL={"k":"#1c1f26","w":"#f4efe4","W":"#ffffff","g":"#a7adb8","G":"#5f6672","r":ST_VIF.err,"R":ST_FONCE.err,"y":"#f2c94c","o":ST_VIF.warn,"O":"#a8701a","b":ST_VIF.info,"B":"#2f4f9a","n":ST_VIF.ok,"N":ST_FONCE.ok,"t":"#d6a868","T":"#8a5a30","s":"#f2c9a0","S":"#c98f62","c":"#8fdcf0"};
 const PIX_ICONS={
-  '✋':[ // t'attend, ta décision
-    '...kkksskkk.','..kssksskssk','..kssksskssk','.kkssksskssk','kskssksskssk','kskssksskssk','kssssksskssk','ksssssssssSk','.kssssssssSk','..ksssssssSk','..ksssssssSk','...kkkkkkkk.'],
+  '✋':[ // t'attend, ta décision : quatre doigts fins de hauteurs différentes et un pouce écarté (plus de moufle)
+    '......k.....','....kkskk...','...kskskskk.','...ksksksksk','...ksksksksk','.kkksksksksk','ksskssssssSk','.kssssssssSk','..ksssssssSk','..ksssssssSk','...kssssSSk.','....kkkkkk..'],
   '⏱':[ // relevé, durée
     '....kkkk....','.....kk.....','...kkkkkk.k.','..kwwwwwwkk.','.kwwwkwwwwk.','.kwwwkwwwwk.','.kwwwkkwwwk.','.kwwwwwwwwk.','.kwwwwwwwwk.','..kwwwwwwk..','...kkkkkk...','............'],
   '🧯':[ // poste en panne
