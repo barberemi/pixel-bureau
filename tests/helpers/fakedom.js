@@ -48,6 +48,7 @@ function makeDom() {
     removeAttribute(k) { delete this.attrs[k]; }
     get children() { return this.nodes.filter(n => n.nodeType === 1); }
     get firstChild() { return this.nodes[0] || null; }
+    get childNodes() { return this.nodes.slice(); }
     get parentElement() { return this.parent; }
     get parentNode() { return this.parent; }
     get isConnected() { let e = this; while (e.parent) e = e.parent; return e === doc.documentElement; }

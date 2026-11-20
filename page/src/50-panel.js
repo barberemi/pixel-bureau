@@ -54,6 +54,21 @@ function sideFoldButton(side){
 function keepFields(side){const k={};for(const e of side.querySelectorAll('input[data-fid],textarea[data-fid],select[data-fid]'))k[e.dataset.fid]=e.value;return k;}
 function restoreFields(side,k){for(const e of side.querySelectorAll('[data-fid]'))if(e.dataset.fid in k&&e.value!==k[e.dataset.fid]){e.value=k[e.dataset.fid];if(e.oninput)e.oninput();}}
 function refocus(side,fid){const e=fid&&[...side.querySelectorAll('[data-fid]')].find(x=>x.dataset.fid===fid);if(e)e.focus();}
+// la signature d'un panneau construit : son HTML et l'image de ses toiles (un portrait change sans changer le HTML)
+let SIDE_SIG=null, SIDE_GEN=0;
+function sideSig(box){
+  let s=box.innerHTML;
+  for(const c of box.querySelectorAll('canvas')){try{s+='|'+(c.toDataURL?c.toDataURL():'');}catch(e){s+='|?';}}
+  return s;
+}
+// et ce qui défile (le panneau lui-même, le détail d'un ticket…) : une boîte retrouvée par sa classe et son texte, sinon
+// elle repart en haut (un autre ticket ouvert)
+const scrollKey=e=>e.className+'|'+e.textContent.length+'|'+e.textContent.slice(0,80);
+function keepScroll(side){const k=[[null,side.scrollTop]];for(const e of side.querySelectorAll('*'))if(e.scrollTop>0)k.push([scrollKey(e),e.scrollTop]);return k;}
+function restoreScroll(side,k){
+  const all=k.length>1?[...side.querySelectorAll('*')]:[];
+  for(const [key,v] of k){if(key==null){side.scrollTop=v;continue;}const cls=key.slice(0,key.indexOf('|')), e=all.find(x=>x.className===cls&&scrollKey(x)===key);if(e)e.scrollTop=v;}
+}
 let COLLAPSED={};try{COLLAPSED=JSON.parse(localStorage.getItem('bureau:collapsed')||'{}')||{};}catch(e){COLLAPSED={};}
 // appui en cours dans le panneau ou le panneau Fraîcheur (33-freshness.js) : pas de redessin automatique. Refait entre
 // l'appui et le relâchement, il remplace le bouton, le « click » part alors à côté et la carte Kronn ne s'ouvre pas.
@@ -68,15 +83,24 @@ function renderSide(force){
   if(!force&&(KM_OPEN||document.querySelector('#side [data-kronn-action-slot]')))return; // carte Kronn ouverte (fenêtre centrée)
   if(!force&&document.activeElement&&/^(SELECT|INPUT|TEXTAREA)$/.test(document.activeElement.tagName)&&document.activeElement.closest('#side'))return; // menu ouvert ou saisie en cours
   const side=document.getElementById('side'); if(!DATA)return;
-  // le panneau se redessine chaque seconde : on garde l'élément qui a le focus clavier (data-fid)
-  const fid=side.contains(document.activeElement)&&document.activeElement.dataset?document.activeElement.dataset.fid:null;
-  const kept=keepFields(side);
-  side.innerHTML='';
+  // construit à part chaque seconde, posé seulement s'il a changé (#20) : sinon on ne touche à rien, et ce qu'on lit
+  // garde sa place (le détail d'un ticket au 2e repartait en haut), le survol et la sélection de texte restent
+  const gen=++SIDE_GEN, nx=document.createElement('div');
   const folded=SIDE_FOLDED&&innerWidth>980; // sous 980 px le panneau passe sous le plan : jamais replié
-  if(innerWidth>980)sideFoldButton(side);
+  if(innerWidth>980)sideFoldButton(nx);
   document.body.classList.toggle('sidefold',folded);
-  if(!folded)(FLOOR===4?drawComblesSide:FLOOR===1?drawAtelierSide:FLOOR===-1?drawCaserneSide:FLOOR===3?drawRetoursSide:FLOOR===2?drawRedactionSide:drawSide)(side); // sur le 1er étage, les bureaux de l'atelier (68-atelier.js) ; au -1, les baies (68-caserne.js)
+  if(!folded)(FLOOR===4?drawComblesSide:FLOOR===1?drawAtelierSide:FLOOR===-1?drawCaserneSide:FLOOR===3?drawRetoursSide:FLOOR===2?drawRedactionSide:drawSide)(nx); // sur le 1er étage, les bureaux de l'atelier (68-atelier.js) ; au -1, les baies (68-caserne.js)
+  if(gen!==SIDE_GEN)return; // la construction a changé de vue (fiche du boss ouverte à un étage : retour au RDC) et redessiné
+  const sig=sideSig(nx);
+  if(sig===SIDE_SIG&&side.firstChild)return;
+  SIDE_SIG=sig;
+  // l'élément qui a le focus clavier (data-fid), ce qui est saisi et ce qui défile survivent au remplacement
+  const fid=side.contains(document.activeElement)&&document.activeElement.dataset?document.activeElement.dataset.fid:null;
+  const kept=keepFields(side), sc=keepScroll(side);
+  side.innerHTML='';
+  side.append(...nx.childNodes);
   restoreFields(side,kept);
+  restoreScroll(side,sc);
   refocus(side,fid);
 }
 // ligne d'état d'une fiche : une pastille d'une ligne (pill, sinon head, sinon label ; le libellé complet au survol), puis
