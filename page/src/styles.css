@@ -1069,10 +1069,12 @@ body.tv .mtbar{display:none}
 .oe-t .mut{color:var(--muted);font-size:var(--fs-meta);white-space:nowrap}
 .oe-s{font-size:var(--fs-meta);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .oe-chips{display:flex;flex-wrap:wrap;gap:4px}
-.oe-chips span{font-family:var(--font-mono);font-size:var(--fs-meta);padding:1px 5px;background:var(--line);color:var(--ink)}
-.oe-chips .rq{background:var(--err-deep)}
-.oe-chips .cf{background:var(--warn-deep)}
-.oe-chips .as{background:var(--info-deep)}
+/* pastilles pleines : couleur vive de l'état et texte « sur couleur », deux jetons que chaque thème définit (lisible en
+   Classique comme sur le thème clair d'un pack) */
+.oe-chips span{font-family:var(--font-mono);font-size:var(--fs-meta);font-weight:700;padding:1px 5px;background:var(--line);color:var(--ink)}
+.oe-chips .rq{background:var(--err);color:var(--on-accent)}
+.oe-chips .cf{background:var(--warn);color:var(--on-warn)}
+.oe-chips .as{background:var(--info);color:var(--on-accent)}
 .oe-q{display:none;font-size:var(--fs-meta);color:var(--ink);border-left:2px solid var(--line);padding-left:6px}
 .oe-now .oe-q{display:block}
 .oe-acts{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
