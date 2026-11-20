@@ -620,13 +620,14 @@ EVENTS = {"approve": "APPROVE", "request_changes": "REQUEST_CHANGES", "comment":
 LIBELLES = {
     "fr": {"approve": "## ✅ Approuvé", "comment": "## 💬 Commentaires", "request_changes": "## 🔧 Changements demandés",
            "bloquants": "**Bloquants**", "aussi": "**Aussi** (hors des lignes du diff)", "positif": "👍 Positif : ",
-           "criteres": "critères", "non_verif": "non vérifiables"},
+           "criteres": "critères", "non_verif": "non vérifiables", "facultatif": "💡 **Facultatif** (pistes, rien à résoudre)"},
     "en": {"approve": "## ✅ Approved", "comment": "## 💬 Comments", "request_changes": "## 🔧 Changes requested",
            "bloquants": "**Blocking**", "aussi": "**Also** (outside the diff lines)", "positif": "👍 Good: ",
-           "criteres": "criteria", "non_verif": "not verifiable"},
+           "criteres": "criteria", "non_verif": "not verifiable", "facultatif": "💡 **Optional** (ideas, nothing to resolve)"},
 }
 SUGGESTION = re.compile(r"```suggestion[^\n]*\n(.*?)```", re.S)
 TITRE = re.compile(r"^\s*(?:[🔴🟡🔵🐛🔒🧪🧬🔁📖⚡💡📚]️?\s*)*")
+LIBELLE = re.compile(r"^(\s*(?:[🔴🟡🔵🐛🔒🧪🧬🔁📖⚡💡📚]️?\s*)*)\*\*(.+?)\*\*\s*[:—–-]?\s*(.*)$", re.S)
 
 
 def resume(d):
@@ -661,6 +662,21 @@ def titre(body):
     first = next((ln for ln in str(body or "").splitlines() if ln.strip()), "")
     first = TITRE.sub("", first).strip()
     return re.sub(r"^\*\*(.+?)\*\*.*$", r"\1", first)[:160] or " ".join(str(body or "").split())[:160]
+
+
+def piste(c):
+    """Un commentaire inline d'une review qui approuve, en une puce de la section Facultatif (il n'ouvre pas de fil à
+    résoudre avant le merge) : « 🧬 Test faible · `f.ts:42` : la première phrase », sans le code proposé."""
+    txt = " ".join(ln.strip() for ln in str(c.get("body") or "").split("```")[0].splitlines() if ln.strip())
+    m = LIBELLE.match(txt)
+    tete, txt = ("%s%s" % (m.group(1), m.group(2).strip()), m.group(3)) if m else ("", TITRE.sub("", txt))
+    phrase = re.match(r"(.+?[.!?])(?:\s|$)", txt)
+    txt = (phrase.group(1) if phrase else txt).strip()
+    txt = txt if len(txt) <= 220 else txt[:219].rstrip() + "…"
+    ref = "`%s:%s`" % (str(c.get("path") or "?").rsplit("/", 1)[-1], c.get("line"))
+    if tete:
+        return "%s · %s" % (tete, ref) + (" : " + txt if txt else "")
+    return "%s · %s" % (txt or "?", ref)
 
 
 def liste(v):
@@ -764,6 +780,9 @@ def verifie(d, files, anchors, obs, prec, own):
         if why:
             fixes.append("approve refusé (" + " ; ".join(why) + ") : comment")
             verdict = "comment"
+    facultatif = []
+    if verdict == "approve" and own != "true":  # un approve n'ouvre aucun fil : la règle « tous les fils résolus » bloquerait le merge
+        facultatif, kept, aussi = [piste(c) for c in kept] + aussi, [], []
     lang = str(d.get("lang") or "fr").lower()[:2]
     lab = LIBELLES.get(lang, LIBELLES["fr"])
     parts = [lab[verdict], "", resume(d)]
@@ -777,10 +796,11 @@ def verifie(d, files, anchors, obs, prec, own):
         parts += ["", lab["aussi"]] + ["- " + a for a in aussi]
     if str(d.get("positive") or "").strip():
         parts += ["", lab["positif"] + str(d["positive"]).strip()]
-    body = "\n".join(parts).strip() if (d.get("summary") or not d.get("generalComment")) else str(d.get("generalComment")).strip()
+    fac = ["", lab["facultatif"]] + ["- " + f for f in facultatif] if facultatif else []
+    body = "\n".join(parts + fac).strip() if (d.get("summary") or not d.get("generalComment")) else "\n".join([str(d.get("generalComment")).strip()] + fac)
     event = "COMMENT" if own == "true" else EVENTS[verdict]
     return {"verdict": verdict, "event": event, "body": body, "comments": kept, "blockers": blockers, "lang": lang,
-            "traces": liste(d.get("traces")), "revus": liste(d.get("revus")), "suivi": liste(d.get("suivi"))}, fixes
+            "traces": liste(d.get("traces")), "revus": liste(d.get("revus")), "suivi": liste(d.get("suivi")), "facultatif": facultatif}, fixes
 
 
 def garde(pr, verdict, own, raw):

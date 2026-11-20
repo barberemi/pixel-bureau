@@ -221,6 +221,35 @@ class ReviewTest(unittest.TestCase):
         r = self.garde_review({**couvert, "suivi": [{"point": "P1", "etat": "corrige", "preuve": "x"}, {"point": "P2", "etat": "refute", "preuve": "y"}]})
         self.assertEqual(r["verdict"], "approve")
 
+    def test_an_approve_opens_no_thread_its_remarks_go_to_optional(self):
+        """La règle « tous les fils résolus » des dépôts bloquerait le merge d'une PR approuvée pour des pistes facultatives :
+        un APPROVE ne poste aucun commentaire inline, ils passent en puces dans « Facultatif » (sans le code proposé), avec
+        ceux hors du diff. Sur sa propre PR (COMMENT) ou un approve refusé, les inline restent."""
+        self.assertEqual(self.ctx().returncode, 0)
+        avis = {"pr": 12, "statut": "ok", "verdict": "approve", "summary": "Rien de bloquant.", "existingCommentActions": [],
+                "existingCommentReplies": [], "skipped": [], "blockers": [],
+                "traces": [{"r": "R9", "recherche": "git grep f", "resultat": "aucun"}], "revus": ["src/f.py", "big.min.js"],
+                "comments": [
+                    {"path": "src/f.py", "line": 11, "side": "RIGHT", "gravite": "conseil",
+                     "body": "🧬 **Test faible** : le cas « liste vide » n'est pas testé. Une mutation du `>` en `>=` survivrait.\n"
+                             "```suggestion\nif n > 3:\n```"},
+                    {"path": "src/f.py", "line": 12, "side": "RIGHT", "gravite": "remarque", "body": "📖 **Lisibilité**\n\nNomme la borne."},
+                    {"path": "absent.py", "line": 1, "side": "RIGHT", "body": "💡 **Hors du diff**"}]}
+        r = self.garde_review(avis)
+        self.assertEqual((r["verdict"], r["event"], r["comments"]), ("approve", "APPROVE", []))
+        self.assertEqual(r["facultatif"], ["🧬 Test faible · `f.py:11` : le cas « liste vide » n'est pas testé.",
+                                           "📖 Lisibilité · `f.py:12` : Nomme la borne.", "Hors du diff · `absent.py:1`"])
+        self.assertIn("\n\n💡 **Facultatif** (pistes, rien à résoudre)\n- 🧬 Test faible", r["body"])
+        self.assertNotIn("**Aussi**", r["body"])
+        self.assertNotIn("suggestion", r["body"])
+        self.assertFalse(any("Facultatif" in f for f in r["corrections"]))  # mise en page, pas une réparation
+        self.assertIn("💡 **Optional** (ideas, nothing to resolve)", self.garde_review({**avis, "lang": "en"})["body"])
+        own = self.garde_review(avis, own="true")
+        self.assertEqual((own["event"], len(own["comments"]), own["facultatif"]), ("COMMENT", 2, []))
+        Path(self.tmp, ".kronn", "review-12", "observation.md").write_text("- Fusion : ⛔ en conflit avec la base\n")
+        refuse = self.garde_review(avis)
+        self.assertEqual((refuse["verdict"], len(refuse["comments"]), refuse["facultatif"]), ("comment", 2, []))
+
     def test_a_blocker_on_a_diff_line_gets_its_inline_comment(self):
         """#2074 : deux bloquants dans la synthèse, aucun commentaire inline. Un bloquant dont le renvoi tombe sur une ligne
         de la nouvelle version du diff reçoit son inline ; hors du diff, ou déjà commenté, il reste dans la synthèse."""
