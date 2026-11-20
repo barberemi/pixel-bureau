@@ -117,3 +117,13 @@ test('sans historique : un message, pas de tableau vide', () => {
   assert.ok(h.includes('0 changement demandé') && h.includes('Aucun ticket créé sur la période'));
   assert.ok(!/undefined|NaN/.test(h));
 });
+
+test('registre des discussions : décisions et questions placées, tours ajoutés pour un oubli ; absent sans discussion', () => {
+  const D = {...DATA, intentions: [r('a', {registre: {total: 9, places: 8, relance: true}}), r('b', {registre: {total: 5, places: 5, relance: false}}), r('c')]};
+  const a = B.aggregate(D, {jours: 30, projet: '', essais: false});
+  assert.deepEqual({...a.registre}, {n: 2, places: 13, total: 14, relances: 1});
+  const h = B.render(D, {jours: 30, projet: '', essais: false, sel: null});
+  assert.ok(h.includes('<b>13 / 14</b><span>décisions et questions des discussions placées dans les tickets (2 intentions · 1 tour ajouté pour un oubli)'), 'la tuile');
+  assert.equal(B.aggregate(DATA, {jours: 30, projet: '', essais: false}).registre, null);
+  assert.ok(!B.render(DATA, {jours: 30, projet: '', essais: false, sel: null}).includes('placées dans les tickets'));
+});

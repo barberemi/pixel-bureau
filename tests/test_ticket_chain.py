@@ -393,7 +393,7 @@ class TicketChainTest(unittest.TestCase):
                                                                  {"qui": "agent", "nom": "", "at": "", "texte": recap}]}
         Path(self.tmp, ".cache", "pixel-bureau", "ticket", "b1", "discussion.json").write_text(json.dumps(disc))
         red = self.t("poste", "redaction", "b1").stdout
-        self.assertIn("## Brouillon : le récap de l'agent\nPars de ce brouillon", red)
+        self.assertIn("## Brouillon : le récap de l'agent\nS'ils décrivent déjà les tickets, pars-en", red)
         self.assertIn("#### Ticket 1\nPR hebdo sur la branche fixe chore/translations-sync", red)
         self.assertIn("Vérifie la couverture", self.t("poste", "critique", "b1").stdout)
         self.assertNotIn("## Brouillon", self.t("poste", "recherche", "b1").stdout, "la recherche a la discussion entière")
@@ -411,6 +411,44 @@ class TicketChainTest(unittest.TestCase):
         self.assertIn("## Écarts avec Jira relevés par la critique (à mettre dans les questions ouvertes du ticket concerné)\n- ticket 1 · DM-7954",
                       self.t("poste", "redaction", "b1").stdout)
         self.assertIn('"ecarts"', self.t("poste", "critique", "b1").stdout, "le format de sortie les décrit")
+
+    def test_investigation_register_each_decision_placed_or_one_more_round(self):
+        """Une investigation (pas un ticket déjà écrit) : la recherche en tire un registre numéroté (D décisions, X pistes
+        écartées, Q questions ouvertes) ; la rédaction dit où va chaque D et Q ; un oubli renvoie une fois à la rédaction, sans
+        attendre la critique ; le tampon montre la couverture, l'historique la garde pour la page bilan."""
+        self.t("dossier", "g1", "Traductions", "Story", "8", "dm/site", "", "backlog", "")
+        disc = {"id": "x", "titre": "T", "messages": [{"qui": "boss", "nom": "", "at": "", "texte": "on cherche"}]}
+        Path(self.tmp, ".cache", "pixel-bureau", "ticket", "g1", "discussion.json").write_text(json.dumps(disc))
+        self.assertIn("`D1 : …` pour chaque décision prise", self.t("poste", "recherche", "g1").stdout)
+        self.t("rapport", "recherche", "g1", stdin="Composants : dm/site\n\n**Registre**\n- **D1** : clé API simple, Sheet public\n"
+               "- D2 : commande `app:translations:pull`\n- X1 : GitHub App (trop lourd)\n- Q1 : nom du secret du PAT bot → infra\n\n- src/a.php")
+        red = self.t("poste", "redaction", "g1").stdout
+        self.assertIn("## Registre de l'investigation (rapport de la recherche)", red)
+        self.assertIn("- D2 : commande `app:translations:pull`\n- X1 : GitHub App (trop lourd)\n- Q1 : nom du secret du PAT bot → infra", red)
+        one = {"summary": "A", "description": "h2. À faire", "composant": "dm/site", "points": 8}
+        self.t("rapport", "redaction", "g1", stdin=json.dumps({"tickets": [one], "registre": {"D1": "T1 · Contexte", "Q1": "T1 · Questions ouvertes"}}))
+        self.t("rapport", "critique", "g1", stdin='{"verdict": "ok", "notes": []}')
+        ap = self.t("apercus", "g1").stdout
+        self.assertIn("🧾 Registre de l'investigation : 2/3 décisions et questions placées dans les tickets\n- sans place · D2 : commande", ap)
+        a = self.t("aiguillage", "g1")
+        self.assertEqual(a.returncode, 3, "un D sans place : un tour de rédaction de plus")
+        self.assertIn("↺ registre : D2 sans place", a.stdout)
+        red = self.t("poste", "redaction", "g1").stdout
+        self.assertIn("## Éléments du registre sans place (contrôle automatique, à corriger en priorité)", red)
+        self.assertIn("- D2", red)
+        self.t("rapport", "redaction", "g1", stdin=json.dumps({"tickets": [one], "registre": {"D1": "T1", "Q1": "T1"}}))
+        self.t("rapport", "critique", "g1", stdin='{"verdict": "ok", "notes": []}')
+        self.assertEqual(self.t("aiguillage", "g1").returncode, 0, "une seule relance pour le registre")
+        cri = self.t("poste", "critique", "g1").stdout
+        self.assertIn("- D1 : clé API simple, Sheet public  →  T1", cri)
+        h = json.loads(Path(self.tmp, ".local", "share", "pixel-bureau", "historique", "ticket", "g1.json").read_text())
+        self.assertEqual(h["registre"], {"total": 3, "places": 2})
+        # les « Changements » d'une autre intention : des leçons pour la rédaction et la critique, jamais celles du run même
+        self.t("dossier", "g2", "Autre", "Story", "3", "dm/site", "", "backlog", "")
+        self.t("poste", "redaction", "g2", "ne renomme jamais une commande décidée")
+        self.assertIn("## Corrections que le boss a déjà dû faire sur d'autres tickets (les plus récentes d'abord)", self.t("poste", "redaction", "g1").stdout)
+        self.assertIn("- ne renomme jamais une commande décidée", self.t("poste", "critique", "g1").stdout)
+        self.assertNotIn("## Corrections que le boss", self.t("poste", "redaction", "g2").stdout)
 
     def test_boss_text_is_the_draft_and_names_left_out_are_listed(self):
         """Run 400a0472 : le récap de l'agent résumait le texte du boss et perdait MainMenu, chore(Wording). Le plus long

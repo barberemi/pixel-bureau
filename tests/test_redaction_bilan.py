@@ -83,7 +83,8 @@ class RedactionBilanTest(unittest.TestCase):
                              {"i": 1, "key": "DM-7854", "title": "Pistes audio", "composant": "dm/site"}]},
             "r2": {"run": "r2", "at": "2026-11-03T09:00:00Z", "intention": "[ESSAI du Bureau] aria-label", "essai": True,
                    "versions": [v(1, "A")], "critiques": [{"v": 1, "verdict": "a_retoucher", "notes": [{"ticket": 0, "note": "à découper"}]}]},
-            "r3": {"run": "r3", "at": "2026-11-04T15:00:00Z", "intention": "Export CSV", "versions": [v(1, "Export")]},
+            "r3": {"run": "r3", "at": "2026-11-04T15:00:00Z", "intention": "Export CSV", "versions": [v(1, "Export")],
+                   "registre": {"total": 9, "places": 8}, "relance_registre": True},
             "vieux": {"run": "vieux", "at": "2026-06-01T08:00:00Z", "intention": "trop vieux"},
         }
         for k, x in self.hist.items():
@@ -138,6 +139,8 @@ class RedactionBilanTest(unittest.TestCase):
         self.assertEqual((r["causes"], r["gate"]["changements"]), (["decoupage"], 1))
         self.assertEqual((rows["r2"]["issue"], rows["r2"]["essai"], rows["r2"]["critique"]["reserves"]), ("rejetee", True, True))
         self.assertEqual(rows["r3"]["issue"], "attente")
+        self.assertEqual(rows["r3"]["registre"], {"total": 9, "places": 8, "relance": True}, "lancée depuis une discussion Kronn")
+        self.assertNotIn("registre", rows["r1"])
         r0 = rows["r0"]
         self.assertEqual((r0["issue"], r0["panne"], r0["partiel"], r0["intention"], r0["proposes"], r0["creations_ko"]), ("panne", "chaque", True, "Pagination", 1, 1))
         f = out["fiches"]["r1"]

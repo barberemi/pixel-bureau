@@ -233,7 +233,10 @@ def ligne(h, c):
             "postes": c.get("postes") or {}, "gate": {k: g.get(k) for k in ("visites", "changements", "attente_ms", "decision")},
             "cout": round(sum(float(p.get("cout") or 0) for p in (c.get("postes") or {}).values()), 4),
             "tok": sum(int(p.get("tok") or 0) for p in (c.get("postes") or {}).values()),
-            "critique": critique_stats(h), "causes": [classe(r.get("texte"), CAUSES) for r in h.get("retours") or []]}
+            "critique": critique_stats(h), "causes": [classe(r.get("texte"), CAUSES) for r in h.get("retours") or []],
+            # registre de l'investigation (discussion Kronn) : décisions et questions placées dans les tickets, relance automatique
+            **({"registre": {"total": int((h.get("registre") or {}).get("total") or 0), "places": int((h.get("registre") or {}).get("places") or 0),
+                             "relance": bool(h.get("relance_registre"))}} if h.get("registre") else {})}
 
 
 def fiche(h, c):

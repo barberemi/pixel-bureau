@@ -172,6 +172,8 @@ function aggregate(data,f){
   a.avecTickets=rows.filter(r=>(r.crees||[]).length).length;
   a.gated=gated.length;
   a.premierCoup=gated.filter(r=>r.gate.decision==='approuvee'&&!r.gate.changements).length;
+  const reg=rows.filter(r=>r.registre&&r.registre.total); // intentions lancées depuis une discussion Kronn
+  a.registre=reg.length?{n:reg.length,places:sum(reg.map(r=>r.registre.places)),total:sum(reg.map(r=>r.registre.total)),relances:reg.filter(r=>r.registre.relance).length}:null;
   a.changements=sum(gated.map(r=>r.gate.changements||0));
   a.rejetees=rows.filter(r=>r.issue==='rejetee').length;
   const tours=rows.filter(r=>(r.critique||{}).tours);
@@ -225,6 +227,7 @@ function kpis(a){
   <div class="kpi"><b>${a.coutIntention==null?'–':fmtUsd(a.coutIntention)}</b><span>par intention (${fmtUsd(a.cout)} en tout) · par ticket créé : ${a.coutTicket==null?'–':fmtUsd(a.coutTicket)}</span></div>
   <div class="kpi"><b>${a.rejetees} / ${a.gated}</b><span>listes rejetées au tampon${a.funnel.panneAvant||a.funnel.creationsKo?' · '+plural(a.rows.filter(r=>r.issue==='panne').length,'en panne','en panne'):''} · ${a.premierCoup} tamponnée${a.premierCoup>1?'s':''} du premier coup</span></div>
   <div class="kpi"><b>${a.attente==null?'–':fmtDur(a.attente/1000)}</b><span>attente médiane à ton tampon</span></div>
+  ${a.registre?`<div class="kpi${a.registre.places<a.registre.total?' err':''}"><b>${a.registre.places} / ${a.registre.total}</b><span>décisions et questions des discussions placées dans les tickets (${plural(a.registre.n,'intention','intentions')}${a.registre.relances?' · '+plural(a.registre.relances,'tour ajouté','tours ajoutés')+' pour un oubli':''})</span></div>`:''}
 </div>`;
 }
 function argent(a){
