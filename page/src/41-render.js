@@ -27,7 +27,7 @@ function render(now){
   if(sc&&sc.present&&sc.pos){selHalo(sc.pos.x,sc.pos.y-26,W,H);drawSeatTrail(sc,now);}
   if(sel==='duck'&&DUCK_POS)selHalo(DUCK_POS.x,DUCK_POS.y-14,W,H); // fiche du canard ouverte : comme autour d'un personnage
   // bulles : celui qui vient voir quelqu'un (ticket livré, réouvert, prod fêtée) passe par-dessus la bulle de la personne visitée
-  const onTop=c=>c._st&&(c._st.st==='deliver'||c._st.st==='reopen'||c._st.st==='proud');
+  const onTop=c=>c._st&&(c._st.st==='deliver'||c._st.st==='reopen'||c._st.st==='proud'||c._st.st==='bigpr');
   BUBBLE_BOXES=[];
   for(const c of chars)if(c.present&&shown(c)&&!onTop(c))drawOverlay(c,now);
   for(const c of chars)if(c.present&&shown(c)&&onTop(c))drawOverlay(c,now);

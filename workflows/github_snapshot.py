@@ -45,8 +45,9 @@ REPOS = pr_repos()
 # limites par dépôt : le principal garde ses 100 PR ouvertes et 40 mergées, les autres moins (sortie sous 100 Ko)
 # l'état de fusion n'est pas demandé ici : GitHub le calcule pour chaque PR et la liste de 100 finit en 504 ; il vient de
 # la requête GraphQL des fils (mergeable), dont l'échec ne coûte que les pastilles
+# additions, deletions, changedFiles : la taille de la PR (l'amiral Ackbar des grosses PR, 43-pop.js)
 OPEN_FIELDS = ("number,title,headRefName,author,isDraft,reviewDecision,url,updatedAt,createdAt,latestReviews,reviewRequests,"
-               "baseRefName,headRefOid")
+               "baseRefName,headRefOid,additions,deletions,changedFiles")
 CALLS = {}
 KEPT = []  # avertissements des PR reprises du relevé précédent
 for repo in REPOS:

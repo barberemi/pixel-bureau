@@ -33,7 +33,10 @@ function galleryScenes(){
   team({ico:'🏁',n:'Lancement du sprint',d:'L\'équipe devant le mur Kanban',w:'Premier jour du sprint',play:{len:2*60e3,speed:10,setup:s=>{SCENE_DEMO.flag='kickoff';}}},!!(TEAM&&TEAM.sprint));
   team({ico:'🔄',n:'Rétrospective',d:'L\'équipe en salle de réunion, l\'animateur en bout de table',w:'Selon le rythme de l\'équipe',play:{len:3*60e3,speed:10,setup:s=>{SCENE_DEMO.flag='retro';}}});
   team({ico:'🍕',n:'Pizzas de fin de sprint',d:'À la table de la cafétéria',w:'Dernier jour du sprint, midi',play:{len:2*60e3,speed:10,setup:s=>{SCENE_DEMO.flag='pizza';}}});
-  for(const c of chars.filter(c=>c.guest&&!['reopen','prod','mep'].includes(c.on))){
+  const ak=chars.find(c=>c.guest&&c.on==='bigpr'), gp=POP_CFG.grosse_pr; // 43-pop.js : l'amiral Ackbar d'une grosse PR
+  if(ak)team({ico:'🦑',n:ak.name+' · grosse PR',c:ak,d:'Il entre et crie devant le poste de l\'auteur',w:'Une PR ouverte dans la journée de plus de '+gp.lignes+' lignes ou '+gp.fichiers+' fichiers',
+    play:{len:HERALD_MS+60e3,speed:10,setup:s=>galTeam([{t:galIso(s),kind:'pr',n:9999,repo:'',title:'Démonstration',keys:[],author:dev&&dev.team.id,author_name:dev&&dev.person,lines:2140,files:48}])}},!!dev);
+  for(const c of chars.filter(c=>c.guest&&!['reopen','prod','mep','bigpr'].includes(c.on))){
     const g={fam:'Invités',c,ok:true};
     const visit=len=>s=>{SCENE_DEMO.visit={c,v:{s,e:s+len,r:rng(keySeed(c.key)*7919+daySeed(s))}};};
     if(c.on==='coffee'){const n=chars.filter(p=>p.person&&p.seat).length+1;
@@ -52,6 +55,11 @@ function galleryScenes(){
   }
   if(DUCKGAME){add({fam:'Petits moments',ok:true,ico:'🏆',n:'Le canard : un succès',d:'L\'insigne qui se pose sur le canard',w:'Un succès débloqué',play:{len:8e3,speed:1,setup:galFx('trophy',{tr:DUCK_TROPHIES[0]})}});
     add({fam:'Petits moments',ok:true,ico:'🐣',n:'Le canard : éclosion',d:'L\'œuf se fend',w:'Les points du sprint',play:{len:8e3,speed:1,setup:galFx('hatch',{from:'oeuf',to:'caneton'})}});}
+  if(dev)add({fam:'Petits moments',ok:true,c:dev,ico:'📡',n:'Le verdict de la revue',d:'La revue du Bureau apparaît sur le poste de l\'auteur, avec son verdict',w:'Une revue du cron postée',
+    play:{len:12e3,speed:1,setup:galFx('holo',{c:dev,v:'request_changes',n:9999,ms:12e3})}});
+  {const acc=typeof mailAccounts==='function'?mailAccounts().filter(a=>a.ok):[];
+    if(acc.length&&!REDUCED_MOTION)add({fam:'Petits moments',ok:true,ico:'✉',n:'Les lettres de Poudlard',d:'Les lettres s\'envolent de la boîte aux lettres',w:'Les mails utiles d\'un compte passent '+POP_CFG.lettres.mails,
+      play:{len:9e3,speed:1,setup:galFx('letters',{a:acc[0],n:POP_CFG.lettres.mails,ms:9e3})}});}
   const ag=chars.find(c=>!c.person&&!c.visitor&&!c.guest&&c.present);
   if(ag)add({fam:'Petits moments',ok:true,c:ag,ico:'✅',n:'Un agent rétabli',d:'Les agents au travail l\'applaudissent',w:'Un succès après une panne',play:{len:8e3,speed:1,setup:galFx('recover',{c:ag})}});
   const sp=typeof spAgent==='function'&&SUPPORT&&spAgent();
@@ -85,6 +93,7 @@ function demoStart(x){
   x.play.setup(s);
   MOVES_MEMO={team:null,list:[]};UFO_M={};
   setSpeed(x.play.speed);setMode('play');
+  hyperGo('🎬 Démonstration',x.n,'la scène commence…'); // 43-pop.js : l'heure reste figée le temps de la transition
   const wrap=cv.parentElement;
   const b=document.createElement('div');b.className='demo-ban';b.id='demoban';
   b.innerHTML=`<span>🎬 Démonstration · <b>${esc(x.n)}</b></span><button type="button">✕ Revenir</button>`;
@@ -94,6 +103,7 @@ function demoStart(x){
 }
 function demoEnd(){
   if(!SCENE_DEMO)return;
+  if(HYPER)hyperEnd(); // 43-pop.js : l'hyperespace en cours se referme avec la démonstration
   const v=SCENE_DEMO.saved; SCENE_DEMO=null;
   TEAM=v.TEAM; if(v.SUPPORT!==null)SUPPORT=v.SUPPORT;
   if(REDACTION!==v.REDACTION){REDACTION=v.REDACTION;if(FLOOR===2)rdReset();} // le 2e revient tel quel

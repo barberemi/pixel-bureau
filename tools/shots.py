@@ -115,6 +115,16 @@ SHOTS = {
     "reopen-testeur": (1400, 1000, AT(10 + 51 / 60), "#cv", 1.5),
     # mise en prod d'Andy finie à 10h42 : le sage le félicite sur la scène du plateau TV, Michael au sax
     "prod-heraut": (1400, 1000, AT(10 + 43.5 / 60), "#cv", 1.5),
+    # scènes pop (43-pop.js) : l'amiral Ackbar devant une grosse PR, le verdict d'une revue en hologramme, les lettres de
+    # Poudlard, l'hyperespace avant une scène
+    "ackbar": (1400, 1000, AT(10 + 51 / 60) + "{const d=chars.find(c=>c.person&&c.seat&&c.team);TEAM={...TEAM,events:[...(TEAM.events||[]),"
+               "{t:new Date(DAY0+10.83*36e5).toISOString(),kind:'pr',n:2042,repo:'',title:'Démo',author:d.team.id,author_name:d.person,lines:2140,files:48}]};"
+               "BIGPR_MEMO={team:null,list:[]};}", "#cv", 1.5),
+    "verdict": (1400, 1000, AT(11) + "setSpeed(1);setMode('play');{const d=chars.find(c=>c.person&&c.seat);"
+                "FX.cur.set('s',{id:'s',kind:'holo',c:d,v:'request_changes',n:2042,ms:12e3,t0:performance.now()-3000});}", "#cv", 1.5),
+    "lettres": (1400, 1000, AT(11) + "setSpeed(1);setMode('play');{const a=mailAccounts().find(a=>a.ok);"
+                "FX.cur.set('l',{id:'l',kind:'letters',a,n:10,ms:9e3,t0:performance.now()-1000});}", "#cv", 1.5),
+    "hyperespace": (1400, 1000, AT(11) + "hyperGo('🎬 Démonstration','Gandalf','la scène commence…');HYPER.hold=.6;", ".stage"),
     # MEP d'un autre dépôt lancée par quelqu'un hors de l'équipe et du sprint : son visiteur sur la scène du plateau TV
     "mep-visiteur": (1400, 1000, AT(11) + "LIVE={deploys:{staging:{},prod:{'api 2.4.0':{status:'in_progress',conclusion:null,"
                      "start:'2026-10-01T08:55:00Z',end:null,url:'',project:'api',repo:'acme/front_api',by:'bobvance'}}}};"

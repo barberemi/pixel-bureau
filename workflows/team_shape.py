@@ -230,8 +230,9 @@ for pr in D.get("open") or []:
     author = gh_owner.get((a.get("login") or "").lower())
     keys = pr_keys(pr)
     base = {"n": pr["number"], "repo": repo_of(pr), "title": pr["title"][:110], "keys": keys, "author": author, "author_name": a.get("name") or a.get("login")}
-    if is_today(pr.get("createdAt")) and not pr.get("isDraft"):
-        events.append({"t": pr["createdAt"], "kind": "pr", **base})
+    if is_today(pr.get("createdAt")) and not pr.get("isDraft"):  # avec sa taille quand GitHub la donne (grosses PR, Ackbar)
+        size = {"lines": (pr.get("additions") or 0) + (pr.get("deletions") or 0), "files": pr.get("changedFiles") or 0} if pr.get("changedFiles") is not None else {}
+        events.append({"t": pr["createdAt"], "kind": "pr", **base, **size})
     for rv in pr.get("latestReviews") or []:
         st = {"APPROVED": "approved", "CHANGES_REQUESTED": "changes", "COMMENTED": "commented"}.get(rv.get("state"))
         if not st or not is_today(rv.get("submittedAt")):
@@ -242,8 +243,8 @@ for pr in D.get("open") or []:
 events.sort(key=lambda e: e["t"])
 
 # Première vue (Gandalf, soucoupe-mère) : ce cron passe toutes les 10 min, une scène de 3 min datée par Jira serait
-# déjà finie quand la page l'apprend. On garde l'heure où ce cron a vu chaque changement de statut ou entrée au sprint
-# pour la première fois (cache hors du dépôt) ; vue avec plus d'une minute et au plus 20 min de retard, l'événement la
+# déjà finie quand la page l'apprend. On garde l'heure où ce cron a vu chaque changement de statut, entrée au sprint ou PR
+# ouverte pour la première fois (cache hors du dépôt) ; vue avec plus d'une minute et au plus 20 min de retard, l'événement la
 # porte (seen) et la page joue la scène à partir de là. Premier passage sans cache, ou retard plus long (cron arrêté,
 # nuit) : rien n'est décalé, pour ne pas rejouer d'un coup des scènes passées.
 SEEN = os.path.join(os.path.expanduser("~"), ".cache", "pixel-bureau", "team_seen.json")
@@ -254,9 +255,9 @@ except (OSError, ValueError):
 _first, _seen, _keep = _seen is None, _seen or {}, {}
 _now = datetime.now(timezone.utc)
 for e in events:
-    if e["kind"] not in ("move", "sprint_in"):
+    if e["kind"] not in ("move", "sprint_in", "pr"):  # pr : l'amiral Ackbar d'une grosse PR, scène de 3 min aussi
         continue
-    k = f'{e["kind"]}|{e["key"]}|{e["t"]}'
+    k = f'{e["kind"]}|{e.get("key") or str(e.get("repo")) + "#" + str(e.get("n"))}|{e["t"]}'
     s = _keep[k] = _seen.get(k) or (e["t"] if _first else _now.isoformat(timespec="seconds"))
     late = jira_ts(s) - jira_ts(e["t"])
     if timedelta(minutes=1) < late <= timedelta(minutes=20):
