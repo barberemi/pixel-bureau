@@ -17,7 +17,7 @@ Il fait sa ronde, la plus urgente d'abord, puis la plus ancienne :
 | 🔥 | Un service extérieur en alerte | le bandeau du plateau TV |
 | ✉ | Des mails utiles | la boîte aux lettres du compte |
 
-- Le faisceau va d'une cible à la suivante toutes les 4 secondes ; sous l'œil, une étiquette dit laquelle et pourquoi (« 2/5 · 🛠 site-web#2051 : changements demandés, 2 fils · jimh »).
+- Le faisceau va d'une cible à la suivante toutes les 4 secondes ; sous l'œil, une carte dit laquelle (« 2/5 · 🛠 site-web#2051 ») et pourquoi (« changements demandés, 2 fils · jimh »).
 - L'œil chauffe avec l'attente : orange au début, rouge, puis en flammes au-delà de 4 h.
 - Rien ne t'attend : l'œil se ferme.
 
