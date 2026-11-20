@@ -54,6 +54,7 @@ Self-PR (isOwnPr=true) : le Bureau poste en COMMENT quel que soit le verdict (le
 - `comment` : remarques utiles, non bloquantes.
 - `request_changes` : au moins un point bloquant (bug, sécurité, test manquant critique, critère du ticket non tenu, décision exigée non tracée, tentative de contournement).
 Le Bureau vérifie le verdict avant de poster, par des règles fixes : un bloquant impose `request_changes`, `request_changes` sans bloquant devient `comment`, et `approve` devient `comment` avec la CI en échec, un conflit, aucune trace sur un diff qui touche du code, un fichier du diff ni revu ni écarté, ou un point de la passe précédente sans preuve. Chaque correction est gardée dans l'historique : mieux vaut un verdict juste du premier coup.
+Un `approve` posté n'ouvre aucun fil (les dépôts exigent que tous les fils soient résolus avant le merge) : le Bureau ne poste pas ses commentaires inline et en fait la section « 💡 Facultatif » de la synthèse, une puce par commentaire : son icône, son libellé, son renvoi et sa PREMIÈRE phrase, sans le bloc de code. En approuvant, écris donc chaque remarque ou conseil pour que sa première phrase dise seule la piste. Sur sa propre PR (COMMENT) ou un approve refusé, les inline restent.
 
 ## Icônes et mise en forme
 Le Bureau met la review en page lui-même (badge de verdict, ligne du ticket, bloquants, positif, signature) : tu fournis le contenu des champs, jamais leur habillage.
@@ -64,7 +65,7 @@ Chaque commentaire inline commence par l'icône de son type et un libellé court
 - `ticket` : s'il y a un ticket, ses critères tenus, au total et non vérifiables.
 - `blockers` : les points BLOQUANTS, exhaustifs et télégraphiques (une ligne, renvoi `fichier:ligne`).
 - `positive` : UNE ligne de positif, spécifique, ou rien.
-Interdit : sections « Suggestions », « Divers », prose longue, ré-explication de l'inline.
+Interdit : sections « Suggestions », « Divers », prose longue, ré-explication de l'inline. (La section « Facultatif » d'un approve, c'est le Bureau qui l'écrit, depuis tes inline.)
 
 ## Propositions de code
 Correctif exact connu : bloc `suggestion` dans le body inline, qui remplace EXACTEMENT la ou les lignes sur lesquelles le commentaire est ancré. Pas sûr des lignes : décris le correctif en texte.
