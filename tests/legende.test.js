@@ -44,7 +44,7 @@ test('chaque étage a sa légende et ses onglets, sans rien du RDC', () => {
 
 test('au RDC : un bloc du gabarit par onglet, dans l\'ordre des onglets, puis les scènes', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'page', 'office_template.html'), 'utf8');
-  const tabs = [...html.matchAll(/<div data-tab="(\w+)"><h4>/g)].map(m => m[1]);
+  const tabs = [...html.matchAll(/<div data-tab="(\w+)"><h3>/g)].map(m => m[1]);
   assert.deepEqual(tabs, J('LEG_RDC_TABS.map(t => t[0])').slice(0, -1));
   assert.equal(J('LEG_RDC_TABS.at(-1)[0]'), 'scenes');
 });

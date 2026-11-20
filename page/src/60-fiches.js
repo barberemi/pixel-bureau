@@ -141,22 +141,15 @@ function renderEmp(side){
 // section dépliable de fiche (même style que les groupes de la liste), pliée par défaut ; état mémorisé par section
 function foldSection(side,id,title,count,defOpen){
   const key='fiche:'+id, closed=key in COLLAPSED?!!COLLAPSED[key]:!defOpen; // pliée par défaut, ouverte si on l'a dépliée
-  const h=document.createElement('h2');
-  h.className='grp fold';
-  h.setAttribute('role','button');
-  h.tabIndex=0;
-  h.setAttribute('aria-expanded',String(!closed));
-  h.innerHTML=`<span class="chev">${closed?'▸':'▾'}</span>${esc(title)}${count!=null?` <span class="cnt">${count}</span>`:''}`;
   const box=document.createElement('div');box.hidden=closed;
-  const toggle=()=>{
-    const now=!box.hidden;
+  const h=grpHead('grp fold',closed,`${esc(title)}${count!=null?` <span class="cnt">${count}</span>`:''}`,function(){
+    const now=!box.hidden, b=this;
     box.hidden=now;
     COLLAPSED[key]=now;
-    h.setAttribute('aria-expanded',String(!now));
-    h.querySelector('.chev').textContent=now?'▸':'▾';
-    try{localStorage.setItem('bureau:collapsed',JSON.stringify(COLLAPSED));}catch(e){}
-  };
-  h.onclick=toggle;h.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}};
+    b.setAttribute('aria-expanded',String(!now));
+    b.querySelector('.chev').textContent=now?'▸':'▾';
+    saveCollapsed();
+  });
   side.appendChild(h);side.appendChild(box);return box;
 }
 // <details> dont on retient l'ouverture d'un rafraîchissement à l'autre

@@ -786,6 +786,27 @@ print(json.dumps(val))
         failed = next(r for r in out["runs"] if r["status"] == "Failed")
         self.assertEqual(failed["steps"][0]["err"], "401 Unauthorized")
 
+    def test_workflow_definitions_cached_and_shared_by_office_and_gates(self):
+        """#17 : la planification des crons (office, toutes les 10 min) et les étapes (gates, chaque minute) viennent d'un
+        cache disque de 10 min partagé (_defs.py) : au passage suivant, plus de GET /workflows/{id}."""
+        fake, gets = FakeKronn(), []
+        route = fake.route
+        fake.route = lambda path: (gets.append(path), route(path))[1]
+        api = self.kronn(fake)
+        defs = lambda: [p.removeprefix("/api") for p in gets if re.fullmatch(r"(/api)?/workflows/[^/?]+", p)]  # noqa: E731
+        first = self.run_script("office_snapshot.py", api=api)
+        self.assertEqual([c["wf"] for c in first["crons"]], [AGENT_WF])
+        self.assertIn(f"/workflows/{AGENT_WF}", defs(), "premier passage : la définition est lue")
+        cache = json.loads(Path(os.path.join(self.tmp, ".cache", "pixel-bureau", "workflow_defs.json")).read_text())
+        self.assertIn("trigger", cache[AGENT_WF]["def"])
+        gets.clear()
+        again = self.run_script("office_snapshot.py", api=api)
+        self.assertEqual(again["crons"], first["crons"])
+        self.assertNotIn(f"/workflows/{AGENT_WF}", defs(), "second passage : depuis le cache")
+        gets.clear()
+        self.run_script("gates_snapshot.py", api=api)
+        self.assertNotIn(f"/workflows/{AGENT_WF}", defs(), "gates relit le cache écrit par office")
+
     def test_office_snapshot_lists_your_actions(self):
         """Fil du Bureau : commentaires posés et questions aux agents du jour ; un run lancé à la main est marqué « man »."""
         cw = "cccccccc-1111-2222-3333-444444444444"

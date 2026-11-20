@@ -11,6 +11,10 @@ metadata:
       status: Deferred
       reviewer: Kronn audit validation card
       note: "Deferred through an audit validation card."
+    - date: 2026-11-21
+      status: Resolved
+      reviewer: fix/a11y-prefs-crons
+      note: "#12"
 ---
 
 # TD-20261011-a11y-heading-structure
@@ -19,7 +23,7 @@ metadata:
 - **WCAG**: 1.3.1 Info and Relationships ; 2.4.6 Headings and Labels
 - **Area**: Sémantique
 - **Severity**: Low
-- **Status**: Deferred
+- **Status**: Resolved
 - **Effort**: S (< 1h)
 - **Blast radius**: local (3 files)
 
@@ -35,3 +39,6 @@ Passer les `<h4>` de la légende en `<h3>` et mettre un `<button aria-expanded>`
 
 ## Next step
 `create ticket`
+
+## Resolution (2026-11-21, #12)
+Les titres repliables (panneau, fiches, « Qui fait quoi ») sont des `<h2>` avec un `<button aria-expanded>` dedans (`grpHead`, `grpBtn`, `page/src/50-panel.js`) ; la légende passe de `h4` à `h3`. Dessin inchangé (références visuelles identiques).

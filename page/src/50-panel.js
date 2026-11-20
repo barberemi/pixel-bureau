@@ -69,7 +69,17 @@ function restoreScroll(side,k){
   const all=k.length>1?[...side.querySelectorAll('*')]:[];
   for(const [key,v] of k){if(key==null){side.scrollTop=v;continue;}const cls=key.slice(0,key.indexOf('|')), e=all.find(x=>x.className===cls&&scrollKey(x)===key);if(e)e.scrollTop=v;}
 }
-let COLLAPSED={};try{COLLAPSED=JSON.parse(localStorage.getItem('bureau:collapsed')||'{}')||{};}catch(e){COLLAPSED={};}
+let COLLAPSED=pref('collapsed',{})||{};
+const saveCollapsed=()=>setPref('collapsed',COLLAPSED); // groupes repliés : panneau, fiches (60-fiches.js), « Qui fait quoi » (72-whoboard.js)
+// titre d'un groupe repliable (#12) : un vrai titre <h2>, et dedans un bouton qui porte aria-expanded (role="button" sur
+// le titre l'effaçait de la navigation par titres des lecteurs d'écran) ; le bouton n'a pas de style à lui (styles.css)
+const grpBtn=(closed,inner,attrs='')=>`<button type="button" class="grp-b" aria-expanded="${!closed}"${attrs}><span class="chev">${closed?'▸':'▾'}</span>${inner}</button>`;
+function grpHead(cls,closed,inner,onToggle,fid){
+  const h=document.createElement('h2'), b=document.createElement('button');h.className=cls;
+  b.type='button';b.className='grp-b';b.setAttribute('aria-expanded',String(!closed));if(fid)b.dataset.fid=fid;
+  b.innerHTML=`<span class="chev">${closed?'▸':'▾'}</span>${inner}`;b.onclick=onToggle; // onToggle : this = le bouton
+  h.appendChild(b);return h;
+}
 // appui en cours dans le panneau ou le panneau Fraîcheur (33-freshness.js) : pas de redessin automatique. Refait entre
 // l'appui et le relâchement, il remplace le bouton, le « click » part alors à côté et la carte Kronn ne s'ouvre pas.
 // Plafond de 10 s si le relâchement se perd (souris lâchée hors de la page), puis 400 ms après lui, le temps que le clic arrive.
@@ -202,14 +212,7 @@ function drawSide(side){
     if(!list.length&&fk!=='misc')continue;
     const n=list.length+(fk==='misc'?1:0); // le canard est toujours là
     const closed=!!COLLAPSED[title];
-    const h=document.createElement('h2');
-    h.className='grp';
-    h.setAttribute('role','button');
-    h.tabIndex=0;
-    h.setAttribute('aria-expanded',String(!closed));h.dataset.fid='grp:'+title;
-    h.innerHTML=`<span class="chev">${closed?'▸':'▾'}</span><span class="famdot fam-${fk}"></span>${esc(title)} <span class="cnt">${n}</span>`;
-    const toggle=()=>{COLLAPSED[title]=!closed;try{localStorage.setItem('bureau:collapsed',JSON.stringify(COLLAPSED));}catch(e){}renderSide();};
-    h.onclick=toggle;h.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}};
+    const h=grpHead('grp',closed,`<span class="famdot fam-${fk}"></span>${esc(title)} <span class="cnt">${n}</span>`,()=>{COLLAPSED[title]=!closed;saveCollapsed();renderSide();},'grp:'+title);
     h.classList.toggle('first',title==="L'équipe");if(closed){side.appendChild(h);continue;}
     side.appendChild(h);
     if(title==='Les visiteurs du jour'){

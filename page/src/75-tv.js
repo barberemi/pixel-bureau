@@ -1,8 +1,8 @@
 // ---------- mode TV (écran d'open space) ----------
-let TV=false;try{TV=localStorage.getItem('bureau:tv')==='1';}catch(e){}
+let TV=prefStr('tv','')==='1';
 let NAMES_BEFORE_TV=null, TICK_SIG='';
 function setTv(on,remember=true){
-  TV=on;if(remember)try{localStorage.setItem('bureau:tv',on?'1':'0');}catch(e){}
+  TV=on;if(remember)setPref('tv',on?'1':'0');
   document.body.classList.toggle('tv',on);
   if(on){NAMES_BEFORE_TV=NAMES;NAMES='all';if(EDIT)closeEditor();sel=null;SEL_BACK=[];renderSide(true);
     try{const el=document.documentElement;if(el.requestFullscreen&&!document.fullscreenElement)el.requestFullscreen().catch(()=>{});}catch(e){}}

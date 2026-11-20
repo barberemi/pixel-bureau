@@ -24,6 +24,7 @@ pixel-bureau/
 │       └── theme-*.css        # thème (couleurs seulement) : classique ; les autres viennent du pack d'équipe
 ├── workflows/                 # scripts Python des étapes Exec des crons Kronn
 │   ├── _lecteurs.py           # « Ce qu'il fait » : lecteurs des journaux d'agents, recopié dans les seuls relevés qui l'importent
+│   ├── _defs.py               # définitions des workflows en cache disque 10 min, partagé par gates_snapshot et office_snapshot (#17)
 │   ├── _vars.py               # variables de lancement d'un run reconstituées (Kronn ne les rend plus), recopié dans office et live
 │   ├── _lib.py, _plan.py      # socle commun et règles des plans, recopiés dans chaque script au rendu
 │   ├── *_snapshot.py          # producteurs des datasets (office, live, gates, payroll, duck, absences, pages, github, gitfut, actions, statuts, oeil)
@@ -58,6 +59,7 @@ Sources : [src: file: guide/developpement.md:5] [src: file: .gitignore:2].
 | `tools/assemble.py` | Assemble la page (modèle + CSS + JS + calques + recettes + plan + démo) dans `dist/office.html` ; `page_config()`, `roster()`, `guests()`, `defaults()` = seuls points d'accès à la config pour la page [src: file: tools/assemble.py:1] [src: file: tools/assemble.py:316] |
 | `page/office_template.html` | Squelette HTML de la page et blocs `kronn-action` des boutons [src: file: guide/developpement.md:7] |
 | `page/src/00-config.js` / `page/src/90-boot.js` | Premier script (plan embarqué `__LAYOUT__`, `readLayout`) et dernier (boucle `loop` et démarrage) [src: file: page/src/00-config.js:1] [src: file: page/src/90-boot.js:1] |
+| `page/src/00-prefs.js` | Préférences du navigateur (`pref`, `prefStr`, `setPref`, `dropPref`, clé `bureau:<k>`) : le seul accès à `localStorage` (#16) [src: file: page/src/00-prefs.js:1] |
 | `bureau.config.json` | Config propre à chaque installation (non versionnée, créée par `tools/install.py`) ; copie de test dans `tests/fixtures/bureau.config.json` [src: file: .gitignore:1] |
 | `workflows/templates/*.json` + `tools/templates.py` | Source des workflows Kronn et leur rendu (`@@…@@` remplacés), `check` et `export` [src: file: tools/templates.py:3] |
 | `tools/publish.py` | Publication `page`, `workflows` ou `all` (les workflows, puis la page ; réservé à l'humain) [src: file: tools/publish.py:103] |

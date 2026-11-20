@@ -11,6 +11,10 @@ metadata:
       status: Deferred
       reviewer: Kronn audit validation card
       note: "Deferred through an audit validation card."
+    - date: 2026-11-21
+      status: Resolved
+      reviewer: fix/a11y-prefs-crons
+      note: "#13"
 ---
 
 # TD-20261011-a11y-skip-link-main-landmark
@@ -19,7 +23,7 @@ metadata:
 - **WCAG**: 2.4.1 Bypass Blocks ; 1.3.1 Info and Relationships
 - **Area**: Sémantique
 - **Severity**: Low
-- **Status**: Deferred
+- **Status**: Resolved
 - **Effort**: S (< 1h)
 - **Blast radius**: local (1-2 files)
 
@@ -34,3 +38,6 @@ Remplacer `<div class="main">` par `<main class="main">` et ajouter en tête de 
 
 ## Next step
 `create ticket`
+
+## Resolution (2026-11-21, #13)
+`<main class="main">` et, en tête de page, trois liens d'évitement visibles au focus (plan, fil, panneau), gérés en JS (`skipTo`, `page/src/80-input.js`) : une ancre rechargerait la page dans le cadre de Kronn.

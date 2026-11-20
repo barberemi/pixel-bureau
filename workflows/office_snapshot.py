@@ -7,6 +7,7 @@ import os as _os, re, sys, urllib.request
 from datetime import datetime, timedelta, timezone
 from _lib import API, CFG, TZ, ACTIVE, dumps, get, get_all, is_bureau, is_bureau_disc, run_row, disc_row, err_of, read_json, write_json
 from _vars import run_vars
+from _defs import definition, save_definitions
 
 
 now = datetime.now(TZ)
@@ -128,9 +129,10 @@ crons = []
 disabled = [w["id"] for w in WFS if not w.get("enabled")]
 for w in WFS:
     if w.get("enabled") and w.get("trigger_type") == "cron" and not is_bureau(w):
-        tr = (get("/workflows/" + w["id"]).get("trigger") or {})
+        tr = definition(w["id"]).get("trigger") or {}  # cache disque 10 min partagé avec gates_snapshot (#17)
         if tr.get("schedule"):
             crons.append({"wf": w["id"], "name": w["name"], "schedule": tr["schedule"]})
+save_definitions()
 
 # crons du Bureau dont le dernier passage a échoué (Jira refusé, script en erreur…) : la page le dit dans le panneau
 # Fraîcheur au lieu d'un simple retard. Un GET de plus seulement pour un cron en échec.

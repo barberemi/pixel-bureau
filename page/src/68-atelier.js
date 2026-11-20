@@ -48,7 +48,7 @@ const atRows=f=>AT_ROWS[f]||27;
 AT_ROWS[1]=17;
 const AT_NB=3, atNone=()=>Array(AT_NB).fill(null);
 let FLOOR=0, ATELIER=null, ATSEL=null;
-try{const f=+localStorage.getItem('bureau:floor');FLOOR=f===1||f===-1||f===2||f===3||f===4?f:0;}catch(e){FLOOR=0;} // -1 : la caserne Support (68-caserne.js) ; 3 : les retours de PR (68-retours.js)
+{const f=+prefStr('floor','0');FLOOR=f===1||f===-1||f===2||f===3||f===4?f:0;} // -1 : la caserne Support (68-caserne.js) ; 3 : les retours de PR (68-retours.js)
 function readAtelier(src){
   try{
     if(!src||!src.datasets)return null;
@@ -310,7 +310,7 @@ function floorTabsHtml(){
 const floorsOn=()=>[...(retoursOn()?[3]:[]),...(redactionOn()?[2]:[]),...(atelierOn()?[1]:[]),0,...(caserneOn()?[-1]:[])];
 function setFloor(f){
   FLOOR=f===4&&comblesOn()?4:f===1&&atelierOn()?1:f===-1&&caserneOn()?-1:f===3&&retoursOn()?3:f===2&&redactionOn()?2:0;ATSEL=null;AT_PICK=null;if(FLOOR){SEL_BACK=[];if(!(byKey[sel]&&byKey[sel].boss))sel=null;} // hors du RDC, seul le boss garde sa fiche du RDC (drawAtelierSide, drawCaserneSide)
-  try{localStorage.setItem('bureau:floor',String(FLOOR));}catch(e){}
+  setPref('floor',String(FLOOR));
   if(FLOOR)AT_H=atRows(FLOOR)*AT_TS;
   if(FLOOR){cv.width=AT_W;cv.height=AT_H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(AT_W/AT_H));}
   else{cv.width=W;cv.height=H;ctx.imageSmoothingEnabled=false;document.documentElement.style.setProperty('--plan-ratio',String(W/H));}

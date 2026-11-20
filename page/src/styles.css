@@ -60,6 +60,10 @@ button,select{font:inherit;color:var(--ink);background:var(--chip);border:1px so
 button:hover{border-color:var(--accent)}
 button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 :focus-visible{outline:3px solid var(--ink);outline-offset:3px} /* encre claire, posée hors du cadre pixel (3 px) : lisible sur le fond comme sur le cadre */
+/* liens d'évitement (#13) : hors de l'écran, visibles au focus clavier ; pas en mode TV */
+.skip a{position:absolute;left:8px;top:-80px;z-index:200;padding:8px 14px;background:var(--panel);color:var(--ink);border:2px solid var(--accent);font-weight:700;text-decoration:none}
+.skip a:focus{top:8px}
+body.tv .skip{display:none}
 canvas:focus-visible{outline-offset:-2px}
 input[type=range]{flex:1;min-width:160px;accent-color:var(--accent)}
 /* galerie des scènes (46-gallery.js) et bandeau d'une démonstration */
@@ -95,6 +99,9 @@ body.tv .gal{display:none}
 .side h2.grp{cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;margin-top:14px}.side h2.grp.first{margin-top:0}
 .side h2.grp+.note{margin:-4px 0 6px}.side .note.wfs{margin:0 0 8px}
 .side h2.grp:hover{color:var(--ink)}
+/* le bouton d'un titre repliable (#12) : sans style à lui, il prend la ligne du titre (chevron, nombre) ; focus visible */
+h2>.grp-b{display:flex;align-items:center;gap:6px;width:100%;margin:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-transform:inherit;letter-spacing:inherit;text-align:left;cursor:pointer}
+h2>.grp-b:hover{border:0;color:var(--ink)}
 .side h2 .chev{display:inline-block;width:10px}
 .side h2 .cnt{font-weight:600;background:var(--chip);padding:0 7px;letter-spacing:0}
 .side h2{font-size:var(--fs-panel);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px}
@@ -665,13 +672,13 @@ body.tv .recap,body.tv .recapbtn{display:none!important}
 .legend-help{margin:6px 4px 0;font-size:var(--fs-sec);color:var(--muted)}
 .legend-help summary{cursor:pointer;color:var(--accent);font-weight:600;width:max-content}
 .lh-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px 18px;margin-top:6px}
-.lh-grid h4{margin:6px 0 2px;font-size:var(--fs-sec);color:var(--ink)}
+.lh-grid h3{margin:6px 0 2px;font-size:var(--fs-sec);color:var(--ink)} /* h3 (#12) : la légende suit le titre du plan, pas de h4 sans h3 */
 .lh-grid p{margin:2px 0;line-height:1.45}
 /* « Comment lire le plan » en onglets (46-legende.js) : un onglet à la fois, le titre du bloc est l'onglet */
 .lh-tabs{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
 .lh-tabs button{font:600 var(--fs-sec) var(--font-ui);padding:4px 10px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
 .lh-tabs button.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
-.legend-help .lh-grid h4{display:none}
+.legend-help .lh-grid h3{display:none}
 .lh-grid.lh-floor{display:flex;flex-wrap:wrap;gap:2px 18px}
 .lh-floor p{flex:1 1 260px}
 .lh-floor h5{flex-basis:100%;margin:6px 0 0;font-size:var(--fs-meta);letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}

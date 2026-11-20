@@ -66,7 +66,7 @@ test('#7a5cc8 : une seule copie (MEP_COLOR), lue par le CSS en var(--mep)', () =
 
 test('légende du gabarit : pastilles sans couleur en dur, peintes depuis les tables comme avant', () => {
   const html = read('page', 'office_template.html');
-  const legend = html.slice(html.indexOf('<div class="legend">'), html.indexOf('<h4>Enveloppes'));
+  const legend = html.slice(html.indexOf('<div class="legend">'), html.indexOf('<h3>Enveloppes'));
   assert.doesNotMatch(legend, /<i[^>]*style=/); // plus de couleur en dur
   const swatches = [...legend.matchAll(/<i( class="([^"]*)")? data-(st|cat|fam)="(\w+)"><\/i>/g)]
     .map(([, , cls = '', kind, key]) => ({classList: {contains: c => cls.split(' ').includes(c)}, dataset: {[kind]: key}, style: {}}));

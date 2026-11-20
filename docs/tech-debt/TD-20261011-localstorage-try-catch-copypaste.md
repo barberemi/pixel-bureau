@@ -11,6 +11,10 @@ metadata:
       status: Deferred
       reviewer: Kronn audit validation card
       note: "Deferred through an audit validation card."
+    - date: 2026-11-21
+      status: Resolved
+      reviewer: fix/a11y-prefs-crons
+      note: "#16"
 ---
 
 # TD-20261011-localstorage-try-catch-copypaste
@@ -18,7 +22,7 @@ metadata:
 - **Category**: code-quality
 - **Area**: Frontend
 - **Severity**: Low
-- **Status**: Deferred
+- **Status**: Resolved
 - **Effort**: S (< 1h)
 - **Blast radius**: module (5-10 files)
 
@@ -42,3 +46,6 @@ Deux petites fonctions `pref(key, def)` / `setPref(key, v)` (JSON + try/catch) d
 
 ## Next step
 `create ticket`
+
+## Resolution (2026-11-21, #16)
+`pref`, `prefStr`, `setPref`, `dropPref` (`page/src/00-prefs.js`) et `saveCollapsed` : plus aucun `localStorage` direct hors de 00-prefs.js, sauf le sondage de `47-todos.js` ; les valeurs gardées en texte (thème, étage, fil, TV, loupe) se relisent telles quelles.

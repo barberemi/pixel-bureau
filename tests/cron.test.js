@@ -67,7 +67,7 @@ test('fiche : « ⏰ Son programme » pour chaque cron, « ↻ Passer maintenant
     var SIDE = {kids: [], appendChild(x) { this.kids.push(x); }};`);
   run('programmeBlock(SIDE, AG); relaunchBlock(SIDE, AG);');
   const out = J(`(() => { const all = []; const walk = n => { if (!n) return; all.push(n); (n.kids || []).forEach(walk); }; SIDE.kids.forEach(walk);
-    return {heads: all.filter(n => n.tag === 'h2').map(n => n.html), btns: all.filter(n => n.tag === 'button').map(n => ({t: n.textContent, b: n.attrs['data-kronn-bindings']})),
+    return {heads: all.filter(n => n.tag === 'h2').map(n => n.html || n.kids.map(k => k.html || '').join('')), btns: all.filter(n => n.tag === 'button' && n.className !== 'grp-b').map(n => ({t: n.textContent, b: n.attrs['data-kronn-bindings']})),
       html: all.map(n => n.html || '').join('')}; })()`);
   assert.match(out.heads[0], /⏰ Son programme/);
   assert.match(out.heads[1], /Relancer/);

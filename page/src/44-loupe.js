@@ -16,7 +16,7 @@ const LOUPE_KINDS={reopen:['⛔','#b3122e'],proud:['🎉','#0172f0'],party:['�
 const LOUPE_ORDER=['rd_gate','rd_jira','rd_cut','rv_leave','rv_stamp','rv_pick','rv_batch','rv_ask','rt_exit','rt_gate','rt_err','rt_arrive','cs_depart','cs_gate','cs_err','cs_arrive','at_exit','at_gate','at_back','at_err','at_arrive','at_clean','reopen','bigpr','ufo','brew','proud','guest','thumbs','kickoff','planning','retro','daily','pizza','party','trophy','hatch','duck'];
 // cérémonies : toute l'équipe est dans la scène, la légende la nomme au lieu d'énumérer tout le monde
 const LOUPE_CEREMONY={daily:"Daily de l'équipe",planning:'Sprint planning',retro:'Rétrospective',kickoff:'Lancement du sprint',pizza:'Pizza de fin de sprint'};
-let LOUPE_ON=!REDUCED_MOTION;try{const v=localStorage.getItem('bureau:loupe');if(v!==null)LOUPE_ON=v!=='0';}catch(e){} // un choix du bouton passe avant le réglage système
+let LOUPE_ON=!REDUCED_MOTION;{const v=prefStr('loupe',null);if(v!==null)LOUPE_ON=v!=='0';} // un choix du bouton passe avant le réglage système
 const LOUPE={seen:null,queue:[],cur:null,resume:false,hoverUntil:0,lastScan:0,settle:0};
 // le type d'événement que vit ce personnage (null : rien à montrer) ; un invité qui n'est pas en scène de héraut = une visite
 function loupeKind(c){
@@ -153,7 +153,7 @@ cv.addEventListener('click',()=>{if(LOUPE.cur)loupeHide();});
 addEventListener('keydown',e=>{if(e.key==='Escape'&&LOUPE.cur)loupeHide();});
 function setLoupe(on,remember=true){
   LOUPE_ON=on;if(!on){LOUPE.queue=[];loupeHide();}
-  if(remember)try{localStorage.setItem('bureau:loupe',on?'1':'0');}catch(e){}
+  if(remember)setPref('loupe',on?'1':'0');
   const b=document.getElementById('loupebtn');if(b){b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));}
 }
 document.getElementById('loupebtn')?.addEventListener('click',()=>setLoupe(!LOUPE_ON));

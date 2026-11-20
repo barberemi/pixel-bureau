@@ -20,17 +20,11 @@ Avec notify_mac (config), une notification du Mac par osascript pour chaque nouv
 import json, os as _os, shutil, subprocess, sys
 from datetime import datetime, timedelta, timezone
 from _lib import CFG, get, get_all, is_bureau, is_bureau_disc, read_json, write_json
+from _defs import DEFS_CACHE, definition, save_definitions
 
 
 
-# définitions complètes en cache 10 min (la liste n'a pas de date de modification) : sans cache, un GET par
-# workflow actif chaque minute. Fichier hors du dépôt ; illisible ou absent : relecture de l'API.
-CACHE = _os.path.join(_os.path.expanduser("~"), ".cache", "pixel-bureau", "workflow_defs.json")
-CACHE_TTL = 600
-try:
-    _cache = read_json(CACHE)
-except Exception:
-    _cache = {}
+# définitions complètes : cache disque 10 min partagé avec office_snapshot (_defs.py, #17)
 _now = datetime.now(timezone.utc).timestamp()
 warnings = []
 
@@ -41,14 +35,6 @@ def warn(what, e):
     print("gates : " + msg, file=sys.stderr)
     warnings.append(msg)
 
-
-def definition(wid):
-    c = _cache.get(wid)
-    if c and _now - c.get("at", 0) < CACHE_TTL:
-        return c["def"]
-    full = get(f"/workflows/{wid}")
-    _cache[wid] = {"at": _now, "def": {k: full.get(k) for k in ("steps", "variables")}}
-    return _cache[wid]["def"]
 
 
 gates, defs = [], {}
@@ -174,17 +160,13 @@ try:
             qrows += [{"id": f"{q['id']}|{k}", "q": q["id"], "disc": d["id"]} for k in ((["_text"] if not form else []) + ["_decline"])]
 except Exception as e:
     warn("questions en attente illisibles", e)
-try:  # cache seulement : un échec coûte une relecture de l'API au passage suivant, rien de faux n'est publié
-    _os.makedirs(_os.path.dirname(CACHE), exist_ok=True)
-    write_json(CACHE, {k: v for k, v in _cache.items() if k in defs})
-except Exception:
-    pass
+save_definitions()
 # ---------- notification du Mac ----------
 # Réglage notify_mac (installateur, sur Mac) : une notification quand une validation ou une question t'attend, même page
 # fermée. Une seule fois par attente : celles déjà signalées sont retenues dans le cache. Le cache est écrit d'abord :
 # s'il ne s'écrit pas, rien n'est envoyé (sinon la même notification reviendrait chaque minute). Textes passés en
 # arguments à osascript, jamais dans le script AppleScript (ils viennent des agents).
-NOTIFIED = _os.path.join(_os.path.dirname(CACHE), "notified.json")
+NOTIFIED = _os.path.join(_os.path.dirname(DEFS_CACHE), "notified.json")
 
 
 def first_line(s):

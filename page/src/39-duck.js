@@ -198,8 +198,8 @@ function duckHit(mx,my){const p=DUCK_POS;return !!p&&Math.abs(mx-p.x)<=12*DUCK_K
 // projet choisi pour parler au canard : retenu dans ce navigateur (confort ; « Sans projet » par défaut)
 let DUCK_PROJECT='none';
 function duckProject(id){
-  if(id!==undefined){DUCK_PROJECT=id;try{localStorage.setItem('bureau:duckProject',id);}catch(e){}return id;}
-  try{const v=localStorage.getItem('bureau:duckProject');if(v)DUCK_PROJECT=v;}catch(e){}
+  if(id!==undefined){DUCK_PROJECT=id;setPref('duckProject',id);return id;}
+  {const v=prefStr('duckProject','');if(v)DUCK_PROJECT=v;}
   return DUCK_PROJECT;
 }
 // questions des discussions du canard qui attendent ta réponse à t (aussi chez le boss, avec les autres)

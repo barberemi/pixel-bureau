@@ -79,7 +79,7 @@ function renderWho(){
   const box=document.getElementById('who'); if(!box||!DATA)return;
   const cards=whoCards(T), up=[...csWhoRows(T),...atWhoRows(T),...rdWhoRows(T),...rtWhoRows(T)]; // 69-atelier-rdc.js, 69-retours-rdc.js : les postes du 1er et du 3e
   const attn=cards.filter(x=>x.attn).length+up.filter(x=>x.attn).length;
-  const head=`<h2 class="grp" data-who-toggle role="button" tabindex="0" aria-expanded="${!COLLAPSED.who}"><span class="chev">${COLLAPSED.who?'▸':'▾'}</span>Qui fait quoi <span class="cnt">${cards.length+up.length}</span>${attn?`<span class="cnt attn">${attn} pour toi</span>`:''}</h2>`;
+  const head=`<h2 class="grp">${grpBtn(COLLAPSED.who,`Qui fait quoi <span class="cnt">${cards.length+up.length}</span>${attn?`<span class="cnt attn">${attn} pour toi</span>`:''}`,' data-who-toggle')}</h2>`;
   const body=COLLAPSED.who?'':'<div class="who-grid">'+cards.map(x=>{
     const img=portraitUrl(x.c);
     // plusieurs tickets : leur liste n'est plus dans l'infobulle mais dans la fiche, ouverte par un lien visible (audit UX 4.6/4.7)
@@ -98,14 +98,13 @@ function renderWho(){
   const box=document.getElementById('who');
   if(box){
     box.addEventListener('click',e=>{
-      if(e.target.closest('[data-who-toggle]')){COLLAPSED.who=!COLLAPSED.who;try{localStorage.setItem('bureau:collapsed',JSON.stringify(COLLAPSED));}catch(err){}renderWho();return;}
+      if(e.target.closest('[data-who-toggle]')){COLLAPSED.who=!COLLAPSED.who;saveCollapsed();renderWho();return;}
       const u=e.target.closest('[data-at-run]');if(u){atGoto(u.dataset.atRun);return;}
       const v=e.target.closest('[data-rt-run]');if(v){rtGoto(v.dataset.rtRun);return;}
       const w=e.target.closest('[data-rd-run]');if(w){if(w.dataset.rdKind==='rd')rdGoto(w.dataset.rdRun);else setFloor(2);return;}
       const x=e.target.closest('[data-cs-thread]');if(x){csGotoThread(x.dataset.csThread);return;}
       const b=e.target.closest('[data-who]');if(b)select(b.dataset.who);
     });
-    box.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.closest('[data-who-toggle]')){e.preventDefault();e.target.click();}});
     box.addEventListener('mouseover',e=>{const b=e.target.closest('[data-who]');if(b)hoverKey=b.dataset.who;});
     box.addEventListener('mouseleave',()=>{hoverKey=null;});
   }

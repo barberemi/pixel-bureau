@@ -118,7 +118,7 @@ Sous le plan, la légende suit l'étage affiché : au RDC les états et les holo
 ![« Et aussi » : un invité de passage et le canard](../img/panneau-et-aussi.png)
 - Le plan prend toute la largeur de l'écran, sans dépasser sa hauteur. Les étages suivent la même règle que le RDC et replient le panneau de droite : un agent y est au moins aussi grand qu'au RDC, à toutes les tailles d'écran (à 1440 × 900 : ×0,79 au RDC, ×0,88 aux étages).
 - « Replier ⟩ » en haut du panneau le réduit à une bande : le plan prend presque toute la largeur (×1 sur un écran de 1440 px au lieu de ×0,8). Un clic sur un personnage le rouvre.
-- Au clavier : Tab jusqu'à la liste de l'équipe, flèches pour passer d'une personne à l'autre (elle ressort sur le plan), Entrée pour ouvrir sa fiche.
+- Au clavier : la première tabulation propose « Aller au plan », « Aller au fil » et « Aller au panneau ». Tab jusqu'à la liste de l'équipe, flèches pour passer d'une personne à l'autre (elle ressort sur le plan), Entrée pour ouvrir sa fiche ; Entrée ou Espace sur un titre de groupe (« L'équipe », « Qui fait quoi »…) le replie ou le déplie.
 
 ![Panneau replié : le plan prend la place](../img/panneau-replie.png)
 - Les bulles des tickets affichent depuis combien de jours le ticket est dans sa colonne (« 📗 7685 · en revue · 6 j »).
