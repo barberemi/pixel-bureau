@@ -269,6 +269,9 @@ test('durées : jamais « 4 h 60 » ni « 60 min »', () => {
   assert.equal(r(`sinceTxt(${59.8 * 60e3})`), '1 h 00');
   assert.equal(r(`agoTxt(${2 * 3600e3 + 5 * 60e3})`), '2 h 05');
   assert.equal(r(`agoTxt(${12 * 60e3})`), '12 min');
+  assert.equal(r(`agoTxt(${103 * 3600e3 + 53 * 60e3})`), '4 j 7 h 53', 'au-delà d\'un jour : les jours, pas « 103 h 53 »');
+  assert.equal(r(`agoTxt(${24 * 3600e3})`), '1 j 0 h 00');
+  assert.equal(r(`agoTxt(${23 * 3600e3 + 59.7 * 60e3})`), '1 j 0 h 00', 'arrondi à la minute avant de compter les jours');
 });
 
 test('run en attente du quota (Kronn 0.15.1, WaitingQuota) : pas fini, comme Running ; libellé et couleur dans le panneau', () => {
