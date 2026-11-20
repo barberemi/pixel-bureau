@@ -7,7 +7,7 @@ from unittest import mock
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 sys.path.insert(0, os.path.join(ROOT, "tests"))
-import install, upgrade  # noqa: E402
+import ci_main, install, upgrade  # noqa: E402
 import test_install  # noqa: E402  (pas « from … import InstallTest » : ses tests tourneraient ici aussi)
 ANSWERS = test_install.ANSWERS
 
@@ -30,6 +30,7 @@ class UpgradeTest(unittest.TestCase):
         self.backups = os.path.join(self.tmp, "sauvegardes")
         for p in (mock.patch.object(install, "Kronn", return_value=self.k), mock.patch.object(upgrade, "BACKUPS", self.backups),
                   mock.patch.object(install, "Asker", NoQuestion),
+                  mock.patch.object(ci_main, "ci_state", return_value=("ok", "tests de main verts (test)")),
                   mock.patch.object(builtins, "input", side_effect=AssertionError("aucune question"))):
             p.start()
             self.patches.append(p)

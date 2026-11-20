@@ -52,7 +52,7 @@ TEMPLATES = {
                                                     "todos": "workflows/todos.py", "atelier": "workflows/atelier_snapshot.py",
                                                     "retours": "workflows/retours_snapshot.py", "redaction": "workflows/redaction_snapshot.py"}),
     "team": ("workflow", ("workflows", "team"), {"github": "workflows/github_snapshot.py", "shape": "workflows/team_shape.py", "since": "workflows/standup_since.py",
-                                                    "planning_jql": "workflows/planning_jql.py", "actions": "workflows/actions_snapshot.py"}),
+                                                    "actions": "workflows/actions_snapshot.py"}),
     "payroll": ("workflow", ("workflows", "payroll"), {"payroll": "workflows/payroll_snapshot.py", "pages": "workflows/pages_snapshot.py", "gitfut": "workflows/gitfut_snapshot.py"}),
     "canard": ("workflow", ("workflows", "canard"), {"duck": "workflows/duck_snapshot.py", "prev_window": "workflows/duck_window.py"}),  # canard d'équipe (KT-7)
     # absences et télétravail (KT-1) : planning Excel lu par Microsoft Graph (connexion Microsoft 365) ; sans elle : pas créé
@@ -351,8 +351,7 @@ def script_code(path, cfg):
 ROLES = ("po", "sm", "qa")
 # étapes du travail des rôles : retirées si personne n'a ce rôle (ou pas de compte Jira dans le roster)
 WORK_REQUIRES = {"work_written": "jira.role_ids", "work_po_triage": "jira.role.po", "work_sm_triage": "jira.role.sm",
-                 "work_qa_ok": "jira.role.qa", "work_qa_back": "jira.role.qa", "since": "jira",
-                 "planning_jql": "jira"}
+                 "work_qa_ok": "jira.role.qa", "work_qa_back": "jira.role.qa", "since": "jira"}
 FLOW_DEFAULTS = assemble.JIRA_FLOW
 
 

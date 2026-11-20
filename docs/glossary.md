@@ -76,7 +76,7 @@ Terms marked `<!-- TODO: ask user -->` need human confirmation.
 |------|-----------|---------|
 | MEP | Mise en production | Déploiements suivis, plateau TV, gel des MEP [src: file: page/src/30-data.js:74] |
 | KT-&lt;n&gt; | Identifiant de ticket du projet | En tête de fichier ou de bloc de fonctionnalité (ex. KT-1 absences) [src: file: guide/developpement.md:34] ; tâche de la planification Kronn du projet [src: user:mainteneur:2026-10-11: KT-19] |
-| JQL | Jira Query Language | Requêtes des étapes Jira des crons (`planning_jql.py`, `new_tickets`) [src: file: guide/developpement.md:25] |
+| JQL | Jira Query Language | Requêtes des étapes Jira des crons (`new_tickets`, `duck_window.py`) [src: file: guide/developpement.md:25] |
 | LPC | Liberated Pixel Cup | Sprites des avatars [src: file: page/office_template.html:87] |
 | QP | Quick Prompt | Cibles `__ASK_QP__` des actions de page [src: file: page/office_template.html:93] |
 | wf | Workflow (Kronn) | Famille des agents, champs `wf`, `wf_name` [src: file: page/src/41-people.js:5] [src: file: workflows/gates_snapshot.py:4] |

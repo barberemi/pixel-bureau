@@ -402,31 +402,9 @@ print(json.dumps(val))
         inp["new_tickets"] = None  # sans Jira, l'étape est retirée du rendu et sa référence devient null
         self.assertEqual(self.run_script("team_shape.py", inp)["new_tickets"], [])
 
-    def test_team_shape_planning_lists_unestimated_tickets_of_the_next_two_sprints(self):
-        inp = self.team_input()
-        sp = lambda i, n: {"id": i, "name": n, "state": "future", "startDate": "2026-10-16T11:00:00.000Z", "endDate": "2026-10-30T11:00:00.000Z"}
-        issue = lambda k, sprint, pts=None: {"key": k, "fields": {"summary": "Ticket " + k, "status": {"name": "À faire"},
-                                                                 "issuetype": {"name": "Story"}, "assignee": None, "customfield_10016": pts,
-                                                                 "customfield_10020": [sprint]}}
-        inp["planning"] = {"sprints": [sp(11, "S43"), sp(12, "S45"), sp(13, "S47")],
-                           "issues": [issue("DM-1", sp(11, "S43")), issue("DM-2", sp(12, "S45"), pts=3), issue("DM-3", sp(13, "S47"))]}
-        pl = self.run_script("team_shape.py", inp)["planning"]
-        self.assertEqual([s["name"] for s in pl["sprints"]], ["S43", "S45"])
-        self.assertEqual([(t["key"], t["sprint"], t["cat"]) for t in pl["tickets"]], [("DM-1", 11, "todo")])  # estimé ou trop loin : ignorés
-        inp["planning"] = None  # sans Jira : étapes retirées, entrée null
-        self.assertIsNone(self.run_script("team_shape.py", inp)["planning"])
-
-    def test_planning_jql(self):
-        def jql(stdin):
-            r = subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "planning_jql.py")], input=stdin, capture_output=True, text=True,
-                               env={"BUREAU_CONFIG": os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"), "PATH": self.bin})
-            self.assertEqual(r.returncode, 0, r.stderr)
-            return r.stdout
-        self.assertEqual(jql(json.dumps([{"id": 2328}, {"id": 2361}, {"id": 2461}])),
-                         "project = DM AND sprint in (2328,2361) AND cf[10016] is EMPTY AND cf[10102] is EMPTY"
-                         " AND statusCategory != Done ORDER BY rank")
-        for empty in ("[]", "null", ""):  # pas de sprint futur : une requête valide qui ne renvoie rien
-            self.assertEqual(jql(empty), "project = DM AND sprint in futureSprints() AND sprint is EMPTY")
+    def test_team_shape_no_more_planning(self):
+        """Plus de scène du sprint planning en mode TV (#311) : le cron équipe ne prépare plus les tickets à estimer."""
+        self.assertNotIn("planning", self.run_script("team_shape.py", self.team_input()))
 
     def test_team_shape_real_age_from_status_history(self):
         d = self.team_input(n_issues=2, moves=0)
@@ -965,10 +943,6 @@ print(json.dumps(val))
         r = self.run_raw("duck_window.py", "null")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("canard : sprint actif illisible", r.stderr)
-        r = self.run_raw("planning_jql.py", "pas du json")
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("sprint is EMPTY", r.stdout)
-        self.assertIn("planning : sprints futurs illisibles", r.stderr)
 
     def test_absence_month_names_the_sheet(self):
         """Feuille du mois sans accents, sans retour à la ligne."""
