@@ -8,7 +8,9 @@ Sortie (stdout) : {generated_at, repo, tickets[{key, cat, pr}], prs[{id, n, repo
 - tickets : ceux du sprint (assignés ou non) ; pr = n° de la PR ouverte du dépôt principal qui cite la clé (une PR
   prête plutôt qu'un brouillon), sinon "" (le workflow de mise en prod, qui travaille sur ce dépôt, la cherche alors).
 - prs : PR ouvertes de tous les dépôts suivis (#56), chacune avec son vrai dépôt ; id = « owner/repo#n », la clé que
-  relisent « Faire relire » (repo, pr) et « Corriger » (pr) : deux #16 de deux dépôts ne se confondent jamais. Avec
+  relisent « Faire relire » (repo, pr) et « Corriger » (pr) : deux #16 de deux dépôts ne se confondent jamais. S'y
+  ajoutent les PR que voit l'Œil (dataset oeil : les tiennes et celles qu'on te demande de relire, tout dépôt), pour
+  que ses boutons trouvent aussi les PR des dépôts non suivis. Avec
   launch.env, env = la valeur fixe de la variable action de ce workflow (launch.env.action, défaut « reposer »), que
   Kronn relit comme le reste : une action de page n'a pas de valeur fixe.
 - moves : les déplacements d'un ticket d'une colonne (◀ / ▶ de sa fiche, workflow « déplacer un ticket »), une ligne par
@@ -26,11 +28,16 @@ from datetime import datetime
 from _lib import CFG, TZ, dumps, get
 
 repo = (CFG.get("github") or {}).get("repo") or ""
-team, warnings = {}, []
+team, oeil, warnings = {}, {}, []
 try:
     ds = {d.get("name"): d.get("current") for d in get(f"/pages/{CFG['page_id']}").get("datasets") or []}
     team = ds.get("team") or {}
     team = json.loads(team) if isinstance(team, str) else team
+    try:
+        oeil = ds.get("oeil") or {}
+        oeil = json.loads(oeil) if isinstance(oeil, str) else oeil
+    except ValueError:
+        oeil = {}
 except Exception as e:
     team = {}
     warnings.append(f"dataset team illisible : boutons sans ticket ni PR ({str(e)[:120] or type(e).__name__})")
@@ -68,10 +75,15 @@ ENV = (CFG.get("launch") or {}).get("env")
 env = {"env": str((ENV.get("action") if isinstance(ENV, dict) else None) or "reposer")} if ENV else {}
 DEPLOY = {r.lower(): list(t["envs"]) for r, t in ((CFG.get("deploy") or {}).get("repos") or {}).items()
           if isinstance(t, dict) and isinstance(t.get("envs"), dict)} if (CFG.get("models") or {}).get("deploy") else {}
+# les PR de l'Œil absentes des dépôts suivis (même id, casse ignorée : une seule ligne)
+known = {f"{repo_of(x)}#{x['n']}".lower() for x in prs if x.get("n")}
+seen_prs = [x for x in (oeil.get("mine") or []) + (oeil.get("asked") or []) if isinstance(x, dict) and x.get("repo") and x.get("n")
+            and f"{x['repo']}#{x['n']}".lower() not in known and not known.add(f"{x['repo']}#{x['n']}".lower())]
 tickets = [x for p in people for x in p.get("tickets") or []] + list(team.get("unassigned") or [])
 out = {"generated_at": datetime.now(TZ).isoformat(), "repo": repo,
        "tickets": [{"key": t["key"], "cat": t.get("cat"), "pr": pr_of(t["key"])} for t in tickets if t.get("key")],
-       "prs": [{"id": f"{repo_of(x)}#{x['n']}", "n": str(x["n"]), "repo": repo_of(x), **env} for x in prs if x.get("n")],
+       "prs": [{"id": f"{repo_of(x)}#{x['n']}", "n": str(x["n"]), "repo": repo_of(x), **env} for x in prs if x.get("n")]
+              + [{"id": f"{x['repo']}#{x['n']}", "n": str(x["n"]), "repo": x["repo"], **env} for x in seen_prs],
        "moves": [m for t in tickets if t.get("key") for m in moves_of(t)],
        "deploys": [{"id": f"{repo_of(x)}#{x['n']}|{e}", "n": str(x["n"]), "repo": repo_of(x), "env": e}
                    for x in prs if x.get("n") for e in DEPLOY.get(repo_of(x).lower(), [])],
