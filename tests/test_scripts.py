@@ -1275,6 +1275,13 @@ print(json.dumps(val))
         runs = {r["run"]: r for r in out["runs"] if r["wf"] == tk}
         self.assertEqual(runs[ok["id"]]["res"], res)
         self.assertNotIn("res", runs[refused["id"]])
+        # une intention découpée : chaque ticket créé (clé et titre) suit, pour le fil et la fiche de l'agent
+        multi = {"key": "DM-1", "url": "https://dm.atlassian.net/browse/DM-1", "title": "2 tickets créés", "meta": "DM-1, DM-2",
+                 "keys": [{"key": "DM-1", "title": "Générer les XLIFF"}, {"key": "DM-2", "title": "Supprimer la génération"}]}
+        body = json.dumps({"data": {"exit_code": 0, "stdout": json.dumps(multi, ensure_ascii=False) + "\n"}, "status": "OK"}, ensure_ascii=False)
+        fake.details[ok["id"]] = [{"step_name": "resultat", "status": "Success", "output": "exit 0\n\n---STEP_OUTPUT---\n" + body + "\n---END_STEP_OUTPUT---"}]
+        out = self.run_script("live_snapshot.py", api=self.kronn(fake), models={"ticket": tk})
+        self.assertEqual(next(r for r in out["runs"] if r["run"] == ok["id"])["res"], multi)
         out = self.run_script("live_snapshot.py", api=self.kronn(fake))  # modèle pas installé : rien de lu
         self.assertFalse([r for r in out["runs"] if r.get("res")])
 

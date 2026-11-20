@@ -52,3 +52,14 @@ test('fil : un ticket créé par l\'agent du modèle ticket (#77) est « Pam cr�
   assert.match(txt[0], new RegExp(`🎫</span> <a [^>]*data-who="${a}"[^>]*>[^<]+</a> crée <a [^>]*browse/DM-7910"[^>]*>DM-7910</a> <small>\\[Recherche\\] Filtre par date</small>`));
   run(`byKey['${a}'].runs.pop(); CFG.ticket = null; renderFeed();`);
 });
+
+test('fil : une intention découpée en deux tickets, une ligne avec chaque lien et chaque titre, et aucune ligne du créateur Jira', () => {
+  const a = J('AGENTS[0].key'), p8 = J('AGENTS[0].wf[0]');
+  run(`CFG.ticket = {wf: '${p8}'}; T=${at('11:00')}; byKey['${a}'].runs.push({wf: '${p8}-x', run: 'tk2', status: 'Success', _s: T - 9e5, _e: T - 6e5,
+    steps: [], res: {key: 'DM-8045', url: 'https://j/browse/DM-8045', title: '2 tickets créés', meta: 'DM-8045, DM-8046',
+      keys: [{key: 'DM-8045', title: 'Generate XLIFF translations'}, {key: 'DM-8046', title: 'Remove XLIFF generation'}]}}); renderFeed();`);
+  const txt = J(`FEED_EV.map(e=>e.txt)`).filter(t => /DM-804[56]/.test(t));
+  assert.equal(txt.length, 1, 'une seule ligne');
+  assert.match(txt[0], /crée 2 tickets : <a [^>]*browse\/DM-8045"[^>]*>DM-8045<\/a> <small>Generate XLIFF translations<\/small> · <a [^>]*browse\/DM-8046"[^>]*>DM-8046<\/a> <small>Remove XLIFF generation<\/small>/);
+  run(`byKey['${a}'].runs.pop(); CFG.ticket = null; renderFeed();`);
+});

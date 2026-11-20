@@ -205,3 +205,19 @@ test('validation : trois boutons directs, chacun lié à sa ligne de gates.grows
   assert.deepEqual(btns.map(([, a]) => JSON.parse(a['data-kronn-bindings'])), ['approve', 'reject', 'request_changes'].map(d => ({run_id: 'r1|' + d, decision: 'r1|' + d})));
   assert.match(run('P.kids[0].innerHTML'), /En attente depuis .* \(12 min\)/, 'durée à l\'heure de la page');
 });
+
+test('validation rouverte après « Changements » : la réponse d\'avant ne cache plus les boutons (même run, même étape)', () => {
+  const {run} = load();
+  run(`document.createElement = t => ({tag: t, attrs: {}, kids: [], className: '', style: {}, setAttribute(k, v) { this.attrs[k] = v; },
+    getAttribute(k) { return this.attrs[k]; }, appendChild(x) { this.kids.push(x); }, append(...x) { this.kids.push(...x); }, addEventListener() {}});
+    MutationObserver = function () { return {observe() {}}; }; ACTIONS.gate = true;
+    var OPEN = Date.parse('2026-11-20T09:20:00Z');
+    GATES = [{run: 'r1', wf: 'w1', wf_name: 'Le Bureau · créer un ticket', gate: 'relire', since: new Date(OPEN).toISOString(), message: 'v3'}];
+    var card = () => { var P = {kids: [], appendChild(x) { this.kids.push(x); }}; gateCard(P, {run: 'r1', wf_name: 'Le Bureau · créer un ticket', _s: T}, null); return P.kids[0]; };
+    var buttons = c => { const out = [], walk = e => { if (e.tag === 'button') out.push(e.textContent); (e.kids || []).forEach(walk); }; walk(c); return out; };`);
+  run(`DECIDED = {'r1|relire': OPEN - 30 * 60e3}`); // « Changements » envoyé avant que le tampon se rouvre
+  assert.deepEqual(JSON.parse(run('JSON.stringify(buttons(card()))')), ['✅ Approuver', '⛔ Rejeter', '✏️ Changements…']);
+  run(`DECIDED = {'r1|relire': OPEN + 60e3}`); // répondu depuis la réouverture
+  assert.deepEqual(JSON.parse(run('JSON.stringify(buttons(card()))')), []);
+  assert.match(run('card().kids.map(k => k.innerHTML || "").join("")'), /Réponse envoyée à/);
+});

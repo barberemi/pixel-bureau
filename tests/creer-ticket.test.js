@@ -34,6 +34,11 @@ test('dernier ticket créé : le plus récent run réussi qui a un résultat, av
   assert.match(last.innerHTML, /Dernier ticket créé/);
   assert.match(last.innerHTML, /href="https:\/\/j\/browse\/DM-2"[^>]*>DM-2 ↗</);
   assert.match(last.innerHTML, /Récent<\/div><small>Bug · 3 pts · site-web · créé à \d\d:\d\d<\/small>/);
+  run(`QC.runs = [qmk('Success', 20, {key: 'DM-3', url: 'https://j/browse/DM-3', title: '2 tickets créés', meta: 'DM-3, DM-4',
+    keys: [{key: 'DM-3', title: 'Générer'}, {key: 'DM-4', title: 'Supprimer'}]})]; QB = qgrab();`);
+  const multi = J('QB.kids[0].innerHTML');
+  assert.match(multi, /Derniers tickets créés \(2\)/);
+  assert.match(multi, /browse\/DM-3"[^>]*>DM-3 ↗<\/a> Générer<\/div><div class="tk-t"><a [^>]*browse\/DM-4"[^>]*>DM-4 ↗<\/a> Supprimer/);
   run(`QC.runs = [qmk('Success', 30)]; QB = qgrab();`);
   assert.equal(J('QB.kids[0].className'), 'relaunch rl-form', 'aucun résultat : pas de bloc');
 });
