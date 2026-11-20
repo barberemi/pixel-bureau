@@ -27,13 +27,13 @@ pixel-bureau/
 │   ├── _vars.py               # variables de lancement d'un run reconstituées (Kronn ne les rend plus), recopié dans office et live
 │   ├── _lib.py, _plan.py      # socle commun et règles des plans, recopiés dans chaque script au rendu
 │   ├── *_snapshot.py          # producteurs des datasets (office, live, gates, payroll, duck, absences, pages, github, gitfut, actions, statuts, oeil)
-│   ├── *.py                   # autres étapes (team_shape, planning_jql, duck_start, todos, gate_decide, question_answer, relaunch, layout_save, agent_save…)
+│   ├── *.py                   # autres étapes (team_shape, duck_start, todos, gate_decide, question_answer, relaunch, layout_save, agent_save…)
 │   └── templates/*.json       # modèles des workflows et Quick Prompts (team, live, office, canard, absences, duck, gate…)
 ├── arcade/sprint-quest/       # source de l'artefact claude.ai Sprint Quest (borne des Combles) et ses capacités ; republié par la skill .claude/skills/sprint-quest
 ├── skills/*.md                # skills du Bureau, partagés par la revue de PR et la chaîne (publiés par publish.py, install.py et upgrade.py)
 ├── tools/                     # outillage local (lancé à la main, jamais par Kronn)
 │   ├── assemble.py            # page -> dist/office.html
-│   ├── install.py, upgrade.py, uninstall.py, publish.py, templates.py
+│   ├── install.py, upgrade.py, uninstall.py, publish.py, ci_main.py, templates.py
 │   ├── plan.py, plan_prompt.md  # vérif/aperçu/partage des plans, brouillon depuis une image (CLI claude)
 │   ├── test.sh, smoke.py, cdp.py  # tests + contrôle de fumée (Chrome headless) ; theme.py : contrastes d'un thème
 │   ├── shots.py               # captures de la doc -> guide/img/
@@ -61,6 +61,7 @@ Sources : [src: file: guide/developpement.md:5] [src: file: .gitignore:2].
 | `bureau.config.json` | Config propre à chaque installation (non versionnée, créée par `tools/install.py`) ; copie de test dans `tests/fixtures/bureau.config.json` [src: file: .gitignore:1] |
 | `workflows/templates/*.json` + `tools/templates.py` | Source des workflows Kronn et leur rendu (`@@…@@` remplacés), `check` et `export` [src: file: tools/templates.py:3] |
 | `tools/publish.py` | Publication `page`, `workflows` ou `all` (les workflows, puis la page ; réservé à l'humain) [src: file: tools/publish.py:103] |
+| `tools/ci_main.py` | Avant de publier (`publish.py`, `upgrade.py`) : le run « Tests » de `main` sur le commit publié ; rouge ou en cours = refusé sans `--sans-ci` (#39) [src: file: tools/ci_main.py:1] |
 | `tools/upgrade.py` | Mise à jour d'une installation sans question : sauvegarde de la config, migrations, ce qui manque créé, puis publication (réservé à l'humain) [src: file: tools/upgrade.py:140] |
 | `tools/test.sh` | Point d'entrée des tests : `node --test`, `unittest`, `smoke.py` (normal et `--empty`) [src: file: tools/test.sh:7] |
 

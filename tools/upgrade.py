@@ -3,6 +3,7 @@
   python3 tools/upgrade.py               # après la mise à jour du dépôt : complète, puis publie
   python3 tools/upgrade.py --dry-run     # affiche ce qui serait fait, sans rien créer ni écrire
   python3 tools/upgrade.py --no-publish  # complète l'installation, sans republier les workflows ni la page
+  python3 tools/upgrade.py --sans-ci     # publie même si les tests de main sont rouges ou pas finis (#39)
 
 Dans l'ordre : une sauvegarde datée de la config, les migrations de la config, ce qui manque à ce qui est déjà installé
 (datasets de la page, pages à part des modèles installés, skills, workflows, crons et Quick Prompts du Bureau ; les crons
@@ -151,7 +152,7 @@ def names_of(cfg):
 
 
 # ---------- mise à jour ----------
-def upgrade(path, dry=False, publish=True):
+def upgrade(path, dry=False, publish=True, sans_ci=False):
     old = install.jload(path) if os.path.exists(path) else {}
     if not old.get("page_id") or not (old.get("kronn") or {}).get("api"):
         raise InstallError("pas encore installé : lance d'abord python3 tools/install.py")
@@ -159,6 +160,10 @@ def upgrade(path, dry=False, publish=True):
     k = install.Kronn(cfg["kronn"]["api"])
     say(f"— Le Bureau : mise à jour{' (dry-run, rien ne sera écrit)' if dry else ''} —")
     say(f"✓ Kronn {check_kronn(k, cfg['page_id'])} sur {cfg['kronn']['api']}")
+    if publish and not dry:  # avant d'écrire quoi que ce soit : tests de main rouges ou pas finis, on s'arrête (#39)
+        import ci_main
+        if not ci_main.check(["--sans-ci"] if sans_ci else [], say):
+            raise InstallError("rien de fait : tests de main rouges ou pas finis (--sans-ci pour passer outre)")
     if not dry:
         say(f"✓ config sauvegardée : {backup(path)}")
     created, ignored = [], []
@@ -262,8 +267,9 @@ def main(argv=None):
     ap.add_argument("--config", default=os.path.join(ROOT, "bureau.config.json"))
     ap.add_argument("--dry-run", action="store_true", help="affiche ce qui serait fait, sans rien créer, écrire ni publier")
     ap.add_argument("--no-publish", action="store_true", help="complète l'installation sans republier workflows et page")
+    ap.add_argument("--sans-ci", action="store_true", help="publie même si les tests de main sont rouges ou pas finis")
     a = ap.parse_args(argv)
-    upgrade(a.config, dry=a.dry_run, publish=not a.no_publish)
+    upgrade(a.config, dry=a.dry_run, publish=not a.no_publish, sans_ci=a.sans_ci)
     return 0
 
 

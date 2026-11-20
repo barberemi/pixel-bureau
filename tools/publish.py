@@ -3,6 +3,7 @@
   python3 tools/publish.py page        # assemble la page (sans démo) et la pousse dans la page Le Bureau (et les pages à part : « Chaîne · bilan », « Support · bilan », « Rédaction · bilan »)
   python3 tools/publish.py workflows   # pousse les skills du Bureau (skills/*.md), puis le rendu des modèles (workflows/templates) : étapes, scripts, crons, QP
   python3 tools/publish.py all         # les workflows d'abord, puis la page (un nouveau bouton a alors son id)
+  … --sans-ci                          # publie même si les tests de main sont rouges ou pas finis (#39, tools/ci_main.py)
 
 Pour une mise à jour du dépôt, tools/upgrade.py crée d'abord ce qui manque (datasets, pages à part, workflows), puis publie.
 """
@@ -102,7 +103,10 @@ def workflows():
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    what = argv[0] if argv else "all"
+    import ci_main
+    if not ci_main.check(argv):  # tests de main rouges ou pas finis : rien de publié sans --sans-ci
+        return 1
+    what = next((a for a in argv if not a.startswith("--")), "all")
     # les workflows avant la page : un bouton dont le workflow vient d'être créé a son id dans la page assemblée ensuite
     if what in ("workflows", "all"):
         workflows()
@@ -111,4 +115,4 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

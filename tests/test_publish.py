@@ -75,11 +75,26 @@ class PublishWorkflowsTest(unittest.TestCase):
             publish = importlib.reload(importlib.import_module("publish"))
             order = []
             publish.workflows, publish.page = lambda: order.append("workflows"), lambda: order.append("page")
-            publish.main(["all"])
+            import ci_main
+            real, ci_main.ci_state = ci_main.ci_state, lambda run=None: ("ok", "tests de main verts (test)")
+            self.addCleanup(setattr, ci_main, "ci_state", real)
+            with contextlib.redirect_stdout(io.StringIO()):
+                publish.main(["all"])
             self.assertEqual(order, ["workflows", "page"])
             order.clear()
-            publish.main([])  # all par défaut
+            with contextlib.redirect_stdout(io.StringIO()):
+                publish.main([])  # all par défaut
             self.assertEqual(order, ["workflows", "page"])
+            order.clear()
+            ci_main.ci_state = lambda run=None: ("stop", "tests de main en échec (failure) sur abc1234")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(publish.main(["page"]), 1)
+            self.assertEqual(order, [], "rouge : rien de publié")
+            self.assertIn("--sans-ci", out.getvalue())
+            with contextlib.redirect_stdout(io.StringIO()):
+                publish.main(["page", "--sans-ci"])
+            self.assertEqual(order, ["page"], "--sans-ci : publié quand même, et « page » reste la commande")
         finally:
             os.environ.pop("BUREAU_CONFIG", None)
 
