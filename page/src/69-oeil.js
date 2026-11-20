@@ -1,13 +1,14 @@
 // ---------- L'Œil du RDC : une tour sombre dont l'œil se pose, une chose à la fois, sur ce qui t'attend ----------
 // La tour se dresse à l'objet objects.oeil du plan ({x, y} : le pied de la tour, en pixels ; facultatif, sans lui pas de tour).
 // L'œil fait sa ronde sur les cibles, la plus urgente d'abord : une validation ✋ (au bureau du boss), une PR dont on te
-// demande la relecture 👀 (au poste de son auteur), une de tes PR avec des retours 🛠 (changements demandés, fils d'un
-// relecteur) ou en panne 🔴 (CI rouge, conflit), un service extérieur en alerte 🔥 (bandeau du plateau TV), des mails
-// utiles ✉ (boîte aux lettres). À temps égal, la plus ancienne. Un faisceau relie l'œil à la cible et une étiquette dit le
-// motif ; l'œil rougit avec l'attente (flammes au-delà de 4 h). Rien ne t'attend : l'œil se ferme. Ses PR sont celles
-// de son relevé : au rejeu, loin de l'heure du relevé, il ne regarde pas. Clic sur la tour : la fiche de l'Œil, une ligne par cible avec son bouton
-// (Décider, Corriger, Remettre à jour, GitHub, Voir) et « ✓ Vu », qui sort la cible de la ronde jusqu'à du nouveau
-// (retenu dans le navigateur).
+// demande la relecture 👀 (au poste de son auteur), une de tes PR avec des retours 🛠 (changements demandés plus récents que
+// ton dernier commit, fils d'un relecteur) ou en panne 🔴 (CI rouge, conflit), un service extérieur en alerte 🔥 (bandeau du
+// plateau TV), des mails utiles ✉ (boîte aux lettres). À temps égal, la plus ancienne. Hors de la ronde : les brouillons,
+// les PR qui dorment (OE_IDLE_D jours sans activité) et les relectures pas prêtes (en conflit, CI rouge), que la fiche
+// range à part. Un faisceau relie l'œil à la cible et une étiquette sous l'œil dit le motif ; l'œil rougit avec l'attente
+// (flammes au-delà de 4 h). Rien ne t'attend : l'œil se ferme. Ses PR sont celles de son relevé : au rejeu, loin de
+// l'heure du relevé, il ne regarde pas. Clic sur la tour : la fiche, par sections ; la carte que l'œil regarde porte son
+// cadre « 👁 L'œil regarde » et le dernier mot du relecteur ; clic sur une carte : l'œil s'y pose OE_FOCUS_MS.
 // Données : dataset oeil (workflows/oeil_snapshot.py, cron office : tes PR de tous tes dépôts, les relectures demandées),
 // GATES (dataset gates), STATUTS (48-statuts.js), MAILS (48-mail.js) ; démo : oeilDemo().
 let OEIL=null, OEIR=null; // OEIR : objects.oeil du plan (40-furniture.js)
@@ -31,36 +32,42 @@ function oeilDemo(){ // équipe fictive : une PR à relire, une des tiennes avec
 }
 // l'heure affichée est celle du direct, ou proche du relevé (15 min avant, 40 min après) : les PR relevées valent pour elle
 const oeLive=()=>{const g=ms(OEIL&&OEIL.generated_at);return typeof mode==='undefined'||mode==='live'||!!g&&T>=g-15*60e3&&T<=g+40*60e3;};
-// ---------- « ✓ Vu » : clé de la cible -> signature de ce qu'on a vu ; du nouveau (autre signature) la remet dans la ronde ----------
-let OE_SEEN={};
-try{OE_SEEN=JSON.parse(localStorage.getItem('bureau.oeil.vu')||'{}')||{};}catch(e){OE_SEEN={};}
-function oeSee(t){OE_SEEN[t.k]=t.sig;try{localStorage.setItem('bureau.oeil.vu',JSON.stringify(OE_SEEN));}catch(e){}}
-const oeSeen=t=>OE_SEEN[t.k]===t.sig;
 // ---------- les cibles ----------
 const oeBoss=()=>{const b=chars.find(c=>c.boss&&c.pos);return b?{x:b.pos.x,y:b.pos.y-18}:{x:W/2,y:H/2};};
 const oePrName=p=>(String(p.repo||'').split('/')[1]||'')+'#'+p.n;
-// toutes les cibles à l'heure t, triées : prio (0 = quelqu'un attend ta décision) puis la plus ancienne
+const OE_IDLE_D=30, OE_FOCUS_MS=10e3; // une PR sans activité depuis 30 jours dort ; un clic sur une carte y pose l'œil 10 s
+const oeIdle=p=>p.draft||(T-(ms(p.updated)||T))>OE_IDLE_D*864e5;
+const oeNotReady=p=>p.conflict||p.ci==='ko';
+const oeAt=login=>{const c=ghChar(login);return c&&c.pos?{x:c.pos.x,y:c.pos.y-18}:oeBoss();};
+function oeFixTxt(p){return oePrName(p)+' : '+[p.review==='changes'&&'changements demandés',p.threads>0&&plural(p.threads,'fil','fils')].filter(Boolean).join(', ')+(p.last?' · '+p.last.who:'');}
+// les cibles de la ronde à l'heure t, triées : prio (0 = quelqu'un attend ta décision) puis la plus ancienne
 function oeTargets(t){
   const out=[], boss=oeBoss();
-  for(const g of GATES||[])out.push({k:'g:'+g.run,sig:g.gate||'',prio:0,ico:'✋',kind:'gate',x:boss.x,y:boss.y,since:ms(g.since),
+  for(const g of GATES||[])out.push({k:'g:'+g.run,prio:0,ico:'✋',kind:'gate',x:boss.x,y:boss.y,since:ms(g.since),
     txt:(g.wf_name||'Un workflow')+' attend ta validation',g});
   if(OEIL){
-    for(const p of OEIL.asked||[]){const c=ghChar(p.author), at=c&&c.pos?{x:c.pos.x,y:c.pos.y-18}:boss;
-      out.push({k:'a:'+p.id,sig:p.since||'',prio:1,ico:'👀',kind:'asked',...at,since:ms(p.since),txt:oePrName(p)+' attend ta relecture'+(p.author?' · '+p.author:''),p});}
+    for(const p of OEIL.asked||[])if(!p.draft&&!oeNotReady(p))out.push({k:'a:'+p.id,prio:1,ico:'👀',kind:'asked',...oeAt(p.author),since:ms(p.since),
+      txt:oePrName(p)+' attend ta relecture'+(p.author?' · '+p.author:''),p});
     for(const p of OEIL.mine||[]){
-      if(p.review==='changes'||p.threads>0)out.push({k:'f:'+p.id,sig:(p.last&&p.last.at)||p.updated||'',prio:2,ico:'🛠',kind:'fix',...boss,since:ms(p.last&&p.last.at)||ms(p.updated),
-        txt:oePrName(p)+' : '+(p.review==='changes'?'changements demandés':plural(p.threads,'fil','fils')+' à traiter')+(p.last?' · '+p.last.who:''),p});
-      else if(p.ci==='ko'||p.conflict)out.push({k:'c:'+p.id,sig:(p.conflict?'conflit':'')+(p.ci||'')+(p.updated||''),prio:3,ico:'🔴',kind:'broken',...boss,since:ms(p.updated),
+      if(oeIdle(p))continue;
+      if(p.review==='changes'||p.threads>0)out.push({k:'f:'+p.id,prio:2,ico:'🛠',kind:'fix',...boss,since:ms(p.last&&p.last.at)||ms(p.updated),txt:oeFixTxt(p),p});
+      else if(oeNotReady(p))out.push({k:'c:'+p.id,prio:3,ico:'🔴',kind:'broken',...boss,since:ms(p.updated),
         txt:oePrName(p)+' : '+[p.conflict&&'en conflit',p.ci==='ko'&&'CI rouge'].filter(Boolean).join(', '),p});
     }
   }
   if(typeof svBad==='function'&&STATUTS){const r=svRect(t), at=r?{x:r.x+r.w/2,y:r.y+r.h/2}:boss;
-    for(const x of svBad(t))out.push({k:'s:'+x.s.k,sig:x.st,prio:4,ico:'🔥',kind:'service',...at,since:null,txt:x.s.n+' : '+SV_ST[x.st][1],s:x.s});}
+    for(const x of svBad(t))out.push({k:'s:'+x.s.k,prio:4,ico:'🔥',kind:'service',...at,since:null,txt:x.s.n+' : '+SV_ST[x.st][1],s:x.s});}
   if(MAILS&&MAILS.sorted)for(const a of MAILS.accounts||[]){const n=a.ok?mailCount(a):0, h=(MAIL_HITS||[]).find(o=>o.id===a.id);
-    if(n>0)out.push({k:'m:'+a.id,sig:String(n),prio:5,ico:'✉',kind:'mail',x:h?h.x+h.w/2:boss.x,y:h?h.y+h.h/2:boss.y,since:null,txt:plural(n,'mail utile','mails utiles')+' · '+(a.label||a.id),a});}
+    if(n>0)out.push({k:'m:'+a.id,prio:5,ico:'✉',kind:'mail',x:h?h.x+h.w/2:boss.x,y:h?h.y+h.h/2:boss.y,since:null,txt:plural(n,'mail utile','mails utiles')+' · '+(a.label||a.id),a});}
   return out.sort((a,b)=>a.prio-b.prio||(a.since||Infinity)-(b.since||Infinity));
 }
-const oeRound=t=>oeLive()?oeTargets(t).filter(x=>!oeSeen(x)):[];
+const oeRound=t=>oeLive()?oeTargets(t):[];
+// hors de la ronde, pour la fiche : relectures pas prêtes, brouillons et PR qui dorment, tes PR sans rien à faire
+function oeAside(){
+  const m=(OEIL&&OEIL.mine)||[], a=(OEIL&&OEIL.asked)||[];
+  return {notReady:a.filter(p=>!p.draft&&oeNotReady(p)),idle:[...m.filter(oeIdle),...a.filter(p=>p.draft)],
+    calm:m.filter(p=>!oeIdle(p)&&p.review!=='changes'&&!(p.threads>0)&&!oeNotReady(p)).length};
+}
 // ---------- dessin ----------
 const OE_H=226, OE_WB=72, OE_WT=30;
 const oeEyePos=()=>OEIR&&{x:OEIR.x,y:OEIR.y-OE_H+20};
@@ -103,13 +110,25 @@ function oeBeam(x,y,tx,ty,heat){
 function oeFire(x,y,now){for(const [c,d] of [['#ff5a14',0],['#ffb020',3],['#fff0a0',6]]){ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(x-12+d,y);
   for(let i=0;i<=6;i++)ctx.lineTo(x-12+d+i*(24-2*d)/6,y-(i%2?14-d*1.4+(Math.floor(now/120+i)%3)*2:4+d));ctx.lineTo(x+12-d,y);ctx.fill();}}
 const OE_DWELL=4000, OE_MOVE=.3; // une cible toutes les 4 s, le faisceau se déplace pendant 30 % du temps
+let OE_FOCUS=null, OE_CUR=null; // OE_FOCUS : {k, until} posé par un clic sur une carte ; OE_CUR : la cible regardée
+function oeFocus(k){OE_FOCUS={k,until:performance.now()+OE_FOCUS_MS};}
+// la carte de la cible regardée, dans la fiche ouverte, porte le cadre « 👁 L'œil regarde » (classe, pas de nouveau rendu :
+// les boutons Kronn de la fiche restent en place)
+function oeMark(k){
+  if(k===OE_CUR)return; OE_CUR=k;
+  if(typeof document.querySelectorAll!=='function')return;
+  for(const el of document.querySelectorAll('[data-oek]'))el.classList.toggle('oe-now',el.getAttribute('data-oek')===k);
+}
 // par-dessus les personnages (41-render.js) : le faisceau, l'œil, et sous lui l'étiquette de la cible regardée
 function oeilOverlay(now){
   const e=oeEyePos();if(!e)return;
   const l=oeRound(T);
-  if(!l.length){oeEye(e.x,e.y,0,0,null);return;}
-  const n=l.length, f=REDUCED_MOTION?0:now/OE_DWELL, k=Math.floor(f)%n, u=f-Math.floor(f), prev=l[(k+n-1)%n], g=l[k];
-  const m=n<2||REDUCED_MOTION?1:Math.min(1,u/OE_MOVE), s=m<.5?2*m*m:1-Math.pow(-2*m+2,2)/2, tx=prev.x+(g.x-prev.x)*s, ty=prev.y+(g.y-prev.y)*s;
+  if(!l.length){oeEye(e.x,e.y,0,0,null);oeMark(null);return;}
+  // une carte cliquée dans la fiche : l'œil s'y pose OE_FOCUS_MS, sinon la ronde (une cible toutes les OE_DWELL)
+  const fi=OE_FOCUS&&now<OE_FOCUS.until?l.findIndex(x=>x.k===OE_FOCUS.k):-1;
+  const n=l.length, f=REDUCED_MOTION?0:now/OE_DWELL, k=fi>=0?fi:Math.floor(f)%n, u=f-Math.floor(f), prev=l[(k+n-1)%n], g=l[k];
+  const m=fi>=0||n<2||REDUCED_MOTION?1:Math.min(1,u/OE_MOVE), s=m<.5?2*m*m:1-Math.pow(-2*m+2,2)/2, tx=prev.x+(g.x-prev.x)*s, ty=prev.y+(g.y-prev.y)*s;
+  oeMark(g.k);
   const heat=Math.min(1,Math.max(0,g.since?(T-g.since)/(4*36e5):.3));
   oeBeam(e.x,e.y,tx,ty,heat);oeEye(e.x,e.y,tx,ty,heat);
   if(heat>=1)oeFire(e.x,e.y-10,now);
@@ -123,33 +142,55 @@ function oeilTip(){const l=oeRound(T);
   return !oeLive()?'L\'Œil : loin de son relevé, il ne regarde pas':l.length?'L\'Œil : '+plural(l.length,'chose t\'attend','choses t\'attendent')+' · '+l[0].ico+' '+l[0].txt+' · clic : la liste'
     :'L\'Œil dort : rien ne t\'attend · clic : ce qu\'il surveille';}
 // ---------- la fiche ----------
+// Par sections : À décider, À corriger, À relire, Ailleurs (services, courrier), Pas prêtes, puis brouillons et PR qui dorment
+// (repliés). Une carte par cible : motif, depuis quand, titre, pastilles, le dernier mot du relecteur (affiché sur la carte
+// regardée), ses boutons. Clic sur la carte (hors boutons) : l'œil s'y pose.
+const OE_SECS=[['gate','✋ À décider'],['fix','🛠 À corriger'],['asked','👀 À relire'],['other','📬 Ailleurs']];
+const oeSec=t=>t.kind==='broken'?'fix':t.kind==='service'||t.kind==='mail'?'other':t.kind;
+function oeChips(t){
+  const p=t.p, c=[];
+  if(t.kind==='asked'||t.kind==='notready')c.push(['as','relecture demandée'+(p.author?' · '+p.author:'')]);
+  if(p&&p.review==='changes')c.push(['rq','changements demandés'+(p.last&&p.last.k==='changes'?' · '+p.last.who:'')]);
+  if(p&&p.threads>0)c.push(['',plural(p.threads,'fil','fils')]);
+  if(p&&p.conflict)c.push(['cf','conflit']);
+  if(p&&p.ci==='ko')c.push(['cf','CI rouge']);
+  return c.length?`<div class="oe-chips">${c.map(([k,v])=>`<span class="${k}">${esc(v)}</span>`).join('')}</div>`:'';
+}
+function oeCard(t,grey){
+  const row=document.createElement('div');row.className='oe-row'+(grey?' oe-grey':'')+(t.k===OE_CUR?' oe-now':'')+(t.kind==='asked'||t.kind==='notready'?' oe-as':'');
+  row.setAttribute('data-oek',t.k);
+  const p=t.p, age=t.since?agoTxt(T-t.since):'';
+  row.innerHTML=`<div class="oe-t"><b>${esc(t.ico)} ${esc(p?oePrName(p):t.txt)}</b><span class="mut">${esc(age)}</span></div>`+
+    (p&&p.title?`<div class="oe-s">${esc(p.title)}</div>`:'')+oeChips(t)+(p&&p.last&&p.last.text?`<div class="oe-q">« ${esc(p.last.text)} » · ${esc(p.last.who)}</div>`:'');
+  if(!grey){row.title='Clic : l\'œil s\'y pose';row.onclick=e=>{if(e.target.closest&&e.target.closest('button,a,[data-kronn-action-slot-host]'))return;oeFocus(t.k);};}
+  const acts=document.createElement('div');acts.className='oe-acts';
+  let na=0; const btn=(label,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=fn;acts.appendChild(b);na++;};
+  if(t.kind==='gate')btn('✋ Décider',()=>select('gate:'+t.g.run));
+  if(t.kind==='service')btn('Voir les services',()=>select('services'));
+  if(t.kind==='mail')btn('Ouvrir le courrier',()=>select('mail:'+t.a.id));
+  if(p&&p.url){const a=document.createElement('a');a.href=p.url;a.target='_blank';a.rel='noopener';a.textContent=t.kind==='asked'?'👀 Relire sur GitHub':'↗ GitHub';acts.appendChild(a);na++;}
+  if(na)row.appendChild(acts);
+  // les boutons Kronn des PR : liés par « owner/dépôt#n » au dataset actions (actions_snapshot.py y ajoute les PR de l'Œil)
+  if(!grey&&t.kind==='fix'&&ACTIONS.fix_pr)launchBlock(row,{action:'bureau-fixpr',bind:{id:p.id},verb:'corrige les retours de '+oePrName(p),
+    sub:'Tu valides le diff et ses réponses, puis il pousse',label:'🛠 Corriger',title:'Corriger les retours de '+oePrName(p)});
+  if(!grey&&(t.kind==='fix'||t.kind==='broken')&&p.conflict&&ACTIONS.rebase)launchBlock(row,{action:'bureau-rebase',bind:{id:p.id},verb:'remet '+oePrName(p)+' à jour',
+    sub:'Conflit : l\'IA propose une résolution, tu la valides avant tout push.',label:'⟳ Remettre à jour',title:'Remettre à jour '+oePrName(p)});
+  return row;
+}
+function oeHead(box,label,n){box.insertAdjacentHTML('beforeend',`<div class="oe-sec"><span>${esc(label)}</span><span>${n}</span></div>`);}
 function renderOeil(side){
-  const all=oeLive()?oeTargets(T):[], box=document.createElement('div');
+  const all=oeRound(T), aside=oeAside(), box=document.createElement('div');
   const vu=OEIL&&OEIL.generated_at?' · vu à '+hm(ms(OEIL.generated_at)):'';
-  box.innerHTML=`<h2>👁 L'Œil</h2><div class="note">${all.length?esc(plural(all.filter(t=>!oeSeen(t)).length,'chose t\'attend','choses t\'attendent')):'Rien ne t\'attend.'}${esc(vu)}</div>`;
-  if(!oeLive())box.innerHTML+='<div class="note">Loin de l\'heure de son relevé, l\'Œil ne regarde pas : ses PR sont celles du relevé.</div>';
-  for(const t of all){
-    const row=document.createElement('div');row.className='oe-row'+(oeSeen(t)?' oe-vu':'');
-    const age=t.since?' · '+agoTxt(T-t.since):'';
-    row.innerHTML=`<div class="oe-t"><b>${esc(t.ico)}</b> ${esc(t.txt)}<span class="mut">${esc(age)}</span></div>`+
-      (t.p&&t.p.title?`<div class="oe-s">${esc(t.p.title)}</div>`:'')+(t.p&&t.p.last&&t.p.last.text?`<div class="oe-q">« ${esc(t.p.last.text)} »</div>`:'');
-    const acts=document.createElement('div');acts.className='oe-acts';
-    const btn=(label,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=fn;acts.appendChild(b);return b;};
-    if(t.kind==='gate')btn('✋ Décider',()=>select('gate:'+t.g.run));
-    if(t.kind==='service')btn('Voir les services',()=>select('services'));
-    if(t.kind==='mail')btn('Ouvrir le courrier',()=>select('mail:'+t.a.id));
-    if(t.p&&t.p.url){const a=document.createElement('a');a.href=t.p.url;a.target='_blank';a.rel='noopener';a.textContent='↗ GitHub';acts.appendChild(a);}
-    if(!oeSeen(t))btn('✓ Vu',()=>{oeSee(t);renderSide(true);});
-    row.appendChild(acts);
-    // les boutons Kronn des PR : liés par « owner/dépôt#n » au dataset actions (actions_snapshot.py y ajoute les PR de l'Œil)
-    if(t.kind==='fix'&&ACTIONS.fix_pr)launchBlock(row,{action:'bureau-fixpr',bind:{id:t.p.id},verb:'corrige les retours de '+oePrName(t.p),
-      sub:'Tu valides le diff et ses réponses, puis il pousse',label:'🛠 Corriger',title:'Corriger les retours de '+oePrName(t.p)});
-    if(t.kind==='broken'&&t.p.conflict&&ACTIONS.rebase)launchBlock(row,{action:'bureau-rebase',bind:{id:t.p.id},verb:'remet '+oePrName(t.p)+' à jour',
-      sub:'Conflit : l\'IA propose une résolution, tu la valides avant tout push.',label:'⟳ Remettre à jour',title:'Remettre à jour '+oePrName(t.p)});
-    box.appendChild(row);
-  }
-  const calm=OEIL?(OEIL.mine||[]).filter(p=>!all.some(t=>t.p&&t.p.id===p.id)).length:0;
-  if(calm)box.insertAdjacentHTML('beforeend',`<div class="note">${esc(plural(calm,'autre PR ouverte','autres PR ouvertes'))} sans retour à traiter.</div>`);
+  box.innerHTML=`<h2>👁 L'Œil</h2><div class="note">${all.length?esc(plural(all.length,'chose t\'attend','choses t\'attendent')):'Rien ne t\'attend.'}${esc(vu)}</div>`;
+  if(!oeLive())box.insertAdjacentHTML('beforeend','<div class="note">Loin de l\'heure de son relevé, l\'Œil ne regarde pas : ses PR sont celles du relevé.</div>');
+  for(const [k,label] of OE_SECS){const l=all.filter(t=>oeSec(t)===k);if(!l.length)continue;oeHead(box,label,l.length);for(const t of l)box.appendChild(oeCard(t));}
+  if(oeLive()&&aside.notReady.length){oeHead(box,'⏸ Pas prêtes',aside.notReady.length);
+    for(const p of aside.notReady)box.appendChild(oeCard({k:'n:'+p.id,kind:'notready',ico:'👀',since:ms(p.since),p},true));}
+  if(aside.idle.length){const d=document.createElement('details');d.className='oe-idle';
+    d.innerHTML=`<summary><span>📝 Brouillons et PR qui dorment</span><span>${aside.idle.length}</span></summary>`+
+      aside.idle.map(p=>`<div class="oe-row oe-grey"><div class="oe-t"><b>${esc(oePrName(p))}</b><span class="mut">${esc(p.draft?'brouillon':'sans activité depuis '+Math.floor((T-ms(p.updated))/864e5)+' j')}</span></div><div class="oe-s">${esc(p.title)}</div></div>`).join('');
+    box.appendChild(d);}
+  if(aside.calm)box.insertAdjacentHTML('beforeend',`<div class="note">${esc(plural(aside.calm,'autre PR ouverte','autres PR ouvertes'))} sans retour à traiter.</div>`);
   if(!OEIL)box.insertAdjacentHTML('beforeend','<div class="note">Tes PR ne sont pas encore relevées : le cron « refresh (page) » les lit toutes les 10 minutes.</div>');
   side.appendChild(box);
 }
