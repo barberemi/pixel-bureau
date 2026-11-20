@@ -55,7 +55,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "3/7 — 🧹 Déterministe : aplatit, retire drafts + label skip-auto-review + auteurs *[bot], capture head.sha, écrit .kronn/prs_candidates.json ET imprime la liste JSON sur stdout (source du fan-out reviews). PAS de cap ici.",
+    "description": "3/7 — 🧹 Déterministe : aplatit, retire drafts + PR portant un label de review.labels_ignores (défaut skip-auto-review) + auteurs *[bot], capture head.sha, écrit .kronn/prs_candidates.json ET imprime la liste JSON sur stdout (source du fan-out reviews). PAS de cap ici.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -67,7 +67,9 @@
     "exec_command": "bash",
     "exec_args": [
      "-c",
-     "set -e\nmkdir -p .kronn\ncat > /tmp/pulls.json\npython3 -c \"\nimport json\nraw=json.load(open('/tmp/pulls.json'))\nSKIP='skip-auto-review'\nprs={}\nstack=[raw]\nwhile stack:\n    x=stack.pop()\n    if isinstance(x,list):\n        stack.extend(x); continue\n    if isinstance(x,dict):\n        b=x.get('base')\n        if 'number' in x and isinstance(b,dict):\n            labels={(l.get('name') or '').lower() for l in (x.get('labels') or [])}\n            repo=((b.get('repo') or {})).get('full_name','')\n            num=x.get('number')\n            author=(x.get('user') or {}).get('login','')\n            head=(x.get('head') or {}).get('sha','')\n            if (not x.get('draft')) and (SKIP not in labels) and (not author.endswith('[bot]')) and repo and num is not None:\n                prs[(repo,num)]={'number':num,'baseRef':b.get('ref','main'),'author':author,'repo':repo,'head':head,'reviewers':[(u or {}).get('login','') for u in (x.get('requested_reviewers') or [])],'teams':[((t or {}).get('slug') or '').lower() for t in (x.get('requested_teams') or [])]}\n        else:\n            stack.extend(x.values())\nout=sorted(prs.values(), key=lambda d:(d['repo'],-d['number']))\njson.dump(out, open('.kronn/prs_candidates.json','w'))\nprint(json.dumps(out))\n\""
+     "set -e\nmkdir -p .kronn\ncat > /tmp/pulls.json\nSKIP=\"$1\" python3 -c \"\nimport json,os\nraw=json.load(open('/tmp/pulls.json'))\nSKIP={str(x).strip().lower() for x in json.loads(os.environ.get('SKIP') or '[\\\"skip-auto-review\\\"]')}\nprs={}\nstack=[raw]\nwhile stack:\n    x=stack.pop()\n    if isinstance(x,list):\n        stack.extend(x); continue\n    if isinstance(x,dict):\n        b=x.get('base')\n        if 'number' in x and isinstance(b,dict):\n            labels={(l.get('name') or '').lower() for l in (x.get('labels') or [])}\n            repo=((b.get('repo') or {})).get('full_name','')\n            num=x.get('number')\n            author=(x.get('user') or {}).get('login','')\n            head=(x.get('head') or {}).get('sha','')\n            if (not x.get('draft')) and not (SKIP & labels) and (not author.endswith('[bot]')) and repo and num is not None:\n                prs[(repo,num)]={'number':num,'baseRef':b.get('ref','main'),'author':author,'repo':repo,'head':head,'reviewers':[(u or {}).get('login','') for u in (x.get('requested_reviewers') or [])],'teams':[((t or {}).get('slug') or '').lower() for t in (x.get('requested_teams') or [])]}\n        else:\n            stack.extend(x.values())\nout=sorted(prs.values(), key=lambda d:(d['repo'],-d['number']))\njson.dump(out, open('.kronn/prs_candidates.json','w'))\nprint(json.dumps(out))\n\"",
+     "_",
+     "@@review.labels_ignores@@"
     ],
     "exec_timeout_secs": 120,
     "exec_stdin": "{{steps.collect_fetch.data_json}}"

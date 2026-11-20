@@ -449,3 +449,24 @@ class CronCap(unittest.TestCase):
             self.assertEqual([(p["number"], p.get("rerequest", False)) for p in kept], [(1, True), (3, False), (4, False)])
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_prefilter_drops_the_ignored_labels(self):
+        """Labels de review.labels_ignores (to-test, to-deploy… sans distinction de casse) : la PR n'est pas relue par le
+        cron ; sans réglage, seul skip-auto-review l'écarte. Brouillons et bots restent écartés."""
+        d = json.load(open(os.path.join(os.path.dirname(__file__), "..", "workflows", "templates", "review_cron.json")))
+        pre = next(s for s in d["definition"]["steps"] if s["name"] == "prefilter")
+        pr = lambda n, labels=(), **kw: {"number": n, "base": {"ref": "main", "repo": {"full_name": "dm/site"}}, "head": {"sha": "h"},
+                                        "user": {"login": kw.get("user", "pam")}, "draft": kw.get("draft", False),
+                                        "labels": [{"name": x} for x in labels]}
+        pulls = json.dumps([{"response": [pr(1), pr(2, ["To-Test"]), pr(3, ["to-deploy", "front"]), pr(4, ["skip-auto-review"]),
+                                          pr(5, draft=True), pr(6, user="renovate[bot]")]}])
+        tmp = tempfile.mkdtemp()
+        try:
+            def kept(*arg):
+                r = subprocess.run([pre["exec_command"], *pre["exec_args"][:3], *arg], cwd=tmp, input=pulls, capture_output=True, text=True)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                return sorted(p["number"] for p in json.load(open(os.path.join(tmp, ".kronn", "prs_candidates.json"))))
+            self.assertEqual(kept(json.dumps(["skip-auto-review", "to-test", "to-deploy"])), [1])
+            self.assertEqual(kept(), [1, 2, 3])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
