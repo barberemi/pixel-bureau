@@ -133,10 +133,16 @@ function oeilOverlay(now){
   oeBeam(e.x,e.y,tx,ty,heat);oeEye(e.x,e.y,tx,ty,heat);
   if(heat>=1)oeFire(e.x,e.y-10,now);
   if(m<1)return;
-  ctx.font=`bold 12px ${FONT_MONO}`;const txt=(n>1?(k+1)+'/'+n+' · ':'')+g.ico+' '+g.txt, w=ctx.measureText(txt).width+14;
-  const x=Math.max(4,e.x-24-w), y=e.y+26; // sous l'œil, à gauche de la tour : le faisceau montre la cible
-  ctx.fillStyle='rgba(58,14,8,.92)';pixRect(ctx,x,y,w,20);ctx.fill();
-  ctx.fillStyle='#ffd9a0';ctx.textBaseline='middle';ctx.fillText(txt,x+7,y+11);ctx.textBaseline='alphabetic';
+  // l'étiquette, sous l'œil à gauche de la tour (le faisceau montre la cible) : une carte de deux lignes, lisible sur tous
+  // les thèmes : en gras la cible (rang dans la ronde, icône, PR), dessous le motif ; fond sombre, liseré orange
+  const i=g.txt.indexOf(' : '), l1=(n>1?(k+1)+'/'+n+' · ':'')+g.ico+' '+(i>0?g.txt.slice(0,i):g.txt), l2=i>0?g.txt.slice(i+3):'';
+  const f1=`bold 13px ${FONT_UI}`, f2=`12px ${FONT_UI}`;
+  ctx.font=f1;let w=ctx.measureText(l1).width;ctx.font=f2;if(l2)w=Math.max(w,ctx.measureText(l2).width);w=Math.ceil(w)+18;
+  const h=l2?40:24, x=Math.max(4,e.x-24-w), y=e.y+22;
+  ctx.fillStyle='rgba(18,12,16,.95)';pixRect(ctx,x,y,w,h);ctx.fill();ctx.strokeStyle='#ff8a3d';ctx.lineWidth=2;pixRect(ctx,x+1,y+1,w-2,h-2);ctx.stroke();
+  ctx.textBaseline='middle';ctx.font=f1;ctx.fillStyle='#ffffff';ctx.fillText(l1,x+9,y+12);
+  if(l2){ctx.font=f2;ctx.fillStyle='#ffd9a0';ctx.fillText(l2,x+9,y+29);}
+  ctx.textBaseline='alphabetic';
 }
 function oeilTip(){const l=oeRound(T);
   return !oeLive()?'L\'Œil : loin de son relevé, il ne regarde pas':l.length?'L\'Œil : '+plural(l.length,'chose t\'attend','choses t\'attendent')+' · '+l[0].ico+' '+l[0].txt+' · clic : la liste'
