@@ -96,7 +96,7 @@ function fxDrawDuck(x,y,now){
       fxSparkles(x,y-12*s,16*s,8,1);fxBubble(x,top,'🐣 Caneton !','#9a6a00');}
   }
 }
-const fxDuckBusy=()=>[...FX.cur.values()].some(e=>e.kind!=='recover'&&e.kind!=='ufo'&&e.kind!=='holo'&&e.kind!=='letters');
+const fxDuckBusy=()=>[...FX.cur.values()].some(e=>e.kind!=='recover'&&e.kind!=='ufo'&&e.kind!=='holo'&&e.kind!=='letters'&&e.kind!=='nazgul');
 // l'œuf qui tremble avant d'éclore : à la place du dessin du canard
 function fxDuckWobble(now){const h=fxOf('hatch');return h&&fxP(h,now)<.7?Math.sin(now/45)*.15:0;}
 // un caneton naît juste derrière lui (début d'un sprint qui suit un sprint tenu) : un petit œuf qui tremble, puis il rejoint la file

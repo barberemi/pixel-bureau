@@ -42,6 +42,16 @@ Par sections : ✋ À décider, 🛠 À corriger, 👀 À relire, 📬 Ailleurs 
 - **🛠 Corriger** sur une de tes PR avec des retours : le workflow « corriger les commentaires d'une PR », qui la monte au [3e](31-retours-bilan.md). **⟳ Remettre à jour** sur une PR en conflit.
 - **✋ Décider** ouvre la validation, **Voir les services** et **Ouvrir le courrier** leurs fiches, **👀 Relire sur GitHub** ou **↗ GitHub** la PR.
 
+## Le Nazgûl, messager de l'Œil
+
+![Le Nazgûl pose le rapport du matin sur le bureau du boss](../img/nazgul.png)
+
+Il ne fait le travail de personne : il porte ce que l'Œil a vu. Il part de la tour, fond sur ton bureau, y pose un parchemin, puis retourne à la tour.
+
+- **Le rapport du matin**, 10 minutes avant le daily : ce qui est arrivé depuis la veille à 18 h (« 📜 Le rapport de l'Œil : 3 nouveautés depuis hier soir »), s'il y a du neuf.
+- **Dans la journée**, chaque nouveauté pour toi : un nouveau retour sur une de tes PR (« 🛠 site-web#2051 : changements demandés · jimh »), une PR dont on te demande la relecture, quand elle a été ouverte dans la journée (GitHub ne date pas la demande elle-même).
+- Jamais pour un brouillon. Chaque livraison a sa ligne dans le fil ; la galerie des scènes le joue (« ▶ voir »).
+
 ## Rejouer la journée
 
 L'Œil voit tes PR telles qu'au dernier relevé : en relecture, il ne regarde qu'autour de l'heure du relevé et dort le reste du temps.

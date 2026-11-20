@@ -211,6 +211,7 @@ function feedLifeEvents(t){
   // 43-pop.js : le verdict d'une revue du Bureau en hologramme, la boîte aux lettres qui déborde (Tout)
   for(const r of holoReviews())if(today(r.at))ev.push({t:r.at,c:r.c,imp:false,txt:`📡 Le verdict de la revue apparaît chez ${refWho(r.c)} : ${esc(POP_VERDICT[r.v][1])}${r.n?' · '+refPr(r.n,null,r.repo):''}`});
   for(const l of letterFloods(DAY0+12*36e5))if(today(l.at))ev.push({t:l.at,imp:false,txt:`✉ La boîte ${esc(l.a.label||l.a.id)} déborde : ${esc(plural(l.n,'mail utile','mails utiles'))}, les lettres s'envolent`});
+  for(const d of nazDeliveries(DAY0+12*36e5))if(today(d.at))ev.push({t:d.at,imp:false,txt:`🐉 Le Nazgûl pose un parchemin sur ton bureau : ${esc(d.txt.replace(/^📜 /,''))}`}); // 69-nazgul.js
   // canard d'équipe : succès débloqué et caneton né (Important), changement de stade et mue (Tout)
   if(DUCKGAME){
     const T_=DUCKGAME.trophies||{};
