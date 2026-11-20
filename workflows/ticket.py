@@ -372,12 +372,13 @@ def discussion(ref):
     return {"id": x.get("id") or m.group(0).lower(), "titre": str(x.get("title") or ""), "messages": msgs}
 
 
-def discussion_texte(disc, maxi=DISC_MAX, boss=False):
+def discussion_texte(disc, maxi=DISC_MAX, boss=False, sauf=""):
     """La discussion pour la consigne : en entier quand elle tient dans maxi, sinon le premier message (le sujet) et
     les plus récents (les décisions), avec le nombre de messages du milieu laissés de côté. boss : ses messages seuls."""
     # les titres des messages descendent sous ceux de la consigne : un « ## Ticket 1 » n'y ouvre pas une section
     blocs = [f"### {'🤖 Agent' if x['qui'] == 'agent' else '👤 Boss'}{' (' + x['nom'] + ')' if x['nom'] else ''} · {x['at']}\n"
-             + re.sub(r"^#{1,3} ", "#### ", x["texte"], flags=re.M) for x in disc["messages"] if not boss or x["qui"] == "boss"]
+             + re.sub(r"^#{1,3} ", "#### ", x["texte"], flags=re.M) for x in disc["messages"]
+             if (not boss or x["qui"] == "boss") and not (sauf and x["texte"] == sauf)]
     taille = lambda l: sum(len(b.encode()) + 2 for b in l)
     if taille(blocs) <= maxi:
         return "\n\n".join(blocs)
@@ -391,10 +392,28 @@ def discussion_texte(disc, maxi=DISC_MAX, boss=False):
 
 
 def brouillon(disc):
-    """Le dernier message de l'agent de la discussion, s'il est assez long pour décrire les tickets : d'habitude le récap
-    que le boss lui a demandé (run dceac87b : la cible à 4 Ko près, que la rédaction ne voyait pas)."""
-    m = [x for x in (disc or {}).get("messages") or [] if x["qui"] == "agent"]
-    return m[-1]["texte"] if m and len(m[-1]["texte"]) >= BROUILLON_MIN else ""
+    """(texte du boss, récap de l'agent) : son plus long message et le dernier de l'agent, chacun s'il fait BROUILLON_MIN
+    caractères ou plus. Run 400a0472 : le récap seul résumait le texte du boss et perdait MainMenu, chore(Wording), le cron."""
+    ms = (disc or {}).get("messages") or []
+    b = max((x["texte"] for x in ms if x["qui"] == "boss"), key=len, default="")
+    a = [x["texte"] for x in ms if x["qui"] == "agent"]
+    return (b if len(b) >= BROUILLON_MIN else ""), (a[-1] if a and len(a[-1]) >= BROUILLON_MIN else "")
+
+
+# les noms précis d'un texte : entre backticks, en CamelCase (MainMenu), un chemin (src/a.php), un préfixe de commit (chore(Wording))
+IDENT = re.compile(r"`([^`\n]{3,80})`|\b([A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)+)\b|(?<![\w/.])([\w.-]*[A-Za-z][\w.-]*/[\w./-]*\w)|\b([a-z]\w*\([\w ]+\))")
+ident_norm = lambda s: re.sub(r"[\s{}`*]", "", s).lower()  # noqa: E731 (accolades du wiki Jira, backticks et gras du Markdown)
+
+
+def absents(disc, tickets):
+    """Les noms précis du texte du boss et du récap de l'agent qu'aucun ticket ne reprend (sans IA), 15 au plus."""
+    b, a = brouillon(disc)
+    src = "\n".join([x["texte"] for x in (disc or {}).get("messages") or [] if x["qui"] == "boss"] + [a])
+    dans = ident_norm(" ".join(str(t.get("summary") or "") + " " + str(t.get("description") or "") for t in tickets))
+    noms = dict.fromkeys(next(g for g in m.groups() if g).strip() for m in IDENT.finditer(src))
+    # un chemin : ASCII, avec un point, un tiret, un souligné ou deux « / » (pas « ticket/mois » ni « ajoutées/supprimées »)
+    chemin = lambda n: "/" not in n or (n.isascii() and (re.search(r"[._-]", n) or n.count("/") >= 2))  # noqa: E731
+    return [n for n in noms if len(n) >= 4 and chemin(n) and ident_norm(n) not in dans][:15]
 
 
 def dossier(run, intention, type_, points, c1, c2, sprint, parent, disc=""):
@@ -624,7 +643,8 @@ def poste(k, run, retours=""):
             dput(run, "demande.json", d)
             archive(run, retours={"texte": retours[:1500], "v": (dget(run, "tickets.json") or {}).get("version")})
     x = dget(run, "discussion.json") if k in ("redaction", "critique") else None
-    if x and any(m["qui"] == "boss" for m in x.get("messages") or []):
+    sauf = brouillon(x)[0] if x else ""  # le texte du boss pris comme brouillon n'est pas répété ici
+    if x and any(m["qui"] == "boss" and m["texte"] != sauf for m in x.get("messages") or []):
         # run 60507405 : la critique, qui ne voyait pas la discussion, a renversé son découpage d'après une épic Jira
         parts.append(f"## Ce que le boss a écrit et décidé dans la discussion Kronn « {x.get('titre') or x.get('id')} » (tranché)\n"
                      + ("Suis ces décisions : elles passent avant un ticket, une épic ou un document Jira qui dirait autre chose ; "
@@ -634,18 +654,30 @@ def poste(k, run, retours=""):
                         "Ne conteste pas ces décisions : un écart avec un ticket, une épic ou un document Jira n'est jamais "
                         "bloquant ; signale-le en conseil, pour qu'il figure dans les questions ouvertes du ticket. Le reste "
                         "de ta relecture (fichiers, langues, tests, modèle) vaut comme d'habitude.")
-                     + "\n\n---- début ----\n\n" + discussion_texte(x, DECISIONS_MAX, boss=True) + "\n\n---- fin ----")
-    b = brouillon(x) if x else ""
-    if b:
-        parts.append("## Brouillon : le dernier message de l'agent dans la discussion\n"
-                     + ("Pars de ce brouillon s'il décrit les tickets : reprends son découpage et chacun de ses points (décisions, "
-                        "noms de commandes, de branches et de fichiers, chiffres, critères d'acceptation, points d'attention), "
-                        "mets-les dans le modèle de l'équipe et complète-les avec la recherche ; corrige ce que le code contredit "
-                        "et dis-le dans tes réponses. S'il ne décrit pas les tickets, ignore-le."
+                     + "\n\n---- début ----\n\n" + discussion_texte(x, DECISIONS_MAX, boss=True, sauf=sauf) + "\n\n---- fin ----")
+    bb, ba = brouillon(x) if x else ("", "")
+    if bb or ba:
+        h = lambda t: re.sub(r"^#{1,3} ", "#### ", t[:DECISIONS_MAX], flags=re.M)  # noqa: E731
+        parts.append("## Brouillon : " + ("le texte du boss dans la discussion" if bb else "") + (", puis " if bb and ba else "")
+                     + ("le récap de l'agent" if ba else "") + "\n"
+                     + ("Pars de ce brouillon s'il décrit les tickets : le texte du boss est la base, reprends son découpage et "
+                        "chacun de ses points (décisions, noms de commandes, de branches, de fichiers et de classes, chiffres, "
+                        "critères d'acceptation, points d'attention) ; le récap de l'agent, plus récent, l'emporte là où ils "
+                        "divergent, mais ce qu'il omet du texte du boss reste. Mets-les dans le modèle de l'équipe et "
+                        "complète-les avec la recherche ; corrige ce que le code contredit et dis-le dans tes réponses. S'il ne "
+                        "décrit pas les tickets, ignore-le."
                         if k == "redaction" else
-                        "Vérifie la couverture : chaque point de ce brouillon (s'il décrit les tickets) et chaque décision du "
-                        "boss ci-dessus qui manque dans les tickets donne un conseil « manque : … » sur le ticket concerné.")
-                     + "\n\n---- début ----\n\n" + re.sub(r"^#{1,3} ", "#### ", b[:DECISIONS_MAX], flags=re.M) + "\n\n---- fin ----")
+                        "Vérifie la couverture : chaque point de ce brouillon (s'il décrit les tickets) qui manque dans les "
+                        "tickets donne une note « manque : … » sur le ticket concerné.")
+                     + ("\n\n---- texte du boss ----\n\n" + h(bb) if bb else "")
+                     + ("\n\n---- récap de l'agent ----\n\n" + h(ba) if ba else "") + "\n\n---- fin ----")
+    ab = (t or {}).get("absents") if k == "critique" else None
+    if ab:
+        parts.append("## Noms de la discussion absents des tickets (contrôle automatique, sans IA)\n"
+                     "Ces noms du texte du boss ou du récap n'apparaissent dans aucun ticket. Pour chacun : s'il manque à tort, "
+                     "une note « manque : … » sur le ticket concerné, bloquante si c'est une décision du boss abandonnée sans "
+                     "raison, un conseil sinon ; s'il est hors sujet ou déjà repris autrement, ignore-le.\n"
+                     + "\n".join("- " + n for n in ab))
     if k in ("redaction", "critique") and dget(run, "retours.json"):
         parts.append("## Retours du boss à la validation (" + ("à appliquer en priorité" if k == "redaction" else "tranchés : ne les conteste pas")
                      + ")\n" + "\n".join("- " + x for x in dget(run, "retours.json")))
@@ -701,7 +733,8 @@ def rapport(k, run, text):
         old = dget(run, "tickets.json") or {}
         v = int(old.get("version") or 0) + 1
         reps = [str(x).strip()[:400] for x in o.get("reponses") or [] if str(x).strip()][:12]
-        dput(run, "tickets.json", {"version": v, "tickets": ts, "reponses": reps, "hors_liste": hors})
+        ab = absents(dget(run, "discussion.json"), ts) if dget(run, "discussion.json") else []
+        dput(run, "tickets.json", {"version": v, "tickets": ts, "reponses": reps, "hors_liste": hors, **({"absents": ab} if ab else {})})
         archive(run, versions={"v": v, "tickets": [{"summary": str(t.get("summary") or "")[:200], "composant": t.get("composant"),
                                                     "points": t.get("points"), "bloque_par": t["bloque_par"]} for t in ts], "hors_liste": hors})
         print("\n".join(f"{i}. {t['summary']} · {t.get('composant') or '?'} · {t.get('points') or '?'} pts{bloque(t)}" for i, t in enumerate(ts, 1))
@@ -840,6 +873,9 @@ def apercus(run):
             print("\n💡 Conseils de la critique (non bloquants) :")
             for n in conseils:
                 print(f"- {qui(n)} : {n.get('note')}")
+    ab = (dget(run, "tickets.json") or {}).get("absents") or []
+    if ab:
+        print("\n🔎 Noms de la discussion absents des tickets (contrôle sans IA) : " + ", ".join(ab))
     proches = dget(run, "doublons.json", [])[:3]
     if proches:
         print("\n🔎 Tickets Jira ouverts proches (doublons possibles) :")

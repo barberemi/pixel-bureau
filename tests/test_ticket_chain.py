@@ -393,7 +393,7 @@ class TicketChainTest(unittest.TestCase):
                                                                  {"qui": "agent", "nom": "", "at": "", "texte": recap}]}
         Path(self.tmp, ".cache", "pixel-bureau", "ticket", "b1", "discussion.json").write_text(json.dumps(disc))
         red = self.t("poste", "redaction", "b1").stdout
-        self.assertIn("## Brouillon : le dernier message de l'agent dans la discussion\nPars de ce brouillon", red)
+        self.assertIn("## Brouillon : le récap de l'agent\nPars de ce brouillon", red)
         self.assertIn("#### Ticket 1\nPR hebdo sur la branche fixe chore/translations-sync", red)
         self.assertIn("Vérifie la couverture", self.t("poste", "critique", "b1").stdout)
         self.assertNotIn("## Brouillon", self.t("poste", "recherche", "b1").stdout, "la recherche a la discussion entière")
@@ -411,6 +411,32 @@ class TicketChainTest(unittest.TestCase):
         self.assertIn("## Écarts avec Jira relevés par la critique (à mettre dans les questions ouvertes du ticket concerné)\n- ticket 1 · DM-7954",
                       self.t("poste", "redaction", "b1").stdout)
         self.assertIn('"ecarts"', self.t("poste", "critique", "b1").stdout, "le format de sortie les décrit")
+
+    def test_boss_text_is_the_draft_and_names_left_out_are_listed(self):
+        """Run 400a0472 : le récap de l'agent résumait le texte du boss et perdait MainMenu, chore(Wording). Le plus long
+        message du boss est la base du brouillon (pas répété dans ses décisions), le récap le met à jour ; les noms précis
+        qu'aucun ticket ne reprend sont relevés sans IA, donnés à la critique et montrés au tampon."""
+        self.t("dossier", "n1", "Découper", "Story", "8", "dm/site", "", "backlog", "")
+        boss = ("Ticket 2 : retirer l'entrée Translations de MainMenu, supprimer src/Client/GoogleServiceSheets.php. "
+                "Commit du bot : chore(Wording): sync translations, sans ticket. " + "contexte " * 100)
+        disc = {"id": "x", "titre": "T", "messages": [{"qui": "boss", "nom": "", "at": "", "texte": boss},
+                                                       {"qui": "boss", "nom": "", "at": "", "texte": "Décision : clé API simple"},
+                                                       {"qui": "agent", "nom": "", "at": "", "texte": "# Récap\nT2 : supprimer `TranslationController`. " + "x " * 450}]}
+        Path(self.tmp, ".cache", "pixel-bureau", "ticket", "n1", "discussion.json").write_text(json.dumps(disc))
+        red = self.t("poste", "redaction", "n1").stdout
+        self.assertIn("## Brouillon : le texte du boss dans la discussion, puis le récap de l'agent", red)
+        self.assertIn("le texte du boss est la base", red)
+        self.assertLess(red.index("---- texte du boss ----"), red.index("---- récap de l'agent ----"))
+        self.assertEqual(red.count("retirer l'entrée Translations de MainMenu"), 1, "pas répété dans les décisions")
+        self.assertIn("Décision : clé API simple", red)
+        r = self.t("rapport", "redaction", "n1", stdin=json.dumps({"tickets": [{"summary": "Supprimer la génération", "composant": "dm/site", "points": 5,
+            "description": "h2. À faire\n* Supprimer {{TranslationController}} et {{src/Client/GoogleServiceSheets.php}}"}]}))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("🔎 Noms de la discussion absents des tickets (contrôle sans IA) : MainMenu, chore(Wording)", self.t("apercus", "n1").stdout)
+        cri = self.t("poste", "critique", "n1").stdout
+        self.assertIn("## Noms de la discussion absents des tickets (contrôle automatique, sans IA)", cri)
+        self.assertIn("- MainMenu\n- chore(Wording)", cri)
+        self.assertNotIn("- TranslationController", cri, "repris (wiki {{…}}) : pas absent")
 
     def test_labels_on_every_created_ticket(self):
         cfg = self.cfg_with(labels=["ia_framed", "Rédigé par le Bureau", "ia_framed"])
