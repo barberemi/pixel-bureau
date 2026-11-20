@@ -337,6 +337,9 @@ SHOTS = {
     # des retours, une PR en conflit), sa fiche, et l'œil fermé quand rien n'attend
     "oeil": (1400, 1000, AT(11), "#cv", 1.5),
     "oeil-fiche": (1400, 1000, AT(11) + "select('oeil');", "#side"),
+    # le Nazgûl, messager de l'Œil (69-nazgul.js) : il pose le rapport du matin sur le bureau du boss
+    "nazgul": (1400, 1000, AT(11) + "setSpeed(1);setMode('play');FX.cur.set('n',{id:'n',kind:'nazgul',"
+               "txt:'📜 Le rapport de l\\'Œil : 3 nouveautés depuis hier soir',ms:9e3,t0:performance.now()-1500});", "#cv", 1.5),
     "oeil-dort": (1400, 1000, AT(11) + "OEIL={...OEIL,mine:[],asked:[]};GATES=[];STATUTS=null;MAILS=null;", "#cv", 1.5),
     "retours": (1600, 1100, AT(11) + "setFloor(3);", None),
     "retours-kanban": (1600, 1100, AT(11) + "setFloor(3);rtKbOpen('demo-f1');", None),

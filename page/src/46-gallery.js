@@ -57,6 +57,8 @@ function galleryScenes(){
     add({fam:'Petits moments',ok:true,ico:'🐣',n:'Le canard : éclosion',d:'L\'œuf se fend',w:'Les points du sprint',play:{len:8e3,speed:1,setup:galFx('hatch',{from:'oeuf',to:'caneton'})}});}
   if(dev)add({fam:'Petits moments',ok:true,c:dev,ico:'📡',n:'Le verdict de la revue',d:'La revue du Bureau apparaît sur le poste de l\'auteur, avec son verdict',w:'Une revue du cron postée',
     play:{len:12e3,speed:1,setup:galFx('holo',{c:dev,v:'request_changes',n:9999,ms:12e3})}});
+  if(OEIR&&!REDUCED_MOTION)add({fam:'Petits moments',ok:true,ico:'📜',n:'Le Nazgûl messager',d:'Il part de la tour de l\'Œil et pose un parchemin sur ton bureau',w:'Le rapport du matin avant le daily, puis chaque nouveauté pour toi',
+    play:{len:NAZ_MS,speed:1,setup:galFx('nazgul',{txt:'📜 Le rapport de l\'Œil : 3 nouveautés depuis hier soir',ms:NAZ_MS})}}); // 69-nazgul.js
   {const acc=typeof mailAccounts==='function'?mailAccounts().filter(a=>a.ok):[];
     if(acc.length&&!REDUCED_MOTION)add({fam:'Petits moments',ok:true,ico:'✉',n:'Les lettres de Poudlard',d:'Les lettres s\'envolent de la boîte aux lettres',w:'Les mails utiles d\'un compte passent '+POP_CFG.lettres.mails,
       play:{len:9e3,speed:1,setup:galFx('letters',{a:acc[0],n:POP_CFG.lettres.mails,ms:9e3})}});}

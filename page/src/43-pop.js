@@ -80,9 +80,10 @@ function popFxEvents(recent){
   const out=[];
   for(const r of holoReviews())if(recent(r.at))out.push({id:'holo:'+r.run,kind:'holo',ms:12e3,...r});
   if(!REDUCED_MOTION)for(const l of letterFloods(T))if(recent(l.at))out.push({id:'letters:'+l.a.id+':'+l.at,kind:'letters',ms:9e3,...l});
+  out.push(...nazFxEvents(recent)); // 69-nazgul.js : le messager de l'Œil
   return out;
 }
-function popOverlay(now){for(const e of FX.cur.values()){if(e.kind==='holo')popHolo(e,now);else if(e.kind==='letters')popLetters(e,now);}}
+function popOverlay(now){for(const e of FX.cur.values()){if(e.kind==='holo')popHolo(e,now);else if(e.kind==='letters')popLetters(e,now);else if(e.kind==='nazgul')nazDraw(e,now);}}
 // ---------- l'hyperespace : avant une scène de la galerie (« ▶ voir ») et avant le rejeu de la journée, 1,2 s d'étoiles qui
 // s'étirent et le nom de ce qui commence ; l'heure reste figée pendant ce temps (HYPER, boucle de 90-boot.js) ; Échap ou un
 // clic pour passer ; rien en mode TV, avec « réduire les animations » ou scenes.hyperespace à false ----------
