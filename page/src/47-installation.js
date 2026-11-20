@@ -24,12 +24,12 @@ const KRONN_MIN='0.15.2'; // MIN_VERSION de tools/install.py : la page dépasse 
 // Kronn passe les paramètres de l'adresse autonome (/standalone/pages/<id>?tv=1…) à la page (75-tv.js, applyViewParams).
 // Les choix restent jusqu'au rechargement (la fenêtre suit les données, wideRefresh) ; l'étage par défaut alterne
 // les étages occupés quand il y en a plusieurs.
-const WALL={floor:null,scene:'',loupe:''};
+const WALL={floor:null,loupe:''};
 const WALL_FLOORS={'-1':'-1',0:'RDC',1:'1er',2:'2e',3:'3e'};
 const pageIdOf=d=>d&&d.page&&typeof d.page.id==='string'&&d.page.id?d.page.id:null;
 function wallUrl(id){
   const fl=WALL.floor!==null?WALL.floor:floorsOn().length>1?'alt':'0';
-  const q=['tv=1',fl!=='0'?'floor='+fl:'',WALL.scene?'scene='+WALL.scene:'',WALL.loupe?'loupe='+WALL.loupe:''].filter(Boolean).join('&');
+  const q=['tv=1',fl!=='0'?'floor='+fl:'',WALL.loupe?'loupe='+WALL.loupe:''].filter(Boolean).join('&');
   return KRONN_BASE.replace(/\/*$/,'/')+'standalone/pages/'+(id?encodeURIComponent(id):'<id de la page>')+'?'+q;
 }
 function wallHtml(){
@@ -38,7 +38,7 @@ function wallHtml(){
   const floors=(floorsOn().length>1?[chip('floor','alt','Alterner',fl==='alt')]:[]).concat(
     [...floorsOn()].sort((a,b)=>a-b).map(f=>chip('floor',String(f),WALL_FLOORS[f],fl===String(f))));
   return '<div class="in-wall"><h3>📺 Adresse de l\'écran mural</h3><div class="in-opts">'+
-    `<span>Étage</span>${floors.join('')}<span>Démarrer</span>${chip('scene','','Plan',!WALL.scene)}${chip('scene','standup','Daily',WALL.scene==='standup')}`+
+    `<span>Étage</span>${floors.join('')}`+
     `<span>Loupe</span>${chip('loupe','','oui',!WALL.loupe)}${chip('loupe','0','non',WALL.loupe==='0')}</div>`+
     `<div class="in-url"><input type="text" readonly aria-label="Adresse de l'écran mural" value="${esc(wallUrl(pageIdOf(window.KronnPageData)))}">`+
     '<button type="button" class="on" data-wall-copy>📋 Copier</button></div><p class="muted in-note" aria-live="polite">'+

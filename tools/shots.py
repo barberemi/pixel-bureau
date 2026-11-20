@@ -179,26 +179,14 @@ SHOTS = {
                 "h=[...b.querySelectorAll('h2')].pop();b.scrollTop=h.offsetTop-b.offsetTop-8;},600);", None),
     "tv-agents": (1600, 900, AT(11) + "setTv(true);setTimeout(()=>{TVSCROLL.hold=performance.now()+1e6;const b=document.querySelector('#tvwho'),"
                   "h=[...b.querySelectorAll('h2')][1];b.scrollTop=h?h.offsetTop-300:0;},1500);", "#tvwho"),
-    "standup": (1600, 900, AT(9.7) + "setTv(true);TVSCENE.manual='daily';TVSCENE.idx=0;updateTv(true);", None),
-    # tour de table : la testeuse, ses réouverts puis ses testés (travail Jira de la semaine simulé)
-    "standup-testeur": (1600, 900, AT(9.7) + "const k=chars.find(c=>c.roleKind==='qa');k.jira_id=k.jira_id||'qa';TEAM.work=Object.assign({},TEAM.work,{[k.jira_id]:"
-                        "{written:[],triaged:[],tested:TEAM.people.flatMap(p=>p.tickets).filter(x=>x.cat==='done').slice(0,7).map(x=>({...x,cat:'test',status:'To Test'})),"
-                        "reopened:[{key:'DM-7089',summary:'[Panier] Alléger le bundle',cat:'doing',status:'Reopen'}]}});"
-                        "setTv(true);TVSCENE.manual='daily';TVSCENE.idx=standupScenes().findIndex(s=>s.c&&s.c.roleKind==='qa');updateTv(true);", None),
     # loupe (44-loupe.js) sur la réouverture de 10h50 : cadre sur la salle de réunion, fenêtre flottante agrandie et sa légende
     "loupe": (1400, 900, AT(10 + 51 / 60) + "setTimeout(()=>{LOUPE.seen=new Set();const ev=loupeScan().find(e=>e.kind==='reopen');LOUPE.resume=true;LOUPE.hoverUntil=0;loupeShow(ev,performance.now());},1200);", None),
     "loupe-daily": (1400, 900, AT(9.7) + "setTimeout(()=>{LOUPE.seen=new Set();const ev=loupeScan().find(e=>e.kind==='daily');LOUPE.resume=true;LOUPE.hoverUntil=0;loupeShow(ev,performance.now());},1200);", None),
     "loupe-tv": (1600, 900, AT(10 + 51 / 60) + "setTv(true);setTimeout(()=>{LOUPE.seen=new Set();const ev=loupeScan().find(e=>e.kind==='reopen');LOUPE.resume=true;LOUPE.hoverUntil=0;loupeShow(ev,performance.now());},1200);", None),
-    # tour de table : la facilitatrice présente les tickets créés par l'équipe depuis le dernier daily
-    "standup-facilitatrice": (1600, 900, AT(9.7) + "setTv(true);TVSCENE.manual='daily';"
-                              "TVSCENE.idx=standupScenes().findIndex(s=>s.c&&s.c.roleKind==='sm');updateTv(true);", None),
     # cérémonies en salle de réunion : rétro un jeudi sur deux à 15h (le jour de la démo en est un), planning le vendredi
-    # à 10h (avancé au jeudi pour la démo) ; animateur en bout de table, scènes TV de chacune
+    # à 10h (avancé au jeudi pour la démo) ; animateur en bout de table
     "scene-planning": (1400, 1000, AT(10 + 10 / 60) + "RHYTHM.planning.day='Thu';", "#cv", 1.5),
     "scene-retro": (1400, 1000, AT(15 + 10 / 60), "#cv", 1.5),
-    "planning-tv": (1600, 900, AT(10 + 10 / 60) + "RHYTHM.planning.day='Thu';setTv(true);TVSCENE.manual=null;TVSCENE.idx=0;updateTv(true);", None),
-    "retro-tv": (1600, 900, AT(15 + 10 / 60) + "setTv(true);TVSCENE.manual=null;TVSCENE.idx=2;updateTv(true);", None),
-    "retro-tour": (1600, 900, AT(15 + 10 / 60) + "setTv(true);TVSCENE.manual=null;TVSCENE.idx=4;updateTv(true);", None),
     # piles des bureaux à 11h : barres de tickets, feuilles de Kelly (tickets créés depuis le daily de 9h40), dossiers de Karen
     "piles-bureaux": (1400, 1000, AT(11), "#cv", 1.5),
     # écran mural : les autres pages Kronn du boss (dataset bosspages) ; miniatures dessinées pour la démo, fenêtre ouverte
@@ -522,7 +510,7 @@ SHOTS = {
 }
 # captures qui ne visent aucun personnage de la démo : valables avec n'importe quelle équipe (--team)
 TEAM_SHOTS = ["plan", "qui-fait-quoi", "fil", "recap", "kanban", "mep", "calendrier", "fiche-agent", "scene-retro",
-              "tv", "tv-agents", "standup"]
+              "tv", "tv-agents"]
 
 
 def team_js(js):

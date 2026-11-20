@@ -58,17 +58,13 @@ test('cérémonies : un absent n\'anime pas (la facilitatrice absente laisse le 
   assert.equal(J(`ceremonyHost(${cr}).boss`), true);
 });
 
-test('Qui fait quoi : l\'absent en carte grisée, en dernier ; pas sa raison ; le stand-up TV le saute et le cite', () => {
+test('Qui fait quoi : l\'absent en carte grisée, en dernier ; pas sa raison ', () => {
   setup({p_clark: {[D]: 'aa'}, p_holly: {[D]: 'tt'}});
   run(`T = ${at(D, '11:00')}; for (const c of chars) c._st = stateAt(c, T);`);
   const cards = J(`whoCards(T).map(x => [x.c.key, x.st.abs || null, x.what])`);
   assert.deepEqual(cards[cards.length - 1], ['p_clark', 'journee', 'Absence toute la journée']);
   assert.equal(J(`shortSt(byKey.p_clark._st)`), 'absence');
   assert.match(J(`shortSt(byKey.p_holly._st)`), /^🏠 télétravail · /);
-  assert.ok(!J(`standupPeople().map(c => c.key)`).includes('p_clark'));
-  const away = J(`sceneAway(T)`);
-  assert.match(away, /Absences aujourd'hui : <b>Clark<\/b>/);
-  assert.match(away, /🏠 En télétravail : <b>Holly<\/b>/);
 });
 
 test('calendrier : cases bureau, télétravail, absence, demi-journée coupée, férié ; le jour encadré', () => {

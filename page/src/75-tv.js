@@ -9,14 +9,13 @@ function setTv(on,remember=true){
   else{if(NAMES_BEFORE_TV)NAMES=NAMES_BEFORE_TV;try{if(document.fullscreenElement)document.exitFullscreen();}catch(e){}}
   updateTv(true);mtBar(); // 69-metiers.js : la barre des agents, hors mode TV
 }
-// paramètres d'affichage de l'adresse Kronn (/standalone/pages/<id>?tv=1&scene=standup, reçus dans KronnPageData.page.params) :
+// paramètres d'affichage de l'adresse Kronn (/standalone/pages/<id>?tv=1&floor=1, reçus dans KronnPageData.page.params) :
 // appliqués une seule fois, au premier envoi qui en contient, sans toucher au réglage mémorisé ; tv=0 force le plan
 let VIEW_PARAMS_DONE=false;
 function viewParams(src){const p=src&&src.page&&src.page.params;return p&&typeof p==='object'?p:null;}
 function applyViewParams(src){
   const p=viewParams(src); if(VIEW_PARAMS_DONE||!p)return; VIEW_PARAMS_DONE=true;
   if(p.tv==='1'&&!TV)setTv(true,false); else if(p.tv==='0'&&TV)setTv(false,false);
-  if(p.scene==='standup'&&TV){TVSCENE.manual=true;TVSCENE.idx=0;TVSCENE.since=0;updateTv(true);}
   if(p.loupe==='0')setLoupe(false,false); // écran mural sans loupe
   // l'écran mural sur un étage (-1 : la caserne, 1 : l'atelier, 2 : la rédaction, 3 : les retours), ou les étages occupés en alternance
   if(p.floor==='alt'&&floorsOn().length>1)TV_FLOOR_ALT=true;
@@ -97,25 +96,27 @@ function tvLiveChip(){
 // l'heure affichée hors du direct, '' en direct ; aux étages, l'heure du relevé des valeurs ⏱ en clair (la pastille du rejeu
 // n'est pas affichée en TV)
 const tvRejeu=()=>mode!=='live'?hm(T)+releveTxt():'';
+// un bouton par étage ouvert, du RDC au 3e (le -1 juste après le RDC), l'étage affiché en couleur ; rien avec un seul étage
+function tvFloorButtons(on=floorsOn()){
+  if(on.length<2)return '';
+  return [0,-1,1,2,3].filter(f=>on.includes(f)).map(f=>
+    `<button class="tvfl${f===FLOOR?' on':''}" data-fl="${f}"${f===FLOOR?' aria-current="true"':''}>${FLOOR_NAME(f)}</button>`).join('');
+}
 function updateTv(force){
   if(!TV||!DATA)return;
   const bar=document.getElementById('tvbar');
-  // titre, horloge, fraîcheur des données, boutons : sprint, MEP, PR et pannes sont dans les cartes du bas (tvKpis)
+  // titre, horloge, fraîcheur des données, un bouton par étage (l'étage affiché en couleur), Quitter : sprint, MEP, PR et
+  // pannes sont dans les cartes du bas (tvKpis)
+  const fls=tvFloorButtons();
   bar.innerHTML=`<span class="tvt">LE BUREAU</span><span class="tvc">${hm(T)}</span><span class="tvchips">${tvLiveChip()}`+
-    `</span><span class="tvhint">S daily · P planning · R rétro${floorsOn().length>1?' · E étage':''} · Échap ou T pour quitter</span>`+
-    [['daily','tvstand','Daily'],['planning','tvplan','Planning'],['retro','tvretro','Rétro']].map(([k,id,l])=>
-      `<button id="${id}" class="${sceneMode(T)===k?'on':''}">${sceneMode(T)===k?'Retour au plan':l}</button>`).join('')+
-    (floorsOn().length>1?`<button id="tvfloor">${FLOOR_NAME(nextFloor(false))}</button>`:'')+`<button id="tvexit">Quitter</button>`;
+    `</span><span class="tvhint">${fls?'E étage suivant · ':''}Échap ou T pour quitter</span>${fls}<button id="tvexit">Quitter</button>`;
   bar.querySelector('#tvexit').onclick=()=>setTv(false);
   // hors du direct (rejeu, pause), le bandeau ne dit plus « EN DIRECT » mais « ⏪ REJEU hh:mm » (pixel.css), plan cerclé d'ambre
   const tk=document.getElementById('tvticker'), rj=tvRejeu();
   if((tk.getAttribute('data-rejeu')||'')!==rj){if(rj)tk.setAttribute('data-rejeu',rj);else tk.removeAttribute('data-rejeu');}
   document.body.classList.toggle('tvreplay',!!rj);
-  const fb=bar.querySelector('#tvfloor');if(fb)fb.onclick=()=>{TV_FLOOR_ALT=false;setFloor(nextFloor(false));updateTv(true);}; // 68-atelier.js, 68-caserne.js
-  bar.querySelector('#tvstand').onclick=()=>toggleScenes('daily');
-  bar.querySelector('#tvplan').onclick=()=>toggleScenes('planning');
-  bar.querySelector('#tvretro').onclick=()=>toggleScenes('retro');
-  renderTvScenes(performance.now());
+  for(const b of bar.querySelectorAll('.tvfl'))b.onclick=()=>{TV_FLOOR_ALT=false;setFloor(+b.dataset.fl);updateTv(true);}; // 68-atelier.js, 68-caserne.js
+  renderTvKpis();
   renderTvWho();
   // fil défilant : les derniers événements d'équipe (merges, releases, MEP, daily), sans les runs des agents
   const strip=h=>{const d=document.createElement('div');d.innerHTML=h;return d.textContent.replace(/\s+/g,' ').trim();};

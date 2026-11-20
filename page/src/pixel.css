@@ -117,34 +117,21 @@
   --tv-wframe:0 calc(-1*var(--px)) 0 0 #ffffff,0 var(--px) 0 0 #ffffff,calc(-1*var(--px)) 0 0 0 #ffffff,var(--px) 0 0 0 #ffffff;
 }
 :root[data-skin] body.tv *{border-radius:0!important}
-:root[data-skin] body.tv #tvscene .sc-dots i,:root[data-skin] body.tv #tvscene .sc-dot,:root[data-skin] body.tv i.ring{border-radius:50%!important}
-/* police pixel : titre, horloge, gros chiffres, titres de scène (tailles multiples de 8, où elle est nette) */
+:root[data-skin] body.tv i.ring{border-radius:50%!important}
+/* police pixel : titre, horloge, gros chiffres (tailles multiples de 8, où elle est nette) */
 :root[data-skin] body.tv #tvbar .tvt{font:400 16px 'BureauPixel',ui-monospace,monospace;letter-spacing:0}
 :root[data-skin] body.tv #tvbar .tvc{font:400 24px 'BureauPixel',ui-monospace,monospace}
 :root[data-skin] body.tv #tvkpi .tk b{font:400 48px/1 'BureauPixel',ui-monospace,monospace}
-:root[data-skin] body.tv #tvscene h2{font:400 32px/1.3 'BureauPixel',ui-monospace,monospace;text-shadow:4px 4px 0 var(--tv-stand)}
-:root[data-skin] body.tv #tvscene .sc-hero>b{font:400 96px/1 'BureauPixel',ui-monospace,monospace}
-/* barre du haut : pastilles carrées, boutons blancs cadrés, le bouton de la scène en cours dans la couleur du stand-up */
+/* barre du haut : pastilles carrées, boutons blancs cadrés, l'étage affiché en couleur */
 :root[data-skin] body.tv #tvbar .chip{margin:0 var(--px)}
 :root[data-skin] body.tv #tvbar button{background:#ffffff;color:var(--tv-bar);border:0;font-weight:700;margin:0 var(--px);box-shadow:var(--tv-wframe),inset -3px -3px 0 0 var(--tv-btn-bevel)}
-:root[data-skin] body.tv #tvbar #tvstand.on,:root[data-skin] body.tv #tvbar #tvplan.on,:root[data-skin] body.tv #tvbar #tvretro.on{background:var(--tv-stand);color:var(--tv-stand-ink);box-shadow:var(--tv-wframe)}
+:root[data-skin] body.tv #tvbar .tvfl.on{background:var(--tv-stand);color:var(--tv-stand-ink);box-shadow:var(--tv-wframe)}
 /* cartes : cadre pixel, ombre décalée pour les chiffres, liseré d'état gardé ; 16 px visibles entre deux cartes de chiffres et
    jusqu'aux bords (cadre 3 px, ombre 6 px), 14 px entre deux cartes de « Qui fait quoi » (mesuré par le relevé des écarts) */
 :root[data-skin] body.tv #tvwho{border-left:0;gap:14px;padding:16px}
 :root[data-skin] body.tv #tvwho .tw{box-shadow:var(--tv-frame);margin:var(--px);border-left-width:6px}
 :root[data-skin] body.tv #tvkpi{gap:19px;padding:16px 19px 19px 16px}
 :root[data-skin] body.tv #tvkpi .tk{box-shadow:var(--tv-frame),6px 6px 0 0 rgba(0,0,0,.35);margin:var(--px);border-top-width:8px}
-/* scènes : étiquette, barre de temps et jauge dans la couleur du stand-up, cartes cadrées */
-:root[data-skin] body.tv #tvscene::after{background:var(--tv-stand);height:6px}
-:root[data-skin] body.tv #tvscene .sc-tag,:root[data-skin] body.tv #tvscene .sc-tag.sc-retro{background:var(--tv-stand);color:var(--tv-stand-ink);box-shadow:var(--tv-frame)}
-:root[data-skin] body.tv #tvscene .sc-meter{height:24px;box-shadow:var(--tv-frame);margin:var(--px)}
-:root[data-skin] body.tv #tvscene .rq,:root[data-skin] body.tv #tvscene .sc-order li{box-shadow:var(--tv-frame)}
-:root[data-skin] body.tv #tvscene .st{color:#ffffff}
-/* compteurs de colonnes de la scène sprint (couleurs CAT_COLOR écrites dans la ligne, trop sombres sur un fond de TV : 3,4:1 pour
-   « en test » sur le marine) : leurs versions claires, >= 7:1 */
-:root[data-skin] body.tv #tvscene .sc-cats span:nth-child(2){color:#4cc27c!important}
-:root[data-skin] body.tv #tvscene .sc-cats span:nth-child(3){color:#5aa9ff!important}
-:root[data-skin] body.tv #tvscene .sc-cats span:nth-child(4){color:#b39cf5!important}
 /* bandeau du bas façon « breaking news », sans clignoter : étiquette rouge EN DIRECT, texte qui défile sur bande blanche */
 :root[data-skin] body.tv #tvticker{background:#ffffff;color:#0a1420;border-top:0}
 :root[data-skin] body.tv #tvticker::before{content:'EN DIRECT';position:absolute;z-index:2;left:0;top:0;bottom:0;display:flex;align-items:center;padding:0 18px;

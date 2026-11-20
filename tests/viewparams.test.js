@@ -1,5 +1,5 @@
-// Adresse Kronn /standalone/pages/<id>?tv=1&scene=standup : Kronn transmet les paramètres dans KronnPageData.page.params ;
-// la page les applique une fois (mode TV, stand-up), sans toucher au réglage mémorisé.
+// Adresse Kronn /standalone/pages/<id>?tv=1&floor=1 : Kronn transmet les paramètres dans KronnPageData.page.params ;
+// la page les applique une fois (mode TV, étage, loupe, thème), sans toucher au réglage mémorisé.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,7 +9,7 @@ const {load} = require('./helpers/page.js');
 const page = load({config: {...require('./fixtures/bureau.config.json'), team: './tests/fixtures/pack-exemple', people: []}, owner: 'p_bob'});
 const run = page.run;
 const J = code => JSON.parse(run('JSON.stringify(' + code + ')'));
-const reset = () => run(`VIEW_PARAMS_DONE=false;if(TV)setTv(false,false);TVSCENE.manual=null;`);
+const reset = () => run(`VIEW_PARAMS_DONE=false;if(TV)setTv(false,false);`);
 
 test('tv=1 : la page passe en mode TV, une seule fois', () => {
   reset();
@@ -19,10 +19,11 @@ test('tv=1 : la page passe en mode TV, une seule fois', () => {
   assert.equal(J('TV'), false);
 });
 
-test('scene=standup : le stand-up démarre avec le mode TV ; tv=0 force le plan', () => {
+test('scene=standup (ancienne adresse) : le mode TV, sur le plan, sans scène ; tv=0 force le plan', () => {
   reset();
   run(`applyViewParams({page:{params:{tv:'1',scene:'standup'}}});`);
-  assert.deepEqual(J('[TV,TVSCENE.manual,TVSCENE.idx]'), [true, true, 0]);
+  assert.equal(J('TV'), true);
+  assert.equal(J("typeof TVSCENE"), 'undefined', 'plus de scènes du daily en mode TV');
   reset();
   run(`setTv(true,false);VIEW_PARAMS_DONE=false;applyViewParams({page:{params:{tv:'0'}}});`);
   assert.equal(J('TV'), false);

@@ -103,19 +103,6 @@ test('rôles : la QA recette l\'équipe, la PO écrit et trie, sans ticket assig
   assert.deepEqual([cy.head, cy.sub], ['À son bureau', "pas d'activité Jira cette semaine"]);
 });
 
-test('stand-up : le sprint, puis le Tech Lead en premier et la facilitatrice en dernier', () => {
-  run(`chars=[{key:'d',name:'Pam',person:'A',team:{tickets:[]}},{key:'s',name:'Kelly',person:'M',roleKind:'sm'},
-    {key:'l',name:'Holly',person:'R',roleKind:'lead',team:{tickets:[]}},{key:'q',name:'Karen',person:'C',roleKind:'qa'},
-    {key:'p',name:'Jan',person:'L',roleKind:'po'},{key:'y',name:'Clark',person:'Y',standup:'Apprend'},{key:'ag',name:'Dwight'}];`);
-  assert.deepEqual(J('standupScenes().map(s=>s.c?s.c.key:"sprint")'), ['sprint', 'l', 'd', 'q', 'p', 'y', 's']);
-  run(`TEAM={sprint:{},people:[{name:'A B',tickets:[{key:'DM-1',cat:'review',status:'To Review',summary:'x',created:'${new Date(Date.parse('2026-10-01T09:00:00Z')).toISOString()}'}]}],unassigned:[],work:{}};`);
-  const sm = run(`personScene(chars[1],${Date.parse('2026-10-01T12:00:00Z')})`);
-  assert.match(sm, /FAITES DES REVIEWS/);
-  assert.match(sm, /1 ticket en revue/);
-  assert.match(sm, /Nouveaux tickets depuis le dernier daily \(1\)/);
-  assert.match(sm, /To Review<\/span><b>DM-1<\/b>/);
-});
-
 test('rattachement : un rôle au nom complet dans le roster retrouve ses tickets, sans doublon', () => {
   run(`chars=[mkChar({key:'p_holly',name:'Holly',person:'Holly Flax',roleKind:'lead',seat:[19,15]})];byKey={p_holly:chars[0]};
     TEAM={people:[{id:'acc-r',name:'Holly Flax',gh:[],tickets:[{key:'DM-7',cat:'doing'}],prs:[],merged:[]}],unassigned:[]};attachTeam();`);
