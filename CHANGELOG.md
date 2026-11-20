@@ -36,6 +36,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- L'icône pixel de la main ✋ (ce qui t'attend : bulle du boss, étiquette de l'Œil, loupe) : une main avec un pouce et quatre doigts séparés, à la place de la moufle.
 - L'Œil : les pastilles de la fiche (changements demandés, fils, conflit, CI rouge, relecture demandée) passent en couleur vive de l'état avec le texte « sur couleur » du thème : lisibles sur le thème clair d'un pack comme en Classique ; la pastille sans état (nombre de fils) prend le gris des états, même règle.
 - L'Œil : l'étiquette sous l'œil passe en carte de deux lignes (la cible en gras, le motif dessous), fond sombre et liseré orange, deux fois moins large : lisible sur le thème d'un pack et sans couvrir le bureau du boss.
 - L'Œil suit les règles de la revue et de « Corriger » : brouillons, PR sans activité depuis 30 jours et relectures pas prêtes (conflit, CI rouge) hors de la ronde ; « changements demandés » seulement si la review est plus récente que ton dernier commit ; fils sans les comptes extérieurs ni les fils périmés ; relectures demandées à toi seulement (pas à tes équipes), sans bot ni label `skip-auto-review`. Sa fiche passe en sections, la carte regardée encadrée ; un clic sur une carte y pose l'œil 10 s. « ✓ Vu » (rien n'est gardé dans Kronn) et la notification du Mac de l'Œil sont retirés.
