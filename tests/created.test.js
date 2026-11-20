@@ -18,13 +18,6 @@ test('seuls les tickets de collègues comptent, avec leur auteur', () => {
   assert.ok(team.some(([k, c]) => k === 'DM-7910' && c === 'p_jan'));
 });
 
-test('stand-up : la facilitatrice présente les tickets créés depuis le dernier daily, numéro, titre et auteur', () => {
-  const html = J(`personScene(byKey.p_kelly,${at('09:42')})`);
-  assert.match(html, /Tickets créés par l'équipe depuis le dernier daily \(7\)/); // de mercredi 9h40 à jeudi 9h42
-  assert.match(html, /<b>DM-7908<\/b> \[Newsletter\] Désinscription en un clic <small>· Jan<\/small>/);
-  assert.doesNotMatch(html, /Qui sommes-nous/);
-});
-
 test('pile de documents : les tickets créés depuis le dernier daily passé, remise à zéro au daily', () => {
   const n = hm => J(`teamCreated(lastDaily(${at(hm)}),${at(hm)}).length`);
   assert.equal(n('09:00'), 6); // avant le daily : depuis celui de mercredi

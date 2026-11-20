@@ -36,7 +36,7 @@ Terms marked `<!-- TODO: ask user -->` need human confirmation.
 | Domain | MEP | Mise en production, suivie par les runs de déploiement GitHub (`github.repo`, `github.deploys`) ; fêtée sur le plateau TV [src: file: guide/developpement.md:24] [src: file: page/src/35-state.js:53] | |
 | Domain | Gel des MEP | Jours sans mise en prod (`rhythm.mep_freeze`, défaut vendredi au dimanche), plateau fermé [src: file: page/src/00-config.js:35] [src: file: page/src/30-data.js:135] | |
 | Domain | Rythme (`rhythm`) | Réglages horaires de l'équipe : fuseau, daily, heures de bureau, gel des MEP, planning, rétro [src: file: page/src/00-config.js:35] [src: file: guide/developpement.md:30] | |
-| Domain | Daily / stand-up | Point quotidien de l'équipe (`rhythm.daily`, défaut 09:40, 15 min), joué en salle de réunion et en mode TV [src: file: page/src/00-config.js:35] [src: file: page/src/76-tvscenes.js:1] | |
+| Domain | Daily / stand-up | Point quotidien de l'équipe (`rhythm.daily`, défaut 09:40, 15 min), joué en cafétéria sur le plan (plus de scène en mode TV depuis le 2026-11-20) [src: file: page/src/00-config.js:35] | |
 | Domain | Cérémonies | Sprint planning (vendredi 10h, animé par la facilitatrice) et rétrospective (jeudi 15h, une semaine sur deux, animateur tiré au sort) [src: file: guide/developpement.md:30] | |
 | Domain | Facilitatrice | Rôle de l'équipe qui anime le sprint planning et le stand-up [src: file: page/src/30-data.js:155] | |
 | Domain | Plateau (TV) | Zone `p` du plan où l'on monte pour une MEP ; porte fermée pendant le gel (`closable`) [src: file: guide/developpement.md:89] [src: file: guide/developpement.md:90] | |

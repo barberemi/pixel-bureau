@@ -5,14 +5,10 @@ Le Bureau sait qui est là : il lit le planning de l'équipe (le classeur Excel 
 ![Qui fait quoi, avec les absences](../img/qui-fait-quoi.png)
 
 - **Sur le plan**, une personne absente n'est pas à son bureau. Absente le matin, elle arrive vers 13h30 ; absente l'après-midi, elle part vers 12h30. Un jour férié, personne ne vient (sauf le boss).
-- **En télétravail**, elle reste à sa place, en transparence, avec le reste de sa journée : ses tickets, ses scènes, le daily et les cérémonies (en visio).
+- **En télétravail**, elle reste à sa place, en transparence, avec le reste de sa journée : ses tickets, le daily et les cérémonies (en visio).
 - **Le boss** reste toujours à son bureau sur le plan ; son absence ou son télétravail se lisent dans sa fiche (« 📅 Selon le planning : … »).
 - **Qui fait quoi** : pendant les heures de bureau (`rhythm.office_hours`), les absents ont une carte grisée en fin de grille (« Absence ce matin · arrive vers 13h30 ») ; le télétravail s'écrit devant l'état (« 🏠 télétravail · en cours »). La fiche dit la même chose.
 - **Daily et cérémonies** : un absent n'y va pas, n'est pas tiré au sort pour animer la rétro ; si la facilitatrice est absente, le boss anime le planning.
-- **Mode TV** : le tour de table du daily saute les absents, et la scène « Le sprint » les cite : « Absences aujourd'hui : Darryl (ce matin), Clark · 🏠 En télétravail : Holly ».
-
-![Daily : la scène du sprint](../img/standup.png)
-
 ## Le calendrier de l'équipe
 
 Un petit calendrier est accroché au mur du bureau du boss, à gauche de son fauteuil, à côté du tableau en liège de tes todos ([Mes todos](18-todos.md)). Un clic dessus ouvre la fenêtre « Calendrier de l'équipe » : cette semaine et la suivante côte à côte (l'une sous l'autre sur un écran étroit), du lundi au vendredi (le week-end, à partir du lundi qui vient). Un nom ferme la fenêtre et ouvre sa fiche dans le panneau.

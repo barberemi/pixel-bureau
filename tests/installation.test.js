@@ -48,8 +48,8 @@ test('l\'écran mural : l\'adresse autonome de Kronn, faite avec kronn.ui et l\'
   const J = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
   assert.equal(J(`wallUrl('4f38f114-e010')`), 'http://localhost:3140/standalone/pages/4f38f114-e010?tv=1&floor=alt',
     'plusieurs étages : ils alternent ; une barre oblique entre l\'interface et le chemin');
-  p.run(`WALL.floor = '3'; WALL.scene = 'standup'; WALL.loupe = '0';`);
-  assert.equal(J(`wallUrl('x')`), 'http://localhost:3140/standalone/pages/x?tv=1&floor=3&scene=standup&loupe=0');
+  p.run(`WALL.floor = '3'; WALL.loupe = '0';`);
+  assert.equal(J(`wallUrl('x')`), 'http://localhost:3140/standalone/pages/x?tv=1&floor=3&loupe=0');
   p.run(`WALL.floor = '0';`);
   assert.doesNotMatch(J(`wallUrl('x')`), /floor/, 'le RDC est l\'étage par défaut');
   assert.match(J('wallUrl(null)'), /\/standalone\/pages\/<id de la page>\?tv=1/, 'sans id (démo) : la place de l\'id');
@@ -61,4 +61,5 @@ test('l\'écran mural : l\'adresse autonome de Kronn, faite avec kronn.ui et l\'
   assert.match(h, /il faut Kronn 0\.15\.2 ou plus/);
   for (const f of ['Alterner', 'RDC', '-1', '1er', '2e', '3e']) assert.match(h, new RegExp(`data-wall="floor"[^>]*>${f}<`), f);
   assert.match(h, /data-wall="floor" data-v="3" aria-pressed="true"/, 'le choix reste au nouveau rendu');
+  assert.doesNotMatch(h, /data-wall="scene"|Démarrer/, 'plus de daily au démarrage : la TV reste sur le plan');
 });

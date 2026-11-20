@@ -36,6 +36,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- Mode TV : on n'y fait plus que changer d'étage. Un bouton par étage dans la barre du haut (l'étage affiché en couleur, la touche E passe toujours au suivant) ; plus de boutons ni de touches Daily, Planning, Rétro, ni de scènes plein écran à l'heure des cérémonies : la TV reste sur le plan. L'adresse de l'écran mural n'a plus le choix « Démarrer : Daily » (`scene=standup` est ignoré). Les cérémonies sur le plan ne changent pas.
 - L'icône pixel de la main ✋ (ce qui t'attend : bulle du boss, étiquette de l'Œil, loupe) : une main avec un pouce et quatre doigts séparés, à la place de la moufle.
 - L'Œil : les pastilles de la fiche (changements demandés, fils, conflit, CI rouge, relecture demandée) passent en couleur vive de l'état avec le texte « sur couleur » du thème : lisibles sur le thème clair d'un pack comme en Classique ; la pastille sans état (nombre de fils) prend le gris des états, même règle.
 - L'Œil : l'étiquette sous l'œil passe en carte de deux lignes (la cible en gras, le motif dessous), fond sombre et liseré orange, deux fois moins large : lisible sur le thème d'un pack et sans couvrir le bureau du boss.

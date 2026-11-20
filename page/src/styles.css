@@ -404,7 +404,7 @@ button.back kbd{font:var(--fs-meta) var(--font-mono);border:1px solid var(--line
 /* couleurs du mode TV (celles du thème Classique) ; un thème de page peut les redéfinir sur body.tv (son mode TV de nuit) */
 body.tv{--tv-bg:#111216;--tv-bar:#191b22;--tv-deep:#15161b;--tv-card:#1d1f26;--tv-chip:#242732;--tv-line:#2a2d36;--tv-line2:#3a3e4a;--tv-btnline:#353946;
   --tv-ink:#ece8df;--tv-muted:#a29c90;--tv-h2:#8d877b;--tv-hint:#7d786e;--tv-ok:#4cc27c;--tv-warn:#f0b03a;--tv-err:#f06a5f;--tv-mep:#a98cf0;
-  --tv-stand:#2e9e9b;--tv-stand-ink:#0d1b1b;--tv-retro:#c25a9e;--tv-retro-ink:#1b0d17;--tv-btn-bevel:#cfd5e0}
+  --tv-stand:#2e9e9b;--tv-stand-ink:#0d1b1b;--tv-btn-bevel:#cfd5e0}
 body.tv{--tvw:clamp(320px,25vw,480px)}
 body.tv{padding:0;overflow:hidden;background:var(--tv-bg)}
 body.tv header,body.tv .kpis,body.tv .side,body.tv .feed,body.tv .whoboard,body.tv footer,body.tv .bar,body.tv .legend{display:none!important}
@@ -681,78 +681,22 @@ body.tv .recap,body.tv .recapbtn{display:none!important}
 .lh-grid i.sq{outline:1px solid var(--sq-edge)}
 .lh-grid i.ring{background:transparent!important;border:2px solid;width:11px;height:11px}.lh-grid i.ring-dash{border-style:dashed}.lh-grid i.ring-dot{border-style:dotted}
 body.tv .legend-help{display:none!important}
-/* TV : bande de chiffres sous le plan, scènes du daily */
-#tvkpi,#tvscene{display:none}
+/* TV : bande de chiffres sous le plan */
+#tvkpi{display:none}
 body.tv #tvkpi{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:10px;flex:1 1 var(--tvk);min-height:0;padding:10px 12px;background:var(--tv-bg)}
 #tvkpi .tk{background:var(--tv-card);border-top:4px solid var(--tv-line2);padding:10px 14px;display:flex;flex-direction:column;justify-content:center;min-width:0;color:var(--tv-ink)}
 #tvkpi .tk b{font:800 clamp(32px,3.4vw,58px)/1 var(--font-mono)}
 #tvkpi .tk b i{font-style:normal;font-size:.5em;color:var(--tv-muted)}
-#tvkpi.no-sprint .tk.k-sprint{display:none}
 #tvkpi .tk span{font-size:clamp(14px,1.1vw,20px);font-weight:600;margin-top:4px}
 #tvkpi .tk small{font-size:clamp(12px,0.9vw,16px);color:var(--tv-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #tvkpi .tk.ok{border-top-color:var(--tv-ok)}#tvkpi .tk.warn{border-top-color:var(--tv-warn)}#tvkpi .tk.warn b{color:var(--tv-warn)}#tvkpi .tk.err{border-top-color:var(--tv-err)}#tvkpi .tk.err b{color:var(--tv-err)}#tvkpi .tk.mep{border-top-color:var(--tv-mep)}
-body.tv.tvscene .cv-wrap{display:none}
-body.tv.tvscene #tvscene{display:block;flex:1;overflow:hidden;background:var(--tv-deep);color:var(--tv-ink);padding:clamp(16px,2vw,36px);position:relative}
-#tvscene::after{content:"";position:absolute;left:0;bottom:0;height:4px;width:calc(var(--sc-left,1) * 100%);background:var(--tv-ok);transition:width 1s linear}
-#tvscene .sc-head{display:flex;align-items:center;gap:18px;margin-bottom:clamp(12px,1.6vw,26px)}
-#tvscene h2{margin:0;font-size:clamp(28px,2.6vw,46px)}
-#tvscene .sc-dots i{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--tv-line2);margin-right:6px}#tvscene .sc-dots i.on{background:var(--tv-ink)}
-#tvscene .sc-tag{margin-left:auto;background:var(--tv-stand);color:var(--tv-stand-ink);font-weight:800;padding:4px 14px;font-size:clamp(14px,1.1vw,20px)}
-#tvscene .sc-body{font-size:clamp(18px,1.5vw,28px)}
-#tvscene .sc-hero{display:flex;align-items:center;gap:clamp(18px,2vw,40px)}
-#tvscene .sc-hero>b{font:800 clamp(64px,7vw,130px)/1 var(--font-mono)}#tvscene .sc-hero>b i{font-style:normal;font-size:.45em;color:var(--tv-muted)}
-#tvscene .sc-hero>div{flex:1}
-#tvscene .sc-meter{position:relative;height:18px;background:var(--tv-line);overflow:hidden}#tvscene .sc-meter i{display:block;height:100%;background:var(--tv-ok)}
-#tvscene .sc-meter u{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--tv-ink)}
-#tvscene .sc-cats span{margin-right:22px}
-#tvscene p{margin:10px 0}
-#tvscene .sc-tab{border-collapse:collapse;margin-top:clamp(12px,1.5vw,24px);font-size:clamp(17px,1.35vw,26px)}
-#tvscene .sc-tab th{color:var(--tv-muted);font-weight:600;text-align:center;padding:4px 18px;font-size:.8em}
-#tvscene .sc-away{margin-top:clamp(10px,1.2vw,20px);font-size:clamp(16px,1.2vw,24px);color:var(--tv-muted)}#tvscene .sc-away b{color:var(--tv-ink)} /* absences du jour (36-absences.js) */
-#tvscene .sc-tab td{padding:4px 18px;text-align:center;border-top:1px solid var(--tv-line)}#tvscene .sc-tab td:first-child{text-align:left;font-weight:700}
-/* minmax(0,…) : un titre long ne pousse pas l'autre colonne hors de l'écran */
-#tvscene .sc-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(18px,2vw,40px)}
-#tvscene h3{margin:0 0 8px;font-size:clamp(18px,1.4vw,26px);color:var(--tv-warn)}
-#tvscene ul{list-style:none;margin:0;padding:0}
-#tvscene li{padding:7px 0;border-top:1px solid var(--tv-line)}#tvscene li small{display:block;color:var(--tv-muted);font-size:.75em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#tvscene .sc-dot{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:10px;vertical-align:middle}
-#tvscene .sc-ok{color:var(--tv-ok);font-size:clamp(24px,2.2vw,40px);font-weight:700}#tvscene .sc-empty{color:var(--tv-muted);font-size:clamp(22px,2vw,36px)}
-#tvscene .more{color:var(--tv-muted)}
-#tvbar #tvstand.on,#tvbar #tvplan.on{background:var(--tv-stand);color:var(--tv-stand-ink);border-color:var(--tv-stand)}#tvbar #tvretro.on{background:var(--tv-retro);color:var(--tv-retro-ink);border-color:var(--tv-retro)}
-#tvscene .sc-tag.sc-retro{background:var(--tv-retro);color:var(--tv-retro-ink)}
-#tvscene .sc-host{display:flex;align-items:center;gap:14px;font-size:clamp(20px,1.7vw,30px);margin:0 0 clamp(12px,1.4vw,22px)}
-#tvscene .sc-rq{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(12px,1.4vw,24px);margin-bottom:clamp(16px,1.8vw,30px)}
-#tvscene .rq{padding:clamp(14px,1.6vw,26px);font-size:clamp(20px,1.8vw,32px);font-weight:700;background:var(--tv-card);border-top:6px solid}
-#tvscene .rq b{display:block;font-size:1.8em;margin-bottom:6px}
-#tvscene .rq.ok{border-color:var(--tv-ok)}#tvscene .rq.ko{border-color:var(--tv-err)}#tvscene .rq.try{border-color:var(--tv-warn)}
-#tvscene .sc-order{list-style:none;display:flex;flex-wrap:wrap;gap:10px 18px;counter-reset:o}
-#tvscene .sc-order li{counter-increment:o;display:flex;align-items:center;gap:8px;border:0;padding:4px 12px 4px 4px;background:var(--tv-card)}
-#tvscene .sc-order li::before{content:counter(o);font-weight:800;color:var(--tv-muted);margin-left:8px}
-#tvscene .sc-order img{width:clamp(30px,2.4vw,44px);height:clamp(30px,2.4vw,44px);image-rendering:pixelated;background:var(--tv-line)}
-body.tv.tvscene #tvkpi{flex:0 0 auto;min-height:var(--tvk)} /* pendant une scène : les cartes gardent leur sous-titre entier */
+#tvbar .tvfl.on{background:var(--tv-stand);color:var(--tv-stand-ink);border-color:var(--tv-stand)} /* l'étage affiché */
 #tvkpi .tk{overflow:hidden}
 #tvticker .calm{padding:12px 18px;color:var(--tv-muted);font-size:16px}
 #tvbar .tvchips{display:flex;flex:1;min-width:0;overflow:hidden;gap:clamp(5px,0.8vw,14px);align-items:center}
 /* une pastille qui ne tient pas passe à la ligne suivante, hors de la barre : jamais de pastille coupée en deux */
 #tvbar .tvchips{flex-wrap:wrap;align-content:flex-start;height:52px;padding-top:11px;row-gap:40px}
 #tvbar button,#tvbar .tvhint{flex:none}
-#tvscene .sc-face{width:clamp(44px,3.6vw,64px);height:clamp(44px,3.6vw,64px);image-rendering:pixelated;background:var(--tv-line)}
-#tvscene .sc-note{font-size:clamp(26px,2.4vw,42px);font-weight:700;color:var(--tv-warn);margin:0 0 clamp(10px,1.2vw,20px)}
-#tvscene .sc-big{font-size:clamp(24px,2.2vw,38px);font-weight:700;margin:clamp(14px,1.6vw,26px) 0 6px}
-#tvscene .sc-shout{font:900 clamp(40px,4.4vw,80px)/1.05 var(--font-ui);color:var(--tv-err);letter-spacing:.04em;margin:8px 0 0}
-#tvscene .sc-tk li{display:flex;align-items:baseline;gap:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#tvscene .sc-tk li small{display:inline;color:var(--tv-muted)}
-#tvscene .st{flex:none;font-size:.62em;font-weight:700;padding:2px 9px;background:var(--tv-line2);color:var(--tv-ink);min-width:6.5em;text-align:center}
-#tvscene .st-doing{background:var(--ok);color:var(--on-accent)}#tvscene .st-reopen{background:var(--err-deep)}#tvscene .st-review{background:var(--info);color:var(--on-accent)}#tvscene .st-test{background:var(--mep)}#tvscene .st-done,#tvscene .st-deploy{background:var(--idle-deep)}
-/* stand-up : pas de colonne « Qui fait quoi », la scène prend toute la largeur ; le corps défile s'il déborde */
-body.tv.tvscene #tvwho{display:none!important}
-body.tv.tvscene .stage{right:0}
-body.tv.tvscene #tvscene{display:flex;flex-direction:column}
-#tvscene .sc-body{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none}
-#tvscene .sc-body::-webkit-scrollbar{display:none}
-#tvscene .sc-lines{list-style:none;margin:0;padding:0}
-#tvscene .sc-lines li{font-size:clamp(20px,1.7vw,30px);border-top:0;padding:4px 0}
-#tvscene .sc-lines li::before{content:"• ";color:var(--tv-warn)}
 /* téléphone : d'abord « Qui fait quoi », le plan en entier en miniature (toucher un personnage ouvre sa fiche), légende repliée dans « Comment lire le plan » */
 @media (max-width:620px){
   .main>div{display:flex;flex-direction:column}
