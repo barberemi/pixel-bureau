@@ -174,11 +174,14 @@ function oeCard(t,grey){
   if(t.kind==='gate')btn('✋ Décider',()=>select('gate:'+t.g.run));
   if(t.kind==='service')btn('Voir les services',()=>select('services'));
   if(t.kind==='mail')btn('Ouvrir le courrier',()=>select('mail:'+t.a.id));
-  if(p&&p.url){const a=document.createElement('a');a.href=p.url;a.target='_blank';a.rel='noopener';a.textContent=t.kind==='asked'?'👀 Relire sur GitHub':'↗ GitHub';acts.appendChild(a);na++;}
+  if(p&&p.url){const a=document.createElement('a');a.href=p.url;a.target='_blank';a.rel='noopener';a.textContent='↗ GitHub';acts.appendChild(a);na++;}
   if(na)row.appendChild(acts);
   // les boutons Kronn des PR : liés par « owner/dépôt#n » au dataset actions (actions_snapshot.py y ajoute les PR de l'Œil)
   if(!grey&&t.kind==='fix'&&ACTIONS.fix_pr)launchBlock(row,{action:'bureau-fixpr',bind:{id:p.id},verb:'corrige les retours de '+oePrName(p),
     sub:'Tu valides le diff et ses réponses, puis il pousse',label:'🛠 Corriger',title:'Corriger les retours de '+oePrName(p)});
+  // une PR à relire : la revue du Bureau à la demande (review_one), sans attendre le passage du cron
+  if(!grey&&t.kind==='asked'&&ACTIONS.review)launchBlock(row,{action:'bureau-review',bind:{id:p.id},verb:'relit '+oePrName(p),
+    sub:'Sa review part sur GitHub',label:'🔎 Faire relire',title:'Faire relire '+oePrName(p)});
   if(!grey&&(t.kind==='fix'||t.kind==='broken')&&p.conflict&&ACTIONS.rebase)launchBlock(row,{action:'bureau-rebase',bind:{id:p.id},verb:'remet '+oePrName(p)+' à jour',
     sub:'Conflit : l\'IA propose une résolution, tu la valides avant tout push.',label:'⟳ Remettre à jour',title:'Remettre à jour '+oePrName(p)});
   return row;

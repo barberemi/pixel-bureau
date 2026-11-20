@@ -40,7 +40,8 @@ Par sections : ✋ À décider, 🛠 À corriger, 👀 À relire, 📬 Ailleurs 
 - La carte que l'œil regarde porte le cadre « 👁 L'œil regarde » et le dernier mot du relecteur ; le cadre suit la ronde.
 - **Clic sur une carte** : l'œil s'y pose 10 secondes sur le plan, puis reprend sa ronde.
 - **🛠 Corriger** sur une de tes PR avec des retours : le workflow « corriger les commentaires d'une PR », qui la monte au [3e](31-retours-bilan.md). **⟳ Remettre à jour** sur une PR en conflit.
-- **✋ Décider** ouvre la validation, **Voir les services** et **Ouvrir le courrier** leurs fiches, **👀 Relire sur GitHub** ou **↗ GitHub** la PR.
+- **🔎 Faire relire** sur une PR qu'on te demande de relire : la revue du Bureau à la demande, tout de suite, sans attendre le passage du cron ; elle prend un bureau de la salle de revue au [2e](28-redaction.md) et sa review part sur GitHub. Grisé quand une revue de la PR tourne déjà ; si le Bureau l'a déjà relue à son dernier commit, la revue s'arrête sans rien poster. Pas sur les relectures « pas prêtes ».
+- **✋ Décider** ouvre la validation, **Voir les services** et **Ouvrir le courrier** leurs fiches, **↗ GitHub** la PR.
 
 ## Le Nazgûl, messager de l'Œil
 

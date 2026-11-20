@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
+- L'Œil : « 🔎 Faire relire » sur chaque PR qu'on te demande de relire lance la revue du Bureau à la demande, sans attendre le cron (grisé quand une revue de la PR tourne déjà). Le lien de ces cartes devient « ↗ GitHub », comme les autres.
 - Revue des PR : le cron ne relit pas les PR qui portent un label du réglage `review.labels_ignores` (défaut `skip-auto-review` ; le pack ajoute par exemple `to-test`, `to-deploy`). Une revue à la demande ou de la chaîne relit la PR quand même.
 - Le Nazgûl, messager de l'Œil : il part de la tour et pose un parchemin sur ton bureau, le rapport du matin 10 min avant le daily (ce qui est arrivé depuis la veille à 18 h), puis chaque nouveauté pour toi dans la journée (retour sur une de tes PR, relecture demandée) ; scène dans la galerie et ligne du fil.
 - Scènes pop au RDC (réglage d'équipe `scenes`, scènes dans la galerie, la loupe et le fil) : l'amiral Ackbar, invité commun, entre et crie « IT'S A TRAP! » devant le poste de l'auteur d'une grosse PR ouverte dans la journée (`scenes.grosse_pr` : 1000 lignes ou 30 fichiers ; le cron équipe relève la taille des PR) ; le verdict d'une revue du Bureau apparaît en hologramme sur le poste de l'auteur ; les lettres de Poudlard s'envolent de la boîte aux lettres quand les mails utiles d'un compte passent `scenes.lettres.mails` (10) ; l'hyperespace annonce une scène de la galerie et le rejeu de la journée (`scenes.hyperespace`).

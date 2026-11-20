@@ -60,17 +60,18 @@ test('clic sur une carte : l\'œil s\'y pose (OE_FOCUS_MS), puis reprend sa rond
   run(`OEIR = null`);
 });
 
-test('fiche : sections dans l\'ordre, une carte par cible, « 🛠 Corriger » et « ⟳ Remettre à jour » liés, pas prêtes sans bouton', () => {
+test('fiche : sections dans l\'ordre, une carte par cible, « 🛠 Corriger », « ⟳ Remettre à jour » et « 🔎 Faire relire » liés, pas prêtes sans bouton', () => {
   run(setup + `const el = t => ({tag: t, attrs: {}, kids: [], style: {}, dataset: {}, html: '', classList: {toggle() {}},
       set innerHTML(v) { this.html = v; }, get innerHTML() { return this.html; }, insertAdjacentHTML(p, h) { this.kids.push({html: h}); },
       setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; }, appendChild(x) { this.kids.push(x); }, append(...x) { this.kids.push(...x); },
       getContext() { return {drawImage() {}}; }});
     document.createElement = el; MutationObserver = function () { this.observe = () => {}; }; kronnModal = () => {};
-    ACTIONS.fix_pr = true; ACTIONS.rebase = true; OE_CUR = 'f:acme/site#2051';`);
+    ACTIONS.fix_pr = true; ACTIONS.rebase = true; ACTIONS.review = true; OE_CUR = 'f:acme/site#2051';`);
   const f = J(`(() => { const side = {kids: [], appendChild(x) { this.kids.push(x); }}; renderOeil(side); const box = side.kids[0];
     const flat = n => [n, ...(n.kids || []).flatMap(flat)];
     return {head: box.html, seq: box.kids.map(k => k.attrs && k.attrs['data-oek'] ? 'carte ' + k.attrs['data-oek'] + (k.className.includes('oe-grey') ? ' (grise)' : '') + (k.className.includes('oe-now') ? ' (regardée)' : '')
         : (k.html || '').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim()),
+      links: flat(box).filter(n => n.tag === 'a').map(n => n.textContent),
       acts: flat(box).filter(n => n.attrs && n.attrs['data-kronn-action']).map(n => n.attrs['data-kronn-action'] + ' ' + n.attrs['data-kronn-bindings'])}; })()`);
   assert.match(f.head, /4 choses t(&#39;|')attendent/);
   assert.deepEqual(f.seq.slice(0, 9), ['✋ À décider 1', 'carte g:r1', '🛠 À corriger 2', 'carte f:acme/site#2051 (regardée)', 'carte c:acme/api#31',
@@ -79,5 +80,7 @@ test('fiche : sections dans l\'ordre, une carte par cible, « 🛠 Corriger » e
   assert.equal(f.seq[10], '1 autre PR ouverte sans retour à traiter.');
   assert.ok(f.acts.some(a => a.startsWith('bureau-fixpr') && a.includes('acme/site#2051')), f.acts.join(' | '));
   assert.ok(f.acts.some(a => a.startsWith('bureau-rebase') && a.includes('acme/api#31')), f.acts.join(' | '));
+  assert.ok(f.acts.some(a => a.startsWith('bureau-review') && a.includes('other/web#16')), f.acts.join(' | '));  // à relire : la revue à la demande
   assert.ok(!f.acts.some(a => a.includes('other/web#17')), 'une relecture pas prête n\'a pas de bouton');
+  assert.ok(f.links.length && f.links.every(t => t === '↗ GitHub'), f.links.join(' | '));  // un seul libellé de lien, « À relire » compris
 });
