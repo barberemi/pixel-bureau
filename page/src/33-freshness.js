@@ -97,7 +97,7 @@ function diagTxt(){
     (p.errors?` · ${p.errors} erreur${p.errors>1?'s':''} (${esc(p.last_error||'')})`:'')+'</div>');
   return out.join('');
 }
-const hmin=m=>m<60?m+' min':Math.floor(m/60)+' h '+String(m%60).padStart(2,'0'); // minutes arrondies d'abord : jamais « 4 h 60 »
+const hmin=m=>m<60?m+' min':(m>=1440?Math.floor(m/1440)+' j ':'')+Math.floor(m%1440/60)+' h '+String(m%60).padStart(2,'0'); // minutes arrondies d'abord : jamais « 4 h 60 » ; au-delà d'un jour, « 4 j 7 h 53 » plutôt que « 103 h 53 »
 const agoTxt=d=>d<60e3?Math.max(0,Math.round(d/1e3))+' s':hmin(Math.round(d/60e3));
 let FRESH_LAST=null, FRESH_FLASH=0, FRESH_VIEW=null; // FRESH_VIEW : dernier état affiché (repris par le mode TV)
 function updateFresh(){
