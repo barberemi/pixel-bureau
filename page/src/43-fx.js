@@ -42,6 +42,7 @@ function fxEvents(t){
   for(const c of chars)if(!c.person&&!c.visitor&&!c.guest&&c.runs)
     for(const r of agentRecoveries(c))if(recent(r.at))out.push({id:'recover:'+r.run,kind:'recover',at:r.at,c});
   if(!REDUCED_MOTION)for(const u of ufoLandings())if(recent(u.at))out.push({id:'ufo:'+u.keys[0]+':'+u.at,kind:'ufo',...u});
+  out.push(...popFxEvents(recent)); // 43-pop.js : l'hologramme d'une revue postée, les lettres de Poudlard
   return out;
 }
 // à chaque image (avant le rendu) : nouvelles scènes, fin des anciennes
@@ -52,7 +53,7 @@ function fxFrame(now){
     if(FX.seen)for(const e of evs)if(!FX.seen.has(e.id)&&!FX.cur.has(e.id))FX.cur.set(e.id,{...e,t0:now});
     FX.seen=new Set(evs.map(e=>e.id));
   }
-  for(const [id,e] of FX.cur)if(now-e.t0>(e.kind==='ufo'?ufoPlan(e).ms:FX_MS+FX_HOLD))FX.cur.delete(id);
+  for(const [id,e] of FX.cur)if(now-e.t0>(e.kind==='ufo'?ufoPlan(e).ms:e.ms||FX_MS+FX_HOLD))FX.cur.delete(id);
 }
 const fxP=(e,now)=>Math.min(1,(now-e.t0)/FX_MS); // avancement de l'animation, 0 à 1
 const fxOf=kind=>[...FX.cur.values()].find(e=>e.kind===kind);
@@ -95,7 +96,7 @@ function fxDrawDuck(x,y,now){
       fxSparkles(x,y-12*s,16*s,8,1);fxBubble(x,top,'🐣 Caneton !','#9a6a00');}
   }
 }
-const fxDuckBusy=()=>[...FX.cur.values()].some(e=>e.kind!=='recover'&&e.kind!=='ufo');
+const fxDuckBusy=()=>[...FX.cur.values()].some(e=>e.kind!=='recover'&&e.kind!=='ufo'&&e.kind!=='holo'&&e.kind!=='letters');
 // l'œuf qui tremble avant d'éclore : à la place du dessin du canard
 function fxDuckWobble(now){const h=fxOf('hatch');return h&&fxP(h,now)<.7?Math.sin(now/45)*.15:0;}
 // un caneton naît juste derrière lui (début d'un sprint qui suit un sprint tenu) : un petit œuf qui tremble, puis il rejoint la file
@@ -104,8 +105,9 @@ function fxDrawKid(x,y,now){
   if(p<.7){ctx.save();ctx.translate(x,y);ctx.rotate(Math.sin(now/45)*.15);ctx.scale(DUCK_SCALE*.6,DUCK_SCALE*.6);ctx.drawImage(duckGameImg('front','oeuf'),-12,-22);ctx.restore();}
   else fxBubble(x,y-Math.round(16*DUCK_SCALE),'🐣','#9a6a00');
 }
-// au-dessus des personnages : l'agent rétabli et les applaudissements des agents au travail
+// au-dessus des personnages : l'agent rétabli et les applaudissements des agents au travail, puis les scènes de 43-pop.js
 function fxOverlay(now){
+  popOverlay(now);
   for(const e of FX.cur.values()){
     if(e.kind!=='recover'||!e.c||!e.c.pos)continue;
     fxBubble(e.c.pos.x,e.c.pos.y-62,'✅ Rétabli !','#2e7d4f'); // au-dessus de sa propre bulle (☕ en sortant)

@@ -170,6 +170,7 @@ function guestState(c,t){
   if(c.on==='mep')return mepVisitorState(c,t);
   if(c.on==='reopen')return heraldState(c,t); // 37-scenes.js : le héraut des tickets réouverts
   if(c.on==='prod')return prodHeraldState(c,t); // 37-scenes.js : le héraut des mises en prod réussies
+  if(c.on==='bigpr')return bigPrHeraldState(c,t); // 43-pop.js : l'amiral Ackbar d'une grosse PR
   if(c.on==='mail')return postmanState(c,t); // 48-mail.js : le facteur dépose le courrier
   if(c.on==='coffee')return coffeeState(c,t); // 49-coffee.js : la tournée de café
   if(c.on==='cleaning')return cleaningState(c,t); // 49-menage.js : le ménage du soir
@@ -463,6 +464,7 @@ const ST_PALETTE={
   boss:'#8a8478',
   frozen:'#7d8fa3',
   reopen:'#d97757',
+  bigpr:'#d97757', // l'amiral Ackbar d'une grosse PR (43-pop.js) : la couleur des hérauts qui alertent
   deliver:MEP_COLOR,
   thumbs:'ok',
   cheer:'ok',

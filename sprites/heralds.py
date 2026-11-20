@@ -1,6 +1,7 @@
 """Planches des invités communs (sprites/common/) : le mage (Gandalf) et le sage (Yoda), composés le 2026-10-05 à partir
-de calques du générateur LPC, et le facteur du courrier (#30, 2026-10-14). Leurs recettes servent aussi à les créditer
-(credits.py). Le LPC n'a pas de képi : celui du facteur est dessiné ici, case par case, sur sa tête (« KEPI »).
+de calques du générateur LPC, le facteur du courrier (#30, 2026-10-14) et l'amiral Ackbar des grosses PR (2026-11-20).
+Leurs recettes servent aussi à les créditer (credits.py). Le LPC n'a pas de képi : celui du facteur est dessiné ici, case
+par case, sur sa tête (« KEPI ») ; ni de tête de Mon Calamari : celle d'Ackbar aussi (« CALAMARI »).
 
     .venv/bin/python sprites/heralds.py    # refait sprites/common/<nom>/<nom>-walk.png et -idle.png (identiques au pixel)
 """
@@ -11,6 +12,8 @@ ANIMS = ("walk", "idle")
 GRAY, ROBE, WHITE, GREEN, BROWN = "#8d8f97", "#7c7f88", "#ecebe6", "#9fc46a", "#6b5038"
 NAVY, SKY, YELLOW = "#24357a", "#a9c8ec", "#f2c230"
 KEPI = "KEPI"  # pas un calque LPC : le képi dessiné par kepi()
+CALAMARI = "CALAMARI"  # pas un calque LPC : la tête de Mon Calamari dessinée par calamari()
+SALMON, UNIFORM = "#c8743a", "#e9e6dc"
 # animations par invité : la sacoche LPC n'a pas d'attente ; sans planche idle, la page prend la 1re image de la marche
 ANIMS_OF = {"facteur": ("walk",)}
 anims = lambda name: ANIMS_OF.get(name, ANIMS)  # noqa: E731
@@ -33,12 +36,15 @@ RECIPES = {
         ("neck/tie/necktie/male", YELLOW, "lum"), ("head/heads/human/male", PALE, "mul"), ("eyes/human/adult/default", None, None),
         ("hair/plain/adult", "#6b4a2e", "lum"), ("backpack/straps/male/{a}/leather.png", None, None),
         ("backpack/squarepack/male/{a}/leather.png", None, None), (KEPI, None, None)]),
+    "ackbar": ("L'amiral Ackbar (tête de Mon Calamari dessinée pour le Bureau)", [
+        ("body/bodies/male", SALMON, "mul"), ("feet/shoes/basic/male", "#1d1d22", "lum"), ("legs/pants/male", "#3a3e48", "lum"),
+        ("torso/clothes/longsleeve/longsleeve/male", UNIFORM, "lum"), ("head/heads/human/male", SALMON, "mul"), (CALAMARI, None, None)]),
 }
 
 
 def files(name):
     """Fichiers LPC de la recette, pour toutes ses animations (chemins du générateur)."""
-    return [p.format(a=a) if "{a}" in p else f"{p}/{a}.png" for p, _, _ in RECIPES[name][1] if p != KEPI for a in anims(name)]
+    return [p.format(a=a) if "{a}" in p else f"{p}/{a}.png" for p, _, _ in RECIPES[name][1] if p not in (KEPI, CALAMARI) for a in anims(name)]
 
 
 def kepi(sheet, head):
@@ -69,14 +75,45 @@ def kepi(sheet, head):
     return out
 
 
+def calamari(sheet, head):
+    """Tête de Mon Calamari sur chaque case de 64 px (rangées LPC : dos, gauche, face, droite) : crâne en dôme plus haut et
+    plus clair, gros yeux jaunes sur les côtés, barbillons sous la bouche. head : le calque de la tête, pour la placer."""
+    from PIL import ImageDraw
+    out, hp, F = sheet.copy(), head.load(), 64
+    dr = ImageDraw.Draw(out)
+    for row in range(sheet.size[1] // F):
+        for col in range(sheet.size[0] // F):
+            ox, oy = col * F, row * F
+            pts = [(x, y) for y in range(oy, oy + F) for x in range(ox, ox + F) if hp[x, y][3]]
+            if not pts:
+                continue
+            top, bot = min(y for _, y in pts), max(y for _, y in pts)
+            x0, x1 = min(x for x, _ in pts), max(x for x, _ in pts)
+            cx, d = (x0 + x1) // 2, row % 4
+            dr.ellipse((x0, top - 4, x1, top + 9), fill="#c8743a")  # le dôme, au-dessus du crâne
+            dr.ellipse((x0 + 2, top - 3, x1 - 3, top + 4), fill="#e0915a")  # reflet
+            if d == 0:  # de dos : le dôme seul
+                continue
+            ey = top + 7
+            eyes = [x0 - 1, x1 - 2] if d == 2 else [x0 - 1] if d == 1 else [x1 - 2]
+            for ex in eyes:
+                dr.ellipse((ex, ey - 2, ex + 3, ey + 3), fill="#ffd040")
+                dr.point((ex + (1 if d != 1 else 0), ey), fill="#1a1010")
+            mx = cx if d == 2 else cx - 3 if d == 1 else cx + 3
+            for k in (-2, 0, 2):  # barbillons
+                dr.line((mx + k, bot - 2, mx + k, bot + 1), fill="#a85a2a")
+    return out
+
+
 def compose(name, anim):
     import build_sprites as bs
     from PIL import Image
     base = None
     for p, color, mode in RECIPES[name][1]:
-        if p == KEPI:
+        if p in (KEPI, CALAMARI):
             hl = next(x for x in RECIPES[name][1] if x[0].startswith("head/heads"))
-            base = kepi(base, bs.recolor(bs.layer([hl[0]], anim), bs.SKIN[hl[1]] if hl[1] in bs.SKIN else hl[1], hl[2]))
+            draw = kepi if p == KEPI else calamari
+            base = draw(base, bs.recolor(bs.layer([hl[0]], anim), bs.SKIN[hl[1]] if hl[1] in bs.SKIN else hl[1], hl[2]))
             continue
         im = bs.fetch(p.format(a=anim)) if "{a}" in p else bs.layer([p], anim)
         if im is None:

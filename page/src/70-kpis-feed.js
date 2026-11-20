@@ -201,11 +201,16 @@ function feedLifeEvents(t){
       const down=up&&typeof caserneOn==='function'&&caserneOn()&&csCleanVisit(c,up.s); // 68-caserne.js : puis le -1, quand il existe
       if(up&&today(up.e))ev.push({t:up.e,c,imp:false,txt:down?`🧹 ${refWho(c)} a fini le 1er étage, il descend au -1`:`🧹 ${refWho(c)} a fini le ménage, tout est propre`});
       if(down&&today(down.e))ev.push({t:down.e,c,imp:false,txt:`🧹 ${refWho(c)} a fini le ménage, tout est propre`});}continue;}
+    if(c.on==='bigpr'){for(const p of bigPrs())if(today(p.t)) // 43-pop.js : l'amiral Ackbar d'une grosse PR
+      ev.push({t:p.t,c,imp:false,txt:`🦑 ${refWho(c)} prévient ${refWho(p.author)} : ${refPr(p.n,null,p.repo)} fait ${esc(popNum(p.lines))} lignes et ${esc(popNum(p.files))} fichiers <small>« ${esc(bigPrShout(c,p))} »</small>`});continue;}
     if(c.on)continue;
     const v=guestVisit(c,DAY0+12*36e5); if(!v||!today(v.s))continue;
     const p=/^Passe voir (.+?) ·/.exec((guestState(c,v.s+1e3)||{}).label||''), pc=p&&chars.find(x=>x.person&&x.name===p[1]);
     ev.push({t:v.s,c,imp:false,txt:`👋 ${refWho(c)} ${pc?'passe voir '+refWho(pc):'passe au bureau'} <small>jusqu'à ${hm(v.e)}</small>`});
   }
+  // 43-pop.js : le verdict d'une revue du Bureau en hologramme, la boîte aux lettres qui déborde (Tout)
+  for(const r of holoReviews())if(today(r.at))ev.push({t:r.at,c:r.c,imp:false,txt:`📡 Le verdict de la revue apparaît chez ${refWho(r.c)} : ${esc(POP_VERDICT[r.v][1])}${r.n?' · '+refPr(r.n,null,r.repo):''}`});
+  for(const l of letterFloods(DAY0+12*36e5))if(today(l.at))ev.push({t:l.at,imp:false,txt:`✉ La boîte ${esc(l.a.label||l.a.id)} déborde : ${esc(plural(l.n,'mail utile','mails utiles'))}, les lettres s'envolent`});
   // canard d'équipe : succès débloqué et caneton né (Important), changement de stade et mue (Tout)
   if(DUCKGAME){
     const T_=DUCKGAME.trophies||{};

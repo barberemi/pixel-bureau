@@ -1078,3 +1078,11 @@ body.tv .mtbar{display:none}
 .oe-acts{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .oe-acts a{font-size:var(--fs-meta)}
 .oe-idle summary{cursor:pointer;display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:var(--fs-meta);color:var(--muted);margin-top:12px}
+/* L'hyperespace (43-pop.js) : par-dessus le plan, avant une scène de la galerie ou le rejeu ; le titre au centre */
+.hyper{position:absolute;z-index:30;cursor:pointer;overflow:hidden}
+.hyper canvas{position:absolute;inset:0;width:100%;height:100%}
+.hyper-t{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 26px;background:var(--bg);border:2px solid var(--line);text-align:center;max-width:90%}
+.hyper-t small{font-family:var(--font-mono);font-size:var(--fs-meta);color:var(--info);letter-spacing:.08em;text-transform:uppercase}
+.hyper-t b{font-size:calc(var(--fs-panel) * 1.6);color:var(--warn)}
+.hyper-t span{font-family:var(--font-mono);font-size:var(--fs-sec);color:var(--ink)}
+.hyper-t i{font-size:var(--fs-meta);color:var(--muted);font-style:normal}

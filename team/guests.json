@@ -1,5 +1,5 @@
 {
- "_doc": "Invités communs à toutes les installations (avant ceux du profil d'équipe et de la config ; même clé = remplacé). Les hérauts : Gandalf au face-à-face d'un ticket réouvert, Yoda à côté de l'auteur d'une mise en prod réussie ; le facteur, qui dépose le courrier (#30, seulement avec un compte de courrier) ; l'agent d'entretien, qui fait le ménage du soir une heure après les heures de bureau. Config : common_guests false pour les retirer.",
+ "_doc": "Invités communs à toutes les installations (avant ceux du profil d'équipe et de la config ; même clé = remplacé). Les hérauts : Gandalf au face-à-face d'un ticket réouvert, Yoda à côté de l'auteur d'une mise en prod réussie ; le facteur, qui dépose le courrier (#30, seulement avec un compte de courrier) ; l'agent d'entretien, qui fait le ménage du soir une heure après les heures de bureau ; l'amiral Ackbar, qui vient crier devant une grosse PR ouverte dans la journée (seuils : scenes.grosse_pr, {pr}, {lignes}, {fichiers}, {name} dans shout). Config : common_guests false pour les retirer.",
  "guests": [
   {
    "key": "g_gandalf",
@@ -23,6 +23,14 @@
    "sprite": "facteur",
    "role": "Facteur",
    "on": "mail"
+  },
+  {
+   "key": "g_ackbar",
+   "name": "L'amiral Ackbar",
+   "sprite": "ackbar",
+   "role": "Garde-fou des grosses PR",
+   "on": "bigpr",
+   "shout": "IT'S A TRAP! {pr} : {lignes} lignes, {fichiers} fichiers"
   },
   {
    "key": "g_menage",

@@ -8,7 +8,8 @@ function loop(now){
   if(DATA){
     REND=liveT();
     if(mode==='live')T=REND;
-    else if(mode==='play'){T+=dt*1000*SPEED;if(T>=REND&&!SCENE_DEMO){T=REND;setMode('live');}} // une démonstration peut dépasser la dernière donnée
+    else if(mode==='play'&&!HYPER){T+=dt*1000*SPEED; // HYPER : l'hyperespace (43-pop.js) fige l'heure le temps de sa transition
+     if(T>=REND&&!SCENE_DEMO){T=REND;setMode('live');}} // une démonstration peut dépasser la dernière donnée
     if(now-lastTick>250||needTeleport){tick(now);lastTick=now;}
     if(!FLOOR)for(const c of chars)step(c,dt); // seul l'étage affiché vit : au 1er, le RDC ne marche pas (setFloor(0) replace chacun)
     tvAutoScroll(now,dt);tvFloorTick(now); // 75-tv.js : alternance des étages de l'écran mural

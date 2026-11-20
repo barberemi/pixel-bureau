@@ -330,7 +330,8 @@ print(json.dumps(val))
         self.assertIsNone(out["DM-102"], "30 min de retard (cron arrêté) : la scène est passée")
         self.assertIsNone(out["DM-103"], "moins d'une minute : à l'heure")
         cache = json.loads(Path(self.tmp, ".cache", "pixel-bureau", "team_seen.json").read_text())
-        self.assertEqual(len(cache), 4, "seulement les événements du jour")
+        self.assertEqual(len([k for k in cache if k.startswith("move|")]), 4, "seulement les événements du jour")
+        self.assertTrue(any(k.startswith("pr|") for k in cache), "les PR ouvertes aussi (l'amiral Ackbar d'une grosse PR)")
         Path(self.tmp, ".cache", "pixel-bureau", "team_seen.json").write_text("{pas du json")
         self.assertEqual(seen(self.run_script("team_shape.py", data([4]))), {"DM-100": None}, "cache illisible : comme un premier passage")
 
@@ -665,6 +666,18 @@ print(json.dumps(val))
         n = {r: sum(p["repo"] == r for p in out["open"]) for r in repos[:12]}
         self.assertGreater(n["acme/r0"], 50)  # les autres dépôts sont raccourcis d'abord : le principal garde l'essentiel
         self.assertTrue(all(2 <= v < n["acme/r0"] for r, v in n.items() if r != "acme/r0"), n)
+
+    def test_team_shape_pr_event_carries_its_size(self):
+        """Grosses PR (l'amiral Ackbar, 43-pop.js) : l'événement « PR ouverte » porte sa taille (lignes ajoutées et retirées,
+        fichiers) quand GitHub la donne, rien sinon ; github_snapshot la demande (additions, deletions, changedFiles)."""
+        gh = {"open": [dict(self.gh_pr(16, "DM-100 menu", "dmartin", "Darryl Martin"), repo="acme/web", additions=1800, deletions=340, changedFiles=48),
+                       dict(self.gh_pr(17, "DM-101 x", "dmartin", "Darryl Martin"), repo="acme/web")],
+              "merged": [], "releases": [], "staging": [], "prod": [], "errors": [], "warnings": []}
+        out = self.run_script("team_shape.py", self.team_input(github=gh), github={"repo": "acme/web"})
+        prs = {e["n"]: e for e in out["events"] if e["kind"] == "pr"}
+        self.assertEqual((prs[16]["lines"], prs[16]["files"]), (2140, 48))
+        self.assertNotIn("lines", prs[17])
+        self.assertIn("additions,deletions,changedFiles", Path(ROOT, "workflows", "github_snapshot.py").read_text())
 
     def test_team_shape_prs_of_another_repo_reach_people_tickets_and_feed(self):
         gh = {"open": [dict(self.gh_pr(16, "DM-100 menu", "dmartin", "Darryl Martin"), repo="acme/web"),

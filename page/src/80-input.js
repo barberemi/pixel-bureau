@@ -116,6 +116,11 @@ function setMode(m){
   updateBadge();
 }
 liveBtn.onclick=()=>{setMode('live');needTeleport=true;};
-playBtn.onclick=()=>{if(mode==='play'){setMode('pause');return;}if(mode==='live'||T>=REND-1000){T=RSTART;needTeleport=true;}setMode('play');};
+// ▶ Rejouer depuis le début de la journée : l'hyperespace d'abord (43-pop.js), avec le jour et la plage ; reprendre en cours de route, non
+playBtn.onclick=()=>{if(mode==='play'){setMode('pause');return;}
+  const fromStart=mode==='live'||T>=REND-1000;
+  if(fromStart){T=RSTART;needTeleport=true;}
+  setMode('play');
+  if(fromStart)hyperGo('⏪ Rejouer la journée',dtf('fr-FR',{weekday:'long',day:'numeric',month:'long'}).format(new Date(RSTART)),hm(RSTART)+' → '+hm(REND)+' · ×'+SPEED);};
 slider.addEventListener('input',()=>{setMode('pause');T=RSTART+(REND-RSTART)*slider.value/1000;needTeleport=true;timeUi();});
 

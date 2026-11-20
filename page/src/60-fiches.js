@@ -320,6 +320,7 @@ function shortSt(st){
     idle:'dispo',
     boss:'au bureau',
     reopen:'signale un reopen',
+    bigpr:'prévient d\'une grosse PR',
     passion:'pause',
     proud:'félicite',
     deliver:'livre un ticket',
