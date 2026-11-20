@@ -24,7 +24,7 @@ OFFICE = [("dwight", "Dwight"), ("jim", "Jim"), ("stanley", "Stanley"), ("phylli
           ("erin", "Erin"), ("ryan", "Ryan")]
 ROLES = {"dev": ("Développement", None), "lead": ("Tech Lead", "lead"), "qa": ("Test", "qa"), "po": ("Product owner", "po"),
          "sm": ("Facilitation", "sm")}  # libellés neutres : le rôle, pas la personne
-DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "agents", "bosspages", "pagelist", "gitfut", "layout", "actions", "duck", "absences", "mails", "mail_rules", "support", "todos", "atelier", "retours", "redaction", "statuts", "sprintquest"]
+DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "agents", "bosspages", "pagelist", "gitfut", "layout", "actions", "duck", "absences", "mails", "mail_rules", "support", "todos", "atelier", "retours", "redaction", "statuts", "sprintquest", "oeil"]
 CRONS = ("office", "live", "team", "payroll", "canard", "absences", "courrier", "support_poll", "chaine_bilan", "support_bilan", "redaction_bilan", "retours_bilan", "revue_bilan")
 # les lignes de la revue de PR : ajoutées une par revue (reviews, review_meta), ou mises à jour par session (review_sessions)
 DATASET_KINDS = {"reviews": "time_series", "review_meta": "time_series", "review_sessions": "collection"}

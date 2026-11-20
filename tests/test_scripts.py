@@ -1729,6 +1729,70 @@ print(json.dumps(val))
         os.chmod(path, 0o755)
         return lambda: [json.loads(x) for x in Path(log).read_text().splitlines()] if os.path.exists(log) else []
 
+    # ---------- l'Œil (oeil_snapshot.py, cron office) ----------
+    def oeil_gql(self, thread_by="jimh", at=10):
+        """Réponse GraphQL de l'Œil : une de tes PR (fils, changements demandés, CI rouge, conflit) et une relecture demandée."""
+        c = lambda who, m, typ="User", body="Le cache doit varier\nselon la langue": {"nodes": [{"author": {"login": who, "__typename": typ}, "createdAt": iso(m), "body": body}]}  # noqa: E731
+        mine = {"number": 2051, "title": "Fil d'Ariane", "url": "https://x/2051", "isDraft": False, "updatedAt": iso(5),
+                "repository": {"nameWithOwner": "acme/site"}, "reviewDecision": "CHANGES_REQUESTED", "mergeable": "CONFLICTING",
+                "reviewThreads": {"nodes": [{"isResolved": False, "comments": c(thread_by, at)},
+                                            {"isResolved": False, "comments": c("michaelscott", 3)},  # ton dernier mot : rien de neuf
+                                            {"isResolved": True, "comments": c("jimh", 2)},
+                                            {"isResolved": False, "comments": c("copilot", 1, "Bot")}]},
+                "reviews": {"nodes": [{"author": {"login": "pambeesly"}, "submittedAt": iso(60), "body": "Deux points"}]},
+                "commits": {"nodes": [{"commit": {"statusCheckRollup": {"state": "FAILURE"}}}]}}
+        asked = {"number": 16, "title": "Menu", "url": "https://x/16", "isDraft": False, "updatedAt": iso(9), "createdAt": iso(90),
+                 "repository": {"nameWithOwner": "other/api"}, "author": {"login": "dwight"}}
+        return json.dumps({"data": {"viewer": {"login": "michaelscott"}, "mine": {"nodes": [mine, {}]}, "asked": {"nodes": [asked]}}})
+
+    def test_oeil_reads_your_prs_and_the_reviews_asked_of_you(self):
+        """L'Œil : tes PR de tout dépôt avec ce qui t'attend (fils d'un relecteur, ni toi ni un bot, ni résolus ;
+        changements demandés ; CI ; conflit ; le dernier retour) et les PR dont on te demande la relecture."""
+        self.fake_gh({"api": {"graphql": self.oeil_gql()}})
+        out = self.run_script("oeil_snapshot.py")
+        self.assertEqual(out["me"], "michaelscott")
+        (p,) = out["mine"]
+        self.assertEqual((p["id"], p["review"], p["threads"], p["ci"], p["conflict"]), ("acme/site#2051", "changes", 1, "ko", True))
+        self.assertEqual(p["last"], {"who": "jimh", "at": iso(10), "text": "Le cache doit varier", "k": "fil"})  # plus récent que la review
+        self.assertEqual(out["asked"], [{"id": "other/api#16", "repo": "other/api", "n": 16, "title": "Menu", "url": "https://x/16",
+                                         "author": "dwight", "since": iso(90)}])
+        self.assertEqual(out["warnings"], [])
+        self.assertEqual(self.gh_calls(), 1)  # une seule requête par relevé
+
+    def test_oeil_without_gh_publishes_empty_lists(self):
+        """Sans gh : listes vides et un avertissement (#8), le run ne tombe pas."""
+        out = self.run_script("oeil_snapshot.py")
+        self.assertEqual((out["mine"], out["asked"]), ([], []))
+        self.assertTrue(out["warnings"])
+
+    def test_oeil_notifies_the_mac_once_per_new_feedback(self):
+        """notify_mac : rien au premier relevé (tout est retenu), puis une notification par retour nouveau, une seule fois."""
+        calls = self.fake_osascript()
+        self.fake_gh({"api": {"graphql": self.oeil_gql()}})
+        self.run_script("oeil_snapshot.py", notify_mac=True)
+        self.assertEqual(calls(), [])  # premier relevé
+        self.run_script("oeil_snapshot.py", notify_mac=True)
+        self.assertEqual(calls(), [])  # rien de neuf
+        self.fake_gh({"api": {"graphql": self.oeil_gql(thread_by="angela", at=1)}})  # un relecteur répond dans un fil
+        self.run_script("oeil_snapshot.py", notify_mac=True)
+        self.assertEqual(len(calls()), 1)
+        text, title, sub = calls()[0][-3:]
+        self.assertEqual((title, sub, text), ("Le Bureau · 👁 1 fil · angela", "acme/site#2051", "Le cache doit varier"))
+        self.assertNotIn("cache", " ".join(calls()[0][:-3]))  # le texte n'entre jamais dans le script AppleScript
+        self.run_script("oeil_snapshot.py", notify_mac=True)
+        self.assertEqual(len(calls()), 1)
+
+    def test_actions_prs_add_the_prs_the_eye_sees(self):
+        """actions.prs : les PR de l'Œil (les tiennes, les relectures demandées) hors des dépôts suivis s'ajoutent, une
+        seule fois chacune, pour que Corriger et Remettre à jour les trouvent."""
+        fake = FakeKronn()
+        team = {"people": [{"name": "Pam", "prs": [{"n": 16, "repo": "acme/web"}]}]}
+        oeil = {"mine": [{"id": "Acme/Web#16", "repo": "Acme/Web", "n": 16}, {"id": "other/api#4", "repo": "other/api", "n": 4}],
+                "asked": [{"id": "other/api#4", "repo": "other/api", "n": 4}, {"id": "x/y#9", "repo": "x/y", "n": 9}]}
+        fake.datasets = [{"name": "team", "current": json.dumps(team)}, {"name": "oeil", "current": oeil}]
+        out = self.run_script("actions_snapshot.py", api=self.kronn(fake), github={"repo": "acme/web"})
+        self.assertEqual([x["id"] for x in out["prs"]], ["acme/web#16", "other/api#4", "x/y#9"])
+
     def test_gates_notify_the_mac_once_per_wait(self):
         """notify_mac : une notification par validation qui t'attend, une seule fois ; textes en arguments d'osascript."""
         calls = self.fake_osascript()
@@ -1834,6 +1898,8 @@ print(json.dumps(val))
                                       wiki_posters=[], wiki_base="http://127.0.0.1:9"),
             "statuts": self.run_script("statuts_snapshot.py", statuts=[]),  # sans réseau : la forme, pas les pages de statut
         }
+        self.fake_gh({"api": {"graphql": self.oeil_gql()}})
+        out["oeil"] = self.run_script("oeil_snapshot.py")
         fake, _, _ = self.boss_pages()
         out["bosspages"] = self.run_script("pages_snapshot.py", api=self.fresh_kronn(fake), boss_pages=["pa"], chrome=False)
         fake = FakeKronn()
@@ -1864,7 +1930,7 @@ print(json.dumps(val))
         objet, et la page démarre sur ces seules données (sans démo). Un champ renommé d'un côté seulement casse ici."""
         outputs = self.cron_outputs()
         self.assertEqual(sorted(outputs), sorted(["office", "live", "gates", "payroll", "team", "duck", "gitfut", "bosspages",
-                                                  "actions", "absences", "avatars", "agents", "layout", "statuts"]))  # tous les datasets de la page
+                                                  "actions", "absences", "avatars", "agents", "layout", "statuts", "oeil"]))  # tous les datasets de la page
         path = os.path.join(self.tmp, "outputs.json")
         with open(path, "w") as fh:
             json.dump(outputs, fh)

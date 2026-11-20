@@ -151,6 +151,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   BOSS_PAGES=readBossPages(k)||[];PAGELIST=readPageList(k);PAGE_TV=readPageTv(k); // 47-bosspages.js (#61), 47-projo.js
   TODOS=readTodos(k); // 47-todos.js
   STATUTS=readStatuts(k); // 48-statuts.js (démo : après refreshAll, qui fixe le jour affiché)
+  OEIL=readOeil(k); // 69-oeil.js : tes PR et les relectures demandées (cron office ; démo : après refreshAll)
   SPRINTQUEST=readSprintQuest(k); // 68-combles.js : les données de la partie Sprint Quest, préparées depuis la borne
   GITFUT=readGitfut(k)||{};
   ACTS=readActs(k);
@@ -163,6 +164,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   LIVE=readLive(k);
   if(!applyAgents(readAgents(k)||{}))refreshAll(); // 31-agents.js : agents ajoutés depuis la page (#64)
   if(!STATUTS&&DEMO)STATUTS=svDemo();
+  if(!OEIL&&DEMO)OEIL=oeilDemo();
   if(!ABSENCES&&DEMO)ABSENCES=absencesDemo();
   if(!MAILS&&DEMO)MAILS=mailDemo();
   if(!TODOS&&DEMO)TODOS=todosDemo(); // 47-todos.js
@@ -203,6 +205,8 @@ window.addEventListener('kronn:page-data',e=>{
   if(bp||pl)bpRefresh(); // 47-bosspages.js : la fenêtre ouverte suit (#61)
   const sv=readStatuts(k)||readStatuts(window.KronnPageData);
   if(sv)STATUTS=sv; // 48-statuts.js
+  const oe=readOeil(k)||readOeil(window.KronnPageData);
+  if(oe)OEIL=oe; // 69-oeil.js
   const td=readTodos(k)||readTodos(window.KronnPageData);
   if(td)todosArrived(td);else if(dk)tdRefresh(); // 47-todos.js : le tableau et la fenêtre suivent (canard compris)
   const gf=readGitfut(k)||readGitfut(window.KronnPageData);

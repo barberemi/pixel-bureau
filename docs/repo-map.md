@@ -26,7 +26,7 @@ pixel-bureau/
 │   ├── _lecteurs.py           # « Ce qu'il fait » : lecteurs des journaux d'agents, recopié dans les seuls relevés qui l'importent
 │   ├── _vars.py               # variables de lancement d'un run reconstituées (Kronn ne les rend plus), recopié dans office et live
 │   ├── _lib.py, _plan.py      # socle commun et règles des plans, recopiés dans chaque script au rendu
-│   ├── *_snapshot.py          # producteurs des datasets (office, live, gates, payroll, duck, absences, pages, github, gitfut, actions, statuts)
+│   ├── *_snapshot.py          # producteurs des datasets (office, live, gates, payroll, duck, absences, pages, github, gitfut, actions, statuts, oeil)
 │   ├── *.py                   # autres étapes (team_shape, planning_jql, duck_start, todos, gate_decide, question_answer, relaunch, layout_save, agent_save…)
 │   └── templates/*.json       # modèles des workflows et Quick Prompts (team, live, office, canard, absences, duck, gate…)
 ├── arcade/sprint-quest/       # source de l'artefact claude.ai Sprint Quest (borne des Combles) et ses capacités ; republié par la skill .claude/skills/sprint-quest

@@ -134,12 +134,12 @@ addEventListener('keydown',e=>{
   goBack();
 },true);
 function drawSide(side){
-  if(sel==='tv'||sel==='services'||sel==='emp'||sel==='planning'||sel==='paie'||sel==='duck'||sel==='support'||String(sel).startsWith('gate:')||String(sel).startsWith('mail:')){
+  if(sel==='tv'||sel==='services'||sel==='emp'||sel==='planning'||sel==='paie'||sel==='duck'||sel==='oeil'||sel==='support'||String(sel).startsWith('gate:')||String(sel).startsWith('mail:')){
     backButton(side);
     if(String(sel).startsWith('gate:')){renderLoneGate(side,sel.slice(5));return;}
     if(String(sel).startsWith('mail:')){renderMail(side,sel.slice(5));return;} // 48-mail.js
     if(sel==='support'){renderSupport(side);return;} // 48-support.js
-    ({tv:renderTv,services:renderServices,emp:renderEmp,planning:renderPlanning,paie:renderPaie,duck:renderDuck})[sel](side);
+    ({tv:renderTv,services:renderServices,emp:renderEmp,planning:renderPlanning,paie:renderPaie,duck:renderDuck,oeil:renderOeil})[sel](side); // oeil : 69-oeil.js
     return;
   }
   if(!sel||!byKey[sel]){

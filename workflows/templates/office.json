@@ -14,7 +14,7 @@
     "step_type": {
      "type": "CollectApiData"
     },
-    "description": "1/3 · Déterministe (0 token) : lit l'API locale Kronn (workflows, runs du jour, discussions) et sort l'instantané office en JSON.",
+    "description": "1/4 · Déterministe (0 token) : lit l'API locale Kronn (workflows, runs du jour, discussions) et sort l'instantané office en JSON.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -49,7 +49,7 @@
     "step_type": {
      "type": "CollectApiData"
     },
-    "description": "2/3 · Déterministe (0 token) : lit les pages de statut publiques des services extérieurs (GitHub, Claude, Jira, Confluence par défaut, réglage statuts) et sort leur état et leurs incidents datés.",
+    "description": "2/4 · Déterministe (0 token) : lit les pages de statut publiques des services extérieurs (GitHub, Claude, Jira, Confluence par défaut, réglage statuts) et sort leur état et leurs incidents datés.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -80,11 +80,46 @@
     }
    },
    {
+    "name": "oeil",
+    "step_type": {
+     "type": "CollectApiData"
+    },
+    "description": "3/4 · Déterministe (0 token) : l'Œil du RDC, tes PR ouvertes de tous tes dépôts (fils d'un relecteur, changements demandés, CI, conflit) et celles dont on te demande la relecture, par une requête GraphQL de gh ; notification du Mac des retours nouveaux avec notify_mac.",
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "collect_api_data": {
+     "sources": [
+      {
+       "alias": "snap",
+       "quick_api_id": "",
+       "quick_exec_id": "",
+       "quick_exec": {
+        "command": "python3",
+        "args": [
+         "-c",
+         "@@script:workflows/oeil_snapshot.py@@"
+        ],
+        "timeout_secs": 90,
+        "output_format": "json"
+       },
+       "required": true
+      }
+     ],
+     "concurrent_limit": 1
+    }
+   },
+   {
     "name": "publish",
     "step_type": {
      "type": "PublishPageData"
     },
-    "description": "3/3 · Remplace les datasets office et statuts de la page Le Bureau.",
+    "description": "4/4 · Remplace les datasets office, statuts et oeil de la page Le Bureau.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -105,6 +140,11 @@
        "dataset": "statuts",
        "operation": "replace",
        "value_from": "steps.statuts.data.sources.snap"
+      },
+      {
+       "dataset": "oeil",
+       "operation": "replace",
+       "value_from": "steps.oeil.data.sources.snap"
       }
      ]
     }
