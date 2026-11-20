@@ -11,6 +11,10 @@ metadata:
       status: Deferred
       reviewer: Kronn audit validation card
       note: "Deferred through an audit validation card."
+    - date: 2026-11-20
+      status: Resolved
+      reviewer: fix/panneau-stable
+      note: "Construit à part, posé seulement si sa signature change (#20)."
 ---
 
 # TD-20261011-side-panel-rebuilt-every-second
@@ -18,7 +22,7 @@ metadata:
 - **Category**: performance
 - **Area**: Frontend
 - **Severity**: Low
-- **Status**: Deferred
+- **Status**: Resolved
 - **Effort**: M (1-4h)
 - **Blast radius**: local (1-2 files)
 
@@ -39,3 +43,6 @@ Construire le HTML (ou une clé d'état : sélection, filtre, repli, états affi
 
 ## Next step
 `create ticket`
+
+## Resolution (2026-11-20)
+`renderSide` construit le panneau dans un élément à part, calcule sa signature (`sideSig` : HTML + image des toiles) et ne remplace le vrai panneau que si elle change [src: file: page/src/50-panel.js:58]. Quand il change, la position de ce qui défile (le panneau, une boîte comme le détail d'un ticket `.rd-det`, retrouvée par sa classe et son texte), la saisie et le focus survivent (`keepScroll`, `restoreScroll`). Symptôme corrigé : le détail d'un ticket au 2e repartait en haut chaque seconde. Reste : la construction et ses toiles de portrait ont toujours lieu chaque seconde (jetées si rien n'a changé, sans mise en page) ; pas de cache des portraits.

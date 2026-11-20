@@ -27,7 +27,7 @@ Périmètre : la page (`page/office_template.html` + `page/src/*.js` + `page/src
 **B. Clavier et focus**
 - `tabindex` positif : aucun (seul `tabindex="0"`, `page/src/72-whoboard.js:76`, `page/src/50-panel.js:117`).
 - Focus visible global : `:focus-visible{outline:2px solid var(--accent)}` (`page/src/styles.css:58`). Le seul `outline:none` (`page/src/styles.css:194`) est compensé par un `box-shadow` sur `.bp-card:focus-visible`.
-- Panneau redessiné chaque seconde : le focus est restauré via `data-fid` (`page/src/50-panel.js:38`).
+- Panneau construit chaque seconde mais remplacé seulement s'il change (#20) : quand il l'est, le focus est restauré via `data-fid`, la saisie et ce qui défile aussi (`page/src/50-panel.js:54`).
 - Flèches haut/bas dans la liste des personnes (`page/src/50-panel.js:139-143`) ; Échap ferme loupe et fenêtres (`page/src/44-loupe.js:133`, `dialogKey` de `page/src/47-fenetre.js`, seul gabarit de fenêtre depuis le constat UX 14 : page inerte, Tab qui boucle, focus rendu ; la carte Kronn en `page/src/55-actions.js`).
 - Lien d'évitement, modale, canvas : voir TD.
 
