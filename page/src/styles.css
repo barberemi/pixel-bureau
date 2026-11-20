@@ -1057,12 +1057,24 @@ body.tv .mtbar{display:none}
 #tvwho .tv-steps span{font:600 var(--fs-sec) var(--font-ui);padding:2px 6px;background:var(--chip);color:var(--muted)}
 #tvwho .tv-steps span.ok{background:color-mix(in srgb,var(--ok) 30%,var(--panel));color:var(--ink)}
 #tvwho .tv-steps span.run{background:color-mix(in srgb,var(--accent) 35%,var(--panel));color:var(--ink)}
-/* L'Œil (69-oeil.js) : une ligne par cible, son motif, la PR, le dernier mot du relecteur, ses boutons */
-.oe-row{border-left:3px solid var(--err);background:var(--chip);padding:8px 10px;margin:8px 0;display:flex;flex-direction:column;gap:4px}
-.oe-row.oe-vu{border-left-color:var(--line);opacity:.7}
-.oe-t{font-size:var(--fs-body)}
-.oe-t .mut{color:var(--muted);font-size:var(--fs-meta)}
-.oe-s{font-size:var(--fs-meta);color:var(--muted)}
-.oe-q{font-size:var(--fs-meta);color:var(--ink);border-left:2px solid var(--line);padding-left:6px}
+/* L'Œil (69-oeil.js) : la fiche par sections, une carte par cible ; la carte regardée porte le cadre « 👁 L'œil regarde »
+   et le dernier mot du relecteur */
+.oe-sec{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:var(--fs-meta);font-weight:700;border-bottom:2px solid var(--line);padding:2px 0;margin:12px 0 4px}
+.oe-row{border-left:3px solid var(--err);background:var(--chip);padding:8px 10px;margin:6px 0;display:flex;flex-direction:column;gap:4px;cursor:pointer}
+.oe-row.oe-as{border-left-color:var(--info)}
+.oe-row.oe-grey{border-left-color:var(--line);opacity:.7;cursor:default}
+.oe-row.oe-now{outline:2px solid var(--warn);background:var(--appr-bg)}
+.oe-row.oe-now::before{content:"👁 L'œil regarde";font-family:var(--font-mono);font-size:var(--fs-meta);font-weight:700;color:var(--warn)}
+.oe-t{font-size:var(--fs-body);display:flex;justify-content:space-between;gap:8px}
+.oe-t .mut{color:var(--muted);font-size:var(--fs-meta);white-space:nowrap}
+.oe-s{font-size:var(--fs-meta);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.oe-chips{display:flex;flex-wrap:wrap;gap:4px}
+.oe-chips span{font-family:var(--font-mono);font-size:var(--fs-meta);padding:1px 5px;background:var(--line);color:var(--ink)}
+.oe-chips .rq{background:var(--err-deep)}
+.oe-chips .cf{background:var(--warn-deep)}
+.oe-chips .as{background:var(--info-deep)}
+.oe-q{display:none;font-size:var(--fs-meta);color:var(--ink);border-left:2px solid var(--line);padding-left:6px}
+.oe-now .oe-q{display:block}
 .oe-acts{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .oe-acts a{font-size:var(--fs-meta)}
+.oe-idle summary{cursor:pointer;display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:var(--fs-meta);color:var(--muted);margin-top:12px}

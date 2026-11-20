@@ -15,6 +15,7 @@
 
 ## ✅ Avant de merger
 - [ ] Guide (`guide/fonctionnalites/`), ligne du README et captures (`tools/shots.py`) dans la même PR si c'est visible
+- [ ] Un événement nouveau : sa scène dans la galerie de l'étage (« ▶ voir ») et sa loupe ; un objet ou un état nouveau : sa ligne dans la légende « Comment lire le plan » ; ce qui arrive : une ligne du fil
 - [ ] Affichage changé exprès : label « références visuelles » posé (la CI refait `tests/visual/`)
 - [ ] `docs/` à jour si une règle ou la structure change
 - [ ] Une ligne dans `CHANGELOG.md`, section « Unreleased » (Ajouté, Modifié, Corrigé…), sauf changement invisible pour qui installe

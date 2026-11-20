@@ -84,7 +84,7 @@
     "step_type": {
      "type": "CollectApiData"
     },
-    "description": "3/4 · Déterministe (0 token) : l'Œil du RDC, tes PR ouvertes de tous tes dépôts (fils d'un relecteur, changements demandés, CI, conflit) et celles dont on te demande la relecture, par une requête GraphQL de gh ; notification du Mac des retours nouveaux avec notify_mac.",
+    "description": "3/4 · Déterministe (0 token) : l'Œil du RDC, tes PR ouvertes de tous tes dépôts (fils d'un relecteur, changements demandés, CI, conflit) et celles dont on te demande la relecture, par une requête GraphQL de gh.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {

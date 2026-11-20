@@ -1730,57 +1730,56 @@ print(json.dumps(val))
         return lambda: [json.loads(x) for x in Path(log).read_text().splitlines()] if os.path.exists(log) else []
 
     # ---------- l'Œil (oeil_snapshot.py, cron office) ----------
-    def oeil_gql(self, thread_by="jimh", at=10):
-        """Réponse GraphQL de l'Œil : une de tes PR (fils, changements demandés, CI rouge, conflit) et une relecture demandée."""
-        c = lambda who, m, typ="User", body="Le cache doit varier\nselon la langue": {"nodes": [{"author": {"login": who, "__typename": typ}, "createdAt": iso(m), "body": body}]}  # noqa: E731
+    def oeil_gql(self, thread_by="jimh", at=10, pushed=30):
+        """Réponse GraphQL de l'Œil : une de tes PR (fils, changements demandés, CI rouge, conflit) et trois relectures demandées
+        (une vraie, une d'un bot, une avec skip-auto-review). pushed = minutes depuis ton dernier commit."""
+        c = lambda who, m, typ="User", assoc="MEMBER", body="Le cache doit varier\nselon la langue": {"nodes": [{"author": {"login": who, "__typename": typ},  # noqa: E731
+                                                                                                        "authorAssociation": assoc, "createdAt": iso(m), "body": body}]}
+        commit = {"nodes": [{"commit": {"committedDate": iso(pushed + 5), "pushedDate": iso(pushed), "statusCheckRollup": {"state": "FAILURE"}}}]}
         mine = {"number": 2051, "title": "Fil d'Ariane", "url": "https://x/2051", "isDraft": False, "updatedAt": iso(5),
-                "repository": {"nameWithOwner": "acme/site"}, "reviewDecision": "CHANGES_REQUESTED", "mergeable": "CONFLICTING",
-                "reviewThreads": {"nodes": [{"isResolved": False, "comments": c(thread_by, at)},
-                                            {"isResolved": False, "comments": c("michaelscott", 3)},  # ton dernier mot : rien de neuf
-                                            {"isResolved": True, "comments": c("jimh", 2)},
-                                            {"isResolved": False, "comments": c("copilot", 1, "Bot")}]},
-                "reviews": {"nodes": [{"author": {"login": "pambeesly"}, "submittedAt": iso(60), "body": "Deux points"}]},
-                "commits": {"nodes": [{"commit": {"statusCheckRollup": {"state": "FAILURE"}}}]}}
-        asked = {"number": 16, "title": "Menu", "url": "https://x/16", "isDraft": False, "updatedAt": iso(9), "createdAt": iso(90),
-                 "repository": {"nameWithOwner": "other/api"}, "author": {"login": "dwight"}}
-        return json.dumps({"data": {"viewer": {"login": "michaelscott"}, "mine": {"nodes": [mine, {}]}, "asked": {"nodes": [asked]}}})
+                "repository": {"nameWithOwner": "acme/site"}, "reviewDecision": "CHANGES_REQUESTED", "mergeable": "CONFLICTING", "commits": commit,
+                "reviewThreads": {"nodes": [{"isResolved": False, "isOutdated": False, "comments": c(thread_by, at)},
+                                            {"isResolved": False, "isOutdated": False, "comments": c("michaelscott", 3)},  # ton dernier mot : rien de neuf
+                                            {"isResolved": True, "isOutdated": False, "comments": c("jimh", 2)},
+                                            {"isResolved": False, "isOutdated": True, "comments": c("jimh", 2)},  # périmé
+                                            {"isResolved": False, "isOutdated": False, "comments": c("inconnu", 2, assoc="NONE")},  # compte extérieur
+                                            {"isResolved": False, "isOutdated": False, "comments": c("copilot", 1, "Bot")}]},
+                "reviews": {"nodes": [{"author": {"login": "pambeesly"}, "submittedAt": iso(20), "body": "Deux points"},
+                                      {"author": {"login": "angela"}, "submittedAt": iso(90), "body": "Ancien"}]}}
+        ask = lambda n, who="dwight", typ="User", labels=(): {"number": n, "title": "Menu", "url": f"https://x/{n}", "isDraft": False, "updatedAt": iso(9),  # noqa: E731
+                                                            "createdAt": iso(90), "repository": {"nameWithOwner": "other/api"}, "mergeable": "MERGEABLE",
+                                                            "commits": {"nodes": [{"commit": {"committedDate": iso(95), "statusCheckRollup": None}}]},
+                                                            "author": {"login": who, "__typename": typ}, "labels": {"nodes": [{"name": x} for x in labels]}}
+        return json.dumps({"data": {"viewer": {"login": "michaelscott"}, "mine": {"nodes": [mine, {}]},
+                                    "asked": {"nodes": [ask(16), ask(17, "dependabot[bot]", "Bot"), ask(18, labels=("skip-auto-review",))]}}})
 
     def test_oeil_reads_your_prs_and_the_reviews_asked_of_you(self):
-        """L'Œil : tes PR de tout dépôt avec ce qui t'attend (fils d'un relecteur, ni toi ni un bot, ni résolus ;
-        changements demandés ; CI ; conflit ; le dernier retour) et les PR dont on te demande la relecture."""
+        """L'Œil : tes PR de tout dépôt avec ce qui t'attend, et les relectures demandées à toi (ni bot, ni skip-auto-review)."""
         self.fake_gh({"api": {"graphql": self.oeil_gql()}})
         out = self.run_script("oeil_snapshot.py")
         self.assertEqual(out["me"], "michaelscott")
         (p,) = out["mine"]
         self.assertEqual((p["id"], p["review"], p["threads"], p["ci"], p["conflict"]), ("acme/site#2051", "changes", 1, "ko", True))
         self.assertEqual(p["last"], {"who": "jimh", "at": iso(10), "text": "Le cache doit varier", "k": "fil"})  # plus récent que la review
-        self.assertEqual(out["asked"], [{"id": "other/api#16", "repo": "other/api", "n": 16, "title": "Menu", "url": "https://x/16",
-                                         "author": "dwight", "since": iso(90)}])
+        self.assertEqual(out["asked"], [{"id": "other/api#16", "repo": "other/api", "n": 16, "title": "Menu", "url": "https://x/16", "draft": False,
+                                         "ci": None, "conflict": False, "author": "dwight", "since": iso(90)}])
         self.assertEqual(out["warnings"], [])
         self.assertEqual(self.gh_calls(), 1)  # une seule requête par relevé
+        self.assertIn("user-review-requested:@me", (Path(self.tmp) / "gh.json.calls").read_text())  # pas les demandes faites à une équipe
+
+    def test_oeil_counts_only_what_still_waits(self):
+        """Fils : ni périmés, ni d'un compte extérieur, ni d'un bot, ni ton dernier mot (règle de Corriger). Changements
+        demandés : seulement une review plus récente que ton dernier commit (GitHub garde la décision après ta correction)."""
+        self.fake_gh({"api": {"graphql": self.oeil_gql(pushed=10, at=40)}})  # ton dernier push date de 10 min : la review « changements demandés » (20 min) est d'avant
+        (p,) = self.run_script("oeil_snapshot.py")["mine"]
+        self.assertEqual((p["review"], p["threads"]), ("", 1))  # le fil reste (non résolu), la review est d'avant ton commit
+        self.assertEqual(p["last"]["k"], "fil")
 
     def test_oeil_without_gh_publishes_empty_lists(self):
         """Sans gh : listes vides et un avertissement (#8), le run ne tombe pas."""
         out = self.run_script("oeil_snapshot.py")
         self.assertEqual((out["mine"], out["asked"]), ([], []))
         self.assertTrue(out["warnings"])
-
-    def test_oeil_notifies_the_mac_once_per_new_feedback(self):
-        """notify_mac : rien au premier relevé (tout est retenu), puis une notification par retour nouveau, une seule fois."""
-        calls = self.fake_osascript()
-        self.fake_gh({"api": {"graphql": self.oeil_gql()}})
-        self.run_script("oeil_snapshot.py", notify_mac=True)
-        self.assertEqual(calls(), [])  # premier relevé
-        self.run_script("oeil_snapshot.py", notify_mac=True)
-        self.assertEqual(calls(), [])  # rien de neuf
-        self.fake_gh({"api": {"graphql": self.oeil_gql(thread_by="angela", at=1)}})  # un relecteur répond dans un fil
-        self.run_script("oeil_snapshot.py", notify_mac=True)
-        self.assertEqual(len(calls()), 1)
-        text, title, sub = calls()[0][-3:]
-        self.assertEqual((title, sub, text), ("Le Bureau · 👁 1 fil · angela", "acme/site#2051", "Le cache doit varier"))
-        self.assertNotIn("cache", " ".join(calls()[0][:-3]))  # le texte n'entre jamais dans le script AppleScript
-        self.run_script("oeil_snapshot.py", notify_mac=True)
-        self.assertEqual(len(calls()), 1)
 
     def test_actions_prs_add_the_prs_the_eye_sees(self):
         """actions.prs : les PR de l'Œil (les tiennes, les relectures demandées) hors des dépôts suivis s'ajoutent, une
