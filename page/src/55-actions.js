@@ -344,7 +344,10 @@ const lastTicket=c=>[...c.runs].reverse().find(r=>isTicketWf(r.wf)&&r.res&&r.res
 function ticketLast(box,c){
   const r=lastTicket(c);if(!r)return;
   const d=document.createElement('div');d.className='tk-last';
-  d.innerHTML=`<div class="tk-h">🎫 Dernier ticket créé</div>${r.res.url?extA(r.res.url,'Ouvrir dans Jira',r.res.key+' ↗'):`<b>${esc(r.res.key)}</b>`}`+
+  const l=r.res.keys&&r.res.keys.length>1?r.res.keys:null; // une intention découpée : chaque ticket, son lien et son titre
+  d.innerHTML=l?`<div class="tk-h">🎫 Derniers tickets créés (${l.length})</div>`+l.map(x=>`<div class="tk-t">${extA(JIRA_BROWSE+encodeURIComponent(x.key),'Ouvrir dans Jira',x.key+' ↗')} ${esc(x.title)}</div>`).join('')+
+    `<small>créés à ${hm(r._e)}</small>`
+    :`<div class="tk-h">🎫 Dernier ticket créé</div>${r.res.url?extA(r.res.url,'Ouvrir dans Jira',r.res.key+' ↗'):`<b>${esc(r.res.key)}</b>`}`+
     `<div class="tk-t">${esc(r.res.title)}</div><small>${esc(r.res.meta)}${r.res.meta?' · ':''}créé à ${hm(r._e)}</small>`;
   box.appendChild(d);
 }

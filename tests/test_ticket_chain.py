@@ -204,6 +204,15 @@ class TicketChainTest(unittest.TestCase):
         r = self.t("parent_check", "p3", '{"errorMessages": ["Issue does not exist"]}')
         self.assertIn("introuvable", r.stderr)
 
+    def test_result_lists_every_created_ticket(self):
+        """Une intention découpée : le résultat porte chaque ticket créé (run a67f4c7b : le fil n'en montrait qu'un)."""
+        self.t("dossier", "m1", "x", "Story", "8", "dm/site", "", "backlog", "")
+        Path(self.tmp, ".cache", "pixel-bureau", "ticket", "m1", "crees.json").write_text(json.dumps(
+            [{"key": "DM-1", "title": "Générer les XLIFF"}, {"key": "DM-2", "title": "Supprimer la génération"}]))
+        b = json.loads(self.t("bilan", "m1").stdout)
+        self.assertEqual((b["key"], b["title"], b["meta"]), ("DM-1", "2 tickets créés", "DM-1, DM-2"))
+        self.assertEqual(b["keys"], [{"key": "DM-1", "title": "Générer les XLIFF"}, {"key": "DM-2", "title": "Supprimer la génération"}])
+
     def test_nothing_drafted_fails_and_nothing_created_gives_no_result(self):
         self.t("dossier", "r2", "x", "Bug", "1", "dm/site", "", "backlog", "")
         self.assertNotEqual(self.t("rapport", "redaction", "r2", stdin="pas de JSON").returncode, 0)

@@ -259,7 +259,11 @@ def run_res(wf, r):
         res = json.loads(json.loads(body, strict=False)["data"]["stdout"])
     except Exception:
         return None
-    return {k: str(res.get(k) or "")[:200] for k in ("key", "url", "title", "meta")} if res.get("key") else None
+    if not res.get("key"):
+        return None
+    out = {k: str(res.get(k) or "")[:200] for k in ("key", "url", "title", "meta")}
+    keys = [{"key": str(x.get("key"))[:30], "title": str(x.get("title") or "")[:120]} for x in res.get("keys") or [] if isinstance(x, dict) and x.get("key")][:8]
+    return {**out, "keys": keys} if len(keys) > 1 else out  # une intention découpée : chaque ticket créé
 
 
 def run_row(wf, r):

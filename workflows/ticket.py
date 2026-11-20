@@ -1030,7 +1030,9 @@ def bilan(run):
     site = ((CFG.get("jira") or {}).get("site") or "").rstrip("/")
     k0 = made[0]["key"]
     print(json.dumps({"key": k0, "url": f"{site}/browse/{k0}" if site else "", "title": made[0]["title"] if len(made) == 1 else f"{len(made)} tickets créés",
-                      "meta": ", ".join(m["key"] for m in made)}, ensure_ascii=False))
+                      "meta": ", ".join(m["key"] for m in made),
+                      # chaque ticket créé, pour le fil et la fiche de l'agent (le premier seul ne suffit pas quand l'intention est découpée)
+                      "keys": [{"key": m["key"], "title": str(m.get("title") or "")[:120]} for m in made[:MAX_TICKETS]]}, ensure_ascii=False))
     refresh("redaction_bilan")  # la page « Rédaction · bilan » à jour tout de suite, sans attendre le cron (stderr, jamais d'échec)
 
 

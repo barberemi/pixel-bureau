@@ -342,8 +342,13 @@ function renderFeed(){
     }
   // tickets créés par l'agent du modèle ticket (#77, run.res) : sa ligne remplace celle du créateur Jira (le boss)
   const made=chars.flatMap(c=>c.person||c.visitor?[]:c.runs.filter(r=>r.res&&r.res.key&&r._e&&r._e<=T&&isTicketWf(r.wf)).map(r=>({c,r})));
-  for(const {c,r} of made)ev.push({t:r._e,c,tv:true,team:true,ty:'tickets',txt:`<span style="color:var(--info)">🎫</span> ${refWho(c)} crée ${refTk(r.res.key,true)} <small>${esc(clip(r.res.title,70))}</small>`});
-  const madeKeys=new Set(made.map(x=>x.r.res.key));
+  // une intention découpée : chaque ticket créé, son lien et son titre (res.keys) ; sinon le seul ticket (res.key)
+  const madeList=r=>r.res.keys&&r.res.keys.length?r.res.keys:[{key:r.res.key,title:r.res.title}];
+  for(const {c,r} of made){const l=madeList(r);
+    ev.push({t:r._e,c,tv:true,team:true,ty:'tickets',txt:`<span style="color:var(--info)">🎫</span> ${refWho(c)} crée `+(l.length>1
+      ?`${l.length} tickets : `+l.map(x=>`${refTk(x.key,true)} <small>${esc(clip(x.title,50))}</small>`).join(' · ')
+      :`${refTk(l[0].key,true)} <small>${esc(clip(l[0].title,70))}</small>`)});}
+  const madeKeys=new Set(made.flatMap(x=>madeList(x.r).map(k=>k.key)));
   const created=TEAM?teamCreated(DAY0,T).filter(x=>!madeKeys.has(x.key)):[], createdKeys=new Set(created.map(x=>x.key)); // tickets créés aujourd'hui par l'équipe
   for(const x of created)ev.push({t:ms(x.created),c:x.c,tv:true,team:true,ty:'tickets',
     txt:`<span style="color:var(--info)">📝</span> ${refWho(x.c)} crée ${refTk(x.key,true)} <small>${esc(clip(x.summary,70))}</small>`});
