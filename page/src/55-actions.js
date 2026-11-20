@@ -133,12 +133,14 @@ function gateCard(parent,run,who){
   const since=g&&g.since?ms(g.since):run._s, mins=Math.max(0,Math.round((T-since)/60e3)); // à l'heure de la page (rejeu compris)
   box.innerHTML=`<div class="gt">✋ Validation demandée${who?' · '+esc(who):''}</div><div class="gw">${esc(clean(run.wf_name))}${g?' · étape <b>'+esc(g.gate)+'</b>':''}</div>`+
     (g&&g.message?`<div class="gm">${esc(g.message)}</div>`:'')+`<div class="gs">En attente depuis ${hm(since)}${mins?' ('+fmtDur(mins*60e3)+')':''}</div>`;
-  const dk=g?g.run+'|'+g.gate:null;
-  if(g&&DECIDED[dk]){
+  // une réponse ne vaut que pour cette ouverture du tampon : après « Changements », le run revient au même tampon (même
+  // run, même étape) et la réponse d'avant ne doit plus cacher les boutons
+  const dk=g?g.run+'|'+g.gate:null, opened=g&&Date.parse(g.since||'')||0, decided=g&&DECIDED[dk]>=opened?DECIDED[dk]:0;
+  if(decided){
     const n=document.createElement('div');
     n.className='note';
     n.style.margin='8px 0 0';
-    n.innerHTML='<b style="color:var(--ok)">✓ Réponse envoyée à '+hm(DECIDED[dk])+'.</b> L\'agent reprend d\'ici une minute sur le plan.';
+    n.innerHTML='<b style="color:var(--ok)">✓ Réponse envoyée à '+hm(decided)+'.</b> L\'agent reprend d\'ici une minute sur le plan.';
     box.appendChild(n);
   }
   else if(g&&!ACTIONS.gate){
@@ -169,7 +171,7 @@ function gateCard(parent,run,who){
         const v=b.getAttribute('data-kronn-action-state');
         if(v==='succeeded'){
           st.innerHTML='<b style="color:var(--ok)">✓ Décision appliquée.</b> L\'agent reprend d\'ici une minute sur le plan.';
-          if(clicked&&!DECIDED[dk]){DECIDED[dk]=Date.now();saveDecided();}
+          if(clicked&&!(DECIDED[dk]>=opened)){DECIDED[dk]=Date.now();saveDecided();}
         }else if(v==='failed')st.innerHTML='<b style="color:var(--err)">Décision refusée par Kronn</b> (gate déjà décidée ?). Détail dans la carte.';
       }).observe(b,{attributes:true,attributeFilter:['data-kronn-action-state']});
       kronnModal(w,b,'Décision de gate',()=>({c:who&&chars.find(x=>x.name===who),ico:'✋',name:clean(run.wf_name)+(g.gate?' · étape '+g.gate:''),small:who?'Validation demandée par '+who:''}));row.appendChild(w);
