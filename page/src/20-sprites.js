@@ -128,9 +128,9 @@ function spriteOf(c){if(!c)return null;if(SPR[c.sprite])return IMG[c.sprite];con
 // AV_TEAM = dataset `avatars` (enregistré pour toute l'équipe par le workflow « Le Bureau · avatars »),
 // AV_LOCAL = retouches de ce navigateur, AV_DRAFT = éditeur ouvert. La plus récente (at) l'emporte.
 let AV_TEAM={}, AV_LOCAL={}, AV_DRAFT=null;
-try{AV_LOCAL=JSON.parse(localStorage.getItem('bureau:avatars')||'{}')||{};}catch(e){AV_LOCAL={};}
+AV_LOCAL=pref('avatars',{})||{};
 if(AV_LOCAL.boss&&!AV_LOCAL.p_remi){AV_LOCAL.p_remi=AV_LOCAL.boss;delete AV_LOCAL.boss;} // ancienne clé du boss (avant le roster)
-const saveLocal=()=>{try{localStorage.setItem('bureau:avatars',JSON.stringify(AV_LOCAL));}catch(e){}};
+const saveLocal=()=>setPref('avatars',AV_LOCAL);
 function readAvatars(src){
   try{
     if(!src||!src.datasets)return null;

@@ -123,4 +123,10 @@ playBtn.onclick=()=>{if(mode==='play'){setMode('pause');return;}
   setMode('play');
   if(fromStart)hyperGo('⏪ Rejouer la journée',dtf('fr-FR',{weekday:'long',day:'numeric',month:'long'}).format(new Date(RSTART)),hm(RSTART)+' → '+hm(REND)+' · ×'+SPEED);};
 slider.addEventListener('input',()=>{setMode('pause');T=RSTART+(REND-RSTART)*slider.value/1000;needTeleport=true;timeUi();});
-
+// liens d'évitement (#13) : au clavier, Tab depuis le haut de la page propose le plan, le fil et le panneau. Dans le cadre de
+// Kronn, une ancre « # » rechargerait la page : on pose le focus à la main (la cible hors tabulation reçoit tabindex -1)
+function skipTo(id){
+  const t=document.getElementById(id);if(!t)return;
+  if(!t.hasAttribute('tabindex'))t.tabIndex=-1;t.focus({preventScroll:true});t.scrollIntoView({block:'start',behavior:SCROLL_BEHAVIOR});
+}
+for(const a of document.querySelectorAll('[data-skip]'))a.addEventListener('click',e=>{e.preventDefault();skipTo(a.dataset.skip);});

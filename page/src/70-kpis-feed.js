@@ -385,11 +385,11 @@ function renderFeed(){
 // ---------- vue du fil : runs répétés regroupés, filtre « Important / Tout », séparateurs par heure ----------
 const FEED_REPEAT=4, FEED_PAGE=30;
 let FEED_MODE='important', FEED_N=FEED_PAGE, FEED_SIG='', FEED_VIEW=[], FEED_ALL=[];
-try{FEED_MODE=localStorage.getItem('bureau:feed')||'important';}catch(e){}
+FEED_MODE=prefStr('feed','')||'important';
 // filtre par type (pastilles, en plus d'« Important / Tout ») : on retient les types éteints, un type nouveau est donc allumé
 const FEED_TYPES=[['toi','Toi','🙋'],['agents','Agents','🤖'],['tickets','Tickets','📝'],['pr','PR','⇡'],['mep','MEP','🚀'],['equipe','Équipe','👥']];
 let FEED_OFF=new Set();
-try{FEED_OFF=new Set(JSON.parse(localStorage.getItem('bureau:feedtypes')||'[]'));}catch(e){}
+{const v=pref('feedtypes',[]);if(Array.isArray(v))FEED_OFF=new Set(v);}
 function showFeed(){const all=feedView(FEED_EV,FEED_MODE);renderFeedList(all.filter(e=>!FEED_OFF.has(e.ty||'equipe')),all);}
 // important : l'équipe, les MEP, les visiteurs, les pannes et les échecs d'agents ; tout : en plus les lancements et les succès.
 // Un même workflow lancé plus de FEED_REPEAT fois dans la journée (crons horaires) tient en une ligne : « ×21, 0 ✓ 21 ✗ ».
@@ -472,12 +472,12 @@ document.getElementById('feed').addEventListener('mouseover',e=>{const a=e.targe
 document.getElementById('feed').addEventListener('mouseleave',()=>{hoverKey=null;});
 {const seg=document.getElementById('feedmode');if(seg)seg.addEventListener('click',ev=>{
   const b=ev.target.closest('[data-mode]');if(!b)return;
-  FEED_MODE=b.dataset.mode;FEED_N=FEED_PAGE;try{localStorage.setItem('bureau:feed',FEED_MODE);}catch(e){}
+  FEED_MODE=b.dataset.mode;FEED_N=FEED_PAGE;setPref('feed',FEED_MODE);
   showFeed();
 });}
 {const tys=document.getElementById('feedtypes');if(tys)tys.addEventListener('click',ev=>{
   const b=ev.target.closest('[data-ty]');if(!b)return;
   const k=b.dataset.ty;if(FEED_OFF.has(k))FEED_OFF.delete(k);else FEED_OFF.add(k);
-  FEED_N=FEED_PAGE;try{localStorage.setItem('bureau:feedtypes',JSON.stringify([...FEED_OFF]));}catch(e){}
+  FEED_N=FEED_PAGE;setPref('feedtypes',[...FEED_OFF]);
   showFeed();
 });}

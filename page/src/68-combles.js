@@ -10,9 +10,9 @@ let CB_HITS=[], CB_GLOW=[], CB_PICK=null;
 // dans Kronn (iframe sans allow-same-origin), localStorage lève une erreur : le déblocage vit alors en mémoire, jusqu'au
 // rechargement de la page ; hors de Kronn (aperçu, captures), il reste dans le navigateur
 let CB_OPEN=false;
-const comblesOn=()=>{if(CB_OPEN)return true;try{return localStorage.getItem('bureau:combles')==='1';}catch(e){return false;}};
-function comblesUnlock(){CB_OPEN=true;try{localStorage.setItem('bureau:combles','1');}catch(e){}atelierTabs();}
-function comblesForget(){CB_OPEN=false;try{localStorage.removeItem('bureau:combles');}catch(e){}setFloor(0);}
+const comblesOn=()=>CB_OPEN||prefStr('combles','')==='1';
+function comblesUnlock(){CB_OPEN=true;setPref('combles','1');atelierTabs();}
+function comblesForget(){CB_OPEN=false;dropPref('combles');setFloor(0);}
 function cbReset(){CB_HITS=[];CB_PICK=null;}
 const cbUrl=()=>typeof CFG.combles_url==='string'&&/^https:\/\//.test(CFG.combles_url)?CFG.combles_url:null;
 // la nuit des Combles : hors des heures de bureau, la lucarne montre la lune et la pièce passe en lumière de veillée

@@ -11,6 +11,10 @@ metadata:
       status: Deferred
       reviewer: Kronn audit validation card
       note: "Deferred through an audit validation card."
+    - date: 2026-11-21
+      status: Resolved
+      reviewer: fix/a11y-prefs-crons
+      note: "#17"
 ---
 
 # TD-20261011-office-cron-defs-per-pass
@@ -18,7 +22,7 @@ metadata:
 - **Category**: performance
 - **Area**: Backend (crons)
 - **Severity**: Low
-- **Status**: Deferred
+- **Status**: Resolved
 - **Effort**: S (< 1h)
 - **Blast radius**: local (1-2 files)
 
@@ -37,3 +41,6 @@ Mutualiser `definition(wid)` dans `workflows/_lib.py` (cache disque avec TTL, in
 
 ## Next step
 `create ticket`
+
+## Resolution (2026-11-21, #17)
+`workflows/_defs.py` : cache disque de 10 min des définitions, partagé par `gates_snapshot` et `office_snapshot` (planification des crons) ; plus de GET /workflows/{id} par cron à chaque passage.

@@ -10,6 +10,7 @@
 </head>
 <body>
 <div class="wrap">
+  <nav class="skip" aria-label="Accès rapide"><a href="#cv" data-skip="cv">Aller au plan</a><a href="#feed" data-skip="feed">Aller au fil</a><a href="#side" data-skip="side">Aller au panneau</a></nav>
   <header>
     <div>
       <h1>Le Bureau</h1>
@@ -24,7 +25,7 @@
   <section class="card recap" id="recap" hidden></section>
   <div class="kpis" id="kpis"></div>
 
-  <div class="main">
+  <main class="main">
     <div>
       <div class="card stage">
         <div class="cv-wrap"><canvas id="cv" width="1280" height="640" aria-label="Plan du bureau avec les agents et workflows de la journée"></canvas></div>
@@ -49,19 +50,19 @@
         <details class="legend-help">
           <summary>? Comment lire le plan</summary>
           <div class="lh-grid">
-            <div data-tab="qui"><h4>Qui</h4>
+            <div data-tab="qui"><h3>Qui</h3>
               <p><b>Collègues</b> : en couleur, à leur place, leurs tickets en bulle.</p>
               <p><b>Agents</b> (workflows Kronn) : en hologramme, cyan au quotidien, violet pour une page, ambre pour les autres ; leur étape dans un nuage, l'outil en cours dans une petite bulle sombre. Les agents des étages, en couleurs pleines dans leur tenue, ont un petit robot hologramme à l'épaule.</p>
               <p><b>Discussions</b> (visiteurs, une discussion Kronn chacun) : en salle de réunion, puis au café ; « ? » devant le boss quand une question t'attend.</p>
               <p><b>Invités</b> : ils passent puis repartent. L'invité du pack, Gandalf et Yoda (réouverture, mise en prod), la tournée de café, le ménage du soir, le facteur et ses porteurs.</p>
               <p><b>Hors équipe</b> : quelqu'un qui n'est pas dans le roster vient pour une mise en prod d'un autre dépôt, sous son login GitHub.</p></div>
-            <div data-tab="ou"><h4>Où</h4>
+            <div data-tab="ou"><h3>Où</h3>
               <p><b>Bureau</b> : travaille · <b>Serveurs</b> : appelle une API · <b>Réunion</b> : sous-workflows · <b>Bureau du boss</b> : ce qui t'attend · <b>Toilettes</b> : en panne (🚨 3 échecs d'affilée) · <b>Plateau TV</b> : mises en prod du jour (fermé le vendredi et le week-end) · <b>Mur du fond</b> : crons et Kanban du sprint · <b>Tour de l'entrée</b> : l'Œil, son faisceau sur ce qui t'attend (clic : la liste).</p>
               <p>Sur les bureaux, une barre par ticket ouvert : <span class="lk"><i class="sq" data-cat="doing"></i>en cours</span><span class="lk"><i class="sq" data-cat="review"></i>review</span><span class="lk"><i class="sq" data-cat="test"></i>test</span><span class="lk"><i class="sq" data-cat="deploy"></i>à déployer</span><span class="lk"><i class="sq" data-cat="todo"></i>à faire</span>. Sur le caisson : les feuilles blanches de la facilitatrice (créés depuis le daily), les dossiers jaunes du testeur (à tester) ; survole une pile pour le détail.</p></div>
-            <div data-tab="etats"><h4>États (couleur et forme de l'anneau)</h4>
+            <div data-tab="etats"><h3>États (couleur et forme de l'anneau)</h3>
               <p><span class="lk"><i data-st="work"></i>au travail</span><span class="lk"><i data-st="srv"></i>serveurs, réunion</span><span class="lk"><i class="ring ring-dot" data-st="gate"></i>validation</span><span class="lk"><i class="ring ring-dash" data-st="error"></i>en panne</span>
               <span class="lk"><i data-st="mep"></i>mise en prod</span><span class="lk"><i data-st="daily"></i>daily</span><span class="lk"><i class="ring ring-dot" data-st="ask"></i>attend ta réponse</span><span class="lk"><i data-st="frozen"></i>⏸ données figées</span><span class="lk"><i data-st="idle"></i>pause, dispo</span></p></div>
-            <div data-tab="env"><h4>Enveloppes (un run passe la main)</h4>
+            <div data-tab="env"><h3>Enveloppes (un run passe la main)</h3>
               <p><span class="lk"><i class="sq" data-env="sub"></i>sous-run</span><span class="lk"><i class="sq" data-env="trig"></i>déclenche un workflow</span><span class="lk"><i class="sq" data-env="ok"></i>rendu</span><span class="lk"><i class="sq" data-env="ko"></i>rendu en échec</span><span class="lk"><i class="sq" data-env="gate"></i>validation</span><span class="lk"><i class="sq" data-env="disc"></i>discussion</span></p></div>
           </div>
         </details>
@@ -74,7 +75,7 @@
       </div>
     </div>
     <aside class="card side" id="side"></aside>
-  </div>
+  </main>
   <footer>Le Bureau __VERSION__ · Sprites : Universal LPC Spritesheet Character Generator, contributeurs du Liberated Pixel Cup (CC-BY-SA 3.0 / GPL 3.0). Bureau dessiné à la main en canvas.</footer>
 </div>
 <div class="tip" id="tip"></div>

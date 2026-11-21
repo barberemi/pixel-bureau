@@ -4,9 +4,9 @@
 // Env pris par la branche de quelqu'un d'autre : « ⇄ Remplacer… », et la fenêtre de la carte Kronn le dit avant Lancer.
 // Juste après un lancement, « ⏳ demandé » jusqu'à ce que le run GitHub arrive (DP_ASKED, ce navigateur, 15 min au plus).
 const DP_ASK_MS=15*60e3;
-let DP_ASKED={};try{DP_ASKED=JSON.parse(localStorage.getItem('bureau:deploy')||'{}')||{};}catch(e){DP_ASKED={};}
+let DP_ASKED=pref('deploy',{})||{};
 for(const k in DP_ASKED)if(!(Date.now()-DP_ASKED[k]<DP_ASK_MS))delete DP_ASKED[k];
-const dpSave=()=>{try{localStorage.setItem('bureau:deploy',JSON.stringify(DP_ASKED));}catch(e){}};
+const dpSave=()=>setPref('deploy',DP_ASKED);
 // « ⏳ demandé » seulement après un clic d'ici : Kronn remet l'état d'un lancement passé (succeeded) sur chaque bouton
 // redessiné de la même ligne, ce qui n'est pas un nouveau lancement. Clé = la ligne du bouton (PR et env), heure du clic
 // gardée le temps qu'arrive le « succeeded » de ce lancement, puis oubliée (un redessin ne le recompte pas).
@@ -109,9 +109,9 @@ function prEnvLine(p){
 // adresse (p.env_url, cron équipe) ; juste après un clic d'ici, « ⏳ demandé » jusqu'au run GitHub (EB_ASKED, ce
 // navigateur, 15 min au plus), comme pour les envs partagés. step : none, asked, run, ko ou ok.
 const EB_ASK_MS=15*60e3;
-let EB_ASKED={};try{EB_ASKED=JSON.parse(localStorage.getItem('bureau:envbranch')||'{}')||{};}catch(e){EB_ASKED={};}
+let EB_ASKED=pref('envbranch',{})||{};
 for(const k in EB_ASKED)if(!(Date.now()-EB_ASKED[k]<EB_ASK_MS))delete EB_ASKED[k];
-const ebSave=()=>{try{localStorage.setItem('bureau:envbranch',JSON.stringify(EB_ASKED));}catch(e){}};
+const ebSave=()=>setPref('envbranch',EB_ASKED);
 function ebState(p){
   const r=String(prRepo(p)).toLowerCase()+'|'+p.head, all=(LIVE&&LIVE.branch_envs)||{};
   const o=p.head&&all[Object.keys(all).find(k=>k.toLowerCase()===r.toLowerCase())]||null, a=EB_ASKED[prId(p)];

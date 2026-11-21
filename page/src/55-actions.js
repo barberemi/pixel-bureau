@@ -102,9 +102,9 @@ function kronnModal(host,btn,title,what){
 }
 // gates déjà décidées depuis ce navigateur (run|étape -> heure) : plus de bouton une fois la réponse donnée.
 // Kronn refuse de toute façon une 2e décision (le run n'attend plus) ; ceci évite juste de la proposer.
-let DECIDED={};try{DECIDED=JSON.parse(localStorage.getItem('bureau:decided')||'{}')||{};}catch(e){DECIDED={};}
+let DECIDED=pref('decided',{})||{};
 for(const k in DECIDED)if(Date.now()-DECIDED[k]>864e5)delete DECIDED[k];
-const saveDecided=()=>{try{localStorage.setItem('bureau:decided',JSON.stringify(DECIDED));}catch(e){}};
+const saveDecided=()=>setPref('decided',DECIDED);
 // validations des workflows sans personnage sur le plan (ex. « Le Bureau · plan ») : comptées dans la bulle ✋ du boss,
 // leur carte de décision dans sa fiche
 // mise en prod d'un run : son projet (nom court du dépôt) et son ticket, pour les libellés
@@ -187,9 +187,9 @@ function gateCard(parent,run,who){
   parent.appendChild(box);
 }
 // questions de discussion déjà répondues depuis ce navigateur (id -> heure) : plus de boutons une fois la réponse partie
-let ANSWERED={};try{ANSWERED=JSON.parse(localStorage.getItem('bureau:answered')||'{}')||{};}catch(e){ANSWERED={};}
+let ANSWERED=pref('answered',{})||{};
 for(const k in ANSWERED)if(Date.now()-ANSWERED[k]>864e5)delete ANSWERED[k];
-const saveAnswered=()=>{try{localStorage.setItem('bureau:answered',JSON.stringify(ANSWERED));}catch(e){}};
+const saveAnswered=()=>setPref('answered',ANSWERED);
 // « depuis 10:42 (20 min) », « depuis hier 16:10 (19 h) », « depuis le 28/09 (3 j) » : à l'heure de la page (rejeu compris)
 function qWaitTxt(s,t){
   const d=Math.max(0,t-s), dur=d<3600e3?Math.round(d/60e3)+' min':d<864e5?Math.floor(d/3600e3)+' h':Math.floor(d/864e5)+' j';

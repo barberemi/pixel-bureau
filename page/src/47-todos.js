@@ -9,8 +9,8 @@
 let TODOS=null, TD_PEND=[], TD_SENT=null, TD_SEQ=0;
 const TD_MAX_TITLE=200, TD_COLS=['todo','duck','done'];
 const TD_PRI={high:['Urgent','var(--err)',ST_VIF.err],normal:['Normal','var(--accent)','#f2d44e'],low:['Plus tard','var(--muted)','#cfd6e4']};
-try{const p=JSON.parse(localStorage.getItem('bureau:todo-pend')||'[]');if(Array.isArray(p))TD_PEND=p.filter(o=>o&&typeof o.op==='string');}catch(e){TD_PEND=[];}
-const tdKeep=()=>{try{localStorage.setItem('bureau:todo-pend',JSON.stringify(TD_PEND));}catch(e){}};
+{const p=pref('todo-pend',[]);if(Array.isArray(p))TD_PEND=p.filter(o=>o&&typeof o.op==='string');}
+const tdKeep=()=>setPref('todo-pend',TD_PEND);
 function readTodos(src){
   try{const d=dsOf(src,'todos');return d&&Array.isArray(d.todos)?{...d,todos:d.todos.filter(t=>t&&typeof t.id==='string'&&TD_COLS.includes(t.col))}:null;}catch(e){return null;}
 }
