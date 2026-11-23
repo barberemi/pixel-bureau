@@ -186,6 +186,14 @@ class TemplatesTest(unittest.TestCase):
         self.assertEqual(templates.clean("workflow", live)["concurrency_key"], "{{project}}")
         self.assertNotIn("concurrency_key", templates.clean("workflow", {**live, "concurrency_key": None}))
 
+    def test_review_on_demand_runs_one_at_a_time_per_pr(self):
+        """Relire à la demande : plusieurs PR en même temps, même dépôt compris (une copie isolée par run), une seule
+        revue à la fois par PR (concurrency_key) ; sans clé, Kronn refusait toute 2e revue, quel que soit le dépôt."""
+        d = TPL["review_one"]["definition"]
+        self.assertEqual((d["concurrency_limit"], d["concurrency_key"]), (1, "{{repo}}|{{pr}}"))
+        self.assertTrue(d["workspace_config"]["require_isolation"])
+        self.assertLessEqual({"repo", "pr"}, {v["name"] for v in d["variables"]})
+
     def test_workflows_never_take_the_main_checkout_lock(self):
         """Les scripts du Bureau n'écrivent que dans ~/.cache et des dossiers temporaires : chaque workflow le déclare
         (main_tree_read_only), sinon Kronn le fait attendre le dossier du projet et le refuse au-delà de 60 s quand
