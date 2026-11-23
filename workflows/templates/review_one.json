@@ -148,6 +148,7 @@
   "exec_allowlist": [
    "bash",
    "python3"
-  ]
+  ],
+  "concurrency_key": "{{repo}}|{{pr}}"
  }
 }
