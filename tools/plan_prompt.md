@@ -19,7 +19,7 @@ Pars du plan d'exemple fourni : même structure, mêmes clés. Adapte-le au croq
 - `labels` : noms des pièces, `{"text": "CUISINE", "at": [x, y]}` en cases (décimales permises), `color` facultatif.
 - `light_rooms` : pièces éclairées la nuit, rectangles [x1, y1, x2, y2] de cases (pas l'open space, éclairé par ses îlots).
 - `objects` : rectangles cliquables, en PIXELS (case × 32), tous dans le plan : `tv` (écran au mur du fond, vers le plateau ou la réunion), `kanban` et `planning` (au mur, près du bureau du boss), `paie` (petit, sur le bureau du boss), `emp` (cadre « employé du mois », près de la cuisine). Garde leurs largeurs et hauteurs de l'exemple.
-- Pas de `seating` : les places de chacun se règlent après, avec `plan.py seats`.
+- `zones` (facultatif) : les îlots de l'équipe et ceux des agents, `{"equipe": ["I1", "I2"], "agents": ["I3"]}` (un îlot « I2 » ou un siège « I2.R1 »). Chacun s'assoit tout seul dans sa zone ; jamais le nom d'une personne dans le plan.
 
 ## Règles du vérificateur
 

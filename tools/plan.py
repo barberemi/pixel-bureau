@@ -2,7 +2,8 @@
 
   python3 tools/plan.py check [plan.json]            # erreurs (bloquantes) et avertissements, code de sortie 1 si erreur
   python3 tools/plan.py check plan.json --json       # même chose en JSON (pour un agent qui corrige son brouillon)
-  python3 tools/plan.py seats [plan.json]            # sièges numérotés (I2.R2 = îlot 2, côté droit, rang 2), qui s'y assoit,
+  python3 tools/plan.py seats [plan.json]            # sièges numérotés (I2.R2 = îlot 2, côté droit, rang 2), leur zone
+                                                     # (equipe, agents), qui s'y assoit,
                                                      # et qui change de place par rapport au plan de l'installation
   .venv/bin/python tools/plan.py preview [plan.json] [-o plan.png]   # rendu du plan (page de démo, Chrome headless)
   python3 tools/plan.py share plan.json              # le proposer à toute l'équipe (workflow « Le Bureau · plan », validé par le boss)
@@ -20,7 +21,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 sys.path.insert(0, os.path.join(ROOT, "workflows"))
 import assemble  # noqa: E402
-from _plan import FURNITURE, assign, seats_of, validate  # noqa: E402,F401  (FURNITURE : lu par les tests)
+from _plan import FURNITURE, assign, seats_of, validate, zoned  # noqa: E402,F401  (FURNITURE : lu par les tests)
 
 PROMPT = os.path.join(ROOT, "tools", "plan_prompt.md")  # aussi le début du Quick Prompt « plan vers brouillon »
 EXAMPLE = os.path.join(ROOT, "layouts", "open-space.json")
@@ -64,8 +65,8 @@ def cmd_check(path, as_json):
 
 
 def cast(cfg):
-    """Équipe (profil et personnes ajoutées) puis agents de l'installation ({key, name, seat?})."""
-    return assemble.roster(cfg) + [dict(a, name=a["name"] + " (agent)") for a in assemble.merged(cfg).get("agents") or []]
+    """Équipe (profil et personnes ajoutées) puis agents de l'installation ({key, name, seat?, near?, agent?})."""
+    return assemble.roster(cfg) + [dict(a, name=a["name"] + " (agent)", agent=True) for a in assemble.merged(cfg).get("agents") or []]
 
 
 def cmd_seats(path):
@@ -76,8 +77,9 @@ def cmd_seats(path):
     names = {p["key"]: p["name"] for p in people}
     got, temps = assign(L, people, owner)
     who = {sid: names[k] for k, sid in got.items()}
+    zone = lambda s: next((z for z in ("equipe", "agents") if zoned(L, z, s)), "")  # noqa: E731
     for s in seats_of(L):
-        print(f"{s['id']:7} [{s['x']:>2},{s['y']:>2}]  " + (who.get(s["id"]) or ("libre (intérimaires)" if s["id"] in temps else "")))
+        print(f"{s['id']:7} [{s['x']:>2},{s['y']:>2}] {zone(s):7} " + (who.get(s["id"]) or ("libre (intérimaires)" if s["id"] in temps else "")))
     if L.get("boss"):
         print(f"{'BOSS':7} {L['boss']['seat']}  " + names.get(owner, "le boss"))
     # qui change de place si ce plan remplace celui de l'installation

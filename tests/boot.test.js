@@ -53,7 +53,7 @@ test('casting : Pam installe, Michael redevient un collègue et la place de Pam 
   assert.ok(JSON.parse(run(`JSON.stringify(FREE_SEATS)`)).some(s => s[0] === before[0] && s[1] === before[1]), 'la place de Pam se libère');
 });
 
-// pack d'équipe fictif (tests/fixtures/pack-exemple) : sprite de boss fourni, places de son plan
+// pack d'équipe fictif (tests/fixtures/pack-exemple) : sprite de boss fourni, zones de places de son plan
 const PACK = {...require('./fixtures/bureau.config.json'), team: './tests/fixtures/pack-exemple', people: []};
 
 test('pack d\'équipe : Bob au bureau du boss avec son sprite fourni', () => {
@@ -62,12 +62,12 @@ test('pack d\'équipe : Bob au bureau du boss avec son sprite fourni', () => {
   assert.deepEqual(R.find(c => c.k === 'p_bob'), {k: 'p_bob', boss: true, seat: null, sprite: 'sorcier', role: 'Le boss'});
 });
 
-test('pack d\'équipe : Lynn installe, Bob redevient un collègue à sa place I2.R2', () => {
+test('pack d\'équipe : Lynn installe, Bob redevient un collègue, premier de la zone de l\'équipe (I1.R1)', () => {
   const {load: ld} = require('./helpers/page.js');
   const run = ld({config: PACK, owner: 'p_lynn'}).run;
   const R = JSON.parse(run(`JSON.stringify(CAST.filter(c=>c.person).map(c=>({k:c.key,boss:!!c.boss,seat:c.seat,sprite:c.sprite||null,role:c.role})))`));
   assert.deepEqual(R.find(c => c.k === 'p_lynn'), {k: 'p_lynn', boss: true, seat: null, sprite: null, role: 'Le boss'});
-  assert.deepEqual(R.find(c => c.k === 'p_bob'), {k: 'p_bob', boss: false, seat: [12, 15], sprite: null, role: 'Directeur'});
+  assert.deepEqual(R.find(c => c.k === 'p_bob'), {k: 'p_bob', boss: false, seat: [7, 14], sprite: null, role: 'Directeur'});
   assert.equal(JSON.parse(run(`JSON.stringify(RECIPES.p_bob.hair)`)), 'plain');
   assert.ok(JSON.parse(run(`JSON.stringify(FREE_SEATS)`)).some(s => s[0] === 7 && s[1] === 15), 'la place de Lynn (I1.R2) se libère');
 });

@@ -193,7 +193,7 @@ Quand il change de stade, gagne un succès ou qu'un caneton naît (dans les 2 he
 
 ## Changer de plan pour toute l'équipe
 
-Le plan se décrit dans un fichier JSON (voir [Développer, plan du bureau](../developpement.md#plan-du-bureau-layoutsjson)). Chacun est placé par le plan (`seating`, par numéro de siège : `I2.R2` = îlot 2, côté droit, rang 2), les autres reçoivent un siège libre, toujours le même.
+Le plan se décrit dans un fichier JSON (voir [Développer, plan du bureau](../developpement.md#plan-du-bureau-layoutsjson)). Le plan ne nomme personne : il dit quels îlots sont à l'équipe et lesquels aux agents (`zones`), et chacun s'y assoit tout seul, toujours au même siège (une préférence se donne dans le roster : `seat`, un numéro de siège comme `I2.R2` = îlot 2, côté droit, rang 2, ou `near`, à côté de quelqu'un).
 
 ```sh
 python3 tools/plan.py check mon-plan.json    # erreurs et avertissements

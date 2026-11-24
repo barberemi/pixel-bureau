@@ -3,7 +3,7 @@
 Entrée (stdin) : le plan, JSON au format bureau-layout/1 (un bloc ```json autour est accepté), ou le mot « defaut »
 pour revenir au plan embarqué dans la page.
 Sortie (stdout) : le dataset `layout` complet {updated_at, layout} (layout null = plan embarqué).
-Sortie d'erreur : le résumé lu par le boss dans la gate (nom, taille, sièges, places qui changent), ou les erreurs.
+Sortie d'erreur : le résumé lu par le boss dans la gate (nom, taille, sièges, zones de places qui changent), ou les erreurs.
 Un plan qui ne passe pas les règles de tools/plan.py check fait échouer le run : rien n'est publié.
 """
 import json, re, sys, urllib.request
@@ -55,18 +55,17 @@ err, warn = validate(L, len(raw.encode()))
 if err:
     fail(f"{len(err)} erreur(s)\n- " + "\n- ".join(err[:20]))
 
-# plan partagé actuel : pour dire au boss qui change de place
+# plan partagé actuel : pour dire au boss si les zones de places changent (chacun se replace tout seul dans sa zone)
 cur = current()
-before = ((cur or {}).get("layout") or {}).get("seating") or {}
-after = L.get("seating") or {}
-b, a = ({k: s for s, k in seating.items()} for seating in (before, after))  # clé -> siège
-moves = sorted(k for k in set(a) | set(b) if a.get(k) != b.get(k))
+zones = lambda P: {z: list(v) for z, v in ((P or {}).get("zones") or {}).items()}  # noqa: E731
+before, after = zones((cur or {}).get("layout")), zones(L)
+said = lambda Z: "; ".join(f"{z} {', '.join(v)}" for z, v in sorted(Z.items())) or "aucune"  # noqa: E731
 
 print(dumps({"updated_at": datetime.now(timezone.utc).isoformat(), "layout": L}))
 lines = [f"Nouveau plan : {L.get('name') or L.get('id') or 'sans nom'} ({L['size'][0]} x {L['size'][1]} cases, "
-         f"{len(seats_of(L))} sièges, {len(after)} places attribuées)."]
+         f"{len(seats_of(L))} sièges ; zones : {said(after)})."]
 if cur and cur.get("layout"):
-    lines.append("Places qui changent : " + (", ".join(f"{k} {b.get(k, '-')} → {a.get(k, 'auto')}" for k in moves[:20]) or "aucune") + ".")
+    lines.append("Zones de places : " + ("inchangées" if before == after else f"avant {said(before)}") + ".")
 else:
     lines.append("Il remplace le plan embarqué dans la page.")
 lines += [f"Avertissement : {w}" for w in warn[:5]]

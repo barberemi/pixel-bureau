@@ -1844,14 +1844,15 @@ print(json.dumps(val))
 
     def test_layout_save_publishes_a_valid_plan_with_a_summary(self):
         fake = FakeKronn()
-        fake.datasets = [{"name": "layout", "current": {"layout": dict(self.PLAN, seating={"I1.L1": "p_pam"})}}]
-        r = self.run_raw("layout_save.py", "```json\n" + json.dumps(dict(self.PLAN, seating={"I2.R1": "p_pam"})) + "\n```",
+        fake.datasets = [{"name": "layout", "current": {"layout": dict(self.PLAN, zones={"equipe": ["I1"]})}}]
+        r = self.run_raw("layout_save.py", "```json\n" + json.dumps(dict(self.PLAN, zones={"equipe": ["I2"], "agents": ["I3"]})) + "\n```",
                          api=self.kronn(fake))
         self.assertEqual(r.returncode, 0, r.stderr)
         out = json.loads(r.stdout)
         self.assertEqual(out["layout"]["id"], "exemple-startup")
         self.assertIn("36 sièges", r.stderr)  # résumé lu par le boss dans la gate
-        self.assertIn("p_pam I1.L1 → I2.R1", r.stderr)
+        self.assertIn("zones : agents I3; equipe I2", r.stderr)
+        self.assertIn("avant equipe I1", r.stderr)
 
     def test_layout_save_refuses_an_invalid_plan(self):
         r = self.run_raw("layout_save.py", json.dumps(dict(self.PLAN, exit=[5, 5])))

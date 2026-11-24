@@ -83,7 +83,7 @@ python3 tools/plan.py check dist/plan-brouillon.json     # ce qui bloque encore,
 .venv/bin/python tools/plan.py preview dist/plan-brouillon.json   # le voir : dist/plan.png
 ```
 
-Range le résultat dans le pack (`layouts/plan.json`, celui que nomme `team.json`). Qui s'assoit où se règle dans le plan (`seating`), et se vérifie avec `python3 tools/plan.py seats layouts/plan.json`. Le format en détail : [Plan du bureau](developpement.md#plan-du-bureau-layoutsjson). Plus tard, un nouveau plan se propose à toute l'équipe depuis la page ([Changer de plan pour toute l'équipe](fonctionnalites/01-plan.md#changer-de-plan-pour-toute-léquipe)).
+Range le résultat dans le pack (`layouts/plan.json`, celui que nomme `team.json`). Le plan ne nomme personne : il réserve des îlots à l'équipe et aux agents (`zones`), chacun s'y range tout seul, et une préférence se donne dans le roster (`seat` : un siège, `near` : à côté de quelqu'un). Le résultat se vérifie avec `python3 tools/plan.py seats layouts/plan.json`. Le format en détail : [Plan du bureau](developpement.md#plan-du-bureau-layoutsjson). Plus tard, un nouveau plan se propose à toute l'équipe depuis la page ([Changer de plan pour toute l'équipe](fonctionnalites/01-plan.md#changer-de-plan-pour-toute-léquipe)).
 
 ## 5. Les couleurs de ton entreprise
 

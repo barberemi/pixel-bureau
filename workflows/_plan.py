@@ -47,36 +47,47 @@ def seat_at(seats, xy):
     return None
 
 
+def zoned(L, zone, t):
+    """Le siège t est-il dans la zone (« equipe » ou « agents ») du plan ? Une zone liste des îlots (« I2 ») ou des sièges."""
+    zones = L.get("zones") if isinstance(L.get("zones"), dict) else {}
+    refs = zones.get(zone) if isinstance(zones.get(zone), list) else []
+    return any(r in (t["id"], t["id"].split(".")[0]) for r in refs)
+
+
 def assign(L, people, owner=None):
-    """Qui s'assoit où : même règle que 10-world.js (vérifié par tests/layout.test.js). people : roster puis agents,
-    dans l'ordre du casting ({key, seat?}). Le plan est maître (seating), puis la place de la personne si c'est un siège
-    libre du plan, puis un siège libre : ordinaire, puis réservé à un absent, enfin une place d'intérimaire (free_seats).
+    """Qui s'assoit où : même règle que placeCast de 10-world.js (vérifié par tests/layout.test.js). people : roster puis
+    agents, dans l'ordre du casting ({key, seat?, near?, agent?} ; agent vrai pour un agent). D'abord la place de la
+    personne si c'est un siège libre du plan, puis un siège libre de sa zone (zones du plan), puis hors zone, puis de
+    l'autre zone, enfin une place d'intérimaire (free_seats) ; near (clé) : après les autres, le plus proche de lui.
     Renvoie ({clé: numéro de siège}, places des intérimaires dans l'ordre) ; la place du boss lui est comptée mais libérée."""
     seats = seats_of(L)
-    keys = {p["key"] for p in people}
     got, taken = {}, set()
 
     def give(k, t):
         got[k] = t
         taken.add(t["id"])
-    seating = list((L.get("seating") or {}).items())
-    for sid, k in seating:
-        t = seat_ref(seats, sid)
-        if t and t["id"] not in taken and k not in got and k in keys:
-            give(k, t)
+    for p in people:
+        t = seat_ref(seats, p.get("seat"))
+        if t and t["id"] not in taken:
+            give(p["key"], t)
+    free = [t for t in (seat_at(seats, f) for f in L.get("free_seats") or []) if t]
+
+    def pick(p):
+        z, o = ("agents", "equipe") if p.get("agent") else ("equipe", "agents")
+        open_ = [t for t in seats if t["id"] not in taken and t not in free]
+        groups = [[t for t in open_ if zoned(L, z, t)], [t for t in open_ if not zoned(L, z, t) and not zoned(L, o, t)],
+                  [t for t in open_ if zoned(L, o, t)], [t for t in free if t["id"] not in taken]]
+        g = next((x for x in groups if x), None)
+        if not g:
+            return
+        n = got.get(p.get("near"))
+        give(p["key"], min(g, key=lambda t: abs(t["x"] - n["x"]) + abs(t["y"] - n["y"])) if n else g[0])
+    for p in people:
+        if p["key"] not in got and not p.get("near"):
+            pick(p)
     for p in people:
         if p["key"] not in got:
-            t = seat_ref(seats, p.get("seat"))
-            if t and t["id"] not in taken:
-                give(p["key"], t)
-    free = [t for t in (seat_at(seats, f) for f in L.get("free_seats") or []) if t]
-    reserved = {sid for sid, _ in seating}
-    spare = [t for t in seats if t["id"] not in taken and t not in free and t["id"] not in reserved]
-    spare += [t for t in seats if t["id"] not in taken and t not in free and t["id"] in reserved]
-    spare += [t for t in free if t["id"] not in taken]
-    for p in people:
-        if p["key"] not in got and spare:
-            give(p["key"], spare.pop(0))
+            pick(p)
     boss = got.pop(owner, None)
     rest = [t for t in seats if t["id"] not in taken and t not in free]
     temps = free + ([boss] if boss and boss not in free else []) + rest
@@ -226,19 +237,27 @@ def _validate(L, raw_size):
     for p in L.get("free_seats") or []:
         if tuple(p) not in seat_set:
             E(f"free_seats {p} : n'est pas un siège d'îlot")
-    seating = L.get("seating") or {}
-    if not isinstance(seating, dict):
-        E("seating : un objet {numéro de siège: clé du personnage}")
-        seating = {}
+    zones = L.get("zones") or {}
+    if not isinstance(zones, dict):
+        E("zones : un objet {equipe: [îlots ou sièges], agents: [îlots ou sièges]}")
+        zones = {}
+    islands = {s["id"].split(".")[0] for s in seats}
     ids = {s["id"] for s in seats}
-    for sid, k in seating.items():
-        if sid not in ids:
-            E(f"seating « {sid} » : pas un siège de ce plan (python3 tools/plan.py seats)")
-        if not isinstance(k, str) or not k:
-            E(f"seating « {sid} » : la clé du personnage (ex. p_remi) est attendue")
-    dup = sorted({k for k in seating.values() if list(seating.values()).count(k) > 1})
-    for k in dup:
-        E(f"seating : « {k} » a plusieurs sièges")
+    for z, refs in zones.items():
+        if z not in ("equipe", "agents"):
+            E(f"zone de places « {z} » inconnue (equipe, agents ; le boss a sa place, boss.seat)")
+        if not isinstance(refs, list):
+            E(f"zones.{z} : une liste d'îlots (« I2 ») ou de sièges (« I2.R1 »)")
+            continue
+        for r in refs:
+            if r not in ids and r not in islands:
+                E(f"zones.{z} « {r} » : ni un îlot ni un siège de ce plan (python3 tools/plan.py seats)")
+    both = [s["id"] for s in seats if zoned(L, "equipe", s) and zoned(L, "agents", s)]
+    if both:
+        E(f"zones : {', '.join(both)} à la fois dans equipe et agents")
+    if "seating" in L:
+        E("seating n'est plus lu : les places se règlent par zones (equipe, agents), et chacun peut demander un siège "
+          "(seat) ou d'être à côté de quelqu'un (near) dans le pack")
     for x in L.get("windows") or []:
         if not 0 <= x < cols - 1:
             E(f"fenêtre en x={x} : hors du mur du fond")

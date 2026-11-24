@@ -45,15 +45,15 @@ test("un autre plan (exemple-startup) : la page démarre, chaque siège et chaqu
   assert.ok(r.chars > 10);
 });
 
-// pack d'équipe fictif (tests/fixtures/pack-exemple) : son plan place l'équipe (seating)
+// pack d'équipe fictif (tests/fixtures/pack-exemple) : son plan a des zones de places (equipe, agents)
 const PACK = './tests/fixtures/pack-exemple', PACK_PLAN = 'tests/fixtures/pack-exemple/layouts/plan.json';
 
 // Lot 7, phase 4 : sièges par numéro. La page (10-world.js) et tools/plan.py (assign) placent tout le monde pareil.
-test('sièges : même attribution dans la page et dans tools/plan.py (plans, boss, agents avec ou sans place)', () => {
+test('sièges : même attribution dans la page et dans tools/plan.py (plans, zones, boss, agents avec ou sans place, near)', () => {
   const {execFileSync} = require('child_process');
   const fixture = {...JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'bureau.config.json'), 'utf8')), team: PACK, people: []};
   const roster = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'pack-exemple', 'roster.json'), 'utf8')).people;
-  const bare = fixture.agents.map(({seat, ...a}) => a);
+  const bare = fixture.agents.map(({seat, ...a}, i) => i === 2 ? {...a, near: 'p_ozzie'} : a);
   fixture.agents = bare.map((a, i) => ({...a, seat: ['I4.L1', 'I4.L2', 'I4.L3', 'I4.R1', 'I4.R2', 'I4.R3', 'I5.L1', 'I5.L2', 'I5.L3', 'I5.R1', 'I5.R2', 'I5.R3'][i]}));
   // l'ancien format [x, y] (les mêmes places) n'est plus lu : mêmes sièges que sans place
   const legacy = bare.map((a, i) => ({...a, seat: [[23, 14], [23, 15], [23, 16], [25, 14], [25, 15], [25, 16], [29, 14], [29, 15], [29, 16], [31, 14], [31, 15], [31, 16]][i]}));
@@ -68,7 +68,7 @@ test('sièges : même attribution dans la page et dans tools/plan.py (plans, bos
 d=json.load(sys.stdin);f=d['layout'] if '/' in d['layout'] else 'layouts/'+d['layout']+'.json'
 got,temps=plan.assign(json.load(open(f)),d['people'],d['owner'])
 print(json.dumps({'seats':got,'temps':temps}))`], {cwd: path.join(__dirname, '..'),
-          input: JSON.stringify({layout, owner, people: [...roster, ...agents]})}));
+          input: JSON.stringify({layout, owner, people: [...roster, ...agents.map(a => ({...a, agent: true}))]})}));
         const kind = agents === bare ? 'sans' : agents === legacy ? 'ancien format' : 'avec';
         assert.deepEqual(js, py, `${layout}, boss ${owner}, agents ${kind} place`);
         got[kind] = js;
@@ -77,12 +77,12 @@ print(json.dumps({'seats':got,'temps':temps}))`], {cwd: path.join(__dirname, '..
     }
 });
 
-test('sièges : le plan du pack place l\'équipe et les agents sans leur place du roster', () => {
+test('sièges : le plan du pack range l\'équipe et les agents chacun dans sa zone', () => {
   const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'bureau.config.json'), 'utf8'));
   const p = load({owner: 'p_lynn', config: {...fixture, team: PACK, people: []}});
   const s = JSON.parse(p.run(`JSON.stringify(Object.fromEntries(CAST.map(c=>[c.key,c.seat])))`));
-  assert.deepEqual(s.p_bob, [12, 15]); // I2.R2
-  assert.deepEqual(s.dwight, [23, 14]); // I4.L1
+  assert.deepEqual(s.p_bob, [7, 14]); // I1.R1 : premier siège de la zone equipe hors places d'intérimaires
+  assert.deepEqual(s.dwight, [23, 14]); // I4.L1 : premier siège de la zone agents
   assert.equal(s.p_lynn, null); // le boss
 });
 
