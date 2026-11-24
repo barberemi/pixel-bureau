@@ -168,7 +168,9 @@ function agentDowns(c,t){
   const ids=new Set(c.runs.map(r=>r.run)), done=c.runs.filter(r=>!(r.parent&&ids.has(r.parent))&&r._s<=t&&t>=r._ve), out=[];
   let n=0;
   for(const r of done){
-    if(r.status==='Failed'||r.status==='Cancelled'){if(++n===ALARM_FAILS)out.push({t:r._ve,up:false,n,wf:clean(r.wf_name)});}
+    const o=runOutcome(r); // 35-state.js : un run arrêté à une gate ne compte pas et ne rétablit pas
+    if(o==='refused')continue;
+    if(o==='ko'){if(++n===ALARM_FAILS)out.push({t:r._ve,up:false,n,wf:clean(r.wf_name)});}
     else{if(n>=ALARM_FAILS)out.push({t:r._ve,up:true,n,wf:clean(r.wf_name)});n=0;}
   }
   return out;
@@ -315,12 +317,13 @@ function renderFeed(){
       txt:c.visitor?`<span style="color:#d97757">●</span> ${refWho(c)} arrive pour « ${esc(clean(c.disc.title).replace(/\s+/g,' ').slice(0,70))} »`:`${refWho(c)} lance <b>${esc(clean(r.wf_name))}</b>`
     });
     if(done){
-      const fs=(r.steps||[]).find(s=>s.s==='Failed'), ko=r.status==='Failed';
+      // arrêté à une gate : ta décision, pas un plantage ; la gate de fin de la MEP refusée : un succès (runOutcome)
+      const fs=(r.steps||[]).find(s=>s.s==='Failed'), o=runOutcome(r), ko=r.status==='Failed'&&o!=='ok';
       ev.push({
         t:r._e,
         c,
-        agent:!c.visitor,grp:g,kind:ko?'ko':'ok',wf:clean(r.wf_name),ty:'agents',
-        txt:ko?`<span style="color:var(--err)">✗</span> ${refWho(c)} se plante${fs?' sur <b>'+esc(fs.n)+'</b>':''} <small>${esc((fs&&fs.err||'').slice(0,90))}</small>`:`<span style="color:var(--ok)">✓</span> ${refWho(c)} termine <b>${esc(clean(r.wf_name))}</b> <small>${esc(fmtDur(r._e-r._s))}${r.tok?' · '+fmtTok(r.tok)+' tokens':''}</small>`
+        agent:!c.visitor,grp:g,kind:o==='refused'?'refused':ko?'ko':'ok',wf:clean(r.wf_name),ty:'agents',
+        txt:o==='refused'?`<span style="color:var(--muted)">⏹</span> ${refWho(c)} s'arrête sur <b>${esc(fs.n)}</b> <small>tu as refusé · ${esc(clean(r.wf_name))}</small>`:ko?`<span style="color:var(--err)">✗</span> ${refWho(c)} se plante${fs?' sur <b>'+esc(fs.n)+'</b>':''} <small>${esc((fs&&fs.err||'').slice(0,90))}</small>`:`<span style="color:var(--ok)">✓</span> ${refWho(c)} termine <b>${esc(clean(r.wf_name))}</b> <small>${esc(fmtDur(r._e-r._s))}${r.tok?' · '+fmtTok(r.tok)+' tokens':''}</small>`
       });
     }
   }

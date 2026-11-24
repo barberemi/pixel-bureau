@@ -8,7 +8,7 @@ function recapData(t){
   const since=DAY0, after=x=>x&&x>=since&&x<=t;
   const fails={};
   for(const c of chars){if(c.person||c.visitor)continue;
-    for(const r of (c.top||c.runs))if(r.status==='Failed'&&after(r._e))fails[c.name]=(fails[c.name]||0)+1;}
+    for(const r of (c.top||c.runs))if(r.status==='Failed'&&runOutcome(r)==='ko'&&after(r._e))fails[c.name]=(fails[c.name]||0)+1;}
   const alarms=chars.filter(c=>c._st&&c._st.alarm).map(c=>c.name);
   const meps=TEAM?(TEAM.meps||[]).filter(m=>m.prod&&after(ms(m.prod.end))):[];
   const merged=TEAM?(TEAM.merged_today||[]).filter(m=>after(ms(m.mergedAt))):[];

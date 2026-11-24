@@ -78,6 +78,41 @@ test('échec récent : aux toilettes (error / wc), puis disponible après 40 min
   assert.equal(st.zone, 'wander');
 });
 
+// un refus à une gate finit en Failed, la gate refusée en dernière étape : ta décision, pas une panne
+const refused = (gate, t0, wf = 'abcd1234-x') => `{run:'r${t0}',wf:'${wf}',wf_name:'Mise en prod',status:'Failed',_s:${t0 - 5 * MIN},_e:${t0},_ve:${t0},
+  steps:[{n:'prod',k:'Exec',s:'Success'},{n:'${gate}',k:'Gate',s:'Failed'}],vars:{}}`;
+const failedRun = t0 => `{run:'f${t0}',wf:'abcd1234-x',status:'Failed',_s:${t0 - 5 * MIN},_e:${t0},_ve:${t0},
+  steps:[{n:'deploy',k:'Exec',s:'Failed'}],vars:{}}`;
+
+test('gate refusée : pas aux toilettes, « Arrêté : tu as refusé … », puis disponible', () => {
+  reset();
+  let st = J(`stateAt(${agentWith(refused('gate_prod', T11 - 10 * MIN))}, ${T11})`);
+  assert.equal(st.st, 'idle');
+  assert.equal(st.zone, 'wander');
+  assert.equal(st.label, 'Arrêté : tu as refusé gate_prod');
+  assert.equal(st.bubble, '⏹');
+  st = J(`stateAt(${agentWith(refused('gate_prod', T11 - 50 * MIN))}, ${T11})`);
+  assert.equal(st.label, 'Disponible');
+});
+
+test('MEP : la gate de fin (ticket terminé ?) refusée est un succès, pause café ; ailleurs, un refus', () => {
+  reset();
+  assert.equal(J(`stateAt(${agentWith(refused('gate_ticket_done', T11 - 5 * MIN, MEP + '-x'))}, ${T11})`).st, 'coffee');
+  assert.equal(J(`stateAt(${agentWith(refused('gate_prod', T11 - 5 * MIN, MEP + '-x'))}, ${T11})`).label, 'Arrêté : tu as refusé gate_prod');
+  assert.equal(J(`stateAt(${agentWith(refused('gate_ticket_done', T11 - 5 * MIN))}, ${T11})`).st, 'idle'); // pas une MEP
+});
+
+test('alarme : un refus de gate ne compte pas dans les échecs d\'affilée et ne les remet pas à zéro', () => {
+  reset();
+  const at = k => T11 - (60 - k * 5) * MIN;
+  const ag = runs => `({key:'ag',name:'Agent',wf:['abcd1234'],seat:[11,14],runs:[${runs.join(',')}]})`;
+  const fails = n => Array.from({length: n}, (_, i) => failedRun(at(i)));
+  const n = J('ALARM_FAILS');
+  assert.equal(J(`failStreak(${ag([...fails(n - 1), refused('gate_prod', at(n))])}, ${T11})`), n - 1);
+  assert.equal(J(`failStreak(${ag([...fails(n - 1), refused('gate_prod', at(n)), failedRun(at(n + 1))])}, ${T11})`), n);
+  assert.equal(J(`failStreak(${ag([...fails(n - 1), refused('gate_ticket_done', at(n), MEP + '-x')])}, ${T11})`), 0);
+});
+
 test('succès récent : pause café ; avant le premier run : pas encore arrivé', () => {
   reset();
   const ok = agentWith(`{run:'r1',wf:'abcd1234-x',status:'Success',_s:${T11 - 10 * MIN},_e:${T11 - 5 * MIN},_ve:${T11 - 5 * MIN},steps:[],vars:{}}`);

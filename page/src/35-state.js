@@ -265,10 +265,25 @@ function frozenSince(){
   const g=ms((LIVE&&LIVE.generated_at)||(DATA&&DATA.generated_at));
   return g&&Date.now()-g>FROZEN_AFTER?g:null;
 }
-// échecs consécutifs des derniers runs terminés à t (premier niveau : les sous-runs sont comptés dans leur parent)
+// un refus à une gate finit lui aussi en Failed : sa dernière étape est la gate refusée, une décision et pas une panne
+// (comme rejete de chaine_pr.py) ; la gate refusée, ou null
+function refusedGate(r){
+  const s=r&&r.status==='Failed'&&r.steps&&r.steps[r.steps.length-1];
+  return s&&s.k==='Gate'&&s.s==='Failed'?s:null;
+}
+// issue d'un run fini : 'ok', 'ko' (panne) ou 'refused' (arrêté à une gate, ni panne ni succès) ; la gate de fin de la MEP
+// (« le ticket est-il terminé ? ») refusée : la prod est passée, le ticket reste en l'état, c'est un succès
+function runOutcome(r){
+  const g=refusedGate(r);
+  if(g)return g.n==='gate_ticket_done'&&CFG.mep_workflow&&(r.wf||'').startsWith(CFG.mep_workflow)?'ok':'refused';
+  return r.status==='Failed'||r.status==='Cancelled'?'ko':'ok';
+}
+// échecs consécutifs des derniers runs terminés à t (premier niveau : les sous-runs sont comptés dans leur parent) ;
+// un run arrêté à une gate ne compte pas et ne rétablit pas
 function failStreak(c,t){
   const ids=new Set(c.runs.map(r=>r.run)), done=c.runs.filter(r=>!(r.parent&&ids.has(r.parent))&&r._s<=t&&t>=r._ve);
-  let n=0;for(let i=done.length-1;i>=0&&(done[i].status==='Failed'||done[i].status==='Cancelled');i--)n++;
+  let n=0;
+  for(let i=done.length-1;i>=0;i--){const o=runOutcome(done[i]);if(o==='ok')break;if(o==='ko')n++;}
   return n;
 }
 // santé sur 7 jours (fiche de paie) : « 136 échecs sur 160 runs en 7 j (85 %) »
@@ -392,7 +407,7 @@ function stateAt0(c,t){
     }
     const s=stepAt(r,t);
     const z=(s&&KIND_ZONE[s.k])||'desk';
-    const failedNow=s&&s.s==='Failed'&&r.status==='Failed'&&s===r.steps[r.steps.length-1];
+    const failedNow=s&&s.s==='Failed'&&r.status==='Failed'&&s===r.steps[r.steps.length-1]&&!refusedGate(r);
     const label=(z==='srv'?'Salle serveurs : ':z==='meet'?'En réunion : ':'Travaille sur ')+(s?s.n:'le run');
     if(failedNow)return {st:'error',zone:'wc',label:'En panne : enfermé aux toilettes ('+s.n+')',bubble:'!',run:r,step:s};
     // 32-familles.js : un agent de page met sa page à jour en salle de réunion, devant l'écran mural
@@ -404,7 +419,7 @@ function stateAt0(c,t){
   if(c.visitor)return since<3*60e3?{st:'idle',zone:'leave',label:'Repart'}:{st:'gone',label:'Parti'};
   // workflow désactivé dans Kronn : c'est voulu, ses échecs passés ne sont plus une panne à traiter
   if(wfDisabled(c))return {st:'off',label:'Workflow désactivé dans Kronn'+(last.status==='Failed'?' (dernier run en échec)':'')};
-  const bad=last.status==='Failed'||last.status==='Cancelled';
+  const out=runOutcome(last), bad=out==='ko';
   // alarme : ALARM_FAILS échecs d'affilée (runs de premier niveau) = en panne jusqu'au prochain succès, plus seulement 40 min
   const streak=failStreak(c,t);
   if(streak>=ALARM_FAILS){
@@ -430,7 +445,12 @@ function stateAt0(c,t){
       step:fs
     };
   }
-  if(!bad&&since<12*60e3)return {st:'coffee',zone:'coffee',label:'Pause café bien méritée',bubble:'☕',run:last};
+  // arrêté à une gate : ta décision, pas une panne ; il retourne à ses affaires
+  if(out==='refused'&&since<40*60e3){
+    const g=refusedGate(last);
+    return {st:'idle',zone:'wander',label:'Arrêté : tu as refusé '+g.n,bubble:'⏹',run:last,step:g};
+  }
+  if(out==='ok'&&since<12*60e3)return {st:'coffee',zone:'coffee',label:'Pause café bien méritée',bubble:'☕',run:last};
   return {st:'idle',zone:'wander',label:'Disponible',run:last};
 }
 // questions en attente d'une discussion, posées avant t (dataset gates, 90-boot.js)

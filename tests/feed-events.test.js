@@ -17,6 +17,14 @@ test('panne : au 3e échec d\'affilée, rétabli au succès suivant ; un ou deux
   assert.deepEqual(d.map(x => [x.t / M, x.up, x.n]), [[5.5, false, 3], [7.5, true, 4]]);
 });
 
+test('panne : un refus de gate (g) ne compte pas et ne rétablit pas ; pas de « sort de panne » sur un refus', () => {
+  const rs = runs('ffgfs').map(r => r.run === 'r2' ? {...r, status: 'Failed', steps: [{n: 'gate_prod', k: 'Gate', s: 'Failed'}]} : r);
+  const d = J(`agentDowns({runs: ${JSON.stringify(rs)}}, 1e9)`);
+  assert.deepEqual(d.map(x => [x.t / M, x.up, x.n]), [[3.5, false, 3], [4.5, true, 3]]);
+  const ok = runs('ffs').map(r => r.run === 'r2' ? {...r, status: 'Failed', steps: [{n: 'gate_prod', k: 'Gate', s: 'Failed'}]} : r);
+  assert.deepEqual(J(`agentRecoveries({runs: ${JSON.stringify(ok)}})`), []);
+});
+
 test('panne : rejouable, rien après l\'heure affichée', () => {
   const d = J(`agentDowns({runs: ${JSON.stringify(runs('fffs'))}}, 2.6 * ${M})`);
   assert.deepEqual(d.map(x => x.up), [false]);

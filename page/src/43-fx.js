@@ -20,12 +20,13 @@ function duckStageTimes(){
   for(const x of all){pts+=+x.points||0;const i=idx(pts/D.target);if(i>cur){list.push({at:Math.max(ms(x.since),st||0),from:DUCK_STAGES[cur].id,to:DUCK_STAGES[i].id});cur=i;}}
   return (FX_STAGES={key,list}).list;
 }
-// un agent sort de panne : un run réussi juste après un échec qui l'avait envoyé aux toilettes (moins de 40 min, ou alarme)
+// un agent sort de panne : un run réussi juste après un échec qui l'avait envoyé aux toilettes (moins de 40 min, ou alarme) ;
+// runOutcome (35-state.js) : un run arrêté à une gate n'est ni une panne ni un succès
 function agentRecoveries(c){
   const ids=new Set(c.runs.map(r=>r.run)), top=c.runs.filter(r=>!(r.parent&&ids.has(r.parent))&&r._ve), out=[];
   for(let i=1;i<top.length;i++){
-    const r=top[i]; if(r.status!=='Success')continue;
-    let n=0;for(let j=i-1;j>=0&&(top[j].status==='Failed'||top[j].status==='Cancelled');j--)n++;
+    const r=top[i]; if(runOutcome(r)!=='ok')continue;
+    let n=0;for(let j=i-1;j>=0&&runOutcome(top[j])==='ko';j--)n++;
     if(n&&(n>=ALARM_FAILS||r._s-top[i-1]._ve<40*60e3))out.push({at:r._ve,run:r.run});
   }
   return out;
