@@ -698,7 +698,7 @@ def pack_agents(ask, wfs, personas, previous):
     full = {w["id"][:8]: w for w in wfs}
     out, used = [], set()
     if ask.answers is None and personas:
-        say("\nLes agents de ton équipe (pack) : à quel workflow de ton Kronn rattacher chacun ?")
+        say("\nLes agents de ton équipe : à quel workflow de ton Kronn rattacher chacun ?")
     for pa in personas:
         old = [x for x in (prev.get(pa["key"]) or {}).get("wf") or [] if x in full]
         free = [w for w in wfs if w["id"][:8] not in used]
@@ -716,8 +716,8 @@ def pack_agents(ask, wfs, personas, previous):
 
 def my_agents(ask, k, previous, bureau, personas=None):
     """bureau : ids et noms des workflows du Bureau (config, réutilisés, modèles) : jamais des agents.
-    personas : personnages d'agents du pack (settings.json, #32), rattachés d'abord ; les workflows restés libres
-    deviennent des agents neufs, comme sans pack."""
+    personas : personnages d'agents, le casting par défaut sous celui du pack (assemble.team_agents, #32), rattachés
+    d'abord ; les workflows restés libres deviennent des agents neufs."""
     wfs = [w for w in k.get("/workflows") if w.get("id") not in bureau and w.get("name") not in bureau and w.get("enabled", True)]
     if not wfs:
         return [], None
@@ -990,7 +990,7 @@ def rebind(ask, old, a):
     k = Kronn(old["kronn"]["api"])
     ids = {(old.get(sec) or {}).get(field) for _, (_, (sec, field), _) in templates.TEMPLATES.items()}
     bureau = {v for v in ids if v} | {t["definition"]["name"] for t in templates.load_templates().values()}
-    agents, mep = my_agents(ask, k, old.get("agents"), bureau, assemble.pack_settings(old).get("agents"))
+    agents, mep = my_agents(ask, k, old.get("agents"), bureau, assemble.team_agents(old))
     screens = boss_pages(ask, k, old.get("boss_pages"), old.get("page_id"))
     cfg = {**old, "agents": agents, "boss_pages": screens, **({"mep_workflow": mep} if mep else {})}
     say(f"\n  Agents : {len(agents)} · écran mural : {len(screens)} page(s)")
@@ -1063,7 +1063,7 @@ def main(argv=None):
     own |= set(old.get("own") or []) & set(tpl_ids.values())
     bureau = {v for v in tpl_ids.values() if v} | {t["definition"]["name"] for t in tpls.values()}
     team_settings = assemble.pack_settings({"team": team_id})  # réglages d'équipe du pack (#32)
-    agents, mep = my_agents(ask, k, old.get("agents"), bureau, team_settings.get("agents"))
+    agents, mep = my_agents(ask, k, old.get("agents"), bureau, assemble.team_agents({"team": team_id}))  # casting par défaut et pack
     screens = boss_pages(ask, k, old.get("boss_pages"), old.get("page_id"))
     courrier = mail(ask, old.get("mail"), defaults)
     notify = mac_notify(ask, old.get("notify_mac"))

@@ -45,8 +45,9 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(m["gitfut"], {"p_bob": "bobvance"})
         self.assertEqual(m["wiki_posters"], ["Mine"])  # posé dans la config : celui de la config
         self.assertEqual(m["microsoft"], {"config_id": "m365", "planning": PLANNING})  # config_id : jamais celui du pack
-        self.assertEqual(m["agents"], [{"key": "dwight", "name": "Dwight", "role": "Reviewer de PR", "wf": ["aaaaaaaa"], "seat": [3, 4]},
-                                       {"key": "a_new", "name": "Neuf", "wf": ["cccccccc"]}])  # Pete, sans workflow ici : absent
+        self.assertEqual(m["agents"][:2], [{"key": "dwight", "name": "Dwight", "role": "Reviewer de PR", "wf": ["aaaaaaaa"], "seat": [3, 4]},
+                                           {"key": "a_new", "name": "Neuf", "wf": ["cccccccc"]}])  # Pete, sans workflow ici : absent
+        self.assertEqual([a["key"] for a in m["agents"][2:]], ["jim", "pompier"])  # casting par défaut : modèles installés
         self.assertEqual(m["jira"], c["jira"])
         self.assertEqual(assemble.merged(m), m)  # idempotent
 
@@ -86,7 +87,7 @@ class SettingsTest(unittest.TestCase):
                     "agents": [{"key": "kelly", "name": "Kelly", "role": "Support", "model": "support"}]})
         m = assemble.merged(self.cfg(agents=[], support={"name": "Support Scranton"}, models={"support": "5e990001-0000-4000-8000-000000000000"}))
         self.assertEqual(m["support"], {"name": "Support Scranton", "team": "T1", "channel": "19:x@thread.tacv2"})
-        self.assertEqual([(a["key"], a["wf"]) for a in m["agents"]], [("kelly", ["5e990001"])])
+        self.assertEqual([(a["key"], a["wf"]) for a in m["agents"]], [("kelly", ["5e990001"]), ("jim", ["4d5e6f70"])])  # pas le Pompier : Kelly du pack a le modèle
         self.assertEqual(assemble.support_page(m), {"name": "Support Scranton", "wf": "5e990001", "postes_wf": []})
         # les postes de l'investigation (sous-workflows support_*) : leurs runs vont à la caserne, pas au RDC
         m2 = {**m, "models": {**(m.get("models") or {}), "support_tri": "7a110001-x", "support_poll": "99990000-x", "support_skip": "88880000-x"}}
@@ -107,14 +108,30 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(m["fix"], {"guidelines": "Conventions front : un seul dépôt.", "skill_ids": ["php"],
                                     "checks": {"vance/front": "make lint", "vance/api": "make test-api", "moi/outil": "make check"}})
         self.assertEqual(assemble.merged(m), m)  # idempotent
-        self.assertEqual(templates.values(m)["fix.guidelines"], "Conventions front : un seul dépôt.")
+        self.assertEqual(templates.values(m)["fix.guidelines"].splitlines()[-1], "Conventions front : un seul dépôt.")  # après les consignes de base
 
     def test_without_settings_nothing_changes(self):
+        """Sans settings.json : rien ne change, sauf le casting par défaut (team/agents.json, lot 5 des habillages) qui
+        rattache d'office les personnages des modèles installés que personne n'incarne (ici Jim au bouton rebase, le
+        Pompier au modèle support) ; la démo les a déjà (Nellie au Support, Jim à soi) : identique."""
         os.remove(self.settings)
         c = self.cfg(agents=[DWIGHT])
-        self.assertIs(assemble.merged(c), c)
+        m = assemble.merged(c)
+        self.assertEqual({k: v for k, v in m.items() if k != "agents"}, {k: v for k, v in c.items() if k != "agents"})
+        self.assertEqual([(a["key"], a["wf"]) for a in m["agents"]], [("dwight", DWIGHT["wf"]), ("jim", ["4d5e6f70"]), ("pompier", ["5e990001"])])
+        self.assertEqual(m["agents"][0], DWIGHT)  # son propre nom : il garde son personnage
         demo = assemble.demo_config()  # sans pack
-        self.assertIs(assemble.merged(demo), demo)
+        self.assertEqual(assemble.merged(demo), demo)
+
+    def test_default_casting_replaced_by_the_pack(self):
+        """Le pack remplace un personnage du casting par le sien (même clé) ; une ligne de config sans nom prend celui du
+        casting ; un modèle déjà incarné par un autre agent ne fait pas apparaître le personnage du casting."""
+        self.write({"agents": [{"key": "jim", "name": "Jimmy", "role": "Rebase", "model": "rebase"}]})
+        m = assemble.merged(self.cfg(agents=[{"key": "holly", "wf": ["cccccccc"]}, {"key": "nellie", "name": "Nellie", "wf": ["5e990001"]}]))
+        self.assertEqual([(a["key"], a.get("name"), a.get("icon")) for a in m["agents"]],
+                         [("holly", "Holly", None), ("nellie", "Nellie", None), ("jim", "Jimmy", None)])
+        self.assertEqual(m["agents"][0]["sprite"], "p_holly")
+        self.assertEqual(assemble.merged(m), m)
 
     def test_page_and_crons_read_the_pack(self):
         self.write({"rhythm": {"daily": "09:05"}, "gitfut": {"p_bob": "bobvance"}, "agents": [{"key": "dwight", "name": "Dwight", "role": "Reviewer de PR"}]})

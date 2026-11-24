@@ -434,6 +434,14 @@ def pack_settings(cfg):
     return s
 
 
+def team_agents(cfg):
+    """Personnages des agents : ceux du pack (settings.json, agents) d'abord, puis le casting par défaut (team/agents.json)
+    hors des clés que le pack a déjà (le pack remplace un personnage par le sien). Sans workflow : la config les rattache."""
+    pack = pack_settings(cfg).get("agents") or []
+    mine = {a["key"] for a in pack}
+    return pack + [a for a in json.loads(Path(p("team", "agents.json")).read_text())["agents"] if a["key"] not in mine]
+
+
 def _agent(persona, binding):
     """Agent de l'installation : le personnage du pack, surchargé par sa ligne de config (wf, place…), champs dans
     l'ordre de l'installateur."""
@@ -448,8 +456,6 @@ def merged(cfg):
     un personnage sans workflow dans la config n'apparaît pas. Idempotent : merged(merged(c)) == merged(c)."""
     cfg = cfg or {}
     s = pack_settings(cfg)
-    if not s:
-        return cfg
     out = dict(cfg)
     if "rhythm" in s:
         out["rhythm"] = {**(s["rhythm"] or {}), **(cfg.get("rhythm") or {})}
@@ -493,18 +499,25 @@ def merged(cfg):
     if "impl" in s:  # chaîne d'implémentation (#76) : dépôts, postes et consignes de l'équipe ; la config surcharge clé à clé
         i, si = cfg.get("impl") or {}, s["impl"] or {}
         out["impl"] = {**si, **i, **{k: {**(si.get(k) or {}), **(i.get(k) or {})} for k in ("repos", "postes", "components")}}
-    if "agents" in s:
-        personas = {a["key"]: {k: v for k, v in a.items() if k != "model"} for a in s["agents"]}
-        out["agents"] = [_agent(personas.get(a.get("key"), {}), a) for a in cfg.get("agents") or []]
+    # agents : le casting par défaut (team/agents.json) sous celui du pack ; une ligne de config prend le personnage du pack
+    # de sa clé, ou celui du casting par défaut si elle n'a pas son propre nom (un agent à soi garde le sien)
+    casting, mine = team_agents(cfg), {a["key"] for a in s.get("agents") or []}
+    if casting and (cfg.get("agents") or any(a.get("model") for a in casting)):
+        personas = {a["key"]: {k: v for k, v in a.items() if k != "model"} for a in casting}
+        out["agents"] = [_agent(personas.get(a.get("key"), {}) if a.get("key") in mine or not a.get("name") else {}, a)
+                         for a in cfg.get("agents") or []]
         # personnage qui incarne un modèle du Bureau (clé model, #78) : rattaché d'office à ses workflows créés par
-        # l'installateur (models), sauf si la config le rattache déjà ; aussi un bouton des fiches (« rebase », « env » :
-        # le workflow du Bureau ou le tien, action_ids), que l'installateur ne propose jamais comme agent
+        # l'installateur (models), sauf si la config le rattache déjà ou qu'un autre agent a déjà ce workflow ; aussi un
+        # bouton des fiches (« rebase », « env » : le workflow du Bureau ou le tien, action_ids), que l'installateur ne
+        # propose jamais comme agent
         bound, models = {a.get("key") for a in out["agents"]}, {**action_ids(cfg), **(cfg.get("models") or {})}
-        for a in s["agents"]:
+        used = {str(w)[:8] for a in out["agents"] for w in a.get("wf") or []}
+        for a in casting:
             want = [a["model"]] if isinstance(a.get("model"), str) else a.get("model") or []
             wf = [str(models[m])[:8] for m in want if models.get(m)]
-            if a["key"] not in bound and wf:
+            if a["key"] not in bound and wf and not used & set(wf):
                 out["agents"].append(_agent({k: v for k, v in a.items() if k != "model"}, {"wf": wf}))
+                used |= set(wf)
     return out
 
 

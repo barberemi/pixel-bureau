@@ -721,7 +721,7 @@ class ChaineScriptTest(unittest.TestCase):
         fix = Path(ROOT, "tools", "fix_prompt.md").read_text().strip()
         self.assertIn(fix[:200], rt["corrige"]["prompt_template"])
         self.assertIn("~/.cache/pixel-bureau/pr/work/{{run.id}}", rt["corrige"]["prompt_template"])
-        self.assertIn("Aucune consigne d'équipe en plus de la doc du dépôt.", rt["corrige"]["prompt_template"])  # impl.guidelines
+        self.assertIn("- Quand un existant peut être réutilisé ou centralisé", rt["corrige"]["prompt_template"])  # impl.guidelines : consignes de base
         self.assertTrue(rt["pousse"]["external_effect"])
         self.assertEqual(rt["synchro"]["exec_args"][2:], ["retours_synchro", "{{run.id}}"])
 

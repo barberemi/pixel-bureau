@@ -447,7 +447,7 @@ def values(cfg):
                           "réponse), `lang` = `fr`."),
         "review.guidelines": str(rv.get("guidelines") or "Aucune consigne d'équipe en plus de la grille."),
         # corriger les commentaires d'une PR (#75) : consignes de l'équipe (section fix du pack), jamais celles de la revue
-        "fix.guidelines": str((cfg.get("fix") or {}).get("guidelines") or "Aucune consigne d'équipe en plus des règles ci-dessus."),
+        "fix.guidelines": guidelines(cfg, "fix", "Aucune consigne d'équipe en plus des règles ci-dessus."),
         "issue.repo": (cfg.get("issue") or {}).get("repo") or (cfg.get("github") or {}).get("repo") or "",
         "issue.search_dirs": ", ".join((cfg.get("issue") or {}).get("search_dirs") or ["~/Sites", "~/Projects", "~/code"]),
         "issue.discussion": (cfg.get("issue") or {}).get("discussion") or "",  # discussion Kronn du récap, facultative
@@ -458,8 +458,19 @@ def values(cfg):
                                                                           *(f"support_{p}" for p in SUPPORT_POSTES),  # postes Support (#62)
                                                                           *(f"ticket_{p}" for p in TICKET_POSTES), "ticket_un",  # salle de rédaction
                                                                           *(f"review_{p}" for p in REVIEW_POSTES))},  # postes de la revue
-        "impl.guidelines": str((cfg.get("impl") or {}).get("guidelines") or "Aucune consigne d'équipe en plus de la doc du dépôt."),
+        "impl.guidelines": guidelines(cfg, "impl", "Aucune consigne d'équipe en plus de la doc du dépôt."),
     }
+
+
+def guidelines(cfg, section, empty):
+    """Consignes d'une section (impl, fix) pour son prompt : les consignes de base du Bureau (team/consignes.json), sauf
+    celles que coupe sans_consignes_base (true = toutes, ou une liste d'id), puis celles de l'équipe (guidelines)."""
+    sec = cfg.get(section) or {}
+    off = sec.get("sans_consignes_base")
+    base = [] if off is True else [r["text"] for r in json.loads(Path(ROOT, "team", "consignes.json").read_text()).get(section) or []
+                                   if not (isinstance(off, list) and r["id"] in off)]
+    team = str(sec.get("guidelines") or "").strip()
+    return "\n".join(["- " + t for t in base] + ([team] if team else [])) or empty
 
 
 def mep_loader():

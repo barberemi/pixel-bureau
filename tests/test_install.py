@@ -142,7 +142,9 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(set(cfg["workflows"]), {"office", "live", "team", "payroll", "canard", "redaction_bilan", "retours_bilan"})
         self.assertEqual(set(cfg["skills"]), set(install.templates.BUREAU_SKILLS))  # skills du Bureau, avant les workflows
         self.assertTrue(all(cfg["actions"].values()))
-        self.assertEqual([a["name"] for a in cfg["agents"]], ["Dwight"])  # ses workflows, pas ceux du Bureau
+        self.assertEqual(cfg["agents"], [{"key": "dwight", "wf": ["aaaaaaaa"]}])  # ses workflows, pas ceux du Bureau ;
+        # Dwight du casting par défaut (team/agents.json), rattaché à « Revue de PR » par son métier : son nom vient du casting
+        self.assertEqual(install.assemble.merged(cfg)["agents"][0]["name"], "Dwight")
         self.assertNotIn("seat", cfg["agents"][0])  # sa place : celle que le plan lui donne
         self.assertEqual(os.path.realpath(cfg["layout"]), os.path.realpath(os.path.join(self.teams, "vance", "layouts", "plan.json")))  # plan du profil
         # deuxième passe : les scripts reçoivent la config complète (ids de tous les crons)
@@ -307,7 +309,7 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(cfg["workflows"]["live"], FakeKronn.LIVE)
         self.assertEqual(sum(1 for m, p, _ in k.calls if m == "POST" and p == "/workflows"), 30)
         self.assertTrue([1 for m, p, _ in k.calls if m == "PUT" and p == f"/workflows/{FakeKronn.LIVE}"])  # mis à jour
-        self.assertEqual([a["name"] for a in cfg["agents"]], ["Dwight"])
+        self.assertEqual([a["key"] for a in cfg["agents"]], ["dwight"])
 
     def test_never_takes_over_another_installation(self):
         k = FakeKronn("http://x")

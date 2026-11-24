@@ -13,6 +13,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 - **L'habillage Newsroom** : un thème clair de chaîne d'info (mode TV « Newsroom nuit ») et son plan, une rédaction de 40 × 20 cases avec plateau TV, ouverts à tous. Un plan propose son thème (`skin`) quand l'installation n'en choisit pas ; le bouton 🎨 apparaît dès l'installation, il y a deux thèmes.
 
 - **Le guide des habillages** (`guide/habillages.md`, cité dans CONTRIBUTING) : choisir un thème et un plan, proposer le sien (ni marque ni vrai nom, licence des dessins), et la galerie de chaque plan dans chaque thème, refaite par `tools/shots.py --galerie` et par la CI avec le label « références visuelles ».
+- **Le casting des agents par défaut** (`team/agents.json`) : douze personnages pour toute installation (Dwight à la revue, Jim pour remettre une PR à jour, Stanley pour déployer une branche, Pam pour créer un ticket, le Pompier au Support…), avec les tenues du Pompier et de Mose ; un pack remplace un personnage par le sien de même clé. Un personnage qui incarne un modèle installé n'apparaît d'office que si aucun agent n'a déjà ce workflow.
+- **Les consignes de base** de la chaîne d'implémentation et de « Corriger » (`team/consignes.json` : DRY, le ticket d'abord, une doc fausse est bloquante, une config qui ne marche qu'en prod aussi, fuseau fixé dans les tests…), avant celles de l'équipe ; `sans_consignes_base` les coupe, toutes ou par id.
 
 ### Modifié
 

@@ -331,5 +331,29 @@ class TemplatesTest(unittest.TestCase):
         self.assertEqual(back["trigger"]["schedule"], "* @@cron_veille@@ * * *")
 
 
+class GuidelinesTest(unittest.TestCase):
+    """Lot 5 des habillages : consignes de base du Bureau (team/consignes.json) avant celles de l'équipe, coupables."""
+
+    def test_base_then_team(self):
+        g = templates.guidelines({"impl": {"guidelines": "- consigne d'équipe"}}, "impl", "vide").splitlines()
+        self.assertEqual(g[0], "- Quand un existant peut être réutilisé ou centralisé, privilégie-le (DRY) plutôt qu'une copie locale.")
+        self.assertEqual(g[-1], "- consigne d'équipe")
+        self.assertEqual(len(g), 11)
+
+    def test_cut_some_or_all(self):
+        g = templates.guidelines({"impl": {"sans_consignes_base": ["dry", "fuseau"]}}, "impl", "vide")
+        self.assertNotIn("DRY", g)
+        self.assertNotIn("fuseau", g)
+        self.assertIn("Le ticket d'abord", g)
+        self.assertEqual(templates.guidelines({"fix": {"sans_consignes_base": True}}, "fix", "vide"), "vide")
+        self.assertEqual(templates.values({**templates.assemble.demo_config(), "fix": {"sans_consignes_base": True, "guidelines": "x"}})["fix.guidelines"], "x")
+
+    def test_no_ticket_key_nor_team_in_the_base(self):
+        d = json.loads(Path(ROOT, "team", "consignes.json").read_text())
+        ids = [r["id"] for k in ("impl", "fix") for r in d[k]]
+        self.assertEqual(len(ids), len(set(ids)) + 1)  # « dry » dans les deux sections, sinon des id uniques
+        self.assertNotRegex(json.dumps(d), r"[A-Z]{2,}-\d|#\d")
+
+
 if __name__ == "__main__":
     unittest.main()
