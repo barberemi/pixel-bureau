@@ -84,3 +84,16 @@ test('fiche : sections dans l\'ordre, une carte par cible, « 🛠 Corriger », 
   assert.ok(!f.acts.some(a => a.includes('other/web#17')), 'une relecture pas prête n\'a pas de bouton');
   assert.ok(f.links.length && f.links.every(t => t === '↗ GitHub'), f.links.join(' | '));  // un seul libellé de lien, « À relire » compris
 });
+
+test('fiche : « ↻ Revoir » relance le cron office (bureau-relaunch), seulement quand la relance est installée et hors mode TV', () => {
+  const acts = J(`(() => { const out = []; const side = {kids: [], appendChild(x) { this.kids.push(x); }};
+    const flat = n => [n, ...(n.kids || []).flatMap(flat)];
+    const once = () => { side.kids = []; renderOeil(side); return flat(side.kids[0]).filter(n => n.attrs && n.attrs['data-kronn-action'] === 'bureau-relaunch')
+      .map(n => n.textContent + ' ' + n.attrs['data-kronn-bindings']); };
+    ACTIONS.relaunch = false; RELAUNCH = [{wf: 'wf-office', bureau: 'office'}]; out.push(once());
+    ACTIONS.relaunch = true; out.push(once());
+    TV = true; out.push(once()); TV = false;
+    RELAUNCH = []; out.push(once());
+    return out; })()`);
+  assert.deepEqual(acts, [[], ['↻ Revoir {"wf_id":"wf-office","params":"wf-office"}'], [], []]);
+});

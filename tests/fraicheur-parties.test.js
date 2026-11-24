@@ -9,7 +9,7 @@ test('fraîcheur : chaque partie sous le cron qui la publie, dans l\'ordre du pa
   const {run} = load();
   const order = JSON.parse(run('JSON.stringify(freshOrder().map(s=>s.key))'));
   assert.deepEqual(order.slice(0, 5), ['live', 'atelier', 'redaction', 'retours', 'office']);
-  assert.equal(order[order.indexOf('office') + 1], 'statuts');
+  assert.deepEqual(order.slice(order.indexOf('office') + 1, order.indexOf('office') + 3), ['statuts', 'oeil']);
   assert.equal(order.length, run('FRESH_SRC.length'), 'aucune source perdue');
   assert.ok(JSON.parse(run('JSON.stringify(FRESH_SRC.filter(s=>s.cron).every(s=>FRESH_SRC.some(p=>!p.cron&&p.key===s.cron)))')), 'chaque partie a son cron');
 });
@@ -26,6 +26,10 @@ test('fraîcheur : une partie suit le calendrier de son cron, et se dit en retar
   assert.equal(f('statuts').late, 0, 'au rythme du cron office (10 min)');
   run('STATUTS={...STATUTS,services:[]}');
   assert.equal(run(`String(freshness(${src('statuts')}, ${now}))`), 'null', 'sans service suivi : pas de ligne');
+  run(`OEIL={...(OEIL||{}),mine:[],asked:[],generated_at:new Date(${now}-12*60e3).toISOString()};OEIR={x:10,y:10}`);
+  assert.ok(f('oeil').late > 0, 'l\'Œil relevé il y a 12 min par le cron office : en retard');
+  run('OEIR=null');
+  assert.equal(run(`String(freshness(${src('oeil')}, ${now}))`), 'null', 'sans tour sur le plan : pas de ligne');
 });
 
 test('fraîcheur : l\'échec d\'un cron nomme ses parties plus publiées, et un cron bilan par son nom', () => {

@@ -11,7 +11,7 @@ Sous-commandes (python3 pr_update.py <étape> <dépôt owner/name> <n° de PR> <
   check    après un conflit seulement : les contrôles du dépôt (voir checks_of), dépendances reliées depuis ton dossier
            local du dépôt s'il est un projet Kronn ; leur résultat part dans la validation, jamais bloquant.
   push     push protégé (--force-with-lease sur la tête lue au départ), label de CI retiré puis reposé, dossier de travail
-           retiré. Rien de nouveau : rien poussé.
+           retiré, cron office relancé (l'Œil). Rien de nouveau : rien poussé.
   done     fin du chemin sans conflit (message seulement).
   abort    rebase abandonné et dossier de travail retiré : rien poussé.
 Corriger les commentaires d'une PR (#75, page action « bureau-fixpr ») :
@@ -26,7 +26,8 @@ Corriger les commentaires d'une PR (#75, page action « bureau-fixpr ») :
   fix_push     validé : commit signé (-s, message de l'agent), push protégé, une réponse dans chaque fil (résolu s'il est
                corrigé), signée en pied (voir signe : agent, modèle et « Version N », 4e et 5e arguments), bloc
                « Corrections de review » (et le compteur des versions) dans la description de la PR, CI relancée, review
-               redemandée à chaque reviewer humain (voir reviewers) quand du code est poussé.
+               redemandée à chaque reviewer humain (voir reviewers) quand du code est poussé ; cron office relancé (l'Œil)
+               dès que quelque chose est posté.
   fix_jira_cle après fix_push : le chemin REST du ticket Jira de la PR (clé dans son titre, sinon sa branche) ; rien de
                posté ou pas de clé : code 3 (renvoi vers la fin).
   fix_jira_num le numéro à écrire dans le champ de version du ticket (jira.review_version_field) : le plus grand de
@@ -37,7 +38,7 @@ sans la gate : la PR lui arrive en « dépôt#n » (sortie de chaine.py retours_
 Codes : 2 réglage ou PR refusés, 3 conflit ou pas de ticket (renvoi), 4 conflit non résolu, 5 push refusé, 9 rien à faire (renvoi), 1 autre échec.
 """
 import difflib, glob, hashlib, json, os, re, shutil, stat, subprocess, sys, time
-from _lib import CFG, fil_col, get, read_json, write_json, write_text
+from _lib import CFG, fil_col, get, read_json, refresh, write_json, write_text
 from _checks import check_run
 
 HOME = os.path.expanduser("~/.cache/pixel-bureau/pr")
@@ -342,6 +343,7 @@ def push(repo, n, run_id):
         ci = f" Label {label} reposé : CI relancée." if ok else f" Label {label} non reposé (relance la CI à la main)."
     cleanup(st)
     print(f"{repo}#{n} à jour de {st['base']} ({head[:8]}), poussé.{ci}")
+    refresh("office")  # l'Œil du RDC (cron office) la revoit tout de suite, sauf s'il tourne déjà ; jamais d'échec
 
 
 def abort(repo, n, run_id):
@@ -823,6 +825,8 @@ def fix_push(repo, n, run_id, agent="", model=""):
     print(f"{repo}#{n} : {pushed}{done} réponse(s) postée(s){f', {failed} en échec' if failed else ''}"
           f"{f', {unresolved} fil(s) corrigé(s) non marqué(s) résolu(s) (à faire sur GitHub)' if unresolved else ''}"
           f"{f', {tranches} fil(s) tranché(s) résolu(s) sans changement' if tranches else ''}.{desc}{ci}{revs}")
+    if files or done or tranches:
+        refresh("office")  # l'Œil du RDC (cron office) revoit la PR tout de suite, sauf s'il tourne déjà ; jamais d'échec
 
 
 def fix_jira_cle(repo, n, run_id):

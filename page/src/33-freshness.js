@@ -16,6 +16,7 @@ const FRESH_SRC=[
   {key:'redaction',cron:'live',label:'2e étage (rédaction)',period:60e3,grace:120e3,gen:()=>redactionOn()&&REDACTION&&REDACTION.generated_at},
   {key:'retours',cron:'live',label:'3e étage (retours)',period:60e3,grace:120e3,gen:()=>retoursOn()&&RETOURS&&RETOURS.generated_at},
   {key:'statuts',cron:'office',label:'Services extérieurs',period:600e3,grace:300e3,gen:()=>STATUTS&&STATUTS.services.length&&STATUTS.generated_at}, // 48-statuts.js
+  {key:'oeil',cron:'office',label:'L\'Œil (tes PR)',period:600e3,grace:300e3,gen:()=>OEIR&&OEIL&&OEIL.generated_at}, // 69-oeil.js : seulement avec sa tour
 ];
 // crons du Bureau sans ligne (leurs données vont sur leur propre page) : leur nom quand leur dernier passage échoue
 const CRON_NAMES={chaine_bilan:'Chaîne · bilan',support_bilan:'Support · bilan',redaction_bilan:'Rédaction · bilan',retours_bilan:'Retours · bilan'};

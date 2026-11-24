@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.join(ts.ROOT, "tools"))
 import templates  # noqa: E402
 
 TPL = templates.load_templates()
-TEAM, LIVE = ts.FIXTURE["workflows"]["team"], ts.FIXTURE["workflows"]["live"]
+TEAM, LIVE, OFFICE = (ts.FIXTURE["workflows"][k] for k in ("team", "live", "office"))
 TRIGGER = "/mcp/workflow-trigger"
 
 
@@ -94,6 +94,33 @@ class RefreshTest(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("pas relancé (pas dans la config)", r.stdout)
 
+    def test_several_crons_in_one_call_each_its_line(self):
+        fake = ts.FakeKronn()
+        fake.runs[OFFICE] = [ts.run_of(904, "Running")]
+        r = self.run_py("refresh.py", "team", "office", api=self.kronn(fake))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.triggers(fake), [{"workflow_id": TEAM, "variables": {}}], "office tourne déjà : seul team part")
+        self.assertIn("Rafraîchissement du cron team : relancé", r.stdout)
+        self.assertIn("Rafraîchissement du cron office : déjà en cours (run 00000904)", r.stdout)
+
+    # ---------- cron office (l'Œil du RDC) ----------
+    def test_pr_actions_and_reviews_refresh_the_eye(self):
+        with open(os.path.join(ts.ROOT, "workflows", "pr_update.py"), encoding="utf-8") as fh:
+            code = fh.read()
+        for fn in ("def push(", "def fix_push("):  # Remettre à jour (push et push_resolved), Corriger : après le push
+            body = code.split(fn, 1)[1].split("\ndef ", 1)[0]
+            self.assertIn('refresh("office")', body, fn)
+        self.assertEqual(len(TPL["fix"]["definition"]["steps"]), 15, "corriger : pas d'étape de plus")
+        self.assertEqual(len(TPL["rebase"]["definition"]["steps"]), 10, "remettre à jour : pas d'étape de plus")
+        st = steps("review_cron", cfg(models={"review_child": "abababab-0000-4000-8000-000000000001"}))
+        last = st[-1]
+        self.assertEqual((last["name"], last["exec_args"][2:]), ("refresh", ["office"]))
+        self.assertIn("def refresh(which", last["exec_args"][1])
+        self.assertFalse(last.get("on_result"))
+        fin = next(s for s in st if s["name"] == "finalize")
+        self.assertIn({"contains": "exit_3", "action": {"type": "Skip"}}, fin["on_result"], "aucune PR relue : la suite, refresh compris, est sautée")
+        self.assertLessEqual(len(st), 20)
+
     # ---------- cron équipe ----------
     def test_team_models_end_with_a_refresh_reached_only_on_success(self):
         c = cfg(models={"review_child": "abababab-0000-4000-8000-000000000001"})
@@ -101,7 +128,7 @@ class RefreshTest(unittest.TestCase):
             st = steps(key, c)
             last = st[-1]
             self.assertEqual(last["step_type"]["type"], "Exec", key)
-            self.assertEqual(last["exec_args"][2:], ["team"], key)
+            self.assertEqual(last["exec_args"][2:], ["team", "office"] if key == "review_one" else ["team"], key)
             self.assertIn("def refresh(which", last["exec_args"][1], key)
             self.assertFalse(last.get("on_result"), key)
             self.assertLessEqual(len(st), 20, key)

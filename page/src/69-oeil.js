@@ -186,11 +186,22 @@ function oeCard(t,grey){
     sub:'Conflit : l\'IA propose une résolution, tu la valides avant tout push.',label:'⟳ Remettre à jour',title:'Remettre à jour '+oePrName(p)});
   return row;
 }
+// « ↻ Revoir maintenant » : relance le cron office, qui relève tes PR (le « ↻ » de la ligne Bureau de Fraîcheur, 33-freshness.js),
+// après confirmation dans la carte Kronn ; refusé s'il tourne déjà. Pas en mode TV ni sans le bouton de relance installé.
+function oeRelaunch(box){
+  const w=ACTIONS.relaunch&&!TV&&RELAUNCH.find(x=>x.bureau==='office'); if(!w)return;
+  const host=document.createElement('div');host.className='relaunch oe-rl';host.setAttribute('data-kronn-action-slot-host','');
+  host.innerHTML='<div class="rl-n">Revoir tes PR maintenant</div><div class="rl-s">Relance tout de suite le relevé de l\'Œil (cron Bureau), sans attendre son passage des 10 minutes.</div>';
+  const b=document.createElement('button');b.textContent='↻ Revoir';b.title='Relever tes PR maintenant';
+  b.setAttribute('data-kronn-action','bureau-relaunch');b.setAttribute('data-kronn-bindings',JSON.stringify({wf_id:w.wf,params:w.wf}));
+  host.appendChild(b);box.appendChild(host);kronnModal(host,b,'Relancer le relevé de l\'Œil',{ico:'👁',tag:'↻ Revoir'});
+}
 function oeHead(box,label,n){box.insertAdjacentHTML('beforeend',`<div class="oe-sec"><span>${esc(label)}</span><span>${n}</span></div>`);}
 function renderOeil(side){
   const all=oeRound(T), aside=oeAside(), box=document.createElement('div');
   const vu=OEIL&&OEIL.generated_at?' · vu à '+hm(ms(OEIL.generated_at)):'';
   box.innerHTML=`<h2>👁 L'Œil</h2><div class="note">${all.length?esc(plural(all.length,'chose t\'attend','choses t\'attendent')):'Rien ne t\'attend.'}${esc(vu)}</div>`;
+  oeRelaunch(box);
   if(!oeLive())box.insertAdjacentHTML('beforeend','<div class="note">Loin de l\'heure de son relevé, l\'Œil ne regarde pas : ses PR sont celles du relevé.</div>');
   for(const [k,label] of OE_SECS){const l=all.filter(t=>oeSec(t)===k);if(!l.length)continue;oeHead(box,label,l.length);for(const t of l)box.appendChild(oeCard(t));}
   if(oeLive()&&aside.notReady.length){oeHead(box,'⏸ Pas prêtes',aside.notReady.length);
@@ -200,6 +211,6 @@ function renderOeil(side){
       aside.idle.map(p=>`<div class="oe-row oe-grey"><div class="oe-t"><b>${esc(oePrName(p))}</b><span class="mut">${esc(p.draft?'brouillon':'sans activité depuis '+Math.floor((T-ms(p.updated))/864e5)+' j')}</span></div><div class="oe-s">${esc(p.title)}</div></div>`).join('');
     box.appendChild(d);}
   if(aside.calm)box.insertAdjacentHTML('beforeend',`<div class="note">${esc(plural(aside.calm,'autre PR ouverte','autres PR ouvertes'))} sans retour à traiter.</div>`);
-  if(!OEIL)box.insertAdjacentHTML('beforeend','<div class="note">Tes PR ne sont pas encore relevées : le cron « refresh (page) » les lit toutes les 10 minutes.</div>');
+  if(!OEIL)box.insertAdjacentHTML('beforeend','<div class="note">Tes PR ne sont pas encore relevées : le cron Bureau les lit toutes les 10 minutes, et la fiche les relève tout de suite avec « ↻ Revoir » quand il est installé.</div>');
   side.appendChild(box);
 }
