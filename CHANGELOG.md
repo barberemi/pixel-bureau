@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Corrigé
 
+- **Une validation refusée n'est plus une panne** : un run que tu arrêtes en refusant une gate (Kronn le finit en échec, la gate en dernière étape) n'envoie plus l'agent aux toilettes. Il reste dans le bureau avec la bulle ⏹ « Arrêté : tu as refusé … », le fil dit « s'arrête sur … (tu as refusé) » au lieu de « se plante », et le refus ne compte ni dans les échecs d'affilée de l'alarme ni dans les échecs du récap. Refuser la dernière gate de la mise en prod (« le ticket est-il terminé ? », pas le dernier ticket de la version) compte comme un succès : la prod est passée, l'agent va au café, comme la carte Teams restée ✅.
 - **L'Œil** revoit tes PR tout de suite après Corriger, Remettre à jour, une revue à la demande ou un passage du cron de revue, au lieu d'attendre ses 10 minutes ; « ↻ Revoir » en tête de sa fiche, et sa ligne sous Bureau dans Fraîcheur des données.
 
 ## [0.3.0] - 2026-11-21
