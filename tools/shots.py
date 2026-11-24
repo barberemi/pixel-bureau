@@ -3,6 +3,8 @@
   .venv/bin/python tools/shots.py            # toutes les captures
   .venv/bin/python tools/shots.py plan tv    # seulement celles-ci
   .venv/bin/python tools/shots.py --team ~/Sites/bureau-monequipe [noms]   # la démo avec un pack, dans <pack>/guide/img
+  .venv/bin/python tools/shots.py --galerie  # chaque plan du dépôt dans chaque thème (guide/habillages.md), refait aussi
+                                             # par la CI avec le label « références visuelles »
 
 Avec --team : roster, avatars, plan et thème du pack, la démo réattribuée à son équipe (assemble.demo_team), le boss
 = la première personne du roster ; seulement les captures de TEAM_SHOTS par défaut (les autres visent la démo).
@@ -516,6 +518,32 @@ TEAM_SHOTS = ["plan", "qui-fait-quoi", "fil", "recap", "kanban", "mep", "calendr
               "tv", "tv-agents"]
 
 
+# galerie des habillages (guide/habillages.md) : chaque plan de layouts/ dans chaque thème de page/src/, la page entière à
+# 11h, sans fiche ouverte, l'enseigne d'une équipe de démo au mur ; à mi-taille (Pillow), pour que le dépôt reste léger
+GALERIE = os.path.join(OUT, "habillages")
+
+
+def galerie():
+    """[(nom de la capture, chemin du plan, id du thème)] : un plan du dépôt × un thème du dépôt, « <plan>--<thème> »."""
+    plans = sorted(f[:-len(".json")] for f in os.listdir(os.path.join(ROOT, "layouts")) if f.endswith(".json"))
+    return [(f"{L}--{t}", f"layouts/{L}.json", t) for L in plans for t in assemble.themes()]
+
+
+def galerie_js(theme):
+    return (AT(11).replace("applySkin('darkmode');", f"applySkin({theme!r});") + "CFG.enseigne={text:'DUNDER MIFFLIN'};buildBg();"
+            "scrollTo(0,0);")
+
+
+def half(png):
+    """Le PNG à mi-taille (la galerie montre l'allure d'un habillage, pas le détail)."""
+    import io
+    from PIL import Image
+    im = Image.open(io.BytesIO(png)).convert("RGB")
+    out = io.BytesIO()
+    im.resize((im.width // 2, im.height // 2), Image.LANCZOS).save(out, "PNG", optimize=True)
+    return out.getvalue()
+
+
 def team_js(js):
     """Mise en scène d'une capture pour un pack : le thème de l'équipe (ui.skin de ses réglages) au lieu du Darkmode."""
     return js.replace("applySkin('darkmode');", "applySkin((CFG.ui||{}).skin);")
@@ -600,7 +628,23 @@ def main(argv):
     ap.add_argument("names", nargs="*", help="captures à refaire (défaut : toutes, ou TEAM_SHOTS avec --team)")
     ap.add_argument("--team", help="la démo avec ce pack d'équipe (chemin) ou ce profil de teams/")
     ap.add_argument("--out", help="dossier des PNG (défaut : guide/img, ou <pack>/guide/img avec --team)")
+    ap.add_argument("--galerie", action="store_true", help="la galerie des habillages : guide/img/habillages/<plan>--<thème>.png")
     a = ap.parse_args(argv)
+    if a.galerie:
+        os.makedirs(GALERIE, exist_ok=True)
+        pages = {}
+        with chrome() as call:
+            for name, layout, theme in galerie():
+                if layout not in pages:
+                    pages[layout] = build_page({**assemble.demo_config(), "layout": layout}, layout)
+                png = capture(call, pages[layout], 1400, 1000, galerie_js(theme), None)
+                if isinstance(png, str):
+                    print(f"✗ {name} : {png}")
+                    continue
+                with open(os.path.join(GALERIE, name + ".png"), "wb") as f:
+                    f.write(half(png))
+                print(f"✓ {os.path.relpath(os.path.join(GALERIE, name + '.png'))}")
+        return
     cfg = team_config(a.team) if a.team else None
     names = a.names or (TEAM_SHOTS if a.team else list(SHOTS))
     out = a.out or (os.path.join(assemble.team_dir(cfg), "guide", "img") if a.team else OUT)

@@ -12,6 +12,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 - **L'habillage Newsroom** : un thème clair de chaîne d'info (mode TV « Newsroom nuit ») et son plan, une rédaction de 40 × 20 cases avec plateau TV, ouverts à tous. Un plan propose son thème (`skin`) quand l'installation n'en choisit pas ; le bouton 🎨 apparaît dès l'installation, il y a deux thèmes.
 
+- **Le guide des habillages** (`guide/habillages.md`, cité dans CONTRIBUTING) : choisir un thème et un plan, proposer le sien (ni marque ni vrai nom, licence des dessins), et la galerie de chaque plan dans chaque thème, refaite par `tools/shots.py --galerie` et par la CI avec le label « références visuelles ».
+
 ### Modifié
 
 - **L'habillage par défaut s'appelle Darkmode** : le thème Classique devient `darkmode` (`page/src/theme-darkmode.css`) et le plan type `layouts/darkmode.json`, mêmes couleurs et même plan. Une installation qui avait `ui.skin` à `classique` retombe d'elle-même sur Darkmode.

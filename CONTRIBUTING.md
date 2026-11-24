@@ -23,6 +23,7 @@ Il faut Python 3.9 ou plus, Node 20 ou plus (sans dépendance npm) et Chrome ou 
 
 ## ✅ Les règles du dépôt
 - **Un test avec chaque changement de code** : `tests/*.test.js` pour la page, `tests/test_*.py` pour les scripts et les outils.
+- **Un thème ou un plan** : ce sont des habillages, ouverts à tous ; les règles (ni marque ni vrai nom, licence des dessins, galerie de captures, label) sont dans [le guide des habillages](guide/habillages.md).
 - **Changement visible = doc dans la même PR** : la page `guide/fonctionnalites/NN-*.md`, la ligne du tableau du README et les captures (`.venv/bin/python tools/shots.py [nom]`). Ne commiter que les captures qui changent vraiment.
 - **On édite `page/src/*` et `page/office_template.html`**, jamais `dist/` (produit par `tools/assemble.py`).
 - **Page sans ressource externe** : ni `import`, ni lien vers un autre site ; images et polices en `data:`. La page publiée doit rester sous 1 000 000 octets (le smoke alerte à 90 %).

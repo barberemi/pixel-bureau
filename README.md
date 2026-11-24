@@ -93,7 +93,7 @@ Pour modifier la page ou les workflows : [guide/developpement.md](guide/developp
 
 ## Ton équipe
 
-Le Bureau de ton équipe, dans tes bureaux : ses collègues, leur apparence, le plan de l'étage depuis un croquis ou une photo, les couleurs de ton entreprise, le tout dans un dossier privé à ton équipe, hors de ce dépôt. Pas à pas, avec l'équipe de la démo en exemple : [guide/equipe.md](guide/equipe.md).
+Le Bureau de ton équipe, dans tes bureaux : ses collègues, leur apparence, le plan de l'étage depuis un croquis ou une photo, les couleurs de ton entreprise, le tout dans un dossier privé à ton équipe, hors de ce dépôt. Pas à pas, avec l'équipe de la démo en exemple : [guide/equipe.md](guide/equipe.md). Les habillages publics (thème et plan du même nom : Darkmode, Newsroom), leur galerie et comment en proposer un : [guide/habillages.md](guide/habillages.md).
 
 ## Contribuer
 
