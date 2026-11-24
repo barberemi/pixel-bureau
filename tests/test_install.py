@@ -133,13 +133,13 @@ class InstallTest(unittest.TestCase):
         posts = [(p, b) for m, p, b in k.calls if m == "POST"]
         page = next(b for p, b in posts if p == "/pages")
         self.assertEqual([d["name"] for d in page["datasets"]], install.DATASETS)
-        self.assertEqual(sum(1 for p, _ in posts if p == "/workflows"), 31)  # Mes todos compris ; Sprint Quest (borne des Combles) ; créer un ticket avec ses 4 sous-workflows (2e étage) et le cron du bilan de la rédaction (avec sa page) ; le cron du bilan des retours (avec sa page, comme corriger) ; déplacer un ticket (Jira connecté) ; dont les 6 modèles d'agents proposés par défaut avec Jira (réestimer, temps gagné par l'IA, issue GitHub, créer un ticket, m'affecter, me désaffecter ; pas la revue de PR sans connexion GitHub), puis remettre une PR à jour et corriger ses commentaires, les agents et les pages de l'écran mural ajoutés depuis la page, commenter un ticket (Jira connecté), parler au canard, le canard d'équipe et répondre aux questions
+        self.assertEqual(sum(1 for p, _ in posts if p == "/workflows"), 32)  # Mes todos compris ; la mémoire du soir ; Sprint Quest (borne des Combles) ; créer un ticket avec ses 4 sous-workflows (2e étage) et le cron du bilan de la rédaction (avec sa page) ; le cron du bilan des retours (avec sa page, comme corriger) ; déplacer un ticket (Jira connecté) ; dont les 6 modèles d'agents proposés par défaut avec Jira (réestimer, temps gagné par l'IA, issue GitHub, créer un ticket, m'affecter, me désaffecter ; pas la revue de PR sans connexion GitHub), puis remettre une PR à jour et corriger ses commentaires, les agents et les pages de l'écran mural ajoutés depuis la page, commenter un ticket (Jira connecté), parler au canard, le canard d'équipe et répondre aux questions
         self.assertEqual(sum(1 for p, _ in posts if p == "/quick-prompts"), 2)  # interroger un agent, plan vers brouillon
         cfg = json.loads(Path(self.cfg_path).read_text())
         self.assertEqual(cfg["owner"], "p_lynn")
         self.assertEqual(cfg["jira"]["config_id"], JIRA)
         self.assertEqual(cfg["jira"]["site"], "https://acme.atlassian.net")  # déduit de la réponse Jira
-        self.assertEqual(set(cfg["workflows"]), {"office", "live", "team", "payroll", "canard", "redaction_bilan", "retours_bilan"})
+        self.assertEqual(set(cfg["workflows"]), {"office", "live", "team", "payroll", "canard", "redaction_bilan", "retours_bilan", "memoire"})
         self.assertEqual(set(cfg["skills"]), set(install.templates.BUREAU_SKILLS))  # skills du Bureau, avant les workflows
         self.assertTrue(all(cfg["actions"].values()))
         self.assertEqual([a["name"] for a in cfg["agents"]], ["Dwight"])  # ses workflows, pas ceux du Bureau
@@ -196,7 +196,7 @@ class InstallTest(unittest.TestCase):
         with mock.patch.object(install, "Kronn", return_value=first):
             self.assertEqual(self.run_install(ANSWERS), 0)
         posts = [p for m, p, _ in first.calls if m == "POST" and p in ("/pages", "/workflows", "/quick-prompts")]
-        self.assertEqual(len(posts), 3 + 31 + 2)  # rien de recréé à la relance (la page du Bureau, « Rédaction · bilan » et « Retours · bilan »)
+        self.assertEqual(len(posts), 3 + 32 + 2)  # rien de recréé à la relance (la page du Bureau, « Rédaction · bilan » et « Retours · bilan »)
 
     def test_relaunch_adds_missing_datasets(self):
         self.run_install(ANSWERS)
@@ -305,7 +305,7 @@ class InstallTest(unittest.TestCase):
         k = self.fakes[-1]
         cfg = json.loads(Path(self.cfg_path).read_text())
         self.assertEqual(cfg["workflows"]["live"], FakeKronn.LIVE)
-        self.assertEqual(sum(1 for m, p, _ in k.calls if m == "POST" and p == "/workflows"), 30)
+        self.assertEqual(sum(1 for m, p, _ in k.calls if m == "POST" and p == "/workflows"), 31)
         self.assertTrue([1 for m, p, _ in k.calls if m == "PUT" and p == f"/workflows/{FakeKronn.LIVE}"])  # mis à jour
         self.assertEqual([a["name"] for a in cfg["agents"]], ["Dwight"])
 
@@ -337,7 +337,7 @@ class InstallTest(unittest.TestCase):
             self.assertFalse([1 for m, _, _ in k.calls if m == "DELETE"])
             self.assertEqual(uninstall.main(["--config", self.cfg_path, "--yes"]), 0)
         deleted = [p for m, p, _ in k.calls if m == "DELETE"]
-        self.assertEqual(len(deleted), 30 + 2 + 1)  # 30 workflows (dont Sprint Quest, les 4 sous-workflows de créer un ticket, les bilans de la rédaction et des retours), les 2 QP, la page
+        self.assertEqual(len(deleted), 31 + 2 + 1)  # 31 workflows (dont la mémoire du soir, Sprint Quest, les 4 sous-workflows de créer un ticket, les bilans de la rédaction et des retours), les 2 QP, la page
         self.assertNotIn(f"/workflows/{mine}", deleted)
         self.assertEqual(deleted[-1], f"/pages/{cfg['page_id']}")  # la page en dernier
         after = json.loads(Path(self.cfg_path).read_text())

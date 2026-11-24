@@ -401,7 +401,8 @@ exit 0
             return [s["exec_args"][2] for s in TPL[key]["definition"]["steps"]
                     if len(s.get("exec_args") or []) > 2 and "pr_update.py" in s["exec_args"][1]]
         # le n° de version dans le ticket (fix_jira_*) reste au workflow « corriger » : la chaîne suit le ticket à sa façon
-        self.assertEqual(subs("impl_retours"), [x for x in subs("fix") if x.startswith("fix_") and not x.startswith("fix_jira_")])
+        # fix_abort : « Changements » à la gate de corriger, que le poste de la chaîne n'a pas
+        self.assertEqual(subs("impl_retours"), [x for x in subs("fix") if x.startswith("fix_") and not x.startswith("fix_jira_") and x != "fix_abort"])
         prompt = {(k, s["name"]): s.get("prompt_template") or "" for k in ("fix", "impl_retours") for s in TPL[k]["definition"]["steps"]}
         self.assertTrue(prompt[("impl_retours", "corrige")].startswith("@@text:tools/fix_prompt.md@@"))
         self.assertTrue(prompt[("fix", "fix")].startswith("@@text:tools/fix_prompt.md@@"))

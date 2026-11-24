@@ -439,16 +439,17 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Changements demandés : dossier de travail retiré, rien poussé ni posté.",
+    "description": "Changements demandés : dossier de travail retiré, rien poussé ni posté ; ton message gardé dans l'état du run pour la mémoire du soir.",
     "exec_command": "python3",
     "exec_args": [
      "-c",
      "@@script:workflows/pr_update.py@@",
-     "abort",
+     "fix_abort",
      "{{repo}}",
      "{{pr}}",
      "{{run.id}}"
     ],
+    "exec_stdin": "{{state.last_human_feedback ?? \"\"}}",
     "exec_timeout_secs": 120
    }
   ],

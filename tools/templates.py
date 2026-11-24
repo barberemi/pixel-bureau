@@ -146,6 +146,10 @@ TEMPLATES = {
     # page « Revue · bilan » : la suite des bloquants (historique des revues) et l'état des PR relues (gh), page Kronn à part
     # (revue_bilan_page_id, sinon review.page_id) ; sans revue installée ou sans cette page : pas créé
     "revue_bilan": ("workflow", ("workflows", "revue_bilan"), {"bilan": "workflows/revue_bilan.py"}),
+    # mémoire du soir (amélioration continue) : les retours humains du jour réécrits en leçons par un agent, validées à ta
+    # gate, lues par les postes de la rédaction, de la chaîne, de la revue et de « corriger » (workflows/_memoire.py) ;
+    # sans aucun de ces workflows installés, ou memoire.actif à false : pas créé
+    "memoire": ("workflow", ("workflows", "memoire"), {n: "workflows/memoire.py" for n in ("releve", "propose", "applique", "fin")}),
     "ask": ("quick_prompt", ("actions", "ask"), {}),
     "sketch": ("quick_prompt", ("actions", "sketch"), {}),
 }
@@ -157,7 +161,7 @@ WF_KEYS = ("name", "project_id", "trigger", "variables", "steps", "actions", "sa
 VIDES = {"prompt_template": "", "skill_ids": [], "sub_workflow_variables": {}}
 QP_KEYS = ("name", "icon", "prompt_template", "variables", "agent", "project_id", "skill_ids", "profile_ids", "directive_ids", "tier", "description")
 TOKEN = re.compile(r"@@([a-z_.]+|(?:script|text|skill):[\w/.]+)@@")
-TEXTS = ("tools/plan_prompt.md", "tools/mail_rules_prompt.md", "tools/rebase_prompt.md", "tools/fix_prompt.md")
+TEXTS = ("tools/plan_prompt.md", "tools/mail_rules_prompt.md", "tools/rebase_prompt.md", "tools/fix_prompt.md", "tools/memoire_prompt.md")
 # skills du Bureau, partagés par la revue de PR et la chaîne d'implémentation : la source est skills/<fichier>.md, publiée
 # dans Kronn par publish.py et install.py (sync_skills), son id rangé dans skills.<clé> de la config ; un poste les nomme
 # « bureau:<clé> » dans REVIEW_AGENTS ou IMPL_AGENTS. Pas d'épinglage (custom-x@N) : Kronn ne désactive un workflow qu'à
@@ -400,6 +404,9 @@ def values(cfg):
         "root": ROOT,
         "cron_hours": assemble.cron_hours(cfg),  # heures UTC des crons, d'après le fuseau et les heures de bureau
         "cron_veille": assemble.cron_hours(cfg, True),  # les crons de ce qui tourne (runs, étages, équipe), jusqu'à rhythm.veille
+        # mémoire du soir : les heures UTC de memoire.heure (défaut 22, heure du bureau) en hiver et en été ; le script ne
+        # travaille qu'au passage qui tombe à cette heure-là
+        "memoire.heures": assemble.local_hour_utc(cfg, (assemble.merged(cfg).get("memoire") or {}).get("heure") or 22),
         # travail Jira des rôles sans tickets assignés (PO, SM, QA) : compte Jira de la première personne du rôle
         **{f"jira.role.{r}": role_ids(r, cfg) for r in ROLES},
         "jira.role_ids": ",".join(f'"{x}"' for r in ROLES for x in [role_ids(r, cfg)] if x),
@@ -546,6 +553,10 @@ def skipped(key, cfg):
         return not ((cfg.get("models") or {}).get("review_child") and revue_page(cfg))
     if key == "retours_bilan":  # la page du bilan des retours : « corriger » installé (actions.fix_pr) et page créée (install.py)
         return not ((cfg.get("actions") or {}).get("fix_pr") and cfg.get("retours_bilan_page_id"))
+    if key == "memoire":  # aucun workflow à agent qui lit la mémoire installé, ou mémoire éteinte (memoire.actif)
+        m, models = cfg.get("memoire") or {}, cfg.get("models") or {}
+        return m.get("actif") is False or not (models.get("ticket") or models.get("impl_chain") or models.get("review_child")
+                                               or (cfg.get("actions") or {}).get("fix_pr"))
     if key.startswith("impl"):  # la chaîne lit le ticket dans Jira et livre sur GitHub (gh)
         return not (cfg.get("jira") or {}).get("config_id")
     if key in ("estimate", "assign", "unassign", "ticket", "ai_time") or key.startswith("ticket_"):  # ses postes et chaque ticket aussi
@@ -838,12 +849,14 @@ def templatize(key, kind, d, cfg):
         return v
 
     d = walk(d)
+    own_tr = ((load_templates().get(key) or {}).get("definition") or {}).get("trigger") or {}
     if (d.get("trigger") or {}).get("timezone") == CRON_TZ:  # posé au rendu (pin_tz) : le modèle reste sans fuseau
         d["trigger"].pop("timezone")
     sch = (d.get("trigger") or {}).get("schedule")
     if isinstance(sch, str) and len(sch.split()) == 5:
-        f, own = sch.split(), (((load_templates().get(key) or {}).get("definition") or {}).get("trigger") or {}).get("schedule") or ""
-        slot = "cron_veille" if "@@cron_veille@@" in own else "cron_hours"  # le modèle dit lequel (les deux peuvent être égaux)
+        f, own = sch.split(), own_tr.get("schedule") or ""
+        # le modèle dit lequel (cron_hours et cron_veille peuvent être égaux)
+        slot = "memoire.heures" if "@@memoire.heures@@" in own else "cron_veille" if "@@cron_veille@@" in own else "cron_hours"
         if f[1] == vals[slot]:
             d["trigger"]["schedule"] = " ".join(f[:1] + ["@@" + slot + "@@"] + f[2:])
     if kind == "workflow":
