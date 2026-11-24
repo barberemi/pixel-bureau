@@ -283,12 +283,12 @@ def review_version():
 _RV_VERSION = {}
 
 
-LIB_IMPORT = re.compile(r"^from (_lib|_plan|_checks|_chaine|_releves|_lecteurs|_vars|_defs) import [\w, *]+(?:  #.*)?$", re.M)
+LIB_IMPORT = re.compile(r"^from (_lib|_plan|_checks|_chaine|_releves|_lecteurs|_vars|_defs|_memoire) import [\w, *]+(?:  #.*)?$", re.M)
 # la chaîne d'implémentation : trois scripts et leur commun (_chaine.py, recopié dans chacun). Kronn passe un script en un
 # seul argument « python3 -c » : sous Linux, 128 Kio au plus (MAX_ARG_STRLEN) ; ils ne reçoivent que leur part de la config
 CHAINE_SCRIPTS = ("workflows/chaine.py", "workflows/chaine_controles.py", "workflows/chaine_pr.py")
-CHAINE_CFG = ("impl", "models", "github", "kronn", "rhythm", "workflows", "actions")
-REVIEW_CFG = ("review", "jira", "kronn", "models", "rhythm", "workflows", "actions", "github")
+CHAINE_CFG = ("impl", "models", "github", "kronn", "rhythm", "workflows", "actions", "memoire")  # memoire : _memoire.py
+REVIEW_CFG = ("review", "jira", "kronn", "models", "rhythm", "workflows", "actions", "github", "memoire")
 MAX_SCRIPT = 110 * 1024  # marge sous les 128 Kio d'un argument (tests/test_templates.py)
 
 

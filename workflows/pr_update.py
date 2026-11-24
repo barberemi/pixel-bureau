@@ -40,6 +40,7 @@ Codes : 2 réglage ou PR refusés, 3 conflit ou pas de ticket (renvoi), 4 confli
 import difflib, glob, hashlib, json, os, re, shutil, stat, subprocess, sys, time
 from _lib import CFG, fil_col, get, read_json, refresh, write_json, write_text
 from _checks import check_run
+from _memoire import MEM_TITRE, memoire_texte
 
 HOME = os.path.expanduser("~/.cache/pixel-bureau/pr")
 GH = CFG.get("github") or {}
@@ -553,7 +554,8 @@ def fix_prepare(repo, n, run_id):
     dj = sum(1 for t in ts if t["deja_repondu"] and not t["relance"])
     print(f"{repo}#{n} : {st['title']}\n{len(ts)} fil(s) de review non résolu(s)" + (f" (dont {dj} déjà répondu(s) par le Bureau, sans relance)" if dj else "")
           + (f", {len(gs)} commentaire(s) hors fil" if gs else "") + (f", {ign}" if ign else "") + f", branche {st['branch']} ; {deps}.\n"
-          f"Passe de corrections : Version {st['version']}.\n\n" + checks_hint(repo, st))
+          f"Passe de corrections : Version {st['version']}.\n\n" + checks_hint(repo, st)
+          + ("\n\n## " + MEM_TITRE + "\n" + memoire_texte("correction") if memoire_texte("correction") else ""))
 
 
 def fix_check(repo, n, run_id):

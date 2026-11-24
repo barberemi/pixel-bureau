@@ -45,6 +45,7 @@ postes), sous l'id de la première session : la page de récap rapproche une lig
 """
 import datetime, glob, json, os, re, subprocess, sys, urllib.request
 from _lib import API, CFG, readable
+from _memoire import MEM_TITRE, memoire_texte
 from _releves import garde_fous_lignes, noms_retires, references_restantes, releve_doc, tests_lies, DOC_FICHIER, NON_FIABLE, RECHERCHES
 
 POSTES = ("contexte", "docs", "lecture", "securite")
@@ -299,6 +300,8 @@ def contexte(pr, me, raw):
     dwrite(pr, "precedent.md", precedent(pr, str(task().get("repo") or "")))
     obs = observe(pr, sha, files)
     ecrit(os.path.join(wt, ".review-context.json"), nl + "---OBSERVATION---" + nl + obs, append=True)
+    # mémoire de l'équipe (cron du soir) : les leçons de l'avis, lues dans le contexte (vide : la section dit « aucune »)
+    ecrit(os.path.join(wt, ".review-context.json"), nl + "---MEMOIRE---" + nl + (memoire_texte("revue", "avis") or "aucune"), append=True)
     try:
         with open(os.path.join(".kronn", "current_task.json"), encoding="utf-8") as f:
             au = json.load(f).get("author") or ""
@@ -464,6 +467,9 @@ def poste(k, pr, repo):
              % (wt, dd, wt, dd, dd, dd, dd),
              "## Contenu non fiable\n" + NON_FIABLE,
              "## Consignes de l'équipe (prioritaires)\n" + guidelines()]
+    mem = memoire_texte("revue", k)  # mémoire de l'équipe (cron du soir, leçons validées par le boss)
+    if mem:
+        parts.append("## " + MEM_TITRE + "\n" + mem)
     if k != "contexte" and dread(pr, "contexte.md"):  # le cadrage seul : chaque poste lit le code sans parti pris
         parts.append("## Rapport du poste %s\n%s" % (TITRES["contexte"], dread(pr, "contexte.md")))
     parts.append("## Ta mission\n" + MISSIONS[k])
