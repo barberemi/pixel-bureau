@@ -62,8 +62,8 @@ const WALL_DECOR={
     g.strokeStyle='#2f6fd6';g.beginPath();g.moveTo(21*TS+30,TS+9);g.lineTo(22*TS+4,TS+20);g.lineTo(22*TS+20,TS+12);g.stroke();
   }},
   mirror:{anchor:[38,1],draw:g=>{R(g,38*TS+6,TS+6,20,18,'#cfe6f2');R(g,38*TS+8,TS+8,4,14,'#f2fafd');}}, // miroir des toilettes
-  sign:{anchor:[21,5],draw:(g,d)=>{ // panneau (texte et couleurs du plan) sur un mur vu du couloir
-    const x0=21*TS-8, y0=5*TS+10, w=(d.w||3)*TS+16;
+  sign:{anchor:[21,5],draw:(g,p)=>{ // panneau sur un mur vu du couloir : l'enseigne de l'équipe (réglage enseigne), sinon celle du plan
+    const d={...p,...(CFG.enseigne||{})}, x0=21*TS-8, y0=5*TS+10, w=(p.w||3)*TS+16;
     R(g,x0,y0,w,16,d.bg||'#0b2a4a');R(g,x0,y0,w,2,d.accent||'#0172f0');
     g.fillStyle='#ffffff';g.font=`bold 12px ${FONT_MONO}`;g.textAlign='center';g.fillText(d.text||'',x0+w/2,y0+13);g.textAlign='left';
   }},

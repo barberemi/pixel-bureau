@@ -127,3 +127,17 @@ test('plan sans les listes facultatives (porte refermable, plantes, fenêtres, m
   assert.equal(p.run('LAYOUT.id'), 'exemple-startup');
   for (const h of [11, 20.25]) p.run(`T=DAY0+${h}*3600e3;render(${h * 1000});lightSources();`);
 });
+
+// Lot 2 des habillages : l'enseigne du mur vient du réglage enseigne (pack ou config), sinon du plan
+test('enseigne : le panneau du plan prend le texte et les couleurs du réglage enseigne', () => {
+  const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'bureau.config.json'), 'utf8'));
+  const sign = cfg => JSON.parse(load({owner: 'p_lynn', config: {...fixture, team: PACK, people: [], ...cfg}}).run(`(() => {
+    const out = [], g = {fillText: t => out.push(['t', String(t)]), set fillStyle(c) { out.push(['c', c]); }, get fillStyle() { return ''; },
+      fillRect() {}, set font(f) {}, set textAlign(a) {}};
+    WALL_DECOR.sign.draw(g, LAYOUT.wall.find(d => d.type === 'sign')); return JSON.stringify(out); })()`));
+  assert.ok(sign({}).some(([k, v]) => k === 't' && v === 'LE BUREAU'), 'sans réglage : le texte du plan');
+  const got = sign({enseigne: {text: 'VANCE', bg: '#112233'}});
+  assert.ok(got.some(([k, v]) => k === 't' && v === 'VANCE'));
+  assert.ok(got.some(([k, v]) => k === 'c' && v === '#112233'));
+  assert.ok(got.some(([k, v]) => k === 'c' && v === '#c9a227'), 'la couleur non réglée reste celle du plan');
+});

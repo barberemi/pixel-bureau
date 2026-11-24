@@ -50,6 +50,20 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(m["jira"], c["jira"])
         self.assertEqual(assemble.merged(m), m)  # idempotent
 
+    def test_enseigne_from_the_pack_and_the_config(self):
+        """Lot 2 des habillages : l'enseigne du mur est un réglage d'équipe (texte ou {text, bg, accent}), relu à chaque
+        assemblage ; la config la surcharge champ à champ ; une couleur mal écrite est ignorée, le texte coupé à 24."""
+        self.write({"enseigne": "VANCE"})
+        self.assertEqual(assemble.page_config(assemble.merged(self.cfg()))["enseigne"], {"text": "VANCE"})
+        m = assemble.merged(self.cfg(enseigne={"bg": "#112233", "accent": "rouge"}))
+        self.assertEqual(m["enseigne"], {"text": "VANCE", "bg": "#112233"})
+        self.assertEqual(assemble.merged(m), m)
+        self.write({"enseigne": {"text": "X" * 40, "bg": "#000000", "accent": "#ffcc00"}})
+        self.assertEqual(assemble.page_config(assemble.merged(self.cfg()))["enseigne"], {"text": "X" * 24, "bg": "#000000", "accent": "#ffcc00"})
+        self.write({})
+        self.assertIsNone(assemble.page_config(assemble.merged(self.cfg()))["enseigne"])  # le panneau garde ce que dit le plan
+        self.assertIn('"enseigne":{"text":"SEUL"}', assemble.build(cfg=self.cfg(enseigne="SEUL")))  # sans pack aussi
+
     def test_mep_transition_and_teams_channel_from_the_pack(self):
         """Mise en prod : statut de fin et canal Teams de l'équipe dans le pack ; le canal de test reste celui de la config."""
         self.write({"mep": {"done_transition": "3", "teams": {"team": "T1", "channel": "19:mep@thread.tacv2"}}})

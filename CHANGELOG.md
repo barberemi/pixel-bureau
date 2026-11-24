@@ -6,6 +6,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ## [Unreleased]
 
+### Ajouté
+
+- **L'enseigne de l'équipe** : le panneau mural du plan affiche le nom de ton équipe et ses couleurs, réglés dans le pack (`settings.json`, clé `enseigne` : un texte ou `{text, bg, accent}`) et surchargeables par ta config ; un plan ne porte plus de nom d'équipe.
+
 ### Modifié
 
 - **Les places se règlent par zones** : un plan ne nomme plus personne. Il réserve des îlots à l'équipe et aux agents (`zones`), et chacun s'y range tout seul, collègues dans l'ordre du roster ; une préférence se donne dans le roster ou les agents du pack (`seat` : un siège, `near` : à côté de quelqu'un). L'ancienne clé `seating` du plan est refusée par `tools/plan.py check`.

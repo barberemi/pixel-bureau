@@ -220,6 +220,7 @@ def page_config(cfg):
         # préfixe du workflow de chaque bouton des fiches (#86) : la page y retrouve l'agent qui l'incarne (agents[].wf)
         "action_wf": {k: str(v)[:8] for k, v in action_ids(cfg).items() if k in FICHE_ACTIONS and v},
         "ui": cfg.get("ui") or {},
+        "enseigne": enseigne(cfg) or None,  # le panneau mural du plan (décor sign) : texte et couleurs de l'équipe
         "scenes": cfg.get("scenes") or {},  # réglage scenes : seuils des lettres et des grosses PR, hyperespace (43-pop.js)
         "skins": themes(cfg),  # thèmes d'interface (theme-*.css) proposés par le bouton 🎨
         "support": support_page(cfg),  # console Support (#62)
@@ -246,6 +247,18 @@ def page_config(cfg):
         "atelier_chain": str((cfg.get("models") or {}).get("impl_chain") or "")[:8],  # tickets sortis aujourd'hui (runs de la chaîne)
         "combles_url": combles_url(cfg),  # l'étage secret (68-combles.js) : la borne ouvre Sprint Quest
     }
+
+
+HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def enseigne(cfg):
+    """Réglage enseigne (pack ou config) : un texte, ou {text, bg, accent} (couleurs en #rrggbb) ; {} sans réglage.
+    Le texte est coupé à 24 signes, une couleur mal écrite est ignorée (le panneau garde celle du plan)."""
+    e = (cfg or {}).get("enseigne")
+    e = {"text": e} if isinstance(e, str) else e if isinstance(e, dict) else {}
+    out = {"text": str(e["text"])[:24]} if isinstance(e.get("text"), str) else {}
+    return {**out, **{k: e[k] for k in ("bg", "accent") if isinstance(e.get(k), str) and HEX.match(e[k])}}
 
 
 def combles_url(cfg):
@@ -399,7 +412,7 @@ def defaults(cfg):
 # Le pack porte l'équipe, la config porte l'installation. settings.json du pack, lu à chaque assemblage et rendu des
 # modèles : rythme, GitFut, affiches du Top 3, planning des absences (sans config_id) et personnages des agents (sans
 # ids de workflows). La config peut surcharger chacun ; elle seule rattache un personnage à ses workflows (agents[].wf).
-SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "fix", "support", "env", "deploy", "jira", "impl", "mep", "combles", "fastly", "scenes")
+SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "fix", "support", "env", "deploy", "jira", "impl", "mep", "combles", "fastly", "scenes", "enseigne")
 AGENT_FIELDS = ("key", "name", "role", "wf", "seat", "sprite")  # ordre des champs d'un agent, comme l'installateur l'écrit
 
 
@@ -462,6 +475,8 @@ def merged(cfg):
         out["deploy"] = {**(s["deploy"] or {}), **(cfg.get("deploy") or {})}
     if "fastly" in s:  # purger le cache Fastly : services de l'équipe ; la config peut les surcharger
         out["fastly"] = {**(s["fastly"] or {}), **(cfg.get("fastly") or {})}
+    if "enseigne" in s:  # l'enseigne au mur du plan : celle de l'équipe, que la config surcharge champ à champ
+        out["enseigne"] = {**enseigne(s), **enseigne(cfg)}
     if "scenes" in s:  # scènes du plan (seuils des lettres et des grosses PR, hyperespace) : celles de l'équipe, scène par scène
         out["scenes"] = {**(s["scenes"] or {}), **(cfg.get("scenes") or {})}
     # créer un ticket (#77), temps gagné par l'IA (#79) : jira.create et jira.ai_feedback de l'équipe ; la config les surcharge
