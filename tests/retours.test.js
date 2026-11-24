@@ -264,6 +264,26 @@ test("le Kanban d'un bureau : la fenêtre large commune, nommée ; un fil cliqu�
   });
 });
 
+test("le Kanban, mots longs : coupés à leurs frontières, le code en pastille, jamais une entité coupée ; la carte à 4 lignes, le texte entier à droite", () => {
+  const {p, J} = page();
+  assert.equal(J("rtBrk('testEditionWithoutFileFallsBackToTheEnglishFileAndCacheEntry ne couvre pas')"),
+    'test<wbr>Edition<wbr>Without<wbr>File<wbr>Falls<wbr>Back<wbr>To<wbr>The<wbr>English<wbr>File<wbr>And<wbr>Cache<wbr>Entry ne couvre pas');
+  assert.equal(J("rtBrk('tests/Unit/Service/Translation.php')"), 'tests/<wbr>Unit/<wbr>Service/<wbr>Translation.<wbr>php');
+  assert.equal(J("rtBrk('Renommer la prop autoplay')"), 'Renommer la prop autoplay', 'mots courts : rien');
+  assert.equal(J(`rtBrk("l'#entréeTrèsLongueÀCouper<b>")`), 'l&#39;#<wbr>entrée<wbr>Très<wbr>LongueÀCouper&lt;b&gt;', 'échappé après la coupe');
+  assert.equal(J("rtRich('`resolveFallback()` devrait être privée')"), '<code>resolveFallback()</code> devrait être privée');
+  assert.equal(J("rtRich('Voir TRANSLATION_FALLBACK_LOCALE en dur')"), 'Voir <code>TRANSLATION_<wbr>FALLBACK_<wbr>LOCALE</code> en dur');
+  assert.equal(J("rtRich('anticonstitutionnellement long')"), 'anticonstitutionnellement long', 'un mot français long reste du texte');
+  assert.equal(J("rtRich('<script>`<b>`')"), '&lt;script&gt;<code>&lt;b&gt;</code>');
+  const css = require('fs').readFileSync(require('path').join(__dirname, '..', 'page', 'src', 'styles.css'), 'utf8');
+  assert.match(css, /\.rt-win \.rt-tx\{[^}]*-webkit-line-clamp:4[^}]*overflow-wrap:anywhere/);
+  assert.match(css, /\.rt-det p\{[^}]*overflow-wrap:anywhere/);
+  p.run(`RETOURS = retoursDemo(); RETOURS.rooms[0].fils[2].text = '\`fooBarBazQuxQuuxCorgeGrault\` à revoir';`);
+  const html = J(`(() => { const el = {}; RT_KB = {run: 'demo-f1', fid: 't3'}; rtKbFill(el, RETOURS.rooms[0]); return el.innerHTML; })()`);
+  assert.match(html, /<span class="rt-tx"><code>foo<wbr>Bar<wbr>Baz<wbr>Qux<wbr>Quux<wbr>Corge<wbr>Grault<\/code> à revoir<\/span><\/button>/, 'la carte');
+  assert.match(html, /<p>« <code>foo<wbr>Bar[^<]*(<wbr>\w+)*<\/code> à revoir »<\/p>/, 'le panneau de droite, en entier');
+});
+
 // ---------- une rangée de trois bureaux, l'entrepôt au début du couloir ----------
 test("une rangée : trois bureaux côte à côte en haut, le couloir dessous ; la porte du bureau 1 juste après l'entrepôt", () => {
   const {J} = page();

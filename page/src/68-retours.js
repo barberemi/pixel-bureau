@@ -393,11 +393,18 @@ function retoursHover(e){
 // ---------- la fenêtre Kanban d'un bureau : les fils en colonnes, le fil choisi à droite ----------
 // la fenêtre large commune (openDialog, 47-fenetre.js) ; un clic sur un fil la redessine sur place, le focus sur ce fil
 function rtKbClose(){if(DLG&&DLG.k==='rtkb')closeDialog();RT_KB=null;}
+// textes d'un fil dans la fenêtre : un mot de 18 caractères ou plus (nom de test, classe, URL, constante) se coupe à ses
+// frontières (minuscule puis Majuscule, après _ . / \ : # -), le reste de la ligne n'y touche pas ; découpé avant esc pour
+// ne jamais couper une entité. rtRich : le code entre accents graves et les mots longs qui ressemblent à du code en pastille
+const rtBrk=s=>String(s==null?'':s).split(/(\S{18,})/).map((p,i)=>i%2?p.split(/(?<=[a-z0-9])(?=[A-Z])|(?<=[_./\\:#-])(?=\w)/).map(esc).join('<wbr>'):esc(p)).join('');
+const rtCode=w=>/[a-z][A-Z]|[_/\\.:#]/.test(w);
+const rtRich=s=>String(s==null?'':s).split(/`([^`\n]+)`/).map((p,i)=>i%2?`<code>${rtBrk(p)}</code>`:
+  p.split(/(\S{18,})/).map((q,j)=>j%2&&rtCode(q)?`<code>${rtBrk(q)}</code>`:rtBrk(q)).join('')).join('');
 function rtKbFill(el,r){
   const f=(r.fils||[]).find(x=>x.id===RT_KB.fid), url=/^[\w.-]+\/[\w.-]+$/.test(String(r.repo||''))&&/^\d+$/.test(String(r.pr||''))?`https://github.com/${r.repo}/pull/${r.pr}/files`:null;
   el.innerHTML=`<div class="at-bar">${RT_POSTES.map(p=>{const s=rtState(r,p);return `<i class="${s?RT_ST[s][0]:''}" title="${esc(p.n+' : '+RT_ST[s||'wait'][1])}"></i>`;}).join('')}</div>
-    <div class="rt-kbb"><div class="rt-cols">${RT_COLS.map(c=>{const l=(r.fils||[]).filter(x=>x.col===c.k);return `<div class="rt-col"><h4>${esc(c.n)} · ${l.length}</h4>${l.map(x=>`<button type="button" class="rt-card${x.cur?' cur':''}${f&&x.id===f.id?' on':''}" data-fil="${esc(x.id)}" aria-pressed="${!!(f&&x.id===f.id)}" style="--c:${c.c}"><span class="mono">${esc(x.path||'')}${x.line?':'+x.line:''}</span><small>@${esc(x.who||'?')}</small>${esc(x.text||'')}</button>`).join('')}</div>`;}).join('')}</div>
-    <div class="rt-det">${f?`<div class="mono">${esc(f.path||'')}${f.line?':'+f.line:''} · @${esc(f.who||'?')}</div><p>« ${esc(f.text||'')} »</p><p class="mut">${f.cur?'🛠 La correction traite ce fil en ce moment (le fil rouge sur le plan).':'Colonne : '+esc((RT_COLS.find(c=>c.k===f.col)||{}).n||'')}</p>${safeUrl(f.url)?`<a ${hrefOf(f.url)} target="_blank" rel="noopener">💬 Le commentaire sur GitHub ↗</a>`:''}`:'<p class="mut">Aucun fil.</p>'}
+    <div class="rt-kbb"><div class="rt-cols">${RT_COLS.map(c=>{const l=(r.fils||[]).filter(x=>x.col===c.k);return `<div class="rt-col"><h4>${esc(c.n)} · ${l.length}</h4>${l.map(x=>`<button type="button" class="rt-card${x.cur?' cur':''}${f&&x.id===f.id?' on':''}" data-fil="${esc(x.id)}" aria-pressed="${!!(f&&x.id===f.id)}" style="--c:${c.c}"><span class="mono">${rtBrk(x.path||'')}${x.line?':'+x.line:''}</span><small>@${esc(x.who||'?')}</small><span class="rt-tx">${rtRich(x.text||'')}</span></button>`).join('')}</div>`;}).join('')}</div>
+    <div class="rt-det">${f?`<div class="mono">${rtBrk(f.path||'')}${f.line?':'+f.line:''} · @${esc(f.who||'?')}</div><p>« ${rtRich(f.text||'')} »</p><p class="mut">${f.cur?'🛠 La correction traite ce fil en ce moment (le fil rouge sur le plan).':'Colonne : '+esc((RT_COLS.find(c=>c.k===f.col)||{}).n||'')}</p>${safeUrl(f.url)?`<a ${hrefOf(f.url)} target="_blank" rel="noopener">💬 Le commentaire sur GitHub ↗</a>`:''}`:'<p class="mut">Aucun fil.</p>'}
       ${url?`<a href="${url}" target="_blank" rel="noopener">↗ Ouvrir la PR sur GitHub</a>`:''}</div></div>`;
 }
 function rtKbOpen(run,fid){
