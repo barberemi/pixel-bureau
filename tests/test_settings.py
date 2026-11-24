@@ -302,3 +302,47 @@ class BranchementsTest(unittest.TestCase):
         self.assertEqual((page["atelier"], page["atelier_chain"], page["action_wf"]["impl"]), (True, "11111111", "11111111"))
         with mock.patch("sys.stdout", new=io.StringIO()):
             self.assertEqual(install.branch(K(), {**assemble.demo_config()}), [])  # rien de branché : Kronn pas interrogé
+
+
+class BoutonsTest(unittest.TestCase):
+    """Lot 7 des habillages : des boutons libres sur les fiches (ticket ou PR), un workflow par son nom, ses variables
+    liées à la fiche ; rattachables à un agent."""
+    R = {"id": "recette", "label": "🧪 Recette", "fiche": "ticket", "wf": "recette", "vars": {"ticket_key": "{ticket}", "env": "?"}, "agent": "holly"}
+
+    def test_errors(self):
+        for bad, msg in (({**self.R, "id": "Recette !"}, "id"), ({**self.R, "fiche": "sprint"}, "ticket ou pr"),
+                         ({**self.R, "vars": {"pr": "{pr}"}}, "pr={pr}"), ({**self.R, "wf": ""}, "obligatoires")):
+            with self.assertRaisesRegex(ValueError, msg):
+                assemble.boutons({"boutons": [bad]})
+
+    def test_install_finds_it_and_the_page_gets_its_block(self):
+        class K:
+            def get(self, p):
+                return {"/workflows": [{"id": "abcdef12-0000", "name": "recette"}],
+                        "/workflows/abcdef12-0000": {"variables": [{"name": "ticket_key"}, {"name": "env"}]}}.get(p)
+        c = {**assemble.demo_config(), "boutons": [self.R], "agents": [{"key": "holly", "name": "Holly", "wf": ["11111111"]}]}
+        with mock.patch("sys.stdout", new=io.StringIO()):
+            self.assertEqual(install.branch(K(), c), [])
+        self.assertEqual(c["boutons_wf"], {"recette": "abcdef12-0000"})
+        m = assemble.merged(c)
+        self.assertEqual(m["agents"][0]["wf"], ["11111111", "abcdef12"])  # rattaché à Holly : son run va à elle
+        self.assertEqual(assemble.merged(m), m)
+        page = assemble.page_config(m)
+        self.assertEqual(page["boutons"], [{"id": "recette", "label": "🧪 Recette", "fiche": "ticket", "wf": "recette"}])
+        self.assertEqual(page["action_wf"]["libre-recette"], "abcdef12")
+        html = assemble.build(cfg=c)
+        self.assertIn('data-action-id="bureau-libre-recette">{"kind":"workflow","target_id":"abcdef12-0000","values":[{"name":"ticket_key",'
+                      '"provenance":"dynamic_binding","source_ref":"<page.dataset.actions.tickets.find(key).key>"},{"name":"env","provenance":"user_input"}]}', html)
+        self.assertIn('"bureau-libre-recette":{"ticket_key":"key"}', html)
+        self.assertNotIn("<!--__BOUTONS__-->", html)
+
+    def test_missing_workflow_or_variable(self):
+        class K:
+            def get(self, p):
+                return {"/workflows": [{"id": "abcdef12-0000", "name": "recette"}], "/workflows/abcdef12-0000": {"variables": [{"name": "key"}]}}.get(p)
+        c = {**assemble.demo_config(), "boutons": [self.R, {**self.R, "id": "autre", "wf": "absent"}]}
+        with mock.patch("sys.stdout", new=io.StringIO()):
+            problems = install.branch(K(), c)
+        self.assertEqual(c["boutons_wf"], {})
+        self.assertEqual(len(problems), 2)
+        self.assertNotIn("data-action-id=\"bureau-libre-", assemble.build(cfg=c))

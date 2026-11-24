@@ -218,7 +218,9 @@ def page_config(cfg):
         "schedules": cron_schedules(cfg),  # calendrier des crons du Bureau (modèles de workflows)
         "agents": cfg.get("agents") or [],
         # préfixe du workflow de chaque bouton des fiches (#86) : la page y retrouve l'agent qui l'incarne (agents[].wf)
-        "action_wf": {k: str(v)[:8] for k, v in action_ids(cfg).items() if k in FICHE_ACTIONS and v},
+        "action_wf": {**{k: str(v)[:8] for k, v in action_ids(cfg).items() if k in FICHE_ACTIONS and v},
+                      **{"libre-" + b["id"]: str(((cfg.get("boutons_wf") or {}).get(b["id"])))[:8] for b in boutons_page(cfg)}},
+        "boutons": boutons_page(cfg),  # boutons libres des fiches (lot 7 des habillages)
         "ui": cfg.get("ui") or {},
         "enseigne": enseigne(cfg) or None,  # le panneau mural du plan (décor sign) : texte et couleurs de l'équipe
         "scenes": cfg.get("scenes") or {},  # réglage scenes : seuils des lettres et des grosses PR, hyperespace (43-pop.js)
@@ -412,7 +414,7 @@ def defaults(cfg):
 # Le pack porte l'équipe, la config porte l'installation. settings.json du pack, lu à chaque assemblage et rendu des
 # modèles : rythme, GitFut, affiches du Top 3, planning des absences (sans config_id) et personnages des agents (sans
 # ids de workflows). La config peut surcharger chacun ; elle seule rattache un personnage à ses workflows (agents[].wf).
-SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "fix", "support", "env", "deploy", "jira", "impl", "mep", "combles", "fastly", "scenes", "enseigne", "branchements")
+SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "fix", "support", "env", "deploy", "jira", "impl", "mep", "combles", "fastly", "scenes", "enseigne", "branchements", "boutons")
 AGENT_FIELDS = ("key", "name", "role", "wf", "seat", "sprite")  # ordre des champs d'un agent, comme l'installateur l'écrit
 
 
@@ -483,6 +485,9 @@ def merged(cfg):
         out["fastly"] = {**(s["fastly"] or {}), **(cfg.get("fastly") or {})}
     if s.get("branchements") or cfg.get("branchements"):  # tes workflows sur les boutons, par nom : la config l'emporte, bouton par bouton
         out["branchements"] = {**(s.get("branchements") or {}), **(cfg.get("branchements") or {})}
+    if s.get("boutons") or cfg.get("boutons"):  # boutons libres des fiches : ceux du pack, puis ceux de la config (même id : remplacé)
+        mine = {b.get("id") for b in cfg.get("boutons") or [] if isinstance(b, dict)}
+        out["boutons"] = [b for b in s.get("boutons") or [] if isinstance(b, dict) and b.get("id") not in mine] + list(cfg.get("boutons") or [])
     if "enseigne" in s:  # l'enseigne au mur du plan : celle de l'équipe, que la config surcharge champ à champ
         out["enseigne"] = {**enseigne(s), **enseigne(cfg)}
     if "scenes" in s:  # scènes du plan (seuils des lettres et des grosses PR, hyperespace) : celles de l'équipe, scène par scène
@@ -520,6 +525,12 @@ def merged(cfg):
             if a["key"] not in bound and wf and not used & set(wf):
                 out["agents"].append(_agent({k: v for k, v in a.items() if k != "model"}, {"wf": wf}))
                 used |= set(wf)
+    # un bouton libre rattaché à un agent (boutons[].agent, lot 7 des habillages) : son workflow s'ajoute à ceux de l'agent
+    wfs = {b.get("agent"): str((cfg.get("boutons_wf") or {}).get(b.get("id")) or "")[:8]
+           for b in out.get("boutons") or [] if isinstance(b, dict) and b.get("agent")}
+    if any(wfs.values()):
+        out["agents"] = [dict(a, wf=list(a.get("wf") or []) + [wfs[a.get("key")]])
+                         if wfs.get(a.get("key")) and wfs[a.get("key")] not in (a.get("wf") or []) else a for a in out.get("agents") or []]
     return out
 
 
@@ -668,6 +679,60 @@ def branchements(cfg):
             raise ValueError(f"branchements.{b}.postes : poste inconnu {', '.join(bad)} (postes : {', '.join(BRANCHE_POSTES[b])}, plan, revue)")
         out[b] = {"wf": v["wf"].strip(), "vars": dict(names), "postes": postes}
     return out
+
+
+# ---------- boutons libres sur les fiches (lot 7 des habillages) ----------
+# Un workflow sans bouton équivalent dans le Bureau (une recette, une réouverture, la description d'une PR) : le pack ou la
+# config déclare un bouton, boutons = [{id, label, fiche: ticket|pr, wf: nom du workflow, vars: {variable: valeur}, sub?,
+# verb?, agent?}] ; valeur = {ticket} (fiche d'un ticket), {pr} ou {repo} (fiche d'une PR), ou « ? » (saisie dans la carte
+# Kronn). L'installateur retrouve l'id du workflow par son nom (boutons_wf, comme branchements) ; agent : la clé de l'agent
+# qui le porte (sa fiche, son run sur le plan).
+BOUTON_ID = re.compile(r"^[a-z0-9_-]{1,30}$")
+BOUTON_VALS = {"ticket": {"{ticket}": "<page.dataset.actions.tickets.find(key).key>"},
+               "pr": {"{pr}": "<page.dataset.actions.prs.find(id).n>", "{repo}": "<page.dataset.actions.prs.find(id).repo>"}}
+
+
+def boutons(cfg):
+    """Boutons libres normalisés (pack puis config, merged), chacun avec son id Kronn (wfid) s'il est trouvé ; ValueError
+    sur un id, une fiche ou une valeur de variable inconnus."""
+    out = []
+    for b in merged(cfg or {}).get("boutons") or []:
+        bid = str((b or {}).get("id") or "")
+        if not BOUTON_ID.match(bid):
+            raise ValueError(f"boutons : id « {bid} » (minuscules, chiffres, - ou _, 30 signes au plus)")
+        if b.get("fiche") not in BOUTON_VALS:
+            raise ValueError(f"boutons.{bid}.fiche : ticket ou pr")
+        if not isinstance(b.get("wf"), str) or not b["wf"].strip() or not isinstance(b.get("label"), str) or not b["label"].strip():
+            raise ValueError(f"boutons.{bid} : label et wf (le nom du workflow dans Kronn) obligatoires")
+        vars_ = b.get("vars") or {}
+        bad = sorted(f"{k}={v}" for k, v in vars_.items() if not re.match(r"^[\w-]+$", str(k)) or (v != "?" and v not in BOUTON_VALS[b["fiche"]]))
+        if bad:
+            raise ValueError(f"boutons.{bid}.vars : {', '.join(bad)} (valeurs : {', '.join(BOUTON_VALS[b['fiche']])} ou ?)")
+        out.append({"id": bid, "label": b["label"].strip()[:40], "fiche": b["fiche"], "wf": b["wf"].strip(), "vars": dict(vars_),
+                    **{k: str(b[k])[:120] for k in ("sub", "verb") if b.get(k)}, **({"agent": b["agent"]} if b.get("agent") else {}),
+                    "wfid": ((cfg or {}).get("boutons_wf") or {}).get(bid)})
+    return out
+
+
+def bouton_blocks(cfg):
+    """Blocs kronn-action des boutons libres trouvés dans Kronn (data-action-id bureau-libre-<id>)."""
+    out = []
+    for b in boutons(cfg):
+        if b["wfid"]:
+            vals = [{"name": k, "provenance": "user_input"} if v == "?" else
+                    {"name": k, "provenance": "dynamic_binding", "source_ref": BOUTON_VALS[b["fiche"]][v]} for k, v in b["vars"].items()]
+            spec = {"kind": "workflow", "target_id": b["wfid"], "values": vals}
+            out.append(f'<script type="application/kronn-action" data-action-id="bureau-libre-{b["id"]}">'
+                       + json.dumps(spec, ensure_ascii=False, separators=(",", ":")) + "</script>\n")
+    return "".join(out)
+
+
+def boutons_page(cfg):
+    """Ce que la page sait des boutons libres trouvés : {id, label, fiche, wf, sub?, verb?} ; [] sans réglage ou s'il est faux."""
+    try:
+        return [{k: b[k] for k in ("id", "label", "fiche", "wf", "sub", "verb") if k in b} for b in boutons(cfg) if b["wfid"]]
+    except ValueError:
+        return []
 
 
 def branche_atelier(cfg):
@@ -822,6 +887,10 @@ def build(demo=True, cfg=None):
         # bouton sans workflow configuré : sa carte kronn-action disparaît (la page masque le bouton) ; les marqueurs
         # __XXX_WF__ ne sont remplis que dans leur bloc (action_block)
         body = ACTION_RE.sub(lambda m: action_block(m.group(0), cfg) if acts[ACTIONS[m.group(1)][0]] else "", body)
+        try:  # boutons libres (lot 7 des habillages) : leurs blocs, après ceux du Bureau
+            body = body.replace("<!--__BOUTONS__-->", bouton_blocks(cfg))
+        except ValueError:  # réglage faux : signalé par l'installateur, la page reste sans ces boutons
+            body = body.replace("<!--__BOUTONS__-->", "")
         vals["__ACTION_BINDS__"] = js_json(action_binds(body))
         # une seule passe sur le squelette : un marqueur écrit dans une donnée déjà posée (un nom « __CONFIG__ ») reste tel quel
         return DATA_MARKS.sub(lambda m: vals[m.group(0)], body)

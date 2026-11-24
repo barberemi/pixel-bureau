@@ -503,16 +503,17 @@ MODEL_LAUNCH = {"review_one": "review", "estimate": "estimate", "env": "env", "i
 
 
 def branch(k, cfg):
-    """Branchements (lot 6 des habillages) : retrouve dans ce Kronn, par leur nom, les workflows que le pack ou la config
-    branchent sur les boutons, et remplit launch (l'id d'ici, les variables) ; les modèles du Bureau ainsi remplacés ne
-    sont plus proposés (MODEL_LAUNCH). Renvoie les problèmes (nom introuvable ou en double, variable absente)."""
+    """Branchements et boutons libres (lots 6 et 7 des habillages) : retrouve dans ce Kronn, par leur nom, les workflows
+    que le pack ou la config branchent sur les boutons (launch : l'id d'ici, les variables) ou posent en boutons libres sur
+    les fiches (boutons_wf) ; les modèles du Bureau ainsi remplacés ne sont plus proposés (MODEL_LAUNCH). Renvoie les
+    problèmes (nom introuvable ou en double, variable absente, réglage faux)."""
     try:
-        wanted = assemble.branchements(cfg)
+        wanted, libres = assemble.branchements(cfg), assemble.boutons(cfg)
     except ValueError as e:
         return [str(e)]
-    if not wanted:
+    if not wanted and not libres:
         return []
-    names = {v["wf"] for v in wanted.values()}
+    names = {v["wf"] for v in wanted.values()} | {b["wf"] for b in libres}
     wfs = [w for w in k.get("/workflows") or [] if (w.get("name") or "").strip() in names]
     for w in wfs:  # ses variables déclarées : dans le détail du workflow
         full = k.get(f"/workflows/{w['id']}") or {}
@@ -521,6 +522,19 @@ def branch(k, cfg):
     cfg["launch"] = {**(cfg.get("launch") or {}), **found}
     for b, v in found.items():
         say(f"✓ bouton {b} branché sur « {wanted[b]['wf']} » ({v['wf'][:8]})")
+    ids = {}
+    for b in libres:
+        same = [w for w in wfs if (w.get("name") or "").strip() == b["wf"]]
+        have = {x.get("name") for x in same[0].get("variables") or [] if isinstance(x, dict)} if len(same) == 1 else set()
+        if len(same) != 1:
+            problems.append(f"bouton « {b['label']} » : « {b['wf']} » " + ("introuvable dans Kronn" if not same else f"porté par {len(same)} workflows"))
+        elif isinstance(same[0].get("variables"), list) and set(b["vars"]) - have:
+            problems.append(f"bouton « {b['label']} » : « {b['wf']} » ne déclare pas {', '.join(sorted(set(b['vars']) - have))}")
+        else:
+            ids[b["id"]] = same[0]["id"]
+            say(f"✓ bouton libre « {b['label']} » ({b['fiche']}) sur « {b['wf']} » ({same[0]['id'][:8]})")
+    if libres:
+        cfg["boutons_wf"] = ids
     for m in problems:
         say(f"✗ branchement {m}")
     return problems

@@ -16,6 +16,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 - **Le casting des agents par défaut** (`team/agents.json`) : douze personnages pour toute installation (Dwight à la revue, Jim pour remettre une PR à jour, Stanley pour déployer une branche, Pam pour créer un ticket, le Pompier au Support…), avec les tenues du Pompier et de Mose ; un pack remplace un personnage par le sien de même clé. Un personnage qui incarne un modèle installé n'apparaît d'office que si aucun agent n'a déjà ce workflow.
 - **Les consignes de base** de la chaîne d'implémentation et de « Corriger » (`team/consignes.json` : DRY, le ticket d'abord, une doc fausse est bloquante, une config qui ne marche qu'en prod aussi, fuseau fixé dans les tests…), avant celles de l'équipe ; `sans_consignes_base` les coupe, toutes ou par id.
 - **Tes workflows branchés par leur nom** (`branchements`, dans le pack ou la config) : l'installateur et la mise à jour retrouvent leur id dans ton Kronn, vérifient leurs variables, remplissent `launch` et ne proposent plus le modèle du Bureau remplacé. Avec `postes`, un workflow d'implémentation à toi fait vivre le 1er étage : chaque étape sur son poste, ses gates et ses pannes.
+- **Des boutons libres sur les fiches** (`boutons`, dans le pack ou la config) : un workflow à toi, retrouvé par son nom, sur la fiche d'un ticket ou d'une PR, ses variables remplies depuis la fiche (`{ticket}`, `{pr}`, `{repo}`) ou saisies dans la carte Kronn, porté par l'agent de ton choix.
 
 ### Modifié
 

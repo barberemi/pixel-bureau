@@ -281,3 +281,22 @@ test('env de branche : bouton sur les PR des dépôts de launch.env, brouillons 
   assert.deepEqual(envCalls('dunder-mifflin/site-web#16'), []); // dépôt sans env de branche
   assert.deepEqual(envCalls('dunder-mifflin/front_api#16', {on: false}), []); // pas de launch.env
 });
+
+test('boutons libres (lot 7 des habillages) : sur la fiche d\'un ticket et sur celle d\'une PR, liés à la fiche', () => {
+  const calls = J(`(() => {
+    const calls = [], lb = launchBlock, fs = foldSection, c0 = CFG.boutons;
+    launchBlock = (box, o) => { calls.push([o.action, o.bind, o.label]); box.childElementCount++; };
+    foldSection = () => ({childElementCount: 0, appendChild() { this.childElementCount++; }});
+    CFG.boutons = [{id: 'recette', label: '🧪 Recette', fiche: 'ticket', wf: 'recette'}, {id: 'desc', label: '📝 Description', fiche: 'pr', wf: 'pr-description'}];
+    TEAM = {people: [{name: 'Pam', tickets: [{key: 'DM-9', cat: 'test', status: 's', summary: 'a'}], prs: []}], unassigned: [], other_prs: []};
+    ACTS = {tickets: [{key: 'DM-9'}], prs: [{id: 'dunder-mifflin/site-web#12', repo: 'dunder-mifflin/site-web', n: 12}]};
+    try {
+      renderTicket({appendChild() {}}, 'DM-9');
+      const box = {childElementCount: 0, appendChild() { this.childElementCount++; }};
+      prLaunch(box, {repo: 'dunder-mifflin/site-web', n: 12, number: 12});
+    } finally { launchBlock = lb; foldSection = fs; CFG.boutons = c0; }
+    return calls.filter(c => c[0].startsWith('bureau-libre-'));
+  })()`);
+  assert.deepEqual(calls, [['bureau-libre-recette', {key: 'DM-9'}, '🧪 Recette'], ['bureau-libre-desc', {id: 'dunder-mifflin/site-web#12'}, '📝 Description']]);
+  assert.equal(J(`actKey('bureau-libre-recette')`), 'libre-recette'); // l'agent qui le porte : CFG.action_wf['libre-recette']
+});
