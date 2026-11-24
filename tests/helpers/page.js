@@ -101,7 +101,7 @@ function layoutPath(cfg) {
   if (cfg.layout) return path.resolve(ROOT, cfg.layout);
   const d = teamDir(cfg), meta = d && fs.existsSync(path.join(d, 'team.json')) ? JSON.parse(fs.readFileSync(path.join(d, 'team.json'), 'utf8')) : {};
   if (meta.layout && fs.existsSync(path.join(d, meta.layout))) return path.join(d, meta.layout);
-  return path.resolve(ROOT, meta.layout || 'layouts/open-space.json');
+  return path.resolve(ROOT, meta.layout || 'layouts/darkmode.json');
 }
 
 function pageJs(owner, {demo = true, actions = true, config, layout} = {}) {

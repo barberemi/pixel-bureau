@@ -24,7 +24,7 @@ import assemble  # noqa: E402
 from _plan import FURNITURE, assign, seats_of, validate, zoned  # noqa: E402,F401  (FURNITURE : lu par les tests)
 
 PROMPT = os.path.join(ROOT, "tools", "plan_prompt.md")  # aussi le début du Quick Prompt « plan vers brouillon »
-EXAMPLE = os.path.join(ROOT, "layouts", "open-space.json")
+EXAMPLE = os.path.join(ROOT, "layouts", "darkmode.json")
 CLAUDE = os.environ.get("BUREAU_CLAUDE", "claude")  # les tests le remplacent par un faux
 ROUNDS = 4  # un brouillon, puis trois corrections au plus
 

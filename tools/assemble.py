@@ -315,7 +315,7 @@ def support_page(cfg):
 FICHE_ACTIONS = ("impl", "mep", "mep_pr", "review", "fix", "fix_pr", "rebase", "comment", "estimate", "env", "deploy", "ai_time")
 # statuts Jira par défaut du flux de l'équipe (jira.flow) : requêtes du cron équipe et scènes de la page
 JIRA_FLOW = {"triage_from": "Proposed", "test": "To Test", "validated": "To Deploy", "reopened": "Reopen"}
-DEFAULT_LAYOUT = "layouts/open-space.json"  # plan type, sans équipe
+DEFAULT_LAYOUT = "layouts/darkmode.json"  # plan type, sans équipe
 
 
 # ---------- profils d'équipe (teams/<équipe>/) et packs d'équipe (KT-60) ----------

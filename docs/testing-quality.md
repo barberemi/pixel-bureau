@@ -27,7 +27,7 @@ CI GitHub Actions (`.github/workflows/tests.yml`) : `sh tools/test.sh --chrome` 
 
 | Langage | Runner | Config / setup | Runtime |
 |---|---|---|---|
-| JavaScript (page) | `node --test` intégré, sans npm ni dépendance [src: file: tools/test.sh:2] | Pas de fichier de config ; harnais `tests/helpers/page.js` (concatène `page/src/*.js` dans l'ordre d'assemblage, bouchons DOM / canvas) [src: file: tests/helpers/page.js:1] ; fixtures `tests/fixtures/bureau.config.json`, `tests/fixtures/world_open-space.json`, pack fictif `tests/fixtures/pack-exemple/` | Node non épinglé (pas de `.nvmrc`) ; v25.9.0 sur le poste de dev au 2026-10-11 |
+| JavaScript (page) | `node --test` intégré, sans npm ni dépendance [src: file: tools/test.sh:2] | Pas de fichier de config ; harnais `tests/helpers/page.js` (concatène `page/src/*.js` dans l'ordre d'assemblage, bouchons DOM / canvas) [src: file: tests/helpers/page.js:1] ; fixtures `tests/fixtures/bureau.config.json`, `tests/fixtures/world_darkmode.json`, pack fictif `tests/fixtures/pack-exemple/` | Node non épinglé (pas de `.nvmrc`) ; v25.9.0 sur le poste de dev au 2026-10-11 |
 | Python (workflows, tools) | `unittest` de la bibliothèque standard [src: file: tools/test.sh:8] | Pas de config ; liste des fichiers en dur dans `tools/test.sh` | Python non épinglé (pas de `.python-version`) ; `python3` 3.9.6 sur le poste de dev |
 | Smoke / Chrome | `tools/smoke.py` | `.venv` avec `websocket-client` pour `--chrome` (et `pillow` pour les captures) [src: file: tools/smoke.py:11] [src: file: guide/developpement.md:41] | Chrome attendu à `/Applications/Google Chrome.app/...` (macOS) [src: file: tools/smoke.py:21], port de débogage 9334 par défaut [src: file: tools/smoke.py:155] |
 

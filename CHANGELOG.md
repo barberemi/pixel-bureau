@@ -10,8 +10,11 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 - **L'enseigne de l'équipe** : le panneau mural du plan affiche le nom de ton équipe et ses couleurs, réglés dans le pack (`settings.json`, clé `enseigne` : un texte ou `{text, bg, accent}`) et surchargeables par ta config ; un plan ne porte plus de nom d'équipe.
 
+- **L'habillage Newsroom** : un thème clair de chaîne d'info (mode TV « Newsroom nuit ») et son plan, une rédaction de 40 × 20 cases avec plateau TV, ouverts à tous. Un plan propose son thème (`skin`) quand l'installation n'en choisit pas ; le bouton 🎨 apparaît dès l'installation, il y a deux thèmes.
+
 ### Modifié
 
+- **L'habillage par défaut s'appelle Darkmode** : le thème Classique devient `darkmode` (`page/src/theme-darkmode.css`) et le plan type `layouts/darkmode.json`, mêmes couleurs et même plan. Une installation qui avait `ui.skin` à `classique` retombe d'elle-même sur Darkmode.
 - **Les places se règlent par zones** : un plan ne nomme plus personne. Il réserve des îlots à l'équipe et aux agents (`zones`), et chacun s'y range tout seul, collègues dans l'ordre du roster ; une préférence se donne dans le roster ou les agents du pack (`seat` : un siège, `near` : à côté de quelqu'un). L'ancienne clé `seating` du plan est refusée par `tools/plan.py check`.
 
 ### Corrigé

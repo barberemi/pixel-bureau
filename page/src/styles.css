@@ -282,7 +282,7 @@ button.back kbd{font:var(--fs-meta) var(--font-mono);border:1px solid var(--line
 .kb-vol .kbw-col{padding:6px}.kb-vol .kbw-col h3 small{display:none}.kb-vol .kbw-c{padding:5px 7px}.kb-vol .kbw-c small,.kb-vol .kbw-cp{display:none}
 .kbw-strip{writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:flex-end;gap:8px;min-height:220px;margin:0;padding:10px 0;font-size:var(--fs-meta);font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
 .kbw-c.kb-ro{border-left-color:var(--err);background:color-mix(in srgb,var(--err) 9%,var(--panel))}
-.kb-rot{display:table;margin:0 0 3px;background:var(--err);color:var(--on-accent)} /* le texte des fonds colorés de chaque thème : 5,9:1 sur le rouge clair du Classique */
+.kb-rot{display:table;margin:0 0 3px;background:var(--err);color:var(--on-accent)} /* le texte des fonds colorés de chaque thème : 5,9:1 sur le rouge clair du Darkmode */
 /* ticket qui traîne (63-kanban.js) : « 🕸 N j » et une toile qui grandit avec le retard, l'araignée au-delà de 60 j */
 .kbw-c.kb-stale{position:relative;overflow:hidden}
 .kb-age{display:table;margin:0 0 3px;background:var(--chip);color:var(--ink);box-shadow:inset 3px 0 0 var(--muted)}
@@ -408,7 +408,7 @@ button.back kbd{font:var(--fs-meta) var(--font-mono);border:1px solid var(--line
 .payrow .payv b{font:600 var(--fs-sec) var(--font-mono);color:var(--ink)}
 .payrow .payv small{font-size:var(--fs-meta);color:var(--muted)}
 #tvbar,#tvticker,#tvwho{display:none}
-/* couleurs du mode TV (celles du thème Classique) ; un thème de page peut les redéfinir sur body.tv (son mode TV de nuit) */
+/* couleurs du mode TV (celles du thème Darkmode) ; un thème de page peut les redéfinir sur body.tv (son mode TV de nuit) */
 body.tv{--tv-bg:#111216;--tv-bar:#191b22;--tv-deep:#15161b;--tv-card:#1d1f26;--tv-chip:#242732;--tv-line:#2a2d36;--tv-line2:#3a3e4a;--tv-btnline:#353946;
   --tv-ink:#ece8df;--tv-muted:#a29c90;--tv-h2:#8d877b;--tv-hint:#7d786e;--tv-ok:#4cc27c;--tv-warn:#f0b03a;--tv-err:#f06a5f;--tv-mep:#a98cf0;
   --tv-stand:#2e9e9b;--tv-stand-ink:#0d1b1b;--tv-btn-bevel:#cfd5e0}
@@ -1026,7 +1026,7 @@ body.tv .mtbar{display:none}
 .oe-s{font-size:var(--fs-meta);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .oe-chips{display:flex;flex-wrap:wrap;gap:4px}
 /* pastilles pleines : couleur vive de l'état et texte « sur couleur », deux jetons que chaque thème définit (lisible en
-   Classique comme sur le thème clair d'un pack) */
+   Darkmode comme sur le thème clair d'un pack) */
 .oe-chips span{font-family:var(--font-mono);font-size:var(--fs-meta);font-weight:700;padding:1px 5px;background:var(--idle);color:var(--on-accent)} /* sans état (fils) : le gris des états */
 .oe-chips .rq{background:var(--err);color:var(--on-accent)}
 .oe-chips .cf{background:var(--warn);color:var(--on-warn)}

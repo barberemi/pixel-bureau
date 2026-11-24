@@ -255,6 +255,8 @@ def _validate(L, raw_size):
     both = [s["id"] for s in seats if zoned(L, "equipe", s) and zoned(L, "agents", s)]
     if both:
         E(f"zones : {', '.join(both)} à la fois dans equipe et agents")
+    if "skin" in L and not (isinstance(L["skin"], str) and L["skin"]):
+        E("skin : l'id du thème que propose le plan (ex. « newsroom »)")
     if "seating" in L:
         E("seating n'est plus lu : les places se règlent par zones (equipe, agents), et chacun peut demander un siège "
           "(seat) ou d'être à côté de quelqu'un (near) dans le pack")

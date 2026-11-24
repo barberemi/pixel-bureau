@@ -1,5 +1,5 @@
-// Lot 7, phase 1 : le monde construit depuis layouts/open-space.json (le plan type, même géométrie que le plan d'origine)
-// est exactement celui de l'ancien plan codé en dur (tests/fixtures/world_open-space.json, figé avant l'extraction) : grille, sols, portes, vitres, sièges, places, cases
+// Lot 7, phase 1 : le monde construit depuis layouts/darkmode.json (le plan type, même géométrie que le plan d'origine)
+// est exactement celui de l'ancien plan codé en dur (tests/fixtures/world_darkmode.json, figé avant l'extraction) : grille, sols, portes, vitres, sièges, places, cases
 // bloquées, cases praticables, pièces éclairées, objets cliquables, places libres.
 'use strict';
 const test = require('node:test');
@@ -8,8 +8,8 @@ const fs = require('fs');
 const path = require('path');
 const {load} = require('./helpers/page.js');
 
-const page = load({layout: 'open-space'});
-const ref = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'world_open-space.json'), 'utf8'));
+const page = load({layout: 'darkmode'});
+const ref = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'world_darkmode.json'), 'utf8'));
 const now = JSON.parse(page.run(`JSON.stringify({TS,COLS,ROWS,W,H,EXIT,grid,floorOf,DOORS,GLASS:[...GLASS].sort(),ISLANDS,IROWS,SEATS:SEATS.map(({id,...s})=>s),
   seatTiles:[...seatTiles].sort(),blocked:[...blocked].sort(),SPOTS,FREE_SEATS:LAYOUT.free_seats,ROOMS,TVR,KANR,PAYR,EMPR,
   walk:Array.from({length:ROWS},(_,y)=>Array.from({length:COLS},(_,x)=>walkable(x,y)?1:0).join('')).join('|')})`));
@@ -22,7 +22,7 @@ for (const k of Object.keys(ref)) {
 }
 
 test('plan : chaque rangée a la largeur annoncée et chaque caractère est dans la légende', () => {
-  const L = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'layouts', 'open-space.json'), 'utf8'));
+  const L = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'layouts', 'darkmode.json'), 'utf8'));
   assert.equal(L.tiles.length, L.size[1]);
   for (const row of L.tiles) {
     assert.equal(row.length, L.size[0]);
@@ -94,11 +94,11 @@ test('plan partagé : lu au démarrage à la place du plan embarqué', () => {
   const p = load({kronnPageData: {datasets: {layout: {current: {layout: EXAMPLE}}}}});
   assert.deepEqual(JSON.parse(p.run('JSON.stringify([W,H,LAYOUT.id])')), [960, 512, 'exemple-startup']);
   const off = load({kronnPageData: {datasets: {layout: {current: {layout: null}}}}}); // « defaut » : plan embarqué
-  assert.equal(off.run('LAYOUT.id'), 'open-space'); // plan embarqué de la démo
+  assert.equal(off.run('LAYOUT.id'), 'darkmode'); // plan embarqué de la démo
 });
 
 test('plan partagé : appliqué à chaud, puis retour au plan embarqué sans aucune différence', () => {
-  const p = load({layout: 'open-space'});
+  const p = load({layout: 'darkmode'});
   const before = p.run(WORLD);
   assert.equal(p.run(`applyLayout(${JSON.stringify(EXAMPLE)})`), true);
   const hot = JSON.parse(p.run(WORLD));

@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const {load} = require('./helpers/page.js');
 
 test('post-it : entre les deux baies du plan type, au fond de la salle Serveurs', () => {
-  const {run} = load({layout: 'open-space'});
+  const {run} = load({layout: 'darkmode'});
   const r = JSON.parse(run('JSON.stringify(cronNoteRect())'));
   const racks = JSON.parse(run('JSON.stringify(FURN_AT.server_rack.map(o=>13*TS+2+o.dx))'));
   assert.ok(r.x >= racks[0] + 28 && r.x + r.w <= racks[1], JSON.stringify({r, racks}));

@@ -28,8 +28,8 @@ test('JSON pour les objets, texte tel quel pour les chaînes ; dropPref efface',
 
 test('une valeur gardée avant #16 se relit pareil (thème et TV en texte, avatars en JSON)', () => {
   const s = store(); page.ctx.localStorage = s;
-  s.setItem('bureau:skin', 'classique'); s.setItem('bureau:tv', '1'); s.setItem('bureau:avatars', '{"p_x":{"hair":2}}');
-  assert.equal(J(`prefStr('skin',null)`), 'classique');
+  s.setItem('bureau:skin', 'darkmode'); s.setItem('bureau:tv', '1'); s.setItem('bureau:avatars', '{"p_x":{"hair":2}}');
+  assert.equal(J(`prefStr('skin',null)`), 'darkmode');
   assert.equal(J(`prefStr('tv','')==='1'`), true);
   assert.deepEqual(J(`pref('avatars',{})`), {p_x: {hair: 2}});
 });

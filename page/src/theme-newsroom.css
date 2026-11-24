@@ -1,0 +1,33 @@
+/* @nom: Newsroom */
+/* Thème d'interface « Newsroom » (ui.skin = newsroom, bouton 🎨 de l'en-tête ; proposé par le plan du même nom,
+   layouts/newsroom.json) : une chaîne d'info en continu, blanc et bleu vif, sur l'habillage pixel commun (pixel.css).
+   Toujours clair, même quand Kronn est en sombre ; mode TV « Newsroom nuit » (fond marine).
+   Contrastes vérifiés par tests/test_theme.py : texte >= 4,5:1 sur panneau, puce et fond ; texte des aplats. */
+
+/* même spécificité que les variables de styles.css, déclarées après : le thème l'emporte */
+:root[data-skin="newsroom"]{
+  color-scheme:light;
+  --bg:#e8f0fb; --panel:#ffffff; --ink:#0a1420; --muted:#566880; --line:#0b2350; --chip:#e8f0fb;
+  --accent:#0355b0; --ok:#087a3f; --warn:#a14a08; --err:#d11f3c; --info:#0355b0; --idle:#566880; --on-accent:#ffffff;
+  --shadow:none;
+  --drop:calc(2*var(--px)) calc(2*var(--px)) 0 0 rgba(11,35,80,.25);
+  --bevel:inset -3px -3px 0 0 #c5d6ee,inset 3px 3px 0 0 #ffffff;
+  --brand:#0172f0; /* bleu vif : en aplat, texte blanc (4,5:1) */
+  --on-brand:#ffffff; --brand-lo:#0150a8; --brand-hi:#4d9cf5;
+  --on-line:#ffffff; --line-hover:#14316b; --on-warn:#ffffff; --on-err:#ffffff;
+  --btn-hover:#f5f8fd; --sel-bg:#e0ecfb; --h1-shadow:#b9d4f7; --appr-ink:#0b2350; --appr-bg:#d6e6fb;
+  --select-arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h10v2H8v2H6v2H4V4H2V2H0z' fill='%230b2350'/%3E%3C/svg%3E");
+}
+
+/* tableau des départs (panneau du plan et fenêtre) : bleu nuit, bandeau bleu vif, versions en prod en jaune */
+:root[data-skin="newsroom"]{--dep-frame:#0a2240;--dep-bg:#0b1f36;--dep-row:#10294a;--dep-row2:#0d2440;--dep-band:#0172f0;--dep-band-ink:#ffffff;
+  --dep-head:#0a2240;--dep-head-ink:#ffffff;--dep-name:#ffffff;--dep-ver:#b8cbe3;--dep-prd:#ffc83d;--dep-branch:#6fe0a0;--dep-when:#8fa9cc}
+
+/* ---------- mode TV : « Newsroom nuit » ----------
+   L'écran mural reste sombre (plus reposant sur un grand écran allumé toute la journée) : fond marine, cartes bleu nuit,
+   texte blanc. */
+:root[data-skin="newsroom"] body.tv{
+  --tv-bg:#071a3d; --tv-bar:#0b2350; --tv-deep:#081f48; --tv-card:#0e2a5c; --tv-chip:#183464; --tv-line:#1d3f7a; --tv-line2:#2f6fd0; --tv-btnline:#2f6fd0;
+  --tv-ink:#ffffff; --tv-muted:#a9bdde; --tv-h2:#a9bdde; --tv-hint:#a9bdde; --tv-ok:#4cc27c; --tv-warn:#f0b03a; --tv-err:#ff7a6e; --tv-mep:#b39cf5;
+  --tv-stand:#0172f0; --tv-stand-ink:#ffffff; --tv-retro:#c25a9e; --tv-retro-ink:#1b0d17; --tv-btn-bevel:#c5d6ee;
+}

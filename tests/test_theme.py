@@ -15,7 +15,7 @@ def path(t):
 
 class ThemeTest(unittest.TestCase):
     def test_every_theme_has_a_name(self):
-        self.assertEqual(list(assemble.themes()), ["classique"])  # le dépôt n'a que le Classique : les autres viennent des packs
+        self.assertEqual(list(assemble.themes()), ["darkmode", "newsroom"])  # ceux du dépôt ; les packs peuvent en ajouter
         for t, name in assemble.themes().items():
             self.assertTrue(name, t)
 
@@ -46,7 +46,7 @@ class ThemeTest(unittest.TestCase):
         errors, warnings = theme.check(pale)
         self.assertIn("--ink sur --panel : 1.92:1 (minimum 4.5:1)", errors)
         self.assertIn("mode TV : --tv-ink sur --tv-bg : 1.11:1 (minimum 4.5:1)", errors)
-        self.assertTrue(warnings and "--muted" in warnings[0])  # couleurs restées celles du Classique
+        self.assertTrue(warnings and "--muted" in warnings[0])  # couleurs restées celles du Darkmode
         sans_nom = os.path.join(tmp, "theme-x.css")
         Path(sans_nom).write_text(':root[data-skin="x"]{--ink:#000000;--bg:#ffffff}\n')
         self.assertIn("première ligne « /* @nom: Nom affiché */ » absente", theme.check(sans_nom)[0])
@@ -66,7 +66,7 @@ class ThemeTest(unittest.TestCase):
 
     def test_state_deep_tones_carry_white_text(self):
         """Tons foncés des états (--ok-deep …, ST_FONCE) : texte blanc >= 4,5:1 ; un ton trop clair est signalé."""
-        v = theme.palette(os.path.join(ROOT, "page", "src", "theme-classique.css"))
+        v = theme.palette(os.path.join(ROOT, "page", "src", "theme-darkmode.css"))
         for d in theme.DEEP:
             self.assertIn(d, v, d)
             self.assertGreaterEqual(theme.ratio("#ffffff", v[d]), 4.5, d)

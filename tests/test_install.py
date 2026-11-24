@@ -390,10 +390,10 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(after["ui"], {"skin": "menthe", "agent_label": "office"})  # thème du profil ajouté, réglage gardé
         self.assertTrue(after["protect"])
         # un thème choisi à la main l'emporte sur celui du profil
-        Path(self.cfg_path).write_text(json.dumps({**after, "ui": {"skin": "classique"}}))
+        Path(self.cfg_path).write_text(json.dumps({**after, "ui": {"skin": "darkmode"}}))
         with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):
             self.assertEqual(self.run_install(ANSWERS), 0)
-        self.assertEqual(json.loads(Path(self.cfg_path).read_text())["ui"], {"skin": "classique"})
+        self.assertEqual(json.loads(Path(self.cfg_path).read_text())["ui"], {"skin": "darkmode"})
         self.assertEqual({k: after.get(k) for k in hand}, hand)
 
     def test_boss_screen_pages_asked_by_id(self):
@@ -505,7 +505,7 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(self.run_install(answers), 0)
         cfg = json.loads(Path(self.cfg_path).read_text())
         self.assertIsNone(cfg["team"])
-        self.assertEqual(cfg["layout"], "layouts/open-space.json")
+        self.assertEqual(cfg["layout"], "layouts/darkmode.json")
         self.assertEqual([p["key"] for p in cfg["people"]], ["p_pam"])
         self.assertEqual(cfg["jira"]["project"], "")  # défauts neutres : rien du profil
         html = next(b for m, p, b in self.fakes[-1].calls if m == "PUT" and p.endswith("/html"))["html"]
