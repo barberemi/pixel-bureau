@@ -6,6 +6,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ## [Unreleased]
 
+### Corrigé
+
+- **L'Œil** revoit tes PR tout de suite après Corriger, Remettre à jour, une revue à la demande ou un passage du cron de revue, au lieu d'attendre ses 10 minutes ; « ↻ Revoir » en tête de sa fiche, et sa ligne sous Bureau dans Fraîcheur des données.
+
 ## [0.3.0] - 2026-11-21
 
 En bref : Le Bureau devient un immeuble d'agents.

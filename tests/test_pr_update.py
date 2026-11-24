@@ -82,7 +82,9 @@ class PrUpdateTest(unittest.TestCase):
 
     def step(self, name, cfg=None, extra=(), stdin=None):
         Path(self.tmp, "gh.json").write_text(json.dumps(self.data))
-        Path(self.tmp, "cfg.json").write_text(json.dumps(cfg or FIXTURE))
+        c = json.loads(json.dumps(cfg or FIXTURE))  # Kronn injoignable : la relance du cron office (refresh) ne part jamais d'ici
+        c["kronn"] = dict(c.get("kronn") or {}, api="http://127.0.0.1:9/api")
+        Path(self.tmp, "cfg.json").write_text(json.dumps(c))
         env = dict(self.env(), BUREAU_CONFIG=os.path.join(self.tmp, "cfg.json"), FAKE_GH=os.path.join(self.tmp, "gh.json"))
         return subprocess.run([sys.executable, os.path.join(ROOT, "workflows", "pr_update.py"), name, REPO, "16", "run-1", *extra],
                               capture_output=True, text=True, env=env, timeout=60, input=stdin)
@@ -111,6 +113,8 @@ class PrUpdateTest(unittest.TestCase):
         for s in ("prepare", "rebase", "push", "done"):
             r = self.step(s)
             self.assertEqual(r.returncode, 0, s + " : " + r.stdout + r.stderr)
+            if s == "push":  # l'Œil du RDC revoit la PR tout de suite ; Kronn injoignable : le push reste réussi
+                self.assertIn("Rafraîchissement du cron office : pas relancé (Kronn injoignable", r.stderr)
         self.assertEqual(self.remote_log(), ["wip 2", "wip 1", "sur main", "init"], "rejoués sur main, sans squash")
         work = os.path.join(self.tmp, ".cache", "pixel-bureau", "pr", "work", "run-1")
         self.assertFalse(os.path.exists(work), "dossier de travail retiré après le push")
@@ -121,6 +125,7 @@ class PrUpdateTest(unittest.TestCase):
             self.assertEqual(self.step(s).returncode, 0)
         r = self.step("push")
         self.assertIn("rien poussé", r.stdout)
+        self.assertNotIn("Rafraîchissement", r.stderr, "rien poussé : l'Œil n'a rien à revoir")
         self.assertEqual(self.remote_log(), before)
 
     def test_conflict_stops_for_the_agent_then_verify_and_push(self):
@@ -229,6 +234,7 @@ class PrUpdateTest(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         self.assertEqual(self.remote_log()[0], "fix: retours de review de #16")
         self.assertIn("2 réponse(s) postée(s)", p.stdout)
+        self.assertIn("Rafraîchissement du cron office", p.stderr, "posté : l'Œil du RDC revoit la PR")
         calls = [json.loads(x) for x in Path(self.tmp, "gh.json.calls").read_text().splitlines()]
         self.assertEqual(sum(1 for c in calls if "t=T1" in c), 2, "T1 : réponse puis résolution")
         self.assertEqual(sum(1 for c in calls if "t=T2" in c), 1, "T2 : réponse seulement (pas corrigé)")

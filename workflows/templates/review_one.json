@@ -117,7 +117,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Relance le cron équipe (sauf s'il tourne déjà) : la page montre la revue postée sur la PR sans attendre son passage suivant. Atteinte seulement si les étapes d'avant ont réussi. 0 token, ne fait jamais échouer le run.",
+    "description": "Relance le cron équipe et le cron office (sauf s'ils tournent déjà) : la page montre la revue postée sur la PR, et l'Œil du RDC la retire de sa ronde, sans attendre leur passage suivant. Atteinte seulement si les étapes d'avant ont réussi. 0 token, ne fait jamais échouer le run.",
     "agent": "ClaudeCode",
     "prompt_template": "",
     "mode": {
@@ -130,7 +130,8 @@
     "exec_args": [
      "-c",
      "@@script:workflows/refresh.py@@",
-     "team"
+     "team",
+     "office"
     ],
     "exec_timeout_secs": 60
    }

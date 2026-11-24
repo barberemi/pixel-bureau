@@ -61,6 +61,13 @@ L'Œil voit tes PR telles qu'au dernier relevé : en relecture, il ne regarde qu
 
 Le cron `office` (toutes les 10 minutes, 0 jeton) pose une seule question à GitHub avec ton `gh` : tes PR ouvertes et celles dont on te demande la relecture, avec leurs fils, leurs reviews, leur dernier commit, leur CI et leur état de fusion. Il publie le dataset `oeil`, que le cron équipe reprend pour que « Corriger » trouve aussi les PR des dépôts qu'il ne suit pas. Sans `gh`, la liste est vide et [Fraîcheur](10-fraicheur.md) le dit.
 
+L'Œil n'attend pas toujours les 10 minutes : le cron `office` est relancé tout de suite, sauf s'il tourne déjà,
+- à la fin de **🛠 Corriger** (dès qu'une réponse ou un commit est posté) et de **⟳ Remettre à jour** (quand la PR est poussée) ;
+- à la fin de **🔎 Faire relire** et d'un passage du cron de revue qui a relu au moins une PR : la relecture sort de la ronde quand la review part sous ton compte (GitHub retire alors la demande) ;
+- avec **↻ Revoir** en tête de la fiche (la même relance que le « ↻ » de la ligne Bureau de [Fraîcheur](10-fraicheur.md), où l'Œil a sa ligne « ↳ L'Œil (tes PR) »).
+
+Un changement fait ailleurs (un commentaire sur GitHub, une CI qui passe au rouge) attend le passage suivant.
+
 Une PR sans aucune vérification sur son dernier commit (une CI qui ne part qu'avec un label, par exemple) n'est jamais « CI rouge ».
 
 ## Placer la tour
