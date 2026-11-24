@@ -242,3 +242,63 @@ class ComblesUrlTest(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+
+
+class BranchementsTest(unittest.TestCase):
+    """Lot 6 des habillages : tes workflows branchés sur les boutons par leur nom (branchements, pack et config) ;
+    l'installateur et la mise à jour retrouvent leur id dans Kronn et remplissent launch."""
+    B = {"impl": {"wf": "deliver-ticket", "vars": {"ticket": "ticket_key"}, "postes": {"analyse": "plan", "develop": "code"}}}
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.pack = os.path.join(self.tmp, "bureau-vance")
+        shutil.copytree(PACK, self.pack)
+        Path(os.path.join(self.pack, "settings.json")).write_text(json.dumps({"branchements": {**self.B, "review": {"wf": "relire-equipe"}}}))
+        self.addCleanup(shutil.rmtree, self.tmp)
+
+    def cfg(self, **kw):
+        return {**assemble.demo_config(), "team": self.pack, "owner": "p_bob", "people": [], **kw}
+
+    def test_pack_then_config_button_by_button(self):
+        b = assemble.branchements(self.cfg(branchements={"review": {"wf": "ma-revue", "vars": {"pr": "num"}}}))
+        self.assertEqual(b["impl"], {"wf": "deliver-ticket", "vars": {"ticket": "ticket_key"}, "postes": {"analyse": "cadrage", "develop": "code"}})
+        self.assertEqual(b["review"], {"wf": "ma-revue", "vars": {"pr": "num"}, "postes": {}})  # la config l'emporte
+
+    def test_errors(self):
+        for bad, msg in (({"deploy": {"wf": "x"}}, "bouton inconnu"), ({"impl": {"vars": {}}}, "nom du workflow"),
+                         ({"impl": {"wf": "x", "vars": {"pr": "n"}}}, "rôle inconnu pr"),
+                         ({"review": {"wf": "x", "postes": {"a": "code"}}}, "seul impl"), ({"impl": {"wf": "x", "postes": {"a": "cuisine"}}}, "poste inconnu")):
+            with self.assertRaisesRegex(ValueError, msg):
+                assemble.branchements({"branchements": bad})
+
+    def test_resolve_by_name_and_check_variables(self):
+        c = self.cfg()
+        wfs = [{"id": "11111111-a", "name": "deliver-ticket", "variables": [{"name": "ticket_key"}]},
+               {"id": "22222222-b", "name": "relire-equipe"}, {"id": "33333333-c", "name": "relire-equipe"}]
+        found, problems = assemble.resolve_branchements(c, wfs)
+        self.assertEqual(found, {"impl": {"wf": "11111111-a", "vars": {"ticket": "ticket_key"}}})
+        self.assertEqual(problems, ["review : « relire-equipe » porté par 2 workflows"])
+        found, problems = assemble.resolve_branchements(c, [{"id": "1", "name": "deliver-ticket", "variables": [{"name": "key"}]}])
+        self.assertEqual(found, {})
+        self.assertIn("ne déclare pas ticket_key", problems[0])
+
+    def test_install_fills_launch_and_the_floor_reads_it(self):
+        class K:
+            calls = []
+
+            def get(self, p):
+                self.calls.append(p)
+                return {"/workflows": [{"id": "11111111-a", "name": "deliver-ticket"}, {"id": "22222222-b", "name": "relire-equipe"}],
+                        "/workflows/11111111-a": {"variables": [{"name": "ticket_key"}]},
+                        "/workflows/22222222-b": {"variables": [{"name": "repo"}, {"name": "pr"}]}}.get(p)
+        c = self.cfg(launch={"mep_pr": "c1605136-x"})
+        with mock.patch("sys.stdout", new=io.StringIO()) as out:
+            self.assertEqual(install.branch(K(), c), [])
+        self.assertEqual(c["launch"], {"mep_pr": "c1605136-x", "impl": {"wf": "11111111-a", "vars": {"ticket": "ticket_key"}},
+                                       "review": {"wf": "22222222-b"}})
+        self.assertIn("bouton impl branché sur « deliver-ticket » (11111111)", out.getvalue())
+        self.assertEqual(install.MODEL_LAUNCH["impl"], "impl")  # la chaîne du Bureau n'est plus proposée
+        page = assemble.page_config(assemble.merged(c))
+        self.assertEqual((page["atelier"], page["atelier_chain"], page["action_wf"]["impl"]), (True, "11111111", "11111111"))
+        with mock.patch("sys.stdout", new=io.StringIO()):
+            self.assertEqual(install.branch(K(), {**assemble.demo_config()}), [])  # rien de branché : Kronn pas interrogé

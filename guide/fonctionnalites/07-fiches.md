@@ -100,6 +100,17 @@ Chaque bouton ouvre la carte Kronn du workflow : tu valides, puis elle suit le r
 
 Rôles et noms par défaut : `impl` → `ticket` (`jira_ticket_key`) ; `mep` → `ticket` (`jira_ticket_key`), `pr` (`pr_number`) ; `review` → `repo`, `pr` ; `fix` → `pr`, `notes`, et `repo` (facultatif : absent tant que tu ne le nommes pas, par exemple `{"wf": "…", "vars": {"repo": "repo"}}`) ; `estimate` → `ticket` (`jira_ticket_key`), `points` (`story_points`), `reason` (`raison`), par exemple `{"wf": "…", "vars": {"ticket": "ticketKey"}}` si ton workflow nomme autrement la clé du ticket. `null` : ton workflow n'a pas cette variable, elle n'est pas envoyée.
 
+**Par leur nom (branchements)** : un id de workflow est propre à chaque Kronn. Pour qu'un pack d'équipe branche les mêmes workflows chez tout le monde, il les nomme (`settings.json` du pack, ou ta config, qui l'emporte bouton par bouton) :
+
+```json
+"branchements": {
+  "impl": {"wf": "deliver-ticket", "vars": {"ticket": "ticket_key"}, "postes": {"analyse": "plan", "develop": "code", "push_pr": "pr"}},
+  "review": {"wf": "relire-une-pr"}
+}
+```
+
+`python3 tools/install.py` retrouve chaque workflow par son nom exact dans ton Kronn, vérifie qu'il déclare les variables nommées, remplit `launch` et ne propose plus le modèle du Bureau qu'il remplace (la chaîne d'implémentation, la revue à la demande, la réestimation, l'env de branche) ; `python3 tools/upgrade.py` refait la correspondance si le workflow a été recréé. Un nom introuvable ou porté par deux workflows est signalé, le bouton garde ce qu'il avait. `postes` (seulement pour `impl`) : quelle étape de ton workflow est quel poste du 1er étage ([L'atelier](23-atelier.md#un-workflow-à-toi)).
+
 ![Fiche d'un ticket](../img/fiche-ticket.png)
 
 **PR** : un clic sur une PR (fil, fiche d'un ticket ou d'un collègue) ouvre le Mur Kanban filtré sur son auteur, et sa fiche dans le volet ; depuis son ticket, « ← » y revient. Son nom avec son dépôt, son titre, l'état de sa review, son auteur (sa fiche), le lien GitHub, le ticket qu'elle cite (sa fiche) et les runs d'agents du jour qui l'ont traitée (une revue de Dwight, une correction). Puis les mêmes boutons que dans la fiche du ticket, avec leur agent et l'action conseillée : **🌿 Générer l'env de branche** (dépôts de `launch.env`), **Remettre à jour**, **Corriger les retours**, **Faire relire** (PR pas encore approuvée) et **Mise en prod** (son ticket en To Deploy).

@@ -171,6 +171,8 @@ def upgrade(path, dry=False, publish=True, sans_ci=False):
     applied = migrate(cfg)
     for name in applied:
         say(f"✓ migration : {name}")
+    # branchements par nom (lot 6 des habillages) : un workflow recréé dans Kronn change d'id, launch suit son nom
+    ignored += [f"branchement {m}" for m in install.branch(k, cfg)]
 
     have = dataset_names(k, cfg["page_id"])
     if have is None:

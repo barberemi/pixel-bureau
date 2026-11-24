@@ -227,7 +227,7 @@ def page_config(cfg):
         # créer un ticket (#77) : préfixe du modèle (l'agent qui l'incarne), pour sa validation et son dernier ticket créé
         "ticket": ticket_page(cfg),
         # 1er étage, l'atelier d'implémentation (#125) : ses onglets quand la chaîne est installée (models.impl_chain)
-        "atelier": bool((cfg.get("models") or {}).get("impl_chain")),
+        "atelier": bool((cfg.get("models") or {}).get("impl_chain")) or bool(branche_atelier(cfg)),
         # 3e étage, les retours de PR : ses onglets quand le modèle « corriger les commentaires d'une PR » est installé
         "retours": bool((cfg.get("actions") or {}).get("fix_pr")),
         # 2e étage, la revue des PR : préfixes des runs de relecture d'une PR (le sous-workflow commun et la revue à la demande)
@@ -244,7 +244,7 @@ def page_config(cfg):
         "atelier_wf": sorted({str(v)[:8] for k, v in (cfg.get("models") or {}).items() if k.startswith("impl") and k != "impl" and v}),
         # le lanceur (models.impl) reste au RDC : l'agent qui l'incarne (Ryan) y travaille et porte le carton à l'entrée
         "atelier_launcher": str((cfg.get("models") or {}).get("impl") or "")[:8],
-        "atelier_chain": str((cfg.get("models") or {}).get("impl_chain") or "")[:8],  # tickets sortis aujourd'hui (runs de la chaîne)
+        "atelier_chain": str((cfg.get("models") or {}).get("impl_chain") or branche_atelier(cfg) or "")[:8],  # tickets sortis aujourd'hui (runs de la chaîne)
         "combles_url": combles_url(cfg),  # l'étage secret (68-combles.js) : la borne ouvre Sprint Quest
     }
 
@@ -412,7 +412,7 @@ def defaults(cfg):
 # Le pack porte l'équipe, la config porte l'installation. settings.json du pack, lu à chaque assemblage et rendu des
 # modèles : rythme, GitFut, affiches du Top 3, planning des absences (sans config_id) et personnages des agents (sans
 # ids de workflows). La config peut surcharger chacun ; elle seule rattache un personnage à ses workflows (agents[].wf).
-SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "fix", "support", "env", "deploy", "jira", "impl", "mep", "combles", "fastly", "scenes", "enseigne")
+SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "fix", "support", "env", "deploy", "jira", "impl", "mep", "combles", "fastly", "scenes", "enseigne", "branchements")
 AGENT_FIELDS = ("key", "name", "role", "wf", "seat", "sprite")  # ordre des champs d'un agent, comme l'installateur l'écrit
 
 
@@ -481,6 +481,8 @@ def merged(cfg):
         out["deploy"] = {**(s["deploy"] or {}), **(cfg.get("deploy") or {})}
     if "fastly" in s:  # purger le cache Fastly : services de l'équipe ; la config peut les surcharger
         out["fastly"] = {**(s["fastly"] or {}), **(cfg.get("fastly") or {})}
+    if s.get("branchements") or cfg.get("branchements"):  # tes workflows sur les boutons, par nom : la config l'emporte, bouton par bouton
+        out["branchements"] = {**(s.get("branchements") or {}), **(cfg.get("branchements") or {})}
     if "enseigne" in s:  # l'enseigne au mur du plan : celle de l'équipe, que la config surcharge champ à champ
         out["enseigne"] = {**enseigne(s), **enseigne(cfg)}
     if "scenes" in s:  # scènes du plan (seuils des lettres et des grosses PR, hyperespace) : celles de l'équipe, scène par scène
@@ -634,6 +636,73 @@ def launch(cfg):
             raise ValueError(f"launch.{k}.vars : rôle inconnu {', '.join(bad)} (rôles : {', '.join(roles) or 'aucun'})")
         out[k] = (wf, {roles[r]: n for r, n in names.items()})
     return out
+
+
+# ---------- branchements : tes workflows sur les boutons des fiches, par leur nom (lot 6 des habillages) ----------
+# Un id de workflow est propre à chaque Kronn : le pack (settings.json) et la config nomment le workflow, l'installateur
+# et la mise à jour retrouvent son id et remplissent launch. branchements.<bouton> = {wf: nom, vars: {rôle: nom chez toi},
+# postes: {étape: poste de l'étage}} ; bouton = une clé de LAUNCH_VARS ; postes : seulement impl (1er étage, l'atelier).
+BRANCHE_POSTES = {"impl": ("cadrage", "gate", "code", "regles", "securite", "tests", "perf", "besoin", "doc", "pr", "revue_pr", "retours")}
+POSTE_ALIAS = {"plan": "cadrage", "revue": "revue_pr"}  # noms courts acceptés dans postes
+
+
+def branchements(cfg):
+    """Branchements normalisés {bouton: {wf, vars, postes}} (pack sous la config, merged) ; ValueError sur un bouton,
+    un rôle ou un poste inconnus, ou un nom de workflow manquant."""
+    out = {}
+    for b, v in ((merged(cfg or {}).get("branchements")) or {}).items():
+        if b not in LAUNCH_VARS:
+            raise ValueError(f"branchements.{b} : bouton inconnu (boutons : {', '.join(LAUNCH_VARS)})")
+        v = {"wf": v} if isinstance(v, str) else v if isinstance(v, dict) else {}
+        if not isinstance(v.get("wf"), str) or not v["wf"].strip():
+            raise ValueError(f"branchements.{b}.wf : le nom du workflow dans Kronn")
+        names = v.get("vars") or {}
+        bad = sorted(set(names) - set(LAUNCH_VARS[b]))
+        if bad:
+            raise ValueError(f"branchements.{b}.vars : rôle inconnu {', '.join(bad)} (rôles : {', '.join(LAUNCH_VARS[b]) or 'aucun'})")
+        postes = {str(k): POSTE_ALIAS.get(x, x) for k, x in (v.get("postes") or {}).items()}
+        if postes and b not in BRANCHE_POSTES:
+            raise ValueError(f"branchements.{b}.postes : seul impl a ses postes (1er étage)")
+        bad = sorted(set(postes.values()) - set(BRANCHE_POSTES.get(b, ())))
+        if bad:
+            raise ValueError(f"branchements.{b}.postes : poste inconnu {', '.join(bad)} (postes : {', '.join(BRANCHE_POSTES[b])}, plan, revue)")
+        out[b] = {"wf": v["wf"].strip(), "vars": dict(names), "postes": postes}
+    return out
+
+
+def branche_atelier(cfg):
+    """Id du workflow branché sur « Implémenter » qui a ses postes (branchements.impl.postes, launch.impl rempli par
+    l'installateur) : le 1er étage le lit à la place de la chaîne du Bureau ; None sinon (ou réglage invalide)."""
+    try:
+        b = branchements(cfg).get("impl") or {}
+    except ValueError:
+        return None
+    wf = launch(cfg).get("impl", ("", {}))[0] if b.get("postes") else None
+    return wf or None
+
+
+def resolve_branchements(cfg, wfs):
+    """Retrouve chaque workflow branché par son nom exact parmi ceux de Kronn (wfs : [{id, name, variables?}]) : renvoie
+    ({bouton: {wf: id, vars}} pour launch, [problèmes en français]). Un nom absent ou porté par plusieurs workflows est un
+    problème, comme une variable nommée dans vars que le workflow ne déclare pas (quand Kronn donne ses variables)."""
+    found, problems = {}, []
+    for b, v in branchements(cfg).items():
+        same = [w for w in wfs or [] if (w.get("name") or "").strip() == v["wf"]]
+        if len(same) != 1:
+            problems.append(f"{b} : « {v['wf']} » " + ("introuvable dans Kronn" if not same else f"porté par {len(same)} workflows"))
+            continue
+        w = same[0]
+        declared = w.get("variables") if isinstance(w.get("variables"), list) else ((w.get("definition") or {}).get("variables"))
+        if isinstance(declared, list):
+            have = {x.get("name") for x in declared if isinstance(x, dict)}
+            want = {r: n for r, n in v["vars"].items()}
+            missing = sorted(n for n in want.values() if n not in have)
+            defaults = sorted(n for r, n in LAUNCH_VARS[b].items() if r not in want and r not in LAUNCH_OPTIONAL.get(b, ()) and n not in have)
+            if missing or defaults:
+                problems.append(f"{b} : « {v['wf']} » ne déclare pas {', '.join(missing + defaults)} (vars : rôle -> nom de sa variable)")
+                continue
+        found[b] = {"wf": w["id"], **({"vars": v["vars"]} if v["vars"] else {})}
+    return found, problems
 
 
 # boutons qu'un modèle du Bureau incarné par un agent (models, #78) fait marcher quand tu n'as pas ton propre workflow

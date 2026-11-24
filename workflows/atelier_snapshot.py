@@ -419,12 +419,119 @@ def events(run, why_=None):
     return [{**base, **e, "t": e["t"].isoformat(timespec="seconds")} for e in out if e["t"]]
 
 
+# ---------- un workflow à toi branché sur « Implémenter » (branchements.impl, lot 6 des habillages) ----------
+# Sans la chaîne du Bureau, l'étage lit les runs de ton workflow (launch.impl, rempli par l'installateur) : chaque étape
+# nommée dans branchements.impl.postes pose son état sur son poste ; une étape en attente de validation est une gate, une
+# étape en échec une panne. Ni lots, ni tours, ni notes : seuls les scripts du Bureau les écrivent.
+ALIAS = {"plan": "cadrage", "revue": "revue_pr"}
+
+
+def branche():
+    """(id de ton workflow branché, {étape: poste}, nom de la variable du ticket), ou (None, {}, None)."""
+    if (CFG.get("models") or {}).get("impl_chain"):
+        return None, {}, None
+    b = (CFG.get("branchements") or {}).get("impl")
+    b = b if isinstance(b, dict) else {}
+    postes = {str(k): ALIAS.get(v, v) for k, v in (b.get("postes") or {}).items() if ALIAS.get(v, v) in POSTES}
+    wf = (CFG.get("launch") or {}).get("impl")
+    wf = wf.get("wf") if isinstance(wf, dict) else wf
+    return (wf, postes, (b.get("vars") or {}).get("ticket") or "jira_ticket_key") if wf and postes else (None, {}, None)
+
+
+def ticket_of(run, var):
+    """Le ticket d'un run de ton workflow : sa variable (variables ou inputs du run), sinon une clé dans sa 1re sortie."""
+    for k in ("variables", "inputs", "trigger_variables"):
+        v = run.get(k)
+        if isinstance(v, dict) and v.get(var):
+            return str(v[var])
+    m = re.search(r"\b([A-Z][A-Z0-9]+-\d+)\b", ((run.get("step_results") or [{}])[0] or {}).get("output") or "")
+    return m.group(1) if m else None
+
+
+def room_branche(run, postes, var, wf):
+    """Le bureau d'un run de ton workflow : l'état de chaque poste, le poste en cours, la gate qui attend."""
+    states, poste, gate = {}, None, None
+    for x in run.get("step_results") or []:  # dans l'ordre : le dernier passage d'une étape l'emporte
+        n, st = x.get("step_name"), st_of(x)
+        if x.get("status") == "WaitingApproval":
+            gate = n
+        if n in postes and st:
+            states[postes[n]] = st
+            if st in ("run", "wait"):
+                poste = postes[n]
+    etape = next((x.get("step_name") for x in reversed(run.get("step_results") or []) if x.get("status") == "Running"), None)
+    a = next((x.get("last_activity") for x in reversed(run.get("step_results") or []) if x.get("status") == "Running"), None)
+    act = {"cat": a.get("category"), "n": a.get("calls"), "at": a.get("at")} if isinstance(a, dict) and a.get("at") else None
+    return {"run": run["id"], "ticket": ticket_of(run, var), "repo": None, "title": None, "status": run.get("status"), "poste": poste,
+            "gate": gate, "states": states, "tour": None, "tok": run.get("tokens_used") or 0, "since": run.get("started_at"),
+            "lot": None, "note": f"✋ {gate}" if gate else None, "back": False, "url": run_url(wf, run["id"]),
+            **({"etape": etape} if etape else {}), **({"act": act} if act else {})}
+
+
+def events_branche(run, postes, var, why_=None):
+    """Les moments d'un run de ton workflow : arrivée, chaque poste, gates, panne, fin réussie."""
+    steps = run.get("step_results") or []
+    base = {"run": run["id"], "ticket": ticket_of(run, var), "repo": None, "title": None}
+    out = [{"t": when((steps[0] if steps else {}).get("started_at")) or when(run.get("started_at")), "k": "arrive"}]
+    for x in steps:
+        n, st = x.get("step_name"), x.get("status")
+        if n in postes:
+            out.append({"t": when(x.get("started_at")), "k": "poste", "poste": postes[n]})
+        if st == "WaitingApproval":
+            out.append({"t": when(x.get("started_at")), "k": "gate", "gate": n})
+        if st in ("Failed", "StoppedByGuard") and not str(x.get("condition_result") or "").startswith("Goto"):
+            out.append({"t": step_end(x), "k": "panne", "poste": postes.get(n, n), **({k: why_[k] for k in ("cause", "cause_type") if why_ and why_.get(k)})})
+    if run.get("status") == "Success" and steps:
+        out.append({"t": step_end(steps[-1]), "k": "sort"})
+    return [{**base, **e, "t": e["t"].isoformat(timespec="seconds")} for e in out if e["t"]]
+
+
+def snapshot_branche(wf, postes, var, now_iso):
+    out = {"generated_at": now_iso, "postes": POSTES, "rooms": [], "queue": [], "pannes": [], "branche": True}
+    runs = get(f"/workflows/{wf}/runs?limit=40") or []
+    fulls = {}
+
+    def full_of(rid):
+        if rid not in fulls:
+            fulls[rid] = get(f"/workflows/{wf}/runs/{rid}") or {}
+        return fulls[rid]
+    limit = day_before(now_iso) if now_iso else ""
+    ev, seen = [], set()
+    for r in sorted(runs, key=lambda r: r.get("started_at") or ""):
+        if r.get("status") == "Pending":
+            out["queue"].append({"run": r["id"], "since": r.get("started_at")})
+        elif r.get("status") in ACTIVE:
+            out["rooms"].append(room_branche(full_of(r["id"]), postes, var, wf))
+    for r in sorted(runs, key=lambda r: r.get("started_at") or "", reverse=True)[:12]:
+        if r.get("status") == "Pending" or (r.get("started_at") or "") < limit:
+            continue
+        full = full_of(r["id"])
+        last = (full.get("step_results") or [{}])[-1]
+        failed = r.get("status") in ("Failed", "StoppedByGuard") and last.get("status") != "WaitingApproval" \
+            and not str(last.get("step_name") or "").startswith("gate")
+        c = why(full, wf) if failed else None
+        tk = ticket_of(full, var)
+        if failed and len(out["pannes"]) < 3 and tk not in seen:
+            s = failed_step(full) or {}
+            out["pannes"].append({"run": r["id"], "ticket": tk, "repo": None, "title": None, "since": r.get("started_at"),
+                                  "poste": postes.get(s.get("step_name"), s.get("step_name")), **c, "url": c.get("url") or run_url(wf, r["id"])})
+        seen.add(tk)
+        ev += events_branche(full, postes, var, c)
+    out["events"] = sorted(ev, key=lambda e: e["t"])
+    now = when(now_iso)
+    midnight = now.astimezone(TZ).replace(hour=0, minute=0, second=0, microsecond=0) if now else None
+    out["livres"] = sum(1 for e in ev if e["k"] == "sort" and (not midnight or when(e["t"]) >= midnight))
+    out["jour"] = None
+    return out
+
+
 def snapshot(now_iso=None):
     models = CFG.get("models") or {}
     chain = models.get("impl_chain")
     out = {"generated_at": now_iso, "postes": POSTES, "rooms": [], "queue": [], "pannes": []}
     if not chain:
-        return out
+        wf, postes, var = branche()
+        return snapshot_branche(wf, postes, var, now_iso) if wf else out
     runs = get(f"/workflows/{chain}/runs?limit=40") or []
     cache, seen, fulls = {}, set(), {}
     try:

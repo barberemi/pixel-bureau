@@ -499,7 +499,31 @@ MODELS = [("review_one", "Relire une PR à la demande (bouton « Faire relire »
           ("env", "Générer l'env de branche d'une PR (label retiré puis reposé, bouton « 🌿 » des fiches)", None),
           ("deploy", "Déployer la branche d'une PR sur DEV ou STG, jamais la prod (bouton « 🚀 » des fiches)", None),
           ("fastly_purge", "Purger le cache Fastly en soft purge, par surrogate key ou par URL (services du réglage fastly)", None)]
-MODEL_LAUNCH = {"review_one": "review", "estimate": "estimate", "env": "env"}
+MODEL_LAUNCH = {"review_one": "review", "estimate": "estimate", "env": "env", "impl": "impl"}
+
+
+def branch(k, cfg):
+    """Branchements (lot 6 des habillages) : retrouve dans ce Kronn, par leur nom, les workflows que le pack ou la config
+    branchent sur les boutons, et remplit launch (l'id d'ici, les variables) ; les modèles du Bureau ainsi remplacés ne
+    sont plus proposés (MODEL_LAUNCH). Renvoie les problèmes (nom introuvable ou en double, variable absente)."""
+    try:
+        wanted = assemble.branchements(cfg)
+    except ValueError as e:
+        return [str(e)]
+    if not wanted:
+        return []
+    names = {v["wf"] for v in wanted.values()}
+    wfs = [w for w in k.get("/workflows") or [] if (w.get("name") or "").strip() in names]
+    for w in wfs:  # ses variables déclarées : dans le détail du workflow
+        full = k.get(f"/workflows/{w['id']}") or {}
+        w["variables"] = full.get("variables") if isinstance(full.get("variables"), list) else (full.get("definition") or {}).get("variables")
+    found, problems = assemble.resolve_branchements(cfg, wfs)
+    cfg["launch"] = {**(cfg.get("launch") or {}), **found}
+    for b, v in found.items():
+        say(f"✓ bouton {b} branché sur « {wanted[b]['wf']} » ({v['wf'][:8]})")
+    for m in problems:
+        say(f"✗ branchement {m}")
+    return problems
 
 
 def models(ask, cfg, old):
@@ -1103,6 +1127,7 @@ def main(argv=None):
 
     title = a.title or defaults["page_title"]
     cfg["page_id"] = upsert_page(k, cfg, title, a.dry_run)
+    branch(k, cfg)  # tes workflows branchés par nom (pack, config) : launch, avant de proposer les modèles qu'ils remplacent
     chosen = models(ask, cfg, old)  # modèles d'agents (#78) : seulement ceux acceptés
     side_pages(k, cfg, chosen, a.dry_run)  # pages à part, avant les workflows : le cron de chaque bilan publie dans sa page
     if not a.dry_run:  # skills du Bureau (revue et chaîne), avant les workflows qui les chargent : ids dans skills.<clé>

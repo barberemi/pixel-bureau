@@ -1523,6 +1523,39 @@ class AtelierSnapshotTest(unittest.TestCase):
         self.snap(get, {"impl_chain": "c", "impl_code": "code"}, ui="http://k:5173/")
         self.assertNotIn("/workflows/code/runs/k1", reads)  # cause gardée : le sous-run n'est plus relu
 
+    def test_branched_workflow_fills_the_floor(self):
+        """Lot 6 des habillages : sans la chaîne du Bureau, l'étage lit ton workflow branché sur « Implémenter »
+        (launch.impl, branchements.impl.postes) : chaque étape nommée pose son état sur son poste, une gate attend, une
+        étape en échec est une panne, un run réussi sort."""
+        import atelier_snapshot as a
+        run = {"id": "r1", "workflow_id": "w", "status": "WaitingApproval", "started_at": "2026-10-30T10:00:00Z",
+               "variables": {"ticket_key": "DM-42"}, "step_results": [
+                   {"step_name": "analyse", "status": "Success", "started_at": "2026-10-30T10:00:00Z", "duration_ms": 60000},
+                   {"step_name": "valider", "status": "WaitingApproval", "started_at": "2026-10-30T10:01:00Z"}]}
+        bad = {"id": "r0", "workflow_id": "w", "status": "Failed", "started_at": "2026-10-30T09:00:00Z", "variables": {"ticket_key": "DM-41"},
+               "step_results": [{"step_name": "analyse", "status": "Success", "started_at": "2026-10-30T09:00:00Z"},
+                                {"step_name": "develop", "status": "Failed", "output": "Le build casse.", "started_at": "2026-10-30T09:05:00Z"}]}
+        ok = {"id": "r9", "workflow_id": "w", "status": "Success", "started_at": "2026-10-30T08:00:00Z", "variables": {"ticket_key": "DM-40"},
+              "step_results": [{"step_name": "push_pr", "status": "Success", "started_at": "2026-10-30T08:30:00Z", "duration_ms": 1000}]}
+        api = {"/workflows/w/runs?limit=40": [{k: v for k, v in r.items() if k != "step_results"} for r in (run, bad, ok)],
+               "/workflows/w/runs/r1": run, "/workflows/w/runs/r0": bad, "/workflows/w/runs/r9": ok}
+        old = dict(a.CFG)
+        a.CFG.update(launch={"impl": {"wf": "w", "vars": {"ticket": "ticket_key"}}},
+                     branchements={"impl": {"wf": "deliver-ticket", "vars": {"ticket": "ticket_key"},
+                                            "postes": {"analyse": "plan", "valider": "gate", "develop": "code", "push_pr": "pr"}}})
+        try:
+            snap = self.snap(api, {})
+        finally:
+            a.CFG.clear()
+            a.CFG.update(old)
+        self.assertTrue(snap["branche"])
+        rm = snap["rooms"][0]
+        self.assertEqual((rm["ticket"], rm["states"], rm["poste"], rm["gate"]), ("DM-42", {"cadrage": "ok", "gate": "wait"}, "gate", "valider"))
+        p = snap["pannes"][0]
+        self.assertEqual((p["ticket"], p["poste"], p["cause"]), ("DM-41", "code", "Le build casse."))
+        self.assertEqual(snap["livres"], 1)
+        self.assertEqual([e["k"] for e in snap["events"] if e["ticket"] == "DM-42"], ["arrive", "poste", "poste", "gate"])
+
     def test_rattrape_keeps_the_code_failure_as_the_cause(self):
         """Le Code en échec saute à rattrape : si elle refuse, la panne est celle du Code ; si elle rattrape (garde-fou
         docs de Kronn, travail fini), le Code est fait."""
