@@ -772,7 +772,7 @@ def resolve_branchements(cfg, wfs):
         if isinstance(declared, list):
             have = {x.get("name") for x in declared if isinstance(x, dict)}
             want = {r: n for r, n in v["vars"].items()}
-            missing = sorted(n for n in want.values() if n not in have)
+            missing = sorted(n for n in want.values() if n and n not in have)  # None : variable non envoyée
             defaults = sorted(n for r, n in LAUNCH_VARS[b].items() if r not in want and r not in LAUNCH_OPTIONAL.get(b, ()) and n not in have)
             if missing or defaults:
                 problems.append(f"{b} : « {v['wf']} » ne déclare pas {', '.join(missing + defaults)} (vars : rôle -> nom de sa variable)")

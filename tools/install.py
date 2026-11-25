@@ -516,7 +516,10 @@ def branch(k, cfg):
     names = {v["wf"] for v in wanted.values()} | {b["wf"] for b in libres}
     wfs = [w for w in k.get("/workflows") or [] if (w.get("name") or "").strip() in names]
     for w in wfs:  # ses variables déclarées : dans le détail du workflow
-        full = k.get(f"/workflows/{w['id']}") or {}
+        try:
+            full = k.get(f"/workflows/{w['id']}") or {}
+        except InstallError:
+            full = {}
         w["variables"] = full.get("variables") if isinstance(full.get("variables"), list) else (full.get("definition") or {}).get("variables")
     found, problems = assemble.resolve_branchements(cfg, wfs)
     cfg["launch"] = {**(cfg.get("launch") or {}), **found}
@@ -538,6 +541,76 @@ def branch(k, cfg):
     for m in problems:
         say(f"✗ branchement {m}")
     return problems
+
+
+BOUTONS = {"impl": "🛠 Implémenter (fiche d'un ticket)", "mep": "🚀 Mettre en prod (fiche d'un ticket)",
+           "review": "🔎 Faire relire (fiche d'une PR)", "fix": "🛠 Corriger (fiche d'une PR)",
+           "estimate": "📏 Réestimer (fiche d'un ticket)", "env": "🌿 Générer l'env de branche (fiche d'une PR)"}
+ROLES_VAR = {"ticket": "la clé du ticket", "pr": "le numéro de la PR", "repo": "le dépôt (owner/nom)", "notes": "tes consignes",
+             "points": "les Story Points", "reason": "la raison", "action": "l'action (poser ou reposer le label)"}
+
+
+def skin(ask, team_id, layout_file, old, defaults):
+    """Thème de la page (ui.skin) : celui de l'installation, sinon de l'équipe (defaults.json du pack), sinon celui que
+    propose le plan choisi (skin), sinon Darkmode ; demandé seulement s'il y a plusieurs thèmes."""
+    themes = assemble.themes({"team": team_id})
+    try:
+        proposed = (jload(os.path.join(ROOT, layout_file)) or {}).get("skin")
+    except (OSError, ValueError):
+        proposed = None
+    dflt = next((t for t in ((old.get("ui") or {}).get("skin"), (defaults.get("ui") or {}).get("skin"), proposed) if t in themes), "darkmode")
+    if len(themes) < 2:
+        return dflt
+    return ask.choice("skin", "Thème de la page (chacun peut en changer avec le bouton 🎨)",
+                      [(t, n + (" (celui du plan)" if t == proposed else "")) for t, n in themes.items()], dflt)
+
+
+def own_buttons(ask, k, old, bureau, team_id):
+    """Tes workflows sur les boutons des fiches (lot 6 des habillages) : pour chaque bouton que ni le pack ni ta config ne
+    branchent, le workflow de ton Kronn choisi et, s'il les déclare, ses variables. Écrit par nom (branchements) : la
+    config reste valable si le workflow est recréé ; l'installateur et la mise à jour retrouvent son id (branch)."""
+    out = dict(old.get("branchements") or {})
+    try:
+        have = assemble.branchements({**old, "team": team_id})
+    except ValueError as e:
+        say(f"✗ branchements : {e}")
+        return out
+    wfs = [w for w in k.get("/workflows") or [] if w.get("id") not in bureau and w.get("name") not in bureau and w.get("enabled", True)]
+    todo = [b for b in BOUTONS if b not in have]
+    if not wfs or not todo or not ask.yes("boutons_perso", "Brancher tes propres workflows Kronn sur les boutons des fiches "
+                                          "(sinon : ceux du Bureau, ou pas de bouton) ?", False):
+        return out
+    names = [w["name"] for w in wfs]
+    for b in todo:
+        pick = ask.choice(f"bouton_{b}", f"« {BOUTONS[b]} » : quel workflow ?",
+                          [("", "Aucun : celui du Bureau, ou pas de bouton")] + [(n, n) for n in dict.fromkeys(names)], "")
+        if not pick:
+            continue
+        if names.count(pick) > 1:
+            say(f"  ✗ « {pick} » : {names.count(pick)} workflows portent ce nom ; renomme l'un d'eux dans Kronn, puis relance")
+            continue
+        w = next(x for x in wfs if x["name"] == pick)
+        try:
+            full = k.get(f"/workflows/{w['id']}") or {}
+        except InstallError:  # détail illisible : ses variables se tapent à la main
+            full = {}
+        declared = full.get("variables") if isinstance(full.get("variables"), list) else (full.get("definition") or {}).get("variables")
+        have_vars = [x.get("name") for x in declared or [] if isinstance(x, dict) and x.get("name")]
+        vars_ = {}
+        for role, dflt in assemble.LAUNCH_VARS[b].items():
+            opt = role in assemble.LAUNCH_OPTIONAL.get(b, ())
+            if have_vars:
+                v = ask.choice(f"bouton_{b}_{role}", f"  Sa variable qui reçoit {ROLES_VAR.get(role, role)}",
+                               [(n, n) for n in have_vars] + [("", "Aucune : il ne la prend pas")],
+                               dflt if dflt in have_vars else "" if opt else have_vars[0])
+            else:
+                v = ask.text(f"bouton_{b}_{role}", f"  Nom de sa variable qui reçoit {ROLES_VAR.get(role, role)} (- : aucune)", dflt)
+                v = "" if v == "-" else v
+            if v != dflt or opt and v:
+                vars_[role] = v or None
+        out[b] = {"wf": pick, **({"vars": vars_} if vars_ else {})}
+        say(f"  ✓ {BOUTONS[b]} → « {pick} »")
+    return out
 
 
 def models(ask, cfg, old):
@@ -761,7 +834,10 @@ def my_agents(ask, k, previous, bureau, personas=None):
         return [], None
     bound = []
     if personas:
-        bound, wfs = pack_agents(ask, wfs, personas, previous)
+        # un personnage qui incarne un modèle du Bureau (model : Jim au rebase, Pam au ticket…) s'y rattache tout seul
+        # (assemble.merged) : il n'est demandé que s'il était déjà rattaché à un de tes workflows
+        was = {a.get("key") for a in previous or [] if a.get("wf")}
+        bound, wfs = pack_agents(ask, wfs, [p for p in personas if not p.get("model") or p["key"] in was], previous)
         taken = {a["key"] for a in personas}
         previous = [a for a in previous or [] if a.get("key") not in taken]
         if not wfs:
@@ -1081,6 +1157,7 @@ def main(argv=None):
             new_person["github"] = login
         people = [p for p in people if p["key"] != new_person["key"]] + [new_person]
     layout_file = layout(ask, assemble.layout_path({"team": team_id}))
+    ui = {**(defaults.get("ui") or {}), **(old.get("ui") or {}), "skin": skin(ask, team_id, layout_file, old, defaults)}
     project_id = project(ask, k)
     kronn["project_id"] = project_id
     j = jira(ask, k, project_id, defaults, tpls["team"])
@@ -1102,6 +1179,7 @@ def main(argv=None):
     bureau = {v for v in tpl_ids.values() if v} | {t["definition"]["name"] for t in tpls.values()}
     team_settings = assemble.pack_settings({"team": team_id})  # réglages d'équipe du pack (#32)
     agents, mep = my_agents(ask, k, old.get("agents"), bureau, assemble.team_agents({"team": team_id}))  # casting par défaut et pack
+    branches = own_buttons(ask, k, old, bureau, team_id)  # tes workflows sur les boutons des fiches, par leur nom
     screens = boss_pages(ask, k, old.get("boss_pages"), old.get("page_id"))
     courrier = mail(ask, old.get("mail"), defaults)
     notify = mac_notify(ask, old.get("notify_mac"))
@@ -1112,7 +1190,7 @@ def main(argv=None):
     cfg = {"_doc": "Propre à cette installation, jamais partagé. Créé par tools/install.py (relançable).",
            "owner": owner, "team": team_id, "people": people, "layout": layout_file, "kronn": kronn, "page_id": old.get("page_id"), "workflows": {}, "actions": {},
            "own": sorted(own), "jira": j, "github": g, **rhythm_of(old, defaults, team_settings),
-           "mep_workflow": mep, "agents": agents, "boss_pages": screens, **({"mail": courrier} if courrier else {}), **({"notify_mac": notify} if notify is not None else {}), "ui": {**(defaults.get("ui") or {}), **(old.get("ui") or {})}, "music": old.get("music") or {},
+           **({"branchements": branches} if branches else {}), "mep_workflow": mep, "agents": agents, "boss_pages": screens, **({"mail": courrier} if courrier else {}), **({"notify_mac": notify} if notify is not None else {}), "ui": ui, "music": old.get("music") or {},
            **({"microsoft": ms} if ms else {}), "_ai_agent": ai, **({"protect": True} if old.get("protect") else {})}
     # réglages posés à la main dans la config (gitfut, wiki_posters, chrome…) : gardés tels quels à la relance
     # (sauf rhythm quand le pack le porte : seule la surcharge calculée par rhythm_of reste, #32)
