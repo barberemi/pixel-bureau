@@ -40,6 +40,9 @@ test('sans gate : absent ; gate ouverte : sur son nuage, une halte par îlot, le
   assert.equal(s.hot, '3 leçons');
   const stops = J('sandStops()');
   assert.equal(stops.length, J('ISLANDS.length'), 'une halte par îlot');
+  const d = p => J(`Math.abs(${p[0]} - EXIT[0]) + Math.abs(${p[1]} - EXIT[1])`);
+  assert.ok(d(stops[0]) <= d(stops[stops.length - 1]), 'il commence par le bout le plus proche de la porte');
+  assert.ok(stops.every((p, i) => !i || Math.sign(p[0] - stops[i - 1][0]) === Math.sign(stops[1][0] - stops[0][0])), 'puis îlot après îlot, sans revenir');
   assert.deepEqual(s.visit, stops[0]);
   assert.deepEqual(S('22:02').visit, stops[1], '90 s par îlot, puis le suivant');
   assert.deepEqual(J(`sandmanState(byKey.g_marchand, Date.parse('${at('22:00')}') + ${stops.length} * SAND_STOP).visit`), stops[0], 'puis il recommence');

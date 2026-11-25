@@ -10,15 +10,18 @@ const sandmanOwns=g=>g.wf_name===SAND_WF&&!!byKey.g_marchand;
 // « 🧠 **Mémoire du soir** · 3 leçons à valider, 1 retirée : … » (workflows/memoire.py, propose) -> 3 ; absent : null
 const sandLessons=g=>{const m=/(\d+) leçons? à valider/.exec(String((g&&g.message)||''));return m?+m[1]:null;};
 const sandText=n=>n==null?'leçons à valider':n+(n>1?' leçons':' leçon');
-// une halte par îlot, de gauche à droite : en haut de l'îlot, au bout de sa table (la case au-dessus du premier rang),
-// sinon à côté de sa place du milieu. Il est dessiné devant tout (41-render.js) : son nuage passe par-dessus les bureaux.
+// une halte par îlot : en haut de l'îlot, au bout de sa table (la case au-dessus du premier rang), sinon à côté de sa place
+// du milieu. Il est dessiné devant tout (41-render.js) : son nuage passe par-dessus les bureaux. La tournée commence par
+// l'îlot du bout le plus proche de la porte (EXIT, par où entrent les invités) : sinon il traversait tout l'étage avant sa
+// première halte, et la loupe, qui attend qu'il soit arrivé, figeait la lecture d'une scène le temps de la traversée.
 function sandStops(){
   const out=[], top=Math.min(...(IROWS||[0]));
   for(const cx of ISLANDS||[]){
     if(walkable(cx,top-1)){out.push([cx,top-1,'down']);continue;}
     const ss=SEATS.filter(s=>s.cx===cx&&s.dir==='right');if(ss.length)out.push(besideSeat([ss[Math.floor(ss.length/2)].x,ss[Math.floor(ss.length/2)].y]));
   }
-  return out;
+  const d=p=>Math.abs(p[0]-EXIT[0])+Math.abs(p[1]-EXIT[1]);
+  return out.length>1&&d(out[out.length-1])<d(out[0])?out.reverse():out;
 }
 function sandmanState(c,t){
   const demo=SCENE_DEMO&&SCENE_DEMO.flag==='memoire'&&t>=SCENE_DEMO.s; // 46-gallery.js : la scène jouée maintenant
