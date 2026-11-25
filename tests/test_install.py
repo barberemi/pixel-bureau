@@ -321,6 +321,47 @@ class InstallTest(unittest.TestCase):
         self.assertNotEqual(json.loads(Path(self.cfg_path).read_text())["workflows"]["live"], FakeKronn.LIVE)
         self.assertFalse([1 for m, p, _ in k.calls if m == "PUT" and p == f"/workflows/{FakeKronn.LIVE}"])
 
+    def test_own_workflows_on_the_buttons_by_name(self):
+        """« Brancher tes propres workflows sur les boutons » : le choix est écrit par nom (branchements), puis l'id de ce
+        Kronn va dans launch ; sans réponse, rien n'est branché."""
+        self.assertEqual(self.run_install({**ANSWERS, "boutons_perso": "o", "bouton_review": "Revue de PR",
+                                           "bouton_review_repo": "projet", "bouton_review_pr": "pr"}), 0)
+        cfg = json.loads(Path(self.cfg_path).read_text())
+        self.assertEqual(cfg["branchements"], {"review": {"wf": "Revue de PR", "vars": {"repo": "projet"}}})
+        self.assertEqual(cfg["launch"]["review"], {"wf": "aaaaaaaa-1111-2222-3333-444444444444", "vars": {"repo": "projet"}})
+        # relance sans y toucher : gardé tel quel, et la question ne porte plus que sur les boutons non branchés
+        k = mock.Mock(get=lambda p: [{"id": "aaaaaaaa-1", "name": "Revue de PR"}])
+        with mock.patch("sys.stdout", new=io.StringIO()):
+            self.assertEqual(install.own_buttons(install.Asker({}), k, cfg, set(), None), cfg["branchements"])
+
+    def test_theme_question(self):
+        """Le thème de la page : celui du pack par défaut, ou celui qu'on choisit parmi ceux du dépôt et du pack."""
+        self.assertEqual(self.run_install({**ANSWERS, "skin": "newsroom"}), 0)
+        self.assertEqual(json.loads(Path(self.cfg_path).read_text())["ui"]["skin"], "newsroom")
+
+    def test_casting_personas_of_a_model_are_not_asked(self):
+        """Les personnages qui incarnent un modèle du Bureau (Jim au rebase, Pam au ticket…) se rattachent seuls : pas
+        de question pour eux, sauf s'ils étaient déjà rattachés à un de tes workflows."""
+        asked = []
+
+        class Ask:
+            answers = {}
+
+            def choice(self, qid, prompt, options, default=None):
+                asked.append(qid)
+                return default
+
+        wfs = [{"id": "aaaaaaaa-1", "name": "Revue de PR"}]
+        k = mock.Mock(get=lambda p: wfs)
+        with mock.patch("sys.stdout", new=io.StringIO()):
+            install.my_agents(Ask(), k, [], set(), install.assemble.team_agents({}))
+        self.assertIn("agent_dwight", asked)
+        self.assertFalse({"agent_jim", "agent_pam", "agent_pompier", "agent_stanley"} & set(asked))
+        asked.clear()
+        with mock.patch("sys.stdout", new=io.StringIO()):
+            install.my_agents(Ask(), k, [{"key": "jim", "wf": ["aaaaaaaa"]}], set(), install.assemble.team_agents({}))
+        self.assertIn("agent_jim", asked)  # déjà rattaché : on lui redemande
+
     def test_own_workflow_by_id_is_kept_as_is(self):
         mine = "aaaaaaaa-1111-2222-3333-444444444444"
         answers = {**ANSWERS, "reuse": "ask", **{f"reuse_{k}": "new" for k in ("office", "live", "payroll", "avatar", "gate", "relaunch", "ask")},

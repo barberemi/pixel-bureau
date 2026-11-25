@@ -42,7 +42,8 @@ Une entrée par personne dans `roster.json`, liste `people` :
 | `person` | son nom **exact dans Jira** : c'est par lui que Le Bureau retrouve ses tickets |
 | `github` | son login GitHub : ses PR, et l'installateur le reconnaît quand c'est lui qui installe |
 | `roleKind` | un rôle d'équipe qui change ce qu'il fait sur le plan : `po` (écrit et trie les tickets), `sm` (anime le daily et les cérémonies), `qa` (teste), `lead` ; rien pour un développeur |
-| `seat` | facultatif, sa place si le plan ne le place pas (« `I2.R2` » : îlot 2, côté droit, rang 2) |
+| `seat` | facultatif, le siège qu'il préfère (« `I2.R2` » : îlot 2, côté droit, rang 2 ; `python3 tools/plan.py seats` les liste) ; sans lui, il s'assoit tout seul dans la zone de l'équipe du plan, dans l'ordre du roster |
+| `near` | facultatif, à côté de qui il s'assoit (la clé d'un collègue ou d'un agent), quand il n'a pas de `seat` |
 
 Les collègues de passage (dans le sprint mais pas dans le roster) apparaissent tout seuls, au fond de l'open space. Les invités (un héraut qui annonce les mises en prod, par exemple) vont dans la liste `guests` ; les communs, Yoda et Gandalf, sont déjà là.
 
@@ -75,7 +76,13 @@ Un personnage fait sur le [générateur LPC](https://liberatedpixelcup.github.io
 
 ## 4. Le plan de tes bureaux
 
-Pas besoin d'écrire le plan à la main : Claude le dessine à partir d'un croquis ou d'une photo de l'étage, et le vérificateur le corrige ([Partir d'un croquis ou d'une photo](fonctionnalites/01-plan.md#partir-dun-croquis-ou-dune-photo)) :
+Le plus simple : un **habillage public** du Bureau, un plan déjà dessiné et son thème ([Les habillages](habillages.md), avec la galerie). Dans `team.json`, `"layout": "layouts/newsroom.json"` (une rédaction avec plateau TV) ou `"layouts/darkmode.json"` (l'open space type) : le chemin est lu dans le dépôt du Bureau quand le pack ne l'a pas. Le nom de ton équipe va sur le panneau mural du plan par le réglage `enseigne` de `settings.json` :
+
+```json
+"enseigne": {"text": "DUNDER MIFFLIN", "bg": "#1d2433", "accent": "#1f4e8c"}
+```
+
+Tes bureaux à toi, sinon : pas besoin d'écrire le plan à la main, Claude le dessine à partir d'un croquis ou d'une photo de l'étage, et le vérificateur le corrige ([Partir d'un croquis ou d'une photo](fonctionnalites/01-plan.md#partir-dun-croquis-ou-dune-photo)) :
 
 ```sh
 python3 tools/plan.py from-image croquis-scranton.jpg   # brouillon dans dist/plan-brouillon.json
@@ -87,7 +94,7 @@ Range le résultat dans le pack (`layouts/plan.json`, celui que nomme `team.json
 
 ## 5. Les couleurs de ton entreprise
 
-Un thème de page dans `themes/theme-<id>.css` du pack, qui ne sera proposé qu'à ton équipe. Pars du thème livré, complet (fonds, textes, cadres pixel) : `page/src/theme-darkmode.css`, copié en `themes/theme-dundermifflin.css` (pour un thème clair, `color-scheme:light` et fonds et textes inversés), puis :
+Les thèmes du dépôt, Darkmode (sombre) et Newsroom (clair), sont proposés à tout le monde ; l'installateur demande lequel prendre, et chacun en change avec le bouton 🎨. Pour les couleurs de ton entreprise : un thème de page dans `themes/theme-<id>.css` du pack, qui ne sera proposé qu'à ton équipe. Pars du thème livré, complet (fonds, textes, cadres pixel) : `page/src/theme-darkmode.css`, copié en `themes/theme-dundermifflin.css` (pour un thème clair, `color-scheme:light` et fonds et textes inversés), puis :
 
 ```css
 /* @nom: Dunder Mifflin */
@@ -104,7 +111,34 @@ La première ligne donne son nom au bouton 🎨 ; remplace partout `data-skin="d
 - `music/music.json` : le morceau de chacun, sur sa fiche (« Sa musique »).
 - Les passions de chacun (`passion` dans le roster) : [Les passions de l'équipe](fonctionnalites/01-plan.md#les-passions-de-léquipe).
 
-## 7. Valider le pack
+## 7. Brancher tes workflows
+
+Le Bureau fait travailler des agents : des workflows de **ton** Kronn, chacun incarné par un personnage. Trois façons de les brancher, de la plus simple à la plus fine.
+
+**Les agents.** À l'installation, chaque personnage (le casting du Bureau, `team/agents.json`, ou ceux de ton pack) est rattaché à un de tes workflows : l'installateur propose le plus proche par son nom, tu confirmes ou tu choisis. Ceux qui incarnent un modèle du Bureau (Jim pour remettre une PR à jour, Pam pour créer un ticket, le Pompier au Support…) s'y rattachent seuls. Tes autres workflows reçoivent un personnage de The Office. À refaire seul : `python3 tools/install.py --rattacher`.
+
+**Les boutons des fiches.** « 🛠 Implémenter », « 🚀 Mettre en prod », « 🔎 Faire relire », « 🛠 Corriger », « 📏 Réestimer » et « 🌿 Générer l'env de branche » lancent par défaut les workflows du Bureau. Pour mettre les tiens à leur place, l'installateur le propose (« Brancher tes propres workflows Kronn sur les boutons ») : pour chaque bouton, ton workflow, et laquelle de ses variables reçoit la clé du ticket, le numéro de la PR ou le dépôt. Pour toute l'équipe, écris-le dans `settings.json` du pack, par **nom** de workflow (un id change d'un Kronn à l'autre) :
+
+```json
+"branchements": {
+  "impl": {"wf": "deliver-ticket", "vars": {"ticket": "ticket_key"}, "postes": {"analyse": "plan", "develop": "code", "push_pr": "pr"}},
+  "review": {"wf": "relire-une-pr"}
+}
+```
+
+L'installateur et `python3 tools/upgrade.py` retrouvent chaque workflow dans le Kronn de chacun et vérifient ses variables ; un nom introuvable est signalé. `postes` (pour « Implémenter ») fait vivre le 1er étage avec ton workflow : quelle étape est quel poste. Le détail : [Les fiches](fonctionnalites/07-fiches.md).
+
+**Des boutons à toi.** Un workflow sans bouton équivalent (une recette, une réouverture, la description d'une PR) se pose sur la fiche d'un ticket ou d'une PR, ses variables remplies depuis la fiche :
+
+```json
+"boutons": [
+  {"id": "recette", "label": "🧪 Recette", "fiche": "ticket", "wf": "recette-ticket", "vars": {"ticket_key": "{ticket}"}, "agent": "holly"}
+]
+```
+
+Ta config (`bureau.config.json`) peut porter les mêmes clés : elle l'emporte, bouton par bouton.
+
+## 8. Valider le pack
 
 Les outils du Bureau vérifient un pack sans rien publier : ses plans, les contrastes de ses thèmes (texte lisible sur chaque fond), puis la page de démo assemblée avec ton équipe, chargée dans Chrome (aucune erreur JS attendue) :
 
@@ -123,7 +157,7 @@ Pour documenter ton pack, les captures du guide se refont avec ton équipe : la 
 
 Le pack d'exemple apporte la même vérification en CI GitHub (`.github/workflows/pack.yml`, copiée avec lui) : sur chaque PR et chaque push sur `main`, elle clone le Bureau à côté du pack et lance ces trois contrôles.
 
-## 8. Installer et partager
+## 9. Installer et partager
 
 Pousse le pack dans un dépôt privé de ton organisation. Chaque personne qui veut la page dans son Kronn clone le pack, puis le Bureau, et lance l'installateur :
 

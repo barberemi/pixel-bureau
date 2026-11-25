@@ -8,6 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
+- **L'installateur aide à brancher tes workflows** : il propose de mettre tes propres workflows sur les boutons des fiches (Implémenter, Mettre en prod, Faire relire, Corriger, Réestimer, Env de branche) en choisissant leurs variables, et l'écrit par nom (`branchements`) ; il demande le thème de la page ; il ne demande plus à quel workflow rattacher les personnages qui incarnent un modèle du Bureau (ils s'y rattachent seuls). Le guide de l'équipe a sa nouvelle étape « Brancher tes workflows », et part des habillages publics pour le plan et le thème.
 - **L'enseigne de l'équipe** : le panneau mural du plan affiche le nom de ton équipe et ses couleurs, réglés dans le pack (`settings.json`, clé `enseigne` : un texte ou `{text, bg, accent}`) et surchargeables par ta config ; un plan ne porte plus de nom d'équipe.
 
 - **L'habillage Newsroom** : un thème clair de chaîne d'info (mode TV « Newsroom nuit ») et son plan, une rédaction de 40 × 20 cases avec plateau TV, ouverts à tous. Un plan propose son thème (`skin`) quand l'installation n'en choisit pas ; le bouton 🎨 apparaît dès l'installation, il y a deux thèmes.
