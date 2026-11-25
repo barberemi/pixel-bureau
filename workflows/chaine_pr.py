@@ -13,6 +13,7 @@ chaine.py (dossier, postes, Code, bilan), chaine_controles.py (contrôles, aigui
   retours_pr | retours_synchro <run> | repasse      # retours des relecteurs par pr_update.py (fix_*, sans gate) : la PR
                                     # en « dépôt#n » (code 3 : essai ou pas de PR), puis la copie de travail resynchronisée
                                     # et la description à jour ; repasse code 4 : seconde revue et retours (2 passes au plus)
+  recap                                             # le récap de ta gate PR (postes, exigences, ouvert, noms introuvables)
   pret | reviewers | fin                              # publication après ta relecture (gh)
 """
 import fnmatch, hashlib, json, os, re, subprocess, sys, time
@@ -522,9 +523,89 @@ def cmd_fin():
          "retours": (load("retours.json") or {}).get("reponses")})
 
 
+STATUTS = {"ok": "✅", "non_concerne": "➖ non concerné", "en_panne": "💥 en panne", "ko": "❌"}
+CHEMIN = re.compile(r"[\w.-]+(?:/[\w.-]+)+\.(?:php|py|js|ts|tsx|vue|twig|ya?ml|json|md|env|sh|css|scss)\b")
+IDENT = re.compile(r"\b(?:[A-Z][a-z0-9]+){3,}\b|\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+){2,}\b")  # NomDeClasse, NOM_DE_VARIABLE
+
+
+def introuvables(textes):
+    """Les chemins et les noms en `code` cités par les rapports et absents de la branche : un poste qui invente (essai
+    DM-7545 : Besoin et Sécurité citaient SharedSecretHeaderTokenProvider et DM_SHARED_SECRET_HEADER_TOKEN_1, que
+    ni le diff ni le dépôt ne contiennent). Un chemin est cherché tel quel puis sous un dossier de premier niveau ; un nom
+    (NomDeClasse, NOM_DE_VARIABLE) par git grep dans la branche."""
+    seen, out_ = set(), []
+    tops = [d for d in os.listdir(root()) if os.path.isdir(os.path.join(root(), d)) and not d.startswith(".")]
+    for t in textes:
+        t = str(t or "")
+        for p in CHEMIN.findall(t):
+            if p not in seen and len(seen) < 40:
+                seen.add(p)
+                if not any(os.path.exists(os.path.join(root(), *([d] if d else []), p)) for d in [""] + tops):
+                    out_.append(p)
+        for name in IDENT.findall(t):
+            if len(name) >= 8 and name not in seen and len(seen) < 40:
+                seen.add(name)
+                if not git_ok("grep", "-q", "-F", "-e", name, "HEAD"):
+                    out_.append(name)
+    return out_
+
+
+def cmd_recap():
+    """Le récap de ta gate PR, sans agent : la PR, ce que chaque poste a rendu (plan, code, contrôles, orchestrateur,
+    retours), les exigences vues par 🎯 Besoin, ce qui reste ouvert, et les noms cités introuvables dans la branche. Avant,
+    la gate montrait le JSON brut de la dernière étape de la livraison."""
+    e = etat()
+    n, repo = e.get("pr"), e.get("repo") or ""
+    url = f"https://github.com/{repo}/pull/{n}" if n and repo else ""
+    lines = [(f"**PR** : [{repo}#{n}]({url}) en brouillon" if url else "**PR** : pas de PR (mode essai ou création sautée)")
+             + f" · {e.get('tours') or 0} tour(s) de contrôle", "", "### Ce que chaque poste a rendu", "",
+             "| Poste | Résultat |", "|---|---|"]
+    cad = load("cadrage.json") or {}
+    resume = cad.get("resume") or (cad.get("resultat") or {}).get("resume")
+    if resume:
+        lines.append(f"| 📋 Plan | {cellule(resume, 400)} |")
+    code = load("code.json") or {}
+    if code:
+        cs = [cellule(c, 120) for c in code.get("commits") or []]
+        lines.append(f"| 🛠️ Code | {STATUTS.get(code.get('statut'), cellule(code.get('statut')))} {len(cs)} commit(s), "
+                     f"{len(code.get('fichiers') or [])} fichier(s)" + ("<br>" + "<br>".join(f"`{c}`" for c in cs[:8]) if cs else "") + " |")
+    c = load("controles.json") or {}
+    for poste, st in (c.get("postes") or {}).items():
+        nb = sum(1 for x in (c.get("bloquants") or []) if x.get("poste") == poste)
+        na = sum(1 for x in (c.get("avis") or []) if x.get("poste") == poste)
+        extra = ", ".join(s for s in (f"{nb} bloquant(s)" if nb else "", f"{na} avis" if na else "") if s)
+        lines.append(f"| {NOMS.get(poste, poste)} | {STATUTS.get(st, cellule(st))}{' ; ' + extra if extra else ''} |")
+    o = load("orchestrateur.json") or {}
+    if o:
+        lines.append(f"| 🧭 Orchestrateur | **{cellule(o.get('decision') or '?')}** : {cellule(o.get('resume'), 400)} |")
+    r = load("retours.json") or {}
+    if r.get("passes"):
+        lines.append(f"| 💬 Revue de la PR | {len(r['passes'])} passe(s), {r.get('reponses') or 0} retour(s) traité(s) |")
+    b = (load("besoin.json") or {}).get("resultat") or {}
+    ex = [x for x in b.get("exigences") or [] if isinstance(x, dict)]
+    if ex:
+        lines += ["", "### Exigences du ticket (poste 🎯 Besoin)", "", "| Exigence | État | Détail |", "|---|---|---|"]
+        lines += [f"| {cellule(x.get('exigence'), 200)} | {ETATS.get(x.get('etat'), cellule(x.get('etat')))} | {cellule(x.get('detail'), 300)} |" for x in ex]
+    pts = points_md()
+    hors = [x for x in b.get("hors_ticket") or [] if isinstance(x, dict)]
+    if pts or hors:
+        lines += ["", "### Ouvert"] + ([pts.split("\n\n", 2)[-1]] if pts else [])
+        lines += [f"- (hors ticket) `{cellule(x.get('fichier'), 160)}` : {cellule(x.get('changement'), 300)}" for x in hors]
+    textes = [x.get("detail") for x in ex] + [x.get(k) for x in (c.get("bloquants") or []) + (c.get("avis") or [])
+                                              for k in ("fichier", "probleme")]  # pas la piste : elle peut nommer un fichier à créer
+    absents = introuvables(textes)
+    if absents:
+        lines += ["", "### ⚠️ À vérifier : cités mais introuvables dans la branche",
+                  "Un poste les nomme, ni le diff ni le dépôt ne les contiennent : la ligne qui les cite est sans doute "
+                  "inventée (description de la PR comprise).", ""] + [f"- `{a}`" for a in absents[:12]]
+    if url:
+        lines += ["", f"La description complète est sur la PR : {url}"]
+    out("\n".join(lines))
+
+
 def main(argv):
     cmd, args = (argv[1] if len(argv) > 1 else ""), argv[2:]
-    simple = {"pousse": cmd_pousse, "pr": cmd_pr, "pret": cmd_pret, "reviewers": cmd_reviewers, "fin": cmd_fin, "revue_prep": cmd_revue_prep, "retours_pr": cmd_retours_pr, "repasse": cmd_repasse, "revue_locale": cmd_revue_locale}
+    simple = {"pousse": cmd_pousse, "pr": cmd_pr, "pret": cmd_pret, "reviewers": cmd_reviewers, "fin": cmd_fin, "revue_prep": cmd_revue_prep, "retours_pr": cmd_retours_pr, "repasse": cmd_repasse, "revue_locale": cmd_revue_locale, "recap": cmd_recap}
     if cmd in simple:
         return simple[cmd]()
     if cmd == "lance":

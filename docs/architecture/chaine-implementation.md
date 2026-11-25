@@ -9,10 +9,10 @@ Un ticket avance sur une chaîne de postes. Un poste = un sous-workflow Kronn à
 ```
 impl (lanceur, 0 token)          composants Jira -> dépôts -> projets Kronn ; une chaîne par dépôt ; un passage par ticket et par dépôt ;
                                  POST /mcp/workflow-trigger avec project_id et ticket, mode, depot, soeurs, partie, reprise
-└─ impl_chain (parent, 19 étapes, project_scope All, require_isolation, concurrency_limit 3)
+└─ impl_chain (parent, 20 étapes, project_scope All, require_isolation, concurrency_limit 3)
    ticket · prepare · [cadrage = 📋 Plan] · compris · dossier · orchestrateur_plan · ✋gate_plan
    · mode · [code] · [controles] · orchestrateur · aiguillage · ✋gate_escalade
-   · [livraison = 📤 PR · [revue_pr] · [retours]] · ✋gate_pr · [publication] (Stop) · commente_plan (Plan seulement, puis Stop)
+   · [livraison = 📤 PR · [revue_pr] · [retours]] · recap · ✋gate_pr · [publication] (Stop) · commente_plan (Plan seulement, puis Stop)
    · fin_essai (Goto seulement : escalade en essai, Stop) · rattrape (Goto seulement : Code en échec)
    cadrage (📋 Plan) = entree · releve (git grep) · propose (un agent, tier reasoning) · existe (chemins) · rapport
    controles = [tests] · missions · parallele (📏 règles, 🔒 sécurité, ⚡ perf · a11y, 🎯 besoin, 📚 doc : un sous-agent chacun, en même temps) · range · bilan
@@ -74,6 +74,8 @@ La variable `base` de la chaîne (commit ou branche) fait partir la branche d'un
 Le poste 🎯 Besoin (mission de l'étape parallèle des contrôles, bloquant par défaut) confronte le diff aux exigences du ticket (critères d'acceptation, « Qu'est-ce qu'on va faire », « Comment on teste », retours de l'humain) : `exigences` = une ligne par exigence, `fait`, `partiel`, `non`, `autrement` ou `hors_scope` ; une exigence non faite qui revient au dépôt est bloquante. Les autres contrôles jugent la qualité du code, aucun ne vérifiait le résultat demandé.
 
 La description de la PR suit le modèle du dépôt avec un emoji par section (🎯 De quoi on parle, 🔧 Comment j'ai réglé, 🧪 Comment on teste, ✅ Validation, 🚦 Avant / après le merge), courte, sans texte d'aide laissé. Deux blocs y sont écrits par le script, pas par l'agent : « 📋 Ce que le ticket demandait, et où ça atterrit » (le tableau du poste Besoin, à l'emplacement `<!-- bureau-exigences -->`) et « ⚠️ Points ouverts » (bloquants restés et avis des contrôles, sans doublon, `<!-- bureau-points -->`). Essai d'DM-7945 : l'orchestrateur disait « avis à reporter dans la PR », le rédacteur les a omis et annonçait « qat retiré ».
+
+Ta gate PR (`gate_pr`) montre le récap de l'étape `recap` (`chaine_pr.py recap`, 0 token, juste avant la gate) : la PR, une ligne par poste (Plan, Code et ses commits, chaque contrôle avec ses bloquants et avis, décision de l'orchestrateur, passes des retours), le tableau du poste Besoin, ce qui reste ouvert, et « ⚠️ À vérifier » : les chemins et noms (`NomDeClasse`, `NOM_DE_VARIABLE`) cités par Besoin ou par les contrôles mais introuvables dans la branche (chemin tel quel ou sous un dossier de premier niveau, nom par `git grep`) ; la piste d'un avis n'est pas lue, elle peut nommer un fichier à créer. Avant, la gate montrait le JSON brut de la dernière étape de la livraison. Essai DM-7545 : Besoin et Sécurité citaient `SharedSecretHeaderTokenProvider` et `DM_SHARED_SECRET_HEADER_TOKEN_1`, absents du diff comme du dépôt, et la description de la PR les reprenait.
 
 ## Doc du dépôt à jour
 
