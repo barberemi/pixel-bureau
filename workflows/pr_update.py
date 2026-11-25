@@ -33,13 +33,16 @@ Corriger les commentaires d'une PR (#75, page action « bureau-fixpr ») :
   fix_jira_num le numéro à écrire dans le champ de version du ticket (jira.review_version_field) : le plus grand de
                celui de cette passe et de celui déjà posé (stdin : le ticket lu par l'API), il ne redescend jamais.
   fix_jira_txt le commentaire de traçabilité du ticket : version, PR, fils traités, commit.
+  fix_abort    « Changements » à la gate : ton message (stdin) gardé dans l'état du run (retour_humain) pour la mémoire
+               du soir (workflows/memoire.py), puis abort.
 Le poste 💬 retours de la chaîne d'implémentation (impl_retours.json) enchaîne fix_prepare, fix_check, fix_diff et fix_push
 sans la gate : la PR lui arrive en « dépôt#n » (sortie de chaine.py retours_pr), le n° de PR passé à « - ».
 Codes : 2 réglage ou PR refusés, 3 conflit ou pas de ticket (renvoi), 4 conflit non résolu, 5 push refusé, 9 rien à faire (renvoi), 1 autre échec.
 """
-import difflib, glob, hashlib, json, os, re, shutil, stat, subprocess, sys, time
+import datetime, difflib, glob, hashlib, json, os, re, shutil, stat, subprocess, sys, time
 from _lib import CFG, fil_col, get, read_json, refresh, write_json, write_text
 from _checks import check_run
+from _memoire import MEM_TITRE, memoire_texte
 
 HOME = os.path.expanduser("~/.cache/pixel-bureau/pr")
 GH = CFG.get("github") or {}
@@ -553,7 +556,8 @@ def fix_prepare(repo, n, run_id):
     dj = sum(1 for t in ts if t["deja_repondu"] and not t["relance"])
     print(f"{repo}#{n} : {st['title']}\n{len(ts)} fil(s) de review non résolu(s)" + (f" (dont {dj} déjà répondu(s) par le Bureau, sans relance)" if dj else "")
           + (f", {len(gs)} commentaire(s) hors fil" if gs else "") + (f", {ign}" if ign else "") + f", branche {st['branch']} ; {deps}.\n"
-          f"Passe de corrections : Version {st['version']}.\n\n" + checks_hint(repo, st))
+          f"Passe de corrections : Version {st['version']}.\n\n" + checks_hint(repo, st)
+          + ("\n\n## " + MEM_TITRE + "\n" + memoire_texte("correction") if memoire_texte("correction") else ""))
 
 
 def fix_check(repo, n, run_id):
@@ -872,12 +876,24 @@ def done(repo, n, run_id):
     print(f"Fin : {repo}#{n} ({st['branch']}) remise à jour de {st['base']}, sans conflit.")
 
 
+def fix_abort(repo, n, run_id):
+    """« Changements » à la gate de corriger : ton message (stdin) gardé dans l'état du run pour la mémoire du soir
+    (workflows/memoire.py), puis abort."""
+    retour = sys.stdin.read().strip()
+    if retour and retour != "null":
+        st = load(run_id)
+        st["retour_humain"] = {"at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"), "texte": retour[:4000],
+                               "repo": repo, "pr": n}
+        save(run_id, st)
+    abort(repo, n, run_id)
+
+
 def end(repo, n, run_id):
     print(f"Fin : {repo}#{n}, rien de plus à faire.")
 
 
 STEPS = {"end": end, "prepare": prepare, "rebase": rebase, "verify": verify, "check": check, "push": push, "done": done, "abort": abort,
-         "fix_prepare": fix_prepare, "fix_check": fix_check, "fix_diff": fix_diff, "fix_push": fix_push,
+         "fix_prepare": fix_prepare, "fix_abort": fix_abort, "fix_check": fix_check, "fix_diff": fix_diff, "fix_push": fix_push,
          "fix_jira_cle": fix_jira_cle, "fix_jira_num": fix_jira_num, "fix_jira_txt": fix_jira_txt}
 
 if __name__ == "__main__":

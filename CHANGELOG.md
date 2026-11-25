@@ -6,6 +6,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ## [Unreleased]
 
+### Ajouté
+
+- **La mémoire du soir** : chaque soir à 22 h, tes retours du jour (Changements au tampon des tickets, aux gates de la chaîne et à la validation des corrections de PR, bloquants d'une revue réfutés ensuite) deviennent des leçons courtes, réécrites par un agent (fusion, oubli), que tu valides à une gate. La rédaction, la chaîne, la revue et la correction les lisent à leur run suivant ; rien de nouveau, rien ne coûte. Tant que la gate attend, **le marchand de sable** (invité commun : cape verte, écharpe, son ours, son nuage) fait le tour des îlots, sa bulle dit le nombre de leçons, sa fiche porte la validation. Réglage `memoire` (workflows lus, heure, dossier). `git pull && python3 tools/upgrade.py` crée le cron.
+
 ### Corrigé
 
 - **Une validation refusée n'est plus une panne** : un run que tu arrêtes en refusant une gate (Kronn le finit en échec, la gate en dernière étape) n'envoie plus l'agent aux toilettes. Il reste dans le bureau avec la bulle ⏹ « Arrêté : tu as refusé … », le fil dit « s'arrête sur … (tu as refusé) » au lieu de « se plante », et le refus ne compte ni dans les échecs d'affilée de l'alarme ni dans les échecs du récap. Refuser la dernière gate de la mise en prod (« le ticket est-il terminé ? », pas le dernier ticket de la version) compte comme un succès : la prod est passée, l'agent va au café, comme la carte Teams restée ✅.

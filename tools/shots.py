@@ -507,6 +507,13 @@ SHOTS = {
                 "k=r.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(mx-9)*TS*k)+'px',"
                 "top:(r.top+scrollY+(my-5)*TS*k)+'px',width:14*TS*k+'px',height:7*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 2),
     "croquis-brouillon": (1400, 1000, AT(11), "#cv", 1.5, "guide/exemples/plan-croquis.json"),
+    # la mémoire du soir (49-marchand.js) : sa gate ouverte à 22 h, le marchand de sable sur son nuage au-dessus d'un îlot
+    "marchand": (1400, 1000, AT(22) + "GATES=[...(GATES||[]),{run:'demo-mem',wf:'mem0demo',wf_name:SAND_WF,gate:'boss',"
+                 "message:'🧠 **Mémoire du soir** · 3 leçons à valider, 1 retirée : la rédaction renomme ce qui est décidé.',"
+                 "since:new Date(T-2*60e3).toISOString()}];needTeleport=true;setTimeout(()=>{const g=byKey.g_marchand,c=document.querySelector('#cv'),"
+                 "r=c.getBoundingClientRect(),k=r.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',"
+                 "left:(r.left+scrollX+(g.pos.x-150)*k)+'px',top:(r.top+scrollY+(g.pos.y-125)*k)+'px',width:330*k+'px',height:185*k+'px',"
+                 "pointerEvents:'none'});document.body.appendChild(d);},1500);", "#shotclip", 2),
 }
 # captures qui ne visent aucun personnage de la démo : valables avec n'importe quelle équipe (--team)
 TEAM_SHOTS = ["plan", "qui-fait-quoi", "fil", "recap", "kanban", "mep", "calendrier", "fiche-agent", "scene-retro",

@@ -48,6 +48,7 @@ critique, tes retours datés et les tickets créés. Jamais au prix de l'étape 
 """
 import datetime, glob, json, os, re, sys, unicodedata
 from _lib import CFG, get, read_json, readable, refresh, write_json
+from _memoire import MEM_TITRE, memoire_texte
 
 SPRINTS = {"backlog": "Backlog", "next": "Sprint suivant"}
 
@@ -743,7 +744,11 @@ def poste(k, run, retours=""):
         parts.append("## Éléments du registre sans place (contrôle automatique, à corriger en priorité)\n"
                      "Place chacun dans un ticket, ou dis dans le registre pourquoi il est hors périmètre :\n"
                      + "\n".join("- " + i for i in t["non_places"]))
-    if k in ("redaction", "critique") and lecons(run):
+    mem = memoire_texte("ticket", k)  # la mémoire de l'équipe (cron du soir, leçons validées) remplace les retours bruts
+    if mem:
+        parts.append("## " + MEM_TITRE + "\n" + mem + ("\nGuette ces erreurs : une leçon déjà apprise et pas appliquée vaut une note "
+                                                     "(bloquante si elle revient)." if k == "critique" else ""))
+    elif k in ("redaction", "critique") and lecons(run):
         parts.append("## Corrections que le boss a déjà dû faire sur d'autres tickets (les plus récentes d'abord)\n"
                      + ("Ne refais pas ces erreurs : applique ce qui vaut en général (une règle, une habitude de l'équipe), pas "
                         "ce qui ne concernait que ce ticket-là."
