@@ -72,6 +72,13 @@ test('la scène de la galerie : jouable, il prend son nuage sans gate', () => {
   run('SCENE_DEMO = null;');
 });
 
+test('la loupe : son arrivée (la gate ouverte), avec le cerveau', () => {
+  assert.equal(J("loupeKind({on: 'memoire', guest: true, _st: {st: 'gate'}})"), 'sand');
+  assert.equal(J("loupeKind({on: 'memoire', guest: true, _st: {st: 'off'}})"), null);
+  assert.equal(J("LOUPE_KINDS.sand[0]"), '🧠');
+  assert.ok(J("LOUPE_ORDER.includes('sand')"));
+});
+
 test('le cerveau : une icône pixel de 12 × 12, ses couleurs dans la palette', () => {
   const rows = J("PIX_ICONS['🧠']"), pal = J('PIX_PAL');
   assert.equal(rows.length, 12);

@@ -21,7 +21,7 @@ Tant que la gate attend, le marchand de sable vient la porter : un monsieur brun
 
 ![Le marchand de sable sur son nuage au-dessus d'un îlot, son ours à côté, la bulle « 3 leçons à valider »](../img/marchand.png)
 
-Un clic sur lui ouvre sa fiche avec la validation. Elle est aussi chez le boss, comptée une fois, comme les règles du facteur. Le fil le note à son arrivée (onglet Tout), et « Comment lire le plan » › 🎬 Scènes le rejoue (« ▶ voir »). La gate décidée, il repart par la porte.
+Un clic sur lui ouvre sa fiche avec la validation. Elle est aussi chez le boss, comptée une fois, comme les règles du facteur. À son arrivée, la loupe l'agrandit et le fil le note (onglet Tout) ; « Comment lire le plan » › 🎬 Scènes le rejoue (« ▶ voir »). La gate décidée, il repart par la porte.
 
 ## Ce que tu valides
 
