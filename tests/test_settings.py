@@ -133,6 +133,14 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(m["agents"][0]["sprite"], "p_holly")
         self.assertEqual(assemble.merged(m), m)
 
+    def test_pack_line_without_name_completes_the_casting(self):
+        """Une ligne du pack sans nom ({key, seat}) garde le personnage du casting et lui donne sa place."""
+        self.write({"agents": [{"key": "dwight", "seat": "I6.L2"}]})
+        a = next(x for x in assemble.team_agents(self.cfg()) if x["key"] == "dwight")
+        self.assertEqual((a["name"], a["metier"], a["seat"]), ("Dwight", "revue", "I6.L2"))
+        m = assemble.merged(self.cfg(agents=[{"key": "dwight", "wf": ["aaaaaaaa"]}]))
+        self.assertEqual((m["agents"][0]["name"], m["agents"][0]["seat"]), ("Dwight", "I6.L2"))
+
     def test_page_and_crons_read_the_pack(self):
         self.write({"rhythm": {"daily": "09:05"}, "gitfut": {"p_bob": "bobvance"}, "agents": [{"key": "dwight", "name": "Dwight", "role": "Reviewer de PR"}]})
         c = {k: v for k, v in self.cfg(agents=[{"key": "dwight", "wf": ["aaaaaaaa"]}]).items() if k != "rhythm"}  # rien à surcharger
