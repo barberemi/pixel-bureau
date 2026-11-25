@@ -9,10 +9,14 @@ const sandmanOwns=g=>g.wf_name===SAND_WF&&!!byKey.g_marchand;
 // « 🧠 **Mémoire du soir** · 3 leçons à valider, 1 retirée : … » (workflows/memoire.py, propose) -> 3 ; absent : null
 const sandLessons=g=>{const m=/(\d+) leçons? à valider/.exec(String((g&&g.message)||''));return m?+m[1]:null;};
 const sandText=n=>n==null?'leçons à valider':n+(n>1?' leçons':' leçon');
-// une halte par îlot, à côté de sa place du milieu (rang central, côté gauche), de gauche à droite
+// une halte par îlot, de gauche à droite : en haut de l'îlot, au bout de sa table (la case au-dessus du premier rang),
+// sinon à côté de sa place du milieu. Il est dessiné devant tout (41-render.js) : son nuage passe par-dessus les bureaux.
 function sandStops(){
-  const out=[];
-  for(const cx of ISLANDS||[]){const ss=SEATS.filter(s=>s.cx===cx&&s.dir==='right');if(ss.length)out.push(besideSeat([ss[Math.floor(ss.length/2)].x,ss[Math.floor(ss.length/2)].y]));}
+  const out=[], top=Math.min(...(IROWS||[0]));
+  for(const cx of ISLANDS||[]){
+    if(walkable(cx,top-1)){out.push([cx,top-1,'down']);continue;}
+    const ss=SEATS.filter(s=>s.cx===cx&&s.dir==='right');if(ss.length)out.push(besideSeat([ss[Math.floor(ss.length/2)].x,ss[Math.floor(ss.length/2)].y]));
+  }
   return out;
 }
 function sandmanState(c,t){

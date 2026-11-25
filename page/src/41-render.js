@@ -8,7 +8,7 @@ const CONFETTI=['#e0a020','#d1453b','#2f6fd6','#2e9e5b',MEP_COLOR]; // confettis
 function render(now){
   ctx.drawImage(bg,0,0); drawWindows(T,now); PILE_HITS=[];
   const list=FURN.map(f=>({y:f.y,d:f.draw}));
-  for(const c of chars)if(c.present&&c.pos&&!popHidden(c,now)&&!ufoHides(c))list.push({y:c.pos.y,d:n=>drawChar(c,n)}); // popHidden : 66-newagent.js
+  for(const c of chars)if(c.present&&c.pos&&!popHidden(c,now)&&!ufoHides(c))list.push({y:c._st&&c._st.cloud?Infinity:c.pos.y,d:n=>drawChar(c,n)}); // popHidden : 66-newagent.js ; sur son nuage (49-marchand.js) : devant tout
   DUCK_POS=duckAt(T); if(DUCK_POS)list.push({y:DUCK_POS.y,d:drawDuck}); // 39-duck.js : le canard, trié avec les personnages
   for(const m of coffeeMugs())list.push({y:m.z,d:n=>drawMug(m,n)}); // 49-coffee.js : les tasses de la tournée de café
   for(const m of cleaningCarts())list.push({y:m.z,d:()=>drawCart(m)}); // 49-menage.js : le chariot du ménage du soir
