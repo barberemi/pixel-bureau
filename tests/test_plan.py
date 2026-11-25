@@ -138,6 +138,15 @@ class SeatingTest(unittest.TestCase):
         got, _ = plan.assign(L, self.PEOPLE)
         self.assertEqual([got["a"], got["b"]], ["I1.R1", "I1.R2"])  # puis hors zone, avant la zone des agents
 
+    def test_own_zone_temps_seats_before_the_other_zone(self):
+        """Une zone pleine hors places d'intérimaires : le collègue prend une place d'intérimaire de sa zone plutôt qu'un
+        siège de la zone des agents (Newsroom : 9 des 18 sièges de l'équipe gardés aux intérimaires)."""
+        L = json.loads(Path(os.path.join(ROOT, "layouts", "newsroom.json")).read_text())
+        people = [{"key": f"p{i}"} for i in range(11)] + [{"key": "a", "agent": True}]
+        got, _ = plan.assign(L, people)
+        self.assertTrue(all(plan.zoned(L, "equipe", s) for s in plan.seats_of(L) if s["id"] in [got[f"p{i}"] for i in range(11)]))
+        self.assertEqual(got["a"], "I4.R1")  # le 1er siège de la zone des agents hors places d'intérimaires
+
     def test_stable_when_someone_arrives(self):
         before, _ = plan.assign(BASE, self.PEOPLE)
         after, _ = plan.assign(BASE, self.PEOPLE + [{"key": "e"}])

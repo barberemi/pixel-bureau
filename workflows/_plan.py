@@ -57,8 +57,9 @@ def zoned(L, zone, t):
 def assign(L, people, owner=None):
     """Qui s'assoit où : même règle que placeCast de 10-world.js (vérifié par tests/layout.test.js). people : roster puis
     agents, dans l'ordre du casting ({key, seat?, near?, agent?} ; agent vrai pour un agent). D'abord la place de la
-    personne si c'est un siège libre du plan, puis un siège libre de sa zone (zones du plan), puis hors zone, puis de
-    l'autre zone, enfin une place d'intérimaire (free_seats) ; near (clé) : après les autres, le plus proche de lui.
+    personne si c'est un siège libre du plan, puis un siège libre de sa zone (zones du plan), puis hors zone, puis une
+    place d'intérimaire de sa zone (free_seats), puis l'autre zone, enfin les autres places d'intérimaires ; near (clé) :
+    après les autres, le plus proche de lui.
     Renvoie ({clé: numéro de siège}, places des intérimaires dans l'ordre) ; la place du boss lui est comptée mais libérée."""
     seats = seats_of(L)
     got, taken = {}, set()
@@ -75,8 +76,9 @@ def assign(L, people, owner=None):
     def pick(p):
         z, o = ("agents", "equipe") if p.get("agent") else ("equipe", "agents")
         open_ = [t for t in seats if t["id"] not in taken and t not in free]
+        spare = [t for t in free if t["id"] not in taken]
         groups = [[t for t in open_ if zoned(L, z, t)], [t for t in open_ if not zoned(L, z, t) and not zoned(L, o, t)],
-                  [t for t in open_ if zoned(L, o, t)], [t for t in free if t["id"] not in taken]]
+                  [t for t in spare if zoned(L, z, t)], [t for t in open_ if zoned(L, o, t)], spare]
         g = next((x for x in groups if x), None)
         if not g:
             return

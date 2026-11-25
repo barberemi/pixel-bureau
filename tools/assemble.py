@@ -447,10 +447,12 @@ def pack_settings(cfg):
 
 def team_agents(cfg):
     """Personnages des agents : ceux du pack (settings.json, agents) d'abord, puis le casting par défaut (team/agents.json)
-    hors des clés que le pack a déjà (le pack remplace un personnage par le sien). Sans workflow : la config les rattache."""
-    pack = pack_settings(cfg).get("agents") or []
+    hors des clés que le pack a déjà. Un personnage du pack avec son nom remplace celui du casting ; sans nom, il le
+    complète (sa place seat ou near, une icône…). Sans workflow : la config les rattache."""
+    base = {a["key"]: a for a in json.loads(Path(p("team", "agents.json")).read_text())["agents"]}
+    pack = [a if a.get("name") or a["key"] not in base else {**base[a["key"]], **a} for a in pack_settings(cfg).get("agents") or []]
     mine = {a["key"] for a in pack}
-    return pack + [a for a in json.loads(Path(p("team", "agents.json")).read_text())["agents"] if a["key"] not in mine]
+    return pack + [a for k, a in base.items() if k not in mine]
 
 
 def _agent(persona, binding):

@@ -41,8 +41,9 @@ function buildWorld(){
 }
 // places : zones par rôle du plan (LAYOUT.zones {equipe, agents} : îlots « I2 » ou sièges « I2.R1 ») ; d'abord la place
 // du roster ou de l'agent si c'est un siège libre de ce plan (numéro « I2.R2 »), puis un siège libre de sa zone (collègues
-// dans l'ordre du roster, agents dans la leur), puis un siège hors zone, puis un siège de l'autre zone, enfin ceux des
-// intérimaires (free_seats). Qui demande à être à côté de quelqu'un (near: clé) passe après les autres et prend, dans le
+// dans l'ordre du roster, agents dans la leur), puis un siège hors zone, puis une place d'intérimaire de sa zone
+// (free_seats : jamais un collègue chez les agents tant que sa zone a un siège), puis l'autre zone, enfin les autres
+// places d'intérimaires. Qui demande à être à côté de quelqu'un (near: clé) passe après les autres et prend, dans le
 // premier de ces groupes qui a de la place, le siège le plus proche de lui.
 // Même règle que assign() de workflows/_plan.py (vérifié par un test).
 // Le boss reçoit aussi une place, libérée pour les intérimaires tant qu'il est à son bureau.
@@ -54,7 +55,8 @@ function placeCast(){
   const free=(LAYOUT.free_seats||[]).map(seatAt).filter(Boolean);
   const pick=w=>{
     const z=AGENTS.includes(w)?'agents':'equipe', o=z==='agents'?'equipe':'agents', open=SEATS.filter(t=>!taken.has(t.id)&&!free.includes(t));
-    const groups=[open.filter(t=>seatZoned(z,t)),open.filter(t=>!seatZoned(z,t)&&!seatZoned(o,t)),open.filter(t=>seatZoned(o,t)),free.filter(t=>!taken.has(t.id))];
+    const spare=free.filter(t=>!taken.has(t.id));
+    const groups=[open.filter(t=>seatZoned(z,t)),open.filter(t=>!seatZoned(z,t)&&!seatZoned(o,t)),spare.filter(t=>seatZoned(z,t)),open.filter(t=>seatZoned(o,t)),spare];
     const g=groups.find(x=>x.length), n=w.near&&got.get(w.near);if(!g)return;
     give(w.key,n?g.reduce((a,t)=>Math.abs(t.x-n.x)+Math.abs(t.y-n.y)<Math.abs(a.x-n.x)+Math.abs(a.y-n.y)?t:a):g[0]);
   };
