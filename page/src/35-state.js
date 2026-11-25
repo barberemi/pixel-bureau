@@ -569,7 +569,7 @@ function tick(real){
     const s=c._st;
     if(s.st==='absent'||s.st==='gone'||s.st==='off'){
       if(c.present&&!needTeleport&&walksOut(c,s)&&c.tile&&!(c.tile[0]===EXIT[0]&&c.tile[1]===EXIT[1])){goTo(c,{key:'exit',x:EXIT[0],y:EXIT[1],dir:'right'});continue;}
-      c.present=false;c.pos=null;c.spotKey=null;continue;
+      c.present=false;c.pos=null;c.spotKey=null;c.target=null;c.path=[];continue; // il revient de zéro : sinon goTo le croit déjà arrivé
     }
     let zone=s.zone; if(zone==='wander')zone=wanderZone(c,real); else c.idlePlan=null;
     const spot=pickSpot(c,zone,taken); if(!spot)continue;
@@ -580,7 +580,7 @@ function tick(real){
       // placé d'un coup seulement au chargement / saut dans le temps ; un nouvel arrivant entre par la porte et marche
       if(needTeleport||s.arrive&&REDUCED_MOTION){place(c,spot);}
       else if(s.arrive&&rackFoot()){const f=rackFoot();c.pos=tileCenter(f[0],f[1]);c.tile=f;c.popAt=performance.now();goTo(c,spot);} // 66-newagent.js : sort de la baie
-      else{c.pos=tileCenter(EXIT[0],EXIT[1]);c.tile=[EXIT[0],EXIT[1]];goTo(c,spot);}
+      else{c.pos=tileCenter(EXIT[0],EXIT[1]);c.tile=[EXIT[0],EXIT[1]];c.target=null;c.path=[];goTo(c,spot);} // une ancienne destination ne doit pas couper le trajet
       c.arrivedOnce=true; continue;
     }
     goTo(c,spot);
@@ -611,7 +611,7 @@ const walkBoost=()=>typeof mode!=='undefined'&&mode==='play'?Math.min(8,Math.max
 function step(c,dt){
   if(!c.pos)return;
   if(!c.path.length){c.moving=false;if(c.target)c.dir=c.target.dir;
-    if(c.target&&c.target.key==='exit'&&c._st&&(walksOut(c,c._st)||c._st.zone==='leave')){c.present=false;c.pos=null;}
+    if(c.target&&c.target.key==='exit'&&c._st&&(walksOut(c,c._st)||c._st.zone==='leave')){c.present=false;c.pos=null;c.target=null;}
     return;}
   const [tx,ty]=c.path[0], last=c.path.length===1&&c.target&&c.target.x===tx&&c.target.y===ty;
   const g=last?spotPos(c.target):tileCenter(tx,ty);
