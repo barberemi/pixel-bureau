@@ -4,7 +4,7 @@
 // fillText et measureText de CanvasRenderingContext2D sont enveloppés une fois : une chaîne sans ces emojis passe telle quelle ;
 // avec, l'icône prend la place de l'emoji, centrée dans sa largeur d'origine (la mise en page ne bouge pas). emo() (46-themes.js)
 // en profite aussi. Le panneau (HTML) garde ses emojis. ✓ ✗ et les flèches restent du texte : la police les rend nettement.
-const PIX_PAL={"k":"#1c1f26","w":"#f4efe4","W":"#ffffff","g":"#a7adb8","G":"#5f6672","r":ST_VIF.err,"R":ST_FONCE.err,"y":"#f2c94c","o":ST_VIF.warn,"O":"#a8701a","b":ST_VIF.info,"B":"#2f4f9a","n":ST_VIF.ok,"N":ST_FONCE.ok,"t":"#d6a868","T":"#8a5a30","s":"#f2c9a0","S":"#c98f62","c":"#8fdcf0"};
+const PIX_PAL={"k":"#1c1f26","w":"#f4efe4","W":"#ffffff","g":"#a7adb8","G":"#5f6672","r":ST_VIF.err,"R":ST_FONCE.err,"y":"#f2c94c","o":ST_VIF.warn,"O":"#a8701a","b":ST_VIF.info,"B":"#2f4f9a","n":ST_VIF.ok,"N":ST_FONCE.ok,"t":"#d6a868","T":"#8a5a30","s":"#f2c9a0","S":"#c98f62","c":"#8fdcf0","p":"#f2a0b4","P":"#c86a86","q":"#ffd6e0"};
 const PIX_ICONS={
   '✋':[ // t'attend, ta décision : quatre doigts fins de hauteurs différentes et un pouce écarté (plus de moufle)
     '......k.....','....kkskk...','...kskskskk.','...ksksksksk','...ksksksksk','.kkksksksksk','ksskssssssSk','.kssssssssSk','..ksssssssSk','..ksssssssSk','...kssssSSk.','....kkkkkk..'],
@@ -78,6 +78,8 @@ const PIX_ICONS={
     '.......kkk..','......kgk.k.','......kgkkgk','......kgggGk','.....kgggGk.','....kgGkkk..','...kgGk.....','..kgGk......','.kgGk.......','kgGk........','kGk.........','.k..........'],
   '📗':[ // fait (Kanban)
     '............','.kkkkkkkkk..','knnnnnnnnNk.','knwwwwwwnNk.','knnnnnnnnNk.','knnnnnnnnNk.','knnnnnnnnNk.','knnnnnnnnNk.','knnnnnnnnNk.','kNNNNNNNNNk.','kwwwwwwwwwk.','.kkkkkkkkk..'],
+  '🧠':[ // la mémoire du soir : leçons à valider (49-marchand.js)
+    '............','..kkkk.kkk..','.kqppkkppqk.','kqpPppkpPppk','kpPpPpkpPpPk','kppPppkppPpk','kpPpPpkpPppk','.kppPpkpPpk.','..kkppkppkk.','....kkkkk...','......kPk...','......kk....'],
   '🧻':[ // toilettes
     '............','...kkkkkk...','..kwwwwwwk..','.kwwkkwwwwk.','.kwkggkwwwk.','.kwkggkwwwk.','.kwwkkwwwwk.','.kwwwwwwwwk.','.kwwwwwwwwk.','.kwwwwwwwwwk','..kkkkkkkkkk','............'],
 };

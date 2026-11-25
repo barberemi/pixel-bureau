@@ -15,11 +15,19 @@ Rien de plus à faire de ton côté : le cron lit ce que les workflows gardent d
 
 S'il n'y a rien de nouveau, le run s'arrête là, sans agent ni jetons.
 
+## Le marchand de sable
+
+Tant que la gate attend, le marchand de sable vient la porter : un monsieur brun à la cape verte et à l'écharpe rayée, debout sur son nuage, son ours à côté. Il fait le tour des îlots de l'open space, s'arrête au-dessus de chacun (une minute et demie), y sème un peu de sable, puis passe au suivant. Sa bulle dit combien de leçons t'attendent, le nombre en rouge.
+
+![Le marchand de sable sur son nuage au-dessus d'un îlot, son ours à côté, la bulle « 3 leçons à valider »](../img/marchand.png)
+
+Un clic sur lui ouvre sa fiche avec la validation. Elle est aussi chez le boss, comptée une fois, comme les règles du facteur. Le fil le note à son arrivée (onglet Tout), et « Comment lire le plan » › 🎬 Scènes le rejoue (« ▶ voir »). La gate décidée, il repart par la porte.
+
 ## Ce que tu valides
 
 Une gate « 🧠 Mémoire du soir » s'ouvre sur la page, comme les autres validations. Elle montre :
 
-- le résumé de ce que la journée a appris ;
+- en première ligne, le nombre de leçons à valider (et celles retirées), puis le résumé de ce que la journée a appris ;
 - un diff par fiche changée, avec la raison ;
 - parfois, des leçons « à graver dans le dépôt » : une règle qui revient souvent et mérite d'aller dans la doc du dépôt, une skill ou les consignes de l'équipe. Ça, c'est à toi de le faire, en PR.
 

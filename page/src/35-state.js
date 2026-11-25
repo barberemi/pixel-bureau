@@ -172,6 +172,7 @@ function guestState(c,t){
   if(c.on==='prod')return prodHeraldState(c,t); // 37-scenes.js : le héraut des mises en prod réussies
   if(c.on==='bigpr')return bigPrHeraldState(c,t); // 43-pop.js : l'amiral Ackbar d'une grosse PR
   if(c.on==='mail')return postmanState(c,t); // 48-mail.js : le facteur dépose le courrier
+  if(c.on==='memoire')return sandmanState(c,t); // 49-marchand.js : le marchand de sable de la mémoire du soir
   if(c.on==='coffee')return coffeeState(c,t); // 49-coffee.js : la tournée de café
   if(c.on==='cleaning')return cleaningState(c,t); // 49-menage.js : le ménage du soir
   const v=guestVisit(c,t);

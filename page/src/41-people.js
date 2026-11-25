@@ -69,6 +69,7 @@ function drawChar(c,now){if(c._st&&c._st.tt){ctx.save();ctx.globalAlpha=TT_ALPHA
   if(c.pos&&metierOf(c))mtKit(c); // 69-metiers.js : la tenue de son étage
   else if(c.pos&&typeof drawGear==='function'){const g=c.gear!==undefined?c.gear:typeof atIsLauncher==='function'&&atIsLauncher(c)?'chantier':null;if(g)drawGear(c,g);} // 68-atelier.js : casque et gilet de chantier (gear null : aucune)
   if(c.pos&&c._st&&c._st.carry&&typeof drawCarry==='function')drawCarry(c); // 69-atelier-rdc.js : le carton porté
+  if(c.pos&&c._st&&c._st.cloud&&typeof drawSandman==='function')drawSandman(c,now); // 49-marchand.js : son ours et son nuage
   if(c.pos&&typeof floorAgentRobot==='function'&&floorAgentRobot(c))drawAgentRobot(c,now);} // 69-metiers.js : le petit robot des agents des étages
 function drawChar0(c,now){
   const img=spriteOf(c); if(!ready(img)||!c.pos)return;
@@ -103,7 +104,7 @@ function drawChar0(c,now){
     ctx.restore();
   }
   const bob=(c.pose==='type'&&!c.moving&&(c.dir==='left'||c.dir==='right')?(Math.floor(now/320+c.phase)%2):0)+(c.boss&&!c.moving&&c.tile&&c.tile[0]===BOSS_SEAT[0]&&c.tile[1]===BOSS_SEAT[1]?9:0);
-  const dx=x-32-(c.sprite==='boss_sax'?5:0), dy=y-60+bob;
+  const dx=x-32-(c.sprite==='boss_sax'?5:0), dy=y-60+bob-(c._st&&c._st.cloud?SAND_LIFT:0); // sur son nuage (49-marchand.js) : plus haut
   if(famOf(c)==='wf'&&!metierOf(c)){ // l'agent d'un étage (69-metiers.js) : en couleurs pleines
     const glitch=(Math.floor(now/110)+Math.floor(c.phase*7))%41===0;
     const gx=dx+(glitch?1:0), hs=holoStyleOf(c);
@@ -184,7 +185,7 @@ let BUBBLE_BOXES=[];
 function drawOverlay(c,now){
   if(!c.pos)return;
   drawApprentice(c);
-  const x=Math.round(c.pos.x), y=Math.round(c.pos.y), st=c._st||{};
+  const st=c._st||{}, x=Math.round(c.pos.x), y=Math.round(c.pos.y)-(st.cloud?SAND_LIFT:0); // sur son nuage : bulle et flèche plus haut
   if(sel===c.key){
     const a=Math.sin(now/200)*2;
     ctx.fillStyle='#ffffff';
@@ -232,5 +233,9 @@ function drawOverlay(c,now){
   BUBBLE_BOXES.push({x:bx,y:by,w,h});
   const ph=toolPhase(c,bb.tool,now); if(ph)drawToolBubble(bb.tool,ph,bx,by);
   ctx.fillStyle=ring?ringCol:alert?'#fff':'#25221d';ctx.textBaseline='middle';ctx.textAlign='center';
-  ctx.fillText(txt,bx+w/2+(bb.tone?1.5:0),by+h/2+1);ctx.textAlign='left';ctx.textBaseline='alphabetic';
+  if(st.hot&&txt.includes(st.hot)){ // un morceau en rouge (le nombre de leçons du marchand de sable, 49-marchand.js)
+    const i=txt.indexOf(st.hot), base=ctx.fillStyle;let cx=bx+w/2-ctx.measureText(txt).width/2;ctx.textAlign='left';
+    for(const [s,col] of [[txt.slice(0,i),base],[st.hot,ST_FONCE.err],[txt.slice(i+st.hot.length),base]]){if(!s)continue;ctx.fillStyle=col;ctx.fillText(s,cx,by+h/2+1);cx+=ctx.measureText(s).width;}
+  }else ctx.fillText(txt,bx+w/2+(bb.tone?1.5:0),by+h/2+1);
+  ctx.textAlign='left';ctx.textBaseline='alphabetic';
 }
