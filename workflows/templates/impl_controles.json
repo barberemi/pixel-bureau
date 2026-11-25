@@ -365,7 +365,7 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Les rapports des sous-agents rangés poste par poste ; un poste sans rapport est noté en panne (0 token).",
+    "description": "Les rapports des sous-agents rangés poste par poste ; un poste sans rapport est noté en panne ; un rapport 🎯 Besoin qui cite des noms absents de la branche le fait repasser seul, une fois par tour (code 4, 0 token).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
@@ -373,7 +373,17 @@
      "range"
     ],
     "exec_timeout_secs": 60,
-    "exec_stdin": "{{steps.parallele.data_json ?? \"null\"}}"
+    "exec_stdin": "{{steps.parallele.data_json ?? \"null\"}}",
+    "on_result": [
+     {
+      "contains": "exit_4",
+      "action": {
+       "type": "Goto",
+       "step_name": "missions",
+       "max_iterations": 4
+      }
+     }
+    ]
    },
    {
     "name": "bilan",

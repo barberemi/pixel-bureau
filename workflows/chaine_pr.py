@@ -19,6 +19,7 @@ chaine.py (dossier, postes, Code, bilan), chaine_controles.py (contrôles, aigui
 import fnmatch, hashlib, json, os, re, subprocess, sys, time
 from _lib import CFG, get, read_json, send, write_json, write_text
 from _chaine import *  # noqa: F401,F403  (recopié au rendu, comme _lib)
+from _noms import introuvables  # noqa: F401  (recopié au rendu)
 
 KEY = re.compile(r"^[A-Z][A-Z0-9]+-\d+$")
 
@@ -228,8 +229,16 @@ def exigences_md():
     if not ex:
         return ""
     return ("## Ce que le ticket demandait, et où ça atterrit\n\n| Exigence du ticket | État | Détail |\n|---|---|---|\n"
-            + "\n".join(f"| {cellule(x.get('exigence'))} | {ETATS.get(x.get('etat'), cellule(x.get('etat')))} | {cellule(x.get('detail'))} |"
-                        for x in ex))
+            + "\n".join(f"| {cellule(x.get('exigence'))} | {etat_md(x)} | {cellule(x.get('detail'))}{introuvable_md(x)} |" for x in ex))
+
+
+def etat_md(x):
+    """L'état d'une exigence ; « à vérifier » quand sa ligne cite des noms absents de la branche (verifie_besoin)."""
+    return "⚠️ à vérifier" if x.get("introuvables") else ETATS.get(x.get("etat"), cellule(x.get("etat")))
+
+
+def introuvable_md(x):
+    return (" (introuvable dans la branche : " + ", ".join(f"`{cellule(n, 80)}`" for n in x["introuvables"][:5]) + ")") if x.get("introuvables") else ""
 
 
 def points_md():
@@ -524,32 +533,6 @@ def cmd_fin():
 
 
 STATUTS = {"ok": "✅", "non_concerne": "➖ non concerné", "en_panne": "💥 en panne", "ko": "❌"}
-CHEMIN = re.compile(r"[\w.-]+(?:/[\w.-]+)+\.(?:php|py|js|ts|tsx|vue|twig|ya?ml|json|md|env|sh|css|scss)\b")
-IDENT = re.compile(r"\b(?:[A-Z][a-z0-9]+){3,}\b|\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+){2,}\b")  # NomDeClasse, NOM_DE_VARIABLE
-
-
-def introuvables(textes):
-    """Les chemins et les noms en `code` cités par les rapports et absents de la branche : un poste qui invente (essai
-    DM-7545 : Besoin et Sécurité citaient SharedSecretHeaderTokenProvider et DM_SHARED_SECRET_HEADER_TOKEN_1, que
-    ni le diff ni le dépôt ne contiennent). Un chemin est cherché tel quel puis sous un dossier de premier niveau ; un nom
-    (NomDeClasse, NOM_DE_VARIABLE) par git grep dans la branche."""
-    seen, out_ = set(), []
-    tops = [d for d in os.listdir(root()) if os.path.isdir(os.path.join(root(), d)) and not d.startswith(".")]
-    for t in textes:
-        t = str(t or "")
-        for p in CHEMIN.findall(t):
-            if p not in seen and len(seen) < 40:
-                seen.add(p)
-                if not any(os.path.exists(os.path.join(root(), *([d] if d else []), p)) for d in [""] + tops):
-                    out_.append(p)
-        for name in IDENT.findall(t):
-            if len(name) >= 8 and name not in seen and len(seen) < 40:
-                seen.add(name)
-                if not git_ok("grep", "-q", "-F", "-e", name, "HEAD"):
-                    out_.append(name)
-    return out_
-
-
 def cmd_recap():
     """Le récap de ta gate PR, sans agent : la PR, ce que chaque poste a rendu (plan, code, contrôles, orchestrateur,
     retours), les exigences vues par 🎯 Besoin, ce qui reste ouvert, et les noms cités introuvables dans la branche. Avant,
@@ -585,7 +568,7 @@ def cmd_recap():
     ex = [x for x in b.get("exigences") or [] if isinstance(x, dict)]
     if ex:
         lines += ["", "### Exigences du ticket (poste 🎯 Besoin)", "", "| Exigence | État | Détail |", "|---|---|---|"]
-        lines += [f"| {cellule(x.get('exigence'), 200)} | {ETATS.get(x.get('etat'), cellule(x.get('etat')))} | {cellule(x.get('detail'), 300)} |" for x in ex]
+        lines += [f"| {cellule(x.get('exigence'), 200)} | {etat_md(x)} | {cellule(x.get('detail'), 300)}{introuvable_md(x)} |" for x in ex]
     pts = points_md()
     hors = [x for x in b.get("hors_ticket") or [] if isinstance(x, dict)]
     if pts or hors:

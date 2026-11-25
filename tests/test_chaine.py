@@ -1071,8 +1071,8 @@ class ChaineScriptTest(unittest.TestCase):
 
     def test_next_rounds_keep_reports_without_blockers(self):
         """Contrôles : chaque sous-agent a son modèle (sécurité sur Opus, les autres sur Sonnet), lit le contexte dans un
-        fichier et y écrit son rapport ; aux tours suivants, un poste sans bloquant garde son rapport, la sécurité repasse
-        toujours (runs du 5 novembre : les tours 2 et 3 des contrôles faisaient 15 % du coût de la chaîne)."""
+        fichier et y écrit son rapport ; aux tours suivants, un poste sans bloquant garde son rapport, la sécurité et le
+        besoin repassent toujours (runs du 5 novembre : les tours 2 et 3 des contrôles faisaient 15 % du coût de la chaîne)."""
         self.prepare()
         g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
         Path(self.wt, "app", "A.php").write_text("<?php // v1\n")
@@ -1093,10 +1093,10 @@ class ChaineScriptTest(unittest.TestCase):
         subprocess.run(g + ["commit", "-qam", "correction"], cwd=self.wt, check=True)
         self.sh("bilan_code")
         m = self.sh("missions")[1]
-        self.assertEqual(self.dossier("missions.json")["postes"], ["regles", "securite"])
-        self.assertIn("besoin : rapport du tour précédent gardé", m)
+        self.assertEqual(self.dossier("missions.json")["postes"], ["regles", "securite", "besoin"])  # besoin : son tableau va dans la PR
+        self.assertIn("perf : rapport du tour précédent gardé", m)
         self.assertFalse(Path(self.wt, ".kronn", "chaine", "rapports", "regles.json").exists())  # celui du tour 1 ne compte plus
-        self.assertEqual(self.dossier("besoin.json")["statut"], "ok")
+        self.assertEqual(self.dossier("perf.json")["statut"], "ok")
         c = cfg()
         c["impl"]["postes"]["controles"] = {"relance": "tous", "modeles": {"securite": "sonnet"}}
         self.render(c)
@@ -1104,6 +1104,43 @@ class ChaineScriptTest(unittest.TestCase):
         self.sh("missions")
         self.assertEqual(self.dossier("missions.json")["postes"], ["regles", "securite", "perf", "besoin", "doc"])
         self.assertEqual(self.dossier("missions.json")["modeles"]["securite"], "sonnet")
+
+    def test_besoin_citing_names_missing_from_the_branch_runs_again_alone_then_is_flagged(self):
+        """Essai DM-7545 : le tableau du poste 🎯 Besoin citait une classe et une variable inventées, et la PR les reprenait.
+        Un rapport qui cite des noms absents de la branche fait repasser Besoin seul (range en code 4, une fois par tour) ;
+        encore là après : la ligne est « à vérifier » dans la PR, avec ses noms."""
+        self.prepare()
+        g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        Path(self.wt, "app", "A.php").write_text("<?php // v1\n")
+        subprocess.run(g + ["commit", "-qam", "v1"], cwd=self.wt, check=True)
+        self.sh("bilan_code")
+        self.sh("missions")
+        faux = {"resume": "b", "constats": [], "exigences": [
+            {"exigence": "lire en env", "etat": "fait", "detail": "SecretProviderInvente lit FAUX_NOM_DE_SECRET (src/Inconnu/Fichier.php)"},
+            {"exigence": "garder A", "etat": "fait", "detail": "app/A.php garde la valeur"}]}
+        code, outp = self.sh("range", stdin=json.dumps({"securite": {"resume": "s", "constats": []}, "besoin": faux}))
+        self.assertEqual(code, 4, outp)
+        self.assertEqual(self.dossier("securite.json")["statut"], "ok")  # rangé avant la relance
+        m = self.sh("missions")[1]
+        self.assertEqual(self.dossier("missions.json")["postes"], ["besoin"])
+        self.assertEqual(self.dossier("securite.json")["statut"], "ok")  # pas réécrit
+        self.assertIn("ton rapport précédent citait des noms absents de la branche", m)
+        self.assertIn("`SecretProviderInvente`", m)
+        code, outp = self.sh("range", stdin=json.dumps({"besoin": faux}))  # toujours faux : pas de seconde relance
+        self.assertEqual(code, 0, outp)
+        Path(self.wt, ".kronn", "chaine", "controles.json").write_text(json.dumps({"bloquants": [], "avis": []}))
+        e = self.dossier("etat.json")
+        e["mode"] = "essai"
+        Path(self.wt, ".kronn", "chaine", "etat.json").write_text(json.dumps(e))
+        self.sh("pr", stdin=json.dumps({"title": "t", "body": "<!-- bureau-exigences -->"}))
+        body = Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text()
+        self.assertIn("| lire en env | ⚠️ à vérifier |", body)
+        self.assertIn("(introuvable dans la branche : `src/Inconnu/Fichier.php`, `SecretProviderInvente`, `FAUX_NOM_DE_SECRET`)", body)
+        self.assertIn("| garder A | ✅ livré | app/A.php garde la valeur |", body)
+        self.assertEqual(self.sh("missions")[0], 0)  # relance faite : plus de mission « Besoin seul »
+        self.assertNotEqual(self.dossier("missions.json")["postes"], ["besoin"])
+        self.assertIn({"contains": "exit_4", "action": {"type": "Goto", "step_name": "missions", "max_iterations": 4}},
+                      steps("impl_controles")["range"]["on_result"])
 
     def test_deletion_survey_finds_dead_references(self):
         """Ticket de suppression (DM-7816 : 4 blocs supprimés, 15 templates, styles et tests encore liés) : le Code reçoit
