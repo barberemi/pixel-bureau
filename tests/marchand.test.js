@@ -108,3 +108,20 @@ test('l\'ours et le nuage : des cartes de pixels régulières, chaque couleur da
     for (const r of rows) for (const ch of r) assert.ok(ch === '.' || ch in pal, ch);
   }
 });
+
+test('rejouer sa scène : il repart de la porte vers sa halte, au lieu de rester planté à l\'entrée', () => {
+  const r = J(`(() => {
+    const c = byKey.g_marchand, walk = () => { for (let i = 0; i < 400 && (c.path.length || c.moving); i++) step(c, .05); };
+    const play = () => { SCENE_DEMO = {flag: 'memoire', s: T - 1000, e: T + 3 * SAND_STOP}; tick(0); };
+    needTeleport = false; play(); walk();
+    const first = c.tile.slice();
+    SCENE_DEMO = null; needTeleport = true; tick(0); // « ✕ Revenir » : il disparaît
+    needTeleport = false; play(); const fromDoor = c.tile.slice(), path = c.path.length; walk();
+    SCENE_DEMO = null;
+    return {first, fromDoor, path, second: c.tile, exit: EXIT, stop: sandStops()[0]};
+  })()`);
+  assert.deepEqual(r.fromDoor, r.exit); // il rentre par la porte
+  assert.ok(r.path > 0, 'un chemin jusqu\'à sa halte');
+  assert.deepEqual(r.second, r.first);
+  assert.deepEqual(r.second, r.stop.slice(0, 2));
+});
