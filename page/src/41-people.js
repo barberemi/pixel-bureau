@@ -63,7 +63,7 @@ function holoFrame(img,sx,sy,now,lines,hs){
 }
 // invités en marche : 1 px de rebond un pas sur deux, pour que la marche se lise même quand les jambes bougent peu
 // (sprites fournis de face ou de dos)
-const guestBob=(c,fx)=>c.guest&&c.moving&&fx%4<2?-1:0;
+const guestBob=(c,fx)=>c.guest&&c.moving&&!(c._st&&c._st.cloud)&&fx%4<2?-1:0; // sur son nuage : pas de pas
 // en télétravail : le personnage en transparence à sa place (36-absences.js)
 function drawChar(c,now){if(c._st&&c._st.tt){ctx.save();ctx.globalAlpha=TT_ALPHA;try{drawChar0(c,now);}finally{ctx.restore();}}else drawChar0(c,now);
   if(c.pos&&metierOf(c))mtKit(c); // 69-metiers.js : la tenue de son étage

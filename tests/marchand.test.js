@@ -40,10 +40,23 @@ test('sans gate : absent ; gate ouverte : sur son nuage, une halte par îlot, le
   assert.equal(s.hot, '3 leçons');
   const stops = J('sandStops()');
   assert.equal(stops.length, J('ISLANDS.length'), 'une halte par îlot');
+  const d = p => J(`Math.abs(${p[0]} - EXIT[0]) + Math.abs(${p[1]} - EXIT[1])`);
+  assert.ok(d(stops[0]) <= d(stops[stops.length - 1]), 'il commence par le bout le plus proche de la porte');
+  assert.ok(stops.every((p, i) => !i || Math.sign(p[0] - stops[i - 1][0]) === Math.sign(stops[1][0] - stops[0][0])), 'puis îlot après îlot, sans revenir');
   assert.deepEqual(s.visit, stops[0]);
   assert.deepEqual(S('22:02').visit, stops[1], '90 s par îlot, puis le suivant');
   assert.deepEqual(J(`sandmanState(byKey.g_marchand, Date.parse('${at('22:00')}') + ${stops.length} * SAND_STOP).visit`), stops[0], 'puis il recommence');
   assert.equal(J(`stateAt(byKey.g_marchand, Date.parse('${at('22:01')}')).st`), 'gate');
+});
+
+test('sur son nuage, il ne marche pas : de face au repos, sans le rebond des pas, même en route', () => {
+  const c = "{guest: true, moving: true, dir: 'right', phase: 0, _st: {cloud: true}}";
+  const [fx, fy] = J(`frameFor(${c}, 0)`);
+  assert.equal(fy, 4, 'rangée du repos');
+  assert.ok(fx === 2 || fx === 3, 'de face');
+  assert.equal(J(`guestBob(${c}, 1)`), 0);
+  assert.equal(J("frameFor({guest: true, moving: true, dir: 'right', phase: 0}, 0)[1]"), J("DIRROW.right"), 'un autre invité marche');
+  assert.equal(J("guestBob({guest: true, moving: true}, 1)"), -1);
 });
 
 test('sa gate : dans sa fiche (run), jamais orpheline chez le boss', () => {
