@@ -332,6 +332,28 @@ class ReviewTest(unittest.TestCase):
         r = self.ctx([{"user": {"login": "bot"}, "body": "— 🤖 *Review automatique · Le Bureau*", "commit_id": self.head}])
         self.assertEqual(r.returncode, 0, r.stderr)
 
+    def test_memory_of_the_team_goes_to_each_poste_and_to_the_avis(self):
+        """Mémoire du soir : la fiche revue (et la commune) dans le prompt de chaque poste, ses lignes [avis] dans le contexte
+        de l'avis (section ---MEMOIRE---) ; sans fiche, « aucune » et pas de section."""
+        mem = Path(self.tmp, "memoire")
+        cfg = {**copy.deepcopy(BASE), "memoire": {"dossier": str(mem)}}
+        files = [{"filename": "src/f.py", "status": "modified", "additions": 2, "deletions": 1, "patch": PATCH}]
+        ctx = lambda: self.run_("contexte", "12", "bot", cfg=cfg, stdin=json.dumps({"reviews": [], "comments": [], "files": files}))
+        self.assertEqual(ctx().returncode, 0)
+        self.assertIn("---MEMOIRE---\naucune", Path(self.tmp, ".kronn", "pr-12", ".review-context.json").read_text())
+        self.assertNotIn("Mémoire de l'équipe", self.run_("poste", "lecture", "12", "dm/site", cfg=cfg).stdout)
+        mem.mkdir()
+        (mem / "revue.md").write_text("# Mémoire · revue\n\n- [avis] Vérifie un test avant de le dire manquant\n- [lecture] Lis le test lié\n")
+        (mem / "equipe.md").write_text("- Écris en français\n")
+        self.assertEqual(ctx().returncode, 0)
+        avis = Path(self.tmp, ".kronn", "pr-12", ".review-context.json").read_text().split("---MEMOIRE---\n")[1]
+        self.assertIn("- Écris en français\n- [avis] Vérifie un test avant de le dire manquant", avis)
+        self.assertNotIn("Lis le test lié", avis)
+        lecture = self.run_("poste", "lecture", "12", "dm/site", cfg=cfg).stdout
+        self.assertIn("## Mémoire de l'équipe (leçons validées par le boss, à appliquer)\n", lecture)
+        self.assertIn("- [lecture] Lis le test lié", lecture)
+        self.assertNotIn("Vérifie un test", lecture)
+
     def test_each_poste_opens_with_the_cost_header_and_reads_the_context(self):
         self.ctx()
         r = self.run_("poste", "contexte", "12", "dm/site")

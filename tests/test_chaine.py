@@ -287,6 +287,21 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertEqual(code, 0, outp)
         self.assertEqual(self.dossier("etat.json")["repo"], "dm/site")
 
+    def test_each_poste_reads_its_lessons_from_the_team_memory(self):
+        """Mémoire du soir : la fiche impl (dossier par défaut, sous HOME) dans le dossier de chaque poste, ses lignes
+        « [poste] » au seul poste nommé."""
+        self.prepare()
+        mem = Path(self.tmp, "home", ".local", "share", "pixel-bureau", "memoire")
+        code, ctx = self.sh("entree", "cadrage", "AB-12")
+        self.assertEqual(code, 0, ctx)
+        self.assertNotIn("Mémoire de l'équipe", ctx, "sans fiche : rien")
+        mem.mkdir(parents=True)
+        (mem / "impl.md").write_text("# Mémoire · impl\n\n- Lis docs/AGENTS.md d'abord\n- [code] Un commit par lot\n- [cadrage] Cite les fichiers lus\n")
+        code, ctx = self.sh("entree", "cadrage", "AB-12")
+        self.assertIn("## Mémoire de l'équipe (leçons validées par le boss, à appliquer)", ctx)
+        self.assertIn("- Lis docs/AGENTS.md d'abord\n- [cadrage] Cite les fichiers lus", ctx)
+        self.assertNotIn("Un commit par lot", ctx)
+
     def test_prepare_then_cadrage_with_human_feedback(self):
         self.prepare()
         self.assertEqual(subprocess.run(["git", "branch", "--show-current"], cwd=self.wt, capture_output=True, text=True).stdout.strip(),

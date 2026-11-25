@@ -1,7 +1,9 @@
 """Planches des invités communs (sprites/common/) : le mage (Gandalf) et le sage (Yoda), composés le 2026-10-05 à partir
-de calques du générateur LPC, le facteur du courrier (#30, 2026-10-14) et l'amiral Ackbar des grosses PR (2026-11-20).
-Leurs recettes servent aussi à les créditer (credits.py). Le LPC n'a pas de képi : celui du facteur est dessiné ici, case
-par case, sur sa tête (« KEPI ») ; ni de tête de Mon Calamari : celle d'Ackbar aussi (« CALAMARI »).
+de calques du générateur LPC, le facteur du courrier (#30, 2026-10-14), l'amiral Ackbar des grosses PR (2026-11-20) et le
+marchand de sable de la mémoire du soir (2026-11-25). Leurs recettes servent aussi à les créditer (credits.py). Le LPC n'a
+pas de képi : celui du facteur est dessiné ici, case par case, sur sa tête (« KEPI ») ; ni de tête de Mon Calamari : celle
+d'Ackbar aussi (« CALAMARI ») ; ni d'écharpe : celle du marchand de sable aussi (« ECHARPE »). Son ours et son nuage ne sont
+pas des planches : la page les dessine (page/src/49-marchand.js).
 
     .venv/bin/python sprites/heralds.py    # refait sprites/common/<nom>/<nom>-walk.png et -idle.png (identiques au pixel)
 """
@@ -13,6 +15,9 @@ GRAY, ROBE, WHITE, GREEN, BROWN = "#8d8f97", "#7c7f88", "#ecebe6", "#9fc46a", "#
 NAVY, SKY, YELLOW = "#24357a", "#a9c8ec", "#f2c230"
 KEPI = "KEPI"  # pas un calque LPC : le képi dessiné par kepi()
 CALAMARI = "CALAMARI"  # pas un calque LPC : la tête de Mon Calamari dessinée par calamari()
+ECHARPE = "ECHARPE"  # pas un calque LPC : l'écharpe rayée du marchand de sable dessinée par echarpe()
+VERT, VERT_L, BRUN_C, NUIT_P = "#2f6b3a", "#3f8a4c", "#4a2f1e", "#3a3346"
+ECH, ECH_L = "#b8342e", "#e8d7a0"
 SALMON, UNIFORM = "#c8743a", "#e9e6dc"
 # animations par invité : la sacoche LPC n'a pas d'attente ; sans planche idle, la page prend la 1re image de la marche
 ANIMS_OF = {"facteur": ("walk",)}
@@ -39,12 +44,18 @@ RECIPES = {
     "ackbar": ("L'amiral Ackbar (tête de Mon Calamari dessinée pour le Bureau)", [
         ("body/bodies/male", SALMON, "mul"), ("feet/shoes/basic/male", "#1d1d22", "lum"), ("legs/pants/male", "#3a3e48", "lum"),
         ("torso/clothes/longsleeve/longsleeve/male", UNIFORM, "lum"), ("head/heads/human/male", SALMON, "mul"), (CALAMARI, None, None)]),
+    "marchand": ("Le marchand de sable (écharpe dessinée pour le Bureau)", [
+        ("cape/solid/bg", VERT, "lum"), ("body/bodies/male", PALE, "mul"), ("feet/shoes/basic/male", "#3b2a1e", "lum"),
+        ("legs/pants/male", NUIT_P, "lum"), ("torso/clothes/longsleeve/longsleeve/male", VERT_L, "lum"),
+        ("head/heads/human/male", PALE, "mul"), ("eyes/human/adult/default", None, None), ("hair/parted/adult", BRUN_C, "lum"),
+        (ECHARPE, None, None)]),
 }
+DRAWN = (KEPI, CALAMARI, ECHARPE)  # pas des calques LPC : dessinés case par case
 
 
 def files(name):
     """Fichiers LPC de la recette, pour toutes ses animations (chemins du générateur)."""
-    return [p.format(a=a) if "{a}" in p else f"{p}/{a}.png" for p, _, _ in RECIPES[name][1] if p not in (KEPI, CALAMARI) for a in anims(name)]
+    return [p.format(a=a) if "{a}" in p else f"{p}/{a}.png" for p, _, _ in RECIPES[name][1] if p not in DRAWN for a in anims(name)]
 
 
 def kepi(sheet, head):
@@ -105,14 +116,43 @@ def calamari(sheet, head):
     return out
 
 
+def echarpe(sheet, head):
+    """Écharpe rayée rouge et crème sur chaque case de 64 px (rangées LPC : dos, gauche, face, droite), au cou, sous la
+    tête : de face, un pan qui tombe sur la poitrine ; de profil, un pan qui flotte derrière. head : le calque de la tête."""
+    from PIL import ImageDraw
+    out, hp, F = sheet.copy(), head.load(), 64
+    dr = ImageDraw.Draw(out)
+    for row in range(sheet.size[1] // F):
+        for col in range(sheet.size[0] // F):
+            ox, oy = col * F, row * F
+            pts = [(x, y) for y in range(oy, oy + F) for x in range(ox, ox + F) if hp[x, y][3]]
+            if not pts:
+                continue
+            bot = max(y for _, y in pts)
+            xs = [x for x, y in pts if y >= bot - 3]
+            x0, x1, d = min(xs), max(xs), row % 4
+            dr.rectangle((x0 - 1, bot - 1, x1 + 1, bot + 2), fill=ECH, outline="#2a1c14")
+            for x in range(x0, x1 + 1, 3):
+                dr.line((x, bot, x, bot + 1), fill=ECH_L)
+            if d == 2:
+                dr.rectangle((x0 + 1, bot + 2, x0 + 4, bot + 10), fill=ECH, outline="#2a1c14")
+                for y in (bot + 5, bot + 8):
+                    dr.line((x0 + 2, y, x0 + 3, y), fill=ECH_L)
+            elif d in (1, 3):
+                tx = x1 + 1 if d == 1 else x0 - 4
+                dr.rectangle((tx, bot, tx + 3, bot + 7), fill=ECH, outline="#2a1c14")
+                dr.line((tx + 1, bot + 4, tx + 2, bot + 4), fill=ECH_L)
+    return out
+
+
 def compose(name, anim):
     import build_sprites as bs
     from PIL import Image
     base = None
     for p, color, mode in RECIPES[name][1]:
-        if p in (KEPI, CALAMARI):
+        if p in DRAWN:
             hl = next(x for x in RECIPES[name][1] if x[0].startswith("head/heads"))
-            draw = kepi if p == KEPI else calamari
+            draw = {KEPI: kepi, CALAMARI: calamari, ECHARPE: echarpe}[p]
             base = draw(base, bs.recolor(bs.layer([hl[0]], anim), bs.SKIN[hl[1]] if hl[1] in bs.SKIN else hl[1], hl[2]))
             continue
         im = bs.fetch(p.format(a=anim)) if "{a}" in p else bs.layer([p], anim)

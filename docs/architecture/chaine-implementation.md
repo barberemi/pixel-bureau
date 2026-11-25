@@ -179,3 +179,7 @@ Relevés et consignes communs avec la revue de PR (`workflows/_releves.py`, reco
 - Poste Besoin : `hors_ticket` (changements sans exigence) ; `ecarts_jira()` les ajoute avec les écarts au ticket au commentaire Jira de la publication [src: file: workflows/chaine.py:ecarts_jira].
 - Publication : `squash()` reprend d'abord par avance rapide ce qui a été poussé sur `origin/<branche>` à côté de la chaîne (bouton 🛠 Corriger lancé avant ta validation), réunit les commits en un (message `commit` du rédacteur, `commit.txt`), pousse en `--force-with-lease` ; copie divergente ou push refusé : commits gardés, rien d'écrasé, et la publication continue. Puis `pret` passe la PR en prête et pose `ci_label()` (`impl.repos.<dépôt>.ci_label`, sinon `impl.ci_label`) [src: file: workflows/chaine_pr.py:squash].
 - Retours : le code de `fix` sans gate ; `retours_synchro` republie la description avec les blocs du script à jour et resynchronise la copie de travail [src: file: workflows/chaine.py:cmd_retours_synchro].
+
+## Mémoire de l'équipe
+
+Chaque poste reçoit, après les retours de l'humain, sa part de la fiche `impl` de la mémoire du soir (leçons validées par le boss, une ligne `- [poste] …` ne va qu'à ce poste) ; les retours aux gates (`retours.md`) en sont la source. Voir [memoire](memoire.md) [src: file: workflows/chaine.py:431].

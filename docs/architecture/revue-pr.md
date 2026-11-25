@@ -89,3 +89,7 @@ Le cron relit ses PR l'une après l'autre (foreach séquentiel) ; la salle montr
 
 Tests : `tests/test_review.py` (script, relevés, vérification, envoi, historique, sélection du cron), `tests/test_models.py` (rendu, niveaux, 20 étapes), `tests/redaction.test.js` (salle), `tests/test_chaine_bilan.py`.
 - Les consignes des postes (`review.py poste`) donnent des chemins absolus : avec `.kronn/pr-<n>` en relatif, un agent reconstruisait parfois le chemin sous le dossier du projet (où rien n'existe) et rendait un rapport vide, quel que soit le modèle [src: file: workflows/review.py:186].
+
+## Mémoire de l'équipe
+
+Les postes reçoivent la fiche `revue` de la mémoire du soir dans leur prompt, l'avis la lit dans `.review-context.json` (section `---MEMOIRE---`, lignes `[avis]`). Un bloquant que la passe suivante réfute en est la source. Voir [memoire](memoire.md) [src: file: workflows/review.py:304].

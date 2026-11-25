@@ -31,6 +31,7 @@ chaine.py : dossier, postes et Code.
 import fnmatch, hashlib, json, os, re, shlex, subprocess, sys, time
 from _lib import CFG, get, read_json, send, write_json, write_text
 from _chaine import *  # noqa: F401,F403  (recopié au rendu, comme _lib)
+from _memoire import MEM_TITRE, memoire_texte
 
 SEP = "\n===SEP===\n"
 
@@ -427,6 +428,9 @@ def cmd_entree(p, ticket, retours="", extra=""):
     parts.append(section("Ticket", open(dossier("ticket.md"), encoding="utf-8").read() if os.path.exists(dossier("ticket.md")) else ""))
     if os.path.exists(dossier("retours.md")):
         parts.append(section("Retours de l'humain (à respecter en priorité)", open(dossier("retours.md"), encoding="utf-8").read()))
+    mem = memoire_texte("impl", p)  # mémoire de l'équipe (cron du soir, leçons validées par le boss)
+    if mem:
+        parts.append(section(MEM_TITRE, mem))
     if p == "cadrage":
         docs = e.get("docs") or []
         parts.append(section("Documentation du dépôt (à lire avant tout)", "\n".join(docs[:80]) + (f"\n… et {len(docs) - 80} autres" if len(docs) > 80 else "")

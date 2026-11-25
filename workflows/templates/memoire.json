@@ -1,0 +1,235 @@
+{
+ "kind": "workflow",
+ "key": "memoire",
+ "doc": "Mémoire du soir (amélioration continue) : les retours humains du jour (tampon des tickets, gates de la chaîne, Changements des corrections, bloquants réfutés des revues) réécrits en leçons courtes par un agent ; le boss valide à sa gate, les agents les lisent à leur run suivant.",
+ "definition": {
+  "name": "Le Bureau · mémoire du soir",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Cron",
+   "schedule": "0 @@memoire.heures@@ * * 1-5"
+  },
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": 1,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "guards": {
+   "timeout_seconds": 259200
+  },
+  "steps": [
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "releve",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "À 22 h, heure du bureau (memoire.heure ; le cron tourne aux deux heures UTC possibles, été comme hiver, l'autre passage s'arrête là) : les retours humains depuis le dernier relevé, lus dans ce que gardent les workflows (historique des tickets, retours.md de la chaîne, état des corrections, historique des revues), au journal ; rien de nouveau : code 3, fin sans agent (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/memoire.py@@",
+     "releve"
+    ],
+    "exec_timeout_secs": 300,
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "fin"
+      }
+     }
+    ]
+   },
+   {
+    "name": "consolide",
+    "step_type": {
+     "type": "Agent"
+    },
+    "description": "L'agent réécrit les fiches de la mémoire (fusionner, reformuler, oublier) et propose ce qui mérite d'être gravé dans le dépôt (seule étape avec des jetons).",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "agent_settings": {
+     "tier": "reasoning",
+     "tools": {
+      "cli": [],
+      "kronn_internal": []
+     }
+    },
+    "prompt_template": "@@text:tools/memoire_prompt.md@@\n{{steps.releve.data.stdout}}",
+    "output_format": {
+     "type": "TypedSchema",
+     "schema": {
+      "type": "object",
+      "properties": {
+       "fiches": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "nom": {
+           "type": "string"
+          },
+          "contenu": {
+           "type": "string"
+          },
+          "pourquoi": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "nom",
+          "contenu",
+          "pourquoi"
+         ]
+        }
+       },
+       "promotions": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "lecon": {
+           "type": "string"
+          },
+          "cible": {
+           "type": "string"
+          },
+          "pourquoi": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "lecon",
+          "cible"
+         ]
+        }
+       },
+       "resume": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "fiches",
+       "promotions",
+       "resume"
+      ]
+     },
+     "on_invalid": "Continue"
+    }
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "propose",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Proposition vérifiée (fiches connues, format, limites) et mise en diff pour ta validation ; rien à changer : code 3, fin (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/memoire.py@@",
+     "propose"
+    ],
+    "exec_timeout_secs": 60,
+    "exec_stdin": "{{steps.consolide.data_json ?? \"null\"}}",
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "fin"
+      }
+     }
+    ]
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "boss",
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "Le boss valide la mémoire : Approuver l'écrit, Changements la renvoie à l'agent avec son message, Rejeter la laisse telle quelle.",
+    "gate_message": "{{steps.propose.data.stdout}}",
+    "gate_request_changes_target": "consolide"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "applique",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Validé : les fiches réécrites (les précédentes gardées dans versions/) ; les agents les lisent dès leur prochain run (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/memoire.py@@",
+     "applique"
+    ],
+    "exec_timeout_secs": 60
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "fin",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Fin du run (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/memoire.py@@",
+     "fin"
+    ],
+    "exec_timeout_secs": 30
+   }
+  ]
+ }
+}

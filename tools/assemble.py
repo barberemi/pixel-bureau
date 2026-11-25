@@ -170,6 +170,15 @@ def cron_hours(cfg, veille=False):
     return span(a, b) if a <= b else f"{span(a, 23)},{span(0, b)}"
 
 
+def local_hour_utc(cfg, hour):
+    """Les heures UTC où il est `hour` heures au bureau (rhythm.timezone), hiver puis été : « 21,20 » à Paris pour 22 h,
+    triées. Un cron quotidien à heure locale fixe tourne aux deux et son script garde le bon passage (mémoire du soir)."""
+    tz = ZoneInfo(((cfg or {}).get("rhythm") or {}).get("timezone") or "Europe/Paris")
+    year = datetime.now().year
+    hs = {int((int(hour) - tz.utcoffset(datetime(year, m, 1)).total_seconds() / 3600) % 24) for m in (1, 7)}
+    return ",".join(str(h) for h in sorted(hs))
+
+
 def cron_schedules(cfg=None):
     """Calendrier de chaque cron du Bureau : celui de ses modèles (workflows/templates), heures calées sur le bureau."""
     out = {}
