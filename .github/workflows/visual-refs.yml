@@ -1,4 +1,4 @@
-# Références visuelles (KT-57) : refaites par la CI (Linux) sur la branche d'une PR quand on y pose le label
+# Références visuelles (KT-57), et la galerie des habillages : refaites par la CI (Linux) sur la branche d'une PR quand on y pose le label
 # « références visuelles » (changement d'affichage voulu, ou Chrome mis à jour). Le commit est poussé sur la branche,
 # le label retiré, puis les tests relancés par workflow_dispatch. Le commit est créé par l'API (signé par GitHub,
 # exigé par le ruleset de main), jamais poussé par git. Le push du robot crée aussi un run « Tests » de la PR
@@ -51,6 +51,13 @@ jobs:
           BUREAU_CHROME: google-chrome
           BUREAU_CHROME_ARGS: --no-sandbox
 
+      # galerie des habillages (guide/habillages.md) : chaque plan du dépôt dans chaque thème, pour qu'une PR montre son rendu
+      - name: Refaire la galerie des habillages
+        run: python3 tools/shots.py --galerie
+        env:
+          BUREAU_CHROME: google-chrome
+          BUREAU_CHROME_ARGS: --no-sandbox
+
       # commit créé par l'API GraphQL (createCommitOnBranch) et non par git push : GitHub le signe (« Verified »), ce
       # qu'exige le ruleset de main (required_signatures) ; un commit poussé par le robot n'est pas signé et bloquait la PR
       - name: Commit signé sur la branche de la PR
@@ -60,7 +67,7 @@ jobs:
           BRANCH: ${{ github.head_ref }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          git add tests/visual
+          git add tests/visual guide/img/habillages
           if git diff --cached --quiet; then echo "Références inchangées"; exit 0; fi
           python3 - <<'PY' > "$RUNNER_TEMP/commit.json"
           import base64, json, os, subprocess

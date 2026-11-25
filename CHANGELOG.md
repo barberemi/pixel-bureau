@@ -8,7 +8,21 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
+- **L'enseigne de l'équipe** : le panneau mural du plan affiche le nom de ton équipe et ses couleurs, réglés dans le pack (`settings.json`, clé `enseigne` : un texte ou `{text, bg, accent}`) et surchargeables par ta config ; un plan ne porte plus de nom d'équipe.
+
+- **L'habillage Newsroom** : un thème clair de chaîne d'info (mode TV « Newsroom nuit ») et son plan, une rédaction de 40 × 20 cases avec plateau TV, ouverts à tous. Un plan propose son thème (`skin`) quand l'installation n'en choisit pas ; le bouton 🎨 apparaît dès l'installation, il y a deux thèmes.
+
+- **Le guide des habillages** (`guide/habillages.md`, cité dans CONTRIBUTING) : choisir un thème et un plan, proposer le sien (ni marque ni vrai nom, licence des dessins), et la galerie de chaque plan dans chaque thème, refaite par `tools/shots.py --galerie` et par la CI avec le label « références visuelles ».
+- **Le casting des agents par défaut** (`team/agents.json`) : douze personnages pour toute installation (Dwight à la revue, Jim pour remettre une PR à jour, Stanley pour déployer une branche, Pam pour créer un ticket, le Pompier au Support…), avec les tenues du Pompier et de Mose ; un pack remplace un personnage par le sien de même clé. Un personnage qui incarne un modèle installé n'apparaît d'office que si aucun agent n'a déjà ce workflow.
+- **Les consignes de base** de la chaîne d'implémentation et de « Corriger » (`team/consignes.json` : DRY, le ticket d'abord, une doc fausse est bloquante, une config qui ne marche qu'en prod aussi, fuseau fixé dans les tests…), avant celles de l'équipe ; `sans_consignes_base` les coupe, toutes ou par id.
+- **Tes workflows branchés par leur nom** (`branchements`, dans le pack ou la config) : l'installateur et la mise à jour retrouvent leur id dans ton Kronn, vérifient leurs variables, remplissent `launch` et ne proposent plus le modèle du Bureau remplacé. Avec `postes`, un workflow d'implémentation à toi fait vivre le 1er étage : chaque étape sur son poste, ses gates et ses pannes.
+- **Des boutons libres sur les fiches** (`boutons`, dans le pack ou la config) : un workflow à toi, retrouvé par son nom, sur la fiche d'un ticket ou d'une PR, ses variables remplies depuis la fiche (`{ticket}`, `{pr}`, `{repo}`) ou saisies dans la carte Kronn, porté par l'agent de ton choix.
 - **La mémoire du soir** : chaque soir à 22 h, tes retours du jour (Changements au tampon des tickets, aux gates de la chaîne et à la validation des corrections de PR, bloquants d'une revue réfutés ensuite) deviennent des leçons courtes, réécrites par un agent (fusion, oubli), que tu valides à une gate. La rédaction, la chaîne, la revue et la correction les lisent à leur run suivant ; rien de nouveau, rien ne coûte. Tant que la gate attend, **le marchand de sable** (invité commun : cape verte, écharpe, son ours, son nuage) fait le tour des îlots, porté par son nuage sans marcher, sa bulle dit le nombre de leçons, sa fiche porte la validation. Réglage `memoire` (workflows lus, heure, dossier). `git pull && python3 tools/upgrade.py` crée le cron.
+
+### Modifié
+
+- **L'habillage par défaut s'appelle Darkmode** : le thème Classique devient `darkmode` (`page/src/theme-darkmode.css`) et le plan type `layouts/darkmode.json`, mêmes couleurs et même plan. Une installation qui avait `ui.skin` à `classique` retombe d'elle-même sur Darkmode.
+- **Les places se règlent par zones** : un plan ne nomme plus personne. Il réserve des îlots à l'équipe et aux agents (`zones`), et chacun s'y range tout seul, collègues dans l'ordre du roster ; une préférence se donne dans le roster ou les agents du pack (`seat` : un siège, `near` : à côté de quelqu'un). L'ancienne clé `seating` du plan est refusée par `tools/plan.py check`.
 
 ### Corrigé
 

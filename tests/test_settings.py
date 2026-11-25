@@ -45,10 +45,25 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(m["gitfut"], {"p_bob": "bobvance"})
         self.assertEqual(m["wiki_posters"], ["Mine"])  # posé dans la config : celui de la config
         self.assertEqual(m["microsoft"], {"config_id": "m365", "planning": PLANNING})  # config_id : jamais celui du pack
-        self.assertEqual(m["agents"], [{"key": "dwight", "name": "Dwight", "role": "Reviewer de PR", "wf": ["aaaaaaaa"], "seat": [3, 4]},
-                                       {"key": "a_new", "name": "Neuf", "wf": ["cccccccc"]}])  # Pete, sans workflow ici : absent
+        self.assertEqual(m["agents"][:2], [{"key": "dwight", "name": "Dwight", "role": "Reviewer de PR", "wf": ["aaaaaaaa"], "seat": [3, 4]},
+                                           {"key": "a_new", "name": "Neuf", "wf": ["cccccccc"]}])  # Pete, sans workflow ici : absent
+        self.assertEqual([a["key"] for a in m["agents"][2:]], ["jim", "pompier"])  # casting par défaut : modèles installés
         self.assertEqual(m["jira"], c["jira"])
         self.assertEqual(assemble.merged(m), m)  # idempotent
+
+    def test_enseigne_from_the_pack_and_the_config(self):
+        """Lot 2 des habillages : l'enseigne du mur est un réglage d'équipe (texte ou {text, bg, accent}), relu à chaque
+        assemblage ; la config la surcharge champ à champ ; une couleur mal écrite est ignorée, le texte coupé à 24."""
+        self.write({"enseigne": "VANCE"})
+        self.assertEqual(assemble.page_config(assemble.merged(self.cfg()))["enseigne"], {"text": "VANCE"})
+        m = assemble.merged(self.cfg(enseigne={"bg": "#112233", "accent": "rouge"}))
+        self.assertEqual(m["enseigne"], {"text": "VANCE", "bg": "#112233"})
+        self.assertEqual(assemble.merged(m), m)
+        self.write({"enseigne": {"text": "X" * 40, "bg": "#000000", "accent": "#ffcc00"}})
+        self.assertEqual(assemble.page_config(assemble.merged(self.cfg()))["enseigne"], {"text": "X" * 24, "bg": "#000000", "accent": "#ffcc00"})
+        self.write({})
+        self.assertIsNone(assemble.page_config(assemble.merged(self.cfg()))["enseigne"])  # le panneau garde ce que dit le plan
+        self.assertIn('"enseigne":{"text":"SEUL"}', assemble.build(cfg=self.cfg(enseigne="SEUL")))  # sans pack aussi
 
     def test_mep_transition_and_teams_channel_from_the_pack(self):
         """Mise en prod : statut de fin et canal Teams de l'équipe dans le pack ; le canal de test reste celui de la config."""
@@ -72,7 +87,7 @@ class SettingsTest(unittest.TestCase):
                     "agents": [{"key": "kelly", "name": "Kelly", "role": "Support", "model": "support"}]})
         m = assemble.merged(self.cfg(agents=[], support={"name": "Support Scranton"}, models={"support": "5e990001-0000-4000-8000-000000000000"}))
         self.assertEqual(m["support"], {"name": "Support Scranton", "team": "T1", "channel": "19:x@thread.tacv2"})
-        self.assertEqual([(a["key"], a["wf"]) for a in m["agents"]], [("kelly", ["5e990001"])])
+        self.assertEqual([(a["key"], a["wf"]) for a in m["agents"]], [("kelly", ["5e990001"]), ("jim", ["4d5e6f70"])])  # pas le Pompier : Kelly du pack a le modèle
         self.assertEqual(assemble.support_page(m), {"name": "Support Scranton", "wf": "5e990001", "postes_wf": []})
         # les postes de l'investigation (sous-workflows support_*) : leurs runs vont à la caserne, pas au RDC
         m2 = {**m, "models": {**(m.get("models") or {}), "support_tri": "7a110001-x", "support_poll": "99990000-x", "support_skip": "88880000-x"}}
@@ -93,14 +108,30 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(m["fix"], {"guidelines": "Conventions front : un seul dépôt.", "skill_ids": ["php"],
                                     "checks": {"vance/front": "make lint", "vance/api": "make test-api", "moi/outil": "make check"}})
         self.assertEqual(assemble.merged(m), m)  # idempotent
-        self.assertEqual(templates.values(m)["fix.guidelines"], "Conventions front : un seul dépôt.")
+        self.assertEqual(templates.values(m)["fix.guidelines"].splitlines()[-1], "Conventions front : un seul dépôt.")  # après les consignes de base
 
     def test_without_settings_nothing_changes(self):
+        """Sans settings.json : rien ne change, sauf le casting par défaut (team/agents.json, lot 5 des habillages) qui
+        rattache d'office les personnages des modèles installés que personne n'incarne (ici Jim au bouton rebase, le
+        Pompier au modèle support) ; la démo les a déjà (Nellie au Support, Jim à soi) : identique."""
         os.remove(self.settings)
         c = self.cfg(agents=[DWIGHT])
-        self.assertIs(assemble.merged(c), c)
+        m = assemble.merged(c)
+        self.assertEqual({k: v for k, v in m.items() if k != "agents"}, {k: v for k, v in c.items() if k != "agents"})
+        self.assertEqual([(a["key"], a["wf"]) for a in m["agents"]], [("dwight", DWIGHT["wf"]), ("jim", ["4d5e6f70"]), ("pompier", ["5e990001"])])
+        self.assertEqual(m["agents"][0], DWIGHT)  # son propre nom : il garde son personnage
         demo = assemble.demo_config()  # sans pack
-        self.assertIs(assemble.merged(demo), demo)
+        self.assertEqual(assemble.merged(demo), demo)
+
+    def test_default_casting_replaced_by_the_pack(self):
+        """Le pack remplace un personnage du casting par le sien (même clé) ; une ligne de config sans nom prend celui du
+        casting ; un modèle déjà incarné par un autre agent ne fait pas apparaître le personnage du casting."""
+        self.write({"agents": [{"key": "jim", "name": "Jimmy", "role": "Rebase", "model": "rebase"}]})
+        m = assemble.merged(self.cfg(agents=[{"key": "holly", "wf": ["cccccccc"]}, {"key": "nellie", "name": "Nellie", "wf": ["5e990001"]}]))
+        self.assertEqual([(a["key"], a.get("name"), a.get("icon")) for a in m["agents"]],
+                         [("holly", "Holly", None), ("nellie", "Nellie", None), ("jim", "Jimmy", None)])
+        self.assertEqual(m["agents"][0]["sprite"], "p_holly")
+        self.assertEqual(assemble.merged(m), m)
 
     def test_page_and_crons_read_the_pack(self):
         self.write({"rhythm": {"daily": "09:05"}, "gitfut": {"p_bob": "bobvance"}, "agents": [{"key": "dwight", "name": "Dwight", "role": "Reviewer de PR"}]})
@@ -211,3 +242,107 @@ class ComblesUrlTest(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+
+
+class BranchementsTest(unittest.TestCase):
+    """Lot 6 des habillages : tes workflows branchés sur les boutons par leur nom (branchements, pack et config) ;
+    l'installateur et la mise à jour retrouvent leur id dans Kronn et remplissent launch."""
+    B = {"impl": {"wf": "deliver-ticket", "vars": {"ticket": "ticket_key"}, "postes": {"analyse": "plan", "develop": "code"}}}
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.pack = os.path.join(self.tmp, "bureau-vance")
+        shutil.copytree(PACK, self.pack)
+        Path(os.path.join(self.pack, "settings.json")).write_text(json.dumps({"branchements": {**self.B, "review": {"wf": "relire-equipe"}}}))
+        self.addCleanup(shutil.rmtree, self.tmp)
+
+    def cfg(self, **kw):
+        return {**assemble.demo_config(), "team": self.pack, "owner": "p_bob", "people": [], **kw}
+
+    def test_pack_then_config_button_by_button(self):
+        b = assemble.branchements(self.cfg(branchements={"review": {"wf": "ma-revue", "vars": {"pr": "num"}}}))
+        self.assertEqual(b["impl"], {"wf": "deliver-ticket", "vars": {"ticket": "ticket_key"}, "postes": {"analyse": "cadrage", "develop": "code"}})
+        self.assertEqual(b["review"], {"wf": "ma-revue", "vars": {"pr": "num"}, "postes": {}})  # la config l'emporte
+
+    def test_errors(self):
+        for bad, msg in (({"deploy": {"wf": "x"}}, "bouton inconnu"), ({"impl": {"vars": {}}}, "nom du workflow"),
+                         ({"impl": {"wf": "x", "vars": {"pr": "n"}}}, "rôle inconnu pr"),
+                         ({"review": {"wf": "x", "postes": {"a": "code"}}}, "seul impl"), ({"impl": {"wf": "x", "postes": {"a": "cuisine"}}}, "poste inconnu")):
+            with self.assertRaisesRegex(ValueError, msg):
+                assemble.branchements({"branchements": bad})
+
+    def test_resolve_by_name_and_check_variables(self):
+        c = self.cfg()
+        wfs = [{"id": "11111111-a", "name": "deliver-ticket", "variables": [{"name": "ticket_key"}]},
+               {"id": "22222222-b", "name": "relire-equipe"}, {"id": "33333333-c", "name": "relire-equipe"}]
+        found, problems = assemble.resolve_branchements(c, wfs)
+        self.assertEqual(found, {"impl": {"wf": "11111111-a", "vars": {"ticket": "ticket_key"}}})
+        self.assertEqual(problems, ["review : « relire-equipe » porté par 2 workflows"])
+        found, problems = assemble.resolve_branchements(c, [{"id": "1", "name": "deliver-ticket", "variables": [{"name": "key"}]}])
+        self.assertEqual(found, {})
+        self.assertIn("ne déclare pas ticket_key", problems[0])
+
+    def test_install_fills_launch_and_the_floor_reads_it(self):
+        class K:
+            calls = []
+
+            def get(self, p):
+                self.calls.append(p)
+                return {"/workflows": [{"id": "11111111-a", "name": "deliver-ticket"}, {"id": "22222222-b", "name": "relire-equipe"}],
+                        "/workflows/11111111-a": {"variables": [{"name": "ticket_key"}]},
+                        "/workflows/22222222-b": {"variables": [{"name": "repo"}, {"name": "pr"}]}}.get(p)
+        c = self.cfg(launch={"mep_pr": "c1605136-x"})
+        with mock.patch("sys.stdout", new=io.StringIO()) as out:
+            self.assertEqual(install.branch(K(), c), [])
+        self.assertEqual(c["launch"], {"mep_pr": "c1605136-x", "impl": {"wf": "11111111-a", "vars": {"ticket": "ticket_key"}},
+                                       "review": {"wf": "22222222-b"}})
+        self.assertIn("bouton impl branché sur « deliver-ticket » (11111111)", out.getvalue())
+        self.assertEqual(install.MODEL_LAUNCH["impl"], "impl")  # la chaîne du Bureau n'est plus proposée
+        page = assemble.page_config(assemble.merged(c))
+        self.assertEqual((page["atelier"], page["atelier_chain"], page["action_wf"]["impl"]), (True, "11111111", "11111111"))
+        with mock.patch("sys.stdout", new=io.StringIO()):
+            self.assertEqual(install.branch(K(), {**assemble.demo_config()}), [])  # rien de branché : Kronn pas interrogé
+
+
+class BoutonsTest(unittest.TestCase):
+    """Lot 7 des habillages : des boutons libres sur les fiches (ticket ou PR), un workflow par son nom, ses variables
+    liées à la fiche ; rattachables à un agent."""
+    R = {"id": "recette", "label": "🧪 Recette", "fiche": "ticket", "wf": "recette", "vars": {"ticket_key": "{ticket}", "env": "?"}, "agent": "holly"}
+
+    def test_errors(self):
+        for bad, msg in (({**self.R, "id": "Recette !"}, "id"), ({**self.R, "fiche": "sprint"}, "ticket ou pr"),
+                         ({**self.R, "vars": {"pr": "{pr}"}}, "pr={pr}"), ({**self.R, "wf": ""}, "obligatoires")):
+            with self.assertRaisesRegex(ValueError, msg):
+                assemble.boutons({"boutons": [bad]})
+
+    def test_install_finds_it_and_the_page_gets_its_block(self):
+        class K:
+            def get(self, p):
+                return {"/workflows": [{"id": "abcdef12-0000", "name": "recette"}],
+                        "/workflows/abcdef12-0000": {"variables": [{"name": "ticket_key"}, {"name": "env"}]}}.get(p)
+        c = {**assemble.demo_config(), "boutons": [self.R], "agents": [{"key": "holly", "name": "Holly", "wf": ["11111111"]}]}
+        with mock.patch("sys.stdout", new=io.StringIO()):
+            self.assertEqual(install.branch(K(), c), [])
+        self.assertEqual(c["boutons_wf"], {"recette": "abcdef12-0000"})
+        m = assemble.merged(c)
+        self.assertEqual(m["agents"][0]["wf"], ["11111111", "abcdef12"])  # rattaché à Holly : son run va à elle
+        self.assertEqual(assemble.merged(m), m)
+        page = assemble.page_config(m)
+        self.assertEqual(page["boutons"], [{"id": "recette", "label": "🧪 Recette", "fiche": "ticket", "wf": "recette"}])
+        self.assertEqual(page["action_wf"]["libre-recette"], "abcdef12")
+        html = assemble.build(cfg=c)
+        self.assertIn('data-action-id="bureau-libre-recette">{"kind":"workflow","target_id":"abcdef12-0000","values":[{"name":"ticket_key",'
+                      '"provenance":"dynamic_binding","source_ref":"<page.dataset.actions.tickets.find(key).key>"},{"name":"env","provenance":"user_input"}]}', html)
+        self.assertIn('"bureau-libre-recette":{"ticket_key":"key"}', html)
+        self.assertNotIn("<!--__BOUTONS__-->", html)
+
+    def test_missing_workflow_or_variable(self):
+        class K:
+            def get(self, p):
+                return {"/workflows": [{"id": "abcdef12-0000", "name": "recette"}], "/workflows/abcdef12-0000": {"variables": [{"name": "key"}]}}.get(p)
+        c = {**assemble.demo_config(), "boutons": [self.R, {**self.R, "id": "autre", "wf": "absent"}]}
+        with mock.patch("sys.stdout", new=io.StringIO()):
+            problems = install.branch(K(), c)
+        self.assertEqual(c["boutons_wf"], {})
+        self.assertEqual(len(problems), 2)
+        self.assertNotIn("data-action-id=\"bureau-libre-", assemble.build(cfg=c))

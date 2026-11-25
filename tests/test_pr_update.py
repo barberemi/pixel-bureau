@@ -737,7 +737,7 @@ class RebaseTemplateTest(unittest.TestCase):
         self.assertEqual(by["fix"]["agent_settings"], {"tier": "reasoning"})
         self.assertEqual(by["fix"]["skill_ids"][:2], ["testing", "security"])
         self.assertNotIn("_skills_from", by["fix"])
-        self.assertIn("Aucune consigne d'équipe", by["fix"]["prompt_template"])
+        self.assertIn("privilégie la centralisation (DRY)", by["fix"]["prompt_template"])  # consigne de base (team/consignes.json)
 
     def test_fix_rendered_jira_version_steps(self):
         """Avec jira.review_version_field : après le push, le n° de version dans le champ du ticket et un commentaire ;

@@ -227,15 +227,18 @@ def page_config(cfg):
         "schedules": cron_schedules(cfg),  # calendrier des crons du Bureau (modèles de workflows)
         "agents": cfg.get("agents") or [],
         # préfixe du workflow de chaque bouton des fiches (#86) : la page y retrouve l'agent qui l'incarne (agents[].wf)
-        "action_wf": {k: str(v)[:8] for k, v in action_ids(cfg).items() if k in FICHE_ACTIONS and v},
+        "action_wf": {**{k: str(v)[:8] for k, v in action_ids(cfg).items() if k in FICHE_ACTIONS and v},
+                      **{"libre-" + b["id"]: str(((cfg.get("boutons_wf") or {}).get(b["id"])))[:8] for b in boutons_page(cfg)}},
+        "boutons": boutons_page(cfg),  # boutons libres des fiches (lot 7 des habillages)
         "ui": cfg.get("ui") or {},
+        "enseigne": enseigne(cfg) or None,  # le panneau mural du plan (décor sign) : texte et couleurs de l'équipe
         "scenes": cfg.get("scenes") or {},  # réglage scenes : seuils des lettres et des grosses PR, hyperespace (43-pop.js)
         "skins": themes(cfg),  # thèmes d'interface (theme-*.css) proposés par le bouton 🎨
         "support": support_page(cfg),  # console Support (#62)
         # créer un ticket (#77) : préfixe du modèle (l'agent qui l'incarne), pour sa validation et son dernier ticket créé
         "ticket": ticket_page(cfg),
         # 1er étage, l'atelier d'implémentation (#125) : ses onglets quand la chaîne est installée (models.impl_chain)
-        "atelier": bool((cfg.get("models") or {}).get("impl_chain")),
+        "atelier": bool((cfg.get("models") or {}).get("impl_chain")) or bool(branche_atelier(cfg)),
         # 3e étage, les retours de PR : ses onglets quand le modèle « corriger les commentaires d'une PR » est installé
         "retours": bool((cfg.get("actions") or {}).get("fix_pr")),
         # 2e étage, la revue des PR : préfixes des runs de relecture d'une PR (le sous-workflow commun et la revue à la demande)
@@ -252,9 +255,21 @@ def page_config(cfg):
         "atelier_wf": sorted({str(v)[:8] for k, v in (cfg.get("models") or {}).items() if k.startswith("impl") and k != "impl" and v}),
         # le lanceur (models.impl) reste au RDC : l'agent qui l'incarne (Ryan) y travaille et porte le carton à l'entrée
         "atelier_launcher": str((cfg.get("models") or {}).get("impl") or "")[:8],
-        "atelier_chain": str((cfg.get("models") or {}).get("impl_chain") or "")[:8],  # tickets sortis aujourd'hui (runs de la chaîne)
+        "atelier_chain": str((cfg.get("models") or {}).get("impl_chain") or branche_atelier(cfg) or "")[:8],  # tickets sortis aujourd'hui (runs de la chaîne)
         "combles_url": combles_url(cfg),  # l'étage secret (68-combles.js) : la borne ouvre Sprint Quest
     }
+
+
+HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def enseigne(cfg):
+    """Réglage enseigne (pack ou config) : un texte, ou {text, bg, accent} (couleurs en #rrggbb) ; {} sans réglage.
+    Le texte est coupé à 24 signes, une couleur mal écrite est ignorée (le panneau garde celle du plan)."""
+    e = (cfg or {}).get("enseigne")
+    e = {"text": e} if isinstance(e, str) else e if isinstance(e, dict) else {}
+    out = {"text": str(e["text"])[:24]} if isinstance(e.get("text"), str) else {}
+    return {**out, **{k: e[k] for k in ("bg", "accent") if isinstance(e.get(k), str) and HEX.match(e[k])}}
 
 
 def combles_url(cfg):
@@ -311,7 +326,7 @@ def support_page(cfg):
 FICHE_ACTIONS = ("impl", "mep", "mep_pr", "review", "fix", "fix_pr", "rebase", "comment", "estimate", "env", "deploy", "ai_time")
 # statuts Jira par défaut du flux de l'équipe (jira.flow) : requêtes du cron équipe et scènes de la page
 JIRA_FLOW = {"triage_from": "Proposed", "test": "To Test", "validated": "To Deploy", "reopened": "Reopen"}
-DEFAULT_LAYOUT = "layouts/open-space.json"  # plan type, sans équipe
+DEFAULT_LAYOUT = "layouts/darkmode.json"  # plan type, sans équipe
 
 
 # ---------- profils d'équipe (teams/<équipe>/) et packs d'équipe (KT-60) ----------
@@ -408,7 +423,7 @@ def defaults(cfg):
 # Le pack porte l'équipe, la config porte l'installation. settings.json du pack, lu à chaque assemblage et rendu des
 # modèles : rythme, GitFut, affiches du Top 3, planning des absences (sans config_id) et personnages des agents (sans
 # ids de workflows). La config peut surcharger chacun ; elle seule rattache un personnage à ses workflows (agents[].wf).
-SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "fix", "support", "env", "deploy", "jira", "impl", "mep", "combles", "fastly", "scenes")
+SETTINGS = ("rhythm", "gitfut", "wiki_posters", "microsoft", "agents", "review", "fix", "support", "env", "deploy", "jira", "impl", "mep", "combles", "fastly", "scenes", "enseigne", "branchements", "boutons")
 AGENT_FIELDS = ("key", "name", "role", "wf", "seat", "sprite")  # ordre des champs d'un agent, comme l'installateur l'écrit
 
 
@@ -430,6 +445,14 @@ def pack_settings(cfg):
     return s
 
 
+def team_agents(cfg):
+    """Personnages des agents : ceux du pack (settings.json, agents) d'abord, puis le casting par défaut (team/agents.json)
+    hors des clés que le pack a déjà (le pack remplace un personnage par le sien). Sans workflow : la config les rattache."""
+    pack = pack_settings(cfg).get("agents") or []
+    mine = {a["key"] for a in pack}
+    return pack + [a for a in json.loads(Path(p("team", "agents.json")).read_text())["agents"] if a["key"] not in mine]
+
+
 def _agent(persona, binding):
     """Agent de l'installation : le personnage du pack, surchargé par sa ligne de config (wf, place…), champs dans
     l'ordre de l'installateur."""
@@ -444,8 +467,6 @@ def merged(cfg):
     un personnage sans workflow dans la config n'apparaît pas. Idempotent : merged(merged(c)) == merged(c)."""
     cfg = cfg or {}
     s = pack_settings(cfg)
-    if not s:
-        return cfg
     out = dict(cfg)
     if "rhythm" in s:
         out["rhythm"] = {**(s["rhythm"] or {}), **(cfg.get("rhythm") or {})}
@@ -471,6 +492,13 @@ def merged(cfg):
         out["deploy"] = {**(s["deploy"] or {}), **(cfg.get("deploy") or {})}
     if "fastly" in s:  # purger le cache Fastly : services de l'équipe ; la config peut les surcharger
         out["fastly"] = {**(s["fastly"] or {}), **(cfg.get("fastly") or {})}
+    if s.get("branchements") or cfg.get("branchements"):  # tes workflows sur les boutons, par nom : la config l'emporte, bouton par bouton
+        out["branchements"] = {**(s.get("branchements") or {}), **(cfg.get("branchements") or {})}
+    if s.get("boutons") or cfg.get("boutons"):  # boutons libres des fiches : ceux du pack, puis ceux de la config (même id : remplacé)
+        mine = {b.get("id") for b in cfg.get("boutons") or [] if isinstance(b, dict)}
+        out["boutons"] = [b for b in s.get("boutons") or [] if isinstance(b, dict) and b.get("id") not in mine] + list(cfg.get("boutons") or [])
+    if "enseigne" in s:  # l'enseigne au mur du plan : celle de l'équipe, que la config surcharge champ à champ
+        out["enseigne"] = {**enseigne(s), **enseigne(cfg)}
     if "scenes" in s:  # scènes du plan (seuils des lettres et des grosses PR, hyperespace) : celles de l'équipe, scène par scène
         out["scenes"] = {**(s["scenes"] or {}), **(cfg.get("scenes") or {})}
     # créer un ticket (#77), temps gagné par l'IA (#79) : jira.create et jira.ai_feedback de l'équipe ; la config les surcharge
@@ -487,18 +515,31 @@ def merged(cfg):
     if "impl" in s:  # chaîne d'implémentation (#76) : dépôts, postes et consignes de l'équipe ; la config surcharge clé à clé
         i, si = cfg.get("impl") or {}, s["impl"] or {}
         out["impl"] = {**si, **i, **{k: {**(si.get(k) or {}), **(i.get(k) or {})} for k in ("repos", "postes", "components")}}
-    if "agents" in s:
-        personas = {a["key"]: {k: v for k, v in a.items() if k != "model"} for a in s["agents"]}
-        out["agents"] = [_agent(personas.get(a.get("key"), {}), a) for a in cfg.get("agents") or []]
+    # agents : le casting par défaut (team/agents.json) sous celui du pack ; une ligne de config prend le personnage du pack
+    # de sa clé, ou celui du casting par défaut si elle n'a pas son propre nom (un agent à soi garde le sien)
+    casting, mine = team_agents(cfg), {a["key"] for a in s.get("agents") or []}
+    if casting and (cfg.get("agents") or any(a.get("model") for a in casting)):
+        personas = {a["key"]: {k: v for k, v in a.items() if k != "model"} for a in casting}
+        out["agents"] = [_agent(personas.get(a.get("key"), {}) if a.get("key") in mine or not a.get("name") else {}, a)
+                         for a in cfg.get("agents") or []]
         # personnage qui incarne un modèle du Bureau (clé model, #78) : rattaché d'office à ses workflows créés par
-        # l'installateur (models), sauf si la config le rattache déjà ; aussi un bouton des fiches (« rebase », « env » :
-        # le workflow du Bureau ou le tien, action_ids), que l'installateur ne propose jamais comme agent
+        # l'installateur (models), sauf si la config le rattache déjà ou qu'un autre agent a déjà ce workflow ; aussi un
+        # bouton des fiches (« rebase », « env » : le workflow du Bureau ou le tien, action_ids), que l'installateur ne
+        # propose jamais comme agent
         bound, models = {a.get("key") for a in out["agents"]}, {**action_ids(cfg), **(cfg.get("models") or {})}
-        for a in s["agents"]:
+        used = {str(w)[:8] for a in out["agents"] for w in a.get("wf") or []}
+        for a in casting:
             want = [a["model"]] if isinstance(a.get("model"), str) else a.get("model") or []
             wf = [str(models[m])[:8] for m in want if models.get(m)]
-            if a["key"] not in bound and wf:
+            if a["key"] not in bound and wf and not used & set(wf):
                 out["agents"].append(_agent({k: v for k, v in a.items() if k != "model"}, {"wf": wf}))
+                used |= set(wf)
+    # un bouton libre rattaché à un agent (boutons[].agent, lot 7 des habillages) : son workflow s'ajoute à ceux de l'agent
+    wfs = {b.get("agent"): str((cfg.get("boutons_wf") or {}).get(b.get("id")) or "")[:8]
+           for b in out.get("boutons") or [] if isinstance(b, dict) and b.get("agent")}
+    if any(wfs.values()):
+        out["agents"] = [dict(a, wf=list(a.get("wf") or []) + [wfs[a.get("key")]])
+                         if wfs.get(a.get("key")) and wfs[a.get("key")] not in (a.get("wf") or []) else a for a in out.get("agents") or []]
     return out
 
 
@@ -615,6 +656,127 @@ def launch(cfg):
             raise ValueError(f"launch.{k}.vars : rôle inconnu {', '.join(bad)} (rôles : {', '.join(roles) or 'aucun'})")
         out[k] = (wf, {roles[r]: n for r, n in names.items()})
     return out
+
+
+# ---------- branchements : tes workflows sur les boutons des fiches, par leur nom (lot 6 des habillages) ----------
+# Un id de workflow est propre à chaque Kronn : le pack (settings.json) et la config nomment le workflow, l'installateur
+# et la mise à jour retrouvent son id et remplissent launch. branchements.<bouton> = {wf: nom, vars: {rôle: nom chez toi},
+# postes: {étape: poste de l'étage}} ; bouton = une clé de LAUNCH_VARS ; postes : seulement impl (1er étage, l'atelier).
+BRANCHE_POSTES = {"impl": ("cadrage", "gate", "code", "regles", "securite", "tests", "perf", "besoin", "doc", "pr", "revue_pr", "retours")}
+POSTE_ALIAS = {"plan": "cadrage", "revue": "revue_pr"}  # noms courts acceptés dans postes
+
+
+def branchements(cfg):
+    """Branchements normalisés {bouton: {wf, vars, postes}} (pack sous la config, merged) ; ValueError sur un bouton,
+    un rôle ou un poste inconnus, ou un nom de workflow manquant."""
+    out = {}
+    for b, v in ((merged(cfg or {}).get("branchements")) or {}).items():
+        if b not in LAUNCH_VARS:
+            raise ValueError(f"branchements.{b} : bouton inconnu (boutons : {', '.join(LAUNCH_VARS)})")
+        v = {"wf": v} if isinstance(v, str) else v if isinstance(v, dict) else {}
+        if not isinstance(v.get("wf"), str) or not v["wf"].strip():
+            raise ValueError(f"branchements.{b}.wf : le nom du workflow dans Kronn")
+        names = v.get("vars") or {}
+        bad = sorted(set(names) - set(LAUNCH_VARS[b]))
+        if bad:
+            raise ValueError(f"branchements.{b}.vars : rôle inconnu {', '.join(bad)} (rôles : {', '.join(LAUNCH_VARS[b]) or 'aucun'})")
+        postes = {str(k): POSTE_ALIAS.get(x, x) for k, x in (v.get("postes") or {}).items()}
+        if postes and b not in BRANCHE_POSTES:
+            raise ValueError(f"branchements.{b}.postes : seul impl a ses postes (1er étage)")
+        bad = sorted(set(postes.values()) - set(BRANCHE_POSTES.get(b, ())))
+        if bad:
+            raise ValueError(f"branchements.{b}.postes : poste inconnu {', '.join(bad)} (postes : {', '.join(BRANCHE_POSTES[b])}, plan, revue)")
+        out[b] = {"wf": v["wf"].strip(), "vars": dict(names), "postes": postes}
+    return out
+
+
+# ---------- boutons libres sur les fiches (lot 7 des habillages) ----------
+# Un workflow sans bouton équivalent dans le Bureau (une recette, une réouverture, la description d'une PR) : le pack ou la
+# config déclare un bouton, boutons = [{id, label, fiche: ticket|pr, wf: nom du workflow, vars: {variable: valeur}, sub?,
+# verb?, agent?}] ; valeur = {ticket} (fiche d'un ticket), {pr} ou {repo} (fiche d'une PR), ou « ? » (saisie dans la carte
+# Kronn). L'installateur retrouve l'id du workflow par son nom (boutons_wf, comme branchements) ; agent : la clé de l'agent
+# qui le porte (sa fiche, son run sur le plan).
+BOUTON_ID = re.compile(r"^[a-z0-9_-]{1,30}$")
+BOUTON_VALS = {"ticket": {"{ticket}": "<page.dataset.actions.tickets.find(key).key>"},
+               "pr": {"{pr}": "<page.dataset.actions.prs.find(id).n>", "{repo}": "<page.dataset.actions.prs.find(id).repo>"}}
+
+
+def boutons(cfg):
+    """Boutons libres normalisés (pack puis config, merged), chacun avec son id Kronn (wfid) s'il est trouvé ; ValueError
+    sur un id, une fiche ou une valeur de variable inconnus."""
+    out = []
+    for b in merged(cfg or {}).get("boutons") or []:
+        bid = str((b or {}).get("id") or "")
+        if not BOUTON_ID.match(bid):
+            raise ValueError(f"boutons : id « {bid} » (minuscules, chiffres, - ou _, 30 signes au plus)")
+        if b.get("fiche") not in BOUTON_VALS:
+            raise ValueError(f"boutons.{bid}.fiche : ticket ou pr")
+        if not isinstance(b.get("wf"), str) or not b["wf"].strip() or not isinstance(b.get("label"), str) or not b["label"].strip():
+            raise ValueError(f"boutons.{bid} : label et wf (le nom du workflow dans Kronn) obligatoires")
+        vars_ = b.get("vars") or {}
+        bad = sorted(f"{k}={v}" for k, v in vars_.items() if not re.match(r"^[\w-]+$", str(k)) or (v != "?" and v not in BOUTON_VALS[b["fiche"]]))
+        if bad:
+            raise ValueError(f"boutons.{bid}.vars : {', '.join(bad)} (valeurs : {', '.join(BOUTON_VALS[b['fiche']])} ou ?)")
+        out.append({"id": bid, "label": b["label"].strip()[:40], "fiche": b["fiche"], "wf": b["wf"].strip(), "vars": dict(vars_),
+                    **{k: str(b[k])[:120] for k in ("sub", "verb") if b.get(k)}, **({"agent": b["agent"]} if b.get("agent") else {}),
+                    "wfid": ((cfg or {}).get("boutons_wf") or {}).get(bid)})
+    return out
+
+
+def bouton_blocks(cfg):
+    """Blocs kronn-action des boutons libres trouvés dans Kronn (data-action-id bureau-libre-<id>)."""
+    out = []
+    for b in boutons(cfg):
+        if b["wfid"]:
+            vals = [{"name": k, "provenance": "user_input"} if v == "?" else
+                    {"name": k, "provenance": "dynamic_binding", "source_ref": BOUTON_VALS[b["fiche"]][v]} for k, v in b["vars"].items()]
+            spec = {"kind": "workflow", "target_id": b["wfid"], "values": vals}
+            out.append(f'<script type="application/kronn-action" data-action-id="bureau-libre-{b["id"]}">'
+                       + json.dumps(spec, ensure_ascii=False, separators=(",", ":")) + "</script>\n")
+    return "".join(out)
+
+
+def boutons_page(cfg):
+    """Ce que la page sait des boutons libres trouvés : {id, label, fiche, wf, sub?, verb?} ; [] sans réglage ou s'il est faux."""
+    try:
+        return [{k: b[k] for k in ("id", "label", "fiche", "wf", "sub", "verb") if k in b} for b in boutons(cfg) if b["wfid"]]
+    except ValueError:
+        return []
+
+
+def branche_atelier(cfg):
+    """Id du workflow branché sur « Implémenter » qui a ses postes (branchements.impl.postes, launch.impl rempli par
+    l'installateur) : le 1er étage le lit à la place de la chaîne du Bureau ; None sinon (ou réglage invalide)."""
+    try:
+        b = branchements(cfg).get("impl") or {}
+    except ValueError:
+        return None
+    wf = launch(cfg).get("impl", ("", {}))[0] if b.get("postes") else None
+    return wf or None
+
+
+def resolve_branchements(cfg, wfs):
+    """Retrouve chaque workflow branché par son nom exact parmi ceux de Kronn (wfs : [{id, name, variables?}]) : renvoie
+    ({bouton: {wf: id, vars}} pour launch, [problèmes en français]). Un nom absent ou porté par plusieurs workflows est un
+    problème, comme une variable nommée dans vars que le workflow ne déclare pas (quand Kronn donne ses variables)."""
+    found, problems = {}, []
+    for b, v in branchements(cfg).items():
+        same = [w for w in wfs or [] if (w.get("name") or "").strip() == v["wf"]]
+        if len(same) != 1:
+            problems.append(f"{b} : « {v['wf']} » " + ("introuvable dans Kronn" if not same else f"porté par {len(same)} workflows"))
+            continue
+        w = same[0]
+        declared = w.get("variables") if isinstance(w.get("variables"), list) else ((w.get("definition") or {}).get("variables"))
+        if isinstance(declared, list):
+            have = {x.get("name") for x in declared if isinstance(x, dict)}
+            want = {r: n for r, n in v["vars"].items()}
+            missing = sorted(n for n in want.values() if n not in have)
+            defaults = sorted(n for r, n in LAUNCH_VARS[b].items() if r not in want and r not in LAUNCH_OPTIONAL.get(b, ()) and n not in have)
+            if missing or defaults:
+                problems.append(f"{b} : « {v['wf']} » ne déclare pas {', '.join(missing + defaults)} (vars : rôle -> nom de sa variable)")
+                continue
+        found[b] = {"wf": w["id"], **({"vars": v["vars"]} if v["vars"] else {})}
+    return found, problems
 
 
 # boutons qu'un modèle du Bureau incarné par un agent (models, #78) fait marcher quand tu n'as pas ton propre workflow
@@ -734,6 +896,10 @@ def build(demo=True, cfg=None):
         # bouton sans workflow configuré : sa carte kronn-action disparaît (la page masque le bouton) ; les marqueurs
         # __XXX_WF__ ne sont remplis que dans leur bloc (action_block)
         body = ACTION_RE.sub(lambda m: action_block(m.group(0), cfg) if acts[ACTIONS[m.group(1)][0]] else "", body)
+        try:  # boutons libres (lot 7 des habillages) : leurs blocs, après ceux du Bureau
+            body = body.replace("<!--__BOUTONS__-->", bouton_blocks(cfg))
+        except ValueError:  # réglage faux : signalé par l'installateur, la page reste sans ces boutons
+            body = body.replace("<!--__BOUTONS__-->", "")
         vals["__ACTION_BINDS__"] = js_json(action_binds(body))
         # une seule passe sur le squelette : un marqueur écrit dans une donnée déjà posée (un nom « __CONFIG__ ») reste tel quel
         return DATA_MARKS.sub(lambda m: vals[m.group(0)], body)

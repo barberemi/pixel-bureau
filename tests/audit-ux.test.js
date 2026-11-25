@@ -209,7 +209,7 @@ test('4.8 : un agent au repos montre son icône et son nom ; le métier et l\'he
 
 test('1.4 : « t\'attend » sur le plan, un seul ambre (le --warn du thème) et son encre sombre', () => {
   assert.equal(J('WAIT_BG'), J('ST_TOKEN.warn'));
-  assert.equal(J('ST_TOKEN.warn'), read('page', 'src', 'theme-classique.css').match(/--warn:(#[0-9a-f]{6})/)[1]);
+  assert.equal(J('ST_TOKEN.warn'), read('page', 'src', 'theme-darkmode.css').match(/--warn:(#[0-9a-f]{6})/)[1]);
   for (const f of ['68-atelier.js', '68-caserne.js', '68-redaction.js', '68-retours.js']) {
     const js = noComments(read('page', 'src', f));
     assert.doesNotMatch(js, /#(ffcf4a|a37a10)/i, f + ' : lampes et pastilles passent par WAIT_BG / WAIT_DIM');

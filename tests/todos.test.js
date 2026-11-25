@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {load} = require('./helpers/page.js');
 
-const page = load({layout: 'open-space'});
+const page = load({layout: 'darkmode'});
 const run = page.run;
 const J = code => JSON.parse(run('JSON.stringify(' + code + ')'));
 const DS = {generated_at: 'x', todos: [
@@ -80,7 +80,7 @@ test('nouvelles données : un changement déjà fait dans Kronn sort de la liste
 
 test('dans Kronn (stockage refusé) : la fenêtre dit qu\'un changement en attente est perdu au rechargement', () => {
   const refuse = () => { throw new Error('SecurityError'); };
-  const kronn = load({layout: 'open-space', globals: {localStorage: {getItem: refuse, setItem: refuse, removeItem: refuse}}});
+  const kronn = load({layout: 'darkmode', globals: {localStorage: {getItem: refuse, setItem: refuse, removeItem: refuse}}});
   assert.equal(JSON.parse(kronn.run('JSON.stringify(TD_STORE)')), false);
   assert.equal(J('TD_STORE'), true, 'hors de Kronn (aperçu) : le navigateur garde, rien à dire');
   kronn.run(`ACTIONS.todo=true;TODOS=readTodos({datasets:{todos:{current:${JSON.stringify(JSON.stringify(DS))}}}});TD_PEND=[];tdAdd('Appeler Jan','high');`);

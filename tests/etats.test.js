@@ -1,4 +1,4 @@
-// couleurs des états (audit UX 1.4) : une seule table (02-etats.js), la même que les jetons du thème Classique
+// couleurs des états (audit UX 1.4) : une seule table (02-etats.js), la même que les jetons du thème Darkmode
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -9,8 +9,8 @@ const SRC = path.join(__dirname, '..', 'page', 'src');
 const read = f => fs.readFileSync(path.join(SRC, f), 'utf8');
 const p = load(), J = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
 
-test('la table des états est celle du thème Classique : ton vif = --ok …, ton foncé = --ok-deep …', () => {
-  const css = read('theme-classique.css'), tok = k => (css.match(new RegExp(`--${k}:\\s*(#[0-9a-f]{6})`)) || [])[1];
+test('la table des états est celle du thème Darkmode : ton vif = --ok …, ton foncé = --ok-deep …', () => {
+  const css = read('theme-darkmode.css'), tok = k => (css.match(new RegExp(`--${k}:\\s*(#[0-9a-f]{6})`)) || [])[1];
   for (const k of ['ok', 'info', 'warn', 'err', 'idle']) {
     assert.equal(J(`ST_VIF.${k}`), tok(k), k);
     assert.equal(J(`ST_FONCE.${k}`), tok(k + '-deep'), k + '-deep');

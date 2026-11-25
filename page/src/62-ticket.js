@@ -255,6 +255,7 @@ function renderTicket(side,key){
     launchBlock(box,{action:'bureau-comment',bind:{key},verb:'commente le ticket',sub:'Ton commentaire part sur le ticket dans Jira',label:'💬 Commenter',title:'Commenter '+key});
   if(known&&ACTIONS.estimate&&x.cat!=='done') // ton workflow de réestimation (launch.estimate), sinon le modèle du Bureau
     launchBlock(box,{action:'bureau-estimate',bind:{key},verb:'réestime le ticket',sub:'Nouveaux Story Points et raison : le ticket est mis à jour dans Jira, avec un commentaire',label:'📏 Réestimer',title:'Réestimer '+key});
+  if(known)freeButtons(box,'ticket',{key},key); // boutons libres du pack ou de la config (lot 7 des habillages)
   // temps gagné par l'IA (#79, modèle ai_time) : sur un ticket terminé ; grisé quand son label de suivi est déjà posé
   // (ai_fb, cron équipe), « Forcer » dans la carte Kronn pour le reposter quand même
   if(known&&ACTIONS.ai_time&&x.cat==='done')
@@ -264,6 +265,12 @@ function renderTicket(side,key){
   if(box.childElementCount===k0+1&&box.lastChild)box.lastChild.remove();
   if(box.childElementCount===before)note(known?'Rien à lancer à ce statut.':'Ticket pas encore dans les données des boutons : prochain passage du cron équipe.');
   else note(KM_NOTE);
+}
+// boutons libres (lot 7 des habillages, CFG.boutons) : un workflow du pack ou de la config, retrouvé par son nom à
+// l'installation, sur la fiche d'un ticket ou d'une PR ; ses variables liées à la fiche (bloc kronn-action bureau-libre-<id>)
+function freeButtons(box,fiche,bind,name){
+  for(const b of CFG.boutons||[])if(b.fiche===fiche)
+    launchBlock(box,{action:'bureau-libre-'+b.id,bind,verb:b.verb||'lance « '+b.label+' »',sub:b.sub||'Ton workflow « '+b.wf+' »',label:b.label,title:b.label+' : '+name});
 }
 // mise en prod (#86) : seulement d'un ticket en To Deploy ; avant, la raison du bouton grisé (jira.flow.validated)
 const MEP_FROZEN='Gel des mises en prod (rhythm.mep_freeze)';
@@ -317,6 +324,7 @@ function prLaunch(box,p,{tickets,isNext=()=>false,group}={}){
     launchBlock(box,{action:'bureau-review',bind:{id},verb:'relit la PR'+dr,next:nx('bureau-review'),sub:'Sa review part sur GitHub',label:'🔎 Faire relire',title:'Faire relire '+nm});
   // « 🚀 Mise en prod » d'une PR (#58) : dépôt de la config (CFG.mep_repos), PR prête (ni brouillon ni changements demandés),
   // et un de ses tickets en To Deploy (#86) ; sinon grisé avec la raison (pas de mise en prod sans ticket à déployer)
+  freeButtons(box,'pr',{id},nm); // boutons libres du pack ou de la config (lot 7 des habillages)
   if(ACTIONS.mep_pr&&mepRepo(id)&&!p.draft&&p.review!=='changes'){
     const tks=tickets||(p.keys||[]).map(ticketOf).filter(Boolean), ready=tks.find(t=>t.cat==='deploy');
     const later=ready?null:!tks.length?'Pas de ticket Jira : pas de mise en prod sans ticket en '+mepStatus():tks.some(t=>t.cat==='done')?null:mepLater(tks[0]);

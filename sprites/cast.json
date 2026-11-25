@@ -294,5 +294,26 @@
   "shirt": "#2f6f8f",
   "legs": "pants",
   "legs_color": "#2f4d66"
+ },
+ "mose": {
+  "torso": "longsleeve/formal",
+  "shirt": "#8a6d3b",
+  "legs": "formal",
+  "legs_color": "#3a3328",
+  "sex": "male",
+  "skin": "pale",
+  "hair": "bangslong",
+  "hair_color": "#2a1e14"
+ },
+ "pompier_agent": {
+  "sex": "female",
+  "skin": "light",
+  "hair": "bangs_bun",
+  "hair_color": "#6b4426",
+  "torso": "longsleeve/longsleeve",
+  "shirt": "#2b2f45",
+  "legs": "pants",
+  "legs_color": "#2b2f45",
+  "shoes": "#1c1c1c"
  }
 }

@@ -115,6 +115,10 @@ La cause est sous le ticket dans « 🧯 En panne », au survol de sa palette à
 
 ![Fiche d'un bureau repris : Plan et Ton plan ↻ repris, après quelle panne](../img/atelier-reprise.png)
 
+## Un workflow à toi
+
+Sans la chaîne du Bureau, l'étage peut suivre ton propre workflow d'implémentation, branché sur « Implémenter » par son nom (`branchements.impl`, voir [Les fiches](07-fiches.md)) : `postes` dit quelle étape est quel poste (`plan`, `gate`, `code`, `regles`, `securite`, `tests`, `perf`, `besoin`, `doc`, `pr`, `revue`, `retours`). Chaque run actif prend un bureau ; une étape nommée pose son état sur son poste (fait, en cours, en panne), une étape qui attend ta validation ouvre une gate, une étape en échec met le ticket dans « 🧯 En panne » avec sa cause, un run réussi sort une PR. Le ticket vient de sa variable (`vars.ticket`, `jira_ticket_key` par défaut). Ni lots, ni tours, ni « Runs du jour » : seuls les scripts de la chaîne du Bureau les écrivent.
+
 ## Données
 
 Le cron `live` lit chaque minute les runs de la chaîne et de ses postes dans l'API Kronn (0 token) et publie le dataset `atelier`, avec les moments des dernières 24 h (arrivée, gate, retour au code, panne, PR ouverte, datés par les étapes des runs) pour le fil du RDC, et le nombre de PR ouvertes depuis minuit. La cause d'un run fini ne change plus : elle est gardée dans `~/.cache/pixel-bureau/atelier_causes.json` (200 runs au plus), le cron ne relit pas ses sous-runs à chaque minute. Le tableau « Runs du jour » (`jour` du dataset) compte les runs de la chaîne depuis minuit (fuseau du bureau), par ticket et dépôt. Sans la chaîne installée, ni ses étapes ni les onglets n'existent.

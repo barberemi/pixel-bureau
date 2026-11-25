@@ -1,0 +1,89 @@
+{
+ "_doc": "Casting par défaut des agents (lot 5 des habillages), pour toutes les installations : le personnage de chaque agent (clé, nom, métier, icône, dessin), sans place (zones du plan) ni workflow. model : le modèle du Bureau ou le bouton des fiches qu'il incarne, rattaché d'office quand il est installé et qu'aucun agent n'a déjà ce workflow ; metier : l'agent de cet étage au RDC. Le pack d'équipe (settings.json, agents) remplace un personnage par le sien de même clé, et peut en ajouter ; une ligne de config qui a son propre nom garde son personnage.",
+ "agents": [
+  {
+   "key": "dwight",
+   "name": "Dwight",
+   "role": "Revue des PR",
+   "metier": "revue"
+  },
+  {
+   "key": "jim",
+   "name": "Jim",
+   "role": "Remettre une PR à jour",
+   "model": "rebase",
+   "icon": "🔄"
+  },
+  {
+   "key": "stanley",
+   "name": "Stanley",
+   "role": "Déployer une branche (DEV/STG)",
+   "model": "deploy",
+   "icon": "🧪"
+  },
+  {
+   "key": "kevin",
+   "name": "Kevin",
+   "role": "Env de branche d'une PR",
+   "model": "env",
+   "icon": "🌿"
+  },
+  {
+   "key": "ryan",
+   "name": "Ryan",
+   "role": "Implémentation",
+   "metier": "impl"
+  },
+  {
+   "key": "darryl",
+   "name": "Darryl",
+   "role": "Mise en prod",
+   "sprite": "p_darryl"
+  },
+  {
+   "key": "clark",
+   "name": "Clark",
+   "role": "Issue GitHub",
+   "sprite": "p_clark",
+   "icon": "🐙"
+  },
+  {
+   "key": "nate",
+   "name": "Nate",
+   "role": "Corriger les commentaires d'une PR",
+   "sprite": "p_gabe",
+   "icon": "🛠️",
+   "metier": "retours"
+  },
+  {
+   "key": "holly",
+   "name": "Holly",
+   "role": "Réestimer un ticket",
+   "sprite": "p_holly"
+  },
+  {
+   "key": "pam",
+   "name": "Pam",
+   "role": "Créer un ticket",
+   "sprite": "p_pam",
+   "model": "ticket",
+   "metier": "ticket"
+  },
+  {
+   "key": "pompier",
+   "name": "Pompier",
+   "role": "Support",
+   "sprite": "pompier_agent",
+   "model": "support",
+   "icon": "🧯",
+   "metier": "support"
+  },
+  {
+   "key": "oscar",
+   "name": "Oscar",
+   "role": "Purger le cache Fastly",
+   "model": "fastly_purge",
+   "icon": "🧹"
+  }
+ ]
+}

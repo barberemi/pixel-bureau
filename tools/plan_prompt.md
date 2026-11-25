@@ -15,11 +15,11 @@ Pars du plan d'exemple fourni : même structure, mêmes clés. Adapte-le au croq
 - `plants` : cases de plantes (bloquées). `blocked` (facultatif) : autres cases bloquées.
 - `spots` : les places où vont les personnages, `[x, y, orientation]` avec orientation up, down, left ou right (le regard). Obligatoires : `wc` (toilettes), `srv` (salle serveurs), `meet` (au moins 2, autour de la table de réunion), `coffee` (cuisine), `daily` (où l'équipe se réunit debout), `boss` (sa place), `gate` (devant son bureau), `kanban` (devant le tableau), `sax` (près du boss). Facultatives : `stage`, `stageout` (devant le plateau), `stagesax`, `sofa`, `ktable` (table de cuisine), `cooler` (fontaine), `copier`. Chaque place est sur du sol, hors meuble, accessible depuis l'entrée.
 - `free_seats` (facultatif) : sièges d'îlots, en [x, y], gardés pour les intérimaires.
-- `windows` : colonnes des fenêtres sur le mur du fond (rangées 0 et 1). `wall` : décor mural sur une case de mur (`whiteboard`, `mirror`, `sign` avec `w`, `text`, `bg`, `accent`). `clock` : une case de mur.
+- `windows` : colonnes des fenêtres sur le mur du fond (rangées 0 et 1). `wall` : décor mural sur une case de mur (`whiteboard`, `mirror`, `sign`, le panneau de l'enseigne, avec `w`, `bg`, `accent` et sans `text` : le nom vient de l'équipe). `clock` : une case de mur.
 - `labels` : noms des pièces, `{"text": "CUISINE", "at": [x, y]}` en cases (décimales permises), `color` facultatif.
 - `light_rooms` : pièces éclairées la nuit, rectangles [x1, y1, x2, y2] de cases (pas l'open space, éclairé par ses îlots).
 - `objects` : rectangles cliquables, en PIXELS (case × 32), tous dans le plan : `tv` (écran au mur du fond, vers le plateau ou la réunion), `kanban` et `planning` (au mur, près du bureau du boss), `paie` (petit, sur le bureau du boss), `emp` (cadre « employé du mois », près de la cuisine). Garde leurs largeurs et hauteurs de l'exemple.
-- Pas de `seating` : les places de chacun se règlent après, avec `plan.py seats`.
+- `zones` (facultatif) : les îlots de l'équipe et ceux des agents, `{"equipe": ["I1", "I2"], "agents": ["I3"]}` (un îlot « I2 » ou un siège « I2.R1 »). Chacun s'assoit tout seul dans sa zone ; jamais le nom d'une personne dans le plan.
 
 ## Règles du vérificateur
 

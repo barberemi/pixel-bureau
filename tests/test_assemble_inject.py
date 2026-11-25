@@ -113,8 +113,8 @@ class InjectTest(unittest.TestCase):
             self.edit("team.json", lambda t: t.update(layout=bad))
             with self.assertRaisesRegex(ValueError, "sort du dossier", msg=bad):
                 assemble.layout_path(self.cfg)
-        self.edit("team.json", lambda t: t.update(layout="layouts/open-space.json"))  # plan du dépôt : accepté
-        self.assertEqual(assemble.layout_path(self.cfg), "layouts/open-space.json")
+        self.edit("team.json", lambda t: t.update(layout="layouts/darkmode.json"))  # plan du dépôt : accepté
+        self.assertEqual(assemble.layout_path(self.cfg), "layouts/darkmode.json")
 
     def test_legit_pack_still_builds(self):
         html = assemble.build(demo=False, cfg=self.cfg)

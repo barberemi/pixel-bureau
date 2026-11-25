@@ -1,11 +1,11 @@
 """Contrôle d'un thème de page (theme-<id>.css), du dépôt ou d'un pack d'équipe : son nom (« /* @nom: … */ »), puis
 les contrastes WCAG de ses couleurs (texte >= 4,5:1 sur ses fonds, texte des aplats >= 4,5:1, de même en mode TV).
 
-    python3 tools/theme.py check page/src/theme-classique.css
+    python3 tools/theme.py check page/src/theme-darkmode.css
     python3 tools/theme.py check ~/Sites/bureau-monequipe/themes/theme-*.css   # CI d'un pack
 
 Un thème de pack peut ne redéfinir que quelques couleurs : seules les paires qu'il définit sont vérifiées, et une
-couleur de texte ou de fond qui manque est signalée (elle reste celle du Classique, sombre). Code de sortie 1 si un
+couleur de texte ou de fond qui manque est signalée (elle reste celle du Darkmode, sombre). Code de sortie 1 si un
 contraste est insuffisant ou si le nom manque. Les thèmes de page/src/ doivent tout définir (tests/test_theme.py).
 """
 import os, re, sys
@@ -85,7 +85,7 @@ def check(path):
         errors += _pairs(v, TEXT, GROUNDS, [("on-" + f, f) for f in FILLS] + [("on-accent", f) for f in STATES] + [("on-deep", f) for f in DEEP])
         missing = [k for k in TEXT + GROUNDS if k not in v]
         if missing:
-            warnings.append("non redéfinies (restent celles du Classique, sombre) : " + ", ".join("--" + k for k in missing))
+            warnings.append("non redéfinies (restent celles du Darkmode, sombre) : " + ", ".join("--" + k for k in missing))
     tv = tv_palette(path)
     if tv:
         errors += _pairs(tv, TV_TEXT, TV_GROUNDS, TV_FILLS, "mode TV : ")

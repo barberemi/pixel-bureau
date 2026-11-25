@@ -1,7 +1,7 @@
 {
  "format": "bureau-layout/1",
- "id": "open-space",
- "name": "Open space (plan type)",
+ "id": "darkmode",
+ "name": "Darkmode (plan type)",
  "tile": 32,
  "size": [40,20],
  "legend": {

@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {load} = require('./helpers/page.js');
 
-const page = load({layout: 'open-space'});
+const page = load({layout: 'darkmode'});
 const run = page.run;
 const J = code => JSON.parse(run('JSON.stringify(' + code + ')'));
 const find = q => J(`srFind(${JSON.stringify(q)}).map(r=>r.g+':'+r.k)`);

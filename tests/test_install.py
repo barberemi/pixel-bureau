@@ -142,7 +142,9 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(set(cfg["workflows"]), {"office", "live", "team", "payroll", "canard", "redaction_bilan", "retours_bilan", "memoire"})
         self.assertEqual(set(cfg["skills"]), set(install.templates.BUREAU_SKILLS))  # skills du Bureau, avant les workflows
         self.assertTrue(all(cfg["actions"].values()))
-        self.assertEqual([a["name"] for a in cfg["agents"]], ["Dwight"])  # ses workflows, pas ceux du Bureau
+        self.assertEqual(cfg["agents"], [{"key": "dwight", "wf": ["aaaaaaaa"]}])  # ses workflows, pas ceux du Bureau ;
+        # Dwight du casting par défaut (team/agents.json), rattaché à « Revue de PR » par son métier : son nom vient du casting
+        self.assertEqual(install.assemble.merged(cfg)["agents"][0]["name"], "Dwight")
         self.assertNotIn("seat", cfg["agents"][0])  # sa place : celle que le plan lui donne
         self.assertEqual(os.path.realpath(cfg["layout"]), os.path.realpath(os.path.join(self.teams, "vance", "layouts", "plan.json")))  # plan du profil
         # deuxième passe : les scripts reçoivent la config complète (ids de tous les crons)
@@ -307,7 +309,7 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(cfg["workflows"]["live"], FakeKronn.LIVE)
         self.assertEqual(sum(1 for m, p, _ in k.calls if m == "POST" and p == "/workflows"), 31)
         self.assertTrue([1 for m, p, _ in k.calls if m == "PUT" and p == f"/workflows/{FakeKronn.LIVE}"])  # mis à jour
-        self.assertEqual([a["name"] for a in cfg["agents"]], ["Dwight"])
+        self.assertEqual([a["key"] for a in cfg["agents"]], ["dwight"])
 
     def test_never_takes_over_another_installation(self):
         k = FakeKronn("http://x")
@@ -390,10 +392,10 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(after["ui"], {"skin": "menthe", "agent_label": "office"})  # thème du profil ajouté, réglage gardé
         self.assertTrue(after["protect"])
         # un thème choisi à la main l'emporte sur celui du profil
-        Path(self.cfg_path).write_text(json.dumps({**after, "ui": {"skin": "classique"}}))
+        Path(self.cfg_path).write_text(json.dumps({**after, "ui": {"skin": "darkmode"}}))
         with mock.patch.object(install, "Kronn", return_value=self.fakes[-1]):
             self.assertEqual(self.run_install(ANSWERS), 0)
-        self.assertEqual(json.loads(Path(self.cfg_path).read_text())["ui"], {"skin": "classique"})
+        self.assertEqual(json.loads(Path(self.cfg_path).read_text())["ui"], {"skin": "darkmode"})
         self.assertEqual({k: after.get(k) for k in hand}, hand)
 
     def test_boss_screen_pages_asked_by_id(self):
@@ -505,7 +507,7 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(self.run_install(answers), 0)
         cfg = json.loads(Path(self.cfg_path).read_text())
         self.assertIsNone(cfg["team"])
-        self.assertEqual(cfg["layout"], "layouts/open-space.json")
+        self.assertEqual(cfg["layout"], "layouts/darkmode.json")
         self.assertEqual([p["key"] for p in cfg["people"]], ["p_pam"])
         self.assertEqual(cfg["jira"]["project"], "")  # défauts neutres : rien du profil
         html = next(b for m, p, b in self.fakes[-1].calls if m == "PUT" and p.endswith("/html"))["html"]

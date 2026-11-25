@@ -1,0 +1,18 @@
+{
+ "_doc": "Consignes de base du Bureau (lot 5 des habillages) : des règles valables pour tout dépôt, ajoutées avant les consignes de l'équipe (guidelines) dans les prompts de la chaîne d'implémentation (@@impl.guidelines@@) et de « corriger les commentaires d'une PR » (@@fix.guidelines@@). Elles complètent les règles déjà écrites dans les modèles (test qui rougirait, diff limité au ticket, doc mise à jour), sans les répéter. Un pack ou une config les coupe : sans_consignes_base = true (toutes) ou la liste de leurs id, sous impl ou fix.",
+ "impl": [
+  {"id": "dry", "text": "Quand un existant peut être réutilisé ou centralisé, privilégie-le (DRY) plutôt qu'une copie locale."},
+  {"id": "ticket-d-abord", "text": "Le ticket d'abord : chaque exigence a sa ligne dans le tableau de la PR ; un écart (fait autrement, reporté, hors scope) est acté dans le ticket, jamais seulement dans la PR."},
+  {"id": "effets", "text": "Tout effet sur une autre fonctionnalité (appelant, style ou option partagés, langues de droite à gauche, mode sombre) est cherché (`git grep`) et dit dans la description de la PR."},
+  {"id": "cycle-de-vie", "text": "Un changement de cycle de vie (écouteur d'événement, fin de requête, cache) se teste par le vrai cycle, pas par un appel direct."},
+  {"id": "http", "text": "Appel HTTP ou service amont : le comportement est décidé et testé par statut (2xx, 204, 401, 404, 408, 429, 5xx, délai dépassé) : action, cache, réessai, backoff ; une panne amont ne fige pas le cache et ne bloque pas un worker."},
+  {"id": "doc-fausse", "text": "Une doc qui affirme une chose fausse sur le code est un bloquant, comme un bug : chaque phrase touchée se vérifie dans le code."},
+  {"id": "config-prod", "text": "Une config qui ne marche qu'en prod (hôte, sous-domaine, option d'environnement) est un bloquant : elle doit marcher en local et sur chaque environnement de test."},
+  {"id": "fuseau", "text": "Tests de date et d'heure : fuseau fixé dans le test, jamais celui de la machine qui les lance."},
+  {"id": "une-regle", "text": "Une règle métier (format, calcul) a une seule implémentation, réutilisée par chaque appelant, jamais une copie par appelant."},
+  {"id": "suppression", "text": "Une suppression (bloc, gabarit, classe, enum, route) retire aussi les gabarits, styles, tests, traductions et entrées de config devenus morts, cherchés par `git grep`."}
+ ],
+ "fix": [
+  {"id": "dry", "text": "Quand un commentaire suggère de centraliser ou de factoriser, privilégie la centralisation (DRY) plutôt qu'un correctif local."}
+ ]
+}

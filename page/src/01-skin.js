@@ -1,10 +1,11 @@
-// Thème d'interface (theme-*.css, sur l'habillage commun pixel.css) : classique (sombre, celui du dépôt), puis ceux du
-// pack d'équipe. Le choix de la personne, gardé dans ce navigateur (bureau:skin), passe avant celui de l'installation (ui.skin,
-// posé par le profil d'équipe à l'installation).
-const UI_SKINS={classique:'Classique',...(CFG.skins||{})}; // thèmes de page/src/ et du pack d'équipe (assemble.themes)
-const skinChoice=()=>Object.keys(UI_SKINS).length>1; // bouton 🎨 : seulement s'il y a un autre thème (celui du pack)
-function skinFor(stored,cfgSkin){return UI_SKINS[stored]?stored:UI_SKINS[cfgSkin]?cfgSkin:'classique';}
-let UI_SKIN=skinFor(prefStr('skin',null),(CFG.ui||{}).skin);
+// Thème d'interface (theme-*.css, sur l'habillage commun pixel.css) : ceux du dépôt (Darkmode, le défaut, et Newsroom),
+// puis ceux du pack d'équipe. Le choix de la personne, gardé dans ce navigateur (bureau:skin), passe avant celui de
+// l'installation (ui.skin, posé par le profil d'équipe à l'installation), puis celui que propose le plan (skin : un
+// habillage = un thème et un plan du même nom).
+const UI_SKINS={darkmode:'Darkmode',...(CFG.skins||{})}; // thèmes de page/src/ et du pack d'équipe (assemble.themes)
+const skinChoice=()=>Object.keys(UI_SKINS).length>1; // bouton 🎨 : seulement s'il y a un autre thème
+function skinFor(stored,cfgSkin){return UI_SKINS[stored]?stored:UI_SKINS[cfgSkin]?cfgSkin:'darkmode';}
+let UI_SKIN=skinFor(prefStr('skin',null),(CFG.ui||{}).skin||LAYOUT.skin);
 function applySkin(s,remember=false){
   UI_SKIN=skinFor(s);
   if(remember)setPref('skin',UI_SKIN);

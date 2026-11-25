@@ -499,7 +499,45 @@ MODELS = [("review_one", "Relire une PR à la demande (bouton « Faire relire »
           ("env", "Générer l'env de branche d'une PR (label retiré puis reposé, bouton « 🌿 » des fiches)", None),
           ("deploy", "Déployer la branche d'une PR sur DEV ou STG, jamais la prod (bouton « 🚀 » des fiches)", None),
           ("fastly_purge", "Purger le cache Fastly en soft purge, par surrogate key ou par URL (services du réglage fastly)", None)]
-MODEL_LAUNCH = {"review_one": "review", "estimate": "estimate", "env": "env"}
+MODEL_LAUNCH = {"review_one": "review", "estimate": "estimate", "env": "env", "impl": "impl"}
+
+
+def branch(k, cfg):
+    """Branchements et boutons libres (lots 6 et 7 des habillages) : retrouve dans ce Kronn, par leur nom, les workflows
+    que le pack ou la config branchent sur les boutons (launch : l'id d'ici, les variables) ou posent en boutons libres sur
+    les fiches (boutons_wf) ; les modèles du Bureau ainsi remplacés ne sont plus proposés (MODEL_LAUNCH). Renvoie les
+    problèmes (nom introuvable ou en double, variable absente, réglage faux)."""
+    try:
+        wanted, libres = assemble.branchements(cfg), assemble.boutons(cfg)
+    except ValueError as e:
+        return [str(e)]
+    if not wanted and not libres:
+        return []
+    names = {v["wf"] for v in wanted.values()} | {b["wf"] for b in libres}
+    wfs = [w for w in k.get("/workflows") or [] if (w.get("name") or "").strip() in names]
+    for w in wfs:  # ses variables déclarées : dans le détail du workflow
+        full = k.get(f"/workflows/{w['id']}") or {}
+        w["variables"] = full.get("variables") if isinstance(full.get("variables"), list) else (full.get("definition") or {}).get("variables")
+    found, problems = assemble.resolve_branchements(cfg, wfs)
+    cfg["launch"] = {**(cfg.get("launch") or {}), **found}
+    for b, v in found.items():
+        say(f"✓ bouton {b} branché sur « {wanted[b]['wf']} » ({v['wf'][:8]})")
+    ids = {}
+    for b in libres:
+        same = [w for w in wfs if (w.get("name") or "").strip() == b["wf"]]
+        have = {x.get("name") for x in same[0].get("variables") or [] if isinstance(x, dict)} if len(same) == 1 else set()
+        if len(same) != 1:
+            problems.append(f"bouton « {b['label']} » : « {b['wf']} » " + ("introuvable dans Kronn" if not same else f"porté par {len(same)} workflows"))
+        elif isinstance(same[0].get("variables"), list) and set(b["vars"]) - have:
+            problems.append(f"bouton « {b['label']} » : « {b['wf']} » ne déclare pas {', '.join(sorted(set(b['vars']) - have))}")
+        else:
+            ids[b["id"]] = same[0]["id"]
+            say(f"✓ bouton libre « {b['label']} » ({b['fiche']}) sur « {b['wf']} » ({same[0]['id'][:8]})")
+    if libres:
+        cfg["boutons_wf"] = ids
+    for m in problems:
+        say(f"✗ branchement {m}")
+    return problems
 
 
 def models(ask, cfg, old):
@@ -698,7 +736,7 @@ def pack_agents(ask, wfs, personas, previous):
     full = {w["id"][:8]: w for w in wfs}
     out, used = [], set()
     if ask.answers is None and personas:
-        say("\nLes agents de ton équipe (pack) : à quel workflow de ton Kronn rattacher chacun ?")
+        say("\nLes agents de ton équipe : à quel workflow de ton Kronn rattacher chacun ?")
     for pa in personas:
         old = [x for x in (prev.get(pa["key"]) or {}).get("wf") or [] if x in full]
         free = [w for w in wfs if w["id"][:8] not in used]
@@ -716,8 +754,8 @@ def pack_agents(ask, wfs, personas, previous):
 
 def my_agents(ask, k, previous, bureau, personas=None):
     """bureau : ids et noms des workflows du Bureau (config, réutilisés, modèles) : jamais des agents.
-    personas : personnages d'agents du pack (settings.json, #32), rattachés d'abord ; les workflows restés libres
-    deviennent des agents neufs, comme sans pack."""
+    personas : personnages d'agents, le casting par défaut sous celui du pack (assemble.team_agents, #32), rattachés
+    d'abord ; les workflows restés libres deviennent des agents neufs."""
     wfs = [w for w in k.get("/workflows") if w.get("id") not in bureau and w.get("name") not in bureau and w.get("enabled", True)]
     if not wfs:
         return [], None
@@ -990,7 +1028,7 @@ def rebind(ask, old, a):
     k = Kronn(old["kronn"]["api"])
     ids = {(old.get(sec) or {}).get(field) for _, (_, (sec, field), _) in templates.TEMPLATES.items()}
     bureau = {v for v in ids if v} | {t["definition"]["name"] for t in templates.load_templates().values()}
-    agents, mep = my_agents(ask, k, old.get("agents"), bureau, assemble.pack_settings(old).get("agents"))
+    agents, mep = my_agents(ask, k, old.get("agents"), bureau, assemble.team_agents(old))
     screens = boss_pages(ask, k, old.get("boss_pages"), old.get("page_id"))
     cfg = {**old, "agents": agents, "boss_pages": screens, **({"mep_workflow": mep} if mep else {})}
     say(f"\n  Agents : {len(agents)} · écran mural : {len(screens)} page(s)")
@@ -1063,7 +1101,7 @@ def main(argv=None):
     own |= set(old.get("own") or []) & set(tpl_ids.values())
     bureau = {v for v in tpl_ids.values() if v} | {t["definition"]["name"] for t in tpls.values()}
     team_settings = assemble.pack_settings({"team": team_id})  # réglages d'équipe du pack (#32)
-    agents, mep = my_agents(ask, k, old.get("agents"), bureau, team_settings.get("agents"))
+    agents, mep = my_agents(ask, k, old.get("agents"), bureau, assemble.team_agents({"team": team_id}))  # casting par défaut et pack
     screens = boss_pages(ask, k, old.get("boss_pages"), old.get("page_id"))
     courrier = mail(ask, old.get("mail"), defaults)
     notify = mac_notify(ask, old.get("notify_mac"))
@@ -1103,6 +1141,7 @@ def main(argv=None):
 
     title = a.title or defaults["page_title"]
     cfg["page_id"] = upsert_page(k, cfg, title, a.dry_run)
+    branch(k, cfg)  # tes workflows branchés par nom (pack, config) : launch, avant de proposer les modèles qu'ils remplacent
     chosen = models(ask, cfg, old)  # modèles d'agents (#78) : seulement ceux acceptés
     side_pages(k, cfg, chosen, a.dry_run)  # pages à part, avant les workflows : le cron de chaque bilan publie dans sa page
     if not a.dry_run:  # skills du Bureau (revue et chaîne), avant les workflows qui les chargent : ids dans skills.<clé>

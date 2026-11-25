@@ -21,7 +21,7 @@ pixel-bureau/
 │       │                      # 50-65 panneau/actions/fiches/éditeur, 69-72 récap/fil/Qui fait quoi, 75-76 TV, 80 souris, 90 boucle
 │       ├── styles.css         # feuille de style principale
 │       ├── pixel.css          # habillage pixel commun à tous les thèmes
-│       └── theme-*.css        # thème (couleurs seulement) : classique ; les autres viennent du pack d'équipe
+│       └── theme-*.css        # thème (couleurs seulement) : darkmode ; les autres viennent du pack d'équipe
 ├── workflows/                 # scripts Python des étapes Exec des crons Kronn
 │   ├── _lecteurs.py           # « Ce qu'il fait » : lecteurs des journaux d'agents, recopié dans les seuls relevés qui l'importent
 │   ├── _defs.py               # définitions des workflows en cache disque 10 min, partagé par gates_snapshot et office_snapshot (#17)
@@ -40,7 +40,7 @@ pixel-bureau/
 │   ├── shots.py               # captures de la doc -> guide/img/
 │   └── lpc_sheet.py           # planche LPC générée -> planche du Bureau (marche de côté réparée), pour un pack
 ├── tests/                     # *.test.js (node --test), test_*.py (unittest), fixtures/, helpers/page.js
-├── layouts/                   # plans de bureau bureau-layout/1 : open-space (type), exemple-startup
+├── layouts/                   # plans de bureau bureau-layout/1 : darkmode (type), newsroom, exemple-startup
 ├── team/                      # defaults.json (valeurs proposées à l'installation), guests.json (invités communs)
 ├── teams/                     # (absent du dépôt) profils d'équipe locaux ; une équipe vit dans son pack (tests/fixtures/pack-exemple)
 ├── sprites/                   # build_sprites.py, build_layers.py, credits.py (CREDITS.md), heralds.py (recettes des hérauts), cast.json, layers.json, lpc_used.json, common/ (Gandalf, Yoda), common.json

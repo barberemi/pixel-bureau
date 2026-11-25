@@ -36,6 +36,7 @@ function merged(cfg) {
   if (!f || !fs.existsSync(f)) return cfg;
   const s = JSON.parse(fs.readFileSync(f, 'utf8')), out = {...cfg};
   if (s.rhythm) out.rhythm = {...s.rhythm, ...(cfg.rhythm || {})};
+  if ('enseigne' in s) out.enseigne = {...enseigne(s), ...enseigne(cfg)}; // l'enseigne de l'équipe, surchargée par la config
   if (s.support) out.support = {...s.support, ...(cfg.support || {})}; // console Support (#62)
   for (const k of ['gitfut', 'wiki_posters']) if (k in s && !(k in cfg)) out[k] = s[k];
   if (Array.isArray(s.agents)) {
@@ -45,6 +46,13 @@ function merged(cfg) {
       return {...Object.fromEntries(AGENT_FIELDS.filter(k => k in a).map(k => [k, a[k]])), ...Object.fromEntries(Object.entries(a).filter(([k]) => !AGENT_FIELDS.includes(k)))};
     });
   }
+  return out;
+}
+// l'enseigne du mur, comme enseigne() de tools/assemble.py : un texte, ou {text, bg, accent} ; {} sans réglage
+function enseigne(cfg) {
+  let e = cfg.enseigne; e = typeof e === 'string' ? {text: e} : e && typeof e === 'object' ? e : {};
+  const out = typeof e.text === 'string' ? {text: e.text.slice(0, 24)} : {};
+  for (const k of ['bg', 'accent']) if (typeof e[k] === 'string' && /^#[0-9a-fA-F]{6}$/.test(e[k])) out[k] = e[k];
   return out;
 }
 // ids des boutons, comme action_ids() : actions, modèles (models, #78) en repli, puis launch
@@ -63,6 +71,7 @@ function pageConfig(cfg) {
   return {kronn_ui: (cfg.kronn || {}).ui, jira_site: (cfg.jira || {}).site, jira_flow: {triage_from: 'Proposed', test: 'To Test', validated: 'To Deploy', reopened: 'Reopen', ...((cfg.jira || {}).flow || {})}, github_repo: (cfg.github || {}).repo,
     fix_any_repo: !!((((cfg.launch || {}).fix || {}).vars || {}).repo), // comme page_config() : Corriger prend le dépôt (#56)
     action_wf: actionWf(cfg), // comme page_config() : préfixe du workflow de chaque bouton des fiches (#86)
+    enseigne: Object.keys(enseigne(cfg)).length ? enseigne(cfg) : null, // comme page_config() : le panneau du plan
     support: supportPage(cfg), // comme support_page() : console Support (#62)
     ticket: (cfg.models || {}).ticket ? {wf: String(cfg.models.ticket).slice(0, 8)} : null, // créer un ticket (#77)
     rhythm: cfg.rhythm || {}, mep_workflow: cfg.mep_workflow, workflows: cfg.workflows || {}, agents: cfg.agents || [], ui: cfg.ui || {}, skins: themes(cfg),
@@ -92,7 +101,7 @@ function layoutPath(cfg) {
   if (cfg.layout) return path.resolve(ROOT, cfg.layout);
   const d = teamDir(cfg), meta = d && fs.existsSync(path.join(d, 'team.json')) ? JSON.parse(fs.readFileSync(path.join(d, 'team.json'), 'utf8')) : {};
   if (meta.layout && fs.existsSync(path.join(d, meta.layout))) return path.join(d, meta.layout);
-  return path.resolve(ROOT, meta.layout || 'layouts/open-space.json');
+  return path.resolve(ROOT, meta.layout || 'layouts/darkmode.json');
 }
 
 function pageJs(owner, {demo = true, actions = true, config, layout} = {}) {

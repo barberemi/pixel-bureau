@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 import plan  # noqa: E402
 
 PACK_PLAN = os.path.join(ROOT, "tests", "fixtures", "pack-exemple", "layouts", "plan.json")
-BASE = json.loads(Path(PACK_PLAN).read_text())  # plan type et places de l'équipe (seating) du pack fictif
+BASE = json.loads(Path(PACK_PLAN).read_text())  # plan type et zones de places (equipe, agents) du pack fictif
 
 
 def broken(**changes):
@@ -118,30 +118,42 @@ class CatalogueTest(unittest.TestCase):
 
 
 class SeatingTest(unittest.TestCase):
-    PEOPLE = [{"key": "a"}, {"key": "b", "seat": [12, 14]}, {"key": "c", "seat": "I6.R3"}, {"key": "d"}]
+    PEOPLE = [{"key": "a"}, {"key": "b", "seat": [12, 14]}, {"key": "c", "seat": "I6.R3"}, {"key": "d"},
+              {"key": "x", "agent": True}, {"key": "y", "agent": True, "near": "c"}]
 
-    def test_plan_is_master(self):
-        L = dict(BASE, seating={"I1.L1": "b"})
+    def test_zones_by_role(self):
+        got, _ = plan.assign(BASE, self.PEOPLE)
+        self.assertEqual(got["c"], "I6.R3")  # sa place demandée, au nouveau format
+        self.assertEqual([got["a"], got["b"], got["d"]], ["I1.R1", "I1.R2", "I2.R1"])  # zone de l'équipe, ordre du roster ; [12, 14] ignoré
+        self.assertEqual(got["x"], "I4.L1")  # zone des agents
+        self.assertEqual(got["y"], "I5.R3")  # dans sa zone, au plus près de c (I6.R3)
+
+    def test_no_zones_fills_in_order(self):
+        L = {k: v for k, v in BASE.items() if k != "zones"}
         got, _ = plan.assign(L, self.PEOPLE)
-        self.assertEqual(got["b"], "I1.L1")  # le plan l'emporte sur la place [12, 14] de la personne
-        self.assertEqual(got["c"], "I6.R3")  # place de repli au nouveau format
-        self.assertNotIn(got["a"], {"I1.L1", "I6.R3"})
+        self.assertEqual([got["a"], got["b"], got["d"], got["x"]], ["I1.R1", "I1.R2", "I2.R1", "I2.R3"])
+
+    def test_full_zone_overflows_outside_zones_first(self):
+        L = dict(BASE, zones={"equipe": ["I1.R1"], "agents": ["I6"]})
+        got, _ = plan.assign(L, self.PEOPLE)
+        self.assertEqual([got["a"], got["b"]], ["I1.R1", "I1.R2"])  # puis hors zone, avant la zone des agents
 
     def test_stable_when_someone_arrives(self):
-        L = dict(BASE, seating={})
-        before, _ = plan.assign(L, self.PEOPLE)
-        after, _ = plan.assign(L, self.PEOPLE + [{"key": "e"}])
+        before, _ = plan.assign(BASE, self.PEOPLE)
+        after, _ = plan.assign(BASE, self.PEOPLE + [{"key": "e"}])
         self.assertEqual({k: after[k] for k in before}, before)
 
     def test_boss_seat_goes_to_temps(self):
         got, temps = plan.assign(BASE, [{"key": "p_pam"}], owner="p_pam")
         self.assertNotIn("p_pam", got)
-        self.assertIn("I2.R2", temps)
+        self.assertIn("I1.R1", temps)
 
-    def test_seating_errors(self):
-        self.assertErr(broken(a=lambda L: L["seating"].update({"I9.L1": "x"})), "pas un siège de ce plan")
-        self.assertErr(broken(a=lambda L: L["seating"].update({"I6.L1": next(iter(L["seating"].values()))})), "plusieurs sièges")
-        self.assertErr(broken(a=lambda L: L.update(seating=["p_pam"])), "seating : un objet")
+    def test_zone_errors(self):
+        self.assertErr(broken(a=lambda L: L["zones"].update(agents=["I9"])), "ni un îlot ni un siège")
+        self.assertErr(broken(a=lambda L: L["zones"].update(agents=["I1.R1"])), "à la fois dans equipe et agents")
+        self.assertErr(broken(a=lambda L: L["zones"].update(boss=["I6"])), "zone de places « boss » inconnue")
+        self.assertErr(broken(a=lambda L: L.update(zones=["I1"])), "zones : un objet")
+        self.assertErr(broken(a=lambda L: L.update(seating={"I1.L1": "p_pam"})), "seating n'est plus lu")
 
     assertErr = PlanTest.assertErr
 
