@@ -15,7 +15,7 @@ TPL = templates.load_templates()
 KEYS = [k for k in templates.TEMPLATES if k.startswith("impl")]
 SEP = "\n===SEP===\n"
 CTRL_CMDS = ('missions', 'range', 'quoi', 'bilan_controles', 'aiguillage', 'fin_essai', 'retours_local')  # sous-commandes de chaine_controles.py
-PR_CMDS = ('lance', 'pousse', 'pr', 'pret', 'reviewers', 'fin', 'revue_prep', 'retours_pr', 'repasse', 'revue_locale', 'retours_synchro')  # sous-commandes de chaine_pr.py ; les autres : chaine.py
+PR_CMDS = ('lance', 'pousse', 'pr', 'pret', 'reviewers', 'fin', 'revue_prep', 'retours_pr', 'repasse', 'revue_locale', 'retours_synchro', 'recap')  # sous-commandes de chaine_pr.py ; les autres : chaine.py
 TICKET = {"key": "AB-12", "fields": {"summary": "Bouton partager sur la fiche", "description": "Ajouter un bouton partager.",
                                      "components": [{"name": "site"}], "issuetype": {"name": "Story"}}}
 
@@ -645,6 +645,35 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("x…", body)
         self.sh("pr", stdin=json.dumps({"title": "t", "body": body}))  # une PR remise à jour ne double pas les blocs
         self.assertEqual(Path(self.wt, ".kronn", "chaine", "pr_body.md").read_text().count("## Ce que le ticket demandait"), 1)
+
+    def test_recap_for_the_pr_gate_lists_postes_and_flags_names_missing_from_the_branch(self):
+        """Ta gate PR : un récap poste par poste (pas le JSON brut de la livraison), et les chemins ou noms cités par un
+        poste mais absents de la branche (essai DM-7545 : Besoin et Sécurité inventaient SharedSecretHeaderTokenProvider)."""
+        self.prepare()
+        d = Path(self.wt, ".kronn", "chaine")
+        e = self.dossier("etat.json")
+        e.update(pr="7", tours=1)
+        (d / "etat.json").write_text(json.dumps(e))
+        (d / "code.json").write_text(json.dumps({"poste": "code", "statut": "ok", "commits": ["abc123 fix: lot 1"], "fichiers": ["app/A.php"]}))
+        (d / "controles.json").write_text(json.dumps({"bloquants": [], "postes": {"securite": "ok", "perf": "non_concerne"}, "avis": [
+            {"poste": "securite", "fichier": "app/A.php", "probleme": "le défaut `FAUX_NOM_DE_SECRET: null`", "correction": "créer docs/neuf.md"}]}))
+        (d / "orchestrateur.json").write_text(json.dumps({"decision": "livrer", "resume": "tout est vert"}))
+        (d / "besoin.json").write_text(json.dumps({"resultat": {"exigences": [
+            {"exigence": "lire en env", "etat": "fait", "detail": "SecretProviderInvente dans src/Inconnu/Fichier.php, lu par app/A.php"}]}}))
+        code, outp = self.sh("recap")
+        self.assertEqual(code, 0, outp)
+        self.assertIn("[dm/site#7](https://github.com/dm/site/pull/7) en brouillon · 1 tour(s)", outp)
+        self.assertIn("| 🛠️ Code | ✅ 1 commit(s), 1 fichier(s)<br>`abc123 fix: lot 1` |", outp)
+        self.assertIn("| 🔒 sécurité | ✅ ; 1 avis |", outp)
+        self.assertIn("| ⚡ perf | ➖ non concerné |", outp)
+        self.assertIn("| 🧭 Orchestrateur | **livrer** : tout est vert |", outp)
+        self.assertIn("| lire en env | ✅ livré |", outp)
+        flagged = outp.split("introuvables dans la branche", 1)[1]
+        for name in ("src/Inconnu/Fichier.php", "SecretProviderInvente", "FAUX_NOM_DE_SECRET"):
+            self.assertIn(f"- `{name}`", flagged)
+        self.assertNotIn("`app/A.php`", flagged)  # présent dans la branche
+        self.assertNotIn("docs/neuf.md", flagged)  # une piste peut nommer un fichier à créer
+        self.assertNotIn("STEP_OUTPUT", outp)
 
     def fake_gh(self, data=None):
         """Un gh de test (PATH) : réponses par sous-commande, appels notés ; jamais GitHub."""

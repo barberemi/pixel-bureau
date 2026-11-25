@@ -583,6 +583,27 @@
     }
    },
    {
+    "name": "recap",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le récap de ta gate PR : ce que chaque poste a rendu, les exigences, ce qui reste ouvert, les noms cités introuvables (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/chaine_pr.py@@",
+     "recap"
+    ],
+    "exec_timeout_secs": 60
+   },
+   {
     "name": "gate_pr",
     "agent": "ClaudeCode",
     "mode": {
@@ -595,7 +616,7 @@
      "type": "Gate"
     },
     "description": "Relis la PR brouillon (revue IA traitée) avant qu'elle parte en relecture humaine.",
-    "gate_message": "## 👀 PR de {{ticket}} prête en brouillon\n\n{{steps.livraison.data.last_output ?? \"(absent)\"}}\n\n---\n**Approuver** : la PR sort du brouillon, les relecteurs sont demandés, le lien va dans le ticket. **Changements** : ta consigne repart au poste Code (puis contrôles et livraison). **Rejeter** : on s'arrête là, la PR reste en brouillon.",
+    "gate_message": "## 👀 PR de {{ticket}} prête en brouillon\n\n{{steps.recap.data.stdout ?? \"(absent)\"}}\n\n---\n**Approuver** : la PR sort du brouillon, les relecteurs sont demandés, le lien va dans le ticket. **Changements** : ta consigne repart au poste Code (puis contrôles et livraison). **Rejeter** : on s'arrête là, la PR reste en brouillon.",
     "gate_request_changes_target": "code"
    },
    {
