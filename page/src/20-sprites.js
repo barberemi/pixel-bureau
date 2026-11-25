@@ -156,6 +156,7 @@ function applyNames(){for(const c of chars){const ov=avatarFor(c.key);c.name=(ov
 
 const DIRROW={up:0,left:1,down:2,right:3};
 function frameFor(c,now){
+  if(c._st&&c._st.cloud)return [2+(Math.floor(now/1100+c.phase)%2),4]; // sur son nuage (49-marchand.js) : de face, au repos ; c'est le nuage qui avance
   if(c.moving){const f=1+Math.floor(now/90)%8;return [f,DIRROW[c.dir]];}
   const p=c.pose;
   if(c.boss&&p!=='type'&&p!=='hands')return [c.dir==='up'?0:c.dir==='left'?4:c.dir==='right'?5:2,4];

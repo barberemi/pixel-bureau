@@ -8,7 +8,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Ajouté
 
-- **La mémoire du soir** : chaque soir à 22 h, tes retours du jour (Changements au tampon des tickets, aux gates de la chaîne et à la validation des corrections de PR, bloquants d'une revue réfutés ensuite) deviennent des leçons courtes, réécrites par un agent (fusion, oubli), que tu valides à une gate. La rédaction, la chaîne, la revue et la correction les lisent à leur run suivant ; rien de nouveau, rien ne coûte. Tant que la gate attend, **le marchand de sable** (invité commun : cape verte, écharpe, son ours, son nuage) fait le tour des îlots, sa bulle dit le nombre de leçons, sa fiche porte la validation. Réglage `memoire` (workflows lus, heure, dossier). `git pull && python3 tools/upgrade.py` crée le cron.
+- **La mémoire du soir** : chaque soir à 22 h, tes retours du jour (Changements au tampon des tickets, aux gates de la chaîne et à la validation des corrections de PR, bloquants d'une revue réfutés ensuite) deviennent des leçons courtes, réécrites par un agent (fusion, oubli), que tu valides à une gate. La rédaction, la chaîne, la revue et la correction les lisent à leur run suivant ; rien de nouveau, rien ne coûte. Tant que la gate attend, **le marchand de sable** (invité commun : cape verte, écharpe, son ours, son nuage) fait le tour des îlots, porté par son nuage sans marcher, sa bulle dit le nombre de leçons, sa fiche porte la validation. Réglage `memoire` (workflows lus, heure, dossier). `git pull && python3 tools/upgrade.py` crée le cron.
 
 ### Corrigé
 

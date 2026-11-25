@@ -46,6 +46,16 @@ test('sans gate : absent ; gate ouverte : sur son nuage, une halte par îlot, le
   assert.equal(J(`stateAt(byKey.g_marchand, Date.parse('${at('22:01')}')).st`), 'gate');
 });
 
+test('sur son nuage, il ne marche pas : de face au repos, sans le rebond des pas, même en route', () => {
+  const c = "{guest: true, moving: true, dir: 'right', phase: 0, _st: {cloud: true}}";
+  const [fx, fy] = J(`frameFor(${c}, 0)`);
+  assert.equal(fy, 4, 'rangée du repos');
+  assert.ok(fx === 2 || fx === 3, 'de face');
+  assert.equal(J(`guestBob(${c}, 1)`), 0);
+  assert.equal(J("frameFor({guest: true, moving: true, dir: 'right', phase: 0}, 0)[1]"), J("DIRROW.right"), 'un autre invité marche');
+  assert.equal(J("guestBob({guest: true, moving: true}, 1)"), -1);
+});
+
 test('sa gate : dans sa fiche (run), jamais orpheline chez le boss', () => {
   run(`GATES = [${gate('2 leçons à valider')}]; byKey.g_marchand.wf = [];`);
   assert.equal(J(`sandmanState(byKey.g_marchand, Date.parse('${at('22:01')}')).run.wf_name`), 'Le Bureau · mémoire du soir');

@@ -3,7 +3,8 @@
 // gate attend, le marchand de sable fait le tour des îlots de l'open space sur son nuage, son ours à côté, et sème du
 // sable. Sa bulle : « 🧠 N leçons à valider » (le nombre, lu dans la première ligne de la gate, en rouge). La gate est la
 // sienne, comme celle du facteur : sa fiche la montre, le boss la compte une fois. Gate décidée : il repart par la porte.
-// L'ours et le nuage ne sont pas des planches : dessinés ici, case par case (1 case = 1 px de toile).
+// L'ours et le nuage ne sont pas des planches : dessinés ici, case par case (1 case = 1 px de toile). Il ne marche pas :
+// de face, au repos, c'est le nuage qui le porte d'un îlot à l'autre (frameFor, 20-sprites.js).
 const SAND_WF='Le Bureau · mémoire du soir', SAND_STOP=90e3, SAND_LIFT=12;
 const sandmanOwns=g=>g.wf_name===SAND_WF&&!!byKey.g_marchand;
 // « 🧠 **Mémoire du soir** · 3 leçons à valider, 1 retirée : … » (workflows/memoire.py, propose) -> 3 ; absent : null
