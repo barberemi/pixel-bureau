@@ -28,6 +28,7 @@ fin (Exec) ◄──────────────────────
 - Un fait n'entre qu'une fois au journal (id stable). Le dossier de l'agent : les faits nouveaux, ceux déjà vus des 30 derniers jours (pour voir ce qui revient), les fiches actuelles avec leur limite.
 - `propose` ne garde que des fiches connues et allumées, ramène chaque fiche à son format (un titre, une leçon par ligne « - … », doublons retirés, limites), écrit `proposition.json` et le message de la gate : un diff par fiche, les promotions, les remarques [src: file: workflows/memoire.py:275].
 - `applique` réécrit les fiches, garde les précédentes dans `versions/<horodatage>/` (30 validations au plus) [src: file: workflows/memoire.py:318].
+- La gate attend jusqu'à 72 h (`guards.timeout_seconds`) : Kronn coupe un run au bout de 2 h par défaut, la proposition de 22 h serait perdue avant le matin, et celle du vendredi soir doit tenir jusqu'au lundi. `concurrency_limit` 1 : tant qu'une gate est ouverte, le soir suivant ne lance pas de second run ; les retours qu'il aurait relevés le sont au passage d'après (rien n'entre au journal sans relevé).
 - La gate s'affiche sur la page comme toute gate (relevé `gates_snapshot.py`, tous les workflows actifs qui ont une étape Gate) [src: file: workflows/gates_snapshot.py:40].
 
 ## Qui lit quoi (`workflows/_memoire.py`)

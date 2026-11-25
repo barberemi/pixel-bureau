@@ -23,6 +23,8 @@ Une gate « 🧠 Mémoire du soir » s'ouvre sur la page, comme les autres valid
 - un diff par fiche changée, avec la raison ;
 - parfois, des leçons « à graver dans le dépôt » : une règle qui revient souvent et mérite d'aller dans la doc du dépôt, une skill ou les consignes de l'équipe. Ça, c'est à toi de le faire, en PR.
 
+Elle t'attend jusqu'à trois jours : celle de 22 h se valide le lendemain matin, celle du vendredi soir le lundi. Tant qu'elle est ouverte, le soir suivant ne relance rien ; les retours de ces jours-là passent au relevé d'après.
+
 **Approuver** écrit les fiches. **Changements** renvoie la proposition à l'agent avec ton message. **Rejeter** laisse tout tel quel.
 
 ## Les fiches

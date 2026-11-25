@@ -23,6 +23,9 @@
   "exec_allowlist": [
    "python3"
   ],
+  "guards": {
+   "timeout_seconds": 259200
+  },
   "steps": [
    {
     "agent": "ClaudeCode",

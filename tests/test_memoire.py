@@ -243,6 +243,8 @@ class MemoireTest(unittest.TestCase):
         self.assertEqual(d["trigger"], {"type": "Cron", "schedule": "0 20,21 * * 1-5", "timezone": "UTC"})
         self.assertEqual(assemble.local_hour_utc({"rhythm": {"timezone": "America/New_York"}}, 22), "2,3")
         self.assertEqual(templates.render(tpl, {**FIXTURE, "memoire": {"heure": 23}})["trigger"]["schedule"], "0 21,22 * * 1-5")
+        self.assertEqual(d["guards"], {"timeout_seconds": 72 * 3600}, "la gate attend le matin, et le lundi après un vendredi soir")
+        self.assertEqual(d["concurrency_limit"], 1, "une gate encore ouverte : le soir suivant ne relance pas")
         steps = {s["name"]: s for s in d["steps"]}
         self.assertEqual(list(steps), ["releve", "consolide", "propose", "boss", "applique", "fin"])
         self.assertEqual([s["name"] for s in d["steps"] if s["step_type"]["type"] == "Agent"], ["consolide"], "un seul agent")
