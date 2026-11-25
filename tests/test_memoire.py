@@ -144,7 +144,7 @@ class MemoireTest(unittest.TestCase):
         r = self.run_("propose", stdin=json.dumps(prop))
         self.assertEqual(r.returncode, 0, r.stderr)
         gate = r.stdout
-        self.assertTrue(gate.startswith("🧠 **Mémoire du soir** : La rédaction renomme ce qui est décidé."), gate[:80])
+        self.assertTrue(gate.startswith("🧠 **Mémoire du soir** · 28 leçons à valider, 1 retirée : La rédaction renomme ce qui est décidé."), gate[:120])
         self.assertIn("**Fiche ticket** : le boss l'a corrigé deux fois", gate)
         self.assertIn("\n-- Ancienne leçon", gate)
         self.assertIn("\n+- [redaction] Garde les noms décidés", gate)
@@ -154,6 +154,7 @@ class MemoireTest(unittest.TestCase):
         self.assertIn("- Les noms de commande se décident dans la discussion → docs/glossary.md (revient)", gate)
         p = json.loads(Path(self.mem, "proposition.json").read_text())
         self.assertEqual(sorted(p["fiches"]), ["equipe", "ticket"], "impl, vide et qui le reste : pas de fiche à créer")
+        self.assertEqual((p["lecons"], p["retirees"]), (28, 1), "3 dans ticket, 25 dans equipe ; l'ancienne leçon retirée")
         lignes = p["fiches"]["ticket"].splitlines()
         self.assertEqual(lignes[0], "# Mémoire · ticket")
         self.assertEqual(lignes[2:4], ["- [redaction] Garde les noms décidés", "- Garde les noms décidés"], "doublon retiré, texte libre ignoré")
@@ -173,6 +174,7 @@ class MemoireTest(unittest.TestCase):
         r = self.run_("propose", stdin=json.dumps({"fiches": [{"nom": "correction", "contenu": "", "pourquoi": "contredite"}], "promotions": [], "resume": "x"}))
         self.assertEqual(r.returncode, 0, r.stdout)
         self.assertIn("\n-- Une leçon devenue fausse", r.stdout)
+        self.assertTrue(r.stdout.startswith("🧠 **Mémoire du soir** · 0 leçon à valider, 1 retirée : x"), r.stdout[:80])
         self.run_("applique")
         self.assertEqual(Path(self.mem, "correction.md").read_text().strip(), "# Mémoire · correction")
 

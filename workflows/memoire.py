@@ -282,7 +282,7 @@ def propose():
         print("La proposition de l'agent est illisible : la mémoire reste telle quelle.")
         sys.exit(3)
     permis = ("equipe",) + memoire_actifs()
-    fiches, avis, diffs = {}, [], []
+    fiches, avis, diffs, ajout, retrait = {}, [], [], 0, 0
     for f in p.get("fiches") or []:
         nom = str((f or {}).get("nom") or "").strip().lower()
         if nom not in permis:
@@ -296,13 +296,17 @@ def propose():
             continue  # inchangée, ou vide et qui le reste
         fiches[nom] = neuf
         d = "".join(difflib.unified_diff(old.splitlines(True), neuf.splitlines(True), f"{nom}.md (avant)", f"{nom}.md (proposé)", n=0))
+        ajout += sum(1 for x in d.splitlines() if x.startswith("+- "))  # leçon nouvelle ou reformulée
+        retrait += sum(1 for x in d.splitlines() if x.startswith("-- "))
         diffs.append(f"**Fiche {nom}** : {court(f.get('pourquoi'), 300) or 'sans explication'}\n\n```diff\n{d.strip()}\n```")
     promos = [x for x in p.get("promotions") or [] if isinstance(x, dict) and str(x.get("lecon") or "").strip()][:5]
     if not fiches and not promos:
         print("L'agent ne propose aucun changement : la mémoire reste telle quelle." + (" " + " ; ".join(avis) if avis else ""))
         sys.exit(3)
-    write_json(mpath("proposition.json"), {"at": iso(now()), "fiches": fiches, "promotions": promos})
-    out = ["🧠 **Mémoire du soir** : " + (court(p.get("resume"), 600) or "ce que les retours du jour ont appris.")]
+    write_json(mpath("proposition.json"), {"at": iso(now()), "fiches": fiches, "promotions": promos, "lecons": ajout, "retirees": retrait})
+    # la 1re ligne porte le compte, que la page lit dans le message de la gate (bulle du marchand de sable)
+    compte = f"{ajout} leçon{'s' if ajout > 1 else ''} à valider" + (f", {retrait} retirée{'s' if retrait > 1 else ''}" if retrait else "")
+    out = [f"🧠 **Mémoire du soir** · {compte} : " + (court(p.get("resume"), 600) or "ce que les retours du jour ont appris.")]
     out += diffs or ["Aucune fiche à changer."]
     if promos:
         out.append("**À graver dans le dépôt** (leçons qui reviennent ; à faire toi-même, en PR) :\n" + "\n".join(
