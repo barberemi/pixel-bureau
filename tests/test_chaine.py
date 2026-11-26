@@ -226,7 +226,9 @@ class ChaineModelesTest(unittest.TestCase):
                     self.assertEqual(s["prompt_template"], templates._sub(mine[name]["prompt_template"], vals, off), (key, name))
         v_off, v_on = templates.impl_version(False), templates.impl_version(True)
         self.assertNotEqual(v_off["hash"], v_on["hash"])
-        self.assertEqual((v_on["commit"], v_on["sujet"]), (v_off["commit"], v_off["sujet"] + " (carnet)"))
+        self.assertEqual(v_on["commit"], v_off["commit"])
+        self.assertTrue(v_on["sujet"].endswith(" (carnet)") and len(v_on["sujet"]) <= 120, v_on["sujet"])  # suffixe entier, même après un sujet long
+        self.assertTrue(v_off["sujet"].startswith(v_on["sujet"][: -len(" (carnet)")]))
         self.assertIn(json.dumps(v_on["hash"]), templates.script_code("workflows/chaine.py", cfg()))
         self.assertIn(json.dumps(v_off["hash"]), templates.script_code("workflows/chaine.py", off))
         # l'export d'un workflow installé ne remet pas la consigne dans le modèle
