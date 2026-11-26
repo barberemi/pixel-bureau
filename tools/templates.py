@@ -241,6 +241,9 @@ def owner_name(cfg):
 _VERSION = {}
 
 
+CHAINE_COMMUNS = ("workflows/_chaine.py", "workflows/_noms.py")  # recopiés au rendu dans les scripts de la chaîne
+
+
 def impl_version(carnet=False):
     """Version de la chaîne d'implémentation rendue : empreinte des modèles impl*.json et de workflows/chaine.py, et le
     dernier commit qui les a touchés (une modification de la chaîne se juge sur les tickets qui l'ont suivie). Avec le
@@ -249,16 +252,16 @@ def impl_version(carnet=False):
         import hashlib
         v = impl_version()
         h = hashlib.sha1((v["hash"] + "".join(carnet_consigne(p) for p in sorted(set(CARNET_POSTES.values())))).encode())
-        return {**v, "hash": h.hexdigest()[:7], "sujet": (v["sujet"] + " (carnet)")[:120]}
+        return {**v, "hash": h.hexdigest()[:7], "sujet": v["sujet"][:120 - len(" (carnet)")] + " (carnet)"}  # le suffixe reste entier (sujet long de #326)
     if not _VERSION:
         import glob, hashlib, subprocess
-        files = (sorted(glob.glob(os.path.join(TPL_DIR, "impl*.json"))) + [os.path.join(ROOT, p) for p in CHAINE_SCRIPTS + ("workflows/_chaine.py",)]
+        files = (sorted(glob.glob(os.path.join(TPL_DIR, "impl*.json"))) + [os.path.join(ROOT, p) for p in CHAINE_SCRIPTS + CHAINE_COMMUNS]
                  + [os.path.join(ROOT, "skills", f) for f, *_ in BUREAU_SKILLS.values()])
         h = hashlib.sha1()
         for f in files:
             h.update(Path(f).read_bytes())
         r = subprocess.run(["git", "-C", ROOT, "log", "-1", "--format=%h%x09%s", "--", "workflows/templates/impl*.json",
-                            *CHAINE_SCRIPTS, "workflows/_chaine.py"], capture_output=True, text=True)
+                            *CHAINE_SCRIPTS, *CHAINE_COMMUNS], capture_output=True, text=True)
         commit, _, sujet = r.stdout.strip().partition("\t")
         _VERSION.update(hash=h.hexdigest()[:7], commit=commit, sujet=re.sub(r"[{}@]", "", sujet)[:120])  # ni {{ ni @@ dans un script
     return dict(_VERSION)
