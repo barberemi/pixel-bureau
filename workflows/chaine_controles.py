@@ -12,6 +12,7 @@ chaine.py (dossier, postes, Code, bilan), chaine_controles.py (contrôles, aigui
 import fnmatch, hashlib, json, os, re, subprocess, sys, time
 from _lib import CFG, get, read_json, send, write_json, write_text
 from _chaine import *  # noqa: F401,F403  (recopié au rendu, comme _lib)
+from _noms import introuvables  # noqa: F401  (recopié au rendu)
 
 PARALLELES = ("regles", "securite", "perf", "besoin", "doc")  # en lecture seule : sous-agents d'une même étape, en même temps
 # modèle de chaque sous-agent (le coordinateur, lui, ne fait que lancer : tier economy) ; impl.postes.controles.modeles le
@@ -26,9 +27,12 @@ def modele_sous(p):
 def garde_rapport(p):
     """Tours 2 et suivants : un poste dont le rapport précédent n'avait aucun bloquant le garde, sans relancer de
     sous-agent ; ceux qui ont bloqué repassent, et ceux de impl.postes.controles.toujours (sécurité par défaut : une
-    correction peut ouvrir une faille). impl.postes.controles.relance = "tous" : tous repassent, comme avant."""
+    correction peut ouvrir une faille). impl.postes.controles.relance = "tous" : tous repassent, comme avant. 🎯 Besoin
+    repasse toujours : son tableau des exigences est écrit tel quel dans la PR."""
     pc = poste_conf("controles")
     if not int(etat().get("tours") or 0) or pc.get("relance") == "tous" or p in pc.get("toujours", ["securite"]):
+        return False
+    if p == "besoin":  # son tableau va dans la PR : il suit le code du tour (essai DM-7545, tableau du tour 1 gardé)
         return False
     prev = load(f"precedent_{p}.json") or {}
     if prev.get("statut") != "ok":
@@ -56,7 +60,8 @@ def cmd_missions():
     à lancer : code 3, saut au bilan."""
     files = changed()
     postes, ecartes = [], []
-    for p in PARALLELES:
+    absents = (etat().get("besoin_absents") or {}).get("noms") if not (etat().get("besoin_absents") or {}).get("fait") else None
+    for p in (() if absents else PARALLELES):
         if deja_fait(p):
             ecartes.append(f"{p} : déjà fait au run d'avant (reprise)")
             continue
@@ -68,6 +73,9 @@ def cmd_missions():
         else:
             write_json(dossier(p + ".json"), {"poste": p, "statut": "non_concerne", "raison": why})
             ecartes.append(f"{p} : non concerné ({why})")
+    if absents:  # range (code 4) : le rapport Besoin de ce tour citait des noms absents de la branche, lui seul repasse
+        postes = ["besoin"]
+        ecartes.append("les autres : rapports de ce tour gardés (seul 🎯 Besoin repasse)")
     modeles = {p: modele_sous(p) for p in postes}
     write_json(dossier("missions.json"), {"postes": postes, "modeles": modeles})
     for p in postes:  # rapports écrits par les sous-agents : ceux d'un tour d'avant ne comptent plus
@@ -103,6 +111,11 @@ def cmd_missions():
         c = correction(p)
         if c:
             parts.append(c.replace("## Tour suivant : la correction", f"## Tour suivant, poste {p} : la correction"))
+    if absents:
+        parts.append(section("Poste besoin : ton rapport précédent citait des noms absents de la branche",
+                             "Ni le diff ni le dépôt ne contiennent : " + ", ".join(f"`{a}`" for a in absents)
+                             + ". Refais le rapport en partant du diff (`git diff` ci-dessus) : chaque `detail` cite un fichier "
+                               "et un nom qui existent dans la branche, sinon dis que tu ne l'as pas trouvé."))
     write_text(dossier("controles_contexte.md"), "".join(parts))
     os.makedirs(dossier("rapports"), exist_ok=True)
     out(section("Contexte commun : fichier", f"`{os.path.relpath(dossier('controles_contexte.md'), root())}` (le texte ci-dessous). "
@@ -137,7 +150,32 @@ def cmd_range():
         else:
             write_json(dossier(p + ".json"), {"poste": p, "statut": "en_panne", "raison": "aucun rapport du sous-agent"})
             res[p] = "en_panne"
+    if "besoin" in postes and verifie_besoin():
+        print(f"🎯 Besoin cite des noms absents de la branche : il repasse seul.\n{json.dumps(res, ensure_ascii=False)}")
+        sys.exit(4)
     out({"postes": res})
+
+
+def verifie_besoin():
+    """Le tableau du poste 🎯 Besoin va tel quel dans la PR : une ligne qui cite un chemin ou un nom absent de la branche
+    (essai DM-7545 : SharedSecretHeaderTokenProvider, inventé) le fait repasser seul, une fois par tour (code 4 de range,
+    retour à missions) ; encore là après : la ligne est marquée « à vérifier » (exigences_md, la gate) avec ses noms."""
+    r = load("besoin.json") or {}
+    ex = [x for x in (r.get("resultat") or {}).get("exigences") or [] if isinstance(x, dict)]
+    for x in ex:
+        x["introuvables"] = introuvables([x.get("detail")])
+    write_json(dossier("besoin.json"), r)
+    noms = sorted({n for x in ex for n in x["introuvables"]})
+    e = etat()
+    b = e.get("besoin_absents") or {}
+    if not noms or (b.get("tour") == e.get("tours", 0) and b.get("fait") is not None):
+        if b.get("tour") == e.get("tours", 0):
+            e["besoin_absents"] = {**b, "fait": True}
+            write_json(dossier("etat.json"), e)
+        return False
+    e["besoin_absents"] = {"tour": e.get("tours", 0), "noms": noms, "fait": False}
+    write_json(dossier("etat.json"), e)
+    return True
 
 
 def cmd_quoi():
