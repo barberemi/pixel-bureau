@@ -368,10 +368,10 @@ function setLive(patch){
   if (db) write('live/state', nx); else { applyLive(nx); }
 }
 function applyLive(nx){
-  const prevStep = LIVE.step, prevQr = LIVE.qr, prevFight = LIVE.fight;
+  const prevStep = LIVE.step, prevQr = LIVE.qr, prevFights = LIVE.fights, prevHit = hitKey();
   LIVE = Object.assign({ step: 0, at: Date.now(), q: 0, qr: false, b: 0, d: 0, g: 0, ph: 0, tr: 0, timerEnd: 0, quizRes: {} }, nx);
   LIVE.step = idx(LIVE.step, STEPS.length);
-  if (!isOwner) liveFightChanged(prevFight);
+  if (!isOwner) liveFightChanged(prevFights, prevHit);
   if (prevStep !== LIVE.step){
     if (STEPS[prevStep].k === 'title' && LIVE.step === 1) SFX.start(); else SFX.step();
     enterScene();
@@ -517,7 +517,7 @@ SC.quiz = t => {
 
 // ---------- Noël : décors ----------
 // ---------- les combats : points de vie, dégâts tirés d'avance, coups réservés ----------
-const hitKey = () => LIVE.step + ':' + (LIVE.b | 0) + ':' + (LIVE.ph | 0) + ':' + (LIVE.bAt || 0);
+const hitKey = () => 'f' + LIVE.step + '_' + (LIVE.b | 0) + '_' + (LIVE.ph | 0) + '_' + (LIVE.bAt || 0);
 const INTRO_MS = 7000;
 const fmt = n => String(Math.max(0, Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 let FIGHT = { key: '', n: 0, total: 0, dmg: {}, dirty: false }, lastHitAt = 0, lastDmg = 0, lastCrit = false, pendHits = 0, hitsKey = '';
@@ -544,7 +544,7 @@ function fight(){
   const key = hitKey(), F0 = fightSpec();
   if (FIGHT.key !== key) FIGHT = { key, n: 0, total: 0, dmg: {}, dirty: false };
   // l'hôte seul compte les coups et garde le combat dans live/state ; les joueurs l'affichent tel quel
-  const L = LIVE.fight, ok = L && L.k === key;
+  const L = (LIVE.fights || {})[key], ok = !!L;
   if (!isOwner) FIGHT = ok ? { key, n: num(L.n, 0, 1e6, 0), total: num(L.total, 0, 1e9, 0), dmg: Object.assign({}, L.dmg || {}), dirty: false } : { key, n: 0, total: 0, dmg: {}, dirty: false };
   else if (ok && num(L.total, 0, 1e9, 0) > FIGHT.total){ FIGHT.n = num(L.n, 0, 1e6, 0); FIGHT.total = num(L.total, 0, 1e9, 0); FIGHT.dmg = Object.assign({}, L.dmg || {}); }
   return Object.assign({}, F0, { total: FIGHT.total, rem: Math.max(0, F0.hp - FIGHT.total), ratio: clamp01(1 - FIGHT.total / F0.hp) });
@@ -572,9 +572,9 @@ function applyHits(by, n){
 }
 // la liste des dégâts, dans le panneau, mise à jour sur place
 // chez un joueur, les coups arrivent par live/state : l'éclair et le son suivent la baisse des points de vie
-function liveFightChanged(prev){
-  const L = LIVE.fight; if (!L || L.k !== hitKey()) return;
-  const before = prev && prev.k === L.k ? num(prev.total, 0, 1e9, 0) : 0, d = num(L.total, 0, 1e9, 0) - before;
+function liveFightChanged(prev, prevKey){
+  const key = hitKey(), L = (LIVE.fights || {})[key]; if (!L || prevKey !== key) return;
+  const before = prev && prev[key] ? num(prev[key].total, 0, 1e9, 0) : 0, d = num(L.total, 0, 1e9, 0) - before;
   if (d <= 0) return;
   const sp = fightSpec(); lastHitAt = Date.now(); lastDmg = d; lastCrit = sp.crit && d >= sp.hp / 10;
   if (lastCrit) SFX.crit(); else SFX.hit();
@@ -589,8 +589,15 @@ function updateDmg(){
 }
 setInterval(() => {
   if (pendHits && room){ const n = Math.min(20, pendHits); pendHits = 0; room.emit('hit', { k: hitKey(), n }).catch(() => {}); }
-  if (isOwner && FIGHT.dirty && FIGHT.key === hitKey()){ FIGHT.dirty = false; setLive({ fight: { k: FIGHT.key, n: FIGHT.n, total: FIGHT.total, dmg: FIGHT.dmg } }); }
+  if (isOwner && FIGHT.dirty && FIGHT.key === hitKey()){ FIGHT.dirty = false; setLive({ fights: Object.assign({}, LIVE.fights || {}, { [FIGHT.key]: { n: FIGHT.n, total: FIGHT.total, dmg: FIGHT.dmg } }) }); }
 }, 200);
+// recommencer un combat : l'hôte seul, de son panneau ; les autres retours ne l'effacent plus
+function restartFight(){
+  const k = cur().k; if (!isOwner || (k !== 'boss' && k !== 'santa')) return;
+  const id = fightId(k, LIVE), now = Date.now(), fights = Object.assign({}, LIVE.fights || {});
+  delete fights[hitKey()]; FIGHT = { key: '', n: 0, total: 0, dmg: {}, dirty: false };
+  setLive({ bAt: now, fAts: Object.assign({}, LIVE.fAts || {}, { [id]: now }), fights });
+}
 // les applaudissements, au moment des trophées
 let CLAPS = [];
 function applause(){
@@ -1506,6 +1513,19 @@ function nextLabel(){
   if (s.k === 'reveal'){ const n = revealOrder().length; return n ? 'Ouvrir le cadeau suivant (' + n + ' restants)' : 'Passer au vote'; }
   return s.nx || '';
 }
+// la place de chaque écran : gardée en le quittant, retrouvée en y revenant ; un combat garde ses points de vie
+const POS_KEYS = ['q', 'qr', 'd', 'g', 'b', 'ph', 'tr'];
+const fightId = (k, L) => k === 'boss' ? 'b' + (L.b | 0) : 's' + (L.ph | 0);
+function withFight(k, L){ const id = fightId(k, L), fAts = Object.assign({}, LIVE.fAts || {}); if (!fAts[id]) fAts[id] = Date.now(); return { bAt: fAts[id], fAts }; }
+function goStep(ns){
+  if (!isOwner || ns < 0 || ns >= STEPS.length) return;
+  const here = {}; for (const x of POS_KEYS) here[x] = LIVE[x];
+  const pos = Object.assign({}, LIVE.pos || {}, { [LIVE.step]: here }), patch = { step: ns, pos }, back = pos[ns], k = STEPS[ns].k;
+  if (back){ for (const x of POS_KEYS) if (back[x] !== undefined) patch[x] = back[x]; Object.assign(patch, { dAt: 0, gAt: 0, trAt: 0 }); }
+  else enterPatch(k, patch);
+  if (k === 'boss' || k === 'santa') Object.assign(patch, withFight(k, Object.assign({}, LIVE, patch)));
+  setLive(patch);
+}
 function next(){
   if (!isOwner) return;
   const s = cur();
@@ -1520,31 +1540,39 @@ function next(){
   }
   if (s.k === 'advent' && LIVE.d < (SP().advent || []).length){ SFX.chest(); return setLive({ d: LIVE.d + 1, dAt: Date.now() }); }
   if (s.k === 'hotte' && LIVE.g < (SP().gifts || []).length - 1) return setLive({ g: LIVE.g + 1, gAt: Date.now() });
-  if (s.k === 'boss' && LIVE.b < (SP().bosses || []).length - 1) return setLive({ b: LIVE.b + 1, bAt: Date.now() });
-  if (s.k === 'santa' && LIVE.ph < 2) return setLive({ ph: LIVE.ph + 1, bAt: Date.now() });
+  if (s.k === 'boss' && LIVE.b < (SP().bosses || []).length - 1) return setLive(Object.assign({ b: LIVE.b + 1 }, withFight('boss', Object.assign({}, LIVE, { b: LIVE.b + 1 }))));
+  if (s.k === 'santa' && LIVE.ph < 2) return setLive(Object.assign({ ph: LIVE.ph + 1 }, withFight('santa', Object.assign({}, LIVE, { ph: LIVE.ph + 1 }))));
   if (s.k === 'trophies' && LIVE.tr < trophyList().length - 1) return setLive({ tr: LIVE.tr + 1, trAt: Date.now() });
   if (s.k === 'reveal'){
     const nx = revealOrder()[0];
     if (nx){ REV = REV.concat([{ id: nx.id, b: nx.b, text: nx.text, by: nx.by, at: Date.now() }]); SFX.chest(); if (db) write('revealed/all', { cards: REV }); renderAll(); return; }
   }
   if (s.k === 'title' && oldGame()) return resetGame(1);
-  if (LIVE.step >= STEPS.length - 1) return;
-  const ns = LIVE.step + 1, patch = { step: ns };
-  if (STEPS[ns].k === 'quiz') Object.assign(patch, { q: 0, qr: false });
-  enterPatch(STEPS[ns].k, patch);
-  setLive(patch);
+  goStep(LIVE.step + 1);
 }
 function enterPatch(k, patch){
+  if (k === 'quiz') Object.assign(patch, { q: 0, qr: false });
   if (k === 'advent') Object.assign(patch, { d: 0, dAt: Date.now() });
   if (k === 'hotte') Object.assign(patch, { g: 0, gAt: Date.now() });
-  if (k === 'boss') Object.assign(patch, { b: 0, bAt: Date.now() });
-  if (k === 'santa') Object.assign(patch, { ph: 0, bAt: Date.now() });
+  if (k === 'boss') patch.b = 0;
+  if (k === 'santa') patch.ph = 0;
   if (k === 'trophies') Object.assign(patch, { tr: 0, trAt: Date.now() });
 }
-function prev(){ if (!isOwner || LIVE.step <= 0) return; const ns = LIVE.step - 1, patch = { step: ns }; if (STEPS[ns].k === 'quiz') Object.assign(patch, { q: 0, qr: false }); enterPatch(STEPS[ns].k, patch); setLive(patch); }
+// ◀ Retour recule d'un cran dans l'écran, puis change d'écran ; rien n'est effacé
+function prev(){
+  if (!isOwner) return;
+  const k = cur().k;
+  if (k === 'quiz' && LIVE.q > 0) return setLive({ q: LIVE.q - 1, qr: true });
+  if (k === 'advent' && LIVE.d > 0) return setLive({ d: LIVE.d - 1, dAt: 0 });
+  if (k === 'hotte' && LIVE.g > 0) return setLive({ g: LIVE.g - 1, gAt: 0 });
+  if (k === 'boss' && LIVE.b > 0) return setLive(Object.assign({ b: LIVE.b - 1 }, withFight('boss', Object.assign({}, LIVE, { b: LIVE.b - 1 }))));
+  if (k === 'santa' && LIVE.ph > 0) return setLive(Object.assign({ ph: LIVE.ph - 1 }, withFight('santa', Object.assign({}, LIVE, { ph: LIVE.ph - 1 }))));
+  if (k === 'trophies' && LIVE.tr > 0) return setLive({ tr: LIVE.tr - 1, trAt: 0 });
+  goStep(LIVE.step - 1);
+}
 document.getElementById('nextBtn').addEventListener('click', next);
 document.getElementById('prevBtn').addEventListener('click', prev);
-document.getElementById('homeBtn').addEventListener('click', () => { if (isOwner && LIVE.step > 0) setLive({ step: 0 }); });
+document.getElementById('homeBtn').addEventListener('click', () => { if (isOwner && LIVE.step > 0) goStep(0); });
 document.getElementById('testOn').addEventListener('click', () => { sess.set('sq.test', '1'); location.reload(); });
 document.getElementById('testOff').addEventListener('click', () => { sess.set('sq.test', null); if (location.hash === '#joueur') history.replaceState(null, '', location.pathname + location.search); location.reload(); });
 
@@ -1665,7 +1693,7 @@ function renderPanel(){
       if (oldGame()){
         const nCards = Object.values(ALLSEC).reduce((a, d) => a + (d && Array.isArray(d.cards) ? d.cards.length : 0), 0), nPl = Object.keys(PL).filter(id => PL[id] && (PL[id].k || PL[id].coinAt)).length;
         f.append(el('p', { class: 'warn', text: 'Une partie précédente est encore là (' + nPl + ' joueur' + (nPl > 1 ? 's' : '') + ', ' + nCards + ' carte' + (nCards > 1 ? 's' : '') + ', ' + REV.length + ' coffre' + (REV.length > 1 ? 's' : '') + ' ouvert' + (REV.length > 1 ? 's' : '') + '). « Suivant » l\'efface et lance une nouvelle partie.' }));
-        if (LIVE.last > 0) f.append(el('button', { class: 'btn', type: 'button', text: 'Reprendre à « ' + STEPS[Math.min(LIVE.last, STEPS.length - 1)].h + ' »', onclick: () => setLive({ step: Math.min(LIVE.last, STEPS.length - 1) }) }));
+        if (LIVE.last > 0) f.append(el('button', { class: 'btn', type: 'button', text: 'Reprendre à « ' + STEPS[Math.min(LIVE.last, STEPS.length - 1)].h + ' »', onclick: () => goStep(Math.min(LIVE.last, STEPS.length - 1)) }));
       }
     }
   } else if (s.k === 'select'){
@@ -1741,6 +1769,7 @@ function renderPanel(){
       if (!introDone()) f.append(el('p', { class: 'note', text: 'Le combat commence dans quelques secondes…' }));
       if (mayHit(me2)) f.append(el('button', { class: 'btn main', type: 'button', text: boss ? '⚔ Taper ton boss' : '⚔ Taper', onclick: attack }));
       else if (boss) f.append(el('p', { class: 'warn', text: 'Seul ' + memberName(B.who) + ' peut taper ce boss. Encourage ' + memberName(B.who) + ' !' }));
+      if (isOwner) f.append(el('div', { style: 'height:8px' }), el('button', { class: 'chip-btn', type: 'button', text: '↺ Recommencer ce combat', onclick: restartFight }));
       f.append(el('div', { style: 'height:14px' }), el('span', { class: 'lbl', text: 'Dégâts' }), el('div', { style: 'height:8px' }), el('ul', { class: 'list', id: 'dmgList' }));
       if (boss){
         const sh = sheetOf(B.who);

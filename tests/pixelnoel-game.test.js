@@ -15,6 +15,7 @@ const SCRIPT = HTML.slice(HTML.lastIndexOf('<script>') + 8, HTML.lastIndexOf('</
 
 function decl(name) {
   const c = new RegExp('^const ' + name + ' = .*$', 'm').exec(SCRIPT);
+  if (c && /[[{]$/.test(c[0])) return SCRIPT.slice(c.index, SCRIPT.indexOf('\n];', c.index) + 3); // un tableau sur plusieurs lignes
   if (c) return c[0];
   const at = SCRIPT.search(new RegExp('^function ' + name + '\\(', 'm'));
   assert.ok(at >= 0, name + ' introuvable dans le jeu');
@@ -91,4 +92,46 @@ test("une année incomplète n'est pas chargée, et l'erreur dit quoi corriger",
   assert.match(g.checkYear(JSON.stringify({...YEAR, ai: {pts: []}})).err, /traîneau/);
   assert.match(g.checkYear(JSON.stringify({...YEAR, santa: {phases: [{hp: 1, hits: 1}]}})).err, /3 phases/);
   assert.match(g.checkYear('pas du json').err, /accolades/);
+});
+
+function nav() {
+  const names = ['STEPS', 'cur', 'POS_KEYS', 'fightId', 'withFight', 'goStep', 'enterPatch', 'next', 'prev'];
+  const ctx = vm.createContext({
+    isOwner: true, LIVE: {step: 0, q: 0, qr: false, d: 0, g: 0, b: 0, ph: 0, tr: 0},
+    SP: () => ({quiz: [{}, {}], advent: new Array(12), gifts: [{}, {}, {}], bosses: [{}, {}, {}]}),
+    trophyList: () => [1, 2], SFX: {chest() {}}, revealOrder: () => [], oldGame: () => false, resetGame() {},
+    walkers: () => [], onTile: () => -1, renderAll() {}, write() {}, db: null, REV: [],
+  });
+  vm.runInContext('setLive = p => Object.assign(LIVE, p);\n' + names.map(decl).join('\n') + '\nthis.next = next; this.prev = prev; this.goStep = goStep; this.STEPS = STEPS;', ctx);
+  ctx.at = k => ctx.STEPS.findIndex(s => s.k === k);
+  return ctx;
+}
+
+test("◀ Retour recule d'un cran dans l'écran, et revenir dans un écran reprend où on l'avait laissé", () => {
+  const g = nav(), L = g.LIVE;
+  g.goStep(g.at('boss'));
+  assert.equal(L.b, 0);
+  const t0 = L.bAt;
+  g.next(); g.next();
+  assert.equal(L.b, 2, 'Suivant passe au boss suivant');
+  g.prev();
+  assert.equal(L.b, 1, 'Retour revient au boss précédent, sans quitter l\'écran');
+  g.prev(); g.prev();
+  assert.equal(g.STEPS[L.step].k, 'hotte', 'au premier boss, Retour change d\'écran');
+  g.next(); g.next(); g.next();
+  assert.equal(g.STEPS[L.step].k, 'boss');
+  assert.equal(L.b, 0, 'en revenant, on retrouve le boss où on était');
+  assert.equal(L.bAt, t0, 'même combat : mêmes points de vie, pas de nouvelle présentation');
+});
+
+test("le calendrier et le quiz gardent leur place quand on en sort", () => {
+  const g = nav(), L = g.LIVE;
+  g.goStep(g.at('advent'));
+  for (let i = 0; i < 5; i++) g.next();
+  assert.equal(L.d, 5);
+  g.prev();
+  assert.equal(L.d, 4, 'Retour referme la dernière case');
+  g.goStep(g.at('quiz')); g.goStep(g.at('advent'));
+  assert.equal(L.d, 4, 'les cases ouvertes restent ouvertes');
+  assert.equal(L.dAt, 0, 'sans rejouer la grande case');
 });

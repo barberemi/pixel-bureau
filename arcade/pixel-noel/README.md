@@ -15,6 +15,8 @@ Seize écrans menés par l'hôte : l'écran titre sous la neige, le choix du per
 
 **Les combats.** Chaque boss et chaque phase du Père Noël a ses points de vie et un nombre de coups prévu (`hp`, `hits`) : les dégâts de chaque coup sont tirés d'avance, un peu au hasard, pour que le dernier coup prévu tombe pile sur zéro. L'écran montre les points de vie, jamais le nombre de coups. Le boss d'un membre ne se tape que par ce membre (l'hôte le remplace s'il est absent) ; au Père Noël, tout le monde tape. Un boss `crit` affiche des coups critiques ; une clé dans `weak` ne fait qu'un point de dégât par coup. Le panneau montre les dégâts de chacun ; l'hôte garde le combat dans `live/state`.
 
+**La navigation de l'hôte.** ◀ Retour recule d'un cran dans l'écran (boss, phase, cadeau, case, question ou trophée précédent), puis change d'écran. Chaque écran garde sa place quand on le quitte et la retrouve quand on y revient (`live/state.pos`), et un combat garde ses points de vie (`fights`, `fAts`) : un retour n'efface rien. Pour rejouer un combat, l'hôte a « ↺ Recommencer ce combat » dans son panneau.
+
 ## Les données de l'année
 
 | Document | Contenu | D'où il vient |
