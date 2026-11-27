@@ -344,6 +344,10 @@ SHOTS = {
     "combles-borne": (1600, 1100, AT(17.7) + "ACTIONS.sprintquest=true;CFG.combles_url='https://claude.ai/artifact/exemple';"
                       "SPRINTQUEST={generated_at:new Date(T-60e3).toISOString(),warnings:[],data:{name:'SPRINT 26-45',dates:'30 OCT-13 NOV',life:[5,4,5,4,4],stops:[],vs:[{l:'TICKETS LIVRÉS',v:'22 / 31'},{l:'MISES EN PROD',v:'3'},{l:'POINTS LIVRÉS',v:'61 / 80'},{l:'TICKETS TESTÉS / RÉOPEN',v:'19 / 2'},{l:'CAFÉS (1/PR + 2/MEP)',v:'24'}],quiz:[{},{},{},{},{}],boss:[{t:'snail',n:'DM-7311',pv:'9 J'},{t:'hydra',n:'PR #2041',pv:'14 COMM.'},{t:'ghost',n:'GITHUB EN PANNE',pv:'2 H'}]}};"
                       "comblesUnlock();setFloor(4);CB_PICK='borne';SIDE_FOLDED=false;renderSide(true);", "#side", 1.5),
+    # en décembre, le sapin de Noël à côté de la borne ouvre Pixel Noël (rétro de l'année) ; sa fiche et la demande pour Claude
+    "combles-noel": (1600, 1100, AT(22.5) + "CB_NOEL_FORCE=true;comblesUnlock();setFloor(4);", None),
+    "combles-sapin": (1600, 1100, AT(17.7) + "CB_NOEL_FORCE=true;CFG.noel_url='https://claude.ai/artifact/exemple';"
+                      "comblesUnlock();setFloor(4);CB_PICK='sapin';SIDE_FOLDED=false;renderSide(true);", "#side", 1.5),
     "digicode": (1600, 1100, AT(11) + "digiOpen();for(const k of 'UUDD')digiPress(k);", ".bp-modal"),
     "temps-gagne-ia": (1400, 1000, AT(11) + "ACTIONS.ai_time=true;ACTION_BINDS['bureau-aitime']={ticket:'key'};"
                        "const all=[...TEAM.people.flatMap(p=>p.tickets),...(TEAM.unassigned||[])];ACTS={tickets:all.map(t=>({key:t.key})),prs:[]};"
