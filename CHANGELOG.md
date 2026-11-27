@@ -23,6 +23,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- **Yoda redessiné, en chibi comme l'équipe** : sa planche n'est plus composée de calques LPC mais générée puis découpée (`sprites/decoupe.py`) ; même scène au plateau TV après une mise en prod. La planche de Palpatine (marche et lancer d'éclairs) arrive aussi, pour le rejeu ; aucun personnage ne la porte encore. La marche d'un personnage à canne ou à robe longue n'est plus signalée « figée » à tort.
+
 - **L'habillage par défaut s'appelle Darkmode** : le thème Classique devient `darkmode` (`page/src/theme-darkmode.css`) et le plan type `layouts/darkmode.json`, mêmes couleurs et même plan. Une installation qui avait `ui.skin` à `classique` retombe d'elle-même sur Darkmode.
 - **Les places se règlent par zones** : un plan ne nomme plus personne. Il réserve des îlots à l'équipe et aux agents (`zones`), et chacun s'y range tout seul, collègues dans l'ordre du roster ; une préférence se donne dans le roster ou les agents du pack (`seat` : un siège, `near` : à côté de quelqu'un). L'ancienne clé `seating` du plan est refusée par `tools/plan.py check`.
 
