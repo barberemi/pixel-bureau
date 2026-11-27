@@ -20,7 +20,8 @@ warnings = []
 MONTHS = ["JANV", "FÉVR", "MARS", "AVR", "MAI", "JUIN", "JUIL", "AOÛT", "SEPT", "OCT", "NOV", "DÉC"]
 DAYS = ["LUN", "MAR", "MER", "JEU", "VEN", "SAM", "DIM"]
 DAYS_LONG = ["LUNDI", "MARDI", "MERCREDI", "JEUDI", "VENDREDI", "SAMEDI", "DIMANCHE"]
-STATUTS = [{"n": "GitHub", "url": "https://www.githubstatus.com"},
+STATUTS = [{"n": "GitHub", "url": "https://www.githubstatus.com",  # pas Copilot, Codespaces, Pages : sprint 26-47, le fantôme était une
+            "components": ["Git Operations", "API Requests", "Webhooks", "Pull Requests", "Actions", "Packages"]},  # panne des suggestions de Copilot
            {"n": "Claude", "url": "https://status.claude.com", "components": ["Claude API (api.anthropic.com)", "Claude Code"]},
            {"n": "Jira", "url": "https://jira-software.status.atlassian.com"},
            {"n": "Confluence", "url": "https://confluence.status.atlassian.com"}]  # comme statuts_snapshot.py
@@ -110,6 +111,9 @@ def histories(log):
     return out
 
 
+EN_ROUTE = ("doing", "review", "test", "deploy")  # colonnes de jira.statuses comptées pour l'escargot
+
+
 def tickets(issues, log, start, end):
     J = CFG.get("jira") or {}
     pts_fields, cols = J.get("points_fields") or [], J.get("statuses") or {}
@@ -122,18 +126,19 @@ def tickets(issues, log, start, end):
         before = [m for m in moves if m[0] <= end]
         at_end = before[-1][2] if before else (moves[0][1] if moves else status)
         pts = next((f.get(k) for k in pts_fields if f.get(k) is not None), None)
-        # temps passé dans une colonne « en cours » pendant le sprint, en jours
+        # temps passé en route pendant le sprint (en cours, en revue, en test, à déployer), en jours : seul « en cours »
+        # donnait 3 jours au plus long d'un sprint de 54 tickets, l'attente de revue et de test n'y comptait pas
         doing, since = 0.0, None
         pre = [m for m in moves if m[0] < start]
         state = pre[-1][2] if pre else (moves[0][1] if moves else status)
-        if cols.get(state) == "doing":
+        if cols.get(state) in EN_ROUTE:
             since = start
         for at, _, to in (m for m in moves if start <= m[0] <= end):
             t = at
             if since is not None:
                 doing += (t - since).total_seconds()
                 since = None
-            if cols.get(to) == "doing":
+            if cols.get(to) in EN_ROUTE:
                 since = t
         if since is not None:
             doing += (end - since).total_seconds()
@@ -150,7 +155,11 @@ def repos():
     return [r for r in dict.fromkeys(rs) if r][:12]
 
 
-def merged_prs(a, b):
+def merged_prs(a, b, start=None, end=None):
+    """Les PR mergées dans la fenêtre ; talk = commentaires et reviews écrits pendant le sprint (start..end) : une PR ouverte
+    trois semaines avant comptait toute sa vie (PR à 128 commentaires, dont l'essentiel avant le sprint)."""
+    def pendant(xs, key):
+        return sum(1 for x in xs or [] if not start or (isinstance(x, dict) and parse(x.get(key)) and start <= parse(x.get(key)) <= end))
     out = []
     for r in repos():
         try:
@@ -158,7 +167,7 @@ def merged_prs(a, b):
                          "--json", "number,title,comments,reviews,mergedAt,author"]):
                 if (p.get("author") or {}).get("is_bot"):
                     continue
-                out.append({"repo": r, "n": p.get("number"), "title": p.get("title") or "", "talk": len(p.get("comments") or []) + len(p.get("reviews") or [])})
+                out.append({"repo": r, "n": p.get("number"), "title": p.get("title") or "", "talk": pendant(p.get("comments"), "createdAt") + pendant(p.get("reviews"), "submittedAt")})
         except Exception as e:  # noqa: BLE001
             warn(f"sprintquest : PR de {r} illisibles ({e})")
     return out
@@ -239,7 +248,7 @@ def build(D, validated, reopened):
     pts_all, pts_done = sum(t["points"] for t in T), sum(t["points"] for t in delivered)
     tested = {t["key"] for t in T if any(m[2] == validated for m in t["moves"])}
     reopen = Counter(t["key"] for t in T for m in t["moves"] if m[2] == reopened)
-    prs, runs, incs = merged_prs(s0, s1), prod_runs(start, end), incidents(start, end)
+    prs, runs, incs = merged_prs(s0, s1, start, end), prod_runs(start, end), incidents(start, end)
     meps, failed = [r for r in runs if r["ok"]], [r for r in runs if not r["ok"]]
 
     vs = [{"l": "TICKETS LIVRÉS", "v": f"{len(delivered)} / {len(T)}"}, {"l": "MISES EN PROD", "v": str(len(meps))},
@@ -283,13 +292,13 @@ def build(D, validated, reopened):
         opts, ok = options(str(len(prs)), numbers(len(prs), max(2, len(prs) // 4)), seed + 2)
         if opts:
             quiz.append({"q1": "COMBIEN DE PR ONT ÉTÉ", "q2": "MERGÉES PENDANT LE SPRINT ?", "a": opts, "ok": ok, "fact": cut(f"{len(prs)} PR MERGÉES EN {(s1.date() - s0.date()).days + 1} JOURS", 40)})
-    # le ticket resté le plus longtemps en cours
+    # le ticket resté le plus longtemps en route (en cours, revue, test, à déployer)
     slow = max(T, key=lambda t: t["doing_days"]) if T else None
     if slow and slow["doing_days"] >= 1:
         d = slow["doing_days"]
         opts, ok = options(f"{d} J", [f"{v} J" for v in numbers(d, 2)[1:]], seed + 3)
         if opts:
-            quiz.append({"q1": "LE TICKET LE PLUS LONG EN COURS :", "q2": "COMBIEN DE JOURS ?", "a": opts, "ok": ok, "fact": cut(f"{slow['key']} : {d} JOURS EN COURS", 40)})
+            quiz.append({"q1": "LE TICKET LE PLUS LONG EN ROUTE :", "q2": "COMBIEN DE JOURS ?", "a": opts, "ok": ok, "fact": cut(f"{slow['key']} : {d} JOURS EN ROUTE", 40)})
     # le type de ticket le plus fréquent
     types = Counter(cut(up(t["type"]), 9) for t in T if t["type"])
     if len(types) >= 2:
@@ -300,7 +309,7 @@ def build(D, validated, reopened):
 
     boss = []
     if slow and slow["doing_days"] >= 1:
-        boss.append({"t": "snail", "n": slow["key"], "s": cut(up(f"{slow['doing_days']} jours en cours : {slow['summary']}"), 60), "pv": f"{slow['doing_days']} J"})
+        boss.append({"t": "snail", "n": slow["key"], "s": cut(up(f"{slow['doing_days']} jours en route : {slow['summary']}"), 60), "pv": f"{slow['doing_days']} J"})
     talk = max(prs, key=lambda p: p["talk"]) if prs else None
     if talk and talk["talk"]:
         boss.append({"t": "hydra", "n": f"PR #{talk['n']}", "s": cut(up(talk["title"]), 60), "pv": cut(f"{talk['talk']} COMM.", 16), "heads": min(9, talk["talk"])})
