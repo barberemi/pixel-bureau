@@ -2,7 +2,8 @@
 // Le cron « Le Bureau · mémoire du soir » (workflows/memoire.py) propose chaque soir des leçons pour les agents ; tant que sa
 // gate attend, le marchand de sable fait le tour des îlots de l'open space sur son nuage, son ours à côté, et sème du
 // sable. Sa bulle : « 🧠 N leçons à valider » (le nombre, lu dans la première ligne de la gate, en rouge). La gate est la
-// sienne, comme celle du facteur : sa fiche la montre, le boss la compte une fois. Gate décidée : il repart par la porte.
+// sienne, comme celle du facteur : sa fiche la montre, le boss la compte une fois. Gate décidée : il repart par la porte,
+// toujours sur son nuage avec son ours (avant, il descendait du nuage et repartait à pied, seul).
 // L'ours et le nuage ne sont pas des planches : dessinés ici, case par case (1 case = 1 px de toile). Il ne marche pas :
 // de face, au repos, c'est le nuage qui le porte d'un îlot à l'autre (frameFor, 20-sprites.js).
 const SAND_WF='Le Bureau · mémoire du soir', SAND_STOP=90e3, SAND_LIFT=12;
@@ -26,7 +27,7 @@ function sandStops(){
 function sandmanState(c,t){
   const demo=SCENE_DEMO&&SCENE_DEMO.flag==='memoire'&&t>=SCENE_DEMO.s; // 46-gallery.js : la scène jouée maintenant
   const g=demo?null:(GATES||[]).find(x=>x.wf_name===SAND_WF&&(!x.since||ms(x.since)<=t));
-  if(!g&&!demo)return {st:'off',label:'Passe le soir, quand la mémoire a des leçons à te proposer'};
+  if(!g&&!demo)return {st:'off',cloud:true,label:'Passe le soir, quand la mémoire a des leçons à te proposer'}; // il repart sur son nuage, l'ours avec lui
   const s0=demo?SCENE_DEMO.s:ms(g.since)||t, stops=sandStops(), n=demo?3:sandLessons(g);
   const i=stops.length?Math.floor(Math.max(0,t-s0)/SAND_STOP)%stops.length:0;
   const o={st:'gate',zone:stops.length?'visit':'gate',visit:stops[i],cloud:true,hot:n==null?null:sandText(n),
