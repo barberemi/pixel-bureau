@@ -32,9 +32,12 @@ LOG = [log(1, [(1, "À faire", "En cours"), (3, "En cours", "To Deploy"), (3.2, 
        log(2, [(1, "À faire", "En cours"), (2, "En cours", "To Test"), (2.5, "To Test", "Reopen"), (5, "Reopen", "To Deploy"), (6, "To Deploy", "Deployed")]),
        log(3, [(1, "À faire", "En cours")]),
        log(4, [(2, "À faire", "En cours"), (3.1, "En cours", "Deployed")])]
-GH = {"merged": [{"number": 11, "title": "Ajoute le panier", "comments": [1, 2, 3], "reviews": [1, 2], "mergedAt": iso(START), "author": {"login": "jim"}},
-                 {"number": 12, "title": "Corrige le pied de page", "comments": [], "reviews": [1], "mergedAt": iso(START), "author": {"login": "pam"}},
-                 {"number": 13, "title": "Bump", "comments": [1] * 20, "reviews": [], "mergedAt": iso(START), "author": {"login": "bot", "is_bot": True}}],
+IN, BEFORE = iso(START + timedelta(days=2)), iso(START - timedelta(days=10))
+GH = {"merged": [{"number": 11, "title": "Ajoute le panier", "comments": [{"createdAt": IN}] * 3, "reviews": [{"submittedAt": IN}] * 2,
+                  "mergedAt": iso(START), "author": {"login": "jim"}},
+                 {"number": 12, "title": "Corrige le pied de page", "comments": [{"createdAt": BEFORE}] * 30, "reviews": [{"submittedAt": IN}],
+                  "mergedAt": iso(START), "author": {"login": "pam"}},  # 30 commentaires avant le sprint : ne comptent pas
+                 {"number": 13, "title": "Bump", "comments": [{"createdAt": IN}] * 20, "reviews": [], "mergedAt": iso(START), "author": {"login": "bot", "is_bot": True}}],
       "prod": [{"conclusion": "success", "createdAt": iso(START + timedelta(days=4)), "displayTitle": "v1.2"},
                {"conclusion": "failure", "createdAt": iso(START + timedelta(days=6)), "displayTitle": "v1.3"},
                {"conclusion": "success", "createdAt": iso(START - timedelta(days=3)), "displayTitle": "v1.1 (avant le sprint)"}],
@@ -105,13 +108,14 @@ class SprintQuestTest(unittest.TestCase):
         right = lambda q: q["a"][q["ok"]]  # noqa: E731
         self.assertEqual(right(quiz["QUI A LIVRÉ LE PLUS"]), "JIM")
         self.assertEqual(right(quiz["COMBIEN DE PR ONT ÉTÉ"]), "2")
-        self.assertEqual(right(quiz["LE TICKET LE PLUS LONG EN COURS :"]), "12 J")
+        self.assertEqual(right(quiz["LE TICKET LE PLUS LONG EN ROUTE :"]), "12 J")
         self.assertEqual(right(quiz["QUEL TYPE DE TICKET"]), "STORY")
         self.assertIn("2 TICKETS DEPLOYED", quiz["QUEL JOUR LE PLUS DE TICKETS"]["fact"])
         boss = {b["t"]: b for b in d["boss"]}
         self.assertEqual(boss["snail"]["n"], "DM-3")
         self.assertEqual((boss["hydra"]["n"], boss["hydra"]["heads"]), ("PR #11", 5))
         self.assertEqual(boss["ghost"]["n"], "GITHUB EN PANNE")
+        self.assertIn("EN ROUTE", boss["snail"]["s"])
         self.assertEqual(out["warnings"], [])
         self.assertEqual(self.build(statuts=[{"n": "GitHub", "url": fake.url("gh")}])["data"], d, "rejouable : la même partie à chaque préparation")
 
@@ -134,6 +138,32 @@ class SprintQuestTest(unittest.TestCase):
         check_format(self, d)
         self.assertEqual(d["team"], {"people": [people[0]]})
         self.assertNotIn("team", self.build()["data"], "sans équipe dans le pack, rien : l'artefact garde la sienne")
+
+    def test_bosses_follow_the_sprint(self):
+        """Sprint 26-47 : l'escargot ne comptait que « En cours » (3 jours au plus long), l'hydre toute la vie de la PR, le
+        fantôme une panne des suggestions de Copilot. L'escargot compte tout le chemin (revue, test, à déployer) ; l'hydre,
+        les commentaires du sprint ; GitHub, les composants qui touchent l'équipe."""
+        attend = [issue(6, "Story", "Pam Beesly", "To Review", 2)]
+        log6 = [log(6, [(0.1, "À faire", "En cours"), (0.2, "En cours", "To Review")])]  # en revue jusqu'à la fin : 12,9 jours en route
+        self.fake_gh(GH)
+        d = self.run_script("sprintquest.py", {"sprint": 42, "issues": ISSUES + attend, "log": LOG + log6}, args=("build", "To Deploy", "Reopen"))["data"]
+        check_format(self, d)
+        boss = {b["t"]: b for b in d["boss"]}
+        self.assertEqual((boss["snail"]["n"], boss["snail"]["pv"]), ("DM-6", "13 J"), "le temps en revue compte")
+        self.assertEqual((boss["hydra"]["n"], boss["hydra"]["heads"]), ("PR #11", 5), "PR #12 : 30 commentaires, tous avant le sprint")
+        import ast
+        src = open(os.path.join(ts.ROOT, "workflows", "sprintquest.py"), encoding="utf-8").read()
+        statuts = ast.literal_eval(src.split("STATUTS = ", 1)[1].split("\n\n", 1)[0])
+        gh = next(x for x in statuts if x["n"] == "GitHub")
+        self.assertIn("Pull Requests", gh["components"])
+        self.assertNotIn("Copilot", gh["components"])
+        pages = {"gh": {"components": st.OK, "incidents": [st.incident("Suggestions lentes", "major", 24 * 8, 24 * 8 - 5, comps=("Copilot",)),
+                                                           st.incident("Pushs refusés", "minor", 24 * 7, 24 * 7 - 1, comps=("Git Operations",))]}}
+        fake = st.FakePages(pages)
+        self.addCleanup(fake.close)
+        d = self.build(statuts=[{**gh, "url": fake.url("gh")}])["data"]
+        ghost = next(b for b in d["boss"] if b["t"] == "ghost")
+        self.assertEqual(ghost["s"], "PUSHS REFUSÉS", "la panne de Copilot, plus grave et plus longue, ne compte pas")
 
     def test_no_sprint_no_data(self):
         out = self.build(issues=[])
