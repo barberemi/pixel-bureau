@@ -1,6 +1,6 @@
 # Mémoire de l'équipe (amélioration continue) : les leçons que le boss a validées, lues par les agents des workflows.
 #
-# Recopié au rendu dans les scripts qui l'importent (ticket.py, review.py, chaine.py, pr_update.py), comme _lib.py. Le cron
+# Recopié au rendu dans les scripts qui l'importent (ticket.py, review.py, chaine.py, chaine_controles.py, pr_update.py), comme _lib.py. Le cron
 # du soir (workflows/memoire.py) relève les retours du jour, un agent réécrit les fiches, le boss valide à sa gate ; ici, on
 # ne fait que lire. Une fiche par workflow (ticket, impl, revue, correction) et une commune (equipe), en Markdown, dans
 # memoire.dossier (défaut ~/.local/share/pixel-bureau/memoire) : une leçon par ligne « - … » ; « - [poste] … » ne va qu'à

@@ -13,6 +13,7 @@ import fnmatch, hashlib, json, os, re, subprocess, sys, time
 from _lib import CFG, get, read_json, send, write_json, write_text
 from _chaine import *  # noqa: F401,F403  (recopié au rendu, comme _lib)
 from _noms import introuvables  # noqa: F401  (recopié au rendu)
+from _memoire import MEM_MAX, MEM_TITRE, memoire_actifs, memoire_lignes  # noqa: F401  (recopié au rendu)
 
 PARALLELES = ("regles", "securite", "perf", "besoin", "doc")  # en lecture seule : sous-agents d'une même étape, en même temps
 # modèle de chaque sous-agent (le coordinateur, lui, ne fait que lancer : tier economy) ; impl.postes.controles.modeles le
@@ -111,6 +112,9 @@ def cmd_missions():
         c = correction(p)
         if c:
             parts.append(c.replace("## Tour suivant : la correction", f"## Tour suivant, poste {p} : la correction"))
+    mem = memoire_controles(postes)
+    if mem:
+        parts.append(section(MEM_TITRE, mem))
     if absents:
         parts.append(section("Poste besoin : ton rapport précédent citait des noms absents de la branche",
                              "Ni le diff ni le dépôt ne contiennent : " + ", ".join(f"`{a}`" for a in absents)
@@ -120,6 +124,23 @@ def cmd_missions():
     os.makedirs(dossier("rapports"), exist_ok=True)
     out(section("Contexte commun : fichier", f"`{os.path.relpath(dossier('controles_contexte.md'), root())}` (le texte ci-dessous). "
                 f"Rapports : `{os.path.relpath(dossier('rapports'), root())}/<poste>.json`.") + "".join(parts))
+
+
+def memoire_controles(postes):
+    """La mémoire de l'équipe (fiches equipe et impl, cron du soir) pour les contrôles en parallèle : ils ne passent pas
+    par `entree` (chaine.py), qui la donne aux autres postes. Le contexte est commun : les leçons sans poste pour tous,
+    celles marquées « - [poste] » pour les seuls postes lancés qu'elles nomment. Essai DM-7545 : une leçon [besoin]
+    validée à la gate n'atteignait pas le poste Besoin."""
+    if "impl" not in memoire_actifs():
+        return ""
+    tag = lambda x: (re.match(r"- \[([\w-]+)\]", x) or [0, None])[1]  # noqa: E731
+    lignes = [x for x in memoire_lignes("equipe") + memoire_lignes("impl") if tag(x) is None or tag(x) in postes]
+    corps = "\n".join(lignes)
+    if len(corps) > MEM_MAX:
+        corps = corps[:MEM_MAX].rsplit("\n", 1)[0]
+    return ("Ce que les corrections passées du boss ont appris. Une leçon sans poste vaut pour chacun ; « - [poste] … » "
+            "ne vaut que pour ce poste. Le ticket, le diff et les retours de ce run passent avant une leçon qui les "
+            "contredit.\n" + corps) if corps else ""
 
 
 def releve_doc_chaine(files):
