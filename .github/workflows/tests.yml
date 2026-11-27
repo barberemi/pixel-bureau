@@ -21,7 +21,7 @@ concurrency:
 jobs:
   tests:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25  # les runs durent 12 à 13,5 min : 15 laissait de faux rouges
+    timeout-minutes: 15  # les runs durent 7 à 8 min depuis les tests Python en parallèle (tools/unittests.py), 12 à 13,5 avant
     steps:
       - uses: actions/checkout@v7
         with:
