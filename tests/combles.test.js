@@ -235,3 +235,38 @@ test('le digicode : une fenêtre « Digicode » avec sa propre toile, Échap la 
   assert.equal(J('comblesOn()'), true);
   assert.match(J('floorTabsHtml()'), /data-floor="4"/);
 });
+
+test('Noël aux Combles : le sapin du 1er décembre au 6 janvier, heure de Paris, et seulement alors', () => {
+  const {p, J} = page();
+  const on = iso => J(`cbNoel(Date.parse('${iso}'))`);
+  assert.equal(on('2026-11-30T22:30:00Z'), false);
+  assert.equal(on('2026-11-30T23:30:00Z'), true, 'minuit passé à Paris : le 1er décembre');
+  assert.equal(on('2026-12-24T12:00:00Z'), true);
+  assert.equal(on('2027-01-06T12:00:00Z'), true);
+  assert.equal(on('2027-01-07T12:00:00Z'), false);
+  p.run('comblesUnlock(); setFloor(4); renderCombles(0);');
+  assert.equal(J("CB_HITS.some(h => h.kind === 'sapin')"), J('cbNoel(T)'), 'la démo est en octobre : pas de sapin');
+  p.run('CB_NOEL_FORCE = true; renderCombles(0);');
+  const h = J("CB_HITS.find(h => h.kind === 'sapin')");
+  assert.ok(h, 'le sapin a sa zone de clic');
+  assert.ok(h.x >= 0 && h.y >= 0 && h.x + h.w <= J('AT_W') && h.y + h.h <= J('AT_H'));
+  const b = J("CB_HITS.find(h => h.kind === 'borne')");
+  assert.ok(h.x + h.w <= b.x, 'à gauche de la borne, sans la chevaucher');
+  assert.match(J('floorHelp(4).bar()'), /le sapin : Pixel Noël/);
+});
+
+test('le sapin : sa fiche ouvre Pixel Noël quand combles.noel_url est réglé, sinon dit comment le brancher, et donne la demande pour Claude', () => {
+  const {p, J} = page();
+  p.run('CB_NOEL_FORCE = true; comblesUnlock(); setFloor(4);');
+  const side = () => J('cbSapinHtml(cbNoelUrl())');
+  p.run('CFG.noel_url = null;');
+  assert.equal(J('cbNoelUrl()'), null);
+  assert.match(side(), /combles\.noel_url/);
+  assert.doesNotMatch(side(), /Jouer à Pixel Noël/);
+  assert.match(side(), /Copier la demande pour Claude/);
+  assert.match(J('cbNoelAsk()'), /^Prépare les données de Pixel Noël pour l'année \d{4} \(skill pixel-noel\)/);
+  p.run("CFG.noel_url = 'https://claude.ai/artifact/noel';");
+  assert.match(side(), /href="https:\/\/claude\.ai\/artifact\/noel"[^>]*>▶ Jouer à Pixel Noël/);
+  p.run("CFG.noel_url = 'javascript:alert(1)';");
+  assert.equal(J('cbNoelUrl()'), null, 'une adresse https seulement');
+});

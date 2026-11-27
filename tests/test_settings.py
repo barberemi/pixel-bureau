@@ -243,6 +243,8 @@ class ComblesUrlTest(unittest.TestCase):
 
     def test_https_only(self):
         self.assertEqual(assemble.page_config({"combles": {"url": "https://claude.ai/artifact/abc"}})["combles_url"], "https://claude.ai/artifact/abc")
+        self.assertEqual(assemble.page_config({"combles": {"noel_url": "https://claude.ai/artifact/noel"}})["noel_url"], "https://claude.ai/artifact/noel")
+        self.assertIsNone(assemble.page_config({"combles": {"noel_url": "http://pas-https"}})["noel_url"])
         for bad in ({}, {"combles": {}}, {"combles": {"url": "javascript:alert(1)"}}, {"combles": {"url": "http://x"}}, {"combles": {"url": 3}}):
             self.assertIsNone(assemble.page_config(bad)["combles_url"], bad)
 

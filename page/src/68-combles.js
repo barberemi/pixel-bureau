@@ -15,13 +15,18 @@ function comblesUnlock(){CB_OPEN=true;setPref('combles','1');atelierTabs();}
 function comblesForget(){CB_OPEN=false;dropPref('combles');setFloor(0);}
 function cbReset(){CB_HITS=[];CB_PICK=null;}
 const cbUrl=()=>typeof CFG.combles_url==='string'&&/^https:\/\//.test(CFG.combles_url)?CFG.combles_url:null;
+// Noël aux Combles : du 1er décembre au 6 janvier, un sapin à côté de la borne ouvre Pixel Noël, la rétro de toute l'année
+// (arcade/pixel-noel/, adresse dans combles.noel_url). CB_NOEL_FORCE : pour les captures, hors saison.
+const cbNoelUrl=()=>typeof CFG.noel_url==='string'&&/^https:\/\//.test(CFG.noel_url)?CFG.noel_url:null;
+let CB_NOEL_FORCE=false;
+const cbNoel=t=>{if(CB_NOEL_FORCE)return true;const [,m,d]=parisYMD(t).split('-').map(Number);return m===12||(m===1&&d<=6);};
 // la nuit des Combles : hors des heures de bureau, la lucarne montre la lune et la pièce passe en lumière de veillée
 const cbNight=t=>{const h=parisHM(t).h;return h>=RHYTHM.office_hours[1]||h<RHYTHM.office_hours[0];};
 const CB_HELP={tabs:[['qui','Qui'],['ou','Où'],['moments','Moments']],
-  bar:()=>'<span>🕹 la borne : Sprint Quest</span><span>🌙 le soir, l\'équipe monte</span><span>✨ le vif d\'or se promène</span>',
+  bar:()=>'<span>🕹 la borne : Sprint Quest</span>'+(cbNoel(T)?'<span>🎄 le sapin : Pixel Noël</span>':'')+'<span>🌙 le soir, l\'équipe monte</span><span>✨ le vif d\'or se promène</span>',
   postes:()=>[],
   qui:'<p><b>L\'équipe</b>, le soir après les heures de bureau : elle monte jouer, et change de place de temps en temps.</p><p>Le jour, la pièce est vide.</p>',
-  ou:'<p><b>La borne</b> : Sprint Quest, la rétro en jeu d\'arcade. <b>La table</b> : la quête du sprint, avec son MJ. <b>Le lit</b>, l\'Anneau en lampe de chevet, et la trappe qui redescend.</p>',
+  ou:'<p><b>La borne</b> : Sprint Quest, la rétro en jeu d\'arcade. <b>Le sapin</b>, en décembre : Pixel Noël, la rétro de toute l\'année. <b>La table</b> : la quête du sprint, avec son MJ. <b>Le lit</b>, l\'Anneau en lampe de chevet, et la trappe qui redescend.</p>',
   moments:'<p><b>🌙 Le soir</b> : la lucarne s\'allume de lune, les lettres du mur s\'éclairent.</p>'};
 // ---------- le dessin ----------
 const cbP=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
@@ -118,6 +123,20 @@ function cbBorne(now,night){
   cbP(x,y+h-6,w,6,'#241c46');
   cbHit('borne',x-4,y,w+8,h);
 }
+// le sapin de Noël, à gauche de la borne : guirlande qui clignote, boules, étoile, cadeaux au pied ; clic : Pixel Noël
+const CB_SAPIN={x:758,y:342};
+function cbSapin(now,night){
+  const {x,y}=CB_SAPIN, tw=k=>REDUCED_MOTION||Math.floor(now/420+k)%3!==0;
+  if(night)CB_GLOW.push([x,y-70,120,'rgba(255,214,120,A)',.32]);
+  cbP(x-7,y-16,14,16,'#6e4c36');
+  for(let k=0;k<5;k++){const hw=18+k*10,yy=y-138+k*24;cbPoly([[x,yy-12],[x+hw,yy+26],[x-hw,yy+26]],'#2f7d47');cbPoly([[x,yy-8],[x+hw-5,yy+22],[x-hw+5,yy+22]],'#3f9e5c');cbP(x-hw+2,yy+24,5,3,'#e6eefb');cbP(x+hw-7,yy+24,5,3,'#e6eefb');}
+  const balls=[[-10,-104,'#e0433b'],[12,-90,'#ffcf4a'],[-20,-72,'#6ab8ff'],[16,-60,'#e0433b'],[-6,-50,'#c47ce0'],[-30,-34,'#ffcf4a'],[28,-30,'#6ab8ff'],[4,-26,'#e0433b']];
+  balls.forEach(([dx,dy,c],k)=>{cbP(x+dx-3,y+dy-3,7,7,'#17151f');cbP(x+dx-2,y+dy-2,5,5,c);cbP(x+dx-1,y+dy-1,1,1,'#fff');});
+  for(let k=0;k<14;k++){const t2=k/13,yy=y-120+t2*96,hw=8+t2*40,xx=x-hw+((k*37)%(hw*2|1));cbP(xx,yy,3,3,tw(k)?['#ffcf4a','#e0433b','#6ab8ff','#62d48e'][k%4]:'#1f4a2a');}
+  const st=tw(9)?'#ffe9a8':'#ffcf4a';cbPoly([[x,y-160],[x+5,y-150],[x+15,y-150],[x+7,y-143],[x+10,y-132],[x,y-139],[x-10,y-132],[x-7,y-143],[x-15,y-150],[x-5,y-150]],st);
+  [[-44,'#e0433b',20],[-20,'#3a6fc4',16],[18,'#3f9e5c',22]].forEach(([dx,c,w])=>{const gy=y-w+4;cbP(x+dx,gy,w,w-4,c);cbP(x+dx+w/2-1,gy,3,w-4,'#ffcf4a');cbP(x+dx,gy+(w-4)/2-1,w,3,'#ffcf4a');cbP(x+dx+w/2-5,gy-4,4,4,'#ffcf4a');cbP(x+dx+w/2+1,gy-4,4,4,'#ffcf4a');});
+  cbHit('sapin',x-48,y-162,96,166);
+}
 // la lampe de chevet : l'Anneau unique flotte au-dessus d'un pied en pierre
 function cbAnneau(night){
   const x=172, y=262;
@@ -190,14 +209,14 @@ function cbDrawCrew(now){
 function renderCombles(now){
   const night=cbNight(T);CB_HITS=[];CB_GLOW=[];
   ctx.save();ctx.setTransform(CB_S,0,0,CB_S,0,0);
-  cbSol();cbAlphabet(night);cbPresentoir();cbCarte();cbLucarne(night);cbEtagere(night);cbLit();cbTable(night);cbAnneau(night);cbBorne(now,night);cbTrappe();cbDrawCrew(now);cbVif(now,night);
+  cbSol();cbAlphabet(night);cbPresentoir();cbCarte();cbLucarne(night);cbEtagere(night);cbLit();cbTable(night);cbAnneau(night);cbBorne(now,night);if(cbNoel(T))cbSapin(now,night);cbTrappe();cbDrawCrew(now);cbVif(now,night);
   if(night){ctx.save();ctx.globalCompositeOperation='multiply';ctx.fillStyle='rgba(70,60,120,.55)';ctx.fillRect(0,0,CB_VW,CB_VH);ctx.restore();}
   for(const g of CB_GLOW)cbGlow(...g);
   ctx.restore();
   const e=ETAGES[CB_FLOOR];plaque(ctx,10,6,(e.n+' · '+e.nom).toUpperCase(),e.c);
 }
 // ---------- survol, clic, panneau ----------
-const CB_TIPS={borne:'La borne Sprint Quest : clic pour jouer',table:'La quête du sprint : la table de jeu de rôle, le MJ et son d20',lit:'Le lit Pac-Man, et le canard en peluche',
+const CB_TIPS={borne:'La borne Sprint Quest : clic pour jouer',sapin:'Le sapin de Noël : clic pour Pixel Noël, la rétro de l\'année',table:'La quête du sprint : la table de jeu de rôle, le MJ et son d20',lit:'Le lit Pac-Man, et le canard en peluche',
   anneau:'L\'Anneau unique, en lampe de chevet',alphabet:'L\'alphabet du mur : une lettre s\'allume le soir',presentoir:'Le bouclier d\'Hyrule et le Nimbus 2000',
   carte:'La Terre du Milieu, le sabre laser et l\'épée Brotherhood',etagere:'Le casque de Master Chief, une pokéball et le bloc « ? »',trappe:'La trappe : clic pour redescendre au RDC'};
 function cbHitAt(e){
@@ -207,11 +226,20 @@ function cbHitAt(e){
 }
 function comblesClick(e){
   const h=cbHitAt(e);if(h&&h.kind==='trappe'){setFloor(0);return;}
-  CB_PICK=h&&h.kind==='borne'?'borne':null;SIDE_FOLDED=false;renderSide(true); // la borne : son lien dans le panneau (la sandbox bloque window.open)
+  CB_PICK=h&&(h.kind==='borne'||h.kind==='sapin')?h.kind:null;SIDE_FOLDED=false;renderSide(true); // la borne, le sapin : leur lien dans le panneau (la sandbox bloque window.open)
 }
 function comblesHover(e){
-  const h=cbHitAt(e), who=h&&h.kind.startsWith('crew:')&&byKey[h.kind.slice(5)], s=who?who.name+' · monté jouer aux Combles':h?CB_TIPS[h.kind]||'':'';cv.style.cursor=h&&(h.kind==='trappe'||h.kind==='borne')?'pointer':'default';
+  const h=cbHitAt(e), who=h&&h.kind.startsWith('crew:')&&byKey[h.kind.slice(5)], s=who?who.name+' · monté jouer aux Combles':h?CB_TIPS[h.kind]||'':'';cv.style.cursor=h&&['trappe','borne','sapin'].includes(h.kind)?'pointer':'default';
   if(s){tip.style.display='block';tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px';tip.textContent=s;}else tip.style.display='none';
+}
+// la fiche du sapin : le lien vers Pixel Noël (ou comment le brancher), et la demande à passer à Claude pour préparer l'année
+const cbNoelAsk=()=>'Prépare les données de Pixel Noël pour l\'année '+parisYMD(T).slice(0,4)+' (skill pixel-noel) : relis Jira et GitHub, propose-moi les boss et les fiches, puis écris-les dans l\'artefact.';
+function cbSapinHtml(u){
+  return '<button type="button" class="at-back">‹ Les Combles</button><h3>🎄 Pixel Noël</h3><p>La rétro de toute l\'année en jeu, à plusieurs, sur claude.ai : un boss par membre, le traîneau de l\'IA, et le Père Noël en boss final.</p>'+
+    (u?'<p><a class="cb-play" href="'+esc(u)+'" target="_blank" rel="noopener">▶ Jouer à Pixel Noël</a></p>'
+      :'<p class="mut">Le sapin n\'est pas encore branché : l\'adresse de Pixel Noël dans <code>combles.noel_url</code> de bureau.config.json, puis republier la page.</p>')+
+    '<p class="mut">Les données de l\'année se préparent dans Claude Code, dans le dossier du Bureau : « '+esc(cbNoelAsk())+' »</p>'+
+    '<p><button type="button" class="cb-copy">📋 Copier la demande pour Claude</button></p>';
 }
 function drawComblesSide(side){
   if(sel!=null){setFloor(0);return;}
@@ -223,6 +251,11 @@ function drawComblesSide(side){
     box.querySelector('.at-back').addEventListener('click',()=>{CB_PICK=null;renderSide(true);});
     if(ACTIONS.sprintquest)sqCard(box);
     if(u)box.insertAdjacentHTML('beforeend','<p><a class="cb-play" href="'+esc(u)+'" target="_blank" rel="noopener">▶ Jouer à Sprint Quest</a></p>');
+    return;}
+  if(CB_PICK==='sapin'){
+    box.innerHTML=cbSapinHtml(cbNoelUrl());
+    box.querySelector('.at-back').addEventListener('click',()=>{CB_PICK=null;renderSide(true);});
+    const c=box.querySelector('.cb-copy');c.addEventListener('click',()=>{c.textContent=copyText(cbNoelAsk())?'✓ Demande copiée':'Sélectionne la demande ci-dessus, puis Cmd+C';});
     return;}
   box.innerHTML='<h3>🕹 Les Combles</h3><p>Tu as trouvé l\'étage secret. Le soir, l\'équipe monte jouer ; la borne ouvre Sprint Quest.</p>'+
     '<p class="mut">L\'onglet reste jusqu\'au rechargement de la page. Pour le cacher de nouveau, referme la trappe.</p>'+

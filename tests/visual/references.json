@@ -1,6 +1,6 @@
 {
  "platform": "linux",
- "chrome": "Google Chrome 157.0.8103.78",
+ "chrome": "Google Chrome 158.0.8127.36",
  "names": [
   "plan",
   "fiche-agent",
@@ -20,6 +20,7 @@
   "retours-calme",
   "redaction",
   "combles",
+  "combles-noel",
   "digicode",
   "fait-code",
   "fait-controles"

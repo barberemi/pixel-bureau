@@ -257,6 +257,7 @@ def page_config(cfg):
         "atelier_launcher": str((cfg.get("models") or {}).get("impl") or "")[:8],
         "atelier_chain": str((cfg.get("models") or {}).get("impl_chain") or branche_atelier(cfg) or "")[:8],  # tickets sortis aujourd'hui (runs de la chaîne)
         "combles_url": combles_url(cfg),  # l'étage secret (68-combles.js) : la borne ouvre Sprint Quest
+        "noel_url": combles_noel_url(cfg),  # en décembre, le sapin des Combles ouvre Pixel Noël
     }
 
 
@@ -275,6 +276,12 @@ def enseigne(cfg):
 def combles_url(cfg):
     """Adresse de Sprint Quest pour la borne des Combles (combles.url) : une adresse https, sinon None (borne débranchée)."""
     u = (cfg.get("combles") or {}).get("url")
+    return u if isinstance(u, str) and u.startswith("https://") else None
+
+
+def combles_noel_url(cfg):
+    """Adresse de Pixel Noël pour le sapin des Combles (combles.noel_url) : une adresse https, sinon None (sapin débranché)."""
+    u = (cfg.get("combles") or {}).get("noel_url")
     return u if isinstance(u, str) and u.startswith("https://") else None
 
 

@@ -30,6 +30,16 @@ Tout se déduit de l'heure : en rejeu, on voit la même soirée.
 
 Au clic, la borne ouvre sa fiche dans le panneau, avec le lien **▶ Jouer à Sprint Quest** : la rétro du sprint en jeu d'arcade, à plusieurs, sur claude.ai. Sans adresse réglée, la fiche explique comment la brancher.
 
+## Le sapin de Noël
+
+![Les Combles en décembre, le soir : le sapin à gauche de la borne](../img/combles-noel.png)
+
+Du 1er décembre au 6 janvier (heure de Paris), un sapin se dresse à gauche de la borne : étoile, guirlande qui clignote, boules et cadeaux au pied ; le soir, il brille dans la lumière de veillée. Au clic, sa fiche ouvre **▶ Jouer à Pixel Noël**, la rétro de toute l'année en jeu, à plusieurs, sur claude.ai (un boss par membre, le traîneau de l'IA, le Père Noël en boss final). Sans adresse réglée (`combles.noel_url`), la fiche explique comment le brancher ; le sapin est là quand même.
+
+![La fiche du sapin : le lien vers Pixel Noël et la demande pour Claude](../img/combles-sapin.png)
+
+Les données de l'année demandent de lire les changements de statut de Jira et de faire valider les boss par l'hôte : elles se préparent dans Claude Code, pas par un workflow du Bureau. La fiche donne la phrase à lui passer, avec **📋 Copier la demande pour Claude** (si le cadre de Kronn refuse la copie, la phrase reste affichée pour un Cmd+C). Hors saison, les Combles ne changent pas.
+
 ## Préparer la partie du sprint
 
 ![La fiche de la borne : la partie du dernier sprint, prête à copier](../img/combles-borne.png)
@@ -45,10 +55,10 @@ Une source en échec (gh absent, page de statut injoignable) laisse un avertisse
 
 ## Régler l'adresse de la borne
 
-Dans `bureau.config.json` (une adresse `https://` seulement), puis republier la page. `company`, facultatif, met le nom de l'entreprise sur l'écran titre de Sprint Quest (« La rétro de Dunder Mifflin ») :
+Dans `bureau.config.json` (une adresse `https://` seulement), puis republier la page. `company`, facultatif, met le nom de l'entreprise sur l'écran titre de Sprint Quest (« La rétro de Dunder Mifflin ») ; `noel_url`, facultatif, branche le sapin de Noël sur Pixel Noël :
 
 ```json
-"combles": {"url": "https://claude.ai/artifact/…", "company": "Dunder Mifflin"}
+"combles": {"url": "https://claude.ai/artifact/…", "company": "Dunder Mifflin", "noel_url": "https://claude.ai/artifact/…"}
 ```
 
 ## Si le jeu se perd
