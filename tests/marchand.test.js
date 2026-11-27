@@ -49,6 +49,16 @@ test('sans gate : absent ; gate ouverte : sur son nuage, une halte par îlot, le
   assert.equal(J(`stateAt(byKey.g_marchand, Date.parse('${at('22:01')}')).st`), 'gate');
 });
 
+test('gate décidée : il repart par la porte toujours sur son nuage, l\'ours avec lui', () => {
+  run(`GATES = [${gate('3 leçons à valider')}];`);
+  assert.equal(S('22:01').cloud, true);
+  run('GATES = [];');
+  const s = S('22:03');
+  assert.equal(s.st, 'off');
+  assert.equal(s.cloud, true, 'avant : il descendait du nuage et repartait à pied, seul');
+  assert.equal(J(`walksOut(byKey.g_marchand, sandmanState(byKey.g_marchand, Date.parse('${at('22:03')}')))`), true, 'il sort par la porte');
+});
+
 test('sur son nuage, il ne marche pas : de face au repos, sans le rebond des pas, même en route', () => {
   const c = "{guest: true, moving: true, dir: 'right', phase: 0, _st: {cloud: true}}";
   const [fx, fy] = J(`frameFor(${c}, 0)`);

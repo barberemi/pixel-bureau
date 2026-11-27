@@ -304,6 +304,28 @@ class ChaineScriptTest(unittest.TestCase):
         self.assertIn("- Lis docs/AGENTS.md d'abord\n- [cadrage] Cite les fichiers lus", ctx)
         self.assertNotIn("Un commit par lot", ctx)
 
+    def test_parallel_controls_read_their_lessons_from_the_team_memory(self):
+        """Les contrôles en parallèle ne passent pas par entree : missions met la mémoire dans leur contexte commun, les
+        leçons sans poste et celles des seuls postes lancés (essai DM-7545 : une leçon [besoin] n'atteignait pas Besoin)."""
+        self.prepare()
+        g = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        Path(self.wt, "app", "A.php").write_text("<?php // v1\n")
+        subprocess.run(g + ["commit", "-qam", "v1"], cwd=self.wt, check=True)
+        self.sh("bilan_code")
+        self.assertNotIn("Mémoire de l'équipe", self.sh("missions")[1], "sans fiche : rien")
+        mem = Path(self.tmp, "home", ".local", "share", "pixel-bureau", "memoire")
+        mem.mkdir(parents=True)
+        (mem / "equipe.md").write_text("# Mémoire · equipe\n\n- Écris en français\n")
+        (mem / "impl.md").write_text("# Mémoire · impl\n\n- Décris d'après le diff\n- [besoin] Cite des fichiers réels\n"
+                                     "- [code] Un commit par lot\n- [inconnu] Rien\n")
+        m = self.sh("missions")[1]
+        self.assertIn("besoin", self.dossier("missions.json")["postes"])
+        self.assertIn("## Mémoire de l'équipe (leçons validées par le boss, à appliquer)", m)
+        self.assertIn("- Écris en français\n- Décris d'après le diff\n- [besoin] Cite des fichiers réels", m)
+        self.assertNotIn("Un commit par lot", m)  # un poste qui n'est pas un contrôle lancé
+        self.assertNotIn("[inconnu]", m)
+        self.assertIn("Cite des fichiers réels", Path(self.wt, ".kronn", "chaine", "controles_contexte.md").read_text())
+
     def test_prepare_then_cadrage_with_human_feedback(self):
         self.prepare()
         self.assertEqual(subprocess.run(["git", "branch", "--show-current"], cwd=self.wt, capture_output=True, text=True).stdout.strip(),

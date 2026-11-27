@@ -17,7 +17,7 @@ S'il n'y a rien de nouveau, le run s'arrête là, sans agent ni jetons.
 
 ## Le marchand de sable
 
-Tant que la gate attend, le marchand de sable vient la porter : un monsieur brun à la cape verte et à l'écharpe rayée, debout sur son nuage, son ours à côté. Il ne marche pas : c'est le nuage qui le porte d'un îlot à l'autre. Il fait le tour des îlots de l'open space, s'arrête en haut de chacun, son nuage par-dessus les bureaux (une minute et demie), y sème un peu de sable, puis passe au suivant. Sa bulle dit combien de leçons t'attendent, le nombre en rouge.
+Tant que la gate attend, le marchand de sable vient la porter : un monsieur brun à la cape verte et à l'écharpe rayée, debout sur son nuage, son ours à côté. Il ne marche pas : c'est le nuage qui le porte d'un îlot à l'autre. Il fait le tour des îlots de l'open space, s'arrête en haut de chacun, son nuage par-dessus les bureaux (une minute et demie), y sème un peu de sable, puis passe au suivant. Sa bulle dit combien de leçons t'attendent, le nombre en rouge. Une fois la gate décidée, il repart par la porte, toujours sur son nuage avec son ours.
 
 ![Le marchand de sable sur son nuage au-dessus d'un îlot, son ours à côté, la bulle « 3 leçons à valider »](../img/marchand.png)
 
