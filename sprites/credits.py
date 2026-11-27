@@ -6,7 +6,7 @@
 Sprites : les fichiers LPC embarqués dans la page (sprites/lpc_used.json, écrit par build_layers.py) croisés avec le
 CREDITS.csv du générateur LPC (auteurs, licences, sources de chaque fichier), téléchargé une fois dans
 sprites/lpc_cache/. Un fichier absent du CSV prend les crédits de son dossier le plus proche. Planches fournies
-(sprites/common/) : les recettes de heralds.py. Police : Press Start 2P.
+(sprites/common/) : les recettes de heralds.py, ou générées (heralds.GENERATED). Police : Press Start 2P.
 """
 import csv, json, os, sys, urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -95,9 +95,12 @@ def render(used, rows):
                          f"artistes : {', '.join(a)}.")
         else:
             lines.append(f"- {name} (`{d}/`) : générateur LPC ; calques à relever.")
+    for n, name in heralds.GENERATED.items():
+        lines.append(f"- {name} (`sprites/common/{n}/`) : planche générée par IA pour le Bureau, sans calque LPC, découpée au "
+                     "format des sprites par `sprites/decoupe.py`.")
     lines.append("- Le sorcier du pack d'exemple (`tests/fixtures/pack-exemple/sprites/sorcier/`) : copie du mage, mêmes crédits.")
     lines += ["", "## Personnages", "",
-              "La démo et les agents sont un clin d'œil de fan à *The Office*, les hérauts à Yoda (*Star Wars*) et à Gandalf "
+              "La démo et les agents sont un clin d'œil de fan à *The Office*, les hérauts à Yoda et Palpatine (*Star Wars*) et à Gandalf "
               "(*Le Seigneur des anneaux*). Ces noms et ces personnages appartiennent à leurs ayants droit ; Le Bureau n'a "
               "aucun lien avec eux, ni leur approbation, et n'en fait aucun usage commercial.", ""]
     return "\n".join(lines)

@@ -148,23 +148,27 @@ class PackTest(unittest.TestCase):
     @unittest.skipUnless(Image, "Pillow absent")
     def test_frozen_side_walk_is_reported(self):
         """Planche dessinée dont la marche de côté répète la même enjambée (le Pompier, Stephouille, le boss au sax) :
-        build_sprites l'avertit ; une marche dont les pieds se rapprochent et s'écartent passe."""
+        build_sprites l'avertit ; une marche dont les pieds se rapprochent et s'écartent passe, ou dont l'écartement reste
+        le même mais qui change de place (une canne, une robe au sol)."""
         sys.path.insert(0, os.path.join(ROOT, "sprites"))
         import build_sprites
 
-        def sheet(name, widths):
+        def sheet(name, widths, shifts=(0,)):
             d = os.path.join(self.tmp, name, name)
             os.makedirs(d)
             im = Image.new("RGBA", (832, 54 * 64), (0, 0, 0, 0))
             for r in range(8, 12):
                 for c in range(9):
                     w = widths[c % len(widths)] if r in (9, 11) else 20
-                    im.paste((40, 40, 60, 255), (c * 64 + 32 - w // 2, r * 64 + 10, c * 64 + 32 + w // 2, r * 64 + 60))
+                    x = c * 64 + 32 + (shifts[c % len(shifts)] if r in (9, 11) else 0)
+                    im.paste((40, 40, 60, 255), (x - w // 2, r * 64 + 10, x + w // 2, r * 64 + 60))
             im.save(os.path.join(d, "universal.png"))
             return os.path.dirname(d)
 
-        for name, widths, frozen in (("glisse", [26, 27], ["gauche", "droite"]), ("marche", [26, 26, 12, 12], [])):
-            d = sheet(name, widths)
+        # « canne » : même écartement mais les pieds changent de place (la canne de Yoda, la robe de Palpatine) : elle marche
+        for name, widths, shifts, frozen in (("glisse", [26, 27], (0,), ["gauche", "droite"]), ("marche", [26, 26, 12, 12], (0,), []),
+                                             ("canne", [26], (0, 5, 0, -5), [])):
+            d = sheet(name, widths, shifts)
             self.assertEqual(build_sprites.frozen_side_walk(build_sprites.build_custom(os.path.join(d, name))), frozen, name)
             err = io.StringIO()
             with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
