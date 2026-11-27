@@ -182,19 +182,25 @@ def frozen_side_walk(png):
     """Directions de côté (« gauche », « droite ») dont la marche glisse : une planche dessinée peut répéter la même
     enjambée sur ses 8 images de marche (le Pompier, Stephouille et le boss au sax l'ont fait). On mesure l'écartement
     des pieds (pixels opaques des 6 dernières lignes) : il varie quand les jambes bougent, presque pas sinon. Seuil
-    relatif, à 18 % de l'écartement maximal : mesuré à 4-14 % sur ces trois planches avant correction, 21 % pour Yoda
-    (petites jambes sous la robe), 24 % et plus ailleurs. Le halo semi-transparent (alpha <= 40) ne compte pas."""
+    relatif, à 18 % de l'écartement maximal : mesuré à 4-14 % sur ces trois planches avant correction, 24 % et plus
+    ailleurs. Une canne ou une robe qui touche le sol garde l'écartement presque constant alors que les pieds bougent
+    (Yoda, Palpatine, 2026-11-27) : la marche n'est figée que si les pieds restent aussi au même endroit, écart moyen
+    entre deux images (pixels des 6 lignes du bas qui changent / pixels de l'une ou l'autre) sous 0,2 ; mesuré à 0,23 et
+    0,26 pour ces deux-là, 0,37 et plus pour les hérauts LPC. Le halo semi-transparent (alpha <= 40) ne compte pas."""
     im = Image.open(io.BytesIO(png)).convert("RGBA")
     out = []
     for name, r in (("gauche", 1), ("droite", 3)):
-        spans = []
+        spans, masks = [], []
         for c in range(1, 9):
             a = frame(im, r, c).getchannel("A").point(lambda v: 255 if v > 40 else 0)
             box = a.getbbox()
-            feet = box and a.crop((0, max(0, box[3] - 6), 64, box[3])).getbbox()
+            low = box and a.crop((0, max(0, box[3] - 6), 64, box[3]))
+            feet = low and low.getbbox()
             if feet:
                 spans.append(feet[2] - feet[0])
-        if len(spans) >= 4 and max(spans) - min(spans) < 0.18 * max(spans):
+                masks.append({i for i, v in enumerate(low.getdata()) if v})
+        moved = [len(m ^ n) / len(m | n) for i, m in enumerate(masks) for n in masks[i + 1:]]
+        if len(spans) >= 4 and max(spans) - min(spans) < 0.18 * max(spans) and sum(moved) / len(moved) < 0.2:
             out.append(name)
     return out
 

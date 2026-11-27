@@ -43,7 +43,7 @@ pixel-bureau/
 ├── layouts/                   # plans de bureau bureau-layout/1 : darkmode (type), newsroom, exemple-startup
 ├── team/                      # defaults.json (valeurs proposées à l'installation), guests.json (invités communs)
 ├── teams/                     # (absent du dépôt) profils d'équipe locaux ; une équipe vit dans son pack (tests/fixtures/pack-exemple)
-├── sprites/                   # build_sprites.py, build_layers.py, credits.py (CREDITS.md), heralds.py (recettes des hérauts), cast.json, layers.json, lpc_used.json, common/ (Gandalf, Yoda), common.json
+├── sprites/                   # build_sprites.py, build_layers.py, credits.py (CREDITS.md), heralds.py (recettes des hérauts LPC, GENERATED), decoupe.py (planches générées à fond magenta : Yoda, Palpatine), cast.json, layers.json, lpc_used.json, common/ (Gandalf, Yoda, Palpatine…), common.json
 ├── data/                      # instantanés de démo (équipe fictive) : aperçu local, captures, tests
 ├── guide/                     # doc HUMAINE (ne pas réécrire) : developpement.md, fonctionnalites/NN-*.md, img/, exemples/
 ├── docs/                      # doc pour agents (ce dossier)

@@ -1,9 +1,10 @@
-"""Planches des invités communs (sprites/common/) : le mage (Gandalf) et le sage (Yoda), composés le 2026-10-05 à partir
-de calques du générateur LPC, le facteur du courrier (#30, 2026-10-14), l'amiral Ackbar des grosses PR (2026-11-20) et le
+"""Planches des invités communs (sprites/common/) : le mage (Gandalf), composé le 2026-10-05 à partir de calques du
+générateur LPC, le facteur du courrier (#30, 2026-10-14), l'amiral Ackbar des grosses PR (2026-11-20) et le
 marchand de sable de la mémoire du soir (2026-11-25). Leurs recettes servent aussi à les créditer (credits.py). Le LPC n'a
 pas de képi : celui du facteur est dessiné ici, case par case, sur sa tête (« KEPI ») ; ni de tête de Mon Calamari : celle
 d'Ackbar aussi (« CALAMARI ») ; ni d'écharpe : celle du marchand de sable aussi (« ECHARPE »). Son ours et son nuage ne sont
-pas des planches : la page les dessine (page/src/49-marchand.js).
+pas des planches : la page les dessine (page/src/49-marchand.js). Yoda et Palpatine ne sont pas des recettes : leurs
+planches sont générées puis découpées par decoupe.py (GENERATED, 2026-11-27).
 
     .venv/bin/python sprites/heralds.py    # refait sprites/common/<nom>/<nom>-walk.png et -idle.png (identiques au pixel)
 """
@@ -11,7 +12,7 @@ import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ANIMS = ("walk", "idle")
-GRAY, ROBE, WHITE, GREEN, BROWN = "#8d8f97", "#7c7f88", "#ecebe6", "#9fc46a", "#6b5038"
+GRAY, ROBE, WHITE = "#8d8f97", "#7c7f88", "#ecebe6"
 NAVY, SKY, YELLOW = "#24357a", "#a9c8ec", "#f2c230"
 KEPI = "KEPI"  # pas un calque LPC : le képi dessiné par kepi()
 CALAMARI = "CALAMARI"  # pas un calque LPC : la tête de Mon Calamari dessinée par calamari()
@@ -32,9 +33,6 @@ RECIPES = {
         ("cape/solid/fg", ROBE, "lum"), ("head/heads/human/male", PALE, "mul"), ("eyes/human/adult/default", None, None),
         ("hair/long/adult", WHITE, "lum"), ("beards/beard/winter/male", WHITE, "lum"),
         ("hat/magic/wizard/base/adult/{a}/gray.png", None, None)]),
-    "yoda": ("Le sage (Yoda)", [
-        ("cape/solid/bg", BROWN, "lum"), ("body/bodies/child", GREEN, "mul"), ("head/heads/human/child", GREEN, "mul"),
-        ("head/ears/long/adult", GREEN, "mul"), ("eyes/human/adult/default", None, None), ("cape/solid/fg", BROWN, "lum")]),
     "facteur": ("Le facteur (képi dessiné pour le Bureau)", [
         ("body/bodies/male", PALE, "mul"), ("feet/shoes/basic/male", "#222222", "lum"), ("legs/pants/male", NAVY, "lum"),
         ("torso/clothes/longsleeve/longsleeve/male", SKY, "lum"), ("torso/clothes/vest/male/{a}/navy.png", None, None),
@@ -50,6 +48,8 @@ RECIPES = {
         ("head/heads/human/male", PALE, "mul"), ("eyes/human/adult/default", None, None), ("hair/parted/adult", BRUN_C, "lum"),
         (ECHARPE, None, None)]),
 }
+# planches générées (fond magenta) et découpées par decoupe.py, sans calque LPC : {dossier: nom pour les crédits}
+GENERATED = {"yoda": "Le sage (Yoda)", "palpatine": "L'empereur (Palpatine), pour le rejeu"}
 DRAWN = (KEPI, CALAMARI, ECHARPE)  # pas des calques LPC : dessinés case par case
 
 
