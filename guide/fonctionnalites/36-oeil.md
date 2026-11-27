@@ -47,7 +47,7 @@ Par sections : ✋ À décider, 🛠 À corriger, 👀 À relire, 📬 Ailleurs 
 
 ![Le Nazgûl pose le rapport du matin sur le bureau du boss](../img/nazgul.png)
 
-Il ne fait le travail de personne : il porte ce que l'Œil a vu. Il part de la tour, fond sur ton bureau, y pose un parchemin, puis retourne à la tour.
+Il ne fait le travail de personne : il porte ce que l'Œil a vu. Il part de la tour, fond sur ton bureau ailes repliées, y pose le parchemin qu'il tenait dans ses griffes, puis retourne à la tour en battant des ailes. Le cavalier et sa monture viennent d'une planche générée pour le Bureau (`sprites/common/nazgul/`, découpée par `sprites/decoupe.py vol`).
 
 - **Le rapport du matin**, 10 minutes avant le daily : ce qui est arrivé depuis la veille à 18 h (« 📜 Le rapport de l'Œil : 3 nouveautés depuis hier soir »), s'il y a du neuf.
 - **Dans la journée**, chaque nouveauté pour toi : un nouveau retour sur une de tes PR (« 🛠 site-web#2051 : changements demandés · jimh »), une PR dont on te demande la relecture, quand elle a été ouverte dans la journée (GitHub ne date pas la demande elle-même).

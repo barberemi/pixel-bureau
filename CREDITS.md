@@ -89,8 +89,9 @@ Benjamin K. Smith (BenCreating), bluecarrot16, Carlo Enrico Victoria (Nemisys), 
 - Le marchand de sable (écharpe dessinée pour le Bureau) (`sprites/common/marchand/`, recette `sprites/heralds.py`) : calques LPC `cape/solid/bg`, `body/bodies/male`, `feet/shoes/basic/male`, `legs/pants/male`, `torso/clothes/longsleeve/longsleeve/male`, `head/heads/human/male`, `eyes/human/adult/default`, `hair/parted/adult` ; artistes : Benjamin K. Smith (BenCreating), bluecarrot16, Durrani, Eliza Wyatt (ElizaWy), ElizaWy, Evert, JaidynReiman, Joe White, Johannes Sjölund (wulax), kirts, Manuel Riecke (MrBeast), Matthew Krohn (makrohn), MuffinElZangano, Nila122, Stephen Challener (Redshrike), TheraHedwig.
 - Le sage (Yoda) (`sprites/common/yoda/`) : planche générée par IA pour le Bureau, sans calque LPC, découpée au format des sprites par `sprites/decoupe.py`.
 - L'empereur (Palpatine), pour le rejeu (`sprites/common/palpatine/`) : planche générée par IA pour le Bureau, sans calque LPC, découpée au format des sprites par `sprites/decoupe.py`.
+- Le Nazgûl et sa monture ailée, messager de l'Œil (`sprites/common/nazgul/`) : planche générée par IA pour le Bureau, découpée en bande d'images par `sprites/decoupe.py vol`.
 - Le sorcier du pack d'exemple (`tests/fixtures/pack-exemple/sprites/sorcier/`) : copie du mage, mêmes crédits.
 
 ## Personnages
 
-La démo et les agents sont un clin d'œil de fan à *The Office*, les hérauts à Yoda et Palpatine (*Star Wars*) et à Gandalf (*Le Seigneur des anneaux*). Ces noms et ces personnages appartiennent à leurs ayants droit ; Le Bureau n'a aucun lien avec eux, ni leur approbation, et n'en fait aucun usage commercial.
+La démo et les agents sont un clin d'œil de fan à *The Office*, les hérauts à Yoda et Palpatine (*Star Wars*) et à Gandalf et au Nazgûl (*Le Seigneur des anneaux*). Ces noms et ces personnages appartiennent à leurs ayants droit ; Le Bureau n'a aucun lien avec eux, ni leur approbation, et n'en fait aucun usage commercial.

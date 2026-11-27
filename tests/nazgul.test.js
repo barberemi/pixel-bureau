@@ -43,3 +43,17 @@ test('galerie : « Le Nazgûl messager » parmi les petits moments, avec la tour
   run(`OEIR = null`);
   assert.ok(!J(`galleryScenes().some(x => x.n === 'Le Nazgûl messager')`));
 });
+
+test('la figure : la planche générée (nazgul_vol), battement d\'ailes ou plané, le parchemin sous les griffes, en miroir vers la gauche', () => {
+  assert.ok(J(`!!SPR.nazgul_vol && SPR.nazgul_vol.startsWith('data:image/png;base64,')`), 'la planche est embarquée');
+  const draw = code => J(`(() => { const out = [], keep = ctx, keepImg = IMG.nazgul_vol;
+    ctx = {save() {}, restore() {}, translate(x, y) { out.push(['t', x, y]); }, scale(x) { out.push(['s', x]); },
+      drawImage(im, sx) { out.push(['i', sx / im.height]); }};
+    IMG.nazgul_vol = {complete: true, height: 83};
+    try { ${code}; } finally { ctx = keep; IMG.nazgul_vol = keepImg; } return out; })()`);
+  assert.deepEqual(draw(`nazFigure(100, 50, 1, 0, false)`), [['t', 100, 50], ['s', 1], ['i', 1]]); // ailes hautes
+  assert.deepEqual(draw(`nazFigure(100, 50, -1, null, true)`), [['t', 100, 50], ['s', -1], ['i', 5], ['i', 0]]); // plané, le parchemin d'abord
+  assert.deepEqual(draw(`for (let k = 0; k < 6; k++) nazFigure(0, 0, 1, k / 6, false)`).filter(x => x[0] === 'i').map(x => x[1]), [1, 2, 3, 4, 3, 2]);
+  assert.deepEqual(J(`(() => { const keepImg = IMG.nazgul_vol; IMG.nazgul_vol = {complete: false}; const keep = ctx; let n = 0;
+    ctx = {save() { n++; }}; try { nazFigure(0, 0, 1, 0, true); } finally { ctx = keep; IMG.nazgul_vol = keepImg; } return n; })()`), 0); // pas chargée : rien
+});

@@ -64,3 +64,14 @@ test('hors du Kanban, un lien de ticket ouvre le Kanban (son volet), sans touche
   assert.deepEqual(J('OPENED'), ['kanban']);
   assert.equal(J('sel'), who);
 });
+
+test('portrait : les planches générées (Palpatine, Yoda), plus petites, sont cadrées plus bas ; les autres comme avant', () => {
+  const oy = sprite => J(`(() => { const keepCe = document.createElement, keepImg = IMG[${JSON.stringify(sprite)}]; let y = null;
+    document.createElement = () => ({style: {}, getContext: () => ({drawImage(im, sx, sy) { y = sy; }})});
+    IMG[${JSON.stringify(sprite)}] = {complete: true}; SPR[${JSON.stringify(sprite)}] = SPR[${JSON.stringify(sprite)}] || 'x';
+    try { portrait({key: 'p', sprite: ${JSON.stringify(sprite)}, person: true}, 64); } finally { document.createElement = keepCe; IMG[${JSON.stringify(sprite)}] = keepImg; }
+    return y - 4 * 64; })()`);
+  assert.equal(oy('palpatine'), 12);
+  assert.equal(oy('yoda'), 14);
+  assert.equal(oy('mage'), 8);
+});

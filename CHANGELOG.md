@@ -26,6 +26,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions : `0
 
 ### Modifié
 
+- **Le Nazgûl redessiné** : le messager de l'Œil vient d'une planche générée (cavalier encapuchonné sur sa monture ailée, battement d'ailes, piqué ailes repliées, le parchemin dans les griffes), au lieu du dessin en code. Les portraits de Palpatine et de Yoda, plus petits que les personnages LPC, sont recadrés dans le panneau : la tête n'est plus collée en bas du cadre.
 - **Yoda redessiné, en chibi comme l'équipe** : sa planche n'est plus composée de calques LPC mais générée puis découpée (`sprites/decoupe.py`) ; même scène au plateau TV après une mise en prod. La planche de Palpatine (marche et lancer d'éclairs) arrive aussi, pour le rejeu ; aucun personnage ne la porte encore. La marche d'un personnage à canne ou à robe longue n'est plus signalée « figée » à tort.
 
 - **L'habillage par défaut s'appelle Darkmode** : le thème Classique devient `darkmode` (`page/src/theme-darkmode.css`) et le plan type `layouts/darkmode.json`, mêmes couleurs et même plan. Une installation qui avait `ui.skin` à `classique` retombe d'elle-même sur Darkmode.

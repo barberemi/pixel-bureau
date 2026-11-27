@@ -50,6 +50,8 @@ RECIPES = {
 }
 # planches générées (fond magenta) et découpées par decoupe.py, sans calque LPC : {dossier: nom pour les crédits}
 GENERATED = {"yoda": "Le sage (Yoda)", "palpatine": "L'empereur (Palpatine), pour le rejeu"}
+# images générées qui ne sont pas des personnages (decoupe.py vol : une bande d'images, sans marche)
+GENERATED_FX = {"nazgul": "Le Nazgûl et sa monture ailée, messager de l'Œil"}
 DRAWN = (KEPI, CALAMARI, ECHARPE)  # pas des calques LPC : dessinés case par case
 
 

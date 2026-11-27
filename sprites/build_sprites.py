@@ -206,10 +206,18 @@ def frozen_side_walk(png):
 
 
 def sheets(custom_dir):
-    """Planches des sprites fournis d'un dossier (un sous-dossier par sprite) ; avertit d'une marche de côté figée. Un
-    <nom>-cast.png à côté (images de lancer de 128 x 64, decoupe.py eclairs) est gardé tel quel sous <nom>_cast."""
+    """Planches des sprites fournis d'un dossier (un sous-dossier par sprite) ; avertit d'une marche de côté figée. Les
+    images à part, gardées telles quelles : <nom>-cast.png (lancer, 128 x 64, decoupe.py eclairs) sous <nom>_cast, et
+    <nom>-vol.png (une monture qui vole, decoupe.py vol : le Nazgûl, dossier sans marche) sous <nom>_vol."""
     out = {}
     for name in sorted(os.listdir(custom_dir)) if os.path.isdir(custom_dir) else []:
+        for extra in ("cast", "vol"):
+            path = os.path.join(custom_dir, name, f"{name}-{extra}.png")
+            if os.path.exists(path):
+                with open(path, "rb") as f:
+                    out[f"{name}_{extra}"] = "data:image/png;base64," + base64.b64encode(f.read()).decode()
+        if not any("walk" in f for f in os.listdir(os.path.join(custom_dir, name))):
+            continue  # pas un personnage : ses images à part seulement
         png = build_custom(os.path.join(custom_dir, name))
         frozen = frozen_side_walk(png)
         if frozen:
@@ -218,10 +226,6 @@ def sheets(custom_dir):
                   file=sys.stderr)
         out[name] = "data:image/png;base64," + base64.b64encode(png).decode()
         print(name, len(png), "(sprite fourni)")
-        cast = os.path.join(custom_dir, name, f"{name}-cast.png")
-        if os.path.exists(cast):  # images de lancer (decoupe.py eclairs, Palpatine) : telles quelles, sous <nom>_cast
-            with open(cast, "rb") as f:
-                out[f"{name}_cast"] = "data:image/png;base64," + base64.b64encode(f.read()).decode()
     return out
 
 
