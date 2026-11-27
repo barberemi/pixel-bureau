@@ -69,7 +69,8 @@ class DecoupeTest(unittest.TestCase):
     def test_generated_sheets_are_shipped_and_credited(self):
         """Chaque planche générée a sa marche et son attente dans sprites/common/, et sa ligne dans CREDITS.md."""
         import heralds
-        credits = open(os.path.join(ROOT, "CREDITS.md"), encoding="utf-8").read()
+        with open(os.path.join(ROOT, "CREDITS.md"), encoding="utf-8") as f:
+            credits = f.read()
         for name in heralds.GENERATED:
             for a in ("walk", "idle"):
                 self.assertTrue(os.path.exists(os.path.join(ROOT, "sprites", "common", name, f"{name}-{a}.png")), name)
