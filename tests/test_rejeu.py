@@ -66,6 +66,37 @@ class GabaritTest(unittest.TestCase):
         self.assertTrue(templates.skipped("rejeu", {"jira": {}}))
 
 
+class PalpatineTest(unittest.TestCase):
+    """Dans la page (lot 2) : Palpatine, l'agent du modèle rejeu, ses deux boutons et ses images de lancer."""
+
+    def setUp(self):
+        import assemble
+        self.a = assemble
+        self.cfg = copy.deepcopy(FIXTURE)  # la démo a le rejeu installé (models.rejeu, models.impl_rejeu)
+
+    def test_boutons_et_runs(self):
+        pc = self.a.page_config(self.cfg)
+        self.assertEqual(pc["rejeu_wf"], self.cfg["models"]["impl_rejeu"][:8])  # ses runs, lus dans AT_RUNS
+        self.assertEqual(pc["action_wf"]["rejeu"], self.cfg["models"]["rejeu"][:8])  # son visage sur les boutons
+        self.assertEqual(self.a.action_ids(self.cfg)["rejeu"], self.cfg["models"]["rejeu"])
+        self.assertEqual({self.a.ACTIONS[k] for k in ("bureau-rejeu", "bureau-rejeu-ticket")}, {("rejeu", "__REJEU_WF__")})
+        cfg = copy.deepcopy(self.cfg)
+        del cfg["models"]["rejeu"], cfg["models"]["impl_rejeu"]
+        self.assertEqual(self.a.page_config(cfg)["rejeu_wf"], "")
+        self.assertNotIn("rejeu", self.a.action_ids(cfg))
+
+    def test_palpatine_et_ses_images_de_lancer(self):
+        agents = {a["key"]: a for a in json.loads(Path(ROOT, "team", "agents.json").read_text())["agents"]}
+        self.assertEqual((agents["palpatine"]["model"], agents["palpatine"]["sprite"]), ("rejeu", "palpatine"))
+        common = json.loads(Path(ROOT, "sprites", "common.json").read_text())
+        self.assertTrue(common["palpatine_cast"].startswith("data:image/png;base64,"))  # build_sprites.sheets : <nom>-cast.png
+        self.assertTrue({"palpatine", "palpatine_cast"} <= set(self.a.sprites(self.a.merged(self.cfg))))  # embarqués avec lui (casting par défaut, comme build)
+        cfg = copy.deepcopy(self.cfg)
+        del cfg["models"]["rejeu"], cfg["models"]["impl_rejeu"]
+        cfg["agents"] = [a for a in cfg["agents"] if a["key"] != "palpatine"]  # la démo l'a dans ses agents, rattaché au lanceur
+        self.assertFalse({"palpatine", "palpatine_cast"} & set(self.a.sprites(self.a.merged(cfg))))  # sans le rejeu, rien de plus dans la page
+
+
 class RejeuTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
@@ -146,6 +177,13 @@ class RejeuTest(unittest.TestCase):
         self.assertEqual(h["juge"]["resume"], "Même idée, un fichier de trop.")
         self.assertEqual(json.loads(Path(self.store, "joues.json").read_text())["42"]["note"], 81)
         self.assertIn("Tout se déroule comme je l’avais prévu", r.stdout)
+        # la page relit la note dans cette sortie (_lib.rejeu_res, run_res du run) : Palpatine la dit dans sa bulle
+        os.environ.setdefault("BUREAU_CONFIG", os.path.join(ROOT, "tests", "fixtures", "bureau.config.json"))
+        sys.path.insert(0, os.path.join(ROOT, "workflows"))
+        from _lib import rejeu_res
+        self.assertEqual(rejeu_res(r.stdout), {"ticket": "ABC-1", "pr": 42, "note": 81, "cible": 80, "atteint": True,
+                                               "parts": {"tests": 100, "fichiers": 67, "lignes": 40, "juge": 70}})
+        self.assertIsNone(rejeu_res("Pas de note (étape note) : rien à ranger."))
 
     def test_tests_rouges_et_juge_absent(self):
         self.depot()
@@ -158,6 +196,9 @@ class RejeuTest(unittest.TestCase):
         self.assertIsNone(h["parts"]["juge"])  # sans juge : la note se fait sur le reste, poids rapportés
         self.assertEqual(h["note_sur_100"], round(100 * (0.2 * 0.67 + 0.1 * 0.4) / 0.8))
         self.assertIn("Je sens un grand trouble", r.stdout)
+        sys.path.insert(0, os.path.join(ROOT, "workflows"))
+        from _lib import rejeu_res
+        self.assertEqual(rejeu_res(r.stdout)["parts"]["juge"], None)  # « juge : non mesuré »
 
     def test_tests_non_mesures(self):
         self.depot()

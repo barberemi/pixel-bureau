@@ -56,7 +56,7 @@ function bindsFor(action,row){
 // calculé à l'assemblage ; jamais un nom écrit en dur), un agent par workflow, jamais celui d'un autre bouton ni un
 // intérimaire (il change chaque jour) ; « Commenter » : toi (le commentaire part avec ton compte Jira) ; sinon
 // l'hologramme du Bureau
-const actKey=a=>({meppr:'mep_pr',fixpr:'fix_pr',aitime:'ai_time'})[a.slice(7)]||a.slice(7); // 'bureau-fixpr' -> clé fix_pr de la config
+const actKey=a=>({meppr:'mep_pr',fixpr:'fix_pr',aitime:'ai_time','rejeu-ticket':'rejeu'})[a.slice(7)]||a.slice(7); // 'bureau-fixpr' -> clé fix_pr de la config
 function actAgent(action){
   const wf=((CFG.action_wf||{})[actKey(action)]||'').slice(0,8);
   return wf&&chars.find(x=>!x.person&&!x.visitor&&!x.temp&&(x.wf||[]).includes(wf))
@@ -262,6 +262,7 @@ function renderTicket(side,key){
     launchBlock(box,{action:'bureau-aitime',bind:{key},verb:'estime le temps gagné par l\'IA',
       sub:'Ses PR mergées sont retrouvées sans IA, l\'IA estime d\'après leurs diffs ; tu relis le commentaire avant qu\'il parte sur le ticket, avec son label',
       label:'⏱ Temps gagné IA',title:'Temps gagné IA sur '+key,off:x.ai_fb?'Déjà posté : le label de suivi est sur le ticket':null});
+  if(known&&x.cat==='done')palpTicketButton(box,key); // 49-palpatine.js : rejouer le ticket livré
   if(box.childElementCount===k0+1&&box.lastChild)box.lastChild.remove();
   if(box.childElementCount===before)note(known?'Rien à lancer à ce statut.':'Ticket pas encore dans les données des boutons : prochain passage du cron équipe.');
   else note(KM_NOTE);

@@ -523,6 +523,13 @@ SHOTS = {
                  "r=c.getBoundingClientRect(),k=r.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',"
                  "left:(r.left+scrollX+(g.pos.x-150)*k)+'px',top:(r.top+scrollY+(g.pos.y-125)*k)+'px',width:330*k+'px',height:185*k+'px',"
                  "pointerEvents:'none'});document.body.appendChild(d);},1500);", "#shotclip", 2),
+    # le rejeu (49-palpatine.js) : un run impl_rejeu en cours depuis 10h40, Palpatine foudroie la baie des serveurs (rafale figée)
+    "palpatine": (1400, 1000, AT(11) + "const iso=h=>new Date(DAY0+h*36e5).toISOString();AT_RUNS=[...AT_RUNS,{wf:CFG.rejeu_wf+'-demo',"
+                  "wf_name:'Le Bureau · rejouer (chaîne)',run:'demo-rejeu',status:'Running',start:iso(10+40/60),end:null,vars:{ticket:'DM-7457'},"
+                  "steps:[{n:'ticket',k:'Exec',s:'Success',at:iso(10+40/60)},{n:'code',k:'Agent',s:'Running',at:iso(10+45/60)}]}];needTeleport=true;PALP_FX.hold=3000;"
+                  "setTimeout(()=>{const g=palpChar(),c=document.querySelector('#cv'),r=c.getBoundingClientRect(),k=r.width/c.width,"
+                  "d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(g.pos.x-180)*k)+'px',"
+                  "top:(r.top+scrollY+(g.pos.y-125)*k)+'px',width:280*k+'px',height:175*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 2),
 }
 # captures qui ne visent aucun personnage de la démo : valables avec n'importe quelle équipe (--team)
 TEAM_SHOTS = ["plan", "qui-fait-quoi", "fil", "recap", "kanban", "mep", "calendrier", "fiche-agent", "scene-retro",

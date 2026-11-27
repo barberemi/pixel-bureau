@@ -66,6 +66,9 @@ function galleryScenes(){
       play:{len:9e3,speed:1,setup:galFx('letters',{a:acc[0],n:POP_CFG.lettres.mails,ms:9e3})}});}
   const ag=chars.find(c=>!c.person&&!c.visitor&&!c.guest&&c.present);
   if(ag)add({fam:'Petits moments',ok:true,c:ag,ico:'✅',n:'Un agent rétabli',d:'Les agents au travail l\'applaudissent',w:'Un succès après une panne',play:{len:8e3,speed:1,setup:galFx('recover',{c:ag})}});
+  const palp=palpChar(); // 49-palpatine.js : le rejeu d'un ticket livré, à la salle des serveurs
+  if(palp&&palpPlace())add({fam:'Petits moments',ok:true,c:palp,ico:'⚡',n:palp.name+' rejoue un ticket',d:'Lumières baissées, il foudroie la baie des serveurs ; sa bulle suit l\'étape du run',
+    w:'Pendant un rejeu (sa fiche, ou un ticket terminé)',play:{len:60e3,speed:1,setup:s=>{SCENE_DEMO.flag='palp';}}});
   const sp=typeof spAgent==='function'&&SUPPORT&&spAgent();
   if(sp)add({fam:'Petits moments',ok:true,c:sp,ico:'🧯',n:sp.name+' : feu éteint',d:'Réponse postée dans le fil Support',w:'3 min après la réponse',
     play:{len:3*60e3,speed:10,setup:s=>{SUPPORT=Object.assign({},SUPPORT,{threads:[...(SUPPORT.threads||[]),{id:'demo',from:'Démonstration',at:galIso(s-120e3),text:'Démonstration',url:'',state:'done',replies:1,mine:{at:galIso(s),text:'Démonstration'}}]});}}});

@@ -65,12 +65,14 @@ function holoFrame(img,sx,sy,now,lines,hs){
 // (sprites fournis de face ou de dos)
 const guestBob=(c,fx)=>c.guest&&c.moving&&!(c._st&&c._st.cloud)&&fx%4<2?-1:0; // sur son nuage : pas de pas
 // en télétravail : le personnage en transparence à sa place (36-absences.js)
-function drawChar(c,now){if(c._st&&c._st.tt){ctx.save();ctx.globalAlpha=TT_ALPHA;try{drawChar0(c,now);}finally{ctx.restore();}}else drawChar0(c,now);
+function drawChar(c,now){if(c.pos&&c._st&&c._st.palp&&palpDraw(c,now))return; // 49-palpatine.js : la salle des serveurs, et lui quand il lance ses éclairs
+  if(c._st&&c._st.tt){ctx.save();ctx.globalAlpha=TT_ALPHA;try{drawChar0(c,now);}finally{ctx.restore();}}else drawChar0(c,now);
   if(c.pos&&metierOf(c))mtKit(c); // 69-metiers.js : la tenue de son étage
   else if(c.pos&&typeof drawGear==='function'){const g=c.gear!==undefined?c.gear:typeof atIsLauncher==='function'&&atIsLauncher(c)?'chantier':null;if(g)drawGear(c,g);} // 68-atelier.js : casque et gilet de chantier (gear null : aucune)
   if(c.pos&&c._st&&c._st.carry&&typeof drawCarry==='function')drawCarry(c); // 69-atelier-rdc.js : le carton porté
   if(c.pos&&c._st&&c._st.cloud&&typeof drawSandman==='function')drawSandman(c,now); // 49-marchand.js : son ours et son nuage
-  if(c.pos&&typeof floorAgentRobot==='function'&&floorAgentRobot(c))drawAgentRobot(c,now);} // 69-metiers.js : le petit robot des agents des étages
+  if(c.pos&&typeof floorAgentRobot==='function'&&floorAgentRobot(c))drawAgentRobot(c,now); // 69-metiers.js : le petit robot des agents des étages
+  if(c.pos&&c._st&&c._st.palp)palpAfter(c,now);} // 49-palpatine.js : son étincelle au repos
 function drawChar0(c,now){
   const img=spriteOf(c); if(!ready(img)||!c.pos)return;
   const [fx,fy]=frameFor(c,now); const x=Math.round(c.pos.x), y=Math.round(c.pos.y);
@@ -105,7 +107,7 @@ function drawChar0(c,now){
   }
   const bob=(c.pose==='type'&&!c.moving&&(c.dir==='left'||c.dir==='right')?(Math.floor(now/320+c.phase)%2):0)+(c.boss&&!c.moving&&c.tile&&c.tile[0]===BOSS_SEAT[0]&&c.tile[1]===BOSS_SEAT[1]?9:0);
   const dx=x-32-(c.sprite==='boss_sax'?5:0), dy=y-60+bob-(c._st&&c._st.cloud?SAND_LIFT:0); // sur son nuage (49-marchand.js) : plus haut
-  if(famOf(c)==='wf'&&!metierOf(c)){ // l'agent d'un étage (69-metiers.js) : en couleurs pleines
+  if(famOf(c)==='wf'&&!metierOf(c)&&!palpIs(c)){ // l'agent d'un étage (69-metiers.js) et Palpatine (49-palpatine.js) : en couleurs pleines
     const glitch=(Math.floor(now/110)+Math.floor(c.phase*7))%41===0;
     const gx=dx+(glitch?1:0), hs=holoStyleOf(c);
     if(hs&&hs.beam)holoBeam(gx,dy,hs.beam);

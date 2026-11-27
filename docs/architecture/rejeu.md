@@ -1,6 +1,6 @@
 # Rejeu d'un ticket livré (Palpatine, lot 1)
 
-> Modèles `rejeu` (lanceur) et `impl_rejeu` (la chaîne sans gate, dérivée d'`impl_chain` au chargement, sans fichier), script `workflows/rejeu.py`, consigne du juge `tools/rejeu_juge.md`, réglage `rejeu`. Lot 1 : rien dans la page, le bouton de Palpatine viendra après ses maquettes. Relevé le 2026-11-27.
+> Modèles `rejeu` (lanceur) et `impl_rejeu` (la chaîne sans gate, dérivée d'`impl_chain` au chargement, sans fichier), script `workflows/rejeu.py`, consigne du juge `tools/rejeu_juge.md`, réglage `rejeu`. Dans la page : Palpatine (`page/src/49-palpatine.js`), à la salle des serveurs du RDC, lancé à la main (lot 2). Relevé le 2026-11-27.
 
 ## But
 
@@ -54,11 +54,21 @@ Le lanceur et la variante s'installent avec la chaîne (`install.with_posts` : `
 
 ## Limites connues
 
-- Les runs d'`impl_rejeu` ne se voient pas à l'atelier : il ne lit que `models.impl_chain` (`atelier_chain`). `atelier_wf` les retire des runs du RDC.
+- Les runs d'`impl_rejeu` ne se voient pas à l'atelier : il ne lit que `models.impl_chain` (`atelier_chain`). `atelier_wf` les retire des runs du RDC ; Palpatine les lit dans `AT_RUNS` par `CFG.rejeu_wf` (préfixe de `models.impl_rejeu`).
 - Les dépendances liées sont celles du checkout principal d'aujourd'hui, pas celles de la base rejouée (même limite que l'essai rejoué).
 - Un test de la vraie PR qui appelle un nom que la chaîne a choisi autrement échoue : le juge le classe `nommage`.
-- Rien n'alimente encore la mémoire du soir, et rien n'apparaît dans la page (lots suivants).
+- Rien n'alimente encore la mémoire du soir (lot suivant).
 
 ## Tests
 
 `tests/test_rejeu.py` : la variante (sans gate, renvois vers la note, mêmes postes que la chaîne, rendu), la note et le rangement dans un dépôt git jetable (fichiers, tests posés puis retirés, rouges, non mesurés, sans demande), le choix d'une PR avec un faux `gh` (témoin, filtres et variété de la rotation, pause).
+
+## Dans la page : Palpatine (lot 2)
+
+- **Qui** : l'agent de `team/agents.json` au `model: "rejeu"` (Palpatine, sprite `palpatine`), rattaché au lanceur ; `palpIs` le reconnaît par `CFG.action_wf.rejeu`, pas par son nom (un pack peut le remplacer) [src: file: page/src/49-palpatine.js:palpIs].
+- **Où** : toujours à la salle des serveurs (`spots.srv` du plan, la case la plus à droite) ; la baie visée est la plus à gauche (`FURN_AT.server_rack`), la salle est la pièce de `light_rooms` qui contient sa case [src: file: page/src/49-palpatine.js:palpPlace].
+- **État** : `palpState` (accroché dans `stateAt`, 35-state.js) lit le run `impl_rejeu` actif dans `AT_RUNS` ; bulle = étape (`atStepName`) ; fini : la note 5 min (`run.res`) ; en panne : l'étape en échec.
+- **La note** : `_lib.run_res` relit la sortie de l'étape `range` des runs réussis d'`impl_rejeu` (`rejeu_res` : ticket, PR, note, cible, parts en %) [src: file: workflows/_lib.py:rejeu_res]. Garder le format de la sortie de `cmd_range` (testé dans `tests/test_rejeu.py`).
+- **Lancer** : blocs `bureau-rejeu` (sa fiche, `jeu` et `cas` saisis) et `bureau-rejeu-ticket` (fiche d'un ticket terminé, `cas` lié au ticket), clé `rejeu` (`MODEL_ACTIONS`).
+- **Dessin** : `palpDraw` (accroché dans `drawChar`) dessine la salle (pénombre, flash, arcs, étincelles, fumée, alarme) et ses images de lancer (`SPR.palpatine_cast`, `sprites/common/palpatine/palpatine-cast.png` ; mains : `PALP_HANDS` = `palpatine-cast.json`).
+- **Tests** : `tests/palpatine.test.js`.

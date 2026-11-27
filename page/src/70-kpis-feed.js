@@ -382,7 +382,7 @@ function renderFeed(){
       txt:`<span style="color:#2e9e9b">●</span> Daily de l'équipe en cafétéria`
     });
   }
-  ev.push(...feedLifeEvents(T).map(e=>({ty:'equipe',...e})),...feedMyActions(T).map(e=>({ty:'toi',...e})),...atFeedEvents(T),...rtFeedEvents(T),...rdFeedEvents(T),...svFeedEvents(T)); // 69-atelier-rdc.js : le 1er étage ; 68-retours.js : le 3e ; 48-statuts.js : services extérieurs
+  ev.push(...feedLifeEvents(T).map(e=>({ty:'equipe',...e})),...feedMyActions(T).map(e=>({ty:'toi',...e})),...atFeedEvents(T),...rtFeedEvents(T),...rdFeedEvents(T),...svFeedEvents(T),...palpFeedEvents(T)); // 69-atelier-rdc.js : le 1er étage ; 68-retours.js : le 3e ; 48-statuts.js : services extérieurs
   ev.sort((a,b)=>b.t-a.t);
   FEED_EV=ev;
   showFeed();

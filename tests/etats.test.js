@@ -33,6 +33,7 @@ const DECOR = {
   drawApprentice: 'le pompon du mortier de l\'apprenti', CONFETTI: 'les confettis du plateau', drawScreen: 'les écrans (veille, plantage)',
   supportScreen: 'l\'écran Support du boss', CLOTH_COLORS: 'les couleurs de vêtements de l\'éditeur', ETAGES: 'la couleur d\'un étage (onglets, TV)',
   atBossDesk: 'le bureau du boss (étages)', rdShelf: 'les livres des bibliothèques', rdStrand: 'le fil rouge du liège', rdSheet: 'le tampon rouge',
+  palpRoom: 'les voyants affolés de la baie foudroyée (Palpatine)', palpSparks: 'les étincelles qui refroidissent (Palpatine)',
 };
 const scopeOf = (L, i) => {
   for (let j = i; j >= 0; j--) {

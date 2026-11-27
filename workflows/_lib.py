@@ -63,7 +63,8 @@ TZ = ZoneInfo((CFG.get("rhythm") or {}).get("timezone") or "Europe/Paris")  # fu
 ACTIVE = ("Running", "WaitingApproval", "Pending", "WaitingQuota")
 # variables de lancement recopiées dans la page : seulement celles qu'elle lit (jamais un token passé en variable)
 VARS_KEPT = ("jira_ticket_key", "current_task.number", "current_task.author", "current_task.repo", "pr", "repo",
-             "message_id")  # message du canal Support (#62) : la page relie l'investigation à son fil
+             "message_id",  # message du canal Support (#62) : la page relie l'investigation à son fil
+             "ticket")  # le ticket d'un run de la chaîne ou du rejeu (Palpatine le dit dans sa bulle)
 # workflows et Quick Prompt du Bureau, par id (un nom se renomme) : jamais comptés comme des agents
 BUREAU_IDS = {v for part in ("workflows", "actions") for v in (CFG.get(part) or {}).values() if v}
 
@@ -242,21 +243,42 @@ def step_row(s):
 
 
 TICKET_WF = str((CFG.get("models") or {}).get("ticket") or "")  # créer un ticket (#77) : son dernier ticket sur la fiche
+REJEU_WF = str((CFG.get("models") or {}).get("impl_rejeu") or "")  # le rejeu d'un ticket livré : sa note, pour Palpatine
 
 
+# sortie standard de l'étape step d'un run : la liste des runs ne porte pas les sorties, lue dans le détail du run (quelques
+# runs par jour), en JSON non strict (une sortie d'étape peut porter des caractères de contrôle bruts)
+def step_stdout(wf, r, step):
+    with urllib.request.urlopen(f"{API}/workflows/{wf['id']}/runs/{r['id']}", timeout=60) as f:
+        detail = json.loads(f.read(), strict=False)
+    detail = detail.get("data", detail)
+    out = next((s.get("output") or "" for s in detail.get("step_results") or [] if s.get("step_name") == step), "")
+    return json.loads(out.split("---STEP_OUTPUT---")[1].split("---END_STEP_OUTPUT---")[0], strict=False)["data"]["stdout"]
+
+
+REJEU_PCT = {"tests": "tests de la vraie PR", "fichiers": "fichiers touchés", "lignes": "lignes communes", "juge": "juge"}
+
+
+# note d'un rejeu relue dans la sortie de son étape range (rejeu.py cmd_range) : {ticket, pr, note, cible, atteint, parts en
+# %, None si non mesuré} ; None si la sortie n'a pas cette forme
+def rejeu_res(t):
+    m = re.search(r"#(\d+) \(([^)\s]+)\) : (\d+)/100 \(cible (\d+)\)", t or "")
+    if not m:
+        return None
+    parts = {k: re.search(rf"^- {v} : (\d+) %", t, re.M) for k, v in REJEU_PCT.items()}
+    n, c = int(m[3]), int(m[4])
+    return {"ticket": m[2][:30], "pr": int(m[1]), "note": n, "cible": c, "atteint": n >= c, "parts": {k: p and int(p[1]) for k, p in parts.items()}}
+
+
+# ce qu'un run réussi a produit, pour la page : le ticket créé par le modèle ticket (#77, {key, url, title, meta} écrit par
+# son étape resultat), ou la note d'un rejeu (rejeu_res de son étape range)
 def run_res(wf, r):
-    """Ticket créé par un run réussi du modèle ticket (#77) : {key, url, title, meta} écrit par son étape resultat. La
-    liste des runs ne porte pas les sorties : lu dans le détail du run (quelques runs par jour), en JSON non strict (une
-    sortie d'étape peut porter des caractères de contrôle bruts)."""
-    if not TICKET_WF or wf.get("id") != TICKET_WF or r.get("status") != "Success":
+    if r.get("status") != "Success" or not wf.get("id") or wf["id"] not in (TICKET_WF, REJEU_WF):
         return None
     try:
-        with urllib.request.urlopen(f"{API}/workflows/{wf['id']}/runs/{r['id']}", timeout=60) as f:
-            detail = json.loads(f.read(), strict=False)
-        detail = detail.get("data", detail)
-        out = next((s.get("output") or "" for s in detail.get("step_results") or [] if s.get("step_name") == "resultat"), "")
-        body = out.split("---STEP_OUTPUT---")[1].split("---END_STEP_OUTPUT---")[0]
-        res = json.loads(json.loads(body, strict=False)["data"]["stdout"])
+        if wf["id"] == REJEU_WF:
+            return rejeu_res(step_stdout(wf, r, "range"))
+        res = json.loads(step_stdout(wf, r, "resultat"))
     except Exception:
         return None
     if not res.get("key"):

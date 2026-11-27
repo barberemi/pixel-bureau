@@ -36,7 +36,10 @@ ACTIONS = {"bureau-avatar": ("avatar", "__AVATAR_WF__"), "bureau-gate": ("gate",
            # console Support (#62) : investiguer un message (modèle support) ; relever le canal : « ↻ » du panneau Fraîcheur
            "bureau-support": ("support", "__SUPPORT_WF__"),
            "bureau-spskip": ("support_skip", "__SPSKIP_WF__"),  # 🔕 ignorer un fil du Support, ou le réactiver (threads[].skip)
-           "bureau-sprintquest": ("sprintquest", "__SPRINTQUEST_WF__")}  # « Préparer la partie » de la borne des Combles
+           "bureau-sprintquest": ("sprintquest", "__SPRINTQUEST_WF__"),  # « Préparer la partie » de la borne des Combles
+           # Palpatine rejoue un ticket livré (modèle rejeu) : depuis sa fiche (jeu et cas à saisir), ou depuis la fiche
+           # d'un ticket terminé (cas = le ticket)
+           "bureau-rejeu": ("rejeu", "__REJEU_WF__"), "bureau-rejeu-ticket": ("rejeu", "__REJEU_WF__")}
 # variables des workflows de la clé launch : rôle -> nom par défaut ; launch.<action> = id seul, ou {wf, vars: {rôle: nom
 # chez toi, ou null si ton workflow n'a pas cette variable}}
 LAUNCH_VARS = {"impl": {"ticket": "jira_ticket_key"}, "mep": {"ticket": "jira_ticket_key", "pr": "pr_number"},
@@ -256,6 +259,8 @@ def page_config(cfg):
         # le lanceur (models.impl) reste au RDC : l'agent qui l'incarne (Ryan) y travaille et porte le carton à l'entrée
         "atelier_launcher": str((cfg.get("models") or {}).get("impl") or "")[:8],
         "atelier_chain": str((cfg.get("models") or {}).get("impl_chain") or branche_atelier(cfg) or "")[:8],  # tickets sortis aujourd'hui (runs de la chaîne)
+        # le rejeu (models.impl_rejeu) : ses runs restent hors du 1er et du RDC ; Palpatine les joue à la salle des serveurs
+        "rejeu_wf": str((cfg.get("models") or {}).get("impl_rejeu") or "")[:8],
         "combles_url": combles_url(cfg),  # l'étage secret (68-combles.js) : la borne ouvre Sprint Quest
         "noel_url": combles_noel_url(cfg),  # en décembre, le sapin des Combles ouvre Pixel Noël
     }
@@ -330,7 +335,7 @@ def support_page(cfg):
             "postes_wf": sorted({str(v)[:8] for k, v in m.items() if k.startswith("support_") and k not in ("support_poll", "support_skip") and v})}
 
 
-FICHE_ACTIONS = ("impl", "mep", "mep_pr", "review", "fix", "fix_pr", "rebase", "comment", "estimate", "env", "deploy", "ai_time")
+FICHE_ACTIONS = ("impl", "mep", "mep_pr", "review", "fix", "fix_pr", "rebase", "comment", "estimate", "env", "deploy", "ai_time", "rejeu")
 # statuts Jira par défaut du flux de l'équipe (jira.flow) : requêtes du cron équipe et scènes de la page
 JIRA_FLOW = {"triage_from": "Proposed", "test": "To Test", "validated": "To Deploy", "reopened": "Reopen"}
 DEFAULT_LAYOUT = "layouts/darkmode.json"  # plan type, sans équipe
@@ -636,11 +641,12 @@ def used_sprites(cfg):
     """Noms de sprite qu'un personnage peut porter (KT-28 : seules ces planches sont embarquées) : clé ou sprite du
     roster, des invités et des agents (sprite d'un personnage = son sprite, sinon sa clé), boss_sprite, ses dessins d'étage
     (captain_sprite en capitaine à la caserne, atelier_sprite au 1er, redaction_sprite au 2e), et tout nom cité entre
-    apostrophes dans le JS de la page (« 'temp' », VISITOR)."""
+    apostrophes dans le JS de la page (« 'temp' », VISITOR) ; et pour chacun, <nom>_cast (images de lancer), s'il existe."""
     defs = roster(cfg) + guests(cfg) + list((cfg or {}).get("agents") or [])
     names = {d.get(f) for d in defs for f in ("key", "sprite", "boss_sprite", "captain_sprite", "atelier_sprite", "redaction_sprite")} - {None}
     js = "".join(Path(os.path.join(SRC, f)).read_text() for f in JS_FILES)
-    return names | set(re.findall(r"'([\w-]+)'", js))
+    names |= set(re.findall(r"'([\w-]+)'", js))
+    return names | {n + "_cast" for n in names}  # ses images de lancer (Palpatine, 49-palpatine.js : IMG[sprite + '_cast'])
 
 
 def layout_path(cfg):
@@ -793,7 +799,8 @@ def resolve_branchements(cfg, wfs):
 
 # boutons qu'un modèle du Bureau incarné par un agent (models, #78) fait marcher quand tu n'as pas ton propre workflow
 # dans launch : action -> clé du modèle ; ses variables portent les noms par défaut de LAUNCH_VARS
-MODEL_ACTIONS = {"review": "review_one", "estimate": "estimate", "support": "support", "env": "env", "deploy": "deploy", "ai_time": "ai_time"}
+MODEL_ACTIONS = {"review": "review_one", "estimate": "estimate", "support": "support", "env": "env", "deploy": "deploy", "ai_time": "ai_time",
+                 "rejeu": "rejeu"}
 # rôles retirés du bloc quand c'est le modèle qui fait marcher le bouton (il n'a pas ces variables)
 MODEL_OPTIONAL = {"env": ("action",)}
 
