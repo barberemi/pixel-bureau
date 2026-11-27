@@ -1,0 +1,1166 @@
+{
+ "generated_at": "2026-11-27T16:00:00+00:00",
+ "error": null,
+ "periode_jours": 90,
+ "cible": 80,
+ "depot": "dundermifflin/papier",
+ "temoin": [
+  412,
+  438,
+  455,
+  471,
+  486
+ ],
+ "version": {
+  "hash": "d90b7e3",
+  "commit": "f13a6c8",
+  "sujet": "feat(chaine): conventions du dépôt dans le cadrage"
+ },
+ "rejeux": [
+  {
+   "run": "demo-r29",
+   "ticket": "DM-571",
+   "pr": 571,
+   "url": "https://github.com/dundermifflin/papier/pull/571",
+   "titre": "feat: rapport mensuel par commercial",
+   "jeu": "rotation",
+   "genre": "feat",
+   "zone": "src/Rapports",
+   "fini_le": "2026-11-22T11:00:00+00:00",
+   "note": 66,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.74,
+    "fichiers": 0.5,
+    "lignes": 0.41,
+    "juge": 0.76
+   },
+   "version": "d90b7e3",
+   "resume": "Même découpage que la vraie PR ; la chaîne a ajouté un service au lieu d'étendre l'existant.",
+   "echecs_tests": "nommage",
+   "ecarts": [],
+   "ms": 2340000,
+   "cout": 6.73
+  },
+  {
+   "run": "demo-r28",
+   "ticket": "DM-563",
+   "pr": 563,
+   "url": "https://github.com/dundermifflin/papier/pull/563",
+   "titre": "fix: devis expiré encore modifiable",
+   "jeu": "rotation",
+   "genre": "fix",
+   "zone": "src/Devis",
+   "fini_le": "2026-11-19T10:00:00+00:00",
+   "note": 75,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.76,
+    "fichiers": 0.75,
+    "lignes": 0.55,
+    "juge": 0.82
+   },
+   "version": "d90b7e3",
+   "resume": "Même découpage que la vraie PR ; la chaîne a ajouté un service au lieu d'étendre l'existant.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "ticket_vague",
+     "lecon": "Le ticket ne disait pas quel entrepôt est le défaut."
+    }
+   ],
+   "ms": 1560000,
+   "cout": 5.58
+  },
+  {
+   "run": "demo-r27",
+   "ticket": "DM-556",
+   "pr": 556,
+   "url": "https://github.com/dundermifflin/papier/pull/556",
+   "titre": "feat: étiquettes d'expédition en lot",
+   "jeu": "rotation",
+   "genre": "feat",
+   "zone": "src/Livraison",
+   "fini_le": "2026-11-16T09:00:00+00:00",
+   "note": 76,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.79,
+    "fichiers": 0.65,
+    "lignes": 0.54,
+    "juge": 0.9
+   },
+   "version": "d90b7e3",
+   "resume": "Approche identique, tests verts ; seul le nommage d'une méthode diffère.",
+   "echecs_tests": "nommage",
+   "ecarts": [],
+   "ms": 2100000,
+   "cout": 6.29
+  },
+  {
+   "run": "demo-t26",
+   "ticket": "DM-486",
+   "pr": 486,
+   "url": "https://github.com/dundermifflin/papier/pull/486",
+   "titre": "feat: tri des fournisseurs par délai",
+   "jeu": "temoin",
+   "genre": "feat",
+   "zone": "src/Commandes",
+   "fini_le": "2026-11-13T21:00:00+00:00",
+   "note": 68,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": null,
+    "fichiers": 0.64,
+    "lignes": 0.42,
+    "juge": 0.84
+   },
+   "version": "d90b7e3",
+   "resume": "Même découpage que la vraie PR ; la chaîne a ajouté un service au lieu d'étendre l'existant.",
+   "echecs_tests": "nommage",
+   "ecarts": [],
+   "ms": 3960000,
+   "cout": 6.53
+  },
+  {
+   "run": "demo-t25",
+   "ticket": "DM-471",
+   "pr": 471,
+   "url": "https://github.com/dundermifflin/papier/pull/471",
+   "titre": "fix: facture en double après relance",
+   "jeu": "temoin",
+   "genre": "fix",
+   "zone": "src/Commandes",
+   "fini_le": "2026-11-13T18:00:00+00:00",
+   "note": 90,
+   "atteint": true,
+   "escalade": false,
+   "parts": {
+    "tests": 0.96,
+    "fichiers": 0.93,
+    "lignes": 0.66,
+    "juge": 0.82
+   },
+   "version": "d90b7e3",
+   "resume": "Approche identique, tests verts ; seul le nommage d'une méthode diffère.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "acceptable",
+     "lecon": "Ordre des imports différent."
+    }
+   ],
+   "ms": 3180000,
+   "cout": 2.94
+  },
+  {
+   "run": "demo-t24",
+   "ticket": "DM-455",
+   "pr": 455,
+   "url": "https://github.com/dundermifflin/papier/pull/455",
+   "titre": "feat: alerte de stock bas par entrepôt",
+   "jeu": "temoin",
+   "genre": "feat",
+   "zone": "src/Commandes",
+   "fini_le": "2026-11-13T15:00:00+00:00",
+   "note": 90,
+   "atteint": true,
+   "escalade": false,
+   "parts": {
+    "tests": 0.97,
+    "fichiers": 0.92,
+    "lignes": 0.54,
+    "juge": 0.87
+   },
+   "version": "d90b7e3",
+   "resume": "La chaîne a corrigé le symptôme dans le contrôleur, la vraie PR dans le domaine.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "ticket_vague",
+     "lecon": "Le ticket ne disait pas quel entrepôt est le défaut."
+    }
+   ],
+   "ms": 3300000,
+   "cout": 4.75
+  },
+  {
+   "run": "demo-t23",
+   "ticket": "DM-438",
+   "pr": 438,
+   "url": "https://github.com/dundermifflin/papier/pull/438",
+   "titre": "fix: remise client arrondie au centime",
+   "jeu": "temoin",
+   "genre": "fix",
+   "zone": "src/Commandes",
+   "fini_le": "2026-11-13T12:00:00+00:00",
+   "note": 72,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.83,
+    "fichiers": 0.55,
+    "lignes": 0.37,
+    "juge": 0.8
+   },
+   "version": "d90b7e3",
+   "resume": "Même découpage que la vraie PR ; la chaîne a ajouté un service au lieu d'étendre l'existant.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "choix_agent",
+     "lecon": "Lire le service voisin avant d'en créer un nouveau."
+    },
+    {
+     "cause": "ticket_vague",
+     "lecon": "Le ticket ne disait pas quel entrepôt est le défaut."
+    },
+    {
+     "cause": "acceptable",
+     "lecon": "Variable locale renommée."
+    }
+   ],
+   "ms": 3420000,
+   "cout": 5.8
+  },
+  {
+   "run": "demo-t22",
+   "ticket": "DM-412",
+   "pr": 412,
+   "url": "https://github.com/dundermifflin/papier/pull/412",
+   "titre": "feat: export des commandes de papier en CSV",
+   "jeu": "temoin",
+   "genre": "feat",
+   "zone": "src/Commandes",
+   "fini_le": "2026-11-13T09:00:00+00:00",
+   "note": 74,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.81,
+    "fichiers": 0.61,
+    "lignes": 0.59,
+    "juge": 0.78
+   },
+   "version": "d90b7e3",
+   "resume": "Même découpage que la vraie PR ; la chaîne a ajouté un service au lieu d'étendre l'existant.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "acceptable",
+     "lecon": "Ordre des imports différent."
+    },
+    {
+     "cause": "ticket_vague",
+     "lecon": "Le ticket ne disait pas quel entrepôt est le défaut."
+    },
+    {
+     "cause": "choix_agent",
+     "lecon": "Réutiliser le formateur de montants existant."
+    }
+   ],
+   "ms": 2040000,
+   "cout": 5.08
+  },
+  {
+   "run": "demo-r21",
+   "ticket": "DM-548",
+   "pr": 548,
+   "url": "https://github.com/dundermifflin/papier/pull/548",
+   "titre": "fix: stock négatif après retour",
+   "jeu": "rotation",
+   "genre": "fix",
+   "zone": "src/Stock",
+   "fini_le": "2026-11-05T10:00:00+00:00",
+   "note": 68,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.8,
+    "fichiers": 0.52,
+    "lignes": 0.39,
+    "juge": 0.69
+   },
+   "version": "c58f2a6",
+   "resume": "Même découpage que la vraie PR ; la chaîne a ajouté un service au lieu d'étendre l'existant.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "choix_agent",
+     "lecon": "Réutiliser le formateur de montants existant."
+    }
+   ],
+   "ms": 2400000,
+   "cout": 3.69
+  },
+  {
+   "run": "demo-r20",
+   "ticket": "DM-541",
+   "pr": 541,
+   "url": "https://github.com/dundermifflin/papier/pull/541",
+   "titre": "refactor: calcul des commissions",
+   "jeu": "rotation",
+   "genre": "refactor",
+   "zone": "src/Ventes",
+   "fini_le": "2026-11-02T09:00:00+00:00",
+   "note": 85,
+   "atteint": true,
+   "escalade": false,
+   "parts": {
+    "tests": 0.9,
+    "fichiers": 0.8,
+    "lignes": 0.53,
+    "juge": 0.93
+   },
+   "version": "c58f2a6",
+   "resume": "Même découpage que la vraie PR ; la chaîne a ajouté un service au lieu d'étendre l'existant.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "convention",
+     "lecon": "Les tests d'intégration vont dans tests/Integration, pas à côté du code."
+    }
+   ],
+   "ms": 3960000,
+   "cout": 5.92
+  },
+  {
+   "run": "demo-t19",
+   "ticket": "DM-486",
+   "pr": 486,
+   "url": "https://github.com/dundermifflin/papier/pull/486",
+   "titre": "feat: tri des fournisseurs par délai",
+   "jeu": "temoin",
+   "genre": "feat",
+   "zone": "src/Commandes",
+   "fini_le": "2026-10-30T21:00:00+00:00",
+   "note": 69,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.78,
+    "fichiers": 0.49,
+    "lignes": 0.5,
+    "juge": 0.75
+   },
+   "version": "c58f2a6",
+   "resume": "Même découpage que la vraie PR ; la chaîne a ajouté un service au lieu d'étendre l'existant.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "acceptable",
+     "lecon": "Ordre des imports différent."
+    },
+    {
+     "cause": "ticket_vague",
+     "lecon": "Le ticket ne disait pas quel entrepôt est le défaut."
+    },
+    {
+     "cause": "choix_agent",
+     "lecon": "Lire le service voisin avant d'en créer un nouveau."
+    }
+   ],
+   "ms": 3240000,
+   "cout": 3.07
+  },
+  {
+   "run": "demo-t18",
+   "ticket": "DM-471",
+   "pr": 471,
+   "url": "https://github.com/dundermifflin/papier/pull/471",
+   "titre": "fix: facture en double après relance",
+   "jeu": "temoin",
+   "genre": "fix",
+   "zone": "src/Commandes",
+   "fini_le": "2026-10-30T18:00:00+00:00",
+   "note": 78,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.91,
+    "fichiers": 0.68,
+    "lignes": 0.32,
+    "juge": 0.8
+   },
+   "version": "c58f2a6",
+   "resume": "La chaîne a corrigé le symptôme dans le contrôleur, la vraie PR dans le domaine.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "choix_agent",
+     "lecon": "Lire le service voisin avant d'en créer un nouveau."
+    },
+    {
+     "cause": "ticket_vague",
+     "lecon": "Le ticket ne disait pas quel entrepôt est le défaut."
+    }
+   ],
+   "ms": 3300000,
+   "cout": 5.7
+  },
+  {
+   "run": "demo-t17",
+   "ticket": "DM-455",
+   "pr": 455,
+   "url": "https://github.com/dundermifflin/papier/pull/455",
+   "titre": "feat: alerte de stock bas par entrepôt",
+   "jeu": "temoin",
+   "genre": "feat",
+   "zone": "src/Commandes",
+   "fini_le": "2026-10-30T15:00:00+00:00",
+   "note": 73,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.8,
+    "fichiers": 0.61,
+    "lignes": 0.5,
+    "juge": 0.78
+   },
+   "version": "c58f2a6",
+   "resume": "Même découpage que la vraie PR ; la chaîne a ajouté un service au lieu d'étendre l'existant.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "ticket_vague",
+     "lecon": "Le ticket ne disait pas quel entrepôt est le défaut."
+    },
+    {
+     "cause": "choix_agent",
+     "lecon": "Lire le service voisin avant d'en créer un nouveau."
+    }
+   ],
+   "ms": 2760000,
+   "cout": 4.47
+  },
+  {
+   "run": "demo-t16",
+   "ticket": "DM-438",
+   "pr": 438,
+   "url": "https://github.com/dundermifflin/papier/pull/438",
+   "titre": "fix: remise client arrondie au centime",
+   "jeu": "temoin",
+   "genre": "fix",
+   "zone": "src/Commandes",
+   "fini_le": "2026-10-30T12:00:00+00:00",
+   "note": 72,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.84,
+    "fichiers": 0.56,
+    "lignes": 0.43,
+    "juge": 0.7
+   },
+   "version": "c58f2a6",
+   "resume": "Même découpage que la vraie PR ; la chaîne a ajouté un service au lieu d'étendre l'existant.",
+   "echecs_tests": "nommage",
+   "ecarts": [],
+   "ms": 3300000,
+   "cout": 5.88
+  },
+  {
+   "run": "demo-t15",
+   "ticket": "DM-412",
+   "pr": 412,
+   "url": "https://github.com/dundermifflin/papier/pull/412",
+   "titre": "feat: export des commandes de papier en CSV",
+   "jeu": "temoin",
+   "genre": "feat",
+   "zone": "src/Commandes",
+   "fini_le": "2026-10-30T09:00:00+00:00",
+   "note": 61,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.61,
+    "fichiers": 0.64,
+    "lignes": 0.28,
+    "juge": 0.73
+   },
+   "version": "c58f2a6",
+   "resume": "La chaîne a corrigé le symptôme dans le contrôleur, la vraie PR dans le domaine.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "convention",
+     "lecon": "Les tests d'intégration vont dans tests/Integration, pas à côté du code."
+    },
+    {
+     "cause": "acceptable",
+     "lecon": "Variable locale renommée."
+    }
+   ],
+   "ms": 2220000,
+   "cout": 3.38
+  },
+  {
+   "run": "demo-r14",
+   "ticket": "DM-541",
+   "pr": 541,
+   "url": "https://github.com/dundermifflin/papier/pull/541",
+   "titre": "refactor: calcul des commissions",
+   "jeu": "rotation",
+   "genre": "refactor",
+   "zone": "src/Ventes",
+   "fini_le": "2026-10-25T11:00:00+00:00",
+   "note": 57,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.59,
+    "fichiers": 0.5,
+    "lignes": 0.38,
+    "juge": 0.66
+   },
+   "version": "7b4e0d1",
+   "resume": "La chaîne a corrigé le symptôme dans le contrôleur, la vraie PR dans le domaine.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "choix_agent",
+     "lecon": "Lire le service voisin avant d'en créer un nouveau."
+    }
+   ],
+   "ms": 4140000,
+   "cout": 3.99
+  },
+  {
+   "run": "demo-r13",
+   "ticket": "DM-530",
+   "pr": 530,
+   "url": "https://github.com/dundermifflin/papier/pull/530",
+   "titre": "feat: historique des appels clients",
+   "jeu": "rotation",
+   "genre": "feat",
+   "zone": "src/Clients",
+   "fini_le": "2026-10-22T10:00:00+00:00",
+   "note": 50,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.52,
+    "fichiers": 0.46,
+    "lignes": 0.29,
+    "juge": 0.59
+   },
+   "version": "7b4e0d1",
+   "resume": "Même découpage que la vraie PR ; la chaîne a ajouté un service au lieu d'étendre l'existant.",
+   "echecs_tests": "nommage",
+   "ecarts": [],
+   "ms": 3240000,
+   "cout": 6.14
+  },
+  {
+   "run": "demo-r12",
+   "ticket": "DM-522",
+   "pr": 522,
+   "url": "https://github.com/dundermifflin/papier/pull/522",
+   "titre": "fix: TVA des ventes à Stamford",
+   "jeu": "rotation",
+   "genre": "fix",
+   "zone": "src/Ventes",
+   "fini_le": "2026-10-19T09:00:00+00:00",
+   "note": 59,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.67,
+    "fichiers": 0.47,
+    "lignes": 0.3,
+    "juge": 0.63
+   },
+   "version": "7b4e0d1",
+   "resume": "Approche identique, tests verts ; seul le nommage d'une méthode diffère.",
+   "echecs_tests": "nommage",
+   "ecarts": [],
+   "ms": 1740000,
+   "cout": 5.1
+  },
+  {
+   "run": "demo-t11",
+   "ticket": "DM-486",
+   "pr": 486,
+   "url": "https://github.com/dundermifflin/papier/pull/486",
+   "titre": "feat: tri des fournisseurs par délai",
+   "jeu": "temoin",
+   "genre": "feat",
+   "zone": "src/Commandes",
+   "fini_le": "2026-10-16T21:00:00+00:00",
+   "note": 82,
+   "atteint": true,
+   "escalade": false,
+   "parts": {
+    "tests": 0.87,
+    "fichiers": 0.8,
+    "lignes": 0.48,
+    "juge": 0.86
+   },
+   "version": "7b4e0d1",
+   "resume": "Même découpage que la vraie PR ; la chaîne a ajouté un service au lieu d'étendre l'existant.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "acceptable",
+     "lecon": "Ordre des imports différent."
+    },
+    {
+     "cause": "convention",
+     "lecon": "Nommer les commandes en verbe à l'infinitif."
+    },
+    {
+     "cause": "ticket_vague",
+     "lecon": "Le ticket ne disait pas quel entrepôt est le défaut."
+    }
+   ],
+   "ms": 2280000,
+   "cout": 3.24
+  },
+  {
+   "run": "demo-t10",
+   "ticket": "DM-471",
+   "pr": 471,
+   "url": "https://github.com/dundermifflin/papier/pull/471",
+   "titre": "fix: facture en double après relance",
+   "jeu": "temoin",
+   "genre": "fix",
+   "zone": "src/Commandes",
+   "fini_le": "2026-10-16T18:00:00+00:00",
+   "note": 63,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": null,
+    "fichiers": 0.74,
+    "lignes": 0.34,
+    "juge": 0.66
+   },
+   "version": "7b4e0d1",
+   "resume": "La chaîne a corrigé le symptôme dans le contrôleur, la vraie PR dans le domaine.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "acceptable",
+     "lecon": "Variable locale renommée."
+    }
+   ],
+   "ms": 1980000,
+   "cout": 4.89
+  },
+  {
+   "run": "demo-t09",
+   "ticket": "DM-455",
+   "pr": 455,
+   "url": "https://github.com/dundermifflin/papier/pull/455",
+   "titre": "feat: alerte de stock bas par entrepôt",
+   "jeu": "temoin",
+   "genre": "feat",
+   "zone": "src/Commandes",
+   "fini_le": "2026-10-16T15:00:00+00:00",
+   "note": 77,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.91,
+    "fichiers": 0.7,
+    "lignes": 0.39,
+    "juge": 0.66
+   },
+   "version": "7b4e0d1",
+   "resume": "Même découpage que la vraie PR ; la chaîne a ajouté un service au lieu d'étendre l'existant.",
+   "echecs_tests": "nommage",
+   "ecarts": [],
+   "ms": 4020000,
+   "cout": 3.07
+  },
+  {
+   "run": "demo-t08",
+   "ticket": "DM-438",
+   "pr": 438,
+   "url": "https://github.com/dundermifflin/papier/pull/438",
+   "titre": "fix: remise client arrondie au centime",
+   "jeu": "temoin",
+   "genre": "fix",
+   "zone": "src/Commandes",
+   "fini_le": "2026-10-16T12:00:00+00:00",
+   "note": 69,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": null,
+    "fichiers": 0.8,
+    "lignes": 0.41,
+    "juge": 0.73
+   },
+   "version": "7b4e0d1",
+   "resume": "Même découpage que la vraie PR ; la chaîne a ajouté un service au lieu d'étendre l'existant.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "acceptable",
+     "lecon": "Variable locale renommée."
+    },
+    {
+     "cause": "choix_agent",
+     "lecon": "Réutiliser le formateur de montants existant."
+    },
+    {
+     "cause": "ticket_vague",
+     "lecon": "Le ticket ne disait pas quel entrepôt est le défaut."
+    }
+   ],
+   "ms": 3600000,
+   "cout": 6.0
+  },
+  {
+   "run": "demo-t07",
+   "ticket": "DM-412",
+   "pr": 412,
+   "url": "https://github.com/dundermifflin/papier/pull/412",
+   "titre": "feat: export des commandes de papier en CSV",
+   "jeu": "temoin",
+   "genre": "feat",
+   "zone": "src/Commandes",
+   "fini_le": "2026-10-16T09:00:00+00:00",
+   "note": 62,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.67,
+    "fichiers": 0.63,
+    "lignes": 0.26,
+    "juge": 0.69
+   },
+   "version": "7b4e0d1",
+   "resume": "Approche identique, tests verts ; seul le nommage d'une méthode diffère.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "ticket_vague",
+     "lecon": "Le ticket ne disait pas quel entrepôt est le défaut."
+    },
+    {
+     "cause": "acceptable",
+     "lecon": "Ordre des imports différent."
+    },
+    {
+     "cause": "convention",
+     "lecon": "Nommer les commandes en verbe à l'infinitif."
+    }
+   ],
+   "ms": 1920000,
+   "cout": 3.14
+  },
+  {
+   "run": "demo-r06",
+   "ticket": "DM-517",
+   "pr": 517,
+   "url": "https://github.com/dundermifflin/papier/pull/517",
+   "titre": "feat: commande récurrente de rames",
+   "jeu": "rotation",
+   "genre": "feat",
+   "zone": "src/Commandes",
+   "fini_le": "2026-10-08T10:00:00+00:00",
+   "note": 78,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.93,
+    "fichiers": 0.65,
+    "lignes": 0.54,
+    "juge": 0.67
+   },
+   "version": "3f1a9c2",
+   "resume": "La chaîne a corrigé le symptôme dans le contrôleur, la vraie PR dans le domaine.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "ticket_vague",
+     "lecon": "Le ticket ne disait pas quel entrepôt est le défaut."
+    },
+    {
+     "cause": "acceptable",
+     "lecon": "Variable locale renommée."
+    }
+   ],
+   "ms": 1740000,
+   "cout": 5.91
+  },
+  {
+   "run": "demo-r05",
+   "ticket": "DM-503",
+   "pr": 503,
+   "url": "https://github.com/dundermifflin/papier/pull/503",
+   "titre": "fix: bon de livraison sans adresse de Scranton",
+   "jeu": "rotation",
+   "genre": "fix",
+   "zone": "src/Livraison",
+   "fini_le": "2026-10-05T09:00:00+00:00",
+   "note": 52,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.56,
+    "fichiers": 0.59,
+    "lignes": 0.28,
+    "juge": 0.49
+   },
+   "version": "3f1a9c2",
+   "resume": "Même découpage que la vraie PR ; la chaîne a ajouté un service au lieu d'étendre l'existant.",
+   "echecs_tests": "nommage",
+   "ecarts": [],
+   "ms": 2100000,
+   "cout": 4.65
+  },
+  {
+   "run": "demo-t04",
+   "ticket": "DM-471",
+   "pr": 471,
+   "url": "https://github.com/dundermifflin/papier/pull/471",
+   "titre": "fix: facture en double après relance",
+   "jeu": "temoin",
+   "genre": "fix",
+   "zone": "src/Commandes",
+   "fini_le": "2026-10-02T18:00:00+00:00",
+   "note": 47,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.48,
+    "fichiers": 0.38,
+    "lignes": 0.25,
+    "juge": 0.65
+   },
+   "version": "3f1a9c2",
+   "resume": "Même découpage que la vraie PR ; la chaîne a ajouté un service au lieu d'étendre l'existant.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "ticket_vague",
+     "lecon": "Le ticket ne disait pas quel entrepôt est le défaut."
+    },
+    {
+     "cause": "convention",
+     "lecon": "Nommer les commandes en verbe à l'infinitif."
+    },
+    {
+     "cause": "acceptable",
+     "lecon": "Ordre des imports différent."
+    }
+   ],
+   "ms": 2400000,
+   "cout": 5.48
+  },
+  {
+   "run": "demo-t03",
+   "ticket": "DM-455",
+   "pr": 455,
+   "url": "https://github.com/dundermifflin/papier/pull/455",
+   "titre": "feat: alerte de stock bas par entrepôt",
+   "jeu": "temoin",
+   "genre": "feat",
+   "zone": "src/Commandes",
+   "fini_le": "2026-10-02T15:00:00+00:00",
+   "note": 49,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.49,
+    "fichiers": 0.49,
+    "lignes": 0.3,
+    "juge": 0.6
+   },
+   "version": "3f1a9c2",
+   "resume": "La chaîne a corrigé le symptôme dans le contrôleur, la vraie PR dans le domaine.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "choix_agent",
+     "lecon": "Garder la signature publique quand le ticket ne demande pas de la changer."
+    }
+   ],
+   "ms": 2880000,
+   "cout": 5.21
+  },
+  {
+   "run": "demo-t02",
+   "ticket": "DM-438",
+   "pr": 438,
+   "url": "https://github.com/dundermifflin/papier/pull/438",
+   "titre": "fix: remise client arrondie au centime",
+   "jeu": "temoin",
+   "genre": "fix",
+   "zone": "src/Commandes",
+   "fini_le": "2026-10-02T12:00:00+00:00",
+   "note": 63,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.64,
+    "fichiers": 0.65,
+    "lignes": 0.32,
+    "juge": 0.72
+   },
+   "version": "3f1a9c2",
+   "resume": "La chaîne a corrigé le symptôme dans le contrôleur, la vraie PR dans le domaine.",
+   "echecs_tests": "nommage",
+   "ecarts": [
+    {
+     "cause": "choix_agent",
+     "lecon": "Garder la signature publique quand le ticket ne demande pas de la changer."
+    }
+   ],
+   "ms": 2340000,
+   "cout": 4.15
+  },
+  {
+   "run": "demo-t01",
+   "ticket": "DM-412",
+   "pr": 412,
+   "url": "https://github.com/dundermifflin/papier/pull/412",
+   "titre": "feat: export des commandes de papier en CSV",
+   "jeu": "temoin",
+   "genre": "feat",
+   "zone": "src/Commandes",
+   "fini_le": "2026-10-02T09:00:00+00:00",
+   "note": 59,
+   "atteint": false,
+   "escalade": false,
+   "parts": {
+    "tests": 0.67,
+    "fichiers": 0.45,
+    "lignes": 0.44,
+    "juge": 0.6
+   },
+   "version": "3f1a9c2",
+   "resume": "La chaîne a corrigé le symptôme dans le contrôleur, la vraie PR dans le domaine.",
+   "echecs_tests": "nommage",
+   "ecarts": [],
+   "ms": 1800000,
+   "cout": 3.34
+  }
+ ],
+ "versions": [
+  {
+   "hash": "3f1a9c2",
+   "commit": "8d2e1f0",
+   "sujet": "feat(chaine): le plan relit les tests voisins",
+   "debut": "2026-10-02T09:00:00+00:00",
+   "moyenne": 54.5,
+   "n": 4,
+   "lecons": 0
+  },
+  {
+   "hash": "7b4e0d1",
+   "commit": "a91c3b7",
+   "sujet": "feat(chaine): la mémoire du soir lue par le poste code",
+   "debut": "2026-10-16T09:00:00+00:00",
+   "moyenne": 70.6,
+   "n": 5,
+   "lecons": 2
+  },
+  {
+   "hash": "c58f2a6",
+   "commit": "e47b9d2",
+   "sujet": "fix(chaine): contrôles relancés sur les seuls fichiers touchés",
+   "debut": "2026-10-30T09:00:00+00:00",
+   "moyenne": 70.6,
+   "n": 5,
+   "lecons": 0
+  },
+  {
+   "hash": "d90b7e3",
+   "commit": "f13a6c8",
+   "sujet": "feat(chaine): conventions du dépôt dans le cadrage",
+   "debut": "2026-11-13T09:00:00+00:00",
+   "moyenne": 78.8,
+   "n": 5,
+   "lecons": 1
+  }
+ ],
+ "temoins": [
+  {
+   "pr": 412,
+   "ticket": "DM-412",
+   "titre": "feat: export des commandes de papier en CSV",
+   "passages": [
+    {
+     "note": 59,
+     "version": "3f1a9c2",
+     "fini_le": "2026-10-02T09:00:00+00:00",
+     "run": "demo-t01"
+    },
+    {
+     "note": 62,
+     "version": "7b4e0d1",
+     "fini_le": "2026-10-16T09:00:00+00:00",
+     "run": "demo-t07"
+    },
+    {
+     "note": 61,
+     "version": "c58f2a6",
+     "fini_le": "2026-10-30T09:00:00+00:00",
+     "run": "demo-t15"
+    },
+    {
+     "note": 74,
+     "version": "d90b7e3",
+     "fini_le": "2026-11-13T09:00:00+00:00",
+     "run": "demo-t22"
+    }
+   ]
+  },
+  {
+   "pr": 438,
+   "ticket": "DM-438",
+   "titre": "fix: remise client arrondie au centime",
+   "passages": [
+    {
+     "note": 63,
+     "version": "3f1a9c2",
+     "fini_le": "2026-10-02T12:00:00+00:00",
+     "run": "demo-t02"
+    },
+    {
+     "note": 69,
+     "version": "7b4e0d1",
+     "fini_le": "2026-10-16T12:00:00+00:00",
+     "run": "demo-t08"
+    },
+    {
+     "note": 72,
+     "version": "c58f2a6",
+     "fini_le": "2026-10-30T12:00:00+00:00",
+     "run": "demo-t16"
+    },
+    {
+     "note": 72,
+     "version": "d90b7e3",
+     "fini_le": "2026-11-13T12:00:00+00:00",
+     "run": "demo-t23"
+    }
+   ]
+  },
+  {
+   "pr": 455,
+   "ticket": "DM-455",
+   "titre": "feat: alerte de stock bas par entrepôt",
+   "passages": [
+    {
+     "note": 49,
+     "version": "3f1a9c2",
+     "fini_le": "2026-10-02T15:00:00+00:00",
+     "run": "demo-t03"
+    },
+    {
+     "note": 77,
+     "version": "7b4e0d1",
+     "fini_le": "2026-10-16T15:00:00+00:00",
+     "run": "demo-t09"
+    },
+    {
+     "note": 73,
+     "version": "c58f2a6",
+     "fini_le": "2026-10-30T15:00:00+00:00",
+     "run": "demo-t17"
+    },
+    {
+     "note": 90,
+     "version": "d90b7e3",
+     "fini_le": "2026-11-13T15:00:00+00:00",
+     "run": "demo-t24"
+    }
+   ]
+  },
+  {
+   "pr": 471,
+   "ticket": "DM-471",
+   "titre": "fix: facture en double après relance",
+   "passages": [
+    {
+     "note": 47,
+     "version": "3f1a9c2",
+     "fini_le": "2026-10-02T18:00:00+00:00",
+     "run": "demo-t04"
+    },
+    {
+     "note": 63,
+     "version": "7b4e0d1",
+     "fini_le": "2026-10-16T18:00:00+00:00",
+     "run": "demo-t10"
+    },
+    {
+     "note": 78,
+     "version": "c58f2a6",
+     "fini_le": "2026-10-30T18:00:00+00:00",
+     "run": "demo-t18"
+    },
+    {
+     "note": 90,
+     "version": "d90b7e3",
+     "fini_le": "2026-11-13T18:00:00+00:00",
+     "run": "demo-t25"
+    }
+   ]
+  },
+  {
+   "pr": 486,
+   "ticket": "DM-486",
+   "titre": "feat: tri des fournisseurs par délai",
+   "passages": [
+    {
+     "note": 82,
+     "version": "7b4e0d1",
+     "fini_le": "2026-10-16T21:00:00+00:00",
+     "run": "demo-t11"
+    },
+    {
+     "note": 69,
+     "version": "c58f2a6",
+     "fini_le": "2026-10-30T21:00:00+00:00",
+     "run": "demo-t19"
+    },
+    {
+     "note": 68,
+     "version": "d90b7e3",
+     "fini_le": "2026-11-13T21:00:00+00:00",
+     "run": "demo-t26"
+    }
+   ]
+  }
+ ],
+ "lecons": {
+  "a_valider": 2,
+  "validees": 3
+ },
+ "resume": {
+  "date": "2026-11-22T11:00:00+00:00",
+  "temoin": {
+   "moyenne": 79,
+   "ecart": 8,
+   "version": "d90b7e3",
+   "version_prec": "c58f2a6",
+   "n": 5
+  },
+  "dernier": {
+   "ticket": "DM-571",
+   "pr": 571,
+   "note": 66,
+   "cible": false,
+   "fini_le": "2026-11-22T11:00:00+00:00"
+  },
+  "lecons": {
+   "a_valider": 2,
+   "validees": 3
+  }
+ },
+ "kpi": {
+  "value": "79",
+  "label": "jeu témoin, cible 80",
+  "short": "Rejeu"
+ }
+}

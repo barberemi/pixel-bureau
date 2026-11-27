@@ -22,9 +22,21 @@ Les deux boutons sont grisés pendant un rejeu : un seul à la fois.
 - **À la fin**, sa bulle donne la note 5 minutes (« ⚡ DM-2041 · 82/100 · cible atteinte »), et une ligne part dans le fil.
 - **En panne**, la salle passe en alarme rouge et sa bulle dit à quelle étape ; la ligne du fil est importante.
 
-Sa fiche dit ce qu'il rejoue et depuis quand, et ses cinq derniers rejeux : la note et ses parts (tests de la vraie PR, fichiers touchés, lignes communes, juge).
-
 Dans « Comment lire le plan », l'onglet 🎬 Scènes a « Palpatine rejoue un ticket » (« ▶ voir »).
+
+## Sa fiche
+
+![La fiche de Palpatine : le bloc TÉMOIN à côté du nom, ce qu'il fait, la dernière note, les leçons à valider et le bouton](../img/fiche-palpatine.png)
+
+Elle reste courte :
+
+- **Maintenant** : ce qu'il rejoue, depuis quand et à quelle étape, ou « Attend un ticket à rejouer ».
+- **Dernière note** : le ticket, la note sur 100 et un tag « cible » (80 ou plus) ou « sous 80 ». C'est le rejeu du jour s'il y en a un, sinon le dernier relevé par la page « Rejeu · bilan ».
+- **« ⚡ 2 leçons à valider ce soir »** quand la mémoire du soir attend ta validation sur des leçons tirées du rejeu (la gate du marchand de sable).
+- Le bouton **« ⚡ Rejouer un ticket »**.
+- En haut à droite, à côté du nom, le bloc **TÉMOIN** : la moyenne du jeu témoin (les PR fixes de `rejeu.temoin`, rejouées avec la version de la chaîne en service), et dessous son écart avec la version précédente de la chaîne : vert « ▲ 6 » si elle monte, rouge « ▼ 3 » si elle baisse, gris « = 0 » à moins d'un point. Au survol : « Moyenne du jeu témoin : 74, +6 depuis la version a1b2c3d » (une version de la chaîne est l'empreinte courte de sa configuration). Pas de bloc tant que le jeu témoin n'a pas été joué.
+
+Le détail (parts de chaque note, historique, écarts du juge) est sur la page « Rejeu · bilan » ([40-rejeu-bilan](40-rejeu-bilan.md)). Sans elle, la fiche marche comme avant, sans le bloc TÉMOIN.
 
 ## Ce qu'il faut
 

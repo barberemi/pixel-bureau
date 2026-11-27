@@ -4,7 +4,7 @@
 
 ## But
 
-Refaire avec la chaîne d'implémentation un ticket dont la PR est déjà mergée, depuis le commit d'avant cette PR, puis comparer son travail à la vraie PR. La cible est 80 sur 100. Ce qu'on en apprend nourrira la mémoire du soir dans un lot suivant ([memoire](memoire.md)). Le rejeu réutilise le mode essai et la variable `base` de la chaîne, qui savaient déjà rejouer un ticket sans fuite du futur ([chaine-implementation](chaine-implementation.md), « Rejouer un ticket déjà livré ») [src: file: workflows/chaine.py:cmd_prepare].
+Refaire avec la chaîne d'implémentation un ticket dont la PR est déjà mergée, depuis le commit d'avant cette PR, puis comparer son travail à la vraie PR. La cible est 80 sur 100. Ce qu'on en apprend nourrit la mémoire du soir ([memoire](memoire.md)). Le rejeu réutilise le mode essai et la variable `base` de la chaîne, qui savaient déjà rejouer un ticket sans fuite du futur ([chaine-implementation](chaine-implementation.md), « Rejouer un ticket déjà livré ») [src: file: workflows/chaine.py:cmd_prepare].
 
 ## Forme
 
@@ -57,11 +57,22 @@ Le lanceur et la variante s'installent avec la chaîne (`install.with_posts` : `
 - Les runs d'`impl_rejeu` ne se voient pas à l'atelier : il ne lit que `models.impl_chain` (`atelier_chain`). `atelier_wf` les retire des runs du RDC ; Palpatine les lit dans `AT_RUNS` par `CFG.rejeu_wf` (préfixe de `models.impl_rejeu`).
 - Les dépendances liées sont celles du checkout principal d'aujourd'hui, pas celles de la base rejouée (même limite que l'essai rejoué).
 - Un test de la vraie PR qui appelle un nom que la chaîne a choisi autrement échoue : le juge le classe `nommage`.
-- Rien n'alimente encore la mémoire du soir (lot suivant).
+- Le rejeu nourrit la mémoire du soir : ses écarts (hors jeu témoin, sans `acceptable`) entrent au relevé ; `ticket_vague` va à la proposition classique, `choix_agent` et `convention` à une seconde gate (`boss_rejeu`) puis à la fiche `impl`, rangées dans `<dossier>/lecons.json` ([memoire](memoire.md), « Le rejeu qui apprend »). Un « Rejeter » de la première gate arrête le run (Kronn) : ces leçons reviennent au relevé suivant.
 
 ## Tests
 
 `tests/test_rejeu.py` : la variante (sans gate, renvois vers la note, mêmes postes que la chaîne, rendu), la note et le rangement dans un dépôt git jetable (fichiers, tests posés puis retirés, rouges, non mesurés, sans demande), le choix d'une PR avec un faux `gh` (témoin, filtres et variété de la rotation, pause).
+
+## Bilan : page « Rejeu · bilan » et résumé de la fiche
+
+Cron `rejeu_bilan` (0 token, `47 @@cron_hours@@ * * 1-5`, comme le bilan des revues : toutes les heures, en semaine aux heures du bureau), script `workflows/rejeu_bilan.py`, page à part `page/rejeu-bilan.html` (`rejeu_bilan_page_id`, `templates.SIDE_PAGES`). La page et le cron s'installent avec le rejeu : `install.side_pages` crée la page quand `rejeu` est choisi (il vient avec `impl`, `install.with_posts`), `templates.skipped("rejeu_bilan")` sans `models.rejeu` ou sans page [src: file: tools/templates.py:skipped].
+
+- `releve` : les runs finis d'`impl_rejeu` (`models.impl_rejeu`), durée (`started_at` à `finished_at`) et coût de Kronn (`agent_provenance.attempts[].cost_usd` des étapes Agent du run et de ses sous-runs par `parent_run_id`, postes `impl_*` et `review_*`, trois niveaux) ; un run fini lu une fois (`~/.cache/pixel-bureau/rejeu_bilan/<run>.json`). Puis `lecons.json` : si `a_valider.run` est encore actif dans Kronn (`workflows.memoire`, statut dans `ACTIVE`), noté dans `_releve.json` (`a_valider_run`, `a_valider_actif`).
+- `bilan` (dataset `rejeu_bilan`) : les rejeux `<dossier>/<ticket>/<run>.json` des 90 derniers jours (200 au plus, sortie sous 90 Ko), la version de la chaîne en service (`impl_version`, injectée dans ce script comme dans ceux de la chaîne, `templates.script_code`), `versions` (jeu témoin par version, dans l'ordre d'apparition : moyenne de la dernière note de chaque PR témoin, `lecons` = leçons du rejeu validées entre la version d'avant et celle-ci), `temoins` (les 6 derniers passages de chaque PR témoin), `lecons`, `resume`, `kpi`. Une version est l'empreinte `hash` de `impl_version` (gardée par `range` dans chaque rejeu).
+- `resume` (dataset `rejeu_resume` de la page du Bureau, `install.DATASETS`) : `{date, temoin: {moyenne, ecart, version, version_prec, n} | null, dernier: {ticket, pr, note, cible, fini_le} | null, lecons: {a_valider, validees}}`. Moyenne et écart arrondis au demi supérieur. La page le lit par `readRejeuSum` (`REJEU_SUM`, `page/src/90-boot.js`), null sans dataset.
+- Leçons : `<dossier>/lecons.json` (`a_valider` : la proposition de la mémoire du soir, `validees` : celles passées à la gate, avec `le`), écrit par la mémoire du soir ([memoire](memoire.md)) ; absent : 0 et 0. `a_valider` ne compte que si son run de la mémoire attend encore.
+- Écarts par cause (page) : hors jeu témoin, comme la mémoire du soir.
+- Tests : `tests/test_rejeu_bilan.py` (relevé bouchonné, bilan, versions et ⚡, résumé, borne, modèle et installation), `tests/rejeu-bilan-page.test.js` (page), `tests/rejeu-resume.test.js` (lecture côté page). Capture : `tools/shots.py rejeu-bilan` (`SIDE_SHOTS`, données de démo `data/rejeu_bilan.json`, équipe fictive).
 
 ## Dans la page : Palpatine (lot 2)
 
@@ -69,6 +80,7 @@ Le lanceur et la variante s'installent avec la chaîne (`install.with_posts` : `
 - **Où** : toujours à la salle des serveurs (`spots.srv` du plan, la case la plus à droite) ; la baie visée est la plus à gauche (`FURN_AT.server_rack`), la salle est la pièce de `light_rooms` qui contient sa case [src: file: page/src/49-palpatine.js:palpPlace].
 - **État** : `palpState` (accroché dans `stateAt`, 35-state.js) lit le run `impl_rejeu` actif dans `AT_RUNS` ; bulle = étape (`atStepName`) ; fini : la note 5 min (`run.res`) ; en panne : l'étape en échec.
 - **La note** : `_lib.run_res` relit la sortie de l'étape `range` des runs réussis d'`impl_rejeu` (`rejeu_res` : ticket, PR, note, cible, parts en %) [src: file: workflows/_lib.py:rejeu_res]. Garder le format de la sortie de `cmd_range` (testé dans `tests/test_rejeu.py`).
+- **Sa fiche** : `palpBlock` (accroché dans `drawSide`, 50-panel.js) : « Maintenant » (`palpMoment`), la dernière note (`palpLast` : le dernier run réussi d'`AT_RUNS` avec `run.res`, sinon `REJEU_SUM.dernier` s'il est plus récent) avec un tag « cible » / « sous 80 », le tag « ⚡ N leçons à valider ce soir » (`palpLessons` : `sandRejeuLessons()` de 49-marchand.js, la gate `boss_rejeu` ouverte, sinon `REJEU_SUM.lecons.a_valider`), le bouton. Pas de liste des rejeux ni de parts : elles sont dans le bilan. Le bloc TÉMOIN (`palpTemoin`) se pose dans l'en-tête de la fiche (`.face`, à gauche du ✎) : `REJEU_SUM.temoin.moyenne`, la pastille d'écart (▲ vert si `ecart` ≥ 1, ▼ rouge si ≤ -1, « = 0 » gris sinon, aucune sans `version_prec`), le title « Moyenne du jeu témoin : 74, +6 depuis la version <version_prec> » (empreinte courte de la chaîne). Sans dataset `rejeu_resume` ou sans `temoin` : pas de bloc [src: file: page/src/49-palpatine.js:palpBlock].
 - **Lancer** : blocs `bureau-rejeu` (sa fiche, `jeu` et `cas` saisis) et `bureau-rejeu-ticket` (fiche d'un ticket terminé, `cas` lié au ticket), clé `rejeu` (`MODEL_ACTIONS`).
 - **Dessin** : `palpDraw` (accroché dans `drawChar`) dessine la salle (pénombre, flash, arcs, étincelles, fumée, alarme) et ses images de lancer (`SPR.palpatine_cast`, `sprites/common/palpatine/palpatine-cast.png` ; mains : `PALP_HANDS` = `palpatine-cast.json`).
-- **Tests** : `tests/palpatine.test.js`.
+- **Tests** : `tests/palpatine.test.js` ; capture de la fiche : `tools/shots.py fiche-palpatine` (`REJEU_SUM` de démo).

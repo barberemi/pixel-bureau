@@ -1,7 +1,9 @@
 """Mémoire du soir (python3 -m unittest tests/test_memoire.py) : workflows/memoire.py relève les retours humains des quatre
 workflows à agent (historique des tickets, retours.md de la chaîne, bloquants réfutés des revues, « Changements » des
 corrections), vérifie et applique la proposition de l'agent ; workflows/_memoire.py donne à chaque poste sa part des
-fiches. Horloge figée (tests/fakeclock), HOME et dossier de la mémoire dans un dossier temporaire."""
+fiches ; le rejeu (Palpatine) apprend aussi : les écarts du juge, hors jeu témoin, en seconde proposition validée à sa
+propre gate (boss_rejeu), rangée dans <rejeu.dossier>/lecons.json. Horloge figée (tests/fakeclock), HOME et dossiers de la
+mémoire et du rejeu dans un dossier temporaire."""
 import copy, json, os, shutil, subprocess, sys, tempfile, unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -24,6 +26,7 @@ class MemoireTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
         self.mem = os.path.join(self.tmp, "memoire")
+        self.rj = os.path.join(self.tmp, "rejeu")
 
     def tearDown(self):
         shutil.rmtree(self.tmp)
@@ -31,6 +34,7 @@ class MemoireTest(unittest.TestCase):
     def cfg(self, **memoire):
         c = copy.deepcopy(FIXTURE)
         c["memoire"] = {"dossier": self.mem, **memoire}
+        c["rejeu"] = {"dossier": self.rj}
         path = os.path.join(self.tmp, "bureau.config.json")
         Path(path).write_text(json.dumps(c))
         return path
@@ -71,6 +75,17 @@ class MemoireTest(unittest.TestCase):
         d.mkdir(parents=True, exist_ok=True)
         (d / f"{run}.json").write_text(json.dumps({"repo": "dm/site", "pr": 42, "retour_humain": {"at": iso(NOW - timedelta(hours=h)), "texte": texte,
                                                                                                     "repo": "dm/site", "pr": "42"}}))
+
+    def rejeu(self, ticket, run, ecarts, jeu="rotation", h=3):
+        d = Path(self.rj, ticket)
+        d.mkdir(parents=True, exist_ok=True)
+        (d / f"{run}.json").write_text(json.dumps({"ticket": ticket, "run": run, "jeu": jeu, "pr": 7, "note_sur_100": 64, "atteint": False,
+                                                   "fini_le": iso(NOW - timedelta(hours=h)), "juge": {"resume": "x", "ecarts": [
+                                                       {"fichier": "a.py", "quoi": q, "cause": c, "lecon": l, **({"poste": p} if p else {})}
+                                                       for q, c, l, p in ecarts]}}))
+
+    def lecons(self):
+        return json.loads(Path(self.rj, "lecons.json").read_text())
 
     def test_releve_reads_the_four_workflows_once(self):
         self.ticket("aaaa1111", (3, "Garde les noms de commande de la discussion"))
@@ -248,14 +263,28 @@ class MemoireTest(unittest.TestCase):
         self.assertEqual(d["guards"], {"timeout_seconds": 72 * 3600}, "la gate attend le matin, et le lundi après un vendredi soir")
         self.assertEqual(d["concurrency_limit"], 1, "une gate encore ouverte : le soir suivant ne relance pas")
         steps = {s["name"]: s for s in d["steps"]}
-        self.assertEqual(list(steps), ["releve", "consolide", "propose", "boss", "applique", "fin"])
+        self.assertEqual(list(steps), ["releve", "consolide", "propose", "boss", "applique", "propose_rejeu", "boss_rejeu", "applique_rejeu", "fin"])
         self.assertEqual([s["name"] for s in d["steps"] if s["step_type"]["type"] == "Agent"], ["consolide"], "un seul agent")
         self.assertIn("Tu tiens la mémoire de l'équipe", steps["consolide"]["prompt_template"])
         self.assertTrue(steps["consolide"]["prompt_template"].endswith("{{steps.releve.data.stdout}}"))
         self.assertEqual(steps["boss"]["gate_request_changes_target"], "consolide")
         self.assertEqual(steps["boss"]["gate_message"], "{{steps.propose.data.stdout}}")
-        for s in ("releve", "propose"):
+        for s in ("releve", "propose_rejeu"):
             self.assertEqual(steps[s]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "fin"}}])
+        self.assertEqual(steps["propose"]["on_result"], [{"contains": "exit_3", "action": {"type": "Goto", "step_name": "fin"}},
+                                                         {"contains": "exit_4", "action": {"type": "Goto", "step_name": "propose_rejeu"}}],
+                         "rien pour la gate boss mais des leçons du rejeu : directement à leur gate")
+        # la seconde gate : même retour à l'agent ; Kronn arrête le run sur un Rejeter, d'où applique avant boss_rejeu
+        self.assertEqual(steps["boss_rejeu"]["step_type"], {"type": "Gate"})
+        self.assertEqual(steps["boss_rejeu"]["gate_request_changes_target"], "consolide")
+        self.assertEqual(steps["boss_rejeu"]["gate_message"], "{{steps.propose_rejeu.data.stdout}}")
+        names = list(steps)
+        self.assertLess(names.index("applique"), names.index("boss_rejeu"), "la mémoire est écrite avant que la gate du rejeu ne s'ouvre")
+        for s in ("releve", "propose", "propose_rejeu", "applique_rejeu"):
+            self.assertEqual(steps[s]["exec_args"][-1], "{{run.id}}", s)
+        self.assertIn("rejeu", steps["consolide"]["output_format"]["schema"]["properties"])
+        self.assertNotIn("rejeu", steps["consolide"]["output_format"]["schema"]["required"], "facultatif : sans rejeu, l'agent ne le rend pas")
+        self.assertIn("Rejeu de Palpatine", steps["consolide"]["prompt_template"])
         back = templates.templatize("memoire", "workflow", d, FIXTURE)["definition"]
         self.assertEqual(back["trigger"], tpl["definition"]["trigger"], "export : heures et fuseau redeviennent des emplacements")
 
@@ -286,6 +315,129 @@ class MemoireTest(unittest.TestCase):
         (runs / "r8.json").write_text(json.dumps({"repo": "dm/site", "pr": 43, "work": str(work), "clone": str(work)}))
         self.run_("fix_abort", "dm/site", "43", "r8", stdin="", script="pr_update.py")
         self.assertNotIn("retour_humain", json.loads((runs / "r8.json").read_text()), "message vide : rien à garder")
+
+
+    # ---------- le rejeu qui apprend (Palpatine) ----------
+    def test_releve_reads_the_judge_without_the_witness_set(self):
+        self.rejeu("DM-2041", "run1", [("le cache n'est pas vidé", "choix_agent", "Vide le cache touché par un changement de modèle", "code"),
+                                       ("nom de test", "convention", "Range les tests à côté du code testé", "poste-inconnu"),
+                                       ("le ticket ne disait rien du CSV", "ticket_vague", "Précise le format des exports attendus", ""),
+                                       ("autre approche", "acceptable", "", ""),
+                                       ("sans leçon", "choix_agent", "", "")])
+        self.rejeu("DM-1000", "run2", [("x", "choix_agent", "Leçon du jeu témoin", "")], jeu="temoin")
+        Path(self.rj, "demandes").mkdir(parents=True)
+        Path(self.rj, "demandes", "DM-2041.json").write_text(json.dumps({"jeu": "rotation", "pr": 7}))
+        r = self.run_("releve", "run-a")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out = r.stdout
+        self.assertIn("Nouveaux retours : ticket 1, impl 0, revue 0, correction 0. Leçons du rejeu de Palpatine : 2.", out)
+        neufs = out.split("## Retours nouveaux")[1].split("## Retours déjà vus")[0]
+        self.assertIn("[ticket/redaction]", neufs)
+        self.assertIn("⚡ DM-2041 · ticket_vague : Précise le format des exports attendus", neufs, "ticket_vague : proposition classique")
+        self.assertNotIn("Vide le cache", neufs, "choix_agent : à part")
+        section = out.split("## Leçons du rejeu de Palpatine")[1].split("## Fiches actuelles")[0]
+        self.assertIn("- ⚡ DM-2041 · choix_agent [code] : Vide le cache touché par un changement de modèle", section)
+        self.assertIn("- ⚡ DM-2041 · convention : Range les tests à côté du code testé", section, "un poste inconnu est oublié")
+        self.assertNotIn("Leçon du jeu témoin", out, "le jeu témoin mesure, il n'apprend rien")
+        self.assertNotIn("autre approche", out, "acceptable : jamais retenu")
+        self.assertEqual(len(Path(self.mem, "journal", NOW.strftime("%Y-%m-%d") + ".jsonl").read_text().splitlines()), 3)
+        self.assertEqual(len(json.loads(Path(self.mem, "rejeu.json").read_text())["lecons"]), 2)
+        again = self.run_("releve", "run-b", now=NOW + timedelta(days=1))
+        self.assertEqual(again.returncode, 3, "un écart n'entre qu'une fois au journal")
+        self.assertEqual(self.run_("releve", "run-c", workflows=["ticket"], now=NOW + timedelta(days=1)).returncode, 3)
+
+    def proposition(self, **extra):
+        return json.dumps({"fiches": [{"nom": "ticket", "contenu": "- [redaction] Précise le format des exports", "pourquoi": "rejeu"}],
+                           "promotions": [], "resume": "Les exports se précisent.", **extra})
+
+    def test_two_gates_each_writes_only_what_was_validated(self):
+        self.fiche("impl", "Lis docs/AGENTS.md d'abord")
+        self.rejeu("DM-2041", "run1", [("cache", "choix_agent", "Vide le cache touché", "code"), ("tests", "convention", "Range les tests à côté", "")])
+        self.assertEqual(self.run_("releve", "run-a").returncode, 0)
+        rejeu = [{"lecon": "Vide tout cache que le changement touche", "poste": "code", "source": "⚡ DM-2041 · choix_agent"},
+                 {"lecon": "Range les tests à côté du code", "poste": "", "source": "⚡ DM-2041 · convention + ⚡ DM-9 · x"},
+                 {"lecon": "Inventée", "poste": "", "source": "⚡ DM-0 · choix_agent"},
+                 {"lecon": "Lis docs/AGENTS.md d'abord", "source": "⚡ DM-2041 · convention"}]
+        r = self.run_("propose", "run-a", stdin=self.proposition(rejeu=rejeu))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(r.stdout.startswith("🧠 **Mémoire du soir** · 1 leçon à valider : Les exports se précisent."), r.stdout[:90])
+        self.assertIn("\n\n⚡ **Rejeu de Palpatine** · 2 leçons à valider ensuite", r.stdout, "le second parchemin, annoncé")
+        self.assertIn("les leçons du rejeu reviennent au prochain soir", r.stdout)
+        av = self.lecons()["a_valider"]
+        self.assertEqual(av["run"], "run-a")
+        self.assertEqual(av["lecons"], [
+            {"ticket": "DM-2041", "cause": "choix_agent", "lecon": "Vide tout cache que le changement touche", "source": "⚡ DM-2041 · choix_agent", "poste": "code"},
+            {"ticket": "DM-2041", "cause": "convention", "lecon": "Range les tests à côté du code", "source": "⚡ DM-2041 · convention"}],
+            "source inconnue et leçon déjà dans la fiche impl retirées")
+        self.assertEqual(self.lecons()["validees"], [])
+        self.assertEqual(self.run_("applique").returncode, 0)
+        self.assertIn("Précise le format", Path(self.mem, "ticket.md").read_text())
+        g = self.run_("propose_rejeu", "run-a")
+        self.assertEqual(g.returncode, 0, g.stderr)
+        self.assertTrue(g.stdout.startswith("⚡ **Mémoire du soir · rejeu de Palpatine** · 2 leçons à valider : "), g.stdout[:90])
+        self.assertIn("- [code] Vide tout cache que le changement touche · _⚡ DM-2041 · choix_agent_", g.stdout)
+        self.assertIn("leçon du rejeu sans source connue ignorée : Inventée", g.stdout)
+        a = self.run_("applique_rejeu", "run-a")
+        self.assertEqual(a.returncode, 0, a.stderr)
+        self.assertEqual(Path(self.mem, "impl.md").read_text(), "# Mémoire · impl\n\n- Lis docs/AGENTS.md d'abord\n"
+                         "- [code] Vide tout cache que le changement touche\n- Range les tests à côté du code\n")
+        lec = self.lecons()
+        self.assertIsNone(lec["a_valider"])
+        self.assertEqual([(x["ticket"], x["cause"], x["run"]) for x in lec["validees"]], [("DM-2041", "choix_agent", "run-a"), ("DM-2041", "convention", "run-a")])
+        self.assertTrue(all(x["le"] for x in lec["validees"]))
+        self.assertTrue(any(d.endswith("-rejeu") for d in os.listdir(os.path.join(self.mem, "versions"))), "la fiche d'avant gardée")
+        self.assertIn("Aucune leçon du rejeu", self.run_("applique_rejeu", "run-a").stdout, "idempotent")
+
+    def test_rejeu_only_goes_straight_to_its_gate_and_falls_back_on_the_judge(self):
+        self.rejeu("DM-7", "run1", [("x", "convention", "Écris la doc du réglage ajouté", "doc")])
+        self.run_("releve", "run-a")
+        r = self.run_("propose", "run-a", stdin=json.dumps({"fiches": [], "promotions": [], "resume": "rien"}))
+        self.assertEqual(r.returncode, 4, "rien pour la gate boss : directement à celle du rejeu")
+        self.assertEqual(self.lecons()["a_valider"]["lecons"][0]["lecon"], "Écris la doc du réglage ajouté", "sans champ rejeu : la leçon du juge")
+        self.assertEqual(self.lecons()["a_valider"]["lecons"][0]["poste"], "doc")
+        self.assertEqual(self.run_("propose", "run-a", stdin="pas du json").returncode, 4, "agent illisible : la leçon du juge quand même")
+        vide = self.run_("propose", "run-a", stdin=json.dumps({"fiches": [], "promotions": [], "resume": "rien", "rejeu": []}))
+        self.assertEqual(vide.returncode, 3, "l'agent n'en retient aucune")
+        self.assertIn("aucune retenue par l'agent", vide.stdout)
+        self.assertIsNone(self.lecons()["a_valider"])
+        self.assertEqual(self.run_("propose_rejeu", "run-a").returncode, 3, "gate sautée")
+
+    def test_changes_at_the_rejeu_gate_do_not_bring_back_the_first_one(self):
+        self.rejeu("DM-7", "run1", [("x", "choix_agent", "Lis le ticket lié", "cadrage")])
+        self.run_("releve", "run-a")
+        self.assertEqual(self.run_("propose", "run-a", stdin=self.proposition()).returncode, 0)
+        self.run_("applique")
+        self.assertEqual(self.run_("propose_rejeu", "run-a").returncode, 0)
+        # Changements à boss_rejeu : retour à consolide, puis propose ; la mémoire est décidée, sa gate ne revient pas
+        r = self.run_("propose", "run-a", stdin=self.proposition(rejeu=[{"lecon": "Lis chaque ticket lié", "poste": "cadrage", "source": "⚡ DM-7 · choix_agent"}]))
+        self.assertEqual(r.returncode, 4, r.stdout)
+        self.assertIn("déjà décidée", r.stdout)
+        self.assertEqual(self.lecons()["a_valider"]["lecons"][0]["lecon"], "Lis chaque ticket lié")
+        self.assertIn("- [cadrage] Lis chaque ticket lié", self.run_("propose_rejeu", "run-a").stdout)
+
+    def test_lessons_of_a_run_stopped_before_their_gate_come_back(self):
+        self.rejeu("DM-7", "run1", [("x", "choix_agent", "Lis le ticket lié", "")])
+        self.run_("releve", "run-a")
+        self.run_("propose", "run-a", stdin=self.proposition())
+        self.assertIsNotNone(self.lecons()["a_valider"])
+        # la gate boss rejetée : Kronn arrête le run, boss_rejeu ne s'ouvre jamais ; le soir suivant, elles reviennent
+        nxt = self.run_("releve", "run-b", now=NOW + timedelta(days=1))
+        self.assertEqual(nxt.returncode, 0, nxt.stdout)
+        self.assertIn("- ⚡ DM-7 · choix_agent : Lis le ticket lié", nxt.stdout)
+        self.assertIsNone(self.lecons()["a_valider"], "vidé au relevé")
+        self.run_("propose", "run-b", stdin=json.dumps({"fiches": [], "promotions": [], "resume": "x"}))
+        self.assertEqual(self.lecons()["a_valider"]["run"], "run-b")
+        # cette fois leur gate s'ouvre, puis le boss la rejette : elles ne reviennent pas
+        self.run_("propose_rejeu", "run-b")
+        third = self.run_("releve", "run-c", now=NOW + timedelta(days=2))
+        self.assertEqual(third.returncode, 3, third.stdout)
+        self.assertIsNone(self.lecons()["a_valider"])
+
+    def test_memoire_script_gets_the_rejeu_folder(self):
+        code = templates.script_code("workflows/memoire.py", {**copy.deepcopy(FIXTURE), "rejeu": {"dossier": "/x/rejeu", "temoin": [1]}})
+        self.assertIn('"rejeu": {"dossier": "/x/rejeu"', code)
+        self.assertNotIn("{{", code)
+        self.assertLess(len(code.encode()), templates.MAX_SCRIPT)
 
 
 if __name__ == "__main__":

@@ -65,7 +65,7 @@ class UpgradeTest(unittest.TestCase):
         modèle installé. Le cron est créé activé, sans être lancé."""
         cfg = self.cfg()
         page = self.k.store[cfg["page_id"]]
-        page["datasets"] = [d for d in page["datasets"] if d["name"] not in ("statuts", "sprintquest", "oeil")]
+        page["datasets"] = [d for d in page["datasets"] if d["name"] not in ("statuts", "sprintquest", "oeil", "rejeu_resume")]
         retours = cfg.pop("retours_bilan_page_id")
         del self.k.store[retours]
         del self.k.store[cfg["workflows"].pop("canard")]

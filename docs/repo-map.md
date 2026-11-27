@@ -16,6 +16,7 @@ pixel-bureau/
 ├── page/                      # sources de la page (seul endroit à éditer pour la page)
 │   ├── office_template.html   # squelette : canvas, panneau, blocs kronn-action, marqueurs /*__STYLES__*/ et /*__SCRIPTS__*/
 │   ├── fonts/                 # PressStart2P (woff2 + licence OFL), intégrée en base64 à l'assemblage
+│   ├── *bilan.html            # pages Kronn à part (templates.SIDE_PAGES) : chaîne, Support, rédaction, retours, revue, rejeu (rejeu-bilan.html)
 │   └── src/
 │       ├── NN-*.js            # 00 config, 10 plan, 20 sprites, 30-39 données/états/scènes/canard, 40-47 dessin,
 │       │                      # 50-65 panneau/actions/fiches/éditeur, 69-72 récap/fil/Qui fait quoi, 75-76 TV, 80 souris, 90 boucle
@@ -28,6 +29,7 @@ pixel-bureau/
 │   ├── _vars.py               # variables de lancement d'un run reconstituées (Kronn ne les rend plus), recopié dans office et live
 │   ├── _lib.py, _plan.py      # socle commun et règles des plans, recopiés dans chaque script au rendu
 │   ├── *_snapshot.py          # producteurs des datasets (office, live, gates, payroll, duck, absences, pages, github, gitfut, actions, statuts, oeil)
+│   ├── memoire.py, rejeu.py, rejeu_bilan.py # mémoire du soir (gates boss et boss_rejeu, écrit <rejeu.dossier>/lecons.json), rejeu de Palpatine, bilan du rejeu (datasets rejeu_bilan et rejeu_resume)
 │   ├── *.py                   # autres étapes (team_shape, duck_start, todos, gate_decide, question_answer, relaunch, layout_save, agent_save…)
 │   └── templates/*.json       # modèles des workflows et Quick Prompts (team, live, office, canard, absences, duck, gate…)
 ├── arcade/sprint-quest/       # source de l'artefact claude.ai Sprint Quest (borne des Combles) et ses capacités ; republié par la skill .claude/skills/sprint-quest

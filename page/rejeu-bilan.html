@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rejeu · bilan</title>
+<!-- Page Kronn « Rejeu · bilan » : les rejeux de Palpatine (tickets déjà livrés refaits par la chaîne et notés contre la
+     vraie PR) (dataset rejeu_bilan, workflows/rejeu_bilan.py, cron rejeu_bilan). Vanilla, sans ressource externe (CSP de
+     Kronn : script et style en ligne seulement). Styles : ceux de page/retours-bilan.html. Le chiffre clé du vidéoprojecteur
+     vient du champ kpi du dataset. -->
+<style>
+:root{
+  --bg:#f3efe6; --panel:#fffdf8; --ink:#25221d; --muted:#6f685c; --line:#e2dccf; --chip:#f0ebe0;
+  --accent:#2f6fd6; --ok:#2e9e5b; --warn:#d89614; --err:#d1453b; --info:#4a7fe0; --idle:#7a7266; --on-accent:#ffffff;
+  --h0:#f0ebe0; --h1:#cfe0f7; --h2:#86aee9; --h3:#2f6fd6; --hx:#d1453b; --sign:#22232b; --sign-ink:#ece8df; --sign-mut:#a29c90;
+  --opus:#8a5cd6; --sonnet:#2f6fd6; --haiku:#1f9e86;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#17181c; --panel:#202228; --ink:#ece8df; --muted:#a29c90; --line:#2f323a; --chip:#2a2d34;
+  --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#9a9284; --on-accent:#0d1b33;
+  --h0:#2a2d34; --h1:#2c3d5c; --h2:#3f63a3; --h3:#6b9cf0; --hx:#f06a5f;
+  --opus:#b48cff; --sonnet:#6b9cf0; --haiku:#3fc7b0;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#17181c; --panel:#202228; --ink:#ece8df; --muted:#a29c90; --line:#2f323a; --chip:#2a2d34;
+  --accent:#6b9cf0; --ok:#4cc27c; --warn:#f0b03a; --err:#f06a5f; --info:#7aa2f2; --idle:#9a9284; --on-accent:#0d1b33;
+  --h0:#2a2d34; --h1:#2c3d5c; --h2:#3f63a3; --h3:#6b9cf0; --hx:#f06a5f;
+  --opus:#b48cff; --sonnet:#6b9cf0; --haiku:#3fc7b0;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:16px 16px 32px}
+.wrap{max-width:1360px;margin:0 auto;display:grid;gap:14px}
+.num,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.mut{color:var(--muted);font-size:12px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--sign);color:var(--sign-ink);padding:10px 14px;border-radius:8px}
+h1{font:700 18px/1.3 ui-monospace,Menlo,monospace;margin:0;letter-spacing:.02em}
+header .mut{color:var(--sign-mut)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.kpi{border:3px solid var(--line);padding:8px 12px;background:var(--panel)}
+.kpi b{display:block;font:600 22px/1.15 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.kpi>span{color:var(--muted);font-size:12px}
+.up{color:var(--ok);font-weight:700}.down{color:var(--err);font-weight:700}.flat{color:var(--muted);font-weight:700}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px}
+.box{border:3px solid var(--line);padding:10px 12px;background:var(--panel);min-width:0}
+.h{font:700 12px system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.h .mut{text-transform:none;letter-spacing:0;font-weight:400}
+.why{color:var(--muted);font-size:12px;margin:0 0 10px}
+.hb{display:grid;grid-template-columns:170px minmax(0,1fr) 56px;gap:4px 8px;align-items:center;font-size:12.5px}
+.hb .bar{height:12px;background:var(--chip);position:relative}
+.hb .bar i{position:absolute;inset:0 auto 0 0;background:var(--info)}
+.hb .v{text-align:right}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;font-size:12.5px;width:100%}
+th{color:var(--muted);font-weight:600;text-align:left}
+td,th{padding:4px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.r,th.r{text-align:right}
+.heat td.c{width:46px;height:26px;text-align:center;font-family:ui-monospace,Menlo,monospace;font-weight:700;border:2px solid var(--panel)}
+.heat th{text-align:center}.heat th:first-child{text-align:left}
+.n-ok{background:var(--ok);color:#fff}.n-warn{background:var(--warn);color:#1c1c1c}.n-err{background:var(--err);color:#fff}.n-0{background:var(--h0);color:var(--muted)}
+.pill{display:inline-block;font:700 10.5px system-ui;padding:1px 6px;white-space:nowrap}
+.pill.idle{background:var(--chip);color:var(--muted)}.pill.info{background:var(--info);color:#fff}
+svg text{fill:var(--muted);font:11px system-ui,sans-serif}
+svg .ax{stroke:var(--line)}svg .ln{stroke:var(--accent);fill:none;stroke-width:2.5}svg .pt{fill:var(--accent)}
+svg .cb{stroke:var(--ok);stroke-dasharray:4 3}svg .cbt{fill:var(--ok);font-weight:600}svg .val{fill:var(--ink);font-family:ui-monospace,Menlo,monospace;font-weight:600}
+svg .zap{fill:var(--warn);font-size:14px}
+tr.row{cursor:pointer}tr.row:hover td,tr.row:focus-visible td{background:var(--chip)}tr.row.on td{background:var(--chip);font-weight:600}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0}
+.legend i{display:inline-block;width:9px;height:9px;margin-right:4px;vertical-align:-1px}
+.note{border-left:4px solid var(--warn);background:var(--chip);padding:6px 10px;font-size:12.5px;overflow-wrap:anywhere;white-space:normal}
+.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+tr.row:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+.vbars{display:grid;grid-auto-columns:minmax(0,1fr);grid-auto-flow:column;gap:8px;align-items:end;min-height:150px}
+.vbars .c{display:grid;gap:3px;justify-items:center;font-size:11px;min-width:0}
+.vbars .s{display:flex;flex-direction:column-reverse;width:100%;height:110px;background:var(--chip)}
+.vbars .s i{display:block;width:100%}
+.parts{display:inline-flex;gap:2px;vertical-align:middle}.parts i{display:block;width:14px;height:10px;background:var(--chip);position:relative;overflow:hidden}
+.parts i b{position:absolute;left:0;right:0;bottom:0;background:var(--info)}.parts i.nm{background:repeating-linear-gradient(45deg,var(--chip) 0 3px,var(--line) 3px 6px)}
+.jauges{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:8px 0}
+.jauge{background:var(--chip);padding:8px 10px}.jauge b{display:block;font:600 20px ui-monospace,Menlo,monospace}.jauge span{font-size:12px;color:var(--muted)}
+.jauge .g{height:8px;background:var(--panel);margin-top:6px}.jauge .g i{display:block;height:100%}
+.ecarts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.ecart{background:var(--chip);padding:5px 8px;font-size:12px;max-width:520px;overflow-wrap:anywhere}
+.quote{border-left:3px solid var(--line);padding:4px 8px;font-size:12.5px;margin:6px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="empty">Chargement du bilan…</div></div>
+<script>
+'use strict';
+(function(){
+// les causes d'écart du juge (tools/rejeu_juge.md) : [libellé, couleur]
+const CAUSES={choix_agent:['choix de l\'agent','err','n-err'],convention:['convention','warn','n-warn'],ticket_vague:['ticket vague','info','info'],acceptable:['acceptable','idle','idle']};
+// les parts de la note (rejeu.py, POIDS) : [libellé, poids]
+const PARTS=[['tests','🧪 Tests de la vraie PR',0.5],['fichiers','📁 Fichiers touchés',0.2],['lignes','📝 Lignes communes',0.1],['juge','⚖️ Juge',0.2]];
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDur=s=>{if(s==null)return '·';if(s<60)return Math.round(s)+' s';const m=Math.round(s/60);return m<60?m+' min':Math.floor(m/60)+' h '+String(m%60).padStart(2,'0');};
+const fmtUsd=v=>v==null?'·':(v||0).toFixed(2).replace('.',',')+' $';
+const sum=a=>a.reduce((x,y)=>x+(+y||0),0);
+const mean=a=>a.length?sum(a)/a.length:null;
+const pct=v=>v==null?'·':Math.round(v*100)+' %';
+const plural=(n,un,plus)=>n+' '+(n>1?plus:un);
+const pill=(c,l)=>`<span class="pill ${c}">${esc(l)}</span>`;
+const day=iso=>{const d=new Date(iso||'');return isNaN(d)?'':d.toLocaleString('fr-FR',{timeZone:'Europe/Paris',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(',','');};
+const cls=n=>n==null?'n-0':n>=80?'n-ok':n>=60?'n-warn':'n-err'; // rouge sous 60, ambre sous 80, vert à 80 et plus
+const badge=(r,cible)=>r.escalade?`<span class="pill n-err" title="La chaîne s'est arrêtée sur une escalade ; note ${esc(r.note)}">escaladé · ${esc(r.note)}</span>`
+  :`<span class="pill ${cls(r.note)}" title="${r.note>=cible?'cible atteinte':'sous '+cible}">${esc(r.note)}</span>`;
+const ecartTxt=e=>e==null?'<span class="flat">·</span>':e>=1?`<span class="up">▲ ${e}</span>`:e<=-1?`<span class="down">▼ ${-e}</span>`:'<span class="flat">= 0</span>';
+const semaine=iso=>{const d=new Date(iso||'');if(isNaN(d))return null;const l=new Date(d.getTime()-((d.getUTCDay()+6)%7)*864e5);return l.toISOString().slice(0,10);};
+
+function readRejeuBilan(k){
+  try{
+    if(!k||!k.datasets)return null;
+    let d=k.datasets.rejeu_bilan;
+    if(d&&d.current!==undefined)d=d.current;
+    if(typeof d==='string')d=JSON.parse(d);
+    return d&&Array.isArray(d.rejeux)?d:null;
+  }catch(e){return null;}
+}
+// les chiffres sur 30 jours (relativement au relevé)
+function aggregate(data){
+  const now=Date.parse(data.generated_at||'')||Date.now(), cible=data.cible||80;
+  const rows=(data.rejeux||[]).filter(r=>(Date.parse(r.fini_le||'')||0)>=now-30*864e5);
+  const a={rows,n:rows.length,cible};
+  a.atteints=rows.filter(r=>r.note>=cible).length;
+  const tests=rows.map(r=>(r.parts||{}).tests).filter(v=>v!=null);
+  a.tests=mean(tests);a.testsN=tests.length;a.nonMesures=rows.length-tests.length;
+  a.parts=Object.fromEntries(PARTS.map(([k])=>[k,mean(rows.map(r=>(r.parts||{})[k]).filter(v=>v!=null))]));
+  const couts=rows.map(r=>r.cout).filter(v=>v!=null), ms=rows.map(r=>r.ms).filter(v=>v!=null);
+  a.cout=mean(couts);a.coutN=couts.length;a.ms=mean(ms);
+  // écarts du juge par semaine, hors jeu témoin (il mesure, il n'apprend pas), 8 semaines au plus
+  const sem={};
+  for(const r of (data.rejeux||[]).filter(r=>r.jeu!=='temoin')){const k=semaine(r.fini_le);if(!k)continue;const s=sem[k]||(sem[k]={k});
+    for(const e of r.ecarts||[])if(CAUSES[e.cause])s[e.cause]=(s[e.cause]||0)+1;}
+  a.semaines=Object.values(sem).sort((x,y)=>x.k.localeCompare(y.k)).slice(-8);
+  return a;
+}
+function kpis(data,a){
+  const res=data.resume||{}, d=res.dernier, t=res.temoin, l=data.lecons||{};
+  return `<div class="kpis">
+  <div class="kpi"><b>${d?`<span class="pill ${cls(d.note)}" style="font:inherit;padding:0 6px">${esc(d.note)}</span>`:'–'}</b><span>${d?`dernier rejeu · ${esc(d.ticket)} · ${d.cible?'cible atteinte':'sous '+a.cible}`:'aucun rejeu encore'}</span></div>
+  <div class="kpi"><b>${t?esc(t.moyenne)+' '+ecartTxt(t.ecart):'–'}</b><span>${t?`jeu témoin (${plural(t.n,'PR','PR')}), version ${esc(t.version)}${t.version_prec?' contre '+esc(t.version_prec):''}`:'jeu témoin pas encore joué'}</span></div>
+  <div class="kpi"><b>${a.atteints} / ${a.n}</b><span>cible ${a.cible} atteinte, sur 30 jours</span></div>
+  <div class="kpi"><b>${pct(a.tests)}</b><span>tests de la vraie PR verts (${plural(a.testsN,'rejeu mesuré','rejeux mesurés')})</span></div>
+  <div class="kpi"><b>${l.validees||0} · ${l.a_valider?'⚡ '+l.a_valider:'0'}</b><span>leçons du rejeu validées · à valider ce soir</span></div>
+  <div class="kpi"><b>${fmtUsd(a.cout)}</b><span>par rejeu (${plural(a.coutN,'run','runs')}${a.ms==null?'':', '+fmtDur(a.ms/1000)+' en moyenne'})</span></div></div>`;
+}
+// la moyenne du jeu témoin par version de la chaîne, la cible en pointillés, ⚡ : une leçon du rejeu validée juste avant
+function courbe(data){
+  const vs=data.versions||[], cible=data.cible||80;
+  if(!vs.length)return `<div class="box"><div class="h">Jeu témoin par version</div><p class="mut">Le jeu témoin n'a pas encore été joué (rejeu « Jeu témoin » depuis la fiche de Palpatine).</p></div>`;
+  const W=560,H=200,L=34,R=40,T=22,B=30, x=i=>L+(vs.length<2?(W-L-R)/2:i*(W-L-R)/(vs.length-1)), y=v=>T+(1-v/100)*(H-T-B);
+  const pts=vs.map((v,i)=>[x(i),y(v.moyenne)]);
+  return `<div class="box"><div class="h">Jeu témoin par version <span class="mut">${plural(vs.length,'version','versions')} de la chaîne</span></div>
+  <p class="why">Moyenne de la dernière note de chaque PR témoin, par version de la chaîne ; ⚡ : une leçon du rejeu validée depuis la version d'avant.</p>
+  <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Moyenne du jeu témoin par version de la chaîne">
+  ${[0,50,100].map(v=>`<line class="ax" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${v}</text>`).join('')}
+  <line class="cb" x1="${L}" x2="${W-R}" y1="${y(cible)}" y2="${y(cible)}"/><text class="cbt" x="${L+4}" y="${y(cible)-4}">cible ${cible}</text>
+  <polyline class="ln" points="${pts.map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' ')}"/>
+  ${vs.map((v,i)=>`<circle class="pt" cx="${pts[i][0]}" cy="${pts[i][1]}" r="4"><title>${esc(v.hash)} · ${esc(v.sujet||'')} · ${Math.round(v.moyenne)} (${plural(v.n,'PR','PR')})</title></circle>
+    <text class="val" x="${pts[i][0]}" y="${pts[i][1]-9}" text-anchor="middle">${Math.round(v.moyenne)}</text>
+    <text x="${pts[i][0]}" y="${H-10}" text-anchor="middle">${esc(v.hash)}</text>${v.lecons?`<text class="zap" x="${pts[i][0]}" y="${T-6}" text-anchor="middle"><title>${plural(v.lecons,'leçon du rejeu validée','leçons du rejeu validées')} avant cette version</title>⚡</text>`:''}`).join('')}
+  </svg></div>`;
+}
+// chaque PR témoin et ses 6 derniers passages, l'écart entre les deux derniers
+function chaleur(data){
+  const ts=data.temoins||[];
+  if(!ts.length)return `<div class="box"><div class="h">Les PR témoins</div><p class="mut">Aucun jeu témoin réglé (rejeu.temoin : les n° de PR, dans le pack ou la config).</p></div>`;
+  const rows=ts.map(t=>{const p=t.passages||[], cells=Array.from({length:6},(_,i)=>p[p.length-6+i]);
+    const e=p.length>1?p[p.length-1].note-p[p.length-2].note:null;
+    return `<tr><td><b>#${esc(t.pr)}</b> <span class="mut">${esc(t.ticket||'')}</span></td>${cells.map(c=>c?`<td class="c ${cls(c.note)}" title="${esc(day(c.fini_le))} · version ${esc(c.version||'?')}">${esc(c.note)}</td>`:'<td class="c n-0">·</td>').join('')}<td class="r num">${ecartTxt(e)}</td></tr>`;}).join('');
+  return `<div class="box"><div class="h">Les PR témoins <span class="legend"><span><i style="background:var(--err)"></i>sous 60</span><span><i style="background:var(--warn)"></i>sous 80</span><span><i style="background:var(--ok)"></i>80 et plus</span></span></div>
+  <p class="why">Chaque PR du jeu témoin et ses six derniers passages, du plus ancien au plus récent ; l'écart entre les deux derniers.</p>
+  <div class="scroll"><table class="heat"><tr><th>PR</th>${[6,5,4,3,2,1].map(i=>`<th>${i===1?'dernier':'−'+(i-1)}</th>`).join('')}<th class="r">écart</th></tr>${rows}</table></div></div>`;
+}
+function causes(a){
+  const ks=Object.keys(CAUSES), max=Math.max(1,...a.semaines.map(s=>sum(ks.map(k=>s[k]))));
+  const leg=`<span class="legend">${ks.map(k=>`<span><i style="background:var(--${CAUSES[k][1]})"></i>${esc(CAUSES[k][0])}</span>`).join('')}</span>`;
+  const body=a.semaines.length?`<div class="vbars">${a.semaines.map(s=>{const n=sum(ks.map(k=>s[k]));return `<div class="c"><span class="mut num">${n}</span><div class="s">${ks.map(k=>s[k]?`<i title="${esc(CAUSES[k][0])} : ${s[k]}" style="height:${(s[k]/max*100).toFixed(1)}%;background:var(--${CAUSES[k][1]})"></i>`:'').join('')}</div><span class="mut">${esc(s.k.slice(8,10)+'/'+s.k.slice(5,7))}</span></div>`;}).join('')}</div>`:'<p class="mut">Aucun écart relevé par le juge.</p>';
+  return `<div class="box"><div class="h">Écarts par cause ${leg}</div><p class="why">Les écarts du juge par semaine (lundi), hors jeu témoin. Choix de l'agent et conventions nourrissent la mémoire du soir ; un ticket vague, la rédaction.</p>${body}</div>`;
+}
+function parts(a){
+  return `<div class="box"><div class="h">Les parts de la note <span class="mut">moyenne sur 30 jours</span></div>
+  <p class="why">La note sur 100 pondère quatre parts ; une part non mesurée est retirée et les poids rapportés au reste.</p>
+  <div class="hb">${PARTS.map(([k,l,w])=>{const v=a.parts[k];return `<span>${esc(l)} <span class="mut">× ${String(w).replace('.',',')}</span></span><div class="bar"><i style="width:${v==null?0:(v*100).toFixed(1)}%;background:var(--${v==null?'idle':v>=.8?'ok':v>=.6?'warn':'err'})"></i></div><span class="v num">${pct(v)}</span>`;}).join('')}</div>
+  <p class="mut" style="margin:8px 0 0">${a.nonMesures?plural(a.nonMesures,'rejeu','rejeux')+' sans tests mesurés (aucune commande de test ne prend les fichiers de la vraie PR).':'Tests mesurés sur tous les rejeux.'}</p></div>`;
+}
+const mini=r=>`<span class="parts">${PARTS.map(([k,l])=>{const v=(r.parts||{})[k];return v==null?`<i class="nm" title="${esc(l)} : non mesuré"></i>`:`<i title="${esc(l)} : ${pct(v)}"><b style="height:${(v*100).toFixed(0)}%"></b></i>`;}).join('')}</span>`;
+function table(data,sel){
+  const rows=(data.rejeux||[]).map(r=>`<tr class="row${r.run===sel?' on':''}" data-run="${esc(r.run)}" tabindex="0"><td class="num">${esc(day(r.fini_le))}</td>
+    <td style="white-space:normal;max-width:340px"><b>${esc(r.ticket)}</b> <span class="mut">${esc(String(r.titre||'').slice(0,70))}</span></td>
+    <td class="num">${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener">#${esc(r.pr)}</a>`:'#'+esc(r.pr)}</td>
+    <td>${r.jeu==='temoin'?pill('info','témoin'):pill('idle','rotation')}</td><td class="mut">${esc(r.genre||'?')} · ${esc(r.zone||'?')}</td>
+    <td>${badge(r,data.cible||80)}</td><td>${mini(r)}</td><td class="r num">${(r.ecarts||[]).length}</td>
+    <td class="r num">${r.ms==null?'·':esc(fmtDur(r.ms/1000))}</td><td class="r num"><b>${fmtUsd(r.cout)}</b></td></tr>`).join('');
+  return `<div class="box"><div class="h">Les rejeux <span class="mut">${plural((data.rejeux||[]).length,'rejeu','rejeux')} sur ${data.periode_jours||90} jours · le plus récent d'abord · clic : son détail</span></div>
+  <div class="scroll"><table><tr><th>Fini le</th><th>Ticket</th><th>PR</th><th>Jeu</th><th>Genre · coin</th><th>Note</th><th>Parts</th><th class="r">Écarts</th><th class="r">Durée</th><th class="r">Coût</th></tr>${rows}</table></div></div>`;
+}
+function detail(r,cible){
+  if(!r)return '';
+  const j=([k,l,w])=>{const v=(r.parts||{})[k];return `<div class="jauge"><span>${esc(l)} · poids ${String(w).replace('.',',')}</span><b>${pct(v)}</b><div class="g"><i style="width:${v==null?0:(v*100).toFixed(0)}%;background:var(--${v==null?'idle':v>=.8?'ok':v>=.6?'warn':'err'})"></i></div></div>`;};
+  return `<div class="box"><div class="h">${esc(r.ticket)} · #${esc(r.pr)} <span class="mut">${esc(r.titre||'')}${r.url?` · <a href="${esc(r.url)}" target="_blank" rel="noopener">la vraie PR ↗</a>`:''}</span></div>
+  <p class="why">Note ${badge(r,cible)} · version de la chaîne ${esc(r.version||'?')} · ${r.jeu==='temoin'?'jeu témoin (mesure, jamais source de leçon)':'rotation'}${r.echecs_tests&&r.echecs_tests!=='aucun'?' · tests rouges : '+esc(r.echecs_tests):''}</p>
+  <div class="jauges">${PARTS.map(j).join('')}</div>
+  ${r.resume?`<p class="quote">⚖️ ${esc(r.resume)}</p>`:'<p class="mut">Pas d\'avis du juge.</p>'}
+  ${(r.ecarts||[]).length?`<div class="ecarts">${r.ecarts.map(e=>{const c=CAUSES[e.cause]||[e.cause||'?','idle','idle'];return `<div class="ecart">${pill(c[2],c[0])} ${esc(e.lecon||'')}</div>`;}).join('')}</div>`:'<p class="mut">Aucun écart relevé.</p>'}</div>`;
+}
+function render(data,st){
+  st=st||{};
+  if(!data||!(data.rejeux||[]).length&&!(data.versions||[]).length)return `<header><h1>⚡ Rejeu · bilan</h1></header><div class="box empty">${data&&data.error?'Relevé incomplet : '+esc(data.error)+'. ':''}Aucun rejeu dans l'historique pour l'instant. Il se remplit à chaque « ⚡ Rejouer un ticket » depuis la fiche de Palpatine, à la salle des serveurs.</div>`;
+  const a=aggregate(data), v=data.version||{}, res=data.resume||{};
+  const sel=(data.rejeux||[]).find(r=>r.run===st.sel)||(data.rejeux||[])[0];
+  return `<header><div><h1>⚡ Rejeu · bilan</h1><div class="mut">${esc(data.depot||'dépôt ?')} · chaîne en service ${esc(v.hash||'?')}${v.sujet?' <span title="'+esc(v.sujet)+'">('+esc(String(v.sujet).slice(0,48))+')</span>':''} · cible ${a.cible} · jeu témoin ${(data.temoin||[]).length?(data.temoin||[]).map(n=>'#'+esc(n)).join(' '):'non réglé'}</div></div>
+  <div class="mut">dernier rejeu ${esc(day(res.date)||'·')} · relevé ${esc(day(data.generated_at).slice(-5))}${data.error?' · '+pill('n-err','cron en erreur'):''}</div></header>
+  ${data.error?`<div class="note">Relevé incomplet : ${esc(data.error)}</div>`:''}
+  ${kpis(data,a)}<div class="grid2">${courbe(data)}${chaleur(data)}</div><div class="grid2">${causes(a)}${parts(a)}</div>
+  ${table(data,sel?sel.run:null)}${detail(sel,a.cible)}`;
+}
+const B={readRejeuBilan,aggregate,render};
+if(typeof window!=='undefined')window.REJEU_BILAN=B;
+if(typeof document==='undefined'||!document.getElementById('app'))return;
+let DATA=readRejeuBilan(window.KronnPageData);
+const ST={sel:null};
+const app=document.getElementById('app');
+function draw(){app.innerHTML=render(DATA,ST);}
+const choose=e=>{const r=e.target.closest('tr.row');if(!r)return;ST.sel=r.dataset.run;draw();const n=app.querySelector('tr.row.on');if(n)n.focus();};
+app.addEventListener('click',e=>{if(e.target.closest('a'))return;choose(e);});
+app.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.closest('tr.row')){e.preventDefault();choose(e);}});
+window.addEventListener('kronn:page-data',e=>{const d=readRejeuBilan(e.detail||window.KronnPageData);if(d){DATA=d;draw();}});
+draw();
+})();
+</script>
+</body>
+</html>

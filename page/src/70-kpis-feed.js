@@ -205,8 +205,10 @@ function feedLifeEvents(t){
       if(down&&today(down.e))ev.push({t:down.e,c,imp:false,txt:`🧹 ${refWho(c)} a fini le ménage, tout est propre`});}continue;}
     if(c.on==='bigpr'){for(const p of bigPrs())if(today(p.t)) // 43-pop.js : l'amiral Ackbar d'une grosse PR
       ev.push({t:p.t,c,imp:false,txt:`🦑 ${refWho(c)} prévient ${refWho(p.author)} : ${refPr(p.n,null,p.repo)} fait ${esc(popNum(p.lines))} lignes et ${esc(popNum(p.files))} fichiers <small>« ${esc(bigPrShout(c,p))} »</small>`});continue;}
-    if(c.on==='memoire'){for(const g of GATES||[])if(g.wf_name===SAND_WF&&today(ms(g.since))) // 49-marchand.js : son arrivée, la gate ouverte
-      ev.push({t:ms(g.since),c,imp:false,txt:`🧠 ${refWho(c)} arrive sur son nuage : ${esc(sandText(sandLessons(g)))} à valider <small>la mémoire du soir</small>`});continue;}
+    if(c.on==='memoire'){for(const g of GATES||[])if(g.wf_name===SAND_WF&&today(ms(g.since))){ // 49-marchand.js : son arrivée, la gate ouverte ; celle du rejeu
+      const k=sandCounts(g), rj=k.rejeu?`${esc(sandText(k.rejeu))} du rejeu à valider`:'';
+      ev.push({t:ms(g.since),c,imp:false,txt:k.mem===false?`🧠 ${refWho(c)} : ${rj} <small>la mémoire du soir · rejeu de Palpatine</small>`
+        :`🧠 ${refWho(c)} arrive sur son nuage : ${esc(sandText(k.mem))} à valider${rj?', puis '+rj:''} <small>la mémoire du soir</small>`});}continue;}
     if(c.on)continue;
     const v=guestVisit(c,DAY0+12*36e5); if(!v||!today(v.s))continue;
     const p=/^Passe voir (.+?) ·/.exec((guestState(c,v.s+1e3)||{}).label||''), pc=p&&chars.find(x=>x.person&&x.name===p[1]);

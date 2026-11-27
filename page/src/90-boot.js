@@ -107,6 +107,10 @@ function readLive(src){
     return d&&Array.isArray(d.runs)?d:null;
   }catch(e){return null;}
 }
+// résumé du rejeu (dataset rejeu_resume, cron rejeu_bilan) : jeu témoin, dernier rejeu, leçons ; lu par la fiche de Palpatine
+// (49-palpatine.js), null sans dataset
+let REJEU_SUM=null;
+function readRejeuSum(src){try{const d=dsOf(src,'rejeu_resume');return d&&typeof d==='object'&&d.lecons&&typeof d.lecons==='object'?d:null;}catch(e){return null;}}
 function mergedOffice(){
   if(!OFFICE)return null;
   if(!LIVE||LIVE.day!==OFFICE.day&&OFFICE.day)return OFFICE;
@@ -153,6 +157,7 @@ function refreshAll(){TEAM=mergedTeam();const o=mergedOffice();if(o)setData(o,OF
   TODOS=readTodos(k); // 47-todos.js
   STATUTS=readStatuts(k); // 48-statuts.js (démo : après refreshAll, qui fixe le jour affiché)
   OEIL=readOeil(k); // 69-oeil.js : tes PR et les relectures demandées (cron office ; démo : après refreshAll)
+  REJEU_SUM=readRejeuSum(k);
   SPRINTQUEST=readSprintQuest(k); // 68-combles.js : les données de la partie Sprint Quest, préparées depuis la borne
   GITFUT=readGitfut(k)||{};
   ACTS=readActs(k);
@@ -208,6 +213,8 @@ window.addEventListener('kronn:page-data',e=>{
   if(sv)STATUTS=sv; // 48-statuts.js
   const oe=readOeil(k)||readOeil(window.KronnPageData);
   if(oe)OEIL=oe; // 69-oeil.js
+  const rj=readRejeuSum(k)||readRejeuSum(window.KronnPageData);
+  if(rj)REJEU_SUM=rj;
   const sq=readSprintQuest(k)||readSprintQuest(window.KronnPageData);
   if(sq)SPRINTQUEST=sq; // 68-combles.js : la borne suit sa préparation (en cours, puis prête) sans recharger la page
   const td=readTodos(k)||readTodos(window.KronnPageData);

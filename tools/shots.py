@@ -516,9 +516,11 @@ SHOTS = {
                 "k=r.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(mx-9)*TS*k)+'px',"
                 "top:(r.top+scrollY+(my-5)*TS*k)+'px',width:14*TS*k+'px',height:7*TS*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 2),
     "croquis-brouillon": (1400, 1000, AT(11), "#cv", 1.5, "guide/exemples/plan-croquis.json"),
-    # la mémoire du soir (49-marchand.js) : sa gate ouverte à 22 h, le marchand de sable sur son nuage au-dessus d'un îlot
+    # la mémoire du soir (49-marchand.js) : sa gate ouverte à 22 h, qui annonce 2 leçons du rejeu (les deux parchemins), le
+    # marchand de sable sur son nuage au-dessus d'un îlot
     "marchand": (1400, 1000, AT(22) + "GATES=[...(GATES||[]),{run:'demo-mem',wf:'mem0demo',wf_name:SAND_WF,gate:'boss',"
-                 "message:'🧠 **Mémoire du soir** · 3 leçons à valider, 1 retirée : la rédaction renomme ce qui est décidé.',"
+                 "message:'🧠 **Mémoire du soir** · 3 leçons à valider, 1 retirée : la rédaction renomme ce qui est décidé.\\n\\n"
+                 "⚡ **Rejeu de Palpatine** · 2 leçons à valider ensuite, à leur propre validation (fiche impl), juste après celle-ci.',"
                  "since:new Date(T-2*60e3).toISOString()}];needTeleport=true;setTimeout(()=>{const g=byKey.g_marchand,c=document.querySelector('#cv'),"
                  "r=c.getBoundingClientRect(),k=r.width/c.width,d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',"
                  "left:(r.left+scrollX+(g.pos.x-150)*k)+'px',top:(r.top+scrollY+(g.pos.y-125)*k)+'px',width:330*k+'px',height:185*k+'px',"
@@ -530,6 +532,10 @@ SHOTS = {
                   "setTimeout(()=>{const g=palpChar(),c=document.querySelector('#cv'),r=c.getBoundingClientRect(),k=r.width/c.width,"
                   "d=document.createElement('div');d.id='shotclip';Object.assign(d.style,{position:'absolute',left:(r.left+scrollX+(g.pos.x-180)*k)+'px',"
                   "top:(r.top+scrollY+(g.pos.y-125)*k)+'px',width:280*k+'px',height:175*k+'px',pointerEvents:'none'});document.body.appendChild(d);},2000);", "#shotclip", 2),
+    # sa fiche (49-palpatine.js, palpBlock) : maintenant, la dernière note, les leçons à valider, le bloc TÉMOIN (REJEU_SUM de démo)
+    "fiche-palpatine": (1400, 1200, AT(11) + "REJEU_SUM={date:new Date(DAY0+9*36e5).toISOString(),temoin:{moyenne:74,ecart:6,version:'b2c3d4e',"
+                        "version_prec:'a1b2c3d',n:5},dernier:{ticket:'DM-7457',pr:457,note:82,cible:true,fini_le:new Date(DAY0+9*36e5).toISOString()},"
+                        "lecons:{a_valider:2,validees:5}};select(palpChar().key);", "#side"),
 }
 # captures qui ne visent aucun personnage de la démo : valables avec n'importe quelle équipe (--team)
 TEAM_SHOTS = ["plan", "qui-fait-quoi", "fil", "recap", "kanban", "mep", "calendrier", "fiche-agent", "scene-retro",
@@ -570,6 +576,24 @@ def team_js(js):
 # clic, et ouvrent donc le panneau elles-mêmes
 for _n in ("atelier-fiche", "atelier-panne", "atelier-reprise", "fait-code", "fait-fini", "fait-controles", "fait-retours", "fait-revue", "fait-caserne"):
     SHOTS[_n] = (*SHOTS[_n][:2], SHOTS[_n][2] + "SIDE_FOLDED=false;renderSide(true);", *SHOTS[_n][3:])
+
+# pages Kronn à part (templates.SIDE_PAGES) avec leur dataset de démo (data/<dataset>.json, équipe fictive) :
+# nom -> (largeur, hauteur, fichier de page/, dataset) ; rognées sur #app
+SIDE_SHOTS = {"rejeu-bilan": (1400, 1900, "rejeu-bilan.html", "rejeu_bilan")}
+
+
+def build_side(fichier, dataset):
+    """La page à part dans dist/, son dataset de démo posé comme Kronn le pose (window.KronnPageData)."""
+    with open(os.path.join(ROOT, "data", dataset + ".json"), encoding="utf-8") as f:
+        data = assemble.tight(f.read())
+    with open(os.path.join(ROOT, "page", fichier), encoding="utf-8") as f:
+        html = f.read().replace("<script>", f"<script>window.KronnPageData={{datasets:{{{dataset}:{data}}}}};</script>\n<script>", 1)
+    path = os.path.join(ROOT, "dist", fichier)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(html)
+    return path
+
 
 def build_page(cfg=None, variant=None):
     """Page de démo assemblée dans dist/ (cfg : config d'installation, défaut : l'installation de démonstration ;
@@ -664,12 +688,22 @@ def main(argv):
                 print(f"✓ {os.path.relpath(os.path.join(GALERIE, name + '.png'))}")
         return
     cfg = team_config(a.team) if a.team else None
-    names = a.names or (TEAM_SHOTS if a.team else list(SHOTS))
+    names = a.names or (TEAM_SHOTS if a.team else list(SHOTS) + list(SIDE_SHOTS))
     out = a.out or (os.path.join(assemble.team_dir(cfg), "guide", "img") if a.team else OUT)
     os.makedirs(out, exist_ok=True)
     pages = {None: build_page(cfg, "team") if a.team else build_page()}
     with chrome() as call:
         for name in names:
+            if name in SIDE_SHOTS:
+                w, h, fichier, dataset = SIDE_SHOTS[name]
+                png = capture(call, build_side(fichier, dataset), w, h, "", "#app")
+                if isinstance(png, str):
+                    print(f"✗ {name} : {png}")
+                    continue
+                with open(os.path.join(out, name + ".png"), "wb") as f:
+                    f.write(png)
+                print(f"✓ {os.path.relpath(os.path.join(out, name + '.png'))}")
+                continue
             w, h, js, sel, *rest = SHOTS[name]
             scale, layout = (rest + [1, None][len(rest):])[:2]
             if layout not in pages:  # même page de démo, sur un autre plan
