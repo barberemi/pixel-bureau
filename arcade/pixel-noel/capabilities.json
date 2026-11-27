@@ -1,0 +1,42 @@
+{
+ "db": {
+  "rules": [
+   {
+    "path": "",
+    "read": "view",
+    "write": "admin"
+   },
+   {
+    "path": "players",
+    "read": "view",
+    "write": "owner"
+   },
+   {
+    "path": "players/{self}",
+    "read": "view",
+    "write": "interact"
+   },
+   {
+    "path": "secret",
+    "read": "admin",
+    "write": "owner"
+   },
+   {
+    "path": "secret/{self}",
+    "read": "interact",
+    "write": "interact"
+   }
+  ]
+ },
+ "room": {
+  "topics": {
+   "hit": "interact",
+   "clap": "interact"
+  }
+ },
+ "user": {
+  "scopes": [
+   "profile"
+  ]
+ }
+}
