@@ -37,8 +37,9 @@ const YEAR = {
   quiz: [{q1: 'QUI A VENDU LE PLUS', q2: 'DE PAPIER ?', a: ['JIM', 'PAM', 'DWIGHT', 'KEVIN'], ok: 2, fact: ''}],
   ai: {labels: ['01', '02'], pts: [30, 42], devs: [4, 4], at: 1, stats: [{v: '+40 %', l: 'de points'}]},
   gifts: [{n: 'LE SCRANTONICITY', s: 'DM-12'}],
-  bosses: [{who: 'p_jim', t: 'yeti', n: 'LE YÉTI DU LEGACY', s: 'DM-3, 400 JOURS', pv: '400 J'}],
-  santa: {hp: 120, l: 'TICKETS'},
+  bosses: [{who: 'p_jim', t: 'yeti', n: 'LE YÉTI DU LEGACY', s: 'DM-3, 400 JOURS', hp: 4000, hits: 10}],
+  weak: ['p_jim'],
+  santa: {l: 'TICKETS', phases: [{hp: 120, hits: 120}, {hp: 3000, hits: 30}, {hp: 50000, hits: 500}]},
   sheets: {p_jim: {real: [{v: '42', l: 'tickets'}], fun: [], trophy: 'Le farceur'}},
 };
 
@@ -57,6 +58,13 @@ test('les capacités couvrent les documents du jeu', () => {
   assert.equal(rule('players/{self}').write, 'interact', 'chaque joueur écrit sa fiche (votes de la hotte compris)');
   assert.equal(rule('secret').read, 'admin');
   assert.ok(CAPS.room && CAPS.room.topics.hit, 'les coups sur les boss passent par la salle');
+  assert.equal(CAPS.room.topics.clap, 'interact', 'chacun peut applaudir aux trophées');
+});
+
+test('un combat ne montre que les points de vie, jamais le nombre de coups', () => {
+  for (const f of ['hpBar', 'hitFlash']) assert.doesNotMatch(decl(f), /hits/, f);
+  assert.match(decl('mayHit'), /holderOf\(who\)/, "le boss d'un membre : lui seul tape");
+  assert.match(decl('applyHits'), /isWeak\(by\) \? 1/, "un joueur « faible » ne fait qu'un point de dégât");
 });
 
 test('chaque type de boss a son dessin, et chaque étape sa scène', () => {
@@ -81,5 +89,6 @@ test("une année incomplète n'est pas chargée, et l'erreur dit quoi corriger",
   assert.match(g.checkYear(JSON.stringify({...YEAR, advent: YEAR.advent.slice(0, 11)})).err, /12 cases/);
   assert.match(g.checkYear(JSON.stringify({...YEAR, bosses: [{who: 'p_jim', t: 'dragon', n: 'X'}]})).err, /Boss 1/);
   assert.match(g.checkYear(JSON.stringify({...YEAR, ai: {pts: []}})).err, /traîneau/);
+  assert.match(g.checkYear(JSON.stringify({...YEAR, santa: {phases: [{hp: 1, hits: 1}]}})).err, /3 phases/);
   assert.match(g.checkYear('pas du json').err, /accolades/);
 });

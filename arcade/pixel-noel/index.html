@@ -73,7 +73,7 @@ ul.list li small{display:block;color:var(--muted)}
 .badge{font:400 9px/1 var(--pixel);padding:4px 5px;background:var(--accent);color:var(--on-accent);white-space:nowrap}
 .badge.alt{background:var(--line);color:var(--ink)}
 #players li.off{opacity:.5}
-.head{width:20px;height:30px;flex:none;image-rendering:pixelated;margin-top:-2px}
+.head{width:20px;height:37px;flex:none;image-rendering:pixelated;margin-top:-2px}
 .pts{white-space:nowrap;font-variant-numeric:tabular-nums}
 .badge.crown{display:inline-block;margin-top:6px}
 .b0{background:#3f9e5c}.b1{background:#c8433d}.b2{background:#3a6fc4}
@@ -147,7 +147,8 @@ const EMOTES = ['👋','👍','❤️','😂','❓','🎉'];
 const BITES = 3;
 const STEPS = [
   { k: 'title',    h: 'Écran titre',                  nx: 'Lancer la partie' },
-  { k: 'select',   h: 'Choisis ton perso',            nx: 'Ouvrir le calendrier' },
+  { k: 'select',   h: 'Choisis ton perso',            nx: 'Décorer le sapin' },
+  { k: 'tree',     h: 'Le sapin à décorer',           nx: 'Ouvrir le calendrier' },
   { k: 'advent',   h: "Le calendrier de l'année",     nx: '' },
   { k: 'quiz',     h: "Le quiz de l'année",           nx: '' },
   { k: 'sleigh',   h: "Le traîneau de l'IA",          nx: 'Ouvrir la hotte' },
@@ -171,7 +172,7 @@ const FALLBACK = {
   quiz: [{ q: ["LES QUESTIONS DU QUIZ", "NE SONT PAS ENCORE CHARGÉES"], a: ['A', 'B', 'C', 'D'], ok: 0, fact: '' }],
   ai: { labels: [], pts: [], devs: [], claude: {}, at: 0, head: '', legend: '', stats: [], note: '' },
   gifts: [{ n: 'CADEAU MYSTÈRE', s: 'À charger avant la partie.' }],
-  bosses: [], santa: { hp: '?', l: 'TICKETS' }, sheets: {},
+  bosses: [], weak: [], santa: { l: 'TICKETS', phases: [{ hp: 100, hits: 10 }, { hp: 100, hits: 10 }, { hp: 100, hits: 10 }] }, sheets: {},
 };
 
 // ---------- utilitaires ----------
@@ -285,26 +286,26 @@ function perso(x, y, d, f, L){
   if (L.beard){ if (d === 0) P(2, 9, 8, 2, shade(hair, .1)); else if (d !== 3) P(1, 9, 5, 2, shade(hair, .1)); }
   if (style === 2){ P(2, 1, 8, 3, cap); if (d === 0) P(1, 4, 10, 1, shade(cap, -.3)); else if (d !== 3) P(0, 4, 4, 1, shade(cap, -.3)); }
   if (style === 3){ P(4, -1, 4, 3, hair); P(5, -2, 2, 1, hair); }
+  // le bonnet de Noël, toujours ; la couronne du champion se pose dessus
+  P(1, 1, 10, 2, '#f4f1ea'); P(2, -2, 8, 3, '#e0433b'); P(d === 2 ? 0 : 7, -4, 4, 2, '#e0433b'); P(d === 2 ? -2 : 10, -4, 2, 2, '#f4f1ea');
   if (L.crown === 2){ // couronne impériale : le boss qui gagne aussi le quiz
-    const top = style === 2 ? -1 : 0, gd = '#ffcf4a', tw = reduced ? 0 : Math.floor(Date.now() / 180) % 4;
+    const top = -3, gd = '#ffcf4a', tw = reduced ? 0 : Math.floor(Date.now() / 180) % 4;
     P(1, top, 10, 2, gd); P(1, top + 1, 10, 1, '#c9951c');
     P(1, top - 3, 2, 3, gd); P(4, top - 4, 1, 4, gd); P(5, top - 6, 2, 6, gd); P(7, top - 4, 1, 4, gd); P(9, top - 3, 2, 3, gd);
     P(5, top, 2, 1, '#e8504a'); P(2, top, 1, 1, '#3f8fe0'); P(9, top, 1, 1, '#62d48e'); P(5, top - 6, 2, 1, '#fff2b8');
     const [sx, sy] = [[-1, top - 5], [12, top - 2], [11, top - 6], [-2, top - 1]][tw]; P(sx, sy, 1, 1, '#ffffff');
   } else if (L.crown){ // la couronne du boss, ou celle du champion du quiz
-    const top = style === 2 ? -1 : 0;
+    const top = -3;
     P(2, top, 8, 2, '#ffcf4a'); P(2, top - 2, 2, 2, '#ffcf4a'); P(5, top - 3, 2, 3, '#ffcf4a'); P(8, top - 2, 2, 2, '#ffcf4a');
     P(2, top + 1, 8, 1, '#c9951c'); P(5, top, 2, 1, '#e8504a'); P(5, top - 3, 1, 1, '#fff2b8');
-  } else { // le bonnet de Noël
-    P(1, 1, 10, 2, '#f4f1ea'); P(2, -2, 8, 3, '#e0433b'); P(d === 2 ? 0 : 7, -4, 4, 2, '#e0433b'); P(d === 2 ? -2 : 10, -4, 2, 2, '#f4f1ea');
   }
 }
 const HEADS = {};
 function headImg(L){
   const k = JSON.stringify(L);
   if (!HEADS[k]){
-    const c = document.createElement('canvas'); c.width = 12; c.height = 18; // de la couronne (rang -6) aux épaules (rang 11)
-    const keep = g; g = c.getContext('2d'); try { perso(6, 29, 0, 0, L); } finally { g = keep; }
+    const c = document.createElement('canvas'); c.width = 12; c.height = 22; // de la couronne posée sur le bonnet (rang -10) aux épaules (rang 11)
+    const keep = g; g = c.getContext('2d'); try { perso(6, 33, 0, 0, L); } finally { g = keep; }
     HEADS[k] = c.toDataURL();
   }
   return el('img', { class: 'head', src: HEADS[k], alt: '' });
@@ -330,7 +331,7 @@ function beep(notes, dur = .09){
     for (const f of notes){ const o = actx.createOscillator(), v = actx.createGain(); o.type = 'square'; o.frequency.value = f; v.gain.setValueAtTime(.05, t0); v.gain.exponentialRampToValueAtTime(.001, t0 + dur * .95); o.connect(v).connect(actx.destination); o.start(t0); o.stop(t0 + dur); t0 += dur; }
   } catch {}
 }
-const SFX = { start: () => { beep([988, 1319], .07); setTimeout(() => beep([523, 659, 784, 1047, 784, 1047], .1), 160); }, coin: () => beep([988, 1319], .07), step: () => beep([660, 880], .06), chest: () => beep([392, 494, 587, 784], .12), hit: () => beep([160, 110], .05), bite: () => beep([440, 330], .04), ok: () => beep([523, 784, 1047], .08) };
+const SFX = { start: () => { beep([988, 1319], .07); setTimeout(() => beep([523, 659, 784, 1047, 784, 1047], .1), 160); }, coin: () => beep([988, 1319], .07), step: () => beep([660, 880], .06), chest: () => beep([392, 494, 587, 784], .12), hit: () => beep([160, 110], .05), bite: () => beep([440, 330], .04), ok: () => beep([523, 784, 1047], .08), crit: () => { beep([110, 80], .08); setTimeout(() => beep([1319, 1568, 2093], .06), 90); } };
 
 // ---------- état partagé ----------
 let db = null, room = null, user = null, uid = null, isOwner = false, canWrite = true, solo = true;
@@ -362,6 +363,7 @@ function savePlayer(patch){ Object.assign(myDoc(), patch); if (db && uid) write(
 function saveSecret(){ if (db && uid) write('secret/' + uid, MYSEC); else ALLSEC['moi'] = MYSEC; renderAll(); }
 function setLive(patch){
   const nx = Object.assign({}, LIVE, patch);
+  if (isOwner) nx.host = uid || 'moi';
   if (patch.step !== undefined && patch.step !== LIVE.step){ nx.at = Date.now(); nx.last = Math.max(LIVE.last || 0, patch.step); }
   if (db) write('live/state', nx); else { applyLive(nx); }
 }
@@ -456,6 +458,7 @@ function team(){
 
 // ---------- scènes ----------
 const SC = {};
+let selCur = -1;
 const TILE_SEL = i => ({ x: 4 + (i % 6) * 42, y: 15 + Math.floor(i / 6) * 42, w: 40, h: 40 });
 function takenBy(k){ if (!k || k === 'invite') return null; for (const [id, d] of Object.entries(PL)) if (id !== (uid || 'moi') && d && d.k === k) return id; return null; }
 function funStats(P){
@@ -476,6 +479,7 @@ SC.select = t => {
     g.globalAlpha = 1;
     T(up(p.name).slice(0, 9), r.x + 20, r.y + 32, { s: 4, a: 'center', c: mine ? '#ffcf4a' : '#c9c3ff' });
     if (by) T('PRIS', r.x + 20, r.y + 3, { s: 4, a: 'center', c: '#ff8a8a' });
+    if (i === selCur && blink(t, 250)){ g.strokeStyle = '#ffffff'; g.lineWidth = 1; g.strokeRect(r.x - 2.5, r.y - 2.5, r.w + 5, r.h + 5); }
     if (mine){ g.strokeStyle = '#ff4d6d'; g.lineWidth = 2; g.strokeRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2); R(r.x - 2, r.y - 4, 14, 7, '#ff4d6d'); T('1P', r.x + 5, r.y - 3, { s: 4, a: 'center' }); }
   });
   box(4, 101, SW - 8, 41);
@@ -511,8 +515,84 @@ SC.quiz = t => {
 };
 
 // ---------- Noël : décors ----------
-let hits = 0, hitsKey = '', lastHitAt = 0;
+// ---------- les combats : points de vie, dégâts tirés d'avance, coups réservés ----------
 const hitKey = () => LIVE.step + ':' + (LIVE.b | 0) + ':' + (LIVE.ph | 0);
+const INTRO_MS = 7000;
+const fmt = n => String(Math.max(0, Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+let FIGHT = { key: '', n: 0, total: 0, dmg: {}, dirty: false }, lastHitAt = 0, lastDmg = 0, lastCrit = false, pendHits = 0, hitsKey = '';
+const SEQS = {};
+function fightSpec(){
+  if (cur().k === 'boss'){ const B = (SP().bosses || [])[LIVE.b] || {}; return { hp: B.hp || 1000, hits: B.hits || 10, crit: !!B.crit, who: B.who || null }; }
+  const P = ((SP().santa || {}).phases || [])[Math.min(2, LIVE.ph | 0)] || { hp: 100, hits: 30 };
+  return { hp: P.hp, hits: P.hits, crit: false, who: null };
+}
+// les dégâts de chaque coup : un peu d'aléatoire, mais le dernier coup prévu tombe pile sur zéro
+function dmgSeq(key, hp, n){
+  const id = key + ':' + hp + ':' + n;
+  if (!SEQS[id]){
+    const w = []; for (let j = 0; j < n; j++) w.push(.7 + .6 * hash(strHash(key) % 997 + j * 13.7));
+    const sum = w.reduce((a, b) => a + b, 0), s = w.map(v => Math.max(1, Math.round(v / sum * hp)));
+    s[n - 1] = Math.max(1, hp - s.slice(0, n - 1).reduce((a, b) => a + b, 0));
+    SEQS[id] = s;
+  }
+  return SEQS[id];
+}
+const kOfId = id => id === (uid || 'moi') ? (myDoc().k || me.k) : (PL[id] || {}).k;
+const isWeak = id => (SP().weak || []).includes(kOfId(id));
+function fight(){
+  const key = hitKey(), F0 = fightSpec();
+  if (FIGHT.key !== key) FIGHT = { key, n: 0, total: 0, dmg: {}, dirty: false };
+  const L = LIVE.fight; // l'hôte garde le combat dans live/state : un joueur qui recharge le retrouve
+  if (L && L.k === key && num(L.total, 0, 1e9, 0) > FIGHT.total){ FIGHT.n = num(L.n, 0, 1e6, 0); FIGHT.total = num(L.total, 0, 1e9, 0); FIGHT.dmg = Object.assign({}, L.dmg || {}); }
+  return Object.assign({}, F0, { total: FIGHT.total, rem: Math.max(0, F0.hp - FIGHT.total), ratio: clamp01(1 - FIGHT.total / F0.hp) });
+}
+const introDone = () => reduced || Date.now() - (LIVE.bAt || LIVE.at || 0) >= INTRO_MS;
+const holderOf = k => Object.keys(PL).find(id => PL[id] && PL[id].k === k) || (myDoc().k === k ? uid || 'moi' : null);
+// qui peut taper : au Père Noël, tout le monde ; au boss d'un membre, ce membre seul (l'hôte s'il n'est pas là)
+function mayHit(id){
+  if (cur().k === 'santa') return true;
+  const who = fightSpec().who, h = holderOf(who);
+  return h ? id === h : id === (LIVE.host || (isOwner ? uid || 'moi' : null));
+}
+function applyHits(by, n){
+  const F = fight(), seq = dmgSeq(F.key || hitKey(), F.hp, F.hits); let got = 0;
+  for (let i = 0; i < n && FIGHT.total < F.hp; i++){
+    let d = isWeak(by) ? 1 : (seq[FIGHT.n++] || 1);
+    d = Math.min(d, F.hp - FIGHT.total); FIGHT.total += d; got += d;
+    FIGHT.dmg[by] = (FIGHT.dmg[by] || 0) + d;
+  }
+  if (!got) return;
+  FIGHT.dirty = true; lastHitAt = Date.now(); lastDmg = got; lastCrit = F.crit && !isWeak(by);
+  if (lastCrit) SFX.crit(); else SFX.hit();
+  if (FIGHT.total >= F.hp) SFX.ok();
+  updateDmg();
+}
+// la liste des dégâts, dans le panneau, mise à jour sur place
+function dmgRows(){ return Object.entries(FIGHT.dmg).sort((a, b) => b[1] - a[1]); }
+function updateDmg(){
+  const ul2 = document.getElementById('dmgList'); if (!ul2) return;
+  const rows = dmgRows();
+  ul2.replaceChildren(...(rows.length ? rows.map(([id, d]) => el('li', {}, headImg(id === (uid || 'moi') ? myLook() : lookOf((PL[id] || {}).k)), el('span', { class: 'grow', text: nameOf(id) }), el('b', { class: 'pts', text: fmt(d) }))) : [el('li', {}, el('span', { class: 'grow muted', text: 'Pas encore de coup.' }))]));
+}
+setInterval(() => {
+  if (pendHits && room){ const n = Math.min(20, pendHits); pendHits = 0; room.emit('hit', { k: hitKey(), n }).catch(() => {}); }
+  if (isOwner && FIGHT.dirty && FIGHT.key === hitKey()){ FIGHT.dirty = false; setLive({ fight: { k: FIGHT.key, n: FIGHT.n, total: FIGHT.total, dmg: FIGHT.dmg } }); }
+}, 250);
+// les applaudissements, au moment des trophées
+let CLAPS = [];
+function applause(){
+  if (!soundOn) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume();
+    const len = Math.floor(actx.sampleRate * 1.6), buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
+    for (let c = 0; c < 70; c++){ const at = Math.floor(Math.random() * (len - 3000)), amp = .15 + Math.random() * .25; for (let i = 0; i < 1600; i++) d[at + i] += (Math.random() * 2 - 1) * amp * Math.exp(-i / 260); }
+    const src = actx.createBufferSource(), v = actx.createGain(), f = actx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1500; f.Q.value = .6;
+    v.gain.setValueAtTime(.5, actx.currentTime); v.gain.linearRampToValueAtTime(0, actx.currentTime + 1.6);
+    src.buffer = buf; src.connect(f).connect(v).connect(actx.destination); src.start();
+  } catch {}
+}
+function clap(){ if (room) room.emit('clap', { at: Date.now() }).catch(() => {}); else gotClap(); }
+function gotClap(){ applause(); for (let i = 0; i < 6; i++) CLAPS.push({ x: 20 + Math.random() * 216, at: performance.now() + i * 90 }); CLAPS = CLAPS.slice(-60); }
 const MONTHS = ['JAN', 'FÉV', 'MAR', 'AVR', 'MAI', 'JUN', 'JUL', 'AOÛ', 'SEP', 'OCT', 'NOV', 'DÉC'];
 function big(x, y, k, fn){ g.save(); g.translate(Math.round(x), Math.round(y)); g.scale(k, k); fn(); g.restore(); }
 function snow(t, n, seed = 1){
@@ -727,6 +807,47 @@ SC.title = t => {
   snow(t, 60, 2);
 };
 
+// le sapin à décorer : chacun accroche sa boule, le dernier paie le café
+const BALL_SPOTS = [[128, 34], [116, 50], [140, 52], [104, 68], [128, 64], [152, 70], [96, 86], [118, 82], [140, 86], [160, 88], [108, 100], [148, 102]];
+function xmasTree(x, y, h, t){
+  const lv = 4, lh = h / lv;
+  for (let k = 0; k < lv; k++){ const hw = Math.round(h * .14 + k * h * .1); R(x - hw, Math.round(y - h + k * lh), hw * 2, Math.ceil(lh) + 1, k % 2 ? '#2f7d47' : '#3f9e5c'); }
+  R(x - Math.max(2, h * .05), y, Math.max(4, h * .1), Math.max(3, h * .12), '#6e4c36');
+  R(x - 2, y - h - 4, 5, 5, '#ffcf4a');
+  for (let i = 0; i < Math.round(h / 6); i++){ const yy = y - h + 6 + hash(i * 7.3) * (h - 8), ww = h * .14 + ((yy - y + h) / h) * h * .3; R(Math.round(x - ww + hash(i * 3.1) * ww * 2), Math.round(yy), 2, 2, blink(t + i * 170, 500) ? ['#e0433b', '#ffcf4a', '#6ab8ff', '#c47ce0'][i % 4] : '#1f4a2a'); }
+}
+function garland(y, t, x0 = 0, x1 = SW){
+  for (let x = x0; x < x1; x += 2){ const yy = y + Math.round(Math.sin((x - x0) / 20 * Math.PI) * 2 + 2); R(x, yy, 2, 2, '#2f7d47'); }
+  for (let x = x0 + 6; x < x1; x += 12){ const yy = y + Math.round(Math.sin((x - x0) / 20 * Math.PI) * 2 + 4); R(x, yy, 2, 3, blink(t + x * 37, 450) ? ['#ffcf4a', '#e0433b', '#6ab8ff'][(x / 12 | 0) % 3] : '#3d4678'); }
+}
+function giftBox(x, y, open, c = '#e0433b'){
+  if (open){ R(x - 2, y - 13, 20, 4, shade(c, -.2)); R(x + 7, y - 13, 2, 4, '#ffcf4a'); }
+  else { R(x - 1, y - 5, 18, 4, shade(c, -.2)); R(x + 7, y - 5, 2, 4, '#ffcf4a'); R(x + 3, y - 9, 4, 4, '#ffcf4a'); R(x + 9, y - 9, 4, 4, '#ffcf4a'); }
+  R(x, y - 1, 16, 11, c); R(x + 7, y - 1, 2, 11, '#ffcf4a'); R(x, y + 4, 16, 2, '#ffcf4a'); R(x, y + 10, 16, 1, shade(c, -.4));
+}
+SC.tree = t => {
+  R(0, 0, SW, SH, '#3a1f24'); for (let x = 0; x < SW; x += 12) R(x, 0, 6, 112, '#422329');
+  parquet(0, 112, SW, 32); garland(2, t);
+  const cs = coins(), waiting = team().filter(p => !cs.find(c => c.id === p.id));
+  xmasTree(128, 112, 96, t);
+  cs.slice(0, BALL_SPOTS.length).forEach((p, i) => {
+    const [bx, by] = BALL_SPOTS[i], drop = reduced ? 1 : clamp01((Date.now() - p.at) / 600), yy = Math.round(by - 30 * (1 - drop));
+    R(bx, yy - 3, 1, 3, '#c9951c'); R(bx - 3, yy, 7, 7, '#17151f'); R(bx - 2, yy + 1, 5, 5, p.L.sh); R(bx - 1, yy + 2, 1, 1, '#ffffff');
+  });
+  cs.slice(0, 5).forEach((p, i) => perso(196 + i * 12, 138 - (i % 2) * 6, 1, 0, p.L));
+  waiting.slice(0, 5).forEach((p, i) => perso(16 + i * 12, 138 - (i % 2) * 6, 2, 0, p.L));
+  R(14, 30, 64, 46, '#ffffff'); R(14, 30, 64, 1, '#17151f'); R(14, 75, 64, 1, '#17151f'); R(44, 77, 3, 4, '#ffffff');
+  if (cs.length >= 2 && !waiting.length){
+    const last = cs[cs.length - 1];
+    T('DERNIER', 46, 34, { s: 5, a: 'center', c: '#17151f' }); T('À DÉCORER :', 46, 42, { s: 4, a: 'center', c: '#17151f' });
+    T(up(last.name).slice(0, 9), 46, 52, { s: 5, a: 'center', c: '#e0433b' }); T('PAIE LE', 46, 60, { s: 5, a: 'center', c: '#e0433b' }); T('CAFÉ !', 46, 67, { s: 5, a: 'center', c: '#e0433b' });
+  } else {
+    T('LE DERNIER', 46, 36, { s: 4, a: 'center', c: '#17151f' }); T('À DÉCORER', 46, 44, { s: 4, a: 'center', c: '#17151f' }); T('LE SAPIN', 46, 52, { s: 4, a: 'center', c: '#17151f' }); T('PAIE LE', 46, 60, { s: 4, a: 'center', c: '#e0433b' }); T('CAFÉ', 46, 67, { s: 4, a: 'center', c: '#e0433b' });
+  }
+  T('BOULES : ' + cs.length + '/' + (cs.length + waiting.length), 230, 20, { s: 4, a: 'right', c: '#ffcf4a', sh: '#000' });
+  if (!myDoc().coinAt && blink(t, 400)) T('CLIQUE SUR LE SAPIN', 128, 132, { s: 4, a: 'center', c: '#ffcf4a', sh: '#000' });
+};
+
 SC.advent = t => {
   R(0, 0, SW, SH, '#5a1414'); for (let y = 0; y < SH; y += 12) for (let x = (y / 12) % 2 * 12; x < SW; x += 24) R(x, y, 12, 12, '#621818');
   R(0, 0, SW, 14, '#3f9e5c'); for (let x = 0; x < SW; x += 12) R(x + 4, 10, 4, 6, blink(t + x * 30, 500) ? ['#ffcf4a', '#e0433b', '#6ab8ff'][(x / 12) % 3] : '#1f4a2a');
@@ -736,16 +857,23 @@ SC.advent = t => {
     const c = i % 4, r = Math.floor(i / 4), x = 10 + c * 60, y = 22 + r * 40, w = 56, h = 36, cell = cells[i] || ['', ''];
     R(x, y, w, h, '#e9e4d4');
     if (i < open){
-      const glow = i === open - 1 && fresh < 1500;
-      R(x + 1, y + 1, w - 2, h - 2, glow && blink(t, 120) ? '#3a3f9e' : '#1d2c78');
+      R(x + 1, y + 1, w - 2, h - 2, '#1d2c78');
       T(MONTHS[i], x + 4, y + 4, { s: 4, c: '#9ee6ff' });
-      const lines = wrap(up(cell[0]), 10, 2).concat(cell[1] ? wrap(up(cell[1]), 13, 1) : []);
-      lines.slice(0, 3).forEach((l, k) => T(l, x + w / 2, y + 13 + k * 7 - (lines.length > 2 ? 2 : 0), { s: k < 2 && lines.length < 3 || k < lines.length - 1 || !cell[1] ? 4 : 3, a: 'center', c: k === lines.length - 1 && cell[1] ? '#c9c3ff' : '#ffcf4a' }));
+      wrap(up(cell[0]), 10, 2).forEach((l, k) => T(l, x + w / 2, y + 13 + k * 7, { s: 4, a: 'center', c: '#ffcf4a' }));
+      if (cell[1]) T(up(cell[1]).slice(0, 13), x + w / 2, y + 28, { s: 3, a: 'center', c: '#c9c3ff' });
     } else {
       R(x + 1, y + 1, w - 2, h - 2, '#a33b3b'); R(x + w / 2 - 1, y + 1, 2, h - 2, '#ffcf4a'); R(x + 1, y + h / 2 - 1, w - 2, 2, '#ffcf4a');
       T(String(i + 1), x + w / 2, y + 12, { s: 9, a: 'center', sh: '#5a1414' });
       if (i === open && isOwner && blink(t, 400)) R(x - 2, y - 2, w + 4, 2, '#ffcf4a');
     }
+  }
+  // la case qu'on vient d'ouvrir, en grand, avec les titres des tickets
+  if (open > 0 && fresh < 9000){
+    const cell = cells[open - 1] || ['', '', ''], k = clamp01(fresh / 300), lines = wrap(up(cell[2] || cell[0]), 46, 8);
+    const hh = 30 + lines.length * 8, y0 = Math.round(SH / 2 - hh / 2 + (1 - k) * 20);
+    R(12, y0, SW - 24, hh, '#05081f'); R(13, y0 + 1, SW - 26, hh - 2, '#e9e4d4'); R(15, y0 + 3, SW - 30, hh - 6, '#1d2c78');
+    T(MONTHS[open - 1] + ' · ' + up(cell[0]), SW / 2, y0 + 8, { s: 6, a: 'center', c: '#ffcf4a' });
+    lines.forEach((l, j) => T(l, SW / 2, y0 + 22 + j * 8, { s: 4, a: 'center' }));
   }
 };
 
@@ -773,7 +901,7 @@ SC.sleigh = t => {
   snow(t, 25, 8);
 };
 
-const GIFT_VOTES = [['🎁', 'JAMAIS SANS IA', 'Jamais sans IA'], ['⏳', 'UN JOUR', 'Un jour, peut-être'], ['🤷', 'PAREIL', 'Pareil sans IA']];
+const GIFT_VOTES = [['🎁', 'JAMAIS SANS IA', 'Jamais sans IA'], ['⏳', 'UN JOUR', 'Un jour, peut-être'], ['👍', 'OUI', 'Oui, même sans IA']];
 const GIFT_CELL = i => ({ x: 10 + i * 80, y: 123, w: 76, h: 13 });
 const GIFT_COLS = ['#e0433b', '#3f9e5c', '#3a6fc4', '#c47ce0', '#ffcf4a', '#2e9e9b'];
 function giftVotes(i){
@@ -786,17 +914,19 @@ function voteGift(i){ if (!canWrite) return; SFX.coin(); savePlayer({ gv: Object
 SC.hotte = t => {
   R(0, 0, SW, SH, '#2a1a1a'); for (let x = 0; x < SW; x += 16) R(x, 0, 8, 96, '#321f1f');
   R(0, 96, SW, 48, '#5e3e28'); for (let y = 96; y < SH; y += 6) R(0, y + 5, SW, 1, '#4a3020');
-  R(196, 40, 44, 56, '#3a2626'); R(200, 70, 36, 26, '#ff8a3d'); if (blink(t, 180)) R(206, 76, 24, 16, '#ffcf4a'); R(192, 36, 52, 6, '#6e4c36');
-  for (let k = 0; k < 3; k++){ R(200 + k * 12, 42, 6, 9, '#e0433b'); R(200 + k * 12, 42, 6, 2, '#f4f1ea'); }
-  R(30, 66, 70, 44, '#7a4a2a'); R(36, 56, 58, 14, '#8a5a32'); R(60, 52, 10, 6, '#5e3e28');
+  R(196, 50, 44, 46, '#3a2626'); R(200, 72, 36, 24, '#ff8a3d'); if (blink(t, 180)) R(206, 78, 24, 14, '#ffcf4a'); R(192, 46, 52, 6, '#6e4c36');
+  for (let k = 0; k < 3; k++){ R(200 + k * 12, 52, 6, 9, '#e0433b'); R(200 + k * 12, 52, 6, 2, '#f4f1ea'); }
+  R(30, 70, 70, 40, '#7a4a2a'); R(36, 60, 58, 14, '#8a5a32'); R(60, 56, 10, 6, '#5e3e28');
   const gifts = SP().gifts || [], G = gifts[LIVE.g] || FALLBACK.gifts[0], since = reduced ? 9999 : Date.now() - (LIVE.gAt || LIVE.at || 0), k = clamp01(since / 700);
   for (let j = 0; j < Math.min(8, LIVE.g); j++){ const px = 110 + (j % 4) * 13, py = 104 - Math.floor(j / 4) * 10; R(px, py, 10, 9, GIFT_COLS[j % 6]); R(px + 4, py, 2, 9, '#f4f1ea'); }
-  const gx = 65 + (150 - 65) * k, gy = 54 - Math.sin(k * Math.PI) * 34 + k * 2;
+  const gx = 65 + (150 - 65) * k, gy = 64 - Math.sin(k * Math.PI) * 20 + k * 30;
   R(gx - 10, gy - 10, 20, 18, GIFT_COLS[LIVE.g % 6]); R(gx - 1, gy - 10, 2, 18, '#f4f1ea'); R(gx - 10, gy - 2, 20, 2, '#f4f1ea'); R(gx - 5, gy - 14, 4, 4, '#f4f1ea'); R(gx + 1, gy - 14, 4, 4, '#f4f1ea');
   if (k >= 1){
-    R(20, 4, 160, 22, 'rgba(5,3,12,.85)');
-    T(up(G.n).slice(0, 22), 100, 8, { s: 6, a: 'center', c: '#ffcf4a' });
-    T('CADEAU ' + (LIVE.g + 1) + '/' + gifts.length, 100, 18, { s: 4, a: 'center', c: '#c9c3ff' });
+    const lines = wrap(up(G.t || ''), 52, 2), hh = 22 + lines.length * 7;
+    R(6, 3, SW - 12, hh, 'rgba(5,3,12,.88)');
+    T(up(G.n).slice(0, 22), SW / 2, 6, { s: 6, a: 'center', c: '#ffcf4a' });
+    T((up(G.s) + ' · CADEAU ' + (LIVE.g + 1) + '/' + gifts.length).slice(0, 52), SW / 2, 15, { s: 4, a: 'center', c: '#9ee6ff' });
+    lines.forEach((l, j) => T(l, SW / 2, 23 + j * 7, { s: 4, a: 'center' }));
   }
   box(4, 116, SW - 8, 25);
   const votes = giftVotes(LIVE.g), mine = (myDoc().gv || {})[LIVE.g], tot = Math.max(1, votes.reduce((a, b) => a + b, 0));
@@ -807,20 +937,30 @@ SC.hotte = t => {
     g.font = '7px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top'; g.fillText(e, r.x + 2, r.y + 3);
     T(l, r.x + 12, r.y + 4, { s: 4, c: sel ? '#ffcf4a' : '#ffffff' }); T(String(votes[i]), r.x + r.w - 3, r.y + 4, { s: 4, a: 'right', c: '#62d48e' });
   });
+  T("SANS L'IA, ON L'AURAIT FAIT ?", SW / 2, 118, { s: 4, a: 'center', c: '#c9c3ff' });
 };
 
-// le boss de chacun : le membre devant, les autres juste derrière lui
+// le boss de chacun : le membre devant, les autres juste derrière lui ; lui seul peut taper
 const memberName = k => (presetOf(k) || {}).name || '?';
-function memberLook(k){ const id = Object.keys(PL).find(i => PL[i] && PL[i].k === k) || (me.k === k ? uid || 'moi' : null); return id ? playerLook(id, k) : lookOf(k); }
-function hitHp(need){ const key = hitKey(); if (hitsKey !== key){ hitsKey = key; hits = 0; } return clamp01(1 - hits / need); }
-function hitFlash(x, y){ if (!reduced && Date.now() - lastHitAt < 150){ R(x - 40, y - 60, 80, 70, 'rgba(255,255,255,.3)'); T('-' + (90 + (hits * 37) % 60), x + 30, y - 58, { s: 7, c: '#ffcf4a', sh: '#000' }); } }
+function memberLook(k){ const id = holderOf(k); return id ? playerLook(id, k) : lookOf(k); }
+function hitFlash(x, y){
+  if (reduced || Date.now() - lastHitAt > (lastCrit ? 700 : 160)) return;
+  R(x - 40, y - 60, 80, 70, lastCrit ? 'rgba(255,207,74,.35)' : 'rgba(255,255,255,.3)');
+  if (lastCrit){ T('CRITIQUE !', x, y - 74, { s: 8, a: 'center', c: '#ff4d6d', sh: '#000' }); T('-' + fmt(lastDmg), x, y - 62, { s: 10, a: 'center', c: '#ffcf4a', sh: '#000' }); }
+  else T('-' + fmt(lastDmg), x + 30, y - 58, { s: 7, c: '#ffcf4a', sh: '#000' });
+}
 function intro(since, l1, l2){
   if (since < 450){ const on = Math.floor(since / 75) % 2; for (let y = 0; y < SH; y += 8) R(0, y, SW, 4, on ? '#ffffff' : '#000000'); return true; }
-  if (since < 3200){
-    box(4, 104, SW - 8, 36); let left = Math.floor((since - 900) / 40);
+  if (since < INTRO_MS){
+    box(4, 104, SW - 8, 36); let left = Math.floor((since - 1000) / 60);
     [l1, l2].forEach((l, i) => { T(l.slice(0, Math.max(0, left)), 12, 112 + i * 12, { s: 6 }); left -= l.length; });
   }
   return false;
+}
+function hpBar(name, F, right){
+  R(130, 6, 122, 9, '#05030c'); T(up(name).slice(0, 26), 191, 8, { s: 4, a: 'center', c: '#ff8a8a' });
+  R(130, 16, 122, 5, '#3b0f1a'); R(131, 17, Math.round(120 * F.ratio), 3, F.ratio > .3 ? '#ff4d6d' : '#ffcf4a');
+  T('PV ' + fmt(F.rem) + ' / ' + fmt(F.hp), 130, 24, { s: 4, c: '#c9c3ff' }); if (right) T(right, 252, 24, { s: 4, a: 'right', c: '#ffcf4a' });
 }
 SC.boss = t => {
   const list = SP().bosses || [], B = list[LIVE.b];
@@ -828,43 +968,39 @@ SC.boss = t => {
   for (const [x, w, h] of [[0, 30, 30], [22, 40, 44], [190, 36, 36], [222, 40, 48]]) for (let k = 0; k < h; k += 4) R(x + k / 3, 98 - h + k, w - (k / 3) * 2, 4, '#203060');
   snowGround(98);
   if (!B){ T('LES BOSS NE SONT', SW / 2, 50, { s: 6, a: 'center', c: '#ffcf4a' }); T('PAS ENCORE CHARGÉS', SW / 2, 62, { s: 6, a: 'center', c: '#ffcf4a' }); snow(t, 30, 5); return; }
-  const since = reduced ? 9999 : Date.now() - (LIVE.bAt || LIVE.at || 0), name = up(memberName(B.who));
-  if (intro(since, name + ' CONTRE ' + up(B.n).slice(0, 38 - name.length - 8), 'LE COMBAT COMMENCE !')){ return; }
-  const slide = clamp01((since - 450) / 700), bx = -60 + 124 * (1 - Math.pow(1 - slide, 3));
-  const hp = hitHp(Math.max(1, team().length) * 6), bob = reduced ? 0 : Math.round(Math.sin(t / 250) * 2);
+  const since = reduced ? 1e9 : Date.now() - (LIVE.bAt || LIVE.at || 0), name = up(memberName(B.who));
+  if (intro(since, (name + ' CONTRE ' + up(B.n)).slice(0, 38), B.crit ? 'LE GRAND BOSS DE L\'ANNÉE !' : 'LE COMBAT COMMENCE !')) return;
+  const slide = clamp01((since - 450) / 1200), bx = -60 + 124 * (1 - Math.pow(1 - slide, 3));
+  const F = fight(), bob = reduced ? 0 : Math.round(Math.sin(t / 250) * 2);
   g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(bx, 118, 30, 5, 0, 0, 7); g.fill();
-  if (hp > 0) (BOSS[B.t] || BOSS.yeti)(Math.round(bx), 116 + bob, t);
+  if (F.rem > 0) (BOSS[B.t] || BOSS.yeti)(Math.round(bx), 116 + bob, t);
   else { T('K.O. !', 64, 60, { s: 12, a: 'center', c: '#ffcf4a', sh: '#000' }); T('VICTOIRE DE ' + name, 64, 80, { s: 5, a: 'center', c: '#62d48e', sh: '#000' }); }
   hitFlash(64, 116);
   crowd(B.who, 9).forEach((L, i) => { const row = i < 5 ? 0 : 1; perso(172 + (i % 5) * 15 + row * 7, 100 + row * 8, 1, 0, L); });
   g.fillStyle = 'rgba(20,26,58,.25)'; g.fillRect(160, 76, 96, 34);
   big(176, 132, 1.7, () => perso(0, 0, 1, step(t, Date.now() - lastHitAt < 300), memberLook(B.who)));
-  R(130, 6, 122, 9, '#05030c'); T(up(B.n).slice(0, 26), 191, 8, { s: 4, a: 'center' });
-  R(130, 16, 122, 5, '#3b0f1a'); R(131, 17, Math.round(120 * hp), 3, '#ff4d6d');
-  T('BOSS ' + (LIVE.b + 1) + '/' + list.length, 130, 24, { s: 4, c: '#c9c3ff' }); if (B.pv) T(up(B.pv).slice(0, 14), 252, 24, { s: 4, a: 'right', c: '#ff8a8a' });
-  R(4, 6, 92, 9, '#05030c'); T((name + " + L'ÉQUIPE").slice(0, 22), 8, 8, { s: 4, c: '#ffcf4a' });
-  if (since >= 3200){ box(4, 106, 150, 34); wrap(up(B.s), 28, 4).forEach((l, k) => T(l, 9, 111 + k * 7, { s: 4 })); }
+  hpBar(B.n, F, 'BOSS ' + (LIVE.b + 1) + '/' + list.length);
+  R(4, 6, 60, 9, '#05030c'); T(name.slice(0, 12), 8, 8, { s: 4, c: '#ffcf4a' });
+  if (since >= INTRO_MS){ box(4, 106, 150, 34); wrap(up(B.s), 28, 3).forEach((l, k) => T(l, 9, 111 + k * 7, { s: 4 })); T(('SEUL JOUEUR À TAPER : ' + name).slice(0, 28), 9, 132, { s: 4, c: '#ffcf4a' }); }
   snow(t, 30, 5);
 };
 
 const SANTA_PH = [['LE PÈRE NOËL', 'LA HOTTE DE TICKETS', 'IL RECULE !'], ['LE PÈRE NOËL', 'LE GEL DU 24 DÉCEMBRE', 'LA PROD DÉGÈLE !'], ['CLAUS-9000', 'LE MASQUE EST TOMBÉ', 'K.O. ! LA HOTTE S\'OUVRE']];
 SC.santa = t => {
   nightSky(t); R(20, 14, 16, 16, '#fff2c4'); roofs(); R(0, 92, SW, 52, 'rgba(7,11,31,.55)'); snowGround(116);
-  const ph = Math.min(2, LIVE.ph | 0), P = SANTA_PH[ph], since = reduced ? 9999 : Date.now() - (LIVE.bAt || LIVE.at || 0);
-  const l1 = ph === 0 ? 'LE PÈRE NOËL SAUVAGE APPARAÎT !' : ph === 1 ? 'IL GÈLE LA PROD !' : 'LA BARBE TOMBE… C\'EST UN ROBOT !', l2 = ph === 0 ? 'HO HO HO… VOICI TON SCOPE.' : ph === 1 ? 'TAPEZ POUR FAIRE FONDRE LA GLACE.' : 'CLAUS-9000 : SCOPE CHARGÉ À 100 %.';
+  const ph = Math.min(2, LIVE.ph | 0), P = SANTA_PH[ph], since = reduced ? 1e9 : Date.now() - (LIVE.bAt || LIVE.at || 0);
+  const l1 = ph === 0 ? 'LE PÈRE NOËL SAUVAGE APPARAÎT !' : ph === 1 ? 'IL GÈLE LA PROD !' : 'LA BARBE TOMBE… UN ROBOT !', l2 = ph === 0 ? 'HO HO HO… VOICI TON SCOPE.' : ph === 1 ? 'TAPEZ POUR FAIRE FONDRE LA GLACE.' : 'CLAUS-9000 : SCOPE CHARGÉ À 100 %.';
   if (intro(since, l1, l2)) return;
-  const hp = hitHp(Math.max(1, team().length) * 8), slide = clamp01((since - 450) / 900), bx = ph === 2 ? 80 : -40 + 120 * (1 - Math.pow(1 - slide, 3));
+  const F = fight(), slide = clamp01((since - 450) / 1200), bx = ph === 2 ? 80 : -40 + 120 * (1 - Math.pow(1 - slide, 3));
   const fol = crowd(null, 10);
   fol.forEach((L, i) => { const row = i % 2; perso(150 + Math.floor(i / 2) * 20 + row * 9, 118 + row * 10, 1, 0, L); });
-  if (ph === 1) fol.forEach((L, i) => { const row = i % 2, x = 150 + Math.floor(i / 2) * 20 + row * 9, y = 118 + row * 10; g.globalAlpha = .15 + .6 * hp; R(x - 8, y - 28, 16, 30, '#bfe6ff'); R(x - 8, y - 28, 16, 2, '#ffffff'); g.globalAlpha = 1; });
-  if (ph === 0 && hp > 0 && !reduced) for (let k = 0; k < 4; k++){ const p = ((t / 900) + k / 4) % 1, x = bx - 30 + p * 170, y = 70 - Math.sin(p * Math.PI) * 30 + k * 4; R(x, y, 7, 9, '#e9e4d4'); R(x + 1, y + 2, 5, 1, '#3d4678'); }
-  if (hp > 0) big(bx, 124, ph === 2 ? 1 : 1.25, () => (ph === 2 ? clausBot : santaEvil)(0, 0, t));
+  if (ph === 1) fol.forEach((L, i) => { const row = i % 2, x = 150 + Math.floor(i / 2) * 20 + row * 9, y = 118 + row * 10; g.globalAlpha = .15 + .6 * F.ratio; R(x - 8, y - 28, 16, 30, '#bfe6ff'); R(x - 8, y - 28, 16, 2, '#ffffff'); g.globalAlpha = 1; });
+  if (ph === 0 && F.rem > 0 && !reduced) for (let k = 0; k < 4; k++){ const p = ((t / 900) + k / 4) % 1, x = bx - 30 + p * 170, y = 70 - Math.sin(p * Math.PI) * 30 + k * 4; R(x, y, 7, 9, '#e9e4d4'); R(x + 1, y + 2, 5, 1, '#3d4678'); }
+  if (F.rem > 0) big(bx, 124, ph === 2 ? 1 : 1.25, () => (ph === 2 ? clausBot : santaEvil)(0, 0, t));
   else { T(P[2], 70, 58, { s: 7, a: 'center', c: '#ffcf4a', sh: '#000' }); if (ph === 2) T('ELLE CONTIENT VOS VŒUX 2027', 70, 72, { s: 4, a: 'center', c: '#62d48e', sh: '#000' }); }
   hitFlash(bx, 110);
-  R(130, 6, 122, 9, '#05030c'); T(P[0], 191, 8, { s: 4, a: 'center', c: '#ff8a8a' });
-  R(130, 16, 122, 5, '#3b0f1a'); R(131, 17, Math.round(120 * hp), 3, '#ff4d6d');
-  T(ph === 0 ? ('PV : ' + up(SP().santa.hp) + ' ' + up(SP().santa.l)).slice(0, 28) : P[1], 130, 24, { s: 4, c: '#c9c3ff' });
-  T('PHASE ' + (ph + 1) + '/3', 252, 32, { s: 4, a: 'right', c: '#ffcf4a' });
+  hpBar(P[0], F, 'PHASE ' + (ph + 1) + '/3');
+  T(ph === 0 ? up(SP().santa.l).slice(0, 26) : P[1], 130, 32, { s: 4, c: '#9ee6ff' });
   snow(t, 50, 4);
 };
 
@@ -891,6 +1027,10 @@ SC.trophies = t => {
     const x = side ? 170 + m * (72 / Math.max(1, n - 1)) : 14 + m * (72 / Math.max(1, n - 1));
     g.globalAlpha = i < (LIVE.tr | 0) ? 1 : .35; perso(x, 100, 0, 0, p.L); g.globalAlpha = 1;
   });
+  const now = performance.now(); CLAPS = CLAPS.filter(c => now - c.at < 2200);
+  g.font = '9px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (const c of CLAPS){ const k = (now - c.at) / 2200; if (k < 0) continue; g.globalAlpha = 1 - k; g.fillText('👏', c.x + Math.sin(k * 9) * 4, 104 - k * 80); }
+  g.globalAlpha = 1;
   snow(t, 20, 9);
 };
 
@@ -903,11 +1043,13 @@ function yearMail(sp, h3, li){
   if (sp.gifts && sp.gifts.length){ h3('Les cadeaux impossibles'); li(sp.gifts.map((x, i) => { const v = giftVotes(i), r = GIFT_VOTES.map(([e, , l], k) => v[k] ? e + ' ' + l.toLowerCase() + ' : ' + v[k] : '').filter(Boolean).join(', ') || 'pas de vote'; return { h: '<b>' + esc(x.n) + '</b>' + (x.s ? ' (' + esc(x.s) + ')' : '') + ' · ' + esc(r), p: x.n + ' · ' + r }; })); }
   const tl = trophyList(); if (tl.length){ h3('Les trophées'); li(tl.map(x => ({ h: '<b>' + esc(x.name) + '</b> : ' + esc(x.t), p: x.name + ' : ' + x.t }))); }
 }
+function miniGift(x, y){ x = Math.round(x); y = Math.round(y); R(x - 3, y - 3, 7, 6, '#e0433b'); R(x, y - 3, 1, 6, '#ffcf4a'); R(x - 3, y - 1, 7, 1, '#ffcf4a'); R(x - 2, y - 5, 2, 2, '#ffcf4a'); R(x + 1, y - 5, 2, 2, '#ffcf4a'); }
 
-function room3(){
+function room3(t){
   R(0, 0, SW, 40, '#2c2846'); for (let x = 0; x < SW; x += 16) R(x, 0, 1, 38, '#28243f'); R(0, 38, SW, 3, '#1b1830');
   parquet(0, 41, SW, 103);
   BOARDS.forEach((b, i) => { const x = 14 + i * 80; R(x - 2, 4, 72, 30, '#8d87a3'); R(x, 6, 68, 26, '#f3f0e6'); R(x, 6, 68, 8, b.c); T(b.label, x + 34, 8, { s: 5, a: 'center' }); });
+  garland(0, t); xmasTree(240, 72, 30, t); giftBox(214, 64, false, '#3a6fc4');
 }
 function cardCounts(){
   const c = [0, 0, 0];
@@ -916,7 +1058,7 @@ function cardCounts(){
   return c;
 }
 SC.write = t => {
-  room3();
+  room3(t);
   const counts = cardCounts();
   BOARDS.forEach((b, i) => { const x = 14 + i * 80; for (let k = 0; k < Math.min(counts[i], 6); k++) chest(x + 4 + (k % 3) * 20, 58 - Math.floor(k / 3) * 10, false); T('× ' + counts[i], x + 34, 22, { s: 6, a: 'center', c: '#1b1626' }); });
   if (LIVE.timerEnd){
@@ -941,10 +1083,11 @@ SC.reveal = t => {
   g.save(); g.translate(128, 108); g.rotate(reduced ? 0 : t / 2500);
   for (let i = 0; i < 12; i++){ g.fillStyle = i % 2 ? 'rgba(255,207,74,.14)' : 'rgba(255,255,255,.06)'; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, 200, i * Math.PI / 6, (i + 1) * Math.PI / 6); g.fill(); }
   g.restore();
+  xmasTree(26, 140, 46, t); xmasTree(230, 140, 46, t); garland(14, t);
   T('CADEAUX OUVERTS : ' + REV.length, 6, 4, { s: 5, c: '#c9c3ff' });
-  if (!last){ chest(120, 116, false); T("L'HÔTE VA OUVRIR", 128, 50, { s: 6, a: 'center', c: '#ffcf4a', sh: '#000' }); T('LE PREMIER CADEAU', 128, 62, { s: 6, a: 'center', c: '#ffcf4a', sh: '#000' }); return; }
+  if (!last){ giftBox(120, 116, false); T("L'HÔTE VA OUVRIR", 128, 50, { s: 6, a: 'center', c: '#ffcf4a', sh: '#000' }); T('LE PREMIER CADEAU', 128, 62, { s: 6, a: 'center', c: '#ffcf4a', sh: '#000' }); return; }
   const rise = reduced ? 1 : clamp01(since / 1200);
-  chest(120, 116, true);
+  giftBox(120, 116, true);
   const B = BOARDS[last.b], cy = 108 - rise * 82;
   R(34, cy - 2, 188, 64, '#c9b27a'); R(36, cy, 184, 60, '#f3e6c0'); R(36, cy, 184, 9, B.c);
   T(B.label, 128, cy + 2, { s: 5, a: 'center' });
@@ -1069,6 +1212,7 @@ SC.tavern = t => {
   if (!QL.length && ALLQ.length) T('TOUTES LES QUÊTES', 128, 38, { s: 5, a: 'center', c: '#3f9e5c' }), T('SONT PRISES !', 128, 48, { s: 5, a: 'center', c: '#3f9e5c' });
   else if (!QL.length) T("L'HÔTE ÉCRIT LES QUÊTES…", 128, 44, { s: 5, a: 'center', c: '#1b1626' });
   if (QL.length > 4) T('+' + (QL.length - 4), 210, 80, { s: 4, a: 'right', c: '#1b1626' });
+  xmasTree(20, 98, 44, t); garland(89, t, 40, 216); R(232, 0, 1, 10, '#6e4c36'); R(228, 10, 9, 6, '#3f9e5c'); R(231, 15, 2, 2, '#e0433b'); R(234, 14, 2, 2, '#e0433b');
   R(196, 100, 56, 16, '#7a5134'); R(196, 100, 56, 3, '#a8703f'); duck(224, 100, false); R(206, 94, 5, 6, '#efe9d8');
   drawWalkers(t, w => { const n = (w.me ? myDoc().quests : (PL[w.by] || {}).quests) || []; if (n.length && !w.em && !w.ty){ R(w.x - 4, w.y - 40, 8, 9, '#f3e6c0'); T('!', w.x, w.y - 39, { s: 6, a: 'center', c: '#e8504a' }); } });
 };
@@ -1088,13 +1232,23 @@ const thanksAll = () => {
 const wordOf = id => str(((id === (uid || 'moi') ? myDoc() : PL[id]) || {}).word, 24);
 let coinSeen = null, coinFlights = [];
 SC.save = t => {
-  R(0, 0, SW, SH, '#0b0a1f'); stars(t, 41, 40, 80);
-  for (let i = 0; i < 12; i++){ const x = i * 24 - 6; R(x + 8, 60, 8, 40, '#1a2a1a'); g.fillStyle = '#163a24'; g.beginPath(); g.moveTo(x + 12, 46); g.lineTo(x + 26, 84); g.lineTo(x - 2, 84); g.fill(); }
-  R(0, 96, SW, 48, '#dfe8f6'); R(0, 96, SW, 2, '#ffffff');
-  const fx = 128, fy = 110, fl = reduced ? 0 : Math.floor(t / 110) % 3;
-  g.fillStyle = 'rgba(255,170,80,.10)'; g.beginPath(); g.arc(fx, fy, 64, 0, 7); g.fill();
-  R(fx - 12, fy + 4, 24, 4, '#5e3e28'); R(fx - 8, fy + 2, 16, 3, '#7a5134');
-  R(fx - 7, fy - 6 + fl, 14, 10, '#e8504a'); R(fx - 5, fy - 12 + fl, 10, 10, '#ff8a3d'); R(fx - 3, fy - 16, 6, 10, '#ffcf4a'); R(fx - 1, fy - 19, 2, 4, '#fff2b8');
+  // la maison : papier peint, cheminée, sapin, fenêtre sous la neige
+  R(0, 0, SW, 112, '#5a2a24'); for (let x = 0; x < SW; x += 16){ R(x, 0, 2, 112, '#4e231f'); for (let y = 6; y < 104; y += 16) R(x + 8, y, 2, 2, '#7a3a30'); }
+  R(0, 104, SW, 8, '#3a1a16'); parquet(0, 112, SW, 32);
+  R(188, 40, 48, 40, '#6e4c36'); R(191, 43, 42, 34, '#0b1130');
+  for (let i = 0; i < 16; i++){ const x = 191 + Math.floor(hash(i * 3) * 42), y = 43 + Math.floor(reduced ? hash(i * 5) * 30 : (t / 45 + hash(i * 5) * 30) % 30); R(x, y, 1, 1, '#ffffff'); }
+  R(191, 72, 42, 5, '#f4f6fb'); R(211, 43, 2, 34, '#6e4c36'); R(191, 58, 42, 2, '#6e4c36');
+  const fx = 128, fl = reduced ? 0 : Math.floor(t / 110) % 3;
+  R(90, 50, 76, 6, '#8a5a32'); R(96, 56, 64, 56, '#8d87a3');
+  for (let y = 58; y < 112; y += 6) for (let x = 96 + ((y / 6) % 2) * 6; x < 160; x += 12) R(x, y, 11, 5, '#a39db8');
+  R(108, 72, 40, 40, '#1a0f0f');
+  g.fillStyle = 'rgba(255,170,80,.16)'; g.beginPath(); g.arc(fx, 104, 56, 0, 7); g.fill();
+  R(fx - 14, 106, 28, 4, '#5e3e28'); R(fx - 10, 103, 20, 3, '#7a5134');
+  R(fx - 9, 94 + fl, 18, 10, '#e8504a'); R(fx - 6, 88 + fl, 12, 10, '#ff8a3d'); R(fx - 3, 84 - fl, 6, 10, '#ffcf4a'); R(fx - 1, 81 - fl, 2, 4, '#fff2b8');
+  for (const [c, x] of [['#e0433b', 100], ['#3f9e5c', 118], ['#3a6fc4', 134], ['#e0433b', 150]]){ R(x, 56, 6, 9, c); R(x, 63, 9, 4, c); R(x, 56, 6, 2, '#f4f1ea'); }
+  garland(44, t, 90, 166);
+  xmasTree(36, 110, 60, t); giftBox(14, 102, false, '#3a6fc4'); giftBox(48, 104, false, '#e0433b');
+  g.fillStyle = '#7a2a2a'; g.beginPath(); g.ellipse(128, 128, 62, 9, 0, 0, 7); g.fill(); g.fillStyle = '#9a3a3a'; g.beginPath(); g.ellipse(128, 128, 50, 6, 0, 0, 7); g.fill();
   box(30, 4, 196, 30);
   const rc = recap();
   T('AU COIN DU FEU', 128, 9, { s: 6, a: 'center', c: '#62d48e' });
@@ -1113,7 +1267,7 @@ SC.save = t => {
       R(Math.round(w.x - wd / 2) - 1, by - 1, wd + 2, hh + 2, '#17151f'); R(Math.round(w.x - wd / 2), by, wd, hh, '#ffffff'); R(Math.round(w.x) - 1, by + hh, 3, 2, '#ffffff');
       ls.forEach((l, i) => T(l, Math.round(w.x), by + 3 + i * 6, { s: 4, a: 'center', c: '#17151f' }));
     }
-    if (got[w.by]){ coin(w.x + 12, w.y - 26, t); T('×' + got[w.by], w.x + 16, w.y - 25, { s: 4, c: '#ffcf4a' }); }
+    if (got[w.by]){ miniGift(w.x + 12, w.y - 22); T('×' + got[w.by], w.x + 16, w.y - 25, { s: 4, c: '#ffcf4a' }); }
   });
   // les pièces en vol : de celui qui remercie vers celui qui est remercié
   if (coinSeen === null) coinSeen = new Set(thanks.map(x => x.from + ':' + x.at));
@@ -1122,7 +1276,7 @@ SC.save = t => {
   for (const f of coinFlights){
     const k = clamp01((Date.now() - f.start) / 1100), a = spots[f.from] || { x: 128, y: 40 }, b = spots[f.to] || { x: 128, y: 120 };
     const x = a.x + (b.x - a.x) * k, y = a.y - 30 + (b.y - a.y) * k - Math.sin(Math.PI * k) * 30;
-    coin(x, y, t);
+    miniGift(x, y + 3);
     if (k >= 1) T('+1', b.x + 6, b.y - 40, { s: 5, c: '#ffcf4a', sh: '#000' });
   }
 };
@@ -1140,7 +1294,7 @@ function feats(rc){
   for (const p of rc.players){
     const d = p.id === (uid || 'moi') ? myDoc() : (PL[p.id] || {}), list = [];
     if (rc.quizBest === p.id) list.push('CHAMPION DU QUIZ');
-    if (got[p.id]) list.push(got[p.id] + ' PIÈCE' + (got[p.id] > 1 ? 'S' : '') + ' REÇUE' + (got[p.id] > 1 ? 'S' : ''));
+    if (got[p.id]) list.push(got[p.id] + ' CADEAU' + (got[p.id] > 1 ? 'X' : '') + ' REÇU' + (got[p.id] > 1 ? 'S' : ''));
     const nq = Object.values(carried).filter(ids => ids.includes(p.id)).length; if (nq) list.push('PORTE ' + nq + ' QUÊTE' + (nq > 1 ? 'S' : ''));
     if (rc.coffee === p.id) list.push('A PAYÉ LE CAFÉ');
     const nc = p.id === (uid || 'moi') ? MYSEC.cards.length : (Array.isArray(d.nCards) ? d.nCards.reduce((a, b) => a + num(b, 0, 99, 0), 0) : 0); if (nc) list.push(nc + ' CARTE' + (nc > 1 ? 'S' : '') + ' ÉCRITE' + (nc > 1 ? 'S' : ''));
@@ -1152,6 +1306,7 @@ function feats(rc){
 }
 SC.recap = t => {
   R(0, 0, SW, SH, '#05030c'); stars(t, 51, 40);
+  sledge(reduced ? 150 : ((t / 16) % (SW + 140)) - 90, 24 + Math.round(Math.sin(t / 600) * 6), t); snow(t, 30, 12);
   const rc = recap(), since = reduced ? 4500 : Date.now() - Math.max(LIVE.at || 0, recapT0), p = clamp01(since / 4000);
   if (since < 9000){
     outlined('JOYEUX NOËL !', 128, 6 + (reduced ? 0 : Math.round(Math.sin(t / 200) * 2)), 10, '#ffcf4a', '#2a1240', '#000');
@@ -1235,7 +1390,7 @@ function mail(){
   if (rc.coffee) fun.push({ h: 'Dernier arrivé, donc café offert par : ' + esc(fullName(rc.coffee)) + ' ☕', p: 'Café offert par : ' + fullName(rc.coffee) });
   fun.push({ h: 'Score de la partie : <b>' + rc.score + '</b>', p: 'Score de la partie : ' + rc.score });
   if (rc.words.length){ h3('Le mot de la fin'); li(rc.words.map(x => ({ h: '<b>' + esc(fullName(x.id)) + '</b> : « ' + esc(x.w) + ' »', p: fullName(x.id) + ' : « ' + x.w + ' »' }))); }
-  if (rc.thanks.length){ h3('Toss a coin to your collègue 🪙'); li(rc.thanks.map(x => ({ h: esc(fullName(x.from)) + ' → <b>' + esc(fullName(x.to)) + '</b>' + (x.msg ? ' : ' + esc(x.msg) : ''), p: fullName(x.from) + ' → ' + fullName(x.to) + (x.msg ? ' : ' + x.msg : '') }))); }
+  if (rc.thanks.length){ h3('Les cadeaux entre collègues 🎁'); li(rc.thanks.map(x => ({ h: esc(fullName(x.from)) + ' → <b>' + esc(fullName(x.to)) + '</b>' + (x.msg ? ' : ' + esc(x.msg) : ''), p: fullName(x.from) + ' → ' + fullName(x.to) + (x.msg ? ' : ' + x.msg : '') }))); }
   h3('Pour le plaisir'); li(fun);
   H.push('<p style="font:14px/1.5 Arial,sans-serif;color:#333;margin-top:20px">Bonnes fêtes à tous !</p>'); P.push('', 'Bonnes fêtes à tous !');
   return { subject, html: '<div>' + H.join('') + '</div>', text: P.join('\n') };
@@ -1260,6 +1415,14 @@ const typingTarget = e => /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
 addEventListener('keydown', e => {
   if (typingTarget(e) || e.metaKey || e.ctrlKey || e.altKey) return;
   const k = KEYS[e.key] || KEYS[e.key.toLowerCase()];
+  if (cur().k === 'select' && (k || ((e.key === 'Enter' || e.key === ' ') && (document.activeElement === cv || document.activeElement === document.body)))){
+    const L2 = memberList().slice(0, 12); if (!L2.length) return;
+    if (selCur < 0) selCur = Math.max(0, L2.findIndex(p => p.k === myDoc().k));
+    if (k === 'l') selCur = (selCur + L2.length - 1) % L2.length; else if (k === 'r') selCur = (selCur + 1) % L2.length;
+    else if (k === 'u') selCur = Math.max(0, selCur - 6); else if (k === 'd') selCur = Math.min(L2.length - 1, selCur + 6);
+    else pickMember(L2[selCur].k);
+    e.preventDefault(); return;
+  }
   if (k && walkRect()){ held.add(k); e.preventDefault(); return; }
   const n = /^Digit[1-6]$/.test(e.code) ? +e.code.slice(5) : parseInt(e.key, 10);
   if (n >= 1 && n <= 6 && walkRect()){ emote(n - 1); e.preventDefault(); return; }
@@ -1279,6 +1442,7 @@ cv.addEventListener('pointerdown', e => {
 function canvasAction(x, y){
   const k = cur().k;
   if (k === 'title' && isOwner) return next();
+  if (k === 'tree') return insertCoin();
   if (k === 'advent' && isOwner) return next();
   if (k === 'recap'){ recapT0 = Date.now(); return; }
   if (k === 'vote' && x !== undefined){
@@ -1300,9 +1464,10 @@ function autoPick(){
   const hit = ROSTER.find(p => p.person && norm(p.person) === norm(me.name)) || ROSTER.find(p => norm(p.name) === norm(first(me.name)));
   if (hit && !takenBy(hit.k)) pickMember(hit.k);
 }
+function insertCoin(){ if (!canWrite || myDoc().coinAt) return; SFX.coin(); savePlayer({ coinAt: Date.now() }); }
 function attack(){
-  if (room) room.emit('hit', { k: hitKey() }).catch(() => {});
-  else { hits++; lastHitAt = Date.now(); SFX.hit(); }
+  if (!['boss', 'santa'].includes(cur().k) || !introDone() || !mayHit(uid || 'moi') || fight().rem <= 0) return;
+  if (room) pendHits++; else applyHits(uid || 'moi', 1);
 }
 
 // ---------- hôte ----------
@@ -1388,7 +1553,7 @@ function checkYear(raw){
   if (!A(d.gifts) || !d.gifts.length || d.gifts.length > 12 || d.gifts.some(x => !x || !S(x.n))) return { err: 'La hotte (gifts) : de 1 à 12 cadeaux, chacun avec son nom (n).' };
   if (!A(d.bosses) || !d.bosses.length || d.bosses.length > 12) return { err: 'Les boss (bosses) : de 1 à 12.' };
   for (let i = 0; i < d.bosses.length; i++){ const x = d.bosses[i]; if (!x || !S(x.who) || !BOSS_KINDS.includes(x.t) || !S(x.n)) return { err: 'Boss ' + (i + 1) + ' : il manque son membre (who), son type (t) ou son nom (n).' }; }
-  if (!O(d.santa) || d.santa.hp === undefined) return { err: 'Le Père Noël (santa.hp) : il manque ses points de vie.' };
+  if (!O(d.santa) || !A(d.santa.phases) || d.santa.phases.length !== 3 || d.santa.phases.some(x => !x || !(x.hp > 0) || !(x.hits > 0))) return { err: 'Le Père Noël (santa.phases) : il faut 3 phases, chacune avec ses points de vie (hp) et ses coups (hits).' };
   let team = null;
   if (d.team !== undefined){
     team = normRoster(d.team);
@@ -1408,7 +1573,7 @@ function snapshotRequest(){
     action: 'pixel_noel_year',
     artifact: ARTIFACT_URL,
     task: "Prépare les données de l'année pour la rétro Pixel Noël : lis Jira (changelogs de l'année) et GitHub (PR fusionnées des dépôts de la config), puis écris year/data et team/roster de l'artefact avec ArtifactData (set). Montre d'abord les boss et les fiches à l'hôte, qui les valide.",
-    format: "{name:'2026', company:'', advent:[12 x {l1,l2}], quiz:[{q1,q2,a:[4],ok,fact}], ai:{labels:[n° de sprint], pts:[points], devs:[développeurs], claude:[{i,v}] (% de PR co-signées), at:index du premier sprint avec IA, head, legend, stats:[{v,l}], note}, gifts:[{n,s}], bosses:[{who:clé du membre, t:" + BOSS_KINDS.join('|') + ", n, s, pv}], santa:{hp, l}, sheets:{clé:{real:[{v,l}], fun:[{v,l}], trophy}}, team:{people:[...]}}",
+    format: "{name:'2026', company:'', advent:[12 x {l1,l2,t}], quiz:[{q1,q2,a:[4],ok,fact,more}], ai:{labels:[n° de sprint], pts:[points], devs:[développeurs], claude:[{i,v}] (% de PR co-signées), at:index du premier sprint avec IA, head, legend, stats:[{v,l}], note}, gifts:[{n,s,t}], bosses:[{who:clé du membre, t:" + BOSS_KINDS.join('|') + ", n, s, hp, hits, crit}], weak:[clés qui ne font qu'un point de dégât], santa:{l, phases:[3 x {hp, hits}]}, sheets:{clé:{real:[{v,l}], fun:[{v,l}], trophy}}, team:{people:[...]}}",
   };
 }
 async function refreshSnapCan(){
@@ -1494,10 +1659,22 @@ function renderPanel(){
       f.append(el('div', { style: 'height:14px' }), el('span', { class: 'lbl', text: P.name + ' · ' + (P.title || P.role) }), el('div', { style: 'height:8px' }), list);
       if (!P.fun.length) f.append(el('div', { style: 'height:8px' }), el('p', { class: 'note', text: 'Stats provisoires, en attendant les vraies.' }));
     }
+  } else if (s.k === 'tree'){
+    f.append(h2('LE SAPIN À DÉCORER'));
+    const done = !!myDoc().coinAt;
+    f.append(el('p', { text: done ? 'Ta boule est sur le sapin.' : 'Accroche ta boule au sapin pour dire que tu es là. Le dernier à décorer paie le café.' }));
+    f.append(el('button', { class: 'btn main', type: 'button', disabled: done || !canWrite, text: done ? '✓ Boule accrochée' : '🎄 Accrocher ma boule', onclick: insertCoin }));
+    const cs = coins(), waiting = team().filter(p => !cs.find(c => c.id === p.id)), list = el('ul', { class: 'list' });
+    cs.forEach((c, i) => {
+      const last = i === cs.length - 1 && cs.length >= 2 && !waiting.length;
+      list.append(el('li', {}, headImg(c.L), el('span', { class: 'grow' }, document.createTextNode((i + 1) + '. ' + nameOf(c.id)), el('small', { text: stamp(c.at) + (i ? ' · +' + gap(c.at - cs[0].at) : ' · premier') })), last ? el('span', { class: 'badge', text: '☕ café' }) : null));
+    });
+    waiting.forEach(p => list.append(el('li', { class: 'off' }, headImg(p.L), el('span', { class: 'grow' }, document.createTextNode(nameOf(p.id)), el('small', { text: 'pas encore de boule' })))));
+    f.append(el('div', { style: 'height:16px' }), el('span', { class: 'lbl', text: "Ordre d'arrivée (" + cs.length + '/' + (cs.length + waiting.length) + ')' }), el('div', { style: 'height:8px' }), list);
   } else if (s.k === 'advent'){
     f.append(h2("LE CALENDRIER DE L'ANNÉE"), el('p', { class: 'muted', text: "Une case par mois : l'hôte les ouvre une à une. Ce qui a marqué l'année, avant de la rejouer." }));
-    const opened = (SP().advent || []).slice(0, LIVE.d | 0);
-    if (opened.length){ const ul2 = el('ul', { class: 'list' }); opened.forEach((c, i) => ul2.append(el('li', {}, el('b', { text: MONTHS[i] }), el('span', { class: 'grow' }, document.createTextNode(c[0]), c[1] ? el('small', { text: c[1] }) : null)))); f.append(ul2); }
+    const opened = (SP().advent || []).slice(0, LIVE.d | 0).map((c, i) => [c, i]).reverse();
+    if (opened.length){ const ul2 = el('ul', { class: 'list' }); opened.forEach(([c, i]) => ul2.append(el('li', {}, el('b', { text: MONTHS[i] }), el('span', { class: 'grow' }, document.createTextNode(c[0]), el('small', { text: c[2] || c[1] }))))); f.append(ul2); }
     f.append(el('div', { style: 'height:16px' }), h2('TON ANNÉE 2026 EN MÉTÉO'), el('p', { class: 'muted', text: 'Elle reste à côté de ton nom. On la compare à ta météo pour 2027, à la fin.' }), weatherPick('wStart'));
   } else if (s.k === 'sleigh'){
     const A = SP().ai || {};
@@ -1505,15 +1682,16 @@ function renderPanel(){
     if ((A.stats || []).length){ const ul2 = el('ul', { class: 'list' }); A.stats.forEach(([v, l]) => ul2.append(el('li', {}, el('b', { class: 'pts', text: v }), el('span', { class: 'grow', text: l })))); f.append(ul2); }
   } else if (s.k === 'hotte'){
     const gifts = SP().gifts || [], G = gifts[LIVE.g] || FALLBACK.gifts[0], mine = (myDoc().gv || {})[LIVE.g], votes = giftVotes(LIVE.g);
-    f.append(h2('CADEAU ' + (LIVE.g + 1) + '/' + gifts.length + ' · ' + up(G.n)), G.s ? el('p', { class: 'muted', text: G.s }) : null);
+    f.append(h2('CADEAU ' + (LIVE.g + 1) + '/' + gifts.length + ' · ' + up(G.n)), el('p', { class: 'lbl', text: G.s }), G.t ? el('p', { class: 'muted', text: G.t }) : null);
     f.append(el('p', { text: "Sans l'IA, on l'aurait fait ? Ton choix est anonyme, seuls les totaux s'affichent." }));
     const grid = el('div', { class: 'stack' });
     GIFT_VOTES.forEach(([e, , l], i) => grid.append(el('button', { type: 'button', class: 'chip-btn', 'aria-pressed': String(mine === i), disabled: !canWrite, text: e + ' ' + l + ' · ' + votes[i], onclick: () => voteGift(i) })));
     f.append(grid);
-    if (LIVE.g > 0){ const ul2 = el('ul', { class: 'list' }); gifts.slice(0, LIVE.g).forEach((x, i) => { const v = giftVotes(i); ul2.append(el('li', {}, el('span', { class: 'grow', text: x.n }), el('small', { text: GIFT_VOTES.map(([e], k) => e + ' ' + v[k]).join('  ') }))); }); f.append(el('div', { style: 'height:14px' }), el('span', { class: 'lbl', text: 'Déjà ouverts' }), el('div', { style: 'height:8px' }), ul2); }
+    if (LIVE.g > 0){ const ul2 = el('ul', { class: 'list' }); gifts.slice(0, LIVE.g).forEach((x, i) => { const v = giftVotes(i); ul2.append(el('li', {}, el('span', { class: 'grow' }, document.createTextNode(x.n), el('small', { text: x.s })), el('small', { text: GIFT_VOTES.map(([e], k) => e + ' ' + v[k]).join('  ') }))); }); f.append(el('div', { style: 'height:14px' }), el('span', { class: 'lbl', text: 'Déjà ouverts' }), el('div', { style: 'height:8px' }), ul2); }
   } else if (s.k === 'quiz'){
     f.append(h2('LE QUIZ'), el('p', { text: 'Marche jusqu\'à la case de ta réponse (flèches, ZQSD ou un clic). La case où tu te tiens au moment de la révélation compte.' }));
     if (LIVE.qr) f.append(el('p', { class: 'muted', text: 'Bonnes réponses à cette question : ' + ((LIVE.quizRes || {})[LIVE.q] || []).length + '.' }));
+    if (LIVE.qr && ((SP().quiz || [])[LIVE.q] || {}).more) f.append(el('p', { class: 'lbl', text: SP().quiz[LIVE.q].more }));
     // le tableau des scores : 100 points par bonne réponse
     const res = LIVE.quizRes || {}, nq = (SP().quiz || []).length, asked = Object.keys(res).length;
     const rows = team().map(p => { const marks = []; for (let i = 0; i < nq; i++) marks.push(!(i in res) ? '·' : (Array.isArray(res[i]) && res[i].includes(p.id)) ? '✓' : '✗'); const good = marks.filter(m => m === '✓').length; return { p, good, marks }; })
@@ -1528,33 +1706,37 @@ function renderPanel(){
     });
     f.append(el('div', { style: 'height:14px' }), el('span', { class: 'lbl', text: 'Scores · ' + asked + '/' + nq + ' questions révélées' }), el('div', { style: 'height:8px' }), board);
 
-  } else if (s.k === 'boss'){
-    const list = SP().bosses || [], B = list[LIVE.b];
-    if (!B) f.append(h2('LES BOSS'), el('p', { class: 'warn', text: "Les boss arrivent avec les données de l'année." }));
+  } else if (s.k === 'boss' || s.k === 'santa'){
+    const boss = s.k === 'boss', list = SP().bosses || [], B = list[LIVE.b], ph = Math.min(2, LIVE.ph | 0);
+    if (boss && !B){ f.append(h2('LES BOSS'), el('p', { class: 'warn', text: "Les boss arrivent avec les données de l'année." })); }
     else {
-      f.append(h2('BOSS ' + (LIVE.b + 1) + '/' + list.length + ' · ' + up(memberName(B.who))), el('p', { class: 'lbl', text: B.n }), el('p', { class: 'muted', text: B.s }));
-      f.append(el('button', { class: 'btn main', type: 'button', text: '⚔ Taper le boss', onclick: attack }), el('div', { style: 'height:14px' }));
-      const sh = sheetOf(B.who);
-      if (sh){
-        const ul2 = el('ul', { class: 'list' });
-        sh.real.forEach(([v, l]) => ul2.append(el('li', {}, el('b', { class: 'pts', text: v }), el('span', { class: 'grow', text: l }))));
-        sh.fun.forEach(([v, l]) => ul2.append(el('li', {}, el('span', { class: 'badge alt', text: v }), el('span', { class: 'grow', text: l }))));
-        f.append(el('span', { class: 'lbl', text: 'La fiche de ' + memberName(B.who) }), el('div', { style: 'height:8px' }), ul2);
+      if (boss) f.append(h2('BOSS ' + (LIVE.b + 1) + '/' + list.length + ' · ' + up(memberName(B.who))), el('p', { class: 'lbl', text: B.n }), el('p', { class: 'muted', text: B.s }));
+      else f.append(h2('PHASE ' + (ph + 1) + '/3 · ' + SANTA_PH[ph][1]), el('p', { class: 'muted', text: [
+        "Sa hotte déborde des tickets de l'année : chaque coup en renvoie un. Tout le monde tape.",
+        "Il gèle la prod pour le 24 décembre. Chaque coup fait fondre la glace qui retient l'équipe.",
+        "Sous la barbe, des câbles : c'est Claus-9000. Vaincu, il rend la hotte, et elle contient nos vœux pour 2027."][ph] }));
+      const me2 = uid || 'moi';
+      if (!introDone()) f.append(el('p', { class: 'note', text: 'Le combat commence dans quelques secondes…' }));
+      if (mayHit(me2)) f.append(el('button', { class: 'btn main', type: 'button', text: boss ? '⚔ Taper ton boss' : '⚔ Taper', onclick: attack }));
+      else if (boss) f.append(el('p', { class: 'warn', text: 'Seul ' + memberName(B.who) + ' peut taper ce boss. Encourage ' + memberName(B.who) + ' !' }));
+      f.append(el('div', { style: 'height:14px' }), el('span', { class: 'lbl', text: 'Dégâts' }), el('div', { style: 'height:8px' }), el('ul', { class: 'list', id: 'dmgList' }));
+      if (boss){
+        const sh = sheetOf(B.who);
+        if (sh){
+          const ul2 = el('ul', { class: 'list' });
+          sh.real.forEach(([v, l]) => ul2.append(el('li', {}, el('b', { class: 'pts', text: v }), el('span', { class: 'grow', text: l }))));
+          sh.fun.forEach(([v, l]) => ul2.append(el('li', {}, el('span', { class: 'badge alt', text: v }), el('span', { class: 'grow', text: l }))));
+          f.append(el('div', { style: 'height:14px' }), el('span', { class: 'lbl', text: 'La fiche de ' + memberName(B.who) }), el('div', { style: 'height:8px' }), ul2);
+        }
       }
+      setTimeout(updateDmg, 0);
     }
-  } else if (s.k === 'santa'){
-    const ph = Math.min(2, LIVE.ph | 0), P = SANTA_PH[ph];
-    const txt = [
-      'Sa hotte déborde des tickets de l\'année : ' + SP().santa.hp + ' ' + SP().santa.l.toLowerCase() + '. Tapez tous ensemble pour le faire reculer.',
-      'Il gèle la prod pour le 24 décembre. Chaque coup fait fondre la glace qui retient l\'équipe.',
-      'Sous la barbe, des câbles : c\'est Claus-9000. Vaincu, il rend la hotte, et elle contient nos vœux pour 2027.'][ph];
-    f.append(h2('PHASE ' + (ph + 1) + '/3 · ' + P[1]), el('p', { class: 'muted', text: txt }), el('button', { class: 'btn main', type: 'button', text: '⚔ Taper', onclick: attack }));
   } else if (s.k === 'trophies'){
     const list = trophyList(), c = list[Math.min(LIVE.tr | 0, list.length - 1)];
     f.append(h2('LES TROPHÉES'));
     if (!c) f.append(el('p', { class: 'warn', text: "Les trophées arrivent avec les données de l'année." }));
     else {
-      f.append(el('p', { text: c.name + ' : ' + c.t }));
+      f.append(el('p', { text: c.name + ' : ' + c.t }), el('button', { class: 'btn main', type: 'button', text: '👏 Applaudir', onclick: clap }));
       const ul2 = el('ul', { class: 'list' });
       list.slice(0, (LIVE.tr | 0) + 1).forEach(x => ul2.append(el('li', {}, headImg(x.L), el('span', { class: 'grow' }, document.createTextNode(x.name), el('small', { text: x.t })))));
       f.append(el('div', { style: 'height:10px' }), ul2);
@@ -1628,14 +1810,14 @@ function renderPanel(){
     wIn.addEventListener('input', () => { wordDraft = wIn.value; });
     f.append(el('div', { class: 'stack' }, wIn, el('button', { class: 'btn', type: 'button', disabled: !canWrite, text: 'Afficher au-dessus de ma tête', onclick: () => { savePlayer({ word: String(wordDraft !== null ? wordDraft : wIn.value).trim().slice(0, 24) }); wordDraft = null; } })));
     // les remerciements
-    f.append(el('div', { style: 'height:18px' }), h2('TOSS A COIN TO YOUR COLLÈGUE'), el('p', { class: 'muted', text: 'Lance une pièce d\'or à quelqu\'un pour le remercier. Le mot est facultatif.' }));
+    f.append(el('div', { style: 'height:18px' }), h2('DONNER UN CADEAU À UN COLLÈGUE'), el('p', { class: 'muted', text: 'Lance un cadeau à quelqu\'un pour le remercier. Le mot est facultatif.' }));
     const others = team().filter(p => p.id !== (uid || 'moi'));
     const sel = el('select', { id: 'coinTo', 'aria-label': 'À qui' }); sel.append(el('option', { value: '', text: 'À qui ?' })); others.forEach(p => { const o = el('option', { value: p.id, text: nameOf(p.id) }); if (p.id === coinDraft.to) o.selected = true; sel.append(o); });
     sel.addEventListener('change', () => { coinDraft.to = sel.value; });
     const mIn = el('input', { type: 'text', id: 'coinMsg', maxlength: '80', placeholder: 'Merci pour…', 'aria-label': 'Ton mot' }); mIn.value = coinDraft.msg; mIn.addEventListener('input', () => { coinDraft.msg = mIn.value; });
-    f.append(el('div', { class: 'stack' }, sel, mIn, el('button', { class: 'btn main', type: 'button', disabled: !canWrite || !others.length, text: '🪙 Lancer la pièce', onclick: () => { if (!coinDraft.to) return; tossCoin(coinDraft.to, coinDraft.msg); coinDraft = { to: '', msg: '' }; } })));
+    f.append(el('div', { class: 'stack' }, sel, mIn, el('button', { class: 'btn main', type: 'button', disabled: !canWrite || !others.length, text: '🎁 Lancer le cadeau', onclick: () => { if (!coinDraft.to) return; tossCoin(coinDraft.to, coinDraft.msg); coinDraft = { to: '', msg: '' }; } })));
     const th = thanksAll().slice().reverse();
-    if (th.length){ const ul2 = el('ul', { class: 'list' }); th.forEach(x => ul2.append(el('li', {}, el('span', { class: 'grow' }, document.createTextNode('🪙 ' + first(nameOf(x.from)) + ' → ' + first(nameOf(x.to))), x.msg ? el('small', { text: x.msg }) : null)))); f.append(el('div', { style: 'height:12px' }), ul2); }
+    if (th.length){ const ul2 = el('ul', { class: 'list' }); th.forEach(x => ul2.append(el('li', {}, el('span', { class: 'grow' }, document.createTextNode('🎁 ' + first(nameOf(x.from)) + ' → ' + first(nameOf(x.to))), x.msg ? el('small', { text: x.msg }) : null)))); f.append(el('div', { style: 'height:12px' }), ul2); }
   } else if (s.k === 'recap'){
     f.append(h2('LE RÉCAP'));
     const m = mail(), rc = recap();
@@ -1713,6 +1895,7 @@ const ul = document.getElementById('players');
 function playerStatus(id, d){
   const k = cur().k, mine = id === (uid || 'moi'), doc = mine ? myDoc() : d;
   if (k === 'select') return doc.k ? (presetOf(doc.k) || {}).role || 'prêt' : 'choisit…';
+  if (k === 'tree') return doc.coinAt ? '🎄 ' + new Date(doc.coinAt).toLocaleTimeString('fr-FR') : 'pas de boule';
   if (k === 'advent') return doc.wStart !== undefined ? '2026 : ' + WEATHERS[doc.wStart][0] : 'météo ?';
   if (k === 'save') return (doc.wStart !== undefined ? WEATHERS[doc.wStart][0] + ' → ' : '') + (doc.wEnd !== undefined ? WEATHERS[doc.wEnd][0] : '?') + (doc.word ? ' · « ' + str(doc.word, 24) + ' »' : '');
   if (k === 'write') return (mine ? MYSEC.cards.length : (Array.isArray(doc.nCards) ? doc.nCards.reduce((a, b) => a + num(b, 0, 99, 0), 0) : 0)) + ' coffre(s)';
@@ -1744,10 +1927,10 @@ function renderAll(force){
     document.getElementById('nextBtn').disabled = !nl; document.getElementById('prevBtn').disabled = LIVE.step === 0; document.getElementById('homeBtn').hidden = LIVE.step === 0;
   }
   const help = document.getElementById('help'), k = cur().k;
-  help.innerHTML = walkRect() ? '<kbd>←↑↓→</kbd> ou <kbd>ZQSD</kbd> pour marcher, un clic pour aller quelque part, <kbd>1</kbd> à <kbd>6</kbd> pour réagir.' : k === 'select' ? 'Clique sur ton perso pour le choisir.' : k === 'hotte' ? 'Clique sur une réponse pour voter.' : k === 'boss' || k === 'santa' ? "Clique sur l'écran pour taper le boss, toute l'équipe en même temps." : k === 'vote' ? 'Clique sur une carte pour la croquer (3 bouchées).' : '';
+  help.innerHTML = walkRect() ? '<kbd>←↑↓→</kbd> ou <kbd>ZQSD</kbd> pour marcher, un clic pour aller quelque part, <kbd>1</kbd> à <kbd>6</kbd> pour réagir.' : k === 'select' ? 'Clique sur ton perso, ou choisis-le avec <kbd>←↑↓→</kbd> puis <kbd>Entrée</kbd>.' : k === 'tree' ? 'Clique sur le sapin pour accrocher ta boule.' : k === 'trophies' ? 'Applaudis depuis le panneau.' : k === 'hotte' ? 'Clique sur une réponse pour voter.' : k === 'boss' ? "Seul le membre que ce boss affronte peut le taper : clique sur l'écran." : k === 'santa' ? "Toute l'équipe tape le Père Noël : clique sur l'écran." : k === 'vote' ? 'Clique sur une carte pour la croquer (3 bouchées).' : '';
   // le panneau ne se redessine pas pendant la saisie
   const typing = document.activeElement && /^(TEXTAREA|INPUT|SELECT)$/.test(document.activeElement.tagName) && panel.contains(document.activeElement);
-  const key = JSON.stringify([LIVE.step, LIVE.q, LIVE.qr, LIVE.b, LIVE.d, LIVE.g, LIVE.ph, LIVE.tr, REV.length, REV.map(c => c.g).join(), mergeFrom, voteTab, QUESTS.length, QHIDDEN.length, myDoc(), MYSEC.cards.length, canWrite, isOwner, SPRINT ? 1 : 0, Object.keys(ALLSEC).length, mailOpen, confirmReset, snapState, snapCan, pasteCheck ? (pasteCheck.err || 'ok') : '', draft.b, me.k, ROSTER.length, Object.values(PL).map(d => [d.votes, d.quests, d.coinAt, d.k, d.bv, d.wEnd, d.word, (d.thanks || []).length])]);
+  const key = JSON.stringify([LIVE.step, LIVE.q, LIVE.qr, LIVE.b, LIVE.d, LIVE.g, LIVE.ph, LIVE.tr, REV.length, REV.map(c => c.g).join(), mergeFrom, voteTab, QUESTS.length, QHIDDEN.length, myDoc(), MYSEC.cards.length, canWrite, isOwner, SPRINT ? 1 : 0, Object.keys(ALLSEC).length, mailOpen, confirmReset, snapState, snapCan, pasteCheck ? (pasteCheck.err || 'ok') : '', draft.b, me.k, ROSTER.length, Object.values(PL).map(d => [d.votes, d.quests, d.coinAt, d.k, d.gv, d.wEnd, d.word, (d.thanks || []).length])]);
   if (!typing && (force || key !== lastPanelKey)){ lastPanelKey = key; renderPanel(); }
   renderPlayers();
 }
@@ -1773,15 +1956,16 @@ function normYear(d){
   const ai = obj(d.ai), claude = {};
   for (const c of arr(ai.claude)) if (c && Number.isInteger(c.i) && c.i >= 0 && c.i < 40) claude[c.i] = num(c.v, 0, 100, 0);
   const sheets = {};
-  for (const [k, v] of Object.entries(obj(d.sheets)).slice(0, 16)){ const o = obj(v); sheets[str(k, 40)] = { real: arr(o.real).slice(0, 6).map(x => vl(x, 90)), fun: arr(o.fun).slice(0, 6).map(x => vl(x, 90)), trophy: str(o.trophy, 60) }; }
+  for (const [k, v] of Object.entries(obj(d.sheets)).slice(0, 16)){ const o = obj(v); sheets[str(k, 40)] = { real: arr(o.real).slice(0, 6).map(x => vl(x, 160)), fun: arr(o.fun).slice(0, 6).map(x => vl(x, 160)), trophy: str(o.trophy, 60) }; }
   return {
     ex: !!d.ex, company: str(d.company, 16), name: str(d.name, 12) || 'ANNÉE',
-    advent: arr(d.advent).slice(0, 12).map(x => [str(x && x.l1, 30), str(x && x.l2, 30)]),
-    quiz: arr(d.quiz).slice(0, 8).map(x => ({ q: Array.isArray(x.q) ? x.q.map(v => str(v, 60)) : [str(x.q1, 60), str(x.q2, 60)], a: arr(x.a).slice(0, 4).map(v => str(v, 20)), ok: idx(x.ok, 4), fact: str(x.fact, 60) })),
+    advent: arr(d.advent).slice(0, 12).map(x => [str(x && x.l1, 30), str(x && x.l2, 30), str(x && x.t, 320)]),
+    quiz: arr(d.quiz).slice(0, 8).map(x => ({ q: Array.isArray(x.q) ? x.q.map(v => str(v, 60)) : [str(x.q1, 60), str(x.q2, 60)], a: arr(x.a).slice(0, 4).map(v => str(v, 20)), ok: idx(x.ok, 4), fact: str(x.fact, 60), more: str(x.more, 300) })),
     ai: { labels: arr(ai.labels).slice(0, 40).map(v => str(String(v), 4)), pts: arr(ai.pts).slice(0, 40).map(v => num(v, 0, 999, 0)), devs: arr(ai.devs).slice(0, 40).map(v => Math.round(num(v, 0, 12, 0))), claude, at: Math.round(num(ai.at, 0, 40, 0)), head: str(ai.head, 30), legend: str(ai.legend, 30), stats: arr(ai.stats).slice(0, 6).map(x => vl(x, 90)), note: str(ai.note, 300) },
-    gifts: arr(d.gifts).slice(0, 12).map(x => ({ n: str(x && x.n, 22), s: str(x && x.s, 140) })),
-    bosses: arr(d.bosses).slice(0, 12).map(x => ({ who: str(x && x.who, 40), t: BOSS[x && x.t] ? x.t : 'yeti', n: str(x && x.n, 34), s: str(x && x.s, 100), pv: str(x && x.pv, 16) })),
-    santa: { hp: str(String(obj(d.santa).hp == null ? '?' : obj(d.santa).hp), 10), l: str(obj(d.santa).l, 24) || 'TICKETS' },
+    gifts: arr(d.gifts).slice(0, 12).map(x => ({ n: str(x && x.n, 22), s: str(x && x.s, 60), t: str(x && x.t, 160) })),
+    bosses: arr(d.bosses).slice(0, 12).map(x => ({ who: str(x && x.who, 40), t: BOSS[x && x.t] ? x.t : 'yeti', n: str(x && x.n, 34), s: str(x && x.s, 100), pv: str(x && x.pv, 16), hp: Math.round(num(x && x.hp, 1, 1e6, 1000)), hits: Math.round(num(x && x.hits, 1, 1000, 10)), crit: !!(x && x.crit) })),
+    weak: arr(d.weak).slice(0, 12).map(v => str(v, 40)),
+    santa: { l: str(obj(d.santa).l, 26) || 'TICKETS', phases: [0, 1, 2].map(i => { const P = obj(arr(obj(d.santa).phases)[i]); return { hp: Math.round(num(P.hp, 1, 1e7, [551, 3000, 50000][i])), hits: Math.round(num(P.hits, 1, 5000, [551, 30, 500][i])) }; }) },
     sheets,
   };
 }
@@ -1814,7 +1998,8 @@ async function boot(){
       if (ch.joined.length || ch.left.length){ refreshNames(); renderPlayers(); }
       if (performance.now() - attachedAt > 2500) for (const p of ch.joined){ if (p.sameTab || p.kind !== 'viewer') continue; setTimeout(() => toast('▶ ' + up(first(nameOf(peerId(p)))) + ' A REJOINT LA PARTIE'), 600); }
     });
-    room.on('hit', m => { if (!m.data || m.data.k !== hitKey() || !['boss', 'santa'].includes(cur().k)) return; hits++; lastHitAt = Date.now(); SFX.hit(); });
+    room.on('hit', m => { if (!m.data || m.data.k !== hitKey() || !['boss', 'santa'].includes(cur().k)) return; const by = m.by || (m.isMe ? uid : null); if (!by || !mayHit(by)) return; applyHits(by, Math.max(1, Math.min(20, m.data.n | 0))); });
+    room.on('clap', () => gotClap());
   } else setStatus('solo', 'Hors salle');
   refreshNames(); renderAll(true);
 }

@@ -11,7 +11,9 @@ La variante de Noël de [Sprint Quest](../sprint-quest/README.md) : même moteur
 
 ## La partie
 
-Quinze écrans menés par l'hôte : l'écran titre sous la neige, le choix du perso (avec bonnet), le calendrier de l'année (une case par mois), le quiz, le traîneau de l'IA (les points par sprint avant et après son arrivée), la hotte des cadeaux impossibles (chaque cadeau est voté : jamais sans IA, un jour, pareil sans), un boss par membre (le membre devant, l'équipe juste derrière, tout le monde tape), le Père Noël en trois phases (la hotte de tickets, le gel, puis le masque tombe : c'est Claus-9000), les trophées, puis les cartes secrètes (Cadeaux, Charbon, Vœux 2027), le vote Pac-Man, la taverne des vœux, le coin du feu et le récap avec « Copier le mail ».
+Seize écrans menés par l'hôte : l'écran titre sous la neige, le choix du perso (à la souris ou aux flèches du clavier, bonnet compris, la couronne du champion se pose dessus), le sapin à décorer (chacun accroche sa boule, le dernier paie le café), le calendrier de l'année (une case par mois, ouverte en grand avec les titres des tickets), le quiz, le traîneau de l'IA, la hotte des cadeaux impossibles (chaque cadeau est voté : jamais sans IA, un jour, oui), un boss par membre, le Père Noël en trois phases jusqu'à Claus-9000, les trophées (avec un bouton pour applaudir), puis les cartes secrètes (Cadeaux, Charbon, Vœux 2027), le vote Pac-Man, la taverne des vœux, la cheminée (on s'y lance des cadeaux) et le récap, où le traîneau passe.
+
+**Les combats.** Chaque boss et chaque phase du Père Noël a ses points de vie et un nombre de coups prévu (`hp`, `hits`) : les dégâts de chaque coup sont tirés d'avance, un peu au hasard, pour que le dernier coup prévu tombe pile sur zéro. L'écran montre les points de vie, jamais le nombre de coups. Le boss d'un membre ne se tape que par ce membre (l'hôte le remplace s'il est absent) ; au Père Noël, tout le monde tape. Un boss `crit` affiche des coups critiques ; une clé dans `weak` ne fait qu'un point de dégât par coup. Le panneau montre les dégâts de chacun ; l'hôte garde le combat dans `live/state`.
 
 ## Les données de l'année
 
