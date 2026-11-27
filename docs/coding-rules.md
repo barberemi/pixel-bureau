@@ -64,7 +64,7 @@
 - Linter : Non configuré (ni `pyproject.toml`, ni `setup.cfg`, ni Ruff, Flake8 ou Pylint).
 - Formatter : Non configuré.
 - Type checker : Non configuré (pas de mypy).
-- Contrôles réels : `python3 -m unittest -q tests/test_templates.py tests/test_install.py tests/test_scripts.py tests/test_plan.py tests/test_theme.py` (dans `tools/test.sh`) et `python3 tools/templates.py check` [src: file: tools/test.sh:8] [src: file: guide/developpement.md:45].
+- Contrôles réels : `python3 tools/unittests.py` (tous les `tests/test_*.py` en parallèle, dans `tools/test.sh`) et `python3 tools/templates.py check` [src: file: tools/test.sh:8] [src: file: guide/developpement.md:45].
 
 ### Conventions
 

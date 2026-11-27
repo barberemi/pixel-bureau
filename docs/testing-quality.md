@@ -9,7 +9,7 @@ CI GitHub Actions (`.github/workflows/tests.yml`) : `sh tools/test.sh --chrome` 
 | Contrôle | Commande | Ce qu'il vérifie |
 |---|---|---|
 | Tests JS de la page | `node --test tests/*.test.js` | Logique de `page/src/*.js` chargée dans un contexte `vm` [src: file: tools/test.sh:7] [src: file: tests/helpers/page.js:1] |
-| Tests Python | `python3 -m unittest -q tests/test_templates.py tests/test_install.py tests/test_scripts.py tests/test_plan.py tests/test_theme.py tests/test_compact.py tests/test_visual.py` | Scripts `workflows/` (dont le contrat crons → page), installateur (dont installation de zéro sans profil), modèles, plans, thèmes, compactage, règle du guide [src: file: tools/test.sh:8] |
+| Tests Python | `python3 -W error::ResourceWarning tools/unittests.py` (tous les `tests/test_*.py`, en parallèle : un processus par cœur, grain = le test ; `BUREAU_TEST_JOBS=1` pour un seul processus ; des fichiers en argument pour n'en lancer que quelques-uns) | Scripts `workflows/` (dont le contrat crons → page), installateur (dont installation de zéro sans profil), modèles, plans, thèmes, compactage, règle du guide [src: file: tools/test.sh:8] [src: file: tools/unittests.py:1] |
 | Build + smoke statique (démo) | `python3 tools/smoke.py` | Assemble `dist/office.html` ; taille < 24 Mio, garde-fou de Kronn (poids de chaque bloc, alerte à partir de 90 %), chaque `<script>` se parse, 10 blocs `kronn-action` du squelette, JSON valide, aucun marqueur `__X__` restant, 1 seul `<script>` exécutable [src: file: tools/smoke.py:8] [src: file: tools/smoke.py:20] [src: file: tools/smoke.py:59] |
 | Smoke installation neuve | `python3 tools/smoke.py --empty` | Mêmes contrôles sur une page d'équipe neuve, plan type, sans démo [src: file: tools/test.sh:12] |
 | Smoke d'un pack d'équipe | `python3 tools/smoke.py --team <id ou chemin>` | La démo avec cette équipe seule (`dist/office_team.html`) ; ce que lance la CI d'un pack [src: file: tools/smoke.py:174] |
@@ -28,14 +28,14 @@ CI GitHub Actions (`.github/workflows/tests.yml`) : `sh tools/test.sh --chrome` 
 | Langage | Runner | Config / setup | Runtime |
 |---|---|---|---|
 | JavaScript (page) | `node --test` intégré, sans npm ni dépendance [src: file: tools/test.sh:2] | Pas de fichier de config ; harnais `tests/helpers/page.js` (concatène `page/src/*.js` dans l'ordre d'assemblage, bouchons DOM / canvas) [src: file: tests/helpers/page.js:1] ; fixtures `tests/fixtures/bureau.config.json`, `tests/fixtures/world_darkmode.json`, pack fictif `tests/fixtures/pack-exemple/` | Node non épinglé (pas de `.nvmrc`) ; v25.9.0 sur le poste de dev au 2026-10-11 |
-| Python (workflows, tools) | `unittest` de la bibliothèque standard [src: file: tools/test.sh:8] | Pas de config ; liste des fichiers en dur dans `tools/test.sh` | Python non épinglé (pas de `.python-version`) ; `python3` 3.9.6 sur le poste de dev |
+| Python (workflows, tools) | `unittest` de la bibliothèque standard [src: file: tools/test.sh:8] | Pas de config ; lanceur parallèle `tools/unittests.py` (glob `tests/test_*.py`) | Python non épinglé (pas de `.python-version`) ; `python3` 3.9.6 sur le poste de dev |
 | Smoke / Chrome | `tools/smoke.py` | `.venv` avec `websocket-client` pour `--chrome` (et `pillow` pour les captures) [src: file: tools/smoke.py:11] [src: file: guide/developpement.md:41] | Chrome attendu à `/Applications/Google Chrome.app/...` (macOS) [src: file: tools/smoke.py:21], port de débogage 9334 par défaut [src: file: tools/smoke.py:155] |
 
-Un nouveau fichier `tests/*.test.js` est pris automatiquement (glob) ; un nouveau `tests/test_*.py` doit être ajouté à la ligne `unittest` de `tools/test.sh` [src: file: tools/test.sh:8].
+Un nouveau fichier `tests/*.test.js` est pris automatiquement (glob) ; un nouveau `tests/test_*.py` aussi, par `tools/unittests.py` [src: file: tools/unittests.py:1]. Durée (2026-11-28) : 13 min en série, 1 min 52 sur 15 cœurs, ~3 min 25 sur 4 (runner CI) ; le plus lent fixe le plancher (~20 s, `test_install`).
 
 ## Test suites
 
-Pas de compteur ici : il change à chaque PR. `sh tools/test.sh` donne le nombre de tests JS (`node --test`, tous les `tests/*.test.js`) et Python (la liste de la ligne `unittest` de `tools/test.sh`).
+Pas de compteur ici : il change à chaque PR. `sh tools/test.sh` donne le nombre de tests JS (`node --test`, tous les `tests/*.test.js`) et Python (`Ran N tests` de `tools/unittests.py`, avec les 5 tests les plus lents).
 
 Horloge des tests de scripts (KT-56, 2026-10-12) : les scripts lancés par `tests/test_scripts.py` voient une heure figée, midi à Paris le jour du test, via `tests/fakeclock/sitecustomize.py` (`PYTHONPATH`, variable `BUREAU_TEST_NOW`) [src: file: tests/test_scripts.py:17] ; les données de test sont datées par rapport à la même heure (`NOW`, `iso()`). Avant, trois tests échouaient entre 00h00 et 00h05 à Paris. `BUREAU_TEST_NOW=2026-10-12T00:02:00+02:00` rejoue une autre heure ; la nuit, des tests qui datent leurs runs de « il y a 5 minutes » échouent par construction.
 
