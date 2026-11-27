@@ -190,6 +190,22 @@ test('la borne : les données de Sprint Quest lues du dataset, et l\'état de la
   p.run('void 0');
 });
 
+test('la borne suit sa préparation en direct : une mise à jour de Kronn (kronn:page-data) relit sprintquest, sans recharger', () => {
+  const on = {};
+  const p = load({globals: {addEventListener: (n, f) => { on[n] = f; }}}), J = c => JSON.parse(p.run('JSON.stringify(' + c + ')'));
+  assert.equal(J('SPRINTQUEST'), null, 'page ouverte avant la préparation');
+  const send = d => on['kronn:page-data']({detail: {datasets: {sprintquest: JSON.stringify(d)}}});
+  const now = Date.now();
+  send({running: true, since: new Date(now - 60e3).toISOString()});
+  assert.equal(J('sqState(SPRINTQUEST, Date.now())'), 'running', 'avant : la page ne relisait sprintquest qu\'au chargement');
+  const data = {name: '26-47', dates: '13-27 NOV', vs: [{l: 'MISES EN PROD', v: '3'}], quiz: [{q1: 'Q', a: ['A', 'B', 'C', 'D'], ok: 1}], boss: [{t: 'snail', n: 'DM-1'}]};
+  send({generated_at: new Date(now).toISOString(), data, warnings: []});
+  assert.equal(J('sqState(SPRINTQUEST, Date.now())'), 'ready');
+  assert.equal(J('SPRINTQUEST.data.name'), '26-47');
+  on['kronn:page-data']({detail: {datasets: {}}});
+  assert.equal(J('SPRINTQUEST.data.name'), '26-47', 'une mise à jour sans le dataset garde la partie');
+});
+
 test('le digicode : une fenêtre « Digicode » avec sa propre toile, Échap la ferme ; un clic sur le pavé tape, le bon code ouvre toujours l\'étage', () => {
   const {withDom} = require('./helpers/fakedom.js');
   const {p, J} = page();

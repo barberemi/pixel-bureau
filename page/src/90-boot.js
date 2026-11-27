@@ -208,6 +208,8 @@ window.addEventListener('kronn:page-data',e=>{
   if(sv)STATUTS=sv; // 48-statuts.js
   const oe=readOeil(k)||readOeil(window.KronnPageData);
   if(oe)OEIL=oe; // 69-oeil.js
+  const sq=readSprintQuest(k)||readSprintQuest(window.KronnPageData);
+  if(sq)SPRINTQUEST=sq; // 68-combles.js : la borne suit sa préparation (en cours, puis prête) sans recharger la page
   const td=readTodos(k)||readTodos(window.KronnPageData);
   if(td)todosArrived(td);else if(dk)tdRefresh(); // 47-todos.js : le tableau et la fenêtre suivent (canard compris)
   const gf=readGitfut(k)||readGitfut(window.KronnPageData);
