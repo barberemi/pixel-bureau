@@ -354,6 +354,7 @@ exit 0
         self.assertNotIn("## Verdict", avis)  # la grille n'est plus recopiée
         sans = steps("review_child", cfg(review={"page_id": PAGE}))["avis"]
         self.assertIn("## Verdict", sans["prompt_template"])  # pas encore publiée : recopiée
+        self.assertIn("Non vérifié, c'est une piste (`remarque`), pas un bloquant.", sans["prompt_template"])
         self.assertFalse([x for x in sans["skill_ids"] if x.startswith("bureau:")])
         # l'export remet l'emplacement, renvoi ou texte recopié
         live = templates.render(TPL["review_child"], c)
