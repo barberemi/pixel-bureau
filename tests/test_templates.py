@@ -264,7 +264,7 @@ class TemplatesTest(unittest.TestCase):
                 self.assertNotIn("__BUREAU_CONFIG__", code, path)
                 self.assertIn("def is_bureau(", code, path)
                 self.assertIn(cfg["kronn"]["project_id"], code, path)  # la chaîne : sa part de la config seulement
-                if path not in templates.CHAINE_SCRIPTS and path != "workflows/review.py":  # la revue : sa part aussi
+                if path not in templates.PART_CHAINE and path != "workflows/review.py":  # la revue (et le rejeu) : sa part aussi
                     self.assertIn(cfg["page_id"], code, path)
                 compile(code, path, "exec")  # le script recopié reste du Python valide
 

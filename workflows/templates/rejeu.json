@@ -1,0 +1,87 @@
+{
+ "kind": "workflow",
+ "key": "rejeu",
+ "doc": "Rejoue un ticket déjà en prod : la chaîne le refait depuis le commit d'avant sa PR, en essai et sans gate, puis son travail est noté contre la vraie PR.",
+ "definition": {
+  "name": "Le Bureau · rejouer un ticket livré",
+  "project_id": "@@kronn.project_id@@",
+  "trigger": {
+   "type": "Manual"
+  },
+  "variables": [
+   {
+    "name": "jeu",
+    "label": "Jeu",
+    "placeholder": "",
+    "description": "rotation : une PR mergée récente, d'un genre et d'un coin du code peu joués. témoin : les PR fixes du réglage rejeu.temoin, qui mesurent la chaîne et ne servent jamais de leçon.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false,
+    "control": {
+     "type": "select",
+     "options": [
+      {
+       "value": "rotation",
+       "label": "Rotation (une PR différente à chaque fois)",
+       "enabled": true
+      },
+      {
+       "value": "temoin",
+       "label": "Jeu témoin (mesure)",
+       "enabled": true
+      }
+     ],
+     "default_value": "rotation"
+    }
+   },
+   {
+    "name": "cas",
+    "label": "PR ou ticket (facultatif)",
+    "placeholder": "2071 ou ABC-123",
+    "description": "Un n° de PR mergée ou une clé de ticket du dépôt du rejeu ; vide : choisi selon le jeu.",
+    "required": false,
+    "source": "user_input",
+    "allow_manual_override": false
+   }
+  ],
+  "actions": [],
+  "safety": {
+   "sandbox": false,
+   "require_approval": false
+  },
+  "workspace_config": {
+   "hooks": {},
+   "require_isolation": false,
+   "main_tree_read_only": true
+  },
+  "concurrency_limit": null,
+  "exec_allowlist": [
+   "python3"
+  ],
+  "steps": [
+   {
+    "name": "lance",
+    "agent": "ClaudeCode",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Choisit la PR (jeu, cas), son commit de départ (parent du merge) et pose la chaîne de rejeu dans le projet du dépôt (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/rejeu.py@@",
+     "lance",
+     "{{jeu ?? \"rotation\"}}",
+     "{{cas ?? \"\"}}"
+    ],
+    "exec_timeout_secs": 180
+   }
+  ]
+ }
+}

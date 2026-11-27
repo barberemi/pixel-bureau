@@ -638,8 +638,9 @@ def with_posts(keep):
         keep |= {f"ticket_{p}" for p in templates.TICKET_POSTES} | {"ticket_un"}
     if "support" in keep:  # l'investigation Support : un sous-workflow par poste (tri, logs, cause, réponse, relecture)
         keep |= {f"support_{p}" for p in templates.SUPPORT_POSTES}
-    if "impl" in keep:  # la chaîne : son lanceur, son parent, le poste des contrôles et chaque poste (sous-workflows)
-        keep |= {k for k in templates.TEMPLATES if k.startswith("impl_")}
+    if "impl" in keep:  # la chaîne : son lanceur, son parent, le poste des contrôles et chaque poste (sous-workflows) ;
+        # le rejeu d'un ticket livré (sa variante sans gate, impl_rejeu, et son lanceur) vient avec
+        keep |= {k for k in templates.TEMPLATES if k.startswith("impl_")} | {"rejeu"}
     if "review_child" in keep or "impl" in keep:  # la revue d'une PR (aussi celle de la chaîne) : un sous-workflow par poste
         keep |= {f"review_{p}" for p in templates.REVIEW_POSTES}
     return keep
