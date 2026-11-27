@@ -130,6 +130,10 @@ TEMPLATES = {
     "impl_controles": ("workflow", ("models", "impl_controles"), IMPL_SCRIPTS["controles"]),
     "impl_chain": ("workflow", ("models", "impl_chain"), IMPL_SCRIPTS["chain"]),
     "impl": ("workflow", ("models", "impl"), IMPL_SCRIPTS["lanceur"]),  # lanceur : projet déduit du composant Jira
+    # rejouer un ticket déjà en prod (Palpatine) : la chaîne sans gate, en essai, finie par la note contre la vraie PR ;
+    # impl_rejeu est dérivé d'impl_chain au chargement (REJEU_RETIRES, rejeu_template), rejeu est son lanceur
+    "impl_rejeu": ("workflow", ("models", "impl_rejeu"), {**IMPL_SCRIPTS["chain"], "rejeu": "workflows/rejeu.py"}),
+    "rejeu": ("workflow", ("models", "rejeu"), {"rejeu": "workflows/rejeu.py"}),
     # page « Chaîne · bilan » : l'historique des runs de la chaîne (bilans de chaine.py et API Kronn), page Kronn à part
     # (bilan_page_id) ; sans chaîne installée ou sans cette page : pas créé
     "chaine_bilan": ("workflow", ("workflows", "chaine_bilan"), {"bilan": "workflows/chaine_bilan.py"}),
@@ -161,7 +165,8 @@ WF_KEYS = ("name", "project_id", "trigger", "variables", "steps", "actions", "sa
 VIDES = {"prompt_template": "", "skill_ids": [], "sub_workflow_variables": {}}
 QP_KEYS = ("name", "icon", "prompt_template", "variables", "agent", "project_id", "skill_ids", "profile_ids", "directive_ids", "tier", "description")
 TOKEN = re.compile(r"@@([a-z_.]+|(?:script|text|skill):[\w/.]+)@@")
-TEXTS = ("tools/plan_prompt.md", "tools/mail_rules_prompt.md", "tools/rebase_prompt.md", "tools/fix_prompt.md", "tools/memoire_prompt.md")
+TEXTS = ("tools/plan_prompt.md", "tools/mail_rules_prompt.md", "tools/rebase_prompt.md", "tools/fix_prompt.md", "tools/memoire_prompt.md",
+         "tools/rejeu_juge.md")
 # skills du Bureau, partagés par la revue de PR et la chaîne d'implémentation : la source est skills/<fichier>.md, publiée
 # dans Kronn par publish.py et install.py (sync_skills), son id rangé dans skills.<clé> de la config ; un poste les nomme
 # « bureau:<clé> » dans REVIEW_AGENTS ou IMPL_AGENTS. Pas d'épinglage (custom-x@N) : Kronn ne désactive un workflow qu'à
@@ -216,7 +221,7 @@ def skills_of(names, cfg):
 REVIEW_SCHEDULE = "30 7,10,13,16,19 * * 1-5"  # cron des revues de PR, heures UTC (review.schedule de l'équipe pour un autre)
 # modèles lancés en foreach (un sous-workflow par PR) : Kronn y écrit .kronn/current_task.json, il leur faut leur propre
 # copie du projet (require_isolation), jamais le dossier principal ; le sous-workflow tourne dans celle de son parent
-ISOLATED = {"review_one", "review_cron", "impl_chain", "ticket"}  # la chaîne : une copie du projet par ticket, 3 en parallèle
+ISOLATED = {"review_one", "review_cron", "impl_chain", "impl_rejeu", "ticket"}  # la chaîne : une copie du projet par ticket, 3 en parallèle
 # sous-workflows qui tournent dans la copie de leur parent : relire une PR, les postes de la chaîne d'implémentation
 SHARED_WORKSPACE = {"review_child", *(f"review_{p}" for p in REVIEW_POSTES), "impl_controles", *(f"impl_{p}" for p in IMPL_POSTES), *(f"support_{p}" for p in SUPPORT_POSTES),
                     *(f"ticket_{p}" for p in TICKET_POSTES), "ticket_un"}  # la salle de rédaction (2e étage)
@@ -296,6 +301,7 @@ LIB_IMPORT = re.compile(r"^from (_lib|_plan|_checks|_chaine|_releves|_lecteurs|_
 CHAINE_SCRIPTS = ("workflows/chaine.py", "workflows/chaine_controles.py", "workflows/chaine_pr.py")
 CHAINE_CFG = ("impl", "models", "github", "kronn", "rhythm", "workflows", "actions", "memoire")  # memoire : _memoire.py
 REVIEW_CFG = ("review", "jira", "kronn", "models", "rhythm", "workflows", "actions", "github", "memoire")
+PART_CHAINE = CHAINE_SCRIPTS + ("workflows/rejeu.py",)  # la part de la config de la chaîne (le rejeu y ajoute la sienne)
 MAX_SCRIPT = 110 * 1024  # marge sous les 128 Kio d'un argument (tests/test_templates.py)
 
 
@@ -327,8 +333,8 @@ def script_code(path, cfg):
     code = without_comment_lines(code)
     # clés de premier niveau triées : même script, que les réglages d'équipe soient dans la config ou dans le pack (#32)
     c = {k: v for k, v in sorted(cfg.items()) if not k.startswith("_")}
-    if path in CHAINE_SCRIPTS:  # la config entière ferait passer le script au-dessus de 128 Kio (un argument, sous Linux)
-        c = {k: v for k, v in c.items() if k in CHAINE_CFG}
+    if path in PART_CHAINE:  # la config entière ferait passer le script au-dessus de 128 Kio (un argument, sous Linux)
+        c = {k: v for k, v in c.items() if k in CHAINE_CFG + ("rejeu",)}
         c["github"] = {"repo": (cfg.get("github") or {}).get("repo") or ""}
         if isinstance(c.get("impl"), dict):  # les consignes de l'équipe vont dans les prompts (@@impl.guidelines@@), jamais lues par un script
             c["impl"] = {k: v for k, v in c["impl"].items() if k != "guidelines"}
@@ -571,7 +577,7 @@ def skipped(key, cfg):
         m, models = cfg.get("memoire") or {}, cfg.get("models") or {}
         return m.get("actif") is False or not (models.get("ticket") or models.get("impl_chain") or models.get("review_child")
                                                or (cfg.get("actions") or {}).get("fix_pr"))
-    if key.startswith("impl"):  # la chaîne lit le ticket dans Jira et livre sur GitHub (gh)
+    if key.startswith("impl") or key == "rejeu":  # la chaîne lit le ticket dans Jira et livre sur GitHub (gh)
         return not (cfg.get("jira") or {}).get("config_id")
     if key in ("estimate", "assign", "unassign", "ticket", "ai_time") or key.startswith("ticket_"):  # ses postes et chaque ticket aussi
         return not (cfg.get("jira") or {}).get("config_id")
@@ -679,6 +685,7 @@ IMPL_AGENTS = {
     "controles": ("economy", ["security", "web-performance", "accessibility", "bureau:recherches", "bureau:exigences", "bureau:doc"]),
     "tests": ("default", ["testing", "bureau:tests"]),  # pas test-driven-development : ce poste éprouve, il n'écrit pas avant le code
     "livraison": ("economy", []), "retours": ("reasoning", ["receiving-code-review"]),
+    "juge": ("reasoning", []),  # rejeu : compare le travail de la chaîne à la vraie PR (impl_rejeu, étape juge)
     "revue_pr": ("reasoning", ["bureau:recherches", "bureau:exigences", "bureau:tests"]),  # mode essai : revue locale du diff (la revue du Bureau a ses propres postes)
 }
 IMPL_TEAM_SKILLS = {"code", "code.relecture", "controles", "tests", "retours", "revue_pr"}  # + impl.skills de l'équipe (langages, conventions)
@@ -902,9 +909,64 @@ def config_id(cfg, where):
     return (cfg.get(a) or {}).get(b)
 
 
+# rejeu (impl_rejeu) : étapes d'impl_chain retirées (les gates : personne ne tranche ; la PR et sa revue : rien à livrer),
+# un renvoi vers l'une d'elles va à la note ; fin_essai (escalade) ne s'arrête plus, la note suit aussi
+REJEU_RETIRES = ("gate_plan", "gate_escalade", "livraison", "recap", "gate_pr", "publication", "commente_plan")
+REJEU_JUGE = {"type": "object", "properties": {
+    "score": {"type": "integer"}, "approche": {"type": "string"}, "resume": {"type": "string"},
+    "echecs_tests": {"type": "string", "enum": ["nommage", "comportement", "environnement", "aucun"]},
+    "ecarts": {"type": "array", "items": {"type": "object", "properties": {
+        "fichier": {"type": "string"}, "quoi": {"type": "string"}, "lecon": {"type": "string"},
+        "cause": {"type": "string", "enum": ["ticket_vague", "choix_agent", "convention", "acceptable"]}}}}},
+    "required": ["score", "resume"]}
+
+
+def rejeu_template(chain):
+    """impl_rejeu depuis impl_chain : mêmes postes, en essai, sans gate ni livraison, puis note, juge et range (rejeu.py)."""
+    t = copy.deepcopy(chain)
+    t.update(key="impl_rejeu", doc="Rejoue un ticket déjà en prod : la chaîne en essai, sans gate ni PR, puis la note contre la vraie PR.")
+    d = t["definition"]
+    d.update(name="Le Bureau · rejouer un ticket livré (chaîne)", concurrency_limit=1)
+    for v in d.get("variables") or []:
+        if v["name"] == "mode":  # toujours en essai : ni push, ni PR, ni Jira
+            v["control"] = {**v["control"], "options": [o for o in v["control"]["options"] if o["value"] == "essai"], "default_value": "essai"}
+    steps = [s for s in d["steps"] if s["name"] not in REJEU_RETIRES]
+    for s in steps:
+        for r in s.get("on_result") or []:
+            a = r.get("action") or {}
+            if a.get("type") == "Goto" and a.get("step_name") in REJEU_RETIRES:
+                a["step_name"] = "note"
+        if s["name"] == "fin_essai":
+            s.pop("on_result", None)
+    exe = {"agent": "ClaudeCode", "mode": {"type": "Normal"}, "output_format": {"type": "FreeText"}, "step_type": {"type": "Exec"},
+           "exec_command": "python3"}
+    fin = [
+        {"name": "note", **exe, "description": "Fichiers touchés, tests de la vraie PR lancés sur le code de la chaîne, lignes communes ; les deux diffs pour le juge (0 token).",
+         "exec_args": ["-c", "@@script:workflows/rejeu.py@@", "note", "{{run.id}}"], "exec_timeout_secs": 1800},
+        {"name": "juge", "agent": "ClaudeCode", "mode": {"type": "Normal"},
+         "output_format": {"type": "TypedSchema", "schema": REJEU_JUGE, "on_invalid": "Continue"}, "step_type": {"type": "Agent"},
+         "description": "Compare le travail de la chaîne à la vraie PR : note, écarts et leur cause (ticket vague, choix de l'agent, convention, acceptable).",
+         "prompt_template": "Les mesures du rejeu, faites sans IA :\n\n{{steps.note.data.stdout ?? \"(absent)\"}}\n\n@@text:tools/rejeu_juge.md@@",
+         "_poste": "juge", "retry": {"max_retries": 1, "backoff": "exponential"},
+         "agent_settings": {"tools": {"cli": ["Read", "Grep", "Glob"], "kronn_internal": []}}},
+        {"name": "range", **exe, "description": "La note sur 100 (tests, fichiers, lignes, juge), gardée dans l'historique du rejeu (0 token).",
+         "exec_args": ["-c", "@@script:workflows/rejeu.py@@", "range", "{{run.id}}"], "exec_timeout_secs": 60,
+         "exec_stdin": "{{steps.juge.data_json ?? \"null\"}}", "on_result": [{"contains": "OK", "action": {"type": "Stop"}}]}]
+    i = next(i for i, s in enumerate(steps) if s["name"] == "fin_essai") + 1
+    d["steps"] = steps[:i] + fin + steps[i:]
+    return t
+
+
+DERIVES = {"impl_rejeu": ("impl_chain", rejeu_template)}  # modèles sans fichier, faits depuis un autre au chargement
+
+
 def load_templates():
-    return {k: json.loads(Path(os.path.join(TPL_DIR, k + ".json")).read_text()) for k in TEMPLATES
-            if os.path.exists(os.path.join(TPL_DIR, k + ".json"))}
+    t = {k: json.loads(Path(os.path.join(TPL_DIR, k + ".json")).read_text()) for k in TEMPLATES
+         if k not in DERIVES and os.path.exists(os.path.join(TPL_DIR, k + ".json"))}
+    for k, (src, fn) in DERIVES.items():
+        if src in t:
+            t[k] = fn(t[src])
+    return {k: t[k] for k in TEMPLATES if k in t}  # dans l'ordre de TEMPLATES (enfants d'abord)
 
 
 def main():
@@ -913,6 +975,8 @@ def main():
     if cmd == "export":
         os.makedirs(TPL_DIR, exist_ok=True)
         for key, (kind, where, _) in TEMPLATES.items():
+            if key in DERIVES:  # fait depuis un autre modèle au chargement : pas de fichier
+                continue
             ident = config_id(cfg, where)
             if not ident:
                 print(f"{key} : pas d'id dans la config, ignoré")
