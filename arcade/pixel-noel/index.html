@@ -1,0 +1,1831 @@
+<title>Pixel Noël</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#13111c; --panel:#1e1a2c; --panel-2:#2a2440; --line:#41395c; --ink:#f1ecdf; --muted:#aea7c6;
+  --accent:#ffcf4a; --holly:#e0433b; --on-accent:#1b1626; --ok:#62d48e; --bad:#ff6b6b; --px:3px;
+  --frame:0 calc(-1*var(--px)) 0 0 var(--line),0 var(--px) 0 0 var(--line),calc(-1*var(--px)) 0 0 0 var(--line),var(--px) 0 0 0 var(--line);
+  --pixel:'Press Start 2P',ui-monospace,monospace;
+  --body:'Atkinson Hyperlegible',ui-sans-serif,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);padding-inline:16px;padding-block:16px 40px;margin:0}
+.wrap{max-width:1240px;margin:0 auto}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand h1{font:400 16px/1.3 var(--pixel);margin:0;text-shadow:3px 3px 0 #000}
+.coin{width:16px;height:16px;background:var(--accent);box-shadow:inset -3px -3px 0 #c9951c,inset 3px 3px 0 #fff2b8;flex:none}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pill{font:400 11px/1 var(--pixel);padding:9px 10px;background:var(--panel);box-shadow:var(--frame);display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.pill i{width:9px;height:9px;background:var(--muted);display:block}
+.pill[data-s="on"] i{background:var(--ok)} .pill[data-s="off"] i{background:var(--bad)} .pill[data-s="solo"] i{background:var(--accent)}
+.tg{font:400 11px/1 var(--pixel);background:var(--panel);color:var(--ink);border:0;padding:9px 10px;box-shadow:var(--frame);cursor:pointer}
+.tg[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.host{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#2b2140;box-shadow:var(--frame);padding:10px 14px;margin-bottom:20px}
+.host .lab{font:400 10px/1.3 var(--pixel);color:var(--accent)}
+.host .cur{font-weight:700;flex:1;min-width:180px}
+.host .cur small{display:block;font-weight:400;color:var(--muted)}
+.btn{font:400 11px/1 var(--pixel);border:0;padding:12px 14px;cursor:pointer;background:var(--panel-2);color:var(--ink);box-shadow:0 4px 0 #000}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #000}
+.btn.main{background:var(--accent);color:var(--on-accent);box-shadow:0 4px 0 #b8861a}
+.btn.main:active{box-shadow:0 1px 0 #b8861a}
+.btn.ok{background:var(--ok);color:#0f2418;box-shadow:0 4px 0 #2f7d47}
+.btn:disabled{opacity:.45;cursor:default;transform:none}
+.btn:focus-visible,.tg:focus-visible,.chip-btn:focus-visible,.sw:focus-visible,textarea:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:28px;align-items:start}
+@media (max-width:920px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{display:flex;flex-direction:column;gap:12px;min-width:0}
+.screen{position:relative;background:#000;box-shadow:var(--frame),6px 6px 0 var(--px) #000}
+.screen canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;image-rendering:pixelated;touch-action:none;outline:none}
+.screen canvas:focus-visible{box-shadow:0 0 0 3px var(--accent)}
+.crt .screen::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,rgba(0,0,0,.2) 0 1px,transparent 1px 3px);box-shadow:inset 0 0 60px rgba(0,0,0,.5)}
+#toasts{position:absolute;left:0;right:0;top:10px;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;z-index:2}
+.toast{font:400 11px/1.4 var(--pixel);background:rgba(16,13,26,.92);color:var(--accent);padding:7px 10px;box-shadow:var(--frame);animation:toast 3.2s steps(8) forwards;max-width:90%;text-align:center}
+@keyframes toast{0%{opacity:0}10%,80%{opacity:1}100%{opacity:0}}
+.help{margin:0;color:var(--muted);font-size:14px}
+.help kbd{font:400 10px/1 var(--pixel);color:var(--ink);background:var(--panel-2);padding:3px 5px;box-shadow:0 2px 0 #000}
+.side{display:flex;flex-direction:column;gap:24px}
+.card{background:var(--panel);box-shadow:var(--frame);padding:16px}
+.card h2{font:400 11px/1.4 var(--pixel);margin:0 0 12px;color:var(--accent)}
+.card p{margin:0 0 10px}
+.card p:last-child{margin-bottom:0}
+.muted{color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip-btn{font:700 14px/1.2 var(--body);background:var(--panel-2);color:var(--ink);border:0;padding:9px 11px;cursor:pointer;text-align:left}
+.chip-btn[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.chip-btn:disabled{opacity:.5;cursor:default}
+.swatches{display:flex;flex-wrap:wrap;gap:6px}
+.sw{width:26px;height:26px;border:0;cursor:pointer;padding:0;box-shadow:inset -4px -4px 0 rgba(0,0,0,.28)}
+.sw[aria-pressed="true"]{box-shadow:inset -4px -4px 0 rgba(0,0,0,.28),0 0 0 3px var(--panel),0 0 0 6px var(--ink)}
+.lbl{font-weight:700;font-size:14px}
+textarea,input[type=text],select{font:15px/1.4 var(--body);width:100%;padding:9px 10px;background:var(--bg);color:var(--ink);border:0;box-shadow:inset 0 0 0 2px var(--line)}
+textarea{min-height:76px;resize:vertical}
+ul.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+ul.list li{display:flex;gap:10px;align-items:flex-start;background:var(--panel-2);padding:9px 10px}
+ul.list li .grow{flex:1;min-width:0;overflow-wrap:anywhere}
+ul.list li small{display:block;color:var(--muted)}
+.dot{width:12px;height:12px;flex:none;margin-top:4px}
+.badge{font:400 9px/1 var(--pixel);padding:4px 5px;background:var(--accent);color:var(--on-accent);white-space:nowrap}
+.badge.alt{background:var(--line);color:var(--ink)}
+#players li.off{opacity:.5}
+.head{width:20px;height:30px;flex:none;image-rendering:pixelated;margin-top:-2px}
+.pts{white-space:nowrap;font-variant-numeric:tabular-nums}
+.badge.crown{display:inline-block;margin-top:6px}
+.b0{background:#3f9e5c}.b1{background:#c8433d}.b2{background:#3a6fc4}
+.mail{background:#f6f3ea;color:#2a2533;padding:14px;max-height:460px;overflow:auto;font-size:14px;box-shadow:inset 0 0 0 2px var(--line)}
+.mail h3{margin:12px 0 6px;font-size:15px}
+.mail h3:first-child{margin-top:0}
+.mail ul{margin:0;padding-left:18px}
+.note{font-size:13px;color:var(--muted);margin:0}
+.warn{background:#3a2a14;color:#ffd99a;padding:10px 12px;font-size:14px}
+.testbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#14324a;box-shadow:var(--frame);padding:10px 14px;margin-bottom:20px}
+.testbar .lab{font:400 10px/1.3 var(--pixel);color:#9ee6ff}
+.testbar span:nth-child(2){flex:1;min-width:180px}
+@media (prefers-reduced-motion:reduce){.toast{animation:none}.btn:active{transform:none}}
+</style>
+
+<div class="wrap" id="app">
+  <div class="top">
+    <div class="brand"><span class="coin" aria-hidden="true"></span><h1>Pixel Noël</h1></div>
+    <div class="tools">
+      <span class="pill" id="status" data-s="wait" role="status"><i></i><span id="statusTxt">Connexion…</span></span>
+      <button class="tg" id="tgCrt" type="button" aria-pressed="true">CRT</button>
+      <button class="tg" id="tgSnd" type="button" aria-pressed="true">Son</button>
+    </div>
+  </div>
+
+  <div class="testbar" id="testbar" hidden>
+    <span class="lab">VUE JOUEUR DE TEST</span>
+    <span>Cet onglet joue comme un participant : <b id="testName"></b>. Il n'avance pas la partie et ne lit pas les cartes des autres.</span>
+    <button class="btn" id="testOff" type="button">Revenir en hôte</button>
+  </div>
+
+  <div class="host" id="host" hidden>
+    <span class="lab">HÔTE</span>
+    <div class="cur"><span id="hostStep"></span><small id="hostNext"></small></div>
+    <button class="btn" id="homeBtn" type="button" title="Revenir à l'écran titre sans rien effacer">⏮ Écran titre</button>
+    <button class="btn" id="prevBtn" type="button">◀ Retour</button>
+    <button class="btn main" id="nextBtn" type="button">Suivant ▶</button>
+    <button class="btn" id="testOn" type="button" title="Cet onglet devient un faux joueur, pour voir la partie côté participant">👁 Vue joueur (test)</button>
+  </div>
+
+  <div class="grid">
+    <section class="stage" aria-label="La partie">
+      <div class="screen"><canvas id="cv" tabindex="0" aria-label="Écran du jeu"></canvas><div id="toasts" aria-live="polite"></div></div>
+      <p class="help" id="help"></p>
+    </section>
+    <aside class="side">
+      <section class="card" id="panel" aria-live="polite"></section>
+      <section class="card">
+        <h2>JOUEURS · <span id="count">0</span></h2>
+        <ul class="list" id="players"></ul>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const SW = 256, SH = 144;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let g = null;
+
+// ---------- données fixes ----------
+const DEFAULT_LOOK = { sh: '#6d7380', sk: '#efc39a', hc: '#3a2a1e', lg: '#2e3350', st: 0, hat: '', beard: false };
+const GUEST = { k: 'invite', name: 'Invité', role: 'Invité', person: '', title: 'PERSONNAGE MYSTÈRE', look: { sh: '#9a62d6', sk: '#efc39a', hc: '#2b1d16', lg: '#2e3350', st: 2, hat: '#5a3a8a' }, fun: [] };
+const WEATHERS = [['☀️', 'Grand soleil'], ['🌤️', 'Éclaircies'], ['🌧️', 'Pluie'], ['⛈️', 'Orage']];
+const BOARDS = [{ label: 'CADEAUX', name: 'Cadeaux', hint: 'Ce que 2026 nous a apporté', c: '#3f9e5c' },
+                { label: 'CHARBON', name: 'Charbon', hint: 'Ce qu\'on laisse dans la cheminée', c: '#c8433d' },
+                { label: 'VŒUX', name: 'Vœux 2027', hint: 'Ce qu\'on veut pour 2027', c: '#3a6fc4' }];
+const EMOTES = ['👋','👍','❤️','😂','❓','🎉'];
+const BITES = 3;
+const STEPS = [
+  { k: 'title',    h: 'Écran titre',                  nx: 'Lancer la partie' },
+  { k: 'select',   h: 'Choisis ton perso',            nx: 'Ouvrir le calendrier' },
+  { k: 'advent',   h: "Le calendrier de l'année",     nx: '' },
+  { k: 'quiz',     h: "Le quiz de l'année",           nx: '' },
+  { k: 'sleigh',   h: "Le traîneau de l'IA",          nx: 'Ouvrir la hotte' },
+  { k: 'hotte',    h: 'La hotte des cadeaux impossibles', nx: '' },
+  { k: 'boss',     h: 'Un boss par membre',           nx: '' },
+  { k: 'santa',    h: 'Le Père Noël',                 nx: '' },
+  { k: 'trophies', h: 'Les trophées',                 nx: '' },
+  { k: 'write',    h: 'Écrire en secret',             nx: 'Ouvrir les cadeaux' },
+  { k: 'reveal',   h: 'Ouvrir les cadeaux',           nx: '' },
+  { k: 'vote',     h: 'Le vote Pac-Man',              nx: 'Aller à la taverne' },
+  { k: 'tavern',   h: 'La taverne des vœux',          nx: 'Rejoindre la cheminée' },
+  { k: 'save',     h: 'Au coin du feu',               nx: 'Afficher le récap' },
+  { k: 'recap',    h: 'Le récap de l\'année',         nx: '' },
+];
+// zones où l'on marche, par scène
+const WALK = { quiz: [10, 50, 246, 140], write: [12, 74, 244, 140], tavern: [12, 102, 188, 140], save: [12, 112, 244, 140] };
+// exemple affiché tant que l'hôte n'a pas chargé l'instantané du sprint
+const FALLBACK = {
+  ex: true, company: '', name: 'ANNÉE ?',
+  advent: Array.from({ length: 12 }, () => ['À CHARGER', '']),
+  quiz: [{ q: ["LES QUESTIONS DU QUIZ", "NE SONT PAS ENCORE CHARGÉES"], a: ['A', 'B', 'C', 'D'], ok: 0, fact: '' }],
+  ai: { labels: [], pts: [], devs: [], claude: {}, at: 0, head: '', legend: '', stats: [], note: '' },
+  gifts: [{ n: 'CADEAU MYSTÈRE', s: 'À charger avant la partie.' }],
+  bosses: [], santa: { hp: '?', l: 'TICKETS' }, sheets: {},
+};
+
+// ---------- utilitaires ----------
+const store = { get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }, set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+const hash = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+const strHash = s => { let h = 7; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); };
+const clamp01 = v => Math.max(0, Math.min(1, v));
+const num = (v, lo, hi, d) => typeof v === 'number' && isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d;
+const idx = (v, n, d = 0) => Number.isInteger(v) && v >= 0 && v < n ? v : d;
+const hex = (v, d) => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v) ? v : d;
+const normLook = L => { L = L || {}; return { sh: hex(L.sh, DEFAULT_LOOK.sh), sk: hex(L.sk, DEFAULT_LOOK.sk), hc: hex(L.hc, DEFAULT_LOOK.hc), lg: hex(L.lg, DEFAULT_LOOK.lg), st: idx(L.st, 4), hat: hex(L.hat, ''), beard: !!L.beard, crown: L.crown === 2 ? 2 : L.crown ? 1 : 0 }; };
+const GUEST_P = Object.assign({}, GUEST, { look: normLook(GUEST.look) });
+const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+let ROSTER = [];
+function normRoster(d){
+  const arr = v => Array.isArray(v) ? v : [];
+  return arr(d && d.people).filter(p => p && typeof p === 'object').slice(0, 11).map(p => ({ k: str(p.k, 40), name: str(p.name, 20) || '?', role: str(p.role, 30), person: str(p.person, 60), title: str(p.title, 26), look: normLook(p.look), fun: arr(p.fun).slice(0, 6).map(f => ({ l: str(f && f.l, 22), v: str(f && f.v, 14) })) })).filter(p => p.k && p.k !== 'invite');
+}
+const memberList = () => ROSTER.concat([GUEST_P]);
+const presetOf = k => k === 'invite' ? GUEST_P : ROSTER.find(p => p.k === k) || null;
+const lookOf = k => { const p = presetOf(k); return p ? p.look : DEFAULT_LOOK; };
+// le gagnant du quiz (ou les ex-aequo) porte une couronne dès la dernière réponse révélée ; s'il l'a déjà, elle devient impériale
+function champions(){
+  const nq = (SP().quiz || []).length, res = LIVE.quizRes || {}, qi = STEPS.findIndex(x => x.k === 'quiz');
+  if (!nq || !(LIVE.step > qi || (LIVE.step === qi && LIVE.qr && Object.keys(res).length >= nq))) return new Set();
+  const c = {}; for (const ids of Object.values(res)) for (const id of (Array.isArray(ids) ? ids : [])) c[id] = (c[id] || 0) + 1;
+  const best = Math.max(0, ...Object.values(c));
+  return new Set(best ? Object.keys(c).filter(id => c[id] === best) : []);
+}
+function playerLook(id, k){ const L = lookOf(k); return champions().has(id) ? Object.assign({}, L, { crown: L.crown ? 2 : 1 }) : L; }
+const str = (v, n) => typeof v === 'string' ? v.slice(0, n) : '';
+const up = s => String(s || '').toUpperCase();
+const first = s => (String(s || '').trim().split(/\s+/)[0] || '');
+function wrap(text, n, max = 9){
+  const words = String(text || '').replace(/\s+/g, ' ').trim().split(' '); const out = []; let cur = '';
+  for (const w of words){
+    if (!w) continue;
+    if ((cur + ' ' + w).trim().length <= n) cur = (cur + ' ' + w).trim();
+    else { if (cur) out.push(cur); cur = w.length > n ? w.slice(0, n - 1) + '…' : w; }
+  }
+  if (cur) out.push(cur);
+  if (out.length > max){ out.length = max; out[max - 1] = out[max - 1].slice(0, n - 1) + '…'; }
+  return out;
+}
+function shade(hex, f){
+  const n = parseInt(hex.slice(1), 16); let r = n >> 16, gg = n >> 8 & 255, b = n & 255;
+  const t = f < 0 ? 0 : 255, a = Math.abs(f);
+  r = Math.round(r + (t - r) * a); gg = Math.round(gg + (t - gg) * a); b = Math.round(b + (t - b) * a);
+  return '#' + ((1 << 24) | (r << 16) | (gg << 8) | b).toString(16).slice(1);
+}
+const el = (tag, props = {}, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(props)){ if (k === 'class') e.className = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else if (k === 'text') e.textContent = v; else if (v !== false && v != null) e.setAttribute(k, v === true ? '' : v); } for (const c of kids) if (c != null) e.append(c); return e; };
+
+// ---------- dessin de base ----------
+const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+function T(s, x, y, o = {}){
+  g.font = (o.s || 8) + 'px "Press Start 2P", monospace'; g.textAlign = o.a || 'left'; g.textBaseline = 'top';
+  if (o.sh){ g.fillStyle = o.sh; g.fillText(s, x + (o.d || 1), y + (o.d || 1)); }
+  g.fillStyle = o.c || '#ffffff'; g.fillText(s, x, y);
+}
+function outlined(s, x, y, size, fill, edge, shadow){
+  g.font = size + 'px "Press Start 2P", monospace'; g.textAlign = 'center'; g.textBaseline = 'top';
+  g.fillStyle = shadow; g.fillText(s, x + 3, y + 3);
+  g.fillStyle = edge; for (const [dx, dy] of [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,1],[1,-1],[-1,1]]) g.fillText(s, x + dx, y + dy);
+  g.fillStyle = fill; g.fillText(s, x, y);
+}
+const blink = (t, p = 500) => reduced || Math.floor(t / p) % 2 === 0;
+function box(x, y, w, h, fill = '#1d2c78'){ R(x, y, w, h, '#05081f'); R(x + 1, y + 1, w - 2, h - 2, '#e9e4d4'); R(x + 2, y + 2, w - 4, h - 4, fill); }
+function stars(t, seed, n, h = SH){ for (let i = 0; i < n; i++){ const x = Math.floor(hash(seed + i) * SW), y = Math.floor(hash(seed + i + 99) * h); if (reduced || Math.floor(t / 400 + hash(i + seed) * 9) % 7 !== 0) R(x, y, 1, 1, hash(i + 7) > .8 ? '#ffe9a8' : '#c9c3ff'); } }
+function heart(x, y, full){ const c = full ? '#ff4d6d' : '#3b2a44'; R(x + 1, y, 2, 1, c); R(x + 4, y, 2, 1, c); R(x, y + 1, 7, 2, c); R(x + 1, y + 3, 5, 1, c); R(x + 2, y + 4, 3, 1, c); R(x + 3, y + 5, 1, 1, c); }
+function coin(x, y, t){ const w = reduced ? 6 : [6, 4, 2, 4][Math.floor(t / 120) % 4]; R(x - w / 2, y, w, 7, '#ffcf4a'); R(x - w / 2, y + 6, w, 1, '#c9951c'); if (w > 2) R(x - w / 2 + 1, y + 1, 1, 4, '#fff2b8'); }
+function duck(x, y, f){ x = Math.round(x); y = Math.round(y); R(x, y - 7, 10, 6, '#ffd84a'); R(x + 6, y - 12, 6, 6, '#ffd84a'); R(x + 12, y - 9, 3, 2, '#ff8a3d'); R(x + 9, y - 11, 1, 1, '#17151f'); R(x + 1, y - 6, 4, 2, '#f2b51c'); R(x + 2 + (f ? 1 : 0), y - 1, 2, 1, '#ff8a3d'); R(x + 6 - (f ? 1 : 0), y - 1, 2, 1, '#ff8a3d'); R(x + 6, y - 14, 6, 2, '#f4f1ea'); R(x + 7, y - 17, 5, 3, '#e0433b'); R(x + 4, y - 18, 3, 2, '#e0433b'); R(x + 3, y - 19, 2, 2, '#f4f1ea'); }
+function chest(x, y, open){ if (open){ R(x, y - 6, 16, 4, '#8a5a32'); R(x + 1, y - 9, 14, 3, '#a8703f'); } else { R(x, y - 4, 16, 5, '#a8703f'); R(x, y - 4, 16, 1, '#c98a52'); } R(x, y + 1, 16, 9, '#8a5a32'); R(x, y + 1, 16, 1, '#ffcf4a'); R(x + 7, y + 2, 2, 3, '#ffcf4a'); R(x, y + 9, 16, 1, '#5e3e28'); }
+function weather(x, y, k, t){
+  y += reduced ? 0 : Math.round(Math.sin(t / 300 + x));
+  if (k === 0){ R(x - 3, y - 3, 6, 6, '#ffd84a'); R(x - 1, y - 6, 2, 2, '#ffd84a'); R(x - 1, y + 4, 2, 2, '#ffd84a'); R(x - 6, y - 1, 2, 2, '#ffd84a'); R(x + 4, y - 1, 2, 2, '#ffd84a'); return; }
+  const cl = k === 3 ? '#5b5a74' : '#eef0f7';
+  if (k === 1) R(x + 1, y - 6, 5, 5, '#ffd84a');
+  R(x - 5, y - 1, 10, 4, cl); R(x - 3, y - 3, 5, 2, cl); R(x - 6, y, 12, 2, cl);
+  if (k === 2){ const d = reduced ? 0 : Math.floor(t / 150) % 3; R(x - 3, y + 4 + d, 1, 2, '#6ab8ff'); R(x + 2, y + 5 + ((d + 1) % 3), 1, 2, '#6ab8ff'); }
+  if (k === 3 && blink(t, 300)){ R(x, y + 3, 2, 2, '#ffd84a'); R(x - 1, y + 5, 2, 2, '#ffd84a'); R(x - 2, y + 7, 2, 1, '#ffd84a'); }
+}
+function bubble(x, y, text){
+  g.font = '6px "Press Start 2P", monospace';
+  const w = Math.ceil(g.measureText(text).width) + 6, bx = Math.round(x - w / 2), by = Math.round(y);
+  R(bx - 1, by - 1, w + 2, 11, '#17151f'); R(bx, by, w, 9, '#ffffff'); R(Math.round(x) - 1, by + 9, 3, 2, '#ffffff');
+  T(text, Math.round(x), by + 2, { s: 6, a: 'center', c: '#17151f' });
+}
+function emoBubble(x, y, e){
+  const bx = Math.round(x) - 9, by = Math.round(y) - 44;
+  R(bx - 1, by - 1, 20, 18, '#17151f'); R(bx, by, 18, 16, '#ffffff'); R(bx + 7, by + 16, 4, 2, '#ffffff');
+  g.font = '11px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(e, bx + 9, by + 9);
+}
+function parquet(x0, y0, w, h){ for (let y = y0; y < y0 + h; y += 6){ R(x0, y, w, 6, (y / 6) % 2 ? '#6e4c36' : '#674630'); R(x0, y + 5, w, 1, '#55392a'); for (let x = x0 + ((y / 6) % 3) * 17; x < x0 + w; x += 48) R(x, y, 1, 5, '#55392a'); } }
+function perso(x, y, d, f, L){
+  x = Math.round(x); y = Math.round(y); L = L || DEFAULT_LOOK;
+  const shirt = L.sh, hair = L.hc, skin = L.sk, style = L.st, legs = L.lg, legsD = shade(L.lg, -.2);
+  const shirtD = shade(shirt, -.25), skinD = shade(skin, -.15), cap = L.hat || shade(shirt, -.35);
+  g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(x, y, 6, 2, 0, 0, 7); g.fill();
+  const ox = x - 6, oy = y - 23, front = d === 0 || d === 3;
+  const P = (px, py, w, h, c) => { g.fillStyle = c; g.fillRect(ox + (d === 2 ? 12 - px - w : px), oy + py, w, h); };
+  if (front){ const lu = f === 1 ? 1 : 0, ru = f === 2 ? 1 : 0; P(3, 18, 3, 4 - lu, legs); P(3, 22 - lu, 3, 1, '#17151f'); P(6, 18, 3, 4 - ru, legs); P(6, 22 - ru, 3, 1, '#17151f'); }
+  else if (f === 0){ P(4, 18, 4, 4, legs); P(3, 22, 5, 1, '#17151f'); }
+  else { const a = f === 1 ? 2 : 6, b = f === 1 ? 6 : 2; P(b, 18, 3, 3, legsD); P(b, 21, 3, 1, '#17151f'); P(a, 18, 3, 4, legs); P(a - 1, 22, 4, 1, '#17151f'); }
+  P(2, 11, 8, 7, shirt); P(2, 17, 8, 1, shirtD);
+  if (front){ const sw = f === 1 ? 1 : f === 2 ? -1 : 0; P(1, 12, 1, 4, shirtD); P(1, 16 + sw, 1, 1, skin); P(10, 12, 1, 4, shirtD); P(10, 16 - sw, 1, 1, skin); if (d === 0) P(5, 11, 2, 1, skinD); }
+  else { P(5, 12, 2, 4, shirtD); P(f === 1 ? 4 : f === 2 ? 6 : 5, 16, 2, 1, skin); }
+  P(2, 3, 8, 8, skin); P(2, 10, 8, 1, skinD);
+  if (d === 0){ P(2, 2, 8, 3, hair); P(1, 3, 1, style === 1 ? 9 : 4, hair); P(10, 3, 1, style === 1 ? 9 : 4, hair); P(3, 5, 2, 1, hair); P(4, 7, 1, 2, '#17151f'); P(7, 7, 1, 2, '#17151f'); }
+  else if (d === 3){ P(2, 2, 8, 8, hair); P(1, 3, 1, 6, hair); P(10, 3, 1, 6, hair); if (style === 1) P(2, 10, 8, 3, hair); }
+  else { P(1, 6, 1, 2, skin); P(2, 2, 8, 3, hair); P(6, 3, 4, 5, hair); P(10, 3, 1, 4, hair); if (style === 1) P(7, 8, 3, 5, hair); P(3, 7, 1, 2, '#17151f'); }
+  if (L.beard){ if (d === 0) P(2, 9, 8, 2, shade(hair, .1)); else if (d !== 3) P(1, 9, 5, 2, shade(hair, .1)); }
+  if (style === 2){ P(2, 1, 8, 3, cap); if (d === 0) P(1, 4, 10, 1, shade(cap, -.3)); else if (d !== 3) P(0, 4, 4, 1, shade(cap, -.3)); }
+  if (style === 3){ P(4, -1, 4, 3, hair); P(5, -2, 2, 1, hair); }
+  if (L.crown === 2){ // couronne impériale : le boss qui gagne aussi le quiz
+    const top = style === 2 ? -1 : 0, gd = '#ffcf4a', tw = reduced ? 0 : Math.floor(Date.now() / 180) % 4;
+    P(1, top, 10, 2, gd); P(1, top + 1, 10, 1, '#c9951c');
+    P(1, top - 3, 2, 3, gd); P(4, top - 4, 1, 4, gd); P(5, top - 6, 2, 6, gd); P(7, top - 4, 1, 4, gd); P(9, top - 3, 2, 3, gd);
+    P(5, top, 2, 1, '#e8504a'); P(2, top, 1, 1, '#3f8fe0'); P(9, top, 1, 1, '#62d48e'); P(5, top - 6, 2, 1, '#fff2b8');
+    const [sx, sy] = [[-1, top - 5], [12, top - 2], [11, top - 6], [-2, top - 1]][tw]; P(sx, sy, 1, 1, '#ffffff');
+  } else if (L.crown){ // la couronne du boss, ou celle du champion du quiz
+    const top = style === 2 ? -1 : 0;
+    P(2, top, 8, 2, '#ffcf4a'); P(2, top - 2, 2, 2, '#ffcf4a'); P(5, top - 3, 2, 3, '#ffcf4a'); P(8, top - 2, 2, 2, '#ffcf4a');
+    P(2, top + 1, 8, 1, '#c9951c'); P(5, top, 2, 1, '#e8504a'); P(5, top - 3, 1, 1, '#fff2b8');
+  } else { // le bonnet de Noël
+    P(1, 1, 10, 2, '#f4f1ea'); P(2, -2, 8, 3, '#e0433b'); P(d === 2 ? 0 : 7, -4, 4, 2, '#e0433b'); P(d === 2 ? -2 : 10, -4, 2, 2, '#f4f1ea');
+  }
+}
+const HEADS = {};
+function headImg(L){
+  const k = JSON.stringify(L);
+  if (!HEADS[k]){
+    const c = document.createElement('canvas'); c.width = 12; c.height = 18; // de la couronne (rang -6) aux épaules (rang 11)
+    const keep = g; g = c.getContext('2d'); try { perso(6, 29, 0, 0, L); } finally { g = keep; }
+    HEADS[k] = c.toDataURL();
+  }
+  return el('img', { class: 'head', src: HEADS[k], alt: '' });
+}
+function bigPerso(x, y, k, d, f, lk){ g.save(); g.translate(x, y); g.scale(k, k); perso(0, 0, d, f, lk); g.restore(); }
+const step = (t, on = true) => on && !reduced ? [0, 1, 0, 2][Math.floor(t / 150) % 4] : 0;
+function nameTag(x, y, s, me){
+  g.font = '5px "Press Start 2P", monospace';
+  const w = Math.ceil(g.measureText(s).width) + 4;
+  R(Math.round(x - w / 2), y + 2, w, 8, me ? '#ffcf4a' : 'rgba(10,8,20,.82)');
+  T(s, Math.round(x), y + 4, { s: 5, a: 'center', c: me ? '#1b1626' : '#ffffff' });
+}
+function marker(x, y, t){ const b = reduced ? 0 : Math.round(Math.sin(t / 220) * 1.5), mx = Math.round(x), my = Math.round(y) - 31 + b; R(mx - 3, my, 7, 2, '#ffcf4a'); R(mx - 2, my + 2, 5, 1, '#ffcf4a'); R(mx - 1, my + 3, 3, 1, '#ffcf4a'); }
+
+// ---------- son ----------
+let soundOn = true, actx = null;
+function beep(notes, dur = .09){
+  if (!soundOn) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    let t0 = actx.currentTime;
+    for (const f of notes){ const o = actx.createOscillator(), v = actx.createGain(); o.type = 'square'; o.frequency.value = f; v.gain.setValueAtTime(.05, t0); v.gain.exponentialRampToValueAtTime(.001, t0 + dur * .95); o.connect(v).connect(actx.destination); o.start(t0); o.stop(t0 + dur); t0 += dur; }
+  } catch {}
+}
+const SFX = { start: () => { beep([988, 1319], .07); setTimeout(() => beep([523, 659, 784, 1047, 784, 1047], .1), 160); }, coin: () => beep([988, 1319], .07), step: () => beep([660, 880], .06), chest: () => beep([392, 494, 587, 784], .12), hit: () => beep([160, 110], .05), bite: () => beep([440, 330], .04), ok: () => beep([523, 784, 1047], .08) };
+
+// ---------- état partagé ----------
+let db = null, room = null, user = null, uid = null, isOwner = false, canWrite = true, solo = true;
+let LIVE = { step: 0, at: Date.now(), q: 0, qr: false, b: 0, timerEnd: 0, quizRes: {} };
+let SPRINT = null, PL = {}, MYSEC = { cards: [] }, ALLSEC = {}, REV = [], QUESTS = [];
+let NAMES = {}, peers = [];
+const sess = { get(k){ try { return sessionStorage.getItem(k); } catch { return null; } }, set(k, v){ try { if (v === null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v); } catch {} } };
+let testMode = location.hash === '#joueur' || sess.get('sq.test') === '1';
+let testId = sess.get('sq.testId'); if (!testId){ testId = 'test-' + Math.random().toString(36).slice(2, 8); sess.set('sq.testId', testId); }
+const isTest = id => typeof id === 'string' && id.startsWith('test-');
+const testLabel = id => 'Testeur ' + id.slice(5, 7).toUpperCase();
+const me = { x: 128, y: 130, d: 3, mv: false, path: null, k: null, em: [0, 0], emUntil: 0, typing: false, name: '', sc: -1 };
+const others = new Map();
+const myLook = () => playerLook(uid || 'moi', me.k);
+const myDoc = () => PL[uid || 'moi'] || (PL[uid || 'moi'] = {});
+const SP = () => SPRINT || FALLBACK;
+const cur = () => STEPS[Math.max(0, Math.min(STEPS.length - 1, LIVE.step | 0))];
+const sinceStep = () => Date.now() - (LIVE.at || 0);
+
+// écritures : une à la fois par document
+const queues = {};
+function write(path, body){
+  if (!db) return Promise.resolve();
+  const data = JSON.parse(JSON.stringify(body));
+  queues[path] = (queues[path] || Promise.resolve()).then(() => db.doc(path).set(data)).catch(e => { console.warn(path, e); if (e && e.code === 'invalid_argument') { canWrite = false; renderPanel(); } });
+  return queues[path];
+}
+function savePlayer(patch){ Object.assign(myDoc(), patch); if (db && uid) write('players/' + uid, myDoc()); renderAll(); }
+function saveSecret(){ if (db && uid) write('secret/' + uid, MYSEC); else ALLSEC['moi'] = MYSEC; renderAll(); }
+function setLive(patch){
+  const nx = Object.assign({}, LIVE, patch);
+  if (patch.step !== undefined && patch.step !== LIVE.step){ nx.at = Date.now(); nx.last = Math.max(LIVE.last || 0, patch.step); }
+  if (db) write('live/state', nx); else { applyLive(nx); }
+}
+function applyLive(nx){
+  const prevStep = LIVE.step, prevQr = LIVE.qr;
+  LIVE = Object.assign({ step: 0, at: Date.now(), q: 0, qr: false, b: 0, d: 0, g: 0, ph: 0, tr: 0, timerEnd: 0, quizRes: {} }, nx);
+  LIVE.step = idx(LIVE.step, STEPS.length);
+  if (prevStep !== LIVE.step){
+    if (STEPS[prevStep].k === 'title' && LIVE.step === 1) SFX.start(); else SFX.step();
+    enterScene();
+  }
+  if (!prevQr && LIVE.qr) SFX.ok();
+  renderAll();
+}
+
+// ---------- noms ----------
+const nameOf = id => { const dd = id === (uid || 'moi') ? PL[uid || 'moi'] : PL[id], pr = dd && dd.k && dd.k !== 'invite' ? presetOf(dd.k) : null; if (pr) return pr.name; if (id === uid || id === 'moi') return me.name || 'Moi'; if (isTest(id)) return testLabel(id); const p = NAMES[id]; return (p && p.name) || 'Collègue'; };
+let namesPending = false;
+async function refreshNames(){
+  if (!user || namesPending) return;
+  const ids = [...new Set([...Object.keys(PL), ...peers.map(peerId), ...REV.map(c => c.by), ...Object.keys(ALLSEC)].filter(id => id && id !== 'moi' && !isTest(id)))];
+  if (!ids.length) return;
+  namesPending = true;
+  try { NAMES = await user.profiles(ids); } catch {} finally { namesPending = false; }
+  renderAll(true);
+}
+
+// ---------- déplacement ----------
+const KEYS = { ArrowUp: 'u', ArrowDown: 'd', ArrowLeft: 'l', ArrowRight: 'r', z: 'u', w: 'u', s: 'd', q: 'l', a: 'l', d: 'r' };
+const held = new Set();
+const walkRect = () => WALK[cur().k];
+function enterScene(){
+  const r = walkRect(); me.sc = LIVE.step; me.path = null;
+  if (r){ me.x = r[0] + 20 + Math.random() * (r[2] - r[0] - 40); me.y = r[3] - 4 - Math.random() * 10; me.d = 3; }
+  if (cur().k === 'boss' || cur().k === 'santa') hitsKey = '';
+}
+function stepMe(dt){
+  const r = walkRect(); if (!r){ me.mv = false; return; }
+  let vx = 0, vy = 0;
+  if (held.has('l')) vx -= 1; if (held.has('r')) vx += 1; if (held.has('u')) vy -= 1; if (held.has('d')) vy += 1;
+  const sp = 64 * dt;
+  if (vx || vy){ me.path = null; const n = Math.hypot(vx, vy); me.x += vx / n * sp; me.y += vy / n * sp; }
+  else if (me.path){ const dx = me.path.x - me.x, dy = me.path.y - me.y, dist = Math.hypot(dx, dy); if (dist <= sp){ me.x = me.path.x; me.y = me.path.y; me.path = null; } else { me.x += dx / dist * sp; me.y += dy / dist * sp; } vx = dx; vy = dy; }
+  me.x = Math.max(r[0], Math.min(r[2], me.x)); me.y = Math.max(r[1], Math.min(r[3], me.y));
+  me.mv = !!(vx || vy) && (me.path !== null || held.size > 0);
+  if (vx || vy) me.d = Math.abs(vx) > Math.abs(vy) ? (vx < 0 ? 1 : 2) : (vy < 0 ? 3 : 0);
+}
+let lastSent = '';
+function sendPresence(){
+  if (!room) return;
+  const st = { tid: testMode && isTest(uid) ? uid : null, x: Math.round(me.x), y: Math.round(me.y), d: me.d, mv: me.mv ? 1 : 0, k: me.k, em: me.em, sc: me.sc, ty: me.typing ? 1 : 0 };
+  const s = JSON.stringify(st); if (s !== lastSent){ lastSent = s; room.presence(st).catch(() => {}); }
+}
+const peerId = p => p.isMe && p.presence && isTest(p.presence.tid) ? p.presence.tid : p.by;
+function syncPeers(list, t){
+  peers = list.filter(p => !p.sameTab && p.kind === 'viewer');
+  const seen = new Set();
+  for (const p of peers){
+    const pr = p.presence || {}; if (typeof pr.x !== 'number') continue;
+    seen.add(p.peer);
+    let o = others.get(p.peer); const tx = num(pr.x, 0, SW, 128), ty = num(pr.y, 0, SH, 130);
+    if (!o){ o = { x: tx, y: ty, emN: null, emUntil: 0 }; others.set(p.peer, o); }
+    o.tx = tx; o.ty = ty; o.d = idx(pr.d, 4); o.mv = pr.mv === 1; o.k = str(pr.k, 40); o.sc = typeof pr.sc === 'number' ? pr.sc : -1; o.ty2 = pr.ty === 1; o.by = peerId(p); o.guest = p.guest;
+    const em = Array.isArray(pr.em) ? pr.em : [0, 0];
+    if (o.emN !== null && em[1] !== o.emN) o.emUntil = t + 3000;
+    o.emN = em[1]; o.emK = idx(em[0], EMOTES.length);
+  }
+  for (const k of [...others.keys()]) if (!seen.has(k)) others.delete(k);
+}
+// personnages présents dans la scène en cours, moi compris
+function walkers(t){
+  const list = [];
+  for (const o of others.values()) if (o.sc === LIVE.step) list.push({ x: o.x, y: o.y, d: o.d, f: step(t, o.walking), L: playerLook(o.by, o.k), name: first(nameOf(o.by)), ty: o.ty2, em: o.emUntil > t ? EMOTES[o.emK] : null, by: o.by });
+  list.push({ x: me.x, y: me.y, d: me.d, f: step(t, me.mv), L: myLook(), name: first(nameOf(uid || 'moi')) || 'MOI', me: true, ty: me.typing, em: me.emUntil > t ? EMOTES[me.em[0]] : null, by: uid || 'moi' });
+  return list.sort((a, b) => a.y - b.y);
+}
+function drawWalkers(t, extra){
+  const ws = walkers(t);
+  for (const w of ws) perso(w.x, w.y, w.d, w.f, w.L);
+  for (const w of ws){
+    nameTag(w.x, w.y, up(w.name).slice(0, 10), w.me);
+    if (extra) extra(w);
+    if (w.em) emoBubble(w.x, w.y, w.em); else if (w.ty) bubble(w.x, w.y - 40, '...'); else if (w.me) marker(w.x, w.y, t);
+  }
+}
+// l'équipe connue : joueurs inscrits, sinon présents
+function team(){
+  const ids = Object.keys(PL).filter(id => PL[id] && PL[id].k);
+  if (!ids.includes(uid || 'moi')) ids.unshift(uid || 'moi');
+  return ids.map(id => ({ id, L: id === (uid || 'moi') ? myLook() : playerLook(id, PL[id].k), name: first(nameOf(id)), doc: PL[id] || {} }));
+}
+
+// ---------- scènes ----------
+const SC = {};
+const TILE_SEL = i => ({ x: 4 + (i % 6) * 42, y: 15 + Math.floor(i / 6) * 42, w: 40, h: 40 });
+function takenBy(k){ if (!k || k === 'invite') return null; for (const [id, d] of Object.entries(PL)) if (id !== (uid || 'moi') && d && d.k === k) return id; return null; }
+function funStats(P){
+  if (P.fun && P.fun.length) return P.fun.map(f => [f.l, f.v]);
+  const h = strHash(P.k);
+  return [['ONGLETS OUVERTS', String(12 + h % 140)], ['CAFÉS / JOUR', String(1 + (h >> 3) % 6)], ['MEP DU VENDREDI', ['JAMAIS', 'PARFOIS', 'SOUVENT', 'TOUJOURS'][(h >> 5) % 4]], ['RÉUNIONS SURVÉCUES', String(20 + (h >> 7) % 80)]];
+}
+SC.select = t => {
+  R(0, 0, SW, SH, '#1a1446');
+  g.fillStyle = '#211a55'; for (let i = -SH; i < SW; i += 12){ g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 6, 0); g.lineTo(i + 6 + SH, SH); g.lineTo(i + SH, SH); g.fill(); }
+  T('CHOISIS TON PERSO', SW / 2, 4, { s: 6, a: 'center', c: '#ffcf4a', sh: '#000' });
+  const mineK = myDoc().k;
+  memberList().slice(0, 12).forEach((p, i) => {
+    const r = TILE_SEL(i), mine = p.k === mineK, by = takenBy(p.k);
+    R(r.x, r.y, r.w, r.h, '#0d0a26'); R(r.x + 1, r.y + 1, r.w - 2, r.h - 2, mine ? '#3a2f8a' : by ? '#17133a' : '#2b2370');
+    if (by) g.globalAlpha = .4;
+    perso(r.x + 20, r.y + 30, 0, mine ? step(t) : 0, p.look);
+    g.globalAlpha = 1;
+    T(up(p.name).slice(0, 9), r.x + 20, r.y + 32, { s: 4, a: 'center', c: mine ? '#ffcf4a' : '#c9c3ff' });
+    if (by) T('PRIS', r.x + 20, r.y + 3, { s: 4, a: 'center', c: '#ff8a8a' });
+    if (mine){ g.strokeStyle = '#ff4d6d'; g.lineWidth = 2; g.strokeRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2); R(r.x - 2, r.y - 4, 14, 7, '#ff4d6d'); T('1P', r.x + 5, r.y - 3, { s: 4, a: 'center' }); }
+  });
+  box(4, 101, SW - 8, 41);
+  const P = mineK ? presetOf(mineK) : null;
+  if (!P){ T(ROSTER.length ? 'CLIQUE SUR TON PERSO' : "L'ÉQUIPE N'EST PAS CHARGÉE", SW / 2, 117, { s: 6, a: 'center', c: '#ffcf4a' }); return; }
+  T(up(P.name), 12, 107, { s: 7, c: '#ffcf4a' });
+  T(up(P.title || P.role).slice(0, 30), 12, 117, { s: 4, c: '#9ee6ff' });
+  funStats(P).slice(0, 4).forEach(([l, v], i) => { const x = 12 + (i % 2) * 122, y = 126 + Math.floor(i / 2) * 7; T(up(l).slice(0, 18), x, y, { s: 4, c: '#c9c3ff' }); T(up(v).slice(0, 10), x + 114, y, { s: 4, a: 'right' }); });
+};
+
+const coins = () => team().filter(p => (p.id === (uid || 'moi') ? myDoc().coinAt : p.doc.coinAt)).map(p => ({ ...p, at: p.id === (uid || 'moi') ? myDoc().coinAt : p.doc.coinAt })).sort((a, b) => a.at - b.at);
+const TILE = i => ({ x: 10 + i * 61, y: 44, w: 54, h: 40 });
+const onTile = (x, y) => { for (let i = 0; i < 4; i++){ const r = TILE(i); if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h + 8) return i; } return -1; };
+SC.quiz = t => {
+  R(0, 0, SW, SH, '#2c2846'); parquet(0, 38, SW, 106);
+  const Q = (SP().quiz || [])[LIVE.q] || FALLBACK.quiz[0];
+  box(4, 3, SW - 8, 30);
+  (Q.q || []).slice(0, 2).forEach((l, k) => T(up(l).slice(0, 38), SW / 2, 10 + k * 10, { s: 6, a: 'center' }));
+  T('Q' + (LIVE.q + 1) + '/' + (SP().quiz || []).length, SW - 8, 35, { s: 4, a: 'right', c: '#c9c3ff' });
+  const answers = Q.a || [];
+  const counts = [0, 0, 0, 0]; for (const w of walkers(t)){ const k = onTile(w.x, w.y); if (k >= 0) counts[k]++; }
+  ['#c8433d', '#3a6fc4', '#d9a12a', '#3f9e5c'].forEach((c, i) => {
+    const r = TILE(i), good = LIVE.qr && i === Q.ok;
+    const bad = LIVE.qr && i !== Q.ok;
+    R(r.x, r.y, r.w, r.h, good && blink(t, 150) ? '#ffffff' : bad ? shade(c, -.55) : c); R(r.x + 2, r.y + 2, r.w - 4, r.h - 4, bad ? shade(c, -.45) : shade(c, .15));
+    T('ABCD'[i], r.x + 5, r.y + 5, { s: 5, c: '#1b1626' });
+    const a = up(answers[i] || ''); const lines = wrap(a, 8, 2);
+    lines.forEach((l, k) => T(l, r.x + r.w / 2, r.y + 16 + k * 8 - (lines.length - 1) * 4, { s: 5, a: 'center', c: '#1b1626' }));
+    if (counts[i]) T('×' + counts[i], r.x + r.w - 4, r.y + 5, { s: 4, a: 'right', c: '#1b1626' });
+  });
+  drawWalkers(t);
+  if (LIVE.qr && Q.fact){ R(20, 92, 216, 12, 'rgba(5,3,20,.85)'); T(up(Q.fact).slice(0, 40), SW / 2, 95, { s: 5, a: 'center', c: '#ffcf4a' }); }
+};
+
+// ---------- Noël : décors ----------
+let hits = 0, hitsKey = '', lastHitAt = 0;
+const hitKey = () => LIVE.step + ':' + (LIVE.b | 0) + ':' + (LIVE.ph | 0);
+const MONTHS = ['JAN', 'FÉV', 'MAR', 'AVR', 'MAI', 'JUN', 'JUL', 'AOÛ', 'SEP', 'OCT', 'NOV', 'DÉC'];
+function big(x, y, k, fn){ g.save(); g.translate(Math.round(x), Math.round(y)); g.scale(k, k); fn(); g.restore(); }
+function snow(t, n, seed = 1){
+  for (let i = 0; i < n; i++){
+    const sp = 8 + hash(seed + i) * 14, x0 = hash(seed + i * 3) * SW;
+    const y = reduced ? hash(seed + i * 7) * SH : ((t / 1000) * sp + hash(seed + i * 7) * SH) % SH;
+    const x = (x0 + (reduced ? 0 : Math.sin(t / 900 + i) * 3) + SW) % SW, s2 = hash(i + seed * 5) > .85 ? 2 : 1;
+    R(Math.round(x), Math.round(y), s2, s2, '#ffffff');
+  }
+}
+function nightSky(t){ R(0, 0, SW, SH, '#1c275b'); ['#070b1f', '#0b1130', '#101840', '#16204e', '#1c275b'].forEach((c, i) => R(0, i * 22, SW, 22, c)); stars(t, 3, 50, 100); }
+function snowGround(y){ R(0, y, SW, SH - y, '#e6eefb'); R(0, y, SW, 2, '#ffffff'); for (let x = 0; x < SW; x += 11) R(x + (x * 7) % 5, y + 3 + (x % 3), 4, 1, '#cfdcf2'); }
+function sledge(x, y, t){
+  x = Math.round(x); y = Math.round(y);
+  const b = reduced ? 0 : Math.round(Math.sin(t / 200) * 1.5);
+  for (let k = 0; k < 3; k++){ const rx = x + 20 + k * 13, ry = y - 2 + b + (k % 2); R(rx, ry, 9, 4, '#6e4c36'); R(rx + 7, ry - 4, 4, 4, '#6e4c36'); R(rx + 8, ry - 7, 1, 3, '#4a3214'); R(rx + 10, ry - 7, 1, 3, '#4a3214'); R(rx + 1, ry + 4, 1, 3, '#4a3214'); R(rx + 6, ry + 4, 1, 3, '#4a3214'); if (k === 2) R(rx + 11, ry - 3, 2, 2, '#ff2d2d'); }
+  R(x + 15, y + b, 8, 1, '#c9a46a');
+  R(x, y - 4 + b, 16, 6, '#c8312d'); R(x - 2, y - 7 + b, 4, 4, '#c8312d'); R(x - 1, y + 3 + b, 18, 1, '#ffcf4a');
+  R(x + 6, y - 11 + b, 6, 7, '#e0433b'); R(x + 7, y - 14 + b, 4, 3, '#f6d2ad'); R(x + 6, y - 16 + b, 6, 2, '#e0433b'); R(x + 7, y - 12 + b, 4, 2, '#f4f1ea');
+  R(x - 2, y - 10 + b, 8, 7, '#7a4a2a');
+}
+function roofs(){
+  for (const [x, y, w] of [[0, 96, 40], [40, 88, 34], [74, 100, 30], [104, 92, 46], [150, 98, 32], [182, 86, 40], [222, 96, 34]]){
+    R(x, y, w, SH - y, '#141a3a'); R(x - 1, y - 3, w + 2, 4, '#f4f6fb');
+    for (let wy = y + 6; wy < 128; wy += 9) for (let wx = x + 4; wx < x + w - 4; wx += 8) if (hash(wx * 3 + wy) > .45) R(wx, wy, 4, 4, '#ffd86b');
+  }
+  R(196, 78, 6, 9, '#3d2a44'); R(195, 76, 8, 3, '#f4f6fb');
+}
+// la foule de l'équipe : les joueurs, complétés par l'équipe connue pour qu'un aperçu ne soit pas vide
+const kOf = p => p.id === (uid || 'moi') ? (myDoc().k || me.k) : p.doc.k;
+function crowd(exceptK, n){
+  const out = team().filter(p => kOf(p) !== exceptK).map(p => p.L);
+  if (out.length < 3) for (const P of ROSTER) if (P.k !== exceptK && out.length < n) out.push(P.look);
+  return out.slice(0, n);
+}
+
+// ---------- Noël : les boss ----------
+const BOSS = {
+  tree(bx, by, t){
+    const w = reduced ? 0 : Math.round(Math.sin(t / 500));
+    for (let k = 0; k < 4; k++){ const hw = 10 + k * 7; R(bx - hw + w, by - 62 + k * 13, hw * 2, 14, k % 2 ? '#2f7d47' : '#3f9e5c'); }
+    R(bx - 5, by - 10, 10, 10, '#6e4c36');
+    R(bx - 3, by - 70 + w, 6, 6, '#ffcf4a'); R(bx - 1, by - 72 + w, 2, 10, '#ffcf4a'); R(bx - 5, by - 68 + w, 10, 2, '#ffcf4a');
+    for (const [x, y, c] of [[-8, -50, '#e0433b'], [6, -44, '#6ab8ff'], [-14, -32, '#ffcf4a'], [12, -26, '#e0433b'], [-2, -36, '#c47ce0']]) R(bx + x + w, by + y, 4, 4, blink(t + x * 40, 400) ? c : shade(c, -.5));
+    R(bx - 8, by - 46, 4, 3, '#ffffff'); R(bx + 4, by - 46, 4, 3, '#ffffff'); R(bx - 7, by - 45, 2, 2, '#17151f'); R(bx + 5, by - 45, 2, 2, '#17151f');
+  },
+  queen(bx, by, t){
+    const s2 = reduced ? 0 : Math.round(Math.sin(t / 400));
+    g.fillStyle = '#9ee6ff'; g.beginPath(); g.moveTo(bx - 20, by); g.lineTo(bx + 20, by); g.lineTo(bx + 6, by - 34); g.lineTo(bx - 6, by - 34); g.fill();
+    R(bx - 14, by - 6, 28, 2, '#ffffff'); R(bx - 8, by - 20, 16, 2, '#cfe3ff');
+    R(bx - 6, by - 40, 12, 8, '#7fb8e0'); R(bx - 6, by - 52, 12, 12, '#f6d2ad'); R(bx - 8, by - 54, 3, 16, '#e6cf86'); R(bx + 5, by - 54, 3, 16, '#e6cf86'); R(bx - 6, by - 55, 12, 3, '#e6cf86');
+    R(bx - 3, by - 48, 2, 2, '#17151f'); R(bx + 2, by - 48, 2, 2, '#17151f');
+    R(bx - 6, by - 59, 12, 3, '#ffcf4a'); R(bx - 6, by - 62, 2, 3, '#ffcf4a'); R(bx - 1, by - 63, 2, 4, '#ffcf4a'); R(bx + 4, by - 62, 2, 3, '#ffcf4a'); R(bx - 1, by - 59, 2, 1, '#e0433b');
+    R(bx + 12, by - 50, 2, 34, '#cfe3ff'); R(bx + 10, by - 54, 6, 5, '#9ee6ff');
+    for (let k = 0; k < 4; k++){ const fx = bx - 34 + k * 6 + (k > 1 ? 50 : 0), fy = by - 30 - (k % 2) * 12 + s2; R(fx, fy, 1, 12, '#6b7590'); R(fx + 1, fy, 6, 5, '#e0433b'); T('!', fx + 2, fy, { s: 4 }); }
+  },
+  owl(bx, by, t){
+    const bl = !reduced && Math.floor(t / 180) % 14 === 0;
+    R(bx - 16, by - 40, 32, 36, '#8a5a32'); R(bx - 12, by - 26, 24, 20, '#c98a52'); for (let k = 0; k < 3; k++) R(bx - 8 + k * 6, by - 22 + (k % 2) * 4, 4, 2, '#8a5a32');
+    R(bx - 16, by - 46, 6, 6, '#8a5a32'); R(bx + 10, by - 46, 6, 6, '#8a5a32');
+    R(bx - 13, by - 38, 12, 12, '#ffcf4a'); R(bx + 1, by - 38, 12, 12, '#ffcf4a');
+    if (bl){ R(bx - 13, by - 33, 12, 2, '#5e3e28'); R(bx + 1, by - 33, 12, 2, '#5e3e28'); } else { R(bx - 9, by - 34, 5, 5, '#17151f'); R(bx + 5, by - 34, 5, 5, '#17151f'); R(bx - 8, by - 33, 1, 1, '#fff'); R(bx + 6, by - 33, 1, 1, '#fff'); }
+    R(bx - 14, by - 39, 13, 1, '#17151f'); R(bx, by - 39, 13, 1, '#17151f');
+    R(bx - 2, by - 27, 4, 4, '#ff8a3d'); R(bx - 10, by - 4, 6, 4, '#ff8a3d'); R(bx + 4, by - 4, 6, 4, '#ff8a3d');
+    R(bx + 16, by - 30, 16, 20, '#f4f1ea'); T('PR', bx + 18, by - 28, { s: 4, c: '#3a6fc4' }); R(bx + 18, by - 21, 11, 1, '#62d48e'); R(bx + 18, by - 18, 8, 1, '#e0433b'); R(bx + 18, by - 15, 10, 1, '#62d48e');
+  },
+  yeti(bx, by, t){
+    const br = reduced ? 0 : Math.round(Math.sin(t / 300));
+    R(bx - 20, by - 46 + br, 40, 40, '#e9eef7'); R(bx - 24, by - 38 + br, 48, 26, '#e9eef7');
+    for (let k = 0; k < 6; k++) R(bx - 22 + k * 8, by - 48 + br + (k % 2) * 2, 4, 4, '#e9eef7');
+    R(bx - 12, by - 38 + br, 24, 16, '#7d8fb0'); R(bx - 8, by - 34 + br, 4, 3, '#ff4d6d'); R(bx + 4, by - 34 + br, 4, 3, '#ff4d6d');
+    R(bx - 6, by - 27 + br, 12, 3, '#1f2a44'); R(bx - 5, by - 27 + br, 2, 2, '#fff'); R(bx + 3, by - 27 + br, 2, 2, '#fff');
+    R(bx - 32, by - 34 + br, 10, 26, '#dfe6f2'); R(bx + 22, by - 34 + br, 10, 26, '#dfe6f2'); R(bx - 34, by - 10 + br, 12, 5, '#7d8fb0'); R(bx + 22, by - 10 + br, 12, 5, '#7d8fb0');
+    R(bx - 16, by - 6, 12, 6, '#dfe6f2'); R(bx + 4, by - 6, 12, 6, '#dfe6f2'); R(bx - 18, by - 1, 14, 2, '#7d8fb0'); R(bx + 4, by - 1, 14, 2, '#7d8fb0');
+    R(bx + 26, by - 44 + br, 12, 8, '#c9a46a'); R(bx + 28, by - 41 + br, 8, 1, '#4a3214'); R(bx + 28, by - 39 + br, 6, 1, '#4a3214');
+  },
+  windmill(bx, by, t){
+    const a = reduced ? .4 : t / 700;
+    R(bx - 12, by - 40, 24, 40, '#c98a52'); R(bx - 14, by - 44, 28, 6, '#8a5a32'); R(bx - 10, by - 50, 20, 6, '#8a5a32'); R(bx - 6, by - 54, 12, 4, '#8a5a32');
+    R(bx - 4, by - 14, 8, 14, '#5e3e28'); R(bx - 8, by - 32, 5, 5, '#ffd86b'); R(bx + 3, by - 32, 5, 5, '#ffd86b');
+    R(bx - 5, by - 26, 2, 2, '#17151f'); R(bx + 3, by - 26, 2, 2, '#17151f');
+    for (let k = 0; k < 4; k++){
+      const ang = a + k * Math.PI / 2;
+      for (let d = 4; d < 30; d += 2){ const x = bx + Math.cos(ang) * d, y = by - 46 + Math.sin(ang) * d; R(x - 1, y - 1, 3, 3, d > 10 ? '#e9e4d4' : '#6e4c36'); if (d > 10) R(x + Math.cos(ang + 1.57) * 3 - 1, y + Math.sin(ang + 1.57) * 3 - 1, 3, 3, '#cfc8b4'); }
+    }
+    R(bx - 2, by - 48, 4, 4, '#5e3e28');
+    for (const [x, c] of [[-30, '#e0433b'], [-24, '#ffcf4a'], [22, '#c47ce0'], [28, '#e0433b']]){ R(bx + x, by - 8, 1, 8, '#3f9e5c'); R(bx + x - 2, by - 12, 5, 4, c); }
+    R(bx + 20, by - 40, 12, 3, '#ae1c28'); R(bx + 20, by - 37, 12, 3, '#ffffff'); R(bx + 20, by - 34, 12, 3, '#21468b'); R(bx + 19, by - 40, 1, 24, '#6b7590');
+  },
+  avalanche(bx, by, t){
+    const n = reduced ? 19 : 8 + Math.floor((t / 400) % 12);
+    g.fillStyle = '#e6eefb'; g.beginPath(); g.moveTo(bx - 34, by); g.lineTo(bx, by - 54); g.lineTo(bx + 34, by); g.fill();
+    for (let k = 0; k < Math.min(19, n); k++){ const row = Math.floor(k / 4), col = k % 4, x = bx - 20 + col * 10 + (row % 2) * 5 - row, y = by - 10 - row * 9; R(x, y, 9, 7, '#e9e4d4'); R(x, y, 9, 1, '#9a62d6'); R(x + 1, y + 3, 6, 1, '#3d4678'); }
+    R(bx - 8, by - 44, 5, 4, '#ffffff'); R(bx + 3, by - 44, 5, 4, '#ffffff'); R(bx - 6, by - 43, 2, 2, '#17151f'); R(bx + 5, by - 43, 2, 2, '#17151f'); R(bx - 4, by - 36, 8, 2, '#3d4678');
+    R(bx + 12, by - 62, 30, 10, '#9a62d6'); T('TO REVIEW', bx + 27, by - 59, { s: 3, a: 'center' }); T(String(n), bx - 32, by - 60, { s: 7, c: n > 8 ? '#ff4d6d' : '#62d48e', sh: '#000' });
+  },
+  elf(bx, by, t){
+    const j = reduced ? 0 : Math.abs(Math.round(Math.sin(t / 160) * 3));
+    R(bx - 10, by - 28 - j, 20, 18, '#3f9e5c'); R(bx - 10, by - 14 - j, 20, 3, '#17151f'); R(bx - 2, by - 15 - j, 4, 4, '#ffcf4a');
+    R(bx - 8, by - 42 - j, 16, 14, '#f6d2ad'); R(bx - 11, by - 38 - j, 3, 4, '#f6d2ad'); R(bx + 8, by - 38 - j, 3, 4, '#f6d2ad');
+    R(bx - 5, by - 37 - j, 2, 3, '#17151f'); R(bx + 3, by - 37 - j, 2, 3, '#17151f'); R(bx - 3, by - 32 - j, 6, 1, '#a33b3b');
+    R(bx - 9, by - 46 - j, 18, 5, '#2f7d47'); R(bx - 4, by - 54 - j, 12, 8, '#2f7d47'); R(bx + 6, by - 58 - j, 6, 5, '#2f7d47'); R(bx + 11, by - 60 - j, 4, 4, '#ffcf4a');
+    R(bx - 8, by - 10 - j, 6, 10, '#a33b3b'); R(bx + 2, by - 10 - j, 6, 10, '#3f9e5c'); R(bx - 10, by - 1 - j, 8, 2, '#17151f'); R(bx + 2, by - 1 - j, 10, 2, '#17151f');
+    R(bx + 12, by - 30 - j, 14, 4, '#aab0c0'); R(bx + 22, by - 34 - j, 4, 12, '#aab0c0'); R(bx + 22, by - 30 - j, 6, 4, '#17151f');
+    if (blink(t, 220)){ R(bx - 26, by - 30, 6, 8, '#ff8a3d'); R(bx - 24, by - 36, 3, 6, '#ffcf4a'); }
+  },
+  golem(bx, by, t){
+    const p = reduced ? 1 : (Math.sin(t / 300) + 1) / 2, S = '#7d8596', SD = '#5a6070';
+    R(bx - 14, by - 10, 10, 10, S); R(bx + 4, by - 10, 10, 10, S);
+    R(bx - 20, by - 40, 40, 30, S); R(bx - 20, by - 40, 40, 2, '#9aa2b2'); R(bx - 2, by - 38, 2, 12, SD); R(bx - 12, by - 28, 10, 2, SD); R(bx + 6, by - 22, 2, 10, SD);
+    R(bx - 30, by - 38, 10, 22, S); R(bx + 20, by - 38, 10, 22, S); R(bx - 32, by - 18, 12, 8, SD); R(bx + 20, by - 18, 12, 8, SD);
+    R(bx - 10, by - 56, 20, 16, S); R(bx - 6, by - 50, 4, 3, '#62d48e'); R(bx + 2, by - 50, 4, 3, '#62d48e');
+    g.globalAlpha = .5 + p * .5; R(bx - 12, by - 34, 24, 9, '#e0433b'); g.globalAlpha = 1; T('CVE', bx, by - 33, { s: 4, a: 'center', c: '#ffffff' });
+  },
+  globe(bx, by, t){
+    R(bx - 16, by - 8, 32, 8, '#6e4c36'); R(bx - 18, by - 2, 36, 2, '#4a3214');
+    g.fillStyle = 'rgba(158,230,255,.25)'; g.beginPath(); g.arc(bx, by - 26, 20, 0, 7); g.fill();
+    g.strokeStyle = '#cfe3ff'; g.lineWidth = 1; g.beginPath(); g.arc(bx, by - 26, 20, 0, 7); g.stroke();
+    R(bx - 6, by - 20, 12, 12, '#e0433b'); R(bx - 4, by - 26, 8, 6, '#e0433b'); R(bx - 3, by - 24, 2, 2, '#ffffff'); R(bx + 1, by - 24, 2, 2, '#ffffff');
+    for (let i = 0; i < 14; i++){ const a = i * 2.1 + (reduced ? 0 : t / 700), r = 6 + (i % 4) * 3.5; R(Math.round(bx + Math.cos(a) * r), Math.round(by - 26 + Math.sin(a * 1.4) * r), 1, 1, '#ffffff'); }
+    T('BUG', bx, by - 6, { s: 4, a: 'center', c: '#ffcf4a' });
+  },
+  krampus(bx, by, t){
+    const s2 = reduced ? 0 : Math.round(Math.sin(t / 260));
+    R(bx - 16, by - 42, 32, 36, '#4a2a1e'); R(bx - 20, by - 32, 40, 20, '#4a2a1e');
+    R(bx - 11, by - 58, 22, 18, '#5e3626');
+    R(bx - 14, by - 66, 4, 10, '#e9e4d4'); R(bx - 18, by - 70, 4, 6, '#e9e4d4'); R(bx + 10, by - 66, 4, 10, '#e9e4d4'); R(bx + 14, by - 70, 4, 6, '#e9e4d4');
+    R(bx - 7, by - 52, 4, 3, '#ffcf4a'); R(bx + 3, by - 52, 4, 3, '#ffcf4a');
+    R(bx - 5, by - 45, 10, 2, '#17151f'); R(bx - 1, by - 43, 3, 6 + s2, '#e0433b');
+    R(bx - 10, by - 6, 8, 6, '#2a1810'); R(bx + 2, by - 6, 8, 6, '#2a1810');
+    R(bx + 20, by - 50, 14, 18, '#f4f1ea'); for (let k = 0; k < 4; k++) R(bx + 22, by - 47 + k * 4, 10, 1, k === 1 ? '#e0433b' : '#3d4678');
+    R(bx - 30, by - 36, 12, 3, '#aab0c0'); R(bx - 32, by - 40, 3, 10, '#aab0c0');
+  },
+  snowman(bx, by, t){
+    const m = reduced ? 0 : (Math.floor(t / 1600) % 2) * 2;
+    R(bx - 18, by - 22 + m, 36, 22 - m, '#f4f6fb'); R(bx - 13, by - 44 + m, 26, 20, '#f4f6fb'); R(bx - 9, by - 58 + m, 18, 16, '#f4f6fb');
+    R(bx - 5, by - 53 + m, 3, 3, '#17151f'); R(bx + 2, by - 53 + m, 3, 3, '#17151f'); R(bx, by - 49 + m, 9, 2, '#ff8a3d');
+    for (let k = 0; k < 3; k++) R(bx - 1, by - 40 + k * 6 + m, 3, 3, '#17151f');
+    R(bx - 10, by - 62 + m, 20, 4, '#17151f'); R(bx - 7, by - 72 + m, 14, 10, '#17151f'); R(bx - 7, by - 65 + m, 14, 2, '#e0433b');
+    R(bx - 14, by - 46 + m, 28, 3, '#3f9e5c'); R(bx + 8, by - 46 + m, 4, 10, '#3f9e5c');
+  },
+  grinch(bx, by, t){
+    const s2 = reduced ? 0 : Math.round(Math.sin(t / 400) * 2);
+    R(bx - 14, by - 40, 28, 34, '#6fae3a'); R(bx - 18, by - 30, 36, 18, '#6fae3a'); R(bx - 12, by - 56, 24, 18, '#7fc044');
+    R(bx - 8, by - 51, 6, 3, '#ffcf4a'); R(bx + 2, by - 51, 6, 3, '#ffcf4a'); R(bx - 6, by - 50, 2, 2, '#c8312d'); R(bx + 4, by - 50, 2, 2, '#c8312d');
+    R(bx - 8 + s2, by - 44, 16, 2, '#2f5a1a'); R(bx - 10, by - 6, 8, 6, '#6fae3a'); R(bx + 2, by - 6, 8, 6, '#6fae3a');
+  },
+};
+function santaEvil(bx, by, t){
+  by += reduced ? 0 : Math.round(Math.sin(t / 300) * 1.5);
+  R(bx - 46, by - 46, 26, 36, '#7a4a2a'); R(bx - 42, by - 52, 18, 8, '#8a5a32');
+  for (let k = 0; k < 4; k++){ const tx = bx - 46 + k * 6, ty = by - 60 - (k % 2) * 5 + (reduced ? 0 : Math.round(Math.sin(t / 250 + k) * 2)); R(tx, ty, 8, 10, '#e9e4d4'); R(tx + 1, ty + 2, 6, 1, '#3d4678'); R(tx + 1, ty + 5, 4, 1, '#e0433b'); }
+  R(bx - 14, by - 8, 11, 8, '#17151f'); R(bx + 3, by - 8, 11, 8, '#17151f');
+  R(bx - 20, by - 38, 40, 30, '#c8312d'); R(bx - 16, by - 36, 32, 24, '#e0433b');
+  R(bx - 20, by - 12, 40, 4, '#f4f1ea'); R(bx - 2, by - 36, 4, 24, '#f4f1ea');
+  R(bx - 20, by - 24, 40, 4, '#17151f'); R(bx - 5, by - 25, 10, 6, '#ffcf4a'); R(bx - 3, by - 23, 6, 2, '#17151f');
+  R(bx - 27, by - 36, 7, 20, '#c8312d'); R(bx + 20, by - 36, 7, 20, '#c8312d'); R(bx - 28, by - 18, 9, 6, '#17151f'); R(bx + 19, by - 18, 9, 6, '#17151f');
+  R(bx - 10, by - 54, 20, 14, '#f6d2ad');
+  R(bx - 14, by - 44, 28, 10, '#f4f1ea'); R(bx - 11, by - 36, 22, 6, '#f4f1ea'); R(bx - 7, by - 31, 14, 4, '#f4f1ea');
+  R(bx - 9, by - 45, 18, 3, '#e9e4d4'); R(bx - 2, by - 47, 4, 3, '#efb08a');
+  R(bx - 7, by - 50, 3, 2, '#ff4d4d'); R(bx + 4, by - 50, 3, 2, '#ff4d4d');
+  R(bx - 9, by - 53, 6, 1, '#f4f1ea'); R(bx - 4, by - 52, 2, 1, '#f4f1ea'); R(bx + 3, by - 53, 6, 1, '#f4f1ea'); R(bx + 2, by - 52, 2, 1, '#f4f1ea');
+  R(bx - 13, by - 58, 26, 5, '#f4f1ea'); R(bx - 11, by - 64, 22, 6, '#c8312d'); R(bx - 6, by - 69, 16, 5, '#c8312d'); R(bx + 6, by - 72, 8, 4, '#c8312d'); R(bx + 12, by - 74, 5, 5, '#f4f1ea');
+}
+function clausBot(bx, by, t){
+  const sc = reduced ? 0 : Math.floor(t / 120) % 8, M = '#aab4c8', MD = '#6b7590', ML = '#dfe5f0', K = '#1a1d2b';
+  by += reduced ? 0 : Math.round(Math.sin(t / 300) * 1.5);
+  if (blink(t, 160)){ g.fillStyle = 'rgba(255,45,45,.12)'; g.beginPath(); g.arc(bx, by - 36, 46, 0, 7); g.fill(); }
+  R(bx - 48, by - 46, 26, 34, MD); R(bx - 47, by - 45, 24, 32, '#7a4a2a'); for (let k = 0; k < 4; k++) R(bx - 47, by - 40 + k * 8, 24, 1, MD);
+  for (let k = 0; k < 4; k++){ const tx = bx - 48 + k * 6, ty = by - 58 - (k % 2) * 5 + (reduced ? 0 : Math.round(Math.sin(t / 250 + k) * 2)); R(tx, ty, 8, 10, '#e9e4d4'); R(tx + 1, ty + 2, 6, 1, '#3d4678'); R(tx + 1, ty + 5, 4, 1, '#e0433b'); }
+  R(bx - 12, by - 14, 5, 8, M); R(bx + 7, by - 14, 5, 8, M); R(bx - 15, by - 7, 11, 7, K); R(bx + 4, by - 7, 11, 7, K);
+  R(bx - 20, by - 38, 40, 26, '#c8312d'); R(bx - 16, by - 36, 32, 22, '#e0433b');
+  R(bx - 20, by - 14, 40, 4, '#f4f1ea'); R(bx - 2, by - 38, 4, 24, '#f4f1ea');
+  R(bx - 20, by - 24, 40, 4, K); R(bx - 5, by - 25, 10, 6, '#ffcf4a'); R(bx - 3, by - 23, 6, 2, K);
+  R(bx - 15, by - 35, 11, 8, K); R(bx - 14, by - 34, 9, 6, '#0f2a1a');
+  for (let k = 0; k < 3; k++) R(bx - 13 + k * 3, by - 31 - ((sc + k) % 3), 2, 1 + ((sc + k) % 3), '#62d48e');
+  R(bx + 6, by - 34, 3, 3, blink(t, 300) ? '#ffcf4a' : '#5a4a14'); R(bx + 11, by - 34, 3, 3, blink(t + 150, 300) ? '#62d48e' : '#1f4a2a');
+  R(bx - 26, by - 36, 6, 6, '#c8312d'); R(bx - 25, by - 30, 4, 4, ML); R(bx - 26, by - 26, 6, 8, M);
+  R(bx - 29, by - 18, 4, 6, MD); R(bx - 21, by - 18, 4, 6, MD);
+  R(bx + 20, by - 36, 6, 6, '#c8312d'); R(bx + 21, by - 30, 4, 4, ML); R(bx + 20, by - 26, 6, 6, M);
+  R(bx + 22, by - 22, 12, 5, MD); R(bx + 33, by - 23, 3, 7, K); if (blink(t, 220)) R(bx + 36, by - 21, 3, 3, '#ff8a3d');
+  R(bx - 3, by - 41, 6, 3, MD);
+  R(bx - 12, by - 58, 24, 18, M); R(bx - 12, by - 58, 24, 1, ML); R(bx - 12, by - 41, 24, 1, MD); R(bx - 13, by - 56, 1, 14, K); R(bx + 12, by - 56, 1, 14, K);
+  R(bx - 15, by - 52, 3, 6, MD); R(bx + 12, by - 52, 3, 6, MD);
+  R(bx - 10, by - 54, 20, 6, K); const sx = reduced ? 0 : [0, 1, 2, 3, 3, 2, 1, 0][sc];
+  R(bx - 9 + sx, by - 53, 4, 4, '#ff2d2d'); R(bx + 2 + sx, by - 53, 4, 4, '#ff2d2d');
+  R(bx - 6, by - 46, 12, 3, K); for (let k = 0; k < 5; k++) R(bx - 5 + k * 2 + (k > 2 ? 1 : 0), by - 46, 1, 3, MD);
+  for (let k = 0; k < 7; k++){ const cx = bx - 11 + k * 3 + (k > 3 ? 1 : 0), len = 6 + ((k * 5) % 4) * 2 + (k === 3 ? 6 : 0); R(cx, by - 42, 2, len, '#f4f1ea'); R(cx, by - 42 + len, 2, 1, k % 2 ? '#ffcf4a' : '#9aa3b8'); }
+  R(bx - 13, by - 62, 26, 5, '#f4f1ea'); R(bx - 11, by - 68, 22, 6, '#c8312d'); R(bx - 6, by - 73, 16, 5, '#c8312d'); R(bx + 6, by - 76, 8, 4, '#c8312d'); R(bx + 12, by - 78, 5, 5, '#f4f1ea');
+  R(bx - 6, by - 82, 1, 14, MD); R(bx - 8, by - 85, 5, 3, blink(t, 250) ? '#ff2d2d' : '#5a1a1a');
+}
+
+// ---------- Noël : scènes ----------
+SC.title = t => {
+  nightSky(t);
+  R(214, 14, 18, 18, '#fff2c4'); R(218, 18, 4, 4, '#e6dcae'); R(225, 24, 3, 3, '#e6dcae');
+  const sx = reduced ? 150 : ((t / 18) % (SW + 120)) - 80;
+  sledge(sx, 30 + Math.round(Math.sin(sx / 40) * 4), t);
+  roofs(); snowGround(126);
+  for (const [w, y, c] of [['PIXEL', 26, '#ffcf4a'], ['NOËL', 50, '#e0433b']])
+    for (let i = 0; i < w.length; i++) outlined(w[i], SW / 2 - (w.length - 1) * 11 + i * 22, y + (reduced ? 0 : Math.round(Math.sin(t / 260 + i * .7) * 2)), 20, c, '#1a0f2e', '#000000');
+  const co = SP().company;
+  T(('LA RÉTRO DE L\'ANNÉE ' + up(SP().name) + (co ? ' · ' + up(co) : '')).slice(0, 42), SW / 2, 76, { s: 5, a: 'center', c: '#9ee6ff', sh: '#000' });
+  const n = Math.max(1, new Set([...peers.map(p => p.by || p.peer), uid || 'moi']).size);
+  T('1UP', 8, 4, { s: 6, c: '#ff5f6d' }); T(up(first(nameOf(uid || 'moi')) || 'MOI').slice(0, 8), 8, 12, { s: 6 });
+  T('JOUEURS', SW - 8, 4, { s: 6, a: 'right', c: '#ff5f6d' }); T(String(n).padStart(2, '0'), SW - 8, 12, { s: 6, a: 'right' });
+  if (blink(t, 600)) T(isOwner ? 'PRESS START' : "EN ATTENTE DE L'HÔTE", SW / 2, 88, { s: isOwner ? 7 : 5, a: 'center', sh: '#000' });
+  const runners = [...peers.map(p => playerLook(peerId(p), p.presence && p.presence.k)), myLook()].slice(0, 10);
+  const loop = reduced ? 160 : (t / 24) % (SW + 60 + runners.length * 16) - 30;
+  duck(loop, 141, step(t) === 1);
+  runners.forEach((lk, i) => perso(loop - 20 - i * 16, 141, 2, step(t + i * 70), lk));
+  snow(t, 60, 2);
+};
+
+SC.advent = t => {
+  R(0, 0, SW, SH, '#5a1414'); for (let y = 0; y < SH; y += 12) for (let x = (y / 12) % 2 * 12; x < SW; x += 24) R(x, y, 12, 12, '#621818');
+  R(0, 0, SW, 14, '#3f9e5c'); for (let x = 0; x < SW; x += 12) R(x + 4, 10, 4, 6, blink(t + x * 30, 500) ? ['#ffcf4a', '#e0433b', '#6ab8ff'][(x / 12) % 3] : '#1f4a2a');
+  T("LE CALENDRIER DE L'ANNÉE " + up(SP().name), SW / 2, 3, { s: 4, a: 'center' });
+  const cells = SP().advent || [], open = LIVE.d | 0, fresh = reduced ? 9999 : Date.now() - (LIVE.dAt || 0);
+  for (let i = 0; i < 12; i++){
+    const c = i % 4, r = Math.floor(i / 4), x = 10 + c * 60, y = 22 + r * 40, w = 56, h = 36, cell = cells[i] || ['', ''];
+    R(x, y, w, h, '#e9e4d4');
+    if (i < open){
+      const glow = i === open - 1 && fresh < 1500;
+      R(x + 1, y + 1, w - 2, h - 2, glow && blink(t, 120) ? '#3a3f9e' : '#1d2c78');
+      T(MONTHS[i], x + 4, y + 4, { s: 4, c: '#9ee6ff' });
+      const lines = wrap(up(cell[0]), 10, 2).concat(cell[1] ? wrap(up(cell[1]), 13, 1) : []);
+      lines.slice(0, 3).forEach((l, k) => T(l, x + w / 2, y + 13 + k * 7 - (lines.length > 2 ? 2 : 0), { s: k < 2 && lines.length < 3 || k < lines.length - 1 || !cell[1] ? 4 : 3, a: 'center', c: k === lines.length - 1 && cell[1] ? '#c9c3ff' : '#ffcf4a' }));
+    } else {
+      R(x + 1, y + 1, w - 2, h - 2, '#a33b3b'); R(x + w / 2 - 1, y + 1, 2, h - 2, '#ffcf4a'); R(x + 1, y + h / 2 - 1, w - 2, 2, '#ffcf4a');
+      T(String(i + 1), x + w / 2, y + 12, { s: 9, a: 'center', sh: '#5a1414' });
+      if (i === open && isOwner && blink(t, 400)) R(x - 2, y - 2, w + 4, 2, '#ffcf4a');
+    }
+  }
+};
+
+SC.sleigh = t => {
+  nightSky(t); snowGround(131);
+  const A = SP().ai || {}, pts = A.pts || [], n = pts.length;
+  T('POINTS LIVRÉS PAR SPRINT', 8, 6, { s: 4, c: '#9ee6ff' });
+  if (A.head) T(up(A.head).slice(0, 26), SW - 8, 6, { s: 4, a: 'right', c: '#ffcf4a' });
+  if (A.legend) T(up(A.legend).slice(0, 30), SW - 8, 14, { s: 3, a: 'right', c: '#62d48e' });
+  if (!n){ T('DONNÉES À CHARGER', SW / 2, 70, { s: 6, a: 'center', c: '#ffcf4a' }); sledge(110, 40, t); snow(t, 25, 8); return; }
+  const top = 40, bot = 124, x0 = 20, slot = Math.max(4, Math.floor((SW - x0 - 6) / n)), bw = Math.max(3, slot - 2);
+  const max = Math.max(10, ...pts) * 1.12, stepV = max > 120 ? 40 : max > 60 ? 20 : 10;
+  for (let v = 0; v <= max; v += stepV){ const y = bot - (bot - top) * v / max; R(x0 - 2, Math.round(y), n * slot, 1, 'rgba(158,230,255,.12)'); T(String(v), x0 - 4, Math.round(y) - 2, { s: 3, a: 'right', c: '#7f88b8' }); }
+  const shown = reduced ? n : Math.min(n, Math.floor(sinceStep() / 180) + 1);
+  pts.forEach((v, i) => {
+    if (i >= shown) return;
+    const h = Math.round((bot - top) * v / max), x = x0 + i * slot, after = i >= A.at;
+    R(x, bot - h, bw, h, after ? '#ffcf4a' : '#5c6aa8'); R(x, bot - h, bw, 2, after ? '#fff2b8' : '#8a96d0');
+    const dv = (A.devs || [])[i] || 0; for (let d = 0; d < dv; d++) R(x + 1 + (d % 3) * 2, bot - 3 - Math.floor(d / 3) * 2, 1, 1, '#1a1d2b');
+    if (i % 2 === 0 && A.labels[i]) T(A.labels[i], x + bw / 2, bot + 3, { s: 3, a: 'center', c: '#c9d3ee' });
+  });
+  for (const [i, pc] of Object.entries(A.claude || {})){ if (+i >= shown) continue; const x = x0 + +i * slot + bw / 2, y = bot - (bot - top) * pc / 100; R(Math.round(x) - 1, Math.round(y) - 1, 3, 3, '#62d48e'); }
+  if (A.at > 0){ const ax = x0 + A.at * slot - 2; for (let y = top - 6; y < bot; y += 4) R(ax, y, 1, 2, '#e0433b'); R(ax - 7, top - 14, 15, 8, '#e0433b'); T('IA', ax + 1, top - 12, { s: 4, a: 'center' }); }
+  sledge(reduced ? 150 : x0 - 30 + ((t / 30) % (n * slot + 60)), 24, t);
+  snow(t, 25, 8);
+};
+
+const GIFT_VOTES = [['🎁', 'JAMAIS SANS IA', 'Jamais sans IA'], ['⏳', 'UN JOUR', 'Un jour, peut-être'], ['🤷', 'PAREIL', 'Pareil sans IA']];
+const GIFT_CELL = i => ({ x: 10 + i * 80, y: 123, w: 76, h: 13 });
+const GIFT_COLS = ['#e0433b', '#3f9e5c', '#3a6fc4', '#c47ce0', '#ffcf4a', '#2e9e9b'];
+function giftVotes(i){
+  const c = [0, 0, 0];
+  for (const [id, d] of Object.entries(PL)){ const v = id === (uid || 'moi') ? (myDoc().gv || {})[i] : (d && d.gv || {})[i]; if (Number.isInteger(v) && v >= 0 && v < 3) c[v]++; }
+  if (!PL[uid || 'moi']){ const v = (myDoc().gv || {})[i]; if (Number.isInteger(v)) c[v]++; }
+  return c;
+}
+function voteGift(i){ if (!canWrite) return; SFX.coin(); savePlayer({ gv: Object.assign({}, myDoc().gv || {}, { [LIVE.g]: i }) }); }
+SC.hotte = t => {
+  R(0, 0, SW, SH, '#2a1a1a'); for (let x = 0; x < SW; x += 16) R(x, 0, 8, 96, '#321f1f');
+  R(0, 96, SW, 48, '#5e3e28'); for (let y = 96; y < SH; y += 6) R(0, y + 5, SW, 1, '#4a3020');
+  R(196, 40, 44, 56, '#3a2626'); R(200, 70, 36, 26, '#ff8a3d'); if (blink(t, 180)) R(206, 76, 24, 16, '#ffcf4a'); R(192, 36, 52, 6, '#6e4c36');
+  for (let k = 0; k < 3; k++){ R(200 + k * 12, 42, 6, 9, '#e0433b'); R(200 + k * 12, 42, 6, 2, '#f4f1ea'); }
+  R(30, 66, 70, 44, '#7a4a2a'); R(36, 56, 58, 14, '#8a5a32'); R(60, 52, 10, 6, '#5e3e28');
+  const gifts = SP().gifts || [], G = gifts[LIVE.g] || FALLBACK.gifts[0], since = reduced ? 9999 : Date.now() - (LIVE.gAt || LIVE.at || 0), k = clamp01(since / 700);
+  for (let j = 0; j < Math.min(8, LIVE.g); j++){ const px = 110 + (j % 4) * 13, py = 104 - Math.floor(j / 4) * 10; R(px, py, 10, 9, GIFT_COLS[j % 6]); R(px + 4, py, 2, 9, '#f4f1ea'); }
+  const gx = 65 + (150 - 65) * k, gy = 54 - Math.sin(k * Math.PI) * 34 + k * 2;
+  R(gx - 10, gy - 10, 20, 18, GIFT_COLS[LIVE.g % 6]); R(gx - 1, gy - 10, 2, 18, '#f4f1ea'); R(gx - 10, gy - 2, 20, 2, '#f4f1ea'); R(gx - 5, gy - 14, 4, 4, '#f4f1ea'); R(gx + 1, gy - 14, 4, 4, '#f4f1ea');
+  if (k >= 1){
+    R(20, 4, 160, 22, 'rgba(5,3,12,.85)');
+    T(up(G.n).slice(0, 22), 100, 8, { s: 6, a: 'center', c: '#ffcf4a' });
+    T('CADEAU ' + (LIVE.g + 1) + '/' + gifts.length, 100, 18, { s: 4, a: 'center', c: '#c9c3ff' });
+  }
+  box(4, 116, SW - 8, 25);
+  const votes = giftVotes(LIVE.g), mine = (myDoc().gv || {})[LIVE.g], tot = Math.max(1, votes.reduce((a, b) => a + b, 0));
+  GIFT_VOTES.forEach(([e, l], i) => {
+    const r = GIFT_CELL(i), sel = mine === i;
+    if (sel) R(r.x - 1, r.y - 1, r.w + 2, r.h + 2, '#ffcf4a');
+    R(r.x, r.y, r.w, r.h, sel ? '#3a3f9e' : '#14205a'); R(r.x, r.y + r.h - 2, Math.round(r.w * votes[i] / tot), 2, '#62d48e');
+    g.font = '7px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top'; g.fillText(e, r.x + 2, r.y + 3);
+    T(l, r.x + 12, r.y + 4, { s: 4, c: sel ? '#ffcf4a' : '#ffffff' }); T(String(votes[i]), r.x + r.w - 3, r.y + 4, { s: 4, a: 'right', c: '#62d48e' });
+  });
+};
+
+// le boss de chacun : le membre devant, les autres juste derrière lui
+const memberName = k => (presetOf(k) || {}).name || '?';
+function memberLook(k){ const id = Object.keys(PL).find(i => PL[i] && PL[i].k === k) || (me.k === k ? uid || 'moi' : null); return id ? playerLook(id, k) : lookOf(k); }
+function hitHp(need){ const key = hitKey(); if (hitsKey !== key){ hitsKey = key; hits = 0; } return clamp01(1 - hits / need); }
+function hitFlash(x, y){ if (!reduced && Date.now() - lastHitAt < 150){ R(x - 40, y - 60, 80, 70, 'rgba(255,255,255,.3)'); T('-' + (90 + (hits * 37) % 60), x + 30, y - 58, { s: 7, c: '#ffcf4a', sh: '#000' }); } }
+function intro(since, l1, l2){
+  if (since < 450){ const on = Math.floor(since / 75) % 2; for (let y = 0; y < SH; y += 8) R(0, y, SW, 4, on ? '#ffffff' : '#000000'); return true; }
+  if (since < 3200){
+    box(4, 104, SW - 8, 36); let left = Math.floor((since - 900) / 40);
+    [l1, l2].forEach((l, i) => { T(l.slice(0, Math.max(0, left)), 12, 112 + i * 12, { s: 6 }); left -= l.length; });
+  }
+  return false;
+}
+SC.boss = t => {
+  const list = SP().bosses || [], B = list[LIVE.b];
+  R(0, 0, SW, SH, '#141a3a'); stars(t, 9, 30, 60);
+  for (const [x, w, h] of [[0, 30, 30], [22, 40, 44], [190, 36, 36], [222, 40, 48]]) for (let k = 0; k < h; k += 4) R(x + k / 3, 98 - h + k, w - (k / 3) * 2, 4, '#203060');
+  snowGround(98);
+  if (!B){ T('LES BOSS NE SONT', SW / 2, 50, { s: 6, a: 'center', c: '#ffcf4a' }); T('PAS ENCORE CHARGÉS', SW / 2, 62, { s: 6, a: 'center', c: '#ffcf4a' }); snow(t, 30, 5); return; }
+  const since = reduced ? 9999 : Date.now() - (LIVE.bAt || LIVE.at || 0), name = up(memberName(B.who));
+  if (intro(since, name + ' CONTRE ' + up(B.n).slice(0, 38 - name.length - 8), 'LE COMBAT COMMENCE !')){ return; }
+  const slide = clamp01((since - 450) / 700), bx = -60 + 124 * (1 - Math.pow(1 - slide, 3));
+  const hp = hitHp(Math.max(1, team().length) * 6), bob = reduced ? 0 : Math.round(Math.sin(t / 250) * 2);
+  g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(bx, 118, 30, 5, 0, 0, 7); g.fill();
+  if (hp > 0) (BOSS[B.t] || BOSS.yeti)(Math.round(bx), 116 + bob, t);
+  else { T('K.O. !', 64, 60, { s: 12, a: 'center', c: '#ffcf4a', sh: '#000' }); T('VICTOIRE DE ' + name, 64, 80, { s: 5, a: 'center', c: '#62d48e', sh: '#000' }); }
+  hitFlash(64, 116);
+  crowd(B.who, 9).forEach((L, i) => { const row = i < 5 ? 0 : 1; perso(172 + (i % 5) * 15 + row * 7, 100 + row * 8, 1, 0, L); });
+  g.fillStyle = 'rgba(20,26,58,.25)'; g.fillRect(160, 76, 96, 34);
+  big(176, 132, 1.7, () => perso(0, 0, 1, step(t, Date.now() - lastHitAt < 300), memberLook(B.who)));
+  R(130, 6, 122, 9, '#05030c'); T(up(B.n).slice(0, 26), 191, 8, { s: 4, a: 'center' });
+  R(130, 16, 122, 5, '#3b0f1a'); R(131, 17, Math.round(120 * hp), 3, '#ff4d6d');
+  T('BOSS ' + (LIVE.b + 1) + '/' + list.length, 130, 24, { s: 4, c: '#c9c3ff' }); if (B.pv) T(up(B.pv).slice(0, 14), 252, 24, { s: 4, a: 'right', c: '#ff8a8a' });
+  R(4, 6, 92, 9, '#05030c'); T((name + " + L'ÉQUIPE").slice(0, 22), 8, 8, { s: 4, c: '#ffcf4a' });
+  if (since >= 3200){ box(4, 106, 150, 34); wrap(up(B.s), 28, 4).forEach((l, k) => T(l, 9, 111 + k * 7, { s: 4 })); }
+  snow(t, 30, 5);
+};
+
+const SANTA_PH = [['LE PÈRE NOËL', 'LA HOTTE DE TICKETS', 'IL RECULE !'], ['LE PÈRE NOËL', 'LE GEL DU 24 DÉCEMBRE', 'LA PROD DÉGÈLE !'], ['CLAUS-9000', 'LE MASQUE EST TOMBÉ', 'K.O. ! LA HOTTE S\'OUVRE']];
+SC.santa = t => {
+  nightSky(t); R(20, 14, 16, 16, '#fff2c4'); roofs(); R(0, 92, SW, 52, 'rgba(7,11,31,.55)'); snowGround(116);
+  const ph = Math.min(2, LIVE.ph | 0), P = SANTA_PH[ph], since = reduced ? 9999 : Date.now() - (LIVE.bAt || LIVE.at || 0);
+  const l1 = ph === 0 ? 'LE PÈRE NOËL SAUVAGE APPARAÎT !' : ph === 1 ? 'IL GÈLE LA PROD !' : 'LA BARBE TOMBE… C\'EST UN ROBOT !', l2 = ph === 0 ? 'HO HO HO… VOICI TON SCOPE.' : ph === 1 ? 'TAPEZ POUR FAIRE FONDRE LA GLACE.' : 'CLAUS-9000 : SCOPE CHARGÉ À 100 %.';
+  if (intro(since, l1, l2)) return;
+  const hp = hitHp(Math.max(1, team().length) * 8), slide = clamp01((since - 450) / 900), bx = ph === 2 ? 80 : -40 + 120 * (1 - Math.pow(1 - slide, 3));
+  const fol = crowd(null, 10);
+  fol.forEach((L, i) => { const row = i % 2; perso(150 + Math.floor(i / 2) * 20 + row * 9, 118 + row * 10, 1, 0, L); });
+  if (ph === 1) fol.forEach((L, i) => { const row = i % 2, x = 150 + Math.floor(i / 2) * 20 + row * 9, y = 118 + row * 10; g.globalAlpha = .15 + .6 * hp; R(x - 8, y - 28, 16, 30, '#bfe6ff'); R(x - 8, y - 28, 16, 2, '#ffffff'); g.globalAlpha = 1; });
+  if (ph === 0 && hp > 0 && !reduced) for (let k = 0; k < 4; k++){ const p = ((t / 900) + k / 4) % 1, x = bx - 30 + p * 170, y = 70 - Math.sin(p * Math.PI) * 30 + k * 4; R(x, y, 7, 9, '#e9e4d4'); R(x + 1, y + 2, 5, 1, '#3d4678'); }
+  if (hp > 0) big(bx, 124, ph === 2 ? 1 : 1.25, () => (ph === 2 ? clausBot : santaEvil)(0, 0, t));
+  else { T(P[2], 70, 58, { s: 7, a: 'center', c: '#ffcf4a', sh: '#000' }); if (ph === 2) T('ELLE CONTIENT VOS VŒUX 2027', 70, 72, { s: 4, a: 'center', c: '#62d48e', sh: '#000' }); }
+  hitFlash(bx, 110);
+  R(130, 6, 122, 9, '#05030c'); T(P[0], 191, 8, { s: 4, a: 'center', c: '#ff8a8a' });
+  R(130, 16, 122, 5, '#3b0f1a'); R(131, 17, Math.round(120 * hp), 3, '#ff4d6d');
+  T(ph === 0 ? ('PV : ' + up(SP().santa.hp) + ' ' + up(SP().santa.l)).slice(0, 28) : P[1], 130, 24, { s: 4, c: '#c9c3ff' });
+  T('PHASE ' + (ph + 1) + '/3', 252, 32, { s: 4, a: 'right', c: '#ffcf4a' });
+  snow(t, 50, 4);
+};
+
+// les trophées : un par membre, dans l'ordre de l'équipe
+const sheetOf = k => (SP().sheets || {})[k] || null;
+const trophyList = () => ROSTER.filter(p => (sheetOf(p.k) || {}).trophy).map(p => ({ k: p.k, name: p.name, L: p.look, t: sheetOf(p.k).trophy }));
+function cup(x, y, t){ R(x - 7, y - 16, 14, 8, '#ffcf4a'); R(x - 10, y - 15, 3, 5, '#ffcf4a'); R(x + 7, y - 15, 3, 5, '#ffcf4a'); R(x - 5, y - 8, 10, 3, '#e0a82a'); R(x - 1, y - 5, 2, 3, '#e0a82a'); R(x - 5, y - 2, 10, 2, '#c9951c'); R(x - 4, y - 14, 2, 4, '#fff2b8'); if (blink(t, 300)) R(x + 9, y - 20, 1, 1, '#ffffff'); }
+SC.trophies = t => {
+  R(0, 0, SW, SH, '#3a0f14'); for (let x = 0; x < SW; x += 10) R(x, 0, 5, 104, '#4a141a');
+  R(0, 0, SW, 8, '#c9951c'); R(0, 104, SW, 40, '#2a1a1a');
+  const list = trophyList(), cur2 = list[Math.min(LIVE.tr | 0, list.length - 1)];
+  if (!cur2){ T('LES TROPHÉES NE SONT', SW / 2, 50, { s: 6, a: 'center', c: '#ffcf4a' }); T('PAS ENCORE CHARGÉS', SW / 2, 62, { s: 6, a: 'center', c: '#ffcf4a' }); return; }
+  const since = reduced ? 9999 : Date.now() - (LIVE.trAt || LIVE.at || 0);
+  g.fillStyle = 'rgba(255,230,150,.14)'; g.beginPath(); g.moveTo(128, 0); g.lineTo(96, 96); g.lineTo(160, 96); g.fill();
+  R(104, 84, 48, 20, '#e9e4d4'); R(104, 84, 48, 3, '#ffffff'); T('1', 128, 90, { s: 7, a: 'center', c: '#c9951c' });
+  big(128, 84, 2, () => perso(0, 0, 0, step(t), cur2.L));
+  const ck = clamp01(since / 800); cup(150, 84 - Math.round(20 * (1 - ck)), t);
+  T(up(cur2.name), 128, 14, { s: 7, a: 'center', c: '#ffcf4a', sh: '#000' });
+  box(8, 108, SW - 16, 32);
+  wrap(up(cur2.t), 36, 3).forEach((l, k) => T(l, SW / 2, 114 + k * 8, { s: 5, a: 'center' }));
+  const rest = list.map((p, i) => ({ p, i })).filter(x => x.i !== (LIVE.tr | 0)), half = Math.ceil(rest.length / 2);
+  rest.forEach(({ p, i }, j) => {
+    const side = j < half ? 0 : 1, n = side ? rest.length - half : half, m = side ? j - half : j;
+    const x = side ? 170 + m * (72 / Math.max(1, n - 1)) : 14 + m * (72 / Math.max(1, n - 1));
+    g.globalAlpha = i < (LIVE.tr | 0) ? 1 : .35; perso(x, 100, 0, 0, p.L); g.globalAlpha = 1;
+  });
+  snow(t, 20, 9);
+};
+
+// le mail : l'année en chiffres, les boss, les cadeaux, les trophées
+function yearMail(sp, h3, li){
+  if (sp.ex) return;
+  const A = sp.ai || {};
+  if (A.stats && A.stats.length){ h3("L'année en chiffres"); li(A.stats.map(([v, l]) => ({ h: '<b>' + esc(v) + '</b> ' + esc(l), p: v + ' ' + l }))); }
+  if (sp.bosses && sp.bosses.length){ h3("Les boss de l'année"); li(sp.bosses.map(b => ({ h: '<b>' + esc(memberName(b.who)) + '</b> a vaincu ' + esc(b.n.toLowerCase()) + ' : ' + esc(b.s.toLowerCase()), p: memberName(b.who) + ' a vaincu ' + b.n.toLowerCase() + ' : ' + b.s.toLowerCase() }))); }
+  if (sp.gifts && sp.gifts.length){ h3('Les cadeaux impossibles'); li(sp.gifts.map((x, i) => { const v = giftVotes(i), r = GIFT_VOTES.map(([e, , l], k) => v[k] ? e + ' ' + l.toLowerCase() + ' : ' + v[k] : '').filter(Boolean).join(', ') || 'pas de vote'; return { h: '<b>' + esc(x.n) + '</b>' + (x.s ? ' (' + esc(x.s) + ')' : '') + ' · ' + esc(r), p: x.n + ' · ' + r }; })); }
+  const tl = trophyList(); if (tl.length){ h3('Les trophées'); li(tl.map(x => ({ h: '<b>' + esc(x.name) + '</b> : ' + esc(x.t), p: x.name + ' : ' + x.t }))); }
+}
+
+function room3(){
+  R(0, 0, SW, 40, '#2c2846'); for (let x = 0; x < SW; x += 16) R(x, 0, 1, 38, '#28243f'); R(0, 38, SW, 3, '#1b1830');
+  parquet(0, 41, SW, 103);
+  BOARDS.forEach((b, i) => { const x = 14 + i * 80; R(x - 2, 4, 72, 30, '#8d87a3'); R(x, 6, 68, 26, '#f3f0e6'); R(x, 6, 68, 8, b.c); T(b.label, x + 34, 8, { s: 5, a: 'center' }); });
+}
+function cardCounts(){
+  const c = [0, 0, 0];
+  for (const [id, d] of Object.entries(PL)){ if (id === (uid || 'moi')) continue; const n = d && d.nCards; if (Array.isArray(n)) n.forEach((v, i) => { if (i < 3) c[i] += num(v, 0, 99, 0); }); }
+  MYSEC.cards.forEach(x => c[x.b]++);
+  return c;
+}
+SC.write = t => {
+  room3();
+  const counts = cardCounts();
+  BOARDS.forEach((b, i) => { const x = 14 + i * 80; for (let k = 0; k < Math.min(counts[i], 6); k++) chest(x + 4 + (k % 3) * 20, 58 - Math.floor(k / 3) * 10, false); T('× ' + counts[i], x + 34, 22, { s: 6, a: 'center', c: '#1b1626' }); });
+  if (LIVE.timerEnd){
+    const left = Math.max(0, LIVE.timerEnd - Date.now()), tot = LIVE.timerDur || 300000, p = 1 - left / tot, hx = 240, hy = 66;
+    R(hx - 7, hy - 22, 14, 2, '#a8703f'); R(hx - 7, hy + 2, 14, 2, '#a8703f'); R(hx - 5, hy - 20, 10, 9, '#cfe8ff'); R(hx - 2, hy - 11, 4, 3, '#cfe8ff'); R(hx - 5, hy - 8, 10, 10, '#cfe8ff');
+    const s = Math.round(8 * (1 - p)); R(hx - 4, hy - 19 + (8 - s), 8, s, '#ffcf4a'); R(hx - 4, hy + 1 - Math.round(8 * p), 8, Math.round(8 * p), '#ffcf4a');
+    const m = Math.floor(left / 60000), sec = Math.floor(left / 1000) % 60;
+    T(left > 0 ? m + ':' + String(sec).padStart(2, '0') : 'STOP !', hx, hy + 8, { s: 5, a: 'center', c: left > 0 ? '#ffffff' : '#ff6b6b', sh: '#000' });
+  }
+  drawWalkers(t);
+};
+
+function revealOrder(){
+  const all = [];
+  for (const [id, d] of Object.entries(ALLSEC)) for (const c of (d && Array.isArray(d.cards) ? d.cards : [])) all.push({ id: c.id, b: idx(c.b, 3), text: str(c.text, 280), by: id, t: num(c.t, 0, 1e15, 0) });
+  const done = new Set(REV.map(c => c.id));
+  return all.filter(c => !done.has(c.id)).sort((a, b) => a.b - b.b || a.t - b.t);
+}
+SC.reveal = t => {
+  R(0, 0, SW, SH, '#120d26');
+  const last = REV[REV.length - 1], since = last ? Date.now() - (last.at || 0) : 0;
+  g.save(); g.translate(128, 108); g.rotate(reduced ? 0 : t / 2500);
+  for (let i = 0; i < 12; i++){ g.fillStyle = i % 2 ? 'rgba(255,207,74,.14)' : 'rgba(255,255,255,.06)'; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, 200, i * Math.PI / 6, (i + 1) * Math.PI / 6); g.fill(); }
+  g.restore();
+  T('CADEAUX OUVERTS : ' + REV.length, 6, 4, { s: 5, c: '#c9c3ff' });
+  if (!last){ chest(120, 116, false); T("L'HÔTE VA OUVRIR", 128, 50, { s: 6, a: 'center', c: '#ffcf4a', sh: '#000' }); T('LE PREMIER CADEAU', 128, 62, { s: 6, a: 'center', c: '#ffcf4a', sh: '#000' }); return; }
+  const rise = reduced ? 1 : clamp01(since / 1200);
+  chest(120, 116, true);
+  const B = BOARDS[last.b], cy = 108 - rise * 82;
+  R(34, cy - 2, 188, 64, '#c9b27a'); R(36, cy, 184, 60, '#f3e6c0'); R(36, cy, 184, 9, B.c);
+  T(B.label, 128, cy + 2, { s: 5, a: 'center' });
+  wrap(up(last.text), 29, 5).forEach((l, k) => T(l, 128, cy + 14 + k * 8, { s: 5, a: 'center', c: '#1b1626' }));
+  T('PAR ' + up(first(nameOf(last.by))), 216, cy + 52, { s: 4, a: 'right', c: '#7a6a4a' });
+  if (rise >= 1 && since < 4000) T('DA-DA-DA-DAAA !', 128, 4, { s: 6, a: 'center', c: blink(t, 160) ? '#ffcf4a' : '#ffffff', sh: '#000' });
+};
+
+function voteCounts(){
+  const c = {};
+  for (const [id, d] of Object.entries(PL)){ if (id === (uid || 'moi')) continue; for (const v of (d && Array.isArray(d.votes) ? d.votes : []).slice(0, BITES)) c[v] = (c[v] || 0) + 1; }
+  for (const v of (myDoc().votes || []).slice(0, BITES)) c[v] = (c[v] || 0) + 1;
+  return c;
+}
+const VOTABLE = [0, 1, 2];
+let QHIDDEN = [];
+function allQuests(){
+  const auto = themes([2]).sort((a, b) => b.n - a.n || a.at - b.at).map(t => ({ id: 't-' + t.id, text: t.text, xp: 100 + t.n * 100, auto: true, by: t.by, n: t.n, more: t.members.length - 1 }));
+  return auto.concat(QUESTS).filter(q => !QHIDDEN.includes(q.id));
+}
+function saveQuests(){ if (db) write('quests/all', { list: QUESTS, hidden: QHIDDEN }); renderAll(true); }
+function rootOf(id){ let c = REV.find(x => x.id === id), n = 0; while (c && c.g && n++ < 20){ const pc = REV.find(x => x.id === c.g); if (!pc) break; c = pc; } return c ? c.id : id; }
+function themes(boards){
+  const counts = voteCounts(), m = {};
+  for (const c of REV){ const r = rootOf(c.id); (m[r] = m[r] || []).push(c); }
+  return Object.entries(m).map(([rid, members]) => {
+    const lead = members.find(c => c.id === rid) || members[0];
+    members.sort((a, b) => a.id === rid ? -1 : b.id === rid ? 1 : (a.at || 0) - (b.at || 0));
+    return { id: lead.id, b: lead.b, text: lead.text, by: lead.by, at: lead.at || 0, members, n: members.reduce((a, c) => a + (counts[c.id] || 0), 0) };
+  }).filter(t => !boards || boards.includes(t.b));
+}
+const ranked = () => themes(VOTABLE).sort((a, b) => b.n - a.n || a.b - b.b);
+const myBitesOn = t => (myDoc().votes || []).filter(v => t.members.some(c => c.id === v)).length;
+let mergeFrom = null;
+function mergeInto(a, b){
+  const ra = rootOf(a), rb = rootOf(b); mergeFrom = null;
+  if (ra === rb || !isOwner){ renderAll(true); return; }
+  const moving = new Set(REV.filter(c => rootOf(c.id) === ra).map(c => c.id));
+  REV = REV.map(c => moving.has(c.id) ? Object.assign({}, c, { g: rb }) : c);
+  SFX.ok(); if (db) write('revealed/all', { cards: REV }); renderAll(true);
+}
+function splitCard(id){ if (!isOwner) return; REV = REV.map(c => c.id === id ? Object.assign({}, c, { g: null }) : c); if (db) write('revealed/all', { cards: REV }); renderAll(true); }
+// les thèmes votables, un onglet par tableau, 12 par page, à leur place fixe (ordre d'ouverture)
+const VCARD = i => ({ x: 8 + (i % 4) * 61, y: 15 + Math.floor(i / 4) * 35, w: 56, h: 31 });
+const TAB = i => ({ x: 6 + i * 61, y: 2, w: 58, h: 10 });
+const ARROW_L = { x: 190, y: 2, w: 14, h: 10 }, ARROW_R = { x: 238, y: 2, w: 14, h: 10 };
+let voteTab = 1, votePage = 0;
+const tabThemes = b => themes([b]).sort((a, c) => a.at - c.at);
+const pageCount = () => Math.max(1, Math.ceil(tabThemes(voteTab).length / 12));
+const voteCards = () => { votePage = Math.min(votePage, pageCount() - 1); return tabThemes(voteTab).slice(votePage * 12, votePage * 12 + 12); };
+let pacAnim = { id: null, at: 0, from: null };
+function pacman(x, y, r, col, t, dir){
+  const mouth = reduced ? .25 : Math.abs(Math.sin(t / 90 + x)) * .35;
+  const a0 = dir < 0 ? Math.PI + mouth * Math.PI : mouth * Math.PI, a1 = dir < 0 ? Math.PI - mouth * Math.PI + 2 * Math.PI : (2 - mouth) * Math.PI;
+  g.fillStyle = col; g.beginPath(); g.moveTo(x, y); g.arc(x, y, r, a0, a1); g.closePath(); g.fill();
+  R(Math.round(x) - 1, Math.round(y) - r + 2, 2, 2, '#05030c');
+}
+SC.vote = t => {
+  R(0, 0, SW, SH, '#05030c');
+  const wall = '#2448d8'; R(2, 13, SW - 4, 1, wall); R(2, SH - 4, SW - 4, 2, wall); R(2, 13, 2, SH - 17, wall); R(SW - 4, 13, 2, SH - 17, wall);
+  VOTE_TABS.forEach((b, i) => {
+    const r = TAB(i), on = b === voteTab, n = tabThemes(b).length;
+    R(r.x, r.y, r.w, r.h, on ? BOARDS[b].c : '#14205a'); T(BOARDS[b].label + ' ' + n, r.x + r.w / 2, r.y + 3, { s: 4, a: 'center', c: on ? '#ffffff' : '#9ea8d8' });
+  });
+  const pc = pageCount();
+  if (pc > 1){
+    R(ARROW_L.x, ARROW_L.y, ARROW_L.w, ARROW_L.h, votePage > 0 ? '#ffcf4a' : '#2a2a40'); T('<', ARROW_L.x + 7, 4, { s: 5, a: 'center', c: '#1b1626' });
+    T((votePage + 1) + '/' + pc, 221, 4, { s: 4, a: 'center', c: '#ffffff' });
+    R(ARROW_R.x, ARROW_R.y, ARROW_R.w, ARROW_R.h, votePage < pc - 1 ? '#ffcf4a' : '#2a2a40'); T('>', ARROW_R.x + 7, 4, { s: 5, a: 'center', c: '#1b1626' });
+  }
+  const cards = voteCards(), mine = myDoc().votes || [], left = BITES - mine.length;
+  if (!cards.length) T(REV.length ? 'RIEN À CROQUER DANS CET ONGLET' : 'AUCUNE CARTE OUVERTE', SW / 2, 60, { s: 5, a: 'center', c: '#ff6b6b' });
+  const pos = {};
+  cards.forEach((c, i) => {
+    const r = VCARD(i), m = myBitesOn(c);
+    for (const x of c.members) pos[x.id] = r;
+    R(r.x, r.y, r.w, r.h, ['#ffe58a', '#ffb7c9', '#b9e6ff'][c.b] || '#ffe58a'); R(r.x, r.y, r.w, 3, BOARDS[c.b].c);
+    if (m){ g.strokeStyle = myLook().sh; g.lineWidth = 2; g.strokeRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2); }
+    if (c.members.length > 1){ R(r.x + r.w - 13, r.y + 3, 13, 7, '#1b1626'); T('+' + (c.members.length - 1), r.x + r.w - 6, r.y + 4, { s: 4, a: 'center', c: '#ffcf4a' }); }
+    const grp = c.members.length > 1; wrap(up(c.text), grp ? 10 : 13, 3).forEach((l, k) => T(l, grp ? r.x + 3 : r.x + r.w / 2, r.y + 5 + k * 6, { s: 4, a: grp ? 'left' : 'center', c: '#1b1626' }));
+    for (let k = 0; k < Math.min(c.n, 7); k++) R(r.x + 3 + k * 6, r.y + r.h - 7, 4, 4, '#d9a12a');
+    if (c.n > 7) T('+' + (c.n - 7), r.x + r.w - 3, r.y + r.h - 7, { s: 4, a: 'right', c: '#7a5a10' });
+  });
+  // le couloir du bas, ses pastilles et le fantôme de la dette
+  for (let x = 14; x < SW - 12; x += 10) if (reduced || (x + Math.floor(t / 100)) % 3) R(x, 131, 2, 2, '#ffd8b0');
+  const gx = 236 - ((reduced ? 30 : t / 30) % 216), gy = 134;
+  R(gx - 5, gy - 6, 10, 9, '#ff5f6d'); R(gx - 3, gy - 8, 6, 2, '#ff5f6d'); for (let k = 0; k < 3; k++) R(gx - 5 + k * 4, gy + 3, 3, 2, '#ff5f6d'); R(gx - 3, gy - 4, 2, 2, '#ffffff'); R(gx + 1, gy - 4, 2, 2, '#ffffff');
+  // les pac-men : chacun sur la dernière carte qu'il a croquée si elle est à l'écran, au repos dans le couloir sinon
+  team().forEach((m, i) => {
+    const votes = m.id === (uid || 'moi') ? mine : (m.doc.votes || []), lastId = votes[votes.length - 1], r = lastId && pos[lastId];
+    let x = r ? r.x + r.w - 6 - (i % 3) * 7 : 16 + i * 14, y = r ? r.y + r.h - 3 : 126;
+    if (m.id === (uid || 'moi') && pacAnim.id === lastId && pacAnim.from){ const k = clamp01((Date.now() - pacAnim.at) / 450); x = pacAnim.from.x + (x - pacAnim.from.x) * k; y = pacAnim.from.y + (y - pacAnim.from.y) * k; }
+    pacman(x, y, m.id === (uid || 'moi') ? 6 : 5, m.L.sh, t, -1);
+    if (m.id === (uid || 'moi')) me.pac = { x, y };
+  });
+  T('BOUCHÉES : ' + Math.max(0, left) + '/' + BITES, SW - 8, 120, { s: 4, a: 'right', c: '#ffcf4a' });
+};
+const VOTE_TABS = VOTABLE;
+function bite(id){
+  const mine = myDoc().votes || [];
+  const card = REV.find(c => c.id === id);
+  if (!canWrite || mine.length >= BITES || !card || !VOTABLE.includes(card.b)) return;
+  pacAnim = { id, at: Date.now(), from: me.pac || null };
+  SFX.bite(); savePlayer({ votes: mine.concat([id]) });
+}
+
+SC.tavern = t => {
+  R(0, 0, SW, SH, '#4a2e1e'); for (let y = 0; y < 96; y += 8) R(0, y + 7, SW, 1, '#3a2316');
+  parquet(0, 96, SW, 48);
+  R(40, 8, 176, 80, '#5e3e28'); R(44, 12, 168, 72, '#b08a5a');
+  T('TABLEAU DES VŒUX 2027', 128, 1, { s: 5, a: 'center', c: '#ffcf4a', sh: '#000' });
+  const takers = questTakers();
+  const ALLQ = allQuests(), QL = ALLQ.filter(q => !(takers[q.id] || []).length);
+  QL.slice(0, 4).forEach((q, i) => {
+    const x = 48 + i * 41, y = 16 + (i % 2) * 4;
+    R(x, y, 38, 62, '#f3e6c0'); R(x + 17, y - 2, 4, 4, '#e8504a');
+    T('!', x + 19, y + 4, { s: 7, a: 'center', c: '#e8504a' });
+    wrap(up(q.text), 9, 5).forEach((l, k) => T(l, x + 19, y + 15 + k * 7, { s: 4, a: 'center', c: '#1b1626' }));
+    T('+' + num(q.xp, 0, 9999, 100) + ' XP', x + 19, y + 51, { s: 4, a: 'center', c: '#3f9e5c' });
+    const tk = takers[q.id] || []; tk.slice(0, 4).forEach((id, k) => R(x + 3 + k * 8, y + 58, 6, 3, (id === (uid || 'moi') ? myLook() : lookOf((PL[id] || {}).k)).sh));
+  });
+  if (!QL.length && ALLQ.length) T('TOUTES LES QUÊTES', 128, 38, { s: 5, a: 'center', c: '#3f9e5c' }), T('SONT PRISES !', 128, 48, { s: 5, a: 'center', c: '#3f9e5c' });
+  else if (!QL.length) T("L'HÔTE ÉCRIT LES QUÊTES…", 128, 44, { s: 5, a: 'center', c: '#1b1626' });
+  if (QL.length > 4) T('+' + (QL.length - 4), 210, 80, { s: 4, a: 'right', c: '#1b1626' });
+  R(196, 100, 56, 16, '#7a5134'); R(196, 100, 56, 3, '#a8703f'); duck(224, 100, false); R(206, 94, 5, 6, '#efe9d8');
+  drawWalkers(t, w => { const n = (w.me ? myDoc().quests : (PL[w.by] || {}).quests) || []; if (n.length && !w.em && !w.ty){ R(w.x - 4, w.y - 40, 8, 9, '#f3e6c0'); T('!', w.x, w.y - 39, { s: 6, a: 'center', c: '#e8504a' }); } });
+};
+function questTakers(){
+  const m = {};
+  for (const [id, d] of Object.entries(PL)){ if (id === (uid || 'moi')) continue; for (const q of (d && Array.isArray(d.quests) ? d.quests : [])) (m[q] = m[q] || []).push(id); }
+  for (const q of (myDoc().quests || [])) (m[q] = m[q] || []).push(uid || 'moi');
+  return m;
+}
+
+const thanksAll = () => {
+  const out = [];
+  for (const [id, d] of Object.entries(PL)){ const list = id === (uid || 'moi') ? (myDoc().thanks || []) : (d && Array.isArray(d.thanks) ? d.thanks : []); for (const x of list.slice(0, 12)) if (x && x.to) out.push({ from: id, to: str(x.to, 80), msg: str(x.msg, 80), at: num(x.at, 0, 1e15, 0) }); }
+  if (!PL[uid || 'moi']) for (const x of (myDoc().thanks || [])) out.push({ from: uid || 'moi', to: x.to, msg: x.msg, at: x.at });
+  return out.sort((a, b) => a.at - b.at);
+};
+const wordOf = id => str(((id === (uid || 'moi') ? myDoc() : PL[id]) || {}).word, 24);
+let coinSeen = null, coinFlights = [];
+SC.save = t => {
+  R(0, 0, SW, SH, '#0b0a1f'); stars(t, 41, 40, 80);
+  for (let i = 0; i < 12; i++){ const x = i * 24 - 6; R(x + 8, 60, 8, 40, '#1a2a1a'); g.fillStyle = '#163a24'; g.beginPath(); g.moveTo(x + 12, 46); g.lineTo(x + 26, 84); g.lineTo(x - 2, 84); g.fill(); }
+  R(0, 96, SW, 48, '#dfe8f6'); R(0, 96, SW, 2, '#ffffff');
+  const fx = 128, fy = 110, fl = reduced ? 0 : Math.floor(t / 110) % 3;
+  g.fillStyle = 'rgba(255,170,80,.10)'; g.beginPath(); g.arc(fx, fy, 64, 0, 7); g.fill();
+  R(fx - 12, fy + 4, 24, 4, '#5e3e28'); R(fx - 8, fy + 2, 16, 3, '#7a5134');
+  R(fx - 7, fy - 6 + fl, 14, 10, '#e8504a'); R(fx - 5, fy - 12 + fl, 10, 10, '#ff8a3d'); R(fx - 3, fy - 16, 6, 10, '#ffcf4a'); R(fx - 1, fy - 19, 2, 4, '#fff2b8');
+  box(30, 4, 196, 30);
+  const rc = recap();
+  T('AU COIN DU FEU', 128, 9, { s: 6, a: 'center', c: '#62d48e' });
+  T(rc.nCards + ' CARTES · ' + rc.quests.length + ' VŒUX · ' + rc.players.length + ' JOUEURS', 128, 22, { s: 4, a: 'center' });
+  // pièces reçues : un compteur à côté de chacun
+  const thanks = thanksAll(), got = {};
+  for (const x of thanks) got[x.to] = (got[x.to] || 0) + 1;
+  const spots = {};
+  drawWalkers(t, w => {
+    spots[w.by] = { x: w.x, y: w.y };
+    const b = (w.me ? myDoc() : (PL[w.by] || {})).wEnd; // la météo de fin seulement ; le début → la fin est dans le panneau
+    if (b !== undefined) weather(w.x, w.y - 44, b, t);
+    const word = wordOf(w.by);
+    if (word){ // petite bulle, à deux hauteurs pour que les voisins ne se masquent pas
+      const ls = wrap(up(word), 12, 2), wd = Math.max(...ls.map(l => l.length)) * 4 + 6, hh = ls.length * 6 + 4, by = w.y - 64 - (strHash(w.by) % 2) * 14 - (ls.length - 1) * 6;
+      R(Math.round(w.x - wd / 2) - 1, by - 1, wd + 2, hh + 2, '#17151f'); R(Math.round(w.x - wd / 2), by, wd, hh, '#ffffff'); R(Math.round(w.x) - 1, by + hh, 3, 2, '#ffffff');
+      ls.forEach((l, i) => T(l, Math.round(w.x), by + 3 + i * 6, { s: 4, a: 'center', c: '#17151f' }));
+    }
+    if (got[w.by]){ coin(w.x + 12, w.y - 26, t); T('×' + got[w.by], w.x + 16, w.y - 25, { s: 4, c: '#ffcf4a' }); }
+  });
+  // les pièces en vol : de celui qui remercie vers celui qui est remercié
+  if (coinSeen === null) coinSeen = new Set(thanks.map(x => x.from + ':' + x.at));
+  for (const x of thanks){ const k = x.from + ':' + x.at; if (!coinSeen.has(k)){ coinSeen.add(k); coinFlights.push({ from: x.from, to: x.to, start: Date.now() }); SFX.coin(); } }
+  coinFlights = coinFlights.filter(f => Date.now() - f.start < 1400);
+  for (const f of coinFlights){
+    const k = clamp01((Date.now() - f.start) / 1100), a = spots[f.from] || { x: 128, y: 40 }, b = spots[f.to] || { x: 128, y: 120 };
+    const x = a.x + (b.x - a.x) * k, y = a.y - 30 + (b.y - a.y) * k - Math.sin(Math.PI * k) * 30;
+    coin(x, y, t);
+    if (k >= 1) T('+1', b.x + 6, b.y - 40, { s: 5, c: '#ffcf4a', sh: '#000' });
+  }
+};
+function tossCoin(to, msg){
+  if (!canWrite || !to || to === (uid || 'moi')) return;
+  const list = (myDoc().thanks || []).slice(-11);
+  savePlayer({ thanks: list.concat([{ to, msg: String(msg || '').trim().slice(0, 80), at: Date.now() }]) });
+}
+
+let recapT0 = 0;
+// les hauts faits de chacun, pour le générique
+function feats(rc){
+  const got = {}, carried = questTakers(), out = {};
+  for (const x of rc.thanks) got[x.to] = (got[x.to] || 0) + 1;
+  for (const p of rc.players){
+    const d = p.id === (uid || 'moi') ? myDoc() : (PL[p.id] || {}), list = [];
+    if (rc.quizBest === p.id) list.push('CHAMPION DU QUIZ');
+    if (got[p.id]) list.push(got[p.id] + ' PIÈCE' + (got[p.id] > 1 ? 'S' : '') + ' REÇUE' + (got[p.id] > 1 ? 'S' : ''));
+    const nq = Object.values(carried).filter(ids => ids.includes(p.id)).length; if (nq) list.push('PORTE ' + nq + ' QUÊTE' + (nq > 1 ? 'S' : ''));
+    if (rc.coffee === p.id) list.push('A PAYÉ LE CAFÉ');
+    const nc = p.id === (uid || 'moi') ? MYSEC.cards.length : (Array.isArray(d.nCards) ? d.nCards.reduce((a, b) => a + num(b, 0, 99, 0), 0) : 0); if (nc) list.push(nc + ' CARTE' + (nc > 1 ? 'S' : '') + ' ÉCRITE' + (nc > 1 ? 'S' : ''));
+    if (d.word) list.push('« ' + up(str(d.word, 24)) + ' »');
+    const P = presetOf(d.k || (p.id === (uid || 'moi') ? me.k : null));
+    out[p.id] = { title: P ? up(P.title || P.role) : '', lines: list.slice(0, 2) };
+  }
+  return out;
+}
+SC.recap = t => {
+  R(0, 0, SW, SH, '#05030c'); stars(t, 51, 40);
+  const rc = recap(), since = reduced ? 4500 : Date.now() - Math.max(LIVE.at || 0, recapT0), p = clamp01(since / 4000);
+  if (since < 9000){
+    outlined('JOYEUX NOËL !', 128, 6 + (reduced ? 0 : Math.round(Math.sin(t / 200) * 2)), 10, '#ffcf4a', '#2a1240', '#000');
+    const rows = [['JOUEURS', rc.players.length], ['CARTES ÉCRITES', rc.nCards], ['BOUCHÉES', rc.votes], ['VŒUX PORTÉS', rc.quests.filter(q => q.takers.length).length], ['BONNES RÉPONSES', rc.quizGood]];
+    rows.forEach(([l, v], i) => {
+      const k = clamp01((p - i * .12) / .15); if (k <= 0) return;
+      T(l, 30, 30 + i * 12, { s: 6, c: '#c9c3ff' }); T('.'.repeat(Math.max(0, 22 - l.length)), 30 + l.length * 6, 30 + i * 12, { s: 6, c: '#3a3470' });
+      T(String(Math.round(v * k)).padStart(3, ' '), 226, 30 + i * 12, { s: 6, a: 'right' });
+    });
+    if (p >= 1){
+      T('SCORE', 30, 98, { s: 8, c: '#ffcf4a' }); T(String(rc.score).padStart(6, '0'), 226, 98, { s: 8, a: 'right' });
+      if (rc.quizBest) T('CHAMPION DU QUIZ : ' + up(first(nameOf(rc.quizBest))), 128, 116, { s: 5, a: 'center', c: '#62d48e' });
+      if (rc.coffee) T('CAFÉ OFFERT PAR ' + up(first(nameOf(rc.coffee))), 128, 128, { s: 5, a: 'center', c: '#ff8a3d' });
+    }
+    return;
+  }
+  // le générique : chacun passe avec son perso, son titre et ses hauts faits, puis « merci d'avoir joué »
+  const F = feats(rc), rowH = 30, total = 40 + rc.players.length * rowH + 90, y0 = SH - ((since - 9000) / 1000 * 14) % (total + SH);
+  T('GÉNÉRIQUE', 128, y0, { s: 7, a: 'center', c: '#ffcf4a' });
+  T(up(SP().company ? 'LA RÉTRO ' + (/^[AEIOUYÉÈHaeiouyéèh]/.test(SP().company) ? "D'" : 'DE ') + SP().company : 'LA RÉTRO DU BUREAU') + ' · ' + up(SP().name), 128, y0 + 12, { s: 4, a: 'center', c: '#9ee6ff' });
+  rc.players.forEach((pl, i) => {
+    const y = y0 + 40 + i * rowH; if (y < -30 || y > SH + 10) return;
+    perso(70, y + 22, 0, step(t + i * 90), pl.id === (uid || 'moi') ? myLook() : playerLook(pl.id, (PL[pl.id] || {}).k));
+    T(up(nameOf(pl.id)), 84, y + 2, { s: 6, c: '#ffffff' });
+    if (F[pl.id] && F[pl.id].title) T(F[pl.id].title.slice(0, 32), 84, y + 11, { s: 4, c: '#9ee6ff' });
+    (F[pl.id] ? F[pl.id].lines : []).forEach((l, k) => T(l.slice(0, 32), 84, y + 18 + k * 6, { s: 4, c: '#c9c3ff' }));
+  });
+  const ye = y0 + 40 + rc.players.length * rowH + 20;
+  T("MERCI D'AVOIR JOUÉ", 128, ye, { s: 7, a: 'center', c: '#ffcf4a', sh: '#000' });
+  T('BONNES FÊTES !', 128, ye + 14, { s: 5, a: 'center' });
+  if (ye + 30 < SH) duck(((t / 18) % (SW + 40)) - 20, Math.min(SH - 6, ye + 44), step(t) === 1);
+};
+
+// ---------- récap et mail ----------
+function recap(){
+  const tm = team(), counts = voteCounts(), takers = questTakers();
+  const players = tm.filter(p => p.id === (uid || 'moi') || p.doc.coinAt || p.doc.k);
+  const cards = themes().sort((a, b) => a.b - b.b || b.n - a.n), nCards = REV.length;
+  const quests = allQuests().map(q => ({ ...q, takers: takers[q.id] || [] }));
+  const votes = Object.values(counts).reduce((a, b) => a + b, 0);
+  const good = {}; let quizGood = 0;
+  for (const ids of Object.values(LIVE.quizRes || {})) for (const id of (Array.isArray(ids) ? ids : [])){ good[id] = (good[id] || 0) + 1; quizGood++; }
+  const quizBest = Object.entries(good).sort((a, b) => b[1] - a[1])[0];
+  const cs = coins(); const coffee = cs.length >= 2 ? cs[cs.length - 1].id : null;
+  const wx = key => { const c = [0, 0, 0, 0]; for (const p of players){ const v = p.id === (uid || 'moi') ? myDoc()[key] : p.doc[key]; if (Number.isInteger(v) && v >= 0 && v < 4) c[v]++; } return c; };
+  const words = players.map(p => ({ id: p.id, w: wordOf(p.id) })).filter(x => x.w), thanks = thanksAll();
+  return { players, words, thanks, cards, nCards, quests, votes, quizGood, quizBest: quizBest ? quizBest[0] : null, coffee, wStart: wx('wStart'), wEnd: wx('wEnd'), score: nCards * 500 + votes * 100 + quests.length * 1000 + quizGood * 300 };
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function mail(){
+  const rc = recap(), sp = SP(), date = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const fullName = id => nameOf(id);
+  const wLine = c => WEATHERS.map((w, i) => c[i] ? w[0] + ' ' + c[i] : '').filter(Boolean).join('  ') || 'non renseignée';
+  const subject = 'Rétro de Noël ' + (sp.company ? sp.company + ' ' : '') + (sp.ex ? '' : sp.name + ' ') + '· Pixel Noël du ' + date;
+  const H = [], P = [];
+  const h3 = s => { H.push('<h3 style="font:700 16px Arial,sans-serif;margin:20px 0 8px;color:#1b1626">' + esc(s) + '</h3>'); P.push('', s.toUpperCase()); };
+  const li = (items) => { H.push('<ul style="margin:0;padding-left:20px;font:14px/1.5 Arial,sans-serif;color:#333">' + items.map(i => '<li>' + i.h + '</li>').join('') + '</ul>'); items.forEach(i => P.push('- ' + i.p)); };
+  H.push('<p style="font:14px/1.5 Arial,sans-serif;color:#333">Bonjour à tous,<br>voici le récap de notre rétro de Noël du ' + esc(date) + '. Merci à ' + rc.players.length + ' joueurs d\'avoir rejoint la partie.</p>');
+  P.push('Bonjour à tous,', 'voici le récap de notre rétro de Noël du ' + date + '. Merci à ' + rc.players.length + " joueurs d'avoir rejoint la partie.");
+  h3('Météo de l\'équipe');
+  li([{ h: 'Notre année 2026 : ' + esc(wLine(rc.wStart)), p: 'Notre année 2026 : ' + wLine(rc.wStart) }, { h: 'Pour 2027 : ' + esc(wLine(rc.wEnd)), p: 'Pour 2027 : ' + wLine(rc.wEnd) }]);
+  yearMail(sp, h3, li);
+
+  BOARDS.forEach((B, i) => {
+    const cs = rc.cards.filter(c => c.b === i); if (!cs.length) return;
+    h3(B.name + ' (' + cs.length + ')');
+    li(cs.map(c => {
+      const who = [...new Set(c.members.map(x => fullName(x.by)))].join(', '), votes = VOTABLE.includes(c.b) && c.n ? ' · ' + c.n + ' vote' + (c.n > 1 ? 's' : '') : '';
+      const more = c.members.slice(1).map(x => x.text);
+      return { h: esc(c.text) + (more.length ? '<br><span style="color:#666">' + more.map(esc).join('<br>') + '</span>' : '') + ' <span style="color:#888">· ' + esc(who) + votes + '</span>', p: c.text + (more.length ? ' / ' + more.join(' / ') : '') + ' (' + who + votes.replace(' · ', ', ') + ')' };
+    }));
+  });
+  if (rc.quests.length){
+    h3('Nos vœux pour 2027, et qui les porte');
+    H.push('<table style="border-collapse:collapse;font:14px/1.4 Arial,sans-serif;color:#333"><tr><th style="text-align:left;padding:6px 12px 6px 0;border-bottom:2px solid #ffcf4a">Quête</th><th style="text-align:left;padding:6px 0;border-bottom:2px solid #ffcf4a">Porteur</th></tr>' +
+      rc.quests.map(q => '<tr><td style="padding:6px 12px 6px 0;border-bottom:1px solid #eee">' + esc(q.text) + '</td><td style="padding:6px 0;border-bottom:1px solid #eee">' + (q.takers.length ? esc(q.takers.map(fullName).join(', ')) : '<i>personne pour l\'instant</i>') + '</td></tr>').join('') + '</table>');
+    rc.quests.forEach(q => P.push('- ' + q.text + ' → ' + (q.takers.length ? q.takers.map(fullName).join(', ') : "personne pour l'instant")));
+  }
+  const fun = [];
+  if (rc.quizBest){ const dbl = lookOf((PL[rc.quizBest] || {}).k).crown ? ' (double couronne 👑👑)' : ' 👑'; fun.push({ h: 'Champion du quiz : ' + esc(fullName(rc.quizBest)) + dbl, p: 'Champion du quiz : ' + fullName(rc.quizBest) + dbl }); }
+  if (rc.coffee) fun.push({ h: 'Dernier arrivé, donc café offert par : ' + esc(fullName(rc.coffee)) + ' ☕', p: 'Café offert par : ' + fullName(rc.coffee) });
+  fun.push({ h: 'Score de la partie : <b>' + rc.score + '</b>', p: 'Score de la partie : ' + rc.score });
+  if (rc.words.length){ h3('Le mot de la fin'); li(rc.words.map(x => ({ h: '<b>' + esc(fullName(x.id)) + '</b> : « ' + esc(x.w) + ' »', p: fullName(x.id) + ' : « ' + x.w + ' »' }))); }
+  if (rc.thanks.length){ h3('Toss a coin to your collègue 🪙'); li(rc.thanks.map(x => ({ h: esc(fullName(x.from)) + ' → <b>' + esc(fullName(x.to)) + '</b>' + (x.msg ? ' : ' + esc(x.msg) : ''), p: fullName(x.from) + ' → ' + fullName(x.to) + (x.msg ? ' : ' + x.msg : '') }))); }
+  h3('Pour le plaisir'); li(fun);
+  H.push('<p style="font:14px/1.5 Arial,sans-serif;color:#333;margin-top:20px">Bonnes fêtes à tous !</p>'); P.push('', 'Bonnes fêtes à tous !');
+  return { subject, html: '<div>' + H.join('') + '</div>', text: P.join('\n') };
+}
+
+// ---------- canvas ----------
+const cv = document.getElementById('cv'); let K = 0;
+function fit(){ const dpr = Math.min(2, window.devicePixelRatio || 1), k = Math.max(1, Math.ceil(cv.clientWidth * dpr / SW)); if (k !== K){ K = k; cv.width = SW * k; cv.height = SH * k; } }
+let prevT = performance.now();
+function frame(t){
+  const dt = Math.min(.05, (t - prevT) / 1000); prevT = t;
+  if (me.sc !== LIVE.step) enterScene();
+  stepMe(dt); sendPresence();
+  for (const o of others.values()){ const dx = o.tx - o.x, dy = o.ty - o.y; if (Math.hypot(dx, dy) > 80){ o.x = o.tx; o.y = o.ty; } else { const k = Math.min(1, dt * 12); o.x += dx * k; o.y += dy * k; } o.walking = o.mv || Math.hypot(dx, dy) > .6; }
+  fit(); g = cv.getContext('2d'); g.setTransform(K, 0, 0, K, 0, 0); g.imageSmoothingEnabled = false; g.clearRect(0, 0, SW, SH);
+  try { SC[cur().k](t); } catch (e) { console.warn(e); }
+  requestAnimationFrame(frame);
+}
+
+// ---------- entrées ----------
+const typingTarget = e => /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
+addEventListener('keydown', e => {
+  if (typingTarget(e) || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = KEYS[e.key] || KEYS[e.key.toLowerCase()];
+  if (k && walkRect()){ held.add(k); e.preventDefault(); return; }
+  const n = /^Digit[1-6]$/.test(e.code) ? +e.code.slice(5) : parseInt(e.key, 10);
+  if (n >= 1 && n <= 6 && walkRect()){ emote(n - 1); e.preventDefault(); return; }
+  if ((e.key === ' ' || e.key === 'Enter') && document.activeElement === cv){ canvasAction(); e.preventDefault(); }
+});
+addEventListener('keyup', e => { const k = KEYS[e.key] || KEYS[e.key.toLowerCase()]; if (k) held.delete(k); });
+addEventListener('blur', () => held.clear());
+function emote(k){ me.em = [k, (me.em[1] + 1) % 1000]; me.emUntil = performance.now() + 3000; }
+cv.addEventListener('pointerdown', e => {
+  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * SW, y = (e.clientY - r.top) / r.height * SH;
+  cv.focus({ preventScroll: true });
+  const k = cur().k;
+  if (walkRect()){ me.path = { x, y }; return; }
+  if (k === 'select'){ memberList().slice(0, 12).forEach((p, i) => { const r = TILE_SEL(i); if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) pickMember(p.k); }); return; }
+  canvasAction(x, y);
+});
+function canvasAction(x, y){
+  const k = cur().k;
+  if (k === 'title' && isOwner) return next();
+  if (k === 'advent' && isOwner) return next();
+  if (k === 'recap'){ recapT0 = Date.now(); return; }
+  if (k === 'vote' && x !== undefined){
+    const hit = r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+    VOTE_TABS.forEach((b, i) => { if (hit(TAB(i))){ voteTab = b; votePage = 0; } });
+    if (hit(ARROW_L)) votePage = Math.max(0, votePage - 1);
+    if (hit(ARROW_R)) votePage = Math.min(pageCount() - 1, votePage + 1);
+    voteCards().forEach((c, i) => { if (hit(VCARD(i))) bite(c.id); });
+    return;
+  }
+  if (k === 'hotte' && x !== undefined){ for (let i = 0; i < 3; i++){ const r = GIFT_CELL(i); if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return voteGift(i); } return; }
+  if (k === 'boss' || k === 'santa') return attack();
+}
+function pickMember(k){ if (!canWrite || !presetOf(k) || takenBy(k)) return; SFX.coin(); me.k = k; savePlayer({ k }); }
+let autoTried = false;
+function autoPick(){
+  if (autoTried || cur().k !== 'select' || !ROSTER.length || myDoc().k || !canWrite || !me.name || isTest(uid)) return;
+  autoTried = true;
+  const hit = ROSTER.find(p => p.person && norm(p.person) === norm(me.name)) || ROSTER.find(p => norm(p.name) === norm(first(me.name)));
+  if (hit && !takenBy(hit.k)) pickMember(hit.k);
+}
+function attack(){
+  if (room) room.emit('hit', { k: hitKey() }).catch(() => {});
+  else { hits++; lastHitAt = Date.now(); SFX.hit(); }
+}
+
+// ---------- hôte ----------
+const oldGame = () => Object.keys(PL).some(id => PL[id] && (PL[id].k || PL[id].coinAt)) || REV.length > 0 || QUESTS.length > 0 || Object.keys(ALLSEC).length > 0;
+function nextLabel(){
+  const s = cur();
+  if (s.k === 'title' && oldGame()) return 'Nouvelle partie (efface la précédente)';
+  if (s.k === 'quiz'){ const n = (SP().quiz || []).length; return !LIVE.qr ? 'Révéler la réponse' : LIVE.q < n - 1 ? 'Question suivante' : 'Monter dans le traîneau'; }
+  if (s.k === 'advent'){ const n = (SP().advent || []).length; return LIVE.d < n ? 'Ouvrir la case ' + (LIVE.d + 1) : 'Passer au quiz'; }
+  if (s.k === 'hotte'){ const n = (SP().gifts || []).length; return LIVE.g < n - 1 ? 'Cadeau suivant' : 'Affronter les boss'; }
+  if (s.k === 'boss'){ const n = (SP().bosses || []).length; return LIVE.b < n - 1 ? 'Boss suivant' : 'Le Père Noël arrive'; }
+  if (s.k === 'santa') return LIVE.ph < 2 ? ['', 'Phase 2 : le gel', 'Phase 3 : le masque'][LIVE.ph + 1] : 'Remettre les trophées';
+  if (s.k === 'trophies'){ const n = trophyList().length; return LIVE.tr < n - 1 ? 'Trophée suivant' : 'Écrire en secret'; }
+  if (s.k === 'reveal'){ const n = revealOrder().length; return n ? 'Ouvrir le cadeau suivant (' + n + ' restants)' : 'Passer au vote'; }
+  return s.nx || '';
+}
+function next(){
+  if (!isOwner) return;
+  const s = cur();
+  if (s.k === 'quiz'){
+    const n = (SP().quiz || []).length;
+    if (!LIVE.qr){
+      const Q = (SP().quiz || [])[LIVE.q] || {}; const good = [];
+      for (const w of walkers(performance.now())) if (onTile(w.x, w.y) === Q.ok && w.by) good.push(w.by);
+      return setLive({ qr: true, quizRes: Object.assign({}, LIVE.quizRes, { [LIVE.q]: good }) });
+    }
+    if (LIVE.q < n - 1) return setLive({ q: LIVE.q + 1, qr: false });
+  }
+  if (s.k === 'advent' && LIVE.d < (SP().advent || []).length){ SFX.chest(); return setLive({ d: LIVE.d + 1, dAt: Date.now() }); }
+  if (s.k === 'hotte' && LIVE.g < (SP().gifts || []).length - 1) return setLive({ g: LIVE.g + 1, gAt: Date.now() });
+  if (s.k === 'boss' && LIVE.b < (SP().bosses || []).length - 1) return setLive({ b: LIVE.b + 1, bAt: Date.now() });
+  if (s.k === 'santa' && LIVE.ph < 2) return setLive({ ph: LIVE.ph + 1, bAt: Date.now() });
+  if (s.k === 'trophies' && LIVE.tr < trophyList().length - 1) return setLive({ tr: LIVE.tr + 1, trAt: Date.now() });
+  if (s.k === 'reveal'){
+    const nx = revealOrder()[0];
+    if (nx){ REV = REV.concat([{ id: nx.id, b: nx.b, text: nx.text, by: nx.by, at: Date.now() }]); SFX.chest(); if (db) write('revealed/all', { cards: REV }); renderAll(); return; }
+  }
+  if (s.k === 'title' && oldGame()) return resetGame(1);
+  if (LIVE.step >= STEPS.length - 1) return;
+  const ns = LIVE.step + 1, patch = { step: ns };
+  if (STEPS[ns].k === 'quiz') Object.assign(patch, { q: 0, qr: false });
+  enterPatch(STEPS[ns].k, patch);
+  setLive(patch);
+}
+function enterPatch(k, patch){
+  if (k === 'advent') Object.assign(patch, { d: 0, dAt: Date.now() });
+  if (k === 'hotte') Object.assign(patch, { g: 0, gAt: Date.now() });
+  if (k === 'boss') Object.assign(patch, { b: 0, bAt: Date.now() });
+  if (k === 'santa') Object.assign(patch, { ph: 0, bAt: Date.now() });
+  if (k === 'trophies') Object.assign(patch, { tr: 0, trAt: Date.now() });
+}
+function prev(){ if (!isOwner || LIVE.step <= 0) return; const ns = LIVE.step - 1, patch = { step: ns }; if (STEPS[ns].k === 'quiz') Object.assign(patch, { q: 0, qr: false }); enterPatch(STEPS[ns].k, patch); setLive(patch); }
+document.getElementById('nextBtn').addEventListener('click', next);
+document.getElementById('prevBtn').addEventListener('click', prev);
+document.getElementById('homeBtn').addEventListener('click', () => { if (isOwner && LIVE.step > 0) setLive({ step: 0 }); });
+document.getElementById('testOn').addEventListener('click', () => { sess.set('sq.test', '1'); location.reload(); });
+document.getElementById('testOff').addEventListener('click', () => { sess.set('sq.test', null); if (location.hash === '#joueur') history.replaceState(null, '', location.pathname + location.search); location.reload(); });
+
+// ---------- panneau ----------
+const panel = document.getElementById('panel');
+const ARTIFACT_URL = '@@ARTIFACT_URL@@'; // posée à la publication, voir arcade/pixel-noel/README.md
+let snapState = '', snapCan = null;
+// les données de l'année : préparées par Claude (Jira, GitHub) et écrites dans year/data, ou collées ici pour les recharger
+let pasteText = '', pasteCheck = null;
+const BOSS_KINDS = ['tree', 'queen', 'owl', 'yeti', 'windmill', 'avalanche', 'elf', 'golem', 'globe', 'krampus', 'snowman', 'grinch'];
+function checkYear(raw){
+  const txt = String(raw || '').trim(), a = txt.indexOf('{'), b = txt.lastIndexOf('}');
+  if (a < 0 || b <= a) return { err: "Ce n'est pas le texte préparé par Claude : il manque les accolades { }." };
+  let d; try { d = JSON.parse(txt.slice(a, b + 1)); } catch { return { err: 'Le texte est coupé ou abîmé (JSON illisible).' }; }
+  const S = v => typeof v === 'string' && v.trim() !== '', A = v => Array.isArray(v), O = v => v && typeof v === 'object' && !Array.isArray(v);
+  if (!O(d)) return { err: "Le texte ne décrit pas une année." };
+  if (!S(d.name)) return { err: "Il manque le nom de l'année (name)." };
+  if (!A(d.advent) || d.advent.length !== 12) return { err: 'Le calendrier (advent) : il faut 12 cases.' };
+  for (let i = 0; i < 12; i++){ const x = d.advent[i]; if (!x || !S(x.l1)) return { err: 'Case ' + (i + 1) + ' du calendrier : il manque sa ligne (l1).' }; }
+  if (!A(d.quiz) || !d.quiz.length || d.quiz.length > 8) return { err: 'Le quiz : de 1 à 8 questions.' };
+  for (let i = 0; i < d.quiz.length; i++){
+    const x = d.quiz[i], q = 'Quiz ' + (i + 1) + ' : ';
+    if (!x || !(S(x.q1) || (A(x.q) && S(x.q[0])))) return { err: q + 'il manque la question (q1).' };
+    if (!A(x.a) || x.a.length !== 4 || x.a.some(v => !S(v))) return { err: q + 'il faut 4 réponses.' };
+    if (!Number.isInteger(x.ok) || x.ok < 0 || x.ok > 3) return { err: q + 'il manque la bonne réponse (ok entre 0 et 3).' };
+  }
+  if (!O(d.ai) || !A(d.ai.pts) || !d.ai.pts.length || d.ai.pts.some(v => typeof v !== 'number')) return { err: 'Le traîneau (ai.pts) : il faut les points de chaque sprint.' };
+  if (!A(d.gifts) || !d.gifts.length || d.gifts.length > 12 || d.gifts.some(x => !x || !S(x.n))) return { err: 'La hotte (gifts) : de 1 à 12 cadeaux, chacun avec son nom (n).' };
+  if (!A(d.bosses) || !d.bosses.length || d.bosses.length > 12) return { err: 'Les boss (bosses) : de 1 à 12.' };
+  for (let i = 0; i < d.bosses.length; i++){ const x = d.bosses[i]; if (!x || !S(x.who) || !BOSS_KINDS.includes(x.t) || !S(x.n)) return { err: 'Boss ' + (i + 1) + ' : il manque son membre (who), son type (t) ou son nom (n).' }; }
+  if (!O(d.santa) || d.santa.hp === undefined) return { err: 'Le Père Noël (santa.hp) : il manque ses points de vie.' };
+  let team = null;
+  if (d.team !== undefined){
+    team = normRoster(d.team);
+    if (!team.length) return { err: "L'équipe (team) : il faut au moins une personne, avec sa clé (k)." };
+  }
+  const data = Object.assign({}, d, { ex: false }); delete data.team;
+  return { data, team };
+}
+function loadYear(data, team){
+  if (db){ write('year/data', data); if (team) write('team/roster', { people: team }); }
+  else { SPRINT = normYear(data); if (team) ROSTER = team; }
+  pasteText = ''; pasteCheck = null; SFX.ok(); toast(team ? 'ANNÉE ET ÉQUIPE CHARGÉES' : "DONNÉES DE L'ANNÉE CHARGÉES"); renderAll(true);
+}
+function snapshotRequest(){
+  return {
+    label: 'Préparer les données de Pixel Noël',
+    action: 'pixel_noel_year',
+    artifact: ARTIFACT_URL,
+    task: "Prépare les données de l'année pour la rétro Pixel Noël : lis Jira (changelogs de l'année) et GitHub (PR fusionnées des dépôts de la config), puis écris year/data et team/roster de l'artefact avec ArtifactData (set). Montre d'abord les boss et les fiches à l'hôte, qui les valide.",
+    format: "{name:'2026', company:'', advent:[12 x {l1,l2}], quiz:[{q1,q2,a:[4],ok,fact}], ai:{labels:[n° de sprint], pts:[points], devs:[développeurs], claude:[{i,v}] (% de PR co-signées), at:index du premier sprint avec IA, head, legend, stats:[{v,l}], note}, gifts:[{n,s}], bosses:[{who:clé du membre, t:" + BOSS_KINDS.join('|') + ", n, s, pv}], santa:{hp, l}, sheets:{clé:{real:[{v,l}], fun:[{v,l}], trophy}}, team:{people:[...]}}",
+  };
+}
+async function refreshSnapCan(){
+  if (!room || !room.canSendToClaudeSession){ snapCan = 'off'; return; }
+  try { snapCan = await room.canSendToClaudeSession(); } catch { snapCan = 'off'; }
+  renderPanel();
+}
+function sendSnapshot(){
+  const req = snapshotRequest();
+  if (!room || !['available', 'available_if_summoned', 'available_if_opened'].includes(snapCan)){ copySnapshot(); return; }
+  // appelé directement depuis le clic : rien n'est attendu avant
+  room.sendToClaudeSession(req, { deliver: 'send' }).then(r => {
+    snapState = r && r.to === 'pane' ? 'Demande envoyée à Claude dans la conversation ouverte à côté.' : 'Demande envoyée à ta session Claude. Vérifie la conversation.';
+    renderPanel();
+  }).catch(() => copySnapshot());
+}
+async function copySnapshot(){
+  const r = snapshotRequest(), txt = r.task + '\n\nArtefact : ' + r.artifact + '\nFormat de year/data : ' + r.format;
+  try { await navigator.clipboard.writeText(txt); snapState = 'Demande copiée : colle-la dans Claude Code (dans le dossier pixel-bureau).'; }
+  catch { snapState = 'Copie impossible ici : demande à Claude Code « prépare les données de Pixel Noël ».'; }
+  renderPanel();
+}
+let wordDraft = null, coinDraft = { to: '', msg: '' };
+let draft = { b: 0, text: '' }, questDraft = { text: '', xp: 200 }, mailOpen = false, confirmReset = false;
+function h2(s){ return el('h2', { text: s }); }
+function weatherPick(key){
+  const row = el('div', { class: 'row', role: 'group', 'aria-label': 'Météo' });
+  WEATHERS.forEach(([e, l], i) => row.append(el('button', { type: 'button', class: 'chip-btn', 'aria-pressed': String(myDoc()[key] === i), disabled: !canWrite, onclick: () => savePlayer({ [key]: i }), text: e + ' ' + l })));
+  return row;
+}
+const stamp = ms => new Date(ms).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const gap = ms => { const t = Math.max(0, Math.round(ms / 1000)); return t < 60 ? t + ' s' : Math.floor(t / 60) + ' min ' + String(t % 60).padStart(2, '0') + ' s'; };
+function renderPanel(){
+  const s = cur(), f = document.createDocumentFragment();
+  if (!canWrite) f.append(el('p', { class: 'warn', text: "Tu peux regarder la partie, mais pas jouer : demande à l'hôte de te donner l'accès Contributeur." }));
+  if (s.k === 'title'){
+    f.append(h2('BIENVENUE'));
+    f.append(el('p', { text: me.name ? 'Tu entres dans la partie en tant que ' + me.name + '.' : 'Tu entres dans la partie.' }));
+    f.append(el('p', { class: 'muted', text: isOwner ? "Tu es l'hôte : attends que l'équipe arrive, puis appuie sur Start (ou « Suivant »)." : "L'hôte lance la partie quand tout le monde est là. En attendant, regarde le canard." }));
+    if (isOwner){
+      const sp = SPRINT;
+      f.append(el('div', { style: 'height:6px' }), el('span', { class: 'lbl', text: "Les données de l'année" }), el('div', { style: 'height:8px' }));
+      f.append(el('p', { class: sp ? 'muted' : 'warn', text: sp ? 'Chargées : ' + sp.name + (sp.ex ? ' (exemple)' : '') + ' · ' + (sp.quiz || []).length + ' questions, ' + (sp.gifts || []).length + ' cadeaux, ' + (sp.bosses || []).length + ' boss.' : "Pas encore de données : la partie montre un exemple. Claude les dépose avant la séance, ou colle-les ici." }));
+      const pc = pasteCheck;
+      if (pc && pc.data){
+        const d = pc.data, q0 = d.quiz[0], qtxt = [q0.q1 || (q0.q || [])[0], q0.q2 || (q0.q || [])[1]].filter(Boolean).join(' ');
+        f.append(el('div', { class: 'stack' },
+          el('p', { class: 'muted', text: '✅ ' + up(d.name) + ' · ' + d.quiz.length + ' questions · ' + d.gifts.length + ' cadeaux · ' + d.bosses.length + ' boss' + (pc.team ? ' · équipe de ' + pc.team.length : '') }),
+          el('p', { class: 'note', text: 'Q1 : ' + up(qtxt) + ' (' + up(q0.a[q0.ok]) + ')' }),
+          el('button', { class: 'btn main', type: 'button', text: '✓ Charger dans la partie', onclick: () => loadYear(d, pc.team) }),
+          el('button', { class: 'btn', type: 'button', text: 'Annuler', onclick: () => { pasteCheck = null; renderPanel(); } }),
+          sp || (pc.team && ROSTER.length) ? el('p', { class: 'note', text: pc.team ? "Remplace les données de l'année et l'équipe pour tous les joueurs." : "Remplace les données de l'année pour tous les joueurs." }) : null));
+      } else {
+        const ta = el('textarea', { id: 'sprintPaste', rows: '4', placeholder: 'Colle ici les données préparées par Claude (Cmd+V)', 'aria-label': "Données de l'année à coller", style: 'font:12px/1.4 ui-monospace,monospace' }); ta.value = pasteText;
+        ta.addEventListener('input', () => { pasteText = ta.value; });
+        f.append(el('div', { class: 'stack' }, ta,
+          pc && pc.err ? el('p', { class: 'warn', role: 'alert', text: 'Données incomplètes, rien n\'est chargé : ' + pc.err }) : null,
+          el('button', { class: 'btn', type: 'button', text: "📥 Coller les données de l'année", onclick: () => { pasteCheck = checkYear(pasteText); renderPanel(); } }),
+          el('p', { class: 'note', text: "Claude les prépare depuis Jira et GitHub et les écrit ici ; ce champ sert à les recharger." })));
+      }
+      {
+        if (snapCan === null){ snapCan = 'wait'; refreshSnapCan(); }
+        const direct = ['available', 'available_if_summoned', 'available_if_opened'].includes(snapCan);
+        f.append(el('div', { style: 'height:8px' }), el('button', { class: 'chip-btn', type: 'button', text: direct ? '🧠 Ou préparer avec Claude' : '📋 Ou copier la demande pour Claude', onclick: sendSnapshot }),
+          snapState ? el('p', { class: 'note', text: snapState }) : null, el('div', { style: 'height:10px' }));
+      }
+      if (oldGame()){
+        const nCards = Object.values(ALLSEC).reduce((a, d) => a + (d && Array.isArray(d.cards) ? d.cards.length : 0), 0), nPl = Object.keys(PL).filter(id => PL[id] && (PL[id].k || PL[id].coinAt)).length;
+        f.append(el('p', { class: 'warn', text: 'Une partie précédente est encore là (' + nPl + ' joueur' + (nPl > 1 ? 's' : '') + ', ' + nCards + ' carte' + (nCards > 1 ? 's' : '') + ', ' + REV.length + ' coffre' + (REV.length > 1 ? 's' : '') + ' ouvert' + (REV.length > 1 ? 's' : '') + '). « Suivant » l\'efface et lance une nouvelle partie.' }));
+        if (LIVE.last > 0) f.append(el('button', { class: 'btn', type: 'button', text: 'Reprendre à « ' + STEPS[Math.min(LIVE.last, STEPS.length - 1)].h + ' »', onclick: () => setLive({ step: Math.min(LIVE.last, STEPS.length - 1) }) }));
+      }
+    }
+  } else if (s.k === 'select'){
+    f.append(h2('TON PERSO'), el('p', { class: 'muted', text: 'Clique sur ton perso dans la grille, ou choisis-le ici.' }));
+    if (!ROSTER.length) f.append(el('p', { class: 'warn', text: "L'équipe n'est pas encore chargée : elle arrive avec les données de l'année." }));
+    const row = el('div', { class: 'row', role: 'group', 'aria-label': 'Personnage' });
+    memberList().forEach(p => { const by = takenBy(p.k); row.append(el('button', { type: 'button', class: 'chip-btn', 'aria-pressed': String(myDoc().k === p.k), disabled: !canWrite || !!by, text: p.name + (by ? ' · pris' : ''), onclick: () => pickMember(p.k) })); });
+    f.append(row);
+    const P = presetOf(myDoc().k);
+    if (P){
+      const list = el('ul', { class: 'list' });
+      funStats(P).forEach(([l, v]) => list.append(el('li', {}, el('span', { class: 'grow', text: l }), el('b', { text: v }))));
+      f.append(el('div', { style: 'height:14px' }), el('span', { class: 'lbl', text: P.name + ' · ' + (P.title || P.role) }), el('div', { style: 'height:8px' }), list);
+      if (!P.fun.length) f.append(el('div', { style: 'height:8px' }), el('p', { class: 'note', text: 'Stats provisoires, en attendant les vraies.' }));
+    }
+  } else if (s.k === 'advent'){
+    f.append(h2("LE CALENDRIER DE L'ANNÉE"), el('p', { class: 'muted', text: "Une case par mois : l'hôte les ouvre une à une. Ce qui a marqué l'année, avant de la rejouer." }));
+    const opened = (SP().advent || []).slice(0, LIVE.d | 0);
+    if (opened.length){ const ul2 = el('ul', { class: 'list' }); opened.forEach((c, i) => ul2.append(el('li', {}, el('b', { text: MONTHS[i] }), el('span', { class: 'grow' }, document.createTextNode(c[0]), c[1] ? el('small', { text: c[1] }) : null)))); f.append(ul2); }
+    f.append(el('div', { style: 'height:16px' }), h2('TON ANNÉE 2026 EN MÉTÉO'), el('p', { class: 'muted', text: 'Elle reste à côté de ton nom. On la compare à ta météo pour 2027, à la fin.' }), weatherPick('wStart'));
+  } else if (s.k === 'sleigh'){
+    const A = SP().ai || {};
+    f.append(h2("LE TRAÎNEAU DE L'IA"), el('p', { class: 'muted', text: A.note || "Les points livrés par sprint, avant et après l'arrivée de l'IA." }));
+    if ((A.stats || []).length){ const ul2 = el('ul', { class: 'list' }); A.stats.forEach(([v, l]) => ul2.append(el('li', {}, el('b', { class: 'pts', text: v }), el('span', { class: 'grow', text: l })))); f.append(ul2); }
+  } else if (s.k === 'hotte'){
+    const gifts = SP().gifts || [], G = gifts[LIVE.g] || FALLBACK.gifts[0], mine = (myDoc().gv || {})[LIVE.g], votes = giftVotes(LIVE.g);
+    f.append(h2('CADEAU ' + (LIVE.g + 1) + '/' + gifts.length + ' · ' + up(G.n)), G.s ? el('p', { class: 'muted', text: G.s }) : null);
+    f.append(el('p', { text: "Sans l'IA, on l'aurait fait ? Ton choix est anonyme, seuls les totaux s'affichent." }));
+    const grid = el('div', { class: 'stack' });
+    GIFT_VOTES.forEach(([e, , l], i) => grid.append(el('button', { type: 'button', class: 'chip-btn', 'aria-pressed': String(mine === i), disabled: !canWrite, text: e + ' ' + l + ' · ' + votes[i], onclick: () => voteGift(i) })));
+    f.append(grid);
+    if (LIVE.g > 0){ const ul2 = el('ul', { class: 'list' }); gifts.slice(0, LIVE.g).forEach((x, i) => { const v = giftVotes(i); ul2.append(el('li', {}, el('span', { class: 'grow', text: x.n }), el('small', { text: GIFT_VOTES.map(([e], k) => e + ' ' + v[k]).join('  ') }))); }); f.append(el('div', { style: 'height:14px' }), el('span', { class: 'lbl', text: 'Déjà ouverts' }), el('div', { style: 'height:8px' }), ul2); }
+  } else if (s.k === 'quiz'){
+    f.append(h2('LE QUIZ'), el('p', { text: 'Marche jusqu\'à la case de ta réponse (flèches, ZQSD ou un clic). La case où tu te tiens au moment de la révélation compte.' }));
+    if (LIVE.qr) f.append(el('p', { class: 'muted', text: 'Bonnes réponses à cette question : ' + ((LIVE.quizRes || {})[LIVE.q] || []).length + '.' }));
+    // le tableau des scores : 100 points par bonne réponse
+    const res = LIVE.quizRes || {}, nq = (SP().quiz || []).length, asked = Object.keys(res).length;
+    const rows = team().map(p => { const marks = []; for (let i = 0; i < nq; i++) marks.push(!(i in res) ? '·' : (Array.isArray(res[i]) && res[i].includes(p.id)) ? '✓' : '✗'); const good = marks.filter(m => m === '✓').length; return { p, good, marks }; })
+      .sort((a, b) => b.good - a.good || a.p.name.localeCompare(b.p.name));
+    const board = el('ul', { class: 'list' }), champs = champions();
+    rows.forEach((r, i) => {
+      const rank = i && r.good === rows[i - 1].good ? '' : (i + 1) + '.';
+      board.append(el('li', {}, headImg(r.p.L),
+        el('span', { class: 'grow' }, document.createTextNode(rank + ' ' + nameOf(r.p.id)), el('small', { text: r.marks.join(' ') }),
+          champs.has(r.p.id) ? el('span', { class: 'badge crown', text: lookOf((PL[r.p.id] || myDoc()).k).crown ? '👑👑 DOUBLE COURONNE' : '👑 CHAMPION' }) : null),
+        el('b', { class: 'pts', text: String(r.good * 100).padStart(3, '0') + ' pts' })));
+    });
+    f.append(el('div', { style: 'height:14px' }), el('span', { class: 'lbl', text: 'Scores · ' + asked + '/' + nq + ' questions révélées' }), el('div', { style: 'height:8px' }), board);
+
+  } else if (s.k === 'boss'){
+    const list = SP().bosses || [], B = list[LIVE.b];
+    if (!B) f.append(h2('LES BOSS'), el('p', { class: 'warn', text: "Les boss arrivent avec les données de l'année." }));
+    else {
+      f.append(h2('BOSS ' + (LIVE.b + 1) + '/' + list.length + ' · ' + up(memberName(B.who))), el('p', { class: 'lbl', text: B.n }), el('p', { class: 'muted', text: B.s }));
+      f.append(el('button', { class: 'btn main', type: 'button', text: '⚔ Taper le boss', onclick: attack }), el('div', { style: 'height:14px' }));
+      const sh = sheetOf(B.who);
+      if (sh){
+        const ul2 = el('ul', { class: 'list' });
+        sh.real.forEach(([v, l]) => ul2.append(el('li', {}, el('b', { class: 'pts', text: v }), el('span', { class: 'grow', text: l }))));
+        sh.fun.forEach(([v, l]) => ul2.append(el('li', {}, el('span', { class: 'badge alt', text: v }), el('span', { class: 'grow', text: l }))));
+        f.append(el('span', { class: 'lbl', text: 'La fiche de ' + memberName(B.who) }), el('div', { style: 'height:8px' }), ul2);
+      }
+    }
+  } else if (s.k === 'santa'){
+    const ph = Math.min(2, LIVE.ph | 0), P = SANTA_PH[ph];
+    const txt = [
+      'Sa hotte déborde des tickets de l\'année : ' + SP().santa.hp + ' ' + SP().santa.l.toLowerCase() + '. Tapez tous ensemble pour le faire reculer.',
+      'Il gèle la prod pour le 24 décembre. Chaque coup fait fondre la glace qui retient l\'équipe.',
+      'Sous la barbe, des câbles : c\'est Claus-9000. Vaincu, il rend la hotte, et elle contient nos vœux pour 2027.'][ph];
+    f.append(h2('PHASE ' + (ph + 1) + '/3 · ' + P[1]), el('p', { class: 'muted', text: txt }), el('button', { class: 'btn main', type: 'button', text: '⚔ Taper', onclick: attack }));
+  } else if (s.k === 'trophies'){
+    const list = trophyList(), c = list[Math.min(LIVE.tr | 0, list.length - 1)];
+    f.append(h2('LES TROPHÉES'));
+    if (!c) f.append(el('p', { class: 'warn', text: "Les trophées arrivent avec les données de l'année." }));
+    else {
+      f.append(el('p', { text: c.name + ' : ' + c.t }));
+      const ul2 = el('ul', { class: 'list' });
+      list.slice(0, (LIVE.tr | 0) + 1).forEach(x => ul2.append(el('li', {}, headImg(x.L), el('span', { class: 'grow' }, document.createTextNode(x.name), el('small', { text: x.t })))));
+      f.append(el('div', { style: 'height:10px' }), ul2);
+    }
+  } else if (s.k === 'write'){
+    f.append(h2('ÉCRIRE EN SECRET'), el('p', { class: 'muted', text: 'Personne ne lit tes cartes avant que l\'hôte ouvre les cadeaux. Elles sortiront signées de ton prénom.' }));
+    const brow = el('div', { class: 'row', role: 'group', 'aria-label': 'Tableau' });
+    BOARDS.forEach((B, i) => brow.append(el('button', { type: 'button', class: 'chip-btn', 'aria-pressed': String(draft.b === i), onclick: () => { draft.b = i; renderPanel(); }, text: B.name })));
+    const ta = el('textarea', { id: 'cardText', maxlength: '280', placeholder: BOARDS[draft.b].hint + '…', 'aria-label': 'Texte de la carte' }); ta.value = draft.text;
+    ta.addEventListener('input', () => { draft.text = ta.value; me.typing = !!ta.value.trim(); });
+    ta.addEventListener('blur', () => { me.typing = false; });
+    const add = el('button', { class: 'btn main', type: 'button', disabled: !canWrite, text: 'Emballer le cadeau', onclick: () => {
+      const text = draft.text.trim(); if (!text) return;
+      MYSEC = { cards: MYSEC.cards.concat([{ id: (uid || 'moi').slice(-6) + '-' + Date.now().toString(36), b: draft.b, text: text.slice(0, 280), t: Date.now() }]) };
+      draft.text = ''; me.typing = false; SFX.coin(); saveSecret(); savePlayer({ nCards: [0, 1, 2].map(i => MYSEC.cards.filter(c => c.b === i).length) });
+    } });
+    f.append(el('div', { class: 'stack' }, brow, ta, add));
+    if (MYSEC.cards.length){
+      const ul = el('ul', { class: 'list' });
+      MYSEC.cards.forEach(c => ul.append(el('li', {}, el('span', { class: 'dot b' + c.b }), el('span', { class: 'grow', text: c.text }), el('button', { class: 'chip-btn', type: 'button', 'aria-label': 'Retirer cette carte', text: '✕', onclick: () => { MYSEC = { cards: MYSEC.cards.filter(x => x.id !== c.id) }; saveSecret(); savePlayer({ nCards: [0, 1, 2].map(i => MYSEC.cards.filter(x => x.b === i).length) }); } }))));
+      f.append(el('div', { style: 'height:14px' }), el('span', { class: 'lbl', text: 'Tes cadeaux (' + MYSEC.cards.length + ')' }), el('div', { style: 'height:8px' }), ul);
+    }
+    if (isOwner){
+      f.append(el('div', { style: 'height:16px' }), el('span', { class: 'lbl', text: 'Sablier (hôte)' }));
+      f.append(el('div', { class: 'row' }, ...[3, 5, 8].map(m => el('button', { class: 'btn', type: 'button', text: m + ' min', onclick: () => setLive({ timerEnd: Date.now() + m * 60000, timerDur: m * 60000 }) }))));
+    }
+  } else if (s.k === 'reveal'){
+    f.append(h2('LES CADEAUX OUVERTS'));
+    if (isOwner) f.append(el('p', { class: 'muted', text: 'Cadeaux encore emballés : ' + revealOrder().length + '. « Suivant » ouvre le prochain. Deux cartes disent la même chose ? ⤵ sur l\'une, puis « ⤵ ici » sur l\'autre (même tableau).' }));
+    if (mergeFrom) f.append(el('p', { class: 'warn', text: 'Choisis le thème où ranger « ' + ((REV.find(c => c.id === mergeFrom) || {}).text || '').slice(0, 60) + ' ».' }));
+    f.append(themeSections(false));
+  } else if (s.k === 'vote'){
+    const mine = myDoc().votes || [], left = BITES - mine.length;
+    f.append(h2('CROQUE TES ' + BITES + ' CARTES'), el('p', { text: left > 0 ? 'Clique sur une carte à l\'écran (ou sur 🟡 ici) pour la croquer. Il te reste ' + left + ' bouchée' + (left > 1 ? 's' : '') + ' ; tu peux en mettre plusieurs au même endroit.' : 'Tu as tout croqué. Un clic sur ✕ rend une bouchée.' }));
+    if (mergeFrom) f.append(el('p', { class: 'warn', text: 'Choisis le thème où ranger « ' + ((REV.find(c => c.id === mergeFrom) || {}).text || '').slice(0, 60) + ' ».' }));
+    f.append(themeSections(true));
+  } else if (s.k === 'tavern'){
+    f.append(h2('LA TAVERNE DES VŒUX'));
+    const mineQ = myDoc().quests || [], tk = questTakers();
+    const QL = allQuests();
+    f.append(el('p', { class: 'muted', text: 'Les cartes du tableau Quêtes sont affichées, des plus croquées aux moins croquées' + (isOwner ? ' ; tu peux en ajouter d\'autres en bas.' : '. Prends celles que tu portes.') }));
+    if (!QL.length) f.append(el('p', { class: 'muted', text: "Aucune quête pour l'instant." }));
+    const ul = el('ul', { class: 'list' });
+    const row = q => {
+      const takers = tk[q.id] || [], has = mineQ.includes(q.id);
+      const origin = q.auto ? 'carte de ' + first(nameOf(q.by)) + (q.more ? ' (+' + q.more + ')' : '') + ' · ' + q.n + ' bouchée' + (q.n > 1 ? 's' : '') : "ajoutée par l'hôte";
+      return el('li', {}, el('span', { class: 'grow' }, document.createTextNode(q.text), el('small', { text: '+' + q.xp + ' XP · ' + origin }), takers.length ? el('small', { text: 'Portée par ' + takers.map(id => first(nameOf(id))).join(', ') }) : null),
+        has ? el('button', { class: 'chip-btn', type: 'button', disabled: !canWrite, text: 'Rendre', onclick: () => savePlayer({ quests: mineQ.filter(x => x !== q.id) }) })
+          : !takers.length ? el('button', { class: 'chip-btn', type: 'button', disabled: !canWrite, text: 'Prendre', onclick: () => { SFX.ok(); savePlayer({ quests: mineQ.concat([q.id]) }); } }) : null,
+        isOwner ? el('button', { class: 'chip-btn', type: 'button', 'aria-label': 'Supprimer la quête', text: '✕', onclick: () => { if (q.auto) QHIDDEN = QHIDDEN.concat([q.id]); else QUESTS = QUESTS.filter(x => x.id !== q.id); saveQuests(); } }) : null);
+    };
+    const free = QL.filter(q => !(tk[q.id] || []).length), taken = QL.filter(q => (tk[q.id] || []).length);
+    if (free.length) free.forEach(q => ul.append(row(q)));
+    else if (QL.length) ul.append(el('li', {}, el('span', { class: 'grow muted', text: 'Toutes les quêtes sont prises.' })));
+    f.append(el('span', { class: 'lbl', text: 'Au tableau (' + free.length + ')' }), el('div', { style: 'height:8px' }), ul);
+    if (taken.length){ const ul2 = el('ul', { class: 'list' }); taken.forEach(q => ul2.append(row(q))); f.append(el('div', { style: 'height:16px' }), el('span', { class: 'lbl', text: 'Prises (' + taken.length + ')' }), el('div', { style: 'height:8px' }), ul2); }
+    if (isOwner){
+      f.append(el('div', { style: 'height:16px' }), el('span', { class: 'lbl', text: 'Ajouter une quête (hôte)' }), el('div', { style: 'height:8px' }));
+      if (QHIDDEN.length) f.append(el('button', { class: 'chip-btn', type: 'button', text: 'Remettre les ' + QHIDDEN.length + ' quête(s) retirée(s)', onclick: () => { QHIDDEN = []; saveQuests(); } }), el('div', { style: 'height:8px' }));
+      const top = ranked().filter(c => c.n && c.b !== 2).slice(0, 5);
+      if (top.length){ const r = el('div', { class: 'stack' }); top.forEach(c => r.append(el('button', { class: 'chip-btn', type: 'button', text: '→ ' + c.text.slice(0, 70) + ' (' + c.n + ')', onclick: () => { questDraft.text = c.text.slice(0, 120); renderPanel(); } }))); f.append(r, el('div', { style: 'height:8px' })); }
+      const inp = el('input', { type: 'text', id: 'questText', maxlength: '120', placeholder: 'Ex. Tests en moins de 10 minutes', 'aria-label': 'Texte de la quête' }); inp.value = questDraft.text; inp.addEventListener('input', () => { questDraft.text = inp.value; });
+      const sel = el('select', { 'aria-label': 'Récompense' }); [100, 200, 300, 500].forEach(v => { const o = el('option', { value: v, text: '+' + v + ' XP' }); if (v === questDraft.xp) o.selected = true; sel.append(o); }); sel.addEventListener('change', () => { questDraft.xp = +sel.value; });
+      f.append(el('div', { class: 'stack' }, inp, sel, el('button', { class: 'btn main', type: 'button', text: 'Afficher la quête', onclick: () => { const tx = questDraft.text.trim(); if (!tx) return; QUESTS = QUESTS.concat([{ id: 'q' + Date.now().toString(36), text: tx, xp: questDraft.xp }]); questDraft.text = ''; SFX.ok(); saveQuests(); } })));
+    }
+  } else if (s.k === 'save'){
+    f.append(h2('TA MÉTÉO POUR 2027'), el('p', { class: 'muted', text: 'Et pour l\'année qui vient ? La liste des joueurs montre ton année 2026 et ta météo pour 2027.' }), weatherPick('wEnd'));
+    // le mot de la fin
+    f.append(el('div', { style: 'height:18px' }), h2('LE MOT DE LA FIN'));
+    const wIn = el('input', { type: 'text', id: 'lastWord', maxlength: '24', placeholder: 'Un mot, une phrase courte', 'aria-label': 'Ton mot de la fin' }); wIn.value = wordDraft !== null ? wordDraft : (myDoc().word || '');
+    wIn.addEventListener('input', () => { wordDraft = wIn.value; });
+    f.append(el('div', { class: 'stack' }, wIn, el('button', { class: 'btn', type: 'button', disabled: !canWrite, text: 'Afficher au-dessus de ma tête', onclick: () => { savePlayer({ word: String(wordDraft !== null ? wordDraft : wIn.value).trim().slice(0, 24) }); wordDraft = null; } })));
+    // les remerciements
+    f.append(el('div', { style: 'height:18px' }), h2('TOSS A COIN TO YOUR COLLÈGUE'), el('p', { class: 'muted', text: 'Lance une pièce d\'or à quelqu\'un pour le remercier. Le mot est facultatif.' }));
+    const others = team().filter(p => p.id !== (uid || 'moi'));
+    const sel = el('select', { id: 'coinTo', 'aria-label': 'À qui' }); sel.append(el('option', { value: '', text: 'À qui ?' })); others.forEach(p => { const o = el('option', { value: p.id, text: nameOf(p.id) }); if (p.id === coinDraft.to) o.selected = true; sel.append(o); });
+    sel.addEventListener('change', () => { coinDraft.to = sel.value; });
+    const mIn = el('input', { type: 'text', id: 'coinMsg', maxlength: '80', placeholder: 'Merci pour…', 'aria-label': 'Ton mot' }); mIn.value = coinDraft.msg; mIn.addEventListener('input', () => { coinDraft.msg = mIn.value; });
+    f.append(el('div', { class: 'stack' }, sel, mIn, el('button', { class: 'btn main', type: 'button', disabled: !canWrite || !others.length, text: '🪙 Lancer la pièce', onclick: () => { if (!coinDraft.to) return; tossCoin(coinDraft.to, coinDraft.msg); coinDraft = { to: '', msg: '' }; } })));
+    const th = thanksAll().slice().reverse();
+    if (th.length){ const ul2 = el('ul', { class: 'list' }); th.forEach(x => ul2.append(el('li', {}, el('span', { class: 'grow' }, document.createTextNode('🪙 ' + first(nameOf(x.from)) + ' → ' + first(nameOf(x.to))), x.msg ? el('small', { text: x.msg }) : null)))); f.append(el('div', { style: 'height:12px' }), ul2); }
+  } else if (s.k === 'recap'){
+    f.append(h2('LE RÉCAP'));
+    const m = mail(), rc = recap();
+    f.append(el('p', { class: 'muted', text: rc.nCards + ' cartes, ' + rc.votes + ' bouchées, ' + rc.quests.length + ' quêtes, score ' + rc.score + '. Un clic sur l\'écran relance le générique.' }));
+    if (isOwner){
+      const status = el('p', { class: 'note', role: 'status' });
+      f.append(el('button', { class: 'btn main', type: 'button', text: 'Copier le mail', onclick: () => copyMail(m, status) }), status, el('p', { class: 'note', text: 'Objet : ' + m.subject }));
+    } else f.append(el('p', { class: 'note', text: "C'est le récap que l'hôte enverra par mail." }));
+    const box = el('div', { class: 'mail' }); box.innerHTML = m.html; f.append(el('div', { style: 'height:10px' }), box);
+  }
+  panel.replaceChildren(f);
+}
+function themeList(list, voting){
+  const ul = el('ul', { class: 'list' }), mine = myDoc().votes || [];
+  if (!list.length) ul.append(el('li', {}, el('span', { class: 'grow muted', text: 'Aucune carte pour l\'instant.' })));
+  for (const t of list){
+    const n = myBitesOn(t), from = mergeFrom ? REV.find(c => c.id === mergeFrom) : null;
+    const authors = [...new Set(t.members.map(c => first(nameOf(c.by))))].join(', ');
+    const body = el('span', { class: 'grow' }, document.createTextNode(t.text + (t.members.length > 1 ? '  (+' + (t.members.length - 1) + ')' : '')), el('small', { text: authors + (voting ? ' · ' + t.n + ' bouchée' + (t.n > 1 ? 's' : '') : '') }));
+    for (const c of t.members.slice(1)) body.append(el('small', {}, document.createTextNode('↳ ' + c.text + ' · ' + first(nameOf(c.by)) + ' '),
+      isOwner ? el('button', { class: 'chip-btn', type: 'button', style: 'padding:2px 6px;font-size:12px', text: 'séparer', onclick: () => splitCard(c.id) }) : null));
+    const tools = el('div', { class: 'row' });
+    if (voting && VOTABLE.includes(t.b)){
+      tools.append(el('button', { class: 'chip-btn', type: 'button', disabled: !canWrite || mine.length >= BITES, 'aria-label': 'Croquer', text: '🟡 ' + (n || ''), onclick: () => bite(t.id) }));
+      if (n) tools.append(el('button', { class: 'chip-btn', type: 'button', 'aria-label': 'Rendre une bouchée', text: '✕', onclick: () => { const i = mine.findIndex(v => t.members.some(c => c.id === v)); const v = mine.slice(); v.splice(i, 1); savePlayer({ votes: v }); } }));
+    }
+    if (isOwner){
+      if (mergeFrom === t.id) tools.append(el('button', { class: 'chip-btn', type: 'button', 'aria-pressed': 'true', text: 'annuler', onclick: () => { mergeFrom = null; renderAll(true); } }));
+      else if (from && from.b === t.b) tools.append(el('button', { class: 'chip-btn', type: 'button', text: '⤵ ici', title: 'Regrouper dans ce thème', onclick: () => mergeInto(mergeFrom, t.id) }));
+      else if (!from) tools.append(el('button', { class: 'chip-btn', type: 'button', text: '⤵', title: 'Regrouper avec une autre carte', 'aria-label': 'Regrouper avec une autre carte', onclick: () => { mergeFrom = t.id; renderAll(true); } }));
+    }
+    ul.append(el('li', {}, el('span', { class: 'dot b' + t.b }), body, tools));
+  }
+  return ul;
+}
+function themeSections(voting){
+  const f = document.createDocumentFragment();
+  (voting ? VOTABLE : [0, 1, 2]).forEach(b => {
+    const list = voting ? themes([b]).sort((a, c) => c.n - a.n || a.at - c.at) : themes([b]).sort((a, c) => c.at - a.at);
+    if (!list.length) return;
+    f.append(el('div', { style: 'height:14px' }), el('span', { class: 'lbl', text: BOARDS[b].name + ' · ' + list.length + ' thème' + (list.length > 1 ? 's' : '') }), el('div', { style: 'height:8px' }), themeList(list, voting));
+  });
+  return f;
+}
+async function copyMail(m, status){
+  try {
+    if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write){
+      await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([m.html], { type: 'text/html' }), 'text/plain': new Blob([m.text], { type: 'text/plain' }) })]);
+    } else await navigator.clipboard.writeText(m.text);
+    status.textContent = 'Mail copié. Colle-le dans Outlook, avec l\'objet ci-dessous.';
+  } catch {
+    try { await navigator.clipboard.writeText(m.text); status.textContent = 'Mail copié en texte simple.'; }
+    catch { renderPanel(); setTimeout(() => { const b = panel.querySelector('.mail'); if (b){ const r = document.createRange(); r.selectNodeContents(b); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } }, 0); }
+  }
+}
+async function resetGame(startStep = 0){
+  confirmReset = false;
+  if (db){
+    try {
+      const [ps, ss] = await Promise.all([db.collection('players').get(), db.collection('secret').get()]);
+      for (const d of ps.docs) await db.doc('players/' + d.id).delete();
+      for (const d of ss.docs) await db.doc('secret/' + d.id).delete();
+      await db.doc('revealed/all').set({ cards: [] }); await db.doc('quests/all').set({ list: [] });
+      await db.doc('live/state').set({ step: startStep, at: Date.now(), q: 0, qr: false, b: 0, timerEnd: 0, quizRes: {}, last: startStep });
+    } catch (e) { console.warn(e); }
+  }
+  PL = {}; MYSEC = { cards: [] }; ALLSEC = {}; REV = []; QUESTS = []; QHIDDEN = [];
+  if (!db) applyLive({ step: startStep, at: Date.now(), q: 0, qr: false, b: 0, timerEnd: 0, quizRes: {}, last: startStep });
+  if (startStep) SFX.start();
+  renderAll(true);
+}
+
+// ---------- joueurs ----------
+const ul = document.getElementById('players');
+function playerStatus(id, d){
+  const k = cur().k, mine = id === (uid || 'moi'), doc = mine ? myDoc() : d;
+  if (k === 'select') return doc.k ? (presetOf(doc.k) || {}).role || 'prêt' : 'choisit…';
+  if (k === 'advent') return doc.wStart !== undefined ? '2026 : ' + WEATHERS[doc.wStart][0] : 'météo ?';
+  if (k === 'save') return (doc.wStart !== undefined ? WEATHERS[doc.wStart][0] + ' → ' : '') + (doc.wEnd !== undefined ? WEATHERS[doc.wEnd][0] : '?') + (doc.word ? ' · « ' + str(doc.word, 24) + ' »' : '');
+  if (k === 'write') return (mine ? MYSEC.cards.length : (Array.isArray(doc.nCards) ? doc.nCards.reduce((a, b) => a + num(b, 0, 99, 0), 0) : 0)) + ' coffre(s)';
+  if (k === 'vote') return (Array.isArray(doc.votes) ? doc.votes.length : 0) + '/' + BITES;
+  if (k === 'hotte'){ const v = (doc.gv || {})[LIVE.g]; return Number.isInteger(v) ? 'a voté' : 'vote…'; }
+  if (k === 'tavern') return (Array.isArray(doc.quests) ? doc.quests.length : 0) + ' quête(s)';
+  return '';
+}
+function renderPlayers(){
+  const online = new Set(peers.map(peerId).filter(Boolean)); online.add(uid || 'moi');
+  const ids = [...new Set([uid || 'moi', ...Object.keys(PL), ...online])];
+  ul.replaceChildren(...ids.map(id => {
+    const d = PL[id] || {}, L = id === (uid || 'moi') ? myLook() : lookOf(d.k || ([...others.values()].find(o => o.by === id) || {}).k);
+    return el('li', { class: online.has(id) ? '' : 'off' }, headImg(L), el('span', { class: 'grow' }, document.createTextNode(nameOf(id)), el('small', { text: playerStatus(id, d) })),
+      id === (uid || 'moi') ? el('span', { class: 'badge', text: 'toi' }) : null);
+  }));
+  document.getElementById('count').textContent = ids.length;
+}
+
+// ---------- rendu des contrôles ----------
+let lastPanelKey = '';
+function renderAll(force){
+  autoPick();
+  const host = document.getElementById('host'); host.hidden = !isOwner;
+  const tb = document.getElementById('testbar'); tb.hidden = !(testMode && isTest(uid)); if (!tb.hidden) document.getElementById('testName').textContent = testLabel(uid);
+  if (isOwner){
+    document.getElementById('hostStep').textContent = 'Étape ' + (LIVE.step + 1) + '/' + STEPS.length + ' · ' + cur().h + (cur().k === 'quiz' ? ' · question ' + (LIVE.q + 1) : cur().k === 'boss' ? ' · boss ' + (LIVE.b + 1) : cur().k === 'santa' ? ' · phase ' + (LIVE.ph + 1) : cur().k === 'hotte' ? ' · cadeau ' + (LIVE.g + 1) : '');
+    const nl = nextLabel(); document.getElementById('hostNext').textContent = nl ? 'Suivant : ' + nl : 'Fin de la partie';
+    document.getElementById('nextBtn').disabled = !nl; document.getElementById('prevBtn').disabled = LIVE.step === 0; document.getElementById('homeBtn').hidden = LIVE.step === 0;
+  }
+  const help = document.getElementById('help'), k = cur().k;
+  help.innerHTML = walkRect() ? '<kbd>←↑↓→</kbd> ou <kbd>ZQSD</kbd> pour marcher, un clic pour aller quelque part, <kbd>1</kbd> à <kbd>6</kbd> pour réagir.' : k === 'select' ? 'Clique sur ton perso pour le choisir.' : k === 'hotte' ? 'Clique sur une réponse pour voter.' : k === 'boss' || k === 'santa' ? "Clique sur l'écran pour taper le boss, toute l'équipe en même temps." : k === 'vote' ? 'Clique sur une carte pour la croquer (3 bouchées).' : '';
+  // le panneau ne se redessine pas pendant la saisie
+  const typing = document.activeElement && /^(TEXTAREA|INPUT|SELECT)$/.test(document.activeElement.tagName) && panel.contains(document.activeElement);
+  const key = JSON.stringify([LIVE.step, LIVE.q, LIVE.qr, LIVE.b, LIVE.d, LIVE.g, LIVE.ph, LIVE.tr, REV.length, REV.map(c => c.g).join(), mergeFrom, voteTab, QUESTS.length, QHIDDEN.length, myDoc(), MYSEC.cards.length, canWrite, isOwner, SPRINT ? 1 : 0, Object.keys(ALLSEC).length, mailOpen, confirmReset, snapState, snapCan, pasteCheck ? (pasteCheck.err || 'ok') : '', draft.b, me.k, ROSTER.length, Object.values(PL).map(d => [d.votes, d.quests, d.coinAt, d.k, d.bv, d.wEnd, d.word, (d.thanks || []).length])]);
+  if (!typing && (force || key !== lastPanelKey)){ lastPanelKey = key; renderPanel(); }
+  renderPlayers();
+}
+
+// ---------- annonces ----------
+const toasts = document.getElementById('toasts');
+function toast(text){ const d = el('div', { class: 'toast', text }); toasts.append(d); setTimeout(() => d.remove(), 3300); }
+
+// ---------- statut, CRT, son ----------
+const pill = document.getElementById('status'), pillTxt = document.getElementById('statusTxt');
+const setStatus = (s, txt) => { pill.dataset.s = s; pillTxt.textContent = txt; };
+const pref = store.get('pn.prefs') || {}, app = document.getElementById('app');
+function applyPrefs(){ app.classList.toggle('crt', pref.crt !== false); document.getElementById('tgCrt').setAttribute('aria-pressed', String(pref.crt !== false)); soundOn = pref.snd !== false; document.getElementById('tgSnd').setAttribute('aria-pressed', String(soundOn)); store.set('sq.prefs', pref); }
+document.getElementById('tgCrt').addEventListener('click', () => { pref.crt = pref.crt === false; applyPrefs(); });
+document.getElementById('tgSnd').addEventListener('click', () => { pref.snd = pref.snd === false; applyPrefs(); });
+applyPrefs();
+
+// ---------- les données de l'année (déposées par Claude avant la partie, ou collées par l'hôte) ----------
+function normYear(d){
+  if (!d) return null;
+  const arr = v => Array.isArray(v) ? v : [], obj = v => v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+  const vl = (x, n) => Array.isArray(x) ? [str(String(x[0] == null ? '' : x[0]), 24), str(x[1], n)] : [str(String(x && x.v != null ? x.v : ''), 24), str(x && x.l, n)];
+  const ai = obj(d.ai), claude = {};
+  for (const c of arr(ai.claude)) if (c && Number.isInteger(c.i) && c.i >= 0 && c.i < 40) claude[c.i] = num(c.v, 0, 100, 0);
+  const sheets = {};
+  for (const [k, v] of Object.entries(obj(d.sheets)).slice(0, 16)){ const o = obj(v); sheets[str(k, 40)] = { real: arr(o.real).slice(0, 6).map(x => vl(x, 90)), fun: arr(o.fun).slice(0, 6).map(x => vl(x, 90)), trophy: str(o.trophy, 60) }; }
+  return {
+    ex: !!d.ex, company: str(d.company, 16), name: str(d.name, 12) || 'ANNÉE',
+    advent: arr(d.advent).slice(0, 12).map(x => [str(x && x.l1, 30), str(x && x.l2, 30)]),
+    quiz: arr(d.quiz).slice(0, 8).map(x => ({ q: Array.isArray(x.q) ? x.q.map(v => str(v, 60)) : [str(x.q1, 60), str(x.q2, 60)], a: arr(x.a).slice(0, 4).map(v => str(v, 20)), ok: idx(x.ok, 4), fact: str(x.fact, 60) })),
+    ai: { labels: arr(ai.labels).slice(0, 40).map(v => str(String(v), 4)), pts: arr(ai.pts).slice(0, 40).map(v => num(v, 0, 999, 0)), devs: arr(ai.devs).slice(0, 40).map(v => Math.round(num(v, 0, 12, 0))), claude, at: Math.round(num(ai.at, 0, 40, 0)), head: str(ai.head, 30), legend: str(ai.legend, 30), stats: arr(ai.stats).slice(0, 6).map(x => vl(x, 90)), note: str(ai.note, 300) },
+    gifts: arr(d.gifts).slice(0, 12).map(x => ({ n: str(x && x.n, 22), s: str(x && x.s, 140) })),
+    bosses: arr(d.bosses).slice(0, 12).map(x => ({ who: str(x && x.who, 40), t: BOSS[x && x.t] ? x.t : 'yeti', n: str(x && x.n, 34), s: str(x && x.s, 100), pv: str(x && x.pv, 16) })),
+    santa: { hp: str(String(obj(d.santa).hp == null ? '?' : obj(d.santa).hp), 10), l: str(obj(d.santa).l, 24) || 'TICKETS' },
+    sheets,
+  };
+}
+
+// ---------- connexion ----------
+async function boot(){
+  const use = window.claude && window.claude.use ? window.claude.use.bind(window.claude) : null;
+  if (!use){ soloMode(); return; }
+  const [r, u, d] = await Promise.all([use('room').catch(() => null), use('user').catch(() => null), use('db').catch(() => null)]);
+  user = u; room = r; db = d;
+  if (user){ try { const v = await user.me(); me.name = v.name || ''; uid = v.id || (await user.id()); isOwner = !!v.isOwner;
+      if (testMode && isOwner){ isOwner = false; uid = testId; me.name = testLabel(testId); }
+      else if (testMode){ testMode = false; sess.set('sq.test', null); } } catch {} try { const c = await user.can('data.write'); if (c === false) canWrite = false; } catch {} }
+  if (!db || !uid){ soloMode(); return; }
+  solo = false;
+  const timer = setTimeout(() => setStatus('off', 'Données injoignables'), 10000);
+  db.doc('live/state').onSnapshot(s => { clearTimeout(timer); if (s.exists) applyLive(s.data()); else renderAll(); }, e => console.warn(e));
+  db.doc('team/roster').onSnapshot(s => { ROSTER = s.exists ? normRoster(s.data()) : []; renderAll(true); }, e => console.warn(e));
+  db.doc('year/data').onSnapshot(s => { SPRINT = s.exists ? normYear(s.data()) : null; renderAll(true); }, e => console.warn(e));
+  db.collection('players').onSnapshot(s => { const nx = {}; for (const doc of s.docs) nx[doc.id] = Object.assign({}, doc.data() || {}); if (uid && !nx[uid] && PL[uid]) nx[uid] = PL[uid]; PL = nx; if (uid && nx[uid] && nx[uid].k) me.k = nx[uid].k; refreshNames(); renderAll(); }, e => console.warn(e));
+  db.doc('revealed/all').onSnapshot(s => { const c = s.exists && Array.isArray(s.data().cards) ? s.data().cards : []; if (c.length > REV.length && REV.length) SFX.chest(); REV = c.map(x => ({ id: str(x.id, 40), b: idx(x.b, 3), text: str(x.text, 280), by: str(x.by, 80), at: num(x.at, 0, 1e15, 0), g: str(x.g, 40) || null })); refreshNames(); renderAll(); }, e => console.warn(e));
+  db.doc('quests/all').onSnapshot(s => { const l = s.exists && Array.isArray(s.data().list) ? s.data().list : []; QUESTS = l.map(q => ({ id: str(q.id, 40), text: str(q.text, 120), xp: num(q.xp, 0, 9999, 100) })); QHIDDEN = s.exists && Array.isArray(s.data().hidden) ? s.data().hidden.map(v => str(v, 60)) : []; renderAll(); }, e => console.warn(e));
+  db.doc('secret/' + uid).onSnapshot(s => { const c = s.exists && Array.isArray(s.data().cards) ? s.data().cards : []; if (!s.metadata.hasPendingWrites) MYSEC = { cards: c }; renderAll(); }, e => console.warn(e));
+  if (isOwner) db.collection('secret').onSnapshot(s => { const nx = {}; for (const doc of s.docs) nx[doc.id] = doc.data() || {}; ALLSEC = nx; renderAll(); }, e => console.warn(e));
+  if (room){
+    room.onConnection(c => setStatus(c ? 'on' : 'off', c ? 'En ligne' : 'Reconnexion…'), () => setStatus('solo', 'Hors salle'));
+    const attachedAt = performance.now();
+    room.onPeers(ch => {
+      syncPeers(ch.peers, performance.now());
+      if (ch.joined.length || ch.left.length){ refreshNames(); renderPlayers(); }
+      if (performance.now() - attachedAt > 2500) for (const p of ch.joined){ if (p.sameTab || p.kind !== 'viewer') continue; setTimeout(() => toast('▶ ' + up(first(nameOf(peerId(p)))) + ' A REJOINT LA PARTIE'), 600); }
+    });
+    room.on('hit', m => { if (!m.data || m.data.k !== hitKey() || !['boss', 'santa'].includes(cur().k)) return; hits++; lastHitAt = Date.now(); SFX.hit(); });
+  } else setStatus('solo', 'Hors salle');
+  refreshNames(); renderAll(true);
+}
+function soloMode(){
+  solo = true; isOwner = true; db = null; setStatus('solo', 'Aperçu solo');
+  SPRINT = null; renderAll(true);
+}
+
+renderAll(true);
+(document.fonts && document.fonts.load ? document.fonts.load('8px "Press Start 2P"') : Promise.resolve()).finally(() => requestAnimationFrame(frame));
+boot();
+setInterval(() => { if (cur().k === 'write' && LIVE.timerEnd) return; renderPlayers(); }, 4000);
+})();
+</script>

@@ -64,3 +64,7 @@ Dans `bureau.config.json` (une adresse `https://` seulement), puis republier la 
 ## Si le jeu se perd
 
 La source de Sprint Quest est dans le dépôt, `arcade/sprint-quest/` : la page et ses capacités. Dans Claude Code, à la racine du dépôt, « republie Sprint Quest » la republie à son adresse, ou refait un artefact neuf s'il a disparu. Pour un artefact neuf : partage-le à l'équipe, mets son lien de partage dans `combles.url`, `publish.py page`, puis « Préparer la partie » et « Coller » remplissent le sprint et l'équipe. Seule une partie en cours est perdue ; son récap se garde par « Copier le mail ».
+
+## Pixel Noël, la rétro de l'année
+
+En décembre, une variante de Sprint Quest rejoue toute l'année au lieu d'un sprint : le calendrier de l'année, le quiz, le traîneau de l'IA (les points par sprint avant et après son arrivée), la hotte des cadeaux qu'on n'aurait pas faits sans IA, un boss par membre tiré de ses chiffres, le Père Noël en boss final, puis les trophées et les vœux pour l'année suivante. C'est un artefact à part, dont la source est dans `arcade/pixel-noel/`. Claude prépare ses données depuis Jira et GitHub, l'hôte valide les boss de chacun, puis Claude les écrit dans l'artefact. Dans Claude Code : « prépare les données de Pixel Noël », « republie Pixel Noël ».
