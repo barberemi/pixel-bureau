@@ -67,7 +67,7 @@ Sources : [src: file: guide/developpement.md:5] [src: file: .gitignore:2].
 | `tools/publish.py` | Publication `page`, `workflows` ou `all` (les workflows, puis la page ; réservé à l'humain) [src: file: tools/publish.py:103] |
 | `tools/ci_main.py` | Avant de publier (`publish.py`, `upgrade.py`) : le run « Tests » de `main` sur le commit publié ; rouge ou en cours = refusé sans `--sans-ci` (#39) [src: file: tools/ci_main.py:1] |
 | `tools/upgrade.py` | Mise à jour d'une installation sans question : sauvegarde de la config, migrations, ce qui manque créé, puis publication (réservé à l'humain) [src: file: tools/upgrade.py:140] |
-| `tools/test.sh` | Point d'entrée des tests : `node --test`, `unittest`, `smoke.py` (normal et `--empty`) [src: file: tools/test.sh:7] |
+| `tools/test.sh` | Point d'entrée des tests : `node --test`, `tools/unittests.py` (tests Python en parallèle), `smoke.py` (normal et `--empty`) [src: file: tools/test.sh:7] |
 
 ## Auto-generated files (do NOT edit manually)
 
