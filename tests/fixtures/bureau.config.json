@@ -292,6 +292,14 @@
    "wf": [
     "5e990001"
    ]
+  },
+  {
+   "key": "palpatine",
+   "name": "Palpatine",
+   "role": "Rejouer un ticket livré", "icon": "⚡", "sprite": "palpatine",
+   "wf": [
+    "4e0e0001"
+   ]
   }
  ],
  "ui": {},
@@ -323,7 +331,9 @@
   "fix": "7a1c0004-0000-5000-8000-000000000004"
  },
  "models": {
-  "support": "5e990001-0000-4000-8000-000000000062"
+  "support": "5e990001-0000-4000-8000-000000000062",
+  "rejeu": "4e0e0001-0000-4000-8000-000000000332",
+  "impl_rejeu": "4e0e0002-0000-4000-8000-000000000332"
  },
  "support": {
   "name": "Support Scranton",

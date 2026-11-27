@@ -58,8 +58,8 @@ function enseigne(cfg) {
 // ids des boutons, comme action_ids() : actions, modèles (models, #78) en repli, puis launch
 function actionWf(cfg) {
   const models = cfg.models || {}, launch = Object.fromEntries(Object.entries(cfg.launch || {}).map(([k, v]) => [k, typeof v === 'object' && v ? v.wf : v]));
-  const ids = {...(cfg.actions || {}), ...(models.review_one ? {review: models.review_one} : {}), ...(models.estimate ? {estimate: models.estimate} : {}), ...(models.ai_time ? {ai_time: models.ai_time} : {}), ...launch};
-  return Object.fromEntries(Object.entries(ids).filter(([k, v]) => v && ['impl', 'mep', 'mep_pr', 'review', 'fix', 'fix_pr', 'rebase', 'comment', 'estimate', 'ai_time'].includes(k)).map(([k, v]) => [k, String(v).slice(0, 8)]));
+  const ids = {...(cfg.actions || {}), ...(models.review_one ? {review: models.review_one} : {}), ...(models.estimate ? {estimate: models.estimate} : {}), ...(models.ai_time ? {ai_time: models.ai_time} : {}), ...(models.rejeu ? {rejeu: models.rejeu} : {}), ...launch};
+  return Object.fromEntries(Object.entries(ids).filter(([k, v]) => v && ['impl', 'mep', 'mep_pr', 'review', 'fix', 'fix_pr', 'rebase', 'comment', 'estimate', 'ai_time', 'rejeu'].includes(k)).map(([k, v]) => [k, String(v).slice(0, 8)]));
 }
 // console Support (#62), comme support_page() : nom du canal et préfixe du modèle d'investigation, null sans canal
 function supportPage(cfg) {
@@ -74,6 +74,7 @@ function pageConfig(cfg) {
     enseigne: Object.keys(enseigne(cfg)).length ? enseigne(cfg) : null, // comme page_config() : le panneau du plan
     support: supportPage(cfg), // comme support_page() : console Support (#62)
     ticket: (cfg.models || {}).ticket ? {wf: String(cfg.models.ticket).slice(0, 8)} : null, // créer un ticket (#77)
+    rejeu_wf: String((cfg.models || {}).impl_rejeu || '').slice(0, 8), // comme page_config() : les runs du rejeu (Palpatine)
     rhythm: cfg.rhythm || {}, mep_workflow: cfg.mep_workflow, workflows: cfg.workflows || {}, agents: cfg.agents || [], ui: cfg.ui || {}, skins: themes(cfg),
     schedules: Object.fromEntries(['office', 'live', 'team', 'payroll', 'canard'].map(k => [k, ((JSON.parse(read('workflows', 'templates', k + '.json')).definition.trigger) || {}).schedule.replace('@@cron_hours@@', '4-20').replace('@@cron_veille@@', '4-22')]))}; // heures de Paris, comme cron_hours() (veille : minuit)
 }
@@ -124,7 +125,7 @@ function pageJs(owner, {demo = true, actions = true, config, layout} = {}) {
     __SNAP__: demo ? read('data', 'office_snapshot.json') : 'null',
     __TEAM__: demo ? read('data', 'team_snapshot.json') : 'null',
     __DEMO__: String(!!demo),
-    __ACTIONS__: JSON.stringify({avatar: actions, gate: actions, relaunch: actions, ask: actions, impl: actions, mep: actions, review: actions, fix: actions, comment: actions, duck: actions, agent: actions}),
+    __ACTIONS__: JSON.stringify({avatar: actions, gate: actions, relaunch: actions, ask: actions, impl: actions, mep: actions, review: actions, fix: actions, comment: actions, duck: actions, agent: actions, rejeu: actions}),
     // comme action_binds() de tools/assemble.py, sur les blocs du squelette (noms par défaut ; rôle facultatif repo de
     // « Corriger » retiré tant que launch.fix.vars ne le nomme pas, LAUNCH_OPTIONAL)
     __ACTION_BINDS__: JSON.stringify(Object.fromEntries([...read('page', 'office_template.html').matchAll(/data-action-id="([^"]+)">(.*?)<\/script>/gs)]

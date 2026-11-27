@@ -84,6 +84,14 @@
    "role": "Purger le cache Fastly",
    "model": "fastly_purge",
    "icon": "🧹"
+  },
+  {
+   "key": "palpatine",
+   "name": "Palpatine",
+   "role": "Rejouer un ticket livré",
+   "model": "rejeu",
+   "icon": "⚡",
+   "sprite": "palpatine"
   }
  ]
 }

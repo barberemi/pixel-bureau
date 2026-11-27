@@ -37,7 +37,7 @@ function portrait(c,size){
   const mf=metierOf(c)&&mtFrame(c);if(mf){x.drawImage(mf,12,8,40,40,0,0,40,40);p.style.width=size+'px';p.style.height=size+'px';return p;} // 69-metiers.js : en tenue
   const img=spriteOf(c);if(ready(img)){const tall=c.sprite==='boss_sax'; // le saxophoniste est plus grand : tête vers y=2 au lieu de ~13
     const ox=2*64+12+(tall?5:0),oy=4*64+(tall?0:8);
-    if(famOf(c)==='wf'&&!metierOf(c))x.drawImage(holoFrame(img,2*64,4*64,0,false,holoStyleOf(c)),12,8,40,40,0,0,40,40);else x.drawImage(img,ox,oy,40,40,0,0,40,40);}
+    if(famOf(c)==='wf'&&!metierOf(c)&&!palpIs(c))x.drawImage(holoFrame(img,2*64,4*64,0,false,holoStyleOf(c)),12,8,40,40,0,0,40,40);else x.drawImage(img,ox,oy,40,40,0,0,40,40);}
   p.style.width=size+'px';p.style.height=size+'px';return p;
 }
 // panneau replié en une bande étroite : le plan prend la place (bouton en haut du panneau ; un clic sur le plan le rouvre)
@@ -265,6 +265,7 @@ function drawSide(side){
     eb.title=canLook(c)?'Personnaliser':'Renommer';eb.setAttribute('aria-label',eb.title);eb.onclick=()=>openEditor(c);f.appendChild(eb);}
   famBlock(side,c); // 32-familles.js : à quoi il sert
   mtBlock(side,c); // 69-metiers.js : ce qu'il lance maintenant
+  palpBlock(side,c); // 49-palpatine.js : le rejeu, ses notes, son bouton
   if(!c.visitor){
     if(localOnly(c.key)){
       const n=document.createElement('div');

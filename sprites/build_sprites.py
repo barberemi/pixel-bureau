@@ -206,7 +206,8 @@ def frozen_side_walk(png):
 
 
 def sheets(custom_dir):
-    """Planches des sprites fournis d'un dossier (un sous-dossier par sprite) ; avertit d'une marche de côté figée."""
+    """Planches des sprites fournis d'un dossier (un sous-dossier par sprite) ; avertit d'une marche de côté figée. Un
+    <nom>-cast.png à côté (images de lancer de 128 x 64, decoupe.py eclairs) est gardé tel quel sous <nom>_cast."""
     out = {}
     for name in sorted(os.listdir(custom_dir)) if os.path.isdir(custom_dir) else []:
         png = build_custom(os.path.join(custom_dir, name))
@@ -217,6 +218,10 @@ def sheets(custom_dir):
                   file=sys.stderr)
         out[name] = "data:image/png;base64," + base64.b64encode(png).decode()
         print(name, len(png), "(sprite fourni)")
+        cast = os.path.join(custom_dir, name, f"{name}-cast.png")
+        if os.path.exists(cast):  # images de lancer (decoupe.py eclairs, Palpatine) : telles quelles, sous <nom>_cast
+            with open(cast, "rb") as f:
+                out[f"{name}_cast"] = "data:image/png;base64," + base64.b64encode(f.read()).decode()
     return out
 
 

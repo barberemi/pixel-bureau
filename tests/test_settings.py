@@ -47,7 +47,7 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(m["microsoft"], {"config_id": "m365", "planning": PLANNING})  # config_id : jamais celui du pack
         self.assertEqual(m["agents"][:2], [{"key": "dwight", "name": "Dwight", "role": "Reviewer de PR", "wf": ["aaaaaaaa"], "seat": [3, 4]},
                                            {"key": "a_new", "name": "Neuf", "wf": ["cccccccc"]}])  # Pete, sans workflow ici : absent
-        self.assertEqual([a["key"] for a in m["agents"][2:]], ["jim", "pompier"])  # casting par défaut : modèles installés
+        self.assertEqual([a["key"] for a in m["agents"][2:]], ["jim", "pompier", "palpatine"])  # casting par défaut : modèles installés (Palpatine : le rejeu de la démo)
         self.assertEqual(m["jira"], c["jira"])
         self.assertEqual(assemble.merged(m), m)  # idempotent
 
@@ -113,12 +113,12 @@ class SettingsTest(unittest.TestCase):
     def test_without_settings_nothing_changes(self):
         """Sans settings.json : rien ne change, sauf le casting par défaut (team/agents.json, lot 5 des habillages) qui
         rattache d'office les personnages des modèles installés que personne n'incarne (ici Jim au bouton rebase, le
-        Pompier au modèle support) ; la démo les a déjà (Nellie au Support, Jim à soi) : identique."""
+        Pompier au modèle support, Palpatine au rejeu) ; la démo les a déjà (Nellie au Support, Jim à soi) : identique."""
         os.remove(self.settings)
         c = self.cfg(agents=[DWIGHT])
         m = assemble.merged(c)
         self.assertEqual({k: v for k, v in m.items() if k != "agents"}, {k: v for k, v in c.items() if k != "agents"})
-        self.assertEqual([(a["key"], a["wf"]) for a in m["agents"]], [("dwight", DWIGHT["wf"]), ("jim", ["4d5e6f70"]), ("pompier", ["5e990001"])])
+        self.assertEqual([(a["key"], a["wf"]) for a in m["agents"]], [("dwight", DWIGHT["wf"]), ("jim", ["4d5e6f70"]), ("pompier", ["5e990001"]), ("palpatine", ["4e0e0001"])])
         self.assertEqual(m["agents"][0], DWIGHT)  # son propre nom : il garde son personnage
         demo = assemble.demo_config()  # sans pack
         self.assertEqual(assemble.merged(demo), demo)
@@ -129,7 +129,7 @@ class SettingsTest(unittest.TestCase):
         self.write({"agents": [{"key": "jim", "name": "Jimmy", "role": "Rebase", "model": "rebase"}]})
         m = assemble.merged(self.cfg(agents=[{"key": "holly", "wf": ["cccccccc"]}, {"key": "nellie", "name": "Nellie", "wf": ["5e990001"]}]))
         self.assertEqual([(a["key"], a.get("name"), a.get("icon")) for a in m["agents"]],
-                         [("holly", "Holly", None), ("nellie", "Nellie", None), ("jim", "Jimmy", None)])
+                         [("holly", "Holly", None), ("nellie", "Nellie", None), ("jim", "Jimmy", None), ("palpatine", "Palpatine", "⚡")])
         self.assertEqual(m["agents"][0]["sprite"], "p_holly")
         self.assertEqual(assemble.merged(m), m)
 

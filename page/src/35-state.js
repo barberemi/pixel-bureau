@@ -113,6 +113,7 @@ function stateAt(c,t){
     }
   if(!c.person&&!c.visitor)s0=supportAgentState(c,s0,t); // 48-support.js : l'agent Support, ses alertes (#62)
   if(metierOf(c))s0=mtState(c,s0); // 69-metiers.js : l'agent d'un étage reste à sa place
+  if(palpIs(c))s0=palpState(c,s0,t); // 49-palpatine.js : toujours à la salle des serveurs, il y rejoue les tickets
   // messages importants d'une discussion (visiteurs)
   if(c.visitor&&c.disc&&c.disc.imp>0&&!['gone','absent'].includes(s0.st))s0={
     ...s0,
