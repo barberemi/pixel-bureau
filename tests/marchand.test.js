@@ -1,6 +1,7 @@
-// Le marchand de sable (49-marchand.js) : l'invité de la mémoire du soir. Tant que la gate du cron « Le Bureau · mémoire du
-// soir » attend, il fait le tour des îlots sur son nuage (une halte par îlot), sa bulle dit le nombre de leçons (lu dans la
-// première ligne de la gate, en rouge) ; la gate est la sienne (sa fiche, jamais orpheline chez le boss) ; scène, fil, icône.
+// Le marchand de sable (49-marchand.js) : l'invité de la mémoire du soir. Tant qu'une gate du cron « Le Bureau · mémoire du
+// soir » attend (boss, puis boss_rejeu : les leçons du rejeu de Palpatine), il fait le tour des îlots sur son nuage (une
+// halte par îlot), sa bulle dit le nombre de leçons (lu dans la gate, en rouge), un parchemin par gate qui attend ; les
+// gates sont les siennes (sa fiche, jamais orphelines chez le boss) ; scène, fil, icône.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,7 +13,10 @@ const J = code => JSON.parse(run('JSON.stringify(' + code + ')'));
 const at = hm => `2026-10-01T${hm}:00+02:00`;
 const gate = (n, extra = '') => `{run: 'r-mem', wf: 'mem0demo-0000', wf_name: 'Le Bureau · mémoire du soir', gate: 'boss', since: '${at('22:00')}',
   message: '🧠 **Mémoire du soir** · ${n} : la rédaction renomme ce qui est décidé.'${extra}}`;
-const S = hm => J(`(s => ({st: s.st, zone: s.zone, bubble: s.bubble || null, hot: s.hot || null, visit: s.visit || null, cloud: !!s.cloud}))(sandmanState(byKey.g_marchand, Date.parse('${at(hm)}')))`);
+const REJEU = "\n\n⚡ **Rejeu de Palpatine** · 2 leçons à valider ensuite, à leur propre validation (fiche impl), juste après celle-ci.";
+const gateRejeu = n => `{run: 'r-mem', wf: 'mem0demo-0000', wf_name: 'Le Bureau · mémoire du soir', gate: 'boss_rejeu', since: '${at('22:00')}',
+  message: '⚡ **Mémoire du soir · rejeu de Palpatine** · ${n} : ce que les rejeux ont appris.'}`;
+const S = hm => J(`(s => ({st: s.st, zone: s.zone, bubble: s.bubble || null, hot: s.hot || null, visit: s.visit || null, cloud: !!s.cloud, scrolls: s.scrolls || null}))(sandmanState(byKey.g_marchand, Date.parse('${at(hm)}')))`);
 
 test('invité commun : le marchand de sable, sa planche (cape verte, écharpe) embarquée', () => {
   assert.equal(J('byKey.g_marchand.name'), 'Le marchand de sable');
@@ -91,7 +95,8 @@ test('la scène de la galerie : jouable, il prend son nuage sans gate', () => {
   assert.equal(sc[0].ok, true);
   run(`GATES = []; SCENE_DEMO = {flag: 'memoire', s: Date.parse('${at('11:00')}')};`);
   assert.equal(S('11:01').st, 'gate');
-  assert.equal(S('11:01').bubble, '🧠 3 leçons à valider');
+  assert.equal(S('11:01').bubble, '🧠 3 · ⚡ 2 à valider', 'la scène montre les deux validations');
+  assert.deepEqual(S('11:01').scrolls, {mem: true, rejeu: true}, 'et les deux parchemins');
   run('SCENE_DEMO = null;');
 });
 
@@ -134,4 +139,55 @@ test('rejouer sa scène : il repart de la porte vers sa halte, au lieu de rester
   assert.ok(r.path > 0, 'un chemin jusqu\'à sa halte');
   assert.deepEqual(r.second, r.first);
   assert.deepEqual(r.second, r.stop.slice(0, 2));
+});
+
+test('deux gates à la suite : la mémoire annonce les leçons du rejeu, puis leur gate ; un parchemin par gate qui attend', () => {
+  run(`GATES = [${gate('3 leçons à valider, 1 retirée', ' + ' + JSON.stringify(REJEU))}];`);
+  assert.deepEqual(J(`sandCounts(GATES[0])`), {mem: 3, rejeu: 2});
+  let s = S('22:01');
+  assert.equal(s.bubble, '🧠 3 · ⚡ 2 à valider');
+  assert.equal(s.hot, '3 · ⚡ 2', 'les deux nombres en rouge');
+  assert.deepEqual(s.scrolls, {mem: true, rejeu: true}, 'cachet violet et cachet rouge');
+  assert.equal(J('sandRejeuLessons()'), 2, 'lu en direct dans la gate ouverte');
+  // la mémoire décidée : la gate du rejeu s'ouvre, le parchemin violet disparaît
+  run(`GATES = [${gateRejeu('2 leçons à valider')}];`);
+  assert.deepEqual(J(`sandCounts(GATES[0])`), {mem: false, rejeu: 2});
+  s = S('22:01');
+  assert.equal(s.st, 'gate');
+  assert.equal(s.bubble, '⚡ 2 leçons à valider', 'une seule partie');
+  assert.equal(s.hot, '2 leçons');
+  assert.deepEqual(s.scrolls, {mem: false, rejeu: true});
+  assert.equal(J('sandRejeuLessons()'), 2);
+  assert.match(J(`sandmanState(byKey.g_marchand, Date.parse('${at('22:01')}')).label`), /2 leçons du rejeu de Palpatine/);
+  // sans leçon du rejeu : comme avant
+  run(`GATES = [${gate('1 leçon à valider')}];`);
+  assert.deepEqual(S('22:01').scrolls, {mem: true, rejeu: false});
+  assert.equal(S('22:01').bubble, '🧠 1 leçon à valider');
+  assert.equal(J('sandRejeuLessons()'), 0);
+  run('GATES = [];');
+  assert.equal(J('sandRejeuLessons()'), 0, 'aucune gate : 0');
+  assert.equal(S('22:01').scrolls, null, 'reparti : plus de parchemin');
+});
+
+test('la gate du rejeu est la sienne aussi, et le fil la dit', () => {
+  run(`GATES = [${gateRejeu('2 leçons à valider')}]; byKey.g_marchand.wf = []; T = Date.parse('${at('22:30')}'); DAY0 = Date.parse('${at('00:00')}');`);
+  assert.equal(J('loneGates().length'), 0, 'jamais orpheline chez le boss');
+  assert.equal(J('sandmanOwns(GATES[0])'), true);
+  const ev = J(`feedLifeEvents(T).filter(e => e.c === byKey.g_marchand).map(e => e.txt)`);
+  assert.equal(ev.length, 1);
+  assert.match(ev[0], /🧠 .*: 2 leçons du rejeu à valider/);
+  run(`GATES = [${gate('3 leçons à valider', ' + ' + JSON.stringify(REJEU))}];`);
+  const ev2 = J(`feedLifeEvents(T).filter(e => e.c === byKey.g_marchand).map(e => e.txt)`);
+  assert.match(ev2[0], /arrive sur son nuage : 3 leçons à valider, puis 2 leçons du rejeu à valider/);
+  run('GATES = [];');
+});
+
+test('les parchemins : des cartes de pixels régulières, cachet violet et cachet rouge à éclair', () => {
+  const pal = J('SAND_PAL');
+  for (const rows of [J('SAND_SCROLL'), J('SAND_SCROLL_R')]) {
+    assert.ok(rows.every(r => r.length === rows[0].length));
+    for (const r of rows) for (const ch of r) assert.ok(ch === '.' || ch in pal, ch);
+  }
+  assert.ok(J('SAND_SCROLL').join('').includes('m') && !J('SAND_SCROLL').join('').includes('n'), 'violet');
+  assert.ok(J('SAND_SCROLL_R').join('').includes('o') && !J('SAND_SCROLL_R').join('').includes('m'), 'rouge, avec l\'éclair');
 });

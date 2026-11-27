@@ -136,22 +136,47 @@ function palpDraw(c,now){
 }
 // après lui (drawChar) : au repos, l'étincelle par-dessus sa main
 function palpAfter(c,now){const m=c._st&&c._st.palp;if(m&&m.mode==='attend'&&!c.moving)palpIdleSpark(Math.round(c.pos.x),Math.round(c.pos.y),now);}
-// ---------- sa fiche (drawSide, 50-panel.js) : ce qu'il rejoue, ses dernières notes, le bouton ----------
+// ---------- sa fiche (drawSide, 50-panel.js) : maintenant, la dernière note, les leçons à valider, le bouton ; le témoin ----------
+// la dernière note : le dernier rejeu réussi du jour (run.res, AT_RUNS) s'il est plus récent que REJEU_SUM.dernier
+function palpLast(t){
+  const x=palpRuns().filter(x=>x.e!=null&&x.e<=t&&x.r.status==='Success'&&x.r.res&&x.r.res.note!=null).pop();
+  const d=REJEU_SUM&&REJEU_SUM.dernier, de=d&&d.note!=null?ms(d.fini_le):NaN;
+  if(x&&!(de>x.e))return {ticket:x.ticket||x.r.res.ticket||'',note:x.r.res.note,atteint:!!x.r.res.atteint,cible:x.r.res.cible||80,t:x.e};
+  return d&&d.note!=null?{ticket:d.ticket||'',note:d.note,atteint:!!d.cible,cible:80,t:isNaN(de)?null:de}:null;
+}
+// les leçons du rejeu à valider ce soir : la gate boss_rejeu ouverte (49-marchand.js), sinon le relevé du bilan
+const palpLessons=()=>(typeof sandRejeuLessons==='function'&&sandRejeuLessons())||(REJEU_SUM&&REJEU_SUM.lecons&&REJEU_SUM.lecons.a_valider)||0;
+// le bloc TÉMOIN (en haut à droite, à côté du nom) : la moyenne du jeu témoin, et l'écart contre la version d'avant
+function palpTemoin(){
+  const w=REJEU_SUM&&REJEU_SUM.temoin;if(!w||w.moyenne==null)return null;
+  const e=w.ecart, up=e!=null&&e>=1, down=e!=null&&e<=-1, col=up?'var(--ok)':down?'var(--err)':null;
+  const el=document.createElement('div');el.className='palp-tem';
+  el.title='Moyenne du jeu témoin : '+w.moyenne+(e!=null&&w.version_prec?', '+(e>0?'+':e<0?'-':'±')+Math.abs(e)+' depuis la version '+w.version_prec
+    :w.version?' (version '+w.version+')':'');
+  el.innerHTML='<div class="pt-l">TÉMOIN</div><div class="pt-v"'+(col?` style="color:${col}"`:'')+'>'+esc(String(w.moyenne))+'</div>'+
+    (e==null?'':`<span class="tag soft" style="--c:${col||'var(--idle)'}">${up?'▲ '+Math.round(e):down?'▼ '+Math.round(-e):'= 0'}</span>`);
+  return el;
+}
 function palpBlock(side,c){
   if(!palpIs(c))return;
+  const tem=palpTemoin(), face=side.querySelector('.face');
+  if(tem&&face){face.classList.add('has-tem');face.appendChild(tem);}
   const box=document.createElement('div');box.className='block palp';
   const h=document.createElement('div');h.className='la-h';h.textContent='⚡ Rejeu des tickets livrés';box.appendChild(h);
-  const m=palpMoment(T), done=palpRuns().filter(x=>x.e!=null&&x.e<=T).reverse().slice(0,5);
-  const p=document.createElement('p');p.className='mut';
-  p.textContent=m&&m.mode==='cast'?'Rejoue '+(m.ticket||'un ticket')+(m.x?' depuis '+hm(m.x.s):'')+' : '+palpStepName(m.step)+'.'
-    :'La chaîne refait un ticket déjà en prod depuis le commit d\'avant sa PR, en essai et sans gate, puis Palpatine note son travail contre la vraie PR (cible 80/100).';
+  if(tem&&!face)box.appendChild(tem);
+  const m=palpMoment(T), last=palpLast(T), n=palpLessons();
+  const p=document.createElement('p');p.className='palp-now';
+  p.innerHTML='<b>Maintenant</b> '+esc(m&&m.mode==='cast'?'Rejoue '+(m.ticket||'un ticket')+(m.x?' depuis '+hm(m.x.s):'')+' : '+palpStepName(m.step)
+    :'Attend un ticket à rejouer');
   box.appendChild(p);
-  if(done.length){const ul=document.createElement('ul');ul.className='palp-notes';
-    for(const x of done){const li=document.createElement('li'), res=x.r.res;
-      li.innerHTML=`<b>${esc(x.ticket||'?')}</b> ${x.r.status==='Success'?esc(palpNote(res)):'<span style="color:var(--err)">en panne</span>'} <small>${esc(hm(x.e))}</small>`+
-        (res&&res.parts?`<small> · tests ${palpPct(res.parts.tests)}, fichiers ${palpPct(res.parts.fichiers)}, lignes ${palpPct(res.parts.lignes)}, juge ${palpPct(res.parts.juge)}</small>`:'');
-      ul.appendChild(li);}
-    box.appendChild(ul);}
+  if(last){const q=document.createElement('p');q.className='palp-last';
+    q.innerHTML='<b>Dernière note</b> '+esc(last.ticket||'?')+' <b>'+esc(String(last.note))+'/100</b> '+
+      `<span class="tag soft" style="--c:${last.atteint?'var(--ok)':'var(--warn)'}">${last.atteint?'cible':'sous '+esc(String(last.cible))}</span>`+
+      (last.t?' <small>'+esc(fmtDay(last.t))+'</small>':'');
+    box.appendChild(q);}
+  if(n){const q=document.createElement('p');q.className='palp-lec';
+    q.innerHTML=`<span class="tag soft" style="--c:var(--err)" title="La mémoire du soir les propose à la gate du marchand de sable">⚡ ${esc(plural(n,'leçon','leçons'))} à valider ce soir</span>`;
+    box.appendChild(q);}
   if(ACTIONS.rejeu){
     const host=document.createElement('div');host.className='relaunch';host.style.display='block';host.setAttribute('data-kronn-action-slot-host','');
     host.innerHTML='<div class="rl-n">Rejouer un ticket</div><div class="rl-s">Rotation (une PR récente d\'un genre peu joué), jeu témoin (pour mesurer), ou un n° de PR ou un ticket.</div>';
@@ -161,7 +186,6 @@ function palpBlock(side,c){
   }
   side.appendChild(box);
 }
-const palpPct=v=>v==null?'non mesuré':v+' %';
 // sur la fiche d'un ticket terminé (62-ticket.js) : grisé pendant un rejeu
 function palpTicketButton(box,key){
   if(!ACTIONS.rejeu)return;

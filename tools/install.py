@@ -24,8 +24,8 @@ OFFICE = [("dwight", "Dwight"), ("jim", "Jim"), ("stanley", "Stanley"), ("phylli
           ("erin", "Erin"), ("ryan", "Ryan")]
 ROLES = {"dev": ("Développement", None), "lead": ("Tech Lead", "lead"), "qa": ("Test", "qa"), "po": ("Product owner", "po"),
          "sm": ("Facilitation", "sm")}  # libellés neutres : le rôle, pas la personne
-DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "agents", "bosspages", "pagelist", "gitfut", "layout", "actions", "duck", "absences", "mails", "mail_rules", "support", "todos", "atelier", "retours", "redaction", "statuts", "sprintquest", "oeil"]
-CRONS = ("office", "live", "team", "payroll", "canard", "absences", "courrier", "support_poll", "chaine_bilan", "support_bilan", "redaction_bilan", "retours_bilan", "revue_bilan")
+DATASETS = ["office", "live", "team", "gates", "payroll", "avatars", "agents", "bosspages", "pagelist", "gitfut", "layout", "actions", "duck", "absences", "mails", "mail_rules", "support", "todos", "atelier", "retours", "redaction", "statuts", "sprintquest", "oeil", "rejeu_resume"]
+CRONS = ("office", "live", "team", "payroll", "canard", "absences", "courrier", "support_poll", "chaine_bilan", "support_bilan", "redaction_bilan", "retours_bilan", "revue_bilan", "rejeu_bilan")
 # les lignes de la revue de PR : ajoutées une par revue (reviews, review_meta), ou mises à jour par session (review_sessions)
 DATASET_KINDS = {"reviews": "time_series", "review_meta": "time_series", "review_sessions": "collection"}
 DATASET = lambda name: {"name": name, "kind": DATASET_KINDS.get(name, "snapshot"), "max_points": 50000}  # noqa: E731
@@ -1000,7 +1000,7 @@ def bilan_html():
 
 
 def upsert_side_page(k, cfg, key, dry):
-    """Une page à part (« Chaîne · bilan », « Support · bilan », « Rédaction · bilan », « Retours · bilan », « Revue · bilan ») : créée une fois (son id dans cfg[key]), ses datasets
+    """Une page à part (« Chaîne · bilan », « Support · bilan », « Rédaction · bilan », « Retours · bilan », « Revue · bilan », « Rejeu · bilan ») : créée une fois (son id dans cfg[key]), ses datasets
     ajoutés s'ils manquent. Son HTML est publié avec la page du Bureau (install.py, publish.py page)."""
     title, datasets, _ = templates.SIDE_PAGES[key]
     pid = cfg.get(key)
@@ -1028,7 +1028,8 @@ def upsert_side_page(k, cfg, key, dry):
 def side_pages(k, cfg, chosen, dry):
     """Les pages à part des modèles installés (chosen : clés de TEMPLATES), créées ou complétées, leur id rangé dans la
     config. Avant les workflows : le cron de chaque bilan publie dans sa page. Partagé avec tools/upgrade.py."""
-    for model, key in (("impl_chain", "bilan_page_id"), ("support", "support_bilan_page_id"), ("ticket", "redaction_bilan_page_id")):
+    for model, key in (("impl_chain", "bilan_page_id"), ("support", "support_bilan_page_id"), ("ticket", "redaction_bilan_page_id"),
+                       ("rejeu", "rejeu_bilan_page_id")):
         if model in chosen and not templates.skipped(model, cfg):
             bid = upsert_side_page(k, cfg, key, dry)
             if bid:

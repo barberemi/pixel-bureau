@@ -5,7 +5,7 @@
   python3 tools/templates.py render <clé>   # affiche le rendu d'un modèle (office, live, team, payroll, canard, absences, avatar, agent, gate, relaunch, layout, comment, duck, ask, sketch)
 
 Emplacements, remplacés au rendu :
-  @@page_id@@, @@bilan.page_id@@ (page « Chaîne · bilan »), @@support_bilan.page_id@@ (page « Support · bilan »), @@redaction_bilan.page_id@@ (page « Rédaction · bilan »), @@retours_bilan.page_id@@ (page « Retours · bilan »), @@kronn.project_id@@, @@jira.config_id@@, @@jira.project@@, @@jira.board@@, @@jira.sprint_field@@,
+  @@page_id@@, @@bilan.page_id@@ (page « Chaîne · bilan »), @@support_bilan.page_id@@ (page « Support · bilan »), @@redaction_bilan.page_id@@ (page « Rédaction · bilan »), @@retours_bilan.page_id@@ (page « Retours · bilan »), @@rejeu_bilan.page_id@@ (page « Rejeu · bilan »), @@kronn.project_id@@, @@jira.config_id@@, @@jira.project@@, @@jira.board@@, @@jira.sprint_field@@,
   @@jira.review_version_field@@ (champ du n° de version des corrections de PR), @@jira.points_fields@@ (liste jointe par des virgules), @@owner_name@@ (prénom du boss),
   @@microsoft.config_id@@, @@microsoft.site@@, @@microsoft.item@@ (planning des absences, connexion Microsoft 365 de Kronn),
   @@script:workflows/x.py@@ (le script, config d'installation injectée comme le fait publish.py),
@@ -44,7 +44,8 @@ SIDE_PAGES = {"bilan_page_id": ("Chaîne · bilan", ["bilan"], "bilan.html"),
               "retours_bilan_page_id": ("Retours · bilan", ["retours_bilan"], "retours-bilan.html"),
               # la page de la revue de PR : la revue y écrit une ligne par revue (reviews, review_meta, review_sessions), le
               # cron revue_bilan la suite ; une page de récap déjà réglée (review.page_id) est reprise, pas recréée
-              "revue_bilan_page_id": ("Revue · bilan", ["revue_bilan", "reviews", "review_meta", "review_sessions"], "revue-bilan.html")}
+              "revue_bilan_page_id": ("Revue · bilan", ["revue_bilan", "reviews", "review_meta", "review_sessions"], "revue-bilan.html"),
+              "rejeu_bilan_page_id": ("Rejeu · bilan", ["rejeu_bilan"], "rejeu-bilan.html")}
 # modèle -> (type, où trouver l'id dans la config, scripts par étape)
 TEMPLATES = {
     "office": ("workflow", ("workflows", "office"), {"snapshot": "workflows/office_snapshot.py", "statuts": "workflows/statuts_snapshot.py", "oeil": "workflows/oeil_snapshot.py"}),
@@ -150,6 +151,9 @@ TEMPLATES = {
     # page « Revue · bilan » : la suite des bloquants (historique des revues) et l'état des PR relues (gh), page Kronn à part
     # (revue_bilan_page_id, sinon review.page_id) ; sans revue installée ou sans cette page : pas créé
     "revue_bilan": ("workflow", ("workflows", "revue_bilan"), {"bilan": "workflows/revue_bilan.py"}),
+    # page « Rejeu · bilan » : les rejeux de Palpatine (dossier du rejeu et API Kronn), page Kronn à part (rejeu_bilan_page_id),
+    # et le résumé de la fiche de Palpatine (dataset rejeu_resume de la page du Bureau) ; sans rejeu installé ou sans cette page : pas créé
+    "rejeu_bilan": ("workflow", ("workflows", "rejeu_bilan"), {n: "workflows/rejeu_bilan.py" for n in ("releve", "bilan", "resume")}),
     # mémoire du soir (amélioration continue) : les retours humains du jour réécrits en leçons par un agent, validées à ta
     # gate, lues par les postes de la rédaction, de la chaîne, de la revue et de « corriger » (workflows/_memoire.py) ;
     # sans aucun de ces workflows installés, ou memoire.actif à false : pas créé
@@ -354,7 +358,7 @@ def script_code(path, cfg):
         c["sprintquest_team"] = assemble.sprintquest_team(cfg)
     if path == "workflows/review.py":  # version de la revue gardée avec chaque revue (historique, page de récap)
         c["review_version"] = review_version()
-    if path in CHAINE_SCRIPTS:  # version de la chaîne gardée dans le bilan de chaque run (page « Chaîne · bilan »)
+    if path in CHAINE_SCRIPTS + ("workflows/rejeu_bilan.py",):  # version de la chaîne : dans le bilan de chaque run, et en service (bilan du rejeu)
         c["impl_version"] = impl_version(carnet_on(cfg))
     blob = json.dumps(c, ensure_ascii=False)
     assert '"""' not in blob and "__BUREAU_CONFIG__" in code, path
@@ -394,6 +398,7 @@ def values(cfg):
         "bilan.page_id": cfg.get("bilan_page_id") or "",  # page « Chaîne · bilan » (installée avec la chaîne)
         "redaction_bilan.page_id": cfg.get("redaction_bilan_page_id") or "",  # page « Rédaction · bilan » (installée avec le modèle ticket)
         "retours_bilan.page_id": cfg.get("retours_bilan_page_id") or "",  # page « Retours · bilan » (installée avec « corriger »)
+        "rejeu_bilan.page_id": cfg.get("rejeu_bilan_page_id") or "",  # page « Rejeu · bilan » (installée avec le rejeu)
         "revue_bilan.page_id": revue_page(cfg),  # page « Revue · bilan » (installée avec la revue, ou la page de récap déjà réglée)
         "support_bilan.page_id": cfg.get("support_bilan_page_id") or "",  # page « Support · bilan » (installée avec l'investigation)
         "kronn.project_id": (cfg.get("kronn") or {}).get("project_id") or "",
@@ -573,6 +578,8 @@ def skipped(key, cfg):
         return not ((cfg.get("models") or {}).get("review_child") and revue_page(cfg))
     if key == "retours_bilan":  # la page du bilan des retours : « corriger » installé (actions.fix_pr) et page créée (install.py)
         return not ((cfg.get("actions") or {}).get("fix_pr") and cfg.get("retours_bilan_page_id"))
+    if key == "rejeu_bilan":  # la page du bilan du rejeu : rejeu installé (models.rejeu) et page créée (install.py)
+        return not ((cfg.get("models") or {}).get("rejeu") and cfg.get("rejeu_bilan_page_id"))
     if key == "memoire":  # aucun workflow à agent qui lit la mémoire installé, ou mémoire éteinte (memoire.actif)
         m, models = cfg.get("memoire") or {}, cfg.get("models") or {}
         return m.get("actif") is False or not (models.get("ticket") or models.get("impl_chain") or models.get("review_child")

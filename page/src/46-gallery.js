@@ -46,8 +46,8 @@ function galleryScenes(){
     else if(c.on==='mail'){const acc=typeof mailAccounts==='function'?mailAccounts().filter(a=>a.ok):[];
       if(acc.length)add({...g,ico:'📮',n:c.name+' · le courrier',d:c.role||'Dépose le courrier aux boîtes',w:'À l\'arrivée d\'un courrier',
         play:{len:POST_STAY+60e3,speed:10,setup:s=>{SCENE_DEMO.flag='post';}}});}
-    else if(c.on==='memoire')add({...g,ico:'🧠',n:c.name+' · la mémoire du soir',d:c.role&&c.role!=='Mémoire du soir'?c.role:'Sur son nuage, son ours à côté, il fait le tour des îlots et sème du sable',
-      w:'Le soir, quand la mémoire a des leçons à te proposer, jusqu\'à ta validation',play:{len:3*SAND_STOP,speed:10,setup:s=>{SCENE_DEMO.flag='memoire';}}}); // 49-marchand.js
+    else if(c.on==='memoire')add({...g,ico:'🧠',n:c.name+' · la mémoire du soir',d:c.role&&c.role!=='Mémoire du soir'?c.role:'Sur son nuage, son ours à côté, il fait le tour des îlots et sème du sable ; deux parchemins : sa mémoire (cachet violet) et les leçons du rejeu de Palpatine (cachet rouge)',
+      w:'Le soir, quand la mémoire a des leçons à te proposer, jusqu\'à tes validations',play:{len:3*SAND_STOP,speed:10,setup:s=>{SCENE_DEMO.flag='memoire';}}}); // 49-marchand.js
     else add({...g,ico:'👋',n:c.name+' · visite',d:c.role||'De passage',w:c.tour?'Sa tournée, la nuit':'Une fois dans la journée',play:{len:3*60e3,speed:10,setup:visit(3*60e3)}});
   }
   for(const c of chars.filter(c=>c.person&&c.seat&&passionOf(c)&&PASSION_MOMENTS[passionOf(c).moment])){

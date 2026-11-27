@@ -1,7 +1,7 @@
 {
  "kind": "workflow",
  "key": "memoire",
- "doc": "Mémoire du soir (amélioration continue) : les retours humains du jour (tampon des tickets, gates de la chaîne, Changements des corrections, bloquants réfutés des revues) réécrits en leçons courtes par un agent ; le boss valide à sa gate, les agents les lisent à leur run suivant.",
+ "doc": "Mémoire du soir (amélioration continue) : les retours humains du jour (tampon des tickets, gates de la chaîne, Changements des corrections, bloquants réfutés des revues) et les écarts vus par le juge du rejeu (Palpatine, hors jeu témoin) réécrits en leçons courtes par un agent ; le boss valide à deux gates (boss : la mémoire ; boss_rejeu : les leçons du rejeu pour la fiche impl), les agents les lisent à leur run suivant.",
  "definition": {
   "name": "Le Bureau · mémoire du soir",
   "project_id": "@@kronn.project_id@@",
@@ -40,12 +40,13 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "À 22 h, heure du bureau (memoire.heure ; le cron tourne aux deux heures UTC possibles, été comme hiver, l'autre passage s'arrête là) : les retours humains depuis le dernier relevé, lus dans ce que gardent les workflows (historique des tickets, retours.md de la chaîne, état des corrections, historique des revues), au journal ; rien de nouveau : code 3, fin sans agent (0 token).",
+    "description": "À 22 h, heure du bureau (memoire.heure ; le cron tourne aux deux heures UTC possibles, été comme hiver, l'autre passage s'arrête là) : les retours humains depuis le dernier relevé, lus dans ce que gardent les workflows (historique des tickets, retours.md de la chaîne, état des corrections, historique des revues), et les écarts des rejeux finis (hors jeu témoin), au journal ; les leçons du rejeu d'un run arrêté avant leur gate reviennent ; rien de nouveau : code 3, fin sans agent (0 token).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
      "@@script:workflows/memoire.py@@",
-     "releve"
+     "releve",
+     "{{run.id}}"
     ],
     "exec_timeout_secs": 300,
     "on_result": [
@@ -63,7 +64,7 @@
     "step_type": {
      "type": "Agent"
     },
-    "description": "L'agent réécrit les fiches de la mémoire (fusionner, reformuler, oublier) et propose ce qui mérite d'être gravé dans le dépôt (seule étape avec des jetons).",
+    "description": "L'agent réécrit les fiches de la mémoire (fusionner, reformuler, oublier), propose ce qui mérite d'être gravé dans le dépôt, et rend à part les leçons du rejeu pour la fiche impl (seule étape avec des jetons).",
     "agent": "ClaudeCode",
     "mode": {
      "type": "Normal"
@@ -126,6 +127,27 @@
        },
        "resume": {
         "type": "string"
+       },
+       "rejeu": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "lecon": {
+           "type": "string"
+          },
+          "poste": {
+           "type": "string"
+          },
+          "source": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "lecon",
+          "source"
+         ]
+        }
        }
       },
       "required": [
@@ -150,12 +172,13 @@
     "step_type": {
      "type": "Exec"
     },
-    "description": "Proposition vérifiée (fiches connues, format, limites) et mise en diff pour ta validation ; rien à changer : code 3, fin (0 token).",
+    "description": "Proposition vérifiée (fiches connues, format, limites) et mise en diff pour ta validation, leçons du rejeu rangées à part (lecons.json) ; rien pour la gate boss mais des leçons du rejeu : code 4, à leur gate ; rien du tout : code 3, fin (0 token).",
     "exec_command": "python3",
     "exec_args": [
      "-c",
      "@@script:workflows/memoire.py@@",
-     "propose"
+     "propose",
+     "{{run.id}}"
     ],
     "exec_timeout_secs": 60,
     "exec_stdin": "{{steps.consolide.data_json ?? \"null\"}}",
@@ -165,6 +188,13 @@
       "action": {
        "type": "Goto",
        "step_name": "fin"
+      }
+     },
+     {
+      "contains": "exit_4",
+      "action": {
+       "type": "Goto",
+       "step_name": "propose_rejeu"
       }
      }
     ]
@@ -182,7 +212,7 @@
     "step_type": {
      "type": "Gate"
     },
-    "description": "Le boss valide la mémoire : Approuver l'écrit, Changements la renvoie à l'agent avec son message, Rejeter la laisse telle quelle.",
+    "description": "Le boss valide la mémoire : Approuver l'écrit, Changements la renvoie à l'agent avec son message, Rejeter la laisse telle quelle (Kronn arrête alors le run : les leçons du rejeu reviennent au prochain soir).",
     "gate_message": "{{steps.propose.data.stdout}}",
     "gate_request_changes_target": "consolide"
    },
@@ -205,6 +235,78 @@
      "-c",
      "@@script:workflows/memoire.py@@",
      "applique"
+    ],
+    "exec_timeout_secs": 60
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "propose_rejeu",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Le message de la gate des leçons du rejeu ; rien du rejeu : code 3, fin (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/memoire.py@@",
+     "propose_rejeu",
+     "{{run.id}}"
+    ],
+    "exec_timeout_secs": 60,
+    "on_result": [
+     {
+      "contains": "exit_3",
+      "action": {
+       "type": "Goto",
+       "step_name": "fin"
+      }
+     }
+    ]
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "boss_rejeu",
+    "step_type": {
+     "type": "Gate"
+    },
+    "description": "Le boss valide les leçons du rejeu de Palpatine : Approuver les ajoute à la fiche impl, Changements les renvoie à l'agent avec son message (la proposition de la mémoire, déjà décidée, ne revient pas), Rejeter n'écrit rien.",
+    "gate_message": "{{steps.propose_rejeu.data.stdout}}",
+    "gate_request_changes_target": "consolide"
+   },
+   {
+    "agent": "ClaudeCode",
+    "prompt_template": "",
+    "mode": {
+     "type": "Normal"
+    },
+    "output_format": {
+     "type": "FreeText"
+    },
+    "name": "applique_rejeu",
+    "step_type": {
+     "type": "Exec"
+    },
+    "description": "Validées : les leçons du rejeu ajoutées à la fiche impl (la précédente gardée dans versions/), lecons.json à jour pour le bilan du rejeu (0 token).",
+    "exec_command": "python3",
+    "exec_args": [
+     "-c",
+     "@@script:workflows/memoire.py@@",
+     "applique_rejeu",
+     "{{run.id}}"
     ],
     "exec_timeout_secs": 60
    },

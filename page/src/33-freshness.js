@@ -19,7 +19,7 @@ const FRESH_SRC=[
   {key:'oeil',cron:'office',label:'L\'Œil (tes PR)',period:600e3,grace:300e3,gen:()=>OEIR&&OEIL&&OEIL.generated_at}, // 69-oeil.js : seulement avec sa tour
 ];
 // crons du Bureau sans ligne (leurs données vont sur leur propre page) : leur nom quand leur dernier passage échoue
-const CRON_NAMES={chaine_bilan:'Chaîne · bilan',support_bilan:'Support · bilan',redaction_bilan:'Rédaction · bilan',retours_bilan:'Retours · bilan'};
+const CRON_NAMES={chaine_bilan:'Chaîne · bilan',support_bilan:'Support · bilan',redaction_bilan:'Rédaction · bilan',retours_bilan:'Retours · bilan',rejeu_bilan:'Rejeu · bilan'};
 // les sources dans l'ordre du panneau : chaque cron, puis ses parties
 const freshOrder=()=>FRESH_SRC.filter(s=>!s.cron).flatMap(s=>[s,...FRESH_SRC.filter(x=>x.cron===s.key)]);
 function cronOf(key){

@@ -12,16 +12,17 @@ Rien de plus à faire de ton côté : le cron lit ce que les workflows gardent d
 - **Chaîne d'implémentation** : tes « Changements » aux gates du plan, de l'escalade et de la PR. Les essais de la chaîne sont écartés.
 - **Revue de PR** : un bloquant que la passe suivante a dû réfuter, avec sa preuve. C'est une revue qui s'est trompée.
 - **Correction des commentaires** : ton message « Changements » à la validation du diff.
+- **Rejeu de Palpatine** : quand Palpatine rejoue un ticket déjà livré, son juge liste les écarts avec la vraie PR, chacun avec une cause et une leçon. Les rejeux du jeu témoin sont écartés (ils servent à mesurer), et un écart « acceptable » (une autre solution valable) n'apprend rien. Un écart « ticket vague » va avec les retours de l'écriture de ticket. Les écarts « choix de l'agent » et « convention » font une seconde proposition, pour la chaîne d'implémentation, que tu valides à part (plus bas).
 
 S'il n'y a rien de nouveau, le run s'arrête là, sans agent ni jetons.
 
 ## Le marchand de sable
 
-Tant que la gate attend, le marchand de sable vient la porter : un monsieur brun à la cape verte et à l'écharpe rayée, debout sur son nuage, son ours à côté. Il ne marche pas : c'est le nuage qui le porte d'un îlot à l'autre. Il fait le tour des îlots de l'open space, s'arrête en haut de chacun, son nuage par-dessus les bureaux (une minute et demie), y sème un peu de sable, puis passe au suivant. Sa bulle dit combien de leçons t'attendent, le nombre en rouge. Une fois la gate décidée, il repart par la porte, toujours sur son nuage avec son ours.
+Tant qu'une de ses deux validations attend, le marchand de sable vient la porter : un monsieur brun à la cape verte et à l'écharpe rayée, debout sur son nuage, son ours à côté. Il ne marche pas : c'est le nuage qui le porte d'un îlot à l'autre. Il fait le tour des îlots de l'open space, s'arrête en haut de chacun, son nuage par-dessus les bureaux (une minute et demie), y sème un peu de sable, puis passe au suivant. Sa bulle dit combien de leçons t'attendent, en rouge : « 🧠 3 · ⚡ 2 à valider » (3 pour la mémoire, 2 du rejeu de Palpatine), ou une seule partie quand l'autre est vide. Il porte un parchemin par validation, posé sur son nuage : cachet violet pour la mémoire, cachet rouge à petit éclair pour les leçons du rejeu. Celui d'une validation décidée disparaît. Quand plus rien n'attend, il repart par la porte, toujours sur son nuage avec son ours.
 
-![Le marchand de sable sur son nuage au-dessus d'un îlot, son ours à côté, la bulle « 3 leçons à valider »](../img/marchand.png)
+![Le marchand de sable sur son nuage au-dessus d'un îlot, son ours à côté, deux parchemins sur le nuage, la bulle « 🧠 3 · ⚡ 2 à valider »](../img/marchand.png)
 
-Un clic sur lui ouvre sa fiche avec la validation. Elle est aussi chez le boss, comptée une fois, comme les règles du facteur. À son arrivée, la loupe l'agrandit et le fil le note (onglet Tout) ; « Comment lire le plan » › 🎬 Scènes le rejoue (« ▶ voir »). La gate décidée, il repart par la porte.
+Un clic sur lui ouvre sa fiche avec la validation. Elle est aussi chez le boss, comptée une fois, comme les règles du facteur. À son arrivée, la loupe l'agrandit et le fil le note (onglet Tout), puis « 🧠 2 leçons du rejeu à valider » quand leur validation s'ouvre ; « Comment lire le plan » › 🎬 Scènes le rejoue (« ▶ voir »). La gate décidée, il repart par la porte.
 
 ## Ce que tu valides
 
@@ -34,6 +35,18 @@ Une gate « 🧠 Mémoire du soir » s'ouvre sur la page, comme les autres valid
 Elle t'attend jusqu'à trois jours : celle de 22 h se valide le lendemain matin, celle du vendredi soir le lundi. Tant qu'elle est ouverte, le soir suivant ne relance rien ; les retours de ces jours-là passent au relevé d'après.
 
 **Approuver** écrit les fiches. **Changements** renvoie la proposition à l'agent avec ton message. **Rejeter** laisse tout tel quel.
+
+### Les leçons du rejeu, à part
+
+Quand le rejeu a appris quelque chose, la première validation l'annonce (« ⚡ Rejeu de Palpatine · 2 leçons à valider ensuite »), et une seconde s'ouvre juste après : « ⚡ Mémoire du soir · rejeu de Palpatine · 2 leçons à valider ». Chaque leçon y est avec sa source (« ⚡ DM-2041 · choix_agent » : le ticket rejoué et la cause de l'écart), et le poste de la chaîne qu'elle vise quand il y en a un.
+
+- **Approuver** les ajoute à la fiche de la chaîne d'implémentation (`impl.md`).
+- **Changements** renvoie ces leçons à l'agent avec ton message. La première validation, déjà décidée, ne revient pas.
+- **Rejeter** n'en écrit aucune.
+
+S'il n'y a rien pour la mémoire mais des leçons du rejeu, seule la seconde validation s'ouvre.
+
+Un « Rejeter » arrête le run dans Kronn. C'est pour ça que la mémoire est écrite avant que la seconde validation ne s'ouvre. Si tu rejettes la première, la seconde ne s'ouvre pas ce soir-là : ses leçons reviennent au soir suivant, rien n'est perdu. Les leçons validées sont gardées dans `~/.local/share/pixel-bureau/rejeu/lecons.json` ; la page « Rejeu · bilan » les compte et les montre sur la courbe du jeu témoin.
 
 ## Les fiches
 
