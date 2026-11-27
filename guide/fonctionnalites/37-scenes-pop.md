@@ -6,7 +6,7 @@ Quatre clins d'œil au RDC, chacun déclenché par un vrai événement. Comme le
 
 ![L'amiral Ackbar crie devant le poste de l'auteur d'une grosse PR](../img/ackbar.png)
 
-Une PR ouverte dans la journée dépasse 1000 lignes (ajoutées et retirées) ou 30 fichiers : l'amiral Ackbar entre par la porte, se plante à côté du poste de son auteur et crie « IT'S A TRAP! #2042 : 2 140 lignes, 48 fichiers » pendant 3 minutes, puis repart. C'est un invité commun, comme Gandalf et Yoda ; un pack peut changer sa réplique (`shout` : `{pr}`, `{lignes}`, `{fichiers}`, `{name}`) en reprenant sa clé `g_ackbar` dans `roster.json`.
+Une PR ouverte dans la journée dépasse 1000 lignes (ajoutées et retirées) ou 30 fichiers : l'amiral Ackbar entre par la porte, se plante à côté du poste de son auteur et crie, bras levés, « IT'S A TRAP! #2042 : 2 140 lignes, 48 fichiers » pendant 3 minutes, puis repart. C'est un invité commun, comme Gandalf et Yoda ; un pack peut changer sa réplique (`shout` : `{pr}`, `{lignes}`, `{fichiers}`, `{name}`) en reprenant sa clé `g_ackbar` dans `roster.json`.
 
 ## Le verdict de la revue
 

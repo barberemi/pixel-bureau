@@ -560,6 +560,9 @@ function wanderZone(c,real){
   }
   return c.idlePlan.zone;
 }
+// la pose d'après l'état : bras levés pour une gate, une fête, un bravo, une passion (sauf la boxe) et les cris de
+// l'amiral Ackbar devant une grosse PR (bigpr, 43-pop.js : ackbar-emote.png) ; tape au clavier à son bureau
+const poseOf=(s,zone)=>s.st==='sax'?'type':(s.st==='gate'||s.st==='party'||s.st==='cheer'||s.st==='bigpr'||s.st==='passion'&&s.passion!=='boxe')?'hands':(s.st==='work'&&zone==='desk')?'type':'idle';
 function tick(real){
   // deux passes : l'état du boss et des invités dépend de celui des autres (validations en attente, collègues à leur bureau)
   for(const c of chars)if(!c.boss&&!c.guest)c._st=stateAt(c,T);
@@ -575,7 +578,7 @@ function tick(real){
     let zone=s.zone; if(zone==='wander')zone=wanderZone(c,real); else c.idlePlan=null;
     const spot=pickSpot(c,zone,taken); if(!spot)continue;
     claimSpot(taken,spot);
-    c.pose=s.st==='sax'?'type':(s.st==='gate'||s.st==='party'||s.st==='cheer'||s.st==='passion'&&s.passion!=='boxe')?'hands':(s.st==='work'&&zone==='desk')?'type':'idle';
+    c.pose=poseOf(s,zone);
     if(!c.present||needTeleport||!c.pos){
       c.present=true;
       // placé d'un coup seulement au chargement / saut dans le temps ; un nouvel arrivant entre par la porte et marche

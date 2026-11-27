@@ -103,7 +103,7 @@ def render(used, rows):
                      "par `sprites/decoupe.py vol`.")
     lines.append("- Le sorcier du pack d'exemple (`tests/fixtures/pack-exemple/sprites/sorcier/`) : copie du mage, mêmes crédits.")
     lines += ["", "## Personnages", "",
-              "La démo et les agents sont un clin d'œil de fan à *The Office*, les hérauts à Yoda et Palpatine (*Star Wars*) et à Gandalf "
+              "La démo et les agents sont un clin d'œil de fan à *The Office*, les hérauts à Yoda, Palpatine et l'amiral Ackbar (*Star Wars*) et à Gandalf "
               "et au Nazgûl (*Le Seigneur des anneaux*). Ces noms et ces personnages appartiennent à leurs ayants droit ; Le Bureau n'a "
               "aucun lien avec eux, ni leur approbation, et n'en fait aucun usage commercial.", ""]
     return "\n".join(lines)

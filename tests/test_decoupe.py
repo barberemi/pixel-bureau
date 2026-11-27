@@ -66,6 +66,27 @@ class DecoupeTest(unittest.TestCase):
                 self.assertTrue(40 <= hx <= 50 and 30 <= hy <= 50, hands[i])
         json.dumps(hands)
 
+    def test_grille(self):
+        """Grille de cases (GRILLES[<nom>]) : marche 9 x 4, attente 2 x 4, bras levés 3 x 1 ; la droite est le miroir de
+        la gauche, la pose d'attente de face fait --taille px, les pieds à 62, le trait de la grille transparent."""
+        g = decoupe.GRILLES["ackbar"]
+        cols, rows = g["grille"]
+        src = Image.new("RGB", (cols * 100, rows * 120), MAGENTA)
+        for r in range(rows):
+            for c in range(cols):
+                src.paste((180, 0, 170), (c * 100, r * 120, c * 100 + 2, r * 120 + 120))  # le trait de la grille
+                x, y = c * 100 + 30, r * 120 + 20
+                src.paste(BODY, (x, y, x + 40, y + 90))
+                src.paste((200, 180, 60), (x + 30, y + 10, x + 40, y + 20))  # un œil à droite : le miroir se voit
+        out = decoupe.grille(self.save(src), "ackbar", 42)
+        walk, idle, emote = out["ackbar-walk.png"], out["ackbar-idle.png"], out["ackbar-emote.png"]
+        self.assertEqual((walk.size, idle.size, emote.size), ((576, 256), (128, 256), (192, 64)))
+        box = idle.crop((0, 128, 64, 192)).getbbox()
+        self.assertEqual((box[3] - box[1], box[3]), (42, 62))
+        self.assertEqual(walk.getpixel((1, 1))[3], 0)
+        self.assertEqual(list(walk.crop((64, 64, 128, 128)).getdata()), list(walk.crop((64, 192, 128, 256)).transpose(Image.FLIP_LEFT_RIGHT).getdata()))
+        self.assertTrue(all(emote.crop((c * 64, 0, c * 64 + 64, 64)).getbbox() for c in range(3)))
+
     def test_vol(self):
         """4 rangées de 8 sur un damier gris : 6 cases carrées (plané, 4 battements, le parchemin seul), l'œil de la monture
         au même point de chaque case, le damier transparent, même enfermé entre la queue et le corps."""

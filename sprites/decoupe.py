@@ -10,6 +10,11 @@ dans le dépôt : les relancer avec les mêmes planches redonne les mêmes fichi
         grille de 3 x 3 cases (lancer d'éclairs de profil, tourné vers la droite) : <nom>-cast.png, 9 images de 128 x 64,
         le corps seul (l'éclair est dessiné par la page, depuis la main) calé à x = 30 comme la marche, et
         <nom>-cast.json, la main de chaque image ([x, y] dans sa case, null sans éclair).
+    .venv/bin/python sprites/decoupe.py grille <planche.png> <nom> [--taille 42]
+        planche en grille régulière (cases séparées par un trait), dont GRILLES[<nom>] dit quelles cases prendre :
+        <nom>-walk.png, <nom>-idle.png et <nom>-emote.png (bras levés, 3 images) ; la droite = miroir de la gauche. Toutes
+        les figures à la même échelle (--taille : la hauteur de la pose d'attente de face), les pieds à 62, la tête
+        centrée. L'amiral Ackbar (2026-11-27).
     .venv/bin/python sprites/decoupe.py vol <planche.png> <nom> [--taille 80]
         planche de 4 rangées de 8 (une monture ailée de profil, tournée vers la droite, sur un damier gris de
         transparence ou un fond magenta) : <nom>-vol.png, une bande de cases carrées : plané, battement d'ailes (haut,
@@ -202,6 +207,53 @@ def eclairs(src, nom, taille):
     return {f"{nom}-cast.png": cast, f"{nom}-cast.json": hands}
 
 
+# planches en grille : (colonnes, rangées), puis les cases (rangée, colonne) de chaque animation ; marche = 9 images par
+# direction (la 1re debout, puis le pas), attente = 2, bras levés = 3 ; dos, gauche, face (la droite est le miroir de la gauche)
+_AK_DOS = [(0, 0), (0, 1), (0, 2), (0, 1), (0, 0), (0, 1), (0, 2), (0, 1), (0, 0)]
+GRILLES = {
+    "ackbar": {"grille": (11, 6),  # profil tourné vers la gauche (rangée 2), face qui marche (rangée 1), cris en rangée 6
+               # la dernière case des rangées 1 et 2 est un dos et un profil tourné vers la droite : une pose debout à la place
+               "walk": {"dos": _AK_DOS, "gauche": [(1, 0)] + [(1, c) for c in range(3, 10)] + [(1, 1)],
+                        "face": [(2, 0)] + [(0, c) for c in range(3, 10)] + [(2, 1)]},
+               "idle": {"dos": [(4, 0), (4, 1)], "gauche": [(4, 2), (4, 3)], "face": [(4, 4), (4, 8)]},  # face : il cligne des yeux
+               "emote": [(5, 8), (5, 9), (5, 10)]},
+}
+
+
+def grille(src, nom, taille):
+    g = GRILLES[nom]
+    im = key(Image.open(src))
+    cols, rows = g["grille"]
+    cw, ch = im.size[0] / cols, im.size[1] / rows
+    memo = {}
+
+    def fig(rc):  # la figure de la case, sans le trait de la grille (4 px de marge)
+        if rc not in memo:
+            r, c = rc
+            f = largest(im.crop((int(c * cw) + 4, int(r * ch) + 4, int((c + 1) * cw) - 4, int((r + 1) * ch) - 4)))
+            memo[rc] = f.crop(f.getbbox())
+        return memo[rc]
+
+    s = taille / fig(g["idle"]["face"][0]).size[1]
+
+    def sheet(cases, n):  # {direction: cases} -> planche de n colonnes, rangées LPC dos, gauche, face, droite
+        out = Image.new("RGBA", (n * F, 4 * F))
+        for row, d in ((0, "dos"), (1, "gauche"), (2, "face")):
+            for c, rc in enumerate(cases[d]):
+                f = fig(rc)
+                paste(out, f, s, head_x(f, 0, f.size[1]), 0, c, row)
+        for c in range(n):
+            out.paste(out.crop((c * F, F, c * F + F, 2 * F)).transpose(Image.FLIP_LEFT_RIGHT), (c * F, 3 * F))
+        return out
+
+    emote = Image.new("RGBA", (3 * F, F))
+    for c, rc in enumerate(g["emote"]):
+        f = fig(rc)
+        legs = f.getchannel("A").crop((0, int(f.size[1] * 0.85), f.size[0], f.size[1])).getbbox()
+        paste(emote, f, s, (legs[0] + legs[2]) / 2, 0, c, 0)  # bras levés : centrée sur les jambes (les mains tirent le haut)
+    return {f"{nom}-walk.png": sheet(g["walk"], 9), f"{nom}-idle.png": sheet(g["idle"], 2), f"{nom}-emote.png": emote}
+
+
 # cases de la planche gardées pour le vol (rangée, colonne) : les rangées 3 et 4 sont sans parchemin ; le parchemin est pris
 # à la rangée 2, sous les griffes
 VOL = ((2, 0), (3, 1), (3, 3), (2, 2), (2, 1))
@@ -249,12 +301,13 @@ def vol(src, nom, taille):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("mode", choices=("marche", "eclairs", "vol"))
+    ap.add_argument("mode", choices=("marche", "eclairs", "grille", "vol"))
     ap.add_argument("planche")
     ap.add_argument("nom")
     ap.add_argument("--taille", type=int)
     a = ap.parse_args()
-    out = {"marche": marche, "eclairs": eclairs, "vol": vol}[a.mode](a.planche, a.nom, a.taille or {"marche": 42, "eclairs": 44, "vol": 80}[a.mode])
+    out = {"marche": marche, "eclairs": eclairs, "grille": grille, "vol": vol}[a.mode](
+        a.planche, a.nom, a.taille or {"marche": 42, "eclairs": 44, "grille": 42, "vol": 80}[a.mode])
     d = os.path.join(HERE, "common", a.nom)
     os.makedirs(d, exist_ok=True)
     for name, v in out.items():

@@ -1,5 +1,5 @@
 // Mise en prod réussie avec un héraut (invité on: « prod », Yoda par défaut, le sage dans la démo) : il entre pendant la
-// fête, monte sur la scène à côté de l'auteur (le boss au sax), le félicite en grand 3 min puis repart.
+// fête, monte sur la scène à côté de l'auteur (le boss au sax), le félicite en grand toute la fête (PARTY_MS, 10 min) puis repart.
 // Démo : prod d'Andy (17.107.0) finie à 10h42, prod de Pam (17.107.1) finie à 9h38, juste avant le daily de 9h40.
 'use strict';
 const test = require('node:test');
@@ -29,11 +29,14 @@ test('il se place sur la scène à côté de l\'auteur', () => {
   assert.equal(Math.abs(p.a[0] - p.s[0]), 1);
 });
 
-test('3 min de scène, puis il repart par la porte et disparaît', () => {
+test('toute la fête du plateau (10 min), puis il repart par la porte et disparaît', () => {
   assert.equal(st('g_yoda', '10:41').st, 'off'); // pas encore en prod
   assert.equal(st('g_yoda', '10:45').st, 'proud');
-  assert.equal(st('g_yoda', '10:46').st, 'gone');
-  assert.equal(st('g_yoda', '10:48').st, 'off');
+  assert.equal(st('g_yoda', '10:51').st, 'proud'); // Andy fête encore sur le plateau : il y est aussi
+  assert.equal(st('p_andy', '10:51').st, 'party');
+  assert.equal(st('g_yoda', '10:53').st, 'gone'); // fin de la fête à 10h52
+  assert.notEqual(st('p_andy', '10:53').st, 'party');
+  assert.equal(st('g_yoda', '10:55').st, 'off');
 });
 
 test('prod finie juste avant le daily : il félicite Pam au daily', () => {
@@ -65,5 +68,6 @@ test('prod en échec : pas de héraut', () => {
 
 test('le héraut des reopens et celui des prods ne se confondent pas', () => {
   assert.equal(st('g_gandalf', '10:43').st, 'off');
-  assert.notEqual(st('g_yoda', '10:51').st, 'proud');
+  assert.match(st('g_yoda', '10:51').label, /mise en prod 17\.107\.0/); // à la fête d'Andy, pas au ticket réouvert de 10h51
+  assert.equal(st('g_yoda', '10:55').st, 'off');
 });

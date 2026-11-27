@@ -75,3 +75,10 @@ test('portrait : les planches générées (Palpatine, Yoda), plus petites, sont 
   assert.equal(oy('yoda'), 14);
   assert.equal(oy('mage'), 8);
 });
+
+test('l\'amiral Ackbar : son portrait cadré comme Yoda, et il crie bras levés devant une grosse PR', () => {
+  assert.equal(J('PORTRAIT_DY.ackbar'), J('PORTRAIT_DY.yoda'));
+  assert.equal(J(`poseOf({st: 'bigpr'}, 'visit')`), 'hands');
+  assert.equal(J(`poseOf({st: 'reopen'}, 'visit')`), 'idle');
+  assert.equal(J(`poseOf({st: 'work'}, 'desk')`), 'type');
+});

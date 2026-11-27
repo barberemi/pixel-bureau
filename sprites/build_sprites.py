@@ -216,8 +216,9 @@ def sheets(custom_dir):
             if os.path.exists(path):
                 with open(path, "rb") as f:
                     out[f"{name}_{extra}"] = "data:image/png;base64," + base64.b64encode(f.read()).decode()
-        if not any("walk" in f for f in os.listdir(os.path.join(custom_dir, name))):
-            continue  # pas un personnage : ses images à part seulement
+        extras = {f"{name}-{x}.png" for x in ("cast", "vol")}
+        if not any(f.lower().endswith(".png") and f not in extras for f in os.listdir(os.path.join(custom_dir, name))):
+            continue  # pas un personnage (rien que des images à part) : le Nazgûl
         png = build_custom(os.path.join(custom_dir, name))
         frozen = frozen_side_walk(png)
         if frozen:

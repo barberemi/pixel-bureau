@@ -123,11 +123,12 @@ function mepsAt(t){return ((TEAM&&TEAM.meps)||[]).map(m=>({m,phase:mepPhase(m,t)
 // la MEP qui occupe la scène du plateau TV (auteur sur scène, boss devant, visiteur) : seulement son déploiement en prod
 // (3 h au plus), puis 10 min de fête ; une release ou un staging seuls (un test, sans prod derrière) ne déplacent personne
 // et ne se voient qu'au fil, sur l'écran du plateau et dans la fiche des MEP
+const PARTY_MS=10*60e3; // la fête après une mise en prod réussie (Yoda y reste jusqu'au bout, 37-scenes.js)
 function stageAt(t){
   const list=mepsAt(t);
   const live=list.filter(x=>x.phase==='prod'&&t-ms(x.m.prod.start)<3*3600e3);
   if(live.length)return live[live.length-1];
-  const party=list.filter(x=>x.phase==='done'&&t-ms(x.m.prod.end)<10*60e3);
+  const party=list.filter(x=>x.phase==='done'&&t-ms(x.m.prod.end)<PARTY_MS);
   return party.length?party[party.length-1]:null;
 }
 // classement aux points déployés du sprint ouvert ; tant qu'il n'a rien livré, celui du dernier sprint fermé (prev:true)

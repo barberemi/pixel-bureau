@@ -33,8 +33,8 @@ const STATUS_COL={
   Skipped:'var(--idle)'
 };
 // les planches générées (sprites/decoupe.py) sont plus petites que les LPC (42 px de haut au lieu de ~50) : le haut de la
-// tête descend d'autant, le cadre aussi (tête vers y=18 pour Palpatine, y=20 pour Yoda, au lieu de ~13)
-const PORTRAIT_DY={palpatine:4,yoda:6};
+// tête descend d'autant, le cadre aussi (tête vers y=18 pour Palpatine, y=20 pour Yoda et Ackbar, au lieu de ~13)
+const PORTRAIT_DY={palpatine:4,yoda:6,ackbar:6};
 function portrait(c,size){
   const p=document.createElement('canvas');p.width=40;p.height=40;const x=p.getContext('2d');x.imageSmoothingEnabled=false;
   const mf=metierOf(c)&&mtFrame(c);if(mf){x.drawImage(mf,12,8,40,40,0,0,40,40);p.style.width=size+'px';p.style.height=size+'px';return p;} // 69-metiers.js : en tenue
