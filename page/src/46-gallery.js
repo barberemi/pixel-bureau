@@ -25,7 +25,7 @@ function galleryScenes(){
     play:{len:HERALD_MS+60e3,speed:10,setup:s=>galTeam([{t:galIso(s),kind:'move',key:galTk(dev),summary:'Démonstration',from:FLOW.test,to:FLOW.reopened,cat:'doing',who:qa&&qa.team.id,who_name:qa&&qa.person}])}},!!(dev&&qa&&dev!==qa&&standoff()));
   const y=chars.find(c=>c.guest&&c.on==='prod');
   team({ico:'🎉',n:(y?y.name+' et la ':'La ')+'fête de mise en prod',c:y,d:'L\'auteur sur la scène du plateau TV, le boss au sax',w:'Fin d\'une mise en prod réussie',
-    play:{len:90e3+HERALD_MS,speed:10,setup:s=>galTeam(null,[{tag:'démo',name:'Démonstration',ticket:galTk(dev),summary:'Démonstration',who:dev&&dev.team.id,who_name:dev&&dev.person,
+    play:{len:90e3+PARTY_MS,speed:10,setup:s=>galTeam(null,[{tag:'démo',name:'Démonstration',ticket:galTk(dev),summary:'Démonstration',who:dev&&dev.team.id,who_name:dev&&dev.person,
       released:galIso(s-60e3),staging:null,prod:{start:galIso(s),end:galIso(s+90e3),status:'completed',conclusion:'success'}}])}},!!dev);
   team({ico:'📁',n:'Ticket livré en test',d:'Le dev porte le dossier jusqu\'au bureau du test',w:'Passage en test',
     play:{len:SCENE_TELL+30e3,speed:10,setup:s=>galTeam([{t:galIso(s),kind:'move',key:galTk(dev),summary:'Démonstration',from:'En cours',to:FLOW.test,cat:'test',who:dev&&dev.team.id,who_name:dev&&dev.person}])}},!!(dev&&qa&&dev!==qa));

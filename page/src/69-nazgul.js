@@ -32,31 +32,28 @@ function nazDeliveries(t){
   return out;
 }
 function nazFxEvents(recent){return REDUCED_MOTION?[]:nazDeliveries(T).filter(x=>recent(x.at)).map(x=>({...x,kind:'nazgul',ms:NAZ_MS}));}
-// la monture ailée et son cavalier, à la façon des maquettes : ailes membraneuses, long cou, capuche sans visage ; pr : le parchemin
+// la monture ailée et son cavalier : la planche générée (sprites/common/nazgul/nazgul-vol.png, decoupe.py vol), des cases
+// carrées tournées vers la droite : plané, battement d'ailes (haut, milieu, bas, bas), le parchemin seul ; l'œil de la
+// monture en NAZ_EYE de chaque case, posé où le dessin d'avant avait le sien. flap : la phase du battement, null en plané
+const NAZ_EYE=[70,37], NAZ_FLAP=[1,2,3,4,3,2];
 function nazFigure(x,y,dir,flap,scroll){
-  const s=1.4;ctx.save();ctx.translate(x,y);ctx.scale(dir*s,s);
-  const B='#141016', M='#2a2030', up=Math.sin(flap*Math.PI*2);
-  for(const w of [-1,1]){const wy=-6-up*16*(w<0?1:.8);ctx.fillStyle=w<0?M:B;ctx.beginPath();ctx.moveTo(-4,-4);ctx.lineTo(-18+w*2,wy-10);ctx.lineTo(-34,wy+2);ctx.lineTo(-30,wy+8);
-    ctx.lineTo(-22,wy+4);ctx.lineTo(-18,wy+12);ctx.lineTo(-10,wy+8);ctx.lineTo(-6,4);ctx.fill();}
-  ctx.fillStyle=B;ctx.beginPath();ctx.ellipse(0,0,14,7,0,0,7);ctx.fill();
-  ctx.beginPath();ctx.moveTo(-12,0);ctx.lineTo(-30,6);ctx.lineTo(-12,4);ctx.fill();
-  ctx.beginPath();ctx.moveTo(10,-3);ctx.quadraticCurveTo(20,-14,26,-12);ctx.lineTo(27,-8);ctx.quadraticCurveTo(20,-8,12,3);ctx.fill();
-  ctx.beginPath();ctx.moveTo(24,-14);ctx.lineTo(34,-10);ctx.lineTo(24,-7);ctx.fill();ctx.fillStyle='#ff5a14';ctx.fillRect(28,-12,2,2);
-  ctx.fillStyle='#0c0a0e';ctx.beginPath();ctx.moveTo(-6,-4);ctx.lineTo(4,-4);ctx.lineTo(1,-22);ctx.lineTo(-3,-24);ctx.lineTo(-8,-14);ctx.fill();
-  ctx.fillStyle=B;ctx.fillRect(-2,5,2,7);ctx.fillRect(4,5,2,7);
-  if(scroll){ctx.fillStyle='#efe2c0';ctx.fillRect(-7,11,14,9);ctx.fillStyle='#c8b088';ctx.fillRect(-8,10,2,11);ctx.fillRect(6,10,2,11);ctx.fillStyle='#8a1010';ctx.fillRect(-1,14,3,3);}
+  const img=IMG['nazgul_vol'];if(!ready(img))return;
+  const s=img.height, f=flap==null?0:NAZ_FLAP[Math.floor(flap*NAZ_FLAP.length)%NAZ_FLAP.length], ox=39-NAZ_EYE[0], oy=-15-NAZ_EYE[1];
+  ctx.save();ctx.translate(Math.round(x),Math.round(y));ctx.scale(dir,1);
+  if(scroll)ctx.drawImage(img,5*s,0,s,s,ox,oy,s,s); // sous la figure : les griffes le tiennent
+  ctx.drawImage(img,f*s,0,s,s,ox,oy,s,s);
   ctx.restore();
 }
 // la scène : de l'œil au bureau du boss (piqué), le parchemin posé, puis retour à la tour ; la bulle pendant la livraison
 function nazDraw(e,now){
   const a=oeEyePos(); if(!a)return;
   const b=oeBoss(), desk={x:b.x+16,y:b.y-30}, p=Math.min(1,(now-e.t0)/e.ms), ease=u=>u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
-  let x,y,dir,scroll;
-  if(p<.35){const u=ease(p/.35);x=a.x+(desk.x-a.x)*u;y=a.y+(desk.y-a.y)*u-Math.sin(u*Math.PI)*40;dir=desk.x<a.x?-1:1;scroll=true;}
+  let x,y,dir,scroll,glide=false;
+  if(p<.35){const u=ease(p/.35);x=a.x+(desk.x-a.x)*u;y=a.y+(desk.y-a.y)*u-Math.sin(u*Math.PI)*40;dir=desk.x<a.x?-1:1;scroll=true;glide=u>.5&&u<.85;} // le piqué, ailes repliées
   else if(p<.6){x=desk.x;y=desk.y+Math.sin(now/120)*2;dir=desk.x<a.x?-1:1;scroll=p<.45;}
   else{const u=ease((p-.6)/.4);x=desk.x+(a.x-desk.x)*u;y=desk.y+(a.y-desk.y)*u-Math.sin(u*Math.PI)*40;dir=a.x<desk.x?-1:1;scroll=false;}
   if(p>=.45){ctx.fillStyle='#efe2c0';ctx.fillRect(b.x+10,b.y+4,12,8);ctx.fillStyle='#8a1010';ctx.fillRect(b.x+15,b.y+7,3,3);} // le parchemin sur le bureau
   ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.ellipse(x,Math.max(y+50,b.y+14),18,5,0,0,7);ctx.fill();
-  nazFigure(x,y,dir,now/600,scroll);
+  nazFigure(x,y,dir,glide?null:now/600,scroll);
   if(p>.35&&p<.85)fxBubble(desk.x,desk.y-30,e.txt,'#7a1a1a');
 }

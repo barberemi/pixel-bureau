@@ -55,9 +55,10 @@ function heraldState(c,t){
 // mise en prod réussie avec un héraut (invité on: « prod », ex. Yoda) : pendant la fête, il entre par la porte, monte sur la
 // scène à côté de l'auteur (le boss est au sax) et le félicite en grand 3 min (shout, {name} = prénom de l'auteur), puis repart
 function prodHeraldState(c,t){
-  const live=mepsAt(t).filter(x=>x.phase==='done'&&t<ms(x.m.prod.end)+HERALD_MS+2*60e3), z=live[live.length-1];
+  // il reste toute la fête du plateau (PARTY_MS, 30-data.js : stageAt), pas seulement HERALD_MS : sinon la fête continue sans lui
+  const live=mepsAt(t).filter(x=>x.phase==='done'&&t<ms(x.m.prod.end)+PARTY_MS+2*60e3), z=live[live.length-1];
   if(!z)return {st:'off',label:'Attend une mise en prod'};
-  if(t>=ms(z.m.prod.end)+HERALD_MS)return {st:'gone',label:'Reparti'};
+  if(t>=ms(z.m.prod.end)+PARTY_MS)return {st:'gone',label:'Reparti'};
   const name=mepName(z.m);
   const shout=(c.shout||'Bravo {name} !').replace(name?/\{name\}/g:/,?\s*\{name\}/g,name);
   return {st:'proud',zone:inDaily(t)?'daily':'stage',label:'Félicite '+(name||"l'équipe")+' pour la mise en prod '+z.m.tag,bubble:shout,big:true}; // prod finie pendant le daily : il les y rejoint
