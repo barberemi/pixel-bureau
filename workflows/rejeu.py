@@ -15,7 +15,7 @@ source de leçons), lignes ([min, max] ajoutées + retirées), fichiers (au plus
 import collections, datetime, json, os, re, subprocess, sys, time
 from _lib import CFG, get, read_json, send, write_json, write_text
 from _checks import check_fill
-from _chaine import dossier, etat, git, git_ok, impl, main_dir, parse, read_stdin, reglages, root, sorte  # noqa: F401  (recopié au rendu)
+from _chaine import dossier, etat, git, git_ok, impl, lie_deps, main_dir, parse, read_stdin, reglages, root, sorte  # noqa: F401  (recopié au rendu)
 
 KEY = re.compile(r"\b([A-Z][A-Z0-9]+-\d+)\b")
 # titres écartés de la rotation : faits par la chaîne elle-même (#autocode), dépendances, CI, traductions seules
@@ -94,13 +94,26 @@ def choisit(repo, jeu, joues):
                   "number,title,headRefName,additions,deletions,files,mergedAt")
     pause = datetime.timedelta(days=int(conf().get("pause_jours") or 60))
     limite = (datetime.datetime.now(datetime.timezone.utc) - pause).isoformat()
-    ok = [p for p in prs if eligible(p, temoin) and (joues.get(str(p["number"])) or {}).get("at", "") < limite]
+    pris = demandees(joues)
+    ok = [p for p in prs if eligible(p, temoin) and (joues.get(str(p["number"])) or {}).get("at", "") < limite and p["number"] not in pris]
     if not ok:
         sys.exit(f"Aucune PR de {repo} ne passe les filtres du rejeu (taille, tests, déjà jouée) parmi les 200 dernières mergées.")
     par_genre = collections.Counter(v.get("genre") for v in joues.values())
     par_zone = collections.Counter(v.get("zone") for v in joues.values())
     ok.sort(key=lambda p: p.get("mergedAt") or "", reverse=True)
     return min(ok, key=lambda p: (par_genre[genre(p["title"])], par_zone[zone([f["path"] for f in p["files"]])]))["number"]
+
+
+def demandees(joues):
+    """N° des PR demandées depuis moins d'un jour et pas encore notées : un rejeu en cours ou en file (joues.json ne
+    s'écrit qu'à la fin du run, la rotation reprendrait la même PR)."""
+    veille = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)).isoformat()
+    out = set()
+    for f in os.listdir(store("demandes")) if os.path.isdir(store("demandes")) else []:
+        d = lit(store("demandes", f)) or {}
+        if d.get("pr") and (d.get("lance_le") or "") > max(veille, (joues.get(str(d["pr"])) or {}).get("at") or ""):
+            out.add(d["pr"])
+    return out
 
 
 def pr_de(repo, cas):
@@ -126,14 +139,17 @@ def project_for(repo):
     return None
 
 
-def en_cours(wf, ticket):
-    """Un run d'impl_rejeu actif sur ce ticket (ou pas encore préparé) : on ne relance pas."""
+def en_cours(wf, ticket, pr):
+    """Un run d'impl_rejeu actif sur ce ticket, ou sa PR déjà demandée et pas encore notée (run en file, pas encore
+    préparé) : on ne relance pas. Les autres tickets passent, en file derrière (concurrency_limit 1)."""
+    if pr in demandees(lit(store("joues.json"), {})):
+        return "en file"
     for r in get(f"/workflows/{wf}/runs?limit=20") or []:
         if r.get("status") not in ("Running", "WaitingApproval", "Pending", "WaitingQuota"):
             continue
         steps = (get(f"/workflows/{wf}/runs/{r['id']}") or {}).get("step_results") or []
         prep = next((x.get("output") or "" for x in steps if x.get("step_name") == "prepare"), "")
-        if not prep or ticket.lower() in prep.lower():
+        if prep and ticket.lower() in prep.lower():
             return r["id"]
     return None
 
@@ -156,7 +172,7 @@ def cmd_lance(jeu="", cas=""):
         sys.exit(f"{repo}#{n} ne cite aucun ticket Jira (titre, branche) : la chaîne part d'un ticket.")
     ticket, merge = m.group(1), pr["mergeCommit"]["oid"]
     base = gh_json("api", f"repos/{repo}/commits/{merge}", "--jq", "[.parents[0].sha]")[0]
-    busy = en_cours(wf, ticket)
+    busy = en_cours(wf, ticket, n)
     if busy:
         sys.exit(f"Un rejeu tourne déjà ({busy[:8]}) sur {ticket} ou n'est pas encore préparé : réessaie plus tard.")
     pid = project_for(repo)
@@ -168,7 +184,10 @@ def cmd_lance(jeu="", cas=""):
                                                      "zone": zone(files), "lance_le": now()})
     res = send("POST", "/mcp/workflow-trigger", {"workflow_id": wf, "project_id": pid, "variables": {
         "ticket": ticket, "mode": "essai", "depot": repo, "soeurs": "", "partie": "", "reprise": "non", "base": base}}, timeout=120)
-    run = str((res or {}).get("run_id") or "?")
+    run = str((res or {}).get("run_id") or "")
+    if not run:
+        os.remove(store("demandes", f"{ticket}.json"))  # pas de run : la demande ne bloque ni ce ticket ni la rotation
+        sys.exit(f"Kronn n'a pas lancé le rejeu de {repo}#{n} : {res}")
     print(f"Rejeu de {repo}#{n} ({ticket}, {'jeu témoin' if jeu == 'temoin' else 'rotation'}) : run {run[:8]}, départ {base[:10]}, "
           f"sans gate ni effet ; la note tombe à la fin du run.\n{pr['title']}")
 
@@ -193,18 +212,23 @@ def touches(a, b):
     return {ln.split("\t")[-1]: ln[:1] for ln in out.splitlines() if "\t" in ln}
 
 
-def lance_tests(files, fin):
-    """Les commandes de test du dépôt (impl.repos.<dépôt>.checks.tests) sur ces fichiers, avant l'heure fin : (code, sortie) ;
-    None si aucune ne les prend."""
-    outs, code = [], 0
+def commandes(files, wt):
+    """Les commandes de test du dépôt (impl.repos.<dépôt>.checks.tests) qui prennent ces fichiers, remplies pour wt."""
     for ch in (reglages().get("checks") or {}).get("tests") or []:
         raw = ch if isinstance(ch, str) else ch.get("cmd") or ""
-        cmd, kinds = check_fill(ch, files, root(), main_dir(), etat().get("base") or "main")
+        cmd, kinds = check_fill(ch, files, wt, main_dir(), etat().get("base") or "main")
         need = [k for k in kinds if "{" + k + "}" in raw]
-        if not kinds["files"] or need and not any(kinds[k] for k in need):
-            continue
+        if kinds["files"] and not (need and not any(kinds[k] for k in need)):
+            yield cmd
+
+
+def lance_tests(files, fin, wt=None):
+    """Les commandes de test sur ces fichiers dans wt (la copie du run par défaut), avant l'heure fin : (code, sortie) ;
+    None si aucune ne les prend."""
+    wt, outs, code = wt or root(), [], 0
+    for cmd in commandes(files, wt):
         try:
-            r = subprocess.run(["sh", "-c", cmd], cwd=root(), capture_output=True, text=True, timeout=max(30, fin - time.time()))
+            r = subprocess.run(["sh", "-c", cmd], cwd=wt, capture_output=True, text=True, timeout=max(30, fin - time.time()))
             rc, txt = r.returncode, r.stdout + r.stderr
         except subprocess.TimeoutExpired:
             rc, txt = 124, "délai dépassé"
@@ -218,8 +242,28 @@ def echecs(txt):
     return "\n".join(keep[:30])[:2500]
 
 
+def rouges_partout(merge, rouges, fin):
+    """Contre-épreuve : les fichiers rouges lancés sur la vraie PR (son merge, dans une copie à part, mêmes dépendances et
+    mêmes commandes). Rouges là aussi : l'environnement de test est en cause, pas la chaîne. Rend ces fichiers."""
+    ref = dossier("reference")
+    if time.time() > fin - 60 or not git_ok("worktree", "add", "-f", "--detach", ref, merge):
+        return []
+    try:
+        lie_deps(ref)
+        tout = lance_tests(rouges, fin, ref)
+        if not tout or tout[0] == 0:
+            return []
+        if len(rouges) == 1:
+            return list(rouges)
+        return [f for f in rouges if time.time() < fin - 60 and (lambda r: bool(r and r[0]))(lance_tests([f], fin, ref))]
+    finally:
+        git_ok("worktree", "remove", "--force", ref)
+
+
 def tests_reference(merge, files):
-    """Les tests de la vraie PR posés sur le code de la chaîne, lancés, puis retirés : ratio des fichiers verts."""
+    """Les tests de la vraie PR posés sur le code de la chaîne, lancés, puis retirés : ratio des fichiers verts. Un fichier
+    qu'aucune commande ne lance (fixture, mock, config de test, classe de base) est posé mais hors du ratio ; un fichier
+    rouge aussi sur la vraie PR (contre-épreuve) en sort : c'est l'environnement."""
     if not files:
         return {"mesure": False, "pourquoi": "la vraie PR n'a pas de fichier de test"}
     gardes = {f: git_ok("cat-file", "-e", f"HEAD:{f}") for f in files}
@@ -229,26 +273,35 @@ def tests_reference(merge, files):
             os.makedirs(os.path.dirname(os.path.join(root(), f)) or root(), exist_ok=True)
             with open(os.path.join(root(), f), "wb") as h:
                 h.write(body)
-        fin = time.time() + BUDGET
-        tout = lance_tests(files, fin)
-        if tout is None:
+        lances = [f for f in files if any(commandes([f], root()))]
+        support = [f for f in files if f not in lances]
+        if not lances:
             return {"mesure": False, "pourquoi": "aucune commande de test réglée ne prend ces fichiers (impl.repos.<dépôt>.checks.tests)"}
+        fin = time.time() + BUDGET
+        tout = lance_tests(lances, fin)
         if tout[0] == 0:
-            return {"mesure": True, "ratio": 1.0, "verts": files, "rouges": [], "sortie": ""}
-        if len(files) == 1:
-            return {"mesure": True, "ratio": 0.0, "verts": [], "rouges": files, "sortie": f"### {files[0]}\n{echecs(tout[1])}"}
+            return {"mesure": True, "ratio": 1.0, "verts": lances, "rouges": [], "support": support, "environnement": [], "sortie": ""}
         verts, rouges, sortie = [], [], ""
-        for i, f in enumerate(files):  # rouge : fichier par fichier, pour le ratio, tant qu'il reste du temps
+        if len(lances) == 1:
+            rouges, sortie = list(lances), f"### {lances[0]}\n{echecs(tout[1])}\n"
+        for i, f in enumerate(lances if len(lances) > 1 else []):  # rouge : fichier par fichier, pour le ratio, tant qu'il reste du temps
             if time.time() > fin - 60:
-                rouges += files[i:]  # pas relancés : comptés rouges, la suite entière l'était
-                sortie += f"(pas relancés faute de temps : {', '.join(files[i:])})\n"
+                rouges += lances[i:]  # pas relancés : comptés rouges, la suite entière l'était
+                sortie += f"(pas relancés faute de temps : {', '.join(lances[i:])})\n"
                 break
             r = lance_tests([f], fin)
             (verts if r and r[0] == 0 else rouges).append(f)
             if r and r[0]:
                 sortie += f"### {f}\n{echecs(r[1])}\n"
-        return {"mesure": True, "ratio": round(len(verts) / len(files), 2), "verts": verts, "rouges": rouges,
-                "sortie": sortie[:6000] or echecs(tout[1])}
+        env = rouges_partout(merge, rouges, fin)
+        mesures = [f for f in lances if f not in env]
+        if env:
+            sortie += f"(rouges aussi sur la vraie PR, environnement : {', '.join(env)})\n"
+        if not mesures:
+            return {"mesure": False, "pourquoi": "les tests de la vraie PR sont rouges sur la vraie PR aussi : environnement de test",
+                    "support": support, "environnement": env, "sortie": sortie[:6000]}
+        return {"mesure": True, "ratio": round(len(verts) / len(mesures), 2), "verts": verts, "rouges": [f for f in rouges if f not in env],
+                "support": support, "environnement": env, "sortie": sortie[:6000] or echecs(tout[1])}
     finally:
         for f, avant in gardes.items():
             if avant:
@@ -299,6 +352,8 @@ def cmd_note(run=""):
            f"Lignes communes : {pct(lignes)} ({sum(lr.values())} dans la vraie PR, {sum(lm.values())} dans la chaîne).\n"
            + (f"Tests de la vraie PR sur le code de la chaîne : {pct(tests['ratio'])} des fichiers verts ; rouges : "
               f"{', '.join(tests['rouges']) or 'aucun'}.\n" if tests.get("mesure") else f"Tests non mesurés : {tests.get('pourquoi')}.\n")
+           + (f"Rouges aussi sur la vraie PR (environnement, hors note) : {', '.join(tests['environnement'])}.\n" if tests.get("environnement") else "")
+           + (f"Posés sans être lancés (aucune commande ne les prend) : {', '.join(tests['support'])}.\n" if tests.get("support") else "")
            + ("La chaîne s'est arrêtée sur une escalade (bloquants restants).\n" if note["escalade"] else ""))
     print(out.replace("{" + "{", "{ {"))
 

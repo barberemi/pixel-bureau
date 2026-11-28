@@ -116,8 +116,8 @@ class RejeuTest(unittest.TestCase):
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(text)
 
-    def depot(self):
-        """Départ : src/a.py ; vraie PR (merge) : a.py change et tests/test_a.txt arrive ; la chaîne : a.py change, b.py en plus."""
+    def depot(self, extra=None):
+        """Départ : src/a.py ; vraie PR (merge) : a.py change et tests/test_a.txt arrive (et extra) ; la chaîne : a.py change, b.py en plus."""
         os.makedirs(self.wt)
         self.git("init", "-q", "-b", "main")
         self.git("config", "user.email", "t@t")
@@ -129,6 +129,8 @@ class RejeuTest(unittest.TestCase):
         base = self.git("rev-parse", "HEAD")
         self.ecrit("src/a.py", "def f():\n    return 2\n")
         self.ecrit("tests/test_a.txt", "attend 2\n")
+        for path, text in (extra or {}).items():
+            self.ecrit(path, text)
         self.git("add", ".")
         self.git("commit", "-qm", "vraie PR")
         merge = self.git("rev-parse", "HEAD")
@@ -187,7 +189,7 @@ class RejeuTest(unittest.TestCase):
 
     def test_tests_rouges_et_juge_absent(self):
         self.depot()
-        r = self.run_("note", "run2", tests="test -f {tests} && grep -q 'return 3' src/a.py")
+        r = self.run_("note", "run2", tests="test -f {tests} && grep -q 'return 2$' src/a.py")  # vert sur la vraie PR, rouge sur la chaîne
         self.assertEqual(r.returncode, 0, r.stderr)
         n = json.loads(Path(self.wt, ".kronn/chaine/rejeu_note.json").read_text())
         self.assertEqual((n["tests"]["ratio"], n["tests"]["rouges"]), (0.0, ["tests/test_a.txt"]))
@@ -199,6 +201,41 @@ class RejeuTest(unittest.TestCase):
         sys.path.insert(0, os.path.join(ROOT, "workflows"))
         from _lib import rejeu_res
         self.assertEqual(rejeu_res(r.stdout)["parts"]["juge"], None)  # « juge : non mesuré »
+
+    # chaque fichier tests/*.test.js est un motif que src/a.py doit contenir ; les autres fichiers de test n'ont pas de commande
+    MOTIFS = 'for t in {tests_ts}; do grep -q "$(cat "$t")" src/a.py || exit 1; done'
+
+    def test_fichiers_de_support_hors_du_ratio(self):
+        """Une fixture ou un fichier qu'aucune commande ne lance est posé mais ne compte pas rouge (rejeu de #2039 :
+        une config de test et une classe de base comptées rouges)."""
+        self.depot({"tests/a.test.js": "return 2", "tests/b.test.js": "return 2$", "tests/fixtures/data.json": "{}"})
+        r = self.run_("note", "run5", tests=self.MOTIFS)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        t = json.loads(Path(self.wt, ".kronn/chaine/rejeu_note.json").read_text())["tests"]
+        # b rouge sur la chaîne (« return 2  # changé ») mais vert sur la vraie PR : la chaîne est en cause
+        self.assertEqual((t["ratio"], t["verts"], t["rouges"], t["environnement"]), (0.5, ["tests/a.test.js"], ["tests/b.test.js"], []))
+        self.assertEqual(t["support"], ["tests/fixtures/data.json", "tests/test_a.txt"])
+        self.assertIn("Posés sans être lancés", r.stdout)
+        self.assertFalse(Path(self.wt, "tests/fixtures/data.json").exists())  # retirés après, comme les autres
+        self.assertFalse(Path(self.wt, ".kronn/chaine/reference").exists())  # la copie de la contre-épreuve aussi
+        self.assertNotIn("reference", self.git("worktree", "list"))
+
+    def test_contre_epreuve_environnement(self):
+        """Rouge aussi sur la vraie PR : l'environnement, hors du ratio (rejeu de #2073 : images absentes, toutes les pages en 500)."""
+        self.depot({"tests/a.test.js": "return 2", "tests/b.test.js": "return 3"})
+        r = self.run_("note", "run6", tests=self.MOTIFS)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        t = json.loads(Path(self.wt, ".kronn/chaine/rejeu_note.json").read_text())["tests"]
+        self.assertEqual((t["ratio"], t["rouges"], t["environnement"]), (1.0, [], ["tests/b.test.js"]))
+        self.assertIn("Rouges aussi sur la vraie PR (environnement, hors note) : tests/b.test.js", r.stdout)
+        # tout rouge des deux côtés (rejeu de #2015 : vendor sans un paquet) : non mesuré, la note se fait sur le reste
+        shutil.rmtree(self.wt)
+        shutil.rmtree(self.store)
+        self.depot({"tests/a.test.js": "return 9", "tests/b.test.js": "return 3"})
+        self.run_("note", "run7", tests=self.MOTIFS)
+        t = json.loads(Path(self.wt, ".kronn/chaine/rejeu_note.json").read_text())["tests"]
+        self.assertFalse(t["mesure"])
+        self.assertIn("environnement", t["pourquoi"])
 
     def test_tests_non_mesures(self):
         self.depot()
@@ -260,6 +297,17 @@ class RejeuTest(unittest.TestCase):
         self.assertEqual(r.stdout.strip(), "5", r.stderr)  # à égalité : la plus récente
         r = self.choisit("rotation", {"99": {"at": "2026-11-26", "genre": "fix", "zone": "website/Builder"}}, temoin=[8])
         self.assertEqual(r.stdout.strip(), "6")  # un fix déjà joué : un autre genre, un autre coin
+
+    def test_rotation_saute_une_pr_deja_demandee(self):
+        """joues.json ne s'écrit qu'à la fin du run : sans ça, un 2e lancement reprenait la PR en cours, et le lanceur la refusait."""
+        from datetime import datetime, timezone
+        code, test = "application/apps/website/src/Builder/X.php", "application/apps/website/tests/Builder/XTest.php"
+        self.faux_gh([self.pr(5, "fix(Cache):ABC-5", [code, test], quand="2026-11-25T00:00:00Z"), self.pr(6, "fix(Cache):ABC-6", [code, test])])
+        os.makedirs(os.path.join(self.store, "demandes"))
+        Path(self.store, "demandes", "ABC-5.json").write_text(json.dumps({"pr": 5, "lance_le": datetime.now(timezone.utc).isoformat()}))
+        self.assertEqual(self.choisit("rotation", {}).stdout.strip(), "6")
+        Path(self.store, "demandes", "ABC-5.json").write_text(json.dumps({"pr": 5, "lance_le": "2026-01-01T00:00:00+00:00"}))
+        self.assertEqual(self.choisit("rotation", {}).stdout.strip(), "5")  # demande de plus d'un jour (run perdu) : ne la retient plus
 
     def test_rotation_ne_rejoue_pas_trop_tot(self):
         self.faux_gh([self.pr(5, "fix(Cache):ABC-5", ["src/a.php", "tests/aTest.php"])])
