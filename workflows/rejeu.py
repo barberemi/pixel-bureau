@@ -139,17 +139,11 @@ def project_for(repo):
     return None
 
 
-def en_cours(wf, ticket, pr):
-    """Un run d'impl_rejeu actif sur ce ticket, ou sa PR déjà demandée et pas encore notée (run en file, pas encore
-    préparé) : on ne relance pas. Les autres tickets passent, en file derrière (concurrency_limit 1)."""
-    if pr in demandees(lit(store("joues.json"), {})):
-        return "en file"
+def en_cours(wf):
+    """Un run d'impl_rejeu actif, quel que soit son ticket : Kronn n'en lance qu'un à la fois (concurrency_limit 1) et
+    refuse le suivant, sans file d'attente (« Concurrency limit reached »)."""
     for r in get(f"/workflows/{wf}/runs?limit=20") or []:
-        if r.get("status") not in ("Running", "WaitingApproval", "Pending", "WaitingQuota"):
-            continue
-        steps = (get(f"/workflows/{wf}/runs/{r['id']}") or {}).get("step_results") or []
-        prep = next((x.get("output") or "" for x in steps if x.get("step_name") == "prepare"), "")
-        if prep and ticket.lower() in prep.lower():
+        if r.get("status") in ("Running", "WaitingApproval", "Pending", "WaitingQuota"):
             return r["id"]
     return None
 
@@ -172,9 +166,9 @@ def cmd_lance(jeu="", cas=""):
         sys.exit(f"{repo}#{n} ne cite aucun ticket Jira (titre, branche) : la chaîne part d'un ticket.")
     ticket, merge = m.group(1), pr["mergeCommit"]["oid"]
     base = gh_json("api", f"repos/{repo}/commits/{merge}", "--jq", "[.parents[0].sha]")[0]
-    busy = en_cours(wf, ticket, n)
+    busy = en_cours(wf)
     if busy:
-        sys.exit(f"Un rejeu tourne déjà ({busy[:8]}) sur {ticket} ou n'est pas encore préparé : réessaie plus tard.")
+        sys.exit(f"Un rejeu tourne déjà (run {busy[:8]}) : Kronn n'en lance qu'un à la fois. Relance {repo}#{n} quand il a fini.")
     pid = project_for(repo)
     if not pid:
         sys.exit(f"Aucun projet Kronn n'a {repo} pour origine : ajoute-le dans Kronn (Projets), puis relance.")
@@ -182,9 +176,12 @@ def cmd_lance(jeu="", cas=""):
     write_json(store("demandes", f"{ticket}.json"), {"ticket": ticket, "repo": repo, "pr": n, "titre": pr["title"], "url": pr.get("url"),
                                                      "merge": merge, "base": base, "jeu": jeu, "genre": genre(pr["title"]),
                                                      "zone": zone(files), "lance_le": now()})
-    res = send("POST", "/mcp/workflow-trigger", {"workflow_id": wf, "project_id": pid, "variables": {
-        "ticket": ticket, "mode": "essai", "depot": repo, "soeurs": "", "partie": "", "reprise": "non", "base": base}}, timeout=120)
-    run = str((res or {}).get("run_id") or "")
+    try:
+        res = send("POST", "/mcp/workflow-trigger", {"workflow_id": wf, "project_id": pid, "variables": {
+            "ticket": ticket, "mode": "essai", "depot": repo, "soeurs": "", "partie": "", "reprise": "non", "base": base}}, timeout=120)
+    except Exception as exc:  # un refus (un rejeu parti entre-temps) lève : la demande ne doit pas rester
+        res = str(exc)
+    run = str(res.get("run_id") or "") if isinstance(res, dict) else ""
     if not run:
         os.remove(store("demandes", f"{ticket}.json"))  # pas de run : la demande ne bloque ni ce ticket ni la rotation
         sys.exit(f"Kronn n'a pas lancé le rejeu de {repo}#{n} : {res}")

@@ -309,6 +309,50 @@ class RejeuTest(unittest.TestCase):
         Path(self.store, "demandes", "ABC-5.json").write_text(json.dumps({"pr": 5, "lance_le": "2026-01-01T00:00:00+00:00"}))
         self.assertEqual(self.choisit("rotation", {}).stdout.strip(), "5")  # demande de plus d'un jour (run perdu) : ne la retient plus
 
+    def lance(self, runs, refus=False):
+        """cmd_lance avec Kronn et gh simulés dans le module : runs d'impl_rejeu en cours, trigger refusé ou non."""
+        os.makedirs(self.wt, exist_ok=True)
+        code = f"""
+import rejeu, sys
+rejeu.CFG.setdefault("models", {{}})["impl_rejeu"] = "wf-rejeu"
+rejeu.get = lambda path: {runs!r} if "/runs" in path else []
+rejeu.project_for = lambda repo: "p1"
+def gh_json(*a):
+    if a[:2] == ("pr", "view"):
+        return {{"number": 5, "title": "fix(Cache):ABC-5 x", "state": "MERGED", "headRefName": "x", "files": [], "url": "u",
+                "mergeCommit": {{"oid": "m" * 40}}}}
+    return ["b" * 40]
+rejeu.gh_json = gh_json
+def send(*a, **k):
+    if {refus!r}:
+        raise RuntimeError("Kronn a refusé /mcp/workflow-trigger : Concurrency limit reached (1/1)")
+    return {{"run_id": "run-neuf"}}
+rejeu.send = send
+rejeu.cmd_lance("rotation", "5")
+"""
+        cfg = copy.deepcopy(FIXTURE)
+        cfg["rejeu"] = {"dossier": self.store, "depot": REPO}
+        Path(self.tmp, "cfg.json").write_text(json.dumps(cfg))
+        env = {"PATH": self.bin + ":/usr/bin:/bin", "HOME": self.tmp, "BUREAU_CONFIG": os.path.join(self.tmp, "cfg.json"),
+               "PYTHONPATH": os.path.join(ROOT, "workflows")}
+        return subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, cwd=self.wt, env=env, timeout=60)
+
+    def test_lanceur_un_rejeu_a_la_fois(self):
+        """Kronn refuse un 2e impl_rejeu (concurrency_limit 1, sans file) : le lanceur le dit avant, et un refus de Kronn
+        ne laisse pas de demande (elle bloquait le ticket une journée)."""
+        r = self.lance([{"id": "abcdef12-0000", "status": "Running"}])
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Un rejeu tourne déjà (run abcdef12)", r.stderr)
+        self.assertFalse(Path(self.store, "demandes", "ABC-5.json").exists())
+        r = self.lance([{"id": "vieux", "status": "Success"}], refus=True)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Concurrency limit reached", r.stderr)
+        self.assertFalse(Path(self.store, "demandes", "ABC-5.json").exists())
+        r = self.lance([])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("run run-neuf", r.stdout)
+        self.assertTrue(Path(self.store, "demandes", "ABC-5.json").exists())
+
     def test_rotation_ne_rejoue_pas_trop_tot(self):
         self.faux_gh([self.pr(5, "fix(Cache):ABC-5", ["src/a.php", "tests/aTest.php"])])
         from datetime import datetime, timezone
